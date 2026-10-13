@@ -6,7 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Matrix.Spectral.Interlacing
-public import NLAlib.Matrix.Factorizations.Elimination
+public import NLAlib.Matrix.Factorizations.GaussState
 
 /-!
 # Inertia of Hermitian matrices

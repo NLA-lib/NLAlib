@@ -35,10 +35,12 @@ Updated at every stopping point. Newest entry first within each section.
 | M7 | `Inequalities/PrincipalMinors.lean`, `HadamardProduct.lean`, `ForMathlib/LinearAlgebra/Matrix/Hadamard.lean` | Opus agent | proved | Oppenheim by a new induction through Schur complements |
 | M7 | `Inequalities/EntrywiseFunctions.lean` and stage wrap-up | Opus agent | done | `Inequalities/Minkowski.lean` split off `Determinant.lean`; majorization companions published; build, audit (1979 declarations), lint (1583) and references clean; stage report in the note; ledger completion for the prototype `Inequalities/` leftovers in progress |
 | M9 | `Factorizations/Triangular.lean`, `Elimination.lean` | Opus agent | proved | `Elimination.lean` is 743 lines: the `gaussState` part moves to `GaussState.lean` |
-| M9 | `Factorizations/LU.lean`, `Cholesky.lean` | Opus agent | in progress | |
+| M9 | `Factorizations/LU.lean`, `Cholesky.lean`, `GaussState.lean` (split off `Elimination.lean`) | Opus agent | proved | the rank pattern of pivoted Cholesky, unproved in the prototype, is proved |
+| M9 | `Factorizations/QR.lean`, `GramSchmidt.lean` | Opus agent | in progress | |
 | M8 | `Functions/HermitianCalculus.lean`, `ForMathlib/Analysis/RCLike/ToComplex.lean`, `ForMathlib/Analysis/Calculus/Deriv/Matrix.lean` | Opus agent | proved | diagonalisation lemmas to be restated for a frame `U : Matrix n r 𝕜` with `card r = card n`, the shape the spectral theorem of M3 produces |
 | M8 | `Functions/Polynomial.lean`, `Exponential.lean` | Opus agent | proved | |
-| M8 | `Functions/Complexification.lean`, `TraceFunctions.lean` | Opus agent | in progress | |
+| M8 | `Functions/Complexification.lean`, `TraceFunctions.lean` | Opus agent | proved | convexity of trace functions through Jensen for quadratic forms (Peierls), Klein from the generalized Klein inequality |
+| M8 | `Functions/OperatorMonotone.lean`, `GoldenThompson.lean` | Opus agent | in progress | |
 | M6 | design note `docs/design/Matrix-Perturbation.md`, skeleton of 10 files under `Matrix/Perturbation/` | orchestrator | done, Fable-reviewed, not maintainer-approved | Davis–Kahan in residual form at three levels; one review proposal rejected (false under repeated eigenvalues) |
 | M7 | design note `docs/design/Matrix-Inequalities.md`, skeleton of 8 files under `Matrix/Inequalities/` | orchestrator | done, Fable-reviewed, not maintainer-approved | spectral equivalence as a Loewner sandwich; `principalMinor`; determinants through `RCLike.re` |
 | M8 | design note `docs/design/Matrix-Functions.md`, skeleton of 12 files under `Matrix/Functions/`, `ForMathlib/Analysis/Calculus/Deriv/Matrix.lean`, `ForMathlib/Analysis/RCLike/ToComplex.lean` | orchestrator | done, Fable-reviewed, not maintainer-approved | `cfc f A` is the spelling of `f(A)`; no `matrixExp`/`traceExp`/`lambdaMax` names; results over `𝕜` through `complexify`; entrywise derivatives |

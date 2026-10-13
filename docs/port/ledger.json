@@ -203,6 +203,42 @@
   "note": "predicate dropped",
   "stage": "M3"
  },
+ "NLAlib.IsCholesky": {
+  "new": "NLAlib.IsCholesky",
+  "stage": "M9"
+ },
+ "NLAlib.IsCholesky.isUnit_det": {
+  "new": "NLAlib.IsCholesky.isUnit_det",
+  "stage": "M9"
+ },
+ "NLAlib.IsCholesky.posDef": {
+  "new": "NLAlib.IsCholesky.posDef",
+  "stage": "M9"
+ },
+ "NLAlib.IsCholesky.unique": {
+  "new": "NLAlib.IsCholesky.unique",
+  "stage": "M9"
+ },
+ "NLAlib.IsLU": {
+  "new": "NLAlib.IsLU",
+  "stage": "M9"
+ },
+ "NLAlib.IsLU.det_eq_prod": {
+  "new": "NLAlib.IsLU.det_eq_prod",
+  "stage": "M9"
+ },
+ "NLAlib.IsLU.leadingMinor_eq_prod": {
+  "new": "NLAlib.IsLU.principalMinor_eq_prod",
+  "stage": "M9"
+ },
+ "NLAlib.IsLU.leadingSubmatrix": {
+  "new": "NLAlib.IsLU.submatrix_of_isLowerSet",
+  "stage": "M9"
+ },
+ "NLAlib.IsLU.unique": {
+  "new": "NLAlib.IsLU.unique",
+  "stage": "M9"
+ },
  "NLAlib.IsLeastSquaresSolution": {
   "new": "NLAlib.IsLeastSquaresSolution",
   "stage": "M4"
@@ -896,6 +932,10 @@
   "new": "NLAlib.abs_frobInner_le_sum_singularValues_mul",
   "stage": "M3a"
  },
+ "NLAlib.abs_luPartialPivot_upper_le_two_pow": {
+  "new": "NLAlib.exists_perm_isLU_norm_le",
+  "stage": "M9"
+ },
  "NLAlib.abs_quadForm_hadamard_le_of_abs_quadForm_le": {
   "new": "NLAlib.hadamard_le_hadamard_of_neg_le_of_le",
   "note": "Loewner form -A ≤ B ≤ A, with NLAlib.neg_hadamard_le_hadamard_of_neg_le_of_le; the quadratic-form spelling is NLAlib.neg_le_and_le_iff_forall_abs_re_quadForm_le",
@@ -1117,6 +1157,18 @@
   "new": null,
   "note": "deferred: characteristic polynomial of a rank-one update (check Mathlib's matrix determinant lemma first)",
   "stage": "M10"
+ },
+ "NLAlib.cholesky": {
+  "new": "NLAlib.choleskyLower",
+  "stage": "M9"
+ },
+ "NLAlib.choleskySucceeds_iff_posDef": {
+  "new": "Matrix.IsHermitian.forall_choleskyLower_apply_self_pos_iff",
+  "stage": "M9"
+ },
+ "NLAlib.cholesky_apply_self_nonneg": {
+  "new": "Matrix.IsHermitian.choleskyLower_apply_self_nonneg",
+  "stage": "M9"
  },
  "NLAlib.columnProjectionMass": {
   "new": null,
@@ -1393,6 +1445,14 @@
   "new": "NLAlib.continuous_re_trace_exp",
   "stage": "M8"
  },
+ "NLAlib.convexOn_traceEvenPower": {
+  "new": "NLAlib.convexOn_re_trace_cfc",
+  "stage": "M8"
+ },
+ "NLAlib.convexOn_traceExp_isHermitian": {
+  "new": "NLAlib.convexOn_re_trace_cfc",
+  "stage": "M8"
+ },
  "NLAlib.coordinateSelector": {
   "new": null,
   "note": "object not reproduced: coordinateSelector, the diagonal projection onto a coordinate set, helper definition of the prototype's proof of Horn's converse, Matrix-Inequalities §6",
@@ -1481,6 +1541,10 @@
   "new": null,
   "note": "equality case not stated: the semidefinite alternative, a zero diagonal entry; the positive definite case is Matrix.PosDef.re_det_eq_prod_re_diag_iff",
   "stage": "M7"
+ },
+ "NLAlib.det_eq_prod_sq_diag_of_cholesky": {
+  "new": "NLAlib.IsCholesky.det_eq_prod",
+  "stage": "M9"
  },
  "NLAlib.det_fromBlocks_eq_mul_det_iff_of_posDef": {
   "new": "NLAlib.re_det_fromBlocks_eq_iff_of_posDef",
@@ -2029,6 +2093,10 @@
   "new": "NLAlib.eliminationStep_zero",
   "stage": "M9"
  },
+ "NLAlib.eq_cholesky_mul_transpose_of_posSemidef": {
+  "new": "Matrix.PosSemidef.eq_choleskyLower_mul_conjTranspose",
+  "stage": "M9"
+ },
  "NLAlib.eq_diagonal_of_isLowerTriangular_of_isUpperTriangular": {
   "new": "NLAlib.eq_diagonal_of_isLowerTriangular_of_isUpperTriangular",
   "stage": "M9"
@@ -2066,6 +2134,10 @@
   "new": null,
   "note": "not ported: step of the prototype's Schur-complement route to the eigenvalue branch; not needed by the characteristic-polynomial route, Matrix-Perturbation §9",
   "stage": "M6"
+ },
+ "NLAlib.existsUnique_cholesky_of_posDef": {
+  "new": "Matrix.PosDef.existsUnique_isCholesky",
+  "stage": "M9"
  },
  "NLAlib.existsUnique_isLeastSquaresSolution_iff": {
   "new": "NLAlib.existsUnique_isLeastSquaresSolution_iff",
@@ -2168,6 +2240,10 @@
   "new": "NLAlib.range_mulVecLin_le_iff_exists_mul",
   "stage": "M5"
  },
+ "NLAlib.exists_eq_mul_transpose_of_posSemidef": {
+  "new": "Matrix.PosSemidef.exists_eq_mul_conjTranspose_of_isLowerTriangular",
+  "stage": "M9"
+ },
  "NLAlib.exists_finset_net_specNorm_le": {
   "new": "NLAlib.exists_finset_specNorm_le_div",
   "stage": "M2"
@@ -2203,6 +2279,18 @@
   "new": "NLAlib.isLeast_frobNorm_sub_of_rank_le",
   "stage": "M3"
  },
+ "NLAlib.exists_isCholesky_iff_posDef": {
+  "new": "NLAlib.exists_isCholesky_iff_posDef",
+  "stage": "M9"
+ },
+ "NLAlib.exists_isLU_iff_forall_leadingMinor_ne_zero": {
+  "new": "NLAlib.exists_isLU_iff_forall_principalMinor_ne_zero",
+  "stage": "M9"
+ },
+ "NLAlib.exists_isLU_of_forall_leadingMinor_ne_zero": {
+  "new": "NLAlib.exists_isLU_of_forall_principalMinor_ne_zero",
+  "stage": "M9"
+ },
  "NLAlib.exists_isLeastSquaresSolution": {
   "new": "NLAlib.exists_isLeastSquaresSolution",
   "stage": "M4"
@@ -2210,6 +2298,10 @@
  "NLAlib.exists_isMoorePenroseInverse": {
   "new": "NLAlib.exists_isPinv",
   "stage": "M4"
+ },
+ "NLAlib.exists_isPLU_abs_le_one": {
+  "new": "NLAlib.exists_perm_isLU_norm_le",
+  "stage": "M9"
  },
  "NLAlib.exists_isSVD": {
   "new": "NLAlib.exists_isSVD",
@@ -2455,6 +2547,10 @@
   "new": null,
   "note": "consumer-specific rank-one lower bound; derive from Matrix.PosSemidef.exists_norm_eq_one_and_mulVec_eq_specNorm_smul where needed",
   "stage": "M3"
+ },
+ "NLAlib.exists_unit_triangular_factorizations_of_leading_minors_through_rank": {
+  "new": "NLAlib.exists_isLU_of_forall_principalMinor_ne_zero_of_le_rank",
+  "stage": "M9"
  },
  "NLAlib.exists_unitary_complement": {
   "new": "NLAlib.HasOrthonormalCols.exists_fromCols",
@@ -3193,6 +3289,10 @@
   "new": "NLAlib.posSemidef_sub_conjTranspose_mul_pinv_mul_of_posSemidef_fromBlocks",
   "stage": "M4"
  },
+ "NLAlib.generalized_klein": {
+  "new": "NLAlib.sum_re_trace_cfc_mul_cfc_nonneg",
+  "stage": "M8"
+ },
  "NLAlib.gram_cfc_abs_eq": {
   "new": null,
   "note": "deferred: the nuclear norm as the trace of the matrix absolute value, with matrix functions",
@@ -3385,6 +3485,14 @@
   "note": "real-only entry expansion; not needed",
   "stage": "M3"
  },
+ "NLAlib.intrinsicDimension": {
+  "new": "NLAlib.intrinsicDimension",
+  "stage": "M8"
+ },
+ "NLAlib.intrinsicDimension_fromBlocks": {
+  "new": "NLAlib.intrinsicDimension_fromBlocks_le",
+  "stage": "M8"
+ },
  "NLAlib.inv_apply_self_of_isLowerTriangular": {
   "new": "Matrix.IsLowerTriangular.inv_apply_self",
   "stage": "M9"
@@ -3435,6 +3543,10 @@
   "new": "NLAlib.frobNorm_sub_truncatedSVD_le_of_rank_le",
   "stage": "M3"
  },
+ "NLAlib.isCholesky_cholesky_of_posDef": {
+  "new": "Matrix.PosDef.isCholesky_choleskyLower",
+  "stage": "M9"
+ },
  "NLAlib.isClosed_stiefel": {
   "new": "NLAlib.isClosed_setOf_hasOrthonormalCols",
   "stage": "M5"
@@ -3483,6 +3595,14 @@
   "new": null,
   "note": "private helper isHermitian_of_mul_eq_mul of HasOrthonormalCols.mul_conjTranspose_commute_of_mul_eq_mul, over 𝕜",
   "stage": "M6"
+ },
+ "NLAlib.isLU_lu": {
+  "new": "NLAlib.isLU_luLower_luUpper",
+  "stage": "M9"
+ },
+ "NLAlib.isLU_lu_of_forall_leadingMinor_ne_zero": {
+  "new": "NLAlib.isLU_luLower_luUpper_of_forall_principalMinor_ne_zero",
+  "stage": "M9"
  },
  "NLAlib.isLeastSquaresSolution_eq_toEuclideanLin_pinv": {
   "new": "NLAlib.isLeastSquaresSolution_iff_eq_pinv_mulVec",
@@ -3546,6 +3666,10 @@
   "new": "NLAlib.isLeast_specNorm_sub_of_rank_le",
   "stage": "M3"
  },
+ "NLAlib.isLowerTriangular_cholesky": {
+  "new": "NLAlib.isLowerTriangular_choleskyLower",
+  "stage": "M9"
+ },
  "NLAlib.isLowerTriangular_inv": {
   "new": "Matrix.IsLowerTriangular.inv",
   "stage": "M9"
@@ -3572,10 +3696,22 @@
   "note": "full column rank is Function.Injective A.mulVec",
   "stage": "M5"
  },
+ "NLAlib.isPLU_luPartialPivot": {
+  "new": "NLAlib.exists_perm_isLU",
+  "stage": "M9"
+ },
+ "NLAlib.isPivotedCholesky_choleskyPivoted": {
+  "new": "Matrix.PosSemidef.exists_perm_eq_mul_conjTranspose",
+  "stage": "M9"
+ },
  "NLAlib.isRoot_charpoly_of_mulVec_eq_smul": {
   "new": null,
   "note": "deferred: characteristic polynomial of a rank-one update (check Mathlib's matrix determinant lemma first)",
   "stage": "M10"
+ },
+ "NLAlib.isUnitLowerTriangular_lu_fst": {
+  "new": "NLAlib.isUnitLowerTriangular_luLower",
+  "stage": "M9"
  },
  "NLAlib.isUnitLowerTriangular_one": {
   "new": "NLAlib.isUnitLowerTriangular_one",
@@ -3629,6 +3765,10 @@
  },
  "NLAlib.isUpperTriangular_inv": {
   "new": "Matrix.IsUpperTriangular.inv",
+  "stage": "M9"
+ },
+ "NLAlib.isUpperTriangular_lu_snd": {
+  "new": "NLAlib.isUpperTriangular_luUpper",
   "stage": "M9"
  },
  "NLAlib.kato_temple_eigenvalue_le": {
@@ -3822,6 +3962,14 @@
   "new": null,
   "note": "deferred: strict variational bounds and eigenvalue counting, with inertia",
   "stage": "M10"
+ },
+ "NLAlib.lu": {
+  "new": "NLAlib.luLower",
+  "stage": "M9"
+ },
+ "NLAlib.luSucceeds_iff_forall_leadingMinor_ne_zero": {
+  "new": "NLAlib.forall_luUpper_apply_self_ne_zero_iff",
+  "stage": "M9"
  },
  "NLAlib.majorized_comp_perm": {
   "new": "NLAlib.majorized_comp_equiv",
@@ -5605,6 +5753,10 @@
   "new": null,
   "note": "the spectrum is stated directly in eigenvalue_dilation",
   "stage": "M3"
+ },
+ "NLAlib.realMatrixComplexification": {
+  "new": "NLAlib.complexify",
+  "stage": "M8"
  },
  "NLAlib.realMatrixComplexification_sqrt": {
   "new": "NLAlib.complexify_sqrt",
@@ -7467,6 +7619,14 @@
   "new": "NLAlib.re_trace_exp_add_real_smul_one",
   "stage": "M8"
  },
+ "NLAlib.traceExp_le_exp_mul_traceExp_of_norm_sub_le": {
+  "new": "NLAlib.re_trace_exp_le_exp_specNorm_sub_mul",
+  "stage": "M8"
+ },
+ "NLAlib.traceExp_le_traceExp": {
+  "new": "NLAlib.re_trace_cfc_le_re_trace_cfc_of_le",
+  "stage": "M8"
+ },
  "NLAlib.traceExp_pos_of_isHermitian": {
   "new": "Matrix.IsHermitian.re_trace_exp_pos",
   "stage": "M8"
@@ -7481,6 +7641,10 @@
  },
  "NLAlib.traceExp_unitary_conj": {
   "new": "NLAlib.re_trace_exp_mul_mul_conjTranspose",
+  "stage": "M8"
+ },
+ "NLAlib.traceFunction_le_intrinsicDimension_mul": {
+  "new": "Matrix.PosSemidef.re_trace_cfc_le_intrinsicDimension_mul",
   "stage": "M8"
  },
  "NLAlib.trace_compression_eq_sum_mul_overlap_row_sq": {

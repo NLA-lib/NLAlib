@@ -21,9 +21,12 @@ the powers are operator concave. Operator convexity of a function `f` on an inte
 predicate `NLAlib.OperatorConvexOn s f`, and operator convex functions satisfy the operator Jensen
 inequality `f(Kᴴ A K) ≤ Kᴴ f(A) K` for an isometry `K` (Hansen–Pedersen).
 
-The results are stated over `𝕜`; they are proved over `ℂ`, where Mathlib has the corresponding
-C⋆-algebra facts (`CFC.rpow_le_rpow`, `CFC.sqrt_le_sqrt`, `CFC.log_le_log`, in the scope
-`Matrix.Norms.L2Operator`), and transferred through `NLAlib.complexify`.
+The results are stated over `𝕜`; the order facts are proved over `ℂ`, where Mathlib has the
+corresponding C⋆-algebra facts (`CFC.rpow_le_rpow`, `CFC.concaveOn_rpow`, `CFC.log_le_log`,
+`CFC.concaveOn_log`, `CStarAlgebra.convexOn_ringInverse`, in the scope
+`Matrix.Norms.L2Operator`), and transferred through `NLAlib.complexify`. The operator Jensen
+inequality is proved by dilating the isometry to a unitary and pinching; `t log t` is operator
+convex because it is `t f(1/t)` for the operator convex `f = -log`.
 
 ## Main definitions
 
@@ -34,7 +37,8 @@ C⋆-algebra facts (`CFC.rpow_le_rpow`, `CFC.sqrt_le_sqrt`, `CFC.log_le_log`, in
 * `Matrix.PosSemidef.rpow_le_rpow`, `Matrix.PosSemidef.sqrt_le_sqrt`,
   `Matrix.PosDef.cfc_log_le_cfc_log`: Löwner–Heinz.
 * `NLAlib.concaveOn_rpow`: operator concavity of the powers.
-* `NLAlib.operatorConvexOn_neg_log`, `NLAlib.operatorConvexOn_inv`, `NLAlib.operatorConvexOn_sq`.
+* `NLAlib.operatorConvexOn_neg_log`, `NLAlib.operatorConvexOn_inv`, `NLAlib.operatorConvexOn_sq`,
+  `NLAlib.operatorConvexOn_mul_log`.
 * `NLAlib.OperatorConvexOn.cfc_conjTranspose_mul_mul_le`,
   `NLAlib.OperatorConvexOn.cfc_sum_conjTranspose_mul_mul_le`: the operator Jensen inequality.
 -/
@@ -490,6 +494,34 @@ private theorem conjTranspose_smul_mul_mul_smul {c : ℝ} (hc : 0 ≤ c) {S r : 
   simp only [Matrix.smul_mul, Matrix.mul_smul, smul_smul, Real.mul_self_sqrt hc,
     Matrix.mul_assoc]
 
+/-- `X^{1/2} X^{1/2} = X` for positive definite `X`, in terms of `cfc`. -/
+private theorem cfc_sqrt_mul_cfc_sqrt {X : Matrix n n 𝕜} (hX : X.PosDef) :
+    cfc Real.sqrt X * cfc Real.sqrt X = X := by
+  rw [cfc_mul_cfc]
+  refine (cfc_congr fun x hx => ?_).trans (cfc_id' ℝ X hX.isHermitian.isSelfAdjoint)
+  exact Real.mul_self_sqrt (le_of_lt (hX.spectrum_subset_Ioi hx))
+
+/-- The inverse square root `r` of a positive definite `X`, with the identities used in the
+proof of operator convexity of `t log t`. -/
+private theorem exists_inv_sqrt {X : Matrix n n 𝕜} (hX : X.PosDef) :
+    ∃ r : Matrix n n 𝕜, rᴴ = r ∧ cfc Real.sqrt X * r = 1 ∧ r * cfc Real.sqrt X = 1 ∧
+      r * X * r = 1 ∧ cfc (fun x : ℝ => -Real.log x) (r * r) = cfc Real.log X := by
+  have hsr : cfc Real.sqrt X * cfc (fun x : ℝ => (√x)⁻¹) X = 1 := by
+    rw [cfc_mul_cfc]
+    exact cfc_eq_one_of_forall_pos hX fun x hx => mul_inv_cancel₀ (Real.sqrt_pos.mpr hx).ne'
+  have hrs : cfc (fun x : ℝ => (√x)⁻¹) X * cfc Real.sqrt X = 1 := by
+    rw [cfc_mul_cfc]
+    exact cfc_eq_one_of_forall_pos hX fun x hx => inv_mul_cancel₀ (Real.sqrt_pos.mpr hx).ne'
+  have hrr : cfc (fun x : ℝ => (√x)⁻¹) X * cfc (fun x : ℝ => (√x)⁻¹) X =
+      cfc (fun x : ℝ => x⁻¹) X := by
+    rw [cfc_mul_cfc]
+    refine cfc_congr fun x hx => ?_
+    rw [← mul_inv, Real.mul_self_sqrt (le_of_lt (hX.spectrum_subset_Ioi hx))]
+  refine ⟨cfc (fun x : ℝ => (√x)⁻¹) X, (cfc_predicate _ X : IsSelfAdjoint _), hsr, hrs, ?_, ?_⟩
+  · nth_rewrite 2 [← cfc_sqrt_mul_cfc_sqrt hX]
+    rw [Matrix.mul_assoc, Matrix.mul_assoc, hsr, Matrix.mul_one, hrs]
+  · rw [hrr, cfc_neg_log_cfc_inv hX.isHermitian]
+
 /-- Convexity of `X ↦ X log X` on positive definite matrices over any field. -/
 private theorem cfc_mul_log_smul_add_smul_le {A B : Matrix n n 𝕜} (hA : A.PosDef)
     (hB : B.PosDef) {a b : ℝ} (ha : 0 ≤ a) (hb : 0 ≤ b) (hab : a + b = 1)
@@ -498,34 +530,11 @@ private theorem cfc_mul_log_smul_add_smul_le {A B : Matrix n n 𝕜} (hA : A.Pos
       a • cfc (fun x : ℝ => x * Real.log x) A + b • cfc (fun x : ℝ => x * Real.log x) B := by
   have hH : ∀ (φ : ℝ → ℝ) (Y : Matrix n n 𝕜), (cfc φ Y)ᴴ = cfc φ Y := fun φ Y =>
     (cfc_predicate φ Y : IsSelfAdjoint (cfc φ Y))
-  have hsq : ∀ Y : Matrix n n 𝕜, Y.PosDef → cfc Real.sqrt Y * cfc Real.sqrt Y = Y :=
-    fun Y hY => by
-      rw [cfc_mul_cfc]
-      refine (cfc_congr fun x hx => ?_).trans (cfc_id' ℝ Y hY.isHermitian.isSelfAdjoint)
-      exact Real.mul_self_sqrt (le_of_lt (hY.spectrum_subset_Ioi hx))
   have hinv : ∀ Y : Matrix n n 𝕜, Y.PosDef →
       cfc Real.sqrt Y * cfc (fun x : ℝ => x⁻¹) Y * cfc Real.sqrt Y = 1 := fun Y hY => by
     rw [cfc_sqrt_mul_cfc_mul_cfc_sqrt hY]
     exact cfc_eq_one_of_forall_pos hY fun x hx => mul_inv_cancel₀ hx.ne'
-  have hsr : cfc Real.sqrt (a • A + b • B) * cfc (fun x : ℝ => (√x)⁻¹) (a • A + b • B) = 1 := by
-    rw [cfc_mul_cfc]
-    exact cfc_eq_one_of_forall_pos hX fun x hx => mul_inv_cancel₀ (Real.sqrt_pos.mpr hx).ne'
-  have hrs : cfc (fun x : ℝ => (√x)⁻¹) (a • A + b • B) * cfc Real.sqrt (a • A + b • B) = 1 := by
-    rw [cfc_mul_cfc]
-    exact cfc_eq_one_of_forall_pos hX fun x hx => inv_mul_cancel₀ (Real.sqrt_pos.mpr hx).ne'
-  have hrr : cfc (fun x : ℝ => (√x)⁻¹) (a • A + b • B) *
-      cfc (fun x : ℝ => (√x)⁻¹) (a • A + b • B) = cfc (fun x : ℝ => x⁻¹) (a • A + b • B) := by
-    rw [cfc_mul_cfc]
-    refine cfc_congr fun x hx => ?_
-    rw [← mul_inv, Real.mul_self_sqrt (le_of_lt (hX.spectrum_subset_Ioi hx))]
-  have hrXr : cfc (fun x : ℝ => (√x)⁻¹) (a • A + b • B) * (a • A + b • B) *
-      cfc (fun x : ℝ => (√x)⁻¹) (a • A + b • B) = 1 := by
-    nth_rewrite 2 [← hsq _ hX]
-    rw [Matrix.mul_assoc, Matrix.mul_assoc, hsr, Matrix.mul_one, hrs]
-  have hrH := hH (fun x : ℝ => (√x)⁻¹) (a • A + b • B)
-  have hlogX := cfc_neg_log_cfc_inv hX.isHermitian
-  rw [← hrr] at hlogX
-  generalize cfc (fun x : ℝ => (√x)⁻¹) (a • A + b • B) = r at hsr hrs hrXr hrH hlogX
+  obtain ⟨r, hrH, hsr, hrs, hrXr, hlogX⟩ := exists_inv_sqrt hX
   have hsp : ∀ Y : Matrix n n 𝕜, Y.PosDef →
       spectrum ℝ (cfc (fun x : ℝ => x⁻¹) Y) ⊆ Set.Ioi 0 := fun Y hY => by
     rw [cfc_map_spectrum (fun x : ℝ => x⁻¹) Y hY.isHermitian.isSelfAdjoint
@@ -538,8 +547,8 @@ private theorem cfc_mul_log_smul_add_smul_le {A B : Matrix n n 𝕜} (hA : A.Pos
           1 := by
     have h1 := conjTranspose_smul_mul_mul_smul ha (hH Real.sqrt A) hrH 1
     have h2 := conjTranspose_smul_mul_mul_smul hb (hH Real.sqrt B) hrH 1
-    rw [Matrix.mul_one, Matrix.mul_one, hsq A hA] at h1
-    rw [Matrix.mul_one, Matrix.mul_one, hsq B hB] at h2
+    rw [Matrix.mul_one, Matrix.mul_one, cfc_sqrt_mul_cfc_sqrt hA] at h1
+    rw [Matrix.mul_one, Matrix.mul_one, cfc_sqrt_mul_cfc_sqrt hB] at h2
     rw [Fin.sum_univ_two]
     change (√a • (cfc Real.sqrt A * r))ᴴ * (√a • (cfc Real.sqrt A * r)) +
       (√b • (cfc Real.sqrt B * r))ᴴ * (√b • (cfc Real.sqrt B * r)) = 1

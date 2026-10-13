@@ -683,6 +683,14 @@
   "new": "NLAlib.Majorized.trans",
   "stage": "M3a"
  },
+ "NLAlib.OperatorConvexOn": {
+  "new": "NLAlib.OperatorConvexOn",
+  "stage": "M8"
+ },
+ "NLAlib.OperatorConvexOn.cfc_conjTranspose_mul_mul_le": {
+  "new": "NLAlib.OperatorConvexOn.cfc_conjTranspose_mul_mul_le",
+  "stage": "M8"
+ },
  "NLAlib.SizedSubset": {
   "new": null,
   "note": "replaced by Mathlib Finset.powersetCard and Set.powersetCard",
@@ -1189,8 +1197,16 @@
   "new": "Matrix.PosDef.inv_sqrt_eq_cfc",
   "stage": "M8"
  },
+ "NLAlib.cfc_log_le_cfc_log": {
+  "new": "Matrix.PosDef.cfc_log_le_cfc_log",
+  "stage": "M8"
+ },
  "NLAlib.cfc_reindex_of_isHermitian": {
   "new": "NLAlib.cfc_submatrix_equiv",
+  "stage": "M8"
+ },
+ "NLAlib.cfc_rpow_le_cfc_rpow": {
+  "new": "Matrix.PosSemidef.rpow_le_rpow",
   "stage": "M8"
  },
  "NLAlib.cfc_unitary_conj": {
@@ -1336,6 +1352,10 @@
   "new": null,
   "note": "no chosen eigenframes",
   "stage": "M3"
+ },
+ "NLAlib.concaveOn_cfc_rpow": {
+  "new": "NLAlib.concaveOn_rpow",
+  "stage": "M8"
  },
  "NLAlib.concaveOn_det_rpow_inv_card": {
   "new": "NLAlib.concaveOn_re_det_rpow",
@@ -5139,6 +5159,14 @@
   "note": "superseded by the net bounds of Norms/Net.lean",
   "stage": "M3"
  },
+ "NLAlib.operatorConvexOn_neg_log": {
+  "new": "NLAlib.operatorConvexOn_neg_log",
+  "stage": "M8"
+ },
+ "NLAlib.operator_jensen": {
+  "new": "NLAlib.OperatorConvexOn.cfc_sum_conjTranspose_mul_mul_le",
+  "stage": "M8"
+ },
  "NLAlib.orthogonalGroupCompactSpace": {
   "new": "NLAlib.isCompact_setOf_hasOrthonormalCols",
   "note": "square case, as a set of matrices instead of an instance on the group",
@@ -5340,6 +5368,10 @@
  },
  "NLAlib.posDef_matrixExp_and_matrixLog_matrixExp": {
   "new": "Matrix.IsHermitian.posDef_exp",
+  "stage": "M8"
+ },
+ "NLAlib.posDef_of_posDef_le": {
+  "new": "Matrix.PosDef.posDef_of_le",
   "stage": "M8"
  },
  "NLAlib.posDef_one_sub_iff_specNorm_lt_one_of_posSemidef": {
@@ -7838,6 +7870,10 @@
   "new": null,
   "note": "no chosen eigenframes",
   "stage": "M3"
+ },
+ "NLAlib.traceExp_add_matrixLog_le": {
+  "new": "Matrix.PosDef.re_trace_exp_add_cfc_log_le",
+  "stage": "M8"
  },
  "NLAlib.traceExp_add_smul_one_eq_exp_mul": {
   "new": "NLAlib.re_trace_exp_add_real_smul_one",

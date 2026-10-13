@@ -14,6 +14,11 @@ public import NLAlib.Matrix.Functions.Complexification
 For Hermitian `H` and `K`, `tr exp (H + K) ≤ tr (exp H · exp K)`. It replaces the scalar identity
 `e^{h + k} = e^h e^k` in the Ahlswede–Winter approach to matrix concentration.
 
+The proof is the classical one: the Lie product formula
+`(exp (H / n) exp (K / n)) ^ n → exp (H + K)` along `n = 2 ^ k`, and the trace inequality
+`tr (A B) ^ (2 ^ k) ≤ tr (A ^ (2 ^ k) B ^ (2 ^ k))` for positive semidefinite `A`, `B`. It works
+over any `RCLike` field and does not use Lieb's theorem.
+
 ## Main results
 
 * `NLAlib.re_trace_exp_add_le`: the Golden–Thompson inequality.
@@ -237,7 +242,8 @@ private theorem tendsto_exp_smul_mul_exp_smul_pow [Nonempty n] (H K : Matrix n n
 /-- **The Golden–Thompson inequality.** For Hermitian `H` and `K`,
 `tr exp (H + K) ≤ tr (exp H · exp K)`.
 [Bhatia1997, §IX.3]; [Tropp2015, §3.1 notes].
-Port of `NLAlib.golden_thompson`, there over `ℂ`.
+Port of the statement of `NLAlib.golden_thompson`, there over `ℂ` and derived from Lieb's theorem
+by pinching; the proof here is by the Lie product formula.
 Result: golden-thompson -/
 theorem re_trace_exp_add_le {H K : Matrix n n 𝕜} (hH : H.IsHermitian) (hK : K.IsHermitian) :
     RCLike.re (exp (H + K)).trace ≤ RCLike.re (exp H * exp K).trace := by

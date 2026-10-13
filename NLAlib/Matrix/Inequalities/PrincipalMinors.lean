@@ -37,8 +37,62 @@ the complement of an index `i` is `det A · (A⁻¹) i i`.
 `NLAlib.det_principal_complement_singleton_eq_det_mul_inv_diag`. -/
 theorem principalMinor_erase_univ_eq {K : Type*} [Field K] {A : Matrix n n K} (hA : IsUnit A)
     (i : n) : principalMinor A (Finset.univ.erase i) = A.det * A⁻¹ i i := by
-  sorry
+  have hdet : A.det ≠ 0 := ((Matrix.isUnit_iff_isUnit_det A).mp hA).ne_zero
+  have hadj : A.adjugate i i = principalMinor A (Finset.univ.erase i) := by
+    rw [Matrix.adjugate_apply, principalMinor, ← Matrix.det_piecewise_one_eq_submatrix_det]
+    congr 1
+    ext a b
+    by_cases ha : a = i
+    · subst ha
+      simp [Matrix.one_apply, Pi.single_apply, eq_comm]
+    · simp [ha]
+  rw [Matrix.inv_def, Matrix.smul_apply, Ring.inverse_eq_inv', smul_eq_mul, ← mul_assoc,
+    mul_inv_cancel₀ hdet, one_mul, hadj]
 
+omit [Fintype n] in
+/-- The determinant of a submatrix along an injective map is the principal minor on its image. -/
+private theorem det_submatrix_eq_principalMinor {R ι : Type*} [CommRing R] [Fintype ι]
+    [DecidableEq ι] (A : Matrix n n R) {f : ι → n} (hf : Function.Injective f) {s : Finset n}
+    (hs : ∀ x, x ∈ s ↔ x ∈ Set.range f) : (A.submatrix f f).det = principalMinor A s := by
+  let e : ι ≃ s := Equiv.ofBijective (fun i => ⟨f i, (hs _).mpr ⟨i, rfl⟩⟩)
+    ⟨fun i j h => hf (congrArg Subtype.val h), fun ⟨x, hx⟩ => by
+      obtain ⟨i, rfl⟩ := (hs x).mp hx
+      exact ⟨i, rfl⟩⟩
+  rw [principalMinor, ← Matrix.det_submatrix_equiv_self e (A.submatrix Subtype.val Subtype.val)]
+  rfl
+
+/-- The case of the whole index set of `Matrix.PosSemidef.re_principalMinor_pow_le_prod_erase`,
+for a positive definite matrix: Hadamard's inequality for the inverse. -/
+private theorem re_det_pow_le_prod_erase_of_posDef {A : Matrix n n 𝕜} (hA : A.PosDef) {k : ℕ}
+    (hk : k + 1 = Fintype.card n) :
+    RCLike.re A.det ^ k ≤ ∏ i, RCLike.re (principalMinor A (Finset.univ.erase i)) := by
+  have hd : 0 < RCLike.re A.det := (RCLike.pos_iff.mp hA.det_pos).1
+  have hinv : RCLike.re A⁻¹.det = (RCLike.re A.det)⁻¹ := by
+    rw [Matrix.det_nonsing_inv, Ring.inverse_eq_inv', hA.isHermitian.det_eq_re_det,
+      ← RCLike.ofReal_inv, RCLike.ofReal_re, RCLike.ofReal_re]
+  have hterm (i : n) : RCLike.re (principalMinor A (Finset.univ.erase i)) =
+      RCLike.re A.det * RCLike.re (A⁻¹ i i) := by
+    rw [principalMinor_erase_univ_eq hA.isUnit, hA.isHermitian.det_eq_re_det,
+      RCLike.re_ofReal_mul, RCLike.ofReal_re]
+  simp only [hterm]
+  rw [Finset.prod_mul_distrib, Finset.prod_const, Finset.card_univ, ← hk]
+  calc RCLike.re A.det ^ k = RCLike.re A.det ^ (k + 1) * RCLike.re A⁻¹.det := by
+        rw [hinv, pow_succ, mul_assoc, mul_inv_cancel₀ hd.ne', mul_one]
+    _ ≤ RCLike.re A.det ^ (k + 1) * ∏ i, RCLike.re (A⁻¹ i i) :=
+        mul_le_mul_of_nonneg_left hA.inv.posSemidef.re_det_le_prod_re_diag (pow_pos hd _).le
+
+/-- The case of the whole index set of `Matrix.PosSemidef.re_principalMinor_pow_le_prod_erase`,
+by continuity from the positive definite case. -/
+private theorem re_det_pow_le_prod_erase {A : Matrix n n 𝕜} (hA : A.PosSemidef) {k : ℕ}
+    (hk : k + 1 = Fintype.card n) :
+    RCLike.re A.det ^ k ≤ ∏ i, RCLike.re (principalMinor A (Finset.univ.erase i)) :=
+  Matrix.PosSemidef.le_of_forall_posDef_le
+    (f := fun A : Matrix n n 𝕜 => RCLike.re A.det ^ k)
+    (g := fun A : Matrix n n 𝕜 => ∏ i, RCLike.re
+      (A.submatrix (Subtype.val : ↥(Finset.univ.erase i) → n) Subtype.val).det)
+    (by fun_prop) (by fun_prop) (fun _ hM => re_det_pow_le_prod_erase_of_posDef hM hk) hA
+
+omit [Fintype n] in
 /-- **A minor against its sub-minors.** For a positive semidefinite matrix and a nonempty index
 set `t` with `k + 1` elements, `A[t] ^ k ≤ ∏ i ∈ t, A[t \ {i}]`.
 [HornJohnson2013, Theorem 7.8.11 (step)].
@@ -47,7 +101,59 @@ matrices. -/
 theorem _root_.Matrix.PosSemidef.re_principalMinor_pow_le_prod_erase {A : Matrix n n 𝕜}
     (hA : A.PosSemidef) {t : Finset n} {k : ℕ} (hk : t.card = k + 1) :
     RCLike.re (principalMinor A t) ^ k ≤ ∏ i ∈ t, RCLike.re (principalMinor A (t.erase i)) := by
-  sorry
+  have h := re_det_pow_le_prod_erase (hA.submatrix (Subtype.val : ↥t → n)) (k := k)
+    (by rw [Fintype.card_coe, hk])
+  have he (i : ↥t) : principalMinor (A.submatrix (Subtype.val : ↥t → n) Subtype.val)
+      (Finset.univ.erase i) = principalMinor A (t.erase i) := by
+    rw [principalMinor, Matrix.submatrix_submatrix]
+    refine det_submatrix_eq_principalMinor A
+      (Subtype.val_injective.comp Subtype.val_injective) fun x => ?_
+    simp only [Finset.mem_erase, Set.mem_range, Function.comp_apply]
+    constructor
+    · rintro ⟨hx, hxt⟩
+      exact ⟨⟨⟨x, hxt⟩, by simpa [Subtype.ext_iff] using hx⟩, rfl⟩
+    · rintro ⟨⟨y, hy⟩, rfl⟩
+      exact ⟨fun h => (Finset.mem_erase.mp hy).1 (Subtype.ext h), y.2⟩
+  simp only [he] at h
+  rw [Finset.prod_coe_sort t fun i => RCLike.re (principalMinor A (t.erase i))] at h
+  exact h
+
+/-- Multiplying a function over every one-element deletion of every subset with `k + 1`
+elements counts each subset with `k` elements once for each element outside it. -/
+private theorem prod_powersetCard_prod_erase {M : Type*} [CommMonoid M] (f : Finset n → M)
+    {k d : ℕ} (hkd : k + d = Fintype.card n) :
+    ∏ t ∈ Finset.univ.powersetCard (k + 1), ∏ i ∈ t, f (t.erase i) =
+      (∏ s ∈ Finset.univ.powersetCard k, f s) ^ d := by
+  have hprod : ∏ u ∈ (Finset.univ.powersetCard (k + 1)).sigma (fun t : Finset n => t),
+      f (u.1.erase u.2) =
+      ∏ v ∈ (Finset.univ.powersetCard k).sigma (fun s : Finset n => Finset.univ \ s), f v.1 := by
+    refine Finset.prod_bij' (fun u _ => ⟨u.1.erase u.2, u.2⟩)
+      (fun v _ => ⟨insert v.2 v.1, v.2⟩) ?_ ?_ ?_ ?_ ?_
+    · intro u hu
+      obtain ⟨ht, hi⟩ := Finset.mem_sigma.mp hu
+      have hcard := (Finset.mem_powersetCard.mp ht).2
+      refine Finset.mem_sigma.mpr ⟨Finset.mem_powersetCard.mpr ⟨Finset.subset_univ _, ?_⟩, ?_⟩
+      · rw [Finset.card_erase_of_mem hi, hcard, Nat.add_sub_cancel]
+      · simp
+    · intro v hv
+      obtain ⟨hs, hi⟩ := Finset.mem_sigma.mp hv
+      have hcard := (Finset.mem_powersetCard.mp hs).2
+      have hnot : v.2 ∉ v.1 := (Finset.mem_sdiff.mp hi).2
+      refine Finset.mem_sigma.mpr ⟨Finset.mem_powersetCard.mpr ⟨Finset.subset_univ _, ?_⟩,
+        Finset.mem_insert_self _ _⟩
+      rw [Finset.card_insert_of_notMem hnot, hcard]
+    · intro u hu
+      exact Sigma.ext (Finset.insert_erase (Finset.mem_sigma.mp hu).2) HEq.rfl
+    · intro v hv
+      exact Sigma.ext
+        (Finset.erase_insert (Finset.mem_sdiff.mp (Finset.mem_sigma.mp hv).2).2) HEq.rfl
+    · intro u _
+      rfl
+  rw [Finset.prod_sigma', hprod, Finset.prod_sigma, ← Finset.prod_pow]
+  refine Finset.prod_congr rfl fun s hs => ?_
+  change ∏ _i ∈ Finset.univ \ s, f s = _
+  rw [Finset.prod_const, Finset.card_sdiff_of_subset (Finset.subset_univ s), Finset.card_univ,
+    (Finset.mem_powersetCard.mp hs).2, ← hkd, Nat.add_sub_cancel_left]
 
 /-- **Szász's inequality.** Let `P k` be the product of all principal minors of size `k` of a
 positive semidefinite matrix of size `N`. Then
@@ -59,14 +165,16 @@ theorem _root_.Matrix.PosSemidef.prod_re_principalMinor_succ_pow_le {A : Matrix 
     (hA : A.PosSemidef) {k d : ℕ} (hkd : k + d = Fintype.card n) :
     (∏ s ∈ Finset.univ.powersetCard (k + 1), RCLike.re (principalMinor A s)) ^ k ≤
       (∏ s ∈ Finset.univ.powersetCard k, RCLike.re (principalMinor A s)) ^ d := by
-  sorry
+  rw [← Finset.prod_pow, ← prod_powersetCard_prod_erase _ hkd]
+  exact Finset.prod_le_prod (fun s _ => pow_nonneg (hA.re_principalMinor_nonneg s) k)
+    fun s hs => hA.re_principalMinor_pow_le_prod_erase (Finset.mem_powersetCard.mp hs).2
 
 /-- The case `k + 1 = N` of Szász's inequality: `det A ^ (N - 1) ≤ ∏ i, A[univ \ {i}]`.
 [HornJohnson2013, Theorem 7.8.11].
 Port of `NLAlib.det_pow_card_pred_le_prod_complement_singleton`. -/
 theorem _root_.Matrix.PosSemidef.re_det_pow_le_prod_re_principalMinor_erase {A : Matrix n n 𝕜}
     (hA : A.PosSemidef) {k : ℕ} (hk : k + 1 = Fintype.card n) :
-    RCLike.re A.det ^ k ≤ ∏ i, RCLike.re (principalMinor A (Finset.univ.erase i)) := by
-  sorry
+    RCLike.re A.det ^ k ≤ ∏ i, RCLike.re (principalMinor A (Finset.univ.erase i)) :=
+  re_det_pow_le_prod_erase hA hk
 
 end NLAlib

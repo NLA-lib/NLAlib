@@ -31,7 +31,7 @@ variable {R : Type*} {m n : Type*}
 /-- The Hadamard product is the submatrix of the Kronecker product on the diagonal index pairs.
 [HornJohnson1991, Lemma 5.1.1]. Port of `NLAlib.submatrix_kronecker_diagonal`. -/
 theorem hadamard_eq_submatrix_kronecker [Mul R] (A B : Matrix m n R) :
-    A ⊙ B = (A ⊗ₖ B).submatrix (fun i => (i, i)) (fun j => (j, j)) := by
-  sorry
+    A ⊙ B = (A ⊗ₖ B).submatrix (fun i => (i, i)) (fun j => (j, j)) :=
+  rfl
 
 end Matrix

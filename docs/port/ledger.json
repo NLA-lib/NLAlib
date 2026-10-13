@@ -626,6 +626,10 @@
   "new": "NLAlib.norm_apply_le_specNorm",
   "stage": "M2"
  },
+ "NLAlib.abs_det_le_prod_column_norm": {
+  "new": "NLAlib.norm_det_le_prod_norm_col",
+  "stage": "M7"
+ },
  "NLAlib.abs_diag_le_specNorm": {
   "new": "NLAlib.norm_apply_le_specNorm",
   "stage": "M2"
@@ -699,6 +703,10 @@
  "NLAlib.abs_sqrt_bestRankFrobSq_sub_le_frobNorm": {
   "new": "NLAlib.SymmetricGauge.abs_matrixNorm_sub_truncatedSVD_sub_le",
   "stage": "M6"
+ },
+ "NLAlib.add_smul_inv_le_smul_one_of_sandwich": {
+  "new": "NLAlib.add_smul_inv_le_smul_one",
+  "stage": "M7"
  },
  "NLAlib.apply_eq_sum_mul_single": {
   "new": null,
@@ -838,6 +846,10 @@
   "note": "no chosen eigenframes",
   "stage": "M3"
  },
+ "NLAlib.concaveOn_det_rpow_inv_card": {
+  "new": "NLAlib.concaveOn_re_det_rpow",
+  "stage": "M7"
+ },
  "NLAlib.conditionNumber": {
   "new": "NLAlib.conditionNumber",
   "note": "real-valued, every shape; the ℝ≥0∞-valued square notion is not reproduced",
@@ -975,6 +987,18 @@
   "new": "Matrix.PosDef.eq_of_le_of_det_eq",
   "stage": "M7"
  },
+ "NLAlib.det_eq_prod_diag_iff_isDiag_of_posDef": {
+  "new": "Matrix.PosDef.re_det_eq_prod_re_diag_iff",
+  "stage": "M7"
+ },
+ "NLAlib.det_fromBlocks_eq_mul_det_iff_of_posDef": {
+  "new": "NLAlib.re_det_fromBlocks_eq_iff_of_posDef",
+  "stage": "M7"
+ },
+ "NLAlib.det_fromBlocks_le_mul_det_of_posSemidef": {
+  "new": "NLAlib.re_det_fromBlocks_le_of_posSemidef",
+  "stage": "M7"
+ },
  "NLAlib.det_gram_mul_eq_zero_of_det_gram_eq_zero": {
   "new": null,
   "note": "case absorbed by the thin SVD factorisation in Horn's inequality",
@@ -1002,6 +1026,10 @@
   "new": "Matrix.PosSemidef.re_det_le_re_det_of_le",
   "stage": "M7"
  },
+ "NLAlib.det_le_prod_diag_of_posSemidef": {
+  "new": "Matrix.PosSemidef.re_det_le_prod_re_diag",
+  "stage": "M7"
+ },
  "NLAlib.det_mul_eq_sum_det_submatrix_mul_det_submatrix": {
   "new": "Matrix.det_mul_eq_sum_powersetCard",
   "note": "no chosen enumeration",
@@ -1011,6 +1039,14 @@
   "new": "NLAlib.isUnit_conjTranspose_mul_self_iff_rank",
   "note": "general Gram form",
   "stage": "M1"
+ },
+ "NLAlib.det_principal_union_mul_inter_le_of_posSemidef": {
+  "new": "Matrix.PosSemidef.re_principalMinor_union_mul_inter_le",
+  "stage": "M7"
+ },
+ "NLAlib.det_rpow_inv_card_add_le": {
+  "new": "Matrix.PosSemidef.re_det_rpow_add_le",
+  "stage": "M7"
  },
  "NLAlib.det_submatrix_equiv_eq_sign_mul": {
   "new": "Matrix.det_submatrix_equiv_equiv",
@@ -3117,6 +3153,18 @@
   "new": "NLAlib.principalAngle_monotone",
   "stage": "M5"
  },
+ "NLAlib.principalMinor": {
+  "new": "NLAlib.principalMinor",
+  "stage": "M7"
+ },
+ "NLAlib.principalMinor_nonneg": {
+  "new": "Matrix.PosSemidef.re_principalMinor_nonneg",
+  "stage": "M7"
+ },
+ "NLAlib.principalMinor_pos": {
+  "new": "Matrix.PosDef.re_principalMinor_pos",
+  "stage": "M7"
+ },
  "NLAlib.prod_singularValues_mul_le": {
   "new": "NLAlib.prod_range_singularValues_mul_le",
   "stage": "M3a"
@@ -3168,6 +3216,14 @@
  },
  "NLAlib.quadForm_fromBlocks": {
   "new": "NLAlib.re_quadForm_fromBlocks",
+  "stage": "M7"
+ },
+ "NLAlib.quadForm_mul_quadForm_inv_le_moorePenroseConditionNumber_sqrt": {
+  "new": "Matrix.PosDef.re_quadForm_mul_re_quadForm_inv_le_conditionNumber",
+  "stage": "M7"
+ },
+ "NLAlib.quadForm_mul_quadForm_inv_le_of_sandwich": {
+  "new": "NLAlib.re_quadForm_mul_re_quadForm_inv_le",
   "stage": "M7"
  },
  "NLAlib.quadForm_reindex": {

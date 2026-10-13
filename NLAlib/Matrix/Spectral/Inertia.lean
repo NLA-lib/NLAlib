@@ -140,6 +140,33 @@ theorem exists_eigenvalue_conjTranspose_mul_mul_eq_mul {A : Matrix n n 𝕜} (hA
       eigenvalue (Sᴴ * A * S) k = θ * eigenvalue A k := by
   sorry
 
+/-! ### Inertia and interlacing -/
+
+/-- **Adding a Hermitian matrix with `p` positive eigenvalues moves each eigenvalue up by at most
+`p` places**: `λ_{i+p}(A + B) ≤ λ_i(A)` with `p = inertiaPos B`.
+[HornJohnson2013, Corollary 4.3.5].
+Port of `NLAlib.eigenvalues₀_add_le_of_card_pos`. -/
+theorem eigenvalue_add_le_of_inertiaPos {A B : Matrix n n 𝕜} (hA : A.IsHermitian)
+    (hB : B.IsHermitian) (i : ℕ) : eigenvalue (A + B) (i + inertiaPos B) ≤ eigenvalue A i := by
+  sorry
+
+/-- Adding a Hermitian matrix with `q` negative eigenvalues moves each eigenvalue down by at most
+`q` places: `λ_{i+q}(A) ≤ λ_i(A + B)` with `q = inertiaNeg B`, for `i + q` below the size.
+Port of `NLAlib.eigenvalues₀_le_add_of_card_neg`. -/
+theorem eigenvalue_le_eigenvalue_add_of_inertiaNeg {A B : Matrix n n 𝕜} (hA : A.IsHermitian)
+    (hB : B.IsHermitian) {i : ℕ} (hi : i + inertiaNeg B < Fintype.card n) :
+    eigenvalue A (i + inertiaNeg B) ≤ eigenvalue (A + B) i := by
+  sorry
+
+/-- **A strict Courant–Fischer bound from below**: if the form of `A` exceeds `c` on a subspace
+of dimension `k + 1`, then `c < λ_k(A)`.
+Port of `NLAlib.lt_eigenvalues₀_of_forall_mem`. -/
+theorem lt_eigenvalue_of_posDef_conjTranspose_mul_mul_sub {A : Matrix n n 𝕜}
+    (hA : A.IsHermitian) {k : ℕ} {V : Matrix n (Fin (k + 1)) 𝕜} (hV : HasOrthonormalCols V)
+    {c : ℝ} (h : (Vᴴ * A * V - c • (1 : Matrix (Fin (k + 1)) (Fin (k + 1)) 𝕜)).PosDef) :
+    c < eigenvalue A k := by
+  sorry
+
 /-! ### Blocks -/
 
 /-- The positive index of a block diagonal matrix is the sum of those of the blocks.

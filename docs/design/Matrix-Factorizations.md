@@ -1,7 +1,7 @@
 # Design note: Matrix stage M9, factorizations and algorithms
 
-Status: written 2026-10-14 by the orchestrator while M6 and M7 were being proved; to be
-implemented without a maintainer approval stop, by the standing instruction in
+Status: written 2026-10-14 by the orchestrator while M6 and M7 were being proved, reviewed by a
+Fable agent the same day (§8); to be implemented without a maintainer approval stop, by the standing instruction in
 `docs/port/status.md`. Choices a maintainer would have been asked about are in §7. The skeleton
 (eleven files) elaborates against the pinned Mathlib and the earlier stages.
 
@@ -36,6 +36,7 @@ convention of §2); rounding error analysis of any of these algorithms (a later 
 | full column rank | `Function.Injective A.mulVec` (as in M4) | `mulVec_injective_iff_rank_eq` |
 | one elimination step | `eliminationStep A t`, any index type, any field | — |
 | elimination in the natural order | `gaussState A k` for `A : Matrix (Fin n) (Fin n) K` | — |
+| elimination along a list of pivots | `l.foldl eliminationStep A` | — |
 | LU | `IsLU A L U`; computed factors `luLower A`, `luUpper A` | — |
 | Cholesky | `IsCholesky A L`; computed factor `choleskyLower A` | — |
 | thin QR | `IsQR A Q R` (`Q` with orthonormal columns, `R` square upper triangular) | — |
@@ -44,7 +45,8 @@ convention of §2); rounding error analysis of any of these algorithms (a later 
 | Householder reflector | `householder v`, `householderVector x i₀`; `householderQ A`, `householderR A` | — |
 | Givens rotation | `givens i j c s` with `c s : 𝕜` | — |
 | polar factor | `polarFactor A = A * pinv (CFC.sqrt (Aᴴ * A))` | — |
-| column selection | `A.submatrix id e`, `e : Fin k → n`; coefficients `pinv C * A`; residual `(1 - rangeProjector C) * A` | — |
+| column selection | `A.submatrix id e`, `e : p → n`; coefficients `pinv C * A`; residual `(1 - rangeProjector C) * A` | — |
+| rank-revealing certificate | `IsLocalMaxVolume A e f` (structure) | — |
 
 Not ported as names: `pivotSchur`, `borderedMatrix`, `borderedUpper`, `leadingSubmatrix`,
 `leadingMinor`, `IsFullQR`, `IsPLU`, `IsPivotedCholesky`, `IsHessenbergForm`,
@@ -87,8 +89,12 @@ monotonicity on positive semidefinite matrices are proved once. LU reads its fac
 `gaussState`: row `i` of `U` is the pivot row of step `i`, column `j` of `L` the multipliers of
 step `j`; Cholesky is the pivot column divided by the square root of the pivot. Pivoted variants
 are existence theorems about a permuted matrix (`exists_perm_isLU_norm_le`,
-`Matrix.PosSemidef.exists_perm_eq_mul_conjTranspose`), not further recursions. The expected step
-of randomly pivoted Cholesky is one identity about `eliminationStep`.
+`Matrix.PosSemidef.exists_perm_eq_mul_conjTranspose`), not further recursions. Elimination along
+an arbitrary list of pivots is `l.foldl eliminationStep A`; for a positive semidefinite matrix it
+is the Nyström residual of the pivot set (`Matrix.PosSemidef.foldl_eliminationStep_eq_sub`),
+which with `trace_eliminationStep` and the expected step
+`Matrix.PosSemidef.sum_smul_eliminationStep` is what the analysis of randomly pivoted Cholesky
+rewrites with.
 
 **Leading principal minors are `principalMinor A (Finset.Iic i)`**, and statements about them
 hold for every lower set of indices (`IsLU.principalMinor_eq_prod`). The proper leading minors,
@@ -114,10 +120,12 @@ existence statements. The absolute value is `CFC.sqrt (Aᴴ * A)` as in M8.
 
 **Rank-revealing means a column selection with three bounded quantities** (the brief's
 question): the selected columns `C = A.submatrix id e`, the interpolation coefficients
-`pinv C * A`, and the residual `(1 - rangeProjector C) * A`. The certificate is local
-`f`-maximality of the volume under single exchanges; its consequences are stated with no QR
-factorization in sight, so that CUR, interpolative decompositions and column subset selection
-consume them directly. The QR form is a thin QR of `C`.
+`pinv C * A`, and the residual `(1 - rangeProjector C) * A`. The certificate is the predicate
+`IsLocalMaxVolume A e f` (independent columns, and no single exchange increases the volume by
+more than `f²`); its consequences are stated with no QR factorization in sight, so that CUR,
+interpolative decompositions and column subset selection consume them directly, including the
+residual against the best rank-`k` error in every unitarily invariant norm. The QR form is a
+thin QR of `C`; a row selection is a column selection of `Aᴴ`.
 
 ## 3. Statement shapes
 
@@ -186,11 +194,13 @@ projector identities, `IsSVD.polarFactor_eq`, `hasOrthonormalCols_polarFactor_if
 `trace_eq_nuclearNorm_iff_posSemidef`; `isLeast_frobNorm_sub_mul_sq` (Procrustes), the two-sided
 problem, the nearest scaled unitary matrix.
 
-`RankRevealing.lean`: `re_det_conjTranspose_mul_self_updateCol`; the certificate in block form
-(`norm_apply_le_of_forall_re_det_updateCol_le`, `frobNorm_sq_add_frobNorm_pinv_sq_mul_le`,
-`singularValues_fromCols_le_sqrt_mul`, `singularValues_le_sqrt_mul_singularValues_fromCols`) and
-for a selection of columns of `A` (three theorems); `exists_embedding_forall_re_det_le`,
-`exists_embedding_rank_revealing`, `exists_embedding_eq_mul_pinv_mul`.
+`RankRevealing.lean`: `re_det_conjTranspose_mul_self_updateCol`; bounds from a budget in block
+form (`frobNorm_sq_add_frobNorm_pinv_sq_mul_le`, `singularValues_fromCols_le_sqrt_mul`,
+`singularValues_le_sqrt_mul_singularValues_fromCols`); `IsLocalMaxVolume` with `one_le`, `mono`,
+`isLocalMaxVolume_one_of_forall_re_det_le`, `submatrix_pinv_mul`, `norm_pinv_mul_apply_le`,
+`singularValues_le_sqrt_mul`, `singularValues_one_sub_rangeProjector_mul_le`,
+`matrixNorm_one_sub_rangeProjector_mul_le`; `exists_embedding_forall_re_det_le`,
+`exists_embedding_isLocalMaxVolume`, `exists_embedding_eq_mul_pinv_mul`.
 
 ## 4. Consumers
 
@@ -264,3 +274,46 @@ are proved or go to `NLAlibScaffold`.
     (the classical leading-minors-through-the-rank theorem is kept), the first-column
     characterisation lemmas of Cholesky, `choleskyPivotProbability` (its identity is stated with
     the ratio written out), the canonical QR frame on the Stiefel manifold and its measurability.
+
+## 8. Review (Fable, 2026-10-14) and what changed
+
+The review checked every statement, with hand examples for the recursions (2×2 and 3×3 LU,
+Cholesky at zero and negative pivots, Householder QR for the three shapes, the complex Householder
+vector), and found the definitions and the realisation hypotheses right. Findings and their
+resolution:
+
+1. **False statement.** The coefficient bound of the rank-revealing certificate had no `0 ≤ f`
+   (a maximum-volume selection satisfies the hypothesis for `f = -1`). The certificate is now the
+   structure `IsLocalMaxVolume A e f`, which carries `0 ≤ f` and full column rank; it had been a
+   raw hypothesis repeated in five statements.
+2. Elimination along a list of pivots was missing, so randomly pivoted Cholesky, the consumer
+   named in §4, could not be stated. Added `Matrix.PosSemidef.foldl_eliminationStep_eq_sub` (the
+   Nyström residual), `Matrix.PosSemidef.foldl_eliminationStep`, `trace_eliminationStep`,
+   `gaussState_eq_foldl`.
+3. Added the two identities every realisation proof and M10 would otherwise re-derive: the
+   telescoping identity `eq_gaussState_add_sum` (no pivot hypothesis) and the pivot as a ratio of
+   leading minors, `gaussState_apply_self_mul_principalMinor_Iio`.
+4. Dot notation: `Matrix.IsHermitian.posDef_iff_eliminationStep`,
+   `Matrix.IsHermitian.forall_choleskyLower_apply_self_pos_iff`.
+5. General forms first: `IsQR.pinv_eq : pinv A = pinv R * Qᴴ` with no rank hypothesis (the
+   inverse form is `IsQR.pinv_eq_inv_mul`); `IsQR.span_col_image_Iic` needs the diagonal nonzero
+   only up to the index.
+6. Conjunctions split (`gramSchmidtQ_mul_left`/`gramSchmidtR_mul_left`,
+   `IsUpperTrapezoidal.apply_eq_zero_of_le`,
+   `Matrix.IsHermitian.choleskyLower_apply_self_nonneg`, `gramSchmidtR_apply_self_pos`); a proof
+   term removed from the Hessenberg reduction statements; `[WellFoundedLT n]` dropped (it follows
+   from `Fintype`); `exists_eq_mul_diagonal_of_isUpperHessenberg` renamed.
+7. Added for the consumers: `IsLU.mulVec_eq_iff`, `IsCholesky.mulVec_eq_iff`,
+   `IsQR.isLeastSquaresSolution_backSubst`, the shifted QR step `IsQR.mul_add_smul_one_eq`,
+   `polarFactor_eq_pinv_sqrt_mul`, `IsLocalMaxVolume.submatrix_pinv_mul`,
+   `IsLocalMaxVolume.matrixNorm_one_sub_rangeProjector_mul_le`.
+8. Removed as dead weight: `IsQR.norm_det_sq`, `givens_one_zero`, `IsUpperHessenberg.add` and
+   `.smul`, `exists_isHermitian_mulVec_eq_smul_single`, the two `submatrix_orderIso` lemmas, the
+   farthest-isometry half of Fan–Hoffman, the nearest scaled unitary matrix,
+   `Matrix.PosSemidef.gaussState`, one of the two transpose twins for unit triangular matrices.
+9. Mathlib supplies the proofs of several triangular and Gram–Schmidt statements
+   (`Matrix.det_of_isUpperTriangular`, `Matrix.blockTriangular_inv_of_blockTriangular`,
+   `InnerProductSpace.span_gramSchmidtNormed`, `Matrix.rank_mul_eq_right_of_isUpperTriangular`);
+   they stay as statements in the vocabulary of the factorizations. Mathlib's `LDL` gives
+   `exists_isCholesky_iff_posDef`.
+10. Not taken: a row-selection twin of the certificate (apply the column statements to `Aᴴ`).

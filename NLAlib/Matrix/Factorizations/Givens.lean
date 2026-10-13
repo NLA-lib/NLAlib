@@ -93,6 +93,32 @@ theorem mul_givens_apply_of_ne {i j b : n} (hbi : b ≠ i) (hbj : b ≠ j) (c s 
     Matrix.mul_single_apply_of_ne _ _ _ _ _ hbi, Matrix.mul_single_apply_of_ne _ _ _ _ _ hbj,
     smul_zero, add_zero, sub_zero]
 
+/-- Row `i` of a matrix multiplied on the left by a rotation in the plane `(i, j)`. -/
+theorem givens_mul_apply_left {i j : n} (hij : i ≠ j) (c s : 𝕜) (A : Matrix n m 𝕜) (b : m) :
+    (givens i j c s * A) i b = c * A i b + s * A j b := by
+  exact givens_mulVec_apply_left hij c s fun a => A a b
+
+/-- Row `j` of a matrix multiplied on the left by a rotation in the plane `(i, j)`. -/
+theorem givens_mul_apply_right {i j : n} (hij : i ≠ j) (c s : 𝕜) (A : Matrix n m 𝕜) (b : m) :
+    (givens i j c s * A) j b = -star s * A i b + star c * A j b := by
+  exact givens_mulVec_apply_right hij c s fun a => A a b
+
+/-- Column `i` of a matrix multiplied on the right by a rotation in the plane `(i, j)`. -/
+theorem mul_givens_apply_left {i j : n} (hij : i ≠ j) (c s : 𝕜) (A : Matrix m n 𝕜) (a : m) :
+    (A * givens i j c s) a i = A a i * c - A a j * star s := by
+  simp only [givens, Matrix.mul_add, Matrix.mul_sub, Matrix.mul_smul, Matrix.mul_one,
+    Matrix.add_apply, Matrix.sub_apply, Matrix.smul_apply, Matrix.mul_single_apply_same,
+    Matrix.mul_single_apply_of_ne _ _ _ _ _ hij, smul_eq_mul, mul_one]
+  ring
+
+/-- Column `j` of a matrix multiplied on the right by a rotation in the plane `(i, j)`. -/
+theorem mul_givens_apply_right {i j : n} (hij : i ≠ j) (c s : 𝕜) (A : Matrix m n 𝕜) (a : m) :
+    (A * givens i j c s) a j = A a i * s + A a j * star c := by
+  simp only [givens, Matrix.mul_add, Matrix.mul_sub, Matrix.mul_smul, Matrix.mul_one,
+    Matrix.add_apply, Matrix.sub_apply, Matrix.smul_apply, Matrix.mul_single_apply_same,
+    Matrix.mul_single_apply_of_ne _ _ _ _ _ hij.symm, smul_eq_mul, mul_one]
+  ring
+
 omit [Fintype n] in
 /-- The conjugate transpose of a rotation is the inverse rotation.
 Port of `NLAlib.transpose_givens`. -/

@@ -223,6 +223,14 @@
   "new": "NLAlib.isQR_submatrix_castLE",
   "stage": "M9"
  },
+ "NLAlib.IsHessenbergForm.exists_sign": {
+  "new": "NLAlib.exists_eq_mul_diagonal_of_isUpperHessenberg",
+  "stage": "M9"
+ },
+ "NLAlib.IsHessenbergForm.isTridiagonal": {
+  "new": "Matrix.IsHermitian.exists_isTridiagonal_conjTranspose_mul_mul",
+  "stage": "M9"
+ },
  "NLAlib.IsLU": {
   "new": "NLAlib.IsLU",
   "stage": "M9"
@@ -614,6 +622,10 @@
   "note": "object not reproduced: IsSVD.truncatedMatrix; truncatedSVD is defined for the matrix through a chosen SVD, so no transpose compatibility at ties",
   "stage": "M6"
  },
+ "NLAlib.IsTridiagonal": {
+  "new": "NLAlib.IsTridiagonal",
+  "stage": "M9"
+ },
  "NLAlib.IsUnitLowerTriangular": {
   "new": "NLAlib.IsUnitLowerTriangular",
   "stage": "M9"
@@ -644,6 +656,26 @@
  },
  "NLAlib.IsUnitUpperTriangular.mul": {
   "new": "NLAlib.IsUnitUpperTriangular.mul",
+  "stage": "M9"
+ },
+ "NLAlib.IsUpperHessenberg": {
+  "new": "NLAlib.IsUpperHessenberg",
+  "stage": "M9"
+ },
+ "NLAlib.IsUpperHessenberg.isTridiagonal_of_isHermitian": {
+  "new": "NLAlib.IsUpperHessenberg.isTridiagonal",
+  "stage": "M9"
+ },
+ "NLAlib.IsUpperHessenberg.isUpperTriangular_mul": {
+  "new": "NLAlib.IsUpperHessenberg.isUpperTriangular_mul",
+  "stage": "M9"
+ },
+ "NLAlib.IsUpperHessenberg.mul_isUpperTriangular": {
+  "new": "NLAlib.IsUpperHessenberg.mul_isUpperTriangular",
+  "stage": "M9"
+ },
+ "NLAlib.IsUpperHessenberg.sub_smul_one": {
+  "new": "NLAlib.IsUpperHessenberg.sub_smul_one",
   "stage": "M9"
  },
  "NLAlib.IsUpperTrapezoidal": {
@@ -1647,6 +1679,10 @@
   "note": "private helper of NLAlib.prod_range_singularValues_mul_le: prod_sq_singularValues_mul_le, with NLAlib.det_conjTranspose_mul_self_eq_prod_sq_singularValues",
   "stage": "M7"
  },
+ "NLAlib.det_gram_updateCol_eq_det_mul": {
+  "new": "NLAlib.re_det_conjTranspose_mul_self_updateCol",
+  "stage": "M9"
+ },
  "NLAlib.det_inv_rpow_smul_eq_one": {
   "new": null,
   "note": "not ported: determinant-one normalisation in the prototype's proof of Minkowski's inequality; Matrix.PosSemidef.re_det_rpow_add_le normalises by a congruence Cᴴ * A * C = 1 instead",
@@ -2363,6 +2399,10 @@
   "new": "NLAlib.exists_hasOrthonormalCols_mul_isUpperTrapezoidal",
   "stage": "M9"
  },
+ "NLAlib.exists_isHessenbergForm": {
+  "new": "NLAlib.exists_isUpperHessenberg_conjTranspose_mul_mul",
+  "stage": "M9"
+ },
  "NLAlib.exists_isLU_iff_forall_leadingMinor_ne_zero": {
   "new": "NLAlib.exists_isLU_iff_forall_principalMinor_ne_zero",
   "stage": "M9"
@@ -2414,6 +2454,14 @@
   "new": null,
   "note": "not ported: converse of real-part majorization, no consumer",
   "stage": "M10"
+ },
+ "NLAlib.exists_maximum_volume_column_embedding": {
+  "new": "NLAlib.exists_embedding_forall_re_det_le",
+  "stage": "M9"
+ },
+ "NLAlib.exists_maximum_volume_qr_blocks": {
+  "new": "NLAlib.exists_embedding_isLocalMaxVolume",
+  "stage": "M9"
  },
  "NLAlib.exists_mem_spectrum_distance_le_euclidean_residual_div_of_normal": {
   "new": "NLAlib.exists_norm_sub_mul_norm_le_conditionNumber_mul",
@@ -2540,6 +2588,10 @@
   "note": "with IsIdempotentElem.principalAngle_conjTranspose_lt; the angle is principalAngle P Pᴴ, no chosen frames",
   "stage": "M5"
  },
+ "NLAlib.exists_rank_adapted_maximum_volume_qr": {
+  "new": "NLAlib.exists_embedding_eq_mul_pinv_mul",
+  "stage": "M9"
+ },
  "NLAlib.exists_real_idempotent_unitary_similarity": {
   "new": null,
   "note": "not ported: transport of complex idempotents to real ones for the Complex* duplicates; Oblique.lean is over 𝕜",
@@ -2576,6 +2628,10 @@
   "new": "NLAlib.posSemidef_fromBlocks_iff_exists_sqrt_mul_mul_sqrt",
   "note": "mp direction, over 𝕜; the iff takes A and C positive semidefinite as hypotheses",
   "stage": "M7"
+ },
+ "NLAlib.exists_strong_rank_revealing_qr": {
+  "new": "NLAlib.IsLocalMaxVolume.norm_pinv_mul_apply_le",
+  "stage": "M9"
  },
  "NLAlib.exists_submodule_mulVec_dotProduct_le_sq_singularValues_mul": {
   "new": "NLAlib.exists_submodule_norm_mulVec_le",
@@ -3020,6 +3076,10 @@
  "NLAlib.frobSq_add_of_mul_conjTranspose_eq_zero": {
   "new": "NLAlib.frobNorm_add_sq_of_mul_conjTranspose_eq_zero",
   "stage": "M5"
+ },
+ "NLAlib.frobSq_add_trace_inv_gram_mul_frobSq_le_of_maximum_volume": {
+  "new": "NLAlib.frobNorm_sq_add_frobNorm_pinv_sq_mul_le",
+  "stage": "M9"
  },
  "NLAlib.frobSq_complement_mul_projector_eq_of_rank_eq": {
   "new": "IsStarProjection.frobNorm_one_sub_mul_eq_of_rank_eq",
@@ -3924,6 +3984,10 @@
   "new": "Matrix.PosSemidef.exists_perm_eq_mul_conjTranspose",
   "stage": "M9"
  },
+ "NLAlib.isQR_givensQR": {
+  "new": "NLAlib.IsUpperHessenberg.exists_isQR",
+  "stage": "M9"
+ },
  "NLAlib.isQR_gramSchmidt": {
   "new": "NLAlib.isQR_gramSchmidt",
   "stage": "M9"
@@ -3936,6 +4000,10 @@
   "new": null,
   "note": "deferred: characteristic polynomial of a rank-one update (check Mathlib's matrix determinant lemma first)",
   "stage": "M10"
+ },
+ "NLAlib.isTridiagonal_mul_of_isQR": {
+  "new": "NLAlib.IsQR.isTridiagonal_mul",
+  "stage": "M9"
  },
  "NLAlib.isUnitLowerTriangular_lu_fst": {
   "new": "NLAlib.isUnitLowerTriangular_luLower",
@@ -3986,6 +4054,18 @@
  "NLAlib.isUnit_transpose_mul_self_of_rank_eq": {
   "new": "NLAlib.isUnit_conjTranspose_mul_self_iff",
   "stage": "M4"
+ },
+ "NLAlib.isUpperHessenberg_givensQR_snd_mul_fst": {
+  "new": "NLAlib.IsQR.isUpperHessenberg_mul",
+  "stage": "M9"
+ },
+ "NLAlib.isUpperHessenberg_mul_of_isQR": {
+  "new": "NLAlib.IsQR.isUpperHessenberg_of_isUpperHessenberg",
+  "stage": "M9"
+ },
+ "NLAlib.isUpperHessenberg_of_isUpperTriangular": {
+  "new": "NLAlib.IsUpperTrapezoidal.isUpperHessenberg",
+  "stage": "M9"
  },
  "NLAlib.isUpperTrapezoidal_householderR": {
   "new": "NLAlib.isUpperTrapezoidal_householderR",
@@ -6676,9 +6756,17 @@
   "new": "NLAlib.singularValues_submatrix_le",
   "stage": "M3"
  },
+ "NLAlib.singularValues_trailing_le_sqrt_budget_mul": {
+  "new": "NLAlib.singularValues_le_sqrt_mul_singularValues_fromCols",
+  "stage": "M9"
+ },
  "NLAlib.singularValues_transpose": {
   "new": "NLAlib.singularValues_transpose",
   "stage": "M3"
+ },
+ "NLAlib.singularValues_upper_block_le_sqrt_budget_mul": {
+  "new": "NLAlib.singularValues_fromCols_le_sqrt_mul",
+  "stage": "M9"
  },
  "NLAlib.singularValues_zero_eq_specNorm": {
   "new": "NLAlib.singularValues_zero_eq_specNorm",

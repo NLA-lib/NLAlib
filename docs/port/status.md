@@ -38,7 +38,8 @@ Updated at every stopping point. Newest entry first within each section.
 | M9 | `Factorizations/LU.lean`, `Cholesky.lean`, `GaussState.lean` (split off `Elimination.lean`) | Opus agent | proved | the rank pattern of pivoted Cholesky, unproved in the prototype, is proved |
 | M9 | `Factorizations/QR.lean`, `GramSchmidt.lean` | Opus agent | proved | existence from Mathlib's `gramSchmidtOrthonormalBasis` on zero-padded columns |
 | M9 | `Factorizations/Householder.lean`, `Givens.lean` | Opus agent | proved | |
-| M9 | `Factorizations/Hessenberg.lean` | Opus agent | in progress | |
+| M9 | `Factorizations/Hessenberg.lean`, `RankRevealing.lean`, `ColumnVolume.lean` (split off) | Opus agent | proved | Hessenberg reduction, the Hessenberg QR and the implicit Q theorem, unproved in the prototype, are proved |
+| M10 | `Spectral/Schur.lean`, `Structured/Walsh.lean`, `Structured/Cauchy.lean` | Opus agent | in progress | |
 | M8 | `Functions/HermitianCalculus.lean`, `ForMathlib/Analysis/RCLike/ToComplex.lean`, `ForMathlib/Analysis/Calculus/Deriv/Matrix.lean` | Opus agent | proved | diagonalisation lemmas to be restated for a frame `U : Matrix n r 𝕜` with `card r = card n`, the shape the spectral theorem of M3 produces |
 | M8 | `Functions/Polynomial.lean`, `Exponential.lean` | Opus agent | proved | |
 | M8 | `Functions/Complexification.lean`, `TraceFunctions.lean` | Opus agent | proved | convexity of trace functions through Jensen for quadratic forms (Peierls), Klein from the generalized Klein inequality |

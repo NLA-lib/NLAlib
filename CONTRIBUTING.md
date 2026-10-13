@@ -269,7 +269,28 @@ those layers are designed.
 | column selection as a matrix | `selectionMatrix s`; a bare selection is `A.submatrix id s` | `mul_selectionMatrix` |
 | Hermitian dilation | `dilation A := fromBlocks 0 A Aᴴ 0` | `dilation_def`, `rfl` |
 | plane rotation | `planeRotation u v c s`, `c s : ℝ` | — |
-| matrix functions | `cfc f A` | Mathlib's |
+| function of a Hermitian matrix | Mathlib's `cfc f A`, `f : ℝ → ℝ`; no `matrixExp`, `matrixLog`, `traceExp`, `lambdaMax` names | `cfc_eq_mul_diagonal_mul_conjTranspose`, `Matrix.IsHermitian.re_trace_cfc` |
+| matrix exponential, logarithm | `NormedSpace.exp A`; `cfc Real.log A` | `Matrix.IsHermitian.exp_eq_cfc` |
+| real power, absolute value, positive part, inverse square root | Mathlib's `A ^ r`, `CFC.abs A` (rectangular: `CFC.sqrt (Aᴴ * A)`), `A⁺`, `(CFC.sqrt A)⁻¹`, under `MatrixOrder` | `CFC.rpow_eq_cfc_real`, `CFC.abs_eq_cfc_norm`, `Matrix.PosDef.inv_sqrt_eq_cfc` |
+| location of the spectrum | `spectrum ℝ A ⊆ s`; for an interval the Loewner sandwich `a • 1 ≤ A`, `A ≤ b • 1` | `Matrix.IsHermitian.spectrum_subset_iff` |
+| transfer from `𝕜` to `ℂ` | `complexify A = A.map RCLike.toComplex` | `complexify_cfc`, `complexify_le_complexify_iff` |
+| operator convexity | `OperatorConvexOn s f`; convex combinations as `a • A + b • B`, `a + b = 1` | `OperatorConvexOn.cfc_smul_add_smul_le` |
+| derivative of a matrix curve | entrywise, `∀ i j, HasDerivAt (fun s => A s i j) (A' i j) t` | `Matrix.hasDerivAt_iff_forall_apply` |
+| triangular, unit triangular | Mathlib's `Matrix.IsUpperTriangular`, `Matrix.IsLowerTriangular`; `IsUnitLowerTriangular`, `IsUnitUpperTriangular` | `Matrix.BlockTriangular` |
+| trapezoidal, Hessenberg, tridiagonal, quasi-triangular | `IsUpperTrapezoidal`, `IsUpperHessenberg`, `IsTridiagonal`, `IsUpperQuasiTriangular`, for matrices indexed by `Fin` | — |
+| factorizations | predicates `IsLU A L U`, `IsCholesky A L`, `IsQR A Q R` (thin); a full QR is a square `Q` with `HasOrthonormalCols Q` and `IsUpperTrapezoidal R` | — |
+| algorithm | a total recursion indexed by the step (`gaussState`, `householderState`), breakdown as a value, a realisation theorem under a hypothesis on the computed pivots | `isLU_luLower_luUpper` |
+| elimination | `eliminationStep A t`; in the natural order `gaussState A k`; along pivots `l.foldl eliminationStep A` | `gaussState_eq_foldl` |
+| leading principal minor | `principalMinor A (Finset.Iic i)`; proper ones `Finset.Iio i` | — |
+| polar factor | `polarFactor A = A * pinv (CFC.sqrt (Aᴴ * A))`, every shape and rank | `IsSVD.polarFactor_eq` |
+| rank-revealing column selection | `C = A.submatrix id e` with coefficients `pinv C * A` and residual `(1 - rangeProjector C) * A`; certificate `IsLocalMaxVolume A e f` | — |
+| eigenvalues of a general matrix | a listing `d` with `A.charpoly = ∏ i, (X - C (d i))` | `Matrix.IsHermitian.charpoly_eq_prod_eigenvalue` |
+| normal, diagonalisable | Mathlib's `IsStarNormal A`; `IsDiagonalizable A` | `isDiagonalizable_iff_isSemisimple` |
+| inertia | `inertiaPos A`, `inertiaNeg A` | `Matrix.IsHermitian.inertiaPos_add_inertiaNeg` |
+| spectral radius | `specRadius A : ℝ`, for matrices over `𝕜` | Mathlib's `spectralRadius ℂ (complexify A)` |
+| Gershgorin radius | `∑ j ∈ Finset.univ.erase i, ‖A i j‖` | Mathlib's `eigenvalue_mem_ball` |
+| Hermitian part | `(2⁻¹ : ℝ) • (A + Aᴴ)` | — |
+| structured matrices | Mathlib's `A ⊗ₖ B`, `Matrix.circulant v`; `fourierMatrix n`, `walshHadamard R b`, `cauchyMatrix x y` | `Matrix.IsHadamard` |
 | random matrix | `X : Ω → Matrix m n 𝕜`, `Measurable X` (global `Matrix.instMeasurableSpace`, `ForMathlib`) | — |
 | law | `HasLaw X ν μ` | Mathlib's |
 | tail | `μ.real {ω | ¬ good ω} ≤ δ` | — |

@@ -5,9 +5,9 @@ Authors: NLAlib contributors
 -/
 module
 
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 public import NLAlib.Matrix.Majorization.Schur
 public import NLAlib.Matrix.Basic.PlaneRotation
-public import NLAlib.Matrix.Subspaces.Frames
 
 /-!
 # The Schur–Horn theorem
@@ -16,6 +16,13 @@ Schur's theorem says that the diagonal of a Hermitian matrix is majorized by its
 (`NLAlib.Matrix.Majorization.Schur`). Horn's converse: every real vector majorized by `λ` is the
 diagonal of a real symmetric matrix with eigenvalues `λ`. Together they describe the set of
 diagonals of the unitary orbit of a Hermitian matrix.
+
+Horn's theorem is proved by induction on the number of diagonal entries still to be corrected.
+A rotation in two coordinates moves a diagonal entry of a real symmetric matrix to any value
+between two of its diagonal entries, changing no other diagonal entry than these two. If `d` is
+majorized by the diagonal, a rotation in two entries adjacent in the sorted order produces a
+chosen entry of `d`, and `d` is still majorized by the new diagonal; that entry is then left
+alone.
 
 ## Main results
 
@@ -255,23 +262,19 @@ private theorem exists_majorized_transfer {ι : Type*} [Fintype ι] [DecidableEq
 
 /-! ### Plane rotations in two coordinates -/
 
-omit [Fintype n] in
-private theorem planeRotation_single_apply {i j : n} (hij : i ≠ j) (c s : ℝ) (k : n) :
-    planeRotation (Pi.single i (1 : ℝ)) (Pi.single j 1) c s k =
-      if k = i then c • Pi.single i 1 + s • Pi.single j 1
-      else if k = j then (-s) • Pi.single i 1 + c • Pi.single j 1
-      else Pi.single k 1 := by
+private theorem norm_toLp_single_one (i : n) : ‖WithLp.toLp 2 (Pi.single i 1 : n → ℝ)‖ = 1 := by
+  rw [PiLp.toLp_single, PiLp.norm_single, norm_one]
+
+private theorem star_single_dotProduct_single {i j : n} (hij : i ≠ j) :
+    star (Pi.single i (1 : ℝ)) ⬝ᵥ Pi.single j 1 = 0 := by
+  rw [star_trivial, single_dotProduct, one_mul, Pi.single_eq_of_ne hij]
+
+/-- A row of a real plane rotation is a column of the opposite rotation. -/
+private theorem planeRotation_apply_eq_mulVec_single (u v : n → ℝ) (c s : ℝ) (k : n) :
+    planeRotation u v c s k = planeRotation u v c (-s) *ᵥ Pi.single k 1 := by
+  rw [← conjTranspose_planeRotation, Matrix.mulVec_single_one]
   ext l
-  by_cases hki : k = i <;> by_cases hkj : k = j
-  · exact (hij (hki.symm.trans hkj)).elim
-  · subst k
-    simp [planeRotation, Matrix.vecMulVec_apply, Pi.single_apply, Matrix.one_apply, hij, eq_comm]
-    split_ifs <;> ring
-  · subst k
-    simp [planeRotation, Matrix.vecMulVec_apply, Pi.single_apply, Matrix.one_apply, hij, eq_comm]
-    split_ifs <;> ring
-  · simp [planeRotation, Matrix.vecMulVec_apply, Pi.single_apply, hki, hkj,
-      Matrix.one_apply, eq_comm]
+  rw [Matrix.col_apply, Matrix.conjTranspose_apply, star_trivial]
 
 /-- Conjugating a real symmetric matrix by a rotation in the coordinates `i`, `j` transfers
 between the diagonal entries `i` and `j` and fixes the other diagonal entries.
@@ -283,23 +286,25 @@ private theorem diag_planeRotation_single_mul_mul {A : Matrix n n ℝ} (hA : A.I
       transfer A.diag i j (-(2 * c * s * A i j + s ^ 2 * (A j j - A i i))) := by
   ext k
   have hji : A j i = A i j := hA.apply i j
+  have huv := star_single_dotProduct_single hij
   rw [Matrix.diag_apply, Matrix.mul_mul_apply, Matrix.conjTranspose_eq_transpose_of_trivial,
-    Matrix.transpose_transpose, planeRotation_single_apply hij]
-  by_cases hki : k = i
-  · subst k
-    simp only [ite_true, Matrix.mulVec_add, Matrix.mulVec_smul, add_dotProduct, dotProduct_add,
-      smul_dotProduct, dotProduct_smul, single_dotProduct, Matrix.mulVec_single_one,
-      one_mul, smul_eq_mul, Matrix.col_apply, hji, transfer_apply_left _ hij, Matrix.diag_apply]
-    linear_combination A i i * hcs
-  · by_cases hkj : k = j
-    · subst k
-      simp only [if_neg hki, ite_true, Matrix.mulVec_add, Matrix.mulVec_smul, add_dotProduct,
-        dotProduct_add, smul_dotProduct, dotProduct_smul, single_dotProduct,
-        Matrix.mulVec_single_one, one_mul, smul_eq_mul, Matrix.col_apply, hji, transfer,
-        Matrix.diag_apply, sub_zero]
-      linear_combination A j j * hcs
-    · rw [if_neg hki, if_neg hkj, transfer_of_ne _ hki hkj, Matrix.mulVec_single_one,
-        single_one_dotProduct, Matrix.col_apply, Matrix.diag_apply]
+    Matrix.transpose_transpose, planeRotation_apply_eq_mulVec_single]
+  obtain rfl | hki := eq_or_ne k i
+  · rw [planeRotation_mulVec_left (norm_toLp_single_one k) huv, transfer_apply_left _ hij]
+    simp only [RCLike.ofReal_real_eq_id, id_eq, Matrix.mulVec_sub, Matrix.mulVec_smul,
+      sub_dotProduct, dotProduct_sub, smul_dotProduct, dotProduct_smul, single_dotProduct,
+      Matrix.mulVec_single_one, one_mul, smul_eq_mul, Matrix.col_apply, hji, Matrix.diag_apply]
+    linear_combination A k k * hcs
+  obtain rfl | hkj := eq_or_ne k j
+  · rw [planeRotation_mulVec_right (norm_toLp_single_one k) huv]
+    simp only [RCLike.ofReal_real_eq_id, id_eq, Matrix.mulVec_add, Matrix.mulVec_smul,
+      add_dotProduct, dotProduct_add, smul_dotProduct, dotProduct_smul, single_dotProduct,
+      Matrix.mulVec_single_one, one_mul, smul_eq_mul, Matrix.col_apply, hji, transfer,
+      if_neg hki, if_true, Matrix.diag_apply, sub_zero]
+    linear_combination A k k * hcs
+  · rw [planeRotation_mulVec_of_orthogonal (star_single_dotProduct_single hki.symm)
+      (star_single_dotProduct_single hkj.symm), transfer_of_ne _ hki hkj,
+      Matrix.mulVec_single_one, single_one_dotProduct, Matrix.col_apply, Matrix.diag_apply]
 
 /-- For a real symmetric matrix and any value `t` between two of its diagonal entries, a
 rotation in those two coordinates puts `t` in the first of the two diagonal positions. -/
@@ -318,12 +323,148 @@ private theorem exists_hasOrthonormalCols_diag_eq_transfer {A : Matrix n n ℝ}
   obtain ⟨θ, -, hθ⟩ := intermediate_value_uIcc (a := 0) (b := Real.pi / 2) hf.continuousOn
     (by rwa [h0, h1])
   refine ⟨planeRotation (Pi.single i 1) (Pi.single j 1) (Real.cos θ) (Real.sin θ),
-    hasOrthonormalCols_planeRotation ?_ ?_ ?_ (Real.cos_sq_add_sin_sq θ), ?_⟩
-  · sorry
-  · sorry
-  · sorry
-  · rw [diag_planeRotation_single_mul_mul hA hij (Real.cos_sq_add_sin_sq θ)]
-    congr 1
-    linarith
+    hasOrthonormalCols_planeRotation (norm_toLp_single_one i) (norm_toLp_single_one j)
+      (star_single_dotProduct_single hij) (Real.cos_sq_add_sin_sq θ), ?_⟩
+  rw [diag_planeRotation_single_mul_mul hA hij (Real.cos_sq_add_sin_sq θ)]
+  congr 1
+  linarith
+
+/-! ### Horn's theorem -/
+
+/-- One step of the proof of Horn's theorem: if `x` is majorized by the diagonal of a real
+symmetric matrix `A` and agrees with it outside `s`, an orthogonal similarity makes the diagonal
+agree with `x` at one more index `p` of `s`. -/
+private theorem exists_hasOrthonormalCols_majorized_diag {A : Matrix n n ℝ} (hA : A.IsHermitian)
+    {x : n → ℝ} (h : Majorized x A.diag) {s : Finset n} (hs : ∀ k ∉ s, x k = A k k) {p : n}
+    (hp : p ∈ s) :
+    ∃ R : Matrix n n ℝ, HasOrthonormalCols R ∧ Majorized x (R * A * Rᴴ).diag ∧
+      ∀ k ∉ s.erase p, x k = (R * A * Rᴴ) k k := by
+  obtain ⟨i, his, j, hjs, hj, hi, hmaj⟩ := exists_majorized_transfer h hs hp
+  obtain ⟨R₁, hR₁, hd₁⟩ :=
+    exists_hasOrthonormalCols_diag_eq_transfer hA i j (Set.mem_uIcc_of_ge hj hi)
+  have hA₁ : (R₁ * A * R₁ᴴ).IsHermitian := Matrix.isHermitian_mul_mul_conjTranspose R₁ hA
+  have hip : (R₁ * A * R₁ᴴ).diag i = x p := by
+    rw [hd₁]
+    obtain rfl | hij := eq_or_ne i j
+    · rw [transfer_self]
+      exact le_antisymm hj hi
+    · rw [transfer_apply_left _ hij, Matrix.diag_apply, sub_sub_cancel]
+  obtain ⟨R₂, hR₂, hd₂⟩ := exists_hasOrthonormalCols_diag_eq_transfer hA₁ p i Set.right_mem_uIcc
+  have hd₂' : (R₂ * (R₁ * A * R₁ᴴ) * R₂ᴴ).diag = (R₁ * A * R₁ᴴ).diag ∘ Equiv.swap p i :=
+    hd₂.trans (transfer_sub_eq_comp_swap _ p i)
+  have hmul : R₂ * R₁ * A * (R₂ * R₁)ᴴ = R₂ * (R₁ * A * R₁ᴴ) * R₂ᴴ := by
+    simp only [Matrix.conjTranspose_mul, Matrix.mul_assoc]
+  refine ⟨R₂ * R₁, hR₂.mul hR₁, ?_, fun k hk => ?_⟩
+  · rw [hmul, hd₂', hd₁]
+    exact hmaj.comp_equiv_right _
+  · rw [hmul, ← Matrix.diag_apply (R₂ * (R₁ * A * R₁ᴴ) * R₂ᴴ), hd₂', Function.comp_apply]
+    obtain rfl | hkp := eq_or_ne k p
+    · rw [Equiv.swap_apply_left, hip]
+    · have hks : k ∉ s := fun hks => hk (Finset.mem_erase.mpr ⟨hkp, hks⟩)
+      have hki : k ≠ i := fun hki => hks (hki ▸ his)
+      have hkj : k ≠ j := fun hkj => hks (hkj ▸ hjs)
+      rw [Equiv.swap_apply_of_ne_of_ne hkp hki, hd₁, transfer_of_ne _ hki hkj]
+      exact hs k hks
+
+/-- Horn's theorem for a real symmetric matrix in place of the diagonal one, by induction on the
+number of indices where `x` and the diagonal may differ. -/
+private theorem exists_hasOrthonormalCols_diag_eq_of_card_eq {x : n → ℝ} (m : ℕ) :
+    ∀ s : Finset n, s.card = m → ∀ A : Matrix n n ℝ, A.IsHermitian → Majorized x A.diag →
+      (∀ k ∉ s, x k = A k k) →
+      ∃ Q : Matrix n n ℝ, HasOrthonormalCols Q ∧ (Q * A * Qᴴ).diag = x := by
+  induction m with
+  | zero =>
+    intro s hs A _ _ hx
+    rw [Finset.card_eq_zero] at hs
+    refine ⟨1, hasOrthonormalCols_one, ?_⟩
+    rw [Matrix.one_mul, Matrix.conjTranspose_one, Matrix.mul_one]
+    exact funext fun k => (hx k (hs ▸ Finset.notMem_empty k)).symm
+  | succ m ih =>
+    intro s hs A hA h hx
+    obtain ⟨p, hp⟩ := Finset.card_pos.mp (by
+      rw [hs]
+      exact Nat.succ_pos m)
+    obtain ⟨R, hR, hmaj, hRx⟩ := exists_hasOrthonormalCols_majorized_diag hA h hx hp
+    obtain ⟨Q, hQ, hQx⟩ := ih (s.erase p)
+      (by rw [Finset.card_erase_of_mem hp, hs, Nat.add_sub_cancel]) _
+      (Matrix.isHermitian_mul_mul_conjTranspose R hA) hmaj hRx
+    refine ⟨Q * R, hQ.mul hR, ?_⟩
+    rw [← hQx]
+    simp only [Matrix.conjTranspose_mul, Matrix.mul_assoc]
+
+/-- **Horn's theorem.** If `d` is majorized by `λ`, there is a real orthogonal matrix `Q` such
+that `Q * diagonal λ * Qᴴ` has diagonal `d`.
+[HornJohnson2013, Theorem 4.3.48].
+Port of `NLAlib.exists_orthogonal_diagonal_eq_of_majorized`.
+Result: schur-horn -/
+theorem exists_hasOrthonormalCols_diag_eq_of_majorized {d lam : n → ℝ} (h : Majorized d lam) :
+    ∃ Q : Matrix n n ℝ, HasOrthonormalCols Q ∧ (Q * Matrix.diagonal lam * Qᴴ).diag = d := by
+  refine exists_hasOrthonormalCols_diag_eq_of_card_eq (Fintype.card n) Finset.univ
+    Finset.card_univ (Matrix.diagonal lam) (Matrix.isHermitian_diagonal lam) ?_
+    fun k hk => absurd (Finset.mem_univ k) hk
+  rwa [Matrix.diag_diagonal]
+
+/-- **The Schur–Horn theorem.** A real vector `d` is majorized by `λ` exactly when it is the
+diagonal of `Q * diagonal λ * Qᴴ` for some real orthogonal `Q`.
+[HornJohnson2013, Theorems 4.3.45 and 4.3.48].
+Port of `NLAlib.majorized_iff_exists_orthogonal_diagonal_eq`.
+Result: schur-horn -/
+theorem majorized_iff_exists_hasOrthonormalCols_diag_eq {d lam : n → ℝ} :
+    Majorized d lam ↔
+      ∃ Q : Matrix n n ℝ, HasOrthonormalCols Q ∧ (Q * Matrix.diagonal lam * Qᴴ).diag = d := by
+  refine ⟨exists_hasOrthonormalCols_diag_eq_of_majorized, ?_⟩
+  rintro ⟨Q, hQ, rfl⟩
+  have h := majorized_re_diag_of_mul_eq_mul_diagonal (𝕜 := ℝ)
+    (A := Q * Matrix.diagonal lam * Qᴴ) (d := lam) hQ (by
+      rw [Matrix.mul_assoc, hQ.conjTranspose_mul_self, Matrix.mul_one]
+      rfl)
+  exact h
+
+/-- **The diagonals of the unitary orbit of a Hermitian matrix** are exactly the vectors
+majorized by its eigenvalues.
+[HornJohnson2013, Theorems 4.3.45 and 4.3.48].
+Result: schur-horn -/
+theorem _root_.Matrix.IsHermitian.majorized_iff_exists_diag_conj_eq {A : Matrix n n 𝕜}
+    (hA : A.IsHermitian) {d : n → ℝ} :
+    Majorized d hA.eigenvalues ↔
+      ∃ U : Matrix n n 𝕜, HasOrthonormalCols U ∧ ∀ i, (Uᴴ * A * U) i i = ((d i : ℝ) : 𝕜) := by
+  have hV := hA.hasOrthonormalCols_eigenvectorUnitary
+  have hAV : A * (hA.eigenvectorUnitary : Matrix n n 𝕜) =
+      (hA.eigenvectorUnitary : Matrix n n 𝕜) *
+        Matrix.diagonal fun i => ((hA.eigenvalues i : ℝ) : 𝕜) := by
+    have h := hA.spectral_theorem
+    rw [Unitary.conjStarAlgAut_apply] at h
+    refine (congrArg (· * (hA.eigenvectorUnitary : Matrix n n 𝕜)) h).trans ?_
+    rw [Matrix.mul_assoc, Unitary.coe_star_mul_self, Matrix.mul_one]
+    rfl
+  constructor
+  · intro h
+    obtain ⟨Q, hQ, hQd⟩ := exists_hasOrthonormalCols_diag_eq_of_majorized h
+    have hstar : (Q.map (algebraMap ℝ 𝕜))ᴴ = Qᴴ.map (algebraMap ℝ 𝕜) :=
+      (Matrix.conjTranspose_map _ fun r => (RCLike.conj_ofReal r).symm).symm
+    have hQc : HasOrthonormalCols (Q.map (algebraMap ℝ 𝕜)) := by
+      rw [HasOrthonormalCols, hstar, ← Matrix.map_mul, hQ.conjTranspose_mul_self,
+        Matrix.map_one _ (map_zero _) (map_one _)]
+    have hD : Matrix.diagonal (fun i => ((hA.eigenvalues i : ℝ) : 𝕜)) =
+        (Matrix.diagonal hA.eigenvalues).map (algebraMap ℝ 𝕜) :=
+      (Matrix.diagonal_map (map_zero _)).symm
+    refine ⟨hA.eigenvectorUnitary * (Q.map (algebraMap ℝ 𝕜))ᴴ, hV.mul hQc.conjTranspose,
+      fun i => ?_⟩
+    have hmul : ((hA.eigenvectorUnitary : Matrix n n 𝕜) * (Q.map (algebraMap ℝ 𝕜))ᴴ)ᴴ * A *
+        ((hA.eigenvectorUnitary : Matrix n n 𝕜) * (Q.map (algebraMap ℝ 𝕜))ᴴ) =
+        (Q * Matrix.diagonal hA.eigenvalues * Qᴴ).map (algebraMap ℝ 𝕜) := by
+      rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose, Matrix.mul_assoc,
+        Matrix.mul_assoc, ← Matrix.mul_assoc A, hAV, Matrix.mul_assoc,
+        hV.conjTranspose_mul_cancel_left, hD, hstar, Matrix.map_mul, Matrix.map_mul,
+        Matrix.mul_assoc]
+    rw [hmul, Matrix.map_apply, ← Matrix.diag_apply (Q * Matrix.diagonal hA.eigenvalues * Qᴴ),
+      hQd]
+  · rintro ⟨U, hU, hUd⟩
+    have hW : HasOrthonormalCols (Uᴴ * (hA.eigenvectorUnitary : Matrix n n 𝕜)) :=
+      hU.conjTranspose.mul hV
+    have h := majorized_re_diag_of_mul_eq_mul_diagonal (A := Uᴴ * A * U) hW (by
+      rw [Matrix.mul_assoc, ← Matrix.mul_assoc U, hU.mul_conjTranspose_self, Matrix.one_mul,
+        Matrix.mul_assoc, hAV, Matrix.mul_assoc])
+    simpa only [hUd, RCLike.ofReal_re] using h
 
 end NLAlib

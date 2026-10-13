@@ -28,7 +28,7 @@ Updated at every stopping point. Newest entry first within each section.
 | M6 | `Perturbation/DavisKahan.lean` | Opus agent | proved | 752 lines: split the gap forms off at wrap-up |
 | M6 | `Perturbation/LeastSquares.lean`, `Continuity.lean` | Opus agent | proved | `isLeast_matrixNorm_sub_of_rank_le` moved to `Norms/UnitarilyInvariant.lean` |
 | M6 | `Perturbation/Wedin.lean`, `SimpleEigenvalue.lean` | Opus agent | proved | simple eigenvalue branch by the implicit function theorem on the characteristic polynomial |
-| M5, M6 | wrap-up (file splits `Subspaces/Tangent.lean`, `Perturbation/DavisKahanGap.lean`; published helpers; review follow-ups) | Opus agent | done | build, audit (1827 declarations), lint (1461) and references clean; stage reports in the two notes; ledger completion for the prototype `Subspaces/` and `Perturbation/` leftovers in progress |
+| M5, M6 | wrap-up (file splits `Subspaces/Tangent.lean`, `Perturbation/DavisKahanGap.lean`; published helpers; review follow-ups) | Opus agent | done | build, audit (1827 declarations), lint (1461) and references clean; stage reports in the two notes; the ledger accounts for every prototype `Subspaces/` and `Perturbation/` declaration (368 lines added by a bookkeeping agent: 185 mapped, 183 null with reasons) |
 | M7 | `Inequalities/Order.lean`, `Block.lean` | Opus agent | proved | two condition-number bounds were false for size zero with `b < 0`; `(hb : 0 ≤ b)` added |
 | M7 | `Inequalities/Determinant.lean`, `Kantorovich.lean` | Opus agent | proved | `Determinant.lean` is 582 lines: split the Minkowski section off at wrap-up |
 | M7 | `Inequalities/SchurHorn.lean`; `PrincipalMinors.lean`, `HadamardProduct.lean`, `ForMathlib/LinearAlgebra/Matrix/Hadamard.lean` | Opus agents | in progress | |

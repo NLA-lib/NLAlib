@@ -2461,10 +2461,18 @@
   "new": "NLAlib.IsUnitLowerTriangular.eq_one_of_isUpperTriangular",
   "stage": "M9"
  },
+ "NLAlib.eq_polarFrame_of_isometry_mul_sqrt_gram_eq": {
+  "new": "NLAlib.eq_polarFactor_of_mul_sqrt_eq",
+  "stage": "M9"
+ },
  "NLAlib.eq_sortedEigenframe_mul_diagonal_mul_transpose": {
   "new": "Matrix.IsHermitian.exists_eq_mul_diagonal_mul_conjTranspose",
   "note": "existence statement, no chosen eigenframe",
   "stage": "M6"
+ },
+ "NLAlib.eq_sqrt_gram_of_isometry_mul_eq": {
+  "new": "NLAlib.eq_sqrt_of_hasOrthonormalCols_mul_eq",
+  "stage": "M9"
  },
  "NLAlib.eq_zero_of_matrix_rank_eq_zero": {
   "new": "Matrix.rank_eq_zero",
@@ -2692,6 +2700,10 @@
  "NLAlib.exists_isometry_mul_eq_of_gram_eq": {
   "new": "NLAlib.conjTranspose_mul_self_eq_iff_exists_mul",
   "stage": "M5"
+ },
+ "NLAlib.exists_isometry_mul_sqrt_gram_eq": {
+  "new": "NLAlib.polarFactor_mul_sqrt",
+  "stage": "M9"
  },
  "NLAlib.exists_least_squares_angle": {
   "new": null,
@@ -3608,6 +3620,10 @@
   "new": "NLAlib.frobNorm_sub_mul_sq",
   "stage": "M2"
  },
+ "NLAlib.frobSq_sub_mul_eq_of_cross_polar": {
+  "new": "NLAlib.frobNorm_sub_mul_sq_of_mul_sqrt_eq",
+  "stage": "M9"
+ },
  "NLAlib.frobSq_sub_mul_le_of_isBestFrobRankApprox": {
   "new": null,
   "note": "not ported: Q * truncatedSVD (Qᴴ * A) k is a best approximation of A among Q * B with rank B ≤ k; two steps from frobNorm_sub_mul_sq and frobNorm_sub_truncatedSVD_le_of_rank_le; needed by the fixed-rank randomized SVD",
@@ -4197,6 +4213,10 @@
   "new": "NLAlib.SymmetricGauge.apply_singularValuesFinsupp_sub_le",
   "stage": "M3b"
  },
+ "NLAlib.invariantNorm_sub_polar_le_sub_isometry": {
+  "new": "NLAlib.SymmetricGauge.matrixNorm_sub_le_matrixNorm_sub_of_mul_sqrt_eq",
+  "stage": "M9"
+ },
  "NLAlib.isBestFrobRankApprox_truncatedSVD": {
   "new": "NLAlib.frobNorm_sub_truncatedSVD_le_of_rank_le",
   "stage": "M3"
@@ -4334,6 +4354,14 @@
  "NLAlib.isLeastSquaresSolution_toEuclideanLin_pinv": {
   "new": "NLAlib.isLeastSquaresSolution_pinv_mulVec",
   "stage": "M6"
+ },
+ "NLAlib.isLeast_frobSq_sub_orthogonal_mul": {
+  "new": "NLAlib.isLeast_frobNorm_sub_mul_sq",
+  "stage": "M9"
+ },
+ "NLAlib.isLeast_frobSq_sub_orthogonal_mul_mul": {
+  "new": "NLAlib.isLeast_frobNorm_sub_mul_mul_sq",
+  "stage": "M9"
  },
  "NLAlib.isLeast_generalizedSchurComplement_quadratic": {
   "new": "NLAlib.isLeast_re_quadForm_fromBlocks",
@@ -5382,6 +5410,10 @@
   "new": "NLAlib.mul_pinv_self_of_injective_conjTranspose",
   "stage": "M4"
  },
+ "NLAlib.mul_polarFrame_eq_polarFrame_mul_of_intertwining": {
+  "new": "NLAlib.mul_polarFactor_eq_polarFactor_mul",
+  "stage": "M9"
+ },
  "NLAlib.mul_rangeProjector_conjTranspose": {
   "new": "NLAlib.conjTranspose_mul_rangeProjector",
   "note": "applied to Bᴴ and transposed",
@@ -6016,6 +6048,10 @@
   "new": null,
   "note": "attainment constructions are private to the duality proofs",
   "stage": "M3b"
+ },
+ "NLAlib.polar_isometry_unique_iff_rank_eq_card": {
+  "new": "NLAlib.forall_eq_of_mul_sqrt_eq_iff",
+  "stage": "M9"
  },
  "NLAlib.posDef_extreme_eigenvalues_sandwich": {
   "new": null,
@@ -8248,6 +8284,10 @@
   "note": "coordinate twin; division-free, Higham's coefficient follows with ‖b‖ ≤ ‖A‖ ‖x‖ + ‖b - A x‖",
   "stage": "M6"
  },
+ "NLAlib.sqrt_rowGram_mul_eq_of_isometry_mul_sqrt_gram_eq": {
+  "new": "NLAlib.sqrt_mul_polarFactor",
+  "stage": "M9"
+ },
  "NLAlib.star_conjTranspose_mulVec_dotProduct_self_of_mem_range": {
   "new": "NLAlib.rangeProjector_mulVec_eq_self_iff",
   "note": "with HasOrthonormalCols.star_mulVec_dotProduct_mulVec",
@@ -8955,6 +8995,10 @@
  "NLAlib.trace_eq_iff_of_le": {
   "new": "NLAlib.eq_of_le_of_re_trace_eq",
   "stage": "M7"
+ },
+ "NLAlib.trace_eq_nuclearNorm_iff_posSemidef": {
+  "new": "NLAlib.trace_eq_nuclearNorm_iff_posSemidef",
+  "stage": "M9"
  },
  "NLAlib.trace_eq_ofReal_re_of_posSemidef": {
   "new": "Matrix.IsHermitian.coe_re_trace",

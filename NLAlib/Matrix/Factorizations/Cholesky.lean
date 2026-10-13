@@ -25,6 +25,8 @@ symmetric permutation one whose nonzero columns are the first `rank A`.
 * `NLAlib.IsCholesky.posDef`, `NLAlib.IsCholesky.unique`.
 * `NLAlib.exists_isCholesky_iff_posDef`, `Matrix.PosDef.existsUnique_isCholesky`.
 * `Matrix.PosDef.isCholesky_choleskyLower`: elimination computes the factorization.
+* `Matrix.IsHermitian.choleskyLower_apply_self`,
+  `Matrix.IsHermitian.choleskyLower_apply_self_pos_iff`: the diagonal of the computed factor.
 * `Matrix.PosSemidef.exists_perm_eq_mul_conjTranspose`: the pivoted factorization.
 -/
 
@@ -195,18 +197,20 @@ private theorem gaussState_apply_eq_zero_of_posSemidef {A : Matrix (Fin n) (Fin 
     · rw [gaussState, dif_neg hk]
       exact ih (by have := i.2; omega) l
 
-/-- The diagonal of the factor computed by elimination on a Hermitian matrix. -/
-private theorem choleskyLower_apply_self {A : Matrix (Fin n) (Fin n) 𝕜} (hA : A.IsHermitian)
-    (i : Fin n) : choleskyLower A i i = ((√(RCLike.re (gaussState A i i i)) : ℝ) : 𝕜) := by
+/-- The diagonal of the factor computed by elimination on a Hermitian matrix is the square root
+of the real part of the pivot (zero when the pivot is negative). -/
+theorem _root_.Matrix.IsHermitian.choleskyLower_apply_self {A : Matrix (Fin n) (Fin n) 𝕜}
+    (hA : A.IsHermitian) (i : Fin n) :
+    choleskyLower A i i = ((√(RCLike.re (gaussState A i i i)) : ℝ) : 𝕜) := by
   simp only [choleskyLower, Matrix.of_apply, le_refl, if_true]
   nth_rewrite 1 [← (isHermitian_gaussState hA i).coe_re_apply_self i]
   rw [← RCLike.ofReal_div, Real.div_sqrt]
 
 /-- The diagonal entry of the computed factor is positive exactly when the pivot is. -/
-private theorem choleskyLower_apply_self_pos_iff {A : Matrix (Fin n) (Fin n) 𝕜}
-    (hA : A.IsHermitian) (i : Fin n) :
+theorem _root_.Matrix.IsHermitian.choleskyLower_apply_self_pos_iff
+    {A : Matrix (Fin n) (Fin n) 𝕜} (hA : A.IsHermitian) (i : Fin n) :
     0 < choleskyLower A i i ↔ 0 < gaussState A i i i := by
-  rw [choleskyLower_apply_self hA, RCLike.ofReal_pos, Real.sqrt_pos,
+  rw [hA.choleskyLower_apply_self, RCLike.ofReal_pos, Real.sqrt_pos,
     ← (isHermitian_gaussState hA i).coe_re_apply_self i, RCLike.ofReal_pos, RCLike.ofReal_re]
 
 /-- The diagonal of the factor computed by elimination on a Hermitian matrix is nonnegative.
@@ -214,7 +218,7 @@ Port of `NLAlib.cholesky_apply_self_nonneg`. -/
 theorem _root_.Matrix.IsHermitian.choleskyLower_apply_self_nonneg
     {A : Matrix (Fin n) (Fin n) 𝕜} (hA : A.IsHermitian) (i : Fin n) :
     0 ≤ choleskyLower A i i := by
-  rw [choleskyLower_apply_self hA]
+  rw [hA.choleskyLower_apply_self]
   exact RCLike.ofReal_nonneg.mpr (Real.sqrt_nonneg _)
 
 /-- The entries of the product of the computed factor with its conjugate transpose, when the
@@ -291,7 +295,7 @@ Port of `NLAlib.isCholesky_cholesky_of_posDef`. -/
 theorem _root_.Matrix.PosDef.isCholesky_choleskyLower {A : Matrix (Fin n) (Fin n) 𝕜}
     (hA : A.PosDef) : IsCholesky A (choleskyLower A) :=
   ⟨isLowerTriangular_choleskyLower A,
-    fun i => (choleskyLower_apply_self_pos_iff hA.isHermitian i).mpr
+    fun i => (hA.isHermitian.choleskyLower_apply_self_pos_iff i).mpr
       (hA.gaussState_apply_self_pos i),
     hA.posSemidef.eq_choleskyLower_mul_conjTranspose⟩
 
@@ -302,7 +306,7 @@ theorem _root_.Matrix.IsHermitian.forall_choleskyLower_apply_self_pos_iff
     (∀ i, 0 < choleskyLower A i i) ↔ A.PosDef := by
   refine ⟨fun h => ?_, fun h => h.isCholesky_choleskyLower.apply_self_pos⟩
   have hp : ∀ j : Fin n, 0 < gaussState A j j j := fun j =>
-    (choleskyLower_apply_self_pos_iff hA j).mp (h j)
+    (hA.choleskyLower_apply_self_pos_iff j).mp (h j)
   exact IsCholesky.posDef ⟨isLowerTriangular_choleskyLower A, h,
     eq_choleskyLower_mul_conjTranspose_of hA (fun j => (hp j).le)
       fun j i hj => absurd hj (hp j).ne'⟩
@@ -358,7 +362,7 @@ private theorem exists_perm_choleskyLower {A : Matrix (Fin n) (Fin n) 𝕜} (hA 
     have hr := rank_gaussState_add B B.rank_le_width fun l hl => hne l l rfl hl
     exact Matrix.rank_eq_zero.mp (by omega)
   refine ⟨fun i => ?_, fun i j hj => ?_⟩
-  · rw [choleskyLower_apply_self_pos_iff hB.isHermitian]
+  · rw [hB.isHermitian.choleskyLower_apply_self_pos_iff]
     constructor
     · intro hi
       by_contra hlt

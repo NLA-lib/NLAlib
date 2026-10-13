@@ -36,7 +36,8 @@ matrices indexed by `Fin`. Existence is read off Mathlib's
 * `NLAlib.IsQR.isLeastSquaresSolution_backSubst`: the triangular solve.
 * `NLAlib.IsQR.isLeastSquaresSolution_iff`: least squares through QR.
 * `NLAlib.IsQR.isCholesky`: `Rᴴ` is the Cholesky factor of the Gram matrix.
-* `NLAlib.exists_hasOrthonormalCols_mul_isUpperTrapezoidal`: the full factorization.
+* `NLAlib.exists_hasOrthonormalCols_mul_isUpperTrapezoidal`,
+  `NLAlib.exists_hasOrthonormalCols_mul_isUpperTrapezoidal_nonneg`: the full factorization.
 -/
 
 @[expose] public section
@@ -268,6 +269,52 @@ theorem exists_hasOrthonormalCols_mul_isUpperTrapezoidal {m n : ℕ}
     rfl
   · rw [← Matrix.mul_assoc, hQ.mul_conjTranspose_self, Matrix.one_mul]
 
+/-- Every scalar is a nonnegative multiple of a scalar of unit modulus. -/
+private theorem exists_star_mul_self_eq_one_and_nonneg (z : 𝕜) :
+    ∃ u : 𝕜, star u * u = 1 ∧ 0 ≤ star u * z := by
+  by_cases h0 : z = 0
+  · exact ⟨1, by rw [star_one, mul_one], by rw [h0, mul_zero]⟩
+  · have hn : (‖z‖ : 𝕜) ≠ 0 := RCLike.ofReal_ne_zero.mpr (norm_ne_zero_iff.mpr h0)
+    refine ⟨z / (‖z‖ : 𝕜), ?_, ?_⟩
+    · simp only [star_div₀, RCLike.star_def, RCLike.conj_ofReal]
+      rw [div_mul_div_comm, RCLike.conj_mul, ← sq, div_self (pow_ne_zero 2 hn)]
+    · have hval : star (z / (‖z‖ : 𝕜)) * z = (‖z‖ : 𝕜) := by
+        simp only [star_div₀, RCLike.star_def, RCLike.conj_ofReal]
+        rw [div_mul_eq_mul_div, RCLike.conj_mul, sq, mul_div_assoc, div_self hn, mul_one]
+      rw [hval]
+      exact RCLike.ofReal_nonneg.mpr (norm_nonneg _)
+
+/-- **The full QR factorization with nonnegative diagonal.** The upper trapezoidal factor of
+`NLAlib.exists_hasOrthonormalCols_mul_isUpperTrapezoidal` can be chosen with nonnegative entries
+on its main diagonal. -/
+theorem exists_hasOrthonormalCols_mul_isUpperTrapezoidal_nonneg {m n : ℕ}
+    (A : Matrix (Fin m) (Fin n) 𝕜) :
+    ∃ (Q : Matrix (Fin m) (Fin m) 𝕜) (R : Matrix (Fin m) (Fin n) 𝕜),
+      HasOrthonormalCols Q ∧ IsUpperTrapezoidal R ∧ A = Q * R ∧
+        ∀ (i : Fin m) (j : Fin n), (i : ℕ) = j → 0 ≤ R i j := by
+  obtain ⟨Q, R, hQ, hR, hA⟩ := exists_hasOrthonormalCols_mul_isUpperTrapezoidal A
+  choose u hu hnn using fun z : 𝕜 => exists_star_mul_self_eq_one_and_nonneg z
+  let d : Fin m → 𝕜 := fun i => if h : (i : ℕ) < n then u (R i ⟨i, h⟩) else 1
+  have hd : ∀ i, star (d i) * d i = 1 := fun i => by
+    by_cases h : (i : ℕ) < n
+    · simp only [d, dif_pos h, hu]
+    · simp only [d, dif_neg h, star_one, mul_one]
+  have hD : HasOrthonormalCols (Matrix.diagonal d) := by
+    rw [HasOrthonormalCols, Matrix.diagonal_conjTranspose, Matrix.diagonal_mul_diagonal,
+      ← Matrix.diagonal_one]
+    exact congrArg _ (funext hd)
+  refine ⟨Q * Matrix.diagonal d, Matrix.diagonal (star d) * R, hQ.mul hD,
+    fun i j hji => ?_, ?_, fun i j hij => ?_⟩
+  · rw [Matrix.diagonal_mul, hR i j hji, mul_zero]
+  · rw [Matrix.mul_assoc, ← Matrix.mul_assoc (Matrix.diagonal d), ← Matrix.diagonal_conjTranspose,
+      hD.mul_conjTranspose_self, Matrix.one_mul]
+    exact hA
+  · have hi : (i : ℕ) < n := hij ▸ j.2
+    obtain rfl : j = ⟨i, hi⟩ := Fin.ext hij.symm
+    rw [Matrix.diagonal_mul, Pi.star_apply]
+    simp only [d, dif_pos hi]
+    exact hnn _
+
 /-- The thin factorization from the full one: the first `n` columns of `Q` and the first `n` rows
 of `R`. Port of `NLAlib.IsFullQR.isQR_castLE`. -/
 theorem isQR_submatrix_castLE {m n : ℕ} {A : Matrix (Fin m) (Fin n) 𝕜}
@@ -290,24 +337,10 @@ theorem isQR_submatrix_castLE {m n : ℕ} {A : Matrix (Fin m) (Fin n) 𝕜}
 /-- A QR factorization can be rescaled to have a nonnegative diagonal. -/
 private theorem IsQR.exists_nonneg {A Q : Matrix m n 𝕜} {R : Matrix n n 𝕜} (h : IsQR A Q R) :
     ∃ Q' R', IsQR A Q' R' ∧ ∀ i, 0 ≤ R' i i := by
-  let d : n → 𝕜 := fun i => if R i i = 0 then 1 else R i i / (‖R i i‖ : 𝕜)
-  have hd : ∀ i, star (d i) * d i = 1 := by
-    intro i
-    by_cases h0 : R i i = 0
-    · simp only [d, if_pos h0, star_one, mul_one]
-    · have hn : (‖R i i‖ : 𝕜) ≠ 0 := RCLike.ofReal_ne_zero.mpr (norm_ne_zero_iff.mpr h0)
-      simp only [d, if_neg h0, star_div₀, RCLike.star_def, RCLike.conj_ofReal]
-      rw [div_mul_div_comm, RCLike.conj_mul, ← sq, div_self (pow_ne_zero 2 hn)]
+  choose d hd hnn using fun i => exists_star_mul_self_eq_one_and_nonneg (R i i)
   refine ⟨_, _, h.mul_diagonal hd, fun i => ?_⟩
   rw [Matrix.diagonal_mul, Pi.star_apply]
-  by_cases h0 : R i i = 0
-  · rw [h0, mul_zero]
-  · have hn : (‖R i i‖ : 𝕜) ≠ 0 := RCLike.ofReal_ne_zero.mpr (norm_ne_zero_iff.mpr h0)
-    have hval : star (d i) * R i i = (‖R i i‖ : 𝕜) := by
-      simp only [d, if_neg h0, star_div₀, RCLike.star_def, RCLike.conj_ofReal]
-      rw [div_mul_eq_mul_div, RCLike.conj_mul, sq, mul_div_assoc, div_self hn, mul_one]
-    rw [hval]
-    exact RCLike.ofReal_nonneg.mpr (norm_nonneg _)
+  exact hnn i
 
 /-- A thin QR factorization of a matrix indexed by `Fin`, from the full one. -/
 private theorem exists_isQR_fin {m n : ℕ} (A : Matrix (Fin m) (Fin n) 𝕜) (h : n ≤ m) :

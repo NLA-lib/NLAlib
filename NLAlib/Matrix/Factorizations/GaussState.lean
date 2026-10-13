@@ -21,6 +21,8 @@ off this sequence.
 
 ## Main results
 
+* `NLAlib.principalMinor_eq_apply_self_mul_principalMinor_eliminationStep`: one elimination step
+  factors the pivot out of a principal minor.
 * `NLAlib.eq_gaussState_add_sum`: the telescoping identity, with no assumption on the pivots.
 * `NLAlib.gaussState_apply_eq_zero_of_lt_left`, `NLAlib.gaussState_apply_eq_zero_of_lt_right`:
   the zero pattern while the pivots are nonzero.
@@ -45,16 +47,10 @@ namespace NLAlib
 
 variable {K : Type*} [Field K] {𝕜 : Type*} [RCLike 𝕜] {n : Type*}
 
-/-- The step as a rank-one update. -/
-private theorem eliminationStep_eq_sub_smul_vecMulVec (A : Matrix n n K) (t : n) :
-    eliminationStep A t = A - (A t t)⁻¹ • Matrix.vecMulVec (fun i => A i t) (A t) := by
-  ext i j
-  simp only [eliminationStep_apply, Matrix.sub_apply, Matrix.smul_apply, Matrix.vecMulVec_apply,
-    smul_eq_mul]
-
-/-- Eliminating a nonzero pivot inside `s` factors the pivot out of the principal minor on
-`s`. -/
-private theorem principalMinor_eq_apply_self_mul_principalMinor_erase [DecidableEq n]
+/-- **A principal minor through an elimination step.** Eliminating a nonzero pivot `t` inside
+`s` factors the pivot out of the principal minor on `s`: what remains is the principal minor of
+the eliminated matrix on `s.erase t`. -/
+theorem principalMinor_eq_apply_self_mul_principalMinor_eliminationStep [DecidableEq n]
     {A : Matrix n n K} {s : Finset n} {t : n} (hts : t ∈ s) (ht : A t t ≠ 0) :
     principalMinor A s = A t t * principalMinor (eliminationStep A t) (s.erase t) := by
   have h := det_eq_apply_self_mul_det_eliminationStep
@@ -232,7 +228,8 @@ private theorem principalMinor_filter_lt_eq (A : Matrix (Fin n) (Fin n) K) {m k 
         Fin.ext_iff]
       omega
     rw [ih (by omega) fun l hl => hp l (by omega),
-      principalMinor_eq_apply_self_mul_principalMinor_erase hmem (hp ⟨k, h⟩ (Nat.lt_succ_self k)),
+      principalMinor_eq_apply_self_mul_principalMinor_eliminationStep hmem
+        (hp ⟨k, h⟩ (Nat.lt_succ_self k)),
       ← gaussState_succ A h, herase, filter_lt_succ h, Finset.prod_insert (notMem_filter_lt h),
       ← mul_assoc, mul_comm (gaussState A (⟨k, h⟩ : Fin n) ⟨k, h⟩ ⟨k, h⟩)]
 

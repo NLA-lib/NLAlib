@@ -24,6 +24,7 @@ through the budget `‖T‖_F² + ‖C⁺‖_F² ‖D‖_F²`.
 
 ## Main results
 
+* `NLAlib.re_det_conjTranspose_mul_self_pos`: independent columns have positive volume.
 * `NLAlib.re_det_conjTranspose_mul_self_updateCol`: the volume after exchanging a column.
 * `NLAlib.re_det_conjTranspose_mul_self_fromCols`: the volume after appending a column.
 * `NLAlib.frobNorm_sq_add_frobNorm_pinv_sq_mul_le`: the budget of a locally maximal selection.
@@ -41,6 +42,13 @@ namespace NLAlib
 variable {𝕜 : Type*} [RCLike 𝕜] {m p q : Type*} [Fintype m] [Fintype p] [Fintype q]
 
 /-! ### Volume under a column exchange -/
+
+omit [Fintype q] in
+/-- **The Gram determinant of independent columns is positive**: the squared volume `det (Cᴴ C)`
+of a matrix of full column rank. -/
+theorem re_det_conjTranspose_mul_self_pos [DecidableEq p] {C : Matrix m p 𝕜}
+    (hC : Function.Injective C.mulVec) : 0 < RCLike.re (Cᴴ * C).det :=
+  (RCLike.pos_iff.mp (posDef_conjTranspose_mul_self_iff.mpr hC).det_pos).1
 
 /-- **The Gram determinant after replacing a column.** If column `i` of `C` is replaced by
 `C t + d` with `d` orthogonal to the range of `C`, the Gram determinant is multiplied by

@@ -131,8 +131,10 @@ thin QR of `C`; a row selection is a column selection of `Aᴴ`.
 
 `Triangular.lean`: conjugate transposes; `submatrix_of_strictMono`;
 `eq_diagonal_of_isLowerTriangular_of_isUpperTriangular`; diagonals of products;
-`submatrix_mul_of_isLowerTriangular_of_isUpperTriangular` (leading blocks of `L U` on a lower
-set); `isUnit_det_iff`, `inv`, `inv_apply_self`; the unit triangular structures with `one`,
+`Matrix.IsLowerTriangular.submatrix_mul_of_isLowerSet` and
+`Matrix.IsUpperTriangular.submatrix_mul_of_isLowerSet` (leading blocks of a product on a lower
+set; one triangular factor suffices); `isUnit_det_iff`, `inv`, `inv_apply_self`; the unit
+triangular structures with `one`,
 `mul`, `inv`, `det_eq_one`, transposes; `IsUpperTrapezoidal`; `forwardSubst`, `backSubst` with
 `mulVec_forwardSubst`, `forwardSubst_eq_inv_mulVec` and the two for back substitution.
 
@@ -183,8 +185,9 @@ equivariance under a unitary factor on the left.
 `exists_isUpperHessenberg_conjTranspose_mul_mul`,
 `Matrix.IsHermitian.exists_isTridiagonal_conjTranspose_mul_mul` (both fixing the first coordinate
 vector); `IsUpperHessenberg.exists_isQR` (a QR factorization with Hessenberg `Q`, no rank
-assumption), `IsQR.isUpperHessenberg_mul`, `IsQR.isTridiagonal_mul`; the implicit Q theorem
-`eq_mul_diagonal_of_isUpperHessenberg`.
+assumption), `IsQR.isUpperHessenberg_mul`, `IsQR.isTridiagonal_mul` (which needs no tridiagonal
+hypothesis: `H` Hermitian and `Q` upper Hessenberg suffice); the implicit Q theorem
+`exists_eq_mul_diagonal_of_isUpperHessenberg`.
 
 `Polar.lean`: `polarFactor` with `polarFactor_mul_sqrt`, `sqrt_mul_polarFactor`, the two
 projector identities, `IsSVD.polarFactor_eq`, `hasOrthonormalCols_polarFactor_iff`,
@@ -238,6 +241,24 @@ Under `NLAlib/Matrix/Factorizations/`:
 11. `RankRevealing.lean` (imports 5, M3 `SingularValueInequalities`).
 
 Order for proving: 1; then 2; then 3, 4; then 5; then 6, 7, 8 and 10, 11; then 9.
+
+Amendment, 2026-10-14 (files added or split while the stage was proved):
+
+- `GaussState.lean` (imports 2): `gaussState` and everything about elimination in the natural
+  order, split from `Elimination.lean`; `LU.lean` and `Cholesky.lean` import it.
+- `Nystrom.lean` (imports 2, M4 `GeneralizedSchur`): the Nyström residual along a selection
+  (positive semidefinite, below `A`, vanishing columns, maximality),
+  `Matrix.PosSemidef.foldl_eliminationStep_eq_sub`, `Matrix.PosSemidef.sum_smul_eliminationStep`
+  and its trace `Matrix.PosSemidef.sum_mul_re_trace_eliminationStep`, split from
+  `Elimination.lean`.
+- `LUGeneral.lean` (imports 3): `isLU_luLower_luUpper_of_forall_eq_zero` (elimination factors
+  the matrix when every zero pivot has zeros below it) and partial pivoting row by row
+  (`norm_luUpper_apply_le`, `exists_perm_isLU_luLower_luUpper_norm_le`, growth `2 ^ i` in row
+  `i`).
+- `ColumnVolume.lean` (imports 5, M3b `UnitarilyInvariant`): the Gram determinant under a column
+  exchange and the bounds from a budget, split from `RankRevealing.lean`, which imports it.
+- `Procrustes.lean` (imports 10): `frobNorm_sub_mul_sq_of_mul_sqrt_eq`,
+  `isLeast_frobNorm_sub_mul_sq`, `isLeast_frobNorm_sub_mul_mul_sq`, split from `Polar.lean`.
 
 ## 6. Material
 

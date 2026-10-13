@@ -8,7 +8,6 @@ module
 public import NLAlib.Matrix.Factorizations.Triangular
 public import NLAlib.Matrix.Inequalities.Determinant
 public import NLAlib.Matrix.Norms.Loewner
-public import NLAlib.Matrix.Pseudoinverse.GeneralizedSchur
 
 /-!
 # Gaussian elimination
@@ -20,7 +19,9 @@ variants. The step is defined for any index type over any field; when the pivot 
 nothing. On the complement of the pivot it is the Schur complement of the pivot entry.
 
 Elimination in the natural order, `NLAlib.gaussState`, is in
-`NLAlib.Matrix.Factorizations.GaussState`.
+`NLAlib.Matrix.Factorizations.GaussState`. Elimination of a positive semidefinite matrix along a
+list of pivots (the Nyström residual, randomly pivoted Cholesky) is in
+`NLAlib.Matrix.Factorizations.Nystrom`.
 
 ## Main definitions
 
@@ -32,7 +33,8 @@ Elimination in the natural order, `NLAlib.gaussState`, is in
 * `NLAlib.det_eq_apply_self_mul_det_eliminationStep`: the determinant through a step.
 * `Matrix.PosSemidef.eliminationStep`, `Matrix.PosSemidef.eliminationStep_le`.
 * `Matrix.IsHermitian.posDef_iff_eliminationStep`: positive definiteness through a step.
-* `Matrix.PosSemidef.sum_smul_eliminationStep`: the expected step of randomly pivoted Cholesky.
+* `Matrix.PosSemidef.foldl_eliminationStep`: elimination along a list of pivots keeps a positive
+  semidefinite matrix positive semidefinite.
 -/
 
 @[expose] public section
@@ -104,8 +106,8 @@ theorem eliminationStep_submatrix (A : Matrix n n K) (e : m → n) (t : m) :
   ext i j
   simp only [eliminationStep_apply, Matrix.submatrix_apply]
 
-/-- The step as a rank-one update. -/
-private theorem eliminationStep_eq_sub_smul_vecMulVec (A : Matrix n n K) (t : n) :
+/-- **The step as a rank-one update**: `A - (A t t)⁻¹ • (column t) (row t)`, in matrix form. -/
+theorem eliminationStep_eq_sub_smul_vecMulVec (A : Matrix n n K) (t : n) :
     eliminationStep A t = A - (A t t)⁻¹ • Matrix.vecMulVec (fun i => A i t) (A t) := by
   ext i j
   simp only [eliminationStep_apply, Matrix.sub_apply, Matrix.smul_apply, Matrix.vecMulVec_apply,
@@ -327,150 +329,6 @@ theorem _root_.Matrix.PosSemidef.foldl_eliminationStep {A : Matrix n n 𝕜} (hA
   | nil => exact hA
   | cons t l ih => exact ih (hA.eliminationStep t)
 
-/-! The Nyström residual `A - A_{:,e} (A_{e,e})⁺ A_{e,:}` of a positive semidefinite matrix along
-`e : p → n` is the largest positive semidefinite matrix below `A` whose columns in the range of
-`e` vanish. The next five lemmas prove this, and that one elimination step is the residual along
-a single index. -/
-
-omit [Finite n] in
-private theorem posSemidef_fromBlocks_submatrix {p : Type*} {A : Matrix n n 𝕜}
-    (hA : A.PosSemidef) (e : p → n) :
-    (Matrix.fromBlocks (A.submatrix e e) (A.submatrix e id) (A.submatrix e id)ᴴ A).PosSemidef := by
-  have hblock : Matrix.fromBlocks (A.submatrix e e) (A.submatrix e id) (A.submatrix e id)ᴴ A =
-      A.submatrix (Sum.elim e id) (Sum.elim e id) := by
-    rw [Matrix.conjTranspose_submatrix, hA.isHermitian.eq]
-    ext (i | i) (j | j) <;> rfl
-  rw [hblock]
-  exact hA.submatrix _
-
-private theorem posSemidef_sub_submatrix_mul_pinv_mul {p : Type*} [Fintype p] {A : Matrix n n 𝕜}
-    (hA : A.PosSemidef) (e : p → n) :
-    (A - A.submatrix id e * pinv (A.submatrix e e) * A.submatrix e id).PosSemidef := by
-  have h := posSemidef_sub_conjTranspose_mul_pinv_mul_of_posSemidef_fromBlocks
-    (posSemidef_fromBlocks_submatrix hA e)
-  rwa [Matrix.conjTranspose_submatrix, hA.isHermitian.eq] at h
-
-private theorem sub_submatrix_mul_pinv_mul_le {p : Type*} [Fintype p] {A : Matrix n n 𝕜}
-    (hA : A.PosSemidef) (e : p → n) :
-    A - A.submatrix id e * pinv (A.submatrix e e) * A.submatrix e id ≤ A := by
-  have hB : (A.submatrix e id)ᴴ = A.submatrix id e := by
-    rw [Matrix.conjTranspose_submatrix, hA.isHermitian.eq]
-  rw [Matrix.le_iff, sub_sub_cancel, ← hB]
-  exact (hA.submatrix e).pinv.conjTranspose_mul_mul_same _
-
-private theorem sub_submatrix_mul_pinv_mul_apply {p : Type*} [Fintype p] {A : Matrix n n 𝕜}
-    (hA : A.PosSemidef) (e : p → n) (i : n) (k : p) :
-    (A - A.submatrix id e * pinv (A.submatrix e e) * A.submatrix e id) i (e k) = 0 := by
-  have h := congrArg Matrix.conjTranspose
-    (mul_pinv_mul_eq_of_posSemidef_fromBlocks (posSemidef_fromBlocks_submatrix hA e))
-  rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, Matrix.conjTranspose_submatrix,
-    hA.isHermitian.eq, (hA.submatrix e).pinv.isHermitian.eq, (hA.submatrix e).isHermitian.eq,
-    ← Matrix.mul_assoc] at h
-  rw [Matrix.sub_apply, sub_eq_zero]
-  exact (congrFun (congrFun h i) k).symm
-
-private theorem le_sub_submatrix_mul_pinv_mul {p : Type*} [Fintype p] {A M : Matrix n n 𝕜}
-    (e : p → n) (hM : M.PosSemidef) (hMA : M ≤ A) (hMe : ∀ i k, M i (e k) = 0) :
-    M ≤ A - A.submatrix id e * pinv (A.submatrix e e) * A.submatrix e id := by
-  have hMe' : ∀ k i, M (e k) i = 0 := fun k i => by
-    rw [← hM.isHermitian.apply, hMe, star_zero]
-  have h1 : (A - M).submatrix id e = A.submatrix id e := by
-    ext i k
-    simp [hMe]
-  have h2 : (A - M).submatrix e id = A.submatrix e id := by
-    ext k i
-    simp [hMe']
-  have h3 : (A - M).submatrix e e = A.submatrix e e := by
-    ext k k'
-    simp [hMe]
-  have h := posSemidef_sub_submatrix_mul_pinv_mul (Matrix.le_iff.mp hMA) e
-  rw [h1, h2, h3] at h
-  rw [Matrix.le_iff]
-  convert h using 1
-  abel
-
-omit [Finite n] in
-private theorem eliminationStep_eq_sub_submatrix_mul_pinv_mul (A : Matrix n n 𝕜) (t : n) :
-    eliminationStep A t =
-      A - A.submatrix id (fun _ : Unit => t) *
-        pinv (A.submatrix (fun _ : Unit => t) fun _ => t) *
-          A.submatrix (fun _ : Unit => t) id := by
-  have h : A.submatrix (fun _ : Unit => t) (fun _ => t) = Matrix.diagonal fun _ => A t t := by
-    ext i j
-    simp
-  rw [h, pinv_diagonal]
-  ext i j
-  simp only [eliminationStep_apply, Matrix.sub_apply, Matrix.mul_apply, Matrix.submatrix_apply,
-    Matrix.diagonal_apply, Finset.univ_unique, Finset.sum_singleton, id_eq, if_true]
-  ring
-
-/-- **Elimination along a list of pivots is the Nyström residual.** For a positive semidefinite
-`A` and pivots `l`, the eliminated matrix is `A - A_{:,l} (A_{l,l})⁺ A_{l,:}`: it depends only on
-the set of pivots, and repeated pivots do nothing. This is the residual of the partial pivoted
-Cholesky factorization. [ChenEtAl2025, §2]. -/
-theorem _root_.Matrix.PosSemidef.foldl_eliminationStep_eq_sub
-    {A : Matrix n n 𝕜} (hA : A.PosSemidef) (l : List n) :
-    l.foldl eliminationStep A =
-      A - A.submatrix id l.get * pinv (A.submatrix l.get l.get) * A.submatrix l.get id := by
-  induction l using List.reverseRecOn with
-  | nil =>
-    ext i j
-    simp
-  | append_singleton l t ih =>
-    rw [List.foldl_append, List.foldl_cons, List.foldl_nil, ih]
-    have hR := posSemidef_sub_submatrix_mul_pinv_mul hA l.get
-    have hR' := posSemidef_sub_submatrix_mul_pinv_mul hA (l ++ [t]).get
-    have hRcol : ∀ x ∈ l, ∀ i,
-        (A - A.submatrix id l.get * pinv (A.submatrix l.get l.get) * A.submatrix l.get id) i x =
-          0 := by
-      intro x hx i
-      obtain ⟨k, rfl⟩ := List.mem_iff_get.mp hx
-      exact sub_submatrix_mul_pinv_mul_apply hA _ i k
-    have hR'col : ∀ x ∈ l ++ [t], ∀ i,
-        (A - A.submatrix id (l ++ [t]).get * pinv (A.submatrix (l ++ [t]).get (l ++ [t]).get) *
-          A.submatrix (l ++ [t]).get id) i x = 0 := by
-      intro x hx i
-      obtain ⟨k, rfl⟩ := List.mem_iff_get.mp hx
-      exact sub_submatrix_mul_pinv_mul_apply hA _ i k
-    apply le_antisymm
-    · refine le_sub_submatrix_mul_pinv_mul _ (hR.eliminationStep t)
-        ((hR.eliminationStep_le t).trans (sub_submatrix_mul_pinv_mul_le hA _)) fun i k => ?_
-      rcases List.mem_append.mp (List.get_mem (l ++ [t]) k) with h | h
-      · exact eliminationStep_apply_eq_zero_of_col (fun i => hRcol _ h i) t i
-      · rw [List.mem_singleton.mp h]
-        exact hR.eliminationStep_apply_pivot_right t i
-    · rw [eliminationStep_eq_sub_submatrix_mul_pinv_mul]
-      refine le_sub_submatrix_mul_pinv_mul _ hR' ?_ fun i _ =>
-        hR'col t (List.mem_append_right _ (List.mem_singleton_self t)) i
-      exact le_sub_submatrix_mul_pinv_mul _ hR' (sub_submatrix_mul_pinv_mul_le hA _)
-        fun i k => hR'col _ (List.mem_append_left _ (List.get_mem l k)) i
-
 end Finite
-
-/-- **The expected step of randomly pivoted Cholesky.** Choosing the pivot `i` with probability
-`A i i / tr A` gives, on average, `A - A² / tr A`.
-[ChenEtAl2025, §5].
-Port of `NLAlib.sum_choleskyPivotProbability_smul_eliminationStep_eq`. -/
-theorem _root_.Matrix.PosSemidef.sum_smul_eliminationStep [Fintype n] {A : Matrix n n 𝕜}
-    (hA : A.PosSemidef) (ht : RCLike.re A.trace ≠ 0) :
-    ∑ i, (RCLike.re (A i i) / RCLike.re A.trace) • eliminationStep A i =
-      A - (RCLike.re A.trace)⁻¹ • (A * A) := by
-  have htr : ∑ i, RCLike.re (A i i) = RCLike.re A.trace := by
-    rw [Matrix.trace, map_sum]
-    rfl
-  have hc : ∀ i j k, (RCLike.re (A i i) / RCLike.re A.trace) •
-      ((A i i)⁻¹ * (A j i * A i k)) = (RCLike.re A.trace)⁻¹ • (A j i * A i k) := by
-    intro i j k
-    by_cases hi : A i i = 0
-    · have hji : A j i = 0 := congrFun (hA.col_eq_zero_of_apply_self_eq_zero hi) j
-      rw [hji, zero_mul, mul_zero, smul_zero, smul_zero]
-    · have ht' : ((RCLike.re A.trace : ℝ) : 𝕜) ≠ 0 := RCLike.ofReal_ne_zero.mpr ht
-      rw [RCLike.real_smul_eq_coe_mul, RCLike.real_smul_eq_coe_mul, RCLike.ofReal_div,
-        RCLike.ofReal_inv, hA.isHermitian.coe_re_apply_self]
-      field_simp
-  ext j k
-  simp only [Matrix.sum_apply, Matrix.smul_apply, eliminationStep_apply, smul_sub,
-    Finset.sum_sub_distrib, Matrix.sub_apply, hc, ← Finset.smul_sum, Matrix.mul_apply]
-  rw [← Finset.sum_smul, ← Finset.sum_div, htr, div_self ht, one_smul]
 
 end NLAlib

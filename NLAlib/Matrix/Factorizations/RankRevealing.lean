@@ -81,11 +81,6 @@ private theorem submatrix_update (A : Matrix m n 𝕜) (e : p → n) (i : p) (j 
       Matrix.col_apply]
   · simp only [Matrix.submatrix_apply, Function.update_of_ne hb, Matrix.updateCol_ne hb]
 
-/-- The Gram determinant of independent columns is positive. -/
-private theorem re_det_conjTranspose_mul_self_pos {C : Matrix m p 𝕜}
-    (hC : Function.Injective C.mulVec) : 0 < RCLike.re (Cᴴ * C).det :=
-  (RCLike.pos_iff.mp (posDef_conjTranspose_mul_self_iff.mpr hC).det_pos).1
-
 /-- The Gram determinant after replacing a column by an arbitrary vector, split into its
 component in the range and the residual. -/
 private theorem re_det_conjTranspose_mul_self_updateCol_eq [DecidableEq m] {C : Matrix m p 𝕜}
@@ -114,6 +109,10 @@ private theorem injective_of_injective_mulVec_submatrix {A : Matrix m n 𝕜} {e
   have h2 := congrFun (h h1) a
   rw [Pi.single_eq_same, Pi.single_eq_of_ne hne] at h2
   exact one_ne_zero h2
+
+/-- A selection that satisfies the certificate has no repeated column. -/
+theorem IsLocalMaxVolume.injective (h : IsLocalMaxVolume A e f) : Function.Injective e :=
+  injective_of_injective_mulVec_submatrix h.injective_mulVec
 
 omit [DecidableEq p] in
 /-- The singular values of a matrix padded with zero columns. -/
@@ -249,7 +248,7 @@ theorem IsLocalMaxVolume.singularValues_le_sqrt_mul [Fintype n] (h : IsLocalMaxV
         singularValues (A.submatrix id e) i := by
   classical
   obtain ⟨ec, hec⟩ := exists_equiv_sum_compl
-    (injective_of_injective_mulVec_submatrix h.injective_mulVec)
+    h.injective
   have hcard : (Fintype.card n : ℝ) - Fintype.card p = Fintype.card ↥(Set.range e)ᶜ := by
     rw [← Fintype.card_congr ec, Fintype.card_sum, Nat.cast_add, add_sub_cancel_left]
   rw [hcard, ← singularValues_submatrix_equiv A (Equiv.refl m) ec, Equiv.coe_refl,
@@ -267,7 +266,7 @@ theorem IsLocalMaxVolume.singularValues_one_sub_rangeProjector_mul_le [Fintype n
         singularValues A (Fintype.card p + j) := by
   classical
   obtain ⟨ec, hec⟩ := exists_equiv_sum_compl
-    (injective_of_injective_mulVec_submatrix h.injective_mulVec)
+    h.injective
   have hcard : (Fintype.card n : ℝ) - Fintype.card p = Fintype.card ↥(Set.range e)ᶜ := by
     rw [← Fintype.card_congr ec, Fintype.card_sum, Nat.cast_add, add_sub_cancel_left]
   have h1 : singularValues ((1 - rangeProjector (A.submatrix id e)) * A) =

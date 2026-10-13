@@ -28,6 +28,9 @@ substitution.
 ## Main results
 
 * `NLAlib.eq_diagonal_of_isLowerTriangular_of_isUpperTriangular`.
+* `Matrix.IsLowerTriangular.submatrix_mul_of_isLowerSet`,
+  `Matrix.IsUpperTriangular.submatrix_mul_of_isLowerSet`: principal blocks of a product on a
+  lower set.
 * `Matrix.IsUpperTriangular.inv_apply_self`: the diagonal of the inverse.
 * `NLAlib.IsUnitLowerTriangular.mul`, `.inv`, `.det_eq_one`.
 * `NLAlib.mulVec_forwardSubst`, `NLAlib.mulVec_backSubst`: the substitutions solve the systems.
@@ -106,23 +109,40 @@ theorem _root_.Matrix.IsLowerTriangular.mul_apply_self [NonUnitalNonAssocSemirin
     · rw [hA (i := i) (j := k) h, zero_mul]
   · exact fun h => absurd (Finset.mem_univ i) h
 
-/-- **Leading blocks of a lower-times-upper product.** For `L` lower triangular and a lower set
-`s` of indices, the principal submatrix of `L * U` on `s` is the product of the principal
-submatrices. The factor `U` is upper triangular in the intended use, but the identity needs
-triangularity of one factor only. -/
-theorem submatrix_mul_of_isLowerTriangular_of_isUpperTriangular [NonUnitalNonAssocSemiring R]
-    {L U : Matrix n n R} (hL : L.IsLowerTriangular) {s : Finset n}
+/-- **Leading blocks of a product with a lower triangular left factor.** For `L` lower
+triangular, any `B`, and a lower set `s` of indices, the principal submatrix of `L * B` on `s` is
+the product of the principal submatrices. With `B` upper triangular these are the leading blocks
+of an LU factorization. -/
+theorem _root_.Matrix.IsLowerTriangular.submatrix_mul_of_isLowerSet [NonUnitalNonAssocSemiring R]
+    {L : Matrix n n R} (hL : L.IsLowerTriangular) (B : Matrix n n R) {s : Finset n}
     (hs : IsLowerSet (s : Set n)) :
-    ((L * U).submatrix (Subtype.val : s → n) (Subtype.val : s → n)) =
+    ((L * B).submatrix (Subtype.val : s → n) (Subtype.val : s → n)) =
       L.submatrix (Subtype.val : s → n) (Subtype.val : s → n) *
-        U.submatrix (Subtype.val : s → n) (Subtype.val : s → n) := by
+        B.submatrix (Subtype.val : s → n) (Subtype.val : s → n) := by
   ext i j
   simp only [Matrix.mul_apply, Matrix.submatrix_apply]
-  rw [Finset.sum_coe_sort s (fun k => L i k * U k j)]
+  rw [Finset.sum_coe_sort s (fun k => L i k * B k j)]
   refine (Finset.sum_subset (Finset.subset_univ s) fun k _ hk => ?_).symm
   have hik : (i : n) < k :=
     lt_of_not_ge fun hki => hk (Finset.mem_coe.mp (hs hki (Finset.mem_coe.mpr i.2)))
   rw [hL (i := (i : n)) (j := k) hik, zero_mul]
+
+/-- **Leading blocks of a product with an upper triangular right factor.** For any `A`, `U`
+upper triangular, and a lower set `s` of indices, the principal submatrix of `A * U` on `s` is
+the product of the principal submatrices. -/
+theorem _root_.Matrix.IsUpperTriangular.submatrix_mul_of_isLowerSet [NonUnitalNonAssocSemiring R]
+    {U : Matrix n n R} (hU : U.IsUpperTriangular) (A : Matrix n n R) {s : Finset n}
+    (hs : IsLowerSet (s : Set n)) :
+    ((A * U).submatrix (Subtype.val : s → n) (Subtype.val : s → n)) =
+      A.submatrix (Subtype.val : s → n) (Subtype.val : s → n) *
+        U.submatrix (Subtype.val : s → n) (Subtype.val : s → n) := by
+  ext i j
+  simp only [Matrix.mul_apply, Matrix.submatrix_apply]
+  rw [Finset.sum_coe_sort s (fun k => A i k * U k j)]
+  refine (Finset.sum_subset (Finset.subset_univ s) fun k _ hk => ?_).symm
+  have hjk : (j : n) < k :=
+    lt_of_not_ge fun hkj => hk (Finset.mem_coe.mp (hs hkj (Finset.mem_coe.mpr j.2)))
+  rw [hU (i := k) (j := (j : n)) hjk, mul_zero]
 
 variable [DecidableEq n]
 

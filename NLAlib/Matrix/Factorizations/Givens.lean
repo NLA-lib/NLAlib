@@ -21,6 +21,7 @@ vector there is a rotation that clears coordinate `j` into coordinate `i`.
 ## Main results
 
 * `NLAlib.hasOrthonormalCols_givens`: unitarity.
+* `NLAlib.det_givens_eq_mul_star_add_mul_star`, `NLAlib.det_givens`: the determinant.
 * `NLAlib.givens_mulVec_apply_left`, `…_right`, `…_of_ne`: the action on a vector.
 * `NLAlib.exists_givens_mulVec_apply_eq_zero`: clearing an entry.
 -/
@@ -154,10 +155,9 @@ theorem givens_mul_conjTranspose_self {i j : n} (hij : i ≠ j) {c s : 𝕜}
     (hcs : ‖c‖ ^ 2 + ‖s‖ ^ 2 = 1) : givens i j c s * (givens i j c s)ᴴ = 1 := by
   exact (hasOrthonormalCols_givens hij hcs).mul_conjTranspose_self
 
-/-- The determinant of a unitary Givens rotation is one. -/
-theorem det_givens {i j : n} (hij : i ≠ j) {c s : 𝕜} (hcs : ‖c‖ ^ 2 + ‖s‖ ^ 2 = 1) :
-    (givens i j c s).det = 1 := by
-  have h := star_mul_self_add hcs
+/-- **The determinant of a Givens rotation** is `c c̄ + s s̄`, for any `c`, `s`. -/
+theorem det_givens_eq_mul_star_add_mul_star {i j : n} (hij : i ≠ j) (c s : 𝕜) :
+    (givens i j c s).det = c * star c + s * star s := by
   let ei : n → 𝕜 := Pi.single i 1
   let ej : n → 𝕜 := Pi.single j 1
   let U : Matrix n (Fin 2) 𝕜 := Matrix.of fun a k => (![ei a, ej a] : Fin 2 → 𝕜) k
@@ -178,7 +178,13 @@ theorem det_givens {i j : n} (hij : i ≠ j) {c s : 𝕜} (hcs : ‖c‖ ^ 2 + �
   simp only [Matrix.add_apply, Matrix.one_apply_eq, Matrix.of_apply, Matrix.cons_val',
     Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_fin_one, Matrix.one_apply_ne,
     ne_eq, zero_ne_one, one_ne_zero, not_false_eq_true]
-  linear_combination h
+  ring
+
+/-- The determinant of a unitary Givens rotation is one. -/
+theorem det_givens {i j : n} (hij : i ≠ j) {c s : 𝕜} (hcs : ‖c‖ ^ 2 + ‖s‖ ^ 2 = 1) :
+    (givens i j c s).det = 1 := by
+  rw [det_givens_eq_mul_star_add_mul_star hij, mul_comm c, mul_comm s]
+  exact star_mul_self_add hcs
 
 /-- **Clearing an entry.** For every vector `x` and `i ≠ j` there is a unitary Givens rotation
 that sends coordinate `j` to zero and coordinate `i` to `√(|x i|² + |x j|²)`.

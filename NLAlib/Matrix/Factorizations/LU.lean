@@ -30,6 +30,7 @@ Leading principal minors are `principalMinor A (Finset.Iic i)`.
 * `NLAlib.exists_isLU_of_forall_principalMinor_ne_zero_of_le_rank`: existence from the leading
   minors up to the rank.
 * `NLAlib.isLU_luLower_luUpper`: elimination computes the factorization.
+* `NLAlib.eq_luLower_mul_luUpper`: `A = luLower A * luUpper A` when zero pivots have zeros below.
 * `NLAlib.exists_perm_isLU_norm_le`: partial pivoting, with the growth bound `2 ^ (n - 1)`.
 -/
 
@@ -78,8 +79,7 @@ theorem IsLU.submatrix_of_isLowerSet (h : IsLU A L U) {s : Finset n}
     (Subtype.strictMono_coe _), fun i => h.isUnitLowerTriangular.apply_self _⟩,
     h.isUpperTriangular.submatrix_of_strictMono (Subtype.strictMono_coe _), ?_⟩
   rw [h.eq_mul]
-  exact submatrix_mul_of_isLowerTriangular_of_isUpperTriangular
-    h.isUnitLowerTriangular.isLowerTriangular hs
+  exact h.isUnitLowerTriangular.isLowerTriangular.submatrix_mul_of_isLowerSet U hs
 
 /-- **Principal minors on lower sets.** For an LU factorization and a lower set `s` of indices,
 the principal minor of `A` on `s` is the product of the pivots in `s`.
@@ -233,7 +233,7 @@ private theorem luLower_mul_luUpper_apply (A : Matrix (Fin n) (Fin n) K) (i j : 
     Finset.sum_filter, Finset.sum_ite_eq' Finset.univ i, if_pos (Finset.mem_univ i)]
 
 /-- Elimination factors the matrix as soon as a zero pivot has only zeros below it. -/
-private theorem eq_luLower_mul_luUpper {A : Matrix (Fin n) (Fin n) K}
+theorem eq_luLower_mul_luUpper {A : Matrix (Fin n) (Fin n) K}
     (h : ∀ j i : Fin n, j < i → gaussState A j j j = 0 → gaussState A j i j = 0) :
     A = luLower A * luUpper A := by
   ext i j
@@ -324,7 +324,7 @@ private theorem isLU_luLower_luUpper_of_le_rank {A : Matrix (Fin n) (Fin n) K}
 
 /-- A row permutation after which every pivot of elimination maximises a given weight over the
 entries below it. -/
-private theorem exists_perm_forall_weight_le (w : K → ℝ) (A : Matrix (Fin n) (Fin n) K) :
+theorem exists_perm_forall_weight_gaussState_le (w : K → ℝ) (A : Matrix (Fin n) (Fin n) K) :
     ∃ σ : Equiv.Perm (Fin n), ∀ j i : Fin n, j ≤ i →
       w (gaussState (A.submatrix σ id) j i j) ≤ w (gaussState (A.submatrix σ id) j j j) := by
   have hs : ∀ (σ τ : Equiv.Perm (Fin n)) (j : Fin n), (∀ l : Fin n, l < j → τ l = l) →
@@ -344,7 +344,7 @@ private theorem exists_perm_isLU_luLower_luUpper (A : Matrix (Fin n) (Fin n) K) 
     ∃ σ : Equiv.Perm (Fin n),
       IsLU (A.submatrix σ id) (luLower (A.submatrix σ id)) (luUpper (A.submatrix σ id)) := by
   classical
-  obtain ⟨σ, hσ⟩ := exists_perm_forall_weight_le (fun x : K => if x = 0 then 0 else 1) A
+  obtain ⟨σ, hσ⟩ := exists_perm_forall_weight_gaussState_le (fun x : K => if x = 0 then 0 else 1) A
   refine ⟨σ, isUnitLowerTriangular_luLower _, isUpperTriangular_luUpper _,
     eq_luLower_mul_luUpper fun j i hji hj => ?_⟩
   have h := hσ j i hji.le
@@ -354,7 +354,7 @@ private theorem exists_perm_isLU_luLower_luUpper (A : Matrix (Fin n) (Fin n) K) 
   exact absurd h (by norm_num)
 
 /-- Entries of the states of elimination with partial pivoting at most double at each step. -/
-private theorem norm_gaussState_le {𝕜 : Type*} [RCLike 𝕜] {B : Matrix (Fin n) (Fin n) 𝕜} {M : ℝ}
+theorem norm_gaussState_apply_le {𝕜 : Type*} [RCLike 𝕜] {B : Matrix (Fin n) (Fin n) 𝕜} {M : ℝ}
     (hM : ∀ i j, ‖B i j‖ ≤ M)
     (hB : ∀ j i : Fin n, j ≤ i → ‖gaussState B j i j‖ ≤ ‖gaussState B j j j‖) (k : ℕ)
     (i l : Fin n) (hk : k ≤ (i : ℕ)) : ‖gaussState B k i l‖ ≤ 2 ^ k * M := by
@@ -384,7 +384,7 @@ private theorem exists_perm_isLU_norm_le_fin {𝕜 : Type*} [RCLike 𝕜]
       IsLU (A.submatrix σ id) (luLower (A.submatrix σ id)) (luUpper (A.submatrix σ id)) ∧
       (∀ i j, ‖luLower (A.submatrix σ id) i j‖ ≤ 1) ∧
       ∀ i j, ‖luUpper (A.submatrix σ id) i j‖ ≤ 2 ^ (n - 1) * M := by
-  obtain ⟨σ, hσ⟩ := exists_perm_forall_weight_le (fun x : 𝕜 => ‖x‖) A
+  obtain ⟨σ, hσ⟩ := exists_perm_forall_weight_gaussState_le (fun x : 𝕜 => ‖x‖) A
   refine ⟨σ, ⟨isUnitLowerTriangular_luLower _, isUpperTriangular_luUpper _,
     eq_luLower_mul_luUpper fun j i hji hj => ?_⟩, fun i j => ?_, fun i j => ?_⟩
   · have h := hσ j i hji.le
@@ -400,7 +400,7 @@ private theorem exists_perm_isLU_norm_le_fin {𝕜 : Type*} [RCLike 𝕜]
   · have hM0 : 0 ≤ M := (norm_nonneg _).trans (hM i j)
     simp only [luUpper, Matrix.of_apply]
     split_ifs with h1
-    · refine (norm_gaussState_le (fun a b => hM (σ a) b) hσ i i j le_rfl).trans ?_
+    · refine (norm_gaussState_apply_le (fun a b => hM (σ a) b) hσ i i j le_rfl).trans ?_
       exact mul_le_mul_of_nonneg_right
         (pow_le_pow_right₀ one_le_two (by have := i.2; omega)) hM0
     · rw [norm_zero]

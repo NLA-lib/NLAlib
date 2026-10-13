@@ -33,9 +33,11 @@ non-increasing, `σ` is the sequence of singular values (`NLAlib.IsSVD.singularV
 * `NLAlib.IsSVD.singularValues_eq`, `NLAlib.IsSVD.exists_equiv_singularValues_eq`: the entries of
   `σ` are the singular values.
 * `NLAlib.IsSVD.rank_eq`, `NLAlib.IsSVD.specNorm_eq`, `NLAlib.IsSVD.frobNorm_sq_eq`: rank and norms
-  from any SVD.
+  from any SVD; `NLAlib.IsSVD.frobInner_eq` for two matrices with the same singular vectors.
 * `NLAlib.IsSVD.conjTranspose`, `NLAlib.IsSVD.mul_left`, `NLAlib.IsSVD.reindex`: stability.
 * `NLAlib.IsSVD.eq_add`, `NLAlib.exists_isSVD_fromCols`: splitting into two blocks.
+* `Matrix.IsHermitian.exists_equiv_abs_eigenvalue_eq_singularValues`: the singular values of a
+  Hermitian matrix are the absolute values of its eigenvalues.
 -/
 
 @[expose] public section
@@ -191,6 +193,19 @@ theorem frobNorm_sq_eq (h : IsSVD A U σ V) : frobNorm A ^ 2 = ∑ i, σ i ^ 2 :
   rw [h.eq_mul_mul, h.hasOrthonormalCols_left.frobNorm_mul_left,
     h.hasOrthonormalCols_right.frobNorm_mul_conjTranspose_right, frobNorm_diagonal_sq]
   exact Finset.sum_congr rfl fun i _ => by rw [RCLike.norm_ofReal, sq_abs]
+
+/-- The Frobenius inner product of two matrices with the same singular vectors is the inner
+product of their diagonal factors: if `A = U * diagonal σ * Vᴴ` and `B = U * diagonal τ * Vᴴ`,
+then `⟨A, B⟩_F = ∑ i, σ i * τ i`. -/
+theorem frobInner_eq {B : Matrix m n 𝕜} {τ : r → ℝ} (h : IsSVD A U σ V) (hB : IsSVD B U τ V) :
+    frobInner A B = ∑ i, σ i * τ i := by
+  rw [h.eq, hB.eq, Matrix.mul_assoc, Matrix.mul_assoc, frobInner_mul_left,
+    h.hasOrthonormalCols_left.conjTranspose_mul_cancel_left, frobInner_mul_right,
+    Matrix.conjTranspose_conjTranspose, Matrix.mul_assoc,
+    h.hasOrthonormalCols_right.conjTranspose_mul_self, Matrix.mul_one, frobInner_eq_re_trace,
+    Matrix.diagonal_conjTranspose, Matrix.diagonal_mul_diagonal, Matrix.trace_diagonal]
+  simp only [Pi.star_apply, RCLike.star_def, RCLike.conj_ofReal, ← RCLike.ofReal_mul,
+    ← RCLike.ofReal_sum, RCLike.ofReal_re]
 
 /-! ### The entries of `σ` are the singular values -/
 
@@ -424,5 +439,42 @@ theorem exists_eq_mul_conjTranspose_of_rank_le [Finite m] (A : Matrix m n 𝕜) 
     conjTranspose_diagonal_ofReal, Matrix.mul_assoc U, hS.conjTranspose_mul_cancel_left,
     ← Matrix.mul_assoc]
   exact h.eq
+
+/-! ### Hermitian matrices -/
+
+/-- The absolute values of the eigenvalues of a Hermitian matrix are its singular values, up to a
+permutation: the eigendecomposition is a singular value decomposition once the signs of the
+eigenvalues are moved into the left factor. For a positive semidefinite matrix no permutation is
+needed (`Matrix.PosSemidef.singularValues_eq_eigenvalue`). -/
+theorem _root_.Matrix.IsHermitian.exists_equiv_abs_eigenvalue_eq_singularValues
+    {A : Matrix n n 𝕜} (hA : A.IsHermitian) :
+    ∃ e : Fin (Fintype.card n) ≃ Fin (Fintype.card n),
+      ∀ i : Fin (Fintype.card n), |eigenvalue A i| = singularValues A (e i) := by
+  classical
+  obtain ⟨U, hU, hAU⟩ := hA.exists_eq_mul_diagonal_mul_conjTranspose
+  let s : Fin (Fintype.card n) → ℝ := fun i => if 0 ≤ eigenvalue A i then 1 else -1
+  have hs : ∀ i, s i * s i = 1 := fun i => by
+    simp only [s]
+    split_ifs <;> norm_num
+  have hsa : ∀ i, s i * |eigenvalue A i| = eigenvalue A i := fun i => by
+    simp only [s]
+    split_ifs with h
+    · rw [abs_of_nonneg h, one_mul]
+    · rw [abs_of_neg (not_le.mp h), neg_mul_neg, one_mul]
+  have hD : HasOrthonormalCols (Matrix.diagonal fun i => ((s i : ℝ) : 𝕜)) := by
+    rw [HasOrthonormalCols, Matrix.diagonal_conjTranspose, Matrix.diagonal_mul_diagonal,
+      ← Matrix.diagonal_one]
+    congr 1
+    funext i
+    rw [Pi.star_apply, RCLike.star_def, RCLike.conj_ofReal, ← RCLike.ofReal_mul, hs,
+      RCLike.ofReal_one]
+  have h : IsSVD A (U * Matrix.diagonal fun i => ((s i : ℝ) : 𝕜))
+      (fun i => |eigenvalue A i|) U := by
+    refine ⟨hU.mul hD, hU, fun i => abs_nonneg _, ?_⟩
+    rw [Matrix.mul_assoc U, Matrix.diagonal_mul_diagonal]
+    simp only [← RCLike.ofReal_mul, hsa]
+    exact hAU
+  obtain ⟨e, he⟩ := h.exists_equiv_singularValues_eq
+  exact ⟨e.trans (finCongr (Fintype.card_fin _)), fun i => he i⟩
 
 end NLAlib

@@ -47,6 +47,12 @@ Two agents may be working on this machine at once, each on its own file. Memory 
   `LEAN_NUM_THREADS=2 lake lean <path/to/File.lean> -- -M 8000 > /tmp/<name>.log 2>&1`
   and read the log. Run it from the repository root. Use `lake lean`, not `lake env lean`: only
   `lake lean` applies the options and linters of `lakefile.toml`.
+- To run the environment linters (`simpNF`, `docBlame`, `unusedArguments`, …) on your file once
+  it has no `sorry`: build its module with
+  `LEAN_NUM_THREADS=2 lake build NLAlib.<Module.Name>`, then check a scratch file in `/tmp`
+  containing `import NLAlib.<Module.Name>`, `import Batteries.Tactic.Lint` and
+  `#lint in NLAlib` with `LEAN_NUM_THREADS=2 lake env lean -M 8000 /tmp/<name>_lint.lean`. Do this
+  when your file has `@[simp]` lemmas or new definitions.
 - Never run `lake build` without `LEAN_NUM_THREADS=2`, never build `NLAlib` as a whole, never run
   `lake exe cache get` or `lake update`, never `import Mathlib`.
 - Scratch files go in `/tmp`, not in the repository.

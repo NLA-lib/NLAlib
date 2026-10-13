@@ -208,3 +208,42 @@ found no false statement. Folded in:
    the index forms `sum_abs_singularValues_sub_le_kyFanNorm_sub` and
    `sum_abs_eigenvalue_sub_le_kyFanNorm_sub` for consumers of Mirsky's theorem.
 6. `schattenNorm_zero_left` renamed `schattenNorm_zero_eq_rank`.
+
+## 9. Stage report (2026-10-14)
+
+**Outcome.** Eight files under `Matrix/Norms/` (amended file list: `KyFanNorm.lean`,
+`Nuclear.lean`, `Schatten.lean`, `SchattenPowers.lean`, `SchattenHolder.lean`,
+`SymmetricGauge.lean`, `GaugeExamples.lean`, `UnitarilyInvariant.lean`; three were split off at
+the follow-up pass when their parents passed 500 lines), all proved; nothing in
+`NLAlibScaffold`. With M1 to M4, M3a and the four proved M5 files the build has no warnings, the
+axiom audit covers 1521 declarations with no violation, the environment linters pass on 1213
+declarations, and references check clean. Proofs by Opus agents, three to twelve minutes per file.
+
+**What changed from the design.** No statement was found false.
+
+- `Nuclear.lean` imports M3a `TraceInequalities` (von Neumann) and not `LowRank`; the
+  factorisation bound `‖A B‖_* ≤ ‖A‖_F ‖B‖_F` goes through attainment and Cauchy–Schwarz, not
+  Horn's inequality.
+- The scalar inequalities behind the Schatten norms (Minkowski, Hölder with three exponents,
+  monotonicity in the exponent, the power-mean comparison) are all Mathlib's; the `PiLp`
+  definition paid for itself.
+- The `ℓ^q` gauge's norm axioms come from `PiLp` through `lpGauge_apply_eq_norm_toLp`.
+- Fan dominance, the triangle inequality and Mirsky's theorem for `Φ.matrixNorm` are each one
+  application of `SymmetricGauge.le_of_forall_sum_le`.
+- Added at the follow-up pass: `forall_matrixNorm_le_iff_forall_kyFanNorm_le` (Fan dominance as
+  an iff), `schattenNorm_congr`, `schattenNorm_le_mul_of_singularValues_le`,
+  `Matrix.IsHermitian.sumLargest_abs_eigenvalue`,
+  `Matrix.IsHermitian.exists_equiv_abs_eigenvalue_eq_singularValues`, `IsSVD.frobInner_eq`,
+  `Matrix.IsHermitian.trace_pow_eq_sum_range_eigenvalue_pow`, `convexOn_sumLargest_abs`,
+  `sum_le_sum_range_card_of_antitone`.
+
+**Mathlib overlap.** None of the matrix statements; the gauge structure extends Mathlib's
+`Seminorm`, and the Schatten norm is a `PiLp` norm by definition.
+
+**Not ported, by decision.** `schattenNormReal`; the one-shape `UnitarilyInvariantNorm` with its
+representation by a gauge; `rectangularDiagonal`; bundled seminorm values. Deferred with ledger
+entries: the nuclear norm as the trace of the matrix absolute value (M8).
+
+**For the next stages.** "For every unitarily invariant norm" is `(Φ : SymmetricGauge)` with
+`Φ.matrixNorm`; M5 and M6 state their inequalities in that form first and give spectral and
+Frobenius corollaries only where a sharper constant or a different hypothesis exists.

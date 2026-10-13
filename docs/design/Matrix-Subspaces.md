@@ -26,7 +26,7 @@ frame (same).
 | a subspace of `𝕜ⁿ` | its orthogonal projector `P` with `IsStarProjection P`; for a frame `U`, `U * Uᴴ`; for any matrix, `rangeProjector X` | M1 |
 | distance from the range of `P` to the range of `Q` | the matrix `(1 - Q) * P`, in a norm: `specNorm ((1 - Q) * P)`, `frobNorm ((1 - Q) * P)`, `Φ.matrixNorm ((1 - Q) * P)` | — |
 | principal angles | `principalAngle X Y k : ℝ`, `k : ℕ`, non-decreasing, for the column spaces of any two matrices | cosines are `singularValues (Uᴴ * V) k` for frames |
-| tangent of the angles between a frame `U` and a basis `Y` | the matrix `(1 - U * Uᴴ) * Y * (Uᴴ * Y)⁻¹`, in a norm | — |
+| tangent of the angles between a frame `U` and a basis `Y` | `tangentMatrix U Y := (1 - U * Uᴴ) * Y * (Uᴴ * Y)⁻¹`, in a norm; `0` when `Uᴴ * Y` is singular | — |
 | oblique projector | `P` with `IsIdempotentElem P`; from two bases, `X * (Yᴴ * X)⁻¹ * Yᴴ` | Mathlib's `IsIdempotentElem` |
 | CS canonical matrix | `csMatrix 𝕜 c s e` | — |
 
@@ -53,9 +53,11 @@ prototype's `directedSubspaceGap`, `projResidual`, `sinePrincipalAngles`, `overl
   tangent matrix in the acute case. Index conventions: angles are non-decreasing in `k`; singular
   values are non-increasing; so sines and tangents come in reverse order, stated with
   `i + j + 1 = rank` equations.
-- Tangents (subspace iteration, randomized range finders) are stated with the tangent matrix
-  `(1 - U * Uᴴ) * Y * (Uᴴ * Y)⁻¹` for a frame `U` and any basis `Y` with the same number of
-  columns; the acute hypothesis is `IsUnit (Uᴴ * Y)`.
+- Tangents (subspace iteration, randomized range finders) are stated with
+  `tangentMatrix U Y = (1 - U * Uᴴ) * Y * (Uᴴ * Y)⁻¹` for a frame `U` and any basis `Y` with the
+  same number of columns; the acute hypothesis is `IsUnit (Uᴴ * Y)`. This is the one named
+  matrix: the four-factor expression is carried through inductions on `A ^ k * X`, and
+  `tangentMatrix_mul_right` makes its independence of the basis a simp lemma.
 
 **Projectors are hypotheses, frames are data.** Statements about two subspaces take
 `hP : IsStarProjection P`, `hQ : IsStarProjection Q`; statements that need coordinates in the
@@ -100,10 +102,22 @@ theorem specNorm_rangeProjector_sub_rangeProjector {X : Matrix n p 𝕜} {Y : Ma
 theorem HasOrthonormalCols.isUnit_conjTranspose_mul_iff {U : Matrix n p 𝕜}
     (hU : HasOrthonormalCols U) (Y : Matrix n p 𝕜) {j : ℕ} (hj : j + 1 = Fintype.card p) :
     IsUnit (Uᴴ * Y) ↔ principalAngle U Y j < Real.pi / 2
-theorem HasOrthonormalCols.singularValues_one_sub_mul_mul_inv {U : Matrix n p 𝕜}
+noncomputable def tangentMatrix (U Y : Matrix n p 𝕜) : Matrix n p 𝕜 :=
+  (1 - U * Uᴴ) * Y * (Uᴴ * Y)⁻¹
+theorem HasOrthonormalCols.singularValues_tangentMatrix {U : Matrix n p 𝕜}
     (hU : HasOrthonormalCols U) {Y : Matrix n p 𝕜} (hY : IsUnit (Uᴴ * Y)) {i j : ℕ}
     (hij : i + j + 1 = Fintype.card p) :
-    singularValues ((1 - U * Uᴴ) * Y * (Uᴴ * Y)⁻¹) i = Real.tan (principalAngle U Y j)
+    singularValues (tangentMatrix U Y) i = Real.tan (principalAngle U Y j)
+theorem IsStarProjection.matrixNorm_one_sub_mul_le_add (Φ : SymmetricGauge) {P R : Matrix n n 𝕜}
+    (hP : IsStarProjection P) (hR : IsStarProjection R) (Q : Matrix n n 𝕜) :
+    Φ.matrixNorm ((1 - P) * R) ≤ Φ.matrixNorm ((1 - P) * Q) + Φ.matrixNorm ((1 - Q) * R)
+theorem IsStarProjection.matrixNorm_one_sub_mul_le_of_le (Φ : SymmetricGauge) {P Q : Matrix n n 𝕜}
+    (hP : IsStarProjection P) (hQ : IsStarProjection Q) (h : P ≤ Q) (A : Matrix n m 𝕜) :
+    Φ.matrixNorm ((1 - Q) * A) ≤ Φ.matrixNorm ((1 - P) * A)
+theorem HasOrthonormalCols.exists_frobNorm_sub_mul_sq_le {U V : Matrix n p 𝕜}
+    (hU : HasOrthonormalCols U) (hV : HasOrthonormalCols V) :
+    ∃ T : Matrix p p 𝕜, HasOrthonormalCols T ∧
+      frobNorm (U - V * T) ^ 2 ≤ 2 * frobNorm ((1 - V * Vᴴ) * U) ^ 2
 
 theorem conjTranspose_mul_self_eq_iff_exists_mul {A : Matrix m n 𝕜} {B : Matrix p n 𝕜}
     (hcard : Fintype.card p ≤ Fintype.card m) :
@@ -146,7 +160,7 @@ theorem HasOrthonormalCols.specNorm_mul_inv_mul_conjTranspose {U V : Matrix n p 
 
 Under `NLAlib/Matrix/Subspaces/`:
 
-1. `ProjectorPair.lean` (imports M2 `Projector`, M3 `SingularValues`).
+1. `ProjectorPair.lean` (imports M2 `Projector`, M3b `UnitarilyInvariant`).
 2. `PrincipalAngles.lean` (imports 1, M3 `SVD`).
 3. `Frames.lean` (imports M1 `OrthonormalBasis`, M2 `Spectral`).
 4. `Oblique.lean` (imports 2).
@@ -170,12 +184,32 @@ duplicates; the canonical form of an idempotent with its parameters `t i` (the s
 ## 7. Decisions taken without approval
 
 1. **The distance between subspaces is the matrix `(1 - Q) * P` of two orthogonal projectors, in
-   a norm.** No named gap, residual or tangent function.
+   a norm.** No named gap or residual function; one named matrix, `tangentMatrix`.
 2. **`principalAngle X Y k` is defined for the column spaces of arbitrary matrices**, through
    `rangeProjector`, ℕ-indexed, non-decreasing, `π / 2` beyond the smaller dimension.
-3. **Tangents are stated for a frame and a basis with the same number of columns** with the
-   matrix `(1 - U * Uᴴ) * Y * (Uᴴ * Y)⁻¹`; no pseudoinverse-based general tangent.
+3. **Tangents are stated for a frame and a basis with the same number of columns** with
+   `tangentMatrix U Y`; no pseudoinverse-based general tangent, which would not be a quantity of
+   the subspace.
 4. **One CS decomposition over `𝕜`**, in the prototype's form with an embedding `e : p ↪ q`, and
    a small definition `csMatrix` for the canonical matrix.
 5. **`Stiefel`, the polar frame, the canonical QR frame and frame moment sums leave this stage**
    (M9 and the random-matrix layer).
+
+## 8. Review (Fable, 2026-10-14) and what changed
+
+The review wrote out Davis–Kahan, Wedin, the tangent contraction of subspace iteration and the
+range-finder bound under this interface and confirmed decision 1 (no named distance), the
+cosine-ordered `principalAngle` through `rangeProjector` (a sine-ordered definition would break
+symmetry when the ranks differ), and decision 3 (no pseudoinverse tangent: `Ω₂ Ω₁⁺` of
+Halko–Martinsson–Tropp is the `F` of the graph lemma after the reduction `Z = Ω * pinv Ω₁`). It
+checked the degenerate cases of the listed statements and found none false. Folded in:
+
+1. `tangentMatrix U Y` is a definition, because subspace iteration carries the four-factor
+   expression through an induction; the tangent lemmas are stated with it.
+2. The inequalities between projectors are stated for `Φ.matrixNorm` first (triangle inequality,
+   equal-rank symmetry), with spectral and Frobenius corollaries; `ProjectorPair.lean` therefore
+   imports M3b.
+3. Added for M6 and the range-finder analysis: `IsStarProjection.rank_eq_of_specNorm_sub_lt_one`,
+   residual monotonicity `IsStarProjection.matrixNorm_one_sub_mul_le_of_le`, and the alignment of
+   two frames `HasOrthonormalCols.exists_frobNorm_sub_mul_sq_le` (with a spectral twin).
+4. The CS decomposition records that its cosines are the singular values of the leading block.

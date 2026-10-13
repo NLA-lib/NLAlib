@@ -59,7 +59,8 @@ theorem hasOrthonormalCols_csMatrix {c s : p → ℝ} (h : ∀ i, c i ^ 2 + s i 
 
 /-- **The CS decomposition.** A unitary matrix `U` partitioned into blocks over `p ⊕ q`, with
 `p` no larger than `q`, factors as `diag(V₁, V₂) * csMatrix c s e * diag(W₁, W₂)ᴴ` with unitary
-`V₁`, `W₁`, `V₂`, `W₂` and `c i, s i ≥ 0`, `c i ^ 2 + s i ^ 2 = 1`.
+`V₁`, `W₁`, `V₂`, `W₂` and `c i, s i ≥ 0`, `c i ^ 2 + s i ^ 2 = 1`; the cosines `c` are the
+singular values of the leading block, in some order.
 [HornJohnson2013, Theorem 2.7.1]; [GolubVanLoan2013, Theorem 2.5.3]; [PaigeWei1994].
 Port of `NLAlib.exists_cs_decomposition_of_embedding` and
 `NLAlib.exists_complex_cs_decomposition_of_embedding`.
@@ -70,6 +71,7 @@ theorem exists_cs_decomposition {U : Matrix (p ⊕ q) (p ⊕ q) 𝕜} (hU : HasO
       HasOrthonormalCols V₁ ∧ HasOrthonormalCols W₁ ∧ HasOrthonormalCols V₂ ∧
       HasOrthonormalCols W₂ ∧ (∀ i, 0 ≤ c i) ∧ (∀ i, 0 ≤ s i) ∧
       (∀ i, c i ^ 2 + s i ^ 2 = 1) ∧
+      (∃ f : p ≃ Fin (Fintype.card p), ∀ i, c i = singularValues U.toBlocks₁₁ (f i)) ∧
       U = Matrix.fromBlocks V₁ 0 0 V₂ * csMatrix 𝕜 c s e * (Matrix.fromBlocks W₁ 0 0 W₂)ᴴ := by
   sorry
 

@@ -19,6 +19,7 @@ similarity and relabelling. Positive semidefiniteness and definiteness in terms 
 ## Main results
 
 * `Matrix.IsHermitian.trace_eq_sum_range_eigenvalue`,
+  `Matrix.IsHermitian.trace_pow_eq_sum_range_eigenvalue_pow`,
   `Matrix.IsHermitian.det_eq_prod_range_eigenvalue`,
   `Matrix.IsHermitian.frobNorm_sq_eq_sum_eigenvalue_sq`,
   `Matrix.IsHermitian.rank_eq_card_eigenvalue_ne_zero`.
@@ -79,6 +80,50 @@ theorem _root_.Matrix.IsHermitian.re_trace_eq_sum_range_eigenvalue {A : Matrix n
     (hA : A.IsHermitian) :
     RCLike.re A.trace = ∑ k ∈ Finset.range (Fintype.card n), eigenvalue A k := by
   rw [hA.trace_eq_sum_range_eigenvalue, RCLike.ofReal_re]
+
+/-- Positive powers of a matrix diagonalised by a matrix with orthonormal columns. -/
+private theorem mul_diagonal_mul_conjTranspose_pow_succ [DecidableEq n] [DecidableEq p]
+    {U : Matrix n p 𝕜} (hU : HasOrthonormalCols U) (d : p → 𝕜) (k : ℕ) :
+    (U * Matrix.diagonal d * Uᴴ) ^ (k + 1) =
+      U * Matrix.diagonal (fun i => d i ^ (k + 1)) * Uᴴ := by
+  induction k with
+  | zero => simp only [zero_add, pow_one]
+  | succ k ih =>
+    calc (U * Matrix.diagonal d * Uᴴ) ^ (k + 1 + 1)
+        = U * Matrix.diagonal (fun i => d i ^ (k + 1)) *
+            (Uᴴ * (U * (Matrix.diagonal d * Uᴴ))) := by
+          rw [pow_succ, ih]
+          simp only [Matrix.mul_assoc]
+      _ = U * (Matrix.diagonal (fun i => d i ^ (k + 1)) * Matrix.diagonal d) * Uᴴ := by
+          rw [hU.conjTranspose_mul_cancel_left]
+          simp only [Matrix.mul_assoc]
+      _ = U * Matrix.diagonal (fun i => d i ^ (k + 1 + 1)) * Uᴴ := by
+          rw [Matrix.diagonal_mul_diagonal]
+          simp only [pow_succ]
+
+/-- The trace of a power of a Hermitian matrix is the power sum of its eigenvalues. For `p = 0`
+both sides are the dimension. -/
+theorem _root_.Matrix.IsHermitian.trace_pow_eq_sum_range_eigenvalue_pow [DecidableEq n]
+    {A : Matrix n n 𝕜} (hA : A.IsHermitian) (p : ℕ) :
+    (A ^ p).trace = ((∑ k ∈ Finset.range (Fintype.card n), eigenvalue A k ^ p : ℝ) : 𝕜) := by
+  obtain rfl | hp := eq_or_ne p 0
+  · simp only [pow_zero, Matrix.trace_one, Finset.sum_const, Finset.card_range, nsmul_eq_mul,
+      mul_one, RCLike.ofReal_natCast]
+  obtain ⟨k, rfl⟩ := Nat.exists_eq_add_one_of_ne_zero hp
+  obtain ⟨U, hU, hAU⟩ := hA.exists_eq_mul_diagonal_mul_conjTranspose
+  have h := mul_diagonal_mul_conjTranspose_pow_succ hU
+    (fun i : Fin (Fintype.card n) => ((eigenvalue A i : ℝ) : 𝕜)) k
+  rw [← hAU] at h
+  rw [h, Matrix.trace_mul_comm, ← Matrix.mul_assoc, hU.conjTranspose_mul_self, Matrix.one_mul,
+    Matrix.trace_diagonal, ← Fin.sum_univ_eq_sum_range fun i => eigenvalue A i ^ (k + 1)]
+  simp only [← RCLike.ofReal_pow, ← RCLike.ofReal_sum]
+
+/-- The real part of the trace of a power of a Hermitian matrix is the power sum of its
+eigenvalues. This is the form used by the moment method. -/
+theorem _root_.Matrix.IsHermitian.re_trace_pow_eq_sum_range_eigenvalue_pow [DecidableEq n]
+    {A : Matrix n n 𝕜} (hA : A.IsHermitian) (p : ℕ) :
+    RCLike.re (A ^ p).trace = ∑ k ∈ Finset.range (Fintype.card n), eigenvalue A k ^ p := by
+  rw [hA.trace_pow_eq_sum_range_eigenvalue_pow, RCLike.ofReal_re]
 
 /-- The determinant of a Hermitian matrix is the product of its eigenvalues. Mathlib's
 `Matrix.IsHermitian.det_eq_prod_eigenvalues` is the same fact for the unsorted `hA.eigenvalues`.

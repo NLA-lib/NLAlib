@@ -248,6 +248,12 @@ those layers are designed.
 | Ky Fan norm | `kyFanNorm k A`, the sum of the `k` largest singular values; eigenvalue partial sums are written `∑ i ∈ Finset.range k, eigenvalue A i` | `kyFanNorm_eq_sum_range`, `kyFanNorm_one` |
 | nuclear and Schatten norms | `nuclearNorm A`; `schattenNorm q A` with `q : ℝ≥0∞`; `1 ≤ q` and `q ≠ 0` are explicit hypotheses; Hölder exponents through Mathlib's `ENNReal.HolderTriple` and `ENNReal.HolderConjugate` | `schattenNorm_one`, `schattenNorm_two`, `schattenNorm_top` |
 | unitarily invariant norm | `Φ.matrixNorm A` for `Φ : SymmetricGauge` (a norm on `ℕ →₀ ℝ` invariant under permutations and absolute values, extending Mathlib's `Seminorm`), one gauge for every shape; "for every unitarily invariant norm" is `∀ Φ : SymmetricGauge`; `singularValuesFinsupp A` appears only as the argument of a gauge | `lpGauge_matrixNorm`, `kyFanGauge_matrixNorm` |
+| distance between subspaces | the matrix `(1 - Q) * P` of the two orthogonal projectors (`IsStarProjection`; `U * Uᴴ` for a frame, `rangeProjector X` in general), in a norm; no named gap. Its singular values are the sines of `principalAngle X Y k` (ℕ-indexed, non-decreasing, `π / 2` beyond the smaller dimension) | `HasOrthonormalCols.cos_principalAngle`: cosines are `singularValues (Uᴴ * V) k` |
+| tangent of the angles between subspaces | `tangentMatrix U Y := (1 - U * Uᴴ) * Y * (Uᴴ * Y)⁻¹` for a frame `U` and a basis `Y` with as many columns, in a norm; the acute hypothesis is `IsUnit (Uᴴ * Y)` | `HasOrthonormalCols.singularValues_tangentMatrix` |
+| oblique projector | `P` with Mathlib's `IsIdempotentElem P`; from two bases, `X * (Yᴴ * X)⁻¹ * Yᴴ` | — |
+| matrix square root | Mathlib's `CFC.sqrt A`; no NLAlib definition | — |
+| principal minor | `principalMinor A s` for `s : Finset n`; determinants of Hermitian matrices are compared through `RCLike.re A.det` | `principalMinor_univ`, `Matrix.IsHermitian.det_eq_re_det` |
+| spectral equivalence | the Loewner sandwich `a • M ≤ A ≤ b • M`; its consequence is `conditionNumber (Cᴴ * A * C) ≤ b / a` for `Cᴴ * M * C = 1` | `Matrix.PosDef.smul_le_and_le_smul_iff_spectrum_subset` |
 | index shift in a statement | an auxiliary `d` with an equation, `hd : card p + d = card n`; never truncated subtraction | — |
 | Loewner order | `A ≤ B` under `open scoped MatrixOrder` | `Matrix.le_iff` |
 | PSD, PD, Hermitian | `A.PosSemidef`, `A.PosDef`, `A.IsHermitian` | Mathlib's |

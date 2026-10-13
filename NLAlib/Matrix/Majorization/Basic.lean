@@ -38,9 +38,11 @@ in that partial-sum form; the predicates are for unsorted vectors and for the ge
   `NLAlib.exists_card_eq_and_sum_eq_sumLargest`: `sumLargest` is the maximum over index sets of
   size `k`.
 * `NLAlib.sumLargest_add_le`: subadditivity.
+* `NLAlib.convexOn_sumLargest_abs`: the sum of the `k` largest absolute values is convex.
 * `NLAlib.sumLargest_eq_sum_of_forall_le`: an index set whose entries dominate all the others
   attains the maximum.
-* `NLAlib.sumLargest_fin_eq_sum_range`: partial sums of a non-increasing sequence.
+* `NLAlib.sumLargest_fin_eq_sum_range`, `NLAlib.sum_le_sum_range_card_of_antitone`: partial sums
+  of a non-increasing sequence.
 * `NLAlib.weaklyMajorized_iff_forall_sum_le`: weak majorization tested on arbitrary index sets.
 * `NLAlib.Majorized.trans`, `NLAlib.Majorized.comp_equiv_left`,
   `NLAlib.WeaklyMajorized.comp_equiv_left`: order properties and invariance under permutations.
@@ -160,6 +162,25 @@ theorem sumLargest_smul {c : ℝ} (hc : 0 ≤ c) (x : ι → ℝ) (k : ℕ) :
     rw [← h, ← hsum]
     exact sum_le_sumLargest_of_card_eq (c • x) hs
 
+/-- The sum of the `k` largest absolute values of the entries is a convex function of a real
+vector. It is also invariant under permutations (`sumLargest_comp_equiv`), so with
+`Majorized.le_of_convexOn_of_comp_perm` a majorization gives inequalities between sums of largest
+absolute values. -/
+theorem convexOn_sumLargest_abs (k : ℕ) :
+    ConvexOn ℝ Set.univ fun z : ι → ℝ => sumLargest (fun i => |z i|) k := by
+  refine ⟨convex_univ, fun x _ y _ a b ha hb _ => ?_⟩
+  have h : (fun i => |(a • x + b • y) i|) ≤ (a • fun i => |x i|) + b • fun i => |y i| := by
+    intro i
+    simp only [Pi.add_apply, Pi.smul_apply, smul_eq_mul]
+    calc |a * x i + b * y i| ≤ |a * x i| + |b * y i| := abs_add_le _ _
+      _ = a * |x i| + b * |y i| := by rw [abs_mul, abs_mul, abs_of_nonneg ha, abs_of_nonneg hb]
+  calc sumLargest (fun i => |(a • x + b • y) i|) k
+      ≤ sumLargest ((a • fun i => |x i|) + b • fun i => |y i|) k := sumLargest_mono h k
+    _ ≤ sumLargest (a • fun i => |x i|) k + sumLargest (b • fun i => |y i|) k :=
+        sumLargest_add_le _ _ k
+    _ = a • sumLargest (fun i => |x i|) k + b • sumLargest (fun i => |y i|) k := by
+        rw [sumLargest_smul ha, sumLargest_smul hb, smul_eq_mul, smul_eq_mul]
+
 /-- **Recognising the largest entries.** If an index set `t` with `min k (card ι)` elements
 carries entries that are all at least every entry outside it, the sum of the `k` largest entries
 is the sum over `t`. -/
@@ -204,6 +225,22 @@ theorem sumLargest_fin_eq_sum_range {f : ℕ → ℝ} {N : ℕ} (hf : AntitoneOn
   congr 1
   ext i
   simp only [Finset.mem_filter, Finset.mem_range, lt_min_iff, and_comm]
+
+/-- A sum of values of a non-increasing sequence over an index set `s` is at most the sum of its
+first `s.card` values. This is `sum_le_sumLargest` for a sorted sequence indexed by `ℕ`, with no
+bound on the indices. -/
+theorem sum_le_sum_range_card_of_antitone {f : ℕ → ℝ} (hf : Antitone f) (s : Finset ℕ) :
+    ∑ i ∈ s, f i ≤ ∑ i ∈ Finset.range s.card, f i := by
+  induction s using Finset.induction_on_max with
+  | empty => simp
+  | insert a s ha ih =>
+    have has : a ∉ s := fun h => lt_irrefl a (ha a h)
+    have hcard : s.card ≤ a := by
+      have h := Finset.card_le_card (fun i hi => Finset.mem_range.mpr (ha i hi) :
+        s ⊆ Finset.range a)
+      rwa [Finset.card_range] at h
+    rw [Finset.sum_insert has, Finset.card_insert_of_notMem has, Finset.sum_range_succ, add_comm]
+    exact add_le_add ih (hf hcard)
 
 /-! ### Majorization -/
 

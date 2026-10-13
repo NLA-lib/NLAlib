@@ -51,14 +51,6 @@ theorem SymmetricGauge.mul_matrixNorm_le_matrixNorm_mul_sub_mul (Φ : SymmetricG
     δ * Φ.matrixNorm X ≤ Φ.matrixNorm (L * X - X * M) := by
   sorry
 
-/-- The disc form with the roles of the two matrices exchanged: `‖L‖₂ ≤ r` and `M` bounded
-below by `r + δ`, in the form `(r + δ)² • 1 ≤ M Mᴴ`. -/
-theorem SymmetricGauge.mul_matrixNorm_le_matrixNorm_mul_sub_mul' (Φ : SymmetricGauge)
-    {L : Matrix m m 𝕜} {M : Matrix n n 𝕜} {r δ : ℝ} (hL : specNorm L ≤ r)
-    (hM : ((r + δ) ^ 2) • (1 : Matrix n n 𝕜) ≤ M * Mᴴ) (X : Matrix m n 𝕜) :
-    δ * Φ.matrixNorm X ≤ Φ.matrixNorm (L * X - X * M) := by
-  sorry
-
 /-! ### Interval separation for Hermitian matrices -/
 
 /-- A Hermitian matrix with spectrum in `[a, b]` is within `(b - a) / 2` of the midpoint.
@@ -106,14 +98,6 @@ theorem SymmetricGauge.mul_matrixNorm_le_matrixNorm_mul_sub_mul_of_ge (Φ : Symm
     {L : Matrix m m 𝕜} {M : Matrix n n 𝕜} {α δ : ℝ}
     (hL : (α + δ) • (1 : Matrix m m 𝕜) ≤ L) (hM : M ≤ α • (1 : Matrix n n 𝕜))
     (X : Matrix m n 𝕜) : δ * Φ.matrixNorm X ≤ Φ.matrixNorm (L * X - X * M) := by
-  sorry
-
-/-- The interval form in the spectral norm. -/
-theorem mul_specNorm_le_specNorm_mul_sub_mul_of_eigenvalue {L : Matrix m m 𝕜}
-    {M : Matrix n n 𝕜} (hL : L.IsHermitian) {a b δ : ℝ} (hM₁ : a • (1 : Matrix n n 𝕜) ≤ M)
-    (hM₂ : M ≤ b • (1 : Matrix n n 𝕜))
-    (hLsep : ∀ i, i < Fintype.card m → eigenvalue L i ≤ a - δ ∨ b + δ ≤ eigenvalue L i)
-    (X : Matrix m n 𝕜) : δ * specNorm X ≤ specNorm (L * X - X * M) := by
   sorry
 
 /-! ### Arbitrary separation, Frobenius norm -/

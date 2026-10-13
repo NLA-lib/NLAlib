@@ -1,0 +1,31 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    name: Build, lint, audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build NLAlib and NLAlibScaffold with the Mathlib cache
+        uses: leanprover/lean-action@v1
+        with:
+          use-mathlib-cache: true
+          build-args: "NLAlib NLAlibScaffold"
+          lint: false
+          test: false
+      - name: Root modules are current
+        run: |
+          lake exe mk_all --lib NLAlib --check
+          lake exe mk_all --lib NLAlibScaffold --check
+      - name: Axiom audit (import NLAlib is sorry-free)
+        run: lake env lean scripts/Audit.lean
+      - name: Environment linters
+        run: lake env lean scripts/Lint.lean
+      - name: Reference keys resolve
+        run: python3 scripts/check_refs.py

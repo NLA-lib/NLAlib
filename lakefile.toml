@@ -1,0 +1,26 @@
+name = "NLAlib"
+defaultTargets = ["NLAlib"]
+
+# Mathlib's standard options. `weak.` prefixes make an option harmless if Mathlib's linters
+# are not yet imported (they are, through any Mathlib import).
+[leanOptions]
+autoImplicit = false
+pp.unicode.fun = true
+maxSynthPendingDepth = 3
+linter.missingDocs = true
+weak.linter.mathlibStandardSet = true
+weak.linter.style.header = true
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.33.1"
+
+# The library. Everything reachable from `import NLAlib` is sorry-free (scripts/Audit.lean).
+[[lean_lib]]
+name = "NLAlib"
+
+# Statements whose proofs are deferred. May contain `sorry`. Never imported by NLAlib.
+# A declaration moves from here into NLAlib when it is proved; see CONTRIBUTING.md §7.
+[[lean_lib]]
+name = "NLAlibScaffold"

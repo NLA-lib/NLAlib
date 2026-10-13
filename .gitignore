@@ -1,0 +1,6 @@
+/.lake
+/docbuild/.lake
+/docbuild/lake-manifest.json
+*.olean
+__pycache__/
+.DS_Store

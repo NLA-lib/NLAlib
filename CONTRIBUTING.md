@@ -1,0 +1,428 @@
+# Contributing to NLAlib
+
+NLAlib is a Lean 4 library, built on Mathlib, of the foundations of numerical linear algebra:
+matrix analysis, matrix perturbation theory, random matrices, concentration, sketching, low-rank
+approximation, Krylov methods and randomized solvers.
+
+**The goal is to make proving new results easy.** The library exists so that someone analysing a
+new algorithm can import a statement and apply it with `exact`, `rw` or `apply`. It is not a
+transcription of the literature: a result is stated in the form most useful for building on it,
+proved by whatever argument is cleanest, and cited where it (or the result it generalises) appears
+in print. The statement is the product. A proof can be replaced; a statement nobody can apply is
+wasted.
+
+This file is the contract. Everything in it is enforced by CI, by review, or both. It is written
+for human contributors and for the AI agents that do much of the work; the rules are the same.
+
+Sections: 1 Ground rules · 2 Layout · 3 File template · 4 Names · 5 Statements · 6 Docstrings
+and citations · 7 Proofs, `sorry` and the scaffold library · 8 Designing a stage · 9 Workflow and
+checks · 10 Building without running out of memory · 11 Rules for agents.
+
+## 1. Ground rules
+
+1. **Built for use, not transcription.** Choose the statement a downstream proof wants: the
+   general form, the hypotheses it will actually have, the conclusion in the shape it will
+   rewrite with. The printed version in a source is provenance, not a specification; deviating
+   from it (generalising, changing the constant, restating as a tail instead of a sample size,
+   splitting or merging) is normal and is recorded in the docstring.
+2. **One interface per kind of hypothesis** (§5.4). Hypotheses are named predicates and structures
+   shared across the library (`HasOrthonormalCols`, `IsSubspaceEmbedding`, an isotropy predicate,
+   a spectral-gap predicate), never raw conditions re-spelled per theorem. If you write a raw
+   condition a second time, it is an interface. If a theorem's hypotheses do not fit an existing
+   interface, that is a design question (§8), not a reason to invent a local one.
+3. **Mathlib first.** Before defining or proving anything, search Mathlib (`grep -rn` in
+   `.lake/packages/mathlib/Mathlib`, `exact?`, `apply?`, `rw?`, Loogle). If Mathlib has the
+   statement, use it. If Mathlib has the object (`Matrix.PosSemidef`, `IsHermitian.eigenvalues₀`,
+   `LinearMap.singularValues`, `cfc`, `MatrixOrder`, `HasLaw`, `HasSubgaussianMGF`), build on it and
+   never define a parallel one. If you must define your own, ship the bridge lemma to Mathlib's
+   notion in the same file.
+4. **One spelling per concept** (§5.3). A second spelling, a `Complex*` twin, an `ᵀ` copy of an
+   `ᴴ` lemma, or a local re-definition is a defect, whatever its reason.
+5. **General once, then corollaries.** Over `[RCLike 𝕜]` and arbitrary `[Fintype]` index types
+   unless the mathematics needs ℝ or `Fin` (§5.1). The ℝ corollary, when useful, is one line.
+6. **Every public declaration is documented and cited** (§6).
+7. **No `sorry` on `main`** in the library. Deferred statements live in `NLAlibScaffold` (§7).
+   No `axiom`, no `native_decide`, no `admit`, no weakening a statement to make it provable.
+8. **Files are topics, not proofs.** 300 to 500 lines, one mathematical topic, ordered
+   definitions → basic API → main theorems → corollaries. No file named after a paper, a round of
+   work, or a proof technique. No "toolkit", "bundle" or "part 2" files.
+9. **Design before code** (§8). Each stage of the library starts with a written design: the
+   objects, the hypothesis interfaces, the statement shapes, and how later layers will consume
+   them. Nothing is inherited from the prototype library by default; its organisation, names and
+   interfaces are material to evaluate, not a template.
+
+## 2. Layout
+
+```
+NLAlib/
+  ForMathlib/      general facts not about NLAlib's objects, headed upstream;
+                   files named after the Mathlib file they would join            (layer −1)
+  Matrix/          deterministic matrix analysis                                  (layer 0)
+  Polynomial/      Chebyshev, minimax, Markov, interpolation                        (layer 0)
+  Probability/     scalar and vector probability, concentration                    (layer 1)
+  Krylov/          deterministic Krylov theory                                      (layer 1)
+  RandomMatrix/    Gaussian, sub-Gaussian, Haar random matrices                     (layer 2)
+  Sketching/       sketch distributions and their embedding guarantees             (layer 3)
+  LowRank/  Estimation/                                                            (layer 4)
+  Solvers/                                                                         (layer 5)
+NLAlibScaffold/    same tree; statements with deferred proofs (§7)
+docs/              references.bib, design notes (docs/design/), port ledger (docs/port/)
+scripts/           Audit.lean, Lint.lean, check_refs.py
+```
+
+The subdirectories of each layer are decided in that layer's design note (§8), not in advance.
+A module imports only its own layer and lower. The root files `NLAlib.lean` and
+`NLAlibScaffold.lean` are generated by `lake exe mk_all --lib <name>`; CI checks they are current.
+There are no per-directory aggregator files: a user imports the file they need.
+
+`ForMathlib` holds only facts with no NLAlib vocabulary in their statement. They are declared in
+the Mathlib namespace they would have upstream, marked in the module docstring as upstream
+candidates, and deleted when they land in Mathlib.
+
+## 3. File template
+
+Every file has this shape. The header linter checks the first lines; the module system is the
+one Mathlib uses.
+
+```lean
+/-
+Copyright (c) 2026 NLAlib contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: NLAlib contributors
+-/
+module
+
+public import Mathlib.Analysis.Matrix.Spectrum
+public import NLAlib.Matrix.Norms.Spectral
+
+/-!
+# Weyl's inequalities
+
+Perturbation bounds for the eigenvalues of Hermitian matrices and the singular values of
+arbitrary matrices.
+
+## Main results
+
+* `Matrix.IsHermitian.eigenvalues₀_add_le`: Weyl's inequality `λₖ(A + B) ≤ λₖ(A) + λ₀(B)`.
+* `NLAlib.singularValues_add_le`: the singular-value form.
+-/
+
+@[expose] public section
+
+open scoped Matrix MatrixOrder
+
+namespace NLAlib
+
+variable {𝕜 : Type*} [RCLike 𝕜] {m n : Type*} [Fintype m] [Fintype n]
+
+...
+
+end NLAlib
+```
+
+Rules:
+
+- The header linter requires a non-empty `Authors:` line; use `NLAlib contributors` unless the
+  file is a port that must keep its original attribution.
+- `module`, then `public import` lines (specific Mathlib files; never `import Mathlib` or
+  `import Mathlib.Tactic`), then the module docstring, then `@[expose] public section`.
+- Everything is in `namespace NLAlib`, except lemmas whose subject is a Mathlib structure
+  hypothesis (`Matrix.IsHermitian`, `Matrix.PosSemidef`), which are declared
+  `theorem _root_.Matrix.IsHermitian.foo` inside `namespace NLAlib` so that `hA.foo` works.
+- No file-level `set_option maxHeartbeats`, `set_option backward.*`, `open Classical` or
+  `open scoped Classical`. A single declaration that needs a heartbeat bump gets
+  `set_option maxHeartbeats N in` on that declaration, with a comment saying why.
+- `private` for proof-local helpers only. A lemma a second file could want is public, named by §4,
+  documented by §6, and placed in the file that owns its subject, not the file that needed it first.
+- `noncomputable section` is not opened at file level; mark individual definitions `noncomputable`
+  when Lean requires it.
+
+## 4. Names
+
+Mathlib's conventions, https://leanprover-community.github.io/contribute/naming.html, in full.
+
+| Kind | Case | Examples |
+|---|---|---|
+| theorem, lemma | `snake_case` | `frobSq_nonneg`, `specNorm_mul_le`, `singularValues_add_le` |
+| definition returning data | `lowerCamelCase` | `specNorm`, `singularValues`, `moorePenroseInverse` |
+| structure, class, Prop-valued predicate | `UpperCamelCase` | `IsSVD`, `HasOrthonormalCols`, `IsSubspaceEmbedding` |
+| namespace, file, directory | `UpperCamelCase` | `NLAlib.Matrix.Spectral.Weyl` |
+
+A theorem name spells its conclusion left to right from the head symbols:
+`frobNorm_mul_le_specNorm_mul_frobNorm` is `frobNorm (A * B) ≤ specNorm A * frobNorm B`.
+Standard suffixes `_eq`, `_le`, `_lt`, `_iff`, `_ne_zero`, `_pos`, `_nonneg`, `_left`, `_right`,
+`_apply`, `exists_`, `_of_<hypothesis>`; measure-theory prefixes `integral_`, `measurable_`,
+`integrable_`, `variance_`. Hypotheses are `h`-prefixed (`hA`, `hQ`, `hk`).
+
+Never name a declaration after its source, its chapter, its author, a paper's lemma number or a
+project. The source goes in the docstring. Named quantities and tail expressions are definitions
+named for what they are (`bernsteinTail d v L t`, `conditionNumber A`), never inline formulas
+repeated across statements.
+
+Renames after the `v0.1` tag keep `@[deprecated (since := "YYYY-MM-DD")] alias old := new` for one
+release.
+
+## 5. Statements
+
+### 5.1 Types
+
+- Scalars: `{𝕜 : Type*} [RCLike 𝕜]` for all deterministic matrix theory, including matrix
+  functions and the concentration layer's vocabulary. ℝ only where the mathematics is real:
+  Gaussian and Rademacher laws, the real spectral quantities they feed. A real corollary of a `𝕜`
+  theorem is stated only when a downstream user needs it in `ᵀ` form that `simp` cannot produce.
+- Index types: `{m n : Type*} [Fintype m] [Fintype n]` plus `[DecidableEq _]` where Mathlib
+  needs it. `Fin k` is appropriate where its order or recursion carries content: sorted positions
+  (`IsHermitian.eigenvalues₀ : Fin (card n) → ℝ`), the columns of SVD factors, total recursions
+  defining algorithms. A theorem stated over `Fin` because a dependency was is a defect to fix at
+  the dependency.
+- Transpose: lemmas are stated with `ᴴ`. Over ℝ, `Aᴴ = Aᵀ` is `Matrix.conjTranspose_eq_transpose_of_trivial`
+  (`@[simp]`). Transpose twins are not written.
+- Vectors: `n → 𝕜` with `⬝ᵥ` as the pairing; the Euclidean norm is `‖WithLp.toLp 2 x‖`
+  (Mathlib's `EuclideanSpace`), never `Real.sqrt (x ⬝ᵥ x)` in a statement.
+- Matrix norms are named functions (§5.3), never `‖A‖`: Mathlib's four matrix norms are scoped
+  instances and a signature cannot show which one is open. `‖A‖` appears only in bridge lemmas
+  and, under a file-level `open scoped Matrix.Norms.L2Operator`, in the C*-algebra and
+  functional-calculus files that need Mathlib's normed API.
+
+### 5.2 Shape
+
+- Every hypothesis explicit, minimal, and an instance of a named interface (§5.4). Nothing that
+  follows from another hypothesis (`(A + B).IsHermitian` next to `hA hB`; `Measurable X` next to
+  `HasLaw X ν μ`).
+- Definitions are total, Mathlib-style (`⁻¹` of a singular matrix is `0`, `conditionNumber` is
+  `⊤`); the theorem carries the hypothesis that excludes the junk value and the definition's
+  docstring states the junk value.
+- Two-sided bounds are two theorems. A conjunction is split when its parts are useful alone.
+  Equational forms (`eigenvalues₀ k = ⨆ … ⨅ …`) are stated when a user would `rw` with them;
+  inequality halves are corollaries.
+- General form first, corollaries after, in the same file. A corollary specialises the field, the
+  index type, or a hypothesis; it does not restate the proof.
+- Probabilistic results are stated as tails, not sample sizes: the primary theorem bounds the
+  failure probability in closed form (`μ.real {ω | ¬ good ω} ≤ 2 d exp (−ε² k / (3 L))`); the
+  "`k ≥ …` suffices" form is a corollary. Inverting the tail is where ugly constants and side
+  conditions appear, so it is done once, not by every consumer.
+- Constants, in order of preference:
+  1. The source's constant, when the source gives one and the proof reaches it.
+  2. An explicit constant the proof reaches, **behind a name** when it is not the source's or is
+     not small: `gaussianEmbeddingSampleSize d ε δ := …`, `sparseEmbeddingConstant : ℝ := …`,
+     with the docstring stating the source's value and the gap. Improving the proof then changes
+     one definition and no signature.
+  3. A universal constant with no explicit value in the literature becomes a named
+     `noncomputable def` chosen from an existence lemma quantified outside all dimensions, and is
+     documented as such.
+  A bare `∃ C` never appears in a statement: quantified after the dimensions it is unusable, and
+  it hides loose proofs.
+- Spectral statements never quantify over `hA.eigenvectorBasis i`; they take an eigenvector `u`
+  with `A *ᵥ u = c • u` and `‖WithLp.toLp 2 u‖ = 1`, or speak of `eigenvalues₀`.
+- No proof term inside a statement. Introduce the needed hypothesis or state through a definition.
+- Dot notation: a lemma whose first explicit argument is `hA : A.IsHermitian` lives in
+  `Matrix.IsHermitian`; one about an `IsSVD` lives in `IsSVD`.
+
+### 5.3 Vocabulary
+
+One spelling per concept. The table is the current state; it grows only through a design note
+(§8) and the PR that adds the row together with its bridge. Rows for later layers are added when
+those layers are designed.
+
+| Concept | Spelling | Mathlib bridge |
+|---|---|---|
+| spectral norm | `specNorm A : ℝ` | `specNorm_eq_norm` (L2Operator scope), `rfl` |
+| Frobenius | `frobInner A B`, `frobSq A`, `frobNorm A` | `frobNorm_eq_norm` (Frobenius scope) |
+| singular values | `singularValues A : ℕ → ℝ` (antitone, zero-padded) | `rfl` to `LinearMap.singularValues` |
+| eigenvalues of Hermitian `A` | `hA.eigenvalues₀ i` (antitone, `Fin (card n)`); extremes are index `0` and `card n - 1` | Mathlib's |
+| Loewner order | `A ≤ B` under `open scoped MatrixOrder` | `Matrix.le_iff` |
+| PSD, PD, Hermitian | `A.PosSemidef`, `A.PosDef`, `A.IsHermitian` | Mathlib's |
+| quadratic form | `quadForm A z := star z ⬝ᵥ (A *ᵥ z) : 𝕜` | `Matrix.PosSemidef` form |
+| orthonormal columns | `HasOrthonormalCols Q := Qᴴ * Q = 1`, always as this hypothesis | — |
+| matrix functions | `cfc f A` | Mathlib's |
+| random matrix | `X : Ω → Matrix m n 𝕜`, `Measurable X` (global `Matrix.instMeasurableSpace`, `ForMathlib`) | — |
+| law | `HasLaw X ν μ` | Mathlib's |
+| tail | `μ.real {ω | ¬ good ω} ≤ δ` | — |
+| expectation | `∫ ω, f (X ω) ∂μ` (Bochner) | — |
+| sub-Gaussian | `HasSubgaussianMGF X c μ` | Mathlib's |
+
+Rows the Matrix design note is expected to add: the pseudoinverse(s), the rectangular diagonal and
+`IsSVD`, the projector and residual, the condition number, the Schatten family, the spectral-gap
+interface, the principal-angle / subspace-distance interface.
+
+### 5.4 Interfaces and reusable hypotheses
+
+This is the rule the prototype library broke most, and the one that matters most for proving new
+things. There, a sketch had five different conclusion shapes across five distributions, isotropy
+was a four-hypothesis bundle repeated in every estimator theorem, orthonormality was sometimes a
+predicate and sometimes `Qᵀ * Q = 1`, and nothing downstream could take "any sketch with
+property P" as an input.
+
+- **A hypothesis is a named interface.** A `structure` or `def … : Prop` with a docstring, a
+  constructor lemma from the obvious raw condition, and the API lemmas a consumer needs
+  (`HasOrthonormalCols.conjTranspose_mul_self`, `.mul_conjTranspose_isHermitian`, `.specNorm_le_one`).
+  Theorems take the interface, never the raw condition.
+- **A conclusion is an interface too.** A theorem that establishes a property concludes the named
+  predicate (`IsSubspaceEmbedding (S ω) U ε`), so the next theorem can take it as a hypothesis
+  without unpacking. Distribution-specific theorems (Gaussian, SRHT, sparse) all conclude the same
+  predicate with the same tail shape; the downstream theorem (sketch-and-solve, range finder) takes
+  that predicate and knows nothing about the distribution.
+- **Parametrise over the interface, not the instance.** "Any `Q` with `HasOrthonormalCols Q`
+  whose range contains `K`" rather than "the Arnoldi basis"; "any random `S` with
+  `HasOSE S U ε δ`" rather than "`gaussianMatrix`"; "any unitarily invariant norm" rather than
+  Frobenius and spectral separately, when the proof is the same. The instance-specific theorem is
+  then a corollary: the instance satisfies the interface.
+- **Interfaces are designed, not accreted.** Introducing one is a §8 decision: what it bundles,
+  what it leaves as separate hypotheses, which Mathlib notion it bridges to, which downstream
+  theorems will consume it. A local predicate invented to make one file compile is a defect.
+- **Fewer, broader interfaces.** Before adding a new one, check whether an existing one with one
+  more field, or one fewer, covers the case. The test is the downstream user: can they state their
+  theorem with the interfaces that exist?
+
+## 6. Docstrings and citations
+
+Every public declaration has a docstring. It is the record the documentation site, the search
+index and the literature map are generated from, so its parts are fixed:
+
+```lean
+/-- **Weyl's inequality.** For Hermitian `A`, `B` and every `k`,
+`λₖ(A + B) ≤ λₖ(A) + λ₀(B)`, eigenvalues in non-increasing order.
+[HornJohnson2013, Theorem 4.3.1]; stated there over ℂ with eigenvalues in increasing order, here
+over any `RCLike` field, any finite index type, non-increasing.
+Result: weyl-inequality -/
+theorem _root_.Matrix.IsHermitian.eigenvalues₀_add_le ...
+```
+
+1. **First sentence:** what it asserts, in words, with the bold name of the result if it has one.
+2. **Citation:** `[Key, label]` where `Key` is an entry of `docs/references.bib` and `label` is the
+   printed theorem, section or equation, for every source where this result or the result it
+   generalises or specialises appears. Several are separated by `;`. Then the relation to the
+   printed statement: generalisation, different constant, tail form instead of sample size,
+   different indexing. The citation is provenance for the reader and the literature map; it does
+   not bind the statement or the proof. A helper or a bridge needs no citation; it says what it
+   is for.
+3. **Port provenance** when the proof was ported: the old library's declaration name, or the
+   external library and commit.
+4. **`Result: <id>`** on its own last line, for a declaration that *is* the formal statement of a
+   named mathematical result (`weyl-inequality`, `eckart-young-frobenius`). Several ids are
+   comma-separated. Helpers carry none. The ids key the literature map maintained in the
+   `explore` repository; a new id is fine, a misspelt existing one is a review comment.
+
+Module docstrings follow Mathlib: `# Title`, a paragraph, `## Main results` listing the names.
+
+`scripts/check_refs.py` fails CI on an unknown bibliography key or a malformed result id.
+`docs/references.bib` grows by adding the entry before citing it; keys are `AuthorSurnames + year`.
+
+## 7. Proofs, `sorry` and the scaffold library
+
+- `import NLAlib` is sorry-free; `scripts/Audit.lean` checks every reachable declaration against
+  `propext`, `Classical.choice`, `Quot.sound` only.
+- A statement worth having before its proof goes in `NLAlibScaffold/` under the same path it will
+  have in `NLAlib/`, with the full docstring, a `sorry` body, and a line
+  `Proof: <sketch, what it reduces to, estimated difficulty>` in the docstring. It compiles, is
+  linted and documented like library code, and may import `NLAlib` but is never imported by it.
+  When proved, the declaration moves to `NLAlib/` in the same PR that proves it. A scaffold is for
+  a statement you are confident of; it is not a place to park the hard part of the result you are
+  claiming.
+- Proofs are free to differ from any source. Choose the argument that is shortest in Lean and
+  reuses the most library API; a clever proof from the literature is worth nothing if a
+  three-line one through Mathlib exists.
+- Proof style: tactic proofs, `simp only` with named lemmas rather than bare `simp` on large
+  goals, no `simp_all`, no `decide` on anything but tiny finite goals, `nlinarith`/`positivity`/
+  `gcongr` welcome. A proof over about 80 lines is split into named lemmas. Terminal `exact?`
+  and `apply?` do not appear in committed code.
+- Instances: no global instance on a Mathlib type unless it is the one Mathlib would add
+  (`Matrix.instMeasurableSpace` is the one exception, in `ForMathlib`). No `attribute [instance]`
+  at file level.
+
+## 8. Designing a stage
+
+The library is built in stages, one at a time, in dependency order. Each stage covers one
+coherent body of mathematics (the norms; the spectral core; perturbation theory; …) and begins with
+a design note, `docs/design/<Stage>.md`, written by the orchestrating agent and approved by the
+maintainer before any proof is written. The note answers, with specifics:
+
+1. **Objects.** Which definitions this stage introduces, each as a §5.3 row with its Mathlib
+   bridge, and which Mathlib objects it uses directly instead.
+2. **Interfaces.** Which hypothesis predicates and structures (§5.4) this stage introduces or
+   extends, what each bundles, and the raw-condition constructor for each.
+3. **Statement shapes.** For each headline result, the exact Lean signature: field, index types,
+   interfaces taken, conclusion form, constants handling (§5.2), and the corollaries it will have.
+   Written out, not described.
+4. **Consumers.** For each interface and headline statement, which later stage or layer will use
+   it and in what form; a statement with no foreseeable consumer is questioned.
+5. **Files.** The file split for this stage, each file a topic of 300 to 500 lines, with the
+   declarations it will hold in order.
+6. **Material.** Which files of the prototype library were read, what in them is reused (as
+   mathematics to cover, as proof material), and what is deliberately not reproduced and why
+   (twins, bundles, transport lemmas, local interfaces).
+7. **Open questions** for the maintainer, with a recommendation each.
+
+The note is reviewed as a design, with the question "will this be the interface people reach for
+in five years?", before the stage is implemented. The implementation PRs reference it. A
+divergence discovered during implementation is a one-line amendment to the note, approved the
+same way.
+
+## 9. Workflow and checks
+
+One topic per branch and PR. A PR adds or changes one file's worth of mathematics (a new topic
+file, or a coherent change to one), plus the consumers it breaks, plus the ledger entry if it
+ports material. Before opening it, run:
+
+```
+lake build -j 4 NLAlib NLAlibScaffold
+lake exe mk_all --lib NLAlib --check && lake exe mk_all --lib NLAlibScaffold --check
+lake env lean scripts/Audit.lean
+lake env lean scripts/Lint.lean
+python3 scripts/check_refs.py
+```
+
+The PR description contains a read-back: for each headline theorem, what the Lean statement says,
+written from the Lean alone. The reviewer checks the read-back against the design note and the
+source, the names against §4, the hypotheses against §5.4, the vocabulary against §5.3. A green CI
+plus one approving review merges; a change to a §5.3 row or a §5.4 interface needs two.
+
+Mathlib bumps are their own PRs and are tagged. Releases are tagged with the Lean version they
+build against (`v4.33.1-nlalib.1`).
+
+## 10. Building without running out of memory
+
+The development machine has 8 cores and 31 GB. A default `lake build` runs 8 Lean workers; heavy
+files on top of Mathlib take 3 to 6 GB each, and the terminal gets killed. Rules:
+
+- **Never run a bare `lake build`.** Use `lake build -j 4 <targets>`; `-j 2` when another build,
+  a Lean language server with files open, or another agent is running on the machine.
+- **One build per machine at a time.** If `lake build` is running, wait for it.
+- **Check a single file** with `lake env lean -M 8000 NLAlib/Matrix/Spectral/Weyl.lean`
+  (`-M` caps that process at 8000 MB). Imports of other NLAlib modules need their `.olean`:
+  `lake build -j 4 NLAlib.Matrix.Norms.Spectral` first.
+- **Run long builds in the background with a log**: `lake build -j 4 NLAlib > /tmp/build.log 2>&1`,
+  then read the log. Do not stream a full build into a terminal or an agent's context.
+- **Keep files under 500 lines and proofs under 80 lines.** Memory and heartbeat blowups come from
+  single huge elaborations: a `simp` with hundreds of lemmas, an `nlinarith` on a goal with many
+  atoms, a `decide` on a finite type. Split the proof.
+- **Never `import Mathlib` or `import Mathlib.Tactic`**, even in a scratch file inside the
+  repository; both load far more than needed.
+- `lake exe cache get` fetches Mathlib's oleans once; never build Mathlib from source.
+
+## 11. Rules for agents
+
+- Read this file, then the current stage's design note in `docs/design/` (or the port brief if the
+  note is not yet written), then `docs/port/status.md`, then the file you are about to write.
+- The library is built **sequentially**: one stage at a time, and within a stage one file at a
+  time unless the design note marks two files independent. Do not fan out proving agents across a
+  stage; the point of the sequence is that each file is designed against the ones before it.
+- The orchestrating agent writes the design note (§8) before any implementation and stops for
+  the maintainer's approval. It does not inherit the prototype's organisation, interfaces or
+  names; it reads them as material and decides.
+- The orchestrator writes design notes, skeletons and file reviews itself; sends design notes,
+  unsettled interface questions and stage reports to `model: "fable"` agents for bounded review
+  (comments in, comments out, never proofs or long tasks); delegates proofs to `model: "opus"`
+  agents, one file at a time; and delegates mechanical passes (docstring formatting, ledger
+  updates, `mk_all`, grep checks) to `model: "sonnet"` or `model: "haiku"` agents. Every `Agent`
+  call passes `model` explicitly; an omitted model inherits the session's, with its usage limits,
+  and that has killed agents mid-work before.
+- Report state on disk (`docs/port/status.md`) at every stopping point so a successor can continue
+  from a cut-off.
+- Search before proving: Mathlib, then the already-built `NLAlib/`, then the prototype.
+- Do not weaken a statement to make it provable. If a proof fails within budget, the statement goes
+  to `NLAlibScaffold` with a `Proof:` note and the difficulty you observed, and you move on.
+- Do not add work beyond the brief: no new theorems "while you are there", no cleanup of files you
+  do not own, no new §5.3 rows or §5.4 interfaces outside a design note. Note what you saw in
+  `docs/port/status.md`.
+- Never commit or push without being asked; never run a bare `lake build` (§10).

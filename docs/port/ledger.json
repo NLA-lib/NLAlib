@@ -1,1 +1,858 @@
-{}
+{
+ "Matrix.IsHermitian.eigenvalues_conjTranspose_mul_mul_same_mem_Icc": {
+  "new": null,
+  "note": "deferred to M3: eigenvalues of a compression",
+  "stage": "M1"
+ },
+ "Matrix.IsHermitian.ofReal_re_quadForm": {
+  "new": "Matrix.IsHermitian.coe_re_quadForm",
+  "stage": "M1"
+ },
+ "Matrix.IsHermitian.re_quadForm_mem_Icc": {
+  "new": null,
+  "note": "deferred to M3: eigenvalue bounds on the quadratic form",
+  "stage": "M1"
+ },
+ "Matrix.IsHermitian.re_quadForm_smul_add_smul": {
+  "new": "Matrix.IsHermitian.re_quadForm_add",
+  "note": "general polar expansion; the scaled form follows with quadForm_smul_right",
+  "stage": "M1"
+ },
+ "Matrix.IsHermitian.star_dotProduct_mulVec_comm": {
+  "new": "Matrix.IsHermitian.star_dotProduct_mulVec_comm",
+  "stage": "M1"
+ },
+ "Matrix.PosDef.quadForm_pos": {
+  "new": "Matrix.PosDef.quadForm_pos",
+  "stage": "M1"
+ },
+ "Matrix.PosSemidef.quadForm_nonneg": {
+  "new": "Matrix.PosSemidef.quadForm_nonneg",
+  "stage": "M1"
+ },
+ "Matrix.PosSemidef.re_quadForm_nonneg": {
+  "new": "Matrix.PosSemidef.re_quadForm_nonneg",
+  "stage": "M1"
+ },
+ "NLAlib.HasOrthonormalCols": {
+  "new": "NLAlib.HasOrthonormalCols",
+  "stage": "M1"
+ },
+ "NLAlib.HasOrthonormalCols.conjTranspose_mul_self": {
+  "new": "NLAlib.HasOrthonormalCols.conjTranspose_mul_self",
+  "stage": "M1"
+ },
+ "NLAlib.HasOrthonormalCols.orthonormal": {
+  "new": null,
+  "note": "it is hasOrthonormalCols_iff_orthonormal.mp",
+  "stage": "M1"
+ },
+ "NLAlib.SizedSubset": {
+  "new": null,
+  "note": "replaced by Mathlib Finset.powersetCard and Set.powersetCard",
+  "stage": "M1"
+ },
+ "NLAlib.abs_apply_le_apply_self_add_apply_self": {
+  "new": "Matrix.PosSemidef.two_mul_norm_apply_le",
+  "note": "sharper; via Matrix.PosSemidef.norm_apply_sq_le",
+  "stage": "M1"
+ },
+ "NLAlib.abs_apply_le_specNorm": {
+  "new": "NLAlib.norm_apply_le_specNorm",
+  "stage": "M2"
+ },
+ "NLAlib.abs_diag_le_specNorm": {
+  "new": "NLAlib.norm_apply_le_specNorm",
+  "stage": "M2"
+ },
+ "NLAlib.abs_dotProduct_mulVec_le": {
+  "new": "NLAlib.norm_star_dotProduct_mulVec_le",
+  "stage": "M2"
+ },
+ "NLAlib.abs_specNorm_sub_specNorm_le": {
+  "new": "NLAlib.abs_specNorm_sub_specNorm_le",
+  "stage": "M2"
+ },
+ "NLAlib.apply_eq_zero_of_posSemidef_of_apply_self_eq_zero": {
+  "new": "Matrix.PosSemidef.col_eq_zero_of_apply_self_eq_zero",
+  "stage": "M1"
+ },
+ "NLAlib.apply_eq_zero_of_posSemidef_of_apply_self_eq_zero'": {
+  "new": "Matrix.PosSemidef.row_eq_zero_of_apply_self_eq_zero",
+  "stage": "M1"
+ },
+ "NLAlib.card_columns_sub_rank_toBlock_eq_inverse_complement": {
+  "new": "Matrix.rank_toBlock_add_card_eq_rank_inv_toBlock_not_add_card",
+  "note": "additive form",
+  "stage": "M1"
+ },
+ "NLAlib.card_le_card_of_hasOrthonormalCols": {
+  "new": "NLAlib.HasOrthonormalCols.card_le",
+  "stage": "M1"
+ },
+ "NLAlib.cauchy_binet_properties": {
+  "new": null,
+  "note": "bundle; conjuncts are separate theorems",
+  "stage": "M1"
+ },
+ "NLAlib.columnSpace": {
+  "new": null,
+  "note": "replaced by Mathlib LinearMap.range A.mulVecLin; design note Matrix-Foundations §7.3",
+  "stage": "M1"
+ },
+ "NLAlib.columnSpace_eq_span_columns": {
+  "new": null,
+  "note": "Mathlib: Matrix.range_mulVecLin",
+  "stage": "M1"
+ },
+ "NLAlib.columnSpace_orthonormalBasisMatrixOfEuclideanSubspace": {
+  "new": "NLAlib.exists_hasOrthonormalCols_range_eq",
+  "stage": "M1"
+ },
+ "NLAlib.complementary_nullities_properties": {
+  "new": null,
+  "note": "bundle; conjuncts are separate theorems",
+  "stage": "M1"
+ },
+ "NLAlib.compoundMatrix": {
+  "new": "Matrix.compound",
+  "note": "indexed by Set.powersetCard, minors in increasing order",
+  "stage": "M1"
+ },
+ "NLAlib.compoundMatrix_conjTranspose": {
+  "new": "Matrix.compound_conjTranspose",
+  "stage": "M1"
+ },
+ "NLAlib.compoundMatrix_mul": {
+  "new": "Matrix.compound_mul",
+  "stage": "M1"
+ },
+ "NLAlib.compoundMatrix_one": {
+  "new": "Matrix.compound_one",
+  "stage": "M1"
+ },
+ "NLAlib.conjTranspose_mulVec_eq_zero_of_fromBlocks_posSemidef": {
+  "new": "NLAlib.conjTranspose_mulVec_eq_zero_of_posSemidef_fromBlocks",
+  "stage": "M1"
+ },
+ "NLAlib.conjTranspose_mul_eq_zero_comm": {
+  "new": null,
+  "note": "Mathlib: conjTranspose_eq_zero with conjTranspose_mul",
+  "stage": "M1"
+ },
+ "NLAlib.conjTranspose_mul_eq_zero_of_completion": {
+  "new": "NLAlib.hasOrthonormalCols_fromCols_iff",
+  "note": "orthogonality of the two blocks is the third conjunct",
+  "stage": "M1"
+ },
+ "NLAlib.conjTranspose_mul_one_sub_mul_conjTranspose": {
+  "new": "NLAlib.conjTranspose_mul_one_sub_rangeProjector",
+  "note": "with HasOrthonormalCols.rangeProjector_eq",
+  "stage": "M1"
+ },
+ "NLAlib.conjTranspose_mul_residual": {
+  "new": "NLAlib.conjTranspose_mul_one_sub_rangeProjector",
+  "stage": "M1"
+ },
+ "NLAlib.det_add_single_diagonal": {
+  "new": "Matrix.det_add_single",
+  "note": "any entry; cofactor is Matrix.adjugate",
+  "stage": "M1"
+ },
+ "NLAlib.det_conjTranspose_mul_self_eq_sum_norm_sq": {
+  "new": "Matrix.det_conjTranspose_mul_self_eq_sum_powersetCard",
+  "stage": "M1"
+ },
+ "NLAlib.det_inverse_bottomRight_eq_topLeft_div_det": {
+  "new": "Matrix.det_inv_toBlocks₂₂",
+  "stage": "M1"
+ },
+ "NLAlib.det_inverse_bottomRight_eq_zero_of_topLeft_eq_zero": {
+  "new": null,
+  "note": "special case of Matrix.det_inv_toBlocks₂₂; the new proof needs no case split",
+  "stage": "M1"
+ },
+ "NLAlib.det_inverse_complement_minor_eq_sign_mul_div": {
+  "new": "Matrix.det_inv_submatrix_inr",
+  "stage": "M1"
+ },
+ "NLAlib.det_mul_eq_sum_det_submatrix_mul_det_submatrix": {
+  "new": "Matrix.det_mul_eq_sum_powersetCard",
+  "note": "no chosen enumeration",
+  "stage": "M1"
+ },
+ "NLAlib.det_ne_zero_of_rank_eq": {
+  "new": "NLAlib.isUnit_conjTranspose_mul_self_iff_rank",
+  "note": "general Gram form",
+  "stage": "M1"
+ },
+ "NLAlib.det_submatrix_equiv_eq_sign_mul": {
+  "new": "Matrix.det_submatrix_equiv_equiv",
+  "stage": "M1"
+ },
+ "NLAlib.det_submatrix_mul_eq_sum_minors": {
+  "new": null,
+  "note": "entrywise form of Matrix.compound_mul",
+  "stage": "M1"
+ },
+ "NLAlib.det_transpose_mul_self_eq_sum_det_sq": {
+  "new": "Matrix.det_conjTranspose_mul_self_eq_sum_powersetCard",
+  "stage": "M1"
+ },
+ "NLAlib.det_updateCol_single_eq_det_mul_inv": {
+  "new": null,
+  "note": "Mathlib: Matrix.inv_def relates adjugate, det and inverse",
+  "stage": "M1"
+ },
+ "NLAlib.det_updateCol_single_eq_of_complement_eq": {
+  "new": "Matrix.adjugate_apply_self_congr",
+  "stage": "M1"
+ },
+ "NLAlib.diag_eq_ofReal_re_of_posSemidef": {
+  "new": null,
+  "note": "Mathlib: Matrix.IsHermitian.coe_re_apply_self",
+  "stage": "M1"
+ },
+ "NLAlib.dilation": {
+  "new": "NLAlib.dilation",
+  "note": "over 𝕜; the prototype was over any type with zero and star",
+  "stage": "M1"
+ },
+ "NLAlib.dilation_add": {
+  "new": "NLAlib.dilation_add",
+  "stage": "M1"
+ },
+ "NLAlib.dotProduct_fromBlocks_eq_generalizedSchurComplement_square": {
+  "new": "NLAlib.quadForm_fromBlocks_eq_add",
+  "note": "any solution X of A X = B in place of A⁺ B",
+  "stage": "M1"
+ },
+ "NLAlib.dotProduct_generalizedSchurComplement_mulVec_eq": {
+  "new": "NLAlib.quadForm_fromBlocks_eq_add",
+  "note": "at y = -(X x)",
+  "stage": "M1"
+ },
+ "NLAlib.dotProduct_generalizedSchurComplement_mulVec_le": {
+  "new": "NLAlib.quadForm_sub_conjTranspose_mul_mul_le",
+  "stage": "M1"
+ },
+ "NLAlib.dotProduct_self_eq_one_of_norm_toLp_eq_one": {
+  "new": "EuclideanSpace.norm_toLp_sq_eq_dotProduct_self",
+  "note": "the general bridge",
+  "stage": "M1"
+ },
+ "NLAlib.eq_zero_of_matrix_rank_eq_zero": {
+  "new": "Matrix.rank_eq_zero",
+  "note": "now an iff",
+  "stage": "M1"
+ },
+ "NLAlib.exists_unitary_complement": {
+  "new": "NLAlib.HasOrthonormalCols.exists_fromCols",
+  "stage": "M1"
+ },
+ "NLAlib.exists_unitary_completion": {
+  "new": "NLAlib.HasOrthonormalCols.exists_fromCols",
+  "note": "the completed matrix is fromCols Q Q'",
+  "stage": "M1"
+ },
+ "NLAlib.finrank_ker_toBlock_eq_finrank_ker_inverse_complement": {
+  "new": "Matrix.finrank_ker_toBlock_eq_finrank_ker_inv_toBlock_not",
+  "stage": "M1"
+ },
+ "NLAlib.finrank_map_add_finrank_inf_ker": {
+  "new": null,
+  "note": "private helper of ForMathlib/LinearAlgebra/Matrix/Rank.lean",
+  "stage": "M1"
+ },
+ "NLAlib.finrank_toCoordinateSubmodule": {
+  "new": null,
+  "note": "transport; not reproduced",
+  "stage": "M1"
+ },
+ "NLAlib.finrank_toEuclideanSubmodule": {
+  "new": null,
+  "note": "transport; not reproduced",
+  "stage": "M1"
+ },
+ "NLAlib.generalizedSchurComplement_le": {
+  "new": "NLAlib.sub_conjTranspose_mul_mul_le",
+  "stage": "M1"
+ },
+ "NLAlib.generalizedSchurComplement_nonneg": {
+  "new": "NLAlib.posSemidef_sub_conjTranspose_mul_mul_of_posSemidef_fromBlocks",
+  "stage": "M1"
+ },
+ "NLAlib.gram_conjTranspose_mul_eq": {
+  "new": null,
+  "note": "Mathlib: conjTranspose_mul and conjTranspose_conjTranspose",
+  "stage": "M1"
+ },
+ "NLAlib.hasOrthonormalCols_iff_conjTranspose_mul_self": {
+  "new": "NLAlib.hasOrthonormalCols_iff",
+  "stage": "M1"
+ },
+ "NLAlib.hasOrthonormalCols_iff_orthonormal": {
+  "new": "NLAlib.hasOrthonormalCols_iff_orthonormal",
+  "stage": "M1"
+ },
+ "NLAlib.hasOrthonormalCols_orthonormalBasisMatrix": {
+  "new": "NLAlib.exists_hasOrthonormalCols_range_eq",
+  "stage": "M1"
+ },
+ "NLAlib.hasOrthonormalCols_orthonormalBasisMatrixOfEuclideanSubspace": {
+  "new": "NLAlib.exists_hasOrthonormalCols_range_eq",
+  "stage": "M1"
+ },
+ "NLAlib.hasOrthonormalCols_planeRotation": {
+  "new": "NLAlib.hasOrthonormalCols_planeRotation",
+  "stage": "M1"
+ },
+ "NLAlib.isHermitian_dilation": {
+  "new": "NLAlib.isHermitian_dilation",
+  "stage": "M1"
+ },
+ "NLAlib.isLeast_generalizedSchurComplement_quadratic": {
+  "new": null,
+  "note": "follows from quadForm_sub_conjTranspose_mul_mul_le and quadForm_fromBlocks_eq_add at y = -(X x); restate in M4 if a consumer wants the IsLeast form",
+  "stage": "M1"
+ },
+ "NLAlib.le_of_posSemidef_of_continuous_of_forall_posDef": {
+  "new": "Matrix.PosSemidef.le_of_forall_posDef_le",
+  "stage": "M1"
+ },
+ "NLAlib.matrixOf_curry_update_eq_add_single": {
+  "new": null,
+  "note": "Gaussian integration-by-parts helper with no Matrix-layer consumer; moves with its consumer in RandomMatrix",
+  "stage": "M1"
+ },
+ "NLAlib.mulVec_conjTranspose_mulVec_of_mem_range": {
+  "new": "NLAlib.rangeProjector_mulVec_eq_self_iff",
+  "stage": "M1"
+ },
+ "NLAlib.mulVec_eq_iff_sub_mem_ker": {
+  "new": null,
+  "note": "trivial; Mathlib LinearMap.sub_mem_ker_iff",
+  "stage": "M1"
+ },
+ "NLAlib.mul_conjTranspose_eq_of_range_eq": {
+  "new": "NLAlib.rangeProjector_inj",
+  "note": "with HasOrthonormalCols.rangeProjector_eq",
+  "stage": "M1"
+ },
+ "NLAlib.mul_conjTranspose_mul_add_residual": {
+  "new": "NLAlib.one_sub_rangeProjector_mul",
+  "note": "the decomposition is sub_add_cancel after expanding",
+  "stage": "M1"
+ },
+ "NLAlib.mul_conjTranspose_mul_eq_of_range_le": {
+  "new": "NLAlib.rangeProjector_mul_eq_self_iff",
+  "note": "with HasOrthonormalCols.rangeProjector_eq",
+  "stage": "M1"
+ },
+ "NLAlib.mul_conjTranspose_mul_mul_conjTranspose": {
+  "new": "NLAlib.HasOrthonormalCols.isStarProjection_mul_conjTranspose",
+  "stage": "M1"
+ },
+ "NLAlib.mul_rangeProjector_conjTranspose": {
+  "new": "NLAlib.conjTranspose_mul_rangeProjector",
+  "note": "applied to Bᴴ and transposed",
+  "stage": "M1"
+ },
+ "NLAlib.mul_selectionMatrix": {
+  "new": "NLAlib.mul_selectionMatrix",
+  "stage": "M1"
+ },
+ "NLAlib.norm_toLp_sq_eq_dotProduct_self": {
+  "new": "EuclideanSpace.norm_toLp_sq_eq_dotProduct_self",
+  "stage": "M1"
+ },
+ "NLAlib.norm_toLp_sq_eq_re_star_dotProduct": {
+  "new": "EuclideanSpace.norm_toLp_sq_eq_re_star_dotProduct",
+  "stage": "M1"
+ },
+ "NLAlib.one_sub_mul_conjTranspose_conjTranspose_mul": {
+  "new": "NLAlib.one_sub_rangeProjector_mul_self",
+  "note": "with HasOrthonormalCols.rangeProjector_eq",
+  "stage": "M1"
+ },
+ "NLAlib.one_sub_mul_conjTranspose_idem": {
+  "new": "NLAlib.isStarProjection_one_sub_rangeProjector",
+  "stage": "M1"
+ },
+ "NLAlib.one_sub_mul_moorePenroseInverse_mul_eq_zero_of_fromBlocks_posSemidef": {
+  "new": "NLAlib.range_mulVecLin_le_of_posSemidef_fromBlocks",
+  "stage": "M1"
+ },
+ "NLAlib.orthonormalBasisMatrix": {
+  "new": "NLAlib.exists_hasOrthonormalCols_range_eq",
+  "note": "existence theorem, not a definition",
+  "stage": "M1"
+ },
+ "NLAlib.orthonormalBasisMatrixOfEuclideanSubspace": {
+  "new": "NLAlib.exists_hasOrthonormalCols_range_eq",
+  "note": "existence theorem, not a definition",
+  "stage": "M1"
+ },
+ "NLAlib.planeRotation": {
+  "new": "NLAlib.planeRotation",
+  "note": "over 𝕜",
+  "stage": "M1"
+ },
+ "NLAlib.planeRotation_mulVec": {
+  "new": "NLAlib.planeRotation_mulVec",
+  "stage": "M1"
+ },
+ "NLAlib.posSemidef_fromBlocks_iff": {
+  "new": "NLAlib.posSemidef_fromBlocks_iff_exists",
+  "stage": "M1"
+ },
+ "NLAlib.posSemidef_iff_trace_mul_nonneg": {
+  "new": "Matrix.IsHermitian.posSemidef_iff_trace_mul_nonneg",
+  "stage": "M1"
+ },
+ "NLAlib.posSemidef_inv_self_mul_transpose": {
+  "new": null,
+  "note": "Mathlib: Matrix.PosSemidef.inv applied to posSemidef_self_mul_conjTranspose",
+  "stage": "M1"
+ },
+ "NLAlib.posSemidef_of_hasSum": {
+  "new": "Matrix.PosSemidef.of_hasSum",
+  "stage": "M1"
+ },
+ "NLAlib.posSemidef_of_tendsto": {
+  "new": "Matrix.PosSemidef.of_tendsto",
+  "stage": "M1"
+ },
+ "NLAlib.projResidual": {
+  "new": null,
+  "note": "replaced by the product (1 - rangeProjector Y) * A; design note Matrix-Foundations §7.1",
+  "stage": "M1"
+ },
+ "NLAlib.psd_trace_pairing_characterizations": {
+  "new": null,
+  "note": "bundle; conjuncts are separate theorems",
+  "stage": "M1"
+ },
+ "NLAlib.quadForm": {
+  "new": "NLAlib.quadForm",
+  "stage": "M1"
+ },
+ "NLAlib.quadForm_add": {
+  "new": "NLAlib.quadForm_add_right",
+  "stage": "M1"
+ },
+ "NLAlib.quadForm_conjTranspose_mul_mul": {
+  "new": "NLAlib.quadForm_conjTranspose_mul_mul",
+  "stage": "M1"
+ },
+ "NLAlib.quadForm_conjTranspose_mul_self": {
+  "new": "NLAlib.quadForm_conjTranspose_mul_self",
+  "note": "right side is the coerced squared Euclidean norm",
+  "stage": "M1"
+ },
+ "NLAlib.quadForm_def": {
+  "new": "NLAlib.quadForm_def",
+  "stage": "M1"
+ },
+ "NLAlib.quadForm_eq_sum": {
+  "new": null,
+  "note": "same sum with another factor order; superseded by the new quadForm_eq_sum",
+  "stage": "M1"
+ },
+ "NLAlib.quadForm_eq_sum_mul_mul": {
+  "new": "NLAlib.quadForm_eq_sum",
+  "stage": "M1"
+ },
+ "NLAlib.quadForm_reindex": {
+  "new": null,
+  "note": "transport lemma",
+  "stage": "M1"
+ },
+ "NLAlib.quadForm_smul": {
+  "new": "NLAlib.quadForm_smul_right",
+  "stage": "M1"
+ },
+ "NLAlib.quadForm_sq_eq_sum": {
+  "new": null,
+  "note": "fourfold entry sum; a Hanson-Wright helper, moves with its consumer in Probability",
+  "stage": "M1"
+ },
+ "NLAlib.quadForm_vecMulVec_star_self": {
+  "new": "NLAlib.quadForm_vecMulVec_star",
+  "stage": "M1"
+ },
+ "NLAlib.quadForm_zero_left": {
+  "new": "NLAlib.quadForm_zero_left",
+  "stage": "M1"
+ },
+ "NLAlib.quadForm_zero_right": {
+  "new": "NLAlib.quadForm_zero_right",
+  "stage": "M1"
+ },
+ "NLAlib.rangeProjector": {
+  "new": "NLAlib.rangeProjector",
+  "note": "redefined through Submodule.starProjection; no pseudoinverse",
+  "stage": "M1"
+ },
+ "NLAlib.rangeProjector_eq_mul_conjTranspose_of_hasOrthonormalCols": {
+  "new": "NLAlib.HasOrthonormalCols.rangeProjector_eq",
+  "stage": "M1"
+ },
+ "NLAlib.rangeProjector_eq_mul_inv_gram_conjTranspose": {
+  "new": "NLAlib.rangeProjector_eq_mul_inv_mul_conjTranspose",
+  "stage": "M1"
+ },
+ "NLAlib.rangeProjector_eq_mul_moorePenroseInverse": {
+  "new": null,
+  "note": "deferred to M4, where the pseudoinverse exists",
+  "stage": "M1"
+ },
+ "NLAlib.rangeProjector_isHermitian": {
+  "new": "NLAlib.isStarProjection_rangeProjector",
+  "stage": "M1"
+ },
+ "NLAlib.rangeProjector_isIdempotentElem": {
+  "new": "NLAlib.isStarProjection_rangeProjector",
+  "stage": "M1"
+ },
+ "NLAlib.rangeProjector_mul": {
+  "new": "NLAlib.rangeProjector_mul_self",
+  "stage": "M1"
+ },
+ "NLAlib.rangeProjector_mul_of_range_le": {
+  "new": "NLAlib.rangeProjector_mul_eq_self_iff",
+  "stage": "M1"
+ },
+ "NLAlib.rangeProjector_mul_rangeProjector_of_mul_eq": {
+  "new": "NLAlib.rangeProjector_mul_rangeProjector_of_range_le",
+  "stage": "M1"
+ },
+ "NLAlib.rangeProjector_mul_self": {
+  "new": "NLAlib.rangeProjector_mul_rangeProjector",
+  "note": "the old name now means rangeProjector A * A = A",
+  "stage": "M1"
+ },
+ "NLAlib.rangeProjector_zero": {
+  "new": "NLAlib.rangeProjector_zero",
+  "stage": "M1"
+ },
+ "NLAlib.range_mulVecLin_rangeProjector": {
+  "new": "NLAlib.range_mulVecLin_rangeProjector",
+  "stage": "M1"
+ },
+ "NLAlib.range_orthonormalBasisMatrix": {
+  "new": "NLAlib.exists_hasOrthonormalCols_range_eq",
+  "stage": "M1"
+ },
+ "NLAlib.range_sizedSubsetIndex": {
+  "new": null,
+  "note": "not needed with orderIsoOfFin",
+  "stage": "M1"
+ },
+ "NLAlib.range_toEuclideanLin_rangeProjector": {
+  "new": "NLAlib.range_mulVecLin_rangeProjector",
+  "note": "stated in n → 𝕜",
+  "stage": "M1"
+ },
+ "NLAlib.rank_add_le": {
+  "new": "Matrix.rank_add_le",
+  "stage": "M1"
+ },
+ "NLAlib.rank_add_rank_sub_card_le_rank_mul": {
+  "new": "Matrix.rank_add_rank_le_card_add_rank_mul",
+  "note": "additive form",
+  "stage": "M1"
+ },
+ "NLAlib.rank_eq_finrank_columnSpace": {
+  "new": null,
+  "note": "Mathlib: Matrix.rank is finrank of the range of mulVecLin by definition",
+  "stage": "M1"
+ },
+ "NLAlib.rank_fromBlocks_eq_rank_add_rank_schur": {
+  "new": "Matrix.rank_fromBlocks₁₁",
+  "stage": "M1"
+ },
+ "NLAlib.rank_fromBlocks_zero_zero_eq": {
+  "new": "Matrix.rank_fromBlocks_zero₁₂_zero₂₁",
+  "stage": "M1"
+ },
+ "NLAlib.rank_fromCols_eq_iff_exists_mulVec_eq": {
+  "new": "Matrix.rank_fromCols_replicateCol_eq_iff",
+  "stage": "M1"
+ },
+ "NLAlib.rank_mul_add_rank_mul_le_rank_add_rank_mul_mul": {
+  "new": "Matrix.rank_mul_add_rank_mul_le",
+  "stage": "M1"
+ },
+ "NLAlib.rank_mul_bounds": {
+  "new": null,
+  "note": "bundle; conjuncts are Matrix.rank_add_rank_le_card_add_rank_mul and Mathlib Matrix.rank_mul_le",
+  "stage": "M1"
+ },
+ "NLAlib.rank_rangeProjector": {
+  "new": "NLAlib.rank_rangeProjector",
+  "stage": "M1"
+ },
+ "NLAlib.rayleighQuotient": {
+  "new": "NLAlib.rayleighQuotient",
+  "note": "denominator is the squared Euclidean norm",
+  "stage": "M1"
+ },
+ "NLAlib.rayleighQuotient_def": {
+  "new": "NLAlib.rayleighQuotient_def",
+  "stage": "M1"
+ },
+ "NLAlib.re_trace_eq_zero_iff_of_posSemidef": {
+  "new": "Matrix.PosSemidef.re_trace_eq_zero_iff",
+  "stage": "M1"
+ },
+ "NLAlib.re_trace_nonneg_of_posSemidef": {
+  "new": "Matrix.PosSemidef.re_trace_nonneg",
+  "stage": "M1"
+ },
+ "NLAlib.residual_eq_mul_conjTranspose_mul_residual": {
+  "new": "NLAlib.HasOrthonormalCols.mul_conjTranspose_add_mul_conjTranspose",
+  "note": "the complementary projector is Q' * Q'ᴴ",
+  "stage": "M1"
+ },
+ "NLAlib.residual_eq_one_sub_mul": {
+  "new": null,
+  "note": "the residual is spelled (1 - rangeProjector Y) * A; there is no projResidual",
+  "stage": "M1"
+ },
+ "NLAlib.residual_mul": {
+  "new": null,
+  "note": "associativity of matrix multiplication once the residual is a product",
+  "stage": "M1"
+ },
+ "NLAlib.residual_mul_eq_zero_of_range": {
+  "new": "NLAlib.rangeProjector_mul_eq_self_iff",
+  "stage": "M1"
+ },
+ "NLAlib.residual_mul_self": {
+  "new": "NLAlib.one_sub_rangeProjector_mul_self",
+  "stage": "M1"
+ },
+ "NLAlib.residual_residual": {
+  "new": "NLAlib.isStarProjection_one_sub_rangeProjector",
+  "note": "idempotence",
+  "stage": "M1"
+ },
+ "NLAlib.selectionMatrix": {
+  "new": "NLAlib.selectionMatrix",
+  "note": "any finite column type; over 𝕜",
+  "stage": "M1"
+ },
+ "NLAlib.sizedSubsetIndex": {
+  "new": null,
+  "note": "replaced by Set.powersetCard.orderIsoOfFin",
+  "stage": "M1"
+ },
+ "NLAlib.sizedSubsetIndex_injective": {
+  "new": null,
+  "note": "not needed with orderIsoOfFin",
+  "stage": "M1"
+ },
+ "NLAlib.solution_set_eq_add_ker": {
+  "new": null,
+  "note": "trivial restatement of the previous",
+  "stage": "M1"
+ },
+ "NLAlib.specNorm": {
+  "new": "NLAlib.specNorm",
+  "note": "no DecidableEq; bridge still rfl",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_add_le": {
+  "new": "NLAlib.specNorm_add_le",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_conjTranspose": {
+  "new": "NLAlib.specNorm_conjTranspose",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_diagonal_le": {
+  "new": "NLAlib.specNorm_diagonal_le",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_eq_norm": {
+  "new": "NLAlib.specNorm_eq_norm",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_le_of_forall_sqrt_le": {
+  "new": "NLAlib.specNorm_le_of_forall_norm_eq_one",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_le_of_mulVec_sq_le": {
+  "new": "NLAlib.specNorm_le_iff",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_map_star": {
+  "new": null,
+  "note": "private helper of Norms/Spectral.lean",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_map_star_le": {
+  "new": null,
+  "note": "private helper of Norms/Spectral.lean",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_mul_conjTranspose_self": {
+  "new": "NLAlib.specNorm_mul_conjTranspose_self",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_mul_le": {
+  "new": "NLAlib.specNorm_mul_le",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_neg": {
+  "new": "NLAlib.specNorm_neg",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_nonneg": {
+  "new": "NLAlib.specNorm_nonneg",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_one_le": {
+  "new": "NLAlib.specNorm_one_le",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_reindex": {
+  "new": "NLAlib.specNorm_submatrix_equiv",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_sq_eq_specNorm_conjTranspose_mul_self": {
+  "new": "NLAlib.specNorm_conjTranspose_mul_self",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_sq_eq_specNorm_transpose_mul_self": {
+  "new": "NLAlib.specNorm_conjTranspose_mul_self",
+  "note": "transpose twin",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_sub_comm": {
+  "new": "NLAlib.specNorm_sub_comm",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_sub_le": {
+  "new": "NLAlib.specNorm_sub_le",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_transpose": {
+  "new": "NLAlib.specNorm_transpose",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_zero": {
+  "new": "NLAlib.specNorm_zero",
+  "stage": "M2"
+ },
+ "NLAlib.sq_rational_rotation_coefficients": {
+  "new": "NLAlib.sq_div_add_sq_div_one_add_sq",
+  "stage": "M1"
+ },
+ "NLAlib.sqrt_mulVec_dotProduct_le_specNorm_mul": {
+  "new": "NLAlib.norm_toLp_mulVec_le",
+  "stage": "M2"
+ },
+ "NLAlib.star_conjTranspose_mulVec_dotProduct_self_of_mem_range": {
+  "new": "NLAlib.rangeProjector_mulVec_eq_self_iff",
+  "note": "with HasOrthonormalCols.star_mulVec_dotProduct_mulVec",
+  "stage": "M1"
+ },
+ "NLAlib.star_mulVec_dotProduct_mulVec_self_of_hasOrthonormalCols": {
+  "new": "NLAlib.HasOrthonormalCols.star_mulVec_dotProduct_mulVec",
+  "note": "generalised to two vectors",
+  "stage": "M1"
+ },
+ "NLAlib.star_quadForm": {
+  "new": "NLAlib.star_quadForm",
+  "stage": "M1"
+ },
+ "NLAlib.sum_norm_sq_conjTranspose_mulVec_le": {
+  "new": "NLAlib.HasOrthonormalCols.norm_toLp_conjTranspose_mulVec_le",
+  "note": "restated with the Euclidean norm",
+  "stage": "M1"
+ },
+ "NLAlib.sum_norm_sq_mulVec_le_specNorm_sq": {
+  "new": "NLAlib.norm_toLp_mulVec_le",
+  "stage": "M2"
+ },
+ "NLAlib.sum_range_le_of_hasSum_posSemidef": {
+  "new": null,
+  "note": "Mathlib sum_le_hasSum through the scoped instance Matrix.instOrderClosedTopology",
+  "stage": "M1"
+ },
+ "NLAlib.sum_sq_mulVec_le_specNorm_sq": {
+  "new": "NLAlib.norm_toLp_mulVec_le",
+  "stage": "M2"
+ },
+ "NLAlib.toCoordinateSubmodule": {
+  "new": null,
+  "note": "transport; not reproduced",
+  "stage": "M1"
+ },
+ "NLAlib.toCoordinateSubmodule_toEuclideanSubmodule": {
+  "new": null,
+  "note": "transport; not reproduced",
+  "stage": "M1"
+ },
+ "NLAlib.toEuclideanLin_rangeProjector": {
+  "new": "NLAlib.toEuclideanLin_rangeProjector",
+  "stage": "M1"
+ },
+ "NLAlib.toEuclideanLin_symm_starProjection_eq_rangeProjector": {
+  "new": "NLAlib.toEuclideanLin_rangeProjector",
+  "note": "same fact through the linear equivalence",
+  "stage": "M1"
+ },
+ "NLAlib.toEuclideanSubmodule": {
+  "new": null,
+  "note": "transport between submodules of n → 𝕜 and of EuclideanSpace; the column space is LinearMap.range A.mulVecLin",
+  "stage": "M1"
+ },
+ "NLAlib.toEuclideanSubmodule_range_mulVecLin": {
+  "new": null,
+  "note": "transport; not reproduced",
+  "stage": "M1"
+ },
+ "NLAlib.toEuclideanSubmodule_toCoordinateSubmodule": {
+  "new": null,
+  "note": "transport; not reproduced",
+  "stage": "M1"
+ },
+ "NLAlib.trace_eq_ofReal_re_of_posSemidef": {
+  "new": "Matrix.IsHermitian.coe_re_trace",
+  "note": "Hermitian suffices",
+  "stage": "M1"
+ },
+ "NLAlib.trace_mul_eq_sum_mul_star": {
+  "new": null,
+  "note": "unused helper",
+  "stage": "M1"
+ },
+ "NLAlib.trace_mul_eq_trace_sqrt_conjTranspose_mul": {
+  "new": null,
+  "note": "helper not needed; proofs factor B = Cᴴ C",
+  "stage": "M1"
+ },
+ "NLAlib.trace_mul_eq_zero_iff_of_posSemidef": {
+  "new": "Matrix.PosSemidef.trace_mul_eq_zero_iff",
+  "stage": "M1"
+ },
+ "NLAlib.trace_mul_le_trace_mul_of_posSemidef": {
+  "new": "Matrix.PosSemidef.trace_mul_le_trace_mul",
+  "stage": "M1"
+ },
+ "NLAlib.trace_mul_nonneg_of_posSemidef": {
+  "new": "Matrix.PosSemidef.trace_mul_nonneg",
+  "stage": "M1"
+ },
+ "NLAlib.transpose_selectionMatrix_apply": {
+  "new": "NLAlib.selectionMatrix_apply",
+  "stage": "M1"
+ },
+ "NLAlib.transpose_selectionMatrix_mul": {
+  "new": "NLAlib.conjTranspose_selectionMatrix_mul",
+  "stage": "M1"
+ }
+}

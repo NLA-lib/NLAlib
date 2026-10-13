@@ -14,24 +14,47 @@ Updated at every stopping point. Newest entry first within each section.
 | Stage | File | Owner | State | Notes |
 |---|---|---|---|---|
 | M0 | bootstrap | orchestrator | done | see "M0 findings" |
-| M1 | design note `docs/design/Matrix-Foundations.md` | orchestrator | done, Fable-reviewed, not maintainer-approved | decisions in its §7 |
-| M1 | skeleton, 13 files | orchestrator | done, builds with `sorry` | checkpoint commit |
-| M1 | `ForMathlib/LinearAlgebra/Matrix/Rank.lean` | — | skeleton | |
-| M1 | `ForMathlib/LinearAlgebra/Matrix/PosDef.lean` | — | skeleton | |
-| M1 | `ForMathlib/LinearAlgebra/Matrix/Adjugate.lean` | — | skeleton | |
-| M1 | `ForMathlib/LinearAlgebra/Matrix/SchurComplement.lean` | — | skeleton | |
-| M1 | `ForMathlib/LinearAlgebra/Matrix/CauchyBinet.lean` | — | skeleton | |
-| M1 | `Matrix/Basic/Orthonormal.lean` | — | skeleton | |
-| M1 | `Matrix/Basic/QuadForm.lean` | — | skeleton | |
-| M1 | `Matrix/Basic/Gram.lean` | — | skeleton | |
-| M1 | `Matrix/Basic/Projector.lean` | — | skeleton | |
-| M1 | `Matrix/Basic/SchurComplement.lean` | — | skeleton | |
-| M1 | `Matrix/Basic/Selection.lean` | — | skeleton | |
-| M1 | `Matrix/Basic/Dilation.lean` | — | skeleton | |
-| M1 | `Matrix/Basic/PlaneRotation.lean` | — | skeleton | |
+| M1 | all 15 files | Opus agents | **done** | design note and stage report: `docs/design/Matrix-Foundations.md`; not maintainer-approved |
+| M2 | design note `docs/design/Matrix-Norms.md` | orchestrator | done, Fable-reviewed, not maintainer-approved | drops `frobSq`; moves Schatten and UI norms to M3b |
+| M2 | skeleton, 7 files under `Matrix/Norms/` | orchestrator | done, builds with `sorry` | |
+| M2 | `Norms/Spectral.lean` | Opus agent | proved | follow-ups in "M2 notes" |
+| M2 | `Norms/Frobenius.lean` | Opus agent | in progress | |
+| M2 | `Norms/Compare.lean` | — | skeleton | after Frobenius |
+| M2 | `Norms/Loewner.lean` | — | skeleton | after Compare |
+| M2 | `Norms/Block.lean` | — | skeleton | after Compare |
+| M2 | `Norms/Projector.lean` | — | skeleton | after Compare |
+| M2 | `Norms/Net.lean` | — | skeleton | after Loewner |
+| M3 | design note | orchestrator | being drafted | |
 
 While a stage is being proved, `import NLAlib` contains `sorry` and `scripts/Audit.lean` fails.
 That is the expected state between a stage's skeleton and its last proof.
+
+## M1 result (2026-10-14)
+
+- 15 files, 2707 lines, 229 declarations: `ForMathlib/LinearAlgebra/Matrix/{Rank, PosDef,
+  Adjugate, SchurComplement, CauchyBinet}`, `ForMathlib/Analysis/InnerProductSpace/PiL2`,
+  `Matrix/Basic/{Orthonormal, QuadForm, Gram, Projector, OrthonormalBasis, SchurComplement,
+  Selection, Dilation, PlaneRotation}`.
+- Checks on the M1 modules alone: build with no warnings; axiom audit, 282 constants, 0
+  violations; `#lint`, 14 linters, clean; `check_refs.py` clean.
+- Nothing in `NLAlibScaffold`.
+- `Projector.lean` is 510 lines after the split.
+- Ledger: 165 prototype declarations accounted for. Left for later stages: Moore–Penrose,
+  pseudoinverse, least squares, generalized Schur complement (M4); leading minors and the pivot
+  Schur step (M9); projector norm lemmas (M2).
+- `scripts/check_refs.py` rejected the docstring ending `Result: id -/` that CONTRIBUTING §6 shows
+  as the example. The script was fixed to accept it.
+- New scripts: `scripts/ledger_add.py` (add entries from `old -> new` lines) and
+  `scripts/ledger_missing.py` (list prototype declarations the ledger does not account for).
+- `docs/port/proof-agent-brief.md` is the standing brief given to every proof agent.
+
+## M2 notes
+
+- From the Spectral report: add `specNorm_real_smul` (real scalar action) and the same for
+  `frobNorm`; the private lemmas `norm_toLp_star` and `norm_toLp_comp_equiv` belong in
+  `ForMathlib/Analysis/InnerProductSpace/PiL2.lean` as public lemmas; `specNorm_map_star` could
+  be public. The docstring of `specNorm_le_of_forall_norm_star_dotProduct_mulVec_le` says "least
+  constant" but the statement is only the sufficiency direction.
 
 ## M0 findings (2026-10-14)
 

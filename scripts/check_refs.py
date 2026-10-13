@@ -10,7 +10,7 @@ bib = (ROOT / "docs" / "references.bib").read_text()
 keys = set(re.findall(r"^@\w+\{([^,\s]+),", bib, re.M))
 
 cite = re.compile(r"\[([A-Z][A-Za-z]+\d{4}[a-z]?)(?:,[^\]]*)?\]")
-result = re.compile(r"^\s*Result:\s*(.+?)\s*$", re.M)
+result = re.compile(r"^\s*Result:\s*(.+?)\s*(?:-/)?\s*$", re.M)
 slug = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
 bad = 0

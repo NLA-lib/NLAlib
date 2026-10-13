@@ -233,7 +233,17 @@ those layers are designed.
 | Loewner order | `A ≤ B` under `open scoped MatrixOrder` | `Matrix.le_iff` |
 | PSD, PD, Hermitian | `A.PosSemidef`, `A.PosDef`, `A.IsHermitian` | Mathlib's |
 | quadratic form | `quadForm A z := star z ⬝ᵥ (A *ᵥ z) : 𝕜` | `Matrix.PosSemidef` form |
-| orthonormal columns | `HasOrthonormalCols Q := Qᴴ * Q = 1`, always as this hypothesis | — |
+| orthonormal columns | `HasOrthonormalCols Q := Qᴴ * Q = 1`, always as this hypothesis; rows are `HasOrthonormalCols Qᴴ`; a unitary is a square `Q` with this property | `hasOrthonormalCols_iff_orthonormal`, `hasOrthonormalCols_iff_mem_unitaryGroup` |
+| orthogonal projector (predicate) | `IsStarProjection P` | Mathlib's |
+| projector onto a column space | `rangeProjector A`, every shape and rank | `toEuclideanLin_rangeProjector` |
+| projection residual | `(1 - rangeProjector Y) * A`, no definition | `one_sub_rangeProjector_mul` expands it |
+| column space, range containment | `LinearMap.range A.mulVecLin`; `LinearMap.range Y.mulVecLin ≤ LinearMap.range B.mulVecLin` | Mathlib's |
+| full column rank | `Function.Injective A.mulVec`, as a hypothesis | Mathlib's; `isUnit_conjTranspose_mul_self_iff`, `mulVec_injective_iff_rank_eq` |
+| Gram matrix, Schur complement | `Aᴴ * A`; `D - C * A⁻¹ * B`; no definitions | Mathlib's |
+| Rayleigh quotient | `rayleighQuotient A x : ℝ := re (quadForm A x) / ‖toLp 2 x‖ ^ 2` | `rayleighQuotient_eq_toEuclideanCLM` |
+| column selection as a matrix | `selectionMatrix s`; a bare selection is `A.submatrix id s` | `mul_selectionMatrix` |
+| Hermitian dilation | `dilation A := fromBlocks 0 A Aᴴ 0` | `dilation_def`, `rfl` |
+| plane rotation | `planeRotation u v c s`, `c s : ℝ` | — |
 | matrix functions | `cfc f A` | Mathlib's |
 | random matrix | `X : Ω → Matrix m n 𝕜`, `Measurable X` (global `Matrix.instMeasurableSpace`, `ForMathlib`) | — |
 | law | `HasLaw X ν μ` | Mathlib's |
@@ -241,9 +251,10 @@ those layers are designed.
 | expectation | `∫ ω, f (X ω) ∂μ` (Bochner) | — |
 | sub-Gaussian | `HasSubgaussianMGF X c μ` | Mathlib's |
 
-Rows the Matrix design note is expected to add: the pseudoinverse(s), the rectangular diagonal and
-`IsSVD`, the projector and residual, the condition number, the Schatten family, the spectral-gap
-interface, the principal-angle / subspace-distance interface.
+Rows the remaining Matrix design notes are expected to add: the pseudoinverse(s), the SVD
+interface, the condition number, the Schatten family and unitarily invariant norms, the
+spectral-gap interface, the principal-angle / subspace-distance interface. Rows from the
+foundations stage (`docs/design/Matrix-Foundations.md`) are in the table.
 
 ### 5.4 Interfaces and reusable hypotheses
 

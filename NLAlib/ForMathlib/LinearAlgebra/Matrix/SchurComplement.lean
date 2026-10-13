@@ -36,7 +36,22 @@ Port of `NLAlib.det_inverse_bottomRight_eq_topLeft_div_det`, there over `ℝ`.
 Result: jacobi-complementary-minors -/
 theorem det_inv_toBlocks₂₂ (M : Matrix (p ⊕ q) (p ⊕ q) K) (hM : IsUnit M) :
     M⁻¹.toBlocks₂₂.det = M.toBlocks₁₁.det / M.det := by
-  sorry
+  have hdet : IsUnit M.det := (isUnit_iff_isUnit_det M).mp hM
+  have hmul := mul_nonsing_inv M hdet
+  generalize M⁻¹ = N at hmul ⊢
+  obtain ⟨A, B, C, D, rfl⟩ : ∃ A B C D, M = fromBlocks A B C D :=
+    ⟨_, _, _, _, (fromBlocks_toBlocks M).symm⟩
+  obtain ⟨W, X, Y, Z, rfl⟩ : ∃ W X Y Z, N = fromBlocks W X Y Z :=
+    ⟨_, _, _, _, (fromBlocks_toBlocks N).symm⟩
+  rw [fromBlocks_multiply, ← fromBlocks_one, fromBlocks_inj] at hmul
+  obtain ⟨-, h₁₂, -, h₂₂⟩ := hmul
+  have h : fromBlocks A B C D * fromBlocks 1 X 0 Z = fromBlocks A 0 C 1 := by
+    rw [fromBlocks_multiply, h₁₂, h₂₂]
+    simp only [Matrix.mul_one, Matrix.mul_zero, add_zero]
+  have h' := congrArg det h
+  simp only [det_mul, det_fromBlocks_zero₂₁, det_fromBlocks_zero₁₂, det_one, one_mul,
+    mul_one] at h'
+  rw [toBlocks_fromBlocks₂₂, toBlocks_fromBlocks₁₁, eq_div_iff hdet.ne_zero, mul_comm, h']
 
 /-- **Jacobi's complementary minor formula.** Let `er` and `ec` split the index type of an
 invertible `A` into a selected part `p` and its complement `q`, for rows and for columns. The
@@ -50,6 +65,15 @@ theorem det_inv_submatrix_inr (A : Matrix n n K) (hA : IsUnit A) (er ec : p ⊕ 
     (A⁻¹.submatrix (fun i => ec (Sum.inr i)) (fun j => er (Sum.inr j))).det =
       (Equiv.Perm.sign (ec.trans er.symm) : ℤ) *
         (A.submatrix (fun i => er (Sum.inl i)) (fun j => ec (Sum.inl j))).det / A.det := by
-  sorry
+  have h := det_inv_toBlocks₂₂ (A.submatrix er ec) ((isUnit_submatrix_equiv er ec).mpr hA)
+  rw [inv_submatrix_equiv, det_submatrix_equiv_equiv] at h
+  have hs : ((Equiv.Perm.sign (ec.trans er.symm) : ℤ) : K) *
+      (Equiv.Perm.sign (ec.trans er.symm) : ℤ) = 1 := by
+    rcases Int.units_eq_one_or (Equiv.Perm.sign (ec.trans er.symm)) with hs | hs <;> simp [hs]
+  have hA' : A.det ≠ 0 := ((isUnit_iff_isUnit_det A).mp hA).ne_zero
+  have hs' : ((Equiv.Perm.sign (ec.trans er.symm) : ℤ) : K) ≠ 0 := left_ne_zero_of_mul_eq_one hs
+  refine h.trans ?_
+  rw [div_eq_div_iff (mul_ne_zero hs' hA') hA', mul_mul_mul_comm, hs, one_mul]
+  rfl
 
 end Matrix

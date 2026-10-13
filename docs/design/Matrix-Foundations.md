@@ -205,7 +205,7 @@ Hermitian `A`, `hA.coe_re_quadForm` and `hA.im_quadForm` say nothing is lost. `0
 over `𝕜` uses `ComplexOrder`, which the file opens. API: linearity in `A`
 (`quadForm_add_left`, `_smul_left`, `_sub_left`, `_neg_left`, `_zero_left`), `quadForm_zero_right`,
 `quadForm_smul_right`, the polar expansion `quadForm_add_right`, `star_quadForm`,
-`quadForm_one`, `quadForm_diagonal`, `quadForm_vecMulVec`, `quadForm_conjTranspose_mul_mul`,
+`quadForm_one`, `quadForm_diagonal`, `quadForm_vecMulVec_star`, `quadForm_conjTranspose_mul_mul`,
 `quadForm_conjTranspose_mul_self`, `quadForm_eq_sum`, `Matrix.PosDef.quadForm_pos`,
 `Matrix.IsHermitian.ext_quadForm`, `rayleighQuotient_smul`, `rayleighQuotient_of_mulVec_eq_smul`.
 
@@ -291,7 +291,7 @@ namespace `Matrix`.
 
 1. `NLAlib/ForMathlib/LinearAlgebra/Matrix/Rank.lean`: `rank_eq_zero`, `rank_add_le`,
    `rank_sub_le`, Sylvester, Frobenius, `rank_fromBlocks_zero₁₂_zero₂₁`, `rank_fromBlocks₁₁`,
-   `rank_fromCols_col_eq_iff`, the complementary nullity theorem.
+   `rank_fromCols_replicateCol_eq_iff`, the complementary nullity theorem.
 2. `NLAlib/ForMathlib/LinearAlgebra/Matrix/PosDef.lean`: zero diagonal entry forces zero row and
    column, entry bounds, real trace, trace pairing of two PSD matrices (nonnegative, zero iff
    product zero, monotone, characterises PSD), closedness of the PSD set, PD dense in PSD.
@@ -398,3 +398,65 @@ Eleven comments; none asked for a decision in §7 to be reversed. Folded in:
 Checked and kept: `posDef_fromBlocks_iff`. Mathlib has `PosSemidef.fromBlocks₁₁`, which assumes
 `A.PosDef` and concludes semidefiniteness of the block matrix; it has no positive definite
 criterion.
+
+## 9. Stage report (2026-10-14)
+
+**Outcome.** Fifteen files, all proved; nothing in `NLAlibScaffold`. Thirteen were in §5; two were
+added during the stage: `ForMathlib/Analysis/InnerProductSpace/PiL2.lean` (the bridges between
+`‖WithLp.toLp 2 x‖` and `star x ⬝ᵥ x`, which three files needed) and
+`Matrix/Basic/OrthonormalBasis.lean` (split from `Projector.lean` when it reached 610 lines).
+Proofs were written by Opus agents, one or two small files per agent, two agents at a time; each
+agent took between three and eleven minutes.
+
+**What changed from the design, and why.**
+
+- *Residual spelling.* The design review changed it from `A - rangeProjector Y * A` to the product
+  `(1 - rangeProjector Y) * A` before any proof was written (§8).
+- *`rangeProjector` takes no `DecidableEq`.* Its definition uses a classical instance internally;
+  no API lemma exposes it.
+- *Cauchy–Binet* is stated with each term as `det (A_s * B_s)`, indexed by the subset itself, and
+  compound matrices are indexed by Mathlib's `Set.powersetCard` with linear orders on the index
+  types (§7.9, rewritten when the skeleton was typed).
+- *Typeclass arguments* were minimised per declaration by the linters. Several statements hold for
+  an arbitrary (not finite) row type: `rank_add_le`, the PSD entry lemmas, closedness of the PSD
+  cone.
+- *Jacobi's formula* is proved by multiplying by a block triangular matrix and taking
+  determinants, with no rank argument and no case split on a singular block; the prototype's proof
+  needed both. The argument works over a commutative ring. The field statement was kept; the ring
+  form `M.det * M⁻¹.toBlocks₂₂.det = M.toBlocks₁₁.det` is the better upstream statement.
+- *`dilation_smul_real`* is stated with the real scalar action `c • A`, matching the convention
+  M2 fixes for scalar multiples of the identity.
+- *Promoted after review:* `HasOrthonormalCols.exists_fromCols_of_card_le` (completion by any
+  number of columns that fits), `rank_one_sub_rangeProjector_add_rank`,
+  `rangeProjector_mulVec_eq_zero_iff`, `Matrix.rank_neg`, `conjTranspose_dilation`.
+
+**Mathlib overlap found while proving** (kept as one-line API on the interfaces):
+`hasOrthonormalCols_iff_mem_unitaryGroup` is `Matrix.mem_unitaryGroup_iff'`;
+`HasOrthonormalCols.mul_conjTranspose_self_of_card_eq` is `Matrix.mul_eq_one_comm_of_card_eq`;
+`Matrix.isStarProjection_iff` is `isStarProjection_iff`; `Matrix.IsHermitian.im_quadForm` is
+`Matrix.IsHermitian.im_star_dotProduct_mulVec_self`; `mul_selectionMatrix` is
+`Matrix.mul_submatrix_one`. Mathlib has no Cauchy–Binet formula, no compound matrix, no closedness
+of the PSD cone, no `OrderClosedTopology` on matrices, no positive definite block criterion.
+
+**Deferred, with the stage that will account for them in the ledger.** Moore–Penrose, the
+full-rank pseudoinverse formulas, least squares, `generalizedSchurComplement` (M4); every
+`frobSq`/`specNorm` statement about projectors and `IsBestFrobRankApprox` (M2, M3);
+`leadingSubmatrix`, `leadingMinor`, `pivotSchur`, `borderedMatrix` (M9).
+
+**For the next stages.**
+
+- M2 should state orthonormal invariance in the `HasOrthonormalCols` namespace and projector
+  bounds on `IsStarProjection`, as its note already does; `PiL2.lean` has the norm bridges it
+  needs.
+- M3 can take `HasOrthonormalCols.exists_fromCols` for the full SVD and
+  `exists_hasOrthonormalCols_range_eq` for thin factors. Eigenvalue bounds on the quadratic form
+  (`re_quadForm_mem_Icc`) and eigenvalues of compressions were left for M3.
+- M4 gets `rangeProjector A = A * A⁺` as a lemma, the generalized Schur complement as a
+  definition, and the `IsLeast` form of the Schur complement minimum if a consumer wants it.
+- Two general facts in `ForMathlib/LinearAlgebra/Matrix/Rank.lean` are private and deserve to be
+  public upstream lemmas: rank–nullity restricted to a submodule
+  (`finrank (map f S) + finrank (S ⊓ ker f) = finrank S`) and the dimension of a product of
+  submodules.
+- Process: skeletons must be checked with `lake lean`, not `lake env lean`. Proof agents handle a
+  file of forty short lemmas in under ten minutes; grouping two or three small files per agent
+  worked and saved orchestration time.

@@ -37,19 +37,43 @@ variable {R : Type*} [CommRing R] {m n : Type*} [Fintype m] [Fintype n] [Decidab
 Port of `NLAlib.det_add_single_diagonal`, there over `ℝ` and for a diagonal entry. -/
 theorem det_add_single (A : Matrix n n R) (i j : n) (a : R) :
     (A + single i j a).det = A.det + a * A.adjugate j i := by
-  sorry
+  have h : A + single i j a = A.updateRow i (A i + a • Pi.single j 1) := by
+    ext k l
+    by_cases hk : k = i
+    · subst hk
+      by_cases hl : l = j
+      · simp [hl]
+      · simp [hl, Ne.symm hl]
+    · simp [hk, Ne.symm hk]
+  rw [h, det_updateRow_add, det_updateRow_smul, updateRow_eq_self, adjugate_apply]
 
 /-- A diagonal cofactor depends only on the entries outside its row and column.
 Port of `NLAlib.det_updateCol_single_eq_of_complement_eq`, there over `ℝ`. -/
 theorem adjugate_apply_self_congr {A B : Matrix n n R} (i : n)
     (h : ∀ a b, a ≠ i → b ≠ i → A a b = B a b) : A.adjugate i i = B.adjugate i i := by
-  sorry
+  simp only [adjugate_apply, det_apply]
+  refine Finset.sum_congr rfl fun σ _ => ?_
+  by_cases hσ : σ i = i
+  · congr 1
+    refine Finset.prod_congr rfl fun j _ => ?_
+    by_cases hj : j = i
+    · subst hj
+      simp [hσ]
+    · have hσj : σ j ≠ i := fun he => hj (σ.injective (he.trans hσ.symm))
+      simp only [updateRow_apply, if_neg hσj]
+      exact h (σ j) j hσj hj
+  · have hi : σ.symm i ≠ i := fun he => hσ (by simpa using congrArg σ he.symm)
+    rw [Finset.prod_eq_zero (Finset.mem_univ (σ.symm i)) (by simp [hi]),
+      Finset.prod_eq_zero (Finset.mem_univ (σ.symm i)) (by simp [hi])]
 
 /-- Reindexing the rows by `er` and the columns by `ec` multiplies the determinant by the sign
 of the permutation `ec.trans er.symm`. With `er = ec` this is `Matrix.det_submatrix_equiv_self`.
 Port of `NLAlib.det_submatrix_equiv_eq_sign_mul`, there over `ℝ`. -/
 theorem det_submatrix_equiv_equiv (A : Matrix n n R) (er ec : m ≃ n) :
     (A.submatrix er ec).det = (Equiv.Perm.sign (ec.trans er.symm) : ℤ) * A.det := by
-  sorry
+  have h : A.submatrix er ec = (A.submatrix er er).submatrix id (ec.trans er.symm) := by
+    ext i j
+    simp only [submatrix_apply, Equiv.trans_apply, Equiv.apply_symm_apply, id_eq]
+  rw [h, det_permute', det_submatrix_equiv_self]
 
 end Matrix

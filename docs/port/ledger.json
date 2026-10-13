@@ -219,6 +219,10 @@
   "new": "NLAlib.IsCholesky.unique",
   "stage": "M9"
  },
+ "NLAlib.IsFullQR.isQR_castLE": {
+  "new": "NLAlib.isQR_submatrix_castLE",
+  "stage": "M9"
+ },
  "NLAlib.IsLU": {
   "new": "NLAlib.IsLU",
   "stage": "M9"
@@ -342,14 +346,54 @@
   "note": "with IsPinv.mul_conjTranspose_right",
   "stage": "M4"
  },
+ "NLAlib.IsQR": {
+  "new": "NLAlib.IsQR",
+  "stage": "M9"
+ },
+ "NLAlib.IsQR.conjTranspose_mul_eq": {
+  "new": "NLAlib.IsQR.conjTranspose_mul_eq",
+  "stage": "M9"
+ },
+ "NLAlib.IsQR.conjTranspose_mul_self_eq": {
+  "new": "NLAlib.IsQR.conjTranspose_mul_self",
+  "stage": "M9"
+ },
+ "NLAlib.IsQR.diagonal_mul": {
+  "new": "NLAlib.IsQR.mul_diagonal",
+  "stage": "M9"
+ },
+ "NLAlib.IsQR.eq_of_diag_pos": {
+  "new": "NLAlib.IsQR.unique",
+  "stage": "M9"
+ },
+ "NLAlib.IsQR.isGradedColumnBasis": {
+  "new": "NLAlib.IsQR.span_col_image_Iic",
+  "stage": "M9"
+ },
  "NLAlib.IsQR.isLeastSquaresSolution_iff": {
   "new": null,
   "note": "deferred: least squares through a QR factorization, with the factorizations stage",
   "stage": "M9"
  },
+ "NLAlib.IsQR.isUnit_conjTranspose_mul_self_iff": {
+  "new": "NLAlib.IsQR.injective_mulVec_iff",
+  "stage": "M9"
+ },
+ "NLAlib.IsQR.mul_conjTranspose_eq": {
+  "new": "NLAlib.IsQR.mul_conjTranspose_eq_rangeProjector",
+  "stage": "M9"
+ },
+ "NLAlib.IsQR.mul_eq_transpose_mul_mul": {
+  "new": "NLAlib.IsQR.mul_eq_conjTranspose_mul_mul",
+  "stage": "M9"
+ },
  "NLAlib.IsQR.norm_sub_mulVec_sq_eq": {
   "new": null,
   "note": "deferred: least squares through a QR factorization, with the factorizations stage",
+  "stage": "M9"
+ },
+ "NLAlib.IsQR.submatrix_rows": {
+  "new": "NLAlib.IsQR.submatrix_rows",
   "stage": "M9"
  },
  "NLAlib.IsSVD": {
@@ -1733,6 +1777,10 @@
   "note": "Mathlib: Matrix.IsHermitian.coe_re_apply_self",
   "stage": "M1"
  },
+ "NLAlib.diag_pos_of_qr_of_rank_eq_card": {
+  "new": "NLAlib.IsQR.apply_self_pos",
+  "stage": "M9"
+ },
  "NLAlib.diagonalSequence": {
   "new": null,
   "note": "helper of the real von Neumann proof; the new proof uses Ky Fan's principle on leading columns",
@@ -2143,6 +2191,10 @@
   "new": "NLAlib.existsUnique_isLeastSquaresSolution_iff",
   "stage": "M4"
  },
+ "NLAlib.existsUnique_qr_of_rank_eq_card": {
+  "new": "NLAlib.existsUnique_isQR_of_injective",
+  "stage": "M9"
+ },
  "NLAlib.exists_charpoly_factor_add_vecMulVec": {
   "new": null,
   "note": "deferred: characteristic polynomial of a rank-one update (check Mathlib's matrix determinant lemma first)",
@@ -2283,6 +2335,10 @@
   "new": "NLAlib.exists_isCholesky_iff_posDef",
   "stage": "M9"
  },
+ "NLAlib.exists_isFullQR": {
+  "new": "NLAlib.exists_hasOrthonormalCols_mul_isUpperTrapezoidal",
+  "stage": "M9"
+ },
  "NLAlib.exists_isLU_iff_forall_leadingMinor_ne_zero": {
   "new": "NLAlib.exists_isLU_iff_forall_principalMinor_ne_zero",
   "stage": "M9"
@@ -2301,6 +2357,14 @@
  },
  "NLAlib.exists_isPLU_abs_le_one": {
   "new": "NLAlib.exists_perm_isLU_norm_le",
+  "stage": "M9"
+ },
+ "NLAlib.exists_isQR": {
+  "new": "NLAlib.exists_isQR",
+  "stage": "M9"
+ },
+ "NLAlib.exists_isQR_of_isUnit": {
+  "new": "NLAlib.exists_isQR_of_injective",
   "stage": "M9"
  },
  "NLAlib.exists_isSVD": {
@@ -3293,6 +3357,62 @@
   "new": "NLAlib.sum_re_trace_cfc_mul_cfc_nonneg",
   "stage": "M8"
  },
+ "NLAlib.givens": {
+  "new": "NLAlib.givens",
+  "stage": "M9"
+ },
+ "NLAlib.givensRotation_transpose_mulVec_apply_right": {
+  "new": "NLAlib.exists_givens_mulVec_apply_eq_zero",
+  "stage": "M9"
+ },
+ "NLAlib.givens_mulVec_apply_left": {
+  "new": "NLAlib.givens_mulVec_apply_left",
+  "stage": "M9"
+ },
+ "NLAlib.givens_mulVec_apply_of_ne": {
+  "new": "NLAlib.givens_mulVec_apply_of_ne",
+  "stage": "M9"
+ },
+ "NLAlib.givens_mulVec_apply_right": {
+  "new": "NLAlib.givens_mulVec_apply_right",
+  "stage": "M9"
+ },
+ "NLAlib.givens_mul_transpose_self": {
+  "new": "NLAlib.givens_mul_conjTranspose_self",
+  "stage": "M9"
+ },
+ "NLAlib.gramSchmidtQ": {
+  "new": "NLAlib.gramSchmidtQ",
+  "stage": "M9"
+ },
+ "NLAlib.gramSchmidtQ_mul_gramSchmidtR": {
+  "new": "NLAlib.gramSchmidtQ_mul_gramSchmidtR",
+  "stage": "M9"
+ },
+ "NLAlib.gramSchmidtR": {
+  "new": "NLAlib.gramSchmidtR",
+  "stage": "M9"
+ },
+ "NLAlib.gramSchmidtR_apply_self_nonneg": {
+  "new": "NLAlib.gramSchmidtR_apply_self_nonneg",
+  "stage": "M9"
+ },
+ "NLAlib.gramSchmidtR_apply_self_pos": {
+  "new": "NLAlib.gramSchmidtR_apply_self_pos",
+  "stage": "M9"
+ },
+ "NLAlib.gramSchmidtResidual_eq_sum": {
+  "new": "NLAlib.gramSchmidtR_apply_self_smul_col",
+  "stage": "M9"
+ },
+ "NLAlib.gramSchmidtResidual_eq_zero_iff": {
+  "new": "NLAlib.gramSchmidtR_apply_self_eq_zero_iff",
+  "stage": "M9"
+ },
+ "NLAlib.gramSchmidtSucceeds_iff_linearIndependent": {
+  "new": "NLAlib.forall_gramSchmidtR_apply_self_ne_zero_iff",
+  "stage": "M9"
+ },
  "NLAlib.gram_cfc_abs_eq": {
   "new": null,
   "note": "deferred: the nuclear norm as the trace of the matrix absolute value, with matrix functions",
@@ -3379,10 +3499,26 @@
   "new": "Matrix.IsHermitian.hasOrthonormalCols_eigenvectorUnitary",
   "stage": "M3a"
  },
+ "NLAlib.hasOrthonormalCols_givens": {
+  "new": "NLAlib.hasOrthonormalCols_givens",
+  "stage": "M9"
+ },
+ "NLAlib.hasOrthonormalCols_gramSchmidtQ": {
+  "new": "NLAlib.hasOrthonormalCols_gramSchmidtQ",
+  "stage": "M9"
+ },
  "NLAlib.hasOrthonormalCols_headColumns": {
   "new": "NLAlib.HasOrthonormalCols.submatrix",
   "note": "the first k columns are Q.submatrix id (Fin.castLE h)",
   "stage": "M6"
+ },
+ "NLAlib.hasOrthonormalCols_householder": {
+  "new": "NLAlib.hasOrthonormalCols_householder",
+  "stage": "M9"
+ },
+ "NLAlib.hasOrthonormalCols_householderQ": {
+  "new": "NLAlib.hasOrthonormalCols_householderQ",
+  "stage": "M9"
  },
  "NLAlib.hasOrthonormalCols_iff_conjTranspose_mul_self": {
   "new": "NLAlib.hasOrthonormalCols_iff",
@@ -3469,6 +3605,54 @@
   "new": null,
   "note": "object not reproduced: headColumns, Matrix-Perturbation §6",
   "stage": "M6"
+ },
+ "NLAlib.householder": {
+  "new": "NLAlib.householder",
+  "stage": "M9"
+ },
+ "NLAlib.householderQ": {
+  "new": "NLAlib.householderQ",
+  "stage": "M9"
+ },
+ "NLAlib.householderQ_mul_householderR": {
+  "new": "NLAlib.householderQ_mul_householderR",
+  "stage": "M9"
+ },
+ "NLAlib.householderR": {
+  "new": "NLAlib.householderR",
+  "stage": "M9"
+ },
+ "NLAlib.householderVector": {
+  "new": "NLAlib.householderVector",
+  "stage": "M9"
+ },
+ "NLAlib.householder_mulVec": {
+  "new": "NLAlib.householder_mulVec",
+  "stage": "M9"
+ },
+ "NLAlib.householder_mulVec_householderVector": {
+  "new": "NLAlib.householder_mulVec_householderVector",
+  "stage": "M9"
+ },
+ "NLAlib.householder_mulVec_of_dotProduct_eq_zero": {
+  "new": "NLAlib.householder_mulVec_of_dotProduct_eq_zero",
+  "stage": "M9"
+ },
+ "NLAlib.householder_mulVec_self": {
+  "new": "NLAlib.householder_mulVec_self",
+  "stage": "M9"
+ },
+ "NLAlib.householder_mul_self": {
+  "new": "NLAlib.householder_mul_self",
+  "stage": "M9"
+ },
+ "NLAlib.householder_transpose": {
+  "new": "NLAlib.isHermitian_householder",
+  "stage": "M9"
+ },
+ "NLAlib.householder_zero": {
+  "new": "NLAlib.householder_zero",
+  "stage": "M9"
  },
  "NLAlib.inner_eq_star_dotProduct_ofLp": {
   "new": null,
@@ -3591,6 +3775,10 @@
   "new": "Matrix.IsHermitian.eliminationStep",
   "stage": "M9"
  },
+ "NLAlib.isHermitian_mul_of_isQR": {
+  "new": "NLAlib.IsQR.isHermitian_mul",
+  "stage": "M9"
+ },
  "NLAlib.isHermitian_of_invariant_orthonormal_frame": {
   "new": null,
   "note": "private helper isHermitian_of_mul_eq_mul of HasOrthonormalCols.mul_conjTranspose_commute_of_mul_eq_mul, over 𝕜",
@@ -3704,6 +3892,14 @@
   "new": "Matrix.PosSemidef.exists_perm_eq_mul_conjTranspose",
   "stage": "M9"
  },
+ "NLAlib.isQR_gramSchmidt": {
+  "new": "NLAlib.isQR_gramSchmidt",
+  "stage": "M9"
+ },
+ "NLAlib.isQR_householderQR": {
+  "new": "NLAlib.isQR_householder",
+  "stage": "M9"
+ },
  "NLAlib.isRoot_charpoly_of_mulVec_eq_smul": {
   "new": null,
   "note": "deferred: characteristic polynomial of a rank-one update (check Mathlib's matrix determinant lemma first)",
@@ -3759,8 +3955,16 @@
   "new": "NLAlib.isUnit_conjTranspose_mul_self_iff",
   "stage": "M4"
  },
+ "NLAlib.isUpperTrapezoidal_householderR": {
+  "new": "NLAlib.isUpperTrapezoidal_householderR",
+  "stage": "M9"
+ },
  "NLAlib.isUpperTrapezoidal_iff_isUpperTriangular": {
   "new": "NLAlib.isUpperTrapezoidal_iff_isUpperTriangular",
+  "stage": "M9"
+ },
+ "NLAlib.isUpperTriangular_gramSchmidtR": {
+  "new": "NLAlib.isUpperTriangular_gramSchmidtR",
   "stage": "M9"
  },
  "NLAlib.isUpperTriangular_inv": {
@@ -4159,6 +4363,10 @@
   "new": "NLAlib.conditionNumber_of_isUnit",
   "stage": "M4"
  },
+ "NLAlib.moorePenroseConditionNumber_eq_of_qr": {
+  "new": "NLAlib.IsQR.conditionNumber_eq",
+  "stage": "M9"
+ },
  "NLAlib.moorePenroseConditionNumber_eq_singularValues_ratio": {
   "new": "NLAlib.conditionNumber_eq_singularValues_div",
   "stage": "M4"
@@ -4208,6 +4416,10 @@
   "new": null,
   "note": "one step from L * A = 1 by Matrix.mul_assoc: L * (A * pinv A) = pinv A; not needed, pinv_mul_self_of_injective gives the left inverse",
   "stage": "M6"
+ },
+ "NLAlib.moorePenroseInverse_eq_of_isQR": {
+  "new": "NLAlib.IsQR.pinv_eq_inv_mul",
+  "stage": "M9"
  },
  "NLAlib.moorePenroseInverse_eq_pinvL": {
   "new": "NLAlib.pinv_eq_inv_mul_conjTranspose",
@@ -4697,6 +4909,10 @@
  "NLAlib.norm_pinv_residual_sq_add_eq": {
   "new": "NLAlib.norm_sub_mulVec_sq_eq_add_norm_mulVec_sub_pinv_sq",
   "stage": "M6"
+ },
+ "NLAlib.norm_smul_gramSchmidtCol": {
+  "new": "NLAlib.gramSchmidtR_apply_self_smul_col",
+  "stage": "M9"
  },
  "NLAlib.norm_sq_entries_mem_doublyStochastic_of_hasOrthonormalCols": {
   "new": "NLAlib.HasOrthonormalCols.norm_sq_mem_doublyStochastic",
@@ -6240,6 +6456,10 @@
   "new": "NLAlib.singularValues_eq_of_conjTranspose_mul_self_eq",
   "stage": "M3"
  },
+ "NLAlib.singularValues_eq_of_qr": {
+  "new": "NLAlib.IsQR.singularValues_eq",
+  "stage": "M9"
+ },
  "NLAlib.singularValues_eq_zero_of_height_le": {
   "new": "NLAlib.singularValues_of_card_rows_le",
   "stage": "M3"
@@ -6448,6 +6668,10 @@
   "new": null,
   "note": "no sorting; sumLargest is a maximum over index sets",
   "stage": "M3a"
+ },
+ "NLAlib.span_gramSchmidtCol_image_Iic": {
+  "new": "NLAlib.span_gramSchmidtQ_col_image_Iic",
+  "stage": "M9"
  },
  "NLAlib.specNorm": {
   "new": "NLAlib.specNorm",
@@ -7763,6 +7987,14 @@
  "NLAlib.transpose_canonicalQRUpper_mul_self": {
   "new": "NLAlib.IsQR.conjTranspose_mul_self",
   "note": "with isQR_gramSchmidt",
+  "stage": "M9"
+ },
+ "NLAlib.transpose_givens": {
+  "new": "NLAlib.conjTranspose_givens",
+  "stage": "M9"
+ },
+ "NLAlib.transpose_gramSchmidtQ_mul_self": {
+  "new": "NLAlib.conjTranspose_gramSchmidtQ_mul_self",
   "stage": "M9"
  },
  "NLAlib.transpose_mulVec_eq_zero_iff_forall_dotProduct_mulVec_eq_zero": {

@@ -1509,6 +1509,10 @@
   "new": "NLAlib.continuous_re_trace_exp",
   "stage": "M8"
  },
+ "NLAlib.convexOn_relativeEntropy": {
+  "new": "NLAlib.convexOn_relativeEntropy",
+  "stage": "M8"
+ },
  "NLAlib.convexOn_traceEvenPower": {
   "new": "NLAlib.convexOn_re_trace_cfc",
   "stage": "M8"
@@ -3782,6 +3786,14 @@
   "note": "with sumLargest_le",
   "stage": "M3a"
  },
+ "NLAlib.isGreatest_variational_trace": {
+  "new": "NLAlib.isGreatest_re_trace_mul_cfc_log_sub",
+  "stage": "M8"
+ },
+ "NLAlib.isGreatest_variational_traceExp": {
+  "new": "NLAlib.isGreatest_re_trace_exp_add_cfc_log",
+  "stage": "M8"
+ },
  "NLAlib.isHermitian_add_smul": {
   "new": null,
   "note": "not needed: eigenvalue takes the matrix and no proof term; Hermitian-ness of A + t • B is Mathlib Matrix.IsHermitian.add with a real scalar multiple",
@@ -4168,6 +4180,10 @@
   "note": "not ported: scalar helper turning the residual form into Higham's divided coefficient; IsLeastSquaresSolution.norm_sub_le_of_le is stated division-free, Matrix-Perturbation §6",
   "stage": "M6"
  },
+ "NLAlib.lieb_concavity": {
+  "new": "NLAlib.concaveOn_re_trace_exp_add_cfc_log",
+  "stage": "M8"
+ },
  "NLAlib.lipschitzWith_eigenvalues₀_pencil": {
   "new": "NLAlib.abs_eigenvalue_sub_le",
   "note": "pencil lemma: the instance A + s • B, A + t • B of Weyl's bound, Matrix-Perturbation §6",
@@ -4291,6 +4307,14 @@
   "new": null,
   "note": "Gaussian integration-by-parts helper with no Matrix-layer consumer; moves with its consumer in RandomMatrix",
   "stage": "M1"
+ },
+ "NLAlib.matrixPerspective": {
+  "new": "NLAlib.matrixPerspective",
+  "stage": "M8"
+ },
+ "NLAlib.matrixPerspective_jointly_operatorConvex": {
+  "new": "NLAlib.OperatorConvexOn.matrixPerspective_smul_add_smul_le",
+  "stage": "M8"
  },
  "NLAlib.max_det_mul_prod_diag_le_det_hadamard": {
   "new": "Matrix.PosSemidef.re_det_mul_prod_re_diag_le_re_det_hadamard",
@@ -6114,6 +6138,14 @@
   "new": null,
   "note": "no rectangular diagonal",
   "stage": "M3b"
+ },
+ "NLAlib.relativeEntropy": {
+  "new": "NLAlib.relativeEntropy",
+  "stage": "M8"
+ },
+ "NLAlib.relativeEntropy_nonneg": {
+  "new": "NLAlib.relativeEntropy_nonneg",
+  "stage": "M8"
  },
  "NLAlib.relative_spectrum_characterizations": {
   "new": null,

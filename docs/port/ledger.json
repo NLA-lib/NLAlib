@@ -1553,6 +1553,10 @@
   "new": "NLAlib.convexOn_re_trace_cfc",
   "stage": "M8"
  },
+ "NLAlib.convex_setOf_posDef": {
+  "new": "NLAlib.convex_setOf_posDef",
+  "stage": "M8"
+ },
  "NLAlib.coordinateSelector": {
   "new": null,
   "note": "object not reproduced: coordinateSelector, the diagonal projection onto a coordinate set, helper definition of the prototype's proof of Horn's converse, Matrix-Inequalities §6",
@@ -1784,6 +1788,10 @@
   "new": null,
   "note": "Mathlib: Real.rpow_inv_natCast_pow",
   "stage": "M7"
+ },
+ "NLAlib.det_rpow_mul_le_det_smul_add": {
+  "new": "Matrix.PosDef.re_det_rpow_mul_re_det_rpow_le",
+  "stage": "M8"
  },
  "NLAlib.det_scalar_block_eigenvalue_pencil_eq_schur": {
   "new": null,
@@ -4278,6 +4286,10 @@
   "new": "Matrix.PosDef.smul_le_and_le_smul_iff_spectrum_subset",
   "stage": "M7"
  },
+ "NLAlib.log_det_smul_add_eq_iff": {
+  "new": "Matrix.PosDef.log_re_det_smul_add_smul_eq_iff",
+  "stage": "M8"
+ },
  "NLAlib.lt_eigenvalues₀_of_forall_mem": {
   "new": null,
   "note": "deferred: strict variational bounds and eigenvalue counting, with inertia",
@@ -4904,6 +4916,10 @@
   "new": "NLAlib.specNorm_sq_le_iff_conjTranspose_mul_self_le",
   "note": "stage M2, applied to Mᴴ with a = 1 and NLAlib.specNorm_conjTranspose; removed from M7 as a duplicate, Matrix-Inequalities §8.4",
   "stage": "M7"
+ },
+ "NLAlib.nat_mul_mul_re_trace_mul_pow_le": {
+  "new": "NLAlib.re_trace_mul_pow_le_add",
+  "stage": "M8"
  },
  "NLAlib.neg_complement_rowProjector_mul_moorePenroseInverse_eq": {
   "new": null,
@@ -6092,9 +6108,33 @@
   "new": "Matrix.PosSemidef.re_trace_eq_zero_iff",
   "stage": "M1"
  },
+ "NLAlib.re_trace_mul_pow_mul_le_trace_sq_mul_pow": {
+  "new": "NLAlib.re_trace_mul_pow_mul_pow_le",
+  "stage": "M8"
+ },
  "NLAlib.re_trace_nonneg_of_posSemidef": {
   "new": "Matrix.PosSemidef.re_trace_nonneg",
   "stage": "M1"
+ },
+ "NLAlib.re_trace_pow_eq_sum_eigenvalues_pow": {
+  "new": "Matrix.IsHermitian.re_trace_pow",
+  "stage": "M8"
+ },
+ "NLAlib.re_trace_pow_mul_pow_eq_sum_overlap": {
+  "new": "NLAlib.re_trace_cfc_mul_cfc_eq_sum",
+  "stage": "M8"
+ },
+ "NLAlib.re_trace_pow_nonneg_of_even": {
+  "new": "Matrix.IsHermitian.re_trace_pow_nonneg",
+  "stage": "M8"
+ },
+ "NLAlib.re_trace_pow_nonneg_of_posSemidef": {
+  "new": "Matrix.PosSemidef.re_trace_pow_nonneg",
+  "stage": "M8"
+ },
+ "NLAlib.re_trace_sub_mul_sub_pow_le": {
+  "new": "NLAlib.re_trace_sub_mul_pow_sub_pow_le",
+  "stage": "M8"
  },
  "NLAlib.realDilationSpectrum": {
   "new": null,
@@ -7170,6 +7210,10 @@
   "note": "not ported: positivity side condition of the divided forms; the new bounds are division-free, Matrix-Perturbation §2",
   "stage": "M6"
  },
+ "NLAlib.specNorm_pow_two_mul_le_trace_pow": {
+  "new": "Matrix.IsHermitian.specNorm_pow_le_re_trace_pow",
+  "stage": "M8"
+ },
  "NLAlib.specNorm_reindex": {
   "new": "NLAlib.specNorm_submatrix_equiv",
   "stage": "M2"
@@ -7523,6 +7567,14 @@
   "new": null,
   "note": "object not reproduced: Stiefel subtype with its group action belongs to a geometry layer outside Matrix/, Matrix-Subspaces §7.5",
   "stage": "M5"
+ },
+ "NLAlib.strictConcaveOn_log_det": {
+  "new": "NLAlib.strictConcaveOn_log_re_det",
+  "stage": "M8"
+ },
+ "NLAlib.strictConvexOn_trace_inv": {
+  "new": "NLAlib.strictConvexOn_re_trace_inv",
+  "stage": "M8"
  },
  "NLAlib.sub_mul_max_le_max_of_coupled": {
   "new": null,

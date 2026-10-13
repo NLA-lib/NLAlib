@@ -35,6 +35,8 @@ exactly when `A` has full column rank.
 * `NLAlib.HasOrthonormalCols.singularValues_mul_left`: invariance under orthonormal factors.
 * `NLAlib.le_singularValues_of_forall_mem`, `NLAlib.singularValues_le_of_forall_mem`: the
   variational bounds.
+* `NLAlib.exists_submodule_singularValues_mul_norm_le`, `NLAlib.exists_submodule_norm_mulVec_le`:
+  the subspaces attaining them.
 * `NLAlib.singularValues_last_mul_norm_le`: the smallest singular value bounds `‖A x‖` below.
 -/
 
@@ -160,6 +162,14 @@ theorem sq_singularValues_eq_eigenvalue_mul_conjTranspose_self (A : Matrix m n �
   rw [sq_singularValues]
   exact eigenvalue_eq_of_X_pow_mul_charpoly_eq (Matrix.posSemidef_conjTranspose_mul_self A)
     (Matrix.posSemidef_self_mul_conjTranspose A) (Matrix.charpoly_mul_comm' A Aᴴ).symm k
+
+/-- The Gram determinant is the product of the squared singular values, as many as the matrix
+has columns: `det (Aᴴ * A) = ∏ i < card n, σ_i(A) ^ 2`. [HornJohnson2013, Section 7.3]. -/
+theorem det_conjTranspose_mul_self_eq_prod_sq_singularValues [DecidableEq n] (A : Matrix m n 𝕜) :
+    (Aᴴ * A).det =
+      ((∏ i ∈ Finset.range (Fintype.card n), singularValues A i ^ 2 : ℝ) : 𝕜) := by
+  rw [(Matrix.isHermitian_conjTranspose_mul_self A).det_eq_prod_range_eigenvalue]
+  simp only [sq_singularValues]
 
 /-- A singular value is positive exactly when its index is below the rank.
 Port of `NLAlib.singularValues_pos_iff`. -/
@@ -402,6 +412,23 @@ theorem exists_submodule_norm_mulVec_le (A : Matrix m n 𝕜) (k : ℕ) :
   · refine ⟨⊥, by rw [finrank_bot]; omega, fun x hx => ?_⟩
     rw [(Submodule.mem_bot 𝕜).mp hx, Matrix.mulVec_zero, WithLp.toLp_zero, norm_zero]
     exact mul_nonneg (singularValues_nonneg A k) (norm_nonneg _)
+
+/-- **Courant–Fischer for singular values, existence of the leading subspace.** For `k` below the
+number of columns there is a subspace of dimension `k + 1` on which
+`singularValues A k * ‖x‖ ≤ ‖A x‖` (the span of the first `k + 1` right singular vectors). This
+is the existence half of the variational lower bound `NLAlib.le_singularValues_of_forall_mem`.
+[HornJohnson2013, Theorem 7.3.8]. -/
+theorem exists_submodule_singularValues_mul_norm_le (A : Matrix m n 𝕜) {k : ℕ}
+    (hk : k < Fintype.card n) :
+    ∃ S : Submodule 𝕜 (n → 𝕜), Module.finrank 𝕜 S = k + 1 ∧
+      ∀ x ∈ S, singularValues A k * ‖WithLp.toLp 2 x‖ ≤ ‖WithLp.toLp 2 (A *ᵥ x)‖ := by
+  obtain ⟨S, hS, h⟩ :=
+    (Matrix.isHermitian_conjTranspose_mul_self A).exists_submodule_eigenvalue_mul_le hk
+  refine ⟨S, hS, fun x hx => ?_⟩
+  have h2 := h x hx
+  rw [← sq_singularValues, re_quadForm_conjTranspose_mul_self, ← mul_pow] at h2
+  exact (pow_le_pow_iff_left₀ (mul_nonneg (singularValues_nonneg A k) (norm_nonneg _))
+    (norm_nonneg _) two_ne_zero).mp h2
 
 /-! ### The smallest singular value -/
 

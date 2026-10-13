@@ -293,6 +293,11 @@
   "new": "NLAlib.IsSVD.conjTranspose_mul_self_eq",
   "stage": "M3"
  },
+ "NLAlib.IsSVD.det_gram_mul_submatrix_eq_prod_sq_singularValues": {
+  "new": "NLAlib.det_conjTranspose_mul_self_eq_prod_sq_singularValues",
+  "note": "Gram determinant as the product of squared singular values",
+  "stage": "M3a"
+ },
  "NLAlib.IsSVD.eq": {
   "new": "NLAlib.IsSVD.eq",
   "stage": "M3"
@@ -365,8 +370,25 @@
   "new": "NLAlib.Majorized",
   "stage": "M3a"
  },
+ "NLAlib.Majorized.exists_perm_sum_mul_le": {
+  "new": "NLAlib.Majorized.exists_perm_sum_mul_le",
+  "stage": "M3a"
+ },
+ "NLAlib.Majorized.mem_convexHull_permutations": {
+  "new": "NLAlib.majorized_iff_mem_convexHull_permutations",
+  "stage": "M3a"
+ },
  "NLAlib.Majorized.refl": {
   "new": "NLAlib.Majorized.refl",
+  "stage": "M3a"
+ },
+ "NLAlib.Majorized.sum_convex_le": {
+  "new": "NLAlib.Majorized.sum_convex_le",
+  "stage": "M3a"
+ },
+ "NLAlib.Majorized.sum_sortedVector_mul_le": {
+  "new": null,
+  "note": "sorting-based, not reproduced",
   "stage": "M3a"
  },
  "NLAlib.Majorized.sum_sub_sumLargest_le_sum": {
@@ -382,12 +404,85 @@
   "note": "replaced by Mathlib Finset.powersetCard and Set.powersetCard",
   "stage": "M1"
  },
+ "NLAlib.SymmetricGauge": {
+  "new": "NLAlib.SymmetricGauge",
+  "note": "on ℕ →₀ ℝ, extending Seminorm; one gauge for every shape",
+  "stage": "M3b"
+ },
+ "NLAlib.SymmetricGauge.convex_sublevel": {
+  "new": "NLAlib.SymmetricGauge.convexOn",
+  "stage": "M3b"
+ },
+ "NLAlib.SymmetricGauge.eq_zero_of_map_eq_zero": {
+  "new": "NLAlib.SymmetricGauge.eq_zero_iff",
+  "stage": "M3b"
+ },
+ "NLAlib.SymmetricGauge.mk": {
+  "new": "NLAlib.SymmetricGauge",
+  "stage": "M3b"
+ },
+ "NLAlib.SymmetricGauge.permutation_invariant": {
+  "new": "NLAlib.SymmetricGauge.map_equivMapDomain",
+  "stage": "M3b"
+ },
+ "NLAlib.SymmetricGauge.seminorm": {
+  "new": "NLAlib.SymmetricGauge",
+  "note": "extends Seminorm: Φ.toSeminorm",
+  "stage": "M3b"
+ },
+ "NLAlib.SymmetricGauge.sign_invariant": {
+  "new": "NLAlib.SymmetricGauge.eq_of_abs_eq",
+  "stage": "M3b"
+ },
+ "NLAlib.SymmetricGauge.value": {
+  "new": null,
+  "note": "replaced by the FunLike coercion",
+  "stage": "M3b"
+ },
+ "NLAlib.SymmetricGauge.value_abs": {
+  "new": "NLAlib.SymmetricGauge.map_abs",
+  "stage": "M3b"
+ },
+ "NLAlib.SymmetricGauge.value_le_of_majorized": {
+  "new": "NLAlib.SymmetricGauge.le_of_forall_sum_le",
+  "stage": "M3b"
+ },
+ "NLAlib.SymmetricGauge.value_le_of_nonneg_of_le": {
+  "new": "NLAlib.SymmetricGauge.le_of_abs_le",
+  "stage": "M3b"
+ },
+ "NLAlib.SymmetricGauge.value_le_of_weaklyMajorized": {
+  "new": "NLAlib.SymmetricGauge.le_of_forall_sum_le",
+  "stage": "M3b"
+ },
  "NLAlib.WeaklyMajorized": {
   "new": "NLAlib.WeaklyMajorized",
   "stage": "M3a"
  },
+ "NLAlib.WeaklyMajorized.exists_le_majorized": {
+  "new": "NLAlib.WeaklyMajorized.exists_le_majorized",
+  "stage": "M3a"
+ },
+ "NLAlib.WeaklyMajorized.exists_perm_sum_mul_le": {
+  "new": "NLAlib.WeaklyMajorized.exists_perm_sum_mul_le",
+  "note": "made public at the stage follow-up",
+  "stage": "M3a"
+ },
  "NLAlib.WeaklyMajorized.refl": {
   "new": "NLAlib.WeaklyMajorized.refl",
+  "stage": "M3a"
+ },
+ "NLAlib.WeaklyMajorized.sum_max_sub_le": {
+  "new": "NLAlib.weaklyMajorized_iff_forall_sum_max_sub_le",
+  "stage": "M3a"
+ },
+ "NLAlib.WeaklyMajorized.sum_monotone_convex_le": {
+  "new": "NLAlib.WeaklyMajorized.sum_monotone_convex_le",
+  "stage": "M3a"
+ },
+ "NLAlib.WeaklyMajorized.sum_sortedVector_mul_le": {
+  "new": null,
+  "note": "sorting-based, not reproduced",
   "stage": "M3a"
  },
  "NLAlib.WeaklyMajorized.trans": {
@@ -420,6 +515,14 @@
   "new": "NLAlib.abs_frobInner_le",
   "stage": "M2"
  },
+ "NLAlib.abs_frobInner_le_nuclearNorm_mul_specNorm": {
+  "new": "NLAlib.abs_frobInner_le_nuclearNorm_mul_specNorm",
+  "stage": "M3b"
+ },
+ "NLAlib.abs_frobInner_le_sum_singularValues_mul": {
+  "new": "NLAlib.abs_frobInner_le_sum_singularValues_mul",
+  "stage": "M3a"
+ },
  "NLAlib.abs_re_star_dotProduct_mulVec_le_specNorm": {
   "new": "NLAlib.abs_re_quadForm_le",
   "stage": "M2"
@@ -443,6 +546,11 @@
  "NLAlib.abs_specNorm_sub_specNorm_le_frobNorm": {
   "new": "NLAlib.abs_specNorm_sub_specNorm_le_frobNorm",
   "stage": "M2"
+ },
+ "NLAlib.apply_eq_sum_mul_single": {
+  "new": null,
+  "note": "Mathlib: LinearMap.pi_apply_eq_sum_univ",
+  "stage": "M3a"
  },
  "NLAlib.apply_eq_zero_of_posSemidef_of_apply_self_eq_zero": {
   "new": "Matrix.PosSemidef.col_eq_zero_of_apply_self_eq_zero",
@@ -483,6 +591,11 @@
   "new": "NLAlib.HasOrthonormalCols.card_le",
   "note": "applied in both directions",
   "stage": "M3"
+ },
+ "NLAlib.card_filter_fin_lt": {
+  "new": null,
+  "note": "Mathlib: Fin.card_filter_val_lt",
+  "stage": "M3a"
  },
  "NLAlib.card_largestCoordinates": {
   "new": null,
@@ -557,6 +670,11 @@
  "NLAlib.compression_sortedEigenframe_eq_diagonal": {
   "new": "Matrix.IsHermitian.exists_eq_mul_diagonal_mul_conjTranspose",
   "stage": "M3"
+ },
+ "NLAlib.compression_submatrix_cols_eq_diagonal": {
+  "new": null,
+  "note": "Fin transport, not needed",
+  "stage": "M3a"
  },
  "NLAlib.compression_topEigenframe_eq_diagonal": {
   "new": null,
@@ -668,6 +786,16 @@
   "new": "Matrix.det_conjTranspose_mul_self_eq_sum_powersetCard",
   "stage": "M1"
  },
+ "NLAlib.det_gram_mul_eq_zero_of_det_gram_eq_zero": {
+  "new": null,
+  "note": "case absorbed by the thin SVD factorisation in Horn's inequality",
+  "stage": "M3a"
+ },
+ "NLAlib.det_gram_mul_le_det_gram_mul_prod_sq_singularValues": {
+  "new": null,
+  "note": "private helper of Horn's inequality",
+  "stage": "M3a"
+ },
  "NLAlib.det_inverse_bottomRight_eq_topLeft_div_det": {
   "new": "Matrix.det_inv_toBlocks₂₂",
   "stage": "M1"
@@ -718,6 +846,11 @@
   "note": "Mathlib: Matrix.IsHermitian.coe_re_apply_self",
   "stage": "M1"
  },
+ "NLAlib.diagonalSequence": {
+  "new": null,
+  "note": "helper of the real von Neumann proof; the new proof uses Ky Fan's principle on leading columns",
+  "stage": "M3a"
+ },
  "NLAlib.dilation": {
   "new": "NLAlib.dilation",
   "note": "over 𝕜; the prototype was over any type with zero and star",
@@ -760,6 +893,30 @@
   "new": null,
   "note": "pinv A * A is rangeProjector Aᴴ; Pythagoras lemmas in Basic/Projector",
   "stage": "M4"
+ },
+ "NLAlib.eigenvaluePrefix": {
+  "new": null,
+  "note": "eigenvalue partial sums are unnamed: ∑ i ∈ Finset.range k, eigenvalue A i",
+  "stage": "M3a"
+ },
+ "NLAlib.eigenvaluePrefix_add_le": {
+  "new": "NLAlib.sum_range_eigenvalue_add_le",
+  "stage": "M3a"
+ },
+ "NLAlib.eigenvaluePrefix_eq_sum_castLE": {
+  "new": null,
+  "note": "eigenvalue partial sums are unnamed",
+  "stage": "M3a"
+ },
+ "NLAlib.eigenvaluePrefix_of_card_le": {
+  "new": null,
+  "note": "eigenvalue partial sums are unnamed",
+  "stage": "M3a"
+ },
+ "NLAlib.eigenvaluePrefix_zero": {
+  "new": null,
+  "note": "eigenvalue partial sums are unnamed",
+  "stage": "M3a"
  },
  "NLAlib.eigenvalue_low_rank_interlacing": {
   "new": null,
@@ -834,6 +991,10 @@
   "new": "NLAlib.eigenvalue_neg",
   "stage": "M3"
  },
+ "NLAlib.eigenvalues₀_nonneg_of_posSemidef": {
+  "new": "Matrix.PosSemidef.eigenvalue_nonneg",
+  "stage": "M3a"
+ },
  "NLAlib.eigenvalues₀_rank_one_add_interlacing": {
   "new": "NLAlib.eigenvalue_add_vecMulVec_star_le",
   "note": "with eigenvalue_le_eigenvalue_add_vecMulVec_star; the conjunction is split",
@@ -871,6 +1032,11 @@
   "new": null,
   "note": "the spectrum of the dilation is eigenvalue_dilation; the explicit diagonalisation is not reproduced",
   "stage": "M3"
+ },
+ "NLAlib.exists_eigenvalue_lists_perm_sum_sq_le_frobSq_of_normal": {
+  "new": null,
+  "note": "deferred: Hoffman–Wielandt for normal matrices, with normal matrices",
+  "stage": "M10"
  },
  "NLAlib.exists_eq_eigenvalues_diagonal": {
   "new": "NLAlib.exists_equiv_eq_eigenvalue_of_eq_mul_diagonal_mul_conjTranspose",
@@ -914,9 +1080,26 @@
   "new": "NLAlib.isLeast_specNorm_not_isUnit_add",
   "stage": "M4"
  },
+ "NLAlib.exists_nuclearNorm_le_one_frobInner_eq_specNorm": {
+  "new": "NLAlib.isGreatest_frobInner_specNorm",
+  "stage": "M3b"
+ },
  "NLAlib.exists_orthogonal_transpose_mul_mul_eq_diagonal_singularValues": {
   "new": "NLAlib.exists_isSVD",
   "stage": "M3"
+ },
+ "NLAlib.exists_perm_sum_le_doublyStochastic_cost": {
+  "new": "NLAlib.exists_perm_sum_le_sum_mul_of_mem_doublyStochastic",
+  "stage": "M3a"
+ },
+ "NLAlib.exists_perm_sum_sq_le_frobSq_of_unitary_diagonalizations": {
+  "new": null,
+  "note": "deferred: Hoffman–Wielandt for normal matrices, with normal matrices",
+  "stage": "M10"
+ },
+ "NLAlib.exists_specNorm_le_one_frobInner_eq_nuclearNorm": {
+  "new": "NLAlib.exists_specNorm_le_one_frobInner_eq_nuclearNorm",
+  "stage": "M3b"
  },
  "NLAlib.exists_submodule_mulVec_dotProduct_le_sq_singularValues_mul": {
   "new": "NLAlib.exists_submodule_norm_mulVec_le",
@@ -927,9 +1110,27 @@
   "note": "added at the M3a wrap-up",
   "stage": "M3"
  },
+ "NLAlib.exists_sumLargest_eq_card_mul_add_sum_max_sub": {
+  "new": null,
+  "note": "private helper of the hinge characterisation",
+  "stage": "M3a"
+ },
  "NLAlib.exists_svd_right_blocks": {
   "new": "NLAlib.exists_isSVD_fromCols",
   "stage": "M3"
+ },
+ "NLAlib.exists_trace_compression_eq_bottom_eigenvalues": {
+  "new": "Matrix.IsHermitian.exists_re_trace_conjTranspose_mul_mul_eq_sum_eigenvalue",
+  "note": "attainment for the top sum; the bottom sum is the same statement for the negated matrix",
+  "stage": "M3a"
+ },
+ "NLAlib.exists_trace_compression_eq_eigenvaluePrefix": {
+  "new": "Matrix.IsHermitian.exists_re_trace_conjTranspose_mul_mul_eq_sum_eigenvalue",
+  "stage": "M3a"
+ },
+ "NLAlib.exists_trace_twoSided_compression_eq_kyFanNorm": {
+  "new": "NLAlib.exists_trace_conjTranspose_mul_mul_eq_kyFanNorm",
+  "stage": "M3a"
  },
  "NLAlib.exists_unit_abs_quadForm_eq_specNorm": {
   "new": "Matrix.IsHermitian.exists_norm_eq_one_and_abs_re_quadForm_eq_specNorm",
@@ -1024,6 +1225,18 @@
   "new": "NLAlib.frobInner_le",
   "stage": "M2"
  },
+ "NLAlib.frobInner_le_kyFanNorm_of_rank_le_of_specNorm_le_one": {
+  "new": "NLAlib.frobInner_le_kyFanNorm_of_rank_le_of_specNorm_le_one",
+  "stage": "M3a"
+ },
+ "NLAlib.frobInner_le_sqrt_mul_frobNorm_mul_specNorm_of_rank_le": {
+  "new": "NLAlib.frobInner_le_sqrt_mul_frobNorm_mul_specNorm_of_rank_le",
+  "stage": "M3a"
+ },
+ "NLAlib.frobInner_le_sum_singularValues_mul": {
+  "new": "NLAlib.norm_trace_conjTranspose_mul_le_sum_singularValues_mul",
+  "stage": "M3a"
+ },
  "NLAlib.frobInner_mul_left_of_orthonormal": {
   "new": "NLAlib.HasOrthonormalCols.frobInner_mul_left",
   "stage": "M2"
@@ -1103,9 +1316,17 @@
   "new": "NLAlib.frobNorm_eq_zero_iff",
   "stage": "M2"
  },
+ "NLAlib.frobNorm_le_nuclearNorm": {
+  "new": "NLAlib.frobNorm_le_nuclearNorm",
+  "stage": "M3b"
+ },
  "NLAlib.frobNorm_le_sqrt_rank_mul_specNorm": {
   "new": "NLAlib.frobNorm_le_sqrt_rank_mul_specNorm",
   "stage": "M3"
+ },
+ "NLAlib.frobNorm_le_trace_of_posSemidef": {
+  "new": "Matrix.PosSemidef.frobNorm_le_re_trace",
+  "stage": "M3a"
  },
  "NLAlib.frobNorm_mul_le": {
   "new": "NLAlib.frobNorm_mul_le",
@@ -1393,6 +1614,10 @@
   "note": "no chosen eigenframes",
   "stage": "M3"
  },
+ "NLAlib.hasOrthonormalCols_eigenvectorUnitary": {
+  "new": "Matrix.IsHermitian.hasOrthonormalCols_eigenvectorUnitary",
+  "stage": "M3a"
+ },
  "NLAlib.hasOrthonormalCols_iff_conjTranspose_mul_self": {
   "new": "NLAlib.hasOrthonormalCols_iff",
   "stage": "M1"
@@ -1447,6 +1672,10 @@
   "new": null,
   "note": "private detail of the variational proofs",
   "stage": "M3"
+ },
+ "NLAlib.isGreatest_nuclearNorm_frobInner": {
+  "new": "NLAlib.isGreatest_frobInner_nuclearNorm",
+  "stage": "M3b"
  },
  "NLAlib.isGreatest_sumLargest": {
   "new": "NLAlib.exists_card_eq_and_sum_eq_sumLargest",
@@ -1538,6 +1767,68 @@
   "new": "NLAlib.isUnit_conjTranspose_mul_self_iff",
   "stage": "M4"
  },
+ "NLAlib.kyFanNorm": {
+  "new": "NLAlib.kyFanNorm",
+  "note": "arguments in the other order: kyFanNorm k A",
+  "stage": "M3a"
+ },
+ "NLAlib.kyFanNorm_add_le": {
+  "new": "NLAlib.kyFanNorm_add_le",
+  "stage": "M3a"
+ },
+ "NLAlib.kyFanNorm_add_le_fin": {
+  "new": null,
+  "note": "Fin transport, not needed",
+  "stage": "M3a"
+ },
+ "NLAlib.kyFanNorm_eq_min": {
+  "new": "NLAlib.kyFanNorm_of_rank_le",
+  "stage": "M3a"
+ },
+ "NLAlib.kyFanNorm_eq_sum_range": {
+  "new": "NLAlib.kyFanNorm_eq_sum_range",
+  "stage": "M3a"
+ },
+ "NLAlib.kyFanNorm_eq_zero_iff": {
+  "new": "NLAlib.kyFanNorm_eq_zero_iff",
+  "stage": "M3b"
+ },
+ "NLAlib.kyFanNorm_mul_orthogonal": {
+  "new": "NLAlib.HasOrthonormalCols.kyFanNorm_mul_conjTranspose_right",
+  "stage": "M3b"
+ },
+ "NLAlib.kyFanNorm_nonneg": {
+  "new": "NLAlib.kyFanNorm_nonneg",
+  "stage": "M3a"
+ },
+ "NLAlib.kyFanNorm_one_eq_specNorm": {
+  "new": "NLAlib.kyFanNorm_one",
+  "stage": "M3a"
+ },
+ "NLAlib.kyFanNorm_orthogonal_mul": {
+  "new": "NLAlib.HasOrthonormalCols.kyFanNorm_mul_left",
+  "stage": "M3b"
+ },
+ "NLAlib.kyFanNorm_reindex": {
+  "new": "NLAlib.kyFanNorm_submatrix_equiv",
+  "stage": "M3a"
+ },
+ "NLAlib.kyFanNorm_smul": {
+  "new": "NLAlib.kyFanNorm_smul",
+  "stage": "M3b"
+ },
+ "NLAlib.kyFanNorm_transpose": {
+  "new": "NLAlib.kyFanNorm_transpose",
+  "stage": "M3b"
+ },
+ "NLAlib.kyFanNorm_zero": {
+  "new": "NLAlib.kyFanNorm_zero_left",
+  "stage": "M3a"
+ },
+ "NLAlib.kyFanNorm_zero_matrix": {
+  "new": "NLAlib.kyFanNorm_zero",
+  "stage": "M3b"
+ },
  "NLAlib.lambdaMax": {
   "new": null,
   "note": "the largest eigenvalue is eigenvalue A 0; design note Matrix-Spectral §1",
@@ -1584,10 +1875,49 @@
   "new": "NLAlib.majorized_comp_equiv",
   "stage": "M3a"
  },
+ "NLAlib.majorized_diagonal_eigenvalues": {
+  "new": "NLAlib.majorized_re_diag_of_mul_eq_mul_diagonal",
+  "note": "with Matrix.IsHermitian.majorized_re_diag_eigenvalues",
+  "stage": "M3a"
+ },
+ "NLAlib.majorized_eigenvalues₀_add": {
+  "new": "NLAlib.majorized_eigenvalue_add",
+  "stage": "M3a"
+ },
+ "NLAlib.majorized_eigenvalues₀_add_sub": {
+  "new": "NLAlib.majorized_eigenvalue_add_sub",
+  "stage": "M3a"
+ },
+ "NLAlib.majorized_iff_exists_doublyStochastic": {
+  "new": "NLAlib.majorized_iff_exists_doublyStochastic",
+  "stage": "M3a"
+ },
+ "NLAlib.majorized_iff_mem_convexHull_permutations": {
+  "new": "NLAlib.majorized_iff_mem_convexHull_permutations",
+  "stage": "M3a"
+ },
+ "NLAlib.majorized_iff_sum_convex_le": {
+  "new": "NLAlib.majorized_iff_forall_sum_convex_le",
+  "stage": "M3a"
+ },
+ "NLAlib.majorized_mulVec_of_doublyStochastic": {
+  "new": "NLAlib.majorized_mulVec_of_mem_doublyStochastic",
+  "stage": "M3a"
+ },
  "NLAlib.matrixOf_curry_update_eq_add_single": {
   "new": null,
   "note": "Gaussian integration-by-parts helper with no Matrix-layer consumer; moves with its consumer in RandomMatrix",
   "stage": "M1"
+ },
+ "NLAlib.mem_convexHull_permutations_iff_exists_doublyStochastic": {
+  "new": null,
+  "note": "the two characterisations are separate iffs",
+  "stage": "M3a"
+ },
+ "NLAlib.monotone_convexOn_max_sub": {
+  "new": null,
+  "note": "private helper",
+  "stage": "M3a"
  },
  "NLAlib.moorePenroseConditionNumber": {
   "new": "NLAlib.conditionNumber",
@@ -1902,6 +2232,10 @@
   "note": "deferred: perturbation of linear systems and least squares, with the perturbation stage",
   "stage": "M6"
  },
+ "NLAlib.norm_sq_entries_mem_doublyStochastic_of_hasOrthonormalCols": {
+  "new": "NLAlib.HasOrthonormalCols.norm_sq_mem_doublyStochastic",
+  "stage": "M3a"
+ },
  "NLAlib.norm_sub_div_le_conditionNumber_mul": {
   "new": null,
   "note": "deferred: perturbation of linear systems and least squares, with the perturbation stage",
@@ -1928,6 +2262,62 @@
  "NLAlib.norm_toLp_sq_eq_re_star_dotProduct": {
   "new": "EuclideanSpace.norm_toLp_sq_eq_re_star_dotProduct",
   "stage": "M1"
+ },
+ "NLAlib.nuclearNorm": {
+  "new": "NLAlib.nuclearNorm",
+  "stage": "M3b"
+ },
+ "NLAlib.nuclearNorm_add_le": {
+  "new": "NLAlib.nuclearNorm_add_le",
+  "stage": "M3b"
+ },
+ "NLAlib.nuclearNorm_eq_sum_abs_eigenvalues₀": {
+  "new": "Matrix.IsHermitian.nuclearNorm_eq_sum_abs_eigenvalue",
+  "stage": "M3b"
+ },
+ "NLAlib.nuclearNorm_eq_sum_rank_singularValues": {
+  "new": "NLAlib.nuclearNorm_eq_sum_range",
+  "stage": "M3b"
+ },
+ "NLAlib.nuclearNorm_eq_trace_of_posSemidef": {
+  "new": "Matrix.PosSemidef.nuclearNorm_eq_re_trace",
+  "stage": "M3b"
+ },
+ "NLAlib.nuclearNorm_eq_zero_iff": {
+  "new": "NLAlib.nuclearNorm_eq_zero_iff",
+  "stage": "M3b"
+ },
+ "NLAlib.nuclearNorm_le_rank_mul_specNorm": {
+  "new": "NLAlib.nuclearNorm_le_rank_mul_specNorm",
+  "stage": "M3b"
+ },
+ "NLAlib.nuclearNorm_le_sqrt_rank_mul_frobNorm": {
+  "new": "NLAlib.nuclearNorm_le_sqrt_rank_mul_frobNorm",
+  "stage": "M3b"
+ },
+ "NLAlib.nuclearNorm_mul_orthogonal": {
+  "new": "NLAlib.HasOrthonormalCols.nuclearNorm_mul_conjTranspose_right",
+  "stage": "M3b"
+ },
+ "NLAlib.nuclearNorm_nonneg": {
+  "new": "NLAlib.nuclearNorm_nonneg",
+  "stage": "M3b"
+ },
+ "NLAlib.nuclearNorm_orthogonal_mul": {
+  "new": "NLAlib.HasOrthonormalCols.nuclearNorm_mul_left",
+  "stage": "M3b"
+ },
+ "NLAlib.nuclearNorm_reindex": {
+  "new": "NLAlib.nuclearNorm_submatrix_equiv",
+  "stage": "M3b"
+ },
+ "NLAlib.nuclearNorm_smul": {
+  "new": "NLAlib.nuclearNorm_smul",
+  "stage": "M3b"
+ },
+ "NLAlib.nuclearNorm_transpose": {
+  "new": "NLAlib.nuclearNorm_transpose",
+  "stage": "M3b"
  },
  "NLAlib.one_le_conditionNumber": {
   "new": "NLAlib.one_le_conditionNumber",
@@ -2076,6 +2466,11 @@
  "NLAlib.quadForm_add": {
   "new": "NLAlib.quadForm_add_right",
   "stage": "M1"
+ },
+ "NLAlib.quadForm_bounds_of_sandwich": {
+  "new": null,
+  "note": "deferred: Wielandt's inequality, with Kantorovich",
+  "stage": "M7"
  },
  "NLAlib.quadForm_conjTranspose_mul_mul": {
   "new": "NLAlib.quadForm_conjTranspose_mul_mul",
@@ -2236,6 +2631,11 @@
   "note": "deferred: powers of the Gram matrix applied to A, with subspace iteration",
   "stage": "M8"
  },
+ "NLAlib.rank_le_of_spectralTraceTail_eq_zero": {
+  "new": null,
+  "note": "deferred: trace-tail bounds for positive semidefinite matrices; the tail is spelled ∑ i ∈ Finset.Ico r (card n), eigenvalue A i",
+  "stage": "M7"
+ },
  "NLAlib.rank_mul_add_rank_mul_le_rank_add_rank_mul_mul": {
   "new": "Matrix.rank_mul_add_rank_mul_le",
   "stage": "M1"
@@ -2262,6 +2662,15 @@
  "NLAlib.rayleighQuotient_def": {
   "new": "NLAlib.rayleighQuotient_def",
   "stage": "M1"
+ },
+ "NLAlib.re_diagonal_eq_norm_sq_eigenvectorUnitary_mulVec": {
+  "new": null,
+  "note": "private helper, for any unitary diagonalisation",
+  "stage": "M3a"
+ },
+ "NLAlib.re_diagonal_mem_Icc_eigenvalues₀": {
+  "new": "Matrix.IsHermitian.re_apply_self_mem_Icc",
+  "stage": "M3a"
  },
  "NLAlib.re_trace_eq_zero_iff_of_posSemidef": {
   "new": "Matrix.PosSemidef.re_trace_eq_zero_iff",
@@ -2672,6 +3081,14 @@
   "new": "Matrix.IsHermitian.specNorm_le_iff_abs_re_quadForm_le",
   "stage": "M2"
  },
+ "NLAlib.specNorm_le_kyFanNorm": {
+  "new": "NLAlib.specNorm_le_kyFanNorm",
+  "stage": "M3b"
+ },
+ "NLAlib.specNorm_le_nuclearNorm": {
+  "new": "NLAlib.specNorm_le_nuclearNorm",
+  "stage": "M3b"
+ },
  "NLAlib.specNorm_le_of_forall_sqrt_le": {
   "new": "NLAlib.specNorm_le_of_forall_norm_eq_one",
   "stage": "M2"
@@ -2823,6 +3240,46 @@
   "new": "NLAlib.specNorm_zero",
   "stage": "M2"
  },
+ "NLAlib.spectralTraceTail": {
+  "new": null,
+  "note": "deferred: trace-tail bounds for positive semidefinite matrices; the tail is spelled ∑ i ∈ Finset.Ico r (card n), eigenvalue A i",
+  "stage": "M7"
+ },
+ "NLAlib.spectralTraceTail_le_trace": {
+  "new": null,
+  "note": "deferred: trace-tail bounds for positive semidefinite matrices; the tail is spelled ∑ i ∈ Finset.Ico r (card n), eigenvalue A i",
+  "stage": "M7"
+ },
+ "NLAlib.spectralTraceTail_nonneg": {
+  "new": null,
+  "note": "deferred: trace-tail bounds for positive semidefinite matrices; the tail is spelled ∑ i ∈ Finset.Ico r (card n), eigenvalue A i",
+  "stage": "M7"
+ },
+ "NLAlib.sq_bilinear_le_sq_ratio_mul_quadForm_of_sandwich": {
+  "new": null,
+  "note": "deferred: Wielandt's inequality, with Kantorovich",
+  "stage": "M7"
+ },
+ "NLAlib.sq_entries_mem_doublyStochastic": {
+  "new": null,
+  "note": "real twin of HasOrthonormalCols.norm_sq_mem_doublyStochastic",
+  "stage": "M3a"
+ },
+ "NLAlib.sq_max_re_trace_sub_spectralTraceTail_le_of_eigenvalues₀_le": {
+  "new": null,
+  "note": "deferred: trace-tail bounds for positive semidefinite matrices; the tail is spelled ∑ i ∈ Finset.Ico r (card n), eigenvalue A i",
+  "stage": "M7"
+ },
+ "NLAlib.sq_max_sum_sub_tail_le_card_mul_sum_sq": {
+  "new": null,
+  "note": "deferred: trace-tail bounds for positive semidefinite matrices; the tail is spelled ∑ i ∈ Finset.Ico r (card n), eigenvalue A i",
+  "stage": "M7"
+ },
+ "NLAlib.sq_max_trace_sub_spectralTraceTail_le_mul_trace_sq": {
+  "new": null,
+  "note": "deferred: trace-tail bounds for positive semidefinite matrices; the tail is spelled ∑ i ∈ Finset.Ico r (card n), eigenvalue A i",
+  "stage": "M7"
+ },
  "NLAlib.sq_rational_rotation_coefficients": {
   "new": "NLAlib.sq_div_add_sq_div_one_add_sq",
   "stage": "M1"
@@ -2897,8 +3354,39 @@
   "new": "NLAlib.sumLargest_of_card_le",
   "stage": "M3a"
  },
+ "NLAlib.sumLargest_le_card_mul_add_sum_max_sub": {
+  "new": null,
+  "note": "private helper of the hinge characterisation",
+  "stage": "M3a"
+ },
  "NLAlib.sumLargest_zero": {
   "new": "NLAlib.sumLargest_zero",
+  "stage": "M3a"
+ },
+ "NLAlib.sum_abs_eigenvalues₀_add_sub_le_nuclearNorm": {
+  "new": "NLAlib.sum_abs_eigenvalue_sub_le_nuclearNorm_sub",
+  "stage": "M3b"
+ },
+ "NLAlib.sum_abs_singularValues_add_sub_le_sum_prefix": {
+  "new": "NLAlib.sum_abs_singularValues_add_sub_le_kyFanNorm",
+  "stage": "M3a"
+ },
+ "NLAlib.sum_abs_singularValues_add_sub_le_sum_range": {
+  "new": "NLAlib.sum_abs_singularValues_add_sub_le_kyFanNorm",
+  "stage": "M3a"
+ },
+ "NLAlib.sum_bottom_eigenvalues_le_trace_compression": {
+  "new": "Matrix.IsHermitian.sum_Ico_eigenvalue_le_re_trace_conjTranspose_mul_mul",
+  "stage": "M3a"
+ },
+ "NLAlib.sum_convex_diagonal_le_trace_cfc": {
+  "new": "Matrix.IsHermitian.sum_convex_re_diag_le",
+  "note": "eigenvalue-sum form, no cfc",
+  "stage": "M3a"
+ },
+ "NLAlib.sum_convex_mulVec_le_of_doublyStochastic": {
+  "new": "NLAlib.Majorized.sum_convex_le",
+  "note": "with majorized_mulVec_of_mem_doublyStochastic",
   "stage": "M3a"
  },
  "NLAlib.sum_diag_sq_le_frobNorm_sq": {
@@ -2911,6 +3399,14 @@
   "note": "real-only twin of the previous",
   "stage": "M2"
  },
+ "NLAlib.sum_eigenvalues_eq_sum_sorted": {
+  "new": "Matrix.IsHermitian.exists_equiv_eigenvalue_eq",
+  "stage": "M3a"
+ },
+ "NLAlib.sum_eigenvalues₀_add_le_sum_add_eigenvaluePrefix": {
+  "new": "NLAlib.sum_eigenvalue_add_sub_le_sum_range",
+  "stage": "M3a"
+ },
  "NLAlib.sum_fin_ite_ge_eq_sum_suffix": {
   "new": null,
   "note": "Fin index bookkeeping; sums are over Finset.Ico now",
@@ -2919,6 +3415,11 @@
  "NLAlib.sum_fin_ite_lt_eq_sum_castLE": {
   "new": null,
   "note": "Fin index bookkeeping, not needed",
+  "stage": "M3a"
+ },
+ "NLAlib.sum_fin_ite_lt_eq_sum_range": {
+  "new": null,
+  "note": "Fin index bookkeeping",
   "stage": "M3a"
  },
  "NLAlib.sum_largestCoordinates": {
@@ -2930,10 +3431,39 @@
   "new": "NLAlib.sum_le_sumLargest",
   "stage": "M3a"
  },
+ "NLAlib.sum_mul_le_of_nonneg_of_prefix_le": {
+  "new": null,
+  "note": "Abel summation helper, private",
+  "stage": "M3a"
+ },
+ "NLAlib.sum_mul_le_of_prefix_le_of_sum_eq": {
+  "new": null,
+  "note": "Abel summation helper, private",
+  "stage": "M3a"
+ },
+ "NLAlib.sum_mul_le_sumLargest": {
+  "new": "NLAlib.sum_mul_le_sumLargest",
+  "stage": "M3a"
+ },
  "NLAlib.sum_mul_le_sum_ite_lt_of_antitone": {
   "new": null,
   "note": "weighted-sum argument not needed",
   "stage": "M3"
+ },
+ "NLAlib.sum_mul_le_sum_ite_lt_of_antitone_of_sum_eq": {
+  "new": null,
+  "note": "sorting-based, not reproduced",
+  "stage": "M3a"
+ },
+ "NLAlib.sum_mul_le_sum_sortedVector_mul": {
+  "new": null,
+  "note": "sorting-based, not reproduced",
+  "stage": "M3a"
+ },
+ "NLAlib.sum_mul_mulVec_le_of_doublyStochastic": {
+  "new": null,
+  "note": "not needed",
+  "stage": "M3a"
  },
  "NLAlib.sum_norm_diag_sq_le_frobSq": {
   "new": "NLAlib.norm_apply_le_frobNorm",
@@ -2953,14 +3483,42 @@
   "new": "NLAlib.norm_toLp_mulVec_le",
   "stage": "M2"
  },
+ "NLAlib.sum_range_diagonalSequence_le": {
+  "new": "NLAlib.norm_trace_conjTranspose_mul_mul_le_kyFanNorm",
+  "stage": "M3a"
+ },
  "NLAlib.sum_range_le_of_hasSum_posSemidef": {
   "new": null,
   "note": "Mathlib sum_le_hasSum through the scoped instance Matrix.instOrderClosedTopology",
   "stage": "M1"
  },
+ "NLAlib.sum_range_mul_le_of_partial_le": {
+  "new": "Finset.sum_range_mul_le_sum_range_mul_of_antitoneOn_of_nonneg",
+  "stage": "M3a"
+ },
+ "NLAlib.sum_range_rpow_le_of_nonneg_of_prod_le": {
+  "new": "NLAlib.sum_range_rpow_le_of_forall_prod_range_le",
+  "stage": "M3a"
+ },
+ "NLAlib.sum_range_rpow_le_of_pos_of_prod_le": {
+  "new": "NLAlib.sum_range_rpow_le_of_forall_prod_range_le",
+  "stage": "M3a"
+ },
+ "NLAlib.sum_range_singularValues_mul_rpow_le": {
+  "new": "NLAlib.sum_range_singularValues_mul_rpow_le",
+  "stage": "M3a"
+ },
  "NLAlib.sum_sortedVector": {
   "new": null,
   "note": "no sorting",
+  "stage": "M3a"
+ },
+ "NLAlib.sum_sq_eigenvalues₀_add_sub_le_frobSq": {
+  "new": "NLAlib.sum_sq_eigenvalue_sub_le_frobNorm_sub_sq",
+  "stage": "M3a"
+ },
+ "NLAlib.sum_sq_eigenvalues₀_sub_le_frobSq_sub": {
+  "new": "NLAlib.sum_sq_eigenvalue_sub_le_frobNorm_sub_sq",
   "stage": "M3a"
  },
  "NLAlib.sum_sq_mulVec_le_frobSq": {
@@ -2974,6 +3532,11 @@
  },
  "NLAlib.sum_sq_singularValues_add_sub_le_frobSq": {
   "new": "NLAlib.sum_sq_singularValues_sub_le_frobNorm_sub_sq",
+  "stage": "M3a"
+ },
+ "NLAlib.sum_sub_sumLargest_le_sum_mul": {
+  "new": null,
+  "note": "lower counterpart of sum_mul_le_sumLargest, not needed",
   "stage": "M3a"
  },
  "NLAlib.toCoordinateSubmodule": {
@@ -3020,6 +3583,10 @@
   "note": "no chosen eigenframes",
   "stage": "M3"
  },
+ "NLAlib.trace_compression_le_eigenvaluePrefix": {
+  "new": "Matrix.IsHermitian.re_trace_conjTranspose_mul_mul_le_sum_eigenvalue",
+  "stage": "M3a"
+ },
  "NLAlib.trace_conjStarAlgAut": {
   "new": null,
   "note": "deferred: traces of powers and functions of a Hermitian matrix, with matrix functions",
@@ -3030,10 +3597,19 @@
   "note": "Hermitian suffices",
   "stage": "M1"
  },
+ "NLAlib.trace_eq_sum_eigenvalues₀": {
+  "new": "Matrix.IsHermitian.trace_eq_sum_range_eigenvalue",
+  "stage": "M3a"
+ },
  "NLAlib.trace_mul_diagonal_pow_mul_mul_diagonal_pow": {
   "new": null,
   "note": "deferred: traces of powers and functions of a Hermitian matrix, with matrix functions",
   "stage": "M10"
+ },
+ "NLAlib.trace_mul_eq_sum_eigenvalues_mul_quadForm": {
+  "new": null,
+  "note": "private step of the Hermitian trace inequality",
+  "stage": "M3a"
  },
  "NLAlib.trace_mul_eq_sum_mul_star": {
   "new": null,
@@ -3048,6 +3624,10 @@
  "NLAlib.trace_mul_eq_zero_iff_of_posSemidef": {
   "new": "Matrix.PosSemidef.trace_mul_eq_zero_iff",
   "stage": "M1"
+ },
+ "NLAlib.trace_mul_le_sum_eigenvalues₀_mul": {
+  "new": "Matrix.IsHermitian.re_trace_mul_le_sum_eigenvalue_mul",
+  "stage": "M3a"
  },
  "NLAlib.trace_mul_le_trace_mul_of_posSemidef": {
   "new": "Matrix.PosSemidef.trace_mul_le_trace_mul",
@@ -3066,6 +3646,15 @@
   "new": null,
   "note": "deferred: traces of powers and functions of a Hermitian matrix, with matrix functions",
   "stage": "M10"
+ },
+ "NLAlib.trace_twoSided_compression_le_kyFanNorm": {
+  "new": "NLAlib.norm_trace_conjTranspose_mul_mul_le_kyFanNorm",
+  "stage": "M3a"
+ },
+ "NLAlib.trace_twoSided_compression_le_kyFanNorm_fin": {
+  "new": null,
+  "note": "Fin transport, not needed",
+  "stage": "M3a"
  },
  "NLAlib.transpose_mulVec_eq_zero_iff_forall_dotProduct_mulVec_eq_zero": {
   "new": null,
@@ -3098,8 +3687,42 @@
   "new": "NLAlib.truncatedSVD",
   "stage": "M3"
  },
+ "NLAlib.twoSided_compression_trace_reindex": {
+  "new": null,
+  "note": "Fin transport, not needed",
+  "stage": "M3a"
+ },
+ "NLAlib.weaklyMajorized_abs_singularValues_add_sub": {
+  "new": "NLAlib.weaklyMajorized_abs_singularValues_add_sub",
+  "stage": "M3a"
+ },
+ "NLAlib.weaklyMajorized_abs_singularValues_add_sub_padded": {
+  "new": "NLAlib.weaklyMajorized_abs_singularValues_add_sub",
+  "stage": "M3a"
+ },
  "NLAlib.weaklyMajorized_iff_sum_le": {
   "new": "NLAlib.weaklyMajorized_iff_forall_sum_le",
+  "stage": "M3a"
+ },
+ "NLAlib.weaklyMajorized_iff_sum_max_sub_le": {
+  "new": "NLAlib.weaklyMajorized_iff_forall_sum_max_sub_le",
+  "stage": "M3a"
+ },
+ "NLAlib.weaklyMajorized_iff_sum_monotone_convex_le": {
+  "new": "NLAlib.weaklyMajorized_iff_forall_sum_monotone_convex_le",
+  "note": "added at the stage follow-up",
+  "stage": "M3a"
+ },
+ "NLAlib.weaklyMajorized_mulVec_of_doublyStochastic": {
+  "new": "NLAlib.majorized_mulVec_of_mem_doublyStochastic",
+  "stage": "M3a"
+ },
+ "NLAlib.weaklyMajorized_of_sum_max_sub_le": {
+  "new": "NLAlib.weaklyMajorized_iff_forall_sum_max_sub_le",
+  "stage": "M3a"
+ },
+ "NLAlib.weaklyMajorized_singularValues_add": {
+  "new": "NLAlib.kyFanNorm_add_le",
   "stage": "M3a"
  }
 }

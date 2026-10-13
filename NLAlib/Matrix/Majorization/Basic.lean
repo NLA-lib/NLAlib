@@ -42,8 +42,8 @@ in that partial-sum form; the predicates are for unsorted vectors and for the ge
   attains the maximum.
 * `NLAlib.sumLargest_fin_eq_sum_range`: partial sums of a non-increasing sequence.
 * `NLAlib.weaklyMajorized_iff_forall_sum_le`: weak majorization tested on arbitrary index sets.
-* `NLAlib.Majorized.trans`, `NLAlib.Majorized.comp_equiv_left`: order properties and invariance
-  under permutations.
+* `NLAlib.Majorized.trans`, `NLAlib.Majorized.comp_equiv_left`,
+  `NLAlib.WeaklyMajorized.comp_equiv_left`: order properties and invariance under permutations.
 -/
 
 @[expose] public section
@@ -273,6 +273,18 @@ theorem Majorized.comp_equiv_right {x y : ι → ℝ} (h : Majorized x y) (e : �
     Majorized x (y ∘ e) := by
   exact ⟨fun k => (h.weaklyMajorized k).trans (sumLargest_comp_equiv y e k).ge,
     h.sum_eq.trans (Equiv.sum_comp e y).symm⟩
+
+/-- Weak majorization is invariant under permuting the smaller vector. -/
+theorem WeaklyMajorized.comp_equiv_left {x y : ι → ℝ} (h : WeaklyMajorized x y) (e : ι ≃ ι) :
+    WeaklyMajorized (x ∘ e) y := by
+  intro k
+  exact (sumLargest_comp_equiv x e k).le.trans (h k)
+
+/-- Weak majorization is invariant under permuting the larger vector. -/
+theorem WeaklyMajorized.comp_equiv_right {x y : ι → ℝ} (h : WeaklyMajorized x y) (e : ι ≃ ι) :
+    WeaklyMajorized x (y ∘ e) := by
+  intro k
+  exact (h k).trans (sumLargest_comp_equiv y e k).ge
 
 /-- For a majorized pair, every partial sum of `x` is at least the sum of the smallest entries
 of `y` of that count: the lower half of majorization.

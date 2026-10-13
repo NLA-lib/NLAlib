@@ -246,6 +246,8 @@ those layers are designed.
 | generalized Schur complement | `C - Bᴴ * pinv A * B`, no definition | — |
 | majorization | `Majorized x y`, `WeaklyMajorized x y` for `x y : ι → ℝ` on one finite index type, unsorted, through `sumLargest x k`; between sorted spectra, the partial-sum inequalities are stated directly | `majorized_iff_exists_doublyStochastic`; `sumLargest_fin_eq_sum_range` |
 | Ky Fan norm | `kyFanNorm k A`, the sum of the `k` largest singular values; eigenvalue partial sums are written `∑ i ∈ Finset.range k, eigenvalue A i` | `kyFanNorm_eq_sum_range`, `kyFanNorm_one` |
+| nuclear and Schatten norms | `nuclearNorm A`; `schattenNorm q A` with `q : ℝ≥0∞`; `1 ≤ q` and `q ≠ 0` are explicit hypotheses; Hölder exponents through Mathlib's `ENNReal.HolderTriple` and `ENNReal.HolderConjugate` | `schattenNorm_one`, `schattenNorm_two`, `schattenNorm_top` |
+| unitarily invariant norm | `Φ.matrixNorm A` for `Φ : SymmetricGauge` (a norm on `ℕ →₀ ℝ` invariant under permutations and absolute values, extending Mathlib's `Seminorm`), one gauge for every shape; "for every unitarily invariant norm" is `∀ Φ : SymmetricGauge`; `singularValuesFinsupp A` appears only as the argument of a gauge | `lpGauge_matrixNorm`, `kyFanGauge_matrixNorm` |
 | index shift in a statement | an auxiliary `d` with an equation, `hd : card p + d = card n`; never truncated subtraction | — |
 | Loewner order | `A ≤ B` under `open scoped MatrixOrder` | `Matrix.le_iff` |
 | PSD, PD, Hermitian | `A.PosSemidef`, `A.PosDef`, `A.IsHermitian` | Mathlib's |

@@ -162,8 +162,9 @@ Under `NLAlib/Matrix/Majorization/`:
 4. `Schur.lean` (imports 2, 3): orthostochastic matrices, Schur's theorem.
 5. `TraceInequalities.lean` (imports 4): the Hermitian trace inequalities, von Neumann,
    Hoffman–Wielandt, Mirsky.
-6. `Lidskii.lean` (imports 5, M3 `SingularValueInequalities`): Lidskii for eigenvalues and
-   singular values.
+6. `Lidskii.lean` (imports 3, M3 `SingularValueInequalities` and `Dilation`; amended
+   2026-10-14: it does not need the trace inequalities): Lidskii for eigenvalues and singular
+   values.
 7. `Horn.lean` (imports 2, M3 `SingularValueInequalities`): Horn's product inequality, Weyl's
    log-majorization lemma, power sums of the singular values of a product.
 
@@ -218,3 +219,50 @@ on sequences `ℕ → ℝ`) and the stage boundary. Folded in:
 9. `hk` dropped from `sum_range_eigenvalue_add_le`; `sumLargest` defined with `Finset.sup'`
    instead of `sSup`, with `sumLargest_le` added to the API.
 10. Vocabulary rows proposed for CONTRIBUTING §5.3 (added with this note).
+
+## 9. Stage report (2026-10-14)
+
+**Outcome.** Seven files under `Matrix/Majorization/` (1993 lines) and
+`ForMathlib/Algebra/BigOperators/AbelSummation.lean`, all proved; nothing in `NLAlibScaffold`.
+With M1 to M4 and `Norms/SymmetricGauge.lean` the build has no warnings, the axiom audit covers
+1232 declarations with no violation, the environment linters pass on 981 declarations, and
+references check clean. Proofs by Opus agents, four to nine minutes per file; one follow-up pass.
+
+**What changed from the design.** No statement was found false.
+
+- The whole trace-inequality chain is new over `𝕜`: Abel summation against Ky Fan's principles
+  applied to the leading `k` columns of a diagonalising frame. Decision 4 expected the complex von
+  Neumann inequality to be the scaffold candidate; it was proved.
+- Ky Fan's principle for singular values is proved through the Hermitian dilation, not through
+  von Neumann's inequality, so `KyFan.lean` does not depend on the trace inequalities.
+- The converse of Hardy–Littlewood–Pólya is proved by separation (Hahn–Banach against the hull of
+  the permutations) after Abel summation, not by T-transforms.
+- Lidskii's inequality for eigenvalues has a new algebraic proof (positive part of
+  `B - λ_{|J|-1}(B) • 1`, Loewner monotonicity, trace); the prototype's proof by eigenvalue
+  derivatives along a pencil is not reproduced. `Lidskii.lean` imports `KyFan.lean` only.
+- Horn's product inequality goes through Gram determinants with a thin SVD of `B X`; the public
+  identity `det_conjTranspose_mul_self_eq_prod_sq_singularValues` came out of it.
+- `sumLargest` kept its `Finset.sup'` body; the sorted-sequence case rests on the general
+  exchange lemma `sumLargest_eq_sum_of_forall_le`.
+- Added at the follow-up pass: `WeaklyMajorized.comp_equiv_left/right`,
+  `WeaklyMajorized.exists_perm_sum_mul_le`, `weaklyMajorized_iff_forall_sum_monotone_convex_le`,
+  `kyFanNorm_min_card`, `sum_range_min_card_eigenvalue`, the real-part form of the singular value
+  principle, `conjTranspose_submatrix_mul_mul_submatrix` (in `Basic/Selection.lean`),
+  `eigenvalue_dilation_of_add_add_one_eq` (the negative half of the dilation's spectrum),
+  `exists_submodule_singularValues_mul_norm_le` (M3's open item), and the Abel summation
+  inequalities `Finset.sum_range_mul_le_sum_range_mul_of_antitoneOn_of_nonneg` and
+  `…_of_sum_eq`.
+
+**Mathlib overlap.** Mathlib has `doublyStochastic` and Birkhoff's theorem, used directly, and no
+majorization; it has summation by parts as an identity and not the Abel inequality.
+
+**Not ported, by decision.** Sorting equivalences and sorted vectors; `eigenvaluePrefix`;
+`diagonalSequence`; `Fin` transports. Deferred with ledger entries: Schur–Horn and its converse,
+trace-tail bounds, Wielandt's inequality (M7); Hoffman–Wielandt for normal matrices (M10).
+
+**For the next stages.**
+
+- M3b consumes `Majorized.le_of_convexOn_of_comp_perm`, `WeaklyMajorized.exists_le_majorized`,
+  `weaklyMajorized_fin_of_forall_sum_le` and Lidskii's singular value inequality in its Ky Fan
+  form; nothing else of the majorization theory is needed to build unitarily invariant norms.
+- M6 gets Hoffman–Wielandt and Mirsky over arbitrary index sets.

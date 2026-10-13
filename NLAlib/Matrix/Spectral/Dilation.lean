@@ -20,6 +20,8 @@ transferred to singular values of rectangular matrices.
 
 * `NLAlib.eigenvalue_dilation`: `eigenvalue (dilation A) k = singularValues A k` below the larger
   dimension of `A`.
+* `NLAlib.eigenvalue_dilation_of_add_add_one_eq`: the trailing eigenvalues are the negated
+  singular values.
 * `NLAlib.eigenvalue_zero_dilation`: `eigenvalue (dilation A) 0 = specNorm A`.
 -/
 
@@ -145,6 +147,19 @@ theorem eigenvalue_dilation (A : Matrix m n 𝕜) {k : ℕ}
     · exact singularValues_of_card_cols_le A (by omega)
     · exact singularValues_of_card_rows_le A (by omega)
   rw [← hmax, max_eq_left h0]
+
+/-- The trailing eigenvalues of the Hermitian dilation are the negated singular values of the
+matrix: `eigenvalue (dilation A) j = -singularValues A k` for the mirror index `j` of `k`, that
+is `k + j + 1 = card m + card n`, with `k` below the larger dimension. Together with
+`NLAlib.eigenvalue_dilation` this describes the whole spectrum `± σ_i(A)` and zeros.
+[HornJohnson2013, Theorem 7.3.3]. -/
+theorem eigenvalue_dilation_of_add_add_one_eq (A : Matrix m n 𝕜) {k j : ℕ}
+    (hk : k < max (Fintype.card m) (Fintype.card n))
+    (h : k + j + 1 = Fintype.card m + Fintype.card n) :
+    eigenvalue (dilation A) j = -singularValues A k := by
+  have h' := eigenvalue_neg (dilation A) (k := k) (j := j) (by rw [Fintype.card_sum]; exact h)
+  rw [← dilation_neg, eigenvalue_dilation _ hk, singularValues_neg] at h'
+  linarith
 
 /-- The largest eigenvalue of the Hermitian dilation is the spectral norm of the matrix.
 [Tropp2015, (2.1.28)]. -/

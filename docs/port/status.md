@@ -16,11 +16,14 @@ Updated at every stopping point. Newest entry first within each section.
 | M0 | bootstrap | orchestrator | done | see "M0 findings" |
 | M1 | all 15 files | Opus agents | **done** | `docs/design/Matrix-Foundations.md` with stage report; not maintainer-approved |
 | M2 | all 8 files | Opus agents | **done** | `docs/design/Matrix-Norms.md` with stage report; not maintainer-approved |
-| M3 | all 10 files | Opus agents | **done** | `docs/design/Matrix-Spectral.md` with stage report; not maintainer-approved. Open: make `exists_submodule_singularValues_mul_norm_le` public at the next follow-up pass |
-| M3a | design note `docs/design/Matrix-Majorization.md`, skeleton of 7 files under `Matrix/Majorization/` | orchestrator | done, Fable-reviewed, not maintainer-approved | `Majorized` on unsorted vectors, `kyFanNorm` defined here |
-| M3a | `Majorization/Basic.lean` | Opus agent | proved | |
-| M3a | `Majorization/DoublyStochastic.lean`, `KyFan.lean` | Opus agents | in progress | |
-| M3a | `Schur`, `TraceInequalities`, `Lidskii`, `Horn` | — | skeleton | |
+| M3 | all 10 files | Opus agents | **done** | `docs/design/Matrix-Spectral.md` with stage report; not maintainer-approved |
+| M3a | all 7 files | Opus agents | **done** | `docs/design/Matrix-Majorization.md` with stage report; not maintainer-approved |
+| M3b | design note `docs/design/Matrix-InvariantNorms.md`, skeleton of 5 files under `Matrix/Norms/` | orchestrator | done, Fable-reviewed, not maintainer-approved | `SymmetricGauge` on `ℕ →₀ ℝ`, `Φ.matrixNorm`, `schattenNorm q` with `q : ℝ≥0∞` |
+| M3b | `Norms/SymmetricGauge.lean` | Opus agent | proved | 564 lines: split the `ℓ^q` and Ky Fan gauges into their own file at wrap-up |
+| M3b | `Norms/Nuclear.lean` | Opus agent | proved | 524 lines: split the Ky Fan section into `Norms/KyFanNorm.lean` at wrap-up; three private helpers to publish |
+| M3b | `Schatten`, `SchattenHolder`, `UnitarilyInvariant` | Opus agents | in progress | |
+| M5 | design note `docs/design/Matrix-Subspaces.md`, skeleton of 5 files under `Matrix/Subspaces/` | orchestrator | written, Fable-reviewed, review being folded in | |
+| M6 | skeleton drafts `Perturbation/Inverse.lean`, `Sylvester.lean` | orchestrator | draft, no design note yet | |
 | M4 | all 6 files | Opus agents | **done** | `docs/design/Matrix-Pseudoinverse.md` with stage report; not maintainer-approved. One designed statement was false (empty column type) and gained `0 ≤ b` |
 
 Stage order after M3, changed by the M3 and M4 notes: **M4** (pseudoinverse, least squares) →

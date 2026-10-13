@@ -1,5 +1,6 @@
 module  -- shake: keep-all --deprecated_module: ignore
 
+public import NLAlib.ForMathlib.Algebra.BigOperators.AbelSummation
 public import NLAlib.ForMathlib.Analysis.InnerProductSpace.PiL2
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.Adjugate
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.CauchyBinet
@@ -28,8 +29,15 @@ public import NLAlib.Matrix.Norms.Compare
 public import NLAlib.Matrix.Norms.Frobenius
 public import NLAlib.Matrix.Norms.Loewner
 public import NLAlib.Matrix.Norms.Net
+public import NLAlib.Matrix.Norms.Nuclear
 public import NLAlib.Matrix.Norms.Projector
+public import NLAlib.Matrix.Norms.Schatten
+public import NLAlib.Matrix.Norms.SchattenHolder
 public import NLAlib.Matrix.Norms.Spectral
+public import NLAlib.Matrix.Norms.SymmetricGauge
+public import NLAlib.Matrix.Norms.UnitarilyInvariant
+public import NLAlib.Matrix.Perturbation.Inverse
+public import NLAlib.Matrix.Perturbation.Sylvester
 public import NLAlib.Matrix.Pseudoinverse.ConditionNumber
 public import NLAlib.Matrix.Pseudoinverse.GeneralizedSchur
 public import NLAlib.Matrix.Pseudoinverse.LeastSquares
@@ -46,3 +54,8 @@ public import NLAlib.Matrix.Spectral.SVD
 public import NLAlib.Matrix.Spectral.SingularValueInequalities
 public import NLAlib.Matrix.Spectral.SingularValues
 public import NLAlib.Matrix.Spectral.Weyl
+public import NLAlib.Matrix.Subspaces.CSDecomposition
+public import NLAlib.Matrix.Subspaces.Frames
+public import NLAlib.Matrix.Subspaces.Oblique
+public import NLAlib.Matrix.Subspaces.PrincipalAngles
+public import NLAlib.Matrix.Subspaces.ProjectorPair

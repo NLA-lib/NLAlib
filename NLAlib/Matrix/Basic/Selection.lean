@@ -72,6 +72,15 @@ theorem conjTranspose_selectionMatrix_mul_mul_selectionMatrix [Fintype n] (s : p
   rw [conjTranspose_selectionMatrix_mul, mul_selectionMatrix, Matrix.submatrix_submatrix,
     Function.comp_id, Function.id_comp]
 
+/-- Selecting columns of the two frames of a two-sided compression selects the corresponding
+block: `(Q.submatrix id f)ᴴ * A * W.submatrix id g = (Qᴴ * A * W).submatrix f g`. With `Q = W` and
+`f = g` this is a principal block of the compression `Qᴴ * A * Q`. -/
+theorem conjTranspose_submatrix_mul_mul_submatrix {l q r s : Type*} [Fintype l] [Fintype m]
+    (Q : Matrix m r 𝕜) (A : Matrix m l 𝕜) (W : Matrix l s 𝕜) (f : p → r) (g : q → s) :
+    (Q.submatrix id f)ᴴ * A * W.submatrix id g = (Qᴴ * A * W).submatrix f g := by
+  ext i j
+  simp only [Matrix.mul_apply, Matrix.submatrix_apply, Matrix.conjTranspose_apply, id]
+
 /-- A selection matrix acts on a vector by scattering its entries: the Mathlib spelling of the
 result is a sum of `Pi.single`. -/
 theorem selectionMatrix_mulVec [Fintype p] (s : p → n) (x : p → 𝕜) :

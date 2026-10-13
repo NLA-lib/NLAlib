@@ -85,7 +85,9 @@ form it specialises to.
 
 **Variational statements.** The workhorses are the two one-sided subspace forms, hypotheses
 written homogeneously as `c * ‖x‖ ^ 2 ≤ re (quadForm A x)` (no `x ≠ 0`, no division). The
-equational sup–inf and inf–sup forms use `rayleighQuotient`. Extremes are also given in Loewner
+equational sup–inf and inf–sup forms range over the unit vectors of the subspace and use
+`re (quadForm A x)` (amended 2026-10-14: on unit vectors this is `rayleighQuotient A x`, and it
+needs no exclusion of the zero vector). Extremes are also given in Loewner
 form, `A ≤ eigenvalue A 0 • 1`, which is how concentration results conclude.
 
 ## 3. Statement shapes
@@ -211,8 +213,10 @@ theorem frobNorm_sub_truncatedSVD_le_of_rank_le (A : Matrix m n 𝕜) {B : Matri
 ```
 
 `truncatedSVD A k` is built from a chosen SVD; it is one best rank-`k` approximation, not the
-only one when `σ_{k-1} = σ_k`. Its docstring says so, and every property is also available for
-the truncation of an arbitrary `IsSVD` (`IsSVD.truncate`). The optimality statements are given as
+only one when `σ_{k-1} = σ_k`. Its docstring says so. The truncation of a given `IsSVD` has no
+definition (amended 2026-10-14, at implementation): a consumer holding a block-partitioned SVD
+uses `IsSVD.eq_add` with `IsSVD.fromCols_left` and `IsSVD.fromCols_right`, which make each piece
+an `IsSVD` to which `specNorm_eq`, `frobNorm_sq_eq` and `rank_eq` apply. The optimality statements are given as
 inequalities, as above, and as `IsLeast` over `{B | B.rank ≤ k}` in Mathlib's vocabulary.
 
 ## 4. Consumers
@@ -282,7 +286,10 @@ restated over `𝕜`.
 5. **von Neumann, Hoffman–Wielandt, Mirsky (Frobenius), Lidskii move to a new stage M3a** with
    the majorization core; M3b follows it.
 6. **Courant–Fischer hypotheses use `re (quadForm A x)` against `c * ‖x‖ ^ 2`**; the equational
-   forms use `rayleighQuotient`.
+   forms range over unit vectors.
+7. **`eigenvalue_le_of_forall_mem` takes a valid index** `hk : k < card n` (amended 2026-10-14).
+   Without it the statement is false: beyond the size of `A` the eigenvalue is `0` by convention,
+   while the zero subspace satisfies the hypothesis for negative `c`.
 
 ## 8. Design review (Fable, 2026-10-14)
 
@@ -313,3 +320,60 @@ lemmas about its unsorted `hA.eigenvalues`, in the very namespaces the contract 
 `Matrix.PosSemidef.eigenvalues_nonneg`, `Matrix.PosDef.eigenvalues_pos`, and more. Every Mathlib
 bump would risk a new collision. The accessor is therefore **`eigenvalue A k`**, singular: "the
 `k`-th eigenvalue of `A`". No Mathlib declaration in those namespaces uses the singular.
+
+## 9. Stage report (2026-10-14)
+
+**Outcome.** Ten files under `Matrix/Spectral/` (3181 lines), all proved; nothing in
+`NLAlibScaffold`. Build of M1 to M3 has no warnings; the axiom audit covers 812 declarations with
+no violation; the environment linters pass on 662 declarations; references check clean. Proofs by
+Opus agents, four to nine minutes per file; one follow-up pass applied the per-file reviews.
+
+**What changed from the design.**
+
+- The accessor is `eigenvalue A k`, singular (§8).
+- `Matrix.IsHermitian.eigenvalue_le_of_forall_mem` needs a valid index `hk : k < card n`: without
+  it the statement is false for `W = ⊥` and `c < 0`. Found while the file was being proved; the
+  note's §3 was amended.
+- `eigenvalue_neg` and `eigenvalue_real_smul` hold with no Hermitian hypothesis (both sides are
+  zero for a non-Hermitian matrix) and are stated in the `NLAlib` namespace.
+- The Hermitian dilation's spectrum has its own file `Dilation.lean`, split from
+  `SingularValues.lean` when that file passed 500 lines.
+- No truncation of a given `IsSVD` (§3 amended); `rank_truncatedSVD` is unconditional,
+  `(truncatedSVD A k).rank = min k A.rank`.
+- Both Eckart–Young theorems are corollaries of one inequality,
+  `singularValues A (k + i) ≤ singularValues (A - B) i` for `rank B ≤ k`, itself a case of Weyl's
+  inequality for singular values. The prototype's weighted-sum proof of the Frobenius case and its
+  `bestRankFrobSq` are gone.
+- All singular value inequalities are proved from the variational characterisation on
+  intersections of subspaces, over `𝕜`; the dilation is not used for them.
+- Added at the follow-up pass: the rank-one downdate companions in `Weyl.lean`, the mirror
+  low-rank bound `singularValues A (k + r) ≤ singularValues (A + B) k`, the public existence half
+  `exists_submodule_norm_mulVec_le`, `IsSVD.singularValues_of_card_le`,
+  `Matrix.IsHermitian.antitone_eigenvalue_coe`; in `ForMathlib/LinearAlgebra/Matrix/Rank.lean`
+  `Submodule.finrank_add_finrank_le_card_add_finrank_inf` and
+  `Matrix.finrank_ker_mulVecLin_add_rank`; in `Norms/Loewner.lean` congruence monotonicity for a
+  rectangular factor.
+
+**Mathlib overlap.** `eigenvalue` and `singularValues` are defined from Mathlib's
+`Matrix.IsHermitian.eigenvalues₀` and `LinearMap.singularValues` with `rfl`-level bridges.
+Mathlib has the spectral theorem and no Courant–Fischer, Weyl, interlacing, matrix SVD or
+Eckart–Young.
+
+**Not ported, by decision.** `rectDiag` and the square-factor SVD; chosen eigenframes
+(`topEigenframe`, `complementaryEigenframe`); `eigenvaluePrefix`; `Fin`-specialised statements.
+Deferred with ledger entries: strict variational bounds and eigenvalue counting (M10, with
+inertia), characteristic polynomials of rank-one updates (M10), traces of powers (M10), powers of
+the Gram matrix applied to `A` (M8).
+
+**Open item.** The lower existence half for singular values, a subspace of dimension `k + 1` on
+which `singularValues A k * ‖x‖ ≤ ‖A x‖`, is still private; it is to be made public as
+`exists_submodule_singularValues_mul_norm_le` at the next follow-up pass.
+
+**For the next stages.**
+
+- M4 was built on `IsSVD.pinv_eq` and `exists_isSVD` with exactly `A.rank` columns, where every
+  `σ i` is positive; that is the convenient SVD for anything that inverts singular values.
+- M3a states Hoffman–Wielandt, Mirsky and Lidskii over arbitrary index sets `S : Finset ℕ`; this
+  works because both `eigenvalue` and `singularValues` are zero-padded.
+- M6 should take its gap hypotheses as `δ ≤ eigengap A k` or `δ ≤ singularGap A k` and its
+  spectral separation of two blocks in Loewner form.

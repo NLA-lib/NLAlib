@@ -180,7 +180,7 @@ and `rangeProjector_mulVec_mulVec`,
 proofs that want the difference.
 
 The matrix best-approximation and Pythagoras statements in Frobenius and spectral norm are M2's.
-M4 adds `rangeProjector A = A * moorePenroseInverse A`.
+M4 adds `mul_pinv : A * pinv A = rangeProjector A`.
 
 ### Quadratic forms
 

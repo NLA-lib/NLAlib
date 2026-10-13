@@ -22,7 +22,7 @@ similarity and relabelling. Positive semidefiniteness and definiteness in terms 
   `Matrix.IsHermitian.det_eq_prod_range_eigenvalue`,
   `Matrix.IsHermitian.frobNorm_sq_eq_sum_eigenvalue_sq`,
   `Matrix.IsHermitian.rank_eq_card_eigenvalue_ne_zero`.
-* `Matrix.IsHermitian.eigenvalue_neg`, `Matrix.IsHermitian.eigenvalue_real_smul`,
+* `NLAlib.eigenvalue_neg`, `NLAlib.eigenvalue_real_smul`,
   `Matrix.IsHermitian.eigenvalue_add_smul_one`.
 * `NLAlib.eigenvalue_conjTranspose_mul_mul_of_card_eq`: invariance under unitary similarity.
 * `Matrix.IsHermitian.posSemidef_iff_eigenvalue_nonneg`,
@@ -61,11 +61,6 @@ private theorem forall_eigenvalues_iff [DecidableEq n] {A : Matrix n n 𝕜} (hA
   · intro h i
     rw [he]
     exact h _ (e i).isLt
-
-/-- The eigenvalue sequence restricted to the valid range is non-increasing. -/
-private theorem antitone_eigenvalue_coe {A : Matrix n n 𝕜} (hA : A.IsHermitian) :
-    Antitone fun i : Fin (Fintype.card n) => eigenvalue A i :=
-  fun _ b hab => hA.eigenvalue_le_eigenvalue hab b.isLt
 
 /-! ### Trace, determinant, Frobenius norm, rank -/
 
@@ -158,11 +153,16 @@ theorem eigenvalue_diagonal {q : ℕ} {d : Fin q → ℝ} (hd : Antitone d) (i :
 /-! ### Transformations -/
 
 /-- Negation reverses and negates the eigenvalues. The index reversal is written with an
-equation, `k + j + 1 = Fintype.card n`, so that no subtraction appears.
+equation, `k + j + 1 = Fintype.card n`, so that no subtraction appears. No hypothesis on `A` is
+needed: both sides are zero when `A` is not Hermitian.
 Port of `NLAlib.eigenvalues₀_neg`, there over `ℝ`. -/
-theorem _root_.Matrix.IsHermitian.eigenvalue_neg {A : Matrix n n 𝕜} (hA : A.IsHermitian)
-    {k j : ℕ} (h : k + j + 1 = Fintype.card n) : eigenvalue (-A) k = -eigenvalue A j := by
+theorem eigenvalue_neg (A : Matrix n n 𝕜) {k j : ℕ} (h : k + j + 1 = Fintype.card n) :
+    eigenvalue (-A) k = -eigenvalue A j := by
   classical
+  by_cases hA : A.IsHermitian
+  swap
+  · rw [eigenvalue_of_not_isHermitian hA,
+      eigenvalue_of_not_isHermitian fun h' => hA (neg_neg A ▸ h'.neg), neg_zero]
   obtain ⟨U, hU, hAU⟩ := hA.exists_eq_mul_diagonal_mul_conjTranspose
   have hμ : Antitone fun i : Fin (Fintype.card n) => -eigenvalue A (Fin.rev i) := fun a b hab =>
     neg_le_neg (hA.eigenvalue_le_eigenvalue (Fin.rev_le_rev.mpr hab) (Fin.rev a).isLt)
@@ -190,10 +190,19 @@ theorem _root_.Matrix.IsHermitian.eigenvalue_neg {A : Matrix n n 𝕜} (hA : A.I
   rw [h2] at h1
   exact h1
 
-/-- Scaling by a nonnegative real scales the eigenvalues. -/
-theorem _root_.Matrix.IsHermitian.eigenvalue_real_smul {A : Matrix n n 𝕜} (hA : A.IsHermitian)
-    {c : ℝ} (hc : 0 ≤ c) (k : ℕ) : eigenvalue (c • A) k = c * eigenvalue A k := by
+/-- Scaling by a nonnegative real scales the eigenvalues. No hypothesis on `A` is needed: both
+sides are zero when `A` is not Hermitian. -/
+theorem eigenvalue_real_smul (A : Matrix n n 𝕜) {c : ℝ} (hc : 0 ≤ c) (k : ℕ) :
+    eigenvalue (c • A) k = c * eigenvalue A k := by
   classical
+  by_cases hA : A.IsHermitian
+  swap
+  · rcases hc.eq_or_lt with rfl | hc'
+    · rw [zero_smul, eigenvalue_zero, zero_mul]
+    · have hcA : ¬ (c • A).IsHermitian := fun h' => hA (by
+        have h'' := h'.smul (IsSelfAdjoint.all c⁻¹)
+        rwa [smul_smul, inv_mul_cancel₀ hc'.ne', one_smul] at h'')
+      rw [eigenvalue_of_not_isHermitian hA, eigenvalue_of_not_isHermitian hcA, mul_zero]
   by_cases hk : k < Fintype.card n
   · obtain ⟨U, hU, hAU⟩ := hA.exists_eq_mul_diagonal_mul_conjTranspose
     have hμ : Antitone fun i : Fin (Fintype.card n) => c * eigenvalue A i := fun a b hab =>
@@ -240,7 +249,7 @@ theorem eigenvalue_conjTranspose_mul_mul_of_card_eq [DecidableEq p] (A : Matrix 
   · by_cases hk : k < Fintype.card n
     · obtain ⟨V, hV, hAV⟩ := hA.exists_eq_mul_diagonal_mul_conjTranspose
       refine eigenvalue_eq_of_eq_mul_diagonal_mul_conjTranspose
-        ((hU.conjTranspose_of_card_eq h).mul hV) h.symm (antitone_eigenvalue_coe hA) ?_ ⟨k, hk⟩
+        ((hU.conjTranspose_of_card_eq h).mul hV) h.symm hA.antitone_eigenvalue_coe ?_ ⟨k, hk⟩
       rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
       conv_lhs => rw [hAV]
       simp only [Matrix.mul_assoc]

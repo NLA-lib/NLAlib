@@ -57,9 +57,30 @@ theorem Submodule.finrank_prod {K E F : Type*} [DivisionRing K] [AddCommGroup E]
     (f := p.subtype.prodMap q.subtype) (p.injective_subtype.prodMap q.injective_subtype),
     LinearMap.range_prodMap, Submodule.range_subtype, Submodule.range_subtype]
 
+/-- Two subspaces of `n → K` meet in dimension at least the sum of their dimensions minus
+`Fintype.card n`, stated additively. A consequence of
+`Submodule.finrank_sup_add_finrank_inf_eq`, in the form dimension counts with `omega` use.
+Upstream candidate for `Mathlib.LinearAlgebra.FiniteDimensional.Lemmas`. -/
+theorem Submodule.finrank_add_finrank_le_card_add_finrank_inf {K n : Type*} [DivisionRing K]
+    [Fintype n] (S W : Submodule K (n → K)) :
+    Module.finrank K S + Module.finrank K W ≤
+      Fintype.card n + Module.finrank K (S ⊓ W : Submodule K (n → K)) := by
+  have h := Submodule.finrank_sup_add_finrank_inf_eq S W
+  have hs := (S ⊔ W).finrank_le
+  rw [Module.finrank_fintype_fun_eq_card] at hs
+  lia
+
 namespace Matrix
 
 variable {K : Type*} [Field K] {l m n p : Type*} [Fintype n]
+
+/-- **Rank–nullity for a matrix**: the dimension of the kernel of `x ↦ A *ᵥ x` plus the rank of
+`A` is the number of columns. The matrix may be rectangular. This is
+`LinearMap.finrank_range_add_finrank_ker` for `A.mulVecLin`, in terms of `Matrix.rank`. -/
+theorem finrank_ker_mulVecLin_add_rank (A : Matrix m n K) :
+    Module.finrank K (LinearMap.ker A.mulVecLin) + A.rank = Fintype.card n := by
+  have h := A.mulVecLin.finrank_range_add_finrank_ker
+  rwa [Module.finrank_fintype_fun_eq_card, add_comm] at h
 
 /-- A matrix over a field has rank zero exactly when it is the zero matrix.
 Port of `NLAlib.eq_zero_of_matrix_rank_eq_zero`. -/

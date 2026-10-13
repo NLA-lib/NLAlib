@@ -85,6 +85,14 @@ theorem _root_.Matrix.IsHermitian.eigenvalue_le_eigenvalue {A : Matrix n n 𝕜}
   rw [hi', hj']
   exact hA.eigenvalues₀_antitone hij
 
+/-- The eigenvalue sequence of a Hermitian matrix, restricted to the valid range
+`Fin (Fintype.card n)`, is non-increasing. This is `Matrix.IsHermitian.eigenvalue_le_eigenvalue`
+as an `Antitone` statement, the form `NLAlib.eigenvalue_eq_of_eq_mul_diagonal_mul_conjTranspose`
+and `NLAlib.eigenvalue_diagonal` take as a hypothesis. -/
+theorem _root_.Matrix.IsHermitian.antitone_eigenvalue_coe {A : Matrix n n 𝕜}
+    (hA : A.IsHermitian) : Antitone fun i : Fin (Fintype.card n) => eigenvalue A i :=
+  fun _ b hab => hA.eigenvalue_le_eigenvalue hab b.isLt
+
 /-- Mathlib's unsorted eigenvalues `hA.eigenvalues : n → ℝ` are a relabelling of the sorted
 sequence. -/
 theorem _root_.Matrix.IsHermitian.exists_equiv_eigenvalue_eq [DecidableEq n] {A : Matrix n n 𝕜}

@@ -16,21 +16,19 @@ Updated at every stopping point. Newest entry first within each section.
 | M0 | bootstrap | orchestrator | done | see "M0 findings" |
 | M1 | all 15 files | Opus agents | **done** | `docs/design/Matrix-Foundations.md` with stage report; not maintainer-approved |
 | M2 | all 8 files | Opus agents | **done** | `docs/design/Matrix-Norms.md` with stage report; not maintainer-approved |
-| M3 | design note `docs/design/Matrix-Spectral.md` | orchestrator | done, Fable-reviewed, not maintainer-approved | `eigenvalue A k`, thin `IsSVD`, gaps, new stage M3a |
-| M3 | skeleton, 9 files under `Matrix/Spectral/` | orchestrator | done, builds with `sorry` | |
-| M3 | `Spectral/Eigenvalues.lean` | Opus agent | proved | |
-| M3 | `Spectral/EigenvalueTransform.lean` | Opus agent | proved | `eigenvalue_neg`, `eigenvalue_real_smul` hold without `hA`: drop the hypothesis at wrap-up; make `antitone_eigenvalue_coe` public |
-| M3 | `Spectral/CourantFischer.lean` | Opus agent | in progress | `eigenvalue_le_of_forall_mem` gained `hk : k < card n` (false without it) |
-| M3 | `Spectral/Weyl.lean` | — | skeleton | after CourantFischer |
-| M3 | `Spectral/Interlacing.lean` | — | skeleton | after CourantFischer |
-| M3 | `Spectral/SingularValues.lean` | — | skeleton | after CourantFischer |
-| M3 | `Spectral/SVD.lean` | — | skeleton | after SingularValues |
-| M3 | `Spectral/SingularValueInequalities.lean` | — | skeleton | after Weyl, Interlacing, SingularValues |
-| M3 | `Spectral/LowRank.lean` | — | skeleton | last |
+| M3 | all 10 files | Opus agents | **done** | `docs/design/Matrix-Spectral.md` with stage report; not maintainer-approved. Open: make `exists_submodule_singularValues_mul_norm_le` public at the next follow-up pass |
+| M3a | design note `docs/design/Matrix-Majorization.md`, skeleton of 7 files under `Matrix/Majorization/` | orchestrator | done, Fable-reviewed, not maintainer-approved | `Majorized` on unsorted vectors, `kyFanNorm` defined here |
+| M3a | `Majorization/Basic.lean` | Opus agent | in progress | |
+| M4 | design note `docs/design/Matrix-Pseudoinverse.md` | orchestrator | done, Fable-reviewed, not maintainer-approved | `pinv`, `IsPinv`, `IsLeastSquaresSolution`, real-valued `conditionNumber` |
+| M4 | skeleton, 6 files under `Matrix/Pseudoinverse/` | orchestrator | done, builds with `sorry` | |
+| M4 | `Pseudoinverse/Penrose.lean`, `Pinv.lean` | Opus agent | proved | 297 and 322 lines |
+| M4 | `NormBounds`, `GeneralizedSchur`, `LeastSquares` | Opus agents | proved | |
+| M4 | `ConditionNumber` and review follow-ups | Opus agent | in progress | |
 
-Stage order after M3, changed by the M3 note: **M3a** (majorization, Ky Fan sums, von Neumann
-trace inequality, Hoffman–Wielandt, Mirsky, Lidskii) → **M3b** (Schatten, nuclear, Ky Fan and
-unitarily invariant norms) → M4 → M5 → M6 → M7 (the rest of the inequalities) → M8 → M9 → M10.
+Stage order after M3, changed by the M3 and M4 notes: **M4** (pseudoinverse, least squares) →
+**M3a** (majorization, Ky Fan sums, von Neumann trace inequality, Hoffman–Wielandt, Mirsky,
+Lidskii) → **M3b** (Schatten, nuclear, Ky Fan and unitarily invariant norms) → M5 → M6 → M7 (the
+rest of the inequalities) → M8 → M9 → M10.
 
 While a stage is being proved, `import NLAlib` contains `sorry` and `scripts/Audit.lean` fails.
 That is the expected state between a stage's skeleton and its last proof.

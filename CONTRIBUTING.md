@@ -144,7 +144,7 @@ Mathlib's conventions, https://leanprover-community.github.io/contribute/naming.
 | Kind | Case | Examples |
 |---|---|---|
 | theorem, lemma | `snake_case` | `frobNorm_nonneg`, `specNorm_mul_le`, `singularValues_add_le` |
-| definition returning data | `lowerCamelCase` | `specNorm`, `singularValues`, `moorePenroseInverse` |
+| definition returning data | `lowerCamelCase` | `specNorm`, `singularValues`, `rangeProjector` |
 | structure, class, Prop-valued predicate | `UpperCamelCase` | `IsSVD`, `HasOrthonormalCols`, `IsSubspaceEmbedding` |
 | namespace, file, directory | `UpperCamelCase` | `NLAlib.Matrix.Spectral.Weyl` |
 
@@ -189,9 +189,11 @@ release.
 - Every hypothesis explicit, minimal, and an instance of a named interface (§5.4). Nothing that
   follows from another hypothesis (`(A + B).IsHermitian` next to `hA hB`; `Measurable X` next to
   `HasLaw X ν μ`).
-- Definitions are total, Mathlib-style (`⁻¹` of a singular matrix is `0`, `conditionNumber` is
-  `⊤`); the theorem carries the hypothesis that excludes the junk value and the definition's
-  docstring states the junk value.
+- Definitions are total, Mathlib-style (`⁻¹` of a singular matrix is `0`, `eigenvalue A k` is `0`
+  for `k` out of range, `conditionNumber` of a singular matrix is the ratio to its smallest nonzero
+  singular value); the theorem carries the hypothesis that excludes the junk value and the
+  definition's docstring states the junk value. Real-valued quantities stay real-valued: a `⊤` in
+  `ℝ≥0∞` costs coercions, `positivity` and `gcongr` at every use.
 - Two-sided bounds are two theorems. A conjunction is split when its parts are useful alone.
   Equational forms (`eigenvalue A k = ⨆ … ⨅ …`) are stated when a user would `rw` with them;
   inequality halves are corollaries.
@@ -237,6 +239,13 @@ those layers are designed.
 | SVD | `IsSVD A U σ V`: thin, any finite column type, `σ : r → ℝ` nonnegative, `A = U * diagonal σ * Vᴴ` | — |
 | best rank-`k` approximation | `truncatedSVD A k`; optimal errors `singularValues A k` (spectral) and `frobNorm (A - truncatedSVD A k)` (Frobenius) | `frobNorm_sub_truncatedSVD_sq` |
 | spectral gap | `eigengap A k`, `singularGap A k`, indexed by the dimension `k` of the leading subspace | `eigengap_succ`, `singularGap_succ` |
+| pseudoinverse | `pinv A`, every shape and rank; recognised through `IsPinv A B` (the four Penrose identities); full-rank formulas are lemmas, not definitions | `pinv_of_isUnit`; `mul_pinv : A * pinv A = rangeProjector A` |
+| full row rank | `Function.Injective Aᴴ.mulVec` | — |
+| least-squares solution | `IsLeastSquaresSolution A b x`; the optimal residual is `(1 - rangeProjector A) *ᵥ b` | `isLeastSquaresSolution_iff_isMinOn` |
+| condition number | `conditionNumber A : ℝ := specNorm A * specNorm (pinv A)`, any shape | `conditionNumber_of_isUnit` |
+| generalized Schur complement | `C - Bᴴ * pinv A * B`, no definition | — |
+| majorization | `Majorized x y`, `WeaklyMajorized x y` for `x y : ι → ℝ` on one finite index type, unsorted, through `sumLargest x k`; between sorted spectra, the partial-sum inequalities are stated directly | `majorized_iff_exists_doublyStochastic`; `sumLargest_fin_eq_sum_range` |
+| Ky Fan norm | `kyFanNorm k A`, the sum of the `k` largest singular values; eigenvalue partial sums are written `∑ i ∈ Finset.range k, eigenvalue A i` | `kyFanNorm_eq_sum_range`, `kyFanNorm_one` |
 | index shift in a statement | an auxiliary `d` with an equation, `hd : card p + d = card n`; never truncated subtraction | — |
 | Loewner order | `A ≤ B` under `open scoped MatrixOrder` | `Matrix.le_iff` |
 | PSD, PD, Hermitian | `A.PosSemidef`, `A.PosDef`, `A.IsHermitian` | Mathlib's |
@@ -259,9 +268,8 @@ those layers are designed.
 | expectation | `∫ ω, f (X ω) ∂μ` (Bochner) | — |
 | sub-Gaussian | `HasSubgaussianMGF X c μ` | Mathlib's |
 
-Rows the remaining Matrix design notes are expected to add: the pseudoinverse(s), the SVD
-interface, the condition number, the Schatten family and unitarily invariant norms, the
-spectral-gap interface, the principal-angle / subspace-distance interface. Rows from the
+Rows the remaining Matrix design notes are expected to add: majorization, the Schatten family
+and unitarily invariant norms, the principal-angle / subspace-distance interface. Rows from the
 foundations stage (`docs/design/Matrix-Foundations.md`) are in the table.
 
 ### 5.4 Interfaces and reusable hypotheses

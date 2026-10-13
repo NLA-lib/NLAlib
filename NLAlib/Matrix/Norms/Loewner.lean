@@ -58,6 +58,18 @@ theorem abs_re_quadForm_le (A : Matrix n n 𝕜) (z : n → 𝕜) :
     |RCLike.re (quadForm A z)| ≤ specNorm A * ‖WithLp.toLp 2 z‖ ^ 2 := by
   exact (RCLike.abs_re_le_norm _).trans (norm_quadForm_le A z)
 
+/-! ### Congruence -/
+
+omit [Fintype n] in
+/-- **Congruence preserves the Loewner order**, for a factor of any shape: if `G ≤ H` then
+`Xᴴ * G * X ≤ Xᴴ * H * X`. This is Mathlib's `Matrix.PosSemidef.conjTranspose_mul_mul_same`
+applied to `H - G`. [HornJohnson2013, §7.7]. -/
+theorem conjTranspose_mul_mul_le_conjTranspose_mul_mul [Finite n] {G H : Matrix m m 𝕜}
+    (h : G ≤ H) (X : Matrix m n 𝕜) : Xᴴ * G * X ≤ Xᴴ * H * X := by
+  rw [Matrix.le_iff] at h ⊢
+  have h' := h.conjTranspose_mul_mul_same X
+  rwa [Matrix.mul_sub, Matrix.sub_mul] at h'
+
 /-! ### Gram matrices -/
 
 /-- An upper Loewner bound on the Gram matrix of `T` is an upper bound on `‖T x‖ ^ 2`. -/

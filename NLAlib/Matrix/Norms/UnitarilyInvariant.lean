@@ -296,6 +296,15 @@ theorem matrixNorm_sub_truncatedSVD_le_of_rank_le (A : Matrix m n 𝕜) {B : Mat
   rw [singularValues_sub_truncatedSVD]
   exact singularValues_add_le_singularValues_sub_of_rank_le A hB i
 
+/-- A best approximation of rank at most `r` exists in every unitarily invariant norm: the
+distance to the closed set of matrices of rank at most `r` is attained (by the truncated SVD). -/
+theorem isLeast_matrixNorm_sub_of_rank_le (A : Matrix m n 𝕜) (r : ℕ) :
+    IsLeast ((fun B : Matrix m n 𝕜 => Φ.matrixNorm (A - B)) '' {B | B.rank ≤ r})
+      (Φ.matrixNorm (A - truncatedSVD A r)) := by
+  refine ⟨⟨truncatedSVD A r, rank_truncatedSVD_le A r, rfl⟩, ?_⟩
+  rintro _ ⟨B, hB, rfl⟩
+  exact Φ.matrixNorm_sub_truncatedSVD_le_of_rank_le A hB
+
 end SymmetricGauge
 
 /-! ### Schatten and Ky Fan norms as gauge norms -/

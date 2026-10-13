@@ -22,10 +22,16 @@ Updated at every stopping point. Newest entry first within each section.
 | M5 | design note `docs/design/Matrix-Subspaces.md`, skeleton of 5 files under `Matrix/Subspaces/` | orchestrator | done, Fable-reviewed, not maintainer-approved | distance is `(1 - Q) * P` in a norm; `principalAngle`; `tangentMatrix` |
 | M5 | `Subspaces/ProjectorPair.lean`, `Frames.lean` | Opus agent | proved | |
 | M5 | `Subspaces/PrincipalAngles.lean`, `Oblique.lean` | Opus agent | proved | `PrincipalAngles.lean` is 530 lines: split tangents and frame alignment off at wrap-up; publish four helpers |
-| M5 | `Subspaces/CSDecomposition.lean` | Opus agent | in progress | |
-| M6 | `Perturbation/Sylvester.lean`, `Inverse.lean`, `Relative.lean` | Opus agents | in progress | |
+| M5 | `Subspaces/CSDecomposition.lean` | Opus agent | proved | wrap-up: drop `card p ≤ card q` where unused, add `singularValues U.toBlocks₁₂ = singularValues U.toBlocks₂₁` |
+| M6 | `Perturbation/Sylvester.lean`, `Inverse.lean`, `Relative.lean` | Opus agents | proved | `specNorm_sub_smul_one_le_of_le` was false for size zero with `b < a`; `(hab : a ≤ b)` added |
+| M6 | `Perturbation/Residual.lean`, `Pseudoinverse.lean` | Opus agent | proved | golden-ratio block lemma moved to `Norms/Projector.lean` |
+| M6 | `Perturbation/DavisKahan.lean` | Opus agent | proved | 752 lines: split the gap forms off at wrap-up |
+| M6 | `Perturbation/LeastSquares.lean`, `Continuity.lean` | Opus agent | proved | `isLeast_matrixNorm_sub_of_rank_le` moved to `Norms/UnitarilyInvariant.lean` |
+| M6 | `Perturbation/Wedin.lean`, `SimpleEigenvalue.lean` | Opus agent | in progress | |
+| M7 | `Inequalities/Order.lean`, `Block.lean` | Opus agent | in progress | |
 | M6 | design note `docs/design/Matrix-Perturbation.md`, skeleton of 10 files under `Matrix/Perturbation/` | orchestrator | done, Fable-reviewed, not maintainer-approved | Davis–Kahan in residual form at three levels; one review proposal rejected (false under repeated eigenvalues) |
 | M7 | design note `docs/design/Matrix-Inequalities.md`, skeleton of 8 files under `Matrix/Inequalities/` | orchestrator | done, Fable-reviewed, not maintainer-approved | spectral equivalence as a Loewner sandwich; `principalMinor`; determinants through `RCLike.re` |
+| M8 | design note `docs/design/Matrix-Functions.md`, skeleton of 12 files under `Matrix/Functions/`, `ForMathlib/Analysis/Calculus/Deriv/Matrix.lean`, `ForMathlib/Analysis/RCLike/ToComplex.lean` | orchestrator | done, Fable-reviewed, not maintainer-approved | `cfc f A` is the spelling of `f(A)`; no `matrixExp`/`traceExp`/`lambdaMax` names; results over `𝕜` through `complexify`; entrywise derivatives |
 | M4 | all 6 files | Opus agents | **done** | `docs/design/Matrix-Pseudoinverse.md` with stage report; not maintainer-approved. One designed statement was false (empty column type) and gained `0 ≤ b` |
 
 Stage order after M3, changed by the M3 and M4 notes: **M4** (pseudoinverse, least squares) →

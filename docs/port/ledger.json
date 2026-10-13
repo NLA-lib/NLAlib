@@ -639,6 +639,10 @@
   "note": "real-only twin",
   "stage": "M2"
  },
+ "NLAlib.abs_eigenvalue_sub_rayleigh_le_residual_sq_div": {
+  "new": "Matrix.IsHermitian.abs_sub_rayleighQuotient_mul_le_norm_sq",
+  "stage": "M6"
+ },
  "NLAlib.abs_frobInner_le_frobNorm_mul_frobNorm": {
   "new": "NLAlib.abs_frobInner_le",
   "stage": "M2"
@@ -687,6 +691,10 @@
  "NLAlib.abs_specNorm_sub_specNorm_le_frobNorm": {
   "new": "NLAlib.abs_specNorm_sub_specNorm_le_frobNorm",
   "stage": "M2"
+ },
+ "NLAlib.abs_sqrt_bestRankFrobSq_sub_le_frobNorm": {
+  "new": "NLAlib.SymmetricGauge.abs_matrixNorm_sub_truncatedSVD_sub_le",
+  "stage": "M6"
  },
  "NLAlib.apply_eq_sum_mul_single": {
   "new": null,
@@ -775,6 +783,10 @@
  "NLAlib.columnSpace_orthonormalBasisMatrixOfEuclideanSubspace": {
   "new": "NLAlib.exists_hasOrthonormalCols_range_eq",
   "stage": "M1"
+ },
+ "NLAlib.complement_columnProjector_mul_columnProjector_eq": {
+  "new": "NLAlib.SymmetricGauge.matrixNorm_one_sub_rangeProjector_mul_rangeProjector_le",
+  "stage": "M6"
  },
  "NLAlib.complementaryEigenframe": {
   "new": null,
@@ -917,8 +929,24 @@
   "new": "IsStarProjection.conjTranspose_one_sub_mul_mul_one_sub_mul",
   "stage": "M5"
  },
+ "NLAlib.continuous_bestRankFrobSq": {
+  "new": "NLAlib.SymmetricGauge.continuous_matrixNorm_sub_truncatedSVD",
+  "stage": "M6"
+ },
+ "NLAlib.continuous_eigenvalues₀_pencil": {
+  "new": "NLAlib.continuousOn_eigenvalue",
+  "stage": "M6"
+ },
+ "NLAlib.continuous_singularValues_array": {
+  "new": "NLAlib.continuous_singularValues",
+  "stage": "M6"
+ },
  "NLAlib.cos_principalAngles": {
   "new": "NLAlib.HasOrthonormalCols.cos_principalAngle",
+  "stage": "M5"
+ },
+ "NLAlib.csCanonicalMatrix": {
+  "new": "NLAlib.csMatrix",
   "stage": "M5"
  },
  "NLAlib.det_add_single_diagonal": {
@@ -1040,6 +1068,10 @@
   "note": "pinv A * A is rangeProjector Aᴴ; IsStarProjection norm bounds in Norms/Projector",
   "stage": "M4"
  },
+ "NLAlib.dotProduct_rayleigh_residual_eq_zero": {
+  "new": "Matrix.IsHermitian.star_dotProduct_mulVec_sub_rayleighQuotient_smul",
+  "stage": "M6"
+ },
  "NLAlib.dotProduct_self_eq_one_of_norm_toLp_eq_one": {
   "new": "EuclideanSpace.norm_toLp_sq_eq_dotProduct_self",
   "note": "the general bridge",
@@ -1054,6 +1086,10 @@
   "new": null,
   "note": "pinv A * A is rangeProjector Aᴴ; Pythagoras lemmas in Basic/Projector",
   "stage": "M4"
+ },
+ "NLAlib.dotProduct_shifted_residual_eq_rayleigh_add_sq": {
+  "new": "Matrix.IsHermitian.norm_mulVec_sub_smul_sq",
+  "stage": "M6"
  },
  "NLAlib.eigenvaluePrefix": {
   "new": null,
@@ -1189,10 +1225,30 @@
   "note": "deferred: characteristic polynomial of a rank-one update (check Mathlib's matrix determinant lemma first)",
   "stage": "M10"
  },
+ "NLAlib.exists_complex_cs_decomposition_of_embedding": {
+  "new": "NLAlib.exists_cs_decomposition",
+  "stage": "M5"
+ },
+ "NLAlib.exists_cs_decomposition_of_embedding": {
+  "new": "NLAlib.exists_cs_decomposition",
+  "stage": "M5"
+ },
  "NLAlib.exists_dilation_orthogonal_diagonalization": {
   "new": null,
   "note": "the spectrum of the dilation is eigenvalue_dilation; the explicit diagonalisation is not reproduced",
   "stage": "M3"
+ },
+ "NLAlib.exists_eigenvalue_abs_sub_le_residual": {
+  "new": "Matrix.IsHermitian.exists_abs_eigenvalue_sub_mul_norm_le",
+  "stage": "M6"
+ },
+ "NLAlib.exists_eigenvalue_distance_le_euclidean_residual_div": {
+  "new": "NLAlib.exists_norm_sub_le_conditionNumber_mul_specNorm",
+  "stage": "M6"
+ },
+ "NLAlib.exists_eigenvalue_distance_mul_euclidean_norm_le_residual": {
+  "new": "NLAlib.exists_norm_sub_mul_norm_le_conditionNumber_mul",
+  "stage": "M6"
  },
  "NLAlib.exists_eigenvalue_lists_perm_sum_sq_le_frobSq_of_normal": {
   "new": null,
@@ -1552,6 +1608,10 @@
   "new": "NLAlib.frobNorm_eq_zero_iff",
   "stage": "M2"
  },
+ "NLAlib.frobNorm_inv_add_sub_inv_le": {
+  "new": "NLAlib.SymmetricGauge.matrixNorm_inv_add_sub_inv_le",
+  "stage": "M6"
+ },
  "NLAlib.frobNorm_le_nuclearNorm": {
   "new": "NLAlib.frobNorm_le_nuclearNorm",
   "stage": "M3b"
@@ -1563,6 +1623,10 @@
  "NLAlib.frobNorm_le_trace_of_posSemidef": {
   "new": "Matrix.PosSemidef.frobNorm_le_re_trace",
   "stage": "M3a"
+ },
+ "NLAlib.frobNorm_moorePenroseInverse_sub_le_sqrt_two_mul_of_rank_eq": {
+  "new": "NLAlib.frobNorm_pinv_sub_pinv_le_sqrt_two_mul_of_rank_eq",
+  "stage": "M6"
  },
  "NLAlib.frobNorm_mul_le": {
   "new": "NLAlib.frobNorm_mul_le",
@@ -1595,6 +1659,14 @@
  "NLAlib.frobNorm_sinePrincipalAngles_eq_residual": {
   "new": "NLAlib.frobNorm_one_sub_rangeProjector_mul_rangeProjector_sq",
   "stage": "M5"
+ },
+ "NLAlib.frobNorm_sinePrincipalAngles_le_compressed_residual_div": {
+  "new": "NLAlib.mul_frobNorm_conjTranspose_mul_le",
+  "stage": "M6"
+ },
+ "NLAlib.frobNorm_sinePrincipalAngles_le_two_mul_min_div_population_gap": {
+  "new": "NLAlib.frobNorm_one_sub_mul_le_sqrt_two_mul_frobNorm_div_eigengap",
+  "stage": "M6"
  },
  "NLAlib.frobNorm_smul": {
   "new": "NLAlib.frobNorm_real_smul",
@@ -1892,6 +1964,10 @@
   "note": "no chosen eigenframes",
   "stage": "M3"
  },
+ "NLAlib.hasOrthonormalCols_csCanonicalMatrix": {
+  "new": "NLAlib.hasOrthonormalCols_csMatrix",
+  "stage": "M5"
+ },
  "NLAlib.hasOrthonormalCols_diagonal_of_abs_eq_one": {
   "new": null,
   "note": "not needed after the gauge redesign",
@@ -1934,6 +2010,10 @@
   "new": null,
   "note": "no chosen eigenframes",
   "stage": "M3"
+ },
+ "NLAlib.hasSum_pow_inv_one_sub": {
+  "new": "NLAlib.hasSum_pow_inv_one_sub",
+  "stage": "M6"
  },
  "NLAlib.inner_toEuclideanLin_eq_sum": {
   "new": null,
@@ -2062,10 +2142,18 @@
   "note": "deferred: characteristic polynomial of a rank-one update (check Mathlib's matrix determinant lemma first)",
   "stage": "M10"
  },
+ "NLAlib.isUnit_add_of_specNorm_inv_mul_lt_one": {
+  "new": "NLAlib.isUnit_add_of_specNorm_inv_mul_lt_one",
+  "stage": "M6"
+ },
  "NLAlib.isUnit_mul_conjTranspose_of_rank_eq_card": {
   "new": "NLAlib.isUnit_conjTranspose_mul_self_iff",
   "note": "applied to the conjugate transpose",
   "stage": "M4"
+ },
+ "NLAlib.isUnit_one_sub_of_specNorm_lt_one": {
+  "new": "NLAlib.isUnit_one_sub_of_specNorm_lt_one",
+  "stage": "M6"
  },
  "NLAlib.isUnit_overlap_of_principalAngles_last_lt_pi_div_two": {
   "new": "NLAlib.HasOrthonormalCols.isUnit_conjTranspose_mul_iff",
@@ -2074,6 +2162,14 @@
  "NLAlib.isUnit_transpose_mul_self_of_rank_eq": {
   "new": "NLAlib.isUnit_conjTranspose_mul_self_iff",
   "stage": "M4"
+ },
+ "NLAlib.kato_temple_eigenvalue_le": {
+  "new": "Matrix.IsHermitian.le_rayleighQuotient_add_of_lt",
+  "stage": "M6"
+ },
+ "NLAlib.kato_temple_le_eigenvalue": {
+  "new": "Matrix.IsHermitian.rayleighQuotient_sub_le_of_lt",
+  "stage": "M6"
  },
  "NLAlib.kyFanInvariantNorm": {
   "new": "NLAlib.kyFanGauge_matrixNorm",
@@ -2241,6 +2337,10 @@
   "note": "the two characterisations are separate iffs",
   "stage": "M3a"
  },
+ "NLAlib.mem_spectrum_of_diagonal_intertwining": {
+  "new": "NLAlib.mem_spectrum_of_mul_eq_mul_diagonal",
+  "stage": "M6"
+ },
  "NLAlib.monotone_convexOn_max_sub": {
   "new": null,
   "note": "private helper",
@@ -2375,6 +2475,10 @@
   "new": "NLAlib.pinv_smul",
   "stage": "M4"
  },
+ "NLAlib.moorePenroseInverse_sub_eq": {
+  "new": "NLAlib.pinv_sub_pinv",
+  "stage": "M6"
+ },
  "NLAlib.moorePenroseInverse_transpose": {
   "new": null,
   "note": "transpose twin; use pinv_conjTranspose",
@@ -2406,6 +2510,10 @@
  "NLAlib.mulVec_moorePenroseInverse_mulVec_ne_zero": {
   "new": null,
   "note": "deferred: perturbation of linear systems and least squares, with the perturbation stage",
+  "stage": "M6"
+ },
+ "NLAlib.mulVec_shift_sq_ge_of_eigenvalue_abs_sub_ge": {
+  "new": "Matrix.IsHermitian.sq_smul_one_le_sub_smul_one_conjTranspose_mul_self",
   "stage": "M6"
  },
  "NLAlib.mul_complementaryEigenframe_eq_mul_diagonal": {
@@ -2445,9 +2553,21 @@
   "new": "IsIdempotentElem.mul_eq_of_range_le",
   "stage": "M5"
  },
+ "NLAlib.mul_frobNorm_le_frobNorm_sylvester": {
+  "new": "NLAlib.mul_frobNorm_le_frobNorm_mul_sub_mul",
+  "stage": "M6"
+ },
  "NLAlib.mul_frobSq_le_frobSq_mul_of_mulVec_sq_le": {
   "new": "NLAlib.mul_frobNorm_sq_le_of_smul_one_le",
   "stage": "M2"
+ },
+ "NLAlib.mul_frobSq_sinePrincipalAngles_le_frobInner_perturbation": {
+  "new": "NLAlib.eigengap_mul_frobNorm_one_sub_mul_sq_le_frobInner",
+  "stage": "M6"
+ },
+ "NLAlib.mul_frobSq_sinePrincipalAngles_le_trace_deficit": {
+  "new": "NLAlib.eigengap_mul_frobNorm_one_sub_mul_sq_le",
+  "stage": "M6"
  },
  "NLAlib.mul_moorePenroseInverse_isHermitian": {
   "new": null,
@@ -2518,6 +2638,14 @@
   "note": "hypothesis is a Loewner inequality on the Gram matrix",
   "stage": "M2"
  },
+ "NLAlib.mul_specNorm_le_specNorm_sylvester_of_interval": {
+  "new": "NLAlib.SymmetricGauge.mul_matrixNorm_le_matrixNorm_mul_sub_mul_of_eigenvalue",
+  "stage": "M6"
+ },
+ "NLAlib.mul_specNorm_le_specNorm_sylvester_of_one_sided": {
+  "new": "NLAlib.SymmetricGauge.mul_matrixNorm_le_matrixNorm_mul_sub_mul_of_le",
+  "stage": "M6"
+ },
  "NLAlib.mul_submatrix_cols_eq_mul_diagonal": {
   "new": null,
   "note": "one-line consequence of submatrix of a product with a diagonal",
@@ -2552,6 +2680,22 @@
   "new": null,
   "note": "Mathlib EuclideanSpace.norm_eq",
   "stage": "M2"
+ },
+ "NLAlib.norm_least_squares_residual_sub_le": {
+  "new": "NLAlib.norm_one_sub_rangeProjector_mulVec_sub_le",
+  "stage": "M6"
+ },
+ "NLAlib.norm_least_squares_residual_sub_le_relative_data": {
+  "new": "NLAlib.norm_one_sub_rangeProjector_mulVec_sub_le_of_le",
+  "stage": "M6"
+ },
+ "NLAlib.norm_least_squares_sub_le_pinv": {
+  "new": "NLAlib.IsLeastSquaresSolution.norm_sub_le",
+  "stage": "M6"
+ },
+ "NLAlib.norm_least_squares_sub_le_relative_data": {
+  "new": "NLAlib.IsLeastSquaresSolution.norm_sub_le_of_le",
+  "stage": "M6"
  },
  "NLAlib.norm_moorePenroseInverse_sub_div_le": {
   "new": null,
@@ -3034,6 +3178,10 @@
   "note": "stated in n → 𝕜",
   "stage": "M1"
  },
+ "NLAlib.rank_add_eq_card_of_pinv_mul_specNorm_lt_one": {
+  "new": "NLAlib.injective_mulVec_add_of_specNorm_pinv_mul_lt_one",
+  "stage": "M6"
+ },
  "NLAlib.rank_add_le": {
   "new": "Matrix.rank_add_le",
   "stage": "M1"
@@ -3042,6 +3190,10 @@
   "new": "Matrix.rank_add_rank_le_card_add_rank_mul",
   "note": "additive form",
   "stage": "M1"
+ },
+ "NLAlib.rank_bottomRight_eq_rank_topLeft_add_card_sub_of_unitary": {
+  "new": "NLAlib.HasOrthonormalCols.rank_toBlocks₂₂_add",
+  "stage": "M5"
  },
  "NLAlib.rank_eq_card_iff_forall_mulVec_eq_zero": {
   "new": null,
@@ -3104,6 +3256,10 @@
   "note": "no rectangular diagonal; attainment is private",
   "stage": "M3b"
  },
+ "NLAlib.rank_offDiagonal_blocks_eq_of_unitary": {
+  "new": "NLAlib.HasOrthonormalCols.rank_toBlocks₁₂",
+  "stage": "M5"
+ },
  "NLAlib.rank_rangeProjector": {
   "new": "NLAlib.rank_rangeProjector",
   "stage": "M1"
@@ -3116,6 +3272,10 @@
  "NLAlib.rayleighQuotient_def": {
   "new": "NLAlib.rayleighQuotient_def",
   "stage": "M1"
+ },
+ "NLAlib.rayleigh_residual_le_shifted_residual": {
+  "new": "Matrix.IsHermitian.norm_mulVec_sub_rayleighQuotient_smul_le",
+  "stage": "M6"
  },
  "NLAlib.re_diag_mem_Icc_of_isHermitian_of_isIdempotentElem": {
   "new": "IsStarProjection.re_apply_self_mem_Icc",
@@ -3462,6 +3622,18 @@
   "new": "NLAlib.sin_principalAngle",
   "stage": "M5"
  },
+ "NLAlib.sinePrincipalAngles_le_compressed_residual_div_of_interval": {
+  "new": "NLAlib.SymmetricGauge.mul_matrixNorm_conjTranspose_mul_le_of_eigenvalue",
+  "stage": "M6"
+ },
+ "NLAlib.sinePrincipalAngles_le_compressed_residual_div_of_one_sided_frames": {
+  "new": "NLAlib.SymmetricGauge.mul_matrixNorm_conjTranspose_mul_le_of_le",
+  "stage": "M6"
+ },
+ "NLAlib.sinePrincipalAngles_le_compressed_residual_div_top_gap": {
+  "new": "NLAlib.SymmetricGauge.mul_matrixNorm_one_sub_mul_le_of_eigenvalue_sub",
+  "stage": "M6"
+ },
  "NLAlib.singularValues": {
   "new": "NLAlib.singularValues",
   "stage": "M3"
@@ -3771,6 +3943,22 @@
   "new": "IsIdempotentElem.specNorm_mul_cos_principalAngle",
   "stage": "M5"
  },
+ "NLAlib.specNorm_inv_add_le": {
+  "new": "NLAlib.specNorm_inv_add_le",
+  "stage": "M6"
+ },
+ "NLAlib.specNorm_inv_add_sub_inv_le": {
+  "new": "NLAlib.specNorm_inv_add_sub_inv_le",
+  "stage": "M6"
+ },
+ "NLAlib.specNorm_inv_one_sub_le": {
+  "new": "NLAlib.specNorm_inv_one_sub_le",
+  "stage": "M6"
+ },
+ "NLAlib.specNorm_inv_one_sub_sub_one_le": {
+  "new": "NLAlib.specNorm_inv_one_sub_sub_one_le",
+  "stage": "M6"
+ },
  "NLAlib.specNorm_inv_pos_of_isUnit": {
   "new": null,
   "note": "not needed; specNorm_pos_iff with inverse nonzero",
@@ -3797,6 +3985,10 @@
  "NLAlib.specNorm_le_frobNorm": {
   "new": "NLAlib.specNorm_le_frobNorm",
   "stage": "M2"
+ },
+ "NLAlib.specNorm_le_goldenRatio_mul_of_zero_complement_block": {
+  "new": "NLAlib.specNorm_le_goldenRatio_mul_of_one_sub_mul_mul_one_sub_eq_zero",
+  "stage": "M6"
  },
  "NLAlib.specNorm_le_iff_abs_dotProduct_mulVec_le": {
   "new": "Matrix.IsHermitian.specNorm_le_iff_abs_re_quadForm_le",
@@ -3845,6 +4037,14 @@
   "note": "private helper of Norms/Spectral.lean",
   "stage": "M2"
  },
+ "NLAlib.specNorm_moorePenroseInverse_add_sub_le": {
+  "new": "NLAlib.SymmetricGauge.matrixNorm_pinv_sub_pinv_le",
+  "stage": "M6"
+ },
+ "NLAlib.specNorm_moorePenroseInverse_add_sub_le_three_mul_max": {
+  "new": "NLAlib.SymmetricGauge.matrixNorm_pinv_sub_pinv_le_three_mul_max",
+  "stage": "M6"
+ },
  "NLAlib.specNorm_moorePenroseInverse_eq": {
   "new": "NLAlib.specNorm_pinv",
   "stage": "M4"
@@ -3853,9 +4053,21 @@
   "new": "NLAlib.specNorm_pinv",
   "stage": "M4"
  },
+ "NLAlib.specNorm_moorePenroseInverse_le_div_of_rank_eq": {
+  "new": "NLAlib.specNorm_pinv_le_div_of_rank_eq",
+  "stage": "M6"
+ },
  "NLAlib.specNorm_moorePenroseInverse_sq": {
   "new": "NLAlib.specNorm_pinv_sq",
   "stage": "M4"
+ },
+ "NLAlib.specNorm_moorePenroseInverse_sub_le_goldenRatio_max_sq": {
+  "new": "NLAlib.specNorm_pinv_sub_pinv_le_goldenRatio_mul_max",
+  "stage": "M6"
+ },
+ "NLAlib.specNorm_moorePenroseInverse_sub_le_goldenRatio_mul_of_rank_eq": {
+  "new": "NLAlib.specNorm_pinv_sub_pinv_le_goldenRatio_mul_of_rank_eq",
+  "stage": "M6"
  },
  "NLAlib.specNorm_mul_conjTranspose_right_of_hasOrthonormalCols": {
   "new": "NLAlib.HasOrthonormalCols.specNorm_mul_conjTranspose_right",
@@ -3913,6 +4125,10 @@
   "note": "deferred to M4: there is no pinvR; see specNorm_pinv_sq",
   "stage": "M3"
  },
+ "NLAlib.specNorm_pinv_add_le_of_rank_eq_card": {
+  "new": "NLAlib.specNorm_pinv_add_le_of_injective",
+  "stage": "M6"
+ },
  "NLAlib.specNorm_pos_of_isUnit": {
   "new": null,
   "note": "not needed; specNorm_pos_iff",
@@ -3930,6 +4146,10 @@
   "new": "IsStarProjection.specNorm_one_sub_mul_sq",
   "stage": "M5"
  },
+ "NLAlib.specNorm_shift_le_half_width": {
+  "new": "NLAlib.specNorm_sub_smul_one_le_of_le",
+  "stage": "M6"
+ },
  "NLAlib.specNorm_sinePrincipalAngles_eq_projector_distance": {
   "new": "NLAlib.specNorm_rangeProjector_sub_rangeProjector",
   "stage": "M5"
@@ -3937,6 +4157,10 @@
  "NLAlib.specNorm_sinePrincipalAngles_eq_residual": {
   "new": "NLAlib.HasOrthonormalCols.singularValues_one_sub_mul_conjTranspose_mul",
   "stage": "M5"
+ },
+ "NLAlib.specNorm_sinePrincipalAngles_le_two_mul_specNorm_div_population_gap": {
+  "new": "NLAlib.specNorm_one_sub_mul_le_two_mul_specNorm_div_eigengap",
+  "stage": "M6"
  },
  "NLAlib.specNorm_sq_eq_specNorm_conjTranspose_mul_self": {
   "new": "NLAlib.specNorm_conjTranspose_mul_self",
@@ -3951,6 +4175,10 @@
   "new": "NLAlib.specNorm_le_frobNorm",
   "note": "the squared form follows by gcongr",
   "stage": "M2"
+ },
+ "NLAlib.specNorm_sub_columnProjector_le_min_pinv_mul_specNorm": {
+  "new": "NLAlib.specNorm_rangeProjector_sub_rangeProjector_le",
+  "stage": "M6"
  },
  "NLAlib.specNorm_sub_comm": {
   "new": "NLAlib.specNorm_sub_comm",
@@ -4057,6 +4285,10 @@
  "NLAlib.sq_singularValues_last_mul_norm_sq_le": {
   "new": "NLAlib.singularValues_last_mul_norm_le",
   "stage": "M3"
+ },
+ "NLAlib.sqrt_complement_eigenvalueProjector_le_residual_div": {
+  "new": "NLAlib.mul_norm_conjTranspose_mulVec_le",
+  "stage": "M6"
  },
  "NLAlib.sqrt_dotProduct_add_le": {
   "new": null,
@@ -4335,6 +4567,10 @@
   "new": null,
   "note": "lower counterpart of sum_mul_le_sumLargest, not needed",
   "stage": "M3a"
+ },
+ "NLAlib.sylvester_complement_overlap_eq": {
+  "new": "NLAlib.conjTranspose_mul_mul_sub_mul_eq",
+  "stage": "M6"
  },
  "NLAlib.tanThetaMax_eq_tan_principalAngles": {
   "new": "NLAlib.HasOrthonormalCols.singularValues_tangentMatrix",

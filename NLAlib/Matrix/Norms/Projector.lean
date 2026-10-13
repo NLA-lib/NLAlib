@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import Mathlib.NumberTheory.Real.GoldenRatio
 public import NLAlib.Matrix.Basic.OrthonormalBasis
 public import NLAlib.Matrix.Norms.Compare
 
@@ -27,6 +28,8 @@ approximation bounds consume.
 * `NLAlib.frobNorm_sub_mul_sq`: the exact error split for an arbitrary `X`.
 * `NLAlib.specNorm_one_sub_rangeProjector_mul_le_of_range_le`: a larger range gives a smaller
   residual.
+* `NLAlib.specNorm_le_goldenRatio_mul_of_one_sub_mul_mul_one_sub_eq_zero`: a matrix with one
+  vanishing block relative to two orthogonal projectors.
 -/
 
 @[expose] public section
@@ -196,5 +199,62 @@ theorem frobNorm_one_sub_rangeProjector_mul_le_of_range_le {B : Matrix m p 𝕜}
     frobNorm ((1 - rangeProjector B) * A) ≤ frobNorm ((1 - rangeProjector Y) * A) := by
   rw [← one_sub_rangeProjector_mul_one_sub_rangeProjector_mul h A]
   exact frobNorm_one_sub_rangeProjector_mul_le B _
+
+/-! ### A matrix with a vanishing block -/
+
+/-- The scalar inequality behind the golden-ratio bound: the matrix `!![1, 1; 1, 0]` has norm
+`(1 + √5) / 2`. -/
+private theorem add_sq_add_sq_le_goldenRatio_sq_mul (s t : ℝ) :
+    (s + t) ^ 2 + s ^ 2 ≤ Real.goldenRatio ^ 2 * (s ^ 2 + t ^ 2) := by
+  have h : Real.goldenRatio * (Real.goldenRatio ^ 2 * (s ^ 2 + t ^ 2) - ((s + t) ^ 2 + s ^ 2)) =
+      (s - Real.goldenRatio * t) ^ 2 := by
+    linear_combination
+      ((Real.goldenRatio + 1) * s ^ 2 + Real.goldenRatio * t ^ 2) * Real.goldenRatio_sq
+  have h0 : 0 ≤ Real.goldenRatio ^ 2 * (s ^ 2 + t ^ 2) - ((s + t) ^ 2 + s ^ 2) :=
+    (mul_nonneg_iff_of_pos_left Real.goldenRatio_pos).mp (h ▸ sq_nonneg _)
+  linarith
+
+/-- A matrix with three blocks of norm at most `d` and a vanishing fourth block, relative to two
+orthogonal projectors, has spectral norm at most `(1 + √5)/2 · d`. This is the step that gives the
+golden ratio in Wedin's bound for the pseudoinverse. [Wedin1973, Theorem 4.1].
+Port of `NLAlib.specNorm_le_goldenRatio_mul_of_zero_complement_block`. -/
+theorem specNorm_le_goldenRatio_mul_of_one_sub_mul_mul_one_sub_eq_zero [DecidableEq n]
+    {Z : Matrix m n 𝕜} {P : Matrix n n 𝕜} {Q : Matrix m m 𝕜} (hP : IsStarProjection P)
+    (hQ : IsStarProjection Q) {d : ℝ} (h00 : (1 - Q) * Z * (1 - P) = 0)
+    (h11 : specNorm (Q * Z * P) ≤ d) (h12 : specNorm (Q * Z * (1 - P)) ≤ d)
+    (h21 : specNorm ((1 - Q) * Z * P) ≤ d) :
+    specNorm Z ≤ Real.goldenRatio * d := by
+  have hd : 0 ≤ d := (specNorm_nonneg _).trans h11
+  refine (specNorm_le_iff (mul_nonneg Real.goldenRatio_pos.le hd)).2 fun x => ?_
+  have hin := norm_toLp_sq_eq_add_one_sub_rangeProjector P x
+  have hout := norm_toLp_sq_eq_add_one_sub_rangeProjector Q (Z *ᵥ x)
+  rw [hP.rangeProjector_eq] at hin
+  rw [hQ.rangeProjector_eq] at hout
+  have e0 : (1 - Q) * Z = (1 - Q) * Z * P := by
+    rwa [Matrix.mul_sub, Matrix.mul_one, sub_eq_zero] at h00
+  have e1 : Q *ᵥ (Z *ᵥ x) =
+      (Q * Z * P) *ᵥ (P *ᵥ x) + (Q * Z * (1 - P)) *ᵥ ((1 - P) *ᵥ x) := by
+    rw [Matrix.mulVec_mulVec, Matrix.mulVec_mulVec, Matrix.mulVec_mulVec,
+      Matrix.mul_assoc (Q * Z) P P, hP.mul_self, Matrix.mul_assoc (Q * Z) (1 - P) (1 - P),
+      hP.one_sub.mul_self, ← Matrix.add_mulVec, ← Matrix.mul_add, add_sub_cancel, Matrix.mul_one]
+  have e2 : (1 - Q) *ᵥ (Z *ᵥ x) = ((1 - Q) * Z * P) *ᵥ (P *ᵥ x) := by
+    rw [Matrix.mulVec_mulVec, Matrix.mulVec_mulVec, Matrix.mul_assoc _ P P, hP.mul_self, ← e0]
+  have h1 : ‖WithLp.toLp 2 (Q *ᵥ (Z *ᵥ x))‖ ≤
+      d * (‖WithLp.toLp 2 (P *ᵥ x)‖ + ‖WithLp.toLp 2 ((1 - P) *ᵥ x)‖) := by
+    rw [e1, WithLp.toLp_add, mul_add]
+    exact (norm_add_le _ _).trans (add_le_add
+      ((norm_toLp_mulVec_le _ _).trans (mul_le_mul_of_nonneg_right h11 (norm_nonneg _)))
+      ((norm_toLp_mulVec_le _ _).trans (mul_le_mul_of_nonneg_right h12 (norm_nonneg _))))
+  have h2 : ‖WithLp.toLp 2 ((1 - Q) *ᵥ (Z *ᵥ x))‖ ≤ d * ‖WithLp.toLp 2 (P *ᵥ x)‖ := by
+    rw [e2]
+    exact (norm_toLp_mulVec_le _ _).trans (mul_le_mul_of_nonneg_right h21 (norm_nonneg _))
+  have h1' := pow_le_pow_left₀ (norm_nonneg _) h1 2
+  have h2' := pow_le_pow_left₀ (norm_nonneg _) h2 2
+  have hg := mul_le_mul_of_nonneg_left (add_sq_add_sq_le_goldenRatio_sq_mul
+    ‖WithLp.toLp 2 (P *ᵥ x)‖ ‖WithLp.toLp 2 ((1 - P) *ᵥ x)‖) (sq_nonneg d)
+  refine (pow_le_pow_iff_left₀ (norm_nonneg _) (mul_nonneg (mul_nonneg Real.goldenRatio_pos.le hd)
+    (norm_nonneg _)) two_ne_zero).mp ?_
+  rw [hout, mul_pow, mul_pow, hin]
+  nlinarith
 
 end NLAlib

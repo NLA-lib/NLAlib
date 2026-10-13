@@ -88,6 +88,13 @@ theorem quadForm_one [DecidableEq n] (z : n → 𝕜) :
     quadForm (1 : Matrix n n 𝕜) z = ((‖WithLp.toLp 2 z‖ ^ 2 : ℝ) : 𝕜) := by
   rw [quadForm, Matrix.one_mulVec, EuclideanSpace.star_dotProduct_self_eq_coe_norm_sq]
 
+/-- The real quadratic form of a real multiple of the identity, written with the real scalar
+action, is that multiple of the squared Euclidean norm. -/
+theorem re_quadForm_real_smul_one [DecidableEq n] (a : ℝ) (x : n → 𝕜) :
+    RCLike.re (quadForm (a • (1 : Matrix n n 𝕜)) x) = a * ‖WithLp.toLp 2 x‖ ^ 2 := by
+  rw [RCLike.real_smul_eq_coe_smul (K := 𝕜), quadForm_smul_left, quadForm_one,
+    RCLike.re_ofReal_mul, RCLike.ofReal_re]
+
 /-- The quadratic form of a diagonal matrix is the weighted sum of squared moduli. -/
 theorem quadForm_diagonal [DecidableEq n] (d : n → 𝕜) (z : n → 𝕜) :
     quadForm (Matrix.diagonal d) z = ∑ i, d i * ((‖z i‖ ^ 2 : ℝ) : 𝕜) := by
@@ -149,6 +156,14 @@ theorem quadForm_add_right (A : Matrix n n 𝕜) (x y : n → 𝕜) :
   ring
 
 /-! ### Hermitian and positive semidefinite matrices -/
+
+omit [Fintype n] in
+/-- A real multiple of the identity, written with the real scalar action, is Hermitian. This is
+the side condition for comparing a matrix with `a • 1` through
+`Matrix.IsHermitian.le_iff_re_quadForm_le`. -/
+theorem isHermitian_real_smul_one [DecidableEq n] (a : ℝ) :
+    (a • (1 : Matrix n n 𝕜)).IsHermitian :=
+  Matrix.isHermitian_one.smul (IsSelfAdjoint.all a)
 
 /-- The quadratic form of a Hermitian matrix is real: it is the coercion of its real part.
 Port of `Matrix.IsHermitian.ofReal_re_quadForm`. -/

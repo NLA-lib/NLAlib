@@ -64,6 +64,14 @@ theorem frobInner_eq_sum (A B : Matrix m n 𝕜) :
     map_sum]
   exact Finset.sum_comm
 
+/-- The Frobenius inner product as the real part of the trace of `A * Bᴴ`, by cyclicity of the
+trace: `re (tr (Aᴴ B)) = re (tr (A Bᴴ))`. The two traces are complex conjugates of each other, so
+only the real parts agree. Port of `NLAlib.frobInner_eq_re_trace_mul_conjTranspose`. -/
+theorem frobInner_eq_re_trace_mul_conjTranspose (A B : Matrix m n 𝕜) :
+    frobInner A B = RCLike.re (A * Bᴴ).trace := by
+  rw [frobInner, Matrix.trace_mul_comm A, ← RCLike.conj_re (Bᴴ * A).trace, ← RCLike.star_def,
+    ← Matrix.trace_conjTranspose, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
+
 /-- The Frobenius inner product is symmetric. Port of `NLAlib.frobInner_comm`. -/
 theorem frobInner_comm (A B : Matrix m n 𝕜) : frobInner A B = frobInner B A := by
   rw [frobInner_eq_sum, frobInner_eq_sum]
@@ -226,6 +234,10 @@ open scoped Matrix.Norms.Frobenius in
 /-- The Frobenius norm is absolutely homogeneous. -/
 theorem frobNorm_smul (c : 𝕜) (A : Matrix m n 𝕜) : frobNorm (c • A) = ‖c‖ * frobNorm A := by
   rw [frobNorm_eq_norm, frobNorm_eq_norm, norm_smul]
+
+/-- The Frobenius norm is absolutely homogeneous for the real scalar action on a `𝕜`-matrix. -/
+theorem frobNorm_real_smul (a : ℝ) (A : Matrix m n 𝕜) : frobNorm (a • A) = |a| * frobNorm A := by
+  rw [RCLike.real_smul_eq_coe_smul (K := 𝕜), frobNorm_smul, RCLike.norm_ofReal]
 
 /-- **Cauchy–Schwarz** for the Frobenius inner product.
 Port of `NLAlib.abs_frobInner_le_frobNorm_mul_frobNorm`. -/

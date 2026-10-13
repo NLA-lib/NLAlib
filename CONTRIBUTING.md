@@ -103,7 +103,7 @@ arbitrary matrices.
 
 ## Main results
 
-* `Matrix.IsHermitian.eigenvalues₀_add_le`: Weyl's inequality `λₖ(A + B) ≤ λₖ(A) + λ₀(B)`.
+* `NLAlib.eigenvalue_add_le`: Weyl's inequality `λ_{i+j}(A + B) ≤ λ_i(A) + λ_j(B)`.
 * `NLAlib.singularValues_add_le`: the singular-value form.
 -/
 
@@ -143,7 +143,7 @@ Mathlib's conventions, https://leanprover-community.github.io/contribute/naming.
 
 | Kind | Case | Examples |
 |---|---|---|
-| theorem, lemma | `snake_case` | `frobSq_nonneg`, `specNorm_mul_le`, `singularValues_add_le` |
+| theorem, lemma | `snake_case` | `frobNorm_nonneg`, `specNorm_mul_le`, `singularValues_add_le` |
 | definition returning data | `lowerCamelCase` | `specNorm`, `singularValues`, `moorePenroseInverse` |
 | structure, class, Prop-valued predicate | `UpperCamelCase` | `IsSVD`, `HasOrthonormalCols`, `IsSubspaceEmbedding` |
 | namespace, file, directory | `UpperCamelCase` | `NLAlib.Matrix.Spectral.Weyl` |
@@ -171,8 +171,8 @@ release.
   Gaussian and Rademacher laws, the real spectral quantities they feed. A real corollary of a `𝕜`
   theorem is stated only when a downstream user needs it in `ᵀ` form that `simp` cannot produce.
 - Index types: `{m n : Type*} [Fintype m] [Fintype n]` plus `[DecidableEq _]` where Mathlib
-  needs it. `Fin k` is appropriate where its order or recursion carries content: sorted positions
-  (`IsHermitian.eigenvalues₀ : Fin (card n) → ℝ`), the columns of SVD factors, total recursions
+  needs it. `Fin k` is appropriate where its order or recursion carries content: the `k` sorted
+  columns of an SVD produced by an existence theorem, total recursions
   defining algorithms. A theorem stated over `Fin` because a dependency was is a defect to fix at
   the dependency.
 - Transpose: lemmas are stated with `ᴴ`. Over ℝ, `Aᴴ = Aᵀ` is `Matrix.conjTranspose_eq_transpose_of_trivial`
@@ -193,7 +193,7 @@ release.
   `⊤`); the theorem carries the hypothesis that excludes the junk value and the definition's
   docstring states the junk value.
 - Two-sided bounds are two theorems. A conjunction is split when its parts are useful alone.
-  Equational forms (`eigenvalues₀ k = ⨆ … ⨅ …`) are stated when a user would `rw` with them;
+  Equational forms (`eigenvalue A k = ⨆ … ⨅ …`) are stated when a user would `rw` with them;
   inequality halves are corollaries.
 - General form first, corollaries after, in the same file. A corollary specialises the field, the
   index type, or a hypothesis; it does not restate the proof.
@@ -213,7 +213,8 @@ release.
   A bare `∃ C` never appears in a statement: quantified after the dimensions it is unusable, and
   it hides loose proofs.
 - Spectral statements never quantify over `hA.eigenvectorBasis i`; they take an eigenvector `u`
-  with `A *ᵥ u = c • u` and `‖WithLp.toLp 2 u‖ = 1`, or speak of `eigenvalues₀`.
+  with `A *ᵥ u = c • u` and `‖WithLp.toLp 2 u‖ = 1`, an invariance equation `A * U = U * M` with
+  `HasOrthonormalCols U`, or speak of `eigenvalue A k`.
 - No proof term inside a statement. Introduce the needed hypothesis or state through a definition.
 - Dot notation: a lemma whose first explicit argument is `hA : A.IsHermitian` lives in
   `Matrix.IsHermitian`; one about an `IsSVD` lives in `IsSVD`.
@@ -226,10 +227,17 @@ those layers are designed.
 
 | Concept | Spelling | Mathlib bridge |
 |---|---|---|
-| spectral norm | `specNorm A : ℝ` | `specNorm_eq_norm` (L2Operator scope), `rfl` |
-| Frobenius | `frobInner A B`, `frobSq A`, `frobNorm A` | `frobNorm_eq_norm` (Frobenius scope) |
-| singular values | `singularValues A : ℕ → ℝ` (antitone, zero-padded) | `rfl` to `LinearMap.singularValues` |
-| eigenvalues of Hermitian `A` | `hA.eigenvalues₀ i` (antitone, `Fin (card n)`); extremes are index `0` and `card n - 1` | Mathlib's |
+| spectral norm | `specNorm A : ℝ`, no `DecidableEq` needed | `specNorm_eq_norm` (L2Operator scope), `rfl` |
+| Frobenius | `frobNorm A`; its square is always `frobNorm A ^ 2`; `frobInner A B : ℝ` | `frobNorm_eq_norm` (Frobenius scope); `frobInner_eq_re_trace` |
+| scalar multiple of the identity in a Loewner inequality | `(a : ℝ) • (1 : Matrix n n 𝕜)`, the real scalar action; a real scalar on a `𝕜`-matrix is `a • A` | Mathlib's; `RCLike.real_smul_eq_coe_smul` |
+| spectral bound on a factor | Loewner form on its Gram matrix: `a • 1 ≤ Tᴴ * T`, `Tᴴ * T ≤ b • 1` | `smul_one_le_conjTranspose_mul_self_iff`, `specNorm_sq_le_iff_conjTranspose_mul_self_le` |
+| ε-net of the unit sphere | `Metric.IsCover ε (Metric.sphere 0 1) N` in `EuclideanSpace 𝕜 n` | Mathlib's |
+| singular values | `singularValues A : ℕ → ℝ` (antitone, zero-padded, no `DecidableEq`); largest is index `0`, the smallest of a matrix with `n` columns is index `k` with `k + 1 = card n` | `singularValues_eq_linearMap`, `rfl` |
+| eigenvalues of Hermitian `A` | `eigenvalue A k : ℝ`, `k : ℕ`: sorted non-increasing for `k < card n`, `0` beyond and for non-Hermitian `A`; largest is `eigenvalue A 0`; the smallest is index `k` with `k + 1 = card n`, and bounds on it are stated in Loewner form `c • 1 ≤ A` | `hA.eigenvalue_eq_eigenvalues₀` to Mathlib's `hA.eigenvalues₀` |
+| SVD | `IsSVD A U σ V`: thin, any finite column type, `σ : r → ℝ` nonnegative, `A = U * diagonal σ * Vᴴ` | — |
+| best rank-`k` approximation | `truncatedSVD A k`; optimal errors `singularValues A k` (spectral) and `frobNorm (A - truncatedSVD A k)` (Frobenius) | `frobNorm_sub_truncatedSVD_sq` |
+| spectral gap | `eigengap A k`, `singularGap A k`, indexed by the dimension `k` of the leading subspace | `eigengap_succ`, `singularGap_succ` |
+| index shift in a statement | an auxiliary `d` with an equation, `hd : card p + d = card n`; never truncated subtraction | — |
 | Loewner order | `A ≤ B` under `open scoped MatrixOrder` | `Matrix.le_iff` |
 | PSD, PD, Hermitian | `A.PosSemidef`, `A.PosDef`, `A.IsHermitian` | Mathlib's |
 | quadratic form | `quadForm A z := star z ⬝ᵥ (A *ᵥ z) : 𝕜` | `Matrix.PosSemidef` form |
@@ -291,12 +299,12 @@ Every public declaration has a docstring. It is the record the documentation sit
 index and the literature map are generated from, so its parts are fixed:
 
 ```lean
-/-- **Weyl's inequality.** For Hermitian `A`, `B` and every `k`,
-`λₖ(A + B) ≤ λₖ(A) + λ₀(B)`, eigenvalues in non-increasing order.
+/-- **Weyl's inequality.** For Hermitian `A`, `B` and `i + j` a valid index,
+`λ_{i+j}(A + B) ≤ λ_i(A) + λ_j(B)`, eigenvalues non-increasing and indexed from `0`.
 [HornJohnson2013, Theorem 4.3.1]; stated there over ℂ with eigenvalues in increasing order, here
 over any `RCLike` field, any finite index type, non-increasing.
 Result: weyl-inequality -/
-theorem _root_.Matrix.IsHermitian.eigenvalues₀_add_le ...
+theorem eigenvalue_add_le ...
 ```
 
 1. **First sentence:** what it asserts, in words, with the bold name of the result if it has one.
@@ -364,6 +372,12 @@ maintainer before any proof is written. The note answers, with specifics:
    (twins, bundles, transport lemmas, local interfaces).
 7. **Open questions** for the maintainer, with a recommendation each.
 
+For each bridge and each API lemma that restates a Mathlib fact, the note names the Mathlib lemma
+it found, or records "searched, none". An exact overlap ships as an `alias` or a one-line proof
+citing the Mathlib lemma, never as an independent proof. A file added or split during the stage is
+recorded as a dated amendment to the note's file list when it happens, not first in the stage
+report.
+
 The note is reviewed as a design, with the question "will this be the interface people reach for
 in five years?", before the stage is implemented. The implementation PRs reference it. A
 divergence discovered during implementation is a one-line amendment to the note, approved the
@@ -422,7 +436,10 @@ files on top of Mathlib take 3 to 6 GB each, and the terminal gets killed. Rules
 - Read this file, then the current stage's design note in `docs/design/` (or the port brief if the
   note is not yet written), then `docs/port/status.md`, then the file you are about to write.
 - The library is built **sequentially**: one stage at a time, and within a stage one file at a
-  time unless the design note marks two files independent. Do not fan out proving agents across a
+  time unless the design note marks files independent. At most two proof agents run at once. A
+  proof agent normally owns one file; two or three small files that the note marks independent of
+  the rest of the stage, or that form a short import chain, may be given to one agent together
+  (amended 2026-10-14 after stage M1, where this was done and worked). Do not fan out proving agents across a
   stage; the point of the sequence is that each file is designed against the ones before it.
 - The orchestrating agent writes the design note (§8) before any implementation and stops for
   the maintainer's approval. It does not inherit the prototype's organisation, interfaces or

@@ -6,6 +6,7 @@ public import NLAlib.ForMathlib.LinearAlgebra.Matrix.CauchyBinet
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.PosDef
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.Rank
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.SchurComplement
+public import NLAlib.ForMathlib.Topology.MetricSpace.CoveringNumbers
 public import NLAlib.Matrix.Basic.Dilation
 public import NLAlib.Matrix.Basic.Gram
 public import NLAlib.Matrix.Basic.Orthonormal
@@ -22,3 +23,12 @@ public import NLAlib.Matrix.Norms.Loewner
 public import NLAlib.Matrix.Norms.Net
 public import NLAlib.Matrix.Norms.Projector
 public import NLAlib.Matrix.Norms.Spectral
+public import NLAlib.Matrix.Spectral.CourantFischer
+public import NLAlib.Matrix.Spectral.EigenvalueTransform
+public import NLAlib.Matrix.Spectral.Eigenvalues
+public import NLAlib.Matrix.Spectral.Interlacing
+public import NLAlib.Matrix.Spectral.LowRank
+public import NLAlib.Matrix.Spectral.SVD
+public import NLAlib.Matrix.Spectral.SingularValueInequalities
+public import NLAlib.Matrix.Spectral.SingularValues
+public import NLAlib.Matrix.Spectral.Weyl

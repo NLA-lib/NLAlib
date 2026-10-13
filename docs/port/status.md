@@ -14,20 +14,42 @@ Updated at every stopping point. Newest entry first within each section.
 | Stage | File | Owner | State | Notes |
 |---|---|---|---|---|
 | M0 | bootstrap | orchestrator | done | see "M0 findings" |
-| M1 | all 15 files | Opus agents | **done** | design note and stage report: `docs/design/Matrix-Foundations.md`; not maintainer-approved |
-| M2 | design note `docs/design/Matrix-Norms.md` | orchestrator | done, Fable-reviewed, not maintainer-approved | drops `frobSq`; moves Schatten and UI norms to M3b |
-| M2 | skeleton, 7 files under `Matrix/Norms/` | orchestrator | done, builds with `sorry` | |
-| M2 | `Norms/Spectral.lean` | Opus agent | proved | follow-ups in "M2 notes" |
-| M2 | `Norms/Frobenius.lean` | Opus agent | in progress | |
-| M2 | `Norms/Compare.lean` | — | skeleton | after Frobenius |
-| M2 | `Norms/Loewner.lean` | — | skeleton | after Compare |
-| M2 | `Norms/Block.lean` | — | skeleton | after Compare |
-| M2 | `Norms/Projector.lean` | — | skeleton | after Compare |
-| M2 | `Norms/Net.lean` | — | skeleton | after Loewner |
-| M3 | design note | orchestrator | being drafted | |
+| M1 | all 15 files | Opus agents | **done** | `docs/design/Matrix-Foundations.md` with stage report; not maintainer-approved |
+| M2 | all 8 files | Opus agents | **done** | `docs/design/Matrix-Norms.md` with stage report; not maintainer-approved |
+| M3 | design note `docs/design/Matrix-Spectral.md` | orchestrator | done, Fable-reviewed, not maintainer-approved | `eigenvalue A k`, thin `IsSVD`, gaps, new stage M3a |
+| M3 | skeleton, 9 files under `Matrix/Spectral/` | orchestrator | done, builds with `sorry` | |
+| M3 | `Spectral/Eigenvalues.lean` | Opus agent | proved | |
+| M3 | `Spectral/EigenvalueTransform.lean` | Opus agent | proved | `eigenvalue_neg`, `eigenvalue_real_smul` hold without `hA`: drop the hypothesis at wrap-up; make `antitone_eigenvalue_coe` public |
+| M3 | `Spectral/CourantFischer.lean` | Opus agent | in progress | `eigenvalue_le_of_forall_mem` gained `hk : k < card n` (false without it) |
+| M3 | `Spectral/Weyl.lean` | — | skeleton | after CourantFischer |
+| M3 | `Spectral/Interlacing.lean` | — | skeleton | after CourantFischer |
+| M3 | `Spectral/SingularValues.lean` | — | skeleton | after CourantFischer |
+| M3 | `Spectral/SVD.lean` | — | skeleton | after SingularValues |
+| M3 | `Spectral/SingularValueInequalities.lean` | — | skeleton | after Weyl, Interlacing, SingularValues |
+| M3 | `Spectral/LowRank.lean` | — | skeleton | last |
+
+Stage order after M3, changed by the M3 note: **M3a** (majorization, Ky Fan sums, von Neumann
+trace inequality, Hoffman–Wielandt, Mirsky, Lidskii) → **M3b** (Schatten, nuclear, Ky Fan and
+unitarily invariant norms) → M4 → M5 → M6 → M7 (the rest of the inequalities) → M8 → M9 → M10.
 
 While a stage is being proved, `import NLAlib` contains `sorry` and `scripts/Audit.lean` fails.
 That is the expected state between a stage's skeleton and its last proof.
+
+## M2 result (2026-10-14)
+
+- 8 files, 2022 lines under `Matrix/Norms/` plus
+  `ForMathlib/Topology/MetricSpace/CoveringNumbers.lean`: `Frobenius`, `Spectral`, `Compare`,
+  `Loewner`, `Block`, `Projector`, `Net`.
+- Checks on M1 + M2 + the two proved M3 eigenvalue files (25 modules): build with no warnings;
+  axiom audit, 563 constants, 0 violations; `#lint` clean on 468 declarations; `check_refs.py`
+  clean.
+- Nothing in `NLAlibScaffold`. The volumetric net bound, expected to be scaffolded, was proved.
+- `frobSq` is gone from the vocabulary; CONTRIBUTING §5.3 was amended (Frobenius row, scalar
+  multiples of the identity, Loewner form of spectral bounds, nets).
+- Ledger: every declaration of the prototype's `Norms/{Core, Frobenius, SpectralNormBounds,
+  BlockNormBounds, EntryBounds, EuclideanOperatorBounds, RayleighNorm, Net, ColumnNorms, Reindex}`
+  is accounted for. The Schatten, nuclear, Ky Fan, invariant-norm and rectangular-diagonal files
+  wait for M3b.
 
 ## M1 result (2026-10-14)
 
@@ -47,14 +69,6 @@ That is the expected state between a stage's skeleton and its last proof.
 - New scripts: `scripts/ledger_add.py` (add entries from `old -> new` lines) and
   `scripts/ledger_missing.py` (list prototype declarations the ledger does not account for).
 - `docs/port/proof-agent-brief.md` is the standing brief given to every proof agent.
-
-## M2 notes
-
-- From the Spectral report: add `specNorm_real_smul` (real scalar action) and the same for
-  `frobNorm`; the private lemmas `norm_toLp_star` and `norm_toLp_comp_equiv` belong in
-  `ForMathlib/Analysis/InnerProductSpace/PiL2.lean` as public lemmas; `specNorm_map_star` could
-  be public. The docstring of `specNorm_le_of_forall_norm_star_dotProduct_mulVec_le` says "least
-  constant" but the statement is only the sufficiency direction.
 
 ## M0 findings (2026-10-14)
 

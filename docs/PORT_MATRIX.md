@@ -64,8 +64,9 @@ every stopping point.
 - **The orchestrator does itself:** the design notes, the skeletons (statements and docstrings),
   the reviews, the stage reports, and the status and ledger files. These are the design-bearing
   tasks and they need the full context of the stage.
-- **Delegated to `model: "opus"` agents:** every proof. One file per agent, one agent at a time
-  (two only when the design note marks the files independent). The agent gets the design note,
+- **Delegated to `model: "opus"` agents:** every proof. One file per agent (two or three small
+  files together when the design note marks them independent or they form a short import chain),
+  at most two agents at a time, and two only on files the note marks independent. The agent gets the design note,
   the skeleton file, the prototype files named for that file, and CONTRIBUTING; it returns the
   file with proofs, the ledger entries, and a note of anything that did not fit the design.
 - **Delegated to `model: "fable"` agents:** short, high-judgement design tasks with a bounded
@@ -289,8 +290,9 @@ Settled unless a design note argues otherwise and the maintainer agrees:
 - Scalars `[RCLike 𝕜]`, index types `[Fintype]`, `ᴴ` only, no transpose twins (CONTRIBUTING §5.1).
 - Matrix norms are named functions; `‖A‖` does not appear in statements (§5.1).
 - Orthonormality is one predicate taken as a hypothesis everywhere (§5.3).
-- Eigenvalues of Hermitian matrices are Mathlib's `eigenvalues₀`; no separate `lamMin`/`sigmaMin`
-  functions; extremes are the first and last index.
+- Eigenvalues of Hermitian matrices are read through `eigenvalue A k` (ℕ-indexed, total, defined
+  from Mathlib's `eigenvalues₀`; changed by the M3 design note, `docs/design/Matrix-Spectral.md`
+  §7.1); no separate `lamMin`/`sigmaMin` functions; extremes are the first and last index.
 - Lemmas about Hermitian/PSD hypotheses live in `Matrix.IsHermitian` / `Matrix.PosSemidef`.
 - Algorithms are exact-arithmetic; no finite precision.
 - Constants: explicit, named when not the source's; tails before sample sizes (§5.2).

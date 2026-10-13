@@ -7,6 +7,7 @@ module
 
 public import Mathlib.Analysis.CStarAlgebra.Matrix
 public import Mathlib.Tactic.Positivity.Core
+public import NLAlib.ForMathlib.Analysis.InnerProductSpace.PiL2
 
 /-!
 # The spectral norm
@@ -114,6 +115,10 @@ theorem specNorm_smul (c : 𝕜) (A : Matrix m n 𝕜) : specNorm (c • A) = �
   classical
   rw [specNorm_eq_norm, specNorm_eq_norm, norm_smul]
 
+/-- The spectral norm is absolutely homogeneous for the real scalar action on a `𝕜`-matrix. -/
+theorem specNorm_real_smul (a : ℝ) (A : Matrix m n 𝕜) : specNorm (a • A) = |a| * specNorm A := by
+  rw [RCLike.real_smul_eq_coe_smul (K := 𝕜), specNorm_smul, RCLike.norm_ofReal]
+
 open scoped Matrix.Norms.L2Operator in
 /-- The spectral norm of a finite sum is at most the sum of the spectral norms. -/
 theorem specNorm_sum_le {ι : Type*} (s : Finset ι) (A : ι → Matrix m n 𝕜) :
@@ -173,8 +178,8 @@ theorem norm_star_dotProduct_mulVec_le (A : Matrix m n 𝕜) (u : m → 𝕜) (x
   exact (norm_inner_le_norm _ _).trans
     (mul_le_mul_of_nonneg_left (norm_toLp_mulVec_le A x) (norm_nonneg _))
 
-/-- The spectral norm is the least constant bounding the bilinear form `uᴴ A x` on unit
-vectors. -/
+/-- To bound the spectral norm by `c ≥ 0` it is enough to bound the bilinear form `uᴴ A x` by `c`
+on unit vectors `u` and `x`. -/
 theorem specNorm_le_of_forall_norm_star_dotProduct_mulVec_le {A : Matrix m n 𝕜} {c : ℝ}
     (hc : 0 ≤ c)
     (h : ∀ (u : m → 𝕜) (x : n → 𝕜), ‖WithLp.toLp 2 u‖ = 1 → ‖WithLp.toLp 2 x‖ = 1 →
@@ -216,18 +221,16 @@ theorem specNorm_conjTranspose (A : Matrix m n 𝕜) : specNorm Aᴴ = specNorm 
   classical
   rw [specNorm_eq_norm, specNorm_eq_norm, Matrix.l2_opNorm_conjTranspose]
 
-private theorem norm_toLp_star (x : n → 𝕜) : ‖WithLp.toLp 2 (star x)‖ = ‖WithLp.toLp 2 x‖ := by
-  simp [EuclideanSpace.norm_eq]
-
 private theorem specNorm_map_star_le (A : Matrix m n 𝕜) : specNorm (A.map star) ≤ specNorm A := by
   refine (specNorm_le_iff (specNorm_nonneg A)).2 fun x => ?_
   have hv : A.map star *ᵥ x = star (A *ᵥ star x) := by
     ext i
     simp [Matrix.mulVec, dotProduct, star_sum]
-  rw [hv, norm_toLp_star, ← norm_toLp_star x]
+  rw [hv, EuclideanSpace.norm_toLp_star, ← EuclideanSpace.norm_toLp_star x]
   exact norm_toLp_mulVec_le A (star x)
 
-private theorem specNorm_map_star (A : Matrix m n 𝕜) : specNorm (A.map star) = specNorm A := by
+/-- The spectral norm is invariant under entrywise conjugation. -/
+theorem specNorm_map_star (A : Matrix m n 𝕜) : specNorm (A.map star) = specNorm A := by
   refine le_antisymm (specNorm_map_star_le A) ?_
   have h := specNorm_map_star_le (A.map star)
   have hA : (A.map star).map star = A := by
@@ -260,15 +263,11 @@ theorem specNorm_mul_conjTranspose_self (A : Matrix m n 𝕜) :
 
 /-! ### Reindexing and special matrices -/
 
-private theorem norm_toLp_comp_equiv (x : n → 𝕜) (e : p ≃ n) :
-    ‖WithLp.toLp 2 (x ∘ e)‖ = ‖WithLp.toLp 2 x‖ := by
-  rw [EuclideanSpace.norm_eq, EuclideanSpace.norm_eq]
-  exact congrArg Real.sqrt (e.sum_comp fun i => ‖x i‖ ^ 2)
-
 private theorem specNorm_submatrix_equiv_le (A : Matrix m n 𝕜) (e₁ : l ≃ m) (e₂ : p ≃ n) :
     specNorm (A.submatrix e₁ e₂) ≤ specNorm A := by
   refine (specNorm_le_iff (specNorm_nonneg A)).2 fun x => ?_
-  rw [Matrix.submatrix_mulVec_equiv, norm_toLp_comp_equiv, ← norm_toLp_comp_equiv x e₂.symm]
+  rw [Matrix.submatrix_mulVec_equiv, EuclideanSpace.norm_toLp_comp_equiv,
+    ← EuclideanSpace.norm_toLp_comp_equiv x e₂.symm]
   exact norm_toLp_mulVec_le A _
 
 /-- The spectral norm is invariant under relabelling rows and columns by bijections.
@@ -315,7 +314,8 @@ theorem specNorm_vecMulVec (u : m → 𝕜) (v : n → 𝕜) :
   refine le_antisymm ((specNorm_le_iff (by positivity)).2 fun x => ?_) ?_
   · have hcs : ‖v ⬝ᵥ x‖ ≤ ‖WithLp.toLp 2 v‖ * ‖WithLp.toLp 2 x‖ := by
       have h := norm_inner_le_norm (𝕜 := 𝕜) (WithLp.toLp 2 (star v)) (WithLp.toLp 2 x)
-      rwa [EuclideanSpace.inner_toLp_toLp, star_star, dotProduct_comm, norm_toLp_star] at h
+      rwa [EuclideanSpace.inner_toLp_toLp, star_star, dotProduct_comm,
+        EuclideanSpace.norm_toLp_star] at h
     rw [hmv]
     calc ‖v ⬝ᵥ x‖ * ‖WithLp.toLp 2 u‖
         ≤ ‖WithLp.toLp 2 v‖ * ‖WithLp.toLp 2 x‖ * ‖WithLp.toLp 2 u‖ := by gcongr
@@ -324,7 +324,7 @@ theorem specNorm_vecMulVec (u : m → 𝕜) (v : n → 𝕜) :
     have hvv : ‖v ⬝ᵥ star v‖ = ‖WithLp.toLp 2 v‖ ^ 2 := by
       rw [← EuclideanSpace.inner_toLp_toLp, inner_self_eq_norm_sq_to_K, norm_pow,
         RCLike.norm_ofReal, abs_norm]
-    rw [hmv, norm_toLp_star, hvv] at h
+    rw [hmv, EuclideanSpace.norm_toLp_star, hvv] at h
     rcases eq_or_lt_of_le (norm_nonneg (WithLp.toLp 2 v)) with h0 | h0
     · rw [← h0, mul_zero]
       exact specNorm_nonneg _

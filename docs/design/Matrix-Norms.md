@@ -66,7 +66,7 @@ noncomputable def specNorm (A : Matrix m n 𝕜) : ℝ
 noncomputable def frobNorm (A : Matrix m n 𝕜) : ℝ := √(∑ i, ∑ j, ‖A i j‖ ^ 2)
 def frobInner (A B : Matrix m n 𝕜) : ℝ := RCLike.re (Aᴴ * B).trace
 
-theorem frobNorm_sq (A : Matrix m n 𝕜) : frobNorm A ^ 2 = ∑ i, ∑ j, ‖A i j‖ ^ 2
+theorem frobNorm_sq_eq_sum (A : Matrix m n 𝕜) : frobNorm A ^ 2 = ∑ i, ∑ j, ‖A i j‖ ^ 2
 theorem frobInner_self (A : Matrix m n 𝕜) : frobInner A A = frobNorm A ^ 2
 theorem frobNorm_add_sq (A B : Matrix m n 𝕜) :
     frobNorm (A + B) ^ 2 = frobNorm A ^ 2 + 2 * frobInner A B + frobNorm B ^ 2
@@ -174,7 +174,7 @@ Conventions for this stage's statements:
    matrices bounded above and below, Hermitian and PSD characterisations, monotonicity.
 5. `NLAlib/Matrix/Norms/Block.lean` (imports 3, M1 `Dilation`): `fromRows`, `fromCols`,
    `fromBlocks`, submatrices, sums with orthogonal ranges, the Hermitian dilation.
-6. `NLAlib/Matrix/Norms/Projector.lean` (imports 3, M1 `Projector`): contraction, Pythagoras,
+6. `NLAlib/Matrix/Norms/Projector.lean` (imports 3, M1 `OrthonormalBasis`; amended 2026-10-14): contraction, Pythagoras,
    best approximation in both norms, monotonicity in the range, trace and Frobenius norm of
    `rangeProjector`.
 7. `NLAlib/Matrix/Norms/Net.lean` (imports 4): the covering bounds and the existence of a finite
@@ -249,3 +249,45 @@ definitions with bridges `frobNorm_eq_schattenNorm_two` and `specNorm_eq_kyFanNo
 unitarily invariant structure bundles a norm on sequences with permutation invariance and
 absoluteness, has Fan dominance as an API lemma, and proves `ν (Q * A) = ν A` under
 `HasOrthonormalCols` as a lemma on the structure.
+
+## 9. Stage report (2026-10-14)
+
+**Outcome.** Seven files under `Matrix/Norms/`, all proved; nothing in `NLAlibScaffold`. One file
+was added at wrap-up, `ForMathlib/Topology/MetricSpace/CoveringNumbers.lean` (the packing bound
+and the volumetric net in a finite-dimensional real normed space, split out of `Net.lean` because
+they have no NLAlib vocabulary). Proofs by Opus agents, three to six minutes per file.
+
+**What changed from the design.**
+
+- `specNorm_le_div_of_isCover_of_isCover` lost a hypothesis: only the codomain net has to lie in
+  the unit ball. The linter found the unused one.
+- The volumetric net bound was expected to be the stage's scaffold candidate. It was proved, in
+  any finite-dimensional real normed space, from Mathlib's `maximalSeparatedSet` and the Haar
+  measure of balls.
+- The Hermitian characterisation `specNorm A ≤ c ↔ ∀ x, |re (quadForm A x)| ≤ c ‖x‖²` is
+  Mathlib's `ContinuousLinearMap.norm_eq_iSup_rayleighQuotient` through `Matrix.toEuclideanCLM`;
+  no polarisation argument was written and no eigenvalues were used anywhere in the stage.
+- Added at wrap-up, from the file reviews: real-scalar versions `specNorm_real_smul`,
+  `frobNorm_real_smul`; `frobInner_eq_re_trace_mul_conjTranspose`; the linear and row-count forms
+  of `frobNorm ≤ √card · specNorm`; the right-factor twins for `frobInner` and for star
+  projections; `specNorm_mul_right_of_card_eq`; the Gram-error forms
+  `specNorm (Tᴴ T - 1) ≤ ε → (1 - ε) • 1 ≤ Tᴴ T ≤ (1 + ε) • 1`; `PosSemidef.frobNorm_le_re_trace`;
+  Euclidean-norm helpers promoted to `ForMathlib/Analysis/InnerProductSpace/PiL2.lean`.
+- `Norms/Projector.lean` imports M1's `OrthonormalBasis` (the file `Projector` was split after
+  this note was written).
+
+**Mathlib overlap.** The norm axioms for both norms are one-line consequences of Mathlib's scoped
+normed structures through the two bridges; `frobNorm_mul_le` is `Matrix.frobenius_norm_mul`;
+`IsStarProjection.specNorm_le_one` is `IsStarProjection.norm_le` (proved here without
+`DecidableEq`). Mathlib has no comparison between the L2 operator norm and the Frobenius norm, no
+volumetric covering bound, and no net bound for operator norms.
+
+**For the next stages.**
+
+- M3 gets the bridges `singularValues A 0 = specNorm A` and `frobNorm A ^ 2 = ∑ σᵢ²` (they were
+  listed under M3b in §0; Eckart–Young needs them).
+- The Loewner lemmas are stated with `(a : ℝ) • 1`; `re_quadForm_real_smul_one` and
+  `isHermitian_real_smul_one` in `QuadForm.lean` are the two facts every such proof starts from.
+- The sketching layer should define a subspace embedding so that it delivers
+  `(1 - ε) • 1 ≤ (S U)ᴴ (S U)` and `(S U)ᴴ (S U) ≤ (1 + ε) • 1`, or the single Gram-error bound;
+  both forms are consumed directly here.

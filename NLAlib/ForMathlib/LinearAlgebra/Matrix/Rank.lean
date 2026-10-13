@@ -28,12 +28,17 @@ so that `omega` and `linarith` can use them.
 * `Matrix.rank_fromBlocks₁₁`: rank additivity of the Schur complement.
 * `Matrix.rank_fromCols_replicateCol_eq_iff`: the Rouché–Capelli solvability criterion.
 * `Matrix.finrank_ker_toBlock_eq_finrank_ker_inv_toBlock_not`: complementary nullities.
+* `Submodule.finrank_map_add_finrank_inf_ker`: rank–nullity for a linear map restricted to a
+  submodule.
+* `Submodule.finrank_prod`: the dimension of a product of submodules.
 -/
 
 @[expose] public section
 
-/-- Rank–nullity for the restriction of a linear map to a submodule. -/
-private theorem Submodule.finrank_map_add_finrank_inf_ker {K E F : Type*} [DivisionRing K]
+/-- **Rank–nullity for the restriction of a linear map to a submodule**: the dimension of the
+image of `S` under `f` plus the dimension of `S ⊓ ker f` is the dimension of `S`. Upstream
+candidate for `Mathlib.LinearAlgebra.FiniteDimensional.Lemmas`. -/
+theorem Submodule.finrank_map_add_finrank_inf_ker {K E F : Type*} [DivisionRing K]
     [AddCommGroup E] [Module K E] [AddCommGroup F] [Module K F] (f : E →ₗ[K] F)
     (S : Submodule K E) [FiniteDimensional K S] :
     Module.finrank K (S.map f) + Module.finrank K (S ⊓ LinearMap.ker f : Submodule K E) =
@@ -42,8 +47,9 @@ private theorem Submodule.finrank_map_add_finrank_inf_ker {K E F : Type*} [Divis
   rwa [LinearMap.range_domRestrict, LinearMap.ker_domRestrict, ← Submodule.finrank_map_subtype_eq,
     Submodule.map_comap_subtype] at h
 
-/-- The dimension of a product of submodules is the sum of the dimensions. -/
-private theorem Submodule.finrank_prod {K E F : Type*} [DivisionRing K] [AddCommGroup E]
+/-- The dimension of a product of submodules is the sum of the dimensions. Upstream candidate for
+`Mathlib.LinearAlgebra.Dimension.Constructions`, next to `Module.finrank_prod`. -/
+theorem Submodule.finrank_prod {K E F : Type*} [DivisionRing K] [AddCommGroup E]
     [Module K E] [AddCommGroup F] [Module K F] (p : Submodule K E) (q : Submodule K F)
     [FiniteDimensional K p] [FiniteDimensional K q] :
     Module.finrank K (p.prod q) = Module.finrank K p + Module.finrank K q := by

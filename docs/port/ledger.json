@@ -4,9 +4,18 @@
   "note": "deferred to M3: eigenvalues of a compression",
   "stage": "M1"
  },
+ "Matrix.IsHermitian.eigenvalues₀_congr": {
+  "new": null,
+  "note": "eigenvalue is a function of the matrix; plain rw rewrites it",
+  "stage": "M3"
+ },
  "Matrix.IsHermitian.ofReal_re_quadForm": {
   "new": "Matrix.IsHermitian.coe_re_quadForm",
   "stage": "M1"
+ },
+ "Matrix.IsHermitian.range_eigenvalues₀": {
+  "new": "Matrix.IsHermitian.exists_equiv_eigenvalue_eq",
+  "stage": "M3"
  },
  "Matrix.IsHermitian.re_quadForm_mem_Icc": {
   "new": null,
@@ -17,6 +26,10 @@
   "new": "Matrix.IsHermitian.re_quadForm_add",
   "note": "general polar expansion; the scaled form follows with quadForm_smul_right",
   "stage": "M1"
+ },
+ "Matrix.IsHermitian.specNorm_le_one_of_isIdempotentElem": {
+  "new": "IsStarProjection.specNorm_le_one",
+  "stage": "M2"
  },
  "Matrix.IsHermitian.star_dotProduct_mulVec_comm": {
   "new": "Matrix.IsHermitian.star_dotProduct_mulVec_comm",
@@ -69,8 +82,25 @@
   "new": "NLAlib.norm_star_dotProduct_mulVec_le",
   "stage": "M2"
  },
+ "NLAlib.abs_dotProduct_mulVec_le_specNorm": {
+  "new": "NLAlib.abs_re_quadForm_le",
+  "note": "real-only twin",
+  "stage": "M2"
+ },
+ "NLAlib.abs_frobInner_le_frobNorm_mul_frobNorm": {
+  "new": "NLAlib.abs_frobInner_le",
+  "stage": "M2"
+ },
+ "NLAlib.abs_re_star_dotProduct_mulVec_le_specNorm": {
+  "new": "NLAlib.abs_re_quadForm_le",
+  "stage": "M2"
+ },
  "NLAlib.abs_specNorm_sub_specNorm_le": {
   "new": "NLAlib.abs_specNorm_sub_specNorm_le",
+  "stage": "M2"
+ },
+ "NLAlib.abs_specNorm_sub_specNorm_le_frobNorm": {
+  "new": "NLAlib.abs_specNorm_sub_specNorm_le_frobNorm",
   "stage": "M2"
  },
  "NLAlib.apply_eq_zero_of_posSemidef_of_apply_self_eq_zero": {
@@ -130,6 +160,10 @@
  "NLAlib.compoundMatrix_one": {
   "new": "Matrix.compound_one",
   "stage": "M1"
+ },
+ "NLAlib.compression_sortedEigenframe_eq_diagonal": {
+  "new": "Matrix.IsHermitian.exists_eq_mul_diagonal_mul_conjTranspose",
+  "stage": "M3"
  },
  "NLAlib.conjTranspose_mulVec_eq_zero_of_fromBlocks_posSemidef": {
   "new": "NLAlib.conjTranspose_mulVec_eq_zero_of_posSemidef_fromBlocks",
@@ -241,10 +275,35 @@
   "note": "the general bridge",
   "stage": "M1"
  },
+ "NLAlib.dotProduct_self_nonneg": {
+  "new": null,
+  "note": "Mathlib dotProduct_self_star_nonneg / sum of squares",
+  "stage": "M2"
+ },
+ "NLAlib.eigenvalues₀_eq_of_eq_mul_diagonal_mul": {
+  "new": "NLAlib.eigenvalue_eq_of_eq_mul_diagonal_mul_conjTranspose",
+  "stage": "M3"
+ },
+ "NLAlib.eigenvalues₀_neg": {
+  "new": "Matrix.IsHermitian.eigenvalue_neg",
+  "stage": "M3"
+ },
  "NLAlib.eq_zero_of_matrix_rank_eq_zero": {
   "new": "Matrix.rank_eq_zero",
   "note": "now an iff",
   "stage": "M1"
+ },
+ "NLAlib.exists_finset_net_specNorm_le": {
+  "new": "NLAlib.exists_finset_specNorm_le_div",
+  "stage": "M2"
+ },
+ "NLAlib.exists_finset_sphere_net": {
+  "new": "NLAlib.exists_finite_isCover_sphere",
+  "stage": "M2"
+ },
+ "NLAlib.exists_unit_abs_quadForm_eq_specNorm": {
+  "new": "Matrix.IsHermitian.exists_norm_eq_one_and_abs_re_quadForm_eq_specNorm",
+  "stage": "M2"
  },
  "NLAlib.exists_unitary_complement": {
   "new": "NLAlib.HasOrthonormalCols.exists_fromCols",
@@ -273,6 +332,362 @@
   "new": null,
   "note": "transport; not reproduced",
   "stage": "M1"
+ },
+ "NLAlib.frobInner": {
+  "new": "NLAlib.frobInner",
+  "note": "defined as the real part of the trace of Aᴴ B",
+  "stage": "M2"
+ },
+ "NLAlib.frobInner_add_left": {
+  "new": "NLAlib.frobInner_add_left",
+  "stage": "M2"
+ },
+ "NLAlib.frobInner_add_right": {
+  "new": "NLAlib.frobInner_add_right",
+  "stage": "M2"
+ },
+ "NLAlib.frobInner_comm": {
+  "new": "NLAlib.frobInner_comm",
+  "stage": "M2"
+ },
+ "NLAlib.frobInner_conjTranspose": {
+  "new": "NLAlib.frobInner_conjTranspose",
+  "stage": "M2"
+ },
+ "NLAlib.frobInner_eq_re_trace_mul_conjTranspose": {
+  "new": "NLAlib.frobInner_eq_re_trace_mul_conjTranspose",
+  "stage": "M2"
+ },
+ "NLAlib.frobInner_eq_sum_mul": {
+  "new": null,
+  "note": "real-only twin of frobInner_eq_sum",
+  "stage": "M2"
+ },
+ "NLAlib.frobInner_eq_sum_re": {
+  "new": "NLAlib.frobInner_eq_sum",
+  "stage": "M2"
+ },
+ "NLAlib.frobInner_eq_trace": {
+  "new": "NLAlib.frobInner_eq_re_trace",
+  "stage": "M2"
+ },
+ "NLAlib.frobInner_le_frobNorm_mul_frobNorm": {
+  "new": "NLAlib.frobInner_le",
+  "stage": "M2"
+ },
+ "NLAlib.frobInner_mul_left_of_orthonormal": {
+  "new": "NLAlib.HasOrthonormalCols.frobInner_mul_left",
+  "stage": "M2"
+ },
+ "NLAlib.frobInner_mul_mul": {
+  "new": "NLAlib.frobInner_mul_left",
+  "stage": "M2"
+ },
+ "NLAlib.frobInner_mul_mul_eq_zero": {
+  "new": "NLAlib.frobInner_mul_left",
+  "note": "orthogonality of the factors makes the right side vanish",
+  "stage": "M2"
+ },
+ "NLAlib.frobInner_mul_residual": {
+  "new": "IsStarProjection.frobInner_mul_one_sub_mul",
+  "stage": "M2"
+ },
+ "NLAlib.frobInner_neg_left": {
+  "new": "NLAlib.frobInner_neg_left",
+  "stage": "M2"
+ },
+ "NLAlib.frobInner_neg_right": {
+  "new": "NLAlib.frobInner_neg_right",
+  "stage": "M2"
+ },
+ "NLAlib.frobInner_reindex": {
+  "new": null,
+  "note": "transport lemma",
+  "stage": "M2"
+ },
+ "NLAlib.frobInner_smul_left": {
+  "new": "NLAlib.frobInner_smul_left",
+  "stage": "M2"
+ },
+ "NLAlib.frobInner_smul_right": {
+  "new": "NLAlib.frobInner_smul_right",
+  "stage": "M2"
+ },
+ "NLAlib.frobInner_sub_left": {
+  "new": "NLAlib.frobInner_sub_left",
+  "stage": "M2"
+ },
+ "NLAlib.frobInner_sub_right": {
+  "new": "NLAlib.frobInner_sub_right",
+  "stage": "M2"
+ },
+ "NLAlib.frobInner_transpose": {
+  "new": null,
+  "note": "transpose twin of frobInner_conjTranspose",
+  "stage": "M2"
+ },
+ "NLAlib.frobInner_zero_left": {
+  "new": "NLAlib.frobInner_zero_left",
+  "stage": "M2"
+ },
+ "NLAlib.frobInner_zero_right": {
+  "new": "NLAlib.frobInner_zero_right",
+  "stage": "M2"
+ },
+ "NLAlib.frobNorm": {
+  "new": "NLAlib.frobNorm",
+  "stage": "M2"
+ },
+ "NLAlib.frobNorm_add_le": {
+  "new": "NLAlib.frobNorm_add_le",
+  "stage": "M2"
+ },
+ "NLAlib.frobNorm_conjTranspose": {
+  "new": "NLAlib.frobNorm_conjTranspose",
+  "stage": "M2"
+ },
+ "NLAlib.frobNorm_eq_norm": {
+  "new": "NLAlib.frobNorm_eq_norm",
+  "stage": "M2"
+ },
+ "NLAlib.frobNorm_eq_zero_iff": {
+  "new": "NLAlib.frobNorm_eq_zero_iff",
+  "stage": "M2"
+ },
+ "NLAlib.frobNorm_mul_le": {
+  "new": "NLAlib.frobNorm_mul_le",
+  "stage": "M2"
+ },
+ "NLAlib.frobNorm_mul_le_frobNorm_mul_specNorm": {
+  "new": "NLAlib.frobNorm_mul_le_frobNorm_mul_specNorm",
+  "stage": "M2"
+ },
+ "NLAlib.frobNorm_mul_le_specNorm_mul_frobNorm": {
+  "new": "NLAlib.frobNorm_mul_le_specNorm_mul_frobNorm",
+  "stage": "M2"
+ },
+ "NLAlib.frobNorm_neg": {
+  "new": "NLAlib.frobNorm_neg",
+  "stage": "M2"
+ },
+ "NLAlib.frobNorm_nonneg": {
+  "new": "NLAlib.frobNorm_nonneg",
+  "stage": "M2"
+ },
+ "NLAlib.frobNorm_one_sq": {
+  "new": "NLAlib.frobNorm_one_sq",
+  "stage": "M2"
+ },
+ "NLAlib.frobNorm_reindex": {
+  "new": "NLAlib.frobNorm_submatrix_equiv",
+  "stage": "M2"
+ },
+ "NLAlib.frobNorm_smul": {
+  "new": "NLAlib.frobNorm_real_smul",
+  "stage": "M2"
+ },
+ "NLAlib.frobNorm_smul_eq_norm_mul": {
+  "new": "NLAlib.frobNorm_smul",
+  "stage": "M2"
+ },
+ "NLAlib.frobNorm_sq": {
+  "new": null,
+  "note": "frobSq is gone; the entry sum is frobNorm_sq_eq_sum",
+  "stage": "M2"
+ },
+ "NLAlib.frobNorm_sub_le": {
+  "new": "NLAlib.frobNorm_sub_le",
+  "stage": "M2"
+ },
+ "NLAlib.frobNorm_transpose": {
+  "new": "NLAlib.frobNorm_transpose",
+  "stage": "M2"
+ },
+ "NLAlib.frobNorm_zero": {
+  "new": "NLAlib.frobNorm_zero",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq": {
+  "new": null,
+  "note": "no squared-norm definition; written frobNorm A ^ 2 (design note Matrix-Norms §7.1)",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_add": {
+  "new": "NLAlib.frobNorm_add_sq",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_add_of_frobInner_eq_zero": {
+  "new": "NLAlib.frobNorm_add_sq_of_frobInner_eq_zero",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_conjTranspose": {
+  "new": "NLAlib.frobNorm_conjTranspose",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_conjTranspose_mul_le": {
+  "new": "NLAlib.HasOrthonormalCols.frobNorm_conjTranspose_mul_le",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_diagonal": {
+  "new": "NLAlib.frobNorm_diagonal_sq",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_eq_frobSq_conjTranspose_mul_add_residual": {
+  "new": "IsStarProjection.frobNorm_sq_eq_add",
+  "note": "with HasOrthonormalCols.frobNorm_mul_left",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_eq_frobSq_proj_add_residual": {
+  "new": "IsStarProjection.frobNorm_sq_eq_add",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_eq_re_trace_conjTranspose_mul_self": {
+  "new": "NLAlib.frobNorm_sq_eq_re_trace",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_eq_sum_frobSq_col": {
+  "new": "NLAlib.frobNorm_sq_eq_sum_col",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_eq_sum_frobSq_single_columns": {
+  "new": "NLAlib.frobNorm_sq_eq_sum_col",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_eq_sum_norm_sq": {
+  "new": "NLAlib.frobNorm_sq_eq_sum",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_eq_sum_re_star_dotProduct_self": {
+  "new": "NLAlib.frobNorm_sq_eq_sum_row",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_eq_sum_sq": {
+  "new": null,
+  "note": "real-only twin of frobNorm_sq_eq_sum",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_eq_sum_sq_eigenvalues": {
+  "new": "Matrix.IsHermitian.frobNorm_sq_eq_sum_eigenvalue_sq",
+  "stage": "M3"
+ },
+ "NLAlib.frobSq_eq_zero_iff": {
+  "new": "NLAlib.frobNorm_eq_zero_iff",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_frame_eq_card": {
+  "new": "NLAlib.HasOrthonormalCols.frobNorm_sq",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_fromCols": {
+  "new": "NLAlib.frobNorm_fromCols_sq",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_fromRows": {
+  "new": "NLAlib.frobNorm_fromRows_sq",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_mul_le": {
+  "new": "NLAlib.frobNorm_mul_le",
+  "note": "squared twin",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_mul_le_frobSq_mul_specNorm_sq": {
+  "new": "NLAlib.frobNorm_mul_le_frobNorm_mul_specNorm",
+  "note": "squared twin",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_mul_le_specNorm_sq_mul_frobSq": {
+  "new": "NLAlib.frobNorm_mul_le_specNorm_mul_frobNorm",
+  "note": "squared twin",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_mul_left_of_orthonormal": {
+  "new": "NLAlib.HasOrthonormalCols.frobNorm_mul_left",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_mul_right_of_orthonormal": {
+  "new": "NLAlib.HasOrthonormalCols.frobNorm_mul_conjTranspose_right",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_neg": {
+  "new": "NLAlib.frobNorm_neg",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_nonneg": {
+  "new": null,
+  "note": "sq_nonneg",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_proj_le": {
+  "new": "IsStarProjection.frobNorm_mul_le",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_reindex": {
+  "new": null,
+  "note": "frobNorm_submatrix_equiv",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_residual_eq_sub": {
+  "new": "IsStarProjection.frobNorm_sq_eq_add",
+  "note": "rearranged",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_residual_le": {
+  "new": "NLAlib.frobNorm_one_sub_rangeProjector_mul_le",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_residual_le_frobSq_sub_mul": {
+  "new": "NLAlib.frobNorm_one_sub_rangeProjector_mul_le_frobNorm_sub_mul",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_residual_le_of_eq_mul": {
+  "new": "NLAlib.frobNorm_one_sub_rangeProjector_mul_le_of_range_le",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_smul": {
+  "new": "NLAlib.frobNorm_real_smul",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_smul_eq_norm_sq_mul": {
+  "new": "NLAlib.frobNorm_smul",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_sub": {
+  "new": "NLAlib.frobNorm_sub_sq",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_sub_comm": {
+  "new": "NLAlib.frobNorm_sub_comm",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_sub_mul_eq": {
+  "new": "NLAlib.frobNorm_sub_mul_sq",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_sub_of_frobInner_eq_zero": {
+  "new": "NLAlib.frobNorm_sub_sq_of_frobInner_eq_zero",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_sub_rangeProjector_mul_le": {
+  "new": "NLAlib.frobNorm_one_sub_rangeProjector_mul_le",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_sub_rangeProjector_mul_le_of_mul_eq": {
+  "new": "NLAlib.frobNorm_one_sub_rangeProjector_mul_le_of_range_le",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_transpose": {
+  "new": "NLAlib.frobNorm_transpose",
+  "stage": "M2"
+ },
+ "NLAlib.frobSq_zero": {
+  "new": "NLAlib.frobNorm_zero",
+  "stage": "M2"
+ },
+ "NLAlib.frobenius_norm_sq_eq_sum_norm_sq": {
+  "new": null,
+  "note": "inlined in the bridge frobNorm_eq_norm",
+  "stage": "M2"
  },
  "NLAlib.generalizedSchurComplement_le": {
   "new": "NLAlib.sub_conjTranspose_mul_mul_le",
@@ -307,6 +722,10 @@
   "new": "NLAlib.hasOrthonormalCols_planeRotation",
   "stage": "M1"
  },
+ "NLAlib.hasOrthonormalCols_sortedEigenframe": {
+  "new": "Matrix.IsHermitian.exists_mul_eq_mul_diagonal",
+  "stage": "M3"
+ },
  "NLAlib.isHermitian_dilation": {
   "new": "NLAlib.isHermitian_dilation",
   "stage": "M1"
@@ -315,6 +734,26 @@
   "new": null,
   "note": "follows from quadForm_sub_conjTranspose_mul_mul_le and quadForm_fromBlocks_eq_add at y = -(X x); restate in M4 if a consumer wants the IsLeast form",
   "stage": "M1"
+ },
+ "NLAlib.lambdaMax": {
+  "new": null,
+  "note": "the largest eigenvalue is eigenvalue A 0; design note Matrix-Spectral §1",
+  "stage": "M3"
+ },
+ "NLAlib.lambdaMax_eq_eigenvalues₀_zero": {
+  "new": null,
+  "note": "no lambdaMax",
+  "stage": "M3"
+ },
+ "NLAlib.lambdaMin": {
+  "new": null,
+  "note": "the smallest eigenvalue is eigenvalue A k with k + 1 = card n",
+  "stage": "M3"
+ },
+ "NLAlib.lambdaMin_eq_eigenvalues₀_last": {
+  "new": null,
+  "note": "no lambdaMin",
+  "stage": "M3"
  },
  "NLAlib.le_of_posSemidef_of_continuous_of_forall_posDef": {
   "new": "Matrix.PosSemidef.le_of_forall_posDef_le",
@@ -328,6 +767,16 @@
  "NLAlib.mulVec_conjTranspose_mulVec_of_mem_range": {
   "new": "NLAlib.rangeProjector_mulVec_eq_self_iff",
   "stage": "M1"
+ },
+ "NLAlib.mulVec_dotProduct_mulVec_eq_sum_sq": {
+  "new": null,
+  "note": "real-only entry expansion; not needed",
+  "stage": "M2"
+ },
+ "NLAlib.mulVec_dotProduct_mulVec_le_frobSq_mul": {
+  "new": null,
+  "note": "real-only twin of norm_toLp_mulVec_le_frobNorm_mul",
+  "stage": "M2"
  },
  "NLAlib.mulVec_eq_iff_sub_mem_ker": {
   "new": null,
@@ -353,14 +802,58 @@
   "new": "NLAlib.HasOrthonormalCols.isStarProjection_mul_conjTranspose",
   "stage": "M1"
  },
+ "NLAlib.mul_frobSq_le_frobSq_mul_of_mulVec_sq_le": {
+  "new": "NLAlib.mul_frobNorm_sq_le_of_smul_one_le",
+  "stage": "M2"
+ },
  "NLAlib.mul_rangeProjector_conjTranspose": {
   "new": "NLAlib.conjTranspose_mul_rangeProjector",
   "note": "applied to Bᴴ and transposed",
   "stage": "M1"
  },
+ "NLAlib.mul_reindex": {
+  "new": null,
+  "note": "Mathlib Matrix.submatrix_mul_equiv",
+  "stage": "M2"
+ },
  "NLAlib.mul_selectionMatrix": {
   "new": "NLAlib.mul_selectionMatrix",
   "stage": "M1"
+ },
+ "NLAlib.mul_sortedEigenframe_eq_mul_diagonal": {
+  "new": "Matrix.IsHermitian.exists_mul_eq_mul_diagonal",
+  "note": "existence statement; no chosen eigenframe",
+  "stage": "M3"
+ },
+ "NLAlib.mul_specNorm_le_specNorm_mul_of_mulVec_sq_le": {
+  "new": "NLAlib.mul_specNorm_le_of_sq_smul_one_le",
+  "note": "hypothesis is a Loewner inequality on the Gram matrix",
+  "stage": "M2"
+ },
+ "NLAlib.norm_eq_sqrt_dotProduct": {
+  "new": null,
+  "note": "real dot-product spelling of the Euclidean norm; statements use ‖toLp 2 x‖",
+  "stage": "M2"
+ },
+ "NLAlib.norm_eq_sqrt_sum_sq": {
+  "new": null,
+  "note": "Mathlib EuclideanSpace.norm_eq",
+  "stage": "M2"
+ },
+ "NLAlib.norm_mulVec_sq_bounds_of_specNorm_gram_sub_one_le": {
+  "new": "NLAlib.smul_one_le_conjTranspose_mul_self_iff",
+  "note": "with Matrix.IsHermitian.specNorm_le_iff on Tᴴ T - 1; a one-step companion is on the M2 wrap-up list",
+  "stage": "M2"
+ },
+ "NLAlib.norm_toLp_eq_sqrt_dotProduct_self": {
+  "new": null,
+  "note": "real dot-product spelling; EuclideanSpace.norm_toLp_sq_eq_dotProduct_self",
+  "stage": "M2"
+ },
+ "NLAlib.norm_toLp_ofReal_eq": {
+  "new": null,
+  "note": "deferred: real-to-𝕜 coercion of matrices, moves with its consumer",
+  "stage": "M2"
  },
  "NLAlib.norm_toLp_sq_eq_dotProduct_self": {
   "new": "EuclideanSpace.norm_toLp_sq_eq_dotProduct_self",
@@ -658,6 +1151,11 @@
   "note": "trivial restatement of the previous",
   "stage": "M1"
  },
+ "NLAlib.sortedEigenframe": {
+  "new": "Matrix.IsHermitian.exists_mul_eq_mul_diagonal",
+  "note": "existence statement, not a definition",
+  "stage": "M3"
+ },
  "NLAlib.specNorm": {
   "new": "NLAlib.specNorm",
   "note": "no DecidableEq; bridge still rfl",
@@ -667,8 +1165,26 @@
   "new": "NLAlib.specNorm_add_le",
   "stage": "M2"
  },
+ "NLAlib.specNorm_add_sq_le_of_conjTranspose_mul_eq_zero": {
+  "new": "NLAlib.specNorm_add_sq_le_of_conjTranspose_mul_eq_zero",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_add_sq_le_of_mul_conjTranspose_eq_zero": {
+  "new": "NLAlib.specNorm_add_sq_le_of_mul_conjTranspose_eq_zero",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_blockDiagonal_const_le": {
+  "new": null,
+  "note": "deferred to M10 with Kronecker products",
+  "stage": "M2"
+ },
  "NLAlib.specNorm_conjTranspose": {
   "new": "NLAlib.specNorm_conjTranspose",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_conjTranspose_mul_of_eq_mul": {
+  "new": "NLAlib.HasOrthonormalCols.specNorm_mul_left",
+  "note": "applied to X = P (Pᴴ X)",
   "stage": "M2"
  },
  "NLAlib.specNorm_diagonal_le": {
@@ -679,12 +1195,58 @@
   "new": "NLAlib.specNorm_eq_norm",
   "stage": "M2"
  },
+ "NLAlib.specNorm_fromCols_sq_le": {
+  "new": "NLAlib.specNorm_fromCols_sq_le",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_fromRows_sq_le": {
+  "new": "NLAlib.specNorm_fromRows_sq_le",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_fromRows_zero_sq": {
+  "new": "NLAlib.specNorm_fromRows_zero",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_le_div_of_net": {
+  "new": "NLAlib.specNorm_le_div_of_isCover",
+  "note": "net is Mathlib Metric.IsCover",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_le_div_of_net_bilinear": {
+  "new": "NLAlib.specNorm_le_div_of_isCover_of_isCover",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_le_div_of_net_quadForm": {
+  "new": "Matrix.IsHermitian.specNorm_le_div_of_isCover",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_le_frobNorm": {
+  "new": "NLAlib.specNorm_le_frobNorm",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_le_iff_abs_dotProduct_mulVec_le": {
+  "new": "Matrix.IsHermitian.specNorm_le_iff_abs_re_quadForm_le",
+  "stage": "M2"
+ },
  "NLAlib.specNorm_le_of_forall_sqrt_le": {
   "new": "NLAlib.specNorm_le_of_forall_norm_eq_one",
   "stage": "M2"
  },
  "NLAlib.specNorm_le_of_mulVec_sq_le": {
   "new": "NLAlib.specNorm_le_iff",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_le_one_of_orthonormal": {
+  "new": "NLAlib.HasOrthonormalCols.specNorm_le_one",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_le_specNorm_map_ofReal": {
+  "new": null,
+  "note": "deferred: real-to-𝕜 coercion of matrices, moves with its consumer",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_le_trace_of_posSemidef": {
+  "new": "Matrix.PosSemidef.specNorm_le_re_trace",
   "stage": "M2"
  },
  "NLAlib.specNorm_map_star": {
@@ -697,12 +1259,25 @@
   "note": "private helper of Norms/Spectral.lean",
   "stage": "M2"
  },
+ "NLAlib.specNorm_mul_conjTranspose_right_of_hasOrthonormalCols": {
+  "new": "NLAlib.HasOrthonormalCols.specNorm_mul_conjTranspose_right",
+  "stage": "M2"
+ },
  "NLAlib.specNorm_mul_conjTranspose_self": {
   "new": "NLAlib.specNorm_mul_conjTranspose_self",
   "stage": "M2"
  },
  "NLAlib.specNorm_mul_le": {
   "new": "NLAlib.specNorm_mul_le",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_mul_left_of_hasOrthonormalCols": {
+  "new": "NLAlib.HasOrthonormalCols.specNorm_mul_left",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_mul_transpose_right_of_hasOrthonormalCols": {
+  "new": "NLAlib.HasOrthonormalCols.specNorm_mul_conjTranspose_right",
+  "note": "transpose twin",
   "stage": "M2"
  },
  "NLAlib.specNorm_neg": {
@@ -715,6 +1290,11 @@
  },
  "NLAlib.specNorm_one_le": {
   "new": "NLAlib.specNorm_one_le",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_one_sub_rangeProjector_le_one": {
+  "new": "IsStarProjection.specNorm_le_one",
+  "note": "applied to isStarProjection_one_sub_rangeProjector",
   "stage": "M2"
  },
  "NLAlib.specNorm_reindex": {
@@ -730,6 +1310,11 @@
   "note": "transpose twin",
   "stage": "M2"
  },
+ "NLAlib.specNorm_sq_le_frobSq": {
+  "new": "NLAlib.specNorm_le_frobNorm",
+  "note": "the squared form follows by gcongr",
+  "stage": "M2"
+ },
  "NLAlib.specNorm_sub_comm": {
   "new": "NLAlib.specNorm_sub_comm",
   "stage": "M2"
@@ -738,8 +1323,26 @@
   "new": "NLAlib.specNorm_sub_le",
   "stage": "M2"
  },
+ "NLAlib.specNorm_sub_mul_conjTranspose_mul_le": {
+  "new": "IsStarProjection.specNorm_mul_le",
+  "note": "applied to the complementary projector",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_sub_rangeProjector_mul_le": {
+  "new": "NLAlib.specNorm_one_sub_rangeProjector_mul_le",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_sub_rangeProjector_mul_le_of_mul_eq": {
+  "new": "NLAlib.specNorm_one_sub_rangeProjector_mul_le_of_range_le",
+  "stage": "M2"
+ },
  "NLAlib.specNorm_transpose": {
   "new": "NLAlib.specNorm_transpose",
+  "stage": "M2"
+ },
+ "NLAlib.specNorm_upper_block_sq_le": {
+  "new": null,
+  "note": "deferred to M9: a rank-revealing QR block bound with no other consumer",
   "stage": "M2"
  },
  "NLAlib.specNorm_zero": {
@@ -750,6 +1353,26 @@
   "new": "NLAlib.sq_div_add_sq_div_one_add_sq",
   "stage": "M1"
  },
+ "NLAlib.sqrt_dotProduct_add_le": {
+  "new": null,
+  "note": "real dot-product spelling; norm_add_le",
+  "stage": "M2"
+ },
+ "NLAlib.sqrt_dotProduct_self_eq_norm": {
+  "new": null,
+  "note": "real dot-product spelling of the Euclidean norm",
+  "stage": "M2"
+ },
+ "NLAlib.sqrt_dotProduct_self_pos": {
+  "new": null,
+  "note": "real dot-product spelling; norm_pos_iff",
+  "stage": "M2"
+ },
+ "NLAlib.sqrt_dotProduct_sub_le": {
+  "new": null,
+  "note": "real dot-product spelling; norm_sub_le",
+  "stage": "M2"
+ },
  "NLAlib.sqrt_mulVec_dotProduct_le_specNorm_mul": {
   "new": "NLAlib.norm_toLp_mulVec_le",
   "stage": "M2"
@@ -758,6 +1381,10 @@
   "new": "NLAlib.rangeProjector_mulVec_eq_self_iff",
   "note": "with HasOrthonormalCols.star_mulVec_dotProduct_mulVec",
   "stage": "M1"
+ },
+ "NLAlib.star_mulVec_dotProduct_mulVec_self": {
+  "new": "NLAlib.quadForm_conjTranspose_mul_self",
+  "stage": "M2"
  },
  "NLAlib.star_mulVec_dotProduct_mulVec_self_of_hasOrthonormalCols": {
   "new": "NLAlib.HasOrthonormalCols.star_mulVec_dotProduct_mulVec",
@@ -768,10 +1395,29 @@
   "new": "NLAlib.star_quadForm",
   "stage": "M1"
  },
+ "NLAlib.sum_diag_sq_le_frobNorm_sq": {
+  "new": null,
+  "note": "real-only twin of the previous",
+  "stage": "M2"
+ },
+ "NLAlib.sum_diag_sq_le_frobSq": {
+  "new": null,
+  "note": "real-only twin of the previous",
+  "stage": "M2"
+ },
+ "NLAlib.sum_norm_diag_sq_le_frobSq": {
+  "new": "NLAlib.norm_apply_le_frobNorm",
+  "note": "the diagonal sum bound follows from frobNorm_sq_eq_sum; restate in M3a if Schur majorization wants it",
+  "stage": "M2"
+ },
  "NLAlib.sum_norm_sq_conjTranspose_mulVec_le": {
   "new": "NLAlib.HasOrthonormalCols.norm_toLp_conjTranspose_mulVec_le",
   "note": "restated with the Euclidean norm",
   "stage": "M1"
+ },
+ "NLAlib.sum_norm_sq_mulVec_le_frobSq": {
+  "new": "NLAlib.norm_toLp_mulVec_le_frobNorm_mul",
+  "stage": "M2"
  },
  "NLAlib.sum_norm_sq_mulVec_le_specNorm_sq": {
   "new": "NLAlib.norm_toLp_mulVec_le",
@@ -781,6 +1427,11 @@
   "new": null,
   "note": "Mathlib sum_le_hasSum through the scoped instance Matrix.instOrderClosedTopology",
   "stage": "M1"
+ },
+ "NLAlib.sum_sq_mulVec_le_frobSq": {
+  "new": null,
+  "note": "real-only twin of norm_toLp_mulVec_le_frobNorm_mul",
+  "stage": "M2"
  },
  "NLAlib.sum_sq_mulVec_le_specNorm_sq": {
   "new": "NLAlib.norm_toLp_mulVec_le",
@@ -842,6 +1493,11 @@
  "NLAlib.trace_mul_le_trace_mul_of_posSemidef": {
   "new": "Matrix.PosSemidef.trace_mul_le_trace_mul",
   "stage": "M1"
+ },
+ "NLAlib.trace_mul_moorePenroseInverse": {
+  "new": "NLAlib.trace_rangeProjector",
+  "note": "the projector A A⁺ is rangeProjector A",
+  "stage": "M2"
  },
  "NLAlib.trace_mul_nonneg_of_posSemidef": {
   "new": "Matrix.PosSemidef.trace_mul_nonneg",

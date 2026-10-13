@@ -1200,6 +1200,10 @@
   "note": "private helper of Spectral/Weyl.lean",
   "stage": "M3"
  },
+ "NLAlib.cauchyMatrix": {
+  "new": "NLAlib.cauchyMatrix",
+  "stage": "M10"
+ },
  "NLAlib.cauchy_binet_properties": {
   "new": null,
   "note": "bundle; conjuncts are separate theorems",
@@ -1610,6 +1614,10 @@
   "note": "bundle of SymmetricGauge.mul_matrixNorm_conjTranspose_mul_le_of_le, SymmetricGauge.mul_matrixNorm_one_sub_mul_le_of_eigenvalue_sub, specNorm_one_sub_mul_le_two_mul_specNorm_div_eigengap, with one_sub_mul_mul_one_sub_le_of_smul_one_le for a frame given by a Loewner bound",
   "stage": "M6"
  },
+ "NLAlib.dense_separable_charpoly": {
+  "new": "NLAlib.dense_setOf_separable_charpoly",
+  "stage": "M10"
+ },
  "NLAlib.det_add_rpow_inv_card_eq_iff": {
   "new": null,
   "note": "equality case not stated: of Matrix.PosSemidef.re_det_rpow_add_le",
@@ -1623,6 +1631,14 @@
  "NLAlib.det_add_vecMulVec": {
   "new": null,
   "note": "deferred: characteristic polynomial of a rank-one update (check Mathlib's matrix determinant lemma first)",
+  "stage": "M10"
+ },
+ "NLAlib.det_cauchyMatrix_eq_prod_differences": {
+  "new": "NLAlib.det_cauchyMatrix",
+  "stage": "M10"
+ },
+ "NLAlib.det_cauchyMatrix_pos_of_strictMono": {
+  "new": "NLAlib.det_cauchyMatrix_pos",
   "stage": "M10"
  },
  "NLAlib.det_conjTranspose_mul_self_eq_sum_norm_sq": {
@@ -1686,6 +1702,10 @@
  "NLAlib.det_gram_updateCol_eq_det_mul": {
   "new": "NLAlib.re_det_conjTranspose_mul_self_updateCol",
   "stage": "M9"
+ },
+ "NLAlib.det_hilbertMatrix_pos": {
+  "new": "NLAlib.det_hilbertMatrix_pos",
+  "stage": "M10"
  },
  "NLAlib.det_inv_rpow_smul_eq_one": {
   "new": null,
@@ -2557,6 +2577,14 @@
   "note": "not ported: realises an orthogonal change of coordinates by an abstract OrthonormalBasis of an inner product space; helper for real Schur blocks, the Matrix layer works in coordinates",
   "stage": "M5"
  },
+ "NLAlib.exists_paired_charpoly_factors_add_mul_of_commute": {
+  "new": "NLAlib.exists_isEigenvalueListing_add_mul_of_commute",
+  "stage": "M10"
+ },
+ "NLAlib.exists_perm_eq_of_prod_X_sub_C_eq": {
+  "new": "NLAlib.IsEigenvalueListing.exists_equiv_eq",
+  "stage": "M10"
+ },
  "NLAlib.exists_perm_sum_le_doublyStochastic_cost": {
   "new": "NLAlib.exists_perm_sum_le_sum_mul_of_mem_doublyStochastic",
   "stage": "M3a"
@@ -2600,6 +2628,10 @@
   "new": "NLAlib.exists_embedding_eq_mul_pinv_mul",
   "stage": "M9"
  },
+ "NLAlib.exists_real_charpoly_factors_of_complex_spectrum_real": {
+  "new": "NLAlib.exists_isEigenvalueListing_of_forall_im_eq_zero",
+  "stage": "M10"
+ },
  "NLAlib.exists_real_idempotent_unitary_similarity": {
   "new": null,
   "note": "not ported: transport of complex idempotents to real ones for the Complex* duplicates; Oblique.lean is over 𝕜",
@@ -2622,6 +2654,10 @@
  "NLAlib.exists_schattenNorm_le_one_frobInner_eq": {
   "new": "NLAlib.exists_schattenNorm_le_one_frobInner_eq",
   "stage": "M3b"
+ },
+ "NLAlib.exists_similarity_upper_triangular_small_entries": {
+  "new": "NLAlib.exists_isUpperTriangular_inv_mul_mul_norm_apply_lt",
+  "stage": "M10"
  },
  "NLAlib.exists_simpleEigenvalueSchurFunction_branch": {
   "new": null,
@@ -2735,6 +2771,14 @@
  "NLAlib.exists_unitary_right_block_of_first_columns_eq": {
   "new": "NLAlib.HasOrthonormalCols.exists_mul_fromBlocks_one_eq",
   "stage": "M5"
+ },
+ "NLAlib.exists_unitary_schur_triangularization": {
+  "new": "NLAlib.exists_hasOrthonormalCols_isUpperTriangular",
+  "stage": "M10"
+ },
+ "NLAlib.exists_unitary_schur_triangularization_with_charpoly": {
+  "new": "NLAlib.IsEigenvalueListing.exists_hasOrthonormalCols_isUpperTriangular",
+  "stage": "M10"
  },
  "NLAlib.exists_unitary_sum_completion": {
   "new": "NLAlib.HasOrthonormalCols.exists_fromCols",
@@ -3697,6 +3741,14 @@
   "new": null,
   "note": "object not reproduced: headColumns, Matrix-Perturbation §6",
   "stage": "M6"
+ },
+ "NLAlib.hilbertMatrix": {
+  "new": "NLAlib.hilbertMatrix",
+  "stage": "M10"
+ },
+ "NLAlib.hilbertMatrix_eq_cauchyMatrix": {
+  "new": "NLAlib.hilbertMatrix_eq_cauchyMatrix",
+  "stage": "M10"
  },
  "NLAlib.householder": {
   "new": "NLAlib.householder",
@@ -7825,6 +7877,10 @@
   "note": "the diagonal sum bound follows from frobNorm_sq_eq_sum; restate in M3a if Schur majorization wants it",
   "stage": "M2"
  },
+ "NLAlib.sum_norm_sq_characteristic_eq_frobSq_iff_normal": {
+  "new": "NLAlib.IsEigenvalueListing.sum_norm_sq_eq_frobNorm_sq_iff",
+  "stage": "M10"
+ },
  "NLAlib.sum_norm_sq_conjTranspose_mulVec_le": {
   "new": "NLAlib.HasOrthonormalCols.norm_toLp_conjTranspose_mulVec_le",
   "note": "restated with the Euclidean norm",
@@ -7837,6 +7893,10 @@
  "NLAlib.sum_norm_sq_mulVec_le_specNorm_sq": {
   "new": "NLAlib.norm_toLp_mulVec_le",
   "stage": "M2"
+ },
+ "NLAlib.sum_norm_sq_schur_diagonal_le_frobSq": {
+  "new": "NLAlib.IsEigenvalueListing.sum_norm_sq_le_frobNorm_sq",
+  "stage": "M10"
  },
  "NLAlib.sum_offDiagonal_frame_contractions_eq": {
   "new": null,
@@ -7947,6 +8007,10 @@
   "new": null,
   "note": "not ported: fourth-moment contraction sums of a frame leave the Matrix layer, Matrix-Subspaces §0",
   "stage": "M5"
+ },
+ "NLAlib.sum_walshCharacter": {
+  "new": "NLAlib.sum_walshHadamard_apply",
+  "stage": "M10"
  },
  "NLAlib.sylvester_complement_overlap_eq": {
   "new": "NLAlib.conjTranspose_mul_mul_sub_mul_eq",
@@ -8114,6 +8178,10 @@
  "NLAlib.trace_eq_sum_eigenvalues₀": {
   "new": "Matrix.IsHermitian.trace_eq_sum_range_eigenvalue",
   "stage": "M3a"
+ },
+ "NLAlib.trace_eq_sum_of_charpoly_eq_prod": {
+  "new": "NLAlib.IsEigenvalueListing.trace_eq_sum",
+  "stage": "M10"
  },
  "NLAlib.trace_le_of_le": {
   "new": "NLAlib.re_trace_le_re_trace_of_le",
@@ -8312,6 +8380,34 @@
   "new": null,
   "note": "not ported: for a unit u orthogonal to w with u + w in range Q, ‖(1 - Q * Qᴴ) *ᵥ u‖ ≤ ‖w‖ * ‖Qᴴ *ᵥ u‖; no vector-to-subspace tangent statement in the new library",
   "stage": "M5"
+ },
+ "NLAlib.walshCharacter_add_left": {
+  "new": "NLAlib.walshHadamard_add_apply",
+  "stage": "M10"
+ },
+ "NLAlib.walshCharacter_sq": {
+  "new": "NLAlib.walshHadamard_apply_mul_self",
+  "stage": "M10"
+ },
+ "NLAlib.walshMatrix": {
+  "new": "NLAlib.walshHadamard",
+  "stage": "M10"
+ },
+ "NLAlib.walshMatrix_apply_sq": {
+  "new": "NLAlib.norm_smul_walshHadamard_apply",
+  "stage": "M10"
+ },
+ "NLAlib.walshMatrix_mul_self": {
+  "new": "NLAlib.walshHadamard_mul_self",
+  "stage": "M10"
+ },
+ "NLAlib.walshMatrix_transpose": {
+  "new": "NLAlib.transpose_walshHadamard",
+  "stage": "M10"
+ },
+ "NLAlib.walshMatrix_transpose_mul_self": {
+  "new": "NLAlib.hasOrthonormalCols_smul_walshHadamard",
+  "stage": "M10"
  },
  "NLAlib.weaklyMajorized_abs_singularValues_add_sub": {
   "new": "NLAlib.weaklyMajorized_abs_singularValues_add_sub",

@@ -59,8 +59,9 @@ would have to be restated for the underlying term to be found by `rw` or `simp`.
 
 **`cfc f A` is the spelling of `f(A)`.** The stage adds the API that makes it usable with the
 library's vocabulary: `cfc f A` through any unitary diagonalisation
-(`cfc_eq_mul_diagonal_mul_conjTranspose`, hypotheses `HasOrthonormalCols U` and
-`A = U * diagonal d * Uᴴ`), its trace as a sum over `eigenvalue A i`, its sorted eigenvalues when
+(`cfc_eq_mul_diagonal_mul_conjTranspose`, for a frame `U : Matrix n r 𝕜` with
+`HasOrthonormalCols U`, `card r = card n` and `A = U * diagonal d * Uᴴ`, the shape the spectral
+theorem of M3 produces), its trace as a sum over `eigenvalue A i`, its sorted eigenvalues when
 `f` is monotone or antitone on the spectrum, and comparison `cfc f A ≤ cfc g A` from `f ≤ g` on
 the eigenvalues or on an interval `[a, b]` with `a • 1 ≤ A ≤ b • 1`.
 

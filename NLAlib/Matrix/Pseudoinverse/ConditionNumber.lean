@@ -152,14 +152,15 @@ theorem HasOrthonormalCols.conditionNumber_eq_one [DecidableEq n] [Nonempty n]
   rw [conditionNumber, hQ.pinv_eq, specNorm_conjTranspose, hQ.specNorm_eq_one, mul_one]
 
 /-- **Two-sided Gram bounds control the condition number.** If
-`a • 1 ≤ Aᴴ * A ≤ b • 1` with `0 < a`, then `conditionNumber A ^ 2 ≤ b / a`. With `A = S * U`
-this is the conditioning of a sketched orthonormal basis. -/
+`a • 1 ≤ Aᴴ * A ≤ b • 1` with `0 < a` and `0 ≤ b`, then `conditionNumber A ^ 2 ≤ b / a`. With
+`A = S * U` this is the conditioning of a sketched orthonormal basis. -/
 theorem conditionNumber_sq_le_div_of_smul_one_le_of_le_smul_one [DecidableEq n]
-    {A : Matrix m n 𝕜} {a b : ℝ} (ha : 0 < a) (h₁ : a • (1 : Matrix n n 𝕜) ≤ Aᴴ * A)
-    (h₂ : Aᴴ * A ≤ b • (1 : Matrix n n 𝕜)) : conditionNumber A ^ 2 ≤ b / a := by
-  -- False as stated: when `n` is empty both hypotheses hold for every `a` and `b`, the left side
-  -- is `0`, and `b / a < 0` for `b < 0 < a`. It holds with `[Nonempty n]` or with `0 ≤ b`.
-  sorry
+    {A : Matrix m n 𝕜} {a b : ℝ} (ha : 0 < a) (hb : 0 ≤ b)
+    (h₁ : a • (1 : Matrix n n 𝕜) ≤ Aᴴ * A) (h₂ : Aᴴ * A ≤ b • (1 : Matrix n n 𝕜)) :
+    conditionNumber A ^ 2 ≤ b / a := by
+  rw [conditionNumber, mul_pow, div_eq_mul_inv]
+  exact mul_le_mul ((specNorm_sq_le_iff_conjTranspose_mul_self_le hb).mpr h₂)
+    (specNorm_pinv_sq_le_inv_of_smul_one_le ha h₁) (sq_nonneg _) hb
 
 /-! ### Distance to rank deficiency -/
 

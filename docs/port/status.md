@@ -18,12 +18,10 @@ Updated at every stopping point. Newest entry first within each section.
 | M2 | all 8 files | Opus agents | **done** | `docs/design/Matrix-Norms.md` with stage report; not maintainer-approved |
 | M3 | all 10 files | Opus agents | **done** | `docs/design/Matrix-Spectral.md` with stage report; not maintainer-approved. Open: make `exists_submodule_singularValues_mul_norm_le` public at the next follow-up pass |
 | M3a | design note `docs/design/Matrix-Majorization.md`, skeleton of 7 files under `Matrix/Majorization/` | orchestrator | done, Fable-reviewed, not maintainer-approved | `Majorized` on unsorted vectors, `kyFanNorm` defined here |
-| M3a | `Majorization/Basic.lean` | Opus agent | in progress | |
-| M4 | design note `docs/design/Matrix-Pseudoinverse.md` | orchestrator | done, Fable-reviewed, not maintainer-approved | `pinv`, `IsPinv`, `IsLeastSquaresSolution`, real-valued `conditionNumber` |
-| M4 | skeleton, 6 files under `Matrix/Pseudoinverse/` | orchestrator | done, builds with `sorry` | |
-| M4 | `Pseudoinverse/Penrose.lean`, `Pinv.lean` | Opus agent | proved | 297 and 322 lines |
-| M4 | `NormBounds`, `GeneralizedSchur`, `LeastSquares` | Opus agents | proved | |
-| M4 | `ConditionNumber` and review follow-ups | Opus agent | in progress | |
+| M3a | `Majorization/Basic.lean` | Opus agent | proved | |
+| M3a | `Majorization/DoublyStochastic.lean`, `KyFan.lean` | Opus agents | in progress | |
+| M3a | `Schur`, `TraceInequalities`, `Lidskii`, `Horn` | — | skeleton | |
+| M4 | all 6 files | Opus agents | **done** | `docs/design/Matrix-Pseudoinverse.md` with stage report; not maintainer-approved. One designed statement was false (empty column type) and gained `0 ≤ b` |
 
 Stage order after M3, changed by the M3 and M4 notes: **M4** (pseudoinverse, least squares) →
 **M3a** (majorization, Ky Fan sums, von Neumann trace inequality, Hoffman–Wielandt, Mirsky,

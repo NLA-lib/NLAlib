@@ -258,7 +258,7 @@ theorem weaklyMajorized_of_le {x y : ι → ℝ} (h : x ≤ y) : WeaklyMajorized
   intro k
   exact sumLargest_mono h k
 
-/-- A vector is majorized by each of its permutations, and conversely.
+/-- Every permutation of a vector is majorized by the vector.
 Port of `NLAlib.majorized_comp_perm`. -/
 theorem majorized_comp_equiv (x : ι → ℝ) (e : ι ≃ ι) : Majorized (x ∘ e) x := by
   exact ⟨fun k => (sumLargest_comp_equiv x e k).le, Equiv.sum_comp e x⟩

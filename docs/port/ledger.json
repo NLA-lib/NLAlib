@@ -118,6 +118,11 @@
   "new": "Matrix.PosSemidef.re_quadForm_nonneg",
   "stage": "M1"
  },
+ "Matrix.isUnit_conjTranspose_iff": {
+  "new": null,
+  "note": "Mathlib: Matrix.isUnit_conjTranspose",
+  "stage": "M4"
+ },
  "NLAlib.HasOrthonormalCols": {
   "new": "NLAlib.HasOrthonormalCols",
   "stage": "M1"
@@ -356,10 +361,38 @@
   "note": "truncation is defined for the matrix, not for a given SVD",
   "stage": "M3"
  },
+ "NLAlib.Majorized": {
+  "new": "NLAlib.Majorized",
+  "stage": "M3a"
+ },
+ "NLAlib.Majorized.refl": {
+  "new": "NLAlib.Majorized.refl",
+  "stage": "M3a"
+ },
+ "NLAlib.Majorized.sum_sub_sumLargest_le_sum": {
+  "new": "NLAlib.Majorized.sum_sub_sumLargest_le_sum",
+  "stage": "M3a"
+ },
+ "NLAlib.Majorized.trans": {
+  "new": "NLAlib.Majorized.trans",
+  "stage": "M3a"
+ },
  "NLAlib.SizedSubset": {
   "new": null,
   "note": "replaced by Mathlib Finset.powersetCard and Set.powersetCard",
   "stage": "M1"
+ },
+ "NLAlib.WeaklyMajorized": {
+  "new": "NLAlib.WeaklyMajorized",
+  "stage": "M3a"
+ },
+ "NLAlib.WeaklyMajorized.refl": {
+  "new": "NLAlib.WeaklyMajorized.refl",
+  "stage": "M3a"
+ },
+ "NLAlib.WeaklyMajorized.trans": {
+  "new": "NLAlib.WeaklyMajorized.trans",
+  "stage": "M3a"
  },
  "NLAlib.abs_apply_le_apply_self_add_apply_self": {
   "new": "Matrix.PosSemidef.two_mul_norm_apply_le",
@@ -451,6 +484,11 @@
   "note": "applied in both directions",
   "stage": "M3"
  },
+ "NLAlib.card_largestCoordinates": {
+  "new": null,
+  "note": "no sorting",
+  "stage": "M3a"
+ },
  "NLAlib.card_le_card_of_hasOrthonormalCols": {
   "new": "NLAlib.HasOrthonormalCols.card_le",
   "stage": "M1"
@@ -524,6 +562,60 @@
   "new": null,
   "note": "no chosen eigenframes",
   "stage": "M3"
+ },
+ "NLAlib.conditionNumber": {
+  "new": "NLAlib.conditionNumber",
+  "note": "real-valued, every shape; the ℝ≥0∞-valued square notion is not reproduced",
+  "stage": "M4"
+ },
+ "NLAlib.conditionNumber_conjTranspose": {
+  "new": "NLAlib.conditionNumber_conjTranspose",
+  "stage": "M4"
+ },
+ "NLAlib.conditionNumber_eq_eigenvalues₀_ratio": {
+  "new": "Matrix.PosDef.conditionNumber_eq",
+  "stage": "M4"
+ },
+ "NLAlib.conditionNumber_eq_ofReal_moorePenroseConditionNumber": {
+  "new": null,
+  "note": "ℝ≥0∞-valued notion not reproduced",
+  "stage": "M4"
+ },
+ "NLAlib.conditionNumber_eq_singularValues_ratio": {
+  "new": "NLAlib.conditionNumber_eq_singularValues_div",
+  "stage": "M4"
+ },
+ "NLAlib.conditionNumber_eq_top_iff": {
+  "new": null,
+  "note": "ℝ≥0∞-valued notion not reproduced",
+  "stage": "M4"
+ },
+ "NLAlib.conditionNumber_inv": {
+  "new": "NLAlib.conditionNumber_pinv",
+  "stage": "M4"
+ },
+ "NLAlib.conditionNumber_ne_top_iff": {
+  "new": null,
+  "note": "ℝ≥0∞-valued notion not reproduced",
+  "stage": "M4"
+ },
+ "NLAlib.conditionNumber_of_isUnit": {
+  "new": "NLAlib.conditionNumber_of_isUnit",
+  "stage": "M4"
+ },
+ "NLAlib.conditionNumber_of_not_isUnit": {
+  "new": null,
+  "note": "ℝ≥0∞-valued notion not reproduced",
+  "stage": "M4"
+ },
+ "NLAlib.conditionNumber_toReal_eq_moorePenroseConditionNumber": {
+  "new": null,
+  "note": "ℝ≥0∞-valued notion not reproduced",
+  "stage": "M4"
+ },
+ "NLAlib.conditionNumber_toReal_of_isUnit": {
+  "new": "NLAlib.conditionNumber_of_isUnit",
+  "stage": "M4"
  },
  "NLAlib.conjTranspose_mulVec_eq_zero_of_fromBlocks_posSemidef": {
   "new": "NLAlib.conjTranspose_mulVec_eq_zero_of_posSemidef_fromBlocks",
@@ -817,6 +909,10 @@
  "NLAlib.exists_ne_zero_mem_inf_of_card_lt_finrank_add": {
   "new": "Submodule.finrank_add_finrank_le_card_add_finrank_inf",
   "stage": "M3"
+ },
+ "NLAlib.exists_not_isUnit_add_specNorm_eq_inv_specNorm_inv": {
+  "new": "NLAlib.isLeast_specNorm_not_isUnit_add",
+  "stage": "M4"
  },
  "NLAlib.exists_orthogonal_transpose_mul_mul_eq_diagonal_singularValues": {
   "new": "NLAlib.exists_isSVD",
@@ -1331,6 +1427,10 @@
   "note": "real-only entry expansion; not needed",
   "stage": "M3"
  },
+ "NLAlib.inv_specNorm_inv_le_specNorm_of_not_isUnit_add": {
+  "new": "NLAlib.singularValues_last_le_specNorm_of_not_injective_add",
+  "stage": "M4"
+ },
  "NLAlib.inv_specNorm_moorePenroseInverse_sq_mul_dotProduct_le": {
   "new": "NLAlib.norm_le_specNorm_pinv_mul_norm_mulVec_of_mem_range",
   "stage": "M4"
@@ -1347,6 +1447,11 @@
   "new": null,
   "note": "private detail of the variational proofs",
   "stage": "M3"
+ },
+ "NLAlib.isGreatest_sumLargest": {
+  "new": "NLAlib.exists_card_eq_and_sum_eq_sumLargest",
+  "note": "with sumLargest_le",
+  "stage": "M3a"
  },
  "NLAlib.isHermitian_dilation": {
   "new": "NLAlib.isHermitian_dilation",
@@ -1388,6 +1493,14 @@
  },
  "NLAlib.isLeast_generalizedSchurComplement_quadratic": {
   "new": "NLAlib.isLeast_re_quadForm_fromBlocks",
+  "stage": "M4"
+ },
+ "NLAlib.isLeast_relative_singular_perturbations": {
+  "new": "NLAlib.isLeast_specNorm_div_not_isUnit_add",
+  "stage": "M4"
+ },
+ "NLAlib.isLeast_specNorm_singular_perturbations": {
+  "new": "NLAlib.isLeast_specNorm_not_isUnit_add",
   "stage": "M4"
  },
  "NLAlib.isLeast_specNorm_sub_of_rank_le": {
@@ -1445,6 +1558,11 @@
   "note": "no lambdaMin",
   "stage": "M3"
  },
+ "NLAlib.largestCoordinates": {
+  "new": null,
+  "note": "no sorting; attainment is exists_card_eq_min_and_sum_eq_sumLargest",
+  "stage": "M3a"
+ },
  "NLAlib.le_of_posSemidef_of_continuous_of_forall_posDef": {
   "new": "Matrix.PosSemidef.le_of_forall_posDef_le",
   "stage": "M1"
@@ -1462,10 +1580,63 @@
   "note": "deferred: strict variational bounds and eigenvalue counting, with inertia",
   "stage": "M10"
  },
+ "NLAlib.majorized_comp_perm": {
+  "new": "NLAlib.majorized_comp_equiv",
+  "stage": "M3a"
+ },
  "NLAlib.matrixOf_curry_update_eq_add_single": {
   "new": null,
   "note": "Gaussian integration-by-parts helper with no Matrix-layer consumer; moves with its consumer in RandomMatrix",
   "stage": "M1"
+ },
+ "NLAlib.moorePenroseConditionNumber": {
+  "new": "NLAlib.conditionNumber",
+  "stage": "M4"
+ },
+ "NLAlib.moorePenroseConditionNumber_conjTranspose": {
+  "new": "NLAlib.conditionNumber_conjTranspose",
+  "stage": "M4"
+ },
+ "NLAlib.moorePenroseConditionNumber_conjTranspose_mul_self": {
+  "new": "NLAlib.conditionNumber_conjTranspose_mul_self",
+  "stage": "M4"
+ },
+ "NLAlib.moorePenroseConditionNumber_eq_eigenvalues₀_ratio": {
+  "new": "Matrix.PosDef.conditionNumber_eq",
+  "stage": "M4"
+ },
+ "NLAlib.moorePenroseConditionNumber_eq_mul_specNorm_inv": {
+  "new": "NLAlib.conditionNumber_of_isUnit",
+  "stage": "M4"
+ },
+ "NLAlib.moorePenroseConditionNumber_eq_singularValues_ratio": {
+  "new": "NLAlib.conditionNumber_eq_singularValues_div",
+  "stage": "M4"
+ },
+ "NLAlib.moorePenroseConditionNumber_eq_specNorm_div_singularValues_last": {
+  "new": "NLAlib.conditionNumber_of_injective",
+  "stage": "M4"
+ },
+ "NLAlib.moorePenroseConditionNumber_mul_left_of_hasOrthonormalCols": {
+  "new": "NLAlib.HasOrthonormalCols.conditionNumber_mul_left",
+  "stage": "M4"
+ },
+ "NLAlib.moorePenroseConditionNumber_nonneg": {
+  "new": "NLAlib.conditionNumber_nonneg",
+  "stage": "M4"
+ },
+ "NLAlib.moorePenroseConditionNumber_smul": {
+  "new": "NLAlib.conditionNumber_smul",
+  "stage": "M4"
+ },
+ "NLAlib.moorePenroseConditionNumber_transpose": {
+  "new": null,
+  "note": "transpose twin",
+  "stage": "M4"
+ },
+ "NLAlib.moorePenroseConditionNumber_zero": {
+  "new": "NLAlib.conditionNumber_zero",
+  "stage": "M4"
  },
  "NLAlib.moorePenroseInverse": {
   "new": "NLAlib.pinv",
@@ -1569,6 +1740,11 @@
   "new": null,
   "note": "trivial; Mathlib LinearMap.sub_mem_ker_iff",
   "stage": "M1"
+ },
+ "NLAlib.mulVec_moorePenroseInverse_mulVec_ne_zero": {
+  "new": null,
+  "note": "deferred: perturbation of linear systems and least squares, with the perturbation stage",
+  "stage": "M6"
  },
  "NLAlib.mul_complementaryEigenframe_eq_mul_diagonal": {
   "new": null,
@@ -1691,6 +1867,16 @@
   "note": "private detail of the variational proofs",
   "stage": "M3"
  },
+ "NLAlib.norm_div_le_conditionNumber_mul_of_mulVec_add": {
+  "new": null,
+  "note": "deferred: perturbation of linear systems and least squares, with the perturbation stage",
+  "stage": "M6"
+ },
+ "NLAlib.norm_div_le_of_add_mulVec_add": {
+  "new": null,
+  "note": "deferred: perturbation of linear systems and least squares, with the perturbation stage",
+  "stage": "M6"
+ },
  "NLAlib.norm_eq_sqrt_dotProduct": {
   "new": null,
   "note": "real dot-product spelling of the Euclidean norm; statements use ‖toLp 2 x‖",
@@ -1701,10 +1887,25 @@
   "note": "Mathlib EuclideanSpace.norm_eq",
   "stage": "M2"
  },
+ "NLAlib.norm_moorePenroseInverse_sub_div_le": {
+  "new": null,
+  "note": "deferred: perturbation of linear systems and least squares, with the perturbation stage",
+  "stage": "M6"
+ },
  "NLAlib.norm_mulVec_sq_bounds_of_specNorm_gram_sub_one_le": {
   "new": "NLAlib.smul_one_le_conjTranspose_mul_self_iff",
   "note": "with Matrix.IsHermitian.specNorm_le_iff on Tᴴ T - 1; a one-step companion is on the M2 wrap-up list",
   "stage": "M2"
+ },
+ "NLAlib.norm_mul_moorePenroseInverse_sub_div_le": {
+  "new": null,
+  "note": "deferred: perturbation of linear systems and least squares, with the perturbation stage",
+  "stage": "M6"
+ },
+ "NLAlib.norm_sub_div_le_conditionNumber_mul": {
+  "new": null,
+  "note": "deferred: perturbation of linear systems and least squares, with the perturbation stage",
+  "stage": "M6"
  },
  "NLAlib.norm_sub_mulVec_sq_eq_add_of_transpose_mulVec_eq_zero": {
   "new": "NLAlib.IsLeastSquaresSolution.norm_sub_mulVec_sq_eq_add",
@@ -1727,6 +1928,19 @@
  "NLAlib.norm_toLp_sq_eq_re_star_dotProduct": {
   "new": "EuclideanSpace.norm_toLp_sq_eq_re_star_dotProduct",
   "stage": "M1"
+ },
+ "NLAlib.one_le_conditionNumber": {
+  "new": "NLAlib.one_le_conditionNumber",
+  "stage": "M4"
+ },
+ "NLAlib.one_le_moorePenroseConditionNumber": {
+  "new": "NLAlib.one_le_conditionNumber",
+  "stage": "M4"
+ },
+ "NLAlib.one_le_specNorm_of_isIdempotentElem": {
+  "new": null,
+  "note": "for star projections: IsStarProjection.specNorm_eq_one; oblique projections come with M5",
+  "stage": "M4"
  },
  "NLAlib.one_sub_mul_conjTranspose_conjTranspose_mul": {
   "new": "NLAlib.one_sub_rangeProjector_mul_self",
@@ -2352,6 +2566,21 @@
   "note": "existence statement, not a definition",
   "stage": "M3"
  },
+ "NLAlib.sortedVector": {
+  "new": null,
+  "note": "no sorting",
+  "stage": "M3a"
+ },
+ "NLAlib.sortedVector_antitone": {
+  "new": null,
+  "note": "no sorting",
+  "stage": "M3a"
+ },
+ "NLAlib.sortingEquiv": {
+  "new": null,
+  "note": "no sorting; sumLargest is a maximum over index sets",
+  "stage": "M3a"
+ },
  "NLAlib.specNorm": {
   "new": "NLAlib.specNorm",
   "note": "no DecidableEq; bridge still rfl",
@@ -2411,6 +2640,11 @@
   "new": null,
   "note": "deferred to the sketching layer, its only consumer",
   "stage": "M3"
+ },
+ "NLAlib.specNorm_inv_pos_of_isUnit": {
+  "new": null,
+  "note": "not needed; specNorm_pos_iff with inverse nonzero",
+  "stage": "M4"
  },
  "NLAlib.specNorm_inv_self_mul_transpose_eq": {
   "new": null,
@@ -2510,6 +2744,10 @@
   "new": "NLAlib.specNorm_nonneg",
   "stage": "M2"
  },
+ "NLAlib.specNorm_one": {
+  "new": "NLAlib.specNorm_one",
+  "stage": "M4"
+ },
  "NLAlib.specNorm_one_le": {
   "new": "NLAlib.specNorm_one_le",
   "stage": "M2"
@@ -2523,6 +2761,11 @@
   "new": null,
   "note": "deferred to M4: there is no pinvR; see specNorm_pinv_sq",
   "stage": "M3"
+ },
+ "NLAlib.specNorm_pos_of_isUnit": {
+  "new": null,
+  "note": "not needed; specNorm_pos_iff",
+  "stage": "M4"
  },
  "NLAlib.specNorm_reindex": {
   "new": "NLAlib.specNorm_submatrix_equiv",
@@ -2634,6 +2877,30 @@
   "new": "NLAlib.star_quadForm",
   "stage": "M1"
  },
+ "NLAlib.sumLargest": {
+  "new": "NLAlib.sumLargest",
+  "stage": "M3a"
+ },
+ "NLAlib.sumLargest_add_le": {
+  "new": "NLAlib.sumLargest_add_le",
+  "stage": "M3a"
+ },
+ "NLAlib.sumLargest_comp_perm": {
+  "new": "NLAlib.sumLargest_comp_equiv",
+  "stage": "M3a"
+ },
+ "NLAlib.sumLargest_eq_prefix_of_antitone": {
+  "new": "NLAlib.sumLargest_eq_sum_of_antitone",
+  "stage": "M3a"
+ },
+ "NLAlib.sumLargest_eq_sum_of_card_le": {
+  "new": "NLAlib.sumLargest_of_card_le",
+  "stage": "M3a"
+ },
+ "NLAlib.sumLargest_zero": {
+  "new": "NLAlib.sumLargest_zero",
+  "stage": "M3a"
+ },
  "NLAlib.sum_diag_sq_le_frobNorm_sq": {
   "new": null,
   "note": "real-only twin of the previous",
@@ -2648,6 +2915,20 @@
   "new": null,
   "note": "Fin index bookkeeping; sums are over Finset.Ico now",
   "stage": "M3"
+ },
+ "NLAlib.sum_fin_ite_lt_eq_sum_castLE": {
+  "new": null,
+  "note": "Fin index bookkeeping, not needed",
+  "stage": "M3a"
+ },
+ "NLAlib.sum_largestCoordinates": {
+  "new": null,
+  "note": "no sorting",
+  "stage": "M3a"
+ },
+ "NLAlib.sum_le_sumLargest": {
+  "new": "NLAlib.sum_le_sumLargest",
+  "stage": "M3a"
  },
  "NLAlib.sum_mul_le_sum_ite_lt_of_antitone": {
   "new": null,
@@ -2676,6 +2957,11 @@
   "new": null,
   "note": "Mathlib sum_le_hasSum through the scoped instance Matrix.instOrderClosedTopology",
   "stage": "M1"
+ },
+ "NLAlib.sum_sortedVector": {
+  "new": null,
+  "note": "no sorting",
+  "stage": "M3a"
  },
  "NLAlib.sum_sq_mulVec_le_frobSq": {
   "new": null,
@@ -2811,5 +3097,9 @@
  "NLAlib.truncatedSVD": {
   "new": "NLAlib.truncatedSVD",
   "stage": "M3"
+ },
+ "NLAlib.weaklyMajorized_iff_sum_le": {
+  "new": "NLAlib.weaklyMajorized_iff_forall_sum_le",
+  "stage": "M3a"
  }
 }

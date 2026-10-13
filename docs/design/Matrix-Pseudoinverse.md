@@ -147,7 +147,7 @@ noncomputable def conditionNumber (A : Matrix m n 𝕜) : ℝ := specNorm A * sp
 theorem conditionNumber_eq_singularValues_div (A : Matrix m n 𝕜) {k : ℕ} (hk : k + 1 = A.rank) :
     conditionNumber A = singularValues A 0 / singularValues A k
 theorem conditionNumber_sq_le_div_of_smul_one_le_of_le_smul_one [DecidableEq n]
-    {A : Matrix m n 𝕜} {a b : ℝ} (ha : 0 < a) (h₁ : a • (1 : Matrix n n 𝕜) ≤ Aᴴ * A)
+    {A : Matrix m n 𝕜} {a b : ℝ} (ha : 0 < a) (hb : 0 ≤ b) (h₁ : a • (1 : Matrix n n 𝕜) ≤ Aᴴ * A)
     (h₂ : Aᴴ * A ≤ b • (1 : Matrix n n 𝕜)) : conditionNumber A ^ 2 ≤ b / a
 theorem isLeast_specNorm_not_injective_add (A : Matrix m n 𝕜) {k : ℕ}
     (hk : k + 1 = Fintype.card n) :
@@ -250,3 +250,42 @@ Recorded for consumers: `pinv` is neither continuous nor monotone in the Loewner
 can jump), so M6 states Wedin's identity directly. There is no "scaled condition number"
 definition; the Kaczmarz rate is `1 - singularValues A k ^ 2 / frobNorm A ^ 2` with
 `k + 1 = card n`.
+
+## 9. Stage report (2026-10-14)
+
+**Outcome.** Six files under `Matrix/Pseudoinverse/` (1430 lines), all proved; nothing in
+`NLAlibScaffold`. With M1 to M3 and `Majorization/Basic.lean` the build is clean, the axiom audit
+covers 1014 declarations with no violation, the environment linters pass on 831 declarations, and
+references check clean. Proofs by Opus agents, three to six minutes per file.
+
+**What changed from the design.**
+
+- `conditionNumber_sq_le_div_of_smul_one_le_of_le_smul_one` was false as designed: with no
+  columns both Loewner hypotheses hold for every `a` and `b`, the left side is `0`, and `b / a` is
+  negative for `b < 0 < a`. It now assumes `0 ≤ b`. §3 is amended.
+- `mul_pinv_mul_eq_of_range_le` is in `Pinv.lean`, for a rectangular `A`, with the iff
+  `mul_pinv_mul_eq_iff_range_le : A * pinv A * B = B ↔ range B ≤ range A`.
+- Least squares is proved from the projector characterisation
+  `A *ᵥ x = rangeProjector A *ᵥ b` and M1's Pythagoras lemmas; no perturbation argument. Added
+  from the file review: `IsLeastSquaresSolution.mulVec_eq_rangeProjector_mulVec` and
+  `IsLeastSquaresSolution.pinv_mulVec_mulVec`.
+- `specNorm_pinv_sq_le_inv_of_smul_one_le` is proved from `A * pinv A = rangeProjector A`, without
+  singular values.
+- The distance to rank deficiency is Weyl's perturbation bound for the last singular value, with
+  attainment by `truncatedSVD`.
+
+**Mathlib overlap.** None: Mathlib has no pseudoinverse, least-squares predicate or condition
+number of a matrix. `Matrix.isUnit_conjTranspose` replaces a prototype lemma.
+
+**Not ported, by decision.** `pinvL`, `pinvR`; the `ℝ≥0∞`-valued condition number of a square
+matrix; transpose twins; real dot-product forms. Deferred with ledger entries: least squares
+through a QR factorization (M9); perturbation of linear systems and of least-squares solutions
+(M6).
+
+**For the next stages.**
+
+- M6 should state perturbation bounds for `pinv` and for least squares with
+  `IsLeastSquaresSolution` and `rangeProjector`, and bounds for linear systems with the real
+  `conditionNumber`, assuming invertibility where the classical statement needs it.
+- The sketching layer consumes `specNorm_pinv_sq_le_inv_of_smul_one_le` and
+  `conditionNumber_sq_le_div_of_smul_one_le_of_le_smul_one` with `A = S * U`.

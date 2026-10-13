@@ -11,7 +11,7 @@ public import Mathlib.Analysis.Calculus.Deriv.Prod
 public import Mathlib.Analysis.SpecialFunctions.Log.Deriv
 public import Mathlib.LinearAlgebra.Matrix.NonsingularInverse
 public import Mathlib.LinearAlgebra.Matrix.Trace
-public import Mathlib.Analysis.Matrix.Normed
+public import Mathlib.Topology.Instances.Matrix
 
 /-!
 # Derivatives of matrix-valued functions of one variable

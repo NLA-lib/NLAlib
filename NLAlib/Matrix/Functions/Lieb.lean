@@ -31,6 +31,9 @@ of an affine function minus a relative entropy.
 * `NLAlib.isGreatest_re_trace_mul_cfc_log_sub`, `NLAlib.isGreatest_re_trace_exp_add_cfc_log`: the
   variational formulas for `tr M` and `tr exp (H + log A)`.
 * `NLAlib.concaveOn_re_trace_exp_add_cfc_log`: Lieb's theorem.
+* `NLAlib.continuousOn_re_trace_exp_add_cfc_log`: continuity of `A ↦ tr exp (H + log A)` on the
+  positive definite matrices.
+* `NLAlib.relativeEntropy_eq`: the relative entropy expanded into traces.
 -/
 
 @[expose] public section
@@ -59,8 +62,9 @@ private theorem cfc_mul_log {A : Matrix n n 𝕜} (hA : A.IsHermitian) :
   rw [cfc_mul (fun x : ℝ => x) Real.log A (A.finite_real_spectrum.continuousOn _)
     (A.finite_real_spectrum.continuousOn _), cfc_id' ℝ A hA.isSelfAdjoint]
 
-/-- The relative entropy as a combination of four traces. -/
-private theorem relativeEntropy_eq (A H : Matrix n n 𝕜) :
+/-- The relative entropy expanded into four traces:
+`D(A; H) = tr (A log A) - tr (A log H) - tr A + tr H`. -/
+theorem relativeEntropy_eq (A H : Matrix n n 𝕜) :
     relativeEntropy A H = RCLike.re (A * cfc Real.log A).trace -
       RCLike.re (A * cfc Real.log H).trace - RCLike.re A.trace + RCLike.re H.trace := by
   rw [relativeEntropy, Matrix.mul_sub, Matrix.trace_sub, Matrix.trace_sub, Matrix.trace_sub,
@@ -98,15 +102,6 @@ theorem relativeEntropy_nonneg {A H : Matrix n n 𝕜} (hA : A.PosDef) (hH : H.P
 `D(A; H) = ⟨vec 1, ψ(A ⊗ 1, 1 ⊗ Hᵀ) vec 1⟩ - tr (A - H)` for the perspective `ψ` of `-log`: the
 Kronecker factors commute, are linear in `A` and `H`, and the perspective is jointly operator
 convex. -/
-
-omit [Fintype n] [DecidableEq n] in
-/-- Convex combinations of positive definite matrices are positive definite. -/
-private theorem posDef_smul_add_smul {A B : Matrix n n 𝕜} (hA : A.PosDef) (hB : B.PosDef)
-    {a b : ℝ} (ha : 0 ≤ a) (hb : 0 ≤ b) (hab : a + b = 1) : (a • A + b • B).PosDef := by
-  rcases ha.eq_or_lt with rfl | ha'
-  · rw [zero_add] at hab
-    rwa [hab, zero_smul, zero_add, one_smul]
-  · exact (hA.smul ha').add_posSemidef (hB.posSemidef.smul hb)
 
 /-- The quadratic form of a matrix on `n × n` at the vectorised identity. -/
 private noncomputable def kroneckerContraction (M : Matrix (n × n) (n × n) 𝕜) : ℝ :=
@@ -243,8 +238,8 @@ Result: relative-entropy -/
 theorem convexOn_relativeEntropy :
     ConvexOn ℝ {P : Matrix n n 𝕜 × Matrix n n 𝕜 | P.1.PosDef ∧ P.2.PosDef}
       fun P => relativeEntropy P.1 P.2 := by
-  refine ⟨fun P hP Q hQ a b ha hb hab => ⟨posDef_smul_add_smul hP.1 hQ.1 ha hb hab,
-    posDef_smul_add_smul hP.2 hQ.2 ha hb hab⟩, fun P hP Q hQ a b ha hb hab => ?_⟩
+  refine ⟨fun P hP Q hQ a b ha hb hab => ⟨convex_setOf_posDef hP.1 hQ.1 ha hb hab,
+    convex_setOf_posDef hP.2 hQ.2 ha hb hab⟩, fun P hP Q hQ a b ha hb hab => ?_⟩
   have hL : ∀ X : Matrix n n 𝕜, X.PosDef → (X ⊗ₖ (1 : Matrix n n 𝕜)).PosDef := fun X hX =>
     hX.kronecker Matrix.PosDef.one
   have hR : ∀ X : Matrix n n 𝕜, X.PosDef → ((1 : Matrix n n 𝕜) ⊗ₖ Xᵀ).PosDef := fun X hX =>
@@ -263,8 +258,8 @@ theorem convexOn_relativeEntropy :
     ring
   change relativeEntropy (a • P.1 + b • Q.1) (a • P.2 + b • Q.2) ≤
     a * relativeEntropy P.1 P.2 + b * relativeEntropy Q.1 Q.2
-  rw [relativeEntropy_eq_kroneckerContraction (posDef_smul_add_smul hP.1 hQ.1 ha hb hab)
-    (posDef_smul_add_smul hP.2 hQ.2 ha hb hab), relativeEntropy_eq_kroneckerContraction hP.1 hP.2,
+  rw [relativeEntropy_eq_kroneckerContraction (convex_setOf_posDef hP.1 hQ.1 ha hb hab)
+    (convex_setOf_posDef hP.2 hQ.2 ha hb hab), relativeEntropy_eq_kroneckerContraction hP.1 hP.2,
     relativeEntropy_eq_kroneckerContraction hQ.1 hQ.2, ht]
   linarith
 
@@ -320,9 +315,7 @@ Result: lieb-concavity -/
 theorem concaveOn_re_trace_exp_add_cfc_log {H : Matrix n n 𝕜} (hH : H.IsHermitian) :
     ConcaveOn ℝ {A : Matrix n n 𝕜 | A.PosDef}
       fun A => RCLike.re (exp (H + cfc Real.log A)).trace := by
-  have hc : Convex ℝ {A : Matrix n n 𝕜 | A.PosDef} := fun A hA B hB a b ha hb hab =>
-    posDef_smul_add_smul hA hB ha hb hab
-  refine ⟨hc, fun A hA B hB a b ha hb hab => ?_⟩
+  refine ⟨convex_setOf_posDef, fun A hA B hB a b ha hb hab => ?_⟩
   obtain ⟨T, hT, hTA⟩ := (isGreatest_re_trace_exp_add_cfc_log hH A).1
   obtain ⟨S, hS, hSB⟩ := (isGreatest_re_trace_exp_add_cfc_log hH B).1
   have hent : relativeEntropy (a • T + b • S) (a • A + b • B) ≤
@@ -333,7 +326,7 @@ theorem concaveOn_re_trace_exp_add_cfc_log {H : Matrix n n 𝕜} (hH : H.IsHermi
       relativeEntropy (a • T + b • S) (a • A + b • B) ≤
         RCLike.re (exp (H + cfc Real.log (a • A + b • B))).trace :=
     (isGreatest_re_trace_exp_add_cfc_log hH (a • A + b • B)).2
-      ⟨a • T + b • S, hc hT hS ha hb hab, rfl⟩
+      ⟨a • T + b • S, convex_setOf_posDef hT hS ha hb hab, rfl⟩
   have htr : ∀ C D : Matrix n n 𝕜, RCLike.re (a • C + b • D).trace =
       a * RCLike.re C.trace + b * RCLike.re D.trace := fun C D => by
     rw [Matrix.trace_add, Matrix.trace_smul, Matrix.trace_smul, map_add, RCLike.smul_re,
@@ -344,5 +337,26 @@ theorem concaveOn_re_trace_exp_add_cfc_log {H : Matrix n n 𝕜} (hH : H.IsHermi
       RCLike.re (exp (H + cfc Real.log (a • A + b • B))).trace
   rw [← hTA, ← hSB]
   linarith
+
+/-- The function `A ↦ tr exp (H + log A)` of Lieb's theorem is continuous on the positive
+definite matrices, for every `H`.
+Port of `NLAlib.continuousOn_traceExp_add_matrixLog`, there over `ℂ`. -/
+theorem continuousOn_re_trace_exp_add_cfc_log (H : Matrix n n 𝕜) :
+    ContinuousOn (fun A : Matrix n n 𝕜 => RCLike.re (exp (H + cfc Real.log A)).trace)
+      {A | A.PosDef} := by
+  have hlog : ContinuousOn (fun B : Matrix n n ℂ => cfc Real.log B) {B | B.PosDef} := by
+    open scoped Matrix.Norms.L2Operator in
+    exact CFC.continuousOn_log.mono fun B hB => ⟨hB.isHermitian, hB.isUnit⟩
+  have hexp : Continuous (exp : Matrix n n ℂ → Matrix n n ℂ) := by
+    open scoped Matrix.Norms.Operator in exact NormedSpace.exp_continuous
+  have hc : Continuous (complexify : Matrix n n 𝕜 → Matrix n n ℂ) :=
+    continuous_id.matrix_map RCLike.continuous_toComplex
+  have h : ContinuousOn (fun A : Matrix n n 𝕜 =>
+      (exp (complexify H + cfc Real.log (complexify A))).trace.re) {A | A.PosDef} :=
+    (Complex.continuous_re.comp continuous_id.matrix_trace).comp_continuousOn
+      (hexp.comp_continuousOn (continuousOn_const.add
+        (hlog.comp hc.continuousOn fun A hA => posDef_complexify_iff.mpr hA)))
+  refine h.congr fun A hA => ?_
+  rw [← re_trace_complexify, complexify_exp, complexify_add, complexify_cfc hA.isHermitian]
 
 end NLAlib

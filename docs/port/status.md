@@ -40,7 +40,9 @@ Updated at every stopping point. Newest entry first within each section.
 | M9 | `Factorizations/Householder.lean`, `Givens.lean` | Opus agent | proved | |
 | M9 | `Factorizations/Hessenberg.lean`, `RankRevealing.lean`, `ColumnVolume.lean` (split off) | Opus agent | proved | Hessenberg reduction, the Hessenberg QR and the implicit Q theorem, unproved in the prototype, are proved |
 | M10 | `Spectral/Schur.lean`, `EigenvalueListing.lean` (split off), `Structured/Walsh.lean`, `Structured/Cauchy.lean` | Opus agent | proved | unitary Schur from the field similarity plus a QR factorization; Hilbert matrix positive definite through `posDef_iff_eliminationStep` |
-| M10 | `Spectral/Normal.lean`, `Simultaneous.lean`, `Diagonalizable.lean` | Opus agent | in progress | |
+| M10 | `Spectral/Normal.lean`, `Simultaneous.lean`, `Diagonalizable.lean`, `EigenvectorPairing.lean`, `SylvesterEquation.lean` (split off) | Opus agent | proved | commuting families over `𝕜` with split characteristic polynomials; simple-eigenvalue pairing over any field |
+| M10 | `Spectral/Inertia.lean`, `SylvesterCriterion.lean`, `RankOneUpdate.lean` | Opus agent | in progress | |
+| M10 | `Spectral/Gershgorin.lean`, `HermitianPart.lean`, `Structured/Kronecker.lean`, `Circulant.lean` | Opus agent | in progress | |
 | M8 | `Functions/HermitianCalculus.lean`, `ForMathlib/Analysis/RCLike/ToComplex.lean`, `ForMathlib/Analysis/Calculus/Deriv/Matrix.lean` | Opus agent | proved | diagonalisation lemmas to be restated for a frame `U : Matrix n r 𝕜` with `card r = card n`, the shape the spectral theorem of M3 produces |
 | M8 | `Functions/Polynomial.lean`, `Exponential.lean` | Opus agent | proved | |
 | M8 | `Functions/Complexification.lean`, `TraceFunctions.lean` | Opus agent | proved | convexity of trace functions through Jensen for quadratic forms (Peierls), Klein from the generalized Klein inequality |
@@ -48,7 +50,8 @@ Updated at every stopping point. Newest entry first within each section.
 | M8 | `Functions/Perspective.lean`, `Lieb.lean`, `OperatorConvex.lean` (split off `OperatorMonotone.lean`) | Opus agent | proved | Lieb's concavity theorem over `𝕜` on any index type; joint convexity of the relative entropy through Kronecker products |
 | M8 | `Functions/TracePowers.lean`, `LogDet.lean`, `AbsoluteValue.lean` | Opus agent | proved | all thirteen M8 files proved; wrap-up pending |
 | M9 | `Factorizations/Polar.lean`, `Procrustes.lean` and stage wrap-up (`Nystrom.lean`, `LUGeneral.lean`) | Opus agent | done | all sixteen M9 files proved, nothing in the scaffold library; stage checks and ledger completion pending |
-| M8 | stage wrap-up | Opus agent | in progress | |
+| M8 | stage wrap-up | Opus agent | done | stage report in `Matrix-Functions.md` §9 |
+| M8, M9 | stage checks | orchestrator | done | build no warnings; audit 2963 declarations, 0 violations; lint 2280 clean; refs clean; ledger complete for prototype `Functions`, `Calculus`, `Factorizations`, `Basic` |
 | M6 | design note `docs/design/Matrix-Perturbation.md`, skeleton of 10 files under `Matrix/Perturbation/` | orchestrator | done, Fable-reviewed, not maintainer-approved | Davis–Kahan in residual form at three levels; one review proposal rejected (false under repeated eigenvalues) |
 | M7 | design note `docs/design/Matrix-Inequalities.md`, skeleton of 8 files under `Matrix/Inequalities/` | orchestrator | done, Fable-reviewed, not maintainer-approved | spectral equivalence as a Loewner sandwich; `principalMinor`; determinants through `RCLike.re` |
 | M8 | design note `docs/design/Matrix-Functions.md`, skeleton of 12 files under `Matrix/Functions/`, `ForMathlib/Analysis/Calculus/Deriv/Matrix.lean`, `ForMathlib/Analysis/RCLike/ToComplex.lean` | orchestrator | done, Fable-reviewed, not maintainer-approved | `cfc f A` is the spelling of `f(A)`; no `matrixExp`/`traceExp`/`lambdaMax` names; results over `𝕜` through `complexify`; entrywise derivatives |

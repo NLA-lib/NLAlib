@@ -22,7 +22,10 @@ method of exchangeable pairs for random matrices use.
 
 * `NLAlib.re_trace_cfc_mul_cfc_eq_sum`: the overlap formula.
 * `NLAlib.sum_re_trace_cfc_mul_cfc_le_of_forall`: lifting a two-variable inequality.
-* `Matrix.IsHermitian.re_trace_pow`, `Matrix.IsHermitian.specNorm_pow_le_re_trace_pow`.
+* `Matrix.IsHermitian.re_trace_pow_nonneg`, `Matrix.PosSemidef.re_trace_pow_nonneg`,
+  `Matrix.IsHermitian.re_trace_pow_le_card_mul_specNorm_pow`: traces of powers through the
+  eigenvalues (`Matrix.IsHermitian.re_trace_pow_eq_sum_range_eigenvalue_pow`); the moment bound for
+  the spectral norm is `NLAlib.specNorm_pow_le_re_trace_pow`.
 * `NLAlib.re_trace_mul_pow_mul_pow_le`: `tr (C Hˡ C Hᵏ) ≤ tr (C² Hˡ⁺ᵏ)` for even `l + k`.
 * `NLAlib.re_trace_cfc_sub_mul_cfc_sub_le`: the mean value trace inequality.
 * `NLAlib.re_trace_mul_pow_le_add`, `NLAlib.re_trace_mul_le_re_trace_rpow_add`: trace Young.
@@ -106,54 +109,25 @@ theorem sum_re_trace_cfc_mul_cfc_le_of_forall {ι : Type*} [Fintype ι] {A B : M
 
 /-! ### Traces of powers -/
 
-/-- The trace of a power of a Hermitian matrix is the power sum of its eigenvalues.
-Port of `NLAlib.re_trace_pow_eq_sum_eigenvalues_pow`, there over `ℂ`. -/
-theorem _root_.Matrix.IsHermitian.re_trace_pow {A : Matrix n n 𝕜} (hA : A.IsHermitian) (r : ℕ) :
-    RCLike.re (A ^ r).trace = ∑ i ∈ Finset.range (Fintype.card n), eigenvalue A i ^ r := by
-  exact hA.re_trace_pow_eq_sum_range_eigenvalue_pow r
-
 /-- The trace of an even power of a Hermitian matrix is nonnegative.
 Port of `NLAlib.re_trace_pow_nonneg_of_even`. -/
 theorem _root_.Matrix.IsHermitian.re_trace_pow_nonneg {A : Matrix n n 𝕜} (hA : A.IsHermitian)
     {r : ℕ} (hr : Even r) : 0 ≤ RCLike.re (A ^ r).trace := by
-  rw [hA.re_trace_pow]
+  rw [hA.re_trace_pow_eq_sum_range_eigenvalue_pow]
   exact Finset.sum_nonneg fun i _ => hr.pow_nonneg _
 
 /-- The trace of a power of a positive semidefinite matrix is nonnegative.
 Port of `NLAlib.re_trace_pow_nonneg_of_posSemidef`. -/
 theorem _root_.Matrix.PosSemidef.re_trace_pow_nonneg {A : Matrix n n 𝕜} (hA : A.PosSemidef)
     (r : ℕ) : 0 ≤ RCLike.re (A ^ r).trace := by
-  rw [hA.isHermitian.re_trace_pow]
+  rw [hA.isHermitian.re_trace_pow_eq_sum_range_eigenvalue_pow]
   exact Finset.sum_nonneg fun i _ => pow_nonneg (hA.eigenvalue_nonneg i) r
-
-/-- **The moment bound for the spectral norm**: `‖A‖₂^{2q} ≤ tr A^{2q}` for Hermitian `A` and
-`q ≥ 1`. This is the first step of the moment method.
-Port of `NLAlib.specNorm_pow_two_mul_le_trace_pow`. -/
-theorem _root_.Matrix.IsHermitian.specNorm_pow_le_re_trace_pow {A : Matrix n n 𝕜}
-    (hA : A.IsHermitian) {q : ℕ} (hq : 0 < q) :
-    specNorm A ^ (2 * q) ≤ RCLike.re (A ^ (2 * q)).trace := by
-  rcases Nat.eq_zero_or_pos (Fintype.card n) with h0 | hpos
-  · have : IsEmpty n := Fintype.card_eq_zero_iff.mp h0
-    rw [Subsingleton.elim A 0, specNorm_zero, zero_pow (by omega)]
-    exact Matrix.isHermitian_zero.re_trace_pow_nonneg (even_two_mul q)
-  · obtain ⟨k, hk⟩ : ∃ k, k + 1 = Fintype.card n := ⟨Fintype.card n - 1, by omega⟩
-    have hterm : ∀ j < Fintype.card n, |eigenvalue A j| ^ (2 * q) ≤
-        RCLike.re (A ^ (2 * q)).trace := fun j hj => by
-      rw [(even_two_mul q).pow_abs, hA.re_trace_pow]
-      exact Finset.single_le_sum (f := fun i => eigenvalue A i ^ (2 * q))
-        (fun i _ => (even_two_mul q).pow_nonneg _) (Finset.mem_range.mpr hj)
-    rw [hA.specNorm_eq_max hk]
-    rcases max_choice |eigenvalue A 0| |eigenvalue A k| with h | h
-    · rw [h]
-      exact hterm 0 hpos
-    · rw [h]
-      exact hterm k (by omega)
 
 /-- The trace of a power is at most the dimension times the power of the spectral norm. -/
 theorem _root_.Matrix.IsHermitian.re_trace_pow_le_card_mul_specNorm_pow {A : Matrix n n 𝕜}
     (hA : A.IsHermitian) (r : ℕ) :
     RCLike.re (A ^ r).trace ≤ Fintype.card n * specNorm A ^ r := by
-  rw [hA.re_trace_pow]
+  rw [hA.re_trace_pow_eq_sum_range_eigenvalue_pow]
   have h := Finset.sum_le_card_nsmul (Finset.range (Fintype.card n))
     (fun i => eigenvalue A i ^ r) (specNorm A ^ r) fun i _ =>
       (le_abs_self _).trans ((abs_pow _ _).le.trans

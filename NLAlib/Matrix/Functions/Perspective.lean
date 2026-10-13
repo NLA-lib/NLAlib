@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Matrix.Functions.OperatorConvex
+public import NLAlib.Matrix.Inequalities.Order
 
 /-!
 # The matrix perspective
@@ -149,15 +150,6 @@ theorem matrixPerspective_smul_smul (f : ℝ → ℝ) (A H : Matrix n n 𝕜) {t
     rw [mul_comm t, ← mul_assoc, ← mul_inv, hs, inv_mul_cancel₀ ht.ne']
   rw [e, one_smul, hs]
 
-omit [Fintype n] [DecidableEq n] in
-/-- Convex combinations of positive definite matrices are positive definite. -/
-private theorem posDef_smul_add_smul {A B : Matrix n n 𝕜} (hA : A.PosDef) (hB : B.PosDef)
-    {a b : ℝ} (ha : 0 ≤ a) (hb : 0 ≤ b) (hab : a + b = 1) : (a • A + b • B).PosDef := by
-  rcases ha.eq_or_lt with rfl | ha'
-  · rw [zero_add] at hab
-    rwa [hab, zero_smul, zero_add, one_smul]
-  · exact (hA.smul ha').add_posSemidef (hB.posSemidef.smul hb)
-
 /-- The square root of a positive definite matrix and its inverse: both Hermitian, the square
 root squares to the matrix, and they are inverse to each other. -/
 private theorem sqrt_and_inv {A : Matrix n n 𝕜} (hA : A.PosDef) :
@@ -258,7 +250,7 @@ theorem OperatorConvexOn.matrixPerspective_smul_add_smul_le {f : ℝ → ℝ}
     (hab : a + b = 1) :
     matrixPerspective f (a • A₁ + b • A₂) (a • H₁ + b • H₂) ≤
       a • matrixPerspective f A₁ H₁ + b • matrixPerspective f A₂ H₂ := by
-  obtain ⟨hS, hR, hSS, hSR, hRS⟩ := sqrt_and_inv (posDef_smul_add_smul hA₁ hA₂ ha hb hab)
+  obtain ⟨hS, hR, hSS, hSR, hRS⟩ := sqrt_and_inv (convex_setOf_posDef hA₁ hA₂ ha hb hab)
   obtain ⟨hS₁, hR₁, hSS₁, hSR₁, hRS₁⟩ := sqrt_and_inv hA₁
   obtain ⟨hS₂, hR₂, hSS₂, hSR₂, hRS₂⟩ := sqrt_and_inv hA₂
   exact hf.mul_cfc_mul_le hS hR hSR hRS hS₁ hR₁ hSR₁ hRS₁ hS₂ hR₂ hSR₂ hRS₂ hH₁ hH₂ ha hb

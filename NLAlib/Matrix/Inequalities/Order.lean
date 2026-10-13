@@ -33,6 +33,8 @@ the spectrum of `M⁻¹ * A` (the generalized eigenvalues of the pair).
   matrix.
 * `Matrix.PosDef.smul_le_and_le_smul_iff_spectrum_subset`: spectral equivalence through the
   generalized eigenvalues.
+* `NLAlib.convex_setOf_posDef`, `NLAlib.convex_setOf_posSemidef`: the positive definite and the
+  positive semidefinite matrices form convex sets.
 -/
 
 @[expose] public section
@@ -436,5 +438,22 @@ theorem _root_.Matrix.PosDef.sq_le_sq_iff_specNorm_mul_inv_le_one {A B : Matrix 
   rw [← conjTranspose_mul_mul_le_conjTranspose_mul_mul_iff (A := B ^ 2) (B := A ^ 2)
     (Matrix.isUnit_nonsing_inv_iff.mpr hA.isUnit), e1, e2, ← sq_le_one_iff₀ (specNorm_nonneg _),
     specNorm_sq_le_iff_conjTranspose_mul_self_le zero_le_one, one_smul]
+
+/-! ### Convexity of the cones -/
+
+omit [Fintype n] [DecidableEq n] in
+/-- The positive definite matrices form a convex set. Port of `NLAlib.convex_setOf_posDef`. -/
+theorem convex_setOf_posDef : Convex ℝ {A : Matrix n n 𝕜 | A.PosDef} := by
+  intro A hA B hB a b ha hb hab
+  rcases ha.eq_or_lt with rfl | ha'
+  · rw [zero_add] at hab
+    simpa [hab] using hB
+  · exact (Matrix.PosDef.smul hA ha').add_posSemidef (hB.posSemidef.smul hb)
+
+omit [Fintype n] [DecidableEq n] in
+/-- The positive semidefinite matrices form a convex set. -/
+theorem convex_setOf_posSemidef : Convex ℝ {A : Matrix n n 𝕜 | A.PosSemidef} := by
+  intro A hA B hB a b ha hb _
+  exact (hA.smul ha).add (hB.smul hb)
 
 end NLAlib

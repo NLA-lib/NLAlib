@@ -25,6 +25,7 @@ functional calculus and the exponential, so a statement about Hermitian matrices
 ## Main results
 
 * `NLAlib.complexify_mul`, `NLAlib.complexify_conjTranspose`: it is a star-ring homomorphism.
+* `NLAlib.complexify_inv`: it commutes with the inverse.
 * `NLAlib.re_trace_complexify`, `NLAlib.complexify_le_complexify_iff`.
 * `NLAlib.complexify_cfc`, `NLAlib.complexify_exp`.
 -/
@@ -100,6 +101,21 @@ theorem complexify_mul [Fintype m] (A : Matrix l m 𝕜) (B : Matrix m n 𝕜) :
 theorem complexify_pow [Fintype n] [DecidableEq n] (A : Matrix n n 𝕜) (k : ℕ) :
     complexify (A ^ k) = complexify A ^ k := by
   rw [complexify_eq_mapMatrix, complexify_eq_mapMatrix, map_pow]
+
+/-- The complexification commutes with the inverse. For a singular matrix both sides are `0`. -/
+@[simp]
+theorem complexify_inv [Fintype n] [DecidableEq n] (A : Matrix n n 𝕜) :
+    complexify A⁻¹ = (complexify A)⁻¹ := by
+  by_cases h : IsUnit A.det
+  · refine (Matrix.inv_eq_right_inv ?_).symm
+    rw [← complexify_mul, Matrix.mul_nonsing_inv A h, complexify_one]
+  · have hdet : (complexify A).det = RCLike.toComplex A.det :=
+      (RingHom.map_det (RCLike.toComplex : 𝕜 →⋆ₐ[ℝ] ℂ).toRingHom A).symm
+    have h' : ¬ IsUnit (complexify A).det := by
+      rwa [hdet, isUnit_iff_ne_zero, ne_eq, map_eq_zero_iff _ RCLike.toComplex_injective, ← ne_eq,
+        ← isUnit_iff_ne_zero]
+    rw [Matrix.nonsing_inv_apply_not_isUnit A h, Matrix.nonsing_inv_apply_not_isUnit _ h',
+      complexify_zero]
 
 /-- The complexification commutes with the conjugate transpose. -/
 @[simp]

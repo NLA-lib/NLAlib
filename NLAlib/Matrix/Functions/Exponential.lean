@@ -8,6 +8,7 @@ module
 public import Mathlib.Analysis.Normed.Algebra.MatrixExponential
 public import Mathlib.Analysis.SpecialFunctions.Exponential
 public import Mathlib.Analysis.SpecialFunctions.Log.Basic
+public import NLAlib.ForMathlib.LinearAlgebra.Matrix.Trace
 public import NLAlib.Matrix.Functions.HermitianCalculus
 
 /-!
@@ -16,15 +17,17 @@ public import NLAlib.Matrix.Functions.HermitianCalculus
 The matrix exponential is Mathlib's `NormedSpace.exp A`; for a Hermitian matrix it is
 `cfc Real.exp A`. The logarithm of a positive definite matrix is `cfc Real.log A`. This file
 gives the bridge, the order facts (`1 + A ≤ exp A`, comparison of `exp` with polynomials on the
-spectrum), and the properties of the trace exponential `re (exp A).trace` used by the matrix
-Laplace transform method: its expression through the eigenvalues, its bounds by the largest
-eigenvalue, and its behaviour under shifts and unitary conjugation.
+spectrum), the norm bound `‖exp A‖₂ ≤ e ^ ‖A‖₂`, and the properties of the trace exponential
+`re (exp A).trace` used by the matrix Laplace transform method: its expression through the
+eigenvalues, its bounds by the largest eigenvalue, and its behaviour under shifts and unitary
+conjugation.
 
 ## Main results
 
 * `Matrix.IsHermitian.exp_eq_cfc`: the bridge.
 * `Matrix.IsHermitian.posDef_exp`, `Matrix.IsHermitian.cfc_log_exp`, `Matrix.PosDef.exp_cfc_log`.
 * `Matrix.IsHermitian.one_add_le_exp`.
+* `NLAlib.specNorm_exp_le`: `‖exp A‖₂ ≤ e ^ ‖A‖₂` for every square matrix.
 * `Matrix.IsHermitian.re_trace_exp`: `tr exp A = ∑ exp λ_i`.
 * `Matrix.IsHermitian.exp_eigenvalue_zero_le_re_trace_exp`: `exp(λ_max) ≤ tr exp A`.
 * `Matrix.IsHermitian.re_trace_exp_le_card_mul_exp`: `tr exp A ≤ n exp(λ_max)`.
@@ -222,6 +225,28 @@ theorem _root_.Matrix.PosSemidef.cfc_log_one_add_le {A : Matrix n n 𝕜} (hA : 
   have hx0 : (0 : ℝ) ≤ x := hA.spectrum_subset_Ici hx
   linarith [Real.log_le_sub_one_of_pos (by linarith : (0 : ℝ) < 1 + x)]
 
+/-! ### The spectral norm -/
+
+/-- The spectral norm of the exponential of any square matrix is at most the exponential of its
+spectral norm: `‖exp A‖₂ ≤ e ^ ‖A‖₂`, by the exponential series. -/
+theorem specNorm_exp_le (A : Matrix n n 𝕜) : specNorm (exp A) ≤ Real.exp (specNorm A) := by
+  rcases isEmpty_or_nonempty n with h | h
+  · rw [Subsingleton.elim (exp A) 0, specNorm_zero]
+    exact (Real.exp_pos _).le
+  have hr : HasSum (fun k : ℕ => ((k.factorial : ℝ))⁻¹ • specNorm A ^ k)
+      (Real.exp (specNorm A)) := by
+    rw [Real.exp_eq_exp_ℝ]
+    exact NormedSpace.exp_series_hasSum_exp' (𝕂 := ℝ) (specNorm A)
+  open scoped Matrix.Norms.L2Operator in
+  refine (NormedSpace.exp_series_hasSum_exp' (𝕂 := 𝕜) A).norm_le_of_bounded hr fun k => ?_
+  rw [norm_smul, norm_inv, RCLike.norm_natCast, smul_eq_mul]
+  refine mul_le_mul_of_nonneg_left ?_ (by positivity)
+  cases k with
+  | zero =>
+    rw [pow_zero, pow_zero]
+    exact specNorm_one_le
+  | succ k => exact norm_pow_le' A k.succ_pos
+
 /-! ### The trace exponential -/
 
 /-- **The trace of the exponential** of a Hermitian matrix is the sum of the exponentials of its
@@ -279,9 +304,7 @@ Port of the block case used in `NLAlib.intrinsicDimension_fromBlocks`. -/
 theorem re_trace_exp_fromBlocks_diagonal (A : Matrix m m 𝕜) (B : Matrix n n 𝕜) :
     RCLike.re (exp (Matrix.fromBlocks A 0 0 B)).trace =
       RCLike.re (exp A).trace + RCLike.re (exp B).trace := by
-  rw [exp_fromBlocks_diagonal, ← map_add]
-  simp only [Matrix.trace, Matrix.diag_apply, Fintype.sum_sum_type, Matrix.fromBlocks_apply₁₁,
-    Matrix.fromBlocks_apply₂₂]
+  rw [exp_fromBlocks_diagonal, Matrix.trace_fromBlocks, map_add]
 
 /-- The trace exponential is continuous. Port of `NLAlib.continuous_traceExp`. -/
 theorem continuous_re_trace_exp :

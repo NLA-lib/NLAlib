@@ -15,7 +15,8 @@ public import NLAlib.Matrix.Norms.SchattenPowers
 The absolute value of a rectangular matrix `A` is `|A| = (Aᴴ A)^{1/2}`, spelled
 `CFC.sqrt (Aᴴ * A)`; for a square matrix this is Mathlib's `CFC.abs A` by definition. Its
 eigenvalues are the singular values of `A`, so the nuclear norm is `tr |A|` and the Schatten
-norms are traces of powers of `Aᴴ A`.
+norms are traces of powers of `Aᴴ A`. For an even natural exponent the trace form, with natural
+powers, is `NLAlib.schattenNorm_two_mul_natCast_pow`.
 
 For a Hermitian matrix, `CFC.abs A = cfc |·| A` is Mathlib's `CFC.abs_eq_cfc_norm`, and the
 positive and negative parts `A⁺`, `A⁻` are Mathlib's, with `CFC.le_posPart`,
@@ -81,13 +82,6 @@ theorem schattenNorm_rpow_eq_re_trace_rpow [DecidableEq n] (A : Matrix m n 𝕜)
   congr 1
   push_cast
   ring
-
-/-- Even Schatten norms as traces of powers: `‖A‖_{2q}^{2q} = tr (Aᴴ A)^q` for `q ≥ 1`. -/
-theorem schattenNorm_pow_eq_re_trace_pow [DecidableEq n] (A : Matrix m n 𝕜) {q : ℕ}
-    (hq : 0 < q) :
-    schattenNorm (2 * q : ℕ) A ^ (2 * q) = RCLike.re ((Aᴴ * A) ^ q).trace := by
-  rw [Nat.cast_mul, Nat.cast_ofNat]
-  exact schattenNorm_two_mul_natCast_pow hq.ne' A
 
 open scoped Classical in
 /-- A Hermitian matrix is at most its absolute value. -/

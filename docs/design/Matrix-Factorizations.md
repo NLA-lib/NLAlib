@@ -338,3 +338,51 @@ resolution:
    they stay as statements in the vocabulary of the factorizations. Mathlib's `LDL` gives
    `exists_isCholesky_iff_posDef`.
 10. Not taken: a row-selection twin of the certificate (apply the column statements to `Aᴴ`).
+
+## 9. Stage report (2026-10-14)
+
+**Outcome.** Sixteen files under `Matrix/Factorizations/` (`Triangular.lean`, `Elimination.lean`,
+`GaussState.lean`, `Nystrom.lean`, `LU.lean`, `LUGeneral.lean`, `Cholesky.lean`, `QR.lean`,
+`GramSchmidt.lean`, `Householder.lean`, `Givens.lean`, `Hessenberg.lean`, `Polar.lean`,
+`Procrustes.lean`, `ColumnVolume.lean`, `RankRevealing.lean`; five of them split off at proof
+time to stay under 500 lines), all proved; nothing in `NLAlibScaffold`. With the stages before
+it the build has no warnings, the axiom audit covers 2963 declarations with no violation,
+the environment linters pass on 2280 declarations, and references check clean.
+
+**Proved here though unproved in the prototype.** The rank pattern of pivoted Cholesky, the
+Hessenberg reduction by unitary similarity, the QR factorization of a Hessenberg matrix with a
+Hessenberg orthogonal factor, and the implicit Q theorem
+(`exists_eq_mul_diagonal_of_isUpperHessenberg`). The bridge between classical Gram–Schmidt and
+QR needs no theorem: the thin QR factor is defined from Mathlib's `gramSchmidtNormed`.
+
+**False statements.** None found by the proof agents. Two were found while writing the skeleton
+and repaired before proofs started: the rank-revealing singular value bounds needed index bounds
+(`i < k`), and `norm_pinv_mul_apply_le…` needed `0 ≤ f`, now a field of `IsLocalMaxVolume`.
+
+**What changed from the design.**
+
+- `Matrix.IsLowerTriangular.submatrix_mul_of_isLowerSet` needs only one triangular factor (and
+  has an upper twin); `IsQR.isTridiagonal_mul` needs no tridiagonal hypothesis.
+- Unitary-free Nyström material is in `Nystrom.lean`: the residual along a selection is positive
+  semidefinite, below `A`, vanishes on the selected columns and is the largest such matrix; the
+  expected trace after a randomly pivoted Cholesky step
+  (`Matrix.PosSemidef.sum_mul_re_trace_eliminationStep`).
+- `LUGeneral.lean`: `A = luLower A * luUpper A` whenever every zero pivot has zeros below it,
+  and the growth bound `‖U i j‖ ≤ 2 ^ i * M` of partial pivoting for the computed factors.
+- Added at wrap-up: `eliminationStep_eq_sub_smul_vecMulVec`,
+  `principalMinor_eq_apply_self_mul_principalMinor_eliminationStep`,
+  `Matrix.IsHermitian.choleskyLower_apply_self` and `…_pos_iff`, `IsLocalMaxVolume.injective`,
+  `re_det_conjTranspose_mul_self_pos`, `det_givens_eq_mul_star_add_mul_star`,
+  `exists_hasOrthonormalCols_mul_isUpperTrapezoidal_nonneg`.
+- `polarFactor` identities are derived from `IsSVD.polarFactor_eq`; the Procrustes problems are
+  in `Procrustes.lean`.
+
+**Mathlib overlap.** None outright. Gram–Schmidt, `Matrix.BlockTriangular`, `Matrix.IsHadamard`
+and the LDL file are used, not duplicated.
+
+**Not ported, by decision.** §7.10 and §1; from the ledger pass: equality cases of von Neumann's
+trace inequality and of Mirsky's theorem, the scaled orthogonal Procrustes problem, the
+restricted rotations variant. Small companions noted for a later pass: a public
+`HasOrthonormalCols.singularValues_eq_one`, `principalMinor_transpose`, an entry formula for
+`givens`, the extension of a thin QR to a full one. The ledger accounts for all 619 public
+prototype declarations of `Matrix/Factorizations` and `Matrix/Basic`.

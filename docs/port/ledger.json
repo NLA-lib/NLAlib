@@ -259,6 +259,14 @@
   "new": "NLAlib.IsCholesky.unique",
   "stage": "M9"
  },
+ "NLAlib.IsDiagonalizable": {
+  "new": "NLAlib.IsDiagonalizable",
+  "stage": "M10"
+ },
+ "NLAlib.IsDiagonalizable.isSemisimple": {
+  "new": "NLAlib.IsDiagonalizable.isSemisimple",
+  "stage": "M10"
+ },
  "NLAlib.IsFullQR": {
   "new": null,
   "note": "object not reproduced: IsFullQR, §1; written as a square Q with HasOrthonormalCols Q, IsUpperTrapezoidal R and A = Q * R",
@@ -1790,6 +1798,10 @@
   "new": "NLAlib.exists_hasOrthonormalCols_range_eq",
   "stage": "M1"
  },
+ "NLAlib.commute_of_simultaneous_diagonalization": {
+  "new": "NLAlib.commute_of_mul_eq_mul_diagonal",
+  "stage": "M10"
+ },
  "NLAlib.complement_columnProjector_mul_columnProjector_eq": {
   "new": "NLAlib.SymmetricGauge.matrixNorm_one_sub_rangeProjector_mul_rangeProjector_le",
   "stage": "M6"
@@ -2006,8 +2018,8 @@
   "stage": "M5"
  },
  "NLAlib.continuousOn_traceExp_add_matrixLog": {
-  "new": null,
-  "note": "not ported: the continuity lemma for Lieb's function was deleted from the skeleton as dead weight, Matrix-Functions §8.9; concavity is NLAlib.concaveOn_re_trace_exp_add_cfc_log; the prototype's consumers are the probabilistic and conditional Lieb inequalities",
+  "new": "NLAlib.continuousOn_re_trace_exp_add_cfc_log",
+  "note": "restored at wrap-up for the concentration layer",
   "stage": "M8"
  },
  "NLAlib.continuous_bestRankFrobSq": {
@@ -2599,6 +2611,10 @@
   "note": "object not reproduced: eigenvalueProjector, Matrix-Perturbation §6",
   "stage": "M6"
  },
+ "NLAlib.dotProduct_eq_zero_of_left_right_eigenvalues_ne": {
+  "new": "NLAlib.dotProduct_eq_zero_of_vecMul_eq_smul_of_mulVec_eq_smul",
+  "stage": "M10"
+ },
  "NLAlib.dotProduct_fromBlocks_eq_generalizedSchurComplement_square": {
   "new": "NLAlib.quadForm_fromBlocks_eq_add",
   "note": "any solution X of A X = B in place of A⁺ B",
@@ -2959,6 +2975,14 @@
   "note": "now an iff",
   "stage": "M1"
  },
+ "NLAlib.eq_zero_of_mul_eq_mul_of_isCoprime_charpoly": {
+  "new": "NLAlib.eq_zero_of_mul_eq_mul_of_isCoprime_charpoly",
+  "stage": "M10"
+ },
+ "NLAlib.eq_zero_of_normal_upper_fromBlocks": {
+  "new": "NLAlib.eq_zero_of_isStarNormal_fromBlocks",
+  "stage": "M10"
+ },
  "NLAlib.euclideanJacobian": {
   "new": null,
   "note": "not ported: Jacobian matrix of a differentiable map; belongs with map conditioning outside Matrix/, Matrix-Perturbation §7.7",
@@ -2996,6 +3020,14 @@
   "new": "NLAlib.existsUnique_isQR_of_injective",
   "stage": "M9"
  },
+ "NLAlib.existsUnique_sylvester_of_isCoprime_charpoly": {
+  "new": "NLAlib.existsUnique_mul_sub_mul_eq_of_isCoprime_charpoly",
+  "stage": "M10"
+ },
+ "NLAlib.exists_adjugate_shift_eq_smul_vecMulVec_of_finrank_eigenspace_eq_one": {
+  "new": "NLAlib.exists_adjugate_eq_smul_vecMulVec",
+  "stage": "M10"
+ },
  "NLAlib.exists_charpoly_factor_add_vecMulVec": {
   "new": null,
   "note": "deferred: characteristic polynomial of a rank-one update (check Mathlib's matrix determinant lemma first)",
@@ -3005,6 +3037,10 @@
   "new": "NLAlib.exists_embedding_forall_re_det_le",
   "note": "the clause Function.Injective (A.submatrix id e).mulVec, which is positive volume by re_det_conjTranspose_mul_self_pos; over 𝕜",
   "stage": "M9"
+ },
+ "NLAlib.exists_common_mulVec_eigenvector_of_commute": {
+  "new": "NLAlib.exists_mulVec_eq_smul_of_pairwise_commute",
+  "stage": "M10"
  },
  "NLAlib.exists_complex_cs_decomposition_of_embedding": {
   "new": "NLAlib.exists_cs_decomposition",
@@ -3258,6 +3294,10 @@
   "note": "normal case: V unitary by isStarNormal_iff_exists_eq_mul_diagonal_mul_conjTranspose, conditionNumber V = 1 by HasOrthonormalCols.conditionNumber_eq_one; no corollary for normal matrices is stated",
   "stage": "M6"
  },
+ "NLAlib.exists_mulVec_eq_smul_of_mem_spectrum": {
+  "new": "NLAlib.exists_mulVec_eq_smul_of_mem_spectrum",
+  "stage": "M10"
+ },
  "NLAlib.exists_ne_isometry_mul_sqrt_gram_eq_of_rank_lt": {
   "new": "NLAlib.forall_eq_of_mul_sqrt_eq_iff",
   "note": "contrapositive of the forward direction; full column rank is Function.Injective A.mulVec; over 𝕜",
@@ -3284,6 +3324,10 @@
   "new": "NLAlib.conjTranspose_mul_self_eq_iff_exists_mul",
   "note": "transitivity on frames as matrices: two frames have the same Gram matrix 1, so Q' = W * Q with W unitary; no Stiefel subtype or group action",
   "stage": "M5"
+ },
+ "NLAlib.exists_orthogonal_congruence_diagonal_of_commute": {
+  "new": "Matrix.IsHermitian.commute_iff_exists_eq_mul_diagonal_mul_conjTranspose",
+  "stage": "M10"
  },
  "NLAlib.exists_orthogonal_diagonal_eq_of_majorized": {
   "new": "NLAlib.exists_hasOrthonormalCols_diag_eq_of_majorized",
@@ -3431,6 +3475,18 @@
   "note": "object not reproduced: simpleEigenvalueSchurFunction; the branch is exists_eigenvalue_branch_of_rootMultiplicity_eq_one, by the implicit function theorem on the characteristic polynomial, Matrix-Perturbation §9",
   "stage": "M6"
  },
+ "NLAlib.exists_simultaneous_diagonalization_of_commute": {
+  "new": "NLAlib.exists_forall_mul_eq_mul_diagonal_of_pairwise_commute",
+  "stage": "M10"
+ },
+ "NLAlib.exists_simultaneous_orthogonal_diagonalization_of_commute": {
+  "new": "NLAlib.exists_hasOrthonormalCols_forall_eq_mul_diagonal_of_pairwise_commute",
+  "stage": "M10"
+ },
+ "NLAlib.exists_simultaneous_unitary_schur_triangularization": {
+  "new": "NLAlib.exists_hasOrthonormalCols_forall_isUpperTriangular_of_pairwise_commute",
+  "stage": "M10"
+ },
  "NLAlib.exists_specNorm_le_one_frobInner_eq_nuclearNorm": {
   "new": "NLAlib.exists_specNorm_le_one_frobInner_eq_nuclearNorm",
   "stage": "M3b"
@@ -3531,6 +3587,10 @@
   "note": "the completed matrix is fromCols Q Q'",
   "stage": "M1"
  },
+ "NLAlib.exists_unitary_diagonalization_of_normal_with_charpoly": {
+  "new": "IsStarNormal.exists_eq_mul_diagonal_mul_conjTranspose_of_isEigenvalueListing",
+  "stage": "M10"
+ },
  "NLAlib.exists_unitary_idempotent_canonical": {
   "new": null,
   "note": "object not reproduced: canonical form of an idempotent with parameters t i and rectDiag, Matrix-Subspaces §6",
@@ -3562,10 +3622,18 @@
   "new": "NLAlib.IsEigenvalueListing.exists_hasOrthonormalCols_isUpperTriangular",
   "stage": "M10"
  },
+ "NLAlib.exists_unitary_similarity_iff_charpoly_eq_of_normal": {
+  "new": "IsStarNormal.exists_eq_mul_mul_conjTranspose_iff_charpoly_eq",
+  "stage": "M10"
+ },
  "NLAlib.exists_unitary_sum_completion": {
   "new": "NLAlib.HasOrthonormalCols.exists_fromCols",
   "note": "H is fromCols Q Q'; H * Hᴴ = 1 by HasOrthonormalCols.mul_conjTranspose_self_of_card_eq",
   "stage": "M5"
+ },
+ "NLAlib.exists_vecMul_eq_smul_of_mem_spectrum": {
+  "new": "NLAlib.exists_vecMul_eq_smul_of_mem_spectrum",
+  "stage": "M10"
  },
  "NLAlib.exp_mul_lambdaMax_lambdaMin_le_traceExp_smul": {
   "new": "Matrix.IsHermitian.exp_eigenvalue_zero_le_re_trace_exp",
@@ -4005,6 +4073,10 @@
  "NLAlib.frobSq_eq_sum_norm_sq": {
   "new": "NLAlib.frobNorm_sq_eq_sum",
   "stage": "M2"
+ },
+ "NLAlib.frobSq_eq_sum_norm_sq_of_normal": {
+  "new": "IsStarNormal.frobNorm_sq_eq_sum",
+  "stage": "M10"
  },
  "NLAlib.frobSq_eq_sum_rank_singularValues_sq": {
   "new": "NLAlib.frobNorm_sq_eq_sum_range_singularValues_sq",
@@ -5108,10 +5180,46 @@
   "new": "NLAlib.isCompact_setOf_hasOrthonormalCols",
   "stage": "M5"
  },
+ "NLAlib.isCoprime_charpoly_iff_disjoint_spectrum": {
+  "new": "NLAlib.isCoprime_charpoly_iff_disjoint_spectrum",
+  "stage": "M10"
+ },
  "NLAlib.isDiag_inv_iff_of_isUnit": {
   "new": null,
   "note": "not ported: helper of equality cases that are not stated; no consumer",
   "stage": "M7"
+ },
+ "NLAlib.isDiagonalizable_fromBlocks_zero_zero_iff": {
+  "new": "NLAlib.isDiagonalizable_fromBlocks_diagonal_iff",
+  "stage": "M10"
+ },
+ "NLAlib.isDiagonalizable_iff_exists_independent_eigenvectors": {
+  "new": "NLAlib.isDiagonalizable_iff_exists_linearIndependent",
+  "stage": "M10"
+ },
+ "NLAlib.isDiagonalizable_iff_exists_similarity": {
+  "new": "NLAlib.isDiagonalizable_iff_exists_eq_mul_diagonal_mul_inv",
+  "stage": "M10"
+ },
+ "NLAlib.isDiagonalizable_iff_iSup_eigenspace_eq_top": {
+  "new": "NLAlib.isDiagonalizable_iff_iSup_eigenspace_eq_top",
+  "stage": "M10"
+ },
+ "NLAlib.isDiagonalizable_iff_isSemisimple": {
+  "new": "NLAlib.isDiagonalizable_iff_isSemisimple",
+  "stage": "M10"
+ },
+ "NLAlib.isDiagonalizable_of_distinct_eigenvalues": {
+  "new": "NLAlib.isDiagonalizable_of_injective_of_forall_mem_spectrum",
+  "stage": "M10"
+ },
+ "NLAlib.isDiagonalizable_of_isHermitian": {
+  "new": "Matrix.IsHermitian.isDiagonalizable",
+  "stage": "M10"
+ },
+ "NLAlib.isDiagonalizable_of_isSemisimple": {
+  "new": "NLAlib.isDiagonalizable_of_isSemisimple",
+  "stage": "M10"
  },
  "NLAlib.isEmpty_unitSphere": {
   "new": null,
@@ -6407,6 +6515,10 @@
   "note": "no chosen eigenframes",
   "stage": "M3"
  },
+ "NLAlib.mul_conjTranspose_eq_conjTranspose_mul_of_unitary_diagonalization": {
+  "new": "NLAlib.isStarNormal_mul_diagonal_mul_conjTranspose",
+  "stage": "M10"
+ },
  "NLAlib.mul_conjTranspose_eq_mul_moorePenroseInverse": {
   "new": "NLAlib.mul_pinv",
   "note": "with HasOrthonormalCols.rangeProjector_eq",
@@ -6444,6 +6556,10 @@
   "new": null,
   "note": "object not reproduced: eigenvalueProjector, Matrix-Perturbation §6",
   "stage": "M6"
+ },
+ "NLAlib.mul_eq_mul_iff_conjTranspose_mul_eq_mul_conjTranspose_of_normal_rectangular": {
+  "new": "IsStarNormal.mul_eq_mul_iff_conjTranspose_mul_eq_mul_conjTranspose",
+  "stage": "M10"
  },
  "NLAlib.mul_eq_of_range_le_of_isIdempotentElem": {
   "new": "IsIdempotentElem.mul_eq_of_range_le",
@@ -6638,8 +6754,7 @@
   "stage": "M5"
  },
  "NLAlib.norm_conjTranspose_mul_mul_le": {
-  "new": "NLAlib.HasOrthonormalCols.specNorm_conjTranspose_mul_le",
-  "note": "followed by NLAlib.HasOrthonormalCols.specNorm_mul_right_le: specNorm (Eᴴ * M * E) ≤ specNorm (M * E) ≤ specNorm M; the two-sided form has no statement of its own",
+  "new": "NLAlib.HasOrthonormalCols.specNorm_conjTranspose_mul_mul_le",
   "stage": "M8"
  },
  "NLAlib.norm_data_sq_eq_pinv_fit_sq_add_residual_sq": {
@@ -6709,7 +6824,7 @@
  },
  "NLAlib.norm_matrixExp_sum_le_prod": {
   "new": null,
-  "note": "not ported: integrability helper of the prototype's matrix Laplace master bound, on Fin d over ℂ; it moves with the matrix concentration layer; the new library has no bound on specNorm (exp (∑ k, A k))",
+  "note": "not ported as stated (Laplace master bound helper); its content is NLAlib.specNorm_exp_le with the triangle inequality and Real.exp_sum",
   "stage": "M8"
  },
  "NLAlib.norm_moorePenroseInverse_sub_div_le": {
@@ -6843,6 +6958,10 @@
  "NLAlib.norm_toLp_sq_eq_re_star_dotProduct": {
   "new": "EuclideanSpace.norm_toLp_sq_eq_re_star_dotProduct",
   "stage": "M1"
+ },
+ "NLAlib.normal_iff_exists_unitary_diagonalization": {
+  "new": "NLAlib.isStarNormal_iff_exists_eq_mul_diagonal_mul_conjTranspose",
+  "stage": "M10"
  },
  "NLAlib.normalizedProjectedColumn": {
   "new": null,
@@ -7070,6 +7189,10 @@
   "new": "NLAlib.HasOrthonormalCols.cos_principalAngle",
   "note": "with principalAngle_mem_Icc; or singularValues_le_one_of_conjTranspose_mul_self_add_eq_one",
   "stage": "M5"
+ },
+ "NLAlib.pairwise_commute_iff_exists_simultaneous_unitary_diagonalization": {
+  "new": "NLAlib.pairwise_commute_iff_exists_forall_eq_mul_diagonal_mul_conjTranspose",
+  "stage": "M10"
  },
  "NLAlib.partialPivotSwap": {
   "new": null,
@@ -8226,6 +8349,10 @@
   "new": "NLAlib.isStarProjection_one_sub_rangeProjector",
   "note": "idempotence",
   "stage": "M1"
+ },
+ "NLAlib.rootMultiplicity_eq_one_iff_pairing_ne_zero_of_finrank_eigenspace_eq_one": {
+  "new": "NLAlib.rootMultiplicity_charpoly_eq_one_iff_dotProduct_ne_zero",
+  "stage": "M10"
  },
  "NLAlib.rowInclusion_of_leading_minors_through_rank": {
   "new": "NLAlib.exists_isLU_of_forall_principalMinor_ne_zero_of_le_rank",
@@ -10489,6 +10616,10 @@
   "new": null,
   "note": "not ported: scalar helper of the strict block tests, which are not stated",
   "stage": "M7"
+ },
+ "NLAlib.upper_fromBlocks_eq_diagonal_of_normal": {
+  "new": "IsStarNormal.isDiag_of_isUpperTriangular",
+  "stage": "M10"
  },
  "NLAlib.vectorTangentToFrame": {
   "new": null,

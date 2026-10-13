@@ -90,10 +90,7 @@ theorem _root_.Matrix.PosDef.cfc_log_le_cfc_log {A B : Matrix n n 𝕜} (hA : A.
 [Bhatia1997, Theorem V.2.5]. Port of `NLAlib.concaveOn_cfc_rpow`, there over `ℝ`. -/
 theorem concaveOn_rpow {r : ℝ} (hr : r ∈ Set.Icc (0 : ℝ) 1) :
     ConcaveOn ℝ {A : Matrix n n 𝕜 | A.PosSemidef} fun A => A ^ r := by
-  have hconv : Convex ℝ {A : Matrix n n 𝕜 | A.PosSemidef} := fun A hA B hB a b ha hb _ =>
-    Matrix.nonneg_iff_posSemidef.mp
-      (add_nonneg (smul_nonneg ha hA.nonneg) (smul_nonneg hb hB.nonneg))
-  refine ⟨hconv, fun A hA B hB a b ha hb hab => ?_⟩
+  refine ⟨convex_setOf_posSemidef, fun A hA B hB a b ha hb hab => ?_⟩
   have hAc : (0 : Matrix n n ℂ) ≤ complexify A := (posSemidef_complexify_iff.mpr hA).nonneg
   have hBc : (0 : Matrix n n ℂ) ≤ complexify B := (posSemidef_complexify_iff.mpr hB).nonneg
   change a • A ^ r + b • B ^ r ≤ (a • A + b • B) ^ r

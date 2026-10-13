@@ -17,7 +17,8 @@ public import NLAlib.Matrix.Norms.Loewner
 For a Hermitian matrix `A` and `f : ℝ → ℝ`, the matrix `f(A)` is Mathlib's continuous functional
 calculus `cfc f A`. This file gives the working API in the vocabulary of this library: `cfc f A`
 through any unitary diagonalisation, its trace, eigenvalues, quadratic form and spectral norm,
-and its behaviour under unitary conjugation and block diagonal sums.
+and its behaviour under unitary conjugation and block diagonal sums; the inverse and the inverse
+square root of a positive definite matrix are functions of it.
 
 No definition is introduced. `cfc f A` is the spelling of `f(A)`; the square root is
 `CFC.sqrt A`, a real power of a positive semidefinite matrix is `A ^ r`, the absolute value is
@@ -39,6 +40,9 @@ The location of the spectrum is the hypothesis `spectrum ℝ A ⊆ s`, or a Loew
 * `Matrix.IsHermitian.eigenvalue_cfc_of_monotoneOn`: eigenvalues of `f(A)` for monotone `f`.
 * `Matrix.IsHermitian.specNorm_cfc_le`: `‖f(A)‖₂ ≤ max |f|` on the spectrum.
 * `NLAlib.re_quadForm_cfc_eq_sum`: the quadratic form of `f(A)` as a weighted sum.
+* `NLAlib.cfc_fromBlocks_diagonal`, `NLAlib.cfc_blockDiagonal`: block diagonal sums.
+* `Matrix.PosDef.inv_eq_cfc`, `Matrix.PosDef.inv_sqrt_eq_cfc`: the inverse and the inverse
+  square root.
 -/
 
 @[expose] public section
@@ -243,6 +247,33 @@ theorem cfc_fromBlocks_diagonal {A : Matrix m m 𝕜} {B : Matrix n n 𝕜} (hA 
   funext i
   cases i <;> rfl
 
+/-- **`f` of a block diagonal matrix** with Hermitian blocks `A i` is the block diagonal matrix
+of the `f (A i)`; the version of `cfc_fromBlocks_diagonal` for a family of blocks of one size. -/
+theorem cfc_blockDiagonal {ι : Type*} [Fintype ι] [DecidableEq ι]
+    {A : ι → Matrix m m 𝕜} (hA : ∀ i, (A i).IsHermitian) (f : ℝ → ℝ) :
+    cfc f (Matrix.blockDiagonal A) = Matrix.blockDiagonal fun i => cfc f (A i) := by
+  choose U hU hAU using fun i => (hA i).exists_eq_mul_diagonal_mul_conjTranspose
+  have hW : HasOrthonormalCols (Matrix.blockDiagonal U) := by
+    rw [HasOrthonormalCols, Matrix.blockDiagonal_conjTranspose, ← Matrix.blockDiagonal_mul]
+    simp only [(hU _).conjTranspose_mul_self]
+    exact Matrix.blockDiagonal_one
+  have hr : Fintype.card (Fin (Fintype.card m) × ι) = Fintype.card (m × ι) := by
+    rw [Fintype.card_prod, Fintype.card_prod, Fintype.card_fin]
+  have hdiag : ∀ g : ℝ → ℝ, (Matrix.blockDiagonal fun i => U i *
+      (Matrix.diagonal fun k : Fin (Fintype.card m) => ((g (eigenvalue (A i) k) : ℝ) : 𝕜)) *
+        (U i)ᴴ) = Matrix.blockDiagonal U *
+      (Matrix.diagonal fun p : Fin (Fintype.card m) × ι =>
+        ((g (eigenvalue (A p.2) p.1) : ℝ) : 𝕜)) * (Matrix.blockDiagonal U)ᴴ := fun g => by
+    rw [Matrix.blockDiagonal_mul, Matrix.blockDiagonal_mul, Matrix.blockDiagonal_conjTranspose,
+      Matrix.blockDiagonal_diagonal]
+  have hA' : Matrix.blockDiagonal A = Matrix.blockDiagonal U *
+      (Matrix.diagonal fun p : Fin (Fintype.card m) × ι =>
+        ((eigenvalue (A p.2) p.1 : ℝ) : 𝕜)) * (Matrix.blockDiagonal U)ᴴ := by
+    exact (congrArg _ (funext hAU)).trans (hdiag id)
+  rw [cfc_eq_mul_diagonal_mul_conjTranspose hW hr hA' f, ← hdiag f]
+  exact congrArg _ (funext fun i =>
+    (cfc_eq_mul_diagonal_mul_conjTranspose (hU i) (Fintype.card_fin _) (hAU i) f).symm)
+
 /-! ### The spectrum -/
 
 /-- The spectrum of a Hermitian matrix lies in `s` exactly when its eigenvalues do. -/
@@ -392,7 +423,21 @@ theorem _root_.Matrix.IsHermitian.mul_card_le_re_trace_cfc {A : Matrix n n 𝕜}
     (fun i hi => h _ (hA.eigenvalue_mem_spectrum (Finset.mem_range.mp hi)))
   rwa [Finset.card_range, nsmul_eq_mul] at hsum
 
-/-! ### The inverse square root -/
+/-! ### The inverse and the inverse square root -/
+
+/-- The inverse of a positive definite matrix through the functional calculus:
+`A⁻¹ = cfc (fun x => x⁻¹) A`. -/
+theorem _root_.Matrix.PosDef.inv_eq_cfc {A : Matrix n n 𝕜} (hA : A.PosDef) :
+    A⁻¹ = cfc (fun x : ℝ => x⁻¹) A := by
+  have hH : IsSelfAdjoint A := hA.isHermitian
+  have h : cfc (fun x : ℝ => x⁻¹) A * cfc (fun x : ℝ => x) A = 1 := by
+    rw [← cfc_mul _ _ A (A.finite_real_spectrum.continuousOn _)
+      (A.finite_real_spectrum.continuousOn _), ← cfc_one ℝ A]
+    refine cfc_congr fun x hx => ?_
+    simp only [Pi.one_apply]
+    exact inv_mul_cancel₀ (hA.spectrum_subset_Ioi hx).ne'
+  rw [cfc_id' ℝ A hH] at h
+  exact Matrix.inv_eq_left_inv h
 
 /-- The functional calculus of `x ↦ (√x)⁻¹` is a left inverse of the square root of a positive
 definite matrix. -/

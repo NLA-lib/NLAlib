@@ -5,8 +5,9 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Matrix.Functions.TraceFunctions
-public import NLAlib.Matrix.Functions.Complexification
+public import Mathlib.Analysis.Calculus.Deriv.Add
+public import Mathlib.Analysis.Calculus.Deriv.Mul
+public import NLAlib.Matrix.Functions.Exponential
 
 /-!
 # The Golden–Thompson inequality
@@ -21,6 +22,9 @@ over any `RCLike` field and does not use Lieb's theorem.
 
 ## Main results
 
+* `NLAlib.tendsto_exp_smul_mul_exp_smul_pow`: the Lie product formula for matrices.
+* `Matrix.PosSemidef.re_trace_mul_pow_two_pow_le`: `tr (A B) ^ m ≤ tr (A ^ m B ^ m)` for
+  `m = 2 ^ k`.
 * `NLAlib.re_trace_exp_add_le`: the Golden–Thompson inequality.
 * `Matrix.PosDef.re_trace_exp_add_cfc_log_le`: the form `tr exp (H + log X) ≤ tr (exp H · X)`.
 -/
@@ -223,10 +227,23 @@ private theorem re_trace_pow_two_pow_le_aux [DecidableEq n] (j : ℕ) :
 
 variable [DecidableEq n]
 
-/-- **The Lie product formula** for matrices. -/
-private theorem tendsto_exp_smul_mul_exp_smul_pow [Nonempty n] (H K : Matrix n n 𝕜) :
+/-- For positive semidefinite `A`, `B` and `m = 2 ^ k`, `tr (A B) ^ m ≤ tr (A ^ m B ^ m)`. With the
+Lie product formula this gives the Golden–Thompson inequality.
+[Bhatia1997, §IX.2]. -/
+theorem _root_.Matrix.PosSemidef.re_trace_mul_pow_two_pow_le {A B : Matrix n n 𝕜}
+    (hA : A.PosSemidef) (hB : B.PosSemidef) (k : ℕ) :
+    RCLike.re ((A * B) ^ 2 ^ k).trace ≤ RCLike.re (A ^ 2 ^ k * B ^ 2 ^ k).trace :=
+  (re_trace_pow_two_pow_le_aux k).2 A B hA hB
+
+/-- **The Lie product formula** for matrices: `(exp (H / k) exp (K / k)) ^ k → exp (H + K)` as
+`k → ∞`, for any two square matrices over an `RCLike` field.
+[Bhatia1997, §IX.1].
+Result: lie-product-formula -/
+theorem tendsto_exp_smul_mul_exp_smul_pow (H K : Matrix n n 𝕜) :
     Tendsto (fun k : ℕ => (exp ((k : 𝕜)⁻¹ • H) * exp ((k : 𝕜)⁻¹ • K)) ^ k) atTop
       (𝓝 (exp (H + K))) := by
+  rcases isEmpty_or_nonempty n with hn | hn
+  · exact tendsto_const_nhds.congr fun _ => Subsingleton.elim _ _
   have h : Tendsto (fun k : ℕ => (exp ((k : 𝕜)⁻¹ • H) * exp ((k : 𝕜)⁻¹ • K)) ^ k -
       exp ((k : 𝕜)⁻¹ • (H + K)) ^ k) atTop (𝓝 0) := by
     open scoped Matrix.Norms.Operator in
@@ -261,8 +278,8 @@ theorem re_trace_exp_add_le {H K : Matrix n n 𝕜} (hH : H.IsHermitian) (hK : K
   have hsmul : ∀ M : Matrix n n 𝕜, exp (((2 ^ k : ℕ) : 𝕜)⁻¹ • M) ^ 2 ^ k = exp M := fun M => by
     rw [← Matrix.exp_nsmul, ← Nat.cast_smul_eq_nsmul 𝕜, smul_smul,
       mul_inv_cancel₀ (Nat.cast_ne_zero.mpr (pow_pos two_pos k).ne'), one_smul]
-  have h := (re_trace_pow_two_pow_le_aux k).2 _ _ (hH.smul hc).posDef_exp.posSemidef
-    (hK.smul hc).posDef_exp.posSemidef
+  have h := (hH.smul hc).posDef_exp.posSemidef.re_trace_mul_pow_two_pow_le
+    (hK.smul hc).posDef_exp.posSemidef k
   rwa [hsmul, hsmul] at h
 
 /-- The Golden–Thompson inequality with a logarithm: for Hermitian `H` and positive definite

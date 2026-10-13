@@ -188,8 +188,9 @@ private theorem bddAbove_range_re_quadForm (A : Matrix n n 𝕜) (p : (n → �
   rintro _ ⟨x, rfl⟩
   exact (abs_le.mp (abs_re_quadForm_le_specNorm A x.2.2)).2
 
-/-- The quadratic form at a unit eigenvector is the eigenvalue. -/
-private theorem re_quadForm_of_mulVec_eq_smul {A : Matrix n n 𝕜} {u : n → 𝕜} {c : ℝ}
+/-- The quadratic form of a matrix at a unit eigenvector with a real eigenvalue is the
+eigenvalue: `A *ᵥ u = c • u` and `‖u‖ = 1` give `re (uᴴ A u) = c`. -/
+theorem re_quadForm_of_mulVec_eq_smul {A : Matrix n n 𝕜} {u : n → 𝕜} {c : ℝ}
     (hu : ‖WithLp.toLp 2 u‖ = 1) (h : A *ᵥ u = c • u) : RCLike.re (quadForm A u) = c := by
   rw [RCLike.real_smul_eq_coe_smul (K := 𝕜)] at h
   rw [quadForm, h, dotProduct_smul, smul_eq_mul,

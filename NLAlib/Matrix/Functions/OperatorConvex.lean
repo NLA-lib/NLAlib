@@ -276,33 +276,6 @@ theorem OperatorConvexOn.cfc_conjTranspose_mul_mul_le {s : Set ℝ} {f : ℝ →
   rwa [cfc_mul_mul_conjTranspose hU rfl hD, hDcfc, toBlocks₂₂_fromBlocks_one_sub_mul_mul,
     toBlocks₂₂_fromBlocks_one_sub_mul_mul] at h
 
-/-- `f` of a block diagonal matrix with Hermitian blocks is the block diagonal matrix of the
-`f(A i)`. -/
-private theorem cfc_blockDiagonal {ι : Type*} [Fintype ι] [DecidableEq ι]
-    {A : ι → Matrix m m 𝕜} (hA : ∀ i, (A i).IsHermitian) (f : ℝ → ℝ) :
-    cfc f (Matrix.blockDiagonal A) = Matrix.blockDiagonal fun i => cfc f (A i) := by
-  choose U hU hAU using fun i => (hA i).exists_eq_mul_diagonal_mul_conjTranspose
-  have hW : HasOrthonormalCols (Matrix.blockDiagonal U) := by
-    rw [HasOrthonormalCols, Matrix.blockDiagonal_conjTranspose, ← Matrix.blockDiagonal_mul]
-    simp only [(hU _).conjTranspose_mul_self]
-    exact Matrix.blockDiagonal_one
-  have hr : Fintype.card (Fin (Fintype.card m) × ι) = Fintype.card (m × ι) := by
-    rw [Fintype.card_prod, Fintype.card_prod, Fintype.card_fin]
-  have hdiag : ∀ g : ℝ → ℝ, (Matrix.blockDiagonal fun i => U i *
-      (Matrix.diagonal fun k : Fin (Fintype.card m) => ((g (eigenvalue (A i) k) : ℝ) : 𝕜)) *
-        (U i)ᴴ) = Matrix.blockDiagonal U *
-      (Matrix.diagonal fun p : Fin (Fintype.card m) × ι =>
-        ((g (eigenvalue (A p.2) p.1) : ℝ) : 𝕜)) * (Matrix.blockDiagonal U)ᴴ := fun g => by
-    rw [Matrix.blockDiagonal_mul, Matrix.blockDiagonal_mul, Matrix.blockDiagonal_conjTranspose,
-      Matrix.blockDiagonal_diagonal]
-  have hA' : Matrix.blockDiagonal A = Matrix.blockDiagonal U *
-      (Matrix.diagonal fun p : Fin (Fintype.card m) × ι =>
-        ((eigenvalue (A p.2) p.1 : ℝ) : 𝕜)) * (Matrix.blockDiagonal U)ᴴ := by
-    exact (congrArg _ (funext hAU)).trans (hdiag id)
-  rw [cfc_eq_mul_diagonal_mul_conjTranspose hW hr hA' f, ← hdiag f]
-  exact congrArg _ (funext fun i =>
-    (cfc_eq_mul_diagonal_mul_conjTranspose (hU i) (Fintype.card_fin _) (hAU i) f).symm)
-
 omit [Fintype n] [DecidableEq m] [DecidableEq n] in
 /-- A block diagonal matrix times a stack of blocks is the stack of the products. -/
 private theorem blockDiagonal_mul_of {ι : Type*} [Fintype ι] [DecidableEq ι]

@@ -10,6 +10,7 @@ public import NLAlib.ForMathlib.LinearAlgebra.Matrix.Hadamard
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.PosDef
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.Rank
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.SchurComplement
+public import NLAlib.ForMathlib.LinearAlgebra.Matrix.Trace
 public import NLAlib.ForMathlib.MeasureTheory.Matrix
 public import NLAlib.ForMathlib.Topology.MetricSpace.CoveringNumbers
 public import NLAlib.Matrix.Basic.Dilation
@@ -22,13 +23,18 @@ public import NLAlib.Matrix.Basic.QuadForm
 public import NLAlib.Matrix.Basic.SchurComplement
 public import NLAlib.Matrix.Basic.Selection
 public import NLAlib.Matrix.Factorizations.Cholesky
+public import NLAlib.Matrix.Factorizations.ColumnVolume
 public import NLAlib.Matrix.Factorizations.Elimination
+public import NLAlib.Matrix.Factorizations.GaussState
 public import NLAlib.Matrix.Factorizations.Givens
 public import NLAlib.Matrix.Factorizations.GramSchmidt
 public import NLAlib.Matrix.Factorizations.Hessenberg
 public import NLAlib.Matrix.Factorizations.Householder
 public import NLAlib.Matrix.Factorizations.LU
+public import NLAlib.Matrix.Factorizations.LUGeneral
+public import NLAlib.Matrix.Factorizations.Nystrom
 public import NLAlib.Matrix.Factorizations.Polar
+public import NLAlib.Matrix.Factorizations.Procrustes
 public import NLAlib.Matrix.Factorizations.QR
 public import NLAlib.Matrix.Factorizations.RankRevealing
 public import NLAlib.Matrix.Factorizations.Triangular
@@ -39,6 +45,7 @@ public import NLAlib.Matrix.Functions.GoldenThompson
 public import NLAlib.Matrix.Functions.HermitianCalculus
 public import NLAlib.Matrix.Functions.Lieb
 public import NLAlib.Matrix.Functions.LogDet
+public import NLAlib.Matrix.Functions.OperatorConvex
 public import NLAlib.Matrix.Functions.OperatorMonotone
 public import NLAlib.Matrix.Functions.Perspective
 public import NLAlib.Matrix.Functions.Polynomial
@@ -97,8 +104,10 @@ public import NLAlib.Matrix.Spectral.Congruence
 public import NLAlib.Matrix.Spectral.CourantFischer
 public import NLAlib.Matrix.Spectral.Diagonalizable
 public import NLAlib.Matrix.Spectral.Dilation
+public import NLAlib.Matrix.Spectral.EigenvalueListing
 public import NLAlib.Matrix.Spectral.EigenvalueTransform
 public import NLAlib.Matrix.Spectral.Eigenvalues
+public import NLAlib.Matrix.Spectral.EigenvectorPairing
 public import NLAlib.Matrix.Spectral.Gershgorin
 public import NLAlib.Matrix.Spectral.HermitianPart
 public import NLAlib.Matrix.Spectral.Inertia
@@ -114,6 +123,7 @@ public import NLAlib.Matrix.Spectral.SingularValueInequalities
 public import NLAlib.Matrix.Spectral.SingularValues
 public import NLAlib.Matrix.Spectral.SpectralRadius
 public import NLAlib.Matrix.Spectral.SylvesterCriterion
+public import NLAlib.Matrix.Spectral.SylvesterEquation
 public import NLAlib.Matrix.Spectral.Weyl
 public import NLAlib.Matrix.Structured.Cauchy
 public import NLAlib.Matrix.Structured.Circulant

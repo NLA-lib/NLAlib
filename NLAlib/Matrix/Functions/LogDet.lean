@@ -37,21 +37,6 @@ namespace NLAlib
 
 variable {𝕜 : Type*} [RCLike 𝕜] {n : Type*} [Fintype n] [DecidableEq n]
 
-omit [Fintype n] [DecidableEq n] in
-/-- The positive definite matrices form a convex set. Port of `NLAlib.convex_setOf_posDef`. -/
-theorem convex_setOf_posDef : Convex ℝ {A : Matrix n n 𝕜 | A.PosDef} := by
-  intro A hA B hB a b ha hb hab
-  rcases ha.eq_or_lt with rfl | ha'
-  · rw [zero_add] at hab
-    simpa [hab] using hB
-  · exact (Matrix.PosDef.smul hA ha').add_posSemidef (hB.posSemidef.smul hb)
-
-omit [Fintype n] [DecidableEq n] in
-/-- The positive semidefinite matrices form a convex set. -/
-theorem convex_setOf_posSemidef : Convex ℝ {A : Matrix n n 𝕜 | A.PosSemidef} := by
-  intro A hA B hB a b ha hb _
-  exact (hA.smul ha).add (hB.smul hb)
-
 /-! ### The determinant through the eigenvalues -/
 
 /-- The determinant of a function of a Hermitian matrix is the product over the eigenvalues. -/
@@ -237,25 +222,12 @@ theorem _root_.Matrix.PosDef.log_re_det_smul_add_smul_eq_iff {A B : Matrix n n �
 
 /-! ### The inverse -/
 
-/-- The inverse of a positive definite matrix through the functional calculus. -/
-private theorem inv_eq_cfc_inv {A : Matrix n n 𝕜} (hA : A.PosDef) :
-    A⁻¹ = cfc (fun x : ℝ => x⁻¹) A := by
-  have hH : IsSelfAdjoint A := hA.isHermitian
-  have h : cfc (fun x : ℝ => x⁻¹) A * cfc (fun x : ℝ => x) A = 1 := by
-    rw [← cfc_mul _ _ A (A.finite_real_spectrum.continuousOn _)
-      (A.finite_real_spectrum.continuousOn _), ← cfc_one ℝ A]
-    refine cfc_congr fun x hx => ?_
-    simp only [Pi.one_apply]
-    exact inv_mul_cancel₀ (hA.spectrum_subset_Ioi hx).ne'
-  rw [cfc_id' ℝ A hH] at h
-  exact Matrix.inv_eq_left_inv h
-
 /-- **The inverse is operator convex** on positive definite matrices:
 `(a A + b B)⁻¹ ≤ a A⁻¹ + b B⁻¹`. [Bhatia1997, Exercise V.1.15 context]. -/
 theorem _root_.Matrix.PosDef.inv_smul_add_smul_le {A B : Matrix n n 𝕜} (hA : A.PosDef)
     (hB : B.PosDef) {a b : ℝ} (ha : 0 ≤ a) (hb : 0 ≤ b) (hab : a + b = 1) :
     (a • A + b • B)⁻¹ ≤ a • A⁻¹ + b • B⁻¹ := by
-  rw [inv_eq_cfc_inv (convex_setOf_posDef hA hB ha hb hab), inv_eq_cfc_inv hA, inv_eq_cfc_inv hB]
+  rw [Matrix.PosDef.inv_eq_cfc (convex_setOf_posDef hA hB ha hb hab), hA.inv_eq_cfc, hB.inv_eq_cfc]
   exact operatorConvexOn_inv.cfc_smul_add_smul_le hA.isHermitian hB.isHermitian
     hA.spectrum_subset_Ioi hB.spectrum_subset_Ioi ha hb hab
 

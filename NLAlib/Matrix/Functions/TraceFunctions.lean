@@ -9,7 +9,7 @@ public import Mathlib.Analysis.Calculus.Deriv.Basic
 public import Mathlib.Analysis.Convex.Deriv
 public import Mathlib.Analysis.Convex.Mul
 public import NLAlib.Matrix.Functions.Exponential
-public import NLAlib.Matrix.Majorization.Schur
+public import NLAlib.Matrix.Norms.Block
 public import NLAlib.Matrix.Spectral.Weyl
 
 /-!
@@ -33,6 +33,9 @@ matrix replaces the ambient dimension in trace bounds.
 * `NLAlib.convexOn_re_trace_cfc`: convex `f` gives a convex trace function.
 * `NLAlib.re_trace_mul_cfc_le_re_trace_cfc_sub`: Klein's inequality.
 * `NLAlib.apply_re_quadForm_le_re_quadForm_cfc`: Jensen for quadratic forms.
+* `NLAlib.re_quadForm_mem_of_spectrum_subset`: the quadratic form at a unit vector lies in every
+  convex set containing the spectrum.
+* `NLAlib.sum_apply_re_quadForm_le_re_trace_cfc`: Peierls' inequality.
 * `NLAlib.re_trace_cfc_conjTranspose_mul_mul_le`: trace Jensen for compressions.
 * `NLAlib.re_trace_exp_le_re_trace_exp_of_le`, `NLAlib.convexOn_re_trace_exp`.
 * `Matrix.PosSemidef.re_trace_cfc_le_intrinsicDimension_mul`: the intrinsic dimension lemma.
@@ -48,7 +51,7 @@ namespace NLAlib
 variable {𝕜 : Type*} [RCLike 𝕜] {m n p : Type*} [Fintype m] [Fintype n] [Fintype p]
   [DecidableEq m] [DecidableEq n] [DecidableEq p]
 
-/-! ### Quadratic forms along an orthonormal frame -/
+/-! ### Jensen for quadratic forms along an orthonormal frame -/
 
 /-- The quadratic form of `f(A)` at a unit vector is an average of `f` over the eigenvalues. -/
 private theorem exists_weights_re_quadForm_cfc {A : Matrix n n 𝕜} (hA : A.IsHermitian)
@@ -64,9 +67,10 @@ private theorem exists_weights_re_quadForm_cfc {A : Matrix n n 𝕜} (hA : A.IsH
   · rw [re_quadForm_cfc_eq_sum hU hr hAU f x]
     exact Finset.sum_congr rfl fun i _ => by rw [smul_eq_mul, mul_comm]
 
-/-- Jensen's inequality for a quadratic form; the public statement is
-`apply_re_quadForm_le_re_quadForm_cfc`. -/
-private theorem apply_re_quadForm_le_aux {φ : ℝ → ℝ} {s : Set ℝ} (hφ : ConvexOn ℝ s φ)
+/-- **Jensen's inequality for a quadratic form.** For `φ` convex on a set containing the spectrum
+of the Hermitian matrix `A` and a unit vector `x`, `φ(xᴴ A x) ≤ xᴴ φ(A) x`.
+[HalkoMartinssonTropp2011, Proposition 8.6 context]. -/
+theorem apply_re_quadForm_le_re_quadForm_cfc {φ : ℝ → ℝ} {s : Set ℝ} (hφ : ConvexOn ℝ s φ)
     {A : Matrix n n 𝕜} (hA : A.IsHermitian) (hAs : spectrum ℝ A ⊆ s) {x : n → 𝕜}
     (hx : ‖WithLp.toLp 2 x‖ = 1) :
     φ (RCLike.re (quadForm A x)) ≤ RCLike.re (quadForm (cfc φ A) x) := by
@@ -78,8 +82,8 @@ private theorem apply_re_quadForm_le_aux {φ : ℝ → ℝ} {s : Set ℝ} (hφ :
   exact hφ.map_sum_le (fun i _ => hw0 i) hw1 fun i _ => hAs (hA.eigenvalue_mem_spectrum i.isLt)
 
 /-- The quadratic form of a Hermitian matrix at a unit vector lies in every convex set containing
-the spectrum. -/
-private theorem re_quadForm_mem {s : Set ℝ} (hs : Convex ℝ s) {A : Matrix n n 𝕜}
+the spectrum: it is a convex combination of the eigenvalues. -/
+theorem re_quadForm_mem_of_spectrum_subset {s : Set ℝ} (hs : Convex ℝ s) {A : Matrix n n 𝕜}
     (hA : A.IsHermitian) (hAs : spectrum ℝ A ⊆ s) {x : n → 𝕜} (hx : ‖WithLp.toLp 2 x‖ = 1) :
     RCLike.re (quadForm A x) ∈ s := by
   obtain ⟨w, hw0, hw1, hw⟩ := exists_weights_re_quadForm_cfc hA hx
@@ -102,18 +106,12 @@ private theorem norm_toLp_mulVec_single {U : Matrix n p 𝕜} (hU : HasOrthonorm
   rw [hU.norm_toLp_mulVec]
   exact (PiLp.norm_single 2 (fun _ : p => 𝕜) i (1 : 𝕜)).trans norm_one
 
-omit [DecidableEq n] in
-/-- The quadratic form at a real eigenvector of unit length is the eigenvalue. -/
-private theorem re_quadForm_eq_of_mulVec_eq_smul {A : Matrix n n 𝕜} {u : n → 𝕜} {c : ℝ}
-    (hu : ‖WithLp.toLp 2 u‖ = 1) (h : A *ᵥ u = c • u) : RCLike.re (quadForm A u) = c := by
-  rw [RCLike.real_smul_eq_coe_smul (K := 𝕜)] at h
-  rw [quadForm, h, dotProduct_smul, smul_eq_mul,
-    EuclideanSpace.star_dotProduct_self_eq_coe_norm_sq, hu, one_pow, RCLike.ofReal_one, mul_one,
-    RCLike.ofReal_re]
-
-/-- **Peierls' inequality**: for a convex `φ` and an orthonormal family, the sum of `φ` over the
-quadratic forms of `A` is at most the trace of the compression of `φ(A)`. -/
-private theorem sum_apply_re_quadForm_le {φ : ℝ → ℝ} {s : Set ℝ} (hφ : ConvexOn ℝ s φ)
+/-- **Peierls' inequality.** For `φ` convex on a set containing the spectrum of the Hermitian
+matrix `A` and `U` with orthonormal columns `u_i = U *ᵥ Pi.single i 1`,
+`∑ i, φ(u_iᴴ A u_i) ≤ tr (Uᴴ φ(A) U)`; for a unitary `U` the right side is `tr φ(A)`.
+[Carlen2010, Theorem 2.9]; stated there for an orthonormal basis, here for any orthonormal family.
+Result: peierls-inequality -/
+theorem sum_apply_re_quadForm_le_re_trace_cfc {φ : ℝ → ℝ} {s : Set ℝ} (hφ : ConvexOn ℝ s φ)
     {A : Matrix n n 𝕜} (hA : A.IsHermitian) (hAs : spectrum ℝ A ⊆ s) {U : Matrix n p 𝕜}
     (hU : HasOrthonormalCols U) :
     ∑ i, φ (RCLike.re (quadForm A (U *ᵥ Pi.single i 1))) ≤
@@ -123,7 +121,7 @@ private theorem sum_apply_re_quadForm_le {φ : ℝ → ℝ} {s : Set ℝ} (hφ :
   have hd : (Uᴴ * cfc φ A * U) i i = quadForm (cfc φ A) (U *ᵥ Pi.single i 1) := by
     rw [← quadForm_conjTranspose_mul_mul, quadForm_single_one]
   rw [Matrix.diag_apply, hd]
-  exact apply_re_quadForm_le_aux hφ hA hAs (norm_toLp_mulVec_single hU i)
+  exact apply_re_quadForm_le_re_quadForm_cfc hφ hA hAs (norm_toLp_mulVec_single hU i)
 
 /-- A Hermitian matrix has a unitary frame along which its quadratic form takes the sorted
 eigenvalues. -/
@@ -160,8 +158,8 @@ private theorem re_trace_cfc_smul_add_smul_le {f : ℝ → ℝ} {s : Set ℝ} (h
       a * RCLike.re (quadForm A (U *ᵥ Pi.single i 1)) +
         b * RCLike.re (quadForm B (U *ᵥ Pi.single i 1)) := fun i => by
     rw [← hq i, re_quadForm_smul_add_smul]
-  have hmA := fun i => re_quadForm_mem hf.1 hA hAs (hu i)
-  have hmB := fun i => re_quadForm_mem hf.1 hB hBs (hu i)
+  have hmA := fun i => re_quadForm_mem_of_spectrum_subset hf.1 hA hAs (hu i)
+  have hmB := fun i => re_quadForm_mem_of_spectrum_subset hf.1 hB hBs (hu i)
   refine ⟨hC, ?_, ?_⟩
   · rw [hC.spectrum_subset_iff]
     intro i hi
@@ -179,8 +177,9 @@ private theorem re_trace_cfc_smul_add_smul_le {f : ℝ → ℝ} {s : Set ℝ} (h
             b * ∑ i : Fin (Fintype.card n), f (RCLike.re (quadForm B (U *ᵥ Pi.single i 1))) := by
           rw [Finset.sum_add_distrib, Finset.mul_sum, Finset.mul_sum]
       _ ≤ a * RCLike.re (Uᴴ * cfc f A * U).trace + b * RCLike.re (Uᴴ * cfc f B * U).trace :=
-          add_le_add (mul_le_mul_of_nonneg_left (sum_apply_re_quadForm_le hf hA hAs hU) ha)
-            (mul_le_mul_of_nonneg_left (sum_apply_re_quadForm_le hf hB hBs hU) hb)
+          add_le_add
+            (mul_le_mul_of_nonneg_left (sum_apply_re_quadForm_le_re_trace_cfc hf hA hAs hU) ha)
+            (mul_le_mul_of_nonneg_left (sum_apply_re_quadForm_le_re_trace_cfc hf hB hBs hU) hb)
       _ = a * RCLike.re (cfc f A).trace + b * RCLike.re (cfc f B).trace := by
           rw [Matrix.trace_mul_cycle, hUU, Matrix.one_mul, Matrix.trace_mul_cycle Uᴴ, hUU,
             Matrix.one_mul]
@@ -306,16 +305,7 @@ theorem re_trace_mul_cfc_le_re_trace_cfc_sub {f f' : ℝ → ℝ} {s : Set ℝ} 
   rw [Matrix.sub_mul, Matrix.trace_sub, map_sub]
   linarith
 
-/-! ### Jensen for quadratic forms and compressions -/
-
-/-- **Jensen's inequality for a quadratic form.** For `φ` convex on a set containing the spectrum
-of the Hermitian matrix `A` and a unit vector `x`, `φ(xᴴ A x) ≤ xᴴ φ(A) x`.
-[HalkoMartinssonTropp2011, Proposition 8.6 context]. -/
-theorem apply_re_quadForm_le_re_quadForm_cfc {φ : ℝ → ℝ} {s : Set ℝ} (hφ : ConvexOn ℝ s φ)
-    {A : Matrix n n 𝕜} (hA : A.IsHermitian) (hAs : spectrum ℝ A ⊆ s) {x : n → 𝕜}
-    (hx : ‖WithLp.toLp 2 x‖ = 1) :
-    φ (RCLike.re (quadForm A x)) ≤ RCLike.re (quadForm (cfc φ A) x) := by
-  exact apply_re_quadForm_le_aux hφ hA hAs hx
+/-! ### Compressions -/
 
 /-- **The power scheme bound.** For positive semidefinite `B` and `Q` with orthonormal columns,
 `‖Qᴴ B Q‖₂^{q+1} ≤ ‖Qᴴ B^{q+1} Q‖₂`. This is why power iteration improves the randomized range
@@ -331,8 +321,8 @@ theorem specNorm_conjTranspose_mul_mul_pow_le {B : Matrix n n 𝕜} (hB : B.PosS
     obtain ⟨u, hu, hMu⟩ := hM.exists_norm_eq_one_and_mulVec_eq_specNorm_smul
     have hx : ‖WithLp.toLp 2 (Q *ᵥ u)‖ = 1 := by rw [hQ.norm_toLp_mulVec, hu]
     have h1 : specNorm (Qᴴ * B * Q) = RCLike.re (quadForm B (Q *ᵥ u)) := by
-      rw [← quadForm_conjTranspose_mul_mul, re_quadForm_eq_of_mulVec_eq_smul hu hMu]
-    have h2 := apply_re_quadForm_le_aux (convexOn_pow (q + 1)) hB.isHermitian
+      rw [← quadForm_conjTranspose_mul_mul, re_quadForm_of_mulVec_eq_smul hu hMu]
+    have h2 := apply_re_quadForm_le_re_quadForm_cfc (convexOn_pow (q + 1)) hB.isHermitian
       hB.spectrum_subset_Ici hx
     have hsa : IsSelfAdjoint B := hB.isHermitian
     rw [cfc_pow_id B (q + 1) hsa] at h2
@@ -351,7 +341,7 @@ theorem re_trace_cfc_conjTranspose_mul_mul_le {f : ℝ → ℝ} {s : Set ℝ} (h
   have hM : (Qᴴ * A * Q).IsHermitian := Matrix.isHermitian_conjTranspose_mul_mul Q hA
   obtain ⟨W, hW, hWW, hq⟩ := exists_frame_re_quadForm_eq_eigenvalue hM
   rw [hM.re_trace_cfc, ← Fin.sum_univ_eq_sum_range (fun i => f (eigenvalue (Qᴴ * A * Q) i))]
-  have h := sum_apply_re_quadForm_le hf hA hAs (hQ.mul hW)
+  have h := sum_apply_re_quadForm_le_re_trace_cfc hf hA hAs (hQ.mul hW)
   have htr : (Q * W)ᴴ * cfc f A * (Q * W) = Wᴴ * (Qᴴ * cfc f A * Q) * W := by
     simp only [Matrix.conjTranspose_mul, Matrix.mul_assoc]
   rw [htr, Matrix.trace_mul_cycle, hWW, Matrix.one_mul] at h
@@ -441,14 +431,6 @@ private theorem re_trace_div_le_intrinsicDimension {A : Matrix n n 𝕜} (hA : A
     exact div_le_div_of_nonneg_left ((specNorm_nonneg A).trans hA.specNorm_le_re_trace) hpos hc
 
 omit [DecidableEq m] [DecidableEq n] in
-/-- The trace of a block diagonal matrix. -/
-private theorem re_trace_fromBlocks_diagonal (A : Matrix m m 𝕜) (B : Matrix n n 𝕜) :
-    RCLike.re (Matrix.fromBlocks A 0 0 B).trace = RCLike.re A.trace + RCLike.re B.trace := by
-  rw [← map_add]
-  simp only [Matrix.trace, Matrix.diag_apply, Fintype.sum_sum_type, Matrix.fromBlocks_apply₁₁,
-    Matrix.fromBlocks_apply₂₂]
-
-omit [DecidableEq m] [DecidableEq n] in
 /-- The intrinsic dimension of a block diagonal positive semidefinite matrix is at most the sum
 of the intrinsic dimensions of the blocks.
 [Tropp2015, §7.3]. Port of `NLAlib.intrinsicDimension_fromBlocks`. -/
@@ -456,7 +438,8 @@ theorem intrinsicDimension_fromBlocks_le {A : Matrix m m 𝕜} {B : Matrix n n �
     (hA : A.PosSemidef) (hB : B.PosSemidef) :
     intrinsicDimension (Matrix.fromBlocks A 0 0 B) ≤
       intrinsicDimension A + intrinsicDimension B := by
-  rw [intrinsicDimension, re_trace_fromBlocks_diagonal, specNorm_fromBlocks_zero₁₂_zero₂₁, add_div]
+  rw [intrinsicDimension, Matrix.trace_fromBlocks, map_add, specNorm_fromBlocks_zero₁₂_zero₂₁,
+    add_div]
   exact add_le_add (re_trace_div_le_intrinsicDimension hA (le_max_left _ _))
     (re_trace_div_le_intrinsicDimension hB (le_max_right _ _))
 
@@ -470,7 +453,7 @@ theorem min_intrinsicDimension_le_intrinsicDimension_fromBlocks {A : Matrix m m 
       intrinsicDimension (Matrix.fromBlocks A 0 0 B) := by
   have htA : 0 ≤ RCLike.re A.trace := (specNorm_nonneg A).trans hA.specNorm_le_re_trace
   have htB : 0 ≤ RCLike.re B.trace := (specNorm_nonneg B).trans hB.specNorm_le_re_trace
-  rw [intrinsicDimension, intrinsicDimension, intrinsicDimension, re_trace_fromBlocks_diagonal,
+  rw [intrinsicDimension, intrinsicDimension, intrinsicDimension, Matrix.trace_fromBlocks, map_add,
     specNorm_fromBlocks_zero₁₂_zero₂₁]
   rcases le_total (specNorm A) (specNorm B) with hAB | hAB
   · rw [max_eq_right hAB]

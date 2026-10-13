@@ -162,7 +162,9 @@ and block bounds, `Matrix.PosSemidef.re_trace_cfc_le_intrinsicDimension_mul`.
 `concaveOn_re_trace_exp_add_cfc_log : ConcaveOn ℝ {A | A.PosDef} fun A => re (exp (H + cfc log A)).trace`.
 
 `TracePowers.lean`: the overlap formula `re_trace_cfc_mul_cfc_eq_sum` and its lifting principle;
-`Matrix.IsHermitian.re_trace_pow`, `specNorm_pow_le_re_trace_pow` (`0 < q`);
+(the trace of a power through the eigenvalues and the moment bound on the spectral norm are the
+earlier `Matrix.IsHermitian.re_trace_pow_eq_sum_range_eigenvalue_pow` and
+`specNorm_pow_le_re_trace_pow`; the copies first written here were deleted at wrap-up);
 `re_trace_mul_pow_mul_pow_le`; the mean value trace inequality `re_trace_cfc_sub_mul_cfc_sub_le`
 and its power form; trace Young for powers (`re_trace_mul_pow_le_add`) and for conjugate exponents
 (`re_trace_mul_le_re_trace_rpow_add`).
@@ -171,11 +173,12 @@ and its power form; trace Young for powers (`re_trace_mul_pow_le_add`) and for c
 `Matrix.IsHermitian.re_det_exp`, `Matrix.PosSemidef.log_re_det_one_add_le_re_trace`,
 `one_add_re_trace_le_re_det_one_add`, the weighted geometric mean of determinants,
 `strictConcaveOn_log_re_det` with its equality case, operator convexity of the inverse,
-`strictConvexOn_re_trace_inv`; convexity of the sets of positive semidefinite and positive
-definite matrices.
+`strictConvexOn_re_trace_inv`. (Convexity of the sets of positive semidefinite and positive
+definite matrices moved to `Inequalities/Order.lean` at wrap-up.)
 
 `AbsoluteValue.lean`: `eigenvalue_sqrt_conjTranspose_mul_self`, `nuclearNorm_eq_re_trace_sqrt`,
-`schattenNorm_rpow_eq_re_trace_rpow`, `schattenNorm_pow_eq_re_trace_pow`,
+`schattenNorm_rpow_eq_re_trace_rpow` (the even natural power is the earlier
+`schattenNorm_two_mul_natCast_pow`),
 `Matrix.IsHermitian.le_abs`, `neg_abs_le`, `abs_le_specNorm_smul_one`.
 
 `ForMathlib/Analysis/Calculus/Deriv/Matrix.lean`: `Matrix.hasDerivAt_iff_forall_apply`,
@@ -213,16 +216,22 @@ Under `NLAlib/Matrix/Functions/`:
 2. `Polynomial.lean` (imports 1, M3 `SVD`).
 3. `Exponential.lean` (imports 1).
 4. `Complexification.lean` (imports 3).
-5. `TraceFunctions.lean` (imports 3, M3a `Schur`).
+5. `TraceFunctions.lean` (imports 3, M2 `Block`, M3 `Weyl`).
 6. `OperatorMonotone.lean` (imports 4, M7 `Order`).
-7. `GoldenThompson.lean` (imports 4, 5).
-8. `Perspective.lean` (imports 6).
-9. `Lieb.lean` (imports 6, 7; will import 8).
+7. `GoldenThompson.lean` (imports 3).
+8. `Perspective.lean` (imports 13, M7 `Order`).
+9. `Lieb.lean` (imports 5, 8, 13).
 10. `TracePowers.lean` (imports 5).
-11. `LogDet.lean` (imports 6, M7 `Determinant`).
-12. `AbsoluteValue.lean` (imports 6, M3b `Schatten`).
+11. `LogDet.lean` (imports 6, 13, M7 `Determinant`).
+12. `AbsoluteValue.lean` (imports 6, M3b `SchattenPowers`).
+13. `OperatorConvex.lean` (imports 4): the predicate `OperatorConvexOn`, the operator convexity
+    of `x²`, `x⁻¹`, `-log x` and `x log x`, and the operator Jensen inequality for a compression
+    and for a finite family (Hansen–Pedersen).
 
-And `NLAlib/ForMathlib/Analysis/Calculus/Deriv/Matrix.lean`.
+And `NLAlib/ForMathlib/Analysis/Calculus/Deriv/Matrix.lean`,
+`NLAlib/ForMathlib/Analysis/RCLike/ToComplex.lean` (imported by 4), and
+`NLAlib/ForMathlib/LinearAlgebra/Matrix/Trace.lean` (imported by 3): `Matrix.trace_fromBlocks`,
+the trace of a block matrix.
 
 Order for proving: 1 and the `ForMathlib` file; then 2, 3; then 4, 5; then 6, 7, 10; then 8, 11,
 12; then 9.
@@ -301,3 +310,56 @@ and their resolution:
 11. One proposal was not taken: dropping the Hermitian hypotheses of `cfc_fromBlocks_diagonal`.
     With `A` not Hermitian and `B` Hermitian the left side is the junk value `0` and the right
     side is not.
+
+## 9. Stage report (2026-10-14)
+
+**Outcome.** Thirteen files under `Matrix/Functions/` (`HermitianCalculus.lean`,
+`Polynomial.lean`, `Exponential.lean`, `Complexification.lean`, `TraceFunctions.lean`,
+`OperatorMonotone.lean`, `OperatorConvex.lean`, `GoldenThompson.lean`, `Perspective.lean`,
+`Lieb.lean`, `TracePowers.lean`, `LogDet.lean`, `AbsoluteValue.lean`; `OperatorConvex.lean` was
+split off `OperatorMonotone.lean`) and three `ForMathlib` files
+(`Analysis/RCLike/ToComplex.lean`, `Analysis/Calculus/Deriv/Matrix.lean`,
+`LinearAlgebra/Matrix/Trace.lean`), all proved; nothing in `NLAlibScaffold`. With the stages
+before it and M9 the build has no warnings, the axiom audit covers 2963 declarations with no
+violation, the environment linters pass on 2280 declarations, and references check clean.
+
+**False statements.** None found by the proof agents. The review had found one in the skeleton
+(§8.1); the Hermitian copy it concerned was deleted at wrap-up as a duplicate, see below.
+
+**What changed from the design.**
+
+- Diagonalisation lemmas take a frame `U : Matrix n r 𝕜` with orthonormal columns and
+  `Fintype.card r = Fintype.card n`, not a unitary matrix on `n`, so that a sorted eigenvalue
+  frame indexed by `Fin (card n)` applies without reindexing (`cfc_eq_mul_diagonal_mul_conjTranspose`).
+- Golden–Thompson is proved over `𝕜` by the Lie product formula, which is public
+  (`tendsto_exp_smul_mul_exp_smul_pow`), with the trace inequality
+  `Matrix.PosSemidef.re_trace_mul_pow_two_pow_le`. Lieb's theorem is proved over `𝕜` on any
+  finite index type through Kronecker products; its continuity on the positive definite cone
+  (`continuousOn_re_trace_exp_add_cfc_log`), first cut by the review as dead weight (§8.9), was
+  restored at wrap-up because the concentration layer integrates it.
+- Deleted at wrap-up as duplicates of earlier stages: `Matrix.IsHermitian.re_trace_pow`
+  (`Matrix.IsHermitian.re_trace_pow_eq_sum_range_eigenvalue_pow`),
+  `schattenNorm_pow_eq_re_trace_pow` (`schattenNorm_two_mul_natCast_pow`),
+  `Matrix.IsHermitian.specNorm_pow_le_re_trace_pow` (`specNorm_pow_le_re_trace_pow`).
+- Moved upstream: `convex_setOf_posDef`, `convex_setOf_posSemidef` (to `Inequalities/Order.lean`),
+  `re_quadForm_of_mulVec_eq_smul` (public in `Spectral/CourantFischer.lean`).
+- Added at wrap-up: `complexify_inv`, `cfc_blockDiagonal`, `Matrix.PosDef.inv_eq_cfc`,
+  `specNorm_exp_le`, Peierls' inequality `sum_apply_re_quadForm_le_re_trace_cfc`,
+  `re_quadForm_mem_of_spectrum_subset`, `relativeEntropy_eq`,
+  `HasOrthonormalCols.specNorm_conjTranspose_mul_mul_le`, `Matrix.trace_fromBlocks`.
+- `LogDet.lean` proves simultaneous congruence privately through `CFC.sqrt A`; it does not wait
+  for M10's `Spectral/Congruence.lean`.
+
+**Mathlib overlap.** No statement is in Mathlib outright. `Matrix.trace_fromBlocks` is missing
+there. Mathlib's `CFC.log` needs a global normed ring on matrices, hence `cfc Real.log A`
+(§7.2); `cfc_inv` exists only with `Ring.inverse`.
+
+**To check.** Three citation locators were written from memory by the wrap-up agent and should
+be verified against the books: `[Carlen2010, Theorem 2.9]` (Peierls), `[Bhatia1997, §IX.1]` (Lie
+product formula), `[Bhatia1997, §IX.2]` (the trace inequality for powers of two).
+
+**Not ported, by decision.** §7.8, and from the ledger pass: derivatives of traces of inverse
+powers along a line, the polynomial energy bound with a general weight, the derivative of the
+characteristic determinant as a sum of complementary minors, the equality cases for `tr A⁻¹` and
+for the multiplicative determinant inequality. The ledger accounts for all 245 public prototype
+declarations of `Matrix/Functions` and `Matrix/Calculus`.

@@ -200,6 +200,12 @@ theorem specNorm_mul_right_le {Q : Matrix m n 𝕜} (hQ : HasOrthonormalCols Q) 
   rw [← Matrix.mulVec_mulVec, ← hQ.norm_toLp_mulVec x]
   exact norm_toLp_mulVec_le A (Q *ᵥ x)
 
+/-- A compression does not increase the spectral norm: `‖Qᴴ A Q‖₂ ≤ ‖A‖₂` for `Q` with
+orthonormal columns. -/
+theorem specNorm_conjTranspose_mul_mul_le {Q : Matrix m n 𝕜} (hQ : HasOrthonormalCols Q)
+    (A : Matrix m m 𝕜) : specNorm (Qᴴ * A * Q) ≤ specNorm A :=
+  (hQ.specNorm_mul_right_le (Qᴴ * A)).trans (hQ.specNorm_conjTranspose_mul_le A)
+
 /-- Right multiplication by a matrix with orthonormal columns does not increase the Frobenius
 norm. -/
 theorem frobNorm_mul_right_le {Q : Matrix m n 𝕜} (hQ : HasOrthonormalCols Q) (A : Matrix p m 𝕜) :

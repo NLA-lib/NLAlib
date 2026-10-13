@@ -783,6 +783,11 @@
   "new": "NLAlib.norm_apply_le_specNorm",
   "stage": "M2"
  },
+ "NLAlib.abs_det_eq_prod_column_norm_iff": {
+  "new": null,
+  "note": "equality case not stated: of NLAlib.norm_det_le_prod_norm_col",
+  "stage": "M7"
+ },
  "NLAlib.abs_det_le_prod_column_norm": {
   "new": "NLAlib.norm_det_le_prod_norm_col",
   "stage": "M7"
@@ -854,6 +859,11 @@
  "NLAlib.abs_frobInner_le_sum_singularValues_mul": {
   "new": "NLAlib.abs_frobInner_le_sum_singularValues_mul",
   "stage": "M3a"
+ },
+ "NLAlib.abs_quadForm_hadamard_le_of_abs_quadForm_le": {
+  "new": "NLAlib.hadamard_le_hadamard_of_neg_le_of_le",
+  "note": "Loewner form -A ≤ B ≤ A, with NLAlib.neg_hadamard_le_hadamard_of_neg_le_of_le; the quadratic-form spelling is NLAlib.neg_le_and_le_iff_forall_abs_re_quadForm_le",
+  "stage": "M7"
  },
  "NLAlib.abs_quadForm_le_iff_neg_le_and_le": {
   "new": "NLAlib.neg_le_and_le_iff_forall_abs_re_quadForm_le",
@@ -1047,6 +1057,26 @@
   "new": null,
   "note": "deferred: characteristic polynomial of a rank-one update (check Mathlib's matrix determinant lemma first)",
   "stage": "M10"
+ },
+ "NLAlib.columnProjectionMass": {
+  "new": null,
+  "note": "object not reproduced: columnProjectionMass, helper definition of the prototype's proof of Horn's converse, Matrix-Inequalities §6",
+  "stage": "M7"
+ },
+ "NLAlib.columnProjectionMass_compl": {
+  "new": null,
+  "note": "object not reproduced: columnProjectionMass, Matrix-Inequalities §6",
+  "stage": "M7"
+ },
+ "NLAlib.columnProjectionMass_le_one": {
+  "new": null,
+  "note": "object not reproduced: columnProjectionMass, Matrix-Inequalities §6",
+  "stage": "M7"
+ },
+ "NLAlib.columnProjectionMass_nonneg": {
+  "new": null,
+  "note": "object not reproduced: columnProjectionMass, Matrix-Inequalities §6",
+  "stage": "M7"
  },
  "NLAlib.columnProjector_apply_pinv_residual_eq_zero": {
   "new": null,
@@ -1280,6 +1310,16 @@
   "note": "Mathlib: Continuous.matrix_elem applied to continuous_id",
   "stage": "M5"
  },
+ "NLAlib.continuous_principalMinor": {
+  "new": null,
+  "note": "not ported: one step from Continuous.matrix_det, no consumer",
+  "stage": "M7"
+ },
+ "NLAlib.continuous_principalMinorProduct": {
+  "new": null,
+  "note": "object not reproduced: principalMinorProduct, Matrix-Inequalities §6, §7.2",
+  "stage": "M7"
+ },
  "NLAlib.continuous_singularValues_array": {
   "new": "NLAlib.continuous_singularValues",
   "stage": "M6"
@@ -1288,6 +1328,31 @@
   "new": "NLAlib.continuous_singularValues",
   "note": "composed with the transpose and the square",
   "stage": "M6"
+ },
+ "NLAlib.coordinateSelector": {
+  "new": null,
+  "note": "object not reproduced: coordinateSelector, the diagonal projection onto a coordinate set, helper definition of the prototype's proof of Horn's converse, Matrix-Inequalities §6",
+  "stage": "M7"
+ },
+ "NLAlib.coordinateSelector_commute_of_cross_eq_zero": {
+  "new": null,
+  "note": "object not reproduced: coordinateSelector, Matrix-Inequalities §6",
+  "stage": "M7"
+ },
+ "NLAlib.coordinateSelector_compl": {
+  "new": null,
+  "note": "object not reproduced: coordinateSelector, Matrix-Inequalities §6",
+  "stage": "M7"
+ },
+ "NLAlib.coordinateSelector_compl_commute": {
+  "new": null,
+  "note": "object not reproduced: coordinateSelector, Matrix-Inequalities §6",
+  "stage": "M7"
+ },
+ "NLAlib.coordinateSelector_mulVec_column": {
+  "new": null,
+  "note": "object not reproduced: coordinateSelector, projectedColumn, Matrix-Inequalities §6",
+  "stage": "M7"
  },
  "NLAlib.coordinateStiefel": {
   "new": null,
@@ -1317,6 +1382,11 @@
   "note": "bundle of SymmetricGauge.mul_matrixNorm_conjTranspose_mul_le_of_le, SymmetricGauge.mul_matrixNorm_one_sub_mul_le_of_eigenvalue_sub, specNorm_one_sub_mul_le_two_mul_specNorm_div_eigengap, with one_sub_mul_mul_one_sub_le_of_smul_one_le for a frame given by a Loewner bound",
   "stage": "M6"
  },
+ "NLAlib.det_add_rpow_inv_card_eq_iff": {
+  "new": null,
+  "note": "equality case not stated: of Matrix.PosSemidef.re_det_rpow_add_le",
+  "stage": "M7"
+ },
  "NLAlib.det_add_single_diagonal": {
   "new": "Matrix.det_add_single",
   "note": "any entry; cofactor is Matrix.adjugate",
@@ -1337,6 +1407,11 @@
  },
  "NLAlib.det_eq_prod_diag_iff_isDiag_of_posDef": {
   "new": "Matrix.PosDef.re_det_eq_prod_re_diag_iff",
+  "stage": "M7"
+ },
+ "NLAlib.det_eq_prod_diag_iff_of_posSemidef": {
+  "new": null,
+  "note": "equality case not stated: the semidefinite alternative, a zero diagonal entry; the positive definite case is Matrix.PosDef.re_det_eq_prod_re_diag_iff",
   "stage": "M7"
  },
  "NLAlib.det_fromBlocks_eq_mul_det_iff_of_posDef": {
@@ -1366,6 +1441,16 @@
   "new": null,
   "note": "private helper of Horn's inequality",
   "stage": "M3a"
+ },
+ "NLAlib.det_gram_mul_le_prod_sq_singularValues": {
+  "new": null,
+  "note": "private helper of NLAlib.prod_range_singularValues_mul_le: prod_sq_singularValues_mul_le, with NLAlib.det_conjTranspose_mul_self_eq_prod_sq_singularValues",
+  "stage": "M7"
+ },
+ "NLAlib.det_inv_rpow_smul_eq_one": {
+  "new": null,
+  "note": "not ported: determinant-one normalisation in the prototype's proof of Minkowski's inequality; Matrix.PosSemidef.re_det_rpow_add_le normalises by a congruence Cᴴ * A * C = 1 instead",
+  "stage": "M7"
  },
  "NLAlib.det_inverse_bottomRight_eq_topLeft_div_det": {
   "new": "Matrix.det_inv_toBlocks₂₂",
@@ -1402,8 +1487,53 @@
   "note": "general Gram form",
   "stage": "M1"
  },
+ "NLAlib.det_overlapping_blocks_eq_iff": {
+  "new": null,
+  "note": "equality case not stated: of Matrix.PosSemidef.re_principalMinor_union_mul_inter_le",
+  "stage": "M7"
+ },
+ "NLAlib.det_overlapping_blocks_le": {
+  "new": "Matrix.PosSemidef.re_principalMinor_union_mul_inter_le",
+  "note": "stated once through principalMinor, Matrix-Inequalities §8.2; the block form is its private helper re_det_mul_re_det_inl_le",
+  "stage": "M7"
+ },
+ "NLAlib.det_pow_card_pred_eq_prod_complement_singleton_iff": {
+  "new": null,
+  "note": "equality case not stated: of Matrix.PosSemidef.re_det_pow_le_prod_re_principalMinor_erase",
+  "stage": "M7"
+ },
  "NLAlib.det_pow_card_pred_le_prod_complement_singleton": {
   "new": "Matrix.PosSemidef.re_det_pow_le_prod_re_principalMinor_erase",
+  "stage": "M7"
+ },
+ "NLAlib.det_principal_complement_singleton_eq_det_mul_inv_diag": {
+  "new": "NLAlib.principalMinor_erase_univ_eq",
+  "note": "over a field, through principalMinor; the adjugate form is NLAlib.principalMinor_erase_univ_eq_adjugate",
+  "stage": "M7"
+ },
+ "NLAlib.det_principal_three_sets_eq_iff": {
+  "new": null,
+  "note": "equality case not stated: of Matrix.PosSemidef.re_principalMinor_union_mul_inter_le",
+  "stage": "M7"
+ },
+ "NLAlib.det_principal_three_sets_le": {
+  "new": "Matrix.PosSemidef.re_principalMinor_union_mul_inter_le",
+  "note": "the case s = I ∪ J, t = I ∪ K with pairwise disjoint I, J, K; positive semidefinite, over 𝕜",
+  "stage": "M7"
+ },
+ "NLAlib.det_principal_union_eq_det_fromBlocks": {
+  "new": null,
+  "note": "inlined in the proof of Matrix.PosSemidef.re_principalMinor_union_mul_inter_le: the reindexing along Sum.elim is done by NLAlib.det_submatrix_eq_principalMinor",
+  "stage": "M7"
+ },
+ "NLAlib.det_principal_union_mul_inter_eq_iff_of_posDef": {
+  "new": null,
+  "note": "equality case not stated: of Matrix.PosSemidef.re_principalMinor_union_mul_inter_le",
+  "stage": "M7"
+ },
+ "NLAlib.det_principal_union_mul_inter_le_of_posDef": {
+  "new": "Matrix.PosSemidef.re_principalMinor_union_mul_inter_le",
+  "note": "positive semidefinite, over 𝕜",
   "stage": "M7"
  },
  "NLAlib.det_principal_union_mul_inter_le_of_posSemidef": {
@@ -1414,10 +1544,25 @@
   "new": "Matrix.PosSemidef.re_det_rpow_add_le",
   "stage": "M7"
  },
+ "NLAlib.det_rpow_inv_card_pow_card": {
+  "new": null,
+  "note": "Mathlib: Real.rpow_inv_natCast_pow",
+  "stage": "M7"
+ },
  "NLAlib.det_scalar_block_eigenvalue_pencil_eq_schur": {
   "new": null,
   "note": "object not reproduced: simpleEigenvalueSchurFunction, Matrix-Perturbation §9",
   "stage": "M6"
+ },
+ "NLAlib.det_smul_add_rpow_inv_card_eq_iff": {
+  "new": null,
+  "note": "equality case not stated: of NLAlib.concaveOn_re_det_rpow; the M8 skeleton has the equality case of log det only, Matrix.PosDef.log_re_det_smul_add_smul_eq_iff",
+  "stage": "M7"
+ },
+ "NLAlib.det_smul_rpow_inv_card": {
+  "new": null,
+  "note": "private helper of NLAlib.concaveOn_re_det_rpow: re_det_real_smul_rpow",
+  "stage": "M7"
  },
  "NLAlib.det_submatrix_equiv_eq_sign_mul": {
   "new": "Matrix.det_submatrix_equiv_equiv",
@@ -1427,6 +1572,16 @@
   "new": null,
   "note": "entrywise form of Matrix.compound_mul",
   "stage": "M1"
+ },
+ "NLAlib.det_toBlock_complement_eq_principalMinor_erase": {
+  "new": "NLAlib.det_submatrix_eq_principalMinor",
+  "note": "the general statement, for any injective reindexing with range s; used in this form inside Matrix.PosSemidef.re_principalMinor_pow_le_prod_erase",
+  "stage": "M7"
+ },
+ "NLAlib.det_transpose_mul_mul_le_prod_eigenvalues₀": {
+  "new": null,
+  "note": "not ported: helper of the prototype's proof of Horn's product inequality; NLAlib.prod_range_singularValues_mul_le is proved through singularValues_mul_le_mul_specNorm instead; one step from Matrix.IsHermitian.eigenvalue_conjTranspose_mul_mul_le and Matrix.IsHermitian.det_eq_prod_range_eigenvalue",
+  "stage": "M7"
  },
  "NLAlib.det_transpose_mul_self_eq_sum_det_sq": {
   "new": "Matrix.det_conjTranspose_mul_self_eq_sum_powersetCard",
@@ -1453,6 +1608,11 @@
  },
  "NLAlib.diagonal_conjugation_eq_sq_mulVec": {
   "new": "NLAlib.re_mul_diagonal_mul_conjTranspose_apply_self",
+  "stage": "M7"
+ },
+ "NLAlib.diagonal_error_stationarity_of_min": {
+  "new": null,
+  "note": "not ported: descent machinery of the prototype's variational proof of Horn's converse, Matrix-Inequalities §6",
   "stage": "M7"
  },
  "NLAlib.dilation": {
@@ -1634,6 +1794,11 @@
   "new": null,
   "note": "object not reproduced: eigenvalueProjector, Matrix-Perturbation §6",
   "stage": "M6"
+ },
+ "NLAlib.eigenvalue_le_of_diagonal_error_min": {
+  "new": null,
+  "note": "not ported: descent machinery of the prototype's variational proof of Horn's converse, Matrix-Inequalities §6",
+  "stage": "M7"
  },
  "NLAlib.eigenvalue_low_rank_interlacing": {
   "new": null,
@@ -1905,6 +2070,11 @@
   "note": "with IsIdempotentElem.one_le_specNorm; the rank endpoints are the cases P = 0 and P = 1",
   "stage": "M5"
  },
+ "NLAlib.exists_injective_vecMulVec_le_of_posSemidef_rows_injective": {
+  "new": null,
+  "note": "private helper of Matrix.PosSemidef.posDef_map_exp_iff: exists_injective_vecMulVec_le",
+  "stage": "M7"
+ },
  "NLAlib.exists_isBestFrobRankApprox": {
   "new": "NLAlib.isLeast_frobNorm_sub_of_rank_le",
   "stage": "M3"
@@ -1936,6 +2106,11 @@
   "note": "object not reproduced: forward error written with the least-squares angle (Golub–Van Loan Theorem 5.3.1), Matrix-Perturbation §7.5; IsLeastSquaresSolution.norm_sub_le_of_le carries the residual norm",
   "stage": "M6"
  },
+ "NLAlib.exists_matrix_charpoly_and_selfAdjointPart_charpoly_of_majorized": {
+  "new": null,
+  "note": "not ported: converse of real-part majorization, no consumer",
+  "stage": "M10"
+ },
  "NLAlib.exists_mem_spectrum_distance_le_euclidean_residual_div_of_normal": {
   "new": "NLAlib.exists_norm_sub_mul_norm_le_conditionNumber_mul",
   "note": "normal case: V unitary by isStarNormal_iff_exists_eq_mul_diagonal_mul_conjTranspose, conditionNumber V = 1 by HasOrthonormalCols.conditionNumber_eq_one, d i in the spectrum by mem_spectrum_of_mul_eq_mul_diagonal; division-free; no corollary for normal matrices is stated",
@@ -1949,6 +2124,11 @@
  "NLAlib.exists_ne_zero_mem_inf_of_card_lt_finrank_add": {
   "new": "Submodule.finrank_add_finrank_le_card_add_finrank_inf",
   "stage": "M3"
+ },
+ "NLAlib.exists_nonsymmetric_quadratic_dominance_not_hadamard_preserved": {
+  "new": null,
+  "note": "not ported: counterexample file, Matrix-Inequalities §6",
+  "stage": "M7"
  },
  "NLAlib.exists_not_isUnit_add_specNorm_eq_inv_specNorm_inv": {
   "new": "NLAlib.isLeast_specNorm_not_isUnit_add",
@@ -2026,6 +2206,11 @@
   "note": "deferred: Hoffman–Wielandt for normal matrices, with normal matrices",
   "stage": "M10"
  },
+ "NLAlib.exists_posDef_zero_dim_not_det_root_add_ge": {
+  "new": null,
+  "note": "not ported: counterexample showing that Nonempty n is needed in Matrix.PosSemidef.re_det_rpow_add_le; counterexamples are not ported, Matrix-Inequalities §6",
+  "stage": "M7"
+ },
  "NLAlib.exists_pos_forall_sqrt_pinv_fit_sub_div_le": {
   "new": null,
   "note": "object not reproduced: first-order sensitivity of the fit with coefficient conditionNumber A / leastSquaresCos (Trefethen–Bau Theorem 18.1), Matrix-Perturbation §6",
@@ -2035,6 +2220,16 @@
   "new": null,
   "note": "object not reproduced: first-order sensitivity of the solution written with leastSquaresTan and leastSquaresEta (Trefethen–Bau Theorem 18.1), Matrix-Perturbation §6",
   "stage": "M6"
+ },
+ "NLAlib.exists_pos_max_residual": {
+  "new": null,
+  "note": "not ported: scalar helper of the prototype's variational proof of Horn's converse, Matrix-Inequalities §6",
+  "stage": "M7"
+ },
+ "NLAlib.exists_projectedColumn_pair": {
+  "new": null,
+  "note": "object not reproduced: columnProjectionMass; descent machinery of the prototype's variational proof of Horn's converse, Matrix-Inequalities §6",
+  "stage": "M7"
  },
  "NLAlib.exists_range_kernel_frames_specNorm_eq_secant": {
   "new": "IsIdempotentElem.specNorm_mul_cos_principalAngle",
@@ -2073,6 +2268,11 @@
   "new": "NLAlib.exists_specNorm_le_one_frobInner_eq_nuclearNorm",
   "stage": "M3b"
  },
+ "NLAlib.exists_sqrt_contraction_factor_of_fromBlocks_posSemidef": {
+  "new": "NLAlib.posSemidef_fromBlocks_iff_exists_sqrt_mul_mul_sqrt",
+  "note": "mp direction, over 𝕜; the iff takes A and C positive semidefinite as hypotheses",
+  "stage": "M7"
+ },
  "NLAlib.exists_submodule_mulVec_dotProduct_le_sq_singularValues_mul": {
   "new": "NLAlib.exists_submodule_norm_mulVec_le",
   "stage": "M3"
@@ -2100,6 +2300,11 @@
  "NLAlib.exists_svd_right_blocks": {
   "new": "NLAlib.exists_isSVD_fromCols",
   "stage": "M3"
+ },
+ "NLAlib.exists_threshold_of_weight_order": {
+  "new": null,
+  "note": "not ported: scalar helper of the prototype's variational proof of Horn's converse, Matrix-Inequalities §6",
+  "stage": "M7"
  },
  "NLAlib.exists_trace_compression_eq_bottom_eigenvalues": {
   "new": "Matrix.IsHermitian.exists_re_trace_conjTranspose_mul_mul_eq_sum_eigenvalue",
@@ -2823,6 +3028,26 @@
   "new": "NLAlib.posSemidef_fromBlocks_conjTranspose_mul_inv_mul",
   "stage": "M7"
  },
+ "NLAlib.fromBlocks_posDef_of_two_abs_bilinear_lt_quadForm_add": {
+  "new": null,
+  "note": "not ported: strict additive test for positive definiteness of a block matrix; the criterion kept is NLAlib.posDef_fromBlocks_iff",
+  "stage": "M7"
+ },
+ "NLAlib.fromBlocks_posSemidef_of_sqrt_contraction_factor": {
+  "new": "NLAlib.posSemidef_fromBlocks_iff_exists_sqrt_mul_mul_sqrt",
+  "note": "mpr direction, over 𝕜",
+  "stage": "M7"
+ },
+ "NLAlib.fromBlocks_posSemidef_of_two_abs_bilinear_le_quadForm_add": {
+  "new": null,
+  "note": "not ported: the additive test 2 |xᵀ B y| ≤ xᵀ A x + yᵀ C y is not stated, Matrix-Inequalities §6 (real dot-product forms of the block tests); one step from NLAlib.re_quadForm_fromBlocks",
+  "stage": "M7"
+ },
+ "NLAlib.fromBlocks_positivity_iff_relative_spectralRadius": {
+  "new": null,
+  "note": "object not reproduced: spectralRadius of a relative matrix, Matrix-Inequalities §0, §6, §7.3; the criteria kept are the Schur complement ones, NLAlib.posDef_fromBlocks_iff and Mathlib's Matrix.PosDef.fromBlocks₁₁",
+  "stage": "M7"
+ },
  "NLAlib.generalizedSchurComplement": {
   "new": null,
   "note": "no definition; spelled C - Bᴴ * pinv A * B",
@@ -2883,6 +3108,16 @@
  "NLAlib.hasDerivAt_matrix_trace_pow": {
   "new": "Matrix.hasDerivAt_trace_pow_succ",
   "stage": "M8"
+ },
+ "NLAlib.hasDerivAt_planeRotation_rational_apply": {
+  "new": null,
+  "note": "not ported: descent machinery of the prototype's variational proof of Horn's converse, Matrix-Inequalities §6; the new proof uses the intermediate value theorem and no derivative",
+  "stage": "M7"
+ },
+ "NLAlib.hasDerivAt_planeRotation_rational_conjugation_diag": {
+  "new": null,
+  "note": "not ported: descent machinery of the prototype's variational proof of Horn's converse, Matrix-Inequalities §6; the new proof uses the intermediate value theorem and no derivative",
+  "stage": "M7"
  },
  "NLAlib.hasFDerivAt_componentRelativeMap": {
   "new": null,
@@ -2979,9 +3214,19 @@
   "note": "object not reproduced: simpleEigenvalueSchurFunction, Matrix-Perturbation §9",
   "stage": "M6"
  },
+ "NLAlib.hasSum_inv_factorial_smul_map_pow": {
+  "new": null,
+  "note": "private helper of Matrix.PosSemidef.map_exp_le_map_exp_of_le and Matrix.PosSemidef.posDef_map_exp_iff, same name",
+  "stage": "M7"
+ },
  "NLAlib.hasSum_pow_inv_one_sub": {
   "new": "NLAlib.hasSum_pow_inv_one_sub",
   "stage": "M6"
+ },
+ "NLAlib.hasSum_smul_map_pow_of_hasSum_entries": {
+  "new": null,
+  "note": "private helper of Matrix.PosSemidef.map_of_hasSum: hasSum_smul_map_pow",
+  "stage": "M7"
  },
  "NLAlib.headColumns": {
   "new": null,
@@ -3057,6 +3302,11 @@
  "NLAlib.isCompact_orthogonalMatrices": {
   "new": "NLAlib.isCompact_setOf_hasOrthonormalCols",
   "stage": "M5"
+ },
+ "NLAlib.isDiag_inv_iff_of_isUnit": {
+  "new": null,
+  "note": "not ported: helper of equality cases that are not stated; no consumer",
+  "stage": "M7"
  },
  "NLAlib.isEmpty_unitSphere": {
   "new": null,
@@ -3314,6 +3564,16 @@
   "note": "no sorting; attainment is exists_card_eq_min_and_sum_eq_sumLargest",
   "stage": "M3a"
  },
+ "NLAlib.le_iff_exists_sqrt_congruence_contraction": {
+  "new": "Matrix.PosDef.le_iff_inv_sqrt_mul_mul_inv_sqrt_le_one",
+  "note": "the contraction is named: (CFC.sqrt A)⁻¹ * B * (CFC.sqrt A)⁻¹ ≤ 1; over 𝕜, no hypothesis on B",
+  "stage": "M8"
+ },
+ "NLAlib.le_iff_relative_spectralRadius_le_one": {
+  "new": "Matrix.PosDef.le_smul_iff_forall_spectrum_le",
+  "note": "the case b = 1; the spectralRadius of the relative matrix is replaced by the generalized-eigenvalue statement, Matrix-Inequalities §0, §7.3; B Hermitian suffices",
+  "stage": "M7"
+ },
  "NLAlib.le_of_posSemidef_of_continuous_of_forall_posDef": {
   "new": "Matrix.PosSemidef.le_of_forall_posDef_le",
   "stage": "M1"
@@ -3420,6 +3680,16 @@
   "new": "NLAlib.majorized_mulVec_of_mem_doublyStochastic",
   "stage": "M3a"
  },
+ "NLAlib.majorized_real_parts_eigenvalues_selfAdjointPart": {
+  "new": "NLAlib.majorized_re_of_isEigenvalueListing",
+  "note": "the Hermitian part's eigenvalues enter as a listing x, in any order",
+  "stage": "M10"
+ },
+ "NLAlib.majorized_real_parts_iff_exists_charpoly_and_selfAdjointPart_charpoly": {
+  "new": "NLAlib.majorized_re_of_isEigenvalueListing",
+  "note": "the direction from the matrix to the majorization; not ported: converse of real-part majorization, no consumer",
+  "stage": "M10"
+ },
  "NLAlib.mapAbsCondition_toEuclideanCLM": {
   "new": null,
   "note": "not ported: conditioning of a differentiable map; mapAbsCondition lives outside Matrix/, Matrix-Perturbation §7.7",
@@ -3457,6 +3727,16 @@
   "new": null,
   "note": "Gaussian integration-by-parts helper with no Matrix-layer consumer; moves with its consumer in RandomMatrix",
   "stage": "M1"
+ },
+ "NLAlib.max_det_mul_prod_diag_le_det_hadamard": {
+  "new": "Matrix.PosSemidef.re_det_mul_prod_re_diag_le_re_det_hadamard",
+  "note": "the maximum is this theorem for (A, B) and for (B, A), with Matrix.hadamard_comm",
+  "stage": "M7"
+ },
+ "NLAlib.max_sInf_spectrum_mul_le_sInf_spectrum_hadamard": {
+  "new": null,
+  "note": "not ported: statement through sInf of the spectrum of a product; its Loewner form, c • B⁻¹ ≤ A gives c • 1 ≤ A ⊙ B, is two steps from Matrix.PosSemidef.hadamard_le_hadamard_of_le and Matrix.PosDef.one_le_hadamard_inv but is not stated",
+  "stage": "M7"
  },
  "NLAlib.max_specNorm_sinePrincipalAngles_le_max_perturbation_frame_div": {
   "new": "NLAlib.SymmetricGauge.mul_max_matrixNorm_one_sub_mul_le_of_singularValues_sub",
@@ -3680,6 +3960,11 @@
   "new": "NLAlib.pinv_zero",
   "stage": "M4"
  },
+ "NLAlib.mulVec_column_eq_smul_of_orthogonal_diagonalization": {
+  "new": null,
+  "note": "not ported: helper of the prototype's variational proof of Horn's converse, Matrix-Inequalities §6; the columns of an orthogonal diagonalisation as eigenvectors are not stated separately",
+  "stage": "M7"
+ },
  "NLAlib.mulVec_conjTranspose_mulVec_of_mem_range": {
   "new": "NLAlib.rangeProjector_mulVec_eq_self_iff",
   "stage": "M1"
@@ -3717,6 +4002,16 @@
   "new": null,
   "note": "deferred: perturbation of linear systems and least squares, with the perturbation stage",
   "stage": "M6"
+ },
+ "NLAlib.mulVec_normalizedProjectedColumn_eq_smul": {
+  "new": null,
+  "note": "object not reproduced: normalizedProjectedColumn, coordinateSelector, Matrix-Inequalities §6",
+  "stage": "M7"
+ },
+ "NLAlib.mulVec_projectedColumn_eq_smul": {
+  "new": null,
+  "note": "object not reproduced: projectedColumn, coordinateSelector, Matrix-Inequalities §6",
+  "stage": "M7"
  },
  "NLAlib.mulVec_shift_sq_ge_of_eigenvalue_abs_sub_ge": {
   "new": "Matrix.IsHermitian.sq_smul_one_le_sub_smul_one_conjTranspose_mul_self",
@@ -3921,6 +4216,11 @@
   "note": "no chosen topEigenframe: an invariant frame above a positive gap satisfies the complement bound that the theorems take as the meaning of a leading eigenframe",
   "stage": "M6"
  },
+ "NLAlib.mul_transpose_le_one_iff_specNorm_le_one": {
+  "new": "NLAlib.specNorm_sq_le_iff_conjTranspose_mul_self_le",
+  "note": "stage M2, applied to Mᴴ with a = 1 and NLAlib.specNorm_conjTranspose; removed from M7 as a duplicate, Matrix-Inequalities §8.4",
+  "stage": "M7"
+ },
  "NLAlib.neg_complement_rowProjector_mul_moorePenroseInverse_eq": {
   "new": null,
   "note": "private helper one_sub_rangeProjector_mul_conjTranspose_mul_pinv of pinv_sub_pinv",
@@ -4089,6 +4389,11 @@
   "note": "Mathlib: norm_add_sq_eq_norm_sq_add_norm_sq_of_inner_eq_zero with EuclideanSpace.inner_toLp_toLp",
   "stage": "M5"
  },
+ "NLAlib.norm_toLp_eq_one_iff_dotProduct_self_eq_one": {
+  "new": null,
+  "note": "one step from EuclideanSpace.norm_toLp_sq_eq_dotProduct_self in ForMathlib; real dot-product spelling of a unit vector, not needed",
+  "stage": "M7"
+ },
  "NLAlib.norm_toLp_eq_sqrt_dotProduct_self": {
   "new": null,
   "note": "real dot-product spelling; EuclideanSpace.norm_toLp_sq_eq_dotProduct_self",
@@ -4097,6 +4402,11 @@
  "NLAlib.norm_toLp_mulVec_le": {
   "new": "NLAlib.norm_toLp_mulVec_le",
   "stage": "M5"
+ },
+ "NLAlib.norm_toLp_normalizedProjectedColumn": {
+  "new": null,
+  "note": "object not reproduced: normalizedProjectedColumn, Matrix-Inequalities §6",
+  "stage": "M7"
  },
  "NLAlib.norm_toLp_ofReal_eq": {
   "new": null,
@@ -4115,6 +4425,26 @@
  "NLAlib.norm_toLp_sq_eq_re_star_dotProduct": {
   "new": "EuclideanSpace.norm_toLp_sq_eq_re_star_dotProduct",
   "stage": "M1"
+ },
+ "NLAlib.normalizedProjectedColumn": {
+  "new": null,
+  "note": "object not reproduced: normalizedProjectedColumn, helper definition of the prototype's proof of Horn's converse, Matrix-Inequalities §6",
+  "stage": "M7"
+ },
+ "NLAlib.normalizedProjectedColumn_apply_eq_zero_of_not_mem": {
+  "new": null,
+  "note": "object not reproduced: normalizedProjectedColumn, Matrix-Inequalities §6",
+  "stage": "M7"
+ },
+ "NLAlib.normalizedProjectedColumn_dotProduct_compl_eq_zero": {
+  "new": null,
+  "note": "object not reproduced: normalizedProjectedColumn, Matrix-Inequalities §6",
+  "stage": "M7"
+ },
+ "NLAlib.normalizedProjectedColumn_mul_compl_eq_zero": {
+  "new": null,
+  "note": "object not reproduced: normalizedProjectedColumn, Matrix-Inequalities §6",
+  "stage": "M7"
  },
  "NLAlib.nuclearNorm": {
   "new": "NLAlib.nuclearNorm",
@@ -4365,6 +4695,16 @@
   "new": "NLAlib.planeRotation_mulVec",
   "stage": "M1"
  },
+ "NLAlib.planeRotation_mul_mul_transpose_apply_diag_of_disjoint_eigenvectors": {
+  "new": null,
+  "note": "not ported: descent machinery of the prototype's variational proof of Horn's converse, Matrix-Inequalities §6",
+  "stage": "M7"
+ },
+ "NLAlib.planeRotation_mul_mul_transpose_of_eigenvectors": {
+  "new": null,
+  "note": "not ported: descent machinery of the prototype's variational proof of Horn's converse, Matrix-Inequalities §6; the action of a plane rotation on vectors is NLAlib.planeRotation_mulVec_left, NLAlib.planeRotation_mulVec_right",
+  "stage": "M7"
+ },
  "NLAlib.planeRotation_single_conjugation_diag": {
   "new": "NLAlib.diag_planeRotation_single_mul_mul",
   "stage": "M7"
@@ -4394,6 +4734,26 @@
   "note": "attainment constructions are private to the duality proofs",
   "stage": "M3b"
  },
+ "NLAlib.posDef_extreme_eigenvalues_sandwich": {
+  "new": null,
+  "note": "bundle of Matrix.IsHermitian.eigenvalue_last_smul_one_le, Matrix.IsHermitian.le_eigenvalue_zero_smul_one, Matrix.IsHermitian.posDef_iff_eigenvalue_pos and Matrix.PosSemidef.eigenvalue_antitone, stage M3",
+  "stage": "M7"
+ },
+ "NLAlib.posDef_fromBlocks_iff_exists_strict_sqrt_contraction_factor": {
+  "new": null,
+  "note": "not ported: strict contraction-factor criterion for general positive definite diagonal blocks; the case A = C = 1 is NLAlib.posDef_fromBlocks_one_iff_specNorm_lt_one, the semidefinite form is NLAlib.posSemidef_fromBlocks_iff_exists_sqrt_mul_mul_sqrt",
+  "stage": "M7"
+ },
+ "NLAlib.posDef_fromBlocks_iff_specNorm_lt_one_of_sqrt_factor": {
+  "new": null,
+  "note": "not ported: strict contraction-factor criterion for general positive definite diagonal blocks; the case A = C = 1 is NLAlib.posDef_fromBlocks_one_iff_specNorm_lt_one, the semidefinite form is NLAlib.posSemidef_fromBlocks_iff_exists_sqrt_mul_mul_sqrt",
+  "stage": "M7"
+ },
+ "NLAlib.posDef_fromBlocks_iff_strict_bilinear_tests": {
+  "new": null,
+  "note": "not ported: strict Cauchy–Schwarz and additive tests for positive definiteness of a block matrix; the semidefinite test is NLAlib.posSemidef_fromBlocks_iff_forall_norm_sq_le, the positive definite criterion is NLAlib.posDef_fromBlocks_iff",
+  "stage": "M7"
+ },
  "NLAlib.posDef_hadamard_of_posDef_of_diag_pos": {
   "new": "Matrix.PosDef.hadamard_of_forall_diag_pos",
   "stage": "M7"
@@ -4408,6 +4768,21 @@
  },
  "NLAlib.posDef_one_sub_iff_specNorm_lt_one_of_posSemidef": {
   "new": "Matrix.PosSemidef.posDef_one_sub_iff_specNorm_lt_one",
+  "stage": "M7"
+ },
+ "NLAlib.posDef_sub_iff_relative_spectralRadius_lt_one": {
+  "new": null,
+  "note": "object not reproduced: spectralRadius of a relative matrix, Matrix-Inequalities §0, §7.3; the case A = 1 is Matrix.PosSemidef.posDef_one_sub_iff_specNorm_lt_one; the strict generalized-eigenvalue form, (A - B).PosDef iff every z in spectrum ℝ (A⁻¹ * B) is below 1, is not stated",
+  "stage": "M7"
+ },
+ "NLAlib.posDef_sum_inv_factorial_map_pow_iff_rows_injective": {
+  "new": null,
+  "note": "not ported: finite-truncation certificate, the first card n terms of the entrywise exponential series; the limit statement is Matrix.PosSemidef.posDef_map_exp_iff",
+  "stage": "M7"
+ },
+ "NLAlib.posDef_sum_inv_factorial_map_pow_of_rows_injective": {
+  "new": null,
+  "note": "not ported: finite-truncation certificate, the first card n terms of the entrywise exponential series are already positive definite; kept only for rank-one Gram matrices as the private posDef_sum_inv_factorial_smul_map_pow_vecMulVec; the limit statement is Matrix.PosSemidef.posDef_map_exp_iff",
   "stage": "M7"
  },
  "NLAlib.posDef_sum_inv_factorial_map_pow_vecMulVec_of_injective": {
@@ -4445,6 +4820,11 @@
  },
  "NLAlib.posSemidef_map_exp": {
   "new": "Matrix.PosSemidef.map_exp",
+  "stage": "M7"
+ },
+ "NLAlib.posSemidef_map_ofScalarsSum_of_lt_radius": {
+  "new": "Matrix.PosSemidef.map_of_hasSum",
+  "note": "the radius condition on FormalMultilinearSeries.ofScalars is replaced by the entrywise HasSum hypothesis it implies",
   "stage": "M7"
  },
  "NLAlib.posSemidef_map_of_nonneg_powerSeries": {
@@ -4520,8 +4900,58 @@
   "new": "NLAlib.principalMinor",
   "stage": "M7"
  },
+ "NLAlib.principalMinorProduct": {
+  "new": null,
+  "note": "object not reproduced: principalMinorProduct, written ∏ s ∈ Finset.univ.powersetCard k, principalMinor A s, Matrix-Inequalities §2, §6, §7.2",
+  "stage": "M7"
+ },
+ "NLAlib.principalMinorProduct_eq_prod": {
+  "new": null,
+  "note": "object not reproduced: principalMinorProduct, Matrix-Inequalities §6, §7.2",
+  "stage": "M7"
+ },
+ "NLAlib.principalMinorProduct_nonneg": {
+  "new": null,
+  "note": "object not reproduced: principalMinorProduct, Matrix-Inequalities §6, §7.2; one step from Matrix.PosSemidef.re_principalMinor_nonneg by Finset.prod_nonneg",
+  "stage": "M7"
+ },
+ "NLAlib.principalMinorProduct_normalized_antitone": {
+  "new": null,
+  "note": "not ported: normalised Szász chain with binomial exponents, Matrix-Inequalities §6; the iteration of Matrix.PosSemidef.prod_re_principalMinor_succ_pow_le",
+  "stage": "M7"
+ },
+ "NLAlib.principalMinorProduct_normalized_succ_eq_iff_isDiag": {
+  "new": null,
+  "note": "equality case not stated: of Matrix.PosSemidef.prod_re_principalMinor_succ_pow_le; normalised Szász chain not ported, Matrix-Inequalities §6",
+  "stage": "M7"
+ },
+ "NLAlib.principalMinorProduct_normalized_succ_le": {
+  "new": null,
+  "note": "not ported: normalised Szász chain with binomial exponents, Matrix-Inequalities §6; equivalent to the unnormalised Matrix.PosSemidef.prod_re_principalMinor_succ_pow_le",
+  "stage": "M7"
+ },
+ "NLAlib.principalMinorProduct_pos": {
+  "new": null,
+  "note": "object not reproduced: principalMinorProduct, Matrix-Inequalities §6, §7.2; one step from Matrix.PosDef.re_principalMinor_pos by Finset.prod_pos",
+  "stage": "M7"
+ },
+ "NLAlib.principalMinorProduct_succ_pow_eq_iff_isDiag": {
+  "new": null,
+  "note": "equality case not stated: of Matrix.PosSemidef.prod_re_principalMinor_succ_pow_le",
+  "stage": "M7"
+ },
+ "NLAlib.principalMinorProduct_succ_pow_le_of_posDef": {
+  "new": "Matrix.PosSemidef.prod_re_principalMinor_succ_pow_le",
+  "note": "positive semidefinite, over 𝕜; the exponent card n - k is d with k + d = card n",
+  "stage": "M7"
+ },
  "NLAlib.principalMinorProduct_succ_pow_le_of_posSemidef": {
   "new": "Matrix.PosSemidef.prod_re_principalMinor_succ_pow_le",
+  "stage": "M7"
+ },
+ "NLAlib.principalMinor_eq_det_toBlock": {
+  "new": null,
+  "note": "not ported: rfl-unfolding of the prototype's toBlock definition; NLAlib.principalMinor is defined as the determinant of the submatrix on s, which Matrix.toBlock is by definition; reindexing is NLAlib.det_submatrix_eq_principalMinor",
   "stage": "M7"
  },
  "NLAlib.principalMinor_nonneg": {
@@ -4530,6 +4960,11 @@
  },
  "NLAlib.principalMinor_pos": {
   "new": "Matrix.PosDef.re_principalMinor_pos",
+  "stage": "M7"
+ },
+ "NLAlib.principalMinor_pow_pred_eq_prod_erase_iff": {
+  "new": null,
+  "note": "equality case not stated: of Matrix.PosSemidef.re_principalMinor_pow_le_prod_erase",
   "stage": "M7"
  },
  "NLAlib.principalMinor_pow_pred_le_prod_erase": {
@@ -4541,6 +4976,11 @@
   "note": "bundle of principalAngle_monotone, principalAngle_mem_Icc, HasOrthonormalCols.cos_principalAngle, singularValues_conjTranspose_mul_eq_of_mul_conjTranspose_add_eq_one, IsStarProjection.specNorm_sub_eq_of_rank_eq, HasOrthonormalCols.frobNorm_one_sub_mul_sq, IsStarProjection.frobNorm_sub_sq_of_rank_eq, principalAngle_comm, principalAngle_congr, IsStarProjection.specNorm_one_sub_mul_sq, singularValues_tangentMatrix_eq_of_mul_conjTranspose_add_eq_one, HasOrthonormalCols.isUnit_conjTranspose_mul_iff",
   "stage": "M5"
  },
+ "NLAlib.prod_eigenvalues_eq_prod_sorted": {
+  "new": "Matrix.IsHermitian.exists_equiv_eigenvalue_eq",
+  "note": "as for sum_eigenvalues_eq_sum_sorted: the product is Equiv.prod_comp along the equivalence; the private prod_eigenvalues_eq_prod_range of Spectral/EigenvalueTransform.lean is this statement",
+  "stage": "M7"
+ },
  "NLAlib.prod_singularValues_mul_le": {
   "new": "NLAlib.prod_range_singularValues_mul_le",
   "stage": "M3a"
@@ -4549,6 +4989,16 @@
   "new": null,
   "note": "replaced by the product (1 - rangeProjector Y) * A; design note Matrix-Foundations §7.1",
   "stage": "M1"
+ },
+ "NLAlib.projectedColumn": {
+  "new": null,
+  "note": "object not reproduced: projectedColumn, helper definition of the prototype's proof of Horn's converse, Matrix-Inequalities §6",
+  "stage": "M7"
+ },
+ "NLAlib.projectedColumn_dotProduct_self": {
+  "new": null,
+  "note": "object not reproduced: projectedColumn, columnProjectionMass, Matrix-Inequalities §6",
+  "stage": "M7"
  },
  "NLAlib.psd_trace_pairing_characterizations": {
   "new": null,
@@ -4588,7 +5038,7 @@
  },
  "NLAlib.quadForm_bounds_of_sandwich": {
   "new": null,
-  "note": "deferred: Wielandt's inequality, with Kantorovich",
+  "note": "covered by the Loewner and eigenvalue lemmas of Norms/Loewner.lean",
   "stage": "M7"
  },
  "NLAlib.quadForm_conjTranspose_mul_mul": {
@@ -4615,6 +5065,11 @@
  },
  "NLAlib.quadForm_fromBlocks": {
   "new": "NLAlib.re_quadForm_fromBlocks",
+  "stage": "M7"
+ },
+ "NLAlib.quadForm_map_pow_vecMulVec_self": {
+  "new": null,
+  "note": "private helper of Matrix.PosSemidef.posDef_map_exp_iff: map_pow_vecMulVec with NLAlib.quadForm_vecMulVec_star",
   "stage": "M7"
  },
  "NLAlib.quadForm_mul_quadForm_inv_le_moorePenroseConditionNumber_sqrt": {
@@ -4923,6 +5378,21 @@
   "note": "the spectrum is stated directly in eigenvalue_dilation",
   "stage": "M3"
  },
+ "NLAlib.realMatrixComplexification_sqrt": {
+  "new": "NLAlib.complexify_sqrt",
+  "note": "from 𝕜, no positivity hypothesis",
+  "stage": "M8"
+ },
+ "NLAlib.real_diagonal_selfAdjointPart": {
+  "new": null,
+  "note": "one step from NLAlib.re_quadForm_hermitianPart at a coordinate vector; helper of the prototype's proof of the real-part majorization",
+  "stage": "M10"
+ },
+ "NLAlib.real_part_eigenvalue_mem_Icc_selfAdjointPart": {
+  "new": "NLAlib.re_le_eigenvalue_zero_hermitianPart",
+  "note": "with NLAlib.eigenvalue_hermitianPart_le_re for the lower bound; over 𝕜, for μ in spectrum 𝕜 A",
+  "stage": "M10"
+ },
  "NLAlib.rectDiag": {
   "new": null,
   "note": "no rectangular diagonal; design note Matrix-Spectral §7.3",
@@ -5013,6 +5483,11 @@
   "note": "no rectangular diagonal",
   "stage": "M3b"
  },
+ "NLAlib.relative_spectrum_characterizations": {
+  "new": null,
+  "note": "bundle of Matrix.PosDef.smul_le_and_le_smul_iff_spectrum_subset, Matrix.PosDef.le_smul_iff_forall_spectrum_le, Matrix.PosDef.sq_le_sq_iff_specNorm_mul_inv_le_one, Matrix.PosSemidef.re_det_le_re_det_of_le, Matrix.PosDef.eq_of_le_of_det_eq, NLAlib.re_trace_le_re_trace_of_le, NLAlib.eq_of_le_of_re_trace_eq, NLAlib.eigenvalue_le_eigenvalue_of_le, Matrix.PosDef.inv_le_inv_of_le, and of the M8 skeletons Matrix.PosDef.le_iff_inv_sqrt_mul_mul_inv_sqrt_le_one, Matrix.PosSemidef.sqrt_le_sqrt",
+  "stage": "M7"
+ },
  "NLAlib.residual_eq_complement_mul_overlap": {
   "new": "NLAlib.singularValues_conjTranspose_mul_eq_of_mul_conjTranspose_add_eq_one",
   "stage": "M5"
@@ -5054,6 +5529,16 @@
   "new": "NLAlib.SymmetricGauge.matrixNorm_one_sub_rangeProjector_mul_rangeProjector_le",
   "note": "row twin: applied to the conjugate transposes; the identity is inlined in its proof",
   "stage": "M6"
+ },
+ "NLAlib.rows_injective_of_posDef_map_exp": {
+  "new": "Matrix.PosSemidef.posDef_map_exp_iff",
+  "note": "mp direction; the new statement carries the PosSemidef hypothesis, which this direction does not use",
+  "stage": "M7"
+ },
+ "NLAlib.sInf_spectrum_mul_nonneg_of_posDef": {
+  "new": "Matrix.PosDef.exists_isEigenvalueListing_mul_nonneg",
+  "note": "every listed eigenvalue of A * B is nonnegative; no sInf of a spectrum",
+  "stage": "M10"
  },
  "NLAlib.sSup_frobInner_schattenNorm_unitBall": {
   "new": "NLAlib.isGreatest_frobInner_schattenNorm",
@@ -5252,6 +5737,11 @@
   "new": "NLAlib.selectionMatrix",
   "note": "any finite column type; over 𝕜",
   "stage": "M1"
+ },
+ "NLAlib.selfAdjointPart_mul_mul_conjTranspose": {
+  "new": "NLAlib.hermitianPart_mul_mul_conjTranspose",
+  "note": "through NLAlib.hermitianPart, over 𝕜; the bridge is NLAlib.hermitianPart_eq_selfAdjointPart",
+  "stage": "M10"
  },
  "NLAlib.shifted_residual_eq_rayleigh_residual_iff": {
   "new": "Matrix.IsHermitian.norm_mulVec_sub_smul_sq",
@@ -6071,6 +6561,21 @@
   "new": "NLAlib.specNorm_zero",
   "stage": "M2"
  },
+ "NLAlib.spectralRadius_eq_nnnorm_of_spectrum_eq_range": {
+  "new": "NLAlib.specRadius_le_iff_of_charpoly_eq",
+  "note": "the radius of a listed spectrum, as specRadius A ≤ c iff every listed eigenvalue has modulus at most c",
+  "stage": "M10"
+ },
+ "NLAlib.spectralRadius_eq_specNorm_of_posSemidef": {
+  "new": "IsStarNormal.specNorm_eq_specRadius",
+  "note": "for normal matrices over 𝕜; for positive semidefinite A the common value is eigenvalue A 0 by Matrix.PosSemidef.specNorm_eq_eigenvalue_zero",
+  "stage": "M10"
+ },
+ "NLAlib.spectralRadius_mul_comm": {
+  "new": "NLAlib.specRadius_mul_comm",
+  "note": "over 𝕜, for specRadius",
+  "stage": "M10"
+ },
  "NLAlib.spectralTraceTail": {
   "new": null,
   "note": "not ported: trace-tail bounds have no consumer in the Matrix layer (M7 review); the tail is ∑ i ∈ Finset.Ico r (card n), eigenvalue A i if a consumer needs them",
@@ -6086,6 +6591,16 @@
   "note": "not ported: trace-tail bounds have no consumer in the Matrix layer (M7 review); the tail is ∑ i ∈ Finset.Ico r (card n), eigenvalue A i if a consumer needs them",
   "stage": "M7"
  },
+ "NLAlib.spectrum_mul_nonempty_of_posDef": {
+  "new": "Matrix.PosDef.exists_isEigenvalueListing_mul_nonneg",
+  "note": "a real nonnegative listing of the eigenvalues of A * B, for B positive semidefinite; nonemptiness of the real spectrum follows for nonempty n",
+  "stage": "M10"
+ },
+ "NLAlib.sq_add_div_four_mul_eq_sq_sqrt_ratio": {
+  "new": null,
+  "note": "not ported: scalar helper, Matrix-Inequalities §6; Kantorovich with the condition number is written (κ + 1)² / (4 κ) in Matrix.PosDef.re_quadForm_mul_re_quadForm_inv_le_conditionNumber",
+  "stage": "M7"
+ },
  "NLAlib.sq_bilinear_le_quadForm_mul_of_fromBlocks_posSemidef": {
   "new": "NLAlib.norm_sq_star_dotProduct_mulVec_le_of_posSemidef_fromBlocks",
   "stage": "M7"
@@ -6095,8 +6610,18 @@
   "stage": "M7"
  },
  "NLAlib.sq_bilinear_le_sq_ratio_mul_quadForm_of_sandwich": {
+  "new": "NLAlib.norm_sq_star_dotProduct_mulVec_le_of_dotProduct_eq_zero",
+  "note": "the Wielandt inequality",
+  "stage": "M7"
+ },
+ "NLAlib.sq_bilinear_lt_quadForm_mul_of_fromBlocks_posDef": {
   "new": null,
-  "note": "deferred: Wielandt's inequality, with Kantorovich",
+  "note": "not ported: strict Cauchy–Schwarz test of a positive definite block matrix; the semidefinite form is NLAlib.norm_sq_star_dotProduct_mulVec_le_of_posSemidef_fromBlocks, positive definiteness is characterised by NLAlib.posDef_fromBlocks_iff",
+  "stage": "M7"
+ },
+ "NLAlib.sq_diag_le_gram_diag": {
+  "new": null,
+  "note": "not ported: helper of the prototype's Gram-factor proof of Hadamard's inequality; Matrix.PosSemidef.re_det_le_prod_re_diag is proved by induction on Fischer's inequality",
   "stage": "M7"
  },
  "NLAlib.sq_entries_mem_doublyStochastic": {
@@ -6177,6 +6702,11 @@
   "new": null,
   "note": "real dot-product spelling; norm_sub_le",
   "stage": "M2"
+ },
+ "NLAlib.sqrt_le_sqrt_of_posSemidef_le": {
+  "new": "Matrix.PosSemidef.sqrt_le_sqrt",
+  "note": "over 𝕜",
+  "stage": "M8"
  },
  "NLAlib.sqrt_mulVec_dotProduct_le_specNorm_mul": {
   "new": "NLAlib.norm_toLp_mulVec_le",
@@ -6329,6 +6859,11 @@
   "new": "Matrix.IsHermitian.sum_Ico_eigenvalue_le_re_trace_conjTranspose_mul_mul",
   "stage": "M3a"
  },
+ "NLAlib.sum_columnProjectionMass_eq_card": {
+  "new": null,
+  "note": "object not reproduced: columnProjectionMass, Matrix-Inequalities §6",
+  "stage": "M7"
+ },
  "NLAlib.sum_convex_diagonal_le_trace_cfc": {
   "new": "Matrix.IsHermitian.sum_convex_re_diag_le",
   "note": "eigenvalue-sum form, no cfc",
@@ -6381,6 +6916,16 @@
   "note": "Fin index bookkeeping",
   "stage": "M3a"
  },
+ "NLAlib.sum_inv_factorial_smul_map_pow_le_map_exp": {
+  "new": null,
+  "note": "inlined in the proof of Matrix.PosSemidef.posDef_map_exp_iff, in its private helper posDef_map_exp_vecMulVec, by sum_le_hasSum",
+  "stage": "M7"
+ },
+ "NLAlib.sum_inv_factorial_smul_map_pow_le_of_posSemidef_le": {
+  "new": null,
+  "note": "one step from Matrix.PosSemidef.map_pow_le_map_pow_of_le: the sum of the termwise inequalities; the limit is Matrix.PosSemidef.map_exp_le_map_exp_of_le",
+  "stage": "M7"
+ },
  "NLAlib.sum_largestCoordinates": {
   "new": null,
   "note": "no sorting",
@@ -6389,6 +6934,11 @@
  "NLAlib.sum_le_sumLargest": {
   "new": "NLAlib.sum_le_sumLargest",
   "stage": "M3a"
+ },
+ "NLAlib.sum_mul_columnProjectionMass_eq_sum_diagonal": {
+  "new": null,
+  "note": "object not reproduced: columnProjectionMass, Matrix-Inequalities §6; the diagonal of Q * diagonal lam * Qᴴ is NLAlib.re_mul_diagonal_mul_conjTranspose_apply_self",
+  "stage": "M7"
  },
  "NLAlib.sum_mul_columns_eq_one_apply": {
   "new": "NLAlib.conjTranspose_mul_self_apply",
@@ -6419,15 +6969,40 @@
   "note": "sorting-based, not reproduced",
   "stage": "M3a"
  },
+ "NLAlib.sum_mul_le_sum_of_weight_order": {
+  "new": null,
+  "note": "not ported: scalar helper of the prototype's variational proof of Horn's converse, Matrix-Inequalities §6",
+  "stage": "M7"
+ },
  "NLAlib.sum_mul_le_sum_sortedVector_mul": {
   "new": null,
   "note": "sorting-based, not reproduced",
   "stage": "M3a"
  },
+ "NLAlib.sum_mul_le_sum_sub_sumLargest_of_weight_order": {
+  "new": null,
+  "note": "not ported: scalar helper of the prototype's variational proof of Horn's converse, Matrix-Inequalities §6; the weighted-sum bound kept is NLAlib.sum_mul_le_sumLargest",
+  "stage": "M7"
+ },
  "NLAlib.sum_mul_mulVec_le_of_doublyStochastic": {
   "new": null,
   "note": "not needed",
   "stage": "M3a"
+ },
+ "NLAlib.sum_mul_sq_eq_of_support": {
+  "new": null,
+  "note": "not ported: scalar helper of the prototype's variational proof of Horn's converse, Matrix-Inequalities §6",
+  "stage": "M7"
+ },
+ "NLAlib.sum_mul_sq_lt_of_support_compl": {
+  "new": null,
+  "note": "not ported: scalar helper of the prototype's variational proof of Horn's converse, Matrix-Inequalities §6",
+  "stage": "M7"
+ },
+ "NLAlib.sum_mul_sub_sq_pos_of_max_support": {
+  "new": null,
+  "note": "not ported: scalar helper of the prototype's variational proof of Horn's converse, Matrix-Inequalities §6",
+  "stage": "M7"
  },
  "NLAlib.sum_norm_diag_sq_le_frobSq": {
   "new": "NLAlib.norm_apply_le_frobNorm",
@@ -6495,6 +7070,16 @@
   "new": null,
   "note": "no sorting",
   "stage": "M3a"
+ },
+ "NLAlib.sum_sq_diagonal_error_planeRotation_eq": {
+  "new": null,
+  "note": "not ported: descent machinery of the prototype's variational proof of Horn's converse, Matrix-Inequalities §6",
+  "stage": "M7"
+ },
+ "NLAlib.sum_sq_diagonal_error_planeRotation_single_eq": {
+  "new": null,
+  "note": "not ported: descent machinery of the prototype's variational proof of Horn's converse, Matrix-Inequalities §6; the diagonal after a coordinate rotation is the private diag_planeRotation_single_mul_mul",
+  "stage": "M7"
  },
  "NLAlib.sum_sq_eigenvalues₀_add_sub_le_frobSq": {
   "new": "NLAlib.sum_sq_eigenvalue_sub_le_frobNorm_sub_sq",
@@ -6770,6 +7355,11 @@
   "note": "helper not needed",
   "stage": "M3"
  },
+ "NLAlib.transpose_mul_mul_eq_zero_iff_of_posDef": {
+  "new": null,
+  "note": "private helper of NLAlib.re_det_fromBlocks_eq_iff_of_posDef: eq_zero_of_conjTranspose_mul_mul_eq_zero",
+  "stage": "M7"
+ },
  "NLAlib.transpose_mul_mul_moorePenroseInverse": {
   "new": "NLAlib.conjTranspose_mul_mul_pinv",
   "stage": "M4"
@@ -6803,6 +7393,16 @@
   "new": null,
   "note": "Fin transport, not needed",
   "stage": "M3a"
+ },
+ "NLAlib.two_abs_bilinear_le_quadForm_add_of_sq_le": {
+  "new": null,
+  "note": "inlined in the proof of NLAlib.posSemidef_fromBlocks_iff_forall_norm_sq_le: the step from the squared test to twice the cross term at most the sum of the diagonal forms",
+  "stage": "M7"
+ },
+ "NLAlib.two_abs_bilinear_lt_quadForm_add_of_sq_lt": {
+  "new": null,
+  "note": "not ported: scalar helper of the strict block tests, which are not stated",
+  "stage": "M7"
  },
  "NLAlib.vectorTangentToFrame": {
   "new": null,

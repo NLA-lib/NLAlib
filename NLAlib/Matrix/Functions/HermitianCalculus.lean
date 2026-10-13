@@ -69,11 +69,15 @@ private theorem diagonal_mul_eq_mul_diagonal_of_eq {p q : Type*} [Fintype p] [Fi
       exact RCLike.ofReal_injective (mul_left_cancel₀ hW hij)
     rw [hde, mul_comm]
 
-/-- `f(A)` through a diagonalisation by a matrix with orthonormal columns and as many columns as
-rows, on any column index type. -/
-private theorem cfc_eq_of_card_eq {r : Type*} [Fintype r] [DecidableEq r] {A : Matrix n n 𝕜}
-    {U : Matrix n r 𝕜} {d : r → ℝ} (hU : HasOrthonormalCols U)
-    (hr : Fintype.card n = Fintype.card r)
+/-- **`f(A)` through a unitary diagonalisation.** If `A = U * diagonal d * Uᴴ` with `d` real and
+`U` unitary, that is, with orthonormal columns and as many columns as rows, on any column index
+type, then `cfc f A = U * diagonal (f ∘ d) * Uᴴ`. The frame of the spectral theorem
+`Matrix.IsHermitian.exists_eq_mul_diagonal_mul_conjTranspose` is such a `U`.
+Port of `NLAlib.cfc_eq_eigenvectorUnitary_mul_diagonal_mul_conjTranspose`, there for the chosen
+eigenvector matrix. -/
+theorem cfc_eq_mul_diagonal_mul_conjTranspose {r : Type*} [Fintype r] [DecidableEq r]
+    {A : Matrix n n 𝕜} {U : Matrix n r 𝕜} {d : r → ℝ} (hU : HasOrthonormalCols U)
+    (hr : Fintype.card r = Fintype.card n)
     (hA : A = U * Matrix.diagonal (fun i => ((d i : ℝ) : 𝕜)) * Uᴴ) (f : ℝ → ℝ) :
     cfc f A = U * Matrix.diagonal (fun i => ((f (d i) : ℝ) : 𝕜)) * Uᴴ := by
   have hH : A.IsHermitian := by
@@ -81,7 +85,7 @@ private theorem cfc_eq_of_card_eq {r : Type*} [Fintype r] [DecidableEq r] {A : M
     refine Matrix.isHermitian_mul_mul_conjTranspose U ?_
     rw [Matrix.isHermitian_diagonal_iff]
     exact fun i => RCLike.conj_ofReal (d i)
-  have hUU : U * Uᴴ = 1 := hU.mul_conjTranspose_self_of_card_eq hr
+  have hUU : U * Uᴴ = 1 := hU.mul_conjTranspose_self_of_card_eq hr.symm
   have hV := hH.hasOrthonormalCols_eigenvectorUnitary
   have hAV : A = (hH.eigenvectorUnitary : Matrix n n 𝕜) *
       Matrix.diagonal (fun i => ((hH.eigenvalues i : ℝ) : 𝕜)) *
@@ -123,37 +127,17 @@ private theorem exists_cfc_eq {A : Matrix n n 𝕜} (hA : A.IsHermitian) :
       ∀ f : ℝ → ℝ, cfc f A = U * (Matrix.diagonal fun i : Fin (Fintype.card n) =>
         ((f (eigenvalue A i) : ℝ) : 𝕜)) * Uᴴ := by
   obtain ⟨U, hU, hAU⟩ := hA.exists_eq_mul_diagonal_mul_conjTranspose
-  have hr := (Fintype.card_fin (Fintype.card n)).symm
-  exact ⟨U, hU, hU.mul_conjTranspose_self_of_card_eq hr, hAU, cfc_eq_of_card_eq hU hr hAU⟩
-
-/-- The quadratic form of `f(A)` through a diagonalisation on any column index type. -/
-private theorem re_quadForm_cfc_eq_sum_of_card_eq {r : Type*} [Fintype r] [DecidableEq r]
-    {A : Matrix n n 𝕜} {U : Matrix n r 𝕜} {d : r → ℝ} (hU : HasOrthonormalCols U)
-    (hr : Fintype.card n = Fintype.card r)
-    (hA : A = U * Matrix.diagonal (fun i => ((d i : ℝ) : 𝕜)) * Uᴴ) (f : ℝ → ℝ) (x : n → 𝕜) :
-    RCLike.re (quadForm (cfc f A) x) = ∑ i, f (d i) * ‖(Uᴴ *ᵥ x) i‖ ^ 2 := by
-  have h := quadForm_conjTranspose_mul_mul (Matrix.diagonal fun i => ((f (d i) : ℝ) : 𝕜)) Uᴴ x
-  rw [Matrix.conjTranspose_conjTranspose] at h
-  rw [cfc_eq_of_card_eq hU hr hA f, h, quadForm_diagonal, map_sum]
-  refine Finset.sum_congr rfl fun i _ => ?_
-  rw [← RCLike.ofReal_mul, RCLike.ofReal_re]
-
-/-- **`f(A)` through a unitary diagonalisation.** If `A = U * diagonal d * Uᴴ` with `U` unitary
-and `d` real, then `cfc f A = U * diagonal (f ∘ d) * Uᴴ`.
-Port of `NLAlib.cfc_eq_eigenvectorUnitary_mul_diagonal_mul_conjTranspose`, there for the chosen
-eigenvector matrix. -/
-theorem cfc_eq_mul_diagonal_mul_conjTranspose {A U : Matrix n n 𝕜} {d : n → ℝ}
-    (hU : HasOrthonormalCols U) (hA : A = U * Matrix.diagonal (fun i => ((d i : ℝ) : 𝕜)) * Uᴴ)
-    (f : ℝ → ℝ) : cfc f A = U * Matrix.diagonal (fun i => ((f (d i) : ℝ) : 𝕜)) * Uᴴ := by
-  exact cfc_eq_of_card_eq hU rfl hA f
+  have hr := Fintype.card_fin (Fintype.card n)
+  exact ⟨U, hU, hU.mul_conjTranspose_self_of_card_eq hr.symm, hAU,
+    cfc_eq_mul_diagonal_mul_conjTranspose hU hr hAU⟩
 
 /-- `f` of a real diagonal matrix is the diagonal matrix of the values of `f`.
 Port of `NLAlib.cfc_diagonal_real`. -/
 theorem cfc_diagonal (f : ℝ → ℝ) (d : n → ℝ) :
     cfc f (Matrix.diagonal fun i => ((d i : ℝ) : 𝕜)) =
       Matrix.diagonal fun i => ((f (d i) : ℝ) : 𝕜) := by
-  have h := cfc_eq_of_card_eq (𝕜 := 𝕜) (U := (1 : Matrix n n 𝕜)) (d := d) hasOrthonormalCols_one
-    rfl (by rw [Matrix.conjTranspose_one, Matrix.one_mul, Matrix.mul_one]) f
+  have h := cfc_eq_mul_diagonal_mul_conjTranspose (𝕜 := 𝕜) (U := (1 : Matrix n n 𝕜)) (d := d)
+    hasOrthonormalCols_one rfl (by rw [Matrix.conjTranspose_one, Matrix.one_mul, Matrix.mul_one]) f
   rwa [Matrix.conjTranspose_one, Matrix.one_mul, Matrix.mul_one] at h
 
 /-- An eigenvector of `A` is an eigenvector of `f(A)`: if `A x = μ x` then `f(A) x = f(μ) x`. -/
@@ -182,25 +166,27 @@ theorem _root_.Matrix.IsHermitian.cfc_mulVec_of_mulVec_eq_smul {A : Matrix n n �
 
 /-! ### Conjugation, relabelling and block sums -/
 
-/-- **`f` commutes with unitary conjugation**: `f(U A Uᴴ) = U f(A) Uᴴ` for unitary `U`.
+/-- **`f` commutes with unitary conjugation**: `f(U A Uᴴ) = U f(A) Uᴴ` for `U` unitary, that is,
+with orthonormal columns and as many columns as rows, on any column index type.
 Port of `NLAlib.cfc_unitary_conj`, there over `ℂ`. -/
-theorem cfc_mul_mul_conjTranspose {U : Matrix n n 𝕜} (hU : HasOrthonormalCols U)
-    {A : Matrix n n 𝕜} (hA : A.IsHermitian) (f : ℝ → ℝ) :
-    cfc f (U * A * Uᴴ) = U * cfc f A * Uᴴ := by
+theorem cfc_mul_mul_conjTranspose {r : Type*} [Fintype r] [DecidableEq r] {U : Matrix n r 𝕜}
+    (hU : HasOrthonormalCols U) (hr : Fintype.card r = Fintype.card n) {A : Matrix r r 𝕜}
+    (hA : A.IsHermitian) (f : ℝ → ℝ) : cfc f (U * A * Uᴴ) = U * cfc f A * Uᴴ := by
   obtain ⟨V, hV, -, hAV, hcfc⟩ := exists_cfc_eq hA
-  have hr := (Fintype.card_fin (Fintype.card n)).symm
-  have hUV : U * A * Uᴴ = U * V * (Matrix.diagonal fun i : Fin (Fintype.card n) =>
+  have hr' : Fintype.card (Fin (Fintype.card r)) = Fintype.card n := by
+    rw [Fintype.card_fin, hr]
+  have hUV : U * A * Uᴴ = U * V * (Matrix.diagonal fun i : Fin (Fintype.card r) =>
       ((eigenvalue A i : ℝ) : 𝕜)) * (U * V)ᴴ := by
     conv_lhs => rw [hAV]
     simp only [Matrix.conjTranspose_mul, Matrix.mul_assoc]
-  rw [cfc_eq_of_card_eq (hU.mul hV) hr hUV f, hcfc f]
+  rw [cfc_eq_mul_diagonal_mul_conjTranspose (hU.mul hV) hr' hUV f, hcfc f]
   simp only [Matrix.conjTranspose_mul, Matrix.mul_assoc]
 
 /-- `f` commutes with relabelling. Port of `NLAlib.cfc_reindex_of_isHermitian`. -/
 theorem cfc_submatrix_equiv {A : Matrix n n 𝕜} (hA : A.IsHermitian) (f : ℝ → ℝ) (e : m ≃ n) :
     cfc f (A.submatrix e e) = (cfc f A).submatrix e e := by
   obtain ⟨V, hV, -, hAV, hcfc⟩ := exists_cfc_eq hA
-  have hr : Fintype.card m = Fintype.card (Fin (Fintype.card n)) := by
+  have hr : Fintype.card (Fin (Fintype.card n)) = Fintype.card m := by
     rw [Fintype.card_fin, Fintype.card_congr e]
   have hsub : ∀ D : Matrix (Fin (Fintype.card n)) (Fin (Fintype.card n)) 𝕜,
       (V * D * Vᴴ).submatrix e e = V.submatrix e (Equiv.refl _) * D *
@@ -214,7 +200,8 @@ theorem cfc_submatrix_equiv {A : Matrix n n 𝕜} (hA : A.IsHermitian) (f : ℝ 
         (V.submatrix e (Equiv.refl _))ᴴ := by
     conv_lhs => rw [hAV]
     exact hsub _
-  rw [cfc_eq_of_card_eq (hV.submatrix e (Equiv.refl _).injective) hr hA' f, hcfc f, hsub]
+  rw [cfc_eq_mul_diagonal_mul_conjTranspose (hV.submatrix e (Equiv.refl _).injective) hr hA' f,
+    hcfc f, hsub]
 
 /-- **`f` of a block diagonal matrix** is the block diagonal matrix of `f(A)` and `f(B)`.
 Port of `NLAlib.cfc_fromBlocks`, there over `ℂ`. -/
@@ -227,8 +214,8 @@ theorem cfc_fromBlocks_diagonal {A : Matrix m m 𝕜} {B : Matrix n n 𝕜} (hA 
     rw [HasOrthonormalCols, Matrix.fromBlocks_conjTranspose, Matrix.fromBlocks_multiply]
     simp only [Matrix.conjTranspose_zero, Matrix.mul_zero, Matrix.zero_mul, add_zero, zero_add,
       hV.conjTranspose_mul_self, hW.conjTranspose_mul_self, Matrix.fromBlocks_one]
-  have hr : Fintype.card (m ⊕ n) =
-      Fintype.card (Fin (Fintype.card m) ⊕ Fin (Fintype.card n)) := by
+  have hr : Fintype.card (Fin (Fintype.card m) ⊕ Fin (Fintype.card n)) =
+      Fintype.card (m ⊕ n) := by
     simp only [Fintype.card_sum, Fintype.card_fin]
   have hblock : ∀ a : Fin (Fintype.card m) → ℝ, ∀ b : Fin (Fintype.card n) → ℝ,
       Matrix.fromBlocks (V * (Matrix.diagonal fun i => ((a i : ℝ) : 𝕜)) * Vᴴ) 0 0
@@ -251,7 +238,7 @@ theorem cfc_fromBlocks_diagonal {A : Matrix m m 𝕜} {B : Matrix n n 𝕜} (hA 
         (fun i : Fin (Fintype.card n) => eigenvalue B i) i : ℝ) : 𝕜)) *
         (Matrix.fromBlocks V 0 0 W)ᴴ := by
     rw [← hblock, ← hAV, ← hBW]
-  rw [cfc_eq_of_card_eq hU hr hAB f, hcfcA f, hcfcB f, hblock]
+  rw [cfc_eq_mul_diagonal_mul_conjTranspose hU hr hAB f, hcfcA f, hcfcB f, hblock]
   congr 3
   funext i
   cases i <;> rfl
@@ -328,13 +315,20 @@ theorem _root_.Matrix.IsHermitian.eigenvalue_cfc_of_antitoneOn {A : Matrix n n �
   have hneg : cfc f A = -cfc (fun x => -f x) A := by rw [cfc_neg, neg_neg]
   rw [hneg, eigenvalue_neg _ hkj, h, neg_neg]
 
-/-- **The quadratic form of `f(A)`** through a unitary diagonalisation `A = U D Uᴴ`:
+/-- **The quadratic form of `f(A)`** through a unitary diagonalisation `A = U D Uᴴ`, with `U`
+having orthonormal columns and as many columns as rows, on any column index type:
 `xᴴ f(A) x = ∑ f(d_i) |(Uᴴ x)_i|²`. This is the identity behind Gauss quadrature for `xᴴ f(A) x`.
 Port of `NLAlib.dotProduct_cfc_mulVec_eq_sum`, there over `ℝ` with the chosen eigenbasis. -/
-theorem re_quadForm_cfc_eq_sum {A U : Matrix n n 𝕜} {d : n → ℝ} (hU : HasOrthonormalCols U)
+theorem re_quadForm_cfc_eq_sum {r : Type*} [Fintype r] [DecidableEq r] {A : Matrix n n 𝕜}
+    {U : Matrix n r 𝕜} {d : r → ℝ} (hU : HasOrthonormalCols U)
+    (hr : Fintype.card r = Fintype.card n)
     (hA : A = U * Matrix.diagonal (fun i => ((d i : ℝ) : 𝕜)) * Uᴴ) (f : ℝ → ℝ) (x : n → 𝕜) :
     RCLike.re (quadForm (cfc f A) x) = ∑ i, f (d i) * ‖(Uᴴ *ᵥ x) i‖ ^ 2 := by
-  exact re_quadForm_cfc_eq_sum_of_card_eq hU rfl hA f x
+  have h := quadForm_conjTranspose_mul_mul (Matrix.diagonal fun i => ((f (d i) : ℝ) : 𝕜)) Uᴴ x
+  rw [Matrix.conjTranspose_conjTranspose] at h
+  rw [cfc_eq_mul_diagonal_mul_conjTranspose hU hr hA f, h, quadForm_diagonal, map_sum]
+  refine Finset.sum_congr rfl fun i _ => ?_
+  rw [← RCLike.ofReal_mul, RCLike.ofReal_re]
 
 /-- **A nonnegative trace function dominates its value at the largest eigenvalue**: if `φ ≥ 0`
 on the spectrum of `A` then `φ(λ_0(A)) ≤ tr φ(A)`. With `φ = exp` this is the first step of the
@@ -364,9 +358,9 @@ private theorem abs_re_quadForm_cfc_le_aux {A : Matrix n n 𝕜} (hA : A.IsHermi
     {c : ℝ} (h : ∀ x ∈ spectrum ℝ A, |f x| ≤ c) (x : n → 𝕜) :
     |RCLike.re (quadForm (cfc f A) x)| ≤ c * ‖WithLp.toLp 2 x‖ ^ 2 := by
   obtain ⟨U, hU, -, hAU, -⟩ := exists_cfc_eq hA
-  have hr := (Fintype.card_fin (Fintype.card n)).symm
-  rw [re_quadForm_cfc_eq_sum_of_card_eq hU hr hAU f x,
-    ← (hU.conjTranspose_of_card_eq hr).norm_toLp_mulVec x, EuclideanSpace.norm_sq_eq,
+  have hr := Fintype.card_fin (Fintype.card n)
+  rw [re_quadForm_cfc_eq_sum hU hr hAU f x,
+    ← (hU.conjTranspose_of_card_eq hr.symm).norm_toLp_mulVec x, EuclideanSpace.norm_sq_eq,
     Finset.mul_sum]
   refine (Finset.abs_sum_le_sum_abs _ _).trans (Finset.sum_le_sum fun i _ => ?_)
   rw [abs_mul, abs_of_nonneg (by positivity : (0 : ℝ) ≤ ‖(Uᴴ *ᵥ x) i‖ ^ 2)]

@@ -5,8 +5,6 @@ Authors: NLAlib contributors
 -/
 module
 
-public import Mathlib.Analysis.Convex.Function
-public import Mathlib.Analysis.SpecialFunctions.Pow.Real
 public import Mathlib.LinearAlgebra.Matrix.IsDiag
 public import NLAlib.Matrix.Inequalities.Order
 public import NLAlib.Matrix.Basic.SchurComplement
@@ -15,18 +13,21 @@ public import NLAlib.Matrix.Basic.SchurComplement
 # Determinant inequalities for positive semidefinite matrices
 
 Hadamard's inequality (in its positive semidefinite form and in its column-norm form), Fischer's
-inequality for a block matrix, the Hadamard–Fischer (Koteljanskii) inequality for principal
-minors on overlapping index sets, and Minkowski's inequality: `A ↦ (det A)^(1/n)` is concave on
-positive definite matrices. Determinants of Hermitian matrices are real; the inequalities are
-stated for `RCLike.re (det A)`.
+inequality for a block matrix, principal minors, and the Hadamard–Fischer (Koteljanskii)
+inequality for principal minors on overlapping index sets. Determinants of Hermitian matrices are
+real; the inequalities are stated for `RCLike.re (det A)`. Minkowski's inequality is in
+`NLAlib.Matrix.Inequalities.Minkowski`.
 
 ## Main results
 
+* `Matrix.IsHermitian.re_det_mul`, `NLAlib.det_eq_det_toBlocks₁₁_mul_det`: the determinant of a
+  Hermitian matrix inside a real part, and the Schur determinant formula on a sum type.
 * `Matrix.PosSemidef.re_det_le_prod_re_diag`, `NLAlib.norm_det_le_prod_norm_col`: Hadamard.
 * `NLAlib.re_det_fromBlocks_le_of_posSemidef`: Fischer.
-* `NLAlib.principalMinor`, `NLAlib.sum_principalMinor`: principal minors.
+* `NLAlib.principalMinor`, `NLAlib.det_submatrix_eq_principalMinor`,
+  `NLAlib.sum_principalMinor`: principal minors.
 * `Matrix.PosSemidef.re_principalMinor_union_mul_inter_le`: Hadamard–Fischer (Koteljanskii).
-* `Matrix.PosDef.re_det_rpow_add_le`, `NLAlib.concaveOn_re_det_rpow`: Minkowski.
+* `Matrix.PosSemidef.re_principalMinor_union_le_of_disjoint`: Fischer for principal minors.
 -/
 
 @[expose] public section
@@ -40,11 +41,22 @@ variable {𝕜 : Type*} [RCLike 𝕜] {m n : Type*} [Fintype m] [Fintype n] [Dec
 
 /-! ### Fischer's inequality -/
 
-/-- The real part of a product of determinants whose first factor is the determinant of a
-Hermitian matrix. -/
-private theorem re_det_mul {A : Matrix m m 𝕜} (hA : A.IsHermitian) (z : 𝕜) :
+/-- The determinant of a Hermitian matrix is real, so it comes out of a real part:
+`re (det A · z) = re (det A) · re z`. -/
+theorem _root_.Matrix.IsHermitian.re_det_mul {A : Matrix m m 𝕜} (hA : A.IsHermitian) (z : 𝕜) :
     RCLike.re (A.det * z) = RCLike.re A.det * RCLike.re z := by
   conv_lhs => rw [hA.det_eq_re_det, RCLike.re_ofReal_mul]
+
+/-- **The Schur determinant formula** for a matrix indexed by a sum type whose leading block is
+invertible: `det M = det M₁₁ · det (M₂₂ - M₂₁ M₁₁⁻¹ M₁₂)`. This is Mathlib's
+`Matrix.det_fromBlocks₁₁` for a matrix that is not written as `Matrix.fromBlocks`, with `⁻¹` in
+place of `⅟`. [HornJohnson2013, §0.8.5]. -/
+theorem det_eq_det_toBlocks₁₁_mul_det {R : Type*} [CommRing R] (M : Matrix (m ⊕ n) (m ⊕ n) R)
+    (h : IsUnit M.toBlocks₁₁) : M.det = M.toBlocks₁₁.det *
+      (M.toBlocks₂₂ - M.toBlocks₂₁ * M.toBlocks₁₁⁻¹ * M.toBlocks₁₂).det := by
+  let : Invertible M.toBlocks₁₁ := h.invertible
+  conv_lhs => rw [← Matrix.fromBlocks_toBlocks M]
+  rw [Matrix.det_fromBlocks₁₁, Matrix.invOf_eq_nonsing_inv]
 
 /-- **Fischer's inequality.** The determinant of a positive semidefinite block matrix is at most
 the product of the determinants of its diagonal blocks.
@@ -69,7 +81,7 @@ theorem re_det_fromBlocks_le_of_posSemidef {A : Matrix m m 𝕜} {B : Matrix m n
     let : Invertible A := hAPD.isUnit.invertible
     have hS : (C - Bᴴ * A⁻¹ * B).PosSemidef := (Matrix.PosDef.fromBlocks₁₁ B C hAPD).mp h
     have hle : C - Bᴴ * A⁻¹ * B ≤ C := sub_conjTranspose_mul_mul_le hAPD.inv.posSemidef B C
-    rw [Matrix.det_fromBlocks₁₁, Matrix.invOf_eq_nonsing_inv, re_det_mul hA.isHermitian]
+    rw [Matrix.det_fromBlocks₁₁, Matrix.invOf_eq_nonsing_inv, hA.isHermitian.re_det_mul]
     exact mul_le_mul_of_nonneg_left (hS.re_det_le_re_det_of_le hle)
       (RCLike.nonneg_iff.mp hA.det_nonneg).1
 
@@ -100,7 +112,7 @@ theorem re_det_fromBlocks_eq_iff_of_posDef {A : Matrix m m 𝕜} {B : Matrix m n
   have hle : C - Bᴴ * A⁻¹ * B ≤ C := sub_conjTranspose_mul_mul_le hA.inv.posSemidef B C
   constructor
   · intro heq
-    rw [Matrix.det_fromBlocks₁₁, Matrix.invOf_eq_nonsing_inv, re_det_mul hA.isHermitian] at heq
+    rw [Matrix.det_fromBlocks₁₁, Matrix.invOf_eq_nonsing_inv, hA.isHermitian.re_det_mul] at heq
     have h1 : RCLike.re (C - Bᴴ * A⁻¹ * B).det = RCLike.re C.det :=
       mul_left_cancel₀ (RCLike.pos_iff.mp hA.det_pos).1.ne' heq
     have h2 : (C - Bᴴ * A⁻¹ * B).det = C.det := by
@@ -108,7 +120,7 @@ theorem re_det_fromBlocks_eq_iff_of_posDef {A : Matrix m m 𝕜} {B : Matrix m n
     have h3 := hC.eq_of_le_of_det_eq hS.posSemidef hle h2
     exact eq_zero_of_conjTranspose_mul_mul_eq_zero hA.inv (sub_eq_self.mp h3)
   · rintro rfl
-    rw [Matrix.conjTranspose_zero, Matrix.det_fromBlocks_zero₂₁, re_det_mul hA.isHermitian]
+    rw [Matrix.conjTranspose_zero, Matrix.det_fromBlocks_zero₂₁, hA.isHermitian.re_det_mul]
 
 /-- Fischer's inequality for a positive semidefinite matrix indexed by a sum type. -/
 private theorem re_det_le_re_det_inl_mul_re_det_inr {M : Matrix (m ⊕ n) (m ⊕ n) 𝕜}
@@ -308,6 +320,15 @@ theorem principalMinor_univ {R : Type*} [CommRing R] (A : Matrix n n R) :
     ← det_submatrix_eq_det_submatrix_val A Function.injective_id (s := Finset.univ) (by simp),
     Matrix.submatrix_id_id]
 
+omit [Fintype n] in
+/-- **A principal minor as the determinant of a submatrix along an injective map.** If `f` is
+injective with image the index set `s`, the determinant of `A.submatrix f f` is the principal
+minor of `A` on `s`: a principal minor does not depend on how its index set is enumerated. -/
+theorem det_submatrix_eq_principalMinor {R ι : Type*} [CommRing R] [Fintype ι] [DecidableEq ι]
+    (A : Matrix n n R) {f : ι → n} (hf : Function.Injective f) {s : Finset n}
+    (hs : Set.range f = s) : (A.submatrix f f).det = principalMinor A s :=
+  det_submatrix_eq_det_submatrix_val A hf fun x => by rw [← Finset.mem_coe, ← hs]
+
 /-- **The sum of all principal minors is `det (1 + A)`.** This is the normalising constant of a
 determinantal point process with kernel `A`. [HornJohnson2013, §1.2 context]. -/
 theorem sum_principalMinor {R : Type*} [CommRing R] (A : Matrix n n R) :
@@ -366,7 +387,7 @@ private theorem re_det_mul_re_det_inl_le_of_posDef {ι : Type*} [Fintype ι] [De
   have hF := re_det_le_re_det_inl_mul_re_det_inr hS.posSemidef
   have hp : 0 ≤ RCLike.re H.toBlocks₁₁.det := (RCLike.pos_iff.mp hP.det_pos).1.le
   rw [det_submatrix_sumMap_id H hP.isUnit Sum.inl, det_submatrix_sumMap_id H hP.isUnit Sum.inr,
-    h0, re_det_mul hP.isHermitian, re_det_mul hP.isHermitian, re_det_mul hP.isHermitian]
+    h0, hP.isHermitian.re_det_mul, hP.isHermitian.re_det_mul, hP.isHermitian.re_det_mul]
   change _ * RCLike.re H.toBlocks₁₁.det ≤ _
   calc RCLike.re H.toBlocks₁₁.det * _ * RCLike.re H.toBlocks₁₁.det
       ≤ RCLike.re H.toBlocks₁₁.det * (_ * _) * RCLike.re H.toBlocks₁₁.det :=
@@ -426,157 +447,17 @@ theorem _root_.Matrix.PosSemidef.re_principalMinor_union_mul_inter_le {A : Matri
   rw [principalMinor, principalMinor, principalMinor, principalMinor, ← hs, ← ht]
   exact h
 
-/-! ### Minkowski's inequality -/
-
-/-- Superadditivity of the geometric mean against the constant sequence `1`. -/
-private theorem one_add_prod_rpow_le {ι : Type*} {s : Finset ι} (hs : s.Nonempty) {μ : ι → ℝ}
-    (hμ : ∀ i ∈ s, 0 ≤ μ i) :
-    1 + (∏ i ∈ s, μ i) ^ (s.card : ℝ)⁻¹ ≤ (∏ i ∈ s, (μ i + 1)) ^ (s.card : ℝ)⁻¹ := by
-  have hw : 0 ≤ (s.card : ℝ)⁻¹ := by positivity
-  have hsum : ∑ _i ∈ s, (s.card : ℝ)⁻¹ = 1 := by
-    rw [Finset.sum_const, nsmul_eq_mul,
-      mul_inv_cancel₀ (Nat.cast_ne_zero.mpr (Finset.card_ne_zero.mpr hs))]
-  have hz : ∀ i ∈ s, 0 < μ i + 1 := fun i hi => by linarith [hμ i hi]
-  have hz' : 0 ≤ ∏ i ∈ s, (μ i + 1) := Finset.prod_nonneg fun i hi => (hz i hi).le
-  have h1 := Real.geom_mean_le_arith_mean_weighted s (fun _ => (s.card : ℝ)⁻¹)
-    (fun i => (μ i + 1)⁻¹) (fun _ _ => hw) hsum fun i hi => (inv_pos.mpr (hz i hi)).le
-  have h2 := Real.geom_mean_le_arith_mean_weighted s (fun _ => (s.card : ℝ)⁻¹)
-    (fun i => μ i / (μ i + 1)) (fun _ _ => hw) hsum fun i hi => div_nonneg (hμ i hi) (hz i hi).le
-  have h3 : ∑ i ∈ s, (s.card : ℝ)⁻¹ * (μ i + 1)⁻¹ + ∑ i ∈ s, (s.card : ℝ)⁻¹ * (μ i / (μ i + 1)) =
-      1 := by
-    rw [← Finset.sum_add_distrib]
-    refine Eq.trans (Finset.sum_congr rfl fun i hi => ?_) hsum
-    rw [← mul_add, inv_eq_one_div (μ i + 1), ← add_div, add_comm 1, div_self (hz i hi).ne',
-      mul_one]
-  have hG : 0 < (∏ i ∈ s, (μ i + 1)) ^ (s.card : ℝ)⁻¹ :=
-    Real.rpow_pos_of_pos (Finset.prod_pos hz) _
-  rw [Real.finsetProd_rpow _ _ fun i hi => (inv_pos.mpr (hz i hi)).le, Finset.prod_inv_distrib,
-    Real.inv_rpow hz'] at h1
-  rw [Real.finsetProd_rpow _ _ fun i hi => div_nonneg (hμ i hi) (hz i hi).le,
-    Finset.prod_div_distrib, Real.div_rpow (Finset.prod_nonneg hμ) hz'] at h2
-  have h4 := mul_le_mul_of_nonneg_right (h3 ▸ add_le_add h1 h2) hG.le
-  rwa [add_mul, inv_mul_cancel₀ hG.ne', div_mul_cancel₀ _ hG.ne', one_mul] at h4
-
-/-- Minkowski's inequality against the identity. -/
-private theorem one_add_re_det_rpow_le [Nonempty n] {M : Matrix n n 𝕜} (hM : M.PosSemidef) :
-    1 + RCLike.re M.det ^ (Fintype.card n : ℝ)⁻¹ ≤
-      RCLike.re (M + (1 : ℝ) • (1 : Matrix n n 𝕜)).det ^ (Fintype.card n : ℝ)⁻¹ := by
-  have h := one_add_prod_rpow_le (s := Finset.range (Fintype.card n))
-    (Finset.nonempty_range_iff.mpr Fintype.card_ne_zero) (μ := eigenvalue M)
-    fun i _ => hM.eigenvalue_nonneg i
-  rw [Finset.card_range] at h
-  rw [hM.isHermitian.det_eq_prod_range_eigenvalue, RCLike.ofReal_re,
-    (hM.isHermitian.add (isHermitian_real_smul_one 1)).det_eq_prod_range_eigenvalue,
-    RCLike.ofReal_re,
-    Finset.prod_congr rfl fun k hk =>
-      hM.isHermitian.eigenvalue_add_smul_one 1 (Finset.mem_range.mp hk)]
-  exact h
-
-/-- A positive definite matrix is congruent to the identity. -/
-private theorem exists_conjTranspose_mul_mul_eq_one {A : Matrix n n 𝕜} (hA : A.PosDef) :
-    ∃ C : Matrix n n 𝕜, Cᴴ * A * C = 1 := by
-  have hS : (CFC.sqrt A).IsHermitian :=
-    (Matrix.nonneg_iff_posSemidef.mp (CFC.sqrt_nonneg A)).isHermitian
-  have hSS : CFC.sqrt A * CFC.sqrt A = A := CFC.sqrt_mul_sqrt_self A hA.posSemidef.nonneg
-  have hSu : IsUnit (CFC.sqrt A) := by
-    refine IsUnit.of_mul_eq_one (CFC.sqrt A * A⁻¹) ?_
-    rw [← Matrix.mul_assoc, hSS,
-      Matrix.mul_nonsing_inv A ((Matrix.isUnit_iff_isUnit_det A).mp hA.isUnit)]
-  have hdet := (Matrix.isUnit_iff_isUnit_det _).mp hSu
-  refine ⟨(CFC.sqrt A)⁻¹, ?_⟩
-  calc (CFC.sqrt A)⁻¹ᴴ * A * (CFC.sqrt A)⁻¹
-      = (CFC.sqrt A)⁻¹ * (CFC.sqrt A * CFC.sqrt A) * (CFC.sqrt A)⁻¹ := by rw [hS.inv.eq, hSS]
-    _ = 1 := by
-      rw [Matrix.mul_assoc, Matrix.mul_assoc, Matrix.mul_nonsing_inv _ hdet, Matrix.mul_one,
-        Matrix.nonsing_inv_mul _ hdet]
-
-/-- The determinant of a congruence. -/
-private theorem re_det_conjTranspose_mul_mul (X C : Matrix n n 𝕜) :
-    RCLike.re (Cᴴ * X * C).det = ‖C.det‖ ^ 2 * RCLike.re X.det := by
-  rw [Matrix.det_mul, Matrix.det_mul, Matrix.det_conjTranspose, mul_right_comm, RCLike.star_def,
-    RCLike.conj_mul, ← RCLike.ofReal_pow, RCLike.re_ofReal_mul]
-
-/-- Minkowski's inequality when the first matrix is positive definite. -/
-private theorem re_det_rpow_add_le_of_posDef [Nonempty n] {A B : Matrix n n 𝕜} (hA : A.PosDef)
-    (hB : B.PosSemidef) :
-    RCLike.re A.det ^ (Fintype.card n : ℝ)⁻¹ + RCLike.re B.det ^ (Fintype.card n : ℝ)⁻¹ ≤
-      RCLike.re (A + B).det ^ (Fintype.card n : ℝ)⁻¹ := by
-  obtain ⟨C, hC⟩ := exists_conjTranspose_mul_mul_eq_one hA
-  have h := one_add_re_det_rpow_le (hB.conjTranspose_mul_mul_same C)
-  have hsum : Cᴴ * B * C + (1 : ℝ) • (1 : Matrix n n 𝕜) = Cᴴ * (A + B) * C := by
-    rw [one_smul, ← hC, Matrix.mul_add, Matrix.add_mul, add_comm]
-  have h1 : ‖C.det‖ ^ 2 * RCLike.re A.det = 1 := by
-    rw [← re_det_conjTranspose_mul_mul, hC, Matrix.det_one, RCLike.one_re]
-  have hc : 0 ≤ ‖C.det‖ ^ 2 := sq_nonneg _
-  have hc' : 0 < (‖C.det‖ ^ 2) ^ (Fintype.card n : ℝ)⁻¹ :=
-    Real.rpow_pos_of_pos (lt_of_le_of_ne hc fun h0 => by simp [← h0] at h1) _
-  have ha : 0 ≤ RCLike.re A.det := (RCLike.nonneg_iff.mp hA.posSemidef.det_nonneg).1
-  have hb : 0 ≤ RCLike.re B.det := (RCLike.nonneg_iff.mp hB.det_nonneg).1
-  have hab : 0 ≤ RCLike.re (A + B).det :=
-    (RCLike.nonneg_iff.mp (hA.posSemidef.add hB).det_nonneg).1
-  rw [hsum, re_det_conjTranspose_mul_mul, re_det_conjTranspose_mul_mul, Real.mul_rpow hc hb,
-    Real.mul_rpow hc hab] at h
-  have h2 : (‖C.det‖ ^ 2) ^ (Fintype.card n : ℝ)⁻¹ * RCLike.re A.det ^ (Fintype.card n : ℝ)⁻¹ =
-      1 := by
-    rw [← Real.mul_rpow hc ha, h1, Real.one_rpow]
-  refine le_of_mul_le_mul_left ?_ hc'
-  rw [mul_add, h2]
-  exact h
-
-/-- **Minkowski's determinant inequality.** For positive semidefinite `A`, `B` of size `N ≥ 1`,
-`(det A)^(1/N) + (det B)^(1/N) ≤ (det (A + B))^(1/N)`.
-[HornJohnson2013, Theorem 7.8.21].
-Port of `NLAlib.det_rpow_inv_card_add_le`, there over `ℝ` for positive definite matrices.
-Result: minkowski-determinant-inequality -/
-theorem _root_.Matrix.PosSemidef.re_det_rpow_add_le [Nonempty n] {A B : Matrix n n 𝕜}
-    (hA : A.PosSemidef) (hB : B.PosSemidef) :
-    RCLike.re A.det ^ (Fintype.card n : ℝ)⁻¹ + RCLike.re B.det ^ (Fintype.card n : ℝ)⁻¹ ≤
-      RCLike.re (A + B).det ^ (Fintype.card n : ℝ)⁻¹ := by
-  have hw : 0 ≤ (Fintype.card n : ℝ)⁻¹ := by positivity
-  have hcont : Continuous fun X : Matrix n n 𝕜 => RCLike.re X.det ^ (Fintype.card n : ℝ)⁻¹ :=
-    (Real.continuous_rpow_const hw).comp (RCLike.continuous_re.comp (continuous_id.matrix_det))
-  exact Matrix.PosSemidef.le_of_forall_posDef_le
-    (f := fun X : Matrix n n 𝕜 =>
-      RCLike.re X.det ^ (Fintype.card n : ℝ)⁻¹ + RCLike.re B.det ^ (Fintype.card n : ℝ)⁻¹)
-    (g := fun X : Matrix n n 𝕜 => RCLike.re (X + B).det ^ (Fintype.card n : ℝ)⁻¹)
-    (hcont.add continuous_const) (hcont.comp (continuous_id.add continuous_const))
-    (fun _ hM => re_det_rpow_add_le_of_posDef hM hB) hA
-
-/-- The determinant root is positively homogeneous of degree one. -/
-private theorem re_det_real_smul_rpow [Nonempty n] {A : Matrix n n 𝕜} (hA : A.PosSemidef)
-    {a : ℝ} (ha : 0 ≤ a) :
-    RCLike.re (a • A).det ^ (Fintype.card n : ℝ)⁻¹ =
-      a * RCLike.re A.det ^ (Fintype.card n : ℝ)⁻¹ := by
-  rw [RCLike.real_smul_eq_coe_smul (K := 𝕜), Matrix.det_smul, ← RCLike.ofReal_pow,
-    RCLike.re_ofReal_mul, Real.mul_rpow (pow_nonneg ha _) (RCLike.nonneg_iff.mp hA.det_nonneg).1,
-    Real.pow_rpow_inv_natCast ha Fintype.card_ne_zero]
-
-/-- `A ↦ (det A)^(1/N)` is concave on the positive definite matrices.
-[HornJohnson2013, Theorem 7.8.21]. Port of `NLAlib.concaveOn_det_rpow_inv_card`. -/
-theorem concaveOn_re_det_rpow [Nonempty n] :
-    ConcaveOn ℝ {A : Matrix n n 𝕜 | A.PosDef}
-      fun A => RCLike.re A.det ^ (Fintype.card n : ℝ)⁻¹ := by
-  refine ⟨fun A hA B hB a b ha hb hab => ?_, fun A hA B hB a b ha hb _ => ?_⟩
-  · rcases ha.eq_or_lt with rfl | ha'
-    · rw [zero_add] at hab
-      simpa [hab] using hB
-    · exact (Matrix.PosDef.smul hA ha').add_posSemidef (hB.posSemidef.smul hb)
-  · have h := (hA.posSemidef.smul ha).re_det_rpow_add_le (hB.posSemidef.smul hb)
-    rwa [re_det_real_smul_rpow hA.posSemidef ha, re_det_real_smul_rpow hB.posSemidef hb] at h
-
-/-- The determinant is superadditive on positive semidefinite matrices of positive size:
-`det A + det B ≤ det (A + B)`. [HornJohnson2013, §7.8]. -/
-theorem _root_.Matrix.PosSemidef.re_det_add_le [Nonempty n] {A B : Matrix n n 𝕜}
-    (hA : A.PosSemidef)
-    (hB : B.PosSemidef) : RCLike.re A.det + RCLike.re B.det ≤ RCLike.re (A + B).det := by
-  have hN : Fintype.card n ≠ 0 := Fintype.card_ne_zero
-  have ha : 0 ≤ RCLike.re A.det := (RCLike.nonneg_iff.mp hA.det_nonneg).1
-  have hb : 0 ≤ RCLike.re B.det := (RCLike.nonneg_iff.mp hB.det_nonneg).1
-  have hab : 0 ≤ RCLike.re (A + B).det := (RCLike.nonneg_iff.mp (hA.add hB).det_nonneg).1
-  have h := pow_le_pow_left₀ (add_nonneg (Real.rpow_nonneg ha _) (Real.rpow_nonneg hb _))
-    (hA.re_det_rpow_add_le hB) (Fintype.card n)
-  rw [Real.rpow_inv_natCast_pow hab hN] at h
-  refine le_trans ?_ ((pow_add_pow_le (Real.rpow_nonneg ha _) (Real.rpow_nonneg hb _) hN).trans h)
-  rw [Real.rpow_inv_natCast_pow ha hN, Real.rpow_inv_natCast_pow hb hN]
+omit [Fintype n] in
+/-- **Fischer's inequality for principal minors.** For a positive semidefinite matrix and
+disjoint index sets `s`, `t`, `A[s ∪ t] ≤ A[s] · A[t]`: the case `s ∩ t = ∅` of the
+Hadamard–Fischer inequality. [HornJohnson2013, Theorem 7.8.5].
+Result: fischer-inequality -/
+theorem _root_.Matrix.PosSemidef.re_principalMinor_union_le_of_disjoint {A : Matrix n n 𝕜}
+    (hA : A.PosSemidef) {s t : Finset n} (hst : Disjoint s t) :
+    RCLike.re (principalMinor A (s ∪ t)) ≤
+      RCLike.re (principalMinor A s) * RCLike.re (principalMinor A t) := by
+  have h := hA.re_principalMinor_union_mul_inter_le s t
+  rwa [Finset.disjoint_iff_inter_eq_empty.mp hst, principalMinor_empty, RCLike.one_re,
+    mul_one] at h
 
 end NLAlib

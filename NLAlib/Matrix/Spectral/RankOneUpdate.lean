@@ -24,6 +24,7 @@ bordering, of it.
 * `NLAlib.det_add_vecMulVec`: the matrix determinant lemma.
 * `NLAlib.charpoly_diagonal_add_vecMulVec`: the secular equation.
 * `NLAlib.charpoly_add_vecMulVec_mul`: Brauer's theorem.
+* `Matrix.IsHermitian.isEigenvalueListing_eigenvalue`: the sorted eigenvalues are a listing.
 * `Matrix.IsHermitian.exists_eigenvalue_add_vecMulVec_star_eq`,
   `Matrix.IsHermitian.exists_eigenvalue_fromBlocks_eq`: the converses of interlacing.
 -/
@@ -75,16 +76,16 @@ moves `μ` to `μ + yᵀ x` and leaves the other eigenvalues in place.
 [HornJohnson2013, Theorem 1.2.8 context].
 Port of `NLAlib.charpoly_add_vecMulVec_mul_X_sub_C`. -/
 theorem charpoly_add_vecMulVec_mul {K : Type*} [Field K] {A : Matrix n n K} {x : n → K} {μ : K}
-    (hx : x ≠ 0) (hAx : A *ᵥ x = μ • x) (y : n → K) :
+    (hAx : A *ᵥ x = μ • x) (y : n → K) :
     (X - C μ) * (A + Matrix.vecMulVec x y).charpoly = (X - C (μ + y ⬝ᵥ x)) * A.charpoly := by
   sorry
 
 /-! ### Eigenvalues determined by the characteristic polynomial -/
 
-/-- The characteristic polynomial of a Hermitian matrix through its sorted eigenvalues. -/
-theorem _root_.Matrix.IsHermitian.charpoly_eq_prod_eigenvalue {A : Matrix n n 𝕜}
+/-- The sorted eigenvalues of a Hermitian matrix list its eigenvalues. -/
+theorem _root_.Matrix.IsHermitian.isEigenvalueListing_eigenvalue {A : Matrix n n 𝕜}
     (hA : A.IsHermitian) :
-    A.charpoly = ∏ i : Fin (Fintype.card n), (X - C ((eigenvalue A i : ℝ) : 𝕜)) := by
+    IsEigenvalueListing A (fun i : Fin (Fintype.card n) => ((eigenvalue A i : ℝ) : 𝕜)) := by
   sorry
 
 /-- Hermitian matrices with the same characteristic polynomial have the same eigenvalues.

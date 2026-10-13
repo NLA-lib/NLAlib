@@ -9,6 +9,7 @@ public import Mathlib.Algebra.BigOperators.Fin
 public import Mathlib.Algebra.Order.Archimedean.Real.Basic
 public import Mathlib.Algebra.Order.BigOperators.Group.Finset
 public import Mathlib.Analysis.Convex.Function
+public import Mathlib.Data.Fin.Tuple.Sort
 public import Mathlib.Data.Finset.Powerset
 public import Mathlib.Data.Fintype.Fin
 public import Mathlib.Order.Interval.Set.Basic
@@ -46,6 +47,9 @@ in that partial-sum form; the predicates are for unsorted vectors and for the ge
 * `NLAlib.weaklyMajorized_iff_forall_sum_le`: weak majorization tested on arbitrary index sets.
 * `NLAlib.Majorized.trans`, `NLAlib.Majorized.comp_equiv_left`,
   `NLAlib.WeaklyMajorized.comp_equiv_left`: order properties and invariance under permutations.
+* `NLAlib.majorized_comp_equiv_iff`: invariance under relabelling both vectors.
+* `NLAlib.exists_equiv_antitone_comp`, `NLAlib.sumLargest_succ_of_antitone`: sorting a vector,
+  and the partial sums of a sorted one.
 -/
 
 @[expose] public section
@@ -365,5 +369,48 @@ theorem weaklyMajorized_fin_of_forall_sum_le {N : ℕ} {x : Fin N → ℝ} {f : 
   refine sumLargest_le fun s hs => ?_
   rw [Fintype.card_fin] at hs
   exact hs ▸ h s
+
+/-! ### Relabelling and sorting -/
+
+/-- Majorization is invariant under relabelling both vectors by the same equivalence of index
+types. For a permutation of one of the two vectors see `Majorized.comp_equiv_left` and
+`Majorized.comp_equiv_right`. -/
+theorem majorized_comp_equiv_iff {x y : ι → ℝ} (e : κ ≃ ι) :
+    Majorized (x ∘ e) (y ∘ e) ↔ Majorized x y := by
+  have hsum (z : ι → ℝ) : ∑ k, (z ∘ e) k = ∑ k, z k := Equiv.sum_comp e z
+  refine ⟨fun h => ⟨fun k => ?_, ?_⟩, fun h => ⟨fun k => ?_, ?_⟩⟩
+  · have hk := h.weaklyMajorized k
+    rwa [sumLargest_comp_equiv, sumLargest_comp_equiv] at hk
+  · have hs := h.sum_eq
+    rwa [hsum, hsum] at hs
+  · rw [sumLargest_comp_equiv, sumLargest_comp_equiv]
+    exact h.weaklyMajorized k
+  · rw [hsum, hsum]
+    exact h.sum_eq
+
+/-- **Sorting.** Every real vector on a finite index type is non-increasing after relabelling
+its indices by `Fin (card ι)`. With `sumLargest_comp_equiv` and `majorized_comp_equiv_iff` this
+reduces a statement about `sumLargest` or majorization to sorted vectors. -/
+theorem exists_equiv_antitone_comp (a : ι → ℝ) :
+    ∃ e : Fin (Fintype.card ι) ≃ ι, Antitone (a ∘ e) := by
+  classical
+  refine ⟨(Tuple.sort fun j => -a ((Fintype.equivFin ι).symm j)).trans (Fintype.equivFin ι).symm,
+    fun i j hij => ?_⟩
+  have h := Tuple.monotone_sort (fun j => -a ((Fintype.equivFin ι).symm j)) hij
+  simpa only [Function.comp_apply, neg_le_neg_iff, Equiv.trans_apply] using h
+
+/-- For a non-increasing family indexed by `Fin N`, the sum of the `i + 1` largest entries is the
+sum of the `i` largest plus the entry `i`. -/
+theorem sumLargest_succ_of_antitone {N : ℕ} {y : Fin N → ℝ} (hy : Antitone y) (i : Fin N) :
+    sumLargest y (i + 1) = sumLargest y i + y i := by
+  have h (k : Fin N) : (if (k : ℕ) < i + 1 then y k else 0) =
+      (if (k : ℕ) < i then y k else 0) + if k = i then y k else 0 := by
+    obtain hlt | heq | hgt := lt_trichotomy (k : ℕ) i
+    · rw [if_pos (Nat.lt_succ_of_lt hlt), if_pos hlt, if_neg (Fin.ne_of_val_ne hlt.ne), add_zero]
+    · rw [if_pos (heq ▸ Nat.lt_succ_self _), if_neg (heq ▸ lt_irrefl _), if_pos (Fin.ext heq),
+        zero_add]
+    · rw [if_neg (by omega), if_neg (by omega), if_neg (Fin.ne_of_val_ne hgt.ne'), add_zero]
+  rw [sumLargest_eq_sum_of_antitone hy, sumLargest_eq_sum_of_antitone hy]
+  simp only [h, Finset.sum_add_distrib, Finset.sum_ite_eq', Finset.mem_univ, if_true]
 
 end NLAlib

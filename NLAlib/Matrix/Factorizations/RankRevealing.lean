@@ -63,6 +63,15 @@ theorem re_det_conjTranspose_mul_self_updateCol {C : Matrix m p 𝕜}
         (‖t i‖ ^ 2 + ‖WithLp.toLp 2 d‖ ^ 2 * RCLike.re ((Cᴴ * C)⁻¹ i i)) := by
   sorry
 
+/-- **The Gram determinant after appending a column**: the volume is multiplied by the distance
+of the new column to the range of the old ones, `det (Gram [C, v]) = det (Gram C) ‖(1 - P_C) v‖²`.
+Port of `NLAlib.det_gram_fromCols_eq_mul_frobSq_sub_projector`, there over `ℝ`. -/
+theorem re_det_conjTranspose_mul_self_fromCols (C : Matrix m p 𝕜) (v : m → 𝕜) :
+    RCLike.re ((Matrix.fromCols C (Matrix.replicateCol Unit v))ᴴ *
+      Matrix.fromCols C (Matrix.replicateCol Unit v)).det =
+      RCLike.re (Cᴴ * C).det * ‖WithLp.toLp 2 ((1 - rangeProjector C) *ᵥ v)‖ ^ 2 := by
+  sorry
+
 /-! ### Bounds from a budget -/
 
 /-- **The budget of a locally maximal selection.** Let `C` have full column rank and let the

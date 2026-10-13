@@ -157,7 +157,8 @@ Read: prototype `Matrix/Inequalities/*` not already ported in M3a (44 modules).
 Reused: the determinant inequalities and their equality cases; the Hadamard product chain
 through the Kronecker product; the entrywise power series argument; Kantorovich through the
 operator inequality; Horn's theorem through minimisation over the compact orthogonal group and
-plane rotations.
+plane rotations. As implemented, Horn's converse is proved by induction with plane rotations and
+the intermediate value theorem, not by minimisation over the orthogonal group.
 
 Not reproduced: `principalMinorProduct` (written as a product); the normalised Szász chain with
 binomial exponents (the unnormalised inequality is the content); statements through
@@ -198,3 +199,54 @@ over `ℂ`, the semidefinite and size-zero cases, and the complex Wielandt inequ
 5. The two trace-tail lemmas were dropped: no consumer in the Matrix layer.
 6. Left for M8: `log det (1 + A) ≤ tr A` and concavity of `log det`. Left for M9: the bridge from
    `principalMinor` to leading minors.
+
+## 9. Stage report (2026-10-14)
+
+**Outcome.** Nine files under `Matrix/Inequalities/` (`Order.lean`, `Block.lean`,
+`Determinant.lean`, `Minkowski.lean`, `PrincipalMinors.lean`, `HadamardProduct.lean`,
+`EntrywiseFunctions.lean`, `Kantorovich.lean`, `SchurHorn.lean`; `Minkowski.lean` was split off
+`Determinant.lean` at the follow-up pass) and `ForMathlib/LinearAlgebra/Matrix/Hadamard.lean`, all
+proved; nothing in `NLAlibScaffold`. With the stages before it the build has no warnings, the
+axiom audit covers 1979 declarations with no violation, the environment linters pass on 1583
+declarations, and references check clean. Proofs by Opus agents, ten to twenty minutes per file
+pair.
+
+**False statements found by the proof agents, and their repair.**
+
+- `conditionNumber_le_div_of_smul_one_le_of_le_smul_one` and
+  `conditionNumber_conjTranspose_mul_mul_le_div` fail for matrices of size zero with `b < 0`;
+  `(hb : 0 ≤ b)` was added, as in the M4 statement they rest on.
+- (Found while writing the skeleton.) `Matrix.PosSemidef.re_det_add_le` fails in size zero;
+  `[Nonempty n]` was added.
+
+**What changed from the design.**
+
+- Proof routes differ from the prototype where Cholesky and the logarithm of the determinant now
+  sit downstream: Hadamard's inequality from Fischer's by induction on index sets, Koteljanskii
+  through a Schur complement and Fischer with the semidefinite case by continuity, Minkowski by
+  congruence to the identity and AM–GM, Oppenheim by a new induction through Schur complements,
+  Kantorovich from `(b • 1 - A)(1 - a • A⁻¹) ≥ 0`.
+- Horn's converse is proved by induction with plane rotations and the intermediate value
+  theorem, in about four hundred lines, replacing the prototype's descent over the orthogonal
+  group (some forty declarations). The stronger statement is public:
+  `Matrix.IsHermitian.exists_hasOrthonormalCols_diag_eq_of_majorized` (any real symmetric matrix
+  can be rotated to have a prescribed diagonal majorized by its own).
+- Added at the follow-up pass: `det_submatrix_eq_principalMinor`,
+  `Matrix.PosSemidef.re_principalMinor_union_le_of_disjoint` (Fischer for principal minors),
+  `Matrix.IsHermitian.re_det_mul`, `det_eq_det_toBlocks₁₁_mul_det`,
+  `principalMinor_erase_univ_eq_adjugate`, `Matrix.PosDef.exists_pos_smul_one_le`,
+  `Matrix.sub_hadamard`, `Matrix.hadamard_sub`, and in the majorization files
+  `majorized_comp_equiv_iff`, `exists_equiv_antitone_comp`, `sumLargest_succ_of_antitone`,
+  `majorized_subtype_iff`.
+
+**Mathlib overlap.** `conjTranspose_mul_mul_le_conjTranspose_mul_mul_iff` is Mathlib's
+`Matrix.IsUnit.posSemidef_star_left_conjugate_iff` applied to a difference; the Schur product
+theorem and positivity of Kronecker products are Mathlib's. Mathlib's inverse monotonicity for
+C⋆-algebras reaches only complex matrices, so `Matrix.PosDef.inv_le_inv_of_le` is proved over
+`𝕜`.
+
+**Not ported, by decision.** Equality cases of Hadamard (semidefinite), Koteljanskii, Minkowski
+and Szász; the normalised chain of principal minor products; statements through the spectral
+radius of a relative matrix; the descent machinery for Horn's converse. Deferred with ledger
+entries: operator monotonicity of the square root and the contraction description of the order
+(M8), the Hermitian part and real parts of eigenvalues (M10).

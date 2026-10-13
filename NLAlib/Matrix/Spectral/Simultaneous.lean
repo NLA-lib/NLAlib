@@ -74,7 +74,8 @@ theorem exists_hasOrthonormalCols_forall_eq_mul_diagonal_of_pairwise_commute
 
 /-- Two Hermitian matrices commute exactly when they are simultaneously unitarily
 diagonalisable. Port of `NLAlib.exists_orthogonal_congruence_diagonal_of_commute`. -/
-theorem commute_iff_exists_eq_mul_diagonal_mul_conjTranspose {A B : Matrix n n 𝕜}
+theorem _root_.Matrix.IsHermitian.commute_iff_exists_eq_mul_diagonal_mul_conjTranspose
+    {A B : Matrix n n 𝕜}
     (hA : A.IsHermitian) (hB : B.IsHermitian) :
     Commute A B ↔
       ∃ (U : Matrix n n 𝕜) (a b : n → ℝ), HasOrthonormalCols U ∧

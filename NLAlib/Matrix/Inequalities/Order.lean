@@ -27,6 +27,8 @@ the spectrum of `M⁻¹ * A` (the generalized eigenvalues of the pair).
 * `NLAlib.conjTranspose_mul_mul_le_conjTranspose_mul_mul_iff`: congruence by an invertible matrix.
 * `Matrix.PosDef.inv_le_inv_of_le`: the inverse is order-reversing.
 * `Matrix.PosDef.inv_conjTranspose_mul_mul_le`: the inverse of a compression.
+* `Matrix.PosDef.exists_pos_smul_one_le`: a positive definite matrix dominates a positive
+  multiple of the identity.
 * `NLAlib.conditionNumber_conjTranspose_mul_mul_le_div`: the condition number of a preconditioned
   matrix.
 * `Matrix.PosDef.smul_le_and_le_smul_iff_spectrum_subset`: spectral equivalence through the
@@ -242,6 +244,23 @@ theorem _root_.Matrix.PosSemidef.posDef_one_sub_iff_specNorm_lt_one {A : Matrix 
       positivity
     have h1 := (le_abs_self _).trans (abs_re_quadForm_le A x)
     nlinarith
+
+omit [Fintype n] in
+/-- **A positive definite matrix dominates a positive multiple of the identity**: `a • 1 ≤ A`
+for some `a > 0`. The largest such `a` is the smallest eigenvalue of `A`; the one produced here
+is `(‖A⁻¹‖₂ + 1)⁻¹`. -/
+theorem _root_.Matrix.PosDef.exists_pos_smul_one_le [Finite n] {A : Matrix n n 𝕜}
+    (hA : A.PosDef) : ∃ a : ℝ, 0 < a ∧ a • (1 : Matrix n n 𝕜) ≤ A := by
+  have := Fintype.ofFinite n
+  have hc : 0 < specNorm A⁻¹ + 1 := add_pos_of_nonneg_of_pos (specNorm_nonneg _) one_pos
+  have h := hA.inv.inv_le_inv_of_le
+    (hA.inv.isHermitian.le_smul_one_of_specNorm_le (le_add_of_nonneg_right zero_le_one))
+  have e : ((specNorm A⁻¹ + 1) • (1 : Matrix n n 𝕜))⁻¹ =
+      (specNorm A⁻¹ + 1)⁻¹ • (1 : Matrix n n 𝕜) :=
+    Matrix.inv_eq_right_inv (by
+      rw [Matrix.smul_mul, Matrix.one_mul, smul_smul, mul_inv_cancel₀ hc.ne', one_smul])
+  rw [e, Matrix.nonsing_inv_nonsing_inv A ((Matrix.isUnit_iff_isUnit_det A).mp hA.isUnit)] at h
+  exact ⟨_, inv_pos.mpr hc, h⟩
 
 /-! ### Spectral equivalence -/
 

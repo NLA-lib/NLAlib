@@ -1,7 +1,7 @@
 # Design note: Matrix stage M10, structured matrices and the remaining spectral theory
 
-Status: written 2026-10-14 by the orchestrator while M7 was being proved; to be implemented
-without a maintainer approval stop, by the standing instruction in `docs/port/status.md`. Choices
+Status: written 2026-10-14 by the orchestrator while M7 was being proved, reviewed by a Fable
+agent the same day (§8); to be implemented without a maintainer approval stop, by the standing instruction in `docs/port/status.md`. Choices
 a maintainer would have been asked about are in §7. The skeleton (eighteen files) elaborates
 against the pinned Mathlib and the earlier stages.
 
@@ -33,8 +33,8 @@ functions of non-normal matrices; pseudospectra.
 
 | Concept | Spelling | Mathlib bridge |
 |---|---|---|
-| eigenvalues of a general matrix | a listing `d : n → K` with `A.charpoly = ∏ i, (X - C (d i))` | `Matrix.charpoly_of_isUpperTriangular` |
-| sorted eigenvalues of a Hermitian matrix | `eigenvalue A k` (M3) | `Matrix.IsHermitian.charpoly_eq_prod_eigenvalue` (new) |
+| eigenvalues of a general matrix | `IsEigenvalueListing A d` (new): `A.charpoly = ∏ i, (X - C (d i))`, `d : ι → K` | `Matrix.IsUpperTriangular.isEigenvalueListing_diag` |
+| sorted eigenvalues of a Hermitian matrix | `eigenvalue A k` (M3) | `Matrix.IsHermitian.isEigenvalueListing_eigenvalue` (new) |
 | normal matrix | Mathlib's `IsStarNormal A` | — |
 | unitary matrix | `HasOrthonormalCols U`, `U` square (as before) | `HasOrthonormalCols.mul_conjTranspose_self_of_card_eq` |
 | upper triangular in a chosen order | `Matrix.IsUpperTriangular` on `[LinearOrder n]` | — |
@@ -43,9 +43,9 @@ functions of non-normal matrices; pseudospectra.
 | inertia | `inertiaPos A`, `inertiaNeg A` (new): counts of positive and negative `eigenvalue A i` | — |
 | leading principal minor | `principalMinor A (Finset.Iic i)` (as in M9) | — |
 | generalized eigenvalues of a definite pair | the diagonal `d` in `A = S Sᴴ`, `B = S diag(d) Sᴴ`; `spectrum ℝ (A⁻¹ * B)` (as in M7) | — |
-| Gershgorin radius | `∑ j ∈ Finset.univ.erase i, ‖A i j‖` (Mathlib's spelling) | `eigenvalue_mem_ball` |
+| Gershgorin radius | `gershgorinRadius A i` (new); columns are `gershgorinRadius Aᵀ j` | `gershgorinRadius_def` (Mathlib's spelling) |
 | spectral radius | `specRadius A : ℝ` (new) `= (spectralRadius ℂ (complexify A)).toReal` | — |
-| Hermitian part | `(2⁻¹ : ℝ) • (A + Aᴴ)` | `selfAdjointPart ℝ A` |
+| Hermitian part | `hermitianPart A` (new) `= (2⁻¹ : ℝ) • (A + Aᴴ)` | `hermitianPart_eq_selfAdjointPart` |
 | Kronecker product | Mathlib's `A ⊗ₖ B` | — |
 | circulant matrix | Mathlib's `Matrix.circulant v` | — |
 | Fourier matrix | `fourierMatrix n` (new) | — |
@@ -53,8 +53,7 @@ functions of non-normal matrices; pseudospectra.
 | Cauchy, Hilbert matrix | `cauchyMatrix x y`, `hilbertMatrix n` (new) | — |
 | σ-algebra on matrices | `Matrix.instMeasurableSpace` (new, `ForMathlib`) | `MeasurableSpace.pi` |
 
-Not ported as names: `gershgorinRowRadius`, `gershgorinRowDisc`, `gershgorinRowUnion` and the
-column twins; `charpolyRootCountIn`; `matrixPowerBoundConstant`; `trailingMinor`,
+Not ported as names: `gershgorinRowDisc`, `gershgorinRowUnion` and the column twins; `charpolyRootCountIn`; `matrixPowerBoundConstant`; `trailingMinor`,
 `leadingMinor`; `IsRealNormalForm`; `sylvesterLinearMap`; `realMatrixComplexification` (replaced
 by M8's `complexify`); `cyclicShiftMatrix`, `toeplitzMatrix`, `hankelMatrix`; `WalshIndex`,
 `walshBitSign`, `walshCharacter`, `walshMatrixFin`.
@@ -63,7 +62,8 @@ by M8's `complexify`); `cyclicShiftMatrix`, `toeplitzMatrix`, `hankelMatrix`; `W
 
 **Eigenvalues of a matrix that is not Hermitian are a listing of the roots of the characteristic
 polynomial.** A statement about "the eigenvalues `d` of `A`" takes
-`hd : A.charpoly = ∏ i, (X - C (d i))`; an existence statement produces `d`. Over `ℂ` a listing
+`hd : IsEigenvalueListing A d`, which unfolds to `A.charpoly = ∏ i, (X - C (d i))`, with `d`
+indexed by any finite type; an existence statement produces `d`. Over `ℂ` a listing
 always exists; over `𝕜` the hypothesis says the characteristic polynomial splits. Two listings
 differ by a permutation. For a Hermitian matrix the sorted `eigenvalue A` is such a listing.
 
@@ -89,8 +89,8 @@ real-valued `specRadius` composes with `specNorm` and with `Tendsto` statements 
 without coercions, and it is the right notion for a real matrix (whose real spectrum may be
 empty).
 
-**Gershgorin statements use Mathlib's spelling of the radius** and are about `spectrum 𝕜 A`;
-no disc or union sets are defined. The counting theorem is stated with the multiset of roots of
+**Gershgorin statements use `gershgorinRadius`**, which unfolds to Mathlib's spelling of the
+radius, and are about `spectrum 𝕜 A`; no disc or union sets are defined. The counting theorem is stated with the multiset of roots of
 the characteristic polynomial.
 
 **Structured matrices use Mathlib's definitions** (`⊗ₖ`, `circulant`, `IsHadamard`). The
@@ -146,12 +146,10 @@ right eigenvectors, biorthogonality, simple eigenvalues through the pairing, the
 simple eigenvalue; the Sylvester equation and block diagonalisation.
 
 `Spectral/RealSchur.lean`: `IsUpperQuasiTriangular`, `IsRealSchurForm`,
-`exists_hasOrthonormalCols_isRealSchurForm`, the real normal, skew-symmetric and orthogonal
-forms, real QZ, descent of similarity and of unitary similarity.
+`exists_hasOrthonormalCols_isRealSchurForm`, the real normal form, real QZ, descent of similarity and of unitary similarity.
 
 `Spectral/Inertia.lean`: `inertiaPos`, `inertiaNeg`, rank, diagonal, definiteness, the
-variational characterisation; Sylvester's law (invertible and general congruence), the congruence
-classification, Ostrowski; inertia forms of interlacing and a strict Courant–Fischer bound;
+variational characterisation; Sylvester's law (invertible and general congruence), Ostrowski; inertia forms of interlacing and a strict Courant–Fischer bound;
 blocks and Haynsworth; counting eigenvalues by a shift, by `L D Lᴴ`, by pivots.
 
 `Spectral/SylvesterCriterion.lean`: leading and trailing criteria, the semidefinite criterion
@@ -171,9 +169,9 @@ matrices.
 
 `Spectral/RankOneUpdate.lean`: `det_add_vecMulVec`, `det_diagonal_add_vecMulVec`, the secular
 equation, the arrowhead characteristic polynomial, Brauer's theorem,
-`Matrix.IsHermitian.charpoly_eq_prod_eigenvalue`, the two converses of interlacing.
+`Matrix.IsHermitian.isEigenvalueListing_eigenvalue`, the two converses of interlacing.
 
-`Spectral/HermitianPart.lean`: Ky Fan's majorization, Bendixson's bounds, the converse.
+`Spectral/HermitianPart.lean`: `hermitianPart`, Ky Fan's majorization, Bendixson's bounds.
 
 `ForMathlib/MeasureTheory/Matrix.lean`, `Measurability/Basic.lean`: §2.
 
@@ -240,15 +238,64 @@ lemmas, the eigenvector deflation block lemmas, `SpectrumCount` and its continui
 3. `specRadius` as a real-valued function on matrices over `𝕜`.
 4. `IsDiagonalizable` as a new predicate (Mathlib has semisimplicity of endomorphisms, not a
    matrix predicate).
-5. No Gershgorin disc definitions; no root-count definition.
+5. `gershgorinRadius` is a definition; no disc or union sets, no root-count definition.
 6. `fourierMatrix`, `walshHadamard`, `cauchyMatrix`, `hilbertMatrix` as new definitions;
    Toeplitz and Hankel matrices not ported.
 7. `Matrix.instMeasurableSpace` as a global instance in `ForMathlib`.
 8. New statements with no prototype counterpart: Hoffman–Wielandt for normal matrices in listing
-   form, the congruence classification by inertia, the variational characterisation of the
+   form, the variational characterisation of the
    inertia, the Sturm count through `gaussState`, the Fourier diagonalisation of circulants,
    positive definiteness of the Hilbert matrix, `specRadius` of commuting sums and products,
    the nuclear norm, pseudoinverse and condition number of a Kronecker product, measurability of
    the rank, the range projector, the condition number and every `Φ.matrixNorm`.
 9. Not ported: Bauer–Fike for raw absolute norms, the bounded-power constant as a definition,
    the quasi-pencil and primary triangularisation lemmas, the trailing-minor definition.
+
+## 8. Review (Fable, 2026-10-14) and what changed
+
+The review checked the roughly two hundred statements, with hand checks of the sign and index
+conventions (Fourier diagonalisation, secular and arrowhead polynomials, Cauchy's determinant,
+coefficients of the characteristic polynomial, the adjugate at a simple eigenvalue, the Sylvester
+block identity). Findings and their resolution:
+
+1. **False statements.** `eigenvalue_add_le_of_inertiaPos` was quantified over all indices; for
+   `A = [-1]`, `B = [1]` it reads `0 ≤ -1` through the zero value of `eigenvalue` beyond the
+   size. The index hypothesis was added. `specRadius_pow` and `specRadius_pow_le_specNorm_pow`
+   fail for a matrix of size zero and exponent zero; `[Nonempty n]` was added, with
+   `specRadius_one`.
+2. The listing equation was spelled out in some forty statements; it is now the predicate
+   `IsEigenvalueListing A d`, indexed by any finite type, with `card_eq`, `exists_equiv_eq`,
+   `comp_equiv`, `spectrum_eq_range`, `trace_eq_sum`, `det_eq_prod`, `pow`, the triangular and
+   Hermitian instances, and `IsEigenvalueListing.kronecker` for Kronecker products and sums.
+3. Dot notation: the lemmas whose first explicit hypothesis is `hA : A.IsHermitian` moved to
+   `Matrix.IsHermitian.*` (inertia, Sylvester's criterion, commuting pairs).
+4. The Sturm count is stated with `inertiaNeg (A - x • 1)` on the left and named accordingly;
+   the Gershgorin count no longer has an instance term in its statement and counts with
+   `Multiset.card (roots.filter …)`.
+5. Hypotheses dropped: `x ≠ 0` in Brauer's theorem, algebraic closure in the simple-eigenvalue
+   pairing, `NoZeroDivisors` for quasi-triangular products, `MeasurableSingletonClass` for
+   measurable powers; the semisimplicity equivalence is split so that only one direction asks
+   for algebraic closure.
+6. `Matrix.PosDef.spectrum_mul_subset_Ici` said nothing about non-real eigenvalues over `ℂ`; it
+   is replaced by the listing form `Matrix.PosDef.exists_isEigenvalueListing_mul_nonneg`.
+7. Definitions where a formula was repeated: `hermitianPart`, `gershgorinRadius`; the discrete
+   Fourier transform of the first column of a circulant is written `√n • (Fᴴ *ᵥ v)`, with one
+   lemma giving the explicit sum.
+8. Real statements use `ᴴ`, as the contract asks; junk values are stated in the docstrings of
+   `inertiaPos` and `inertiaNeg`; `_pair` names replaced.
+9. Removed as having no consumer: the converse of real-part majorization, the congruence
+   classification by inertia, the skew-symmetric and orthogonal specialisations of the real
+   normal form.
+10. Added for the consumers: `specRadius_one_sub_inv_diagonal_mul_lt_one` (convergence of the
+    Jacobi iteration), the inertia of a saddle-point matrix
+    (`Matrix.PosDef.inertiaPos_fromBlocks_zero`, `inertiaNeg_fromBlocks_zero`),
+    `specNorm_pow_le_conditionNumber_mul` (powers through a similarity), the bridges
+    `specRadius_eq_toReal_spectralRadius`, `specRadius_complexify`, and the Hermitian-part
+    lemmas over `𝕜`.
+11. Not taken: removing Cauchy and Hilbert matrices (the brief lists them) and Fuglede–Putnam;
+    the growth bound `exists_forall_specNorm_pow_le_mul_pow` keeps its existential constant,
+    since over `ℝ` the similarity that realises it is complex.
+12. Mathlib supplies several proofs (`Matrix.charpoly_coeff_eq_sum_minors`,
+    `Matrix.det_add_replicateCol_mul_replicateRow`, `eigenvalue_mem_ball`, Gelfand's formula,
+    `Matrix.IsHermitian.roots_charpoly_eq_eigenvalues₀`); the statements stay in the vocabulary
+    of this library.

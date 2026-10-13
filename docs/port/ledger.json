@@ -1365,10 +1365,18 @@
   "note": "no chosen enumeration",
   "stage": "M1"
  },
+ "NLAlib.det_mul_prod_diag_le_det_hadamard": {
+  "new": "Matrix.PosSemidef.re_det_mul_prod_re_diag_le_re_det_hadamard",
+  "stage": "M7"
+ },
  "NLAlib.det_ne_zero_of_rank_eq": {
   "new": "NLAlib.isUnit_conjTranspose_mul_self_iff_rank",
   "note": "general Gram form",
   "stage": "M1"
+ },
+ "NLAlib.det_pow_card_pred_le_prod_complement_singleton": {
+  "new": "Matrix.PosSemidef.re_det_pow_le_prod_re_principalMinor_erase",
+  "stage": "M7"
  },
  "NLAlib.det_principal_union_mul_inter_le_of_posSemidef": {
   "new": "Matrix.PosSemidef.re_principalMinor_union_mul_inter_le",
@@ -1414,6 +1422,10 @@
   "new": null,
   "note": "helper of the real von Neumann proof; the new proof uses Ky Fan's principle on leading columns",
   "stage": "M3a"
+ },
+ "NLAlib.diagonal_conjugation_eq_sq_mulVec": {
+  "new": "NLAlib.re_mul_diagonal_mul_conjTranspose_apply_self",
+  "stage": "M7"
  },
  "NLAlib.dilation": {
   "new": "NLAlib.dilation",
@@ -1914,6 +1926,10 @@
   "new": "NLAlib.conjTranspose_mul_self_eq_iff_exists_mul",
   "note": "transitivity on frames as matrices: two frames have the same Gram matrix 1, so Q' = W * Q with W unitary; no Stiefel subtype or group action",
   "stage": "M5"
+ },
+ "NLAlib.exists_orthogonal_diagonal_eq_of_majorized": {
+  "new": "NLAlib.exists_hasOrthonormalCols_diag_eq_of_majorized",
+  "stage": "M7"
  },
  "NLAlib.exists_orthogonal_frame_transition": {
   "new": "NLAlib.HasOrthonormalCols.exists_mul_eq_of_range_eq",
@@ -2808,6 +2824,14 @@
   "note": "columns are fun j => WithLp.toLp 2 (A.col j); no qrColumnFamily",
   "stage": "M5"
  },
+ "NLAlib.hadamard_le_hadamard_of_neg_le_of_le": {
+  "new": "NLAlib.hadamard_le_hadamard_of_neg_le_of_le",
+  "stage": "M7"
+ },
+ "NLAlib.hadamard_le_hadamard_of_posSemidef_left": {
+  "new": "Matrix.PosSemidef.hadamard_le_hadamard_of_le",
+  "stage": "M7"
+ },
  "NLAlib.hasFDerivAt_componentRelativeMap": {
   "new": null,
   "note": "not ported: conditioning of a differentiable map; its base definitions live outside Matrix/, Matrix-Perturbation §7.7",
@@ -2934,6 +2958,10 @@
  },
  "NLAlib.inv_compression_le_compression_inv": {
   "new": "Matrix.PosDef.inv_conjTranspose_mul_mul_le",
+  "stage": "M7"
+ },
+ "NLAlib.inv_hadamard_le_hadamard_inv": {
+  "new": "Matrix.PosDef.inv_hadamard_le_hadamard_inv",
   "stage": "M7"
  },
  "NLAlib.inv_one_sub_eq_one_add_mul": {
@@ -3324,6 +3352,10 @@
   "new": "NLAlib.majorized_iff_exists_doublyStochastic",
   "stage": "M3a"
  },
+ "NLAlib.majorized_iff_exists_orthogonal_diagonal_eq": {
+  "new": "NLAlib.majorized_iff_exists_hasOrthonormalCols_diag_eq",
+  "stage": "M7"
+ },
  "NLAlib.majorized_iff_mem_convexHull_permutations": {
   "new": "NLAlib.majorized_iff_mem_convexHull_permutations",
   "stage": "M3a"
@@ -3360,6 +3392,14 @@
   "new": null,
   "note": "not ported: conditioning of a differentiable map; mapNormRelativeCondition lives outside Matrix/, Matrix-Perturbation §7.7; the matrix fact behind it is norm_sub_mul_norm_le_conditionNumber_mul",
   "stage": "M6"
+ },
+ "NLAlib.map_exp_le_map_exp_of_posSemidef_le": {
+  "new": "Matrix.PosSemidef.map_exp_le_map_exp_of_le",
+  "stage": "M7"
+ },
+ "NLAlib.map_pow_le_map_pow_of_posSemidef_le": {
+  "new": "Matrix.PosSemidef.map_pow_le_map_pow_of_le",
+  "stage": "M7"
  },
  "NLAlib.matrixOf_curry_update_eq_add_single": {
   "new": null,
@@ -3830,6 +3870,10 @@
   "note": "private helper one_sub_rangeProjector_mul_conjTranspose_mul_pinv of pinv_sub_pinv",
   "stage": "M6"
  },
+ "NLAlib.neg_hadamard_le_hadamard_of_neg_le_of_le": {
+  "new": "NLAlib.neg_hadamard_le_hadamard_of_neg_le_of_le",
+  "stage": "M7"
+ },
  "NLAlib.neumann_and_inverse_perturbation": {
   "new": null,
   "note": "bundle of isUnit_one_sub_of_specNorm_lt_one, hasSum_pow_inv_one_sub, specNorm_inv_one_sub_le, specNorm_inv_one_sub_sub_one_le, isUnit_add_of_specNorm_inv_mul_lt_one, specNorm_inv_add_le, specNorm_inv_add_sub_inv_le, SymmetricGauge.matrixNorm_inv_add_sub_inv_le",
@@ -4105,6 +4149,10 @@
   "new": "NLAlib.one_le_conditionNumber",
   "stage": "M4"
  },
+ "NLAlib.one_le_hadamard_inv": {
+  "new": "Matrix.PosDef.one_le_hadamard_inv",
+  "stage": "M7"
+ },
  "NLAlib.one_le_moorePenroseConditionNumber": {
   "new": "NLAlib.one_le_conditionNumber",
   "stage": "M4"
@@ -4261,6 +4309,10 @@
   "new": "NLAlib.planeRotation_mulVec",
   "stage": "M1"
  },
+ "NLAlib.planeRotation_single_conjugation_diag": {
+  "new": "NLAlib.diag_planeRotation_single_mul_mul",
+  "stage": "M7"
+ },
  "NLAlib.polarFrame": {
   "new": "NLAlib.polarFactor",
   "note": "the partial isometry of the polar decomposition over 𝕜, every shape and rank; the prototype's Y * (Yᵀ * Y)^(-1/2) is its value on full column rank",
@@ -4286,12 +4338,24 @@
   "note": "attainment constructions are private to the duality proofs",
   "stage": "M3b"
  },
+ "NLAlib.posDef_hadamard_of_posDef_of_diag_pos": {
+  "new": "Matrix.PosDef.hadamard_of_forall_diag_pos",
+  "stage": "M7"
+ },
  "NLAlib.posDef_identity_fromBlocks_iff_specNorm_lt_one": {
   "new": "NLAlib.posDef_fromBlocks_one_iff_specNorm_lt_one",
   "stage": "M7"
  },
+ "NLAlib.posDef_map_exp_iff_rows_injective": {
+  "new": "Matrix.PosSemidef.posDef_map_exp_iff",
+  "stage": "M7"
+ },
  "NLAlib.posDef_one_sub_iff_specNorm_lt_one_of_posSemidef": {
   "new": "Matrix.PosSemidef.posDef_one_sub_iff_specNorm_lt_one",
+  "stage": "M7"
+ },
+ "NLAlib.posDef_sum_inv_factorial_map_pow_vecMulVec_of_injective": {
+  "new": "NLAlib.posDef_of_exp_mul",
   "stage": "M7"
  },
  "NLAlib.posSemidef_equal_diagonal_fromBlocks_iff_le": {
@@ -4322,6 +4386,18 @@
   "new": null,
   "note": "Mathlib: Matrix.PosSemidef.inv applied to posSemidef_self_mul_conjTranspose",
   "stage": "M1"
+ },
+ "NLAlib.posSemidef_map_exp": {
+  "new": "Matrix.PosSemidef.map_exp",
+  "stage": "M7"
+ },
+ "NLAlib.posSemidef_map_of_nonneg_powerSeries": {
+  "new": "Matrix.PosSemidef.map_of_hasSum",
+  "stage": "M7"
+ },
+ "NLAlib.posSemidef_map_pow": {
+  "new": "Matrix.PosSemidef.map_pow",
+  "stage": "M7"
  },
  "NLAlib.posSemidef_of_hasSum": {
   "new": "Matrix.PosSemidef.of_hasSum",
@@ -4388,12 +4464,20 @@
   "new": "NLAlib.principalMinor",
   "stage": "M7"
  },
+ "NLAlib.principalMinorProduct_succ_pow_le_of_posSemidef": {
+  "new": "Matrix.PosSemidef.prod_re_principalMinor_succ_pow_le",
+  "stage": "M7"
+ },
  "NLAlib.principalMinor_nonneg": {
   "new": "Matrix.PosSemidef.re_principalMinor_nonneg",
   "stage": "M7"
  },
  "NLAlib.principalMinor_pos": {
   "new": "Matrix.PosDef.re_principalMinor_pos",
+  "stage": "M7"
+ },
+ "NLAlib.principalMinor_pow_pred_le_prod_erase": {
+  "new": "Matrix.PosSemidef.re_principalMinor_pow_le_prod_erase",
   "stage": "M7"
  },
  "NLAlib.principal_angle_characterizations": {
@@ -6107,6 +6191,10 @@
   "new": null,
   "note": "private helper sub_sq_mul_add_sq_le_add_sq of sub_sq_mul_frobNorm_sq_add_frobNorm_sq_le",
   "stage": "M6"
+ },
+ "NLAlib.submatrix_kronecker_diagonal": {
+  "new": "Matrix.hadamard_eq_submatrix_kronecker",
+  "stage": "M7"
  },
  "NLAlib.subspaceTangent": {
   "new": null,

@@ -23,9 +23,10 @@ triangularised (the generalized Schur, or QZ, decomposition).
 
 * `Matrix.PosDef.exists_eq_mul_conjTranspose_and_eq_mul_diagonal_mul_conjTranspose`: the definite
   pair.
-* `Matrix.PosDef.charpoly_inv_mul_eq_prod`, `Matrix.PosDef.isDiagonalizable_inv_mul`.
+* `NLAlib.isEigenvalueListing_inv_mul_of_eq_mul_diagonal_mul_conjTranspose`,
+  `Matrix.PosDef.isDiagonalizable_inv_mul`.
 * `Matrix.PosSemidef.exists_conjTranspose_mul_mul_eq_diagonal`: the semidefinite pair.
-* `NLAlib.exists_hasOrthonormalCols_isUpperTriangular_pair`: the QZ decomposition.
+* `NLAlib.exists_hasOrthonormalCols_isUpperTriangular_isUpperTriangular`: the QZ decomposition.
 -/
 
 @[expose] public section
@@ -52,10 +53,10 @@ theorem _root_.Matrix.PosDef.exists_eq_mul_conjTranspose_and_eq_mul_diagonal_mul
 
 /-- **The generalized eigenvalues of a definite pair** are the eigenvalues of `A⁻¹ B`.
 Port of `NLAlib.charpoly_inverse_mul_eq_prod_of_congruence`. -/
-theorem charpoly_inv_mul_eq_prod_of_eq_mul_diagonal_mul_conjTranspose {A B S : Matrix n n 𝕜}
+theorem isEigenvalueListing_inv_mul_of_eq_mul_diagonal_mul_conjTranspose {A B S : Matrix n n 𝕜}
     {d : n → ℝ} (hS : IsUnit S.det) (hA : A = S * Sᴴ)
     (hB : B = S * Matrix.diagonal (fun i => ((d i : ℝ) : 𝕜)) * Sᴴ) :
-    (A⁻¹ * B).charpoly = ∏ i, (X - C ((d i : ℝ) : 𝕜)) := by
+    IsEigenvalueListing (A⁻¹ * B) (fun i => ((d i : ℝ) : 𝕜)) := by
   sorry
 
 /-- For `A` positive definite and `B` Hermitian, `A⁻¹ B` is diagonalisable.
@@ -72,14 +73,15 @@ theorem _root_.Matrix.PosDef.isDiagonalizable_mul {A B : Matrix n n 𝕜} (hA : 
 
 /-- For `A` positive definite and `B` Hermitian, the eigenvalues of `A B` are real: its
 characteristic polynomial splits with real roots. -/
-theorem _root_.Matrix.PosDef.exists_charpoly_mul_eq_prod {A B : Matrix n n 𝕜} (hA : A.PosDef)
-    (hB : B.IsHermitian) : ∃ d : n → ℝ, (A * B).charpoly = ∏ i, (X - C ((d i : ℝ) : 𝕜)) := by
+theorem _root_.Matrix.PosDef.exists_isEigenvalueListing_mul {A B : Matrix n n 𝕜} (hA : A.PosDef)
+    (hB : B.IsHermitian) : ∃ d : n → ℝ, IsEigenvalueListing (A * B) (fun i => ((d i : ℝ) : 𝕜)) := by
   sorry
 
-/-- For `A` positive definite and `B` positive semidefinite, the spectrum of `A B` is
-nonnegative. Port of `NLAlib.spectrum_mul_subset_nonneg_of_posDef`. -/
-theorem _root_.Matrix.PosDef.spectrum_mul_subset_Ici {A B : Matrix n n 𝕜} (hA : A.PosDef)
-    (hB : B.PosSemidef) : spectrum ℝ (A * B) ⊆ Set.Ici 0 := by
+/-- For `A` positive definite and `B` positive semidefinite, the eigenvalues of `A B` are real
+and nonnegative. Port of `NLAlib.spectrum_mul_subset_nonneg_of_posDef`. -/
+theorem _root_.Matrix.PosDef.exists_isEigenvalueListing_mul_nonneg {A B : Matrix n n 𝕜}
+    (hA : A.PosDef) (hB : B.PosSemidef) :
+    ∃ d : n → ℝ, IsEigenvalueListing (A * B) (fun i => ((d i : ℝ) : 𝕜)) ∧ ∀ i, 0 ≤ d i := by
   sorry
 
 /-- The inertia of `B` is read off the diagonal of a congruence.
@@ -111,10 +113,10 @@ theorem _root_.Matrix.PosSemidef.exists_conjTranspose_mul_mul_eq_diagonal {A B :
 /-- **A real symmetric pair with invertible `A` is simultaneously diagonalised by congruence
 exactly when `A⁻¹ B` is diagonalisable over `ℝ`.** [HornJohnson2013, Theorem 4.5.17].
 Port of `NLAlib.exists_diagonal_congruence_iff_isDiagonalizable_inverse_mul`. -/
-theorem exists_transpose_mul_mul_eq_diagonal_iff_isDiagonalizable_inv_mul {A B : Matrix n n ℝ}
-    (hA : A.IsHermitian) (hAu : IsUnit A.det) (hB : B.IsHermitian) :
-    (∃ (X : Matrix n n ℝ) (a b : n → ℝ), IsUnit X.det ∧ Xᵀ * A * X = Matrix.diagonal a ∧
-      Xᵀ * B * X = Matrix.diagonal b) ↔ IsDiagonalizable (A⁻¹ * B) := by
+theorem _root_.Matrix.IsHermitian.exists_conjTranspose_mul_mul_eq_diagonal_iff
+    {A B : Matrix n n ℝ} (hA : A.IsHermitian) (hAu : IsUnit A.det) (hB : B.IsHermitian) :
+    (∃ (X : Matrix n n ℝ) (a b : n → ℝ), IsUnit X.det ∧ Xᴴ * A * X = Matrix.diagonal a ∧
+      Xᴴ * B * X = Matrix.diagonal b) ↔ IsDiagonalizable (A⁻¹ * B) := by
   sorry
 
 /-! ### The generalized Schur decomposition -/
@@ -124,7 +126,8 @@ upper triangular form by two unitary matrices.
 [GolubVanLoan2013, Theorem 7.7.1]; [HornJohnson2013, Theorem 2.6.1].
 Port of `NLAlib.exists_unitary_qz_triangularization`.
 Result: qz -/
-theorem exists_hasOrthonormalCols_isUpperTriangular_pair [LinearOrder n] (A B : Matrix n n ℂ) :
+theorem exists_hasOrthonormalCols_isUpperTriangular_isUpperTriangular
+    [LinearOrder n] (A B : Matrix n n ℂ) :
     ∃ Q Z : Matrix n n ℂ, HasOrthonormalCols Q ∧ HasOrthonormalCols Z ∧
       (Qᴴ * A * Z).IsUpperTriangular ∧ (Qᴴ * B * Z).IsUpperTriangular := by
   sorry

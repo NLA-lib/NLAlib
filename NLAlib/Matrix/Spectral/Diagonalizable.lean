@@ -66,9 +66,9 @@ theorem isDiagonalizable_iff_exists_linearIndependent {A : Matrix n n K} :
   sorry
 
 /-- The diagonal of a diagonalisation lists the eigenvalues. -/
-theorem charpoly_eq_prod_of_mul_eq_mul_diagonal {A V : Matrix n n K} {d : n → K}
+theorem isEigenvalueListing_of_mul_eq_mul_diagonal {A V : Matrix n n K} {d : n → K}
     (hV : IsUnit V.det) (h : A * V = V * Matrix.diagonal d) :
-    A.charpoly = ∏ i, (X - C (d i)) := by
+    IsEigenvalueListing A d := by
   sorry
 
 /-- **A matrix with distinct eigenvalues is diagonalisable.**
@@ -81,6 +81,17 @@ theorem isDiagonalizable_of_injective_of_forall_mem_spectrum {A : Matrix n n K} 
 Port of `NLAlib.isDiagonalizable_iff_iSup_eigenspace_eq_top`. -/
 theorem isDiagonalizable_iff_iSup_eigenspace_eq_top {A : Matrix n n K} :
     IsDiagonalizable A ↔ ⨆ μ, Module.End.eigenspace (Matrix.toLin' A) μ = ⊤ := by
+  sorry
+
+/-- A diagonalisable matrix is semisimple. Port of `NLAlib.IsDiagonalizable.isSemisimple`. -/
+theorem IsDiagonalizable.isSemisimple {A : Matrix n n K} (hA : IsDiagonalizable A) :
+    Module.End.IsSemisimple (Matrix.toLin' A) := by
+  sorry
+
+/-- Over an algebraically closed field a semisimple matrix is diagonalisable.
+Port of `NLAlib.isDiagonalizable_of_isSemisimple`. -/
+theorem isDiagonalizable_of_isSemisimple [IsAlgClosed K] {A : Matrix n n K}
+    (hA : Module.End.IsSemisimple (Matrix.toLin' A)) : IsDiagonalizable A := by
   sorry
 
 /-- Over an algebraically closed field, diagonalisable means semisimple.
@@ -143,7 +154,7 @@ theorem dotProduct_eq_zero_of_vecMul_eq_smul_of_mulVec_eq_smul {A : Matrix n n K
 /-- **A geometrically simple eigenvalue is algebraically simple exactly when its left and right
 eigenvectors are not orthogonal.** [HornJohnson2013, Theorem 1.4.12].
 Port of `NLAlib.rootMultiplicity_eq_one_iff_pairing_ne_zero_of_finrank_eigenspace_eq_one`. -/
-theorem rootMultiplicity_charpoly_eq_one_iff_dotProduct_ne_zero [IsAlgClosed K]
+theorem rootMultiplicity_charpoly_eq_one_iff_dotProduct_ne_zero
     {A : Matrix n n K} {x y : n → K} {μ : K} (hx : x ≠ 0) (hy : y ≠ 0) (hAx : A *ᵥ x = μ • x)
     (hyA : y ᵥ* A = μ • y)
     (h : Module.finrank K (Module.End.eigenspace (Matrix.toLin' A) μ) = 1) :

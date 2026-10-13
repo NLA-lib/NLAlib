@@ -8,6 +8,7 @@ module
 public import Mathlib.Analysis.Normed.Algebra.Spectrum
 public import NLAlib.Matrix.Spectral.Normal
 public import NLAlib.Matrix.Spectral.Gershgorin
+public import NLAlib.Matrix.Pseudoinverse.ConditionNumber
 
 /-!
 # The spectral radius and powers of a matrix
@@ -31,6 +32,7 @@ the eigenvalues of modulus one are semisimple.
 * `NLAlib.hasSum_pow_inv_one_sub_of_specRadius_lt_one`: the Neumann series.
 * `NLAlib.exists_forall_specNorm_pow_le_mul_pow`: growth of the powers.
 * `NLAlib.exists_forall_specNorm_pow_le_iff`: power-bounded matrices.
+* `NLAlib.specRadius_one_sub_inv_diagonal_mul_lt_one`: convergence of the Jacobi iteration.
 -/
 
 @[expose] public section
@@ -51,6 +53,21 @@ noncomputable def specRadius (A : Matrix n n 𝕜) : ℝ :=
 theorem specRadius_nonneg (A : Matrix n n 𝕜) : 0 ≤ specRadius A := by
   sorry
 
+/-- Over `ℂ` the spectral radius is Mathlib's `spectralRadius`. -/
+theorem specRadius_eq_toReal_spectralRadius (A : Matrix n n ℂ) :
+    specRadius A = (spectralRadius ℂ A).toReal := by
+  sorry
+
+/-- The spectral radius of the complexification. -/
+@[simp]
+theorem specRadius_complexify (A : Matrix n n 𝕜) : specRadius (complexify A) = specRadius A := by
+  sorry
+
+/-- The spectral radius of the identity of positive size is one. -/
+@[simp]
+theorem specRadius_one [Nonempty n] : specRadius (1 : Matrix n n 𝕜) = 1 := by
+  sorry
+
 /-- Every eigenvalue is at most the spectral radius in modulus. -/
 theorem norm_le_specRadius_of_mem_spectrum {A : Matrix n n 𝕜} {μ : 𝕜} (hμ : μ ∈ spectrum 𝕜 A) :
     ‖μ‖ ≤ specRadius A := by
@@ -58,7 +75,7 @@ theorem norm_le_specRadius_of_mem_spectrum {A : Matrix n n 𝕜} {μ : 𝕜} (h�
 
 /-- **The spectral radius through a listing of the eigenvalues.** -/
 theorem specRadius_le_iff_of_charpoly_eq {A : Matrix n n 𝕜} {d : n → ℂ}
-    (hd : (complexify A).charpoly = ∏ i, (X - C (d i))) {c : ℝ} (hc : 0 ≤ c) :
+    (hd : IsEigenvalueListing (complexify A) d) {c : ℝ} (hc : 0 ≤ c) :
     specRadius A ≤ c ↔ ∀ i, ‖d i‖ ≤ c := by
   sorry
 
@@ -72,7 +89,8 @@ theorem specRadius_le_specNorm (A : Matrix n n 𝕜) : specRadius A ≤ specNorm
   sorry
 
 /-- The spectral radius of a power. -/
-theorem specRadius_pow (A : Matrix n n 𝕜) (k : ℕ) : specRadius (A ^ k) = specRadius A ^ k := by
+theorem specRadius_pow [Nonempty n] (A : Matrix n n 𝕜) (k : ℕ) :
+    specRadius (A ^ k) = specRadius A ^ k := by
   sorry
 
 /-- The spectral radius is invariant under similarity. -/
@@ -96,7 +114,7 @@ theorem specRadius_le_of_forall_sum_le {A : Matrix n n 𝕜} {c : ℝ} (hc : 0 �
     (h : ∀ i, ∑ j, ‖A i j‖ ≤ c) : specRadius A ≤ c := by
   sorry
 
-/-- The spectral radius of commuting matrices is subadditive and submultiplicative. -/
+/-- The spectral radius of a sum of commuting matrices is at most the sum. -/
 theorem specRadius_add_le_of_commute {A B : Matrix n n 𝕜} (h : Commute A B) :
     specRadius (A + B) ≤ specRadius A + specRadius B := by
   sorry
@@ -117,8 +135,16 @@ theorem tendsto_specNorm_pow_rpow_specRadius (A : Matrix n n 𝕜) :
   sorry
 
 /-- The spectral radius bounds the powers from below: `ρ(A)ᵏ ≤ ‖Aᵏ‖₂`. -/
-theorem specRadius_pow_le_specNorm_pow (A : Matrix n n 𝕜) (k : ℕ) :
+theorem specRadius_pow_le_specNorm_pow [Nonempty n] (A : Matrix n n 𝕜) (k : ℕ) :
     specRadius A ^ k ≤ specNorm (A ^ k) := by
+  sorry
+
+/-- **Powers through a similarity**: `‖Aᵏ‖₂ ≤ κ(S) ‖S⁻¹ A S‖₂ᵏ` for every invertible `S`. With a
+similarity that brings the norm close to the spectral radius this bounds the transient growth of
+the powers. [TrefethenBau1997, Lecture 24 context]. -/
+theorem specNorm_pow_le_conditionNumber_mul (A : Matrix n n 𝕜) {S : Matrix n n 𝕜}
+    (hS : IsUnit S.det) (k : ℕ) :
+    specNorm (A ^ k) ≤ conditionNumber S * specNorm (S⁻¹ * A * S) ^ k := by
   sorry
 
 /-- **Growth of the powers**: for every `ε > 0`, `‖Aᵏ‖₂ ≤ C (ρ(A) + ε)ᵏ` for some `C`.
@@ -147,6 +173,15 @@ theorem hasSum_pow_inv_one_sub_of_specRadius_lt_one {A : Matrix n n 𝕜}
 Port of `NLAlib.isUnit_one_sub_of_matrix_spectralRadius_lt_one`. -/
 theorem isUnit_det_one_sub_of_specRadius_lt_one {A : Matrix n n 𝕜} (hA : specRadius A < 1) :
     IsUnit (1 - A).det := by
+  sorry
+
+/-- **The Jacobi iteration converges for strictly diagonally dominant matrices**: the iteration
+matrix `1 - D⁻¹ A`, with `D` the diagonal of `A`, has spectral radius less than one.
+[GolubVanLoan2013, Theorem 11.2.2]; [Saad2003, Theorem 4.9].
+Result: jacobi-convergence -/
+theorem specRadius_one_sub_inv_diagonal_mul_lt_one {A : Matrix n n 𝕜}
+    (h : ∀ i, gershgorinRadius A i < ‖A i i‖) :
+    specRadius (1 - (Matrix.diagonal fun i => A i i)⁻¹ * A) < 1 := by
   sorry
 
 /-- **A similarity brings the spectral norm within `ε` of the spectral radius.**

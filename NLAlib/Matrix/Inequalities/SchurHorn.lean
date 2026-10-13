@@ -26,6 +26,8 @@ alone.
 
 ## Main results
 
+* `Matrix.IsHermitian.exists_hasOrthonormalCols_diag_eq_of_majorized`: a real symmetric matrix
+  is orthogonally similar to one with any diagonal majorized by its own.
 * `NLAlib.exists_hasOrthonormalCols_diag_eq_of_majorized`: Horn's theorem.
 * `NLAlib.majorized_iff_exists_hasOrthonormalCols_diag_eq`: the Schur–Horn theorem.
 * `Matrix.IsHermitian.majorized_iff_exists_diag_conj_eq`: for the orbit of a Hermitian matrix.
@@ -89,56 +91,7 @@ private theorem transfer_sub_eq_comp_swap {ι : Type*} [DecidableEq ι] (y : ι 
       Equiv.swap_apply_right]
   · rw [transfer_of_ne y hkp hki, Function.comp_apply, Equiv.swap_apply_of_ne_of_ne hkp hki]
 
-/-! ### Majorization under relabelling and restriction -/
-
-private theorem majorized_comp_equiv_iff {ι κ : Type*} [Fintype ι] [Fintype κ] {x y : ι → ℝ}
-    (e : κ ≃ ι) : Majorized (x ∘ e) (y ∘ e) ↔ Majorized x y := by
-  have hsum (z : ι → ℝ) : ∑ k, (z ∘ e) k = ∑ k, z k := Equiv.sum_comp e z
-  refine ⟨fun h => ⟨fun k => ?_, ?_⟩, fun h => ⟨fun k => ?_, ?_⟩⟩
-  · have hk := h.weaklyMajorized k
-    rwa [sumLargest_comp_equiv, sumLargest_comp_equiv] at hk
-  · have hs := h.sum_eq
-    rwa [hsum, hsum] at hs
-  · rw [sumLargest_comp_equiv, sumLargest_comp_equiv]
-    exact h.weaklyMajorized k
-  · rw [hsum, hsum]
-    exact h.sum_eq
-
-/-- Two vectors that agree outside an index set are majorized exactly when their restrictions to
-the set are. -/
-private theorem majorized_subtype_iff {ι : Type*} [Fintype ι] {x y : ι → ℝ} {s : Finset ι}
-    (h : ∀ k ∉ s, x k = y k) :
-    Majorized (fun k : s => x k) (fun k : s => y k) ↔ Majorized x y := by
-  classical
-  simp only [majorized_iff_forall_sum_convex_le]
-  refine forall₂_congr fun φ _ => ?_
-  have hc : ∑ k ∈ sᶜ, φ (x k) = ∑ k ∈ sᶜ, φ (y k) :=
-    Finset.sum_congr rfl fun k hk => by rw [h k (Finset.mem_compl.mp hk)]
-  rw [Finset.sum_coe_sort s fun k => φ (x k), Finset.sum_coe_sort s fun k => φ (y k),
-    ← Finset.sum_add_sum_compl s fun k => φ (x k), ← Finset.sum_add_sum_compl s fun k => φ (y k),
-    hc, add_le_add_iff_right]
-
-private theorem exists_equiv_antitone_comp {ι : Type*} [Fintype ι] (a : ι → ℝ) :
-    ∃ e : Fin (Fintype.card ι) ≃ ι, Antitone (a ∘ e) := by
-  classical
-  refine ⟨(Tuple.sort fun j => -a ((Fintype.equivFin ι).symm j)).trans (Fintype.equivFin ι).symm,
-    fun i j hij => ?_⟩
-  have h := Tuple.monotone_sort (fun j => -a ((Fintype.equivFin ι).symm j)) hij
-  simpa only [Function.comp_apply, neg_le_neg_iff, Equiv.trans_apply] using h
-
 /-! ### A transfer between adjacent entries of a sorted vector -/
-
-private theorem sumLargest_succ_of_antitone {N : ℕ} {y : Fin N → ℝ} (hy : Antitone y)
-    (i : Fin N) : sumLargest y (i + 1) = sumLargest y i + y i := by
-  have h (k : Fin N) : (if (k : ℕ) < i + 1 then y k else 0) =
-      (if (k : ℕ) < i then y k else 0) + if k = i then y k else 0 := by
-    obtain hlt | heq | hgt := lt_trichotomy (k : ℕ) i
-    · rw [if_pos (Nat.lt_succ_of_lt hlt), if_pos hlt, if_neg (Fin.ne_of_val_ne hlt.ne), add_zero]
-    · rw [if_pos (heq ▸ Nat.lt_succ_self _), if_neg (heq ▸ lt_irrefl _), if_pos (Fin.ext heq),
-        zero_add]
-    · rw [if_neg (by omega), if_neg (by omega), if_neg (Fin.ne_of_val_ne hgt.ne'), add_zero]
-  rw [sumLargest_eq_sum_of_antitone hy, sumLargest_eq_sum_of_antitone hy]
-  simp only [h, Finset.sum_add_distrib, Finset.sum_ite_eq', Finset.mem_univ, if_true]
 
 /-- The first `r` entries of a transfer of a sorted vector bound its `r` largest entries from
 below. -/
@@ -237,7 +190,6 @@ private theorem exists_majorized_transfer_of_antitone {N : ℕ} {x y : Fin N →
   · subst hij
     exact ⟨i, i, hj, hi, by rwa [transfer_self]⟩
   · exact ⟨i, j, hj, hi, majorized_transfer_of_antitone hy h p hij⟩
-
 
 /-- If `x` is majorized by `y` and agrees with it outside an index set `s`, then for every `p` in
 `s` a transfer between two entries of `y` in `s` puts the value `x p` on the diagonal, keeping
@@ -392,17 +344,26 @@ private theorem exists_hasOrthonormalCols_diag_eq_of_card_eq {x : n → ℝ} (m 
     rw [← hQx]
     simp only [Matrix.conjTranspose_mul, Matrix.mul_assoc]
 
+/-- **Horn's theorem for a real symmetric matrix.** If `x` is majorized by the diagonal of a real
+symmetric matrix `A`, there is a real orthogonal matrix `Q` such that `Q * A * Qᴴ` has diagonal
+`x`. For a diagonal `A` this is Horn's theorem
+(`exists_hasOrthonormalCols_diag_eq_of_majorized`).
+[HornJohnson2013, Theorem 4.3.48], there for a diagonal matrix. -/
+theorem _root_.Matrix.IsHermitian.exists_hasOrthonormalCols_diag_eq_of_majorized
+    {A : Matrix n n ℝ} (hA : A.IsHermitian) {x : n → ℝ} (h : Majorized x A.diag) :
+    ∃ Q : Matrix n n ℝ, HasOrthonormalCols Q ∧ (Q * A * Qᴴ).diag = x :=
+  exists_hasOrthonormalCols_diag_eq_of_card_eq (Fintype.card n) Finset.univ Finset.card_univ A hA
+    h fun k hk => absurd (Finset.mem_univ k) hk
+
 /-- **Horn's theorem.** If `d` is majorized by `λ`, there is a real orthogonal matrix `Q` such
 that `Q * diagonal λ * Qᴴ` has diagonal `d`.
 [HornJohnson2013, Theorem 4.3.48].
 Port of `NLAlib.exists_orthogonal_diagonal_eq_of_majorized`.
 Result: schur-horn -/
 theorem exists_hasOrthonormalCols_diag_eq_of_majorized {d lam : n → ℝ} (h : Majorized d lam) :
-    ∃ Q : Matrix n n ℝ, HasOrthonormalCols Q ∧ (Q * Matrix.diagonal lam * Qᴴ).diag = d := by
-  refine exists_hasOrthonormalCols_diag_eq_of_card_eq (Fintype.card n) Finset.univ
-    Finset.card_univ (Matrix.diagonal lam) (Matrix.isHermitian_diagonal lam) ?_
-    fun k hk => absurd (Finset.mem_univ k) hk
-  rwa [Matrix.diag_diagonal]
+    ∃ Q : Matrix n n ℝ, HasOrthonormalCols Q ∧ (Q * Matrix.diagonal lam * Qᴴ).diag = d :=
+  (Matrix.isHermitian_diagonal lam).exists_hasOrthonormalCols_diag_eq_of_majorized
+    (by rwa [Matrix.diag_diagonal])
 
 /-- **The Schur–Horn theorem.** A real vector `d` is majorized by `λ` exactly when it is the
 diagonal of `Q * diagonal λ * Qᴴ` for some real orthogonal `Q`.

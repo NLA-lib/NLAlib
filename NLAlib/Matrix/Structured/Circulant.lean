@@ -83,14 +83,20 @@ theorem transpose_fourierMatrix (n : ℕ) : (fourierMatrix n)ᵀ = fourierMatrix
 theorem hasOrthonormalCols_fourierMatrix (n : ℕ) : HasOrthonormalCols (fourierMatrix n) := by
   sorry
 
+/-- The unitary discrete Fourier transform of a vector, scaled by `√n`, is the discrete Fourier
+transform: `√n (Fᴴ v)_k = ∑ l, v l * exp (-2π i k l / n)`. -/
+theorem sqrt_mul_conjTranspose_fourierMatrix_mulVec_apply (v : Fin n → ℂ) (k : Fin n) :
+    (√(n : ℝ) : ℂ) * ((fourierMatrix n)ᴴ *ᵥ v) k =
+      ∑ l : Fin n, v l * Complex.exp (-(2 * Real.pi * Complex.I * (k : ℕ) * (l : ℕ) / n)) := by
+  sorry
+
 /-- **Fourier diagonalisation of a circulant matrix.** `circulant v = F diag(v̂) Fᴴ` with `F` the
-Fourier matrix and `v̂ k = ∑ l, v l * exp (-2π i k l / n)` the discrete Fourier transform.
-[HornJohnson2013, §2.2.P10]; [GolubVanLoan2013, §4.8.2]. -/
+Fourier matrix and `v̂ = √n Fᴴ v` the discrete Fourier transform of `v`.
+[HornJohnson2013, §2.2.P10]; [GolubVanLoan2013, §4.8.2].
+Result: circulant-diagonalization -/
 theorem circulant_eq_fourierMatrix_mul_diagonal_mul_conjTranspose (v : Fin n → ℂ) :
     Matrix.circulant v =
-      fourierMatrix n *
-        Matrix.diagonal (fun k : Fin n =>
-          ∑ l : Fin n, v l * Complex.exp (-(2 * Real.pi * Complex.I * (k : ℕ) * (l : ℕ) / n))) *
+      fourierMatrix n * Matrix.diagonal ((√(n : ℝ) : ℂ) • ((fourierMatrix n)ᴴ *ᵥ v)) *
         (fourierMatrix n)ᴴ := by
   sorry
 
@@ -102,17 +108,13 @@ theorem isStarNormal_circulant (v : Fin n → ℂ) : IsStarNormal (Matrix.circul
 of its first column. -/
 theorem specNorm_circulant_le_iff (v : Fin n → ℂ) {c : ℝ} (hc : 0 ≤ c) :
     specNorm (Matrix.circulant v) ≤ c ↔
-      ∀ k : Fin n,
-        ‖∑ l : Fin n, v l * Complex.exp (-(2 * Real.pi * Complex.I * (k : ℕ) * (l : ℕ) / n))‖ ≤
-          c := by
+      ∀ k : Fin n, √(n : ℝ) * ‖((fourierMatrix n)ᴴ *ᵥ v) k‖ ≤ c := by
   sorry
 
 /-- The determinant of a circulant matrix is the product of the Fourier coefficients of its
 first column. -/
 theorem det_circulant (v : Fin n → ℂ) :
-    (Matrix.circulant v).det =
-      ∏ k : Fin n,
-        ∑ l : Fin n, v l * Complex.exp (-(2 * Real.pi * Complex.I * (k : ℕ) * (l : ℕ) / n)) := by
+    (Matrix.circulant v).det = ∏ k : Fin n, (√(n : ℝ) : ℂ) * ((fourierMatrix n)ᴴ *ᵥ v) k := by
   sorry
 
 end NLAlib

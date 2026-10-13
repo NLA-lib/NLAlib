@@ -24,6 +24,8 @@ majorization is characterised by monotone convex functions.
 * `NLAlib.majorized_iff_exists_doublyStochastic`: Hardy–Littlewood–Pólya.
 * `NLAlib.majorized_iff_mem_convexHull_permutations`: Rado.
 * `NLAlib.Majorized.sum_convex_le`, `NLAlib.majorized_iff_forall_sum_convex_le`: Karamata.
+* `NLAlib.majorized_subtype_iff`: vectors that agree outside an index set are majorized exactly
+  when their restrictions to it are.
 * `NLAlib.Majorized.le_of_convexOn_of_comp_perm`: symmetric convex functions are Schur-convex.
 * `NLAlib.WeaklyMajorized.sum_monotone_convex_le`,
   `NLAlib.weaklyMajorized_iff_forall_sum_monotone_convex_le`: Tomić–Weyl and its converse.
@@ -170,21 +172,13 @@ private theorem sum_mul_le_sum_mul_of_antitone {N : ℕ} {a b c : Fin N → ℝ}
       rw [extendFin, dif_pos hi]
       exact hc _
 
-private theorem exists_equiv_antitone (a : ι → ℝ) :
-    ∃ e : Fin (Fintype.card ι) ≃ ι, Antitone (a ∘ e) := by
-  classical
-  refine ⟨(Tuple.sort fun j => -a ((Fintype.equivFin ι).symm j)).trans (Fintype.equivFin ι).symm,
-    fun i j hij => ?_⟩
-  have h := Tuple.monotone_sort (fun j => -a ((Fintype.equivFin ι).symm j)) hij
-  simpa only [Function.comp_apply, neg_le_neg_iff, Equiv.trans_apply] using h
-
 /-- The pairing of a weight vector with a weakly majorized vector is at most its pairing with a
 permutation of the majorizing vector, when the totals agree or the weight is nonnegative. -/
 private theorem exists_perm_sum_mul_le_aux {x y : ι → ℝ} (h : WeaklyMajorized x y) (a : ι → ℝ)
     (hc : ∑ i, x i = ∑ i, y i ∨ ∀ i, 0 ≤ a i) :
     ∃ σ : Equiv.Perm ι, ∑ i, a i * x i ≤ ∑ i, a i * y (σ i) := by
-  obtain ⟨e₁, ha⟩ := exists_equiv_antitone a
-  obtain ⟨e₂, hy⟩ := exists_equiv_antitone y
+  obtain ⟨e₁, ha⟩ := exists_equiv_antitone_comp a
+  obtain ⟨e₂, hy⟩ := exists_equiv_antitone_comp y
   refine ⟨e₁.symm.trans e₂, ?_⟩
   have h1 : ∑ i, a i * x i = ∑ j, (a ∘ e₁) j * (x ∘ e₁) j :=
     (Equiv.sum_comp e₁ fun i => a i * x i).symm
@@ -354,6 +348,19 @@ theorem majorized_iff_forall_sum_convex_le {x y : ι → ℝ} :
   have hneg := h (fun u => -u) (concaveOn_id convex_univ).neg
   simp only [id_eq, Finset.sum_neg_distrib, neg_le_neg_iff] at hpos hneg
   exact le_antisymm hpos hneg
+
+/-- **Majorization is decided on the entries that differ.** Two vectors that agree outside an
+index set `s` are majorized exactly when their restrictions to `s` are. -/
+theorem majorized_subtype_iff {x y : ι → ℝ} {s : Finset ι} (h : ∀ k ∉ s, x k = y k) :
+    Majorized (fun k : s => x k) (fun k : s => y k) ↔ Majorized x y := by
+  classical
+  simp only [majorized_iff_forall_sum_convex_le]
+  refine forall₂_congr fun φ _ => ?_
+  have hc : ∑ k ∈ sᶜ, φ (x k) = ∑ k ∈ sᶜ, φ (y k) :=
+    Finset.sum_congr rfl fun k hk => by rw [h k (Finset.mem_compl.mp hk)]
+  rw [Finset.sum_coe_sort s fun k => φ (x k), Finset.sum_coe_sort s fun k => φ (y k),
+    ← Finset.sum_add_sum_compl s fun k => φ (x k), ← Finset.sum_add_sum_compl s fun k => φ (y k),
+    hc, add_le_add_iff_right]
 
 /-! ### Weak majorization -/
 

@@ -8,6 +8,7 @@ module
 public import Mathlib.LinearAlgebra.Matrix.Kronecker
 public import NLAlib.Matrix.Norms.Nuclear
 public import NLAlib.Matrix.Pseudoinverse.ConditionNumber
+public import NLAlib.Matrix.Spectral.Schur
 
 /-!
 # Kronecker products
@@ -79,6 +80,23 @@ theorem kronecker_one_add_one_kronecker_eq_mul_diagonal_mul_conjTranspose {A U :
     (hB : B = V * Matrix.diagonal b * Vᴴ) :
     A ⊗ₖ (1 : Matrix n n 𝕜) + (1 : Matrix m m 𝕜) ⊗ₖ B =
       (U ⊗ₖ V) * Matrix.diagonal (fun ij : m × n => a ij.1 + b ij.2) * (U ⊗ₖ V)ᴴ := by
+  sorry
+
+/-- **The eigenvalues of a Kronecker product are the products of the eigenvalues**, for any two
+square matrices whose eigenvalues are listed. [HornJohnson1991, Theorem 4.2.12]. -/
+theorem IsEigenvalueListing.kronecker {K : Type*} [Field K] {A : Matrix m m K}
+    {B : Matrix n n K} {a : m → K} {b : n → K} (hA : IsEigenvalueListing A a)
+    (hB : IsEigenvalueListing B b) :
+    IsEigenvalueListing (A ⊗ₖ B) fun ij : m × n => a ij.1 * b ij.2 := by
+  sorry
+
+/-- **The eigenvalues of a Kronecker sum are the sums of the eigenvalues.**
+[HornJohnson1991, Theorem 4.4.5]. -/
+theorem IsEigenvalueListing.kronecker_one_add_one_kronecker {K : Type*} [Field K]
+    {A : Matrix m m K} {B : Matrix n n K} {a : m → K} {b : n → K}
+    (hA : IsEigenvalueListing A a) (hB : IsEigenvalueListing B b) :
+    IsEigenvalueListing (A ⊗ₖ (1 : Matrix n n K) + (1 : Matrix m m K) ⊗ₖ B)
+      fun ij : m × n => a ij.1 + b ij.2 := by
   sorry
 
 /-- The largest eigenvalue of a Kronecker sum of Hermitian matrices is the sum of the largest

@@ -15,9 +15,13 @@ The Hadamard product of two matrices is the submatrix of their Kronecker product
 index pairs. Inequalities for Hadamard products follow from those for Kronecker products and for
 compressions.
 
+Also the distributivity of the Hadamard product over subtraction, the companion of Mathlib's
+`Matrix.add_hadamard` and `Matrix.hadamard_add`.
+
 ## Main results
 
 * `Matrix.hadamard_eq_submatrix_kronecker`.
+* `Matrix.sub_hadamard`, `Matrix.hadamard_sub`.
 -/
 
 @[expose] public section
@@ -33,5 +37,15 @@ variable {R : Type*} {m n : Type*}
 theorem hadamard_eq_submatrix_kronecker [Mul R] (A B : Matrix m n R) :
     A ⊙ B = (A ⊗ₖ B).submatrix (fun i => (i, i)) (fun j => (j, j)) :=
   rfl
+
+/-- The Hadamard product distributes over subtraction in its second factor. -/
+theorem hadamard_sub [NonUnitalNonAssocRing R] (A B C : Matrix m n R) :
+    A ⊙ (B - C) = A ⊙ B - A ⊙ C :=
+  ext fun _ _ => mul_sub _ _ _
+
+/-- The Hadamard product distributes over subtraction in its first factor. -/
+theorem sub_hadamard [NonUnitalNonAssocRing R] (A B C : Matrix m n R) :
+    (B - C) ⊙ A = B ⊙ A - C ⊙ A :=
+  ext fun _ _ => sub_mul _ _ _
 
 end Matrix

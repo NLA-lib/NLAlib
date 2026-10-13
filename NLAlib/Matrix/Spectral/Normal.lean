@@ -22,7 +22,8 @@ Frobenius distance (Hoffman–Wielandt).
 ## Main results
 
 * `NLAlib.isStarNormal_iff_exists_eq_mul_diagonal_mul_conjTranspose`: the spectral theorem.
-* `IsStarNormal.exists_eq_mul_diagonal_mul_conjTranspose_of_charpoly_eq`: with prescribed order.
+* `IsStarNormal.exists_eq_mul_diagonal_mul_conjTranspose_of_isEigenvalueListing`: with a prescribed
+  order.
 * `IsStarNormal.isDiag_of_isUpperTriangular`.
 * `IsStarNormal.mul_eq_mul_iff_conjTranspose_mul_eq_mul_conjTranspose`: Fuglede–Putnam.
 * `IsStarNormal.exists_eq_mul_mul_conjTranspose_iff_charpoly_eq`: unitary similarity.
@@ -50,9 +51,9 @@ theorem isStarNormal_mul_diagonal_mul_conjTranspose {U : Matrix n n 𝕜}
 /-- **A normal matrix whose characteristic polynomial splits is unitarily diagonalisable**, with
 its eigenvalues in any prescribed order. [HornJohnson2013, Theorem 2.5.3].
 Port of `NLAlib.exists_unitary_diagonalization_of_normal_with_charpoly`, there over `ℂ`. -/
-theorem _root_.IsStarNormal.exists_eq_mul_diagonal_mul_conjTranspose_of_charpoly_eq
+theorem _root_.IsStarNormal.exists_eq_mul_diagonal_mul_conjTranspose_of_isEigenvalueListing
     {A : Matrix n n 𝕜} (hA : IsStarNormal A) {d : n → 𝕜}
-    (hd : A.charpoly = ∏ i, (X - C (d i))) :
+    (hd : IsEigenvalueListing A d) :
     ∃ U : Matrix n n 𝕜, HasOrthonormalCols U ∧ A = U * Matrix.diagonal d * Uᴴ := by
   sorry
 
@@ -80,26 +81,27 @@ theorem eq_zero_of_isStarNormal_fromBlocks {A : Matrix m m 𝕜} {B : Matrix n n
 
 /-- A normal matrix with listed eigenvalues `d` is Hermitian exactly when the `d i` are real. -/
 theorem _root_.IsStarNormal.isHermitian_iff_forall_im_eq_zero {A : Matrix n n 𝕜}
-    (hA : IsStarNormal A) {d : n → 𝕜} (hd : A.charpoly = ∏ i, (X - C (d i))) :
+    (hA : IsStarNormal A) {d : n → 𝕜} (hd : IsEigenvalueListing A d) :
     A.IsHermitian ↔ ∀ i, RCLike.im (d i) = 0 := by
   sorry
 
 /-- A normal matrix with listed eigenvalues `d` is unitary exactly when the `d i` have modulus
 one. -/
 theorem _root_.IsStarNormal.hasOrthonormalCols_iff_forall_norm_eq_one {A : Matrix n n 𝕜}
-    (hA : IsStarNormal A) {d : n → 𝕜} (hd : A.charpoly = ∏ i, (X - C (d i))) :
+    (hA : IsStarNormal A) {d : n → 𝕜} (hd : IsEigenvalueListing A d) :
     HasOrthonormalCols A ↔ ∀ i, ‖d i‖ = 1 := by
   sorry
 
 /-- The squared Frobenius norm of a normal matrix is the sum of the squared moduli of its
 eigenvalues. Port of `NLAlib.frobSq_eq_sum_norm_sq_of_normal`. -/
 theorem _root_.IsStarNormal.frobNorm_sq_eq_sum {A : Matrix n n 𝕜} (hA : IsStarNormal A)
-    {d : n → 𝕜} (hd : A.charpoly = ∏ i, (X - C (d i))) : frobNorm A ^ 2 = ∑ i, ‖d i‖ ^ 2 := by
+    {ι : Type*} [Fintype ι] {d : ι → 𝕜} (hd : IsEigenvalueListing A d) :
+    frobNorm A ^ 2 = ∑ i, ‖d i‖ ^ 2 := by
   sorry
 
 /-- The spectral norm of a normal matrix is the largest modulus of an eigenvalue. -/
 theorem _root_.IsStarNormal.specNorm_le_iff {A : Matrix n n 𝕜} (hA : IsStarNormal A)
-    {d : n → 𝕜} (hd : A.charpoly = ∏ i, (X - C (d i))) {c : ℝ} (hc : 0 ≤ c) :
+    {d : n → 𝕜} (hd : IsEigenvalueListing A d) {c : ℝ} (hc : 0 ≤ c) :
     specNorm A ≤ c ↔ ∀ i, ‖d i‖ ≤ c := by
   sorry
 
@@ -127,9 +129,9 @@ can be matched so that the sum of squared distances is at most `‖A - B‖_F²`
 [HornJohnson2013, Theorem 6.3.5]; [Bhatia1997, Theorem VI.4.1].
 Result: hoffman-wielandt-normal -/
 theorem _root_.IsStarNormal.exists_perm_sum_norm_sub_sq_le_frobNorm_sq {A B : Matrix n n 𝕜}
-    (hA : IsStarNormal A) (hB : IsStarNormal B) {a b : n → 𝕜}
-    (ha : A.charpoly = ∏ i, (X - C (a i))) (hb : B.charpoly = ∏ i, (X - C (b i))) :
-    ∃ σ : Equiv.Perm n, ∑ i, ‖a i - b (σ i)‖ ^ 2 ≤ frobNorm (A - B) ^ 2 := by
+    (hA : IsStarNormal A) (hB : IsStarNormal B) {ι : Type*} [Fintype ι] {a b : ι → 𝕜}
+    (ha : IsEigenvalueListing A a) (hb : IsEigenvalueListing B b) :
+    ∃ σ : Equiv.Perm ι, ∑ i, ‖a i - b (σ i)‖ ^ 2 ≤ frobNorm (A - B) ^ 2 := by
   sorry
 
 end NLAlib

@@ -284,12 +284,12 @@ those layers are designed.
 | leading principal minor | `principalMinor A (Finset.Iic i)`; proper ones `Finset.Iio i` | — |
 | polar factor | `polarFactor A = A * pinv (CFC.sqrt (Aᴴ * A))`, every shape and rank | `IsSVD.polarFactor_eq` |
 | rank-revealing column selection | `C = A.submatrix id e` with coefficients `pinv C * A` and residual `(1 - rangeProjector C) * A`; certificate `IsLocalMaxVolume A e f` | — |
-| eigenvalues of a general matrix | a listing `d` with `A.charpoly = ∏ i, (X - C (d i))` | `Matrix.IsHermitian.charpoly_eq_prod_eigenvalue` |
+| eigenvalues of a general matrix | a listing, `IsEigenvalueListing A d`: `A.charpoly = ∏ i, (X - C (d i))` | `Matrix.IsHermitian.isEigenvalueListing_eigenvalue` |
 | normal, diagonalisable | Mathlib's `IsStarNormal A`; `IsDiagonalizable A` | `isDiagonalizable_iff_isSemisimple` |
 | inertia | `inertiaPos A`, `inertiaNeg A` | `Matrix.IsHermitian.inertiaPos_add_inertiaNeg` |
 | spectral radius | `specRadius A : ℝ`, for matrices over `𝕜` | Mathlib's `spectralRadius ℂ (complexify A)` |
-| Gershgorin radius | `∑ j ∈ Finset.univ.erase i, ‖A i j‖` | Mathlib's `eigenvalue_mem_ball` |
-| Hermitian part | `(2⁻¹ : ℝ) • (A + Aᴴ)` | — |
+| Gershgorin radius | `gershgorinRadius A i` | `gershgorinRadius_def`; Mathlib's `eigenvalue_mem_ball` |
+| Hermitian part | `hermitianPart A` | `hermitianPart_eq_selfAdjointPart` |
 | structured matrices | Mathlib's `A ⊗ₖ B`, `Matrix.circulant v`; `fourierMatrix n`, `walshHadamard R b`, `cauchyMatrix x y` | `Matrix.IsHadamard` |
 | random matrix | `X : Ω → Matrix m n 𝕜`, `Measurable X` (global `Matrix.instMeasurableSpace`, `ForMathlib`) | — |
 | law | `HasLaw X ν μ` | Mathlib's |

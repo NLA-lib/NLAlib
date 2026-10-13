@@ -67,7 +67,8 @@ theorem Measurable.matrix_transpose [MeasurableSpace α] {f : β → Matrix m n 
     (hf : Measurable f) : Measurable fun x => (f x)ᵀ := by
   sorry
 
-/-- The conjugate transpose of a measurable matrix-valued function is measurable. -/
+/-- The conjugate transpose of a measurable matrix-valued function is measurable, when `star` is
+measurable on the entries (Mathlib has no class for this). -/
 theorem Measurable.matrix_conjTranspose [MeasurableSpace α] [Star α]
     (hstar : Measurable (star : α → α)) {f : β → Matrix m n α} (hf : Measurable f) :
     Measurable fun x => (f x)ᴴ := by
@@ -105,7 +106,7 @@ theorem Measurable.matrix_det [MeasurableSpace α] [Fintype n] [DecidableEq n] [
 
 /-- The powers of a measurable matrix-valued function are measurable. -/
 theorem Measurable.matrix_pow [MeasurableSpace α] [Fintype n] [DecidableEq n] [Semiring α]
-    [MeasurableAdd₂ α] [MeasurableMul₂ α] [MeasurableSingletonClass α] {f : β → Matrix n n α}
+    [MeasurableAdd₂ α] [MeasurableMul₂ α] {f : β → Matrix n n α}
     (hf : Measurable f) (k : ℕ) : Measurable fun x => f x ^ k := by
   sorry
 

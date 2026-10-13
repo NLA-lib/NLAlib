@@ -133,12 +133,6 @@ theorem neg_hadamard_le_hadamard_of_neg_le_of_le {A B C D : Matrix n n 𝕜} (hA
   rw [Matrix.le_iff, e]
   exact ((hp.hadamard hp').add (hm.hadamard hm')).smul (by norm_num : (0 : ℝ) ≤ 1 / 2)
 
-omit [Fintype n] [DecidableEq n] in
-/-- The Hadamard product distributes over subtraction in its first factor. -/
-private theorem sub_hadamard (A C B : Matrix n n 𝕜) : (A - C) ⊙ B = A ⊙ B - C ⊙ B := by
-  ext i j
-  simp only [Matrix.sub_apply, Matrix.hadamard_apply, sub_mul]
-
 omit [Fintype n] in
 /-- The Hadamard product with a real multiple of the identity keeps the diagonal. -/
 private theorem smul_one_hadamard (a : ℝ) (B : Matrix n n 𝕜) :
@@ -154,7 +148,7 @@ theorem _root_.Matrix.PosSemidef.smul_diagonal_le_hadamard {A B : Matrix n n �
     (hB : B.PosSemidef) (hA : a • (1 : Matrix n n 𝕜) ≤ A) :
     a • Matrix.diagonal (fun i => B i i) ≤ A ⊙ B := by
   have h := (Matrix.le_iff.mp hA).hadamard hB
-  rwa [Matrix.le_iff, ← smul_one_hadamard, ← sub_hadamard]
+  rwa [Matrix.le_iff, ← smul_one_hadamard, ← Matrix.sub_hadamard]
 
 omit [Fintype n] in
 /-- The upper companion: if `A ≤ b • 1` and `B` is positive semidefinite then
@@ -163,22 +157,7 @@ theorem _root_.Matrix.PosSemidef.hadamard_le_smul_diagonal {A B : Matrix n n �
     (hB : B.PosSemidef) (hA : A ≤ b • (1 : Matrix n n 𝕜)) :
     A ⊙ B ≤ b • Matrix.diagonal (fun i => B i i) := by
   have h := (Matrix.le_iff.mp hA).hadamard hB
-  rwa [Matrix.le_iff, ← smul_one_hadamard, ← sub_hadamard]
-
-omit [Fintype n] in
-/-- A positive definite matrix is bounded below by a positive multiple of the identity. -/
-private theorem exists_pos_smul_one_le [Finite n] {A : Matrix n n 𝕜} (hA : A.PosDef) :
-    ∃ a : ℝ, 0 < a ∧ a • (1 : Matrix n n 𝕜) ≤ A := by
-  have := Fintype.ofFinite n
-  have hc : 0 < specNorm A⁻¹ + 1 := add_pos_of_nonneg_of_pos (specNorm_nonneg _) one_pos
-  have h := hA.inv.inv_le_inv_of_le
-    (hA.inv.isHermitian.le_smul_one_of_specNorm_le (le_add_of_nonneg_right zero_le_one))
-  have e : ((specNorm A⁻¹ + 1) • (1 : Matrix n n 𝕜))⁻¹ =
-      (specNorm A⁻¹ + 1)⁻¹ • (1 : Matrix n n 𝕜) :=
-    Matrix.inv_eq_right_inv (by
-      rw [Matrix.smul_mul, Matrix.one_mul, smul_smul, mul_inv_cancel₀ hc.ne', one_smul])
-  rw [e, Matrix.nonsing_inv_nonsing_inv A ((Matrix.isUnit_iff_isUnit_det A).mp hA.isUnit)] at h
-  exact ⟨_, inv_pos.mpr hc, h⟩
+  rwa [Matrix.le_iff, ← smul_one_hadamard, ← Matrix.sub_hadamard]
 
 omit [Fintype n] [DecidableEq n] in
 /-- The Hadamard product of a positive definite matrix with a positive semidefinite matrix with
@@ -188,7 +167,7 @@ theorem _root_.Matrix.PosDef.hadamard_of_forall_diag_pos [Finite n] {A B : Matri
     (hA : A.PosDef) (hB : B.PosSemidef) (hdiag : ∀ i, 0 < RCLike.re (B i i)) :
     (A ⊙ B).PosDef := by
   classical
-  obtain ⟨a, ha, hle⟩ := exists_pos_smul_one_le hA
+  obtain ⟨a, ha, hle⟩ := hA.exists_pos_smul_one_le
   have hd : (a • Matrix.diagonal (fun i => B i i)).PosDef :=
     (Matrix.PosDef.diagonal fun i =>
       RCLike.pos_iff.mpr ⟨hdiag i, (RCLike.nonneg_iff.mp hB.diag_nonneg).2⟩).smul ha
@@ -227,22 +206,9 @@ theorem _root_.Matrix.PosDef.one_le_hadamard_inv {A : Matrix n n 𝕜} (hA : A.P
 
 /-! ### Determinants -/
 
-/-- The real part of a product whose first factor is the determinant of a Hermitian matrix. -/
-private theorem re_det_mul {A : Matrix n n 𝕜} (hA : A.IsHermitian) (z : 𝕜) :
-    RCLike.re (A.det * z) = RCLike.re A.det * RCLike.re z := by
-  conv_lhs => rw [hA.det_eq_re_det, RCLike.re_ofReal_mul]
-
 section Oppenheim
 
 variable {ι α : Type*} [Fintype ι] [DecidableEq ι] [Fintype α] [DecidableEq α]
-
-/-- The determinant of a block matrix through the Schur complement of its leading block. -/
-private theorem det_eq_det_toBlocks₁₁_mul (M : Matrix (ι ⊕ α) (ι ⊕ α) 𝕜)
-    (h : IsUnit M.toBlocks₁₁) : M.det = M.toBlocks₁₁.det *
-      (M.toBlocks₂₂ - M.toBlocks₂₁ * M.toBlocks₁₁⁻¹ * M.toBlocks₁₂).det := by
-  let : Invertible M.toBlocks₁₁ := h.invertible
-  conv_lhs => rw [← Matrix.fromBlocks_toBlocks M]
-  rw [Matrix.det_fromBlocks₁₁, Matrix.invOf_eq_nonsing_inv]
 
 omit [Fintype ι] [DecidableEq ι] [Fintype α] [DecidableEq α] in
 /-- The lower left block of a Hermitian block matrix. -/
@@ -316,11 +282,12 @@ private theorem re_det_mul_prod_le_step
   have h2 := (hS.posSemidef.hadamard hK₂).re_det_le_re_det_of_le hle
   have h11 : RCLike.re (H ⊙ K).toBlocks₁₁.det =
       RCLike.re H.toBlocks₁₁.det * RCLike.re (K (Sum.inl default) (Sum.inl default)) := by
-    rw [← re_det_mul hA.isHermitian, Matrix.det_unique, Matrix.det_unique]
+    rw [← hA.isHermitian.re_det_mul, Matrix.det_unique, Matrix.det_unique]
     rfl
   have hp : 0 ≤ RCLike.re H.toBlocks₁₁.det := (RCLike.pos_iff.mp hA.det_pos).1.le
-  rw [det_eq_det_toBlocks₁₁_mul H hA.isUnit, det_eq_det_toBlocks₁₁_mul (H ⊙ K) hAA'.isUnit,
-    re_det_mul hA.isHermitian, re_det_mul hAA'.isHermitian, h11, Fintype.prod_sum_type,
+  rw [det_eq_det_toBlocks₁₁_mul_det H hA.isUnit,
+    det_eq_det_toBlocks₁₁_mul_det (H ⊙ K) hAA'.isUnit, hA.isHermitian.re_det_mul,
+    hAA'.isHermitian.re_det_mul, h11, Fintype.prod_sum_type,
     Fintype.prod_unique]
   calc RCLike.re H.toBlocks₁₁.det * _ * (_ * _) = RCLike.re H.toBlocks₁₁.det *
         RCLike.re (K (Sum.inl default) (Sum.inl default)) * (_ * _) := by ring

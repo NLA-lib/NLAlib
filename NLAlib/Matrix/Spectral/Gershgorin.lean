@@ -20,7 +20,11 @@ in real part has its eigenvalues in the right half plane, an irreducibly diagona
 matrix is nonsingular (Taussky), and a union of discs disjoint from the others contains as many
 eigenvalues as discs.
 
-The off-diagonal row sum is `∑ j ∈ Finset.univ.erase i, ‖A i j‖`, as in Mathlib.
+The off-diagonal row sum is `gershgorinRadius A i`, as in Mathlib.
+
+## Main definitions
+
+* `NLAlib.gershgorinRadius`: the off-diagonal row sum.
 
 ## Main results
 
@@ -29,7 +33,8 @@ The off-diagonal row sum is `∑ j ∈ Finset.univ.erase i, ‖A i j‖`, as in 
   definiteness.
 * `NLAlib.re_pos_of_mem_spectrum_of_forall_sum_lt_re`.
 * `NLAlib.det_ne_zero_of_isIrreducible_of_forall_sum_le`: Taussky's theorem.
-* `NLAlib.countP_roots_charpoly_mem_iUnion_closedBall`: counting eigenvalues in a union of discs.
+* `NLAlib.card_roots_charpoly_filter_mem_iUnion_closedBall`: counting eigenvalues in a union of
+  discs.
 -/
 
 @[expose] public section
@@ -40,19 +45,34 @@ namespace NLAlib
 
 variable {𝕜 : Type*} [RCLike 𝕜] {n : Type*} [Fintype n] [DecidableEq n]
 
+/-- The **Gershgorin radius** of row `i`: the sum of the moduli of the off-diagonal entries of
+the row. The radius of column `j` is `gershgorinRadius Aᵀ j`. [HornJohnson2013, §6.1].
+Port of `NLAlib.gershgorinRowRadius`. -/
+def gershgorinRadius (A : Matrix n n 𝕜) (i : n) : ℝ :=
+  ∑ j ∈ Finset.univ.erase i, ‖A i j‖
+
+/-- The Gershgorin radius unfolded, in the spelling of Mathlib's `eigenvalue_mem_ball`. -/
+theorem gershgorinRadius_def (A : Matrix n n 𝕜) (i : n) :
+    gershgorinRadius A i = ∑ j ∈ Finset.univ.erase i, ‖A i j‖ :=
+  rfl
+
+/-- The Gershgorin radius is nonnegative. Port of `NLAlib.gershgorinRowRadius_nonneg`. -/
+theorem gershgorinRadius_nonneg (A : Matrix n n 𝕜) (i : n) : 0 ≤ gershgorinRadius A i := by
+  sorry
+
 /-! ### The circle theorem -/
 
 /-- **Gershgorin's circle theorem**, by rows: every eigenvalue lies in a disc centred at a
 diagonal entry with radius the off-diagonal row sum. [HornJohnson2013, Theorem 6.1.1].
 Port of `NLAlib.exists_mem_gershgorinRowDisc_of_mem_spectrum`. -/
 theorem exists_norm_sub_le_sum_of_mem_spectrum {A : Matrix n n 𝕜} {μ : 𝕜}
-    (hμ : μ ∈ spectrum 𝕜 A) : ∃ i, ‖μ - A i i‖ ≤ ∑ j ∈ Finset.univ.erase i, ‖A i j‖ := by
+    (hμ : μ ∈ spectrum 𝕜 A) : ∃ i, ‖μ - A i i‖ ≤ gershgorinRadius A i := by
   sorry
 
 /-- Gershgorin's circle theorem, by columns.
 Port of `NLAlib.exists_mem_gershgorinColumnDisc_of_mem_spectrum`. -/
 theorem exists_norm_sub_le_sum_col_of_mem_spectrum {A : Matrix n n 𝕜} {μ : 𝕜}
-    (hμ : μ ∈ spectrum 𝕜 A) : ∃ j, ‖μ - A j j‖ ≤ ∑ i ∈ Finset.univ.erase j, ‖A i j‖ := by
+    (hμ : μ ∈ spectrum 𝕜 A) : ∃ j, ‖μ - A j j‖ ≤ gershgorinRadius Aᵀ j := by
   sorry
 
 /-- Every eigenvalue is at most a row sum in absolute value.
@@ -75,14 +95,14 @@ theorem exists_norm_le_weighted_sum_of_mem_spectrum {A : Matrix n n 𝕜} {μ : 
 definite.** [HornJohnson2013, Theorem 6.1.10].
 Port of `NLAlib.posDef_of_isHermitian_of_row_radius_lt_diag`, there over `ℝ`. -/
 theorem _root_.Matrix.IsHermitian.posDef_of_forall_sum_lt_re {A : Matrix n n 𝕜}
-    (hA : A.IsHermitian) (h : ∀ i, ∑ j ∈ Finset.univ.erase i, ‖A i j‖ < RCLike.re (A i i)) :
+    (hA : A.IsHermitian) (h : ∀ i, gershgorinRadius A i < RCLike.re (A i i)) :
     A.PosDef := by
   sorry
 
 /-- A Hermitian weakly diagonally dominant matrix with nonnegative diagonal is positive
 semidefinite. -/
 theorem _root_.Matrix.IsHermitian.posSemidef_of_forall_sum_le_re {A : Matrix n n 𝕜}
-    (hA : A.IsHermitian) (h : ∀ i, ∑ j ∈ Finset.univ.erase i, ‖A i j‖ ≤ RCLike.re (A i i)) :
+    (hA : A.IsHermitian) (h : ∀ i, gershgorinRadius A i ≤ RCLike.re (A i i)) :
     A.PosSemidef := by
   sorry
 
@@ -90,7 +110,7 @@ theorem _root_.Matrix.IsHermitian.posSemidef_of_forall_sum_le_re {A : Matrix n n
 plane.** [HornJohnson2013, Theorem 6.1.10].
 Port of `NLAlib.re_pos_of_mem_spectrum_of_row_radius_lt_re_diag`. -/
 theorem re_pos_of_mem_spectrum_of_forall_sum_lt_re {A : Matrix n n 𝕜}
-    (h : ∀ i, ∑ j ∈ Finset.univ.erase i, ‖A i j‖ < RCLike.re (A i i)) {μ : 𝕜}
+    (h : ∀ i, gershgorinRadius A i < RCLike.re (A i i)) {μ : 𝕜}
     (hμ : μ ∈ spectrum 𝕜 A) : 0 < RCLike.re μ := by
   sorry
 
@@ -99,8 +119,8 @@ dominant row is nonsingular. [HornJohnson2013, Corollary 6.2.27].
 Port of `NLAlib.det_ne_zero_of_irreducible_weak_diagonal_dominance`. -/
 theorem det_ne_zero_of_isIrreducible_of_forall_sum_le {A : Matrix n n 𝕜}
     (hI : (A.map fun x => ‖x‖).IsIrreducible)
-    (hweak : ∀ i, ∑ j ∈ Finset.univ.erase i, ‖A i j‖ ≤ ‖A i i‖)
-    (hstrict : ∃ i, ∑ j ∈ Finset.univ.erase i, ‖A i j‖ < ‖A i i‖) : A.det ≠ 0 := by
+    (hweak : ∀ i, gershgorinRadius A i ≤ ‖A i i‖)
+    (hstrict : ∃ i, gershgorinRadius A i < ‖A i i‖) : A.det ≠ 0 := by
   sorry
 
 /-- A Hermitian irreducible weakly diagonally dominant matrix with positive diagonal and one
@@ -108,24 +128,21 @@ strictly dominant row is positive definite. [HornJohnson2013, Corollary 6.2.27].
 Port of `NLAlib.posDef_of_isHermitian_of_irreducible_weak_diagonal_dominance`. -/
 theorem _root_.Matrix.IsHermitian.posDef_of_isIrreducible_of_forall_sum_le {A : Matrix n n 𝕜}
     (hA : A.IsHermitian) (hI : (A.map fun x => ‖x‖).IsIrreducible)
-    (hweak : ∀ i, ∑ j ∈ Finset.univ.erase i, ‖A i j‖ ≤ RCLike.re (A i i))
-    (hstrict : ∃ i, ∑ j ∈ Finset.univ.erase i, ‖A i j‖ < RCLike.re (A i i)) : A.PosDef := by
+    (hweak : ∀ i, gershgorinRadius A i ≤ RCLike.re (A i i))
+    (hstrict : ∃ i, gershgorinRadius A i < RCLike.re (A i i)) : A.PosDef := by
   sorry
 
 /-! ### Counting eigenvalues -/
 
+open Classical in
 /-- **A union of Gershgorin discs disjoint from the remaining discs contains exactly as many
 eigenvalues, with multiplicity, as it has discs.** [HornJohnson2013, Theorem 6.1.1].
 Port of `NLAlib.charpolyRootCountIn_gershgorinRowUnion_eq_card`. -/
-theorem countP_roots_charpoly_mem_iUnion_closedBall (A : Matrix n n ℂ) (I : Finset n)
-    (h : Disjoint
-      (⋃ i ∈ I, Metric.closedBall (A i i) (∑ j ∈ Finset.univ.erase i, ‖A i j‖))
-      (⋃ i ∈ Iᶜ, Metric.closedBall (A i i) (∑ j ∈ Finset.univ.erase i, ‖A i j‖))) :
-    letI := Classical.decPred fun z : ℂ =>
-      z ∈ ⋃ i ∈ I, Metric.closedBall (A i i) (∑ j ∈ Finset.univ.erase i, ‖A i j‖)
-    A.charpoly.roots.countP
-      (fun z => z ∈ ⋃ i ∈ I, Metric.closedBall (A i i) (∑ j ∈ Finset.univ.erase i, ‖A i j‖)) =
-      I.card := by
+theorem card_roots_charpoly_filter_mem_iUnion_closedBall (A : Matrix n n ℂ) (I : Finset n)
+    (h : Disjoint (⋃ i ∈ I, Metric.closedBall (A i i) (gershgorinRadius A i))
+      (⋃ i ∈ Iᶜ, Metric.closedBall (A i i) (gershgorinRadius A i))) :
+    Multiset.card (A.charpoly.roots.filter fun z =>
+      z ∈ ⋃ i ∈ I, Metric.closedBall (A i i) (gershgorinRadius A i)) = I.card := by
   sorry
 
 end NLAlib

@@ -19,8 +19,8 @@ interpolates between `det A` and Hadamard's bound `∏ A i i`.
 * `Matrix.PosSemidef.re_principalMinor_pow_le_prod_erase`: a minor against its sub-minors of one
   size less.
 * `Matrix.PosSemidef.prod_re_principalMinor_succ_pow_le`: Szász's inequality.
-* `NLAlib.principalMinor_erase_univ_eq`: complementary minors and the diagonal of the
-  inverse.
+* `NLAlib.principalMinor_erase_univ_eq_adjugate`, `NLAlib.principalMinor_erase_univ_eq`:
+  complementary minors as the diagonal of the adjugate and of the inverse.
 -/
 
 @[expose] public section
@@ -31,6 +31,19 @@ namespace NLAlib
 
 variable {𝕜 : Type*} [RCLike 𝕜] {n : Type*} [Fintype n] [DecidableEq n]
 
+/-- **A complementary minor is a diagonal entry of the adjugate.** Over any commutative ring, the
+principal minor on the complement of an index `i` is `A.adjugate i i`.
+[HornJohnson2013, §0.8.2]. -/
+theorem principalMinor_erase_univ_eq_adjugate {R : Type*} [CommRing R] (A : Matrix n n R)
+    (i : n) : principalMinor A (Finset.univ.erase i) = A.adjugate i i := by
+  rw [Matrix.adjugate_apply, principalMinor, ← Matrix.det_piecewise_one_eq_submatrix_det]
+  congr 1
+  ext a b
+  by_cases ha : a = i
+  · subst ha
+    simp [Matrix.one_apply, Pi.single_apply, eq_comm]
+  · simp [ha]
+
 /-- **Complementary minors and the inverse.** For an invertible matrix, the principal minor on
 the complement of an index `i` is `det A · (A⁻¹) i i`.
 [HornJohnson2013, §0.8.4]. Port of
@@ -38,28 +51,8 @@ the complement of an index `i` is `det A · (A⁻¹) i i`.
 theorem principalMinor_erase_univ_eq {K : Type*} [Field K] {A : Matrix n n K} (hA : IsUnit A)
     (i : n) : principalMinor A (Finset.univ.erase i) = A.det * A⁻¹ i i := by
   have hdet : A.det ≠ 0 := ((Matrix.isUnit_iff_isUnit_det A).mp hA).ne_zero
-  have hadj : A.adjugate i i = principalMinor A (Finset.univ.erase i) := by
-    rw [Matrix.adjugate_apply, principalMinor, ← Matrix.det_piecewise_one_eq_submatrix_det]
-    congr 1
-    ext a b
-    by_cases ha : a = i
-    · subst ha
-      simp [Matrix.one_apply, Pi.single_apply, eq_comm]
-    · simp [ha]
   rw [Matrix.inv_def, Matrix.smul_apply, Ring.inverse_eq_inv', smul_eq_mul, ← mul_assoc,
-    mul_inv_cancel₀ hdet, one_mul, hadj]
-
-omit [Fintype n] in
-/-- The determinant of a submatrix along an injective map is the principal minor on its image. -/
-private theorem det_submatrix_eq_principalMinor {R ι : Type*} [CommRing R] [Fintype ι]
-    [DecidableEq ι] (A : Matrix n n R) {f : ι → n} (hf : Function.Injective f) {s : Finset n}
-    (hs : ∀ x, x ∈ s ↔ x ∈ Set.range f) : (A.submatrix f f).det = principalMinor A s := by
-  let e : ι ≃ s := Equiv.ofBijective (fun i => ⟨f i, (hs _).mpr ⟨i, rfl⟩⟩)
-    ⟨fun i j h => hf (congrArg Subtype.val h), fun ⟨x, hx⟩ => by
-      obtain ⟨i, rfl⟩ := (hs x).mp hx
-      exact ⟨i, rfl⟩⟩
-  rw [principalMinor, ← Matrix.det_submatrix_equiv_self e (A.submatrix Subtype.val Subtype.val)]
-  rfl
+    mul_inv_cancel₀ hdet, one_mul, principalMinor_erase_univ_eq_adjugate]
 
 /-- The case of the whole index set of `Matrix.PosSemidef.re_principalMinor_pow_le_prod_erase`,
 for a positive definite matrix: Hadamard's inequality for the inverse. -/
@@ -107,13 +100,14 @@ theorem _root_.Matrix.PosSemidef.re_principalMinor_pow_le_prod_erase {A : Matrix
       (Finset.univ.erase i) = principalMinor A (t.erase i) := by
     rw [principalMinor, Matrix.submatrix_submatrix]
     refine det_submatrix_eq_principalMinor A
-      (Subtype.val_injective.comp Subtype.val_injective) fun x => ?_
-    simp only [Finset.mem_erase, Set.mem_range, Function.comp_apply]
+      (Subtype.val_injective.comp Subtype.val_injective) (Set.ext fun x => ?_)
+    simp only [Finset.coe_erase, Set.mem_sdiff, Finset.mem_coe, Set.mem_singleton_iff,
+      Set.mem_range, Function.comp_apply]
     constructor
-    · rintro ⟨hx, hxt⟩
-      exact ⟨⟨⟨x, hxt⟩, by simpa [Subtype.ext_iff] using hx⟩, rfl⟩
     · rintro ⟨⟨y, hy⟩, rfl⟩
-      exact ⟨fun h => (Finset.mem_erase.mp hy).1 (Subtype.ext h), y.2⟩
+      exact ⟨y.2, fun h => (Finset.mem_erase.mp hy).1 (Subtype.ext h)⟩
+    · rintro ⟨hxt, hx⟩
+      exact ⟨⟨⟨x, hxt⟩, by simpa [Subtype.ext_iff] using hx⟩, rfl⟩
   simp only [he] at h
   rw [Finset.prod_coe_sort t fun i => RCLike.re (principalMinor A (t.erase i))] at h
   exact h

@@ -791,6 +791,10 @@
   "new": "NLAlib.norm_apply_le_specNorm",
   "stage": "M2"
  },
+ "NLAlib.abs_dotProduct_cfc_mulVec_le": {
+  "new": "Matrix.IsHermitian.abs_re_quadForm_cfc_le",
+  "stage": "M8"
+ },
  "NLAlib.abs_dotProduct_mulVec_le": {
   "new": "NLAlib.norm_star_dotProduct_mulVec_le",
   "stage": "M2"
@@ -1014,6 +1018,30 @@
   "new": null,
   "note": "bundle; conjuncts are separate theorems",
   "stage": "M1"
+ },
+ "NLAlib.cfc_diagonal_real": {
+  "new": "NLAlib.cfc_diagonal",
+  "stage": "M8"
+ },
+ "NLAlib.cfc_eq_eigenvectorUnitary_mul_diagonal_mul_conjTranspose": {
+  "new": "NLAlib.cfc_eq_mul_diagonal_mul_conjTranspose",
+  "stage": "M8"
+ },
+ "NLAlib.cfc_fromBlocks": {
+  "new": "NLAlib.cfc_fromBlocks_diagonal",
+  "stage": "M8"
+ },
+ "NLAlib.cfc_inv_sqrt_mul_sqrt": {
+  "new": "Matrix.PosDef.inv_sqrt_eq_cfc",
+  "stage": "M8"
+ },
+ "NLAlib.cfc_reindex_of_isHermitian": {
+  "new": "NLAlib.cfc_submatrix_equiv",
+  "stage": "M8"
+ },
+ "NLAlib.cfc_unitary_conj": {
+  "new": "NLAlib.cfc_mul_mul_conjTranspose",
+  "stage": "M8"
  },
  "NLAlib.charpoly_add_vecMulVec_mul_X_sub_C": {
   "new": null,
@@ -1489,6 +1517,10 @@
   "new": "NLAlib.specNorm_nonneg",
   "stage": "M5"
  },
+ "NLAlib.dotProduct_cfc_mulVec_eq_sum": {
+  "new": "NLAlib.re_quadForm_cfc_eq_sum",
+  "stage": "M8"
+ },
  "NLAlib.dotProduct_cfc_mulVec_self_eq_sum": {
   "new": null,
   "note": "not ported: eigenbasis expansion after functional calculus, a helper of eigenvalueProjector, which is not reproduced, Matrix-Perturbation §6",
@@ -1630,6 +1662,10 @@
  "NLAlib.eigenvalues₀_add_le_of_rank_le": {
   "new": "NLAlib.eigenvalue_add_le_of_rank_le",
   "stage": "M3"
+ },
+ "NLAlib.eigenvalues₀_cfc_of_antitone": {
+  "new": "Matrix.IsHermitian.eigenvalue_cfc_of_monotoneOn",
+  "stage": "M8"
  },
  "NLAlib.eigenvalues₀_dilation": {
   "new": "NLAlib.eigenvalue_dilation",
@@ -2832,6 +2868,22 @@
   "new": "Matrix.PosSemidef.hadamard_le_hadamard_of_le",
   "stage": "M7"
  },
+ "NLAlib.hasDerivAt_det": {
+  "new": "Matrix.hasDerivAt_det",
+  "stage": "M8"
+ },
+ "NLAlib.hasDerivAt_log_det": {
+  "new": "Matrix.hasDerivAt_log_det",
+  "stage": "M8"
+ },
+ "NLAlib.hasDerivAt_matrix_inv": {
+  "new": "Matrix.hasDerivAt_inv_apply",
+  "stage": "M8"
+ },
+ "NLAlib.hasDerivAt_matrix_trace_pow": {
+  "new": "Matrix.hasDerivAt_trace_pow_succ",
+  "stage": "M8"
+ },
  "NLAlib.hasFDerivAt_componentRelativeMap": {
   "new": null,
   "note": "not ported: conditioning of a differentiable map; its base definitions live outside Matrix/, Matrix-Perturbation §7.7",
@@ -3674,6 +3726,10 @@
   "new": null,
   "note": "not ported: diagonal step of Bauer–Fike for a raw absolute norm on vectors; waits for vector-norm vocabulary, Matrix-Perturbation §7.7",
   "stage": "M6"
+ },
+ "NLAlib.mul_card_le_re_trace_cfc_of_le": {
+  "new": "Matrix.IsHermitian.mul_card_le_re_trace_cfc",
+  "stage": "M8"
  },
  "NLAlib.mul_complement_rowProjector_eq_zero": {
   "new": "NLAlib.mul_pinv_mul_self",
@@ -4845,6 +4901,10 @@
   "new": "Matrix.IsHermitian.re_apply_self_mem_Icc",
   "stage": "M3a"
  },
+ "NLAlib.re_trace_cfc_eq_sum_eigenvalues": {
+  "new": "Matrix.IsHermitian.re_trace_cfc",
+  "stage": "M8"
+ },
  "NLAlib.re_trace_eq_zero_iff_of_posSemidef": {
   "new": "Matrix.PosSemidef.re_trace_eq_zero_iff",
   "stage": "M1"
@@ -5535,6 +5595,10 @@
  "NLAlib.specNorm_add_sq_le_of_mul_conjTranspose_eq_zero": {
   "new": "NLAlib.specNorm_add_sq_le_of_mul_conjTranspose_eq_zero",
   "stage": "M2"
+ },
+ "NLAlib.specNorm_aeval_le": {
+  "new": "Matrix.IsHermitian.specNorm_cfc_le",
+  "stage": "M8"
  },
  "NLAlib.specNorm_blockDiagonal_const_le": {
   "new": null,
@@ -6274,6 +6338,10 @@
   "new": "NLAlib.Majorized.sum_convex_le",
   "note": "with majorized_mulVec_of_mem_doublyStochastic",
   "stage": "M3a"
+ },
+ "NLAlib.sum_det_updateRow_eq_trace_adjugate_mul": {
+  "new": "Matrix.sum_det_updateRow",
+  "stage": "M8"
  },
  "NLAlib.sum_diag_sq_le_frobNorm_sq": {
   "new": null,

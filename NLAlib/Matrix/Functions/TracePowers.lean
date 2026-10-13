@@ -36,11 +36,14 @@ variable {𝕜 : Type*} [RCLike 𝕜] {n : Type*} [Fintype n] [DecidableEq n]
 
 /-! ### The overlap formula -/
 
-/-- **The overlap formula.** If `A = U diag(a) Uᴴ` and `B = V diag(b) Vᴴ` with `U`, `V` unitary,
+/-- **The overlap formula.** If `A = U diag(a) Uᴴ` and `B = V diag(b) Vᴴ` with `U`, `V` unitary
+(orthonormal columns, as many columns as rows),
 then `tr (f(A) g(B)) = ∑ i j, |(Uᴴ V)_{ij}|² f(a_i) g(b_j)`.
 Port of `NLAlib.re_trace_pow_mul_pow_eq_sum_overlap`, there for powers over `ℂ`. -/
-theorem re_trace_cfc_mul_cfc_eq_sum {A B U V : Matrix n n 𝕜} {a b : n → ℝ}
-    (hU : HasOrthonormalCols U) (hV : HasOrthonormalCols V)
+theorem re_trace_cfc_mul_cfc_eq_sum {r s : Type*} [Fintype r] [Fintype s] [DecidableEq r]
+    [DecidableEq s] {A B : Matrix n n 𝕜} {U : Matrix n r 𝕜} {V : Matrix n s 𝕜} {a : r → ℝ}
+    {b : s → ℝ} (hU : HasOrthonormalCols U) (hV : HasOrthonormalCols V)
+    (hr : Fintype.card r = Fintype.card n) (hs : Fintype.card s = Fintype.card n)
     (hA : A = U * Matrix.diagonal (fun i => ((a i : ℝ) : 𝕜)) * Uᴴ)
     (hB : B = V * Matrix.diagonal (fun i => ((b i : ℝ) : 𝕜)) * Vᴴ) (f g : ℝ → ℝ) :
     RCLike.re (cfc f A * cfc g B).trace = ∑ i, ∑ j, ‖(Uᴴ * V) i j‖ ^ 2 * (f (a i) * g (b j)) := by

@@ -46,8 +46,9 @@ theorem aeval_diagonal (d : n → ℝ) (p : ℝ[X]) :
   sorry
 
 /-- A polynomial commutes with unitary conjugation. -/
-theorem aeval_mul_mul_conjTranspose {U : Matrix n n 𝕜} (hU : HasOrthonormalCols U)
-    (A : Matrix n n 𝕜) (p : ℝ[X]) : aeval (U * A * Uᴴ) p = U * aeval A p * Uᴴ := by
+theorem aeval_mul_mul_conjTranspose {U : Matrix n r 𝕜} (hU : HasOrthonormalCols U)
+    (hr : Fintype.card r = Fintype.card n) (A : Matrix r r 𝕜) (p : ℝ[X]) :
+    aeval (U * A * Uᴴ) p = U * aeval A p * Uᴴ := by
   sorry
 
 /-- A function of a Hermitian matrix is the polynomial that agrees with it on the eigenvalues.

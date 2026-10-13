@@ -93,8 +93,9 @@ instances (powers `0 ≤ r ≤ 1`, square root, logarithm) are theorems.
 The generalized Klein inequality, Klein's inequality, the mean value trace inequality and trace
 Young are scalar inequalities summed against these weights.
 
-**Derivatives are entrywise.** Matrices carry no global norm in Mathlib, so
-`HasDerivAt (A : ℝ → Matrix n n ℝ)` depends on a scoped instance. Jacobi's formula and the
+**Derivatives are entrywise.** Matrices carry no global norm in Mathlib; `HasDerivAt` for a
+matrix-valued curve needs only the product topology, and `Matrix.hasDerivAt_iff_forall_apply`
+says it is the entrywise statement. Jacobi's formula and the
 derivative of the inverse are stated with hypothesis `∀ i j, HasDerivAt (fun s => A s i j) …` and
 scalar or entrywise conclusions, over a normed commutative ring; they go to
 `ForMathlib/Analysis/Calculus/Deriv/Matrix.lean`.

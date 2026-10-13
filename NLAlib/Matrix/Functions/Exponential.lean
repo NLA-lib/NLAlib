@@ -47,17 +47,20 @@ theorem _root_.Matrix.IsHermitian.exp_eq_cfc {A : Matrix n n 𝕜} (hA : A.IsHer
     exp A = cfc Real.exp A := by
   sorry
 
-/-- The exponential of a unitary diagonalisation: `exp (U D Uᴴ) = U exp(D) Uᴴ`. -/
-theorem exp_mul_diagonal_mul_conjTranspose {U : Matrix n n 𝕜} (hU : HasOrthonormalCols U)
-    (d : n → ℝ) :
+/-- The exponential of a unitary diagonalisation: `exp (U D Uᴴ) = U exp(D) Uᴴ`, for `U` with
+orthonormal columns and as many columns as rows. -/
+theorem exp_mul_diagonal_mul_conjTranspose {r : Type*} [Fintype r] [DecidableEq r]
+    {U : Matrix n r 𝕜} (hU : HasOrthonormalCols U) (hr : Fintype.card r = Fintype.card n)
+    (d : r → ℝ) :
     exp (U * Matrix.diagonal (fun i => ((d i : ℝ) : 𝕜)) * Uᴴ) =
       U * Matrix.diagonal (fun i => ((Real.exp (d i) : ℝ) : 𝕜)) * Uᴴ := by
   sorry
 
 /-- The exponential commutes with unitary conjugation.
 Port of `NLAlib.matrixExp_unitary_conj`, there over `ℂ`. -/
-theorem exp_mul_mul_conjTranspose {U : Matrix n n 𝕜} (hU : HasOrthonormalCols U)
-    (A : Matrix n n 𝕜) : exp (U * A * Uᴴ) = U * exp A * Uᴴ := by
+theorem exp_mul_mul_conjTranspose {r : Type*} [Fintype r] [DecidableEq r] {U : Matrix n r 𝕜}
+    (hU : HasOrthonormalCols U) (hr : Fintype.card r = Fintype.card n) (A : Matrix r r 𝕜) :
+    exp (U * A * Uᴴ) = U * exp A * Uᴴ := by
   sorry
 
 /-- A scalar shift factors out of the exponential: `exp (A + t • 1) = e^t • exp A`. -/
@@ -150,8 +153,9 @@ theorem _root_.Matrix.IsHermitian.re_trace_exp_le_card_mul_exp {A : Matrix n n �
 
 /-- The trace exponential is invariant under unitary conjugation.
 Port of `NLAlib.traceExp_unitary_conj`. -/
-theorem re_trace_exp_mul_mul_conjTranspose {U : Matrix n n 𝕜} (hU : HasOrthonormalCols U)
-    (A : Matrix n n 𝕜) : RCLike.re (exp (U * A * Uᴴ)).trace = RCLike.re (exp A).trace := by
+theorem re_trace_exp_mul_mul_conjTranspose {r : Type*} [Fintype r] [DecidableEq r]
+    {U : Matrix n r 𝕜} (hU : HasOrthonormalCols U) (hr : Fintype.card r = Fintype.card n)
+    (A : Matrix r r 𝕜) : RCLike.re (exp (U * A * Uᴴ)).trace = RCLike.re (exp A).trace := by
   sorry
 
 /-- A scalar shift factors out of the trace exponential.

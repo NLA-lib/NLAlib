@@ -45,7 +45,7 @@ The layer is built in the stages of §3, **strictly one after another**. Each st
    review ("Models and delegation" below), fold its comments in or record why not, then stop for
    the maintainer's approval. Do not start proofs before approval.
 3. **Skeleton.** The stage's files with every definition, docstring and statement in place and
-   every proof `sorry`, compiling (`lake env lean -M 8000 <file>`). Review the skeleton against
+   every proof `sorry`, compiling (`lake lean <file> -- -M 8000`). Review the skeleton against
    the note; statements are easier to fix before they have proofs.
 4. **Proofs**, one file at a time in the note's order, by the procedure in §2. A second agent
    may prove a file the note marks as independent of the one in progress; otherwise one at a time.
@@ -124,8 +124,8 @@ to decide. Stage boundaries may move if the note argues for it.
 ```
 cd ~/Documents/NLA-lib/nlalib
 lake update && lake exe cache get
-lake exe mk_all --lib NLAlib && lake exe mk_all --lib NLAlibScaffold
-lake build -j 4 NLAlib NLAlibScaffold
+lake exe mk_all --module --lib NLAlib && lake exe mk_all --module --lib NLAlibScaffold
+LEAN_NUM_THREADS=4 lake build NLAlib NLAlibScaffold
 mkdir -p docs/design docs/port && echo '{}' > docs/port/ledger.json
 ```
 
@@ -300,8 +300,8 @@ Settled unless a design note argues otherwise and the maintainer agrees:
 
 - One stage at a time, one proving agent at a time unless the design note marks files independent;
   never more than two Lean-building processes on the machine (8 cores, 31 GB). Each uses
-  `lake build -j 2 <module>` and `lake env lean -M 8000 <file>` with output to a log file. A full
-  `lake build -j 4 NLAlib NLAlibScaffold` runs only with nothing else building.
+  `LEAN_NUM_THREADS=2 lake build <module>` and `lake lean <file> -- -M 8000` with output to a log file. A full
+  `LEAN_NUM_THREADS=4 lake build NLAlib NLAlibScaffold` runs only with nothing else building.
 - Opus for the orchestrator and every proof-bearing agent; Fable for the bounded design reviews
   and adjudications of §1; Sonnet or Haiku for ledger, status, `mk_all`, reference-key and header
   checks.
@@ -310,7 +310,7 @@ Settled unless a design note argues otherwise and the maintainer agrees:
 ## 6. Done
 
 The Matrix layer is done when every stage's design note is approved and implemented,
-`lake build -j 4 NLAlib NLAlibScaffold` is green, `scripts/Audit.lean` reports zero violations,
+`LEAN_NUM_THREADS=4 lake build NLAlib NLAlibScaffold` is green, `scripts/Audit.lean` reports zero violations,
 `scripts/Lint.lean` is clean, `check_refs.py` passes, `docs/port/ledger.json` accounts for every
 public declaration of the prototype's `Matrix/` (ported, dropped with reason, or scaffolded), and
 `docs/port/status.md` lists what is in `NLAlibScaffold` with a difficulty estimate for each item.

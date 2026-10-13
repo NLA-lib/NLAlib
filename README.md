@@ -12,7 +12,7 @@ layer at a time, starting with `NLAlib/Matrix/`.
 
 ```
 lake exe cache get
-lake build -j 4 NLAlib
+LEAN_NUM_THREADS=4 lake build NLAlib
 ```
 
 Pinned: Lean `v4.33.1`, Mathlib `v4.33.1`.

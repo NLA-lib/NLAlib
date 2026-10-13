@@ -8,7 +8,7 @@
 3. Read `docs/port/status.md` to see what is in progress and where the last agent stopped.
 4. Work is sequential: one stage, one file at a time. Do the one file you own. Search Mathlib,
    then `NLAlib/`, then the prototype files the design note names, before proving anything.
-5. Build with `lake build -j 2 <your module>` and `lake env lean -M 8000 <file>`, output to a log
+5. Build with `LEAN_NUM_THREADS=2 lake build <your module>` and `lake lean <file> -- -M 8000`, output to a log
    file. Never a bare `lake build`. Never two builds at once.
 6. Before stopping: update `docs/port/ledger.json` and `docs/port/status.md`, run the §9 checks,
    and leave the read-back for the PR. Do not commit or push unless asked.

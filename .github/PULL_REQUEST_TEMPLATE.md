@@ -9,7 +9,7 @@
 
 ## Checklist
 
-- [ ] `lake build -j 4 NLAlib NLAlibScaffold` passes with no new warnings
+- [ ] `LEAN_NUM_THREADS=4 lake build NLAlib NLAlibScaffold` passes with no new warnings
 - [ ] `lake env lean scripts/Audit.lean` reports 0 violations
 - [ ] `lake env lean scripts/Lint.lean` is clean for the touched files
 - [ ] `python3 scripts/check_refs.py` passes; new sources are in `docs/references.bib`

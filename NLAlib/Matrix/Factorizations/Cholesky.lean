@@ -34,8 +34,7 @@ open scoped Matrix ComplexOrder MatrixOrder
 
 namespace NLAlib
 
-variable {𝕜 : Type*} [RCLike 𝕜] {m n : Type*} [LinearOrder m] [LinearOrder n] [Fintype m]
-  [Fintype n]
+variable {𝕜 : Type*} [RCLike 𝕜] {n : Type*} [LinearOrder n] [Fintype n]
 
 /-- `IsCholesky A L`: **`A = L * Lᴴ` is a Cholesky factorization**, with `L` lower triangular
 with positive diagonal. [GolubVanLoan2013, Theorem 4.2.7]; [HornJohnson2013, Corollary 7.2.9].
@@ -72,9 +71,9 @@ Port of `NLAlib.det_eq_prod_sq_diag_of_cholesky`. -/
 theorem IsCholesky.det_eq_prod (h : IsCholesky A L) : A.det = ∏ i, L i i ^ 2 := by
   sorry
 
-/-- A Cholesky factorization is preserved by an order isomorphism of the index type. -/
-theorem IsCholesky.submatrix_orderIso (h : IsCholesky A L) (e : m ≃o n) :
-    IsCholesky (A.submatrix e e) (L.submatrix e e) := by
+/-- **Solving through a Cholesky factorization**: `A x = b` exactly when `Lᴴ x = L⁻¹ b`. -/
+theorem IsCholesky.mulVec_eq_iff (h : IsCholesky A L) {x b : n → 𝕜} :
+    A *ᵥ x = b ↔ Lᴴ *ᵥ x = L⁻¹ *ᵥ b := by
   sorry
 
 /-- **A matrix has a Cholesky factorization exactly when it is positive definite.**
@@ -136,18 +135,25 @@ theorem _root_.Matrix.PosDef.isCholesky_choleskyLower {A : Matrix (Fin n) (Fin n
     (hA : A.PosDef) : IsCholesky A (choleskyLower A) := by
   sorry
 
-/-- Elimination factors a positive semidefinite matrix, with nonnegative diagonal.
+/-- The diagonal of the factor computed by elimination on a Hermitian matrix is nonnegative.
+Port of `NLAlib.cholesky_apply_self_nonneg`. -/
+theorem _root_.Matrix.IsHermitian.choleskyLower_apply_self_nonneg
+    {A : Matrix (Fin n) (Fin n) 𝕜} (hA : A.IsHermitian) (i : Fin n) :
+    0 ≤ choleskyLower A i i := by
+  sorry
+
+/-- Elimination factors a positive semidefinite matrix.
 Port of `NLAlib.eq_cholesky_mul_transpose_of_posSemidef`. -/
 theorem _root_.Matrix.PosSemidef.eq_choleskyLower_mul_conjTranspose
     {A : Matrix (Fin n) (Fin n) 𝕜} (hA : A.PosSemidef) :
-    A = choleskyLower A * (choleskyLower A)ᴴ ∧ ∀ i, 0 ≤ choleskyLower A i i := by
+    A = choleskyLower A * (choleskyLower A)ᴴ := by
   sorry
 
 /-- **Elimination on a Hermitian matrix produces a positive diagonal exactly when the matrix is
-positive definite.** Port of `NLAlib.choleskySucceeds_iff_posDef`.
-Result: cholesky-existence -/
-theorem forall_choleskyLower_apply_self_pos_iff {A : Matrix (Fin n) (Fin n) 𝕜}
-    (hA : A.IsHermitian) : (∀ i, 0 < choleskyLower A i i) ↔ A.PosDef := by
+positive definite.** Port of `NLAlib.choleskySucceeds_iff_posDef`. -/
+theorem _root_.Matrix.IsHermitian.forall_choleskyLower_apply_self_pos_iff
+    {A : Matrix (Fin n) (Fin n) 𝕜} (hA : A.IsHermitian) :
+    (∀ i, 0 < choleskyLower A i i) ↔ A.PosDef := by
   sorry
 
 end Recursion

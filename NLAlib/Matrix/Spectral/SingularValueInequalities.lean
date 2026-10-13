@@ -222,6 +222,21 @@ theorem mul_sq_singularValues_le_of_smul_one_le [DecidableEq m] {T : Matrix l m 
       ← sq_singularValues, ← sq_singularValues] at hk
   · exact (mul_nonpos_of_nonpos_of_nonneg ha.le (sq_nonneg _)).trans (sq_nonneg _)
 
+/-- For a square matrix, a lower Loewner bound on `Tᴴ * T` is also a lower bound on `T * Tᴴ`:
+the two Gram matrices have the same smallest eigenvalue. -/
+theorem smul_one_le_mul_conjTranspose_self_of_smul_one_le [DecidableEq m] {T : Matrix m m 𝕜}
+    {a : ℝ} (hT : a • (1 : Matrix m m 𝕜) ≤ Tᴴ * T) : a • (1 : Matrix m m 𝕜) ≤ T * Tᴴ := by
+  rcases Nat.eq_zero_or_pos (Fintype.card m) with h0 | hpos
+  · have : IsEmpty m := Fintype.card_eq_zero_iff.mp h0
+    exact le_of_eq (Subsingleton.elim _ _)
+  · obtain ⟨k, hk⟩ : ∃ k, k + 1 = Fintype.card m := ⟨Fintype.card m - 1, by omega⟩
+    have h₁ := le_sq_singularValues_last_of_smul_one_le hk hT
+    have h₂ := sq_singularValues_last_smul_one_le Tᴴ hk
+    rw [singularValues_conjTranspose, smul_one_le_conjTranspose_mul_self_iff] at h₂
+    have e : T * Tᴴ = Tᴴᴴ * Tᴴ := by rw [Matrix.conjTranspose_conjTranspose]
+    rw [e, smul_one_le_conjTranspose_mul_self_iff]
+    exact fun x => (mul_le_mul_of_nonneg_right h₁ (sq_nonneg _)).trans (h₂ x)
+
 /-! ### Submatrices and projections -/
 
 /-- Selecting columns by an injective map does not increase any singular value. -/

@@ -25,6 +25,8 @@ quantity with the roles exchanged.
   order (the value part of the thin CS decomposition).
 * `IsStarProjection.sq_singularValues_one_sub_mul`: the singular values of `(1 - Q) * P` from
   those of `Q * P`.
+* `IsStarProjection.singularValues_of_lt_rank`: the nonzero singular values of an orthogonal
+  projector are `1`.
 * `IsStarProjection.singularValues_one_sub_mul_eq_of_rank_eq`: for projectors of equal rank,
   `(1 - Q) * P` and `(1 - P) * Q` have the same singular values.
 * `IsStarProjection.specNorm_sub_eq_max`, `IsStarProjection.specNorm_sub_eq_of_rank_eq`: the gap
@@ -34,6 +36,9 @@ quantity with the roles exchanged.
   every unitarily invariant norm.
 * `IsStarProjection.rank_eq_of_specNorm_sub_lt_one`: projectors at distance less than one have
   the same rank.
+* `NLAlib.HasOrthonormalCols.frobNorm_one_sub_mul_sq`,
+  `NLAlib.HasOrthonormalCols.frobNorm_mul_conjTranspose_sub_mul_conjTranspose`: the Frobenius
+  distance between two frames.
 -/
 
 @[expose] public section
@@ -196,6 +201,17 @@ theorem _root_.IsStarProjection.sq_singularValues_one_sub_mul {P Q : Matrix n n 
   rw [hA, hB]
   exact sq_singularValues_eq_one_sub_of_conjTranspose_mul_self_add_eq_one hAB
     (by rw [Fintype.card_fin, hij])
+
+omit [DecidableEq n] in
+/-- The singular values of an orthogonal projector are `1` below its rank. From the rank on they
+vanish, as for every matrix (`NLAlib.singularValues_eq_zero_iff`). -/
+theorem _root_.IsStarProjection.singularValues_of_lt_rank {P : Matrix n n 𝕜}
+    (hP : IsStarProjection P) {k : ℕ} (hk : k < P.rank) : singularValues P k = 1 := by
+  classical
+  have h := hP.sq_singularValues_one_sub_mul hP (i := P.rank - 1 - k) (j := k) (by omega)
+  rw [hP.one_sub_mul_self, singularValues_zero, hP.mul_self, Pi.zero_apply] at h
+  refine (sq_eq_sq₀ (singularValues_nonneg P k) zero_le_one).mp ?_
+  linarith
 
 /-- The spectral norm of `(1 - Q) * P` from the smallest relevant singular value of `Q * P`.
 Port of `NLAlib.specNorm_residual_sq_eq_one_sub_singularValues_last_sq`. -/
@@ -439,5 +455,34 @@ theorem _root_.IsStarProjection.frobNorm_sub_sq_of_rank_eq {P Q : Matrix n n �
     (hP : IsStarProjection P) (hQ : IsStarProjection Q) (h : P.rank = Q.rank) :
     frobNorm (P - Q) ^ 2 = 2 * frobNorm ((1 - Q) * P) ^ 2 := by
   rw [hP.frobNorm_sub_sq hQ, hP.frobNorm_one_sub_mul_eq_of_rank_eq hQ h, two_mul]
+
+/-! ### Frames -/
+
+/-- The squared distance `‖(1 - U Uᴴ) Q‖_F²` from a frame `Q` to the range of a frame `U` is the
+number of columns of `Q` less the squared overlap `‖Qᴴ U‖_F²`. -/
+theorem HasOrthonormalCols.frobNorm_one_sub_mul_sq [DecidableEq p] [DecidableEq q]
+    {U : Matrix n p 𝕜} {Q : Matrix n q 𝕜} (hU : HasOrthonormalCols U)
+    (hQ : HasOrthonormalCols Q) :
+    frobNorm ((1 - U * Uᴴ) * Q) ^ 2 = Fintype.card q - frobNorm (Qᴴ * U) ^ 2 := by
+  have h := hU.isStarProjection_mul_conjTranspose.frobNorm_sq_eq_add Q
+  rw [hQ.frobNorm_sq, Matrix.mul_assoc, hU.frobNorm_mul_left, ← frobNorm_conjTranspose (Uᴴ * Q),
+    Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose] at h
+  linarith
+
+/-- The projectors of two frames with the same number of columns are at Frobenius distance
+`√2 ‖(1 - U Uᴴ) Q‖_F`. Port of
+`NLAlib.frobNorm_projector_distance_eq_sqrt_two_mul_sinePrincipalAngles`. -/
+theorem HasOrthonormalCols.frobNorm_mul_conjTranspose_sub_mul_conjTranspose [DecidableEq p]
+    {U Q : Matrix n p 𝕜} (hU : HasOrthonormalCols U) (hQ : HasOrthonormalCols Q) :
+    frobNorm (Q * Qᴴ - U * Uᴴ) = √2 * frobNorm ((1 - U * Uᴴ) * Q) := by
+  have e : frobInner (Q * Qᴴ) (U * Uᴴ) = frobNorm (Qᴴ * U) ^ 2 := by
+    rw [NLAlib.frobInner_mul_left, frobInner_comm, ← Matrix.mul_assoc,
+      NLAlib.frobInner_mul_right, Matrix.conjTranspose_conjTranspose, frobInner_self]
+  have h : frobNorm (Q * Qᴴ - U * Uᴴ) ^ 2 = 2 * frobNorm ((1 - U * Uᴴ) * Q) ^ 2 := by
+    rw [frobNorm_sub_sq, e, hQ.frobNorm_mul_left, hU.frobNorm_mul_left, frobNorm_conjTranspose,
+      frobNorm_conjTranspose, hQ.frobNorm_sq, hU.frobNorm_sq, hU.frobNorm_one_sub_mul_sq hQ]
+    ring
+  rw [← Real.sqrt_sq (frobNorm_nonneg (Q * Qᴴ - U * Uᴴ)), h, Real.sqrt_mul (by norm_num),
+    Real.sqrt_sq (frobNorm_nonneg _)]
 
 end NLAlib

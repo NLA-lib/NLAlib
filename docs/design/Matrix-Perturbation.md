@@ -273,3 +273,53 @@ rank zero, the constants of the second-order remainder). Folded in:
    theorem uses the bilinear pairing.
 8. To be placed by subject when proved: `SymmetricGauge.isLeast_matrixNorm_sub_of_rank_le` in
    `Norms/UnitarilyInvariant.lean`, the golden-ratio block lemma in `Norms/Projector.lean`.
+
+## 9. Stage report (2026-10-14)
+
+**Outcome.** Eleven files under `Matrix/Perturbation/` (`Inverse.lean`, `Sylvester.lean`,
+`DavisKahan.lean`, `DavisKahanGap.lean`, `Wedin.lean`, `Residual.lean`, `Pseudoinverse.lean`,
+`LeastSquares.lean`, `Continuity.lean`, `SimpleEigenvalue.lean`, `Relative.lean`;
+`DavisKahanGap.lean` was split off `DavisKahan.lean` at the follow-up pass), all proved; nothing
+in `NLAlibScaffold`. Build, axiom audit (1827 declarations), environment linters (1461
+declarations) and references are clean together with M5. Proofs by Opus agents, five to twenty
+minutes per file pair.
+
+**False statements found by the proof agents, and their repair.**
+
+- `specNorm_sub_smul_one_le_of_le` (a matrix with spectrum in `[a, b]` is within `(b - a) / 2` of
+  the midpoint) fails for a matrix of size zero with `b < a`; `(hab : a ≤ b)` was added.
+
+**What changed from the design.**
+
+- Davis–Kahan, Wedin and the pseudoinverse bounds are all consequences of the Sylvester bounds in
+  every unitarily invariant norm; the Frobenius forms with arbitrary separation are separate.
+- The three variational Davis–Kahan theorems have primary versions with the hypothesis
+  `re tr (Uᴴ (A + E) U) ≤ re tr (Qᴴ (A + E) Q)` (names ending `_of_re_trace_le`), which cover
+  approximate maximisers and need no Hermitian `E`.
+- Wedin's coupled bounds need no `0 ≤ α`; the Frobenius residual form
+  `sub_sq_mul_frobNorm_one_sub_mul_sq_add_le` is public.
+- The simple-eigenvalue branch is obtained from the implicit function theorem applied to the
+  characteristic polynomial, not from the prototype's Schur-function argument;
+  `hasDerivAt_of_isRoot_charpoly_add_smul` gives the derivative `yᵀ E x / yᵀ x` for any
+  continuous branch through a simple eigenvalue.
+- Added at the follow-up pass: `SymmetricGauge.matrixNorm_pinv_sub_pinv_le_three_mul_of_rank_eq`,
+  `isOpen_setOf_le_rank`, `continuous_schattenNorm`,
+  `SymmetricGauge.mul_matrixNorm_le_of_sq_smul_one_le`, and in `Norms/Loewner.lean`
+  `isHermitian_of_le_smul_one`, `isHermitian_of_smul_one_le`, `smul_one_le_smul_one_iff`,
+  `smul_one_le_diagonal_iff`.
+- Placed by subject: `SymmetricGauge.isLeast_matrixNorm_sub_of_rank_le` in
+  `Norms/UnitarilyInvariant.lean`; the golden-ratio block lemma in `Norms/Projector.lean`.
+- `sqrt_mul_singularValues_le_singularValues_mul` was deleted as a duplicate of
+  `mul_sq_singularValues_le_of_smul_one_le`.
+
+**Mathlib overlap.** `isUnit_one_sub_of_specNorm_lt_one` and `hasSum_pow_inv_one_sub` are
+Mathlib's `isUnit_one_sub_of_norm_lt_one` and `hasSum_geom_series_inverse` in the operator-norm
+scope; they are kept as the statements in `specNorm`.
+
+**Not ported, by decision.** `MapConditioning` (conditioning of a differentiable map, outside
+`Matrix/`); Bauer–Fike for a raw absolute vector norm; eigenspace projectors, singular frames and
+least-squares angle functions as objects; pencil lemmas. Deferred to M10: eigenvalue variation
+for normal matrices (Hoffman–Wielandt).
+
+**For the next stages.** `Pseudoinverse.lean` is at the 500-line limit; anything added to it
+goes to a new file.

@@ -29,6 +29,8 @@ simple, with derivative `xᴴ E x` for a unit eigenvector: no branch has to be c
 ## Main results
 
 * `Matrix.IsHermitian.hasDerivAt_eigenvalue_add_smul`: the Hermitian case.
+* `NLAlib.hasDerivAt_of_isRoot_charpoly_add_smul`: every continuous eigenvalue branch through a
+  simple eigenvalue of a complex matrix has derivative `yᵀ E x / yᵀ x`.
 * `NLAlib.exists_eigenvalue_branch_of_rootMultiplicity_eq_one`: a differentiable branch through a
   simple eigenvalue of a complex matrix.
 -/
@@ -261,9 +263,17 @@ private theorem mulVec_adjugate_add_smul_vecMulVec_mulVec {M : Matrix n n ℂ} (
   simp only [Matrix.mulVec_smul, hMw, smul_zero] at h
   exact (smul_eq_zero.mp h.symm).resolve_left hc
 
-/-- A continuous eigenvalue branch through a simple eigenvalue is differentiable at the base
-point, with derivative `yᵀ E x / yᵀ x`. -/
-private theorem hasDerivAt_of_isRoot_charpoly_add_smul {A : Matrix n n ℂ} (E : Matrix n n ℂ)
+/-- **Every continuous eigenvalue branch through a simple eigenvalue is differentiable.** Let `μ`
+be a simple root of the characteristic polynomial of the complex matrix `A`, with right
+eigenvector `x` and left eigenvector `y` (`y ᵥ* A = μ • y`). If `φ` is continuous at `0`,
+`φ 0 = μ`, and `φ t` is an eigenvalue of `A + t • E` for `t` near `0` (a root of the
+characteristic polynomial; see `Matrix.mem_spectrum_iff_isRoot_charpoly`), then `φ` has derivative
+`yᵀ E x / yᵀ x` at `0`. Only continuity at the base point is assumed of `φ`, so this applies to
+any selection of eigenvalues, not only to the branch of
+`NLAlib.exists_eigenvalue_branch_of_rootMultiplicity_eq_one`.
+[StewartSun1990, Theorem IV.2.3]; [HornJohnson2013, Theorem 6.3.12].
+Result: simple-eigenvalue-perturbation -/
+theorem hasDerivAt_of_isRoot_charpoly_add_smul {A : Matrix n n ℂ} (E : Matrix n n ℂ)
     {x y : n → ℂ} {μ : ℂ} (hx : x ≠ 0) (hy : y ≠ 0) (hAx : A *ᵥ x = μ • x)
     (hyA : y ᵥ* A = μ • y) (hμ : A.charpoly.rootMultiplicity μ = 1) {φ : ℂ → ℂ} (hφ₀ : φ 0 = μ)
     (hφc : ContinuousAt φ 0) (hφ : ∀ᶠ t in 𝓝 0, (A + t • E).charpoly.IsRoot (φ t)) :

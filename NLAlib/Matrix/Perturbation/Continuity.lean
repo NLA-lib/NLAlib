@@ -21,16 +21,17 @@ topological consequences in Mathlib's vocabulary, for the product topology on ma
 ## Main results
 
 * `NLAlib.continuous_singularValues`, `NLAlib.continuousOn_eigenvalue`.
-* `NLAlib.SymmetricGauge.continuous_matrixNorm`.
+* `NLAlib.SymmetricGauge.continuous_matrixNorm`, `NLAlib.continuous_schattenNorm`.
 * `NLAlib.SymmetricGauge.abs_matrixNorm_sub_truncatedSVD_sub_le`: the optimal error of rank-`k`
   approximation is `1`-Lipschitz in every unitarily invariant norm.
-* `NLAlib.isClosed_setOf_rank_le`, `NLAlib.isOpen_setOf_injective_mulVec`.
+* `NLAlib.isClosed_setOf_rank_le`, `NLAlib.isOpen_setOf_le_rank`,
+  `NLAlib.isOpen_setOf_injective_mulVec`.
 * `NLAlib.continuousOn_pinv_setOf_rank_eq`, `NLAlib.continuousOn_rangeProjector_setOf_rank_eq`.
 -/
 
 @[expose] public section
 
-open scoped Matrix
+open scoped Matrix ENNReal
 
 namespace NLAlib
 
@@ -94,6 +95,14 @@ theorem SymmetricGauge.continuous_matrixNorm (Φ : SymmetricGauge) :
   exact (Φ.abs_matrixNorm_sub_matrixNorm_le B A).trans
     (Φ.matrixNorm_le_apply_single_mul_nuclearNorm (B - A))
 
+/-- The Schatten `q`-norm is continuous, for `1 ≤ q`: it is the unitarily invariant norm of the
+`ℓ^q` gauge. -/
+theorem continuous_schattenNorm {q : ℝ≥0∞} (hq : 1 ≤ q) :
+    Continuous fun A : Matrix m n 𝕜 => schattenNorm q A := by
+  have h := (lpGauge q hq).continuous_matrixNorm (𝕜 := 𝕜) (m := m) (n := n)
+  simp only [lpGauge_matrixNorm] at h
+  exact h
+
 /-! ### Optimal low-rank approximation errors -/
 
 /-- One half of `SymmetricGauge.abs_matrixNorm_sub_truncatedSVD_sub_le`. -/
@@ -147,6 +156,19 @@ theorem isClosed_setOf_rank_le [Finite m] (r : ℕ) : IsClosed {A : Matrix m n �
     exact (singularValues_eq_zero_iff A).symm
   rw [h]
   exact isClosed_singleton.preimage (continuous_singularValues r)
+
+omit [Fintype m] in
+/-- **The matrices of rank at least `r` form an open set**: a small perturbation does not lower
+the rank. -/
+theorem isOpen_setOf_le_rank [Finite m] (r : ℕ) : IsOpen {A : Matrix m n 𝕜 | r ≤ A.rank} := by
+  cases r with
+  | zero => simp only [Nat.zero_le, Set.ofPred_true, isOpen_univ]
+  | succ k =>
+    have h : {A : Matrix m n 𝕜 | k + 1 ≤ A.rank} = {A : Matrix m n 𝕜 | A.rank ≤ k}ᶜ := by
+      ext A
+      simp only [Set.mem_ofPred_eq, Set.mem_compl_iff, not_le, Nat.lt_iff_add_one_le]
+    rw [h]
+    exact (isClosed_setOf_rank_le k).isOpen_compl
 
 omit [Fintype m] in
 /-- The matrices of full column rank form an open set. -/

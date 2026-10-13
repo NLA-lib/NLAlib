@@ -29,8 +29,11 @@ Results stated for `Φ.matrixNorm` hold for all of them at once, across shapes: 
 * `NLAlib.SymmetricGauge.matrixNorm_le_of_forall_kyFanNorm_le`,
   `NLAlib.forall_matrixNorm_le_iff_forall_kyFanNorm_le`: Fan dominance.
 * `NLAlib.SymmetricGauge.apply_singularValuesFinsupp_sub_le`: Mirsky's theorem.
-* `NLAlib.SymmetricGauge.matrixNorm_sub_truncatedSVD_le_of_rank_le`: the truncated SVD is a best
-  low-rank approximation in every unitarily invariant norm.
+* `NLAlib.SymmetricGauge.matrixNorm_sub_truncatedSVD_le_of_rank_le`,
+  `NLAlib.SymmetricGauge.isLeast_matrixNorm_sub_of_rank_le`: the truncated SVD is a best
+  low-rank approximation in every unitarily invariant norm, and its error is the least one.
+* `NLAlib.SymmetricGauge.mul_matrixNorm_le_of_sq_smul_one_le`: a factor bounded below cannot
+  shrink a unitarily invariant norm by more than its lower bound.
 -/
 
 @[expose] public section
@@ -249,6 +252,20 @@ theorem matrixNorm_submatrix_le (A : Matrix m n 𝕜) {f : l → m} {g : p → n
     (hf : Function.Injective f) (hg : Function.Injective g) :
     Φ.matrixNorm (A.submatrix f g) ≤ Φ.matrixNorm A := by
   exact Φ.matrixNorm_le_of_singularValues_le (singularValues_submatrix_le A hf hg)
+
+open scoped MatrixOrder in
+/-- A factor `T` with `c² • 1 ≤ Tᴴ * T`, `c ≥ 0`, shrinks a unitarily invariant norm by at most
+`c`: `c * Φ.matrixNorm X ≤ Φ.matrixNorm (T * X)`. The form of
+`NLAlib.mul_specNorm_le_of_sq_smul_one_le` for every unitarily invariant norm. -/
+theorem mul_matrixNorm_le_of_sq_smul_one_le [DecidableEq m] {T : Matrix l m 𝕜} {c : ℝ}
+    (hc : 0 ≤ c) (h : (c ^ 2) • (1 : Matrix m m 𝕜) ≤ Tᴴ * T) (X : Matrix m n 𝕜) :
+    c * Φ.matrixNorm X ≤ Φ.matrixNorm (T * X) := by
+  have h' := Φ.matrixNorm_le_of_singularValues_le (A := (c : 𝕜) • X) (B := T * X) fun i => by
+    rw [singularValues_smul, RCLike.norm_ofReal, abs_of_nonneg hc,
+      ← sq_le_sq₀ (mul_nonneg hc (singularValues_nonneg X i)) (singularValues_nonneg _ i),
+      mul_pow]
+    exact mul_sq_singularValues_le_of_smul_one_le h X i
+  rwa [matrixNorm_smul, RCLike.norm_ofReal, abs_of_nonneg hc] at h'
 
 /-! ### Comparison with the spectral and nuclear norms -/
 

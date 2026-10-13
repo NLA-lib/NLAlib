@@ -24,6 +24,9 @@ and the perturbation is small, `‖pinv B‖₂` is controlled by `‖pinv A‖�
 * `NLAlib.SymmetricGauge.matrixNorm_pinv_sub_pinv_le`: the bound in every unitarily invariant
   norm.
 * `NLAlib.specNorm_pinv_sub_pinv_le_goldenRatio_mul_max`: the spectral norm constant.
+* `NLAlib.SymmetricGauge.matrixNorm_pinv_sub_pinv_le_three_mul_of_rank_eq`,
+  `NLAlib.specNorm_pinv_sub_pinv_le_goldenRatio_mul_of_rank_eq`,
+  `NLAlib.frobNorm_pinv_sub_pinv_le_sqrt_two_mul_of_rank_eq`: bounds for equal ranks.
 * `NLAlib.specNorm_pinv_le_div_of_rank_eq`: control of `‖pinv B‖₂` for equal ranks.
 * `NLAlib.specNorm_rangeProjector_sub_rangeProjector_le`: perturbation of the range projector.
 -/
@@ -170,6 +173,14 @@ private theorem matrixNorm_one_sub_rangeProjector_mul_pinv_le [DecidableEq n] (�
   exact mul_le_mul_of_nonneg_left (mul_le_of_le_one_left (Φ.matrixNorm_nonneg _)
     (isStarProjection_one_sub_rangeProjector Bᴴ).specNorm_le_one) (specNorm_nonneg _)
 
+/-- `B⁺ - A⁺` as the sum of its three nonzero blocks. -/
+private theorem pinv_sub_pinv_eq_add_add [DecidableEq m] [DecidableEq n] (A B : Matrix m n 𝕜) :
+    pinv B - pinv A = -(pinv B * (B - A) * pinv A) + pinv B * (1 - rangeProjector A) +
+      -((1 - rangeProjector Bᴴ) * pinv A) := by
+  rw [← pinv_mul_conjTranspose_mul_one_sub_rangeProjector,
+    ← one_sub_rangeProjector_mul_conjTranspose_mul_pinv, ← mul_pinv, ← pinv_mul]
+  exact pinv_sub_pinv A B
+
 /-- **Perturbation of the pseudoinverse in every unitarily invariant norm**:
 `‖B⁺ - A⁺‖ ≤ (‖B⁺‖₂ ‖A⁺‖₂ + ‖B⁺‖₂² + ‖A⁺‖₂²) ‖B - A‖`.
 [Wedin1973]; [StewartSun1990, Theorem III.3.8].
@@ -180,15 +191,10 @@ theorem SymmetricGauge.matrixNorm_pinv_sub_pinv_le (Φ : SymmetricGauge) (A B : 
       (specNorm (pinv B) * specNorm (pinv A) + specNorm (pinv B) ^ 2 + specNorm (pinv A) ^ 2) *
         Φ.matrixNorm (B - A) := by
   classical
-  have h : pinv B - pinv A = -(pinv B * (B - A) * pinv A) + pinv B * (1 - rangeProjector A) +
-      -((1 - rangeProjector Bᴴ) * pinv A) := by
-    rw [← pinv_mul_conjTranspose_mul_one_sub_rangeProjector,
-      ← one_sub_rangeProjector_mul_conjTranspose_mul_pinv, ← mul_pinv, ← pinv_mul]
-    exact pinv_sub_pinv A B
   have h1 := matrixNorm_pinv_mul_sub_mul_pinv_le Φ A B
   have h2 := matrixNorm_pinv_mul_one_sub_rangeProjector_le Φ A B
   have h3 := matrixNorm_one_sub_rangeProjector_mul_pinv_le Φ A B
-  rw [h, add_mul, add_mul]
+  rw [pinv_sub_pinv_eq_add_add A B, add_mul, add_mul]
   refine (Φ.matrixNorm_add_le _ _).trans (add_le_add ((Φ.matrixNorm_add_le _ _).trans
     (add_le_add ?_ h2)) ?_)
   · rwa [Φ.matrixNorm_neg]
@@ -318,6 +324,30 @@ private theorem matrixNorm_one_sub_rangeProjector_mul_pinv_le_of_rank_eq [Decida
     pinv_conjTranspose, pinv_conjTranspose, specNorm_conjTranspose, specNorm_conjTranspose,
     mul_comm (specNorm (pinv B))] at h1
   exact h1
+
+/-- **Perturbation of the pseudoinverse for equal ranks**, every unitarily invariant norm:
+`‖B⁺ - A⁺‖ ≤ 3 ‖A⁺‖₂ ‖B⁺‖₂ ‖B - A‖`. The constant improves to `(1 + √5)/2` in the spectral norm
+and to `√2` in the Frobenius norm. [Wedin1973]; [StewartSun1990, Theorem III.3.9].
+Result: pseudoinverse-perturbation -/
+theorem SymmetricGauge.matrixNorm_pinv_sub_pinv_le_three_mul_of_rank_eq (Φ : SymmetricGauge)
+    {A B : Matrix m n 𝕜} (h : A.rank = B.rank) :
+    Φ.matrixNorm (pinv B - pinv A) ≤
+      3 * specNorm (pinv A) * specNorm (pinv B) * Φ.matrixNorm (B - A) := by
+  classical
+  have hab : 0 ≤ specNorm (pinv A) * specNorm (pinv B) :=
+    mul_nonneg (specNorm_nonneg _) (specNorm_nonneg _)
+  have h1 := matrixNorm_pinv_mul_sub_mul_pinv_le Φ A B
+  have h2 := (matrixNorm_pinv_mul_one_sub_rangeProjector_le_of_rank_eq Φ h).trans
+    (mul_le_mul_of_nonneg_left (Φ.matrixNorm_mul_le_of_isStarProjection
+      (isStarProjection_one_sub_rangeProjector B) (B - A)) hab)
+  have h3 := (matrixNorm_one_sub_rangeProjector_mul_pinv_le_of_rank_eq Φ h).trans
+    (mul_le_mul_of_nonneg_left ((Φ.matrixNorm_mul_le_mul_specNorm (B - A) _).trans
+      (mul_le_of_le_one_right (Φ.matrixNorm_nonneg _)
+        (isStarProjection_one_sub_rangeProjector Aᴴ).specNorm_le_one)) hab)
+  have h4 := (Φ.matrixNorm_add_le (-(pinv B * (B - A) * pinv A) + pinv B * (1 - rangeProjector A))
+    (-((1 - rangeProjector Bᴴ) * pinv A))).trans (add_le_add_left (Φ.matrixNorm_add_le _ _) _)
+  rw [Φ.matrixNorm_neg, Φ.matrixNorm_neg, ← pinv_sub_pinv_eq_add_add] at h4
+  linarith
 
 /-- For matrices of equal rank, `‖B⁺ - A⁺‖₂ ≤ (1 + √5)/2 · ‖A⁺‖₂ ‖B⁺‖₂ ‖B - A‖₂`.
 [Wedin1973]; [StewartSun1990, Theorem III.3.9].

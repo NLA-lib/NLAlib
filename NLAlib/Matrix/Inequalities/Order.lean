@@ -111,15 +111,8 @@ theorem _root_.Matrix.PosDef.eq_of_le_of_det_eq {A B : Matrix n n 𝕜} (hA : A.
 Port of `NLAlib.congruence_le_congruence_iff`. -/
 theorem conjTranspose_mul_mul_le_conjTranspose_mul_mul_iff {A B S : Matrix n n 𝕜}
     (hS : IsUnit S) : Sᴴ * A * S ≤ Sᴴ * B * S ↔ A ≤ B := by
-  refine ⟨fun h => ?_, fun h => conjTranspose_mul_mul_le_conjTranspose_mul_mul h S⟩
-  have h' := conjTranspose_mul_mul_le_conjTranspose_mul_mul h S⁻¹
-  have hS' : S * S⁻¹ = 1 := Matrix.mul_nonsing_inv S ((Matrix.isUnit_iff_isUnit_det S).mp hS)
-  have e : ∀ M : Matrix n n 𝕜, S⁻¹ᴴ * (Sᴴ * M * S) * S⁻¹ = M := by
-    intro M
-    calc S⁻¹ᴴ * (Sᴴ * M * S) * S⁻¹ = (S * S⁻¹)ᴴ * M * (S * S⁻¹) := by
-          simp only [Matrix.conjTranspose_mul, Matrix.mul_assoc]
-      _ = M := by rw [hS', Matrix.conjTranspose_one, Matrix.one_mul, Matrix.mul_one]
-  rwa [e, e] at h'
+  rw [Matrix.le_iff, Matrix.le_iff, ← Matrix.sub_mul, ← Matrix.mul_sub]
+  exact Matrix.IsUnit.posSemidef_star_left_conjugate_iff hS
 
 /-- For positive definite `A`, the block matrix `[A 1; 1 A⁻¹]` is positive semidefinite. -/
 private theorem posSemidef_fromBlocks_one_one_inv {A : Matrix n n 𝕜} (hA : A.PosDef) :
@@ -268,12 +261,11 @@ private theorem conditionNumber_le_div_aux [Nonempty n] {A : Matrix n n 𝕜} {a
 /-- A Hermitian matrix between `a • 1` and `b • 1` with `0 < a` has condition number at most
 `b / a`. -/
 theorem conditionNumber_le_div_of_smul_one_le_of_le_smul_one {A : Matrix n n 𝕜} {a b : ℝ}
-    (ha : 0 < a) (h₁ : a • (1 : Matrix n n 𝕜) ≤ A) (h₂ : A ≤ b • (1 : Matrix n n 𝕜)) :
-    conditionNumber A ≤ b / a := by
+    (ha : 0 < a) (hb : 0 ≤ b) (h₁ : a • (1 : Matrix n n 𝕜) ≤ A)
+    (h₂ : A ≤ b • (1 : Matrix n n 𝕜)) : conditionNumber A ≤ b / a := by
   rcases isEmpty_or_nonempty n with hn | hn
-  · -- False as stated: for empty `n` both hypotheses hold for every `b`, `conditionNumber A = 0`,
-    -- and `b / a < 0` when `b < 0`. Needs `[Nonempty n]` or `0 ≤ b`.
-    sorry
+  · rw [Subsingleton.elim A 0, conditionNumber_zero]
+    exact div_nonneg hb ha.le
   · exact conditionNumber_le_div_aux ha h₁ h₂
 
 /-- **Spectral equivalence, lower half, after a change of variables.** If `Cᴴ * M * C = 1`
@@ -298,12 +290,11 @@ theorem le_smul_iff_conjTranspose_mul_mul_le_smul_one {A M C : Matrix n n 𝕜}
 most `b / a`. This is the statement that conjugate gradient rates consume.
 Result: preconditioned-condition-number -/
 theorem conditionNumber_conjTranspose_mul_mul_le_div {A M C : Matrix n n 𝕜}
-    (hC : Cᴴ * M * C = 1) {a b : ℝ} (ha : 0 < a) (h₁ : a • M ≤ A) (h₂ : A ≤ b • M) :
-    conditionNumber (Cᴴ * A * C) ≤ b / a := by
+    (hC : Cᴴ * M * C = 1) {a b : ℝ} (ha : 0 < a) (hb : 0 ≤ b) (h₁ : a • M ≤ A)
+    (h₂ : A ≤ b • M) : conditionNumber (Cᴴ * A * C) ≤ b / a := by
   rcases isEmpty_or_nonempty n with hn | hn
-  · -- False as stated, for the same reason as
-    -- `conditionNumber_le_div_of_smul_one_le_of_le_smul_one`: empty `n` and `b < 0`.
-    sorry
+  · rw [Subsingleton.elim (Cᴴ * A * C) 0, conditionNumber_zero]
+    exact div_nonneg hb ha.le
   · exact conditionNumber_le_div_aux ha
       ((smul_le_iff_smul_one_le_conjTranspose_mul_mul hC).mp h₁)
       ((le_smul_iff_conjTranspose_mul_mul_le_smul_one hC).mp h₂)

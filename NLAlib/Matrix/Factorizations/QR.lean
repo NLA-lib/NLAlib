@@ -31,6 +31,7 @@ matrices indexed by `Fin`.
 * `NLAlib.IsQR.conjTranspose_mul_self`, `NLAlib.IsQR.singularValues_eq`,
   `NLAlib.IsQR.conditionNumber_eq`.
 * `NLAlib.IsQR.pinv_eq`, `NLAlib.IsQR.mul_conjTranspose_eq_rangeProjector`.
+* `NLAlib.IsQR.isLeastSquaresSolution_backSubst`: the triangular solve.
 * `NLAlib.IsQR.isLeastSquaresSolution_iff`: least squares through QR.
 * `NLAlib.IsQR.isCholesky`: `Rᴴ` is the Cholesky factor of the Gram matrix.
 * `NLAlib.exists_hasOrthonormalCols_mul_isUpperTrapezoidal`: the full factorization.
@@ -84,11 +85,6 @@ Port of `NLAlib.moorePenroseConditionNumber_eq_of_qr`. -/
 theorem IsQR.conditionNumber_eq (h : IsQR A Q R) : conditionNumber R = conditionNumber A := by
   sorry
 
-/-- The absolute value of the determinant of `R` is the square root of the Gram determinant:
-the volume of the columns of `A`. -/
-theorem IsQR.norm_det_sq (h : IsQR A Q R) : ‖R.det‖ ^ 2 = RCLike.re (Aᴴ * A).det := by
-  sorry
-
 /-! ### Full column rank -/
 
 /-- `A` has full column rank exactly when the diagonal of `R` has no zero.
@@ -103,9 +99,13 @@ theorem IsQR.apply_self_pos (h : IsQR A Q R) (hA : Function.Injective A.mulVec)
     (hd : ∀ i, 0 ≤ R i i) (i : n) : 0 < R i i := by
   sorry
 
-/-- **The pseudoinverse through QR**: `A⁺ = R⁻¹ Qᴴ` for `A` of full column rank.
+/-- **The pseudoinverse through QR**: `A⁺ = R⁺ Qᴴ`, with no rank assumption. -/
+theorem IsQR.pinv_eq (h : IsQR A Q R) : pinv A = pinv R * Qᴴ := by
+  sorry
+
+/-- The pseudoinverse through QR for `A` of full column rank: `A⁺ = R⁻¹ Qᴴ`.
 Port of `NLAlib.moorePenroseInverse_eq_of_isQR`. -/
-theorem IsQR.pinv_eq (h : IsQR A Q R) (hR : ∀ i, R i i ≠ 0) : pinv A = R⁻¹ * Qᴴ := by
+theorem IsQR.pinv_eq_inv_mul (h : IsQR A Q R) (hR : ∀ i, R i i ≠ 0) : pinv A = R⁻¹ * Qᴴ := by
   sorry
 
 /-- For `A` of full column rank, `Q Qᴴ` is the orthogonal projector onto the range of `A`.
@@ -114,9 +114,9 @@ theorem IsQR.mul_conjTranspose_eq_rangeProjector [DecidableEq m] (h : IsQR A Q R
     (hR : ∀ i, R i i ≠ 0) : Q * Qᴴ = rangeProjector A := by
   sorry
 
-/-- For `A` of full column rank, the first columns of `Q` span the same subspace as the first
-columns of `A`. Port of `NLAlib.IsQR.isGradedColumnBasis`. -/
-theorem IsQR.span_col_image_Iic (h : IsQR A Q R) (hR : ∀ i, R i i ≠ 0) (j : n) :
+/-- While the diagonal of `R` has no zero, the first columns of `Q` span the same subspace as
+the first columns of `A`. Port of `NLAlib.IsQR.isGradedColumnBasis`. -/
+theorem IsQR.span_col_image_Iic (h : IsQR A Q R) {j : n} (hR : ∀ i, i ≤ j → R i i ≠ 0) :
     Submodule.span 𝕜 (Q.col '' Set.Iic j) = Submodule.span 𝕜 (A.col '' Set.Iic j) := by
   sorry
 
@@ -214,6 +214,21 @@ theorem IsQR.mul_eq_conjTranspose_mul_mul {H Q R : Matrix n n 𝕜} (h : IsQR H 
 Port of `NLAlib.isHermitian_mul_of_isQR`. -/
 theorem IsQR.isHermitian_mul {H Q R : Matrix n n 𝕜} (h : IsQR H Q R) (hH : H.IsHermitian) :
     (R * Q).IsHermitian := by
+  sorry
+
+/-- **One shifted step of the QR iteration is a unitary similarity**: if `H - μ • 1 = Q R` then
+`R Q + μ • 1 = Qᴴ H Q`. [GolubVanLoan2013, §7.5.2]. -/
+theorem IsQR.mul_add_smul_one_eq {H Q R : Matrix n n 𝕜} {μ : 𝕜}
+    (h : IsQR (H - μ • (1 : Matrix n n 𝕜)) Q R) :
+    R * Q + μ • (1 : Matrix n n 𝕜) = Qᴴ * H * Q := by
+  sorry
+
+/-- **The least-squares solution by back substitution**: for a QR factorization with no zero on
+the diagonal of `R`, `x = R⁻¹ Qᴴ b`, computed by back substitution, solves the least-squares
+problem. [GolubVanLoan2013, Algorithm 5.3.2]. -/
+theorem IsQR.isLeastSquaresSolution_backSubst {k : ℕ} {A Q : Matrix m (Fin k) 𝕜}
+    {R : Matrix (Fin k) (Fin k) 𝕜} (h : IsQR A Q R) (hR : ∀ i, R i i ≠ 0) (b : m → 𝕜) :
+    IsLeastSquaresSolution A b (backSubst R (Qᴴ *ᵥ b)) := by
   sorry
 
 end NLAlib

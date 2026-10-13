@@ -26,8 +26,9 @@ directly.
 * `NLAlib.exists_cs_decomposition`: the CS decomposition of a partitioned unitary matrix.
 * `NLAlib.HasOrthonormalCols.rank_toBlocks₁₂`, `NLAlib.HasOrthonormalCols.rank_toBlocks₂₂_add`:
   the ranks of the blocks.
-* `NLAlib.HasOrthonormalCols.sq_singularValues_toBlocks₂₁`: the singular values of the blocks of a
-  column block.
+* `NLAlib.HasOrthonormalCols.sq_singularValues_toBlocks₂₁`,
+  `NLAlib.HasOrthonormalCols.singularValues_toBlocks₂₂`,
+  `NLAlib.HasOrthonormalCols.singularValues_toBlocks₁₂`: the singular values of the blocks.
 -/
 
 @[expose] public section
@@ -270,22 +271,27 @@ theorem HasOrthonormalCols.singularValues_toBlocks₂₂ {U : Matrix (p ⊕ q) (
       sub_sub_cancel] at h₁
     exact (sq_eq_sq₀ (singularValues_nonneg _ _) (singularValues_nonneg _ _)).mp h₁
 
+/-- The off-diagonal blocks of a partitioned unitary matrix have the same singular values.
+[GolubVanLoan2013, Theorem 2.5.3 context]. -/
+theorem HasOrthonormalCols.singularValues_toBlocks₁₂ {U : Matrix (p ⊕ q) (p ⊕ q) 𝕜}
+    (hU : HasOrthonormalCols U) (k : ℕ) :
+    singularValues U.toBlocks₁₂ k = singularValues U.toBlocks₂₁ k := by
+  rcases le_or_gt (Fintype.card p) k with hk | hk
+  · rw [singularValues_of_card_rows_le _ hk, singularValues_of_card_cols_le _ hk]
+  · obtain ⟨j, hj⟩ : ∃ j, k + j + 1 = Fintype.card p := ⟨Fintype.card p - 1 - k, by omega⟩
+    have h₁ := sq_singularValues_eq_one_sub_of_conjTranspose_mul_self_add_eq_one
+      (toBlocks_conjTranspose_gram hU).1 hj
+    rw [singularValues_conjTranspose, singularValues_conjTranspose,
+      ← hU.sq_singularValues_toBlocks₂₁ hj] at h₁
+    exact (sq_eq_sq₀ (singularValues_nonneg _ _) (singularValues_nonneg _ _)).mp h₁
+
 /-- The off-diagonal blocks of a partitioned unitary matrix have the same rank.
 Port of `NLAlib.rank_offDiagonal_blocks_eq_of_unitary`. -/
 theorem HasOrthonormalCols.rank_toBlocks₁₂ {U : Matrix (p ⊕ q) (p ⊕ q) 𝕜}
     (hU : HasOrthonormalCols U) : U.toBlocks₁₂.rank = U.toBlocks₂₁.rank := by
-  have h : ∀ k, singularValues U.toBlocks₁₂ k = singularValues U.toBlocks₂₁ k := fun k => by
-    rcases le_or_gt (Fintype.card p) k with hk | hk
-    · rw [singularValues_of_card_rows_le _ hk, singularValues_of_card_cols_le _ hk]
-    · obtain ⟨j, hj⟩ : ∃ j, k + j + 1 = Fintype.card p := ⟨Fintype.card p - 1 - k, by omega⟩
-      have h₁ := sq_singularValues_eq_one_sub_of_conjTranspose_mul_self_add_eq_one
-        (toBlocks_conjTranspose_gram hU).1 hj
-      rw [singularValues_conjTranspose, singularValues_conjTranspose,
-        ← hU.sq_singularValues_toBlocks₂₁ hj] at h₁
-      exact (sq_eq_sq₀ (singularValues_nonneg _ _) (singularValues_nonneg _ _)).mp h₁
   refine le_antisymm ?_ ?_
-  · rw [← singularValues_eq_zero_iff, h, singularValues_eq_zero_iff]
-  · rw [← singularValues_eq_zero_iff, ← h, singularValues_eq_zero_iff]
+  · rw [← singularValues_eq_zero_iff, hU.singularValues_toBlocks₁₂, singularValues_eq_zero_iff]
+  · rw [← singularValues_eq_zero_iff, ← hU.singularValues_toBlocks₁₂, singularValues_eq_zero_iff]
 
 /-- The ranks of the diagonal blocks of a partitioned unitary matrix differ by the difference of
 the block sizes. Port of `NLAlib.rank_bottomRight_eq_rank_topLeft_add_card_sub_of_unitary`. -/

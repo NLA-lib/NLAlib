@@ -39,7 +39,7 @@ open scoped Matrix
 
 namespace NLAlib
 
-variable {R K : Type*} {m n : Type*} [LinearOrder m] [LinearOrder n] [Fintype m] [Fintype n]
+variable {R K : Type*} {n : Type*} [LinearOrder n] [Fintype n]
 
 /-- `IsLU A L U`: **`A = L * U` is an LU factorization**, with `L` unit lower triangular and `U`
 upper triangular. [GolubVanLoan2013, §3.2]; [HornJohnson2013, §3.5].
@@ -80,16 +80,16 @@ theorem IsLU.submatrix_of_isLowerSet (h : IsLU A L U) {s : Finset n}
       (U.submatrix (Subtype.val : s → n) (Subtype.val : s → n)) := by
   sorry
 
-/-- An LU factorization is preserved by an order isomorphism of the index type.
-Port of `NLAlib.IsLU.submatrix`. -/
-theorem IsLU.submatrix_orderIso (h : IsLU A L U) (e : m ≃o n) :
-    IsLU (A.submatrix e e) (L.submatrix e e) (U.submatrix e e) := by
-  sorry
-
 /-- **The LU factorization of a nonsingular matrix is unique.**
 [HornJohnson2013, Corollary 3.5.6]. Port of `NLAlib.IsLU.unique`. -/
 theorem IsLU.unique {L' U' : Matrix n n R} (hA : IsUnit A.det) (h : IsLU A L U)
     (h' : IsLU A L' U') : L = L' ∧ U = U' := by
+  sorry
+
+/-- **Solving through an LU factorization**: `A x = b` exactly when `U x = L⁻¹ b`.
+[GolubVanLoan2013, §3.2]. -/
+theorem IsLU.mulVec_eq_iff (h : IsLU A L U) {x b : n → R} :
+    A *ᵥ x = b ↔ U *ᵥ x = L⁻¹ *ᵥ b := by
   sorry
 
 end CommRing

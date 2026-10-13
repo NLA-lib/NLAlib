@@ -8,6 +8,7 @@ module
 public import NLAlib.Matrix.Factorizations.Triangular
 public import NLAlib.Matrix.Inequalities.Determinant
 public import NLAlib.Matrix.Norms.Loewner
+public import NLAlib.Matrix.Pseudoinverse.Pinv
 
 /-!
 # Gaussian elimination
@@ -32,7 +33,7 @@ pivot, and its correctness theorem assumes nonzero pivots.
 * `NLAlib.rank_eliminationStep_add_one`: a step at a nonzero pivot lowers the rank by one.
 * `NLAlib.det_eq_apply_self_mul_det_eliminationStep`: the determinant through a step.
 * `Matrix.PosSemidef.eliminationStep`, `Matrix.PosSemidef.eliminationStep_le`.
-* `NLAlib.posDef_iff_eliminationStep`: positive definiteness through a step.
+* `Matrix.IsHermitian.posDef_iff_eliminationStep`: positive definiteness through a step.
 * `Matrix.PosSemidef.sum_smul_eliminationStep`: the expected step of randomly pivoted Cholesky.
 -/
 
@@ -125,6 +126,11 @@ theorem det_eq_apply_self_mul_det_eliminationStep {A : Matrix n n K} {t : n} (ht
       ((eliminationStep A t).submatrix (Subtype.val : {i // i ≠ t} → n) Subtype.val).det := by
   sorry
 
+/-- The trace after an elimination step. -/
+theorem trace_eliminationStep (A : Matrix n n K) (t : n) :
+    (eliminationStep A t).trace = A.trace - (A t t)⁻¹ * ∑ i, A i t * A t i := by
+  sorry
+
 end Fintype
 
 /-! ### Elimination on Hermitian and positive semidefinite matrices -/
@@ -165,10 +171,26 @@ theorem _root_.Matrix.PosSemidef.eliminationStep_apply_pivot_right {A : Matrix n
 /-- **Positive definiteness through an elimination step**: `A` is positive definite exactly when
 the pivot is positive and the Schur complement is positive definite.
 Port of `NLAlib.posDef_iff_pivotSchur`, there for the first pivot of a matrix on `Fin`. -/
-theorem posDef_iff_eliminationStep [DecidableEq n] {A : Matrix n n 𝕜} (hA : A.IsHermitian)
-    (t : n) :
+theorem _root_.Matrix.IsHermitian.posDef_iff_eliminationStep [DecidableEq n]
+    {A : Matrix n n 𝕜} (hA : A.IsHermitian) (t : n) :
     A.PosDef ↔ 0 < A t t ∧
       ((eliminationStep A t).submatrix (Subtype.val : {i // i ≠ t} → n) Subtype.val).PosDef := by
+  sorry
+
+/-- Elimination along any list of pivots keeps a positive semidefinite matrix positive
+semidefinite. -/
+theorem _root_.Matrix.PosSemidef.foldl_eliminationStep {A : Matrix n n 𝕜} (hA : A.PosSemidef)
+    (l : List n) : (l.foldl eliminationStep A).PosSemidef := by
+  sorry
+
+/-- **Elimination along a list of pivots is the Nyström residual.** For a positive semidefinite
+`A` and pivots `l`, the eliminated matrix is `A - A_{:,l} (A_{l,l})⁺ A_{l,:}`: it depends only on
+the set of pivots, and repeated pivots do nothing. This is the residual of the partial pivoted
+Cholesky factorization. [ChenEtAl2025, §2]. -/
+theorem _root_.Matrix.PosSemidef.foldl_eliminationStep_eq_sub [DecidableEq n]
+    {A : Matrix n n 𝕜} (hA : A.PosSemidef) (l : List n) :
+    l.foldl eliminationStep A =
+      A - A.submatrix id l.get * pinv (A.submatrix l.get l.get) * A.submatrix l.get id := by
   sorry
 
 /-- **The expected step of randomly pivoted Cholesky.** Choosing the pivot `i` with probability
@@ -205,6 +227,21 @@ theorem gaussState_succ (A : Matrix (Fin n) (Fin n) K) {k : ℕ} (h : k < n) :
     gaussState A (k + 1) = eliminationStep (gaussState A k) ⟨k, h⟩ := by
   sorry
 
+/-- Elimination in the natural order is elimination along the list `0, …, k - 1`. -/
+theorem gaussState_eq_foldl (A : Matrix (Fin n) (Fin n) K) (k : ℕ) :
+    gaussState A k = ((List.finRange n).take k).foldl eliminationStep A := by
+  sorry
+
+/-- **The telescoping identity of elimination**: `A` is the current state plus the rank-one
+matrices removed so far. It holds with no assumption on the pivots, since a zero pivot removes
+nothing. -/
+theorem eq_gaussState_add_sum (A : Matrix (Fin n) (Fin n) K) (k : ℕ) :
+    A = gaussState A k +
+      ∑ j ∈ Finset.univ.filter (fun j : Fin n => (j : ℕ) < k),
+        (gaussState A j j j)⁻¹ •
+          Matrix.vecMulVec (fun i => gaussState A j i j) (gaussState A j j) := by
+  sorry
+
 /-- While the pivots are nonzero, the rows already eliminated are zero. -/
 theorem gaussState_apply_eq_zero_of_lt_left (A : Matrix (Fin n) (Fin n) K) {k : ℕ}
     (hp : ∀ l : Fin n, (l : ℕ) < k → gaussState A l l l ≠ 0) {i : Fin n} (hi : (i : ℕ) < k)
@@ -231,16 +268,18 @@ theorem principalMinor_Iic_eq_prod_gaussState (A : Matrix (Fin n) (Fin n) K) (i 
     principalMinor A (Finset.Iic i) = ∏ l ∈ Finset.Iic i, gaussState A l l l := by
   sorry
 
+/-- **A pivot is the ratio of consecutive leading principal minors**, while the earlier pivots
+are nonzero. -/
+theorem gaussState_apply_self_mul_principalMinor_Iio (A : Matrix (Fin n) (Fin n) K) (i : Fin n)
+    (hp : ∀ l : Fin n, l < i → gaussState A l l l ≠ 0) :
+    gaussState A i i i * principalMinor A (Finset.Iio i) = principalMinor A (Finset.Iic i) := by
+  sorry
+
 /-- **The pivots up to `i` are nonzero exactly when the leading principal minors up to order
 `i + 1` are nonzero.** -/
 theorem forall_gaussState_ne_zero_iff (A : Matrix (Fin n) (Fin n) K) (i : Fin n) :
     (∀ l : Fin n, l ≤ i → gaussState A l l l ≠ 0) ↔
       ∀ l : Fin n, l ≤ i → principalMinor A (Finset.Iic l) ≠ 0 := by
-  sorry
-
-/-- Elimination keeps a positive semidefinite matrix positive semidefinite. -/
-theorem _root_.Matrix.PosSemidef.gaussState {A : Matrix (Fin n) (Fin n) 𝕜} (hA : A.PosSemidef)
-    (k : ℕ) : (gaussState A k).PosSemidef := by
   sorry
 
 /-- The pivots of a positive definite matrix are positive. -/

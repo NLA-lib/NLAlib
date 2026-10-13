@@ -175,12 +175,6 @@ theorem isUnitUpperTriangular_transpose_iff [Zero R] [One R] {L : Matrix n n R} 
     IsUnitUpperTriangular Lᵀ ↔ IsUnitLowerTriangular L := by
   sorry
 
-/-- The transpose of a unit upper triangular matrix is unit lower triangular.
-Port of `NLAlib.isUnitLowerTriangular_transpose_iff`. -/
-theorem isUnitLowerTriangular_transpose_iff [Zero R] [One R] {U : Matrix n n R} :
-    IsUnitLowerTriangular Uᵀ ↔ IsUnitUpperTriangular U := by
-  sorry
-
 /-- The conjugate transpose of a unit lower triangular matrix is unit upper triangular. -/
 theorem IsUnitLowerTriangular.conjTranspose [NonAssocSemiring R] [StarRing R] {L : Matrix n n R}
     (hL : IsUnitLowerTriangular L) : IsUnitUpperTriangular Lᴴ := by
@@ -249,12 +243,16 @@ theorem isUpperTrapezoidal_iff_isUpperTriangular [Zero R] {n : ℕ}
     {A : Matrix (Fin n) (Fin n) R} : IsUpperTrapezoidal A ↔ A.IsUpperTriangular := by
   sorry
 
-/-- The leading square block of a tall upper trapezoidal matrix is upper triangular and the rows
-below it vanish. -/
+/-- The leading square block of a tall upper trapezoidal matrix is upper triangular. -/
 theorem IsUpperTrapezoidal.isUpperTriangular_submatrix_castLE [Zero R] {m n : ℕ}
     {A : Matrix (Fin m) (Fin n) R} (hA : IsUpperTrapezoidal A) (h : n ≤ m) :
-    (A.submatrix (Fin.castLE h) id).IsUpperTriangular ∧
-      ∀ (i : Fin m) (j : Fin n), n ≤ (i : ℕ) → A i j = 0 := by
+    (A.submatrix (Fin.castLE h) id).IsUpperTriangular := by
+  sorry
+
+/-- The rows of an upper trapezoidal matrix beyond the number of columns vanish. -/
+theorem IsUpperTrapezoidal.apply_eq_zero_of_le [Zero R] {m n : ℕ}
+    {A : Matrix (Fin m) (Fin n) R} (hA : IsUpperTrapezoidal A) {i : Fin m} (hi : n ≤ (i : ℕ))
+    (j : Fin n) : A i j = 0 := by
   sorry
 
 /-! ### Forward and back substitution -/

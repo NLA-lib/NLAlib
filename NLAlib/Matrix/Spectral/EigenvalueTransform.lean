@@ -24,7 +24,7 @@ similarity and relabelling. Positive semidefiniteness and definiteness in terms 
   `Matrix.IsHermitian.frobNorm_sq_eq_sum_eigenvalue_sq`,
   `Matrix.IsHermitian.rank_eq_card_eigenvalue_ne_zero`.
 * `NLAlib.eigenvalue_neg`, `NLAlib.eigenvalue_real_smul`,
-  `Matrix.IsHermitian.eigenvalue_add_smul_one`.
+  `Matrix.IsHermitian.eigenvalue_add_smul_one`, `NLAlib.eigenvalue_real_smul_one`.
 * `NLAlib.eigenvalue_conjTranspose_mul_mul_of_card_eq`: invariance under unitary similarity.
 * `Matrix.IsHermitian.posSemidef_iff_eigenvalue_nonneg`,
   `Matrix.PosSemidef.eigenvalue_antitone`.
@@ -281,6 +281,12 @@ theorem _root_.Matrix.IsHermitian.eigenvalue_add_smul_one [DecidableEq n] {A : M
   refine eigenvalue_eq_of_eq_mul_diagonal_mul_conjTranspose hU rfl hμ ?_ ⟨k, hk⟩
   rw [hd, Matrix.mul_add, Matrix.add_mul, ← hAU, Matrix.mul_smul, Matrix.smul_mul, Matrix.mul_one,
     hU.mul_conjTranspose_self_of_card_eq (Fintype.card_fin _).symm]
+
+/-- The eigenvalues of a real multiple of the identity are that multiple, on the valid range. -/
+theorem eigenvalue_real_smul_one [DecidableEq n] (c : ℝ) {k : ℕ} (hk : k < Fintype.card n) :
+    eigenvalue (c • (1 : Matrix n n 𝕜)) k = c := by
+  have h := (Matrix.isHermitian_zero (α := 𝕜) (n := n)).eigenvalue_add_smul_one c hk
+  rwa [zero_add, eigenvalue_zero, zero_add] at h
 
 /-- **Invariance under unitary similarity.** If `U` has orthonormal columns and as many columns
 as rows, `Uᴴ * A * U` has the eigenvalues of `A`. No hypothesis on `A` is needed: both sides are

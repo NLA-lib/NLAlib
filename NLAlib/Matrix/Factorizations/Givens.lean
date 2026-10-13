@@ -40,11 +40,6 @@ def givens (i j : n) (c s : 𝕜) : Matrix n n 𝕜 :=
   1 + (c - 1) • Matrix.single i i 1 + (star c - 1) • Matrix.single j j 1 +
     s • Matrix.single i j 1 - star s • Matrix.single j i 1
 
-/-- The trivial rotation is the identity. -/
-@[simp]
-theorem givens_one_zero (i j : n) : givens i j (1 : 𝕜) 0 = 1 := by
-  sorry
-
 /-- Coordinate `i` of a rotated vector. Port of `NLAlib.givens_mulVec_apply_left`. -/
 theorem givens_mulVec_apply_left {i j : n} (hij : i ≠ j) (c s : 𝕜) (x : n → 𝕜) :
     (givens i j c s *ᵥ x) i = c * x i + s * x j := by

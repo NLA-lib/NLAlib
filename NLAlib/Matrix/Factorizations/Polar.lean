@@ -63,6 +63,11 @@ theorem sqrt_mul_polarFactor (A : Matrix m n 𝕜) :
     CFC.sqrt (A * Aᴴ) * polarFactor A = A := by
   sorry
 
+/-- The polar factor from the left absolute value: `U = |Aᴴ|⁺ A`. -/
+theorem polarFactor_eq_pinv_sqrt_mul (A : Matrix m n 𝕜) :
+    polarFactor A = pinv (CFC.sqrt (A * Aᴴ)) * A := by
+  sorry
+
 /-- The polar factor is a partial isometry with initial space the row space of `A`. -/
 theorem conjTranspose_polarFactor_mul_self (A : Matrix m n 𝕜) :
     (polarFactor A)ᴴ * polarFactor A = rangeProjector Aᴴ := by
@@ -153,13 +158,6 @@ theorem SymmetricGauge.matrixNorm_sub_le_matrixNorm_sub_of_mul_sqrt_eq (Φ : Sym
     (hV : HasOrthonormalCols V) : Φ.matrixNorm (A - U) ≤ Φ.matrixNorm (A - V) := by
   sorry
 
-/-- No matrix with orthonormal columns is farther from `A` than minus the polar factor.
-[Higham2008, Theorem 8.4 context]. -/
-theorem SymmetricGauge.matrixNorm_sub_le_matrixNorm_add_of_mul_sqrt_eq (Φ : SymmetricGauge)
-    {A U V : Matrix m n 𝕜} (hU : HasOrthonormalCols U) (hA : U * CFC.sqrt (Aᴴ * A) = A)
-    (hV : HasOrthonormalCols V) : Φ.matrixNorm (A - V) ≤ Φ.matrixNorm (A + U) := by
-  sorry
-
 /-- The trace of a square matrix equals its nuclear norm exactly when it is positive
 semidefinite. Port of `NLAlib.trace_eq_nuclearNorm_iff_posSemidef`, there over `ℝ`. -/
 theorem trace_eq_nuclearNorm_iff_posSemidef {M : Matrix n n 𝕜} :
@@ -195,16 +193,6 @@ theorem isLeast_frobNorm_sub_mul_mul_sq (A B : Matrix m n 𝕜) :
         {P | HasOrthonormalCols P.1 ∧ HasOrthonormalCols P.2})
       (∑ i ∈ Finset.range (min (Fintype.card m) (Fintype.card n)),
         (singularValues A i - singularValues B i) ^ 2) := by
-  sorry
-
-/-- **The nearest scaled unitary matrix.** The least value of `‖A - c U‖_F²` over real `c` and
-unitary `U` is `‖A‖_F² - ‖A‖_*² / n`, attained at `c = ‖A‖_* / n` and a polar factor.
-Port of `NLAlib.isLeast_frobSq_sub_scaled_orthogonal`, there over `ℝ`. -/
-theorem isLeast_frobNorm_sub_smul_sq [Nonempty n] (A : Matrix n n 𝕜) :
-    IsLeast
-      ((fun P : ℝ × Matrix n n 𝕜 => frobNorm (A - P.1 • P.2) ^ 2) ''
-        {P | HasOrthonormalCols P.2})
-      (frobNorm A ^ 2 - nuclearNorm A ^ 2 / Fintype.card n) := by
   sorry
 
 end NLAlib

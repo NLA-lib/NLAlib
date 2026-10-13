@@ -27,7 +27,8 @@ The perturbation theorem is the case where `(U', V', S)` is exact for `A + E`.
   form, every unitarily invariant norm.
 * `NLAlib.SymmetricGauge.mul_max_matrixNorm_one_sub_mul_le_of_singularValues_sub`: the leading
   singular subspaces of `A` and `A + E`.
-* `NLAlib.sq_mul_frobNorm_one_sub_mul_sq_add_le_of_singularValues_sub`: the Frobenius form.
+* `NLAlib.sub_sq_mul_frobNorm_one_sub_mul_sq_add_le`,
+  `NLAlib.sq_mul_frobNorm_one_sub_mul_sq_add_le_of_singularValues_sub`: the Frobenius forms.
 * `NLAlib.max_specNorm_one_sub_mul_le_two_mul_specNorm_div_singularGap`: the bound with the gap of
   the unperturbed matrix only.
 -/
@@ -42,20 +43,6 @@ variable {𝕜 : Type*} [RCLike 𝕜] {m n p : Type*} [Fintype m] [Fintype n] [F
   [DecidableEq m] [DecidableEq n] [DecidableEq p]
 
 /-! ### Coupled separation bounds -/
-
-/-- For a square matrix, a lower bound on `Tᴴ * T` is also a lower bound on `T * Tᴴ`. -/
-private theorem smul_one_le_mul_conjTranspose_self {T : Matrix p p 𝕜} {a : ℝ}
-    (hT : a • (1 : Matrix p p 𝕜) ≤ Tᴴ * T) : a • (1 : Matrix p p 𝕜) ≤ T * Tᴴ := by
-  rcases Nat.eq_zero_or_pos (Fintype.card p) with h0 | hpos
-  · have : IsEmpty p := Fintype.card_eq_zero_iff.mp h0
-    exact le_of_eq (Subsingleton.elim _ _)
-  · obtain ⟨k, hk⟩ : ∃ k, k + 1 = Fintype.card p := ⟨Fintype.card p - 1, by omega⟩
-    have h₁ := le_sq_singularValues_last_of_smul_one_le hk hT
-    have h₂ := sq_singularValues_last_smul_one_le Tᴴ hk
-    rw [singularValues_conjTranspose, smul_one_le_conjTranspose_mul_self_iff] at h₂
-    have e : T * Tᴴ = Tᴴᴴ * Tᴴ := by rw [Matrix.conjTranspose_conjTranspose]
-    rw [e, smul_one_le_conjTranspose_mul_self_iff]
-    exact fun x => (mul_le_mul_of_nonneg_right h₁ (sq_nonneg _)).trans (h₂ x)
 
 omit [DecidableEq m] [DecidableEq n] in
 /-- One of the two inequalities behind the coupled bound: `α ‖X‖ ≤ β ‖Y‖ + ‖D Y - X T‖`. -/
@@ -124,7 +111,8 @@ theorem SymmetricGauge.sub_mul_max_matrixNorm_le_max (Φ : SymmetricGauge) {D : 
     (α - β) * max (Φ.matrixNorm X) (Φ.matrixNorm Y) ≤
       max (Φ.matrixNorm (D * Y - X * T)) (Φ.matrixNorm (Dᴴ * X - Y * Tᴴ)) := by
   have hβ : 0 ≤ β := (specNorm_nonneg D).trans hD
-  have h₁ := mul_matrixNorm_le_mul_matrixNorm_add Φ (smul_one_le_mul_conjTranspose_self hT) hD X Y
+  have h₁ := mul_matrixNorm_le_mul_matrixNorm_add Φ
+    (smul_one_le_mul_conjTranspose_self_of_smul_one_le hT) hD X Y
   have h₂ := mul_matrixNorm_le_mul_matrixNorm_add Φ (D := Dᴴ) (T := Tᴴ) (β := β)
     (by rwa [Matrix.conjTranspose_conjTranspose]) (by rwa [specNorm_conjTranspose]) Y X
   rcases le_total (Φ.matrixNorm X) (Φ.matrixNorm Y) with h | h
@@ -146,7 +134,7 @@ theorem sub_sq_mul_frobNorm_sq_add_frobNorm_sq_le {D : Matrix m n 𝕜} {T : Mat
     (α - β) ^ 2 * (frobNorm X ^ 2 + frobNorm Y ^ 2) ≤
       frobNorm (D * Y - X * T) ^ 2 + frobNorm (Dᴴ * X - Y * Tᴴ) ^ 2 := by
   have h₁ := mul_matrixNorm_le_mul_matrixNorm_add (lpGauge 2 one_le_two)
-    (smul_one_le_mul_conjTranspose_self hT) hD X Y
+    (smul_one_le_mul_conjTranspose_self_of_smul_one_le hT) hD X Y
   have h₂ := mul_matrixNorm_le_mul_matrixNorm_add (lpGauge 2 one_le_two) (D := Dᴴ) (T := Tᴴ)
     (β := β) (by rwa [Matrix.conjTranspose_conjTranspose]) (by rwa [specNorm_conjTranspose]) Y X
   simp only [lpGauge_two_matrixNorm] at h₁ h₂
@@ -330,6 +318,33 @@ theorem SymmetricGauge.sub_mul_max_matrixNorm_one_sub_mul_le_max (Φ : Symmetric
   exact h.trans (max_le_max (Φ.matrixNorm_mul_le_of_isStarProjection hPU _)
     (Φ.matrixNorm_mul_le_of_isStarProjection hPV _))
 
+/-- **Wedin's `sin Θ` theorem, residual form, Frobenius norm.** Let `U`, `V` be frames of left
+and right singular vectors of `A` for its `j + 1` largest singular values. For any triple
+`(U', V', S)` with `S` bounded below by `α ≥ σ_{j+1}(A)` (`α² • 1 ≤ Sᴴ S`),
+`(α - σ_{j+1}(A))² (‖(1 - U Uᴴ) U'‖_F² + ‖(1 - V Vᴴ) V'‖_F²) ≤
+‖A V' - U' S‖_F² + ‖Aᴴ U' - V' Sᴴ‖_F²`.
+[Wedin1972]; [StewartSun1990, Theorem V.4.1].
+Result: wedin -/
+theorem sub_sq_mul_frobNorm_one_sub_mul_sq_add_le {A : Matrix m n 𝕜} {j : ℕ}
+    {U : Matrix m (Fin (j + 1)) 𝕜} {V : Matrix n (Fin (j + 1)) 𝕜}
+    (hU : HasOrthonormalCols U) (hV : HasOrthonormalCols V)
+    (hAV : A * V = U * Matrix.diagonal fun i : Fin (j + 1) => ((singularValues A i : ℝ) : 𝕜))
+    (hAU : Aᴴ * U = V * Matrix.diagonal fun i : Fin (j + 1) => ((singularValues A i : ℝ) : 𝕜))
+    {S : Matrix p p 𝕜} {α : ℝ} (hα : singularValues A (j + 1) ≤ α)
+    (hS : (α ^ 2) • (1 : Matrix p p 𝕜) ≤ Sᴴ * S) (U' : Matrix m p 𝕜) (V' : Matrix n p 𝕜) :
+    (α - singularValues A (j + 1)) ^ 2 *
+        (frobNorm ((1 - U * Uᴴ) * U') ^ 2 + frobNorm ((1 - V * Vᴴ) * V') ^ 2) ≤
+      frobNorm (A * V' - U' * S) ^ 2 + frobNorm (Aᴴ * U' - V' * Sᴴ) ^ 2 := by
+  have hPU : IsStarProjection (1 - U * Uᴴ) := hU.isStarProjection_mul_conjTranspose.one_sub
+  have hPV : IsStarProjection (1 - V * Vᴴ) := hV.isStarProjection_mul_conjTranspose.one_sub
+  have h := sub_sq_mul_frobNorm_sq_add_frobNorm_sq_le hα hS
+    (specNorm_one_sub_mul_mul_one_sub_of_mul_eq_mul_diagonal hV hAV hAU).le
+    ((1 - U * Uᴴ) * U') ((1 - V * Vᴴ) * V')
+  rw [one_sub_mul_mul_one_sub_mul_sub hU hV hAV hAU,
+    conjTranspose_one_sub_mul_mul_one_sub_mul_sub hU hV hAV hAU] at h
+  exact h.trans (add_le_add (pow_le_pow_left₀ (frobNorm_nonneg _) (hPU.frobNorm_mul_le _) 2)
+    (pow_le_pow_left₀ (frobNorm_nonneg _) (hPV.frobNorm_mul_le _) 2))
+
 /-- **Wedin's `sin Θ` theorem.** Let `U`, `V` be frames of left and right singular vectors of `A`
 for its `j + 1` largest singular values, and `U'`, `V'` the same for `A + E`. If
 `δ ≤ σ_j(A + E) - σ_{j+1}(A)`, then in every unitarily invariant norm
@@ -377,30 +392,16 @@ theorem sq_mul_frobNorm_one_sub_mul_sq_add_le_of_singularValues_sub {A E : Matri
     {δ : ℝ} (hδ₀ : 0 ≤ δ) (hδ : δ ≤ singularValues (A + E) j - singularValues A (j + 1)) :
     δ ^ 2 * (frobNorm ((1 - U * Uᴴ) * U') ^ 2 + frobNorm ((1 - V * Vᴴ) * V') ^ 2) ≤
       frobNorm (E * V') ^ 2 + frobNorm (Eᴴ * U') ^ 2 := by
-  have hPU : IsStarProjection (1 - U * Uᴴ) := hU.isStarProjection_mul_conjTranspose.one_sub
-  have hPV : IsStarProjection (1 - V * Vᴴ) := hV.isStarProjection_mul_conjTranspose.one_sub
   have hS := sq_smul_one_le_conjTranspose_diagonal_mul_self (𝕜 := 𝕜)
     (σ := fun i : Fin (j + 1) => singularValues (A + E) i) (singularValues_nonneg (A + E) j)
     fun i => singularValues_antitone (A + E) (Nat.lt_succ_iff.mp i.2)
-  have h := sub_sq_mul_frobNorm_sq_add_frobNorm_sq_le (by linarith) hS
-    (specNorm_one_sub_mul_mul_one_sub_of_mul_eq_mul_diagonal hV hAV hAU).le
-    ((1 - U * Uᴴ) * U') ((1 - V * Vᴴ) * V')
-  rw [one_sub_mul_mul_one_sub_mul_sub hU hV hAV hAU,
-    conjTranspose_one_sub_mul_mul_one_sub_mul_sub hU hV hAV hAU, conjTranspose_diagonal_ofReal,
-    sub_eq_neg_mul_of_add_mul_eq hAV',
-    sub_eq_neg_mul_of_add_mul_eq (by rwa [Matrix.conjTranspose_add] at hAU')] at h
-  have h₁ := (hPU.frobNorm_mul_le (-(E * V'))).trans_eq (frobNorm_neg _)
-  have h₂ := (hPV.frobNorm_mul_le (-(Eᴴ * U'))).trans_eq (frobNorm_neg _)
+  have h := sub_sq_mul_frobNorm_one_sub_mul_sq_add_le hU hV hAV hAU (by linarith) hS U' V'
+  rw [conjTranspose_diagonal_ofReal, sub_eq_neg_mul_of_add_mul_eq hAV',
+    sub_eq_neg_mul_of_add_mul_eq (by rwa [Matrix.conjTranspose_add] at hAU'), frobNorm_neg,
+    frobNorm_neg] at h
   have h₃ : δ ^ 2 ≤ (singularValues (A + E) j - singularValues A (j + 1)) ^ 2 :=
     pow_le_pow_left₀ hδ₀ hδ 2
-  calc δ ^ 2 * (frobNorm ((1 - U * Uᴴ) * U') ^ 2 + frobNorm ((1 - V * Vᴴ) * V') ^ 2)
-      ≤ (singularValues (A + E) j - singularValues A (j + 1)) ^ 2 *
-        (frobNorm ((1 - U * Uᴴ) * U') ^ 2 + frobNorm ((1 - V * Vᴴ) * V') ^ 2) :=
-        mul_le_mul_of_nonneg_right h₃ (by positivity)
-    _ ≤ _ := h
-    _ ≤ frobNorm (E * V') ^ 2 + frobNorm (Eᴴ * U') ^ 2 :=
-        add_le_add (pow_le_pow_left₀ (frobNorm_nonneg _) h₁ 2)
-          (pow_le_pow_left₀ (frobNorm_nonneg _) h₂ 2)
+  exact (mul_le_mul_of_nonneg_right h₃ (by positivity)).trans h
 
 /-- **Wedin's theorem with the gap of the unperturbed matrix**, spectral norm:
 `max (‖(1 - U Uᴴ) U'‖₂, ‖(1 - V Vᴴ) V'‖₂) ≤ 2 ‖E‖₂ / (σ_j(A) - σ_{j+1}(A))`, for frames with

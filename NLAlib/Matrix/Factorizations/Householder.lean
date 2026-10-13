@@ -116,13 +116,6 @@ theorem norm_householder_mulVec_householderVector_apply (x : m → 𝕜) (i₀ :
     ‖(householder (householderVector x i₀) *ᵥ x) i₀‖ = ‖WithLp.toLp 2 x‖ := by
   sorry
 
-/-- **Every vector is reflected to a multiple of a coordinate vector** by a unitary Hermitian
-matrix. -/
-theorem exists_isHermitian_mulVec_eq_smul_single (x : m → 𝕜) (i₀ : m) :
-    ∃ (H : Matrix m m 𝕜) (c : 𝕜), H.IsHermitian ∧ H * H = 1 ∧
-      ‖c‖ = ‖WithLp.toLp 2 x‖ ∧ H *ᵥ x = c • Pi.single i₀ 1 := by
-  sorry
-
 /-! ### Householder QR -/
 
 section QR

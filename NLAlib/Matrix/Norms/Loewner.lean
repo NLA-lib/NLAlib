@@ -34,6 +34,9 @@ action, `(a : ℝ) • (1 : Matrix n n 𝕜)`.
   `specNorm (Tᴴ * T - 1) ≤ ε` to the Loewner bounds `(1 - ε) • 1 ≤ Tᴴ * T ≤ (1 + ε) • 1`.
 * `Matrix.PosSemidef.specNorm_le_specNorm_of_le`: the spectral norm is monotone on the positive
   semidefinite cone.
+* `NLAlib.isHermitian_of_le_smul_one`, `NLAlib.isHermitian_of_smul_one_le`,
+  `NLAlib.smul_one_le_smul_one_iff`, `NLAlib.smul_one_le_diagonal_iff`: comparisons with
+  multiples of the identity.
 -/
 
 @[expose] public section
@@ -69,6 +72,57 @@ theorem conjTranspose_mul_mul_le_conjTranspose_mul_mul [Finite n] {G H : Matrix 
   rw [Matrix.le_iff] at h ⊢
   have h' := h.conjTranspose_mul_mul_same X
   rwa [Matrix.mul_sub, Matrix.sub_mul] at h'
+
+/-! ### Multiples of the identity -/
+
+omit [Fintype n] in
+/-- A matrix below a real multiple of the identity in the Loewner order is Hermitian. A Loewner
+bound against `b • 1` therefore needs no separate Hermitian hypothesis. -/
+theorem isHermitian_of_le_smul_one [DecidableEq n] {M : Matrix n n 𝕜} {b : ℝ}
+    (h : M ≤ b • (1 : Matrix n n 𝕜)) : M.IsHermitian := by
+  have h' := (isHermitian_real_smul_one (𝕜 := 𝕜) (n := n) b).sub (Matrix.le_iff.mp h).isHermitian
+  rwa [sub_sub_cancel] at h'
+
+omit [Fintype n] in
+/-- A matrix above a real multiple of the identity in the Loewner order is Hermitian. -/
+theorem isHermitian_of_smul_one_le [DecidableEq n] {M : Matrix n n 𝕜} {a : ℝ}
+    (h : a • (1 : Matrix n n 𝕜) ≤ M) : M.IsHermitian := by
+  have h' := (Matrix.le_iff.mp h).isHermitian.add (isHermitian_real_smul_one (𝕜 := 𝕜) (n := n) a)
+  rwa [sub_add_cancel] at h'
+
+omit [Fintype n] in
+/-- A real diagonal matrix is above `c • 1` in the Loewner order exactly when its entries are at
+least `c`. -/
+theorem smul_one_le_diagonal_iff [DecidableEq n] {d : n → ℝ} {c : ℝ} :
+    c • (1 : Matrix n n 𝕜) ≤ Matrix.diagonal (fun i => ((d i : ℝ) : 𝕜)) ↔ ∀ i, c ≤ d i := by
+  have e : (Matrix.diagonal fun i => ((d i : ℝ) : 𝕜)) - c • (1 : Matrix n n 𝕜) =
+      Matrix.diagonal fun i => ((d i - c : ℝ) : 𝕜) := by
+    rw [RCLike.real_smul_eq_coe_smul (K := 𝕜) c, ← Matrix.diagonal_one, ← Matrix.diagonal_smul,
+      Matrix.diagonal_sub]
+    congr 1
+    ext i
+    simp
+  rw [Matrix.le_iff, e, Matrix.posSemidef_diagonal_iff]
+  exact forall_congr' fun i => by rw [RCLike.ofReal_nonneg, sub_nonneg]
+
+omit [Fintype n] in
+/-- Real multiples of the identity are ordered as their scalars. -/
+theorem smul_one_le_smul_one [DecidableEq n] {a b : ℝ} (h : a ≤ b) :
+    a • (1 : Matrix n n 𝕜) ≤ b • (1 : Matrix n n 𝕜) := by
+  rw [Matrix.le_iff, ← sub_smul]
+  exact Matrix.PosSemidef.one.smul (sub_nonneg.mpr h)
+
+omit [Fintype n] in
+/-- On a nonempty index type, real multiples of the identity are ordered exactly as their
+scalars. -/
+theorem smul_one_le_smul_one_iff [DecidableEq n] [Nonempty n] {a b : ℝ} :
+    a • (1 : Matrix n n 𝕜) ≤ b • (1 : Matrix n n 𝕜) ↔ a ≤ b := by
+  have e : b • (1 : Matrix n n 𝕜) = Matrix.diagonal fun _ => ((b : ℝ) : 𝕜) := by
+    rw [RCLike.real_smul_eq_coe_smul (K := 𝕜) b, ← Matrix.diagonal_one, ← Matrix.diagonal_smul]
+    congr 1
+    ext i
+    simp
+  rw [e, smul_one_le_diagonal_iff, forall_const]
 
 /-! ### Gram matrices -/
 

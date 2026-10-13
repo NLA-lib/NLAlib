@@ -38,7 +38,7 @@ open scoped Matrix ComplexOrder MatrixOrder
 namespace NLAlib
 
 variable {𝕜 : Type*} [RCLike 𝕜] {m n : Type*} [Fintype m] [Fintype n] [LinearOrder n]
-  [LocallyFiniteOrderBot n] [WellFoundedLT n] [DecidableEq n]
+  [LocallyFiniteOrderBot n] [DecidableEq n]
 
 /-- The matrix of Gram–Schmidt vectors of the columns of `A`: column `j` is the normalised
 component of column `j` of `A` orthogonal to the earlier columns, or zero if there is none.
@@ -107,18 +107,30 @@ theorem hasOrthonormalCols_gramSchmidtQ {A : Matrix m n 𝕜} (hA : Function.Inj
     HasOrthonormalCols (gramSchmidtQ A) := by
   sorry
 
-/-- **Gram–Schmidt computes the QR factorization** of a matrix of full column rank, with positive
-diagonal. [TrefethenBau1997, Lecture 7]. Port of `NLAlib.isQR_gramSchmidt`. -/
+/-- **Gram–Schmidt computes the QR factorization** of a matrix of full column rank.
+[TrefethenBau1997, Lecture 7]. Port of `NLAlib.isQR_gramSchmidt`. -/
 theorem isQR_gramSchmidt {A : Matrix m n 𝕜} (hA : Function.Injective A.mulVec) :
-    IsQR A (gramSchmidtQ A) (gramSchmidtR A) ∧ ∀ j, 0 < gramSchmidtR A j j := by
+    IsQR A (gramSchmidtQ A) (gramSchmidtR A) := by
   sorry
 
-/-- Gram–Schmidt commutes with a unitary factor on the left: `Q(W A) = W Q(A)` and
-`R(W A) = R(A)`. Port of `NLAlib.qrNormalizedArray_orthogonal_mul` and
-`NLAlib.canonicalQRUpper_orthogonal_mul`. -/
-theorem gramSchmidt_mul_left {l : Type*} [Fintype l] [DecidableEq m] {W : Matrix l m 𝕜}
+/-- For `A` of full column rank the diagonal of the triangular factor is positive.
+Port of `NLAlib.gramSchmidtR_apply_self_pos`. -/
+theorem gramSchmidtR_apply_self_pos {A : Matrix m n 𝕜} (hA : Function.Injective A.mulVec)
+    (j : n) : 0 < gramSchmidtR A j j := by
+  sorry
+
+/-- Gram–Schmidt commutes with a unitary factor on the left: `Q(W A) = W Q(A)`.
+Port of `NLAlib.qrNormalizedArray_orthogonal_mul`. -/
+theorem gramSchmidtQ_mul_left {l : Type*} [Fintype l] [DecidableEq m] {W : Matrix l m 𝕜}
     (hW : HasOrthonormalCols W) (A : Matrix m n 𝕜) :
-    gramSchmidtQ (W * A) = W * gramSchmidtQ A ∧ gramSchmidtR (W * A) = gramSchmidtR A := by
+    gramSchmidtQ (W * A) = W * gramSchmidtQ A := by
+  sorry
+
+/-- The triangular factor is unchanged by a unitary factor on the left: `R(W A) = R(A)`.
+Port of `NLAlib.canonicalQRUpper_orthogonal_mul`. -/
+theorem gramSchmidtR_mul_left {l : Type*} [Fintype l] [DecidableEq m] {W : Matrix l m 𝕜}
+    (hW : HasOrthonormalCols W) (A : Matrix m n 𝕜) :
+    gramSchmidtR (W * A) = gramSchmidtR A := by
   sorry
 
 end NLAlib

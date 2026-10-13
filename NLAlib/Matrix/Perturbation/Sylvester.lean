@@ -40,18 +40,6 @@ variable {𝕜 : Type*} [RCLike 𝕜] {m n : Type*} [Fintype m] [Fintype n]
 
 /-! ### Disc separation, every unitarily invariant norm -/
 
-/-- A factor `T` with `c² • 1 ≤ Tᴴ * T` shrinks a unitarily invariant norm by at most `c`. -/
-private theorem mul_matrixNorm_le_matrixNorm_mul_of_sq_smul_one_le [DecidableEq m]
-    (Φ : SymmetricGauge) {L : Matrix m m 𝕜} {c : ℝ} (hc : 0 ≤ c)
-    (hL : (c ^ 2) • (1 : Matrix m m 𝕜) ≤ Lᴴ * L) (X : Matrix m n 𝕜) :
-    c * Φ.matrixNorm X ≤ Φ.matrixNorm (L * X) := by
-  have h := Φ.matrixNorm_le_of_singularValues_le (A := (c : 𝕜) • X) (B := L * X) fun i => by
-    rw [singularValues_smul, RCLike.norm_ofReal, abs_of_nonneg hc,
-      ← sq_le_sq₀ (mul_nonneg hc (singularValues_nonneg X i)) (singularValues_nonneg _ i),
-      mul_pow]
-    exact mul_sq_singularValues_le_of_smul_one_le hL X i
-  rwa [SymmetricGauge.matrixNorm_smul, RCLike.norm_ofReal, abs_of_nonneg hc] at h
-
 /-- **Sylvester separation bound, disc form.** If `‖M‖₂ ≤ r` and `L` is bounded below by
 `r + δ`, in the form `(r + δ)² • 1 ≤ Lᴴ L`, then `δ ‖X‖ ≤ ‖L X - X M‖` in every unitarily
 invariant norm. Apply it to `L - c • 1` and `M - c • 1` for a disc centred at `c`.
@@ -65,7 +53,7 @@ theorem SymmetricGauge.mul_matrixNorm_le_matrixNorm_mul_sub_mul [DecidableEq m]
   · have hδ : δ ≤ 0 := by linarith
     exact (mul_nonpos_of_nonpos_of_nonneg hδ (Φ.matrixNorm_nonneg X)).trans
       (Φ.matrixNorm_nonneg _)
-  · have h₁ := mul_matrixNorm_le_matrixNorm_mul_of_sq_smul_one_le Φ h.le hL X
+  · have h₁ := Φ.mul_matrixNorm_le_of_sq_smul_one_le h.le hL X
     have h₂ : Φ.matrixNorm (L * X) ≤ Φ.matrixNorm (L * X - X * M) + Φ.matrixNorm X * r := by
       calc Φ.matrixNorm (L * X) = Φ.matrixNorm (L * X - X * M + X * M) := by rw [sub_add_cancel]
         _ ≤ Φ.matrixNorm (L * X - X * M) + Φ.matrixNorm (X * M) := Φ.matrixNorm_add_le _ _
@@ -76,18 +64,6 @@ theorem SymmetricGauge.mul_matrixNorm_le_matrixNorm_mul_sub_mul [DecidableEq m]
     linarith
 
 /-! ### Interval separation for Hermitian matrices -/
-
-omit [Fintype n] in
-private theorem isHermitian_of_le_smul_one [DecidableEq n] {M : Matrix n n 𝕜} {b : ℝ}
-    (h : M ≤ b • (1 : Matrix n n 𝕜)) : M.IsHermitian := by
-  have h' := (isHermitian_real_smul_one (𝕜 := 𝕜) (n := n) b).sub (Matrix.le_iff.mp h).isHermitian
-  rwa [sub_sub_cancel] at h'
-
-omit [Fintype n] in
-private theorem isHermitian_of_smul_one_le [DecidableEq n] {M : Matrix n n 𝕜} {a : ℝ}
-    (h : a • (1 : Matrix n n 𝕜) ≤ M) : M.IsHermitian := by
-  have h' := (Matrix.le_iff.mp h).isHermitian.add (isHermitian_real_smul_one (𝕜 := 𝕜) (n := n) a)
-  rwa [sub_add_cancel] at h'
 
 /-- A Hermitian matrix with spectrum in `[a, b]` is within `(b - a) / 2` of the midpoint. The
 hypothesis `a ≤ b` is automatic unless the matrix has size zero.
@@ -177,11 +153,6 @@ theorem SymmetricGauge.mul_matrixNorm_le_matrixNorm_mul_sub_mul_of_eigenvalue [D
     rw [Matrix.sub_mul, Matrix.mul_sub, Matrix.smul_mul, Matrix.mul_smul, Matrix.one_mul,
       Matrix.mul_one, sub_sub_sub_cancel_right]
   rwa [heq] at h₃
-
-private theorem eigenvalue_real_smul_one [DecidableEq n] (c : ℝ) {k : ℕ} (hk : k < Fintype.card n) :
-    eigenvalue (c • (1 : Matrix n n 𝕜)) k = c := by
-  have h := (Matrix.isHermitian_zero (α := 𝕜) (n := n)).eigenvalue_add_smul_one c hk
-  rwa [zero_add, eigenvalue_zero, zero_add] at h
 
 /-- **Sylvester separation bound, one-sided form.** If `L ≤ (α - δ) • 1` and `α • 1 ≤ M`, then
 `δ ‖X‖ ≤ ‖L X - X M‖` in every unitarily invariant norm.

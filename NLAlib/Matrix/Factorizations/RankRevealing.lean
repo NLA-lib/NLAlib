@@ -6,7 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Matrix.Factorizations.QR
-public import NLAlib.Matrix.Spectral.SingularValueInequalities
+public import NLAlib.Matrix.Norms.UnitarilyInvariant
 
 /-!
 # Rank-revealing column selection
@@ -16,22 +16,29 @@ columns are as well conditioned as the leading part of `A` allows and what they 
 as the trailing part. The interface is in terms of three matrices built from the selection: the
 selected columns `C`, the interpolation coefficients `pinv C * A`, and the residual
 `(1 - rangeProjector C) * A`. A rank-revealing QR factorization is a thin QR factorization of
-`C`; a CUR or interpolative decomposition uses `C` and `pinv C * A` directly.
+`C`; a CUR or interpolative decomposition uses `C` and `pinv C * A` directly; a selection of rows
+is a selection of columns of `Aᴴ`.
 
-The certificate is local maximality of the volume `det (Cᴴ C)` up to a factor `f²` under
-exchanges of one selected column (Gu and Eisenstat). It bounds the interpolation coefficients by
-`f` and the singular values of `C` and of the residual against those of `A` within
-`√(1 + f² k (n - k))`. A selection of maximum volume exists and satisfies the certificate with
-`f = 1`.
+The certificate is `NLAlib.IsLocalMaxVolume A e f`: the selected columns are independent and no
+exchange of one selected column for another column of `A` increases the volume `det (Cᴴ C)` by
+more than `f²` (Gu and Eisenstat). It bounds the interpolation coefficients by `f` and the
+singular values of `C` and of the residual against those of `A` within `√(1 + f² k (n - k))`. A
+selection of maximum volume exists and satisfies the certificate with `f = 1`.
+
+## Main definitions
+
+* `NLAlib.IsLocalMaxVolume`: the certificate.
 
 ## Main results
 
 * `NLAlib.re_det_conjTranspose_mul_self_updateCol`: the volume after exchanging a column.
-* `NLAlib.norm_pinv_mul_apply_le_of_forall_re_det_le`: the coefficient bound.
-* `NLAlib.singularValues_le_sqrt_mul_singularValues_submatrix`,
-  `NLAlib.singularValues_one_sub_rangeProjector_mul_le_sqrt_mul`: the singular value bounds.
-* `NLAlib.exists_embedding_forall_re_det_le`: a selection of maximum volume exists.
-* `NLAlib.exists_embedding_rank_revealing`: existence of a strong rank-revealing selection.
+* `NLAlib.IsLocalMaxVolume.norm_pinv_mul_apply_le`: the coefficient bound.
+* `NLAlib.IsLocalMaxVolume.singularValues_le_sqrt_mul`,
+  `NLAlib.IsLocalMaxVolume.singularValues_one_sub_rangeProjector_mul_le`: singular value bounds.
+* `NLAlib.IsLocalMaxVolume.matrixNorm_one_sub_rangeProjector_mul_le`: the residual against the
+  best rank-`k` error in every unitarily invariant norm.
+* `NLAlib.exists_embedding_isLocalMaxVolume`: a selection of maximum volume exists.
+* `NLAlib.exists_embedding_eq_mul_pinv_mul`: an interpolative decomposition at the rank.
 -/
 
 @[expose] public section
@@ -56,28 +63,18 @@ theorem re_det_conjTranspose_mul_self_updateCol {C : Matrix m p 𝕜}
         (‖t i‖ ^ 2 + ‖WithLp.toLp 2 d‖ ^ 2 * RCLike.re ((Cᴴ * C)⁻¹ i i)) := by
   sorry
 
-/-! ### The certificate, in block form -/
+/-! ### Bounds from a budget -/
 
-/-- **Local maximality of the volume bounds the coefficients.** Let `C` have full column rank and
-let the other columns be `C T + D` with `D` orthogonal to the range of `C`. If exchanging any
-column of `C` for any other column increases the Gram determinant by at most `f²`, then every
-entry of `T` is at most `f` in absolute value. [GuEisenstat1996, §3].
-Port of `NLAlib.frobSq_add_trace_inv_gram_mul_frobSq_le_of_maximum_volume`, first part. -/
-theorem norm_apply_le_of_forall_re_det_updateCol_le {C : Matrix m p 𝕜} {T : Matrix p q 𝕜}
-    {D : Matrix m q 𝕜} {f : ℝ} (hf : 0 ≤ f) (hC : Function.Injective C.mulVec)
-    (hD : Cᴴ * D = 0)
-    (hmax : ∀ i j, RCLike.re ((C.updateCol i ((C * T + D).col j))ᴴ *
-      C.updateCol i ((C * T + D).col j)).det ≤ f ^ 2 * RCLike.re (Cᴴ * C).det)
-    (i : p) (j : q) : ‖T i j‖ ≤ f := by
-  sorry
-
-/-- **Local maximality of the volume bounds the budget**
+/-- **The budget of a locally maximal selection.** Let `C` have full column rank and let the
+other columns be `C T + D` with `D` orthogonal to the range of `C`. If
+`|T i j|² + ‖D_j‖² ((Cᴴ C)⁻¹)_{ii} ≤ f²` for all `i`, `j` (which by the volume formula says that
+no exchange increases the volume by more than `f²`), then
 `‖T‖_F² + ‖C⁺‖_F² ‖D‖_F² ≤ f² · p · q`. [GuEisenstat1996, Theorem 3.2].
-Port of `NLAlib.frobSq_add_trace_inv_gram_mul_frobSq_le_of_maximum_volume`, second part. -/
+Port of `NLAlib.frobSq_add_trace_inv_gram_mul_frobSq_le_of_maximum_volume`. -/
 theorem frobNorm_sq_add_frobNorm_pinv_sq_mul_le {C : Matrix m p 𝕜} {T : Matrix p q 𝕜}
-    {D : Matrix m q 𝕜} {f : ℝ} (hC : Function.Injective C.mulVec) (hD : Cᴴ * D = 0)
-    (hmax : ∀ i j, RCLike.re ((C.updateCol i ((C * T + D).col j))ᴴ *
-      C.updateCol i ((C * T + D).col j)).det ≤ f ^ 2 * RCLike.re (Cᴴ * C).det) :
+    {D : Matrix m q 𝕜} {f : ℝ} (hC : Function.Injective C.mulVec)
+    (h : ∀ i j, ‖T i j‖ ^ 2 +
+      ‖WithLp.toLp 2 (D.col j)‖ ^ 2 * RCLike.re ((Cᴴ * C)⁻¹ i i) ≤ f ^ 2) :
     frobNorm T ^ 2 + frobNorm (pinv C) ^ 2 * frobNorm D ^ 2 ≤
       f ^ 2 * Fintype.card p * Fintype.card q := by
   sorry
@@ -104,56 +101,89 @@ theorem singularValues_le_sqrt_mul_singularValues_fromCols {C : Matrix m p 𝕜}
       √(1 + b) * singularValues (Matrix.fromCols C (C * T + D)) (Fintype.card p + j) := by
   sorry
 
-/-! ### The certificate, for a selection of columns -/
+/-! ### The certificate -/
 
-section Selection
+/-- `IsLocalMaxVolume A e f`: the columns of `A` selected by `e` are linearly independent, and
+exchanging any one of them for any column of `A` increases the volume `det (Cᴴ C)` by a factor
+at most `f²`. This is the stopping criterion of the strong rank-revealing QR algorithm.
+[GuEisenstat1996, §3]. -/
+structure IsLocalMaxVolume (A : Matrix m n 𝕜) (e : p → n) (f : ℝ) : Prop where
+  /-- The selected columns are linearly independent. -/
+  injective_mulVec : Function.Injective (A.submatrix id e).mulVec
+  /-- The tolerance is nonnegative. -/
+  nonneg : 0 ≤ f
+  /-- No single exchange increases the volume by more than `f²`. -/
+  re_det_le : ∀ (i : p) (j : n),
+    RCLike.re ((A.submatrix id (Function.update e i j))ᴴ *
+      A.submatrix id (Function.update e i j)).det ≤
+    f ^ 2 * RCLike.re ((A.submatrix id e)ᴴ * A.submatrix id e).det
 
-variable {k : ℕ} {A : Matrix m n 𝕜} {e : Fin k → n} {f : ℝ}
+section Certificate
 
-/-- **Bounded interpolation coefficients.** If the selected columns have full rank and no
-exchange of one selected column increases the volume by more than `f²`, every entry of
-`pinv C * A` is at most `f` in absolute value. [GuEisenstat1996, Theorem 3.2].
-Result: strong-rrqr -/
-theorem norm_pinv_mul_apply_le_of_forall_re_det_le
+variable {A : Matrix m n 𝕜} {e : p → n} {f : ℝ}
+
+/-- The tolerance of a nonempty locally maximal selection is at least one. -/
+theorem IsLocalMaxVolume.one_le [Nonempty p] (h : IsLocalMaxVolume A e f) : 1 ≤ f := by
+  sorry
+
+/-- A locally maximal selection stays so for a larger tolerance. -/
+theorem IsLocalMaxVolume.mono (h : IsLocalMaxVolume A e f) {g : ℝ} (hfg : f ≤ g) :
+    IsLocalMaxVolume A e g := by
+  sorry
+
+/-- A selection of independent columns of the largest volume is locally maximal with tolerance
+one. -/
+theorem isLocalMaxVolume_one_of_forall_re_det_le
     (he : Function.Injective (A.submatrix id e).mulVec)
-    (hmax : ∀ (i : Fin k) (j : n),
-      RCLike.re ((A.submatrix id (Function.update e i j))ᴴ *
-        A.submatrix id (Function.update e i j)).det ≤
-      f ^ 2 * RCLike.re ((A.submatrix id e)ᴴ * A.submatrix id e).det)
-    (i : Fin k) (j : n) : ‖(pinv (A.submatrix id e) * A) i j‖ ≤ f := by
+    (h : ∀ g : p → n, RCLike.re ((A.submatrix id g)ᴴ * A.submatrix id g).det ≤
+      RCLike.re ((A.submatrix id e)ᴴ * A.submatrix id e).det) :
+    IsLocalMaxVolume A e 1 := by
+  sorry
+
+/-- The interpolation coefficients of the selected columns are the identity. -/
+theorem IsLocalMaxVolume.submatrix_pinv_mul (h : IsLocalMaxVolume A e f) :
+    (pinv (A.submatrix id e) * A).submatrix id e = 1 := by
+  sorry
+
+/-- **Bounded interpolation coefficients.** For a locally maximal selection, every entry of
+`pinv C * A` is at most `f` in absolute value. [GuEisenstat1996, Theorem 3.2].
+Port of `NLAlib.exists_strong_rank_revealing_qr`, third bound, as a certificate. -/
+theorem IsLocalMaxVolume.norm_pinv_mul_apply_le (h : IsLocalMaxVolume A e f) (i : p) (j : n) :
+    ‖(pinv (A.submatrix id e) * A) i j‖ ≤ f := by
   sorry
 
 /-- **The selected columns are well conditioned**:
-`σ_i(A) ≤ √(1 + f² k (n - k)) σ_i(C)` for `i < k`. [GuEisenstat1996, Theorem 3.2].
-Port of `NLAlib.exists_strong_rank_revealing_qr`, first bound, as a certificate.
-Result: strong-rrqr -/
-theorem singularValues_le_sqrt_mul_singularValues_submatrix
-    (he : Function.Injective (A.submatrix id e).mulVec)
-    (hmax : ∀ (i : Fin k) (j : n),
-      RCLike.re ((A.submatrix id (Function.update e i j))ᴴ *
-        A.submatrix id (Function.update e i j)).det ≤
-      f ^ 2 * RCLike.re ((A.submatrix id e)ᴴ * A.submatrix id e).det)
-    {i : ℕ} (hi : i < k) :
+`σ_i(A) ≤ √(1 + f² k (n - k)) σ_i(C)` for `i < k`, with `k` the number of selected columns.
+[GuEisenstat1996, Theorem 3.2].
+Port of `NLAlib.exists_strong_rank_revealing_qr`, first bound, as a certificate. -/
+theorem IsLocalMaxVolume.singularValues_le_sqrt_mul (h : IsLocalMaxVolume A e f) {i : ℕ}
+    (hi : i < Fintype.card p) :
     singularValues A i ≤
-      √(1 + f ^ 2 * k * ((Fintype.card n : ℝ) - k)) * singularValues (A.submatrix id e) i := by
+      √(1 + f ^ 2 * Fintype.card p * ((Fintype.card n : ℝ) - Fintype.card p)) *
+        singularValues (A.submatrix id e) i := by
   sorry
 
 /-- **The residual of the selection is small**:
 `σ_j((1 - P_C) A) ≤ √(1 + f² k (n - k)) σ_{k+j}(A)`. [GuEisenstat1996, Theorem 3.2].
-Port of `NLAlib.exists_strong_rank_revealing_qr`, second bound, as a certificate.
-Result: strong-rrqr -/
-theorem singularValues_one_sub_rangeProjector_mul_le_sqrt_mul
-    (he : Function.Injective (A.submatrix id e).mulVec)
-    (hmax : ∀ (i : Fin k) (j : n),
-      RCLike.re ((A.submatrix id (Function.update e i j))ᴴ *
-        A.submatrix id (Function.update e i j)).det ≤
-      f ^ 2 * RCLike.re ((A.submatrix id e)ᴴ * A.submatrix id e).det)
-    (j : ℕ) :
+Port of `NLAlib.exists_strong_rank_revealing_qr`, second bound, as a certificate. -/
+theorem IsLocalMaxVolume.singularValues_one_sub_rangeProjector_mul_le
+    (h : IsLocalMaxVolume A e f) (j : ℕ) :
     singularValues ((1 - rangeProjector (A.submatrix id e)) * A) j ≤
-      √(1 + f ^ 2 * k * ((Fintype.card n : ℝ) - k)) * singularValues A (k + j) := by
+      √(1 + f ^ 2 * Fintype.card p * ((Fintype.card n : ℝ) - Fintype.card p)) *
+        singularValues A (Fintype.card p + j) := by
   sorry
 
-end Selection
+/-- **The column selection error against the best low-rank error**, in every unitarily invariant
+norm: `‖A - C C⁺ A‖ ≤ √(1 + f² k (n - k)) ‖A - A_k‖`. This is the bound that CUR and
+interpolative decompositions cite. -/
+theorem IsLocalMaxVolume.matrixNorm_one_sub_rangeProjector_mul_le (Φ : SymmetricGauge)
+    (h : IsLocalMaxVolume A e f) :
+    Φ.matrixNorm ((1 - rangeProjector (A.submatrix id e)) * A) ≤
+      √(1 + f ^ 2 * Fintype.card p * ((Fintype.card n : ℝ) - Fintype.card p)) *
+        Φ.matrixNorm (A - truncatedSVD A (Fintype.card p)) := by
+  sorry
+
+end Certificate
 
 /-! ### Existence -/
 
@@ -166,30 +196,24 @@ theorem exists_embedding_forall_re_det_le (A : Matrix m n 𝕜) {k : ℕ} (hk : 
         RCLike.re ((A.submatrix id e)ᴴ * A.submatrix id e).det := by
   sorry
 
-/-- **A strong rank-revealing selection exists.** For `k ≤ rank A` there are `k` columns `C` of
-`A` with interpolation coefficients `pinv C * A` bounded by one, with
-`σ_i(A) ≤ √(1 + k (n - k)) σ_i(C)` for `i < k`, and with residual
+/-- **A strong rank-revealing selection exists.** For `k ≤ rank A` there are `k` columns of `A`
+that are locally of maximum volume with tolerance one: coefficients `pinv C * A` bounded by one,
+`σ_i(A) ≤ √(1 + k (n - k)) σ_i(C)` and residual
 `σ_j((1 - P_C) A) ≤ √(1 + k (n - k)) σ_{k+j}(A)`.
 [GuEisenstat1996, Theorem 3.2]; [GolubVanLoan2013, §5.4.6].
 Port of `NLAlib.exists_strong_rank_revealing_qr` and `NLAlib.exists_maximum_volume_qr_blocks`,
 in column-selection form.
 Result: strong-rrqr -/
-theorem exists_embedding_rank_revealing (A : Matrix m n 𝕜) {k : ℕ} (hk : k ≤ A.rank) :
-    ∃ e : Fin k ↪ n, Function.Injective (A.submatrix id e).mulVec ∧
-      (∀ i j, ‖(pinv (A.submatrix id e) * A) i j‖ ≤ 1) ∧
-      (∀ i, i < k → singularValues A i ≤
-        √(1 + k * ((Fintype.card n : ℝ) - k)) * singularValues (A.submatrix id e) i) ∧
-      ∀ j, singularValues ((1 - rangeProjector (A.submatrix id e)) * A) j ≤
-        √(1 + k * ((Fintype.card n : ℝ) - k)) * singularValues A (k + j) := by
+theorem exists_embedding_isLocalMaxVolume (A : Matrix m n 𝕜) {k : ℕ} (hk : k ≤ A.rank) :
+    ∃ e : Fin k ↪ n, IsLocalMaxVolume A e 1 := by
   sorry
 
 /-- **At the rank, a selection of maximum volume reproduces the matrix**: for `k = rank A` the
 residual vanishes, `A = C (C⁺ A)`, an interpolative decomposition with coefficients bounded by
 one. Port of `NLAlib.exists_rank_adapted_maximum_volume_qr`. -/
 theorem exists_embedding_eq_mul_pinv_mul (A : Matrix m n 𝕜) :
-    ∃ e : Fin A.rank ↪ n, Function.Injective (A.submatrix id e).mulVec ∧
-      A = A.submatrix id e * (pinv (A.submatrix id e) * A) ∧
-      ∀ i j, ‖(pinv (A.submatrix id e) * A) i j‖ ≤ 1 := by
+    ∃ e : Fin A.rank ↪ n, IsLocalMaxVolume A e 1 ∧
+      A = A.submatrix id e * (pinv (A.submatrix id e) * A) := by
   sorry
 
 end NLAlib

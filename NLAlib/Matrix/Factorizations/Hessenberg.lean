@@ -31,7 +31,7 @@ The Hessenberg predicate is stated for rectangular matrices, since the Arnoldi p
 * `Matrix.IsHermitian.exists_isTridiagonal_conjTranspose_mul_mul`: reduction to tridiagonal form.
 * `NLAlib.IsUpperHessenberg.exists_isQR`: a Hessenberg matrix has a QR factorization with
   Hessenberg `Q`, so `R Q` is again Hessenberg.
-* `NLAlib.eq_mul_diagonal_of_isUpperHessenberg`: the implicit Q theorem.
+* `NLAlib.exists_eq_mul_diagonal_of_isUpperHessenberg`: the implicit Q theorem.
 -/
 
 @[expose] public section
@@ -96,16 +96,6 @@ theorem IsUpperHessenberg.isUpperTriangular_mul [NonUnitalNonAssocSemiring R]
     (hH : IsUpperHessenberg H) : IsUpperHessenberg (U * H) := by
   sorry
 
-/-- Sums of upper Hessenberg matrices are upper Hessenberg. -/
-theorem IsUpperHessenberg.add [AddZeroClass R] {H K : Matrix (Fin m) (Fin n) R}
-    (hH : IsUpperHessenberg H) (hK : IsUpperHessenberg K) : IsUpperHessenberg (H + K) := by
-  sorry
-
-/-- Scalar multiples of upper Hessenberg matrices are upper Hessenberg. -/
-theorem IsUpperHessenberg.smul [MulZeroClass R] {H : Matrix (Fin m) (Fin n) R}
-    (hH : IsUpperHessenberg H) (c : R) : IsUpperHessenberg (c • H) := by
-  sorry
-
 /-- A shift of an upper Hessenberg matrix is upper Hessenberg.
 Port of `NLAlib.IsUpperHessenberg.sub_smul_one`. -/
 theorem IsUpperHessenberg.sub_smul_one [Ring R] {H : Matrix (Fin n) (Fin n) R}
@@ -121,7 +111,7 @@ Port of `NLAlib.exists_isHessenbergForm`, which the prototype leaves unproved.
 Result: hessenberg-reduction -/
 theorem exists_isUpperHessenberg_conjTranspose_mul_mul (A : Matrix (Fin n) (Fin n) 𝕜) :
     ∃ Q : Matrix (Fin n) (Fin n) 𝕜, HasOrthonormalCols Q ∧ IsUpperHessenberg (Qᴴ * A * Q) ∧
-      ∀ h : 0 < n, Q.col ⟨0, h⟩ = Pi.single ⟨0, h⟩ 1 := by
+      ∀ i : Fin n, (i : ℕ) = 0 → Q.col i = Pi.single i 1 := by
   sorry
 
 /-- **Reduction to tridiagonal form.** Every Hermitian matrix is unitarily similar to a
@@ -130,13 +120,13 @@ Port of `NLAlib.IsHessenbergForm.isTridiagonal`. -/
 theorem _root_.Matrix.IsHermitian.exists_isTridiagonal_conjTranspose_mul_mul
     {A : Matrix (Fin n) (Fin n) 𝕜} (hA : A.IsHermitian) :
     ∃ Q : Matrix (Fin n) (Fin n) 𝕜, HasOrthonormalCols Q ∧ IsTridiagonal (Qᴴ * A * Q) ∧
-      ∀ h : 0 < n, Q.col ⟨0, h⟩ = Pi.single ⟨0, h⟩ 1 := by
+      ∀ i : Fin n, (i : ℕ) = 0 → Q.col i = Pi.single i 1 := by
   sorry
 
 /-! ### The QR iteration -/
 
-/-- **A Hessenberg matrix has a QR factorization with a Hessenberg unitary factor**, obtained by
-`n - 1` Givens rotations. No rank assumption is made.
+/-- **A Hessenberg matrix has a QR factorization with a Hessenberg unitary factor.** No rank
+assumption is made.
 [GolubVanLoan2013, §5.2.5]. Port of `NLAlib.isQR_givensQR` with
 `NLAlib.isUpperHessenberg_givensQR_fst`, which the prototype leaves unproved. -/
 theorem IsUpperHessenberg.exists_isQR {H : Matrix (Fin n) (Fin n) 𝕜}
@@ -171,7 +161,7 @@ theorem IsQR.isTridiagonal_mul {H Q R : Matrix (Fin n) (Fin n) 𝕜} (h : IsQR H
 [GolubVanLoan2013, Theorem 7.4.2].
 Port of `NLAlib.IsHessenbergForm.exists_sign`, which the prototype leaves unproved.
 Result: implicit-q -/
-theorem eq_mul_diagonal_of_isUpperHessenberg {A Q₁ Q₂ : Matrix (Fin (n + 1)) (Fin (n + 1)) 𝕜}
+theorem exists_eq_mul_diagonal_of_isUpperHessenberg {A Q₁ Q₂ : Matrix (Fin (n + 1)) (Fin (n + 1)) 𝕜}
     (hQ₁ : HasOrthonormalCols Q₁) (hQ₂ : HasOrthonormalCols Q₂)
     (hH₁ : IsUpperHessenberg (Q₁ᴴ * A * Q₁)) (hH₂ : IsUpperHessenberg (Q₂ᴴ * A * Q₂))
     (hcol : Q₁.col 0 = Q₂.col 0)

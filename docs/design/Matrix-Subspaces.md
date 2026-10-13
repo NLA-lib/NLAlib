@@ -213,3 +213,37 @@ checked the degenerate cases of the listed statements and found none false. Fold
    residual monotonicity `IsStarProjection.matrixNorm_one_sub_mul_le_of_le`, and the alignment of
    two frames `HasOrthonormalCols.exists_frobNorm_sub_mul_sq_le` (with a spectral twin).
 4. The CS decomposition records that its cosines are the singular values of the leading block.
+
+## 9. Stage report (2026-10-14)
+
+**Outcome.** Six files under `Matrix/Subspaces/` (`ProjectorPair.lean`, `Frames.lean`,
+`PrincipalAngles.lean`, `Tangent.lean`, `Oblique.lean`, `CSDecomposition.lean`; `Tangent.lean` was
+split off `PrincipalAngles.lean` at the follow-up pass), all proved; nothing in
+`NLAlibScaffold`. With the stages before it and M6 the build has no warnings, the axiom audit
+covers 1827 declarations with no violation, the environment linters pass on 1461 declarations,
+and references check clean. Proofs by Opus agents.
+
+**What changed from the design.** No statement was found false.
+
+- The CS decomposition is proved for any sizes of the two blocks (no `card p ≤ card q`), from
+  `conjTranspose_mul_self_eq_iff_exists_mul` rather than a Gram-isometry step; the block
+  relations `HasOrthonormalCols.singularValues_toBlocks₁₂` (the off-diagonal blocks of a unitary
+  matrix have the same singular values), `rank_toBlocks₁₂` and `rank_toBlocks₂₂_add` follow.
+- Published at the follow-up pass: `IsStarProjection.singularValues_of_lt_rank`,
+  `IsIdempotentElem.pinv_eq_rangeProjector_conjTranspose_mul_rangeProjector`,
+  `IsIdempotentElem.specNorm_sq`, the Loewner form of frame alignment
+  `HasOrthonormalCols.exists_conjTranspose_sub_mul_mul_sub_mul_le` (from which the bound in every
+  `Φ.matrixNorm` follows), and the two frame identities
+  `HasOrthonormalCols.frobNorm_one_sub_mul_sq`,
+  `HasOrthonormalCols.frobNorm_mul_conjTranspose_sub_mul_conjTranspose`.
+- `IsIdempotentElem.mul_eq_of_range_le` holds over a commutative semiring.
+
+**Mathlib overlap.** None of the statements.
+
+**Not ported, by decision.** `sinePrincipalAngles`, `directedSubspaceGap`, `tanThetaMax` and
+`overlapTangentNorm` as functions (the distance between subspaces is `(1 - Q) * P` in a norm,
+§2); the Stiefel manifold as a type with a group action; the complex twins. Deferred with ledger
+entries: the canonical QR frame and the polar frame (M9, as `gramSchmidtQ` and `polarFactor`).
+
+**For the next stages.** A `sin Θ` statement is a bound on `Φ.matrixNorm ((1 - U * Uᴴ) * V)` or
+on `Φ.matrixNorm (Vᴴ * U)` for a complementary frame; M6 uses both.

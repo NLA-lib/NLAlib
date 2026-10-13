@@ -668,6 +668,10 @@
   "new": "NLAlib.abs_frobInner_le_sum_singularValues_mul",
   "stage": "M3a"
  },
+ "NLAlib.abs_quadForm_le_iff_neg_le_and_le": {
+  "new": "NLAlib.neg_le_and_le_iff_forall_abs_re_quadForm_le",
+  "stage": "M7"
+ },
  "NLAlib.abs_re_star_dotProduct_mulVec_le_specNorm": {
   "new": "NLAlib.abs_re_quadForm_le",
   "stage": "M2"
@@ -888,6 +892,10 @@
   "new": "NLAlib.conditionNumber_of_isUnit",
   "stage": "M4"
  },
+ "NLAlib.congruence_le_congruence_iff": {
+  "new": "NLAlib.conjTranspose_mul_mul_le_conjTranspose_mul_mul_iff",
+  "stage": "M7"
+ },
  "NLAlib.conjTranspose_mulVec_eq_zero_of_fromBlocks_posSemidef": {
   "new": "NLAlib.conjTranspose_mulVec_eq_zero_of_posSemidef_fromBlocks",
   "stage": "M1"
@@ -963,6 +971,10 @@
   "new": "Matrix.det_conjTranspose_mul_self_eq_sum_powersetCard",
   "stage": "M1"
  },
+ "NLAlib.det_eq_iff_eq_of_posSemidef_le_posDef": {
+  "new": "Matrix.PosDef.eq_of_le_of_det_eq",
+  "stage": "M7"
+ },
  "NLAlib.det_gram_mul_eq_zero_of_det_gram_eq_zero": {
   "new": null,
   "note": "case absorbed by the thin SVD factorisation in Horn's inequality",
@@ -985,6 +997,10 @@
  "NLAlib.det_inverse_complement_minor_eq_sign_mul_div": {
   "new": "Matrix.det_inv_submatrix_inr",
   "stage": "M1"
+ },
+ "NLAlib.det_le_det_of_posSemidef_le": {
+  "new": "Matrix.PosSemidef.re_det_le_re_det_of_le",
+  "stage": "M7"
  },
  "NLAlib.det_mul_eq_sum_det_submatrix_mul_det_submatrix": {
   "new": "Matrix.det_mul_eq_sum_powersetCard",
@@ -1067,6 +1083,10 @@
   "new": null,
   "note": "pinv A * A is rangeProjector Aᴴ; IsStarProjection norm bounds in Norms/Projector",
   "stage": "M4"
+ },
+ "NLAlib.dotProduct_ne_zero_of_simple_eigenvalue": {
+  "new": "NLAlib.dotProduct_ne_zero_of_rootMultiplicity_eq_one",
+  "stage": "M6"
  },
  "NLAlib.dotProduct_rayleigh_residual_eq_zero": {
   "new": "Matrix.IsHermitian.star_dotProduct_mulVec_sub_rayleighQuotient_smul",
@@ -1240,6 +1260,10 @@
  },
  "NLAlib.exists_eigenvalue_abs_sub_le_residual": {
   "new": "Matrix.IsHermitian.exists_abs_eigenvalue_sub_mul_norm_le",
+  "stage": "M6"
+ },
+ "NLAlib.exists_eigenvalue_branch_of_simple_with_multiplicity": {
+  "new": "NLAlib.exists_eigenvalue_branch_of_rootMultiplicity_eq_one",
   "stage": "M6"
  },
  "NLAlib.exists_eigenvalue_distance_le_euclidean_residual_div": {
@@ -1927,6 +1951,10 @@
   "note": "inlined in the bridge frobNorm_eq_norm",
   "stage": "M2"
  },
+ "NLAlib.fromBlocks_inverse_gram_posSemidef": {
+  "new": "NLAlib.posSemidef_fromBlocks_conjTranspose_mul_inv_mul",
+  "stage": "M7"
+ },
  "NLAlib.generalizedSchurComplement": {
   "new": null,
   "note": "no definition; spelled C - Bᴴ * pinv A * B",
@@ -2020,6 +2048,10 @@
   "note": "real-only entry expansion; not needed",
   "stage": "M3"
  },
+ "NLAlib.inv_compression_le_compression_inv": {
+  "new": "Matrix.PosDef.inv_conjTranspose_mul_mul_le",
+  "stage": "M7"
+ },
  "NLAlib.inv_specNorm_inv_le_specNorm_of_not_isUnit_add": {
   "new": "NLAlib.singularValues_last_le_specNorm_of_not_injective_add",
   "stage": "M4"
@@ -2031,6 +2063,10 @@
  "NLAlib.inv_specNorm_pinvL_sq_mul_dotProduct_le": {
   "new": "NLAlib.norm_le_specNorm_pinv_mul_norm_mulVec",
   "stage": "M4"
+ },
+ "NLAlib.inv_submatrix_le_submatrix_inv": {
+  "new": "Matrix.PosDef.inv_submatrix_le",
+  "stage": "M7"
  },
  "NLAlib.invariantNorm_rectangularDiagonal_singularValues_add_sub_le": {
   "new": "NLAlib.SymmetricGauge.apply_singularValuesFinsupp_sub_le",
@@ -2276,6 +2312,10 @@
   "new": "Matrix.PosSemidef.le_of_forall_posDef_le",
   "stage": "M1"
  },
+ "NLAlib.le_one_iff_specNorm_le_one_of_posSemidef": {
+  "new": "Matrix.PosSemidef.le_one_iff_specNorm_le_one",
+  "stage": "M7"
+ },
  "NLAlib.le_singularValues_last": {
   "new": "NLAlib.le_singularValues_last",
   "stage": "M3"
@@ -2284,10 +2324,18 @@
   "new": "NLAlib.le_singularValues_of_forall_mem",
   "stage": "M3"
  },
+ "NLAlib.le_smul_iff_relative_spectrum_upper": {
+  "new": "Matrix.PosDef.le_smul_iff_forall_spectrum_le",
+  "stage": "M7"
+ },
  "NLAlib.leadingSingularCoefficients": {
   "new": null,
   "note": "attainment constructions are private to the duality proofs",
   "stage": "M3b"
+ },
+ "NLAlib.loewner_sandwich_iff_relative_spectrum_subset": {
+  "new": "Matrix.PosDef.smul_le_and_le_smul_iff_spectrum_subset",
+  "stage": "M7"
  },
  "NLAlib.lt_eigenvalues₀_of_forall_mem": {
   "new": null,
@@ -2331,6 +2379,18 @@
   "new": null,
   "note": "Gaussian integration-by-parts helper with no Matrix-layer consumer; moves with its consumer in RandomMatrix",
   "stage": "M1"
+ },
+ "NLAlib.max_specNorm_sinePrincipalAngles_le_max_perturbation_frame_div": {
+  "new": "NLAlib.SymmetricGauge.mul_max_matrixNorm_one_sub_mul_le_of_singularValues_sub",
+  "stage": "M6"
+ },
+ "NLAlib.max_specNorm_sinePrincipalAngles_le_max_residual_div": {
+  "new": "NLAlib.SymmetricGauge.sub_mul_max_matrixNorm_one_sub_mul_le_max",
+  "stage": "M6"
+ },
+ "NLAlib.max_specNorm_sinePrincipalAngles_le_two_mul_specNorm_div_population_gap": {
+  "new": "NLAlib.max_specNorm_one_sub_mul_le_two_mul_specNorm_div_singularGap",
+  "stage": "M6"
  },
  "NLAlib.mem_convexHull_permutations_iff_exists_doublyStochastic": {
   "new": null,
@@ -2972,9 +3032,33 @@
   "note": "attainment constructions are private to the duality proofs",
   "stage": "M3b"
  },
+ "NLAlib.posDef_identity_fromBlocks_iff_specNorm_lt_one": {
+  "new": "NLAlib.posDef_fromBlocks_one_iff_specNorm_lt_one",
+  "stage": "M7"
+ },
+ "NLAlib.posDef_one_sub_iff_specNorm_lt_one_of_posSemidef": {
+  "new": "Matrix.PosSemidef.posDef_one_sub_iff_specNorm_lt_one",
+  "stage": "M7"
+ },
+ "NLAlib.posSemidef_equal_diagonal_fromBlocks_iff_le": {
+  "new": "NLAlib.posSemidef_fromBlocks_self_iff",
+  "stage": "M7"
+ },
  "NLAlib.posSemidef_fromBlocks_iff": {
   "new": "NLAlib.posSemidef_fromBlocks_iff_pinv",
   "stage": "M4"
+ },
+ "NLAlib.posSemidef_fromBlocks_iff_bilinear_tests": {
+  "new": "NLAlib.posSemidef_fromBlocks_iff_forall_norm_sq_le",
+  "stage": "M7"
+ },
+ "NLAlib.posSemidef_fromBlocks_iff_exists_sqrt_contraction_factor": {
+  "new": "NLAlib.posSemidef_fromBlocks_iff_exists_sqrt_mul_mul_sqrt",
+  "stage": "M7"
+ },
+ "NLAlib.posSemidef_identity_fromBlocks_iff_specNorm_le_one": {
+  "new": "NLAlib.posSemidef_fromBlocks_one_iff_specNorm_le_one",
+  "stage": "M7"
  },
  "NLAlib.posSemidef_iff_trace_mul_nonneg": {
   "new": "Matrix.IsHermitian.posSemidef_iff_trace_mul_nonneg",
@@ -3081,6 +3165,10 @@
  "NLAlib.quadForm_eq_sum_mul_mul": {
   "new": "NLAlib.quadForm_eq_sum",
   "stage": "M1"
+ },
+ "NLAlib.quadForm_fromBlocks": {
+  "new": "NLAlib.re_quadForm_fromBlocks",
+  "stage": "M7"
  },
  "NLAlib.quadForm_reindex": {
   "new": null,
@@ -3803,7 +3891,7 @@
   "stage": "M3"
  },
  "NLAlib.singularValues_residual_le": {
-  "new": "NLAlib.IsStarProjection.singularValues_mul_le",
+  "new": "IsStarProjection.singularValues_mul_le",
   "stage": "M3"
  },
  "NLAlib.singularValues_smul": {
@@ -3845,6 +3933,10 @@
   "new": null,
   "note": "not needed with orderIsoOfFin",
   "stage": "M1"
+ },
+ "NLAlib.smul_le_iff_relative_spectrum_lower": {
+  "new": "Matrix.PosDef.smul_le_iff_forall_le_spectrum",
+  "stage": "M7"
  },
  "NLAlib.solution_set_eq_add_ker": {
   "new": null,
@@ -4249,6 +4341,14 @@
   "note": "not ported: trace-tail bounds have no consumer in the Matrix layer (M7 review); the tail is ∑ i ∈ Finset.Ico r (card n), eigenvalue A i if a consumer needs them",
   "stage": "M7"
  },
+ "NLAlib.sq_bilinear_le_quadForm_mul_of_fromBlocks_posSemidef": {
+  "new": "NLAlib.norm_sq_star_dotProduct_mulVec_le_of_posSemidef_fromBlocks",
+  "stage": "M7"
+ },
+ "NLAlib.sq_bilinear_le_quadForm_mul_of_posSemidef": {
+  "new": "Matrix.PosSemidef.norm_sq_star_dotProduct_mulVec_le",
+  "stage": "M7"
+ },
  "NLAlib.sq_bilinear_le_sq_ratio_mul_quadForm_of_sandwich": {
   "new": null,
   "note": "deferred: Wielandt's inequality, with Kantorovich",
@@ -4258,6 +4358,10 @@
   "new": null,
   "note": "real twin of HasOrthonormalCols.norm_sq_mem_doublyStochastic",
   "stage": "M3a"
+ },
+ "NLAlib.sq_le_sq_iff_relative_specNorm_le_one": {
+  "new": "Matrix.PosDef.sq_le_sq_iff_specNorm_mul_inv_le_one",
+  "stage": "M7"
  },
  "NLAlib.sq_max_re_trace_sub_spectralTraceTail_le_of_eigenvalues₀_le": {
   "new": null,
@@ -4285,6 +4389,10 @@
  "NLAlib.sq_singularValues_last_mul_norm_sq_le": {
   "new": "NLAlib.singularValues_last_mul_norm_le",
   "stage": "M3"
+ },
+ "NLAlib.sqrt_add_sq_frobNorm_sinePrincipalAngles_le_sqrt_add_sq_perturbation_frame_div": {
+  "new": "NLAlib.sq_mul_frobNorm_one_sub_mul_sq_add_le_of_singularValues_sub",
+  "stage": "M6"
  },
  "NLAlib.sqrt_complement_eigenvalueProjector_le_residual_div": {
   "new": "NLAlib.mul_norm_conjTranspose_mulVec_le",
@@ -4336,9 +4444,17 @@
   "new": "NLAlib.isCompact_setOf_hasOrthonormalCols",
   "stage": "M5"
  },
+ "NLAlib.sub_mul_max_specNorm_le_max_coupled_residual": {
+  "new": "NLAlib.SymmetricGauge.sub_mul_max_matrixNorm_le_max",
+  "stage": "M6"
+ },
  "NLAlib.sub_projector_eq_complement_mul_sub": {
   "new": "NLAlib.sub_eq_one_sub_mul_sub_mul_one_sub",
   "stage": "M5"
+ },
+ "NLAlib.sub_sq_mul_add_sq_frobNorm_le_add_sq_coupled_residual": {
+  "new": "NLAlib.sub_sq_mul_frobNorm_sq_add_frobNorm_sq_le",
+  "stage": "M6"
  },
  "NLAlib.subspaceTangent_range_graph_eq_specNorm": {
   "new": "NLAlib.HasOrthonormalCols.tangentMatrix_add_mul",
@@ -4637,6 +4753,10 @@
   "note": "deferred: traces of powers and functions of a Hermitian matrix, with matrix functions",
   "stage": "M10"
  },
+ "NLAlib.trace_eq_iff_of_le": {
+  "new": "NLAlib.eq_of_le_of_re_trace_eq",
+  "stage": "M7"
+ },
  "NLAlib.trace_eq_ofReal_re_of_posSemidef": {
   "new": "Matrix.IsHermitian.coe_re_trace",
   "note": "Hermitian suffices",
@@ -4649,6 +4769,10 @@
  "NLAlib.trace_eq_sum_eigenvalues₀": {
   "new": "Matrix.IsHermitian.trace_eq_sum_range_eigenvalue",
   "stage": "M3a"
+ },
+ "NLAlib.trace_le_of_le": {
+  "new": "NLAlib.re_trace_le_re_trace_of_le",
+  "stage": "M7"
  },
  "NLAlib.trace_mul_diagonal_pow_mul_mul_diagonal_pow": {
   "new": null,

@@ -3,40 +3,6 @@
   "new": "ConcaveOn.le_map_integral_of_integral_mem",
   "stage": "P5a"
  },
- "Gamma_add_half_le_mul_sqrt": {
-  "new": null,
-  "note": "not needed",
-  "stage": "R4"
- },
- "Gamma_add_nat_div_two_le": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "Gamma_add_nat_div_two_sq_le_mul_prod": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "Gamma_endpoint_moment_le": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "Gamma_nat_add_one_div_two_sq_ge": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "HasEuclideanLogSobolev": {
-  "new": "NLAlib.HasLogSobolev",
-  "stage": "P4"
- },
- "HasHansonWrightMGF": {
-  "new": null,
-  "note": "HasSubexponentialMGF is the interface",
-  "stage": "P3"
- },
  "Matrix.IsHermitian.eigenvalues_conjTranspose_mul_mul_same_mem_Icc": {
   "new": "Matrix.IsHermitian.eigenvalue_conjTranspose_mul_mul_le",
   "note": "with eigenvalue_le_eigenvalue_conjTranspose_mul_mul",
@@ -166,6 +132,31 @@
   "note": "object not reproduced: CholeskySucceeds, §1 and §2 item 3; breakdown is the hypothesis ∀ i, 0 < choleskyLower A i i, characterised by Matrix.IsHermitian.forall_choleskyLower_apply_self_pos_iff",
   "stage": "M9"
  },
+ "NLAlib.Gamma_add_half_le_mul_sqrt": {
+  "new": null,
+  "note": "not needed",
+  "stage": "R4"
+ },
+ "NLAlib.Gamma_add_nat_div_two_le": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
+ "NLAlib.Gamma_add_nat_div_two_sq_le_mul_prod": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
+ "NLAlib.Gamma_endpoint_moment_le": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
+ "NLAlib.Gamma_nat_add_one_div_two_sq_ge": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
  "NLAlib.GramSchmidtSucceeds": {
   "new": null,
   "note": "object not reproduced: GramSchmidtSucceeds, §1 and §2 item 3; breakdown is the hypothesis ∀ j, gramSchmidtR A j j ≠ 0, characterised by forall_gramSchmidtR_apply_self_ne_zero_iff",
@@ -175,6 +166,15 @@
   "new": null,
   "note": "object not reproduced: HasColumnInclusion, §1 and §7.10; the row and column inclusion characterisation of LU for singular matrices is not ported",
   "stage": "M9"
+ },
+ "NLAlib.HasEuclideanLogSobolev": {
+  "new": "NLAlib.HasLogSobolev",
+  "stage": "P4"
+ },
+ "NLAlib.HasHansonWrightMGF": {
+  "new": null,
+  "note": "HasSubexponentialMGF is the interface",
+  "stage": "P3"
  },
  "NLAlib.HasOrthonormalCols": {
   "new": "NLAlib.HasOrthonormalCols",
@@ -1487,6 +1487,32 @@
   "note": "private helper of NLAlib.exists_adjugate_eq_smul_vecMulVec, under the same name",
   "stage": "M10"
  },
+ "NLAlib.ae_eq_one_or_neg_one_of_hasLaw_rademacherMeasure": {
+  "new": "NLAlib.ae_eq_one_or_neg_one_of_hasLaw_rademacherMeasure",
+  "stage": "P2"
+ },
+ "NLAlib.ae_eq_one_or_neg_one_rademacherMeasure": {
+  "new": null,
+  "note": "measure-form twin of ae_eq_one_or_neg_one_of_hasLaw_rademacherMeasure",
+  "stage": "P2"
+ },
+ "NLAlib.ae_mem_Icc_rademacherMeasure": {
+  "new": null,
+  "note": "measure-form twin; ae_eq_one_or_neg_one_of_hasLaw_rademacherMeasure",
+  "stage": "P2"
+ },
+ "NLAlib.ae_ne_zero_mvPolynomial": {
+  "new": "NLAlib.ae_eval_ne_zero_of_ne_zero",
+  "stage": "R1"
+ },
+ "NLAlib.ae_rank_mul_gaussian_eq_min": {
+  "new": "NLAlib.ae_rank_mul_eq_min_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
+ "NLAlib.aemeasurable_of_directional_hasSubgaussianMGF": {
+  "new": "NLAlib.IsSubgaussianVector.aemeasurable",
+  "stage": "P3"
+ },
  "NLAlib.aeval_conjGram_mul_eq_mul_aeval_conjGram": {
   "new": "NLAlib.aeval_mul_conjTranspose_self_mul",
   "stage": "M8"
@@ -1550,6 +1576,15 @@
  "NLAlib.backSubst": {
   "new": "NLAlib.backSubst",
   "stage": "M9"
+ },
+ "NLAlib.bernsteinTail": {
+  "new": null,
+  "note": "written out in the statements",
+  "stage": "P5a"
+ },
+ "NLAlib.bernstein_matrix_mgf_cgf_le": {
+  "new": "NLAlib.hasMatrixMGFBound_of_integral_eq_zero_of_le",
+  "stage": "P5a"
  },
  "NLAlib.bestRankFrobSq": {
   "new": null,
@@ -1752,6 +1787,10 @@
   "note": "bundle; conjuncts are separate theorems",
   "stage": "M1"
  },
+ "NLAlib.centered_sq_cgf_le_of_hasSubgaussianMGF_of_le": {
+  "new": "ProbabilityTheory.HasSubgaussianMGF.hasSubexponentialMGF_sq_sub_integral",
+  "stage": "P1"
+ },
  "NLAlib.cfc_diagonal_real": {
   "new": "NLAlib.cfc_diagonal",
   "stage": "M8"
@@ -1907,6 +1946,25 @@
   "new": "NLAlib.charpoly_mul_mul_of_mul_eq_one",
   "note": "with S' = S⁻¹; over a commutative ring; for a unit of the matrix ring it is Mathlib's Matrix.charpoly_units_conj'",
   "stage": "M10"
+ },
+ "NLAlib.chernoffCgfCoefficient": {
+  "new": null,
+  "note": "written out in the statements, CONTRIBUTING §5.2 Numerical bounds rule 2",
+  "stage": "P5a"
+ },
+ "NLAlib.chernoffLowerTail": {
+  "new": null,
+  "note": "written out in the statements",
+  "stage": "P5a"
+ },
+ "NLAlib.chernoffUpperTail": {
+  "new": null,
+  "note": "written out in the statements",
+  "stage": "P5a"
+ },
+ "NLAlib.chernoff_matrix_mgf_cgf_le": {
+  "new": "NLAlib.hasMatrixMGFBound_of_posSemidef_of_le",
+  "stage": "P5a"
  },
  "NLAlib.cholesky": {
   "new": "NLAlib.choleskyLower",
@@ -2279,6 +2337,11 @@
   "new": "NLAlib.continuous_frobNorm",
   "stage": "M6"
  },
+ "NLAlib.continuous_linForm": {
+  "new": null,
+  "note": "the dot product of the uncurried matrix",
+  "stage": "R1"
+ },
  "NLAlib.continuous_matrix_apply": {
   "new": null,
   "note": "Mathlib: Continuous.matrix_elem applied to continuous_id",
@@ -2440,6 +2503,11 @@
   "new": null,
   "note": "bundle of exists_cs_decomposition, HasOrthonormalCols.rank_toBlocks₁₂, HasOrthonormalCols.rank_toBlocks₂₂_add, IsIdempotentElem.specNorm_mul_cos_principalAngle, IsIdempotentElem.specNorm_one_sub; its canonical form of an idempotent is not reproduced, Matrix-Subspaces §6",
   "stage": "M5"
+ },
+ "NLAlib.cumulantSum": {
+  "new": null,
+  "note": "written out in the statements",
+  "stage": "P5a"
  },
  "NLAlib.cyclicShiftMatrix": {
   "new": null,
@@ -3265,6 +3333,46 @@
   "new": "NLAlib.eliminationStep_zero",
   "stage": "M9"
  },
+ "NLAlib.entropy_exp_mul_le_of_logSobolev_of_bounded": {
+  "new": null,
+  "note": "private step in LogSobolev.lean",
+  "stage": "P4"
+ },
+ "NLAlib.entropy_le_half_integral_sq_deriv_div_gaussianReal": {
+  "new": null,
+  "note": "Ornstein–Uhlenbeck route not used; Gross's two-point route through the central limit theorem",
+  "stage": "P4"
+ },
+ "NLAlib.entropy_pi_le_sum_integral_entropy_update": {
+  "new": "NLAlib.entropy_pi_le_sum",
+  "stage": "P4"
+ },
+ "NLAlib.entropy_pi_le_sum_integral_entropy_update_of_nonneg": {
+  "new": "NLAlib.entropy_pi_le_sum",
+  "stage": "P4"
+ },
+ "NLAlib.entropy_sq_le_two_mul_integral_sq_deriv_gaussianReal": {
+  "new": null,
+  "note": "private step in Distributions/GaussianLogSobolev.lean",
+  "stage": "P4"
+ },
+ "NLAlib.entropy_sq_le_two_mul_integral_sq_deriv_gaussianReal_of_hasCompactSupport": {
+  "new": "NLAlib.entropy_sq_le_two_mul_integral_deriv_sq_gaussianReal_of_hasCompactSupport",
+  "stage": "P4"
+ },
+ "NLAlib.entropy_sq_le_two_mul_integral_sq_deriv_gaussianReal_of_integrable": {
+  "new": "NLAlib.entropy_sq_le_two_mul_integral_deriv_sq_gaussianReal",
+  "stage": "P4"
+ },
+ "NLAlib.entropy_sq_le_two_mul_integral_sum_sq_fderiv_gaussian": {
+  "new": null,
+  "note": "private step on gaussianVector",
+  "stage": "P4"
+ },
+ "NLAlib.entropy_sq_le_two_mul_integral_sum_sq_fderiv_gaussian_of_integrable": {
+  "new": "NLAlib.entropy_sq_le_two_mul_integral_norm_fderiv_sq_stdGaussian",
+  "stage": "P4"
+ },
  "NLAlib.eq_blockDiagonal'_of_intertwines_of_disjoint_spectrum": {
   "new": null,
   "note": "not ported: many-block form over blockDiagonal'; block by block it is NLAlib.eq_zero_of_mul_eq_mul_of_isCoprime_charpoly",
@@ -3501,6 +3609,11 @@
   "new": null,
   "note": "private helper exists_forall_norm_pow_apply_le_of_specRadius_le_one of NLAlib.exists_forall_specNorm_pow_le_iff, §6",
   "stage": "M10"
+ },
+ "NLAlib.exists_bounded_contDiff_lipschitz_approx": {
+  "new": null,
+  "note": "private step in LogSobolev.lean",
+  "stage": "P4"
  },
  "NLAlib.exists_charpoly_factor_add_vecMulVec": {
   "new": null,
@@ -4015,6 +4128,11 @@
   "note": "matrix form; IsRealSchurForm T contains IsUpperQuasiTriangular T",
   "stage": "M10"
  },
+ "NLAlib.exists_orthonormal_ker_sq_dist_rowSpace": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
  "NLAlib.exists_paired_charpoly_factors_add_mul_of_commute": {
   "new": "NLAlib.exists_isEigenvalueListing_add_mul_of_commute",
   "stage": "M10"
@@ -4135,6 +4253,11 @@
   "new": "NLAlib.IsEigenvalueListing.exists_isUpperTriangular_inv_mul_mul_norm_apply_lt",
   "note": "over 𝕜 = ℝ, with the real listing given by NLAlib.exists_isEigenvalueListing_of_forall_im_eq_zero; the order is that of the index type",
   "stage": "M10"
+ },
+ "NLAlib.exists_right_sketch_rank_eq_of_le_rank": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/Rank.lean",
+  "stage": "R1"
  },
  "NLAlib.exists_schattenNormReal_le_one_frobInner_eq": {
   "new": "NLAlib.exists_schattenNorm_le_one_frobInner_eq",
@@ -4405,6 +4528,11 @@
   "new": "Matrix.IsHermitian.exp_eigenvalue_zero_le_re_trace_exp",
   "stage": "M8"
  },
+ "NLAlib.exp_mul_le_one_add_mul_add_sq_mul_of_le": {
+  "new": null,
+  "note": "private step in MatrixConcentration/Bernstein.lean",
+  "stage": "P5a"
+ },
  "NLAlib.exp_sub_le_traceExp_compensated_of_crossing": {
   "new": null,
   "note": "not ported: crossing bound of the prototype's matrix Freedman proof; it moves with that proof; its ingredients are Matrix.IsHermitian.exp_eigenvalue_zero_le_re_trace_exp and NLAlib.re_trace_exp_le_re_trace_exp_of_le",
@@ -4424,6 +4552,23 @@
   "new": null,
   "note": "object not reproduced: finOneSumEquiv, the bordered splitting, §2 item 2",
   "stage": "M9"
+ },
+ "NLAlib.finiteSamplingLaw": {
+  "new": "NLAlib.samplingMeasure",
+  "stage": "P2"
+ },
+ "NLAlib.finiteSamplingLaw_isProbabilityMeasure": {
+  "new": "NLAlib.isProbabilityMeasure_samplingMeasure",
+  "stage": "P2"
+ },
+ "NLAlib.finiteSamplingLaw_singleton": {
+  "new": "NLAlib.samplingMeasure_singleton",
+  "stage": "P2"
+ },
+ "NLAlib.finiteSamplingPMF": {
+  "new": null,
+  "note": "samplingMeasure takes weights without a proof",
+  "stage": "P2"
  },
  "NLAlib.finite_not_separable_charpoly_affine": {
   "new": null,
@@ -5232,6 +5377,104 @@
   "note": "not ported: block inclusion bundled as a continuous linear map, used for measurability and integrability in the prototype's matrix Bernstein proofs; no consumer in Matrix/",
   "stage": "M8"
  },
+ "NLAlib.gamma_inverse_spectral_endpoint_le": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
+ "NLAlib.gaussianMatrix": {
+  "new": "NLAlib.gaussianMatrix",
+  "stage": "R1"
+ },
+ "NLAlib.gaussianMatrix_ae_eval_ne_zero": {
+  "new": null,
+  "note": "inlined in RandomMatrix/Gaussian/Rank.lean",
+  "stage": "R1"
+ },
+ "NLAlib.gaussianMatrix_ae_isUnit_gram_mul_of_le_rank": {
+  "new": "NLAlib.ae_isUnit_conjTranspose_mul_self_mul_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
+ "NLAlib.gaussianMatrix_ae_isUnit_mul_transpose": {
+  "new": null,
+  "note": "from ae_rank_eq_min_of_hasLaw_gaussianMatrix and isUnit_conjTranspose_mul_self_iff_rank",
+  "stage": "R1"
+ },
+ "NLAlib.gaussianMatrix_ae_isUnit_transpose_mul": {
+  "new": null,
+  "note": "from ae_rank_eq_min_of_hasLaw_gaussianMatrix and isUnit_conjTranspose_mul_self_iff_rank",
+  "stage": "R1"
+ },
+ "NLAlib.gaussianMatrix_ae_rank_eq": {
+  "new": "NLAlib.ae_rank_eq_min_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
+ "NLAlib.gaussianMatrix_ae_rank_mul_eq_min": {
+  "new": "NLAlib.ae_rank_mul_eq_min_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
+ "NLAlib.gaussianMatrix_eq_map_curry": {
+  "new": "NLAlib.hasLaw_gaussianMatrix_of_hasLaw_uncurry",
+  "stage": "R1"
+ },
+ "NLAlib.gaussianMatrix_indepFun_block": {
+  "new": "NLAlib.indepFun_conjTranspose_mul_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
+ "NLAlib.gaussianMatrix_indepFun_block_of_hasLaw": {
+  "new": "NLAlib.indepFun_conjTranspose_mul_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
+ "NLAlib.gaussianMatrix_lt_frobSq_pinvR_le": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
+ "NLAlib.gaussianMatrix_lt_frobSq_pinvR_le_of_hasLaw": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
+ "NLAlib.gaussianMatrix_map_inv_self_mul_transpose_apply_self": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
+ "NLAlib.gaussianMatrix_map_mulVec": {
+  "new": null,
+  "note": "stated for unit vectors; consumers scale",
+  "stage": "R1"
+ },
+ "NLAlib.gaussianMatrix_map_mulVec_of_dotProduct_self_eq_one": {
+  "new": "NLAlib.hasLaw_mulVec_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
+ "NLAlib.gaussianMatrix_map_uncurry": {
+  "new": "NLAlib.hasLaw_uncurry_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
+ "NLAlib.gaussianSeriesTail": {
+  "new": null,
+  "note": "written out in the statements",
+  "stage": "P5a"
+ },
+ "NLAlib.gaussianVector": {
+  "new": "NLAlib.gaussianVector",
+  "stage": "P2"
+ },
+ "NLAlib.gaussianVector_map_toLp_eq_stdGaussian": {
+  "new": null,
+  "note": "Mathlib's map_pi_eq_stdGaussian",
+  "stage": "P2"
+ },
+ "NLAlib.gaussian_concentration": {
+  "new": "NLAlib.hasSubgaussianMGF_sub_integral_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
+ "NLAlib.gaussian_concentration_of_hasLaw": {
+  "new": "NLAlib.hasSubgaussianMGF_sub_integral_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
  "NLAlib.generalizedSchurComplement": {
   "new": null,
   "note": "no definition; spelled C - Bᴴ * pinv A * B",
@@ -5565,6 +5808,15 @@
   "note": "object not reproduced: Hankel matrices are not ported, §0 and §7.6",
   "stage": "M10"
  },
+ "NLAlib.hanson_wright_mgf": {
+  "new": "NLAlib.measureReal_abs_quadForm_sub_integral_ge_le",
+  "stage": "P3"
+ },
+ "NLAlib.hanson_wright_of_lintegral_exp_sq_le_two": {
+  "new": null,
+  "note": "ψ₂ form; P7 with the Orlicz bridges",
+  "stage": "P3"
+ },
  "NLAlib.hasDerivAt_det": {
   "new": "Matrix.hasDerivAt_det",
   "stage": "M8"
@@ -5646,6 +5898,10 @@
   "note": "not ported: Hessian route to trace-power convexity, superseded by NLAlib.convexOn_re_trace_cfc, Matrix-Functions §6 and §7.8",
   "stage": "M8"
  },
+ "NLAlib.hasEuclideanLogSobolev_gaussianVector": {
+  "new": "NLAlib.hasLogSobolev_stdGaussian",
+  "stage": "P4"
+ },
  "NLAlib.hasFDerivAt_componentRelativeMap": {
   "new": null,
   "note": "not ported: conditioning of a differentiable map; its base definitions live outside Matrix/, Matrix-Perturbation §7.7",
@@ -5655,6 +5911,85 @@
   "new": null,
   "note": "not ported: Fréchet derivative of the Rayleigh quotient, the pairing with (2 / ‖x‖ ^ 2) • (A x - ρ x); stated for Mathlib's ContinuousLinearMap.rayleighQuotient on EuclideanSpace; Perturbation/Residual.lean has no derivative of rayleighQuotient",
   "stage": "M6"
+ },
+ "NLAlib.hasGaussianLaw_id_gaussianMatrix": {
+  "new": "NLAlib.isGaussian_gaussianMatrix",
+  "stage": "R1"
+ },
+ "NLAlib.hasGaussianLaw_id_gaussianVector": {
+  "new": "NLAlib.isGaussian_gaussianVector",
+  "stage": "P2"
+ },
+ "NLAlib.hasHansonWrightMGF_of_bounded": {
+  "new": null,
+  "note": "no consumer",
+  "stage": "P3"
+ },
+ "NLAlib.hasHansonWrightMGF_of_subgaussian": {
+  "new": null,
+  "note": "HasSubexponentialMGF is the interface",
+  "stage": "P3"
+ },
+ "NLAlib.hasLaw_dotProduct_gaussianVector": {
+  "new": "NLAlib.hasLaw_dotProduct_of_hasLaw_gaussianVector",
+  "note": "no unit-norm hypothesis",
+  "stage": "P2"
+ },
+ "NLAlib.hasLaw_eval_rademacherVector": {
+  "new": null,
+  "note": "HasLaw.eval",
+  "stage": "P2"
+ },
+ "NLAlib.hasLaw_gaussianMatrix_block": {
+  "new": "NLAlib.hasLaw_const_mul_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
+ "NLAlib.hasLaw_gaussianMatrix_block_of_hasLaw": {
+  "new": "NLAlib.hasLaw_const_mul_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
+ "NLAlib.hasLaw_gaussianMatrix_first_cols": {
+  "new": null,
+  "note": "not needed",
+  "stage": "R1"
+ },
+ "NLAlib.hasLaw_gaussianMatrix_mul_right": {
+  "new": "NLAlib.hasLaw_mul_const_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
+ "NLAlib.hasLaw_gaussianMatrix_mul_right_of_hasLaw": {
+  "new": "NLAlib.hasLaw_mul_const_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
+ "NLAlib.hasLaw_gaussianMatrix_of_iIndepFun": {
+  "new": "NLAlib.hasLaw_gaussianMatrix_of_hasLaw_uncurry",
+  "stage": "R1"
+ },
+ "NLAlib.hasLaw_gaussianMatrix_orthogonal": {
+  "new": "NLAlib.hasLaw_mul_mul_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
+ "NLAlib.hasLaw_gaussianMatrix_orthogonal_of_hasLaw": {
+  "new": "NLAlib.hasLaw_mul_mul_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
+ "NLAlib.hasLaw_gaussianMatrix_transpose": {
+  "new": "NLAlib.hasLaw_conjTranspose_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
+ "NLAlib.hasLaw_gaussianMatrix_transpose_of_hasLaw": {
+  "new": "NLAlib.hasLaw_conjTranspose_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
+ "NLAlib.hasLaw_rademacherMeasure_iff_map_eq": {
+  "new": null,
+  "note": "HasLaw's definition",
+  "stage": "P2"
+ },
+ "NLAlib.hasLaw_rademacherVector_of_iIndepFun": {
+  "new": null,
+  "note": "hasLaw_pi_iff",
+  "stage": "P2"
  },
  "NLAlib.hasOrthonormalCols_complementaryEigenframe": {
   "new": null,
@@ -5786,6 +6121,47 @@
   "note": "object not reproduced: simpleEigenvalueSchurFunction, Matrix-Perturbation §9",
   "stage": "M6"
  },
+ "NLAlib.hasSubgaussianMGF_finset_sum_mul_of_iIndepFun": {
+  "new": "ProbabilityTheory.HasSubgaussianMGF.sum_const_mul_of_iIndepFun",
+  "stage": "P1"
+ },
+ "NLAlib.hasSubgaussianMGF_id_gaussianReal": {
+  "new": null,
+  "note": "measure form; hasSubgaussianMGF_of_hasLaw_gaussianReal with HasLaw.id",
+  "stage": "P2"
+ },
+ "NLAlib.hasSubgaussianMGF_id_rademacherMeasure": {
+  "new": null,
+  "note": "measure-form twin of hasSubgaussianMGF_of_hasLaw_rademacherMeasure",
+  "stage": "P2"
+ },
+ "NLAlib.hasSubgaussianMGF_mono": {
+  "new": "ProbabilityTheory.HasSubgaussianMGF.mono",
+  "stage": "P1"
+ },
+ "NLAlib.hasSubgaussianMGF_mulVec_apply_gaussianMatrix": {
+  "new": null,
+  "note": "the mulVec law, HasLaw.eval and hasSubgaussianMGF_of_hasLaw_gaussianReal",
+  "stage": "R1"
+ },
+ "NLAlib.hasSubgaussianMGF_of_hasLaw_gaussianReal": {
+  "new": "NLAlib.hasSubgaussianMGF_of_hasLaw_gaussianReal",
+  "note": "any variance",
+  "stage": "P2"
+ },
+ "NLAlib.hasSubgaussianMGF_of_hasLaw_rademacherMeasure": {
+  "new": "NLAlib.hasSubgaussianMGF_of_hasLaw_rademacherMeasure",
+  "stage": "P2"
+ },
+ "NLAlib.hasSubgaussianMGF_of_logSobolev": {
+  "new": "NLAlib.HasLogSobolev.hasSubgaussianMGF_sub_integral",
+  "stage": "P4"
+ },
+ "NLAlib.hasSubgaussianMGF_of_logSobolev_of_bounded": {
+  "new": null,
+  "note": "private step in LogSobolev.lean",
+  "stage": "P4"
+ },
  "NLAlib.hasSum_inv_factorial_smul_map_pow": {
   "new": null,
   "note": "private helper of Matrix.PosSemidef.map_exp_le_map_exp_of_le and Matrix.PosSemidef.posDef_map_exp_iff, same name",
@@ -5823,6 +6199,16 @@
   "new": null,
   "note": "object not reproduced: headColumns, Matrix-Perturbation §6",
   "stage": "M6"
+ },
+ "NLAlib.hermitianSecondMoment": {
+  "new": null,
+  "note": "written out in the statements",
+  "stage": "P5a"
+ },
+ "NLAlib.hermitianSecondMoment_dilation_eq_rectSecondMoment": {
+  "new": null,
+  "note": "private step in MatrixConcentration/Bernstein.lean",
+  "stage": "P5a"
  },
  "NLAlib.hessenbergH": {
   "new": null,
@@ -5950,6 +6336,26 @@
   "new": "NLAlib.householder_zero",
   "stage": "M9"
  },
+ "NLAlib.iIndepFun_eval_rademacherVector": {
+  "new": null,
+  "note": "HasLaw.iIndepFun_eval",
+  "stage": "P2"
+ },
+ "NLAlib.iIndepFun_gaussianMatrix_entry": {
+  "new": null,
+  "note": "P0's HasLaw.entry, HasLaw.eval, HasLaw.iIndepFun_entry, HasLaw.iIndepFun_eval",
+  "stage": "R1"
+ },
+ "NLAlib.iIndepFun_gaussianMatrix_row": {
+  "new": null,
+  "note": "P0's HasLaw.entry, HasLaw.eval, HasLaw.iIndepFun_entry, HasLaw.iIndepFun_eval",
+  "stage": "R1"
+ },
+ "NLAlib.indepFun_mulVec_sq_dist_rowSpace": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
  "NLAlib.inertiaNeg": {
   "new": "NLAlib.inertiaNeg",
   "stage": "M10"
@@ -6021,6 +6427,10 @@
   "note": "Mathlib: EuclideanSpace.inner_eq_star_dotProduct, and EuclideanSpace.inner_toLp_toLp for coordinate vectors",
   "stage": "M5"
  },
+ "NLAlib.inner_randomVector_hasSubgaussianMGF_of_iIndepFun": {
+  "new": "NLAlib.lintegral_exp_mul_dotProduct_le",
+  "stage": "P3"
+ },
  "NLAlib.inner_toEuclideanLin_eq_inner_transpose": {
   "new": null,
   "note": "Mathlib: Matrix.toEuclideanLin_conjTranspose_eq_adjoint with LinearMap.adjoint_inner_right; statements use dot products of mulVec",
@@ -6030,6 +6440,588 @@
   "new": null,
   "note": "real-only entry expansion; not needed",
   "stage": "M3"
+ },
+ "NLAlib.integrable_and_integral_frobSq_inv_self_mul_transpose_gaussianMatrix": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
+ "NLAlib.integrable_and_integral_frobSq_inv_self_mul_transpose_gaussianMatrix_of_hasLaw": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
+ "NLAlib.integrable_and_integral_frobSq_pinvR_gaussianMatrix": {
+  "new": "NLAlib.integral_frobNorm_pinv_sq_of_hasLaw_gaussianMatrix",
+  "stage": "R4"
+ },
+ "NLAlib.integrable_and_integral_frobSq_pinvR_gaussianMatrix_of_hasLaw": {
+  "new": "NLAlib.integral_frobNorm_pinv_sq_of_hasLaw_gaussianMatrix",
+  "stage": "R4"
+ },
+ "NLAlib.integrable_and_integral_frobSq_pinvR_sq_gaussianMatrix": {
+  "new": "NLAlib.integral_frobNorm_pinv_pow_four_of_hasLaw_gaussianMatrix",
+  "stage": "R4"
+ },
+ "NLAlib.integrable_and_integral_frobSq_pinvR_sq_gaussianMatrix_of_hasLaw": {
+  "new": "NLAlib.integral_frobNorm_pinv_pow_four_of_hasLaw_gaussianMatrix",
+  "stage": "R4"
+ },
+ "NLAlib.integrable_and_integral_half_gap_rpow_specNorm_inv_gaussianMatrix_le": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
+ "NLAlib.integrable_and_integral_half_gap_rpow_specNorm_inv_gaussianMatrix_le_of_hasLaw": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
+ "NLAlib.integrable_and_integral_inv_self_mul_transpose_apply_self_mul_apply_self_gaussianMatrix": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
+ "NLAlib.integrable_and_integral_inv_self_mul_transpose_apply_self_sq_gaussianMatrix": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
+ "NLAlib.integrable_and_integral_inv_self_mul_transpose_apply_sq_gaussianMatrix": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
+ "NLAlib.integrable_and_integral_inv_self_mul_transpose_gaussianMatrix": {
+  "new": "NLAlib.integrable_mul_conjTranspose_inv_of_hasLaw_gaussianMatrix",
+  "stage": "R4"
+ },
+ "NLAlib.integrable_and_integral_inv_self_mul_transpose_gaussianMatrix_of_hasLaw": {
+  "new": "NLAlib.integrable_mul_conjTranspose_inv_of_hasLaw_gaussianMatrix",
+  "stage": "R4"
+ },
+ "NLAlib.integrable_and_integral_inv_sq_dist_rowSpace_sq": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
+ "NLAlib.integrable_and_integral_matrixExp_smul_eq_cfc_mgf": {
+  "new": null,
+  "note": "private step in MatrixConcentration/Series.lean",
+  "stage": "P5a"
+ },
+ "NLAlib.integrable_and_integral_rpow_dotProduct_inv_self_mul_transpose_gaussianMatrix": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
+ "NLAlib.integrable_and_integral_rpow_dotProduct_inv_self_mul_transpose_unit_gaussianMatrix": {
+  "new": "NLAlib.integral_dotProduct_mul_conjTranspose_inv_mulVec_rpow_of_hasLaw_gaussianMatrix",
+  "stage": "R4"
+ },
+ "NLAlib.integrable_and_integral_rpow_inv_self_mul_transpose_apply_self_gaussianMatrix": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
+ "NLAlib.integrable_and_integral_rpow_specNorm_inv_gaussianMatrix_le_sharp": {
+  "new": "NLAlib.integral_specNorm_pinv_rpow_le_of_hasLaw_gaussianMatrix",
+  "stage": "R4"
+ },
+ "NLAlib.integrable_and_integral_rpow_specNorm_inv_gaussianMatrix_le_sharp_of_hasLaw": {
+  "new": "NLAlib.integral_specNorm_pinv_rpow_le_of_hasLaw_gaussianMatrix",
+  "stage": "R4"
+ },
+ "NLAlib.integrable_and_integral_rpow_specNorm_inv_self_mul_transpose_gaussianMatrix_le": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
+ "NLAlib.integrable_and_integral_rpow_specNorm_inv_self_mul_transpose_gaussianMatrix_le_of_hasLaw": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
+ "NLAlib.integrable_and_integral_specNorm_pinvR_gaussianMatrix_le": {
+  "new": "NLAlib.integral_specNorm_pinv_le_exp_mul_sqrt_card_div_of_hasLaw_gaussianMatrix",
+  "stage": "R4"
+ },
+ "NLAlib.integrable_and_integral_specNorm_pinvR_gaussianMatrix_le_of_hasLaw": {
+  "new": "NLAlib.integral_specNorm_pinv_le_exp_mul_sqrt_card_div_of_hasLaw_gaussianMatrix",
+  "stage": "R4"
+ },
+ "NLAlib.integrable_and_integral_specNorm_pinvR_gaussianMatrix_le_sharp": {
+  "new": "NLAlib.integral_specNorm_pinv_le_of_hasLaw_gaussianMatrix",
+  "stage": "R4"
+ },
+ "NLAlib.integrable_and_integral_specNorm_pinvR_gaussianMatrix_le_sharp_of_hasLaw": {
+  "new": "NLAlib.integral_specNorm_pinv_le_of_hasLaw_gaussianMatrix",
+  "stage": "R4"
+ },
+ "NLAlib.integrable_entropy_update_of_nonneg": {
+  "new": null,
+  "note": "not needed",
+  "stage": "P4"
+ },
+ "NLAlib.integrable_exp_centered_sq_of_hasSubgaussianMGF_of_le": {
+  "new": "ProbabilityTheory.HasSubgaussianMGF.hasSubexponentialMGF_sq_sub_integral",
+  "stage": "P1"
+ },
+ "NLAlib.integrable_exp_mul_sq_of_hasSubgaussianMGF": {
+  "new": "ProbabilityTheory.HasSubgaussianMGF.integrable_exp_mul_sq",
+  "stage": "P1"
+ },
+ "NLAlib.integrable_exp_mul_sq_of_hasSubgaussianMGF_of_le": {
+  "new": "ProbabilityTheory.HasSubgaussianMGF.integrable_exp_mul_sq",
+  "stage": "P1"
+ },
+ "NLAlib.integrable_exp_mul_sq_of_summable_integrals": {
+  "new": null,
+  "note": "series step; private in SubGaussian/Square.lean",
+  "stage": "P1"
+ },
+ "NLAlib.integrable_exp_quadraticForm_offDiagonal": {
+  "new": "NLAlib.hasSubexponentialMGF_quadForm_sub_diagonal",
+  "stage": "P3"
+ },
+ "NLAlib.integrable_exp_sq_norm_of_directional_hasSubgaussianMGF": {
+  "new": "NLAlib.IsSubgaussianVector.integrable_exp_mul_norm_sq",
+  "stage": "P3"
+ },
+ "NLAlib.integrable_frobSq_mul_gaussianMatrix_mul": {
+  "new": "NLAlib.integrable_frobNorm_mul_mul_sq_of_isIsotropic",
+  "stage": "R2"
+ },
+ "NLAlib.integrable_frobSq_mul_gaussian_mul_of_indepFun": {
+  "new": "NLAlib.integrable_frobNorm_mul_mul_sq_iff_of_hasLaw_gaussianMatrix_of_indepFun",
+  "stage": "R2"
+ },
+ "NLAlib.integrable_gaussianMatrix_iff": {
+  "new": null,
+  "note": "the abbrev and the uncurry law",
+  "stage": "R1"
+ },
+ "NLAlib.integrable_iSup_abs_of_hasSubgaussianMGF": {
+  "new": "ProbabilityTheory.HasSubgaussianMGF.integrable_iSup_abs",
+  "stage": "P1"
+ },
+ "NLAlib.integrable_iSup_of_hasSubgaussianMGF": {
+  "new": "ProbabilityTheory.HasSubgaussianMGF.integrable_iSup",
+  "stage": "P1"
+ },
+ "NLAlib.integrable_inv_sum_sq_gaussianVector": {
+  "new": "NLAlib.integrable_norm_sq_rpow_of_hasLaw_gaussianVector",
+  "stage": "R4"
+ },
+ "NLAlib.integrable_matrixExp_add_and_traceExp_add": {
+  "new": null,
+  "note": "private step in MatrixConcentration/Subadditivity.lean",
+  "stage": "P5a"
+ },
+ "NLAlib.integrable_matrixExp_smul_sum_of_iIndepFun": {
+  "new": "NLAlib.integrable_re_trace_exp_sum",
+  "stage": "P5a"
+ },
+ "NLAlib.integrable_mul_log_add_of_nonneg": {
+  "new": null,
+  "note": "inlined in EntropyTensorization.lean",
+  "stage": "P4"
+ },
+ "NLAlib.integrable_mul_log_integral_update_of_nonneg": {
+  "new": null,
+  "note": "private step in EntropyTensorization.lean",
+  "stage": "P4"
+ },
+ "NLAlib.integrable_of_lipschitz_gaussianVector": {
+  "new": "NLAlib.integrable_comp_of_lipschitzWith_of_hasLaw_gaussianVector",
+  "stage": "P4"
+ },
+ "NLAlib.integrable_of_logSobolev_of_lipschitz": {
+  "new": "NLAlib.HasLogSobolev.integrable_of_lipschitzWith",
+  "stage": "P4"
+ },
+ "NLAlib.integrable_of_nonneg_mul_log_integrable": {
+  "new": null,
+  "note": "integrability is a hypothesis of entropy_pi_le_sum",
+  "stage": "P4"
+ },
+ "NLAlib.integrable_of_tail_le": {
+  "new": "NLAlib.integrable_of_measureReal_ge_le",
+  "stage": "P0"
+ },
+ "NLAlib.integrable_of_tail_le_rpow": {
+  "new": null,
+  "note": "integrable_of_measureReal_ge_le applied to f ^ p",
+  "stage": "P0"
+ },
+ "NLAlib.integrable_pow_four_of_hasLaw_rademacherMeasure": {
+  "new": null,
+  "note": "HasLaw.integrable_comp_iff with integrable_rademacherMeasure",
+  "stage": "P2"
+ },
+ "NLAlib.integrable_rademacherMeasure": {
+  "new": "NLAlib.integrable_rademacherMeasure",
+  "stage": "P2"
+ },
+ "NLAlib.integrable_rpow_inv_sum_sq_gaussianVector": {
+  "new": "NLAlib.integrable_norm_sq_rpow_of_hasLaw_gaussianVector",
+  "stage": "R4"
+ },
+ "NLAlib.integrable_rpow_sum_sq_gaussianVector": {
+  "new": "NLAlib.integrable_norm_sq_rpow_of_hasLaw_gaussianVector",
+  "stage": "R4"
+ },
+ "NLAlib.integrable_sq_mul_log_sq_gaussian": {
+  "new": "NLAlib.integrable_sq_mul_log_sq_stdGaussian",
+  "stage": "P4"
+ },
+ "NLAlib.integrable_sq_mul_log_sq_gaussianReal": {
+  "new": "NLAlib.integrable_sq_mul_log_sq_gaussianReal",
+  "stage": "P4"
+ },
+ "NLAlib.integrable_sq_mul_log_sq_of_logSobolev_bound": {
+  "new": null,
+  "note": "private proof material",
+  "stage": "P4"
+ },
+ "NLAlib.integral_abs_rpow_le_of_hasSubgaussianMGF": {
+  "new": "ProbabilityTheory.HasSubgaussianMGF.integral_abs_rpow_le",
+  "stage": "P1"
+ },
+ "NLAlib.integral_coord_mul_coord": {
+  "new": "NLAlib.IsIsotropic.of_iIndepFun",
+  "note": "its integral_mul_star field",
+  "stage": "P0"
+ },
+ "NLAlib.integral_coord_mul_coord_mul_coord_mul_coord": {
+  "new": null,
+  "note": "private fourth mixed moment, over 𝕜",
+  "stage": "P3"
+ },
+ "NLAlib.integral_entropy_update_eq_sub_integral_mul_log_mean": {
+  "new": null,
+  "note": "private step in EntropyTensorization.lean",
+  "stage": "P4"
+ },
+ "NLAlib.integral_eq_zero_of_hasLaw_gaussianReal": {
+  "new": "NLAlib.integral_of_hasLaw_gaussianReal",
+  "stage": "P2"
+ },
+ "NLAlib.integral_eq_zero_of_hasLaw_rademacherMeasure": {
+  "new": "NLAlib.integral_of_hasLaw_rademacherMeasure",
+  "stage": "P2"
+ },
+ "NLAlib.integral_eq_zero_of_hasSubgaussianMGF": {
+  "new": "ProbabilityTheory.HasSubgaussianMGF.integral_eq_zero",
+  "stage": "P1"
+ },
+ "NLAlib.integral_exp_centered_sq_le_exp_quadratic_nonneg": {
+  "new": null,
+  "note": "folded into the private MGF bound of the centred square",
+  "stage": "P1"
+ },
+ "NLAlib.integral_exp_centered_sq_le_exp_quadratic_nonpos": {
+  "new": null,
+  "note": "folded into the private MGF bound of the centred square",
+  "stage": "P1"
+ },
+ "NLAlib.integral_exp_dotProduct_gaussianVector": {
+  "new": null,
+  "note": "private step in SubGaussianVector/Norm.lean, via the law of the dot product",
+  "stage": "P3"
+ },
+ "NLAlib.integral_exp_mul_le_exp_of_entropy_le": {
+  "new": null,
+  "note": "private step of hasSubgaussianMGF_sub_integral_of_entropy_le",
+  "stage": "P4"
+ },
+ "NLAlib.integral_exp_mul_le_of_logSobolev_of_bounded": {
+  "new": null,
+  "note": "private step in LogSobolev.lean",
+  "stage": "P4"
+ },
+ "NLAlib.integral_exp_mul_sq_eq_tsum_integrals": {
+  "new": null,
+  "note": "series step; private in SubGaussian/Square.lean",
+  "stage": "P1"
+ },
+ "NLAlib.integral_exp_mul_sq_le_exp_linear_of_hasSubgaussianMGF_of_le": {
+  "new": "ProbabilityTheory.HasSubgaussianMGF.integral_exp_mul_sq_le",
+  "note": "sharper",
+  "stage": "P1"
+ },
+ "NLAlib.integral_exp_mul_sq_le_of_hasSubgaussianMGF": {
+  "new": "ProbabilityTheory.HasSubgaussianMGF.integral_exp_mul_sq_le",
+  "note": "sharper",
+  "stage": "P1"
+ },
+ "NLAlib.integral_exp_mul_sq_le_one_add_linear_add_tail_of_hasSubgaussianMGF_of_le": {
+  "new": null,
+  "note": "series step; private in SubGaussian/Square.lean",
+  "stage": "P1"
+ },
+ "NLAlib.integral_exp_mul_sq_le_one_add_tail_of_hasSubgaussianMGF_of_le": {
+  "new": null,
+  "note": "series step; private in SubGaussian/Square.lean",
+  "stage": "P1"
+ },
+ "NLAlib.integral_exp_neg_mul_sq_gaussianReal_eq_rpow": {
+  "new": null,
+  "note": "private step in Distributions/ChiSquare.lean",
+  "stage": "P3"
+ },
+ "NLAlib.integral_exp_neg_mul_sum_sq_gaussianVector": {
+  "new": "NLAlib.integral_exp_mul_norm_sq_of_hasLaw_gaussianVector",
+  "stage": "P3"
+ },
+ "NLAlib.integral_exp_norm_toEuclideanCLM_randomVector_sq_le": {
+  "new": "NLAlib.lintegral_exp_mul_norm_mulVec_sq_le",
+  "stage": "P3"
+ },
+ "NLAlib.integral_exp_quadraticForm_offDiagonal_le": {
+  "new": "NLAlib.hasSubexponentialMGF_quadForm_sub_diagonal",
+  "stage": "P3"
+ },
+ "NLAlib.integral_exp_sq_norm_le_chi_square_mgf": {
+  "new": "NLAlib.IsSubgaussianVector.integral_exp_mul_norm_sq_le",
+  "stage": "P3"
+ },
+ "NLAlib.integral_exp_sq_norm_le_chi_square_mgf_pmf": {
+  "new": null,
+  "note": "PMF copy; a PMF is a measure through toMeasure",
+  "stage": "P3"
+ },
+ "NLAlib.integral_exp_sqrt_mul_dotProduct_gaussianVector": {
+  "new": null,
+  "note": "inlined in SubGaussianVector/Norm.lean",
+  "stage": "P3"
+ },
+ "NLAlib.integral_finiteSamplingLaw": {
+  "new": "NLAlib.integral_samplingMeasure",
+  "stage": "P2"
+ },
+ "NLAlib.integral_frobSq_mul_gaussianMatrix_mul": {
+  "new": "NLAlib.integral_frobNorm_mul_mul_sq_of_isIsotropic",
+  "stage": "R2"
+ },
+ "NLAlib.integral_frobSq_mul_gaussianMatrix_mul_of_hasLaw": {
+  "new": "NLAlib.integral_frobNorm_mul_mul_sq_of_hasLaw_gaussianMatrix",
+  "stage": "R2"
+ },
+ "NLAlib.integral_frobSq_mul_gaussian_mul_of_indepFun": {
+  "new": "NLAlib.integral_frobNorm_mul_mul_sq_of_hasLaw_gaussianMatrix_of_indepFun",
+  "stage": "R2"
+ },
+ "NLAlib.integral_fromBlocks_diag": {
+  "new": null,
+  "note": "P5, with the dilation, its only consumer",
+  "stage": "P0"
+ },
+ "NLAlib.integral_gaussianMatrix_eq": {
+  "new": null,
+  "note": "the abbrev and the uncurry law",
+  "stage": "R1"
+ },
+ "NLAlib.integral_iSup_abs_le_of_hasSubgaussianMGF": {
+  "new": null,
+  "note": "parametrised form; private step of HasSubgaussianMGF.integral_iSup_abs_le",
+  "stage": "P1"
+ },
+ "NLAlib.integral_iSup_abs_le_sqrt_of_hasSubgaussianMGF": {
+  "new": "ProbabilityTheory.HasSubgaussianMGF.integral_iSup_abs_le",
+  "stage": "P1"
+ },
+ "NLAlib.integral_iSup_le_of_hasSubgaussianMGF": {
+  "new": null,
+  "note": "parametrised form; private step of HasSubgaussianMGF.integral_iSup_le",
+  "stage": "P1"
+ },
+ "NLAlib.integral_iSup_le_sqrt_of_hasSubgaussianMGF": {
+  "new": "ProbabilityTheory.HasSubgaussianMGF.integral_iSup_le",
+  "stage": "P1"
+ },
+ "NLAlib.integral_id_rademacherMeasure": {
+  "new": null,
+  "note": "measure-form twin of integral_of_hasLaw_rademacherMeasure",
+  "stage": "P2"
+ },
+ "NLAlib.integral_inv_self_mul_transpose_apply_self_sq_eq": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
+ "NLAlib.integral_inv_self_mul_transpose_gaussianMatrix": {
+  "new": "NLAlib.integral_mul_conjTranspose_inv_of_hasLaw_gaussianMatrix",
+  "stage": "R4"
+ },
+ "NLAlib.integral_inv_self_mul_transpose_gaussianMatrix_of_hasLaw": {
+  "new": "NLAlib.integral_mul_conjTranspose_inv_of_hasLaw_gaussianMatrix",
+  "stage": "R4"
+ },
+ "NLAlib.integral_inv_sum_sq_gaussianVector": {
+  "new": "NLAlib.integral_norm_sq_inv_of_hasLaw_gaussianVector",
+  "stage": "R4"
+ },
+ "NLAlib.integral_lambdaMax_hermitianSeries_le": {
+  "new": "NLAlib.integral_eigenvalue_zero_sum_smul_le",
+  "stage": "P5a"
+ },
+ "NLAlib.integral_lambdaMax_hermitianSeries_le_of_hasLaw_gaussianReal": {
+  "new": null,
+  "note": "the case c = 1 of the sub-Gaussian series theorems",
+  "stage": "P5a"
+ },
+ "NLAlib.integral_lambdaMax_hermitianSeries_le_of_hasLaw_rademacherMeasure": {
+  "new": null,
+  "note": "the case c = 1 of the sub-Gaussian series theorems",
+  "stage": "P5a"
+ },
+ "NLAlib.integral_lambdaMax_le_log_integral_traceExp_div": {
+  "new": "NLAlib.integral_eigenvalue_zero_le",
+  "stage": "P5a"
+ },
+ "NLAlib.integral_lambdaMax_sum_le_chernoff": {
+  "new": "NLAlib.integral_eigenvalue_zero_sum_le_chernoff",
+  "stage": "P5a"
+ },
+ "NLAlib.integral_lambdaMax_sum_le_log_traceExp_cumulantSum_div": {
+  "new": "NLAlib.HasMatrixMGFBound.integral_eigenvalue_zero_sum_le",
+  "stage": "P5a"
+ },
+ "NLAlib.integral_lambdaMax_sum_le_of_lambdaMax_le": {
+  "new": "NLAlib.integral_eigenvalue_zero_sum_le_bernstein",
+  "stage": "P5a"
+ },
+ "NLAlib.integral_lambdaMin_sum_ge_chernoff": {
+  "new": "NLAlib.le_integral_eigenvalue_sum_chernoff",
+  "stage": "P5a"
+ },
+ "NLAlib.integral_le_of_tail_le": {
+  "new": "NLAlib.integral_le_of_measureReal_ge_le",
+  "stage": "P0"
+ },
+ "NLAlib.integral_le_of_tail_le_rpow": {
+  "new": null,
+  "note": "integral_le_of_measureReal_ge_le applied to f ^ p",
+  "stage": "P0"
+ },
+ "NLAlib.integral_le_one_div_mul_log_integral_exp_mul": {
+  "new": null,
+  "note": "Jensen step; private in Probability/SubGaussian/Moments.lean",
+  "stage": "P1"
+ },
+ "NLAlib.integral_matrixExp_smul_eq_cfc_of_hasSubgaussianMGF": {
+  "new": null,
+  "note": "private step in MatrixConcentration/Series.lean",
+  "stage": "P5a"
+ },
+ "NLAlib.integral_matrixExp_smul_le_of_hasSubgaussianMGF": {
+  "new": "NLAlib.hasMatrixMGFBound_smul_of_hasSubgaussianMGF",
+  "stage": "P5a"
+ },
+ "NLAlib.integral_mul_le_entropy_of_integral_exp_le_one": {
+  "new": null,
+  "note": "private step of entropy_pi_le_sum",
+  "stage": "P4"
+ },
+ "NLAlib.integral_nonpos_of_hasSubgaussianMGF": {
+  "new": null,
+  "note": "proof leaf; the mean is zero by the derivative of the MGF",
+  "stage": "P1"
+ },
+ "NLAlib.integral_pow_four_eq_one_of_hasLaw_rademacherMeasure": {
+  "new": "NLAlib.integral_pow_four_of_hasLaw_rademacherMeasure",
+  "stage": "P2"
+ },
+ "NLAlib.integral_pow_four_eq_three_of_hasLaw_gaussianReal": {
+  "new": "NLAlib.integral_pow_four_of_hasLaw_gaussianReal",
+  "note": "any variance",
+  "stage": "P2"
+ },
+ "NLAlib.integral_pow_four_gaussianReal": {
+  "new": null,
+  "note": "private step of integral_pow_four_of_hasLaw_gaussianReal",
+  "stage": "P2"
+ },
+ "NLAlib.integral_quadForm_eq_trace": {
+  "new": null,
+  "note": "IsIsotropic.of_iIndepFun followed by IsIsotropic.integral_quadForm",
+  "stage": "P0"
+ },
+ "NLAlib.integral_quadForm_eq_trace_of_second_moments": {
+  "new": "NLAlib.IsIsotropic.integral_quadForm",
+  "stage": "P0"
+ },
+ "NLAlib.integral_quadForm_sq": {
+  "new": null,
+  "note": "private uncentred second moment, over 𝕜",
+  "stage": "P3"
+ },
+ "NLAlib.integral_rademacherMeasure": {
+  "new": "NLAlib.integral_rademacherMeasure",
+  "stage": "P2"
+ },
+ "NLAlib.integral_reindex": {
+  "new": "Matrix.integral_reindex",
+  "stage": "P0"
+ },
+ "NLAlib.integral_rpow_inv_sum_sq_gaussianVector": {
+  "new": "NLAlib.integral_norm_sq_rpow_of_hasLaw_gaussianVector",
+  "stage": "R4"
+ },
+ "NLAlib.integral_rpow_specNorm_inv_gaussianMatrix_rpow_inv_le_sharp": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
+ "NLAlib.integral_rpow_specNorm_inv_gaussianMatrix_rpow_inv_le_sharp_of_hasLaw": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
+ "NLAlib.integral_rpow_sum_sq_gaussianVector": {
+  "new": "NLAlib.integral_norm_sq_rpow_of_hasLaw_gaussianVector",
+  "stage": "R4"
+ },
+ "NLAlib.integral_specNorm_matrixSeries_le": {
+  "new": "NLAlib.integral_specNorm_sum_smul_le",
+  "stage": "P5a"
+ },
+ "NLAlib.integral_specNorm_matrixSeries_le_of_hasLaw_gaussianReal": {
+  "new": null,
+  "note": "the case c = 1 of the sub-Gaussian series theorems",
+  "stage": "P5a"
+ },
+ "NLAlib.integral_specNorm_matrixSeries_le_of_hasLaw_rademacherMeasure": {
+  "new": null,
+  "note": "the case c = 1 of the sub-Gaussian series theorems",
+  "stage": "P5a"
+ },
+ "NLAlib.integral_specNorm_sum_le_of_specNorm_le": {
+  "new": "NLAlib.integral_specNorm_sum_le_bernstein",
+  "stage": "P5a"
+ },
+ "NLAlib.integral_sq_eq_one_of_hasLaw_gaussianReal": {
+  "new": "NLAlib.integral_sq_of_hasLaw_gaussianReal",
+  "stage": "P2"
+ },
+ "NLAlib.integral_sq_eq_one_of_hasLaw_rademacherMeasure": {
+  "new": "NLAlib.integral_sq_of_hasLaw_rademacherMeasure",
+  "stage": "P2"
+ },
+ "NLAlib.integral_sq_le_of_hasSubgaussianMGF_of_le": {
+  "new": "ProbabilityTheory.HasSubgaussianMGF.integral_sq_le",
+  "note": "now at most c",
+  "stage": "P1"
+ },
+ "NLAlib.integral_traceExp_add_le_integral_traceExp_add_matrixLog": {
+  "new": null,
+  "note": "private step in MatrixConcentration/Subadditivity.lean",
+  "stage": "P5a"
+ },
+ "NLAlib.integral_traceExp_add_le_traceExp_add_matrixLog": {
+  "new": "NLAlib.integral_re_trace_exp_add_le",
+  "stage": "P5a"
  },
  "NLAlib.intrinsicDimension": {
   "new": "NLAlib.intrinsicDimension",
@@ -6079,6 +7071,21 @@
   "new": "NLAlib.hasSum_pow_inv_one_sub",
   "note": "HasSum form; the tsum form is HasSum.tsum_eq",
   "stage": "M6"
+ },
+ "NLAlib.inv_self_mul_transpose_apply_self": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
+ "NLAlib.inv_self_mul_transpose_apply_succAbove": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
+ "NLAlib.inv_self_mul_transpose_orthogonal_mul": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
  },
  "NLAlib.inv_specNorm_inv_le_specNorm_of_not_isUnit_add": {
   "new": "NLAlib.singularValues_last_le_specNorm_of_not_injective_add",
@@ -6227,6 +7234,10 @@
   "new": null,
   "note": "recursion on the dimension not reproduced: the step-indexed householderState replaces it, §2 item 2",
   "stage": "M9"
+ },
+ "NLAlib.isGaussian_gaussianMatrix": {
+  "new": "NLAlib.isGaussian_gaussianMatrix",
+  "stage": "R1"
  },
  "NLAlib.isGradedColumnBasis_gramSchmidtQ": {
   "new": "NLAlib.span_gramSchmidtQ_col_image_Iic",
@@ -6450,6 +7461,14 @@
  "NLAlib.isPivotedCholesky_choleskyPivoted": {
   "new": "Matrix.PosSemidef.exists_perm_eq_mul_conjTranspose",
   "stage": "M9"
+ },
+ "NLAlib.isProbabilityMeasure_gaussianMatrix": {
+  "new": "NLAlib.isProbabilityMeasure_gaussianMatrix",
+  "stage": "R1"
+ },
+ "NLAlib.isProbabilityMeasure_rademacherMeasure": {
+  "new": "NLAlib.isProbabilityMeasure_rademacherMeasure",
+  "stage": "P2"
  },
  "NLAlib.isQR_givensQR": {
   "new": "NLAlib.IsUpperHessenberg.exists_isQR",
@@ -7007,10 +8026,55 @@
   "new": "NLAlib.concaveOn_re_trace_exp_add_cfc_log",
   "stage": "M8"
  },
+ "NLAlib.linForm": {
+  "new": null,
+  "note": "the dot product of the uncurried matrix",
+  "stage": "R1"
+ },
+ "NLAlib.linFormCLM": {
+  "new": null,
+  "note": "the dot product of the uncurried matrix",
+  "stage": "R1"
+ },
+ "NLAlib.linForm_eq_frobInner": {
+  "new": null,
+  "note": "the dot product of the uncurried matrix",
+  "stage": "R1"
+ },
+ "NLAlib.linForm_sub_linForm": {
+  "new": null,
+  "note": "the dot product of the uncurried matrix",
+  "stage": "R1"
+ },
  "NLAlib.linearIndependent_real_imag_of_nonreal_eigen_equations": {
   "new": null,
   "note": "not ported: real invariant plane lemma, §6; the new deflation step is the private exists_mulVec_eq_smul_sub_smul of NLAlib.exists_hasOrthonormalCols_isRealSchurForm, which produces orthogonal real and imaginary parts",
   "stage": "M10"
+ },
+ "NLAlib.lintegral_exp_sq_norm_le_chi_square_mgf": {
+  "new": null,
+  "note": "private Tonelli step in SubGaussianVector/Norm.lean",
+  "stage": "P3"
+ },
+ "NLAlib.lintegral_frobSq_mul_gaussian_mul_of_indepFun": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/Moments.lean",
+  "stage": "R2"
+ },
+ "NLAlib.lintegral_le_of_tail_le": {
+  "new": null,
+  "note": "proof step inside Probability/Tail.lean; the real-valued forms are public",
+  "stage": "P0"
+ },
+ "NLAlib.lintegral_lintegral_rpow_dotProduct_inv_self_mul_transpose_gaussianMatrix": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
+ "NLAlib.lintegral_rpow_sq_dotProduct_unit_pi_gaussianReal": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
  },
  "NLAlib.lipschitzWith_eigenvalues₀_pencil": {
   "new": "NLAlib.abs_eigenvalue_sub_le",
@@ -7044,6 +8108,15 @@
   "new": "NLAlib.strictConcaveOn_log_re_det",
   "note": "its ConcaveOn part, endpoints included; over 𝕜 with RCLike.re A.det",
   "stage": "M8"
+ },
+ "NLAlib.log_integral_traceExp_div_le_integral_lambdaMin": {
+  "new": "NLAlib.le_integral_eigenvalue",
+  "stage": "P5a"
+ },
+ "NLAlib.log_one_sub_le_neg_sub_sq_div_two": {
+  "new": null,
+  "note": "private step in Distributions/ChiSquare.lean",
+  "stage": "P3"
  },
  "NLAlib.lt_eigenvalues₀_of_forall_mem": {
   "new": "Matrix.IsHermitian.lt_eigenvalue_of_posDef_conjTranspose_mul_mul_sub",
@@ -7145,6 +8218,11 @@
   "note": "not ported: conditioning of a differentiable map; mapNormRelativeCondition lives outside Matrix/, Matrix-Perturbation §7.7; the matrix fact behind it is norm_sub_mul_norm_le_conditionNumber_mul",
   "stage": "M6"
  },
+ "NLAlib.map_comp_injective_pi": {
+  "new": null,
+  "note": "replaced by hasLaw_mulVec_of_hasLaw_gaussianVector",
+  "stage": "R1"
+ },
  "NLAlib.map_exp_le_map_exp_of_posSemidef_le": {
   "new": "Matrix.PosSemidef.map_exp_le_map_exp_of_le",
   "stage": "M7"
@@ -7205,6 +8283,11 @@
   "note": "not stated: the logarithm is cfc Real.log A because CFC.log needs a global NormedRing on matrices, Matrix-Functions §1 and §7.2; the order fact is Matrix.PosDef.cfc_log_le_cfc_log",
   "stage": "M8"
  },
+ "NLAlib.matrixLog_integral_matrixExp_smul_le_of_hasSubgaussianMGF": {
+  "new": null,
+  "note": "the master bound covers the CGF step",
+  "stage": "P5a"
+ },
  "NLAlib.matrixLog_reflection_conj": {
   "new": "NLAlib.cfc_mul_mul_conjTranspose",
   "note": "reflection twin at f = Real.log; over 𝕜",
@@ -7237,6 +8320,14 @@
   "new": null,
   "note": "object not reproduced: matrixPowerBoundConstant, §1 and §7.9; the constant of NLAlib.exists_forall_specNorm_pow_le_mul_pow is existential",
   "stage": "M10"
+ },
+ "NLAlib.matrix_chernoff_sampling_lower": {
+  "new": "NLAlib.measureReal_eigenvalue_sum_le_le_card_mul_exp",
+  "stage": "P5a"
+ },
+ "NLAlib.matrix_chernoff_sampling_upper": {
+  "new": "NLAlib.measureReal_eigenvalue_zero_sum_ge_le_card_mul_exp",
+  "stage": "P5a"
  },
  "NLAlib.matrix_spectralRadius_ne_top": {
   "new": "NLAlib.spectralRadius_complexify_ne_top",
@@ -7345,6 +8436,154 @@
   "new": "Measurable.matrix_trace",
   "stage": "M10"
  },
+ "NLAlib.measurePreserving_gaussianMatrix_entry": {
+  "new": null,
+  "note": "P0's HasLaw.entry, HasLaw.eval, HasLaw.iIndepFun_entry, HasLaw.iIndepFun_eval",
+  "stage": "R1"
+ },
+ "NLAlib.measurePreserving_gaussianMatrix_row": {
+  "new": null,
+  "note": "P0's HasLaw.entry, HasLaw.eval, HasLaw.iIndepFun_entry, HasLaw.iIndepFun_eval",
+  "stage": "R1"
+ },
+ "NLAlib.measurePreserving_ofMeasurableEquiv_gaussianMatrix": {
+  "new": null,
+  "note": "the abbrev and the uncurry law",
+  "stage": "R1"
+ },
+ "NLAlib.measurePreserving_orthonormalBasis_repr_pi_gaussianReal": {
+  "new": null,
+  "note": "replaced by hasLaw_mulVec_of_hasLaw_gaussianVector",
+  "stage": "R1"
+ },
+ "NLAlib.measureReal_abs_ge_le_two_mul_exp_of_cgf_le": {
+  "new": null,
+  "note": "replaced by HasSubexponentialMGF.measure_abs_ge_le",
+  "stage": "P1"
+ },
+ "NLAlib.measureReal_ge_le_exp_of_cgf_le": {
+  "new": null,
+  "note": "raw closed-window CGF hypotheses; replaced by HasSubexponentialMGF.measure_ge_le",
+  "stage": "P1"
+ },
+ "NLAlib.measureReal_ge_le_of_lipschitz_gaussianVector": {
+  "new": "NLAlib.measureReal_integral_add_le_of_lipschitzWith_of_hasLaw_gaussianVector",
+  "stage": "P4"
+ },
+ "NLAlib.measureReal_ge_le_of_logSobolev": {
+  "new": null,
+  "note": "P1's measure_ge_le applied to HasLogSobolev.hasSubgaussianMGF_sub_integral",
+  "stage": "P4"
+ },
+ "NLAlib.measureReal_lambdaMax_ge_le_exp_mul_integral_traceExp": {
+  "new": "NLAlib.measureReal_eigenvalue_zero_ge_le",
+  "stage": "P5a"
+ },
+ "NLAlib.measureReal_lambdaMax_hermitianSeries_ge_le": {
+  "new": "NLAlib.measureReal_eigenvalue_zero_sum_smul_ge_le",
+  "stage": "P5a"
+ },
+ "NLAlib.measureReal_lambdaMax_hermitianSeries_ge_le_of_hasLaw_gaussianReal": {
+  "new": null,
+  "note": "the case c = 1 of the sub-Gaussian series theorems",
+  "stage": "P5a"
+ },
+ "NLAlib.measureReal_lambdaMax_hermitianSeries_ge_le_of_hasLaw_rademacherMeasure": {
+  "new": null,
+  "note": "the case c = 1 of the sub-Gaussian series theorems",
+  "stage": "P5a"
+ },
+ "NLAlib.measureReal_lambdaMax_sum_ge_le_bernsteinTail": {
+  "new": "NLAlib.measureReal_eigenvalue_zero_sum_ge_le_bernstein",
+  "stage": "P5a"
+ },
+ "NLAlib.measureReal_lambdaMax_sum_ge_le_chernoffUpperTail": {
+  "new": "NLAlib.measureReal_eigenvalue_zero_sum_ge_le_chernoff",
+  "stage": "P5a"
+ },
+ "NLAlib.measureReal_lambdaMax_sum_ge_le_exp_mul_traceExp_cumulantSum": {
+  "new": "NLAlib.HasMatrixMGFBound.measure_eigenvalue_zero_sum_ge_le",
+  "stage": "P5a"
+ },
+ "NLAlib.measureReal_lambdaMin_le_le_exp_mul_integral_traceExp": {
+  "new": "NLAlib.measureReal_eigenvalue_le_le",
+  "stage": "P5a"
+ },
+ "NLAlib.measureReal_lambdaMin_sum_le_le_chernoffLowerTail": {
+  "new": "NLAlib.measureReal_eigenvalue_sum_le_le_chernoff",
+  "stage": "P5a"
+ },
+ "NLAlib.measureReal_lt_abs_le_of_hasSubgaussianMGF": {
+  "new": "ProbabilityTheory.HasSubgaussianMGF.measure_abs_ge_le",
+  "note": "non-strict event",
+  "stage": "P1"
+ },
+ "NLAlib.measureReal_specNorm_matrixSeries_ge_le": {
+  "new": "NLAlib.measureReal_specNorm_sum_smul_ge_le",
+  "stage": "P5a"
+ },
+ "NLAlib.measureReal_specNorm_matrixSeries_ge_le_of_hasLaw_gaussianReal": {
+  "new": null,
+  "note": "the case c = 1 of the sub-Gaussian series theorems",
+  "stage": "P5a"
+ },
+ "NLAlib.measureReal_specNorm_matrixSeries_ge_le_of_hasLaw_rademacherMeasure": {
+  "new": null,
+  "note": "the case c = 1 of the sub-Gaussian series theorems",
+  "stage": "P5a"
+ },
+ "NLAlib.measureReal_specNorm_sum_ge_le_bernsteinTail": {
+  "new": "NLAlib.measureReal_specNorm_sum_ge_le_bernstein",
+  "stage": "P5a"
+ },
+ "NLAlib.measureReal_sq_norm_ge_add_two_sqrt_mul_add_le": {
+  "new": "NLAlib.IsSubgaussianVector.measure_norm_sq_ge_le",
+  "stage": "P3"
+ },
+ "NLAlib.measureReal_sq_norm_ge_add_two_sqrt_mul_add_le_pmf": {
+  "new": null,
+  "note": "PMF copy",
+  "stage": "P3"
+ },
+ "NLAlib.measureReal_sq_norm_ge_le_chi_square_mgf": {
+  "new": null,
+  "note": "Chernoff step inside IsSubgaussianVector.measureReal_norm_sq_ge_le",
+  "stage": "P3"
+ },
+ "NLAlib.measureReal_sq_norm_ge_le_chi_square_mgf_pmf": {
+  "new": null,
+  "note": "PMF copy",
+  "stage": "P3"
+ },
+ "NLAlib.measureReal_sq_norm_ge_one_add_mul_le": {
+  "new": null,
+  "note": "relaxed form; the Hsu–Kakade–Zhang form is stated",
+  "stage": "P3"
+ },
+ "NLAlib.measureReal_sq_norm_ge_one_add_mul_le_pmf": {
+  "new": null,
+  "note": "PMF copy",
+  "stage": "P3"
+ },
+ "NLAlib.measureReal_sum_sq_le_le_exp_mul_rpow": {
+  "new": null,
+  "note": "private Chernoff step in Distributions/ChiSquare.lean",
+  "stage": "P3"
+ },
+ "NLAlib.measureReal_sum_sq_le_one_sub_mul_le_gaussianVector": {
+  "new": null,
+  "note": "relaxed form; the Laurent–Massart form is stated",
+  "stage": "P3"
+ },
+ "NLAlib.measureReal_sum_sq_le_sub_two_sqrt_mul_le_gaussianVector": {
+  "new": "NLAlib.measureReal_norm_sq_le_of_hasLaw_gaussianVector",
+  "stage": "P3"
+ },
+ "NLAlib.memLp_two_of_hasLaw_rademacherMeasure": {
+  "new": null,
+  "note": "HasLaw.memLp_comp_iff with integrable_rademacherMeasure",
+  "stage": "P2"
+ },
  "NLAlib.mem_convexHull_permutations_iff_exists_doublyStochastic": {
   "new": null,
   "note": "the two characterisations are separate iffs",
@@ -7383,6 +8622,15 @@
   "new": null,
   "note": "object not reproduced: simpleEigenvalueSchurFunction, Matrix-Perturbation §9",
   "stage": "M6"
+ },
+ "NLAlib.mgf_id_rademacherMeasure": {
+  "new": null,
+  "note": "measure-form twin of mgf_of_hasLaw_rademacherMeasure",
+  "stage": "P2"
+ },
+ "NLAlib.mgf_of_hasLaw_rademacherMeasure": {
+  "new": "NLAlib.mgf_of_hasLaw_rademacherMeasure",
+  "stage": "P2"
  },
  "NLAlib.modifiedGramSchmidtQ": {
   "new": null,
@@ -7776,6 +9024,10 @@
   "new": null,
   "note": "not ported: scalar helper; inlined in the proof of SymmetricGauge.matrixNorm_pinv_sub_pinv_le_three_mul_max",
   "stage": "M6"
+ },
+ "NLAlib.mul_log_integral_le_integral_mul_log_of_nonneg": {
+  "new": "NLAlib.entropy_nonneg",
+  "stage": "P4"
  },
  "NLAlib.mul_moorePenroseInverse_isHermitian": {
   "new": null,
@@ -8342,6 +9594,11 @@
   "note": "no bundled Seminorm values for the named norms",
   "stage": "M3b"
  },
+ "NLAlib.ofReal_rpow_specNorm_mul_gaussian_moment_le_lintegral": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
+ },
  "NLAlib.one_add_le_matrixExp_of_isHermitian": {
   "new": "Matrix.IsHermitian.one_add_le_exp",
   "stage": "M8"
@@ -8472,6 +9729,11 @@
   "new": null,
   "note": "object not reproduced: the row swap of the recursion luPartialPivot, §1 and §7.4",
   "stage": "M9"
+ },
+ "NLAlib.pi_gaussianReal_map_sq_dist_rowSpace": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
+  "stage": "R4"
  },
  "NLAlib.pinvL": {
   "new": null,
@@ -8664,6 +9926,10 @@
  "NLAlib.posDef_iff_trailingMinor_pos": {
   "new": "Matrix.IsHermitian.posDef_iff_forall_re_principalMinor_Ici_pos",
   "stage": "M10"
+ },
+ "NLAlib.posDef_integral_of_ae_posDef": {
+  "new": "Matrix.posDef_integral",
+  "stage": "P0"
  },
  "NLAlib.posDef_map_exp_iff_rows_injective": {
   "new": "Matrix.PosSemidef.posDef_map_exp_iff",
@@ -9182,6 +10448,15 @@
  "NLAlib.quadForm_zero_right": {
   "new": "NLAlib.quadForm_zero_right",
   "stage": "M1"
+ },
+ "NLAlib.rademacherMeasure": {
+  "new": "NLAlib.rademacherMeasure",
+  "note": "now 2⁻¹ • (dirac 1 + dirac (-1))",
+  "stage": "P2"
+ },
+ "NLAlib.rademacherVector": {
+  "new": "NLAlib.rademacherVector",
+  "stage": "P2"
  },
  "NLAlib.rangeProjector": {
   "new": "NLAlib.rangeProjector",
@@ -9702,6 +10977,11 @@
   "note": "object not reproduced: rectDiag, Matrix-Spectral §7.3",
   "stage": "M5"
  },
+ "NLAlib.rectSecondMoment": {
+  "new": null,
+  "note": "written out in the statements",
+  "stage": "P5a"
+ },
  "NLAlib.rectangularDiagonal": {
   "new": null,
   "note": "no rectangular diagonal",
@@ -10128,6 +11408,11 @@
   "new": "NLAlib.principalAngle_submatrix_equiv",
   "note": "added at the follow-up pass",
   "stage": "M5"
+ },
+ "NLAlib.sineTruncation": {
+  "new": null,
+  "note": "private proof material",
+  "stage": "P4"
  },
  "NLAlib.singularValues": {
   "new": "NLAlib.singularValues",
@@ -11169,6 +12454,10 @@
   "new": "NLAlib.sqrt_mul_polarFactor",
   "stage": "M9"
  },
+ "NLAlib.sqrt_sub_sqrt_le_integral_sqrt_sum_sq_sub": {
+  "new": "NLAlib.le_integral_norm_sub_integral_norm_of_hasLaw_gaussianVector",
+  "stage": "R4"
+ },
  "NLAlib.star_conjTranspose_mulVec_dotProduct_self_of_mem_range": {
   "new": "NLAlib.rangeProjector_mulVec_eq_self_iff",
   "note": "with HasOrthonormalCols.star_mulVec_dotProduct_mulVec",
@@ -11438,6 +12727,11 @@
   "new": null,
   "note": "Fin index bookkeeping",
   "stage": "M3a"
+ },
+ "NLAlib.sum_fourth_moment_contraction": {
+  "new": null,
+  "note": "private index contraction",
+  "stage": "P3"
  },
  "NLAlib.sum_inv_factorial_smul_map_pow_le_map_exp": {
   "new": null,
@@ -11717,6 +13011,16 @@
   "new": "NLAlib.sum_walshHadamard_apply",
   "stage": "M10"
  },
+ "NLAlib.summable_integral_exp_sq_series_of_hasSubgaussianMGF": {
+  "new": null,
+  "note": "series step; private in SubGaussian/Square.lean",
+  "stage": "P1"
+ },
+ "NLAlib.summable_integral_exp_sq_series_of_hasSubgaussianMGF_of_le": {
+  "new": null,
+  "note": "series step; private in SubGaussian/Square.lean",
+  "stage": "P1"
+ },
  "NLAlib.summable_matrix_pow_of_spectralRadius_lt_one": {
   "new": "NLAlib.hasSum_pow_inv_one_sub_of_specRadius_lt_one",
   "note": "summability is HasSum.summable; over 𝕜 with specRadius",
@@ -11782,6 +13086,11 @@
  "NLAlib.tangentPrincipalAngles": {
   "new": "NLAlib.tangentMatrix",
   "stage": "M5"
+ },
+ "NLAlib.tendsto_integral_mul_log_add_of_nonneg": {
+  "new": null,
+  "note": "private step in EntropyTensorization.lean",
+  "stage": "P4"
  },
  "NLAlib.tendsto_matrix_pow_zero_iff_spectralRadius_lt_one": {
   "new": "NLAlib.tendsto_pow_zero_iff_specRadius_lt_one",
@@ -12020,6 +13329,10 @@
   "new": "Matrix.IsHermitian.re_trace_cfc",
   "note": "real-part form over the sorted eigenvalue A i; the 𝕜-valued trace_cfc was deleted as dead weight, Matrix-Functions §8.9; Matrix.IsHermitian.coe_re_trace recovers it",
   "stage": "M8"
+ },
+ "NLAlib.trace_cgf_subadditivity": {
+  "new": "NLAlib.integral_re_trace_exp_sum_le",
+  "stage": "P5a"
  },
  "NLAlib.trace_compression_eq_sum_mul_overlap_row_sq": {
   "new": null,
@@ -12301,6 +13614,22 @@
   "new": "IsStarNormal.isDiag_of_isUpperTriangular",
   "stage": "M10"
  },
+ "NLAlib.variance_quadForm": {
+  "new": "NLAlib.integral_norm_quadForm_sub_trace_sq",
+  "stage": "P3"
+ },
+ "NLAlib.variance_quadForm_of_isHermitian": {
+  "new": "NLAlib.variance_quadForm_of_isHermitian",
+  "stage": "P3"
+ },
+ "NLAlib.variance_quadForm_of_isHermitian_of_fourth_moment_eq_one": {
+  "new": "NLAlib.variance_quadForm_of_hasLaw_rademacherVector",
+  "stage": "P3"
+ },
+ "NLAlib.variance_quadForm_of_isHermitian_of_fourth_moment_eq_three": {
+  "new": "NLAlib.variance_quadForm_of_hasLaw_gaussianVector",
+  "stage": "P3"
+ },
  "NLAlib.vecMulVec_ne_zero": {
   "new": null,
   "note": "Mathlib: Matrix.vecMulVec_ne_zero",
@@ -12489,1334 +13818,5 @@
   "new": null,
   "note": "HasLaw's constructor; P0 states with HasLaw directly",
   "stage": "P0"
- },
- "ae_eq_one_or_neg_one_of_hasLaw_rademacherMeasure": {
-  "new": "NLAlib.ae_eq_one_or_neg_one_of_hasLaw_rademacherMeasure",
-  "stage": "P2"
- },
- "ae_eq_one_or_neg_one_rademacherMeasure": {
-  "new": null,
-  "note": "measure-form twin of ae_eq_one_or_neg_one_of_hasLaw_rademacherMeasure",
-  "stage": "P2"
- },
- "ae_mem_Icc_rademacherMeasure": {
-  "new": null,
-  "note": "measure-form twin; ae_eq_one_or_neg_one_of_hasLaw_rademacherMeasure",
-  "stage": "P2"
- },
- "ae_ne_zero_mvPolynomial": {
-  "new": "NLAlib.ae_eval_ne_zero_of_ne_zero",
-  "stage": "R1"
- },
- "ae_rank_mul_gaussian_eq_min": {
-  "new": "NLAlib.ae_rank_mul_eq_min_of_hasLaw_gaussianMatrix",
-  "stage": "R1"
- },
- "aemeasurable_of_directional_hasSubgaussianMGF": {
-  "new": "NLAlib.IsSubgaussianVector.aemeasurable",
-  "stage": "P3"
- },
- "bernsteinTail": {
-  "new": null,
-  "note": "written out in the statements",
-  "stage": "P5a"
- },
- "bernstein_matrix_mgf_cgf_le": {
-  "new": "NLAlib.hasMatrixMGFBound_of_integral_eq_zero_of_le",
-  "stage": "P5a"
- },
- "centered_sq_cgf_le_of_hasSubgaussianMGF_of_le": {
-  "new": "ProbabilityTheory.HasSubgaussianMGF.hasSubexponentialMGF_sq_sub_integral",
-  "stage": "P1"
- },
- "chernoffCgfCoefficient": {
-  "new": null,
-  "note": "written out in the statements, CONTRIBUTING §5.2 Numerical bounds rule 2",
-  "stage": "P5a"
- },
- "chernoffLowerTail": {
-  "new": null,
-  "note": "written out in the statements",
-  "stage": "P5a"
- },
- "chernoffUpperTail": {
-  "new": null,
-  "note": "written out in the statements",
-  "stage": "P5a"
- },
- "chernoff_matrix_mgf_cgf_le": {
-  "new": "NLAlib.hasMatrixMGFBound_of_posSemidef_of_le",
-  "stage": "P5a"
- },
- "continuous_linForm": {
-  "new": null,
-  "note": "the dot product of the uncurried matrix",
-  "stage": "R1"
- },
- "cumulantSum": {
-  "new": null,
-  "note": "written out in the statements",
-  "stage": "P5a"
- },
- "entropy_exp_mul_le_of_logSobolev_of_bounded": {
-  "new": null,
-  "note": "private step in LogSobolev.lean",
-  "stage": "P4"
- },
- "entropy_le_half_integral_sq_deriv_div_gaussianReal": {
-  "new": null,
-  "note": "Ornstein–Uhlenbeck route not used; Gross's two-point route through the central limit theorem",
-  "stage": "P4"
- },
- "entropy_pi_le_sum_integral_entropy_update": {
-  "new": "NLAlib.entropy_pi_le_sum",
-  "stage": "P4"
- },
- "entropy_pi_le_sum_integral_entropy_update_of_nonneg": {
-  "new": "NLAlib.entropy_pi_le_sum",
-  "stage": "P4"
- },
- "entropy_sq_le_two_mul_integral_sq_deriv_gaussianReal": {
-  "new": null,
-  "note": "private step in Distributions/GaussianLogSobolev.lean",
-  "stage": "P4"
- },
- "entropy_sq_le_two_mul_integral_sq_deriv_gaussianReal_of_hasCompactSupport": {
-  "new": "NLAlib.entropy_sq_le_two_mul_integral_deriv_sq_gaussianReal_of_hasCompactSupport",
-  "stage": "P4"
- },
- "entropy_sq_le_two_mul_integral_sq_deriv_gaussianReal_of_integrable": {
-  "new": "NLAlib.entropy_sq_le_two_mul_integral_deriv_sq_gaussianReal",
-  "stage": "P4"
- },
- "entropy_sq_le_two_mul_integral_sum_sq_fderiv_gaussian": {
-  "new": null,
-  "note": "private step on gaussianVector",
-  "stage": "P4"
- },
- "entropy_sq_le_two_mul_integral_sum_sq_fderiv_gaussian_of_integrable": {
-  "new": "NLAlib.entropy_sq_le_two_mul_integral_norm_fderiv_sq_stdGaussian",
-  "stage": "P4"
- },
- "exists_bounded_contDiff_lipschitz_approx": {
-  "new": null,
-  "note": "private step in LogSobolev.lean",
-  "stage": "P4"
- },
- "exists_orthonormal_ker_sq_dist_rowSpace": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "exists_right_sketch_rank_eq_of_le_rank": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/Rank.lean",
-  "stage": "R1"
- },
- "exp_mul_le_one_add_mul_add_sq_mul_of_le": {
-  "new": null,
-  "note": "private step in MatrixConcentration/Bernstein.lean",
-  "stage": "P5a"
- },
- "finiteSamplingLaw": {
-  "new": "NLAlib.samplingMeasure",
-  "stage": "P2"
- },
- "finiteSamplingLaw_isProbabilityMeasure": {
-  "new": "NLAlib.isProbabilityMeasure_samplingMeasure",
-  "stage": "P2"
- },
- "finiteSamplingLaw_singleton": {
-  "new": "NLAlib.samplingMeasure_singleton",
-  "stage": "P2"
- },
- "finiteSamplingPMF": {
-  "new": null,
-  "note": "samplingMeasure takes weights without a proof",
-  "stage": "P2"
- },
- "gamma_inverse_spectral_endpoint_le": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "gaussianMatrix": {
-  "new": "NLAlib.gaussianMatrix",
-  "stage": "R1"
- },
- "gaussianMatrix_ae_eval_ne_zero": {
-  "new": null,
-  "note": "inlined in RandomMatrix/Gaussian/Rank.lean",
-  "stage": "R1"
- },
- "gaussianMatrix_ae_isUnit_gram_mul_of_le_rank": {
-  "new": "NLAlib.ae_isUnit_conjTranspose_mul_self_mul_of_hasLaw_gaussianMatrix",
-  "stage": "R1"
- },
- "gaussianMatrix_ae_isUnit_mul_transpose": {
-  "new": null,
-  "note": "from ae_rank_eq_min_of_hasLaw_gaussianMatrix and isUnit_conjTranspose_mul_self_iff_rank",
-  "stage": "R1"
- },
- "gaussianMatrix_ae_isUnit_transpose_mul": {
-  "new": null,
-  "note": "from ae_rank_eq_min_of_hasLaw_gaussianMatrix and isUnit_conjTranspose_mul_self_iff_rank",
-  "stage": "R1"
- },
- "gaussianMatrix_ae_rank_eq": {
-  "new": "NLAlib.ae_rank_eq_min_of_hasLaw_gaussianMatrix",
-  "stage": "R1"
- },
- "gaussianMatrix_ae_rank_mul_eq_min": {
-  "new": "NLAlib.ae_rank_mul_eq_min_of_hasLaw_gaussianMatrix",
-  "stage": "R1"
- },
- "gaussianMatrix_eq_map_curry": {
-  "new": "NLAlib.hasLaw_gaussianMatrix_of_hasLaw_uncurry",
-  "stage": "R1"
- },
- "gaussianMatrix_indepFun_block": {
-  "new": "NLAlib.indepFun_conjTranspose_mul_of_hasLaw_gaussianMatrix",
-  "stage": "R1"
- },
- "gaussianMatrix_indepFun_block_of_hasLaw": {
-  "new": "NLAlib.indepFun_conjTranspose_mul_of_hasLaw_gaussianMatrix",
-  "stage": "R1"
- },
- "gaussianMatrix_lt_frobSq_pinvR_le": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "gaussianMatrix_lt_frobSq_pinvR_le_of_hasLaw": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "gaussianMatrix_map_inv_self_mul_transpose_apply_self": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "gaussianMatrix_map_mulVec": {
-  "new": null,
-  "note": "stated for unit vectors; consumers scale",
-  "stage": "R1"
- },
- "gaussianMatrix_map_mulVec_of_dotProduct_self_eq_one": {
-  "new": "NLAlib.hasLaw_mulVec_of_hasLaw_gaussianMatrix",
-  "stage": "R1"
- },
- "gaussianMatrix_map_uncurry": {
-  "new": "NLAlib.hasLaw_uncurry_of_hasLaw_gaussianMatrix",
-  "stage": "R1"
- },
- "gaussianSeriesTail": {
-  "new": null,
-  "note": "written out in the statements",
-  "stage": "P5a"
- },
- "gaussianVector": {
-  "new": "NLAlib.gaussianVector",
-  "stage": "P2"
- },
- "gaussianVector_map_toLp_eq_stdGaussian": {
-  "new": null,
-  "note": "Mathlib's map_pi_eq_stdGaussian",
-  "stage": "P2"
- },
- "gaussian_concentration": {
-  "new": "NLAlib.hasSubgaussianMGF_sub_integral_of_hasLaw_gaussianMatrix",
-  "stage": "R1"
- },
- "gaussian_concentration_of_hasLaw": {
-  "new": "NLAlib.hasSubgaussianMGF_sub_integral_of_hasLaw_gaussianMatrix",
-  "stage": "R1"
- },
- "hanson_wright_mgf": {
-  "new": "NLAlib.measureReal_abs_quadForm_sub_integral_ge_le",
-  "stage": "P3"
- },
- "hanson_wright_of_lintegral_exp_sq_le_two": {
-  "new": null,
-  "note": "ψ₂ form; P7 with the Orlicz bridges",
-  "stage": "P3"
- },
- "hasEuclideanLogSobolev_gaussianVector": {
-  "new": "NLAlib.hasLogSobolev_stdGaussian",
-  "stage": "P4"
- },
- "hasGaussianLaw_id_gaussianMatrix": {
-  "new": "NLAlib.isGaussian_gaussianMatrix",
-  "stage": "R1"
- },
- "hasGaussianLaw_id_gaussianVector": {
-  "new": "NLAlib.isGaussian_gaussianVector",
-  "stage": "P2"
- },
- "hasHansonWrightMGF_of_bounded": {
-  "new": null,
-  "note": "no consumer",
-  "stage": "P3"
- },
- "hasHansonWrightMGF_of_subgaussian": {
-  "new": null,
-  "note": "HasSubexponentialMGF is the interface",
-  "stage": "P3"
- },
- "hasLaw_dotProduct_gaussianVector": {
-  "new": "NLAlib.hasLaw_dotProduct_of_hasLaw_gaussianVector",
-  "note": "no unit-norm hypothesis",
-  "stage": "P2"
- },
- "hasLaw_eval_rademacherVector": {
-  "new": null,
-  "note": "HasLaw.eval",
-  "stage": "P2"
- },
- "hasLaw_gaussianMatrix_block": {
-  "new": "NLAlib.hasLaw_const_mul_of_hasLaw_gaussianMatrix",
-  "stage": "R1"
- },
- "hasLaw_gaussianMatrix_block_of_hasLaw": {
-  "new": "NLAlib.hasLaw_const_mul_of_hasLaw_gaussianMatrix",
-  "stage": "R1"
- },
- "hasLaw_gaussianMatrix_first_cols": {
-  "new": null,
-  "note": "not needed",
-  "stage": "R1"
- },
- "hasLaw_gaussianMatrix_mul_right": {
-  "new": "NLAlib.hasLaw_mul_const_of_hasLaw_gaussianMatrix",
-  "stage": "R1"
- },
- "hasLaw_gaussianMatrix_mul_right_of_hasLaw": {
-  "new": "NLAlib.hasLaw_mul_const_of_hasLaw_gaussianMatrix",
-  "stage": "R1"
- },
- "hasLaw_gaussianMatrix_of_iIndepFun": {
-  "new": "NLAlib.hasLaw_gaussianMatrix_of_hasLaw_uncurry",
-  "stage": "R1"
- },
- "hasLaw_gaussianMatrix_orthogonal": {
-  "new": "NLAlib.hasLaw_mul_mul_of_hasLaw_gaussianMatrix",
-  "stage": "R1"
- },
- "hasLaw_gaussianMatrix_orthogonal_of_hasLaw": {
-  "new": "NLAlib.hasLaw_mul_mul_of_hasLaw_gaussianMatrix",
-  "stage": "R1"
- },
- "hasLaw_gaussianMatrix_transpose": {
-  "new": "NLAlib.hasLaw_conjTranspose_of_hasLaw_gaussianMatrix",
-  "stage": "R1"
- },
- "hasLaw_gaussianMatrix_transpose_of_hasLaw": {
-  "new": "NLAlib.hasLaw_conjTranspose_of_hasLaw_gaussianMatrix",
-  "stage": "R1"
- },
- "hasLaw_rademacherMeasure_iff_map_eq": {
-  "new": null,
-  "note": "HasLaw's definition",
-  "stage": "P2"
- },
- "hasLaw_rademacherVector_of_iIndepFun": {
-  "new": null,
-  "note": "hasLaw_pi_iff",
-  "stage": "P2"
- },
- "hasSubgaussianMGF_finset_sum_mul_of_iIndepFun": {
-  "new": "ProbabilityTheory.HasSubgaussianMGF.sum_const_mul_of_iIndepFun",
-  "stage": "P1"
- },
- "hasSubgaussianMGF_id_gaussianReal": {
-  "new": null,
-  "note": "measure form; hasSubgaussianMGF_of_hasLaw_gaussianReal with HasLaw.id",
-  "stage": "P2"
- },
- "hasSubgaussianMGF_id_rademacherMeasure": {
-  "new": null,
-  "note": "measure-form twin of hasSubgaussianMGF_of_hasLaw_rademacherMeasure",
-  "stage": "P2"
- },
- "hasSubgaussianMGF_mono": {
-  "new": "ProbabilityTheory.HasSubgaussianMGF.mono",
-  "stage": "P1"
- },
- "hasSubgaussianMGF_mulVec_apply_gaussianMatrix": {
-  "new": null,
-  "note": "the mulVec law, HasLaw.eval and hasSubgaussianMGF_of_hasLaw_gaussianReal",
-  "stage": "R1"
- },
- "hasSubgaussianMGF_of_hasLaw_gaussianReal": {
-  "new": "NLAlib.hasSubgaussianMGF_of_hasLaw_gaussianReal",
-  "note": "any variance",
-  "stage": "P2"
- },
- "hasSubgaussianMGF_of_hasLaw_rademacherMeasure": {
-  "new": "NLAlib.hasSubgaussianMGF_of_hasLaw_rademacherMeasure",
-  "stage": "P2"
- },
- "hasSubgaussianMGF_of_logSobolev": {
-  "new": "NLAlib.HasLogSobolev.hasSubgaussianMGF_sub_integral",
-  "stage": "P4"
- },
- "hasSubgaussianMGF_of_logSobolev_of_bounded": {
-  "new": null,
-  "note": "private step in LogSobolev.lean",
-  "stage": "P4"
- },
- "hermitianSecondMoment": {
-  "new": null,
-  "note": "written out in the statements",
-  "stage": "P5a"
- },
- "hermitianSecondMoment_dilation_eq_rectSecondMoment": {
-  "new": null,
-  "note": "private step in MatrixConcentration/Bernstein.lean",
-  "stage": "P5a"
- },
- "iIndepFun_eval_rademacherVector": {
-  "new": null,
-  "note": "HasLaw.iIndepFun_eval",
-  "stage": "P2"
- },
- "iIndepFun_gaussianMatrix_entry": {
-  "new": null,
-  "note": "P0's HasLaw.entry, HasLaw.eval, HasLaw.iIndepFun_entry, HasLaw.iIndepFun_eval",
-  "stage": "R1"
- },
- "iIndepFun_gaussianMatrix_row": {
-  "new": null,
-  "note": "P0's HasLaw.entry, HasLaw.eval, HasLaw.iIndepFun_entry, HasLaw.iIndepFun_eval",
-  "stage": "R1"
- },
- "indepFun_mulVec_sq_dist_rowSpace": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "inner_randomVector_hasSubgaussianMGF_of_iIndepFun": {
-  "new": "NLAlib.lintegral_exp_mul_dotProduct_le",
-  "stage": "P3"
- },
- "integrable_and_integral_frobSq_inv_self_mul_transpose_gaussianMatrix": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "integrable_and_integral_frobSq_inv_self_mul_transpose_gaussianMatrix_of_hasLaw": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "integrable_and_integral_frobSq_pinvR_gaussianMatrix": {
-  "new": "NLAlib.integral_frobNorm_pinv_sq_of_hasLaw_gaussianMatrix",
-  "stage": "R4"
- },
- "integrable_and_integral_frobSq_pinvR_gaussianMatrix_of_hasLaw": {
-  "new": "NLAlib.integral_frobNorm_pinv_sq_of_hasLaw_gaussianMatrix",
-  "stage": "R4"
- },
- "integrable_and_integral_frobSq_pinvR_sq_gaussianMatrix": {
-  "new": "NLAlib.integral_frobNorm_pinv_pow_four_of_hasLaw_gaussianMatrix",
-  "stage": "R4"
- },
- "integrable_and_integral_frobSq_pinvR_sq_gaussianMatrix_of_hasLaw": {
-  "new": "NLAlib.integral_frobNorm_pinv_pow_four_of_hasLaw_gaussianMatrix",
-  "stage": "R4"
- },
- "integrable_and_integral_half_gap_rpow_specNorm_inv_gaussianMatrix_le": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "integrable_and_integral_half_gap_rpow_specNorm_inv_gaussianMatrix_le_of_hasLaw": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "integrable_and_integral_inv_self_mul_transpose_apply_self_mul_apply_self_gaussianMatrix": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "integrable_and_integral_inv_self_mul_transpose_apply_self_sq_gaussianMatrix": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "integrable_and_integral_inv_self_mul_transpose_apply_sq_gaussianMatrix": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "integrable_and_integral_inv_self_mul_transpose_gaussianMatrix": {
-  "new": "NLAlib.integrable_mul_conjTranspose_inv_of_hasLaw_gaussianMatrix",
-  "stage": "R4"
- },
- "integrable_and_integral_inv_self_mul_transpose_gaussianMatrix_of_hasLaw": {
-  "new": "NLAlib.integrable_mul_conjTranspose_inv_of_hasLaw_gaussianMatrix",
-  "stage": "R4"
- },
- "integrable_and_integral_inv_sq_dist_rowSpace_sq": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "integrable_and_integral_matrixExp_smul_eq_cfc_mgf": {
-  "new": null,
-  "note": "private step in MatrixConcentration/Series.lean",
-  "stage": "P5a"
- },
- "integrable_and_integral_rpow_dotProduct_inv_self_mul_transpose_gaussianMatrix": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "integrable_and_integral_rpow_dotProduct_inv_self_mul_transpose_unit_gaussianMatrix": {
-  "new": "NLAlib.integral_dotProduct_mul_conjTranspose_inv_mulVec_rpow_of_hasLaw_gaussianMatrix",
-  "stage": "R4"
- },
- "integrable_and_integral_rpow_inv_self_mul_transpose_apply_self_gaussianMatrix": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "integrable_and_integral_rpow_specNorm_inv_gaussianMatrix_le_sharp": {
-  "new": "NLAlib.integral_specNorm_pinv_rpow_le_of_hasLaw_gaussianMatrix",
-  "stage": "R4"
- },
- "integrable_and_integral_rpow_specNorm_inv_gaussianMatrix_le_sharp_of_hasLaw": {
-  "new": "NLAlib.integral_specNorm_pinv_rpow_le_of_hasLaw_gaussianMatrix",
-  "stage": "R4"
- },
- "integrable_and_integral_rpow_specNorm_inv_self_mul_transpose_gaussianMatrix_le": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "integrable_and_integral_rpow_specNorm_inv_self_mul_transpose_gaussianMatrix_le_of_hasLaw": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "integrable_and_integral_specNorm_pinvR_gaussianMatrix_le": {
-  "new": "NLAlib.integral_specNorm_pinv_le_exp_mul_sqrt_card_div_of_hasLaw_gaussianMatrix",
-  "stage": "R4"
- },
- "integrable_and_integral_specNorm_pinvR_gaussianMatrix_le_of_hasLaw": {
-  "new": "NLAlib.integral_specNorm_pinv_le_exp_mul_sqrt_card_div_of_hasLaw_gaussianMatrix",
-  "stage": "R4"
- },
- "integrable_and_integral_specNorm_pinvR_gaussianMatrix_le_sharp": {
-  "new": "NLAlib.integral_specNorm_pinv_le_of_hasLaw_gaussianMatrix",
-  "stage": "R4"
- },
- "integrable_and_integral_specNorm_pinvR_gaussianMatrix_le_sharp_of_hasLaw": {
-  "new": "NLAlib.integral_specNorm_pinv_le_of_hasLaw_gaussianMatrix",
-  "stage": "R4"
- },
- "integrable_entropy_update_of_nonneg": {
-  "new": null,
-  "note": "not needed",
-  "stage": "P4"
- },
- "integrable_exp_centered_sq_of_hasSubgaussianMGF_of_le": {
-  "new": "ProbabilityTheory.HasSubgaussianMGF.hasSubexponentialMGF_sq_sub_integral",
-  "stage": "P1"
- },
- "integrable_exp_mul_sq_of_hasSubgaussianMGF": {
-  "new": "ProbabilityTheory.HasSubgaussianMGF.integrable_exp_mul_sq",
-  "stage": "P1"
- },
- "integrable_exp_mul_sq_of_hasSubgaussianMGF_of_le": {
-  "new": "ProbabilityTheory.HasSubgaussianMGF.integrable_exp_mul_sq",
-  "stage": "P1"
- },
- "integrable_exp_mul_sq_of_summable_integrals": {
-  "new": null,
-  "note": "series step; private in SubGaussian/Square.lean",
-  "stage": "P1"
- },
- "integrable_exp_quadraticForm_offDiagonal": {
-  "new": "NLAlib.hasSubexponentialMGF_quadForm_sub_diagonal",
-  "stage": "P3"
- },
- "integrable_exp_sq_norm_of_directional_hasSubgaussianMGF": {
-  "new": "NLAlib.IsSubgaussianVector.integrable_exp_mul_norm_sq",
-  "stage": "P3"
- },
- "integrable_frobSq_mul_gaussianMatrix_mul": {
-  "new": "NLAlib.integrable_frobNorm_mul_mul_sq_of_isIsotropic",
-  "stage": "R2"
- },
- "integrable_frobSq_mul_gaussian_mul_of_indepFun": {
-  "new": "NLAlib.integrable_frobNorm_mul_mul_sq_iff_of_hasLaw_gaussianMatrix_of_indepFun",
-  "stage": "R2"
- },
- "integrable_gaussianMatrix_iff": {
-  "new": null,
-  "note": "the abbrev and the uncurry law",
-  "stage": "R1"
- },
- "integrable_iSup_abs_of_hasSubgaussianMGF": {
-  "new": "ProbabilityTheory.HasSubgaussianMGF.integrable_iSup_abs",
-  "stage": "P1"
- },
- "integrable_iSup_of_hasSubgaussianMGF": {
-  "new": "ProbabilityTheory.HasSubgaussianMGF.integrable_iSup",
-  "stage": "P1"
- },
- "integrable_inv_sum_sq_gaussianVector": {
-  "new": "NLAlib.integrable_norm_sq_rpow_of_hasLaw_gaussianVector",
-  "stage": "R4"
- },
- "integrable_matrixExp_add_and_traceExp_add": {
-  "new": null,
-  "note": "private step in MatrixConcentration/Subadditivity.lean",
-  "stage": "P5a"
- },
- "integrable_matrixExp_smul_sum_of_iIndepFun": {
-  "new": "NLAlib.integrable_re_trace_exp_sum",
-  "stage": "P5a"
- },
- "integrable_mul_log_add_of_nonneg": {
-  "new": null,
-  "note": "inlined in EntropyTensorization.lean",
-  "stage": "P4"
- },
- "integrable_mul_log_integral_update_of_nonneg": {
-  "new": null,
-  "note": "private step in EntropyTensorization.lean",
-  "stage": "P4"
- },
- "integrable_of_lipschitz_gaussianVector": {
-  "new": "NLAlib.integrable_comp_of_lipschitzWith_of_hasLaw_gaussianVector",
-  "stage": "P4"
- },
- "integrable_of_logSobolev_of_lipschitz": {
-  "new": "NLAlib.HasLogSobolev.integrable_of_lipschitzWith",
-  "stage": "P4"
- },
- "integrable_of_nonneg_mul_log_integrable": {
-  "new": null,
-  "note": "integrability is a hypothesis of entropy_pi_le_sum",
-  "stage": "P4"
- },
- "integrable_of_tail_le": {
-  "new": "NLAlib.integrable_of_measureReal_ge_le",
-  "stage": "P0"
- },
- "integrable_of_tail_le_rpow": {
-  "new": null,
-  "note": "integrable_of_measureReal_ge_le applied to f ^ p",
-  "stage": "P0"
- },
- "integrable_pow_four_of_hasLaw_rademacherMeasure": {
-  "new": null,
-  "note": "HasLaw.integrable_comp_iff with integrable_rademacherMeasure",
-  "stage": "P2"
- },
- "integrable_rademacherMeasure": {
-  "new": "NLAlib.integrable_rademacherMeasure",
-  "stage": "P2"
- },
- "integrable_rpow_inv_sum_sq_gaussianVector": {
-  "new": "NLAlib.integrable_norm_sq_rpow_of_hasLaw_gaussianVector",
-  "stage": "R4"
- },
- "integrable_rpow_sum_sq_gaussianVector": {
-  "new": "NLAlib.integrable_norm_sq_rpow_of_hasLaw_gaussianVector",
-  "stage": "R4"
- },
- "integrable_sq_mul_log_sq_gaussian": {
-  "new": "NLAlib.integrable_sq_mul_log_sq_stdGaussian",
-  "stage": "P4"
- },
- "integrable_sq_mul_log_sq_gaussianReal": {
-  "new": "NLAlib.integrable_sq_mul_log_sq_gaussianReal",
-  "stage": "P4"
- },
- "integrable_sq_mul_log_sq_of_logSobolev_bound": {
-  "new": null,
-  "note": "private proof material",
-  "stage": "P4"
- },
- "integral_abs_rpow_le_of_hasSubgaussianMGF": {
-  "new": "ProbabilityTheory.HasSubgaussianMGF.integral_abs_rpow_le",
-  "stage": "P1"
- },
- "integral_coord_mul_coord": {
-  "new": "NLAlib.IsIsotropic.of_iIndepFun",
-  "note": "its integral_mul_star field",
-  "stage": "P0"
- },
- "integral_coord_mul_coord_mul_coord_mul_coord": {
-  "new": null,
-  "note": "private fourth mixed moment, over 𝕜",
-  "stage": "P3"
- },
- "integral_entropy_update_eq_sub_integral_mul_log_mean": {
-  "new": null,
-  "note": "private step in EntropyTensorization.lean",
-  "stage": "P4"
- },
- "integral_eq_zero_of_hasLaw_gaussianReal": {
-  "new": "NLAlib.integral_of_hasLaw_gaussianReal",
-  "stage": "P2"
- },
- "integral_eq_zero_of_hasLaw_rademacherMeasure": {
-  "new": "NLAlib.integral_of_hasLaw_rademacherMeasure",
-  "stage": "P2"
- },
- "integral_eq_zero_of_hasSubgaussianMGF": {
-  "new": "ProbabilityTheory.HasSubgaussianMGF.integral_eq_zero",
-  "stage": "P1"
- },
- "integral_exp_centered_sq_le_exp_quadratic_nonneg": {
-  "new": null,
-  "note": "folded into the private MGF bound of the centred square",
-  "stage": "P1"
- },
- "integral_exp_centered_sq_le_exp_quadratic_nonpos": {
-  "new": null,
-  "note": "folded into the private MGF bound of the centred square",
-  "stage": "P1"
- },
- "integral_exp_dotProduct_gaussianVector": {
-  "new": null,
-  "note": "private step in SubGaussianVector/Norm.lean, via the law of the dot product",
-  "stage": "P3"
- },
- "integral_exp_mul_le_exp_of_entropy_le": {
-  "new": null,
-  "note": "private step of hasSubgaussianMGF_sub_integral_of_entropy_le",
-  "stage": "P4"
- },
- "integral_exp_mul_le_of_logSobolev_of_bounded": {
-  "new": null,
-  "note": "private step in LogSobolev.lean",
-  "stage": "P4"
- },
- "integral_exp_mul_sq_eq_tsum_integrals": {
-  "new": null,
-  "note": "series step; private in SubGaussian/Square.lean",
-  "stage": "P1"
- },
- "integral_exp_mul_sq_le_exp_linear_of_hasSubgaussianMGF_of_le": {
-  "new": "ProbabilityTheory.HasSubgaussianMGF.integral_exp_mul_sq_le",
-  "note": "sharper",
-  "stage": "P1"
- },
- "integral_exp_mul_sq_le_of_hasSubgaussianMGF": {
-  "new": "ProbabilityTheory.HasSubgaussianMGF.integral_exp_mul_sq_le",
-  "note": "sharper",
-  "stage": "P1"
- },
- "integral_exp_mul_sq_le_one_add_linear_add_tail_of_hasSubgaussianMGF_of_le": {
-  "new": null,
-  "note": "series step; private in SubGaussian/Square.lean",
-  "stage": "P1"
- },
- "integral_exp_mul_sq_le_one_add_tail_of_hasSubgaussianMGF_of_le": {
-  "new": null,
-  "note": "series step; private in SubGaussian/Square.lean",
-  "stage": "P1"
- },
- "integral_exp_neg_mul_sq_gaussianReal_eq_rpow": {
-  "new": null,
-  "note": "private step in Distributions/ChiSquare.lean",
-  "stage": "P3"
- },
- "integral_exp_neg_mul_sum_sq_gaussianVector": {
-  "new": "NLAlib.integral_exp_mul_norm_sq_of_hasLaw_gaussianVector",
-  "stage": "P3"
- },
- "integral_exp_norm_toEuclideanCLM_randomVector_sq_le": {
-  "new": "NLAlib.lintegral_exp_mul_norm_mulVec_sq_le",
-  "stage": "P3"
- },
- "integral_exp_quadraticForm_offDiagonal_le": {
-  "new": "NLAlib.hasSubexponentialMGF_quadForm_sub_diagonal",
-  "stage": "P3"
- },
- "integral_exp_sq_norm_le_chi_square_mgf": {
-  "new": "NLAlib.IsSubgaussianVector.integral_exp_mul_norm_sq_le",
-  "stage": "P3"
- },
- "integral_exp_sq_norm_le_chi_square_mgf_pmf": {
-  "new": null,
-  "note": "PMF copy; a PMF is a measure through toMeasure",
-  "stage": "P3"
- },
- "integral_exp_sqrt_mul_dotProduct_gaussianVector": {
-  "new": null,
-  "note": "inlined in SubGaussianVector/Norm.lean",
-  "stage": "P3"
- },
- "integral_finiteSamplingLaw": {
-  "new": "NLAlib.integral_samplingMeasure",
-  "stage": "P2"
- },
- "integral_frobSq_mul_gaussianMatrix_mul": {
-  "new": "NLAlib.integral_frobNorm_mul_mul_sq_of_isIsotropic",
-  "stage": "R2"
- },
- "integral_frobSq_mul_gaussianMatrix_mul_of_hasLaw": {
-  "new": "NLAlib.integral_frobNorm_mul_mul_sq_of_hasLaw_gaussianMatrix",
-  "stage": "R2"
- },
- "integral_frobSq_mul_gaussian_mul_of_indepFun": {
-  "new": "NLAlib.integral_frobNorm_mul_mul_sq_of_hasLaw_gaussianMatrix_of_indepFun",
-  "stage": "R2"
- },
- "integral_fromBlocks_diag": {
-  "new": null,
-  "note": "P5, with the dilation, its only consumer",
-  "stage": "P0"
- },
- "integral_gaussianMatrix_eq": {
-  "new": null,
-  "note": "the abbrev and the uncurry law",
-  "stage": "R1"
- },
- "integral_iSup_abs_le_of_hasSubgaussianMGF": {
-  "new": null,
-  "note": "parametrised form; private step of HasSubgaussianMGF.integral_iSup_abs_le",
-  "stage": "P1"
- },
- "integral_iSup_abs_le_sqrt_of_hasSubgaussianMGF": {
-  "new": "ProbabilityTheory.HasSubgaussianMGF.integral_iSup_abs_le",
-  "stage": "P1"
- },
- "integral_iSup_le_of_hasSubgaussianMGF": {
-  "new": null,
-  "note": "parametrised form; private step of HasSubgaussianMGF.integral_iSup_le",
-  "stage": "P1"
- },
- "integral_iSup_le_sqrt_of_hasSubgaussianMGF": {
-  "new": "ProbabilityTheory.HasSubgaussianMGF.integral_iSup_le",
-  "stage": "P1"
- },
- "integral_id_rademacherMeasure": {
-  "new": null,
-  "note": "measure-form twin of integral_of_hasLaw_rademacherMeasure",
-  "stage": "P2"
- },
- "integral_inv_self_mul_transpose_apply_self_sq_eq": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "integral_inv_self_mul_transpose_gaussianMatrix": {
-  "new": "NLAlib.integral_mul_conjTranspose_inv_of_hasLaw_gaussianMatrix",
-  "stage": "R4"
- },
- "integral_inv_self_mul_transpose_gaussianMatrix_of_hasLaw": {
-  "new": "NLAlib.integral_mul_conjTranspose_inv_of_hasLaw_gaussianMatrix",
-  "stage": "R4"
- },
- "integral_inv_sum_sq_gaussianVector": {
-  "new": "NLAlib.integral_norm_sq_inv_of_hasLaw_gaussianVector",
-  "stage": "R4"
- },
- "integral_lambdaMax_hermitianSeries_le": {
-  "new": "NLAlib.integral_eigenvalue_zero_sum_smul_le",
-  "stage": "P5a"
- },
- "integral_lambdaMax_hermitianSeries_le_of_hasLaw_gaussianReal": {
-  "new": null,
-  "note": "the case c = 1 of the sub-Gaussian series theorems",
-  "stage": "P5a"
- },
- "integral_lambdaMax_hermitianSeries_le_of_hasLaw_rademacherMeasure": {
-  "new": null,
-  "note": "the case c = 1 of the sub-Gaussian series theorems",
-  "stage": "P5a"
- },
- "integral_lambdaMax_le_log_integral_traceExp_div": {
-  "new": "NLAlib.integral_eigenvalue_zero_le",
-  "stage": "P5a"
- },
- "integral_lambdaMax_sum_le_chernoff": {
-  "new": "NLAlib.integral_eigenvalue_zero_sum_le_chernoff",
-  "stage": "P5a"
- },
- "integral_lambdaMax_sum_le_log_traceExp_cumulantSum_div": {
-  "new": "NLAlib.HasMatrixMGFBound.integral_eigenvalue_zero_sum_le",
-  "stage": "P5a"
- },
- "integral_lambdaMax_sum_le_of_lambdaMax_le": {
-  "new": "NLAlib.integral_eigenvalue_zero_sum_le_bernstein",
-  "stage": "P5a"
- },
- "integral_lambdaMin_sum_ge_chernoff": {
-  "new": "NLAlib.le_integral_eigenvalue_sum_chernoff",
-  "stage": "P5a"
- },
- "integral_le_of_tail_le": {
-  "new": "NLAlib.integral_le_of_measureReal_ge_le",
-  "stage": "P0"
- },
- "integral_le_of_tail_le_rpow": {
-  "new": null,
-  "note": "integral_le_of_measureReal_ge_le applied to f ^ p",
-  "stage": "P0"
- },
- "integral_le_one_div_mul_log_integral_exp_mul": {
-  "new": null,
-  "note": "Jensen step; private in Probability/SubGaussian/Moments.lean",
-  "stage": "P1"
- },
- "integral_matrixExp_smul_eq_cfc_of_hasSubgaussianMGF": {
-  "new": null,
-  "note": "private step in MatrixConcentration/Series.lean",
-  "stage": "P5a"
- },
- "integral_matrixExp_smul_le_of_hasSubgaussianMGF": {
-  "new": "NLAlib.hasMatrixMGFBound_smul_of_hasSubgaussianMGF",
-  "stage": "P5a"
- },
- "integral_mul_le_entropy_of_integral_exp_le_one": {
-  "new": null,
-  "note": "private step of entropy_pi_le_sum",
-  "stage": "P4"
- },
- "integral_nonpos_of_hasSubgaussianMGF": {
-  "new": null,
-  "note": "proof leaf; the mean is zero by the derivative of the MGF",
-  "stage": "P1"
- },
- "integral_pow_four_eq_one_of_hasLaw_rademacherMeasure": {
-  "new": "NLAlib.integral_pow_four_of_hasLaw_rademacherMeasure",
-  "stage": "P2"
- },
- "integral_pow_four_eq_three_of_hasLaw_gaussianReal": {
-  "new": "NLAlib.integral_pow_four_of_hasLaw_gaussianReal",
-  "note": "any variance",
-  "stage": "P2"
- },
- "integral_pow_four_gaussianReal": {
-  "new": null,
-  "note": "private step of integral_pow_four_of_hasLaw_gaussianReal",
-  "stage": "P2"
- },
- "integral_quadForm_eq_trace": {
-  "new": null,
-  "note": "IsIsotropic.of_iIndepFun followed by IsIsotropic.integral_quadForm",
-  "stage": "P0"
- },
- "integral_quadForm_eq_trace_of_second_moments": {
-  "new": "NLAlib.IsIsotropic.integral_quadForm",
-  "stage": "P0"
- },
- "integral_quadForm_sq": {
-  "new": null,
-  "note": "private uncentred second moment, over 𝕜",
-  "stage": "P3"
- },
- "integral_rademacherMeasure": {
-  "new": "NLAlib.integral_rademacherMeasure",
-  "stage": "P2"
- },
- "integral_reindex": {
-  "new": "Matrix.integral_reindex",
-  "stage": "P0"
- },
- "integral_rpow_inv_sum_sq_gaussianVector": {
-  "new": "NLAlib.integral_norm_sq_rpow_of_hasLaw_gaussianVector",
-  "stage": "R4"
- },
- "integral_rpow_specNorm_inv_gaussianMatrix_rpow_inv_le_sharp": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "integral_rpow_specNorm_inv_gaussianMatrix_rpow_inv_le_sharp_of_hasLaw": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "integral_rpow_sum_sq_gaussianVector": {
-  "new": "NLAlib.integral_norm_sq_rpow_of_hasLaw_gaussianVector",
-  "stage": "R4"
- },
- "integral_specNorm_matrixSeries_le": {
-  "new": "NLAlib.integral_specNorm_sum_smul_le",
-  "stage": "P5a"
- },
- "integral_specNorm_matrixSeries_le_of_hasLaw_gaussianReal": {
-  "new": null,
-  "note": "the case c = 1 of the sub-Gaussian series theorems",
-  "stage": "P5a"
- },
- "integral_specNorm_matrixSeries_le_of_hasLaw_rademacherMeasure": {
-  "new": null,
-  "note": "the case c = 1 of the sub-Gaussian series theorems",
-  "stage": "P5a"
- },
- "integral_specNorm_sum_le_of_specNorm_le": {
-  "new": "NLAlib.integral_specNorm_sum_le_bernstein",
-  "stage": "P5a"
- },
- "integral_sq_eq_one_of_hasLaw_gaussianReal": {
-  "new": "NLAlib.integral_sq_of_hasLaw_gaussianReal",
-  "stage": "P2"
- },
- "integral_sq_eq_one_of_hasLaw_rademacherMeasure": {
-  "new": "NLAlib.integral_sq_of_hasLaw_rademacherMeasure",
-  "stage": "P2"
- },
- "integral_sq_le_of_hasSubgaussianMGF_of_le": {
-  "new": "ProbabilityTheory.HasSubgaussianMGF.integral_sq_le",
-  "note": "now at most c",
-  "stage": "P1"
- },
- "integral_traceExp_add_le_integral_traceExp_add_matrixLog": {
-  "new": null,
-  "note": "private step in MatrixConcentration/Subadditivity.lean",
-  "stage": "P5a"
- },
- "integral_traceExp_add_le_traceExp_add_matrixLog": {
-  "new": "NLAlib.integral_re_trace_exp_add_le",
-  "stage": "P5a"
- },
- "inv_self_mul_transpose_apply_self": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "inv_self_mul_transpose_apply_succAbove": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "inv_self_mul_transpose_orthogonal_mul": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "isGaussian_gaussianMatrix": {
-  "new": "NLAlib.isGaussian_gaussianMatrix",
-  "stage": "R1"
- },
- "isProbabilityMeasure_gaussianMatrix": {
-  "new": "NLAlib.isProbabilityMeasure_gaussianMatrix",
-  "stage": "R1"
- },
- "isProbabilityMeasure_rademacherMeasure": {
-  "new": "NLAlib.isProbabilityMeasure_rademacherMeasure",
-  "stage": "P2"
- },
- "linForm": {
-  "new": null,
-  "note": "the dot product of the uncurried matrix",
-  "stage": "R1"
- },
- "linFormCLM": {
-  "new": null,
-  "note": "the dot product of the uncurried matrix",
-  "stage": "R1"
- },
- "linForm_eq_frobInner": {
-  "new": null,
-  "note": "the dot product of the uncurried matrix",
-  "stage": "R1"
- },
- "linForm_sub_linForm": {
-  "new": null,
-  "note": "the dot product of the uncurried matrix",
-  "stage": "R1"
- },
- "lintegral_exp_sq_norm_le_chi_square_mgf": {
-  "new": null,
-  "note": "private Tonelli step in SubGaussianVector/Norm.lean",
-  "stage": "P3"
- },
- "lintegral_frobSq_mul_gaussian_mul_of_indepFun": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/Moments.lean",
-  "stage": "R2"
- },
- "lintegral_le_of_tail_le": {
-  "new": null,
-  "note": "proof step inside Probability/Tail.lean; the real-valued forms are public",
-  "stage": "P0"
- },
- "lintegral_lintegral_rpow_dotProduct_inv_self_mul_transpose_gaussianMatrix": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "lintegral_rpow_sq_dotProduct_unit_pi_gaussianReal": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "log_integral_traceExp_div_le_integral_lambdaMin": {
-  "new": "NLAlib.le_integral_eigenvalue",
-  "stage": "P5a"
- },
- "log_one_sub_le_neg_sub_sq_div_two": {
-  "new": null,
-  "note": "private step in Distributions/ChiSquare.lean",
-  "stage": "P3"
- },
- "map_comp_injective_pi": {
-  "new": null,
-  "note": "replaced by hasLaw_mulVec_of_hasLaw_gaussianVector",
-  "stage": "R1"
- },
- "matrixLog_integral_matrixExp_smul_le_of_hasSubgaussianMGF": {
-  "new": null,
-  "note": "the master bound covers the CGF step",
-  "stage": "P5a"
- },
- "matrix_chernoff_sampling_lower": {
-  "new": "NLAlib.measureReal_eigenvalue_sum_le_le_card_mul_exp",
-  "stage": "P5a"
- },
- "matrix_chernoff_sampling_upper": {
-  "new": "NLAlib.measureReal_eigenvalue_zero_sum_ge_le_card_mul_exp",
-  "stage": "P5a"
- },
- "measurePreserving_gaussianMatrix_entry": {
-  "new": null,
-  "note": "P0's HasLaw.entry, HasLaw.eval, HasLaw.iIndepFun_entry, HasLaw.iIndepFun_eval",
-  "stage": "R1"
- },
- "measurePreserving_gaussianMatrix_row": {
-  "new": null,
-  "note": "P0's HasLaw.entry, HasLaw.eval, HasLaw.iIndepFun_entry, HasLaw.iIndepFun_eval",
-  "stage": "R1"
- },
- "measurePreserving_ofMeasurableEquiv_gaussianMatrix": {
-  "new": null,
-  "note": "the abbrev and the uncurry law",
-  "stage": "R1"
- },
- "measurePreserving_orthonormalBasis_repr_pi_gaussianReal": {
-  "new": null,
-  "note": "replaced by hasLaw_mulVec_of_hasLaw_gaussianVector",
-  "stage": "R1"
- },
- "measureReal_abs_ge_le_two_mul_exp_of_cgf_le": {
-  "new": null,
-  "note": "replaced by HasSubexponentialMGF.measure_abs_ge_le",
-  "stage": "P1"
- },
- "measureReal_ge_le_exp_of_cgf_le": {
-  "new": null,
-  "note": "raw closed-window CGF hypotheses; replaced by HasSubexponentialMGF.measure_ge_le",
-  "stage": "P1"
- },
- "measureReal_ge_le_of_lipschitz_gaussianVector": {
-  "new": "NLAlib.measureReal_integral_add_le_of_lipschitzWith_of_hasLaw_gaussianVector",
-  "stage": "P4"
- },
- "measureReal_ge_le_of_logSobolev": {
-  "new": null,
-  "note": "P1's measure_ge_le applied to HasLogSobolev.hasSubgaussianMGF_sub_integral",
-  "stage": "P4"
- },
- "measureReal_lambdaMax_ge_le_exp_mul_integral_traceExp": {
-  "new": "NLAlib.measureReal_eigenvalue_zero_ge_le",
-  "stage": "P5a"
- },
- "measureReal_lambdaMax_hermitianSeries_ge_le": {
-  "new": "NLAlib.measureReal_eigenvalue_zero_sum_smul_ge_le",
-  "stage": "P5a"
- },
- "measureReal_lambdaMax_hermitianSeries_ge_le_of_hasLaw_gaussianReal": {
-  "new": null,
-  "note": "the case c = 1 of the sub-Gaussian series theorems",
-  "stage": "P5a"
- },
- "measureReal_lambdaMax_hermitianSeries_ge_le_of_hasLaw_rademacherMeasure": {
-  "new": null,
-  "note": "the case c = 1 of the sub-Gaussian series theorems",
-  "stage": "P5a"
- },
- "measureReal_lambdaMax_sum_ge_le_bernsteinTail": {
-  "new": "NLAlib.measureReal_eigenvalue_zero_sum_ge_le_bernstein",
-  "stage": "P5a"
- },
- "measureReal_lambdaMax_sum_ge_le_chernoffUpperTail": {
-  "new": "NLAlib.measureReal_eigenvalue_zero_sum_ge_le_chernoff",
-  "stage": "P5a"
- },
- "measureReal_lambdaMax_sum_ge_le_exp_mul_traceExp_cumulantSum": {
-  "new": "NLAlib.HasMatrixMGFBound.measure_eigenvalue_zero_sum_ge_le",
-  "stage": "P5a"
- },
- "measureReal_lambdaMin_le_le_exp_mul_integral_traceExp": {
-  "new": "NLAlib.measureReal_eigenvalue_le_le",
-  "stage": "P5a"
- },
- "measureReal_lambdaMin_sum_le_le_chernoffLowerTail": {
-  "new": "NLAlib.measureReal_eigenvalue_sum_le_le_chernoff",
-  "stage": "P5a"
- },
- "measureReal_lt_abs_le_of_hasSubgaussianMGF": {
-  "new": "ProbabilityTheory.HasSubgaussianMGF.measure_abs_ge_le",
-  "note": "non-strict event",
-  "stage": "P1"
- },
- "measureReal_specNorm_matrixSeries_ge_le": {
-  "new": "NLAlib.measureReal_specNorm_sum_smul_ge_le",
-  "stage": "P5a"
- },
- "measureReal_specNorm_matrixSeries_ge_le_of_hasLaw_gaussianReal": {
-  "new": null,
-  "note": "the case c = 1 of the sub-Gaussian series theorems",
-  "stage": "P5a"
- },
- "measureReal_specNorm_matrixSeries_ge_le_of_hasLaw_rademacherMeasure": {
-  "new": null,
-  "note": "the case c = 1 of the sub-Gaussian series theorems",
-  "stage": "P5a"
- },
- "measureReal_specNorm_sum_ge_le_bernsteinTail": {
-  "new": "NLAlib.measureReal_specNorm_sum_ge_le_bernstein",
-  "stage": "P5a"
- },
- "measureReal_sq_norm_ge_add_two_sqrt_mul_add_le": {
-  "new": "NLAlib.IsSubgaussianVector.measure_norm_sq_ge_le",
-  "stage": "P3"
- },
- "measureReal_sq_norm_ge_add_two_sqrt_mul_add_le_pmf": {
-  "new": null,
-  "note": "PMF copy",
-  "stage": "P3"
- },
- "measureReal_sq_norm_ge_le_chi_square_mgf": {
-  "new": null,
-  "note": "Chernoff step inside IsSubgaussianVector.measureReal_norm_sq_ge_le",
-  "stage": "P3"
- },
- "measureReal_sq_norm_ge_le_chi_square_mgf_pmf": {
-  "new": null,
-  "note": "PMF copy",
-  "stage": "P3"
- },
- "measureReal_sq_norm_ge_one_add_mul_le": {
-  "new": null,
-  "note": "relaxed form; the Hsu–Kakade–Zhang form is stated",
-  "stage": "P3"
- },
- "measureReal_sq_norm_ge_one_add_mul_le_pmf": {
-  "new": null,
-  "note": "PMF copy",
-  "stage": "P3"
- },
- "measureReal_sum_sq_le_le_exp_mul_rpow": {
-  "new": null,
-  "note": "private Chernoff step in Distributions/ChiSquare.lean",
-  "stage": "P3"
- },
- "measureReal_sum_sq_le_one_sub_mul_le_gaussianVector": {
-  "new": null,
-  "note": "relaxed form; the Laurent–Massart form is stated",
-  "stage": "P3"
- },
- "measureReal_sum_sq_le_sub_two_sqrt_mul_le_gaussianVector": {
-  "new": "NLAlib.measureReal_norm_sq_le_of_hasLaw_gaussianVector",
-  "stage": "P3"
- },
- "memLp_two_of_hasLaw_rademacherMeasure": {
-  "new": null,
-  "note": "HasLaw.memLp_comp_iff with integrable_rademacherMeasure",
-  "stage": "P2"
- },
- "mgf_id_rademacherMeasure": {
-  "new": null,
-  "note": "measure-form twin of mgf_of_hasLaw_rademacherMeasure",
-  "stage": "P2"
- },
- "mgf_of_hasLaw_rademacherMeasure": {
-  "new": "NLAlib.mgf_of_hasLaw_rademacherMeasure",
-  "stage": "P2"
- },
- "mul_log_integral_le_integral_mul_log_of_nonneg": {
-  "new": "NLAlib.entropy_nonneg",
-  "stage": "P4"
- },
- "ofReal_rpow_specNorm_mul_gaussian_moment_le_lintegral": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "pi_gaussianReal_map_sq_dist_rowSpace": {
-  "new": null,
-  "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
-  "stage": "R4"
- },
- "posDef_integral_of_ae_posDef": {
-  "new": "Matrix.posDef_integral",
-  "stage": "P0"
- },
- "rademacherMeasure": {
-  "new": "NLAlib.rademacherMeasure",
-  "note": "now 2⁻¹ • (dirac 1 + dirac (-1))",
-  "stage": "P2"
- },
- "rademacherVector": {
-  "new": "NLAlib.rademacherVector",
-  "stage": "P2"
- },
- "rectSecondMoment": {
-  "new": null,
-  "note": "written out in the statements",
-  "stage": "P5a"
- },
- "sineTruncation": {
-  "new": null,
-  "note": "private proof material",
-  "stage": "P4"
- },
- "sqrt_sub_sqrt_le_integral_sqrt_sum_sq_sub": {
-  "new": "NLAlib.le_integral_norm_sub_integral_norm_of_hasLaw_gaussianVector",
-  "stage": "R4"
- },
- "sum_fourth_moment_contraction": {
-  "new": null,
-  "note": "private index contraction",
-  "stage": "P3"
- },
- "summable_integral_exp_sq_series_of_hasSubgaussianMGF": {
-  "new": null,
-  "note": "series step; private in SubGaussian/Square.lean",
-  "stage": "P1"
- },
- "summable_integral_exp_sq_series_of_hasSubgaussianMGF_of_le": {
-  "new": null,
-  "note": "series step; private in SubGaussian/Square.lean",
-  "stage": "P1"
- },
- "tendsto_integral_mul_log_add_of_nonneg": {
-  "new": null,
-  "note": "private step in EntropyTensorization.lean",
-  "stage": "P4"
- },
- "trace_cgf_subadditivity": {
-  "new": "NLAlib.integral_re_trace_exp_sum_le",
-  "stage": "P5a"
- },
- "variance_quadForm": {
-  "new": "NLAlib.integral_norm_quadForm_sub_trace_sq",
-  "stage": "P3"
- },
- "variance_quadForm_of_isHermitian": {
-  "new": "NLAlib.variance_quadForm_of_isHermitian",
-  "stage": "P3"
- },
- "variance_quadForm_of_isHermitian_of_fourth_moment_eq_one": {
-  "new": "NLAlib.variance_quadForm_of_hasLaw_rademacherVector",
-  "stage": "P3"
- },
- "variance_quadForm_of_isHermitian_of_fourth_moment_eq_three": {
-  "new": "NLAlib.variance_quadForm_of_hasLaw_gaussianVector",
-  "stage": "P3"
  }
 }

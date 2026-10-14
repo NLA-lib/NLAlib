@@ -2,8 +2,9 @@
 """Add entries to docs/port/ledger.json.
 
 Usage: python3 scripts/ledger_add.py STAGE < entries.txt
-Each input line is `old -> new` or `old -> null (reason)`. Names are given without the
-`NLAlib.` prefix when they had one in the prototype; write a leading `Matrix.` etc. as is.
+Each input line is `old -> new` or `old -> null (reason)`. `old` is the prototype's full name as
+in atlas/declarations.json (with its `NLAlib.` prefix: `scripts/ledger_missing.py` looks keys up
+that way); `new` is the full new name.
 """
 import json
 import re

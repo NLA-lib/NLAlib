@@ -65,7 +65,7 @@ P4 proceeded on the orchestrator's recommendations (Lipschitz as `LipschitzWith`
   (after P6), `RandomMatrix/SubGaussian/ExtremeSingularValues.lean` (independent of P6); R5
   `Matrix/Factorizations/PolarFrames.lean` first, then `RandomMatrix/UnitaryInvariance.lean`,
   `RandomMatrix/Haar/{Basic,Uniqueness,Moments,Transfer}.lean`, plus deviation 16's bridge.
-- Pending bookkeeping (Sonnet): ledger lines in `/tmp/claude-1000/p0/ledger_pending.txt` (may be
+- Ledger keys are full prototype names with `NLAlib.` (fixed 2026-10-14; `ledger_missing.py NLAlib.Probability. NLAlib.RandomMatrix.` reports coverage: 302 of 921). Pending bookkeeping (Sonnet): ledger lines in `/tmp/claude-1000/p0/ledger_pending.txt` (may be
   lost on reboot: re-derive from agent reports in the design notes' stage reports if so) and the
   R4/P6/R3/R5 entries as they finish; register modules in `NLAlib.lean` once sorry-free;
   `stage_check.sh` after each stage.

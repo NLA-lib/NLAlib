@@ -17,6 +17,10 @@ Updated at every stopping point. Newest entry first within each section.
   `ledger_add.py`), `NLAlib.lean` registration, status-table updates and `stage_check.sh` runs go
   to Sonnet agents; proofs to Opus as before. The orchestrator reads reports, not files, and checks
   builds only through `stage_check.sh` output.
+- 2026-10-14, orchestrator rule for skeleton agents: never add a `sorry` statement to a proved
+  file (above all a registered one); new statements go in a new skeleton file, merged at wrap-up.
+  (A P6/R3 skeleton agent added two to `Isotropic.lean` and one to `ChiSquareMoments.lean`; a proof
+  agent was sent to prove them.)
 - 2026-10-14, maintainer: files up to about 1000 lines (Mathlib's 1500-line linter is the hard
   ceiling); proofs under about 80 lines (`CONTRIBUTING.md` §1, §8, §10).
 

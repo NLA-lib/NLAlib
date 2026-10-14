@@ -208,9 +208,9 @@ None of these was approved by the maintainer when it was made. Status is given p
   `open scoped Matrix.Norms.L2Operator` (one scope, library-wide; the one the Matrix layer already
   opens for its functional-calculus files). `NLAlib/ForMathlib` adds, under that scope,
   `NormedSpace ℝ (Matrix m n 𝕜)` on the existing `Module ℝ` (no new data; at `𝕜 = ℂ` it agrees
-  with `NormedSpace.complexToReal` by `with_reducible_and_instances rfl`, checked), and, under
-  `MatrixOrder`, `ClosedIciTopology` for the Loewner order over `𝕜`, so Mathlib's
-  `integral_mono_ae` applies. Statements never mention the norm, only the integral, whose value
+  with `NormedSpace.complexToReal` by `with_reducible_and_instances rfl`, checked), and the Matrix
+  layer's `Matrix.instOrderClosedTopology` (scoped to `MatrixOrder`, over `𝕜`) makes Mathlib's
+  `integral_mono_ae` apply to the Loewner order. Statements never mention the norm, only the integral, whose value
   does not depend on it; `NLAlib/Probability/MatrixIntegral.lean` proves the norm-free bridges
   (`(∫ X) i j = ∫ X · i j`, integrability iff entrywise, trace, conjugate transpose, products,
   Hermitian and positive semidefinite integrals).

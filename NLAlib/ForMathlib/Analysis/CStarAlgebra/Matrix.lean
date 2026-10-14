@@ -34,7 +34,7 @@ scoped with the norm, `open scoped Matrix.Norms.L2Operator`. -/
 @[instance_reducible]
 noncomputable def instL2OpNormedSpaceReal : NormedSpace ℝ (Matrix m n 𝕜) where
   norm_smul_le r A := by
-    sorry
+    rw [← algebraMap_smul 𝕜 r A, norm_smul, norm_algebraMap']
 
 scoped[Matrix.Norms.L2Operator] attribute [instance] Matrix.instL2OpNormedSpaceReal
 

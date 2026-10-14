@@ -1,6 +1,7 @@
 module  -- shake: keep-all --deprecated_module: ignore
 
 public import NLAlib.ForMathlib.Algebra.BigOperators.AbelSummation
+public import NLAlib.ForMathlib.Analysis.CStarAlgebra.Matrix
 public import NLAlib.ForMathlib.Analysis.Calculus.Deriv.Matrix
 public import NLAlib.ForMathlib.Analysis.InnerProductSpace.PiL2
 public import NLAlib.ForMathlib.Analysis.RCLike.ToComplex
@@ -149,6 +150,7 @@ public import NLAlib.Probability.Distributions.Rademacher
 public import NLAlib.Probability.Distributions.Sampling
 public import NLAlib.Probability.Isotropic
 public import NLAlib.Probability.Law
+public import NLAlib.Probability.MatrixIntegral
 public import NLAlib.Probability.Measurability.Matrix
 public import NLAlib.Probability.QuadraticForm.HansonWright
 public import NLAlib.Probability.QuadraticForm.HansonWright.LinearImage

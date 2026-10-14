@@ -409,3 +409,10 @@ design:
   `inferInstanceAs`, and R1 should consider an instance for its `gaussianMatrix`.
 - Added after the review: power Markov `measureReal_abs_ge_le_integral_rpow_div` (proved by the
   orchestrator).
+- Later (2026-10-14, after Q1 was decided): `MatrixIntegral.lean` proved with
+  `ForMathlib/Analysis/CStarAlgebra/Matrix.lean` (the scoped `NormedSpace ℝ`). The planned
+  `ForMathlib/Analysis/Matrix/Order.lean` was dropped: the Matrix layer already has
+  `Matrix.instOrderClosedTopology` over `𝕜` (`ForMathlib/LinearAlgebra/Matrix/PosDef.lean`), which
+  gives `ClosedIciTopology`; §3.4's remark that Mathlib has it only for `ℂ` was true of Mathlib, not
+  of NLAlib. `DecidableEq` is needed only on the column index of each matrix type (the
+  `L2Operator` norm's requirement), and the statements carry exactly that.

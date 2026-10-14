@@ -62,7 +62,9 @@ correction. Now: P0's matrix-integral file, P4 design.
 | P3 | `QuadraticForm/HansonWright.lean` (+ `HansonWright/{LinearImage,OffDiagonal}.lean`) | Opus agent | proved | constant `1/196` (prototype `1/(256e²)`); 884 lines against 3,400 |
 | P0–P3 | checks | orchestrator | done | `stage_check.sh`: 162 modules, 0 warnings; audit 3809, 0 violations; lint 2900 clean; `Result:` ids on the headline theorems; ledger +35 |
 | P0–P3 | wrap-up (one public Gaussian linear-form MGF, `HasSubexponentialMGF.add`, tail-prefix rename) | Opus agent, orchestrator | done | stage review by Fable; ledger targets qualified (0 missing) |
-| P0 | `Probability/MatrixIntegral.lean`, `ForMathlib/Analysis/{CStarAlgebra/Matrix,Matrix/Order}.lean` | Opus agent | proofs in progress | Q1 decided: `L2Operator` |
+| P0 | `Probability/MatrixIntegral.lean`, `ForMathlib/Analysis/CStarAlgebra/Matrix.lean` | Opus agent | proved | the Loewner closedness instance already existed (`ForMathlib/LinearAlgebra/Matrix/PosDef.lean`); the planned `Order.lean` dropped |
+| P4 | design note `docs/design/Probability-P4.md`, skeletons | orchestrator | written, Fable-reviewed (§8); skeletons compile | |
+| P4 | `Probability/Entropy.lean` | Opus agent | proofs in progress | first: the others import it |
 
 **Matrix layer complete, 2026-10-14** (branch `scaffold`, local commits, not pushed): stages M0 to
 M10 proved, 144 files, nothing scaffolded, all checks green. Read `docs/design/Matrix-REPORT.md`

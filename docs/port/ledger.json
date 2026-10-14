@@ -12726,6 +12726,11 @@
   "new": "NLAlib.integral_samplingMeasure",
   "stage": "P2"
  },
+ "integral_fromBlocks_diag": {
+  "new": null,
+  "note": "P5, with the dilation, its only consumer",
+  "stage": "P0"
+ },
  "integral_iSup_abs_le_of_hasSubgaussianMGF": {
   "new": null,
   "note": "parametrised form; private step of HasSubgaussianMGF.integral_iSup_abs_le",
@@ -12799,6 +12804,10 @@
  "integral_rademacherMeasure": {
   "new": "NLAlib.integral_rademacherMeasure",
   "stage": "P2"
+ },
+ "integral_reindex": {
+  "new": "Matrix.integral_reindex",
+  "stage": "P0"
  },
  "integral_sq_eq_one_of_hasLaw_gaussianReal": {
   "new": "NLAlib.integral_sq_of_hasLaw_gaussianReal",
@@ -12903,6 +12912,10 @@
  "mgf_of_hasLaw_rademacherMeasure": {
   "new": "NLAlib.mgf_of_hasLaw_rademacherMeasure",
   "stage": "P2"
+ },
+ "posDef_integral_of_ae_posDef": {
+  "new": "Matrix.posDef_integral",
+  "stage": "P0"
  },
  "rademacherMeasure": {
   "new": "NLAlib.rademacherMeasure",

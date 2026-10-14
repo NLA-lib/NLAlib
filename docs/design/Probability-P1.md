@@ -175,7 +175,7 @@ theorem measure_ge_le (h : HasSubexponentialMGF X v b μ) {t : ℝ} (ht : 0 ≤ 
 theorem measure_ge_le_of_mul_le (h : HasSubexponentialMGF X v b μ) {t : ℝ} (ht : 0 ≤ t)
     (hbt : b * t ≤ v) : μ.real {ω | t ≤ X ω} ≤ rexp (-t ^ 2 / (2 * v))
 /-- The exponential regime `v ≤ b t`. -/
-theorem measure_ge_le_of_le_mul (h : HasSubexponentialMGF X v b μ) {t : ℝ} (ht : 0 ≤ t)
+theorem measure_ge_le_of_le_mul (h : HasSubexponentialMGF X v b μ) {t : ℝ}
     (hbt : v ≤ b * t) : μ.real {ω | t ≤ X ω} ≤ rexp (-t / (2 * b))
 theorem measure_le_le … : μ.real {ω | X ω ≤ -t} ≤ rexp (-min (t ^ 2 / (2 * v)) (t / (2 * b)))
 theorem measure_abs_ge_le … : μ.real {ω | t ≤ |X ω|} ≤ 2 * rexp (-min (t ^ 2 / (2 * v)) (t / (2 * b)))

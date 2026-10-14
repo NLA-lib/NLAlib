@@ -178,8 +178,8 @@ there gives the new spelling for each, which is the translation guide for portin
 layers), 19 are coincidences of name, and 19 were gaps.
 
 - Six general facts and two convenience lemmas were added after the audit (the trace-tail
-  inequality behind randomly pivoted Cholesky, the scaled Gram-error bounds of Vershynin's lemma, the column
-  distance bound for a small least singular value, `specNorm_exp_sum_le_prod`, the polynomial
+  inequality behind randomly pivoted Cholesky, the scaled Gram-error bounds of Vershynin's
+  lemma, the column distance bound for a small least singular value, `specNorm_exp_sum_le_prod`, the polynomial
   bound in a general weight for CG and MINRES, the per-vector tangent bound for subspace
   iteration; the real entrywise forms of `frobNorm` and `frobInner`).
 - Seven helpers of single proofs are left to the layer that uses them, as the ledger says: the

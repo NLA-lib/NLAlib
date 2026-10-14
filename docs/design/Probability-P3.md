@@ -114,12 +114,11 @@ theorem measureReal_abs_norm_sq_sub_integral_ge_le [IsProbabilityMeasure μ]
     (hind : iIndepFun (fun i ω => X ω i) μ) (h : ∀ i, HasSubgaussianMGF (fun ω => X ω i) c μ)
     {t : ℝ} (ht : 0 ≤ t) :
     μ.real {ω | t ≤ |‖WithLp.toLp 2 (X ω)‖ ^ 2 - ∫ ω', ‖WithLp.toLp 2 (X ω')‖ ^ 2 ∂μ|} ≤
-      2 * rexp (-min (t ^ 2 / (2 * (Fintype.card n * (centeredSqVarianceConstant * c ^ 2))))
-        (t / (2 * (centeredSqScaleConstant * c))))
+      2 * rexp (-min (t ^ 2 / (2 * (Fintype.card n * (32 * c ^ 2)))) (t / (2 * (4 * c))))
 ```
 
-The two-sided form is stated with the P1 constants as they are (`CONTRIBUTING.md` §5.2: the
-consumer sees the named constants, and `centeredSq*_le` gives explicit values). The `t = 0` and
+The two-sided form carries P1's constants `32` and `4` (the centred square's variance proxy and
+scale) unsimplified, so the statement is visibly Bernstein's inequality applied to them. The `t = 0` and
 `c = 0` cases are the junk cases of P1 (bound `≥ 1` or `2`).
 
 ### 3.3 `Probability/Distributions/ChiSquare.lean`

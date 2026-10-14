@@ -143,7 +143,15 @@ public import NLAlib.Matrix.Subspaces.Oblique
 public import NLAlib.Matrix.Subspaces.PrincipalAngles
 public import NLAlib.Matrix.Subspaces.ProjectorPair
 public import NLAlib.Matrix.Subspaces.Tangent
+public import NLAlib.Probability.Distributions.Gaussian
+public import NLAlib.Probability.Distributions.Rademacher
+public import NLAlib.Probability.Distributions.Sampling
 public import NLAlib.Probability.Isotropic
 public import NLAlib.Probability.Law
 public import NLAlib.Probability.Measurability.Matrix
+public import NLAlib.Probability.SubExponential.Basic
+public import NLAlib.Probability.SubExponential.Tail
+public import NLAlib.Probability.SubGaussian.Basic
+public import NLAlib.Probability.SubGaussian.Moments
+public import NLAlib.Probability.SubGaussian.Square
 public import NLAlib.Probability.Tail

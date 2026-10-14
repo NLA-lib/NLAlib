@@ -38,7 +38,7 @@ Mathlib's (`hasSubgaussianMGF_of_mem_Icc_of_integral_eq_zero`,
 | sub-Gaussian MGF, proxy `c : ℝ≥0` | Mathlib's `HasSubgaussianMGF X c μ` | — |
 | sub-exponential MGF, `v b : ℝ≥0` | `HasSubexponentialMGF X v b μ`, new (§2) | `hasSubexponentialMGF_zero_iff_hasSubgaussianMGF`: `b = 0` is `HasSubgaussianMGF X v μ` |
 | scale of a coefficient | `‖a‖₊ ^ 2 * c` for the proxy of `a * X` (no `⟨a ^ 2, _⟩`, D2) | Mathlib's `const_mul` uses `⟨r ^ 2, sq_nonneg r⟩ * c`; `HasSubgaussianMGF.const_mul'` restates it in this form |
-| constants of the centred square | `centeredSqVarianceConstant`, `centeredSqScaleConstant : ℝ≥0`, `irreducible_def` (D5 rule 2) | — |
+| constants of the centred square | `32` and `4`, written in the statement: the proof reached the literature's values (amended 2026-10-14; the design had `irreducible_def` constants for the prototype's `4e³`, `2e`) | — |
 
 ## 2. Interfaces
 
@@ -298,3 +298,18 @@ which bounded variables and the Bernstein moment condition produce natively and 
 `HasMatrixMGFBound` carries, converts to `(v, b)` at the price of a constant (`(2v, 2b)`), so a
 `1 × 1` bridge from P5 to this interface and the P7 constructors do not reach the source's
 constants.
+
+## 8. Stage report (2026-10-14)
+
+All six files proved, nothing in `NLAlibScaffold`. Changes from the design:
+- `hasSubexponentialMGF_sq_sub_integral` reached `(32 c², 4 c)`, the literature's constants, so
+  by `CONTRIBUTING.md` §5.2 rule 2 they are written in the statement and the two
+  `irreducible_def` constants with their `_pos` and `_le` lemmas were removed. The locator
+  (Honorio and Jaakkola 2014) is still unchecked.
+- `HasSubgaussianMGF.isFiniteMeasure` is public in `SubGaussian/Basic.lean` (Mathlib has only
+  the kernel form).
+- `HasSubexponentialMGF.measure_ge_le_of_le_mul` dropped `0 ≤ t` (implied by `v ≤ b t` when
+  `b > 0`, and the bound is `1` when `b = 0`).
+- `SubGaussian/Square.lean` imports `Moments.lean` (it uses `integral_abs_rpow_le`).
+- The maximal inequalities' parametrised forms (`log N / s + c s / 2`) are private; a consumer
+  wanting another `s` would ask for them.

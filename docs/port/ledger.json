@@ -12427,10 +12427,145 @@
   "new": "NLAlib.kyFanNorm_add_le",
   "stage": "M3a"
  },
+ "ProbabilityTheory.HasLaw.hasLaw_eval_rademacherMeasure": {
+  "new": null,
+  "note": "HasLaw.eval",
+  "stage": "P2"
+ },
+ "ProbabilityTheory.HasLaw.iIndepFun_eval_of_rademacherVector": {
+  "new": null,
+  "note": "HasLaw.iIndepFun_eval",
+  "stage": "P2"
+ },
  "ProbabilityTheory.hasLaw_iff_map_eq": {
   "new": null,
   "note": "HasLaw's constructor; P0 states with HasLaw directly",
   "stage": "P0"
+ },
+ "ae_eq_one_or_neg_one_of_hasLaw_rademacherMeasure": {
+  "new": "ae_eq_one_or_neg_one_of_hasLaw_rademacherMeasure",
+  "stage": "P2"
+ },
+ "ae_eq_one_or_neg_one_rademacherMeasure": {
+  "new": null,
+  "note": "measure-form twin of ae_eq_one_or_neg_one_of_hasLaw_rademacherMeasure",
+  "stage": "P2"
+ },
+ "ae_mem_Icc_rademacherMeasure": {
+  "new": null,
+  "note": "measure-form twin; ae_eq_one_or_neg_one_of_hasLaw_rademacherMeasure",
+  "stage": "P2"
+ },
+ "centered_sq_cgf_le_of_hasSubgaussianMGF_of_le": {
+  "new": "HasSubgaussianMGF.hasSubexponentialMGF_sq_sub_integral",
+  "stage": "P1"
+ },
+ "finiteSamplingLaw": {
+  "new": "samplingMeasure",
+  "stage": "P2"
+ },
+ "finiteSamplingLaw_isProbabilityMeasure": {
+  "new": "isProbabilityMeasure_samplingMeasure",
+  "stage": "P2"
+ },
+ "finiteSamplingLaw_singleton": {
+  "new": "samplingMeasure_singleton",
+  "stage": "P2"
+ },
+ "finiteSamplingPMF": {
+  "new": null,
+  "note": "samplingMeasure takes weights without a proof",
+  "stage": "P2"
+ },
+ "gaussianVector": {
+  "new": "gaussianVector",
+  "stage": "P2"
+ },
+ "gaussianVector_map_toLp_eq_stdGaussian": {
+  "new": null,
+  "note": "Mathlib's map_pi_eq_stdGaussian",
+  "stage": "P2"
+ },
+ "hasGaussianLaw_id_gaussianVector": {
+  "new": "isGaussian_gaussianVector",
+  "stage": "P2"
+ },
+ "hasLaw_dotProduct_gaussianVector": {
+  "new": "hasLaw_dotProduct_of_hasLaw_gaussianVector",
+  "note": "no unit-norm hypothesis",
+  "stage": "P2"
+ },
+ "hasLaw_eval_rademacherVector": {
+  "new": null,
+  "note": "HasLaw.eval",
+  "stage": "P2"
+ },
+ "hasLaw_rademacherMeasure_iff_map_eq": {
+  "new": null,
+  "note": "HasLaw's definition",
+  "stage": "P2"
+ },
+ "hasLaw_rademacherVector_of_iIndepFun": {
+  "new": null,
+  "note": "hasLaw_pi_iff",
+  "stage": "P2"
+ },
+ "hasSubgaussianMGF_finset_sum_mul_of_iIndepFun": {
+  "new": "HasSubgaussianMGF.sum_const_mul_of_iIndepFun",
+  "stage": "P1"
+ },
+ "hasSubgaussianMGF_id_gaussianReal": {
+  "new": null,
+  "note": "measure form; hasSubgaussianMGF_of_hasLaw_gaussianReal with HasLaw.id",
+  "stage": "P2"
+ },
+ "hasSubgaussianMGF_id_rademacherMeasure": {
+  "new": null,
+  "note": "measure-form twin of hasSubgaussianMGF_of_hasLaw_rademacherMeasure",
+  "stage": "P2"
+ },
+ "hasSubgaussianMGF_mono": {
+  "new": "HasSubgaussianMGF.mono",
+  "stage": "P1"
+ },
+ "hasSubgaussianMGF_of_hasLaw_gaussianReal": {
+  "new": "hasSubgaussianMGF_of_hasLaw_gaussianReal",
+  "note": "any variance",
+  "stage": "P2"
+ },
+ "hasSubgaussianMGF_of_hasLaw_rademacherMeasure": {
+  "new": "hasSubgaussianMGF_of_hasLaw_rademacherMeasure",
+  "stage": "P2"
+ },
+ "iIndepFun_eval_rademacherVector": {
+  "new": null,
+  "note": "HasLaw.iIndepFun_eval",
+  "stage": "P2"
+ },
+ "integrable_exp_centered_sq_of_hasSubgaussianMGF_of_le": {
+  "new": "HasSubgaussianMGF.hasSubexponentialMGF_sq_sub_integral",
+  "stage": "P1"
+ },
+ "integrable_exp_mul_sq_of_hasSubgaussianMGF": {
+  "new": "HasSubgaussianMGF.integrable_exp_mul_sq",
+  "stage": "P1"
+ },
+ "integrable_exp_mul_sq_of_hasSubgaussianMGF_of_le": {
+  "new": "HasSubgaussianMGF.integrable_exp_mul_sq",
+  "stage": "P1"
+ },
+ "integrable_exp_mul_sq_of_summable_integrals": {
+  "new": null,
+  "note": "series step; private in SubGaussian/Square.lean",
+  "stage": "P1"
+ },
+ "integrable_iSup_abs_of_hasSubgaussianMGF": {
+  "new": "HasSubgaussianMGF.integrable_iSup_abs",
+  "stage": "P1"
+ },
+ "integrable_iSup_of_hasSubgaussianMGF": {
+  "new": "HasSubgaussianMGF.integrable_iSup",
+  "stage": "P1"
  },
  "integrable_of_tail_le": {
   "new": "integrable_of_measureReal_ge_le",
@@ -12441,10 +12576,97 @@
   "note": "integrable_of_measureReal_ge_le applied to f ^ p",
   "stage": "P0"
  },
+ "integrable_pow_four_of_hasLaw_rademacherMeasure": {
+  "new": null,
+  "note": "HasLaw.integrable_comp_iff with integrable_rademacherMeasure",
+  "stage": "P2"
+ },
+ "integrable_rademacherMeasure": {
+  "new": "integrable_rademacherMeasure",
+  "stage": "P2"
+ },
+ "integral_abs_rpow_le_of_hasSubgaussianMGF": {
+  "new": "HasSubgaussianMGF.integral_abs_rpow_le",
+  "stage": "P1"
+ },
  "integral_coord_mul_coord": {
   "new": "IsIsotropic.of_iIndepFun",
   "note": "its integral_mul_star field",
   "stage": "P0"
+ },
+ "integral_eq_zero_of_hasLaw_gaussianReal": {
+  "new": "integral_of_hasLaw_gaussianReal",
+  "stage": "P2"
+ },
+ "integral_eq_zero_of_hasLaw_rademacherMeasure": {
+  "new": "integral_of_hasLaw_rademacherMeasure",
+  "stage": "P2"
+ },
+ "integral_eq_zero_of_hasSubgaussianMGF": {
+  "new": "HasSubgaussianMGF.integral_eq_zero",
+  "stage": "P1"
+ },
+ "integral_exp_centered_sq_le_exp_quadratic_nonneg": {
+  "new": null,
+  "note": "folded into the private MGF bound of the centred square",
+  "stage": "P1"
+ },
+ "integral_exp_centered_sq_le_exp_quadratic_nonpos": {
+  "new": null,
+  "note": "folded into the private MGF bound of the centred square",
+  "stage": "P1"
+ },
+ "integral_exp_mul_sq_eq_tsum_integrals": {
+  "new": null,
+  "note": "series step; private in SubGaussian/Square.lean",
+  "stage": "P1"
+ },
+ "integral_exp_mul_sq_le_exp_linear_of_hasSubgaussianMGF_of_le": {
+  "new": "HasSubgaussianMGF.integral_exp_mul_sq_le",
+  "note": "sharper",
+  "stage": "P1"
+ },
+ "integral_exp_mul_sq_le_of_hasSubgaussianMGF": {
+  "new": "HasSubgaussianMGF.integral_exp_mul_sq_le",
+  "note": "sharper",
+  "stage": "P1"
+ },
+ "integral_exp_mul_sq_le_one_add_linear_add_tail_of_hasSubgaussianMGF_of_le": {
+  "new": null,
+  "note": "series step; private in SubGaussian/Square.lean",
+  "stage": "P1"
+ },
+ "integral_exp_mul_sq_le_one_add_tail_of_hasSubgaussianMGF_of_le": {
+  "new": null,
+  "note": "series step; private in SubGaussian/Square.lean",
+  "stage": "P1"
+ },
+ "integral_finiteSamplingLaw": {
+  "new": "integral_samplingMeasure",
+  "stage": "P2"
+ },
+ "integral_iSup_abs_le_of_hasSubgaussianMGF": {
+  "new": null,
+  "note": "parametrised form; private step of HasSubgaussianMGF.integral_iSup_abs_le",
+  "stage": "P1"
+ },
+ "integral_iSup_abs_le_sqrt_of_hasSubgaussianMGF": {
+  "new": "HasSubgaussianMGF.integral_iSup_abs_le",
+  "stage": "P1"
+ },
+ "integral_iSup_le_of_hasSubgaussianMGF": {
+  "new": null,
+  "note": "parametrised form; private step of HasSubgaussianMGF.integral_iSup_le",
+  "stage": "P1"
+ },
+ "integral_iSup_le_sqrt_of_hasSubgaussianMGF": {
+  "new": "HasSubgaussianMGF.integral_iSup_le",
+  "stage": "P1"
+ },
+ "integral_id_rademacherMeasure": {
+  "new": null,
+  "note": "measure-form twin of integral_of_hasLaw_rademacherMeasure",
+  "stage": "P2"
  },
  "integral_le_of_tail_le": {
   "new": "integral_le_of_measureReal_ge_le",
@@ -12455,6 +12677,30 @@
   "note": "integral_le_of_measureReal_ge_le applied to f ^ p",
   "stage": "P0"
  },
+ "integral_le_one_div_mul_log_integral_exp_mul": {
+  "new": null,
+  "note": "Jensen step; private in Probability/SubGaussian/Moments.lean",
+  "stage": "P1"
+ },
+ "integral_nonpos_of_hasSubgaussianMGF": {
+  "new": null,
+  "note": "proof leaf; the mean is zero by the derivative of the MGF",
+  "stage": "P1"
+ },
+ "integral_pow_four_eq_one_of_hasLaw_rademacherMeasure": {
+  "new": "integral_pow_four_of_hasLaw_rademacherMeasure",
+  "stage": "P2"
+ },
+ "integral_pow_four_eq_three_of_hasLaw_gaussianReal": {
+  "new": "integral_pow_four_of_hasLaw_gaussianReal",
+  "note": "any variance",
+  "stage": "P2"
+ },
+ "integral_pow_four_gaussianReal": {
+  "new": null,
+  "note": "private step of integral_pow_four_of_hasLaw_gaussianReal",
+  "stage": "P2"
+ },
  "integral_quadForm_eq_trace": {
   "new": null,
   "note": "IsIsotropic.of_iIndepFun followed by IsIsotropic.integral_quadForm",
@@ -12464,9 +12710,78 @@
   "new": "IsIsotropic.integral_quadForm",
   "stage": "P0"
  },
+ "integral_rademacherMeasure": {
+  "new": "integral_rademacherMeasure",
+  "stage": "P2"
+ },
+ "integral_sq_eq_one_of_hasLaw_gaussianReal": {
+  "new": "integral_sq_of_hasLaw_gaussianReal",
+  "stage": "P2"
+ },
+ "integral_sq_eq_one_of_hasLaw_rademacherMeasure": {
+  "new": "integral_sq_of_hasLaw_rademacherMeasure",
+  "stage": "P2"
+ },
+ "integral_sq_le_of_hasSubgaussianMGF_of_le": {
+  "new": "HasSubgaussianMGF.integral_sq_le",
+  "note": "now at most c",
+  "stage": "P1"
+ },
+ "isProbabilityMeasure_rademacherMeasure": {
+  "new": "isProbabilityMeasure_rademacherMeasure",
+  "stage": "P2"
+ },
  "lintegral_le_of_tail_le": {
   "new": null,
   "note": "proof step inside Probability/Tail.lean; the real-valued forms are public",
   "stage": "P0"
+ },
+ "measureReal_abs_ge_le_two_mul_exp_of_cgf_le": {
+  "new": null,
+  "note": "replaced by HasSubexponentialMGF.measure_abs_ge_le",
+  "stage": "P1"
+ },
+ "measureReal_ge_le_exp_of_cgf_le": {
+  "new": null,
+  "note": "raw closed-window CGF hypotheses; replaced by HasSubexponentialMGF.measure_ge_le",
+  "stage": "P1"
+ },
+ "measureReal_lt_abs_le_of_hasSubgaussianMGF": {
+  "new": "HasSubgaussianMGF.measure_abs_ge_le",
+  "note": "non-strict event",
+  "stage": "P1"
+ },
+ "memLp_two_of_hasLaw_rademacherMeasure": {
+  "new": null,
+  "note": "HasLaw.memLp_comp_iff with integrable_rademacherMeasure",
+  "stage": "P2"
+ },
+ "mgf_id_rademacherMeasure": {
+  "new": null,
+  "note": "measure-form twin of mgf_of_hasLaw_rademacherMeasure",
+  "stage": "P2"
+ },
+ "mgf_of_hasLaw_rademacherMeasure": {
+  "new": "mgf_of_hasLaw_rademacherMeasure",
+  "stage": "P2"
+ },
+ "rademacherMeasure": {
+  "new": "rademacherMeasure",
+  "note": "now 2⁻¹ • (dirac 1 + dirac (-1))",
+  "stage": "P2"
+ },
+ "rademacherVector": {
+  "new": "rademacherVector",
+  "stage": "P2"
+ },
+ "summable_integral_exp_sq_series_of_hasSubgaussianMGF": {
+  "new": null,
+  "note": "series step; private in SubGaussian/Square.lean",
+  "stage": "P1"
+ },
+ "summable_integral_exp_sq_series_of_hasSubgaussianMGF_of_le": {
+  "new": null,
+  "note": "series step; private in SubGaussian/Square.lean",
+  "stage": "P1"
  }
 }

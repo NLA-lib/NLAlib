@@ -2,7 +2,10 @@
 
 Status: written 2026-10-14 by the orchestrator under `docs/PORT_PROBABILITY.md` (§2 decided).
 Introduces the sub-Gaussian-vector interface D6 fixed. The maintainer's design checkpoint (D1)
-follows this stage. No new question of the brief's §2 kind.
+follows this stage. No new question of the brief's §2 kind. Reviewed by a Fable agent on
+2026-10-14; corrections in §8. The skeletons
+(`NLAlib/Probability/{SubGaussianVector/{Basic,Norm},Distributions/ChiSquare,QuadraticForm/{Moments,HansonWright}}.lean`)
+carry them; where §3 and a skeleton differ, the skeleton is the statement.
 
 ## 0. Scope and consumers
 
@@ -244,3 +247,35 @@ not in this round (P2 Q1). Their complex versions are additive later.
 **Q2. Hutchinson's variance with explicit moment parameters** `s` and `m₄` rather than a law:
 one statement covers Gaussian, Rademacher, complex Gaussian and Steinhaus probes (brief D6:
 fixed moments are parameters).
+
+## 8. Amendments from the review (2026-10-14)
+
+1. `IsSubgaussianVector.measureReal_norm_sq_ge_le` takes `hc : c ≠ 0`: with `c = 0` the vector
+   is `0` a.s., the non-strict event is everything, and `exp (-t) < 1`.
+2. `measureReal_norm_sq_le_of_hasLaw_gaussianVector` takes `hn : 0 < Fintype.card n`: for
+   `n = 0` the event `{0 ≤ 0}` is everything.
+3. The second moment of the quadratic form in the vocabulary of §5.3, with no `if` and no
+   `DecidableEq`: `frobNorm A ^ 2 + ‖s‖ ^ 2 * frobInner A Aᵀ + (m₄ - 2 - ‖s‖ ^ 2) * ∑ ‖A i i‖ ^ 2`
+   (the review derived it independently). The real corollary drops `hs` (forced to `1`).
+4. New corollaries `variance_quadForm_of_hasLaw_gaussianVector` (`= 2 ‖A‖_F²`) and
+   `…_rademacherVector` (`= 2 (‖A‖_F² - ∑ A i i²)`), so a consumer with a law does not assemble six
+   hypotheses; they replace the prototype's `integral_quadForm_sq_rademacherVector`.
+5. `memLp_quadForm : MemLp (quadForm A X) 2 μ` in place of the integrability of `‖·‖²` (what
+   Chebyshev and `variance` take).
+6. `[IsProbabilityMeasure μ]` dropped wherever `iIndepFun` is a hypothesis (Mathlib's
+   `iIndepFun.isProbabilityMeasure`); kept in `IsSubgaussianVector.integral_apply_eq_zero` and
+   `integral_norm_sq_le`.
+7. Hanson–Wright: the constant's body is what the proof reaches (the skeleton has the
+   prototype's `1/(256 e²)` as a placeholder; the diagonal now goes through P1's sharper `32`,
+   `4`); `le_hansonWrightConstant` states the number the docstring promises. New lower tail
+   `measureReal_quadForm_sub_integral_le_le`.
+8. `IsSubgaussianVector` API: `congr`, `memLp_apply` (coordinates over `𝕜`), the real part of a
+   coordinate (`hasSubgaussianMGF_re_apply`, no `DecidableEq`), law transport
+   `HasLaw.isSubgaussianVector_iff`; `integral_norm_sq_le : E ‖X‖² ≤ c n` (real, in `Norm.lean`).
+   `isSubgaussianVector_unique_iff` (§1) is not stated: no consumer.
+9. The general-`A` form of Hsu–Kakade–Zhang (`‖A X‖²` with `tr Σ`, `‖Σ‖_F`, `‖Σ‖`) is the same
+   linearisation and what a reader of the citation expects; no consumer needs it now, so it is
+   not stated.
+10. Noted inconsistencies, not changed: P1's scalar `E exp (θX²) ≤ 1 / √(1 - 2θc)` against the
+    rpow form here (a bridge for `n` a singleton is one `rw`); tail names use `measureReal_` here
+    and in P0 but Mathlib's `measure_` (for `μ.real` statements) in P1's dot-notation lemmas.

@@ -49,11 +49,15 @@ instance). Only `Probability/MatrixIntegral.lean` waits; nothing before P5 needs
 | P1 | design note `docs/design/Probability-P1.md` | orchestrator | written, Fable-reviewed | |
 | P1 | `SubGaussian/Basic.lean`, `Moments.lean` | Opus agent | proved | `HasSubgaussianMGF.isFiniteMeasure` made public |
 | P1 | `SubExponential/Basic.lean`, `Tail.lean` | Opus agent | proved | split at the skeleton (file budget); `measure_ge_le_of_le_mul` lost a redundant `0 ≤ t` |
-| P1 | `SubGaussian/Square.lean` | Opus agent | proofs in progress | |
+| P1 | `SubGaussian/Square.lean` | Opus agent | proved | reached the literature's constants `32 c²`, `4 c`, now literals in the statement; stage report in the note |
 | P2 | design note `docs/design/Probability-P2.md` | orchestrator | written, Fable-reviewed (§8 amendments) | |
-| P2 | `Distributions/Rademacher.lean`, `Sampling.lean` | Opus agent | proved | `samplingMeasure_singleton` made public (recheck pending) |
-| P2 | `Distributions/Gaussian.lean` | Opus agent | proofs in progress | |
-| P3 | design note `docs/design/Probability-P3.md` | orchestrator | written; Fable review running | maintainer checkpoint after P3 |
+| P2 | `Distributions/Rademacher.lean`, `Sampling.lean` | Opus agent | proved | `samplingMeasure_singleton` public |
+| P2 | `Distributions/Gaussian.lean` | Opus agent | proved | |
+| P0–P2 | checks | orchestrator | done | `stage_check.sh`: 155 modules, 0 warnings; audit 3697, 0 violations; lint 2818 clean; ledger +69 |
+| P3 | design note `docs/design/Probability-P3.md` | orchestrator | written, Fable-reviewed (§8) | maintainer checkpoint after P3 |
+| P3 | `SubGaussianVector/Basic.lean`, `Norm.lean` | Opus agent | proofs in progress | |
+| P3 | `Distributions/ChiSquare.lean`, `QuadraticForm/Moments.lean` | Opus agent | proofs in progress | |
+| P3 | `QuadraticForm/HansonWright.lean` | — | skeleton compiles | after the others; the long proof |
 | P0 | `Probability/MatrixIntegral.lean` | — | waits on Q1 | |
 
 **Matrix layer complete, 2026-10-14** (branch `scaffold`, local commits, not pushed): stages M0 to

@@ -5,7 +5,9 @@ moment generating function interface, the master bound through Lieb's theorem, a
 Bernstein and series inequalities with their rectangular forms), **P5b** (intrinsic-dimension
 forms), **P5c** (trace moments and noncommutative Khintchine), **P5d** (Freedman, with the
 conditional form of the interface and matrix conditional expectations). Introduces
-`HasMatrixMGFBound`, fixed by D6. No question of the brief's §2 kind.
+`HasMatrixMGFBound`, fixed by D6. No question of the brief's §2 kind. Reviewed by a Fable agent
+on 2026-10-14; corrections in §8. The skeletons under `NLAlib/Probability/MatrixConcentration/`
+carry them and are the statements where they differ from §3.
 
 ## 0. Scope and consumers
 
@@ -295,3 +297,34 @@ the Matrix layer's vocabulary, the same in every statement, and a definition wou
 
 **Q3. Non-strict events and `[Nonempty n]`** throughout (D3; brief §3.1 permits a hypothesis on
 the cardinal; `[Nonempty n]` is the Matrix layer's form of it).
+
+## 8. Amendments from the review (2026-10-14)
+
+1. `HasMatrixMGFBound.mono_bound` deleted: it was false (the matrix exponential is not operator
+   monotone; `X ≡ A`, `g = id` is a counterexample). Monotonicity in `A` is used after the trace
+   (`re_trace_exp_le_re_trace_exp_of_le`) or at the CGF level, and the interface stays in D6's
+   MGF form.
+2. New, before the tails ("general form first"): the trace-level master bound
+   `HasMatrixMGFBound.integral_re_trace_exp_sum_le` with its integrability companion. The Chernoff
+   tails are stated from a trace bound `E tr exp (θ Y) ≤ tr exp ((e^{θL}-1)/L • V)` for a single
+   random matrix `Y` (`Chernoff.lean`), so sampling without replacement (next round) reuses them,
+   and the independent-sum forms are corollaries (`ChernoffSum.lean`, a new file).
+3. Measurability: `HasMatrixMGFBound.aemeasurable` (derivable from the interface when `s`
+   contains some `θ ≠ 0`); the Chernoff constructor and the sum statements take
+   `AEMeasurable (X k) μ` (bounded summands give integrability but not measurability).
+4. The smallest eigenvalue is `eigenvalue A j` with `hj : j + 1 = Fintype.card n` (the Matrix
+   layer's form, no truncated subtraction); bounds on summands are Loewner,
+   `X ω ≤ L • 1` (`exp_smul_le_one_add_smul_add_smul_sq` takes it, and it implies Hermitian, so
+   Bernstein's separate Hermitian hypothesis is gone).
+5. Names: the master tails in the namespace are `HasMatrixMGFBound.measure_…` (the tail-prefix
+   rule); the simplified Chernoff forms are `…_le_card_mul_exp`; `[DecidableEq m]` dropped on
+   rectangular statements (the `L2Operator` norm needs only the column index).
+6. Added: Chernoff means (`E λ_max ≤ (e - 1) μmax + L log d`, `E λ_min ≥ (1 - e⁻¹) μmin - L log d`,
+   the stage's only expectation lower bound, with integrability from boundedness); Hermitian means
+   for Bernstein and series; the two-sided form around the identity
+   `measureReal_specNorm_sum_sub_one_ge_le` (`2 d e^{-ε²/(3L)}` when `∑ E X k = 1`), which the next
+   round uses three times; `HasMatrixMGFBound.congr` and `mono_set`; per-index proxies `c k` in the
+   series; the D3 companions `integrable_eigenvalue` and `integrable_specNorm` (`Laplace.lean`).
+7. Docstrings: rectangular Bernstein is Tropp's Theorem 6.1.1 (Corollary 6.1.2 in some printings)
+   and also the two-sided Hermitian form; the sub-Gaussian series is the same proof as Tropp's
+   Gaussian and Rademacher Theorem 4.1.1, not his statement.

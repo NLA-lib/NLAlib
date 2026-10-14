@@ -20,6 +20,8 @@ Massart's exactly.
 * `NLAlib.integral_exp_mul_norm_sq_of_hasLaw_gaussianVector`: `E exp (θ‖X‖²) = (1 - 2θ)^{-n/2}`.
 * `NLAlib.measureReal_norm_sq_le_of_hasLaw_gaussianVector`:
   `P(‖X‖² ≤ n - 2√(n t)) ≤ e^{-t}`.
+* `NLAlib.measureReal_norm_sq_le_le_rpow_of_hasLaw_gaussianVector`: the small ball
+  `P(‖X‖² ≤ u) ≤ (e u / n)^{n/2}`.
 -/
 
 @[expose] public section
@@ -127,5 +129,57 @@ theorem measureReal_norm_sq_le_of_hasLaw_gaussianVector (hX : HasLaw X (gaussian
     have : (rexp (u ^ 2 / 2) - 1) / 2 * (N * (1 - u)) ≤ 0 :=
       mul_nonpos_of_nonneg_of_nonpos hs (mul_nonpos_of_nonneg_of_nonpos hN.le (by linarith))
     nlinarith
+
+/-- A standard Gaussian vector of positive dimension is almost surely nonzero. -/
+private theorem measureReal_norm_sq_le_zero_of_hasLaw_gaussianVector
+    (hX : HasLaw X (gaussianVector n) μ) (hn : 0 < Fintype.card n) :
+    μ.real {ω | ‖WithLp.toLp 2 (X ω)‖ ^ 2 ≤ 0} = 0 := by
+  have : IsProbabilityMeasure μ := hX.isProbabilityMeasure_iff.2 inferInstance
+  obtain ⟨i⟩ := Fintype.card_pos_iff.mp hn
+  have : NullSingletonClass (gaussianReal 0 1) := nullSingletonClass_gaussianReal one_ne_zero
+  have hsub : {ω | ‖WithLp.toLp 2 (X ω)‖ ^ 2 ≤ 0} ⊆ {ω | X ω i = 0} := by
+    intro ω (hω : ‖WithLp.toLp 2 (X ω)‖ ^ 2 ≤ 0)
+    have h0 : WithLp.toLp 2 (X ω) = 0 := norm_eq_zero.mp (pow_eq_zero_iff two_ne_zero |>.mp
+      (le_antisymm hω (sq_nonneg _)))
+    change X ω i = 0
+    rw [← WithLp.ofLp_toLp 2 (X ω), h0]
+    rfl
+  refine le_antisymm ((measureReal_mono hsub).trans (le_of_eq ?_)) measureReal_nonneg
+  rw [(hX.eval i).measureReal_eq (p := fun x => x = 0) (measurableSet_singleton 0)]
+  rw [measureReal_def, Set.ofPred_eq_eq_singleton, measure_singleton, ENNReal.toReal_zero]
+
+/-- **Small-ball bound for `χ²_n`**: `P(‖X‖² ≤ u) ≤ (e u / n)^{n/2}` for `u ≥ 0`. Chernoff's
+bound with the parameter `s = (n / u - 1) / 2`. It decays like `u^{n/2}` as `u → 0`, which
+`NLAlib.measureReal_norm_sq_le_of_hasLaw_gaussianVector` (better for thresholds near `n`) does
+not see; it is at least `1` for `u ≥ n` and for `n = 0`.
+Port of `NLAlib.measureReal_sum_sq_le_le_gaussianVector`, there for `Fin d`, `d ≥ 1` and
+`u ≤ d`.
+Result: chi-square-small-ball -/
+theorem measureReal_norm_sq_le_le_rpow_of_hasLaw_gaussianVector
+    (hX : HasLaw X (gaussianVector n) μ) {u : ℝ} (hu : 0 ≤ u) :
+    μ.real {ω | ‖WithLp.toLp 2 (X ω)‖ ^ 2 ≤ u} ≤
+      (rexp 1 * u / Fintype.card n) ^ (Fintype.card n / 2 : ℝ) := by
+  have : IsProbabilityMeasure μ := hX.isProbabilityMeasure_iff.2 inferInstance
+  set d : ℝ := (Fintype.card n : ℝ)
+  rcases (Nat.cast_nonneg (Fintype.card n) : (0 : ℝ) ≤ d).eq_or_lt with hd | hd
+  · rw [show d = 0 from hd.symm, zero_div, Real.rpow_zero]
+    exact measureReal_le_one
+  rcases le_or_gt d u with hdu | hud
+  · refine measureReal_le_one.trans (Real.one_le_rpow ?_ (by positivity))
+    rw [le_div_iff₀ hd, one_mul]
+    nlinarith [Real.add_one_le_exp 1]
+  rcases hu.eq_or_lt with rfl | hu0
+  · rw [measureReal_norm_sq_le_zero_of_hasLaw_gaussianVector hX (by exact_mod_cast hd),
+      mul_zero, zero_div, Real.zero_rpow (by positivity)]
+  set s := (d / u - 1) / 2 with hs_def
+  have hdu : 1 ≤ d / u := by rw [le_div_iff₀ hu0]; linarith
+  have hs : 0 ≤ s := by rw [hs_def]; linarith
+  have h1 : 1 + 2 * s = d / u := by rw [hs_def]; ring
+  have hsu : s * u = (d - u) / 2 := by rw [hs_def]; field_simp
+  refine (measureReal_norm_sq_le_le_exp_mul_rpow hX u hs).trans ?_
+  rw [h1, hsu, Real.rpow_neg (by positivity), ← Real.inv_rpow (by positivity), inv_div,
+    mul_div_assoc, Real.mul_rpow (Real.exp_pos 1).le (by positivity), Real.exp_one_rpow]
+  gcongr
+  linarith
 
 end NLAlib

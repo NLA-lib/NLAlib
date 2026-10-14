@@ -163,6 +163,7 @@ public import NLAlib.Probability.Distributions.Gaussian
 public import NLAlib.Probability.Distributions.GaussianComparison
 public import NLAlib.Probability.Distributions.GaussianConcentration
 public import NLAlib.Probability.Distributions.GaussianIntegrationByParts
+public import NLAlib.Probability.Distributions.GaussianLogOverlap
 public import NLAlib.Probability.Distributions.GaussianLogSobolev
 public import NLAlib.Probability.Distributions.GaussianLogSobolevOneDim
 public import NLAlib.Probability.Distributions.Rademacher
@@ -183,6 +184,7 @@ public import NLAlib.Probability.MatrixConcentration.Laplace
 public import NLAlib.Probability.MatrixConcentration.MGFBound
 public import NLAlib.Probability.MatrixConcentration.Series
 public import NLAlib.Probability.MatrixConcentration.Subadditivity
+public import NLAlib.Probability.MatrixConcentration.Variance
 public import NLAlib.Probability.MatrixConditionalExpectation
 public import NLAlib.Probability.MatrixIntegral
 public import NLAlib.Probability.Measurability.Matrix

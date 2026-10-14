@@ -234,13 +234,13 @@
   "stage": "P4"
  },
  "NLAlib.HasEuclideanLogSobolev.inequality_of_integrable": {
-  "new": null,
-  "note": "not ported: HasLogSobolev extended from bounded to finite-energy C¹ test functions; Gaussian case is entropy_sq_le_two_mul_integral_norm_fderiv_sq_stdGaussian",
+  "new": "NLAlib.HasLogSobolev.entropy_sq_le_of_integrable",
+  "note": "from HasLogSobolev (bounded test functions with bounded derivative), finite-energy C¹ g",
   "stage": "P4"
  },
  "NLAlib.HasEuclideanLogSobolev.integrable_sq_mul_log_sq": {
-  "new": null,
-  "note": "not ported: an LSI gives entropy integrability for C¹ functions of finite square and Dirichlet energy; Gaussian case is integrable_sq_mul_log_sq_stdGaussian",
+  "new": "NLAlib.HasLogSobolev.integrable_sq_mul_log_sq",
+  "note": "from HasLogSobolev (bounded test functions with bounded derivative), finite-energy C¹ g",
   "stage": "P4"
  },
  "NLAlib.HasEuclideanLogSobolev.mk": {
@@ -1735,7 +1735,7 @@
  },
  "NLAlib.ae_eigenvectorBasis_dotProduct_ne_zero_pi_gaussianReal": {
   "new": null,
-  "note": "not ported: step of the random-start Gaussian log-overlap moments",
+  "note": "not needed: the log-overlap statements of Probability/Distributions/GaussianLogOverlap.lean take any unit vector and hold with log 0 = 0 on the null event",
   "stage": "R2"
  },
  "NLAlib.ae_eq_one_or_neg_one_of_hasLaw_rademacherMeasure": {
@@ -6087,17 +6087,17 @@
  },
  "NLAlib.gaussianLogOverlap": {
   "new": null,
-  "note": "not ported: random-start Gaussian log-overlap; E log(‖g‖²/g_i²) ≤ log(2N)+2, second moment and exp tail",
+  "note": "no definition: the statements of Probability/Distributions/GaussianLogOverlap.lean write log (‖X‖² / (u ⬝ᵥ X)²) out",
   "stage": "R2"
  },
  "NLAlib.gaussianLogOverlap_eq_log_sum_div_sq": {
   "new": null,
-  "note": "not ported: step of the random-start Gaussian log-overlap moments",
+  "note": "no definition to unfold: the statements use log (‖X‖² / (u ⬝ᵥ X)²) directly",
   "stage": "R2"
  },
  "NLAlib.gaussianLogOverlap_nonneg": {
   "new": null,
-  "note": "not ported: step of the random-start Gaussian log-overlap moments",
+  "note": "private step in Probability/Distributions/GaussianLogOverlap.lean",
   "stage": "R2"
  },
  "NLAlib.gaussianMatrix": {
@@ -6267,7 +6267,7 @@
  },
  "NLAlib.gaussianPDFReal_zero_one_le_half": {
   "new": null,
-  "note": "not ported: step of the random-start Gaussian log-overlap moments",
+  "note": "private step in Probability/Distributions/GaussianLogOverlap.lean",
   "stage": "R2"
  },
  "NLAlib.gaussianPairingPositions": {
@@ -6307,12 +6307,12 @@
  },
  "NLAlib.gaussianReal_abs_le_le_ofReal": {
   "new": null,
-  "note": "not ported: step of the random-start Gaussian log-overlap moments",
+  "note": "private step in Probability/Distributions/GaussianLogOverlap.lean",
   "stage": "R2"
  },
  "NLAlib.gaussianReal_div_sq_gt_le_ofReal_sqrt": {
   "new": null,
-  "note": "not ported: step of the random-start Gaussian log-overlap moments",
+  "note": "private step in Probability/Distributions/GaussianLogOverlap.lean",
   "stage": "R2"
  },
  "NLAlib.gaussianSeriesTail": {
@@ -7629,8 +7629,8 @@
   "stage": "R4"
  },
  "NLAlib.integrable_and_integral_gaussianLogOverlap_le": {
-  "new": null,
-  "note": "not ported: random-start Gaussian log-overlap; E log(‖g‖²/g_i²) ≤ log(2N)+2, second moment and exp tail",
+  "new": "NLAlib.integral_log_norm_sq_div_sq_le_of_hasLaw_gaussianVector",
+  "note": "split: integrable_log_norm_sq_div_sq_of_hasLaw_gaussianVector, integrable_log_norm_sq_div_sq_sq_of_hasLaw_gaussianVector, integral_log_norm_sq_div_sq_sq_le_of_hasLaw_gaussianVector; any unit vector u, not a coordinate of Fin (n + 1)",
   "stage": "R2"
  },
  "NLAlib.integrable_and_integral_half_gap_rpow_specNorm_inv_gaussianMatrix_le": {
@@ -7672,8 +7672,8 @@
   "stage": "R4"
  },
  "NLAlib.integrable_and_integral_log_sum_div_sq_pi_gaussianReal_le": {
-  "new": null,
-  "note": "not ported: random-start Gaussian log-overlap; E log(‖g‖²/g_i²) ≤ log(2N)+2, second moment and exp tail",
+  "new": "NLAlib.integral_log_norm_sq_div_sq_le_of_hasLaw_gaussianVector",
+  "note": "coordinate i is u = Pi.single i 1; split as for integrable_and_integral_gaussianLogOverlap_le",
   "stage": "R2"
  },
  "NLAlib.integrable_and_integral_matrixExp_smul_eq_cfc_mgf": {
@@ -9037,7 +9037,7 @@
  },
  "NLAlib.integral_sqrt_sum_sq_pi_gaussianReal_le": {
   "new": null,
-  "note": "not ported: step of the random-start Gaussian log-overlap moments",
+  "note": "private step in Probability/Distributions/GaussianLogOverlap.lean (AM-GM against E ‖g‖² = n)",
   "stage": "R2"
  },
  "NLAlib.integral_stein_energy_eq": {
@@ -9056,8 +9056,8 @@
   "stage": "P6"
  },
  "NLAlib.integral_sum_mul_sum_eq_sum_integral_mul": {
-  "new": null,
-  "note": "not ported: cross terms of independent centred random matrices vanish, E (∑ f Xk)(∑ g Xk) = ∑ E f Xk g Xk",
+  "new": "NLAlib.integral_sum_mul_sum_of_iIndepFun",
+  "note": "over RCLike, any Fintype index types, X valued in any measurable space",
   "stage": "P5a"
  },
  "NLAlib.integral_sum_smul_mul_sum_smul_eq": {
@@ -10656,7 +10656,7 @@
  },
  "NLAlib.measurable_gaussianLogOverlap": {
   "new": null,
-  "note": "not ported: step of the random-start Gaussian log-overlap moments",
+  "note": "private step in Probability/Distributions/GaussianLogOverlap.lean",
   "stage": "R2"
  },
  "NLAlib.measurable_gaussianRangeFrame_entry": {
@@ -10979,8 +10979,8 @@
   "stage": "P3"
  },
  "NLAlib.measureReal_sum_sq_le_le_gaussianVector": {
-  "new": null,
-  "note": "not ported: small-ball lower tail of χ²_d, P(χ²_d ≤ u) ≤ (e u / d)^{d/2}",
+  "new": "NLAlib.measureReal_norm_sq_le_le_rpow_of_hasLaw_gaussianVector",
+  "note": "under HasLaw, any Fintype, only u ≥ 0 (d = 0 and u ≥ d are trivial cases)",
   "stage": "P3"
  },
  "NLAlib.measureReal_sum_sq_le_one_sub_mul_le_gaussianVector": {
@@ -12388,12 +12388,12 @@
  },
  "NLAlib.pi_gaussianReal_energy_ratio_gt_le": {
   "new": null,
-  "note": "not ported: step of the random-start Gaussian log-overlap moments",
+  "note": "private step in Probability/Distributions/GaussianLogOverlap.lean",
   "stage": "R2"
  },
  "NLAlib.pi_gaussianReal_logOverlap_gt_le": {
-  "new": null,
-  "note": "not ported: random-start Gaussian log-overlap; E log(‖g‖²/g_i²) ≤ log(2N)+2, second moment and exp tail",
+  "new": "NLAlib.measureReal_log_norm_sq_div_sq_ge_le_of_hasLaw_gaussianVector",
+  "note": "for any unit vector u under HasLaw X (gaussianVector n) μ, every real t, non-strict event",
   "stage": "R2"
  },
  "NLAlib.pi_gaussianReal_map_sq_dist_rowSpace": {
@@ -12949,7 +12949,7 @@
  },
  "NLAlib.prod_gaussianReal_energy_ratio_gt_le": {
   "new": null,
-  "note": "not ported: step of the random-start Gaussian log-overlap moments",
+  "note": "private step in Probability/Distributions/GaussianLogOverlap.lean",
   "stage": "R2"
  },
  "NLAlib.prod_map_householder_map_vecCons_zero": {
@@ -16672,8 +16672,8 @@
   "stage": "M10"
  },
  "NLAlib.variance_additivity": {
-  "new": null,
-  "note": "not ported: E (∑ Xk)² = ∑ E Xk² for independent centred square-integrable random matrices",
+  "new": "NLAlib.integral_sum_sub_integral_sq_of_iIndepFun",
+  "note": "over RCLike, any Fintype, no Hermitian hypothesis; centred form integral_sum_sq_of_iIndepFun",
   "stage": "P5a"
  },
  "NLAlib.variance_quadForm": {

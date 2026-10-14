@@ -5,12 +5,16 @@ Authors: NLAlib contributors
 -/
 module
 
+public import Mathlib.Analysis.Calculus.BumpFunction.InnerProduct
 public import Mathlib.Analysis.InnerProductSpace.Basic
 public import Mathlib.Analysis.Calculus.FDeriv.Basic
 public import Mathlib.Analysis.Calculus.ContDiff.Defs
 public import Mathlib.MeasureTheory.Constructions.BorelSpace.Basic
 public import Mathlib.Analysis.SpecialFunctions.ExpDeriv
 public import Mathlib.MeasureTheory.Integral.DominatedConvergence
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Sinc
+public import NLAlib.ForMathlib.Analysis.SpecialFunctions.Log.Basic
 public import NLAlib.ForMathlib.Analysis.Calculus.BumpFunction.Convolution
 public import NLAlib.Probability.Entropy
 
@@ -32,6 +36,9 @@ sub-Gaussian about its mean with proxy `c L²`. The standard Gaussian satisfies 
 
 * `NLAlib.HasLogSobolev.integrable_of_lipschitzWith`.
 * `NLAlib.HasLogSobolev.hasSubgaussianMGF_sub_integral`: concentration of Lipschitz functions.
+* `NLAlib.HasLogSobolev.integrable_sq_mul_log_sq`,
+  `NLAlib.HasLogSobolev.entropy_sq_le_of_integrable`: the inequality extends to every `C¹`
+  function `g` with `g²` and `‖∇g‖²` integrable, and `g² log g²` is then integrable.
 -/
 
 @[expose] public section
@@ -326,5 +333,342 @@ theorem HasLogSobolev.hasSubgaussianMGF_sub_integral [IsProbabilityMeasure ν]
     (fun n => integral_exp_le_of_hasSubgaussianMGF
       (h.hasSubgaussianMGF_of_bounded (hFL n) (hFc n) (hFb n)) s) ?_
   exact (continuous_exp.tendsto _).comp ((hMean.const_mul s).add_const _)
+
+/-! ### Finite-energy test functions -/
+
+section FiniteEnergy
+
+omit [MeasurableSpace E] [BorelSpace E] in
+/-- Smooth cutoffs `χ n = φ ((n + 1)⁻¹ • ·)`: `C¹`, compactly supported, with values in `[0, 1]`
+and derivatives bounded uniformly in `n`, and eventually equal to `1` near every point. -/
+private theorem exists_cutoff : ∃ (χ : ℕ → E → ℝ) (K : ℝ), (∀ n, ContDiff ℝ 1 (χ n)) ∧
+    (∀ n, HasCompactSupport (χ n)) ∧ (∀ n x, 0 ≤ χ n x ∧ χ n x ≤ 1) ∧
+    (∀ n x, ‖fderiv ℝ (χ n) x‖ ≤ K) ∧ (∀ x, ∀ᶠ n in atTop, χ n =ᶠ[𝓝 x] fun _ => 1) := by
+  let φ : ContDiffBump (0 : E) := ⟨1, 2, by norm_num, by norm_num⟩
+  have hφc : ContDiff ℝ 1 (fun x => φ x) := φ.contDiff
+  obtain ⟨K, hK⟩ := (hφc.continuous_fderiv one_ne_zero).bounded_above_of_compact_support
+    (φ.hasCompactSupport.fderiv (𝕜 := ℝ))
+  have hK0 : 0 ≤ K := (norm_nonneg _).trans (hK 0)
+  have ha (n : ℕ) : (0 : ℝ) < ((n : ℝ) + 1)⁻¹ := by positivity
+  have ha1 (n : ℕ) : ((n : ℝ) + 1)⁻¹ ≤ 1 :=
+    inv_le_one_of_one_le₀ (by linarith [(Nat.cast_nonneg n : (0 : ℝ) ≤ n)])
+  have hnorm (n : ℕ) (x : E) : ‖((n : ℝ) + 1)⁻¹ • x‖ = ((n : ℝ) + 1)⁻¹ * ‖x‖ := by
+    rw [norm_smul, Real.norm_of_nonneg (ha n).le]
+  refine ⟨fun n x => φ (((n : ℝ) + 1)⁻¹ • x), K,
+    fun n => hφc.comp (contDiff_const_smul _), fun n => ?_, fun n x => ⟨φ.nonneg, φ.le_one⟩,
+    fun n x => ?_, fun x => ?_⟩
+  · refine HasCompactSupport.intro (isCompact_closedBall (0 : E) (2 * ((n : ℝ) + 1)))
+      fun x hx => φ.zero_of_le_dist ?_
+    rw [Metric.mem_closedBall, dist_zero_right, not_le] at hx
+    rw [dist_zero_right, hnorm, ← div_eq_inv_mul, le_div_iff₀ (by positivity)]
+    exact hx.le
+  · have h := ((hφc.differentiable one_ne_zero) (((n : ℝ) + 1)⁻¹ • x)).hasFDerivAt.comp x
+      ((hasFDerivAt_id x).const_smul ((n : ℝ) + 1)⁻¹)
+    change ‖fderiv ℝ ((fun x => φ x) ∘ HSMul.hSMul ((n : ℝ) + 1)⁻¹) x‖ ≤ K
+    rw [h.fderiv]
+    calc ‖(fderiv ℝ (fun x => φ x) (((n : ℝ) + 1)⁻¹ • x)).comp
+          (((n : ℝ) + 1)⁻¹ • ContinuousLinearMap.id ℝ E)‖
+        ≤ ‖fderiv ℝ (fun x => φ x) (((n : ℝ) + 1)⁻¹ • x)‖ *
+          ‖((n : ℝ) + 1)⁻¹ • ContinuousLinearMap.id ℝ E‖ := ContinuousLinearMap.opNorm_comp_le _ _
+      _ ≤ K * 1 := by
+          gcongr
+          · exact hK _
+          · rw [norm_smul, Real.norm_of_nonneg (ha n).le]
+            exact (mul_le_mul (ha1 n) (ContinuousLinearMap.norm_id_le) (norm_nonneg _)
+              zero_le_one).trans_eq (one_mul 1)
+      _ = K := mul_one K
+  · obtain ⟨N, hN⟩ := exists_nat_gt ‖x‖
+    refine eventually_atTop.2 ⟨N, fun n hn => ?_⟩
+    have hx : ‖x‖ < (n : ℝ) + 1 := by
+      have : (N : ℝ) ≤ n := by exact_mod_cast hn
+      linarith
+    filter_upwards [(isOpen_lt continuous_norm continuous_const).mem_nhds hx] with y hy
+    refine φ.one_of_mem_closedBall ?_
+    rw [Metric.mem_closedBall, dist_zero_right, hnorm, ← div_eq_inv_mul,
+      div_le_one (by positivity)]
+    exact (show ‖y‖ < (n : ℝ) + 1 from hy).le
+
+/-- `|(G s) log (G s)| ≤ |G log G| + G` for `G ≥ 0` and `s ∈ [0, 1]`. -/
+private theorem abs_mul_mul_log_le {G s : ℝ} (hG : 0 ≤ G) (hs0 : 0 ≤ s) (hs1 : s ≤ 1) :
+    |G * s * Real.log (G * s)| ≤ |G * Real.log G| + G := by
+  rcases hG.eq_or_lt with rfl | hG'
+  · simp
+  rcases hs0.eq_or_lt with rfl | hs'
+  · simp only [mul_zero, zero_mul, abs_zero]; positivity
+  rw [Real.log_mul hG'.ne' hs'.ne']
+  have e : G * s * (Real.log G + Real.log s) = s * (G * Real.log G) + G * (Real.log s * s) := by
+    ring
+  rw [e]
+  have h1 := Real.abs_log_mul_self_lt s hs' hs1
+  calc |s * (G * Real.log G) + G * (Real.log s * s)|
+      ≤ |s * (G * Real.log G)| + |G * (Real.log s * s)| := abs_add_le _ _
+    _ = s * |G * Real.log G| + G * |Real.log s * s| := by
+        rw [abs_mul s (G * Real.log G), abs_mul G (Real.log s * s), abs_of_nonneg hs0,
+          abs_of_nonneg hG]
+    _ ≤ 1 * |G * Real.log G| + G * 1 := by gcongr
+    _ = |G * Real.log G| + G := by ring
+
+/-- The inequality for a bounded `C¹` function of finite energy, from the defining class by the
+cutoffs `g χ n` and dominated convergence. -/
+private theorem HasLogSobolev.entropy_sq_le_of_abs_le [IsProbabilityMeasure ν]
+    (h : HasLogSobolev ν c) {g : E → ℝ} (hg : ContDiff ℝ 1 g) {M : ℝ} (hM : ∀ x, |g x| ≤ M)
+    (hdg : Integrable (fun x => ‖fderiv ℝ g x‖ ^ 2) ν) :
+    entropy ν (fun x => g x ^ 2) ≤ 2 * c * ∫ x, ‖fderiv ℝ g x‖ ^ 2 ∂ν := by
+  obtain ⟨χ, K, hχc, hχs, hχ01, hχd, hχ1⟩ := exists_cutoff (E := E)
+  have hgd : Differentiable ℝ g := hg.differentiable one_ne_zero
+  let gn : ℕ → E → ℝ := fun n x => g x * χ n x
+  have hgnc (n : ℕ) : ContDiff ℝ 1 (gn n) := hg.mul (hχc n)
+  have hgn_abs (n : ℕ) (x : E) : |gn n x| ≤ M := by
+    obtain ⟨h0, h1⟩ := hχ01 n x
+    rw [abs_mul, abs_of_nonneg h0]
+    exact (mul_le_of_le_one_right (abs_nonneg _) h1).trans (hM x)
+  have hgn_d (n : ℕ) : ∃ M', ∀ x, ‖fderiv ℝ (gn n) x‖ ≤ M' :=
+    ((hgnc n).continuous_fderiv one_ne_zero).bounded_above_of_compact_support
+      ((hχs n).mul_left.fderiv (𝕜 := ℝ))
+  have hgn_dsq (n : ℕ) (x : E) :
+      ‖fderiv ℝ (gn n) x‖ ^ 2 ≤ 2 * ‖fderiv ℝ g x‖ ^ 2 + 2 * (M * K) ^ 2 := by
+    have hd : fderiv ℝ (gn n) x = g x • fderiv ℝ (χ n) x + χ n x • fderiv ℝ g x :=
+      fderiv_fun_mul (hgd x) (((hχc n).differentiable one_ne_zero) x)
+    obtain ⟨h0, h1⟩ := hχ01 n x
+    have hb : ‖fderiv ℝ (gn n) x‖ ≤ M * K + ‖fderiv ℝ g x‖ := by
+      rw [hd]
+      refine (norm_add_le _ _).trans (add_le_add ?_ ?_)
+      · rw [norm_smul, Real.norm_eq_abs]
+        exact mul_le_mul (hM x) (hχd n x) (norm_nonneg _) ((abs_nonneg _).trans (hM x))
+      · rw [norm_smul, Real.norm_of_nonneg h0]
+        exact mul_le_of_le_one_left (norm_nonneg _) h1
+    have h2 := pow_le_pow_left₀ (norm_nonneg _) hb 2
+    nlinarith [sq_nonneg (M * K - ‖fderiv ℝ g x‖)]
+  have hev (x : E) : ∀ᶠ n in atTop, gn n x = g x ∧ fderiv ℝ (gn n) x = fderiv ℝ g x := by
+    filter_upwards [hχ1 x] with n hn
+    have : gn n =ᶠ[𝓝 x] g := hn.mono fun y hy => by simp only [gn, hy, mul_one]
+    exact ⟨this.eq_of_nhds, this.fderiv_eq⟩
+  have hineq (n : ℕ) : entropy ν (fun x => gn n x ^ 2) ≤
+      2 * c * ∫ x, ‖fderiv ℝ (gn n) x‖ ^ 2 ∂ν :=
+    h.entropy_sq_le (gn n) (hgnc n) ⟨M, hgn_abs n⟩ (hgn_d n)
+  have hconst {F : ℕ → E → ℝ} {f : E → ℝ} (hF : ∀ x, ∀ᶠ n in atTop, F n x = f x) :
+      ∀ᵐ x ∂ν, Tendsto (fun n => F n x) atTop (𝓝 (f x)) :=
+    ae_of_all _ fun x => tendsto_const_nhds.congr' ((hF x).mono fun n hn => hn.symm)
+  have hsq (n : ℕ) (x : E) : gn n x ^ 2 ≤ M ^ 2 := by
+    rw [← sq_abs]
+    exact pow_le_pow_left₀ (abs_nonneg _) (hgn_abs n x) 2
+  have L1 : Tendsto (fun n => ∫ x, gn n x ^ 2 ∂ν) atTop (𝓝 (∫ x, g x ^ 2 ∂ν)) := by
+    refine tendsto_integral_of_dominated_convergence (fun _ => M ^ 2)
+      (fun n => ((hgnc n).continuous.pow 2).aestronglyMeasurable) (integrable_const _)
+      (fun n => ae_of_all _ fun x => ?_) (hconst fun x => (hev x).mono fun n hn => by rw [hn.1])
+    rw [Real.norm_of_nonneg (sq_nonneg _)]
+    exact hsq n x
+  have L2 : Tendsto (fun n => ∫ x, gn n x ^ 2 * Real.log (gn n x ^ 2) ∂ν) atTop
+      (𝓝 (∫ x, g x ^ 2 * Real.log (g x ^ 2) ∂ν)) := by
+    refine tendsto_integral_of_dominated_convergence (fun _ => (M ^ 2) ^ 2 + 1)
+      (fun n => (Real.continuous_mul_log.comp ((hgnc n).continuous.pow 2)).aestronglyMeasurable)
+      (integrable_const _) (fun n => ae_of_all _ fun x => ?_)
+      (hconst fun x => (hev x).mono fun n hn => by rw [hn.1])
+    rw [Real.norm_eq_abs]
+    refine (Real.abs_mul_log_le_sq_add_one (sq_nonneg _)).trans ?_
+    have := pow_le_pow_left₀ (sq_nonneg _) (hsq n x) 2
+    linarith
+  have L3 : Tendsto (fun n => ∫ x, ‖fderiv ℝ (gn n) x‖ ^ 2 ∂ν) atTop
+      (𝓝 (∫ x, ‖fderiv ℝ g x‖ ^ 2 ∂ν)) := by
+    refine tendsto_integral_of_dominated_convergence
+      (fun x => 2 * ‖fderiv ℝ g x‖ ^ 2 + 2 * (M * K) ^ 2)
+      (fun n => (((hgnc n).continuous_fderiv one_ne_zero).norm.pow 2).aestronglyMeasurable)
+      ((hdg.const_mul 2).add (integrable_const _)) (fun n => ae_of_all _ fun x => ?_)
+      (hconst fun x => (hev x).mono fun n hn => by rw [hn.2])
+    rw [Real.norm_of_nonneg (sq_nonneg _)]
+    exact hgn_dsq n x
+  exact le_of_tendsto_of_tendsto (L2.sub ((Real.continuous_mul_log.tendsto _).comp L1))
+    (L3.const_mul _) (Eventually.of_forall hineq)
+
+omit [FiniteDimensional ℝ E] [MeasurableSpace E] [BorelSpace E] in
+/-- The sine truncation `c sin (f / c)` of a `C¹` function `f`, for `c > 0`: its square is at
+most `f²` and `c²`, and its gradient norm is at most that of `f`. -/
+private theorem sineTrunc_le {f : E → ℝ} (hf : ContDiff ℝ 1 f) {c : ℝ} (hc : 0 < c) (x : E) :
+    (c * Real.sin (c⁻¹ * f x)) ^ 2 ≤ f x ^ 2 ∧ (c * Real.sin (c⁻¹ * f x)) ^ 2 ≤ c ^ 2 ∧
+      ‖fderiv ℝ (fun x => c * Real.sin (c⁻¹ * f x)) x‖ ^ 2 ≤ ‖fderiv ℝ f x‖ ^ 2 := by
+  refine ⟨?_, ?_, ?_⟩
+  · have : |c * Real.sin (c⁻¹ * f x)| ≤ |f x| := by
+      rw [abs_mul, abs_of_pos hc]
+      calc c * |Real.sin (c⁻¹ * f x)| ≤ c * |c⁻¹ * f x| :=
+            mul_le_mul_of_nonneg_left Real.abs_sin_le_abs hc.le
+        _ = |f x| := by
+            rw [abs_mul, abs_inv, abs_of_pos hc, ← mul_assoc, mul_inv_cancel₀ hc.ne', one_mul]
+    simpa only [sq_abs] using pow_le_pow_left₀ (abs_nonneg _) this 2
+  · have : |c * Real.sin (c⁻¹ * f x)| ≤ c := by
+      rw [abs_mul, abs_of_pos hc]
+      exact mul_le_of_le_one_right hc.le (Real.abs_sin_le_one _)
+    simpa only [sq_abs] using pow_le_pow_left₀ (abs_nonneg _) this 2
+  · have h := ((((hf.differentiable one_ne_zero) x).hasFDerivAt.const_mul c⁻¹).sin.const_mul
+      c).fderiv
+    have h' : ‖fderiv ℝ (fun x => c * Real.sin (c⁻¹ * f x)) x‖ ≤ ‖fderiv ℝ f x‖ := by
+      rw [h, norm_smul, norm_smul, norm_smul, Real.norm_eq_abs, Real.norm_eq_abs,
+        Real.norm_eq_abs, abs_inv, abs_of_pos hc]
+      calc c * (|Real.cos (c⁻¹ * f x)| * (c⁻¹ * ‖fderiv ℝ f x‖))
+          = (c * c⁻¹) * (|Real.cos (c⁻¹ * f x)| * ‖fderiv ℝ f x‖) := by ring
+        _ = |Real.cos (c⁻¹ * f x)| * ‖fderiv ℝ f x‖ := by rw [mul_inv_cancel₀ hc.ne', one_mul]
+        _ ≤ 1 * ‖fderiv ℝ f x‖ :=
+            mul_le_mul_of_nonneg_right (Real.abs_cos_le_one _) (norm_nonneg _)
+        _ = ‖fderiv ℝ f x‖ := one_mul _
+    exact pow_le_pow_left₀ (norm_nonneg _) h' 2
+
+/-- The sine truncations at scales `n + 1` converge pointwise to the identity. -/
+private theorem tendsto_sineTrunc (y : ℝ) :
+    Tendsto (fun n : ℕ => ((n : ℝ) + 1) * Real.sin (((n : ℝ) + 1)⁻¹ * y)) atTop (𝓝 y) := by
+  have hs : Tendsto (fun n : ℕ => ((n : ℝ) + 1)⁻¹ * y) atTop (𝓝 0) := by
+    simpa only [one_div, zero_mul] using tendsto_one_div_add_atTop_nhds_zero_nat.mul_const y
+  have h := (tendsto_const_nhds (x := y)).mul ((Real.continuous_sinc.tendsto 0).comp hs)
+  rw [Real.sinc_zero, mul_one] at h
+  refine h.congr fun n => ?_
+  have hn : ((n : ℝ) + 1) ≠ 0 := by positivity
+  by_cases hy : y = 0
+  · simp [hy]
+  · simp only [Function.comp]
+    rw [Real.sinc_of_ne_zero (mul_ne_zero (inv_ne_zero hn) hy)]
+    field_simp
+
+variable [IsProbabilityMeasure ν] {g : E → ℝ}
+
+omit [FiniteDimensional ℝ E] [IsProbabilityMeasure ν] in
+/-- The sine truncations `g_N = (N + 1) sin (g / (N + 1))` of a finite-energy `C¹` function: they
+are bounded, `C¹`, with `g_N² ≤ g²` and `‖∇g_N‖² ≤ ‖∇g‖²`, and tend to `g` pointwise. -/
+private theorem sineTrunc_facts (hg : ContDiff ℝ 1 g) (hg2 : Integrable (fun x => g x ^ 2) ν)
+    (hdg : Integrable (fun x => ‖fderiv ℝ g x‖ ^ 2) ν) (n : ℕ) :
+    let gN : E → ℝ := fun x => ((n : ℝ) + 1) * Real.sin (((n : ℝ) + 1)⁻¹ * g x)
+    ContDiff ℝ 1 gN ∧ (∀ x, |gN x| ≤ (n : ℝ) + 1) ∧ (∀ x, gN x ^ 2 ≤ g x ^ 2) ∧
+      Integrable (fun x => gN x ^ 2) ν ∧
+      (∀ x, ‖fderiv ℝ gN x‖ ^ 2 ≤ ‖fderiv ℝ g x‖ ^ 2) ∧
+      Integrable (fun x => ‖fderiv ℝ gN x‖ ^ 2) ν := by
+  intro gN
+  have hc : (0 : ℝ) < (n : ℝ) + 1 := by positivity
+  have hcd : ContDiff ℝ 1 gN := contDiff_const.mul ((contDiff_const.mul hg).sin)
+  have hsq (x : E) : gN x ^ 2 ≤ g x ^ 2 := (sineTrunc_le hg hc x).1
+  have hdf (x : E) : ‖fderiv ℝ gN x‖ ^ 2 ≤ ‖fderiv ℝ g x‖ ^ 2 := (sineTrunc_le hg hc x).2.2
+  refine ⟨hcd, fun x => ?_, hsq, ?_, hdf, ?_⟩
+  · rw [← abs_of_pos hc]
+    exact sq_le_sq.mp (sineTrunc_le hg hc x).2.1
+  · refine hg2.mono' (hcd.continuous.pow 2).aestronglyMeasurable (ae_of_all _ fun x => ?_)
+    rw [Real.norm_of_nonneg (sq_nonneg _)]
+    exact hsq x
+  · refine hdg.mono' ((hcd.continuous_fderiv one_ne_zero).norm.pow 2).aestronglyMeasurable
+      (ae_of_all _ fun x => ?_)
+    rw [Real.norm_of_nonneg (sq_nonneg _)]
+    exact hdf x
+
+/-- **A logarithmic Sobolev inequality controls the entropy of every finite-energy function.** If
+`ν` satisfies `HasLogSobolev ν c` and `g` is `C¹` with `g²` and `‖∇g‖²` integrable, then
+`g² log g²` is integrable, so `Ent_ν (g²)` is not a junk value. The proof applies the inequality
+to the bounded truncations `(N + 1) sin (g / (N + 1))`, whose energy is at most that of `g`, and
+uses Fatou's lemma. For the standard Gaussian this is
+`NLAlib.integrable_sq_mul_log_sq_stdGaussian`.
+Port of `NLAlib.HasEuclideanLogSobolev.integrable_sq_mul_log_sq`. -/
+theorem HasLogSobolev.integrable_sq_mul_log_sq (h : HasLogSobolev ν c) (hg : ContDiff ℝ 1 g)
+    (hg2 : Integrable (fun x => g x ^ 2) ν) (hdg : Integrable (fun x => ‖fderiv ℝ g x‖ ^ 2) ν) :
+    Integrable (fun x => g x ^ 2 * Real.log (g x ^ 2)) ν := by
+  let gN : ℕ → E → ℝ := fun n x => ((n : ℝ) + 1) * Real.sin (((n : ℝ) + 1)⁻¹ * g x)
+  have hF (n : ℕ) := sineTrunc_facts hg hg2 hdg n
+  have hNlog (n : ℕ) : Integrable (fun x => gN n x ^ 2 * Real.log (gN n x ^ 2)) ν := by
+    obtain ⟨hcd, habs, -⟩ := hF n
+    refine Integrable.of_bound
+      (Real.continuous_mul_log.comp (hcd.continuous.pow 2)).aestronglyMeasurable
+      ((((n : ℝ) + 1) ^ 2) ^ 2 + 1) (ae_of_all _ fun x => ?_)
+    rw [Real.norm_eq_abs]
+    refine (Real.abs_mul_log_le_sq_add_one (sq_nonneg _)).trans ?_
+    have h1 : gN n x ^ 2 ≤ ((n : ℝ) + 1) ^ 2 := by
+      rw [← sq_abs]
+      exact pow_le_pow_left₀ (abs_nonneg _) (habs x) 2
+    have := pow_le_pow_left₀ (sq_nonneg _) h1 2
+    linarith
+  set M := ∫ x, g x ^ 2 ∂ν
+  set B := 2 * c * ∫ x, ‖fderiv ℝ g x‖ ^ 2 ∂ν + M ^ 2 + 2
+  let Fx : E → ℝ := fun x => g x ^ 2 * Real.log (g x ^ 2) + 1
+  let FN : ℕ → E → ℝ := fun n x => gN n x ^ 2 * Real.log (gN n x ^ 2) + 1
+  have hF0 (x : E) : 0 ≤ Fx x := by
+    have h := Real.self_sub_one_le_mul_log (sq_nonneg (g x))
+    simp only [Fx]
+    nlinarith [sq_nonneg (g x)]
+  have hFN0 (n : ℕ) (x : E) : 0 ≤ FN n x := by
+    have h := Real.self_sub_one_le_mul_log (sq_nonneg (gN n x))
+    simp only [FN]
+    nlinarith [sq_nonneg (gN n x)]
+  have hFNbound (n : ℕ) : ∫ x, FN n x ∂ν ≤ B := by
+    obtain ⟨hcd, habs, hsq, hN2, hdf, hNdf⟩ := hF n
+    have hlsi := h.entropy_sq_le_of_abs_le hcd habs hNdf
+    rw [entropy] at hlsi
+    have hm0 : 0 ≤ ∫ x, gN n x ^ 2 ∂ν := integral_nonneg fun x => sq_nonneg _
+    have hmLog := Real.abs_mul_log_le_sq_add_one hm0
+    have hmSq := pow_le_pow_left₀ hm0 (integral_mono hN2 hg2 hsq) 2
+    have he := mul_le_mul_of_nonneg_left (integral_mono hNdf hdg hdf)
+      (by positivity : (0 : ℝ) ≤ 2 * c)
+    have ha := le_abs_self ((∫ x, gN n x ^ 2 ∂ν) * Real.log (∫ x, gN n x ^ 2 ∂ν))
+    simp only [FN]
+    rw [integral_add (hNlog n) (integrable_const _), integral_const, probReal_univ, one_smul]
+    linarith
+  have hFatou : ∫⁻ x, ENNReal.ofReal (Fx x) ∂ν ≤
+      liminf (fun n => ∫⁻ x, ENNReal.ofReal (FN n x) ∂ν) atTop := by
+    calc ∫⁻ x, ENNReal.ofReal (Fx x) ∂ν
+        = ∫⁻ x, liminf (fun n => ENNReal.ofReal (FN n x)) atTop ∂ν := by
+          refine lintegral_congr fun x => (Tendsto.liminf_eq ?_).symm
+          have hlim : Tendsto (fun n => gN n x) atTop (𝓝 (g x)) := tendsto_sineTrunc (g x)
+          exact (ENNReal.continuous_ofReal.tendsto _).comp
+            (((Real.continuous_mul_log.tendsto _).comp (hlim.pow 2)).add tendsto_const_nhds)
+      _ ≤ _ := lintegral_liminf_le fun n => ENNReal.measurable_ofReal.comp
+          ((Real.continuous_mul_log.comp ((hF n).1.continuous.pow 2)).add
+            continuous_const).measurable
+  have hLiminf : liminf (fun n => ∫⁻ x, ENNReal.ofReal (FN n x) ∂ν) atTop ≤ ENNReal.ofReal B := by
+    refine (liminf_le_liminf (Eventually.of_forall fun n => ?_)).trans_eq (liminf_const _)
+    have hi : Integrable (FN n) ν := (hNlog n).add (integrable_const _)
+    rw [← ofReal_integral_eq_lintegral_ofReal hi (ae_of_all _ (hFN0 n))]
+    exact ENNReal.ofReal_le_ofReal (hFNbound n)
+  have hFi := (lintegral_ofReal_ne_top_iff_integrable
+    ((Real.continuous_mul_log.comp (hg.continuous.pow 2)).add continuous_const).aestronglyMeasurable
+    (ae_of_all _ hF0)).1 (ne_top_of_le_ne_top ENNReal.ofReal_ne_top (hFatou.trans hLiminf))
+  exact (hFi.sub (integrable_const (1 : ℝ))).congr (ae_of_all _ fun x => by simp)
+
+/-- **The logarithmic Sobolev inequality for finite-energy functions.** If `ν` satisfies
+`HasLogSobolev ν c`, then `Ent_ν (g²) ≤ 2 c E_ν ‖∇g‖²` for every `C¹` function `g` with `g²` and
+`‖∇g‖²` integrable, not only for the bounded test functions of the definition; `g² log g²` is then
+integrable (`NLAlib.HasLogSobolev.integrable_sq_mul_log_sq`). The truncations
+`(N + 1) sin (g / (N + 1))` and dominated convergence. For the standard Gaussian this is
+`NLAlib.entropy_sq_le_two_mul_integral_norm_fderiv_sq_stdGaussian`.
+Port of `NLAlib.HasEuclideanLogSobolev.inequality_of_integrable`. -/
+theorem HasLogSobolev.entropy_sq_le_of_integrable (h : HasLogSobolev ν c) (hg : ContDiff ℝ 1 g)
+    (hg2 : Integrable (fun x => g x ^ 2) ν) (hdg : Integrable (fun x => ‖fderiv ℝ g x‖ ^ 2) ν) :
+    entropy ν (fun x => g x ^ 2) ≤ 2 * c * ∫ x, ‖fderiv ℝ g x‖ ^ 2 ∂ν := by
+  let gN : ℕ → E → ℝ := fun n x => ((n : ℝ) + 1) * Real.sin (((n : ℝ) + 1)⁻¹ * g x)
+  have hF (n : ℕ) := sineTrunc_facts hg hg2 hdg n
+  have hglog := h.integrable_sq_mul_log_sq hg hg2 hdg
+  have hlim (x : E) : Tendsto (fun n => gN n x) atTop (𝓝 (g x)) := tendsto_sineTrunc (g x)
+  have hineq (n : ℕ) : entropy ν (fun x => gN n x ^ 2) ≤
+      2 * c * ∫ x, ‖fderiv ℝ g x‖ ^ 2 ∂ν := by
+    obtain ⟨hcd, habs, hsq, hN2, hdf, hNdf⟩ := hF n
+    exact (h.entropy_sq_le_of_abs_le hcd habs hNdf).trans
+      (mul_le_mul_of_nonneg_left (integral_mono hNdf hdg hdf) (by positivity))
+  have L1 : Tendsto (fun n => ∫ x, gN n x ^ 2 ∂ν) atTop (𝓝 (∫ x, g x ^ 2 ∂ν)) := by
+    refine tendsto_integral_of_dominated_convergence (fun x => g x ^ 2)
+      (fun n => ((hF n).1.continuous.pow 2).aestronglyMeasurable) hg2
+      (fun n => ae_of_all _ fun x => ?_) (ae_of_all _ fun x => (hlim x).pow 2)
+    rw [Real.norm_of_nonneg (sq_nonneg _)]
+    exact (hF n).2.2.1 x
+  have L2 : Tendsto (fun n => ∫ x, gN n x ^ 2 * Real.log (gN n x ^ 2) ∂ν) atTop
+      (𝓝 (∫ x, g x ^ 2 * Real.log (g x ^ 2) ∂ν)) := by
+    refine tendsto_integral_of_dominated_convergence
+      (fun x => |g x ^ 2 * Real.log (g x ^ 2)| + g x ^ 2)
+      (fun n => (Real.continuous_mul_log.comp ((hF n).1.continuous.pow 2)).aestronglyMeasurable)
+      (hglog.abs.add hg2) (fun n => ae_of_all _ fun x => ?_)
+      (ae_of_all _ fun x => (Real.continuous_mul_log.tendsto _).comp ((hlim x).pow 2))
+    rw [Real.norm_eq_abs]
+    have hsq := (hF n).2.2.1 x
+    by_cases hx : g x = 0
+    · have h0 : gN n x = 0 := by simp only [gN, hx, mul_zero, Real.sin_zero]
+      simp only [h0, hx]
+      norm_num
+    have hpos : 0 < g x ^ 2 := by positivity
+    have e : gN n x ^ 2 = g x ^ 2 * (gN n x ^ 2 / g x ^ 2) := by field_simp
+    rw [e]
+    exact abs_mul_mul_log_le hpos.le (by positivity) ((div_le_one hpos).2 hsq)
+  exact le_of_tendsto (L2.sub ((Real.continuous_mul_log.tendsto _).comp L1))
+    (Eventually.of_forall hineq)
+
+end FiniteEnergy
 
 end NLAlib

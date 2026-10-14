@@ -29,11 +29,20 @@ Updated at every stopping point. Newest entry first within each section.
 
 ## Current
 
+**Probability round started, 2026-10-14.** The maintainer decided §2 of `docs/PORT_PROBABILITY.md`
+(all ten as recommended; D4 revised: `RCLike` wherever the proof allows, Gaussian and Haar matrix
+laws real for now with complex analogues in view). `CONTRIBUTING.md` §5.1 and §5.2 ("Numerical
+bounds") and `Mathlib-deviations.md` entries 12 and 13 are updated to match. Design checkpoint
+for the maintainer after P3. Now: P0 design note.
+
+| Stage | File | Owner | State | Notes |
+|---|---|---|---|---|
+| P0 | design note `docs/design/Probability-P0.md` | orchestrator | in progress | |
+
 **Matrix layer complete, 2026-10-14** (branch `scaffold`, local commits, not pushed): stages M0 to
 M10 proved, 144 files, nothing scaffolded, all checks green. Read `docs/design/Matrix-REPORT.md`
 first. No design note was approved by the maintainer; the decisions to confirm are in §3 of the
-report. Next: the Probability layer (concentration), which has no brief yet; the maintainer's inputs
-for it are under "Standing instructions".
+report.
 
 | Stage | File | Owner | State | Notes |
 |---|---|---|---|---|

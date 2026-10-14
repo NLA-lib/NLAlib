@@ -155,7 +155,8 @@ Standard suffixes `_eq`, `_le`, `_lt`, `_iff`, `_ne_zero`, `_pos`, `_nonneg`, `_
 `integrable_`, `variance_`. Hypotheses are `h`-prefixed (`hA`, `hQ`, `hk`).
 
 Never name a declaration after its source, its chapter, its author, a paper's lemma number or a
-project. The source goes in the docstring. Named quantities and tail expressions are definitions
+project, and never after how good its bound is (`_sharp`, `_improved`; §5.2 "Numerical
+bounds"). The source goes in the docstring. Named quantities and tail expressions are definitions
 named for what they are (`bernsteinTail d v L t`, `conditionNumber A`), never inline formulas
 repeated across statements.
 
@@ -167,8 +168,11 @@ release.
 ### 5.1 Types
 
 - Scalars: `{𝕜 : Type*} [RCLike 𝕜]` for all deterministic matrix theory, including matrix
-  functions and the concentration layer's vocabulary. ℝ only where the mathematics is real:
-  Gaussian and Rademacher laws, the real spectral quantities they feed. A real corollary of a `𝕜`
+  functions, and in the probability layers wherever the proof allows: random vectors, isotropy,
+  moments, quadratic forms, matrix-valued integrals, matrix concentration. ℝ only where the
+  object is a real number (scalar MGFs and tails, the norm or singular value a tail is about) and,
+  for now, for the Gaussian and Haar matrix laws, whose interfaces are still stated over `𝕜`
+  (maintainer, 2026-10-14; `docs/PORT_PROBABILITY.md` D4). A real corollary of a `𝕜`
   theorem is stated only when a downstream user needs it in `ᵀ` form that `simp` cannot produce.
 - Index types: `{m n : Type*} [Fintype m] [Fintype n]` plus `[DecidableEq _]` where Mathlib
   needs it. `Fin k` is appropriate where its order or recursion carries content: the `k` sorted
@@ -211,17 +215,33 @@ release.
   failure probability in closed form (`μ.real {ω | ¬ good ω} ≤ 2 d exp (−ε² k / (3 L))`); the
   "`k ≥ …` suffices" form is a corollary. Inverting the tail is where ugly constants and side
   conditions appear, so it is done once, not by every consumer.
-- Constants, in order of preference:
-  1. The source's constant, when the source gives one and the proof reaches it.
-  2. An explicit constant the proof reaches, **behind a name** when it is not the source's or is
-     not small: `gaussianEmbeddingSampleSize d ε δ := …`, `sparseEmbeddingConstant : ℝ := …`,
-     with the docstring stating the source's value and the gap. Improving the proof then changes
-     one definition and no signature.
-  3. A universal constant with no explicit value in the literature becomes a named
+- **Numerical bounds** (maintainer, 2026-10-14; `docs/PORT_PROBABILITY.md` D5). A later
+  improvement, and a new proof whose bound is incomparable with the old one, must fit without a
+  rename:
+  1. A name says what the statement is, never how good it is: no `_sharp`, `_improved`,
+     `_tight`, `_v2`, `_strong`. Classical names stay where the subject uses them (`bernstein`,
+     `hoeffding`, `hansonWright`, `freedman`).
+  2. The source's constant, when the proof reaches it and it is small, is written in the
+     statement (Hoeffding's `exp (-t ^ 2 / (2 * c))`). Any other constant or tail function is a
+     definition,
+     `irreducible_def hansonWrightConstant : ℝ := …`, `matrixBernsteinTail d v L t : ℝ`, whose
+     docstring gives the source's value, the value proved and the gap. Consumers use only its API,
+     chosen to stay true when the bound improves: positivity, monotonicity where a consumer inverts
+     the tail, and a one-sided explicit comparison
+     (`1 / (256 * exp 2) ≤ hansonWrightConstant`). An improvement of the same shape changes the
+     body and that comparison, no statement and no name.
+  3. A universal constant with no explicit value in the literature is a named
      `noncomputable def` chosen from an existence lemma quantified outside all dimensions, and is
-     documented as such.
-  A bare `∃ C` never appears in a statement: quantified after the dimensions it is unusable, and
-  it hides loose proofs.
+     documented as such. A bare `∃ C` never appears in a statement: quantified after the
+     dimensions it is unusable, and it hides loose proofs.
+  4. Incomparable bounds coexist, each named by what distinguishes it: its hypothesis
+     (`_of_bounded`, `_of_variance_le`) or the parameter its bound is in (`_intrinsicDim`). Each
+     docstring says in which regime it is better and names the other.
+  5. A statement whose bound is the minimum of two others is added only when both have identical
+     hypotheses and side conditions.
+  6. A dominated result (the new bound is at least as good in every regime) is reproved from the
+     new one and keeps its name when consumers cite its simpler form; otherwise it becomes
+     `@[deprecated]` and is removed after a release.
 - Spectral statements never quantify over `hA.eigenvectorBasis i`; they take an eigenvector `u`
   with `A *ᵥ u = c • u` and `‖WithLp.toLp 2 u‖ = 1`, an invariance equation `A * U = U * M` with
   `HasOrthonormalCols U`, or speak of `eigenvalue A k`.

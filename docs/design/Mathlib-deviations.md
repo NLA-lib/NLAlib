@@ -186,9 +186,37 @@ None of these was approved by the maintainer when it was made. Status is given p
 - **NLAlib.** `Matrix.instMeasurableSpace`, the product σ-algebra, as a global instance in
   `NLAlib/ForMathlib/MeasureTheory/Matrix.lean`.
 - **Risk.** If Mathlib adds an instance later, the two may differ syntactically.
-- **Status: open.** The Matrix layer does not import it; the statements that use it are in
-  `NLAlib/Probability/Measurability/Matrix.lean` (moved there by the maintainer, 2026-10-14).
-  Whether the instance should be global is a question for the Probability design.
+- **Why.** Mathlib has a global `TopologicalSpace (Matrix m n R)`
+  (`Mathlib/Topology/Instances/Matrix.lean`); the product σ-algebra is the measurable-space
+  counterpart, and it is the Borel σ-algebra of that topology for second-countable `R`
+  (the Borel instance in the same file). Transporting to `m → n → R` at each use is what the
+  prototype did and cost a lemma per statement.
+- **Status: kept (maintainer, 2026-10-14; `docs/PORT_PROBABILITY.md` D8).** The Matrix layer does
+  not import it; the statements that use it are in `NLAlib/Probability/Measurability/Matrix.lean`.
+  If Mathlib adds an instance, this one is deleted in its favour.
+
+## 13. Integrals of matrix-valued functions
+
+- **Mathlib.** `∫ ω, X ω ∂μ` and `μ[X | m]` need a `NormedAddCommGroup` and `NormedSpace ℝ`
+  instance on the codomain. On `Matrix m n 𝕜` Mathlib has only scoped ones
+  (`Matrix.Norms.Frobenius`, `Matrix.Norms.Elementwise`, `Matrix.Norms.L2Operator`), so a matrix
+  integral cannot be written without opening one.
+- **NLAlib.** Every file that integrates or conditions a matrix-valued function opens
+  `open scoped Matrix.Norms.Frobenius` (one scope, library-wide; never another for this purpose).
+  Statements never mention the norm itself; they use only the integral, whose value is the same
+  for every norm (the Bochner integral of a function into a finite-dimensional space does not
+  depend on the norm), and `NLAlib/Probability/MatrixIntegral.lean` proves the bridges that do not
+  mention any norm: `(∫ X) i j = ∫ X · i j`, integrability iff entrywise integrability, trace,
+  conjugate transpose and the Loewner order commuting with the integral.
+- **Why.** The Frobenius instance covers every shape and is an inner product space, so Mathlib's
+  integral, conditional-expectation and Jensen API applies as is. The alternative, an entrywise
+  `Matrix.of fun i j => ∫ ω, X ω i j ∂μ` with its own API, would rebuild conditional expectation
+  and Jensen. (Maintainer, 2026-10-14; `docs/PORT_PROBABILITY.md` D10.)
+- **Cost.** A user must open the scope to state a matrix expectation, and a statement elaborated
+  under another matrix norm scope would carry a different (propositionally equal) instance; the
+  bridge lemmas are the way across.
+- **Bridges.** `Matrix.integral_apply` and the integrability lemmas in
+  `NLAlib/Probability/MatrixIntegral.lean`.
 
 ## Small spelling choices
 

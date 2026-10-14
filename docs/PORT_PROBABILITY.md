@@ -5,7 +5,9 @@ For the orchestrating agent building `NLAlib/Probability/` and `NLAlib/RandomMat
 exports and what it learned), `docs/design/Mathlib-deviations.md`, and the two surveys of the
 prototype this brief is built on: `docs/port/inventory-probability.md` (the prototype's
 `Probability/` and `RandomMatrix/`) and `docs/port/inventory-sketching.md` (`Sketching/` and the
-layers that consume randomness). Status: **draft, 2026-10-14; §2 awaits the maintainer.**
+layers that consume randomness). Status: **§2 decided by the maintainer, 2026-10-14** (all ten
+as recommended, D4 revised to `𝕜` wherever the proof allows); stages in progress
+(`docs/port/status.md`).
 
 ## 0. What this is and is not
 
@@ -59,7 +61,9 @@ amendments the Matrix report proposed, applied here from the start:
 
 Each with the alternatives and a recommendation; "rework" says what changing it later would cost.
 Reviewed by a Fable agent on 2026-10-14; its corrections are folded in (D2, D3, D5, D6, D7) and
-it added D10.
+it added D10. **Decided by the maintainer on 2026-10-14: D1 to D3 and D5 to D10 as recommended
+(D5 with `irreducible_def`, D7 (a), D10 (a)); D4 as revised below.** A new question of this kind
+is added here, marked open, and the work that depends on it waits.
 
 **D1. Scope.** (a) Probability and RandomMatrix in one round, as above, with a design checkpoint
 for the maintainer after P3 (scalar, vector and quadratic-form concentration done, before matrix
@@ -105,12 +109,24 @@ Alternative: state on the canonical measure with `_of_hasLaw` corollaries (the p
   finite is vacuous; probability or finiteness is a hypothesis wherever it is not implied (§3.2).
 *Rework:* every quantitative statement.
 
-**D4. Fields.** Random scalars and random vectors are real (`Ω → ℝ`, `Ω → n → ℝ`). Matrix
-concentration is over `𝕜`: sums of random Hermitian matrices over `𝕜`, real random coefficients
-times deterministic matrices over `𝕜`. Random-matrix laws (Gaussian matrices, Haar frames) are
-defined over `ℝ` in this round; the interfaces they satisfy (isotropy, invariance, frames) are
-stated over `𝕜`, so complex Gaussian and complex Haar laws are later instances, not redesigns.
-*Recommendation:* as stated. *Rework:* high for the interfaces, low for the laws.
+**D4. Fields.** *Decided (maintainer, 2026-10-14): `RCLike` wherever the proof allows, above all
+in the lower levels; this replaces the draft's "random scalars and vectors are real".*
+- `{𝕜 : Type*} [RCLike 𝕜]` for random vectors `Ω → n → 𝕜` and everything about them that does
+  not need an order on the values: isotropy, second and fourth moments, `quadForm` and trace
+  estimation (Hutchinson), matrix-valued integrals and conditional expectations, the
+  sub-Gaussian-vector interface (stated through `re` of the pairing, so it covers every real
+  linear functional of a complex vector), and matrix concentration (sums of random Hermitian
+  matrices over `𝕜`, real or `𝕜` coefficients times deterministic matrices over `𝕜`).
+- Real where the object is a real number: scalar MGFs and tails (Mathlib's `HasSubgaussianMGF` is
+  for `Ω → ℝ`), and the real quantity a tail is about (`‖X‖²`, `re (quadForm A X)`, a
+  singular value).
+- The Gaussian and Haar matrix laws serve sketching and are used over `ℝ`; the theorems about
+  them are proved over `ℝ` in this round. The complex analogues are expected later, so the
+  interfaces these laws satisfy (isotropy, unitary invariance, frames) are over `𝕜`, and each law's
+  design note (R1, R5) chooses a carrier and a name that a complex version extends without a
+  rename (for example a field argument with only the real case proved, or a parallel definition
+  with the same API names); the choice is recorded in that note.
+*Rework:* high for the interfaces, low for the laws.
 
 **D5. Numerical bounds and naming.** Bounds begin in this round; later improvements and new
 proofs with incomparable bounds must fit without renaming. Proposed rules (to replace the

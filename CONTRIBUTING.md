@@ -187,8 +187,9 @@ release.
 ### 5.2 Shape
 
 - Every hypothesis explicit, minimal, and an instance of a named interface (§5.4). Nothing that
-  follows from another hypothesis (`(A + B).IsHermitian` next to `hA hB`; `Measurable X` next to
-  `HasLaw X ν μ`).
+  follows from another hypothesis (`(A + B).IsHermitian` next to `hA hB`; `Integrable X μ` next to
+  `HasSubgaussianMGF X c μ`; not `Measurable X` next to `HasLaw X ν μ`, which gives only
+  `AEMeasurable`).
 - Definitions are total, Mathlib-style (`⁻¹` of a singular matrix is `0`, `eigenvalue A k` is `0`
   for `k` out of range, `conditionNumber` of a singular matrix is the ratio to its smallest nonzero
   singular value); the theorem carries the hypothesis that excludes the junk value and the

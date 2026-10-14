@@ -57,120 +57,155 @@ amendments the Matrix report proposed, applied here from the start:
 
 ## 2. Decisions for the maintainer
 
-Each with the alternatives and a recommendation. "Rework" says what changing it later would cost.
+Each with the alternatives and a recommendation; "rework" says what changing it later would cost.
+Reviewed by a Fable agent on 2026-10-14; its corrections are folded in (D2, D3, D5, D6, D7) and
+it added D10.
 
-**D1. Scope.** (a) Probability and RandomMatrix in one round, as above; (b) Probability alone,
-RandomMatrix designed later. *Recommendation (a):* the Gaussian and Haar laws, their invariance
-and their moments are the same objects at vector and matrix level, and the user's main
-requirement (one interface per property, all distributions as instances) is a cross-layer
-design. *Rework:* low for the choice itself; high if (b) leads to interfaces RandomMatrix cannot
-use.
+**D1. Scope.** (a) Probability and RandomMatrix in one round, as above, with a design checkpoint
+for the maintainer after P3 (scalar, vector and quadratic-form concentration done, before matrix
+concentration and the random-matrix stages); (b) Probability alone, RandomMatrix designed later.
+*Recommendation (a):* the Gaussian and Haar laws, their invariance and their moments are the same
+objects at vector and matrix level, and one interface per property is a cross-layer design.
+*Rework:* low for the choice; high if (b) produces interfaces RandomMatrix cannot use.
 
-**D2. How randomness appears in statements.** (a) Random variables only: a theorem takes
-`X : Ω → E` with Mathlib's `HasLaw X ν μ` (or a property such as `HasSubgaussianMGF`), never the
-canonical space `E` with the measure `ν`; the measure form is `HasLaw.id`, never a twin. Discrete
-laws are measures (`PMF.toMeasure`), `PMF` appears only as a constructor. (b) State on the
-canonical measure, with `_of_hasLaw` corollaries (the prototype; 50 twins). *Recommendation (a).*
-*Rework:* every statement.
+**D2. How randomness appears in statements.** Every statement of the round follows these.
+- Random variables, not canonical spaces: a theorem takes `X : Ω → E` with Mathlib's
+  `HasLaw X ν μ` (or a property such as `HasSubgaussianMGF`); the measure form is `HasLaw.id`,
+  never a twin (the prototype has 50). Discrete laws are measures; `PMF` is only a constructor.
+- "i.i.d. with law `ν`" is the single hypothesis `HasLaw X (Measure.pi fun _ => ν) μ`, which
+  Mathlib equates with independence plus marginals (`iIndepFun_iff_hasLaw_pi_pi`). A matrix with
+  i.i.d. entries is `HasLaw X (gaussianMatrix m n) μ`, `gaussianMatrix` being the nested
+  `Measure.pi`. Independent coordinates with a property (not a law) stay two hypotheses:
+  `iIndepFun (fun i ω => X ω i) μ` and `∀ i, HasSubgaussianMGF (fun ω => X ω i) c μ`.
+- Proxies, variances and other scale parameters are `ℝ≥0`, as in Mathlib's `HasSubgaussianMGF`;
+  everything else is `ℝ`. The prototype's `⟨K ^ 2, _⟩` (30 statements) is not used.
+- `[IsProbabilityMeasure μ]` is assumed only when nothing else implies it (`HasLaw X ν μ` with a
+  probability `ν` does, as a lemma).
+- Measurability: `HasLaw` gives `AEMeasurable` only, so `Measurable X` beside it is not
+  redundant when a proof needs it (`CONTRIBUTING.md` §5.2's example is corrected accordingly).
+Alternative: state on the canonical measure with `_of_hasLaw` corollaries (the prototype).
+*Recommendation:* as listed. *Rework:* every statement.
 
 **D3. Tails and expectations.**
-- Tails in failure form, real-valued, with non-strict events:
-  `μ.real {ω | t ≤ f ω} ≤ bound`, `μ.real {ω | f ω ≤ t}`, `μ.real {ω | t ≤ |f ω - m|}`. Never the
-  success form `1 - δ ≤ …`, never `ENNReal.ofReal` or `.toReal` on the right. A non-strict event is
-  the stronger statement. `μ.real` of a non-measurable set is its outer measure, so a tail bound
-  never needs a measurability hypothesis on the event.
-- Expectations are Bochner integrals `∫ ω, f ω ∂μ`. **Every bound of the form `∫ f ≤ B` comes with
-  an integrability theorem, as a separate statement** (`integrable_…`, then `integral_…_le`).
-  Reason: the Bochner integral of a non-integrable function is `0`, a junk value, so for
-  nonnegative `f` the bound alone is true whenever `B ≥ 0` and says nothing; this is the same
-  hazard as the out-of-range eigenvalue (`Mathlib-deviations.md` §1). Alternative: lower
-  Lebesgue integrals `∫⁻` (no junk value, but values in `ℝ≥0∞` and no subtraction or variance).
-  *Recommendation:* the Bochner form with the integrability companion; `∫⁻` only where finiteness
-  is itself the question. *Rework:* every expectation statement.
+- Tails in failure form, real-valued, non-strict events: `μ.real {ω | t ≤ f ω} ≤ bound`,
+  `μ.real {ω | f ω ≤ t}`, `μ.real {ω | t ≤ |f ω - m|}`. Never the success form `1 - δ ≤ …`. A
+  non-strict event is the stronger statement, and `μ.real` of a non-measurable set is its outer
+  measure, so no measurability hypothesis on the event. Mathlib's Chernoff bound
+  `measure_ge_le_exp_mul_mgf` is in `ℝ≥0∞`; P0 provides the `μ.real` bridge.
+- Expectations are Bochner integrals. **Every upper bound `∫ f ≤ B` comes with integrability**:
+  as its own theorem (`integrable_…`, then `integral_…_le`, Mathlib's pattern), or as an API lemma
+  when a hypothesis already gives it (`HasSubgaussianMGF` gives `MemLp`). Reason: the Bochner
+  integral of a non-integrable function is `0`, so for nonnegative `f` the bound alone holds
+  whenever `B ≥ 0` and says nothing, the same hazard as the out-of-range eigenvalue
+  (`Mathlib-deviations.md` §1). Lower bounds `B ≤ ∫ f` are false, not vacuous, without
+  integrability, so there integrability is a hypothesis. Alternative: `∫⁻` in `ℝ≥0∞` (no junk
+  value, no subtraction or variance). *Recommendation:* Bochner with the companion; `∫⁻` only
+  where finiteness is the question.
+- A second junk value: `μ.real s = 0` when `μ s = ∞`, so a tail bound on a measure that is not
+  finite is vacuous; probability or finiteness is a hypothesis wherever it is not implied (§3.2).
+*Rework:* every quantitative statement.
 
 **D4. Fields.** Random scalars and random vectors are real (`Ω → ℝ`, `Ω → n → ℝ`). Matrix
 concentration is over `𝕜`: sums of random Hermitian matrices over `𝕜`, real random coefficients
 times deterministic matrices over `𝕜`. Random-matrix laws (Gaussian matrices, Haar frames) are
-defined over `ℝ` in this round, and the interfaces they satisfy (invariance, frames) are stated
-over `𝕜`, so complex Gaussian and complex Haar laws are later instances, not redesigns.
-Alternative: everything over `ℝ`, or Gaussian laws over `𝕜` now. *Recommendation:* as stated.
-*Rework:* high for the interfaces, low for the laws.
+defined over `ℝ` in this round; the interfaces they satisfy (isotropy, invariance, frames) are
+stated over `𝕜`, so complex Gaussian and complex Haar laws are later instances, not redesigns.
+*Recommendation:* as stated. *Rework:* high for the interfaces, low for the laws.
 
-**D5. Numerical bounds and naming.** Bounds begin in this round, and later improvements and
-incomparable new proofs must fit without renaming. Proposed rules (to enter `CONTRIBUTING.md`
-§4 and §5.2 when approved):
+**D5. Numerical bounds and naming.** Bounds begin in this round; later improvements and new
+proofs with incomparable bounds must fit without renaming. Proposed rules (to replace the
+"constants" item of `CONTRIBUTING.md` §5.2 and extend §4 when approved):
 1. **A name says what the statement is, never how good it is.** No `_sharp`, `_improved`,
-   `_tight`, `_v2`, `_new`. Classical names are kept where the subject uses them (`bernstein`,
+   `_tight`, `_v2`. Classical names are kept where the subject uses them (`bernstein`,
    `hoeffding`, `mcdiarmid`, `hansonWright`, `freedman`, `gordon`).
-2. **Constants and tail functions are definitions**, introduced with `irreducible_def`:
-   `hansonWrightConstant : ℝ`, `matrixBernsteinTail d v L t : ℝ`. The docstring records the
-   source's value, the value proved, and the gap. Consumers use only API lemmas that remain true
-   when the bound improves: positivity, and a one-sided explicit comparison
-   (`1 / (256 * exp 2) ≤ hansonWrightConstant` for a constant in an exponent,
-   `matrixBernsteinTail d v L t ≤ 2 * d * exp (…)` for a tail). An improvement of the same shape
-   changes a definition's body and one comparison lemma; no statement, no name.
+2. **Constants and tail functions are definitions**: `hansonWrightConstant : ℝ`,
+   `matrixBernsteinTail d v L t : ℝ`. The docstring gives the source's value, the value proved and
+   the gap. Each comes with the API consumers are allowed to use, chosen to stay true when the bound
+   improves: positivity, monotonicity where a consumer inverts the tail, and a one-sided explicit
+   comparison (`1 / (256 * exp 2) ≤ hansonWrightConstant`;
+   `matrixBernsteinTail d v L t ≤ 2 * d * exp (…)`). An improvement of the same shape changes the
+   body and the comparison lemma, no statement and no name. *Sub-choice:* `irreducible_def`,
+   which makes the API the only access (it works with `rw [foo_def]`, `norm_num [foo_def]`,
+   `positivity` given `foo_pos`), or a plain `def` with the API kept by review (what Mathlib
+   usually does). *Recommendation:* `irreducible_def`, because agents unfold what they can.
 3. **Incomparable bounds coexist**, each named by what distinguishes it: its hypothesis
    (`_of_bounded`, `_of_variance_le`) or the parameter its bound is in (`_intrinsicDim` against
-   the dimension form). Each docstring says in which regime it is the better bound and names the
-   other.
-4. **One canonical statement per result** for consumers who want the best available bound: an
-   unqualified theorem whose bound is a named function defined as the minimum of the available
-   bounds (for tails), or as the minimum of the sufficient sizes (for sample sizes: `k ≥ min k₁ k₂`
-   suffices because each `kᵢ` does). A new incomparable bound adds a term to the minimum; the
-   canonical statement gets stronger and keeps its name.
+   the dimension form). Each docstring says in which regime it wins and names the other.
+4. **No automatic "best of" statement.** A theorem whose bound is the minimum of two others is
+   added only when both have identical hypotheses and side conditions. (The draft proposed one
+   canonical minimum per result; the review showed it is unusable in general: matrix Bernstein's
+   intrinsic form takes a matrix `V` and a threshold on `t`, so the minimum of the two tails needs
+   the stronger hypotheses and a piecewise tail that no one can invert or cite.)
 5. **A dominated result** (the new bound is at least as good in every regime) is reproved from the
-   new one and keeps its name if consumers cite its simpler form; otherwise it is deprecated with
-   `@[deprecated]` and removed after a release.
-6. **Tail before sample size** (`CONTRIBUTING.md` §5.2, unchanged): the sample size is a named
-   definition with comparison lemmas.
-Alternative: rules 1–3 and 5 without rule 4 (no canonical minimum; consumers choose a bound).
-*Recommendation:* all six. *Rework:* every quantitative statement in this round and the next.
+   new one and keeps its name if consumers cite its simpler form; otherwise `@[deprecated]`, and
+   removed after a release.
+6. **Tail before sample size** (`CONTRIBUTING.md` §5.2): the sample size is a named definition with
+   its API; a sufficient-size corollary of each tail.
+*Rework:* every quantitative statement in this round and the next.
 
-**D6. The property interfaces** (CONTRIBUTING §5.4). Every theorem of the round takes one of these
-or a Mathlib notion, never a raw bundle. Names are proposals.
+**D6. The property interfaces** (`CONTRIBUTING.md` §5.4). Every theorem of the round takes one of
+these or a Mathlib notion, never a raw bundle. Names are proposals.
 
 | Interface | Form | Instances | Consumers |
 |---|---|---|---|
-| sub-Gaussian scalar | Mathlib's `HasSubgaussianMGF X c μ`, `c : ℝ≥0` always | Gaussian, Rademacher, bounded centred, Lipschitz images of Gaussian | tails, maxima, Hoeffding, series |
-| sub-exponential scalar | `HasSubexponentialMGF X v b μ`: `cgf X μ l ≤ v * l ^ 2 / 2` for `|l| < 1 / b`, with integrability | Bernstein condition, centred squares, ψ₁ | Bernstein, Hanson–Wright |
-| sub-Gaussian vector | `IsSubgaussianVector X c μ`: every `⟨u, X⟩` has `HasSubgaussianMGF` with proxy `c * ‖u‖ ^ 2` | Gaussian, Rademacher, independent sub-Gaussian coordinates | χ²-type tails, nets, JL, rows |
-| isotropy | `IsIsotropic X μ`: `MemLp 2` coordinates and `∫ X i * X j = if i = j then 1 else 0` | Gaussian, Rademacher, uniform on the sphere of radius `√n`, Haar columns rescaled | Hutchinson, `E ‖S X T‖_F²`, AMM |
-| matrix MGF bound | `HasMatrixMGFBound X g A s μ`: `∫ exp (θ • X ω) ≤ exp (g θ • A)` in the Loewner order for `θ ∈ s` | bounded (Chernoff, Bernstein), sub-Gaussian coefficients (series) | one master tail; sampling without replacement |
-| unitary invariance | `IsLeftUnitarilyInvariant ν` (and right): `ν.map (U * ·) = ν` for unitary `U` | Gaussian matrices, Haar frames | block laws, inverse moments, transfer |
-| random frame | `X : Ω → Matrix n k 𝕜` with `∀ᵐ ω, HasOrthonormalCols (X ω)` | Haar frames, range frames | low-rank layer |
+| sub-Gaussian scalar | Mathlib's `HasSubgaussianMGF X c μ`, `c : ℝ≥0` | Gaussian, Rademacher, bounded centred, Lipschitz images of a Gaussian | tails, maxima, Hoeffding, series |
+| sub-exponential scalar | `HasSubexponentialMGF X v b μ`, `v b : ℝ≥0`, fields as Mathlib's: `exp (l * X)` integrable and `mgf X μ l ≤ exp (v * l ^ 2 / 2)` for `b * |l| < 1` (so `b = 0` is the sub-Gaussian case) | Bernstein condition, centred squares, ψ₁ | Bernstein, Hanson–Wright |
+| sub-Gaussian vector | `IsSubgaussianVector X c μ` for `X : Ω → n → ℝ`: every `u ⬝ᵥ X ω` has `HasSubgaussianMGF` with proxy `c * ‖WithLp.toLp 2 u‖₊ ^ 2` | Gaussian, Rademacher, independent sub-Gaussian coordinates | χ²-type tails, nets (a matrix through its entries), JL, rows |
+| isotropy | `IsIsotropic X μ` for `X : Ω → n → 𝕜`: `MemLp 2` coordinates and `∫ X i * star (X j) = if i = j then 1 else 0` | Gaussian, Rademacher, sphere of radius `√n`, rescaled Haar columns, SRHT rows | Hutchinson, `E ‖S X T‖_F²`, AMM |
+| matrix MGF bound | `HasMatrixMGFBound X g A s μ`: a.s. Hermitian, `exp (θ • X)` integrable and `∫ exp (θ • X ω) ≤ exp (g θ • A)` in the Loewner order, for `θ ∈ s` (spelling of `∫` by D10) | bounded (Chernoff, Bernstein), sub-Gaussian coefficients (series) | one master tail; sampling without replacement; conditional form for Freedman as in Mathlib's `HasCondSubgaussianMGF` |
+| unitary invariance | `IsLeftUnitarilyInvariant ν` (and right): `ν.map (U * ·) = ν` for every `U` with `HasOrthonormalCols U` square | Gaussian matrices, Haar frames | block laws, inverse moments, transfer, Haar moments |
 
-Concentration of functions concludes Mathlib's `HasSubgaussianMGF (fun ω => f (X ω) - ∫ f ∘ X)`
-(Gaussian Lipschitz, log-Sobolev, bounded differences), so it needs no interface of its own.
-Fixed moments enter as parameters (`∫ X i ^ 4 = m₄`), not as interfaces. *Rework:* the
-interfaces are what every later layer takes; this is the most expensive decision of the round.
+Not interfaces, by design: random frames are three Mathlib-form hypotheses, `Measurable Q`,
+`∀ᵐ ω, HasOrthonormalCols (Q ω)`, `IndepFun Q Ψ μ`, bundled nowhere; concentration of a function
+concludes Mathlib's `HasSubgaussianMGF (fun ω => f (X ω) - ∫ f ∘ X)`; fixed moments
+(`∫ X i ^ 4 = m₄`) and independence are parameters beside an interface. *Rework:* these are what
+every later layer takes; the most expensive decision of the round.
 
 **D7. Matrices with orthonormal columns (Haar).** (a) A measure `haarFrame n k` on
-`Matrix n k ℝ`, defined as the law of `polarFactor G` for a standard Gaussian `G`, with the
-theorems that it is the unique left-invariant probability measure on matrices with orthonormal
-columns and that the QR factor `gramSchmidtQ G` has the same law. (b) The same with the QR factor
-as the definition. (c) Mathlib's Haar measure on the orthogonal group pushed to its first `k`
-columns, on a bundled Stiefel type (the prototype). *Recommendation (a):* matrix-valued as
-consumers hold them, rectangular from the start, and it is literally the normalized Gaussian; (c)
-puts the law on a subtype no consumer uses. *Rework:* moderate; every frame theorem cites it.
+`Matrix n k ℝ`, defined as the law of `polarFactor G` for a standard Gaussian `G`
+(`card k ≤ card n` where orthonormality is claimed); left invariance from `polarFactor_mul_left`
+and Gaussian invariance; right invariance from a new Matrix lemma
+`polarFactor (A * V) = polarFactor A * V` for unitary `V`; moments and the law of a column
+derived from invariance alone (a matrix commuting with every unitary is scalar); uniqueness (Haar
+on the unitary group, which needs `CompactSpace` proved and an averaging argument) only for the
+theorem that the QR factor `gramSchmidtQ G` has the same law. (b) The QR factor as the definition.
+(c) Mathlib's Haar measure on the orthogonal group pushed to `k` columns on a bundled Stiefel type
+(the prototype). *Recommendation (a):* matrix-valued as consumers hold it, rectangular from the
+start, literally the normalized Gaussian, and the transfer lemma is immediate because
+`range (polarFactor G) = range G` at full rank. *Rework:* moderate.
 
 **D8. Measurable space on matrices.** Keep the global instance `Matrix.instMeasurableSpace`
-(product σ-algebra) in `ForMathlib`, with its Borel instance. It mirrors Mathlib's own global
-`TopologicalSpace (Matrix m n R)` instance (`Mathlib/Topology/Instances/Matrix.lean`), so the
-Borel structure agrees with the topology Mathlib already uses. Alternative: no instance,
-transport to `m → n → α` at each use. *Recommendation:* keep. *Rework:* every measurability
-statement.
+(product σ-algebra) in `ForMathlib`, with its Borel instance, mirroring Mathlib's own global
+`TopologicalSpace (Matrix m n R)` (`Mathlib/Topology/Instances/Matrix.lean`). Alternative: no
+instance, transport to `m → n → α` at each use. *Recommendation:* keep, and close entry 12 of
+`Mathlib-deviations.md`. *Rework:* every measurability statement.
 
-**D9. Cuts.** Not ported unless a consumer appears (§6): the Wishart and hard-edge material
-(about 190 declarations serving a `λ_min` tail nothing uses), the localized Freedman interface,
-the general-covariance Isserlis machinery, the sparse embedding machinery (next round). Material
-with no consumer kept because a user expects it: matrix Bernstein and the intrinsic-dimension
-forms, McDiarmid, log-Sobolev and Gaussian Lipschitz concentration, Gaussian comparison
-(Slepian, Gordon) behind the extreme singular values. *Rework:* low (cuts can be undone);
-listed for the maintainer's information rather than as a hard decision.
+**D9. Cuts.** Not ported unless a consumer appears (§6): Wishart and the hard edge (about 190
+declarations serving a `λ_min` tail nothing uses), the localized Freedman interface,
+general-covariance Isserlis, the sparse embedding machinery (next round). Kept although no
+survey consumer uses them, because a user expects them: matrix Bernstein and intrinsic-dimension
+forms, Gaussian comparison (behind R3), Gaussian Lipschitz concentration (behind R3's tails).
+Entropy in general and McDiarmid go to the end of the round (P7) and may be scaffolded.
+*Rework:* low; listed for information.
+
+**D10. Integrals and conditional expectations of matrix-valued functions** (added by the review).
+`∫ ω, X ω ∂μ` for `X : Ω → Matrix m n 𝕜` needs a normed-space instance on matrices, and Mathlib
+has only scoped ones (`Matrix.Norms.Frobenius`, `.Elementwise`, `.L2Operator`), so
+`E [Q Qᴴ] = (k / n) • 1`, the matrix MGF bound and every matrix expectation depend on how this is
+spelled. (a) **One library-wide scope, `open scoped Matrix.Norms.Frobenius`**, in every file that
+integrates matrices: every shape, an inner product space, so Mathlib's integral, conditional
+expectation and Jensen API applies directly; P0 adds the scope-independent bridges
+(`(∫ X ∂μ) i j = ∫ ω, X ω i j ∂μ`, integrability iff entrywise). (b) **Entrywise**, the term
+`Matrix.of fun i j => ∫ ω, X ω i j ∂μ` or a named `matrixIntegral μ X`, instance-free, with the
+linearity, trace, Loewner and conditional-expectation API rebuilt entrywise. *Recommendation (a):*
+the norm itself never appears in statements, only the integral, whose value does not depend on
+which norm is chosen; Mathlib's conditional expectation and Jensen are too much to rebuild. It is
+a deviation (statements under a scope) and gets an entry in `Mathlib-deviations.md`.
+*Rework:* every matrix expectation and every matrix concentration statement.
 
 ## 3. Conventions the stages follow
 
-Subject to §2; repeated here as the working rules.
+Subject to §2; the working rules beyond it.
 
 ### 3.1 Statements
 
@@ -215,10 +250,10 @@ or `RandomMatrix-<Stage>.md`. Consumers are from the surveys (counts are prototy
   Hutchinson mean and variance from isotropy and `m₄`; Hanson–Wright for `quadForm`. Consumers:
   `JL`, `SRHTFlattening`, `HutchinsonTail`, SLQ, CountSketch moments. Material: `P/ChiSquare`,
   `P/Concentration/QuadraticForms`.
-- **P4 Concentration of functions.** Entropy and its tensorization, Herbst, Gaussian log-Sobolev,
-  Lipschitz functions of a Gaussian vector, bounded differences (McDiarmid); all concluding
-  `HasSubgaussianMGF` of the centred function. Material: `P/Concentration/Entropy`,
-  `P/Gaussian/Concentration`.
+- **P4 Gaussian concentration of functions.** Lipschitz functions of a Gaussian vector, through
+  the Gaussian log-Sobolev inequality and Herbst's argument, concluding `HasSubgaussianMGF` of the
+  centred function. Consumer: R3's tails. Material: `P/Gaussian/Concentration`, the part of
+  `P/Concentration/Entropy` the Gaussian proof needs.
 - **P5 Matrix concentration.** `HasMatrixMGFBound`; the Laplace transform method, the master bound
   through Lieb's theorem (Matrix layer: `concaveOn_re_trace_exp_add_cfc_log`), Chernoff, Bernstein,
   matrix series with sub-Gaussian coefficients, intrinsic dimension, rectangular matrices through
@@ -247,6 +282,9 @@ or `RandomMatrix-<Stage>.md`. Consumers are from the surveys (counts are prototy
   (Dasgupta–Gupta), and the transfer lemma: a function of `range Ω` has the same law under a
   Gaussian and a Haar test matrix, so the range-finder theorems hold for both. Mostly new
   mathematics: the prototype has 18 declarations here and no consumer. Material: `R/Haar`.
+- **P7 Remaining concentration** (D9). Entropy and its tensorization in general, bounded
+  differences (McDiarmid), scalar Bernstein in ψ₁ form if P1 does not already give it; no
+  consumer in either survey; may be scaffolded.
 
 ## 5. What the next round needs from this one
 

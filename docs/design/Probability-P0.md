@@ -236,7 +236,7 @@ theorem integral_norm_sq (hX : IsIsotropic X μ) :
     ∫ ω, ‖WithLp.toLp 2 (X ω)‖ ^ 2 ∂μ = Fintype.card n
 
 /-- Independent coordinates with mean zero and unit second moment form an isotropic vector. -/
-theorem of_iIndepFun [IsProbabilityMeasure μ] (hind : iIndepFun (fun i ω => X ω i) μ)
+theorem of_iIndepFun (hind : iIndepFun (fun i ω => X ω i) μ)
     (hL2 : ∀ i, MemLp (fun ω => X ω i) 2 μ) (hmean : ∀ i, ∫ ω, X ω i ∂μ = 0)
     (hvar : ∀ i, ∫ ω, ‖X ω i‖ ^ 2 ∂μ = 1) : IsIsotropic X μ
 
@@ -252,7 +252,7 @@ theorem _root_.ProbabilityTheory.HasLaw.isIsotropic_iff {ν : Measure (n → �
 sub-Gaussian-vector interface (D6) and a sketch row applied to a vector use; it is stated because the JL and sketching consumers hold
 a vector, not a matrix. Over `ℝ`, `‖r‖ ^ 2` is `r ^ 2` by `Real.norm_eq_abs, sq_abs`; no real twin.
 Degenerate cases: `n` empty (`card n = 0`, everything zero); `A = 0`; `μ` not a probability
-measure is allowed everywhere except `of_iIndepFun` (independence of the product needs it).
+measure is allowed everywhere (`iIndepFun` in `of_iIndepFun` already implies one).
 
 Searched: `CovarianceBilin.lean` (centred, real inner product spaces, a law not a random
 variable), `Independence/Integration.lean` (`IndepFun.integral_fun_mul_eq_mul_integral` over

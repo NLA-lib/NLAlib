@@ -12426,5 +12426,47 @@
  "NLAlib.weaklyMajorized_singularValues_add": {
   "new": "NLAlib.kyFanNorm_add_le",
   "stage": "M3a"
+ },
+ "ProbabilityTheory.hasLaw_iff_map_eq": {
+  "new": null,
+  "note": "HasLaw's constructor; P0 states with HasLaw directly",
+  "stage": "P0"
+ },
+ "integrable_of_tail_le": {
+  "new": "integrable_of_measureReal_ge_le",
+  "stage": "P0"
+ },
+ "integrable_of_tail_le_rpow": {
+  "new": null,
+  "note": "integrable_of_measureReal_ge_le applied to f ^ p",
+  "stage": "P0"
+ },
+ "integral_coord_mul_coord": {
+  "new": "IsIsotropic.of_iIndepFun",
+  "note": "its integral_mul_star field",
+  "stage": "P0"
+ },
+ "integral_le_of_tail_le": {
+  "new": "integral_le_of_measureReal_ge_le",
+  "stage": "P0"
+ },
+ "integral_le_of_tail_le_rpow": {
+  "new": null,
+  "note": "integral_le_of_measureReal_ge_le applied to f ^ p",
+  "stage": "P0"
+ },
+ "integral_quadForm_eq_trace": {
+  "new": null,
+  "note": "IsIsotropic.of_iIndepFun followed by IsIsotropic.integral_quadForm",
+  "stage": "P0"
+ },
+ "integral_quadForm_eq_trace_of_second_moments": {
+  "new": "IsIsotropic.integral_quadForm",
+  "stage": "P0"
+ },
+ "lintegral_le_of_tail_le": {
+  "new": null,
+  "note": "proof step inside Probability/Tail.lean; the real-valued forms are public",
+  "stage": "P0"
  }
 }

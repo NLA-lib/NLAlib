@@ -143,4 +143,7 @@ public import NLAlib.Matrix.Subspaces.Oblique
 public import NLAlib.Matrix.Subspaces.PrincipalAngles
 public import NLAlib.Matrix.Subspaces.ProjectorPair
 public import NLAlib.Matrix.Subspaces.Tangent
+public import NLAlib.Probability.Isotropic
+public import NLAlib.Probability.Law
 public import NLAlib.Probability.Measurability.Matrix
+public import NLAlib.Probability.Tail

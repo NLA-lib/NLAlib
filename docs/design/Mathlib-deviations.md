@@ -197,31 +197,34 @@ None of these was approved by the maintainer when it was made. Status is given p
 
 ## 13. Integrals of matrix-valued functions
 
-- **Status: under review (2026-10-14).** Checking D10 against Mathlib showed that `Integrable`
-  does not elaborate under `Matrix.Norms.Frobenius` (`docs/design/Probability-P0.md` §7 Q1); the
-  maintainer is asked to confirm `Matrix.Norms.L2Operator` instead. This entry is rewritten when
-  that is decided; nothing below is implemented yet.
-
-- **Mathlib.** `∫ ω, X ω ∂μ` and `μ[X | m]` need a `NormedAddCommGroup` and `NormedSpace ℝ`
-  instance on the codomain. On `Matrix m n 𝕜` Mathlib has only scoped ones
-  (`Matrix.Norms.Frobenius`, `Matrix.Norms.Elementwise`, `Matrix.Norms.L2Operator`), so a matrix
-  integral cannot be written without opening one.
+- **Mathlib.** `∫ ω, X ω ∂μ`, `Integrable X μ` and `μ[X | m]` need a normed-group and
+  `NormedSpace ℝ` instance on the codomain. On `Matrix m n 𝕜` Mathlib has only scoped ones
+  (`Matrix.Norms.Frobenius`, `Matrix.Norms.Elementwise`, `Matrix.Norms.L2Operator`). Under the
+  first two, `Integrable X μ` does not elaborate in the pinned Mathlib: the global matrix topology
+  (`Mathlib/Topology/Instances/Matrix.lean`, defined with `inferInstanceAs`) is not reducibly the
+  product topology those norms carry, so `ContinuousENorm` is not found. `L2Operator` is built
+  with `replaceTopology` and works, but has `NormedSpace 𝕜` and no `NormedSpace ℝ`.
 - **NLAlib.** Every file that integrates or conditions a matrix-valued function opens
-  `open scoped Matrix.Norms.Frobenius` (one scope, library-wide; never another for this purpose).
-  Statements never mention the norm itself; they use only the integral, whose value is the same
-  for every norm (the Bochner integral of a function into a finite-dimensional space does not
-  depend on the norm), and `NLAlib/Probability/MatrixIntegral.lean` proves the bridges that do not
-  mention any norm: `(∫ X) i j = ∫ X · i j`, integrability iff entrywise integrability, trace,
-  conjugate transpose and the Loewner order commuting with the integral.
-- **Why.** The Frobenius instance covers every shape and gives a complete normed space over `𝕜`
-  (completeness from finite dimension), so Mathlib's
-  integral, conditional-expectation and Jensen API applies as is. The alternative, an entrywise
-  `Matrix.of fun i j => ∫ ω, X ω i j ∂μ` with its own API, would rebuild conditional expectation
-  and Jensen. (Maintainer, 2026-10-14; `docs/PORT_PROBABILITY.md` D10.)
-- **Cost.** A user must open the scope to state a matrix expectation, and a statement elaborated
-  under another matrix norm scope would carry a different (propositionally equal) instance; the
-  bridge lemmas are the way across.
-- **Bridges.** `Matrix.integral_apply` and the integrability lemmas in
+  `open scoped Matrix.Norms.L2Operator` (one scope, library-wide; the one the Matrix layer already
+  opens for its functional-calculus files). `NLAlib/ForMathlib` adds, under that scope,
+  `NormedSpace ℝ (Matrix m n 𝕜)` on the existing `Module ℝ` (no new data; at `𝕜 = ℂ` it agrees
+  with `NormedSpace.complexToReal` by `with_reducible_and_instances rfl`, checked), and, under
+  `MatrixOrder`, `ClosedIciTopology` for the Loewner order over `𝕜`, so Mathlib's
+  `integral_mono_ae` applies. Statements never mention the norm, only the integral, whose value
+  does not depend on it; `NLAlib/Probability/MatrixIntegral.lean` proves the norm-free bridges
+  (`(∫ X) i j = ∫ X · i j`, integrability iff entrywise, trace, conjugate transpose, products,
+  Hermitian and positive semidefinite integrals).
+- **Why.** Mathlib's integral, conditional-expectation and Jensen API applies as is; the
+  alternative, entrywise integrals with their own API, would rebuild conditional expectation and
+  Jensen. (Maintainer: D10, 2026-10-14; the scope amended from Frobenius to `L2Operator` on
+  2026-10-14, `docs/design/Probability-P0.md` §7 Q1.)
+- **Cost.** `[DecidableEq n]` on matrix-expectation statements (the `L2Operator` instance needs
+  it). A user must open the scope to state a matrix expectation. If Mathlib makes the global
+  topology reducibly the product one, Frobenius would work too; switching would change instance
+  arguments only.
+- **Rule.** For analysis on matrices (integrals, Mathlib's normed API), open only
+  `Matrix.Norms.L2Operator` (`CONTRIBUTING.md` §5.1).
+- **Bridges.** `Matrix.integral_apply`, `Matrix.integrable_iff` and the rest of
   `NLAlib/Probability/MatrixIntegral.lean`.
 
 ## Small spelling choices

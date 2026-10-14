@@ -219,6 +219,9 @@ the norm itself never appears in statements, only the integral, whose value does
 which norm is chosen; Mathlib's conditional expectation and Jensen are too much to rebuild. It is
 a deviation (statements under a scope) and gets an entry in `Mathlib-deviations.md`.
 *Rework:* every matrix expectation and every matrix concentration statement.
+*Amended (maintainer, 2026-10-14):* the scope is `Matrix.Norms.L2Operator`, not Frobenius, under
+which `Integrable` does not elaborate in the pinned Mathlib (`docs/design/Probability-P0.md` §7
+Q1; `Mathlib-deviations.md` entry 13).
 
 ## 3. Conventions the stages follow
 

@@ -194,7 +194,11 @@ release.
 - Matrix norms are named functions (§5.3), never `‖A‖`: Mathlib's four matrix norms are scoped
   instances and a signature cannot show which one is open. `‖A‖` appears only in bridge lemmas
   and, under a file-level `open scoped Matrix.Norms.L2Operator`, in the C*-algebra and
-  functional-calculus files that need Mathlib's normed API.
+  functional-calculus files that need Mathlib's normed API. `Matrix.Norms.L2Operator` is the only matrix norm scope
+  opened for analysis, including integrals and conditional expectations of matrix-valued
+  functions; never `Matrix.Norms.Frobenius` or `Matrix.Norms.Elementwise`, whose topology does not
+  match Mathlib's global matrix topology, so `Integrable`, `Continuous` and limits do not elaborate
+  under them (`docs/design/Mathlib-deviations.md` entry 13; maintainer, 2026-10-14).
 
 ### 5.2 Shape
 

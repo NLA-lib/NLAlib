@@ -35,17 +35,12 @@ laws real for now with complex analogues in view). `CONTRIBUTING.md` §5.1 and �
 bounds") and `Mathlib-deviations.md` entries 12 and 13 are updated to match. Design checkpoint
 for the maintainer after P3. Now: P0.
 
-**Waiting for the maintainer (P3 checkpoint, D1), 2026-10-14.** P0 to P3 are proved (162 modules
-with the Matrix layer; all checks green). Questions:
-1. P0 §7 Q1: the scope for matrix integrals (D10 amended): `Matrix.Norms.L2Operator` plus one
-   scoped `NormedSpace ℝ` instance, recommended; Frobenius does not elaborate `Integrable`.
-2. Order of the remaining stages while Q1 is open (stage review): P4 → P6 → R1 → R3 (Gaussian
-   half) → R4, then P5 → R2 → R5 → P7; none of the first five integrates a matrix.
-3. P4's hypothesis form for a Lipschitz function of a Gaussian vector:
-   `LipschitzWith L (fun x : EuclideanSpace ℝ n => f (WithLp.ofLp x))` with an `iff` to the explicit
-   `|f x - f y| ≤ L * ‖toLp 2 (x - y)‖`, recommended; and its proof route, the Gaussian log-Sobolev
-   inequality and Herbst (constant `L²`, the source's, ported from the prototype) rather than
-   Maurey–Pisier (`π² L² / 4`, shorter).
+**P3 checkpoint passed (maintainer, 2026-10-14).** P0 §7 Q1 decided: `Matrix.Norms.L2Operator`
+for matrix integrals (D10 amended; `Mathlib-deviations.md` entry 13; `CONTRIBUTING.md` §5.1 rule).
+With the scope decided, the brief's stage order stands (P4, P5, P6, R1 to R5, P7). P4 proceeds on
+the orchestrator's recommendations (Lipschitz as `LipschitzWith` on `EuclideanSpace` with an `iff`
+to the explicit inequality; the log-Sobolev route with constant `L²`), open to the maintainer's
+correction. Now: P0's matrix-integral file, P4 design.
 
 | Stage | File | Owner | State | Notes |
 |---|---|---|---|---|
@@ -67,7 +62,7 @@ with the Matrix layer; all checks green). Questions:
 | P3 | `QuadraticForm/HansonWright.lean` (+ `HansonWright/{LinearImage,OffDiagonal}.lean`) | Opus agent | proved | constant `1/196` (prototype `1/(256e²)`); 884 lines against 3,400 |
 | P0–P3 | checks | orchestrator | done | `stage_check.sh`: 162 modules, 0 warnings; audit 3809, 0 violations; lint 2900 clean; `Result:` ids on the headline theorems; ledger +35 |
 | P0–P3 | wrap-up (one public Gaussian linear-form MGF, `HasSubexponentialMGF.add`, tail-prefix rename) | Opus agent, orchestrator | done | stage review by Fable; ledger targets qualified (0 missing) |
-| P0 | `Probability/MatrixIntegral.lean` | — | waits on Q1 | |
+| P0 | `Probability/MatrixIntegral.lean`, `ForMathlib/Analysis/{CStarAlgebra/Matrix,Matrix/Order}.lean` | Opus agent | proofs in progress | Q1 decided: `L2Operator` |
 
 **Matrix layer complete, 2026-10-14** (branch `scaffold`, local commits, not pushed): stages M0 to
 M10 proved, 144 files, nothing scaffolded, all checks green. Read `docs/design/Matrix-REPORT.md`

@@ -335,7 +335,8 @@ Not reproduced: `hasLaw_iff_map_eq`; `integrable_comp_of_abs_le_sum_abs`; the `u
 
 ## 7. Open questions
 
-**Q1 (§2 kind; for the maintainer). The scope for matrix integrals (amends D10).** D10 chose one
+**Q1 (§2 kind). The scope for matrix integrals (amends D10).** *Decided (maintainer,
+2026-10-14): (a′).* D10 chose one
 library-wide scope, `Matrix.Norms.Frobenius`. Checked against the pinned Mathlib, it does not
 work, and neither does `Matrix.Norms.Elementwise`: under either, `Integrable X μ` for
 `X : Ω → Matrix m n 𝕜` fails with

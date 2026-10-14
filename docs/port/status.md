@@ -55,9 +55,9 @@ instance). Only `Probability/MatrixIntegral.lean` waits; nothing before P5 needs
 | P2 | `Distributions/Gaussian.lean` | Opus agent | proved | |
 | P0–P2 | checks | orchestrator | done | `stage_check.sh`: 155 modules, 0 warnings; audit 3697, 0 violations; lint 2818 clean; ledger +69 |
 | P3 | design note `docs/design/Probability-P3.md` | orchestrator | written, Fable-reviewed (§8) | maintainer checkpoint after P3 |
-| P3 | `SubGaussianVector/Basic.lean`, `Norm.lean` | Opus agent | proofs in progress | |
-| P3 | `Distributions/ChiSquare.lean`, `QuadraticForm/Moments.lean` | Opus agent | proofs in progress | |
-| P3 | `QuadraticForm/HansonWright.lean` | — | skeleton compiles | after the others; the long proof |
+| P3 | `SubGaussianVector/Basic.lean`, `Norm.lean` | Opus agent | proved | `IsSubgaussianVector.aemeasurable` public over `𝕜` |
+| P3 | `Distributions/ChiSquare.lean`, `QuadraticForm/Moments.lean` | Opus agent | proved | Hutchinson's variance over `𝕜` with moment parameters |
+| P3 | `QuadraticForm/HansonWright.lean` | Opus agent | proofs in progress | the long proof |
 | P0 | `Probability/MatrixIntegral.lean` | — | waits on Q1 | |
 
 **Matrix layer complete, 2026-10-14** (branch `scaffold`, local commits, not pushed): stages M0 to

@@ -197,6 +197,11 @@ None of these was approved by the maintainer when it was made. Status is given p
 
 ## 13. Integrals of matrix-valued functions
 
+- **Status: under review (2026-10-14).** Checking D10 against Mathlib showed that `Integrable`
+  does not elaborate under `Matrix.Norms.Frobenius` (`docs/design/Probability-P0.md` §7 Q1); the
+  maintainer is asked to confirm `Matrix.Norms.L2Operator` instead. This entry is rewritten when
+  that is decided; nothing below is implemented yet.
+
 - **Mathlib.** `∫ ω, X ω ∂μ` and `μ[X | m]` need a `NormedAddCommGroup` and `NormedSpace ℝ`
   instance on the codomain. On `Matrix m n 𝕜` Mathlib has only scoped ones
   (`Matrix.Norms.Frobenius`, `Matrix.Norms.Elementwise`, `Matrix.Norms.L2Operator`), so a matrix
@@ -208,7 +213,8 @@ None of these was approved by the maintainer when it was made. Status is given p
   depend on the norm), and `NLAlib/Probability/MatrixIntegral.lean` proves the bridges that do not
   mention any norm: `(∫ X) i j = ∫ X · i j`, integrability iff entrywise integrability, trace,
   conjugate transpose and the Loewner order commuting with the integral.
-- **Why.** The Frobenius instance covers every shape and is an inner product space, so Mathlib's
+- **Why.** The Frobenius instance covers every shape and gives a complete normed space over `𝕜`
+  (completeness from finite dimension), so Mathlib's
   integral, conditional-expectation and Jensen API applies as is. The alternative, an entrywise
   `Matrix.of fun i j => ∫ ω, X ω i j ∂μ` with its own API, would rebuild conditional expectation
   and Jensen. (Maintainer, 2026-10-14; `docs/PORT_PROBABILITY.md` D10.)

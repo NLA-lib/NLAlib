@@ -95,7 +95,8 @@ Alternative: state on the canonical measure with `_of_hasLaw` corollaries (the p
   `μ.real {ω | f ω ≤ t}`, `μ.real {ω | t ≤ |f ω - m|}`. Never the success form `1 - δ ≤ …`. A
   non-strict event is the stronger statement, and `μ.real` of a non-measurable set is its outer
   measure, so no measurability hypothesis on the event. Mathlib's Chernoff bound
-  `measure_ge_le_exp_mul_mgf` is in `ℝ≥0∞`; P0 provides the `μ.real` bridge.
+  `measure_ge_le_exp_mul_mgf` and Markov's `mul_meas_ge_le_integral_of_nonneg` are already in
+  `μ.real` (corrected 2026-10-14; the draft said `ℝ≥0∞`); Chebyshev is not, and P0 adds it.
 - Expectations are Bochner integrals. **Every upper bound `∫ f ≤ B` comes with integrability**:
   as its own theorem (`integrable_…`, then `integral_…_le`, Mathlib's pattern), or as an API lemma
   when a hypothesis already gives it (`HasSubgaussianMGF` gives `MemLp`). Reason: the Bochner
@@ -209,7 +210,7 @@ Entropy in general and McDiarmid go to the end of the round (P7) and may be scaf
 has only scoped ones (`Matrix.Norms.Frobenius`, `.Elementwise`, `.L2Operator`), so
 `E [Q Qᴴ] = (k / n) • 1`, the matrix MGF bound and every matrix expectation depend on how this is
 spelled. (a) **One library-wide scope, `open scoped Matrix.Norms.Frobenius`**, in every file that
-integrates matrices: every shape, an inner product space, so Mathlib's integral, conditional
+integrates matrices: every shape, a complete normed space over `𝕜`, so Mathlib's integral, conditional
 expectation and Jensen API applies directly; P0 adds the scope-independent bridges
 (`(∫ X ∂μ) i j = ∫ ω, X ω i j ∂μ`, integrability iff entrywise). (b) **Entrywise**, the term
 `Matrix.of fun i j => ∫ ω, X ω i j ∂μ` or a named `matrixIntegral μ X`, instance-free, with the

@@ -33,11 +33,19 @@ Updated at every stopping point. Newest entry first within each section.
 (all ten as recommended; D4 revised: `RCLike` wherever the proof allows, Gaussian and Haar matrix
 laws real for now with complex analogues in view). `CONTRIBUTING.md` §5.1 and §5.2 ("Numerical
 bounds") and `Mathlib-deviations.md` entries 12 and 13 are updated to match. Design checkpoint
-for the maintainer after P3. Now: P0 design note.
+for the maintainer after P3. Now: P0.
+
+**Waiting for the maintainer:** `docs/design/Probability-P0.md` §7 Q1, the scope for matrix
+integrals (D10 chose `Matrix.Norms.Frobenius`, under which `Integrable` does not elaborate in the
+pinned Mathlib; recommendation `Matrix.Norms.L2Operator` plus one scoped `NormedSpace ℝ`
+instance). Only `Probability/MatrixIntegral.lean` waits; nothing before P5 needs it.
 
 | Stage | File | Owner | State | Notes |
 |---|---|---|---|---|
-| P0 | design note `docs/design/Probability-P0.md` | orchestrator | in progress | |
+| P0 | design note `docs/design/Probability-P0.md` | orchestrator | written; Fable review running | Q1 to the maintainer |
+| P0 | `Probability/Law.lean`, `Tail.lean` | Opus agent | proved | `measureReal_abs_ge_le` needs no finiteness. Note for R1: `HasLaw.isProbabilityMeasure` does not find the `Measure.pi` instance at type `Measure (Matrix m n α)`; consider an instance for the nested product on matrices |
+| P0 | `Probability/Isotropic.lean` | orchestrator | skeleton compiles | proofs after the review |
+| P0 | `Probability/MatrixIntegral.lean` | — | waits on Q1 | |
 
 **Matrix layer complete, 2026-10-14** (branch `scaffold`, local commits, not pushed): stages M0 to
 M10 proved, 144 files, nothing scaffolded, all checks green. Read `docs/design/Matrix-REPORT.md`

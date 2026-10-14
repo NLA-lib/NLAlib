@@ -30,6 +30,7 @@ that form; `positivity` knows `frobNorm`, so `gcongr` passes between a bound and
 
 * `NLAlib.frobNorm_sq_eq_sum`, `NLAlib.frobNorm_sq_eq_re_trace`: the squared norm as an entry sum
   and as a trace.
+* `NLAlib.frobNorm_sq_eq_sum_sq`, `NLAlib.frobInner_eq_sum_mul`: the entry sums over `ℝ`.
 * `NLAlib.frobNorm_add_sq`, `NLAlib.frobNorm_add_sq_of_frobInner_eq_zero`: the polar identity and
   Pythagoras.
 * `NLAlib.abs_frobInner_le`: Cauchy–Schwarz.
@@ -63,6 +64,12 @@ theorem frobInner_eq_sum (A B : Matrix m n 𝕜) :
   simp only [frobInner, Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.conjTranspose_apply,
     map_sum]
   exact Finset.sum_comm
+
+/-- Over `ℝ` the Frobenius inner product is the sum of the products of the entries. This is
+`NLAlib.frobInner_eq_sum` with the conjugation and the real part removed, the form to rewrite
+with under an integral or a sum. Port of `NLAlib.frobInner_eq_sum_mul`. -/
+theorem frobInner_eq_sum_mul (A B : Matrix m n ℝ) : frobInner A B = ∑ i, ∑ j, A i j * B i j := by
+  simp only [frobInner_eq_sum, star_trivial, RCLike.re_to_real]
 
 /-- The Frobenius inner product as the real part of the trace of `A * Bᴴ`, by cyclicity of the
 trace: `re (tr (Aᴴ B)) = re (tr (A Bᴴ))`. The two traces are complex conjugates of each other, so
@@ -176,6 +183,12 @@ theorem frobNorm_nonneg (A : Matrix m n 𝕜) : 0 ≤ frobNorm A := by
 Port of `NLAlib.frobSq_eq_sum_norm_sq`. -/
 theorem frobNorm_sq_eq_sum (A : Matrix m n 𝕜) : frobNorm A ^ 2 = ∑ i, ∑ j, ‖A i j‖ ^ 2 := by
   exact Real.sq_sqrt (Finset.sum_nonneg fun i _ => Finset.sum_nonneg fun j _ => sq_nonneg _)
+
+/-- Over `ℝ` the squared Frobenius norm is the sum of the squared entries. This is
+`NLAlib.frobNorm_sq_eq_sum` with the absolute values removed, the form to rewrite with under an
+integral or a sum. Port of `NLAlib.frobSq_eq_sum_sq`. -/
+theorem frobNorm_sq_eq_sum_sq (A : Matrix m n ℝ) : frobNorm A ^ 2 = ∑ i, ∑ j, A i j ^ 2 := by
+  simp only [frobNorm_sq_eq_sum, Real.norm_eq_abs, sq_abs]
 
 /-- The Frobenius inner product of a matrix with itself is its squared Frobenius norm. -/
 @[simp]

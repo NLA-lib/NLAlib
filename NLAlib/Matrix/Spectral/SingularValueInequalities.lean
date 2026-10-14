@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.Matrix.Basic.ComplementaryProjector
 public import NLAlib.Matrix.Norms.Projector
 public import NLAlib.Matrix.Spectral.Interlacing
 public import NLAlib.Matrix.Spectral.SingularValues
@@ -33,6 +34,12 @@ zeros, none of these statements carries an index side condition.
 * `NLAlib.singularValues_add_le_of_rank_le`: low-rank perturbations.
 * `NLAlib.singularValues_submatrix_le`: submatrices.
 * `IsStarProjection.singularValues_mul_le`: projections.
+* `NLAlib.specNorm_conjTranspose_mul_self_sub_one_le_iff`,
+  `NLAlib.specNorm_conjTranspose_mul_self_sub_one_eq_iSup`: the Gram error `‖Aᴴ A - 1‖₂` through
+  the singular values.
+* `NLAlib.specNorm_le_sqrt_mul_one_add_of_specNorm_sub_smul_one_le`,
+  `NLAlib.sqrt_mul_one_sub_le_singularValues_of_specNorm_sub_smul_one_le`: from a Gram error
+  relative to `N • 1` to bounds on the extreme singular values.
 -/
 
 @[expose] public section
@@ -308,6 +315,101 @@ theorem singularValues_one_sub_rangeProjector_mul_le [DecidableEq m] (Y : Matrix
     (A : Matrix m n 𝕜) (k : ℕ) :
     singularValues ((1 - rangeProjector Y) * A) k ≤ singularValues A k := by
   exact (isStarProjection_one_sub_rangeProjector Y).singularValues_mul_le A k
+
+/-! ### Gram matrices close to a multiple of the identity -/
+
+/-- **The Gram error is the largest deviation of a squared singular value from one**:
+`‖Aᴴ A - 1‖₂ = max_k |σ_k(A)² - 1|`, the maximum over the indices below the number of columns
+(an empty supremum, zero, when there are none).
+Port of `NLAlib.specNorm_gram_sub_one_eq_norm_singularValues_sq_sub_one`, there over `ℝ` and
+`Fin`, with the supremum norm of a vector on the right. -/
+theorem specNorm_conjTranspose_mul_self_sub_one_eq_iSup [DecidableEq n] (A : Matrix m n 𝕜) :
+    specNorm (Aᴴ * A - 1) = ⨆ k : Fin (Fintype.card n), |singularValues A k ^ 2 - 1| := by
+  have hG := Matrix.isHermitian_conjTranspose_mul_self A
+  have hH : (Aᴴ * A - 1).IsHermitian := hG.sub Matrix.isHermitian_one
+  have he : ∀ k < Fintype.card n,
+      eigenvalue (Aᴴ * A - 1) k = singularValues A k ^ 2 - 1 := fun k hk => by
+    rw [sq_singularValues, sub_eq_add_neg, ← neg_one_smul ℝ (1 : Matrix n n 𝕜),
+      hG.eigenvalue_add_smul_one _ hk, ← sub_eq_add_neg]
+  have hbdd : BddAbove (Set.range fun k : Fin (Fintype.card n) =>
+      |singularValues A k ^ 2 - 1|) := (Set.finite_range _).bddAbove
+  rcases Nat.eq_zero_or_pos (Fintype.card n) with h0 | hpos
+  · have : IsEmpty n := Fintype.card_eq_zero_iff.mp h0
+    have : IsEmpty (Fin (Fintype.card n)) := by rw [h0]; infer_instance
+    rw [Real.iSup_of_isEmpty, Subsingleton.elim (Aᴴ * A - 1) 0, specNorm_zero]
+  · obtain ⟨k, hk⟩ : ∃ k, k + 1 = Fintype.card n := ⟨Fintype.card n - 1, by omega⟩
+    have : Nonempty (Fin (Fintype.card n)) := ⟨⟨0, hpos⟩⟩
+    refine le_antisymm ?_ (ciSup_le fun i => ?_)
+    · rw [hH.specNorm_eq_max hk, he 0 hpos, he k (by omega)]
+      exact max_le (le_ciSup hbdd ⟨0, hpos⟩) (le_ciSup hbdd ⟨k, by omega⟩)
+    · rw [← he i i.isLt]
+      exact hH.abs_eigenvalue_le_specNorm i
+
+/-- **A Gram error of at most `ε` says that every squared singular value is within `ε` of one.**
+This is the equivalence between the Gram form of a subspace embedding,
+`specNorm (Aᴴ * A - 1) ≤ ε`, and its singular value form. The hypothesis `0 ≤ ε` is needed only
+for a matrix with no columns. -/
+theorem specNorm_conjTranspose_mul_self_sub_one_le_iff [DecidableEq n] {A : Matrix m n 𝕜}
+    {ε : ℝ} (hε : 0 ≤ ε) :
+    specNorm (Aᴴ * A - 1) ≤ ε ↔ ∀ k < Fintype.card n, |singularValues A k ^ 2 - 1| ≤ ε := by
+  rw [specNorm_conjTranspose_mul_self_sub_one_eq_iSup]
+  refine ⟨fun h k hk => ?_, fun h => Real.iSup_le (fun i => h i i.isLt) hε⟩
+  exact (le_ciSup (f := fun k : Fin (Fintype.card n) => |singularValues A k ^ 2 - 1|)
+    (Set.finite_range _).bddAbove ⟨k, hk⟩).trans h
+
+/-- **Approximate isometries, upper bound.** If the Gram matrix of `A` is within
+`N * max α (α ^ 2)` of `N • 1` in spectral norm, then `‖A‖₂ ≤ √N (1 + α)`. This is the
+deterministic step from a concentration bound for `Aᴴ A`, with `N` the number of rows, to the
+largest singular value. [Vershynin2018, Lemma 4.1.5]; stated there for `N = 1` over `ℝ`.
+Port of `NLAlib.specNorm_le_sqrt_mul_one_add_of_gram_error`, there over `ℝ` and with `0 ≤ N`. -/
+theorem specNorm_le_sqrt_mul_one_add_of_specNorm_sub_smul_one_le [DecidableEq n]
+    {A : Matrix m n 𝕜} {N α : ℝ} (hα : 0 ≤ α)
+    (h : specNorm (Aᴴ * A - N • (1 : Matrix n n 𝕜)) ≤ N * max α (α ^ 2)) :
+    specNorm A ≤ √N * (1 + α) := by
+  have hH : (Aᴴ * A - N • (1 : Matrix n n 𝕜)).IsHermitian :=
+    (Matrix.isHermitian_conjTranspose_mul_self A).sub (isHermitian_real_smul_one N)
+  have hle : Aᴴ * A ≤ (N + N * max α (α ^ 2)) • (1 : Matrix n n 𝕜) := by
+    rw [add_smul, add_comm]
+    exact sub_le_iff_le_add.mp (hH.le_smul_one_of_specNorm_le h)
+  have hmax : max α (α ^ 2) ≤ 2 * α + α ^ 2 := max_le (by nlinarith) (by nlinarith)
+  rw [conjTranspose_mul_self_le_smul_one_iff] at hle
+  rw [specNorm_le_iff (by positivity)]
+  intro x
+  refine (sq_le_sq₀ (norm_nonneg _) (by positivity)).mp ((hle x).trans ?_)
+  rw [mul_pow, mul_pow]
+  refine mul_le_mul_of_nonneg_right ?_ (sq_nonneg _)
+  rcases le_total 0 N with hN | hN
+  · rw [Real.sq_sqrt hN]
+    nlinarith
+  · rw [Real.sqrt_eq_zero_of_nonpos hN]
+    nlinarith [le_max_right α (α ^ 2), sq_nonneg α]
+
+/-- **Approximate isometries, lower bound.** If the Gram matrix of `A` is within
+`N * max α (α ^ 2)` of `N • 1` in spectral norm, then the smallest singular value of `A` is at
+least `√N (1 - α)`. [Vershynin2018, Lemma 4.1.5]; stated there for `N = 1` over `ℝ`.
+Port of `NLAlib.sqrt_mul_one_sub_le_singularValues_last_of_gram_error`, there over `ℝ` and with
+`0 ≤ N`. -/
+theorem sqrt_mul_one_sub_le_singularValues_of_specNorm_sub_smul_one_le [DecidableEq n]
+    {A : Matrix m n 𝕜} {N α : ℝ} (hα : 0 ≤ α) {k : ℕ} (hk : k + 1 = Fintype.card n)
+    (h : specNorm (Aᴴ * A - N • (1 : Matrix n n 𝕜)) ≤ N * max α (α ^ 2)) :
+    √N * (1 - α) ≤ singularValues A k := by
+  rcases le_total 1 α with hα1 | hα1
+  · exact (mul_nonpos_of_nonneg_of_nonpos (Real.sqrt_nonneg N) (by linarith)).trans
+      (singularValues_nonneg A k)
+  rcases le_total N 0 with hN | hN
+  · rw [Real.sqrt_eq_zero_of_nonpos hN, zero_mul]
+    exact singularValues_nonneg A k
+  have hH : (Aᴴ * A - N • (1 : Matrix n n 𝕜)).IsHermitian :=
+    (Matrix.isHermitian_conjTranspose_mul_self A).sub (isHermitian_real_smul_one N)
+  have hle : (N - N * max α (α ^ 2)) • (1 : Matrix n n 𝕜) ≤ Aᴴ * A := by
+    rw [sub_smul, sub_le_iff_le_add]
+    exact neg_le_sub_iff_le_add.mp (hH.neg_smul_one_le_of_specNorm_le h)
+  have h2 := le_sq_singularValues_last_of_smul_one_le hk hle
+  rw [max_eq_left (by nlinarith)] at h2
+  refine (sq_le_sq₀ (by have := Real.sqrt_nonneg N; nlinarith) (singularValues_nonneg A k)).mp
+    (le_trans ?_ h2)
+  rw [mul_pow, Real.sq_sqrt hN]
+  nlinarith [mul_nonneg (mul_nonneg hN (sub_nonneg.mpr hα1)) hα]
 
 /-! ### The singular gap -/
 

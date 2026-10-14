@@ -6,6 +6,7 @@ public import NLAlib.ForMathlib.Analysis.InnerProductSpace.PiL2
 public import NLAlib.ForMathlib.Analysis.RCLike.ToComplex
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.Adjugate
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.CauchyBinet
+public import NLAlib.ForMathlib.LinearAlgebra.Matrix.ConjTranspose
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.Hadamard
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.PosDef
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.Rank
@@ -13,6 +14,7 @@ public import NLAlib.ForMathlib.LinearAlgebra.Matrix.SchurComplement
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.Trace
 public import NLAlib.ForMathlib.MeasureTheory.Matrix
 public import NLAlib.ForMathlib.Topology.MetricSpace.CoveringNumbers
+public import NLAlib.Matrix.Basic.ComplementaryProjector
 public import NLAlib.Matrix.Basic.Dilation
 public import NLAlib.Matrix.Basic.Gram
 public import NLAlib.Matrix.Basic.Orthonormal
@@ -111,11 +113,18 @@ public import NLAlib.Matrix.Spectral.EigenvectorPairing
 public import NLAlib.Matrix.Spectral.Gershgorin
 public import NLAlib.Matrix.Spectral.HermitianPart
 public import NLAlib.Matrix.Spectral.Inertia
+public import NLAlib.Matrix.Spectral.InertiaElimination
 public import NLAlib.Matrix.Spectral.Interlacing
+public import NLAlib.Matrix.Spectral.InterlacingConverse
+public import NLAlib.Matrix.Spectral.LeastSingularValue
 public import NLAlib.Matrix.Spectral.LowRank
 public import NLAlib.Matrix.Spectral.Normal
+public import NLAlib.Matrix.Spectral.PowerBounds
+public import NLAlib.Matrix.Spectral.ProjectedLowRank
+public import NLAlib.Matrix.Spectral.QuasiTriangular
 public import NLAlib.Matrix.Spectral.RankOneUpdate
 public import NLAlib.Matrix.Spectral.RealSchur
+public import NLAlib.Matrix.Spectral.RealSimilarity
 public import NLAlib.Matrix.Spectral.SVD
 public import NLAlib.Matrix.Spectral.Schur
 public import NLAlib.Matrix.Spectral.Simultaneous

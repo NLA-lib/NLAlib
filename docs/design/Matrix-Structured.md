@@ -340,3 +340,79 @@ block identity). Findings and their resolution:
     `Matrix.det_add_replicateCol_mul_replicateRow`, `eigenvalue_mem_ball`, Gelfand's formula,
     `Matrix.IsHermitian.roots_charpoly_eq_eigenvalues₀`); the statements stay in the vocabulary
     of this library.
+
+## 9. Stage report (2026-10-14)
+
+**Outcome.** Twenty-seven files, all proved; nothing in `NLAlibScaffold`. The skeleton had
+eighteen; eight were split off at proof time to stay under 500 lines (`EigenvalueListing.lean`,
+`EigenvectorPairing.lean`, `SylvesterEquation.lean`, `InertiaElimination.lean`,
+`InterlacingConverse.lean`, `PowerBounds.lean`, `QuasiTriangular.lean`, `RealSimilarity.lean`,
+all under `Matrix/Spectral/`) and `ForMathlib/LinearAlgebra/Matrix/ConjTranspose.lean` was added
+at wrap-up. With every earlier stage the library builds with no warnings, the axiom audit covers
+3493 declarations with no violation, the environment linters pass on 2680 declarations,
+and references check clean.
+
+**False statements.** None found by the proof agents. The review (§8) had already added the
+index hypothesis of `eigenvalue_add_le_of_inertiaPos` and `[Nonempty n]` on `specRadius_pow` and
+`specRadius_pow_le_specNorm_pow`.
+
+**What changed from the design.**
+
+- Unitary Schur triangularisation is the similarity over a field followed by a QR factorization
+  of the similarity; the same file gives commuting pairs and families over any field with split
+  characteristic polynomials (`IsEigenvalueListing.exists_isEigenvalueListing_add_mul_of_commute`,
+  `exists_hasOrthonormalCols_forall_isUpperTriangular_of_forall_splits`), of which the complex
+  and Hermitian theorems are corollaries.
+- The pairing criterion for a simple eigenvalue
+  (`rootMultiplicity_charpoly_eq_one_iff_dotProduct_ne_zero`) holds over any field, by a new
+  argument for the forward direction.
+- Sylvester's criterion is proved by interlacing, with no pivots; both interlacing converses
+  (rank-one update and bordering) are proved, in `InterlacingConverse.lean`.
+- Real Schur, the real normal form and the real generalised Schur form share one deflation
+  through an invariant subspace of dimension one or two; the complex generalised Schur form is
+  Schur of `B⁻¹ * A` for invertible `B` and a compactness limit in general.
+- The Hilbert matrix is positive definite through `Matrix.IsHermitian.posDef_iff_eliminationStep`
+  (public: `posDef_cauchyMatrix_self`), with no integrals.
+- `measurable_pinv` glues continuity on the pieces of constant rank over the measurable rank.
+- `inertiaNeg_eq_inertiaPos_neg` lost an unused Hermitian hypothesis;
+  `specRadius_le_iff_of_charpoly_eq` became `IsEigenvalueListing.specRadius_le_iff` over any
+  index; `Matrix.PosSemidef.exists_conjTranspose_mul_mul_eq_diagonal` now also gives
+  nonnegative diagonals.
+- Added at wrap-up: `IsPinv.kronecker`, `det_ne_zero_of_posDef_hermitianPart`,
+  `IsStarNormal.conjTranspose_mul_mul`, `Measurable.matrix_sub`, `matrix_neg`, `matrix_smul`,
+  `matrix_const_smul`, `matrix_vecMul`, `walshHadamard_apply`, and upstream
+  `Matrix.IsHermitian.gaussState`, `specNorm_pow_le`, `complexify_eq_self`,
+  `charpoly_complexify`, `Commute.complexify`, `IsSVD.nuclearNorm_eq_sum`,
+  `HasOrthonormalCols.singularValues_eq_one`, `principalMinor_transpose`,
+  `IsStarProjection.norm_toLp_sq_eq_add`, `IsQR.exists_hasOrthonormalCols_mul_isUpperTrapezoidal`,
+  `Matrix.IsHermitian.exists_hasOrthonormalCols_eq_mul_diagonal_mul_conjTranspose`.
+
+**Mathlib overlap.** `Matrix.PosSemidef.mul_of_commute` was Mathlib's `Commute.mul_nonneg` and
+was deleted. `exists_norm_sub_le_sum_of_mem_spectrum` restates `eigenvalue_mem_ball` for the
+spectrum; `charpoly_coeff_eq_sum_principalMinor` is `Matrix.charpoly_coeff_eq_sum_minors` and
+`det_add_vecMulVec` is `Matrix.det_add_replicateCol_mul_replicateRow` in `vecMulVec` form.
+Mathlib has no measurable space on matrices, no `rank_kronecker`, and Fuglede–Putnam only for
+one C⋆-algebra (the square case).
+
+**Not ported, by decision.** §7.9, and from the ledger pass: simultaneous triangularisation with
+a prescribed listing for one member, the eigenspace dimension criterion for diagonalisability,
+irreducible weak diagonal dominance for the real parts, the converse direction of the Sylvester
+operator's injectivity, root-count constancy as a public statement, the negative rank-one
+converse, eigenvector deflation, Toeplitz and Hankel matrices. The ledger accounts for every
+public prototype declaration of `Matrix/Spectral`, `Matrix/Structured` and
+`Matrix/Measurability`.
+
+**After the stage reports (all stages).** Two passes followed the last stage. A follow-up pass
+added statements that the ledger passes had found useful and missing (idempotents in oblique
+form, invariance of principal angles, `Spectral/ProjectedLowRank.lean`, the determinant of a
+compression against the top eigenvalues, `frobInner_polarFactor`, `givens_apply`, kernel
+monotonicity of an elimination step). An audit of the dropped prototype declarations that the
+prototype's upper layers use (`docs/port/matrix-downstream-audit.md`) then found six general
+facts and two convenience lemmas missing; they were added: the trace-tail inequality behind
+randomly pivoted Cholesky (`Majorization/KyFan.lean`), the scaled Gram-error bounds and
+`Spectral/LeastSingularValue.lean`, `Matrix.IsHermitian.specNorm_exp` and
+`specNorm_exp_sum_le_prod`, the polynomial bound in a general weight
+(`Matrix.IsHermitian.re_quadForm_aeval_aeval_mulVec_le`), the per-vector tangent bound
+(`Subspaces/Tangent.lean`), the real entrywise forms of `frobNorm` and `frobInner`,
+`singularValues_complexify`, `continuous_complexify`, `specRadius_transpose` and the column-sum
+bound.

@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.Matrix.Basic.ComplementaryProjector
 public import NLAlib.Matrix.Pseudoinverse.NormBounds
 
 /-!

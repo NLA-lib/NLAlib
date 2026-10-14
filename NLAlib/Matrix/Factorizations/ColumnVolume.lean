@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.Adjugate
+public import NLAlib.Matrix.Basic.ComplementaryProjector
 public import NLAlib.Matrix.Factorizations.QR
 public import NLAlib.Matrix.Norms.UnitarilyInvariant
 

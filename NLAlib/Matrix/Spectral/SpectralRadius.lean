@@ -14,9 +14,10 @@ public import NLAlib.Matrix.Spectral.Gershgorin
 
 The spectral radius of a square matrix over `𝕜` is the largest modulus of a complex eigenvalue,
 `NLAlib.specRadius A`, defined through Mathlib's `spectralRadius` of the complexification. It is
-at most the spectral norm, with equality for normal matrices; it is invariant under similarity;
-it is at most the largest row sum; and it is sub-additive and sub-multiplicative on commuting
-matrices. The powers of a matrix are in `NLAlib.Matrix.Spectral.PowerBounds`.
+at most the spectral norm, with equality for normal matrices; it is invariant under similarity
+and under transposition; it is at most the largest row sum and the largest column sum; and it is
+sub-additive and sub-multiplicative on commuting matrices. The powers of a matrix are in
+`NLAlib.Matrix.Spectral.PowerBounds`.
 
 ## Main definitions
 
@@ -27,6 +28,9 @@ matrices. The powers of a matrix are in `NLAlib.Matrix.Spectral.PowerBounds`.
 * `NLAlib.IsEigenvalueListing.specRadius_le_iff`: the spectral radius through an eigenvalue listing.
 * `NLAlib.specRadius_le_specNorm`, `IsStarNormal.specNorm_eq_specRadius`.
 * `NLAlib.specRadius_inv_mul_mul`, `NLAlib.specRadius_mul_comm`.
+* `NLAlib.specRadius_transpose`, `NLAlib.specRadius_conjTranspose`.
+* `NLAlib.specRadius_le_of_forall_sum_le`, `NLAlib.specRadius_le_of_forall_sum_col_le`: row and
+  column sums.
 * `NLAlib.specRadius_add_le_of_commute`, `NLAlib.specRadius_mul_le_of_commute`.
 * `NLAlib.specRadius_one_sub_inv_diagonal_mul_lt_one`: convergence of the Jacobi iteration.
 -/
@@ -196,6 +200,33 @@ theorem specRadius_le_of_forall_sum_le {A : Matrix n n 𝕜} {c : ℝ} (hc : 0 �
   obtain ⟨j, hj⟩ := exists_norm_le_sum_of_mem_spectrum hmem
   refine hj.trans ((Finset.sum_congr rfl fun l _ => ?_).trans_le (h j))
   rw [complexify_apply, RCLike.norm_toComplex]
+
+/-- The transpose has the same spectral radius. -/
+@[simp]
+theorem specRadius_transpose (A : Matrix n n 𝕜) : specRadius Aᵀ = specRadius A :=
+  specRadius_eq_of_charpoly_eq (Matrix.charpoly_transpose A)
+
+private theorem spectralRadius_star_le (B : Matrix n n ℂ) :
+    spectralRadius ℂ (star B) ≤ spectralRadius ℂ B := by
+  refine iSup₂_le fun k hk => ?_
+  rw [spectrum.map_star, Set.mem_star] at hk
+  have h := le_iSup₂ (f := fun k (_ : k ∈ spectrum ℂ B) => (‖k‖₊ : ENNReal)) (star k) hk
+  rwa [nnnorm_star] at h
+
+/-- The conjugate transpose has the same spectral radius: its eigenvalues are the conjugates. -/
+@[simp]
+theorem specRadius_conjTranspose (A : Matrix n n 𝕜) : specRadius Aᴴ = specRadius A := by
+  rw [specRadius, specRadius, complexify_conjTranspose, ← Matrix.star_eq_conjTranspose]
+  refine congrArg ENNReal.toReal (le_antisymm (spectralRadius_star_le _) ?_)
+  have h := spectralRadius_star_le (star (complexify A))
+  rwa [star_star] at h
+
+/-- The spectral radius is at most the largest column sum.
+Port of `NLAlib.spectralRadius_le_max_column_sum`. -/
+theorem specRadius_le_of_forall_sum_col_le {A : Matrix n n 𝕜} {c : ℝ} (hc : 0 ≤ c)
+    (h : ∀ j, ∑ i, ‖A i j‖ ≤ c) : specRadius A ≤ c := by
+  rw [← specRadius_transpose]
+  exact specRadius_le_of_forall_sum_le hc h
 
 /-- The spectral radius of a sum of commuting matrices is at most the sum. -/
 theorem specRadius_add_le_of_commute {A B : Matrix n n 𝕜} (h : Commute A B) :

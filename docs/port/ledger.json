@@ -3661,8 +3661,7 @@
   "stage": "M5"
  },
  "NLAlib.exists_iInf_norm_mulVec_le_of_singularValues_last_le": {
-  "new": null,
-  "note": "not ported: if the smallest singular value of A is at most s, some column j has inf over x with x j = 1 of ‖A *ᵥ x‖ at most √(card n) * s, the invertibility-via-distance step of Rudelson–Vershynin; used only by RandomMatrix/Gaussian/Spectral/SmallBall.lean and to be stated with it; it rests on NLAlib.le_singularValues_last",
+  "new": "NLAlib.exists_iInf_norm_mulVec_le_of_singularValues_le",
   "stage": "M3"
  },
  "NLAlib.exists_idempotent_complement_norm_factor": {
@@ -4481,8 +4480,7 @@
   "stage": "M2"
  },
  "NLAlib.frobInner_eq_sum_mul": {
-  "new": null,
-  "note": "real-only twin of frobInner_eq_sum",
+  "new": "NLAlib.frobInner_eq_sum_mul",
   "stage": "M2"
  },
  "NLAlib.frobInner_eq_sum_re": {
@@ -4845,8 +4843,7 @@
   "stage": "M2"
  },
  "NLAlib.frobSq_eq_sum_sq": {
-  "new": null,
-  "note": "real-only twin of frobNorm_sq_eq_sum",
+  "new": "NLAlib.frobNorm_sq_eq_sum_sq",
   "stage": "M2"
  },
  "NLAlib.frobSq_eq_sum_sq_eigenvalues": {
@@ -8023,8 +8020,7 @@
   "stage": "M6"
  },
  "NLAlib.norm_matrixExp_sum_le_prod": {
-  "new": null,
-  "note": "not ported as stated (Laplace master bound helper); its content is NLAlib.specNorm_exp_le with the triangle inequality and Real.exp_sum",
+  "new": "NLAlib.specNorm_exp_sum_le_prod",
   "stage": "M8"
  },
  "NLAlib.norm_matrix_pow_le_matrixPowerBoundConstant_mul_pow": {
@@ -9057,8 +9053,7 @@
   "stage": "M8"
  },
  "NLAlib.quadForm_aeval_aeval_mulVec_le": {
-  "new": null,
-  "note": "not ported: the bound with a general polynomial weight g; the new library has the energy norm g = X, NLAlib.re_quadForm_aeval_mulVec_le, and the Euclidean norm g = 1, Matrix.IsHermitian.specNorm_aeval_le",
+  "new": "Matrix.IsHermitian.re_quadForm_aeval_aeval_mulVec_le",
   "stage": "M8"
  },
  "NLAlib.quadForm_aeval_mulVec_eq_sum": {
@@ -9351,8 +9346,7 @@
   "stage": "M10"
  },
  "NLAlib.rank_le_of_spectralTraceTail_eq_zero": {
-  "new": null,
-  "note": "not ported: trace-tail bounds have no consumer in the Matrix layer (M7 review); the tail is ∑ i ∈ Finset.Ico r (card n), eigenvalue A i if a consumer needs them",
+  "new": "Matrix.PosSemidef.rank_le_of_sum_Ico_eigenvalue_eq_zero",
   "stage": "M7"
  },
  "NLAlib.rank_moorePenroseInverse_mul": {
@@ -10234,8 +10228,7 @@
   "stage": "M3"
  },
  "NLAlib.singularValues_map_ofReal": {
-  "new": null,
-  "note": "one step from NLAlib.eigenvalue_complexify applied to Aᴴ * A with NLAlib.sq_singularValues, NLAlib.complexify_mul and NLAlib.complexify_conjTranspose, as in the proof of NLAlib.specNorm_complexify; a singularValues_complexify is not stated; prototype users are the Complex* twins of Matrix/Subspaces, which are not ported",
+  "new": "NLAlib.singularValues_complexify",
   "stage": "M3"
  },
  "NLAlib.singularValues_mul_add_le": {
@@ -10476,8 +10469,7 @@
   "stage": "M2"
  },
  "NLAlib.specNorm_gram_sub_one_eq_norm_singularValues_sq_sub_one": {
-  "new": null,
-  "note": "not ported: the identity specNorm (Aᴴ * A - 1) = sup over j < card n of |singularValues A j ^ 2 - 1|, used by Sketching/Properties/SubspaceEmbedding/SingularValueEmbedding.lean; a Gram error bound is used in Loewner form through NLAlib.one_sub_smul_one_le_conjTranspose_mul_self_of_specNorm_le and NLAlib.conjTranspose_mul_self_le_one_add_smul_one_of_specNorm_le, and reaches the extreme singular values by NLAlib.le_sq_singularValues_last_of_smul_one_le and NLAlib.specNorm_sq_le_iff_conjTranspose_mul_self_le; the identity follows from Matrix.IsHermitian.specNorm_eq_max and Matrix.IsHermitian.eigenvalue_add_smul_one",
+  "new": "NLAlib.specNorm_conjTranspose_mul_self_sub_one_eq_iSup",
   "stage": "M3"
  },
  "NLAlib.specNorm_idempotent_eq_secant_of_range_frames": {
@@ -10612,8 +10604,7 @@
   "stage": "M6"
  },
  "NLAlib.specNorm_le_sqrt_mul_one_add_of_gram_error": {
-  "new": null,
-  "note": "not ported: Vershynin's Lemma 5.36, upper half, in the scaled form with ‖Aᴴ * A - N • 1‖ ≤ N * max α (α ^ 2); the unscaled Loewner statement is conjTranspose_mul_self_le_one_add_smul_one_of_specNorm_le; needed by the random-matrix layer",
+  "new": "NLAlib.specNorm_le_sqrt_mul_one_add_of_specNorm_sub_smul_one_le",
   "stage": "M6"
  },
  "NLAlib.specNorm_le_trace_of_posSemidef": {
@@ -10927,8 +10918,7 @@
   "stage": "M10"
  },
  "NLAlib.spectralRadius_le_max_column_sum": {
-  "new": null,
-  "note": "not ported: column twin of NLAlib.specRadius_le_of_forall_sum_le; it needs specRadius Aᵀ = specRadius A, which the new library has only as the private specRadius_eq_of_charpoly_eq",
+  "new": "NLAlib.specRadius_le_of_forall_sum_col_le",
   "stage": "M10"
  },
  "NLAlib.spectralRadius_le_max_row_sum": {
@@ -11046,8 +11036,7 @@
   "stage": "M7"
  },
  "NLAlib.sq_max_re_trace_sub_spectralTraceTail_le_of_eigenvalues₀_le": {
-  "new": null,
-  "note": "not ported: trace-tail bounds have no consumer in the Matrix layer (M7 review); the tail is ∑ i ∈ Finset.Ico r (card n), eigenvalue A i if a consumer needs them",
+  "new": "Matrix.PosSemidef.sq_max_re_trace_sub_sum_Ico_eigenvalue_le",
   "stage": "M7"
  },
  "NLAlib.sq_max_sum_sub_tail_le_card_mul_sum_sq": {
@@ -11125,8 +11114,7 @@
   "stage": "M2"
  },
  "NLAlib.sqrt_mul_one_sub_le_singularValues_last_of_gram_error": {
-  "new": null,
-  "note": "not ported: Vershynin's Lemma 5.36, lower half, in the scaled form with ‖Aᴴ * A - N • 1‖ ≤ N * max α (α ^ 2); the unscaled Loewner statement is one_sub_smul_one_le_conjTranspose_mul_self_of_specNorm_le; needed by the random-matrix layer",
+  "new": "NLAlib.sqrt_mul_one_sub_le_singularValues_of_specNorm_sub_smul_one_le",
   "stage": "M6"
  },
  "NLAlib.sqrt_pinv_residual_sub_div_le": {
@@ -12069,8 +12057,7 @@
   "stage": "M8"
  },
  "NLAlib.trace_mul_diagonal_pow_mul_mul_diagonal_pow": {
-  "new": null,
-  "note": "private helper re_trace_mul_diagonal_mul_mul_diagonal of NLAlib.re_trace_mul_pow_mul_pow_le, there over 𝕜 for two real diagonal matrices and Hermitian C; prototype user RandomMatrix/Gaussian/Wishart/SoftMin/InversePowerConcavity.lean",
+  "new": "NLAlib.re_trace_mul_diagonal_mul_mul_diagonal",
   "stage": "M10"
  },
  "NLAlib.trace_mul_eq_sum_eigenvalues_mul_quadForm": {
@@ -12322,13 +12309,11 @@
   "stage": "M5"
  },
  "NLAlib.vectorTangentToFrame_graph_col_le": {
-  "new": null,
-  "note": "not ported: per-vector form of the graph bound, the tangent of the angle from the column U₁ e_i to a frame Q containing range (U₁ + U₂ * F) is at most ‖F e_i‖; HasOrthonormalCols.tangentMatrix_add_mul covers whole subspaces of equal dimension only",
+  "new": "NLAlib.HasOrthonormalCols.norm_toLp_one_sub_mul_mulVec_col_le_mul",
   "stage": "M5"
  },
  "NLAlib.vectorTangentToFrame_le_of_orthogonal_competitor": {
-  "new": null,
-  "note": "not ported: for a unit u orthogonal to w with u + w in range Q, ‖(1 - Q * Qᴴ) *ᵥ u‖ ≤ ‖w‖ * ‖Qᴴ *ᵥ u‖; no vector-to-subspace tangent statement in the new library",
+  "new": "NLAlib.HasOrthonormalCols.norm_toLp_one_sub_mul_mulVec_le_mul",
   "stage": "M5"
  },
  "NLAlib.walshBitSign": {

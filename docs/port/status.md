@@ -11,6 +11,11 @@ Updated at every stopping point. Newest entry first within each section.
 
 ## Current
 
+**Matrix layer complete, 2026-10-14** (branch `scaffold`, local commits, not pushed): stages M0 to
+M10 proved, 144 files, nothing scaffolded, all checks green. Read `docs/design/Matrix-REPORT.md`
+first. No design note was approved by the maintainer; the decisions to confirm are in §3 of the
+report. Next by the plan: the Probability layer, which has no brief yet.
+
 | Stage | File | Owner | State | Notes |
 |---|---|---|---|---|
 | M0 | bootstrap | orchestrator | done | see "M0 findings" |
@@ -44,7 +49,8 @@ Updated at every stopping point. Newest entry first within each section.
 | M10 | `Spectral/Inertia.lean`, `InertiaElimination.lean`, `SylvesterCriterion.lean`, `RankOneUpdate.lean`, `InterlacingConverse.lean` (two split off) | Opus agent | proved | Sylvester's criterion by interlacing, no pivots; both interlacing converses proved |
 | M10 | `Spectral/Congruence.lean`, `ForMathlib/MeasureTheory/Matrix.lean`, `Measurability/Basic.lean` | Opus agent | proved | all M10 files proved, nothing in the scaffold library; QZ by Schur of `B⁻¹ A` and a compactness limit |
 | M10 | stage wrap-up | Opus agent | done | |
-| all | gap-closing additions from the downstream audit | Opus agent | in progress | |
+| all | gap-closing additions from the downstream audit | Opus agent | done | `docs/port/matrix-downstream-audit.md`; new files `Spectral/LeastSingularValue.lean`, `Basic/ComplementaryProjector.lean` |
+| all | final checks and report | orchestrator | **done** | full build of `NLAlib` and `NLAlibScaffold` with no warnings; audit 3493 declarations, 0 violations; lint 2680 clean; 32 bibliography keys, 0 problems; ledger 2734 of 2734 accounted; `docs/design/Matrix-REPORT.md` |
 | M5 to M9 | follow-up additions from the ledger passes | Opus agent | done | idempotents in oblique form, invariance of principal angles, `Spectral/ProjectedLowRank.lean` (truncation step of the randomized SVD), compression determinant bound, `frobInner_polarFactor`, `givens_apply` |
 | M10 | `Spectral/Gershgorin.lean`, `HermitianPart.lean`, `Structured/Kronecker.lean`, `Circulant.lean` | Opus agent | proved | |
 | M10 | `Spectral/SpectralRadius.lean`, `PowerBounds.lean`, `QuasiTriangular.lean`, `RealSchur.lean`, `RealSimilarity.lean` (three split off) | Opus agent | proved | real Schur, the real normal form and real QZ by one deflation through a one- or two-dimensional invariant subspace |
@@ -131,4 +137,4 @@ That is the expected state between a stage's skeleton and its last proof.
 
 ## In NLAlibScaffold
 
-Nothing yet.
+Nothing. Every statement of the Matrix layer is proved (2026-10-14).

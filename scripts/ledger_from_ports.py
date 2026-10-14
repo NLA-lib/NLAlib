@@ -4,7 +4,7 @@
 Usage: python3 scripts/ledger_from_ports.py STAGE FILE [FILE ...]
 For every declaration in FILE whose docstring says "Port of `Old.name`" (several names allowed),
 record `Old.name -> New.name` in docs/port/ledger.json, unless the old name already has an entry
-or is not a prototype declaration. New names are resolved through `namespace` lines and the
+with a new name (an entry recorded as dropped is filled in) or is not a prototype declaration. New names are resolved through `namespace` lines and the
 `_root_.` prefix. Prints what was added and what was skipped.
 """
 import json
@@ -62,7 +62,11 @@ for fname in sys.argv[2:]:
                 if not cands and ("NLAlib." + old) in proto:
                     cands = ["NLAlib." + old]
                 for o in cands:
-                    if o in ledger:
+                    if o in ledger and ledger[o].get("new") is None:
+                        ledger[o] = {"new": full, "stage": ledger[o].get("stage", stage)}
+                        added += 1
+                        print(f"  {o} -> {full} (was recorded as dropped)")
+                    elif o in ledger:
                         skipped += 1
                     else:
                         ledger[o] = {"new": full, "stage": stage}

@@ -20,7 +20,8 @@ self-adjoint). `NLAlib.rangeProjector A` is the orthogonal projector onto the co
 on that range.
 
 The projection residual of `A` with respect to `Y` has no definition; it is always written
-`(1 - rangeProjector Y) * A`.
+`(1 - rangeProjector Y) * A`. The complementary projector `1 - rangeProjector A` is treated in
+`NLAlib.Matrix.Basic.ComplementaryProjector`.
 
 ## Main definitions
 
@@ -35,7 +36,7 @@ The projection residual of `A` with respect to `Y` has no definition; it is alwa
   inside the range of `B`.
 * `NLAlib.HasOrthonormalCols.rangeProjector_eq`: for orthonormal `Q` the projector is `Q * Qᴴ`.
 * `NLAlib.rangeProjector_eq_mul_inv_mul_conjTranspose`: the full-column-rank formula.
-* `NLAlib.norm_one_sub_rangeProjector_mulVec_le`: the projection is the best approximation.
+* `NLAlib.toEuclideanLin_rangeProjector`: the bridge to Mathlib's `Submodule.starProjection`.
 -/
 
 @[expose] public section
@@ -420,73 +421,6 @@ Port of `NLAlib.rank_rangeProjector`. -/
 theorem rank_rangeProjector [Fintype m] [Fintype n] (A : Matrix m n 𝕜) :
     (rangeProjector A).rank = A.rank := by
   rw [Matrix.rank, range_mulVecLin_rangeProjector, Matrix.rank]
-
-/-! ### The complementary projector -/
-
-/-- The complementary projector `1 - rangeProjector A` is a star projection. -/
-theorem isStarProjection_one_sub_rangeProjector [Fintype m] [Fintype n] [DecidableEq m]
-    (A : Matrix m n 𝕜) : IsStarProjection (1 - rangeProjector A) :=
-  (isStarProjection_rangeProjector A).one_sub
-
-/-- The projection residual of `A` with respect to itself vanishes. -/
-@[simp]
-theorem one_sub_rangeProjector_mul_self [Fintype m] [Fintype n] [DecidableEq m]
-    (A : Matrix m n 𝕜) : (1 - rangeProjector A) * A = 0 := by
-  rw [Matrix.sub_mul, Matrix.one_mul, rangeProjector_mul_self, sub_self]
-
-/-- The projection residual is orthogonal to the columns of `B`:
-`Bᴴ * (1 - rangeProjector B) = 0`. Port of `NLAlib.conjTranspose_mul_residual`. -/
-@[simp]
-theorem conjTranspose_mul_one_sub_rangeProjector [Fintype m] [Fintype n] [DecidableEq m]
-    (B : Matrix m n 𝕜) : Bᴴ * (1 - rangeProjector B) = 0 := by
-  rw [Matrix.mul_sub, Matrix.mul_one, conjTranspose_mul_rangeProjector, sub_self]
-
-/-- The projection residual written as a difference. The product on the left is the library's
-spelling of the residual; this lemma is for proofs that want the difference. -/
-theorem one_sub_rangeProjector_mul [Fintype m] [Fintype n] [DecidableEq m] (Y : Matrix m n 𝕜)
-    (A : Matrix m p 𝕜) : (1 - rangeProjector Y) * A = A - rangeProjector Y * A := by
-  rw [Matrix.sub_mul, Matrix.one_mul]
-
-/-- The range of the complementary projector of `A` is the kernel of `Aᴴ`: the orthogonal
-complement of the column space, expressed without leaving `m → 𝕜`. -/
-theorem range_mulVecLin_one_sub_rangeProjector [Fintype m] [Fintype n] [DecidableEq m]
-    (A : Matrix m n 𝕜) :
-    LinearMap.range (1 - rangeProjector A).mulVecLin = LinearMap.ker Aᴴ.mulVecLin := by
-  ext x
-  rw [← (isStarProjection_one_sub_rangeProjector A).mulVec_eq_self_iff, LinearMap.mem_ker,
-    Matrix.mulVecLin_apply, Matrix.sub_mulVec, Matrix.one_mulVec, sub_eq_self,
-    rangeProjector_mulVec_eq_zero_iff]
-
-/-- The rank of the complementary projector `1 - rangeProjector A` and the rank of `A` add up to
-the number of rows. -/
-theorem rank_one_sub_rangeProjector_add_rank [Fintype m] [Fintype n] [DecidableEq m]
-    (A : Matrix m n 𝕜) : (1 - rangeProjector A).rank + A.rank = Fintype.card m := by
-  have h := LinearMap.finrank_range_add_finrank_ker Aᴴ.mulVecLin
-  rw [Module.finrank_fintype_fun_eq_card] at h
-  rw [Matrix.rank, range_mulVecLin_one_sub_rangeProjector, ← Matrix.rank_conjTranspose A,
-    Matrix.rank, add_comm]
-  exact h
-
-/-- **Best approximation.** The projection of `x` onto the column space of `B` is at least as
-close to `x`, in Euclidean norm, as any other point `B *ᵥ y` of that space.
-[GolubVanLoan2013, §5.3.1]. -/
-theorem norm_one_sub_rangeProjector_mulVec_le [Fintype m] [Fintype n] [DecidableEq m]
-    (B : Matrix m n 𝕜) (x : m → 𝕜) (y : n → 𝕜) :
-    ‖WithLp.toLp 2 ((1 - rangeProjector B) *ᵥ x)‖ ≤ ‖WithLp.toLp 2 (x - B *ᵥ y)‖ := by
-  have h : (1 - rangeProjector B) *ᵥ x = (1 - rangeProjector B) *ᵥ (x - B *ᵥ y) := by
-    rw [Matrix.mulVec_sub, Matrix.mulVec_mulVec, one_sub_rangeProjector_mul_self,
-      Matrix.zero_mulVec, sub_zero]
-  rw [h]
-  exact (isStarProjection_one_sub_rangeProjector B).norm_toLp_mulVec_le _
-
-/-- **Pythagoras** for a vector and a column space:
-`‖x‖² = ‖P x‖² + ‖(1 - P) x‖²` with `P = rangeProjector B`. -/
-theorem norm_toLp_sq_eq_add_one_sub_rangeProjector [Fintype m] [Fintype n] [DecidableEq m]
-    (B : Matrix m n 𝕜) (x : m → 𝕜) :
-    ‖WithLp.toLp 2 x‖ ^ 2 =
-      ‖WithLp.toLp 2 (rangeProjector B *ᵥ x)‖ ^ 2 +
-        ‖WithLp.toLp 2 ((1 - rangeProjector B) *ᵥ x)‖ ^ 2 :=
-  (isStarProjection_rangeProjector B).norm_toLp_sq_eq_add x
 
 /-! ### Bridge to Mathlib -/
 

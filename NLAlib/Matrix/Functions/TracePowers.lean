@@ -26,6 +26,7 @@ method of exchangeable pairs for random matrices use.
   `Matrix.IsHermitian.re_trace_pow_le_card_mul_specNorm_pow`: traces of powers through the
   eigenvalues (`Matrix.IsHermitian.re_trace_pow_eq_sum_range_eigenvalue_pow`); the moment bound for
   the spectral norm is `NLAlib.specNorm_pow_le_re_trace_pow`.
+* `NLAlib.re_trace_mul_diagonal_mul_mul_diagonal`: `tr (C D_x C D_y)` as a weighted sum.
 * `NLAlib.re_trace_mul_pow_mul_pow_le`: `tr (C Hˡ C Hᵏ) ≤ tr (C² Hˡ⁺ᵏ)` for even `l + k`.
 * `NLAlib.re_trace_cfc_sub_mul_cfc_sub_le`: the mean value trace inequality.
 * `NLAlib.re_trace_mul_pow_le_add`, `NLAlib.re_trace_mul_le_re_trace_rpow_add`: trace Young.
@@ -152,8 +153,12 @@ private theorem pow_mul_pow_add_le {l k : ℕ} (h : Even (l + k)) (x y : ℝ) :
   rw [← h.pow_abs x, ← h.pow_abs y, pow_add, pow_add]
   linarith [h1 l k, h1 k l]
 
-/-- The trace of `C D_x C D_y` for Hermitian `C` and real diagonal matrices. -/
-private theorem re_trace_mul_diagonal_mul_mul_diagonal {p : Type*} [Fintype p] [DecidableEq p]
+/-- **The trace of `C D_x C D_y`** for Hermitian `C` and real diagonal matrices `D_x`, `D_y` is
+the weighted sum `∑ i j, |C i j|² x_j y_i`. In an eigenbasis of `H` this expresses
+`tr (C f(H) C g(H))` through the eigenvalues of `H`.
+Port of `NLAlib.trace_mul_diagonal_pow_mul_mul_diagonal_pow`, there over `ℝ` for powers of one
+diagonal matrix. -/
+theorem re_trace_mul_diagonal_mul_mul_diagonal {p : Type*} [Fintype p] [DecidableEq p]
     {C : Matrix p p 𝕜} (hC : C.IsHermitian) (x y : p → ℝ) :
     RCLike.re (C * Matrix.diagonal (fun i => ((x i : ℝ) : 𝕜)) * C *
       Matrix.diagonal (fun i => ((y i : ℝ) : 𝕜))).trace =

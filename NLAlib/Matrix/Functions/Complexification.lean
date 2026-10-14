@@ -7,6 +7,7 @@ module
 
 public import NLAlib.ForMathlib.Analysis.RCLike.ToComplex
 public import NLAlib.Matrix.Functions.Exponential
+public import NLAlib.Matrix.Spectral.SingularValues
 
 /-!
 # Transfer from `𝕜` to `ℂ`
@@ -30,6 +31,9 @@ functional calculus and the exponential, so a statement about Hermitian matrices
 * `NLAlib.charpoly_complexify`, `NLAlib.toComplex_mem_spectrum_complexify`: characteristic
   polynomial and eigenvalues.
 * `NLAlib.re_trace_complexify`, `NLAlib.complexify_le_complexify_iff`.
+* `NLAlib.eigenvalue_complexify`, `NLAlib.singularValues_complexify`,
+  `NLAlib.specNorm_complexify`: eigenvalues, singular values and the spectral norm are preserved.
+* `NLAlib.continuous_complexify`: it is continuous.
 * `NLAlib.complexify_cfc`, `NLAlib.complexify_exp`.
 -/
 
@@ -266,6 +270,22 @@ theorem specNorm_complexify [Fintype m] [Fintype n] (A : Matrix m n 𝕜) :
     ← complexify_conjTranspose, ← complexify_mul,
     (posSemidef_complexify_iff.mpr hP).specNorm_eq_eigenvalue_zero,
     hP.specNorm_eq_eigenvalue_zero, eigenvalue_complexify]
+
+/-- The complexification preserves the singular values, so every unitarily invariant quantity of
+a real matrix can be computed over `ℂ`. Port of `NLAlib.singularValues_map_ofReal`, there for the
+inclusion of `ℝ` in an `RCLike` field. -/
+@[simp]
+theorem singularValues_complexify [Fintype m] [Fintype n] (A : Matrix m n 𝕜) :
+    singularValues (complexify A) = singularValues A := by
+  funext k
+  refine (sq_eq_sq₀ (singularValues_nonneg _ k) (singularValues_nonneg _ k)).mp ?_
+  rw [sq_singularValues, sq_singularValues, ← complexify_conjTranspose, ← complexify_mul,
+    eigenvalue_complexify]
+
+/-- The complexification is continuous for the entrywise topology on matrices. -/
+theorem continuous_complexify :
+    Continuous (complexify : Matrix m n 𝕜 → Matrix m n ℂ) :=
+  continuous_id.matrix_map RCLike.continuous_toComplex
 
 /-- **The complexification commutes with the functional calculus** of a Hermitian matrix. -/
 theorem complexify_cfc [Fintype n] [DecidableEq n] {A : Matrix n n 𝕜} (hA : A.IsHermitian)

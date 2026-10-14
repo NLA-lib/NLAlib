@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.Matrix.Basic.ComplementaryProjector
 public import NLAlib.Matrix.Perturbation.Pseudoinverse
 public import NLAlib.Matrix.Pseudoinverse.LeastSquares
 public import NLAlib.Matrix.Pseudoinverse.ConditionNumber

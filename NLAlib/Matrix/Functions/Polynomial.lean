@@ -23,6 +23,8 @@ and act on the singular values.
 
 * `Matrix.IsHermitian.exists_cfc_eq_aeval`: every function of `A` is a polynomial in `A`.
 * `Matrix.IsHermitian.specNorm_aeval_le`: `‖p(A)‖₂ ≤ max |p(λ_i)|`.
+* `Matrix.IsHermitian.re_quadForm_aeval_aeval_mulVec_le`: the same bound for the quadratic form
+  of a polynomial weight `g(A)`, with `NLAlib.re_quadForm_aeval_mulVec_le` the case `g = X`.
 * `NLAlib.specNorm_cfc_sub_aeval_le`: polynomial approximation of `f(A)`.
 * `NLAlib.aeval_mul_conjTranspose_self_mul`: intertwining.
 * `NLAlib.IsSVD.mul_aeval_conjTranspose_mul_self`: a polynomial filter applied to an SVD.
@@ -141,36 +143,52 @@ theorem _root_.Matrix.IsHermitian.re_trace_aeval {A : Matrix n n 𝕜} (hA : A.I
   rw [← cfc_polynomial p A hsa]
   exact hA.re_trace_cfc p.eval
 
+/-- **The polynomial bound in a polynomial weight.** For Hermitian `A` with spectrum in `S`, a
+polynomial `g` that is nonnegative on `S` and a polynomial `p` with `|p| ≤ c` on `S`, the
+quadratic form of `g(A)` satisfies `(p(A) x)ᴴ g(A) (p(A) x) ≤ c ^ 2 * xᴴ g(A) x`. With `g = X`
+this is the energy-norm bound behind the conjugate gradient method
+(`NLAlib.re_quadForm_aeval_mulVec_le`), with `g = X ^ 2` the residual-norm bound behind MINRES,
+which holds for indefinite `A`. [Saad2003, Lemma 6.28 context].
+Port of `NLAlib.quadForm_aeval_aeval_mulVec_le`, there over `ℝ`. -/
+theorem _root_.Matrix.IsHermitian.re_quadForm_aeval_aeval_mulVec_le {A : Matrix n n 𝕜}
+    (hA : A.IsHermitian) {S : Set ℝ} (hS : spectrum ℝ A ⊆ S) (g p : ℝ[X]) {c : ℝ}
+    (hg : ∀ x ∈ S, 0 ≤ g.eval x) (hp : ∀ x ∈ S, |p.eval x| ≤ c) (x : n → 𝕜) :
+    RCLike.re (quadForm (Polynomial.aeval A g) (Polynomial.aeval A p *ᵥ x)) ≤
+      c ^ 2 * RCLike.re (quadForm (Polynomial.aeval A g) x) := by
+  have hsa : IsSelfAdjoint A := hA
+  have hcont : ∀ f : ℝ → ℝ, ContinuousOn f (spectrum ℝ A) := fun f =>
+    A.finite_real_spectrum.continuousOn f
+  have hPGP : (Polynomial.aeval A p)ᴴ * Polynomial.aeval A g * Polynomial.aeval A p =
+      cfc (fun t => p.eval t * g.eval t * p.eval t) A := by
+    rw [(hA.aeval p).eq, cfc_mul (fun t => p.eval t * g.eval t) p.eval A (hcont _) (hcont _),
+      cfc_mul p.eval g.eval A (hcont _) (hcont _), cfc_polynomial p A hsa,
+      cfc_polynomial g A hsa]
+  have hle : cfc (fun t => p.eval t * g.eval t * p.eval t) A ≤ c ^ 2 • Polynomial.aeval A g := by
+    have h2 : cfc (fun t : ℝ => c ^ 2 * g.eval t) A = c ^ 2 • Polynomial.aeval A g := by
+      rw [cfc_const_mul (c ^ 2) g.eval A (hcont _), cfc_polynomial g A hsa]
+    rw [← h2]
+    refine cfc_mono (fun x hx => ?_) (hcont _) (hcont _)
+    have hp' := abs_le.mp (hp x (hS hx))
+    calc p.eval x * g.eval x * p.eval x = p.eval x ^ 2 * g.eval x := by ring
+      _ ≤ c ^ 2 * g.eval x :=
+        mul_le_mul_of_nonneg_right (sq_le_sq' hp'.1 hp'.2) (hg x (hS hx))
+  have hq := re_quadForm_le_re_quadForm_of_le hle x
+  rw [← hPGP, quadForm_conjTranspose_mul_mul, RCLike.real_smul_eq_coe_smul (K := 𝕜),
+    quadForm_smul_left, RCLike.re_ofReal_mul] at hq
+  exact hq
+
 /-- The quadratic form of `p(A)` for positive semidefinite `A` is controlled by `|p|` on an
-interval containing the spectrum: the energy-norm bound for a polynomial error.
+interval containing the spectrum: the energy-norm bound for a polynomial error. This is
+`Matrix.IsHermitian.re_quadForm_aeval_aeval_mulVec_le` with the weight `g = X`.
 [Saad2003, Lemma 6.28 context].
 Port of `NLAlib.quadForm_aeval_mulVec_le`, there over `ℝ`. -/
 theorem re_quadForm_aeval_mulVec_le {A : Matrix n n 𝕜} {a b : ℝ} (ha : 0 ≤ a)
     (h₁ : a • (1 : Matrix n n 𝕜) ≤ A) (h₂ : A ≤ b • (1 : Matrix n n 𝕜)) (p : ℝ[X]) {c : ℝ}
     (h : ∀ x ∈ Set.Icc a b, |p.eval x| ≤ c) (x : n → 𝕜) :
     RCLike.re (quadForm A (aeval A p *ᵥ x)) ≤ c ^ 2 * RCLike.re (quadForm A x) := by
-  have hA := isHermitian_of_le_smul_one h₂
-  have hsa : IsSelfAdjoint A := hA
-  have hs := spectrum_subset_Icc_of_le h₁ h₂
-  have hcont : ∀ g : ℝ → ℝ, ContinuousOn g (spectrum ℝ A) := fun g =>
-    A.finite_real_spectrum.continuousOn g
-  have hPAP : (aeval A p)ᴴ * A * aeval A p = cfc (fun t => p.eval t * t * p.eval t) A := by
-    rw [(hA.aeval p).eq, cfc_mul (fun t => p.eval t * t) p.eval A (hcont _) (hcont _),
-      cfc_mul p.eval (fun t => t) A (hcont _) (hcont _), cfc_id' ℝ A hsa, cfc_polynomial p A hsa]
-  have hle : cfc (fun t => p.eval t * t * p.eval t) A ≤ c ^ 2 • A := by
-    have h2 : cfc (fun t : ℝ => c ^ 2 * t) A = c ^ 2 • A := by
-      rw [cfc_const_mul (c ^ 2) (fun t => t) A (hcont _), cfc_id' ℝ A hsa]
-    rw [← h2]
-    refine cfc_mono (fun x hx => ?_) (hcont _) (hcont _)
-    have hx0 : 0 ≤ x := ha.trans (hs hx).1
-    have hp := abs_le.mp (h x (hs hx))
-    have hsq : p.eval x ^ 2 ≤ c ^ 2 := sq_le_sq' hp.1 hp.2
-    calc p.eval x * x * p.eval x = p.eval x ^ 2 * x := by ring
-      _ ≤ c ^ 2 * x := mul_le_mul_of_nonneg_right hsq hx0
-  have hq := re_quadForm_le_re_quadForm_of_le hle x
-  rw [← hPAP, quadForm_conjTranspose_mul_mul, RCLike.real_smul_eq_coe_smul (K := 𝕜),
-    quadForm_smul_left, RCLike.re_ofReal_mul] at hq
-  exact hq
+  have hq := (isHermitian_of_le_smul_one h₂).re_quadForm_aeval_aeval_mulVec_le
+    (spectrum_subset_Icc_of_le h₁ h₂) X p (fun t ht => by rw [eval_X]; exact ha.trans ht.1) h x
+  rwa [aeval_X] at hq
 
 /-! ### Intertwining and singular values -/
 

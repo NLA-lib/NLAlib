@@ -5,11 +5,13 @@ Authors: NLAlib contributors
 -/
 module
 
+public import Mathlib.Algebra.Order.Chebyshev
 public import Mathlib.Tactic.Positivity.Core
 public import NLAlib.Matrix.Majorization.Basic
 public import NLAlib.Matrix.Spectral.Dilation
 public import NLAlib.Matrix.Spectral.Interlacing
 public import NLAlib.Matrix.Spectral.SVD
+public import NLAlib.Matrix.Spectral.Weyl
 
 /-!
 # Ky Fan's maximum principles and the Ky Fan norms
@@ -32,6 +34,8 @@ sums are written `∑ i ∈ Finset.range k, eigenvalue A i` and have no name.
   principle for eigenvalues, and
   `Matrix.IsHermitian.exists_re_trace_conjTranspose_mul_mul_eq_sum_eigenvalue`: attainment.
 * `NLAlib.sum_range_eigenvalue_add_le`: subadditivity of eigenvalue partial sums.
+* `Matrix.PosSemidef.sq_max_re_trace_sub_sum_Ico_eigenvalue_le`,
+  `Matrix.PosSemidef.rank_le_of_sum_Ico_eigenvalue_eq_zero`: the trace above an eigenvalue tail.
 * `NLAlib.norm_trace_conjTranspose_mul_mul_le_kyFanNorm`,
   `NLAlib.re_trace_conjTranspose_mul_mul_le_kyFanNorm`: the principle for singular values.
 * `NLAlib.kyFanNorm_add_le`: the triangle inequality of the Ky Fan norms.
@@ -141,6 +145,68 @@ theorem majorized_eigenvalue_add {A B : Matrix n n 𝕜} (hA : A.IsHermitian) (h
       Finset.sum_add_distrib, ← (hA.add hB).re_trace_eq_sum_range_eigenvalue,
       ← hA.re_trace_eq_sum_range_eigenvalue, ← hB.re_trace_eq_sum_range_eigenvalue,
       Matrix.trace_add, map_add]
+
+/-! ### The trace tail -/
+
+open scoped ComplexOrder MatrixOrder in
+/-- **The trace above the eigenvalue tail is paid for by the Frobenius norm.** For positive
+semidefinite `R ≤ A` and `τ` the sum of the eigenvalues of `A` from index `r` on (the optimal
+trace error of a rank-`r` approximation of `A`), `max (tr R - τ) 0 ^ 2 ≤ r * tr (R * R)`: by
+monotonicity of the eigenvalues, `tr R - τ` is at most the sum of the `r` largest eigenvalues of
+`R`, and the Cauchy–Schwarz inequality bounds that sum. This is the step that turns the expected
+trace decrease of randomly pivoted Cholesky into its error bound.
+[ChenEtAl2025, proof of Theorem 3.1].
+Port of `NLAlib.sq_max_re_trace_sub_spectralTraceTail_le_of_eigenvalues₀_le` and of its real case
+`NLAlib.sq_max_trace_sub_spectralTraceTail_le_mul_trace_sq`. -/
+theorem _root_.Matrix.PosSemidef.sq_max_re_trace_sub_sum_Ico_eigenvalue_le {A R : Matrix n n 𝕜}
+    (hR : R.PosSemidef) (hRA : R ≤ A) (r : ℕ) :
+    max (RCLike.re R.trace - ∑ i ∈ Finset.Ico r (Fintype.card n), eigenvalue A i) 0 ^ 2 ≤
+      r * RCLike.re (R * R).trace := by
+  classical
+  set N := Fintype.card n
+  set S := (Finset.range N).filter (· < r) with hS
+  have hd : ∀ i, 0 ≤ eigenvalue R i := hR.eigenvalue_nonneg
+  have hT : (Finset.range N).filter (fun i => ¬ i < r) = Finset.Ico r N := by
+    ext i
+    simp only [Finset.mem_filter, Finset.mem_range, Finset.mem_Ico]
+    omega
+  have htr : RCLike.re R.trace =
+      ∑ i ∈ S, eigenvalue R i + ∑ i ∈ Finset.Ico r N, eigenvalue R i := by
+    rw [hR.isHermitian.re_trace_eq_sum_range_eigenvalue, ← hT,
+      Finset.sum_filter_add_sum_filter_not]
+  have htail : ∑ i ∈ Finset.Ico r N, eigenvalue R i ≤ ∑ i ∈ Finset.Ico r N, eigenvalue A i :=
+    Finset.sum_le_sum fun i _ => eigenvalue_le_eigenvalue_of_le hRA hR.isHermitian i
+  have hhead : 0 ≤ ∑ i ∈ S, eigenvalue R i := Finset.sum_nonneg fun i _ => hd i
+  have hmax : max (RCLike.re R.trace - ∑ i ∈ Finset.Ico r N, eigenvalue A i) 0 ≤
+      ∑ i ∈ S, eigenvalue R i := max_le (by linarith) hhead
+  have hcard : (S.card : ℝ) ≤ r := by
+    have : S ⊆ Finset.range r := fun i hi => Finset.mem_range.mpr (Finset.mem_filter.mp hi).2
+    exact_mod_cast (Finset.card_le_card this).trans_eq (Finset.card_range r)
+  have hsq : RCLike.re (R * R).trace = ∑ i ∈ Finset.range N, eigenvalue R i ^ 2 := by
+    rw [← pow_two, hR.isHermitian.re_trace_pow_eq_sum_range_eigenvalue_pow]
+  calc max (RCLike.re R.trace - ∑ i ∈ Finset.Ico r N, eigenvalue A i) 0 ^ 2
+      ≤ (∑ i ∈ S, eigenvalue R i) ^ 2 := pow_le_pow_left₀ (le_max_right _ _) hmax 2
+    _ ≤ S.card * ∑ i ∈ S, eigenvalue R i ^ 2 := sq_sum_le_card_mul_sum_sq
+    _ ≤ r * ∑ i ∈ Finset.range N, eigenvalue R i ^ 2 :=
+        mul_le_mul hcard (Finset.sum_le_sum_of_subset_of_nonneg (Finset.filter_subset _ _)
+          fun i _ _ => sq_nonneg _) (Finset.sum_nonneg fun i _ => sq_nonneg _) r.cast_nonneg
+    _ = r * RCLike.re (R * R).trace := by rw [hsq]
+
+open scoped ComplexOrder in
+/-- A positive semidefinite matrix whose eigenvalues from index `r` on sum to zero has rank at
+most `r`: the exact-rank case of the trace-tail bound.
+[ChenEtAl2025, Theorem 3.1, exact-rank case].
+Port of `NLAlib.rank_le_of_spectralTraceTail_eq_zero`. -/
+theorem _root_.Matrix.PosSemidef.rank_le_of_sum_Ico_eigenvalue_eq_zero {A : Matrix n n 𝕜}
+    (hA : A.PosSemidef) {r : ℕ}
+    (h : ∑ i ∈ Finset.Ico r (Fintype.card n), eigenvalue A i = 0) : A.rank ≤ r := by
+  rw [Finset.sum_eq_zero_iff_of_nonneg fun i _ => hA.eigenvalue_nonneg i] at h
+  rw [hA.isHermitian.rank_eq_card_eigenvalue_ne_zero]
+  refine (Finset.card_le_card fun i hi => ?_).trans_eq (Finset.card_range r)
+  rw [Finset.mem_filter, Finset.mem_range] at hi
+  rw [Finset.mem_range]
+  by_contra hir
+  exact hi.2 (h i (Finset.mem_Ico.mpr ⟨not_lt.mp hir, hi.1⟩))
 
 /-! ### The Ky Fan norms -/
 

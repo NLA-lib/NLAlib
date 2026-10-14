@@ -460,3 +460,9 @@ full-rank pseudoinverse formulas, least squares, `generalizedSchurComplement` (M
 - Process: skeletons must be checked with `lake lean`, not `lake env lean`. Proof agents handle a
   file of forty short lemmas in under ten minutes; grouping two or three small files per agent
   worked and saved orchestration time.
+
+**Amendment, 2026-10-14 (end of the layer).** `Basic/Projector.lean` had grown past 500 lines
+through later additions; its section on the complementary projector `1 - rangeProjector A`
+(eight declarations, unchanged) is now `Basic/ComplementaryProjector.lean`, which the files using
+them import. `IsStarProjection.norm_toLp_sq_eq_add` (Pythagoras for a star projection on vectors)
+was made public.

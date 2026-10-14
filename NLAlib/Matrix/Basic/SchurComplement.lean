@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import Mathlib.LinearAlgebra.Matrix.SchurComplement
+public import NLAlib.Matrix.Basic.ComplementaryProjector
 public import NLAlib.Matrix.Basic.Projector
 public import NLAlib.Matrix.Basic.QuadForm
 

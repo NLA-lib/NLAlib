@@ -53,17 +53,6 @@ private theorem inertia_mul_diagonal_mul_conjTranspose [DecidableEq n] {L : Matr
   rw [Matrix.conjTranspose_conjTranspose] at h1 h2
   exact ⟨h1.trans (inertiaPos_diagonal d), h2.trans (inertiaNeg_diagonal d)⟩
 
-/-- A Hermitian matrix is `P D Pᴴ` with `P` invertible and `D` real diagonal, both indexed by the
-index type of the matrix. -/
-private theorem exists_eq_mul_diagonal_mul_conjTranspose [DecidableEq n] {A : Matrix n n 𝕜}
-    (hA : A.IsHermitian) :
-    ∃ (P : Matrix n n 𝕜) (d : n → ℝ), IsUnit P.det ∧
-      A = P * Matrix.diagonal (fun i => ((d i : ℝ) : 𝕜)) * Pᴴ := by
-  refine ⟨hA.eigenvectorUnitary, hA.eigenvalues,
-    (Matrix.isUnit_iff_isUnit_det _).mp hA.hasOrthonormalCols_eigenvectorUnitary.isUnit, ?_⟩
-  have h := hA.spectral_theorem
-  rwa [Unitary.conjStarAlgAut_apply] at h
-
 /-! ### Blocks -/
 
 /-- The inertia of a block diagonal matrix, both indices at once. -/
@@ -72,8 +61,10 @@ private theorem inertia_fromBlocks_diagonal {A : Matrix m m 𝕜} {C : Matrix n 
     inertiaPos (Matrix.fromBlocks A 0 0 C) = inertiaPos A + inertiaPos C ∧
       inertiaNeg (Matrix.fromBlocks A 0 0 C) = inertiaNeg A + inertiaNeg C := by
   classical
-  obtain ⟨P, a, hP, rfl⟩ := exists_eq_mul_diagonal_mul_conjTranspose hA
-  obtain ⟨R, c, hR, rfl⟩ := exists_eq_mul_diagonal_mul_conjTranspose hC
+  obtain ⟨P, a, hP', rfl⟩ := hA.exists_hasOrthonormalCols_eq_mul_diagonal_mul_conjTranspose
+  obtain ⟨R, c, hR', rfl⟩ := hC.exists_hasOrthonormalCols_eq_mul_diagonal_mul_conjTranspose
+  have hP : IsUnit P.det := (Matrix.isUnit_iff_isUnit_det P).mp hP'.isUnit
+  have hR : IsUnit R.det := (Matrix.isUnit_iff_isUnit_det R).mp hR'.isUnit
   have hQ : IsUnit (Matrix.fromBlocks P 0 0 R).det := by
     rw [Matrix.det_fromBlocks_zero₂₁]
     exact hP.mul hR

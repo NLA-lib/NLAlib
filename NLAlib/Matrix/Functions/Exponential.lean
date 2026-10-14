@@ -28,6 +28,8 @@ conjugation.
 * `Matrix.IsHermitian.posDef_exp`, `Matrix.IsHermitian.cfc_log_exp`, `Matrix.PosDef.exp_cfc_log`.
 * `Matrix.IsHermitian.one_add_le_exp`.
 * `NLAlib.specNorm_exp_le`: `‖exp A‖₂ ≤ e ^ ‖A‖₂` for every square matrix.
+* `Matrix.IsHermitian.specNorm_exp`: `‖exp A‖₂ = exp(λ_max)` for Hermitian `A`, and
+  `NLAlib.specNorm_exp_sum_le_prod`: `‖exp (∑ A_k)‖₂ ≤ ∏ ‖exp A_k‖₂` for Hermitian `A_k`.
 * `Matrix.IsHermitian.re_trace_exp`: `tr exp A = ∑ exp λ_i`.
 * `Matrix.IsHermitian.exp_eigenvalue_zero_le_re_trace_exp`: `exp(λ_max) ≤ tr exp A`.
 * `Matrix.IsHermitian.re_trace_exp_le_card_mul_exp`: `tr exp A ≤ n exp(λ_max)`.
@@ -246,6 +248,31 @@ theorem specNorm_exp_le (A : Matrix n n 𝕜) : specNorm (exp A) ≤ Real.exp (s
     rw [pow_zero, pow_zero]
     exact specNorm_one_le
   | succ k => exact norm_pow_le' A k.succ_pos
+
+/-- **The spectral norm of the exponential of a Hermitian matrix** is the exponential of its
+largest eigenvalue: `‖exp A‖₂ = exp(λ_max(A))`, on a nonempty index type (for a matrix of size
+zero the left side is `0` and the right side `1`). -/
+theorem _root_.Matrix.IsHermitian.specNorm_exp [Nonempty n] {A : Matrix n n 𝕜}
+    (hA : A.IsHermitian) : specNorm (exp A) = Real.exp (eigenvalue A 0) := by
+  rw [hA.posDef_exp.posSemidef.specNorm_eq_eigenvalue_zero, hA.eigenvalue_exp Fintype.card_pos]
+
+/-- **The exponential of a sum of Hermitian matrices** is bounded in spectral norm by the product
+of the norms of the exponentials: `‖exp (∑ A_k)‖₂ ≤ ∏ ‖exp A_k‖₂`. The matrices need not commute:
+the largest eigenvalue is subadditive. Unlike the bound `∏ exp ‖A_k‖₂` from
+`NLAlib.specNorm_exp_le`, the right side is small when the `A k` are very negative, which is what
+the integrability of the matrix Laplace transform bound needs.
+Port of `NLAlib.norm_matrixExp_sum_le_prod`, there over `ℂ` with the weaker factors
+`1 + ‖exp (A k)‖`. -/
+theorem specNorm_exp_sum_le_prod {ι : Type*} (s : Finset ι) {A : ι → Matrix n n 𝕜}
+    (hA : ∀ k ∈ s, (A k).IsHermitian) :
+    specNorm (exp (∑ k ∈ s, A k)) ≤ ∏ k ∈ s, specNorm (exp (A k)) := by
+  rcases isEmpty_or_nonempty n with h | h
+  · rw [Subsingleton.elim (exp (∑ k ∈ s, A k)) 0, specNorm_zero]
+    exact Finset.prod_nonneg fun k _ => specNorm_nonneg _
+  have hS : (∑ k ∈ s, A k).IsHermitian := isSelfAdjoint_sum s hA
+  rw [hS.specNorm_exp, Finset.prod_congr rfl fun k hk => (hA k hk).specNorm_exp, ← Real.exp_sum,
+    Real.exp_le_exp, ← hS.le_smul_one_iff, Finset.sum_smul]
+  exact Finset.sum_le_sum fun k hk => (hA k hk).le_eigenvalue_zero_smul_one
 
 /-! ### The trace exponential -/
 

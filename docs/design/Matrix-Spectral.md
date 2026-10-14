@@ -377,3 +377,16 @@ which `singularValues A k * ‖x‖ ≤ ‖A x‖`, is still private; it is to b
   works because both `eigenvalue` and `singularValues` are zero-padded.
 - M6 should take its gap hypotheses as `δ ≤ eigengap A k` or `δ ≤ singularGap A k` and its
   spectral separation of two blocks in Loewner form.
+
+**Amendment, 2026-10-14 (end of the layer).** Files added after the stage report, all proved:
+`Spectral/ProjectedLowRank.lean` (the truncation step of the randomized SVD: for `Q` with
+orthonormal columns, `Q * truncatedSVD (Qᴴ * A) k` is the best approximation of `A` of the form
+`Q * B` with `B.rank ≤ k`, with the Pythagorean identity behind it),
+`Spectral/LeastSingularValue.lean` (every singular value is attained at a unit vector; a small
+least singular value puts a column within `√n * s` of the span of the others) and
+`ForMathlib/LinearAlgebra/Matrix/ConjTranspose.lean` (`Matrix.conjTranspose_diagonal_ofReal`,
+which four files had proved privately). `Spectral/SingularValueInequalities.lean` gained the
+scaled Gram-error bounds (`specNorm_le_sqrt_mul_one_add_of_specNorm_sub_smul_one_le` and its
+lower companion), `specNorm (Aᴴ * A - 1)` through the singular values, and
+`HasOrthonormalCols.singularValues_eq_one`; `Spectral/Eigenvalues.lean` gained
+`Matrix.IsHermitian.exists_hasOrthonormalCols_eq_mul_diagonal_mul_conjTranspose`.

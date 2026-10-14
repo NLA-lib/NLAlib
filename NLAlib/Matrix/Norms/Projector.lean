@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import Mathlib.NumberTheory.Real.GoldenRatio
+public import NLAlib.Matrix.Basic.ComplementaryProjector
 public import NLAlib.Matrix.Basic.OrthonormalBasis
 public import NLAlib.Matrix.Norms.Compare
 

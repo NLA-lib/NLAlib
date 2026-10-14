@@ -32,6 +32,9 @@ as close, up to a factor `√2`, as their column spaces.
   `NLAlib.HasOrthonormalCols.specNorm_tangentMatrix`: tangents.
 * `NLAlib.HasOrthonormalCols.tangentMatrix_add_mul`,
   `NLAlib.HasOrthonormalCols.singularValues_eq_tan_principalAngle_add_mul`: graph subspaces.
+* `NLAlib.HasOrthonormalCols.norm_toLp_one_sub_mul_mulVec_le_mul`,
+  `NLAlib.HasOrthonormalCols.norm_toLp_one_sub_mul_mulVec_col_le_mul`: the tangent of the angle
+  from a vector to a subspace, bounded by an orthogonal competitor.
 * `NLAlib.HasOrthonormalCols.exists_conjTranspose_sub_mul_mul_sub_mul_le`: aligning two frames, in
   Loewner form.
 * `NLAlib.HasOrthonormalCols.exists_frobNorm_sub_mul_sq_le`,
@@ -207,6 +210,74 @@ theorem HasOrthonormalCols.singularValues_eq_tan_principalAngle_add_mul [Decidab
     exact isUnit_one
   have h := hU.singularValues_tangentMatrix h1 hij
   rwa [hU.tangentMatrix_add_mul hUW, hW.singularValues_mul_left] at h
+
+/-! ### The tangent of the angle from a vector to a subspace -/
+
+/-- **The tangent of the angle from a unit vector to a subspace, bounded by a competitor.** For
+`Q` with orthonormal columns, the tangent of the angle between a unit vector `u` and the column
+space of `Q` is the quotient of `‖(1 - Q * Qᴴ) u‖` and `‖Qᴴ u‖`. If `u + w` lies in that column
+space for some `w` orthogonal to `u`, the tangent is at most `‖w‖`, stated here without the
+division. This is the per-vector form of the tangent bounds for subspace iterations: it needs no
+assumption on the dimension of the column space of `Q`, where
+`NLAlib.HasOrthonormalCols.tangentMatrix_add_mul` compares subspaces of equal dimension.
+Port of `NLAlib.vectorTangentToFrame_le_of_orthogonal_competitor`, there over `ℝ` and as a
+quotient. -/
+theorem HasOrthonormalCols.norm_toLp_one_sub_mul_mulVec_le_mul {Q : Matrix n p 𝕜}
+    (hQ : HasOrthonormalCols Q) {u w : n → 𝕜} (hu : ‖WithLp.toLp 2 u‖ = 1)
+    (huw : star u ⬝ᵥ w = 0) (hw : u + w ∈ LinearMap.range Q.mulVecLin) :
+    ‖WithLp.toLp 2 ((1 - Q * Qᴴ) *ᵥ u)‖ ≤
+      ‖WithLp.toLp 2 w‖ * ‖WithLp.toLp 2 (Qᴴ *ᵥ u)‖ := by
+  obtain ⟨z, hz⟩ := hw
+  rw [Matrix.mulVecLin_apply] at hz
+  have hpyth := hQ.isStarProjection_mul_conjTranspose.norm_toLp_sq_eq_add u
+  rw [hu, one_pow, ← Matrix.mulVec_mulVec, hQ.norm_toLp_mulVec] at hpyth
+  have hadd : ‖WithLp.toLp 2 (u + w)‖ ^ 2 = 1 + ‖WithLp.toLp 2 w‖ ^ 2 := by
+    have h0 : inner 𝕜 (WithLp.toLp 2 u) (WithLp.toLp 2 w) = 0 := by
+      rw [EuclideanSpace.inner_toLp_toLp_eq_star_dotProduct, huw]
+    have h := norm_add_sq_eq_norm_sq_add_norm_sq_of_inner_eq_zero _ _ h0
+    rw [hu, one_mul] at h
+    rw [WithLp.toLp_add, sq, sq, h]
+  have hone : star (Qᴴ *ᵥ u) ⬝ᵥ z = 1 := by
+    rw [Matrix.star_mulVec, Matrix.conjTranspose_conjTranspose, ← Matrix.dotProduct_mulVec, hz,
+      dotProduct_add, huw, add_zero, EuclideanSpace.star_dotProduct_self_eq_coe_norm_sq, hu,
+      one_pow, RCLike.ofReal_one]
+  have hcs : 1 ≤ ‖WithLp.toLp 2 (Qᴴ *ᵥ u)‖ * ‖WithLp.toLp 2 (u + w)‖ := by
+    have h := norm_inner_le_norm (𝕜 := 𝕜) (WithLp.toLp 2 (Qᴴ *ᵥ u)) (WithLp.toLp 2 z)
+    rwa [EuclideanSpace.inner_toLp_toLp_eq_star_dotProduct, hone, norm_one,
+      ← hQ.norm_toLp_mulVec z, hz] at h
+  have hcs2 : 1 ≤ ‖WithLp.toLp 2 (Qᴴ *ᵥ u)‖ ^ 2 * (1 + ‖WithLp.toLp 2 w‖ ^ 2) := by
+    rw [← hadd, ← mul_pow]
+    exact one_le_pow₀ hcs
+  refine (sq_le_sq₀ (norm_nonneg _) (by positivity)).mp ?_
+  rw [mul_pow]
+  linarith
+
+/-- **The tangent of the angle from a column of a graph basis to a subspace.** If `U` and `W`
+have orthonormal columns with `Uᴴ * W = 0` and the column space of the graph `U + W * F` is
+contained in that of `Q`, which has orthonormal columns, then the tangent of the angle between
+column `i` of `U` and the column space of `Q` is at most the norm of column `i` of `F`, stated
+without the division. This is how a tangent bound for a subspace iteration gives a bound for each
+target vector. Port of `NLAlib.vectorTangentToFrame_graph_col_le`, there over `ℝ` and as a
+quotient. -/
+theorem HasOrthonormalCols.norm_toLp_one_sub_mul_mulVec_col_le_mul {r : Type*} [Fintype r]
+    [DecidableEq q] [DecidableEq r] {Q : Matrix n p 𝕜} (hQ : HasOrthonormalCols Q)
+    {U : Matrix n q 𝕜} {W : Matrix n r 𝕜} (hU : HasOrthonormalCols U)
+    (hW : HasOrthonormalCols W) (hUW : Uᴴ * W = 0) (F : Matrix r q 𝕜)
+    (h : LinearMap.range (U + W * F).mulVecLin ≤ LinearMap.range Q.mulVecLin) (i : q) :
+    ‖WithLp.toLp 2 ((1 - Q * Qᴴ) *ᵥ U.col i)‖ ≤
+      ‖WithLp.toLp 2 (F.col i)‖ * ‖WithLp.toLp 2 (Qᴴ *ᵥ U.col i)‖ := by
+  have hUi : U *ᵥ Pi.single i 1 = U.col i := Matrix.mulVec_single_one U i
+  have hFi : F *ᵥ Pi.single i 1 = F.col i := Matrix.mulVec_single_one F i
+  have hu : ‖WithLp.toLp 2 (U.col i)‖ = 1 := by
+    rw [← hUi, hU.norm_toLp_mulVec, PiLp.toLp_single, PiLp.norm_single, norm_one]
+  have huw : star (U.col i) ⬝ᵥ (W *ᵥ F.col i) = 0 := by
+    rw [← hUi, Matrix.star_mulVec, ← Matrix.dotProduct_mulVec, Matrix.mulVec_mulVec, hUW,
+      Matrix.zero_mulVec, dotProduct_zero]
+  have hmem : U.col i + W *ᵥ F.col i ∈ LinearMap.range Q.mulVecLin := by
+    refine h ⟨Pi.single i 1, ?_⟩
+    rw [Matrix.mulVecLin_apply, Matrix.add_mulVec, ← Matrix.mulVec_mulVec, hUi, hFi]
+  have key := hQ.norm_toLp_one_sub_mul_mulVec_le_mul hu huw hmem
+  rwa [hW.norm_toLp_mulVec] at key
 
 /-! ### Aligning two frames -/
 

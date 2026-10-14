@@ -215,3 +215,39 @@ cut by D9 and the standard case has no user (R2 §0 does not port the fourth mom
 Unchecked: the printed label of the `(2p-1)^p` bound (Tropp 2015 discusses noncommutative
 Khintchine in the notes to chapter 4; Mackey et al. 2014 prove the trace form by exchangeable
 pairs). The docstring agent fixes the labels.
+
+## 8. Amendments from the review (2026-10-14)
+
+Review: Fable, of P5b, P5c, P5d and P7 together; the orchestrator accepted every finding. The
+skeletons are written under the rule that no `sorry` enters a proved file: new statements go in
+new files, merged at wrap-up.
+
+1. **Polynomial-growth Stein confirmed needed and cheap** (D4 stands). P6's one-dimensional step
+   `integral_mul_eq_integral_deriv_gaussianReal_one` (private) takes only integrability; the bound
+   on the derivative is used only for the growth and `L²` estimates
+   (`memLp_two_comp_of_norm_fderiv_le`), which polynomial growth replaces through
+   `memLp_id_gaussianReal` and `HasGaussianLaw.memLp`. Recorded in the docstring. The statement
+   of §3.2 is unchanged. P6's bounded theorem stays as it is until wrap-up, where it either
+   becomes the `k = 0` corollary (D5 rule 6, keeping its name) or stays as proved.
+2. **Law-free lemma, integrability** (in the docstring): no integrability hypothesis is needed,
+   by a case split. If `tr (V Y^{2q})` is not integrable its integral is `0`, and `hrec` makes the
+   left side at most `0`; if `tr Y^{2q+2}` is not integrable the left side is `0`; either way the
+   right side is nonnegative (`Matrix.PosSemidef.re_trace_pow_nonneg`). If both are integrable,
+   trace Young is integrated (and `|tr (V Y^{2q})| ≤ ‖V‖ (d + tr Y^{2q+2})` on a probability
+   measure shows the second integrability follows from the first). This replaces §3's sentence
+   "if either trace moment is not integrable, `hrec` forces the left side to be `0`".
+3. **Citations.** The trace bound is [MackeyEtAl2014, Theorem 7.1], not "§7". Tropp 2015's
+   section numbers for noncommutative Khintchine are unconfirmed: cite [Tropp2015, chapter 4].
+   The review asked for the key `MackeyJordanChenFarrellTropp2014`; the same paper is already in
+   `docs/references.bib` as `MackeyEtAl2014` (cited by `TracePowers.lean`), so no second key was
+   added and the skeletons cite `MackeyEtAl2014`.
+4. **Files** (amends §5). §3.3 is in a new skeleton file
+   `Probability/Distributions/RademacherSymmetry.lean` (2 statements), to be merged into
+   `Rademacher.lean`; §3.2 in a new skeleton file
+   `Probability/Distributions/GaussianIntegrationByPartsGrowth.lean` (1 statement), to be merged
+   into `GaussianIntegrationByParts.lean`, where P6's theorem is then reproved from it or kept.
+   `Probability/MatrixConcentration/Khintchine.lean` (9 statements, §3.1 unchanged) imports both
+   new files, `TracePowers.lean`, `Gaussian.lean` and `MatrixIntegral.lean`. The proved files get
+   no `sorry`; nothing is registered in `NLAlib.lean` yet.
+5. **Instances.** `[DecidableEq ι]` is taken only by the two isotropic second-moment lemmas
+   (`IsIsotropic` needs it); the law statements do not use it.

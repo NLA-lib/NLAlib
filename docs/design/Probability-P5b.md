@@ -217,3 +217,37 @@ unused `Measurable Y`; `0 ≤ L`. Atlas id: `intrinsic-dimension`.
 
 Unchecked: the theorem labels of Tropp 2015 chapter 7 (taken from the prototype's docstrings; the
 Hermitian intrinsic Bernstein is cited there as 7.7.1 and the rectangular as 7.3.1).
+
+## 8. Amendments from the review (2026-10-14)
+
+Review: Fable, of P5b, P5c, P5d and P7 together; the orchestrator accepted every finding. The
+skeletons are written under the rule that no `sorry` enters a proved file: new statements go in
+new files, merged at wrap-up.
+
+1. **Chernoff mean, proof route** (written into the docstring of
+   `integral_eigenvalue_zero_sum_le_chernoff_intrinsicDim`): for positive semidefinite `Y`,
+   `e^{s λ_max Y} - 1 ≤ tr (e^{s Y} - I)`; Jensen; the trace bound at `s = θ / L` and
+   monotonicity after the trace; the intrinsic dimension lemma; then
+   `1 + d (e^a - 1) ≤ 2 d e^a` from `Matrix.PosSemidef.one_le_intrinsicDimension`, with a case
+   split on `M = 0` (both sides `0`). The statement is unchanged.
+2. **§3.1 hypotheses** (in the docstring): no continuity of `ψ` is needed, since a Hermitian
+   matrix has finite spectrum and `cfc ψ` is never its junk value there; and
+   `mul_meas_ge_le_integral_of_nonneg` has no finiteness hypothesis, so "any measure" is right.
+   The statement is unchanged.
+3. **Labels.** [Tropp2015]: Theorem 7.2.1 (Chernoff, tail and mean), Theorem 7.3.1 (rectangular
+   Bernstein, tail and mean), Corollary 7.3.2 (Hermitian Bernstein, tail and mean),
+   Proposition 7.4.1 (generalised Laplace), Lemma 7.5.1 (intrinsic dimension lemma, Matrix
+   layer), Theorem 7.7.1 (the Hermitian trace form). The means are cited as theorems, not as
+   "(7.3.3)"; `intrinsicBernsteinMeanConstant` cites Theorem 7.3.1.
+4. **Files** (amends §5 and D6). §3.1 is in a new skeleton file
+   `Probability/MatrixConcentration/LaplaceGeneral.lean` (1 statement), to be merged into
+   `Laplace.lean` at wrap-up; `Laplace.lean` is proved and gets no `sorry`.
+   `Probability/MatrixConcentration/IntrinsicDimension.lean` (11 declarations: 3 Chernoff,
+   3 Bernstein tails, the constant and its 2 lemmas, 2 means) imports `LaplaceGeneral.lean`,
+   `ChernoffSum.lean`, `Bernstein.lean` and `TraceFunctions.lean`. §5 item 3 (making
+   `exists_bernstein_exponent` and `integral_dilation_sq` public in `Bernstein.lean`) is a
+   visibility change to a proved file, left to the proof round; the skeleton does not touch
+   `Bernstein.lean`. Neither file is registered in `NLAlib.lean` yet.
+5. **Result ids**: `generalized-matrix-laplace` (§3.1), `intrinsic-matrix-chernoff` (the sum tail
+   and mean), `intrinsic-matrix-bernstein` (the Hermitian and rectangular sum tails and means).
+   The trace forms are the general statements behind them and carry no id.

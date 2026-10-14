@@ -1,4 +1,8 @@
 {
+ "HasEuclideanLogSobolev": {
+  "new": "NLAlib.HasLogSobolev",
+  "stage": "P4"
+ },
  "HasHansonWrightMGF": {
   "new": null,
   "note": "HasSubexponentialMGF is the interface",
@@ -12469,6 +12473,24 @@
   "new": "ProbabilityTheory.HasSubgaussianMGF.hasSubexponentialMGF_sq_sub_integral",
   "stage": "P1"
  },
+ "entropy_exp_mul_le_of_logSobolev_of_bounded": {
+  "new": null,
+  "note": "private step in LogSobolev.lean",
+  "stage": "P4"
+ },
+ "entropy_pi_le_sum_integral_entropy_update": {
+  "new": "NLAlib.entropy_pi_le_sum",
+  "stage": "P4"
+ },
+ "entropy_pi_le_sum_integral_entropy_update_of_nonneg": {
+  "new": "NLAlib.entropy_pi_le_sum",
+  "stage": "P4"
+ },
+ "exists_bounded_contDiff_lipschitz_approx": {
+  "new": null,
+  "note": "private step in LogSobolev.lean",
+  "stage": "P4"
+ },
  "finiteSamplingLaw": {
   "new": "NLAlib.samplingMeasure",
   "stage": "P2"
@@ -12565,6 +12587,15 @@
   "new": "NLAlib.hasSubgaussianMGF_of_hasLaw_rademacherMeasure",
   "stage": "P2"
  },
+ "hasSubgaussianMGF_of_logSobolev": {
+  "new": "NLAlib.HasLogSobolev.hasSubgaussianMGF_sub_integral",
+  "stage": "P4"
+ },
+ "hasSubgaussianMGF_of_logSobolev_of_bounded": {
+  "new": null,
+  "note": "private step in LogSobolev.lean",
+  "stage": "P4"
+ },
  "iIndepFun_eval_rademacherVector": {
   "new": null,
   "note": "HasLaw.iIndepFun_eval",
@@ -12573,6 +12604,11 @@
  "inner_randomVector_hasSubgaussianMGF_of_iIndepFun": {
   "new": "NLAlib.lintegral_exp_mul_dotProduct_le",
   "stage": "P3"
+ },
+ "integrable_entropy_update_of_nonneg": {
+  "new": null,
+  "note": "not needed",
+  "stage": "P4"
  },
  "integrable_exp_centered_sq_of_hasSubgaussianMGF_of_le": {
   "new": "ProbabilityTheory.HasSubgaussianMGF.hasSubexponentialMGF_sq_sub_integral",
@@ -12607,6 +12643,25 @@
   "new": "ProbabilityTheory.HasSubgaussianMGF.integrable_iSup",
   "stage": "P1"
  },
+ "integrable_mul_log_add_of_nonneg": {
+  "new": null,
+  "note": "inlined in EntropyTensorization.lean",
+  "stage": "P4"
+ },
+ "integrable_mul_log_integral_update_of_nonneg": {
+  "new": null,
+  "note": "private step in EntropyTensorization.lean",
+  "stage": "P4"
+ },
+ "integrable_of_logSobolev_of_lipschitz": {
+  "new": "NLAlib.HasLogSobolev.integrable_of_lipschitzWith",
+  "stage": "P4"
+ },
+ "integrable_of_nonneg_mul_log_integrable": {
+  "new": null,
+  "note": "integrability is a hypothesis of entropy_pi_le_sum",
+  "stage": "P4"
+ },
  "integrable_of_tail_le": {
   "new": "NLAlib.integrable_of_measureReal_ge_le",
   "stage": "P0"
@@ -12639,6 +12694,11 @@
   "note": "private fourth mixed moment, over 𝕜",
   "stage": "P3"
  },
+ "integral_entropy_update_eq_sub_integral_mul_log_mean": {
+  "new": null,
+  "note": "private step in EntropyTensorization.lean",
+  "stage": "P4"
+ },
  "integral_eq_zero_of_hasLaw_gaussianReal": {
   "new": "NLAlib.integral_of_hasLaw_gaussianReal",
   "stage": "P2"
@@ -12665,6 +12725,16 @@
   "new": null,
   "note": "private step in SubGaussianVector/Norm.lean, via the law of the dot product",
   "stage": "P3"
+ },
+ "integral_exp_mul_le_exp_of_entropy_le": {
+  "new": null,
+  "note": "private step of hasSubgaussianMGF_sub_integral_of_entropy_le",
+  "stage": "P4"
+ },
+ "integral_exp_mul_le_of_logSobolev_of_bounded": {
+  "new": null,
+  "note": "private step in LogSobolev.lean",
+  "stage": "P4"
  },
  "integral_exp_mul_sq_eq_tsum_integrals": {
   "new": null,
@@ -12767,6 +12837,11 @@
   "new": null,
   "note": "Jensen step; private in Probability/SubGaussian/Moments.lean",
   "stage": "P1"
+ },
+ "integral_mul_le_entropy_of_integral_exp_le_one": {
+  "new": null,
+  "note": "private step of entropy_pi_le_sum",
+  "stage": "P4"
  },
  "integral_nonpos_of_hasSubgaussianMGF": {
   "new": null,
@@ -12913,6 +12988,10 @@
   "new": "NLAlib.mgf_of_hasLaw_rademacherMeasure",
   "stage": "P2"
  },
+ "mul_log_integral_le_integral_mul_log_of_nonneg": {
+  "new": "NLAlib.entropy_nonneg",
+  "stage": "P4"
+ },
  "posDef_integral_of_ae_posDef": {
   "new": "Matrix.posDef_integral",
   "stage": "P0"
@@ -12940,6 +13019,11 @@
   "new": null,
   "note": "series step; private in SubGaussian/Square.lean",
   "stage": "P1"
+ },
+ "tendsto_integral_mul_log_add_of_nonneg": {
+  "new": null,
+  "note": "private step in EntropyTensorization.lean",
+  "stage": "P4"
  },
  "variance_quadForm": {
   "new": "NLAlib.integral_norm_quadForm_sub_trace_sq",

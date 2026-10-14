@@ -66,9 +66,12 @@ correction. Now: P0's matrix-integral file, P4 design.
 | P4 | design note `docs/design/Probability-P4.md`, skeletons | orchestrator | written, Fable-reviewed (§8); skeletons compile | |
 | P4 | `Probability/Entropy.lean`, `EntropyTensorization.lean`, `ForMathlib/MeasureTheory/Constructions/PiUpdate.lean` | Opus agent, orchestrator | proved | split from one 722-line file |
 | P4 | `Distributions/GaussianLogSobolev.lean` | Opus agent | proofs in progress | |
-| P4 | `LogSobolev.lean` | Opus agent | proofs in progress | |
+| P4 | `LogSobolev.lean` (+ `ForMathlib/Analysis/Calculus/BumpFunction/Convolution.lean`) | Opus agent | proved | Lipschitz approximation by convolution |
 | P4 | `Distributions/GaussianConcentration.lean` | — | skeleton compiles | after the two above |
-| P5a | design note `docs/design/Probability-P5a.md`, skeletons `MatrixConcentration/*` | orchestrator | written, Fable-reviewed (§8); skeleton check pending a build slot | |
+| P5a | design note `docs/design/Probability-P5a.md`, skeletons `MatrixConcentration/*` | orchestrator | written, Fable-reviewed (§8); skeletons compile | |
+| P5a | `MatrixConcentration/{Laplace,Subadditivity,MGFBound}.lean` (+ `ForMathlib/Analysis/Convex/Integral.lean`) | Opus agent | proved | Jensen on a non-closed convex set; wrap-up: move `continuousOn_cfc_log` to the Matrix layer, `measurableSet_posDef` to Measurability |
+| P5a | `MatrixConcentration/{Chernoff,ChernoffSum}.lean` | Opus agent | proofs in progress | |
+| P5a | `MatrixConcentration/{Bernstein,Series}.lean` | — | skeletons compile | next slot |
 
 **Matrix layer complete, 2026-10-14** (branch `scaffold`, local commits, not pushed): stages M0 to
 M10 proved, 144 files, nothing scaffolded, all checks green. Read `docs/design/Matrix-REPORT.md`

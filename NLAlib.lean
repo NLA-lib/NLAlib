@@ -3,6 +3,7 @@ module  -- shake: keep-all --deprecated_module: ignore
 public import NLAlib.ForMathlib.Algebra.BigOperators.AbelSummation
 public import NLAlib.ForMathlib.Analysis.CStarAlgebra.Matrix
 public import NLAlib.ForMathlib.Analysis.Calculus.BumpFunction.Convolution
+public import NLAlib.ForMathlib.Analysis.Calculus.ContDiff.Hessian
 public import NLAlib.ForMathlib.Analysis.Calculus.Deriv.Matrix
 public import NLAlib.ForMathlib.Analysis.Convex.Integral
 public import NLAlib.ForMathlib.Analysis.InnerProductSpace.PiL2
@@ -40,6 +41,7 @@ public import NLAlib.Matrix.Factorizations.LU
 public import NLAlib.Matrix.Factorizations.LUGeneral
 public import NLAlib.Matrix.Factorizations.Nystrom
 public import NLAlib.Matrix.Factorizations.Polar
+public import NLAlib.Matrix.Factorizations.PolarFrames
 public import NLAlib.Matrix.Factorizations.Procrustes
 public import NLAlib.Matrix.Factorizations.QR
 public import NLAlib.Matrix.Factorizations.RankRevealing
@@ -150,7 +152,9 @@ public import NLAlib.Matrix.Subspaces.Tangent
 public import NLAlib.Probability.Distributions.ChiSquare
 public import NLAlib.Probability.Distributions.ChiSquareMoments
 public import NLAlib.Probability.Distributions.Gaussian
+public import NLAlib.Probability.Distributions.GaussianComparison
 public import NLAlib.Probability.Distributions.GaussianConcentration
+public import NLAlib.Probability.Distributions.GaussianIntegrationByParts
 public import NLAlib.Probability.Distributions.GaussianLogSobolev
 public import NLAlib.Probability.Distributions.GaussianLogSobolevOneDim
 public import NLAlib.Probability.Distributions.Rademacher
@@ -183,8 +187,9 @@ public import NLAlib.Probability.SubGaussianVector.Norm
 public import NLAlib.Probability.Tail
 public import NLAlib.RandomMatrix.Gaussian.Basic
 public import NLAlib.RandomMatrix.Gaussian.Concentration
+public import NLAlib.RandomMatrix.Gaussian.Invariance
 public import NLAlib.RandomMatrix.Gaussian.InverseMoments
 public import NLAlib.RandomMatrix.Gaussian.InverseMoments.Spectral
-public import NLAlib.RandomMatrix.Gaussian.Invariance
 public import NLAlib.RandomMatrix.Gaussian.Moments
 public import NLAlib.RandomMatrix.Gaussian.Rank
+public import NLAlib.RandomMatrix.UnitaryInvariance

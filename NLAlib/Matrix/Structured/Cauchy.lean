@@ -24,6 +24,8 @@ is the case `x i = i + 1`, `y j = j`.
 
 * `NLAlib.det_cauchyMatrix`: Cauchy's determinant formula.
 * `NLAlib.det_cauchyMatrix_pos`, `NLAlib.det_hilbertMatrix_pos`.
+* `NLAlib.posDef_cauchyMatrix_self`: a symmetric Cauchy matrix of distinct positive numbers is
+  positive definite.
 * `NLAlib.posDef_hilbertMatrix`: the Hilbert matrix is positive definite.
 -/
 
@@ -207,6 +209,14 @@ private theorem posDef_cauchyMatrix_self_aux (k : ℕ) :
     refine Pi.isUnit_iff.mpr fun i => IsUnit.mk0 _ (div_ne_zero ?_ (add_pos (ha i) (ha t)).ne')
     exact sub_ne_zero.mpr fun h => i.2 (hinj h)
 
+/-- **A symmetric Cauchy matrix of distinct positive numbers is positive definite**: for an
+injective family `a` of positive reals on any finite index type, the matrix with entries
+`1 / (a i + a j)` is positive definite. [HornJohnson2013, §7.1.P19 context]. -/
+theorem posDef_cauchyMatrix_self {ι : Type*} [Finite ι] {a : ι → ℝ} (ha : ∀ i, 0 < a i)
+    (hinj : Function.Injective a) : (cauchyMatrix a a).PosDef := by
+  cases nonempty_fintype ι
+  exact posDef_cauchyMatrix_self_aux _ ι rfl a ha hinj
+
 /-- **The Hilbert matrix is positive definite.** [HornJohnson2013, §7.1.P19 context]. -/
 theorem posDef_hilbertMatrix (n : ℕ) : (hilbertMatrix n).PosDef := by
   have h : hilbertMatrix n =
@@ -216,7 +226,7 @@ theorem posDef_hilbertMatrix (n : ℕ) : (hilbertMatrix n).PosDef := by
     congr 1
     ring
   rw [h]
-  exact posDef_cauchyMatrix_self_aux _ _ rfl _ (fun i => by positivity) fun i j hij =>
+  exact posDef_cauchyMatrix_self (fun i => by positivity) fun i j hij =>
     Fin.ext (Nat.cast_injective (add_right_cancel hij))
 
 end NLAlib

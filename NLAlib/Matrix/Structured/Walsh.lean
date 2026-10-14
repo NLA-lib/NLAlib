@@ -24,6 +24,8 @@ subsampled randomized Hadamard transforms use.
 
 ## Main results
 
+* `NLAlib.walshHadamard_apply`, `NLAlib.transpose_walshHadamard`,
+  `NLAlib.conjTranspose_walshHadamard`: entries and symmetry.
 * `NLAlib.walshHadamard_mul_self`: `H * H = 2 ^ b • 1`.
 * `NLAlib.isHadamard_walshHadamard`.
 * `NLAlib.hasOrthonormalCols_smul_walshHadamard`: the normalised matrix is orthogonal.
@@ -54,7 +56,7 @@ private theorem ite_add_eq_zero (s t : ZMod 2) :
     simp [show (1 : ZMod 2) + 1 = 0 from by decide]
 
 /-- Entries of the Walsh–Hadamard matrix, unfolded. -/
-private theorem walshHadamard_apply (x y : Fin b → ZMod 2) :
+theorem walshHadamard_apply (x y : Fin b → ZMod 2) :
     walshHadamard R b x y = if ∑ i, x i * y i = 0 then 1 else -1 :=
   rfl
 
@@ -117,7 +119,7 @@ theorem walshHadamard_mul_self (b : ℕ) :
   rw [walshHadamard_add_apply, walshHadamard_comm z y]
 
 /-- The Walsh–Hadamard matrix is its own conjugate transpose. -/
-private theorem conjTranspose_walshHadamard [StarRing R] (b : ℕ) :
+theorem conjTranspose_walshHadamard [StarRing R] (b : ℕ) :
     (walshHadamard R b)ᴴ = walshHadamard R b := by
   ext x y
   rw [Matrix.conjTranspose_apply, walshHadamard_comm, walshHadamard_apply]

@@ -23,7 +23,8 @@ spectral, Frobenius and nuclear norms, the rank, the pseudoinverse and the condi
 
 * `NLAlib.HasOrthonormalCols.kronecker`, `NLAlib.IsSVD.kronecker`.
 * `NLAlib.specNorm_kronecker`, `NLAlib.frobNorm_kronecker`, `NLAlib.nuclearNorm_kronecker`,
-  `NLAlib.rank_kronecker`, `NLAlib.pinv_kronecker`, `NLAlib.conditionNumber_kronecker`.
+  `NLAlib.rank_kronecker`, `NLAlib.IsPinv.kronecker`, `NLAlib.pinv_kronecker`,
+  `NLAlib.conditionNumber_kronecker`.
 * `NLAlib.kronecker_eq_mul_diagonal_mul_conjTranspose`,
   `NLAlib.kronecker_one_add_one_kronecker_eq_mul_diagonal_mul_conjTranspose`: eigenvalues of a
   Kronecker product and of a Kronecker sum.
@@ -167,12 +168,6 @@ private theorem exists_kronecker_similarity [Fintype m] [Fintype n] [DecidableEq
       ← Matrix.mul_kronecker_mul, ← Matrix.mul_kronecker_mul, Matrix.mul_one, Matrix.mul_one,
       Matrix.nonsing_inv_mul _ hF, Matrix.nonsing_inv_mul _ hG]
 
-/-- Conjugation by a pair of mutually inverse matrices preserves the characteristic polynomial. -/
-private theorem charpoly_mul_mul_of_mul_eq_one [Fintype m] [DecidableEq m] {K : Type*} [Field K]
-    {P Q : Matrix m m K}
-    (h : Q * P = 1) (M : Matrix m m K) : (P * M * Q).charpoly = M.charpoly := by
-  rw [Matrix.charpoly_mul_comm, ← Matrix.mul_assoc, h, Matrix.one_mul]
-
 /-- **The eigenvalues of a Kronecker product are the products of the eigenvalues**, for any two
 square matrices whose eigenvalues are listed. [HornJohnson1991, Theorem 4.2.12]. -/
 theorem IsEigenvalueListing.kronecker [Fintype m] [Fintype n] [DecidableEq m] [DecidableEq n]
@@ -182,7 +177,7 @@ theorem IsEigenvalueListing.kronecker [Fintype m] [Fintype n] [DecidableEq m] [D
   let _ : LinearOrder m := LinearOrder.lift' (Fintype.equivFin m) (Fintype.equivFin m).injective
   let _ : LinearOrder n := LinearOrder.lift' (Fintype.equivFin n) (Fintype.equivFin n).injective
   obtain ⟨P, Q, S, T, hQP, hS, hT, hdS, hdT, hprod, -⟩ := exists_kronecker_similarity hA hB
-  rw [isEigenvalueListing_iff, ← charpoly_mul_mul_of_mul_eq_one hQP, hprod,
+  rw [isEigenvalueListing_iff, ← charpoly_mul_mul_of_mul_eq_one (mul_eq_one_comm.mp hQP), hprod,
     charpoly_of_blockTriangular_toLex (blockTriangular_toLex_kronecker hS hT)]
   simp only [Matrix.kroneckerMap_apply, hdS, hdT]
 
@@ -196,7 +191,7 @@ theorem IsEigenvalueListing.kronecker_one_add_one_kronecker [Fintype m] [Fintype
   let _ : LinearOrder m := LinearOrder.lift' (Fintype.equivFin m) (Fintype.equivFin m).injective
   let _ : LinearOrder n := LinearOrder.lift' (Fintype.equivFin n) (Fintype.equivFin n).injective
   obtain ⟨P, Q, S, T, hQP, hS, hT, hdS, hdT, -, hsum⟩ := exists_kronecker_similarity hA hB
-  rw [isEigenvalueListing_iff, ← charpoly_mul_mul_of_mul_eq_one hQP, hsum,
+  rw [isEigenvalueListing_iff, ← charpoly_mul_mul_of_mul_eq_one (mul_eq_one_comm.mp hQP), hsum,
     charpoly_of_blockTriangular_toLex
       ((blockTriangular_toLex_kronecker hS Matrix.blockTriangular_one).add
         (blockTriangular_toLex_kronecker Matrix.blockTriangular_one hT))]
@@ -285,15 +280,6 @@ private theorem pi_norm_mul_apply [Fintype r] [Fintype s] (σ : r → ℝ) (τ :
     rw [mul_comm, ← norm_mul]
     exact norm_le_pi_norm (fun ij : r × s => σ ij.1 * τ ij.2) (i, j)
 
-/-- The nuclear norm is the sum of the singular values of any singular value decomposition. -/
-private theorem nuclearNorm_eq_sum_of_isSVD [Fintype m] [Fintype n] [Fintype r] [DecidableEq r]
-    {A : Matrix m n 𝕜} {U : Matrix m r 𝕜} {σ : r → ℝ} {V : Matrix n r 𝕜} (h : IsSVD A U σ V) :
-    nuclearNorm A = ∑ i, σ i := by
-  obtain ⟨e, he⟩ := h.exists_equiv_singularValues_eq
-  have hrank : A.rank ≤ Fintype.card r := h.rank_eq ▸ Finset.card_le_univ _
-  rw [nuclearNorm_eq_sum_range A hrank, ← Fin.sum_univ_eq_sum_range, ← e.sum_comp]
-  exact Finset.sum_congr rfl fun i _ => (he i).symm
-
 /-- **The spectral norm is multiplicative on Kronecker products.**
 [HornJohnson1991, Theorem 4.2.15]. Port of `NLAlib.specNorm_kronecker`, there over `ℝ`. -/
 theorem specNorm_kronecker [Fintype m] [Fintype n] [Fintype p] [Fintype q] (A : Matrix m n 𝕜)
@@ -323,8 +309,8 @@ theorem nuclearNorm_kronecker [Fintype m] [Fintype n] [Fintype p] [Fintype q] (A
     nuclearNorm (A ⊗ₖ B) = nuclearNorm A * nuclearNorm B := by
   obtain ⟨U, V, hA⟩ := exists_isSVD A le_rfl A.rank_le_card_height A.rank_le_card_width
   obtain ⟨P, W, hB⟩ := exists_isSVD B le_rfl B.rank_le_card_height B.rank_le_card_width
-  rw [nuclearNorm_eq_sum_of_isSVD (hA.kronecker hB), nuclearNorm_eq_sum_of_isSVD hA,
-    nuclearNorm_eq_sum_of_isSVD hB, Fintype.sum_prod_type, Finset.sum_mul_sum]
+  rw [(hA.kronecker hB).nuclearNorm_eq_sum, hA.nuclearNorm_eq_sum, hB.nuclearNorm_eq_sum,
+    Fintype.sum_prod_type, Finset.sum_mul_sum]
 
 /-- **The rank is multiplicative on Kronecker products.**
 [HornJohnson1991, Theorem 4.2.15]. Port of `NLAlib.rank_kronecker`, there over `ℝ`. -/
@@ -340,14 +326,13 @@ theorem rank_kronecker [Finite m] [Fintype n] [Finite p] [Fintype q] (A : Matrix
   refine congrArg Finset.card (Finset.ext fun ij => ?_)
   simp only [Finset.mem_filter, Finset.mem_univ, true_and, Finset.mem_product, mul_ne_zero_iff]
 
-/-- **The pseudoinverse of a Kronecker product** is the Kronecker product of the pseudoinverses.
-Port of `NLAlib.moorePenroseInverse_kronecker`, there over `ℝ`. -/
-theorem pinv_kronecker [Fintype m] [Fintype n] [Fintype p] [Fintype q] (A : Matrix m n 𝕜)
-    (B : Matrix p q 𝕜) :
-    pinv (A ⊗ₖ B) = pinv A ⊗ₖ pinv B := by
-  have hA := isPinv_pinv A
-  have hB := isPinv_pinv B
-  refine IsPinv.pinv_eq ⟨?_, ?_, ?_, ?_⟩
+/-- The Penrose identities pass to Kronecker products: if `A'` is the pseudoinverse of `A` and
+`B'` that of `B`, both recognised through `IsPinv`, then `A' ⊗ₖ B'` is the pseudoinverse of
+`A ⊗ₖ B`. -/
+theorem IsPinv.kronecker [Fintype m] [Fintype n] [Fintype p] [Fintype q] {A : Matrix m n 𝕜}
+    {A' : Matrix n m 𝕜} {B : Matrix p q 𝕜} {B' : Matrix q p 𝕜} (hA : IsPinv A A')
+    (hB : IsPinv B B') : IsPinv (A ⊗ₖ B) (A' ⊗ₖ B') := by
+  refine ⟨?_, ?_, ?_, ?_⟩
   · rw [← Matrix.mul_kronecker_mul, ← Matrix.mul_kronecker_mul, hA.mul_mul_left,
       hB.mul_mul_left]
   · rw [← Matrix.mul_kronecker_mul, ← Matrix.mul_kronecker_mul, hA.mul_mul_right,
@@ -356,6 +341,13 @@ theorem pinv_kronecker [Fintype m] [Fintype n] [Fintype p] [Fintype q] (A : Matr
     exact hA.isHermitian_left.kronecker hB.isHermitian_left
   · rw [← Matrix.mul_kronecker_mul]
     exact hA.isHermitian_right.kronecker hB.isHermitian_right
+
+/-- **The pseudoinverse of a Kronecker product** is the Kronecker product of the pseudoinverses.
+Port of `NLAlib.moorePenroseInverse_kronecker`, there over `ℝ`. -/
+theorem pinv_kronecker [Fintype m] [Fintype n] [Fintype p] [Fintype q] (A : Matrix m n 𝕜)
+    (B : Matrix p q 𝕜) :
+    pinv (A ⊗ₖ B) = pinv A ⊗ₖ pinv B :=
+  ((isPinv_pinv A).kronecker (isPinv_pinv B)).pinv_eq
 
 /-- The condition number is multiplicative on Kronecker products. -/
 theorem conditionNumber_kronecker [Fintype m] [Fintype n] [Fintype p] [Fintype q] (A : Matrix m n 𝕜)

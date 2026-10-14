@@ -25,7 +25,8 @@ of the `Matrix.Norms.L2Operator` scope. Unlike that norm, `specNorm` needs no `D
 
 * `NLAlib.norm_toLp_mulVec_le`: `‖A x‖ ≤ specNorm A * ‖x‖`.
 * `NLAlib.specNorm_le_iff`: the characterisation as the least such constant.
-* `NLAlib.specNorm_mul_le`: submultiplicativity, for rectangular factors.
+* `NLAlib.specNorm_mul_le`, `NLAlib.specNorm_pow_le`: submultiplicativity, for rectangular
+  factors and for powers.
 * `NLAlib.specNorm_conjTranspose_mul_self`: the C*-identity `specNorm (Aᴴ * A) = specNorm A ^ 2`.
 * `NLAlib.exists_norm_eq_one_and_norm_mulVec_eq_specNorm`: the norm is attained.
 * `NLAlib.specNorm_eq_norm`: the bridge to Mathlib.
@@ -291,6 +292,15 @@ theorem specNorm_one [DecidableEq n] [Nonempty n] : specNorm (1 : Matrix n n �
   obtain ⟨i⟩ := ‹Nonempty n›
   have h := norm_toLp_mulVec_le (1 : Matrix n n 𝕜) (Pi.single i 1)
   rwa [Matrix.one_mulVec, PiLp.toLp_single, PiLp.norm_single, norm_one, mul_one] at h
+
+/-- The spectral norm of a power is at most the power of the spectral norm. -/
+theorem specNorm_pow_le [DecidableEq n] (A : Matrix n n 𝕜) (k : ℕ) :
+    specNorm (A ^ k) ≤ specNorm A ^ k := by
+  induction k with
+  | zero => simpa only [pow_zero] using specNorm_one_le (n := n) (𝕜 := 𝕜)
+  | succ k ih =>
+    rw [pow_succ, pow_succ]
+    exact (specNorm_mul_le _ _).trans (mul_le_mul_of_nonneg_right ih (specNorm_nonneg A))
 
 open scoped Matrix.Norms.L2Operator in
 /-- The spectral norm of a diagonal matrix is the largest modulus of a diagonal entry, that is,

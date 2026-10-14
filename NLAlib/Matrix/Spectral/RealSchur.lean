@@ -299,17 +299,6 @@ private theorem exists_mul_eq_mul_isRealSchurForm (hk : 0 < k) (A : Matrix (Fin 
 
 /-! ### Real Schur and real normal forms -/
 
-private theorem isStarNormal_conjTranspose_mul_mul {m n : Type*} [Fintype m] [Fintype n]
-    [DecidableEq m] {W : Matrix m n ℝ} (h : W * Wᴴ = 1) {A : Matrix m m ℝ}
-    (hA : IsStarNormal A) : IsStarNormal (Wᴴ * A * W) := by
-  have hA' : Aᴴ * A = A * Aᴴ := hA.star_comm_self.eq
-  rw [isStarNormal_iff, commute_iff_eq, Matrix.star_eq_conjTranspose, Matrix.conjTranspose_mul,
-    Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
-  calc Wᴴ * (Aᴴ * W) * (Wᴴ * A * W) = Wᴴ * (Aᴴ * (W * Wᴴ) * A) * W := by
-        simp only [Matrix.mul_assoc]
-    _ = Wᴴ * (A * (W * Wᴴ) * Aᴴ) * W := by rw [h, Matrix.mul_one, Matrix.mul_one, hA']
-    _ = Wᴴ * A * W * (Wᴴ * (Aᴴ * W)) := by simp only [Matrix.mul_assoc]
-
 private theorem isStarNormal_of_finBlocks {p q : ℕ} {S : Matrix (Fin p) (Fin p) ℝ}
     {C : Matrix (Fin p) (Fin q) ℝ} {D : Matrix (Fin q) (Fin p) ℝ} {T : Matrix (Fin q) (Fin q) ℝ}
     (h : IsStarNormal (finBlocks S C D T)) : IsStarNormal (Matrix.fromBlocks S C D T) := by
@@ -381,15 +370,14 @@ private theorem exists_isRealSchurForm_conjTranspose_mul_mul (k : ℕ) :
     refine ⟨finCols V (V₂ * Q'), hQ, ?_, fun hA => ?_⟩
     · rw [hblock]
       exact isRealSchurForm_finBlocks _ hB hT'
-    · have hN := isStarNormal_conjTranspose_mul_mul hQ.mul_conjTranspose_self hA
+    · have hN := hA.conjTranspose_mul_mul hQ
       rw [hblock] at hN ⊢
       have hC : Vᴴ * A * (V₂ * Q') = 0 :=
         eq_zero_of_isStarNormal_fromBlocks (isStarNormal_of_finBlocks hN)
       rw [hC] at hN ⊢
       obtain ⟨hBn, hTn⟩ := isStarNormal_of_fromBlocks_zero (isStarNormal_of_finBlocks hN)
       have hA' : IsStarNormal (V₂ᴴ * A * V₂) := by
-        have h := isStarNormal_conjTranspose_mul_mul (W := Q'ᴴ)
-          (by rw [Matrix.conjTranspose_conjTranspose]; exact hQ'.conjTranspose_mul_self) hTn
+        have h := hTn.conjTranspose_mul_mul hQ'.conjTranspose
         rwa [Matrix.conjTranspose_conjTranspose, ← Matrix.mul_assoc, ← Matrix.mul_assoc,
           hQ'.mul_conjTranspose_self, Matrix.one_mul, Matrix.mul_assoc,
           hQ'.mul_conjTranspose_self, Matrix.mul_one] at h

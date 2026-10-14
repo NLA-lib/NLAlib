@@ -244,17 +244,6 @@ theorem _root_.Matrix.IsHermitian.card_eigenvalue_lt_eq_card_neg_of_sub_smul_one
       (Finset.univ.filter fun i => d i < 0).card := by
   rw [← hA.inertiaNeg_sub_smul_one, h, (inertia_mul_diagonal_mul_conjTranspose hL d).2]
 
-/-- Elimination keeps a Hermitian matrix Hermitian. -/
-private theorem isHermitian_gaussState {k : ℕ} {M : Matrix (Fin k) (Fin k) 𝕜}
-    (hM : M.IsHermitian) (j : ℕ) : (gaussState M j).IsHermitian := by
-  induction j with
-  | zero => exact hM
-  | succ j ih =>
-    rw [gaussState]
-    split_ifs with h
-    · exact ih.eliminationStep _
-    · exact ih
-
 /-- **The `L D Lᴴ` factorization produced by elimination** of a Hermitian matrix at nonzero
 pivots: column `j` of `L` is the pivot column of the `j`-th state and `D` holds the inverses of
 the pivots. -/
@@ -274,8 +263,8 @@ private theorem eq_mul_diagonal_mul_conjTranspose_of_gaussState_ne_zero {k : ℕ
   rw [Matrix.sum_apply, Matrix.mul_apply]
   refine Finset.sum_congr rfl fun j _ => ?_
   rw [Matrix.mul_diagonal, Matrix.smul_apply, Matrix.vecMulVec_apply, Matrix.of_apply,
-    Matrix.conjTranspose_apply, Matrix.of_apply, (isHermitian_gaussState hM j).apply,
-    smul_eq_mul, RCLike.ofReal_inv, (isHermitian_gaussState hM j).coe_re_apply_self j]
+    Matrix.conjTranspose_apply, Matrix.of_apply, (hM.gaussState j).apply,
+    smul_eq_mul, RCLike.ofReal_inv, (hM.gaussState j).coe_re_apply_self j]
   ring
 
 /-- **Counting eigenvalues by pivots** (the Sturm count). If elimination on `A - x • 1` meets no

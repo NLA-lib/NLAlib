@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.ForMathlib.LinearAlgebra.Matrix.ConjTranspose
 public import NLAlib.Matrix.Subspaces.Frames
 public import NLAlib.Matrix.Subspaces.ProjectorPair
 public import NLAlib.Matrix.Spectral.SVD
@@ -51,15 +52,6 @@ def csMatrix (𝕜 : Type*) [RCLike 𝕜] (c s : p → ℝ) (e : p ↪ q) : Matr
   let C : Matrix p p 𝕜 := Matrix.diagonal fun i => ((c i : ℝ) : 𝕜)
   let S : Matrix p p 𝕜 := Matrix.diagonal fun i => ((s i : ℝ) : 𝕜)
   Matrix.fromBlocks C (S * Eᴴ) (-(E * S)) (E * C * Eᴴ + (1 - E * Eᴴ))
-
-omit [Fintype p] in
-/-- A real diagonal matrix is Hermitian. -/
-private theorem conjTranspose_diagonal_ofReal (c : p → ℝ) :
-    (Matrix.diagonal fun i => ((c i : ℝ) : 𝕜))ᴴ = Matrix.diagonal fun i => ((c i : ℝ) : 𝕜) := by
-  rw [Matrix.diagonal_conjTranspose]
-  congr 1
-  funext i
-  exact RCLike.conj_ofReal (c i)
 
 /-- The block computation behind the unitarity of the canonical CS matrix. -/
 private theorem conjTranspose_fromBlocks_mul_self_eq_one {C S : Matrix p p 𝕜} {E : Matrix q p 𝕜}
@@ -112,8 +104,8 @@ private theorem conjTranspose_fromBlocks_mul_self_eq_one {C S : Matrix p p 𝕜}
 Port of `NLAlib.hasOrthonormalCols_csCanonicalMatrix`. -/
 theorem hasOrthonormalCols_csMatrix {c s : p → ℝ} (h : ∀ i, c i ^ 2 + s i ^ 2 = 1) (e : p ↪ q) :
     HasOrthonormalCols (csMatrix 𝕜 c s e) := by
-  refine conjTranspose_fromBlocks_mul_self_eq_one (conjTranspose_diagonal_ofReal c)
-    (conjTranspose_diagonal_ofReal s)
+  refine conjTranspose_fromBlocks_mul_self_eq_one (Matrix.conjTranspose_diagonal_ofReal c)
+    (Matrix.conjTranspose_diagonal_ofReal s)
     (hasOrthonormalCols_one.submatrix (Equiv.refl q) e.injective) ?_ ?_
   · rw [Matrix.diagonal_mul_diagonal, Matrix.diagonal_mul_diagonal, Matrix.diagonal_add,
       ← Matrix.diagonal_one]

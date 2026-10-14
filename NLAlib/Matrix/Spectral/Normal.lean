@@ -25,6 +25,7 @@ Frobenius distance (Hoffman–Wielandt).
 * `IsStarNormal.exists_eq_mul_diagonal_mul_conjTranspose_of_isEigenvalueListing`: with a prescribed
   order.
 * `IsStarNormal.isDiag_of_isUpperTriangular`.
+* `IsStarNormal.conjTranspose_mul_mul`: normality is invariant under unitary similarity.
 * `IsStarNormal.mul_eq_mul_iff_conjTranspose_mul_eq_mul_conjTranspose`: Fuglede–Putnam.
 * `IsStarNormal.exists_eq_mul_mul_conjTranspose_iff_charpoly_eq`: unitary similarity.
 * `IsStarNormal.exists_perm_sum_norm_sub_sq_le_frobNorm_sq`: Hoffman–Wielandt.
@@ -79,9 +80,10 @@ theorem isStarNormal_mul_diagonal_mul_conjTranspose {U : Matrix n n 𝕜}
     Matrix.diagonal_mul_diagonal, Matrix.diagonal_mul_diagonal]
   simp only [mul_comm]
 
-/-- A unitary similarity of a normal matrix is normal. -/
-private theorem isStarNormal_conjTranspose_mul_mul {U A : Matrix n n 𝕜}
-    (hU : HasOrthonormalCols U) (hA : IsStarNormal A) : IsStarNormal (Uᴴ * A * U) := by
+/-- **Normality is invariant under unitary similarity**: for normal `A` and unitary `U`, the
+matrix `Uᴴ * A * U` is normal. -/
+theorem _root_.IsStarNormal.conjTranspose_mul_mul {A : Matrix n n 𝕜} (hA : IsStarNormal A)
+    {U : Matrix n n 𝕜} (hU : HasOrthonormalCols U) : IsStarNormal (Uᴴ * A * U) := by
   have h : Aᴴ * A = A * Aᴴ := hA.star_comm_self
   refine ⟨?_⟩
   rw [Commute, SemiconjBy, Matrix.star_eq_conjTranspose]
@@ -111,7 +113,7 @@ theorem _root_.IsStarNormal.eq_mul_diagonal_mul_conjTranspose_of_isUpperTriangul
     {A U : Matrix n n 𝕜} (hA : IsStarNormal A) (hU : HasOrthonormalCols U)
     (hT : (Uᴴ * A * U).IsUpperTriangular) :
     A = U * Matrix.diagonal (fun i => (Uᴴ * A * U) i i) * Uᴴ := by
-  have hD := (isStarNormal_conjTranspose_mul_mul hU hA).isDiag_of_isUpperTriangular hT
+  have hD := (hA.conjTranspose_mul_mul hU).isDiag_of_isUpperTriangular hT
   refine hU.eq_mul_mul_conjTranspose_iff.mpr (Matrix.ext fun i j => ?_)
   by_cases hij : i = j
   · rw [hij, Matrix.diagonal_apply_eq]
@@ -162,21 +164,26 @@ theorem eq_zero_of_isStarNormal_fromBlocks {A : Matrix m m 𝕜} {B : Matrix n n
 
 /-- A normal matrix with listed eigenvalues `d` is Hermitian exactly when the `d i` are real. -/
 theorem _root_.IsStarNormal.isHermitian_iff_forall_im_eq_zero {A : Matrix n n 𝕜}
-    (hA : IsStarNormal A) {d : n → 𝕜} (hd : IsEigenvalueListing A d) :
+    (hA : IsStarNormal A) {ι : Type*} [Fintype ι] {d : ι → 𝕜} (hd : IsEigenvalueListing A d) :
     A.IsHermitian ↔ ∀ i, RCLike.im (d i) = 0 := by
-  obtain ⟨U, hU, rfl⟩ := hA.exists_eq_mul_diagonal_mul_conjTranspose_of_isEigenvalueListing hd
+  obtain ⟨e⟩ : Nonempty (n ≃ ι) := ⟨Fintype.equivOfCardEq hd.card_eq.symm⟩
+  obtain ⟨U, hU, rfl⟩ :=
+    hA.exists_eq_mul_diagonal_mul_conjTranspose_of_isEigenvalueListing (hd.comp_equiv e)
   rw [Matrix.IsHermitian, conjTranspose_mul_diagonal_mul_conjTranspose,
     mul_mul_conjTranspose_inj hU, Matrix.diagonal_eq_diagonal_iff]
-  simp only [Pi.star_apply, RCLike.star_def, RCLike.conj_eq_iff_im]
+  refine e.forall_congr fun i => ?_
+  simp only [Pi.star_apply, Function.comp_apply, RCLike.star_def, RCLike.conj_eq_iff_im]
 
 /-- A normal matrix with listed eigenvalues `d` is unitary exactly when the `d i` have modulus
 one. -/
 theorem _root_.IsStarNormal.hasOrthonormalCols_iff_forall_norm_eq_one {A : Matrix n n 𝕜}
-    (hA : IsStarNormal A) {d : n → 𝕜} (hd : IsEigenvalueListing A d) :
+    (hA : IsStarNormal A) {ι : Type*} [Fintype ι] {d : ι → 𝕜} (hd : IsEigenvalueListing A d) :
     HasOrthonormalCols A ↔ ∀ i, ‖d i‖ = 1 := by
-  obtain ⟨U, hU, rfl⟩ := hA.exists_eq_mul_diagonal_mul_conjTranspose_of_isEigenvalueListing hd
-  have h1 : (U * Matrix.diagonal d * Uᴴ)ᴴ * (U * Matrix.diagonal d * Uᴴ) =
-      U * Matrix.diagonal (fun i => star (d i) * d i) * Uᴴ := by
+  obtain ⟨e⟩ : Nonempty (n ≃ ι) := ⟨Fintype.equivOfCardEq hd.card_eq.symm⟩
+  obtain ⟨U, hU, rfl⟩ :=
+    hA.exists_eq_mul_diagonal_mul_conjTranspose_of_isEigenvalueListing (hd.comp_equiv e)
+  have h1 : (U * Matrix.diagonal (d ∘ e) * Uᴴ)ᴴ * (U * Matrix.diagonal (d ∘ e) * Uᴴ) =
+      U * Matrix.diagonal (fun i => star (d (e i)) * d (e i)) * Uᴴ := by
     simp only [Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose,
       Matrix.diagonal_conjTranspose, Matrix.mul_assoc]
     rw [hU.conjTranspose_mul_cancel_left, ← Matrix.mul_assoc (Matrix.diagonal _)
@@ -185,7 +192,7 @@ theorem _root_.IsStarNormal.hasOrthonormalCols_iff_forall_norm_eq_one {A : Matri
   have h2 : (1 : Matrix n n 𝕜) = U * Matrix.diagonal (fun _ => 1) * Uᴴ := by
     rw [Matrix.diagonal_one, Matrix.mul_one, hU.mul_conjTranspose_self]
   rw [hasOrthonormalCols_iff, h1, h2, mul_mul_conjTranspose_inj hU, Matrix.diagonal_eq_diagonal_iff]
-  refine forall_congr' fun i => ?_
+  refine e.forall_congr fun i => ?_
   rw [RCLike.star_def, RCLike.conj_mul, ← RCLike.ofReal_pow, ← RCLike.ofReal_one,
     RCLike.ofReal_inj, pow_eq_one_iff_of_nonneg (norm_nonneg _) two_ne_zero]
 
@@ -198,11 +205,14 @@ theorem _root_.IsStarNormal.frobNorm_sq_eq_sum {A : Matrix n n 𝕜} (hA : IsSta
 
 /-- The spectral norm of a normal matrix is the largest modulus of an eigenvalue. -/
 theorem _root_.IsStarNormal.specNorm_le_iff {A : Matrix n n 𝕜} (hA : IsStarNormal A)
-    {d : n → 𝕜} (hd : IsEigenvalueListing A d) {c : ℝ} (hc : 0 ≤ c) :
+    {ι : Type*} [Fintype ι] {d : ι → 𝕜} (hd : IsEigenvalueListing A d) {c : ℝ} (hc : 0 ≤ c) :
     specNorm A ≤ c ↔ ∀ i, ‖d i‖ ≤ c := by
-  obtain ⟨U, hU, rfl⟩ := hA.exists_eq_mul_diagonal_mul_conjTranspose_of_isEigenvalueListing hd
+  obtain ⟨e⟩ : Nonempty (n ≃ ι) := ⟨Fintype.equivOfCardEq hd.card_eq.symm⟩
+  obtain ⟨U, hU, rfl⟩ :=
+    hA.exists_eq_mul_diagonal_mul_conjTranspose_of_isEigenvalueListing (hd.comp_equiv e)
   rw [hU.specNorm_mul_conjTranspose_right, hU.specNorm_mul_left, specNorm_diagonal,
     pi_norm_le_iff_of_nonneg hc]
+  exact e.forall_congr fun i => Iff.rfl
 
 /-! ### Intertwining and similarity -/
 

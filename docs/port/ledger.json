@@ -10917,7 +10917,7 @@
   "stage": "M2"
  },
  "NLAlib.spectralRadius_eq_nnnorm_of_spectrum_eq_range": {
-  "new": "NLAlib.specRadius_le_iff_of_charpoly_eq",
+  "new": "NLAlib.IsEigenvalueListing.specRadius_le_iff",
   "note": "the radius of a listed spectrum, as specRadius A ≤ c iff every listed eigenvalue has modulus at most c",
   "stage": "M10"
  },

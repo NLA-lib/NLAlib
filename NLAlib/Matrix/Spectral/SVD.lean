@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.ForMathlib.LinearAlgebra.Matrix.ConjTranspose
 public import NLAlib.Matrix.Basic.OrthonormalBasis
 public import NLAlib.Matrix.Spectral.SingularValues
 
@@ -38,6 +39,7 @@ non-increasing, `σ` is the sequence of singular values (`NLAlib.IsSVD.singularV
 * `NLAlib.IsSVD.eq_add`, `NLAlib.exists_isSVD_fromCols`: splitting into two blocks.
 * `Matrix.IsHermitian.exists_equiv_abs_eigenvalue_eq_singularValues`: the singular values of a
   Hermitian matrix are the absolute values of its eigenvalues.
+* `NLAlib.HasOrthonormalCols.singularValues_eq_one`: the singular values of an isometry.
 -/
 
 @[expose] public section
@@ -66,15 +68,6 @@ structure IsSVD (A : Matrix m n 𝕜) (U : Matrix m r 𝕜) (σ : r → ℝ) (V 
   /-- The decomposition `A = U Σ Vᴴ`. -/
   eq : A = U * Matrix.diagonal (fun i => ((σ i : ℝ) : 𝕜)) * Vᴴ
 
-omit [Fintype r] in
-/-- A diagonal matrix with real entries is its own conjugate transpose. -/
-private theorem conjTranspose_diagonal_ofReal (σ : r → ℝ) :
-    (Matrix.diagonal fun i => ((σ i : ℝ) : 𝕜))ᴴ = Matrix.diagonal fun i => ((σ i : ℝ) : 𝕜) := by
-  rw [Matrix.diagonal_conjTranspose]
-  congr 1
-  funext i
-  exact RCLike.conj_ofReal (σ i)
-
 namespace IsSVD
 
 variable {A : Matrix m n 𝕜} {U : Matrix m r 𝕜} {σ : r → ℝ} {V : Matrix n r 𝕜}
@@ -89,7 +82,7 @@ private theorem eq_mul_mul (h : IsSVD A U σ V) :
 private theorem conjTranspose_eq_mul_mul (h : IsSVD A U σ V) :
     Aᴴ = V * Matrix.diagonal (fun i => ((σ i : ℝ) : 𝕜)) * Uᴴ := by
   rw [h.eq, Matrix.conjTranspose_mul, Matrix.conjTranspose_mul,
-    Matrix.conjTranspose_conjTranspose, conjTranspose_diagonal_ofReal, Matrix.mul_assoc]
+    Matrix.conjTranspose_conjTranspose, Matrix.conjTranspose_diagonal_ofReal, Matrix.mul_assoc]
 
 /-! ### Consequences of the decomposition -/
 
@@ -320,7 +313,7 @@ private theorem exists_hasOrthonormalCols_mul_diagonal_eq {B : Matrix m r 𝕜} 
       C = B * Matrix.diagonal fun i => (((s i)⁻¹ : ℝ) : 𝕜) := ⟨_, rfl⟩
   have hC : Cᴴ * C =
       Matrix.diagonal fun i => (((s i)⁻¹ : ℝ) : 𝕜) * (((s i ^ 2 : ℝ) : 𝕜) * ((s i)⁻¹ : ℝ)) := by
-    rw [hCB, Matrix.conjTranspose_mul, conjTranspose_diagonal_ofReal, Matrix.mul_assoc,
+    rw [hCB, Matrix.conjTranspose_mul, Matrix.conjTranspose_diagonal_ofReal, Matrix.mul_assoc,
       ← Matrix.mul_assoc Bᴴ, hB, Matrix.diagonal_mul_diagonal, Matrix.diagonal_mul_diagonal]
   have hQ₁ : HasOrthonormalCols (C.submatrix id (Subtype.val : {i // s i ≠ 0} → r)) := by
     rw [HasOrthonormalCols, Matrix.conjTranspose_submatrix,
@@ -436,7 +429,7 @@ theorem exists_eq_mul_conjTranspose_of_rank_le [Finite m] (A : Matrix m n 𝕜) 
     V * Matrix.diagonal (fun i : Fin A.rank => ((singularValues A i : ℝ) : 𝕜)) *
       ((1 : Matrix (Fin k) (Fin k) 𝕜).submatrix id (Fin.castLE hk))ᴴ, ?_⟩
   rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose, Matrix.conjTranspose_mul,
-    conjTranspose_diagonal_ofReal, Matrix.mul_assoc U, hS.conjTranspose_mul_cancel_left,
+    Matrix.conjTranspose_diagonal_ofReal, Matrix.mul_assoc U, hS.conjTranspose_mul_cancel_left,
     ← Matrix.mul_assoc]
   exact h.eq
 
@@ -476,5 +469,14 @@ theorem _root_.Matrix.IsHermitian.exists_equiv_abs_eigenvalue_eq_singularValues
     exact hAU
   obtain ⟨e, he⟩ := h.exists_equiv_singularValues_eq
   exact ⟨e.trans (finCongr (Fintype.card_fin _)), fun i => he i⟩
+
+/-- The singular values of a matrix with orthonormal columns are `1`, as many as it has
+columns. -/
+theorem HasOrthonormalCols.singularValues_eq_one [DecidableEq n] {V : Matrix m n 𝕜}
+    (hV : HasOrthonormalCols V) {i : ℕ} (hi : i < Fintype.card n) : singularValues V i = 1 := by
+  have h1 : singularValues V = singularValues (1 : Matrix n n 𝕜) :=
+    singularValues_eq_of_conjTranspose_mul_self_eq
+      (by rw [hV.conjTranspose_mul_self, Matrix.conjTranspose_one, Matrix.one_mul])
+  rw [h1, Matrix.PosSemidef.one.singularValues_eq_eigenvalue, eigenvalue_one hi]
 
 end NLAlib

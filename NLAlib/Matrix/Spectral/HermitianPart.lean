@@ -27,6 +27,8 @@ eigenvalues (Bendixson).
 * `NLAlib.majorized_re_of_isEigenvalueListing`: Ky Fan's majorization.
 * `NLAlib.re_le_eigenvalue_zero_hermitianPart`, `NLAlib.eigenvalue_hermitianPart_le_re`:
   Bendixson's bounds.
+* `NLAlib.det_ne_zero_of_posDef_hermitianPart`: a matrix with positive definite Hermitian part is
+  invertible.
 -/
 
 @[expose] public section
@@ -138,5 +140,17 @@ theorem eigenvalue_hermitianPart_le_re {A : Matrix n n 𝕜} {μ : 𝕜} (hμ : 
   have h := (isHermitian_hermitianPart A).eigenvalue_last_mul_le_re_quadForm hj v
   rw [re_quadForm_hermitianPart, hq] at h
   exact le_of_mul_le_mul_right h hv
+
+open scoped ComplexOrder in
+/-- **A matrix with positive definite Hermitian part is invertible.** A null vector `v` of `A`
+would have `re (v* A v) = 0`, which is the quadratic form of the Hermitian part.
+[HornJohnson2013, §7.1 context]. -/
+theorem det_ne_zero_of_posDef_hermitianPart {A : Matrix n n 𝕜} (h : (hermitianPart A).PosDef) :
+    A.det ≠ 0 := by
+  intro hdet
+  obtain ⟨v, hv, hAv⟩ := Matrix.exists_mulVec_eq_zero_iff.mpr hdet
+  have hpos := h.re_quadForm_pos hv
+  rw [re_quadForm_hermitianPart, quadForm, hAv, dotProduct_zero, map_zero] at hpos
+  exact lt_irrefl 0 hpos
 
 end NLAlib

@@ -38,6 +38,8 @@ matrices indexed by `Fin`. Existence is read off Mathlib's
 * `NLAlib.IsQR.isCholesky`: `Rᴴ` is the Cholesky factor of the Gram matrix.
 * `NLAlib.exists_hasOrthonormalCols_mul_isUpperTrapezoidal`,
   `NLAlib.exists_hasOrthonormalCols_mul_isUpperTrapezoidal_nonneg`: the full factorization.
+* `NLAlib.isQR_submatrix_castLE`, `NLAlib.IsQR.exists_hasOrthonormalCols_mul_isUpperTrapezoidal`:
+  from the full factorization to the thin one and back.
 -/
 
 @[expose] public section
@@ -331,6 +333,44 @@ theorem isQR_submatrix_castLE {m n : ℕ} {A : Matrix (Fin m) (Fin n) 𝕜}
   rw [hR.apply_eq_zero_of_le (i := k) ?_ j, mul_zero]
   by_contra hkn
   exact hk ⟨⟨k, not_le.mp hkn⟩, Fin.ext rfl⟩
+
+/-- **A thin QR factorization extends to a full one**, the converse of
+`NLAlib.isQR_submatrix_castLE`: for `A = Q * R` with `Q` having orthonormal columns and `R` upper
+triangular there are a square unitary `Q'` whose first `n` columns are `Q` and an upper
+trapezoidal `R'` whose first `n` rows are `R` (the others vanish), with `A = Q' * R'`. -/
+theorem IsQR.exists_hasOrthonormalCols_mul_isUpperTrapezoidal {m n : ℕ}
+    {A Q : Matrix (Fin m) (Fin n) 𝕜} {R : Matrix (Fin n) (Fin n) 𝕜} (h : IsQR A Q R)
+    (hnm : n ≤ m) :
+    ∃ (Q' : Matrix (Fin m) (Fin m) 𝕜) (R' : Matrix (Fin m) (Fin n) 𝕜),
+      HasOrthonormalCols Q' ∧ IsUpperTrapezoidal R' ∧ A = Q' * R' ∧
+        Q'.submatrix id (Fin.castLE hnm) = Q ∧ R'.submatrix (Fin.castLE hnm) id = R := by
+  obtain ⟨d, rfl⟩ := Nat.exists_eq_add_of_le hnm
+  obtain ⟨Q₂, hQ₂⟩ := h.hasOrthonormalCols.exists_fromCols (p := Fin d)
+    (by simp only [Fintype.card_fin])
+  refine ⟨(Matrix.fromCols Q Q₂).submatrix id finSumFinEquiv.symm,
+    (Matrix.fromRows R (0 : Matrix (Fin d) (Fin n) 𝕜)).submatrix finSumFinEquiv.symm id,
+    hQ₂.submatrix (Equiv.refl _) finSumFinEquiv.symm.injective, fun i j hji => ?_, ?_, ?_, ?_⟩
+  · rw [Matrix.submatrix_apply]
+    induction i using Fin.addCases with
+    | left i =>
+      rw [finSumFinEquiv_symm_apply_castAdd, Matrix.fromRows_apply_inl]
+      exact h.isUpperTriangular (show j < i from hji)
+    | right i =>
+      rw [finSumFinEquiv_symm_apply_natAdd, Matrix.fromRows_apply_inr, Matrix.zero_apply]
+  · rw [show (id : Fin (n + d) → Fin (n + d)) = Equiv.refl _ from rfl,
+      Matrix.submatrix_mul_equiv, Matrix.fromCols_mul_fromRows, Matrix.mul_zero, add_zero,
+      ← h.eq_mul]
+    rfl
+  · ext i j
+    rw [Matrix.submatrix_apply, Matrix.submatrix_apply,
+      show Fin.castLE hnm j = Fin.castAdd d j from rfl, finSumFinEquiv_symm_apply_castAdd,
+      Matrix.fromCols_apply_inl]
+    rfl
+  · ext i j
+    rw [Matrix.submatrix_apply, Matrix.submatrix_apply,
+      show Fin.castLE hnm i = Fin.castAdd d i from rfl, finSumFinEquiv_symm_apply_castAdd,
+      Matrix.fromRows_apply_inl]
+    rfl
 
 /-! ### Existence -/
 

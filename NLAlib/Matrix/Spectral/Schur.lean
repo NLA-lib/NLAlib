@@ -29,7 +29,10 @@ The eigenvalues of a matrix that need not be Hermitian are given by a listing,
 * `NLAlib.IsEigenvalueListing.sum_norm_sq_le_frobNorm_sq`: Schur's inequality.
 * `NLAlib.IsEigenvalueListing.sum_norm_sq_eq_frobNorm_sq_iff`: equality exactly for normal
   matrices.
-* `NLAlib.exists_isEigenvalueListing_add_mul_of_commute`: eigenvalues of commuting matrices add.
+* `NLAlib.IsEigenvalueListing.exists_isUpperTriangular_inv_mul_mul_norm_apply_lt`: a triangular
+  form with small off-diagonal part.
+* `NLAlib.IsEigenvalueListing.exists_isEigenvalueListing_add_mul_of_commute`: eigenvalues of
+  commuting matrices add and multiply, for a prescribed listing of the first.
 * `NLAlib.dense_setOf_separable_charpoly`: matrices with distinct eigenvalues are dense.
 
 ## Implementation notes
@@ -50,11 +53,6 @@ variable {𝕜 : Type*} [RCLike 𝕜] {K : Type*} [Field K] {ι n : Type*} [Fint
   [DecidableEq n]
 
 /-! ### Schur's theorem -/
-
-/-- Conjugation by a pair of mutually inverse matrices preserves the characteristic polynomial. -/
-private theorem charpoly_mul_mul_of_mul_eq_one {S S' : Matrix n n K} (hS : S' * S = 1)
-    (M : Matrix n n K) : (S' * M * S).charpoly = M.charpoly := by
-  rw [Matrix.charpoly_mul_comm, ← Matrix.mul_assoc, mul_eq_one_comm.mp hS, Matrix.one_mul]
 
 open scoped ComplexOrder in
 /-- Simultaneous unitary triangularisation of a commuting pair: a QR factorization turns the
@@ -120,16 +118,17 @@ theorem isEigenvalueListing_of_isUpperTriangular_conjTranspose_mul_mul [LinearOr
   rw [isEigenvalueListing_iff, ← Matrix.charpoly_of_isUpperTriangular _ hT,
     charpoly_mul_mul_of_mul_eq_one hU.conjTranspose_mul_self]
 
-/-- **Triangularisation with small off-diagonal part.** For every `ε > 0` a complex matrix is
-similar to an upper triangular matrix whose off-diagonal entries are smaller than `ε`. This is
-the step from the spectral radius to a norm in which the matrix is almost as small.
-[HornJohnson2013, Lemma 5.6.10].
+/-- **Triangularisation with small off-diagonal part.** If `d` lists the eigenvalues of `A`,
+then for every `ε > 0` the matrix `A` is similar to an upper triangular matrix with diagonal `d`,
+in the given order, whose off-diagonal entries are smaller than `ε`. This is the step from the
+spectral radius to a norm in which the matrix is almost as small.
+[HornJohnson2013, Lemma 5.6.10], there over `ℂ`.
 Port of `NLAlib.exists_similarity_upper_triangular_small_entries`. -/
-theorem exists_isUpperTriangular_inv_mul_mul_norm_apply_lt [LinearOrder n] (A : Matrix n n ℂ)
-    {ε : ℝ} (hε : 0 < ε) :
-    ∃ S : Matrix n n ℂ, IsUnit S.det ∧ (S⁻¹ * A * S).IsUpperTriangular ∧
-      ∀ i j, i ≠ j → ‖(S⁻¹ * A * S) i j‖ < ε := by
-  obtain ⟨U, hU, hT⟩ := exists_hasOrthonormalCols_isUpperTriangular A
+theorem IsEigenvalueListing.exists_isUpperTriangular_inv_mul_mul_norm_apply_lt [LinearOrder n]
+    {A : Matrix n n 𝕜} {d : n → 𝕜} (hd : IsEigenvalueListing A d) {ε : ℝ} (hε : 0 < ε) :
+    ∃ S : Matrix n n 𝕜, IsUnit S.det ∧ (S⁻¹ * A * S).IsUpperTriangular ∧
+      (∀ i, (S⁻¹ * A * S) i i = d i) ∧ ∀ i j, i ≠ j → ‖(S⁻¹ * A * S) i j‖ < ε := by
+  obtain ⟨U, hU, hT, hdiag⟩ := hd.exists_hasOrthonormalCols_isUpperTriangular
   obtain ⟨M, hM⟩ : ∃ M : ℝ, M = frobNorm (Uᴴ * A * U) := ⟨_, rfl⟩
   have hM0 : 0 ≤ M := hM ▸ frobNorm_nonneg _
   obtain ⟨δ, hδdef⟩ : ∃ δ : ℝ, δ = ε / (1 + M + ε) := ⟨_, rfl⟩
@@ -139,36 +138,37 @@ theorem exists_isUpperTriangular_inv_mul_mul_norm_apply_lt [LinearOrder n] (A : 
   have hMδ : M * δ < ε := by
     rw [hδdef, ← mul_div_assoc, div_lt_iff₀ hden]
     nlinarith
-  have hδC : (δ : ℂ) ≠ 0 := Complex.ofReal_ne_zero.mpr hδ.ne'
+  have hδC : (δ : 𝕜) ≠ 0 := RCLike.ofReal_ne_zero.mpr hδ.ne'
   let r : n → ℕ := fun i => (Finset.univ.filter (· < i)).card
   have hr : ∀ i j, i < j → r i < r j := fun i j hij =>
     Finset.card_lt_card (Finset.ssubset_iff_of_subset
       (Finset.monotone_filter_right _ fun k _ hk => hk.trans hij) |>.mpr
       ⟨i, by simpa using hij, by simp⟩)
-  have hHS : Matrix.diagonal (fun i => ((δ : ℂ) ^ r i)⁻¹) * Uᴴ *
-      (U * Matrix.diagonal fun i => (δ : ℂ) ^ r i) = 1 := by
+  have hHS : Matrix.diagonal (fun i => ((δ : 𝕜) ^ r i)⁻¹) * Uᴴ *
+      (U * Matrix.diagonal fun i => (δ : 𝕜) ^ r i) = 1 := by
     rw [Matrix.mul_assoc, hU.conjTranspose_mul_cancel_left, Matrix.diagonal_mul_diagonal]
     simp only [inv_mul_cancel₀ (pow_ne_zero _ hδC), Matrix.diagonal_one]
-  have hentry : ∀ i j, ((U * Matrix.diagonal fun i => (δ : ℂ) ^ r i)⁻¹ * A *
-      (U * Matrix.diagonal fun i => (δ : ℂ) ^ r i)) i j =
-        ((δ : ℂ) ^ r i)⁻¹ * (Uᴴ * A * U) i j * (δ : ℂ) ^ r j := by
+  have hentry : ∀ i j, ((U * Matrix.diagonal fun i => (δ : 𝕜) ^ r i)⁻¹ * A *
+      (U * Matrix.diagonal fun i => (δ : 𝕜) ^ r i)) i j =
+        ((δ : 𝕜) ^ r i)⁻¹ * (Uᴴ * A * U) i j * (δ : 𝕜) ^ r j := by
     intro i j
-    have hmat : (U * Matrix.diagonal fun i => (δ : ℂ) ^ r i)⁻¹ * A *
-        (U * Matrix.diagonal fun i => (δ : ℂ) ^ r i) =
-        Matrix.diagonal (fun i => ((δ : ℂ) ^ r i)⁻¹) * (Uᴴ * A * U) *
-          Matrix.diagonal fun i => (δ : ℂ) ^ r i := by
+    have hmat : (U * Matrix.diagonal fun i => (δ : 𝕜) ^ r i)⁻¹ * A *
+        (U * Matrix.diagonal fun i => (δ : 𝕜) ^ r i) =
+        Matrix.diagonal (fun i => ((δ : 𝕜) ^ r i)⁻¹) * (Uᴴ * A * U) *
+          Matrix.diagonal fun i => (δ : 𝕜) ^ r i := by
       rw [Matrix.inv_eq_left_inv hHS]
       simp only [Matrix.mul_assoc]
     rw [hmat, Matrix.mul_diagonal, Matrix.diagonal_mul]
-  refine ⟨U * Matrix.diagonal fun i => (δ : ℂ) ^ r i, Matrix.isUnit_det_of_left_inverse hHS,
-    fun i j hji => ?_, fun i j hij => ?_⟩
+  refine ⟨U * Matrix.diagonal fun i => (δ : 𝕜) ^ r i, Matrix.isUnit_det_of_left_inverse hHS,
+    fun i j hji => ?_, fun i => ?_, fun i j hij => ?_⟩
   · rw [hentry, hT hji, mul_zero, zero_mul]
+  · rw [hentry, hdiag, mul_right_comm, inv_mul_cancel₀ (pow_ne_zero _ hδC), one_mul]
   · rw [hentry]
     rcases lt_or_gt_of_ne hij with h | h
-    · have hnorm : ‖((δ : ℂ) ^ r i)⁻¹ * (Uᴴ * A * U) i j * (δ : ℂ) ^ r j‖ =
+    · have hnorm : ‖((δ : 𝕜) ^ r i)⁻¹ * (Uᴴ * A * U) i j * (δ : 𝕜) ^ r j‖ =
           ‖(Uᴴ * A * U) i j‖ * δ ^ (r j - r i) := by
-        rw [norm_mul, norm_mul, norm_inv, norm_pow, norm_pow, Complex.norm_real,
-          Real.norm_of_nonneg hδ.le, pow_sub₀ δ hδ.ne' (hr i j h).le]
+        rw [norm_mul, norm_mul, norm_inv, norm_pow, norm_pow, RCLike.norm_ofReal,
+          abs_of_nonneg hδ.le, pow_sub₀ δ hδ.ne' (hr i j h).le]
         ring
       rw [hnorm]
       calc ‖(Uᴴ * A * U) i j‖ * δ ^ (r j - r i) ≤ ‖(Uᴴ * A * U) i j‖ * δ :=
@@ -179,6 +179,17 @@ theorem exists_isUpperTriangular_inv_mul_mul_norm_apply_lt [LinearOrder n] (A : 
         _ < ε := hMδ
     · rw [hT h, mul_zero, zero_mul, norm_zero]
       exact hε
+
+/-- **Triangularisation of a complex matrix with small off-diagonal part.** For every `ε > 0` a
+complex matrix is similar to an upper triangular matrix whose off-diagonal entries are smaller
+than `ε`. [HornJohnson2013, Lemma 5.6.10]. -/
+theorem exists_isUpperTriangular_inv_mul_mul_norm_apply_lt [LinearOrder n] (A : Matrix n n ℂ)
+    {ε : ℝ} (hε : 0 < ε) :
+    ∃ S : Matrix n n ℂ, IsUnit S.det ∧ (S⁻¹ * A * S).IsUpperTriangular ∧
+      ∀ i j, i ≠ j → ‖(S⁻¹ * A * S) i j‖ < ε := by
+  obtain ⟨d, hd⟩ := exists_isEigenvalueListing A
+  obtain ⟨S, hS, hT, -, hoff⟩ := hd.exists_isUpperTriangular_inv_mul_mul_norm_apply_lt hε
+  exact ⟨S, hS, hT, hoff⟩
 
 /-! ### Schur's inequality -/
 
@@ -273,33 +284,52 @@ theorem IsEigenvalueListing.sum_norm_sq_eq_frobNorm_sq_iff {A : Matrix n n 𝕜}
 
 /-! ### Commuting matrices and density -/
 
-/-- **Eigenvalues of commuting matrices pair up**: commuting complex matrices have listings of
-their eigenvalues whose sums and products list the eigenvalues of `A + B` and `A * B`.
-[HornJohnson2013, Theorem 2.4.8.1].
+/-- **Eigenvalues of commuting matrices pair up, with a prescribed listing of the first.** If
+`a` lists the eigenvalues of `A`, and `B` commutes with `A` and has a characteristic polynomial
+that splits, then there is a listing `b` of the eigenvalues of `B` on the same index type such
+that the sums `a i + b i` and the products `a i * b i` list the eigenvalues of `A + B` and
+`A * B`. [HornJohnson2013, Theorem 2.4.8.1], there over `ℂ` without the prescribed listing.
 Port of `NLAlib.exists_paired_charpoly_factors_add_mul_of_commute`. -/
-theorem exists_isEigenvalueListing_add_mul_of_commute {A B : Matrix n n ℂ} (h : Commute A B) :
-    ∃ a b : n → ℂ, IsEigenvalueListing A a ∧ IsEigenvalueListing B b ∧
+theorem IsEigenvalueListing.exists_isEigenvalueListing_add_mul_of_commute {A B : Matrix n n K}
+    {a : ι → K} (ha : IsEigenvalueListing A a) (h : Commute A B) (hB : B.charpoly.Splits) :
+    ∃ b : ι → K, IsEigenvalueListing B b ∧
       IsEigenvalueListing (A + B) (fun i => a i + b i) ∧
       IsEigenvalueListing (A * B) (fun i => a i * b i) := by
   classical
   let : LinearOrder n := LinearOrder.lift' (Fintype.equivFin n) (Fintype.equivFin n).injective
-  obtain ⟨a, ha⟩ := exists_isEigenvalueListing A
+  let e : n ≃ ι := Fintype.equivOfCardEq ha.card_eq.symm
   obtain ⟨S, hdet, hTA, hdA, hTB⟩ :=
-    ha.exists_isUpperTriangular_inv_mul_mul_of_commute h (IsAlgClosed.splits _)
+    (ha.comp_equiv e).exists_isUpperTriangular_inv_mul_mul_of_commute h hB
   have hS : S⁻¹ * S = 1 := Matrix.nonsing_inv_mul _ hdet
-  refine ⟨a, fun i => (S⁻¹ * B * S) i i, ha, ?_, ?_, ?_⟩
-  · rw [isEigenvalueListing_iff, ← charpoly_mul_mul_of_mul_eq_one hS,
+  have hb : IsEigenvalueListing B fun j => (S⁻¹ * B * S) j j := by
+    rw [isEigenvalueListing_iff, ← charpoly_mul_mul_of_mul_eq_one hS,
       Matrix.charpoly_of_isUpperTriangular _ hTB]
-  · have hadd : S⁻¹ * (A + B) * S = S⁻¹ * A * S + S⁻¹ * B * S := by
+  have hadd : IsEigenvalueListing (A + B) fun j => a (e j) + (S⁻¹ * B * S) j j := by
+    have hadd : S⁻¹ * (A + B) * S = S⁻¹ * A * S + S⁻¹ * B * S := by
       rw [Matrix.mul_add, Matrix.add_mul]
     rw [isEigenvalueListing_iff, ← charpoly_mul_mul_of_mul_eq_one hS, hadd,
       Matrix.charpoly_of_isUpperTriangular _ (hTA.add hTB)]
-    simp only [Matrix.add_apply, hdA]
-  · have hmul : S⁻¹ * (A * B) * S = S⁻¹ * A * S * (S⁻¹ * B * S) := by
+    simp only [Matrix.add_apply, hdA, Function.comp_apply]
+  have hmul : IsEigenvalueListing (A * B) fun j => a (e j) * (S⁻¹ * B * S) j j := by
+    have hmul : S⁻¹ * (A * B) * S = S⁻¹ * A * S * (S⁻¹ * B * S) := by
       simp only [Matrix.mul_assoc, Matrix.mul_nonsing_inv_cancel_left _ _ hdet]
     rw [isEigenvalueListing_iff, ← charpoly_mul_mul_of_mul_eq_one hS, hmul,
       Matrix.charpoly_of_isUpperTriangular _ (hTA.mul hTB)]
-    simp only [Matrix.IsUpperTriangular.mul_apply_self hTA hTB, hdA]
+    simp only [Matrix.IsUpperTriangular.mul_apply_self hTA hTB, hdA, Function.comp_apply]
+  refine ⟨fun i => (S⁻¹ * B * S) (e.symm i) (e.symm i), hb.comp_equiv e.symm, ?_, ?_⟩
+  · simpa only [Function.comp_def, Equiv.apply_symm_apply] using hadd.comp_equiv e.symm
+  · simpa only [Function.comp_def, Equiv.apply_symm_apply] using hmul.comp_equiv e.symm
+
+/-- **Eigenvalues of commuting complex matrices pair up**: commuting complex matrices have
+listings of their eigenvalues whose sums and products list the eigenvalues of `A + B` and
+`A * B`. [HornJohnson2013, Theorem 2.4.8.1]. -/
+theorem exists_isEigenvalueListing_add_mul_of_commute {A B : Matrix n n ℂ} (h : Commute A B) :
+    ∃ a b : n → ℂ, IsEigenvalueListing A a ∧ IsEigenvalueListing B b ∧
+      IsEigenvalueListing (A + B) (fun i => a i + b i) ∧
+      IsEigenvalueListing (A * B) (fun i => a i * b i) := by
+  obtain ⟨a, ha⟩ := exists_isEigenvalueListing A
+  obtain ⟨b, hb⟩ := ha.exists_isEigenvalueListing_add_mul_of_commute h (IsAlgClosed.splits _)
+  exact ⟨a, b, ha, hb⟩
 
 /-- Along the segment from `A` to a matrix `D` with separable characteristic polynomial, the
 characteristic polynomial is separable for all but finitely many parameters: the resultant of the

@@ -32,6 +32,7 @@ off this sequence.
 * `NLAlib.gaussState_apply_self_mul_principalMinor_Iio`: a pivot is the ratio of consecutive
   leading principal minors.
 * `NLAlib.forall_gaussState_ne_zero_iff`: nonzero pivots are nonzero leading principal minors.
+* `Matrix.IsHermitian.gaussState`: elimination preserves Hermitian matrices.
 * `Matrix.PosDef.gaussState_apply_self_pos`: the pivots of a positive definite matrix are
   positive.
 * `NLAlib.gaussState_submatrix`, `NLAlib.gaussState_submatrix_left`: elimination commutes with
@@ -290,6 +291,18 @@ theorem forall_gaussState_ne_zero_iff (A : Matrix (Fin n) (Fin n) K) (i : Fin n)
       have hm := h l hl
       rw [principalMinor_Iic_eq_prod_gaussState A l hp] at hm
       exact Finset.prod_ne_zero_iff.mp hm l (Finset.mem_Iic.mpr le_rfl)
+
+/-- Elimination in the natural order preserves Hermitian matrices: every `gaussState A k` of a
+Hermitian `A` is Hermitian. -/
+theorem _root_.Matrix.IsHermitian.gaussState {A : Matrix (Fin n) (Fin n) 𝕜} (hA : A.IsHermitian)
+    (k : ℕ) : (NLAlib.gaussState A k).IsHermitian := by
+  induction k with
+  | zero => exact hA
+  | succ k ih =>
+    rw [NLAlib.gaussState]
+    split_ifs with h
+    · exact ih.eliminationStep _
+    · exact ih
 
 /-- The pivots of a positive definite matrix are positive. -/
 theorem _root_.Matrix.PosDef.gaussState_apply_self_pos {A : Matrix (Fin n) (Fin n) 𝕜}

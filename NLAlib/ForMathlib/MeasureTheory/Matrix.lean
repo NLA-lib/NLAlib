@@ -26,8 +26,10 @@ for a file `Mathlib.MeasureTheory.Constructions.Matrix`.
 
 * `Matrix.measurable_iff`: a matrix-valued function is measurable exactly when its entries are.
 * `Matrix.instBorelSpace`.
-* `Measurable.matrix_mul`, `Measurable.matrix_det`, `Measurable.matrix_inv`, and the other
-  operations.
+* `Measurable.matrix_add`, `Measurable.matrix_sub`, `Measurable.matrix_neg`,
+  `Measurable.matrix_smul`, `Measurable.matrix_const_smul`: the linear operations.
+* `Measurable.matrix_mul`, `Measurable.matrix_mulVec`, `Measurable.matrix_vecMul`,
+  `Measurable.matrix_det`, `Measurable.matrix_inv`, and the other operations.
 -/
 
 @[expose] public section
@@ -82,6 +84,30 @@ theorem Measurable.matrix_add [MeasurableSpace α] [Add α] [MeasurableAdd₂ α
   exact Matrix.measurable_iff.2 fun i j =>
     ((Matrix.measurable_apply i j).comp hf).add ((Matrix.measurable_apply i j).comp hg)
 
+/-- The difference of measurable matrix-valued functions is measurable. -/
+theorem Measurable.matrix_sub [MeasurableSpace α] [Sub α] [MeasurableSub₂ α]
+    {f g : β → Matrix m n α} (hf : Measurable f) (hg : Measurable g) :
+    Measurable fun x => f x - g x := by
+  exact Matrix.measurable_iff.2 fun i j =>
+    ((Matrix.measurable_apply i j).comp hf).sub ((Matrix.measurable_apply i j).comp hg)
+
+/-- The negative of a measurable matrix-valued function is measurable. -/
+theorem Measurable.matrix_neg [MeasurableSpace α] [Neg α] [MeasurableNeg α]
+    {f : β → Matrix m n α} (hf : Measurable f) : Measurable fun x => -f x := by
+  exact Matrix.measurable_iff.2 fun i j => ((Matrix.measurable_apply i j).comp hf).neg
+
+/-- A measurable scalar function times a measurable matrix-valued function is measurable. -/
+theorem Measurable.matrix_smul {γ : Type*} [MeasurableSpace α] [MeasurableSpace γ] [SMul γ α]
+    [MeasurableSMul₂ γ α] {c : β → γ} {f : β → Matrix m n α} (hc : Measurable c)
+    (hf : Measurable f) : Measurable fun x => c x • f x := by
+  exact Matrix.measurable_iff.2 fun i j => hc.smul ((Matrix.measurable_apply i j).comp hf)
+
+/-- A constant scalar multiple of a measurable matrix-valued function is measurable. -/
+theorem Measurable.matrix_const_smul {γ : Type*} [MeasurableSpace α] [SMul γ α]
+    [MeasurableConstSMul γ α] {f : β → Matrix m n α} (hf : Measurable f) (c : γ) :
+    Measurable fun x => c • f x := by
+  exact Matrix.measurable_iff.2 fun i j => ((Matrix.measurable_apply i j).comp hf).const_smul c
+
 /-- The product of measurable matrix-valued functions is measurable. -/
 theorem Measurable.matrix_mul [MeasurableSpace α] [Fintype m] [NonUnitalNonAssocSemiring α]
     [MeasurableAdd₂ α] [MeasurableMul₂ α] {f : β → Matrix l m α} {g : β → Matrix m n α}
@@ -99,6 +125,16 @@ theorem Measurable.matrix_mulVec [MeasurableSpace α] [Fintype n] [NonUnitalNonA
   simp only [Matrix.mulVec, dotProduct]
   exact Finset.measurable_fun_sum _ fun j _ =>
     ((Matrix.measurable_apply i j).comp hf).mul ((measurable_pi_apply j).comp hv)
+
+/-- The action of a measurable matrix-valued function on a measurable row vector is
+measurable. -/
+theorem Measurable.matrix_vecMul [MeasurableSpace α] [Fintype m] [NonUnitalNonAssocSemiring α]
+    [MeasurableAdd₂ α] [MeasurableMul₂ α] {v : β → m → α} {f : β → Matrix m n α}
+    (hv : Measurable v) (hf : Measurable f) : Measurable fun x => v x ᵥ* f x := by
+  refine measurable_pi_iff.2 fun j => ?_
+  simp only [Matrix.vecMul, dotProduct]
+  exact Finset.measurable_fun_sum _ fun i _ =>
+    ((measurable_pi_apply i).comp hv).mul ((Matrix.measurable_apply i j).comp hf)
 
 /-- The trace of a measurable matrix-valued function is measurable. -/
 theorem Measurable.matrix_trace [MeasurableSpace α] [Fintype n] [AddCommMonoid α]

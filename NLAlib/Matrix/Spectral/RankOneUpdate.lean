@@ -174,11 +174,12 @@ theorem charpoly_fromBlocks_diagonal_replicateCol {R : Type*} [CommRing R] (d u 
   ring
 
 /-- **Brauer's theorem.** A rank-one update along an eigenvector `x` of `A` with eigenvalue `μ`
-moves `μ` to `μ + yᵀ x` and leaves the other eigenvalues in place.
-[HornJohnson2013, Theorem 1.2.8 context].
+moves `μ` to `μ + yᵀ x` and leaves the other eigenvalues in place, as an identity of
+characteristic polynomials over any commutative ring.
+[HornJohnson2013, Theorem 1.2.8 context], there over `ℂ`.
 Port of `NLAlib.charpoly_add_vecMulVec_mul_X_sub_C`. -/
-theorem charpoly_add_vecMulVec_mul {K : Type*} [Field K] {A : Matrix n n K} {x : n → K} {μ : K}
-    (hAx : A *ᵥ x = μ • x) (y : n → K) :
+theorem charpoly_add_vecMulVec_mul {R : Type*} [CommRing R] {A : Matrix n n R} {x : n → R}
+    {μ : R} (hAx : A *ᵥ x = μ • x) (y : n → R) :
     (X - C μ) * (A + Matrix.vecMulVec x y).charpoly = (X - C (μ + y ⬝ᵥ x)) * A.charpoly := by
   have hcm : (A + Matrix.vecMulVec x y).charmatrix =
       A.charmatrix - Matrix.vecMulVec (fun i => C (x i)) fun i => C (y i) := by

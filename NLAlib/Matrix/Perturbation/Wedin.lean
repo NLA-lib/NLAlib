@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.ForMathlib.LinearAlgebra.Matrix.ConjTranspose
 public import NLAlib.Matrix.Perturbation.DavisKahan
 public import NLAlib.Matrix.Spectral.LowRank
 
@@ -143,14 +144,6 @@ theorem sub_sq_mul_frobNorm_sq_add_frobNorm_sq_le {D : Matrix m n 𝕜} {T : Mat
 
 /-! ### The part of a matrix outside its leading singular subspaces -/
 
-omit [Fintype p] in
-private theorem conjTranspose_diagonal_ofReal (σ : p → ℝ) :
-    (Matrix.diagonal fun i => ((σ i : ℝ) : 𝕜))ᴴ = Matrix.diagonal fun i => ((σ i : ℝ) : 𝕜) := by
-  rw [Matrix.diagonal_conjTranspose]
-  congr 1
-  ext i
-  exact RCLike.conj_ofReal _
-
 omit [Fintype n] [DecidableEq m] [DecidableEq n] in
 /-- The second singular vector equation in the form `Uᴴ * A = Σ * Vᴴ`. -/
 private theorem conjTranspose_mul_eq_diagonal_mul {A : Matrix m n 𝕜} {U : Matrix m p 𝕜}
@@ -159,7 +152,7 @@ private theorem conjTranspose_mul_eq_diagonal_mul {A : Matrix m n 𝕜} {U : Mat
     Uᴴ * A = (Matrix.diagonal fun i => ((σ i : ℝ) : 𝕜)) * Vᴴ := by
   have h := congrArg Matrix.conjTranspose hAU
   rwa [Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose, Matrix.conjTranspose_mul,
-    conjTranspose_diagonal_ofReal] at h
+    Matrix.conjTranspose_diagonal_ofReal] at h
 
 /-- The right complement alone already removes the leading part:
 `(1 - U Uᴴ) A (1 - V Vᴴ) = A (1 - V Vᴴ)`. -/
@@ -369,7 +362,7 @@ theorem SymmetricGauge.mul_max_matrixNorm_one_sub_mul_le_of_singularValues_sub
     (σ := fun i : Fin (j + 1) => singularValues (A + E) i) (singularValues_nonneg (A + E) j)
     fun i => singularValues_antitone (A + E) (Nat.lt_succ_iff.mp i.2)
   have h := Φ.sub_mul_max_matrixNorm_one_sub_mul_le_max hU hV hAV hAU hS U' V'
-  rw [conjTranspose_diagonal_ofReal, sub_eq_neg_mul_of_add_mul_eq hAV',
+  rw [Matrix.conjTranspose_diagonal_ofReal, sub_eq_neg_mul_of_add_mul_eq hAV',
     sub_eq_neg_mul_of_add_mul_eq (by rwa [Matrix.conjTranspose_add] at hAU'), Φ.matrixNorm_neg,
     Φ.matrixNorm_neg] at h
   exact (mul_le_mul_of_nonneg_right hδ (le_max_of_le_left (Φ.matrixNorm_nonneg _))).trans h
@@ -396,7 +389,7 @@ theorem sq_mul_frobNorm_one_sub_mul_sq_add_le_of_singularValues_sub {A E : Matri
     (σ := fun i : Fin (j + 1) => singularValues (A + E) i) (singularValues_nonneg (A + E) j)
     fun i => singularValues_antitone (A + E) (Nat.lt_succ_iff.mp i.2)
   have h := sub_sq_mul_frobNorm_one_sub_mul_sq_add_le hU hV hAV hAU (by linarith) hS U' V'
-  rw [conjTranspose_diagonal_ofReal, sub_eq_neg_mul_of_add_mul_eq hAV',
+  rw [Matrix.conjTranspose_diagonal_ofReal, sub_eq_neg_mul_of_add_mul_eq hAV',
     sub_eq_neg_mul_of_add_mul_eq (by rwa [Matrix.conjTranspose_add] at hAU'), frobNorm_neg,
     frobNorm_neg] at h
   have h₃ : δ ^ 2 ≤ (singularValues (A + E) j - singularValues A (j + 1)) ^ 2 :=

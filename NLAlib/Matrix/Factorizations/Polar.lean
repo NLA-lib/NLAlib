@@ -308,15 +308,6 @@ theorem forall_eq_of_mul_sqrt_eq_iff {A U : Matrix m n 𝕜} (hU : HasOrthonorma
 /-! ### The nearest isometry -/
 
 omit [DecidableEq n] in
-/-- The singular values of a matrix with orthonormal columns are `1`, as many as its columns. -/
-private theorem HasOrthonormalCols.singularValues_eq_one [DecidableEq n] {V : Matrix m n 𝕜}
-    (hV : HasOrthonormalCols V) {i : ℕ} (hi : i < Fintype.card n) : singularValues V i = 1 := by
-  have h1 : singularValues V = singularValues (1 : Matrix n n 𝕜) :=
-    singularValues_eq_of_conjTranspose_mul_self_eq
-      (by rw [hV.conjTranspose_mul_self, Matrix.conjTranspose_one, Matrix.one_mul])
-  rw [h1, Matrix.PosSemidef.one.singularValues_eq_eigenvalue, eigenvalue_one hi]
-
-omit [DecidableEq n] in
 /-- The norm of a Hermitian matrix is the gauge of any sequence that has the absolute values of
 its eigenvalues. -/
 private theorem SymmetricGauge.matrixNorm_eq_of_abs_eq_abs_eigenvalue (Φ : SymmetricGauge)

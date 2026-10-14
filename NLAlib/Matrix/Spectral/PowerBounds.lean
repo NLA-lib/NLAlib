@@ -59,13 +59,6 @@ theorem specRadius_pow_le_specNorm_pow [Nonempty n] (A : Matrix n n 𝕜) (k : �
   rw [← specRadius_pow]
   exact specRadius_le_specNorm _
 
-private theorem specNorm_pow_le (A : Matrix n n 𝕜) (k : ℕ) : specNorm (A ^ k) ≤ specNorm A ^ k := by
-  induction k with
-  | zero => simpa only [pow_zero] using specNorm_one_le (n := n) (𝕜 := 𝕜)
-  | succ k ih =>
-    rw [pow_succ, pow_succ]
-    exact (specNorm_mul_le _ _).trans (mul_le_mul_of_nonneg_right ih (specNorm_nonneg A))
-
 /-- **Powers through a similarity**: `‖Aᵏ‖₂ ≤ κ(S) ‖S⁻¹ A S‖₂ᵏ` for every invertible `S`. With a
 similarity that brings the norm close to the spectral radius this bounds the transient growth of
 the powers. [TrefethenBau1997, Lecture 24 context]. -/

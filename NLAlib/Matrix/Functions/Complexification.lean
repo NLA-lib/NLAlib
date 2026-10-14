@@ -26,6 +26,9 @@ functional calculus and the exponential, so a statement about Hermitian matrices
 
 * `NLAlib.complexify_mul`, `NLAlib.complexify_conjTranspose`: it is a star-ring homomorphism.
 * `NLAlib.complexify_inv`: it commutes with the inverse.
+* `NLAlib.complexify_eq_self`: over `ℂ` it is the identity.
+* `NLAlib.charpoly_complexify`, `NLAlib.toComplex_mem_spectrum_complexify`: characteristic
+  polynomial and eigenvalues.
 * `NLAlib.re_trace_complexify`, `NLAlib.complexify_le_complexify_iff`.
 * `NLAlib.complexify_cfc`, `NLAlib.complexify_exp`.
 -/
@@ -129,6 +132,32 @@ theorem complexify_conjTranspose (A : Matrix m n 𝕜) : complexify Aᴴ = (comp
 theorem complexify_diagonal [DecidableEq n] (d : n → 𝕜) :
     complexify (Matrix.diagonal d) = Matrix.diagonal fun i => RCLike.toComplex (d i) := by
   exact Matrix.diagonal_map (map_zero _)
+
+/-- Over `ℂ` the complexification is the identity. -/
+@[simp]
+theorem complexify_eq_self (A : Matrix m n ℂ) : complexify A = A := by
+  ext i j
+  rw [complexify_apply, RCLike.toComplex_complex]
+
+/-- The complexifications of commuting matrices commute. -/
+theorem _root_.Commute.complexify [Fintype n] {A B : Matrix n n 𝕜} (h : Commute A B) :
+    Commute (NLAlib.complexify A) (NLAlib.complexify B) := by
+  rw [commute_iff_eq, ← complexify_mul, ← complexify_mul, h.eq]
+
+/-- The characteristic polynomial of the complexification is the image of the characteristic
+polynomial under the embedding of `𝕜` into `ℂ`. -/
+theorem charpoly_complexify [Fintype n] [DecidableEq n] (A : Matrix n n 𝕜) :
+    (complexify A).charpoly = A.charpoly.map (RCLike.toComplex : 𝕜 →⋆ₐ[ℝ] ℂ).toRingHom :=
+  Matrix.charpoly_map A (RCLike.toComplex : 𝕜 →⋆ₐ[ℝ] ℂ).toRingHom
+
+/-- An eigenvalue of a matrix over `𝕜` is, embedded in `ℂ`, an eigenvalue of the
+complexification. -/
+theorem toComplex_mem_spectrum_complexify [Fintype n] [DecidableEq n] {A : Matrix n n 𝕜} {μ : 𝕜}
+    (hμ : μ ∈ spectrum 𝕜 A) : RCLike.toComplex μ ∈ spectrum ℂ (complexify A) := by
+  rw [Matrix.mem_spectrum_iff_isRoot_charpoly, Polynomial.IsRoot.def] at hμ ⊢
+  rw [charpoly_complexify,
+    show RCLike.toComplex μ = (RCLike.toComplex : 𝕜 →⋆ₐ[ℝ] ℂ).toRingHom μ from rfl,
+    Polynomial.eval_map_apply, hμ, map_zero]
 
 /-- The complexification of a matrix with orthonormal columns has orthonormal columns. -/
 theorem HasOrthonormalCols.complexify [Fintype m] [DecidableEq n] {Q : Matrix m n 𝕜}

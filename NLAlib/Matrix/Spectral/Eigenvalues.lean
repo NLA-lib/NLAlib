@@ -35,6 +35,8 @@ basis: a diagonalisation is an equation `A * U = U * Matrix.diagonal d` with
 * `Matrix.IsHermitian.eigenvalue_le_eigenvalue`: the values are non-increasing.
 * `Matrix.IsHermitian.exists_mul_eq_mul_diagonal`: a unitary diagonalisation with the eigenvalues
   in order.
+* `Matrix.IsHermitian.exists_hasOrthonormalCols_eq_mul_diagonal_mul_conjTranspose`: a unitary
+  diagonalisation indexed by the index type of the matrix.
 * `NLAlib.eigenvalue_eq_of_eq_mul_diagonal_mul_conjTranspose`: the eigenvalues are determined by
   any sorted unitary diagonalisation.
 * `Matrix.IsHermitian.exists_norm_eq_one_and_mulVec_eq`: a unit eigenvector for each eigenvalue.
@@ -161,6 +163,18 @@ theorem _root_.Matrix.IsHermitian.exists_eq_mul_diagonal_mul_conjTranspose {A : 
   refine ⟨U, hU, ?_⟩
   rw [← h, Matrix.mul_assoc, hU.mul_conjTranspose_self_of_card_eq (Fintype.card_fin _).symm,
     Matrix.mul_one]
+
+/-- **Spectral theorem**, with the eigenvectors and the eigenvalues indexed by the index type of
+the matrix: a Hermitian matrix is `U * diagonal d * Uᴴ` for a unitary `U` and a real `d`, in no
+particular order. `Matrix.IsHermitian.exists_eq_mul_diagonal_mul_conjTranspose` is the form with
+the sorted eigenvalues, indexed by `Fin (Fintype.card n)`. -/
+theorem _root_.Matrix.IsHermitian.exists_hasOrthonormalCols_eq_mul_diagonal_mul_conjTranspose
+    [DecidableEq n] {A : Matrix n n 𝕜} (hA : A.IsHermitian) :
+    ∃ (U : Matrix n n 𝕜) (d : n → ℝ), HasOrthonormalCols U ∧
+      A = U * Matrix.diagonal (fun i => ((d i : ℝ) : 𝕜)) * Uᴴ := by
+  refine ⟨hA.eigenvectorUnitary, hA.eigenvalues, hA.hasOrthonormalCols_eigenvectorUnitary, ?_⟩
+  have h := hA.spectral_theorem
+  rwa [Unitary.conjStarAlgAut_apply] at h
 
 /-- For each valid index there is a unit eigenvector with that eigenvalue. -/
 theorem _root_.Matrix.IsHermitian.exists_norm_eq_one_and_mulVec_eq {A : Matrix n n 𝕜}

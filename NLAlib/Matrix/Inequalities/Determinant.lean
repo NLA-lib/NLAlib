@@ -25,7 +25,8 @@ real; the inequalities are stated for `RCLike.re (det A)`. Minkowski's inequalit
 * `Matrix.PosSemidef.re_det_le_prod_re_diag`, `NLAlib.norm_det_le_prod_norm_col`: Hadamard.
 * `NLAlib.re_det_fromBlocks_le_of_posSemidef`: Fischer.
 * `NLAlib.principalMinor`, `NLAlib.det_submatrix_eq_principalMinor`,
-  `NLAlib.sum_principalMinor`: principal minors.
+  `NLAlib.sum_principalMinor`, `NLAlib.principalMinor_transpose`,
+  `NLAlib.principalMinor_conjTranspose`: principal minors.
 * `Matrix.PosSemidef.re_principalMinor_union_mul_inter_le`: Hadamard–Fischer (Koteljanskii).
 * `Matrix.PosSemidef.re_principalMinor_union_le_of_disjoint`: Fischer for principal minors.
 -/
@@ -319,6 +320,21 @@ theorem principalMinor_univ {R : Type*} [CommRing R] (A : Matrix n n R) :
   rw [principalMinor,
     ← det_submatrix_eq_det_submatrix_val A Function.injective_id (s := Finset.univ) (by simp),
     Matrix.submatrix_id_id]
+
+omit [Fintype n] in
+/-- The principal minors of the transpose are those of the matrix. -/
+@[simp]
+theorem principalMinor_transpose {R : Type*} [CommRing R] (A : Matrix n n R) (s : Finset n) :
+    principalMinor Aᵀ s = principalMinor A s := by
+  rw [principalMinor, principalMinor, ← Matrix.transpose_submatrix, Matrix.det_transpose]
+
+omit [Fintype n] in
+/-- The principal minors of the conjugate transpose are the conjugates of those of the
+matrix. -/
+@[simp]
+theorem principalMinor_conjTranspose {R : Type*} [CommRing R] [StarRing R] (A : Matrix n n R)
+    (s : Finset n) : principalMinor Aᴴ s = star (principalMinor A s) := by
+  rw [principalMinor, principalMinor, ← Matrix.det_conjTranspose, Matrix.conjTranspose_submatrix]
 
 omit [Fintype n] in
 /-- **A principal minor as the determinant of a submatrix along an injective map.** If `f` is

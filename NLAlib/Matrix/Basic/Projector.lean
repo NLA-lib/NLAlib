@@ -109,8 +109,8 @@ theorem _root_.IsStarProjection.eq_of_range_eq [Fintype m] {P P' : Matrix m m �
   rw [Matrix.conjTranspose_mul, hP.conjTranspose_eq, hP'.conjTranspose_eq, h2] at h3
   exact h3.symm
 
-/-- Pythagoras for a star projection: `‖x‖² = ‖P x‖² + ‖(1 - P) x‖²`. -/
-private theorem norm_toLp_sq_eq_add_of_isStarProjection [Fintype m] [DecidableEq m]
+/-- **Pythagoras** for a star projection: `‖x‖² = ‖P x‖² + ‖(1 - P) x‖²`. -/
+theorem _root_.IsStarProjection.norm_toLp_sq_eq_add [Fintype m] [DecidableEq m]
     {P : Matrix m m 𝕜} (hP : IsStarProjection P) (x : m → 𝕜) :
     ‖WithLp.toLp 2 x‖ ^ 2 =
       ‖WithLp.toLp 2 (P *ᵥ x)‖ ^ 2 + ‖WithLp.toLp 2 ((1 - P) *ᵥ x)‖ ^ 2 := by
@@ -129,7 +129,7 @@ theorem _root_.IsStarProjection.norm_toLp_mulVec_le [Fintype m] {P : Matrix m m 
     (hP : IsStarProjection P) (x : m → 𝕜) : ‖WithLp.toLp 2 (P *ᵥ x)‖ ≤ ‖WithLp.toLp 2 x‖ := by
   classical
   refine (sq_le_sq₀ (norm_nonneg _) (norm_nonneg _)).mp ?_
-  rw [norm_toLp_sq_eq_add_of_isStarProjection hP x]
+  rw [hP.norm_toLp_sq_eq_add x]
   exact le_add_of_nonneg_right (sq_nonneg _)
 
 /-- For `Q` with orthonormal columns, `Q * Qᴴ` is a star projection.
@@ -486,7 +486,7 @@ theorem norm_toLp_sq_eq_add_one_sub_rangeProjector [Fintype m] [Fintype n] [Deci
     ‖WithLp.toLp 2 x‖ ^ 2 =
       ‖WithLp.toLp 2 (rangeProjector B *ᵥ x)‖ ^ 2 +
         ‖WithLp.toLp 2 ((1 - rangeProjector B) *ᵥ x)‖ ^ 2 :=
-  norm_toLp_sq_eq_add_of_isStarProjection (isStarProjection_rangeProjector B) x
+  (isStarProjection_rangeProjector B).norm_toLp_sq_eq_add x
 
 /-! ### Bridge to Mathlib -/
 

@@ -35,6 +35,12 @@ any field; Schur's unitary triangularisation and what follows from it are in
 * `Matrix.IsUpperTriangular.isEigenvalueListing_diag`: the diagonal of a triangular matrix.
 * `NLAlib.exists_isEigenvalueListing_of_forall_im_eq_zero`: a real matrix with real eigenvalues
   has a real listing.
+* `NLAlib.charpoly_mul_mul_of_mul_eq_one`: similar matrices have the same characteristic
+  polynomial.
+* `NLAlib.submatrix_sumCompl_eq_fromBlocks`,
+  `NLAlib.fromBlocks_one_submatrix_mul_mul_fromBlocks_one`,
+  `NLAlib.isUpperTriangular_fromBlocks_submatrix_sumCompl_symm`: the block lemmas of a deflation
+  step, shared with `NLAlib.Matrix.Spectral.Simultaneous`.
 * `NLAlib.IsEigenvalueListing.exists_isUpperTriangular_inv_mul_mul_of_commute`: a commuting pair
   over a field is simultaneously similar to triangular matrices, with a prescribed diagonal.
 * `NLAlib.IsEigenvalueListing.pow`: the eigenvalues of a power.
@@ -251,15 +257,21 @@ private theorem inv_mul_mul_apply_of_mulVec_eq_smul {A S : Matrix n n K} (hS : I
   rw [h1, hA, Matrix.mulVec_smul, h2, Pi.smul_apply, Matrix.one_apply, smul_eq_mul, mul_ite,
     mul_one, mul_zero]
 
-/-- Similar matrices have the same characteristic polynomial. -/
-private theorem charpoly_inv_mul_mul {S : Matrix n n K} (hS : IsUnit S.det) (A : Matrix n n K) :
-    (S⁻¹ * A * S).charpoly = A.charpoly := by
-  rw [Matrix.charpoly_mul_comm, ← Matrix.mul_assoc, Matrix.mul_nonsing_inv _ hS, Matrix.one_mul]
+/-- **Similar matrices have the same characteristic polynomial**: conjugation by a pair of
+mutually inverse matrices over a commutative ring preserves it. For a unit of the matrix ring
+this is Mathlib's `Matrix.charpoly_units_conj'`; here the similarity is given by the equation
+`S' * S = 1`, as `S⁻¹` with `IsUnit S.det` or `Uᴴ` with `HasOrthonormalCols U` provide it. -/
+theorem charpoly_mul_mul_of_mul_eq_one {R : Type*} [CommRing R] {S S' : Matrix n n R}
+    (hS : S' * S = 1) (M : Matrix n n R) : (S' * M * S).charpoly = M.charpoly := by
+  rw [Matrix.charpoly_mul_comm, ← Matrix.mul_assoc, mul_eq_one_comm.mp hS, Matrix.one_mul]
 
 omit [Fintype n] in
-/-- A matrix with a multiple of a coordinate vector in the column `i₀` is block triangular for the
-splitting of the indices into `i₀` and the others. -/
-private theorem submatrix_sumCompl_eq_fromBlocks {M : Matrix n n K} {i₀ : n} {α : K}
+/-- **Deflation, block form.** A matrix whose column `i₀` is `α` times a coordinate vector is
+block upper triangular for the splitting of the indices into `i₀` and the others: reindexed by
+`Equiv.sumCompl (· = i₀)` it is `fromBlocks (diagonal fun _ => α) r 0 M'` with `M'` the matrix
+with the row and the column `i₀` deleted. This is the step of every triangularisation by
+induction on the size, after a similarity has put an eigenvector in the column `i₀`. -/
+theorem submatrix_sumCompl_eq_fromBlocks {M : Matrix n n K} {i₀ : n} {α : K}
     (hcol : ∀ i, M i i₀ = if i = i₀ then α else 0) :
     M.submatrix (Equiv.sumCompl (· = i₀)) (Equiv.sumCompl (· = i₀)) =
       Matrix.fromBlocks (Matrix.diagonal fun _ => α)
@@ -285,9 +297,12 @@ private theorem charpoly_eq_X_sub_C_mul_charpoly_submatrix {M : Matrix n n K} {i
     pow_one]
 
 omit [DecidableEq n] in
-/-- Conjugating a block triangular matrix by a block diagonal matrix, in the original indices. -/
-private theorem fromBlocks_one_mul_mul_fromBlocks_one {p q : Type*} [Fintype p] [Finite q]
-    [DecidableEq q] (e : q ⊕ p ≃ n) {M : Matrix n n K} {D : Matrix q q K}
+/-- Conjugating a block upper triangular matrix by block diagonal matrices `1 ⊕ S'` and `1 ⊕ S`,
+in the original indices: for `M` with block form `fromBlocks D r 0 M'` along `e : q ⊕ p ≃ n`,
+the product `(1 ⊕ S') * M * (1 ⊕ S)` has block form `fromBlocks D (r * S) 0 (S' * M' * S)`. The
+induction step of a triangularisation applies it with `S' = S⁻¹` or `S' = Sᴴ`. -/
+theorem fromBlocks_one_submatrix_mul_mul_fromBlocks_one {p q : Type*} [Fintype p]
+    [Finite q] [DecidableEq q] (e : q ⊕ p ≃ n) {M : Matrix n n K} {D : Matrix q q K}
     {r : Matrix q p K} {M' : Matrix p p K} (hM : M.submatrix e e = Matrix.fromBlocks D r 0 M')
     (S S' : Matrix p p K) :
     (Matrix.fromBlocks (1 : Matrix q q K) 0 0 S').submatrix e.symm e.symm * M *
@@ -301,9 +316,9 @@ private theorem fromBlocks_one_mul_mul_fromBlocks_one {p q : Type*} [Fintype p] 
   simp
 
 omit [Fintype n] in
-/-- A block triangular matrix with a triangular second block is triangular when the first block
-is the least index. -/
-private theorem isUpperTriangular_submatrix_sumCompl_symm [LinearOrder n] {i₀ : n}
+/-- A block upper triangular matrix for the splitting of the indices into `i₀` and the others is
+upper triangular when its second diagonal block is and `i₀` is the least index. -/
+theorem isUpperTriangular_fromBlocks_submatrix_sumCompl_symm [LinearOrder n] {i₀ : n}
     (hi₀ : ∀ j, i₀ ≤ j) (D : Matrix {i // i = i₀} {i // i = i₀} K)
     (r : Matrix {i // i = i₀} {i // ¬i = i₀} K) {T : Matrix {i // ¬i = i₀} {i // ¬i = i₀} K}
     (hT : T.IsUpperTriangular) :
@@ -353,12 +368,12 @@ private theorem exists_triangular_pair_aux (k : ℕ) :
           (X - C (a i₀)) * ∏ i : {i // ¬i = i₀}, (X - C (a i)) := by
         rw [← Finset.mul_prod_erase Finset.univ _ (Finset.mem_univ i₀),
           Finset.prod_subtype (Finset.univ.erase i₀) (p := fun i => ¬i = i₀) (by simp)]
-      rw [charpoly_inv_mul_mul hW, ha, hsplit] at h
+      rw [charpoly_mul_mul_of_mul_eq_one (Matrix.nonsing_inv_mul _ hW), ha, hsplit] at h
       exact (mul_left_cancel₀ (X_sub_C_ne_zero (a i₀)) h).symm
     have hB' : ((W⁻¹ * B * W).submatrix
         (Subtype.val : {i // ¬i = i₀} → n) Subtype.val).charpoly.Splits := by
       have h := charpoly_eq_X_sub_C_mul_charpoly_submatrix hcolB
-      rw [charpoly_inv_mul_mul hW] at h
+      rw [charpoly_mul_mul_of_mul_eq_one (Matrix.nonsing_inv_mul _ hW)] at h
       exact splits_X_sub_C_mul_iff.mp (h ▸ hB)
     have hcomm : Commute
         ((W⁻¹ * A * W).submatrix Subtype.val Subtype.val :
@@ -387,17 +402,17 @@ private theorem exists_triangular_pair_aux (k : ℕ) :
     · rw [Matrix.mul_assoc, Matrix.nonsing_inv_mul_cancel_left _ _ hW, Matrix.submatrix_mul_equiv,
         Matrix.fromBlocks_multiply]
       simp [h11, Matrix.fromBlocks_one]
-    · rw [key, fromBlocks_one_mul_mul_fromBlocks_one _ hMA]
-      exact isUpperTriangular_submatrix_sumCompl_symm hi₀ _ _ hTA
+    · rw [key, fromBlocks_one_submatrix_mul_mul_fromBlocks_one _ hMA]
+      exact isUpperTriangular_fromBlocks_submatrix_sumCompl_symm hi₀ _ _ hTA
     · intro i
-      rw [key, fromBlocks_one_mul_mul_fromBlocks_one _ hMA, Matrix.submatrix_apply]
+      rw [key, fromBlocks_one_submatrix_mul_mul_fromBlocks_one _ hMA, Matrix.submatrix_apply]
       by_cases hi : i = i₀
       · rw [Equiv.sumCompl_symm_apply_of_pos (p := (· = i₀)) hi, Matrix.fromBlocks_apply₁₁,
           Matrix.diagonal_apply_eq, hi]
       · rw [Equiv.sumCompl_symm_apply_of_neg (p := (· = i₀)) hi, Matrix.fromBlocks_apply₂₂]
         exact hdA ⟨i, hi⟩
-    · rw [key, fromBlocks_one_mul_mul_fromBlocks_one _ hMB]
-      exact isUpperTriangular_submatrix_sumCompl_symm hi₀ _ _ hTB
+    · rw [key, fromBlocks_one_submatrix_mul_mul_fromBlocks_one _ hMB]
+      exact isUpperTriangular_fromBlocks_submatrix_sumCompl_symm hi₀ _ _ hTB
 
 /-- **Triangularisation over a field.** Commuting matrices `A` and `B` over a field, where `a`
 lists the eigenvalues of `A` and the characteristic polynomial of `B` splits, are simultaneously
@@ -438,8 +453,8 @@ theorem IsEigenvalueListing.pow {A : Matrix n n K} {d : ι → K} (h : IsEigenva
     | succ k ih =>
       rw [pow_succ, pow_succ, ← ih]
       simp only [Matrix.mul_assoc, Matrix.mul_nonsing_inv_cancel_left _ _ hS]
-  rw [isEigenvalueListing_iff, ← charpoly_inv_mul_mul hS, hpow,
-    Matrix.charpoly_of_isUpperTriangular _ (hT.pow k)]
+  rw [isEigenvalueListing_iff, ← charpoly_mul_mul_of_mul_eq_one (Matrix.nonsing_inv_mul _ hS),
+    hpow, Matrix.charpoly_of_isUpperTriangular _ (hT.pow k)]
   simp only [pow_apply_self_of_isUpperTriangular hT, hdiag, Function.comp_apply]
   exact (Fintype.equivOfCardEq h.card_eq.symm).prod_comp fun i => X - C (d i ^ k)
 

@@ -30,8 +30,8 @@ the unitary matrix is orthogonal. The families are indexed by an arbitrary type.
 
 The triangular form comes from an induction over the size: a common eigenvector, found in a
 minimal invariant subspace, is completed to a unitary matrix, and the complementary blocks are
-triangularised by the induction hypothesis. The block lemmas repeat, for a family and a unitary
-change of basis, those of `NLAlib.Matrix.Spectral.EigenvalueListing` for a pair.
+triangularised by the induction hypothesis. The block lemmas are those of
+`NLAlib.Matrix.Spectral.EigenvalueListing`, used there for a pair and a general similarity.
 -/
 
 @[expose] public section
@@ -177,57 +177,6 @@ private theorem conjTranspose_mul_mul_apply_of_mulVec_eq_smul {A W : Matrix n n 
   rw [h1, hA, Matrix.mulVec_smul, h2, Pi.smul_apply, Matrix.one_apply, smul_eq_mul, mul_ite,
     mul_one, mul_zero]
 
-omit [Fintype n] in
-/-- A matrix with a multiple of a coordinate vector in the column `i₀` is block triangular for the
-splitting of the indices into `i₀` and the others. -/
-private theorem submatrix_sumCompl_eq_fromBlocks {M : Matrix n n K} {i₀ : n} {α : K}
-    (hcol : ∀ i, M i i₀ = if i = i₀ then α else 0) :
-    M.submatrix (Equiv.sumCompl (· = i₀)) (Equiv.sumCompl (· = i₀)) =
-      Matrix.fromBlocks (Matrix.diagonal fun _ => α)
-        (Matrix.of fun (i : {i // i = i₀}) (j : {i // ¬i = i₀}) => M i j) 0
-        (M.submatrix Subtype.val Subtype.val) := by
-  ext (⟨i, hi⟩ | ⟨i, hi⟩) (⟨j, hj⟩ | ⟨j, hj⟩)
-  · subst hi hj
-    simp [hcol]
-  · simp
-  · subst hj
-    simp [hcol, hi]
-  · simp
-
-omit [DecidableEq n] in
-/-- Conjugating a block triangular matrix by a block diagonal matrix, in the original indices. -/
-private theorem fromBlocks_one_mul_mul_fromBlocks_one {p q : Type*} [Fintype p] [Finite q]
-    [DecidableEq q] (e : q ⊕ p ≃ n) {M : Matrix n n K} {D : Matrix q q K}
-    {r : Matrix q p K} {M' : Matrix p p K} (hM : M.submatrix e e = Matrix.fromBlocks D r 0 M')
-    (S S' : Matrix p p K) :
-    (Matrix.fromBlocks (1 : Matrix q q K) 0 0 S').submatrix e.symm e.symm * M *
-        (Matrix.fromBlocks (1 : Matrix q q K) 0 0 S).submatrix e.symm e.symm =
-      (Matrix.fromBlocks D (r * S) 0 (S' * M' * S)).submatrix e.symm e.symm := by
-  cases nonempty_fintype q
-  have hM' : M = (Matrix.fromBlocks D r 0 M').submatrix e.symm e.symm := by
-    rw [← hM, Matrix.submatrix_submatrix, Equiv.self_comp_symm, Matrix.submatrix_id_id]
-  rw [hM', Matrix.submatrix_mul_equiv, Matrix.submatrix_mul_equiv, Matrix.fromBlocks_multiply,
-    Matrix.fromBlocks_multiply]
-  simp
-
-omit [Fintype n] in
-/-- A block triangular matrix with a triangular second block is triangular when the first block
-is the least index. -/
-private theorem isUpperTriangular_submatrix_sumCompl_symm [LinearOrder n] {i₀ : n}
-    (hi₀ : ∀ j, i₀ ≤ j) (D : Matrix {i // i = i₀} {i // i = i₀} K)
-    (r : Matrix {i // i = i₀} {i // ¬i = i₀} K) {T : Matrix {i // ¬i = i₀} {i // ¬i = i₀} K}
-    (hT : T.IsUpperTriangular) :
-    ((Matrix.fromBlocks D r 0 T).submatrix (Equiv.sumCompl (· = i₀)).symm
-      (Equiv.sumCompl (· = i₀)).symm).IsUpperTriangular := by
-  intro i j hji
-  have hi : ¬i = i₀ := fun h => (hi₀ j).not_gt (h ▸ hji)
-  rw [Matrix.submatrix_apply, Equiv.sumCompl_symm_apply_of_neg (p := (· = i₀)) hi]
-  by_cases hj : j = i₀
-  · rw [Equiv.sumCompl_symm_apply_of_pos (p := (· = i₀)) hj, Matrix.fromBlocks_apply₂₁,
-      Matrix.zero_apply]
-  · rw [Equiv.sumCompl_symm_apply_of_neg (p := (· = i₀)) hj, Matrix.fromBlocks_apply₂₂]
-    exact hT (show (⟨j, hj⟩ : {i // ¬i = i₀}) < ⟨i, hi⟩ from hji)
-
 /-- Simultaneous unitary triangularisation of a commuting family whose characteristic polynomials
 split, by induction on the size: a common eigenvector is completed to a unitary matrix, and the
 complementary blocks are triangularised by the induction hypothesis. -/
@@ -297,8 +246,9 @@ private theorem exists_triangular_family_aux (k : ℕ) :
       simp [hU₁.conjTranspose_mul_self, Matrix.fromBlocks_one]
     · rw [Matrix.conjTranspose_mul, hF, Matrix.mul_assoc, Matrix.mul_assoc,
         ← Matrix.mul_assoc (A i), ← Matrix.mul_assoc Wᴴ, ← Matrix.mul_assoc Wᴴ,
-        ← Matrix.mul_assoc _ (Wᴴ * A i * W), fromBlocks_one_mul_mul_fromBlocks_one _ (hM i)]
-      exact isUpperTriangular_submatrix_sumCompl_symm hi₀ _ _ (hT i)
+        ← Matrix.mul_assoc _ (Wᴴ * A i * W),
+        fromBlocks_one_submatrix_mul_mul_fromBlocks_one _ (hM i)]
+      exact isUpperTriangular_fromBlocks_submatrix_sumCompl_symm hi₀ _ _ (hT i)
 
 /-- **A commuting family of matrices whose characteristic polynomials split is simultaneously
 unitarily triangularisable.** Over `ℝ` this is simultaneous orthogonal triangularisation of
@@ -393,15 +343,5 @@ theorem _root_.Matrix.IsHermitian.commute_iff_exists_eq_mul_diagonal_mul_conjTra
     exact ⟨U, a, b, hU, ha, hb⟩
   · rintro ⟨U, a, b, hU, rfl, rfl⟩
     exact commute_mul_diagonal_mul_conjTranspose hU _ _
-
-omit [DecidableEq n] in
-open scoped MatrixOrder in
-/-- The product of two commuting positive semidefinite matrices is positive semidefinite. This is
-Mathlib's `Commute.mul_nonneg` in the vocabulary of matrices. -/
-theorem _root_.Matrix.PosSemidef.mul_of_commute {A B : Matrix n n 𝕜} (hA : A.PosSemidef)
-    (hB : B.PosSemidef) (h : Commute A B) : (A * B).PosSemidef := by
-  classical
-  exact Matrix.nonneg_iff_posSemidef.mp (Commute.mul_nonneg
-    (Matrix.nonneg_iff_posSemidef.mpr hA) (Matrix.nonneg_iff_posSemidef.mpr hB) h)
 
 end NLAlib

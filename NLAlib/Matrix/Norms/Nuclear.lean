@@ -23,6 +23,7 @@ inner product.
 
 ## Main results
 
+* `NLAlib.IsSVD.nuclearNorm_eq_sum`: the nuclear norm from any singular value decomposition.
 * `NLAlib.kyFanNorm_of_rank_le`: Ky Fan norms beyond the rank are the nuclear norm.
 * `NLAlib.nuclearNorm_add_le`: the triangle inequality.
 * `NLAlib.norm_trace_conjTranspose_mul_le_nuclearNorm_mul_specNorm`,
@@ -56,6 +57,15 @@ theorem nuclearNorm_eq_sum_range (A : Matrix m n 𝕜) {N : ℕ} (hN : A.rank �
     (Finset.sum_subset (Finset.range_mono hM) fun i _ hi =>
       (singularValues_eq_zero_iff A).mpr (not_lt.mp fun h => hi (Finset.mem_range.mpr h))).symm
   rw [nuclearNorm, key hN, key (le_min A.rank_le_card_height A.rank_le_card_width)]
+
+/-- The nuclear norm is the sum of the entries of `σ` in any singular value decomposition. -/
+theorem IsSVD.nuclearNorm_eq_sum {r : Type*} [Fintype r] [DecidableEq r] {A : Matrix m n 𝕜}
+    {U : Matrix m r 𝕜} {σ : r → ℝ} {V : Matrix n r 𝕜} (h : IsSVD A U σ V) :
+    nuclearNorm A = ∑ i, σ i := by
+  obtain ⟨e, he⟩ := h.exists_equiv_singularValues_eq
+  have hrank : A.rank ≤ Fintype.card r := h.rank_eq ▸ Finset.card_le_univ _
+  rw [nuclearNorm_eq_sum_range A hrank, ← Fin.sum_univ_eq_sum_range, ← e.sum_comp]
+  exact Finset.sum_congr rfl fun i _ => (he i).symm
 
 /-- Ky Fan norms beyond the rank are the nuclear norm. Port of `NLAlib.kyFanNorm_eq_min`. -/
 theorem kyFanNorm_of_rank_le {k : ℕ} {A : Matrix m n 𝕜} (h : A.rank ≤ k) :

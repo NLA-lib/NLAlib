@@ -24,7 +24,7 @@ matrices. The powers of a matrix are in `NLAlib.Matrix.Spectral.PowerBounds`.
 
 ## Main results
 
-* `NLAlib.specRadius_le_iff_of_charpoly_eq`: the spectral radius through an eigenvalue listing.
+* `NLAlib.IsEigenvalueListing.specRadius_le_iff`: the spectral radius through an eigenvalue listing.
 * `NLAlib.specRadius_le_specNorm`, `IsStarNormal.specNorm_eq_specRadius`.
 * `NLAlib.specRadius_inv_mul_mul`, `NLAlib.specRadius_mul_comm`.
 * `NLAlib.specRadius_add_le_of_commute`, `NLAlib.specRadius_mul_le_of_commute`.
@@ -49,13 +49,8 @@ noncomputable def specRadius (A : Matrix n n 𝕜) : ℝ :=
 theorem specRadius_nonneg (A : Matrix n n 𝕜) : 0 ≤ specRadius A :=
   ENNReal.toReal_nonneg
 
-omit [Fintype n] [DecidableEq n] in
-private theorem complexify_complex (A : Matrix n n ℂ) : complexify A = A := by
-  ext i j
-  rw [complexify_apply, RCLike.toComplex_complex]
-
-private theorem spectralRadius_complexify_eq_iSup {A : Matrix n n 𝕜} {d : n → ℂ}
-    (hd : IsEigenvalueListing (complexify A) d) :
+private theorem spectralRadius_complexify_eq_iSup {A : Matrix n n 𝕜} {ι : Type*} [Fintype ι]
+    {d : ι → ℂ} (hd : IsEigenvalueListing (complexify A) d) :
     spectralRadius ℂ (complexify A) = ⨆ i, (‖d i‖₊ : ENNReal) := by
   rw [spectralRadius, hd.spectrum_eq_range]
   exact iSup_range
@@ -70,10 +65,6 @@ theorem spectralRadius_complexify_ne_top (A : Matrix n n 𝕜) :
   exact iSup_le fun i => ENNReal.coe_le_coe.mpr (Finset.le_sup (f := fun i => ‖d i‖₊)
     (Finset.mem_univ i))
 
-private theorem charpoly_complexify (A : Matrix n n 𝕜) :
-    (complexify A).charpoly = A.charpoly.map (RCLike.toComplex : 𝕜 →⋆ₐ[ℝ] ℂ).toRingHom :=
-  Matrix.charpoly_map A (RCLike.toComplex : 𝕜 →⋆ₐ[ℝ] ℂ).toRingHom
-
 private theorem specRadius_eq_of_charpoly_eq {A B : Matrix n n 𝕜}
     (h : A.charpoly = B.charpoly) : specRadius A = specRadius B := by
   have hs : spectrum ℂ (complexify A) = spectrum ℂ (complexify B) := by
@@ -81,13 +72,6 @@ private theorem specRadius_eq_of_charpoly_eq {A B : Matrix n n 𝕜}
     rw [Matrix.mem_spectrum_iff_isRoot_charpoly, Matrix.mem_spectrum_iff_isRoot_charpoly,
       charpoly_complexify, charpoly_complexify, h]
   rw [specRadius, specRadius, spectralRadius, spectralRadius, hs]
-
-private theorem toComplex_mem_spectrum_complexify {A : Matrix n n 𝕜} {μ : 𝕜}
-    (hμ : μ ∈ spectrum 𝕜 A) : RCLike.toComplex μ ∈ spectrum ℂ (complexify A) := by
-  rw [Matrix.mem_spectrum_iff_isRoot_charpoly, IsRoot.def] at hμ ⊢
-  rw [charpoly_complexify,
-    show RCLike.toComplex μ = (RCLike.toComplex : 𝕜 →⋆ₐ[ℝ] ℂ).toRingHom μ from rfl,
-    Polynomial.eval_map_apply, hμ, map_zero]
 
 /-- Every complex eigenvalue is at most the spectral radius in modulus. -/
 theorem norm_le_specRadius_of_mem_spectrum_complexify {A : Matrix n n 𝕜} {μ : ℂ}
@@ -99,12 +83,12 @@ theorem norm_le_specRadius_of_mem_spectrum_complexify {A : Matrix n n 𝕜} {μ 
 /-- Over `ℂ` the spectral radius is Mathlib's `spectralRadius`. -/
 theorem specRadius_eq_toReal_spectralRadius (A : Matrix n n ℂ) :
     specRadius A = (spectralRadius ℂ A).toReal := by
-  rw [specRadius, complexify_complex]
+  rw [specRadius, complexify_eq_self]
 
 /-- The spectral radius of the complexification. -/
 @[simp]
 theorem specRadius_complexify (A : Matrix n n 𝕜) : specRadius (complexify A) = specRadius A := by
-  rw [specRadius, complexify_complex, specRadius]
+  rw [specRadius, complexify_eq_self, specRadius]
 
 /-- The spectral radius of the identity of positive size is one. -/
 @[simp]
@@ -117,18 +101,21 @@ theorem norm_le_specRadius_of_mem_spectrum {A : Matrix n n 𝕜} {μ : 𝕜} (h�
   rw [← RCLike.norm_toComplex]
   exact norm_le_specRadius_of_mem_spectrum_complexify (toComplex_mem_spectrum_complexify hμ)
 
-/-- **The spectral radius through a listing of the eigenvalues.** -/
-theorem specRadius_le_iff_of_charpoly_eq {A : Matrix n n 𝕜} {d : n → ℂ}
-    (hd : IsEigenvalueListing (complexify A) d) {c : ℝ} (hc : 0 ≤ c) :
+/-- **The spectral radius through a listing of the eigenvalues**: if `d`, indexed by any finite
+type, lists the complex eigenvalues of `A`, then `specRadius A ≤ c` exactly when every `‖d i‖` is
+at most `c`, for `c ≥ 0` (the hypothesis matters only for a matrix of size zero). -/
+theorem IsEigenvalueListing.specRadius_le_iff {A : Matrix n n 𝕜} {ι : Type*} [Fintype ι]
+    {d : ι → ℂ} (hd : IsEigenvalueListing (complexify A) d) {c : ℝ} (hc : 0 ≤ c) :
     specRadius A ≤ c ↔ ∀ i, ‖d i‖ ≤ c := by
   rw [specRadius, ← ENNReal.le_ofReal_iff_toReal_le (spectralRadius_complexify_ne_top A) hc,
     spectralRadius_complexify_eq_iSup hd, iSup_le_iff]
   refine forall_congr' fun i => ?_
   rw [ENNReal.le_ofReal_iff_toReal_le ENNReal.coe_ne_top hc, ENNReal.coe_toReal, coe_nnnorm]
 
-private theorem norm_le_specRadius_of_isEigenvalueListing {A : Matrix n n 𝕜} {d : n → ℂ}
-    (hd : IsEigenvalueListing (complexify A) d) (i : n) : ‖d i‖ ≤ specRadius A :=
-  (specRadius_le_iff_of_charpoly_eq hd (specRadius_nonneg A)).mp le_rfl i
+private theorem norm_le_specRadius_of_isEigenvalueListing {A : Matrix n n 𝕜} {ι : Type*}
+    [Fintype ι] {d : ι → ℂ} (hd : IsEigenvalueListing (complexify A) d) (i : ι) :
+    ‖d i‖ ≤ specRadius A :=
+  (hd.specRadius_le_iff (specRadius_nonneg A)).mp le_rfl i
 
 /-- The spectral radius is attained at an eigenvalue of the complexification. -/
 theorem exists_mem_spectrum_norm_eq_specRadius [Nonempty n] (A : Matrix n n 𝕜) :
@@ -137,7 +124,7 @@ theorem exists_mem_spectrum_norm_eq_specRadius [Nonempty n] (A : Matrix n n 𝕜
   obtain ⟨i, hi⟩ := Finite.exists_max fun i => ‖d i‖
   have hmem : d i ∈ spectrum ℂ (complexify A) := hd.spectrum_eq_range ▸ Set.mem_range_self i
   exact ⟨d i, hmem, le_antisymm (norm_le_specRadius_of_mem_spectrum_complexify hmem)
-    ((specRadius_le_iff_of_charpoly_eq hd (norm_nonneg _)).mpr hi)⟩
+    ((hd.specRadius_le_iff (norm_nonneg _)).mpr hi)⟩
 
 /-- **The spectral radius is at most the spectral norm.** [HornJohnson2013, Theorem 5.6.9]. -/
 theorem specRadius_le_specNorm (A : Matrix n n 𝕜) : specRadius A ≤ specNorm A := by
@@ -165,13 +152,13 @@ theorem specRadius_pow [Nonempty n] (A : Matrix n n 𝕜) (k : ℕ) :
     rw [complexify_pow]
     exact hd.pow k
   refine le_antisymm ?_ ?_
-  · refine (specRadius_le_iff_of_charpoly_eq hk (pow_nonneg (specRadius_nonneg A) k)).mpr
+  · refine (hk.specRadius_le_iff (pow_nonneg (specRadius_nonneg A) k)).mpr
       fun i => ?_
     rw [norm_pow]
     exact pow_le_pow_left₀ (norm_nonneg _) (norm_le_specRadius_of_isEigenvalueListing hd i) k
   · obtain ⟨i, hi⟩ := Finite.exists_max fun i => ‖d i‖
     have hρ : specRadius A = ‖d i‖ :=
-      le_antisymm ((specRadius_le_iff_of_charpoly_eq hd (norm_nonneg _)).mpr hi)
+      le_antisymm ((hd.specRadius_le_iff (norm_nonneg _)).mpr hi)
         (norm_le_specRadius_of_isEigenvalueListing hd i)
     rw [hρ, ← norm_pow]
     exact norm_le_specRadius_of_isEigenvalueListing hk i
@@ -204,24 +191,19 @@ Port of `NLAlib.spectralRadius_le_max_row_sum`. -/
 theorem specRadius_le_of_forall_sum_le {A : Matrix n n 𝕜} {c : ℝ} (hc : 0 ≤ c)
     (h : ∀ i, ∑ j, ‖A i j‖ ≤ c) : specRadius A ≤ c := by
   obtain ⟨d, hd⟩ := exists_isEigenvalueListing (complexify A)
-  refine (specRadius_le_iff_of_charpoly_eq hd hc).mpr fun i => ?_
+  refine (hd.specRadius_le_iff hc).mpr fun i => ?_
   have hmem : d i ∈ spectrum ℂ (complexify A) := hd.spectrum_eq_range ▸ Set.mem_range_self i
   obtain ⟨j, hj⟩ := exists_norm_le_sum_of_mem_spectrum hmem
   refine hj.trans ((Finset.sum_congr rfl fun l _ => ?_).trans_le (h j))
   rw [complexify_apply, RCLike.norm_toComplex]
 
-omit [DecidableEq n] in
-private theorem commute_complexify {A B : Matrix n n 𝕜} (h : Commute A B) :
-    Commute (complexify A) (complexify B) := by
-  rw [commute_iff_eq, ← complexify_mul, ← complexify_mul, h.eq]
-
 /-- The spectral radius of a sum of commuting matrices is at most the sum. -/
 theorem specRadius_add_le_of_commute {A B : Matrix n n 𝕜} (h : Commute A B) :
     specRadius (A + B) ≤ specRadius A + specRadius B := by
   obtain ⟨a, b, ha, hb, hab, -⟩ :=
-    exists_isEigenvalueListing_add_mul_of_commute (commute_complexify h)
+    exists_isEigenvalueListing_add_mul_of_commute h.complexify
   rw [← complexify_add] at hab
-  refine (specRadius_le_iff_of_charpoly_eq hab
+  refine (hab.specRadius_le_iff
     (add_nonneg (specRadius_nonneg A) (specRadius_nonneg B))).mpr fun i => ?_
   exact (norm_add_le _ _).trans (add_le_add (norm_le_specRadius_of_isEigenvalueListing ha i)
     (norm_le_specRadius_of_isEigenvalueListing hb i))
@@ -230,9 +212,9 @@ theorem specRadius_add_le_of_commute {A B : Matrix n n 𝕜} (h : Commute A B) :
 theorem specRadius_mul_le_of_commute {A B : Matrix n n 𝕜} (h : Commute A B) :
     specRadius (A * B) ≤ specRadius A * specRadius B := by
   obtain ⟨a, b, ha, hb, -, hab⟩ :=
-    exists_isEigenvalueListing_add_mul_of_commute (commute_complexify h)
+    exists_isEigenvalueListing_add_mul_of_commute h.complexify
   rw [← complexify_mul] at hab
-  refine (specRadius_le_iff_of_charpoly_eq hab
+  refine (hab.specRadius_le_iff
     (mul_nonneg (specRadius_nonneg A) (specRadius_nonneg B))).mpr fun i => ?_
   rw [norm_mul]
   exact mul_le_mul (norm_le_specRadius_of_isEigenvalueListing ha i)

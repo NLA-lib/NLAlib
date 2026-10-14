@@ -162,18 +162,6 @@ theorem isLowerTriangular_choleskyLower (A : Matrix (Fin n) (Fin n) 𝕜) :
   have hij' : i < j := hij
   simp only [choleskyLower, Matrix.of_apply, if_neg hij'.not_ge]
 
-/-- Elimination preserves Hermitian matrices. -/
-private theorem isHermitian_gaussState {A : Matrix (Fin n) (Fin n) 𝕜} (hA : A.IsHermitian)
-    (k : ℕ) : (gaussState A k).IsHermitian := by
-  induction k with
-  | zero => exact hA
-  | succ k ih =>
-    by_cases hk : k < n
-    · rw [gaussState_succ A hk]
-      exact ih.eliminationStep _
-    · rw [gaussState, dif_neg hk]
-      exact ih
-
 /-- Elimination preserves positive semidefinite matrices. -/
 private theorem posSemidef_gaussState {A : Matrix (Fin n) (Fin n) 𝕜} (hA : A.PosSemidef)
     (k : ℕ) : (gaussState A k).PosSemidef := by
@@ -203,7 +191,7 @@ theorem _root_.Matrix.IsHermitian.choleskyLower_apply_self {A : Matrix (Fin n) (
     (hA : A.IsHermitian) (i : Fin n) :
     choleskyLower A i i = ((√(RCLike.re (gaussState A i i i)) : ℝ) : 𝕜) := by
   simp only [choleskyLower, Matrix.of_apply, le_refl, if_true]
-  nth_rewrite 1 [← (isHermitian_gaussState hA i).coe_re_apply_self i]
+  nth_rewrite 1 [← (hA.gaussState i).coe_re_apply_self i]
   rw [← RCLike.ofReal_div, Real.div_sqrt]
 
 /-- The diagonal entry of the computed factor is positive exactly when the pivot is. -/
@@ -211,7 +199,7 @@ theorem _root_.Matrix.IsHermitian.choleskyLower_apply_self_pos_iff
     {A : Matrix (Fin n) (Fin n) 𝕜} (hA : A.IsHermitian) (i : Fin n) :
     0 < choleskyLower A i i ↔ 0 < gaussState A i i i := by
   rw [hA.choleskyLower_apply_self, RCLike.ofReal_pos, Real.sqrt_pos,
-    ← (isHermitian_gaussState hA i).coe_re_apply_self i, RCLike.ofReal_pos, RCLike.ofReal_re]
+    ← (hA.gaussState i).coe_re_apply_self i, RCLike.ofReal_pos, RCLike.ofReal_re]
 
 /-- The diagonal of the factor computed by elimination on a Hermitian matrix is nonnegative.
 Port of `NLAlib.cholesky_apply_self_nonneg`. -/
@@ -236,9 +224,9 @@ private theorem choleskyLower_mul_conjTranspose_apply {A : Matrix (Fin n) (Fin n
     · have hsq : ((√(RCLike.re (gaussState A j j j)) : ℝ) : 𝕜) *
           ((√(RCLike.re (gaussState A j j j)) : ℝ) : 𝕜) = gaussState A j j j := by
         rw [← RCLike.ofReal_mul, Real.mul_self_sqrt (RCLike.nonneg_iff.mp (h0 j)).1,
-          (isHermitian_gaussState hA j).coe_re_apply_self j]
+          (hA.gaussState j).coe_re_apply_self j]
       rw [if_pos hji, if_pos hjl, if_pos ⟨hji, hjl⟩, star_div₀, RCLike.star_def,
-        RCLike.conj_ofReal, ← RCLike.star_def, (isHermitian_gaussState hA j).apply,
+        RCLike.conj_ofReal, ← RCLike.star_def, (hA.gaussState j).apply,
         div_mul_div_comm, hsq]
       ring
     · rw [if_neg hjl, if_neg (not_and_of_not_right _ hjl), star_zero, mul_zero]
@@ -259,7 +247,7 @@ private theorem eq_choleskyLower_mul_conjTranspose_of {A : Matrix (Fin n) (Fin n
     · exact eliminationStep_apply_pivot_right hp i
   have hrow : ∀ j l : Fin n, gaussState A ((j : ℕ) + 1) j l = 0 := by
     intro j l
-    rw [← (isHermitian_gaussState hA ((j : ℕ) + 1)).apply, hcol j l, star_zero]
+    rw [← (hA.gaussState ((j : ℕ) + 1)).apply, hcol j l, star_zero]
   have ht : ∀ (k : ℕ) (i l : Fin n), A i l = gaussState A k i l +
       ∑ j ∈ Finset.univ.filter (fun j : Fin n => (j : ℕ) < k),
         (gaussState A j j j)⁻¹ * (gaussState A j i j * gaussState A j j l) := by

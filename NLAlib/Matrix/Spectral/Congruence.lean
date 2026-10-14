@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import Mathlib.Topology.Maps.Proper.Basic
+public import NLAlib.ForMathlib.LinearAlgebra.Matrix.ConjTranspose
 public import NLAlib.Matrix.Factorizations.QR
 public import NLAlib.Matrix.Spectral.Diagonalizable
 public import NLAlib.Matrix.Spectral.Inertia
@@ -43,30 +44,11 @@ variable {𝕜 : Type*} [RCLike 𝕜] {n : Type*} [Fintype n] [DecidableEq n]
 
 /-! ### Definite pairs -/
 
-/-- A Hermitian matrix is unitarily diagonalised, with a real diagonal indexed by the index
-type. -/
-private theorem exists_eq_mul_diagonal_mul_conjTranspose {H : Matrix n n 𝕜} (hH : H.IsHermitian) :
-    ∃ (U : Matrix n n 𝕜) (d : n → ℝ), HasOrthonormalCols U ∧
-      H = U * Matrix.diagonal (fun i => ((d i : ℝ) : 𝕜)) * Uᴴ := by
-  obtain ⟨U, hU, h⟩ := exists_hasOrthonormalCols_forall_eq_mul_diagonal_of_pairwise_commute
-    (A := fun _ : Unit => H) (fun _ => hH) (fun i j hij => (hij (Subsingleton.elim i j)).elim)
-  obtain ⟨d, hd⟩ := h ()
-  exact ⟨U, d, hU, hd⟩
-
 /-- The conjugate transpose of an invertible matrix is invertible. -/
 private theorem isUnit_det_conjTranspose {S : Matrix n n 𝕜} (hS : IsUnit S.det) :
     IsUnit Sᴴ.det := by
   rw [Matrix.det_conjTranspose]
   exact hS.star
-
-omit [Fintype n] in
-/-- A real diagonal matrix is Hermitian. -/
-private theorem conjTranspose_diagonal_ofReal (d : n → ℝ) :
-    (Matrix.diagonal fun i => ((d i : ℝ) : 𝕜))ᴴ = Matrix.diagonal fun i => ((d i : ℝ) : 𝕜) := by
-  rw [Matrix.diagonal_conjTranspose]
-  congr 1
-  funext i
-  exact RCLike.conj_ofReal (d i)
 
 /-- For `A = S Sᴴ` and `B = S D Sᴴ`, the columns of `S⁻ᴴ` are eigenvectors of `A⁻¹ B` when `D` is
 diagonal: `A⁻¹ B S⁻ᴴ = S⁻ᴴ D`. -/
@@ -100,8 +82,8 @@ theorem _root_.Matrix.PosDef.exists_eq_mul_conjTranspose_and_eq_mul_diagonal_mul
   have hLL : L * L⁻¹ = 1 := Matrix.mul_nonsing_inv L hLu
   have hLL' : (L⁻¹)ᴴ * Lᴴ = 1 := by
     rw [← Matrix.conjTranspose_mul, hLL, Matrix.conjTranspose_one]
-  obtain ⟨U, d, hU, hd⟩ := exists_eq_mul_diagonal_mul_conjTranspose
-    (Matrix.isHermitian_mul_mul_conjTranspose L⁻¹ hB)
+  obtain ⟨U, d, hU, hd⟩ := (Matrix.isHermitian_mul_mul_conjTranspose L⁻¹
+    hB).exists_hasOrthonormalCols_eq_mul_diagonal_mul_conjTranspose
   refine ⟨L * U, d, ?_, ?_, ?_⟩
   · rw [Matrix.det_mul]
     exact hLu.mul ((Matrix.isUnit_iff_isUnit_det U).mp hU.isUnit)
@@ -171,7 +153,7 @@ theorem inertiaPos_eq_card_of_eq_mul_diagonal_mul_conjTranspose {B S : Matrix n 
     (hS : IsUnit S.det) (hB : B = S * Matrix.diagonal (fun i => ((d i : ℝ) : 𝕜)) * Sᴴ) :
     inertiaPos B = (Finset.univ.filter fun i => 0 < d i).card := by
   have hD : (Matrix.diagonal fun i => ((d i : ℝ) : 𝕜)).IsHermitian :=
-    conjTranspose_diagonal_ofReal d
+    Matrix.conjTranspose_diagonal_ofReal d
   have h := hD.inertiaPos_conjTranspose_mul_mul (isUnit_det_conjTranspose hS)
   rw [Matrix.conjTranspose_conjTranspose] at h
   rw [hB, h, inertiaPos_diagonal]
@@ -225,7 +207,8 @@ private theorem exists_conjTranspose_mul_mul_eq_diagonal_indicator {C : Matrix n
     (hC : C.PosSemidef) :
     ∃ (X : Matrix n n 𝕜) (e : n → ℝ), IsUnit X.det ∧
       Xᴴ * C * X = Matrix.diagonal (fun i => ((e i : ℝ) : 𝕜)) ∧ ∀ i, e i * e i = e i := by
-  obtain ⟨U, c, hU, hCU⟩ := exists_eq_mul_diagonal_mul_conjTranspose hC.isHermitian
+  obtain ⟨U, c, hU, hCU⟩ :=
+    hC.isHermitian.exists_hasOrthonormalCols_eq_mul_diagonal_mul_conjTranspose
   have hc : ∀ i, 0 ≤ c i := by
     have h := hC.conjTranspose_mul_mul_same U
     rw [hU.eq_mul_mul_conjTranspose_iff.mp hCU, Matrix.posSemidef_diagonal_iff] at h
@@ -240,7 +223,7 @@ private theorem exists_conjTranspose_mul_mul_eq_diagonal_indicator {C : Matrix n
   · rw [Matrix.det_mul, Matrix.det_diagonal]
     refine ((Matrix.isUnit_iff_isUnit_det U).mp hU.isUnit).mul (isUnit_iff_ne_zero.mpr ?_)
     exact Finset.prod_ne_zero_iff.mpr fun i _ => RCLike.ofReal_ne_zero.mpr (hs i)
-  · rw [Matrix.conjTranspose_mul, conjTranspose_diagonal_ofReal, hCU]
+  · rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_diagonal_ofReal, hCU]
     simp only [Matrix.mul_assoc]
     rw [hU.conjTranspose_mul_cancel_left, ← Matrix.mul_assoc Uᴴ, hU.conjTranspose_mul_self,
       Matrix.one_mul, Matrix.diagonal_mul_diagonal, Matrix.diagonal_mul_diagonal]
@@ -254,14 +237,15 @@ private theorem exists_conjTranspose_mul_mul_eq_diagonal_indicator {C : Matrix n
       field_simp
       exact (Real.sq_sqrt (hc i)).symm
 
-/-- **Two positive semidefinite matrices are simultaneously diagonalised by congruence.**
-[HornJohnson2013, Theorem 7.6.4 context].
+/-- **Two positive semidefinite matrices are simultaneously diagonalised by congruence**, with
+nonnegative diagonals. [HornJohnson2013, Theorem 7.6.4 context].
 Port of `NLAlib.exists_diagonal_congruence_of_posSemidef`, there over `ℝ`. -/
 theorem _root_.Matrix.PosSemidef.exists_conjTranspose_mul_mul_eq_diagonal {A B : Matrix n n 𝕜}
     (hA : A.PosSemidef) (hB : B.PosSemidef) :
     ∃ (X : Matrix n n 𝕜) (a b : n → ℝ), IsUnit X.det ∧
       Xᴴ * A * X = Matrix.diagonal (fun i => ((a i : ℝ) : 𝕜)) ∧
-      Xᴴ * B * X = Matrix.diagonal (fun i => ((b i : ℝ) : 𝕜)) := by
+      Xᴴ * B * X = Matrix.diagonal (fun i => ((b i : ℝ) : 𝕜)) ∧
+      (∀ i, 0 ≤ a i) ∧ ∀ i, 0 ≤ b i := by
   obtain ⟨X₁, e, hX₁, hsum, he⟩ := exists_conjTranspose_mul_mul_eq_diagonal_indicator
     (hA.add hB)
   have hA' := hA.conjTranspose_mul_mul_same X₁
@@ -276,13 +260,20 @@ theorem _root_.Matrix.PosSemidef.exists_conjTranspose_mul_mul_eq_diagonal {A B :
   obtain ⟨V, a, b, hV, ha, hb⟩ :=
     (hA'.isHermitian.commute_iff_exists_eq_mul_diagonal_mul_conjTranspose hB'.isHermitian).mp
       (commute_of_add_eq_of_mul_self_eq hA' hB' hsum hP)
-  refine ⟨X₁ * V, a, b, ?_, ?_, ?_⟩
-  · rw [Matrix.det_mul]
-    exact hX₁.mul ((Matrix.isUnit_iff_isUnit_det V).mp hV.isUnit)
-  · rw [Matrix.conjTranspose_mul, ← hV.eq_mul_mul_conjTranspose_iff.mp ha]
+  have hXA : (X₁ * V)ᴴ * A * (X₁ * V) = Matrix.diagonal (fun i => ((a i : ℝ) : 𝕜)) := by
+    rw [Matrix.conjTranspose_mul, ← hV.eq_mul_mul_conjTranspose_iff.mp ha]
     simp only [Matrix.mul_assoc]
-  · rw [Matrix.conjTranspose_mul, ← hV.eq_mul_mul_conjTranspose_iff.mp hb]
+  have hXB : (X₁ * V)ᴴ * B * (X₁ * V) = Matrix.diagonal (fun i => ((b i : ℝ) : 𝕜)) := by
+    rw [Matrix.conjTranspose_mul, ← hV.eq_mul_mul_conjTranspose_iff.mp hb]
     simp only [Matrix.mul_assoc]
+  have ha0 := hA.conjTranspose_mul_mul_same (X₁ * V)
+  have hb0 := hB.conjTranspose_mul_mul_same (X₁ * V)
+  rw [hXA, Matrix.posSemidef_diagonal_iff] at ha0
+  rw [hXB, Matrix.posSemidef_diagonal_iff] at hb0
+  refine ⟨X₁ * V, a, b, ?_, hXA, hXB, fun i => RCLike.ofReal_nonneg.mp (ha0 i),
+    fun i => RCLike.ofReal_nonneg.mp (hb0 i)⟩
+  rw [Matrix.det_mul]
+  exact hX₁.mul ((Matrix.isUnit_iff_isUnit_det V).mp hV.isUnit)
 
 /-- **A real symmetric pair with invertible `A` is simultaneously diagonalised by congruence
 exactly when `A⁻¹ B` is diagonalisable over `ℝ`.** [HornJohnson2013, Theorem 4.5.17].

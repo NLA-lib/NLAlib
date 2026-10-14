@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Probability.Distributions.Gaussian
+public import NLAlib.Probability.EntropyTensorization
 public import NLAlib.Probability.LogSobolev
 
 /-!

@@ -224,3 +224,10 @@ junk-free interface, standard theorem.
    tensorization's type family is `X : ι → Type*` (the section's `Ω` is not shadowed). The tail
    `measureReal_integral_add_le_of_lipschitzWith_of_hasLaw_gaussianVector` is kept because R3 wants
    the event in that shape (it is one rewrite of P1's `measure_ge_le`).
+
+Amendment (2026-10-14, after `Entropy.lean` was proved at 722 lines): split into
+`Probability/Entropy.lean` (definition, nonnegativity, Herbst), `Probability/EntropyTensorization.lean`
+(`entropy_pi_le_sum`), and `ForMathlib/MeasureTheory/Constructions/PiUpdate.lean` (six public
+lemmas on resampling one coordinate of a product of probability measures, for dependent families:
+`MeasureTheory.measurePreserving_update_pi`, `integral_integral_update_pi`, …, general facts
+for every conditioning-on-all-but-one argument).

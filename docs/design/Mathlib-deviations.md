@@ -47,11 +47,18 @@ None of these was approved by the maintainer when it was made. Status is given p
   `eigenvalue_le_of_forall_mem`) or true for a trivial reason, which no proof catches and only
   review does. `eigenvalue A 0` for a non-Hermitian `A` type-checks and means nothing; the name
   does not warn. Statements to be upstreamed have to be translated to `eigenvalues₀`.
-- **Status: open.** The maintainer questions the junk value for non-Hermitian input. Options:
-  `hA.eigenvalue k` (still `ℕ`-indexed, takes the proof, so a non-Hermitian matrix cannot be
-  passed; loses the rewriting convenience), or a rename that says "Hermitian". The zero padding
-  beyond the size would stay in either. Not yet audited: statements that mention `eigenvalue`
-  with no Hermitian hypothesis.
+- **Status: kept (maintainer, 2026-10-14).** The alternative `hA.eigenvalue k`, taking the
+  proof, was considered and not taken: building the Hermitian proof at every use is a recurring
+  cost in proofs, while the junk value costs nothing as long as statements are right, since Lean
+  will not accept a proof of a false one. What has to be checked is therefore the statements.
+  Checked on 2026-10-14: of the 193 statements that mention `eigenvalue`, 27 carry no
+  Hermitian-type hypothesis, and each of those is intended. Either the argument is Hermitian by
+  construction (`Aᴴ * A`, `dilation A`, `hermitianPart A`, `0`, `1`, a real diagonal,
+  `U * diagonal d * Uᴴ`), or the statement is an identity whose two sides are junk together
+  (`eigenvalue_neg`, `eigenvalue_real_smul`, `eigenvalue_complexify`,
+  `eigenvalue_submatrix_equiv`, unitary conjugation), which is the total function paying off:
+  these hold for every matrix with no hypothesis to discharge. Not yet checked: whether any of
+  the other 166 is true only for a trivial reason at an out-of-range index.
 
 ## 2. Singular values
 

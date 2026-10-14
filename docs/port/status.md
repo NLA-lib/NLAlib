@@ -88,11 +88,12 @@ P5b to P5d outside their own layer.
 | P5a | `MatrixConcentration/{Laplace,Subadditivity,MGFBound}.lean` (+ `ForMathlib/Analysis/Convex/Integral.lean`) | Opus agent | proved | Jensen on a non-closed convex set; wrap-up: move `continuousOn_cfc_log` to the Matrix layer, `measurableSet_posDef` to Measurability |
 | P5a | `MatrixConcentration/{Chernoff,ChernoffSum}.lean` | Opus agent | proved | skeleton bug fixed: `∀ θ` had elaborated as `θ : ℕ` (rule added to CONTRIBUTING §5.2) |
 | R1 | design note `docs/design/RandomMatrix-R1.md`, skeletons `RandomMatrix/Gaussian/*` | orchestrator | written, Fable-reviewed (§8); skeletons compile | `frobNorm_eq_norm_toLp_uncurry` proved in the Matrix layer |
-| R1 | `RandomMatrix/Gaussian/{Basic,Invariance}.lean` | Opus agent | proofs in progress | |
+| R1 | `RandomMatrix/Gaussian/{Basic,Invariance}.lean` | Opus agent | proved | |
 | R1 | `RandomMatrix/Gaussian/{Rank,Concentration}.lean` | — | skeletons compile | next slot |
 | R2 | design note `docs/design/RandomMatrix-R2.md`, skeleton `RandomMatrix/Gaussian/Moments.lean` | orchestrator | written, Fable-reviewed (§8); skeleton check pending a slot | |
 | R4 | design note `docs/design/RandomMatrix-R4.md`, skeletons | orchestrator | written, Fable-reviewed (§8); skeleton check pending a slot | |
-| P5a | `MatrixConcentration/{Bernstein,Series}.lean` | Opus agent | proofs in progress | |
+| P5a | `MatrixConcentration/{Bernstein,Series}.lean` | Opus agent | proved | |
+| P5a | wrap-up | — | to do | move the duplicated private `le_sqrt_of_forall_le_div_add_mul` (Bernstein, Series) to ForMathlib; `integrable_and_integral_cfc` (Series) to `MatrixIntegral.lean`; `continuousOn_cfc_log` to the Matrix layer; `measurableSet_posDef` to Measurability; note: under `Matrix.Norms.L2Operator`, `Continuous.measurable` finds no `BorelSpace (Matrix …)` |
 
 **Matrix layer complete, 2026-10-14** (branch `scaffold`, local commits, not pushed): stages M0 to
 M10 proved, 144 files, nothing scaffolded, all checks green. Read `docs/design/Matrix-REPORT.md`

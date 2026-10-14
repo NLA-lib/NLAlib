@@ -12483,6 +12483,15 @@
   "new": "NLAlib.IsSubgaussianVector.aemeasurable",
   "stage": "P3"
  },
+ "bernsteinTail": {
+  "new": null,
+  "note": "written out in the statements",
+  "stage": "P5a"
+ },
+ "bernstein_matrix_mgf_cgf_le": {
+  "new": "NLAlib.hasMatrixMGFBound_of_integral_eq_zero_of_le",
+  "stage": "P5a"
+ },
  "centered_sq_cgf_le_of_hasSubgaussianMGF_of_le": {
   "new": "ProbabilityTheory.HasSubgaussianMGF.hasSubexponentialMGF_sq_sub_integral",
   "stage": "P1"
@@ -12510,6 +12519,11 @@
   "new": null,
   "note": "the dot product of the uncurried matrix",
   "stage": "R1"
+ },
+ "cumulantSum": {
+  "new": null,
+  "note": "written out in the statements",
+  "stage": "P5a"
  },
  "entropy_exp_mul_le_of_logSobolev_of_bounded": {
   "new": null,
@@ -12556,6 +12570,11 @@
   "note": "private step in LogSobolev.lean",
   "stage": "P4"
  },
+ "exp_mul_le_one_add_mul_add_sq_mul_of_le": {
+  "new": null,
+  "note": "private step in MatrixConcentration/Bernstein.lean",
+  "stage": "P5a"
+ },
  "finiteSamplingLaw": {
   "new": "NLAlib.samplingMeasure",
   "stage": "P2"
@@ -12601,6 +12620,11 @@
  "gaussianMatrix_map_uncurry": {
   "new": "NLAlib.hasLaw_uncurry_of_hasLaw_gaussianMatrix",
   "stage": "R1"
+ },
+ "gaussianSeriesTail": {
+  "new": null,
+  "note": "written out in the statements",
+  "stage": "P5a"
  },
  "gaussianVector": {
   "new": "NLAlib.gaussianVector",
@@ -12739,6 +12763,16 @@
   "note": "private step in LogSobolev.lean",
   "stage": "P4"
  },
+ "hermitianSecondMoment": {
+  "new": null,
+  "note": "written out in the statements",
+  "stage": "P5a"
+ },
+ "hermitianSecondMoment_dilation_eq_rectSecondMoment": {
+  "new": null,
+  "note": "private step in MatrixConcentration/Bernstein.lean",
+  "stage": "P5a"
+ },
  "iIndepFun_eval_rademacherVector": {
   "new": null,
   "note": "HasLaw.iIndepFun_eval",
@@ -12757,6 +12791,11 @@
  "inner_randomVector_hasSubgaussianMGF_of_iIndepFun": {
   "new": "NLAlib.lintegral_exp_mul_dotProduct_le",
   "stage": "P3"
+ },
+ "integrable_and_integral_matrixExp_smul_eq_cfc_mgf": {
+  "new": null,
+  "note": "private step in MatrixConcentration/Series.lean",
+  "stage": "P5a"
  },
  "integrable_entropy_update_of_nonneg": {
   "new": null,
@@ -13013,8 +13052,34 @@
   "note": "measure-form twin of integral_of_hasLaw_rademacherMeasure",
   "stage": "P2"
  },
+ "integral_lambdaMax_hermitianSeries_le": {
+  "new": "NLAlib.integral_eigenvalue_zero_sum_smul_le",
+  "stage": "P5a"
+ },
+ "integral_lambdaMax_hermitianSeries_le_of_hasLaw_gaussianReal": {
+  "new": null,
+  "note": "the case c = 1 of the sub-Gaussian series theorems",
+  "stage": "P5a"
+ },
+ "integral_lambdaMax_hermitianSeries_le_of_hasLaw_rademacherMeasure": {
+  "new": null,
+  "note": "the case c = 1 of the sub-Gaussian series theorems",
+  "stage": "P5a"
+ },
+ "integral_lambdaMax_le_log_integral_traceExp_div": {
+  "new": "NLAlib.integral_eigenvalue_zero_le",
+  "stage": "P5a"
+ },
  "integral_lambdaMax_sum_le_chernoff": {
   "new": "NLAlib.integral_eigenvalue_zero_sum_le_chernoff",
+  "stage": "P5a"
+ },
+ "integral_lambdaMax_sum_le_log_traceExp_cumulantSum_div": {
+  "new": "NLAlib.HasMatrixMGFBound.integral_eigenvalue_zero_sum_le",
+  "stage": "P5a"
+ },
+ "integral_lambdaMax_sum_le_of_lambdaMax_le": {
+  "new": "NLAlib.integral_eigenvalue_zero_sum_le_bernstein",
   "stage": "P5a"
  },
  "integral_lambdaMin_sum_ge_chernoff": {
@@ -13034,6 +13099,15 @@
   "new": null,
   "note": "Jensen step; private in Probability/SubGaussian/Moments.lean",
   "stage": "P1"
+ },
+ "integral_matrixExp_smul_eq_cfc_of_hasSubgaussianMGF": {
+  "new": null,
+  "note": "private step in MatrixConcentration/Series.lean",
+  "stage": "P5a"
+ },
+ "integral_matrixExp_smul_le_of_hasSubgaussianMGF": {
+  "new": "NLAlib.hasMatrixMGFBound_smul_of_hasSubgaussianMGF",
+  "stage": "P5a"
  },
  "integral_mul_le_entropy_of_integral_exp_le_one": {
   "new": null,
@@ -13080,6 +13154,24 @@
  "integral_reindex": {
   "new": "Matrix.integral_reindex",
   "stage": "P0"
+ },
+ "integral_specNorm_matrixSeries_le": {
+  "new": "NLAlib.integral_specNorm_sum_smul_le",
+  "stage": "P5a"
+ },
+ "integral_specNorm_matrixSeries_le_of_hasLaw_gaussianReal": {
+  "new": null,
+  "note": "the case c = 1 of the sub-Gaussian series theorems",
+  "stage": "P5a"
+ },
+ "integral_specNorm_matrixSeries_le_of_hasLaw_rademacherMeasure": {
+  "new": null,
+  "note": "the case c = 1 of the sub-Gaussian series theorems",
+  "stage": "P5a"
+ },
+ "integral_specNorm_sum_le_of_specNorm_le": {
+  "new": "NLAlib.integral_specNorm_sum_le_bernstein",
+  "stage": "P5a"
  },
  "integral_sq_eq_one_of_hasLaw_gaussianReal": {
   "new": "NLAlib.integral_sq_of_hasLaw_gaussianReal",
@@ -13145,6 +13237,10 @@
   "note": "proof step inside Probability/Tail.lean; the real-valued forms are public",
   "stage": "P0"
  },
+ "log_integral_traceExp_div_le_integral_lambdaMin": {
+  "new": "NLAlib.le_integral_eigenvalue",
+  "stage": "P5a"
+ },
  "log_one_sub_le_neg_sub_sq_div_two": {
   "new": null,
   "note": "private step in Distributions/ChiSquare.lean",
@@ -13154,6 +13250,11 @@
   "new": null,
   "note": "replaced by hasLaw_mulVec_of_hasLaw_gaussianVector",
   "stage": "R1"
+ },
+ "matrixLog_integral_matrixExp_smul_le_of_hasSubgaussianMGF": {
+  "new": null,
+  "note": "the master bound covers the CGF step",
+  "stage": "P5a"
  },
  "matrix_chernoff_sampling_lower": {
   "new": "NLAlib.measureReal_eigenvalue_sum_le_le_card_mul_exp",
@@ -13202,8 +13303,38 @@
   "note": "P1's measure_ge_le applied to HasLogSobolev.hasSubgaussianMGF_sub_integral",
   "stage": "P4"
  },
+ "measureReal_lambdaMax_ge_le_exp_mul_integral_traceExp": {
+  "new": "NLAlib.measureReal_eigenvalue_zero_ge_le",
+  "stage": "P5a"
+ },
+ "measureReal_lambdaMax_hermitianSeries_ge_le": {
+  "new": "NLAlib.measureReal_eigenvalue_zero_sum_smul_ge_le",
+  "stage": "P5a"
+ },
+ "measureReal_lambdaMax_hermitianSeries_ge_le_of_hasLaw_gaussianReal": {
+  "new": null,
+  "note": "the case c = 1 of the sub-Gaussian series theorems",
+  "stage": "P5a"
+ },
+ "measureReal_lambdaMax_hermitianSeries_ge_le_of_hasLaw_rademacherMeasure": {
+  "new": null,
+  "note": "the case c = 1 of the sub-Gaussian series theorems",
+  "stage": "P5a"
+ },
+ "measureReal_lambdaMax_sum_ge_le_bernsteinTail": {
+  "new": "NLAlib.measureReal_eigenvalue_zero_sum_ge_le_bernstein",
+  "stage": "P5a"
+ },
  "measureReal_lambdaMax_sum_ge_le_chernoffUpperTail": {
   "new": "NLAlib.measureReal_eigenvalue_zero_sum_ge_le_chernoff",
+  "stage": "P5a"
+ },
+ "measureReal_lambdaMax_sum_ge_le_exp_mul_traceExp_cumulantSum": {
+  "new": "NLAlib.HasMatrixMGFBound.measure_eigenvalue_zero_sum_ge_le",
+  "stage": "P5a"
+ },
+ "measureReal_lambdaMin_le_le_exp_mul_integral_traceExp": {
+  "new": "NLAlib.measureReal_eigenvalue_le_le",
   "stage": "P5a"
  },
  "measureReal_lambdaMin_sum_le_le_chernoffLowerTail": {
@@ -13214,6 +13345,24 @@
   "new": "ProbabilityTheory.HasSubgaussianMGF.measure_abs_ge_le",
   "note": "non-strict event",
   "stage": "P1"
+ },
+ "measureReal_specNorm_matrixSeries_ge_le": {
+  "new": "NLAlib.measureReal_specNorm_sum_smul_ge_le",
+  "stage": "P5a"
+ },
+ "measureReal_specNorm_matrixSeries_ge_le_of_hasLaw_gaussianReal": {
+  "new": null,
+  "note": "the case c = 1 of the sub-Gaussian series theorems",
+  "stage": "P5a"
+ },
+ "measureReal_specNorm_matrixSeries_ge_le_of_hasLaw_rademacherMeasure": {
+  "new": null,
+  "note": "the case c = 1 of the sub-Gaussian series theorems",
+  "stage": "P5a"
+ },
+ "measureReal_specNorm_sum_ge_le_bernsteinTail": {
+  "new": "NLAlib.measureReal_specNorm_sum_ge_le_bernstein",
+  "stage": "P5a"
  },
  "measureReal_sq_norm_ge_add_two_sqrt_mul_add_le": {
   "new": "NLAlib.IsSubgaussianVector.measure_norm_sq_ge_le",
@@ -13288,6 +13437,11 @@
  "rademacherVector": {
   "new": "NLAlib.rademacherVector",
   "stage": "P2"
+ },
+ "rectSecondMoment": {
+  "new": null,
+  "note": "written out in the statements",
+  "stage": "P5a"
  },
  "sineTruncation": {
   "new": null,

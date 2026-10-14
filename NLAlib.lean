@@ -159,6 +159,13 @@ public import NLAlib.Probability.EntropyTensorization
 public import NLAlib.Probability.Isotropic
 public import NLAlib.Probability.Law
 public import NLAlib.Probability.LogSobolev
+public import NLAlib.Probability.MatrixConcentration.Bernstein
+public import NLAlib.Probability.MatrixConcentration.Chernoff
+public import NLAlib.Probability.MatrixConcentration.ChernoffSum
+public import NLAlib.Probability.MatrixConcentration.Laplace
+public import NLAlib.Probability.MatrixConcentration.MGFBound
+public import NLAlib.Probability.MatrixConcentration.Series
+public import NLAlib.Probability.MatrixConcentration.Subadditivity
 public import NLAlib.Probability.MatrixIntegral
 public import NLAlib.Probability.Measurability.Matrix
 public import NLAlib.Probability.QuadraticForm.HansonWright
@@ -173,3 +180,5 @@ public import NLAlib.Probability.SubGaussian.Square
 public import NLAlib.Probability.SubGaussianVector.Basic
 public import NLAlib.Probability.SubGaussianVector.Norm
 public import NLAlib.Probability.Tail
+public import NLAlib.RandomMatrix.Gaussian.Basic
+public import NLAlib.RandomMatrix.Gaussian.Invariance

@@ -59,6 +59,7 @@ P4 proceeded on the orchestrator's recommendations (Lipschitz as `LipschitzWith`
 - Proved and registered: P0–P5a, R1, R2 (stage checks green at 185 modules, before R4–R5).
 - R4 `ChiSquareMoments.lean`, `InverseMoments.lean`, `InverseMoments/Spectral.lean` proved (split at 1490 lines); P6 `GaussianIntegrationByParts.lean`,
   `GaussianComparison.lean` (Opus).
+- R5 complete: all six files proved (`PolarFrames`, `UnitaryInvariance`, `Haar/{Basic,Uniqueness,Moments,Transfer}`); deviation bridges 15 and 16 proved.
 - P6 proved: `GaussianIntegrationByParts.lean`, `GaussianComparison.lean` (1035 lines, slightly over the soft limit); R5 `PolarFrames.lean`, `UnitaryInvariance.lean` proved.
 - Skeletons written, reviewed, waiting for a proof agent, in this order: R4 `BlockMoments.lean`
   (after InverseMoments; also has three R3 spectral block statements, so after R3's

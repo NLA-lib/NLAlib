@@ -2411,6 +2411,11 @@
   "note": "composed with the transpose and the square",
   "stage": "M6"
  },
+ "NLAlib.continuous_stiefelSquareToOrthogonal": {
+  "new": null,
+  "note": "no consumer; the Haar frame law is defined directly, R5",
+  "stage": "R5"
+ },
  "NLAlib.continuous_traceExp": {
   "new": "NLAlib.continuous_re_trace_exp",
   "stage": "M8"
@@ -5450,6 +5455,11 @@
   "note": "from ae_rank_eq_min_of_hasLaw_gaussianMatrix and isUnit_conjTranspose_mul_self_iff_rank",
   "stage": "R1"
  },
+ "NLAlib.gaussianMatrix_ae_linearIndependent_qrColumnFamily": {
+  "new": null,
+  "note": "no consumer; the Haar frame law is defined directly, R5",
+  "stage": "R5"
+ },
  "NLAlib.gaussianMatrix_ae_rank_eq": {
   "new": "NLAlib.ae_rank_eq_min_of_hasLaw_gaussianMatrix",
   "stage": "R1"
@@ -5479,6 +5489,25 @@
   "new": null,
   "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
   "stage": "R4"
+ },
+ "NLAlib.gaussianMatrix_map_canonicalQRFrame": {
+  "new": "NLAlib.hasLaw_gramSchmidtQ_of_hasLaw_gaussianMatrix",
+  "stage": "R5"
+ },
+ "NLAlib.gaussianMatrix_map_canonicalQRFrame_of_hasLaw": {
+  "new": null,
+  "note": "no consumer; the Haar frame law is defined directly, R5",
+  "stage": "R5"
+ },
+ "NLAlib.gaussianMatrix_map_canonicalQR_orthogonal": {
+  "new": null,
+  "note": "no consumer; the Haar frame law is defined directly, R5",
+  "stage": "R5"
+ },
+ "NLAlib.gaussianMatrix_map_canonicalQR_orthogonal_of_hasLaw": {
+  "new": null,
+  "note": "no consumer; the Haar frame law is defined directly, R5",
+  "stage": "R5"
  },
  "NLAlib.gaussianMatrix_map_inv_self_mul_transpose_apply_self": {
   "new": null,
@@ -5843,6 +5872,23 @@
   "new": "NLAlib.conjTranspose_mul_self_eq_gram",
   "note": "columns are fun j => WithLp.toLp 2 (A.col j); no qrColumnFamily",
   "stage": "M5"
+ },
+ "NLAlib.haarFrameLaw": {
+  "new": "NLAlib.haarFrame",
+  "stage": "R5"
+ },
+ "NLAlib.haarFrameLaw_isProbabilityMeasure": {
+  "new": "NLAlib.isProbabilityMeasure_haarFrame",
+  "stage": "R5"
+ },
+ "NLAlib.haarFrameLaw_map_smul": {
+  "new": "NLAlib.isLeftUnitarilyInvariant_haarFrame",
+  "stage": "R5"
+ },
+ "NLAlib.haarFrameLaw_map_stiefelSquareToOrthogonal": {
+  "new": null,
+  "note": "no consumer; the Haar frame law is defined directly, R5",
+  "stage": "R5"
  },
  "NLAlib.hadamard_le_hadamard_of_neg_le_of_le": {
   "new": "NLAlib.hadamard_le_hadamard_of_neg_le_of_le",
@@ -8801,6 +8847,10 @@
   "new": "NLAlib.measureReal_norm_sq_le_of_hasLaw_gaussianVector",
   "stage": "P3"
  },
+ "NLAlib.measure_eq_haarFrameLaw_of_invariant": {
+  "new": "NLAlib.hasLaw_haarFrame_of_isLeftUnitarilyInvariant",
+  "stage": "R5"
+ },
  "NLAlib.memLp_two_gaussianVector_of_polynomial_growth": {
   "new": null,
   "note": "private step or covered by the covariance form; Sudakov-Fernique follows from Gordon",
@@ -9919,9 +9969,33 @@
   "stage": "P6"
  },
  "NLAlib.orthogonalGroupCompactSpace": {
-  "new": "NLAlib.isCompact_setOf_hasOrthonormalCols",
-  "note": "square case, as a set of matrices instead of an instance on the group",
-  "stage": "M5"
+  "new": "NLAlib.compactSpace_unitaryGroup",
+  "stage": "R5"
+ },
+ "NLAlib.orthogonalHaar": {
+  "new": null,
+  "note": "no consumer; the Haar frame law is defined directly, R5",
+  "stage": "R5"
+ },
+ "NLAlib.orthogonalHaar_isHaarMeasure": {
+  "new": null,
+  "note": "no consumer; the Haar frame law is defined directly, R5",
+  "stage": "R5"
+ },
+ "NLAlib.orthogonalHaar_isMulRightInvariant": {
+  "new": null,
+  "note": "no consumer; the Haar frame law is defined directly, R5",
+  "stage": "R5"
+ },
+ "NLAlib.orthogonalHaar_isProbabilityMeasure": {
+  "new": null,
+  "note": "no consumer; the Haar frame law is defined directly, R5",
+  "stage": "R5"
+ },
+ "NLAlib.orthogonalHaar_map_smul_eq_haarFrameLaw": {
+  "new": null,
+  "note": "private step in RandomMatrix/Haar/Uniqueness.lean",
+  "stage": "R5"
  },
  "NLAlib.orthonormalBasisMatrix": {
   "new": "NLAlib.exists_hasOrthonormalCols_range_eq",
@@ -12761,6 +12835,16 @@
   "new": null,
   "note": "object not reproduced: Stiefel subtype with its group action belongs to a geometry layer outside Matrix/, Matrix-Subspaces §7.5",
   "stage": "M5"
+ },
+ "NLAlib.stiefelSquareToOrthogonal": {
+  "new": null,
+  "note": "no consumer; the Haar frame law is defined directly, R5",
+  "stage": "R5"
+ },
+ "NLAlib.stiefelSquareToOrthogonal_smul_coordinate": {
+  "new": null,
+  "note": "no consumer; the Haar frame law is defined directly, R5",
+  "stage": "R5"
  },
  "NLAlib.strictConcaveOn_log_det": {
   "new": "NLAlib.strictConcaveOn_log_re_det",

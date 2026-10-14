@@ -192,4 +192,8 @@ public import NLAlib.RandomMatrix.Gaussian.InverseMoments
 public import NLAlib.RandomMatrix.Gaussian.InverseMoments.Spectral
 public import NLAlib.RandomMatrix.Gaussian.Moments
 public import NLAlib.RandomMatrix.Gaussian.Rank
+public import NLAlib.RandomMatrix.Haar.Basic
+public import NLAlib.RandomMatrix.Haar.Moments
+public import NLAlib.RandomMatrix.Haar.Transfer
+public import NLAlib.RandomMatrix.Haar.Uniqueness
 public import NLAlib.RandomMatrix.UnitaryInvariance

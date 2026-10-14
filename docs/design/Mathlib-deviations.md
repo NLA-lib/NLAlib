@@ -57,8 +57,19 @@ None of these was approved by the maintainer when it was made. Status is given p
   `U * diagonal d * Uᴴ`), or the statement is an identity whose two sides are junk together
   (`eigenvalue_neg`, `eigenvalue_real_smul`, `eigenvalue_complexify`,
   `eigenvalue_submatrix_equiv`, unitary conjugation), which is the total function paying off:
-  these hold for every matrix with no hypothesis to discharge. Not yet checked: whether any of
-  the other 166 is true only for a trivial reason at an out-of-range index.
+  these hold for every matrix with no hypothesis to discharge. The out-of-range value was
+  checked the same day, for `eigenvalue` and `singularValues` together. The shapes in which the
+  padding could make a statement say less than it seems are an index bound by `∃` in a
+  conclusion (`∃ k, -3 < eigenvalue A k` is true by taking `k` out of range) and an index bound
+  by `∀` in a hypothesis (`∀ k, 0 < eigenvalue A k` can never hold, so a theorem assuming it is
+  empty). The library has 6 existential and 47 universal index binders of this kind. Every
+  existential one ranges over `Fin`, an equivalence into `Fin (card n)`, or carries a bound.
+  Of the universal ones, 18 have no written bound: 13 range over a `Fin` type through the term
+  they index, and 5 are over `ℕ` on purpose, where the padding is harmless
+  (`A.PosSemidef ↔ ∀ k, 0 ≤ eigenvalue A k`; comparison of singular values at every index).
+  The strict statement is bounded, as it must be:
+  `A.PosDef ↔ ∀ k < Fintype.card n, 0 < eigenvalue A k`. The scan is textual; a statement that
+  hides an index inside a definition would escape it.
 
 ## 2. Singular values
 

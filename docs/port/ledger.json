@@ -642,6 +642,10 @@
   "note": "structure field, renamed",
   "stage": "M9"
  },
+ "NLAlib.IsRealSchurForm": {
+  "new": "NLAlib.IsRealSchurForm",
+  "stage": "M10"
+ },
  "NLAlib.IsSVD": {
   "new": "NLAlib.IsSVD",
   "note": "redesigned: thin form, free index type, explicit σ",
@@ -949,6 +953,14 @@
  "NLAlib.IsUpperHessenberg.sub_smul_one": {
   "new": "NLAlib.IsUpperHessenberg.sub_smul_one",
   "stage": "M9"
+ },
+ "NLAlib.IsUpperQuasiTriangular": {
+  "new": "NLAlib.IsUpperQuasiTriangular",
+  "stage": "M10"
+ },
+ "NLAlib.IsUpperQuasiTriangular.upperTriangular_mul": {
+  "new": "Matrix.IsUpperTriangular.mul_isUpperQuasiTriangular",
+  "stage": "M10"
  },
  "NLAlib.IsUpperTrapezoidal": {
   "new": "NLAlib.IsUpperTrapezoidal",
@@ -3088,6 +3100,10 @@
   "new": "Matrix.IsHermitian.exists_eigenvalue_fromBlocks_eq",
   "stage": "M10"
  },
+ "NLAlib.exists_bound_norm_matrix_pow_iff": {
+  "new": "NLAlib.exists_forall_specNorm_pow_le_iff",
+  "stage": "M10"
+ },
  "NLAlib.exists_charpoly_factor_add_vecMulVec": {
   "new": null,
   "note": "deferred: characteristic polynomial of a rank-one update (check Mathlib's matrix determinant lemma first)",
@@ -3441,6 +3457,18 @@
   "note": "the attainment half, in distance form; the pairing form follows by frobNorm_sub_sq and frobNorm_sq_eq_sum_range_singularValues_sq; over 𝕜",
   "stage": "M9"
  },
+ "NLAlib.exists_orthogonal_qz_triangularization": {
+  "new": "NLAlib.exists_hasOrthonormalCols_isUpperQuasiTriangular_isUpperTriangular",
+  "stage": "M10"
+ },
+ "NLAlib.exists_orthogonal_real_normal_form": {
+  "new": "NLAlib.exists_hasOrthonormalCols_isRealSchurForm_of_isStarNormal",
+  "stage": "M10"
+ },
+ "NLAlib.exists_orthogonal_real_schur": {
+  "new": "NLAlib.exists_hasOrthonormalCols_isRealSchurForm",
+  "stage": "M10"
+ },
  "NLAlib.exists_orthogonal_rectangularDiagonal_perm": {
   "new": null,
   "note": "no rectangular diagonal",
@@ -3501,6 +3529,10 @@
   "note": "not ported: scalar helper of the prototype's variational proof of Horn's converse, Matrix-Inequalities §6",
   "stage": "M7"
  },
+ "NLAlib.exists_prefix_norm_matrix_pow_le_spectralRadius_add": {
+  "new": "NLAlib.exists_forall_specNorm_pow_le_mul_pow",
+  "stage": "M10"
+ },
  "NLAlib.exists_projectedColumn_pair": {
   "new": null,
   "note": "object not reproduced: columnProjectionMass; descent machinery of the prototype's variational proof of Horn's converse, Matrix-Inequalities §6",
@@ -3524,6 +3556,10 @@
   "note": "not ported: transport of complex idempotents to real ones for the Complex* duplicates; Oblique.lean is over 𝕜",
   "stage": "M5"
  },
+ "NLAlib.exists_real_orthogonal_similarity_of_complex_unitary_similarity": {
+  "new": "NLAlib.exists_real_orthogonal_of_complexify",
+  "stage": "M10"
+ },
  "NLAlib.exists_real_parameter_eigenvalue_branch_of_simple": {
   "new": "NLAlib.exists_eigenvalue_branch_of_rootMultiplicity_eq_one",
   "note": "restriction to real parameters",
@@ -3533,6 +3569,10 @@
   "new": "NLAlib.exists_eigenvalue_branch_of_rootMultiplicity_eq_one",
   "note": "restriction to real parameters",
   "stage": "M6"
+ },
+ "NLAlib.exists_real_similarity_of_complex_similarity": {
+  "new": "NLAlib.exists_real_similarity_of_complexify",
+  "stage": "M10"
  },
  "NLAlib.exists_schattenNormReal_le_one_frobInner_eq": {
   "new": "NLAlib.exists_schattenNorm_le_one_frobInner_eq",
@@ -5023,6 +5063,10 @@
   "note": "private helper of Matrix.PosSemidef.map_exp_le_map_exp_of_le and Matrix.PosSemidef.posDef_map_exp_iff, same name",
   "stage": "M7"
  },
+ "NLAlib.hasSum_matrix_pow_inv_of_spectralRadius_lt_one": {
+  "new": "NLAlib.hasSum_pow_inv_one_sub_of_specRadius_lt_one",
+  "stage": "M10"
+ },
  "NLAlib.hasSum_pow_inv_one_sub": {
   "new": "NLAlib.hasSum_pow_inv_one_sub",
   "stage": "M6"
@@ -5677,6 +5721,10 @@
   "note": "full column rank is Function.Injective A.mulVec; the diagonal of R is nonzero, and R is a unit by Matrix.IsUpperTriangular.isUnit_det_iff",
   "stage": "M9"
  },
+ "NLAlib.isUnit_one_sub_of_matrix_spectralRadius_lt_one": {
+  "new": "NLAlib.isUnit_det_one_sub_of_specRadius_lt_one",
+  "stage": "M10"
+ },
  "NLAlib.isUnit_one_sub_of_specNorm_lt_one": {
   "new": "NLAlib.isUnit_one_sub_of_specNorm_lt_one",
   "stage": "M6"
@@ -5715,6 +5763,14 @@
  "NLAlib.isUpperHessenberg_of_isUpperTriangular": {
   "new": "NLAlib.IsUpperTrapezoidal.isUpperHessenberg",
   "stage": "M9"
+ },
+ "NLAlib.isUpperQuasiTriangular_of_isUpperTriangular": {
+  "new": "Matrix.IsUpperTriangular.isUpperQuasiTriangular",
+  "stage": "M10"
+ },
+ "NLAlib.isUpperQuasiTriangular_of_small_leading_block": {
+  "new": "NLAlib.IsUpperQuasiTriangular.submatrix_fromBlocks",
+  "stage": "M10"
  },
  "NLAlib.isUpperTrapezoidal_borderedUpper": {
   "new": null,
@@ -9655,6 +9711,10 @@
   "note": "for normal matrices over 𝕜; for positive semidefinite A the common value is eigenvalue A 0 by Matrix.PosSemidef.specNorm_eq_eigenvalue_zero",
   "stage": "M10"
  },
+ "NLAlib.spectralRadius_le_max_row_sum": {
+  "new": "NLAlib.specRadius_le_of_forall_sum_le",
+  "stage": "M10"
+ },
  "NLAlib.spectralRadius_le_max_weighted_row_sum": {
   "new": "NLAlib.exists_norm_le_weighted_sum_of_mem_spectrum",
   "stage": "M10"
@@ -10362,6 +10422,14 @@
  "NLAlib.tangentPrincipalAngles": {
   "new": "NLAlib.tangentMatrix",
   "stage": "M5"
+ },
+ "NLAlib.tendsto_matrix_pow_zero_iff_spectralRadius_lt_one": {
+  "new": "NLAlib.tendsto_pow_zero_iff_specRadius_lt_one",
+  "stage": "M10"
+ },
+ "NLAlib.tendsto_norm_matrix_pow_rpow_spectralRadius": {
+  "new": "NLAlib.tendsto_specNorm_pow_rpow_specRadius",
+  "stage": "M10"
  },
  "NLAlib.toCoordinateSubmodule": {
   "new": null,

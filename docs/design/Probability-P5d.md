@@ -237,3 +237,57 @@ exposes (`HasCondSubgaussianMGF.ae_condExp_le`). (b) Kernel form: every statemen
 
 Unchecked: Tropp 2011's labels (the prototype cites Theorem 1.2 for the global form; Theorem 1.1
 and Corollary 1.3 here are from memory) and the bibliographic data of `Tropp2011`.
+
+## 8. Amendments from the review (2026-10-14)
+
+Review: Fable, of P5b, P5c, P5d and P7 together; the orchestrator accepted every finding and
+decided Q1. The skeletons are written under the rule that no `sorry` enters a proved file: new
+statements go in new files, merged or registered at wrap-up. None is registered in `NLAlib.lean`.
+
+0. **Q1 decided (a)**: the conditional interface is spelled with `μ[· | m]`, per `θ` almost
+   surely (§2), not with `condExpKernel`. `docs/design/Mathlib-deviations.md` entry 17 records
+   it (status open until the bridge is proved); the bridge
+   `hasCondMatrixMGFBound_smul_of_hasCondSubgaussianMGF` is a skeleton statement in
+   `ConditionalMGFBound.lean`, the only one there with `[StandardBorelSpace Ω]` (it also needs
+   `[IsFiniteMeasure μ]`, as Mathlib's `HasCondSubgaussianMGF` does).
+1. **Conditional Lieb** is split in two statements so that the random-`H` step can be
+   scaffolded alone: `condExp_re_trace_exp_const_add_le` (fixed Hermitian `H`: conditional
+   Jensen on Lieb's concave map) and `condExp_re_trace_exp_add_le` (`m`-measurable `H`, the §3.3
+   statement, marked "may be scaffolded"). Its docstring says why the kernel would not help
+   (`condExpKernel_ae_eq_condExp` is per measurable set, so an `m`-measurable `H` is constant
+   under `κ ω'` only through approximation anyway) and gives the approximants: entrywise
+   rounding of `H` to a `1/k` grid (`m`-measurable, countable range), simpler than
+   `StronglyMeasurable.approx`. `ConditionalMGFBound.lean` has 7 declarations, not 6.
+2. **Ville** (docstring of `MeasureTheory.Supermartingale.measure_exists_ge_le`): Mathlib has
+   `Submartingale.maximal_ineq` and `Submartingale.expected_stoppedValue_mono`; the finite
+   horizon comes from `expected_stoppedValue_mono` on `hf.neg` with `σ = 0` and
+   `τ = hittingBtwn f (Set.Ici c) 0 n ⊓ n`, then `n → ∞` by continuity from below. The §3.2
+   remark "optional stopping at the first crossing" is this.
+3. **`Matrix.condExp_conjTranspose`** without integrability: the docstring prescribes the case
+   split (`condExp_of_not_integrable` on both sides; the conjugate transpose preserves
+   integrability both ways).
+4. **Freedman's proof**: `exists_bernstein_exponent` needs `0 ≤ v`; the docstring of
+   `measureReal_exists_eigenvalue_zero_sum_ge_le_freedman` puts the case split `v < 0` (event
+   empty) first. `exists_bernstein_exponent` and `exp_mul_le_bernstein` are still `private` in
+   the proved `Bernstein.lean`; making them public is left to the proof round.
+5. **Labels**: [Tropp2011, Theorem 1.2] for matrix Freedman (Theorem 1.1 is the scalar one;
+   the §3.4 citation "Theorem 1.1" is corrected), [Tropp2011, Corollary 1.3] for the
+   rectangular form, [Tropp2011, §2] for conditional Lieb, the supermartingale and the master
+   tail. `Tropp2011` is added to `docs/references.bib`
+   (Electron. Commun. Probab. 16 (2011) 262–270, doi 10.1214/ECP.v16-1624).
+6. **Files** (amends §5). Skeletons written, each compiling with only `sorry` warnings:
+   `Probability/MatrixConditionalExpectation.lean` (8),
+   `ForMathlib/MeasureTheory/Function/ConditionalExpectation/CondJensen.lean` (1),
+   `ForMathlib/Probability/Martingale/OptionalStopping.lean` (1),
+   `Probability/MatrixConcentration/ConditionalMGFBound.lean` (7: the structure, `congr`,
+   `mono_set`, two conditional Lieb statements, conditional Bernstein, the bridge),
+   `Probability/MatrixConcentration/Freedman.lean` (5, the rectangular form included, marked
+   "may be scaffolded").
+7. **Elaboration fixes** (same meaning). The structure binds `μ : @Measure Ω mΩ`: with the
+   explicit `m : MeasurableSpace Ω` parameter, `Measure Ω` picks up `m` as the instance and the
+   fields would be stated on `m`. `MatrixConditionalExpectation.lean` takes `[DecidableEq]` on
+   both index types (the L2 operator norm on `Matrix l n 𝕜` needs `DecidableEq n`).
+   `Matrix.ae_posDef_condExp` and the bridge take `[IsFiniteMeasure μ]`; the Lieb, Bernstein,
+   supermartingale and Freedman statements `[IsProbabilityMeasure μ]` (as §3 says).
+8. **Result ids**: `matrix-freedman` (the Hermitian Freedman inequality), `ville-inequality`
+   (new, for Ville's inequality).

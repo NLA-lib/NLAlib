@@ -213,3 +213,48 @@ used (§7 D1). Atlas ids: `mcdiarmid`, `subgaussian-def`, `bernstein-scalar`. Bi
 Unchecked: the label of the entropy lemma in Boucheron–Lugosi–Massart (cited as the proof of
 Theorem 6.2). Checked: `iIndepFun_iff_map_fun_eq_pi_map` takes `AEMeasurable` coordinates and
 `[IsProbabilityMeasure μ]`, which the proof derives from `iIndepFun`.
+
+## 8. Amendments from the review (2026-10-14)
+
+Review: Fable, of P5b, P5c, P5d and P7 together; the orchestrator accepted every finding. The
+skeletons are written under the rule that no `sorry` enters a proved file: new statements go in
+new files, merged at wrap-up. None is registered in `NLAlib.lean`.
+
+1. **§3.2 restated as Mathlib's Hoeffding** (amends §3.2 and §5 item 2). The primary statement is
+   `entropy_exp_mul_le_of_mem_Icc [IsProbabilityMeasure ν] (hg : AEMeasurable g ν)
+   (hab : ∀ᵐ ω ∂ν, g ω ∈ Set.Icc a b) (s : ℝ) : entropy ν (fun ω => rexp (s * g ω)) ≤
+   s ^ 2 * (b - a) ^ 2 / 8 * ∫ ω, rexp (s * g ω) ∂ν`, whose docstring gives the proof through
+   the steps of Mathlib's `mgf_le_of_mem_Icc_of_integral_eq_zero`
+   (`exists_cgf_eq_iteratedDeriv_two_cgf_mul`, `variance_tilted_mul`,
+   `variance_le_sq_of_bounded`). The pointwise-oscillation form
+   `entropy_exp_mul_le_of_abs_sub_le` (the §3.2 statement, unchanged) is its corollary with
+   `a = sInf (Set.range g)`, `b = a + c`. Both are in a new skeleton file
+   `Probability/EntropyExpBounded.lean` (2), to be merged into the proved `Entropy.lean` at
+   wrap-up.
+2. **§3.3**: the sentence "the zero measure makes both statements trivial" is deleted:
+   `iIndepFun` gives a probability measure (`ProbabilityTheory.iIndepFun.isProbabilityMeasure`),
+   which the module docstring of `BoundedDifferences.lean` says.
+3. **Centring** (amends §3.1). The bridges need `E X = 0`; two corollaries are added for a
+   variable that is not centred, citing the centring lemma [Vershynin2018, Lemma 2.6.8]:
+   `hasSubgaussianMGF_sub_integral_of_integral_exp_sq_div_le_two` (proxy
+   `psiTwoSubgaussianConstant * (4 * K)`: `X - E X` has the `ψ₂` condition at `4K`, since
+   `(EX)² ≤ K log 2` and `E exp (X² / (2K)) ≤ √2`) and
+   `hasSubexponentialMGF_sub_integral_of_integral_exp_abs_div_le_two` (proxies
+   `psiOneSubexponentialVarianceConstant * (2 * K) ^ 2`, `psiOneSubexponentialScaleConstant *
+   (2 * K)`: the `ψ₁` condition at `2K`). The bridges' docstrings point to them.
+   `Orlicz.lean` has 10 declarations, not 8.
+4. **Constants and labels.** The docstrings record what the proofs reach: `1 + log 2` for
+   `psiTwoSubgaussianConstant` (body `2`), `32 / e²` and `2` for the `ψ₁` constants (bodies `5`
+   and `2`). Labels kept: [BoucheronLugosiMassart2013, Theorem 6.2], [Vershynin2018,
+   Proposition 2.5.2], [Vershynin2018, Proposition 2.7.1]. McDiarmid 1989's numbering is
+   unverified (the reviewer reads the inequality as Lemma (1.2) there), so both bounded
+   differences statements cite `[McDiarmid1989]` without a label (the §3.3 "Lemma 3.3" and
+   "Theorem 3.1" are withdrawn). `McDiarmid1989` is added to `docs/references.bib`.
+5. **Entropy method** for McDiarmid confirmed (§7 D1 stands).
+6. **Files** (amends §5). Skeletons written, each compiling with only `sorry` warnings:
+   `Probability/Orlicz.lean` (10: 3 constants, 3 comparison lemmas, 2 bridges, 2 centred forms),
+   `Probability/EntropyExpBounded.lean` (2), `Probability/BoundedDifferences.lean` (2; imports
+   `EntropyExpBounded.lean` and `EntropyTensorization.lean`; `LogSobolev.lean` is not needed,
+   Herbst's argument being in `Entropy.lean`). No statement needed an elaboration fix.
+7. **Result ids**: `subgaussian-def` (the `ψ₂` bridge), `subexponential-def` (new, the `ψ₁`
+   bridge), `bounded-differences` (new) and `mcdiarmid`.

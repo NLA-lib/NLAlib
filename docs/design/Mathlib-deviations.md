@@ -291,6 +291,40 @@ None of these was approved by the maintainer when it was made. Status is given p
   `EuclideanSpace ℝ n`, pushed forward by `WithLp.ofLp ∘ Subtype.val`.
 - **Status: bridge proved** (`uniformSphereVector_eq_map_toSphere`, `RandomMatrix/Haar/Uniqueness.lean`; needs `[Nonempty n]`: for empty `n` the sphere is empty while `uniformSphereVector n` is a point mass).
 
+## 17. Conditional moment generating function bounds
+
+- **Mathlib.** `HasCondSubgaussianMGF m hm X c μ :=
+  Kernel.HasSubgaussianMGF X c (condExpKernel μ m) (μ.trim hm)`: a bound on the moment
+  generating function of `X` under the conditional expectation kernel, for every `t` on one
+  almost-sure set. The kernel needs `[StandardBorelSpace Ω]` (and `[IsFiniteMeasure μ]`). The
+  form consumers use is `HasCondSubgaussianMGF.ae_condExp_le`:
+  `∀ t, ∀ᵐ ω ∂μ, μ[fun ω => exp (t * X ω) | m] ω ≤ exp (c * t ^ 2 / 2)`.
+- **NLAlib.** `HasCondMatrixMGFBound m hm X g A s μ`, the conditional matrix MGF bound
+  (`NLAlib/Probability/MatrixConcentration/ConditionalMGFBound.lean`), spelled with Mathlib's
+  conditional expectation: `∀ θ ∈ s, μ[fun ω => exp (θ • X ω) | m] ≤ᵐ[μ] fun ω =>
+  exp (g θ • A ω)` in the Loewner order, with an `m`-measurable, almost surely Hermitian bound
+  `A`, the integrability of `exp (θ • X)` and `X` almost surely Hermitian as fields. The
+  quantifier over `θ` is outside the almost-everywhere statement; no Borel hypothesis.
+- **Bridge.** `hasCondMatrixMGFBound_smul_of_hasCondSubgaussianMGF [StandardBorelSpace Ω]
+  [IsFiniteMeasure μ] (hγ : HasCondSubgaussianMGF m hm γ c μ) (hB : B.IsHermitian) :
+  HasCondMatrixMGFBound m hm (fun ω => γ ω • B) (fun θ => θ ^ 2 / 2)
+  (fun _ => (c : ℝ) • B ^ 2) Set.univ μ`, in the same file, through
+  `HasCondSubgaussianMGF.ae_condExp_le` on the spectral decomposition of `B`. It is the only
+  statement of the conditional interface that needs `[StandardBorelSpace Ω]`.
+- **Why.** The trace supermartingale and Freedman's inequality
+  (`NLAlib/Probability/MatrixConcentration/Freedman.lean`) use one `θ` at a time, so the
+  per-`θ` almost-sure form is what the proofs consume; it is the form Mathlib's own API exposes
+  (`ae_condExp_le`). The kernel form would put `[StandardBorelSpace Ω]` on every Freedman
+  statement, and it would not shorten the one hard proof, conditional Lieb for an
+  `m`-measurable `H`: `condExpKernel_ae_eq_condExp` holds per measurable set, so `H` is constant
+  under the kernel only through the same approximation by countably valued `m`-measurable
+  matrices (`docs/design/Probability-P5d.md` §8 item 1).
+- **Cost.** A user holding `HasCondSubgaussianMGF` goes through the bridge, and needs a standard
+  Borel space there. Kernel-level facts (the conditional law as a measure) are not available
+  from `HasCondMatrixMGFBound`; no consumer uses them.
+- **Status: open** until the bridge is proved (skeleton; `docs/design/Probability-P5d.md` §7 Q1,
+  decided (a) by the orchestrator, and §8), 2026-10-14.
+
 ## Small spelling choices
 
 - `principalMinor A s` for `(A.submatrix (↑) (↑)).det` with `s : Finset n`

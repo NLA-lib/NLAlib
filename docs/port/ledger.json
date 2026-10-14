@@ -1593,6 +1593,22 @@
   "note": "additive form",
   "stage": "M1"
  },
+ "NLAlib.card_eigenvalues_lt_eq_card_neg_of_eq_mul_diagonal_mul": {
+  "new": "Matrix.IsHermitian.card_eigenvalue_lt_eq_card_neg_of_sub_smul_one_eq",
+  "stage": "M10"
+ },
+ "NLAlib.card_eigenvalues_lt_eq_card_sign_changes": {
+  "new": "Matrix.IsHermitian.inertiaNeg_sub_smul_one_eq_card_gaussState_re_neg",
+  "stage": "M10"
+ },
+ "NLAlib.card_eigenvalues₀_neg_congruence_le": {
+  "new": "Matrix.IsHermitian.inertiaNeg_conjTranspose_mul_mul_le",
+  "stage": "M10"
+ },
+ "NLAlib.card_eigenvalues₀_pos_congruence_le": {
+  "new": "Matrix.IsHermitian.inertiaPos_conjTranspose_mul_mul_le",
+  "stage": "M10"
+ },
  "NLAlib.card_eigenvalues₀_pos_neg": {
   "new": null,
   "note": "deferred to M10: inertia",
@@ -1698,6 +1714,14 @@
  "NLAlib.charpoly_add_vecMulVec_mul_X_sub_C": {
   "new": null,
   "note": "deferred: characteristic polynomial of a rank-one update (check Mathlib's matrix determinant lemma first)",
+  "stage": "M10"
+ },
+ "NLAlib.charpoly_diagonal_add_vecMulVec": {
+  "new": "NLAlib.charpoly_diagonal_add_vecMulVec",
+  "stage": "M10"
+ },
+ "NLAlib.charpoly_fromBlocks_diagonal_replicate": {
+  "new": "NLAlib.charpoly_fromBlocks_diagonal_replicateCol",
   "stage": "M10"
  },
  "NLAlib.cholesky": {
@@ -2253,6 +2277,10 @@
  "NLAlib.det_conjTranspose_mul_self_eq_sum_norm_sq": {
   "new": "Matrix.det_conjTranspose_mul_self_eq_sum_powersetCard",
   "stage": "M1"
+ },
+ "NLAlib.det_diagonal_add_vecMulVec_of_forall_ne_zero": {
+  "new": "NLAlib.det_diagonal_add_vecMulVec",
+  "stage": "M10"
  },
  "NLAlib.det_eq_iff_eq_of_posSemidef_le_posDef": {
   "new": "Matrix.PosDef.eq_of_le_of_det_eq",
@@ -3048,8 +3076,16 @@
   "new": "NLAlib.existsUnique_mul_sub_mul_eq_of_isCoprime_charpoly",
   "stage": "M10"
  },
+ "NLAlib.exists_add_vecMulVec_charpoly_of_interlacing": {
+  "new": "Matrix.IsHermitian.exists_eigenvalue_add_vecMulVec_star_eq",
+  "stage": "M10"
+ },
  "NLAlib.exists_adjugate_shift_eq_smul_vecMulVec_of_finrank_eigenspace_eq_one": {
   "new": "NLAlib.exists_adjugate_eq_smul_vecMulVec",
+  "stage": "M10"
+ },
+ "NLAlib.exists_bordered_charpoly_of_interlacing": {
+  "new": "Matrix.IsHermitian.exists_eigenvalue_fromBlocks_eq",
   "stage": "M10"
  },
  "NLAlib.exists_charpoly_factor_add_vecMulVec": {
@@ -3148,6 +3184,10 @@
  "NLAlib.exists_eigenvalue_lists_perm_sum_sq_le_frobSq_of_normal": {
   "new": null,
   "note": "deferred: Hoffman–Wielandt for normal matrices, with normal matrices",
+  "stage": "M10"
+ },
+ "NLAlib.exists_eigenvalues₀_congruence_scale": {
+  "new": "Matrix.IsHermitian.exists_eigenvalue_conjTranspose_mul_mul_eq_mul",
   "stage": "M10"
  },
  "NLAlib.exists_eq_eigenvalues_diagonal": {
@@ -5127,6 +5167,58 @@
  "NLAlib.householder_zero": {
   "new": "NLAlib.householder_zero",
   "stage": "M9"
+ },
+ "NLAlib.inertiaNeg": {
+  "new": "NLAlib.inertiaNeg",
+  "stage": "M10"
+ },
+ "NLAlib.inertiaNeg_diagonal": {
+  "new": "NLAlib.inertiaNeg_diagonal",
+  "stage": "M10"
+ },
+ "NLAlib.inertiaNeg_fromBlocks_eq_add_schur": {
+  "new": "Matrix.IsHermitian.inertiaNeg_fromBlocks",
+  "stage": "M10"
+ },
+ "NLAlib.inertiaNeg_fromBlocks_zero": {
+  "new": "Matrix.IsHermitian.inertiaNeg_fromBlocks_diagonal",
+  "stage": "M10"
+ },
+ "NLAlib.inertiaNeg_sub_smul_one_eq_card": {
+  "new": "Matrix.IsHermitian.inertiaNeg_sub_smul_one",
+  "stage": "M10"
+ },
+ "NLAlib.inertiaNeg_transpose_mul_mul": {
+  "new": "Matrix.IsHermitian.inertiaNeg_conjTranspose_mul_mul",
+  "stage": "M10"
+ },
+ "NLAlib.inertiaPos": {
+  "new": "NLAlib.inertiaPos",
+  "stage": "M10"
+ },
+ "NLAlib.inertiaPos_add_inertiaNeg_eq_rank": {
+  "new": "Matrix.IsHermitian.inertiaPos_add_inertiaNeg",
+  "stage": "M10"
+ },
+ "NLAlib.inertiaPos_diagonal": {
+  "new": "NLAlib.inertiaPos_diagonal",
+  "stage": "M10"
+ },
+ "NLAlib.inertiaPos_fromBlocks_eq_add_schur": {
+  "new": "Matrix.IsHermitian.inertiaPos_fromBlocks",
+  "stage": "M10"
+ },
+ "NLAlib.inertiaPos_fromBlocks_zero": {
+  "new": "Matrix.IsHermitian.inertiaPos_fromBlocks_diagonal",
+  "stage": "M10"
+ },
+ "NLAlib.inertiaPos_sub_smul_one_eq_card": {
+  "new": "Matrix.IsHermitian.inertiaPos_sub_smul_one",
+  "stage": "M10"
+ },
+ "NLAlib.inertiaPos_transpose_mul_mul": {
+  "new": "Matrix.IsHermitian.inertiaPos_conjTranspose_mul_mul",
+  "stage": "M10"
  },
  "NLAlib.inner_eq_star_dotProduct_ofLp": {
   "new": null,
@@ -7433,9 +7525,17 @@
   "new": "NLAlib.posDef_fromBlocks_one_iff_specNorm_lt_one",
   "stage": "M7"
  },
+ "NLAlib.posDef_iff_leadingMinor_pos": {
+  "new": "Matrix.IsHermitian.posDef_iff_forall_re_principalMinor_Iic_pos",
+  "stage": "M10"
+ },
  "NLAlib.posDef_iff_pivotSchur": {
   "new": "Matrix.IsHermitian.posDef_iff_eliminationStep",
   "stage": "M9"
+ },
+ "NLAlib.posDef_iff_trailingMinor_pos": {
+  "new": "Matrix.IsHermitian.posDef_iff_forall_re_principalMinor_Ici_pos",
+  "stage": "M10"
  },
  "NLAlib.posDef_map_exp_iff_rows_injective": {
   "new": "Matrix.PosSemidef.posDef_map_exp_iff",
@@ -7539,6 +7639,14 @@
   "new": "NLAlib.posSemidef_fromBlocks_one_iff_specNorm_le_one",
   "stage": "M7"
  },
+ "NLAlib.posSemidef_iff_principal_minors_nonneg": {
+  "new": "Matrix.IsHermitian.posSemidef_iff_forall_re_principalMinor_nonneg",
+  "stage": "M10"
+ },
+ "NLAlib.posSemidef_iff_signed_charpoly_coeff_nonneg": {
+  "new": "Matrix.IsHermitian.posSemidef_iff_forall_re_charpoly_coeff_nonneg",
+  "stage": "M10"
+ },
  "NLAlib.posSemidef_iff_trace_mul_nonneg": {
   "new": "Matrix.IsHermitian.posSemidef_iff_trace_mul_nonneg",
   "stage": "M1"
@@ -7573,6 +7681,10 @@
  "NLAlib.posSemidef_of_hasSum": {
   "new": "Matrix.PosSemidef.of_hasSum",
   "stage": "M1"
+ },
+ "NLAlib.posSemidef_of_leadingMinor_pos_and_det_nonneg": {
+  "new": "Matrix.IsHermitian.posSemidef_of_forall_re_principalMinor_Iio_pos",
+  "stage": "M10"
  },
  "NLAlib.posSemidef_of_tendsto": {
   "new": "Matrix.PosSemidef.of_tendsto",
@@ -8661,6 +8773,10 @@
   "new": "Matrix.IsHermitian.norm_mulVec_sub_smul_sq",
   "note": "the equality case is read off the identity: the extra term (μ - ρ) ^ 2 * ‖x‖ ^ 2 vanishes exactly at μ = ρ",
   "stage": "M6"
+ },
+ "NLAlib.signed_charpoly_coeff_eq_sum_principal_minors": {
+  "new": "NLAlib.charpoly_coeff_eq_sum_principalMinor",
+  "stage": "M10"
  },
  "NLAlib.simpleEigenvalueSchurFunction": {
   "new": null,
@@ -9916,6 +10032,10 @@
   "new": "NLAlib.Majorized.sum_convex_le",
   "note": "with majorized_mulVec_of_mem_doublyStochastic",
   "stage": "M3a"
+ },
+ "NLAlib.sum_det_principal_minors_eq_sum_prod_of_diagonalization": {
+  "new": "NLAlib.IsEigenvalueListing.sum_principalMinor_eq",
+  "stage": "M10"
  },
  "NLAlib.sum_det_updateRow_eq_trace_adjugate_mul": {
   "new": "Matrix.sum_det_updateRow",

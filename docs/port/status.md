@@ -56,6 +56,7 @@ P4 proceeded on the orchestrator's recommendations (Lipschitz as `LipschitzWith`
 `EuclideanSpace`; the log-Sobolev route with constant `L²`), open to the maintainer's correction.
 
 **Queue (orchestrator, 2026-10-14, latest):**
+- R3 complete: `RandomMatrix/Gaussian/SpectralNorm.lean` and `RandomMatrix/Gaussian/ExtremeSingularValues.lean` proved and registered in `NLAlib.lean`; ledger R3 entries added.
 - R3 `RandomMatrix/SubGaussian/ExtremeSingularValues.lean` proved (constant 24 reached) and registered. Stage check 2026-10-14: 200 proved modules (1 not yet), 0 warnings, audit 4681 declarations 0 violations, lint 0 errors (14 linters), 38 bib keys 0 problems.
 - Proved and registered: P0–P5a, R1, R2 (stage checks green at 185 modules, before R4–R5).
 - R4 `ChiSquareMoments.lean`, `InverseMoments.lean`, `InverseMoments/Spectral.lean` proved (split at 1490 lines); P6 `GaussianIntegrationByParts.lean`,

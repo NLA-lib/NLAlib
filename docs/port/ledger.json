@@ -1521,6 +1521,11 @@
   "note": "measure-form twin of ae_eq_one_or_neg_one_of_hasLaw_rademacherMeasure",
   "stage": "P2"
  },
+ "NLAlib.ae_hasOrthonormalCols_gaussianRangeFrame_of_hasLaw": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/{SpectralNorm,ExtremeSingularValues}.lean",
+  "stage": "R3"
+ },
  "NLAlib.ae_mem_Icc_rademacherMeasure": {
   "new": null,
   "note": "measure-form twin; ae_eq_one_or_neg_one_of_hasLaw_rademacherMeasure",
@@ -1529,6 +1534,11 @@
  "NLAlib.ae_ne_zero_mvPolynomial": {
   "new": "NLAlib.ae_eval_ne_zero_of_ne_zero",
   "stage": "R1"
+ },
+ "NLAlib.ae_project_gaussianRangeFrame_of_hasLaw": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/{SpectralNorm,ExtremeSingularValues}.lean",
+  "stage": "R3"
  },
  "NLAlib.ae_rank_mul_gaussian_eq_min": {
   "new": "NLAlib.ae_rank_mul_eq_min_of_hasLaw_gaussianMatrix",
@@ -3990,6 +4000,11 @@
   "note": "column-selection form, §2 and §7.9: the QR-block statement is not ported; the entry bound is IsLocalMaxVolume.norm_pinv_mul_apply_le and the Frobenius budget is frobNorm_sq_add_frobNorm_pinv_sq_mul_le",
   "stage": "M9"
  },
+ "NLAlib.exists_measurable_gaussian_range_frame": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/{SpectralNorm,ExtremeSingularValues}.lean",
+  "stage": "R3"
+ },
  "NLAlib.exists_mem_gershgorinColumnDisc_of_mem_spectrum": {
   "new": "NLAlib.exists_norm_sub_le_sum_col_of_mem_spectrum",
   "stage": "M10"
@@ -4177,6 +4192,11 @@
   "new": "NLAlib.exists_hasOrthonormalCols_isRealSchurForm",
   "note": "matrix form; IsRealSchurForm T contains IsUpperQuasiTriangular T",
   "stage": "M10"
+ },
+ "NLAlib.exists_orthonormal_frame_reproducing_matrix": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/{SpectralNorm,ExtremeSingularValues}.lean",
+  "stage": "R3"
  },
  "NLAlib.exists_orthonormal_ker_sq_dist_rowSpace": {
   "new": null,
@@ -5441,6 +5461,11 @@
   "note": "inlined in RandomMatrix/Gaussian/Rank.lean",
   "stage": "R1"
  },
+ "NLAlib.gaussianMatrix_ae_hasOrthonormalCols_gaussianRangeFrame": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/{SpectralNorm,ExtremeSingularValues}.lean",
+  "stage": "R3"
+ },
  "NLAlib.gaussianMatrix_ae_isUnit_gram_mul_of_le_rank": {
   "new": "NLAlib.ae_isUnit_conjTranspose_mul_self_mul_of_hasLaw_gaussianMatrix",
   "stage": "R1"
@@ -5459,6 +5484,11 @@
   "new": null,
   "note": "no consumer; the Haar frame law is defined directly, R5",
   "stage": "R5"
+ },
+ "NLAlib.gaussianMatrix_ae_project_gaussianRangeFrame": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/{SpectralNorm,ExtremeSingularValues}.lean",
+  "stage": "R3"
  },
  "NLAlib.gaussianMatrix_ae_rank_eq": {
   "new": "NLAlib.ae_rank_eq_min_of_hasLaw_gaussianMatrix",
@@ -5526,6 +5556,11 @@
  "NLAlib.gaussianMatrix_map_uncurry": {
   "new": "NLAlib.hasLaw_uncurry_of_hasLaw_gaussianMatrix",
   "stage": "R1"
+ },
+ "NLAlib.gaussianRangeFrame": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/{SpectralNorm,ExtremeSingularValues}.lean",
+  "stage": "R3"
  },
  "NLAlib.gaussianSeriesTail": {
   "new": null,
@@ -5767,6 +5802,16 @@
   "new": "NLAlib.re_trace_exp_add_le",
   "note": "complex twin stated in ComplexOrder; both traces are real and the real-part form is the statement",
   "stage": "M8"
+ },
+ "NLAlib.gordon_extreme_singular_values": {
+  "new": null,
+  "note": "split into the mean bounds",
+  "stage": "R3"
+ },
+ "NLAlib.gordon_extreme_singular_values_of_hasLaw": {
+  "new": null,
+  "note": "split into the mean bounds",
+  "stage": "R3"
  },
  "NLAlib.gordon_minimax_inequality": {
   "new": "NLAlib.integral_iInf_iSup_le_integral_iInf_iSup_of_hasGaussianLaw",
@@ -6677,6 +6722,14 @@
   "note": "private step in RandomMatrix/Gaussian/InverseMoments.lean or InverseMoments/Spectral.lean, or no consumer",
   "stage": "R4"
  },
+ "NLAlib.integrable_and_integral_specNorm_mul_gaussianMatrix_mul_le": {
+  "new": "NLAlib.integrable_specNorm_mul_mul_of_hasLaw_gaussianMatrix",
+  "stage": "R3"
+ },
+ "NLAlib.integrable_and_integral_specNorm_mul_gaussianMatrix_mul_le_of_hasLaw": {
+  "new": "NLAlib.integrable_specNorm_mul_mul_of_hasLaw_gaussianMatrix",
+  "stage": "R3"
+ },
  "NLAlib.integrable_and_integral_specNorm_pinvR_gaussianMatrix_le": {
   "new": "NLAlib.integral_specNorm_pinv_le_exp_mul_sqrt_card_div_of_hasLaw_gaussianMatrix",
   "stage": "R4"
@@ -6692,6 +6745,16 @@
  "NLAlib.integrable_and_integral_specNorm_pinvR_gaussianMatrix_le_sharp_of_hasLaw": {
   "new": "NLAlib.integral_specNorm_pinv_le_of_hasLaw_gaussianMatrix",
   "stage": "R4"
+ },
+ "NLAlib.integrable_and_integral_specNorm_sq_mul_gaussianMatrix_mul_le": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/{SpectralNorm,ExtremeSingularValues}.lean",
+  "stage": "R3"
+ },
+ "NLAlib.integrable_and_integral_specNorm_sq_mul_gaussianMatrix_mul_le_of_hasLaw": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/{SpectralNorm,ExtremeSingularValues}.lean",
+  "stage": "R3"
  },
  "NLAlib.integrable_comp_add_mul_of_abs_deriv_le": {
   "new": null,
@@ -7221,6 +7284,14 @@
   "new": "NLAlib.integral_norm_sq_rpow_of_hasLaw_gaussianVector",
   "stage": "R4"
  },
+ "NLAlib.integral_specNorm_gaussianMatrix_le_sqrt_add_sqrt": {
+  "new": "NLAlib.integral_specNorm_le_of_hasLaw_gaussianMatrix",
+  "stage": "R3"
+ },
+ "NLAlib.integral_specNorm_gaussianMatrix_le_sqrt_add_sqrt_of_hasLaw": {
+  "new": "NLAlib.integral_specNorm_le_of_hasLaw_gaussianMatrix",
+  "stage": "R3"
+ },
  "NLAlib.integral_specNorm_matrixSeries_le": {
   "new": "NLAlib.integral_specNorm_sum_smul_le",
   "stage": "P5a"
@@ -7234,6 +7305,24 @@
   "new": null,
   "note": "the case c = 1 of the sub-Gaussian series theorems",
   "stage": "P5a"
+ },
+ "NLAlib.integral_specNorm_mul_gaussianMatrix_mul_le": {
+  "new": "NLAlib.integral_specNorm_mul_mul_le_of_hasLaw_gaussianMatrix",
+  "stage": "R3"
+ },
+ "NLAlib.integral_specNorm_mul_gaussianMatrix_mul_le_of_hasLaw": {
+  "new": "NLAlib.integral_specNorm_mul_mul_le_of_hasLaw_gaussianMatrix",
+  "stage": "R3"
+ },
+ "NLAlib.integral_specNorm_sq_mul_gaussianMatrix_mul_le": {
+  "new": null,
+  "note": "Chevet no longer goes through it",
+  "stage": "R3"
+ },
+ "NLAlib.integral_specNorm_sq_mul_gaussianMatrix_mul_le_of_hasLaw": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/{SpectralNorm,ExtremeSingularValues}.lean",
+  "stage": "R3"
  },
  "NLAlib.integral_specNorm_sum_le_of_specNorm_le": {
   "new": "NLAlib.integral_specNorm_sum_le_bernstein",
@@ -8632,6 +8721,11 @@
   "note": "one-line composition of NLAlib.measurable_frobNorm with measurable matrix arithmetic",
   "stage": "M10"
  },
+ "NLAlib.measurable_gaussianRangeFrame_entry": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/{SpectralNorm,ExtremeSingularValues}.lean",
+  "stage": "R3"
+ },
  "NLAlib.measurable_integral_ornsteinUhlenbeckFisherIntegrand": {
   "new": null,
   "note": "private step or covered by the covariance form; Sudakov-Fernique follows from Gordon",
@@ -8723,6 +8817,11 @@
   "new": null,
   "note": "replaced by hasLaw_mulVec_of_hasLaw_gaussianVector",
   "stage": "R1"
+ },
+ "NLAlib.measurePreserving_updateCol_gaussianMatrix": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/{SpectralNorm,ExtremeSingularValues}.lean",
+  "stage": "R3"
  },
  "NLAlib.measureReal_abs_ge_le_two_mul_exp_of_cgf_le": {
   "new": null,
@@ -8862,6 +8961,47 @@
  "NLAlib.measure_lt_specNorm_gram_sub_card_le_of_independent_isotropic_rows": {
   "new": null,
   "note": "private step measureReal_not_specNorm_lt in RandomMatrix/SubGaussian/ExtremeSingularValues.lean",
+  "stage": "R3"
+ },
+ "NLAlib.measure_sigmaMin_le_le_gaussianMatrix": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/{SpectralNorm,ExtremeSingularValues}.lean",
+  "stage": "R3"
+ },
+ "NLAlib.measure_sigmaMin_le_le_gaussianMatrix_of_hasLaw": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/{SpectralNorm,ExtremeSingularValues}.lean",
+  "stage": "R3"
+ },
+ "NLAlib.measure_sigmaMin_le_sqrt_sub_sqrt_sub_le_gaussianMatrix": {
+  "new": "NLAlib.measureReal_singularValues_le_le_of_hasLaw_gaussianMatrix",
+  "stage": "R3"
+ },
+ "NLAlib.measure_sigmaMin_le_sqrt_sub_sqrt_sub_le_gaussianMatrix_of_hasLaw": {
+  "new": "NLAlib.measureReal_singularValues_le_le_of_hasLaw_gaussianMatrix",
+  "stage": "R3"
+ },
+ "NLAlib.measure_sq_dist_colSpace_le_le_gaussianReal": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/{SpectralNorm,ExtremeSingularValues}.lean",
+  "stage": "R3"
+ },
+ "NLAlib.measure_sq_dist_col_span_le_le_gaussianMatrix": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/{SpectralNorm,ExtremeSingularValues}.lean",
+  "stage": "R3"
+ },
+ "NLAlib.measure_sq_dist_col_span_le_le_gaussianMatrix_of_hasLaw": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/{SpectralNorm,ExtremeSingularValues}.lean",
+  "stage": "R3"
+ },
+ "NLAlib.measure_sqrt_add_sqrt_add_le_specNorm_le_gaussianMatrix": {
+  "new": "NLAlib.measureReal_specNorm_ge_le_of_hasLaw_gaussianMatrix",
+  "stage": "R3"
+ },
+ "NLAlib.measure_sqrt_add_sqrt_add_le_specNorm_le_gaussianMatrix_of_hasLaw": {
+  "new": "NLAlib.measureReal_specNorm_ge_le_of_hasLaw_gaussianMatrix",
   "stage": "R3"
  },
  "NLAlib.memLp_two_gaussianVector_of_polynomial_growth": {
@@ -9935,6 +10075,16 @@
   "note": "private helper one_le_sq_singularValues_mul_frobNorm_pinv_sq of singularValues_fromCols_le_sqrt_mul, there for pinv of any matrix below its rank",
   "stage": "M9"
  },
+ "NLAlib.one_sub_le_measure_sigmaMin_and_specNorm_gaussianMatrix": {
+  "new": null,
+  "note": "success form; the Gram sandwich replaces it",
+  "stage": "R3"
+ },
+ "NLAlib.one_sub_le_measure_sigmaMin_and_specNorm_gaussianMatrix_of_hasLaw": {
+  "new": null,
+  "note": "success form; the Gram sandwich replaces it",
+  "stage": "R3"
+ },
  "NLAlib.one_sub_mul_conjTranspose_conjTranspose_mul": {
   "new": "NLAlib.one_sub_rangeProjector_mul_self",
   "note": "with HasOrthonormalCols.rangeProjector_eq",
@@ -10858,6 +11008,11 @@
   "new": null,
   "note": "not ported: bridge between LinearMap.range A.mulVecLin and the range of Matrix.toEuclideanLin A; statements use the mulVecLin spelling only, CONTRIBUTING §5.3",
   "stage": "M5"
+ },
+ "NLAlib.range_mulVecLin_mul_eq_of_rank_eq": {
+  "new": null,
+  "note": "private step in RandomMatrix/Gaussian/{SpectralNorm,ExtremeSingularValues}.lean",
+  "stage": "R3"
  },
  "NLAlib.range_mulVecLin_rangeProjector": {
   "new": "NLAlib.range_mulVecLin_rangeProjector",
@@ -12802,6 +12957,14 @@
  "NLAlib.sqrt_rowGram_mul_eq_of_isometry_mul_sqrt_gram_eq": {
   "new": "NLAlib.sqrt_mul_polarFactor",
   "stage": "M9"
+ },
+ "NLAlib.sqrt_sub_sqrt_le_integral_sigmaMin_gaussianMatrix": {
+  "new": "NLAlib.le_integral_singularValues_of_hasLaw_gaussianMatrix",
+  "stage": "R3"
+ },
+ "NLAlib.sqrt_sub_sqrt_le_integral_sigmaMin_gaussianMatrix_of_hasLaw": {
+  "new": "NLAlib.le_integral_singularValues_of_hasLaw_gaussianMatrix",
+  "stage": "R3"
  },
  "NLAlib.sqrt_sub_sqrt_le_integral_sqrt_sum_sq_sub": {
   "new": "NLAlib.le_integral_norm_sub_integral_norm_of_hasLaw_gaussianVector",

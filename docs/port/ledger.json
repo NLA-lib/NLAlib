@@ -2328,8 +2328,8 @@
   "stage": "M7"
  },
  "NLAlib.det_gram_fromCols_eq_mul_frobSq_sub_projector": {
-  "new": null,
-  "note": "not ported: real twin of det_gram_fromCols_eq_mul_frobenius_norm_sq_sub_rangeProjector; no Gram determinant identity for an appended column in the new library",
+  "new": "NLAlib.re_det_conjTranspose_mul_self_fromCols",
+  "note": "added at the follow-up pass",
   "stage": "M5"
  },
  "NLAlib.det_gram_fromCols_eq_mul_frobenius_norm_sq_sub_rangeProjector": {
@@ -2505,8 +2505,8 @@
   "stage": "M7"
  },
  "NLAlib.det_transpose_mul_mul_le_prod_eigenvalues₀": {
-  "new": null,
-  "note": "not ported: helper of the prototype's proof of Horn's product inequality; NLAlib.prod_range_singularValues_mul_le is proved through singularValues_mul_le_mul_specNorm instead; one step from Matrix.IsHermitian.eigenvalue_conjTranspose_mul_mul_le and Matrix.IsHermitian.det_eq_prod_range_eigenvalue",
+  "new": "Matrix.PosSemidef.re_det_conjTranspose_mul_mul_le_prod_range_eigenvalue",
+  "note": "added at the follow-up pass",
   "stage": "M7"
  },
  "NLAlib.det_transpose_mul_self_eq_sum_det_sq": {
@@ -3859,8 +3859,8 @@
   "stage": "M2"
  },
  "NLAlib.frobInner_eq_nuclearNorm_of_polar": {
-  "new": null,
-  "note": "inlined in the proof of frobNorm_sub_mul_sq_of_mul_sqrt_eq: nuclearNorm_eq_re_trace_sqrt and HasOrthonormalCols.conjTranspose_mul_cancel_left",
+  "new": "NLAlib.HasOrthonormalCols.frobInner_eq_nuclearNorm_of_mul_sqrt_eq",
+  "note": "added at the follow-up pass",
   "stage": "M9"
  },
  "NLAlib.frobInner_eq_re_trace_mul_conjTranspose": {
@@ -4422,8 +4422,8 @@
   "stage": "M9"
  },
  "NLAlib.frobSq_sub_mul_le_of_isBestFrobRankApprox": {
-  "new": null,
-  "note": "not ported: Q * truncatedSVD (Qᴴ * A) k is a best approximation of A among Q * B with rank B ≤ k; two steps from frobNorm_sub_mul_sq and frobNorm_sub_truncatedSVD_le_of_rank_le; needed by the fixed-rank randomized SVD",
+  "new": "NLAlib.HasOrthonormalCols.frobNorm_sub_mul_truncatedSVD_le_of_rank_le",
+  "note": "added at the follow-up pass",
   "stage": "M5"
  },
  "NLAlib.frobSq_sub_nuclearNorm_sq_div_card_le_sub_smul": {
@@ -4688,8 +4688,8 @@
   "stage": "M9"
  },
  "NLAlib.givens_apply": {
-  "new": null,
-  "note": "not ported: entry formula of givens; the definition is a sum of Matrix.single terms and the public interface is the action on rows and columns, givens_mul_apply_left, givens_mul_apply_right, givens_mul_apply_of_ne",
+  "new": "NLAlib.givens_apply",
+  "note": "added at the follow-up pass",
   "stage": "M9"
  },
  "NLAlib.givens_mulVec_apply_left": {
@@ -5762,8 +5762,8 @@
   "stage": "M6"
  },
  "NLAlib.isUnit_overlap_and_eq_mul_inv_mul_of_idempotent": {
-  "new": null,
-  "note": "not ported: every idempotent is Q * (Wᴴ * Q)⁻¹ * Wᴴ for frames Q of range P and W of range Pᴴ, with Wᴴ * Q invertible; Oblique.lean has only the converse isIdempotentElem_mul_inv_mul_conjTranspose",
+  "new": "IsIdempotentElem.isUnit_conjTranspose_mul_of_range_le",
+  "note": "added at the follow-up pass",
   "stage": "M5"
  },
  "NLAlib.isUnit_overlap_of_principalAngles_last_lt_pi_div_two": {
@@ -5892,8 +5892,8 @@
   "stage": "M9"
  },
  "NLAlib.ker_mulVecLin_le_ker_eliminationStep": {
-  "new": null,
-  "note": "one step from eliminationStep_mulVec: A *ᵥ x = 0 makes the correction vanish",
+  "new": "NLAlib.ker_mulVecLin_le_ker_eliminationStep",
+  "note": "added at the follow-up pass",
   "stage": "M9"
  },
  "NLAlib.kyFanInvariantNorm": {
@@ -6407,8 +6407,8 @@
   "stage": "M7"
  },
  "NLAlib.max_sInf_spectrum_mul_le_sInf_spectrum_hadamard": {
-  "new": null,
-  "note": "not ported: statement through sInf of the spectrum of a product; its Loewner form, c • B⁻¹ ≤ A gives c • 1 ≤ A ⊙ B, is two steps from Matrix.PosSemidef.hadamard_le_hadamard_of_le and Matrix.PosDef.one_le_hadamard_inv but is not stated",
+  "new": "Matrix.PosDef.smul_one_le_hadamard_of_smul_inv_le",
+  "note": "added at the follow-up pass",
   "stage": "M7"
  },
  "NLAlib.max_specNorm_sinePrincipalAngles_le_max_perturbation_frame_div": {
@@ -7364,8 +7364,8 @@
   "stage": "M4"
  },
  "NLAlib.one_le_specNorm_of_isIdempotentElem": {
-  "new": null,
-  "note": "for star projections: IsStarProjection.specNorm_eq_one; oblique projections come with M5",
+  "new": "IsIdempotentElem.one_le_specNorm",
+  "note": "added at the follow-up pass",
   "stage": "M4"
  },
  "NLAlib.one_le_sq_singularValue_mul_frobSq_inv": {
@@ -8938,8 +8938,8 @@
   "stage": "M6"
  },
  "NLAlib.sinePrincipalAngles_reindex_rows": {
-  "new": null,
-  "note": "object not reproduced: sinePrincipalAngles; the new library has no invariance lemma for principalAngle under row reindexing or left multiplication by a frame",
+  "new": "NLAlib.principalAngle_submatrix_equiv",
+  "note": "added at the follow-up pass",
   "stage": "M5"
  },
  "NLAlib.singularValues": {

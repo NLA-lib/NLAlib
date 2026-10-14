@@ -12,7 +12,9 @@ public import NLAlib.Matrix.Inequalities.Determinant
 
 For a positive semidefinite matrix, the products of all principal minors
 (`NLAlib.principalMinor`) of a given size satisfy Szász's chain of inequalities, which
-interpolates between `det A` and Hadamard's bound `∏ A i i`.
+interpolates between `det A` and Hadamard's bound `∏ A i i`. The determinant of a compression
+`Vᴴ * A * V` by a matrix with orthonormal columns, of which a principal minor is the case of a
+coordinate selection, is at most the product of the leading eigenvalues.
 
 ## Main results
 
@@ -21,6 +23,8 @@ interpolates between `det A` and Hadamard's bound `∏ A i i`.
 * `Matrix.PosSemidef.prod_re_principalMinor_succ_pow_le`: Szász's inequality.
 * `NLAlib.principalMinor_erase_univ_eq_adjugate`, `NLAlib.principalMinor_erase_univ_eq`:
   complementary minors as the diagonal of the adjugate and of the inverse.
+* `Matrix.PosSemidef.re_det_conjTranspose_mul_mul_le_prod_range_eigenvalue`: the determinant of a
+  compression against the leading eigenvalues.
 -/
 
 @[expose] public section
@@ -170,5 +174,23 @@ theorem _root_.Matrix.PosSemidef.re_det_pow_le_prod_re_principalMinor_erase {A :
     (hA : A.PosSemidef) {k : ℕ} (hk : k + 1 = Fintype.card n) :
     RCLike.re A.det ^ k ≤ ∏ i, RCLike.re (principalMinor A (Finset.univ.erase i)) :=
   re_det_pow_le_prod_erase hA hk
+
+/-! ### Compressions -/
+
+omit [DecidableEq n] in
+/-- **The determinant of a compression is at most the product of the leading eigenvalues.** For
+positive semidefinite `A` and `V` with orthonormal columns indexed by `p`,
+`det (Vᴴ A V) ≤ λ_0(A) ⋯ λ_{card p - 1}(A)`, eigenvalues non-increasing. With no columns both
+sides are `1`.
+[HornJohnson2013, Corollary 4.3.37]; a consequence of the Poincaré separation theorem.
+Port of `NLAlib.det_transpose_mul_mul_le_prod_eigenvalues₀`, there over `ℝ`. -/
+theorem _root_.Matrix.PosSemidef.re_det_conjTranspose_mul_mul_le_prod_range_eigenvalue
+    {p : Type*} [Fintype p] [DecidableEq p] {A : Matrix n n 𝕜} (hA : A.PosSemidef)
+    {V : Matrix n p 𝕜} (hV : HasOrthonormalCols V) :
+    RCLike.re (Vᴴ * A * V).det ≤ ∏ i ∈ Finset.range (Fintype.card p), eigenvalue A i := by
+  have hB : (Vᴴ * A * V).PosSemidef := hA.conjTranspose_mul_mul_same V
+  rw [hB.isHermitian.det_eq_prod_range_eigenvalue, RCLike.ofReal_re]
+  exact Finset.prod_le_prod (fun i _ => hB.eigenvalue_nonneg i) fun i hi =>
+    hA.isHermitian.eigenvalue_conjTranspose_mul_mul_le hV (Finset.mem_range.mp hi)
 
 end NLAlib

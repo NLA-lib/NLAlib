@@ -26,6 +26,9 @@ orthogonal complement of the column space of `Y` is `X * (Yᴴ * X)⁻¹ * Yᴴ`
 * `IsIdempotentElem.pinv_eq_rangeProjector_conjTranspose_mul_rangeProjector`: the pseudoinverse
   of an idempotent.
 * `IsIdempotentElem.specNorm_mul_cos_principalAngle`: the secant formula.
+* `IsIdempotentElem.isUnit_conjTranspose_mul_of_range_le`,
+  `IsIdempotentElem.eq_mul_inv_mul_conjTranspose`: every idempotent is the oblique projector
+  `X * (Yᴴ * X)⁻¹ * Yᴴ` of a basis `X` of its range and a basis `Y` of the range of its adjoint.
 * `NLAlib.HasOrthonormalCols.specNorm_mul_inv_mul_conjTranspose`: the norm of an oblique
   projector given by two frames.
 -/
@@ -266,6 +269,54 @@ column space of `Y`. -/
 theorem mul_inv_mul_conjTranspose_mulVec_eq_zero (X Y : Matrix n p 𝕜) {v : n → 𝕜}
     (hv : Yᴴ *ᵥ v = 0) : (X * (Yᴴ * X)⁻¹ * Yᴴ) *ᵥ v = 0 := by
   rw [← Matrix.mulVec_mulVec, hv, Matrix.mulVec_zero]
+
+/-- **The overlap of two bases adapted to an idempotent is invertible.** If the columns of `X`
+are independent and lie in the range of an idempotent `P`, and the column space of `Y` contains
+the range of `Pᴴ` (the orthogonal complement of the kernel of `P`), then `Yᴴ * X` is invertible.
+Matrices with orthonormal columns are the case `HasOrthonormalCols.mulVec_injective`; no
+independence of the columns of `Y` is assumed, it follows.
+[HornJohnson2013, Corollary 3.4.3.3 context].
+Port of `NLAlib.isUnit_overlap_and_eq_mul_inv_mul_of_idempotent`, first half, there over `ℝ` for
+two frames spanning the two ranges. -/
+theorem _root_.IsIdempotentElem.isUnit_conjTranspose_mul_of_range_le {P : Matrix n n 𝕜}
+    (hP : IsIdempotentElem P) {X Y : Matrix n p 𝕜} (hX : Function.Injective X.mulVec)
+    (hXP : LinearMap.range X.mulVecLin ≤ LinearMap.range P.mulVecLin)
+    (hYP : LinearMap.range Pᴴ.mulVecLin ≤ LinearMap.range Y.mulVecLin) : IsUnit (Yᴴ * X) := by
+  obtain ⟨D, hD⟩ := range_mulVecLin_le_iff_exists_mul.mp hYP
+  have hPX : Dᴴ * (Yᴴ * X) = X := by
+    rw [← Matrix.mul_assoc, ← Matrix.conjTranspose_mul, ← hD, Matrix.conjTranspose_conjTranspose]
+    exact hP.mul_eq_of_range_le hXP
+  rw [← Matrix.mulVec_injective_iff_isUnit]
+  intro v w h
+  have h' := congrArg Dᴴ.mulVec h
+  rw [Matrix.mulVec_mulVec, Matrix.mulVec_mulVec, hPX] at h'
+  exact hX h'
+
+/-- **Every idempotent is an oblique projector of two bases.** If the columns of `X` are a basis
+of the range of an idempotent `P` and the columns of `Y` span the range of `Pᴴ` (the orthogonal
+complement of the kernel of `P`), then `P = X * (Yᴴ * X)⁻¹ * Yᴴ`, with `Yᴴ * X` invertible by
+`IsIdempotentElem.isUnit_conjTranspose_mul_of_range_le`. This is the converse of
+`NLAlib.isIdempotentElem_mul_inv_mul_conjTranspose`. Matrices with orthonormal columns are the
+case `HasOrthonormalCols.mulVec_injective`; for `P = 0` the bases have no columns.
+[HornJohnson2013, Corollary 3.4.3.3 context].
+Port of `NLAlib.isUnit_overlap_and_eq_mul_inv_mul_of_idempotent`, second half, there over `ℝ` for
+two frames. -/
+theorem _root_.IsIdempotentElem.eq_mul_inv_mul_conjTranspose {P : Matrix n n 𝕜}
+    (hP : IsIdempotentElem P) {X Y : Matrix n p 𝕜} (hX : Function.Injective X.mulVec)
+    (hXP : LinearMap.range X.mulVecLin = LinearMap.range P.mulVecLin)
+    (hYP : LinearMap.range Y.mulVecLin = LinearMap.range Pᴴ.mulVecLin) :
+    P = X * (Yᴴ * X)⁻¹ * Yᴴ := by
+  have hu := hP.isUnit_conjTranspose_mul_of_range_le hX hXP.le hYP.ge
+  obtain ⟨C, hC⟩ := range_mulVecLin_le_iff_exists_mul.mp hXP.ge
+  have hPH : IsIdempotentElem Pᴴ := by
+    rw [IsIdempotentElem, ← Matrix.conjTranspose_mul, hP.eq]
+  have hYP' : Yᴴ * P = Yᴴ := by
+    have h := congrArg Matrix.conjTranspose (hPH.mul_eq_of_range_le hYP.le)
+    rwa [Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose] at h
+  calc P = X * ((Yᴴ * X)⁻¹ * (Yᴴ * X)) * C := by
+        rw [Matrix.nonsing_inv_mul _ ((Matrix.isUnit_iff_isUnit_det _).mp hu), Matrix.mul_one, hC]
+    _ = X * (Yᴴ * X)⁻¹ * (Yᴴ * (X * C)) := by simp only [Matrix.mul_assoc]
+    _ = X * (Yᴴ * X)⁻¹ * Yᴴ := by rw [← hC, hYP']
 
 /-- **The norm of an oblique projector between two frames**: for `U`, `V` with orthonormal
 columns and `Vᴴ * U` invertible, `‖U (Vᴴ U)⁻¹ Vᴴ‖₂ = ‖(Vᴴ U)⁻¹‖₂`, the reciprocal of the smallest

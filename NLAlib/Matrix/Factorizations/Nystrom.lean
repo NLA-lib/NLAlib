@@ -26,6 +26,7 @@ proportional to the diagonal gives the expected step of randomly pivoted Cholesk
   semidefinite, below `A`, zero on the selected columns, and the largest such matrix.
 * `Matrix.PosSemidef.foldl_eliminationStep_eq_sub`: elimination along pivots is the Nyström
   residual.
+* `NLAlib.ker_mulVecLin_le_ker_eliminationStep`: an elimination step does not shrink the kernel.
 * `Matrix.PosSemidef.sum_smul_eliminationStep`,
   `Matrix.PosSemidef.sum_mul_re_trace_eliminationStep`: the expected step of randomly pivoted
   Cholesky and its trace.
@@ -171,6 +172,21 @@ theorem _root_.Matrix.PosSemidef.foldl_eliminationStep_eq_sub
         fun i k => hR'col _ (List.mem_append_left _ (List.get_mem l k)) i
 
 end Finite
+
+/-! ### The kernel under elimination -/
+
+/-- **An elimination step does not shrink the kernel**: `ker A ≤ ker (eliminationStep A t)`, for
+any square matrix over a field and any pivot, zero or not. For a positive semidefinite matrix
+this is the exhaustion of the column space by the pivots of a partial Cholesky factorization.
+[ChenEtAl2025, §2]. Port of `NLAlib.ker_mulVecLin_le_ker_eliminationStep`. -/
+theorem ker_mulVecLin_le_ker_eliminationStep {K : Type*} [Field K] [Fintype n]
+    (A : Matrix n n K) (t : n) :
+    LinearMap.ker A.mulVecLin ≤ LinearMap.ker (eliminationStep A t).mulVecLin := by
+  classical
+  intro x hx
+  rw [LinearMap.mem_ker, Matrix.mulVecLin_apply] at hx ⊢
+  rw [eliminationStep_mulVec, Matrix.mulVec_sub, Matrix.mulVec_smul, hx, Pi.zero_apply,
+    zero_div, zero_smul, sub_zero]
 
 /-! ### Randomly pivoted Cholesky -/
 

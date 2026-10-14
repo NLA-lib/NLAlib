@@ -24,6 +24,8 @@ product and the Hadamard product of the inverses, and Oppenheim's determinant in
 * `Matrix.PosSemidef.smul_diagonal_le_hadamard`: a lower bound from a lower bound of one factor.
 * `NLAlib.specNorm_hadamard_le`: `‖A ⊙ B‖₂ ≤ ‖A‖₂ ‖B‖₂`.
 * `Matrix.PosDef.inv_hadamard_le_hadamard_inv`, `Matrix.PosDef.one_le_hadamard_inv`.
+* `Matrix.PosDef.smul_one_le_hadamard_of_smul_inv_le`: the smallest eigenvalue of `A ⊙ B` is at
+  least the smallest eigenvalue of `A * B`, in Loewner form.
 * `Matrix.PosSemidef.re_det_mul_prod_re_diag_le_re_det_hadamard`: Oppenheim's inequality.
 -/
 
@@ -203,6 +205,23 @@ theorem _root_.Matrix.PosDef.one_le_hadamard_inv {A : Matrix n n 𝕜} (hA : A.P
   have h := h1.hadamard h2
   rw [e] at h
   exact (posSemidef_fromBlocks_self_iff.mp h).2
+
+/-- **A lower bound for a Hadamard product from the ordinary product.** For positive definite
+`A` and `c ≥ 0`, if `c • A⁻¹ ≤ B` then `c • 1 ≤ A ⊙ B`. For Hermitian `B` the hypothesis says that
+the eigenvalues of `A * B` are at least `c` (the lower half of
+`Matrix.PosDef.smul_le_and_le_smul_iff_spectrum_subset`, applied to `A⁻¹`), so this is
+`λ_min(A ⊙ B) ≥ λ_min(A B)`. For `c < 0` the bound can fail, already for `B = c • A⁻¹`.
+[HornJohnson2013, Theorem 7.7.18]; stated there for the smallest eigenvalues of two positive
+definite matrices.
+Port of `NLAlib.max_sInf_spectrum_mul_le_sInf_spectrum_hadamard`, there over `ℝ` for positive
+definite `B` with `c` the infimum of the spectrum of `A * B`. -/
+theorem _root_.Matrix.PosDef.smul_one_le_hadamard_of_smul_inv_le {A B : Matrix n n 𝕜} {c : ℝ}
+    (hA : A.PosDef) (hc : 0 ≤ c) (h : c • A⁻¹ ≤ B) : c • (1 : Matrix n n 𝕜) ≤ A ⊙ B := by
+  have h1 : c • (1 : Matrix n n 𝕜) ≤ c • (A ⊙ A⁻¹) :=
+    smul_le_smul_of_nonneg_left hA.one_le_hadamard_inv hc
+  have h2 := hA.posSemidef.hadamard_le_hadamard_of_le h
+  rw [Matrix.hadamard_smul] at h2
+  exact h1.trans h2
 
 /-! ### Determinants -/
 

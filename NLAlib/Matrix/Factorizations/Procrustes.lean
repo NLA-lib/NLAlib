@@ -17,6 +17,8 @@ distance between the sorted singular values.
 
 ## Main results
 
+* `NLAlib.HasOrthonormalCols.frobInner_eq_nuclearNorm_of_mul_sqrt_eq`,
+  `NLAlib.frobInner_polarFactor`: a polar factor attains the nuclear dual pairing.
 * `NLAlib.frobNorm_sub_mul_sq_of_mul_sqrt_eq`: the objective at a polar factor of `A Bᴴ`.
 * `NLAlib.isLeast_frobNorm_sub_mul_sq`: the orthogonal Procrustes problem.
 * `NLAlib.isLeast_frobNorm_sub_mul_mul_sq`: the two-sided Procrustes problem.
@@ -29,6 +31,33 @@ open scoped Matrix ComplexOrder MatrixOrder
 namespace NLAlib
 
 variable {𝕜 : Type*} [RCLike 𝕜] {m n : Type*} [Fintype m] [Fintype n] [DecidableEq m]
+
+omit [DecidableEq m] in
+/-- **An isometric polar factor attains the nuclear dual pairing.** If `M = U |M|` with `U` of
+orthonormal columns and `|M| = CFC.sqrt (Mᴴ * M)`, then `⟨M, U⟩ = ‖M‖_*`. This is the case of
+equality in `NLAlib.abs_frobInner_le_nuclearNorm_mul_specNorm`. Rectangular, any rank.
+[HornJohnson2013, §7.4.4].
+Port of `NLAlib.frobInner_eq_nuclearNorm_of_polar`, there over `ℝ` for square matrices. -/
+theorem HasOrthonormalCols.frobInner_eq_nuclearNorm_of_mul_sqrt_eq [DecidableEq n]
+    {M U : Matrix m n 𝕜} (hU : HasOrthonormalCols U) (h : U * CFC.sqrt (Mᴴ * M) = M) :
+    frobInner M U = nuclearNorm M := by
+  rw [nuclearNorm_eq_re_trace_sqrt, frobInner_eq_re_trace_mul_conjTranspose]
+  obtain ⟨S, hS⟩ : ∃ S, S = CFC.sqrt (Mᴴ * M) := ⟨_, rfl⟩
+  rw [← hS] at h ⊢
+  rw [← h, Matrix.trace_mul_comm, hU.conjTranspose_mul_cancel_left]
+
+omit [DecidableEq m] in
+/-- **The polar factor attains the nuclear dual pairing**: `⟨M, polarFactor M⟩ = ‖M‖_*`, for
+every shape and rank; the polar factor is then a partial isometry and need not have orthonormal
+columns. [HornJohnson2013, §7.4.4]. -/
+theorem frobInner_polarFactor [DecidableEq n] (M : Matrix m n 𝕜) :
+    frobInner M (polarFactor M) = nuclearNorm M := by
+  rw [nuclearNorm_eq_re_trace_sqrt, frobInner_eq_re_trace, polarFactor, ← Matrix.mul_assoc]
+  obtain ⟨S, hS⟩ : ∃ S, S = CFC.sqrt (Mᴴ * M) := ⟨_, rfl⟩
+  have hSS : S * S = Mᴴ * M := by
+    rw [hS]
+    exact CFC.sqrt_mul_sqrt_self _ (Matrix.posSemidef_conjTranspose_mul_self M).nonneg
+  rw [← hS, ← hSS, Matrix.mul_assoc, Matrix.trace_mul_comm, mul_pinv_mul_self]
 
 /-- The Procrustes objective through the inner product of `A Bᴴ` with the unitary factor. -/
 private theorem frobNorm_sub_mul_sq_eq (A B : Matrix m n 𝕜) {U : Matrix m m 𝕜}
@@ -46,11 +75,7 @@ theorem frobNorm_sub_mul_sq_of_mul_sqrt_eq {A B : Matrix m n 𝕜} {U : Matrix m
     (hU : HasOrthonormalCols U)
     (h : U * CFC.sqrt ((A * Bᴴ)ᴴ * (A * Bᴴ)) = A * Bᴴ) :
     frobNorm (A - U * B) ^ 2 = frobNorm A ^ 2 + frobNorm B ^ 2 - 2 * nuclearNorm (A * Bᴴ) := by
-  rw [frobNorm_sub_mul_sq_eq A B hU, nuclearNorm_eq_re_trace_sqrt,
-    frobInner_eq_re_trace_mul_conjTranspose]
-  obtain ⟨S, hS⟩ : ∃ S, S = CFC.sqrt ((A * Bᴴ)ᴴ * (A * Bᴴ)) := ⟨_, rfl⟩
-  rw [← hS] at h ⊢
-  rw [← h, Matrix.trace_mul_comm, hU.conjTranspose_mul_cancel_left]
+  rw [frobNorm_sub_mul_sq_eq A B hU, hU.frobInner_eq_nuclearNorm_of_mul_sqrt_eq h]
 
 /-- **The orthogonal Procrustes problem.** The least value of `‖A - U B‖_F²` over unitary `U` is
 `‖A‖_F² + ‖B‖_F² - 2 ‖A Bᴴ‖_*`, attained at a polar factor of `A Bᴴ`.

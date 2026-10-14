@@ -31,6 +31,8 @@ angles.
 
 ## Main results
 
+* `NLAlib.HasOrthonormalCols.principalAngle_mul_left`, `NLAlib.principalAngle_submatrix_equiv`:
+  invariance under an isometry of the ambient space and under relabelling.
 * `NLAlib.cos_principalAngle`, `NLAlib.HasOrthonormalCols.cos_principalAngle`: cosines.
 * `NLAlib.singularValues_one_sub_rangeProjector_mul_rangeProjector`: sines.
 * `NLAlib.specNorm_one_sub_rangeProjector_mul_rangeProjector`,
@@ -130,6 +132,72 @@ theorem principalAngle_eq_zero_of_range_le {X : Matrix n p 𝕜} {Y : Matrix n q
   have h0 := principalAngle_self Y hk
   unfold principalAngle at h0 ⊢
   rwa [rangeProjector_mul_rangeProjector_of_range_le h, ← rangeProjector_mul_rangeProjector Y]
+
+/-! ### Invariance -/
+
+section Invariance
+
+variable {m p' q' : Type*} [Fintype m] [Fintype p'] [Fintype q']
+
+/-- The projector onto the column space of `Q * X`, for `Q` with orthonormal columns. -/
+private theorem HasOrthonormalCols.rangeProjector_mul [DecidableEq n] {Q : Matrix m n 𝕜}
+    (hQ : HasOrthonormalCols Q) (X : Matrix n p 𝕜) :
+    rangeProjector (Q * X) = Q * rangeProjector X * Qᴴ := by
+  have hP := isStarProjection_rangeProjector X
+  obtain ⟨C, hC⟩ := range_mulVecLin_le_iff_exists_mul.mp (range_mulVecLin_rangeProjector X).le
+  refine (IsStarProjection.eq_rangeProjector (Matrix.isStarProjection_iff.mpr ⟨?_, ?_⟩)
+    (le_antisymm ?_ ?_)).symm
+  · rw [Matrix.mul_assoc (Q * rangeProjector X), ← Matrix.mul_assoc Qᴴ,
+      hQ.conjTranspose_mul_cancel_left, ← Matrix.mul_assoc, Matrix.mul_assoc Q, hP.mul_self]
+  · rw [Matrix.IsHermitian, Matrix.conjTranspose_mul, Matrix.conjTranspose_mul,
+      Matrix.conjTranspose_conjTranspose, hP.conjTranspose_eq, Matrix.mul_assoc]
+  · refine range_mulVecLin_le_iff_exists_mul.mpr ⟨C * Qᴴ, ?_⟩
+    rw [hC]
+    simp only [Matrix.mul_assoc]
+  · refine range_mulVecLin_le_iff_exists_mul.mpr ⟨Q * X, ?_⟩
+    rw [Matrix.mul_assoc, hQ.conjTranspose_mul_cancel_left, Matrix.mul_assoc,
+      rangeProjector_mul_self]
+
+/-- **Principal angles are invariant under an isometry of the ambient space**: multiplying both
+matrices on the left by a matrix `Q` with orthonormal columns, square or not, does not change the
+angles between their column spaces. [StewartSun1990, §I.5]. -/
+theorem HasOrthonormalCols.principalAngle_mul_left [DecidableEq n] {Q : Matrix m n 𝕜}
+    (hQ : HasOrthonormalCols Q) (X : Matrix n p 𝕜) (Y : Matrix n q 𝕜) (k : ℕ) :
+    principalAngle (Q * X) (Q * Y) k = principalAngle X Y k := by
+  unfold principalAngle
+  rw [hQ.rangeProjector_mul, hQ.rangeProjector_mul, Matrix.mul_assoc (Q * rangeProjector X),
+    ← Matrix.mul_assoc Qᴴ, hQ.conjTranspose_mul_cancel_left, Matrix.mul_assoc Q,
+    ← Matrix.mul_assoc (rangeProjector X), hQ.singularValues_mul_left,
+    hQ.singularValues_mul_conjTranspose_right]
+
+/-- Relabelling the columns by an equivalence does not change the column space. -/
+private theorem rangeProjector_submatrix_id_equiv (X : Matrix n p 𝕜) (f : p' ≃ p) :
+    rangeProjector (X.submatrix id f) = rangeProjector X := by
+  rw [rangeProjector_inj, Matrix.range_mulVecLin, Matrix.range_mulVecLin]
+  exact congrArg _ (f.surjective.range_comp X.col)
+
+/-- **Principal angles are invariant under relabelling**: a common relabelling of the rows by an
+equivalence, together with any relabelling of the columns of either matrix, does not change the
+angles. For `Matrix.reindex`, rewrite with `Matrix.reindex_apply` first.
+[StewartSun1990, §I.5]. Port of `NLAlib.sinePrincipalAngles_reindex_rows`, there over `ℝ` for the
+matrix of sines of two frames and a relabelling of the rows only. -/
+theorem principalAngle_submatrix_equiv (X : Matrix n p 𝕜) (Y : Matrix n q 𝕜) (e : m ≃ n)
+    (f : p' ≃ p) (g : q' ≃ q) (k : ℕ) :
+    principalAngle (X.submatrix e f) (Y.submatrix e g) k = principalAngle X Y k := by
+  classical
+  have hQ : HasOrthonormalCols ((1 : Matrix n n 𝕜).submatrix e id) :=
+    hasOrthonormalCols_one.submatrix e Function.injective_id
+  have hX : X.submatrix e f = (1 : Matrix n n 𝕜).submatrix e id * X.submatrix id f := by
+    ext i j
+    simp [Matrix.mul_apply, Matrix.one_apply]
+  have hY : Y.submatrix e g = (1 : Matrix n n 𝕜).submatrix e id * Y.submatrix id g := by
+    ext i j
+    simp [Matrix.mul_apply, Matrix.one_apply]
+  rw [hX, hY, hQ.principalAngle_mul_left]
+  unfold principalAngle
+  rw [rangeProjector_submatrix_id_equiv, rangeProjector_submatrix_id_equiv]
+
+end Invariance
 
 /-! ### Cosines -/
 

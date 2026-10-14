@@ -20,6 +20,7 @@ vector there is a rotation that clears coordinate `j` into coordinate `i`.
 
 ## Main results
 
+* `NLAlib.givens_apply`: the entries.
 * `NLAlib.hasOrthonormalCols_givens`: unitarity.
 * `NLAlib.det_givens_eq_mul_star_add_mul_star`, `NLAlib.det_givens`: the determinant.
 * `NLAlib.givens_mulVec_apply_left`, `…_right`, `…_of_ne`: the action on a vector.
@@ -40,6 +41,25 @@ columns `i`, `j`, and `[[c, s], [-s̄, c̄]]` on them.
 def givens (i j : n) (c s : 𝕜) : Matrix n n 𝕜 :=
   1 + (c - 1) • Matrix.single i i 1 + (star c - 1) • Matrix.single j j 1 +
     s • Matrix.single i j 1 - star s • Matrix.single j i 1
+
+omit [Fintype n] in
+/-- **The entries of a Givens rotation** in the plane `(i, j)`, `i ≠ j`: `c`, `s` in row `i` and
+`-s̄`, `c̄` in row `j` at the columns `i`, `j`, and the identity elsewhere.
+[GolubVanLoan2013, §5.1.8]. Port of `NLAlib.givens_apply`, there over `ℝ`. -/
+theorem givens_apply {i j : n} (hij : i ≠ j) (c s : 𝕜) (a b : n) :
+    givens i j c s a b =
+      if a = i then (if b = i then c else if b = j then s else 0)
+      else if a = j then (if b = i then -star s else if b = j then star c else 0)
+      else if a = b then 1 else 0 := by
+  simp only [givens, Matrix.add_apply, Matrix.sub_apply, Matrix.smul_apply, Matrix.one_apply,
+    Matrix.single_apply, smul_eq_mul, mul_ite, mul_one, mul_zero, @eq_comm _ i a,
+    @eq_comm _ j a, @eq_comm _ i b, @eq_comm _ j b]
+  by_cases hai : a = i <;> by_cases haj : a = j <;> by_cases hbi : b = i <;>
+    by_cases hbj : b = j <;>
+    first
+    | exact absurd (hai.symm.trans haj) hij
+    | exact absurd (hbi.symm.trans hbj) hij
+    | simp [hai, haj, hbi, hbj, hij, hij.symm, @eq_comm _ i b, @eq_comm _ j b]
 
 /-- The action of a rotation on a vector, in vector form. -/
 private theorem givens_mulVec (i j : n) (c s : 𝕜) (x : n → 𝕜) :

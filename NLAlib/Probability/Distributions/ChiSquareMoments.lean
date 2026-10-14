@@ -42,7 +42,8 @@ theorem integrable_norm_sq_rpow_of_hasLaw_gaussianVector (hX : HasLaw X (gaussia
 theorem integral_norm_sq_rpow_of_hasLaw_gaussianVector (hX : HasLaw X (gaussianVector n) μ)
     {s : ℝ} (hs : -((Fintype.card n : ℝ) / 2) < s) :
     ∫ ω, (‖WithLp.toLp 2 (X ω)‖ ^ 2) ^ s ∂μ =
-      2 ^ s * Real.Gamma ((Fintype.card n : ℝ) / 2 + s) / Real.Gamma ((Fintype.card n : ℝ) / 2) := by
+      2 ^ s * Real.Gamma ((Fintype.card n : ℝ) / 2 + s) /
+        Real.Gamma ((Fintype.card n : ℝ) / 2) := by
   sorry
 
 /-- `E 1 / χ²_d = 1 / (d - 2)` for `d ≥ 3`. -/

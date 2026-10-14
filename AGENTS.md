@@ -13,7 +13,9 @@
    file. Never a bare `lake build`. Never two builds at once.
 6. Before stopping: update `docs/port/ledger.json` and `docs/port/status.md`, run the §9 checks,
    and leave the read-back for the PR. Do not commit or push unless asked.
-7. If you orchestrate: you write the design notes, skeletons and file reviews yourself; you send
+7. If you orchestrate: keep your own context small (maintainer, 2026-10-14; `docs/port/status.md`
+   standing instructions): you make the decisions, write the agent briefs, read reports and commit;
+   design notes and skeletons are drafted by Opus agents from your brief; you send
    each design note, each interface question you cannot settle, and each stage report to a
    `model: "fable"` agent for a bounded review before acting on it; you delegate every proof to a
    `model: "opus"` agent, one file at a time; you delegate mechanical passes to `model: "sonnet"`

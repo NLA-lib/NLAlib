@@ -52,7 +52,7 @@ private theorem hasDerivAt_bernsteinAux' (u : ℝ) :
   have h1 := (((Real.hasDerivAt_exp u).sub_const 1).sub (hasDerivAt_id' u)).div_const 3
   have h2 := ((hasDerivAt_id' u).div_const 3).const_sub 1
   have h3 := h2.mul ((Real.hasDerivAt_exp u).sub_const 1)
-  convert ((hasDerivAt_id' u).add h1).sub h3 using 1
+  refine (((hasDerivAt_id' u).add h1).sub h3).congr_deriv ?_
   ring
 
 /-- The derivative of `u²/2 - (1 - u/3)(eᵘ - 1 - u)`. -/
@@ -61,7 +61,8 @@ private theorem hasDerivAt_bernsteinAux (u : ℝ) :
       (u + (Real.exp u - 1 - u) / 3 - (1 - u / 3) * (Real.exp u - 1)) u := by
   have h1 := ((Real.hasDerivAt_exp u).sub_const 1).sub (hasDerivAt_id' u)
   have h2 := ((hasDerivAt_id' u).div_const 3).const_sub 1
-  convert ((hasDerivAt_pow 2 u).div_const 2).sub (h2.mul h1) using 1
+  refine (((hasDerivAt_pow 2 u).div_const 2).sub (h2.mul h1)).congr_deriv ?_
+  simp only [Pi.sub_apply]
   push_cast
   ring
 
@@ -221,7 +222,6 @@ private theorem le_of_forall_bernstein_mean {x a v L : ℝ} (hL : 0 < L) (ha : 0
 
 /-! ### Integrability, the dilation and `1 × 1` matrices -/
 
-omit [DecidableEq n] in
 /-- A square-integrable random matrix times its conjugate transpose is integrable. -/
 private theorem integrable_mul_conjTranspose {m : Type*} [Fintype m] [DecidableEq m]
     {S : Ω → Matrix m n 𝕜} (hS : MemLp S 2 μ) : Integrable (fun ω => S ω * (S ω)ᴴ) μ := by
@@ -232,7 +232,7 @@ private theorem integrable_mul_conjTranspose {m : Type*} [Fintype m] [DecidableE
 
 /-- A square-integrable random matrix times its conjugate transpose on the left is
 integrable. -/
-private theorem integrable_conjTranspose_mul {m : Type*} [Fintype m] [DecidableEq m]
+private theorem integrable_conjTranspose_mul {m : Type*} [Fintype m]
     {S : Ω → Matrix m n 𝕜} (hS : MemLp S 2 μ) : Integrable (fun ω => (S ω)ᴴ * S ω) μ := by
   refine (hS.integrable_norm_pow two_ne_zero).mono'
     ((continuous_id.matrix_conjTranspose.matrix_mul continuous_id).comp_aestronglyMeasurable
@@ -268,13 +268,15 @@ private theorem integral_dilation_sq {m : Type*} [Fintype m] [DecidableEq m]
             RingHom.id_apply] }
   have h1 := integrable_mul_conjTranspose hS
   have h2 := integrable_conjTranspose_mul hS
-  have hpt : ∀ ω, dilation (S ω) ^ 2 = B (S ω * (S ω)ᴴ, (S ω)ᴴ * S ω) := fun ω => by
+  have hpt : ∀ ω, dilation (S ω) ^ 2 =
+      B ((S ω * (S ω)ᴴ, (S ω)ᴴ * S ω) : Matrix m m 𝕜 × Matrix n n 𝕜) := fun ω => by
     rw [sq, dilation_mul_dilation]
     rfl
   simp only [hpt]
   rw [B.integral_comp_comm (h1.prodMk h2), integral_pair h1 h2]
   rfl
 
+omit [Fintype n] [DecidableEq n] in
 /-- A sum of block diagonal matrices is block diagonal. -/
 private theorem sum_fromBlocks_diagonal {ι m : Type*} [Fintype ι] (P : ι → Matrix m m 𝕜)
     (Q : ι → Matrix n n 𝕜) :
@@ -322,8 +324,12 @@ theorem hasMatrixMGFBound_of_integral_eq_zero_of_le [IsProbabilityMeasure μ]
     exact hθX.posDef_exp.posSemidef.specNorm_le_specNorm_of_le hω
   refine ⟨hH, hS, hint, fun θ hθ => ?_⟩
   have h1 := integral_mono_ae (hint θ hθ) (hQ θ _) (hpt θ hθ)
-  rw [integral_add ((integrable_const 1).add (hXi.smul θ)) (hX2i.smul _),
-    integral_add (integrable_const 1) (hXi.smul θ), integral_const, integral_smul,
+  have hA : Integrable (fun ω => (1 : Matrix n n 𝕜) + θ • X ω) μ :=
+    (integrable_const 1).add (hXi.smul θ)
+  have hB : Integrable (fun ω => (θ ^ 2 / 2 / (1 - L * θ / 3)) • X ω ^ 2) μ :=
+    hX2i.smul (θ ^ 2 / 2 / (1 - L * θ / 3))
+  have hC : Integrable (fun ω => θ • X ω) μ := hXi.smul θ
+  rw [integral_add hA hB, integral_add (integrable_const 1) hC, integral_const, integral_smul,
     integral_smul, hmean, smul_zero, add_zero, probReal_univ, one_smul] at h1
   have hcS : ((θ ^ 2 / 2 / (1 - L * θ / 3)) • ∫ ω, X ω ^ 2 ∂μ).IsHermitian :=
     (IsSelfAdjoint.all _).smul hS
@@ -352,7 +358,8 @@ theorem measureReal_eigenvalue_zero_sum_ge_le_bernstein [Nonempty n] (hind : iIn
   · rw [show -((0 : ℝ) ^ 2 / 2) / (specNorm (∑ k, ∫ ω, X k ω ^ 2 ∂μ) + L * 0 / 3) = 0 by ring,
       Real.exp_zero, mul_one]
     exact hP.trans hd
-  obtain ⟨θ, hθ, hexp⟩ := exists_bernstein_exponent hL (specNorm_nonneg _) ht'
+  obtain ⟨θ, hθ, hexp⟩ := exists_bernstein_exponent hL
+    (specNorm_nonneg (∑ k, ∫ ω, X k ω ^ 2 ∂μ)) ht'
   have hg := (bernsteinCoeff_nonneg hL hθ).2
   refine (HasMatrixMGFBound.measure_eigenvalue_zero_sum_ge_le_card_mul_exp hind h hθ hθ.1
     hg t).trans ?_
@@ -402,12 +409,16 @@ private theorem dilation_hypotheses (hind : iIndepFun S μ) (hS2 : ∀ k, MemLp 
     (hmean : ∀ k, ∫ ω, S k ω ∂μ = 0) (hle : ∀ k, ∀ᵐ ω ∂μ, specNorm (S k ω) ≤ L) :
     iIndepFun (fun k ω => dilation (S k ω)) μ ∧
       (∀ k, MemLp (fun ω => dilation (S k ω)) 2 μ) ∧ (∀ k, ∫ ω, dilation (S k ω) ∂μ = 0) ∧
-      ∀ k, ∀ᵐ ω ∂μ, dilation (S k ω) ≤ L • (1 : Matrix (m ⊕ n) (m ⊕ n) 𝕜) :=
-  ⟨hind.comp (fun _ A => dilation A) fun _ => measurable_dilation,
-    fun k => (dilationCLM m).comp_memLp' (hS2 k),
-    fun k => by rw [integral_dilation ((hS2 k).integrable one_le_two), hmean k, dilation_zero],
-    fun k => (hle k).mono fun ω h =>
+      ∀ k, ∀ᵐ ω ∂μ, dilation (S k ω) ≤ L • (1 : Matrix (m ⊕ n) (m ⊕ n) 𝕜) := by
+  have := hind.isProbabilityMeasure
+  have hmeas : Measurable (fun A : Matrix m n 𝕜 => dilation A) :=
+    (Continuous.matrix_fromBlocks continuous_const continuous_id
+      continuous_id.matrix_conjTranspose continuous_const).measurable
+  refine ⟨hind.comp (fun _ A => dilation A) fun _ => hmeas,
+    fun k => (dilationCLM (𝕜 := 𝕜) (n := n) m).comp_memLp' (hS2 k),
+    fun k => ?_, fun k => (hle k).mono fun ω h =>
       (isHermitian_dilation _).le_smul_one_of_specNorm_le (by rwa [specNorm_dilation])⟩
+  rw [integral_dilation ((hS2 k).integrable one_le_two), hmean k, dilation_zero]
 
 /-- **Matrix Bernstein**, rectangular summands ([Tropp2015], Theorem 6.1.1), with variance
 `v = max ‖∑ E S Sᴴ‖ ‖∑ E Sᴴ S‖`. For square Hermitian summands this is the two-sided form. -/

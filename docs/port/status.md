@@ -9,6 +9,17 @@ Updated at every stopping point. Newest entry first within each section.
   have been approval questions are recorded in the note under "Open questions" with the choice
   taken, for review after the fact. When very unsure: commit a checkpoint, then continue.
 
+- 2026-10-14, maintainer: **the orchestrator does less itself** (its context runs out). It keeps
+  the decisions, the agent briefs, the reading of agent reports, and commits. It delegates: design
+  notes are drafted by an Opus agent from a short brief (scope, consumers, decisions already made)
+  and reviewed by Fable; skeletons are written by the proof agent's predecessor or by an Opus
+  "skeleton" agent from the reviewed note; file splits, ledger entries (prototype-key lookup and
+  `ledger_add.py`), `NLAlib.lean` registration, status-table updates and `stage_check.sh` runs go
+  to Sonnet agents; proofs to Opus as before. The orchestrator reads reports, not files, and checks
+  builds only through `stage_check.sh` output.
+- 2026-10-14, maintainer: files up to about 1000 lines (Mathlib's 1500-line linter is the hard
+  ceiling); proofs under about 80 lines (`CONTRIBUTING.md` §1, §8, §10).
+
 - 2026-10-14, maintainer, approval for the Probability round: the maintainer weighs in on
   serious design decisions, meaning those that would need substantial rework to change once the
   round is finished (an interface every later theorem takes, a definition's carrier or indexing,

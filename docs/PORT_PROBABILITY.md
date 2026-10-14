@@ -41,7 +41,8 @@ amendments the Matrix report proposed, applied here from the start:
 - **Degenerate-case checklist** for every statement: empty index type, zero matrix or vector,
   constants that may be zero, indices past the size, rank deficiency, a probability measure that
   is not assumed, non-integrable functions (§3.2).
-- **File budget.** A skeleton file has at most about fifteen statements, or the note names its
+- **File budget.** A skeleton file has at most about twenty-five statements (files up to about
+  1000 lines, maintainer 2026-10-14), or the note names its
   split in advance.
 - **Duplicate search** against the library, not only Mathlib, before a statement enters a
   skeleton; a helper a second file could want is public from the start.

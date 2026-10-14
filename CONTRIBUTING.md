@@ -43,7 +43,8 @@ checks · 10 Building without running out of memory · 11 Rules for agents.
 6. **Every public declaration is documented and cited** (§6).
 7. **No `sorry` on `main`** in the library. Deferred statements live in `NLAlibScaffold` (§7).
    No `axiom`, no `native_decide`, no `admit`, no weakening a statement to make it provable.
-8. **Files are topics, not proofs.** 300 to 500 lines, one mathematical topic, ordered
+8. **Files are topics, not proofs.** Up to about 1000 lines (Mathlib's linter limit of 1500 is
+   the hard ceiling; maintainer, 2026-10-14), one mathematical topic, ordered
    definitions → basic API → main theorems → corollaries. No file named after a paper, a round of
    work, or a proof technique. No "toolkit", "bundle" or "part 2" files.
 9. **Design before code** (§8). Each stage of the library starts with a written design: the
@@ -445,7 +446,7 @@ maintainer before any proof is written. The note answers, with specifics:
    Written out, not described.
 4. **Consumers.** For each interface and headline statement, which later stage or layer will use
    it and in what form; a statement with no foreseeable consumer is questioned.
-5. **Files.** The file split for this stage, each file a topic of 300 to 500 lines, with the
+5. **Files.** The file split for this stage, each file a topic of up to about 1000 lines, with the
    declarations it will hold in order.
 6. **Material.** Which files of the prototype library were read, what in them is reused (as
    mathematics to cover, as proof material), and what is deliberately not reproduced and why
@@ -511,7 +512,7 @@ files on top of Mathlib take 3 to 6 GB each, and the terminal gets killed. Rules
   `LEAN_NUM_THREADS=4 lake build NLAlib.Matrix.Norms.Spectral` first.
 - **Run long builds in the background with a log**: `LEAN_NUM_THREADS=4 lake build NLAlib > /tmp/build.log 2>&1`,
   then read the log. Do not stream a full build into a terminal or an agent's context.
-- **Keep files under 500 lines and proofs under 80 lines.** Memory and heartbeat blowups come from
+- **Keep files under about 1000 lines and proofs under 80 lines.** Memory and heartbeat blowups come from
   single huge elaborations: a `simp` with hundreds of lemmas, an `nlinarith` on a goal with many
   atoms, a `decide` on a finite type. Split the proof.
 - **Never `import Mathlib` or `import Mathlib.Tactic`**, even in a scratch file inside the

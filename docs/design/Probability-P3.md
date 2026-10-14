@@ -279,3 +279,28 @@ fixed moments are parameters).
 10. Noted inconsistencies, not changed: P1's scalar `E exp (θX²) ≤ 1 / √(1 - 2θc)` against the
     rpow form here (a bridge for `n` a singleton is one `rw`); tail names use `measureReal_` here
     and in P0 but Mathlib's `measure_` (for `μ.real` statements) in P1's dot-notation lemmas.
+
+## 9. Stage report (2026-10-14)
+
+All files proved, nothing in `NLAlibScaffold`. Changes from the design and §8:
+- **Hanson–Wright reached `hansonWrightConstant = 1/196`** (the prototype had `1/(256 e²)`, about
+  ten times smaller), in 884 lines against the prototype's 3,400. The diagonal goes through P1's
+  centred square (`32 c²`, `4 c`) and Bernstein; the off-diagonal part is decoupled by random cuts
+  and compared with a Gaussian chaos. The two parts are added without independence by convexity
+  of `exp` (weights `4/7`, `3/7`), giving variance proxy `98 c² ‖A‖_F²` and scale `28 c ‖A‖`.
+  Amendment to §5: two proof files, `QuadraticForm/HansonWright/LinearImage.lean` (public
+  `lintegral_exp_mul_dotProduct_le`, `lintegral_exp_mul_norm_mulVec_sq_le`) and
+  `QuadraticForm/HansonWright/OffDiagonal.lean` (public `hasSubexponentialMGF_quadForm_sub_diagonal`:
+  the off-diagonal chaos is sub-exponential with `(18 c² ‖A‖_F², 12 c ‖A‖)`).
+- `IsSubgaussianVector.aemeasurable` is public over `𝕜` (Basic).
+- Hutchinson's variance is proved over `𝕜` through the complex fourth mixed moment
+  `E[conj X i · X j · X k · conj X l]` (private); the uncentred `E |Xᴴ A X|²` is a private lemma a
+  consumer could ask for.
+- The Laurent–Massart lower tail is proved without the prototype's "`χ² > 0` a.s." argument (two
+  choices of the Chernoff parameter).
+
+Follow-ups for the wrap-up: the non-independent sum of two sub-exponential variables (private in
+`OffDiagonal.lean`) belongs in `SubExponential/Basic.lean` as a public lemma;
+`lintegral_exp_mul_dotProduct_le` overlaps `IsSubgaussianVector.of_iIndepFun` and could be derived
+from it; `lintegral_exp_mul_dotProduct_gaussianVector` is duplicated privately in `Norm.lean` and
+`LinearImage.lean` and should be public once, in `Distributions/Gaussian.lean`.

@@ -80,7 +80,8 @@ theorem integrable_quadForm (hX : IsIsotropic X μ) (A : Matrix n n 𝕜) :
     (hX.integrable_mul_star j i).const_mul (A i j)
 
 /-- **Hutchinson's identity**: for an isotropic probe `X`, the quadratic form `Xᴴ A X` is an
-unbiased estimator of `tr A`. -/
+unbiased estimator of `tr A`.
+Result: hutchinson-trace-estimator -/
 theorem integral_quadForm (hX : IsIsotropic X μ) (A : Matrix n n 𝕜) :
     ∫ ω, quadForm A (X ω) ∂μ = A.trace := by
   have h (i : n) : ∫ ω, ∑ j, A i j * (X ω j * star (X ω i)) ∂μ = A i i := by

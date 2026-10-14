@@ -220,7 +220,8 @@ private lemma measureReal_norm_sq_ge_le_aux (h : IsSubgaussianVector X c μ) (hc
 /-- **The upper tail of `‖X‖²`** for a sub-Gaussian vector (Hsu, Kakade and Zhang 2012,
 Theorem 2.1 with `A = 1`; for a standard Gaussian vector this is Laurent and Massart's bound).
 `c ≠ 0` is needed for the non-strict event: with `c = 0` the vector is `0` almost surely and the
-event is everything. -/
+event is everything.
+Result: hsu-kakade-zhang -/
 theorem measureReal_norm_sq_ge_le (h : IsSubgaussianVector X c μ) (hc : c ≠ 0) {t : ℝ}
     (ht : 0 ≤ t) :
     μ.real {ω | c * (Fintype.card n + 2 * √(Fintype.card n * t) + 2 * t) ≤

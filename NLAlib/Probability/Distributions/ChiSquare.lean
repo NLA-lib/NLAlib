@@ -89,7 +89,8 @@ private theorem measureReal_norm_sq_le_le_exp_mul_rpow (hX : HasLaw X (gaussianV
 
 /-- **The lower tail of `χ²_n`** (Laurent and Massart 2000, Lemma 1):
 `P(‖X‖² ≤ n - 2√(n t)) ≤ e^{-t}`. The dimension must be positive: for `n = 0` the event is
-everything. -/
+everything.
+Result: laurent-massart -/
 theorem measureReal_norm_sq_le_of_hasLaw_gaussianVector (hX : HasLaw X (gaussianVector n) μ)
     (hn : 0 < Fintype.card n) {t : ℝ} (ht : 0 ≤ t) :
     μ.real {ω | ‖WithLp.toLp 2 (X ω)‖ ^ 2 ≤ Fintype.card n - 2 * √(Fintype.card n * t)} ≤

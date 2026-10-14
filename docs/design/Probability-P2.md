@@ -231,3 +231,13 @@ instances, not theorems.
     without an `IsIsotropic` transport along `(↑) : ℝ → ℂ` (absent; no consumer needs it now).
 11. Importance-weighted estimators (next round): when `p i = 0`, `f i / p i = 0` in Lean, so the
     estimator is unbiased on the support; say so where it is stated.
+
+## 9. Stage report (2026-10-14)
+
+All three files proved, nothing in `NLAlibScaffold`, with the §8 amendments. Further changes:
+- `integral_pow_four_of_hasLaw_gaussianReal` is proved for every variance by scaling from
+  `v = 1`; `v = 0` needs no separate case.
+- `isGaussian_gaussianVector` goes through `stdGaussian` and `PiLp.continuousLinearEquiv`, not
+  through `iIndepFun.hasGaussianLaw` (which needs a heavier import).
+- `samplingMeasure_singleton` (in `ℝ≥0∞`) is public, for `Measure.ext_of_singleton` arguments.
+- `isProbabilityMeasure_samplingMeasure` does not need `MeasurableSingletonClass`.

@@ -40,7 +40,8 @@ namespace NLAlib
 variable {Ω : Type*} {mΩ : MeasurableSpace Ω} {μ : Measure Ω}
 
 /-- **Markov's inequality** as a failure probability: `P(t ≤ f) ≤ E f / t` for nonnegative
-integrable `f` and `t > 0`. Integrability is needed: otherwise `∫ f = 0`. -/
+integrable `f` and `t > 0`. Integrability is needed: otherwise `∫ f = 0`.
+Result: markov-inequality -/
 theorem measureReal_ge_le_integral_div {f : Ω → ℝ} (hf0 : 0 ≤ᵐ[μ] f) (hf : Integrable f μ)
     {t : ℝ} (ht : 0 < t) : μ.real {ω | t ≤ f ω} ≤ (∫ ω, f ω ∂μ) / t := by
   rw [le_div_iff₀ ht, mul_comm]
@@ -60,7 +61,8 @@ theorem measureReal_abs_ge_le_integral_rpow_div {X : Ω → ℝ} {p : ℝ} (hp :
     (Filter.Eventually.of_forall fun ω => Real.rpow_nonneg (abs_nonneg _) p) hX
     (Real.rpow_pos_of_pos ht p)
 
-/-- **Chebyshev's inequality** as a failure probability: `P(t ≤ |X - E X|) ≤ Var X / t²`. -/
+/-- **Chebyshev's inequality** as a failure probability: `P(t ≤ |X - E X|) ≤ Var X / t²`.
+Result: chebyshev-inequality -/
 theorem measureReal_ge_le_variance_div_sq [IsFiniteMeasure μ] {X : Ω → ℝ} (hX : MemLp X 2 μ)
     {t : ℝ} (ht : 0 < t) :
     μ.real {ω | t ≤ |X ω - ∫ ω', X ω' ∂μ|} ≤ variance X μ / t ^ 2 := by

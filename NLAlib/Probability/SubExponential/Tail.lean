@@ -115,7 +115,8 @@ theorem measure_ge_le_of_le_mul (h : HasSubexponentialMGF X v b μ) {t : ℝ}
 /-- **The sub-exponential tail** ([Wainwright2019], Proposition 2.9):
 `P(t ≤ X) ≤ exp (-min (t² / (2v)) (t / (2b)))`. If `b = 0` or `v = 0`, Lean's division by zero
 makes the exponent `0` and the bound `1`; the regime forms are the usable statements then (for a
-sub-Gaussian variable, `b = 0`, use `measure_ge_le_of_mul_le`). -/
+sub-Gaussian variable, `b = 0`, use `measure_ge_le_of_mul_le`).
+Result: subexponential-tail -/
 theorem measure_ge_le (h : HasSubexponentialMGF X v b μ) {t : ℝ} (ht : 0 ≤ t) :
     μ.real {ω | t ≤ X ω} ≤ rexp (-min (t ^ 2 / (2 * v)) (t / (2 * b))) := by
   rcases le_total ((b : ℝ) * t) v with hbt | hbt
@@ -147,7 +148,8 @@ theorem measure_abs_ge_le (h : HasSubexponentialMGF X v b μ) {t : ℝ} (ht : 0 
     exact add_le_add (h.measure_ge_le ht) (h.measure_le_le ht)
 
 /-- **Bernstein's inequality** for independent sub-exponential variables
-([Wainwright2019], §2.1.3). -/
+([Wainwright2019], §2.1.3).
+Result: bernstein-inequality -/
 theorem measure_sum_ge_le_of_iIndepFun {ι : Type*} {X : ι → Ω → ℝ} (h_indep : iIndepFun X μ)
     {v b : ι → ℝ≥0} {s : Finset ι} (h : ∀ i ∈ s, HasSubexponentialMGF (X i) (v i) (b i) μ)
     {t : ℝ} (ht : 0 ≤ t) :

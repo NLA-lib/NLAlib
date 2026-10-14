@@ -229,7 +229,8 @@ theorem _root_.ProbabilityTheory.HasSubgaussianMGF.integrable_iSup {ι : Type*} 
 
 /-- **The maximal inequality** (Boucheron–Lugosi–Massart, Theorem 2.5): the mean of the maximum
 of `N` sub-Gaussian variables with proxy `c` is at most `√(2 c log N)`. No independence is
-assumed. -/
+assumed.
+Result: subgaussian-maximal-inequality -/
 theorem _root_.ProbabilityTheory.HasSubgaussianMGF.integral_iSup_le [IsProbabilityMeasure μ]
     {ι : Type*} [Fintype ι] {X : ι → Ω → ℝ} (h : ∀ i, HasSubgaussianMGF (X i) c μ) :
     ∫ ω, ⨆ i, X i ω ∂μ ≤ √(2 * c * Real.log (Fintype.card ι)) := by

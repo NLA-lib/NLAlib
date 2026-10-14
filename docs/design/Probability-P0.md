@@ -389,3 +389,22 @@ consumer is Freedman, last in P5; stating them now would fix a shape before its 
 Caveat from the review: R2's conditioning on a block and R4's `E ‖Σ₂ Ω₂ Ω₁⁺‖²` condition on an
 independent block; R2's note says whether they go through `condExp` or through independence and
 Fubini, and if the former, the matrix `condExp` API moves before R2.
+
+## 9. Stage report (2026-10-14)
+
+`Law.lean`, `Tail.lean` and `Isotropic.lean` proved, nothing in `NLAlibScaffold`;
+`MatrixIntegral.lean` and the Loewner `ClosedIciTopology` instance wait on Q1. Changes from the
+design:
+- `measureReal_abs_ge_le_add` needs no finiteness (the two-sided event is the union of the two
+  one-sided ones).
+- `integrable_of_measureReal_ge_le` and `integral_le_of_measureReal_ge_le` take any real `a`
+  (the `0 ≤ a` of the draft was redundant); a negative `a` reduces to `a = 0`.
+- `IsIsotropic` and `HasLaw.isIsotropic_iff` take no `[Fintype n]`; `IsIsotropic.of_iIndepFun`
+  takes no probability instance (`iIndepFun` implies it); `IsIsotropic.mulVec` takes no
+  `[Fintype m]`.
+- `hasLaw_pi_pi_iff` is proved through `Measure.infinitePi_map_curry` (Mathlib has no currying
+  lemma for `Measure.pi`). For R1: `HasLaw.isProbabilityMeasure` does not find the probability
+  instance of the nested product at type `Measure (Matrix m n α)`; the proof used
+  `inferInstanceAs`, and R1 should consider an instance for its `gaussianMatrix`.
+- Added after the review: power Markov `measureReal_abs_ge_le_integral_rpow_div` (proved by the
+  orchestrator).

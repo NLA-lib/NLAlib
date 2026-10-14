@@ -37,10 +37,15 @@ for the maintainer after P3. Now: P0.
 
 **P3 checkpoint passed (maintainer, 2026-10-14).** P0 §7 Q1 decided: `Matrix.Norms.L2Operator`
 for matrix integrals (D10 amended; `Mathlib-deviations.md` entry 13; `CONTRIBUTING.md` §5.1 rule).
-With the scope decided, the brief's stage order stands (P4, P5, P6, R1 to R5, P7). P4 proceeds on
-the orchestrator's recommendations (Lipschitz as `LipschitzWith` on `EuclideanSpace` with an `iff`
-to the explicit inequality; the log-Sobolev route with constant `L²`), open to the maintainer's
-correction. Now: P0's matrix-integral file, P4 design.
+P4 proceeded on the orchestrator's recommendations (Lipschitz as `LipschitzWith` on
+`EuclideanSpace`; the log-Sobolev route with constant `L²`), open to the maintainer's correction.
+
+**Order from here (orchestrator, 2026-10-14):** P5a (in progress), then the random-matrix stages
+by consumer weight, R1 (Gaussian matrices), R2 (moments), R4 (inverse moments, the range-finder
+family), P6 (Gaussian comparison, behind R3), R3 (extreme singular values), R5 (Haar frames),
+then P5b (intrinsic dimension), P5c (Khintchine), P5d (Freedman), P7. The brief's order is a
+dependency order and none of R1 to R5 depends on P5b to P5d; the survey finds no consumer of
+P5b to P5d outside their own layer.
 
 | Stage | File | Owner | State | Notes |
 |---|---|---|---|---|
@@ -70,7 +75,8 @@ correction. Now: P0's matrix-integral file, P4 design.
 | P4 | `Distributions/GaussianConcentration.lean` | Opus agent | proved | P4 complete; stage report and checks at the next quiet point |
 | P5a | design note `docs/design/Probability-P5a.md`, skeletons `MatrixConcentration/*` | orchestrator | written, Fable-reviewed (§8); skeletons compile | |
 | P5a | `MatrixConcentration/{Laplace,Subadditivity,MGFBound}.lean` (+ `ForMathlib/Analysis/Convex/Integral.lean`) | Opus agent | proved | Jensen on a non-closed convex set; wrap-up: move `continuousOn_cfc_log` to the Matrix layer, `measurableSet_posDef` to Measurability |
-| P5a | `MatrixConcentration/{Chernoff,ChernoffSum}.lean` | Opus agent | proofs in progress | |
+| P5a | `MatrixConcentration/{Chernoff,ChernoffSum}.lean` | Opus agent | proved | skeleton bug fixed: `∀ θ` had elaborated as `θ : ℕ` (rule added to CONTRIBUTING §5.2) |
+| R1 | design note `docs/design/RandomMatrix-R1.md` | orchestrator | written; Fable review running | |
 | P5a | `MatrixConcentration/{Bernstein,Series}.lean` | Opus agent | proofs in progress | |
 
 **Matrix layer complete, 2026-10-14** (branch `scaffold`, local commits, not pushed): stages M0 to

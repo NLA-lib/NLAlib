@@ -258,6 +258,9 @@ release.
   with `A *ᵥ u = c • u` and `‖WithLp.toLp 2 u‖ = 1`, an invariance equation `A * U = U * M` with
   `HasOrthonormalCols U`, or speak of `eigenvalue A k`.
 - No proof term inside a statement. Introduce the needed hypothesis or state through a definition.
+- A bound variable that only meets `•` gets its type written: `∀ θ : ℝ, … θ • Y ω …`. Without it
+  Lean elaborates `θ : ℕ` (`ℕ` acts on every additive monoid), and the hypothesis silently quantifies
+  over natural numbers (found in P5a's Chernoff skeleton, 2026-10-14).
 - Dot notation: a lemma whose first explicit argument is `hA : A.IsHermitian` lives in
   `Matrix.IsHermitian`; one about an `IsSVD` lives in `IsSVD`.
 

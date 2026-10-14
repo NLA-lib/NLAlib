@@ -12477,6 +12477,25 @@
   "new": "ProbabilityTheory.HasSubgaussianMGF.hasSubexponentialMGF_sq_sub_integral",
   "stage": "P1"
  },
+ "chernoffCgfCoefficient": {
+  "new": null,
+  "note": "written out in the statements, CONTRIBUTING §5.2 Numerical bounds rule 2",
+  "stage": "P5a"
+ },
+ "chernoffLowerTail": {
+  "new": null,
+  "note": "written out in the statements",
+  "stage": "P5a"
+ },
+ "chernoffUpperTail": {
+  "new": null,
+  "note": "written out in the statements",
+  "stage": "P5a"
+ },
+ "chernoff_matrix_mgf_cgf_le": {
+  "new": "NLAlib.hasMatrixMGFBound_of_posSemidef_of_le",
+  "stage": "P5a"
+ },
  "entropy_exp_mul_le_of_logSobolev_of_bounded": {
   "new": null,
   "note": "private step in LogSobolev.lean",
@@ -12885,6 +12904,14 @@
   "note": "measure-form twin of integral_of_hasLaw_rademacherMeasure",
   "stage": "P2"
  },
+ "integral_lambdaMax_sum_le_chernoff": {
+  "new": "NLAlib.integral_eigenvalue_zero_sum_le_chernoff",
+  "stage": "P5a"
+ },
+ "integral_lambdaMin_sum_ge_chernoff": {
+  "new": "NLAlib.le_integral_eigenvalue_sum_chernoff",
+  "stage": "P5a"
+ },
  "integral_le_of_tail_le": {
   "new": "NLAlib.integral_le_of_measureReal_ge_le",
   "stage": "P0"
@@ -12986,6 +13013,14 @@
   "note": "private step in Distributions/ChiSquare.lean",
   "stage": "P3"
  },
+ "matrix_chernoff_sampling_lower": {
+  "new": "NLAlib.measureReal_eigenvalue_sum_le_le_card_mul_exp",
+  "stage": "P5a"
+ },
+ "matrix_chernoff_sampling_upper": {
+  "new": "NLAlib.measureReal_eigenvalue_zero_sum_ge_le_card_mul_exp",
+  "stage": "P5a"
+ },
  "measureReal_abs_ge_le_two_mul_exp_of_cgf_le": {
   "new": null,
   "note": "replaced by HasSubexponentialMGF.measure_abs_ge_le",
@@ -13004,6 +13039,14 @@
   "new": null,
   "note": "P1's measure_ge_le applied to HasLogSobolev.hasSubgaussianMGF_sub_integral",
   "stage": "P4"
+ },
+ "measureReal_lambdaMax_sum_ge_le_chernoffUpperTail": {
+  "new": "NLAlib.measureReal_eigenvalue_zero_sum_ge_le_chernoff",
+  "stage": "P5a"
+ },
+ "measureReal_lambdaMin_sum_le_le_chernoffLowerTail": {
+  "new": "NLAlib.measureReal_eigenvalue_sum_le_le_chernoff",
+  "stage": "P5a"
  },
  "measureReal_lt_abs_le_of_hasSubgaussianMGF": {
   "new": "ProbabilityTheory.HasSubgaussianMGF.measure_abs_ge_le",

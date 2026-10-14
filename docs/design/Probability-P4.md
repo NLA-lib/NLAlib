@@ -241,3 +241,19 @@ Ornstein–Uhlenbeck semigroup; the compactly supported case is
 approximation of `LogSobolev.lean` is `ForMathlib/Analysis/Calculus/BumpFunction/Convolution.lean`
 (new file: convolution with a normed bump keeps the Lipschitz constant; `C^∞` Lipschitz
 approximation in finite dimension).
+
+## 9. Stage report (2026-10-14)
+
+All files proved, nothing in `NLAlibScaffold`, with the §8 amendments and the two dated amendments
+above. Results: Gaussian concentration of Lipschitz functions with the sharp proxy `L²`, for
+`stdGaussian E` and for `gaussianVector n`; Gross's inequality in its general integrable form, on
+`ℝ` and on any Euclidean space, with the integrability companions; Herbst's argument and entropy
+tensorization as general tools; `HasLogSobolev` with the Gaussian as its instance. New public
+general facts: resampling one coordinate of a product measure
+(`ForMathlib/MeasureTheory/Constructions/PiUpdate.lean`), Lipschitz-preserving smooth
+approximation (`ForMathlib/Analysis/Calculus/BumpFunction/Convolution.lean`). Changes from the
+design: the one-dimensional Gross inequality by the two-point route and Mathlib's central limit
+theorem (no Ornstein–Uhlenbeck semigroup, which the prototype spent about 1,000 lines on);
+integrability of a Lipschitz function under a log-Sobolev law by Fatou on clipped mollifications.
+Wrap-up items: `|s log s| ≤ s² + 1` has two private copies (one `ForMathlib` lemma);
+`Gross1975` is not in the bibliography (docstrings cite Boucheron–Lugosi–Massart).

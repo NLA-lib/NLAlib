@@ -251,3 +251,14 @@ new files, merged at wrap-up.
 5. **Result ids**: `generalized-matrix-laplace` (§3.1), `intrinsic-matrix-chernoff` (the sum tail
    and mean), `intrinsic-matrix-bernstein` (the Hermitian and rectangular sum tails and means).
    The trace forms are the general statements behind them and carry no id.
+6. **Mean constant** (proof round, amends §1 and §3.3). The proof reaches
+   `intrinsicBernsteinMeanConstant = 8`, the value of the `irreducible_def`, with
+   `intrinsicBernsteinMeanConstant_le : intrinsicBernsteinMeanConstant ≤ 8`; the `20` of §1, §3.3
+   and §7 was the prototype's.
+7. **Wrap-up** (amends item 4). `LaplaceGeneral.lean` is merged into `Laplace.lean`, which
+   `IntrinsicDimension.lean` now imports. The helpers the proof round copied into
+   `IntrinsicDimension.lean` are deleted in favour of the public originals:
+   `NLAlib.exp_div_rpow_rpow_eq_exp` (`Chernoff.lean`), `NLAlib.exp_integral_le_integral`
+   (`Laplace.lean`), `NLAlib.dilationCLM`, `NLAlib.memLp_dilation`, `NLAlib.iIndepFun_dilation`,
+   `NLAlib.integral_dilation_eq_zero` (`Bernstein.lean`) and `Matrix.sum_fromBlocks`
+   (`ForMathlib/Data/Matrix/Block.lean`).

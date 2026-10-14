@@ -110,9 +110,10 @@ private theorem sub_mul_log_one_add_le {δ : ℝ} (hδ0 : 0 ≤ δ) (hδ1 : δ �
     positivity
   nlinarith [mul_le_mul_of_nonneg_left hlow (show 0 ≤ 1 + δ by linarith)]
 
-/-- The Chernoff tail base in exponential form:
-`(e^s / (1 + s)^{1+s})^a = e^{(s - (1 + s) log (1 + s)) a}`. -/
-private theorem chernoff_base_rpow_eq {s : ℝ} (hs : 0 < 1 + s) (a : ℝ) :
+/-- The Chernoff tail base in exponential form: for `s > -1`,
+`(e^s / (1 + s)^{1+s})^a = e^{(s - (1 + s) log (1 + s)) a}`. It turns the source form of the
+Chernoff tails into an exponent to optimise. -/
+theorem exp_div_rpow_rpow_eq_exp {s : ℝ} (hs : 0 < 1 + s) (a : ℝ) :
     (Real.exp s / (1 + s) ^ (1 + s)) ^ a = Real.exp ((s - (1 + s) * Real.log (1 + s)) * a) := by
   rw [Real.rpow_def_of_pos (div_pos (Real.exp_pos _) (Real.rpow_pos_of_pos hs _)),
     Real.log_div (Real.exp_pos _).ne' (Real.rpow_pos_of_pos hs _).ne', Real.log_exp,
@@ -230,7 +231,7 @@ theorem measureReal_eigenvalue_zero_ge_le_chernoff_of_integral_le [Nonempty n]
           (Fintype.card n * Real.exp ((Real.exp (θ * L) - 1) / L * eigenvalue V 0)) :=
         mul_le_mul_of_nonneg_left ((htr θ hθ).trans htrd) (Real.exp_pos _).le
     _ = Fintype.card n * (Real.exp δ / (1 + δ) ^ (1 + δ)) ^ (eigenvalue V 0 / L) := by
-        rw [chernoff_base_rpow_eq h1δ, hθL, mul_left_comm, ← Real.exp_add, hθdef]
+        rw [exp_div_rpow_rpow_eq_exp h1δ, hθL, mul_left_comm, ← Real.exp_add, hθdef]
         congr 2
         field_simp
         ring
@@ -265,7 +266,7 @@ theorem measureReal_eigenvalue_le_le_chernoff_of_integral_le (hY : ∀ᵐ ω ∂
       eigenvalue_neg _ (show 0 + k + 1 = Fintype.card n by omega),
       eigenvalue_real_smul _ (neg_nonneg.mpr hc), neg_mul, neg_neg]
   rw [heig] at htrd
-  have hbase := chernoff_base_rpow_eq (s := -δ) (by linarith) (eigenvalue V k / L)
+  have hbase := exp_div_rpow_rpow_eq_exp (s := -δ) (by linarith) (eigenvalue V k / L)
   rw [← sub_eq_add_neg] at hbase
   calc μ.real {ω | eigenvalue (Y ω) k ≤ (1 - δ) * eigenvalue V k}
       ≤ Real.exp (-θ * ((1 - δ) * eigenvalue V k)) *
@@ -293,7 +294,7 @@ theorem measureReal_eigenvalue_zero_ge_le_card_mul_exp_of_integral_le [Nonempty 
   have hm : 0 ≤ eigenvalue V 0 := hV.eigenvalue_nonneg 0
   refine (measureReal_eigenvalue_zero_ge_le_chernoff_of_integral_le hY hV hL hint htr
     hδ0).trans ?_
-  rw [chernoff_base_rpow_eq (by linarith)]
+  rw [exp_div_rpow_rpow_eq_exp (by linarith)]
   gcongr
   calc (δ - (1 + δ) * Real.log (1 + δ)) * (eigenvalue V 0 / L)
       ≤ -(δ ^ 2 / 3) * (eigenvalue V 0 / L) :=
@@ -314,7 +315,7 @@ theorem measureReal_eigenvalue_le_le_card_mul_exp_of_integral_le
   have hm : 0 ≤ eigenvalue V k := hV.eigenvalue_nonneg k
   refine (measureReal_eigenvalue_le_le_chernoff_of_integral_le hY hV hL hk hint htr hδ0
     hδ1).trans ?_
-  have hbase := chernoff_base_rpow_eq (s := -δ) (by linarith) (eigenvalue V k / L)
+  have hbase := exp_div_rpow_rpow_eq_exp (s := -δ) (by linarith) (eigenvalue V k / L)
   rw [← sub_eq_add_neg] at hbase
   rw [hbase]
   gcongr

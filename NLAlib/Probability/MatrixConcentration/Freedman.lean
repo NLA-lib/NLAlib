@@ -59,17 +59,6 @@ variable {Ω : Type*} {mΩ : MeasurableSpace Ω} {μ : Measure Ω} [IsProbabilit
 private theorem measureReal_mono_ae' {s t : Set Ω} (h : s ≤ᵐ[μ] t) : μ.real s ≤ μ.real t :=
   ENNReal.toReal_mono (measure_ne_top μ t) (measure_mono_ae h)
 
-omit [Fintype n] [DecidableEq n] in
-/-- A sum of block diagonal matrices is block diagonal. -/
-private theorem sum_fromBlocks_diagonal {ι r : Type*} (u : Finset ι) (P : ι → Matrix r r 𝕜)
-    (Q : ι → Matrix n n 𝕜) :
-    ∑ k ∈ u, Matrix.fromBlocks (P k) 0 0 (Q k) =
-      Matrix.fromBlocks (∑ k ∈ u, P k) 0 0 (∑ k ∈ u, Q k) := by
-  ext (i | i) (j | j) <;>
-    simp only [Matrix.sum_apply, Matrix.fromBlocks_apply₁₁, Matrix.fromBlocks_apply₁₂,
-      Matrix.fromBlocks_apply₂₁, Matrix.fromBlocks_apply₂₂, Matrix.zero_apply,
-      Finset.sum_const_zero]
-
 /-- The trace exponential of a Hermitian matrix is nonnegative. -/
 private theorem re_trace_exp_nonneg {M : Matrix n n 𝕜} (hM : M.IsHermitian) :
     0 ≤ RCLike.re (exp M).trace := by
@@ -286,7 +275,7 @@ theorem measureReal_exists_eigenvalue_zero_sum_ge_le_freedman [Nonempty n]
   have h : ∀ j, HasCondMatrixMGFBound (ℱ j) (ℱ.le j) (X j) (fun θ => θ ^ 2 / 2 / (1 - L * θ / 3))
       (μ[fun ω' => X j ω' ^ 2 | ℱ j]) (Set.Ioo 0 (3 / L)) μ := fun j =>
     hasCondMatrixMGFBound_of_condExp_eq_zero_of_le (ℱ.le j) hL (hX2 j) (hmean j) (hle j)
-  have hg := (bernsteinCoeff_nonneg hL hθ).2
+  have hg := sq_div_two_div_nonneg_of_mem_Ioo hL hθ
   have hA : ∀ j, ∀ᵐ ω ∂μ, (μ[fun ω' => X j ω' ^ 2 | ℱ j] ω).PosSemidef := fun j =>
     Matrix.ae_posSemidef_condExp ((h j).ae_isHermitian.mono fun ω hω => by
       have h2 := Matrix.posSemidef_conjTranspose_mul_self (X j ω)
@@ -376,8 +365,8 @@ theorem measureReal_exists_specNorm_sum_ge_le_freedman [Nonempty n] {r : Type*} 
     rintro ⟨k, hk1, hk2⟩
     refine ⟨k, ?_, ?_⟩
     · rwa [← dilation_sum, eigenvalue_zero_dilation]
-    · rwa [Finset.sum_congr rfl fun j _ => hω j, sum_fromBlocks_diagonal,
-        specNorm_fromBlocks_zero₁₂_zero₂₁]
+    · rwa [Finset.sum_congr rfl fun j _ => hω j, Matrix.sum_fromBlocks, Finset.sum_const_zero,
+        Finset.sum_const_zero, specNorm_fromBlocks_zero₁₂_zero₂₁]
   refine (measureReal_mono_ae' hsub).trans (hF.trans_eq ?_)
   rw [Fintype.card_sum, Nat.cast_add]
 

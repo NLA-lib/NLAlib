@@ -19,15 +19,23 @@ its mean by `θ⁻¹ log E tr exp (θ Y)` (Tropp 2015, Proposition 3.2.1). The s
 `eigenvalue Y k` with `k + 1 = card n`, is handled with `θ < 0`. The eigenvalue and spectral norm of
 an integrable random matrix are integrable, so the means here are not junk values.
 
+More generally, for a nonnegative `ψ`, nondecreasing on `[0, ∞)`,
+`P(t ≤ λ_max Y) ≤ E tr ψ(Y) / ψ(t)` for `t ≥ 0` with `ψ t > 0` (Tropp 2015, Proposition 7.4.1).
+The exponential `ψ a = e^{θ a}` gives the bound above; the intrinsic-dimension tails
+(`NLAlib/Probability/MatrixConcentration/IntrinsicDimension.lean`) use `ψ a = e^{θ a} - θ a - 1`
+and `ψ a = max (e^{θ a} - 1) 0`, which vanish at `0` and so let the intrinsic dimension replace
+the ambient dimension.
+
 ## Main results
 
 * `NLAlib.measureReal_eigenvalue_zero_ge_le`, `NLAlib.measureReal_eigenvalue_le_le`: the tails.
 * `NLAlib.integral_eigenvalue_zero_le`, `NLAlib.le_integral_eigenvalue`: the means.
+* `NLAlib.measureReal_eigenvalue_zero_ge_le_integral_re_trace_cfc_div`: the generalised bound.
 * `NLAlib.integrable_eigenvalue`, `NLAlib.integrable_specNorm`.
 
 ## References
 
-* [J. A. Tropp, *An Introduction to Matrix Concentration Inequalities*][Tropp2015], §3.2.
+* [J. A. Tropp, *An Introduction to Matrix Concentration Inequalities*][Tropp2015], §3.2 and §7.4.
 -/
 
 @[expose] public section
@@ -73,6 +81,39 @@ private theorem re_trace_exp_smul_nonneg {A : Matrix n n 𝕜} (hA : A.IsHermiti
     {j : ℕ} (hj : j < Fintype.card n) : 0 ≤ RCLike.re (exp (θ • A)).trace :=
   (Real.exp_pos _).le.trans (exp_mul_eigenvalue_le_re_trace_exp hA θ hj)
 
+/-- **The generalised matrix Laplace transform bound**: for `ψ ≥ 0` nondecreasing on `[0, ∞)`,
+`t ≥ 0` and `ψ t > 0`, `P(t ≤ λ_max Y) ≤ E tr ψ(Y) / ψ(t)`.
+[Tropp2015, Proposition 7.4.1]; here for any measure (the proof is Markov's inequality,
+`mul_meas_ge_le_integral_of_nonneg`, which needs no finiteness), over any `RCLike` field. No
+continuity of `ψ` is assumed: the spectrum of a Hermitian matrix is finite, so `cfc ψ` is never
+its junk value at a Hermitian argument. `[Nonempty n]` is needed: for empty `n` and `t = 0` the
+event is everything and the right side `0`. The integrability hypothesis `hint` excludes the junk
+value `0` of the integral.
+Result: generalized-matrix-laplace -/
+theorem measureReal_eigenvalue_zero_ge_le_integral_re_trace_cfc_div [Nonempty n]
+    (hY : ∀ᵐ ω ∂μ, (Y ω).IsHermitian) {ψ : ℝ → ℝ} (hψ0 : ∀ x, 0 ≤ ψ x)
+    (hψ : MonotoneOn ψ (Set.Ici 0))
+    (hint : Integrable (fun ω => RCLike.re (cfc ψ (Y ω)).trace) μ) {t : ℝ} (ht : 0 ≤ t)
+    (hψt : 0 < ψ t) :
+    μ.real {ω | t ≤ eigenvalue (Y ω) 0} ≤ (∫ ω, RCLike.re (cfc ψ (Y ω)).trace ∂μ) / ψ t := by
+  set f : Ω → ℝ := fun ω => RCLike.re (cfc ψ (Y ω)).trace with hf
+  have hf0 : 0 ≤ᵐ[μ] f := by
+    filter_upwards [hY] with ω hω
+    simp only [hf, Pi.zero_apply, hω.re_trace_cfc]
+    exact Finset.sum_nonneg fun i _ => hψ0 _
+  have hfin : μ {ω | ψ t ≤ f ω} ≠ ⊤ := by
+    refine (lt_of_le_of_lt (measure_mono fun ω (h : ψ t ≤ f ω) => ?_)
+      (hint.measure_norm_ge_lt_top hψt)).ne
+    exact h.trans (Real.le_norm_self _)
+  have hsub : μ.real {ω | t ≤ eigenvalue (Y ω) 0} ≤ μ.real {ω | ψ t ≤ f ω} := by
+    refine ENNReal.toReal_mono hfin (measure_mono_ae ?_)
+    filter_upwards [hY] with ω hω (h : t ≤ eigenvalue (Y ω) 0)
+    exact (hψ ht (ht.trans h) h).trans
+      (hω.apply_eigenvalue_zero_le_re_trace_cfc fun x _ => hψ0 x)
+  rw [le_div_iff₀ hψt, mul_comm]
+  exact (mul_le_mul_of_nonneg_left hsub hψt.le).trans
+    (mul_meas_ge_le_integral_of_nonneg hf0 hint _)
+
 variable [IsProbabilityMeasure μ]
 
 /-- Markov's inequality in the form `P(s) ≤ e^{-c} E f` when `e^c ≤ f` on `s`. -/
@@ -87,8 +128,10 @@ private theorem measureReal_le_exp_neg_mul_integral {f : Ω → ℝ} {s : Set Ω
       rw [← mul_assoc, ← Real.exp_add, neg_add_cancel, Real.exp_zero, one_mul]
     _ ≤ Real.exp (-c) * ∫ ω, f ω ∂μ := mul_le_mul_of_nonneg_left hM (Real.exp_pos _).le
 
-/-- Jensen's inequality for the exponential: `exp (E Z) ≤ E f` when `exp Z ≤ f`. -/
-private theorem exp_integral_le {Z f : Ω → ℝ} (hZ : Integrable Z μ) (hf : Integrable f μ)
+/-- **Jensen's inequality for the exponential**, in the form the Laplace transform method uses:
+for an integrable `Z` and an integrable `f` with `exp Z ≤ f` almost surely,
+`exp (E Z) ≤ E f`. The integrability of `exp Z` follows from the domination. -/
+theorem exp_integral_le_integral {Z f : Ω → ℝ} (hZ : Integrable Z μ) (hf : Integrable f μ)
     (hle : ∀ᵐ ω ∂μ, Real.exp (Z ω) ≤ f ω) : Real.exp (∫ ω, Z ω ∂μ) ≤ ∫ ω, f ω ∂μ := by
   have hgi : Integrable (Real.exp ∘ Z) μ := by
     refine hf.mono' (Real.continuous_exp.comp_aestronglyMeasurable hZ.aestronglyMeasurable) ?_
@@ -132,7 +175,7 @@ theorem integral_eigenvalue_zero_le [Nonempty n] (hY : ∀ᵐ ω ∂μ, (Y ω).I
     (hYi : Integrable Y μ) {θ : ℝ} (hθ : 0 < θ)
     (hint : Integrable (fun ω => RCLike.re (exp (θ • Y ω)).trace) μ) :
     ∫ ω, eigenvalue (Y ω) 0 ∂μ ≤ θ⁻¹ * Real.log (∫ ω, RCLike.re (exp (θ • Y ω)).trace ∂μ) := by
-  have h := exp_integral_le ((integrable_eigenvalue hYi 0).const_mul θ) hint
+  have h := exp_integral_le_integral ((integrable_eigenvalue hYi 0).const_mul θ) hint
     (hY.mono fun ω hω => exp_mul_eigenvalue_le_re_trace_exp hω θ Fintype.card_pos)
   rw [integral_const_mul] at h
   rw [le_inv_mul_iff₀ hθ, Real.le_log_iff_exp_le ((Real.exp_pos _).trans_le h)]
@@ -144,7 +187,7 @@ theorem le_integral_eigenvalue (hY : ∀ᵐ ω ∂μ, (Y ω).IsHermitian) (hYi :
     (hint : Integrable (fun ω => RCLike.re (exp (θ • Y ω)).trace) μ) :
     θ⁻¹ * Real.log (∫ ω, RCLike.re (exp (θ • Y ω)).trace ∂μ) ≤ ∫ ω, eigenvalue (Y ω) k ∂μ := by
   have hkn : k < Fintype.card n := by omega
-  have h := exp_integral_le ((integrable_eigenvalue hYi k).const_mul θ) hint
+  have h := exp_integral_le_integral ((integrable_eigenvalue hYi k).const_mul θ) hint
     (hY.mono fun ω hω => exp_mul_eigenvalue_le_re_trace_exp hω θ hkn)
   rw [integral_const_mul] at h
   have hlog : θ * ∫ ω, eigenvalue (Y ω) k ∂μ ≤

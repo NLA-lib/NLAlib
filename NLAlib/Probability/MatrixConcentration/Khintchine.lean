@@ -7,8 +7,8 @@ module
 
 public import NLAlib.Matrix.Functions.TracePowers
 public import NLAlib.Probability.Distributions.Gaussian
-public import NLAlib.Probability.Distributions.GaussianIntegrationByPartsGrowth
-public import NLAlib.Probability.Distributions.RademacherSymmetry
+public import NLAlib.Probability.Distributions.GaussianIntegrationByParts
+public import NLAlib.Probability.Distributions.Rademacher
 public import NLAlib.Probability.MatrixIntegral
 
 /-!

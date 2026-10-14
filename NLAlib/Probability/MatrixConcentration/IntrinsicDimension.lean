@@ -12,7 +12,7 @@ public import NLAlib.Matrix.Basic.SchurComplement
 public import NLAlib.Matrix.Functions.TraceFunctions
 public import NLAlib.Probability.MatrixConcentration.Bernstein
 public import NLAlib.Probability.MatrixConcentration.ChernoffSum
-public import NLAlib.Probability.MatrixConcentration.LaplaceGeneral
+public import NLAlib.Probability.MatrixConcentration.Laplace
 public import NLAlib.Probability.Tail
 
 /-!
@@ -59,14 +59,6 @@ variable {Ω : Type*} {mΩ : MeasurableSpace Ω} {μ : Measure Ω} {𝕜 : Type*
   {n : Type*} [Fintype n] [DecidableEq n] {ι : Type*} [Fintype ι] {L : ℝ}
 
 /-! ### Preliminaries -/
-
-/-- The Chernoff tail base in exponential form:
-`(e^s / (1 + s)^{1+s})^a = e^{(s - (1 + s) log (1 + s)) a}`. -/
-private theorem chernoff_base_rpow_eq_exp {s : ℝ} (hs : 0 < 1 + s) (a : ℝ) :
-    (Real.exp s / (1 + s) ^ (1 + s)) ^ a = Real.exp ((s - (1 + s) * Real.log (1 + s)) * a) := by
-  rw [Real.rpow_def_of_pos (div_pos (Real.exp_pos _) (Real.rpow_pos_of_pos hs _)),
-    Real.log_div (Real.exp_pos _).ne' (Real.rpow_pos_of_pos hs _).ne', Real.log_exp,
-    Real.log_rpow hs]
 
 /-- `δ ≤ (1 + δ) log (1 + δ)` for `δ > -1`. -/
 private theorem le_one_add_mul_log_one_add {δ : ℝ} (hδ : 0 < 1 + δ) :
@@ -115,19 +107,6 @@ private theorem convexOn_exp_mul_sub_one (c : ℝ) :
   have e : c * (a * x + b * y) = a * (c * x) + b * (c * y) := by ring
   rw [e]
   linear_combination h + hab
-
-/-- Jensen's inequality for the exponential: `exp (E Z) ≤ E f` when `exp Z ≤ f`. -/
-private theorem exp_integral_le_integral [IsProbabilityMeasure μ] {Z f : Ω → ℝ}
-    (hZ : Integrable Z μ) (hf : Integrable f μ) (hle : ∀ᵐ ω ∂μ, Real.exp (Z ω) ≤ f ω) :
-    Real.exp (∫ ω, Z ω ∂μ) ≤ ∫ ω, f ω ∂μ := by
-  have hgi : Integrable (Real.exp ∘ Z) μ := by
-    refine hf.mono' (Real.continuous_exp.comp_aestronglyMeasurable hZ.aestronglyMeasurable) ?_
-    filter_upwards [hle] with ω hω
-    rw [Function.comp_apply, Real.norm_eq_abs, abs_of_pos (Real.exp_pos _)]
-    exact hω
-  refine (ConvexOn.map_integral_le convexOn_exp Real.continuous_exp.continuousOn isClosed_univ
-    (ae_of_all _ fun _ => Set.mem_univ _) hZ hgi).trans ?_
-  exact integral_mono_ae hgi hf hle
 
 omit [DecidableEq n] in
 /-- The intrinsic dimension of a positive semidefinite matrix is nonnegative. -/
@@ -253,7 +232,7 @@ theorem measureReal_eigenvalue_zero_ge_le_chernoff_intrinsicDim_of_integral_le
   refine hlap.trans ((div_le_div_of_nonneg_right hE (by linarith)).trans ?_)
   refine (mul_sub_one_div_sub_one_le (intrinsicDimension_nonneg_of_posSemidef hV)
     (Real.exp_pos _).le hX2).trans_eq ?_
-  rw [chernoff_base_rpow_eq_exp h1δ, mul_div_assoc, ← Real.exp_sub]
+  rw [exp_div_rpow_rpow_eq_exp h1δ, mul_div_assoc, ← Real.exp_sub]
   congr 2
   rw [htdef, hθdef]
   field_simp
@@ -553,32 +532,6 @@ section Rectangular
 
 variable {m : Type*} [Fintype m] [DecidableEq m] {S : ι → Ω → Matrix m n 𝕜}
 
-/-- The Hermitian dilation as a continuous real-linear map. -/
-private noncomputable def dilationRealCLM (m : Type*) [Fintype m] :
-    Matrix m n 𝕜 →L[ℝ] Matrix (m ⊕ n) (m ⊕ n) 𝕜 :=
-  LinearMap.toContinuousLinearMap
-    { toFun := dilation
-      map_add' := dilation_add
-      map_smul' := dilation_smul_real }
-
-omit [Fintype ι] in
-/-- The dilations of bounded centred independent summands satisfy the hypotheses of the
-Hermitian theorems. -/
-private theorem dilation_intrinsic_hyps (hind : iIndepFun S μ) (hS2 : ∀ k, MemLp (S k) 2 μ)
-    (hmean : ∀ k, ∫ ω, S k ω ∂μ = 0) (hle : ∀ k, ∀ᵐ ω ∂μ, specNorm (S k ω) ≤ L) :
-    iIndepFun (fun k ω => dilation (S k ω)) μ ∧
-      (∀ k, MemLp (fun ω => dilation (S k ω)) 2 μ) ∧ (∀ k, ∫ ω, dilation (S k ω) ∂μ = 0) ∧
-      ∀ k, ∀ᵐ ω ∂μ, dilation (S k ω) ≤ L • (1 : Matrix (m ⊕ n) (m ⊕ n) 𝕜) := by
-  have := hind.isProbabilityMeasure
-  have hmeas : Measurable (fun A : Matrix m n 𝕜 => dilation A) :=
-    (Continuous.matrix_fromBlocks continuous_const continuous_id
-      continuous_id.matrix_conjTranspose continuous_const).measurable
-  refine ⟨hind.comp (fun _ A => dilation A) fun _ => hmeas,
-    fun k => (dilationRealCLM (𝕜 := 𝕜) (n := n) m).comp_memLp' (hS2 k),
-    fun k => ?_, fun k => (hle k).mono fun ω h =>
-      (isHermitian_dilation _).le_smul_one_of_specNorm_le (by rwa [specNorm_dilation])⟩
-  rw [integral_dilation ((hS2 k).integrable one_le_two), hmean k, dilation_zero]
-
 /-- The second moments of the dilations are bounded by the block diagonal proxy. -/
 private theorem sum_integral_dilation_sq_le (hS2 : ∀ k, MemLp (S k) 2 μ) {V₁ : Matrix m m 𝕜}
     {V₂ : Matrix n n 𝕜} (hV₁ : ∑ k, ∫ ω, S k ω * (S k ω)ᴴ ∂μ ≤ V₁)
@@ -587,15 +540,8 @@ private theorem sum_integral_dilation_sq_le (hS2 : ∀ k, MemLp (S k) 2 μ) {V�
   have hsq : ∀ k, ∫ ω, dilation (S k ω) ^ 2 ∂μ =
       Matrix.fromBlocks (∫ ω, S k ω * (S k ω)ᴴ ∂μ) 0 0 (∫ ω, (S k ω)ᴴ * S k ω ∂μ) := fun k =>
     integral_dilation_sq (hS2 k)
-  have hsum : ∑ k, Matrix.fromBlocks (∫ ω, S k ω * (S k ω)ᴴ ∂μ) 0 0
-      (∫ ω, (S k ω)ᴴ * S k ω ∂μ) = Matrix.fromBlocks (∑ k, ∫ ω, S k ω * (S k ω)ᴴ ∂μ) 0 0
-      (∑ k, ∫ ω, (S k ω)ᴴ * S k ω ∂μ) := by
-    ext (i | i) (j | j) <;>
-      simp only [Matrix.sum_apply, Matrix.fromBlocks_apply₁₁, Matrix.fromBlocks_apply₁₂,
-        Matrix.fromBlocks_apply₂₁, Matrix.fromBlocks_apply₂₂, Matrix.zero_apply,
-        Finset.sum_const_zero]
-  simp only [hsq]
-  rw [hsum, Matrix.le_iff]
+  simp only [hsq, Matrix.sum_fromBlocks, Finset.sum_const_zero]
+  rw [Matrix.le_iff]
   have hdiff : Matrix.fromBlocks V₁ 0 0 V₂ - Matrix.fromBlocks (∑ k, ∫ ω, S k ω * (S k ω)ᴴ ∂μ) 0 0
       (∑ k, ∫ ω, (S k ω)ᴴ * S k ω ∂μ) = Matrix.fromBlocks (V₁ - ∑ k, ∫ ω, S k ω * (S k ω)ᴴ ∂μ)
       0 0ᴴ (V₂ - ∑ k, ∫ ω, (S k ω)ᴴ * S k ω ∂μ) := by
@@ -621,8 +567,12 @@ theorem measureReal_specNorm_sum_ge_le_bernstein_intrinsicDim (hind : iIndepFun 
     μ.real {ω | t ≤ specNorm (∑ k, S k ω)} ≤
       4 * intrinsicDimension (Matrix.fromBlocks V₁ 0 0 V₂) *
         Real.exp (-(t ^ 2 / 2) / (max (specNorm V₁) (specNorm V₂) + L * t / 3)) := by
-  obtain ⟨h1, h2, h3, h4⟩ := dilation_intrinsic_hyps hind hS2 hmean hle
-  have h := measureReal_eigenvalue_zero_sum_ge_le_bernstein_intrinsicDim h1 hL h2 h3 h4
+  have := hind.isProbabilityMeasure
+  have h := measureReal_eigenvalue_zero_sum_ge_le_bernstein_intrinsicDim (iIndepFun_dilation hind)
+    hL (fun k => memLp_dilation (hS2 k))
+    (fun k => integral_dilation_eq_zero ((hS2 k).integrable one_le_two) (hmean k))
+    (fun k => (hle k).mono fun ω h =>
+      (isHermitian_dilation _).le_smul_one_of_specNorm_le (by rwa [specNorm_dilation]))
     (sum_integral_dilation_sq_le hS2 hV₁ hV₂) (t := t)
     (by rwa [specNorm_fromBlocks_zero₁₂_zero₂₁])
   simp only [← dilation_sum, eigenvalue_zero_dilation, specNorm_fromBlocks_zero₁₂_zero₂₁] at h
@@ -804,8 +754,12 @@ theorem integral_specNorm_sum_le_bernstein_intrinsicDim (hind : iIndepFun S μ)
       (√(max (specNorm V₁) (specNorm V₂) *
           Real.log (1 + intrinsicDimension (Matrix.fromBlocks V₁ 0 0 V₂))) +
         L * Real.log (1 + intrinsicDimension (Matrix.fromBlocks V₁ 0 0 V₂))) := by
-  obtain ⟨h1, h2, h3, h4⟩ := dilation_intrinsic_hyps hind hS2 hmean hle
-  have h := integral_eigenvalue_zero_sum_le_bernstein_intrinsicDim h1 hL h2 h3 h4
+  have := hind.isProbabilityMeasure
+  have h := integral_eigenvalue_zero_sum_le_bernstein_intrinsicDim (iIndepFun_dilation hind)
+    hL (fun k => memLp_dilation (hS2 k))
+    (fun k => integral_dilation_eq_zero ((hS2 k).integrable one_le_two) (hmean k))
+    (fun k => (hle k).mono fun ω h =>
+      (isHermitian_dilation _).le_smul_one_of_specNorm_le (by rwa [specNorm_dilation]))
     (sum_integral_dilation_sq_le hS2 hV₁ hV₂)
   simp only [← dilation_sum, eigenvalue_zero_dilation, specNorm_fromBlocks_zero₁₂_zero₂₁] at h
   exact h

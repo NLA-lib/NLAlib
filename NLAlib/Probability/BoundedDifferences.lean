@@ -6,7 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import Mathlib.Probability.Independence.Basic
-public import NLAlib.Probability.EntropyExpBounded
+public import NLAlib.Probability.Entropy
 public import NLAlib.Probability.EntropyTensorization
 
 /-!

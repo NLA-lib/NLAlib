@@ -258,3 +258,16 @@ new files, merged at wrap-up. None is registered in `NLAlib.lean`.
    Herbst's argument being in `Entropy.lean`). No statement needed an elaboration fix.
 7. **Result ids**: `subgaussian-def` (the `ψ₂` bridge), `subexponential-def` (new, the `ψ₁`
    bridge), `bounded-differences` (new) and `mcdiarmid`.
+8. **Reached constants and the entropy-lemma route** (proof round, amends §3.1, §3.2 and item 4).
+   The bodies are the values the proofs reach: `psiTwoSubgaussianConstant = (1 + log 2)` and
+   `psiOneSubexponentialVarianceConstant = 32 / e²`, each through `Real.toNNReal` (§3.1's
+   `Real.toNNReal` allowance, made there for `1 + log 2`, extends to the `32 / e²` body; accepted
+   by the orchestrator), and `psiOneSubexponentialScaleConstant = 2`. The `_le` lemmas keep the
+   bounds `2`, `5` and `2`. `entropy_exp_mul_le_of_mem_Icc` is proved by the mean value theorem
+   for `s Λ'(s) - Λ(s) - s² (b - a)² / 8` (`Λ = cgf g ν`), which vanishes at `0` and has
+   derivative `s (Λ''(s) - (b - a)² / 4)`, with `variance_tilted_mul` and
+   `variance_le_sq_of_bounded` for `Λ'' ≤ (b - a)² / 4`; Mathlib's Taylor step
+   `exists_cgf_eq_iteratedDeriv_two_cgf_mul` named in item 1 is not used.
+9. **Wrap-up** (amends items 1 and 6). `EntropyExpBounded.lean` is merged into `Entropy.lean`,
+   which `BoundedDifferences.lean` now imports; `Orlicz.lean` and `BoundedDifferences.lean` are
+   registered in `NLAlib.lean`.

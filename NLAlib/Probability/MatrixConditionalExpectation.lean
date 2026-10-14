@@ -17,7 +17,8 @@ The conditional expectation of a random matrix `X : Ω → Matrix m n 𝕜` give
 Mathlib's `μ[X | m]`, under the same normed structure as the integral:
 `open scoped Matrix.Norms.L2Operator` (`docs/design/Mathlib-deviations.md` entry 13;
 `NLAlib/Probability/MatrixIntegral.lean`). It is entrywise, commutes with the conjugate
-transpose, the trace and the Hermitian dilation, and preserves almost sure Hermitian, positive
+transpose, the trace, the Hermitian dilation and the functional calculus of a fixed Hermitian
+matrix, and preserves almost sure Hermitian, positive
 semidefinite and positive definite values. The conjugate transpose, Hermitian and positive
 semidefinite statements need no integrability, because a non-integrable function has conditional
 expectation `0`. Loewner monotonicity is Mathlib's `MeasureTheory.condExp_mono`, through
@@ -31,6 +32,8 @@ The conditional sibling of `NLAlib/Probability/MatrixIntegral.lean`
 
 * `Matrix.condExp_apply`, `Matrix.condExp_conjTranspose`, `Matrix.condExp_trace`.
 * `Matrix.ae_isHermitian_condExp`, `Matrix.ae_posSemidef_condExp`, `Matrix.ae_posDef_condExp`.
+* `Matrix.IsHermitian.condExp_cfc`: the functional calculus of a fixed Hermitian matrix commutes
+  with the conditional expectation.
 * `Matrix.condExp_dilation`, `Matrix.condExp_dilation_sq`: for the rectangular Freedman
   inequality.
 -/
@@ -168,6 +171,41 @@ theorem _root_.Matrix.ae_posDef_condExp (hm : m ≤ mΩ) [IsFiniteMeasure μ]
     ae_pos_condExp hm hf hfpos] with ω h₁ h₂ h₃
   rw [← h₂] at h₁
   exact Matrix.PosDef.posDef_of_le (Matrix.PosDef.smul Matrix.PosDef.one h₃) h₁
+
+/-- **The functional calculus of a fixed Hermitian matrix commutes with the conditional
+expectation**: if `ω ↦ f ω x` is integrable for every `x`, then almost surely
+`μ[cfc (f ·) B | m] = cfc (fun x => μ[f · x | m]) B`. The conditional form of
+`Matrix.IsHermitian.cfc_integral`; as there, no continuity in `ω` or `x` is needed, since the
+spectrum of a matrix is finite. Proof: through a unitary diagonalisation `B = U diag(λ) Uᴴ`,
+`cfc g B` is a real-linear image of `(g (λ i))ᵢ`, and `comp_condExp_comm` passes it through. -/
+theorem _root_.Matrix.IsHermitian.condExp_cfc {B : Matrix n n 𝕜} (hB : B.IsHermitian)
+    {f : Ω → ℝ → ℝ} (hf : ∀ x, Integrable (fun ω => f ω x) μ) :
+    μ[fun ω => cfc (f ω) B | m] =ᵐ[μ] fun ω' => cfc (fun x => μ[fun ω => f ω x | m] ω') B := by
+  obtain ⟨U, hU, hBU⟩ := hB.exists_eq_mul_diagonal_mul_conjTranspose
+  have hr := Fintype.card_fin (Fintype.card n)
+  let Lc : (Fin (Fintype.card n) → ℝ) →L[ℝ] Matrix n n 𝕜 := LinearMap.toContinuousLinearMap
+    { toFun := fun v => U * Matrix.diagonal (fun i => ((v i : ℝ) : 𝕜)) * Uᴴ
+      map_add' := fun v w => by
+        simp only [Pi.add_apply, RCLike.ofReal_add, ← Matrix.diagonal_add, Matrix.mul_add,
+          Matrix.add_mul]
+      map_smul' := fun a v => by
+        have hd : (fun i => (((a • v) i : ℝ) : 𝕜)) = (a : 𝕜) • fun i => ((v i : ℝ) : 𝕜) := by
+          funext i
+          simp only [Pi.smul_apply, smul_eq_mul, RCLike.ofReal_mul]
+        rw [RingHom.id_apply, hd, Matrix.diagonal_smul, Matrix.mul_smul, Matrix.smul_mul,
+          ← RCLike.real_smul_eq_coe_smul] }
+  have hcfc : ∀ g : ℝ → ℝ, cfc g B = Lc (fun i => g (eigenvalue B i)) := fun g =>
+    cfc_eq_mul_diagonal_mul_conjTranspose hU hr hBU g
+  let v : Ω → Fin (Fintype.card n) → ℝ := fun ω i => f ω (eigenvalue B i)
+  have hv : Integrable v μ := integrable_pi_iff.2 fun i => hf _
+  have hcomp : (fun ω => cfc (f ω) B) = Lc ∘ v := funext fun ω => hcfc (f ω)
+  have hproj : ∀ᵐ ω' ∂μ, ∀ i, μ[v | m] ω' i = μ[fun ω => f ω (eigenvalue B i) | m] ω' :=
+    ae_all_iff.mpr fun i =>
+      (ContinuousLinearMap.proj (R := ℝ) (φ := fun _ => ℝ) i).comp_condExp_comm (m := m) hv
+  rw [hcomp]
+  filter_upwards [(Lc.comp_condExp_comm (m := m) hv).symm, hproj] with ω' h1 h2
+  rw [h1, Function.comp_apply, hcfc]
+  exact congrArg Lc (funext h2)
 
 /-- The conditional expectation of the Hermitian dilation of an integrable random matrix is the
 dilation of its conditional expectation. The conditional form of `NLAlib.integral_dilation`.

@@ -15,7 +15,11 @@ public import NLAlib.Probability.SubGaussian.Basic
 `NLAlib.rademacherVector n` is the law of a vector of independent signs, an `abbrev` for the
 product. This file proves, for random variables with these laws, the interfaces and moments the
 probability layers use: proxy `1`, `X² = 1` almost surely, `E X⁴ = 1`, the moment generating
-function `cosh`, and isotropy of the vector.
+function `cosh`, and isotropy of the vector. The law is symmetric, and flipping one coordinate of
+a vector of independent signs preserves its law: the symmetries behind the Rademacher moment
+recursion of the noncommutative Khintchine inequality
+(`NLAlib/Probability/MatrixConcentration/Khintchine.lean`). The symmetries are stated for the
+measures; statements with `HasLaw ε (rademacherVector n) μ` transport through `integral_map`.
 
 `NLAlib.integrable_rademacherMeasure` and `NLAlib.integral_rademacherMeasure` are stated for the
 measure: they are its constructors (as Mathlib's `integral_bernoulliMeasure` is), from which the
@@ -30,6 +34,8 @@ random-variable forms follow.
 * `NLAlib.integral_rademacherMeasure`: `∫ f = (f 1 + f (-1)) / 2`.
 * `NLAlib.hasSubgaussianMGF_of_hasLaw_rademacherMeasure`: proxy `1`.
 * `NLAlib.isIsotropic_of_hasLaw_rademacherVector`.
+* `NLAlib.measurePreserving_neg_rademacherMeasure`,
+  `NLAlib.measurePreserving_update_neg_rademacherVector`: sign-flip symmetry.
 -/
 
 @[expose] public section
@@ -136,5 +142,32 @@ theorem ae_sq_eq_one_of_hasLaw_rademacherVector {X : Ω → n → ℝ}
   refine ae_all_iff.2 fun i => ?_
   filter_upwards [ae_eq_one_or_neg_one_of_hasLaw_rademacherMeasure (hX.eval i)] with ω h
   rcases h with h | h <;> simp [h]
+
+/-! ### Sign-flip symmetry -/
+
+/-- The Rademacher law is symmetric: `x ↦ -x` preserves it. -/
+theorem measurePreserving_neg_rademacherMeasure :
+    MeasurePreserving (fun x : ℝ => -x) rademacherMeasure rademacherMeasure := by
+  refine ⟨measurable_neg, ?_⟩
+  rw [rademacherMeasure, Measure.map_smul, Measure.map_add _ _ measurable_neg,
+    Measure.map_dirac' measurable_neg, Measure.map_dirac' measurable_neg, neg_neg, add_comm]
+
+/-- Flipping the sign of one coordinate of a vector of independent random signs preserves its
+law. Proof: Mathlib's `measurePreserving_pi`, with `-·` in coordinate `i` and `id` elsewhere. -/
+theorem measurePreserving_update_neg_rademacherVector [DecidableEq n] (i : n) :
+    MeasurePreserving (fun x : n → ℝ => Function.update x i (-x i))
+      (rademacherVector n) (rademacherVector n) := by
+  have h := measurePreserving_pi (fun _ : n => rademacherMeasure) (fun _ => rademacherMeasure)
+    (f := fun j (x : ℝ) => if j = i then -x else x) fun j => by
+      by_cases hj : j = i
+      · simp only [hj, if_true]
+        exact measurePreserving_neg_rademacherMeasure
+      · simp only [hj, if_false]
+        exact MeasurePreserving.id _
+  convert h using 1
+  funext x j
+  by_cases hj : j = i
+  · subst hj; simp
+  · simp [hj]
 
 end NLAlib

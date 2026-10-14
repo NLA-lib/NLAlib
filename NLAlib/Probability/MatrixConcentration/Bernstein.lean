@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.ForMathlib.Analysis.Real.Sqrt
+public import NLAlib.ForMathlib.Data.Matrix.Block
 public import NLAlib.Matrix.Spectral.Dilation
 public import NLAlib.Probability.MatrixConcentration.MGFBound
 
@@ -122,15 +123,18 @@ theorem exp_mul_le_bernstein {L θ x : ℝ} (hθ : 0 < θ) (hθL : L * θ < 3) (
   have h3 : θ ^ 2 / 2 / (1 - L * θ / 3) * x ^ 2 = (θ * x) ^ 2 / 2 / (1 - L * θ / 3) := by ring
   linarith
 
-/-- On `(0, 3/L)`, `1 - Lθ/3 > 0` and the Bernstein coefficient `(θ²/2)/(1 - Lθ/3)` is
-nonnegative. -/
-theorem bernsteinCoeff_nonneg {L θ : ℝ} (hL : 0 < L) (hθ : θ ∈ Set.Ioo 0 (3 / L)) :
-    L * θ < 3 ∧ 0 ≤ θ ^ 2 / 2 / (1 - L * θ / 3) := by
-  have h : L * θ < 3 := by
-    have := hθ.2
-    rw [lt_div_iff₀ hL] at this
-    linarith
-  exact ⟨h, div_nonneg (by positivity) (by linarith)⟩
+/-- On `(0, 3/L)`, `Lθ < 3`: the Bernstein coefficient `(θ²/2)/(1 - Lθ/3)` has a positive
+denominator. -/
+theorem mul_lt_three_of_mem_Ioo {L θ : ℝ} (hL : 0 < L) (hθ : θ ∈ Set.Ioo 0 (3 / L)) :
+    L * θ < 3 := by
+  have := hθ.2
+  rw [lt_div_iff₀ hL] at this
+  linarith
+
+/-- On `(0, 3/L)`, the Bernstein coefficient `(θ²/2)/(1 - Lθ/3)` is nonnegative. -/
+theorem sq_div_two_div_nonneg_of_mem_Ioo {L θ : ℝ} (hL : 0 < L) (hθ : θ ∈ Set.Ioo 0 (3 / L)) :
+    0 ≤ θ ^ 2 / 2 / (1 - L * θ / 3) :=
+  div_nonneg (by positivity) (by linarith [mul_lt_three_of_mem_Ioo hL hθ])
 
 /-- The choice of `θ` in the Bernstein tail: `θ = t / (v + Lt/3)`, or `θ = 3/(2L)` when `v = 0`,
 gives `-θt + g(θ) v ≤ -(t²/2)/(v + Lt/3)`. -/
@@ -203,19 +207,46 @@ private theorem integrable_conjTranspose_mul {m : Type*} [Fintype m]
       hS.1) (ae_of_all _ fun ω => ?_)
   rw [← specNorm_eq_norm, ← specNorm_eq_norm, specNorm_conjTranspose_mul_self]
 
-/-- The Hermitian dilation as a continuous real-linear map. -/
-private noncomputable def dilationCLM (m : Type*) [Fintype m] :
+/-- The Hermitian dilation as a continuous real-linear map, through which integrals, `Lᵖ`
+membership and measurability pass to `dilation`. It is only real-linear: the lower-left block
+`Aᴴ` is conjugate-linear in `A`. -/
+noncomputable def dilationCLM (m : Type*) [Fintype m] :
     Matrix m n 𝕜 →L[ℝ] Matrix (m ⊕ n) (m ⊕ n) 𝕜 :=
   LinearMap.toContinuousLinearMap
     { toFun := dilation
       map_add' := dilation_add
       map_smul' := dilation_smul_real }
 
+omit [DecidableEq n] in
+/-- `dilationCLM` applies `dilation`. -/
+@[simp]
+theorem dilationCLM_apply {m : Type*} [Fintype m] (A : Matrix m n 𝕜) :
+    dilationCLM m A = dilation A :=
+  rfl
+
+/-- The dilation of a random matrix in `Lᵖ` is in `Lᵖ`. -/
+theorem memLp_dilation {m : Type*} [Fintype m] [DecidableEq m] {p : ENNReal} {S : Ω → Matrix m n 𝕜}
+    (hS : MemLp S p μ) : MemLp (fun ω => dilation (S ω)) p μ :=
+  (dilationCLM (𝕜 := 𝕜) (n := n) m).comp_memLp' hS
+
+omit [Fintype n] [DecidableEq n] in
+/-- The dilations of independent random matrices are independent. -/
+theorem iIndepFun_dilation {ι m : Type*} [Finite m] [Finite n] {S : ι → Ω → Matrix m n 𝕜}
+    (hind : iIndepFun S μ) : iIndepFun (fun k ω => dilation (S k ω)) μ := by
+  have := Fintype.ofFinite m
+  have := Fintype.ofFinite n
+  exact hind.comp (fun _ A => dilation A) fun _ => (dilationCLM m).continuous.measurable
+
 /-- The integral of the dilation of an integrable random matrix is the dilation of its
 integral. -/
 theorem integral_dilation {m : Type*} [Fintype m] [DecidableEq m] {S : Ω → Matrix m n 𝕜}
     (hS : Integrable S μ) : ∫ ω, dilation (S ω) ∂μ = dilation (∫ ω, S ω ∂μ) :=
   (dilationCLM m).integral_comp_comm hS
+
+/-- The dilation of a centred integrable random matrix is centred. -/
+theorem integral_dilation_eq_zero {m : Type*} [Fintype m] [DecidableEq m] {S : Ω → Matrix m n 𝕜}
+    (hS : Integrable S μ) (h0 : ∫ ω, S ω ∂μ = 0) : ∫ ω, dilation (S ω) ∂μ = 0 := by
+  rw [integral_dilation hS, h0, dilation_zero]
 
 /-- The integral of the square of a dilation is block diagonal: for a square-integrable `S`,
 `E (dilation S)² = fromBlocks (E S Sᴴ) 0 0 (E Sᴴ S)`. -/
@@ -240,16 +271,6 @@ theorem integral_dilation_sq {m : Type*} [Fintype m] [DecidableEq m]
   simp only [hpt]
   rw [B.integral_comp_comm (h1.prodMk h2), integral_pair h1 h2]
   rfl
-
-omit [Fintype n] [DecidableEq n] in
-/-- A sum of block diagonal matrices is block diagonal. -/
-private theorem sum_fromBlocks_diagonal {ι m : Type*} [Fintype ι] (P : ι → Matrix m m 𝕜)
-    (Q : ι → Matrix n n 𝕜) :
-    ∑ k, Matrix.fromBlocks (P k) 0 0 (Q k) = Matrix.fromBlocks (∑ k, P k) 0 0 (∑ k, Q k) := by
-  ext (i | i) (j | j) <;>
-    simp only [Matrix.sum_apply, Matrix.fromBlocks_apply₁₁, Matrix.fromBlocks_apply₁₂,
-      Matrix.fromBlocks_apply₂₁, Matrix.fromBlocks_apply₂₂, Matrix.zero_apply,
-      Finset.sum_const_zero]
 
 /-- **The Bernstein matrix MGF bound** ([Tropp2015], Lemma 6.6.2): a centred random matrix with
 `X ≤ L • 1` almost surely has `E exp (θ X) ≤ exp (θ²/2 / (1 - Lθ/3) • E X²)` for `0 < θ < 3/L`. -/
@@ -276,7 +297,7 @@ theorem hasMatrixMGFBound_of_integral_eq_zero_of_le [IsProbabilityMeasure μ]
     intro θ hθ
     filter_upwards [hle, hH] with ω hω hωH
     refine exp_smul_le_one_add_smul_add_smul_sq (a := -specNorm (X ω)) ?_ hω
-      fun x hx => exp_mul_le_bernstein hθ.1 (bernsteinCoeff_nonneg hL hθ).1 hx.2
+      fun x hx => exp_mul_le_bernstein hθ.1 (mul_lt_three_of_mem_Ioo hL hθ) hx.2
     rw [neg_smul]
     exact hωH.neg_specNorm_smul_one_le
   have hint : ∀ θ ∈ Set.Ioo 0 (3 / L), Integrable (fun ω => exp (θ • X ω)) μ := by
@@ -325,7 +346,7 @@ theorem measureReal_eigenvalue_zero_sum_ge_le_bernstein [Nonempty n] (hind : iIn
     exact hP.trans hd
   obtain ⟨θ, hθ, hexp⟩ := exists_bernstein_exponent hL
     (specNorm_nonneg (∑ k, ∫ ω, X k ω ^ 2 ∂μ)) ht'
-  have hg := (bernsteinCoeff_nonneg hL hθ).2
+  have hg := sq_div_two_div_nonneg_of_mem_Ioo hL hθ
   refine (HasMatrixMGFBound.measure_eigenvalue_zero_sum_ge_le_card_mul_exp hind h hθ hθ.1
     hg t).trans ?_
   refine mul_le_mul_of_nonneg_left (Real.exp_le_exp.2 ?_) (Nat.cast_nonneg _)
@@ -347,7 +368,7 @@ theorem integral_eigenvalue_zero_sum_le_bernstein [Nonempty n] (hind : iIndepFun
   have hlam : eigenvalue V 0 ≤ specNorm V :=
     (le_abs_self _).trans (hV.abs_eigenvalue_le_specNorm 0)
   refine le_of_forall_bernstein_mean hL (Real.log_nonneg hd) (specNorm_nonneg _) fun θ hθ => ?_
-  have hg := (bernsteinCoeff_nonneg hL hθ).2
+  have hg := sq_div_two_div_nonneg_of_mem_Ioo hL hθ
   refine (HasMatrixMGFBound.integral_eigenvalue_zero_sum_le hind h
     (fun k => (hX2 k).integrable one_le_two) hθ hθ.1).trans ?_
   have hM : ((θ ^ 2 / 2 / (1 - L * θ / 3)) • V).IsHermitian := (IsSelfAdjoint.all _).smul hV
@@ -367,24 +388,6 @@ section Rectangular
 
 variable {m : Type*} [Fintype m] [DecidableEq m] {S : ι → Ω → Matrix m n 𝕜}
 
-omit [Fintype ι] in
-/-- The dilations of bounded centred independent summands satisfy the hypotheses of the
-Hermitian theorem. -/
-private theorem dilation_hypotheses (hind : iIndepFun S μ) (hS2 : ∀ k, MemLp (S k) 2 μ)
-    (hmean : ∀ k, ∫ ω, S k ω ∂μ = 0) (hle : ∀ k, ∀ᵐ ω ∂μ, specNorm (S k ω) ≤ L) :
-    iIndepFun (fun k ω => dilation (S k ω)) μ ∧
-      (∀ k, MemLp (fun ω => dilation (S k ω)) 2 μ) ∧ (∀ k, ∫ ω, dilation (S k ω) ∂μ = 0) ∧
-      ∀ k, ∀ᵐ ω ∂μ, dilation (S k ω) ≤ L • (1 : Matrix (m ⊕ n) (m ⊕ n) 𝕜) := by
-  have := hind.isProbabilityMeasure
-  have hmeas : Measurable (fun A : Matrix m n 𝕜 => dilation A) :=
-    (Continuous.matrix_fromBlocks continuous_const continuous_id
-      continuous_id.matrix_conjTranspose continuous_const).measurable
-  refine ⟨hind.comp (fun _ A => dilation A) fun _ => hmeas,
-    fun k => (dilationCLM (𝕜 := 𝕜) (n := n) m).comp_memLp' (hS2 k),
-    fun k => ?_, fun k => (hle k).mono fun ω h =>
-      (isHermitian_dilation _).le_smul_one_of_specNorm_le (by rwa [specNorm_dilation])⟩
-  rw [integral_dilation ((hS2 k).integrable one_le_two), hmean k, dilation_zero]
-
 /-- **Matrix Bernstein**, rectangular summands ([Tropp2015], Theorem 6.1.1), with variance
 `v = max ‖∑ E S Sᴴ‖ ‖∑ E Sᴴ S‖`. For square Hermitian summands this is the two-sided form. -/
 theorem measureReal_specNorm_sum_ge_le_bernstein [Nonempty n]
@@ -395,13 +398,17 @@ theorem measureReal_specNorm_sum_ge_le_bernstein [Nonempty n]
       (Fintype.card m + Fintype.card n) * Real.exp (-(t ^ 2 / 2) /
         (max (specNorm (∑ k, ∫ ω, S k ω * (S k ω)ᴴ ∂μ))
           (specNorm (∑ k, ∫ ω, (S k ω)ᴴ * S k ω ∂μ)) + L * t / 3)) := by
-  obtain ⟨h1, h2, h3, h4⟩ := dilation_hypotheses hind hS2 hmean hle
-  have h := measureReal_eigenvalue_zero_sum_ge_le_bernstein h1 hL h2 h3 h4 ht
+  have := hind.isProbabilityMeasure
+  have h := measureReal_eigenvalue_zero_sum_ge_le_bernstein (iIndepFun_dilation hind) hL
+    (fun k => memLp_dilation (hS2 k))
+    (fun k => integral_dilation_eq_zero ((hS2 k).integrable one_le_two) (hmean k))
+    (fun k => (hle k).mono fun ω h =>
+      (isHermitian_dilation _).le_smul_one_of_specNorm_le (by rwa [specNorm_dilation])) ht
   have hsq : ∀ k, ∫ ω, dilation (S k ω) ^ 2 ∂μ =
       Matrix.fromBlocks (∫ ω, S k ω * (S k ω)ᴴ ∂μ) 0 0 (∫ ω, (S k ω)ᴴ * S k ω ∂μ) := fun k =>
     integral_dilation_sq (hS2 k)
-  simp only [← dilation_sum, eigenvalue_zero_dilation, hsq, sum_fromBlocks_diagonal,
-    specNorm_fromBlocks_zero₁₂_zero₂₁, Fintype.card_sum, Nat.cast_add] at h
+  simp only [← dilation_sum, eigenvalue_zero_dilation, hsq, Matrix.sum_fromBlocks,
+    Finset.sum_const_zero, specNorm_fromBlocks_zero₁₂_zero₂₁, Fintype.card_sum, Nat.cast_add] at h
   exact h
 
 /-- **Matrix Bernstein** for the mean, rectangular summands ([Tropp2015], Theorem 6.1.1). -/
@@ -413,13 +420,17 @@ theorem integral_specNorm_sum_le_bernstein [Nonempty n] (hind : iIndepFun S μ)
           (specNorm (∑ k, ∫ ω, (S k ω)ᴴ * S k ω ∂μ)) *
         Real.log (Fintype.card m + Fintype.card n)) +
       L * Real.log (Fintype.card m + Fintype.card n) / 3 := by
-  obtain ⟨h1, h2, h3, h4⟩ := dilation_hypotheses hind hS2 hmean hle
-  have h := integral_eigenvalue_zero_sum_le_bernstein h1 hL h2 h3 h4
+  have := hind.isProbabilityMeasure
+  have h := integral_eigenvalue_zero_sum_le_bernstein (iIndepFun_dilation hind) hL
+    (fun k => memLp_dilation (hS2 k))
+    (fun k => integral_dilation_eq_zero ((hS2 k).integrable one_le_two) (hmean k))
+    (fun k => (hle k).mono fun ω h =>
+      (isHermitian_dilation _).le_smul_one_of_specNorm_le (by rwa [specNorm_dilation]))
   have hsq : ∀ k, ∫ ω, dilation (S k ω) ^ 2 ∂μ =
       Matrix.fromBlocks (∫ ω, S k ω * (S k ω)ᴴ ∂μ) 0 0 (∫ ω, (S k ω)ᴴ * S k ω ∂μ) := fun k =>
     integral_dilation_sq (hS2 k)
-  simp only [← dilation_sum, eigenvalue_zero_dilation, hsq, sum_fromBlocks_diagonal,
-    specNorm_fromBlocks_zero₁₂_zero₂₁, Fintype.card_sum, Nat.cast_add] at h
+  simp only [← dilation_sum, eigenvalue_zero_dilation, hsq, Matrix.sum_fromBlocks,
+    Finset.sum_const_zero, specNorm_fromBlocks_zero₁₂_zero₂₁, Fintype.card_sum, Nat.cast_add] at h
   exact h
 
 end Rectangular

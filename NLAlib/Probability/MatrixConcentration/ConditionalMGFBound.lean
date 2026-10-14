@@ -284,7 +284,7 @@ theorem hasCondMatrixMGFBound_of_condExp_eq_zero_of_le (hm : m ≤ mΩ) {X : Ω 
     intro θ hθ
     filter_upwards [hle, hH] with ω hω hωH
     refine exp_smul_le_one_add_smul_add_smul_sq (a := -specNorm (X ω)) ?_ hω
-      fun x hx => exp_mul_le_bernstein hθ.1 (bernsteinCoeff_nonneg hL hθ).1 hx.2
+      fun x hx => exp_mul_le_bernstein hθ.1 (mul_lt_three_of_mem_Ioo hL hθ) hx.2
     rw [neg_smul]
     exact hωH.neg_specNorm_smul_one_le
   have hint : ∀ θ ∈ Set.Ioo 0 (3 / L), Integrable (fun ω => exp (θ • X ω)) μ := by
@@ -321,39 +321,6 @@ private theorem exp_cfc {B : Matrix n n 𝕜} (hB : B.IsHermitian) (f : ℝ → 
   rw [hH.exp_eq_cfc]
   exact (cfc_comp' Real.exp f B ((B.finite_real_spectrum.image _).continuousOn _)
     (B.finite_real_spectrum.continuousOn _) hB).symm
-
-omit [IsProbabilityMeasure μ] in
-/-- The conditional expectation of a random function of a fixed Hermitian matrix is the function
-of the matrix with the conditional expectations of the values, through a unitary diagonalisation.
-The conditional form of `Matrix.IsHermitian.cfc_integral`. -/
-private theorem condExp_cfc {B : Matrix n n 𝕜} (hB : B.IsHermitian) {f : Ω → ℝ → ℝ}
-    (hf : ∀ x, Integrable (fun ω => f ω x) μ) :
-    μ[fun ω => cfc (f ω) B | m] =ᵐ[μ] fun ω' => cfc (fun x => μ[fun ω => f ω x | m] ω') B := by
-  obtain ⟨U, hU, hBU⟩ := hB.exists_eq_mul_diagonal_mul_conjTranspose
-  have hr := Fintype.card_fin (Fintype.card n)
-  let Lc : (Fin (Fintype.card n) → ℝ) →L[ℝ] Matrix n n 𝕜 := LinearMap.toContinuousLinearMap
-    { toFun := fun v => U * Matrix.diagonal (fun i => ((v i : ℝ) : 𝕜)) * Uᴴ
-      map_add' := fun v w => by
-        simp only [Pi.add_apply, RCLike.ofReal_add, ← Matrix.diagonal_add, Matrix.mul_add,
-          Matrix.add_mul]
-      map_smul' := fun a v => by
-        have hd : (fun i => (((a • v) i : ℝ) : 𝕜)) = (a : 𝕜) • fun i => ((v i : ℝ) : 𝕜) := by
-          funext i
-          simp only [Pi.smul_apply, smul_eq_mul, RCLike.ofReal_mul]
-        rw [RingHom.id_apply, hd, Matrix.diagonal_smul, Matrix.mul_smul, Matrix.smul_mul,
-          ← RCLike.real_smul_eq_coe_smul] }
-  have hcfc : ∀ g : ℝ → ℝ, cfc g B = Lc (fun i => g (eigenvalue B i)) := fun g =>
-    cfc_eq_mul_diagonal_mul_conjTranspose hU hr hBU g
-  let v : Ω → Fin (Fintype.card n) → ℝ := fun ω i => f ω (eigenvalue B i)
-  have hv : Integrable v μ := integrable_pi_iff.2 fun i => hf _
-  have hcomp : (fun ω => cfc (f ω) B) = Lc ∘ v := funext fun ω => hcfc (f ω)
-  have hproj : ∀ᵐ ω' ∂μ, ∀ i, μ[v | m] ω' i = μ[fun ω => f ω (eigenvalue B i) | m] ω' :=
-    ae_all_iff.mpr fun i =>
-      (ContinuousLinearMap.proj (R := ℝ) (φ := fun _ => ℝ) i).comp_condExp_comm (m := m) hv
-  rw [hcomp]
-  filter_upwards [(Lc.comp_condExp_comm (m := m) hv).symm, hproj] with ω' h1 h2
-  rw [h1, Function.comp_apply, hcfc]
-  exact congrArg Lc (funext h2)
 
 omit [IsProbabilityMeasure μ] in
 /-- **The bridge from Mathlib's conditionally sub-Gaussian scalars**: if `γ` has a conditionally
@@ -403,7 +370,7 @@ theorem hasCondMatrixMGFBound_smul_of_hasCondSubgaussianMGF [StandardBorelSpace 
       refine h.trans_eq ?_
       congr 1
       ring
-    filter_upwards [condExp_cfc (m := m) hB (hf θ), hsub] with ω' h1 h2
+    filter_upwards [hB.condExp_cfc (m := m) (hf θ), hsub] with ω' h1 h2
     rw [h1, hR, exp_cfc hB]
     refine cfc_mono (fun x hx => ?_) (hcont _) (hcont _)
     have hsp := (hB.spectrum_subset_iff (s := {x | μ[fun ω => Real.exp (θ * γ ω * x) | m] ω' ≤

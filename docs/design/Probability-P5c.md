@@ -251,3 +251,7 @@ new files, merged at wrap-up.
    no `sorry`; nothing is registered in `NLAlib.lean` yet.
 5. **Instances.** `[DecidableEq ι]` is taken only by the two isotropic second-moment lemmas
    (`IsIsotropic` needs it); the law statements do not use it.
+6. **Wrap-up** (resolves items 1 and 4). `RademacherSymmetry.lean` is merged into
+   `Rademacher.lean` and `GaussianIntegrationByPartsGrowth.lean` into
+   `GaussianIntegrationByParts.lean`, where P6's bounded theorem is now the `k = 0` corollary of
+   the polynomial-growth one, keeping its name; P6's bounded-derivative helpers are deleted.

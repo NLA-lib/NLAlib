@@ -63,12 +63,7 @@ P4 proceeded on the orchestrator's recommendations (Lipschitz as `LipschitzWith`
   `GaussianComparison.lean` (Opus).
 - R5 complete: all six files proved (`PolarFrames`, `UnitaryInvariance`, `Haar/{Basic,Uniqueness,Moments,Transfer}`); deviation bridges 15 and 16 proved.
 - P6 proved: `GaussianIntegrationByParts.lean`, `GaussianComparison.lean` (1035 lines, slightly over the soft limit); R5 `PolarFrames.lean`, `UnitaryInvariance.lean` proved.
-- Skeletons written, reviewed, waiting for a proof agent, in this order: R4 `BlockMoments.lean`
-  (after InverseMoments; also has three R3 spectral block statements, so after R3's
-  `SpectralNorm.lean`); R3 `RandomMatrix/Gaussian/{SpectralNorm,ExtremeSingularValues}.lean`
-  (after P6), `RandomMatrix/SubGaussian/ExtremeSingularValues.lean` (independent of P6); R5
-  `Matrix/Factorizations/PolarFrames.lean` first, then `RandomMatrix/UnitaryInvariance.lean`,
-  `RandomMatrix/Haar/{Basic,Uniqueness,Moments,Transfer}.lean`, plus deviation 16's bridge.
+- R4 complete: `RandomMatrix/Gaussian/BlockMoments.lean` proved and registered (with a transposed form for Nystrom that needs the rank hypothesis and gives the closed value); ledger R4 block entries added.
 - Ledger keys are full prototype names with `NLAlib.` (fixed 2026-10-14; `ledger_missing.py NLAlib.Probability. NLAlib.RandomMatrix.` reports coverage: 302 of 921). Pending bookkeeping (Sonnet): ledger lines in `/tmp/claude-1000/p0/ledger_pending.txt` (may be
   lost on reboot: re-derive from agent reports in the design notes' stage reports if so) and the
   R4/P6/R3/R5 entries as they finish; register modules in `NLAlib.lean` once sorry-free;

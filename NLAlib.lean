@@ -186,6 +186,7 @@ public import NLAlib.Probability.SubGaussianVector.Basic
 public import NLAlib.Probability.SubGaussianVector.Norm
 public import NLAlib.Probability.Tail
 public import NLAlib.RandomMatrix.Gaussian.Basic
+public import NLAlib.RandomMatrix.Gaussian.BlockMoments
 public import NLAlib.RandomMatrix.Gaussian.Concentration
 public import NLAlib.RandomMatrix.Gaussian.ExtremeSingularValues
 public import NLAlib.RandomMatrix.Gaussian.Invariance

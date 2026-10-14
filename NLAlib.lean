@@ -2,7 +2,9 @@ module  -- shake: keep-all --deprecated_module: ignore
 
 public import NLAlib.ForMathlib.Algebra.BigOperators.AbelSummation
 public import NLAlib.ForMathlib.Analysis.CStarAlgebra.Matrix
+public import NLAlib.ForMathlib.Analysis.Calculus.BumpFunction.Convolution
 public import NLAlib.ForMathlib.Analysis.Calculus.Deriv.Matrix
+public import NLAlib.ForMathlib.Analysis.Convex.Integral
 public import NLAlib.ForMathlib.Analysis.InnerProductSpace.PiL2
 public import NLAlib.ForMathlib.Analysis.RCLike.ToComplex
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.Adjugate
@@ -13,6 +15,7 @@ public import NLAlib.ForMathlib.LinearAlgebra.Matrix.PosDef
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.Rank
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.SchurComplement
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.Trace
+public import NLAlib.ForMathlib.MeasureTheory.Constructions.PiUpdate
 public import NLAlib.ForMathlib.MeasureTheory.Matrix
 public import NLAlib.ForMathlib.Topology.MetricSpace.CoveringNumbers
 public import NLAlib.Matrix.Basic.ComplementaryProjector
@@ -146,10 +149,16 @@ public import NLAlib.Matrix.Subspaces.ProjectorPair
 public import NLAlib.Matrix.Subspaces.Tangent
 public import NLAlib.Probability.Distributions.ChiSquare
 public import NLAlib.Probability.Distributions.Gaussian
+public import NLAlib.Probability.Distributions.GaussianConcentration
+public import NLAlib.Probability.Distributions.GaussianLogSobolev
+public import NLAlib.Probability.Distributions.GaussianLogSobolevOneDim
 public import NLAlib.Probability.Distributions.Rademacher
 public import NLAlib.Probability.Distributions.Sampling
+public import NLAlib.Probability.Entropy
+public import NLAlib.Probability.EntropyTensorization
 public import NLAlib.Probability.Isotropic
 public import NLAlib.Probability.Law
+public import NLAlib.Probability.LogSobolev
 public import NLAlib.Probability.MatrixIntegral
 public import NLAlib.Probability.Measurability.Matrix
 public import NLAlib.Probability.QuadraticForm.HansonWright

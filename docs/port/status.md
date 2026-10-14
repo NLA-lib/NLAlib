@@ -67,11 +67,11 @@ correction. Now: P0's matrix-integral file, P4 design.
 | P4 | `Probability/Entropy.lean`, `EntropyTensorization.lean`, `ForMathlib/MeasureTheory/Constructions/PiUpdate.lean` | Opus agent, orchestrator | proved | split from one 722-line file |
 | P4 | `Distributions/GaussianLogSobolev.lean`, `GaussianLogSobolevOneDim.lean` | Opus agent | proved | Gross's two-point route through Mathlib's CLT (the prototype's Ornstein–Uhlenbeck files not needed); wrap-up: one `ForMathlib` copy of `|s log s| ≤ s² + 1` |
 | P4 | `LogSobolev.lean` (+ `ForMathlib/Analysis/Calculus/BumpFunction/Convolution.lean`) | Opus agent | proved | Lipschitz approximation by convolution |
-| P4 | `Distributions/GaussianConcentration.lean` | Opus agent | proofs in progress | |
+| P4 | `Distributions/GaussianConcentration.lean` | Opus agent | proved | P4 complete; stage report and checks at the next quiet point |
 | P5a | design note `docs/design/Probability-P5a.md`, skeletons `MatrixConcentration/*` | orchestrator | written, Fable-reviewed (§8); skeletons compile | |
 | P5a | `MatrixConcentration/{Laplace,Subadditivity,MGFBound}.lean` (+ `ForMathlib/Analysis/Convex/Integral.lean`) | Opus agent | proved | Jensen on a non-closed convex set; wrap-up: move `continuousOn_cfc_log` to the Matrix layer, `measurableSet_posDef` to Measurability |
 | P5a | `MatrixConcentration/{Chernoff,ChernoffSum}.lean` | Opus agent | proofs in progress | |
-| P5a | `MatrixConcentration/{Bernstein,Series}.lean` | — | skeletons compile | next slot |
+| P5a | `MatrixConcentration/{Bernstein,Series}.lean` | Opus agent | proofs in progress | |
 
 **Matrix layer complete, 2026-10-14** (branch `scaffold`, local commits, not pushed): stages M0 to
 M10 proved, 144 files, nothing scaffolded, all checks green. Read `docs/design/Matrix-REPORT.md`

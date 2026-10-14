@@ -12697,6 +12697,10 @@
   "note": "private step in EntropyTensorization.lean",
   "stage": "P4"
  },
+ "integrable_of_lipschitz_gaussianVector": {
+  "new": "NLAlib.integrable_comp_of_lipschitzWith_of_hasLaw_gaussianVector",
+  "stage": "P4"
+ },
  "integrable_of_logSobolev_of_lipschitz": {
   "new": "NLAlib.HasLogSobolev.integrable_of_lipschitzWith",
   "stage": "P4"
@@ -12991,6 +12995,15 @@
   "new": null,
   "note": "raw closed-window CGF hypotheses; replaced by HasSubexponentialMGF.measure_ge_le",
   "stage": "P1"
+ },
+ "measureReal_ge_le_of_lipschitz_gaussianVector": {
+  "new": "NLAlib.measureReal_integral_add_le_of_lipschitzWith_of_hasLaw_gaussianVector",
+  "stage": "P4"
+ },
+ "measureReal_ge_le_of_logSobolev": {
+  "new": null,
+  "note": "P1's measure_ge_le applied to HasLogSobolev.hasSubgaussianMGF_sub_integral",
+  "stage": "P4"
  },
  "measureReal_lt_abs_le_of_hasSubgaussianMGF": {
   "new": "ProbabilityTheory.HasSubgaussianMGF.measure_abs_ge_le",

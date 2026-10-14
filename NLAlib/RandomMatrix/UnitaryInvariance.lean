@@ -72,47 +72,48 @@ omit [Fintype k] in
 multiplication by every element of `Matrix.unitaryGroup n 𝕜`. -/
 theorem isLeftUnitarilyInvariant_iff [DecidableEq n] {ν : Measure (Matrix n k 𝕜)} :
     IsLeftUnitarilyInvariant ν ↔
-      ∀ U : Matrix.unitaryGroup n 𝕜, ν.map ((U : Matrix n n 𝕜) * ·) = ν := by
-  -- Proof: `hasOrthonormalCols_iff_mem_unitaryGroup`.
-  sorry
+      ∀ U : Matrix.unitaryGroup n 𝕜, ν.map ((U : Matrix n n 𝕜) * ·) = ν :=
+  ⟨fun h U => h.map_mul_left_eq_self U (hasOrthonormalCols_iff_mem_unitaryGroup.mpr U.2),
+    fun h => ⟨fun U hU => h ⟨U, hasOrthonormalCols_iff_mem_unitaryGroup.mp hU⟩⟩⟩
 
 omit [Fintype n] in
 /-- **Bridge to Mathlib's unitary group**: right unitary invariance is invariance under right
 multiplication by every element of `Matrix.unitaryGroup k 𝕜`. -/
 theorem isRightUnitarilyInvariant_iff [DecidableEq k] {ν : Measure (Matrix n k 𝕜)} :
     IsRightUnitarilyInvariant ν ↔
-      ∀ V : Matrix.unitaryGroup k 𝕜, ν.map (· * (V : Matrix k k 𝕜)) = ν := by
-  sorry
+      ∀ V : Matrix.unitaryGroup k 𝕜, ν.map (· * (V : Matrix k k 𝕜)) = ν :=
+  ⟨fun h V => h.map_mul_right_eq_self V (hasOrthonormalCols_iff_mem_unitaryGroup.mpr V.2),
+    fun h => ⟨fun V hV => h ⟨V, hasOrthonormalCols_iff_mem_unitaryGroup.mp hV⟩⟩⟩
 
 omit [Fintype k] in
 /-- A random matrix whose law is left unitarily invariant keeps its law under left multiplication
 by a fixed unitary. -/
 theorem hasLaw_const_mul_of_isLeftUnitarilyInvariant [DecidableEq n] {ν : Measure (Matrix n k 𝕜)}
     [IsLeftUnitarilyInvariant ν] {X : Ω → Matrix n k 𝕜} (hX : HasLaw X ν μ) {U : Matrix n n 𝕜}
-    (hU : HasOrthonormalCols U) : HasLaw (fun ω => U * X ω) ν μ := by
-  sorry
+    (hU : HasOrthonormalCols U) : HasLaw (fun ω => U * X ω) ν μ :=
+  HasLaw.fun_comp (Y := (U * ·)) ⟨(measurable_const.matrix_mul measurable_id).aemeasurable,
+    IsLeftUnitarilyInvariant.map_mul_left_eq_self U hU⟩ hX
 
 omit [Fintype n] in
 /-- A random matrix whose law is right unitarily invariant keeps its law under right
 multiplication by a fixed unitary. -/
 theorem hasLaw_mul_const_of_isRightUnitarilyInvariant [DecidableEq k] {ν : Measure (Matrix n k 𝕜)}
     [IsRightUnitarilyInvariant ν] {X : Ω → Matrix n k 𝕜} (hX : HasLaw X ν μ) {V : Matrix k k 𝕜}
-    (hV : HasOrthonormalCols V) : HasLaw (fun ω => X ω * V) ν μ := by
-  sorry
+    (hV : HasOrthonormalCols V) : HasLaw (fun ω => X ω * V) ν μ :=
+  HasLaw.fun_comp (Y := (· * V)) ⟨(measurable_id.matrix_mul measurable_const).aemeasurable,
+    IsRightUnitarilyInvariant.map_mul_right_eq_self V hV⟩ hX
 
 /-! ### Gaussian matrices -/
 
 /-- The standard Gaussian matrix is left orthogonally invariant. -/
 instance isLeftUnitarilyInvariant_gaussianMatrix [DecidableEq n] :
-    IsLeftUnitarilyInvariant (gaussianMatrix n k) := by
-  -- Proof: `hasLaw_const_mul_of_hasLaw_gaussianMatrix` at `HasLaw.id`, with
-  -- `HasOrthonormalCols.conjTranspose_of_card_eq`.
-  sorry
+    IsLeftUnitarilyInvariant (gaussianMatrix n k) :=
+  ⟨fun _ hU => (hasLaw_const_mul_of_hasLaw_gaussianMatrix HasLaw.id hU.conjTranspose).map_eq⟩
 
 /-- The standard Gaussian matrix is right orthogonally invariant. -/
 instance isRightUnitarilyInvariant_gaussianMatrix [DecidableEq k] :
-    IsRightUnitarilyInvariant (gaussianMatrix n k) := by
-  sorry
+    IsRightUnitarilyInvariant (gaussianMatrix n k) :=
+  ⟨fun _ hV => (hasLaw_mul_const_of_hasLaw_gaussianMatrix HasLaw.id hV).map_eq⟩
 
 /-! ### Moments from invariance -/
 
@@ -121,7 +122,20 @@ is needed: `∫ (-X) = -∫ X` holds for the Bochner integral in every case. -/
 theorem integral_eq_zero_of_isLeftUnitarilyInvariant [DecidableEq n] [DecidableEq k]
     {ν : Measure (Matrix n k 𝕜)} [IsLeftUnitarilyInvariant ν] {X : Ω → Matrix n k 𝕜}
     (hX : HasLaw X ν μ) : ∫ ω, X ω ∂μ = 0 := by
-  sorry
+  have hneg : HasOrthonormalCols (-1 : Matrix n n 𝕜) := by
+    rw [hasOrthonormalCols_iff, Matrix.conjTranspose_neg, Matrix.conjTranspose_one,
+      neg_mul_neg, Matrix.one_mul]
+  have hX' : ∫ ω, (-1 : Matrix n n 𝕜) * X ω ∂μ = -∫ ω, X ω ∂μ := by
+    simp only [Matrix.neg_mul, Matrix.one_mul]
+    exact integral_neg _
+  have h : ∫ ω, X ω ∂μ = -∫ ω, X ω ∂μ :=
+    hX.integral_eq.trans
+      ((hasLaw_const_mul_of_isLeftUnitarilyInvariant hX hneg).integral_eq.symm.trans hX')
+  ext i j
+  have hij := congrFun₂ h i j
+  rw [Matrix.neg_apply] at hij
+  rw [Matrix.zero_apply]
+  linear_combination hij / 2
 
 /-- **`E [X B Xᴴ]` is scalar** for a left unitarily invariant `X`: it commutes with every unitary,
 so it is `(E tr (X B Xᴴ) / n) • 1`. The integrability hypothesis is needed: without it the left
@@ -133,9 +147,24 @@ theorem integral_mul_mul_conjTranspose_of_isLeftUnitarilyInvariant [DecidableEq 
     (hX : HasLaw X ν μ) (B : Matrix k k 𝕜) (hint : Integrable (fun ω => X ω * B * (X ω)ᴴ) μ) :
     ∫ ω, X ω * B * (X ω)ᴴ ∂μ =
       ((∫ ω, (X ω * B * (X ω)ᴴ).trace ∂μ) / Fintype.card n) • (1 : Matrix n n 𝕜) := by
-  -- Proof: `Matrix.integral_const_mul`, `Matrix.integral_mul_const` and the law of `U X` give
-  -- `U E Uᴴ = E`; then `eq_smul_one_of_forall_mul_mul_conjTranspose_eq` and
-  -- `Matrix.integral_trace`.
-  sorry
+  have hm : Measurable fun Q : Matrix n k 𝕜 => Q * B * Qᴴ :=
+    ((measurable_id.matrix_mul measurable_const).matrix_mul
+      (Measurable.matrix_conjTranspose continuous_star.measurable measurable_id))
+  have hf : AEStronglyMeasurable (fun Q : Matrix n k 𝕜 => Q * B * Qᴴ) ν :=
+    hm.aestronglyMeasurable
+  have key : ∀ U : Matrix n n 𝕜, HasOrthonormalCols U →
+      U * (∫ ω, X ω * B * (X ω)ᴴ ∂μ) * Uᴴ = ∫ ω, X ω * B * (X ω)ᴴ ∂μ := by
+    intro U hU
+    have h1 := hX.integral_comp hf
+    have h2 := (hasLaw_const_mul_of_isLeftUnitarilyInvariant hX hU).integral_comp hf
+    have h3 : ∫ ω, U * X ω * B * (U * X ω)ᴴ ∂μ = U * (∫ ω, X ω * B * (X ω)ᴴ ∂μ) * Uᴴ := by
+      have h4 : ∀ ω, U * X ω * B * (U * X ω)ᴴ = U * (X ω * B * (X ω)ᴴ) * Uᴴ := fun ω => by
+        simp only [Matrix.conjTranspose_mul, Matrix.mul_assoc]
+      simp only [h4]
+      rw [Matrix.integral_mul_const (hint.const_mul U), Matrix.integral_const_mul U hint]
+    rw [← h3]
+    exact h2.trans h1.symm
+  refine (eq_smul_one_of_forall_mul_mul_conjTranspose_eq key).trans ?_
+  rw [Matrix.integral_trace hint]
 
 end NLAlib

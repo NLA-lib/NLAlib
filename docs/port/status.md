@@ -69,7 +69,7 @@ P4 proceeded on the orchestrator's recommendations (Lipschitz as `LipschitzWith`
   lost on reboot: re-derive from agent reports in the design notes' stage reports if so) and the
   R4/P6/R3/R5 entries as they finish; register modules in `NLAlib.lean` once sorry-free;
   `stage_check.sh` after each stage.
-- Wrap-up items: P5a row in the table; `Uniqueness.lean`'s `compactSpace_unitaryGroup` to
+- Wrap-up items: Procrustes should call `HasOrthonormalCols.exists_mul_eq` (PolarFrames) and drop its private copy; P5a row in the table; `Uniqueness.lean`'s `compactSpace_unitaryGroup` to
   ForMathlib; `|s log s| ≤ s² + 1` duplicated (P4).
 - Then to design (drafted by Opus agents from a brief): P5b (intrinsic dimension), P5c
   (Khintchine), P5d (Freedman, with matrix conditional expectations), P7 (bounded differences,

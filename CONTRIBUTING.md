@@ -67,7 +67,7 @@ NLAlib/
   Solvers/                                                                         (layer 5)
 NLAlibScaffold/    same tree; statements with deferred proofs (§7)
 docs/              references.bib, design notes (docs/design/), port ledger (docs/port/)
-scripts/           Audit.lean, Lint.lean, check_refs.py
+scripts/           Audit.lean, Lint.lean, check_refs.py, stage_check.sh, ledger and prototype tools
 ```
 
 The subdirectories of each layer are decided in that layer's design note (§8), not in advance.

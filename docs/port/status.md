@@ -55,12 +55,26 @@ for matrix integrals (D10 amended; `Mathlib-deviations.md` entry 13; `CONTRIBUTI
 P4 proceeded on the orchestrator's recommendations (Lipschitz as `LipschitzWith` on
 `EuclideanSpace`; the log-Sobolev route with constant `L²`), open to the maintainer's correction.
 
-**Order from here (orchestrator, 2026-10-14):** P5a (in progress), then the random-matrix stages
-by consumer weight, R1 (Gaussian matrices), R2 (moments), R4 (inverse moments, the range-finder
-family), P6 (Gaussian comparison, behind R3), R3 (extreme singular values), R5 (Haar frames),
-then P5b (intrinsic dimension), P5c (Khintchine), P5d (Freedman), P7. The brief's order is a
-dependency order and none of R1 to R5 depends on P5b to P5d; the survey finds no consumer of
-P5b to P5d outside their own layer.
+**Queue (orchestrator, 2026-10-14, latest):**
+- Proved and registered: P0–P5a, R1, R2 (stage checks green at 185 modules, before R4–R5).
+- In progress: R4 `InverseMoments.lean` (Opus); P6 `GaussianIntegrationByParts.lean`,
+  `GaussianComparison.lean` (Opus).
+- Skeletons written, reviewed, waiting for a proof agent, in this order: R4 `BlockMoments.lean`
+  (after InverseMoments; also has three R3 spectral block statements, so after R3's
+  `SpectralNorm.lean`); R3 `RandomMatrix/Gaussian/{SpectralNorm,ExtremeSingularValues}.lean`
+  (after P6), `RandomMatrix/SubGaussian/ExtremeSingularValues.lean` (independent of P6); R5
+  `Matrix/Factorizations/PolarFrames.lean` first, then `RandomMatrix/UnitaryInvariance.lean`,
+  `RandomMatrix/Haar/{Basic,Uniqueness,Moments,Transfer}.lean`, plus deviation 16's bridge.
+- Pending bookkeeping (Sonnet): ledger lines in `/tmp/claude-1000/p0/ledger_pending.txt` (may be
+  lost on reboot: re-derive from agent reports in the design notes' stage reports if so) and the
+  R4/P6/R3/R5 entries as they finish; register modules in `NLAlib.lean` once sorry-free;
+  `stage_check.sh` after each stage.
+- Wrap-up items: P5a row in the table; `Uniqueness.lean`'s `compactSpace_unitaryGroup` to
+  ForMathlib; `|s log s| ≤ s² + 1` duplicated (P4).
+- Then to design (drafted by Opus agents from a brief): P5b (intrinsic dimension), P5c
+  (Khintchine), P5d (Freedman, with matrix conditional expectations), P7 (bounded differences,
+  Orlicz bridges, entropy extras); then the round report `docs/design/Probability-REPORT.md` and
+  the ledger accounting for all prototype `Probability/`, `RandomMatrix/` declarations.
 
 | Stage | File | Owner | State | Notes |
 |---|---|---|---|---|

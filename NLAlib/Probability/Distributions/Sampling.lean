@@ -46,42 +46,76 @@ noncomputable def samplingMeasure : Measure ι :=
   ∑ i, (p i : ℝ≥0∞) • Measure.dirac i
 
 instance isFiniteMeasure_samplingMeasure : IsFiniteMeasure (samplingMeasure p) := by
-  sorry
+  constructor
+  simp only [samplingMeasure, Measure.coe_finsetSum, Finset.sum_apply, Measure.smul_apply,
+    measure_univ, smul_eq_mul, mul_one]
+  exact ENNReal.sum_lt_top.2 fun i _ => ENNReal.coe_lt_top
 
+omit [MeasurableSingletonClass ι] in
 /-- With weights summing to one, `samplingMeasure p` is a probability measure. -/
 theorem isProbabilityMeasure_samplingMeasure (hp : ∑ i, p i = 1) :
     IsProbabilityMeasure (samplingMeasure p) := by
-  sorry
+  constructor
+  simp only [samplingMeasure, Measure.coe_finsetSum, Finset.sum_apply, Measure.smul_apply,
+    measure_univ, smul_eq_mul, mul_one]
+  exact_mod_cast hp
 
 /-- The probability of a set of indices is the sum of their weights. -/
 theorem samplingMeasure_real_apply (s : Finset ι) :
     (samplingMeasure p).real (s : Set ι) = ∑ i ∈ s, (p i : ℝ) := by
-  sorry
+  classical
+  simp only [measureReal_def, samplingMeasure, Measure.coe_finsetSum, Finset.sum_apply,
+    Measure.smul_apply, Measure.dirac_apply, smul_eq_mul, Set.indicator_apply, Finset.mem_coe,
+    Pi.one_apply, mul_ite, mul_one, mul_zero]
+  rw [Finset.sum_ite_mem, Finset.univ_inter, ENNReal.toReal_sum fun i _ => ENNReal.coe_ne_top]
+  rfl
 
 /-- Every function is integrable for `samplingMeasure p`. -/
 theorem integrable_samplingMeasure {E : Type*} [NormedAddCommGroup E] (f : ι → E) :
     Integrable f (samplingMeasure p) := by
-  sorry
+  exact integrable_finsetSum_measure.2 fun i _ =>
+    (integrable_dirac (by simp)).smul_measure ENNReal.coe_ne_top
 
 /-- The integral against `samplingMeasure p` is the weighted sum. -/
 theorem integral_samplingMeasure {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
     [CompleteSpace E] (f : ι → E) :
     ∫ i, f i ∂samplingMeasure p = ∑ i, (p i : ℝ) • f i := by
-  sorry
+  rw [samplingMeasure, integral_finsetSum_measure fun i _ =>
+    (integrable_dirac (by simp)).smul_measure ENNReal.coe_ne_top]
+  simp only [integral_smul_measure, integral_dirac, ENNReal.coe_toReal]
 
 /-- A random index with law `samplingMeasure p` equals `i` with probability `p i`. -/
 theorem measureReal_eq_of_hasLaw_samplingMeasure {X : Ω → ι}
     (hX : HasLaw X (samplingMeasure p) μ) (i : ι) : μ.real {ω | X ω = i} = p i := by
-  sorry
+  have h := Measure.map_apply_of_aemeasurable hX.aemeasurable (measurableSet_singleton i)
+  rw [hX.map_eq] at h
+  have hs := samplingMeasure_real_apply p {i}
+  rw [Finset.coe_singleton, Finset.sum_singleton] at hs
+  rw [← hs, measureReal_def, measureReal_def, h]
+  rfl
+
+/-- The mass of a single index is its weight. -/
+theorem samplingMeasure_singleton (i : ι) : samplingMeasure p {i} = p i := by
+  classical
+  simp only [samplingMeasure, Measure.coe_finsetSum, Finset.sum_apply, Measure.smul_apply,
+    Measure.dirac_apply, smul_eq_mul, Set.indicator_apply, Set.mem_singleton_iff, Pi.one_apply,
+    mul_ite, mul_one, mul_zero, Finset.sum_ite_eq', Finset.mem_univ, if_true]
 
 /-- The bridge to `PMF`. -/
 theorem samplingMeasure_toNNReal_eq_toMeasure (q : PMF ι) :
     samplingMeasure (fun i => (q i).toNNReal) = q.toMeasure := by
-  sorry
+  refine Measure.ext_of_singleton fun a => ?_
+  rw [samplingMeasure_singleton, PMF.toMeasure_apply_singleton _ _ (measurableSet_singleton a),
+    ENNReal.coe_toNNReal (q.apply_ne_top a)]
 
 /-- Uniform weights give Mathlib's uniform measure. -/
 theorem samplingMeasure_const_inv_card :
     samplingMeasure (fun _ : ι => (Fintype.card ι : ℝ≥0)⁻¹) = uniformOn Set.univ := by
-  sorry
+  refine Measure.ext_of_singleton fun a => ?_
+  have : (Fintype.card ι : ℝ≥0) ≠ 0 := by
+    have : Nonempty ι := ⟨a⟩
+    exact_mod_cast Fintype.card_ne_zero
+  rw [samplingMeasure_singleton, uniformOn_univ, Measure.count_singleton, ENNReal.coe_inv this,
+    one_div, ENNReal.coe_natCast]
 
 end NLAlib

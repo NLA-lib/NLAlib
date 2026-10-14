@@ -47,7 +47,10 @@ noncomputable def rademacherMeasure : Measure ℝ :=
   (2⁻¹ : ℝ≥0∞) • (Measure.dirac 1 + Measure.dirac (-1))
 
 instance isProbabilityMeasure_rademacherMeasure : IsProbabilityMeasure rademacherMeasure := by
-  sorry
+  constructor
+  simp only [rademacherMeasure, Measure.smul_apply, Measure.add_apply, measure_univ,
+    smul_eq_mul, one_add_one_eq_two]
+  exact ENNReal.inv_mul_cancel two_ne_zero ENNReal.ofNat_ne_top
 
 /-- The law of a vector of independent random signs. -/
 noncomputable abbrev rademacherVector (n : Type*) [Fintype n] : Measure (n → ℝ) :=
@@ -56,52 +59,82 @@ noncomputable abbrev rademacherVector (n : Type*) [Fintype n] : Measure (n → �
 /-- Every function is integrable for the Rademacher law. -/
 theorem integrable_rademacherMeasure {E : Type*} [NormedAddCommGroup E] (f : ℝ → E) :
     Integrable f rademacherMeasure := by
-  sorry
+  exact ((integrable_dirac (by simp)).add_measure (integrable_dirac (by simp))).smul_measure
+    (by simp)
 
 /-- The integral against the Rademacher law is the average of the two values. -/
 theorem integral_rademacherMeasure {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
     [CompleteSpace E] (f : ℝ → E) :
     ∫ x, f x ∂rademacherMeasure = (2 : ℝ)⁻¹ • (f 1 + f (-1)) := by
-  sorry
+  rw [rademacherMeasure, integral_smul_measure,
+    integral_add_measure (integrable_dirac (by simp)) (integrable_dirac (by simp)),
+    integral_dirac, integral_dirac, ENNReal.toReal_inv, ENNReal.toReal_ofNat]
 
 /-- A random sign is `1` or `-1` almost surely. -/
 theorem ae_eq_one_or_neg_one_of_hasLaw_rademacherMeasure {X : Ω → ℝ}
     (hX : HasLaw X rademacherMeasure μ) : ∀ᵐ ω ∂μ, X ω = 1 ∨ X ω = -1 := by
-  sorry
+  have hS : MeasurableSet {x : ℝ | x = 1 ∨ x = -1} :=
+    (measurableSet_singleton 1).union (measurableSet_singleton (-1))
+  rw [← ae_map_iff hX.aemeasurable hS, hX.map_eq, rademacherMeasure]
+  refine Measure.ae_smul_measure (ae_add_measure_iff.2 ⟨?_, ?_⟩) _
+  · exact (ae_dirac_iff hS).2 (Or.inl rfl)
+  · exact (ae_dirac_iff hS).2 (Or.inr rfl)
+
+private theorem integral_comp_of_hasLaw_rademacherMeasure {X : Ω → ℝ}
+    (hX : HasLaw X rademacherMeasure μ) (f : ℝ → ℝ) :
+    ∫ ω, f (X ω) ∂μ = 2⁻¹ * (f 1 + f (-1)) :=
+  (hX.integral_comp (integrable_rademacherMeasure f).aestronglyMeasurable).trans
+    (integral_rademacherMeasure f)
 
 /-- The moment generating function of a random sign is `cosh`. -/
 theorem mgf_of_hasLaw_rademacherMeasure {X : Ω → ℝ} (hX : HasLaw X rademacherMeasure μ)
     (t : ℝ) : mgf X μ t = Real.cosh t := by
-  sorry
+  rw [mgf, integral_comp_of_hasLaw_rademacherMeasure hX fun x => Real.exp (t * x), Real.cosh_eq,
+    mul_one, mul_neg_one]
+  ring
 
 /-- A random sign is sub-Gaussian with proxy `1`. -/
 theorem hasSubgaussianMGF_of_hasLaw_rademacherMeasure {X : Ω → ℝ}
     (hX : HasLaw X rademacherMeasure μ) : HasSubgaussianMGF X 1 μ := by
-  sorry
+  refine ⟨fun t => ?_, fun t => ?_⟩
+  · exact (hX.integrable_comp_iff (integrable_rademacherMeasure _).aestronglyMeasurable).2
+      (integrable_rademacherMeasure fun x => Real.exp (t * x))
+  · rw [mgf_of_hasLaw_rademacherMeasure hX, NNReal.coe_one, one_mul]
+    exact Real.cosh_le_exp_half_sq t
 
 /-- A random sign has mean zero. -/
 theorem integral_of_hasLaw_rademacherMeasure {X : Ω → ℝ} (hX : HasLaw X rademacherMeasure μ) :
     ∫ ω, X ω ∂μ = 0 := by
-  sorry
+  rw [integral_comp_of_hasLaw_rademacherMeasure hX (fun x => x)]
+  norm_num
 
 /-- The second moment of a random sign is `1`. -/
 theorem integral_sq_of_hasLaw_rademacherMeasure {X : Ω → ℝ}
     (hX : HasLaw X rademacherMeasure μ) : ∫ ω, X ω ^ 2 ∂μ = 1 := by
-  sorry
+  rw [integral_comp_of_hasLaw_rademacherMeasure hX (fun x => x ^ 2)]
+  norm_num
 
 /-- The fourth moment of a random sign is `1`. -/
 theorem integral_pow_four_of_hasLaw_rademacherMeasure {X : Ω → ℝ}
     (hX : HasLaw X rademacherMeasure μ) : ∫ ω, X ω ^ 4 ∂μ = 1 := by
-  sorry
+  rw [integral_comp_of_hasLaw_rademacherMeasure hX (fun x => x ^ 4)]
+  norm_num
 
 /-- A vector of independent random signs is isotropic. -/
 theorem isIsotropic_of_hasLaw_rademacherVector [DecidableEq n] {X : Ω → n → ℝ}
     (hX : HasLaw X (rademacherVector n) μ) : IsIsotropic X μ := by
-  sorry
+  refine IsIsotropic.of_iIndepFun hX.iIndepFun_eval (fun i => ?_)
+    (fun i => integral_of_hasLaw_rademacherMeasure (hX.eval i)) (fun i => ?_)
+  · exact ((hX.eval i).memLp_comp_iff aestronglyMeasurable_id).2
+      ((memLp_two_iff_integrable_sq aestronglyMeasurable_id).2 (integrable_rademacherMeasure _))
+  · simp only [Real.norm_eq_abs, sq_abs]
+    exact integral_sq_of_hasLaw_rademacherMeasure (hX.eval i)
 
 /-- The squared coordinates of a vector of random signs are `1` almost surely. -/
 theorem ae_sq_eq_one_of_hasLaw_rademacherVector {X : Ω → n → ℝ}
     (hX : HasLaw X (rademacherVector n) μ) : ∀ᵐ ω ∂μ, ∀ i, X ω i ^ 2 = 1 := by
-  sorry
+  refine ae_all_iff.2 fun i => ?_
+  filter_upwards [ae_eq_one_or_neg_one_of_hasLaw_rademacherMeasure (hX.eval i)] with ω h
+  rcases h with h | h <;> simp [h]
 
 end NLAlib

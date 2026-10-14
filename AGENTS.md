@@ -2,7 +2,8 @@
 
 1. Read `CONTRIBUTING.md` in full. It is the contract; §5.4 (interfaces), §8 (designing a stage),
    §10 (memory) and §11 (agent rules) are not optional.
-2. Read the current brief (`docs/PORT_MATRIX.md` while the Matrix layer is being built) and the
+2. Read the current brief (`docs/PORT_MATRIX.md` for the Matrix layer, finished;
+   `docs/PORT_PROBABILITY.md` for the Probability round) and the
    current stage's design note in `docs/design/`. If the note does not exist, the stage has not
    been designed: the orchestrator writes it and stops for approval before any proof is written.
 3. Read `docs/port/status.md` to see what is in progress and where the last agent stopped.

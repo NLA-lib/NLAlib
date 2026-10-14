@@ -42,7 +42,8 @@ Updated at every stopping point. Newest entry first within each section.
 | M10 | `Spectral/Schur.lean`, `EigenvalueListing.lean` (split off), `Structured/Walsh.lean`, `Structured/Cauchy.lean` | Opus agent | proved | unitary Schur from the field similarity plus a QR factorization; Hilbert matrix positive definite through `posDef_iff_eliminationStep` |
 | M10 | `Spectral/Normal.lean`, `Simultaneous.lean`, `Diagonalizable.lean`, `EigenvectorPairing.lean`, `SylvesterEquation.lean` (split off) | Opus agent | proved | commuting families over `𝕜` with split characteristic polynomials; simple-eigenvalue pairing over any field |
 | M10 | `Spectral/Inertia.lean`, `SylvesterCriterion.lean`, `RankOneUpdate.lean` | Opus agent | in progress | |
-| M10 | `Spectral/Gershgorin.lean`, `HermitianPart.lean`, `Structured/Kronecker.lean`, `Circulant.lean` | Opus agent | in progress | |
+| M10 | `Spectral/Gershgorin.lean`, `HermitianPart.lean`, `Structured/Kronecker.lean`, `Circulant.lean` | Opus agent | proved | |
+| M10 | `Spectral/SpectralRadius.lean`, `RealSchur.lean` | Opus agent | in progress | |
 | M8 | `Functions/HermitianCalculus.lean`, `ForMathlib/Analysis/RCLike/ToComplex.lean`, `ForMathlib/Analysis/Calculus/Deriv/Matrix.lean` | Opus agent | proved | diagonalisation lemmas to be restated for a frame `U : Matrix n r 𝕜` with `card r = card n`, the shape the spectral theorem of M3 produces |
 | M8 | `Functions/Polynomial.lean`, `Exponential.lean` | Opus agent | proved | |
 | M8 | `Functions/Complexification.lean`, `TraceFunctions.lean` | Opus agent | proved | convexity of trace functions through Jensen for quadratic forms (Peierls), Klein from the generalized Klein inequality |

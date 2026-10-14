@@ -752,6 +752,10 @@
   "new": "NLAlib.IsSVD.pinv_eq",
   "stage": "M4"
  },
+ "NLAlib.IsSVD.kronecker_factorization": {
+  "new": "NLAlib.IsSVD.kronecker",
+  "stage": "M10"
+ },
  "NLAlib.IsSVD.leadingSingularCoefficients_attain": {
   "new": "NLAlib.isGreatest_frobInner_specNorm",
   "stage": "M3b"
@@ -1687,6 +1691,10 @@
   "new": "NLAlib.cfc_mul_mul_conjTranspose",
   "stage": "M8"
  },
+ "NLAlib.charpolyRootCountIn_gershgorinRowUnion_eq_card": {
+  "new": "NLAlib.card_roots_charpoly_filter_mem_iUnion_closedBall",
+  "stage": "M10"
+ },
  "NLAlib.charpoly_add_vecMulVec_mul_X_sub_C": {
   "new": null,
   "note": "deferred: characteristic polynomial of a rank-one update (check Mathlib's matrix determinant lemma first)",
@@ -1797,6 +1805,10 @@
  "NLAlib.columnSpace_orthonormalBasisMatrixOfEuclideanSubspace": {
   "new": "NLAlib.exists_hasOrthonormalCols_range_eq",
   "stage": "M1"
+ },
+ "NLAlib.commute_cyclicShift_iff_exists_circulant": {
+  "new": "NLAlib.mul_circulant_single_comm_iff",
+  "stage": "M10"
  },
  "NLAlib.commute_of_simultaneous_diagonalization": {
   "new": "NLAlib.commute_of_mul_eq_mul_diagonal",
@@ -2338,6 +2350,10 @@
  "NLAlib.det_mul_prod_diag_le_det_hadamard": {
   "new": "Matrix.PosSemidef.re_det_mul_prod_re_diag_le_re_det_hadamard",
   "stage": "M7"
+ },
+ "NLAlib.det_ne_zero_of_irreducible_weak_diagonal_dominance": {
+  "new": "NLAlib.det_ne_zero_of_isIrreducible_of_forall_sum_le",
+  "stage": "M10"
  },
  "NLAlib.det_ne_zero_of_rank_eq": {
   "new": "NLAlib.isUnit_conjTranspose_mul_self_iff_rank",
@@ -2939,9 +2955,17 @@
   "new": "Matrix.PosSemidef.eq_choleskyLower_mul_conjTranspose",
   "stage": "M9"
  },
+ "NLAlib.eq_circulant_of_commute_cyclicShift": {
+  "new": "NLAlib.eq_circulant_of_mul_circulant_single_comm",
+  "stage": "M10"
+ },
  "NLAlib.eq_diagonal_of_isLowerTriangular_of_isUpperTriangular": {
   "new": "NLAlib.eq_diagonal_of_isLowerTriangular_of_isUpperTriangular",
   "stage": "M9"
+ },
+ "NLAlib.eq_eigenvectorUnitary_kronecker_mul_diagonal_mul_transpose": {
+  "new": "NLAlib.kronecker_eq_mul_diagonal_mul_conjTranspose",
+  "stage": "M10"
  },
  "NLAlib.eq_eigenvectorUnitary_mul_diagonal_mul_transpose": {
   "new": "Matrix.IsHermitian.exists_eq_mul_diagonal_mul_conjTranspose",
@@ -3284,6 +3308,14 @@
   "note": "column-selection form, §2 and §7.9: the QR-block statement is not ported; the entry bound is IsLocalMaxVolume.norm_pinv_mul_apply_le and the Frobenius budget is frobNorm_sq_add_frobNorm_pinv_sq_mul_le",
   "stage": "M9"
  },
+ "NLAlib.exists_mem_gershgorinColumnDisc_of_mem_spectrum": {
+  "new": "NLAlib.exists_norm_sub_le_sum_col_of_mem_spectrum",
+  "stage": "M10"
+ },
+ "NLAlib.exists_mem_gershgorinRowDisc_of_mem_spectrum": {
+  "new": "NLAlib.exists_norm_sub_le_sum_of_mem_spectrum",
+  "stage": "M10"
+ },
  "NLAlib.exists_mem_spectrum_distance_le_euclidean_residual_div_of_normal": {
   "new": "NLAlib.exists_norm_sub_mul_norm_le_conditionNumber_mul",
   "note": "normal case: V unitary by isStarNormal_iff_exists_eq_mul_diagonal_mul_conjTranspose, conditionNumber V = 1 by HasOrthonormalCols.conditionNumber_eq_one, d i in the spectrum by mem_spectrum_of_mul_eq_mul_diagonal; division-free; no corollary for normal matrices is stated",
@@ -3311,6 +3343,10 @@
   "new": null,
   "note": "not ported: counterexample file, Matrix-Inequalities §6",
   "stage": "M7"
+ },
+ "NLAlib.exists_norm_le_row_sum_of_mem_spectrum": {
+  "new": "NLAlib.exists_norm_le_sum_of_mem_spectrum",
+  "stage": "M10"
  },
  "NLAlib.exists_not_isUnit_add_specNorm_eq_inv_specNorm_inv": {
   "new": "NLAlib.isLeast_specNorm_not_isUnit_add",
@@ -3869,6 +3905,10 @@
  "NLAlib.frobNorm_inv_add_sub_inv_le": {
   "new": "NLAlib.SymmetricGauge.matrixNorm_inv_add_sub_inv_le",
   "stage": "M6"
+ },
+ "NLAlib.frobNorm_kronecker": {
+  "new": "NLAlib.frobNorm_kronecker",
+  "stage": "M10"
  },
  "NLAlib.frobNorm_le_frobNorm_sylvester_div": {
   "new": "NLAlib.mul_frobNorm_le_frobNorm_mul_sub_mul",
@@ -4441,6 +4481,14 @@
   "note": "not ported: Hessian route to trace-power convexity, superseded by NLAlib.convexOn_re_trace_cfc, Matrix-Functions §6 and §7.8",
   "stage": "M8"
  },
+ "NLAlib.gershgorinRowRadius": {
+  "new": "NLAlib.gershgorinRadius",
+  "stage": "M10"
+ },
+ "NLAlib.gershgorinRowRadius_nonneg": {
+  "new": "NLAlib.gershgorinRadius_nonneg",
+  "stage": "M10"
+ },
  "NLAlib.givens": {
   "new": "NLAlib.givens",
   "stage": "M9"
@@ -4862,6 +4910,10 @@
   "new": "NLAlib.hasOrthonormalCols_iff_orthonormal",
   "stage": "M1"
  },
+ "NLAlib.hasOrthonormalCols_kronecker": {
+  "new": "NLAlib.HasOrthonormalCols.kronecker",
+  "stage": "M10"
+ },
  "NLAlib.hasOrthonormalCols_list_prod": {
   "new": null,
   "note": "one step from HasOrthonormalCols.mul by induction on the list; lists of reflectors are not reproduced, the product is accumulated in householderState",
@@ -5274,6 +5326,10 @@
  "NLAlib.isHermitian_eliminationStep": {
   "new": "Matrix.IsHermitian.eliminationStep",
   "stage": "M9"
+ },
+ "NLAlib.isHermitian_kronecker": {
+  "new": "Matrix.IsHermitian.kronecker",
+  "stage": "M10"
  },
  "NLAlib.isHermitian_mul_of_isQR": {
   "new": "NLAlib.IsQR.isHermitian_mul",
@@ -6360,6 +6416,10 @@
   "new": "NLAlib.pinv_eq_zero",
   "stage": "M4"
  },
+ "NLAlib.moorePenroseInverse_kronecker": {
+  "new": "NLAlib.pinv_kronecker",
+  "stage": "M10"
+ },
  "NLAlib.moorePenroseInverse_moorePenroseInverse": {
   "new": "NLAlib.pinv_pinv",
   "stage": "M4"
@@ -6721,6 +6781,10 @@
   "new": "NLAlib.specNorm_sq_le_iff_conjTranspose_mul_self_le",
   "note": "stage M2, applied to Mᴴ with a = 1 and NLAlib.specNorm_conjTranspose; removed from M7 as a duplicate, Matrix-Inequalities §8.4",
   "stage": "M7"
+ },
+ "NLAlib.multiset_eigenvalues_kronecker_sum": {
+  "new": "NLAlib.kronecker_one_add_one_kronecker_eq_mul_diagonal_mul_conjTranspose",
+  "stage": "M10"
  },
  "NLAlib.nat_mul_mul_re_trace_mul_pow_le": {
   "new": "NLAlib.re_trace_mul_pow_le_add",
@@ -7381,6 +7445,14 @@
   "new": "Matrix.IsHermitian.posDef_exp",
   "stage": "M8"
  },
+ "NLAlib.posDef_of_isHermitian_of_irreducible_weak_diagonal_dominance": {
+  "new": "Matrix.IsHermitian.posDef_of_isIrreducible_of_forall_sum_le",
+  "stage": "M10"
+ },
+ "NLAlib.posDef_of_isHermitian_of_row_radius_lt_diag": {
+  "new": "Matrix.IsHermitian.posDef_of_forall_sum_lt_re",
+  "stage": "M10"
+ },
  "NLAlib.posDef_of_posDef_le": {
   "new": "Matrix.PosDef.posDef_of_le",
   "stage": "M8"
@@ -8009,6 +8081,10 @@
   "new": "NLAlib.HasOrthonormalCols.rank_mul",
   "stage": "M5"
  },
+ "NLAlib.rank_kronecker": {
+  "new": "NLAlib.rank_kronecker",
+  "stage": "M10"
+ },
  "NLAlib.rank_le_of_spectralTraceTail_eq_zero": {
   "new": null,
   "note": "not ported: trace-tail bounds have no consumer in the Matrix layer (M7 review); the tail is ∑ i ∈ Finset.Ico r (card n), eigenvalue A i if a consumer needs them",
@@ -8100,6 +8176,10 @@
  "NLAlib.re_diagonal_mem_Icc_eigenvalues₀": {
   "new": "Matrix.IsHermitian.re_apply_self_mem_Icc",
   "stage": "M3a"
+ },
+ "NLAlib.re_pos_of_mem_spectrum_of_row_radius_lt_re_diag": {
+  "new": "NLAlib.re_pos_of_mem_spectrum_of_forall_sum_lt_re",
+  "stage": "M10"
  },
  "NLAlib.re_trace_cfc_eq_sum_eigenvalues": {
   "new": "Matrix.IsHermitian.re_trace_cfc",
@@ -9077,6 +9157,10 @@
   "note": "deferred to M4: norm of the pseudoinverse (specNorm_pinv)",
   "stage": "M3"
  },
+ "NLAlib.specNorm_kronecker": {
+  "new": "NLAlib.specNorm_kronecker",
+  "stage": "M10"
+ },
  "NLAlib.specNorm_le_div_of_net": {
   "new": "NLAlib.specNorm_le_div_of_isCover",
   "note": "net is Mathlib Metric.IsCover",
@@ -9453,6 +9537,10 @@
  "NLAlib.spectralRadius_eq_specNorm_of_posSemidef": {
   "new": "IsStarNormal.specNorm_eq_specRadius",
   "note": "for normal matrices over 𝕜; for positive semidefinite A the common value is eigenvalue A 0 by Matrix.PosSemidef.specNorm_eq_eigenvalue_zero",
+  "stage": "M10"
+ },
+ "NLAlib.spectralRadius_le_max_weighted_row_sum": {
+  "new": "NLAlib.exists_norm_le_weighted_sum_of_mem_spectrum",
   "stage": "M10"
  },
  "NLAlib.spectralRadius_mul_comm": {

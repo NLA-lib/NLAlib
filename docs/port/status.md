@@ -9,6 +9,13 @@ Updated at every stopping point. Newest entry first within each section.
   have been approval questions are recorded in the note under "Open questions" with the choice
   taken, for review after the fact. When very unsure: commit a checkpoint, then continue.
 
+- 2026-10-14, maintainer, approval for the Probability round: the maintainer weighs in on
+  serious design decisions, meaning those that would need substantial rework to change once the
+  round is finished (an interface every later theorem takes, a definition's carrier or indexing,
+  a naming scheme, a global instance). The orchestrator collects these, with the alternatives
+  and a recommendation, and stops for them before building on them. Everything else proceeds
+  without a stop and is recorded in the design note, as in the Matrix layer.
+
 - 2026-10-14, maintainer, for the Probability layer and above (inputs to its brief, not yet
   designed):
   1. Measurability belongs to Probability, not Matrix (done: `Probability/Measurability/`).

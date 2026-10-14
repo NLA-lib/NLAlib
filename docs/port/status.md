@@ -57,7 +57,7 @@ P4 proceeded on the orchestrator's recommendations (Lipschitz as `LipschitzWith`
 
 **Queue (orchestrator, 2026-10-14, latest):**
 - Proved and registered: P0–P5a, R1, R2 (stage checks green at 185 modules, before R4–R5).
-- In progress: R4 `InverseMoments.lean` (Opus); P6 `GaussianIntegrationByParts.lean`,
+- R4 `ChiSquareMoments.lean`, `InverseMoments.lean`, `InverseMoments/Spectral.lean` proved (split at 1490 lines); P6 `GaussianIntegrationByParts.lean`,
   `GaussianComparison.lean` (Opus).
 - Skeletons written, reviewed, waiting for a proof agent, in this order: R4 `BlockMoments.lean`
   (after InverseMoments; also has three R3 spectral block statements, so after R3's

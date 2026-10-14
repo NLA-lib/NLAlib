@@ -148,6 +148,7 @@ public import NLAlib.Matrix.Subspaces.PrincipalAngles
 public import NLAlib.Matrix.Subspaces.ProjectorPair
 public import NLAlib.Matrix.Subspaces.Tangent
 public import NLAlib.Probability.Distributions.ChiSquare
+public import NLAlib.Probability.Distributions.ChiSquareMoments
 public import NLAlib.Probability.Distributions.Gaussian
 public import NLAlib.Probability.Distributions.GaussianConcentration
 public import NLAlib.Probability.Distributions.GaussianLogSobolev
@@ -182,6 +183,8 @@ public import NLAlib.Probability.SubGaussianVector.Norm
 public import NLAlib.Probability.Tail
 public import NLAlib.RandomMatrix.Gaussian.Basic
 public import NLAlib.RandomMatrix.Gaussian.Concentration
+public import NLAlib.RandomMatrix.Gaussian.InverseMoments
+public import NLAlib.RandomMatrix.Gaussian.InverseMoments.Spectral
 public import NLAlib.RandomMatrix.Gaussian.Invariance
 public import NLAlib.RandomMatrix.Gaussian.Moments
 public import NLAlib.RandomMatrix.Gaussian.Rank

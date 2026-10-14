@@ -263,8 +263,18 @@
   "new": "NLAlib.IsDiagonalizable",
   "stage": "M10"
  },
+ "NLAlib.IsDiagonalizable.finrank_eigenspace_eq_rootMultiplicity": {
+  "new": null,
+  "note": "not ported: equality of geometric and algebraic multiplicities of a diagonalizable matrix has no statement in the new library",
+  "stage": "M10"
+ },
  "NLAlib.IsDiagonalizable.isSemisimple": {
   "new": "NLAlib.IsDiagonalizable.isSemisimple",
+  "stage": "M10"
+ },
+ "NLAlib.IsDiagonalizable.of_surjective_intertwiner": {
+  "new": null,
+  "note": "private helper IsDiagonalizable.of_surjective of NLAlib.isDiagonalizable_fromBlocks_diagonal_iff",
   "stage": "M10"
  },
  "NLAlib.IsFullQR": {
@@ -468,6 +478,11 @@
   "new": "NLAlib.IsPinv.isStarProjection_right",
   "stage": "M4"
  },
+ "NLAlib.IsMoorePenroseInverse.kronecker": {
+  "new": "NLAlib.pinv_kronecker",
+  "note": "IsPinv A B is pinv A = B, NLAlib.pinv_eq_iff; over 𝕜",
+  "stage": "M10"
+ },
  "NLAlib.IsMoorePenroseInverse.mk": {
   "new": "NLAlib.IsPinv",
   "note": "structure with four named fields",
@@ -641,6 +656,11 @@
   "new": "NLAlib.IsQR.isUpperTriangular",
   "note": "structure field, renamed",
   "stage": "M9"
+ },
+ "NLAlib.IsRealNormalForm": {
+  "new": null,
+  "note": "object not reproduced: IsRealNormalForm, §1; the form is written IsRealSchurForm T ∧ ∀ i j, i ≠ j → T i j = -T j i in NLAlib.exists_hasOrthonormalCols_isRealSchurForm_of_isStarNormal",
+  "stage": "M10"
  },
  "NLAlib.IsRealSchurForm": {
   "new": "NLAlib.IsRealSchurForm",
@@ -934,9 +954,19 @@
   "new": "NLAlib.IsUnitUpperTriangular.mul",
   "stage": "M9"
  },
+ "NLAlib.IsUnreducedHessenberg": {
+  "new": null,
+  "note": "object not reproduced: IsUnreducedHessenberg; the hypothesis is written out as ∀ i j, (i : ℕ) = j + 1 → H i j ≠ 0 in the implicit Q theorem of NLAlib/Matrix/Factorizations/Hessenberg.lean",
+  "stage": "M10"
+ },
  "NLAlib.IsUpperHessenberg": {
   "new": "NLAlib.IsUpperHessenberg",
   "stage": "M9"
+ },
+ "NLAlib.IsUpperHessenberg.add_smul_one": {
+  "new": "NLAlib.IsUpperHessenberg.sub_smul_one",
+  "note": "sign twin: apply it to -μ; over any ring",
+  "stage": "M10"
  },
  "NLAlib.IsUpperHessenberg.isTridiagonal_of_isHermitian": {
   "new": "NLAlib.IsUpperHessenberg.isTridiagonal",
@@ -1185,6 +1215,11 @@
   "note": "representation of a one-shape norm by a gauge not reproduced",
   "stage": "M3b"
  },
+ "NLAlib.WalshIndex": {
+  "new": null,
+  "note": "object not reproduced: WalshIndex, §1; the index type is written Fin b → ZMod 2",
+  "stage": "M10"
+ },
  "NLAlib.WeaklyMajorized": {
   "new": "NLAlib.WeaklyMajorized",
   "stage": "M3a"
@@ -1409,6 +1444,11 @@
   "note": "over any commutative ring; the complement of i is Finset.univ.erase i, through principalMinor",
   "stage": "M8"
  },
+ "NLAlib.adjugate_ne_zero_of_finrank_ker_eq_one": {
+  "new": null,
+  "note": "private helper of NLAlib.exists_adjugate_eq_smul_vecMulVec, under the same name",
+  "stage": "M10"
+ },
  "NLAlib.aeval_conjGram_mul_eq_mul_aeval_conjGram": {
   "new": "NLAlib.aeval_mul_conjTranspose_self_mul",
   "stage": "M8"
@@ -1495,6 +1535,11 @@
   "note": "object not reproduced: bestRankFrobSq, written frobNorm (A - truncatedSVD A k) ^ 2; nonnegativity is sq_nonneg",
   "stage": "M6"
  },
+ "NLAlib.border_eq_sum_sub_trace_of_charpoly_eq_prod": {
+  "new": null,
+  "note": "one step from NLAlib.IsEigenvalueListing.trace_eq_sum: the trace of the bordered matrix is trace A + a",
+  "stage": "M10"
+ },
  "NLAlib.borderedMatrix": {
   "new": null,
   "note": "object not reproduced: borderedMatrix, §1 and §2 item 2; no recursion on the dimension",
@@ -1564,6 +1609,11 @@
   "new": null,
   "note": "object not reproduced: borderedUpper, §1 and §2 item 2",
   "stage": "M9"
+ },
+ "NLAlib.bordered_interlacing_converse_of_strict_cases": {
+  "new": null,
+  "note": "not ported: interlacing-converse construction machinery, §6; the new proof of Matrix.IsHermitian.exists_eigenvalue_fromBlocks_eq treats repeated eigenvalues directly",
+  "stage": "M10"
  },
  "NLAlib.canonicalQRFrame": {
   "new": "NLAlib.gramSchmidtQ",
@@ -1650,6 +1700,11 @@
   "note": "private helper of Spectral/Weyl.lean",
   "stage": "M3"
  },
+ "NLAlib.card_walshIndex": {
+  "new": null,
+  "note": "object not reproduced: WalshIndex, §1; the cardinality of Fin b → ZMod 2 is by simp with ZMod.card",
+  "stage": "M10"
+ },
  "NLAlib.cauchyMatrix": {
   "new": "NLAlib.cauchyMatrix",
   "stage": "M10"
@@ -1719,8 +1774,38 @@
   "new": "NLAlib.cfc_mul_mul_conjTranspose",
   "stage": "M8"
  },
+ "NLAlib.change_eigenbasis_apply_eq_zero_of_eigenvalues_ne": {
+  "new": null,
+  "note": "not ported: change of basis between two diagonalisations with the same eigenvalue list, Horn–Johnson 1.3.27; no consumer",
+  "stage": "M10"
+ },
+ "NLAlib.charpolyRootCountIn": {
+  "new": null,
+  "note": "object not reproduced: charpolyRootCountIn, §1 and §7.5; counts are written Multiset.card (A.charpoly.roots.filter fun z => z ∈ K), §8.4",
+  "stage": "M10"
+ },
+ "NLAlib.charpolyRootCountIn_eq_card_filter": {
+  "new": null,
+  "note": "private helper card_filter_roots_charpoly of NLAlib.card_roots_charpoly_filter_mem_iUnion_closedBall",
+  "stage": "M10"
+ },
+ "NLAlib.charpolyRootCountIn_eq_of_preconnected": {
+  "new": null,
+  "note": "private helper card_filter_roots_eq_of_preconnected of NLAlib.card_roots_charpoly_filter_mem_iUnion_closedBall, §6",
+  "stage": "M10"
+ },
+ "NLAlib.charpolyRootCountIn_gershgorinColumnUnion_eq_card": {
+  "new": "NLAlib.card_roots_charpoly_filter_mem_iUnion_closedBall",
+  "note": "column twin: apply it to Aᵀ, with Mathlib's Matrix.charpoly_transpose",
+  "stage": "M10"
+ },
  "NLAlib.charpolyRootCountIn_gershgorinRowUnion_eq_card": {
   "new": "NLAlib.card_roots_charpoly_filter_mem_iUnion_closedBall",
+  "stage": "M10"
+ },
+ "NLAlib.charpolyRootCountIn_le_card": {
+  "new": null,
+  "note": "object not reproduced: charpolyRootCountIn, §7.5; for the root multiset it is Mathlib's Polynomial.card_roots' with Matrix.charpoly_natDegree_eq_dim",
   "stage": "M10"
  },
  "NLAlib.charpoly_add_vecMulVec_mul_X_sub_C": {
@@ -1728,8 +1813,38 @@
   "note": "deferred: characteristic polynomial of a rank-one update (check Mathlib's matrix determinant lemma first)",
   "stage": "M10"
  },
+ "NLAlib.charpoly_bordered_diagonal_insertNth": {
+  "new": null,
+  "note": "not ported: interlacing-converse restoration machinery, §6; one step from NLAlib.charpoly_fromBlocks_diagonal_replicateCol",
+  "stage": "M10"
+ },
  "NLAlib.charpoly_diagonal_add_vecMulVec": {
   "new": "NLAlib.charpoly_diagonal_add_vecMulVec",
+  "stage": "M10"
+ },
+ "NLAlib.charpoly_diagonal_add_vecMulVec_insertNth": {
+  "new": null,
+  "note": "not ported: interlacing-converse restoration machinery, §6; one step from NLAlib.charpoly_diagonal_add_vecMulVec",
+  "stage": "M10"
+ },
+ "NLAlib.charpoly_diagonal_add_vecMulVec_reindex": {
+  "new": null,
+  "note": "not ported: interlacing-converse reindexing machinery, §6; NLAlib.charpoly_diagonal_add_vecMulVec holds on any finite index type",
+  "stage": "M10"
+ },
+ "NLAlib.charpoly_diagonal_arrowhead_reindex": {
+  "new": null,
+  "note": "not ported: interlacing-converse reindexing machinery, §6; NLAlib.charpoly_fromBlocks_diagonal_replicateCol holds on any finite index type",
+  "stage": "M10"
+ },
+ "NLAlib.charpoly_diagonal_one_neg_one_eq": {
+  "new": null,
+  "note": "not ported: counterexample to the uncorrected coefficient criterion, of documentary value only",
+  "stage": "M10"
+ },
+ "NLAlib.charpoly_eq_prod_of_eval_eq": {
+  "new": null,
+  "note": "private helper isEigenvalueListing_of_forall_eval_eq of NLAlib.card_roots_charpoly_filter_mem_iUnion_closedBall",
   "stage": "M10"
  },
  "NLAlib.charpoly_fromBlocks_diagonal_replicate": {
@@ -1738,6 +1853,21 @@
  },
  "NLAlib.charpoly_inverse_mul_eq_prod_of_congruence": {
   "new": "NLAlib.isEigenvalueListing_inv_mul_of_eq_mul_diagonal_mul_conjTranspose",
+  "stage": "M10"
+ },
+ "NLAlib.charpoly_mul_mul_transpose_of_hasOrthonormalCols": {
+  "new": "NLAlib.charpoly_mul_mul_of_mul_eq_one",
+  "note": "with S' = Q and S = Qᴴ; any pair with S' * S = 1, over a commutative ring",
+  "stage": "M10"
+ },
+ "NLAlib.charpoly_neg_eq_prod_of_isHermitian": {
+  "new": null,
+  "note": "not ported: helper of the negative rank-one converse, which is not ported; the eigenvalues of -A are NLAlib.eigenvalue_neg",
+  "stage": "M10"
+ },
+ "NLAlib.charpoly_nonsing_inv_mul_mul_eq": {
+  "new": "NLAlib.charpoly_mul_mul_of_mul_eq_one",
+  "note": "with S' = S⁻¹; over a commutative ring; for a unit of the matrix ring it is Mathlib's Matrix.charpoly_units_conj'",
   "stage": "M10"
  },
  "NLAlib.cholesky": {
@@ -1846,12 +1976,32 @@
   "new": "NLAlib.exists_hasOrthonormalCols_range_eq",
   "stage": "M1"
  },
+ "NLAlib.commute_blockDiagonal'_iff": {
+  "new": null,
+  "note": "not ported: commutant of a block diagonal matrix with pairwise disjoint block spectra, over blockDiagonal'; the two-block obstruction is NLAlib.eq_zero_of_mul_eq_mul_of_isCoprime_charpoly",
+  "stage": "M10"
+ },
  "NLAlib.commute_cyclicShift_iff_exists_circulant": {
   "new": "NLAlib.mul_circulant_single_comm_iff",
   "stage": "M10"
  },
+ "NLAlib.commute_nonsing_inv_mul_mul_iff": {
+  "new": null,
+  "note": "not ported: conjugation preserves commutation, helper of the blockDiagonal' commutant lemma, which is not ported",
+  "stage": "M10"
+ },
+ "NLAlib.commute_of_posSemidef_add_eq_diagonal_projection": {
+  "new": null,
+  "note": "proof step of Matrix.PosSemidef.exists_conjTranspose_mul_mul_eq_diagonal",
+  "stage": "M10"
+ },
  "NLAlib.commute_of_simultaneous_diagonalization": {
   "new": "NLAlib.commute_of_mul_eq_mul_diagonal",
+  "stage": "M10"
+ },
+ "NLAlib.commute_similarity_blockDiagonal'_iff": {
+  "new": null,
+  "note": "not ported: commutant of a matrix similar to a block diagonal matrix with pairwise disjoint block spectra, over blockDiagonal'; the block triangular reduction kept is NLAlib.exists_fromBlocks_mul_eq_mul_fromBlocks",
   "stage": "M10"
  },
  "NLAlib.complement_columnProjector_mul_columnProjector_eq": {
@@ -2082,6 +2232,11 @@
   "new": "NLAlib.continuousOn_eigenvalue",
   "stage": "M6"
  },
+ "NLAlib.continuous_eval_derivative_charpoly_affine": {
+  "new": null,
+  "note": "inlined in the proof of NLAlib.exists_eigenvalue_branch_of_rootMultiplicity_eq_one, through the private contDiff_eval_charpoly_add_smul and fderiv_eval_charpoly_add_smul_apply",
+  "stage": "M10"
+ },
  "NLAlib.continuous_frobNorm_array": {
   "new": "NLAlib.continuous_frobNorm",
   "stage": "M6"
@@ -2105,6 +2260,11 @@
   "new": null,
   "note": "not ported: polynomial-series lemmas of the Stein-method proof of the noncommutative Khintchine inequality; they move with that proof, Matrix-Functions §6 and §7.8",
   "stage": "M8"
+ },
+ "NLAlib.continuous_realMatrixComplexification": {
+  "new": null,
+  "note": "inlined in the proof of NLAlib.continuousOn_re_trace_exp_add_cfc_log as continuous_id.matrix_map RCLike.continuous_toComplex; there is no public continuity lemma for complexify",
+  "stage": "M10"
  },
  "NLAlib.continuous_singularValues_array": {
   "new": "NLAlib.continuous_singularValues",
@@ -2243,6 +2403,11 @@
   "note": "bundle of exists_cs_decomposition, HasOrthonormalCols.rank_toBlocks₁₂, HasOrthonormalCols.rank_toBlocks₂₂_add, IsIdempotentElem.specNorm_mul_cos_principalAngle, IsIdempotentElem.specNorm_one_sub; its canonical form of an idempotent is not reproduced, Matrix-Subspaces §6",
   "stage": "M5"
  },
+ "NLAlib.cyclicShiftMatrix": {
+  "new": null,
+  "note": "object not reproduced: cyclicShiftMatrix, §1; written Matrix.circulant (Pi.single 1 1)",
+  "stage": "M10"
+ },
  "NLAlib.davis_kahan_bounds": {
   "new": null,
   "note": "bundle of SymmetricGauge.mul_matrixNorm_conjTranspose_mul_le_of_mul_eq_mul, mul_frobNorm_conjTranspose_mul_le, SymmetricGauge.mul_matrixNorm_one_sub_mul_le_of_eigenvalue_sub, specNorm_one_sub_mul_le_two_mul_specNorm_div_eigengap, frobNorm_one_sub_mul_le_sqrt_two_mul_frobNorm_div_eigengap, frobNorm_one_sub_mul_le_two_mul_sqrt_mul_specNorm_div_eigengap; topEigenframe is not reproduced",
@@ -2252,6 +2417,21 @@
   "new": null,
   "note": "bundle of SymmetricGauge.mul_matrixNorm_conjTranspose_mul_le_of_le, SymmetricGauge.mul_matrixNorm_one_sub_mul_le_of_eigenvalue_sub, specNorm_one_sub_mul_le_two_mul_specNorm_div_eigengap, with one_sub_mul_mul_one_sub_le_of_smul_one_le for a frame given by a Loewner bound",
   "stage": "M6"
+ },
+ "NLAlib.definite_pair_congruence_characterizations": {
+  "new": null,
+  "note": "bundle of the definite-pair statements of Spectral/Congruence.lean",
+  "stage": "M10"
+ },
+ "NLAlib.dense_exists_injective_charpoly_factors_complex": {
+  "new": "NLAlib.dense_setOf_separable_charpoly",
+  "note": "distinct eigenvalues are spelled A.charpoly.Separable; over 𝕜",
+  "stage": "M10"
+ },
+ "NLAlib.dense_exists_injective_charpoly_factors_real": {
+  "new": "NLAlib.dense_setOf_separable_charpoly",
+  "note": "real twin: distinct complex eigenvalues are spelled A.charpoly.Separable over ℝ",
+  "stage": "M10"
  },
  "NLAlib.dense_separable_charpoly": {
   "new": "NLAlib.dense_setOf_separable_charpoly",
@@ -2286,8 +2466,28 @@
   "new": "NLAlib.det_cauchyMatrix",
   "stage": "M10"
  },
+ "NLAlib.det_cauchyMatrix_eq_vandermonde": {
+  "new": "NLAlib.det_cauchyMatrix",
+  "note": "over any field; the two Vandermonde determinants are written as the products of differences, Mathlib's Matrix.det_vandermonde",
+  "stage": "M10"
+ },
+ "NLAlib.det_cauchyMatrix_eq_vandermonde_fintype": {
+  "new": null,
+  "note": "not ported: relabelling of NLAlib.det_cauchyMatrix to an arbitrary finite index type through Fintype.equivFin",
+  "stage": "M10"
+ },
  "NLAlib.det_cauchyMatrix_pos_of_strictMono": {
   "new": "NLAlib.det_cauchyMatrix_pos",
+  "stage": "M10"
+ },
+ "NLAlib.det_cauchyMatrix_succ": {
+  "new": null,
+  "note": "private helper of NLAlib.det_cauchyMatrix, under the same name",
+  "stage": "M10"
+ },
+ "NLAlib.det_congruence_diagonal": {
+  "new": null,
+  "note": "not ported: calculus helper of the prototype's definite-pair congruence; LogDet.lean proves its results directly",
   "stage": "M10"
  },
  "NLAlib.det_conjTranspose_mul_self_eq_sum_norm_sq": {
@@ -2318,6 +2518,11 @@
  "NLAlib.det_eq_prod_sq_diag_of_cholesky": {
   "new": "NLAlib.IsCholesky.det_eq_prod",
   "stage": "M9"
+ },
+ "NLAlib.det_fromBlocks_diagonal_of_forall_ne_zero": {
+  "new": null,
+  "note": "not ported in determinant form: the general private det_fromBlocks_replicateCol_of_isRegular serves NLAlib.charpoly_fromBlocks_diagonal_replicateCol, which holds without the restriction to nonzero diagonal entries",
+  "stage": "M10"
  },
  "NLAlib.det_fromBlocks_eq_mul_det_iff_of_posDef": {
   "new": "NLAlib.re_det_fromBlocks_eq_iff_of_posDef",
@@ -2403,6 +2608,11 @@
   "new": "NLAlib.isUnit_conjTranspose_mul_self_iff_rank",
   "note": "general Gram form",
   "stage": "M1"
+ },
+ "NLAlib.det_one_add_X_smul_eq_of_diagonalization": {
+  "new": null,
+  "note": "not ported: det (1 + X • G) step of the prototype's proof; NLAlib.IsEigenvalueListing.sum_principalMinor_eq is proved from NLAlib.charpoly_coeff_eq_sum_principalMinor",
+  "stage": "M10"
  },
  "NLAlib.det_overlapping_blocks_eq_iff": {
   "new": null,
@@ -2555,6 +2765,16 @@
   "note": "not ported: descent machinery of the prototype's variational proof of Horn's converse, Matrix-Inequalities §6",
   "stage": "M7"
  },
+ "NLAlib.diagonal_mem_gershgorinRowDisc": {
+  "new": null,
+  "note": "object not reproduced: gershgorinRowDisc, §7.5; for the closed ball it is Metric.mem_closedBall_self with NLAlib.gershgorinRadius_nonneg",
+  "stage": "M10"
+ },
+ "NLAlib.diagonal_mul_change_eigenbasis_eq_change_eigenbasis_mul_diagonal": {
+  "new": null,
+  "note": "not ported: change of basis between two diagonalisations with the same eigenvalue list, Horn–Johnson 1.3.27; no consumer",
+  "stage": "M10"
+ },
  "NLAlib.dilation": {
   "new": "NLAlib.dilation",
   "note": "over 𝕜; the prototype was over any type with zero and star",
@@ -2675,6 +2895,11 @@
   "new": "NLAlib.dotProduct_eq_zero_of_vecMul_eq_smul_of_mulVec_eq_smul",
   "stage": "M10"
  },
+ "NLAlib.dotProduct_eq_zero_of_mem_maxGenEigenspace_of_left_eigenvalue_ne": {
+  "new": null,
+  "note": "not ported: generalized eigenvector pairing, unused; the eigenvector case is NLAlib.dotProduct_eq_zero_of_vecMul_eq_smul_of_mulVec_eq_smul",
+  "stage": "M10"
+ },
  "NLAlib.dotProduct_fromBlocks_eq_generalizedSchurComplement_square": {
   "new": "NLAlib.quadForm_fromBlocks_eq_add",
   "note": "any solution X of A X = B in place of A⁺ B",
@@ -2741,6 +2966,11 @@
   "note": "pinv A * A is rangeProjector Aᴴ; Pythagoras lemmas in Basic/Projector",
   "stage": "M4"
  },
+ "NLAlib.dotProduct_shift_pow_mulVec_of_left_eigenvector": {
+  "new": null,
+  "note": "not ported: proof step of the generalized eigenvector pairing",
+  "stage": "M10"
+ },
  "NLAlib.dotProduct_shifted_residual_eq_rayleigh_add_sq": {
   "new": "Matrix.IsHermitian.norm_mulVec_sub_smul_sq",
   "stage": "M6"
@@ -2749,6 +2979,11 @@
   "new": null,
   "note": "private helper exists_eigencoordinates in Perturbation/Residual.lean: the eigenbasis expansion of ‖A x - μ x‖², of Matrix.IsHermitian.exists_abs_eigenvalue_sub_mul_norm_le",
   "stage": "M6"
+ },
+ "NLAlib.eigenpair_of_isolated_similarity": {
+  "new": null,
+  "note": "not ported: eigenvector deflation, §6",
+  "stage": "M10"
  },
  "NLAlib.eigenvaluePrefix": {
   "new": null,
@@ -2835,6 +3070,16 @@
  "NLAlib.eigenvalues₀_cfc_of_antitone": {
   "new": "Matrix.IsHermitian.eigenvalue_cfc_of_monotoneOn",
   "stage": "M8"
+ },
+ "NLAlib.eigenvalues₀_congruence_bounds_of_nonneg": {
+  "new": "Matrix.IsHermitian.exists_eigenvalue_conjTranspose_mul_mul_eq_mul",
+  "note": "corollary: multiply the two bounds on θ by eigenvalue A k ≥ 0",
+  "stage": "M10"
+ },
+ "NLAlib.eigenvalues₀_congruence_bounds_of_nonpos": {
+  "new": "Matrix.IsHermitian.exists_eigenvalue_conjTranspose_mul_mul_eq_mul",
+  "note": "corollary: multiply the two bounds on θ by eigenvalue A k ≤ 0",
+  "stage": "M10"
  },
  "NLAlib.eigenvalues₀_dilation": {
   "new": "NLAlib.eigenvalue_dilation",
@@ -2985,6 +3230,11 @@
   "new": "NLAlib.eliminationStep_zero",
   "stage": "M9"
  },
+ "NLAlib.eq_blockDiagonal'_of_intertwines_of_disjoint_spectrum": {
+  "new": null,
+  "note": "not ported: many-block form over blockDiagonal'; block by block it is NLAlib.eq_zero_of_mul_eq_mul_of_isCoprime_charpoly",
+  "stage": "M10"
+ },
  "NLAlib.eq_borderedMatrix_mul_borderedMatrix_pivotSchur": {
   "new": null,
   "note": "recursion on the dimension not reproduced: the step-indexed eq_gaussState_add_sum replaces it; one step is eliminationStep_eq_sub_smul_vecMulVec",
@@ -3016,6 +3266,16 @@
   "note": "ᵀ copy for real matrices of Mathlib's Matrix.IsHermitian.spectral_theorem; the new statement has the sorted eigenvalues and an existential frame",
   "stage": "M8"
  },
+ "NLAlib.eq_inv_transpose_mul_diagonal_mul_inv_of_congruence": {
+  "new": null,
+  "note": "not ported: rewriting of a congruence, one step from Matrix.inv_mul_cancel_left_of_invertible",
+  "stage": "M10"
+ },
+ "NLAlib.eq_of_hasEigenvalue_restrict_maxGenEigenspace": {
+  "new": null,
+  "note": "not ported: primary decomposition helper, unused",
+  "stage": "M10"
+ },
  "NLAlib.eq_one_of_isUnitLowerTriangular_of_isUpperTriangular": {
   "new": "NLAlib.IsUnitLowerTriangular.eq_one_of_isUpperTriangular",
   "stage": "M9"
@@ -3023,6 +3283,11 @@
  "NLAlib.eq_polarFrame_of_isometry_mul_sqrt_gram_eq": {
   "new": "NLAlib.eq_polarFactor_of_mul_sqrt_eq",
   "stage": "M9"
+ },
+ "NLAlib.eq_real_schur_block_of_charpoly": {
+  "new": null,
+  "note": "not ported: real Schur plane lemma, §6; the new deflation step is the private exists_mul_eq_mul_isRealSchurForm of NLAlib.exists_hasOrthonormalCols_isRealSchurForm",
+  "stage": "M10"
  },
  "NLAlib.eq_sortedEigenframe_mul_diagonal_mul_transpose": {
   "new": "Matrix.IsHermitian.exists_eq_mul_diagonal_mul_conjTranspose",
@@ -3043,12 +3308,37 @@
   "note": "now an iff",
   "stage": "M1"
  },
+ "NLAlib.eq_zero_of_mul_eq_mul_of_disjoint_spectrum": {
+  "new": "NLAlib.eq_zero_of_mul_eq_mul_of_isCoprime_charpoly",
+  "note": "over any field; the hypothesis is translated by NLAlib.isCoprime_charpoly_iff_disjoint_spectrum",
+  "stage": "M10"
+ },
  "NLAlib.eq_zero_of_mul_eq_mul_of_isCoprime_charpoly": {
   "new": "NLAlib.eq_zero_of_mul_eq_mul_of_isCoprime_charpoly",
   "stage": "M10"
  },
+ "NLAlib.eq_zero_of_norm_sub_real_le_of_re_nonpos": {
+  "new": null,
+  "note": "not ported: scalar step of the weak-dominance right-half-plane corollaries, which are not ported",
+  "stage": "M10"
+ },
  "NLAlib.eq_zero_of_normal_upper_fromBlocks": {
   "new": "NLAlib.eq_zero_of_isStarNormal_fromBlocks",
+  "stage": "M10"
+ },
+ "NLAlib.eq_zero_of_real_normal_cut": {
+  "new": null,
+  "note": "not ported: coordinate-cut form of NLAlib.eq_zero_of_isStarNormal_fromBlocks; real normal form machinery, §6",
+  "stage": "M10"
+ },
+ "NLAlib.eq_zero_of_real_normal_upper_fromBlocks": {
+  "new": "NLAlib.eq_zero_of_isStarNormal_fromBlocks",
+  "note": "real twin; over 𝕜 with IsStarNormal",
+  "stage": "M10"
+ },
+ "NLAlib.equivalent_toQuadraticForm'_transpose_mul_mul": {
+  "new": null,
+  "note": "not ported: quadratic-form route to the inertia; Sylvester's law is Matrix.IsHermitian.inertiaPos_conjTranspose_mul_mul, §2 and §7.2",
   "stage": "M10"
  },
  "NLAlib.euclideanJacobian": {
@@ -3076,6 +3366,11 @@
   "note": "not ported: step of the prototype's Schur-complement route to the eigenvalue branch; not needed by the characteristic-polynomial route, Matrix-Perturbation §9",
   "stage": "M6"
  },
+ "NLAlib.eventually_rootMultiplicity_eq_one_of_continuous_eigenvalue": {
+  "new": null,
+  "note": "one step from NLAlib.exists_eigenvalue_branch_of_rootMultiplicity_eq_one: its iff clause identifies a continuous eigenvalue branch near the base point with φ, and its last clause says φ stays simple",
+  "stage": "M10"
+ },
  "NLAlib.existsUnique_cholesky_of_posDef": {
   "new": "Matrix.PosDef.existsUnique_isCholesky",
   "stage": "M9"
@@ -3088,24 +3383,88 @@
   "new": "NLAlib.existsUnique_isQR_of_injective",
   "stage": "M9"
  },
+ "NLAlib.existsUnique_real_sylvester_of_disjoint_complex_spectrum": {
+  "new": "NLAlib.existsUnique_mul_sub_mul_eq_of_isCoprime_charpoly",
+  "note": "real twin: over any field with coprime characteristic polynomials, which over ℝ is the disjointness of the complex spectra by NLAlib.isCoprime_charpoly_iff_disjoint_spectrum and Mathlib's Polynomial.isCoprime_map",
+  "stage": "M10"
+ },
+ "NLAlib.existsUnique_sylvester_of_disjoint_spectrum": {
+  "new": "NLAlib.existsUnique_mul_sub_mul_eq_of_isCoprime_charpoly",
+  "note": "over any field; the hypothesis is translated by NLAlib.isCoprime_charpoly_iff_disjoint_spectrum",
+  "stage": "M10"
+ },
  "NLAlib.existsUnique_sylvester_of_isCoprime_charpoly": {
   "new": "NLAlib.existsUnique_mul_sub_mul_eq_of_isCoprime_charpoly",
+  "stage": "M10"
+ },
+ "NLAlib.exists_add_vecMulVec_charpoly_of_diagonal_construction": {
+  "new": null,
+  "note": "not ported: interlacing-converse transport machinery, §6; the transport is inside the proof of Matrix.IsHermitian.exists_eigenvalue_add_vecMulVec_star_eq",
   "stage": "M10"
  },
  "NLAlib.exists_add_vecMulVec_charpoly_of_interlacing": {
   "new": "Matrix.IsHermitian.exists_eigenvalue_add_vecMulVec_star_eq",
   "stage": "M10"
  },
+ "NLAlib.exists_adjugate_eq_smul_vecMulVec_of_finrank_ker_eq_one": {
+  "new": "NLAlib.exists_adjugate_eq_smul_vecMulVec",
+  "stage": "M10"
+ },
  "NLAlib.exists_adjugate_shift_eq_smul_vecMulVec_of_finrank_eigenspace_eq_one": {
   "new": "NLAlib.exists_adjugate_eq_smul_vecMulVec",
+  "stage": "M10"
+ },
+ "NLAlib.exists_bordered_charpoly_of_diagonal_construction": {
+  "new": null,
+  "note": "not ported: interlacing-converse transport machinery, §6; the transport is inside the proof of Matrix.IsHermitian.exists_eigenvalue_fromBlocks_eq",
   "stage": "M10"
  },
  "NLAlib.exists_bordered_charpoly_of_interlacing": {
   "new": "Matrix.IsHermitian.exists_eigenvalue_fromBlocks_eq",
   "stage": "M10"
  },
+ "NLAlib.exists_bordered_diagonal_charpoly": {
+  "new": "Matrix.IsHermitian.exists_eigenvalue_fromBlocks_eq",
+  "note": "the diagonal case; the conclusion is on eigenvalue",
+  "stage": "M10"
+ },
+ "NLAlib.exists_bordered_diagonal_charpoly_of_strictMono": {
+  "new": null,
+  "note": "not ported: strictly ordered special case of Matrix.IsHermitian.exists_eigenvalue_fromBlocks_eq, construction file, §6",
+  "stage": "M10"
+ },
+ "NLAlib.exists_bordered_diagonal_charpoly_with_trace": {
+  "new": "Matrix.IsHermitian.exists_eigenvalue_fromBlocks_eq",
+  "note": "the diagonal case; the corner entry is forced by the trace, NLAlib.IsEigenvalueListing.trace_eq_sum",
+  "stage": "M10"
+ },
  "NLAlib.exists_bound_norm_matrix_pow_iff": {
   "new": "NLAlib.exists_forall_specNorm_pow_le_iff",
+  "stage": "M10"
+ },
+ "NLAlib.exists_bound_norm_pow_iff_eigenvalues_le_one_and_peripheral_semisimple": {
+  "new": null,
+  "note": "not ported: statement for an endomorphism of an abstract finite-dimensional complex normed space, §6; the matrix form is NLAlib.exists_forall_specNorm_pow_le_iff",
+  "stage": "M10"
+ },
+ "NLAlib.exists_bound_norm_pow_of_bounded_pow_orbits": {
+  "new": null,
+  "note": "inlined in the proof of NLAlib.exists_forall_specNorm_pow_le_iff, through the private specNorm_le_card_mul_of_forall_norm_apply_le, §6",
+  "stage": "M10"
+ },
+ "NLAlib.exists_bound_norm_real_matrix_pow_iff": {
+  "new": "NLAlib.exists_forall_specNorm_pow_le_iff",
+  "note": "real twin; stated over 𝕜 through complexify and specRadius",
+  "stage": "M10"
+ },
+ "NLAlib.exists_bound_norm_real_matrix_pow_iff_complexification": {
+  "new": null,
+  "note": "one step from NLAlib.specNorm_complexify and NLAlib.complexify_pow",
+  "stage": "M10"
+ },
+ "NLAlib.exists_bound_pow_orbit_of_eigenvalues_le_one_of_peripheral_semisimple": {
+  "new": null,
+  "note": "private helper exists_forall_norm_pow_apply_le_of_specRadius_le_one of NLAlib.exists_forall_specNorm_pow_le_iff, §6",
   "stage": "M10"
  },
  "NLAlib.exists_charpoly_factor_add_vecMulVec": {
@@ -3113,10 +3472,20 @@
   "note": "deferred: characteristic polynomial of a rank-one update (check Mathlib's matrix determinant lemma first)",
   "stage": "M10"
  },
+ "NLAlib.exists_circulant_iff_toeplitz_and_commute": {
+  "new": null,
+  "note": "object not reproduced: toeplitzMatrix, §7.6; the characterisation by commutation with the cyclic shift alone is NLAlib.mul_circulant_single_comm_iff",
+  "stage": "M10"
+ },
  "NLAlib.exists_column_embedding_gram_det_pos": {
   "new": "NLAlib.exists_embedding_forall_re_det_le",
   "note": "the clause Function.Injective (A.submatrix id e).mulVec, which is positive volume by re_det_conjTranspose_mul_self_pos; over 𝕜",
   "stage": "M9"
+ },
+ "NLAlib.exists_common_eigenbasis_of_commute": {
+  "new": "NLAlib.exists_forall_mul_eq_mul_diagonal_of_pairwise_commute",
+  "note": "the common eigenbasis is the columns of V",
+  "stage": "M10"
  },
  "NLAlib.exists_common_mulVec_eigenvector_of_commute": {
   "new": "NLAlib.exists_mulVec_eq_smul_of_pairwise_commute",
@@ -3149,12 +3518,36 @@
   "new": "Matrix.PosDef.exists_eq_mul_conjTranspose_and_eq_mul_diagonal_mul_conjTranspose",
   "stage": "M10"
  },
+ "NLAlib.exists_diagonal_add_vecMulVec_charpoly": {
+  "new": "Matrix.IsHermitian.exists_eigenvalue_add_vecMulVec_star_eq",
+  "note": "the diagonal case; the conclusion is on eigenvalue, and the characteristic polynomial follows by Matrix.IsHermitian.isEigenvalueListing_eigenvalue",
+  "stage": "M10"
+ },
+ "NLAlib.exists_diagonal_add_vecMulVec_charpoly_of_strictMono": {
+  "new": null,
+  "note": "not ported: strictly ordered special case of Matrix.IsHermitian.exists_eigenvalue_add_vecMulVec_star_eq, construction file, §6",
+  "stage": "M10"
+ },
+ "NLAlib.exists_diagonal_add_vecMulVec_charpoly_with_sum_sq": {
+  "new": "Matrix.IsHermitian.exists_eigenvalue_add_vecMulVec_star_eq",
+  "note": "the diagonal case; the norm of the coupling vector is forced by the trace, NLAlib.IsEigenvalueListing.trace_eq_sum",
+  "stage": "M10"
+ },
  "NLAlib.exists_diagonal_congruence_iff_isDiagonalizable_inverse_mul": {
+  "new": "Matrix.IsHermitian.exists_conjTranspose_mul_mul_eq_diagonal_iff",
+  "stage": "M10"
+ },
+ "NLAlib.exists_diagonal_congruence_of_isDiagonalizable_inverse_mul": {
   "new": "Matrix.IsHermitian.exists_conjTranspose_mul_mul_eq_diagonal_iff",
   "stage": "M10"
  },
  "NLAlib.exists_diagonal_congruence_of_posSemidef": {
   "new": "Matrix.PosSemidef.exists_conjTranspose_mul_mul_eq_diagonal",
+  "stage": "M10"
+ },
+ "NLAlib.exists_diagonal_similarity_small_upper_entries": {
+  "new": null,
+  "note": "inlined in the proof of NLAlib.IsEigenvalueListing.exists_isUpperTriangular_inv_mul_mul_norm_apply_lt, §6",
   "stage": "M10"
  },
  "NLAlib.exists_dilation_orthogonal_diagonalization": {
@@ -3285,6 +3678,16 @@
   "note": "private helper of Matrix.PosSemidef.posDef_map_exp_iff: exists_injective_vecMulVec_le",
   "stage": "M7"
  },
+ "NLAlib.exists_invariant_line_or_real_schur_plane": {
+  "new": null,
+  "note": "not ported: real Schur plane lemma in endomorphism form, §6; the matrix step is the private exists_mul_eq_mul_isRealSchurForm of NLAlib.exists_hasOrthonormalCols_isRealSchurForm",
+  "stage": "M10"
+ },
+ "NLAlib.exists_invariant_subspace_finrank_one_or_two": {
+  "new": null,
+  "note": "not ported: endomorphism form of the real invariant subspace lemma, §6; the matrix step is the private exists_mul_eq_mul_isRealSchurForm of NLAlib.exists_hasOrthonormalCols_isRealSchurForm",
+  "stage": "M10"
+ },
  "NLAlib.exists_isBestFrobRankApprox": {
   "new": "NLAlib.isLeast_frobNorm_sub_of_rank_le",
   "stage": "M3"
@@ -3338,6 +3741,16 @@
   "new": "NLAlib.exists_isSVD",
   "note": "any number of columns between the rank and the smaller dimension",
   "stage": "M3"
+ },
+ "NLAlib.exists_isUnit_add_smul_of_isUnit_complex_pencil": {
+  "new": null,
+  "note": "private helper exists_isUnit_det_add_smul of NLAlib.exists_real_similarity_of_complexify",
+  "stage": "M10"
+ },
+ "NLAlib.exists_isolated_eigenvector_similarity": {
+  "new": null,
+  "note": "not ported: eigenvector deflation, §6; the pairing results kept are in NLAlib/Matrix/Spectral/EigenvectorPairing.lean",
+  "stage": "M10"
  },
  "NLAlib.exists_isometry_mul_eq_of_gram_eq": {
   "new": "NLAlib.conjTranspose_mul_self_eq_iff_exists_mul",
@@ -3420,6 +3833,11 @@
   "new": "NLAlib.exists_norm_le_sum_of_mem_spectrum",
   "stage": "M10"
  },
+ "NLAlib.exists_normalized_diagonal_congruence_of_posSemidef": {
+  "new": null,
+  "note": "not ported: normalised form of Matrix.PosSemidef.exists_conjTranspose_mul_mul_eq_diagonal; the proof produces it but it is not stated",
+  "stage": "M10"
+ },
  "NLAlib.exists_not_isUnit_add_specNorm_eq_inv_specNorm_inv": {
   "new": "NLAlib.isLeast_specNorm_not_isUnit_add",
   "stage": "M4"
@@ -3440,6 +3858,11 @@
  "NLAlib.exists_orthogonal_diagonal_eq_of_majorized": {
   "new": "NLAlib.exists_hasOrthonormalCols_diag_eq_of_majorized",
   "stage": "M7"
+ },
+ "NLAlib.exists_orthogonal_diagonalization_of_isHermitian_with_charpoly": {
+  "new": "IsStarNormal.exists_eq_mul_diagonal_mul_conjTranspose_of_isEigenvalueListing",
+  "note": "generalised to normal matrices over 𝕜 with any listing",
+  "stage": "M10"
  },
  "NLAlib.exists_orthogonal_frame_transition": {
   "new": "NLAlib.HasOrthonormalCols.exists_mul_eq_of_range_eq",
@@ -3481,8 +3904,18 @@
   "new": "NLAlib.exists_hasOrthonormalCols_isRealSchurForm_of_isStarNormal",
   "stage": "M10"
  },
+ "NLAlib.exists_orthogonal_real_orthogonal_normal_form": {
+  "new": null,
+  "note": "not ported: orthogonal specialisation of the real normal form, removed as having no consumer, §8.9",
+  "stage": "M10"
+ },
  "NLAlib.exists_orthogonal_real_schur": {
   "new": "NLAlib.exists_hasOrthonormalCols_isRealSchurForm",
+  "stage": "M10"
+ },
+ "NLAlib.exists_orthogonal_real_skew_normal_form": {
+  "new": null,
+  "note": "not ported: skew-symmetric specialisation of the real normal form, removed as having no consumer, §8.9",
   "stage": "M10"
  },
  "NLAlib.exists_orthogonal_rectangularDiagonal_perm": {
@@ -3503,10 +3936,50 @@
   "new": "NLAlib.exists_isSVD",
   "stage": "M3"
  },
+ "NLAlib.exists_orthogonal_triangularization_of_complex_spectrum_real": {
+  "new": "NLAlib.IsEigenvalueListing.exists_hasOrthonormalCols_isUpperTriangular",
+  "note": "over 𝕜 = ℝ, with the real listing given by NLAlib.exists_isEigenvalueListing_of_forall_im_eq_zero; the order is that of the index type",
+  "stage": "M10"
+ },
+ "NLAlib.exists_orthogonal_two_eq_diagonal": {
+  "new": null,
+  "note": "not ported: 2 × 2 rotation step of the prototype's route, §6; the new proof takes orthogonal real and imaginary parts, private exists_mulVec_eq_smul_sub_smul of NLAlib.exists_hasOrthonormalCols_isRealSchurForm",
+  "stage": "M10"
+ },
+ "NLAlib.exists_orthonormalBases_real_pencil_upper_quasi_triangular": {
+  "new": "NLAlib.exists_hasOrthonormalCols_isUpperQuasiTriangular_isUpperTriangular",
+  "note": "matrix form: the two orthonormal bases are the columns of Q and Z",
+  "stage": "M10"
+ },
+ "NLAlib.exists_orthonormalBasis_eigenvectors_of_normal": {
+  "new": "NLAlib.isStarNormal_iff_exists_eq_mul_diagonal_mul_conjTranspose",
+  "note": "the mp direction; the orthonormal eigenbasis is the columns of U",
+  "stage": "M10"
+ },
+ "NLAlib.exists_orthonormalBasis_pencil_of_quasi_basis": {
+  "new": null,
+  "note": "not ported: quasi-pencil lemma, §6 and §7.9; the real QZ form is NLAlib.exists_hasOrthonormalCols_isUpperQuasiTriangular_isUpperTriangular",
+  "stage": "M10"
+ },
+ "NLAlib.exists_orthonormalBasis_real_schur": {
+  "new": "NLAlib.exists_hasOrthonormalCols_isRealSchurForm",
+  "note": "matrix form: the orthonormal basis is the columns of Q",
+  "stage": "M10"
+ },
+ "NLAlib.exists_orthonormalBasis_real_schur_plane": {
+  "new": null,
+  "note": "not ported: real Schur plane lemma, §6; the new deflation step is the private exists_mul_eq_mul_isRealSchurForm of NLAlib.exists_hasOrthonormalCols_isRealSchurForm",
+  "stage": "M10"
+ },
  "NLAlib.exists_orthonormalBasis_toMatrix_eq_conjugate": {
   "new": null,
   "note": "not ported: realises an orthogonal change of coordinates by an abstract OrthonormalBasis of an inner product space; helper for real Schur blocks, the Matrix layer works in coordinates",
   "stage": "M5"
+ },
+ "NLAlib.exists_orthonormalBasis_upper_quasi_triangular": {
+  "new": "NLAlib.exists_hasOrthonormalCols_isRealSchurForm",
+  "note": "matrix form; IsRealSchurForm T contains IsUpperQuasiTriangular T",
+  "stage": "M10"
  },
  "NLAlib.exists_paired_charpoly_factors_add_mul_of_commute": {
   "new": "NLAlib.exists_isEigenvalueListing_add_mul_of_commute",
@@ -3530,6 +4003,11 @@
   "note": "not ported: counterexample showing that Nonempty n is needed in Matrix.PosSemidef.re_det_rpow_add_le; counterexamples are not ported, Matrix-Inequalities §6",
   "stage": "M7"
  },
+ "NLAlib.exists_pos_eigenvalues₀_congruence_scale": {
+  "new": "Matrix.IsHermitian.exists_eigenvalue_conjTranspose_mul_mul_eq_mul",
+  "note": "0 < θ follows from singularValues S j ^ 2 ≤ θ when S is invertible",
+  "stage": "M10"
+ },
  "NLAlib.exists_pos_forall_sqrt_pinv_fit_sub_div_le": {
   "new": null,
   "note": "object not reproduced: first-order sensitivity of the fit with coefficient conditionNumber A / leastSquaresCos (Trefethen–Bau Theorem 18.1), Matrix-Perturbation §6",
@@ -3545,8 +4023,23 @@
   "note": "not ported: scalar helper of the prototype's variational proof of Horn's converse, Matrix-Inequalities §6",
   "stage": "M7"
  },
+ "NLAlib.exists_positive_definite_pair_congruence": {
+  "new": null,
+  "note": "not ported: calculus helper; private in Functions/LogDet.lean",
+  "stage": "M10"
+ },
+ "NLAlib.exists_prefix_norm_matrix_pow_le_growth": {
+  "new": "NLAlib.exists_forall_specNorm_pow_le_mul_pow",
+  "note": "with r = specRadius A + ε and an existential constant in place of matrixPowerBoundConstant, §8.11",
+  "stage": "M10"
+ },
  "NLAlib.exists_prefix_norm_matrix_pow_le_spectralRadius_add": {
   "new": "NLAlib.exists_forall_specNorm_pow_le_mul_pow",
+  "stage": "M10"
+ },
+ "NLAlib.exists_prefix_specNorm_real_matrix_pow_le_complex_spectralRadius_add": {
+  "new": "NLAlib.exists_forall_specNorm_pow_le_mul_pow",
+  "note": "real twin; existential constant in place of matrixPowerBoundConstant",
   "stage": "M10"
  },
  "NLAlib.exists_projectedColumn_pair": {
@@ -3567,10 +4060,24 @@
   "new": "NLAlib.exists_isEigenvalueListing_of_forall_im_eq_zero",
   "stage": "M10"
  },
+ "NLAlib.exists_real_eigenline_or_plane": {
+  "new": null,
+  "note": "not ported: endomorphism form of the real invariant subspace lemma, §6; the matrix step is the private exists_mulVec_eq_smul_sub_smul of NLAlib.exists_hasOrthonormalCols_isRealSchurForm",
+  "stage": "M10"
+ },
+ "NLAlib.exists_real_eigenvector_or_invariant_plane": {
+  "new": null,
+  "note": "private helper exists_mulVec_eq_smul_sub_smul of NLAlib.exists_hasOrthonormalCols_isRealSchurForm, there with orthogonal vectors and without the case split, §6",
+  "stage": "M10"
+ },
  "NLAlib.exists_real_idempotent_unitary_similarity": {
   "new": null,
   "note": "not ported: transport of complex idempotents to real ones for the Complex* duplicates; Oblique.lean is over 𝕜",
   "stage": "M5"
+ },
+ "NLAlib.exists_real_isUnit_intertwiner_of_complex": {
+  "new": "NLAlib.exists_real_similarity_of_complexify",
+  "stage": "M10"
  },
  "NLAlib.exists_real_orthogonal_similarity_of_complex_unitary_similarity": {
   "new": "NLAlib.exists_real_orthogonal_of_complexify",
@@ -3590,6 +4097,11 @@
   "new": "NLAlib.exists_real_similarity_of_complexify",
   "stage": "M10"
  },
+ "NLAlib.exists_real_similarity_upper_triangular_small_entries": {
+  "new": "NLAlib.IsEigenvalueListing.exists_isUpperTriangular_inv_mul_mul_norm_apply_lt",
+  "note": "over 𝕜 = ℝ, with the real listing given by NLAlib.exists_isEigenvalueListing_of_forall_im_eq_zero; the order is that of the index type",
+  "stage": "M10"
+ },
  "NLAlib.exists_schattenNormReal_le_one_frobInner_eq": {
   "new": "NLAlib.exists_schattenNorm_le_one_frobInner_eq",
   "stage": "M3b"
@@ -3597,6 +4109,16 @@
  "NLAlib.exists_schattenNorm_le_one_frobInner_eq": {
   "new": "NLAlib.exists_schattenNorm_le_one_frobInner_eq",
   "stage": "M3b"
+ },
+ "NLAlib.exists_similarity_primary_upperTriangular": {
+  "new": null,
+  "note": "not ported: primary triangular form by similarity, unused",
+  "stage": "M10"
+ },
+ "NLAlib.exists_similarity_small_entries_of_triangular_similarity": {
+  "new": "NLAlib.IsEigenvalueListing.exists_isUpperTriangular_inv_mul_mul_norm_apply_lt",
+  "note": "over 𝕜; the hypothesis is a listing d, which the diagonal of the given triangular form supplies by Matrix.IsUpperTriangular.isEigenvalueListing_diag and NLAlib.charpoly_mul_mul_of_mul_eq_one",
+  "stage": "M10"
  },
  "NLAlib.exists_similarity_upper_triangular_small_entries": {
   "new": "NLAlib.exists_isUpperTriangular_inv_mul_mul_norm_apply_lt",
@@ -3607,16 +4129,56 @@
   "note": "object not reproduced: simpleEigenvalueSchurFunction; the branch is exists_eigenvalue_branch_of_rootMultiplicity_eq_one, by the implicit function theorem on the characteristic polynomial, Matrix-Perturbation §9",
   "stage": "M6"
  },
+ "NLAlib.exists_simple_eigenvalue_isolated_similarity": {
+  "new": null,
+  "note": "not ported: eigenvector deflation, §6; that the pairing of a simple eigenvalue is nonzero is NLAlib.dotProduct_ne_zero_of_rootMultiplicity_eq_one",
+  "stage": "M10"
+ },
  "NLAlib.exists_simultaneous_diagonalization_of_commute": {
   "new": "NLAlib.exists_forall_mul_eq_mul_diagonal_of_pairwise_commute",
+  "stage": "M10"
+ },
+ "NLAlib.exists_simultaneous_diagonalization_with_charpoly": {
+  "new": null,
+  "note": "not ported: prescribed order of the eigenvalues of a designated member; from NLAlib.exists_forall_mul_eq_mul_diagonal_of_pairwise_commute it follows by permuting the columns of V with NLAlib.isEigenvalueListing_of_mul_eq_mul_diagonal and NLAlib.IsEigenvalueListing.exists_equiv_eq",
   "stage": "M10"
  },
  "NLAlib.exists_simultaneous_orthogonal_diagonalization_of_commute": {
   "new": "NLAlib.exists_hasOrthonormalCols_forall_eq_mul_diagonal_of_pairwise_commute",
   "stage": "M10"
  },
+ "NLAlib.exists_simultaneous_triangular_similarity_iff_unitary": {
+  "new": null,
+  "note": "not ported: a family triangularised by a similarity is triangularised by a unitary matrix, Horn–Johnson 2.3.3, by the QR factorisation of the similarity; no statement in the new library",
+  "stage": "M10"
+ },
+ "NLAlib.exists_simultaneous_triangular_similarity_iff_unitary_of_equiv": {
+  "new": null,
+  "note": "not ported: a family triangularised by a similarity is triangularised by a unitary matrix, Horn–Johnson 2.3.3; no statement in the new library",
+  "stage": "M10"
+ },
+ "NLAlib.exists_simultaneous_unitary_diagonalization_of_normal_of_commute": {
+  "new": "NLAlib.pairwise_commute_iff_exists_forall_eq_mul_diagonal_mul_conjTranspose",
+  "note": "the mp direction",
+  "stage": "M10"
+ },
+ "NLAlib.exists_simultaneous_unitary_diagonalization_with_charpoly": {
+  "new": null,
+  "note": "not ported: prescribed order of the eigenvalues of a designated member; from NLAlib.pairwise_commute_iff_exists_forall_eq_mul_diagonal_mul_conjTranspose it follows by permuting the columns of U with NLAlib.IsEigenvalueListing.exists_equiv_eq",
+  "stage": "M10"
+ },
  "NLAlib.exists_simultaneous_unitary_schur_triangularization": {
   "new": "NLAlib.exists_hasOrthonormalCols_forall_isUpperTriangular_of_pairwise_commute",
+  "stage": "M10"
+ },
+ "NLAlib.exists_simultaneous_unitary_schur_triangularization_with_charpoly": {
+  "new": null,
+  "note": "not ported in this strength: the family form NLAlib.exists_hasOrthonormalCols_forall_isUpperTriangular_of_pairwise_commute does not prescribe the order of the diagonal of a designated member; the order is prescribed only for one matrix, NLAlib.IsEigenvalueListing.exists_hasOrthonormalCols_isUpperTriangular, and for a commuting pair by the private exists_schur_pair; that each diagonal is a listing is NLAlib.isEigenvalueListing_of_isUpperTriangular_conjTranspose_mul_mul",
+  "stage": "M10"
+ },
+ "NLAlib.exists_small_real_schur_subspace": {
+  "new": null,
+  "note": "private helper exists_mul_eq_mul_isRealSchurForm of NLAlib.exists_hasOrthonormalCols_isRealSchurForm, in matrix form",
   "stage": "M10"
  },
  "NLAlib.exists_specNorm_le_one_frobInner_eq_nuclearNorm": {
@@ -3636,6 +4198,11 @@
  "NLAlib.exists_strong_rank_revealing_qr": {
   "new": "NLAlib.IsLocalMaxVolume.norm_pinv_mul_apply_le",
   "stage": "M9"
+ },
+ "NLAlib.exists_sub_vecMulVec_charpoly_of_interlacing": {
+  "new": null,
+  "note": "not ported: negative rank-one twin A - v vᴴ of Matrix.IsHermitian.exists_eigenvalue_add_vecMulVec_star_eq; it follows by applying that theorem to -A with NLAlib.eigenvalue_neg",
+  "stage": "M10"
  },
  "NLAlib.exists_submodule_mulVec_dotProduct_le_sq_singularValues_mul": {
   "new": "NLAlib.exists_submodule_norm_mulVec_le",
@@ -3670,6 +4237,16 @@
   "note": "not ported: scalar helper of the prototype's variational proof of Horn's converse, Matrix-Inequalities §6",
   "stage": "M7"
  },
+ "NLAlib.exists_toeplitzMatrix_eq_circulant": {
+  "new": null,
+  "note": "object not reproduced: toeplitzMatrix, §7.6",
+  "stage": "M10"
+ },
+ "NLAlib.exists_toeplitz_circulant_of_empty": {
+  "new": null,
+  "note": "object not reproduced: toeplitzMatrix, §7.6",
+  "stage": "M10"
+ },
  "NLAlib.exists_trace_compression_eq_bottom_eigenvalues": {
   "new": "Matrix.IsHermitian.exists_re_trace_conjTranspose_mul_mul_eq_sum_eigenvalue",
   "note": "attainment for the top sum; the bottom sum is the same statement for the negated matrix",
@@ -3701,6 +4278,11 @@
   "new": "Matrix.PosSemidef.exists_norm_eq_one_and_mulVec_eq_specNorm_smul",
   "stage": "M3"
  },
+ "NLAlib.exists_unit_pencil_image_line_of_not_injective": {
+  "new": null,
+  "note": "not ported: quasi-pencil lemma, §6 and §7.9; the real QZ form is NLAlib.exists_hasOrthonormalCols_isUpperQuasiTriangular_isUpperTriangular",
+  "stage": "M10"
+ },
  "NLAlib.exists_unit_specNorm_mul_dotProduct_sq_le": {
   "new": null,
   "note": "consumer-specific rank-one lower bound; derive from Matrix.PosSemidef.exists_norm_eq_one_and_mulVec_eq_specNorm_smul where needed",
@@ -3718,6 +4300,11 @@
   "new": "NLAlib.HasOrthonormalCols.exists_fromCols",
   "note": "the completed matrix is fromCols Q Q'",
   "stage": "M1"
+ },
+ "NLAlib.exists_unitary_diagonalization_of_normal": {
+  "new": "NLAlib.isStarNormal_iff_exists_eq_mul_diagonal_mul_conjTranspose",
+  "note": "the mp direction; with a prescribed listing on the diagonal, IsStarNormal.exists_eq_mul_diagonal_mul_conjTranspose_of_isEigenvalueListing",
+  "stage": "M10"
  },
  "NLAlib.exists_unitary_diagonalization_of_normal_with_charpoly": {
   "new": "IsStarNormal.exists_eq_mul_diagonal_mul_conjTranspose_of_isEigenvalueListing",
@@ -3746,6 +4333,10 @@
   "new": "NLAlib.exists_hasOrthonormalCols_isUpperTriangular_isUpperTriangular",
   "stage": "M10"
  },
+ "NLAlib.exists_unitary_qz_upperTriangular": {
+  "new": "NLAlib.exists_hasOrthonormalCols_isUpperTriangular_isUpperTriangular",
+  "stage": "M10"
+ },
  "NLAlib.exists_unitary_right_block_of_first_columns_eq": {
   "new": "NLAlib.HasOrthonormalCols.exists_mul_fromBlocks_one_eq",
   "stage": "M5"
@@ -3766,6 +4357,11 @@
   "new": "NLAlib.HasOrthonormalCols.exists_fromCols",
   "note": "H is fromCols Q Q'; H * Hᴴ = 1 by HasOrthonormalCols.mul_conjTranspose_self_of_card_eq",
   "stage": "M5"
+ },
+ "NLAlib.exists_unitary_upperTriangular_diagonal_charpoly": {
+  "new": "NLAlib.exists_hasOrthonormalCols_isUpperTriangular",
+  "note": "Fin twin; that the diagonal is a listing is NLAlib.isEigenvalueListing_of_isUpperTriangular_conjTranspose_mul_mul",
+  "stage": "M10"
  },
  "NLAlib.exists_vecMul_eq_smul_of_mem_spectrum": {
   "new": "NLAlib.exists_vecMul_eq_smul_of_mem_spectrum",
@@ -3794,6 +4390,26 @@
   "new": null,
   "note": "object not reproduced: finOneSumEquiv, the bordered splitting, §2 item 2",
   "stage": "M9"
+ },
+ "NLAlib.finite_not_separable_charpoly_affine": {
+  "new": null,
+  "note": "private helper finite_setOf_not_separable_charpoly of NLAlib.dense_setOf_separable_charpoly",
+  "stage": "M10"
+ },
+ "NLAlib.finrank_ker_eq_card_eigenvalues_zero": {
+  "new": "Matrix.IsHermitian.rank_eq_card_eigenvalue_ne_zero",
+  "note": "rank form over 𝕜: the rank counts the nonzero eigenvalues; the nullity form follows by rank-nullity",
+  "stage": "M10"
+ },
+ "NLAlib.finrank_ker_fromBlocks_eq_schur": {
+  "new": "Matrix.rank_fromBlocks₁₁",
+  "note": "rank form over any field, without symmetry: rank = card m + rank of the Schur complement; the nullity form follows by rank-nullity",
+  "stage": "M10"
+ },
+ "NLAlib.finrank_ker_mulVecLin_transpose_eq": {
+  "new": null,
+  "note": "private helper finrank_ker_mulVecLin_transpose of NLAlib.exists_adjugate_eq_smul_vecMulVec; rank-nullity with Mathlib's Matrix.rank_transpose",
+  "stage": "M10"
  },
  "NLAlib.finrank_ker_toBlock_eq_finrank_ker_inverse_complement": {
   "new": "Matrix.finrank_ker_toBlock_eq_finrank_ker_inv_toBlock_not",
@@ -4202,6 +4818,11 @@
   "note": "column Gram form; the row form follows by Matrix.trace_mul_comm",
   "stage": "M5"
  },
+ "NLAlib.frobSq_eq_sum_diag_add_frobSq_sub_diagonal": {
+  "new": null,
+  "note": "private helper frobNorm_sq_eq_sum_diag_add of NLAlib.IsEigenvalueListing.sum_norm_sq_le_frobNorm_sq",
+  "stage": "M10"
+ },
  "NLAlib.frobSq_eq_sum_frobSq_col": {
   "new": "NLAlib.frobNorm_sq_eq_sum_col",
   "stage": "M2"
@@ -4254,6 +4875,11 @@
  "NLAlib.frobSq_fromRows": {
   "new": "NLAlib.frobNorm_fromRows_sq",
   "stage": "M2"
+ },
+ "NLAlib.frobSq_kronecker": {
+  "new": "NLAlib.frobNorm_kronecker",
+  "note": "frobSq is frobNorm ^ 2; over 𝕜",
+  "stage": "M10"
  },
  "NLAlib.frobSq_le_rank_mul_specNorm_sq": {
   "new": "NLAlib.frobNorm_sq_le_rank_mul_specNorm_sq",
@@ -4466,6 +5092,11 @@
   "new": "NLAlib.frobNorm_transpose",
   "stage": "M2"
  },
+ "NLAlib.frobSq_unitary_similarity": {
+  "new": null,
+  "note": "one step from NLAlib.HasOrthonormalCols.frobNorm_mul_left and NLAlib.HasOrthonormalCols.frobNorm_mul_conjTranspose_right",
+  "stage": "M10"
+ },
  "NLAlib.frobSq_zero": {
   "new": "NLAlib.frobNorm_zero",
   "stage": "M2"
@@ -4510,9 +5141,24 @@
   "note": "the hypothesis rangeProjector Q * Y = Y is the range containment, rangeProjector_mul_eq_self_iff",
   "stage": "M5"
  },
+ "NLAlib.fromBlocks_eq_congruence_diagonal": {
+  "new": null,
+  "note": "inlined in the proof of the private inertia_fromBlocks_diagonal behind Matrix.IsHermitian.inertiaPos_fromBlocks_diagonal",
+  "stage": "M10"
+ },
+ "NLAlib.fromBlocks_eq_transpose_mul_schur_mul": {
+  "new": null,
+  "note": "private helper fromBlocks_eq_conjTranspose_mul_fromBlocks_mul of Matrix.IsHermitian.inertiaPos_fromBlocks",
+  "stage": "M10"
+ },
  "NLAlib.fromBlocks_inverse_gram_posSemidef": {
   "new": "NLAlib.posSemidef_fromBlocks_conjTranspose_mul_inv_mul",
   "stage": "M7"
+ },
+ "NLAlib.fromBlocks_mul_arrowhead_mul_transpose": {
+  "new": null,
+  "note": "not ported: interlacing-converse transport machinery, §6; the transport is inside the proof of Matrix.IsHermitian.exists_eigenvalue_fromBlocks_eq",
+  "stage": "M10"
  },
  "NLAlib.fromBlocks_posDef_of_two_abs_bilinear_lt_quadForm_add": {
   "new": null,
@@ -4581,12 +5227,37 @@
   "note": "not ported: Hessian route to trace-power convexity, superseded by NLAlib.convexOn_re_trace_cfc, Matrix-Functions §6 and §7.8",
   "stage": "M8"
  },
+ "NLAlib.gershgorinColumnDisc": {
+  "new": null,
+  "note": "object not reproduced: column discs are closed balls of radius gershgorinRadius Aᵀ j, §1 and §7.5",
+  "stage": "M10"
+ },
+ "NLAlib.gershgorinColumnRadius": {
+  "new": "NLAlib.gershgorinRadius",
+  "note": "the column radius is gershgorinRadius Aᵀ j, §1",
+  "stage": "M10"
+ },
+ "NLAlib.gershgorinColumnUnion": {
+  "new": null,
+  "note": "object not reproduced: unions of column discs, §1 and §7.5",
+  "stage": "M10"
+ },
+ "NLAlib.gershgorinRowDisc": {
+  "new": null,
+  "note": "object not reproduced: Gershgorin discs are written Metric.closedBall (A i i) (gershgorinRadius A i), §1 and §7.5",
+  "stage": "M10"
+ },
  "NLAlib.gershgorinRowRadius": {
   "new": "NLAlib.gershgorinRadius",
   "stage": "M10"
  },
  "NLAlib.gershgorinRowRadius_nonneg": {
   "new": "NLAlib.gershgorinRadius_nonneg",
+  "stage": "M10"
+ },
+ "NLAlib.gershgorinRowUnion": {
+  "new": null,
+  "note": "object not reproduced: unions of Gershgorin discs are written ⋃ i ∈ I, Metric.closedBall (A i i) (gershgorinRadius A i), §1 and §7.5",
   "stage": "M10"
  },
  "NLAlib.givens": {
@@ -4857,6 +5528,11 @@
   "new": "Matrix.PosSemidef.hadamard_le_hadamard_of_le",
   "stage": "M7"
  },
+ "NLAlib.hankelMatrix": {
+  "new": null,
+  "note": "object not reproduced: Hankel matrices are not ported, §0 and §7.6",
+  "stage": "M10"
+ },
  "NLAlib.hasDerivAt_det": {
   "new": "Matrix.hasDerivAt_det",
   "stage": "M8"
@@ -5091,10 +5767,20 @@
   "new": "NLAlib.hasSum_pow_inv_one_sub",
   "stage": "M6"
  },
+ "NLAlib.hasSum_real_matrix_pow_inv_of_complex_spectralRadius_lt_one": {
+  "new": "NLAlib.hasSum_pow_inv_one_sub_of_specRadius_lt_one",
+  "note": "real twin",
+  "stage": "M10"
+ },
  "NLAlib.hasSum_smul_map_pow_of_hasSum_entries": {
   "new": null,
   "note": "private helper of Matrix.PosSemidef.map_of_hasSum: hasSum_smul_map_pow",
   "stage": "M7"
+ },
+ "NLAlib.haynsworth_inertia_additivity": {
+  "new": null,
+  "note": "bundle of Matrix.IsHermitian.inertiaPos_fromBlocks, Matrix.IsHermitian.inertiaNeg_fromBlocks, Matrix.rank_fromBlocks₁₁ and NLAlib.posDef_fromBlocks_iff",
+  "stage": "M10"
  },
  "NLAlib.headColumns": {
   "new": null,
@@ -5240,6 +5926,11 @@
   "new": "NLAlib.inertiaNeg_diagonal",
   "stage": "M10"
  },
+ "NLAlib.inertiaNeg_eq_card_eigenvalues_neg": {
+  "new": "NLAlib.inertiaNeg",
+  "note": "now the definition: the number of negative eigenvalue A i, §2",
+  "stage": "M10"
+ },
  "NLAlib.inertiaNeg_fromBlocks_eq_add_schur": {
   "new": "Matrix.IsHermitian.inertiaNeg_fromBlocks",
   "stage": "M10"
@@ -5266,6 +5957,11 @@
  },
  "NLAlib.inertiaPos_diagonal": {
   "new": "NLAlib.inertiaPos_diagonal",
+  "stage": "M10"
+ },
+ "NLAlib.inertiaPos_eq_card_eigenvalues_pos": {
+  "new": "NLAlib.inertiaPos",
+  "note": "now the definition: the number of positive eigenvalue A i, §2",
   "stage": "M10"
  },
  "NLAlib.inertiaPos_fromBlocks_eq_add_schur": {
@@ -5323,6 +6019,16 @@
   "new": "Matrix.PosDef.inv_conjTranspose_mul_mul_le",
   "stage": "M7"
  },
+ "NLAlib.inv_congruence_diagonal": {
+  "new": null,
+  "note": "not ported: calculus helper of the prototype's definite-pair congruence",
+  "stage": "M10"
+ },
+ "NLAlib.inv_diagonal_of_forall_ne_zero": {
+  "new": null,
+  "note": "Mathlib: Matrix.inv_diagonal",
+  "stage": "M10"
+ },
  "NLAlib.inv_hadamard_le_hadamard_inv": {
   "new": "Matrix.PosDef.inv_hadamard_le_hadamard_inv",
   "stage": "M7"
@@ -5371,6 +6077,11 @@
   "new": "NLAlib.SymmetricGauge.matrixNorm_sub_le_matrixNorm_sub_of_mul_sqrt_eq",
   "stage": "M9"
  },
+ "NLAlib.inverse_mul_eq_inv_transpose_mul_diagonal_mul_transpose": {
+  "new": null,
+  "note": "proof step of NLAlib.isEigenvalueListing_inv_mul_of_eq_mul_diagonal_mul_conjTranspose",
+  "stage": "M10"
+ },
  "NLAlib.isBestFrobRankApprox_truncatedSVD": {
   "new": "NLAlib.frobNorm_sub_truncatedSVD_le_of_rank_le",
   "stage": "M3"
@@ -5384,9 +6095,19 @@
   "new": "Matrix.PosDef.isCholesky_choleskyLower",
   "stage": "M9"
  },
+ "NLAlib.isClosed_setOf_charpolyRootCountIn_eq": {
+  "new": null,
+  "note": "private helper isClosed_setOf_card_filter_roots_eq of NLAlib.card_roots_charpoly_filter_mem_iUnion_closedBall, §6",
+  "stage": "M10"
+ },
  "NLAlib.isClosed_stiefel": {
   "new": "NLAlib.isClosed_setOf_hasOrthonormalCols",
   "stage": "M5"
+ },
+ "NLAlib.isCompact_gershgorinRowUnion": {
+  "new": null,
+  "note": "object not reproduced: gershgorinRowUnion, §7.5; compactness of the finite union of closed balls is used inside the proof of NLAlib.card_roots_charpoly_filter_mem_iUnion_closedBall",
+  "stage": "M10"
  },
  "NLAlib.isCompact_orthogonalMatrices": {
   "new": "NLAlib.isCompact_setOf_hasOrthonormalCols",
@@ -5405,6 +6126,11 @@
   "new": "NLAlib.isDiagonalizable_fromBlocks_diagonal_iff",
   "stage": "M10"
  },
+ "NLAlib.isDiagonalizable_iff_exists_eigenbasis": {
+  "new": "NLAlib.isDiagonalizable_iff_exists_linearIndependent",
+  "note": "a basis indexed by n is spelled as a linearly independent family indexed by n",
+  "stage": "M10"
+ },
  "NLAlib.isDiagonalizable_iff_exists_independent_eigenvectors": {
   "new": "NLAlib.isDiagonalizable_iff_exists_linearIndependent",
   "stage": "M10"
@@ -5413,12 +6139,26 @@
   "new": "NLAlib.isDiagonalizable_iff_exists_eq_mul_diagonal_mul_inv",
   "stage": "M10"
  },
+ "NLAlib.isDiagonalizable_iff_finrank_eigenspace_eq_rootMultiplicity": {
+  "new": null,
+  "note": "not ported: characterisation of diagonalizability by multiplicities; the equivalent forms kept are NLAlib.isDiagonalizable_iff_iSup_eigenspace_eq_top and NLAlib.isDiagonalizable_iff_isSemisimple",
+  "stage": "M10"
+ },
  "NLAlib.isDiagonalizable_iff_iSup_eigenspace_eq_top": {
   "new": "NLAlib.isDiagonalizable_iff_iSup_eigenspace_eq_top",
   "stage": "M10"
  },
  "NLAlib.isDiagonalizable_iff_isSemisimple": {
   "new": "NLAlib.isDiagonalizable_iff_isSemisimple",
+  "stage": "M10"
+ },
+ "NLAlib.isDiagonalizable_inverse_mul_of_congruence": {
+  "new": null,
+  "note": "proof step of Matrix.PosDef.isDiagonalizable_inv_mul",
+  "stage": "M10"
+ },
+ "NLAlib.isDiagonalizable_inverse_mul_of_diagonal_congruence": {
+  "new": "Matrix.IsHermitian.exists_conjTranspose_mul_mul_eq_diagonal_iff",
   "stage": "M10"
  },
  "NLAlib.isDiagonalizable_inverse_mul_of_posDef": {
@@ -5517,6 +6257,11 @@
   "new": null,
   "note": "Mathlib: Matrix.isHermitian_mul_mul_conjTranspose, with Rᴴ = R",
   "stage": "M8"
+ },
+ "NLAlib.isHermitian_schur_complement": {
+  "new": null,
+  "note": "inlined in the proof of Matrix.IsHermitian.inertiaPos_fromBlocks, by Mathlib's Matrix.isHermitian_conjTranspose_mul_mul",
+  "stage": "M10"
  },
  "NLAlib.isHermitian_sum_smul_real": {
   "new": null,
@@ -5691,6 +6436,16 @@
   "note": "object not reproduced: modified Gram–Schmidt, §1, §2 and §7.5; it coincides with gramSchmidtQ, gramSchmidtR in exact arithmetic, whose realisation is isQR_gramSchmidt",
   "stage": "M9"
  },
+ "NLAlib.isRealNormalForm_of_isRealSchurForm": {
+  "new": null,
+  "note": "object not reproduced: IsRealNormalForm, §1; that a normal real Schur form has opposite off-diagonal entries is stated only together with its existence, NLAlib.exists_hasOrthonormalCols_isRealSchurForm_of_isStarNormal",
+  "stage": "M10"
+ },
+ "NLAlib.isRealSchurForm_of_small_leading_block": {
+  "new": null,
+  "note": "private helper isRealSchurForm_finBlocks of NLAlib.exists_hasOrthonormalCols_isRealSchurForm",
+  "stage": "M10"
+ },
  "NLAlib.isRoot_charpoly_of_mulVec_eq_smul": {
   "new": null,
   "note": "deferred: characteristic polynomial of a rank-one update (check Mathlib's matrix determinant lemma first)",
@@ -5729,6 +6484,11 @@
  "NLAlib.isUnit_add_of_specNorm_inv_mul_lt_one": {
   "new": "NLAlib.isUnit_add_of_specNorm_inv_mul_lt_one",
   "stage": "M6"
+ },
+ "NLAlib.isUnit_change_eigenbasis_and_apply_eq_zero": {
+  "new": null,
+  "note": "not ported: change of basis between two diagonalisations with the same eigenvalue list, Horn–Johnson 1.3.27; no consumer",
+  "stage": "M10"
  },
  "NLAlib.isUnit_det_iff_of_isLowerTriangular": {
   "new": "Matrix.IsLowerTriangular.isUnit_det_iff",
@@ -5770,6 +6530,11 @@
   "new": "NLAlib.HasOrthonormalCols.isUnit_conjTranspose_mul_iff",
   "stage": "M5"
  },
+ "NLAlib.isUnit_transpose_eigenvectorUnitary": {
+  "new": null,
+  "note": "not ported: unitary-group helper of the quadratic-form route; unitary matrices are HasOrthonormalCols U, §6",
+  "stage": "M10"
+ },
  "NLAlib.isUnit_transpose_mul_self_of_rank_eq": {
   "new": "NLAlib.isUnit_conjTranspose_mul_self_iff",
   "stage": "M4"
@@ -5795,6 +6560,11 @@
  "NLAlib.isUpperHessenberg_of_isUpperTriangular": {
   "new": "NLAlib.IsUpperTrapezoidal.isUpperHessenberg",
   "stage": "M9"
+ },
+ "NLAlib.isUpperQuasiTriangular_of_first_column_and_tail": {
+  "new": null,
+  "note": "not ported: the case of a 1 × 1 leading block of NLAlib.IsUpperQuasiTriangular.submatrix_fromBlocks, in Fin.succ spelling",
+  "stage": "M10"
  },
  "NLAlib.isUpperQuasiTriangular_of_isUpperTriangular": {
   "new": "Matrix.IsUpperTriangular.isUpperQuasiTriangular",
@@ -6082,6 +6852,16 @@
   "note": "the full leading minor is the principal minor on Finset.univ; leadingMinor is not reproduced, §7.3",
   "stage": "M9"
  },
+ "NLAlib.leadingMinor_eq_det": {
+  "new": "NLAlib.principalMinor_univ",
+  "note": "the full leading minor is the principal minor on Finset.univ; leadingMinor is not reproduced",
+  "stage": "M10"
+ },
+ "NLAlib.leadingMinor_eq_pivot_mul_leadingMinor_pivotSchur": {
+  "new": "NLAlib.principalMinor_eq_apply_self_mul_principalMinor_eliminationStep",
+  "note": "any pivot t in any index set s, over a field; leadingMinor and pivotSchur are not reproduced",
+  "stage": "M10"
+ },
  "NLAlib.leadingMinor_fin": {
   "new": "NLAlib.det_submatrix_eq_principalMinor",
   "note": "with f = Fin.castLE hk, whose range is a lower set; leadingMinor is not reproduced, §7.3",
@@ -6096,6 +6876,11 @@
   "new": "NLAlib.principalMinor_singleton",
   "note": "Finset.Iic of the least index is a singleton; leadingMinor is not reproduced, §7.3",
   "stage": "M9"
+ },
+ "NLAlib.leadingMinor_pos_of_posDef": {
+  "new": "Matrix.IsHermitian.posDef_iff_forall_re_principalMinor_Iic_pos",
+  "note": "the mp direction; over 𝕜, any linearly ordered finite index type",
+  "stage": "M10"
  },
  "NLAlib.leadingMinor_submatrix_monoEquivOfFin": {
   "new": null,
@@ -6190,6 +6975,11 @@
   "new": "NLAlib.concaveOn_re_trace_exp_add_cfc_log",
   "stage": "M8"
  },
+ "NLAlib.linearIndependent_real_imag_of_nonreal_eigen_equations": {
+  "new": null,
+  "note": "not ported: real invariant plane lemma, §6; the new deflation step is the private exists_mulVec_eq_smul_sub_smul of NLAlib.exists_hasOrthonormalCols_isRealSchurForm, which produces orthogonal real and imaginary parts",
+  "stage": "M10"
+ },
  "NLAlib.lipschitzWith_eigenvalues₀_pencil": {
   "new": "NLAlib.abs_eigenvalue_sub_le",
   "note": "pencil lemma: the instance A + s • B, A + t • B of Weyl's bound, Matrix-Perturbation §6",
@@ -6208,6 +6998,11 @@
  "NLAlib.loewner_sandwich_iff_relative_spectrum_subset": {
   "new": "Matrix.PosDef.smul_le_and_le_smul_iff_spectrum_subset",
   "stage": "M7"
+ },
+ "NLAlib.log_det_congruence_diagonal": {
+  "new": null,
+  "note": "not ported: calculus helper of the prototype's definite-pair congruence",
+  "stage": "M10"
  },
  "NLAlib.log_det_smul_add_eq_iff": {
   "new": "Matrix.PosDef.log_re_det_smul_add_smul_eq_iff",
@@ -6322,6 +7117,11 @@
   "new": "Matrix.PosSemidef.map_exp_le_map_exp_of_le",
   "stage": "M7"
  },
+ "NLAlib.map_ofReal_matrix_pow": {
+  "new": "NLAlib.complexify_pow",
+  "note": "real twin: A.map Complex.ofReal is complexify A",
+  "stage": "M10"
+ },
  "NLAlib.map_pow_le_map_pow_of_posSemidef_le": {
   "new": "Matrix.PosSemidef.map_pow_le_map_pow_of_le",
   "stage": "M7"
@@ -6401,6 +7201,16 @@
   "new": "NLAlib.OperatorConvexOn.matrixPerspective_smul_add_smul_le",
   "stage": "M8"
  },
+ "NLAlib.matrixPowerBoundConstant": {
+  "new": null,
+  "note": "object not reproduced: matrixPowerBoundConstant, §1 and §7.9; the constant of NLAlib.exists_forall_specNorm_pow_le_mul_pow is existential",
+  "stage": "M10"
+ },
+ "NLAlib.matrix_spectralRadius_ne_top": {
+  "new": "NLAlib.spectralRadius_complexify_ne_top",
+  "note": "over 𝕜 through complexify, which is the identity over ℂ",
+  "stage": "M10"
+ },
  "NLAlib.max_det_mul_prod_diag_le_det_hadamard": {
   "new": "Matrix.PosSemidef.re_det_mul_prod_re_diag_le_re_det_hadamard",
   "note": "the maximum is this theorem for (A, B) and for (B, A), with Matrix.hadamard_comm",
@@ -6442,6 +7252,24 @@
   "new": "NLAlib.measurable_frobNorm",
   "stage": "M10"
  },
+ "NLAlib.measurable_frobSq_residual_of": {
+  "new": null,
+  "note": "one-line composition of NLAlib.measurable_frobNorm with measurable matrix arithmetic",
+  "stage": "M10"
+ },
+ "NLAlib.measurable_inv_entry_of": {
+  "new": "Measurable.matrix_inv",
+  "stage": "M10"
+ },
+ "NLAlib.measurable_inv_self_mul_transpose_apply": {
+  "new": null,
+  "note": "one-line composition of Matrix.Measurable.matrix_inv and Matrix.Measurable.matrix_mul",
+  "stage": "M10"
+ },
+ "NLAlib.measurable_mul_entry_of": {
+  "new": "Measurable.matrix_mul",
+  "stage": "M10"
+ },
  "NLAlib.measurable_pinvL_entry_of": {
   "new": "NLAlib.measurable_pinv",
   "stage": "M10"
@@ -6455,13 +7283,36 @@
   "note": "deferred to M10: measurability file; measurability of polarFactor",
   "stage": "M10"
  },
+ "NLAlib.measurable_pow_entry_of": {
+  "new": "Measurable.matrix_pow",
+  "stage": "M10"
+ },
  "NLAlib.measurable_qrNormalizedArray": {
   "new": null,
   "note": "deferred to M10: measurability file; measurability of gramSchmidtQ",
   "stage": "M10"
  },
+ "NLAlib.measurable_specNorm_inv_self_mul_transpose": {
+  "new": null,
+  "note": "one-line composition of NLAlib.measurable_specNorm with Matrix.Measurable.matrix_inv",
+  "stage": "M10"
+ },
  "NLAlib.measurable_specNorm_of_entries": {
   "new": "NLAlib.measurable_specNorm",
+  "stage": "M10"
+ },
+ "NLAlib.measurable_specNorm_pinvR": {
+  "new": null,
+  "note": "one-line composition of NLAlib.measurable_specNorm and NLAlib.measurable_pinv",
+  "stage": "M10"
+ },
+ "NLAlib.measurable_specNorm_residual_of": {
+  "new": null,
+  "note": "one-line composition of NLAlib.measurable_specNorm with measurable matrix arithmetic",
+  "stage": "M10"
+ },
+ "NLAlib.measurable_trace_of_entries": {
+  "new": "Measurable.matrix_trace",
   "stage": "M10"
  },
  "NLAlib.mem_convexHull_permutations_iff_exists_doublyStochastic": {
@@ -6469,14 +7320,34 @@
   "note": "the two characterisations are separate iffs",
   "stage": "M3a"
  },
+ "NLAlib.mem_gershgorinRowUnion_of_mem": {
+  "new": null,
+  "note": "object not reproduced: gershgorinRowUnion, §7.5; for ⋃ i ∈ I it is Set.mem_biUnion",
+  "stage": "M10"
+ },
  "NLAlib.mem_span_of_gramSchmidtResidual_eq_zero": {
   "new": "NLAlib.gramSchmidtR_apply_self_eq_zero_iff",
   "note": "forward direction",
   "stage": "M9"
  },
+ "NLAlib.mem_spectrum_nonsing_inv_mul_mul_iff": {
+  "new": null,
+  "note": "Mathlib: spectrum.units_conjugate'",
+  "stage": "M10"
+ },
  "NLAlib.mem_spectrum_of_diagonal_intertwining": {
   "new": "NLAlib.mem_spectrum_of_mul_eq_mul_diagonal",
   "stage": "M6"
+ },
+ "NLAlib.mem_spectrum_principal_submatrix_of_finrank_eigenspace_gt": {
+  "new": null,
+  "note": "not ported: an eigenvalue of large geometric multiplicity survives in principal submatrices, Horn–Johnson 1.4.10; no statement in the new library",
+  "stage": "M10"
+ },
+ "NLAlib.mem_spectrum_principal_submatrix_of_le_finrank_eigenspace": {
+  "new": null,
+  "note": "not ported: an eigenvalue of large geometric multiplicity survives in principal submatrices, Horn–Johnson 1.4.10; no statement in the new library",
+  "stage": "M10"
  },
  "NLAlib.mem_spectrum_scalar_block_iff_schur_eq_zero": {
   "new": null,
@@ -6719,6 +7590,11 @@
   "note": "real-only twin of norm_toLp_mulVec_le_frobNorm_mul",
   "stage": "M2"
  },
+ "NLAlib.mulVec_eigenvector_of_intertwines": {
+  "new": null,
+  "note": "not ported: one step from Mathlib's Matrix.mulVec_mulVec",
+  "stage": "M10"
+ },
  "NLAlib.mulVec_eq_iff_sub_mem_ker": {
   "new": null,
   "note": "trivial; Mathlib LinearMap.sub_mem_ker_iff",
@@ -6760,6 +7636,16 @@
   "new": null,
   "note": "not ported: diagonal step of Bauer–Fike for a raw absolute norm on vectors; waits for vector-norm vocabulary, Matrix-Perturbation §7.7",
   "stage": "M6"
+ },
+ "NLAlib.mul_add_vecMulVec_mul_transpose": {
+  "new": null,
+  "note": "inlined in the proof of Matrix.IsHermitian.exists_eigenvalue_add_vecMulVec_star_eq, by Mathlib's Matrix.mul_vecMulVec and Matrix.vecMulVec_mul",
+  "stage": "M10"
+ },
+ "NLAlib.mul_apply_subdiagonal_of_upperTriangular": {
+  "new": null,
+  "note": "private helper mul_apply_of_succ_eq of Matrix.IsUpperTriangular.mul_isUpperQuasiTriangular",
+  "stage": "M10"
  },
  "NLAlib.mul_card_le_re_trace_cfc_of_le": {
   "new": "Matrix.IsHermitian.mul_card_le_re_trace_cfc",
@@ -6816,6 +7702,11 @@
   "new": null,
   "note": "object not reproduced: eigenvalueProjector, Matrix-Perturbation §6",
   "stage": "M6"
+ },
+ "NLAlib.mul_eq_mul_iff_conjTranspose_mul_eq_mul_conjTranspose_of_normal": {
+  "new": "IsStarNormal.mul_eq_mul_iff_conjTranspose_mul_eq_mul_conjTranspose",
+  "note": "generalised to a rectangular X between normal matrices of two sizes",
+  "stage": "M10"
  },
  "NLAlib.mul_eq_mul_iff_conjTranspose_mul_eq_mul_conjTranspose_of_normal_rectangular": {
   "new": "IsStarNormal.mul_eq_mul_iff_conjTranspose_mul_eq_mul_conjTranspose",
@@ -6874,6 +7765,11 @@
   "new": null,
   "note": "one step from pinv_mul and rangeProjector_mul_conjTranspose_self: equal Gram matrices give rangeProjector Aᴴ = rangeProjector Rᴴ, hence A * (pinv R * R) = A",
   "stage": "M5"
+ },
+ "NLAlib.mul_normalized_vecMulVec_eq_smul": {
+  "new": null,
+  "note": "not ported: the oblique rank-one projector of a left-right eigenvector pair has no statement in the new library; one step from Mathlib's Matrix.mul_vecMulVec and Matrix.vecMulVec_mul",
+  "stage": "M10"
  },
  "NLAlib.mul_pinvL_isHermitian": {
   "new": null,
@@ -6982,8 +7878,33 @@
   "note": "stage M2, applied to Mᴴ with a = 1 and NLAlib.specNorm_conjTranspose; removed from M7 as a duplicate, Matrix-Inequalities §8.4",
   "stage": "M7"
  },
+ "NLAlib.mul_vecMulVec_eq_vecMulVec_mul": {
+  "new": null,
+  "note": "one step from Mathlib's Matrix.mul_vecMulVec and Matrix.vecMulVec_mul",
+  "stage": "M10"
+ },
+ "NLAlib.multiset_eigenvalues_eq_of_orthogonal_diagonalization": {
+  "new": "NLAlib.isEigenvalueListing_of_mul_eq_mul_diagonal",
+  "note": "listing form over any field, §2; two listings differ by a permutation, NLAlib.IsEigenvalueListing.exists_equiv_eq with Matrix.IsHermitian.isEigenvalueListing_eigenvalue",
+  "stage": "M10"
+ },
+ "NLAlib.multiset_eigenvalues_kronecker": {
+  "new": "NLAlib.IsEigenvalueListing.kronecker",
+  "note": "listing form over any field, without symmetry, §2 and §8.2; for Hermitian factors the listings are Matrix.IsHermitian.isEigenvalueListing_eigenvalue",
+  "stage": "M10"
+ },
  "NLAlib.multiset_eigenvalues_kronecker_sum": {
   "new": "NLAlib.kronecker_one_add_one_kronecker_eq_mul_diagonal_mul_conjTranspose",
+  "stage": "M10"
+ },
+ "NLAlib.multiset_singularValues_eq_sqrt_eigenvalues": {
+  "new": "NLAlib.sq_singularValues",
+  "note": "index by index, singularValues A k ^ 2 = eigenvalue (Aᴴ * A) k, which is stronger than the equality of multisets",
+  "stage": "M10"
+ },
+ "NLAlib.multiset_singularValues_kronecker": {
+  "new": "NLAlib.IsSVD.kronecker",
+  "note": "multisets of singular values are not reproduced: the singular values of A ⊗ₖ B are the products σ i * τ j of an SVD, matched with singularValues by NLAlib.IsSVD.exists_equiv_singularValues_eq",
   "stage": "M10"
  },
  "NLAlib.nat_mul_mul_re_trace_mul_pow_le": {
@@ -7009,6 +7930,11 @@
   "note": "private detail of the variational proofs",
   "stage": "M3"
  },
+ "NLAlib.nonsing_inv_mul_mul_apply_eq_dotProduct_mulVec_div": {
+  "new": null,
+  "note": "not ported: eigenvector deflation block lemma, §6; the derivative of a simple eigenvalue is NLAlib.hasDerivAt_of_isRoot_charpoly_add_smul, without the deflating similarity",
+  "stage": "M10"
+ },
  "NLAlib.norm_add_sq_le_of_mul_conjTranspose_eq_zero": {
   "new": "NLAlib.specNorm_add_sq_le_of_mul_conjTranspose_eq_zero",
   "stage": "M5"
@@ -7026,6 +7952,11 @@
   "note": "the fit A * pinv A *ᵥ b is rangeProjector A *ᵥ b, by mul_pinv",
   "stage": "M6"
  },
+ "NLAlib.norm_diagonal_mul_le_of_mulVec_eq_zero": {
+  "new": null,
+  "note": "private helper norm_mul_norm_le_sum_of_mulVec_eq_zero of NLAlib.det_ne_zero_of_isIrreducible_of_forall_sum_le",
+  "stage": "M10"
+ },
  "NLAlib.norm_div_le_conditionNumber_mul_of_mulVec_add": {
   "new": null,
   "note": "deferred: perturbation of linear systems and least squares, with the perturbation stage",
@@ -7035,6 +7966,16 @@
   "new": null,
   "note": "deferred: perturbation of linear systems and least squares, with the perturbation stage",
   "stage": "M6"
+ },
+ "NLAlib.norm_eq_max_of_mulVec_eq_zero_of_entry_ne_zero": {
+  "new": null,
+  "note": "private helper norm_eq_of_mulVec_eq_zero_of_apply_ne_zero of NLAlib.det_ne_zero_of_isIrreducible_of_forall_sum_le",
+  "stage": "M10"
+ },
+ "NLAlib.norm_eq_re_of_im_eq_zero_of_re_pos": {
+  "new": null,
+  "note": "not ported: scalar helper translating a positive real diagonal entry into its norm; the new dominance statements take the hypothesis as gershgorinRadius A i < RCLike.re (A i i)",
+  "stage": "M10"
  },
  "NLAlib.norm_eq_sqrt_dotProduct": {
   "new": null,
@@ -7090,6 +8031,11 @@
   "new": null,
   "note": "not ported as stated (Laplace master bound helper); its content is NLAlib.specNorm_exp_le with the triangle inequality and Real.exp_sum",
   "stage": "M8"
+ },
+ "NLAlib.norm_matrix_pow_le_matrixPowerBoundConstant_mul_pow": {
+  "new": null,
+  "note": "object not reproduced: matrixPowerBoundConstant, §1 and §7.9; extending an eventual geometric bound to all exponents is inside the proof of NLAlib.exists_forall_specNorm_pow_le_mul_pow",
+  "stage": "M10"
  },
  "NLAlib.norm_moorePenroseInverse_sub_div_le": {
   "new": null,
@@ -7223,8 +8169,18 @@
   "new": "EuclideanSpace.norm_toLp_sq_eq_re_star_dotProduct",
   "stage": "M1"
  },
+ "NLAlib.normal_iff_exists_orthonormalBasis_eigenvectors": {
+  "new": "NLAlib.isStarNormal_iff_exists_eq_mul_diagonal_mul_conjTranspose",
+  "note": "the orthonormal eigenbasis is the columns of U with HasOrthonormalCols U",
+  "stage": "M10"
+ },
  "NLAlib.normal_iff_exists_unitary_diagonalization": {
   "new": "NLAlib.isStarNormal_iff_exists_eq_mul_diagonal_mul_conjTranspose",
+  "stage": "M10"
+ },
+ "NLAlib.normal_of_orthonormalBasis_eigenvectors": {
+  "new": "NLAlib.isStarNormal_mul_diagonal_mul_conjTranspose",
+  "note": "the orthonormal eigenbasis is the columns of U with HasOrthonormalCols U; over 𝕜",
   "stage": "M10"
  },
  "NLAlib.normalizedProjectedColumn": {
@@ -7247,10 +8203,25 @@
   "note": "object not reproduced: normalizedProjectedColumn, Matrix-Inequalities §6",
   "stage": "M7"
  },
+ "NLAlib.normalized_vecMulVec_mul_self": {
+  "new": null,
+  "note": "not ported: the oblique rank-one projector of a left-right eigenvector pair has no statement in the new library",
+  "stage": "M10"
+ },
  "NLAlib.normedAlgebraRealMatrix": {
   "new": null,
   "note": "not reproduced: a local NormedAlgebra ℝ structure on matrices; norms are named functions, CONTRIBUTING §5.3, and the exponential reaches the functional calculus through Matrix.IsHermitian.exp_eq_cfc",
   "stage": "M8"
+ },
+ "NLAlib.not_mem_spectrum_submatrix_of_isolated_coordinate_of_simple": {
+  "new": null,
+  "note": "not ported: eigenvector deflation, §6",
+  "stage": "M10"
+ },
+ "NLAlib.not_posSemidef_diagonal_one_neg_one": {
+  "new": null,
+  "note": "not ported: counterexample to the uncorrected coefficient criterion, of documentary value only",
+  "stage": "M10"
  },
  "NLAlib.nuclearNorm": {
   "new": "NLAlib.nuclearNorm",
@@ -7359,6 +8330,11 @@
   "new": "Matrix.PosDef.one_le_hadamard_inv",
   "stage": "M7"
  },
+ "NLAlib.one_le_matrixPowerBoundConstant": {
+  "new": null,
+  "note": "object not reproduced: matrixPowerBoundConstant, §1 and §7.9",
+  "stage": "M10"
+ },
  "NLAlib.one_le_moorePenroseConditionNumber": {
   "new": "NLAlib.one_le_conditionNumber",
   "stage": "M4"
@@ -7453,6 +8429,11 @@
   "new": "NLAlib.HasOrthonormalCols.cos_principalAngle",
   "note": "with principalAngle_mem_Icc; or singularValues_le_one_of_conjTranspose_mul_self_add_eq_one",
   "stage": "M5"
+ },
+ "NLAlib.pairwise_commute_iff_exists_simultaneous_diagonalization": {
+  "new": null,
+  "note": "bundle of NLAlib.exists_forall_mul_eq_mul_diagonal_of_pairwise_commute and NLAlib.commute_of_mul_eq_mul_diagonal",
+  "stage": "M10"
  },
  "NLAlib.pairwise_commute_iff_exists_simultaneous_unitary_diagonalization": {
   "new": "NLAlib.pairwise_commute_iff_exists_forall_eq_mul_diagonal_mul_conjTranspose",
@@ -7615,6 +8596,11 @@
   "note": "not ported: strict contraction-factor criterion for general positive definite diagonal blocks; the case A = C = 1 is NLAlib.posDef_fromBlocks_one_iff_specNorm_lt_one, the semidefinite form is NLAlib.posSemidef_fromBlocks_iff_exists_sqrt_mul_mul_sqrt",
   "stage": "M7"
  },
+ "NLAlib.posDef_fromBlocks_iff_posDef_and_schur": {
+  "new": "NLAlib.posDef_fromBlocks_iff",
+  "note": "real twin",
+  "stage": "M10"
+ },
  "NLAlib.posDef_fromBlocks_iff_specNorm_lt_one_of_sqrt_factor": {
   "new": null,
   "note": "not ported: strict contraction-factor criterion for general positive definite diagonal blocks; the case A = C = 1 is NLAlib.posDef_fromBlocks_one_iff_specNorm_lt_one, the semidefinite form is NLAlib.posSemidef_fromBlocks_iff_exists_sqrt_mul_mul_sqrt",
@@ -7624,6 +8610,11 @@
   "new": null,
   "note": "not ported: strict Cauchy–Schwarz and additive tests for positive definiteness of a block matrix; the semidefinite test is NLAlib.posSemidef_fromBlocks_iff_forall_norm_sq_le, the positive definite criterion is NLAlib.posDef_fromBlocks_iff",
   "stage": "M7"
+ },
+ "NLAlib.posDef_fromBlocks_zero_iff": {
+  "new": "NLAlib.posDef_fromBlocks_iff",
+  "note": "the case B = 0; over 𝕜",
+  "stage": "M10"
  },
  "NLAlib.posDef_hadamard_of_posDef_of_diag_pos": {
   "new": "Matrix.PosDef.hadamard_of_forall_diag_pos",
@@ -7657,8 +8648,28 @@
   "new": "Matrix.IsHermitian.posDef_of_isIrreducible_of_forall_sum_le",
   "stage": "M10"
  },
+ "NLAlib.posDef_of_isHermitian_of_irreducible_weak_diagonal_dominance_complex": {
+  "new": "Matrix.IsHermitian.posDef_of_isIrreducible_of_forall_sum_le",
+  "note": "complex twin; hypotheses in the form radius ≤ re (A i i)",
+  "stage": "M10"
+ },
  "NLAlib.posDef_of_isHermitian_of_row_radius_lt_diag": {
   "new": "Matrix.IsHermitian.posDef_of_forall_sum_lt_re",
+  "stage": "M10"
+ },
+ "NLAlib.posDef_of_isHermitian_of_strict_diagonal_dominance": {
+  "new": "Matrix.IsHermitian.posDef_of_forall_sum_lt_re",
+  "note": "real twin; hypothesis in the form radius < re (A i i)",
+  "stage": "M10"
+ },
+ "NLAlib.posDef_of_isHermitian_of_strict_diagonal_dominance_complex": {
+  "new": "Matrix.IsHermitian.posDef_of_forall_sum_lt_re",
+  "note": "complex twin; hypothesis in the form radius < re (A i i)",
+  "stage": "M10"
+ },
+ "NLAlib.posDef_of_leadingMinor_pos": {
+  "new": "Matrix.IsHermitian.posDef_iff_forall_re_principalMinor_Iic_pos",
+  "note": "the mpr direction; over 𝕜, any linearly ordered finite index type",
   "stage": "M10"
  },
  "NLAlib.posDef_of_posDef_le": {
@@ -7668,6 +8679,11 @@
  "NLAlib.posDef_one_sub_iff_specNorm_lt_one_of_posSemidef": {
   "new": "Matrix.PosSemidef.posDef_one_sub_iff_specNorm_lt_one",
   "stage": "M7"
+ },
+ "NLAlib.posDef_realMatrixComplexification": {
+  "new": "NLAlib.posDef_complexify_iff",
+  "note": "now an iff; the transfer runs from 𝕜 to ℂ",
+  "stage": "M10"
  },
  "NLAlib.posDef_reflection_conj_iff": {
   "new": null,
@@ -7794,6 +8810,16 @@
   "new": "Matrix.IsHermitian.posSemidef_of_forall_re_principalMinor_Iio_pos",
   "stage": "M10"
  },
+ "NLAlib.posSemidef_of_pivotSchur_posSemidef": {
+  "new": null,
+  "note": "not ported: converse of Matrix.PosSemidef.eliminationStep at a positive pivot; one step from NLAlib.eliminationStep_eq_sub_smul_vecMulVec, and the positive definite form is Matrix.IsHermitian.posDef_iff_eliminationStep",
+  "stage": "M10"
+ },
+ "NLAlib.posSemidef_of_signed_charpoly_coeff_nonneg": {
+  "new": "Matrix.IsHermitian.posSemidef_iff_forall_re_charpoly_coeff_nonneg",
+  "note": "the mpr direction; over 𝕜, with the index shift written k + j = card n",
+  "stage": "M10"
+ },
  "NLAlib.posSemidef_of_tendsto": {
   "new": "Matrix.PosSemidef.of_tendsto",
   "stage": "M1"
@@ -7802,6 +8828,11 @@
   "new": "Matrix.PosSemidef.eliminationStep",
   "note": "pivotSchur A is the trailing block of eliminationStep A 0; over 𝕜, any pivot, no condition on it",
   "stage": "M9"
+ },
+ "NLAlib.posSemidef_realMatrixComplexification_iff": {
+  "new": "NLAlib.posSemidef_complexify_iff",
+  "note": "the transfer now runs from 𝕜 to ℂ",
+  "stage": "M10"
  },
  "NLAlib.posSemidef_sum_sq_of_isHermitian": {
   "new": null,
@@ -7959,6 +8990,11 @@
   "new": null,
   "note": "object not reproduced: borderedUpper, §1; no recursion on the dimension",
   "stage": "M9"
+ },
+ "NLAlib.prod_mul_sum_div_eq_sum_prod_erase": {
+  "new": null,
+  "note": "not ported: field-only step of the prototype's Schur-complement route; NLAlib.det_diagonal_add_vecMulVec and NLAlib.charpoly_diagonal_add_vecMulVec are proved over a commutative ring through the adjugate",
+  "stage": "M10"
  },
  "NLAlib.prod_singularValues_mul_le": {
   "new": "NLAlib.prod_range_singularValues_mul_le",
@@ -8265,6 +9301,16 @@
   "note": "full column rank is spelled Function.Injective A.mulVec; bridges in ForMathlib Rank and Basic/Gram",
   "stage": "M4"
  },
+ "NLAlib.rank_eq_card_nonzero_of_diagonal_congruence": {
+  "new": null,
+  "note": "not ported: rank through a diagonal congruence, not in the design",
+  "stage": "M10"
+ },
+ "NLAlib.rank_eq_card_nonzero_of_orthogonal_diagonalization": {
+  "new": null,
+  "note": "not ported: helper of the prototype's proof for Hermitian factors; NLAlib.rank_kronecker is general, and the count is Mathlib's Matrix.rank_diagonal up to invertible factors, or NLAlib.IsSVD.rank_eq",
+  "stage": "M10"
+ },
  "NLAlib.rank_eq_card_of_left_inverse": {
   "new": null,
   "note": "one step: L * A = 1 gives Function.Injective A.mulVec by Matrix.mulVec_mulVec, then mulVec_injective_iff_rank_eq",
@@ -8303,6 +9349,11 @@
  },
  "NLAlib.rank_kronecker": {
   "new": "NLAlib.rank_kronecker",
+  "stage": "M10"
+ },
+ "NLAlib.rank_kronecker_of_isHermitian": {
+  "new": "NLAlib.rank_kronecker",
+  "note": "special case of the general rectangular statement",
   "stage": "M10"
  },
  "NLAlib.rank_le_of_spectralTraceTail_eq_zero": {
@@ -8347,6 +9398,11 @@
   "new": "NLAlib.HasOrthonormalCols.rank_toBlocks₁₂",
   "stage": "M5"
  },
+ "NLAlib.rank_one_interlacing_converse_of_strict_cases": {
+  "new": null,
+  "note": "not ported: interlacing-converse construction machinery, §6; the new proof of Matrix.IsHermitian.exists_eigenvalue_add_vecMulVec_star_eq treats repeated eigenvalues directly, private exists_nonneg_prod_X_sub_C_eq",
+  "stage": "M10"
+ },
  "NLAlib.rank_rangeProjector": {
   "new": "NLAlib.rank_rangeProjector",
   "stage": "M1"
@@ -8364,6 +9420,16 @@
  "NLAlib.rayleighQuotient_def": {
   "new": "NLAlib.rayleighQuotient_def",
   "stage": "M1"
+ },
+ "NLAlib.rayleighQuotient_toEuclideanCLM_bounds": {
+  "new": null,
+  "note": "not ported: 0 ≤ rayleighQuotient A b ≤ specNorm A for a positive semidefinite A has no statement in the new library; helper of the power-method bound",
+  "stage": "M10"
+ },
+ "NLAlib.rayleighQuotient_toEuclideanCLM_eq": {
+  "new": "NLAlib.rayleighQuotient_eq_toEuclideanCLM",
+  "note": "over 𝕜; the two sides are exchanged",
+  "stage": "M10"
  },
  "NLAlib.rayleigh_residual_le_shifted_residual": {
   "new": "Matrix.IsHermitian.norm_mulVec_sub_rayleighQuotient_smul_le",
@@ -8397,8 +9463,23 @@
   "new": "Matrix.IsHermitian.re_apply_self_mem_Icc",
   "stage": "M3a"
  },
+ "NLAlib.re_pos_of_mem_spectrum_of_irreducible_weak_diagonal_dominance": {
+  "new": null,
+  "note": "not ported: right half plane under irreducible weak dominance for a matrix that is not Hermitian; the new library has Taussky's NLAlib.det_ne_zero_of_isIrreducible_of_forall_sum_le and the Hermitian Matrix.IsHermitian.posDef_of_isIrreducible_of_forall_sum_le",
+  "stage": "M10"
+ },
+ "NLAlib.re_pos_of_mem_spectrum_of_isUnit_of_weak_diagonal_dominance": {
+  "new": null,
+  "note": "not ported: right half plane under weak dominance for a nonsingular matrix; only the strict form NLAlib.re_pos_of_mem_spectrum_of_forall_sum_lt_re is stated",
+  "stage": "M10"
+ },
  "NLAlib.re_pos_of_mem_spectrum_of_row_radius_lt_re_diag": {
   "new": "NLAlib.re_pos_of_mem_spectrum_of_forall_sum_lt_re",
+  "stage": "M10"
+ },
+ "NLAlib.re_pos_of_mem_spectrum_of_strict_diagonal_dominance": {
+  "new": "NLAlib.re_pos_of_mem_spectrum_of_forall_sum_lt_re",
+  "note": "over 𝕜; the three hypotheses real diagonal, positive diagonal, radius < ‖A i i‖ are the single hypothesis radius < re (A i i)",
   "stage": "M10"
  },
  "NLAlib.re_trace_cfc_eq_sum_eigenvalues": {
@@ -8476,6 +9557,26 @@
   "new": "NLAlib.complexify",
   "stage": "M8"
  },
+ "NLAlib.realMatrixComplexification_apply": {
+  "new": "NLAlib.complexify_apply",
+  "note": "the transfer now runs from 𝕜 to ℂ",
+  "stage": "M10"
+ },
+ "NLAlib.realMatrixComplexification_cfc": {
+  "new": "NLAlib.complexify_cfc",
+  "note": "the transfer now runs from 𝕜 to ℂ",
+  "stage": "M10"
+ },
+ "NLAlib.realMatrixComplexification_inv": {
+  "new": "NLAlib.complexify_inv",
+  "note": "no invertibility hypothesis; the transfer runs from 𝕜 to ℂ",
+  "stage": "M10"
+ },
+ "NLAlib.realMatrixComplexification_le_iff": {
+  "new": "NLAlib.complexify_le_complexify_iff",
+  "note": "the transfer now runs from 𝕜 to ℂ",
+  "stage": "M10"
+ },
  "NLAlib.realMatrixComplexification_sqrt": {
   "new": "NLAlib.complexify_sqrt",
   "note": "from 𝕜, no positivity hypothesis",
@@ -8486,9 +9587,49 @@
   "note": "one step from NLAlib.re_quadForm_hermitianPart at a coordinate vector; helper of the prototype's proof of the real-part majorization",
   "stage": "M10"
  },
+ "NLAlib.real_imaginary_parts_intertwine": {
+  "new": null,
+  "note": "private helper mul_map_re_and_mul_map_im of NLAlib.exists_real_similarity_of_complexify",
+  "stage": "M10"
+ },
+ "NLAlib.real_normal_form_orthogonal_block_coefficients": {
+  "new": null,
+  "note": "not ported: orthogonal specialisation of the real normal form, removed as having no consumer, §8.9",
+  "stage": "M10"
+ },
+ "NLAlib.real_normal_orthogonal_conjugate": {
+  "new": "IsStarNormal.conjTranspose_mul_mul",
+  "note": "real twin; over 𝕜",
+  "stage": "M10"
+ },
+ "NLAlib.real_normal_quasi_cut_eq_zero": {
+  "new": null,
+  "note": "not ported: real normal form machinery, §6; NLAlib.exists_hasOrthonormalCols_isRealSchurForm_of_isStarNormal is proved by deflating normal blocks",
+  "stage": "M10"
+ },
+ "NLAlib.real_normal_quasi_eq_zero_above_superdiagonal": {
+  "new": null,
+  "note": "not ported: real normal form machinery, §6; the antisymmetry of the off-diagonal entries comes with NLAlib.exists_hasOrthonormalCols_isRealSchurForm_of_isStarNormal",
+  "stage": "M10"
+ },
+ "NLAlib.real_normal_quasi_eq_zero_of_subdiagonal_eq_zero": {
+  "new": null,
+  "note": "not ported: real normal form machinery, §6; the antisymmetry of the off-diagonal entries comes with NLAlib.exists_hasOrthonormalCols_isRealSchurForm_of_isStarNormal",
+  "stage": "M10"
+ },
+ "NLAlib.real_normal_quasi_row_eq_zero_of_pair": {
+  "new": null,
+  "note": "not ported: real normal form machinery, §6",
+  "stage": "M10"
+ },
  "NLAlib.real_part_eigenvalue_mem_Icc_selfAdjointPart": {
   "new": "NLAlib.re_le_eigenvalue_zero_hermitianPart",
   "note": "with NLAlib.eigenvalue_hermitianPart_le_re for the lower bound; over 𝕜, for μ in spectrum 𝕜 A",
+  "stage": "M10"
+ },
+ "NLAlib.real_similarity_descent_properties": {
+  "new": null,
+  "note": "bundle of NLAlib.exists_real_similarity_of_complexify and NLAlib.exists_real_orthogonal_of_complexify",
   "stage": "M10"
  },
  "NLAlib.rectDiag": {
@@ -8650,8 +9791,18 @@
   "note": "idempotence",
   "stage": "M1"
  },
+ "NLAlib.rootMultiplicity_eq_one_iff_isRoot_and_derivative_ne_zero": {
+  "new": null,
+  "note": "one step from Mathlib's Polynomial.one_lt_rootMultiplicity_iff_isRoot; the direction used is the private rootMultiplicity_eq_one_of_isRoot_of_derivative_ne_zero of NLAlib.exists_eigenvalue_branch_of_rootMultiplicity_eq_one",
+  "stage": "M10"
+ },
  "NLAlib.rootMultiplicity_eq_one_iff_pairing_ne_zero_of_finrank_eigenspace_eq_one": {
   "new": "NLAlib.rootMultiplicity_charpoly_eq_one_iff_dotProduct_ne_zero",
+  "stage": "M10"
+ },
+ "NLAlib.rootMultiplicity_eq_one_of_finrank_eigenspace_eq_one_of_pairing_ne_zero": {
+  "new": "NLAlib.rootMultiplicity_charpoly_eq_one_iff_dotProduct_ne_zero",
+  "note": "the mpr direction; x ≠ 0 and y ≠ 0 follow from the nonzero pairing",
   "stage": "M10"
  },
  "NLAlib.rowInclusion_of_leading_minors_through_rank": {
@@ -8877,6 +10028,11 @@
   "note": "through NLAlib.hermitianPart, over 𝕜; the bridge is NLAlib.hermitianPart_eq_selfAdjointPart",
   "stage": "M10"
  },
+ "NLAlib.semidefinite_pair_congruence_normal_form": {
+  "new": null,
+  "note": "bundle: normal form of a semidefinite pair, not in the design",
+  "stage": "M10"
+ },
  "NLAlib.shifted_residual_eq_rayleigh_residual_iff": {
   "new": "Matrix.IsHermitian.norm_mulVec_sub_smul_sq",
   "note": "the equality case is read off the identity: the extra term (μ - ρ) ^ 2 * ‖x‖ ^ 2 vanishes exactly at μ = ρ",
@@ -8884,6 +10040,11 @@
  },
  "NLAlib.signed_charpoly_coeff_eq_sum_principal_minors": {
   "new": "NLAlib.charpoly_coeff_eq_sum_principalMinor",
+  "stage": "M10"
+ },
+ "NLAlib.signed_charpoly_coeff_nonneg_of_posSemidef": {
+  "new": "Matrix.IsHermitian.posSemidef_iff_forall_re_charpoly_coeff_nonneg",
+  "note": "the mp direction; over 𝕜, with the index shift written k + j = card n",
   "stage": "M10"
  },
  "NLAlib.simpleEigenvalueSchurFunction": {
@@ -9191,6 +10352,11 @@
   "note": "not needed with orderIsoOfFin",
   "stage": "M1"
  },
+ "NLAlib.smul_add_smul_eq_congruence_diagonal": {
+  "new": null,
+  "note": "not ported: calculus helper; private in Functions/LogDet.lean",
+  "stage": "M10"
+ },
  "NLAlib.smul_le_iff_relative_spectrum_lower": {
   "new": "Matrix.PosDef.smul_le_iff_forall_le_spectrum",
   "stage": "M7"
@@ -9383,6 +10549,11 @@
  },
  "NLAlib.specNorm_kronecker": {
   "new": "NLAlib.specNorm_kronecker",
+  "stage": "M10"
+ },
+ "NLAlib.specNorm_kronecker_of_isHermitian": {
+  "new": "NLAlib.specNorm_kronecker",
+  "note": "special case of the general rectangular statement",
   "stage": "M10"
  },
  "NLAlib.specNorm_le_div_of_net": {
@@ -9763,12 +10934,27 @@
   "note": "for normal matrices over 𝕜; for positive semidefinite A the common value is eigenvalue A 0 by Matrix.PosSemidef.specNorm_eq_eigenvalue_zero",
   "stage": "M10"
  },
+ "NLAlib.spectralRadius_le_max_column_sum": {
+  "new": null,
+  "note": "not ported: column twin of NLAlib.specRadius_le_of_forall_sum_le; it needs specRadius Aᵀ = specRadius A, which the new library has only as the private specRadius_eq_of_charpoly_eq",
+  "stage": "M10"
+ },
  "NLAlib.spectralRadius_le_max_row_sum": {
   "new": "NLAlib.specRadius_le_of_forall_sum_le",
   "stage": "M10"
  },
  "NLAlib.spectralRadius_le_max_weighted_row_sum": {
   "new": "NLAlib.exists_norm_le_weighted_sum_of_mem_spectrum",
+  "stage": "M10"
+ },
+ "NLAlib.spectralRadius_le_min_max_row_column_sum": {
+  "new": null,
+  "note": "bundle of NLAlib.specRadius_le_of_forall_sum_le and its column twin, which is not ported",
+  "stage": "M10"
+ },
+ "NLAlib.spectralRadius_lt_one_of_tendsto_matrix_pow_zero": {
+  "new": "NLAlib.tendsto_pow_zero_iff_specRadius_lt_one",
+  "note": "the mp direction; over 𝕜 with specRadius",
   "stage": "M10"
  },
  "NLAlib.spectralRadius_mul_comm": {
@@ -9795,6 +10981,16 @@
   "new": null,
   "note": "not ported: Hessian route to trace-power convexity, superseded by NLAlib.convexOn_re_trace_cfc, Matrix-Functions §6 and §7.8",
   "stage": "M8"
+ },
+ "NLAlib.spectrum_inverse_mul_eq_range_of_congruence": {
+  "new": null,
+  "note": "one step from NLAlib.isEigenvalueListing_inv_mul_of_eq_mul_diagonal_mul_conjTranspose and IsEigenvalueListing.spectrum_eq_range",
+  "stage": "M10"
+ },
+ "NLAlib.spectrum_inverse_mul_subset_nonneg_of_posDef": {
+  "new": "Matrix.PosDef.exists_isEigenvalueListing_mul_nonneg",
+  "note": "applied to A⁻¹",
+  "stage": "M10"
  },
  "NLAlib.spectrum_mul_nonempty_of_posDef": {
   "new": "Matrix.PosDef.exists_isEigenvalueListing_mul_nonneg",
@@ -10018,6 +11214,16 @@
   "new": "NLAlib.sub_eq_one_sub_mul_sub_mul_one_sub",
   "stage": "M5"
  },
+ "NLAlib.sub_rayleighQuotient_pow_div_specNorm_le_log_overlap_div": {
+  "new": null,
+  "note": "not ported: gap-free Rayleigh-quotient bound for the power method, atlas random-start-power; it is not in the scope of M10 (§0) and belongs with the eigenvalue algorithms of a later layer",
+  "stage": "M10"
+ },
+ "NLAlib.sub_smul_one_eq_transpose_mul_diagonal_mul": {
+  "new": null,
+  "note": "not ported: congruence step of the prototype's proof; Matrix.IsHermitian.inertiaNeg_sub_smul_one is proved by the eigenvalue shift Matrix.IsHermitian.eigenvalue_add_smul_one",
+  "stage": "M10"
+ },
  "NLAlib.sub_sq_mul_add_sq_frobNorm_le_add_sq_coupled_residual": {
   "new": "NLAlib.sub_sq_mul_frobNorm_sq_add_frobNorm_sq_le",
   "stage": "M6"
@@ -10026,6 +11232,11 @@
   "new": null,
   "note": "private helper sub_sq_mul_add_sq_le_add_sq of sub_sq_mul_frobNorm_sq_add_frobNorm_sq_le",
   "stage": "M6"
+ },
+ "NLAlib.submatrix_blockDiagonal'_mul": {
+  "new": null,
+  "note": "not ported: blockDiagonal' helper of the many-block commutant lemmas, which are not ported; the new block statements use fromBlocks",
+  "stage": "M10"
  },
  "NLAlib.submatrix_decomposeFin_symm": {
   "new": null,
@@ -10037,6 +11248,16 @@
   "note": "recursion on the dimension not reproduced: bordered form of a symmetric permutation, a helper of choleskyPivoted",
   "stage": "M9"
  },
+ "NLAlib.submatrix_eq_fromBlocks_of_isolated_coordinate": {
+  "new": "NLAlib.submatrix_sumCompl_eq_fromBlocks",
+  "note": "generalised: only the column is assumed, and the upper right block is the row of M, which the row hypothesis makes zero",
+  "stage": "M10"
+ },
+ "NLAlib.submatrix_eq_fromBlocks_scalar_row_col": {
+  "new": null,
+  "note": "not ported: eigenvector deflation block lemma, §6",
+  "stage": "M10"
+ },
  "NLAlib.submatrix_kronecker_diagonal": {
   "new": "Matrix.hadamard_eq_submatrix_kronecker",
   "stage": "M7"
@@ -10045,6 +11266,11 @@
   "new": null,
   "note": "inlined in the proof of exists_isCholesky_iff_posDef and of Matrix.PosSemidef.exists_eq_mul_conjTranspose_of_isLowerTriangular: transport along Fintype.orderIsoFinOfCardEq",
   "stage": "M9"
+ },
+ "NLAlib.submatrix_mul_blockDiagonal'": {
+  "new": null,
+  "note": "not ported: blockDiagonal' helper of the many-block commutant lemmas, which are not ported; the new block statements use fromBlocks",
+  "stage": "M10"
  },
  "NLAlib.submatrix_succ_borderedMatrix": {
   "new": null,
@@ -10283,6 +11509,11 @@
   "note": "not ported: scalar helper of the prototype's variational proof of Horn's converse, Matrix-Inequalities §6",
   "stage": "M7"
  },
+ "NLAlib.sum_mul_walshCharacter": {
+  "new": "NLAlib.walshHadamard_mul_self",
+  "note": "matrix form of the orthogonality of the rows, with NLAlib.transpose_walshHadamard; over any ring",
+  "stage": "M10"
+ },
  "NLAlib.sum_norm_diag_sq_le_frobSq": {
   "new": "NLAlib.norm_apply_le_frobNorm",
   "note": "the diagonal sum bound follows from frobNorm_sq_eq_sum; restate in M3a if Schur majorization wants it",
@@ -10297,6 +11528,11 @@
   "note": "restated with the Euclidean norm",
   "stage": "M1"
  },
+ "NLAlib.sum_norm_sq_eq_of_prod_X_sub_C_eq": {
+  "new": null,
+  "note": "one step from NLAlib.IsEigenvalueListing.exists_equiv_eq: two listings differ by a permutation",
+  "stage": "M10"
+ },
  "NLAlib.sum_norm_sq_mulVec_le_frobSq": {
   "new": "NLAlib.norm_toLp_mulVec_le_frobNorm_mul",
   "stage": "M2"
@@ -10304,6 +11540,11 @@
  "NLAlib.sum_norm_sq_mulVec_le_specNorm_sq": {
   "new": "NLAlib.norm_toLp_mulVec_le",
   "stage": "M2"
+ },
+ "NLAlib.sum_norm_sq_schur_diagonal_eq_frobSq_iff_normal": {
+  "new": "NLAlib.IsEigenvalueListing.sum_norm_sq_eq_frobNorm_sq_iff",
+  "note": "the Schur diagonal is a listing; over 𝕜",
+  "stage": "M10"
  },
  "NLAlib.sum_norm_sq_schur_diagonal_le_frobSq": {
   "new": "NLAlib.IsEigenvalueListing.sum_norm_sq_le_frobNorm_sq",
@@ -10396,6 +11637,16 @@
   "note": "applied to Uᴴ for the frame U of a diagonalisation, unitary by HasOrthonormalCols.conjTranspose_of_card_eq: ‖Uᴴ *ᵥ v‖ = ‖v‖; for Mathlib's chosen basis it is OrthonormalBasis.sum_sq_norm_inner_right",
   "stage": "M8"
  },
+ "NLAlib.sum_sq_eq_sum_sub_trace_of_charpoly_add_vecMulVec": {
+  "new": null,
+  "note": "one step from NLAlib.IsEigenvalueListing.trace_eq_sum: trace (A + vecMulVec v v) = trace A + v ⬝ᵥ v",
+  "stage": "M10"
+ },
+ "NLAlib.sum_sq_eq_trace_sub_sum_of_charpoly_sub_vecMulVec": {
+  "new": null,
+  "note": "one step from NLAlib.IsEigenvalueListing.trace_eq_sum: trace (A - vecMulVec v v) = trace A - v ⬝ᵥ v",
+  "stage": "M10"
+ },
  "NLAlib.sum_sq_mulVec_le_frobSq": {
   "new": null,
   "note": "real-only twin of norm_toLp_mulVec_le_frobNorm_mul",
@@ -10439,8 +11690,43 @@
   "note": "not ported: fourth-moment contraction sums of a frame leave the Matrix layer, Matrix-Subspaces §0",
   "stage": "M5"
  },
+ "NLAlib.sum_walshBitSign_mul": {
+  "new": null,
+  "note": "not ported: bit-level character sum of the prototype's product route, §6; NLAlib.sum_walshHadamard_apply is proved by an involution",
+  "stage": "M10"
+ },
  "NLAlib.sum_walshCharacter": {
   "new": "NLAlib.sum_walshHadamard_apply",
+  "stage": "M10"
+ },
+ "NLAlib.summable_matrix_pow_of_spectralRadius_lt_one": {
+  "new": "NLAlib.hasSum_pow_inv_one_sub_of_specRadius_lt_one",
+  "note": "summability is HasSum.summable; over 𝕜 with specRadius",
+  "stage": "M10"
+ },
+ "NLAlib.summable_real_matrix_pow_of_complex_spectralRadius_lt_one": {
+  "new": "NLAlib.hasSum_pow_inv_one_sub_of_specRadius_lt_one",
+  "note": "real twin; summability is HasSum.summable",
+  "stage": "M10"
+ },
+ "NLAlib.sylvesterLinearMap": {
+  "new": null,
+  "note": "object not reproduced: sylvesterLinearMap, §1; the operator is written X ↦ A * X - X * B",
+  "stage": "M10"
+ },
+ "NLAlib.sylvesterLinearMap_bijective_iff_disjoint_spectrum": {
+  "new": null,
+  "note": "object not reproduced: sylvesterLinearMap, §1; disjoint spectra give unique solvability by NLAlib.existsUnique_mul_sub_mul_eq_of_isCoprime_charpoly with NLAlib.isCoprime_charpoly_iff_disjoint_spectrum; the converse is not ported",
+  "stage": "M10"
+ },
+ "NLAlib.sylvesterLinearMap_bijective_of_isCoprime_charpoly": {
+  "new": "NLAlib.existsUnique_mul_sub_mul_eq_of_isCoprime_charpoly",
+  "note": "bijectivity is spelled ∃! X, A * X - X * B = C; sylvesterLinearMap is not reproduced",
+  "stage": "M10"
+ },
+ "NLAlib.sylvesterLinearMap_injective_iff_disjoint_spectrum": {
+  "new": null,
+  "note": "object not reproduced: sylvesterLinearMap, §1; disjoint spectra give injectivity by NLAlib.eq_zero_of_mul_eq_mul_of_isCoprime_charpoly with NLAlib.isCoprime_charpoly_iff_disjoint_spectrum; the converse, a nonzero intertwiner from a common eigenvalue, is not ported",
   "stage": "M10"
  },
  "NLAlib.sylvester_complement_overlap_eq": {
@@ -10483,8 +11769,23 @@
   "new": "NLAlib.tendsto_pow_zero_iff_specRadius_lt_one",
   "stage": "M10"
  },
+ "NLAlib.tendsto_matrix_pow_zero_of_spectralRadius_lt_one": {
+  "new": "NLAlib.tendsto_pow_zero_iff_specRadius_lt_one",
+  "note": "the mpr direction; over 𝕜 with specRadius",
+  "stage": "M10"
+ },
  "NLAlib.tendsto_norm_matrix_pow_rpow_spectralRadius": {
   "new": "NLAlib.tendsto_specNorm_pow_rpow_specRadius",
+  "stage": "M10"
+ },
+ "NLAlib.tendsto_pow_apply_zero_of_mem_maxGenEigenspace": {
+  "new": null,
+  "note": "not ported: generalized-eigenspace decay, unused; power convergence is NLAlib.tendsto_pow_zero_iff_specRadius_lt_one",
+  "stage": "M10"
+ },
+ "NLAlib.tendsto_real_matrix_pow_zero_iff_complex_spectralRadius_lt_one": {
+  "new": "NLAlib.tendsto_pow_zero_iff_specRadius_lt_one",
+  "note": "real twin: specRadius A is the complex spectral radius of complexify A",
   "stage": "M10"
  },
  "NLAlib.toCoordinateSubmodule": {
@@ -10540,6 +11841,21 @@
   "new": null,
   "note": "transport; not reproduced",
   "stage": "M1"
+ },
+ "NLAlib.toQuadraticForm'_apply": {
+  "new": null,
+  "note": "not ported: quadratic-form route to the inertia; inertiaPos and inertiaNeg are defined by counting eigenvalues, §2 and §7.2",
+  "stage": "M10"
+ },
+ "NLAlib.toQuadraticForm'_diagonal": {
+  "new": null,
+  "note": "not ported: quadratic-form route to the inertia, §2 and §7.2",
+  "stage": "M10"
+ },
+ "NLAlib.toeplitzMatrix": {
+  "new": null,
+  "note": "object not reproduced: Toeplitz matrices are not ported, §0 and §7.6",
+  "stage": "M10"
  },
  "NLAlib.topEigenframe": {
   "new": null,
@@ -10701,6 +12017,11 @@
   "note": "no chosen eigenframe; the bound is the sum of the leading eigenvalues",
   "stage": "M6"
  },
+ "NLAlib.trace_congruence_diagonal": {
+  "new": null,
+  "note": "not ported: calculus helper of the prototype's definite-pair congruence",
+  "stage": "M10"
+ },
  "NLAlib.trace_conjStarAlgAut": {
   "new": null,
   "note": "deferred: traces of powers and functions of a Hermitian matrix, with matrix functions",
@@ -10844,6 +12165,11 @@
   "note": "Mathlib: Matrix.trace_units_conj, or Matrix.trace_mul_cycle with Uᴴ * U = 1",
   "stage": "M8"
  },
+ "NLAlib.trailingMinor": {
+  "new": null,
+  "note": "object not reproduced: trailingMinor, §1 and §7.9; written principalMinor A (Finset.Ici i)",
+  "stage": "M10"
+ },
  "NLAlib.transpose_aeval": {
   "new": "Matrix.IsHermitian.aeval",
   "stage": "M8"
@@ -10934,6 +12260,11 @@
   "new": "NLAlib.truncatedSVD",
   "stage": "M3"
  },
+ "NLAlib.tsum_matrix_pow_eq_inv_of_spectralRadius_lt_one": {
+  "new": "NLAlib.hasSum_pow_inv_one_sub_of_specRadius_lt_one",
+  "note": "the value of the sum is HasSum.tsum_eq; over 𝕜 with specRadius",
+  "stage": "M10"
+ },
  "NLAlib.twoSided_compression_trace_reindex": {
   "new": null,
   "note": "Fin transport, not needed",
@@ -10951,6 +12282,16 @@
  },
  "NLAlib.upper_fromBlocks_eq_diagonal_of_normal": {
   "new": "IsStarNormal.isDiag_of_isUpperTriangular",
+  "stage": "M10"
+ },
+ "NLAlib.vecMulVec_ne_zero": {
+  "new": null,
+  "note": "Mathlib: Matrix.vecMulVec_ne_zero",
+  "stage": "M10"
+ },
+ "NLAlib.vecMul_eigenvector_of_intertwines": {
+  "new": null,
+  "note": "not ported: one step from Mathlib's Matrix.vecMul_vecMul",
   "stage": "M10"
  },
  "NLAlib.vectorTangentToFrame": {
@@ -10998,16 +12339,66 @@
   "note": "not ported: for a unit u orthogonal to w with u + w in range Q, ‖(1 - Q * Qᴴ) *ᵥ u‖ ≤ ‖w‖ * ‖Qᴴ *ᵥ u‖; no vector-to-subspace tangent statement in the new library",
   "stage": "M5"
  },
+ "NLAlib.walshBitSign": {
+  "new": null,
+  "note": "object not reproduced: walshBitSign, §1 and §6; the sign of a bit is written if s = 0 then 1 else -1",
+  "stage": "M10"
+ },
+ "NLAlib.walshBitSign_add": {
+  "new": null,
+  "note": "private helper ite_add_eq_zero of NLAlib.walshHadamard_add_apply",
+  "stage": "M10"
+ },
+ "NLAlib.walshBitSign_sq": {
+  "new": null,
+  "note": "object not reproduced: walshBitSign, §1; for the entries of the matrix it is NLAlib.walshHadamard_apply_mul_self",
+  "stage": "M10"
+ },
+ "NLAlib.walshCharacter": {
+  "new": "NLAlib.walshHadamard",
+  "note": "walshCharacter a c is the entry walshHadamard ℝ b a c of the unnormalised matrix; not a separate name, §1",
+  "stage": "M10"
+ },
  "NLAlib.walshCharacter_add_left": {
   "new": "NLAlib.walshHadamard_add_apply",
+  "stage": "M10"
+ },
+ "NLAlib.walshCharacter_comm": {
+  "new": "NLAlib.transpose_walshHadamard",
+  "note": "symmetry stated for the matrix; over any ring",
   "stage": "M10"
  },
  "NLAlib.walshCharacter_sq": {
   "new": "NLAlib.walshHadamard_apply_mul_self",
   "stage": "M10"
  },
+ "NLAlib.walshIndexEquivFin": {
+  "new": null,
+  "note": "object not reproduced: the relabelling of the bit strings by Fin (2 ^ b), §1; walshHadamard is indexed by Fin b → ZMod 2",
+  "stage": "M10"
+ },
+ "NLAlib.walshIndex_add_eq_zero_iff": {
+  "new": null,
+  "note": "Mathlib: CharTwo.add_eq_zero",
+  "stage": "M10"
+ },
  "NLAlib.walshMatrix": {
   "new": "NLAlib.walshHadamard",
+  "stage": "M10"
+ },
+ "NLAlib.walshMatrixFin": {
+  "new": null,
+  "note": "object not reproduced: walshMatrixFin, §1; the normalised matrix is (√(2 ^ b))⁻¹ • walshHadamard 𝕜 b on the index type Fin b → ZMod 2",
+  "stage": "M10"
+ },
+ "NLAlib.walshMatrixFin_apply_sq": {
+  "new": "NLAlib.norm_smul_walshHadamard_apply",
+  "note": "Fin twin; on the index type Fin b → ZMod 2, over 𝕜",
+  "stage": "M10"
+ },
+ "NLAlib.walshMatrixFin_transpose_mul_self": {
+  "new": "NLAlib.hasOrthonormalCols_smul_walshHadamard",
+  "note": "Fin twin; on the index type Fin b → ZMod 2, over 𝕜",
   "stage": "M10"
  },
  "NLAlib.walshMatrix_apply_sq": {

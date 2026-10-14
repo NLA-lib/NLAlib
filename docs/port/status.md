@@ -65,9 +65,9 @@ correction. Now: P0's matrix-integral file, P4 design.
 | P0 | `Probability/MatrixIntegral.lean`, `ForMathlib/Analysis/CStarAlgebra/Matrix.lean` | Opus agent | proved | the Loewner closedness instance already existed (`ForMathlib/LinearAlgebra/Matrix/PosDef.lean`); the planned `Order.lean` dropped |
 | P4 | design note `docs/design/Probability-P4.md`, skeletons | orchestrator | written, Fable-reviewed (§8); skeletons compile | |
 | P4 | `Probability/Entropy.lean`, `EntropyTensorization.lean`, `ForMathlib/MeasureTheory/Constructions/PiUpdate.lean` | Opus agent, orchestrator | proved | split from one 722-line file |
-| P4 | `Distributions/GaussianLogSobolev.lean` | Opus agent | proofs in progress | |
+| P4 | `Distributions/GaussianLogSobolev.lean`, `GaussianLogSobolevOneDim.lean` | Opus agent | proved | Gross's two-point route through Mathlib's CLT (the prototype's Ornstein–Uhlenbeck files not needed); wrap-up: one `ForMathlib` copy of `|s log s| ≤ s² + 1` |
 | P4 | `LogSobolev.lean` (+ `ForMathlib/Analysis/Calculus/BumpFunction/Convolution.lean`) | Opus agent | proved | Lipschitz approximation by convolution |
-| P4 | `Distributions/GaussianConcentration.lean` | — | skeleton compiles | after the two above |
+| P4 | `Distributions/GaussianConcentration.lean` | Opus agent | proofs in progress | |
 | P5a | design note `docs/design/Probability-P5a.md`, skeletons `MatrixConcentration/*` | orchestrator | written, Fable-reviewed (§8); skeletons compile | |
 | P5a | `MatrixConcentration/{Laplace,Subadditivity,MGFBound}.lean` (+ `ForMathlib/Analysis/Convex/Integral.lean`) | Opus agent | proved | Jensen on a non-closed convex set; wrap-up: move `continuousOn_cfc_log` to the Matrix layer, `measurableSet_posDef` to Measurability |
 | P5a | `MatrixConcentration/{Chernoff,ChernoffSum}.lean` | Opus agent | proofs in progress | |

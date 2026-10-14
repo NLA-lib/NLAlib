@@ -231,3 +231,13 @@ Amendment (2026-10-14, after `Entropy.lean` was proved at 722 lines): split into
 lemmas on resampling one coordinate of a product of probability measures, for dependent families:
 `MeasureTheory.measurePreserving_update_pi`, `integral_integral_update_pi`, …, general facts
 for every conditioning-on-all-but-one argument).
+
+Amendment (2026-10-14): Gross's one-dimensional inequality is proved by the two-point inequality
+for a random sign, tensorized over `n` signs and passed to the limit with Mathlib's central limit
+theorem (Boucheron–Lugosi–Massart, Theorems 5.1 and 5.4), not by the prototype's
+Ornstein–Uhlenbeck semigroup; the compactly supported case is
+`Distributions/GaussianLogSobolevOneDim.lean` (new file), public
+`entropy_sq_le_two_mul_integral_deriv_sq_gaussianReal_of_hasCompactSupport`. The Lipschitz
+approximation of `LogSobolev.lean` is `ForMathlib/Analysis/Calculus/BumpFunction/Convolution.lean`
+(new file: convolution with a normed bump keeps the Lipschitz constant; `C^∞` Lipschitz
+approximation in finite dimension).

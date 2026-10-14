@@ -26,7 +26,8 @@ limit theorem passes to the limit.
 
 ## References
 
-* [L. Gross, *Logarithmic Sobolev inequalities*][Gross1975].
+* [S. Boucheron, G. Lugosi, P. Massart, *Concentration Inequalities*][BoucheronLugosiMassart2013],
+  Theorems 5.1 (random signs) and 5.4 (the Gaussian, by the central limit theorem).
 -/
 
 @[expose] public section
@@ -316,7 +317,11 @@ private lemma entropy_comp_sum_le {ι : Type*} [Fintype ι] {g : ℝ → ℝ}
 /-! ### The limit -/
 
 /-- **Gross's logarithmic Sobolev inequality** on `ℝ` for a compactly supported `C¹` function:
-`Ent_γ (g²) ≤ 2 E_γ g'²` for the standard Gaussian `γ`. -/
+`Ent_γ (g²) ≤ 2 E_γ g'²` for the standard Gaussian `γ` ([BoucheronLugosiMassart2013],
+Theorem 5.4, whose proof by random signs and the central limit theorem is followed here). The
+general integrable form is `NLAlib.entropy_sq_le_two_mul_integral_deriv_sq_gaussianReal`.
+Port: the old library's `entropy_sq_le_two_mul_integral_sq_deriv_gaussianReal_of_hasCompactSupport`,
+re-proved without the Ornstein–Uhlenbeck semigroup. -/
 theorem entropy_sq_le_two_mul_integral_deriv_sq_gaussianReal_of_hasCompactSupport {g : ℝ → ℝ}
     (hg : ContDiff ℝ 1 g) (hgc : HasCompactSupport g) :
     entropy (gaussianReal 0 1) (fun x => g x ^ 2) ≤

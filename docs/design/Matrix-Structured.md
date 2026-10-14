@@ -194,24 +194,65 @@ equation, the arrowhead characteristic polynomial, Brauer's theorem,
 
 ## 5. Files
 
-`NLAlib/Matrix/Structured/`: `Kronecker.lean`, `Circulant.lean`, `Walsh.lean`, `Cauchy.lean`
-(independent of each other; they import M1 to M4).
+Amended 2026-10-14 after the stage was proved: eight files were added or split off during the
+stage (marked "new" below), and the imports are the ones the files have now.
 
-`NLAlib/Matrix/Spectral/`, in dependency order: `Schur.lean` (imports M8 `Complexification`);
-`Normal.lean` (Schur, M3a `DoublyStochastic`); `Simultaneous.lean` (Normal);
-`Diagonalizable.lean` (Simultaneous); `RealSchur.lean` (Simultaneous, M9 `Hessenberg`);
-`Inertia.lean` (M3 `Interlacing`, M9 `Elimination`); `SylvesterCriterion.lean` (Inertia, Schur);
-`Congruence.lean` (Diagonalizable, Inertia); `Gershgorin.lean` (Schur); `SpectralRadius.lean`
-(Normal, Gershgorin); `RankOneUpdate.lean` (SylvesterCriterion, M3 `Weyl`); `HermitianPart.lean`
-(Schur, M3a `Schur`).
+`NLAlib/Matrix/Structured/`: `Kronecker.lean`, `Circulant.lean`, `Walsh.lean`, `Cauchy.lean`
+(independent of each other; they import M1 to M4, `Kronecker.lean` also `Spectral/Schur` for the
+eigenvalue listings of a Kronecker product and sum, `Cauchy.lean` M9 `Elimination`).
+
+`NLAlib/Matrix/Spectral/`, in dependency order:
+
+- `EigenvalueListing.lean` (new; imports M8 `Complexification`, `Factorizations/Triangular`):
+  the predicate `IsEigenvalueListing`, its interface (relabelling, spectrum, trace, determinant,
+  powers), `charpoly_mul_mul_of_mul_eq_one`, the block lemmas of a deflation step, and
+  simultaneous triangularisation of a commuting pair by a similarity over any field.
+- `EigenvectorPairing.lean` (new; Mathlib only): left and right eigenvectors, biorthogonality,
+  simple eigenvalues through the pairing `y ⬝ᵥ x`, the adjugate at a simple eigenvalue.
+- `SylvesterEquation.lean` (new; Mathlib only): `A X - X B = C` has exactly one solution when the
+  characteristic polynomials are coprime; block diagonalisation of a block triangular matrix.
+- `QuasiTriangular.lean` (new; M9 `Hessenberg`): `IsUpperQuasiTriangular` and its stability under
+  triangular factors and under assembling blocks.
+- `Schur.lean` (EigenvalueListing, `Factorizations/QR`).
+- `Normal.lean` (Schur, M3a `Schur`).
+- `Simultaneous.lean` (Normal).
+- `Diagonalizable.lean` (Simultaneous, EigenvectorPairing).
+- `RealSchur.lean` (Simultaneous, QuasiTriangular).
+- `RealSimilarity.lean` (new; M8 `Complexification`, M9 `Polar`): real matrices similar, or
+  unitarily similar, over `ℂ` are similar, or orthogonally similar, over `ℝ`.
+- `Inertia.lean` (M3 `Interlacing`, `Weyl`, `SingularValues`).
+- `InertiaElimination.lean` (new; Inertia, `Factorizations/GaussState`): Haynsworth additivity
+  of the inertia, the inertia of a saddle-point matrix, and counting the eigenvalues below `x` by
+  the signs of the pivots of `A - x • 1`.
+- `SylvesterCriterion.lean` (InertiaElimination, Schur).
+- `Congruence.lean` (Diagonalizable, Inertia, `Factorizations/QR`, `Subspaces/Frames`,
+  `ForMathlib/LinearAlgebra/Matrix/ConjTranspose`).
+- `Gershgorin.lean` (Schur).
+- `SpectralRadius.lean` (Normal, Gershgorin).
+- `PowerBounds.lean` (new; SpectralRadius, `Pseudoinverse/ConditionNumber`): Gelfand's formula,
+  growth and convergence of the powers, the Neumann series, a similarity to within `ε` of the
+  spectral radius, power-bounded matrices.
+- `RankOneUpdate.lean` (SylvesterCriterion, M3 `Weyl`).
+- `InterlacingConverse.lean` (new; RankOneUpdate): every interlacing sequence is the spectrum of
+  a rank-one update and of a bordering, through the secular equation.
+- `HermitianPart.lean` (Schur, EigenvectorPairing, M3a `Schur`).
 
 `NLAlib/ForMathlib/MeasureTheory/Matrix.lean`; `NLAlib/Matrix/Measurability/Basic.lean` (imports
 M6 `Continuity`, M9 `Polar`, `GramSchmidt`).
 
-Order for proving: the four structured files and `Schur`, `Inertia`, the measure-theory file
-first; then `Normal`, `Gershgorin`, `SylvesterCriterion`, `HermitianPart`; then `Simultaneous`,
-`SpectralRadius`, `RankOneUpdate`; then `Diagonalizable`, `RealSchur`; then `Congruence`,
-`Measurability`.
+Order for proving: the four structured files and `Schur`, `Inertia`, the
+measure-theory file first; then `Normal`, `Gershgorin`, `SylvesterCriterion`, `HermitianPart`;
+then `Simultaneous`, `SpectralRadius`, `RankOneUpdate`; then `Diagonalizable`, `RealSchur`; then
+`Congruence`, `Measurability`. Each new file was proved with the file that first imports it.
+
+Names settled at the wrap-up of the stage: the spectral radius through a listing is
+`IsEigenvalueListing.specRadius_le_iff` (any finite index type); the nearly diagonal triangular
+form is `IsEigenvalueListing.exists_isUpperTriangular_inv_mul_mul_norm_apply_lt` over `𝕜`, with
+`exists_isUpperTriangular_inv_mul_mul_norm_apply_lt` its corollary over `ℂ`; the eigenvalues of a
+commuting pair with a prescribed listing of the first are
+`IsEigenvalueListing.exists_isEigenvalueListing_add_mul_of_commute`, with
+`exists_isEigenvalueListing_add_mul_of_commute` its corollary over `ℂ`; invariance of normality
+under unitary similarity is `IsStarNormal.conjTranspose_mul_mul`.
 
 ## 6. Material
 

@@ -79,8 +79,8 @@ P5b to P5d outside their own layer.
 | R1 | design note `docs/design/RandomMatrix-R1.md`, skeletons `RandomMatrix/Gaussian/*` | orchestrator | written, Fable-reviewed (§8); skeletons compile | `frobNorm_eq_norm_toLp_uncurry` proved in the Matrix layer |
 | R1 | `RandomMatrix/Gaussian/{Basic,Invariance}.lean` | Opus agent | proofs in progress | |
 | R1 | `RandomMatrix/Gaussian/{Rank,Concentration}.lean` | — | skeletons compile | next slot |
-| R2 | design note `docs/design/RandomMatrix-R2.md` | orchestrator | written; Fable review running | |
-| R4 | design note `docs/design/RandomMatrix-R4.md` | orchestrator | written; Fable review running | |
+| R2 | design note `docs/design/RandomMatrix-R2.md`, skeleton `RandomMatrix/Gaussian/Moments.lean` | orchestrator | written, Fable-reviewed (§8); skeleton check pending a slot | |
+| R4 | design note `docs/design/RandomMatrix-R4.md`, skeletons | orchestrator | written, Fable-reviewed (§8); skeleton check pending a slot | |
 | P5a | `MatrixConcentration/{Bernstein,Series}.lean` | Opus agent | proofs in progress | |
 
 **Matrix layer complete, 2026-10-14** (branch `scaffold`, local commits, not pushed): stages M0 to

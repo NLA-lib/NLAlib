@@ -133,3 +133,26 @@ the hard edge and Wishart (D9), tails without a consumer, `Fin` index types, `_o
 `e √((k + r - 1)/2) / (k - r)` is at most the source's `e √k / (k - r)` whenever `r ≤ k + 1`, so the
 source's form is dominated (D5 rule 5): it is proved from the first and kept because LowRank cites
 it, under a name that spells its right side; neither is named `_sharp`.
+
+## 8. Amendments from the review (2026-10-14)
+
+The skeletons (`Probability/Distributions/ChiSquareMoments.lean`,
+`RandomMatrix/Gaussian/{InverseMoments,BlockMoments}.lean`) are the statements where they differ
+from §3.
+1. Tails first (CONTRIBUTING §5.2): the range finder's tail theorems (Halko, Martinsson and Tropp
+   10.7, 10.8) consume the higher moments, so R4 states the general spectral moments
+   `E ‖G†‖^q ≤ (e √((k + r - 1)/2) / (k - r))^q` for `0 < q ≤ k - r` (with `E ‖G†‖` as `q = 1`, and
+   the source's `e √k / (k - r)` as a corollary) and the Frobenius fourth moment
+   (`r + 4 ≤ k`). The constant `√((k + r - 1)/2)` has no source; the docstring says it is what the
+   probe proof reaches. The extension to `p ≥ 1` (HMT state `p ≥ 2`) is recorded in the docstring.
+2. χ²: the general real moments `E (‖X‖²)^s = 2^s Γ(d/2 + s)/Γ(d/2)` for `s > -d/2` (file renamed
+   `ChiSquareMoments.lean`), with `E 1/χ²_d = 1/(d - 2)` as the case used.
+3. `E ‖G†‖_F ≤ √(r/(k - r - 1))` (Jensen) with its integrability companion, for the spectral block
+   bound (R3).
+4. Names: `integral_mul_conjTranspose_inv_…` (the inverse of `X Xᴴ`), `integral_norm_sq_inv_…`,
+   `integral_norm_sq_rpow_…`; `hr : 0 < card r` dropped (`r = 0` gives `0 = 0`); instances per
+   statement; casts written `(Fintype.card r : ℝ)`; the block file keeps `X` for the matrix.
+5. Junk values: `(G Gᴴ)⁻¹` is `0` off the a.s. full-rank set and `pinv` is total; the integrals are
+   unaffected (module docstrings).
+6. The spectral block bound (HMT Theorem 10.6: `E ‖S G₂ G₁†‖ ≤ ‖S‖ √(r/(k-r-1)) + ‖S‖_F e√k/(k-r)`)
+   needs Chevet with independent factors and is R3's.

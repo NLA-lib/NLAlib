@@ -74,3 +74,17 @@ The prototype's `RandomMatrix/Gaussian/Moments/{SecondMoment,Conditioning}.lean`
 reproduced: `frobSq` (the Matrix layer writes `frobNorm A ^ 2`), measure-form twins,
 `integrable_const_mul_gaussianMatrix_entry_mul` and the entrywise moment lemmas (P2 and P0 through
 the `uncurry` law), `Fin` index types.
+
+## 8. Amendments from the review (2026-10-14)
+
+The skeleton `NLAlib/RandomMatrix/Gaussian/Moments.lean` is the statement where it differs from §3.
+1. The isotropic forms are over `𝕜` (D4); the Gaussian ones are their real corollaries.
+2. Proof route: `uncurry (S X T) = (S ⊗ₖ Tᵀ) *ᵥ uncurry X` (Mathlib's `kronecker_mulVec_vec` up to
+   spelling), `frobNorm_eq_norm_toLp_uncurry`, `IsIsotropic.integral_norm_mulVec_sq` and the
+   Matrix layer's `frobNorm_kronecker`.
+3. The independent-factor identity is stated for any law `ν` with isotropic entries
+   (`…_of_isIsotropic_of_indepFun`, with `[IsProbabilityMeasure μ]`), the Gaussian one is its
+   corollary (`…_of_hasLaw_gaussianMatrix_of_indepFun`); a consumer with random `S`, `T` takes
+   `Y := (S, T)`.
+4. New: `integrable_frobNorm_mul_mul_sq_iff_of_…_of_indepFun` (the two sides are integrable
+   together), which the range finder's Jensen step needs (D3).

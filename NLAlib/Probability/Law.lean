@@ -75,7 +75,10 @@ section Matrix
 variable {m n α : Type*} [Fintype m] [Fintype n] [MeasurableSpace α] {ν : m → n → Measure α}
   [∀ i j, IsProbabilityMeasure (ν i j)] {X : Ω → Matrix m n α}
 
-private theorem measurePreserving_curry_pi :
+/-- Currying is measure preserving from the product law on `m × n` to the nested product law on
+matrices. This is the step that reads a random matrix with independent entries as a random vector
+indexed by `m × n` (through its inverse, `Function.uncurry`), and back. -/
+theorem measurePreserving_curry_pi :
     MeasurePreserving (MeasurableEquiv.curry m n α) (Measure.pi fun p : m × n => ν p.1 p.2)
       (Measure.pi fun i => Measure.pi fun j => ν i j) := by
   refine ⟨(MeasurableEquiv.curry m n α).measurable, ?_⟩

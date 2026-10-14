@@ -69,7 +69,6 @@ public import NLAlib.Matrix.Majorization.KyFan
 public import NLAlib.Matrix.Majorization.Lidskii
 public import NLAlib.Matrix.Majorization.Schur
 public import NLAlib.Matrix.Majorization.TraceInequalities
-public import NLAlib.Matrix.Measurability.Basic
 public import NLAlib.Matrix.Norms.Block
 public import NLAlib.Matrix.Norms.Compare
 public import NLAlib.Matrix.Norms.Frobenius
@@ -144,3 +143,4 @@ public import NLAlib.Matrix.Subspaces.Oblique
 public import NLAlib.Matrix.Subspaces.PrincipalAngles
 public import NLAlib.Matrix.Subspaces.ProjectorPair
 public import NLAlib.Matrix.Subspaces.Tangent
+public import NLAlib.Probability.Measurability.Matrix

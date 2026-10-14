@@ -15,9 +15,10 @@ public import NLAlib.Matrix.Factorizations.Polar
 public import NLAlib.Matrix.Factorizations.GramSchmidt
 
 /-!
-# Measurability of spectral quantities
+# Measurability of matrix quantities
 
-For random matrices, the quantities of this library must be measurable functions of the matrix.
+For random matrices, the quantities of the Matrix layer must be measurable functions of the
+matrix. This file belongs to the Probability layer: the Matrix layer itself has no measure theory.
 Norms, singular values and eigenvalues are continuous, hence measurable. The rank, the
 pseudoinverse, the range projector, the condition number, the polar factor and the Gram–Schmidt
 factors are not continuous but are Borel measurable.

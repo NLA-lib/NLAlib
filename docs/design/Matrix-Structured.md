@@ -416,3 +416,8 @@ randomly pivoted Cholesky (`Majorization/KyFan.lean`), the scaled Gram-error bou
 (`Subspaces/Tangent.lean`), the real entrywise forms of `frobNorm` and `frobInner`,
 `singularValues_complexify`, `continuous_complexify`, `specRadius_transpose` and the column-sum
 bound.
+
+**Amendment, 2026-10-14 (maintainer).** Measurability belongs to the Probability layer.
+`NLAlib/Matrix/Measurability/Basic.lean` is now `NLAlib/Probability/Measurability/Matrix.lean`,
+with its statements and names unchanged; `ForMathlib/MeasureTheory/Matrix.lean` stays where it
+is and is imported only from there.

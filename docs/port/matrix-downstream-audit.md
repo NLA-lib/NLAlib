@@ -252,7 +252,7 @@ Format: old name → new spelling. "short" marks a derivation of three to five l
 - `singularValues_gram_pow_mul` → `singularValues_pow_mul_conjTranspose_self_mul`;
   `rank_gram_pow_mul` → `rank_pow_mul_conjTranspose_self_mul` (`Functions/Polynomial.lean`).
 - `measurable_polarFrame_entry` → `measurable_polarFactor`; `measurable_canonicalQRFrame` →
-  `measurable_gramSchmidtQ` (`Measurability/Basic.lean`).
+  `measurable_gramSchmidtQ` (`NLAlib/Probability/Measurability/Matrix.lean`).
 - `specNorm_le_specNorm_map_ofReal` → `specNorm_complexify` (an equality, at `𝕜 = ℝ`).
 - `specNorm_blockDiagonal_const_le` → Mathlib `Matrix.kronecker_one`, `specNorm_kronecker`,
   `specNorm_one_le`.

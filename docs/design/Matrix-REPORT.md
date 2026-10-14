@@ -31,14 +31,15 @@ a review section and a stage report.
    run ("do not stop for me for the matrix part"). Each note was reviewed by a Fable agent
    instead, and each records the decisions that were the maintainer's to make in a section
    "Decisions taken without approval". §3 below collects the ones that later layers inherit.
-2. **Measurability is in the layer**, although the brief's §4 says it is designed with
-   Probability. The prototype has `Matrix/Measurability/`, the ledger had to account for it, and
-   the statements are deterministic. `NLAlib/ForMathlib/MeasureTheory/Matrix.lean` puts the
-   product measurable space on `Matrix m n α` as a **global instance** (Mathlib has none), with
-   a Borel instance, and `NLAlib/Matrix/Measurability/Basic.lean` proves measurability of the
+2. **Measurability was first put in the layer**, although the brief's §4 says it is designed
+   with Probability. The maintainer moved it on 2026-10-14: the statements (measurability of the
    norms, singular values, eigenvalues, rank, `pinv`, `rangeProjector`, `conditionNumber`,
-   `polarFactor` and `gramSchmidtQ`. If the Probability design wants another route, these two
-   files are the only ones to change; nothing else imports them.
+   `polarFactor` and `gramSchmidtQ`) are now `NLAlib/Probability/Measurability/Matrix.lean`,
+   the first file of the Probability layer, and the Matrix layer has no measure theory. The
+   product measurable space on `Matrix m n α`, a **global instance** (Mathlib has none) with a
+   Borel instance, stays in `NLAlib/ForMathlib/MeasureTheory/Matrix.lean`, because it is about
+   Mathlib's objects only; nothing in `NLAlib/Matrix/` imports it. Whether a global instance is
+   the right form is a question for the Probability design.
 
 ## 2. How much changed from the prototype
 

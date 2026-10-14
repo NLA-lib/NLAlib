@@ -186,7 +186,9 @@ None of these was approved by the maintainer when it was made. Status is given p
 - **NLAlib.** `Matrix.instMeasurableSpace`, the product σ-algebra, as a global instance in
   `NLAlib/ForMathlib/MeasureTheory/Matrix.lean`.
 - **Risk.** If Mathlib adds an instance later, the two may differ syntactically.
-- **Status: open, and against the brief, which leaves measurability to the Probability layer.**
+- **Status: open.** The Matrix layer does not import it; the statements that use it are in
+  `NLAlib/Probability/Measurability/Matrix.lean` (moved there by the maintainer, 2026-10-14).
+  Whether the instance should be global is a question for the Probability design.
 
 ## Small spelling choices
 

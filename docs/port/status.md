@@ -9,12 +9,24 @@ Updated at every stopping point. Newest entry first within each section.
   have been approval questions are recorded in the note under "Open questions" with the choice
   taken, for review after the fact. When very unsure: commit a checkpoint, then continue.
 
+- 2026-10-14, maintainer, for the Probability layer and above (inputs to its brief, not yet
+  designed):
+  1. Measurability belongs to Probability, not Matrix (done: `Probability/Measurability/`).
+  2. Numerical bounds start here. Before statements are written, fix how a later improvement of
+     a bound, and a new proof whose bound is incomparable with the old one (mostly better, worse
+     in edge cases), are handled, above all in naming.
+  3. Results that repeat across distributions go through shared interfaces; nothing is derived as
+     a one-off for a single distribution.
+  4. Random matrices with orthonormal columns (normalised Gaussians) are a first-class
+     distribution alongside Gaussian, sub-Gaussian, sparse and structured ones.
+
 ## Current
 
 **Matrix layer complete, 2026-10-14** (branch `scaffold`, local commits, not pushed): stages M0 to
 M10 proved, 144 files, nothing scaffolded, all checks green. Read `docs/design/Matrix-REPORT.md`
 first. No design note was approved by the maintainer; the decisions to confirm are in §3 of the
-report. Next by the plan: the Probability layer, which has no brief yet.
+report. Next: the Probability layer (concentration), which has no brief yet; the maintainer's inputs
+for it are under "Standing instructions".
 
 | Stage | File | Owner | State | Notes |
 |---|---|---|---|---|

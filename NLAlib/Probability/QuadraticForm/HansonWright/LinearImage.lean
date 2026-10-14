@@ -11,18 +11,20 @@ public import NLAlib.Matrix.Norms.Spectral
 public import NLAlib.Probability.Distributions.Gaussian
 public import NLAlib.Probability.SubGaussian.Basic
 public import NLAlib.Probability.SubGaussian.Square
+public import NLAlib.Probability.SubGaussianVector.Basic
 
 /-!
 # Exponential moments of linear images of sub-Gaussian vectors
 
 For a random vector `X` with independent coordinates, each sub-Gaussian with proxy `c`, a linear
-form `v ⬝ᵥ X` has moment generating function at most `exp (c s² ‖v‖² / 2)`, and the squared norm
-of a linear image satisfies `E exp (θ ‖B X‖²) ≤ exp (9/8 · c θ ‖B‖_F²)` when
-`18 c θ ‖B‖² ≤ 1`. The second bound linearises the square against a standard Gaussian vector `g`,
-`exp (θ ‖y‖²) = E_g exp (√(2θ) y ⬝ᵥ g)`, applies the first bound to `X`, and computes the
-remaining Gaussian expectation `E_g exp (c θ ‖Bᵀ g‖²)` in an eigenbasis of `B Bᵀ`. Both bounds
-are steps of the off-diagonal part of the Hanson–Wright inequality
-(`NLAlib/Probability/QuadraticForm/HansonWright.lean`).
+form `v ⬝ᵥ X` has moment generating function at most `exp (c s² ‖v‖² / 2)` (the lower-integral
+form of `NLAlib.IsSubgaussianVector.of_iIndepFun`), and the squared norm of a linear image
+satisfies `E exp (θ ‖B X‖²) ≤ exp (9/8 · c θ ‖B‖_F²)` when `18 c θ ‖B‖² ≤ 1`. The second bound
+linearises the square against a standard Gaussian vector `g`,
+`exp (θ ‖y‖²) = E_g exp (√(2θ) y ⬝ᵥ g)` (`NLAlib.lintegral_exp_mul_dotProduct_gaussianVector`),
+applies the first bound to `X`, and computes the remaining Gaussian expectation
+`E_g exp (c θ ‖Bᵀ g‖²)` in an eigenbasis of `B Bᵀ`. Both bounds are steps of the off-diagonal
+part of the Hanson–Wright inequality (`NLAlib/Probability/QuadraticForm/HansonWright.lean`).
 
 ## Main results
 
@@ -44,39 +46,20 @@ namespace NLAlib
 variable {Ω : Type*} {mΩ : MeasurableSpace Ω} {μ : Measure Ω} {m n : Type*} [Fintype m]
   [Fintype n] {X : Ω → n → ℝ} {c : ℝ≥0}
 
-private lemma norm_sq_eq (x : n → ℝ) : ‖WithLp.toLp 2 x‖ ^ 2 = ∑ i, x i ^ 2 :=
-  EuclideanSpace.real_norm_sq_eq _
-
 /-- The moment generating function of a linear form of independent coordinates, each
 sub-Gaussian with proxy `c`, written as a lower integral: `E exp (s (v ⬝ᵥ X)) ≤
-exp (c s² ‖v‖² / 2)`. -/
+exp (c s² ‖v‖² / 2)`. It is `IsSubgaussianVector.of_iIndepFun` in the form the conditioning
+arguments of the Hanson–Wright inequality integrate. -/
 theorem lintegral_exp_mul_dotProduct_le (hind : iIndepFun (fun i ω => X ω i) μ)
     (h : ∀ i, HasSubgaussianMGF (fun ω => X ω i) c μ) (v : n → ℝ) (s : ℝ) :
     ∫⁻ ω, ENNReal.ofReal (rexp (s * (v ⬝ᵥ X ω))) ∂μ ≤
       ENNReal.ofReal (rexp (c * s ^ 2 * ‖WithLp.toLp 2 v‖ ^ 2 / 2)) := by
-  have hv : HasSubgaussianMGF (fun ω => v ⬝ᵥ X ω) (∑ i, ‖v i‖₊ ^ 2 * c) μ :=
-    HasSubgaussianMGF.sum_const_mul_of_iIndepFun hind (s := Finset.univ) (fun i _ => h i) v
+  have hv := (IsSubgaussianVector.of_iIndepFun hind h).hasSubgaussianMGF v
+  simp only [RCLike.re_to_real] at hv
   rw [← ofReal_integral_eq_lintegral_ofReal (hv.integrable_exp_mul s)
     (ae_of_all _ fun _ => (exp_pos _).le)]
-  refine ENNReal.ofReal_le_ofReal ((hv.mgf_le s).trans (exp_le_exp.mpr (le_of_eq ?_)))
-  rw [norm_sq_eq]
+  refine ENNReal.ofReal_le_ofReal ((hv.mgf_le s).trans_eq ?_)
   push_cast
-  simp only [Real.norm_eq_abs, sq_abs, ← Finset.sum_mul]
-  ring
-
-/-- Gaussian linearisation: `E_g exp (s (v ⬝ᵥ g)) = exp (s² ‖v‖² / 2)`. Copied from the private
-lemma of the same name in `NLAlib/Probability/SubGaussianVector/Norm.lean`. -/
-private lemma lintegral_exp_mul_dotProduct_gaussianVector (s : ℝ) (v : n → ℝ) :
-    ∫⁻ g, ENNReal.ofReal (rexp (s * (v ⬝ᵥ g))) ∂(gaussianVector n) =
-      ENNReal.ofReal (rexp (s ^ 2 / 2 * ‖WithLp.toLp 2 v‖ ^ 2)) := by
-  have hv := hasLaw_dotProduct_of_hasLaw_gaussianVector (μ := gaussianVector n)
-    (X := fun g => g) ⟨aemeasurable_id', Measure.map_id'⟩ v
-  rw [hv.lintegral_comp (f := fun x => ENNReal.ofReal (rexp (s * x))) (by fun_prop),
-    ← ofReal_integral_eq_lintegral_ofReal (integrable_exp_mul_gaussianReal s)
-      (ae_of_all _ fun _ => (exp_pos _).le)]
-  have := congrFun (mgf_id_gaussianReal (μ := 0) (v := ‖WithLp.toLp 2 v‖₊ ^ 2)) s
-  simp only [mgf, id, zero_mul, zero_add, NNReal.coe_pow, coe_nnnorm] at this
-  rw [this]
   ring_nf
 
 /-- The standard Gaussian vector is invariant under the change of coordinates to an orthonormal

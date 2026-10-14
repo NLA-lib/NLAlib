@@ -24,8 +24,9 @@ with the universal constant `C = NLAlib.hansonWrightConstant`, which the sources
 unspecified. The diagonal part is Bernstein's inequality for the centred squares; the
 off-diagonal part is bounded by decoupling and comparison with a Gaussian chaos
 (`NLAlib/Probability/QuadraticForm/HansonWright/OffDiagonal.lean`). The two are combined by
-convexity of `exp`, which needs no independence between them: the centred form is sub-exponential
-with variance proxy `98 c² ‖A‖_F²` and scale `28 c ‖A‖`, which gives `C = 1/196`.
+convexity of `exp` with weights `4/7` and `3/7` (`NLAlib.HasSubexponentialMGF.add`), which needs
+no independence between them: the centred form is sub-exponential with variance proxy
+`98 c² ‖A‖_F²` and scale `28 c ‖A‖`, which gives `C = 1/196`.
 
 ## Main definitions
 
@@ -72,59 +73,6 @@ theorem hansonWrightConstant_pos : 0 < hansonWrightConstant := by
 /-- An explicit lower bound on `hansonWrightConstant`. -/
 theorem le_hansonWrightConstant : 1 / 196 ≤ hansonWrightConstant := by
   rw [hansonWrightConstant_def]
-
-/-- The sum of two sub-exponential variables, independent or not, by convexity of `exp` with
-weights `1 / p` and `1 / q`. -/
-private lemma hasSubexponentialMGF_add {Y Z : Ω → ℝ} {v₁ b₁ v₂ b₂ v b : ℝ≥0}
-    (hY : HasSubexponentialMGF Y v₁ b₁ μ) (hZ : HasSubexponentialMGF Z v₂ b₂ μ) {p q : ℝ}
-    (hp : 0 < p) (hq : 0 < q) (hpq : 1 / p + 1 / q = 1) (hv₁ : p ^ 2 * v₁ ≤ v)
-    (hv₂ : q ^ 2 * v₂ ≤ v) (hb₁ : p * b₁ ≤ b) (hb₂ : q * b₂ ≤ b) :
-    HasSubexponentialMGF (fun ω => Y ω + Z ω) v b μ := by
-  have hw₁ : ∀ l : ℝ, (b : ℝ) * |l| < 1 → (b₁ : ℝ) * |p * l| < 1 := fun l hl => by
-    rw [abs_mul, abs_of_pos hp]
-    nlinarith [mul_le_mul_of_nonneg_right hb₁ (abs_nonneg l)]
-  have hw₂ : ∀ l : ℝ, (b : ℝ) * |l| < 1 → (b₂ : ℝ) * |q * l| < 1 := fun l hl => by
-    rw [abs_mul, abs_of_pos hq]
-    nlinarith [mul_le_mul_of_nonneg_right hb₂ (abs_nonneg l)]
-  have hpt : ∀ (l : ℝ) ω, rexp (l * (Y ω + Z ω)) ≤
-      1 / p * rexp (p * l * Y ω) + 1 / q * rexp (q * l * Z ω) := by
-    intro l ω
-    have := convexOn_exp.2 (Set.mem_univ (p * l * Y ω)) (Set.mem_univ (q * l * Z ω))
-      (by positivity : (0 : ℝ) ≤ 1 / p) (by positivity : (0 : ℝ) ≤ 1 / q) hpq
-    have e₁ : 1 / p * (p * l * Y ω) = l * Y ω := by field_simp
-    have e₂ : 1 / q * (q * l * Z ω) = l * Z ω := by field_simp
-    simp only [smul_eq_mul, e₁, e₂] at this
-    rwa [mul_add]
-  have hm : ∀ l : ℝ, AEStronglyMeasurable (fun ω => rexp (l * (Y ω + Z ω))) μ := fun l =>
-    (measurable_exp.comp_aemeasurable
-      ((hY.aemeasurable.add hZ.aemeasurable).const_mul l)).aestronglyMeasurable
-  have hint : ∀ l : ℝ, (b : ℝ) * |l| < 1 →
-      Integrable (fun ω => 1 / p * rexp (p * l * Y ω) + 1 / q * rexp (q * l * Z ω)) μ :=
-    fun l hl => ((hY.integrable_exp_mul (p * l) (hw₁ l hl)).const_mul _).add
-      ((hZ.integrable_exp_mul (q * l) (hw₂ l hl)).const_mul _)
-  have hint' : ∀ l : ℝ, (b : ℝ) * |l| < 1 → Integrable (fun ω => rexp (l * (Y ω + Z ω))) μ :=
-    fun l hl => (hint l hl).mono' (hm l) (ae_of_all _ fun ω => by
-      rw [Real.norm_of_nonneg (exp_pos _).le]
-      exact hpt l ω)
-  refine ⟨hint', fun l hl => ?_⟩
-  calc mgf (fun ω => Y ω + Z ω) μ l
-      ≤ ∫ ω, (1 / p * rexp (p * l * Y ω) + 1 / q * rexp (q * l * Z ω)) ∂μ :=
-        integral_mono (hint' l hl) (hint l hl) (hpt l)
-    _ = 1 / p * mgf Y μ (p * l) + 1 / q * mgf Z μ (q * l) := by
-        rw [integral_add ((hY.integrable_exp_mul (p * l) (hw₁ l hl)).const_mul _)
-          ((hZ.integrable_exp_mul (q * l) (hw₂ l hl)).const_mul _), integral_const_mul,
-          integral_const_mul]
-        rfl
-    _ ≤ 1 / p * rexp (v₁ * (p * l) ^ 2 / 2) + 1 / q * rexp (v₂ * (q * l) ^ 2 / 2) := by
-        gcongr
-        · exact hY.mgf_le _ (hw₁ l hl)
-        · exact hZ.mgf_le _ (hw₂ l hl)
-    _ ≤ 1 / p * rexp (v * l ^ 2 / 2) + 1 / q * rexp (v * l ^ 2 / 2) := by
-        refine add_le_add (mul_le_mul_of_nonneg_left (exp_le_exp.mpr ?_) (by positivity))
-          (mul_le_mul_of_nonneg_left (exp_le_exp.mpr ?_) (by positivity))
-        · nlinarith [mul_le_mul_of_nonneg_right hv₁ (sq_nonneg l)]
-        · nlinarith [mul_le_mul_of_nonneg_right hv₂ (sq_nonneg l)]
-    _ = rexp (v * l ^ 2 / 2) := by rw [← add_mul, hpq, one_mul]
 
 /-- The diagonal part: Bernstein's inequality for the centred squares. -/
 private lemma hasSubexponentialMGF_diag (hind : iIndepFun (fun i ω => X ω i) μ)
@@ -184,10 +132,11 @@ private lemma hasSubexponentialMGF_quadForm_sub_integral (hind : iIndepFun (fun 
     simp only [mul_sub, Finset.sum_sub_distrib]
     ring
   rw [hZ]
+  have hpq : (7 / 4 : ℝ≥0).HolderConjugate (7 / 3) :=
+    NNReal.holderConjugate_coe_iff.mp ⟨by norm_num, by norm_num, by norm_num⟩
   have hc : (0 : ℝ) ≤ c := c.coe_nonneg
-  refine hasSubexponentialMGF_add hD hO (p := 7 / 4) (q := 7 / 3) (by norm_num) (by norm_num)
-    (by norm_num) ?_ ?_ ?_ ?_ <;> push_cast <;>
-    nlinarith [mul_nonneg hc (NNReal.coe_nonneg (specNorm A).toNNReal)]
+  refine (hD.add hO hpq).mono (max_le ?_ ?_) (max_le ?_ ?_) <;> rw [← NNReal.coe_le_coe] <;>
+    push_cast <;> nlinarith [mul_nonneg hc (NNReal.coe_nonneg (specNorm A).toNNReal)]
 
 /-- The exponent of the sub-exponential tail of the centred form against the Hanson–Wright
 exponent. -/

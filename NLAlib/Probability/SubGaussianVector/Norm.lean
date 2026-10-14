@@ -19,8 +19,8 @@ coordinates, the two-sided tail of `‖X‖²` about its mean is Bernstein's ine
 centred squares.
 
 The statements are over `ℝ`: the proofs linearise with a standard Gaussian vector of the same
-dimension, which exists over `ℝ` only in this library for now; the complex versions are the real
-ones in dimension `2 n`.
+dimension (`NLAlib.lintegral_exp_mul_dotProduct_gaussianVector`), which exists over `ℝ` only in
+this library for now; the complex versions are the real ones in dimension `2 n`.
 
 ## Main results
 
@@ -42,20 +42,6 @@ variable {Ω : Type*} {mΩ : MeasurableSpace Ω} {μ : Measure Ω} {n : Type*} [
 
 private lemma norm_sq_eq (x : n → ℝ) : ‖WithLp.toLp 2 x‖ ^ 2 = ∑ i, x i ^ 2 :=
   EuclideanSpace.real_norm_sq_eq _
-
-/-- Gaussian linearisation: `E_g exp (s (v ⬝ᵥ g)) = exp (s² ‖v‖² / 2)`. -/
-private lemma lintegral_exp_mul_dotProduct_gaussianVector (s : ℝ) (v : n → ℝ) :
-    ∫⁻ g, ENNReal.ofReal (rexp (s * (v ⬝ᵥ g))) ∂(gaussianVector n) =
-      ENNReal.ofReal (rexp (s ^ 2 / 2 * ‖WithLp.toLp 2 v‖ ^ 2)) := by
-  have hv := hasLaw_dotProduct_of_hasLaw_gaussianVector (μ := gaussianVector n)
-    (X := fun g => g) ⟨aemeasurable_id', Measure.map_id'⟩ v
-  rw [hv.lintegral_comp (f := fun x => ENNReal.ofReal (rexp (s * x))) (by fun_prop),
-    ← ofReal_integral_eq_lintegral_ofReal (integrable_exp_mul_gaussianReal s)
-      (ae_of_all _ fun _ => (exp_pos _).le)]
-  have := congrFun (mgf_id_gaussianReal (μ := 0) (v := ‖WithLp.toLp 2 v‖₊ ^ 2)) s
-  simp only [mgf, id, zero_mul, zero_add, NNReal.coe_pow, coe_nnnorm] at this
-  rw [this]
-  ring_nf
 
 /-- The Laplace transform of `χ²_n`, as an upper bound. -/
 private lemma lintegral_exp_mul_norm_sq_gaussianVector_le {a : ℝ} (ha0 : 0 ≤ a)

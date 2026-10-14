@@ -38,6 +38,7 @@ law will be a separate definition (`docs/design/Probability-P2.md` §7).
 * `NLAlib.integral_pow_four_of_hasLaw_gaussianReal`: `E X⁴ = 3 v²`.
 * `NLAlib.isIsotropic_of_hasLaw_gaussianVector`.
 * `NLAlib.hasLaw_dotProduct_of_hasLaw_gaussianVector`: `u ⬝ᵥ X` has law `N(0, ‖u‖²)`.
+* `NLAlib.lintegral_exp_mul_dotProduct_gaussianVector`: `E_g exp (s (u ⬝ᵥ g)) = exp (s² ‖u‖² / 2)`.
 -/
 
 @[expose] public section
@@ -170,5 +171,21 @@ theorem hasLaw_dotProduct_of_hasLaw_gaussianVector {X : Ω → n → ℝ}
     (hX : HasLaw X (gaussianVector n) μ) (u : n → ℝ) :
     HasLaw (fun ω => u ⬝ᵥ X ω) (gaussianReal 0 (‖WithLp.toLp 2 u‖₊ ^ 2)) μ := by
   exact (hasLaw_dotProduct_gaussianVector u).comp hX
+
+/-- The moment generating function of a linear form of a standard Gaussian vector, as a lower
+integral: `E_g exp (s (u ⬝ᵥ g)) = exp (s² ‖u‖² / 2)`. With `s = √(2θ)` it linearises a square,
+`exp (θ ‖x‖²) = E_g exp (√(2θ) (x ⬝ᵥ g))`, the step behind the squared-norm bounds for
+sub-Gaussian vectors and the Hanson–Wright inequality. -/
+theorem lintegral_exp_mul_dotProduct_gaussianVector (s : ℝ) (u : n → ℝ) :
+    ∫⁻ g, ENNReal.ofReal (Real.exp (s * (u ⬝ᵥ g))) ∂(gaussianVector n) =
+      ENNReal.ofReal (Real.exp (s ^ 2 / 2 * ‖WithLp.toLp 2 u‖ ^ 2)) := by
+  rw [(hasLaw_dotProduct_gaussianVector u).lintegral_comp
+      (f := fun x => ENNReal.ofReal (Real.exp (s * x))) (by fun_prop),
+    ← ofReal_integral_eq_lintegral_ofReal (integrable_exp_mul_gaussianReal s)
+      (ae_of_all _ fun _ => (Real.exp_pos _).le)]
+  have := congrFun (mgf_id_gaussianReal (μ := 0) (v := ‖WithLp.toLp 2 u‖₊ ^ 2)) s
+  simp only [mgf, id, zero_mul, zero_add, NNReal.coe_pow, coe_nnnorm] at this
+  rw [this]
+  ring_nf
 
 end NLAlib

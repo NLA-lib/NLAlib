@@ -23,6 +23,8 @@ the tail of a sum of independent sub-exponential variables is Bernstein's inequa
 
 ## Main results
 
+* `NLAlib.HasSubexponentialMGF.add`: the sum of two sub-exponential variables, without
+  independence.
 * `NLAlib.HasSubexponentialMGF.sum_of_iIndepFun`, `.sum_const_mul_of_iIndepFun`: sums and
   weighted sums of independent sub-exponential variables.
 * `NLAlib.hasSubexponentialMGF_zero_iff_hasSubgaussianMGF`: scale `0` is the sub-Gaussian case.
@@ -178,6 +180,73 @@ theorem add_of_indepFun {Y : Ω → ℝ} {v' b' : ℝ≥0} (hX : HasSubexponenti
       congr 1
       push_cast
       ring
+
+/-- The sum of two sub-exponential variables, with **no independence assumption**: for Hölder
+conjugate `p` and `q` (`1 / p + 1 / q = 1`), `X + Y` has variance proxy `max (p² v) (q² v')` and
+scale `max (p b) (q b')`. The proof is convexity of `exp` with weights `1 / p` and `1 / q`,
+`exp (l (X + Y)) ≤ exp (p l X) / p + exp (q l Y) / q`. For independent variables
+`add_of_indepFun` gives the better proxy `v + v'`. -/
+theorem add {Y : Ω → ℝ} {v' b' : ℝ≥0} (hX : HasSubexponentialMGF X v b μ)
+    (hY : HasSubexponentialMGF Y v' b' μ) {p q : ℝ≥0} (hpq : p.HolderConjugate q) :
+    HasSubexponentialMGF (fun ω => X ω + Y ω) (max (p ^ 2 * v) (q ^ 2 * v'))
+      (max (p * b) (q * b')) μ := by
+  have hp : (0 : ℝ) < p := hpq.pos
+  have hq : (0 : ℝ) < q := hpq.symm.pos
+  have hpq' : 1 / (p : ℝ) + 1 / q = 1 := by
+    have := congrArg ((↑) : ℝ≥0 → ℝ) hpq.inv_add_inv_eq_inv
+    push_cast at this
+    simpa only [one_div, inv_one] using this
+  set V : ℝ≥0 := max (p ^ 2 * v) (q ^ 2 * v')
+  set B : ℝ≥0 := max (p * b) (q * b')
+  have hv₁ : (p : ℝ) ^ 2 * v ≤ V := by exact_mod_cast le_max_left _ _
+  have hv₂ : (q : ℝ) ^ 2 * v' ≤ V := by exact_mod_cast le_max_right _ _
+  have hb₁ : (p : ℝ) * b ≤ B := by exact_mod_cast le_max_left _ _
+  have hb₂ : (q : ℝ) * b' ≤ B := by exact_mod_cast le_max_right _ _
+  have hw₁ : ∀ l : ℝ, (B : ℝ) * |l| < 1 → (b : ℝ) * |p * l| < 1 := fun l hl => by
+    rw [abs_mul, abs_of_pos hp]
+    nlinarith [mul_le_mul_of_nonneg_right hb₁ (abs_nonneg l)]
+  have hw₂ : ∀ l : ℝ, (B : ℝ) * |l| < 1 → (b' : ℝ) * |q * l| < 1 := fun l hl => by
+    rw [abs_mul, abs_of_pos hq]
+    nlinarith [mul_le_mul_of_nonneg_right hb₂ (abs_nonneg l)]
+  have hpt : ∀ (l : ℝ) ω, rexp (l * (X ω + Y ω)) ≤
+      1 / p * rexp (p * l * X ω) + 1 / q * rexp (q * l * Y ω) := by
+    intro l ω
+    have := convexOn_exp.2 (Set.mem_univ ((p : ℝ) * l * X ω)) (Set.mem_univ ((q : ℝ) * l * Y ω))
+      (by positivity : (0 : ℝ) ≤ 1 / p) (by positivity : (0 : ℝ) ≤ 1 / q) hpq'
+    have e₁ : 1 / (p : ℝ) * (p * l * X ω) = l * X ω := by field_simp
+    have e₂ : 1 / (q : ℝ) * (q * l * Y ω) = l * Y ω := by field_simp
+    simp only [smul_eq_mul, e₁, e₂] at this
+    rwa [mul_add]
+  have hm : ∀ l : ℝ, AEStronglyMeasurable (fun ω => rexp (l * (X ω + Y ω))) μ := fun l =>
+    (measurable_exp.comp_aemeasurable
+      ((hX.aemeasurable.add hY.aemeasurable).const_mul l)).aestronglyMeasurable
+  have hint : ∀ l : ℝ, (B : ℝ) * |l| < 1 →
+      Integrable (fun ω => 1 / p * rexp (p * l * X ω) + 1 / q * rexp (q * l * Y ω)) μ :=
+    fun l hl => ((hX.integrable_exp_mul (p * l) (hw₁ l hl)).const_mul _).add
+      ((hY.integrable_exp_mul (q * l) (hw₂ l hl)).const_mul _)
+  have hint' : ∀ l : ℝ, (B : ℝ) * |l| < 1 → Integrable (fun ω => rexp (l * (X ω + Y ω))) μ :=
+    fun l hl => (hint l hl).mono' (hm l) (ae_of_all _ fun ω => by
+      rw [Real.norm_of_nonneg (exp_pos _).le]
+      exact hpt l ω)
+  refine ⟨hint', fun l hl => ?_⟩
+  calc mgf (fun ω => X ω + Y ω) μ l
+      ≤ ∫ ω, (1 / p * rexp (p * l * X ω) + 1 / q * rexp (q * l * Y ω)) ∂μ :=
+        integral_mono (hint' l hl) (hint l hl) (hpt l)
+    _ = 1 / p * mgf X μ (p * l) + 1 / q * mgf Y μ (q * l) := by
+        rw [integral_add ((hX.integrable_exp_mul (p * l) (hw₁ l hl)).const_mul _)
+          ((hY.integrable_exp_mul (q * l) (hw₂ l hl)).const_mul _), integral_const_mul,
+          integral_const_mul]
+        rfl
+    _ ≤ 1 / p * rexp (v * (p * l) ^ 2 / 2) + 1 / q * rexp (v' * (q * l) ^ 2 / 2) := by
+        gcongr
+        · exact hX.mgf_le _ (hw₁ l hl)
+        · exact hY.mgf_le _ (hw₂ l hl)
+    _ ≤ 1 / p * rexp (V * l ^ 2 / 2) + 1 / q * rexp (V * l ^ 2 / 2) := by
+        refine add_le_add (mul_le_mul_of_nonneg_left (exp_le_exp.mpr ?_) (by positivity))
+          (mul_le_mul_of_nonneg_left (exp_le_exp.mpr ?_) (by positivity))
+        · nlinarith [mul_le_mul_of_nonneg_right hv₁ (sq_nonneg l)]
+        · nlinarith [mul_le_mul_of_nonneg_right hv₂ (sq_nonneg l)]
+    _ = rexp (V * l ^ 2 / 2) := by rw [← add_mul, hpq', one_mul]
 
 private lemma sum_of_iIndepFun_of_forall_aemeasurable {ι : Type*} {X : ι → Ω → ℝ}
     (h_indep : iIndepFun X μ) (h_meas : ∀ i, AEMeasurable (X i) μ) {v b : ι → ℝ≥0}

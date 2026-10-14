@@ -8,6 +8,7 @@ module
 public import Mathlib.Analysis.Normed.Lp.MeasurableSpace
 public import Mathlib.Analysis.SpecialFunctions.ContinuousFunctionalCalculus.Rpow.Isometric
 public import Mathlib.MeasureTheory.Constructions.BorelSpace.Metric
+public import Mathlib.MeasureTheory.Constructions.BorelSpace.Order
 public import Mathlib.MeasureTheory.Function.SpecialFunctions.Inner
 public import NLAlib.ForMathlib.MeasureTheory.Matrix
 public import NLAlib.Matrix.Perturbation.Continuity
@@ -29,6 +30,7 @@ Matrices carry the product σ-algebra `Matrix.instMeasurableSpace`.
 
 * `NLAlib.measurable_specNorm`, `NLAlib.measurable_frobNorm`, `NLAlib.measurable_matrixNorm`.
 * `NLAlib.measurable_singularValues`, `NLAlib.measurable_eigenvalue`.
+* `NLAlib.measurableSet_setOf_posDef`: the positive definite matrices form a measurable set.
 * `NLAlib.measurable_rank`, `NLAlib.measurable_pinv`, `NLAlib.measurable_rangeProjector`,
   `NLAlib.measurable_conditionNumber`.
 * `NLAlib.measurable_polarFactor`, `NLAlib.measurable_gramSchmidtQ`.
@@ -92,6 +94,25 @@ theorem measurable_eigenvalue (k : ℕ) :
       exact eigenvalue_of_not_isHermitian A.2 k
     rw [h]
     exact measurable_const
+
+omit [Fintype m] [Fintype n] in
+open scoped ComplexOrder in
+/-- The set of positive definite matrices is measurable: it is the set of Hermitian matrices whose
+sorted eigenvalues are all positive. -/
+theorem measurableSet_setOf_posDef [Finite n] :
+    MeasurableSet {A : Matrix n n 𝕜 | A.PosDef} := by
+  have : Fintype n := Fintype.ofFinite n
+  have hH : MeasurableSet {A : Matrix n n 𝕜 | A.IsHermitian} :=
+    (isClosed_eq continuous_id.matrix_conjTranspose continuous_id).measurableSet
+  have h : {A : Matrix n n 𝕜 | A.PosDef} = {A | A.IsHermitian} ∩
+      ⋂ k ∈ Finset.range (Fintype.card n), {A | 0 < eigenvalue A k} := by
+    ext A
+    simp only [Set.mem_ofPred_eq, Set.mem_inter_iff, Set.mem_iInter, Finset.mem_range]
+    exact ⟨fun h => ⟨h.isHermitian, h.isHermitian.posDef_iff_eigenvalue_pos.mp h⟩,
+      fun h => h.1.posDef_iff_eigenvalue_pos.mpr h.2⟩
+  rw [h]
+  exact hH.inter (Finset.measurableSet_biInter _ fun k _ =>
+    measurableSet_lt measurable_const (measurable_eigenvalue k))
 
 /-! ### Quantities that are not continuous -/
 

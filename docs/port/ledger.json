@@ -10148,7 +10148,7 @@
   "stage": "P6"
  },
  "NLAlib.orthogonalGroupCompactSpace": {
-  "new": "NLAlib.compactSpace_unitaryGroup",
+  "new": "Matrix.compactSpace_unitaryGroup",
   "stage": "R5"
  },
  "NLAlib.orthogonalHaar": {

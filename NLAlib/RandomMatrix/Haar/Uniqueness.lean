@@ -7,7 +7,7 @@ module
 
 public import Mathlib.MeasureTheory.Constructions.HaarToSphere
 public import Mathlib.MeasureTheory.Measure.Haar.Basic
-public import Mathlib.Topology.Algebra.Star.Unitary
+public import NLAlib.ForMathlib.LinearAlgebra.UnitaryGroup
 public import NLAlib.RandomMatrix.Haar.Basic
 
 /-!
@@ -24,7 +24,7 @@ entry 16).
 
 The argument compares an invariant law `ν` with `haarFrame n n` itself, by Tonelli, so it needs
 neither the uniqueness of Haar measure nor the compactness of the orthogonal group; the
-compactness (`compactSpace_unitaryGroup`) is used only to state the bridge to Mathlib's
+compactness (`Matrix.compactSpace_unitaryGroup`) is used only to state the bridge to Mathlib's
 `haarMeasure` (`docs/design/Mathlib-deviations.md` entry 15).
 
 ## Main results
@@ -35,8 +35,8 @@ compactness (`compactSpace_unitaryGroup`) is used only to state the bridge to Ma
 * `NLAlib.hasLaw_col_of_hasLaw_haarFrame`: a column is uniform on the sphere.
 * `NLAlib.uniformSphereVector_eq_map_toSphere`: the uniform law on the sphere is Mathlib's
   normalised surface measure `Measure.toSphere`.
-* `NLAlib.compactSpace_unitaryGroup`, `NLAlib.haarFrame_eq_map_haarMeasure`: the square case is
-  Haar measure on `Matrix.orthogonalGroup n ℝ`.
+* `NLAlib.haarFrame_eq_map_haarMeasure`: the square case is Haar measure on
+  `Matrix.orthogonalGroup n ℝ`.
 -/
 
 @[expose] public section
@@ -300,18 +300,6 @@ theorem uniformSphereVector_eq_map_toSphere [Nonempty n] :
   exact Measure.map_id
 
 /-! ### Haar measure on the orthogonal group -/
-
-/-- The unitary group `Matrix.unitaryGroup n 𝕜` (over `ℝ`, the orthogonal group) is compact, in
-every dimension including `0`. An upstream candidate (it uses no NLAlib vocabulary), to move to
-`NLAlib/ForMathlib` at the wrap-up. Port of the prototype's `orthogonalGroupCompactSpace`, there
-for `Fin n` over `ℝ`. -/
-instance compactSpace_unitaryGroup {𝕜 : Type*} [RCLike 𝕜] [DecidableEq n] :
-    CompactSpace (Matrix.unitaryGroup n 𝕜) := by
-  have h : (Matrix.unitaryGroup n 𝕜 : Set (Matrix n n 𝕜)) = {Q | HasOrthonormalCols Q} :=
-    Set.ext fun _ => hasOrthonormalCols_iff_mem_unitaryGroup.symm
-  have hc := isCompact_setOf_hasOrthonormalCols (𝕜 := 𝕜) (n := n) (p := n)
-  rw [← h] at hc
-  exact isCompact_iff_compactSpace.mp hc
 
 /-- **The square Haar frame is Haar measure on the orthogonal group**: `haarFrame n n` is the
 image under the coercion of Mathlib's Haar measure on `Matrix.orthogonalGroup n ℝ`, normalised to

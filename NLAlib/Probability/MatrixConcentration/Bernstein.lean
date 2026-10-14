@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.ForMathlib.Analysis.Real.Sqrt
 public import NLAlib.Matrix.Spectral.Dilation
 public import NLAlib.Probability.MatrixConcentration.MGFBound
 
@@ -155,43 +156,6 @@ private theorem exists_bernstein_exponent {L v t : ℝ} (hL : 0 < L) (hv : 0 ≤
     field_simp
     ring
 
-/-- The scalar optimisation behind the means: if `x ≤ a / u + b u` for every `u > 0`, with
-`a, b ≥ 0`, then `x ≤ √(4ab)`. -/
-private theorem le_sqrt_of_forall_le_div_add_mul {x a b : ℝ} (ha : 0 ≤ a) (hb : 0 ≤ b)
-    (h : ∀ u, 0 < u → x ≤ a / u + b * u) : x ≤ √(4 * a * b) := by
-  rcases ha.eq_or_lt with rfl | ha'
-  · refine le_trans ?_ (Real.sqrt_nonneg _)
-    by_contra hx
-    push Not at hx
-    have h1 := h (x / (2 * (b + 1))) (by positivity)
-    rw [zero_div, zero_add] at h1
-    have h2 : b * (x / (2 * (b + 1))) < x := by
-      rw [mul_div_assoc', div_lt_iff₀ (by positivity)]
-      nlinarith
-    linarith
-  rcases hb.eq_or_lt with rfl | hb'
-  · refine le_trans ?_ (Real.sqrt_nonneg _)
-    by_contra hx
-    push Not at hx
-    have h1 := h (2 * a / x) (by positivity)
-    rw [zero_mul, add_zero, div_div_eq_mul_div] at h1
-    have h2 : a * x / (2 * a) = x / 2 := by field_simp
-    linarith
-  set p := √a with hp
-  set q := √b with hq
-  have hp0 : 0 < p := Real.sqrt_pos.2 ha'
-  have hq0 : 0 < q := Real.sqrt_pos.2 hb'
-  have hpa : p ^ 2 = a := Real.sq_sqrt ha
-  have hqb : q ^ 2 = b := Real.sq_sqrt hb
-  have h1 := h (p / q) (div_pos hp0 hq0)
-  have h4 : 4 * a * b = (2 * p * q) ^ 2 := by rw [← hpa, ← hqb]; ring
-  rw [h4, Real.sqrt_sq (by positivity)]
-  have h5 : a / (p / q) + b * (p / q) = 2 * p * q := by
-    rw [← hpa, ← hqb]
-    field_simp
-    ring
-  linarith
-
 /-- The Bernstein mean optimisation: if `x ≤ θ⁻¹ (a + g(θ) v)` on `(0, 3/L)`, then
 `x ≤ √(2 v a) + L a / 3` (substitute `θ = u / (1 + L u / 3)`). -/
 private theorem le_of_forall_bernstein_mean {x a v L : ℝ} (hL : 0 < L) (ha : 0 ≤ a)
@@ -199,7 +163,7 @@ private theorem le_of_forall_bernstein_mean {x a v L : ℝ} (hL : 0 < L) (ha : 0
       x ≤ θ⁻¹ * (a + θ ^ 2 / 2 / (1 - L * θ / 3) * v)) :
     x ≤ √(2 * v * a) + L * a / 3 := by
   have key : x - L * a / 3 ≤ √(4 * a * (v / 2)) := by
-    refine le_sqrt_of_forall_le_div_add_mul ha (by positivity) fun u hu => ?_
+    refine Real.le_sqrt_of_forall_le_div_add_mul ha (by positivity) fun u hu => ?_
     have hw : 0 < 1 + L * u / 3 := by positivity
     have hθ : u / (1 + L * u / 3) ∈ Set.Ioo 0 (3 / L) := by
       refine ⟨div_pos hu hw, ?_⟩

@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import Mathlib.Analysis.SpecialFunctions.ContinuousFunctionalCalculus.ExpLog.Basic
 public import NLAlib.ForMathlib.Analysis.RCLike.ToComplex
 public import NLAlib.Matrix.Functions.Exponential
 public import NLAlib.Matrix.Spectral.SingularValues
@@ -35,6 +36,8 @@ functional calculus and the exponential, so a statement about Hermitian matrices
   `NLAlib.specNorm_complexify`: eigenvalues, singular values and the spectral norm are preserved.
 * `NLAlib.continuous_complexify`: it is continuous.
 * `NLAlib.complexify_cfc`, `NLAlib.complexify_exp`.
+* `NLAlib.continuousOn_cfc_log`: the matrix logarithm is continuous on the positive definite
+  matrices over `𝕜`, by transfer from `ℂ`.
 -/
 
 @[expose] public section
@@ -300,6 +303,29 @@ theorem complexify_cfc [Fintype n] [DecidableEq n] {A : Matrix n n 𝕜} (hA : A
   rw [cfc_eq_mul_diagonal_mul_conjTranspose hU hr hAU f,
     cfc_eq_mul_diagonal_mul_conjTranspose hU.complexify hr hc f]
   exact complexify_mul_diagonal_mul_conjTranspose U _
+
+/-- The entrywise left inverse of `NLAlib.complexify`. -/
+private noncomputable def decomplexify (C : Matrix n n ℂ) : Matrix n n 𝕜 :=
+  C.map fun z => (z.re : 𝕜) + (z.im : 𝕜) * RCLike.I
+
+private theorem decomplexify_complexify (A : Matrix n n 𝕜) : decomplexify (complexify A) = A := by
+  ext i j
+  simp only [decomplexify, Matrix.map_apply, complexify_apply, RCLike.re_toComplex,
+    RCLike.im_toComplex, RCLike.re_add_im]
+
+/-- **The matrix logarithm is continuous on the positive definite matrices**, over any `RCLike`
+field: the transfer to `ℂ` of Mathlib's `CFC.continuousOn_log`, which needs a C⋆-algebra. -/
+theorem continuousOn_cfc_log [Fintype n] [DecidableEq n] :
+    ContinuousOn (fun A : Matrix n n 𝕜 => cfc Real.log A) {A | A.PosDef} := by
+  have hlog : ContinuousOn (fun B : Matrix n n ℂ => cfc Real.log B) {B | B.PosDef} := by
+    open scoped Matrix.Norms.L2Operator in
+    exact CFC.continuousOn_log.mono fun B hB => ⟨hB.isHermitian, hB.isUnit⟩
+  have hd : Continuous (decomplexify : Matrix n n ℂ → Matrix n n 𝕜) :=
+    continuous_id.matrix_map (by fun_prop)
+  refine (hd.comp_continuousOn (hlog.comp continuous_complexify.continuousOn
+    fun A hA => posDef_complexify_iff.mpr hA)).congr fun A hA => ?_
+  simp only [Function.comp_apply]
+  rw [← complexify_cfc (show A.PosDef from hA).isHermitian, decomplexify_complexify]
 
 open scoped Classical in
 /-- The complexification commutes with the square root. -/

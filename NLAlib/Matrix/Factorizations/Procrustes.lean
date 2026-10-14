@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Matrix.Factorizations.Polar
+public import NLAlib.Matrix.Factorizations.PolarFrames
 
 /-!
 # Procrustes problems
@@ -97,28 +97,6 @@ theorem isLeast_frobNorm_sub_mul_sq (A B : Matrix m n 𝕜) :
     rw [frobNorm_sub_mul_sq_eq A B hU']
     linarith
 
-/-- Two frames with the same number of columns differ by a unitary factor on the left. -/
-private theorem exists_hasOrthonormalCols_mul_eq {r : Type*} [Finite r] [DecidableEq r]
-    {X Y : Matrix m r 𝕜} (hX : HasOrthonormalCols X) (hY : HasOrthonormalCols Y) :
-    ∃ Q : Matrix m m 𝕜, HasOrthonormalCols Q ∧ Q * X = Y := by
-  cases nonempty_fintype r
-  obtain ⟨d, hd⟩ := Nat.exists_eq_add_of_le hX.card_le
-  have hcard : Fintype.card r + Fintype.card (Fin d) = Fintype.card m := by
-    rw [Fintype.card_fin]
-    exact hd.symm
-  obtain ⟨X', hX'⟩ := hX.exists_fromCols (p := Fin d) hcard
-  obtain ⟨Y', hY'⟩ := hY.exists_fromCols (p := Fin d) hcard
-  have hc : Fintype.card m = Fintype.card (r ⊕ Fin d) := by
-    rw [Fintype.card_sum]
-    exact hcard.symm
-  refine ⟨Matrix.fromCols Y Y' * (Matrix.fromCols X X')ᴴ,
-    hY'.mul (hX'.conjTranspose_of_card_eq hc), ?_⟩
-  have h1 : Matrix.fromCols Y Y' * (Matrix.fromCols X X')ᴴ * Matrix.fromCols X X' =
-      Matrix.fromCols Y Y' := by
-    rw [Matrix.mul_assoc, hX'.conjTranspose_mul_self, Matrix.mul_one]
-  rw [Matrix.mul_fromCols] at h1
-  exact (Matrix.fromCols_inj.eq_iff.mp h1).1
-
 /-- **The two-sided Procrustes problem.** The least value of `‖A - U B W‖_F²` over unitary `U`,
 `W` is `∑ (σ_i(A) - σ_i(B))²`. [HornJohnson2013, §7.4.1 context].
 Port of `NLAlib.isLeast_frobSq_sub_orthogonal_mul_mul`, there over `ℝ`. -/
@@ -139,9 +117,9 @@ theorem isLeast_frobNorm_sub_mul_mul_sq [DecidableEq n] (A B : Matrix m n 𝕜) 
     obtain ⟨UB, VB, hB⟩ := exists_isSVD B
       (hk.symm ▸ le_min B.rank_le_card_height B.rank_le_card_width) hkm hkn
     obtain ⟨P, hP, hPU⟩ :=
-      exists_hasOrthonormalCols_mul_eq hB.hasOrthonormalCols_left hA.hasOrthonormalCols_left
+      hB.hasOrthonormalCols_left.exists_mul_eq hA.hasOrthonormalCols_left
     obtain ⟨R, hR, hRV⟩ :=
-      exists_hasOrthonormalCols_mul_eq hB.hasOrthonormalCols_right hA.hasOrthonormalCols_right
+      hB.hasOrthonormalCols_right.exists_mul_eq hA.hasOrthonormalCols_right
     refine ⟨(P, Rᴴ), ⟨hP, hR.conjTranspose⟩, ?_⟩
     have h1 : P * B * Rᴴ =
         UA * Matrix.diagonal (fun i : Fin k => ((singularValues B i : ℝ) : 𝕜)) * VAᴴ :=

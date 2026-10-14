@@ -45,6 +45,7 @@ Gordon's lower bound compares, over nets of the unit spheres, the process `⟨g,
 
 open MeasureTheory ProbabilityTheory
 open scoped Matrix MatrixOrder
+open EuclideanSpace (abs_dotProduct_le_norm norm_toLp_sq_eq_dotProduct_self)
 
 namespace NLAlib
 
@@ -54,53 +55,6 @@ variable {Ω : Type*} {mΩ : MeasurableSpace Ω} {μ : Measure Ω} {m n : Type*}
 section Process
 
 variable {ι : Type*} [Fintype ι]
-
-private theorem abs_dotProduct_le (x y : ι → ℝ) :
-    |x ⬝ᵥ y| ≤ ‖WithLp.toLp 2 x‖ * ‖WithLp.toLp 2 y‖ := by
-  have h := abs_real_inner_le_norm (WithLp.toLp 2 x) (WithLp.toLp 2 y)
-  rwa [EuclideanSpace.inner_toLp_toLp, star_trivial, dotProduct_comm] at h
-
-private theorem norm_toLp_sq (x : ι → ℝ) : ‖WithLp.toLp 2 x‖ ^ 2 = x ⬝ᵥ x := by
-  rw [← real_inner_self_eq_norm_sq, EuclideanSpace.inner_toLp_toLp, star_trivial]
-
-variable {Ω' : Type*} {mΩ' : MeasurableSpace Ω'} {ν : Measure Ω'} {Z : Ω' → ι → ℝ}
-
-private theorem hasGaussianLaw_dotProduct {I : Type*} [Finite I]
-    (hZ : HasLaw Z (gaussianVector ι) ν) (w : I → ι → ℝ) :
-    HasGaussianLaw (fun ω i => w i ⬝ᵥ Z ω) ν := by
-  have := Fintype.ofFinite I
-  exact hZ.hasGaussianLaw.map_fun (Matrix.mulVecLin (Matrix.of w)).toContinuousLinearMap
-
-private theorem integral_dotProduct (hZ : HasLaw Z (gaussianVector ι) ν) (w : ι → ℝ) :
-    ∫ ω, w ⬝ᵥ Z ω ∂ν = 0 :=
-  integral_of_hasLaw_gaussianReal (hasLaw_dotProduct_of_hasLaw_gaussianVector hZ w)
-
-private theorem integral_dotProduct_sub_sq (hZ : HasLaw Z (gaussianVector ι) ν)
-    (w w' : ι → ℝ) :
-    ∫ ω, (w ⬝ᵥ Z ω - w' ⬝ᵥ Z ω) ^ 2 ∂ν = (w - w') ⬝ᵥ (w - w') := by
-  simp only [← sub_dotProduct]
-  rw [integral_sq_of_hasLaw_gaussianReal (hasLaw_dotProduct_of_hasLaw_gaussianVector hZ _),
-    NNReal.coe_pow, coe_nnnorm, norm_toLp_sq]
-
-private theorem hasLaw_comp_inl :
-    HasLaw (fun z : n ⊕ m → ℝ => z ∘ Sum.inl) (gaussianVector n) (gaussianVector (n ⊕ m)) :=
-  hasLaw_pi_iff.2 ⟨(HasLaw.id (μ := gaussianVector (n ⊕ m))).iIndepFun_eval.precomp
-    Sum.inl_injective, fun i => (HasLaw.id (μ := gaussianVector (n ⊕ m))).eval (Sum.inl i)⟩
-
-private theorem hasLaw_comp_inr :
-    HasLaw (fun z : n ⊕ m → ℝ => z ∘ Sum.inr) (gaussianVector m) (gaussianVector (n ⊕ m)) :=
-  hasLaw_pi_iff.2 ⟨(HasLaw.id (μ := gaussianVector (n ⊕ m))).iIndepFun_eval.precomp
-    Sum.inr_injective, fun i => (HasLaw.id (μ := gaussianVector (n ⊕ m))).eval (Sum.inr i)⟩
-
-/-- A point of the unit sphere is within `ε` of a point of an `ε`-net, in coordinates. -/
-private theorem exists_mem_norm_sub_le {N : Set (EuclideanSpace ℝ ι)} {ε : NNReal}
-    (hN : Metric.IsCover ε (Metric.sphere (0 : EuclideanSpace ℝ ι) 1) N) {y : ι → ℝ}
-    (hy : ‖WithLp.toLp 2 y‖ = 1) : ∃ x ∈ N, ‖WithLp.toLp 2 (y - WithLp.ofLp x)‖ ≤ ε := by
-  have h := hN.subset_iUnion_closedBall (mem_sphere_zero_iff_norm.2 hy)
-  simp only [Set.mem_iUnion, Metric.mem_closedBall, exists_prop] at h
-  obtain ⟨x, hx, hxy⟩ := h
-  refine ⟨x, hx, ?_⟩
-  rwa [WithLp.toLp_sub, WithLp.toLp_ofLp, ← dist_eq_norm]
 
 /-- Every vector has a unit vector aligned with it. -/
 private theorem exists_norm_eq_one_dotProduct_eq [Nonempty ι] (h : ι → ℝ) :
@@ -115,24 +69,10 @@ private theorem exists_norm_eq_one_dotProduct_eq [Nonempty ι] (h : ι → ℝ) 
       simp
   · refine ⟨‖WithLp.toLp 2 h‖⁻¹ • h, ?_, ?_⟩
     · rw [WithLp.toLp_smul, norm_smul, norm_inv, norm_norm, inv_mul_cancel₀ h0]
-    · rw [smul_dotProduct, ← norm_toLp_sq, smul_eq_mul]
+    · rw [smul_dotProduct, ← norm_toLp_sq_eq_dotProduct_self, smul_eq_mul]
       field_simp
 
 end Process
-
-/-- `x ⬝ᵥ G y` is the dot product of the flattened `G` with `x yᵀ`. -/
-private theorem dotProduct_mulVec_eq (x : m → ℝ) (G : Matrix m n ℝ) (y : n → ℝ) :
-    x ⬝ᵥ (G *ᵥ y) = (fun p : m × n => x p.1 * y p.2) ⬝ᵥ Function.uncurry G := by
-  simp only [dotProduct, Matrix.mulVec, Fintype.sum_prod_type, Finset.mul_sum]
-  refine Finset.sum_congr rfl fun i _ => Finset.sum_congr rfl fun j _ => ?_
-  change _ = _ * G i j
-  ring
-
-private theorem prod_dotProduct_prod (x x' : m → ℝ) (y y' : n → ℝ) :
-    (fun p : m × n => x p.1 * y p.2) ⬝ᵥ (fun p => x' p.1 * y' p.2) = (x ⬝ᵥ x') * (y ⬝ᵥ y') := by
-  simp only [dotProduct, Fintype.sum_prod_type, Finset.sum_mul_sum]
-  refine Finset.sum_congr rfl fun i _ => Finset.sum_congr rfl fun j _ => ?_
-  ring
 
 section Gordon
 
@@ -141,7 +81,8 @@ private theorem gordon_increment_same {u : n → ℝ} (hu : u ⬝ᵥ u = 1) (t s
     (Sum.elim u t - Sum.elim u s) ⬝ᵥ (Sum.elim u t - Sum.elim u s) =
       ((fun p : m × n => t p.1 * u p.2) - fun p => s p.1 * u p.2) ⬝ᵥ
         ((fun p : m × n => t p.1 * u p.2) - fun p => s p.1 * u p.2) := by
-  simp only [sub_dotProduct, dotProduct_sub, sumElim_dotProduct_sumElim, prod_dotProduct_prod]
+  simp only [sub_dotProduct, dotProduct_sub, sumElim_dotProduct_sumElim,
+    dotProduct_mul_eq_mul_dotProduct]
   rw [dotProduct_comm s t, hu]
   ring
 
@@ -151,10 +92,10 @@ private theorem gordon_increment_le {u u' : n → ℝ} {t s : m → ℝ} (hu : u
     ((fun p : m × n => t p.1 * u p.2) - fun p => s p.1 * u' p.2) ⬝ᵥ
         ((fun p : m × n => t p.1 * u p.2) - fun p => s p.1 * u' p.2) ≤
       (Sum.elim u t - Sum.elim u' s) ⬝ᵥ (Sum.elim u t - Sum.elim u' s) := by
-  have h1 := norm_toLp_sq (u - u')
-  have h2 := norm_toLp_sq (t - s)
+  have h1 := norm_toLp_sq_eq_dotProduct_self (u - u')
+  have h2 := norm_toLp_sq_eq_dotProduct_self (t - s)
   simp only [sub_dotProduct, dotProduct_sub, sumElim_dotProduct_sumElim,
-    prod_dotProduct_prod] at h1 h2 ⊢
+    dotProduct_mul_eq_mul_dotProduct] at h1 h2 ⊢
   rw [dotProduct_comm u' u, dotProduct_comm s t, hu, hu', ht, hs] at *
   have h3 := sq_nonneg ‖WithLp.toLp 2 (u - u')‖
   have h4 := sq_nonneg ‖WithLp.toLp 2 (t - s)‖
@@ -170,26 +111,31 @@ private theorem integral_iInf_iSup_le_gordon (hX : HasLaw X (gaussianMatrix m n)
   have hU := hasLaw_uncurry_of_hasLaw_gaussianMatrix hX
   have hV : HasLaw (fun z : n ⊕ m → ℝ => z) (gaussianVector (n ⊕ m)) (gaussianVector (n ⊕ m)) :=
     HasLaw.id
-  simp only [dotProduct_mulVec_eq]
+  simp only [Matrix.dotProduct_mulVec_eq_dotProduct_uncurry]
   refine integral_iInf_iSup_le_integral_iInf_iSup_of_hasGaussianLaw
     (X := fun i j z => Sum.elim (u i) (t j) ⬝ᵥ z)
     (Y := fun i j ω => (fun p : m × n => t j p.1 * u i p.2) ⬝ᵥ Function.uncurry (X ω))
-    (hasGaussianLaw_dotProduct hV fun p : U × T => Sum.elim (u p.1) (t p.2))
-    (hasGaussianLaw_dotProduct hU fun (p : U × T) (q : m × n) => t p.2 q.1 * u p.1 q.2)
-    (fun i j => integral_dotProduct hV _) (fun i j => integral_dotProduct hU _)
+    (hasGaussianLaw_dotProduct_of_hasLaw_gaussianVector hV
+      fun p : U × T => Sum.elim (u p.1) (t p.2))
+    (hasGaussianLaw_dotProduct_of_hasLaw_gaussianVector hU
+      fun (p : U × T) (q : m × n) => t p.2 q.1 * u p.1 q.2)
+    (fun i j => integral_dotProduct_of_hasLaw_gaussianVector hV _)
+    (fun i j => integral_dotProduct_of_hasLaw_gaussianVector hU _)
     (fun i j j' => ?_) (fun i i' j j' _ => ?_)
-  · rw [integral_dotProduct_sub_sq hV, integral_dotProduct_sub_sq hU]
+  · rw [integral_dotProduct_sub_dotProduct_sq_of_hasLaw_gaussianVector hV,
+      integral_dotProduct_sub_dotProduct_sq_of_hasLaw_gaussianVector hU]
     exact (gordon_increment_same (hu i) (t j) (t j')).le
-  · rw [integral_dotProduct_sub_sq hV, integral_dotProduct_sub_sq hU]
+  · rw [integral_dotProduct_sub_dotProduct_sq_of_hasLaw_gaussianVector hV,
+      integral_dotProduct_sub_dotProduct_sq_of_hasLaw_gaussianVector hU]
     exact gordon_increment_le (hu i) (hu i') (ht j) (ht j')
 
 private theorem integrable_iInf_iSup_gordon (hX : HasLaw X (gaussianMatrix m n) μ)
     (u : U → n → ℝ) (t : T → m → ℝ) :
     Integrable (fun ω => ⨅ i, ⨆ j, t j ⬝ᵥ (X ω *ᵥ u i)) μ := by
-  simp only [dotProduct_mulVec_eq]
+  simp only [Matrix.dotProduct_mulVec_eq_dotProduct_uncurry]
   exact integrable_iInf_iSup_of_hasGaussianLaw (X := fun i j ω =>
       (fun p : m × n => t j p.1 * u i p.2) ⬝ᵥ Function.uncurry (X ω))
-    (hasGaussianLaw_dotProduct (hasLaw_uncurry_of_hasLaw_gaussianMatrix hX)
+    (hasGaussianLaw_dotProduct_of_hasLaw_gaussianVector (hasLaw_uncurry_of_hasLaw_gaussianMatrix hX)
       fun (p : U × T) (q : m × n) => t p.2 q.1 * u p.1 q.2)
 
 end Gordon
@@ -214,8 +160,8 @@ private theorem le_integral_iInf_iSup_sumElim [Nonempty m] [Nonempty n]
     √(Fintype.card m : ℝ) - √(Fintype.card n : ℝ) - ε * √(Fintype.card m : ℝ) ≤
       ∫ z, ⨅ i, ⨆ j, Sum.elim (u i) (t j) ⬝ᵥ z ∂gaussianVector (n ⊕ m) := by
   classical
-  have hl := hasLaw_comp_inl (n := n) (m := m)
-  have hr := hasLaw_comp_inr (n := n) (m := m)
+  have hl := hasLaw_comp_inl_gaussianVector (n := n) (m := m)
+  have hr := hasLaw_comp_inr_gaussianVector (n := n) (m := m)
   have hV : HasLaw (fun z : n ⊕ m → ℝ => z) (gaussianVector (n ⊕ m)) (gaussianVector (n ⊕ m)) :=
     HasLaw.id
   have hil := (isIsotropic_of_hasLaw_gaussianVector hl).integrable_norm_mulVec (1 : Matrix n n ℝ)
@@ -236,8 +182,8 @@ private theorem le_integral_iInf_iSup_sumElim [Nonempty m] [Nonempty n]
       conv_lhs => rw [← Sum.elim_comp_inl_inr z]
       exact sumElim_dotProduct_sumElim _ _ _ _
     have h1 := neg_abs_le (u i ⬝ᵥ (z ∘ Sum.inl))
-    have h2 := abs_dotProduct_le (u i) (z ∘ Sum.inl)
-    have h3 := (le_abs_self _).trans (abs_dotProduct_le (s - t j) (z ∘ Sum.inr))
+    have h2 := abs_dotProduct_le_norm (u i) (z ∘ Sum.inl)
+    have h3 := (le_abs_self _).trans (abs_dotProduct_le_norm (s - t j) (z ∘ Sum.inr))
     rw [sub_dotProduct, hsh] at h3
     have h5 := mul_le_mul_of_nonneg_right hj (norm_nonneg (WithLp.toLp 2 (z ∘ Sum.inr)))
     rw [hu i, one_mul] at h2
@@ -250,7 +196,8 @@ private theorem le_integral_iInf_iSup_sumElim [Nonempty m] [Nonempty n]
         nlinarith [mul_le_mul_of_nonneg_left hEr hε]
     _ ≤ _ := integral_mono ((hir.const_mul _).sub hil)
         (integrable_iInf_iSup_of_hasGaussianLaw (X := fun i j z => Sum.elim (u i) (t j) ⬝ᵥ z)
-          (hasGaussianLaw_dotProduct hV fun p : U × T => Sum.elim (u p.1) (t p.2))) hpt
+          (hasGaussianLaw_dotProduct_of_hasLaw_gaussianVector hV
+            fun p : U × T => Sum.elim (u p.1) (t p.2))) hpt
 
 /-- The matrix side: `min_u max_t ⟨t, G u⟩ ≤ σ_min(G) + ε ‖G‖` on `ε`-nets. -/
 private theorem iInf_iSup_le_singularValues_add {U T : Type*} [Finite U]
@@ -263,7 +210,7 @@ private theorem iInf_iSup_le_singularValues_add {U T : Type*} [Finite U]
   obtain ⟨i, hi⟩ := hu x hx1
   refine (ciInf_le (Finite.bddBelow_range _) i).trans (Real.iSup_le (fun j => ?_)
     (add_nonneg (singularValues_nonneg G k) (mul_nonneg hε (specNorm_nonneg G))))
-  have h1 := (le_abs_self _).trans (abs_dotProduct_le (t j) (G *ᵥ u i))
+  have h1 := (le_abs_self _).trans (abs_dotProduct_le_norm (t j) (G *ᵥ u i))
   rw [ht j, one_mul] at h1
   have hsplit : G *ᵥ u i = G *ᵥ x + G *ᵥ (u i - x) := by
     rw [← Matrix.mulVec_add, add_sub_cancel]
@@ -299,10 +246,10 @@ private theorem le_integral_singularValues_add (hX : HasLaw X (gaussianMatrix m 
   have ht1 (j : Nm) : ‖WithLp.toLp 2 (t j)‖ = 1 := by
     simpa [t] using mem_sphere_zero_iff_norm.1 (hNm1 j.2)
   have hcu (x : n → ℝ) (hx : ‖WithLp.toLp 2 x‖ = 1) : ∃ i, ‖WithLp.toLp 2 (x - u i)‖ ≤ ε := by
-    obtain ⟨y, hy, hxy⟩ := exists_mem_norm_sub_le hNn hx
+    obtain ⟨y, hy, hxy⟩ := hNn.exists_mem_norm_toLp_sub_le hx
     exact ⟨⟨y, hy⟩, hxy⟩
   have hct (x : m → ℝ) (hx : ‖WithLp.toLp 2 x‖ = 1) : ∃ j, ‖WithLp.toLp 2 (x - t j)‖ ≤ ε := by
-    obtain ⟨y, hy, hxy⟩ := exists_mem_norm_sub_le hNm hx
+    obtain ⟨y, hy, hxy⟩ := hNm.exists_mem_norm_toLp_sub_le hx
     exact ⟨⟨y, hy⟩, hxy⟩
   have : Nonempty Nn := by
     obtain ⟨i⟩ := ‹Nonempty n›
@@ -310,7 +257,8 @@ private theorem le_integral_singularValues_add (hX : HasLaw X (gaussianMatrix m 
     exact ⟨j⟩
   have h1 := le_integral_iInf_iSup_sumElim hnm u t hu1 hε0.le hct
   have h2 := integral_iInf_iSup_le_gordon hX u t
-    (fun i => by rw [← norm_toLp_sq, hu1, one_pow]) (fun j => by rw [← norm_toLp_sq, ht1, one_pow])
+    (fun i => by rw [← norm_toLp_sq_eq_dotProduct_self, hu1, one_pow])
+    (fun j => by rw [← norm_toLp_sq_eq_dotProduct_self, ht1, one_pow])
   have hσ := integrable_singularValues_of_hasLaw_gaussianMatrix hX k
   have hG := (integrable_specNorm_of_hasLaw_gaussianMatrix hX).const_mul ε
   have h3 : ∫ ω, ⨅ i, ⨆ j, t j ⬝ᵥ (X ω *ᵥ u i) ∂μ ≤

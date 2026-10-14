@@ -24,6 +24,7 @@ hide the cover and give a finite set of unit vectors in `n → 𝕜` that works 
 * `NLAlib.specNorm_le_div_of_isCover`: `specNorm A ≤ M / (1 - ε)` from a bound `M` on the net.
 * `Matrix.IsHermitian.specNorm_le_div_of_isCover`: for Hermitian `A`, from a bound on the
   quadratic form on the net, with `1 - 2 ε`.
+* `Metric.IsCover.exists_mem_norm_toLp_sub_le`: a unit vector is within `ε` of the net.
 * `NLAlib.exists_finite_isCover_sphere`: a net of the sphere with at most `(1 + 2 / ε) ^ d`
   points.
 * `NLAlib.exists_finset_specNorm_le_div`, `NLAlib.exists_finset_specNorm_le_div_of_isHermitian`:
@@ -47,9 +48,11 @@ theorem finrank_real_fun (𝕜 : Type*) [RCLike 𝕜] (n : Type*) [Fintype n] :
     Module.finrank ℝ (n → 𝕜) = Fintype.card n * Module.finrank ℝ 𝕜 := by
   rw [Module.finrank_pi_fintype, Finset.sum_const, Finset.card_univ, smul_eq_mul]
 
-/-- A point of the unit sphere is within `ε` of a point of an `ε`-net, in coordinates. -/
-private theorem exists_mem_norm_sub_le {N : Set (EuclideanSpace 𝕜 n)} {ε : ℝ≥0}
-    (hN : IsCover ε (sphere (0 : EuclideanSpace 𝕜 n) 1) N) {y : n → 𝕜}
+/-- **A unit vector is within `ε` of an `ε`-net of the sphere, in coordinates**: if `N` is an
+`ε`-net of the unit sphere of `EuclideanSpace 𝕜 n` and `y : n → 𝕜` has Euclidean norm `1`, some
+`x ∈ N` has `‖y - x‖ ≤ ε`. The coordinate form of `Metric.IsCover.subset_iUnion_closedBall`. -/
+theorem _root_.Metric.IsCover.exists_mem_norm_toLp_sub_le {N : Set (EuclideanSpace 𝕜 n)}
+    {ε : ℝ≥0} (hN : IsCover ε (sphere (0 : EuclideanSpace 𝕜 n) 1) N) {y : n → 𝕜}
     (hy : ‖WithLp.toLp 2 y‖ = 1) : ∃ x ∈ N, ‖WithLp.toLp 2 (y - WithLp.ofLp x)‖ ≤ ε := by
   have h := hN.subset_iUnion_closedBall (mem_sphere_zero_iff_norm.2 hy)
   simp only [Set.mem_iUnion, mem_closedBall, exists_prop] at h
@@ -68,7 +71,7 @@ theorem specNorm_le_div_of_isCover (A : Matrix m n 𝕜) {N : Set (EuclideanSpac
   have hε' : (ε : ℝ) < 1 := mod_cast hε
   have key : specNorm A ≤ M + specNorm A * ε := by
     refine specNorm_le_of_forall_norm_eq_one (by positivity) fun y hy => ?_
-    obtain ⟨x, hxN, hxy⟩ := exists_mem_norm_sub_le hN hy
+    obtain ⟨x, hxN, hxy⟩ := hN.exists_mem_norm_toLp_sub_le hy
     have hsplit : A *ᵥ y = A *ᵥ WithLp.ofLp x + A *ᵥ (y - WithLp.ofLp x) := by
       rw [← Matrix.mulVec_add, add_sub_cancel]
     rw [hsplit, WithLp.toLp_add]
@@ -92,8 +95,8 @@ theorem specNorm_le_div_of_isCover_of_isCover (A : Matrix m n 𝕜)
   have key : specNorm A ≤ M + 2 * ε * specNorm A := by
     refine specNorm_le_of_forall_norm_star_dotProduct_mulVec_le (by positivity)
       fun u x hu hx => ?_
-    obtain ⟨x₀, hx₀N, hx₀⟩ := exists_mem_norm_sub_le hN hx
-    obtain ⟨u₀, hu₀N, hu₀⟩ := exists_mem_norm_sub_le hN' hu
+    obtain ⟨x₀, hx₀N, hx₀⟩ := hN.exists_mem_norm_toLp_sub_le hx
+    obtain ⟨u₀, hu₀N, hu₀⟩ := hN'.exists_mem_norm_toLp_sub_le hu
     have hu₀1 : ‖WithLp.toLp 2 (WithLp.ofLp u₀)‖ ≤ 1 := mem_closedBall_zero_iff.1 (hNs' hu₀N)
     have hsplit : star u ⬝ᵥ (A *ᵥ x) = star (WithLp.ofLp u₀) ⬝ᵥ (A *ᵥ WithLp.ofLp x₀) +
         star (u - WithLp.ofLp u₀) ⬝ᵥ (A *ᵥ x) +
@@ -132,7 +135,7 @@ theorem _root_.Matrix.IsHermitian.specNorm_le_div_of_isCover {A : Matrix n n �
     · rw [Subsingleton.elim A 0, specNorm_zero]
       positivity
     obtain ⟨x, hx, hxA⟩ := hA.exists_norm_eq_one_and_abs_re_quadForm_eq_specNorm
-    obtain ⟨x₀, hx₀N, hx₀⟩ := exists_mem_norm_sub_le hN hx
+    obtain ⟨x₀, hx₀N, hx₀⟩ := hN.exists_mem_norm_toLp_sub_le hx
     have hx₀1 : ‖WithLp.toLp 2 (WithLp.ofLp x₀)‖ ≤ 1 := mem_closedBall_zero_iff.1 (hNs hx₀N)
     have hsplit : quadForm A x = quadForm A (WithLp.ofLp x₀) +
         star (x - WithLp.ofLp x₀) ⬝ᵥ (A *ᵥ x) +

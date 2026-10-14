@@ -11,14 +11,16 @@ public import Mathlib.Analysis.InnerProductSpace.PiL2
 # The Euclidean norm of a coordinate vector as a dot product
 
 Bridges between the Euclidean norm `‖WithLp.toLp 2 x‖` of a vector `x : n → 𝕜` and the pairing
-`star x ⬝ᵥ x`, and the behaviour of that norm under conjugation, reindexing, extension by zero
-and concatenation. Upstream candidates for `Mathlib.Analysis.InnerProductSpace.PiL2`.
+`star x ⬝ᵥ x`, the Cauchy–Schwarz inequality for `⬝ᵥ`, and the behaviour of that norm under
+conjugation, reindexing, extension by zero and concatenation. Upstream candidates for
+`Mathlib.Analysis.InnerProductSpace.PiL2`.
 
 ## Main results
 
 * `EuclideanSpace.inner_toLp_toLp_eq_star_dotProduct`: the inner product is `star x ⬝ᵥ y`.
 * `EuclideanSpace.norm_toLp_sq_eq_re_star_dotProduct`: `‖x‖ ^ 2 = re (star x ⬝ᵥ x)`.
 * `EuclideanSpace.star_dotProduct_self_eq_coe_norm_sq`: `star x ⬝ᵥ x = ‖x‖ ^ 2` in `𝕜`.
+* `EuclideanSpace.abs_dotProduct_le_norm`: Cauchy–Schwarz over `ℝ`.
 * `EuclideanSpace.norm_toLp_star`: `‖star x‖ = ‖x‖`.
 * `EuclideanSpace.norm_toLp_comp_equiv`: `‖x ∘ e‖ = ‖x‖` for a bijection `e`.
 * `EuclideanSpace.norm_toLp_comp_le_of_injective`: `‖y ∘ e‖ ≤ ‖y‖` for an injection `e`.
@@ -53,6 +55,13 @@ theorem star_dotProduct_self_eq_coe_norm_sq (x : n → 𝕜) :
 Port of `NLAlib.norm_toLp_sq_eq_dotProduct_self`. -/
 theorem norm_toLp_sq_eq_dotProduct_self (x : n → ℝ) : ‖WithLp.toLp 2 x‖ ^ 2 = x ⬝ᵥ x := by
   rw [norm_toLp_sq_eq_re_star_dotProduct, star_trivial, RCLike.re_to_real]
+
+/-- **Cauchy–Schwarz for the dot product**: over `ℝ`, `|x ⬝ᵥ y| ≤ ‖x‖ ‖y‖` with Euclidean
+norms. The coordinate form of `abs_real_inner_le_norm`. -/
+theorem abs_dotProduct_le_norm (x y : n → ℝ) :
+    |x ⬝ᵥ y| ≤ ‖WithLp.toLp 2 x‖ * ‖WithLp.toLp 2 y‖ := by
+  have h := abs_real_inner_le_norm (WithLp.toLp 2 x) (WithLp.toLp 2 y)
+  rwa [EuclideanSpace.inner_toLp_toLp, star_trivial, dotProduct_comm] at h
 
 /-! ### Conjugation, reindexing, extension by zero and concatenation -/
 

@@ -5,8 +5,10 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.ForMathlib.Analysis.Real.Sqrt
 public import NLAlib.Matrix.Spectral.Dilation
 public import NLAlib.Probability.MatrixConcentration.MGFBound
+public import NLAlib.Probability.MatrixIntegral
 public import NLAlib.Probability.SubGaussian.Basic
 
 /-!
@@ -44,37 +46,6 @@ variable {Ω : Type*} {mΩ : MeasurableSpace Ω} {μ : Measure Ω} {𝕜 : Type*
 
 /-! ### Helpers -/
 
-/-- The integral of a family of functions of a fixed Hermitian matrix is the function of the
-matrix given by the integral: `∫ f ω (B) = (∫ f ω) (B)`, with integrability. -/
-private theorem integrable_and_integral_cfc {B : Matrix n n 𝕜} (hB : B.IsHermitian)
-    {f : Ω → ℝ → ℝ} (hf : ∀ x, Integrable (fun ω => f ω x) μ) :
-    Integrable (fun ω => cfc (f ω) B) μ ∧
-      ∫ ω, cfc (f ω) B ∂μ = cfc (fun x => ∫ ω, f ω x ∂μ) B := by
-  obtain ⟨U, hU, hBU⟩ := hB.exists_eq_mul_diagonal_mul_conjTranspose
-  have hr := Fintype.card_fin (Fintype.card n)
-  let L : (Fin (Fintype.card n) → ℝ) →ₗ[ℝ] Matrix n n 𝕜 :=
-    { toFun := fun v => U * Matrix.diagonal (fun i => ((v i : ℝ) : 𝕜)) * Uᴴ
-      map_add' := fun v w => by
-        simp only [Pi.add_apply, RCLike.ofReal_add, ← Matrix.diagonal_add, Matrix.mul_add,
-          Matrix.add_mul]
-      map_smul' := fun a v => by
-        have hd : (fun i => (((a • v) i : ℝ) : 𝕜)) = (a : 𝕜) • fun i => ((v i : ℝ) : 𝕜) := by
-          funext i
-          simp only [Pi.smul_apply, smul_eq_mul, RCLike.ofReal_mul]
-        rw [RingHom.id_apply, hd, Matrix.diagonal_smul, Matrix.mul_smul, Matrix.smul_mul,
-          ← RCLike.real_smul_eq_coe_smul] }
-  let Lc := LinearMap.toContinuousLinearMap L
-  have hcfc : ∀ g : ℝ → ℝ, cfc g B = Lc (fun i => g (eigenvalue B i)) := fun g =>
-    cfc_eq_mul_diagonal_mul_conjTranspose hU hr hBU g
-  have hv : Integrable (fun ω => fun i : Fin (Fintype.card n) => f ω (eigenvalue B i)) μ :=
-    integrable_pi_iff.2 fun i => hf _
-  simp only [hcfc]
-  refine ⟨Lc.integrable_comp hv, ?_⟩
-  rw [Lc.integral_comp_comm hv]
-  congr 1
-  funext i
-  exact eval_integral (fun i => hf _) i
-
 /-- The exponential of a function of a Hermitian matrix. -/
 private theorem exp_cfc {B : Matrix n n 𝕜} (hB : B.IsHermitian) (g : ℝ → ℝ) :
     exp (cfc g B) = cfc (fun x => Real.exp (g x)) B := by
@@ -82,43 +53,6 @@ private theorem exp_cfc {B : Matrix n n 𝕜} (hB : B.IsHermitian) (g : ℝ → 
   rw [hH.exp_eq_cfc]
   exact (cfc_comp' Real.exp g B ((B.finite_real_spectrum.image _).continuousOn _)
     (B.finite_real_spectrum.continuousOn _) hB).symm
-
-/-- The scalar optimisation behind the means: if `x ≤ a / u + b u` for every `u > 0`, with
-`a, b ≥ 0`, then `x ≤ √(4ab)`. -/
-private theorem le_sqrt_of_forall_le_div_add_mul {x a b : ℝ} (ha : 0 ≤ a) (hb : 0 ≤ b)
-    (h : ∀ u, 0 < u → x ≤ a / u + b * u) : x ≤ √(4 * a * b) := by
-  rcases ha.eq_or_lt with rfl | ha'
-  · refine le_trans ?_ (Real.sqrt_nonneg _)
-    by_contra hx
-    push Not at hx
-    have h1 := h (x / (2 * (b + 1))) (by positivity)
-    rw [zero_div, zero_add] at h1
-    have h2 : b * (x / (2 * (b + 1))) < x := by
-      rw [mul_div_assoc', div_lt_iff₀ (by positivity)]
-      nlinarith
-    linarith
-  rcases hb.eq_or_lt with rfl | hb'
-  · refine le_trans ?_ (Real.sqrt_nonneg _)
-    by_contra hx
-    push Not at hx
-    have h1 := h (2 * a / x) (by positivity)
-    rw [zero_mul, add_zero, div_div_eq_mul_div] at h1
-    have h2 : a * x / (2 * a) = x / 2 := by field_simp
-    linarith
-  set p := √a with hp
-  set q := √b with hq
-  have hp0 : 0 < p := Real.sqrt_pos.2 ha'
-  have hq0 : 0 < q := Real.sqrt_pos.2 hb'
-  have hpa : p ^ 2 = a := Real.sq_sqrt ha
-  have hqb : q ^ 2 = b := Real.sq_sqrt hb
-  have h1 := h (p / q) (div_pos hp0 hq0)
-  have h4 : 4 * a * b = (2 * p * q) ^ 2 := by rw [← hpa, ← hqb]; ring
-  rw [h4, Real.sqrt_sq (by positivity)]
-  have h5 : a / (p / q) + b * (p / q) = 2 * p * q := by
-    rw [← hpa, ← hqb]
-    field_simp
-    ring
-  linarith
 
 /-- A sub-Gaussian coefficient times a fixed Hermitian matrix has a matrix MGF bound:
 `E exp (θ γ B) ≤ exp (θ²/2 • c B²)`. -/
@@ -138,9 +72,9 @@ theorem hasMatrixMGFBound_smul_of_hasSubgaussianMGF {γ : Ω → ℝ} {c : ℝ�
   refine ⟨ae_of_all _ fun ω => (IsSelfAdjoint.all _).smul hB,
     (IsSelfAdjoint.all _).smul (hB.pow 2), fun θ _ => ?_, fun θ _ => ?_⟩
   · simp only [hexp]
-    exact (integrable_and_integral_cfc hB (hf θ)).1
+    exact hB.integrable_cfc (hf θ)
   · simp only [hexp]
-    rw [(integrable_and_integral_cfc hB (hf θ)).2]
+    rw [← hB.cfc_integral (hf θ)]
     have hR : (θ ^ 2 / 2) • ((c : ℝ) • B ^ 2) =
         cfc (fun x : ℝ => θ ^ 2 / 2 * ((c : ℝ) * x ^ 2)) B := by
       rw [cfc_const_mul _ _ B (hcont _), cfc_const_mul _ _ B (hcont _),
@@ -229,7 +163,7 @@ theorem integral_eigenvalue_zero_sum_smul_le [Nonempty n] (hind : iIndepFun γ �
       _ = Real.log (Fintype.card n) / θ + v / 2 * θ := by
           rw [Real.log_mul (by positivity) (Real.exp_pos _).ne', Real.log_exp]
           field_simp
-  refine (le_sqrt_of_forall_le_div_add_mul (Real.log_nonneg hd)
+  refine (Real.le_sqrt_of_forall_le_div_add_mul (Real.log_nonneg hd)
     (div_nonneg (specNorm_nonneg _) two_pos.le) hbound).trans_eq ?_
   congr 1
   ring

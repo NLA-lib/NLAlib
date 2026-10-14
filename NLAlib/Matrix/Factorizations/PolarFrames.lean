@@ -107,9 +107,9 @@ theorem polarFactor_replicateCol (x : m → 𝕜) :
 /-! ### Frames under unitary maps -/
 
 /-- **Unitaries act transitively on frames**: two matrices with orthonormal columns and the same
-column index differ by a unitary factor on the left. Port of the private
-`exists_hasOrthonormalCols_mul_eq` of `NLAlib/Matrix/Factorizations/Procrustes.lean`, made public
-here (`docs/design/RandomMatrix-R5.md` §1, addition 5). -/
+column index differ by a unitary factor on the left. Used by the two-sided Procrustes problem
+(`NLAlib.isLeast_frobNorm_sub_mul_mul_sq`) and the Haar frame law
+(`docs/design/RandomMatrix-R5.md` §1, addition 5). -/
 theorem HasOrthonormalCols.exists_mul_eq [DecidableEq m] {r : Type*} [Finite r] [DecidableEq r]
     {X Y : Matrix m r 𝕜} (hX : HasOrthonormalCols X) (hY : HasOrthonormalCols Y) :
     ∃ U : Matrix m m 𝕜, HasOrthonormalCols U ∧ U * X = Y := by

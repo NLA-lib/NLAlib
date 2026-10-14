@@ -38,6 +38,11 @@ law will be a separate definition (`docs/design/Probability-P2.md` §7).
 * `NLAlib.integral_pow_four_of_hasLaw_gaussianReal`: `E X⁴ = 3 v²`.
 * `NLAlib.isIsotropic_of_hasLaw_gaussianVector`.
 * `NLAlib.hasLaw_dotProduct_of_hasLaw_gaussianVector`: `u ⬝ᵥ X` has law `N(0, ‖u‖²)`.
+* `NLAlib.hasGaussianLaw_dotProduct_of_hasLaw_gaussianVector`,
+  `NLAlib.integral_dotProduct_sub_dotProduct_sq_of_hasLaw_gaussianVector`: the canonical Gaussian
+  process `w ↦ w ⬝ᵥ X` is jointly Gaussian with increments `‖w - w'‖²`.
+* `NLAlib.hasLaw_comp_inl_gaussianVector`, `NLAlib.hasLaw_comp_inr_gaussianVector`: the blocks of
+  a standard Gaussian vector indexed by `n ⊕ m`.
 * `NLAlib.lintegral_exp_mul_dotProduct_gaussianVector`: `E_g exp (s (u ⬝ᵥ g)) = exp (s² ‖u‖² / 2)`.
 -/
 
@@ -171,6 +176,43 @@ theorem hasLaw_dotProduct_of_hasLaw_gaussianVector {X : Ω → n → ℝ}
     (hX : HasLaw X (gaussianVector n) μ) (u : n → ℝ) :
     HasLaw (fun ω => u ⬝ᵥ X ω) (gaussianReal 0 (‖WithLp.toLp 2 u‖₊ ^ 2)) μ := by
   exact (hasLaw_dotProduct_gaussianVector u).comp hX
+
+/-- A finite family of linear forms `w i ⬝ᵥ X` of a standard Gaussian vector is jointly
+Gaussian: `fun ω i => w i ⬝ᵥ X ω` has a Gaussian law. The input of Gaussian comparison
+(Sudakov–Fernique, Gordon) for processes indexed by vectors. -/
+theorem hasGaussianLaw_dotProduct_of_hasLaw_gaussianVector {X : Ω → n → ℝ} {I : Type*} [Finite I]
+    (hX : HasLaw X (gaussianVector n) μ) (w : I → n → ℝ) :
+    HasGaussianLaw (fun ω i => w i ⬝ᵥ X ω) μ := by
+  have := Fintype.ofFinite I
+  exact hX.hasGaussianLaw.map_fun (Matrix.mulVecLin (Matrix.of w)).toContinuousLinearMap
+
+/-- A linear form of a standard Gaussian vector is centred: `E [w ⬝ᵥ X] = 0`. -/
+theorem integral_dotProduct_of_hasLaw_gaussianVector {X : Ω → n → ℝ}
+    (hX : HasLaw X (gaussianVector n) μ) (w : n → ℝ) : ∫ ω, w ⬝ᵥ X ω ∂μ = 0 :=
+  integral_of_hasLaw_gaussianReal (hasLaw_dotProduct_of_hasLaw_gaussianVector hX w)
+
+/-- **Increments of the canonical Gaussian process**: for a standard Gaussian vector `X`,
+`E [(w ⬝ᵥ X - w' ⬝ᵥ X)²] = ‖w - w'‖²`, written as `(w - w') ⬝ᵥ (w - w')`. -/
+theorem integral_dotProduct_sub_dotProduct_sq_of_hasLaw_gaussianVector {X : Ω → n → ℝ}
+    (hX : HasLaw X (gaussianVector n) μ) (w w' : n → ℝ) :
+    ∫ ω, (w ⬝ᵥ X ω - w' ⬝ᵥ X ω) ^ 2 ∂μ = (w - w') ⬝ᵥ (w - w') := by
+  simp only [← sub_dotProduct]
+  rw [integral_sq_of_hasLaw_gaussianReal (hasLaw_dotProduct_of_hasLaw_gaussianVector hX _),
+    NNReal.coe_pow, coe_nnnorm, EuclideanSpace.norm_toLp_sq_eq_dotProduct_self]
+
+/-- The first block `z ∘ Sum.inl` of a standard Gaussian vector indexed by `n ⊕ m` is a standard
+Gaussian vector. -/
+theorem hasLaw_comp_inl_gaussianVector {m : Type*} [Fintype m] :
+    HasLaw (fun z : n ⊕ m → ℝ => z ∘ Sum.inl) (gaussianVector n) (gaussianVector (n ⊕ m)) :=
+  hasLaw_pi_iff.2 ⟨(HasLaw.id (μ := gaussianVector (n ⊕ m))).iIndepFun_eval.precomp
+    Sum.inl_injective, fun i => (HasLaw.id (μ := gaussianVector (n ⊕ m))).eval (Sum.inl i)⟩
+
+/-- The second block `z ∘ Sum.inr` of a standard Gaussian vector indexed by `n ⊕ m` is a
+standard Gaussian vector. -/
+theorem hasLaw_comp_inr_gaussianVector {m : Type*} [Fintype m] :
+    HasLaw (fun z : n ⊕ m → ℝ => z ∘ Sum.inr) (gaussianVector m) (gaussianVector (n ⊕ m)) :=
+  hasLaw_pi_iff.2 ⟨(HasLaw.id (μ := gaussianVector (n ⊕ m))).iIndepFun_eval.precomp
+    Sum.inr_injective, fun i => (HasLaw.id (μ := gaussianVector (n ⊕ m))).eval (Sum.inr i)⟩
 
 /-- The moment generating function of a linear form of a standard Gaussian vector, as a lower
 integral: `E_g exp (s (u ⬝ᵥ g)) = exp (s² ‖u‖² / 2)`. With `s = √(2θ)` it linearises a square,

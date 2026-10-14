@@ -41,19 +41,6 @@ namespace NLAlib
 private lemma norm_fderiv_sq_eq (g : ℝ → ℝ) (x : ℝ) : ‖fderiv ℝ g x‖ ^ 2 = deriv g x ^ 2 := by
   rw [← norm_deriv_eq_norm_fderiv, Real.norm_eq_abs, sq_abs]
 
-private lemma abs_mul_log_le_sq_add_one {s : ℝ} (hs : 0 ≤ s) :
-    |s * Real.log s| ≤ s ^ 2 + 1 := by
-  rcases hs.eq_or_lt with rfl | hs'
-  · simp
-  rcases le_or_gt s 1 with h1 | h1
-  · have := Real.abs_log_mul_self_lt s hs' h1
-    rw [mul_comm]
-    nlinarith [sq_nonneg s]
-  · have hl : 0 ≤ Real.log s := Real.log_nonneg h1.le
-    have hl2 : Real.log s ≤ s - 1 := Real.log_le_sub_one_of_pos hs'
-    rw [abs_of_nonneg (mul_nonneg hs hl)]
-    nlinarith
-
 /-! ### From compact support to the integrable case on the line -/
 
 /-- `|(G s) log (G s)| ≤ |G log G| + G` for `G ≥ 0` and `s ∈ [0, 1]`. -/
@@ -268,7 +255,7 @@ private lemma integrable_sq_mul_log_sq_of_entropy_le {F : Type*} [NormedAddCommG
       (Real.continuous_mul_log.comp ((hNcd n).continuous.pow 2)).aestronglyMeasurable
       ((c n ^ 2) ^ 2 + 1) (ae_of_all _ fun x => ?_)
     rw [Real.norm_eq_abs]
-    refine (abs_mul_log_le_sq_add_one (sq_nonneg _)).trans ?_
+    refine (Real.abs_mul_log_le_sq_add_one (sq_nonneg _)).trans ?_
     have := pow_le_pow_left₀ (sq_nonneg _) (hNscale n x) 2
     linarith
   have hNdf_le (n : ℕ) (x : F) : ‖fderiv ℝ (fN n) x‖ ^ 2 ≤ ‖fderiv ℝ f x‖ ^ 2 :=
@@ -294,7 +281,7 @@ private lemma integrable_sq_mul_log_sq_of_entropy_le {F : Type*} [NormedAddCommG
     have hlsi := hLSI (fN n) (hNcd n) (hN2 n) (hNlog n) (hNdf n)
     rw [entropy] at hlsi
     have hm0 : 0 ≤ ∫ x, fN n x ^ 2 ∂ν := integral_nonneg fun x => sq_nonneg _
-    have hmLog := abs_mul_log_le_sq_add_one hm0
+    have hmLog := Real.abs_mul_log_le_sq_add_one hm0
     have hmSq := pow_le_pow_left₀ hm0 (integral_mono (hN2 n) hf2 (hNsq n)) 2
     have he := integral_mono (hNdf n) hdf (hNdf_le n)
     have ha := le_abs_self ((∫ x, fN n x ^ 2 ∂ν) * Real.log (∫ x, fN n x ^ 2 ∂ν))

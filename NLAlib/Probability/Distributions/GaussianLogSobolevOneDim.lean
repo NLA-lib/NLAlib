@@ -7,6 +7,7 @@ module
 
 public import Mathlib.Probability.CentralLimitTheorem
 public import Mathlib.Probability.Independence.InfinitePi
+public import NLAlib.ForMathlib.Analysis.SpecialFunctions.Log.Basic
 public import NLAlib.Probability.Distributions.Rademacher
 public import NLAlib.Probability.EntropyTensorization
 
@@ -177,18 +178,6 @@ private lemma tendsto_integral_rademacher {φ : ℝ → ℝ} (hφ : Continuous �
 
 /-! ### Tensorization over random signs -/
 
-private lemma abs_mul_log_le_sq_add_one {s : ℝ} (hs : 0 ≤ s) : |s * Real.log s| ≤ s ^ 2 + 1 := by
-  rcases hs.eq_or_lt with rfl | hs'
-  · simp
-  rcases le_or_gt s 1 with h1 | h1
-  · have := Real.abs_log_mul_self_lt s hs' h1
-    rw [mul_comm]
-    nlinarith [sq_nonneg s]
-  · have hl : 0 ≤ Real.log s := Real.log_nonneg h1.le
-    have hl2 : Real.log s ≤ s - 1 := Real.log_le_sub_one_of_pos hs'
-    rw [abs_of_nonneg (mul_nonneg hs hl)]
-    nlinarith
-
 /-- The first-order estimate `|g u - g v - (u - v) g' c| ≤ ε |u - v|` when `g'` varies by at
 most `ε` on the `δ`-ball about `c`. -/
 private lemma abs_sub_sub_mul_deriv_le {g : ℝ → ℝ} (hgd : Differentiable ℝ g) {ε δ c u v : ℝ}
@@ -282,7 +271,7 @@ private lemma entropy_comp_sum_le {ι : Type*} [Fintype ι] {g : ℝ → ℝ}
       (Real.continuous_mul_log.comp ((hgc.comp hTc).pow 2)).aestronglyMeasurable
       ((B ^ 2) ^ 2 + 1) (ae_of_all _ fun x => ?_)
     rw [Real.norm_eq_abs]
-    refine (abs_mul_log_le_sq_add_one (sq_nonneg _)).trans ?_
+    refine (Real.abs_mul_log_le_sq_add_one (sq_nonneg _)).trans ?_
     have := pow_le_pow_left₀ (sq_nonneg _) (hB2 (T x)) 2
     linarith
   have hD : Integrable (fun x => deriv g (T x) ^ 2) ν :=
@@ -341,7 +330,7 @@ theorem entropy_sq_le_two_mul_integral_deriv_sq_gaussianReal_of_hasCompactSuppor
   -- the three integrals converge along the central limit theorem
   have hlimE := tendsto_integral_rademacher (φ := fun x => g x ^ 2 * Real.log (g x ^ 2))
     (Real.continuous_mul_log.comp (hgcont.pow 2)) (C := (B ^ 2) ^ 2 + 1) fun x => by
-      refine (abs_mul_log_le_sq_add_one (sq_nonneg _)).trans ?_
+      refine (Real.abs_mul_log_le_sq_add_one (sq_nonneg _)).trans ?_
       have := pow_le_pow_left₀ (sq_nonneg _) (hB2 x) 2
       linarith
   have hlimM := tendsto_integral_rademacher (φ := fun x => g x ^ 2) (hgcont.pow 2)

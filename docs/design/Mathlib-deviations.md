@@ -265,8 +265,8 @@ None of these was approved by the maintainer when it was made. Status is given p
   (Measure.haarMeasure ⊤ : Measure (Matrix.orthogonalGroup n ℝ)).map Subtype.val`
   (`NLAlib/RandomMatrix/Haar/Uniqueness.lean`), a corollary of the characterization
   `hasLaw_haarFrame_of_isLeftUnitarilyInvariant`. It uses the instance
-  `compactSpace_unitaryGroup` (from `isCompact_setOf_hasOrthonormalCols`; the prototype's
-  `orthogonalGroupCompactSpace`), an upstream candidate that moves to `NLAlib/ForMathlib`.
+  `Matrix.compactSpace_unitaryGroup` (`NLAlib/ForMathlib/LinearAlgebra/UnitaryGroup.lean`, an
+  upstream candidate; the prototype's `orthogonalGroupCompactSpace`).
 - **Why.** Rectangular frames (range finders and Haar sketches use `n × k` frames, which no group
   measure describes), `Matrix` values rather than subtype elements (entry 4), and one definition
   for every shape (`docs/PORT_PROBABILITY.md` D7 (a): the polar factor of a Gaussian). The

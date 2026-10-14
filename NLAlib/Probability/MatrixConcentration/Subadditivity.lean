@@ -8,6 +8,7 @@ module
 public import NLAlib.ForMathlib.Analysis.Convex.Integral
 public import NLAlib.Matrix.Functions.Lieb
 public import NLAlib.Matrix.Functions.OperatorMonotone
+public import NLAlib.Probability.Measurability.Matrix
 public import NLAlib.Probability.MatrixConcentration.Laplace
 
 /-!
@@ -44,45 +45,6 @@ variable {Ω : Type*} {mΩ : MeasurableSpace Ω} {μ : Measure Ω} {𝕜 : Type*
 
 /-! ### Measurability -/
 
-omit [Fintype n] [DecidableEq n] in
-/-- The entrywise left inverse of `NLAlib.complexify`. -/
-private noncomputable def decomplexify (C : Matrix n n ℂ) : Matrix n n 𝕜 :=
-  C.map fun z => (z.re : 𝕜) + (z.im : 𝕜) * RCLike.I
-
-omit [Fintype n] [DecidableEq n] in
-private theorem decomplexify_complexify (A : Matrix n n 𝕜) : decomplexify (complexify A) = A := by
-  ext i j
-  simp only [decomplexify, Matrix.map_apply, complexify_apply, RCLike.re_toComplex,
-    RCLike.im_toComplex, RCLike.re_add_im]
-
-/-- The matrix logarithm is continuous on the positive definite matrices. -/
-private theorem continuousOn_cfc_log :
-    ContinuousOn (fun A : Matrix n n 𝕜 => cfc Real.log A) {A | A.PosDef} := by
-  have hlog : ContinuousOn (fun B : Matrix n n ℂ => cfc Real.log B) {B | B.PosDef} :=
-    CFC.continuousOn_log.mono fun B hB => ⟨hB.isHermitian, hB.isUnit⟩
-  have hd : Continuous (decomplexify : Matrix n n ℂ → Matrix n n 𝕜) :=
-    continuous_id.matrix_map (by fun_prop)
-  refine (hd.comp_continuousOn (hlog.comp continuous_complexify.continuousOn
-    fun A hA => posDef_complexify_iff.mpr hA)).congr fun A hA => ?_
-  simp only [Function.comp_apply]
-  rw [← complexify_cfc (show A.PosDef from hA).isHermitian, decomplexify_complexify]
-
-omit [Fintype n] [DecidableEq n] in
-private theorem measurableSet_posDef [Finite n] :
-    MeasurableSet {A : Matrix n n 𝕜 | A.PosDef} := by
-  have : Fintype n := Fintype.ofFinite n
-  have hH : MeasurableSet {A : Matrix n n 𝕜 | A.IsHermitian} :=
-    (isClosed_eq continuous_id.matrix_conjTranspose continuous_id).measurableSet
-  have h : {A : Matrix n n 𝕜 | A.PosDef} = {A | A.IsHermitian} ∩
-      ⋂ k ∈ Finset.range (Fintype.card n), {A | 0 < eigenvalue A k} := by
-    ext A
-    simp only [Set.mem_ofPred_eq, Set.mem_inter_iff, Set.mem_iInter, Finset.mem_range]
-    exact ⟨fun h => ⟨h.isHermitian, h.isHermitian.posDef_iff_eigenvalue_pos.mp h⟩,
-      fun h => h.1.posDef_iff_eigenvalue_pos.mpr h.2⟩
-  rw [h]
-  exact hH.inter (Finset.measurableSet_biInter _ fun k _ =>
-    measurableSet_lt measurable_const (measurable_eigenvalue k))
-
 /-- An almost surely Hermitian random matrix with an integrable exponential is almost everywhere
 measurable: `X = log (exp X)` almost surely, and the logarithm is continuous on the positive
 definite matrices. -/
@@ -92,7 +54,7 @@ theorem aemeasurable_of_integrable_exp {X : Ω → Matrix n n 𝕜}
   classical
   have hL : Measurable ({A : Matrix n n 𝕜 | A.PosDef}.piecewise (fun A => cfc Real.log A)
       fun _ => 0) :=
-    continuousOn_cfc_log.measurable_piecewise continuousOn_const measurableSet_posDef
+    continuousOn_cfc_log.measurable_piecewise continuousOn_const measurableSet_setOf_posDef
   refine (hL.comp_aemeasurable hint.aemeasurable).congr ?_
   filter_upwards [hX] with ω hω
   rw [Function.comp_apply, Set.piecewise_eq_of_mem _ _ _ (show exp (X ω) ∈ {A | A.PosDef} from

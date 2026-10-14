@@ -63,7 +63,7 @@ private theorem integrable_gaussianReal_one_iff (g : ℝ → ℝ) :
   simp [smul_eq_mul]
 
 /-- Stein's identity for the standard Gaussian, under integrability hypotheses. -/
-private theorem integral_mul_eq_integral_deriv_gaussianReal_one {h : ℝ → ℝ}
+theorem integral_mul_eq_integral_deriv_gaussianReal_one {h : ℝ → ℝ}
     (hh : Differentiable ℝ h) (hhi : Integrable h (gaussianReal 0 1))
     (hxh : Integrable (fun x => x * h x) (gaussianReal 0 1))
     (hdi : Integrable (deriv h) (gaussianReal 0 1)) :
@@ -158,7 +158,7 @@ private theorem integral_sub_mul_eq_mul_integral_deriv_gaussianReal (m : ℝ) (v
 
 /-- Integration against the law of an independent pair, iterated: for independent `U` and `W`
 and `F` continuous with `F (U, W)` integrable, `E F(U, W) = ∫ ∫ F (u, w) dU du dW`. -/
-private theorem integral_comp_eq_integral_integral_of_indepFun {E : Type*}
+theorem integral_comp_eq_integral_integral_of_indepFun {E : Type*}
     [NormedAddCommGroup E] [MeasurableSpace E] [BorelSpace E] [SecondCountableTopology E]
     [IsProbabilityMeasure μ] {U : Ω → ℝ} {W : Ω → E} (hU : AEMeasurable U μ)
     (hW : AEMeasurable W μ) (hUW : IndepFun U W μ) {F : ℝ × E → ℝ} (hF : Continuous F)
@@ -177,7 +177,7 @@ private theorem integral_comp_eq_integral_integral_of_indepFun {E : Type*}
 omit [Fintype ι] [DecidableEq ι] in
 /-- The regression residual `X - X i • a` of a Gaussian vector is independent of `X i` when
 `Cov(X i, X j) = Var (X i) a j` for every `j`. -/
-private theorem indepFun_residual_of_hasGaussianLaw [Finite ι] {X : Ω → ι → ℝ}
+theorem indepFun_residual_of_hasGaussianLaw [Finite ι] {X : Ω → ι → ℝ}
     (hX : HasGaussianLaw X μ) (i : ι) (a : ι → ℝ)
     (hcov : ∀ j, cov[fun ω => X ω i, fun ω => X ω j; μ] = Var[fun ω => X ω i; μ] * a j) :
     IndepFun (fun ω => X ω i) (fun ω => X ω - X ω i • a) μ := by
@@ -228,7 +228,7 @@ private theorem memLp_two_comp_of_norm_fderiv_le {X : Ω → ι → ℝ} (hX : H
 
 omit [Fintype ι] [DecidableEq ι] in
 /-- `Cov(U, V) = Var U * (Cov(U, V) / Var U)`, also when `Var U = 0`. -/
-private theorem covariance_eq_variance_mul_div [IsProbabilityMeasure μ] {U V : Ω → ℝ}
+theorem covariance_eq_variance_mul_div [IsProbabilityMeasure μ] {U V : Ω → ℝ}
     (hU : MemLp U 2 μ) : cov[U, V; μ] = Var[U; μ] * (cov[U, V; μ] / Var[U; μ]) := by
   by_cases hσ : Var[U; μ] = 0
   · have hae := ae_eq_integral_of_variance_eq_zero hU hσ

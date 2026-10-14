@@ -108,7 +108,7 @@ private theorem bernsteinAux_nonneg (u : ℝ) :
 
 /-- The one-sided Bernstein bound for the exponential ([Tropp2015], Lemma 6.6.2): for `x ≤ L`
 and `0 < θ` with `Lθ < 3`, `e^{θx} ≤ 1 + θx + (θ²/2)/(1 - Lθ/3) x²`. -/
-private theorem exp_mul_le_bernstein {L θ x : ℝ} (hθ : 0 < θ) (hθL : L * θ < 3) (hx : x ≤ L) :
+theorem exp_mul_le_bernstein {L θ x : ℝ} (hθ : 0 < θ) (hθL : L * θ < 3) (hx : x ≤ L) :
     Real.exp (θ * x) ≤ 1 + θ * x + θ ^ 2 / 2 / (1 - L * θ / 3) * x ^ 2 := by
   have hux : θ * x ≤ L * θ := by nlinarith
   have hpos : 0 < 1 - L * θ / 3 := by linarith
@@ -124,7 +124,7 @@ private theorem exp_mul_le_bernstein {L θ x : ℝ} (hθ : 0 < θ) (hθL : L * �
 
 /-- On `(0, 3/L)`, `1 - Lθ/3 > 0` and the Bernstein coefficient `(θ²/2)/(1 - Lθ/3)` is
 nonnegative. -/
-private theorem bernsteinCoeff_nonneg {L θ : ℝ} (hL : 0 < L) (hθ : θ ∈ Set.Ioo 0 (3 / L)) :
+theorem bernsteinCoeff_nonneg {L θ : ℝ} (hL : 0 < L) (hθ : θ ∈ Set.Ioo 0 (3 / L)) :
     L * θ < 3 ∧ 0 ≤ θ ^ 2 / 2 / (1 - L * θ / 3) := by
   have h : L * θ < 3 := by
     have := hθ.2
@@ -134,7 +134,7 @@ private theorem bernsteinCoeff_nonneg {L θ : ℝ} (hL : 0 < L) (hθ : θ ∈ Se
 
 /-- The choice of `θ` in the Bernstein tail: `θ = t / (v + Lt/3)`, or `θ = 3/(2L)` when `v = 0`,
 gives `-θt + g(θ) v ≤ -(t²/2)/(v + Lt/3)`. -/
-private theorem exists_bernstein_exponent {L v t : ℝ} (hL : 0 < L) (hv : 0 ≤ v) (ht : 0 < t) :
+theorem exists_bernstein_exponent {L v t : ℝ} (hL : 0 < L) (hv : 0 ≤ v) (ht : 0 < t) :
     ∃ θ ∈ Set.Ioo 0 (3 / L),
       -θ * t + θ ^ 2 / 2 / (1 - L * θ / 3) * v ≤ -(t ^ 2 / 2) / (v + L * t / 3) := by
   rcases hv.eq_or_lt with rfl | hv'

@@ -77,7 +77,7 @@ private theorem specNorm_exp_add_le {A B : Matrix n n 𝕜} (hA : A.IsHermitian)
   simpa only [Fintype.sum_bool, Fintype.prod_bool, cond_true, cond_false] using h
 
 /-- `tr exp (H + X)` is integrable when `‖exp X‖` is dominated by an integrable function. -/
-private theorem integrable_re_trace_exp_add_of_le {H : Matrix n n 𝕜} (hH : H.IsHermitian)
+theorem integrable_re_trace_exp_add_of_le {H : Matrix n n 𝕜} (hH : H.IsHermitian)
     {X : Ω → Matrix n n 𝕜} (hXm : AEMeasurable X μ) (hX : ∀ᵐ ω ∂μ, (X ω).IsHermitian)
     {g : Ω → ℝ} (hg : Integrable g μ) (hle : ∀ᵐ ω ∂μ, specNorm (exp (X ω)) ≤ g ω) :
     Integrable (fun ω => RCLike.re (exp (H + X ω)).trace) μ := by

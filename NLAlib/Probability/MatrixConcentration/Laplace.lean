@@ -60,7 +60,7 @@ theorem integrable_specNorm {m : Type*} [Fintype m] {S : Ω → Matrix m n 𝕜}
   exact hS.norm
 
 /-- `exp (θ λ_j(A)) ≤ tr exp (θ A)` for a Hermitian `A`, any real `θ` and any valid index `j`. -/
-private theorem exp_mul_eigenvalue_le_re_trace_exp {A : Matrix n n 𝕜} (hA : A.IsHermitian)
+theorem exp_mul_eigenvalue_le_re_trace_exp {A : Matrix n n 𝕜} (hA : A.IsHermitian)
     (θ : ℝ) {j : ℕ} (hj : j < Fintype.card n) :
     Real.exp (θ * eigenvalue A j) ≤ RCLike.re (exp (θ • A)).trace := by
   have hθA : (θ • A).IsHermitian := (IsSelfAdjoint.all θ).smul hA

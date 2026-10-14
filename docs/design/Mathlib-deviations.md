@@ -322,8 +322,11 @@ None of these was approved by the maintainer when it was made. Status is given p
 - **Cost.** A user holding `HasCondSubgaussianMGF` goes through the bridge, and needs a standard
   Borel space there. Kernel-level facts (the conditional law as a measure) are not available
   from `HasCondMatrixMGFBound`; no consumer uses them.
-- **Status: open** until the bridge is proved (skeleton; `docs/design/Probability-P5d.md` §7 Q1,
-  decided (a) by the orchestrator, and §8), 2026-10-14.
+- **Status: bridge proved** (`hasCondMatrixMGFBound_smul_of_hasCondSubgaussianMGF`,
+  `docs/design/Probability-P5d.md` §7 Q1, decided (a) by the orchestrator, and §8), 2026-10-14.
+  Conditional Lieb for an `m`-measurable `H` was proved through a dense sequence of fixed
+  Hermitian offsets and the perturbation bound `tr exp A ≤ e^{‖A - B‖} tr exp B`, not through an
+  approximation of `H`; the kernel would not have shortened that either.
 
 ## Small spelling choices
 

@@ -48,4 +48,22 @@ theorem ConcaveOn.condExp_map_le_of_condExp_mem (hm : m ≤ mΩ) [SigmaFinite (�
     (hfs : ∀ᵐ ω ∂μ, f ω ∈ s) (hf : Integrable f μ) (hφf : Integrable (fun ω => φ (f ω)) μ)
     (hmean : ∀ᵐ ω ∂μ, μ[f | m] ω ∈ s) :
     μ[fun ω => φ (f ω) | m] ≤ᵐ[μ] fun ω => φ (μ[f | m] ω) := by
-  sorry
+  let S : Set (E × ℝ) := {p | p.1 ∈ s ∧ p.2 ≤ φ p.1}
+  let p : Ω → E × ℝ := fun ω => (f ω, φ (f ω))
+  have hp : Integrable p μ := hf.prodMk hφf
+  have hmem : ∀ᵐ ω ∂μ, μ[p | m] ω ∈ closure S :=
+    hφ.convex_hypograph.closure.condExp_mem hm hp isClosed_closure
+      (hfs.mono fun ω hω => subset_closure ⟨hω, le_rfl⟩)
+  have hfst := (ContinuousLinearMap.fst ℝ E ℝ).comp_condExp_comm (m := m) hp
+  have hsnd := (ContinuousLinearMap.snd ℝ E ℝ).comp_condExp_comm (m := m) hp
+  filter_upwards [hmem, hfst, hsnd, hmean] with ω hω h₁ h₂ hmean
+  change (μ[p | m] ω).1 = μ[f | m] ω at h₁
+  change (μ[p | m] ω).2 = μ[fun ω => φ (f ω) | m] ω at h₂
+  have heq : μ[p | m] ω = (μ[f | m] ω, μ[fun ω => φ (f ω) | m] ω) := Prod.ext h₁ h₂
+  rw [heq] at hω
+  obtain ⟨u, hu, hlim⟩ := mem_closure_iff_seq_limit.mp hω
+  have hφlim : Tendsto (fun k => φ (u k).1) atTop (𝓝 (φ (μ[f | m] ω))) :=
+    (hφc _ hmean).tendsto.comp (tendsto_nhdsWithin_iff.mpr
+      ⟨(continuous_fst.tendsto _).comp hlim, Eventually.of_forall fun k => (hu k).1⟩)
+  exact le_of_tendsto_of_tendsto' ((continuous_snd.tendsto _).comp hlim) hφlim
+    fun k => (hu k).2

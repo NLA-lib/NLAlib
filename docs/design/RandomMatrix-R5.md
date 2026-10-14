@@ -322,3 +322,65 @@ D7 (a)). The bridge `haarFrame n n = (haarMeasure ⊤).map Subtype.val` is block
 **Q7. Transfer by range projector**, not by a hypothesis "`F (B T) = F B` for invertible `T`":
 the projector form needs no rank hypothesis and no new raw condition. A consumer whose statistic
 is given otherwise rewrites it through `rangeProjector_mul_of_isUnit`.
+
+## 8. Amendments from the review (2026-10-14)
+
+From the Fable review and the orchestrator's decisions; each item says how the skeletons handle it.
+
+1. **Deviation 15 is not blocked.** The prototype proves `CompactSpace (Matrix.orthogonalGroup (Fin
+   n) ℝ)` (`NLAlib/Matrix/Subspaces/Stiefel.lean:24`), and NLAlib already has
+   `isCompact_setOf_hasOrthonormalCols`. Skeleton: `Uniqueness.lean` states the instance
+   `compactSpace_unitaryGroup` (over `𝕜`, any `[Fintype n]`, flagged as an upstream candidate that
+   moves to `NLAlib/ForMathlib` at the wrap-up) and the bridge `haarFrame_eq_map_haarMeasure :
+   haarFrame n n = (Measure.haarMeasure ⊤ : Measure (Matrix.orthogonalGroup n ℝ)).map Subtype.val`,
+   a corollary of the characterization at `X = id`. §7 Q6 is superseded; entry 15 is written.
+2. **Deviation 14's bridge.** `isLeftUnitarilyInvariant_iff : IsLeftUnitarilyInvariant ν ↔ ∀ U :
+   Matrix.unitaryGroup n 𝕜, ν.map ((U : Matrix n n 𝕜) * ·) = ν` (by
+   `hasOrthonormalCols_iff_mem_unitaryGroup`), in `UnitaryInvariance.lean`, with the right twin
+   `isRightUnitarilyInvariant_iff`. §7 Q1's "bridge: none" is superseded; entry 14 is written.
+3. **Characterization: `[IsProbabilityMeasure ν]` on the law**, not `[IsProbabilityMeasure μ]`. It
+   is load-bearing (an invariant law of total mass `c` is `c • haarFrame n k`), and `μ` is then a
+   probability by `hX.isProbabilityMeasure`. Skeleton: as stated.
+4. **File 2 imports `NLAlib.Matrix.Subspaces.Frames`** (`isClosed_setOf_hasOrthonormalCols`).
+   Skeleton: done.
+5. **Proof hint for `E [Qᴴ A Q]`: split on `card k = 0`** (the interface lemma divides by `card k`
+   for `Qᴴ`). Skeleton: a comment in the proof body.
+6. **Transfer docstring** names the power-iteration range finder (`A := (A * Aᴴ) ^ q * A`) and the
+   Nyström approximation of a positive semidefinite `A` (`A := CFC.sqrt A`). Skeleton: in the
+   docstrings of both transfer theorems.
+7. **New `ae_rank_mul_eq_min_of_hasLaw_haarFrame`**: `rank (A Q) = min (rank A) (card k)` a.s.,
+   every shape, from the transfer and `rank_rangeProjector`; the Haar twin of R1's
+   `ae_rank_mul_eq_min_of_hasLaw_gaussianMatrix` (`[Finite m]` as there). Skeleton: in
+   `Transfer.lean` (file 5 now holds 3).
+8. **The expectation form of the transfer takes `f` into any `[NormedAddCommGroup E]
+   [NormedSpace ℝ E]`**, so the matrix-valued residual `(1 - P) A` transfers without taking
+   entries. Skeleton: `integral_comp_rangeProjector_mul_of_hasLaw_haarFrame` with
+   `hf : StronglyMeasurable f` (the hypothesis `HasLaw.integral_comp` needs; for second-countable
+   `E` a consumer passes `hf.stronglyMeasurable` from `Measurable f`). It replaces the real-valued
+   form of §3.5.
+9. **Orchestrator decision: the column law is named.** `uniformSphereVector n : Measure (n → ℝ) :=
+   (gaussianVector n).map (fun g => ‖WithLp.toLp 2 g‖⁻¹ • g)`, a `def` like `haarFrame`, with
+   `isProbabilityMeasure_uniformSphereVector`, its `HasLaw` form
+   `hasLaw_inv_norm_smul_of_hasLaw_gaussianVector`, and the bridge
+   `hasLaw_col_unit_of_hasLaw_haarFrame` (the column of a `haarFrame n Unit` has law
+   `uniformSphereVector n`, no hypothesis on `n`), all in `Haar/Basic.lean`. §3.3's
+   `hasLaw_col_of_hasLaw_haarFrame` concludes `HasLaw (fun ω i => X ω i j) (uniformSphereVector n)
+   μ`. §1's "no sphere measure is defined" is superseded.
+10. **Interfaces are classes over `𝕜`** (orchestrator decision; D6 fixed the interface). §7 Q1 is
+    settled as recommended: `class IsLeftUnitarilyInvariant [DecidableEq n] (ν : Measure (Matrix n
+    k 𝕜))` and its right twin, with the fields of §2. Files 1 and 3 no longer wait.
+11. **Not now (optional note under §0):** the joint law of `(rangeProjector (A X), Ψ)` for `Ψ`
+    independent of `X`, for consumers that sketch twice. No skeleton.
+12. **The Matrix-layer additions go in a new skeleton file
+    `NLAlib/Matrix/Factorizations/PolarFrames.lean`**, not in the proved `Polar.lean` and
+    `OrthonormalBasis.lean`; the proof agent proves them there and they are merged into their owner
+    files at the wrap-up. Amendment to §5 (2026-10-14): file 0,
+    `Matrix/Factorizations/PolarFrames.lean` (§1 additions 1 to 6, 7 declarations), imported by
+    file 1. Addition 5 is `HasOrthonormalCols.exists_mul_eq` there; the private copy in
+    `Procrustes.lean` stays until the merge.
+
+Noted while writing the skeletons, not decided: Mathlib has a sphere measure,
+`MeasureTheory.Measure.toSphere` (`Mathlib/MeasureTheory/Constructions/HaarToSphere.lean`), the
+surface measure of a Haar measure on the unit sphere as a subtype. `uniformSphereVector` is a
+probability on `n → ℝ` instead; if that counts as a deviation it needs an entry and a bridge
+(`uniformSphereVector n` is the normalised image of `volume.toSphere` on `EuclideanSpace ℝ n`).

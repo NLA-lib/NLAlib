@@ -227,6 +227,68 @@ None of these was approved by the maintainer when it was made. Status is given p
 - **Bridges.** `Matrix.integral_apply`, `Matrix.integrable_iff` and the rest of
   `NLAlib/Probability/MatrixIntegral.lean`.
 
+## 14. Unitarily invariant laws of random matrices
+
+- **Mathlib.** `Measure.IsMulLeftInvariant` and `Measure.IsMulRightInvariant` for a measure on a
+  group, and `SMulInvariantMeasure G α μ` for a measure on a space with a `MulAction G α`. For
+  `G = Matrix.unitaryGroup n 𝕜` acting on `Matrix n k 𝕜` this needs a global `MulAction` of the
+  unitary group on rectangular matrices, which Mathlib does not have.
+- **NLAlib.** Two classes on a measure `ν : Measure (Matrix n k 𝕜)`, over `𝕜`:
+  `IsLeftUnitarilyInvariant ν` (`∀ U : Matrix n n 𝕜, HasOrthonormalCols U → ν.map (U * ·) = ν`)
+  and `IsRightUnitarilyInvariant ν` (`… ν.map (· * V) = ν`), in
+  `NLAlib/RandomMatrix/UnitaryInvariance.lean`. Instances: `gaussianMatrix`, `haarFrame`.
+- **Bridge.** `isLeftUnitarilyInvariant_iff : IsLeftUnitarilyInvariant ν ↔
+  ∀ U : Matrix.unitaryGroup n 𝕜, ν.map ((U : Matrix n n 𝕜) * ·) = ν`, by
+  `hasOrthonormalCols_iff_mem_unitaryGroup` (entry 4); `isRightUnitarilyInvariant_iff` likewise.
+- **Why.** Consumers hold unitaries as `Matrix` values with `HasOrthonormalCols` (entry 4), as
+  every theorem of the Matrix layer states them; a bundled group element would need a coercion in
+  every product. Adding the `MulAction` instance would put a global instance on Mathlib types that
+  Mathlib has not chosen (`CONTRIBUTING.md` §7). A `class`, as Mathlib's invariance notions are, so
+  the instances on the concrete laws are found by typeclass search.
+- **Cost.** A user who has `SMulInvariantMeasure` or a bundled unitary goes through the bridge.
+  If Mathlib adds the action, the classes could become abbreviations of `SMulInvariantMeasure`;
+  the field statements would not change.
+- **Status: open.** Orchestrator decision (classes over `𝕜`, left and right separately;
+  `docs/design/RandomMatrix-R5.md` §7 Q1, §8 items 2 and 10), 2026-10-14.
+
+## 15. Haar measure on the orthogonal group, as a law on matrices
+
+- **Mathlib.** `Measure.haarMeasure K₀` on a locally compact group, normalised by a compact set
+  `K₀`; for the compact group `Matrix.orthogonalGroup n ℝ`, `haarMeasure ⊤` is the probability
+  Haar measure, a measure on the bundled subtype. Mathlib has no `CompactSpace` instance for
+  `Matrix.unitaryGroup n 𝕜` and no Haar law on rectangular frames.
+- **NLAlib.** `haarFrame n k : Measure (Matrix n k ℝ) := (gaussianMatrix n k).map polarFactor`,
+  the law of a Haar frame of any shape, as a measure on matrices
+  (`NLAlib/RandomMatrix/Haar/Basic.lean`). The square case `haarFrame n n` is the library's Haar
+  measure on the orthogonal group.
+- **Bridge.** `haarFrame_eq_map_haarMeasure : haarFrame n n =
+  (Measure.haarMeasure ⊤ : Measure (Matrix.orthogonalGroup n ℝ)).map Subtype.val`
+  (`NLAlib/RandomMatrix/Haar/Uniqueness.lean`), a corollary of the characterization
+  `hasLaw_haarFrame_of_isLeftUnitarilyInvariant`. It uses the instance
+  `compactSpace_unitaryGroup` (from `isCompact_setOf_hasOrthonormalCols`; the prototype's
+  `orthogonalGroupCompactSpace`), an upstream candidate that moves to `NLAlib/ForMathlib`.
+- **Why.** Rectangular frames (range finders and Haar sketches use `n × k` frames, which no group
+  measure describes), `Matrix` values rather than subtype elements (entry 4), and one definition
+  for every shape (`docs/PORT_PROBABILITY.md` D7 (a): the polar factor of a Gaussian). The
+  characterization is proved against `haarFrame n n` itself, so it needs neither Haar uniqueness
+  nor compactness; those enter only through the bridge.
+- **Cost.** A user with Mathlib's Haar measure on `O(n)` rewrites with the bridge; group-level
+  facts (`IsHaarMeasure`, uniqueness up to scaling) are reached only through it.
+- **Status: open.** `docs/design/RandomMatrix-R5.md` §7 Q6 and §8 item 1, 2026-10-14.
+
+## 16. The uniform law on the sphere
+
+- **Mathlib.** `Measure.toSphere`: the surface measure on `Metric.sphere (0 : E) 1`, a subtype, not
+  normalised.
+- **NLAlib.** `uniformSphereVector n : Measure (n → ℝ)`, the probability law of `g / ‖g‖` for a
+  standard Gaussian vector `g` (`NLAlib/RandomMatrix/Haar/Basic.lean`), on the library's vectors
+  `n → ℝ` (CONTRIBUTING §5.1) and with the Gaussian construction the Haar frames use.
+- **Why.** Consumers (JL, the column law of a Haar frame) hold vectors in `n → ℝ` and a probability
+  measure; the subtype carrier and the normalisation would be re-done at every use.
+- **Bridge (planned, R5).** `uniformSphereVector n` is the normalisation of `Measure.toSphere` on
+  `EuclideanSpace ℝ n`, pushed forward by `WithLp.ofLp ∘ Subtype.val`.
+- **Status: open** until the bridge is proved.
+
 ## Small spelling choices
 
 - `principalMinor A s` for `(A.submatrix (↑) (↑)).det` with `s : Finset n`

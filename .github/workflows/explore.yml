@@ -1,0 +1,54 @@
+name: Explore data
+# Extracts the declaration data for nla-lib.org/explore (scripts/explore_data.sh), publishes it as
+# the asset `explore-data.json` of the rolling release `explore-data`, and asks the NLA-lib/explore
+# repository to rebuild the site.
+on:
+  push:
+    branches: [main, scaffold]
+  workflow_dispatch:
+concurrency:
+  # Only the newest run publishes.
+  group: explore-data
+  cancel-in-progress: true
+permissions:
+  contents: write
+jobs:
+  explore:
+    name: Extract and publish explore data
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build NLAlib with the Mathlib cache
+        uses: leanprover/lean-action@v1
+        with:
+          use-mathlib-cache: true
+          build-args: "NLAlib"
+          lint: false
+          test: false
+      - name: Extract
+        run: bash scripts/explore_data.sh explore-data.json
+      - name: Publish to the explore-data release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if ! gh release view explore-data > /dev/null 2>&1; then
+            gh release create explore-data --title "Explore data" --latest=false \
+              --notes "Rolling data for nla-lib.org/explore; replaced on every push." \
+              --target "$GITHUB_SHA"
+          fi
+          gh release upload explore-data explore-data.json --clobber
+          gh release edit explore-data \
+            --notes "Rolling data for nla-lib.org/explore. Built from ${GITHUB_SHA} (${GITHUB_REF_NAME})."
+      - name: Notify NLA-lib/explore
+        env:
+          DISPATCH_TOKEN: ${{ secrets.EXPLORE_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$DISPATCH_TOKEN" ]; then
+            echo "EXPLORE_DISPATCH_TOKEN not set; not notifying NLA-lib/explore"
+            exit 0
+          fi
+          curl -fsS -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${DISPATCH_TOKEN}" \
+            https://api.github.com/repos/NLA-lib/explore/dispatches \
+            -d "{\"event_type\":\"nlalib-updated\",\"client_payload\":{\"sha\":\"${GITHUB_SHA}\",\"ref\":\"${GITHUB_REF_NAME}\"}}"

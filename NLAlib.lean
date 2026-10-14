@@ -181,4 +181,7 @@ public import NLAlib.Probability.SubGaussianVector.Basic
 public import NLAlib.Probability.SubGaussianVector.Norm
 public import NLAlib.Probability.Tail
 public import NLAlib.RandomMatrix.Gaussian.Basic
+public import NLAlib.RandomMatrix.Gaussian.Concentration
 public import NLAlib.RandomMatrix.Gaussian.Invariance
+public import NLAlib.RandomMatrix.Gaussian.Moments
+public import NLAlib.RandomMatrix.Gaussian.Rank

@@ -33,23 +33,38 @@ namespace NLAlib
 variable {Ω : Type*} {mΩ : MeasurableSpace Ω} {μ : Measure Ω} {m n : Type*} [Fintype m]
   [Fintype n] {X : Ω → Matrix m n ℝ} {f : Matrix m n ℝ → ℝ} {L : ℝ≥0}
 
+/-- The Frobenius-Lipschitz inequality for `f`, read on the flattened entries. -/
+private theorem lipschitzWith_curry (hf : ∀ A B, |f A - f B| ≤ L * frobNorm (A - B)) :
+    LipschitzWith L (fun x : EuclideanSpace ℝ (m × n) =>
+      f (Matrix.of (Function.curry (WithLp.ofLp x)))) := by
+  refine lipschitzWith_ofLp_iff (f := fun x => f (Matrix.of (Function.curry x))) |>.2 ?_
+  intro x y
+  have h := hf (Matrix.of (Function.curry x)) (Matrix.of (Function.curry y))
+  rwa [frobNorm_eq_norm_toLp_uncurry] at h
+
 /-- A Frobenius-Lipschitz function of a Gaussian matrix is integrable. -/
 theorem integrable_comp_of_hasLaw_gaussianMatrix (hX : HasLaw X (gaussianMatrix m n) μ)
     (hf : ∀ A B, |f A - f B| ≤ L * frobNorm (A - B)) : Integrable (fun ω => f (X ω)) μ := by
-  sorry
+  exact integrable_comp_of_lipschitzWith_of_hasLaw_gaussianVector
+    (f := fun x => f (Matrix.of (Function.curry x)))
+    (hasLaw_uncurry_of_hasLaw_gaussianMatrix hX) (lipschitzWith_curry hf)
 
 /-- **Gaussian concentration** for a function of a Gaussian matrix that is `L`-Lipschitz for the
 Frobenius distance: `f (G) - E f (G)` is sub-Gaussian with proxy `L²`. -/
 theorem hasSubgaussianMGF_sub_integral_of_hasLaw_gaussianMatrix
     (hX : HasLaw X (gaussianMatrix m n) μ) (hf : ∀ A B, |f A - f B| ≤ L * frobNorm (A - B)) :
     HasSubgaussianMGF (fun ω => f (X ω) - ∫ ω', f (X ω') ∂μ) (L ^ 2) μ := by
-  sorry
+  exact hasSubgaussianMGF_sub_integral_of_lipschitzWith_of_hasLaw_gaussianVector
+    (f := fun x => f (Matrix.of (Function.curry x)))
+    (hasLaw_uncurry_of_hasLaw_gaussianMatrix hX) (lipschitzWith_curry hf)
 
 /-- The upper tail: `P(E f(G) + t ≤ f(G)) ≤ exp (-t² / (2L²))`. -/
 theorem measureReal_integral_add_le_of_hasLaw_gaussianMatrix
     (hX : HasLaw X (gaussianMatrix m n) μ) (hf : ∀ A B, |f A - f B| ≤ L * frobNorm (A - B))
     {t : ℝ} (ht : 0 ≤ t) :
     μ.real {ω | ∫ ω', f (X ω') ∂μ + t ≤ f (X ω)} ≤ Real.exp (-t ^ 2 / (2 * L ^ 2)) := by
-  sorry
+  exact measureReal_integral_add_le_of_lipschitzWith_of_hasLaw_gaussianVector
+    (f := fun x => f (Matrix.of (Function.curry x)))
+    (hasLaw_uncurry_of_hasLaw_gaussianMatrix hX) (lipschitzWith_curry hf) ht
 
 end NLAlib

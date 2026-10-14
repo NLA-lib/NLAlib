@@ -10,6 +10,7 @@ public import NLAlib.ForMathlib.Analysis.InnerProductSpace.PiL2
 public import NLAlib.ForMathlib.Analysis.RCLike.ToComplex
 public import NLAlib.ForMathlib.Analysis.Real.Sqrt
 public import NLAlib.ForMathlib.Analysis.SpecialFunctions.Log.Basic
+public import NLAlib.ForMathlib.Analysis.SpecialFunctions.Trigonometric.Sinc
 public import NLAlib.ForMathlib.Data.Matrix.Block
 public import NLAlib.ForMathlib.Data.Matrix.Mul
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.Adjugate

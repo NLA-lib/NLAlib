@@ -15,8 +15,8 @@ public import NLAlib.Probability.Distributions.Gaussian
 
 For a standard Gaussian vector `X` in `ℝⁿ` (`N = card n`) and a fixed unit vector `u`, the
 squared overlap `(u ⬝ᵥ X)² / ‖X‖²` is the squared cosine between a random start and a fixed
-direction, the quantity a random-start analysis of the power method or the Lanczos method
-(Kuczyński and Woźniakowski 1992) has to control. Its inverse `‖X‖² / (u ⬝ᵥ X)²` has infinite
+direction, the quantity a random-start analysis of the power method or the Lanczos method has to
+control [KuczynskiWozniakowski1992]. Its inverse `‖X‖² / (u ⬝ᵥ X)²` has infinite
 mean, but its logarithm has an exponential tail beyond `log (2N)`:
 `P(t ≤ log (‖X‖² / (u ⬝ᵥ X)²)) ≤ √(2N) e^{-t/2}` for every real `t`, and so finite first and
 second moments, `E log (‖X‖² / (u ⬝ᵥ X)²) ≤ log (2N) + 2` and
@@ -37,6 +37,11 @@ standard Gaussian density is at most `1/2`): `P(v ≤ R / g²) ≤ E √(R / v) 
   `NLAlib.integral_log_norm_sq_div_sq_le_of_hasLaw_gaussianVector`: the mean.
 * `NLAlib.integrable_log_norm_sq_div_sq_sq_of_hasLaw_gaussianVector`,
   `NLAlib.integral_log_norm_sq_div_sq_sq_le_of_hasLaw_gaussianVector`: the second moment.
+
+## References
+
+* [J. Kuczyński, H. Woźniakowski, *Estimating the largest eigenvalue by the power and Lanczos
+  algorithms with a random start*][KuczynskiWozniakowski1992].
 -/
 
 @[expose] public section
@@ -445,8 +450,8 @@ private theorem exists_hasLaw_gaussianVector_eq (hX : HasLaw X (gaussianVector n
 /-- **The tail of the logarithmic overlap.** For a standard Gaussian vector `X` in `ℝⁿ` and a
 unit vector `u`, `P(t ≤ log (‖X‖² / (u ⬝ᵥ X)²)) ≤ √(2N) e^{-t/2}` for every real `t`, with
 `N = card n`; the bound is below `1` exactly when `t > log (2N)`. The logarithm is `0` on the null
-event `u ⬝ᵥ X = 0`. The random-start step of the power and Lanczos methods (Kuczyński and
-Woźniakowski 1992), in logarithmic form.
+event `u ⬝ᵥ X = 0`. The random-start step of the power and Lanczos methods
+[KuczynskiWozniakowski1992], in logarithmic form.
 Port of `NLAlib.pi_gaussianReal_logOverlap_gt_le`, there for a coordinate of `Fin (n + 1)`, a
 strict event and `t ≥ log (2N)`.
 Result: random-start-log-overlap -/
@@ -476,7 +481,7 @@ theorem integrable_log_norm_sq_div_sq_of_hasLaw_gaussianVector
 vector `u`, `E log (‖X‖² / (u ⬝ᵥ X)²) ≤ log (2N) + 2` with `N = card n`, although
 `E ‖X‖² / (u ⬝ᵥ X)² = ∞`. Integrating the tail
 `NLAlib.measureReal_log_norm_sq_div_sq_ge_le_of_hasLaw_gaussianVector`; the random-start step of
-the power and Lanczos methods (Kuczyński and Woźniakowski 1992). The exact mean is
+the power and Lanczos methods [KuczynskiWozniakowski1992]. The exact mean is
 `ψ(N/2) - ψ(1/2) ~ log (2N) + γ`, so the additive constant is not tight.
 Port of `NLAlib.integrable_and_integral_gaussianLogOverlap_le` and
 `NLAlib.integrable_and_integral_log_sum_div_sq_pi_gaussianReal_le`, there for a coordinate.

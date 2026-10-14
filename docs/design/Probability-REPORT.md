@@ -15,16 +15,16 @@ The round built the probabilistic foundation the sketching and low-rank layers w
 property interfaces, concentration stated once against them, and the standard laws (Gaussian
 scalars, vectors and matrices, Rademacher, finite sampling, Haar frames, the uniform sphere) shown
 to satisfy them. Every statement is proved; `NLAlibScaffold/` is empty. The work ran from commit
-`b851677` (measurability moved to the Probability layer) to `0aa65e5` (wrap-up), 63 commits on
-2026-10-14.
+`b851677` (measurability moved to the Probability layer) through `0aa65e5` (wrap-up) to `c22904e`
+(the last ports, §6.1), 65 commits on 2026-10-14, followed by the closing commit with this report.
 
-- `NLAlib/Probability/` and `NLAlib/RandomMatrix/`: 59 files, 18,513 lines. With the 12 new
-  `ForMathlib` files and `Matrix/Factorizations/PolarFrames.lean`, about 19,600 lines and about
-  480 public declarations (27 definitions, structures or classes), plus about 410 private helpers.
+- `NLAlib/Probability/` and `NLAlib/RandomMatrix/`: 61 files, 19,396 lines. With the 13 new
+  `ForMathlib` files and `Matrix/Factorizations/PolarFrames.lean`, about 20,600 lines and about
+  500 public declarations (27 definitions, structures or classes), plus about 410 private helpers.
   All modules are registered in `NLAlib.lean`; no `sorry` anywhere.
-- Last recorded stage check (`scripts/stage_check.sh`, after R3, at 200 modules): build with no
-  warnings, audit 4681 declarations with 0 violations, lint clean, 38 bibliography keys with 0
-  problems. The check after the final wrap-up (`0aa65e5`) is not recorded in `status.md`.
+- Final stage check (`scripts/stage_check.sh`, after the closing changes): 218 proved modules (0 not yet), build with 0
+  warnings, audit 5001 declarations with 0 violations, lint 0 errors in 3645 declarations (14
+  linters), 41 bibliography keys with 0 problems. The lines are quoted in §7.
 - Ledger: the completeness pass (`b5ce6e9`) leaves 0 of the prototype's 921 public
   `Probability/` and `RandomMatrix/` declarations unaccounted for. `docs/port/ledger.json` has
   938 entries tagged with a round stage: 245 with a target, 693 with a reason and no target. By
@@ -32,23 +32,24 @@ to satisfy them. Every statement is proved; `NLAlibScaffold/` is empty. The work
   P5a 65 (29), P5b 6 (6), P5c 59 (10), P5d 49 (9), P6 55 (4), P7 15 (5), R1 68 (35), R2 34 (7),
   R3 41 (14), R4 257 (32; most of the Wishart and hard-edge cut is booked here), R5 19 (6). The
   completeness pass itself classified its 414 entries as 36 mapped, 15 in Mathlib, 69 reached by
-  another route, 273 cut, 21 not ported (§6).
+  another route, 273 cut, 21 not ported; all but the two sub-Gaussian Johnson–Lindenstrauss
+  entries were ported at the end of the round (§6.1).
 
 | Stage | Headline results | Files |
 |---|---|---|
 | P0 | Product laws and their coordinates; Markov, power Markov, Chebyshev; moments from tails; isotropy and Hutchinson's mean `E x*Ax = tr A`; matrix integrals with trace, Loewner and positivity API | `Probability/{Law,Tail,Isotropic,MatrixIntegral}`, `Measurability/Matrix` |
 | P1 | Sub-Gaussian API (proxy monotonicity, moments, maxima, weighted sums); sub-exponential interface, its tails and Bernstein's inequality for sums; centred square of a sub-Gaussian is sub-exponential `(32c², 4c)` | `SubGaussian/{Basic,Moments,Square}`, `SubExponential/{Basic,Tail}` |
 | P2 | Standard Gaussian vector (an `IsGaussian` instance), Rademacher, finite sampling laws, with exact moments (`m₄ = 3`, `m₄ = 1`) and sub-Gaussian proxy 1 | `Distributions/{Gaussian,Rademacher,Sampling}` |
-| P3 | Sub-Gaussian vectors over `𝕜`; norm tail (Hsu, Kakade and Zhang); χ² MGF and Laurent–Massart lower tail; Hutchinson's variance over `𝕜` from moment parameters; Hanson–Wright with constant `1/196` | `SubGaussianVector/{Basic,Norm}`, `Distributions/ChiSquare`, `QuadraticForm/{Moments,HansonWright,HansonWright/*}` |
-| P4 | Entropy, tensorization, Herbst's argument; Gross's log-Sobolev inequality on any Euclidean space; Gaussian concentration of Lipschitz functions with the sharp proxy `L²` | `Entropy`, `EntropyTensorization`, `LogSobolev`, `Distributions/{GaussianLogSobolev,GaussianLogSobolevOneDim,GaussianConcentration}` |
-| P5a | Matrix Laplace transform method, Lieb subadditivity, master bound; matrix Chernoff (tails, means, two-sided around `1`), Bernstein (Hermitian, rectangular, scalar corollary), sub-Gaussian matrix series | `MatrixConcentration/{Laplace,Subadditivity,MGFBound,Chernoff,ChernoffSum,Bernstein,Series}` |
+| P3 | Sub-Gaussian vectors over `𝕜`; norm tail (Hsu, Kakade and Zhang); χ² MGF, Laurent–Massart lower tail and the small ball `P(‖X‖² ≤ u) ≤ (e u / N)^{N/2}`; Hutchinson's variance over `𝕜` from moment parameters; Hanson–Wright with constant `1/196` | `SubGaussianVector/{Basic,Norm}`, `Distributions/ChiSquare`, `QuadraticForm/{Moments,HansonWright,HansonWright/*}` |
+| P4 | Entropy, tensorization, Herbst's argument; Gross's log-Sobolev inequality on any Euclidean space; Gaussian concentration of Lipschitz functions with the sharp proxy `L²`; every log-Sobolev inequality extended to finite-energy `C¹` functions, with `g² log g²` integrable | `Entropy`, `EntropyTensorization`, `LogSobolev`, `Distributions/{GaussianLogSobolev,GaussianLogSobolevOneDim,GaussianConcentration}` |
+| P5a | Matrix Laplace transform method, Lieb subadditivity, master bound; matrix Chernoff (tails, means, two-sided around `1`), Bernstein (Hermitian, rectangular, scalar corollary), sub-Gaussian matrix series; variance additivity `E (∑ Xₖ)² = ∑ E Xₖ²` for independent centred matrices | `MatrixConcentration/{Laplace,Subadditivity,MGFBound,Chernoff,ChernoffSum,Bernstein,Series,Variance}` |
 | P5b | Generalised Laplace bound `P(t ≤ λ_max Y) ≤ E tr ψ(Y) / ψ(t)`; Chernoff and Bernstein in the intrinsic dimension, tails and means (mean constant 8) | `MatrixConcentration/IntrinsicDimension`, `Laplace` |
 | P5c | `E Y² = ∑ Aᵢ²` for isotropic coefficients; noncommutative Khintchine `E tr Y^{2p} ≤ (2p-1)^p tr (∑ Aᵢ²)^p` for Gaussian and Rademacher series, from one law-free recursion | `MatrixConcentration/Khintchine` |
 | P5d | Matrix conditional expectations; conditional Lieb (also for an `m`-measurable offset); Ville's inequality; trace supermartingale; matrix Freedman (Hermitian and rectangular) | `MatrixConditionalExpectation`, `MatrixConcentration/{ConditionalMGFBound,Freedman}`, two `ForMathlib` files |
 | P6 | Stein's identity in covariance form (polynomial-growth class); Gaussian interpolation (Kahane); Sudakov–Fernique; Gordon's min-max inequality; `E ‖A X‖ ≤ ‖A‖_F` | `Distributions/{GaussianIntegrationByParts,GaussianComparison}`, additions to `Isotropic`, `ChiSquareMoments` |
 | P7 | ψ₂ and ψ₁ (Orlicz) conditions imply the sub-Gaussian and sub-exponential interfaces; entropy of `exp (s g)` for bounded `g`; bounded differences and McDiarmid | `Orlicz`, `BoundedDifferences`, addition to `Entropy` |
 | R1 | `gaussianMatrix m n`; rows, columns, flattening; two-sided orthogonal invariance; independence of orthogonal blocks; a.s. rank `rank (A G) = min (rank A) k`; Frobenius-Lipschitz concentration | `RandomMatrix/Gaussian/{Basic,Invariance,Rank,Concentration}` |
-| R2 | `E ‖S X T‖_F² = ‖S‖_F² ‖T‖_F²` for isotropic entries, also with `S`, `T` random and independent | `RandomMatrix/Gaussian/Moments` |
+| R2 | `E ‖S X T‖_F² = ‖S‖_F² ‖T‖_F²` for isotropic entries, also with `S`, `T` random and independent; the random-start log-overlap `log (‖X‖² / (u ⬝ᵥ X)²)` of a Gaussian vector with a unit vector: tail, mean `≤ log (2N) + 2`, second moment | `RandomMatrix/Gaussian/Moments`, `Distributions/GaussianLogOverlap` |
 | R3 | Chevet's inequality; `E ‖G‖ ≤ √N + √n` and `√N - √n ≤ E σ_min(G)`; Gaussian deviation tails and Loewner sandwich on `Gᴴ G`; the same for independent isotropic sub-Gaussian rows (constant 24) | `RandomMatrix/Gaussian/{SpectralNorm,ExtremeSingularValues}`, `RandomMatrix/SubGaussian/ExtremeSingularValues` |
 | R4 | Real moments of χ²; `E (G Gᴴ)⁻¹ = (k - r - 1)⁻¹ • 1`, `E ‖G†‖_F² = r/(k - r - 1)`, Frobenius fourth moment, spectral moments `E ‖G†‖^q`; the range finder's block moments | `Distributions/ChiSquareMoments`, `RandomMatrix/Gaussian/{InverseMoments,InverseMoments/Spectral,BlockMoments}` |
 | R5 | `haarFrame n k` (polar factor of a Gaussian); two-sided invariance; characterization by left invariance; QR law; Haar measure bridge; `E [Q B Qᴴ] = (tr B / n) • 1`; column law `uniformSphereVector`; Gaussian–Haar transfer of `rangeProjector (A Ω)` | `RandomMatrix/{UnitaryInvariance,Haar/{Basic,Uniqueness,Moments,Transfer}}`, `Matrix/Factorizations/PolarFrames` |
@@ -99,21 +100,30 @@ hypotheses are three Mathlib-form hypotheses (`Measurable Q`, `∀ᵐ ω, HasOrt
 `hasSubgaussianMGF_sub_integral_of_abs_update_sub_le` (bounded differences, proxy `∑ cᵢ² / 4`),
 `measureReal_sub_integral_ge_le_mcdiarmid`.
 
-**Vectors and quadratic forms (P3, R4).** `IsSubgaussianVector.measure_norm_sq_ge_le`,
+**Vectors and quadratic forms (P3, R2, R4).** `IsSubgaussianVector.measure_norm_sq_ge_le`,
 `measureReal_abs_norm_sq_sub_integral_ge_le`; `measureReal_norm_sq_le_of_hasLaw_gaussianVector`
-(Laurent–Massart); `integral_norm_sq_rpow_of_hasLaw_gaussianVector` (all real χ² moments);
+(Laurent–Massart); `measureReal_norm_sq_le_le_rpow_of_hasLaw_gaussianVector` (χ² small ball);
+`integral_norm_sq_rpow_of_hasLaw_gaussianVector` (all real χ² moments);
+`measureReal_log_norm_sq_div_sq_ge_le_of_hasLaw_gaussianVector`,
+`integral_log_norm_sq_div_sq_le_of_hasLaw_gaussianVector` and
+`integral_log_norm_sq_div_sq_sq_le_of_hasLaw_gaussianVector` (random-start log-overlap with any
+unit vector `u`: tail, mean, second moment);
 `variance_quadForm_of_isHermitian` and its Gaussian and Rademacher corollaries (Hutchinson);
 `measureReal_abs_quadForm_sub_integral_ge_le` and the one-sided forms (Hanson–Wright).
 
 **Gaussian analysis (P4, P6).** `entropy_pi_le_sum`, `hasSubgaussianMGF_sub_integral_of_entropy_le`
 (Herbst); `entropy_sq_le_two_mul_integral_norm_fderiv_sq_stdGaussian` (Gross);
+`HasLogSobolev.integrable_sq_mul_log_sq` and `HasLogSobolev.entropy_sq_le_of_integrable` (the
+inequality for finite-energy `C¹` functions under any `HasLogSobolev` law);
 `hasSubgaussianMGF_sub_integral_of_lipschitzWith_of_hasLaw_stdGaussian` and the `gaussianVector`
 form; `integral_sub_integral_mul_eq_sum_covariance_mul_integral_fderiv_of_hasGaussianLaw` (Stein);
 `integral_comp_le_integral_comp_of_hasGaussianLaw` (interpolation);
 `integral_iSup_le_integral_iSup_of_hasGaussianLaw` (Sudakov–Fernique);
 `integral_iInf_iSup_le_integral_iInf_iSup_of_hasGaussianLaw` (Gordon).
 
-**Matrix concentration (P5a to P5d).** Chernoff `measureReal_eigenvalue_zero_sum_ge_le_chernoff`,
+**Matrix concentration (P5a to P5d).** Variance additivity `integral_sum_sq_of_iIndepFun`,
+`integral_sum_mul_sum_of_iIndepFun`, `integral_sum_sub_integral_sq_of_iIndepFun`
+(`MatrixConcentration/Variance.lean`); Chernoff `measureReal_eigenvalue_zero_sum_ge_le_chernoff`,
 `measureReal_eigenvalue_sum_le_le_chernoff`, the means, and `measureReal_specNorm_sum_sub_one_ge_le`
 (`2 d e^{-ε²/(3L)}` when `∑ E Xₖ = 1`); the trace forms `…_of_integral_le` for a single matrix
 (for sampling without replacement); Bernstein `measureReal_eigenvalue_zero_sum_ge_le_bernstein`,
@@ -158,8 +168,8 @@ General facts added to `ForMathlib`: resampling one coordinate of a product meas
 (`Analysis/Convex/Integral`), conditional Jensen for concave maps (`ConditionalExpectation/CondJensen`),
 optional stopping for Ville (`Probability/Martingale/OptionalStopping`), the scoped `NormedSpace ℝ`
 on matrices (`Analysis/CStarAlgebra/Matrix`), compactness of the unitary group
-(`LinearAlgebra/UnitaryGroup`), Hessian lemmas, block sums, `|s log s| ≤ s² + 1`, a square-root
-lemma.
+(`LinearAlgebra/UnitaryGroup`), Hessian lemmas, block sums, `|s log s| ≤ s² + 1` and `|G s log (G s)| ≤ |G log G| + G`, a square-root
+lemma, the sine truncation `c sin (y / c)` (`Analysis/SpecialFunctions/Trigonometric/Sinc`).
 
 ## 3. Numerical constants
 
@@ -309,19 +319,24 @@ Entries in `docs/design/Mathlib-deviations.md`:
 
 ### 6.1 Not ported
 
-From the ledger completeness pass, 21 prototype declarations in five groups. **A port of items 1
-to 3, and possibly 4, is in progress; the orchestrator will update this section.**
+The ledger completeness pass left 21 prototype declarations in five groups. All but the last were
+ported at the end of the round (`c22904e`), under new names:
 
-1. Random-start log-overlap (R2, 14 entries): `gaussianLogOverlap` and its moments,
-   `E log(‖g‖²/gᵢ²) ≤ log 2N + 2`, a second moment and an exponential tail. Brief §5 lists it as
-   a downstream export (random-start power and Lanczos).
-2. χ² small ball (P3): `P(χ²_d ≤ u) ≤ (e u / d)^{d/2}`
-   (`measureReal_sum_sq_le_le_gaussianVector`).
-3. Matrix variance (P5a, 2 entries): `E (∑ X)² = ∑ E X²` for independent centred matrices
-   (`variance_additivity`, `integral_sum_mul_sum_eq_sum_integral_mul`).
-4. Log-Sobolev extension (P4, 2 entries): `HasEuclideanLogSobolev.integrable_sq_mul_log_sq` and
-   `.inequality_of_integrable`, the extension to finite-energy `C¹` test functions.
-5. Sub-Gaussian Johnson–Lindenstrauss (R3, 2 entries), for the next round.
+1. Random-start log-overlap (R2, 14 entries): `measureReal_log_norm_sq_div_sq_ge_le_of_hasLaw_gaussianVector`
+   (tail), `integral_log_norm_sq_div_sq_le_of_hasLaw_gaussianVector` (mean `≤ log (2N) + 2`),
+   `integral_log_norm_sq_div_sq_sq_le_of_hasLaw_gaussianVector` (second moment), with their
+   `integrable_` companions, in `Distributions/GaussianLogOverlap.lean`. They hold for any unit
+   vector `u`, not only a coordinate, and write the quantity out with no definition. They are the
+   random-start step of the power and Lanczos methods [KuczynskiWozniakowski1992].
+2. χ² small ball (P3): `measureReal_norm_sq_le_le_rpow_of_hasLaw_gaussianVector`,
+   `P(‖X‖² ≤ u) ≤ (e u / N)^{N/2}` with `N = card n`, in `Distributions/ChiSquare.lean`.
+3. Matrix variance (P5a, 2 entries): `integral_sum_sq_of_iIndepFun`,
+   `integral_sum_mul_sum_of_iIndepFun`, `integral_sum_sub_integral_sq_of_iIndepFun`, in
+   `MatrixConcentration/Variance.lean`, over `RCLike` with no Hermitian hypothesis.
+4. Log-Sobolev extension (P4, 2 entries): `HasLogSobolev.integrable_sq_mul_log_sq` and
+   `HasLogSobolev.entropy_sq_le_of_integrable`, in `LogSobolev.lean`, for every law with
+   `HasLogSobolev`; the Gaussian integrability lemmas now follow from them.
+5. Sub-Gaussian Johnson–Lindenstrauss (R3, 2 entries): not ported, for the next round.
 
 Cut by design (D9 and the notes; ledgered): Wishart and the hard edge, the localized Freedman
 interface, general-covariance Isserlis, Slepian, Ornstein–Uhlenbeck, the `_of_hasLaw` twins.
@@ -347,7 +362,7 @@ interface, general-covariance Isserlis, Slepian, Ornstein–Uhlenbeck, the `_of_
 
 ### 6.3 Next-round candidates
 
-- Sub-Gaussian JL (item 5 above) and the Haar JL in Dasgupta–Gupta form, with the Haar fourth
+- Sub-Gaussian JL (§6.1, item 5) and the Haar JL in Dasgupta–Gupta form, with the Haar fourth
   moments it needs (R5 Q4) and concentration of `‖Qᴴ x‖²`.
 - Complex Gaussian vectors and matrices and complex Haar frames, as parallel definitions; with
   them the complex χ², Hanson–Wright, rows theorem (constant depending on `finrank ℝ 𝕜`) and an
@@ -359,10 +374,12 @@ interface, general-covariance Isserlis, Slepian, Ornstein–Uhlenbeck, the `_of_
 
 ### 6.4 Small items left from the wrap-up
 
-- `Matrix/Factorizations/PolarFrames.lean` still holds the seven R5 Matrix-layer additions; R5
-  §8.12 planned to merge them into `Polar.lean` and `Basic/OrthonormalBasis.lean`.
 - `Distributions/GaussianComparison.lean` is 1035 lines, over the soft limit.
-- `status.md` still lacks the P5a row and a stage check after the final wrap-up.
+
+`Matrix/Factorizations/PolarFrames.lean`, which holds the seven R5 Matrix-layer additions, is a
+proved Matrix-layer file and stays separate by design; it is not merged into `Polar.lean` and
+`Basic/OrthonormalBasis.lean` as R5 §8.12 had planned. The P5a row is now in the `status.md` table, and the final stage check is in
+§7.
 
 ## 7. Process notes
 
@@ -377,8 +394,21 @@ interface, general-covariance Isserlis, Slepian, Ornstein–Uhlenbeck, the `_of_
 - **Delegation.** From midway the orchestrator delegated design-note drafts and skeletons to Opus
   agents, reviews to Fable, bookkeeping (ledger, registration, stage checks) to Sonnet. P5b, P5c,
   P5d and P7 were reviewed together by one Fable agent.
-- **Incident.** A merge script wrote 36 MB into a source file. The file was restored from git;
-  nothing was lost.
+- **Incident.** A merge script wrote 36 MB into
+  `NLAlib/Probability/Distributions/GaussianIntegrationByParts.lean`. The file was restored from
+  git; nothing was lost.
 - **False statements caught.** `HasMatrixMGFBound.mono_bound` (the exponential is not operator
   monotone) and Chevet's first comparison process (false for non-unit vectors) were found by
   review before proofs; the skeleton binder bug (`θ : ℕ`) by a proof agent.
+- **Final check.** `scripts/stage_check.sh`, run after the closing changes (one public copy each of
+  the sine-truncation and `x log x` lemmas, the Gaussian integrability lemmas derived from
+  `HasLogSobolev`, the `KuczynskiWozniakowski1992` entry), printed:
+
+  ```
+  218 proved modules; 0 not yet
+  build: Build completed successfully (3767 jobs).; warnings: 0
+  audited 5001 declarations reachable through import NLAlib; 0 violations
+  -- Found 0 errors in 3645 declarations (plus 1356 automatically generated ones) in NLAlib with 14 linters
+  -- All linting checks passed!
+  41 bibliography keys; 0 problems
+  ```

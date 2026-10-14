@@ -17,9 +17,8 @@ right, has the range of its matrix and spectral norm at most one, and normalises
 frames with the same number of columns differ by a unitary on the left; and a matrix that every
 unitary conjugation fixes is a multiple of the identity.
 
-This file collects the Matrix-layer additions of `docs/design/RandomMatrix-R5.md` §1 while they are
-proved. At the wrap-up, the polar-factor statements join `NLAlib/Matrix/Factorizations/Polar.lean`
-and the frame statements join `NLAlib/Matrix/Basic/OrthonormalBasis.lean`.
+These are the Matrix-layer additions of `docs/design/RandomMatrix-R5.md` §1. They stay in their own
+file: `Procrustes.lean` imports it, and it imports both `Polar.lean` and `OrthonormalBasis.lean`.
 
 ## Main results
 

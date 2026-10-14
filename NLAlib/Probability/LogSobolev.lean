@@ -12,9 +12,8 @@ public import Mathlib.Analysis.Calculus.ContDiff.Defs
 public import Mathlib.MeasureTheory.Constructions.BorelSpace.Basic
 public import Mathlib.Analysis.SpecialFunctions.ExpDeriv
 public import Mathlib.MeasureTheory.Integral.DominatedConvergence
-public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
-public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Sinc
 public import NLAlib.ForMathlib.Analysis.SpecialFunctions.Log.Basic
+public import NLAlib.ForMathlib.Analysis.SpecialFunctions.Trigonometric.Sinc
 public import NLAlib.ForMathlib.Analysis.Calculus.BumpFunction.Convolution
 public import NLAlib.Probability.Entropy
 
@@ -388,26 +387,6 @@ private theorem exists_cutoff : ∃ (χ : ℕ → E → ℝ) (K : ℝ), (∀ n, 
       div_le_one (by positivity)]
     exact (show ‖y‖ < (n : ℝ) + 1 from hy).le
 
-/-- `|(G s) log (G s)| ≤ |G log G| + G` for `G ≥ 0` and `s ∈ [0, 1]`. -/
-private theorem abs_mul_mul_log_le {G s : ℝ} (hG : 0 ≤ G) (hs0 : 0 ≤ s) (hs1 : s ≤ 1) :
-    |G * s * Real.log (G * s)| ≤ |G * Real.log G| + G := by
-  rcases hG.eq_or_lt with rfl | hG'
-  · simp
-  rcases hs0.eq_or_lt with rfl | hs'
-  · simp only [mul_zero, zero_mul, abs_zero]; positivity
-  rw [Real.log_mul hG'.ne' hs'.ne']
-  have e : G * s * (Real.log G + Real.log s) = s * (G * Real.log G) + G * (Real.log s * s) := by
-    ring
-  rw [e]
-  have h1 := Real.abs_log_mul_self_lt s hs' hs1
-  calc |s * (G * Real.log G) + G * (Real.log s * s)|
-      ≤ |s * (G * Real.log G)| + |G * (Real.log s * s)| := abs_add_le _ _
-    _ = s * |G * Real.log G| + G * |Real.log s * s| := by
-        rw [abs_mul s (G * Real.log G), abs_mul G (Real.log s * s), abs_of_nonneg hs0,
-          abs_of_nonneg hG]
-    _ ≤ 1 * |G * Real.log G| + G * 1 := by gcongr
-    _ = |G * Real.log G| + G := by ring
-
 /-- The inequality for a bounded `C¹` function of finite energy, from the defining class by the
 cutoffs `g χ n` and dominated convergence. -/
 private theorem HasLogSobolev.entropy_sq_le_of_abs_le [IsProbabilityMeasure ν]
@@ -480,52 +459,6 @@ private theorem HasLogSobolev.entropy_sq_le_of_abs_le [IsProbabilityMeasure ν]
   exact le_of_tendsto_of_tendsto (L2.sub ((Real.continuous_mul_log.tendsto _).comp L1))
     (L3.const_mul _) (Eventually.of_forall hineq)
 
-omit [FiniteDimensional ℝ E] [MeasurableSpace E] [BorelSpace E] in
-/-- The sine truncation `c sin (f / c)` of a `C¹` function `f`, for `c > 0`: its square is at
-most `f²` and `c²`, and its gradient norm is at most that of `f`. -/
-private theorem sineTrunc_le {f : E → ℝ} (hf : ContDiff ℝ 1 f) {c : ℝ} (hc : 0 < c) (x : E) :
-    (c * Real.sin (c⁻¹ * f x)) ^ 2 ≤ f x ^ 2 ∧ (c * Real.sin (c⁻¹ * f x)) ^ 2 ≤ c ^ 2 ∧
-      ‖fderiv ℝ (fun x => c * Real.sin (c⁻¹ * f x)) x‖ ^ 2 ≤ ‖fderiv ℝ f x‖ ^ 2 := by
-  refine ⟨?_, ?_, ?_⟩
-  · have : |c * Real.sin (c⁻¹ * f x)| ≤ |f x| := by
-      rw [abs_mul, abs_of_pos hc]
-      calc c * |Real.sin (c⁻¹ * f x)| ≤ c * |c⁻¹ * f x| :=
-            mul_le_mul_of_nonneg_left Real.abs_sin_le_abs hc.le
-        _ = |f x| := by
-            rw [abs_mul, abs_inv, abs_of_pos hc, ← mul_assoc, mul_inv_cancel₀ hc.ne', one_mul]
-    simpa only [sq_abs] using pow_le_pow_left₀ (abs_nonneg _) this 2
-  · have : |c * Real.sin (c⁻¹ * f x)| ≤ c := by
-      rw [abs_mul, abs_of_pos hc]
-      exact mul_le_of_le_one_right hc.le (Real.abs_sin_le_one _)
-    simpa only [sq_abs] using pow_le_pow_left₀ (abs_nonneg _) this 2
-  · have h := ((((hf.differentiable one_ne_zero) x).hasFDerivAt.const_mul c⁻¹).sin.const_mul
-      c).fderiv
-    have h' : ‖fderiv ℝ (fun x => c * Real.sin (c⁻¹ * f x)) x‖ ≤ ‖fderiv ℝ f x‖ := by
-      rw [h, norm_smul, norm_smul, norm_smul, Real.norm_eq_abs, Real.norm_eq_abs,
-        Real.norm_eq_abs, abs_inv, abs_of_pos hc]
-      calc c * (|Real.cos (c⁻¹ * f x)| * (c⁻¹ * ‖fderiv ℝ f x‖))
-          = (c * c⁻¹) * (|Real.cos (c⁻¹ * f x)| * ‖fderiv ℝ f x‖) := by ring
-        _ = |Real.cos (c⁻¹ * f x)| * ‖fderiv ℝ f x‖ := by rw [mul_inv_cancel₀ hc.ne', one_mul]
-        _ ≤ 1 * ‖fderiv ℝ f x‖ :=
-            mul_le_mul_of_nonneg_right (Real.abs_cos_le_one _) (norm_nonneg _)
-        _ = ‖fderiv ℝ f x‖ := one_mul _
-    exact pow_le_pow_left₀ (norm_nonneg _) h' 2
-
-/-- The sine truncations at scales `n + 1` converge pointwise to the identity. -/
-private theorem tendsto_sineTrunc (y : ℝ) :
-    Tendsto (fun n : ℕ => ((n : ℝ) + 1) * Real.sin (((n : ℝ) + 1)⁻¹ * y)) atTop (𝓝 y) := by
-  have hs : Tendsto (fun n : ℕ => ((n : ℝ) + 1)⁻¹ * y) atTop (𝓝 0) := by
-    simpa only [one_div, zero_mul] using tendsto_one_div_add_atTop_nhds_zero_nat.mul_const y
-  have h := (tendsto_const_nhds (x := y)).mul ((Real.continuous_sinc.tendsto 0).comp hs)
-  rw [Real.sinc_zero, mul_one] at h
-  refine h.congr fun n => ?_
-  have hn : ((n : ℝ) + 1) ≠ 0 := by positivity
-  by_cases hy : y = 0
-  · simp [hy]
-  · simp only [Function.comp]
-    rw [Real.sinc_of_ne_zero (mul_ne_zero (inv_ne_zero hn) hy)]
-    field_simp
-
 variable [IsProbabilityMeasure ν] {g : E → ℝ}
 
 omit [FiniteDimensional ℝ E] [IsProbabilityMeasure ν] in
@@ -541,11 +474,12 @@ private theorem sineTrunc_facts (hg : ContDiff ℝ 1 g) (hg2 : Integrable (fun x
   intro gN
   have hc : (0 : ℝ) < (n : ℝ) + 1 := by positivity
   have hcd : ContDiff ℝ 1 gN := contDiff_const.mul ((contDiff_const.mul hg).sin)
-  have hsq (x : E) : gN x ^ 2 ≤ g x ^ 2 := (sineTrunc_le hg hc x).1
-  have hdf (x : E) : ‖fderiv ℝ gN x‖ ^ 2 ≤ ‖fderiv ℝ g x‖ ^ 2 := (sineTrunc_le hg hc x).2.2
+  have hsq (x : E) : gN x ^ 2 ≤ g x ^ 2 := sq_le_sq.2 (Real.abs_mul_sin_inv_mul_le _ _)
+  have hdf (x : E) : ‖fderiv ℝ gN x‖ ^ 2 ≤ ‖fderiv ℝ g x‖ ^ 2 := pow_le_pow_left₀ (norm_nonneg _)
+    (norm_fderiv_mul_sin_inv_mul_le ((hg.differentiable one_ne_zero) x) _) 2
   refine ⟨hcd, fun x => ?_, hsq, ?_, hdf, ?_⟩
-  · rw [← abs_of_pos hc]
-    exact sq_le_sq.mp (sineTrunc_le hg hc x).2.1
+  · rw [abs_mul, abs_of_pos hc]
+    exact mul_le_of_le_one_right hc.le (Real.abs_sin_le_one _)
   · refine hg2.mono' (hcd.continuous.pow 2).aestronglyMeasurable (ae_of_all _ fun x => ?_)
     rw [Real.norm_of_nonneg (sq_nonneg _)]
     exact hsq x
@@ -608,7 +542,8 @@ theorem HasLogSobolev.integrable_sq_mul_log_sq (h : HasLogSobolev ν c) (hg : Co
     calc ∫⁻ x, ENNReal.ofReal (Fx x) ∂ν
         = ∫⁻ x, liminf (fun n => ENNReal.ofReal (FN n x)) atTop ∂ν := by
           refine lintegral_congr fun x => (Tendsto.liminf_eq ?_).symm
-          have hlim : Tendsto (fun n => gN n x) atTop (𝓝 (g x)) := tendsto_sineTrunc (g x)
+          have hlim : Tendsto (fun n => gN n x) atTop (𝓝 (g x)) :=
+            Real.tendsto_natCast_add_one_mul_sin_inv_mul (g x)
           exact (ENNReal.continuous_ofReal.tendsto _).comp
             (((Real.continuous_mul_log.tendsto _).comp (hlim.pow 2)).add tendsto_const_nhds)
       _ ≤ _ := lintegral_liminf_le fun n => ENNReal.measurable_ofReal.comp
@@ -637,7 +572,8 @@ theorem HasLogSobolev.entropy_sq_le_of_integrable (h : HasLogSobolev ν c) (hg :
   let gN : ℕ → E → ℝ := fun n x => ((n : ℝ) + 1) * Real.sin (((n : ℝ) + 1)⁻¹ * g x)
   have hF (n : ℕ) := sineTrunc_facts hg hg2 hdg n
   have hglog := h.integrable_sq_mul_log_sq hg hg2 hdg
-  have hlim (x : E) : Tendsto (fun n => gN n x) atTop (𝓝 (g x)) := tendsto_sineTrunc (g x)
+  have hlim (x : E) : Tendsto (fun n => gN n x) atTop (𝓝 (g x)) :=
+    Real.tendsto_natCast_add_one_mul_sin_inv_mul (g x)
   have hineq (n : ℕ) : entropy ν (fun x => gN n x ^ 2) ≤
       2 * c * ∫ x, ‖fderiv ℝ g x‖ ^ 2 ∂ν := by
     obtain ⟨hcd, habs, hsq, hN2, hdf, hNdf⟩ := hF n
@@ -665,7 +601,7 @@ theorem HasLogSobolev.entropy_sq_le_of_integrable (h : HasLogSobolev ν c) (hg :
     have hpos : 0 < g x ^ 2 := by positivity
     have e : gN n x ^ 2 = g x ^ 2 * (gN n x ^ 2 / g x ^ 2) := by field_simp
     rw [e]
-    exact abs_mul_mul_log_le hpos.le (by positivity) ((div_le_one hpos).2 hsq)
+    exact Real.abs_mul_mul_log_mul_le hpos.le (by positivity) ((div_le_one hpos).2 hsq)
   exact le_of_tendsto (L2.sub ((Real.continuous_mul_log.tendsto _).comp L1))
     (Eventually.of_forall hineq)
 

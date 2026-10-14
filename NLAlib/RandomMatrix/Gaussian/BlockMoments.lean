@@ -24,6 +24,7 @@ inequality with factors independent of the Gaussian matrix
 ## Main results
 
 * `NLAlib.integral_frobNorm_mul_mul_pinv_sq_of_hasLaw_gaussianMatrix`.
+* `NLAlib.integral_frobNorm_pinv_mul_mul_sq_of_hasLaw_gaussianMatrix`: the transposed form.
 * `NLAlib.integral_specNorm_mul_mul_pinv_le_of_hasLaw_gaussianMatrix`: the spectral block bound;
   `NLAlib.integral_specNorm_mul_mul_pinv_le_add_exp_mul_sqrt_card_div_of_hasLaw_gaussianMatrix`:
   the form of Halko, Martinsson and Tropp.
@@ -84,6 +85,35 @@ theorem integral_frobNorm_mul_mul_pinv_sq_of_hasLaw_gaussianMatrix [DecidableEq 
     (indepFun_conjTranspose_mul_of_hasLaw_gaussianMatrix hX hV₁ hV₂ h₁₂)
     (S := fun _ => S) measurable_const measurable_pinv).trans ?_
   rw [integral_const_mul, integral_frobNorm_pinv_sq_of_hasLaw_gaussianMatrix hY hrk, mul_div_assoc]
+
+private theorem frobNorm_pinv_mul_mul_eq (A : Matrix n k ℝ) (V₁ : Matrix n r ℝ)
+    (V₂ : Matrix n s ℝ) (S : Matrix s a ℝ) :
+    frobNorm (pinv (Aᴴ * V₁) * (Aᴴ * V₂) * S) = frobNorm (Sᴴ * (V₂ᴴ * A) * pinv (V₁ᴴ * A)) := by
+  rw [← frobNorm_conjTranspose]
+  simp only [Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose, ← pinv_conjTranspose,
+    Matrix.mul_assoc]
+
+/-- The squared norm in the transposed block bound is integrable. -/
+theorem integrable_frobNorm_pinv_mul_mul_sq_of_hasLaw_gaussianMatrix [DecidableEq r]
+    [DecidableEq s] (hX : HasLaw X (gaussianMatrix n k) μ) {V₁ : Matrix n r ℝ}
+    {V₂ : Matrix n s ℝ} (hV₁ : HasOrthonormalCols V₁) (hV₂ : HasOrthonormalCols V₂)
+    (h₁₂ : V₁ᴴ * V₂ = 0) (hrk : Fintype.card r + 2 ≤ Fintype.card k) (S : Matrix s a ℝ) :
+    Integrable (fun ω => frobNorm (pinv ((X ω)ᴴ * V₁) * ((X ω)ᴴ * V₂) * S) ^ 2) μ := by
+  simp only [frobNorm_pinv_mul_mul_eq]
+  exact integrable_frobNorm_mul_mul_pinv_sq_of_hasLaw_gaussianMatrix hX hV₁ hV₂ h₁₂ hrk Sᴴ
+
+/-- **The transposed block bound** (Halko, Martinsson and Tropp 2011, proof of Theorem 10.5,
+conjugate-transposed): `E ‖(Gᴴ V₁)† (Gᴴ V₂) S‖_F² = ‖S‖_F² r / (k - r - 1)`. This is the form
+the Nyström approximation's completion step uses. -/
+theorem integral_frobNorm_pinv_mul_mul_sq_of_hasLaw_gaussianMatrix [DecidableEq r]
+    [DecidableEq s] (hX : HasLaw X (gaussianMatrix n k) μ) {V₁ : Matrix n r ℝ}
+    {V₂ : Matrix n s ℝ} (hV₁ : HasOrthonormalCols V₁) (hV₂ : HasOrthonormalCols V₂)
+    (h₁₂ : V₁ᴴ * V₂ = 0) (hrk : Fintype.card r + 2 ≤ Fintype.card k) (S : Matrix s a ℝ) :
+    ∫ ω, frobNorm (pinv ((X ω)ᴴ * V₁) * ((X ω)ᴴ * V₂) * S) ^ 2 ∂μ =
+      frobNorm S ^ 2 * Fintype.card r / ((Fintype.card k : ℝ) - Fintype.card r - 1) := by
+  simp only [frobNorm_pinv_mul_mul_eq]
+  rw [integral_frobNorm_mul_mul_pinv_sq_of_hasLaw_gaussianMatrix hX hV₁ hV₂ h₁₂ hrk Sᴴ,
+    frobNorm_conjTranspose]
 
 /-- The spectral norm in the range finder's block bound is integrable. -/
 theorem integrable_specNorm_mul_mul_pinv_of_hasLaw_gaussianMatrix [DecidableEq r]

@@ -415,6 +415,13 @@ citing the Mathlib lemma, never as an independent proof. A file added or split d
 recorded as a dated amendment to the note's file list when it happens, not first in the stage
 report.
 
+**Deviations from Mathlib are recorded.** Where Mathlib has a notion and the library states things
+with another one (a different index type, a total function in place of one that takes a proof, a
+named function in place of a scoped instance, a new predicate next to a Mathlib one), the design
+note says so, and `docs/design/Mathlib-deviations.md` gets an entry in the same commit: what
+Mathlib has, what the library does, why, what it costs, and the bridge lemma. A deviation with no
+entry is a defect. (Maintainer, 2026-10-14.)
+
 The note is reviewed as a design, with the question "will this be the interface people reach for
 in five years?", before the stage is implemented. The implementation PRs reference it. A
 divergence discovered during implementation is a one-line amendment to the note, approved the

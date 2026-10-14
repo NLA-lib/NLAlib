@@ -106,7 +106,9 @@ Predicates in the sense of §5.4 (hypotheses and conclusions that theorems excha
 `IsIdempotentElem`, `IsStarNormal`, `Matrix.IsHermitian`, `Matrix.PosSemidef`, `Matrix.PosDef`,
 `Metric.IsCover`.
 
-**Decisions to confirm before they spread.** Each is argued in the note cited.
+**Decisions to confirm before they spread.** Each is argued in the note cited; those that
+depart from Mathlib are set out, with justification and cost, in
+`docs/design/Mathlib-deviations.md`.
 
 1. `eigenvalue A k` indexed by `ℕ` and total, replacing `hA.eigenvalues₀ i` in statements
    (`Matrix-Spectral.md` §7.1). This changed a row of §5.3 and a line of the brief.

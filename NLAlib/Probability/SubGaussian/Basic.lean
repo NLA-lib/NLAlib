@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import Mathlib.Probability.Moments.SubGaussian
+public import Mathlib.Order.ConditionallyCompleteLattice.Finset
 
 /-!
 # Sub-Gaussian random variables
@@ -23,8 +24,9 @@ the union bound for a maximum. Proxies are `ℝ≥0` throughout (`docs/PORT_PROB
   second moment at most the proxy.
 * `ProbabilityTheory.HasSubgaussianMGF.measure_le_le`, `.measure_abs_ge_le`: lower and two-sided
   tails.
-* `ProbabilityTheory.HasSubgaussianMGF.sum_mul_of_iIndepFun`: `∑ aᵢ Xᵢ` has proxy `∑ aᵢ² cᵢ`.
-* `ProbabilityTheory.HasSubgaussianMGF.measure_exists_ge_le`: the union bound for a maximum.
+* `ProbabilityTheory.HasSubgaussianMGF.sum_const_mul_of_iIndepFun`: `∑ aᵢ Xᵢ` has proxy `∑ aᵢ² cᵢ`.
+* `ProbabilityTheory.HasSubgaussianMGF.measure_exists_ge_le`, `.measure_iSup_ge_le`,
+  `.measure_exists_abs_ge_le`: the union bound for a maximum.
 -/
 
 @[expose] public section
@@ -71,7 +73,7 @@ theorem _root_.ProbabilityTheory.HasSubgaussianMGF.measure_abs_ge_le
 
 /-- A weighted sum of independent sub-Gaussian variables is sub-Gaussian with proxy
 `∑ aᵢ² cᵢ`. -/
-theorem _root_.ProbabilityTheory.HasSubgaussianMGF.sum_mul_of_iIndepFun {ι : Type*}
+theorem _root_.ProbabilityTheory.HasSubgaussianMGF.sum_const_mul_of_iIndepFun {ι : Type*}
     {X : ι → Ω → ℝ} (h_indep : iIndepFun X μ) {c : ι → ℝ≥0} {s : Finset ι}
     (h : ∀ i ∈ s, HasSubgaussianMGF (X i) (c i) μ) (a : ι → ℝ) :
     HasSubgaussianMGF (fun ω => ∑ i ∈ s, a i * X i ω) (∑ i ∈ s, ‖a i‖₊ ^ 2 * c i) μ := by
@@ -82,6 +84,18 @@ No independence is assumed. -/
 theorem _root_.ProbabilityTheory.HasSubgaussianMGF.measure_exists_ge_le {ι : Type*} [Fintype ι]
     {X : ι → Ω → ℝ} (h : ∀ i, HasSubgaussianMGF (X i) c μ) {t : ℝ} (ht : 0 ≤ t) :
     μ.real {ω | ∃ i, t ≤ X i ω} ≤ Fintype.card ι * rexp (-t ^ 2 / (2 * c)) := by
+  sorry
+
+/-- The union bound for the maximum, with the event written through `⨆`. -/
+theorem _root_.ProbabilityTheory.HasSubgaussianMGF.measure_iSup_ge_le {ι : Type*} [Fintype ι]
+    [Nonempty ι] {X : ι → Ω → ℝ} (h : ∀ i, HasSubgaussianMGF (X i) c μ) {t : ℝ} (ht : 0 ≤ t) :
+    μ.real {ω | t ≤ ⨆ i, X i ω} ≤ Fintype.card ι * rexp (-t ^ 2 / (2 * c)) := by
+  sorry
+
+/-- The union bound for the maximum of absolute values. -/
+theorem _root_.ProbabilityTheory.HasSubgaussianMGF.measure_exists_abs_ge_le {ι : Type*}
+    [Fintype ι] {X : ι → Ω → ℝ} (h : ∀ i, HasSubgaussianMGF (X i) c μ) {t : ℝ} (ht : 0 ≤ t) :
+    μ.real {ω | ∃ i, t ≤ |X i ω|} ≤ 2 * Fintype.card ι * rexp (-t ^ 2 / (2 * c)) := by
   sorry
 
 end NLAlib

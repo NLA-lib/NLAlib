@@ -2,6 +2,9 @@
 
 Status: written 2026-10-14 by the orchestrator under `docs/PORT_PROBABILITY.md` (§2 decided). It
 introduces the sub-exponential interface D6 fixed; no new question of the brief's §2 kind.
+Reviewed by a Fable agent on 2026-10-14; its corrections are folded in (weighted sub-exponential
+sums, the structure's basic API, `⨆` and two-sided union bounds, names, file order, proof
+hazards in §3.3, requirements on P5 in §7).
 
 ## 0. Scope and consumers
 
@@ -33,7 +36,7 @@ Mathlib's (`hasSubgaussianMGF_of_mem_Icc_of_integral_eq_zero`,
 | Concept | Spelling | Mathlib bridge |
 |---|---|---|
 | sub-Gaussian MGF, proxy `c : ℝ≥0` | Mathlib's `HasSubgaussianMGF X c μ` | — |
-| sub-exponential MGF, `v b : ℝ≥0` | `HasSubexponentialMGF X v b μ`, new (§2) | `hasSubexponentialMGF_zero_iff`: `b = 0` is `HasSubgaussianMGF X v μ` |
+| sub-exponential MGF, `v b : ℝ≥0` | `HasSubexponentialMGF X v b μ`, new (§2) | `hasSubexponentialMGF_zero_iff_hasSubgaussianMGF`: `b = 0` is `HasSubgaussianMGF X v μ` |
 | scale of a coefficient | `‖a‖₊ ^ 2 * c` for the proxy of `a * X` (no `⟨a ^ 2, _⟩`, D2) | Mathlib's `const_mul` uses `⟨r ^ 2, sq_nonneg r⟩ * c`; `HasSubgaussianMGF.const_mul'` restates it in this form |
 | constants of the centred square | `centeredSqVarianceConstant`, `centeredSqScaleConstant : ℝ≥0`, `irreducible_def` (D5 rule 2) | — |
 
@@ -87,14 +90,21 @@ theorem HasSubgaussianMGF.measure_le_le (h : HasSubgaussianMGF X c μ) {t : ℝ}
 theorem HasSubgaussianMGF.measure_abs_ge_le (h : HasSubgaussianMGF X c μ) {t : ℝ} (ht : 0 ≤ t) :
     μ.real {ω | t ≤ |X ω|} ≤ 2 * rexp (-t ^ 2 / (2 * c))
 /-- Independent sub-Gaussian variables with coefficients. -/
-theorem HasSubgaussianMGF.sum_mul_of_iIndepFun {ι : Type*} {X : ι → Ω → ℝ} (h_indep : iIndepFun X μ)
+theorem HasSubgaussianMGF.sum_const_mul_of_iIndepFun {ι : Type*} {X : ι → Ω → ℝ} (h_indep : iIndepFun X μ)
     {c : ι → ℝ≥0} {s : Finset ι} (h : ∀ i ∈ s, HasSubgaussianMGF (X i) (c i) μ) (a : ι → ℝ) :
     HasSubgaussianMGF (fun ω => ∑ i ∈ s, a i * X i ω) (∑ i ∈ s, ‖a i‖₊ ^ 2 * c i) μ
 /-- The union bound for the maximum of sub-Gaussian variables; no independence. -/
 theorem HasSubgaussianMGF.measure_exists_ge_le {ι : Type*} [Fintype ι] {X : ι → Ω → ℝ}
     (h : ∀ i, HasSubgaussianMGF (X i) c μ) {t : ℝ} (ht : 0 ≤ t) :
     μ.real {ω | ∃ i, t ≤ X i ω} ≤ Fintype.card ι * rexp (-t ^ 2 / (2 * c))
+theorem HasSubgaussianMGF.measure_iSup_ge_le [Fintype ι] [Nonempty ι] … :
+    μ.real {ω | t ≤ ⨆ i, X i ω} ≤ Fintype.card ι * rexp (-t ^ 2 / (2 * c))
+theorem HasSubgaussianMGF.measure_exists_abs_ge_le [Fintype ι] … :
+    μ.real {ω | ∃ i, t ≤ |X i ω|} ≤ 2 * Fintype.card ι * rexp (-t ^ 2 / (2 * c))
 ```
+
+The `∃` form is primary (true for empty `ι`); the `⨆` form is the event R3's net argument
+produces and needs `Nonempty ι` for the finite supremum to be attained.
 
 `measure_exists_ge_le` takes one proxy for all `i` (the consumers' case); a family of proxies
 would put `∑ i, exp (…)` on the right, which the union bound gives directly. Degenerate cases:
@@ -127,12 +137,18 @@ would change; this one changes only with the tail). Maxima: the source's constan
 (Boucheron–Lugosi–Massart 2013, Theorem 2.5). No `Nonempty ι`: over an empty type `⨆` is `0`
 and so are `log 0` and `√0`, so both bounds hold there as written.
 
-### 3.3 `Probability/SubExponential.lean`
+### 3.3 `Probability/SubExponential/{Basic,Tail}.lean`
 
 ```lean
 structure HasSubexponentialMGF (X : Ω → ℝ) (v b : ℝ≥0) (μ : Measure Ω) : Prop  -- §2
 namespace HasSubexponentialMGF
 theorem aemeasurable (h : HasSubexponentialMGF X v b μ) : AEMeasurable X μ
+theorem measure_univ_le_one (h) : μ Set.univ ≤ 1
+theorem isFiniteMeasure (h) : IsFiniteMeasure μ
+theorem memLp (h) (p : ℝ≥0) : MemLp X p μ      -- `0` is interior to `integrableExpSet`
+theorem integrable (h) : Integrable X μ
+theorem cgf_le (h) {l : ℝ} (hl : b * |l| < 1) : cgf X μ l ≤ v * l ^ 2 / 2
+theorem congr {Y : Ω → ℝ} (h) (hXY : X =ᵐ[μ] Y) : HasSubexponentialMGF Y v b μ
 theorem mono (h : HasSubexponentialMGF X v b μ) {v' b' : ℝ≥0} (hv : v ≤ v') (hb : b ≤ b') :
     HasSubexponentialMGF X v' b' μ
 theorem neg (h : HasSubexponentialMGF X v b μ) : HasSubexponentialMGF (fun ω => -X ω) v b μ
@@ -144,6 +160,10 @@ theorem add_of_indepFun {Y : Ω → ℝ} {v' b' : ℝ≥0} (hX : HasSubexponenti
 theorem sum_of_iIndepFun {ι : Type*} {X : ι → Ω → ℝ} (h_indep : iIndepFun X μ)
     {v b : ι → ℝ≥0} {s : Finset ι} (h : ∀ i ∈ s, HasSubexponentialMGF (X i) (v i) (b i) μ) :
     HasSubexponentialMGF (fun ω => ∑ i ∈ s, X i ω) (∑ i ∈ s, v i) (s.sup b) μ
+/-- Weighted sums: Hanson–Wright's diagonal `∑ A i i (X i² - E X i²)` is one. -/
+theorem sum_const_mul_of_iIndepFun … (a : ι → ℝ) :
+    HasSubexponentialMGF (fun ω => ∑ i ∈ s, a i * X i ω) (∑ i ∈ s, ‖a i‖₊ ^ 2 * v i)
+      (s.sup fun i => ‖a i‖₊ * b i) μ
 theorem integral_eq_zero [IsProbabilityMeasure μ] (h : HasSubexponentialMGF X v b μ) :
     ∫ ω, X ω ∂μ = 0
 /-- **Sub-exponential tail** (Wainwright 2019, Proposition 2.9):
@@ -168,7 +188,7 @@ theorem measure_sum_ge_le_of_iIndepFun {ι : Type*} {X : ι → Ω → ℝ} (h_i
 end HasSubexponentialMGF
 theorem _root_.ProbabilityTheory.HasSubgaussianMGF.hasSubexponentialMGF
     (h : HasSubgaussianMGF X c μ) : HasSubexponentialMGF X c 0 μ
-theorem hasSubexponentialMGF_zero_iff {v : ℝ≥0} :
+theorem hasSubexponentialMGF_zero_iff_hasSubgaussianMGF {v : ℝ≥0} :
     HasSubexponentialMGF X v 0 μ ↔ HasSubgaussianMGF X v μ
 ```
 
@@ -176,7 +196,15 @@ Bound forms (D5): the `min` form is the source's and dominates the combined form
 `exp (-t ^ 2 / (2 * (v + b * t)))` in every regime (`min (t²/2v) (t/2b) ≥ t²/(2(v + bt))`), so the
 combined form is not stated; the two regime forms are corollaries a consumer can use without the
 `min`, and they are the ones that survive `b = 0` and `v = 0`. Names follow Mathlib's
-(`measure_ge_le`, `measure_sum_ge_le_of_iIndepFun`), with "Bernstein" in the docstring.
+(`measure_ge_le`, `measure_sum_ge_le_of_iIndepFun`), with "Bernstein" in the docstring. The
+combined form is the only one junk-free at both `b = 0` and `v = 0` and is the classical
+Bernstein shape; it is added as a corollary only if a consumer asks (D5 rule 6).
+
+Proof hazards (the statements are true as written): in `measure_ge_le` and its regime forms the
+optimising `l` is `1 / b` at the boundary, outside the open window, so the proof takes the
+infimum over `l < 1 / b` by continuity, not one evaluation; in `add_of_indepFun`, integrability of
+the product must come from `IndepFun.integrable_exp_mul_add`, not from `memLp_exp_mul _ 2`
+(which needs `2 l` in the window).
 
 ### 3.4 `Probability/SubGaussian/Square.lean`
 
@@ -209,7 +237,7 @@ reaches in the docstring and the `_le` lemma. Consumers use only `_pos`, `_le` a
 
 ## 4. Consumers of the headline statements
 
-`sum_mul_of_iIndepFun`: P3's sub-Gaussian vector with independent coordinates, P5's series,
+`sum_const_mul_of_iIndepFun`: P3's sub-Gaussian vector with independent coordinates, P5's series,
 Sketching's Rademacher sums. `measure_exists_ge_le`, `integral_iSup_le`: R3. `integral_abs_rpow_le`:
 P3, Khintchine (P5). `integral_exp_mul_sq_le`: P3 (`χ²`-type tails for sub-Gaussian vectors use the
 vector form, proved there by the same linearisation). `measure_sum_ge_le_of_iIndepFun` and
@@ -217,13 +245,17 @@ vector form, proved there by the same linearisation). `measure_sum_ge_le_of_iInd
 
 ## 5. Files
 
-In build order; 1, 2 and 3 are independent, 4 imports 1 to 3.
+In build order; 1 and 3 are independent, 2 imports 1, 4 imports 1 and 3.
 
-1. `NLAlib/Probability/SubGaussian/Basic.lean`: §3.1 (9 statements).
-2. `NLAlib/Probability/SubGaussian/Moments.lean`: §3.2 (5 statements).
-3. `NLAlib/Probability/SubExponential.lean`: §3.3 (16 statements; at the file budget's edge, split
-   the tails off as `SubExponentialTail.lean` if the file passes 500 lines).
-4. `NLAlib/Probability/SubGaussian/Square.lean`: §3.4 (9 statements).
+1. `NLAlib/Probability/SubGaussian/Basic.lean`: §3.1 (10 statements).
+2. `NLAlib/Probability/SubGaussian/Moments.lean`: §3.2 (5 statements). `integral_abs_rpow_le`
+   needs no probability measure, so its proof uses Mathlib's layer cake
+   (`Integrable.integral_eq_integral_meas_le`), not P0's `integral_le_of_measureReal_ge_le`, which
+   assumes one.
+3. `NLAlib/Probability/SubExponential/Basic.lean` (the structure, its API, sums and the
+   sub-Gaussian case; 16 statements) and `NLAlib/Probability/SubExponential/Tail.lean` (the tails
+   and Bernstein; 6 statements), split at the skeleton because §3.3 is over the file budget.
+4. `NLAlib/Probability/SubGaussian/Square.lean`: §3.4 (9 statements); imports 1 and 3.
 
 ## 6. Material
 
@@ -249,6 +281,11 @@ proves matrix Bernstein for every dimension from the Matrix layer's
 `exp_smul_le_one_add_smul_add_smul_sq`. Stating the scalar form as that corollary proves it once
 (the survey found the prototype's scalar Bernstein unrelated to its matrix one). Cost: a scalar
 user waits for P5. Alternative: a scalar proof here and the matrix proof separately.
+Requirement on P5 (from the review): the one-sided tail with constant `1` is the `d = 1` case of
+the `eigenvalue _ 0` (largest eigenvalue) form, so P5 states that form as primary (the `specNorm`
+form carries a `2`), and the scalar corollary is restated in scalar terms, with no
+`Matrix Unit Unit ℝ` in its statement; the bridge `eigenvalue (of fun _ _ => x) 0 = x` lives in
+P5.
 
 **Q2. The `min` form with the regime corollaries** (§3.3), not a tail function behind a
 definition: the exponent is the source's and two lines long; D5 rule 2's definitions are for
@@ -256,4 +293,8 @@ constants and tails that a better proof would change, and this one is optimal fo
 
 **Q3. One sub-exponential parametrisation `(v, b)` with an open window**, not Vershynin's
 `‖X‖_ψ₁` nor the Bernstein moment condition: those are constructors (P7), and every proof
-consumes the MGF.
+consumes the MGF. Known cost, not a defect: the sub-gamma shape `cgf ≤ v l² / (2 (1 - b l))`,
+which bounded variables and the Bernstein moment condition produce natively and which P5's
+`HasMatrixMGFBound` carries, converts to `(v, b)` at the price of a constant (`(2v, 2b)`), so a
+`1 × 1` bridge from P5 to this interface and the P7 constructors do not reach the source's
+constants.

@@ -78,6 +78,9 @@ P5b to P5d outside their own layer.
 | P5a | `MatrixConcentration/{Chernoff,ChernoffSum}.lean` | Opus agent | proved | skeleton bug fixed: `∀ θ` had elaborated as `θ : ℕ` (rule added to CONTRIBUTING §5.2) |
 | R1 | design note `docs/design/RandomMatrix-R1.md`, skeletons `RandomMatrix/Gaussian/*` | orchestrator | written, Fable-reviewed (§8); skeletons compile | `frobNorm_eq_norm_toLp_uncurry` proved in the Matrix layer |
 | R1 | `RandomMatrix/Gaussian/{Basic,Invariance}.lean` | Opus agent | proofs in progress | |
+| R1 | `RandomMatrix/Gaussian/{Rank,Concentration}.lean` | — | skeletons compile | next slot |
+| R2 | design note `docs/design/RandomMatrix-R2.md` | orchestrator | written; Fable review running | |
+| R4 | design note `docs/design/RandomMatrix-R4.md` | orchestrator | written; Fable review running | |
 | P5a | `MatrixConcentration/{Bernstein,Series}.lean` | Opus agent | proofs in progress | |
 
 **Matrix layer complete, 2026-10-14** (branch `scaffold`, local commits, not pushed): stages M0 to

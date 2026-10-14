@@ -186,12 +186,13 @@ theorem measureReal_eigenvalue_zero_sum_smul_ge_le [Nonempty n] (hind : iIndepFu
     exact hP.trans hd
   refine (HasMatrixMGFBound.measure_eigenvalue_zero_sum_ge_le_card_mul_exp
     hX (fun k => hasMatrixMGFBound_smul_of_hasSubgaussianMGF (hγ k) (hB k))
-    (Set.mem_univ (t / v)) (div_pos ht' hv0) (by positivity) t).trans ?_
+    (Set.mem_univ (t / v)) (div_pos ht' hv0) (div_nonneg (sq_nonneg _) two_pos.le) t).trans ?_
   have hlam : eigenvalue (∑ k, (c k : ℝ) • B k ^ 2) 0 ≤ v :=
     (le_abs_self _).trans (hA.abs_eigenvalue_le_specNorm 0)
-  gcongr
+  refine mul_le_mul_of_nonneg_left (Real.exp_le_exp.2 ?_) (Nat.cast_nonneg _)
   calc -(t / v) * t + (t / v) ^ 2 / 2 * eigenvalue (∑ k, (c k : ℝ) • B k ^ 2) 0
-      ≤ -(t / v) * t + (t / v) ^ 2 / 2 * v := by gcongr
+      ≤ -(t / v) * t + (t / v) ^ 2 / 2 * v :=
+        add_le_add_right (mul_le_mul_of_nonneg_left hlam (div_nonneg (sq_nonneg _) two_pos.le)) _
     _ = -t ^ 2 / (2 * v) := by
         field_simp
         ring

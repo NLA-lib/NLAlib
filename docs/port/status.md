@@ -42,7 +42,9 @@ Updated at every stopping point. Newest entry first within each section.
 | M10 | `Spectral/Schur.lean`, `EigenvalueListing.lean` (split off), `Structured/Walsh.lean`, `Structured/Cauchy.lean` | Opus agent | proved | unitary Schur from the field similarity plus a QR factorization; Hilbert matrix positive definite through `posDef_iff_eliminationStep` |
 | M10 | `Spectral/Normal.lean`, `Simultaneous.lean`, `Diagonalizable.lean`, `EigenvectorPairing.lean`, `SylvesterEquation.lean` (split off) | Opus agent | proved | commuting families over `𝕜` with split characteristic polynomials; simple-eigenvalue pairing over any field |
 | M10 | `Spectral/Inertia.lean`, `InertiaElimination.lean`, `SylvesterCriterion.lean`, `RankOneUpdate.lean`, `InterlacingConverse.lean` (two split off) | Opus agent | proved | Sylvester's criterion by interlacing, no pivots; both interlacing converses proved |
-| M10 | `Spectral/Congruence.lean`, `ForMathlib/MeasureTheory/Matrix.lean`, `Measurability/Basic.lean` | Opus agent | in progress | |
+| M10 | `Spectral/Congruence.lean`, `ForMathlib/MeasureTheory/Matrix.lean`, `Measurability/Basic.lean` | Opus agent | proved | all M10 files proved, nothing in the scaffold library; QZ by Schur of `B⁻¹ A` and a compactness limit |
+| M10 | stage wrap-up | Opus agent | in progress | |
+| M5 to M9 | follow-up additions from the ledger passes | Opus agent | in progress | |
 | M10 | `Spectral/Gershgorin.lean`, `HermitianPart.lean`, `Structured/Kronecker.lean`, `Circulant.lean` | Opus agent | proved | |
 | M10 | `Spectral/SpectralRadius.lean`, `PowerBounds.lean`, `QuasiTriangular.lean`, `RealSchur.lean`, `RealSimilarity.lean` (three split off) | Opus agent | proved | real Schur, the real normal form and real QZ by one deflation through a one- or two-dimensional invariant subspace |
 | M8 | `Functions/HermitianCalculus.lean`, `ForMathlib/Analysis/RCLike/ToComplex.lean`, `ForMathlib/Analysis/Calculus/Deriv/Matrix.lean` | Opus agent | proved | diagonalisation lemmas to be restated for a frame `U : Matrix n r 𝕜` with `card r = card n`, the shape the spectral theorem of M3 produces |

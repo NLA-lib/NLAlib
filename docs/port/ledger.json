@@ -1736,6 +1736,10 @@
   "new": "NLAlib.charpoly_fromBlocks_diagonal_replicateCol",
   "stage": "M10"
  },
+ "NLAlib.charpoly_inverse_mul_eq_prod_of_congruence": {
+  "new": "NLAlib.isEigenvalueListing_inv_mul_of_eq_mul_diagonal_mul_conjTranspose",
+  "stage": "M10"
+ },
  "NLAlib.cholesky": {
   "new": "NLAlib.choleskyLower",
   "stage": "M9"
@@ -3141,6 +3145,18 @@
   "new": "NLAlib.exists_cs_decomposition",
   "stage": "M5"
  },
+ "NLAlib.exists_definite_pair_congruence_diagonal": {
+  "new": "Matrix.PosDef.exists_eq_mul_conjTranspose_and_eq_mul_diagonal_mul_conjTranspose",
+  "stage": "M10"
+ },
+ "NLAlib.exists_diagonal_congruence_iff_isDiagonalizable_inverse_mul": {
+  "new": "Matrix.IsHermitian.exists_conjTranspose_mul_mul_eq_diagonal_iff",
+  "stage": "M10"
+ },
+ "NLAlib.exists_diagonal_congruence_of_posSemidef": {
+  "new": "Matrix.PosSemidef.exists_conjTranspose_mul_mul_eq_diagonal",
+  "stage": "M10"
+ },
  "NLAlib.exists_dilation_orthogonal_diagonalization": {
   "new": null,
   "note": "the spectrum of the dilation is eigenvalue_dilation; the explicit diagonalisation is not reproduced",
@@ -3725,6 +3741,10 @@
  "NLAlib.exists_unitary_mul_eq_of_gram_eq": {
   "new": "NLAlib.conjTranspose_mul_self_eq_iff_exists_mul",
   "stage": "M5"
+ },
+ "NLAlib.exists_unitary_qz_triangularization": {
+  "new": "NLAlib.exists_hasOrthonormalCols_isUpperTriangular_isUpperTriangular",
+  "stage": "M10"
  },
  "NLAlib.exists_unitary_right_block_of_first_columns_eq": {
   "new": "NLAlib.HasOrthonormalCols.exists_mul_fromBlocks_one_eq",
@@ -5264,6 +5284,10 @@
   "new": "Matrix.IsHermitian.inertiaPos_conjTranspose_mul_mul",
   "stage": "M10"
  },
+ "NLAlib.inertia_diagonal_eq_of_congruence": {
+  "new": "NLAlib.inertiaPos_eq_card_of_eq_mul_diagonal_mul_conjTranspose",
+  "stage": "M10"
+ },
  "NLAlib.inner_eq_star_dotProduct_ofLp": {
   "new": null,
   "note": "Mathlib: EuclideanSpace.inner_eq_star_dotProduct, and EuclideanSpace.inner_toLp_toLp for coordinate vectors",
@@ -5395,6 +5419,14 @@
  },
  "NLAlib.isDiagonalizable_iff_isSemisimple": {
   "new": "NLAlib.isDiagonalizable_iff_isSemisimple",
+  "stage": "M10"
+ },
+ "NLAlib.isDiagonalizable_inverse_mul_of_posDef": {
+  "new": "Matrix.PosDef.isDiagonalizable_inv_mul",
+  "stage": "M10"
+ },
+ "NLAlib.isDiagonalizable_mul_of_posDef": {
+  "new": "Matrix.PosDef.isDiagonalizable_mul",
   "stage": "M10"
  },
  "NLAlib.isDiagonalizable_of_distinct_eigenvalues": {
@@ -5849,6 +5881,10 @@
  "NLAlib.kato_temple_le_eigenvalue": {
   "new": "Matrix.IsHermitian.rayleighQuotient_sub_le_of_lt",
   "stage": "M6"
+ },
+ "NLAlib.ker_add_eq_inf_of_posSemidef": {
+  "new": "Matrix.PosSemidef.ker_add",
+  "stage": "M10"
  },
  "NLAlib.ker_eliminationStep_eq_sup_span_singleton": {
   "new": null,
@@ -6402,6 +6438,18 @@
   "note": "deferred to M10: measurability file; measurability of gramSchmidtQ",
   "stage": "M10"
  },
+ "NLAlib.measurable_frobSq_of_entries": {
+  "new": "NLAlib.measurable_frobNorm",
+  "stage": "M10"
+ },
+ "NLAlib.measurable_pinvL_entry_of": {
+  "new": "NLAlib.measurable_pinv",
+  "stage": "M10"
+ },
+ "NLAlib.measurable_pinvR_entry": {
+  "new": "NLAlib.measurable_pinv",
+  "stage": "M10"
+ },
  "NLAlib.measurable_polarFrame_entry": {
   "new": null,
   "note": "deferred to M10: measurability file; measurability of polarFactor",
@@ -6410,6 +6458,10 @@
  "NLAlib.measurable_qrNormalizedArray": {
   "new": null,
   "note": "deferred to M10: measurability file; measurability of gramSchmidtQ",
+  "stage": "M10"
+ },
+ "NLAlib.measurable_specNorm_of_entries": {
+  "new": "NLAlib.measurable_specNorm",
   "stage": "M10"
  },
  "NLAlib.mem_convexHull_permutations_iff_exists_doublyStochastic": {
@@ -9747,6 +9799,10 @@
  "NLAlib.spectrum_mul_nonempty_of_posDef": {
   "new": "Matrix.PosDef.exists_isEigenvalueListing_mul_nonneg",
   "note": "a real nonnegative listing of the eigenvalues of A * B, for B positive semidefinite; nonemptiness of the real spectrum follows for nonempty n",
+  "stage": "M10"
+ },
+ "NLAlib.spectrum_mul_subset_nonneg_of_posDef": {
+  "new": "Matrix.PosDef.exists_isEigenvalueListing_mul_nonneg",
   "stage": "M10"
  },
  "NLAlib.spectrum_reflection_conj": {

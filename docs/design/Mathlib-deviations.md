@@ -274,7 +274,9 @@ None of these was approved by the maintainer when it was made. Status is given p
   nor compactness; those enter only through the bridge.
 - **Cost.** A user with Mathlib's Haar measure on `O(n)` rewrites with the bridge; group-level
   facts (`IsHaarMeasure`, uniqueness up to scaling) are reached only through it.
-- **Status: open.** `docs/design/RandomMatrix-R5.md` §7 Q6 and §8 item 1, 2026-10-14.
+- **Status: bridge proved** (`haarFrame_eq_map_haarMeasure`,
+  `RandomMatrix/Haar/Uniqueness.lean`). `docs/design/RandomMatrix-R5.md` §7 Q6 and §8 item 1,
+  2026-10-14.
 
 ## 16. The uniform law on the sphere
 

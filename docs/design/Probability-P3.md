@@ -107,7 +107,7 @@ theorem IsSubgaussianVector.integrable_exp_mul_norm_sq … (hθ : 2 * θ * c < 1
     Integrable (fun ω => rexp (θ * ‖WithLp.toLp 2 (X ω)‖ ^ 2)) μ
 /-- The upper tail of `‖X‖²` (Hsu, Kakade and Zhang 2012, Theorem 2.1 for `A = 1`; for the
 Gaussian it is Laurent and Massart's bound). -/
-theorem IsSubgaussianVector.measureReal_norm_sq_ge_le (h : IsSubgaussianVector X c μ)
+theorem IsSubgaussianVector.measure_norm_sq_ge_le (h : IsSubgaussianVector X c μ)
     {t : ℝ} (ht : 0 ≤ t) :
     μ.real {ω | c * (Fintype.card n + 2 * √(Fintype.card n * t) + 2 * t) ≤
       ‖WithLp.toLp 2 (X ω)‖ ^ 2} ≤ rexp (-t)
@@ -138,7 +138,7 @@ theorem measureReal_norm_sq_le_of_hasLaw_gaussianVector (hX : HasLaw X (gaussian
     μ.real {ω | ‖WithLp.toLp 2 (X ω)‖ ^ 2 ≤ Fintype.card n - 2 * √(Fintype.card n * t)} ≤ rexp (-t)
 ```
 
-The Gaussian upper tail is `IsSubgaussianVector.measureReal_norm_sq_ge_le` at `c = 1` through
+The Gaussian upper tail is `IsSubgaussianVector.measure_norm_sq_ge_le` at `c = 1` through
 `isSubgaussianVector_of_hasLaw_gaussianVector`, and is Laurent and Massart's exactly, so it is not
 restated. The lower tail needs the exact Laplace transform at negative `θ` (a sub-Gaussian
 vector has no lower tail in general). The prototype's `(e u / d)^{d/2}` small-ball form goes to
@@ -208,7 +208,7 @@ etc.), and only the statements above are public unless a second file uses a help
 
 ## 4. Consumers of the headline statements
 
-`IsSubgaussianVector` and `measureReal_norm_sq_ge_le`: Sketching's JL and `SRHTFlattening`, R3.
+`IsSubgaussianVector` and `measure_norm_sq_ge_le`: Sketching's JL and `SRHTFlattening`, R3.
 `measureReal_abs_norm_sq_sub_integral_ge_le`: JL for sub-Gaussian sketches. The Gaussian χ²
 statements: Gaussian JL, R4. `integral_norm_quadForm_sub_trace_sq` and its real corollary:
 Estimation's Hutchinson error. Hanson–Wright: `HutchinsonTail`, R3.
@@ -250,7 +250,7 @@ fixed moments are parameters).
 
 ## 8. Amendments from the review (2026-10-14)
 
-1. `IsSubgaussianVector.measureReal_norm_sq_ge_le` takes `hc : c ≠ 0`: with `c = 0` the vector
+1. `IsSubgaussianVector.measure_norm_sq_ge_le` takes `hc : c ≠ 0`: with `c = 0` the vector
    is `0` a.s., the non-strict event is everything, and `exp (-t) < 1`.
 2. `measureReal_norm_sq_le_of_hasLaw_gaussianVector` takes `hn : 0 < Fintype.card n`: for
    `n = 0` the event `{0 ≤ 0}` is everything.
@@ -304,3 +304,7 @@ Follow-ups for the wrap-up: the non-independent sum of two sub-exponential varia
 `lintegral_exp_mul_dotProduct_le` overlaps `IsSubgaussianVector.of_iIndepFun` and could be derived
 from it; `lintegral_exp_mul_dotProduct_gaussianVector` is duplicated privately in `Norm.lean` and
 `LinearImage.lean` and should be public once, in `Distributions/Gaussian.lean`.
+- Renamed after the stage review: `IsSubgaussianVector.measureReal_norm_sq_ge_le` →
+  `IsSubgaussianVector.measure_norm_sq_ge_le` (the tail-prefix rule now in `CONTRIBUTING.md` §4).
+  Not changed: P1's scalar `E exp (θX²) ≤ 1 / √(1 - 2θc)` keeps its square-root form (the
+  readable scalar statement; the vector form's `card n = 1` case is one `rw`).

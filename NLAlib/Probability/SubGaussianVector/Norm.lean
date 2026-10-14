@@ -25,7 +25,7 @@ this library for now; the complex versions are the real ones in dimension `2 n`.
 ## Main results
 
 * `NLAlib.IsSubgaussianVector.integral_exp_mul_norm_sq_le`: `E exp (θ‖X‖²) ≤ (1 - 2θc)^{-n/2}`.
-* `NLAlib.IsSubgaussianVector.measureReal_norm_sq_ge_le`: the upper tail of `‖X‖²`.
+* `NLAlib.IsSubgaussianVector.measure_norm_sq_ge_le`: the upper tail of `‖X‖²`.
 * `NLAlib.measureReal_abs_norm_sq_sub_integral_ge_le`: the two-sided tail for independent
   coordinates.
 -/
@@ -153,7 +153,7 @@ theorem integral_exp_mul_norm_sq_le (h : IsSubgaussianVector X c μ) {θ : ℝ} 
     (h.integrable_exp_mul_norm_sq hθ).aestronglyMeasurable]
   exact ENNReal.toReal_le_of_le_ofReal (by positivity) (h.lintegral_exp_mul_norm_sq_le hθ0 hθ)
 
-private lemma measureReal_norm_sq_ge_le_aux (h : IsSubgaussianVector X c μ) (hc0 : (0 : ℝ) < c)
+private lemma measure_norm_sq_ge_le_aux (h : IsSubgaussianVector X c μ) (hc0 : (0 : ℝ) < c)
     {t : ℝ} (ht : 0 < t) (hd : (0 : ℝ) < Fintype.card n) :
     μ.real {ω | c * (Fintype.card n + 2 * √(Fintype.card n * t) + 2 * t) ≤
       ‖WithLp.toLp 2 (X ω)‖ ^ 2} ≤ rexp (-t) := by
@@ -208,7 +208,7 @@ Theorem 2.1 with `A = 1`; for a standard Gaussian vector this is Laurent and Mas
 `c ≠ 0` is needed for the non-strict event: with `c = 0` the vector is `0` almost surely and the
 event is everything.
 Result: hsu-kakade-zhang -/
-theorem measureReal_norm_sq_ge_le (h : IsSubgaussianVector X c μ) (hc : c ≠ 0) {t : ℝ}
+theorem measure_norm_sq_ge_le (h : IsSubgaussianVector X c μ) (hc : c ≠ 0) {t : ℝ}
     (ht : 0 ≤ t) :
     μ.real {ω | c * (Fintype.card n + 2 * √(Fintype.card n * t) + 2 * t) ≤
       ‖WithLp.toLp 2 (X ω)‖ ^ 2} ≤ rexp (-t) := by
@@ -230,7 +230,7 @@ theorem measureReal_norm_sq_ge_le (h : IsSubgaussianVector X c μ) (hc : c ≠ 0
       positivity
     rw [hset, measureReal_empty]
     positivity
-  exact measureReal_norm_sq_ge_le_aux h hc0 htpos hd
+  exact measure_norm_sq_ge_le_aux h hc0 htpos hd
 
 end IsSubgaussianVector
 

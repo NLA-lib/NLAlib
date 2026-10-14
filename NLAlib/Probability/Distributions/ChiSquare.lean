@@ -12,7 +12,7 @@ public import NLAlib.Probability.Distributions.Gaussian
 
 The squared norm of a standard Gaussian vector in `ℝⁿ` is `χ²_n`. This file gives its Laplace
 transform and the Laurent–Massart lower tail. The upper tail is the sub-Gaussian-vector bound
-`NLAlib.IsSubgaussianVector.measureReal_norm_sq_ge_le` at proxy `1`, which is Laurent and
+`NLAlib.IsSubgaussianVector.measure_norm_sq_ge_le` at proxy `1`, which is Laurent and
 Massart's exactly.
 
 ## Main results

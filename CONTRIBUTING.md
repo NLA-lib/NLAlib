@@ -154,6 +154,12 @@ Standard suffixes `_eq`, `_le`, `_lt`, `_iff`, `_ne_zero`, `_pos`, `_nonneg`, `_
 `_apply`, `exists_`, `_of_<hypothesis>`; measure-theory prefixes `integral_`, `measurable_`,
 `integrable_`, `variance_`. Hypotheses are `h`-prefixed (`hA`, `hQ`, `hk`).
 
+Tail bounds (all in `μ.real`, `docs/PORT_PROBABILITY.md` D3): a lemma in the namespace of an
+interface it is about takes Mathlib's prefix there, `measure_` (`HasSubgaussianMGF.measure_ge_le`,
+`HasSubexponentialMGF.measure_sum_ge_le_of_iIndepFun`, `IsSubgaussianVector.measure_norm_sq_ge_le`);
+a root-level tail takes `measureReal_` (`measureReal_ge_le_variance_div_sq`,
+`measureReal_norm_sq_le_of_hasLaw_gaussianVector`). (2026-10-14.)
+
 Never name a declaration after its source, its chapter, its author, a paper's lemma number or a
 project, and never after how good its bound is (`_sharp`, `_improved`; §5.2 "Numerical
 bounds"). The source goes in the docstring. Named quantities and tail expressions are definitions
@@ -183,6 +189,8 @@ release.
   (`@[simp]`). Transpose twins are not written.
 - Vectors: `n → 𝕜` with `⬝ᵥ` as the pairing; the Euclidean norm is `‖WithLp.toLp 2 x‖`
   (Mathlib's `EuclideanSpace`), never `Real.sqrt (x ⬝ᵥ x)` in a statement.
+- A real quantity used where Mathlib wants `ℝ≥0` (a sub-Gaussian proxy `c * ‖specNorm A‖₊ ^ 2`, a
+  coefficient `‖a i‖₊ ^ 2 * c`) is written with `‖·‖₊`, never `⟨x, hx⟩` or `Real.toNNReal x`.
 - Matrix norms are named functions (§5.3), never `‖A‖`: Mathlib's four matrix norms are scoped
   instances and a signature cannot show which one is open. `‖A‖` appears only in bridge lemmas
   and, under a file-level `open scoped Matrix.Norms.L2Operator`, in the C*-algebra and

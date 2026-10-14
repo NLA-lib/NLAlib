@@ -217,8 +217,9 @@ theorem integral_dilation {m : Type*} [Fintype m] [DecidableEq m] {S : Ω → Ma
     (hS : Integrable S μ) : ∫ ω, dilation (S ω) ∂μ = dilation (∫ ω, S ω ∂μ) :=
   (dilationCLM m).integral_comp_comm hS
 
-/-- The integral of the square of a dilation is block diagonal. -/
-private theorem integral_dilation_sq {m : Type*} [Fintype m] [DecidableEq m]
+/-- The integral of the square of a dilation is block diagonal: for a square-integrable `S`,
+`E (dilation S)² = fromBlocks (E S Sᴴ) 0 0 (E Sᴴ S)`. -/
+theorem integral_dilation_sq {m : Type*} [Fintype m] [DecidableEq m]
     {S : Ω → Matrix m n 𝕜} (hS : MemLp S 2 μ) :
     ∫ ω, dilation (S ω) ^ 2 ∂μ =
       Matrix.fromBlocks (∫ ω, S ω * (S ω)ᴴ ∂μ) 0 0 (∫ ω, (S ω)ᴴ * S ω ∂μ) := by

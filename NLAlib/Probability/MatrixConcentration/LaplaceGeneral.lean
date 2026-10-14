@@ -54,6 +54,22 @@ theorem measureReal_eigenvalue_zero_ge_le_integral_re_trace_cfc_div [Nonempty n]
     (hint : Integrable (fun ω => RCLike.re (cfc ψ (Y ω)).trace) μ) {t : ℝ} (ht : 0 ≤ t)
     (hψt : 0 < ψ t) :
     μ.real {ω | t ≤ eigenvalue (Y ω) 0} ≤ (∫ ω, RCLike.re (cfc ψ (Y ω)).trace ∂μ) / ψ t := by
-  sorry
+  set f : Ω → ℝ := fun ω => RCLike.re (cfc ψ (Y ω)).trace with hf
+  have hf0 : 0 ≤ᵐ[μ] f := by
+    filter_upwards [hY] with ω hω
+    simp only [hf, Pi.zero_apply, hω.re_trace_cfc]
+    exact Finset.sum_nonneg fun i _ => hψ0 _
+  have hfin : μ {ω | ψ t ≤ f ω} ≠ ⊤ := by
+    refine (lt_of_le_of_lt (measure_mono fun ω (h : ψ t ≤ f ω) => ?_)
+      (hint.measure_norm_ge_lt_top hψt)).ne
+    exact h.trans (Real.le_norm_self _)
+  have hsub : μ.real {ω | t ≤ eigenvalue (Y ω) 0} ≤ μ.real {ω | ψ t ≤ f ω} := by
+    refine ENNReal.toReal_mono hfin (measure_mono_ae ?_)
+    filter_upwards [hY] with ω hω (h : t ≤ eigenvalue (Y ω) 0)
+    exact (hψ ht (ht.trans h) h).trans
+      (hω.apply_eigenvalue_zero_le_re_trace_cfc fun x _ => hψ0 x)
+  rw [le_div_iff₀ hψt, mul_comm]
+  exact (mul_le_mul_of_nonneg_left hsub hψt.le).trans
+    (mul_meas_ge_le_integral_of_nonneg hf0 hint _)
 
 end NLAlib

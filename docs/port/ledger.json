@@ -1,4 +1,8 @@
 {
+ "ConcaveOn.condExp_map_le_of_condExp_mem": {
+  "new": "ConcaveOn.condExp_map_le_of_condExp_mem",
+  "stage": "P5d"
+ },
  "ConcaveOn.le_map_integral_of_integral_mem": {
   "new": "ConcaveOn.le_map_integral_of_integral_mem",
   "stage": "P5a"
@@ -122,10 +126,53 @@
   "new": "Matrix.PosSemidef.re_quadForm_nonneg",
   "stage": "M1"
  },
+ "Matrix.convex_setOf_posSemidef": {
+  "new": null,
+  "note": "Mathlib condExp_nonneg/condExp_mono",
+  "stage": "P5d"
+ },
+ "Matrix.isClosed_setOf_posSemidef": {
+  "new": null,
+  "note": "Mathlib condExp_nonneg/condExp_mono",
+  "stage": "P5d"
+ },
  "Matrix.isUnit_conjTranspose_iff": {
   "new": null,
   "note": "Mathlib: Matrix.isUnit_conjTranspose",
   "stage": "M4"
+ },
+ "MeasureTheory.ae_condExp_le_condExp_of_ae_le": {
+  "new": null,
+  "note": "Mathlib condExp_nonneg/condExp_mono",
+  "stage": "P5d"
+ },
+ "MeasureTheory.ae_condExp_le_condExp_on_of_ae_le_on": {
+  "new": null,
+  "note": "inlined/private",
+  "stage": "P5d"
+ },
+ "MeasureTheory.ae_posSemidef_condExp_of_ae_posSemidef": {
+  "new": "Matrix.ae_posSemidef_condExp",
+  "stage": "P5d"
+ },
+ "MeasureTheory.condExp_family_le_family_condExp_of_exponential_comparison": {
+  "new": null,
+  "note": "inlined/private",
+  "stage": "P5d"
+ },
+ "MeasureTheory.integral_stoppedValue_le_integral_zero_of_supermartingale": {
+  "new": null,
+  "note": "Mathlib expected_stoppedValue_mono",
+  "stage": "P5d"
+ },
+ "MeasureTheory.measureReal_exists_le_nat_le_supermartingale_le": {
+  "new": null,
+  "note": "inlined",
+  "stage": "P5d"
+ },
+ "MeasureTheory.measureReal_exists_le_supermartingale_le": {
+  "new": "MeasureTheory.Supermartingale.measure_exists_ge_le",
+  "stage": "P5d"
  },
  "NLAlib.CholeskySucceeds": {
   "new": null,
@@ -175,6 +222,46 @@
   "new": null,
   "note": "HasSubexponentialMGF is the interface",
   "stage": "P3"
+ },
+ "NLAlib.HasLocalMatrixSecondMoment": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
+ },
+ "NLAlib.HasLocalMatrixSecondMoment.ae_posSemidef": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
+ },
+ "NLAlib.HasLocalMatrixSecondMoment.condExp_sq_eq_of_integrable": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
+ },
+ "NLAlib.HasLocalMatrixSecondMoment.indicator": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
+ },
+ "NLAlib.HasLocalMatrixSecondMoment.integrable_and_integrable_sq_of_trace_le": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
+ },
+ "NLAlib.HasLocalMatrixSecondMoment.measurable": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
+ },
+ "NLAlib.HasLocalMatrixSecondMoment.setIntegral_sq_eq": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
+ },
+ "NLAlib.HasLocalMatrixSecondMoment.setLIntegral_eq": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
  },
  "NLAlib.HasOrthonormalCols": {
   "new": "NLAlib.HasOrthonormalCols",
@@ -1328,6 +1415,11 @@
   "new": "Matrix.IsHermitian.abs_re_quadForm_cfc_le",
   "stage": "M8"
  },
+ "NLAlib.abs_dotProduct_le_sum_abs_mul_one_add_norm": {
+  "new": null,
+  "note": "private step in the P5c files, or inlined",
+  "stage": "P5c"
+ },
  "NLAlib.abs_dotProduct_mulVec_le": {
   "new": "NLAlib.norm_star_dotProduct_mulVec_le",
   "stage": "M2"
@@ -1437,6 +1529,11 @@
   "note": "the pivot dominates its column at every step, in existence form with weight the norm; partialPivotSwap is not reproduced",
   "stage": "M9"
  },
+ "NLAlib.abs_prod_dotProduct_le_polynomial": {
+  "new": null,
+  "note": "private step in the P5c files, or inlined",
+  "stage": "P5c"
+ },
  "NLAlib.abs_quadForm_hadamard_le_of_abs_quadForm_le": {
   "new": "NLAlib.hadamard_le_hadamard_of_neg_le_of_le",
   "note": "Loewner form -A ≤ B ≤ A, with NLAlib.neg_hadamard_le_hadamard_of_neg_le_of_le; the quadratic-form spelling is NLAlib.neg_le_and_le_iff_forall_abs_re_quadForm_le",
@@ -1512,6 +1609,10 @@
   "note": "private helper of NLAlib.exists_adjugate_eq_smul_vecMulVec, under the same name",
   "stage": "M10"
  },
+ "NLAlib.ae_condExp_matrixExp_one_le_and_condExp_sq_posSemidef_and_matrixLog_le": {
+  "new": "NLAlib.hasCondMatrixMGFBound_of_condExp_eq_zero_of_le",
+  "stage": "P5d"
+ },
  "NLAlib.ae_eq_one_or_neg_one_of_hasLaw_rademacherMeasure": {
   "new": "NLAlib.ae_eq_one_or_neg_one_of_hasLaw_rademacherMeasure",
   "stage": "P2"
@@ -1520,6 +1621,11 @@
   "new": null,
   "note": "measure-form twin of ae_eq_one_or_neg_one_of_hasLaw_rademacherMeasure",
   "stage": "P2"
+ },
+ "NLAlib.ae_forall_sq_eq_one_rademacherVector": {
+  "new": null,
+  "note": "private step in the P5c files, or inlined",
+  "stage": "P5c"
  },
  "NLAlib.ae_hasOrthonormalCols_gaussianRangeFrame_of_hasLaw": {
   "new": null,
@@ -1534,6 +1640,11 @@
  "NLAlib.ae_ne_zero_mvPolynomial": {
   "new": "NLAlib.ae_eval_ne_zero_of_ne_zero",
   "stage": "R1"
+ },
+ "NLAlib.ae_norm_le_one_rademacherVector": {
+  "new": null,
+  "note": "private step in the P5c files, or inlined",
+  "stage": "P5c"
  },
  "NLAlib.ae_project_gaussianRangeFrame_of_hasLaw": {
   "new": null,
@@ -2227,6 +2338,19 @@
   "new": "NLAlib.concaveOn_re_det_rpow",
   "stage": "M7"
  },
+ "NLAlib.condExp_traceExp_add_le_traceExp_add_matrixLog_of_ae_posDef_condExp": {
+  "new": "NLAlib.condExp_re_trace_exp_const_add_le",
+  "stage": "P5d"
+ },
+ "NLAlib.condExp_traceExp_add_le_traceExp_add_matrixLog_of_predictable": {
+  "new": "NLAlib.condExp_re_trace_exp_add_le",
+  "stage": "P5d"
+ },
+ "NLAlib.condExp_traceExp_variance_update_le": {
+  "new": null,
+  "note": "inlined",
+  "stage": "P5d"
+ },
  "NLAlib.conditionNumber": {
   "new": "NLAlib.conditionNumber",
   "note": "real-valued, every shape; the ℝ≥0∞-valued square notion is not reproduced",
@@ -2280,6 +2404,11 @@
  "NLAlib.conditionNumber_toReal_of_isUnit": {
   "new": "NLAlib.conditionNumber_of_isUnit",
   "stage": "M4"
+ },
+ "NLAlib.conditionalMatrixSecondMoment": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
  },
  "NLAlib.congruence_le_congruence_iff": {
   "new": "NLAlib.conjTranspose_mul_mul_le_conjTranspose_mul_mul_iff",
@@ -5976,6 +6105,11 @@
   "note": "Fin (k + 1) twin of hasDerivAt_det_smul_one_sub_sum_complement_minors: one step from Matrix.hasDerivAt_det and NLAlib.principalMinor_erase_univ_eq_adjugate",
   "stage": "M8"
  },
+ "NLAlib.hasDerivAt_dotProduct_update": {
+  "new": null,
+  "note": "private step in the P5c files, or inlined",
+  "stage": "P5c"
+ },
  "NLAlib.hasDerivAt_entropy_ornsteinUhlenbeck_of_polynomial_growth": {
   "new": null,
   "note": "private step or covered by the covariance form; Sudakov-Fernique follows from Gordon",
@@ -6160,6 +6294,16 @@
   "new": null,
   "note": "hasLaw_pi_iff",
   "stage": "P2"
+ },
+ "NLAlib.hasLocalMatrixSecondMoment_condExp_sq": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
+ },
+ "NLAlib.hasLocalMatrixSecondMoment_of_condExp_sq_eq": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
  },
  "NLAlib.hasOrthonormalCols_complementaryEigenframe": {
   "new": null,
@@ -6770,6 +6914,26 @@
   "note": "private step or covered by the covariance form; Sudakov-Fernique follows from Gordon",
   "stage": "P6"
  },
+ "NLAlib.integrable_coordinate_mul_coordinate_rademacherVector": {
+  "new": null,
+  "note": "private step in the P5c files, or inlined",
+  "stage": "P5c"
+ },
+ "NLAlib.integrable_coordinate_mul_re_trace_gaussianSeries_product": {
+  "new": null,
+  "note": "private step in the P5c files, or inlined",
+  "stage": "P5c"
+ },
+ "NLAlib.integrable_coordinate_mul_re_trace_mul_gaussianSeries_pow": {
+  "new": null,
+  "note": "private",
+  "stage": "P5c"
+ },
+ "NLAlib.integrable_dotProduct_mul_prod_gaussianVector": {
+  "new": null,
+  "note": "private step in the P5c files, or inlined",
+  "stage": "P5c"
+ },
  "NLAlib.integrable_entropy_update_of_nonneg": {
   "new": null,
   "note": "not needed",
@@ -6778,6 +6942,11 @@
  "NLAlib.integrable_exp_centered_sq_of_hasSubgaussianMGF_of_le": {
   "new": "ProbabilityTheory.HasSubgaussianMGF.hasSubexponentialMGF_sq_sub_integral",
   "stage": "P1"
+ },
+ "NLAlib.integrable_exp_mul_of_hasLaw_rademacherMeasure": {
+  "new": null,
+  "note": "private step in the P5c files, or inlined",
+  "stage": "P5c"
  },
  "NLAlib.integrable_exp_mul_sq_of_hasSubgaussianMGF": {
   "new": "ProbabilityTheory.HasSubgaussianMGF.integrable_exp_mul_sq",
@@ -6840,6 +7009,11 @@
   "new": "ProbabilityTheory.HasSubgaussianMGF.integrable_iSup",
   "stage": "P1"
  },
+ "NLAlib.integrable_indicator_and_condExp_indicator_eq_zero": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
+ },
  "NLAlib.integrable_inv_sum_sq_gaussianVector": {
   "new": "NLAlib.integrable_norm_sq_rpow_of_hasLaw_gaussianVector",
   "stage": "R4"
@@ -6849,9 +7023,19 @@
   "note": "private step in MatrixConcentration/Subadditivity.lean",
   "stage": "P5a"
  },
+ "NLAlib.integrable_matrixExp_smul_of_ae_le_algebraMap": {
+  "new": null,
+  "note": "inlined",
+  "stage": "P5d"
+ },
  "NLAlib.integrable_matrixExp_smul_sum_of_iIndepFun": {
   "new": "NLAlib.integrable_re_trace_exp_sum",
   "stage": "P5a"
+ },
+ "NLAlib.integrable_matrixVarianceBudget_indicator_and_sq": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
  },
  "NLAlib.integrable_mul_log_add_of_nonneg": {
   "new": null,
@@ -6910,9 +7094,28 @@
   "note": "HasLaw.integrable_comp_iff with integrable_rademacherMeasure",
   "stage": "P2"
  },
+ "NLAlib.integrable_prod_dotProduct_gaussianVector": {
+  "new": null,
+  "note": "private step in the P5c files, or inlined",
+  "stage": "P5c"
+ },
  "NLAlib.integrable_rademacherMeasure": {
   "new": "NLAlib.integrable_rademacherMeasure",
   "stage": "P2"
+ },
+ "NLAlib.integrable_rademacherVector_of_polynomial_growth": {
+  "new": null,
+  "note": "private step in the P5c files, or inlined",
+  "stage": "P5c"
+ },
+ "NLAlib.integrable_re_trace_gaussianSeries_product": {
+  "new": null,
+  "note": "private growth bound",
+  "stage": "P5c"
+ },
+ "NLAlib.integrable_re_trace_mul_gaussianSeries_pow": {
+  "new": "NLAlib.integrable_re_trace_sum_smul_pow_of_hasLaw_gaussianVector",
+  "stage": "P5c"
  },
  "NLAlib.integrable_rpow_inv_sum_sq_gaussianVector": {
   "new": "NLAlib.integrable_norm_sq_rpow_of_hasLaw_gaussianVector",
@@ -6954,6 +7157,11 @@
   "note": "private step or covered by the covariance form; Sudakov-Fernique follows from Gordon",
   "stage": "P6"
  },
+ "NLAlib.integral_coordinate_mul_coordinate_rademacherVector": {
+  "new": null,
+  "note": "private step in the P5c files, or inlined",
+  "stage": "P5c"
+ },
  "NLAlib.integral_coordinate_mul_eq_integral_fderiv_gaussian": {
   "new": null,
   "note": "private step or covered by the covariance form; Sudakov-Fernique follows from Gordon",
@@ -6964,10 +7172,30 @@
   "note": "private step or covered by the covariance form; Sudakov-Fernique follows from Gordon",
   "stage": "P6"
  },
+ "NLAlib.integral_coordinate_mul_prod_dotProduct_gaussianVector": {
+  "new": null,
+  "note": "private step in the P5c files, or inlined",
+  "stage": "P5c"
+ },
+ "NLAlib.integral_coordinate_mul_re_trace_mul_gaussianSeries_pow": {
+  "new": null,
+  "note": "private coordinate Stein step",
+  "stage": "P5c"
+ },
+ "NLAlib.integral_coordinate_mul_re_trace_mul_rademacherSeries_pow_le": {
+  "new": null,
+  "note": "private sign-flip step",
+  "stage": "P5c"
+ },
  "NLAlib.integral_deriv_mul_eq_integral_mul_mul_sub_deriv_gaussianReal": {
   "new": null,
   "note": "private step or covered by the covariance form; Sudakov-Fernique follows from Gordon",
   "stage": "P6"
+ },
+ "NLAlib.integral_dotProduct_mul_prod_gaussianVector": {
+  "new": null,
+  "note": "private step in the P5c files, or inlined",
+  "stage": "P5c"
  },
  "NLAlib.integral_entropy_update_eq_sub_integral_mul_log_mean": {
   "new": null,
@@ -7172,6 +7400,10 @@
   "new": "NLAlib.HasMatrixMGFBound.integral_eigenvalue_zero_sum_le",
   "stage": "P5a"
  },
+ "NLAlib.integral_lambdaMax_sum_le_of_intrinsicDimension": {
+  "new": "NLAlib.integral_eigenvalue_zero_sum_le_chernoff_intrinsicDim",
+  "stage": "P5b"
+ },
  "NLAlib.integral_lambdaMax_sum_le_of_lambdaMax_le": {
   "new": "NLAlib.integral_eigenvalue_zero_sum_le_bernstein",
   "stage": "P5a"
@@ -7278,6 +7510,69 @@
   "new": "NLAlib.integral_rademacherMeasure",
   "stage": "P2"
  },
+ "NLAlib.integral_re_trace_gaussianSeries_even_pow_le_recursion": {
+  "new": "NLAlib.integral_re_trace_sum_smul_pow_le_mul_of_hasLaw_gaussianVector",
+  "stage": "P5c"
+ },
+ "NLAlib.integral_re_trace_gaussianSeries_pow_le": {
+  "new": "NLAlib.integral_re_trace_sum_smul_pow_le_of_hasLaw_gaussianVector",
+  "stage": "P5c"
+ },
+ "NLAlib.integral_re_trace_gaussianSeries_pow_le_of_hasLaw": {
+  "new": "NLAlib.integral_re_trace_sum_smul_pow_le_of_hasLaw_gaussianVector",
+  "stage": "P5c"
+ },
+ "NLAlib.integral_re_trace_gaussianSeries_pow_rpow_le_of_hasLaw": {
+  "new": null,
+  "note": "rooted form, P5c note §6",
+  "stage": "P5c"
+ },
+ "NLAlib.integral_re_trace_gaussianSeries_sq": {
+  "new": null,
+  "note": "private step in the P5c files, or inlined",
+  "stage": "P5c"
+ },
+ "NLAlib.integral_re_trace_gaussianSeries_sq_of_hasLaw": {
+  "new": null,
+  "note": "private step in the P5c files, or inlined",
+  "stage": "P5c"
+ },
+ "NLAlib.integral_re_trace_independent_series_sq": {
+  "new": null,
+  "note": "private step in the P5c files, or inlined",
+  "stage": "P5c"
+ },
+ "NLAlib.integral_re_trace_pow_le_of_polynomial_recursion": {
+  "new": "NLAlib.integral_re_trace_pow_le_of_recursion",
+  "stage": "P5c"
+ },
+ "NLAlib.integral_re_trace_rademacherSeries_even_pow_le_recursion": {
+  "new": "NLAlib.integral_re_trace_sum_smul_pow_le_mul_of_hasLaw_rademacherVector",
+  "stage": "P5c"
+ },
+ "NLAlib.integral_re_trace_rademacherSeries_pow_le": {
+  "new": "NLAlib.integral_re_trace_sum_smul_pow_le_of_hasLaw_rademacherVector",
+  "stage": "P5c"
+ },
+ "NLAlib.integral_re_trace_rademacherSeries_pow_le_of_hasLaw": {
+  "new": "NLAlib.integral_re_trace_sum_smul_pow_le_of_hasLaw_rademacherVector",
+  "stage": "P5c"
+ },
+ "NLAlib.integral_re_trace_rademacherSeries_pow_rpow_le_of_hasLaw": {
+  "new": null,
+  "note": "rooted form, P5c note §6",
+  "stage": "P5c"
+ },
+ "NLAlib.integral_re_trace_rademacherSeries_sq": {
+  "new": null,
+  "note": "private step in the P5c files, or inlined",
+  "stage": "P5c"
+ },
+ "NLAlib.integral_re_trace_rademacherSeries_sq_of_hasLaw": {
+  "new": null,
+  "note": "private step in the P5c files, or inlined",
+  "stage": "P5c"
+ },
  "NLAlib.integral_reindex": {
   "new": "Matrix.integral_reindex",
   "stage": "P0"
@@ -7340,6 +7635,10 @@
   "note": "private step in RandomMatrix/Gaussian/{SpectralNorm,ExtremeSingularValues}.lean",
   "stage": "R3"
  },
+ "NLAlib.integral_specNorm_sum_le_of_intrinsicDimension": {
+  "new": "NLAlib.integral_specNorm_sum_le_bernstein_intrinsicDim",
+  "stage": "P5b"
+ },
  "NLAlib.integral_specNorm_sum_le_of_specNorm_le": {
   "new": "NLAlib.integral_specNorm_sum_le_bernstein",
   "stage": "P5a"
@@ -7370,6 +7669,11 @@
  "NLAlib.integral_traceExp_add_le_traceExp_add_matrixLog": {
   "new": "NLAlib.integral_re_trace_exp_add_le",
   "stage": "P5a"
+ },
+ "NLAlib.integral_update_neg_rademacherVector": {
+  "new": null,
+  "note": "replaced by HasLaw.integral_comp",
+  "stage": "P5c"
  },
  "NLAlib.intrinsicDimension": {
   "new": "NLAlib.intrinsicDimension",
@@ -8216,6 +8520,11 @@
   "note": "the case b = 1; the spectralRadius of the relative matrix is replaced by the generalized-eigenvalue statement, Matrix-Inequalities §0, §7.3; B Hermitian suffices",
   "stage": "M7"
  },
+ "NLAlib.le_matrixIncrementSum_succ": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
+ },
  "NLAlib.le_of_mem_spectrum_of_lambdaMax_le": {
   "new": "Matrix.IsHermitian.spectrum_subset_iff",
   "note": "at s = Set.Iic L, with Matrix.IsHermitian.eigenvalue_le_eigenvalue; the Loewner form is Matrix.IsHermitian.le_smul_one_iff; no lambdaMax",
@@ -8594,6 +8903,16 @@
   "new": "Matrix.PosSemidef.map_pow_le_map_pow_of_le",
   "stage": "M7"
  },
+ "NLAlib.matrixCompensatedTracePotential": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
+ },
+ "NLAlib.matrixCompensatedTracePotential_zero": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
+ },
  "NLAlib.matrixExp": {
   "new": null,
   "note": "object not reproduced: matrixExp, written NormedSpace.exp A, Matrix-Functions §1 and §7.1",
@@ -8630,6 +8949,36 @@
  "NLAlib.matrixExp_unitary_conj": {
   "new": "NLAlib.exp_mul_mul_conjTranspose",
   "stage": "M8"
+ },
+ "NLAlib.matrixIncrementSum": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
+ },
+ "NLAlib.matrixIncrementSum_indicator_eq_of_norm_le": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
+ },
+ "NLAlib.matrixIncrementSum_le_matrixIncrementSum": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
+ },
+ "NLAlib.matrixIncrementSum_posSemidef": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
+ },
+ "NLAlib.matrixIncrementSum_succ": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
+ },
+ "NLAlib.matrixIncrementSum_zero": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
  },
  "NLAlib.matrixLog": {
   "new": null,
@@ -8679,6 +9028,36 @@
   "note": "object not reproduced: matrixPowerBoundConstant, §1 and §7.9; the constant of NLAlib.exists_forall_specNorm_pow_le_mul_pow is existential",
   "stage": "M10"
  },
+ "NLAlib.matrixQuadraticFormReal": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
+ },
+ "NLAlib.matrixQuadraticFormReal_single": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
+ },
+ "NLAlib.matrixVarianceBudgetSet": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
+ },
+ "NLAlib.matrixVectorSqNorm": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
+ },
+ "NLAlib.matrixVectorSqNorm_nonneg": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
+ },
+ "NLAlib.matrixVectorSqNorm_single": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
+ },
  "NLAlib.matrix_chernoff_sampling_lower": {
   "new": "NLAlib.measureReal_eigenvalue_sum_le_le_card_mul_exp",
   "stage": "P5a"
@@ -8686,6 +9065,11 @@
  "NLAlib.matrix_chernoff_sampling_upper": {
   "new": "NLAlib.measureReal_eigenvalue_zero_sum_ge_le_card_mul_exp",
   "stage": "P5a"
+ },
+ "NLAlib.matrix_freedman": {
+  "new": null,
+  "note": "local-moment form cut, D1/D9",
+  "stage": "P5d"
  },
  "NLAlib.matrix_spectralRadius_ne_top": {
   "new": "NLAlib.spectralRadius_complexify_ne_top",
@@ -8718,6 +9102,11 @@
  "NLAlib.max_specNorm_sinePrincipalAngles_le_two_mul_specNorm_div_population_gap": {
   "new": "NLAlib.max_specNorm_one_sub_mul_le_two_mul_specNorm_div_singularGap",
   "stage": "M6"
+ },
+ "NLAlib.measurableSet_matrixVarianceBudgetSet": {
+  "new": null,
+  "note": "private step in the P5d files, or inlined",
+  "stage": "P5d"
  },
  "NLAlib.measurable_bestRankFrobSq": {
   "new": null,
@@ -8824,6 +9213,11 @@
   "note": "P0's HasLaw.entry, HasLaw.eval, HasLaw.iIndepFun_entry, HasLaw.iIndepFun_eval",
   "stage": "R1"
  },
+ "NLAlib.measurePreserving_neg_rademacherMeasure": {
+  "new": null,
+  "note": "private step in the P5c files, or inlined",
+  "stage": "P5c"
+ },
  "NLAlib.measurePreserving_ofMeasurableEquiv_gaussianMatrix": {
   "new": null,
   "note": "the abbrev and the uncurry law",
@@ -8838,6 +9232,10 @@
   "new": null,
   "note": "private step in RandomMatrix/Gaussian/{SpectralNorm,ExtremeSingularValues}.lean",
   "stage": "R3"
+ },
+ "NLAlib.measurePreserving_update_neg_rademacherVector": {
+  "new": "NLAlib.measurePreserving_update_neg_rademacherVector",
+  "stage": "P5c"
  },
  "NLAlib.measureReal_abs_ge_le_two_mul_exp_of_cgf_le": {
   "new": null,
@@ -8888,6 +9286,14 @@
   "new": "NLAlib.HasMatrixMGFBound.measure_eigenvalue_zero_sum_ge_le",
   "stage": "P5a"
  },
+ "NLAlib.measureReal_lambdaMax_sum_ge_le_intrinsicDimension_mul_exp": {
+  "new": "NLAlib.measureReal_eigenvalue_zero_sum_ge_le_bernstein_intrinsicDim",
+  "stage": "P5b"
+ },
+ "NLAlib.measureReal_lambdaMax_sum_ge_le_intrinsicDimension_mul_exp_chernoff": {
+  "new": "NLAlib.measureReal_eigenvalue_zero_sum_ge_le_chernoff_intrinsicDim",
+  "stage": "P5b"
+ },
  "NLAlib.measureReal_lambdaMin_le_le_exp_mul_integral_traceExp": {
   "new": "NLAlib.measureReal_eigenvalue_le_le",
   "stage": "P5a"
@@ -8922,6 +9328,10 @@
  "NLAlib.measureReal_specNorm_sum_ge_le_bernsteinTail": {
   "new": "NLAlib.measureReal_specNorm_sum_ge_le_bernstein",
   "stage": "P5a"
+ },
+ "NLAlib.measureReal_specNorm_sum_ge_le_intrinsicDimension_mul_exp": {
+  "new": "NLAlib.measureReal_specNorm_sum_ge_le_bernstein_intrinsicDim",
+  "stage": "P5b"
  },
  "NLAlib.measureReal_sq_norm_ge_add_two_sqrt_mul_add_le": {
   "new": "NLAlib.IsSubgaussianVector.measure_norm_sq_ge_le",
@@ -8970,9 +9380,21 @@
   "new": "NLAlib.hasLaw_haarFrame_of_isLeftUnitarilyInvariant",
   "stage": "R5"
  },
+ "NLAlib.measure_exists_matrix_crossing_le_of_condExp_sq": {
+  "new": "NLAlib.measureReal_exists_eigenvalue_zero_sum_ge_le_freedman",
+  "stage": "P5d"
+ },
+ "NLAlib.measure_exists_matrix_crossing_le_of_trace_supermartingale": {
+  "new": "NLAlib.HasCondMatrixMGFBound.measure_exists_eigenvalue_zero_sum_ge_le",
+  "stage": "P5d"
+ },
  "NLAlib.measure_extreme_singular_failure_le_of_independent_isotropic_rows": {
   "new": "NLAlib.measureReal_singularValues_le_le_of_isSubgaussianVector",
   "stage": "R3"
+ },
+ "NLAlib.measure_lambdaMax_ge_le_integral_traceFunction_div": {
+  "new": "NLAlib.measureReal_eigenvalue_zero_ge_le_integral_re_trace_cfc_div",
+  "stage": "P5b"
  },
  "NLAlib.measure_lt_specNorm_gram_sub_card_le_of_independent_isotropic_rows": {
   "new": null,
@@ -13572,6 +13994,10 @@
   "new": "NLAlib.hasSum_pow_inv_one_sub_of_specRadius_lt_one",
   "note": "real twin; summability is HasSum.summable",
   "stage": "M10"
+ },
+ "NLAlib.supermartingale_matrixCompensatedTracePotential_of_condExp_sq": {
+  "new": "NLAlib.HasCondMatrixMGFBound.supermartingale_re_trace_exp",
+  "stage": "P5d"
  },
  "NLAlib.sylvesterLinearMap": {
   "new": null,

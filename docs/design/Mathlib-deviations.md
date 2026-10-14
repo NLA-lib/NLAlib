@@ -69,7 +69,9 @@ None of these was approved by the maintainer when it was made. Status is given p
   (`A.PosSemidef ↔ ∀ k, 0 ≤ eigenvalue A k`; comparison of singular values at every index).
   The strict statement is bounded, as it must be:
   `A.PosDef ↔ ∀ k < Fintype.card n, 0 < eigenvalue A k`. The scan is textual; a statement that
-  hides an index inside a definition would escape it.
+  hides an index inside a definition would escape it. The explanation for users, with the
+  example, is in the module docstring of `NLAlib/Matrix/Spectral/Eigenvalues.lean`; the rule
+  for contributors is in `CONTRIBUTING.md` §5.2.
 
 ## 2. Singular values
 

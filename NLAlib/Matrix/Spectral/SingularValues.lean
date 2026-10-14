@@ -20,7 +20,9 @@ indexed from `0`, non-increasing, and `0` for `k` at least the rank of `A`. It i
 
 The largest singular value is `singularValues A 0 = specNorm A`. For a matrix with `n` columns,
 the smallest singular value is `singularValues A k` with `k + 1 = Fintype.card n`; it is positive
-exactly when `A` has full column rank.
+exactly when `A` has full column rank. The zeros beyond the rank are padding, so an index
+quantified by `∃`, or by `∀` in a hypothesis, needs a range: `∃ k, singularValues A k < 1` holds for
+every matrix. See the module docstring of `NLAlib/Matrix/Spectral/Eigenvalues.lean`.
 
 ## Main definitions
 

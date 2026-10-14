@@ -194,6 +194,13 @@ release.
   singular value); the theorem carries the hypothesis that excludes the junk value and the
   definition's docstring states the junk value. Real-valued quantities stay real-valued: a `⊤` in
   `ℝ≥0∞` costs coercions, `positivity` and `gcongr` at every use.
+- **A quantified index of a padded sequence carries its range.** `∃ k, -3 < eigenvalue A k` is
+  true of every matrix (take `k` out of range, where the value is `0`), and a hypothesis
+  `∀ k, 0 < eigenvalue A k` is never satisfied. An index of `eigenvalue` or `singularValues`
+  quantified by `∃`, or by `∀` in a hypothesis, has a bound (`k < Fintype.card n`, `k + 1 = Fintype.card n`,
+  `k ∈ Finset.range r`), unless the statement is meant to hold of the padding and does
+  (`A.PosSemidef ↔ ∀ k, 0 ≤ eigenvalue A k`). The module docstring of
+  `NLAlib/Matrix/Spectral/Eigenvalues.lean` explains this to users.
 - Two-sided bounds are two theorems. A conjunction is split when its parts are useful alone.
   Equational forms (`eigenvalue A k = ⨆ … ⨅ …`) are stated when a user would `rw` with them;
   inequality halves are corollaries.

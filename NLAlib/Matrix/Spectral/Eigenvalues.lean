@@ -25,6 +25,34 @@ The largest eigenvalue is `eigenvalue A 0`. Statements never mention a chosen ei
 basis: a diagonalisation is an equation `A * U = U * Matrix.diagonal d` with
 `HasOrthonormalCols U`.
 
+## Reading and writing statements about `eigenvalue A k`
+
+`eigenvalue` is a total function: it returns a number for every matrix and every natural number,
+including inputs for which "the `k`-th eigenvalue" does not exist. There the value is `0`, a
+*junk value*, in the way that `1 / 0 = 0` and `A⁻¹ = 0` for a singular `A` are in Mathlib. This
+cannot make a false theorem provable, because Lean checks every proof against this definition.
+What it does mean is that a statement is also a statement about the junk values, so the range of
+the index has to be read, and written, with care.
+
+**The example to remember.** `∃ k, -3 < eigenvalue A k` does not say that `A` has an eigenvalue
+above `-3`. It holds for every matrix: take `k ≥ Fintype.card n`, where the value is `0`. The
+statement that was meant is `∃ k < Fintype.card n, -3 < eigenvalue A k`.
+
+* An index quantified by `∃` needs `k < Fintype.card n`, or the witness can be out of range.
+* An index quantified by `∀` in a hypothesis needs it too. `∀ k, 0 < eigenvalue A k` is never
+  satisfied, since the value is `0` out of range, so a theorem that assumes it says nothing.
+* An index quantified by `∀` in a conclusion, or left free, makes a claim about the padding too.
+  That is fine when the claim is true of `0`, and such statements are left unbounded on purpose.
+  Compare `Matrix.IsHermitian.posSemidef_iff_eigenvalue_nonneg`,
+  `A.PosSemidef ↔ ∀ k, 0 ≤ eigenvalue A k`, with `Matrix.IsHermitian.posDef_iff_eigenvalue_pos`,
+  `A.PosDef ↔ ∀ k < Fintype.card n, 0 < eigenvalue A k`: the strict one must carry the bound.
+* The same applies to a matrix that is not Hermitian, for which `eigenvalue A k = 0` for every
+  `k`. Theorems carry `A.IsHermitian` where the value matters. Identities such as
+  `NLAlib.eigenvalue_neg` hold for every matrix, because both sides are junk together.
+
+`NLAlib.singularValues` is padded in the same way and is read by the same rules. The reasons for
+this design, and what Mathlib does, are in `docs/design/Mathlib-deviations.md`, entry 1.
+
 ## Main definitions
 
 * `NLAlib.eigenvalue`: the sorted, zero-padded eigenvalues of a Hermitian matrix.
@@ -55,7 +83,10 @@ open Classical in
 from `0`. Non-increasing in `k` for `k < Fintype.card n`. The value is `0` for
 `k ≥ Fintype.card n`, and `0` for every `k` when `A` is not Hermitian. Mathlib's
 `Matrix.IsHermitian.eigenvalues₀` is the same sequence indexed by `Fin (Fintype.card n)`;
-Mathlib's `Matrix.IsHermitian.eigenvalues` is unsorted. -/
+Mathlib's `Matrix.IsHermitian.eigenvalues` is unsorted.
+
+The zeros are junk values: `∃ k, -3 < eigenvalue A k` is true of every matrix. Bound the index
+(`k < Fintype.card n`) when quantifying over it; see the module docstring. -/
 noncomputable def eigenvalue (A : Matrix n n 𝕜) (k : ℕ) : ℝ :=
   if h : A.IsHermitian ∧ k < Fintype.card n then h.1.eigenvalues₀ ⟨k, h.2⟩ else 0
 

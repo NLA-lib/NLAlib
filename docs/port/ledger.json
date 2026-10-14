@@ -2538,8 +2538,7 @@
   "stage": "M5"
  },
  "NLAlib.det_gram_fromCols_eq_mul_frobenius_norm_sq_sub_rangeProjector": {
-  "new": null,
-  "note": "not ported: det of the Gram matrix of fromCols B v equals det (Bᴴ * B) times ‖(1 - rangeProjector B) v‖²; consumer is volume sampling, outside M5; candidate for Inequalities/Determinant.lean",
+  "new": "NLAlib.re_det_conjTranspose_mul_self_fromCols",
   "stage": "M5"
  },
  "NLAlib.det_gram_mul_eq_zero_of_det_gram_eq_zero": {
@@ -3094,8 +3093,7 @@
   "stage": "M3"
  },
  "NLAlib.eigenvalues₀_eq_of_charpoly_eq": {
-  "new": null,
-  "note": "deferred: eigenvalues determined by the characteristic polynomial; complexification of a real symmetric matrix",
+  "new": "Matrix.IsHermitian.eigenvalue_eq_of_charpoly_eq",
   "stage": "M10"
  },
  "NLAlib.eigenvalues₀_eq_of_eq_mul_diagonal_mul": {
@@ -7244,8 +7242,7 @@
   "stage": "M10"
  },
  "NLAlib.measurable_canonicalQRFrame": {
-  "new": null,
-  "note": "deferred to M10: measurability file; measurability of gramSchmidtQ",
+  "new": "NLAlib.measurable_gramSchmidtQ",
   "stage": "M10"
  },
  "NLAlib.measurable_frobSq_of_entries": {
@@ -7279,8 +7276,7 @@
   "stage": "M10"
  },
  "NLAlib.measurable_polarFrame_entry": {
-  "new": null,
-  "note": "deferred to M10: measurability file; measurability of polarFactor",
+  "new": "NLAlib.measurable_polarFactor",
   "stage": "M10"
  },
  "NLAlib.measurable_pow_entry_of": {
@@ -9339,8 +9335,7 @@
   "stage": "M1"
  },
  "NLAlib.rank_gram_pow_mul": {
-  "new": null,
-  "note": "deferred: powers of the Gram matrix applied to A, with subspace iteration",
+  "new": "NLAlib.rank_pow_mul_conjTranspose_self_mul",
   "stage": "M8"
  },
  "NLAlib.rank_isometry_mul_eq": {
@@ -10187,8 +10182,7 @@
   "stage": "M3"
  },
  "NLAlib.singularValues_gram_pow_mul": {
-  "new": null,
-  "note": "deferred: powers of the Gram matrix applied to A, with subspace iteration",
+  "new": "NLAlib.singularValues_pow_mul_conjTranspose_self_mul",
   "stage": "M8"
  },
  "NLAlib.singularValues_isometry_mul": {
@@ -10432,7 +10426,7 @@
  },
  "NLAlib.specNorm_blockDiagonal_const_le": {
   "new": null,
-  "note": "deferred to M10 with Kronecker products",
+  "note": "one step from Matrix.kronecker_one-type rewriting, NLAlib.specNorm_kronecker and NLAlib.specNorm_one_le",
   "stage": "M2"
  },
  "NLAlib.specNorm_complement_mul_projector_eq_of_rank_eq": {
@@ -10610,8 +10604,7 @@
   "stage": "M3b"
  },
  "NLAlib.specNorm_le_specNorm_map_ofReal": {
-  "new": null,
-  "note": "deferred: real-to-𝕜 coercion of matrices, moves with its consumer",
+  "new": "NLAlib.specNorm_complexify",
   "stage": "M2"
  },
  "NLAlib.specNorm_le_specNorm_sylvester_div": {

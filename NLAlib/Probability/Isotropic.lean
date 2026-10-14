@@ -31,6 +31,7 @@ these estimators needs, are separate hypotheses where they are used.
 
 * `NLAlib.IsIsotropic.integral_quadForm`: Hutchinson's identity `E [Xᴴ A X] = tr A`.
 * `NLAlib.IsIsotropic.integral_norm_mulVec_sq`: `E ‖A X‖² = ‖A‖_F²`.
+* `NLAlib.IsIsotropic.integral_norm_mulVec_le`: `E ‖A X‖ ≤ ‖A‖_F` under a probability measure.
 * `NLAlib.IsIsotropic.integral_norm_dotProduct_sq`: `E |⟨u, X⟩|² = ‖u‖²`.
 * `NLAlib.IsIsotropic.mulVec`: maps with orthonormal rows preserve isotropy.
 * `NLAlib.IsIsotropic.of_iIndepFun`: independent coordinates with mean zero and unit second
@@ -129,6 +130,47 @@ theorem integral_norm_sq (hX : IsIsotropic X μ) :
   simp only [key]
   rw [integral_re (hX.integrable_quadForm _), hX.integral_quadForm, Matrix.trace_one,
     RCLike.natCast_re]
+
+/-- The Euclidean norm of `A X` is square integrable for an isotropic `X`. -/
+private theorem memLp_norm_mulVec (hX : IsIsotropic X μ) {m : Type*} [Fintype m]
+    (A : Matrix m n 𝕜) : MemLp (fun ω => ‖WithLp.toLp 2 (A *ᵥ X ω)‖) 2 μ := by
+  have hsq := hX.integrable_norm_mulVec_sq A
+  have hf : (fun ω => ‖WithLp.toLp 2 (A *ᵥ X ω)‖) =
+      fun ω => √(‖WithLp.toLp 2 (A *ᵥ X ω)‖ ^ 2) := by
+    funext ω
+    rw [Real.sqrt_sq (norm_nonneg _)]
+  have hm : AEStronglyMeasurable (fun ω => ‖WithLp.toLp 2 (A *ᵥ X ω)‖) μ := by
+    rw [hf]
+    exact Real.continuous_sqrt.comp_aestronglyMeasurable hsq.aestronglyMeasurable
+  exact (memLp_two_iff_integrable_sq hm).2 hsq
+
+/-- The Euclidean norm of `A X` is integrable for an isotropic `X` under a probability measure. -/
+theorem integrable_norm_mulVec [IsProbabilityMeasure μ] (hX : IsIsotropic X μ) {m : Type*}
+    [Fintype m] (A : Matrix m n 𝕜) : Integrable (fun ω => ‖WithLp.toLp 2 (A *ᵥ X ω)‖) μ :=
+  (hX.memLp_norm_mulVec A).integrable one_le_two
+
+/-- `E ‖A X‖ ≤ ‖A‖_F` for an isotropic `X` under a probability measure, by Jensen and
+`NLAlib.IsIsotropic.integral_norm_mulVec_sq`; with `A = 1`, `E ‖X‖ ≤ √n` (`frobNorm_one_sq`).
+The probability hypothesis is needed: isotropy does not imply it, and Jensen's step
+`E ‖Y‖ ≤ (E ‖Y‖²)^{1/2}` fails on a measure of mass `> 1`. -/
+theorem integral_norm_mulVec_le [IsProbabilityMeasure μ] (hX : IsIsotropic X μ) {m : Type*}
+    [Fintype m] (A : Matrix m n 𝕜) : ∫ ω, ‖WithLp.toLp 2 (A *ᵥ X ω)‖ ∂μ ≤ frobNorm A := by
+  set f : Ω → ℝ := fun ω => ‖WithLp.toLp 2 (A *ᵥ X ω)‖ with hf_def
+  set c : ℝ := ∫ ω, f ω ∂μ with hc_def
+  have hf : Integrable f μ := hX.integrable_norm_mulVec A
+  have hsq : Integrable (fun ω => f ω ^ 2) μ := hX.integrable_norm_mulVec_sq A
+  have hsq_int : ∫ ω, f ω ^ 2 ∂μ = frobNorm A ^ 2 := hX.integral_norm_mulVec_sq A
+  have hexp : ∫ ω, (f ω - c) ^ 2 ∂μ = frobNorm A ^ 2 - c ^ 2 := by
+    have e (ω : Ω) : (f ω - c) ^ 2 = f ω ^ 2 - 2 * c * f ω + c ^ 2 := by ring
+    simp only [e]
+    have h1 : Integrable (fun ω => f ω ^ 2 - 2 * c * f ω) μ := hsq.sub (hf.const_mul _)
+    rw [integral_add h1 (integrable_const _), integral_sub hsq (hf.const_mul _),
+      integral_const_mul, integral_const, probReal_univ,
+      hsq_int, ← hc_def, smul_eq_mul, one_mul]
+    ring
+  have h0 : 0 ≤ frobNorm A ^ 2 - c ^ 2 := hexp ▸ integral_nonneg fun ω => sq_nonneg _
+  have hc0 : 0 ≤ c := integral_nonneg fun ω => norm_nonneg _
+  exact (pow_le_pow_iff_left₀ hc0 (frobNorm_nonneg A) two_ne_zero).1 (by linarith)
 
 omit [DecidableEq n] in
 private theorem mulVec_mul_star_mulVec {m : Type*} (U : Matrix m n 𝕜) (x : n → 𝕜) (i j : m) :

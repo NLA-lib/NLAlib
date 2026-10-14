@@ -287,7 +287,7 @@ None of these was approved by the maintainer when it was made. Status is given p
   measure; the subtype carrier and the normalisation would be re-done at every use.
 - **Bridge (planned, R5).** `uniformSphereVector n` is the normalisation of `Measure.toSphere` on
   `EuclideanSpace ℝ n`, pushed forward by `WithLp.ofLp ∘ Subtype.val`.
-- **Status: open** until the bridge is proved.
+- **Status: bridge proved** (`uniformSphereVector_eq_map_toSphere`, `RandomMatrix/Haar/Uniqueness.lean`; needs `[Nonempty n]`: for empty `n` the sphere is empty while `uniformSphereVector n` is a point mass).
 
 ## Small spelling choices
 

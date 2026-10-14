@@ -262,7 +262,7 @@ variable {B : ι → Matrix m n 𝕜}
 
 /-- **The matrix series tail**, rectangular coefficients ([Tropp2015], Theorem 4.1.1), with
 `v = max ‖∑ c k B k B kᴴ‖ ‖∑ c k B kᴴ B k‖`. -/
-theorem measureReal_specNorm_sum_smul_ge_le [Nonempty m] [Nonempty n] (hind : iIndepFun γ μ)
+theorem measureReal_specNorm_sum_smul_ge_le [Nonempty n] (hind : iIndepFun γ μ)
     (hγ : ∀ k, HasSubgaussianMGF (γ k) (c k) μ) {t : ℝ} (ht : 0 ≤ t) :
     μ.real {ω | t ≤ specNorm (∑ k, γ k ω • B k)} ≤
       (Fintype.card m + Fintype.card n) * Real.exp (-t ^ 2 /
@@ -276,7 +276,7 @@ theorem measureReal_specNorm_sum_smul_ge_le [Nonempty m] [Nonempty n] (hind : iI
   exact h
 
 /-- The matrix series mean, rectangular coefficients ([Tropp2015], Theorem 4.1.1). -/
-theorem integral_specNorm_sum_smul_le [Nonempty m] [Nonempty n] (hind : iIndepFun γ μ)
+theorem integral_specNorm_sum_smul_le [Nonempty n] (hind : iIndepFun γ μ)
     (hγ : ∀ k, HasSubgaussianMGF (γ k) (c k) μ) :
     ∫ ω, specNorm (∑ k, γ k ω • B k) ∂μ ≤
       √(2 * max (specNorm (∑ k, (c k : ℝ) • (B k * (B k)ᴴ)))

@@ -240,7 +240,7 @@ private theorem integrable_conjTranspose_mul {m : Type*} [Fintype m]
   rw [← specNorm_eq_norm, ← specNorm_eq_norm, specNorm_conjTranspose_mul_self]
 
 /-- The Hermitian dilation as a continuous real-linear map. -/
-private noncomputable def dilationCLM (m : Type*) [Fintype m] [DecidableEq m] :
+private noncomputable def dilationCLM (m : Type*) [Fintype m] :
     Matrix m n 𝕜 →L[ℝ] Matrix (m ⊕ n) (m ⊕ n) 𝕜 :=
   LinearMap.toContinuousLinearMap
     { toFun := dilation
@@ -422,7 +422,7 @@ private theorem dilation_hypotheses (hind : iIndepFun S μ) (hS2 : ∀ k, MemLp 
 
 /-- **Matrix Bernstein**, rectangular summands ([Tropp2015], Theorem 6.1.1), with variance
 `v = max ‖∑ E S Sᴴ‖ ‖∑ E Sᴴ S‖`. For square Hermitian summands this is the two-sided form. -/
-theorem measureReal_specNorm_sum_ge_le_bernstein [Nonempty m] [Nonempty n]
+theorem measureReal_specNorm_sum_ge_le_bernstein [Nonempty n]
     (hind : iIndepFun S μ) (hL : 0 < L) (hS2 : ∀ k, MemLp (S k) 2 μ)
     (hmean : ∀ k, ∫ ω, S k ω ∂μ = 0) (hle : ∀ k, ∀ᵐ ω ∂μ, specNorm (S k ω) ≤ L) {t : ℝ}
     (ht : 0 ≤ t) :
@@ -440,7 +440,7 @@ theorem measureReal_specNorm_sum_ge_le_bernstein [Nonempty m] [Nonempty n]
   exact h
 
 /-- **Matrix Bernstein** for the mean, rectangular summands ([Tropp2015], Theorem 6.1.1). -/
-theorem integral_specNorm_sum_le_bernstein [Nonempty m] [Nonempty n] (hind : iIndepFun S μ)
+theorem integral_specNorm_sum_le_bernstein [Nonempty n] (hind : iIndepFun S μ)
     (hL : 0 < L) (hS2 : ∀ k, MemLp (S k) 2 μ) (hmean : ∀ k, ∫ ω, S k ω ∂μ = 0)
     (hle : ∀ k, ∀ᵐ ω ∂μ, specNorm (S k ω) ≤ L) :
     ∫ ω, specNorm (∑ k, S k ω) ∂μ ≤

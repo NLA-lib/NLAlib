@@ -12440,10 +12440,20 @@
   "new": "NLAlib.kyFanNorm_add_le",
   "stage": "M3a"
  },
+ "ProbabilityTheory.HasLaw.hasLaw_entry_gaussianReal": {
+  "new": null,
+  "note": "P0's HasLaw.entry, HasLaw.eval, HasLaw.iIndepFun_entry, HasLaw.iIndepFun_eval",
+  "stage": "R1"
+ },
  "ProbabilityTheory.HasLaw.hasLaw_eval_rademacherMeasure": {
   "new": null,
   "note": "HasLaw.eval",
   "stage": "P2"
+ },
+ "ProbabilityTheory.HasLaw.iIndepFun_entry_of_gaussianMatrix": {
+  "new": null,
+  "note": "P0's HasLaw.entry, HasLaw.eval, HasLaw.iIndepFun_entry, HasLaw.iIndepFun_eval",
+  "stage": "R1"
  },
  "ProbabilityTheory.HasLaw.iIndepFun_eval_of_rademacherVector": {
   "new": null,
@@ -12495,6 +12505,11 @@
  "chernoff_matrix_mgf_cgf_le": {
   "new": "NLAlib.hasMatrixMGFBound_of_posSemidef_of_le",
   "stage": "P5a"
+ },
+ "continuous_linForm": {
+  "new": null,
+  "note": "the dot product of the uncurried matrix",
+  "stage": "R1"
  },
  "entropy_exp_mul_le_of_logSobolev_of_bounded": {
   "new": null,
@@ -12558,6 +12573,35 @@
   "note": "samplingMeasure takes weights without a proof",
   "stage": "P2"
  },
+ "gaussianMatrix": {
+  "new": "NLAlib.gaussianMatrix",
+  "stage": "R1"
+ },
+ "gaussianMatrix_eq_map_curry": {
+  "new": "NLAlib.hasLaw_gaussianMatrix_of_hasLaw_uncurry",
+  "stage": "R1"
+ },
+ "gaussianMatrix_indepFun_block": {
+  "new": "NLAlib.indepFun_conjTranspose_mul_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
+ "gaussianMatrix_indepFun_block_of_hasLaw": {
+  "new": "NLAlib.indepFun_conjTranspose_mul_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
+ "gaussianMatrix_map_mulVec": {
+  "new": null,
+  "note": "stated for unit vectors; consumers scale",
+  "stage": "R1"
+ },
+ "gaussianMatrix_map_mulVec_of_dotProduct_self_eq_one": {
+  "new": "NLAlib.hasLaw_mulVec_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
+ "gaussianMatrix_map_uncurry": {
+  "new": "NLAlib.hasLaw_uncurry_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
  "gaussianVector": {
   "new": "NLAlib.gaussianVector",
   "stage": "P2"
@@ -12579,6 +12623,10 @@
  "hasEuclideanLogSobolev_gaussianVector": {
   "new": "NLAlib.hasLogSobolev_stdGaussian",
   "stage": "P4"
+ },
+ "hasGaussianLaw_id_gaussianMatrix": {
+  "new": "NLAlib.isGaussian_gaussianMatrix",
+  "stage": "R1"
  },
  "hasGaussianLaw_id_gaussianVector": {
   "new": "NLAlib.isGaussian_gaussianVector",
@@ -12603,6 +12651,42 @@
   "new": null,
   "note": "HasLaw.eval",
   "stage": "P2"
+ },
+ "hasLaw_gaussianMatrix_block": {
+  "new": "NLAlib.hasLaw_const_mul_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
+ "hasLaw_gaussianMatrix_block_of_hasLaw": {
+  "new": "NLAlib.hasLaw_const_mul_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
+ "hasLaw_gaussianMatrix_mul_right": {
+  "new": "NLAlib.hasLaw_mul_const_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
+ "hasLaw_gaussianMatrix_mul_right_of_hasLaw": {
+  "new": "NLAlib.hasLaw_mul_const_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
+ "hasLaw_gaussianMatrix_of_iIndepFun": {
+  "new": "NLAlib.hasLaw_gaussianMatrix_of_hasLaw_uncurry",
+  "stage": "R1"
+ },
+ "hasLaw_gaussianMatrix_orthogonal": {
+  "new": "NLAlib.hasLaw_mul_mul_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
+ "hasLaw_gaussianMatrix_orthogonal_of_hasLaw": {
+  "new": "NLAlib.hasLaw_mul_mul_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
+ "hasLaw_gaussianMatrix_transpose": {
+  "new": "NLAlib.hasLaw_conjTranspose_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
+ },
+ "hasLaw_gaussianMatrix_transpose_of_hasLaw": {
+  "new": "NLAlib.hasLaw_conjTranspose_of_hasLaw_gaussianMatrix",
+  "stage": "R1"
  },
  "hasLaw_rademacherMeasure_iff_map_eq": {
   "new": null,
@@ -12632,6 +12716,11 @@
   "new": "ProbabilityTheory.HasSubgaussianMGF.mono",
   "stage": "P1"
  },
+ "hasSubgaussianMGF_mulVec_apply_gaussianMatrix": {
+  "new": null,
+  "note": "the mulVec law, HasLaw.eval and hasSubgaussianMGF_of_hasLaw_gaussianReal",
+  "stage": "R1"
+ },
  "hasSubgaussianMGF_of_hasLaw_gaussianReal": {
   "new": "NLAlib.hasSubgaussianMGF_of_hasLaw_gaussianReal",
   "note": "any variance",
@@ -12654,6 +12743,16 @@
   "new": null,
   "note": "HasLaw.iIndepFun_eval",
   "stage": "P2"
+ },
+ "iIndepFun_gaussianMatrix_entry": {
+  "new": null,
+  "note": "P0's HasLaw.entry, HasLaw.eval, HasLaw.iIndepFun_entry, HasLaw.iIndepFun_eval",
+  "stage": "R1"
+ },
+ "iIndepFun_gaussianMatrix_row": {
+  "new": null,
+  "note": "P0's HasLaw.entry, HasLaw.eval, HasLaw.iIndepFun_entry, HasLaw.iIndepFun_eval",
+  "stage": "R1"
  },
  "inner_randomVector_hasSubgaussianMGF_of_iIndepFun": {
   "new": "NLAlib.lintegral_exp_mul_dotProduct_le",
@@ -12688,6 +12787,11 @@
  "integrable_exp_sq_norm_of_directional_hasSubgaussianMGF": {
   "new": "NLAlib.IsSubgaussianVector.integrable_exp_mul_norm_sq",
   "stage": "P3"
+ },
+ "integrable_gaussianMatrix_iff": {
+  "new": null,
+  "note": "the abbrev and the uncurry law",
+  "stage": "R1"
  },
  "integrable_iSup_abs_of_hasSubgaussianMGF": {
   "new": "ProbabilityTheory.HasSubgaussianMGF.integrable_iSup_abs",
@@ -12881,6 +12985,11 @@
   "note": "P5, with the dilation, its only consumer",
   "stage": "P0"
  },
+ "integral_gaussianMatrix_eq": {
+  "new": null,
+  "note": "the abbrev and the uncurry law",
+  "stage": "R1"
+ },
  "integral_iSup_abs_le_of_hasSubgaussianMGF": {
   "new": null,
   "note": "parametrised form; private step of HasSubgaussianMGF.integral_iSup_abs_le",
@@ -12994,9 +13103,37 @@
   "new": "NLAlib.integral_re_trace_exp_add_le",
   "stage": "P5a"
  },
+ "isGaussian_gaussianMatrix": {
+  "new": "NLAlib.isGaussian_gaussianMatrix",
+  "stage": "R1"
+ },
+ "isProbabilityMeasure_gaussianMatrix": {
+  "new": "NLAlib.isProbabilityMeasure_gaussianMatrix",
+  "stage": "R1"
+ },
  "isProbabilityMeasure_rademacherMeasure": {
   "new": "NLAlib.isProbabilityMeasure_rademacherMeasure",
   "stage": "P2"
+ },
+ "linForm": {
+  "new": null,
+  "note": "the dot product of the uncurried matrix",
+  "stage": "R1"
+ },
+ "linFormCLM": {
+  "new": null,
+  "note": "the dot product of the uncurried matrix",
+  "stage": "R1"
+ },
+ "linForm_eq_frobInner": {
+  "new": null,
+  "note": "the dot product of the uncurried matrix",
+  "stage": "R1"
+ },
+ "linForm_sub_linForm": {
+  "new": null,
+  "note": "the dot product of the uncurried matrix",
+  "stage": "R1"
  },
  "lintegral_exp_sq_norm_le_chi_square_mgf": {
   "new": null,
@@ -13013,6 +13150,11 @@
   "note": "private step in Distributions/ChiSquare.lean",
   "stage": "P3"
  },
+ "map_comp_injective_pi": {
+  "new": null,
+  "note": "replaced by hasLaw_mulVec_of_hasLaw_gaussianVector",
+  "stage": "R1"
+ },
  "matrix_chernoff_sampling_lower": {
   "new": "NLAlib.measureReal_eigenvalue_sum_le_le_card_mul_exp",
   "stage": "P5a"
@@ -13020,6 +13162,26 @@
  "matrix_chernoff_sampling_upper": {
   "new": "NLAlib.measureReal_eigenvalue_zero_sum_ge_le_card_mul_exp",
   "stage": "P5a"
+ },
+ "measurePreserving_gaussianMatrix_entry": {
+  "new": null,
+  "note": "P0's HasLaw.entry, HasLaw.eval, HasLaw.iIndepFun_entry, HasLaw.iIndepFun_eval",
+  "stage": "R1"
+ },
+ "measurePreserving_gaussianMatrix_row": {
+  "new": null,
+  "note": "P0's HasLaw.entry, HasLaw.eval, HasLaw.iIndepFun_entry, HasLaw.iIndepFun_eval",
+  "stage": "R1"
+ },
+ "measurePreserving_ofMeasurableEquiv_gaussianMatrix": {
+  "new": null,
+  "note": "the abbrev and the uncurry law",
+  "stage": "R1"
+ },
+ "measurePreserving_orthonormalBasis_repr_pi_gaussianReal": {
+  "new": null,
+  "note": "replaced by hasLaw_mulVec_of_hasLaw_gaussianVector",
+  "stage": "R1"
  },
  "measureReal_abs_ge_le_two_mul_exp_of_cgf_le": {
   "new": null,

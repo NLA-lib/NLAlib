@@ -196,4 +196,5 @@ public import NLAlib.RandomMatrix.Haar.Basic
 public import NLAlib.RandomMatrix.Haar.Moments
 public import NLAlib.RandomMatrix.Haar.Transfer
 public import NLAlib.RandomMatrix.Haar.Uniqueness
+public import NLAlib.RandomMatrix.SubGaussian.ExtremeSingularValues
 public import NLAlib.RandomMatrix.UnitaryInvariance

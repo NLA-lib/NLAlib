@@ -8781,6 +8781,10 @@
   "new": "NLAlib.measureReal_eigenvalue_sum_le_le_chernoff",
   "stage": "P5a"
  },
+ "NLAlib.measureReal_le_abs_sum_sq_sub_card_of_hasSubgaussianMGF": {
+  "new": "NLAlib.hasSubexponentialMGF_norm_mulVec_sq_sub_of_isSubgaussianVector",
+  "stage": "R3"
+ },
  "NLAlib.measureReal_lt_abs_le_of_hasSubgaussianMGF": {
   "new": "ProbabilityTheory.HasSubgaussianMGF.measure_abs_ge_le",
   "note": "non-strict event",
@@ -8850,6 +8854,15 @@
  "NLAlib.measure_eq_haarFrameLaw_of_invariant": {
   "new": "NLAlib.hasLaw_haarFrame_of_isLeftUnitarilyInvariant",
   "stage": "R5"
+ },
+ "NLAlib.measure_extreme_singular_failure_le_of_independent_isotropic_rows": {
+  "new": "NLAlib.measureReal_singularValues_le_le_of_isSubgaussianVector",
+  "stage": "R3"
+ },
+ "NLAlib.measure_lt_specNorm_gram_sub_card_le_of_independent_isotropic_rows": {
+  "new": null,
+  "note": "private step measureReal_not_specNorm_lt in RandomMatrix/SubGaussian/ExtremeSingularValues.lean",
+  "stage": "R3"
  },
  "NLAlib.memLp_two_gaussianVector_of_polynomial_growth": {
   "new": null,

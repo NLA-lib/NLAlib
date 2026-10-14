@@ -56,6 +56,7 @@ P4 proceeded on the orchestrator's recommendations (Lipschitz as `LipschitzWith`
 `EuclideanSpace`; the log-Sobolev route with constant `L²`), open to the maintainer's correction.
 
 **Queue (orchestrator, 2026-10-14, latest):**
+- P5b/P5c/P5d/P7 notes Fable-reviewed; findings and decisions in `/tmp/claude-1000/p0/review_p5bcd7.txt` (to be copied into each note's §8). P5d Q1 decided: conditional matrix MGF bound spelled with `μ[·|m]` (a.e. per θ), not `condExpKernel`; deviation entry 17; bridge from Mathlib's `HasCondSubgaussianMGF` needs `StandardBorelSpace` only there. P5b+P5c skeletons in progress; P5d+P7 skeletons next.
 - R3 complete: `RandomMatrix/Gaussian/SpectralNorm.lean` and `RandomMatrix/Gaussian/ExtremeSingularValues.lean` proved and registered in `NLAlib.lean`; ledger R3 entries added.
 - R3 `RandomMatrix/SubGaussian/ExtremeSingularValues.lean` proved (constant 24 reached) and registered. Stage check 2026-10-14: 200 proved modules (1 not yet), 0 warnings, audit 4681 declarations 0 violations, lint 0 errors (14 linters), 38 bib keys 0 problems.
 - Proved and registered: P0–P5a, R1, R2 (stage checks green at 185 modules, before R4–R5).

@@ -61,7 +61,7 @@ private theorem integrable_and_integral_cfc {B : Matrix n n 𝕜} (hB : B.IsHerm
         have hd : (fun i => (((a • v) i : ℝ) : 𝕜)) = (a : 𝕜) • fun i => ((v i : ℝ) : 𝕜) := by
           funext i
           simp only [Pi.smul_apply, smul_eq_mul, RCLike.ofReal_mul]
-        rw [RingHom.id_apply, hd, ← Matrix.diagonal_smul, Matrix.mul_smul, Matrix.smul_mul,
+        rw [RingHom.id_apply, hd, Matrix.diagonal_smul, Matrix.mul_smul, Matrix.smul_mul,
           ← RCLike.real_smul_eq_coe_smul] }
   let Lc := LinearMap.toContinuousLinearMap L
   have hcfc : ∀ g : ℝ → ℝ, cfc g B = Lc (fun i => g (eigenvalue B i)) := fun g =>
@@ -78,9 +78,10 @@ private theorem integrable_and_integral_cfc {B : Matrix n n 𝕜} (hB : B.IsHerm
 /-- The exponential of a function of a Hermitian matrix. -/
 private theorem exp_cfc {B : Matrix n n 𝕜} (hB : B.IsHermitian) (g : ℝ → ℝ) :
     exp (cfc g B) = cfc (fun x => Real.exp (g x)) B := by
-  rw [(cfc_predicate g B : (cfc g B).IsHermitian).exp_eq_cfc,
-    ← cfc_comp' Real.exp g B ((B.finite_real_spectrum.image _).continuousOn _)
-      (B.finite_real_spectrum.continuousOn _) hB]
+  have hH : (cfc g B).IsHermitian := cfc_predicate g B
+  rw [hH.exp_eq_cfc]
+  exact (cfc_comp' Real.exp g B ((B.finite_real_spectrum.image _).continuousOn _)
+    (B.finite_real_spectrum.continuousOn _) hB).symm
 
 /-- The scalar optimisation behind the means: if `x ≤ a / u + b u` for every `u > 0`, with
 `a, b ≥ 0`, then `x ≤ √(4ab)`. -/
@@ -89,7 +90,7 @@ private theorem le_sqrt_of_forall_le_div_add_mul {x a b : ℝ} (ha : 0 ≤ a) (h
   rcases ha.eq_or_lt with rfl | ha'
   · refine le_trans ?_ (Real.sqrt_nonneg _)
     by_contra hx
-    push_neg at hx
+    push Not at hx
     have h1 := h (x / (2 * (b + 1))) (by positivity)
     rw [zero_div, zero_add] at h1
     have h2 : b * (x / (2 * (b + 1))) < x := by
@@ -99,7 +100,7 @@ private theorem le_sqrt_of_forall_le_div_add_mul {x a b : ℝ} (ha : 0 ≤ a) (h
   rcases hb.eq_or_lt with rfl | hb'
   · refine le_trans ?_ (Real.sqrt_nonneg _)
     by_contra hx
-    push_neg at hx
+    push Not at hx
     have h1 := h (2 * a / x) (by positivity)
     rw [zero_mul, add_zero, div_div_eq_mul_div] at h1
     have h2 : a * x / (2 * a) = x / 2 := by field_simp
@@ -158,13 +159,42 @@ theorem hasMatrixMGFBound_smul_of_hasSubgaussianMGF {γ : Ω → ℝ} {c : ℝ�
 
 variable {ι : Type*} [Fintype ι] {γ : ι → Ω → ℝ} {c : ι → ℝ≥0}
 
+omit [Fintype ι] in
+/-- The variance matrix of a Hermitian series is Hermitian. -/
+private theorem isHermitian_sum_smul_sq [Fintype ι] (c : ι → ℝ≥0) {B : ι → Matrix n n 𝕜}
+    (hB : ∀ k, (B k).IsHermitian) : (∑ k, (c k : ℝ) • B k ^ 2).IsHermitian :=
+  isSelfAdjoint_sum _ fun k _ => (IsSelfAdjoint.all _).smul ((hB k).pow 2)
+
 /-- **The matrix series tail**, Hermitian coefficients ([Tropp2015], Theorem 4.1.1). -/
 theorem measureReal_eigenvalue_zero_sum_smul_ge_le [Nonempty n] (hind : iIndepFun γ μ)
     (hγ : ∀ k, HasSubgaussianMGF (γ k) (c k) μ) {B : ι → Matrix n n 𝕜}
     (hB : ∀ k, (B k).IsHermitian) {t : ℝ} (ht : 0 ≤ t) :
     μ.real {ω | t ≤ eigenvalue (∑ k, γ k ω • B k) 0} ≤
       Fintype.card n * Real.exp (-t ^ 2 / (2 * specNorm (∑ k, (c k : ℝ) • B k ^ 2))) := by
-  sorry
+  have := hind.isProbabilityMeasure
+  have hA := isHermitian_sum_smul_sq c hB
+  have hX : iIndepFun (fun k ω => γ k ω • B k) μ :=
+    hind.comp (fun k x => x • B k) fun k => measurable_id.smul_const (B k)
+  set v := specNorm (∑ k, (c k : ℝ) • B k ^ 2) with hv
+  have hd : (1 : ℝ) ≤ Fintype.card n := by exact_mod_cast Fintype.card_pos
+  have hP : μ.real {ω | t ≤ eigenvalue (∑ k, γ k ω • B k) 0} ≤ 1 := measureReal_le_one
+  rcases ht.eq_or_lt with rfl | ht'
+  · rw [show -(0 : ℝ) ^ 2 / (2 * v) = 0 by ring, Real.exp_zero, mul_one]
+    exact hP.trans hd
+  rcases (show 0 ≤ v from specNorm_nonneg _).eq_or_lt with hv0 | hv0
+  · rw [← hv0, mul_zero, div_zero, Real.exp_zero, mul_one]
+    exact hP.trans hd
+  refine (HasMatrixMGFBound.measure_eigenvalue_zero_sum_ge_le_card_mul_exp
+    hX (fun k => hasMatrixMGFBound_smul_of_hasSubgaussianMGF (hγ k) (hB k))
+    (Set.mem_univ (t / v)) (div_pos ht' hv0) (by positivity) t).trans ?_
+  have hlam : eigenvalue (∑ k, (c k : ℝ) • B k ^ 2) 0 ≤ v :=
+    (le_abs_self _).trans (hA.abs_eigenvalue_le_specNorm 0)
+  gcongr
+  calc -(t / v) * t + (t / v) ^ 2 / 2 * eigenvalue (∑ k, (c k : ℝ) • B k ^ 2) 0
+      ≤ -(t / v) * t + (t / v) ^ 2 / 2 * v := by gcongr
+    _ = -t ^ 2 / (2 * v) := by
+        field_simp
+        ring
 
 /-- The matrix series mean, Hermitian coefficients ([Tropp2015], Theorem 4.1.1). -/
 theorem integral_eigenvalue_zero_sum_smul_le [Nonempty n] (hind : iIndepFun γ μ)
@@ -172,9 +202,62 @@ theorem integral_eigenvalue_zero_sum_smul_le [Nonempty n] (hind : iIndepFun γ �
     (hB : ∀ k, (B k).IsHermitian) :
     ∫ ω, eigenvalue (∑ k, γ k ω • B k) 0 ∂μ ≤
       √(2 * specNorm (∑ k, (c k : ℝ) • B k ^ 2) * Real.log (Fintype.card n)) := by
-  sorry
+  have := hind.isProbabilityMeasure
+  have hA := isHermitian_sum_smul_sq c hB
+  have hX : iIndepFun (fun k ω => γ k ω • B k) μ :=
+    hind.comp (fun k x => x • B k) fun k => measurable_id.smul_const (B k)
+  set v := specNorm (∑ k, (c k : ℝ) • B k ^ 2) with hv
+  have hd : (1 : ℝ) ≤ Fintype.card n := by exact_mod_cast Fintype.card_pos
+  have hlam : eigenvalue (∑ k, (c k : ℝ) • B k ^ 2) 0 ≤ v :=
+    (le_abs_self _).trans (hA.abs_eigenvalue_le_specNorm 0)
+  have hbound : ∀ θ, 0 < θ → ∫ ω, eigenvalue (∑ k, γ k ω • B k) 0 ∂μ ≤
+      Real.log (Fintype.card n) / θ + v / 2 * θ := by
+    intro θ hθ
+    refine (HasMatrixMGFBound.integral_eigenvalue_zero_sum_le hX
+      (fun k => hasMatrixMGFBound_smul_of_hasSubgaussianMGF (hγ k) (hB k))
+      (fun k => (hγ k).integrable.smul_const _) (Set.mem_univ θ) hθ).trans ?_
+    have hM : ((θ ^ 2 / 2) • ∑ k, (c k : ℝ) • B k ^ 2).IsHermitian :=
+      (IsSelfAdjoint.all _).smul hA
+    have htr := hM.re_trace_exp_le_card_mul_exp
+    rw [eigenvalue_real_smul _ (by positivity)] at htr
+    have hle : RCLike.re (exp ((θ ^ 2 / 2) • ∑ k, (c k : ℝ) • B k ^ 2)).trace ≤
+        Fintype.card n * Real.exp (θ ^ 2 / 2 * v) := htr.trans (by gcongr)
+    calc θ⁻¹ * Real.log (RCLike.re (exp ((θ ^ 2 / 2) • ∑ k, (c k : ℝ) • B k ^ 2)).trace)
+        ≤ θ⁻¹ * Real.log (Fintype.card n * Real.exp (θ ^ 2 / 2 * v)) :=
+          mul_le_mul_of_nonneg_left (Real.log_le_log hM.re_trace_exp_pos hle) (inv_nonneg.2 hθ.le)
+      _ = Real.log (Fintype.card n) / θ + v / 2 * θ := by
+          rw [Real.log_mul (by positivity) (Real.exp_pos _).ne', Real.log_exp]
+          field_simp
+  refine (le_sqrt_of_forall_le_div_add_mul (Real.log_nonneg hd)
+    (div_nonneg (specNorm_nonneg _) two_pos.le) hbound).trans_eq ?_
+  congr 1
+  ring
 
-variable {m : Type*} [Fintype m] {B : ι → Matrix m n 𝕜}
+section Rectangular
+
+omit [DecidableEq n]
+
+variable {m : Type*} [Fintype m]
+
+omit [Fintype n] [Fintype m] in
+/-- A real combination of dilations is the dilation of the combination. -/
+private theorem sum_smul_dilation (a : ι → ℝ) (B : ι → Matrix m n 𝕜) :
+    ∑ k, a k • dilation (B k) = dilation (∑ k, a k • B k) := by
+  rw [dilation_sum]
+  simp only [dilation_smul_real]
+
+/-- A real combination of squared dilations is block diagonal. -/
+private theorem sum_smul_dilation_sq [DecidableEq m] [DecidableEq n] (a : ι → ℝ)
+    (B : ι → Matrix m n 𝕜) :
+    ∑ k, a k • dilation (B k) ^ 2 =
+      Matrix.fromBlocks (∑ k, a k • (B k * (B k)ᴴ)) 0 0 (∑ k, a k • ((B k)ᴴ * B k)) := by
+  simp only [sq, dilation_mul_dilation]
+  ext (i | i) (j | j) <;>
+    simp only [Matrix.sum_apply, Matrix.smul_apply, Matrix.fromBlocks_apply₁₁,
+      Matrix.fromBlocks_apply₁₂, Matrix.fromBlocks_apply₂₁, Matrix.fromBlocks_apply₂₂,
+      Matrix.zero_apply, smul_zero, Finset.sum_const_zero]
+
+variable {B : ι → Matrix m n 𝕜}
 
 /-- **The matrix series tail**, rectangular coefficients ([Tropp2015], Theorem 4.1.1), with
 `v = max ‖∑ c k B k B kᴴ‖ ‖∑ c k B kᴴ B k‖`. -/
@@ -184,7 +267,12 @@ theorem measureReal_specNorm_sum_smul_ge_le [Nonempty m] [Nonempty n] (hind : iI
       (Fintype.card m + Fintype.card n) * Real.exp (-t ^ 2 /
         (2 * max (specNorm (∑ k, (c k : ℝ) • (B k * (B k)ᴴ)))
           (specNorm (∑ k, (c k : ℝ) • ((B k)ᴴ * B k))))) := by
-  sorry
+  classical
+  have h := measureReal_eigenvalue_zero_sum_smul_ge_le (n := m ⊕ n) hind hγ
+    (B := fun k => dilation (B k)) (fun k => isHermitian_dilation _) ht
+  simp only [sum_smul_dilation, eigenvalue_zero_dilation, sum_smul_dilation_sq,
+    specNorm_fromBlocks_zero₁₂_zero₂₁, Fintype.card_sum, Nat.cast_add] at h
+  exact h
 
 /-- The matrix series mean, rectangular coefficients ([Tropp2015], Theorem 4.1.1). -/
 theorem integral_specNorm_sum_smul_le [Nonempty m] [Nonempty n] (hind : iIndepFun γ μ)
@@ -193,6 +281,13 @@ theorem integral_specNorm_sum_smul_le [Nonempty m] [Nonempty n] (hind : iIndepFu
       √(2 * max (specNorm (∑ k, (c k : ℝ) • (B k * (B k)ᴴ)))
           (specNorm (∑ k, (c k : ℝ) • ((B k)ᴴ * B k))) *
         Real.log (Fintype.card m + Fintype.card n)) := by
-  sorry
+  classical
+  have h := integral_eigenvalue_zero_sum_smul_le (n := m ⊕ n) hind hγ
+    (B := fun k => dilation (B k)) (fun k => isHermitian_dilation _)
+  simp only [sum_smul_dilation, eigenvalue_zero_dilation, sum_smul_dilation_sq,
+    specNorm_fromBlocks_zero₁₂_zero₂₁, Fintype.card_sum, Nat.cast_add] at h
+  exact h
+
+end Rectangular
 
 end NLAlib

@@ -2,7 +2,9 @@
 
 Status: written 2026-10-14 by the orchestrator under `docs/PORT_PROBABILITY.md` (§2 decided; D4:
 the Gaussian matrix law is real in this round, with a complex analogue later as a parallel
-definition, as P2 §7 Q1 decided for vectors). No question of the brief's §2 kind.
+definition, as P2 §7 Q1 decided for vectors). No question of the brief's §2 kind. Reviewed by a
+Fable agent on 2026-10-14; corrections in §8; the skeletons under `NLAlib/RandomMatrix/Gaussian/`
+are the statements where they differ from §3.
 
 ## 0. Scope and consumers
 
@@ -173,3 +175,25 @@ forms); the polynomial-growth integrability lemmas (`memLp` of every order throu
 P2's vectors; flattening is a theorem, not the definition.
 
 **Q2. Frobenius-Lipschitz as an explicit inequality** in §3.4 (no metric on `Matrix`).
+
+## 8. Amendments from the review (2026-10-14)
+
+1. Rule: every typeclass fact about `gaussianMatrix` is an explicit instance in `Basic.lean`
+   (`Matrix` is a `def`, so Mathlib's `Measure.pi` instances are not found).
+2. "Flatten" is `Function.uncurry`: `hasLaw_uncurry_of_hasLaw_gaussianMatrix`,
+   `hasLaw_gaussianMatrix_of_hasLaw_uncurry`, `frobNorm_eq_norm_toLp_uncurry` (the last proved in
+   the Matrix layer's `Norms/Frobenius.lean`). A consumer applying a P2/P3 vector result writes the
+   variable as `fun ω => Function.uncurry (X ω)`, and `IsIsotropic` of it needs
+   `[DecidableEq m] [DecidableEq n]`.
+3. Row lemmas dropped (they are `hX.eval i` and `hX.iIndepFun_eval`); column law and column
+   independence stated (`hasLaw_col_…`, `iIndepFun_col_…`).
+4. One-sided forms `hasLaw_const_mul_…` (`U * X`) and `hasLaw_mul_const_…` (`X * V`), and
+   `hasLaw_submatrix_…` on injective maps; the transpose is `hasLaw_conjTranspose_…` with `ᴴ`
+   (§5.1). §0's `G x ~ N(0, ‖x‖² I)` is stated for unit `x` (consumers scale).
+5. `ae_isUnit_conjTranspose_mul_self_mul_of_hasLaw_gaussianMatrix` (a.s. invertible Gram matrix
+   of `A G` when `card n ≤ rank A`), the shape the Nyström consumer uses.
+6. The atomless hypothesis is Mathlib's `NullSingletonClass` (`NoAtoms` is deprecated in the
+   pinned Mathlib), which `gaussianReal 0 v` has for `v ≠ 0` (`nullSingletonClass_gaussianReal`).
+7. Proof routes: the invariance laws by `isGaussian_map` and equality of Gaussian measures by mean
+   and covariance (`IsGaussian.ext`), which needs no completion of frames; independence of blocks
+   through `HasGaussianLaw.indepFun_of_covariance_…` on the `uncurry`ed blocks.

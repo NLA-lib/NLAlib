@@ -184,6 +184,14 @@ Port of `NLAlib.frobSq_eq_sum_norm_sq`. -/
 theorem frobNorm_sq_eq_sum (A : Matrix m n 𝕜) : frobNorm A ^ 2 = ∑ i, ∑ j, ‖A i j‖ ^ 2 := by
   exact Real.sq_sqrt (Finset.sum_nonneg fun i _ => Finset.sum_nonneg fun j _ => sq_nonneg _)
 
+/-- The Frobenius norm is the Euclidean norm of the entries read as a vector indexed by
+`m × n`. -/
+theorem frobNorm_eq_norm_toLp_uncurry (A : Matrix m n 𝕜) :
+    frobNorm A = ‖WithLp.toLp 2 (Function.uncurry A)‖ := by
+  rw [← Real.sqrt_sq (frobNorm_nonneg A), frobNorm_sq_eq_sum, EuclideanSpace.norm_eq,
+    Fintype.sum_prod_type]
+  rfl
+
 /-- Over `ℝ` the squared Frobenius norm is the sum of the squared entries. This is
 `NLAlib.frobNorm_sq_eq_sum` with the absolute values removed, the form to rewrite with under an
 integral or a sum. Port of `NLAlib.frobSq_eq_sum_sq`. -/

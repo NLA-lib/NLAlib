@@ -76,7 +76,8 @@ P5b to P5d outside their own layer.
 | P5a | design note `docs/design/Probability-P5a.md`, skeletons `MatrixConcentration/*` | orchestrator | written, Fable-reviewed (§8); skeletons compile | |
 | P5a | `MatrixConcentration/{Laplace,Subadditivity,MGFBound}.lean` (+ `ForMathlib/Analysis/Convex/Integral.lean`) | Opus agent | proved | Jensen on a non-closed convex set; wrap-up: move `continuousOn_cfc_log` to the Matrix layer, `measurableSet_posDef` to Measurability |
 | P5a | `MatrixConcentration/{Chernoff,ChernoffSum}.lean` | Opus agent | proved | skeleton bug fixed: `∀ θ` had elaborated as `θ : ℕ` (rule added to CONTRIBUTING §5.2) |
-| R1 | design note `docs/design/RandomMatrix-R1.md` | orchestrator | written; Fable review running | |
+| R1 | design note `docs/design/RandomMatrix-R1.md`, skeletons `RandomMatrix/Gaussian/*` | orchestrator | written, Fable-reviewed (§8); skeletons compile | `frobNorm_eq_norm_toLp_uncurry` proved in the Matrix layer |
+| R1 | `RandomMatrix/Gaussian/{Basic,Invariance}.lean` | Opus agent | proofs in progress | |
 | P5a | `MatrixConcentration/{Bernstein,Series}.lean` | Opus agent | proofs in progress | |
 
 **Matrix layer complete, 2026-10-14** (branch `scaffold`, local commits, not pushed): stages M0 to

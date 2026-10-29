@@ -202,12 +202,114 @@ theorem lipschitzOnWith_eval_of_degree_le_of_isUniformApproxOn {α β : ℝ} (h�
         exact_mod_cast sum_range_sq_le (m + 1)
     _ = 4 / 3 * (m + 1 : ℝ) ^ 3 * M / (β - α) * |x - y| := by ring
 
+/-! ### The perturbed Chebyshev recurrence -/
+
+/-- **Bandwidth of powers of a tridiagonal matrix**: $(\mathbf{T}^p)_{ij} = 0$ for
+$p + j < i$. -/
+private theorem pow_apply_eq_zero_of_add_lt {m : ℕ} {T : Matrix (Fin m) (Fin m) ℝ}
+    (hT : IsTridiagonal T) (p : ℕ) {i j : Fin m} (h : p + (j : ℕ) < i) : (T ^ p) i j = 0 := by
+  induction p generalizing j with
+  | zero =>
+    rw [pow_zero, Matrix.one_apply_ne]
+    exact fun hij => by rw [hij] at h; omega
+  | succ p ih =>
+    rw [pow_succ, Matrix.mul_apply]
+    refine Finset.sum_eq_zero fun l _ => ?_
+    by_cases hl : (l : ℕ) ≤ j + 1
+    · rw [ih (by omega), zero_mul]
+    · rw [hT l j (Or.inr (by omega)), mul_zero]
+
+/-- **Bandwidth of polynomials in a tridiagonal matrix**: $(q(\mathbf{T}))_{ij} = 0$ when
+$\deg q + j < i$. -/
+private theorem aeval_apply_eq_zero_of_natDegree_add_lt {m : ℕ}
+    {T : Matrix (Fin m) (Fin m) ℝ} (hT : IsTridiagonal T) {q : ℝ[X]} {i j : Fin m}
+    (h : q.natDegree + (j : ℕ) < i) : aeval T q i j = 0 := by
+  rw [aeval_eq_sum_range, Matrix.sum_apply]
+  refine Finset.sum_eq_zero fun d hd => ?_
+  rw [Matrix.smul_apply, pow_apply_eq_zero_of_add_lt hT d
+    (by rw [Finset.mem_range] at hd; omega), smul_zero]
+
+/-- The Chebyshev-type step $\mathbf{x} \mapsto 2\mathbf{A}\mathbf{x} - \mathbf{y}$ under
+`aeval`. -/
+private theorem aeval_two_mul_X_mul_sub_mulVec {m : Type*} [Fintype m] [DecidableEq m]
+    (A : Matrix m m ℝ) (p q : ℝ[X]) (v : m → ℝ) :
+    aeval A (2 * X * p - q) *ᵥ v = (2 : ℝ) • (A *ᵥ (aeval A p *ᵥ v)) - aeval A q *ᵥ v := by
+  rw [map_sub, map_mul, map_mul, aeval_X, Matrix.sub_mulVec, ← Matrix.mulVec_mulVec,
+    ← Matrix.mulVec_mulVec]
+  congr 1
+  rw [map_ofNat, Matrix.ofNat_mulVec]
+
+/-- The **residual sequence** of a sequence $\mathbf{d}_j$ for the Chebyshev recurrence of
+$\mathbf{A}$: $\mathbf{f}_0 = \mathbf{d}_1$, $\mathbf{f}_{j+1} = \mathbf{d}_{j+2} -
+2\mathbf{A}\mathbf{d}_{j+1} + \mathbf{d}_j$. -/
+private noncomputable def chebyshevRecurrenceResidual {m : Type*} [Fintype m] (A : Matrix m m ℝ)
+    (d : ℕ → m → ℝ) : ℕ → m → ℝ
+  | 0 => d 1
+  | j + 1 => d (j + 2) - (2 : ℝ) • (A *ᵥ d (j + 1)) + d j
+
+/-- **Solution of the perturbed Chebyshev recurrence** (Clenshaw): a sequence with
+$\mathbf{d}_0 = \mathbf{0}$ is
+$\mathbf{d}_i = \sum_{j<i}U_{i-1-j}(\mathbf{A})\mathbf{f}_j$ in its residual sequence. -/
+private theorem eq_sum_aeval_U_mulVec_chebyshevRecurrenceResidual {m : Type*} [Fintype m]
+    [DecidableEq m] (A : Matrix m m ℝ) {d : ℕ → m → ℝ} (hd0 : d 0 = 0) (i : ℕ) :
+    d i = ∑ j ∈ Finset.range i,
+      aeval A (Chebyshev.U ℝ ((i : ℤ) - 1 - j)) *ᵥ chebyshevRecurrenceResidual A d j := by
+  induction i using Nat.twoStepInduction with
+  | zero => simp [hd0]
+  | one => simp [chebyshevRecurrenceResidual]
+  | more i ih0 ih1 =>
+    have hU : ∀ j ∈ Finset.range (i + 1),
+        aeval A (Chebyshev.U ℝ (((i + 2 : ℕ) : ℤ) - 1 - j)) *ᵥ chebyshevRecurrenceResidual A d j =
+          (2 : ℝ) • (A *ᵥ (aeval A (Chebyshev.U ℝ (((i + 1 : ℕ) : ℤ) - 1 - j)) *ᵥ
+            chebyshevRecurrenceResidual A d j)) -
+          aeval A (Chebyshev.U ℝ ((i : ℤ) - 1 - j)) *ᵥ chebyshevRecurrenceResidual A d j := by
+      intro j _
+      rw [show ((i + 2 : ℕ) : ℤ) - 1 - j = ((i : ℤ) - 1 - j) + 2 by push_cast; ring,
+        Chebyshev.U_add_two, aeval_two_mul_X_mul_sub_mulVec,
+        show (i : ℤ) - 1 - j + 1 = ((i + 1 : ℕ) : ℤ) - 1 - j by push_cast; ring]
+    have hlast : aeval A (Chebyshev.U ℝ ((i : ℤ) - 1 - (i : ℕ))) *ᵥ
+        chebyshevRecurrenceResidual A d i = 0 := by
+      rw [show (i : ℤ) - 1 - (i : ℕ) = -1 by ring, Chebyshev.U_neg_one, map_zero,
+        Matrix.zero_mulVec]
+    rw [Finset.sum_range_succ, Finset.sum_congr rfl hU, Finset.sum_sub_distrib,
+      ← Finset.smul_sum, ← Matrix.mulVec_sum, ← ih1, Finset.sum_range_succ, hlast, add_zero,
+      ← ih0, show ((i + 2 : ℕ) : ℤ) - 1 - (i + 1 : ℕ) = 0 by push_cast; ring, Chebyshev.U_zero,
+      map_one, Matrix.one_mulVec]
+    simp only [chebyshevRecurrenceResidual]
+    abel
+
+/-- $\sum_{j<i}(i - j) = i(i + 1)/2$. -/
+private theorem sum_range_sub_eq (i : ℕ) :
+    ∑ j ∈ Finset.range i, ((i : ℝ) - j) = i * (i + 1) / 2 := by
+  induction i with
+  | zero => simp
+  | succ i ih =>
+    push_cast
+    rw [Finset.sum_range_succ]
+    simp only [add_sub_right_comm _ (1 : ℝ), Finset.sum_add_distrib, ih, Finset.sum_const,
+      Finset.card_range, nsmul_eq_mul, mul_one]
+    ring
+
+/-- $\sum_{i<k} i(i + 1) \le k^3/3$. -/
+private theorem sum_range_mul_succ_le (k : ℕ) :
+    ∑ i ∈ Finset.range k, (i : ℝ) * (i + 1) ≤ (k : ℝ) ^ 3 / 3 := by
+  induction k with
+  | zero => simp
+  | succ k ih =>
+    rw [Finset.sum_range_succ]
+    push_cast
+    nlinarith [(k.cast_nonneg : (0 : ℝ) ≤ k)]
+
 namespace LanczosData
 
 variable {n k : ℕ} (D : LanczosData n k)
 
 /-- The first index $0 : \mathrm{Fin}\,k$ ($k \ge 1$). -/
 def firstIndex : Fin k := ⟨0, D.k_pos⟩
+
+/-- The computed tridiagonal matrix is symmetric. -/
+theorem isHermitian_tridiagonal : D.tridiagonal.IsHermitian := by
+  rw [Matrix.IsHermitian, Matrix.conjTranspose_eq_transpose_of_trivial, D.transpose_tridiagonal]
 
 /-- The dilated start is a unit vector (for unit vectors). -/
 theorem norm_toLp_dilatedStart (hW : ∀ j, (D.basisSuccᵀ * D.basisSucc) j j = 1) :
@@ -255,7 +357,8 @@ private theorem abs_dotProduct_cfc_mulVec_sub_le_mul_frobNorm
     have hsb : IsSelfAdjoint D.backwardH := D.isHermitian_backwardH hW
     rw [hconst, cfc_const (g 0) D.H hsa, cfc_const (g 0) D.backwardH hsb,
       Algebra.algebraMap_eq_smul_one, Algebra.algebraMap_eq_smul_one, Matrix.smul_mulVec,
-      Matrix.smul_mulVec, Matrix.one_mulVec, Matrix.one_mulVec, dotProduct_smul, dotProduct_smul, hv1, hvt, sub_self, abs_zero, NNReal.coe_zero, zero_mul]
+      Matrix.smul_mulVec, Matrix.one_mulVec, Matrix.one_mulVec, dotProduct_smul,
+      dotProduct_smul, hv1, hvt, sub_self, abs_zero, NNReal.coe_zero, zero_mul]
   · have hK0 : (0 : ℝ) < K :=
       lt_of_le_of_ne K.coe_nonneg (fun h => hK (NNReal.coe_eq_zero.1 h.symm))
     have h1 : LipschitzWith 1 (fun x => (K : ℝ)⁻¹ * g x) := LipschitzWith.of_dist_le_mul
@@ -390,7 +493,74 @@ theorem abs_dotProduct_cfc_mulVec_sub_cfc_tridiagonal_le_of_isUniformApproxOn_of
     {M : ℝ} (hM : ∀ x ∈ Set.Icc (a - c) (a' + c), |f x| ≤ M) :
     |D.v 1 ⬝ᵥ (cfc f D.H *ᵥ D.v 1) - cfc f D.tridiagonal D.firstIndex D.firstIndex| ≤
       4 * δ + 11 * (k : ℝ) ^ 3 * (M + δ) * c / (a' - a + 2 * c) := by
-  sorry
+  have hδ0 : 0 ≤ δ := hδ.nonneg ⟨a, by linarith, by linarith⟩
+  have hM0 : 0 ≤ M := (abs_nonneg _).trans (hM a ⟨by linarith, by linarith⟩)
+  have hw : 0 < a' - a + 2 * c := by linarith
+  have hk1 : (1 : ℝ) ≤ k := by exact_mod_cast D.k_pos
+  have hpdeg : p.degree ≤ ((2 * k - 1 : ℕ) : WithBot ℕ) := by
+    apply degree_le_of_degree_lt_succ
+    rw [show 2 * k - 1 + 1 = 2 * k by have := D.k_pos; omega]
+    exact_mod_cast hp
+  have hpM : Metric.IsUniformApproxOn (fun x => p.eval x) (fun _ => 0)
+      (Set.Icc (a - c) (a' + c)) (M + δ) := fun x hx => by
+    have h1 := hδ.apply hx
+    have h2 := hM x hx
+    rw [Real.dist_eq] at h1
+    rw [Real.dist_eq, sub_zero]
+    calc |p.eval x| ≤ |p.eval x - f x| + |f x| := by
+          simpa using abs_add_le (p.eval x - f x) (f x)
+      _ ≤ M + δ := by linarith
+  have hLp := lipschitzOnWith_eval_of_degree_le_of_isUniformApproxOn (by linarith) hpdeg hpM
+  have hQ := D.abs_dotProduct_cfc_mulVec_sub_cfc_tridiagonal_le_of_isUniformApproxOn hW hβ hβpos
+    hs hc hp (δ := 0) (fun x _ => by simp) hLp
+  have hsub : Set.Icc a a' ⊆ Set.Icc (a - c) (a' + c) :=
+    Set.Icc_subset_Icc (by linarith) (by linarith)
+  have hfp : ∀ x ∈ Set.Icc (a - c) (a' + c), |f x - p.eval x| ≤ δ := fun x hx => by
+    rw [abs_sub_comm, ← Real.dist_eq]
+    exact hδ.apply hx
+  have hv1 : ‖WithLp.toLp 2 (D.v 1)‖ = 1 := by
+    have h := hW 0
+    simp only [Matrix.mul_apply, Matrix.transpose_apply, basisSucc, Matrix.of_apply] at h
+    rw [← pow_eq_one_iff_of_nonneg (norm_nonneg _) two_ne_zero,
+      EuclideanSpace.norm_toLp_sq_eq_dotProduct_self]
+    simpa [dotProduct] using h
+  have h1 := abs_dotProduct_cfc_mulVec_sub_dotProduct_cfc_mulVec_le D.isHermitian
+    (hs.trans hsub) hfp (D.v 1)
+  have h2 := abs_dotProduct_cfc_mulVec_sub_dotProduct_cfc_mulVec_le
+    (D.isHermitian_tridiagonal) (D.spectrum_tridiagonal_subset_Icc hW hs hc) hfp
+    (Pi.single D.firstIndex 1)
+  rw [hv1, one_pow, mul_one] at h1
+  rw [norm_toLp_single_one, one_pow, mul_one, ← cfc_apply_self_eq_dotProduct,
+    ← cfc_apply_self_eq_dotProduct] at h2
+  have hcast : (((2 * k - 1 : ℕ) : ℝ) + 1) = 2 * k := by
+    rw [Nat.cast_sub (by have := D.k_pos; omega)]
+    push_cast
+    ring
+  rw [Real.coe_toNNReal _ (div_nonneg (by positivity) (by linarith)), hcast,
+    show a' + c - (a - c) = a' - a + 2 * c by ring] at hQ
+  have hLc : 4 / 3 * (2 * (k : ℝ)) ^ 3 * (M + δ) / (a' - a + 2 * c) * c ≤
+      11 * (k : ℝ) ^ 3 * (M + δ) * c / (a' - a + 2 * c) := by
+    rw [div_mul_eq_mul_div]
+    refine div_le_div_of_nonneg_right ?_ hw.le
+    nlinarith [mul_nonneg (pow_nonneg (by linarith : (0 : ℝ) ≤ k) 3)
+      (mul_nonneg (add_nonneg hM0 hδ0) hc0)]
+  calc _ ≤ |D.v 1 ⬝ᵥ (cfc f D.H *ᵥ D.v 1) - D.v 1 ⬝ᵥ (cfc (fun x => p.eval x) D.H *ᵥ D.v 1)| +
+        |D.v 1 ⬝ᵥ (cfc (fun x => p.eval x) D.H *ᵥ D.v 1) -
+          cfc (fun x => p.eval x) D.tridiagonal D.firstIndex D.firstIndex| +
+        |cfc f D.tridiagonal D.firstIndex D.firstIndex -
+          cfc (fun x => p.eval x) D.tridiagonal D.firstIndex D.firstIndex| := by
+        have := abs_sub_le (D.v 1 ⬝ᵥ (cfc f D.H *ᵥ D.v 1))
+          (D.v 1 ⬝ᵥ (cfc (fun x => p.eval x) D.H *ᵥ D.v 1))
+          (cfc f D.tridiagonal D.firstIndex D.firstIndex)
+        have := abs_sub_le (D.v 1 ⬝ᵥ (cfc (fun x => p.eval x) D.H *ᵥ D.v 1))
+          (cfc (fun x => p.eval x) D.tridiagonal D.firstIndex D.firstIndex)
+          (cfc f D.tridiagonal D.firstIndex D.firstIndex)
+        rw [abs_sub_comm (cfc (fun x => p.eval x) D.tridiagonal D.firstIndex D.firstIndex)]
+          at this
+        linarith
+    _ ≤ δ + (2 * 0 + 4 / 3 * (2 * (k : ℝ)) ^ 3 * (M + δ) / (a' - a + 2 * c) * c) + δ := by
+        gcongr
+    _ ≤ 4 * δ + 11 * (k : ℝ) ^ 3 * (M + δ) * c / (a' - a + 2 * c) := by linarith
 
 /-! ### Lanczos-FA through the Chebyshev recurrence -/
 

@@ -368,6 +368,7 @@ public import NLAlib.Polynomial.Approximation.MinimaxError
 public import NLAlib.Polynomial.Approximation.Stieltjes
 public import NLAlib.Polynomial.Chebyshev.EvenFilter
 public import NLAlib.Polynomial.Chebyshev.ExtremaEvaluation
+public import NLAlib.Polynomial.Chebyshev.Interval
 public import NLAlib.Polynomial.Chebyshev.Residual
 public import NLAlib.Polynomial.Chebyshev.ResidualMinimax
 public import NLAlib.Polynomial.Chebyshev.TwoInterval

@@ -8,20 +8,19 @@ module
 public import NLAlib.Krylov.FinitePrecision.BackwardSpectral
 public import NLAlib.Krylov.Functions.Quadrature
 public import NLAlibScaffold.Krylov.Processes.LanczosRounding
-public import NLAlib.Polynomial.Approximation.ChebyshevTruncation
 public import NLAlib.Polynomial.Approximation.Jackson
-public import NLAlib.Polynomial.Chebyshev.EvenFilter
-public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Chebyshev.RootsExtrema
-public import Mathlib.Analysis.Calculus.MeanValue
+public import NLAlib.Polynomial.Chebyshev.Interval
 
 /-!
 # Finite-precision Lanczos quadrature and Lanczos-FA: Druskin–Knizhnerman and Knizhnerman bounds
 
-Statements only (research branch `research/dk-bounds`; design
-`docs/design/research/Krylov-LanczosFunctionsRounding.md`). For a finite-precision Lanczos run
+Research branch `research/dk-bounds`; design
+`docs/design/research/Krylov-LanczosFunctionsRounding.md`. All statements proved; the
+polynomial facts (Chebyshev polynomials on an interval, bounded Chebyshev coefficients) are in
+`NLAlib/Polynomial/Chebyshev/Interval.lean`. For a finite-precision Lanczos run
 `L : NLAlib.LanczosRun n k` on a symmetric $\mathbf{H}$ with spectrum in $[a, a']$, write
-$c = 2000k^4\varepsilon\|\mathbf{H}\|_2$ (`NLAlib.lanczosBackwardFactor`) and
-$I_c = [a - c, a' + c]$.
+$I_c = [a - c, a' + c]$ with <!-- value lanczosBackwardFactor k -->
+$c = 2000k^4\varepsilon\|\mathbf{H}\|_2$ (`NLAlib.lanczosBackwardFactor`).
 
 * **Quadrature (Knizhnerman 1996 type)**, through the backward model: exact Lanczos on
   $(\tilde{\mathbf{H}}, \tilde{\mathbf{v}})$ computes $\mathbf{T}_k$, its Gauss rule is exact to
@@ -64,143 +63,6 @@ open scoped Matrix NNReal
 namespace NLAlib
 
 open Computation Builder
-
-/-! ### Scaled Chebyshev polynomials -/
-
-/-- The **Chebyshev polynomial of the first kind on $[\alpha, \beta]$**:
-$\hat T_i(x) = T_i\bigl((2x - \alpha - \beta)/(\beta - \alpha)\bigr)$. -/
-noncomputable def chebyshevOn (α β : ℝ) (i : ℕ) : ℝ[X] :=
-  (Chebyshev.T ℝ (i : ℤ)).comp (C (2 / (β - α)) * X - C ((β + α) / (β - α)))
-
-/-- The affine map $x \mapsto (2x - \alpha - \beta)/(\beta - \alpha)$ sends $[\alpha, \beta]$ into
-$[-1, 1]$. -/
-private theorem abs_affine_le_one {α β : ℝ} (hαβ : α < β) {x : ℝ} (hx : x ∈ Set.Icc α β) :
-    |2 / (β - α) * x - (β + α) / (β - α)| ≤ 1 := by
-  have hd : 0 < β - α := sub_pos.2 hαβ
-  rw [show 2 / (β - α) * x - (β + α) / (β - α) = (2 * x - β - α) / (β - α) by
-    field_simp; ring, abs_div, abs_of_pos hd, div_le_one hd, abs_le]
-  constructor <;> linarith [hx.1, hx.2]
-
-/-- $\hat T_i$ has degree at most $i$. -/
-theorem degree_chebyshevOn_le (α β : ℝ) (i : ℕ) : (chebyshevOn α β i).degree ≤ i := by
-  have hl : (C (2 / (β - α)) * X - C ((β + α) / (β - α))).natDegree ≤ 1 := by compute_degree
-  have h := natDegree_comp_le (p := Chebyshev.T ℝ (i : ℤ))
-    (q := C (2 / (β - α)) * X - C ((β + α) / (β - α)))
-  rw [Chebyshev.natDegree_T, Int.natAbs_natCast] at h
-  refine degree_le_natDegree.trans ?_
-  exact_mod_cast h.trans (by nlinarith)
-
-/-- $|\hat T_i| \le 1$ on $[\alpha, \beta]$. -/
-theorem abs_eval_chebyshevOn_le_one {α β : ℝ} (hαβ : α < β) (i : ℕ) {x : ℝ}
-    (hx : x ∈ Set.Icc α β) : |(chebyshevOn α β i).eval x| ≤ 1 := by
-  simp only [chebyshevOn, eval_comp, eval_sub, eval_mul, eval_C, eval_X]
-  exact Chebyshev.abs_eval_T_real_le_one _ (abs_affine_le_one hαβ hx)
-
-/-- $\hat T_i$ is $2i^2/(\beta - \alpha)$-Lipschitz on $[\alpha, \beta]$ (Markov's inequality for
-Chebyshev polynomials: $T_i' = iU_{i-1}$, $|U_{i-1}| \le i$). -/
-theorem lipschitzOnWith_eval_chebyshevOn {α β : ℝ} (hαβ : α < β) (i : ℕ) :
-    LipschitzOnWith (Real.toNNReal (2 * i ^ 2 / (β - α)))
-      (fun x => (chebyshevOn α β i).eval x) (Set.Icc α β) := by
-  have hd : 0 < β - α := sub_pos.2 hαβ
-  refine (convex_Icc α β).lipschitzOnWith_of_nnnorm_deriv_le
-    (fun x _ => (chebyshevOn α β i).differentiableAt) fun x hx => ?_
-  rw [← NNReal.coe_le_coe, coe_nnnorm, Real.coe_toNNReal _ (by positivity), Polynomial.deriv,
-    chebyshevOn, derivative_comp, eval_mul, eval_comp]
-  simp only [derivative_sub, derivative_mul, derivative_C, zero_mul, derivative_X, mul_one,
-    zero_add, sub_zero, eval_C, eval_sub, eval_mul, eval_X, Real.norm_eq_abs, abs_mul,
-    abs_of_pos (div_pos two_pos hd)]
-  have hT := Chebyshev.abs_iterate_derivative_T_real_le (i : ℤ) 1 (abs_affine_le_one hαβ hx)
-  simp only [Function.iterate_one, Chebyshev.derivative_T_eval_one, Int.cast_natCast] at hT
-  rw [div_mul_eq_mul_div]
-  gcongr
-
-/-- **Chebyshev expansion of a polynomial on $[\alpha, \beta]$ with bounded coefficients**: a
-real polynomial of degree at most $m$ bounded by $M$ on $[\alpha, \beta]$ is
-$\sum_{i \le m} a_i\hat T_i$ with $|a_0| \le M$ and $|a_i| \le 2M$. [Trefethen2019, Thm 3.1];
-the finite case of `NLAlib.chebyshevTrunc_eval`, scaled. -/
-theorem exists_eq_sum_smul_chebyshevOn_of_isUniformApproxOn {α β : ℝ} (hαβ : α < β)
-    {p : ℝ[X]} {m : ℕ} (hp : p.degree ≤ m) {M : ℝ}
-    (hM : Metric.IsUniformApproxOn (fun x => p.eval x) (fun _ => 0) (Set.Icc α β) M) :
-    ∃ a : ℕ → ℝ, p = ∑ i ∈ Finset.range (m + 1), a i • chebyshevOn α β i ∧
-      |a 0| ≤ M ∧ ∀ i, 1 ≤ i → |a i| ≤ 2 * M := by
-  have hd : 0 < β - α := sub_pos.2 hαβ
-  set ℓ : ℝ[X] := C ((β - α) / 2) * X + C ((β + α) / 2) with hℓ
-  set q := p.comp ℓ with hq
-  have hqdeg : q.degree ≤ m := by
-    have h := natDegree_comp_le (p := p) (q := ℓ)
-    have hl : ℓ.natDegree ≤ 1 := by rw [hℓ]; compute_degree
-    have hpm : p.natDegree ≤ m := natDegree_le_of_degree_le hp
-    refine degree_le_natDegree.trans ?_
-    exact_mod_cast h.trans (by nlinarith)
-  have hqM : Metric.IsUniformApproxOn (fun t : ℝ => q.eval t) (fun _ => 0)
-      (Set.Icc (-1 : ℝ) 1) M := fun t ht => by
-    have hmem : (β - α) / 2 * t + (β + α) / 2 ∈ Set.Icc α β :=
-      ⟨by nlinarith [ht.1], by nlinarith [ht.2]⟩
-    simpa only [hq, eval_comp, hℓ, eval_add, eval_mul, eval_C, eval_X] using hM.apply hmem
-  have h := chebyshevTrunc_eval (𝕜 := ℝ) hqdeg
-  simp only [RCLike.ofReal_real_eq_id, id] at h
-  refine ⟨fun i => chebyshevCoeff (fun t : ℝ => q.eval t) i, ?_, ?_, fun i _ => ?_⟩
-  · refine Polynomial.funext fun x => ?_
-    have hx := congrArg (eval (2 / (β - α) * x - (β + α) / (β - α))) h
-    rw [eval_chebyshevTrunc] at hx
-    have hinv : (β - α) / 2 * (2 / (β - α) * x - (β + α) / (β - α)) + (β + α) / 2 = x := by
-      field_simp
-      ring
-    have hqx : q.eval (2 / (β - α) * x - (β + α) / (β - α)) = p.eval x := by
-      rw [hq, eval_comp, hℓ]
-      simp only [eval_add, eval_mul, eval_C, eval_X, hinv]
-    rw [hqx] at hx
-    rw [← hx, eval_finsetSum]
-    simp only [eval_smul, smul_eq_mul, chebyshevOn, eval_comp, eval_sub, eval_mul, eval_C, eval_X]
-  · simpa only [Real.norm_eq_abs] using norm_chebyshevCoeff_zero_le hqM
-  · simpa only [Real.norm_eq_abs] using norm_chebyshevCoeff_le hqM i
-
-/-- $\sum_{i<n} i^2 \le n^3/3$. -/
-private theorem sum_range_sq_le (n : ℕ) :
-    ∑ i ∈ Finset.range n, (i : ℝ) ^ 2 ≤ (n : ℝ) ^ 3 / 3 := by
-  induction n with
-  | zero => simp
-  | succ n ih =>
-    rw [Finset.sum_range_succ]
-    push_cast
-    nlinarith [(n.cast_nonneg : (0 : ℝ) ≤ n)]
-
-/-- **Lipschitz constant of a bounded polynomial on an interval**, through its Chebyshev
-expansion: a polynomial of degree at most $m$ bounded by $M$ on $[\alpha, \beta]$ is
-$\frac{4}{3}(m + 1)^3 M/(\beta - \alpha)$-Lipschitz there (unoptimised; Markov's inequality
-gives $2m^2M/(\beta - \alpha)$). -/
-theorem lipschitzOnWith_eval_of_degree_le_of_isUniformApproxOn {α β : ℝ} (hαβ : α < β)
-    {p : ℝ[X]} {m : ℕ} (hp : p.degree ≤ m) {M : ℝ}
-    (hM : Metric.IsUniformApproxOn (fun x => p.eval x) (fun _ => 0) (Set.Icc α β) M) :
-    LipschitzOnWith (Real.toNNReal (4 / 3 * (m + 1 : ℝ) ^ 3 * M / (β - α)))
-      (fun x => p.eval x) (Set.Icc α β) := by
-  have hd : 0 < β - α := sub_pos.2 hαβ
-  have hM0 : 0 ≤ M := hM.nonneg ⟨α, le_rfl, hαβ.le⟩
-  obtain ⟨a, hpa, ha0, ha⟩ := exists_eq_sum_smul_chebyshevOn_of_isUniformApproxOn hαβ hp hM
-  have ha' : ∀ i, |a i| ≤ 2 * M := fun i => by
-    rcases Nat.eq_zero_or_pos i with rfl | hi
-    · linarith
-    · exact ha i hi
-  refine LipschitzOnWith.of_dist_le_mul fun x hx y hy => ?_
-  rw [Real.coe_toNNReal _ (by positivity), hpa]
-  simp only [eval_finsetSum, eval_smul, smul_eq_mul, Real.dist_eq, ← Finset.sum_sub_distrib,
-    ← mul_sub]
-  calc |∑ i ∈ Finset.range (m + 1),
-        a i * ((chebyshevOn α β i).eval x - (chebyshevOn α β i).eval y)|
-      ≤ ∑ i ∈ Finset.range (m + 1), 2 * M * (2 * (i : ℝ) ^ 2 / (β - α) * |x - y|) := by
-        refine (Finset.abs_sum_le_sum_abs _ _).trans (Finset.sum_le_sum fun i _ => ?_)
-        rw [abs_mul]
-        have hL := (lipschitzOnWith_eval_chebyshevOn hαβ i).dist_le_mul x hx y hy
-        rw [Real.coe_toNNReal _ (by positivity), Real.dist_eq, Real.dist_eq] at hL
-        exact mul_le_mul (ha' i) hL (abs_nonneg _) (by positivity)
-    _ = 4 * M * |x - y| / (β - α) * ∑ i ∈ Finset.range (m + 1), (i : ℝ) ^ 2 := by
-        rw [Finset.mul_sum]
-        refine Finset.sum_congr rfl fun i _ => ?_
-        ring
-    _ ≤ 4 * M * |x - y| / (β - α) * ((m + 1 : ℝ) ^ 3 / 3) := by
-        gcongr
-        exact_mod_cast sum_range_sq_le (m + 1)
-    _ = 4 / 3 * (m + 1 : ℝ) ^ 3 * M / (β - α) * |x - y| := by ring
 
 /-! ### The perturbed Chebyshev recurrence -/
 
@@ -603,7 +465,7 @@ private theorem norm_aeval_U_mulVec_le {ι : Type*} [Fintype ι] [DecidableEq ι
   refine (norm_toLp_mulVec_le _ _).trans (mul_le_mul_of_nonneg_right
     (hH.specNorm_aeval_le _ (by positivity) fun x hx => ?_) (norm_nonneg _))
   simp only [eval_comp, eval_sub, eval_mul, eval_C, eval_X]
-  exact abs_eval_U_le m (abs_affine_le_one hαβ (hs hx))
+  exact abs_eval_U_le m (abs_div_mul_sub_div_le_one hαβ (hs hx))
 
 /-- $\|\hat T_j(\mathbf{A})\mathbf{w}\| \le \|\mathbf{w}\|$ for
 $\operatorname{spec}\mathbf{A} \subseteq [\alpha, \beta]$. -/
@@ -615,6 +477,27 @@ private theorem norm_aeval_chebyshevOn_mulVec_le {ι : Type*} [Fintype ι] [Deci
   conv_rhs => rw [← one_mul ‖WithLp.toLp 2 w‖]
   exact mul_le_mul_of_nonneg_right (hH.specNorm_aeval_le _ zero_le_one fun x hx =>
     abs_eval_chebyshevOn_le_one hαβ j (hs hx)) (norm_nonneg _)
+
+/-- The Clenshaw sum is at most $\frac{i(i+1)}{2}$ times a bound on its terms: for
+$\operatorname{spec}\mathbf{H} \subseteq [\alpha, \beta]$ and $\|\mathbf{f}_j\| \le B$ ($j < i$),
+$\|\sum_{j<i}U_{i-1-j}(\hat{\mathbf{H}})\mathbf{f}_j\| \le \frac{i(i+1)}{2}B$. -/
+private theorem norm_sum_aeval_U_mulVec_le {ι : Type*} [Fintype ι] [DecidableEq ι]
+    {H : Matrix ι ι ℝ} (hH : H.IsHermitian) {α β : ℝ} (hαβ : α < β)
+    (hs : spectrum ℝ H ⊆ Set.Icc α β) (i : ℕ) {f : ℕ → ι → ℝ} {B : ℝ}
+    (hf : ∀ j < i, ‖WithLp.toLp 2 (f j)‖ ≤ B) :
+    ‖WithLp.toLp 2 (∑ j ∈ Finset.range i,
+      aeval (aeval H (C (2 / (β - α)) * X - C ((β + α) / (β - α))))
+        (Chebyshev.U ℝ ((i : ℤ) - 1 - j)) *ᵥ f j)‖ ≤ i * (i + 1) / 2 * B := by
+  rw [WithLp.toLp_sum, ← sum_range_sub_eq, Finset.sum_mul]
+  refine (norm_sum_le _ _).trans (Finset.sum_le_sum fun j hj => ?_)
+  rw [Finset.mem_range] at hj
+  rw [show (i : ℤ) - 1 - j = ((i - 1 - j : ℕ) : ℤ) by omega]
+  refine (norm_aeval_U_mulVec_le hH hαβ hs _ _).trans ?_
+  rw [show (((i - 1 - j : ℕ) : ℝ) + 1) = (i : ℝ) - j by
+    rw [Nat.cast_sub (by omega), Nat.cast_sub (by omega)]; push_cast; ring]
+  exact mul_le_mul_of_nonneg_left (hf j hj) (by
+    have : (j : ℝ) < i := by exact_mod_cast hj
+    linarith)
 
 /-- **The computed recurrence applies Chebyshev polynomials stably** ([DruskinKnizhnerman1991,
 §4]; [MuscoMuscoSidford2018, Lemma 10]; Chen's thesis, Theorem 8.4): for any symmetric
@@ -703,23 +586,11 @@ theorem norm_aeval_chebyshevOn_mulVec_sub_basis_mulVec_le {α β : ℝ} (hαβ :
       exact mul_le_mul_of_nonneg_left (hFy _) (by positivity)
   -- the Clenshaw representation and the bounds
   change ‖WithLp.toLp 2 (d i)‖ ≤ _
-  rw [eq_sum_aeval_U_mulVec_chebyshevRecurrenceResidual A hd0 i, WithLp.toLp_sum]
-  refine (norm_sum_le _ _).trans ?_
-  calc ∑ j ∈ Finset.range i, ‖WithLp.toLp 2 (aeval A (Chebyshev.U ℝ ((i : ℤ) - 1 - j)) *ᵥ
-        chebyshevRecurrenceResidual A d j)‖
-      ≤ ∑ j ∈ Finset.range i, ((i : ℝ) - j) * (2 * σ * specNorm F) := by
-        refine Finset.sum_le_sum fun j hj => ?_
-        rw [Finset.mem_range] at hj
-        rw [show (i : ℤ) - 1 - j = ((i - 1 - j : ℕ) : ℤ) by omega]
-        refine (norm_aeval_U_mulVec_le D.isHermitian hαβ hs _ _).trans ?_
-        rw [show (((i - 1 - j : ℕ) : ℝ) + 1) = (i : ℝ) - j by
-          rw [Nat.cast_sub (by omega), Nat.cast_sub (by omega)]; push_cast; ring]
-        exact mul_le_mul_of_nonneg_left (hf j (by omega)) (by
-          have : (j : ℝ) < i := by exact_mod_cast hj
-          linarith)
-    _ = 2 * i * (i + 1) / (β - α) * specNorm F := by
-        rw [← Finset.sum_mul, sum_range_sub_eq, hσ]
-        field_simp
+  rw [eq_sum_aeval_U_mulVec_chebyshevRecurrenceResidual A hd0 i]
+  refine (norm_sum_aeval_U_mulVec_le D.isHermitian hαβ hs i fun j hj => hf j (by omega)).trans
+    (le_of_eq ?_)
+  rw [hσ]
+  field_simp
 
 /-- **The computed recurrence applies bounded polynomials stably** ([MuscoMuscoSidford2018,
 Lemma 9]): for a real polynomial of degree less than $k$ bounded by $M$ on $[\alpha, \beta]$,
@@ -782,8 +653,9 @@ variable {n k : ℕ} (L : LanczosRun n k)
 /-- The first index $0 : \mathrm{Fin}\,k$ of a run. -/
 def firstIndex : Fin k := L.toLanczosData.firstIndex
 
-/-- The **width of the enlarged interval** $I_c = [a - c, a' + c]$,
-$c = 2000k^4\varepsilon\|\mathbf{H}\|_2$ (`NLAlib.lanczosBackwardFactor`). -/
+/-- The **width of the enlarged interval** $I_c = [a - c, a' + c]$, namely
+(`NLAlib.lanczosBackwardFactor`) <!-- value lanczosBackwardFactor k -->
+$c = 2000k^4\varepsilon\|\mathbf{H}\|_2$. -/
 noncomputable def enlargement : ℝ := lanczosBackwardFactor k * L.ε * specNorm L.H
 
 /-- **Containment of the computed Ritz values** as a spectrum inclusion: for
@@ -833,7 +705,7 @@ theorem abs_dotProduct_cfc_mulVec_sub_cfc_tridiagonal_le_of_continuousOn {a a' :
     L.frobNorm_backwardH_sub_dilatedH_le hp' hpf hf
 
 /-- **Knizhnerman-type quadrature bound, explicit rate for Lipschitz $f$** (Jackson):
-<!-- value jacksonApproximationConstant -->
+for $f$ $L$-Lipschitz on $I_c$, <!-- value jacksonApproximationConstant -->
 $$\bigl\lvert\bar{\mathbf{v}}_1^{\mathsf{T}}f(\mathbf{H})\bar{\mathbf{v}}_1 -
 (f(\mathbf{T}_k))_{00}\bigr\rvert \le L\Bigl(\frac{\pi(a' - a + 2c)}{2k + 1} + c\Bigr) ,
 \qquad c = 2000k^4\varepsilon\|\mathbf{H}\|_2 .$$
@@ -900,10 +772,10 @@ theorem abs_dotProduct_cfc_mulVec_v_sub_cfc_tridiagonal_le_of_continuousOn {a a'
 /-! ### Lanczos-FA -/
 
 /-- **Druskin–Knizhnerman-type Lanczos-FA bound for a Lanczos run**: for
-$\operatorname{spec}\mathbf{H} \subseteq [a, a']$, $c = 2000k^4\varepsilon\|\mathbf{H}\|_2$,
+$\operatorname{spec}\mathbf{H} \subseteq [a, a']$, <!-- value lanczosBackwardFactor k -->
+$c = 2000k^4\varepsilon\|\mathbf{H}\|_2$,
 $I_c = [a - c, a' + c]$, $f$ continuous on $I_c$ with $|f| \le M$ there, the computed
 basis $\mathbf{V}_k$ and tridiagonal matrix $\mathbf{T}_k$ satisfy
-<!-- value lanczosBackwardFactor k --> <!-- value lanczosResidualFactor k -->
 $$\|f(\mathbf{H})\mathbf{v}_1 - \mathbf{V}_kf(\mathbf{T}_k)\mathbf{e}_0\| \le
 (2 + \sqrt{k})\,E_{k-1}(f; I_c) + 16k^4\sqrt{k}\,\varepsilon\|\mathbf{H}\|_2\,
 \frac{M}{a' - a + 2c} .$$
@@ -913,7 +785,8 @@ $\|\mathbf{V}_k(f - p)(\mathbf{T}_k)\mathbf{e}_0\| \le \|\mathbf{V}_k\|_{\mathsf
 $\|\mathbf{V}_k\|_{\mathsf{F}} \le (1 + \varepsilon/2)\sqrt{k}$
 (`NLAlib.LanczosRun.frobNorm_basis_le`) and the Ritz values in $I_c$
 (`NLAlib.LanczosRun.spectrum_tridiagonal_subset_Icc`), and
-`NLAlib.LanczosData.norm_aeval_mulVec_sub_basis_mulVec_le_of_degree_lt` with
+`NLAlib.LanczosData.norm_aeval_mulVec_sub_basis_mulVec_le_of_degree_lt` with the residual
+bound <!-- value lanczosResidualFactor k -->
 $\|\mathbf{F}_k\|_2 \le 6k\sqrt{k}\varepsilon\|\mathbf{H}\|_2$
 (`NLAlib.LanczosRun.specNorm_residual_le`) and $E_{k-1} \le M$. Compare
 [MuscoMuscoSidford2018, Lemma 11]: $(k + 2)\delta_k + 92Ck^4n^{3/2}\|\mathbf{A}\|\epsilon_{\rm mach}

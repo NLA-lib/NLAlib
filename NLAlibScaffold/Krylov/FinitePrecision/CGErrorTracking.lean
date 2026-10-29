@@ -279,7 +279,32 @@ theorem quadForm_sub_x_sub_quadForm_sub_x_succ_eq {xs : Fin n → ℝ} (hx : C.A
         (C.γ j ^ 2 * (C.p j ⬝ᵥ (C.A *ᵥ C.p j)) - C.γ j * C.ρ j ^ 2) +
         2 * C.γ j * (C.p j ⬝ᵥ (C.b - C.A *ᵥ C.x j - C.r j)) +
         2 * (C.ex j ⬝ᵥ (C.A *ᵥ (xs - C.x j - C.γ j • C.p j))) - quadForm C.A (C.ex j) := by
-  sorry
+  set e := xs - C.x j with he
+  set w := e - C.γ j • C.p j with hw
+  set v := C.ex j
+  have hxe : xs - C.x (j + 1) = w - v := by
+    rw [C.x_succ j hj, hw, he]
+    abel
+  have hAe : C.A *ᵥ e = C.r j + (C.b - C.A *ᵥ C.x j - C.r j) := by
+    rw [he, Matrix.mulVec_sub, hx]
+    abel
+  have hexp : w ⬝ᵥ (C.A *ᵥ w) = e ⬝ᵥ (C.A *ᵥ e) - 2 * C.γ j * (C.p j ⬝ᵥ (C.A *ᵥ e)) +
+      C.γ j ^ 2 * (C.p j ⬝ᵥ (C.A *ᵥ C.p j)) := by
+    rw [hw]
+    simp only [Matrix.mulVec_sub, Matrix.mulVec_smul, sub_dotProduct, dotProduct_sub,
+      smul_dotProduct, dotProduct_smul, smul_eq_mul]
+    rw [C.trk_dotProduct_mulVec_comm e (C.p j)]
+    ring
+  have hexp2 : (w - v) ⬝ᵥ (C.A *ᵥ (w - v)) = w ⬝ᵥ (C.A *ᵥ w) - 2 * (v ⬝ᵥ (C.A *ᵥ w)) +
+      v ⬝ᵥ (C.A *ᵥ v) := by
+    simp only [Matrix.mulVec_sub, sub_dotProduct, dotProduct_sub]
+    rw [C.trk_dotProduct_mulVec_comm w v]
+    ring
+  have hpAe : C.p j ⬝ᵥ (C.A *ᵥ e) =
+      C.p j ⬝ᵥ C.r j + C.p j ⬝ᵥ (C.b - C.A *ᵥ C.x j - C.r j) := by
+    rw [hAe, dotProduct_add]
+  rw [hxe, C.trk_quadForm_eq, C.trk_quadForm_eq, C.trk_quadForm_eq, hexp2, hexp, hpAe]
+  ring
 
 /-- **The line search defect, relative**: under (H), for $j < k$,
 $\lvert\mathbf{p}_j^{\mathsf{T}}\mathbf{r}_j - \|\mathbf{r}_j\|^2\rvert \le
@@ -292,7 +317,81 @@ theorem abs_p_dotProduct_r_sub_sq_le {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a') (hsmall : (k : ℝ) ^ 3 * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
     {j : ℕ} (hj : j < k) :
     |C.p j ⬝ᵥ C.r j - C.ρ j ^ 2| ≤ 26 * k * C.ε * (a' / a) * C.ρ j ^ 2 := by
-  sorry
+  obtain ⟨-, hκ, -, hε5, -, -, -⟩ := C.trk_small ha hs hsmall
+  have hε0 := C.ε_nonneg
+  have hk1 : (1 : ℝ) ≤ k := by exact_mod_cast C.k_pos
+  set κ := a' / a with hκdef
+  have hP : ∀ i < k, ‖WithLp.toLp 2 (C.p i)‖ ≤ 2 * κ * C.ρ i := fun i hi => by
+    have h := C.norm_p_sq_le ha hs hsmall hi
+    have h2 : ‖WithLp.toLp 2 (C.p i)‖ ^ 2 ≤ (2 * κ * C.ρ i) ^ 2 := by
+      have := C.ρ_nonneg i
+      nlinarith [sq_nonneg (C.ρ i)]
+    exact (pow_le_pow_iff_left₀ (norm_nonneg _) (by have := C.ρ_nonneg i; positivity)
+      two_ne_zero).mp h2
+  have hK := fun i (hi : i < k) => C.specNorm_mul_γ_mul_norm_p_sq_le ha hs hsmall hi
+  rcases j with _ | i
+  · rw [C.p_zero, ← C.r_zero, ρ, EuclideanSpace.norm_toLp_sq_eq_dotProduct_self, sub_self,
+      abs_zero]
+    exact mul_nonneg (mul_nonneg (by positivity) (by linarith)) (Finset.sum_nonneg fun i _ => mul_self_nonneg _)
+  · have hi : i < k := by omega
+    have hτ := C.abs_p_dotProduct_r_succ_le hP hK hi
+    obtain ⟨hδ0, hδ1, -⟩ := C.δ_bounds hi
+    have hep := C.norm_ep_le' hi
+    have hD := C.δ_mul_norm_p_le hi
+    have hPi := hP (i + 1) hj
+    have hid : C.p (i + 1) ⬝ᵥ C.r (i + 1) - C.ρ (i + 1) ^ 2 =
+        C.δ i * (C.p i ⬝ᵥ C.r (i + 1)) + C.ep i ⬝ᵥ C.r (i + 1) := by
+      rw [C.p_succ i hi, add_dotProduct, add_dotProduct, smul_dotProduct, smul_eq_mul, ρ,
+        EuclideanSpace.norm_toLp_sq_eq_dotProduct_self]
+      ring
+    rw [hid]
+    set ρ1 := C.ρ (i + 1)
+    have hρ1 : 0 ≤ ρ1 := C.ρ_nonneg _
+    have hik : ((i : ℕ) + 1 : ℝ) ≤ k := by exact_mod_cast hj.le
+    -- the line search term
+    have hY : 5 * ((i : ℝ) + 1) * C.ε * (1 + 2 * κ + 21 / 20 * κ) ≤
+        81 / 4 * ((k : ℝ) * C.ε * κ) := by
+      have h1 : 1 + 2 * κ + 21 / 20 * κ ≤ 81 / 20 * κ := by linarith
+      have h3 := mul_le_mul_of_nonneg_left h1 (by positivity : 0 ≤ 5 * ((i : ℝ) + 1) * C.ε)
+      have h4 : 5 * ((i : ℝ) + 1) * C.ε * (81 / 20 * κ) ≤ 5 * (k : ℝ) * C.ε * (81 / 20 * κ) := by
+        gcongr
+      nlinarith
+    have hτ' : |C.p i ⬝ᵥ C.r (i + 1)| ≤ 81 / 4 * ((k : ℝ) * C.ε * κ) * C.ρ i ^ 2 := by
+      refine hτ.trans ?_
+      exact mul_le_mul_of_nonneg_right hY (sq_nonneg (C.ρ i))
+    have hδτ : |C.δ i * (C.p i ⬝ᵥ C.r (i + 1))| ≤ 21 * ((k : ℝ) * C.ε * κ) * ρ1 ^ 2 := by
+      rw [abs_mul, abs_of_nonneg hδ0]
+      calc C.δ i * |C.p i ⬝ᵥ C.r (i + 1)| ≤
+            C.δ i * (81 / 4 * ((k : ℝ) * C.ε * κ) * C.ρ i ^ 2) :=
+            mul_le_mul_of_nonneg_left hτ' hδ0
+        _ = 81 / 4 * ((k : ℝ) * C.ε * κ) * (C.δ i * C.ρ i ^ 2) := by ring
+        _ ≤ 81 / 4 * ((k : ℝ) * C.ε * κ) * ((1 + 31 / 10 * C.ε) * ρ1 ^ 2) := by gcongr
+        _ ≤ 21 * ((k : ℝ) * C.ε * κ) * ρ1 ^ 2 := by
+            have : 81 / 4 * (1 + 31 / 10 * C.ε) ≤ 21 := by nlinarith
+            have h := mul_le_mul_of_nonneg_right this (by positivity :
+              0 ≤ (k : ℝ) * C.ε * κ * ρ1 ^ 2)
+            nlinarith
+    -- the direction update term
+    have hepr : |C.ep i ⬝ᵥ C.r (i + 1)| ≤ 5 * ((k : ℝ) * C.ε * κ) * ρ1 ^ 2 := by
+      refine (EuclideanSpace.abs_dotProduct_le_norm _ _).trans ?_
+      have h1 : ‖WithLp.toLp 2 (C.ep i)‖ ≤ C.ε * (ρ1 + 21 / 20 * (2 * κ * ρ1 + ρ1)) := by
+        refine hep.trans (mul_le_mul_of_nonneg_left ?_ hε0)
+        linarith
+      have h2 : C.ε * (ρ1 + 21 / 20 * (2 * κ * ρ1 + ρ1)) ≤ 5 * ((k : ℝ) * C.ε * κ) * ρ1 := by
+        have e : C.ε * (ρ1 + 21 / 20 * (2 * κ * ρ1 + ρ1)) =
+            ρ1 * (41 / 20 * C.ε + 21 / 10 * (C.ε * κ)) := by ring
+        rw [e]
+        have hεκ : C.ε ≤ C.ε * κ := le_mul_of_one_le_right hε0 hκ
+        have hkεκ : C.ε * κ ≤ (k : ℝ) * C.ε * κ := by
+          have := mul_le_mul_of_nonneg_right hk1 (by positivity : 0 ≤ C.ε * κ)
+          linarith
+        nlinarith
+      calc ‖WithLp.toLp 2 (C.ep i)‖ * ‖WithLp.toLp 2 (C.r (i + 1))‖ ≤
+            5 * ((k : ℝ) * C.ε * κ) * ρ1 * ρ1 := mul_le_mul_of_nonneg_right (h1.trans h2) hρ1
+        _ = _ := by ring
+    calc |C.δ i * (C.p i ⬝ᵥ C.r (i + 1)) + C.ep i ⬝ᵥ C.r (i + 1)| ≤
+          |C.δ i * (C.p i ⬝ᵥ C.r (i + 1))| + |C.ep i ⬝ᵥ C.r (i + 1)| := abs_add_le _ _
+      _ ≤ 26 * k * C.ε * κ * ρ1 ^ 2 := by nlinarith
 
 /-- **The curvature error, relative**: under (H), for $j < k$,
 $\lvert\gamma_j^2\mathbf{p}_j^{\mathsf{T}}\mathbf{A}\mathbf{p}_j - \gamma_j\|\mathbf{r}_j\|^2\rvert
@@ -306,7 +405,96 @@ theorem abs_γ_sq_mul_dotProduct_mulVec_sub_le {a a' : ℝ} (ha : 0 < a)
     {j : ℕ} (hj : j < k) :
     |C.γ j ^ 2 * (C.p j ⬝ᵥ (C.A *ᵥ C.p j)) - C.γ j * C.ρ j ^ 2| ≤
       6 * C.ε * (a' / a) * (C.γ j * C.ρ j ^ 2) := by
-  sorry
+  obtain ⟨haa', hκ, hspec, hε5, -, -, -⟩ := C.trk_small ha hs hsmall
+  have hε0 := C.ε_nonneg
+  have hγ := C.γ_pos hj
+  have hG2 := C.γ_sq_mul_dotProduct_mulVec_le ha hs hsmall hj
+  set N := ‖WithLp.toLp 2 (C.p j)‖ with hN
+  have hNn : 0 ≤ N := norm_nonneg _
+  set P := C.p j ⬝ᵥ (C.A *ᵥ C.p j) with hPdef
+  have hP0 : a * N ^ 2 ≤ P := by
+    have := (C.trk_quadForm_bounds hs (C.p j)).1
+    rwa [C.trk_quadForm_eq] at this
+  have hP0' : 0 ≤ P := le_trans (by positivity) hP0
+  have hμ : C.μ j = P + (C.p j ⬝ᵥ C.es j + C.eμ j) := by
+    rw [C.μ_eq j hj, C.s_eq j hj, dotProduct_add]
+    ring
+  set t := C.p j ⬝ᵥ C.es j + C.eμ j with ht
+  have h1 : |C.p j ⬝ᵥ C.es j| ≤ C.ε * a' * N ^ 2 := by
+    refine (EuclideanSpace.abs_dotProduct_le_norm _ _).trans ?_
+    have := C.norm_es_le j hj
+    calc N * ‖WithLp.toLp 2 (C.es j)‖ ≤ N * (C.ε * specNorm C.A * N) :=
+          mul_le_mul_of_nonneg_left this hNn
+      _ ≤ N * (C.ε * a' * N) := by gcongr
+      _ = _ := by ring
+  have h2 : |C.eμ j| ≤ 2 * C.ε * a' * N ^ 2 := by
+    refine (C.abs_eμ_le j hj).trans ?_
+    have hs' := C.norm_s_le hj
+    have : ‖WithLp.toLp 2 (C.s j)‖ ≤ 2 * a' * N := by
+      refine hs'.trans ?_
+      have : (1 + C.ε) * specNorm C.A ≤ 2 * a' := by nlinarith [specNorm_nonneg C.A]
+      exact mul_le_mul_of_nonneg_right this hNn
+    calc C.ε * N * ‖WithLp.toLp 2 (C.s j)‖ ≤ C.ε * N * (2 * a' * N) :=
+          mul_le_mul_of_nonneg_left this (by positivity)
+      _ = _ := by ring
+  have h3 : a' * N ^ 2 ≤ a' / a * P := by
+    have := mul_le_mul_of_nonneg_left hP0 (by linarith : 0 ≤ a' / a)
+    calc a' * N ^ 2 = a' / a * (a * N ^ 2) := by field_simp
+      _ ≤ _ := this
+  have htP : |t| ≤ 3 * (C.ε * (a' / a)) * P := by
+    have h4 : C.ε * (a' * N ^ 2) ≤ C.ε * (a' / a * P) := mul_le_mul_of_nonneg_left h3 hε0
+    calc |t| ≤ |C.p j ⬝ᵥ C.es j| + |C.eμ j| := abs_add_le _ _
+      _ ≤ 3 * (C.ε * (a' / a)) * P := by nlinarith
+  have hgm := C.γ_mul_μ hj
+  rw [C.ν_eq' hj.le, hμ] at hgm
+  have hθ := abs_le.mp (C.abs_θ_le j hj.le)
+  have he := abs_le.mp (C.abs_eγ_le j hj)
+  have hρ2 : 0 ≤ C.ρ j ^ 2 := sq_nonneg _
+  -- `γP ≤ 1.001ρ²`
+  have hγP : C.γ j * P ≤ (1 + 1 / 1000) * C.ρ j ^ 2 := by
+    have : C.γ j * (C.γ j * P) ≤ C.γ j * ((1 + 1 / 1000) * C.ρ j ^ 2) := by
+      calc C.γ j * (C.γ j * P) = C.γ j ^ 2 * P := by ring
+        _ ≤ _ := hG2
+        _ = _ := by ring
+    exact le_of_mul_le_mul_left this hγ
+  have hγP0 : 0 ≤ C.γ j * P := by positivity
+  have hεκ : C.ε ≤ C.ε * (a' / a) := le_mul_of_one_le_right hε0 hκ
+  -- `|γP - ρ²| ≤ 6εκρ²`
+  have hid : C.γ j * P - C.ρ j ^ 2 =
+      C.ρ j ^ 2 * (C.θ j + C.eγ j + C.θ j * C.eγ j) - C.γ j * t := by
+    have : C.γ j * P = C.γ j * (P + t) - C.γ j * t := by ring
+    rw [this, hgm]
+    ring
+  have hθe : |C.θ j + C.eγ j + C.θ j * C.eγ j| ≤ 21 / 10 * C.ε := by
+    rw [abs_le]
+    constructor <;> nlinarith
+  have hA : |C.γ j * P - C.ρ j ^ 2| ≤ 6 * C.ε * (a' / a) * C.ρ j ^ 2 := by
+    rw [hid]
+    have hγt : |C.γ j * t| ≤ 3 * (C.ε * (a' / a)) * (C.γ j * P) := by
+      rw [abs_mul, abs_of_pos hγ]
+      calc C.γ j * |t| ≤ C.γ j * (3 * (C.ε * (a' / a)) * P) :=
+            mul_le_mul_of_nonneg_left htP hγ.le
+        _ = _ := by ring
+    have hρθ : |C.ρ j ^ 2 * (C.θ j + C.eγ j + C.θ j * C.eγ j)| ≤
+        C.ρ j ^ 2 * (21 / 10 * C.ε) := by
+      rw [abs_mul, abs_of_nonneg hρ2]
+      exact mul_le_mul_of_nonneg_left hθe hρ2
+    have hT0 : 0 ≤ C.ε * (a' / a) := le_trans hε0 hεκ
+    have h5 : 3 * (C.ε * (a' / a)) * (C.γ j * P) ≤
+        3 * (C.ε * (a' / a)) * ((1 + 1 / 1000) * C.ρ j ^ 2) :=
+      mul_le_mul_of_nonneg_left hγP (by positivity)
+    have h6 : C.ρ j ^ 2 * (21 / 10 * C.ε) ≤ 21 / 10 * (C.ε * (a' / a)) * C.ρ j ^ 2 := by
+      nlinarith
+    calc |C.ρ j ^ 2 * (C.θ j + C.eγ j + C.θ j * C.eγ j) - C.γ j * t| ≤
+          |C.ρ j ^ 2 * (C.θ j + C.eγ j + C.θ j * C.eγ j)| + |C.γ j * t| := abs_sub _ _
+      _ ≤ 6 * C.ε * (a' / a) * C.ρ j ^ 2 := by
+          have : 0 ≤ C.ε * (a' / a) * C.ρ j ^ 2 := by positivity
+          linarith
+  have e : C.γ j ^ 2 * P - C.γ j * C.ρ j ^ 2 = C.γ j * (C.γ j * P - C.ρ j ^ 2) := by ring
+  rw [e, abs_mul, abs_of_pos hγ]
+  calc C.γ j * |C.γ j * P - C.ρ j ^ 2| ≤ C.γ j * (6 * C.ε * (a' / a) * C.ρ j ^ 2) :=
+        mul_le_mul_of_nonneg_left hA hγ.le
+    _ = _ := by ring
 
 /-- **One step of the computed error, two-sided**: under (H), for $\mathbf{A}\mathbf{x}_\star =
 \mathbf{b}$ and $j < k$,

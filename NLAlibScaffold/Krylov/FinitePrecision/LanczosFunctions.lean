@@ -1077,6 +1077,27 @@ theorem _root_.NLAlib.Computation.IsRelErrSem.exists_lanczosQuadratureBound_of_l
       HasLanczosQuadratureBound st' p dec (u p)
         (lanczosRoundingEps N (u p) (√(N : ℝ) * roundingFactor N (u p))) 2 3 4 q
         (Matrix.of fun i j => dec p (Hw i j)) (fun i => dec p (b i)) a a' := by
-  sorry
+  obtain ⟨st', he, hL⟩ :=
+    IsRelErrSem.exists_lanczosRun_of_lanczosBasisDenseProg I p h hz q Hw hH b hb hq hu hsmall
+  refine ⟨st', he, ?_⟩
+  obtain ⟨α, β, V, hout, hstart, -, -, L, hLH, hLε, hcoef, hvec⟩ := hL
+  have hv1 : L.normalizedV 1 = ‖WithLp.toLp 2 (V 0)‖⁻¹ • V 0 := by
+    rw [L.normalizedV_of_le L.k_pos, hvec 0 (Nat.zero_le _)]
+  have hT : lanczosOutputTridiagonal α β (lanczosSteps β q) = L.tridiagonal := by
+    ext i j
+    simp only [lanczosOutputTridiagonal, LanczosRun.tridiagonal, LanczosData.tridiagonal,
+      LanczosRun.toLanczosData, Matrix.of_apply]
+    split_ifs with h1 h2 h3
+    · exact (hcoef i i.2).1.symm
+    · rw [h2]
+      exact (hcoef j (by omega)).2.symm
+    · rw [h3]
+      exact (hcoef i (by omega)).2.symm
+    · rfl
+  rw [← hLH] at hs
+  rw [← hLH, ← hLε]
+  refine ⟨α, β, V, hout, hstart, fun f Lf hf i₀ hi₀ => ?_⟩
+  rw [hT, show i₀ = L.firstIndex from Fin.ext hi₀, ← hv1]
+  exact L.abs_dotProduct_cfc_mulVec_sub_cfc_tridiagonal_le_of_continuousOn hs hf
 
 end NLAlib

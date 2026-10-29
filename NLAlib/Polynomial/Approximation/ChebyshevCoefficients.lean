@@ -29,6 +29,7 @@ are equalities, not additional coefficient objects.
 * `NLAlib.chebyshevCoeff_add`: additivity under interval integrability.
 * `NLAlib.chebyshevCoeff_const_mul`: scalar linearity.
 * `NLAlib.chebyshevCoeff_eval_T`: coefficient identification on the Chebyshev basis.
+* `NLAlib.norm_chebyshevCoeff_le`: the coefficients of a function bounded by $M$ are at most $2M$.
 -/
 
 @[expose] public section
@@ -141,6 +142,38 @@ theorem norm_chebyshevCoeff_zero_le {f : ℝ → 𝕜} {M : ℝ}
         (1 / Real.pi) * (M * Real.pi) :=
       mul_le_mul_of_nonneg_left hi (by positivity)
     _ = M := by field_simp
+
+/-- **Chebyshev coefficients of a bounded function**: a uniform bound $\|f(x)\| \le M$ on
+$[-1, 1]$ bounds every full coefficient by $2M$ ($\lvert\cos(k\theta)\rvert \le 1$ in the cosine
+integral); no continuity or integrability assumption is required. [Trefethen2019, Theorem 3.1],
+the cosine integral it is read from. -/
+theorem norm_chebyshevCoeff_le {f : ℝ → 𝕜} {M : ℝ}
+    (hM : Metric.IsUniformApproxOn f (fun _ => 0) (Set.Icc (-1 : ℝ) 1) M) (k : ℕ) :
+    ‖chebyshevCoeff f k‖ ≤ 2 * M := by
+  have hM0 : 0 ≤ M := hM.nonneg ⟨0, by norm_num⟩
+  have hi : ‖∫ θ in 0..Real.pi, f (Real.cos θ) * (Real.cos ((k : ℝ) * θ) : 𝕜)‖ ≤
+      M * Real.pi := by
+    have h := intervalIntegral.norm_integral_le_of_norm_le_const
+      (a := 0) (b := Real.pi) (f := fun θ => f (Real.cos θ) * (Real.cos ((k : ℝ) * θ) : 𝕜))
+      (C := M) (fun θ _ => by
+        have h1 : ‖f (Real.cos θ)‖ ≤ M := by
+          simpa only [dist_zero_right] using
+            hM.apply (show Real.cos θ ∈ Set.Icc (-1 : ℝ) 1 from
+              ⟨Real.neg_one_le_cos θ, Real.cos_le_one θ⟩)
+        rw [norm_mul, RCLike.norm_ofReal]
+        calc ‖f (Real.cos θ)‖ * |Real.cos ((k : ℝ) * θ)| ≤ M * 1 :=
+              mul_le_mul h1 (Real.abs_cos_le_one _) (abs_nonneg _) hM0
+          _ = M := mul_one M)
+    simpa only [sub_zero, abs_of_pos Real.pi_pos] using h
+  have hc : |(if k = 0 then 1 else 2 : ℝ) / Real.pi| ≤ 2 / Real.pi := by
+    rw [abs_div, abs_of_pos Real.pi_pos]
+    gcongr
+    split_ifs <;> norm_num
+  simp only [chebyshevCoeff, norm_mul, RCLike.norm_ofReal]
+  calc |(if k = 0 then 1 else 2 : ℝ) / Real.pi| *
+        ‖∫ θ in 0..Real.pi, f (Real.cos θ) * (Real.cos ((k : ℝ) * θ) : 𝕜)‖ ≤
+        2 / Real.pi * (M * Real.pi) := mul_le_mul hc hi (norm_nonneg _) (by positivity)
+    _ = 2 * M := by field_simp
 
 /-- The canonical Chebyshev coefficient commutes with the existing RCLike embedding into
 $\mathbb C$. The identity is unconditional, including nonintegrable weighted integrands,

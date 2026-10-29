@@ -8,6 +8,11 @@ module
 public import NLAlib.Krylov.FinitePrecision.BackwardSpectral
 public import NLAlib.Krylov.Functions.Quadrature
 public import NLAlibScaffold.Krylov.Processes.LanczosRounding
+public import NLAlib.Polynomial.Approximation.ChebyshevTruncation
+public import NLAlib.Polynomial.Approximation.Jackson
+public import NLAlib.Polynomial.Chebyshev.EvenFilter
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Chebyshev.RootsExtrema
+public import Mathlib.Analysis.Calculus.MeanValue
 
 /-!
 # Finite-precision Lanczos quadrature and Lanczos-FA: Druskin–Knizhnerman and Knizhnerman bounds
@@ -67,21 +72,47 @@ $\hat T_i(x) = T_i\bigl((2x - \alpha - \beta)/(\beta - \alpha)\bigr)$. -/
 noncomputable def chebyshevOn (α β : ℝ) (i : ℕ) : ℝ[X] :=
   (Chebyshev.T ℝ (i : ℤ)).comp (C (2 / (β - α)) * X - C ((β + α) / (β - α)))
 
+/-- The affine map $x \mapsto (2x - \alpha - \beta)/(\beta - \alpha)$ sends $[\alpha, \beta]$ into
+$[-1, 1]$. -/
+private theorem abs_affine_le_one {α β : ℝ} (hαβ : α < β) {x : ℝ} (hx : x ∈ Set.Icc α β) :
+    |2 / (β - α) * x - (β + α) / (β - α)| ≤ 1 := by
+  have hd : 0 < β - α := sub_pos.2 hαβ
+  rw [show 2 / (β - α) * x - (β + α) / (β - α) = (2 * x - β - α) / (β - α) by
+    field_simp; ring, abs_div, abs_of_pos hd, div_le_one hd, abs_le]
+  constructor <;> linarith [hx.1, hx.2]
+
 /-- $\hat T_i$ has degree at most $i$. -/
 theorem degree_chebyshevOn_le (α β : ℝ) (i : ℕ) : (chebyshevOn α β i).degree ≤ i := by
-  sorry
+  have hl : (C (2 / (β - α)) * X - C ((β + α) / (β - α))).natDegree ≤ 1 := by compute_degree
+  have h := natDegree_comp_le (p := Chebyshev.T ℝ (i : ℤ))
+    (q := C (2 / (β - α)) * X - C ((β + α) / (β - α)))
+  rw [Chebyshev.natDegree_T, Int.natAbs_natCast] at h
+  refine degree_le_natDegree.trans ?_
+  exact_mod_cast h.trans (by nlinarith)
 
 /-- $|\hat T_i| \le 1$ on $[\alpha, \beta]$. -/
 theorem abs_eval_chebyshevOn_le_one {α β : ℝ} (hαβ : α < β) (i : ℕ) {x : ℝ}
     (hx : x ∈ Set.Icc α β) : |(chebyshevOn α β i).eval x| ≤ 1 := by
-  sorry
+  simp only [chebyshevOn, eval_comp, eval_sub, eval_mul, eval_C, eval_X]
+  exact Chebyshev.abs_eval_T_real_le_one _ (abs_affine_le_one hαβ hx)
 
 /-- $\hat T_i$ is $2i^2/(\beta - \alpha)$-Lipschitz on $[\alpha, \beta]$ (Markov's inequality for
 Chebyshev polynomials: $T_i' = iU_{i-1}$, $|U_{i-1}| \le i$). -/
 theorem lipschitzOnWith_eval_chebyshevOn {α β : ℝ} (hαβ : α < β) (i : ℕ) :
     LipschitzOnWith (Real.toNNReal (2 * i ^ 2 / (β - α)))
       (fun x => (chebyshevOn α β i).eval x) (Set.Icc α β) := by
-  sorry
+  have hd : 0 < β - α := sub_pos.2 hαβ
+  refine (convex_Icc α β).lipschitzOnWith_of_nnnorm_deriv_le
+    (fun x _ => (chebyshevOn α β i).differentiableAt) fun x hx => ?_
+  rw [← NNReal.coe_le_coe, coe_nnnorm, Real.coe_toNNReal _ (by positivity), Polynomial.deriv,
+    chebyshevOn, derivative_comp, eval_mul, eval_comp]
+  simp only [derivative_sub, derivative_mul, derivative_C, zero_mul, derivative_X, mul_one,
+    zero_add, sub_zero, eval_C, eval_sub, eval_mul, eval_X, Real.norm_eq_abs, abs_mul,
+    abs_of_pos (div_pos two_pos hd)]
+  have hT := Chebyshev.abs_iterate_derivative_T_real_le (i : ℤ) 1 (abs_affine_le_one hαβ hx)
+  simp only [Function.iterate_one, Chebyshev.derivative_T_eval_one, Int.cast_natCast] at hT
+  rw [div_mul_eq_mul_div]
+  gcongr
 
 /-- **Chebyshev expansion of a polynomial on $[\alpha, \beta]$ with bounded coefficients**: a
 real polynomial of degree at most $m$ bounded by $M$ on $[\alpha, \beta]$ is
@@ -92,7 +123,47 @@ theorem exists_eq_sum_smul_chebyshevOn_of_isUniformApproxOn {α β : ℝ} (hαβ
     (hM : Metric.IsUniformApproxOn (fun x => p.eval x) (fun _ => 0) (Set.Icc α β) M) :
     ∃ a : ℕ → ℝ, p = ∑ i ∈ Finset.range (m + 1), a i • chebyshevOn α β i ∧
       |a 0| ≤ M ∧ ∀ i, 1 ≤ i → |a i| ≤ 2 * M := by
-  sorry
+  have hd : 0 < β - α := sub_pos.2 hαβ
+  set ℓ : ℝ[X] := C ((β - α) / 2) * X + C ((β + α) / 2) with hℓ
+  set q := p.comp ℓ with hq
+  have hqdeg : q.degree ≤ m := by
+    have h := natDegree_comp_le (p := p) (q := ℓ)
+    have hl : ℓ.natDegree ≤ 1 := by rw [hℓ]; compute_degree
+    have hpm : p.natDegree ≤ m := natDegree_le_of_degree_le hp
+    refine degree_le_natDegree.trans ?_
+    exact_mod_cast h.trans (by nlinarith)
+  have hqM : Metric.IsUniformApproxOn (fun t : ℝ => q.eval t) (fun _ => 0)
+      (Set.Icc (-1 : ℝ) 1) M := fun t ht => by
+    have hmem : (β - α) / 2 * t + (β + α) / 2 ∈ Set.Icc α β :=
+      ⟨by nlinarith [ht.1], by nlinarith [ht.2]⟩
+    simpa only [hq, eval_comp, hℓ, eval_add, eval_mul, eval_C, eval_X] using hM.apply hmem
+  have h := chebyshevTrunc_eval (𝕜 := ℝ) hqdeg
+  simp only [RCLike.ofReal_real_eq_id, id] at h
+  refine ⟨fun i => chebyshevCoeff (fun t : ℝ => q.eval t) i, ?_, ?_, fun i _ => ?_⟩
+  · refine Polynomial.funext fun x => ?_
+    have hx := congrArg (eval (2 / (β - α) * x - (β + α) / (β - α))) h
+    rw [eval_chebyshevTrunc] at hx
+    have hinv : (β - α) / 2 * (2 / (β - α) * x - (β + α) / (β - α)) + (β + α) / 2 = x := by
+      field_simp
+      ring
+    have hqx : q.eval (2 / (β - α) * x - (β + α) / (β - α)) = p.eval x := by
+      rw [hq, eval_comp, hℓ]
+      simp only [eval_add, eval_mul, eval_C, eval_X, hinv]
+    rw [hqx] at hx
+    rw [← hx, eval_finsetSum]
+    simp only [eval_smul, smul_eq_mul, chebyshevOn, eval_comp, eval_sub, eval_mul, eval_C, eval_X]
+  · simpa only [Real.norm_eq_abs] using norm_chebyshevCoeff_zero_le hqM
+  · simpa only [Real.norm_eq_abs] using norm_chebyshevCoeff_le hqM i
+
+/-- $\sum_{i<n} i^2 \le n^3/3$. -/
+private theorem sum_range_sq_le (n : ℕ) :
+    ∑ i ∈ Finset.range n, (i : ℝ) ^ 2 ≤ (n : ℝ) ^ 3 / 3 := by
+  induction n with
+  | zero => simp
+  | succ n ih =>
+    rw [Finset.sum_range_succ]
+    push_cast
+    nlinarith [(n.cast_nonneg : (0 : ℝ) ≤ n)]
 
 /-- **Lipschitz constant of a bounded polynomial on an interval**, through its Chebyshev
 expansion: a polynomial of degree at most $m$ bounded by $M$ on $[\alpha, \beta]$ is
@@ -103,7 +174,33 @@ theorem lipschitzOnWith_eval_of_degree_le_of_isUniformApproxOn {α β : ℝ} (h�
     (hM : Metric.IsUniformApproxOn (fun x => p.eval x) (fun _ => 0) (Set.Icc α β) M) :
     LipschitzOnWith (Real.toNNReal (4 / 3 * (m + 1 : ℝ) ^ 3 * M / (β - α)))
       (fun x => p.eval x) (Set.Icc α β) := by
-  sorry
+  have hd : 0 < β - α := sub_pos.2 hαβ
+  have hM0 : 0 ≤ M := hM.nonneg ⟨α, le_rfl, hαβ.le⟩
+  obtain ⟨a, hpa, ha0, ha⟩ := exists_eq_sum_smul_chebyshevOn_of_isUniformApproxOn hαβ hp hM
+  have ha' : ∀ i, |a i| ≤ 2 * M := fun i => by
+    rcases Nat.eq_zero_or_pos i with rfl | hi
+    · linarith
+    · exact ha i hi
+  refine LipschitzOnWith.of_dist_le_mul fun x hx y hy => ?_
+  rw [Real.coe_toNNReal _ (by positivity), hpa]
+  simp only [eval_finsetSum, eval_smul, smul_eq_mul, Real.dist_eq, ← Finset.sum_sub_distrib,
+    ← mul_sub]
+  calc |∑ i ∈ Finset.range (m + 1),
+        a i * ((chebyshevOn α β i).eval x - (chebyshevOn α β i).eval y)|
+      ≤ ∑ i ∈ Finset.range (m + 1), 2 * M * (2 * (i : ℝ) ^ 2 / (β - α) * |x - y|) := by
+        refine (Finset.abs_sum_le_sum_abs _ _).trans (Finset.sum_le_sum fun i _ => ?_)
+        rw [abs_mul]
+        have hL := (lipschitzOnWith_eval_chebyshevOn hαβ i).dist_le_mul x hx y hy
+        rw [Real.coe_toNNReal _ (by positivity), Real.dist_eq, Real.dist_eq] at hL
+        exact mul_le_mul (ha' i) hL (abs_nonneg _) (by positivity)
+    _ = 4 * M * |x - y| / (β - α) * ∑ i ∈ Finset.range (m + 1), (i : ℝ) ^ 2 := by
+        rw [Finset.mul_sum]
+        refine Finset.sum_congr rfl fun i _ => ?_
+        ring
+    _ ≤ 4 * M * |x - y| / (β - α) * ((m + 1 : ℝ) ^ 3 / 3) := by
+        gcongr
+        exact_mod_cast sum_range_sq_le (m + 1)
+    _ = 4 / 3 * (m + 1 : ℝ) ^ 3 * M / (β - α) * |x - y| := by ring
 
 namespace LanczosData
 
@@ -112,7 +209,99 @@ variable {n k : ℕ} (D : LanczosData n k)
 /-- The first index $0 : \mathrm{Fin}\,k$ ($k \ge 1$). -/
 def firstIndex : Fin k := ⟨0, D.k_pos⟩
 
+/-- The dilated start is a unit vector (for unit vectors). -/
+theorem norm_toLp_dilatedStart (hW : ∀ j, (D.basisSuccᵀ * D.basisSucc) j j = 1) :
+    ‖WithLp.toLp 2 D.dilatedStart‖ = 1 := by
+  rw [← D.dilatedBasisSucc_col_zero]
+  exact (D.hasOrthonormalCols_dilatedBasisSucc hW).norm_toLp_col 0
+
+/-- **Containment of the Ritz values of a datum**: for unit vectors,
+$\operatorname{spec}\mathbf{H} \subseteq [a, a']$ and
+$\|\tilde{\mathbf{H}} - \mathbf{I}_{k+1} \otimes \mathbf{H}\|_{\mathsf{F}} \le c$, the spectrum
+of $\mathbf{T}_k$ lies in $[a - c, a' + c]$: $\mathbf{T}_k$ is a compression of
+$\tilde{\mathbf{H}}$ to orthonormal columns. -/
+theorem spectrum_tridiagonal_subset_Icc (hW : ∀ j, (D.basisSuccᵀ * D.basisSucc) j j = 1)
+    {a a' c : ℝ} (hs : spectrum ℝ D.H ⊆ Set.Icc a a')
+    (hc : frobNorm (D.backwardH - D.dilatedH) ≤ c) :
+    spectrum ℝ D.tridiagonal ⊆ Set.Icc (a - c) (a' + c) := by
+  have hT : D.dilatedBasisᴴ * D.backwardH * D.dilatedBasis = D.tridiagonal := by
+    rw [Matrix.conjTranspose_eq_transpose_of_trivial, Matrix.mul_assoc,
+      D.backwardH_mul_dilatedBasis hW, D.transpose_dilatedBasis_mul_dilatedBasisSucc_mul hW]
+  rw [← hT]
+  exact (D.isHermitian_backwardH hW).spectrum_conjTranspose_mul_mul_subset_Icc
+    (D.spectrum_backwardH_subset_Icc hW hs hc) (D.hasOrthonormalCols_dilatedBasis hW)
+
+/-- The Kittaneh transfer for a $K$-Lipschitz function: for unit vectors,
+$\lvert\mathbf{v}_1^{\mathsf{T}}g(\mathbf{H})\mathbf{v}_1 -
+\tilde{\mathbf{v}}^{\mathsf{T}}g(\tilde{\mathbf{H}})\tilde{\mathbf{v}}\rvert \le
+K\|\tilde{\mathbf{H}} - \mathbf{I}_{k+1} \otimes \mathbf{H}\|_{\mathsf{F}}$. -/
+private theorem abs_dotProduct_cfc_mulVec_sub_le_mul_frobNorm
+    (hW : ∀ j, (D.basisSuccᵀ * D.basisSucc) j j = 1) {g : ℝ → ℝ} {K : ℝ≥0}
+    (hg : LipschitzWith K g) :
+    |D.v 1 ⬝ᵥ (cfc g D.H *ᵥ D.v 1) - D.dilatedStart ⬝ᵥ (cfc g D.backwardH *ᵥ D.dilatedStart)| ≤
+      K * frobNorm (D.backwardH - D.dilatedH) := by
+  rcases eq_or_ne K 0 with rfl | hK
+  · have hconst : g = fun _ => g 0 := funext fun x => by
+      have h := hg.dist_le_mul x 0
+      simp only [NNReal.coe_zero, zero_mul, dist_le_zero] at h
+      exact h
+    have hv1 : D.v 1 ⬝ᵥ D.v 1 = 1 := by
+      have h := hW 0
+      simp only [Matrix.mul_apply, Matrix.transpose_apply, basisSucc, Matrix.of_apply] at h
+      simpa [dotProduct] using h
+    have hvt : D.dilatedStart ⬝ᵥ D.dilatedStart = 1 := by
+      rw [← EuclideanSpace.norm_toLp_sq_eq_dotProduct_self, D.norm_toLp_dilatedStart hW, one_pow]
+    have hsa : IsSelfAdjoint D.H := D.isHermitian
+    have hsb : IsSelfAdjoint D.backwardH := D.isHermitian_backwardH hW
+    rw [hconst, cfc_const (g 0) D.H hsa, cfc_const (g 0) D.backwardH hsb,
+      Algebra.algebraMap_eq_smul_one, Algebra.algebraMap_eq_smul_one, Matrix.smul_mulVec,
+      Matrix.smul_mulVec, Matrix.one_mulVec, Matrix.one_mulVec, dotProduct_smul, dotProduct_smul, hv1, hvt, sub_self, abs_zero, NNReal.coe_zero, zero_mul]
+  · have hK0 : (0 : ℝ) < K :=
+      lt_of_le_of_ne K.coe_nonneg (fun h => hK (NNReal.coe_eq_zero.1 h.symm))
+    have h1 : LipschitzWith 1 (fun x => (K : ℝ)⁻¹ * g x) := LipschitzWith.of_dist_le_mul
+      fun x y => by
+        rw [Real.dist_eq, ← mul_sub, abs_mul, abs_of_pos (inv_pos.2 hK0), NNReal.coe_one, one_mul,
+          inv_mul_le_iff₀ hK0, ← Real.dist_eq]
+        exact hg.dist_le_mul x y
+    have h := D.abs_dotProduct_cfc_mulVec_sub_le_frobNorm hW h1
+    rw [cfc_const_mul _ _ D.H (D.H.finite_real_spectrum.continuousOn _),
+      cfc_const_mul _ _ D.backwardH (D.backwardH.finite_real_spectrum.continuousOn _),
+      Matrix.smul_mulVec,
+      Matrix.smul_mulVec, dotProduct_smul, dotProduct_smul, smul_eq_mul, smul_eq_mul, ← mul_sub,
+      abs_mul, abs_of_pos (inv_pos.2 hK0), inv_mul_le_iff₀ hK0] at h
+    exact h
+
 /-! ### Quadrature through the backward model -/
+
+/-- A degree below $m + 1$ is a degree at most $m$. -/
+private theorem degree_le_of_degree_lt_succ {p : ℝ[X]} {m : ℕ}
+    (hp : p.degree < ((m + 1 : ℕ) : WithBot ℕ)) : p.degree ≤ m := by
+  rw [Nat.cast_add, Nat.cast_one] at hp
+  exact Order.le_of_lt_succ hp
+
+/-- Two functions within $\delta$ on a set containing the spectrum give quadratic forms within
+$\delta\|\mathbf{x}\|^2$. -/
+private theorem abs_dotProduct_cfc_mulVec_sub_dotProduct_cfc_mulVec_le {ι : Type*} [Fintype ι]
+    [DecidableEq ι] {A : Matrix ι ι ℝ} (hA : A.IsHermitian) {s : Set ℝ}
+    (hs : spectrum ℝ A ⊆ s) {f g : ℝ → ℝ} {δ : ℝ} (h : ∀ x ∈ s, |f x - g x| ≤ δ) (x : ι → ℝ) :
+    |x ⬝ᵥ (cfc f A *ᵥ x) - x ⬝ᵥ (cfc g A *ᵥ x)| ≤ δ * ‖WithLp.toLp 2 x‖ ^ 2 := by
+  rw [← dotProduct_sub, ← Matrix.sub_mulVec, ← cfc_sub f g A
+    (A.finite_real_spectrum.continuousOn _) (A.finite_real_spectrum.continuousOn _)]
+  have := hA.abs_re_quadForm_cfc_le (f := fun y => f y - g y) (fun y hy => h y (hs hy)) x
+  simpa only [quadForm_def, star_trivial, RCLike.re_to_real] using this
+
+/-- An entry on the diagonal of $f(\mathbf{A})$ is the quadratic form at a coordinate vector. -/
+private theorem cfc_apply_self_eq_dotProduct {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (B : Matrix ι ι ℝ) (i : ι) : B i i = (Pi.single i 1 : ι → ℝ) ⬝ᵥ (B *ᵥ Pi.single i 1) := by
+  simp [Matrix.mulVec, dotProduct, Pi.single_apply]
+
+/-- A coordinate vector is a unit vector. -/
+private theorem norm_toLp_single_one {ι : Type*} [Fintype ι] [DecidableEq ι] (i : ι) :
+    ‖WithLp.toLp 2 (Pi.single i 1 : ι → ℝ)‖ = 1 := by
+  rw [← pow_eq_one_iff_of_nonneg (norm_nonneg _) two_ne_zero,
+    EuclideanSpace.norm_toLp_sq_eq_dotProduct_self]
+  simp [dotProduct, Pi.single_apply]
+
 
 /-- **The $(0,0)$ entry of $f(\mathbf{T}_k)$ is the Gauss rule of the backward model**: for
 unit vectors and the sign conditions on $\beta$,
@@ -125,7 +314,11 @@ theorem cfc_tridiagonal_firstIndex_eq_integral
     (hβpos : ∀ j, 1 ≤ j → j < k → 0 < D.β j) (f : ℝ → ℝ) :
     cfc f D.tridiagonal D.firstIndex D.firstIndex =
       ∫ x, f x ∂lanczosQuadrature D.backwardH D.dilatedStart k := by
-  sorry
+  obtain ⟨m, rfl⟩ : ∃ m, k = m + 1 := ⟨k - 1, (Nat.succ_pred_eq_of_pos D.k_pos).symm⟩
+  rw [(D.isHermitian_backwardH hW).integral_lanczosQuadrature_succ,
+    LanczosData.lanczosTridiagonal_backwardH_dilatedStart hW hβ hβpos, D.norm_toLp_dilatedStart hW]
+  simp only [one_pow, one_mul, RCLike.re_to_real]
+  rfl
 
 /-- **Knizhnerman-type quadrature bound, polynomial form**: for unit vectors, the sign conditions
 on $\beta$, $\operatorname{spec}\mathbf{H} \subseteq [a, a']$ and
@@ -152,7 +345,33 @@ theorem abs_dotProduct_cfc_mulVec_sub_cfc_tridiagonal_le_of_isUniformApproxOn
     {L : ℝ≥0} (hf : LipschitzOnWith L f (Set.Icc (a - c) (a' + c))) :
     |D.v 1 ⬝ᵥ (cfc f D.H *ᵥ D.v 1) - cfc f D.tridiagonal D.firstIndex D.firstIndex| ≤
       2 * δ + L * c := by
-  sorry
+  have hc0 : 0 ≤ c := (frobNorm_nonneg _).trans hc
+  have hsub : Set.Icc a a' ⊆ Set.Icc (a - c) (a' + c) :=
+    Set.Icc_subset_Icc (by linarith) (by linarith)
+  have hsB := D.spectrum_backwardH_subset_Icc hW hs hc
+  -- the Gauss rule of the backward model is exact to degree `2k - 1`
+  have hG : |D.dilatedStart ⬝ᵥ (cfc f D.backwardH *ᵥ D.dilatedStart) -
+      cfc f D.tridiagonal D.firstIndex D.firstIndex| ≤ 2 * δ := by
+    have h := (D.isHermitian_backwardH
+      hW).norm_star_dotProduct_cfc_mulVec_sub_lanczosFA_le_of_isUniformApproxOn hsB hp hδ
+      D.dilatedStart
+    rw [D.cfc_tridiagonal_firstIndex_eq_integral hW hβ hβpos f, integral_lanczosQuadrature]
+    rw [D.norm_toLp_dilatedStart hW, star_trivial, dotProduct_sub, Real.norm_eq_abs, one_pow,
+      mul_one] at h
+    simpa only [star_trivial, RCLike.re_to_real] using h
+  -- the spectral measures are `W₁`-close
+  obtain ⟨g, hg, hfg⟩ := hf.extend_real
+  have hH : cfc f D.H = cfc g D.H := cfc_congr (hfg.mono (hs.trans hsub))
+  have hB : cfc f D.backwardH = cfc g D.backwardH := cfc_congr (hfg.mono hsB)
+  have hK := (D.abs_dotProduct_cfc_mulVec_sub_le_mul_frobNorm hW hg).trans
+    (mul_le_mul_of_nonneg_left hc L.coe_nonneg)
+  rw [← hH, ← hB] at hK
+  calc _ ≤ |D.v 1 ⬝ᵥ (cfc f D.H *ᵥ D.v 1) -
+          D.dilatedStart ⬝ᵥ (cfc f D.backwardH *ᵥ D.dilatedStart)| +
+        |D.dilatedStart ⬝ᵥ (cfc f D.backwardH *ᵥ D.dilatedStart) -
+          cfc f D.tridiagonal D.firstIndex D.firstIndex| := abs_sub_le _ _ _
+    _ ≤ L * c + 2 * δ := add_le_add hK hG
+    _ = 2 * δ + L * c := add_comm _ _
 
 /-- **Knizhnerman-type quadrature bound for bounded $f$**: as
 `abs_dotProduct_cfc_mulVec_sub_cfc_tridiagonal_le_of_isUniformApproxOn`, with $|f| \le M$ on

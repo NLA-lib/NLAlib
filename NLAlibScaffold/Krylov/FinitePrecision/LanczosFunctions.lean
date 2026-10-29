@@ -735,7 +735,43 @@ theorem norm_aeval_mulVec_sub_basis_mulVec_le_of_degree_lt {α β : ℝ} (hαβ 
     ‖WithLp.toLp 2 (aeval D.H p *ᵥ D.v 1 -
       D.basis *ᵥ (aeval D.tridiagonal p *ᵥ Pi.single D.firstIndex 1))‖ ≤
       4 / 3 * (k : ℝ) ^ 3 * M / (β - α) * specNorm D.residual := by
-  sorry
+  have hd : 0 < β - α := sub_pos.2 hαβ
+  have hM0 : 0 ≤ M := hM.nonneg ⟨α, le_rfl, hαβ.le⟩
+  have hpdeg : p.degree ≤ ((k - 1 : ℕ) : WithBot ℕ) :=
+    degree_le_of_degree_lt_succ (by rw [Nat.sub_add_cancel D.k_pos]; exact hp)
+  obtain ⟨a, hpa, ha0, ha⟩ := exists_eq_sum_smul_chebyshevOn_of_isUniformApproxOn hαβ hpdeg hM
+  have ha' : ∀ i, |a i| ≤ 2 * M := fun i => by
+    rcases Nat.eq_zero_or_pos i with rfl | hi
+    · linarith
+    · exact ha i hi
+  rw [Nat.sub_add_cancel D.k_pos] at hpa
+  have hsum : aeval D.H p *ᵥ D.v 1 -
+      D.basis *ᵥ (aeval D.tridiagonal p *ᵥ Pi.single D.firstIndex 1) =
+      ∑ i ∈ Finset.range k, a i • (aeval D.H (chebyshevOn α β i) *ᵥ D.v 1 -
+        D.basis *ᵥ (aeval D.tridiagonal (chebyshevOn α β i) *ᵥ Pi.single D.firstIndex 1)) := by
+    rw [hpa]
+    simp only [map_sum, map_smul, Matrix.sum_mulVec, Matrix.smul_mulVec, Matrix.mulVec_sum,
+      Matrix.mulVec_smul, smul_sub, Finset.sum_sub_distrib]
+  rw [hsum, WithLp.toLp_sum]
+  refine (norm_sum_le _ _).trans ?_
+  calc ∑ i ∈ Finset.range k, ‖WithLp.toLp 2 (a i • (aeval D.H (chebyshevOn α β i) *ᵥ D.v 1 -
+        D.basis *ᵥ (aeval D.tridiagonal (chebyshevOn α β i) *ᵥ Pi.single D.firstIndex 1)))‖
+      ≤ ∑ i ∈ Finset.range k,
+          2 * M * (2 * i * (i + 1) / (β - α) * specNorm D.residual) := by
+        refine Finset.sum_le_sum fun i hi => ?_
+        rw [WithLp.toLp_smul, norm_smul, Real.norm_eq_abs]
+        exact mul_le_mul (ha' i) (D.norm_aeval_chebyshevOn_mulVec_sub_basis_mulVec_le hαβ hs hT
+          (Finset.mem_range.1 hi)) (norm_nonneg _) (by positivity)
+    _ = 4 * M * specNorm D.residual / (β - α) *
+          ∑ i ∈ Finset.range k, (i : ℝ) * (i + 1) := by
+        rw [Finset.mul_sum]
+        refine Finset.sum_congr rfl fun i _ => ?_
+        ring
+    _ ≤ 4 * M * specNorm D.residual / (β - α) * ((k : ℝ) ^ 3 / 3) := by
+        have := specNorm_nonneg D.residual
+        gcongr
+        exact sum_range_mul_succ_le k
+    _ = 4 / 3 * (k : ℝ) ^ 3 * M / (β - α) * specNorm D.residual := by ring
 
 end LanczosData
 
@@ -757,8 +793,16 @@ $c = 2000k^4\varepsilon\|\mathbf{H}\|_2$. The eigenpair forms are
 `NLAlib.LanczosRun.eigenvalue_last_sub_le_of_mulVec_eq_smul` and
 `NLAlib.LanczosRun.sub_eigenvalue_zero_le_of_mulVec_eq_smul`. -/
 theorem spectrum_tridiagonal_subset_Icc {a a' : ℝ} (hs : spectrum ℝ L.H ⊆ Set.Icc a a') :
-    spectrum ℝ L.tridiagonal ⊆ Set.Icc (a - L.enlargement) (a' + L.enlargement) := by
-  sorry
+    spectrum ℝ L.tridiagonal ⊆ Set.Icc (a - L.enlargement) (a' + L.enlargement) :=
+  L.normalized.spectrum_tridiagonal_subset_Icc L.transpose_basisSucc_mul_self_apply hs
+    L.frobNorm_backwardH_sub_dilatedH_le
+
+/-- The enlargement is nonnegative. -/
+theorem enlargement_nonneg : 0 ≤ L.enlargement := by
+  have := L.ε_nonneg
+  have := specNorm_nonneg L.H
+  rw [enlargement, lanczosBackwardFactor_def]
+  positivity
 
 /-! ### Quadrature -/
 
@@ -780,7 +824,13 @@ theorem abs_dotProduct_cfc_mulVec_sub_cfc_tridiagonal_le_of_continuousOn {a a' :
         cfc f L.tridiagonal L.firstIndex L.firstIndex| ≤
       2 * minimaxError f (Set.Icc (a - L.enlargement) (a' + L.enlargement)) (2 * k - 1) +
         Lf * L.enlargement := by
-  sorry
+  obtain ⟨p, hp, hpf⟩ := exists_degree_le_isUniformApproxOn_minimaxError isCompact_Icc
+    hf.continuousOn (2 * k - 1)
+  have hp' : p.degree < 2 * k :=
+    hp.trans_lt (by exact_mod_cast (by have := L.k_pos; omega : 2 * k - 1 < 2 * k))
+  exact L.normalized.abs_dotProduct_cfc_mulVec_sub_cfc_tridiagonal_le_of_isUniformApproxOn
+    L.transpose_basisSucc_mul_self_apply L.β_nonneg L.β_pos hs
+    L.frobNorm_backwardH_sub_dilatedH_le hp' hpf hf
 
 /-- **Knizhnerman-type quadrature bound, explicit rate for Lipschitz $f$** (Jackson):
 <!-- value jacksonApproximationConstant -->
@@ -795,7 +845,21 @@ theorem abs_dotProduct_cfc_mulVec_sub_cfc_tridiagonal_le_of_lipschitzOnWith {a a
         cfc f L.tridiagonal L.firstIndex L.firstIndex| ≤
       Lf * (jacksonApproximationConstant * (a' - a + 2 * L.enlargement) / (2 * k + 1) +
         L.enlargement) := by
-  sorry
+  have hc0 := L.enlargement_nonneg
+  have h := L.abs_dotProduct_cfc_mulVec_sub_cfc_tridiagonal_le_of_continuousOn hs hf
+  have hJ := minimaxError_le_of_lipschitzOnWith
+    (by linarith : a - L.enlargement < a' + L.enlargement) hf (2 * k - 1)
+  have hcast : ((2 * k - 1 : ℕ) : ℝ) + 2 = 2 * k + 1 := by
+    rw [Nat.cast_sub (by have := L.k_pos; omega)]
+    push_cast
+    ring
+  rw [hcast, show a' + L.enlargement - (a - L.enlargement) = a' - a + 2 * L.enlargement by
+    ring] at hJ
+  have hk : (0 : ℝ) < 2 * k + 1 := by positivity
+  calc _ ≤ _ := h
+    _ ≤ 2 * (jacksonApproximationConstant * Lf * (a' - a + 2 * L.enlargement) /
+          (2 * (2 * k + 1))) + Lf * L.enlargement := by gcongr
+    _ = _ := by field_simp
 
 /-- **The quadrature bound with the computed (unnormalised) first vector**: as
 `abs_dotProduct_cfc_mulVec_sub_cfc_tridiagonal_le_of_continuousOn`, for $\mathbf{v}_1$ itself,
@@ -807,7 +871,31 @@ theorem abs_dotProduct_cfc_mulVec_v_sub_cfc_tridiagonal_le_of_continuousOn {a a'
     |L.v 1 ⬝ᵥ (cfc f L.H *ᵥ L.v 1) - cfc f L.tridiagonal L.firstIndex L.firstIndex| ≤
       2 * minimaxError f (Set.Icc (a - L.enlargement) (a' + L.enlargement)) (2 * k - 1) +
         Lf * L.enlargement + L.ε * M := by
-  sorry
+  have hc0 := L.enlargement_nonneg
+  have h := L.abs_dotProduct_cfc_mulVec_sub_cfc_tridiagonal_le_of_continuousOn hs hf
+  have hpos := L.norm_v_pos le_rfl L.k_pos
+  have hv : L.v 1 = ‖WithLp.toLp 2 (L.v 1)‖ • L.normalizedV 1 := by
+    rw [L.normalizedV_of_le L.k_pos, smul_smul, mul_inv_cancel₀ hpos.ne', one_smul]
+  have hq : L.v 1 ⬝ᵥ (cfc f L.H *ᵥ L.v 1) = ‖WithLp.toLp 2 (L.v 1)‖ ^ 2 *
+      (L.normalizedV 1 ⬝ᵥ (cfc f L.H *ᵥ L.normalizedV 1)) := by
+    conv_lhs => rw [hv]
+    rw [Matrix.mulVec_smul, dotProduct_smul, smul_dotProduct, smul_eq_mul, smul_eq_mul]
+    ring
+  have hb : |L.normalizedV 1 ⬝ᵥ (cfc f L.H *ᵥ L.normalizedV 1)| ≤ M := by
+    have := L.isHermitian.abs_re_quadForm_cfc_le (f := f) (c := M)
+      (fun x hx => hM x (Set.Icc_subset_Icc (by linarith) (by linarith) (hs hx)))
+      (L.normalizedV 1)
+    rw [L.norm_normalizedV le_rfl (by omega), one_pow, mul_one] at this
+    simpa only [quadForm_def, star_trivial, RCLike.re_to_real] using this
+  have hε := L.abs_norm_v_sq_sub_one_le 1 le_rfl L.k_pos
+  rw [hq]
+  calc _ = |(L.normalizedV 1 ⬝ᵥ (cfc f L.H *ᵥ L.normalizedV 1) -
+          cfc f L.tridiagonal L.firstIndex L.firstIndex) +
+        (‖WithLp.toLp 2 (L.v 1)‖ ^ 2 - 1) *
+          (L.normalizedV 1 ⬝ᵥ (cfc f L.H *ᵥ L.normalizedV 1))| := by ring_nf
+    _ ≤ _ := (abs_add_le _ _).trans (by
+        rw [abs_mul]
+        exact add_le_add h (mul_le_mul hε hb (abs_nonneg _) L.ε_nonneg))
 
 /-! ### Lanczos-FA -/
 

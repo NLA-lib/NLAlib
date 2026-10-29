@@ -71,12 +71,13 @@ theorem abs_eval_chebyshevOn_le_one {α β : ℝ} (hαβ : α < β) (i : ℕ) {x
 /-- $\hat T_i$ is $2i^2/(\beta - \alpha)$-Lipschitz on $[\alpha, \beta]$ (Markov's inequality for
 Chebyshev polynomials: $\lvert T_i'\rvert \le T_i'(1) = i^2$ on $[-1, 1]$). -/
 theorem lipschitzOnWith_eval_chebyshevOn {α β : ℝ} (hαβ : α < β) (i : ℕ) :
-    LipschitzOnWith (Real.toNNReal (2 * i ^ 2 / (β - α)))
+    LipschitzOnWith ‖2 * (i : ℝ) ^ 2 / (β - α)‖₊
       (fun x => (chebyshevOn α β i).eval x) (Set.Icc α β) := by
   have hd : 0 < β - α := sub_pos.2 hαβ
   refine (convex_Icc α β).lipschitzOnWith_of_nnnorm_deriv_le
     (fun x _ => (chebyshevOn α β i).differentiableAt) fun x hx => ?_
-  rw [← NNReal.coe_le_coe, coe_nnnorm, Real.coe_toNNReal _ (by positivity), Polynomial.deriv,
+  rw [← NNReal.coe_le_coe, coe_nnnorm, coe_nnnorm,
+    Real.norm_of_nonneg (show 0 ≤ 2 * (i : ℝ) ^ 2 / (β - α) by positivity), Polynomial.deriv,
     chebyshevOn, derivative_comp, eval_mul, eval_comp]
   simp only [derivative_sub, derivative_mul, derivative_C, zero_mul, derivative_X, mul_one,
     zero_add, sub_zero, eval_C, eval_sub, eval_mul, eval_X, Real.norm_eq_abs, abs_mul,
@@ -146,7 +147,7 @@ constant is composed here. -/
 theorem lipschitzOnWith_eval_of_degree_le_of_isUniformApproxOn {α β : ℝ} (hαβ : α < β)
     {p : ℝ[X]} {m : ℕ} (hp : p.degree ≤ m) {M : ℝ}
     (hM : Metric.IsUniformApproxOn (fun x => p.eval x) (fun _ => 0) (Set.Icc α β) M) :
-    LipschitzOnWith (Real.toNNReal (4 / 3 * (m + 1 : ℝ) ^ 3 * M / (β - α)))
+    LipschitzOnWith ‖4 / 3 * (m + 1 : ℝ) ^ 3 * M / (β - α)‖₊
       (fun x => p.eval x) (Set.Icc α β) := by
   have hd : 0 < β - α := sub_pos.2 hαβ
   have hM0 : 0 ≤ M := hM.nonneg ⟨α, le_rfl, hαβ.le⟩
@@ -156,7 +157,7 @@ theorem lipschitzOnWith_eval_of_degree_le_of_isUniformApproxOn {α β : ℝ} (h�
     · linarith
     · exact ha i hi
   refine LipschitzOnWith.of_dist_le_mul fun x hx y hy => ?_
-  rw [Real.coe_toNNReal _ (by positivity), hpa]
+  rw [coe_nnnorm, Real.norm_of_nonneg (by positivity), hpa]
   simp only [eval_finsetSum, eval_smul, smul_eq_mul, Real.dist_eq, ← Finset.sum_sub_distrib,
     ← mul_sub]
   calc |∑ i ∈ Finset.range (m + 1),
@@ -165,7 +166,7 @@ theorem lipschitzOnWith_eval_of_degree_le_of_isUniformApproxOn {α β : ℝ} (h�
         refine (Finset.abs_sum_le_sum_abs _ _).trans (Finset.sum_le_sum fun i _ => ?_)
         rw [abs_mul]
         have hL := (lipschitzOnWith_eval_chebyshevOn hαβ i).dist_le_mul x hx y hy
-        rw [Real.coe_toNNReal _ (by positivity), Real.dist_eq, Real.dist_eq] at hL
+        rw [coe_nnnorm, Real.norm_of_nonneg (by positivity), Real.dist_eq, Real.dist_eq] at hL
         exact mul_le_mul (ha' i) hL (abs_nonneg _) (by positivity)
     _ = 4 * M * |x - y| / (β - α) * ∑ i ∈ Finset.range (m + 1), (i : ℝ) ^ 2 := by
         rw [Finset.mul_sum]

@@ -398,7 +398,7 @@ theorem abs_dotProduct_cfc_mulVec_sub_cfc_tridiagonal_le_of_isUniformApproxOn_of
     rw [Nat.cast_sub (by have := D.k_pos; omega)]
     push_cast
     ring
-  rw [Real.coe_toNNReal _ (div_nonneg (by positivity) (by linarith)), hcast,
+  rw [coe_nnnorm, Real.norm_of_nonneg (div_nonneg (by positivity) (by linarith)), hcast,
     show a' + c - (a - c) = a' - a + 2 * c by ring] at hQ
   have hLc : 4 / 3 * (2 * (k : ℝ)) ^ 3 * (M + δ) / (a' - a + 2 * c) * c ≤
       11 * (k : ℝ) ^ 3 * (M + δ) * c / (a' - a + 2 * c) := by

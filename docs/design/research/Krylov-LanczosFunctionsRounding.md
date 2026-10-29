@@ -376,6 +376,10 @@ scaffold: `LanczosData.isHermitian_tridiagonal`, `LanczosData.norm_toLp_dilatedS
 via the compression $\hat{\mathbf V}_k^{\mathsf T}\tilde{\mathbf H}\hat{\mathbf V}_k = \mathbf T_k$),
 `LanczosRun.enlargement_nonneg`.
 
+Statement change (cosmetic, rule T2 in the library): the two Lipschitz constants of
+`Interval.lean` are written `‖x‖₊` instead of `Real.toNNReal x`; they agree since
+$x \ge 0$ there ($\alpha < \beta$, $M \ge 0$).
+
 Proof notes. (i) The Lipschitz constant of $\hat T_i$ uses Mathlib's
 `abs_iterate_derivative_T_real_le` and `derivative_T_eval_one` ($\lvert T_i'\rvert \le i^2$).
 (ii) The Clenshaw step is a pure algebraic identity: for any sequence with $\mathbf d_0 = 0$,

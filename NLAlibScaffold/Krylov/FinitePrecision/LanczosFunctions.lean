@@ -1,0 +1,392 @@
+/-
+Copyright (c) 2026 NLAlib contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: NLAlib contributors
+-/
+module
+
+public import NLAlib.Krylov.FinitePrecision.BackwardSpectral
+public import NLAlib.Krylov.Functions.Quadrature
+public import NLAlibScaffold.Krylov.Processes.LanczosRounding
+
+/-!
+# Finite-precision Lanczos quadrature and Lanczos-FA: Druskin–Knizhnerman and Knizhnerman bounds
+
+Statements only (research branch `research/dk-bounds`; design
+`docs/design/research/Krylov-LanczosFunctionsRounding.md`). For a finite-precision Lanczos run
+`L : NLAlib.LanczosRun n k` on a symmetric $\mathbf{H}$ with spectrum in $[a, a']$, write
+$c = 2000k^4\varepsilon\|\mathbf{H}\|_2$ (`NLAlib.lanczosBackwardFactor`) and
+$I_c = [a - c, a' + c]$.
+
+* **Quadrature (Knizhnerman 1996 type)**, through the backward model: exact Lanczos on
+  $(\tilde{\mathbf{H}}, \tilde{\mathbf{v}})$ computes $\mathbf{T}_k$, its Gauss rule is exact to
+  degree $2k - 1$, the spectrum of $\tilde{\mathbf{H}}$ lies in $I_c$, and the quadratic forms of
+  $(\mathbf{H}, \bar{\mathbf{v}}_1)$ and $(\tilde{\mathbf{H}}, \tilde{\mathbf{v}})$ differ by at
+  most $L c$ for $L$-Lipschitz $f$ (Kittaneh). Hence
+  $$\lvert\bar{\mathbf{v}}_1^{\mathsf{T}}f(\mathbf{H})\bar{\mathbf{v}}_1 -
+  (f(\mathbf{T}_k))_{00}\rvert \le 2E_{2k-1}(f; I_c) + L c .$$
+* **Lanczos-FA (Druskin–Knizhnerman 1991 type)**, through the stability of the Chebyshev
+  recurrence under the computed three-term recurrence (the backward model contributes only the
+  containment of the Ritz values in $I_c$):
+  $$\|f(\mathbf{H})\mathbf{v}_1 - \mathbf{V}_k f(\mathbf{T}_k)\mathbf{e}_0\| \le
+  (2 + \sqrt{k})E_{k-1}(f; I_c) + 16k^{9/2}\varepsilon\|\mathbf{H}\|_2\,
+  \frac{\sup_{I_c}|f|}{a' - a + 2c} .$$
+
+The generic statements are on `NLAlib.LanczosData` (any symmetric three-term datum), so that
+the CG backward model can reuse them.
+
+## Main results
+
+* `NLAlib.LanczosData.cfc_tridiagonal_firstIndex_eq_integral`: $(f(\mathbf{T}_k))_{00}$ is the
+  Gauss rule of the backward model.
+* `NLAlib.LanczosData.abs_dotProduct_cfc_mulVec_sub_cfc_tridiagonal_le_of_isUniformApproxOn`,
+  `NLAlib.LanczosRun.abs_dotProduct_cfc_mulVec_sub_cfc_tridiagonal_le_of_continuousOn`,
+  `NLAlib.LanczosRun.abs_dotProduct_cfc_mulVec_sub_cfc_tridiagonal_le_of_lipschitzOnWith`:
+  the quadrature bounds.
+* `NLAlib.LanczosData.norm_aeval_chebyshevOn_mulVec_sub_basis_mulVec_le`,
+  `NLAlib.LanczosData.norm_aeval_mulVec_sub_basis_mulVec_le_of_degree_lt`,
+  `NLAlib.LanczosRun.norm_cfc_mulVec_sub_basis_mulVec_le_of_continuousOn`: the Lanczos-FA
+  bounds.
+* `NLAlib.Computation.IsRelErrSem.exists_lanczosQuadratureBound_of_lanczosBasisDenseProg`:
+  the quadrature bound for the dense program, end to end.
+-/
+
+@[expose] public section
+
+open Polynomial MeasureTheory
+open scoped Matrix NNReal
+
+namespace NLAlib
+
+open Computation Builder
+
+/-! ### Scaled Chebyshev polynomials -/
+
+/-- The **Chebyshev polynomial of the first kind on $[\alpha, \beta]$**:
+$\hat T_i(x) = T_i\bigl((2x - \alpha - \beta)/(\beta - \alpha)\bigr)$. -/
+noncomputable def chebyshevOn (α β : ℝ) (i : ℕ) : ℝ[X] :=
+  (Chebyshev.T ℝ (i : ℤ)).comp (C (2 / (β - α)) * X - C ((β + α) / (β - α)))
+
+/-- $\hat T_i$ has degree at most $i$. -/
+theorem degree_chebyshevOn_le (α β : ℝ) (i : ℕ) : (chebyshevOn α β i).degree ≤ i := by
+  sorry
+
+/-- $|\hat T_i| \le 1$ on $[\alpha, \beta]$. -/
+theorem abs_eval_chebyshevOn_le_one {α β : ℝ} (hαβ : α < β) (i : ℕ) {x : ℝ}
+    (hx : x ∈ Set.Icc α β) : |(chebyshevOn α β i).eval x| ≤ 1 := by
+  sorry
+
+/-- $\hat T_i$ is $2i^2/(\beta - \alpha)$-Lipschitz on $[\alpha, \beta]$ (Markov's inequality for
+Chebyshev polynomials: $T_i' = iU_{i-1}$, $|U_{i-1}| \le i$). -/
+theorem lipschitzOnWith_eval_chebyshevOn {α β : ℝ} (hαβ : α < β) (i : ℕ) :
+    LipschitzOnWith (Real.toNNReal (2 * i ^ 2 / (β - α)))
+      (fun x => (chebyshevOn α β i).eval x) (Set.Icc α β) := by
+  sorry
+
+/-- **Chebyshev expansion of a polynomial on $[\alpha, \beta]$ with bounded coefficients**: a
+real polynomial of degree at most $m$ bounded by $M$ on $[\alpha, \beta]$ is
+$\sum_{i \le m} a_i\hat T_i$ with $|a_0| \le M$ and $|a_i| \le 2M$. [Trefethen2019, Thm 3.1];
+the finite case of `NLAlib.chebyshevTrunc_eval`, scaled. -/
+theorem exists_eq_sum_smul_chebyshevOn_of_isUniformApproxOn {α β : ℝ} (hαβ : α < β)
+    {p : ℝ[X]} {m : ℕ} (hp : p.degree ≤ m) {M : ℝ}
+    (hM : Metric.IsUniformApproxOn (fun x => p.eval x) (fun _ => 0) (Set.Icc α β) M) :
+    ∃ a : ℕ → ℝ, p = ∑ i ∈ Finset.range (m + 1), a i • chebyshevOn α β i ∧
+      |a 0| ≤ M ∧ ∀ i, 1 ≤ i → |a i| ≤ 2 * M := by
+  sorry
+
+/-- **Lipschitz constant of a bounded polynomial on an interval**, through its Chebyshev
+expansion: a polynomial of degree at most $m$ bounded by $M$ on $[\alpha, \beta]$ is
+$\frac{4}{3}(m + 1)^3 M/(\beta - \alpha)$-Lipschitz there (unoptimised; Markov's inequality
+gives $2m^2M/(\beta - \alpha)$). -/
+theorem lipschitzOnWith_eval_of_degree_le_of_isUniformApproxOn {α β : ℝ} (hαβ : α < β)
+    {p : ℝ[X]} {m : ℕ} (hp : p.degree ≤ m) {M : ℝ}
+    (hM : Metric.IsUniformApproxOn (fun x => p.eval x) (fun _ => 0) (Set.Icc α β) M) :
+    LipschitzOnWith (Real.toNNReal (4 / 3 * (m + 1 : ℝ) ^ 3 * M / (β - α)))
+      (fun x => p.eval x) (Set.Icc α β) := by
+  sorry
+
+namespace LanczosData
+
+variable {n k : ℕ} (D : LanczosData n k)
+
+/-- The first index $0 : \mathrm{Fin}\,k$ ($k \ge 1$). -/
+def firstIndex : Fin k := ⟨0, D.k_pos⟩
+
+/-! ### Quadrature through the backward model -/
+
+/-- **The $(0,0)$ entry of $f(\mathbf{T}_k)$ is the Gauss rule of the backward model**: for
+unit vectors and the sign conditions on $\beta$,
+$(f(\mathbf{T}_k))_{00} = \int f\,d\,\mathsf{lanczosQuadrature}(\tilde{\mathbf{H}},
+\tilde{\mathbf{v}}, k)$, since exact Lanczos on $(\tilde{\mathbf{H}}, \tilde{\mathbf{v}})$
+computes $\mathbf{T}_k$ (`NLAlib.LanczosData.lanczosTridiagonal_backwardH_dilatedStart`) and
+$\|\tilde{\mathbf{v}}\| = 1$ (`Matrix.IsHermitian.integral_lanczosQuadrature_succ`). -/
+theorem cfc_tridiagonal_firstIndex_eq_integral
+    (hW : ∀ j, (D.basisSuccᵀ * D.basisSucc) j j = 1) (hβ : ∀ j ≤ k, 0 ≤ D.β j)
+    (hβpos : ∀ j, 1 ≤ j → j < k → 0 < D.β j) (f : ℝ → ℝ) :
+    cfc f D.tridiagonal D.firstIndex D.firstIndex =
+      ∫ x, f x ∂lanczosQuadrature D.backwardH D.dilatedStart k := by
+  sorry
+
+/-- **Knizhnerman-type quadrature bound, polynomial form**: for unit vectors, the sign conditions
+on $\beta$, $\operatorname{spec}\mathbf{H} \subseteq [a, a']$ and
+$\|\tilde{\mathbf{H}} - \mathbf{I}_{k+1} \otimes \mathbf{H}\|_{\mathsf{F}} \le c$, if a real
+polynomial of degree less than $2k$ is within $\delta$ of $f$ on $I_c = [a - c, a' + c]$ and $f$
+is $L$-Lipschitz on $I_c$, then
+$$\bigl\lvert\mathbf{v}_1^{\mathsf{T}}f(\mathbf{H})\mathbf{v}_1 - (f(\mathbf{T}_k))_{00}\bigr\rvert
+\le 2\delta + Lc .$$
+Proof: `cfc_tridiagonal_firstIndex_eq_integral`, the Gauss rule of
+$(\tilde{\mathbf{H}}, \tilde{\mathbf{v}})$ is exact to degree $2k - 1$ and its spectrum lies in
+$I_c$ (`Matrix.IsHermitian.norm_star_dotProduct_cfc_mulVec_sub_lanczosFA_le_of_isUniformApproxOn`,
+`NLAlib.LanczosData.spectrum_backwardH_subset_Icc`), and the quadratic forms of
+$(\mathbf{H}, \mathbf{v}_1)$ and $(\tilde{\mathbf{H}}, \tilde{\mathbf{v}})$ differ by at most
+$Lc$ (`NLAlib.LanczosData.abs_dotProduct_cfc_mulVec_sub_le_frobNorm` applied to the Lipschitz
+extension of $f/L$, `LipschitzOnWith.extend_real`). [Knizhnerman1996] (bound of the form
+$O(k)E_{2k-1} + O(\mathrm{poly}(k)\varepsilon)\sup|f|$, through Paige's bounds and the
+Chebyshev recurrence); no printed source for this form. -/
+theorem abs_dotProduct_cfc_mulVec_sub_cfc_tridiagonal_le_of_isUniformApproxOn
+    (hW : ∀ j, (D.basisSuccᵀ * D.basisSucc) j j = 1) (hβ : ∀ j ≤ k, 0 ≤ D.β j)
+    (hβpos : ∀ j, 1 ≤ j → j < k → 0 < D.β j) {a a' c : ℝ}
+    (hs : spectrum ℝ D.H ⊆ Set.Icc a a') (hc : frobNorm (D.backwardH - D.dilatedH) ≤ c)
+    {f : ℝ → ℝ} {p : ℝ[X]} (hp : p.degree < 2 * k) {δ : ℝ}
+    (hδ : Metric.IsUniformApproxOn (fun x => p.eval x) f (Set.Icc (a - c) (a' + c)) δ)
+    {L : ℝ≥0} (hf : LipschitzOnWith L f (Set.Icc (a - c) (a' + c))) :
+    |D.v 1 ⬝ᵥ (cfc f D.H *ᵥ D.v 1) - cfc f D.tridiagonal D.firstIndex D.firstIndex| ≤
+      2 * δ + L * c := by
+  sorry
+
+/-- **Knizhnerman-type quadrature bound for bounded $f$**: as
+`abs_dotProduct_cfc_mulVec_sub_cfc_tridiagonal_le_of_isUniformApproxOn`, with $|f| \le M$ on
+$I_c$ in place of the Lipschitz hypothesis:
+$$\bigl\lvert\mathbf{v}_1^{\mathsf{T}}f(\mathbf{H})\mathbf{v}_1 - (f(\mathbf{T}_k))_{00}\bigr\rvert
+\le 4\delta + 11k^3\frac{(M + \delta)\,c}{a' - a + 2c} ,$$
+the Lipschitz constant of the approximating polynomial coming from its Chebyshev expansion
+(`NLAlib.lipschitzOnWith_eval_of_degree_le_of_isUniformApproxOn`, $m = 2k - 1$). This is the
+shape of [Knizhnerman1996] (an additive term proportional to $\sup|f|$); unoptimised. -/
+theorem abs_dotProduct_cfc_mulVec_sub_cfc_tridiagonal_le_of_isUniformApproxOn_of_abs_le
+    (hW : ∀ j, (D.basisSuccᵀ * D.basisSucc) j j = 1) (hβ : ∀ j ≤ k, 0 ≤ D.β j)
+    (hβpos : ∀ j, 1 ≤ j → j < k → 0 < D.β j) {a a' c : ℝ} (haa : a < a') (hc0 : 0 ≤ c)
+    (hs : spectrum ℝ D.H ⊆ Set.Icc a a') (hc : frobNorm (D.backwardH - D.dilatedH) ≤ c)
+    {f : ℝ → ℝ} {p : ℝ[X]} (hp : p.degree < 2 * k) {δ : ℝ}
+    (hδ : Metric.IsUniformApproxOn (fun x => p.eval x) f (Set.Icc (a - c) (a' + c)) δ)
+    {M : ℝ} (hM : ∀ x ∈ Set.Icc (a - c) (a' + c), |f x| ≤ M) :
+    |D.v 1 ⬝ᵥ (cfc f D.H *ᵥ D.v 1) - cfc f D.tridiagonal D.firstIndex D.firstIndex| ≤
+      4 * δ + 11 * (k : ℝ) ^ 3 * (M + δ) * c / (a' - a + 2 * c) := by
+  sorry
+
+/-! ### Lanczos-FA through the Chebyshev recurrence -/
+
+/-- **The computed recurrence applies Chebyshev polynomials stably** ([DruskinKnizhnerman1991,
+§4]; [MuscoMuscoSidford2018, Lemma 10]; Chen's thesis, Theorem 8.4): for any symmetric
+three-term datum with $\mathbf{H}\mathbf{V}_k = \mathbf{V}_{k+1}\underline{\mathbf{T}}_k +
+\mathbf{F}_k$ (`NLAlib.LanczosData.mul_basis`), $\operatorname{spec}\mathbf{H} \subseteq
+[\alpha, \beta]$ and $\operatorname{spec}\mathbf{T}_k \subseteq [\alpha, \beta]$, for $i < k$,
+$$\|\hat T_i(\mathbf{H})\mathbf{v}_1 - \mathbf{V}_k\hat T_i(\mathbf{T}_k)\mathbf{e}_0\|
+\le \frac{2i(i + 1)}{\beta - \alpha}\|\mathbf{F}_k\|_2 .$$
+Proof: $\mathbf{d}_i = \hat T_i(\mathbf{H})\mathbf{v}_1 -
+\mathbf{V}_k\hat T_i(\mathbf{T}_k)\mathbf{e}_0$ satisfies $\mathbf{d}_0 = \mathbf{0}$ and the
+perturbed Chebyshev recurrence $\mathbf{d}_{i+1} = 2\hat{\mathbf{H}}\mathbf{d}_i - \mathbf{d}_{i-1}
++ \frac{4}{\beta - \alpha}\mathbf{F}_k\hat T_i(\mathbf{T}_k)\mathbf{e}_0$ (the term
+$\beta_k\mathbf{v}_{k+1}\mathbf{e}_{k-1}^{\mathsf{T}}\hat T_i(\mathbf{T}_k)\mathbf{e}_0$ vanishes
+for $i < k - 1$ since $\mathbf{T}_k$ is tridiagonal), so $\mathbf{d}_i$ is a sum of
+$\hat U_{i-j-1}(\mathbf{H})$ applied to the perturbations, with $\|\hat U_m(\mathbf{H})\| \le
+m + 1$ and $\|\hat T_j(\mathbf{T}_k)\mathbf{e}_0\| \le 1$. No orthogonality is used. -/
+theorem norm_aeval_chebyshevOn_mulVec_sub_basis_mulVec_le {α β : ℝ} (hαβ : α < β)
+    (hs : spectrum ℝ D.H ⊆ Set.Icc α β) (hT : spectrum ℝ D.tridiagonal ⊆ Set.Icc α β)
+    {i : ℕ} (hi : i < k) :
+    ‖WithLp.toLp 2 (aeval D.H (chebyshevOn α β i) *ᵥ D.v 1 -
+      D.basis *ᵥ (aeval D.tridiagonal (chebyshevOn α β i) *ᵥ Pi.single D.firstIndex 1))‖ ≤
+      2 * i * (i + 1) / (β - α) * specNorm D.residual := by
+  sorry
+
+/-- **The computed recurrence applies bounded polynomials stably** ([MuscoMuscoSidford2018,
+Lemma 9]): for a real polynomial of degree less than $k$ bounded by $M$ on $[\alpha, \beta]$,
+$$\|p(\mathbf{H})\mathbf{v}_1 - \mathbf{V}_kp(\mathbf{T}_k)\mathbf{e}_0\| \le
+\frac{4}{3}k^3\frac{M}{\beta - \alpha}\|\mathbf{F}_k\|_2 ,$$
+by the Chebyshev expansion $p = \sum_{i < k}a_i\hat T_i$, $|a_i| \le 2M$, and
+`norm_aeval_chebyshevOn_mulVec_sub_basis_mulVec_le`
+($\sum_{i<k} 2M \cdot 2i(i+1) = \frac{4}{3}M(k-1)k(k+1)$). -/
+theorem norm_aeval_mulVec_sub_basis_mulVec_le_of_degree_lt {α β : ℝ} (hαβ : α < β)
+    (hs : spectrum ℝ D.H ⊆ Set.Icc α β) (hT : spectrum ℝ D.tridiagonal ⊆ Set.Icc α β)
+    {p : ℝ[X]} (hp : p.degree < k) {M : ℝ}
+    (hM : Metric.IsUniformApproxOn (fun x => p.eval x) (fun _ => 0) (Set.Icc α β) M) :
+    ‖WithLp.toLp 2 (aeval D.H p *ᵥ D.v 1 -
+      D.basis *ᵥ (aeval D.tridiagonal p *ᵥ Pi.single D.firstIndex 1))‖ ≤
+      4 / 3 * (k : ℝ) ^ 3 * M / (β - α) * specNorm D.residual := by
+  sorry
+
+end LanczosData
+
+namespace LanczosRun
+
+variable {n k : ℕ} (L : LanczosRun n k)
+
+/-- The first index $0 : \mathrm{Fin}\,k$ of a run. -/
+def firstIndex : Fin k := L.toLanczosData.firstIndex
+
+/-- The **width of the enlarged interval** $I_c = [a - c, a' + c]$,
+$c = 2000k^4\varepsilon\|\mathbf{H}\|_2$ (`NLAlib.lanczosBackwardFactor`). -/
+noncomputable def enlargement : ℝ := lanczosBackwardFactor k * L.ε * specNorm L.H
+
+/-- **Containment of the computed Ritz values** as a spectrum inclusion: for
+$\operatorname{spec}\mathbf{H} \subseteq [a, a']$,
+$\operatorname{spec}\mathbf{T}_k \subseteq [a - c, a' + c]$ with
+$c = 2000k^4\varepsilon\|\mathbf{H}\|_2$. The eigenpair forms are
+`NLAlib.LanczosRun.eigenvalue_last_sub_le_of_mulVec_eq_smul` and
+`NLAlib.LanczosRun.sub_eigenvalue_zero_le_of_mulVec_eq_smul`. -/
+theorem spectrum_tridiagonal_subset_Icc {a a' : ℝ} (hs : spectrum ℝ L.H ⊆ Set.Icc a a') :
+    spectrum ℝ L.tridiagonal ⊆ Set.Icc (a - L.enlargement) (a' + L.enlargement) := by
+  sorry
+
+/-! ### Quadrature -/
+
+/-- **Knizhnerman-type quadrature bound for a Lanczos run** (continuous $f$, Lipschitz on the
+enlarged interval): for $\operatorname{spec}\mathbf{H} \subseteq [a, a']$,
+$c = 2000k^4\varepsilon\|\mathbf{H}\|_2$, $I_c = [a - c, a' + c]$ and $f$ $L$-Lipschitz on
+$I_c$, <!-- value lanczosBackwardFactor k -->
+$$\bigl\lvert\bar{\mathbf{v}}_1^{\mathsf{T}}f(\mathbf{H})\bar{\mathbf{v}}_1 -
+(f(\mathbf{T}_k))_{00}\bigr\rvert \le 2E_{2k-1}(f; I_c) + 2000k^4\varepsilon\|\mathbf{H}\|_2\,L ,$$
+$E_{2k-1}$ the best uniform approximation error by polynomials of degree at most $2k - 1$
+(`NLAlib.minimaxError`), $\bar{\mathbf{v}}_1$ the normalised computed first vector. Compare
+[Knizhnerman1996]: $O(k)E_{2k-1}(f; I_\eta) + O(\mathrm{poly}(k)\varepsilon)\sup_{I_\eta}|f|$
+with Paige's $\eta$ (as summarised in Chen's thesis §8.4 and the handbook, Cor. 7.5).
+Result: lanczos-quadrature-finite-precision -/
+theorem abs_dotProduct_cfc_mulVec_sub_cfc_tridiagonal_le_of_continuousOn {a a' : ℝ}
+    (hs : spectrum ℝ L.H ⊆ Set.Icc a a') {f : ℝ → ℝ} {Lf : ℝ≥0}
+    (hf : LipschitzOnWith Lf f (Set.Icc (a - L.enlargement) (a' + L.enlargement))) :
+    |L.normalizedV 1 ⬝ᵥ (cfc f L.H *ᵥ L.normalizedV 1) -
+        cfc f L.tridiagonal L.firstIndex L.firstIndex| ≤
+      2 * minimaxError f (Set.Icc (a - L.enlargement) (a' + L.enlargement)) (2 * k - 1) +
+        Lf * L.enlargement := by
+  sorry
+
+/-- **Knizhnerman-type quadrature bound, explicit rate for Lipschitz $f$** (Jackson):
+<!-- value jacksonApproximationConstant -->
+$$\bigl\lvert\bar{\mathbf{v}}_1^{\mathsf{T}}f(\mathbf{H})\bar{\mathbf{v}}_1 -
+(f(\mathbf{T}_k))_{00}\bigr\rvert \le L\Bigl(\frac{\pi(a' - a + 2c)}{2k + 1} + c\Bigr) ,
+\qquad c = 2000k^4\varepsilon\|\mathbf{H}\|_2 .$$
+Result: lanczos-quadrature-finite-precision -/
+theorem abs_dotProduct_cfc_mulVec_sub_cfc_tridiagonal_le_of_lipschitzOnWith {a a' : ℝ}
+    (haa : a < a') (hs : spectrum ℝ L.H ⊆ Set.Icc a a') {f : ℝ → ℝ} {Lf : ℝ≥0}
+    (hf : LipschitzOnWith Lf f (Set.Icc (a - L.enlargement) (a' + L.enlargement))) :
+    |L.normalizedV 1 ⬝ᵥ (cfc f L.H *ᵥ L.normalizedV 1) -
+        cfc f L.tridiagonal L.firstIndex L.firstIndex| ≤
+      Lf * (jacksonApproximationConstant * (a' - a + 2 * L.enlargement) / (2 * k + 1) +
+        L.enlargement) := by
+  sorry
+
+/-- **The quadrature bound with the computed (unnormalised) first vector**: as
+`abs_dotProduct_cfc_mulVec_sub_cfc_tridiagonal_le_of_continuousOn`, for $\mathbf{v}_1$ itself,
+at the price of $\varepsilon\sup_{I_c}|f|$ from $|\|\mathbf{v}_1\|^2 - 1| \le \varepsilon$. -/
+theorem abs_dotProduct_cfc_mulVec_v_sub_cfc_tridiagonal_le_of_continuousOn {a a' : ℝ}
+    (hs : spectrum ℝ L.H ⊆ Set.Icc a a') {f : ℝ → ℝ} {Lf : ℝ≥0}
+    (hf : LipschitzOnWith Lf f (Set.Icc (a - L.enlargement) (a' + L.enlargement))) {M : ℝ}
+    (hM : ∀ x ∈ Set.Icc (a - L.enlargement) (a' + L.enlargement), |f x| ≤ M) :
+    |L.v 1 ⬝ᵥ (cfc f L.H *ᵥ L.v 1) - cfc f L.tridiagonal L.firstIndex L.firstIndex| ≤
+      2 * minimaxError f (Set.Icc (a - L.enlargement) (a' + L.enlargement)) (2 * k - 1) +
+        Lf * L.enlargement + L.ε * M := by
+  sorry
+
+/-! ### Lanczos-FA -/
+
+/-- **Druskin–Knizhnerman-type Lanczos-FA bound for a Lanczos run**: for
+$\operatorname{spec}\mathbf{H} \subseteq [a, a']$, $c = 2000k^4\varepsilon\|\mathbf{H}\|_2$,
+$I_c = [a - c, a' + c]$, $f$ continuous on $I_c$ with $|f| \le M$ there, the computed
+basis $\mathbf{V}_k$ and tridiagonal matrix $\mathbf{T}_k$ satisfy
+<!-- value lanczosBackwardFactor k --> <!-- value lanczosResidualFactor k -->
+$$\|f(\mathbf{H})\mathbf{v}_1 - \mathbf{V}_kf(\mathbf{T}_k)\mathbf{e}_0\| \le
+(2 + \sqrt{k})\,E_{k-1}(f; I_c) + 16k^4\sqrt{k}\,\varepsilon\|\mathbf{H}\|_2\,
+\frac{M}{a' - a + 2c} .$$
+Proof: $p$ the best approximation of degree less than $k$ on $I_c$ (so $|p| \le M + E_{k-1}$
+there); $\|f(\mathbf{H})\mathbf{v}_1 - p(\mathbf{H})\mathbf{v}_1\| \le E_{k-1}\|\mathbf{v}_1\|$,
+$\|\mathbf{V}_k(f - p)(\mathbf{T}_k)\mathbf{e}_0\| \le \|\mathbf{V}_k\|_{\mathsf{F}}E_{k-1}$ with
+$\|\mathbf{V}_k\|_{\mathsf{F}} \le (1 + \varepsilon/2)\sqrt{k}$
+(`NLAlib.LanczosRun.frobNorm_basis_le`) and the Ritz values in $I_c$
+(`NLAlib.LanczosRun.spectrum_tridiagonal_subset_Icc`), and
+`NLAlib.LanczosData.norm_aeval_mulVec_sub_basis_mulVec_le_of_degree_lt` with
+$\|\mathbf{F}_k\|_2 \le 6k\sqrt{k}\varepsilon\|\mathbf{H}\|_2$
+(`NLAlib.LanczosRun.specNorm_residual_le`) and $E_{k-1} \le M$. Compare
+[MuscoMuscoSidford2018, Lemma 11]: $(k + 2)\delta_k + 92Ck^4n^{3/2}\|\mathbf{A}\|\epsilon_{\rm mach}
+/(\lambda_{\max} - \lambda_{\min} + 2\eta)$ with Paige's $\eta \ge 85n^{3/2}k^{5/2}\|\mathbf{A}\|
+\epsilon_{\rm mach}$; [DruskinKnizhnerman1991] for the method of proof.
+Result: lanczos-fa-finite-precision -/
+theorem norm_cfc_mulVec_sub_basis_mulVec_le_of_continuousOn {a a' : ℝ} (haa : a < a')
+    (hs : spectrum ℝ L.H ⊆ Set.Icc a a') {f : ℝ → ℝ}
+    (hf : ContinuousOn f (Set.Icc (a - L.enlargement) (a' + L.enlargement))) {M : ℝ}
+    (hM : ∀ x ∈ Set.Icc (a - L.enlargement) (a' + L.enlargement), |f x| ≤ M) :
+    ‖WithLp.toLp 2 (cfc f L.H *ᵥ L.v 1 -
+      L.basis *ᵥ (cfc f L.tridiagonal *ᵥ Pi.single L.firstIndex 1))‖ ≤
+      (2 + Real.sqrt k) *
+          minimaxError f (Set.Icc (a - L.enlargement) (a' + L.enlargement)) (k - 1) +
+        16 * (k : ℝ) ^ 4 * Real.sqrt k * L.ε * specNorm L.H * M /
+          (a' - a + 2 * L.enlargement) := by
+  sorry
+
+end LanczosRun
+
+/-! ### End to end -/
+
+/-- The tridiagonal matrix assembled from the output coefficients $\alpha_j$, $\beta_j$
+(0-based, as the program writes them): $\alpha_i$ on the diagonal, $\beta_j$ at $(j + 1, j)$
+and $(j, j + 1)$. -/
+def lanczosOutputTridiagonal (α β : ℕ → ℝ) (k : ℕ) : Matrix (Fin k) (Fin k) ℝ :=
+  Matrix.of fun i j =>
+    if i = j then α i else if (i : ℕ) = j + 1 then β j else if (j : ℕ) = i + 1 then β i else 0
+
+variable {P ι K C : Type} [DecidableEq P] [AddMonoid C]
+
+omit [AddMonoid C] in
+/-- **The outputs of a Lanczos run satisfy the quadrature bound**: with $k$ the number of steps
+before breakdown, $c = 2000k^4\varepsilon\|\mathbf{H}\|_2$ and
+$\bar{\mathbf{v}}_1 = \mathbf{v}_1/\|\mathbf{v}_1\|$ the normalised computed first vector, for
+every $f$ $L$-Lipschitz on $I_c = [a - c, a' + c]$ and the index $i_0 = 0$ of $\mathbf{T}_k$,
+$$\bigl\lvert\bar{\mathbf{v}}_1^{\mathsf{T}}f(\mathbf{H})\bar{\mathbf{v}}_1 -
+(f(\mathbf{T}_k))_{00}\bigr\rvert \le 2E_{2k-1}(f; I_c) + Lc .$$ -/
+def HasLanczosQuadratureBound (st : St P K C) (p : P)
+    (dec : P → K → ℝ) (u ε : ℝ) (alpha beta Q : ℕ) {N : ℕ} (q : ℕ)
+    (H : Matrix (Fin N) (Fin N) ℝ) (b : Fin N → ℝ) (a a' : ℝ) : Prop :=
+  ∃ (α β : ℕ → ℝ) (V : ℕ → Fin N → ℝ), LanczosOutputs st p dec alpha beta Q q α β V ∧
+    (∃ (c : ℝ) (δ₀ : Fin N → ℝ), 0 < c ∧ c • V 0 = b + δ₀ ∧
+      ‖WithLp.toLp 2 δ₀‖ ≤ u * ‖WithLp.toLp 2 b‖) ∧
+    ∀ (f : ℝ → ℝ) (Lf : ℝ≥0),
+      LipschitzOnWith Lf f (Set.Icc (a - lanczosBackwardFactor (lanczosSteps β q) * ε * specNorm H)
+        (a' + lanczosBackwardFactor (lanczosSteps β q) * ε * specNorm H)) →
+      ∀ i₀ : Fin (lanczosSteps β q), (i₀ : ℕ) = 0 →
+      |(‖WithLp.toLp 2 (V 0)‖⁻¹ • V 0) ⬝ᵥ (cfc f H *ᵥ (‖WithLp.toLp 2 (V 0)‖⁻¹ • V 0)) -
+          cfc f (lanczosOutputTridiagonal α β (lanczosSteps β q)) i₀ i₀| ≤
+        2 * minimaxError f
+            (Set.Icc (a - lanczosBackwardFactor (lanczosSteps β q) * ε * specNorm H)
+              (a' + lanczosBackwardFactor (lanczosSteps β q) * ε * specNorm H))
+            (2 * lanczosSteps β q - 1) +
+          Lf * (lanczosBackwardFactor (lanczosSteps β q) * ε * specNorm H)
+
+/-- **The dense Lanczos program satisfies the Knizhnerman-type quadrature bound** (end to end):
+under the hypotheses of
+`NLAlib.Computation.IsRelErrSem.exists_lanczosBackwardModel_of_lanczosBasisDenseProg` and
+$\operatorname{spec}\mathbf{H} \subseteq [a, a']$, the run succeeds and its outputs satisfy
+`NLAlib.HasLanczosQuadratureBound` with $\varepsilon = \max(\sqrt{N}\gamma_N, \gamma_{N+4})$.
+Proof: the dense bridge and
+`NLAlib.LanczosRun.abs_dotProduct_cfc_mulVec_sub_cfc_tridiagonal_le_of_continuousOn`, with
+`lanczosOutputTridiagonal α β k = L.tridiagonal` from the output clauses.
+Result: lanczos-quadrature-finite-precision -/
+theorem _root_.NLAlib.Computation.IsRelErrSem.exists_lanczosQuadratureBound_of_lanczosBasisDenseProg
+    {u : P → ℝ} {dec : P → K → ℝ} (I : Interp P ι K C) (p : P)
+    (h : IsRelErrSem u dec (fun _ _ => True) I.sem) (hz : AddsZeroExactly dec I.sem)
+    {N : ℕ} (q : ℕ) (Hw : Fin N → Fin N → K)
+    (hH : (Matrix.of fun i j => dec p (Hw i j))ᵀ = Matrix.of fun i j => dec p (Hw i j))
+    {a a' : ℝ} (hs : spectrum ℝ (Matrix.of fun i j => dec p (Hw i j)) ⊆ Set.Icc a a')
+    (b : Fin N → K) (hb : (fun i => dec p (b i)) ≠ 0)
+    (hq : 0 < q) (hu : ((N + 4 : ℕ) : ℝ) * u p < 1)
+    (hsmall : (q : ℝ) * lanczosRoundingEps N (u p) (√(N : ℝ) * roundingFactor N (u p)) ≤
+      1 / 100) :
+    ∃ st', exec I (lanczosBasisDenseProg p (.const N) (.const q) 0 1 2 3 4).run
+        (inputState p [(List.ofFn fun t : Fin (N * N) =>
+            some (Hw ⟨t % N, Nat.mod_lt _ (Nat.pos_of_mul_pos_right
+              (Nat.zero_lt_of_lt t.2))⟩ ⟨t / N, Nat.div_lt_of_lt_mul t.2⟩)).toArray,
+          (List.ofFn fun i => some (b i)).toArray, Array.replicate q none,
+          Array.replicate q none, Array.replicate (N * (q + 1)) none]) = some st' ∧
+      HasLanczosQuadratureBound st' p dec (u p)
+        (lanczosRoundingEps N (u p) (√(N : ℝ) * roundingFactor N (u p))) 2 3 4 q
+        (Matrix.of fun i j => dec p (Hw i j)) (fun i => dec p (b i)) a a' := by
+  sorry
+
+end NLAlib

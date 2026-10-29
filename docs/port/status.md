@@ -200,6 +200,17 @@ and 221 warnings unchanged. Independent review also checked the identifier-prime
 boundary and outdented-comment regressions. The scanners remain bounded lexical tools, not parsers
 for arbitrary Lean syntax extensions or interpolated terms.
 
+## Research: Druskin–Knizhnerman / Knizhnerman 1996 bounds for finite-precision Lanczos (2026-10-29)
+
+Branch `research/dk-bounds` (worktree `nlalib-research-dk`), from fb84945. All 16 statements of
+`docs/design/research/Krylov-LanczosFunctionsRounding.md` are proved (one agent, by hand), with
+statements and constants unchanged: `NLAlibScaffold/Krylov/FinitePrecision/LanczosFunctions.lean`
+(quadrature $2E_{2k-1}(f; I_c) + Lc$ on `LanczosData` and `LanczosRun`, bounded/Jackson/unnormalised
+forms, the Chebyshev-recurrence stability lemma, Lanczos-FA $(2+\sqrt k)E_{k-1} +
+16k^{9/2}\varepsilon\|\mathbf H\|_2M/(a'-a+2c)$, end to end for the dense program). The
+sorry-free polynomial facts moved to `NLAlib/Polynomial/Chebyshev/Interval.lean` (new),
+`NLAlib.norm_chebyshevCoeff_le` and the now public `NLAlib.abs_eval_U_le`. Record: §7 of the note.
+
 ## Research: truncated generalized Nyström with $O(k/\varepsilon)$ sketches (2026-10-26)
 
 Branch `research/tgn-upper` (worktree `nlalib-research-tgn`), from `origin/main` (79f8cc2). All

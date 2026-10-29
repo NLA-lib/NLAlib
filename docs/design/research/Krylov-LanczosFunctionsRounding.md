@@ -1,7 +1,8 @@
 # Design note (research): finite-precision Lanczos quadrature and Lanczos-FA (Knizhnerman 1996 and Druskin–Knizhnerman 1991 type bounds)
 
 2026-10-29. Branch `research/dk-bounds` (from `fix/main-checks` @ e88d2e3). **Status: RESEARCH,
-statements only** (maintainer: "next thing to do is the Druskin–Knizhnerman 1990s and
+all 16 statements proved** (2026-10-29, after the maintainer approved DK1–DK5 as recommended;
+see §7) (maintainer: "next thing to do is the Druskin–Knizhnerman 1990s and
 Knizhnerman 1996 type bounds"). Precedents: `docs/design/Krylov-LanczosRounding.md` (the
 finite-precision chain this builds on), `docs/design/research/Krylov-CGRounding.md`. Decision
 sheet: harness `state/decisions/DK-Bounds.json` (ids DK1–DK5 below). Skeleton:
@@ -351,3 +352,38 @@ Open for the maintainer (DK1–DK5 on the decision sheet): routes (DK1, DK2), th
 (DK3), the hypothesis classes (DK4), and deferring the eigenvalue consequences (DK5). Also:
 whether to try to obtain the DK91/K96 originals (mathnet full text requires a browser session)
 to fix theorem numbers and constants before the docstrings cite them.
+
+## 7. Proof record (2026-10-29)
+
+All 16 skeleton statements are proved with their statements, hypotheses and constants unchanged
+(no constant was weakened): quadrature $2E_{2k-1}(f; I_c) + Lc$ (bounded form
+$4\delta + 11k^3(M+\delta)c/(a'-a+2c)$, Jackson form $L(\pi(a'-a+2c)/(2k+1) + c)$, unnormalised
+$\mathbf v_1$ with $+\varepsilon M$), Chebyshev stability $2i(i+1)\|\mathbf F_k\|_2/(\beta-\alpha)$,
+polynomial form $\frac43k^3M\|\mathbf F_k\|_2/(\beta-\alpha)$, Lanczos-FA
+$(2+\sqrt k)E_{k-1}(f; I_c) + 16k^{9/2}\varepsilon\|\mathbf H\|_2M/(a'-a+2c)$, $\eta = c =
+2000k^4\varepsilon\|\mathbf H\|_2$; end to end for the dense program. Axioms: the standard three.
+
+Placement. The polynomial facts are sorry-free and general, so they moved to the library:
+`NLAlib/Polynomial/Chebyshev/Interval.lean` (`chebyshevOn`, its degree, bound and Lipschitz
+lemmas, the bounded Chebyshev expansion, the Lipschitz constant of a bounded polynomial, and
+`abs_div_mul_sub_div_le_one`, the affine map onto $[-1, 1]$), `NLAlib.norm_chebyshevCoeff_le`
+($\lvert a_k\rvert \le 2M$, in `Approximation/ChebyshevCoefficients.lean`), and
+`NLAlib.abs_eval_U_le` ($\lvert U_n\rvert \le n + 1$ on $[-1, 1]$, made public in
+`Chebyshev/EvenFilter.lean`). The rest stays in the scaffold file (the end-to-end statement
+imports the scaffold `Krylov/Processes/LanczosRounding.lean`). New public helpers in the
+scaffold: `LanczosData.isHermitian_tridiagonal`, `LanczosData.norm_toLp_dilatedStart`,
+`LanczosData.spectrum_tridiagonal_subset_Icc` (Ritz containment for any datum with unit vectors,
+via the compression $\hat{\mathbf V}_k^{\mathsf T}\tilde{\mathbf H}\hat{\mathbf V}_k = \mathbf T_k$),
+`LanczosRun.enlargement_nonneg`.
+
+Proof notes. (i) The Lipschitz constant of $\hat T_i$ uses Mathlib's
+`abs_iterate_derivative_T_real_le` and `derivative_T_eval_one` ($\lvert T_i'\rvert \le i^2$).
+(ii) The Clenshaw step is a pure algebraic identity: for any sequence with $\mathbf d_0 = 0$,
+$\mathbf d_i = \sum_{j<i}U_{i-1-j}(\hat{\mathbf H})\mathbf f_j$ with $\mathbf f_0 = \mathbf d_1$,
+$\mathbf f_{j+1} = \mathbf d_{j+2} - 2\hat{\mathbf H}\mathbf d_{j+1} + \mathbf d_j$ (integer-indexed
+$U$, $U_{-1} = 0$); the recurrence facts only bound $\mathbf f_j$ ($\|\mathbf f_0\| \le \sigma
+\|\mathbf F_k\|$, $\|\mathbf f_{j+1}\| \le 2\sigma\|\mathbf F_k\|$, $\sigma = 2/(\beta-\alpha)$, the
+$\beta_k\mathbf v_{k+1}$ term killed by the bandwidth $(q(\mathbf T_k))_{k-1,0} = 0$ for
+$\deg q < k-1$). (iii) The Kittaneh transfer for an $L$-Lipschitz function scales the
+1-Lipschitz statement by $1/L$; $L = 0$ is the constant case.
+

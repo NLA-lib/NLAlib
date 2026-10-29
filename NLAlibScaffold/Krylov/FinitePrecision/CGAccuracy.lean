@@ -180,54 +180,69 @@ namespace CGRun
 
 variable {n k : ℕ} (C : CGRun n k)
 
-/-! ### Helpers -/
+/-! ### The matrix of the run and (H) -/
 
-private theorem acc_n_pos {n k : ℕ} (C : CGRun n k) : 0 < n := by
+/-- There is at least one coordinate: $n \ge 1$ since $\mathbf{r}_0 \neq \mathbf{0}$. -/
+theorem n_pos {n k : ℕ} (C : CGRun n k) : 0 < n := by
   by_contra h
   have h0 : C.r 0 = 0 := funext fun i => absurd i.2 (by omega)
   have := C.ρ_pos C.k_pos
   rw [ρ, h0, WithLp.toLp_zero, norm_zero] at this
   exact lt_irrefl _ this
 
-private theorem acc_isHermitian : C.A.IsHermitian := by
+/-- The matrix of the run is Hermitian (it is real symmetric). -/
+theorem isHermitian_A : C.A.IsHermitian := by
   rw [Matrix.IsHermitian, Matrix.conjTranspose_eq_transpose_of_trivial, C.transpose_A]
 
-private theorem acc_quadForm_eq (v : Fin n → ℝ) : quadForm C.A v = v ⬝ᵥ (C.A *ᵥ v) := by
+/-- The energy of $\mathbf{v}$ is $\mathbf{v}^{\mathsf{T}}\mathbf{A}\mathbf{v}$. -/
+theorem quadForm_eq_dotProduct_mulVec (v : Fin n → ℝ) : quadForm C.A v = v ⬝ᵥ (C.A *ᵥ v) := by
   rw [quadForm_def, star_trivial]
 
-private theorem acc_dotProduct_mulVec_comm (u v : Fin n → ℝ) :
+/-- The symmetry of the matrix of the run:
+$\mathbf{u}^{\mathsf{T}}\mathbf{A}\mathbf{v} = \mathbf{v}^{\mathsf{T}}\mathbf{A}\mathbf{u}$. -/
+theorem dotProduct_mulVec_comm (u v : Fin n → ℝ) :
     u ⬝ᵥ (C.A *ᵥ v) = v ⬝ᵥ (C.A *ᵥ u) := by
   rw [Matrix.dotProduct_mulVec, ← Matrix.mulVec_transpose, C.transpose_A, dotProduct_comm]
 
-/-- The Rayleigh bounds of the matrix of the run. -/
-private theorem acc_quadForm_bounds {a a' : ℝ} (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (v : Fin n → ℝ) :
-    a * ‖WithLp.toLp 2 v‖ ^ 2 ≤ quadForm C.A v ∧ quadForm C.A v ≤ a' * ‖WithLp.toLp 2 v‖ ^ 2 := by
-  have hH := C.acc_isHermitian
-  have hpos := C.acc_n_pos
-  obtain ⟨c, hc⟩ : ∃ c, c + 1 = Fintype.card (Fin n) := ⟨n - 1, by simp; omega⟩
+/-- **The lower Rayleigh bound** for the matrix of the run: with spectrum in $[a, a']$,
+$a\|\mathbf{v}\|^2 \le \mathbf{v}^{\mathsf{T}}\mathbf{A}\mathbf{v}$. -/
+theorem mul_norm_sq_le_quadForm {a a' : ℝ} (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
+    (v : Fin n → ℝ) : a * ‖WithLp.toLp 2 v‖ ^ 2 ≤ quadForm C.A v := by
+  have hH := C.isHermitian_A
+  obtain ⟨c, hc⟩ : ∃ c, c + 1 = Fintype.card (Fin n) := ⟨n - 1, by simp; have := C.n_pos; omega⟩
   have h1 := hH.eigenvalue_last_mul_le_re_quadForm hc v
-  have h2 := hH.re_quadForm_le_eigenvalue_zero_mul v
-  simp only [RCLike.re_to_real] at h1 h2
+  simp only [RCLike.re_to_real] at h1
   have e1 := (hH.spectrum_subset_iff.mp hs c (by omega)).1
-  have e2 := (hH.spectrum_subset_iff.mp hs 0 (by simp; omega)).2
-  have hx := sq_nonneg ‖WithLp.toLp 2 v‖
-  exact ⟨(mul_le_mul_of_nonneg_right e1 hx).trans h1,
-    h2.trans (mul_le_mul_of_nonneg_right e2 hx)⟩
+  exact (mul_le_mul_of_nonneg_right e1 (sq_nonneg _)).trans h1
 
-private theorem acc_le {a a' : ℝ} (hs : spectrum ℝ C.A ⊆ Set.Icc a a') : a ≤ a' := by
-  have e0 := C.acc_isHermitian.spectrum_subset_iff.mp hs 0 (by
-    simp only [Fintype.card_fin]; exact C.acc_n_pos)
+/-- **The upper Rayleigh bound** for the matrix of the run: with spectrum in $[a, a']$,
+$\mathbf{v}^{\mathsf{T}}\mathbf{A}\mathbf{v} \le a'\|\mathbf{v}\|^2$. -/
+theorem quadForm_le_mul_norm_sq {a a' : ℝ} (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
+    (v : Fin n → ℝ) : quadForm C.A v ≤ a' * ‖WithLp.toLp 2 v‖ ^ 2 := by
+  have hH := C.isHermitian_A
+  have hpos := C.n_pos
+  have h2 := hH.re_quadForm_le_eigenvalue_zero_mul v
+  simp only [RCLike.re_to_real] at h2
+  have e2 := (hH.spectrum_subset_iff.mp hs 0 (by simp; omega)).2
+  exact h2.trans (mul_le_mul_of_nonneg_right e2 (sq_nonneg _))
+
+/-- The spectral interval is nonempty: $a \le a'$. -/
+theorem le_of_spectrum_subset_Icc {a a' : ℝ} (hs : spectrum ℝ C.A ⊆ Set.Icc a a') : a ≤ a' := by
+  have e0 := C.isHermitian_A.spectrum_subset_iff.mp hs 0 (by
+    simp only [Fintype.card_fin]; exact C.n_pos)
   exact e0.1.trans e0.2
 
-/-- The elementary consequences of the spectral hypothesis and of (H). -/
-private theorem acc_small {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
+/-- **The elementary consequences of the spectral hypothesis and of (H)**: with spectrum in
+$[a, a']$, $a > 0$, $\kappa = a'/a$ and (H) $k^3\varepsilon\kappa^2 \le 10^{-5}$: $a \le a'$,
+$1 \le \kappa$, $\|\mathbf{A}\|_2 \le a'$, $\varepsilon \le 10^{-5}$ and $k\varepsilon\kappa$,
+$k^2\varepsilon\kappa$, $k^2\varepsilon\kappa^2 \le 10^{-5}$. -/
+theorem le_of_cube_mul_ε_mul_sq_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
     (hsmall : (k : ℝ) ^ 3 * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) :
     a ≤ a' ∧ 1 ≤ a' / a ∧ specNorm C.A ≤ a' ∧ C.ε ≤ 1 / 10 ^ 5 ∧
       (k : ℝ) * C.ε * (a' / a) ≤ 1 / 10 ^ 5 ∧ (k : ℝ) ^ 2 * C.ε * (a' / a) ≤ 1 / 10 ^ 5 ∧
       (k : ℝ) ^ 2 * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5 := by
-  have hn := C.acc_n_pos
-  have hherm := C.acc_isHermitian
+  have hn := C.n_pos
+  have hherm := C.isHermitian_A
   have e0 := hherm.spectrum_subset_iff.mp hs 0 (by simp; omega)
   have e1 := hherm.spectrum_subset_iff.mp hs (n - 1) (by simp; omega)
   have haa' : a ≤ a' := e0.1.trans e0.2
@@ -262,7 +277,7 @@ private theorem acc_small {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ S
 
 private theorem acc_εκ {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
     (hsmall : (k : ℝ) ^ 3 * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) : C.ε * (a' / a) ≤ 1 / 10 ^ 5 := by
-  obtain ⟨-, hκ, -, -, hkεκ, -, -⟩ := C.acc_small ha hs hsmall
+  obtain ⟨-, hκ, -, -, hkεκ, -, -⟩ := C.le_of_cube_mul_ε_mul_sq_le ha hs hsmall
   have h1k : (1 : ℝ) ≤ k := by exact_mod_cast C.k_pos
   have := mul_le_mul_of_nonneg_right h1k (by have := C.ε_nonneg; positivity :
     0 ≤ C.ε * (a' / a))
@@ -271,19 +286,19 @@ private theorem acc_εκ {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Se
 /-- **The residual against the energy** for the matrix of the run:
 $\|\mathbf{A}\mathbf{e}\|^2 \le a'\,\mathbf{e}^{\mathsf{T}}\mathbf{A}\mathbf{e}$
 (Cauchy–Schwarz for the form of $\mathbf{A}$). -/
-private theorem acc_norm_mulVec_sq_le {a a' : ℝ} (ha : 0 < a)
+theorem norm_mulVec_sq_le_mul_quadForm {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a') (e : Fin n → ℝ) :
     ‖WithLp.toLp 2 (C.A *ᵥ e)‖ ^ 2 ≤ a' * quadForm C.A e := by
   have hpsd : ∀ x : Fin n → ℝ, 0 ≤ x ⬝ᵥ (C.A *ᵥ x) := fun x => by
-    have := (C.acc_quadForm_bounds hs x).1
-    rw [C.acc_quadForm_eq] at this
+    have := (C.mul_norm_sq_le_quadForm hs x)
+    rw [C.quadForm_eq_dotProduct_mulVec] at this
     exact le_trans (by positivity) this
   set v := C.A *ᵥ e with hv
   have hCS : (e ⬝ᵥ (C.A *ᵥ v)) ^ 2 ≤ (e ⬝ᵥ (C.A *ᵥ e)) * (v ⬝ᵥ (C.A *ᵥ v)) := by
     have hd := discrim_le_zero (a := v ⬝ᵥ (C.A *ᵥ v)) (b := 2 * (e ⬝ᵥ (C.A *ᵥ v)))
       (c := e ⬝ᵥ (C.A *ᵥ e)) (fun x => by
         have h := hpsd (e + x • v)
-        have hc := C.acc_dotProduct_mulVec_comm v e
+        have hc := C.dotProduct_mulVec_comm v e
         simp only [Matrix.mulVec_add, Matrix.mulVec_smul, add_dotProduct, dotProduct_add,
           smul_dotProduct, dotProduct_smul, smul_eq_mul] at h
         rw [hc] at h
@@ -295,19 +310,19 @@ private theorem acc_norm_mulVec_sq_le {a a' : ℝ} (ha : 0 < a)
     unfold discrim at hd
     nlinarith
   have h1 : e ⬝ᵥ (C.A *ᵥ v) = ‖WithLp.toLp 2 v‖ ^ 2 := by
-    rw [C.acc_dotProduct_mulVec_comm, EuclideanSpace.norm_toLp_sq_eq_dotProduct_self]
+    rw [C.dotProduct_mulVec_comm, EuclideanSpace.norm_toLp_sq_eq_dotProduct_self]
   have h2 : v ⬝ᵥ (C.A *ᵥ v) ≤ a' * ‖WithLp.toLp 2 v‖ ^ 2 := by
-    have := (C.acc_quadForm_bounds hs v).2
-    rwa [C.acc_quadForm_eq] at this
+    have := (C.quadForm_le_mul_norm_sq hs v)
+    rwa [C.quadForm_eq_dotProduct_mulVec] at this
   have he0 := hpsd e
   rw [h1] at hCS
-  rw [C.acc_quadForm_eq]
+  rw [C.quadForm_eq_dotProduct_mulVec]
   rcases (sq_nonneg ‖WithLp.toLp 2 v‖).lt_or_eq with hpos | hzero
   · have : (‖WithLp.toLp 2 v‖ ^ 2) ^ 2 ≤ (e ⬝ᵥ (C.A *ᵥ e)) * (a' * ‖WithLp.toLp 2 v‖ ^ 2) :=
       hCS.trans (mul_le_mul_of_nonneg_left h2 he0)
     nlinarith
   · rw [← hzero]
-    have ha' : 0 ≤ a' := ha.le.trans (C.acc_le hs)
+    have ha' : 0 ≤ a' := ha.le.trans (C.le_of_spectrum_subset_Icc hs)
     positivity
 
 /-! ### One step -/
@@ -326,7 +341,7 @@ $\lvert\mathbf{e}^{p\mathsf{T}}_{j-1}\mathbf{r}_j\rvert \le
 theorem p_dotProduct_r_ge {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
     (hsmall : (k : ℝ) ^ 3 * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) {j : ℕ} (hj : j < k) :
     (1 - 1 / 1000) * C.ρ j ^ 2 ≤ C.p j ⬝ᵥ C.r j := by
-  obtain ⟨-, hκ, -, hε5, hkεκ, -, -⟩ := C.acc_small ha hs hsmall
+  obtain ⟨-, hκ, -, hε5, hkεκ, -, -⟩ := C.le_of_cube_mul_ε_mul_sq_le ha hs hsmall
   have hε0 := C.ε_nonneg
   have hP : ∀ i < k, ‖WithLp.toLp 2 (C.p i)‖ ≤ 2 * (a' / a) * C.ρ i := fun i hi => by
     have h := C.norm_p_sq_le ha hs hsmall hi
@@ -407,7 +422,7 @@ theorem γ_sq_mul_dotProduct_mulVec_le {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a') (hsmall : (k : ℝ) ^ 3 * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
     {j : ℕ} (hj : j < k) :
     C.γ j ^ 2 * (C.p j ⬝ᵥ (C.A *ᵥ C.p j)) ≤ (1 + 1 / 1000) * (C.γ j * C.ρ j ^ 2) := by
-  obtain ⟨haa', hκ, hspec, hε5, -, -, -⟩ := C.acc_small ha hs hsmall
+  obtain ⟨haa', hκ, hspec, hε5, -, -, -⟩ := C.le_of_cube_mul_ε_mul_sq_le ha hs hsmall
   have hεκ := C.acc_εκ ha hs hsmall
   have hε0 := C.ε_nonneg
   have hγ := C.γ_pos hj
@@ -416,8 +431,8 @@ theorem γ_sq_mul_dotProduct_mulVec_le {a a' : ℝ} (ha : 0 < a)
   have hNn : 0 ≤ N := norm_nonneg _
   set P := C.p j ⬝ᵥ (C.A *ᵥ C.p j) with hPdef
   have hP0 : a * N ^ 2 ≤ P := by
-    have := (C.acc_quadForm_bounds hs (C.p j)).1
-    rwa [C.acc_quadForm_eq] at this
+    have := (C.mul_norm_sq_le_quadForm hs (C.p j))
+    rwa [C.quadForm_eq_dotProduct_mulVec] at this
   have hμ : C.μ j = P + C.p j ⬝ᵥ C.es j + C.eμ j := by
     rw [C.μ_eq j hj, C.s_eq j hj, dotProduct_add]
   have h1 : |C.p j ⬝ᵥ C.es j| ≤ C.ε * a' * N ^ 2 := by
@@ -481,8 +496,8 @@ theorem γ_mul_norm_p_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Se
       (Finset.mem_range.mpr hj)
   have h2 := C.γ_sq_mul_dotProduct_mulVec_le ha hs hsmall hj
   have hP0 : a * ‖WithLp.toLp 2 (C.p j)‖ ^ 2 ≤ C.p j ⬝ᵥ (C.A *ᵥ C.p j) := by
-    have := (C.acc_quadForm_bounds hs (C.p j)).1
-    rwa [C.acc_quadForm_eq] at this
+    have := (C.mul_norm_sq_le_quadForm hs (C.p j))
+    rwa [C.quadForm_eq_dotProduct_mulVec] at this
   set B := ‖WithLp.toLp 2 C.b‖
   set X := C.γ j * ‖WithLp.toLp 2 (C.p j)‖
   have hX0 : 0 ≤ X := by positivity
@@ -503,6 +518,41 @@ theorem γ_mul_norm_p_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Se
     nlinarith [sq_nonneg B]
   exact (pow_le_pow_iff_left₀ hX0 (by positivity) two_ne_zero).mp h5
 
+/-- The energy of a difference:
+$\|\mathbf{u} - \mathbf{v}\|_{\mathbf{A}}^2 = \|\mathbf{u}\|_{\mathbf{A}}^2 -
+2\,\mathbf{v}^{\mathsf{T}}\mathbf{A}\mathbf{u} + \|\mathbf{v}\|_{\mathbf{A}}^2$. -/
+theorem quadForm_sub_eq (u v : Fin n → ℝ) :
+    quadForm C.A (u - v) = quadForm C.A u - 2 * (v ⬝ᵥ (C.A *ᵥ u)) + quadForm C.A v := by
+  simp only [C.quadForm_eq_dotProduct_mulVec, Matrix.mulVec_sub, sub_dotProduct, dotProduct_sub]
+  rw [C.dotProduct_mulVec_comm u v]
+  ring
+
+/-- **The energy after the exact step, expanded**: for $\mathbf{A}\mathbf{x}_\star = \mathbf{b}$,
+with the gap $\mathbf{g}_j = \mathbf{b} - \mathbf{A}\mathbf{x}_j - \mathbf{r}_j$,
+$$\|\mathbf{x}_\star - \mathbf{x}_j - \gamma_j\mathbf{p}_j\|_{\mathbf{A}}^2 =
+\|\mathbf{x}_\star - \mathbf{x}_j\|_{\mathbf{A}}^2 -
+2\gamma_j\mathbf{p}_j^{\mathsf{T}}\mathbf{r}_j - 2\gamma_j\mathbf{p}_j^{\mathsf{T}}\mathbf{g}_j +
+\gamma_j^2\mathbf{p}_j^{\mathsf{T}}\mathbf{A}\mathbf{p}_j .$$
+Proof: $\mathbf{A}(\mathbf{x}_\star - \mathbf{x}_j) = \mathbf{r}_j + \mathbf{g}_j$. -/
+theorem quadForm_sub_x_sub_smul_p_eq {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) (j : ℕ) :
+    quadForm C.A (xs - C.x j - C.γ j • C.p j) = quadForm C.A (xs - C.x j) -
+      2 * C.γ j * (C.p j ⬝ᵥ C.r j) - 2 * C.γ j * (C.p j ⬝ᵥ (C.b - C.A *ᵥ C.x j - C.r j)) +
+        C.γ j ^ 2 * (C.p j ⬝ᵥ (C.A *ᵥ C.p j)) := by
+  set e := xs - C.x j with he
+  have hpAe : C.p j ⬝ᵥ (C.A *ᵥ e) =
+      C.p j ⬝ᵥ C.r j + C.p j ⬝ᵥ (C.b - C.A *ᵥ C.x j - C.r j) := by
+    rw [← dotProduct_add, he, Matrix.mulVec_sub, hx]
+    congr 1
+    abel
+  have hexp : (e - C.γ j • C.p j) ⬝ᵥ (C.A *ᵥ (e - C.γ j • C.p j)) = e ⬝ᵥ (C.A *ᵥ e) -
+      2 * C.γ j * (C.p j ⬝ᵥ (C.A *ᵥ e)) + C.γ j ^ 2 * (C.p j ⬝ᵥ (C.A *ᵥ C.p j)) := by
+    simp only [Matrix.mulVec_sub, Matrix.mulVec_smul, sub_dotProduct, dotProduct_sub,
+      smul_dotProduct, dotProduct_smul, smul_eq_mul]
+    rw [C.dotProduct_mulVec_comm e (C.p j)]
+    ring
+  rw [C.quadForm_eq_dotProduct_mulVec, C.quadForm_eq_dotProduct_mulVec, hexp, hpAe]
+  ring
+
 /-- G3 with the nonnegativity of the bracket, for the induction. -/
 private theorem quadForm_sub_x_succ_le_aux {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
@@ -514,11 +564,12 @@ private theorem quadForm_sub_x_succ_le_aux {a a' : ℝ} (ha : 0 < a)
       (Real.sqrt (quadForm C.A (xs - C.x j) - 99 / 100 * (C.γ j * C.ρ j ^ 2) +
           2 * (C.γ j * ‖WithLp.toLp 2 (C.p j)‖) * ‖WithLp.toLp 2 (C.b - C.A *ᵥ C.x j - C.r j)‖) +
         Real.sqrt a' * ‖WithLp.toLp 2 (C.ex j)‖) ^ 2 := by
-  have haa' := C.acc_le hs
+  have haa' := C.le_of_spectrum_subset_Icc hs
   have ha' : 0 ≤ a' := ha.le.trans haa'
   have hγ := C.γ_pos hj
   have hG1 := C.p_dotProduct_r_ge ha hs hsmall hj
   have hG2 := C.γ_sq_mul_dotProduct_mulVec_le ha hs hsmall hj
+  have hwe := C.quadForm_sub_x_sub_smul_p_eq hx j
   set g := C.b - C.A *ᵥ C.x j - C.r j with hg
   set e := xs - C.x j with he
   set w := e - C.γ j • C.p j with hw
@@ -528,23 +579,11 @@ private theorem quadForm_sub_x_succ_le_aux {a a' : ℝ} (ha : 0 < a)
   have hxe : xs - C.x (j + 1) = w - v := by
     rw [C.x_succ j hj, hw, he]
     abel
-  have hAe : C.A *ᵥ e = C.r j + g := by
-    rw [he, hg, Matrix.mulVec_sub, hx]
-    abel
-  have hpAe : C.p j ⬝ᵥ (C.A *ᵥ e) = C.p j ⬝ᵥ C.r j + C.p j ⬝ᵥ g := by
-    rw [hAe, dotProduct_add]
-  have hexp : w ⬝ᵥ (C.A *ᵥ w) = e ⬝ᵥ (C.A *ᵥ e) - 2 * C.γ j * (C.p j ⬝ᵥ (C.A *ᵥ e)) +
-      C.γ j ^ 2 * (C.p j ⬝ᵥ (C.A *ᵥ C.p j)) := by
-    rw [hw]
-    simp only [Matrix.mulVec_sub, Matrix.mulVec_smul, sub_dotProduct, dotProduct_sub,
-      smul_dotProduct, dotProduct_smul, smul_eq_mul]
-    rw [C.acc_dotProduct_mulVec_comm e (C.p j)]
-    ring
   have hpg : |C.p j ⬝ᵥ g| ≤ ‖WithLp.toLp 2 (C.p j)‖ * ‖WithLp.toLp 2 g‖ :=
     EuclideanSpace.abs_dotProduct_le_norm _ _
-  have hQw0 : 0 ≤ quadForm C.A w := le_trans (by positivity) (C.acc_quadForm_bounds hs w).1
+  have hQw0 : 0 ≤ quadForm C.A w := le_trans (by positivity) (C.mul_norm_sq_le_quadForm hs w)
   have hQw : quadForm C.A w ≤ X := by
-    rw [C.acc_quadForm_eq, hexp, hpAe, hX, C.acc_quadForm_eq]
+    rw [hwe, hX]
     have h1 := (abs_le.mp hpg).1
     have h2 := mul_le_mul_of_nonneg_left h1 (by positivity : 0 ≤ 2 * C.γ j)
     have h3 := mul_le_mul_of_nonneg_left hG1 (by positivity : 0 ≤ 2 * C.γ j)
@@ -557,7 +596,7 @@ private theorem quadForm_sub_x_succ_le_aux {a a' : ℝ} (ha : 0 < a)
   have hsa : Real.sqrt a' ^ 2 = a' := Real.sq_sqrt ha'
   have hsa0 : 0 ≤ Real.sqrt a' := Real.sqrt_nonneg _
   have hAw : ‖WithLp.toLp 2 (C.A *ᵥ w)‖ ≤ Real.sqrt a' * W := by
-    have h := C.acc_norm_mulVec_sq_le ha hs w
+    have h := C.norm_mulVec_sq_le_mul_quadForm ha hs w
     have h' : ‖WithLp.toLp 2 (C.A *ᵥ w)‖ ^ 2 ≤ (Real.sqrt a' * W) ^ 2 := by
       rw [mul_pow, hsa, hW2]
       exact h
@@ -567,15 +606,10 @@ private theorem quadForm_sub_x_succ_le_aux {a a' : ℝ} (ha : 0 < a)
       (mul_le_mul_of_nonneg_left hAw (norm_nonneg _))
   have hQv : quadForm C.A v ≤ (Real.sqrt a' * ‖WithLp.toLp 2 v‖) ^ 2 := by
     rw [mul_pow, hsa]
-    exact (C.acc_quadForm_bounds hs v).2
-  have hexp2 : quadForm C.A (w - v) = quadForm C.A w - 2 * (v ⬝ᵥ (C.A *ᵥ w)) +
-      quadForm C.A v := by
-    simp only [C.acc_quadForm_eq, Matrix.mulVec_sub, sub_dotProduct, dotProduct_sub]
-    rw [C.acc_dotProduct_mulVec_comm w v]
-    ring
+    exact (C.quadForm_le_mul_norm_sq hs v)
   have hWX : W ≤ Real.sqrt X := Real.sqrt_le_sqrt hQw
   have hv0 := norm_nonneg (WithLp.toLp 2 v)
-  rw [hxe, hexp2]
+  rw [hxe, C.quadForm_sub_eq w v]
   calc quadForm C.A w - 2 * (v ⬝ᵥ (C.A *ᵥ w)) + quadForm C.A v ≤
         (W + Real.sqrt a' * ‖WithLp.toLp 2 v‖) ^ 2 := by
         have := (abs_le.mp hvw).1
@@ -604,11 +638,13 @@ theorem quadForm_sub_x_succ_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A 
 
 /-! ### The joint induction -/
 
-private theorem acc_norm_sol_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
+/-- **The solution against the right-hand side**: with spectrum in $[a, a']$, $a > 0$, for
+$\mathbf{A}\mathbf{x}_\star = \mathbf{b}$, $\|\mathbf{x}_\star\| \le \|\mathbf{b}\|/a$. -/
+theorem norm_le_norm_b_div_of_mulVec_eq {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
     {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) :
     ‖WithLp.toLp 2 xs‖ ≤ ‖WithLp.toLp 2 C.b‖ / a := by
-  have h1 := (C.acc_quadForm_bounds hs xs).1
-  rw [C.acc_quadForm_eq, hx] at h1
+  have h1 := (C.mul_norm_sq_le_quadForm hs xs)
+  rw [C.quadForm_eq_dotProduct_mulVec, hx] at h1
   have h2 := (le_abs_self _).trans (EuclideanSpace.abs_dotProduct_le_norm xs C.b)
   rw [le_div_iff₀ ha]
   rcases (norm_nonneg (WithLp.toLp 2 xs)).lt_or_eq with hpos | hzero
@@ -616,21 +652,29 @@ private theorem acc_norm_sol_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A
   · rw [← hzero]
     simp
 
-private theorem acc_quadForm_sol_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
+/-- **The energy of the solution, from above**: with spectrum in $[a, a']$, $a > 0$, for
+$\mathbf{A}\mathbf{x}_\star = \mathbf{b}$,
+$\|\mathbf{x}_\star\|_{\mathbf{A}}^2 \le \|\mathbf{b}\|^2/a$. -/
+theorem quadForm_le_norm_b_sq_div_of_mulVec_eq {a a' : ℝ} (ha : 0 < a)
+    (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
     {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) :
     quadForm C.A xs ≤ ‖WithLp.toLp 2 C.b‖ ^ 2 / a := by
-  have h := C.acc_norm_sol_le ha hs hx
-  rw [C.acc_quadForm_eq, hx]
+  have h := C.norm_le_norm_b_div_of_mulVec_eq ha hs hx
+  rw [C.quadForm_eq_dotProduct_mulVec, hx]
   refine (le_abs_self _).trans ((EuclideanSpace.abs_dotProduct_le_norm xs C.b).trans ?_)
   calc ‖WithLp.toLp 2 xs‖ * ‖WithLp.toLp 2 C.b‖ ≤
         ‖WithLp.toLp 2 C.b‖ / a * ‖WithLp.toLp 2 C.b‖ :=
         mul_le_mul_of_nonneg_right h (norm_nonneg _)
     _ = ‖WithLp.toLp 2 C.b‖ ^ 2 / a := by ring
 
-private theorem acc_quadForm_sol_ge {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
+/-- **The energy of the solution, from below**: with spectrum in $[a, a']$, $a > 0$, for
+$\mathbf{A}\mathbf{x}_\star = \mathbf{b}$,
+$\|\mathbf{b}\|^2/a \le \kappa\,\|\mathbf{x}_\star\|_{\mathbf{A}}^2$. -/
+theorem norm_b_sq_div_le_mul_quadForm_of_mulVec_eq {a a' : ℝ} (ha : 0 < a)
+    (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
     {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) :
     ‖WithLp.toLp 2 C.b‖ ^ 2 / a ≤ a' / a * quadForm C.A xs := by
-  have h := C.acc_norm_mulVec_sq_le ha hs xs
+  have h := C.norm_mulVec_sq_le_mul_quadForm ha hs xs
   rw [hx] at h
   rw [div_mul_eq_mul_div]
   exact div_le_div_of_nonneg_right h ha.le
@@ -638,14 +682,16 @@ private theorem acc_quadForm_sol_ge {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ
 private theorem acc_norm_sq_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
     (v : Fin n → ℝ) : ‖WithLp.toLp 2 v‖ ^ 2 ≤ quadForm C.A v / a := by
   rw [le_div_iff₀ ha, mul_comm]
-  exact (C.acc_quadForm_bounds hs v).1
+  exact (C.mul_norm_sq_le_quadForm hs v)
 
-/-- The smallness of step $j \le k$ under (H). -/
-private theorem acc_small_j {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
+/-- **The smallness of step $j \le k$ under (H)**: $j\varepsilon\kappa$, $j^2\varepsilon\kappa$,
+$j^2\varepsilon\kappa^2 \le 10^{-5}$ (`NLAlib.CGRun.le_of_cube_mul_ε_mul_sq_le`). -/
+theorem le_of_cube_mul_ε_mul_sq_le_of_le {a a' : ℝ} (ha : 0 < a)
+    (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
     (hsmall : (k : ℝ) ^ 3 * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) {j : ℕ} (hj : j ≤ k) :
     (j : ℝ) * C.ε * (a' / a) ≤ 1 / 10 ^ 5 ∧ (j : ℝ) ^ 2 * C.ε * (a' / a) ≤ 1 / 10 ^ 5 ∧
       (j : ℝ) ^ 2 * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5 := by
-  obtain ⟨-, hκ, -, -, hkεκ, hk2εκ, hk2εκ2⟩ := C.acc_small ha hs hsmall
+  obtain ⟨-, hκ, -, -, hkεκ, hk2εκ, hk2εκ2⟩ := C.le_of_cube_mul_ε_mul_sq_le ha hs hsmall
   have hε0 := C.ε_nonneg
   have hjr : (j : ℝ) ≤ k := by exact_mod_cast hj
   have hj2 : (j : ℝ) ^ 2 ≤ (k : ℝ) ^ 2 := pow_le_pow_left₀ (by positivity) hjr 2
@@ -672,14 +718,14 @@ private theorem acc_step_facts {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A 
     ‖WithLp.toLp 2 (xs - C.x j)‖ ≤ 2 * ‖WithLp.toLp 2 C.b‖ / a ∧
       ‖WithLp.toLp 2 (C.x j)‖ ≤ 3 * ‖WithLp.toLp 2 C.b‖ / a ∧
       C.ρ j ≤ 3 * (a' / a) * ‖WithLp.toLp 2 C.b‖ := by
-  obtain ⟨haa', hκ, hspec, -, -, -, -⟩ := C.acc_small ha hs hsmall
+  obtain ⟨haa', hκ, hspec, -, -, -, -⟩ := C.le_of_cube_mul_ε_mul_sq_le ha hs hsmall
   have hε0 := C.ε_nonneg
   have hjε : (j : ℝ) * C.ε ≤ 1 / 100 := C.mul_ε_le' hj
   set κ := a' / a with hκdef
   set B := ‖WithLp.toLp 2 C.b‖ with hB
   have hB0 : 0 ≤ B := norm_nonneg _
   have ha'κ : a' = κ * a := by rw [hκdef]; field_simp
-  have hxs := C.acc_norm_sol_le ha hs hx
+  have hxs := C.norm_le_norm_b_div_of_mulVec_eq ha hs hx
   have he : ‖WithLp.toLp 2 (xs - C.x j)‖ ≤ 2 * B / a := by
     have h1 := C.acc_norm_sq_le ha hs (xs - C.x j)
     have h2 : ‖WithLp.toLp 2 (xs - C.x j)‖ ^ 2 ≤ (2 * B / a) ^ 2 := by
@@ -720,7 +766,7 @@ private theorem acc_gap_step {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A �
     (hQ : quadForm C.A (xs - C.x j) ≤ 2 * (‖WithLp.toLp 2 C.b‖ ^ 2 / a)) :
     ‖WithLp.toLp 2 (C.b - C.A *ᵥ C.x (j + 1) - C.r (j + 1))‖ ≤
       12 * ((j + 1 : ℕ) : ℝ) * C.ε * (a' / a) * ‖WithLp.toLp 2 C.b‖ := by
-  obtain ⟨haa', hκ, hspec, -, -, -, -⟩ := C.acc_small ha hs hsmall
+  obtain ⟨haa', hκ, hspec, -, -, -, -⟩ := C.le_of_cube_mul_ε_mul_sq_le ha hs hsmall
   obtain ⟨-, hxj, hρ⟩ := C.acc_step_facts ha hs hsmall hx hj.le hG hQ
   have hε0 := C.ε_nonneg
   have hγp := C.γ_mul_norm_p_le ha hs hsmall hj
@@ -756,8 +802,8 @@ private theorem acc_err_step {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A �
     quadForm C.A (xs - C.x (j + 1)) ≤ quadForm C.A (xs - C.x j) -
       99 / 100 * (C.γ j * C.ρ j ^ 2) +
         (36 * j + 19) * (C.ε * (a' / a)) * (‖WithLp.toLp 2 C.b‖ ^ 2 / a) := by
-  obtain ⟨haa', hκ, -, -, -, -, -⟩ := C.acc_small ha hs hsmall
-  obtain ⟨hjT, -, -⟩ := C.acc_small_j ha hs hsmall hj.le
+  obtain ⟨haa', hκ, -, -, -, -, -⟩ := C.le_of_cube_mul_ε_mul_sq_le ha hs hsmall
+  obtain ⟨hjT, -, -⟩ := C.le_of_cube_mul_ε_mul_sq_le_of_le ha hs hsmall hj.le
   obtain ⟨-, hxj, -⟩ := C.acc_step_facts ha hs hsmall hx hj.le hG hQ
   obtain ⟨hX0, hstep⟩ := C.quadForm_sub_x_succ_le_aux ha hs hsmall hx hj
   have hε0 := C.ε_nonneg
@@ -844,7 +890,7 @@ private theorem gapErrorInduction {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C
         12 * j * C.ε * (a' / a) * ‖WithLp.toLp 2 C.b‖ ∧
       quadForm C.A (xs - C.x j) + 99 / 100 * ∑ i ∈ Finset.range j, C.γ i * C.ρ i ^ 2 ≤
         quadForm C.A xs + 25 * j ^ 2 * C.ε * (a' / a) * (‖WithLp.toLp 2 C.b‖ ^ 2 / a) := by
-  have hQ0 := C.acc_quadForm_sol_le ha hs hx
+  have hQ0 := C.quadForm_le_norm_b_sq_div_of_mulVec_eq ha hs hx
   have hε0 := C.ε_nonneg
   induction j with
   | zero =>
@@ -855,7 +901,7 @@ private theorem gapErrorInduction {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C
   | succ j ih =>
     have hjk : j < k := by omega
     obtain ⟨hG, hQ⟩ := ih hjk.le
-    obtain ⟨hjT, hj2T, -⟩ := C.acc_small_j ha hs hsmall hjk.le
+    obtain ⟨hjT, hj2T, -⟩ := C.le_of_cube_mul_ε_mul_sq_le_of_le ha hs hsmall hjk.le
     set u := ‖WithLp.toLp 2 C.b‖ ^ 2 / a with hu
     have hu0 : 0 ≤ u := by positivity
     have hS0 : 0 ≤ ∑ i ∈ Finset.range j, C.γ i * C.ρ i ^ 2 := Finset.sum_nonneg fun i hi =>
@@ -869,7 +915,7 @@ private theorem gapErrorInduction {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C
     have h := C.acc_err_step ha hs hsmall hx hjk hG hQ2
     rw [Finset.sum_range_succ]
     have hT : 0 ≤ C.ε * (a' / a) * u := by
-      have := (C.acc_small ha hs hsmall).2.1
+      have := (C.le_of_cube_mul_ε_mul_sq_le ha hs hsmall).2.1
       have : 0 ≤ a' / a := by linarith
       positivity
     have e : 25 * (((j + 1 : ℕ) : ℝ)) ^ 2 * C.ε * (a' / a) * u =
@@ -894,7 +940,7 @@ theorem norm_sub_mulVec_x_sub_r_le_norm_b {a a' : ℝ} (ha : 0 < a)
     {j : ℕ} (hj : j ≤ k) :
     ‖WithLp.toLp 2 (C.b - C.A *ᵥ C.x j - C.r j)‖ ≤
       12 * j * C.ε * (a' / a) * ‖WithLp.toLp 2 C.b‖ := by
-  have hherm := C.acc_isHermitian
+  have hherm := C.isHermitian_A
   have hPD : C.A.PosDef := hherm.posDef_iff_eigenvalue_pos.mpr fun i hi =>
     ha.trans_le (hherm.spectrum_subset_iff.mp hs i hi).1
   have hx : C.A *ᵥ (C.A⁻¹ *ᵥ C.b) = C.b := by
@@ -931,11 +977,11 @@ theorem quadForm_sub_x_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ S
     (hx : C.A *ᵥ xs = C.b) {j : ℕ} (hj : j ≤ k) :
     quadForm C.A (xs - C.x j) ≤ (1 + 1 / 1000) * quadForm C.A xs := by
   have h := (C.gapErrorInduction ha hs hsmall hx hj).2
-  obtain ⟨-, hκ, -, -, -, -, -⟩ := C.acc_small ha hs hsmall
-  obtain ⟨-, -, hj2⟩ := C.acc_small_j ha hs hsmall hj
-  have hge := C.acc_quadForm_sol_ge ha hs hx
+  obtain ⟨-, hκ, -, -, -, -, -⟩ := C.le_of_cube_mul_ε_mul_sq_le ha hs hsmall
+  obtain ⟨-, -, hj2⟩ := C.le_of_cube_mul_ε_mul_sq_le_of_le ha hs hsmall hj
+  have hge := C.norm_b_sq_div_le_mul_quadForm_of_mulVec_eq ha hs hx
   have hε0 := C.ε_nonneg
-  have hQ0 : 0 ≤ quadForm C.A xs := le_trans (by positivity) (C.acc_quadForm_bounds hs xs).1
+  have hQ0 : 0 ≤ quadForm C.A xs := le_trans (by positivity) (C.mul_norm_sq_le_quadForm hs xs)
   have hS0 : 0 ≤ ∑ i ∈ Finset.range j, C.γ i * C.ρ i ^ 2 := Finset.sum_nonneg fun i hi =>
     mul_nonneg (C.γ_pos (by have := Finset.mem_range.mp hi; omega)).le (sq_nonneg _)
   have h1 : 25 * (j : ℝ) ^ 2 * C.ε * (a' / a) * (‖WithLp.toLp 2 C.b‖ ^ 2 / a) ≤
@@ -962,7 +1008,7 @@ theorem norm_x_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a
     ‖WithLp.toLp 2 (C.x j)‖ ≤
       (1 + 1 / 1000) * (‖WithLp.toLp 2 xs‖ + Real.sqrt (quadForm C.A xs) / Real.sqrt a) := by
   have hQ := C.quadForm_sub_x_le ha hs hsmall hx hj
-  have hQ0 : 0 ≤ quadForm C.A xs := le_trans (by positivity) (C.acc_quadForm_bounds hs xs).1
+  have hQ0 : 0 ≤ quadForm C.A xs := le_trans (by positivity) (C.mul_norm_sq_le_quadForm hs xs)
   have he2 := C.acc_norm_sq_le ha hs (xs - C.x j)
   set M := Real.sqrt (quadForm C.A xs) / Real.sqrt a
   have hM0 : 0 ≤ M := by positivity
@@ -989,7 +1035,7 @@ private theorem acc_norm_sub_x_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C
     ‖WithLp.toLp 2 (xs - C.x j)‖ ≤
       (1 + 1 / 1000) * (Real.sqrt (quadForm C.A xs) / Real.sqrt a) := by
   have hQ := C.quadForm_sub_x_le ha hs hsmall hx hj
-  have hQ0 : 0 ≤ quadForm C.A xs := le_trans (by positivity) (C.acc_quadForm_bounds hs xs).1
+  have hQ0 : 0 ≤ quadForm C.A xs := le_trans (by positivity) (C.mul_norm_sq_le_quadForm hs xs)
   have he2 := C.acc_norm_sq_le ha hs (xs - C.x j)
   have hM2 : (Real.sqrt (quadForm C.A xs) / Real.sqrt a) ^ 2 = quadForm C.A xs / a := by
     rw [div_pow, Real.sq_sqrt hQ0, Real.sq_sqrt ha.le]
@@ -1005,8 +1051,8 @@ private theorem acc_norm_sub_x_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C
 /-- $a\|\mathbf{v}\| \le \|\mathbf{A}\mathbf{v}\|$. -/
 private theorem acc_mul_norm_le {a a' : ℝ} (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
     (v : Fin n → ℝ) : a * ‖WithLp.toLp 2 v‖ ≤ ‖WithLp.toLp 2 (C.A *ᵥ v)‖ := by
-  have h1 := (C.acc_quadForm_bounds hs v).1
-  rw [C.acc_quadForm_eq] at h1
+  have h1 := (C.mul_norm_sq_le_quadForm hs v)
+  rw [C.quadForm_eq_dotProduct_mulVec] at h1
   have h2 := (le_abs_self _).trans (EuclideanSpace.abs_dotProduct_le_norm v (C.A *ᵥ v))
   rcases (norm_nonneg (WithLp.toLp 2 v)).lt_or_eq with hpos | hzero
   · exact le_of_mul_le_mul_left (by nlinarith) hpos
@@ -1019,7 +1065,7 @@ private theorem acc_norm_b_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A �
     (hx : C.A *ᵥ xs = C.b) : ‖WithLp.toLp 2 C.b‖ ≤ a' * ‖WithLp.toLp 2 xs‖ := by
   rw [← hx]
   exact (norm_toLp_mulVec_le _ _).trans
-    (mul_le_mul_of_nonneg_right (C.acc_small ha hs hsmall).2.2.1 (norm_nonneg _))
+    (mul_le_mul_of_nonneg_right (C.le_of_cube_mul_ε_mul_sq_le ha hs hsmall).2.2.1 (norm_nonneg _))
 
 /-! ### The residual gap -/
 
@@ -1038,7 +1084,7 @@ theorem norm_sub_mulVec_x_sub_r_le_energy {a a' : ℝ} (ha : 0 < a)
     {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) :
     ‖WithLp.toLp 2 (C.b - C.A *ᵥ C.x k - C.r k)‖ ≤
       11 * k * C.ε * a' * (‖WithLp.toLp 2 xs‖ + Real.sqrt (quadForm C.A xs) / Real.sqrt a) := by
-  obtain ⟨haa', hκ, hspec, hε5, hkεκ, -, -⟩ := C.acc_small ha hs hsmall
+  obtain ⟨haa', hκ, hspec, hε5, hkεκ, -, -⟩ := C.le_of_cube_mul_ε_mul_sq_le ha hs hsmall
   have hε0 := C.ε_nonneg
   have hε1 := C.ε_le
   set M := ‖WithLp.toLp 2 xs‖ + Real.sqrt (quadForm C.A xs) / Real.sqrt a with hM
@@ -1089,7 +1135,8 @@ theorem norm_sub_mulVec_x_sub_r_le_energy {a a' : ℝ} (ha : 0 < a)
       have hAe : ‖WithLp.toLp 2 (C.A *ᵥ (xs - C.x j))‖ ≤ a' * ((1 + 1 / 1000) * M) :=
         (norm_toLp_mulVec_le _ _).trans (mul_le_mul hspec (he.trans (by nlinarith))
           (norm_nonneg _) ha')
-      have hjT : (j : ℝ) * C.ε * (a' / a) ≤ 1 / 10 ^ 5 := (C.acc_small_j ha hs hsmall hj.le).1
+      have hjT : (j : ℝ) * C.ε * (a' / a) ≤ 1 / 10 ^ 5 :=
+        (C.le_of_cube_mul_ε_mul_sq_le_of_le ha hs hsmall hj.le).1
       have hG' : 12 * (j : ℝ) * C.ε * (a' / a) * ‖WithLp.toLp 2 C.b‖ ≤
           12 * (1 / 10 ^ 5) * (a' * M) := by
         have : 12 * (j : ℝ) * C.ε * (a' / a) * ‖WithLp.toLp 2 C.b‖ =
@@ -1128,10 +1175,10 @@ theorem norm_sub_mulVec_x_sub_r_le_norm_sol {a a' : ℝ} (ha : 0 < a)
     ‖WithLp.toLp 2 (C.b - C.A *ᵥ C.x k - C.r k)‖ ≤
       22 * k * C.ε * Real.sqrt (a' / a) * a' * ‖WithLp.toLp 2 xs‖ := by
   have h := C.norm_sub_mulVec_x_sub_r_le_energy ha hs hsmall hx
-  obtain ⟨haa', hκ, -, -, -, -, -⟩ := C.acc_small ha hs hsmall
+  obtain ⟨haa', hκ, -, -, -, -, -⟩ := C.le_of_cube_mul_ε_mul_sq_le ha hs hsmall
   have hε0 := C.ε_nonneg
   have ha' : 0 ≤ a' := by linarith
-  have hQ := (C.acc_quadForm_bounds hs xs).2
+  have hQ := (C.quadForm_le_mul_norm_sq hs xs)
   have hs1 : 1 ≤ Real.sqrt (a' / a) := by rw [Real.one_le_sqrt]; exact hκ
   have hxs0 := norm_nonneg (WithLp.toLp 2 xs)
   have hq : Real.sqrt (quadForm C.A xs) ≤ Real.sqrt a' * ‖WithLp.toLp 2 xs‖ := by
@@ -1191,7 +1238,7 @@ theorem ρ_le_of_cgKStar_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆
     (hsmall : (k : ℝ) ^ 3 * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) (hε : 0 < C.ε) {δ : ℝ}
     (hδ : 0 < δ) {j : ℕ} (hkj : cgKStar (a' / a) C.ε δ ≤ j) (hj : j ≤ k) :
     C.ρ j ≤ 8 * δ * C.ε * ‖WithLp.toLp 2 C.b‖ := by
-  obtain ⟨-, hκ, -, -, -, -, -⟩ := C.acc_small ha hs hsmall
+  obtain ⟨-, hκ, -, -, -, -, -⟩ := C.le_of_cube_mul_ε_mul_sq_le ha hs hsmall
   have h1 := C.ρ_le_chebyshev ha hs hsmall hj
   have h2 := pow_le_of_cgKStar_le (by linarith : 0 ≤ a' / a) hε hδ hkj
   set s := Real.sqrt (2 * (a' / a) + 1) with hsdef
@@ -1242,7 +1289,7 @@ theorem norm_sub_mulVec_x_le_of_cgKStar_le {a a' : ℝ} (ha : 0 < a)
   have h2 := C.ρ_le_of_cgKStar_le ha hs hsmall hε one_pos hk le_rfl
   have h3 := C.norm_sub_mulVec_x_sub_r_le_energy ha hs hsmall hx
   have hB := C.acc_norm_b_le ha hs hsmall hx
-  have ha' : 0 ≤ a' := ha.le.trans (C.acc_le hs)
+  have ha' : 0 ≤ a' := ha.le.trans (C.le_of_spectrum_subset_Icc hs)
   have hM : ‖WithLp.toLp 2 xs‖ ≤
       ‖WithLp.toLp 2 xs‖ + Real.sqrt (quadForm C.A xs) / Real.sqrt a := by
     have : 0 ≤ Real.sqrt (quadForm C.A xs) / Real.sqrt a := by positivity
@@ -1271,12 +1318,12 @@ theorem norm_sub_mulVec_x_le_norm_sol_of_cgKStar_le {a a' : ℝ} (ha : 0 < a)
     (hε : 0 < C.ε) {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) (hk : cgKStar (a' / a) C.ε 1 ≤ k) :
     ‖WithLp.toLp 2 (C.b - C.A *ᵥ C.x k)‖ ≤
       (22 * k + 8) * C.ε * Real.sqrt (a' / a) * a' * ‖WithLp.toLp 2 xs‖ := by
-  obtain ⟨-, hκ, -, -, -, -, -⟩ := C.acc_small ha hs hsmall
+  obtain ⟨-, hκ, -, -, -, -, -⟩ := C.le_of_cube_mul_ε_mul_sq_le ha hs hsmall
   have h1 := C.acc_norm_true_le k
   have h2 := C.ρ_le_of_cgKStar_le ha hs hsmall hε one_pos hk le_rfl
   have h3 := C.norm_sub_mulVec_x_sub_r_le_norm_sol ha hs hsmall hx
   have hB := C.acc_norm_b_le ha hs hsmall hx
-  have ha' : 0 ≤ a' := ha.le.trans (C.acc_le hs)
+  have ha' : 0 ≤ a' := ha.le.trans (C.le_of_spectrum_subset_Icc hs)
   have hs1 : 1 ≤ Real.sqrt (a' / a) := by rw [Real.one_le_sqrt]; exact hκ
   have h4 : 8 * 1 * C.ε * ‖WithLp.toLp 2 C.b‖ ≤
       8 * C.ε * Real.sqrt (a' / a) * a' * ‖WithLp.toLp 2 xs‖ := by
@@ -1301,7 +1348,7 @@ theorem norm_sub_mulVec_x_le_norm_b_of_cgKStar_le {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a') (hsmall : (k : ℝ) ^ 3 * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
     (hε : 0 < C.ε) (hk : cgKStar (a' / a) C.ε 1 ≤ k) :
     ‖WithLp.toLp 2 (C.b - C.A *ᵥ C.x k)‖ ≤ (12 * k + 8) * C.ε * (a' / a) * ‖WithLp.toLp 2 C.b‖ := by
-  obtain ⟨-, hκ, -, -, -, -, -⟩ := C.acc_small ha hs hsmall
+  obtain ⟨-, hκ, -, -, -, -, -⟩ := C.le_of_cube_mul_ε_mul_sq_le ha hs hsmall
   have h1 := C.acc_norm_true_le k
   have h2 := C.ρ_le_of_cgKStar_le ha hs hsmall hε one_pos hk le_rfl
   have h3 := C.norm_sub_mulVec_x_sub_r_le_norm_b ha hs hsmall le_rfl
@@ -1365,7 +1412,7 @@ theorem norm_sub_mulVec_x_cgKStar_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum �
       (11 / 2 * (Real.sqrt (2 * (a' / a) + 1) + 1) *
           Real.log (Real.sqrt (2 * (a' / a) + 1) / (4 * 1 * C.ε)) + 19) * C.ε * a' *
         (‖WithLp.toLp 2 xs‖ + Real.sqrt (quadForm C.A xs) / Real.sqrt a) := by
-  have haa' := C.acc_le hs
+  have haa' := C.le_of_spectrum_subset_Icc hs
   have ha' : 0 ≤ a' := ha.le.trans haa'
   have hκ0 : 0 ≤ a' / a := div_nonneg ha' ha.le
   have hε1 := C.ε_le

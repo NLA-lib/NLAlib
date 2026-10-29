@@ -28,18 +28,12 @@ $$\bigl\lvert E_j^2 - \|\tilde{\mathbf{x}}_\star - \tilde{\mathbf{x}}_j\|_{\tild
 \bigr\rvert \le 10^5\,k^3\varepsilon\kappa^2\,u .$$
 With $\nu_{0,j} = \|\mathbf{b}\|^2(\mathbf{T}_j^{-1})_{00}$, $E_j^2$ is the Gauss quadrature
 error $\|\mathbf{x}_\star\|_{\mathbf{A}}^2 - \|\mathbf{b}\|^2(\mathbf{T}_j^{-1})_{00}$ of the
-computed tridiagonal matrix up to $200k^2\varepsilon\kappa u$ [MeurantStrakos2006, §5.3].
+computed tridiagonal matrix up to $200k^2\varepsilon\kappa u$ (cf. [MeurantStrakos2006, (3.17)]).
 
-The proof is an exact one-step identity
-$E_j^2 - E_{j+1}^2 = \gamma_j\rho_j^2 + 2\gamma_j(\mathbf{p}_j^{\mathsf{T}}\mathbf{r}_j - \rho_j^2)
-- (\gamma_j^2\mathbf{p}_j^{\mathsf{T}}\mathbf{A}\mathbf{p}_j - \gamma_j\rho_j^2)
-+ 2\gamma_j\mathbf{p}_j^{\mathsf{T}}\mathbf{g}_j + 2\mathbf{e}^{x\mathsf{T}}_j\mathbf{A}\mathbf{w}_j
-- \|\mathbf{e}^x_j\|_{\mathbf{A}}^2$, $\mathbf{w}_j = \mathbf{x}_\star - \mathbf{x}_j -
-\gamma_j\mathbf{p}_j$, whose first two error terms are relative to $\gamma_j\rho_j^2$ (line search
-defect and curvature error) and whose last three are additive (residual gap, iterate update),
-bounded with the a priori results of `NLAlib.CGRun.quadForm_sub_x_le`,
-`NLAlib.CGRun.norm_x_le`, `NLAlib.CGRun.γ_mul_norm_p_le` and
-`NLAlib.CGRun.norm_sub_mulVec_x_sub_r_le_norm_b`; then a sum over the steps.
+The proof is the exact one-step identity
+`NLAlib.CGRun.quadForm_sub_x_sub_quadForm_sub_x_succ_eq`, whose error terms are relative to
+$\gamma_j\rho_j^2$ (line search defect, curvature error) or additive (residual gap, iterate
+update; bounded with the a priori results of `CGAccuracy.lean`), summed over the steps.
 
 Research branch `research/cg-error-tracking`. Design: `docs/design/research/Krylov-CGRounding.md`
 (§9.4). Constants are unoptimised.
@@ -51,8 +45,7 @@ Research branch `research/cg-error-tracking`. Design: `docs/design/research/Kryl
   `NLAlib.CGRun.abs_γ_sq_mul_dotProduct_mulVec_sub_le`: its relative error terms.
 * `NLAlib.CGRun.abs_quadForm_sub_x_sub_quadForm_sub_x_succ_sub_le`: one step, two-sided.
 * `NLAlib.CGRun.abs_quadForm_sub_x_sub_quadForm_sub_x_add_sub_sum_le`,
-  `NLAlib.CGRun.abs_quadForm_sub_x_sub_quadForm_sub_x_add_sub_sum_le_sq`: $d$ steps, the
-  estimator.
+  `NLAlib.CGRun.abs_quadForm_sub_x_sub_quadForm_sub_x_add_sub_sum_le_sq`: $d$ steps.
 * `NLAlib.CGRun.abs_quadForm_sub_x_sub_sub_sum_le`,
   `NLAlib.CGRun.abs_quadForm_sub_x_sub_sub_sum_le_quadForm`,
   `NLAlib.CGRun.abs_quadForm_sub_x_succ_sub_sub_inv_cgTridiagonal_le`: the error itself, against
@@ -152,14 +145,6 @@ private theorem trk_small {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ S
     nlinarith
   exact ⟨haa', hκ, hspec, he, h1, h2, h22⟩
 
-private theorem trk_εκ {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 3 * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) : C.ε * (a' / a) ≤ 1 / 10 ^ 5 := by
-  obtain ⟨-, hκ, -, -, hkεκ, -, -⟩ := C.trk_small ha hs hsmall
-  have h1k : (1 : ℝ) ≤ k := by exact_mod_cast C.k_pos
-  have := mul_le_mul_of_nonneg_right h1k (by have := C.ε_nonneg; positivity :
-    0 ≤ C.ε * (a' / a))
-  nlinarith
-
 /-- **The residual against the energy** for the matrix of the run:
 $\|\mathbf{A}\mathbf{e}\|^2 \le a'\,\mathbf{e}^{\mathsf{T}}\mathbf{A}\mathbf{e}$
 (Cauchy–Schwarz for the form of $\mathbf{A}$). -/
@@ -233,11 +218,6 @@ private theorem trk_quadForm_sol_ge {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ
   rw [div_mul_eq_mul_div]
   exact div_le_div_of_nonneg_right h ha.le
 
-private theorem trk_norm_sq_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (v : Fin n → ℝ) : ‖WithLp.toLp 2 v‖ ^ 2 ≤ quadForm C.A v / a := by
-  rw [le_div_iff₀ ha, mul_comm]
-  exact (C.trk_quadForm_bounds hs v).1
-
 /-- The smallness of step $j \le k$ under (H). -/
 private theorem trk_small_j {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
     (hsmall : (k : ℝ) ^ 3 * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) {j : ℕ} (hj : j ≤ k) :
@@ -260,6 +240,26 @@ private theorem trk_small_j {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆
 
 /-! ### One step -/
 
+/-- The energy of $\mathbf{x}_\star - \mathbf{x}_j - \gamma_j\mathbf{p}_j$, expanded. -/
+private theorem trk_quadForm_w_eq {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) (j : ℕ) :
+    quadForm C.A (xs - C.x j - C.γ j • C.p j) = quadForm C.A (xs - C.x j) -
+      2 * C.γ j * (C.p j ⬝ᵥ C.r j) - 2 * C.γ j * (C.p j ⬝ᵥ (C.b - C.A *ᵥ C.x j - C.r j)) +
+        C.γ j ^ 2 * (C.p j ⬝ᵥ (C.A *ᵥ C.p j)) := by
+  set e := xs - C.x j with he
+  have hpAe : C.p j ⬝ᵥ (C.A *ᵥ e) =
+      C.p j ⬝ᵥ C.r j + C.p j ⬝ᵥ (C.b - C.A *ᵥ C.x j - C.r j) := by
+    rw [← dotProduct_add, he, Matrix.mulVec_sub, hx]
+    congr 1
+    abel
+  have hexp : (e - C.γ j • C.p j) ⬝ᵥ (C.A *ᵥ (e - C.γ j • C.p j)) = e ⬝ᵥ (C.A *ᵥ e) -
+      2 * C.γ j * (C.p j ⬝ᵥ (C.A *ᵥ e)) + C.γ j ^ 2 * (C.p j ⬝ᵥ (C.A *ᵥ C.p j)) := by
+    simp only [Matrix.mulVec_sub, Matrix.mulVec_smul, sub_dotProduct, dotProduct_sub,
+      smul_dotProduct, dotProduct_smul, smul_eq_mul]
+    rw [C.trk_dotProduct_mulVec_comm e (C.p j)]
+    ring
+  rw [C.trk_quadForm_eq, C.trk_quadForm_eq, hexp, hpAe]
+  ring
+
 /-- **The exact one-step identity for the computed error**: for $\mathbf{A}\mathbf{x}_\star =
 \mathbf{b}$ and $j < k$, with the gap $\mathbf{g}_j = \mathbf{b} - \mathbf{A}\mathbf{x}_j -
 \mathbf{r}_j$ and $\mathbf{w}_j = \mathbf{x}_\star - \mathbf{x}_j - \gamma_j\mathbf{p}_j$,
@@ -279,31 +279,18 @@ theorem quadForm_sub_x_sub_quadForm_sub_x_succ_eq {xs : Fin n → ℝ} (hx : C.A
         (C.γ j ^ 2 * (C.p j ⬝ᵥ (C.A *ᵥ C.p j)) - C.γ j * C.ρ j ^ 2) +
         2 * C.γ j * (C.p j ⬝ᵥ (C.b - C.A *ᵥ C.x j - C.r j)) +
         2 * (C.ex j ⬝ᵥ (C.A *ᵥ (xs - C.x j - C.γ j • C.p j))) - quadForm C.A (C.ex j) := by
-  set e := xs - C.x j with he
-  set w := e - C.γ j • C.p j with hw
+  have hw := C.trk_quadForm_w_eq hx j
+  set w := xs - C.x j - C.γ j • C.p j with hwdef
   set v := C.ex j
   have hxe : xs - C.x (j + 1) = w - v := by
-    rw [C.x_succ j hj, hw, he]
+    rw [C.x_succ j hj, hwdef]
     abel
-  have hAe : C.A *ᵥ e = C.r j + (C.b - C.A *ᵥ C.x j - C.r j) := by
-    rw [he, Matrix.mulVec_sub, hx]
-    abel
-  have hexp : w ⬝ᵥ (C.A *ᵥ w) = e ⬝ᵥ (C.A *ᵥ e) - 2 * C.γ j * (C.p j ⬝ᵥ (C.A *ᵥ e)) +
-      C.γ j ^ 2 * (C.p j ⬝ᵥ (C.A *ᵥ C.p j)) := by
-    rw [hw]
-    simp only [Matrix.mulVec_sub, Matrix.mulVec_smul, sub_dotProduct, dotProduct_sub,
-      smul_dotProduct, dotProduct_smul, smul_eq_mul]
-    rw [C.trk_dotProduct_mulVec_comm e (C.p j)]
-    ring
-  have hexp2 : (w - v) ⬝ᵥ (C.A *ᵥ (w - v)) = w ⬝ᵥ (C.A *ᵥ w) - 2 * (v ⬝ᵥ (C.A *ᵥ w)) +
-      v ⬝ᵥ (C.A *ᵥ v) := by
-    simp only [Matrix.mulVec_sub, sub_dotProduct, dotProduct_sub]
+  have hexp2 : quadForm C.A (w - v) = quadForm C.A w - 2 * (v ⬝ᵥ (C.A *ᵥ w)) +
+      quadForm C.A v := by
+    simp only [C.trk_quadForm_eq, Matrix.mulVec_sub, sub_dotProduct, dotProduct_sub]
     rw [C.trk_dotProduct_mulVec_comm w v]
     ring
-  have hpAe : C.p j ⬝ᵥ (C.A *ᵥ e) =
-      C.p j ⬝ᵥ C.r j + C.p j ⬝ᵥ (C.b - C.A *ᵥ C.x j - C.r j) := by
-    rw [hAe, dotProduct_add]
-  rw [hxe, C.trk_quadForm_eq, C.trk_quadForm_eq, C.trk_quadForm_eq, hexp2, hexp, hpAe]
+  rw [hxe, hexp2, hw]
   ring
 
 /-- **The line search defect, relative**: under (H), for $j < k$,
@@ -332,7 +319,8 @@ theorem abs_p_dotProduct_r_sub_sq_le {a a' : ℝ} (ha : 0 < a)
   rcases j with _ | i
   · rw [C.p_zero, ← C.r_zero, ρ, EuclideanSpace.norm_toLp_sq_eq_dotProduct_self, sub_self,
       abs_zero]
-    exact mul_nonneg (mul_nonneg (by positivity) (by linarith)) (Finset.sum_nonneg fun i _ => mul_self_nonneg _)
+    exact mul_nonneg (mul_nonneg (by positivity) (by linarith))
+      (Finset.sum_nonneg fun i _ => mul_self_nonneg _)
   · have hi : i < k := by omega
     have hτ := C.abs_p_dotProduct_r_succ_le hP hK hi
     obtain ⟨hδ0, hδ1, -⟩ := C.δ_bounds hi
@@ -393,22 +381,15 @@ theorem abs_p_dotProduct_r_sub_sq_le {a a' : ℝ} (ha : 0 < a)
           |C.δ i * (C.p i ⬝ᵥ C.r (i + 1))| + |C.ep i ⬝ᵥ C.r (i + 1)| := abs_add_le _ _
       _ ≤ 26 * k * C.ε * κ * ρ1 ^ 2 := by nlinarith
 
-/-- **The curvature error, relative**: under (H), for $j < k$,
-$\lvert\gamma_j^2\mathbf{p}_j^{\mathsf{T}}\mathbf{A}\mathbf{p}_j - \gamma_j\|\mathbf{r}_j\|^2\rvert
-\le 6\,\varepsilon\kappa\,\gamma_j\|\mathbf{r}_j\|^2$. The two-sided form of
-`NLAlib.CGRun.γ_sq_mul_dotProduct_mulVec_le` with the $\varepsilon$-dependence kept.
-Proof: $\gamma_j\mu_j = \|\mathbf{r}_j\|^2(1 + \theta_j)(1 + \eta^\gamma_j)$ and
-$\lvert\mu_j - \mathbf{p}_j^{\mathsf{T}}\mathbf{A}\mathbf{p}_j\rvert \le
-3\varepsilon\kappa\,\mathbf{p}_j^{\mathsf{T}}\mathbf{A}\mathbf{p}_j$. Difficulty: easy. -/
-theorem abs_γ_sq_mul_dotProduct_mulVec_sub_le {a a' : ℝ} (ha : 0 < a)
-    (hs : spectrum ℝ C.A ⊆ Set.Icc a a') (hsmall : (k : ℝ) ^ 3 * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
-    {j : ℕ} (hj : j < k) :
-    |C.γ j ^ 2 * (C.p j ⬝ᵥ (C.A *ᵥ C.p j)) - C.γ j * C.ρ j ^ 2| ≤
-      6 * C.ε * (a' / a) * (C.γ j * C.ρ j ^ 2) := by
+/-- The curvature error: $\mu_j = \mathbf{p}_j^{\mathsf{T}}\mathbf{A}\mathbf{p}_j + t_j$ with
+$\lvert t_j\rvert \le 3\varepsilon\kappa\,\mathbf{p}_j^{\mathsf{T}}\mathbf{A}\mathbf{p}_j$. -/
+private theorem trk_curvature {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
+    (hsmall : (k : ℝ) ^ 3 * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) {j : ℕ} (hj : j < k) :
+    0 ≤ C.p j ⬝ᵥ (C.A *ᵥ C.p j) ∧
+      C.μ j = C.p j ⬝ᵥ (C.A *ᵥ C.p j) + (C.p j ⬝ᵥ C.es j + C.eμ j) ∧
+      |C.p j ⬝ᵥ C.es j + C.eμ j| ≤ 3 * (C.ε * (a' / a)) * (C.p j ⬝ᵥ (C.A *ᵥ C.p j)) := by
   obtain ⟨haa', hκ, hspec, hε5, -, -, -⟩ := C.trk_small ha hs hsmall
   have hε0 := C.ε_nonneg
-  have hγ := C.γ_pos hj
-  have hG2 := C.γ_sq_mul_dotProduct_mulVec_le ha hs hsmall hj
   set N := ‖WithLp.toLp 2 (C.p j)‖ with hN
   have hNn : 0 ≤ N := norm_nonneg _
   set P := C.p j ⬝ᵥ (C.A *ᵥ C.p j) with hPdef
@@ -419,7 +400,6 @@ theorem abs_γ_sq_mul_dotProduct_mulVec_sub_le {a a' : ℝ} (ha : 0 < a)
   have hμ : C.μ j = P + (C.p j ⬝ᵥ C.es j + C.eμ j) := by
     rw [C.μ_eq j hj, C.s_eq j hj, dotProduct_add]
     ring
-  set t := C.p j ⬝ᵥ C.es j + C.eμ j with ht
   have h1 : |C.p j ⬝ᵥ C.es j| ≤ C.ε * a' * N ^ 2 := by
     refine (EuclideanSpace.abs_dotProduct_le_norm _ _).trans ?_
     have := C.norm_es_le j hj
@@ -441,10 +421,31 @@ theorem abs_γ_sq_mul_dotProduct_mulVec_sub_le {a a' : ℝ} (ha : 0 < a)
     have := mul_le_mul_of_nonneg_left hP0 (by linarith : 0 ≤ a' / a)
     calc a' * N ^ 2 = a' / a * (a * N ^ 2) := by field_simp
       _ ≤ _ := this
-  have htP : |t| ≤ 3 * (C.ε * (a' / a)) * P := by
+  have htP : |C.p j ⬝ᵥ C.es j + C.eμ j| ≤ 3 * (C.ε * (a' / a)) * P := by
     have h4 : C.ε * (a' * N ^ 2) ≤ C.ε * (a' / a * P) := mul_le_mul_of_nonneg_left h3 hε0
-    calc |t| ≤ |C.p j ⬝ᵥ C.es j| + |C.eμ j| := abs_add_le _ _
+    calc |C.p j ⬝ᵥ C.es j + C.eμ j| ≤ |C.p j ⬝ᵥ C.es j| + |C.eμ j| := abs_add_le _ _
       _ ≤ 3 * (C.ε * (a' / a)) * P := by nlinarith
+  exact ⟨hP0', hμ, htP⟩
+
+/-- **The curvature error, relative**: under (H), for $j < k$,
+$\lvert\gamma_j^2\mathbf{p}_j^{\mathsf{T}}\mathbf{A}\mathbf{p}_j - \gamma_j\|\mathbf{r}_j\|^2\rvert
+\le 6\,\varepsilon\kappa\,\gamma_j\|\mathbf{r}_j\|^2$. The two-sided form of
+`NLAlib.CGRun.γ_sq_mul_dotProduct_mulVec_le` with the $\varepsilon$-dependence kept.
+Proof: $\gamma_j\mu_j = \|\mathbf{r}_j\|^2(1 + \theta_j)(1 + \eta^\gamma_j)$ and
+$\lvert\mu_j - \mathbf{p}_j^{\mathsf{T}}\mathbf{A}\mathbf{p}_j\rvert \le
+3\varepsilon\kappa\,\mathbf{p}_j^{\mathsf{T}}\mathbf{A}\mathbf{p}_j$. Difficulty: easy. -/
+theorem abs_γ_sq_mul_dotProduct_mulVec_sub_le {a a' : ℝ} (ha : 0 < a)
+    (hs : spectrum ℝ C.A ⊆ Set.Icc a a') (hsmall : (k : ℝ) ^ 3 * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    {j : ℕ} (hj : j < k) :
+    |C.γ j ^ 2 * (C.p j ⬝ᵥ (C.A *ᵥ C.p j)) - C.γ j * C.ρ j ^ 2| ≤
+      6 * C.ε * (a' / a) * (C.γ j * C.ρ j ^ 2) := by
+  obtain ⟨haa', hκ, hspec, hε5, -, -, -⟩ := C.trk_small ha hs hsmall
+  have hε0 := C.ε_nonneg
+  have hγ := C.γ_pos hj
+  have hG2 := C.γ_sq_mul_dotProduct_mulVec_le ha hs hsmall hj
+  obtain ⟨hP0', hμ, htP⟩ := C.trk_curvature ha hs hsmall hj
+  set P := C.p j ⬝ᵥ (C.A *ᵥ C.p j) with hPdef
+  set t := C.p j ⬝ᵥ C.es j + C.eμ j with ht
   have hgm := C.γ_mul_μ hj
   rw [C.ν_eq' hj.le, hμ] at hgm
   have hθ := abs_le.mp (C.abs_θ_le j hj.le)
@@ -510,7 +511,6 @@ private theorem trk_gap_term {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A �
   have hγp := C.γ_mul_norm_p_le ha hs hsmall hj
   set g := C.b - C.A *ᵥ C.x j - C.r j
   set B := ‖WithLp.toLp 2 C.b‖
-  have hB0 : 0 ≤ B := norm_nonneg _
   have hκ0 : 0 ≤ a' / a := by linarith
   rw [abs_mul, abs_of_pos (by positivity : (0 : ℝ) < 2 * C.γ j)]
   have h1 : |C.p j ⬝ᵥ g| ≤ ‖WithLp.toLp 2 (C.p j)‖ * ‖WithLp.toLp 2 g‖ :=
@@ -550,19 +550,7 @@ private theorem trk_quadForm_w_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C
         (Finset.mem_range.mpr hj)
     have : 2 * ‖WithLp.toLp 2 C.b‖ ^ 2 / a = 2 * u := by rw [hu]; ring
     linarith
-  have hexp : (e - C.γ j • C.p j) ⬝ᵥ (C.A *ᵥ (e - C.γ j • C.p j)) = e ⬝ᵥ (C.A *ᵥ e) -
-      2 * C.γ j * (C.p j ⬝ᵥ C.r j) - 2 * C.γ j * (C.p j ⬝ᵥ g) +
-        C.γ j ^ 2 * (C.p j ⬝ᵥ (C.A *ᵥ C.p j)) := by
-    have hpAe : C.p j ⬝ᵥ (C.A *ᵥ e) = C.p j ⬝ᵥ C.r j + C.p j ⬝ᵥ g := by
-      have hAe : C.A *ᵥ e = C.r j + g := by
-        rw [he, hg, Matrix.mulVec_sub, hx]
-        abel
-      rw [hAe, dotProduct_add]
-    simp only [Matrix.mulVec_sub, Matrix.mulVec_smul, sub_dotProduct, dotProduct_sub,
-      smul_dotProduct, dotProduct_smul, smul_eq_mul]
-    rw [C.trk_dotProduct_mulVec_comm e (C.p j), hpAe]
-    ring
-  rw [C.trk_quadForm_eq, hexp, ← C.trk_quadForm_eq]
+  rw [C.trk_quadForm_w_eq hx j]
   have h1 : 0 ≤ 2 * C.γ j * (C.p j ⬝ᵥ C.r j) := by
     have : 0 ≤ C.p j ⬝ᵥ C.r j := le_trans (by positivity) hG1
     positivity
@@ -759,7 +747,42 @@ theorem abs_quadForm_sub_x_sub_quadForm_sub_x_add_sub_sum_le {a a' : ℝ} (ha : 
         ∑ i ∈ Finset.Ico j (j + d), C.γ i * C.ρ i ^ 2| ≤
       60 * k * C.ε * (a' / a) * ∑ i ∈ Finset.Ico j (j + d), C.γ i * C.ρ i ^ 2 +
         (36 * (j + d) + 16) * d * C.ε * (a' / a) * (‖WithLp.toLp 2 C.b‖ ^ 2 / a) := by
-  sorry
+  obtain ⟨-, hκ, -, -, -, -, -⟩ := C.trk_small ha hs hsmall
+  have hε0 := C.ε_nonneg
+  set κ := a' / a with hκdef
+  set u := ‖WithLp.toLp 2 C.b‖ ^ 2 / a with hu
+  have hκ0 : 0 ≤ κ := by linarith
+  have hu0 : 0 ≤ u := by positivity
+  have hT : 0 ≤ C.ε * κ * u := by positivity
+  induction d with
+  | zero => simp
+  | succ d ih =>
+    have hjd' : j + d < k := by omega
+    have h1 := ih (by omega)
+    have h2 := C.abs_quadForm_sub_x_sub_quadForm_sub_x_succ_sub_le ha hs hsmall hx hjd'
+    rw [← hκdef, ← hu] at h2
+    rw [← add_assoc, Finset.sum_Ico_succ_top (by omega)]
+    set S := ∑ i ∈ Finset.Ico j (j + d), C.γ i * C.ρ i ^ 2
+    set Q0 := quadForm C.A (xs - C.x j)
+    set Q1 := quadForm C.A (xs - C.x (j + d))
+    set Q2 := quadForm C.A (xs - C.x (j + d + 1))
+    set t := C.γ (j + d) * C.ρ (j + d) ^ 2
+    have e : Q0 - Q2 - (S + t) = (Q0 - Q1 - S) + (Q1 - Q2 - t) := by ring
+    rw [e]
+    refine (abs_add_le _ _).trans ?_
+    have hd : (0 : ℝ) ≤ d := d.cast_nonneg
+    have hj0 : (0 : ℝ) ≤ j := j.cast_nonneg
+    have h3 : (36 * ((j : ℝ) + d) + 16) * d * C.ε * κ * u + (36 * ((j + d : ℕ) : ℝ) + 16) *
+        C.ε * κ * u ≤
+          (36 * ((j : ℝ) + ((d + 1 : ℕ) : ℝ)) + 16) * ((d + 1 : ℕ) : ℝ) * C.ε * κ * u := by
+      push_cast
+      have : (36 * ((j : ℝ) + d) + 16) * d * C.ε * κ * u + (36 * ((j : ℝ) + d) + 16) *
+          C.ε * κ * u + 36 * (d + 1) * (C.ε * κ * u) =
+          (36 * ((j : ℝ) + (d + 1)) + 16) * (d + 1) * C.ε * κ * u := by ring
+      nlinarith
+    have e2 : 60 * (k : ℝ) * C.ε * κ * (S + t) = 60 * (k : ℝ) * C.ε * κ * S +
+        60 * (k : ℝ) * C.ε * κ * t := by ring
+    linarith
 
 /-- **The computed error decrement against the estimator, additive form**: under (H), for
 $\mathbf{A}\mathbf{x}_\star = \mathbf{b}$ and $j + d \le k$,
@@ -773,7 +796,46 @@ theorem abs_quadForm_sub_x_sub_quadForm_sub_x_add_sub_sum_le_sq {a a' : ℝ} (ha
     |quadForm C.A (xs - C.x j) - quadForm C.A (xs - C.x (j + d)) -
         ∑ i ∈ Finset.Ico j (j + d), C.γ i * C.ρ i ^ 2| ≤
       200 * k ^ 2 * C.ε * (a' / a) * (‖WithLp.toLp 2 C.b‖ ^ 2 / a) := by
-  sorry
+  obtain ⟨-, hκ, -, -, -, -, -⟩ := C.trk_small ha hs hsmall
+  have hε0 := C.ε_nonneg
+  have h := C.abs_quadForm_sub_x_sub_quadForm_sub_x_add_sub_sum_le ha hs hsmall hx hjd
+  have hsum := C.sum_γ_mul_ρ_sq_le ha hs hsmall
+  set κ := a' / a with hκdef
+  set u := ‖WithLp.toLp 2 C.b‖ ^ 2 / a with hu
+  have hκ0 : 0 ≤ κ := by linarith
+  have hu0 : 0 ≤ u := by positivity
+  have hT : 0 ≤ C.ε * κ * u := by positivity
+  have hS : ∑ i ∈ Finset.Ico j (j + d), C.γ i * C.ρ i ^ 2 ≤ 2 * u := by
+    refine le_trans (Finset.sum_le_sum_of_subset_of_nonneg ?_ ?_) (hsum.trans (le_of_eq ?_))
+    · intro i hi
+      simp only [Finset.mem_Ico, Finset.mem_range] at hi ⊢
+      omega
+    · intro i hi _
+      exact mul_nonneg (C.γ_pos (by simp only [Finset.mem_range] at hi; omega)).le (sq_nonneg _)
+    · rw [hu]; ring
+  have hk1 : (1 : ℝ) ≤ k := by exact_mod_cast C.k_pos
+  have hjdk : (j : ℝ) + d ≤ k := by exact_mod_cast hjd
+  have hdk : (d : ℝ) ≤ k := by linarith [(j.cast_nonneg : (0 : ℝ) ≤ j)]
+  have hd0 : (0 : ℝ) ≤ d := d.cast_nonneg
+  have h1 : 60 * (k : ℝ) * C.ε * κ * ∑ i ∈ Finset.Ico j (j + d), C.γ i * C.ρ i ^ 2 ≤
+      120 * (k : ℝ) * (C.ε * κ * u) := by
+    have := mul_le_mul_of_nonneg_left hS (by positivity : 0 ≤ 60 * (k : ℝ) * C.ε * κ)
+    linarith
+  have h2 : (36 * ((j : ℝ) + d) + 16) * d ≤ (36 * (k : ℝ) + 16) * k :=
+    mul_le_mul (by linarith) hdk hd0 (by positivity)
+  have h3 : (36 * ((j : ℝ) + d) + 16) * d * C.ε * κ * u ≤
+      (36 * (k : ℝ) + 16) * k * (C.ε * κ * u) := by
+    have := mul_le_mul_of_nonneg_right h2 hT
+    linarith
+  have h4 : (k : ℝ) ≤ (k : ℝ) ^ 2 := by nlinarith
+  have h5 : 120 * (k : ℝ) * (C.ε * κ * u) + (36 * (k : ℝ) + 16) * k * (C.ε * κ * u) ≤
+      200 * (k : ℝ) ^ 2 * (C.ε * κ * u) := by
+    have e : 120 * (k : ℝ) * (C.ε * κ * u) + (36 * (k : ℝ) + 16) * k * (C.ε * κ * u) =
+        (36 * (k : ℝ) ^ 2 + 136 * k) * (C.ε * κ * u) := by ring
+    rw [e]
+    exact mul_le_mul_of_nonneg_right (by linarith) hT
+  have e : 200 * (k : ℝ) ^ 2 * C.ε * κ * u = 200 * (k : ℝ) ^ 2 * (C.ε * κ * u) := by ring
+  linarith
 
 /-- **The computed error against the estimator**: under (H), for $\mathbf{A}\mathbf{x}_\star =
 \mathbf{b}$ and $j \le k$,
@@ -789,7 +851,14 @@ theorem abs_quadForm_sub_x_sub_sub_sum_le {a a' : ℝ} (ha : 0 < a)
     {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) {j : ℕ} (hj : j ≤ k) :
     |quadForm C.A (xs - C.x j) - (quadForm C.A xs - ∑ i ∈ Finset.range j, C.γ i * C.ρ i ^ 2)| ≤
       200 * k ^ 2 * C.ε * (a' / a) * (‖WithLp.toLp 2 C.b‖ ^ 2 / a) := by
-  sorry
+  have h := C.abs_quadForm_sub_x_sub_quadForm_sub_x_add_sub_sum_le_sq ha hs hsmall hx
+    (j := 0) (d := j) (by omega)
+  rw [C.x_zero, sub_zero, zero_add, ← Finset.range_eq_Ico] at h
+  have e : quadForm C.A (xs - C.x j) - (quadForm C.A xs - ∑ i ∈ Finset.range j, C.γ i * C.ρ i ^ 2) =
+      -(quadForm C.A xs - quadForm C.A (xs - C.x j) - ∑ i ∈ Finset.range j, C.γ i * C.ρ i ^ 2) := by
+    ring
+  rw [e, abs_neg]
+  exact h
 
 /-- **The computed error against the estimator, relative to the initial error**: under (H), for
 $\mathbf{A}\mathbf{x}_\star = \mathbf{b}$ and $j \le k$,
@@ -803,7 +872,16 @@ theorem abs_quadForm_sub_x_sub_sub_sum_le_quadForm {a a' : ℝ} (ha : 0 < a)
     {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) {j : ℕ} (hj : j ≤ k) :
     |quadForm C.A (xs - C.x j) - (quadForm C.A xs - ∑ i ∈ Finset.range j, C.γ i * C.ρ i ^ 2)| ≤
       200 * k ^ 2 * C.ε * (a' / a) ^ 2 * quadForm C.A xs := by
-  sorry
+  have h := C.abs_quadForm_sub_x_sub_sub_sum_le ha hs hsmall hx hj
+  have hge := C.trk_quadForm_sol_ge ha hs hx
+  obtain ⟨-, hκ, -, -, -, -, -⟩ := C.trk_small ha hs hsmall
+  have hε0 := C.ε_nonneg
+  have h1 : 200 * (k : ℝ) ^ 2 * C.ε * (a' / a) * (‖WithLp.toLp 2 C.b‖ ^ 2 / a) ≤
+      200 * (k : ℝ) ^ 2 * C.ε * (a' / a) * (a' / a * quadForm C.A xs) :=
+    mul_le_mul_of_nonneg_left hge (by have : (0 : ℝ) ≤ a' / a := (by linarith); positivity)
+  have e : 200 * (k : ℝ) ^ 2 * C.ε * (a' / a) * (a' / a * quadForm C.A xs) =
+      200 * k ^ 2 * C.ε * (a' / a) ^ 2 * quadForm C.A xs := by ring
+  linarith
 
 /-- **The computed error is a Gauss quadrature error**: under (H), for $\mathbf{A}\mathbf{x}_\star
 = \mathbf{b}$ and $j + 1 \le k$, with $\mathbf{T}_{j+1}$ = `cgTridiagonal C.γ C.ρ (j + 1)`,
@@ -820,7 +898,13 @@ theorem abs_quadForm_sub_x_succ_sub_sub_inv_cgTridiagonal_le {a a' : ℝ} (ha : 
     |quadForm C.A (xs - C.x (j + 1)) -
         (quadForm C.A xs - ‖WithLp.toLp 2 C.b‖ ^ 2 * (cgTridiagonal C.γ C.ρ (j + 1))⁻¹ 0 0)| ≤
       200 * k ^ 2 * C.ε * (a' / a) * (‖WithLp.toLp 2 C.b‖ ^ 2 / a) := by
-  sorry
+  have h := C.abs_quadForm_sub_x_sub_sub_sum_le ha hs hsmall hx hj
+  have hT := sq_mul_inv_cgTridiagonal_zero_zero (γ := C.γ) (ρ := C.ρ) (k := j)
+    (fun i hi => C.γ_pos (by omega)) (fun i hi => (C.ρ_pos (by omega)).ne')
+  have hρ0 : C.ρ 0 = ‖WithLp.toLp 2 C.b‖ := by rw [ρ, C.r_zero]
+  rw [hρ0] at hT
+  rw [hT]
+  exact h
 
 /-! ### Against exact CG on the backward model -/
 
@@ -846,7 +930,9 @@ theorem abs_quadForm_sub_x_sub_quadForm_sub_x_add_sub_backwardH_le {a a' : ℝ} 
           (quadForm C.backwardH (xs' - cgIterate C.backwardH C.dilatedRhs 0 j) -
             quadForm C.backwardH (xs' - cgIterate C.backwardH C.dilatedRhs 0 (j + d))) +
         (36 * (j + d) + 16) * d * C.ε * (a' / a) * (‖WithLp.toLp 2 C.b‖ ^ 2 / a) := by
-  sorry
+  rw [C.quadForm_backwardH_sub_cgIterate_sub_quadForm_backwardH_sub_cgIterate ha hs hsmall hxs'
+    hjd]
+  exact C.abs_quadForm_sub_x_sub_quadForm_sub_x_add_sub_sum_le ha hs hsmall hx hjd
 
 /-- **The computed error tracks the error of exact CG on the model**: under (H), for
 $\mathbf{A}\mathbf{x}_\star = \mathbf{b}$, $\tilde{\mathbf{H}}\tilde{\mathbf{x}}_\star =
@@ -869,7 +955,44 @@ theorem abs_quadForm_sub_x_sub_quadForm_backwardH_sub_cgIterate_le {a a' : ℝ} 
     |quadForm C.A (xs - C.x j) -
         quadForm C.backwardH (xs' - cgIterate C.backwardH C.dilatedRhs 0 j)| ≤
       10 ^ 5 * k ^ 3 * C.ε * (a' / a) ^ 2 * (‖WithLp.toLp 2 C.b‖ ^ 2 / a) := by
-  sorry
+  obtain ⟨-, hκ, -, -, -, -, -⟩ := C.trk_small ha hs hsmall
+  have hε0 := C.ε_nonneg
+  have h1 := C.abs_quadForm_sub_x_sub_sub_sum_le ha hs hsmall hx hj
+  have h2 := C.abs_quadForm_backwardH_sub_quadForm_le ha hs hsmall hxs' hx
+  have h3 := C.quadForm_backwardH_sub_cgIterate_sub_quadForm_backwardH_sub_cgIterate ha hs hsmall
+    hxs' (j := 0) (d := j) (by omega)
+  rw [cgIterate_zero, sub_zero, zero_add, ← Finset.range_eq_Ico] at h3
+  set κ := a' / a with hκdef
+  set B := ‖WithLp.toLp 2 C.b‖ with hB
+  set u := B ^ 2 / a with hu
+  have hB0 : 0 ≤ B := norm_nonneg _
+  have hκ0 : 0 ≤ κ := by linarith
+  have hu0 : 0 ≤ u := by positivity
+  have ha'κ : a' = κ * a := by rw [hκdef]; field_simp
+  have e2 : 2 * B ^ 2 * (40000 * (k : ℝ) ^ 3 * C.ε * κ * a') / a ^ 2 =
+      80000 * (k : ℝ) ^ 3 * C.ε * κ ^ 2 * u := by
+    rw [hu, ha'κ]
+    field_simp
+    ring
+  rw [e2] at h2
+  have hk1 : (1 : ℝ) ≤ k := by exact_mod_cast C.k_pos
+  have h4 : 200 * (k : ℝ) ^ 2 * C.ε * κ * u ≤ 200 * (k : ℝ) ^ 3 * C.ε * κ ^ 2 * u := by
+    have hk : (k : ℝ) ^ 2 ≤ (k : ℝ) ^ 3 := by nlinarith
+    have hκ2 : κ ≤ κ ^ 2 := by nlinarith
+    have hT : 0 ≤ C.ε * u := by positivity
+    have h5 : (k : ℝ) ^ 2 * κ ≤ (k : ℝ) ^ 3 * κ ^ 2 := mul_le_mul hk hκ2 hκ0 (by positivity)
+    have := mul_le_mul_of_nonneg_left h5 (by positivity : (0 : ℝ) ≤ 200 * (C.ε * u))
+    linarith
+  set Em := quadForm C.backwardH (xs' - cgIterate C.backwardH C.dilatedRhs 0 j)
+  set S := ∑ i ∈ Finset.range j, C.γ i * C.ρ i ^ 2
+  have e : quadForm C.A (xs - C.x j) - Em = (quadForm C.A (xs - C.x j) - (quadForm C.A xs - S)) -
+      (quadForm C.backwardH xs' - quadForm C.A xs) := by
+    rw [show Em = quadForm C.backwardH xs' - S by linarith]
+    ring
+  rw [e]
+  refine (abs_sub _ _).trans ?_
+  have hT : 0 ≤ (k : ℝ) ^ 3 * C.ε * κ ^ 2 * u := by positivity
+  linarith
 
 end CGRun
 

@@ -487,6 +487,18 @@ absolute form, and a "trust until $\|\mathbf e_j\|_A\gg|\xi|$" form (ST02 (10.11
 decision (CG4); (iii) nothing in ER3 is needed by the rest of the chain. The `CGRun` fields for
 $\mathbf x$, $\mathbf e^x$ are already in place, so no refactor.
 
+**Done (2026-10-29, branch `research/cg-error-tracking`, `Krylov/FinitePrecision/CGErrorTracking.lean`,
+all proved).** Shape as proposed, with $\zeta,\xi$ not named as fields: the exact identity
+`quadForm_sub_x_sub_quadForm_sub_x_succ_eq` (terms $2\gamma_j(\mathbf p_j^{\mathsf T}\mathbf r_j-\rho_j^2)$,
+$\gamma_j^2\mathbf p_j^{\mathsf T}\mathbf A\mathbf p_j-\gamma_j\rho_j^2$, $2\gamma_j\mathbf p_j^{\mathsf T}\mathbf g_j$,
+$2\mathbf e^{x\mathsf T}_j\mathbf A\mathbf w_j$, $\|\mathbf e^x_j\|_A^2$); relative terms $26k\varepsilon\kappa\rho_j^2$ and
+$6\varepsilon\kappa\gamma_j\rho_j^2$; one step $|\Delta E^2-\gamma_j\rho_j^2|\le60k\varepsilon\kappa\gamma_j\rho_j^2+(36j+16)\varepsilon\kappa\|\mathbf b\|^2/a$
+(a priori, via `norm_x_le` and the gap bound, so no a posteriori $\xi$ form); $d$ steps
+$|\Delta_{j,d}E^2-\nu_{j,d}|\le60k\varepsilon\kappa\nu_{j,d}+(36(j+d)+16)d\varepsilon\kappa\|\mathbf b\|^2/a\le200k^2\varepsilon\kappa\|\mathbf b\|^2/a$;
+the decrement form against the model (no model distance); Gauss quadrature
+$|E_{j+1}^2-(\|\mathbf x_\star\|_A^2-\|\mathbf b\|^2(\mathbf T_{j+1}^{-1})_{00})|\le200k^2\varepsilon\kappa\|\mathbf b\|^2/a$;
+absolute $|E_j^2-\tilde E_j^2|\le10^5k^3\varepsilon\kappa^2\|\mathbf b\|^2/a$ (model distance dominant).
+
 ## 10. Files, dependency order, size
 
 | # | file (scaffold path = future path, except where noted) | content | sorry | est. lines |

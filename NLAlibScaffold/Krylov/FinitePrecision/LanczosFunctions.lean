@@ -930,7 +930,86 @@ theorem norm_cfc_mulVec_sub_basis_mulVec_le_of_continuousOn {a a' : ℝ} (haa : 
           minimaxError f (Set.Icc (a - L.enlargement) (a' + L.enlargement)) (k - 1) +
         16 * (k : ℝ) ^ 4 * Real.sqrt k * L.ε * specNorm L.H * M /
           (a' - a + 2 * L.enlargement) := by
-  sorry
+  set c := L.enlargement
+  set I := Set.Icc (a - c) (a' + c)
+  set E := minimaxError f I (k - 1)
+  set e₀ : Fin k → ℝ := Pi.single L.firstIndex 1
+  have hc0 : 0 ≤ c := L.enlargement_nonneg
+  have hsub : Set.Icc a a' ⊆ I := Set.Icc_subset_Icc (by linarith) (by linarith)
+  have hw : 0 < a' - a + 2 * c := by linarith
+  have hM0 : 0 ≤ M := (abs_nonneg _).trans (hM a (hsub ⟨le_rfl, haa.le⟩))
+  have hε := L.ε_nonneg
+  have hH := specNorm_nonneg L.H
+  have hT := L.spectrum_tridiagonal_subset_Icc hs
+  obtain ⟨p, hp, hpf⟩ := exists_degree_le_isUniformApproxOn_minimaxError isCompact_Icc hf (k - 1)
+  have hE0 : 0 ≤ E := minimaxError_nonneg _ _ _
+  have hEM : E ≤ M := minimaxError_le_of_isUniformApproxOn (p := 0) (by simp) hM0
+    fun x hx => by simpa only [eval_zero, Real.dist_eq, zero_sub, abs_neg] using hM x hx
+  have hpdeg : p.degree < k :=
+    hp.trans_lt (by exact_mod_cast Nat.sub_one_lt_of_lt L.k_pos)
+  have hfp : ∀ x ∈ I, |f x - p.eval x| ≤ E := fun x hx => by
+    rw [abs_sub_comm, ← Real.dist_eq]
+    exact hpf.apply hx
+  have hpM : Metric.IsUniformApproxOn (fun x => p.eval x) (fun _ => 0) I (M + E) :=
+    fun x hx => by
+      rw [Real.dist_eq, sub_zero]
+      calc |p.eval x| ≤ |f x - p.eval x| + |f x| := by
+            simpa [abs_sub_comm] using abs_sub_le (p.eval x) (f x) 0
+        _ ≤ M + E := by linarith [hfp x hx, hM x hx]
+  -- the three terms
+  have hmid := L.toLanczosData.norm_aeval_mulVec_sub_basis_mulVec_le_of_degree_lt
+    (by linarith : a - c < a' + c) (hs.trans hsub) hT hpdeg hpM
+  rw [show a' + c - (a - c) = a' - a + 2 * c by ring] at hmid
+  have hmid' : ‖WithLp.toLp 2 (aeval L.H p *ᵥ L.v 1 - L.basis *ᵥ (aeval L.tridiagonal p *ᵥ e₀))‖ ≤
+      4 / 3 * (k : ℝ) ^ 3 * (M + E) / (a' - a + 2 * c) * specNorm L.residual := hmid
+  have hres : specNorm L.residual ≤ 6 * k * Real.sqrt k * L.ε * specNorm L.H := by
+    have := L.specNorm_residual_le
+    rwa [lanczosResidualFactor_def] at this
+  have h1 : ‖WithLp.toLp 2 ((cfc f L.H - cfc (fun x => p.eval x) L.H) *ᵥ L.v 1)‖ ≤
+      E * (1 + L.ε / 2) := by
+    refine (norm_toLp_mulVec_le _ _).trans (mul_le_mul ?_ (L.norm_v_le L.k_pos) (norm_nonneg _)
+      hE0)
+    rw [← cfc_sub f _ L.H (L.H.finite_real_spectrum.continuousOn _)
+      (L.H.finite_real_spectrum.continuousOn _)]
+    exact L.isHermitian.specNorm_cfc_le hE0 fun x hx => hfp x (hsub (hs hx))
+  have h3 : ‖WithLp.toLp 2 (L.basis *ᵥ ((cfc f L.tridiagonal -
+      cfc (fun x => p.eval x) L.tridiagonal) *ᵥ e₀))‖ ≤ (1 + L.ε / 2) * Real.sqrt k * E := by
+    refine (norm_toLp_mulVec_le _ _).trans (mul_le_mul ((specNorm_le_frobNorm _).trans
+      L.frobNorm_basis_le) ((norm_toLp_mulVec_le _ _).trans ?_) (norm_nonneg _) (by positivity))
+    rw [LanczosData.norm_toLp_single_one, mul_one, ← cfc_sub f _ L.tridiagonal
+      (L.tridiagonal.finite_real_spectrum.continuousOn _)
+      (L.tridiagonal.finite_real_spectrum.continuousOn _)]
+    exact L.toLanczosData.isHermitian_tridiagonal.specNorm_cfc_le hE0 fun x hx => hfp x (hT hx)
+  have hdec : cfc f L.H *ᵥ L.v 1 - L.basis *ᵥ (cfc f L.tridiagonal *ᵥ e₀) =
+      (cfc f L.H - cfc (fun x => p.eval x) L.H) *ᵥ L.v 1 +
+        (aeval L.H p *ᵥ L.v 1 - L.basis *ᵥ (aeval L.tridiagonal p *ᵥ e₀)) -
+        L.basis *ᵥ ((cfc f L.tridiagonal - cfc (fun x => p.eval x) L.tridiagonal) *ᵥ e₀) := by
+    have hsa : IsSelfAdjoint L.H := L.isHermitian
+    have hsT : IsSelfAdjoint L.tridiagonal := L.toLanczosData.isHermitian_tridiagonal
+    rw [← cfc_polynomial p L.H hsa, ← cfc_polynomial p L.tridiagonal hsT]
+    simp only [Matrix.sub_mulVec, Matrix.mulVec_sub]
+    abel
+  rw [hdec]
+  refine (norm_sub_le_of_le (norm_add_le_of_le h1 hmid') h3).trans ?_
+  -- the arithmetic
+  have hsk : Real.sqrt k ≤ k := by
+    have hk1 : (1 : ℝ) ≤ k := by exact_mod_cast L.k_pos
+    exact (Real.sqrt_le_sqrt (by nlinarith : (k : ℝ) ≤ k ^ 2)).trans_eq
+      (Real.sqrt_sq (by linarith))
+  have hkε := L.k_mul_ε_le
+  have hεs : L.ε * Real.sqrt k ≤ 1 / 100 := by nlinarith
+  have hA : E * (1 + L.ε / 2) + (1 + L.ε / 2) * Real.sqrt k * E ≤ (2 + Real.sqrt k) * E := by
+    nlinarith [L.ε_le, Real.sqrt_nonneg (k : ℝ)]
+  have hB : 4 / 3 * (k : ℝ) ^ 3 * (M + E) / (a' - a + 2 * c) * specNorm L.residual ≤
+      16 * (k : ℝ) ^ 4 * Real.sqrt k * L.ε * specNorm L.H * M / (a' - a + 2 * c) := by
+    rw [div_mul_eq_mul_div]
+    refine div_le_div_of_nonneg_right ?_ hw.le
+    have hX : 0 ≤ (k : ℝ) ^ 3 * (k * Real.sqrt k * L.ε * specNorm L.H) := by positivity
+    calc 4 / 3 * (k : ℝ) ^ 3 * (M + E) * specNorm L.residual
+        ≤ 4 / 3 * (k : ℝ) ^ 3 * (M + E) * (6 * k * Real.sqrt k * L.ε * specNorm L.H) := by
+          gcongr
+      _ ≤ 16 * (k : ℝ) ^ 4 * Real.sqrt k * L.ε * specNorm L.H * M := by nlinarith
+  linarith
 
 end LanczosRun
 

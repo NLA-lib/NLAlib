@@ -564,6 +564,58 @@ theorem abs_dotProduct_cfc_mulVec_sub_cfc_tridiagonal_le_of_isUniformApproxOn_of
 
 /-! ### Lanczos-FA through the Chebyshev recurrence -/
 
+/-- The computed recurrence under the affine change of variable
+$\hat{\mathbf{H}} = \sigma\mathbf{H} - \tau\mathbf{I}$:
+$\mathbf{V}_k\hat{\mathbf{T}}_k = \hat{\mathbf{H}}\mathbf{V}_k -
+\sigma(\beta_k\mathbf{v}_{k+1}\mathbf{e}_{k-1}^{\mathsf{T}} + \mathbf{F}_k)$. -/
+private theorem basis_mulVec_aeval_mulVec (σ τ : ℝ) (y : Fin k → ℝ) :
+    D.basis *ᵥ (aeval D.tridiagonal (C σ * X - C τ) *ᵥ y) =
+      aeval D.H (C σ * X - C τ) *ᵥ (D.basis *ᵥ y) -
+        σ • ((Matrix.vecMulVec (D.β k • D.v (k + 1)) (Pi.single D.lastIndex 1) +
+          D.residual) *ᵥ y) := by
+  have hM : D.basis * aeval D.tridiagonal (C σ * X - C τ) =
+      aeval D.H (C σ * X - C τ) * D.basis -
+        σ • (Matrix.vecMulVec (D.β k • D.v (k + 1)) (Pi.single D.lastIndex 1) + D.residual) := by
+    simp only [map_sub, map_mul, aeval_C, aeval_X, Algebra.algebraMap_eq_smul_one,
+      Matrix.mul_sub, Matrix.sub_mul, Matrix.mul_smul, Matrix.smul_mul, Matrix.mul_one,
+      Matrix.one_mul, D.mul_basis]
+    module
+  rw [Matrix.mulVec_mulVec, hM, Matrix.sub_mulVec, ← Matrix.mulVec_mulVec, Matrix.smul_mulVec]
+
+/-- **The bandwidth of $\mathbf{T}_k$ kills the last coordinate**: for $j + 1 < k$,
+$\mathbf{e}_{k-1}^{\mathsf{T}}\hat T_j(\mathbf{T}_k)\mathbf{e}_0 = 0$. -/
+private theorem aeval_chebyshevOn_mulVec_lastIndex {α β : ℝ} {j : ℕ} (hj : j + 1 < k) :
+    (aeval D.tridiagonal (chebyshevOn α β j) *ᵥ Pi.single D.firstIndex 1) D.lastIndex = 0 := by
+  rw [Matrix.mulVec_single_one, Matrix.col_apply]
+  refine aeval_apply_eq_zero_of_natDegree_add_lt D.isTridiagonal_tridiagonal ?_
+  have h := natDegree_le_of_degree_le (degree_chebyshevOn_le α β j)
+  simp only [firstIndex, lastIndex]
+  omega
+
+/-- $\|U_m(\hat{\mathbf{H}})\mathbf{w}\| \le (m + 1)\|\mathbf{w}\|$ for
+$\operatorname{spec}\mathbf{H} \subseteq [\alpha, \beta]$. -/
+private theorem norm_aeval_U_mulVec_le {ι : Type*} [Fintype ι] [DecidableEq ι]
+    {H : Matrix ι ι ℝ} (hH : H.IsHermitian) {α β : ℝ} (hαβ : α < β)
+    (hs : spectrum ℝ H ⊆ Set.Icc α β) (m : ℕ) (w : ι → ℝ) :
+    ‖WithLp.toLp 2 (aeval (aeval H (C (2 / (β - α)) * X - C ((β + α) / (β - α))))
+      (Chebyshev.U ℝ (m : ℤ)) *ᵥ w)‖ ≤ (m + 1) * ‖WithLp.toLp 2 w‖ := by
+  rw [← aeval_comp]
+  refine (norm_toLp_mulVec_le _ _).trans (mul_le_mul_of_nonneg_right
+    (hH.specNorm_aeval_le _ (by positivity) fun x hx => ?_) (norm_nonneg _))
+  simp only [eval_comp, eval_sub, eval_mul, eval_C, eval_X]
+  exact abs_eval_U_le m (abs_affine_le_one hαβ (hs hx))
+
+/-- $\|\hat T_j(\mathbf{A})\mathbf{w}\| \le \|\mathbf{w}\|$ for
+$\operatorname{spec}\mathbf{A} \subseteq [\alpha, \beta]$. -/
+private theorem norm_aeval_chebyshevOn_mulVec_le {ι : Type*} [Fintype ι] [DecidableEq ι]
+    {H : Matrix ι ι ℝ} (hH : H.IsHermitian) {α β : ℝ} (hαβ : α < β)
+    (hs : spectrum ℝ H ⊆ Set.Icc α β) (j : ℕ) (w : ι → ℝ) :
+    ‖WithLp.toLp 2 (aeval H (chebyshevOn α β j) *ᵥ w)‖ ≤ ‖WithLp.toLp 2 w‖ := by
+  refine (norm_toLp_mulVec_le _ _).trans ?_
+  conv_rhs => rw [← one_mul ‖WithLp.toLp 2 w‖]
+  exact mul_le_mul_of_nonneg_right (hH.specNorm_aeval_le _ zero_le_one fun x hx =>
+    abs_eval_chebyshevOn_le_one hαβ j (hs hx)) (norm_nonneg _)
+
 /-- **The computed recurrence applies Chebyshev polynomials stably** ([DruskinKnizhnerman1991,
 §4]; [MuscoMuscoSidford2018, Lemma 10]; Chen's thesis, Theorem 8.4): for any symmetric
 three-term datum with $\mathbf{H}\mathbf{V}_k = \mathbf{V}_{k+1}\underline{\mathbf{T}}_k +
@@ -585,7 +637,89 @@ theorem norm_aeval_chebyshevOn_mulVec_sub_basis_mulVec_le {α β : ℝ} (hαβ :
     ‖WithLp.toLp 2 (aeval D.H (chebyshevOn α β i) *ᵥ D.v 1 -
       D.basis *ᵥ (aeval D.tridiagonal (chebyshevOn α β i) *ᵥ Pi.single D.firstIndex 1))‖ ≤
       2 * i * (i + 1) / (β - α) * specNorm D.residual := by
-  sorry
+  have hd : 0 < β - α := sub_pos.2 hαβ
+  set σ := 2 / (β - α) with hσ
+  set ℓ : ℝ[X] := C σ * X - C ((β + α) / (β - α)) with hℓ
+  set A := aeval D.H ℓ
+  set e₀ : Fin k → ℝ := Pi.single D.firstIndex 1
+  set E := Matrix.vecMulVec (D.β k • D.v (k + 1)) (Pi.single D.lastIndex (1 : ℝ))
+  set F := D.residual
+  set y : ℕ → Fin k → ℝ := fun j => aeval D.tridiagonal (chebyshevOn α β j) *ᵥ e₀ with hy
+  set d : ℕ → Fin n → ℝ := fun j => aeval D.H (chebyshevOn α β j) *ᵥ D.v 1 - D.basis *ᵥ y j
+    with hd_def
+  have hcheb : ∀ {ι : Type} [Fintype ι] [DecidableEq ι] (M : Matrix ι ι ℝ) (j : ℕ),
+      aeval M (chebyshevOn α β j) = aeval (aeval M ℓ) (Chebyshev.T ℝ (j : ℤ)) :=
+    fun M j => by rw [chebyshevOn, aeval_comp]
+  have hrec : ∀ {ι : Type} [Fintype ι] [DecidableEq ι] (M : Matrix ι ι ℝ) (w : ι → ℝ) (j : ℕ),
+      aeval M (chebyshevOn α β (j + 2)) *ᵥ w = (2 : ℝ) • (aeval M ℓ *ᵥ
+        (aeval M (chebyshevOn α β (j + 1)) *ᵥ w)) - aeval M (chebyshevOn α β j) *ᵥ w := by
+    intro ι _ _ M w j
+    rw [hcheb, hcheb, hcheb, show ((j + 2 : ℕ) : ℤ) = (j : ℤ) + 2 by push_cast; ring,
+      Chebyshev.T_add_two, aeval_two_mul_X_mul_sub_mulVec]
+    push_cast
+    rfl
+  have hV0 : D.basis *ᵥ e₀ = D.v 1 := by
+    rw [Matrix.mulVec_single_one]
+    rfl
+  have hd0 : d 0 = 0 := by
+    simp only [hd_def, hy, hcheb, Nat.cast_zero, Chebyshev.T_zero, map_one, Matrix.one_mulVec,
+      hV0, sub_self]
+  have hE : ∀ j, j + 1 < k → E *ᵥ y j = 0 := fun j hj => by
+    have h0 : y j D.lastIndex = 0 := D.aeval_chebyshevOn_mulVec_lastIndex hj
+    rw [Matrix.vecMulVec_mulVec, single_one_dotProduct, h0, MulOpposite.op_zero, zero_smul]
+  have hFy : ∀ j, ‖WithLp.toLp 2 (F *ᵥ y j)‖ ≤ specNorm F := fun j => by
+    refine (norm_toLp_mulVec_le _ _).trans ?_
+    conv_rhs => rw [← mul_one (specNorm F)]
+    refine mul_le_mul_of_nonneg_left ((norm_aeval_chebyshevOn_mulVec_le D.isHermitian_tridiagonal
+      hαβ hT j e₀).trans (norm_toLp_single_one _).le) (specNorm_nonneg _)
+  -- the residual sequence of the recurrence
+  have hf : ∀ j, j + 1 < k →
+      ‖WithLp.toLp 2 (chebyshevRecurrenceResidual A d j)‖ ≤ 2 * σ * specNorm F := by
+    intro j hj
+    have hσ0 : 0 < σ := div_pos two_pos hd
+    rcases j with _ | j
+    · have hy0 : y 0 = e₀ := by
+        simp only [hy, hcheb, Nat.cast_zero, Chebyshev.T_zero, map_one, Matrix.one_mulVec]
+      have h1 : chebyshevRecurrenceResidual A d 0 = σ • (F *ᵥ y 0) := by
+        have hk := D.basis_mulVec_aeval_mulVec σ ((β + α) / (β - α)) e₀
+        rw [hV0, ← hℓ] at hk
+        have hd1 : d 1 = A *ᵥ D.v 1 - D.basis *ᵥ (aeval D.tridiagonal ℓ *ᵥ e₀) := by
+          simp only [hd_def, hy, hcheb, Nat.cast_one, Chebyshev.T_one, aeval_X, A]
+        have hE0 : E *ᵥ e₀ = 0 := hy0 ▸ hE 0 hj
+        change d 1 = _
+        rw [hd1, hk, Matrix.add_mulVec, hE0, zero_add, hy0]
+        abel
+      rw [h1, WithLp.toLp_smul, norm_smul, Real.norm_eq_abs, abs_of_pos hσ0]
+      nlinarith [hFy 0, specNorm_nonneg F]
+    · have h1 : chebyshevRecurrenceResidual A d (j + 1) = (2 * σ) • (F *ᵥ y (j + 1)) := by
+        have hk := D.basis_mulVec_aeval_mulVec σ ((β + α) / (β - α)) (y (j + 1))
+        rw [← hℓ, Matrix.add_mulVec, hE (j + 1) hj, zero_add] at hk
+        have hy2 : y (j + 2) = (2 : ℝ) • (aeval D.tridiagonal ℓ *ᵥ y (j + 1)) - y j :=
+          hrec D.tridiagonal e₀ j
+        simp only [chebyshevRecurrenceResidual, hd_def, hrec D.H (D.v 1) j, hy2,
+          Matrix.mulVec_sub, Matrix.mulVec_smul, hk]
+        module
+      rw [h1, WithLp.toLp_smul, norm_smul, Real.norm_eq_abs, abs_of_pos (by positivity)]
+      exact mul_le_mul_of_nonneg_left (hFy _) (by positivity)
+  -- the Clenshaw representation and the bounds
+  change ‖WithLp.toLp 2 (d i)‖ ≤ _
+  rw [eq_sum_aeval_U_mulVec_chebyshevRecurrenceResidual A hd0 i, WithLp.toLp_sum]
+  refine (norm_sum_le _ _).trans ?_
+  calc ∑ j ∈ Finset.range i, ‖WithLp.toLp 2 (aeval A (Chebyshev.U ℝ ((i : ℤ) - 1 - j)) *ᵥ
+        chebyshevRecurrenceResidual A d j)‖
+      ≤ ∑ j ∈ Finset.range i, ((i : ℝ) - j) * (2 * σ * specNorm F) := by
+        refine Finset.sum_le_sum fun j hj => ?_
+        rw [Finset.mem_range] at hj
+        rw [show (i : ℤ) - 1 - j = ((i - 1 - j : ℕ) : ℤ) by omega]
+        refine (norm_aeval_U_mulVec_le D.isHermitian hαβ hs _ _).trans ?_
+        rw [show (((i - 1 - j : ℕ) : ℝ) + 1) = (i : ℝ) - j by
+          rw [Nat.cast_sub (by omega), Nat.cast_sub (by omega)]; push_cast; ring]
+        exact mul_le_mul_of_nonneg_left (hf j (by omega)) (by
+          have : (j : ℝ) < i := by exact_mod_cast hj
+          linarith)
+    _ = 2 * i * (i + 1) / (β - α) * specNorm F := by
+        rw [← Finset.sum_mul, sum_range_sub_eq, hσ]
+        field_simp
 
 /-- **The computed recurrence applies bounded polynomials stably** ([MuscoMuscoSidford2018,
 Lemma 9]): for a real polynomial of degree less than $k$ bounded by $M$ on $[\alpha, \beta]$,

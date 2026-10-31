@@ -37,6 +37,7 @@ public import NLAlib.ForMathlib.Algebra.Order.Round
 public import NLAlib.ForMathlib.Algebra.Polynomial.Derivative
 public import NLAlib.ForMathlib.Algebra.Polynomial.Div
 public import NLAlib.ForMathlib.Algebra.Polynomial.Expand
+public import NLAlib.ForMathlib.Algebra.Ring.Idempotent
 public import NLAlib.ForMathlib.Analysis.CStarAlgebra.Matrix
 public import NLAlib.ForMathlib.Analysis.Calculus.BumpFunction.Basic
 public import NLAlib.ForMathlib.Analysis.Calculus.BumpFunction.Convolution

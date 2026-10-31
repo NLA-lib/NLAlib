@@ -18,7 +18,7 @@ and scaled rotations (for a skew-symmetric matrix the scalars vanish, for an ort
 blocks are $\pm 1$ and rotations). A pair of real matrices is reduced by two orthogonal matrices to
 an upper quasi-triangular and an upper triangular matrix.
 
-The three theorems are proved by the same deflation: a real matrix has an invariant subspace of
+The Schur, normal, and QZ forms use the same deflation: a real matrix has an invariant subspace of
 dimension one or two, spanned by the real and imaginary parts of a complex eigenvector, whose
 phase is chosen so that the two parts are orthogonal.
 
@@ -30,6 +30,10 @@ phase is chosen so that the two parts are orthogonal.
 
 * `NLAlib.exists_hasOrthonormalCols_isRealSchurForm`: the real Schur form.
 * `NLAlib.exists_hasOrthonormalCols_isRealSchurForm_of_isStarNormal`: real normal matrices.
+* `NLAlib.exists_hasOrthonormalCols_isRealSchurForm_submatrix_of_isStarNormal`: normal forms
+  on arbitrary finite index types with a supplied enumeration.
+* `NLAlib.exists_hasOrthonormalCols_isRealSchurForm_of_conjTranspose_eq_neg`: skew blocks.
+* `NLAlib.HasOrthonormalCols.exists_isRealSchurForm`: scalar signs and rotation blocks.
 * `NLAlib.exists_hasOrthonormalCols_isUpperQuasiTriangular_isUpperTriangular`: the real QZ
   decomposition.
 -/
@@ -378,6 +382,49 @@ theorem exists_hasOrthonormalCols_isRealSchurForm (A : Matrix (Fin k) (Fin k) �
   obtain ⟨Q, hQ, hT, -⟩ := exists_isRealSchurForm_conjTranspose_mul_mul k A
   exact ⟨Q, Qᴴ * A * Q, hQ, hQ.eq_mul_mul_conjTranspose_iff.mpr rfl, hT⟩
 
+/-- A real normal matrix on any finite index type has an orthogonal real normal form
+in any prescribed enumeration. The one- and two-dimensional blocks are described by
+`IsRealSchurForm`, with skew off-diagonal entries; no sign convention for their coefficients
+is imposed. [HornJohnson2013, Theorem 2.5.8]; the input index type is arbitrary here. -/
+theorem exists_hasOrthonormalCols_isRealSchurForm_submatrix_of_isStarNormal
+    {n : Type*} [Fintype n] [DecidableEq n]
+    {A : Matrix n n ℝ} (hA : IsStarNormal A) (order : Fin k ≃ n) :
+    ∃ Q T : Matrix n n ℝ, HasOrthonormalCols Q ∧ A = Q * T * Qᴴ ∧
+      IsRealSchurForm (T.submatrix order order) ∧
+      ∀ i j, i ≠ j → T i j = -T j i := by
+  have hAe : IsStarNormal (A.submatrix order order) := by
+    refine ⟨?_⟩
+    change (A.submatrix order order)ᴴ * A.submatrix order order =
+      A.submatrix order order * (A.submatrix order order)ᴴ
+    rw [Matrix.conjTranspose_submatrix, Matrix.submatrix_mul_equiv,
+      Matrix.submatrix_mul_equiv]
+    exact congrArg (fun B : Matrix n n ℝ => B.submatrix order order) hA.star_comm_self.eq
+  obtain ⟨Q, hQ, hF, hN⟩ :=
+    exists_isRealSchurForm_conjTranspose_mul_mul k (A.submatrix order order)
+  let T := Qᴴ * A.submatrix order order * Q
+  have heq : A.submatrix order order = Q * T * Qᴴ :=
+    hQ.eq_mul_mul_conjTranspose_iff.mpr rfl
+  have hT : IsRealSchurForm T := hF
+  have hskew : ∀ i j, i ≠ j → T i j = -T j i := hN hAe
+  refine ⟨Q.submatrix order.symm order.symm, T.submatrix order.symm order.symm,
+    hQ.submatrix order.symm order.symm.injective, ?_, ?_, ?_⟩
+  · have h := congrArg (fun B : Matrix (Fin k) (Fin k) ℝ =>
+        B.submatrix order.symm order.symm) heq
+    have ha : (A.submatrix order order).submatrix order.symm order.symm = A := by
+      ext i j
+      simp only [Matrix.submatrix_apply, Equiv.apply_symm_apply]
+    rw [ha] at h
+    rw [Matrix.conjTranspose_submatrix, Matrix.submatrix_mul_equiv,
+      Matrix.submatrix_mul_equiv]
+    exact h
+  · have ht : (T.submatrix order.symm order.symm).submatrix order order = T := by
+      ext i j
+      simp only [Matrix.submatrix_apply, Equiv.symm_apply_apply]
+    rw [ht]
+    exact hT
+  · intro i j hij
+    exact hskew _ _ (fun h => hij (order.symm.injective h))
+
 /-- **The real normal form.** Every real normal matrix is orthogonally similar to a direct sum of
 real scalars and blocks $\begin{bmatrix} a & b \\ -b & a \end{bmatrix}$:
 $\mathbf{A} = \mathbf{Q}\mathbf{T}\mathbf{Q}^{\mathsf{T}}$ with $\mathbf{Q}$ orthogonal and
@@ -387,8 +434,140 @@ theorem exists_hasOrthonormalCols_isRealSchurForm_of_isStarNormal
     {A : Matrix (Fin k) (Fin k) ℝ} (hA : IsStarNormal A) :
     ∃ Q T : Matrix (Fin k) (Fin k) ℝ, HasOrthonormalCols Q ∧ A = Q * T * Qᴴ ∧
       IsRealSchurForm T ∧ ∀ i j, i ≠ j → T i j = -T j i := by
-  obtain ⟨Q, hQ, hT, hN⟩ := exists_isRealSchurForm_conjTranspose_mul_mul k A
-  exact ⟨Q, Qᴴ * A * Q, hQ, hQ.eq_mul_mul_conjTranspose_iff.mpr rfl, hT, hN hA⟩
+  simpa only [Equiv.coe_refl, Matrix.submatrix_id_id] using
+    exists_hasOrthonormalCols_isRealSchurForm_submatrix_of_isStarNormal hA (Equiv.refl _)
+
+/-! ### Skew-symmetric and orthogonal specializations -/
+
+/-- **Real skew-symmetric canonical form.** A real matrix with
+$\mathbf{A}^{\mathsf{H}}=-\mathbf{A}$ is orthogonally similar to zero scalar blocks and
+blocks $\begin{bmatrix}0&b\\-b&0\end{bmatrix}$, with signed real $b$.
+For any finite index type, including the empty type, a supplied enumeration specifies the
+real Schur pattern. [HornJohnson2013, Corollary 2.5.11(b)]; the printed statement additionally
+chooses positive block orientation, which is not asserted here.
+Adapted from `tchen-research/NLAlib` at `77514ce42a0e437d837797a063ac161f41022730`,
+`exists_orthogonal_real_skew_normal_form`.
+Result: real-schur -/
+theorem exists_hasOrthonormalCols_isRealSchurForm_of_conjTranspose_eq_neg
+    {n : Type*} [Fintype n] [DecidableEq n] {A : Matrix n n ℝ} (hA : Aᴴ = -A)
+    (order : Fin k ≃ n) :
+    ∃ Q T : Matrix n n ℝ, HasOrthonormalCols Q ∧ A = Q * T * Qᴴ ∧
+      IsRealSchurForm (T.submatrix order order) ∧
+      (∀ i j, i ≠ j → T i j = -T j i) ∧ ∀ i, T i i = 0 := by
+  have hN : IsStarNormal A := by
+    refine ⟨?_⟩
+    change Aᴴ * A = A * Aᴴ
+    rw [hA, Matrix.neg_mul, Matrix.mul_neg]
+  obtain ⟨Q, T, hQ, heq, hT, hskew⟩ :=
+    exists_hasOrthonormalCols_isRealSchurForm_submatrix_of_isStarNormal hN order
+  have hconj : Qᴴ * A * Q = T := hQ.eq_mul_mul_conjTranspose_iff.mp heq
+  have ht : Tᴴ = -T := by
+    rw [← hconj, Matrix.conjTranspose_mul, Matrix.conjTranspose_mul,
+      Matrix.conjTranspose_conjTranspose, hA]
+    simp only [Matrix.mul_neg, Matrix.neg_mul, Matrix.mul_assoc]
+  refine ⟨Q, T, hQ, heq, hT, hskew, fun i => ?_⟩
+  have h := congrArg (fun B : Matrix n n ℝ => B i i) ht
+  simp only [Matrix.conjTranspose_apply, star_trivial, Matrix.neg_apply] at h
+  linarith
+
+/-- An active two-by-two block in a real normal form has no other entries in its column. -/
+private theorem apply_eq_zero_of_isRealSchurForm_pair
+    {T : Matrix (Fin k) (Fin k) ℝ} (hT : IsRealSchurForm T)
+    (hskew : ∀ i j, i ≠ j → T i j = -T j i)
+    {i j : Fin k} (hij : (j : ℕ) + 1 = (i : ℕ)) (hn : T i j ≠ 0)
+    (l : Fin k) (hlj : l ≠ j) (hli : l ≠ i) : T l j = 0 := by
+  have hlj' := Fin.val_ne_of_ne hlj
+  have hli' := Fin.val_ne_of_ne hli
+  by_cases hlt : (l : ℕ) < (j : ℕ)
+  · rw [hskew l j hlj]
+    by_cases hadj : (l : ℕ) + 1 = (j : ℕ)
+    · have hz := (hT.1.2 i j l hij hadj).resolve_left hn
+      rw [hz, neg_zero]
+    · rw [hT.1.1 j l (by omega), neg_zero]
+  · exact hT.1.1 l j (by omega)
+
+/-- The singleton column of an orthogonal matrix has diagonal entry a sign. -/
+private theorem diagonal_eq_neg_one_or_one_of_column_support
+    {n : Type*} [Fintype n] [DecidableEq n] {T : Matrix n n ℝ}
+    (hT : HasOrthonormalCols T) (i : n) (hi : ∀ j, j ≠ i → T j i = 0) :
+    T i i = -1 ∨ T i i = 1 := by
+  have hc := congrArg (fun B : Matrix n n ℝ => B i i) hT.conjTranspose_mul_self
+  simp only [Matrix.mul_apply, Matrix.conjTranspose_apply, star_trivial,
+    Matrix.one_apply_eq] at hc
+  have hs : ∑ l, T l i * T l i = T i i * T i i := by
+    apply Finset.sum_eq_single i
+    · intro l _ hli
+      rw [hi l hli, mul_zero]
+    · simp
+  rw [hs] at hc
+  have hf : (T i i - 1) * (T i i + 1) = 0 := by nlinarith
+  rcases mul_eq_zero.mp hf with h | h
+  · exact Or.inr (by linarith)
+  · exact Or.inl (by linarith)
+
+/-- The coefficients of an orthogonal two-by-two block lie on the unit circle. -/
+private theorem sq_add_sq_eq_one_of_isRealSchurForm_pair
+    {T : Matrix (Fin k) (Fin k) ℝ} (hF : IsRealSchurForm T)
+    (hskew : ∀ i j, i ≠ j → T i j = -T j i) (hT : HasOrthonormalCols T)
+    {i j : Fin k} (hij : (j : ℕ) + 1 = (i : ℕ)) (hn : T i j ≠ 0) :
+    T j j ^ 2 + T i j ^ 2 = 1 := by
+  have hij' : i ≠ j := by intro h; subst i; omega
+  have hc := congrArg (fun B : Matrix (Fin k) (Fin k) ℝ => B j j)
+    hT.conjTranspose_mul_self
+  simp only [Matrix.mul_apply, Matrix.conjTranspose_apply, star_trivial,
+    Matrix.one_apply_eq] at hc
+  have hs : ∑ l, T l j * T l j = T j j * T j j + T i j * T i j := by
+    calc
+      _ = ∑ l, (if l = j then T j j * T j j else if l = i then T i j * T i j else 0) := by
+        apply Finset.sum_congr rfl
+        intro l _
+        by_cases hlj : l = j
+        · simp only [hlj, ite_true]
+        by_cases hli : l = i
+        · simp only [hli, hij', ite_false, ite_true]
+        rw [apply_eq_zero_of_isRealSchurForm_pair hF hskew hij hn l hlj hli]
+        simp only [hlj, hli, ite_false, mul_zero]
+      _ = _ := by
+        have hfilter : Finset.univ.filter (fun l : Fin k => l = j) = {j} := by
+          ext l
+          simp
+        simp [Finset.sum_ite, hij', hfilter]
+  rw [hs] at hc
+  nlinarith
+
+/-- **Real orthogonal canonical form.** A real orthogonal matrix is orthogonally similar
+to scalar signs $\pm1$ and blocks $\begin{bmatrix}a&b\\-b&a\end{bmatrix}$ with
+$a^2+b^2=1$. The real Schur pattern, singleton signs, and unit-circle equation hold for any
+supplied enumeration of a finite index type, including the empty type.
+[HornJohnson2013, Corollary 2.5.11(c)]; signed block coefficients are allowed here, without
+choosing the printed positive-angle convention.
+Adapted from `tchen-research/NLAlib` at `77514ce42a0e437d837797a063ac161f41022730`,
+`exists_orthogonal_real_orthogonal_normal_form`.
+Result: real-schur -/
+theorem HasOrthonormalCols.exists_isRealSchurForm
+    {n : Type*} [Fintype n] [DecidableEq n] {A : Matrix n n ℝ}
+    (hA : HasOrthonormalCols A) (order : Fin k ≃ n) :
+    ∃ Q T : Matrix n n ℝ, HasOrthonormalCols Q ∧ A = Q * T * Qᴴ ∧
+      IsRealSchurForm (T.submatrix order order) ∧
+      (∀ i j, i ≠ j → T i j = -T j i) ∧
+      (∀ i, (∀ j, j ≠ i → T j i = 0) → T i i = -1 ∨ T i i = 1) ∧
+      (∀ i j : Fin k, (j : ℕ) + 1 = (i : ℕ) →
+        T (order i) (order j) ≠ 0 →
+        T (order j) (order j) ^ 2 + T (order i) (order j) ^ 2 = 1) := by
+  have hN : IsStarNormal A := by
+    refine ⟨?_⟩
+    change Aᴴ * A = A * Aᴴ
+    rw [hA.conjTranspose_mul_self, hA.mul_conjTranspose_self]
+  obtain ⟨Q, T, hQ, heq, hF, hskew⟩ :=
+    exists_hasOrthonormalCols_isRealSchurForm_submatrix_of_isStarNormal hN order
+  have hconj : Qᴴ * A * Q = T := hQ.eq_mul_mul_conjTranspose_iff.mp heq
+  have hT : HasOrthonormalCols T := hconj ▸ (hQ.conjTranspose.mul hA).mul hQ
+  refine ⟨Q, T, hQ, heq, hF, hskew,
+    diagonal_eq_neg_one_or_one_of_column_support hT, ?_⟩
+  intro i j hij hn
+  exact sq_add_sq_eq_one_of_isRealSchurForm_pair hF
+    (fun a b hab => hskew _ _ (fun h => hab (order.injective h)))
+    (hT.submatrix order order.injective) hij hn
 
 /-! ### The real QZ decomposition -/
 

@@ -260,6 +260,7 @@ public import NLAlib.Matrix.Functions.OperatorConvex
 public import NLAlib.Matrix.Functions.OperatorMonotone
 public import NLAlib.Matrix.Functions.Perspective
 public import NLAlib.Matrix.Functions.Polynomial
+public import NLAlib.Matrix.Functions.PositivePart
 public import NLAlib.Matrix.Functions.TraceFunctions
 public import NLAlib.Matrix.Functions.TracePowers
 public import NLAlib.Matrix.Inequalities.Block

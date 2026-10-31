@@ -32,6 +32,10 @@ Hermitian part (Ky Fan), so they lie between its extreme eigenvalues (Bendixson)
   invertible.
 * `NLAlib.quadForm_hermitianPart`, `NLAlib.trace_conjTranspose_mul_hermitianPart_mul`: over
   $\mathbb{R}$, quadratic forms and traces of compressions see only the symmetric part.
+* `Matrix.IsHermitian.frobNorm_sub_sq`: orthogonal decomposition of the error to a Hermitian
+  matrix into its skew-Hermitian and Hermitian components.
+* `Matrix.IsHermitian.frobNorm_sub_eq_frobNorm_sub_hermitianPart_iff`: uniqueness of the
+  nearest Hermitian matrix in Frobenius norm.
 -/
 
 @[expose] public section
@@ -63,7 +67,52 @@ theorem _root_.Matrix.IsHermitian.hermitianPart_eq {A : Matrix n n 𝕜} (hA : A
     hermitianPart A = A := by
   rw [hermitianPart, hA.eq, ← two_smul ℝ A, smul_smul, inv_mul_cancel₀ two_ne_zero, one_smul]
 
+/-- Taking the Hermitian part commutes with subtraction. This transports the norm contraction
+to differences of two matrices. -/
+theorem hermitianPart_sub (A B : Matrix n n 𝕜) :
+    hermitianPart (A - B) = hermitianPart A - hermitianPart B := by
+  simp only [hermitianPart, Matrix.conjTranspose_sub, smul_sub, smul_add]
+  abel
+
 variable [Fintype n]
+
+/-- A Hermitian matrix is Frobenius-orthogonal to the skew-Hermitian part of any matrix.
+Adapted from `tchen-research/NLAlib` at `77514ce42a0e437d837797a063ac161f41022730`,
+`frobInner_eq_zero_of_skewHermitian_of_isHermitian`, for the canonical decomposition. -/
+theorem _root_.Matrix.IsHermitian.frobInner_sub_hermitianPart {X : Matrix n n 𝕜}
+    (hX : X.IsHermitian) (A : Matrix n n 𝕜) :
+    frobInner (A - hermitianPart A) X = 0 := by
+  have h := frobInner_conjTranspose A X
+  rw [hX.eq] at h
+  rw [frobInner_sub_left, hermitianPart, frobInner_smul_left, frobInner_add_left, h]
+  ring
+
+/-- For any matrix $\mathbf{A}$ and Hermitian $\mathbf{X}$, with
+$\mathbf{H}=(\mathbf{A}+\mathbf{A}^{\mathsf{H}})/2$, the squared error splits orthogonally:
+$$\|\mathbf{A}-\mathbf{X}\|_{\mathsf{F}}^2 =
+\|\mathbf{A}-\mathbf{H}\|_{\mathsf{F}}^2 + \|\mathbf{H}-\mathbf{X}\|_{\mathsf{F}}^2\,.$$
+[Higham1988, proof of Theorem 2.1]; generalized from real matrices to either scalar field.
+This identity gives nearest-Hermitian approximation and its error certificate. -/
+theorem _root_.Matrix.IsHermitian.frobNorm_sub_sq {X : Matrix n n 𝕜}
+    (hX : X.IsHermitian) (A : Matrix n n 𝕜) :
+    frobNorm (A - X) ^ 2 = frobNorm (A - hermitianPart A) ^ 2 +
+      frobNorm (hermitianPart A - X) ^ 2 := by
+  have horth := ((isHermitian_hermitianPart A).sub hX).frobInner_sub_hermitianPart A
+  rw [show A - X = (A - hermitianPart A) + (hermitianPart A - X) by abel,
+    frobNorm_add_sq_of_frobInner_eq_zero horth]
+
+/-- For any matrix $\mathbf{A}$ and Hermitian $\mathbf{X}$, the Frobenius distance to
+$\mathbf{X}$ equals that to $\mathbf{H}=(\mathbf{A}+\mathbf{A}^{\mathsf{H}})/2$ exactly when
+$\mathbf{X}=\mathbf{H}$. Thus the Hermitian-part approximation has a unique minimizer.
+[Higham1988, proof of Theorem 2.1]; generalized from real matrices to either scalar field. -/
+theorem _root_.Matrix.IsHermitian.frobNorm_sub_eq_frobNorm_sub_hermitianPart_iff
+    {X : Matrix n n 𝕜} (hX : X.IsHermitian) (A : Matrix n n 𝕜) :
+    frobNorm (A - X) = frobNorm (A - hermitianPart A) ↔ X = hermitianPart A := by
+  refine ⟨fun h => ?_, fun h => h ▸ rfl⟩
+  have he := hX.frobNorm_sub_sq A
+  rw [h] at he
+  have hz : frobNorm (hermitianPart A - X) = 0 := by nlinarith
+  exact (sub_eq_zero.mp (frobNorm_eq_zero_iff.mp hz)).symm
 
 /-- The Hermitian part does not increase the Frobenius norm:
 $$\|\tfrac{1}{2}(\mathbf{A} + \mathbf{A}^{\mathsf{H}})\|_{\mathsf{F}} \le

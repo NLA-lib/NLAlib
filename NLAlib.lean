@@ -126,6 +126,7 @@ public import NLAlib.Krylov.FinitePrecision.Backward
 public import NLAlib.Krylov.FinitePrecision.BackwardSpectral
 public import NLAlib.Krylov.FinitePrecision.CGAccuracy
 public import NLAlib.Krylov.FinitePrecision.CGBackward
+public import NLAlib.Krylov.FinitePrecision.CGErrorTracking
 public import NLAlib.Krylov.FinitePrecision.CGRun
 public import NLAlib.Krylov.FinitePrecision.CGRunModel
 public import NLAlib.Krylov.FinitePrecision.LanczosData

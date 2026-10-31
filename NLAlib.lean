@@ -331,6 +331,7 @@ public import NLAlib.Matrix.Spectral.Interlacing
 public import NLAlib.Matrix.Spectral.InterlacingConverse
 public import NLAlib.Matrix.Spectral.LeastSingularValue
 public import NLAlib.Matrix.Spectral.LowRank
+public import NLAlib.Matrix.Spectral.LyapunovEquation
 public import NLAlib.Matrix.Spectral.Normal
 public import NLAlib.Matrix.Spectral.PowerBounds
 public import NLAlib.Matrix.Spectral.ProjectedLowRank
@@ -345,6 +346,7 @@ public import NLAlib.Matrix.Spectral.SingularValueInequalities
 public import NLAlib.Matrix.Spectral.SingularValues
 public import NLAlib.Matrix.Spectral.SpectralMeasure
 public import NLAlib.Matrix.Spectral.SpectralRadius
+public import NLAlib.Matrix.Spectral.SteinEquation
 public import NLAlib.Matrix.Spectral.SylvesterCriterion
 public import NLAlib.Matrix.Spectral.SylvesterEquation
 public import NLAlib.Matrix.Spectral.Weyl

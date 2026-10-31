@@ -17,6 +17,13 @@ $\|\mathbf{A}\|_{\mathsf{F}}^2 + \|\mathbf{B}\|_{\mathsf{F}}^2 -
 2 \|\mathbf{A}\mathbf{B}^{\mathsf{H}}\|_*$. With a unitary factor on each side the least value is
 the squared distance between the non-increasing sequences of singular values.
 
+For a matrix with at least as many rows as columns, the nearest real multiple of a matrix
+with orthonormal columns is an isometric polar extension scaled by the average singular value.
+The least squared error is
+$$\|\mathbf{A}\|_{\mathsf{F}}^2 - \frac{\|\mathbf{A}\|_*^2}{\lvert n \rvert}\,.$$
+This includes negative competing scales, rank-deficient matrices and empty column types, with
+division by zero interpreted as zero.
+
 ## Main results
 
 * `NLAlib.HasOrthonormalCols.frobInner_eq_nuclearNorm_of_mul_sqrt_eq`,
@@ -25,6 +32,13 @@ the squared distance between the non-increasing sequences of singular values.
   $\mathbf{A}\mathbf{B}^{\mathsf{H}}$.
 * `NLAlib.isLeast_frobNorm_sub_mul_sq`: the orthogonal Procrustes problem.
 * `NLAlib.isLeast_frobNorm_sub_mul_mul_sq`: the two-sided Procrustes problem.
+* `NLAlib.HasOrthonormalCols.frobNorm_sub_smul_sq_of_mul_sqrt_eq`: the objective at any real
+  multiple of an isometric polar extension.
+* `NLAlib.HasOrthonormalCols.frobNorm_sq_sub_nuclearNorm_sq_div_le`: the lower bound for every
+  scaled isometry.
+* `NLAlib.HasOrthonormalCols.frobNorm_sub_div_smul_sq_of_mul_sqrt_eq`: the objective at the
+  average-singular-value scale.
+* `NLAlib.isLeast_frobNorm_sub_smul_sq`: the nearest scaled isometry in Frobenius norm.
 -/
 
 @[expose] public section
@@ -168,5 +182,116 @@ theorem isLeast_frobNorm_sub_mul_mul_sq [DecidableEq n] (A B : Matrix m n 𝕜) 
       rwa [Matrix.conjTranspose_conjTranspose] at h
     have h := sum_singularValues_sub_sq_le_frobNorm_sub_sq A (P * B * W) (Finset.range k)
     rwa [hsv] at h
+
+/-! ### The nearest scaled isometry -/
+
+omit [DecidableEq m] in
+/-- The squared Frobenius distance to a real multiple of an isometric polar extension is a
+scalar quadratic. For $\mathbf{A},\mathbf{U} \in \Bbbk^{m \times n}$, with $\mathbf{U}$ of
+orthonormal columns and
+$\mathbf{U}(\mathbf{A}^{\mathsf{H}}\mathbf{A})^{1/2} = \mathbf{A}$, every $c \in \mathbb{R}$
+satisfies
+$$\|\mathbf{A} - c\mathbf{U}\|_{\mathsf{F}}^2 = \|\mathbf{A}\|_{\mathsf{F}}^2 -
+  2c\|\mathbf{A}\|_* + \lvert n \rvert c^2\,.$$
+No full-rank or nonempty-dimension hypothesis is needed. This evaluates the objective before
+optimizing the scale.
+Generalizes `NLAlib.frobSq_sub_smul_polar_eq` from the original NLAlib formal library,
+`NLAlib.Matrix.Factorizations.ScaledOrthogonal`, commit
+`77514ce42a0e437d837797a063ac161f41022730`, from square real to rectangular `RCLike` matrices. -/
+theorem HasOrthonormalCols.frobNorm_sub_smul_sq_of_mul_sqrt_eq [DecidableEq n]
+    {A U : Matrix m n 𝕜} (hU : HasOrthonormalCols U)
+    (hA : U * CFC.sqrt (Aᴴ * A) = A) (c : ℝ) :
+    frobNorm (A - c • U) ^ 2 =
+      frobNorm A ^ 2 - 2 * c * nuclearNorm A + (Fintype.card n : ℝ) * c ^ 2 := by
+  rw [frobNorm_sub_sq, frobInner_smul_right,
+    hU.frobInner_eq_nuclearNorm_of_mul_sqrt_eq hA, frobNorm_real_smul,
+    mul_pow, sq_abs, hU.frobNorm_sq]
+  ring
+
+omit [DecidableEq m] in
+/-- Every real multiple of a matrix with orthonormal columns has squared Frobenius error at
+least the nuclear-norm optimum. For $\mathbf{A},\mathbf{U} \in \Bbbk^{m \times n}$ with
+$\mathbf{U}$ of orthonormal columns and every $c \in \mathbb{R}$,
+$$\|\mathbf{A}\|_{\mathsf{F}}^2 - \frac{\|\mathbf{A}\|_*^2}{\lvert n \rvert}
+  \le \|\mathbf{A} - c\mathbf{U}\|_{\mathsf{F}}^2\,.$$
+This certifies a lower bound for any competing scaled isometry, including negative scales.
+Empty columns are included, with division by zero interpreted as zero.
+Generalizes `NLAlib.frobSq_sub_nuclearNorm_sq_div_card_le_sub_smul` from the original NLAlib
+formal library, `NLAlib.Matrix.Factorizations.ScaledOrthogonal`, commit
+`77514ce42a0e437d837797a063ac161f41022730`, from positive-dimensional square real matrices to
+rectangular `RCLike` matrices of any dimension. -/
+theorem HasOrthonormalCols.frobNorm_sq_sub_nuclearNorm_sq_div_le [DecidableEq n]
+    {U : Matrix m n 𝕜} (hU : HasOrthonormalCols U) (A : Matrix m n 𝕜) (c : ℝ) :
+    frobNorm A ^ 2 - nuclearNorm A ^ 2 / (Fintype.card n : ℝ) ≤
+      frobNorm (A - c • U) ^ 2 := by
+  classical
+  rcases isEmpty_or_nonempty n with hn | hn
+  · have hA : A = 0 := Subsingleton.elim _ _
+    have hU0 : U = 0 := Subsingleton.elim _ _
+    simp [hA, hU0]
+  · have hd : (0 : ℝ) < Fintype.card n := Nat.cast_pos.mpr Fintype.card_pos
+    have hp : |frobInner A U| ≤ nuclearNorm A :=
+      (abs_frobInner_le_nuclearNorm_mul_specNorm A U).trans
+        (mul_le_of_le_one_right (nuclearNorm_nonneg A) hU.specNorm_le_one)
+    have hp2 : frobInner A U ^ 2 ≤ nuclearNorm A ^ 2 := by
+      simpa only [sq_abs] using pow_le_pow_left₀ (abs_nonneg _) hp 2
+    have hdiv : nuclearNorm A ^ 2 / (Fintype.card n : ℝ) * (Fintype.card n : ℝ) =
+        nuclearNorm A ^ 2 := div_mul_cancel₀ _ hd.ne'
+    rw [frobNorm_sub_sq, frobInner_smul_right, frobNorm_real_smul,
+      mul_pow, sq_abs, hU.frobNorm_sq]
+    apply (mul_le_mul_iff_right₀ hd).mp
+    nlinarith [sq_nonneg ((Fintype.card n : ℝ) * c - frobInner A U)]
+
+omit [DecidableEq m] in
+/-- Scaling an isometric polar extension by the average singular value attains the optimal
+squared Frobenius error. For $\mathbf{A},\mathbf{U} \in \Bbbk^{m \times n}$, with $\mathbf{U}$
+of orthonormal columns and
+$\mathbf{U}(\mathbf{A}^{\mathsf{H}}\mathbf{A})^{1/2} = \mathbf{A}$,
+$$\left\|\mathbf{A} - \frac{\|\mathbf{A}\|_*}{\lvert n \rvert}\mathbf{U}
+  \right\|_{\mathsf{F}}^2 = \|\mathbf{A}\|_{\mathsf{F}}^2 -
+  \frac{\|\mathbf{A}\|_*^2}{\lvert n \rvert}\,.$$
+This certifies optimality of a supplied factor, even when $\mathbf{A}$ is rank deficient.
+For empty columns the scale and both sides are zero by total division.
+Generalizes `NLAlib.frobSq_sub_avg_smul_polar_eq` from the original NLAlib formal library,
+`NLAlib.Matrix.Factorizations.ScaledOrthogonal`, commit
+`77514ce42a0e437d837797a063ac161f41022730`, from positive-dimensional square real matrices to
+rectangular `RCLike` matrices of any dimension. -/
+theorem HasOrthonormalCols.frobNorm_sub_div_smul_sq_of_mul_sqrt_eq [DecidableEq n]
+    {A U : Matrix m n 𝕜} (hU : HasOrthonormalCols U)
+    (hA : U * CFC.sqrt (Aᴴ * A) = A) :
+    frobNorm (A - (nuclearNorm A / (Fintype.card n : ℝ)) • U) ^ 2 =
+      frobNorm A ^ 2 - nuclearNorm A ^ 2 / (Fintype.card n : ℝ) := by
+  rw [hU.frobNorm_sub_smul_sq_of_mul_sqrt_eq hA]
+  rcases eq_or_ne (Fintype.card n : ℝ) 0 with hd | hd
+  · simp [hd]
+  · field_simp
+    ring
+
+omit [DecidableEq m] in
+/-- **The nearest scaled isometry in Frobenius norm.** For
+$\mathbf{A} \in \Bbbk^{m \times n}$ with $\lvert n \rvert \le \lvert m \rvert$, the least
+value of $\|\mathbf{A} - c\mathbf{U}\|_{\mathsf{F}}^2$ over all $c \in \mathbb{R}$ and all
+$\mathbf{U} \in \Bbbk^{m \times n}$ with orthonormal columns is
+$$\|\mathbf{A}\|_{\mathsf{F}}^2 - \frac{\|\mathbf{A}\|_*^2}{\lvert n \rvert}\,.$$
+It is attained by an isometric polar extension scaled by the average singular value. This
+includes negative competing scales and rank-deficient matrices. For empty columns the minimum
+is zero, with division by zero interpreted as zero. No uniqueness is asserted.
+[HornJohnson2013, §7.4.4], the square case; here generalized to rectangular matrices over any
+`RCLike` field and arbitrary finite index types, including empty columns.
+Generalizes `NLAlib.isLeast_frobSq_sub_scaled_orthogonal` and
+`NLAlib.isLeast_frobSq_sub_scaled_orthogonal_of_isEmpty` from the original NLAlib formal library,
+`NLAlib.Matrix.Factorizations.ScaledOrthogonal`, commit
+`77514ce42a0e437d837797a063ac161f41022730`, from square real to rectangular `RCLike` matrices,
+combining the nonempty and empty cases.
+Result: procrustes-scaled -/
+theorem isLeast_frobNorm_sub_smul_sq [DecidableEq n] (A : Matrix m n 𝕜)
+    (hcard : Fintype.card n ≤ Fintype.card m) :
+    IsLeast {z : ℝ | ∃ (c : ℝ) (U : Matrix m n 𝕜),
+      HasOrthonormalCols U ∧ frobNorm (A - c • U) ^ 2 = z}
+      (frobNorm A ^ 2 - nuclearNorm A ^ 2 / (Fintype.card n : ℝ)) := by
+  obtain ⟨U, hU, hA⟩ := exists_hasOrthonormalCols_mul_sqrt_eq A hcard
+  refine ⟨⟨_, U, hU, hU.frobNorm_sub_div_smul_sq_of_mul_sqrt_eq hA⟩, ?_⟩
+  rintro z ⟨c, V, hV, rfl⟩
+  exact hV.frobNorm_sq_sub_nuclearNorm_sq_div_le A c
 
 end NLAlib

@@ -181,7 +181,7 @@ theorem n_pos {n k : ℕ} (C : CGRun n k) : 0 < n := by
   exact lt_irrefl _ this
 
 /-- The matrix of the run is Hermitian (it is real symmetric). -/
-theorem isHermitian_A : C.A.IsHermitian := by
+theorem isHermitian : C.A.IsHermitian := by
   rw [Matrix.IsHermitian, Matrix.conjTranspose_eq_transpose_of_trivial, C.transpose_A]
 
 /-- The energy of $\mathbf{v}$ is $\mathbf{v}^{\mathsf{T}}\mathbf{A}\mathbf{v}$. -/
@@ -198,7 +198,7 @@ theorem dotProduct_mulVec_comm (u v : Fin n → ℝ) :
 $a\|\mathbf{v}\|^2 \le \mathbf{v}^{\mathsf{T}}\mathbf{A}\mathbf{v}$. -/
 theorem mul_norm_sq_le_quadForm {a a' : ℝ} (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
     (v : Fin n → ℝ) : a * ‖WithLp.toLp 2 v‖ ^ 2 ≤ quadForm C.A v := by
-  have hH := C.isHermitian_A
+  have hH := C.isHermitian
   obtain ⟨c, hc⟩ : ∃ c, c + 1 = Fintype.card (Fin n) := ⟨n - 1, by simp; have := C.n_pos; omega⟩
   have h1 := hH.eigenvalue_last_mul_le_re_quadForm hc v
   simp only [RCLike.re_to_real] at h1
@@ -209,7 +209,7 @@ theorem mul_norm_sq_le_quadForm {a a' : ℝ} (hs : spectrum ℝ C.A ⊆ Set.Icc 
 $\mathbf{v}^{\mathsf{T}}\mathbf{A}\mathbf{v} \le a'\|\mathbf{v}\|^2$. -/
 theorem quadForm_le_mul_norm_sq {a a' : ℝ} (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
     (v : Fin n → ℝ) : quadForm C.A v ≤ a' * ‖WithLp.toLp 2 v‖ ^ 2 := by
-  have hH := C.isHermitian_A
+  have hH := C.isHermitian
   have hpos := C.n_pos
   have h2 := hH.re_quadForm_le_eigenvalue_zero_mul v
   simp only [RCLike.re_to_real] at h2
@@ -218,7 +218,7 @@ theorem quadForm_le_mul_norm_sq {a a' : ℝ} (hs : spectrum ℝ C.A ⊆ Set.Icc 
 
 /-- The spectral interval is nonempty: $a \le a'$. -/
 theorem le_of_spectrum_subset_Icc {a a' : ℝ} (hs : spectrum ℝ C.A ⊆ Set.Icc a a') : a ≤ a' := by
-  have e0 := C.isHermitian_A.spectrum_subset_iff.mp hs 0 (by
+  have e0 := C.isHermitian.spectrum_subset_iff.mp hs 0 (by
     simp only [Fintype.card_fin]; exact C.n_pos)
   exact e0.1.trans e0.2
 
@@ -232,7 +232,7 @@ theorem le_of_cube_mul_ε_mul_sq_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ
       (k : ℝ) * C.ε * (a' / a) ≤ 1 / 10 ^ 5 ∧ (k : ℝ) ^ 2 * C.ε * (a' / a) ≤ 1 / 10 ^ 5 ∧
       (k : ℝ) ^ 2 * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5 := by
   have hn := C.n_pos
-  have hherm := C.isHermitian_A
+  have hherm := C.isHermitian
   have e0 := hherm.spectrum_subset_iff.mp hs 0 (by simp; omega)
   have e1 := hherm.spectrum_subset_iff.mp hs (n - 1) (by simp; omega)
   have haa' : a ≤ a' := e0.1.trans e0.2
@@ -909,7 +909,7 @@ theorem norm_sub_mulVec_x_sub_r_le_norm_b {a a' : ℝ} (ha : 0 < a)
     {j : ℕ} (hj : j ≤ k) :
     ‖WithLp.toLp 2 (C.b - C.A *ᵥ C.x j - C.r j)‖ ≤
       12 * j * C.ε * (a' / a) * ‖WithLp.toLp 2 C.b‖ := by
-  have hherm := C.isHermitian_A
+  have hherm := C.isHermitian
   have hPD : C.A.PosDef := hherm.posDef_iff_eigenvalue_pos.mpr fun i hi =>
     ha.trans_le (hherm.spectrum_subset_iff.mp hs i hi).1
   have hx : C.A *ᵥ (C.A⁻¹ *ᵥ C.b) = C.b := by

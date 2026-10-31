@@ -7,6 +7,7 @@ module
 
 public import Mathlib.Analysis.Normed.Algebra.GelfandFormula
 public import Mathlib.LinearAlgebra.Eigenspace.Triangularizable
+public import NLAlib.ForMathlib.Algebra.Ring.Idempotent
 public import NLAlib.Matrix.Spectral.SpectralRadius
 public import NLAlib.Matrix.Pseudoinverse.ConditionNumber
 
@@ -28,6 +29,9 @@ stay bounded exactly when it is at most one and the eigenvalues of modulus one a
 * `NLAlib.exists_specNorm_inv_mul_mul_le`: a similarity to within $\varepsilon$ of the spectral
   radius.
 * `NLAlib.exists_forall_specNorm_pow_le_iff`: power-bounded matrices.
+* `NLAlib.tendsto_pow_iff_specRadius_sub_lt_one`: convergence to a fixed idempotent.
+* `NLAlib.exists_forall_specNorm_pow_sub_le_mul_pow`: geometric bounds on the power error.
+* `NLAlib.isUnit_of_specRadius_one_sub_mul_lt_one`: invertibility from spectral stability.
 -/
 
 @[expose] public section
@@ -401,6 +405,83 @@ theorem exists_forall_specNorm_pow_le_iff (A : Matrix n n 𝕜) :
     rw [hij]
     exact (norm_le_pi_norm _ i).trans ((hC j k).trans
       (Finset.single_le_sum (fun j _ => hC0 j) (Finset.mem_univ j)))
+
+/-! ### Fixed idempotent limits -/
+
+private theorem eventually_sub_pow_eq_pow_sub (T P : Matrix n n 𝕜)
+    (hP : IsIdempotentElem P) (hTP : T * P = P) (hPT : P * T = P) :
+    (fun k : ℕ => (T - P) ^ k) =ᶠ[atTop] (fun k => T ^ k - P) := by
+  filter_upwards [eventually_ge_atTop 1] with k hk
+  obtain ⟨j, rfl⟩ := Nat.exists_eq_succ_of_ne_zero (by omega : k ≠ 0)
+  exact hP.sub_pow_succ hTP hPT j
+
+/-- **Convergence to a fixed idempotent.** For an idempotent $\mathbf{P}$ satisfying
+$\mathbf{T}\mathbf{P}=\mathbf{P}\mathbf{T}=\mathbf{P}$,
+$$\mathbf{T}^k\longrightarrow\mathbf{P}\quad\Longleftrightarrow\quad
+\rho(\mathbf{T}-\mathbf{P})<1\,.$$
+The idempotent may be oblique, and no normality or diagonalizability is required.
+No printed source. This is a consequence of the zero-limit power criterion.
+Adapted from `tchen-research/NLAlib` at `77514ce42a0e437d837797a063ac161f41022730`,
+`tendsto_matrix_pow_projector_of_deflated_spectralRadius_lt_one`, generalized from real
+matrices to either scalar field and from an implication to an equivalence.
+Result: convergent-matrix -/
+theorem tendsto_pow_iff_specRadius_sub_lt_one
+    (T P : Matrix n n 𝕜) (hP : IsIdempotentElem P)
+    (hTP : T * P = P) (hPT : P * T = P) :
+    Tendsto (fun k : ℕ => T ^ k) atTop (𝓝 P) ↔ specRadius (T - P) < 1 := by
+  have heq := eventually_sub_pow_eq_pow_sub T P hP hTP hPT
+  constructor
+  · intro h
+    apply (tendsto_pow_zero_iff_specRadius_lt_one (T - P)).mp
+    have hz : Tendsto (fun k : ℕ => T ^ k - P) atTop (𝓝 0) := by
+      simpa only [sub_self] using h.sub_const P
+    exact hz.congr' heq.symm
+  · intro h
+    have hz := (tendsto_pow_zero_iff_specRadius_lt_one (T - P)).mpr h
+    have hp : Tendsto (fun k : ℕ => (T - P) ^ k + P) atTop (𝓝 P) := by
+      simpa only [zero_add] using hz.add_const P
+    apply hp.congr'
+    filter_upwards [heq] with k hk
+    rw [hk, sub_add_cancel]
+
+/-- For an idempotent $\mathbf{P}$ with $\mathbf{T}\mathbf{P}=\mathbf{P}\mathbf{T}=\mathbf{P}$
+and every $r>\rho(\mathbf{T}-\mathbf{P})$, there is a matrix- and rate-dependent $C>0$ such that
+$$\|\mathbf{T}^k-\mathbf{P}\|_2\le C r^k\qquad(k\ge0)\,.$$
+This includes exponent zero; a rate below one gives geometric convergence. No normality
+or diagonalizability is needed. This is the fixed-idempotent form of the existing power bound.
+Adapted from `tchen-research/NLAlib` at `77514ce42a0e437d837797a063ac161f41022730`,
+`exists_specNorm_matrix_pow_sub_projector_le_geometric`, generalized to either scalar field. -/
+theorem exists_forall_specNorm_pow_sub_le_mul_pow
+    (T P : Matrix n n 𝕜) (hP : IsIdempotentElem P)
+    (hTP : T * P = P) (hPT : P * T = P)
+    {r : ℝ} (hr : specRadius (T - P) < r) :
+    ∃ C : ℝ, 0 < C ∧ ∀ k : ℕ, specNorm (T ^ k - P) ≤ C * r ^ k := by
+  have hr0 : 0 < r := (specRadius_nonneg (T - P)).trans_lt hr
+  obtain ⟨C, hC, hbound⟩ := exists_forall_specNorm_pow_le_mul_pow (T - P) (sub_pos.mpr hr)
+  have hb (k : ℕ) : specNorm ((T - P) ^ k) ≤ C * r ^ k := by
+    simpa only [add_sub_cancel] using hbound k
+  refine ⟨specNorm (1 - P) + C, add_pos_of_nonneg_of_pos (specNorm_nonneg _) hC,
+    fun k => ?_⟩
+  cases k with
+  | zero =>
+    simp only [pow_zero, mul_one]
+    exact le_add_of_nonneg_right hC.le
+  | succ k =>
+    rw [← hP.sub_pow_succ hTP hPT]
+    exact (hb _).trans (mul_le_mul_of_nonneg_right
+      (le_add_of_nonneg_left (specNorm_nonneg _)) (pow_nonneg hr0.le _))
+
+/-- A square matrix $\mathbf{A}$ is invertible when
+$\rho(\mathbf{I}-\mathbf{M}\mathbf{A})<1$. The spectral condition implies invertibility
+of the product, so no invertibility hypothesis on the preconditioner is needed.
+This is the algebraic solvability consequence used by stationary iterations.
+Adapted from `tchen-research/NLAlib` at `77514ce42a0e437d837797a063ac161f41022730`,
+`isUnit_sub_of_tendsto_splitting_pow_zero`, with an arbitrary square preconditioner. -/
+theorem isUnit_of_specRadius_one_sub_mul_lt_one
+    {A M : Matrix n n 𝕜} (hρ : specRadius (1 - M * A) < 1) : IsUnit A := by
+  have hdet := isUnit_det_one_sub_of_specRadius_lt_one hρ
+  rw [sub_sub_cancel, Matrix.det_mul] at hdet
+  exact (Matrix.isUnit_iff_isUnit_det A).mpr (isUnit_of_mul_isUnit_right hdet)
 
 /-! ### Deprecated aliases -/
 

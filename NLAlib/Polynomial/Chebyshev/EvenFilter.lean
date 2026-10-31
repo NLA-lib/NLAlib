@@ -83,8 +83,9 @@ private theorem expand_contract_U_two_mul (k : ℕ) :
     obtain ⟨m, hm⟩ : Odd n := Nat.odd_iff.mpr (by omega)
     exact ⟨k + m, by omega⟩
 
-/-- $\lvert U_n(y)\rvert \le n + 1$ on $[-1, 1]$. -/
-private theorem abs_eval_U_le (n : ℕ) {y : ℝ} (hy : |y| ≤ 1) :
+/-- **Second-kind Chebyshev polynomials are bounded on $[-1, 1]$**: for $\lvert y \rvert \le 1$,
+$\lvert U_n(y)\rvert \le n + 1$. [Trefethen2019, Ch. 3] (locator to check). -/
+theorem abs_eval_U_le (n : ℕ) {y : ℝ} (hy : |y| ≤ 1) :
     |(Chebyshev.U ℝ (n : ℤ)).eval y| ≤ n + 1 := by
   induction n with
   | zero => simp

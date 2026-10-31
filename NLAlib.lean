@@ -230,6 +230,7 @@ public import NLAlib.Matrix.Factorizations.Cholesky
 public import NLAlib.Matrix.Factorizations.ColumnVolume
 public import NLAlib.Matrix.Factorizations.Elimination
 public import NLAlib.Matrix.Factorizations.GaussState
+public import NLAlib.Matrix.Factorizations.GeneralizedSVD
 public import NLAlib.Matrix.Factorizations.Givens
 public import NLAlib.Matrix.Factorizations.GivensHessenberg
 public import NLAlib.Matrix.Factorizations.GramSchmidt

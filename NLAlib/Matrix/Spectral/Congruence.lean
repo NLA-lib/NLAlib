@@ -21,8 +21,9 @@ $\mathbf{B} = \mathbf{S}\mathbf{D}\mathbf{S}^{\mathsf{H}}$ with $\mathbf{D}$ rea
 entries of $\mathbf{D}$ are the generalized eigenvalues of the pair, the eigenvalues of
 $\mathbf{A}^{-1}\mathbf{B}$, so $\mathbf{A}^{-1}\mathbf{B}$ and $\mathbf{A}\mathbf{B}$ are
 diagonalisable with real spectrum. Two positive semidefinite matrices are simultaneously
-diagonalised by congruence as well, and for an indefinite invertible $\mathbf{A}$ this happens
-exactly when $\mathbf{A}^{-1}\mathbf{B}$ is diagonalisable with real eigenvalues. Over
+diagonalised by congruence as well, with nonnegative diagonals whose coordinate sums are zero
+or one. For an indefinite invertible $\mathbf{A}$, simultaneous diagonalisation by congruence
+is possible exactly when $\mathbf{A}^{-1}\mathbf{B}$ is diagonalisable with real eigenvalues. Over
 $\mathbb{C}$ every pair of square matrices is simultaneously unitarily triangularised (the
 generalized Schur, or QZ, decomposition).
 
@@ -32,7 +33,7 @@ generalized Schur, or QZ, decomposition).
   pair.
 * `NLAlib.isEigenvalueListing_inv_mul_of_eq_mul_diagonal_mul_conjTranspose`,
   `Matrix.PosDef.isDiagonalizable_inv_mul`.
-* `Matrix.PosSemidef.exists_conjTranspose_mul_mul_eq_diagonal`: the semidefinite pair.
+* `Matrix.PosSemidef.exists_conjTranspose_mul_mul_eq_diagonal`: the normalized semidefinite pair.
 * `NLAlib.exists_hasOrthonormalCols_isUpperTriangular_isUpperTriangular`: the QZ decomposition.
 -/
 
@@ -264,16 +265,18 @@ private theorem exists_conjTranspose_mul_mul_eq_diagonal_indicator {C : Matrix n
       exact (Real.sq_sqrt (hc i)).symm
 
 /-- **Two positive semidefinite matrices are simultaneously diagonalised by congruence**, with
-nonnegative diagonals: there are an invertible $\mathbf{X}$ and nonnegative real $\mathbf{a}$,
-$\mathbf{b}$ with $\mathbf{X}^{\mathsf{H}}\mathbf{A}\mathbf{X} = \operatorname{diag}(\mathbf{a})$
-and $\mathbf{X}^{\mathsf{H}}\mathbf{B}\mathbf{X} = \operatorname{diag}(\mathbf{b})$.
-[HornJohnson2013, Theorem 7.6.4 context]. -/
+normalized nonnegative diagonals: there are an invertible $\mathbf{X}$ and nonnegative real
+$\mathbf{a}$, $\mathbf{b}$ with
+$\mathbf{X}^{\mathsf{H}}\mathbf{A}\mathbf{X} = \operatorname{diag}(\mathbf{a})$
+and $\mathbf{X}^{\mathsf{H}}\mathbf{B}\mathbf{X} = \operatorname{diag}(\mathbf{b})$, and each
+$\mathbf{a}_i + \mathbf{b}_i$ is zero or one.
+[HornJohnson2013, Theorem 7.6.4 context]; the diagonals are normalized by whitening their sum. -/
 theorem _root_.Matrix.PosSemidef.exists_conjTranspose_mul_mul_eq_diagonal {A B : Matrix n n 𝕜}
     (hA : A.PosSemidef) (hB : B.PosSemidef) :
     ∃ (X : Matrix n n 𝕜) (a b : n → ℝ), IsUnit X.det ∧
       Xᴴ * A * X = Matrix.diagonal (fun i => ((a i : ℝ) : 𝕜)) ∧
       Xᴴ * B * X = Matrix.diagonal (fun i => ((b i : ℝ) : 𝕜)) ∧
-      (∀ i, 0 ≤ a i) ∧ ∀ i, 0 ≤ b i := by
+      (∀ i, 0 ≤ a i) ∧ (∀ i, 0 ≤ b i) ∧ ∀ i, a i + b i = 0 ∨ a i + b i = 1 := by
   obtain ⟨X₁, e, hX₁, hsum, he⟩ := exists_conjTranspose_mul_mul_eq_diagonal_indicator
     (hA.add hB)
   have hA' := hA.conjTranspose_mul_mul_same X₁
@@ -298,10 +301,26 @@ theorem _root_.Matrix.PosSemidef.exists_conjTranspose_mul_mul_eq_diagonal {A B :
   have hb0 := hB.conjTranspose_mul_mul_same (X₁ * V)
   rw [hXA, Matrix.posSemidef_diagonal_iff] at ha0
   rw [hXB, Matrix.posSemidef_diagonal_iff] at hb0
+  have hD : Matrix.diagonal (fun i => ((a i + b i : ℝ) : 𝕜)) =
+      Vᴴ * Matrix.diagonal (fun i => ((e i : ℝ) : 𝕜)) * V := by
+    rw [← hsum, Matrix.mul_add, Matrix.add_mul, hV.eq_mul_mul_conjTranspose_iff.mp ha,
+      hV.eq_mul_mul_conjTranspose_iff.mp hb]
+    simp only [RCLike.ofReal_add, Matrix.diagonal_add]
+  have hDsq : Matrix.diagonal (fun i => ((a i + b i : ℝ) : 𝕜)) *
+      Matrix.diagonal (fun i => ((a i + b i : ℝ) : 𝕜)) =
+      Matrix.diagonal (fun i => ((a i + b i : ℝ) : 𝕜)) := by
+    rw [hD]
+    simp only [Matrix.mul_assoc]
+    rw [← Matrix.mul_assoc V Vᴴ, hV.mul_conjTranspose_self, Matrix.one_mul,
+      ← Matrix.mul_assoc (Matrix.diagonal _) (Matrix.diagonal _), hP]
   refine ⟨X₁ * V, a, b, ?_, hXA, hXB, fun i => RCLike.ofReal_nonneg.mp (ha0 i),
-    fun i => RCLike.ofReal_nonneg.mp (hb0 i)⟩
-  rw [Matrix.det_mul]
-  exact hX₁.mul ((Matrix.isUnit_iff_isUnit_det V).mp hV.isUnit)
+    fun i => RCLike.ofReal_nonneg.mp (hb0 i), fun i => ?_⟩
+  · rw [Matrix.det_mul]
+    exact hX₁.mul ((Matrix.isUnit_iff_isUnit_det V).mp hV.isUnit)
+  · have hi := congrArg (fun M : Matrix n n 𝕜 => M i i) hDsq
+    simp only [Matrix.diagonal_mul_diagonal, Matrix.diagonal_apply_eq,
+      ← RCLike.ofReal_mul] at hi
+    exact IsIdempotentElem.iff_eq_zero_or_one.mp (RCLike.ofReal_injective hi)
 
 /-- **A real symmetric pair with invertible $\mathbf{A}$ is simultaneously diagonalised by
 congruence exactly when $\mathbf{A}^{-1}\mathbf{B}$ is diagonalisable over $\mathbb{R}$**: there

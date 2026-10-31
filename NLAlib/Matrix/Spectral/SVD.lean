@@ -327,17 +327,6 @@ end IsSVD
 
 /-! ### Existence -/
 
-omit [Fintype r] in
-/-- A column of $\mathbf{B}$ whose diagonal entry in the Gram matrix
-$\mathbf{B}^{\mathsf{H}}\mathbf{B}$ vanishes is zero. -/
-private theorem apply_eq_zero_of_conjTranspose_mul_self_eq_diagonal {B : Matrix m r 𝕜}
-    {d : r → 𝕜} (hB : Bᴴ * B = Matrix.diagonal d) {i : r} (hi : d i = 0) (j : m) :
-    B j i = 0 := by
-  have h0 : star (B.col i) ⬝ᵥ B.col i = 0 := by
-    have hii := congrFun (congrFun hB i) i
-    rwa [Matrix.diagonal_apply_eq, hi] at hii
-  exact congrFun (dotProduct_star_self_eq_zero.mp h0) j
-
 /-- A matrix $\mathbf{B}$ whose Gram matrix is $\operatorname{diag}(\mathbf{s})^2$ is
 $\mathbf{U} \operatorname{diag}(\mathbf{s})$ for a $\mathbf{U}$ with orthonormal columns, when
 $\lvert r \rvert \le \lvert m \rvert$: normalise the columns with $\mathbf{s}_i \ne 0$ and complete
@@ -350,19 +339,13 @@ private theorem exists_hasOrthonormalCols_mul_diagonal_eq {B : Matrix m r 𝕜} 
   classical
   obtain ⟨C, hCB⟩ : ∃ C : Matrix m r 𝕜,
       C = B * Matrix.diagonal fun i => (((s i)⁻¹ : ℝ) : 𝕜) := ⟨_, rfl⟩
-  have hC : Cᴴ * C =
-      Matrix.diagonal fun i => (((s i)⁻¹ : ℝ) : 𝕜) * (((s i ^ 2 : ℝ) : 𝕜) * ((s i)⁻¹ : ℝ)) := by
-    rw [hCB, Matrix.conjTranspose_mul, Matrix.conjTranspose_diagonal_ofReal, Matrix.mul_assoc,
-      ← Matrix.mul_assoc Bᴴ, hB, Matrix.diagonal_mul_diagonal, Matrix.diagonal_mul_diagonal]
   have hQ₁ : HasOrthonormalCols (C.submatrix id (Subtype.val : {i // s i ≠ 0} → r)) := by
-    rw [HasOrthonormalCols, Matrix.conjTranspose_submatrix,
-      ← Matrix.submatrix_mul _ _ _ id _ Function.bijective_id, hC,
-      Matrix.submatrix_diagonal _ _ Subtype.val_injective, ← Matrix.diagonal_one]
-    congr 1
-    funext i
-    have hi : s i ≠ 0 := i.2
-    rw [Function.comp_apply, ← RCLike.ofReal_mul, ← RCLike.ofReal_mul,
-      show (s i)⁻¹ * (s i ^ 2 * (s i)⁻¹) = 1 by field_simp, RCLike.ofReal_one]
+    have hQ := hasOrthonormalCols_div_of_conjTranspose_mul_self_eq_diagonal hB
+      (Subtype.val : {i // s i ≠ 0} → r) Subtype.val_injective (fun i => i.2)
+    convert hQ using 1
+    ext j i
+    simp only [hCB, Matrix.submatrix_apply, id_eq, Matrix.mul_diagonal, Matrix.of_apply,
+      RCLike.ofReal_inv, div_eq_mul_inv]
   obtain ⟨Q₂, hQ⟩ := hQ₁.exists_fromCols_of_card_le (p := {i // ¬ s i ≠ 0}) (by
     rw [← Fintype.card_sum, Fintype.card_congr (Equiv.sumCompl fun i => s i ≠ 0)]
     exact hr)
@@ -377,8 +360,9 @@ private theorem exists_hasOrthonormalCols_mul_diagonal_eq {B : Matrix m r 𝕜} 
     rw [mul_assoc, ← RCLike.ofReal_mul, inv_mul_cancel₀ hi, RCLike.ofReal_one, mul_one]
   · have hi0 : s i = 0 := not_not.mp hi
     rw [hi0, RCLike.ofReal_zero, mul_zero]
-    refine (apply_eq_zero_of_conjTranspose_mul_self_eq_diagonal hB ?_ j).symm
-    rw [hi0, zero_pow two_ne_zero, RCLike.ofReal_zero]
+    exact (congrFun (col_eq_zero_of_conjTranspose_mul_self_apply_eq_zero B
+      (by rw [hB, Matrix.diagonal_apply_eq, hi0, zero_pow two_ne_zero,
+        RCLike.ofReal_zero])) j).symm
 
 /-- **Existence of the singular value decomposition.** For every $k$ between the rank of
 $\mathbf{A}$ and its smaller dimension,
@@ -427,9 +411,11 @@ theorem exists_isSVD (A : Matrix m n 𝕜) {k : ℕ} (hk : A.rank ≤ k) (hkm : 
   have hki : k ≤ i := by
     by_contra hlt
     exact hi ⟨⟨i, not_le.mp hlt⟩, Fin.ext rfl⟩
-  rw [apply_eq_zero_of_conjTranspose_mul_self_eq_diagonal hAW ?_ a, zero_mul]
-  rw [(singularValues_eq_zero_iff A).mpr (hk.trans hki), zero_pow two_ne_zero,
-    RCLike.ofReal_zero]
+  have hi0 : (A * W).col i = 0 :=
+    col_eq_zero_of_conjTranspose_mul_self_apply_eq_zero (A * W) (by
+      rw [hAW, Matrix.diagonal_apply_eq, (singularValues_eq_zero_iff A).mpr (hk.trans hki),
+        zero_pow two_ne_zero, RCLike.ofReal_zero])
+  rw [show (A * W) a i = 0 from congrFun hi0 a, zero_mul]
 
 /-- Existence of a split singular value decomposition: for $k + d$ between the rank of
 $\mathbf{A}$ and its smaller dimension, $\mathbf{A}$ has an SVD whose first block carries the $k$

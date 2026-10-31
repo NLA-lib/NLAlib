@@ -94,6 +94,45 @@ theorem hasOrthonormalCols_iff_mem_unitaryGroup [Fintype n] {Q : Matrix n n 𝕜
 theorem hasOrthonormalCols_one [Fintype n] : HasOrthonormalCols (1 : Matrix n n 𝕜) := by
   rw [HasOrthonormalCols, Matrix.conjTranspose_one, Matrix.one_mul]
 
+open scoped ComplexOrder in
+omit [DecidableEq n] in
+/-- A zero diagonal entry of the Gram matrix forces the corresponding column to vanish.
+This supplies the zero-column case when normalizing singular columns. -/
+theorem col_eq_zero_of_conjTranspose_mul_self_apply_eq_zero (B : Matrix m n 𝕜) {i : n}
+    (hi : (Bᴴ * B) i i = 0) : B.col i = 0 :=
+  dotProduct_star_self_eq_zero.mp hi
+
+/-- If the Gram matrix of $\mathbf{B}$ is the diagonal of the real squares $s_i^2$, then
+any injectively selected columns with $s_i \ne 0$, divided by $s_i$, are orthonormal.
+This is the shared normalization step for singular and generalized singular columns.
+Proof material adapted from `tchen-research/NLAlib` at
+`77514ce42a0e437d837797a063ac161f41022730`,
+`NLAlib/Matrix/Factorizations/GeneralizedSVD.lean`. -/
+theorem hasOrthonormalCols_div_of_conjTranspose_mul_self_eq_diagonal
+    {B : Matrix m n 𝕜} {s : n → ℝ}
+    (hB : Bᴴ * B = Matrix.diagonal (fun i => ((s i ^ 2 : ℝ) : 𝕜)))
+    {r : Type*} [DecidableEq r] (e : r → n) (he : Function.Injective e)
+    (hs : ∀ i, s (e i) ≠ 0) :
+    HasOrthonormalCols (Matrix.of (fun j i => B j (e i) / (s (e i) : 𝕜))) := by
+  ext i j
+  have hij := congrArg (fun M : Matrix n n 𝕜 => M (e i) (e j)) hB
+  simp only [Matrix.mul_apply, Matrix.conjTranspose_apply, Matrix.diagonal_apply] at hij
+  simp only [Matrix.mul_apply, Matrix.conjTranspose_apply, Matrix.of_apply,
+    star_div₀, RCLike.star_def, RCLike.conj_ofReal, div_mul_div_comm,
+    ← Finset.sum_div, Matrix.one_apply]
+  simp only [RCLike.star_def] at hij
+  by_cases h : i = j
+  · subst j
+    simp only [ite_true] at hij ⊢
+    rw [hij]
+    have hi : (s (e i) : 𝕜) ≠ 0 := by exact_mod_cast hs i
+    push_cast
+    field_simp
+  · have hij' : e i ≠ e j := fun h' => h (he h')
+    simp only [hij', ite_false] at hij
+    rw [hij]
+    simp only [zero_div, h, ite_false]
+
 namespace HasOrthonormalCols
 
 /-- A product of matrices with orthonormal columns has orthonormal columns. -/

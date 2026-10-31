@@ -223,15 +223,31 @@ theorem trace_conjTranspose_mul_hermitianPart_mul {k : Type*} [Fintype k] (Q : M
     Matrix.add_mul, Matrix.trace_add, h, smul_eq_mul]
   ring
 
-/-- The Hermitian part commutes with unitary conjugation: the Hermitian part of
-$\mathbf{U}\mathbf{A}\mathbf{U}^{\mathsf{H}}$ is $\mathbf{U}\mathbf{H}\mathbf{U}^{\mathsf{H}}$ for
-$\mathbf{H} = \tfrac{1}{2}(\mathbf{A} + \mathbf{A}^{\mathsf{H}})$, for any square $\mathbf{U}$. -/
-theorem hermitianPart_mul_mul_conjTranspose (U A : Matrix n n 𝕜) :
+/-- The Hermitian part commutes with congruence by any rectangular matrix:
+the Hermitian part of $\mathbf{U}\mathbf{A}\mathbf{U}^{\mathsf{H}}$ is
+$\mathbf{U}\mathbf{H}\mathbf{U}^{\mathsf{H}}$ for
+$\mathbf{H} = \tfrac{1}{2}(\mathbf{A} + \mathbf{A}^{\mathsf{H}})$. -/
+theorem hermitianPart_mul_mul_conjTranspose {m : Type*}
+    (U : Matrix m n 𝕜) (A : Matrix n n 𝕜) :
     hermitianPart (U * A * Uᴴ) = U * hermitianPart A * Uᴴ := by
   simp only [hermitianPart, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose,
     Matrix.mul_smul, Matrix.smul_mul, Matrix.mul_add, Matrix.add_mul, Matrix.mul_assoc]
 
 variable [DecidableEq n]
+
+open scoped MatrixOrder in
+/-- Compression to orthonormal columns preserves any scalar upper bound on the Hermitian
+part. In particular, a strict dissipativity bound survives compression with the same constant. -/
+theorem HasOrthonormalCols.hermitianPart_conjTranspose_mul_mul_le
+    {k : Type*} [DecidableEq k] {V : Matrix n k 𝕜}
+    (hV : HasOrthonormalCols V) {A : Matrix n n 𝕜} {b : ℝ}
+    (hA : hermitianPart A ≤ b • (1 : Matrix n n 𝕜)) :
+    hermitianPart (Vᴴ * A * V) ≤ b • (1 : Matrix k k 𝕜) := by
+  have hpart := hermitianPart_mul_mul_conjTranspose Vᴴ A
+  simp only [Matrix.conjTranspose_conjTranspose] at hpart
+  rw [hpart]
+  simpa only [Matrix.mul_smul, Matrix.smul_mul, Matrix.mul_one, hV.conjTranspose_mul_self]
+    using conjTranspose_mul_mul_le_conjTranspose_mul_mul hA V
 
 /-- **The real parts of the eigenvalues are majorized by the eigenvalues of the Hermitian
 part** (Ky Fan): if $\mathbf{z}$ lists the eigenvalues of a complex matrix $\mathbf{A}$ and the

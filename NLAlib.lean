@@ -130,6 +130,7 @@ public import NLAlib.Krylov.FinitePrecision.CGRun
 public import NLAlib.Krylov.FinitePrecision.CGRunModel
 public import NLAlib.Krylov.FinitePrecision.LanczosData
 public import NLAlib.Krylov.FinitePrecision.LanczosFunctions
+public import NLAlib.Krylov.FinitePrecision.LanczosProgramQuadrature
 public import NLAlib.Krylov.FinitePrecision.LanczosRun
 public import NLAlib.Krylov.FinitePrecision.LocalErrors
 public import NLAlib.Krylov.FinitePrecision.Normalized

@@ -67,7 +67,7 @@ $a\mathbf{I} \preceq \mathbf{A} \preceq b\mathbf{I}$ for an interval.
   $\psi(\mathbf{A})\mathbf{x}$ as a quadratic form, and a Cauchy–Schwarz inequality for
   functions of one Hermitian matrix.
 * `Matrix.IsHermitian.frobNorm_cfc_sub_cfc_le`: a $1$-Lipschitz function is $1$-Lipschitz in
-  the Frobenius norm on symmetric matrices [Kittaneh1985].
+  the Frobenius norm on Hermitian matrices over either scalar field [Kittaneh1985].
 * `Matrix.IsHermitian.cfc_fromBlocks_zero₁₂_zero₂₁`, `NLAlib.cfc_blockDiagonal`: block diagonal
   sums.
 * `Matrix.PosDef.inv_eq_cfc`, `Matrix.PosDef.inv_sqrt_eq_cfc`: the inverse and the inverse
@@ -736,70 +736,69 @@ theorem _root_.Matrix.IsHermitian.cfc_mul_eq_mul_diagonal_of_mul_eq {r : Type*} 
 
 /-! ### Lipschitz functions in the Frobenius norm -/
 
-/-- **A $1$-Lipschitz function is $1$-Lipschitz in the Frobenius norm on symmetric matrices**:
-for real symmetric $\mathbf{A}$, $\mathbf{B}$ and $f$ with $\lvert f(x) - f(y)\rvert \le
+/-- **A $1$-Lipschitz function is $1$-Lipschitz in the Frobenius norm on Hermitian matrices**:
+for Hermitian $\mathbf{A}$, $\mathbf{B}$ over $\Bbbk$ and $f : \mathbb{R} \to \mathbb{R}$ with
+$\lvert f(x) - f(y)\rvert \le
 \lvert x - y\rvert$,
 $\|f(\mathbf{A}) - f(\mathbf{B})\|_{\mathsf{F}} \le \|\mathbf{A} - \mathbf{B}\|_{\mathsf{F}}$.
-No printed source in this form: Kittaneh proves it for normal operators and the
-Hilbert–Schmidt norm (cited in the module docstring).
+The finite-dimensional Hermitian specialization of [Kittaneh1985, abstract], with Lipschitz
+constant one. The statement includes both real and complex matrices and empty index types.
 Result: lipschitz-cfc-frobenius -/
 theorem _root_.Matrix.IsHermitian.frobNorm_cfc_sub_cfc_le {ι : Type*} [Fintype ι]
-    [DecidableEq ι] {A B : Matrix ι ι ℝ} (hA : A.IsHermitian) (hB : B.IsHermitian) {f : ℝ → ℝ}
+    [DecidableEq ι] {A B : Matrix ι ι 𝕜} (hA : A.IsHermitian) (hB : B.IsHermitian) {f : ℝ → ℝ}
     (hf : LipschitzWith 1 f) :
     frobNorm (cfc f A - cfc f B) ≤ frobNorm (A - B) := by
-  have hdec : ∀ {C : Matrix ι ι ℝ} (hC : C.IsHermitian) (g : ℝ → ℝ),
-      cfc g C = (hC.eigenvectorUnitary : Matrix ι ι ℝ) *
-        Matrix.diagonal (fun i => g (hC.eigenvalues i)) *
-          (hC.eigenvectorUnitary : Matrix ι ι ℝ)ᵀ := by
+  have hdec : ∀ {C : Matrix ι ι 𝕜} (hC : C.IsHermitian) (g : ℝ → ℝ),
+      cfc g C = (hC.eigenvectorUnitary : Matrix ι ι 𝕜) *
+        Matrix.diagonal (fun i => ((g (hC.eigenvalues i) : ℝ) : 𝕜)) *
+          (hC.eigenvectorUnitary : Matrix ι ι 𝕜)ᴴ := by
     intro C hC g
     rw [hC.cfc_eq, Matrix.IsHermitian.cfc, Unitary.conjStarAlgAut_apply,
-      Matrix.star_eq_conjTranspose, Matrix.conjTranspose_eq_transpose_of_trivial]
+      Matrix.star_eq_conjTranspose]
     rfl
-  set U := (hA.eigenvectorUnitary : Matrix ι ι ℝ)
-  set V := (hB.eigenvectorUnitary : Matrix ι ι ℝ)
+  set U := (hA.eigenvectorUnitary : Matrix ι ι 𝕜)
+  set V := (hB.eigenvectorUnitary : Matrix ι ι 𝕜)
   set a := hA.eigenvalues
   set b := hB.eigenvalues
   have hU := hA.hasOrthonormalCols_eigenvectorUnitary
   have hV := hB.hasOrthonormalCols_eigenvectorUnitary
-  have hUt : HasOrthonormalCols Uᵀ := by
-    have := hU.conjTranspose
-    rwa [Matrix.conjTranspose_eq_transpose_of_trivial] at this
-  have hUU : Uᵀ * U = 1 := by
-    have := hU.conjTranspose_mul_self
-    rwa [Matrix.conjTranspose_eq_transpose_of_trivial] at this
-  have hVV : Vᵀ * V = 1 := by
-    have := hV.conjTranspose_mul_self
-    rwa [Matrix.conjTranspose_eq_transpose_of_trivial] at this
-  have hA' : A = U * Matrix.diagonal a * Uᵀ := by
+  have hUU : Uᴴ * U = 1 := hU.conjTranspose_mul_self
+  have hVV : Vᴴ * V = 1 := hV.conjTranspose_mul_self
+  have hA' : A = U * Matrix.diagonal (fun i => ((a i : ℝ) : 𝕜)) * Uᴴ := by
     have := hdec hA (fun x => x)
     rwa [cfc_id' ℝ A] at this
-  have hB' : B = V * Matrix.diagonal b * Vᵀ := by
+  have hB' : B = V * Matrix.diagonal (fun i => ((b i : ℝ) : 𝕜)) * Vᴴ := by
     have := hdec hB (fun x => x)
     rwa [cfc_id' ℝ B] at this
   -- conjugate both differences by the two eigenbases
-  have hconj : ∀ (d e : ι → ℝ), Uᵀ * (U * Matrix.diagonal d * Uᵀ - V * Matrix.diagonal e * Vᵀ) * V =
-      Matrix.diagonal d * (Uᵀ * V) - Uᵀ * V * Matrix.diagonal e := by
+  have hconj : ∀ (d e : ι → 𝕜),
+      Uᴴ * (U * Matrix.diagonal d * Uᴴ - V * Matrix.diagonal e * Vᴴ) * V =
+        Matrix.diagonal d * (Uᴴ * V) - Uᴴ * V * Matrix.diagonal e := by
     intro d e
     simp only [Matrix.mul_sub, Matrix.sub_mul, ← Matrix.mul_assoc, hUU, Matrix.one_mul]
     simp only [Matrix.mul_assoc, hVV, Matrix.mul_one]
-  have hfrob : ∀ X : Matrix ι ι ℝ, frobNorm X = frobNorm (Uᵀ * X * V) := fun X => by
-    rw [Matrix.mul_assoc, hUt.frobNorm_mul_left, hV.frobNorm_mul_right]
-  have hAB : A - B = U * Matrix.diagonal a * Uᵀ - V * Matrix.diagonal b * Vᵀ := by
+  have hfrob : ∀ X : Matrix ι ι 𝕜, frobNorm X = frobNorm (Uᴴ * X * V) := fun X => by
+    rw [Matrix.mul_assoc, hU.conjTranspose.frobNorm_mul_left, hV.frobNorm_mul_right]
+  have hAB : A - B = U * Matrix.diagonal (fun i => ((a i : ℝ) : 𝕜)) * Uᴴ -
+      V * Matrix.diagonal (fun i => ((b i : ℝ) : 𝕜)) * Vᴴ := by
     rw [← hA', ← hB']
   rw [hfrob, hfrob (A - B), hdec hA f, hdec hB f, hconj, hAB, hconj]
-  have hsq : frobNorm (Matrix.diagonal (fun i => f (a i)) * (Uᵀ * V) -
-      Uᵀ * V * Matrix.diagonal (fun i => f (b i))) ^ 2 ≤
-      frobNorm (Matrix.diagonal a * (Uᵀ * V) - Uᵀ * V * Matrix.diagonal b) ^ 2 := by
-    rw [frobNorm_sq_eq_sum_sq, frobNorm_sq_eq_sum_sq]
+  have hsq : frobNorm (Matrix.diagonal (fun i => ((f (a i) : ℝ) : 𝕜)) * (Uᴴ * V) -
+      Uᴴ * V * Matrix.diagonal (fun i => ((f (b i) : ℝ) : 𝕜))) ^ 2 ≤
+      frobNorm (Matrix.diagonal (fun i => ((a i : ℝ) : 𝕜)) * (Uᴴ * V) -
+        Uᴴ * V * Matrix.diagonal (fun i => ((b i : ℝ) : 𝕜))) ^ 2 := by
+    rw [frobNorm_sq_eq_sum, frobNorm_sq_eq_sum]
     refine Finset.sum_le_sum fun i _ => Finset.sum_le_sum fun j _ => ?_
     simp only [Matrix.sub_apply, Matrix.diagonal_mul, Matrix.mul_diagonal]
     have hl : |f (a i) - f (b j)| ≤ |a i - b j| := by
       have := hf.dist_le_mul (a i) (b j)
-      simpa [Real.dist_eq] using this
-    rw [show f (a i) * (Uᵀ * V) i j - (Uᵀ * V) i j * f (b j) =
-        (f (a i) - f (b j)) * (Uᵀ * V) i j by ring,
-      show a i * (Uᵀ * V) i j - (Uᵀ * V) i j * b j = (a i - b j) * (Uᵀ * V) i j by ring,
-      mul_pow, mul_pow, ← sq_abs (f (a i) - f (b j)), ← sq_abs (a i - b j)]
+      simpa only [Real.dist_eq, NNReal.coe_one, one_mul] using this
+    have he (x y : ℝ) (z : 𝕜) :
+        ‖(x : 𝕜) * z - z * (y : 𝕜)‖ = |x - y| * ‖z‖ := by
+      rw [show (x : 𝕜) * z - z * (y : 𝕜) = ((x - y : ℝ) : 𝕜) * z by
+        push_cast
+        ring, norm_mul, RCLike.norm_ofReal]
+    rw [he, he]
     gcongr
   exact (sq_le_sq₀ (frobNorm_nonneg _) (frobNorm_nonneg _)).1 hsq
 

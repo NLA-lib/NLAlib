@@ -298,10 +298,28 @@ theorem submatrix_sumCompl_eq_fromBlocks {M : Matrix n n K} {i₀ : n} {α : K}
     simp [hcol, hi]
   · simp
 
+omit [Fintype n] in
+/-- Isolating row and column $i$ of $\mathbf{M}$ at $\mu$ gives the scalar direct-sum block
+$[\mu]\oplus\mathbf{B}$, where $\mathbf{B}$ deletes row and column $i$.
+This derives the paired deflation block from the existing one-column block decomposition.
+Adapted from `NLAlib.submatrix_eq_fromBlocks_of_isolated_coordinate` in
+`tchen-research/NLAlib` at `77514ce42a0e437d837797a063ac161f41022730`. -/
+theorem submatrix_eq_fromBlocks_of_isolated_coordinate (M : Matrix n n K) (i : n) (μ : K)
+    (hcol : ∀ j, M j i = if j = i then μ else 0)
+    (hrow : ∀ j, M i j = if j = i then μ else 0) :
+    M.submatrix (Equiv.sumCompl (fun j => j = i)) (Equiv.sumCompl (fun j => j = i)) =
+      Matrix.fromBlocks (Matrix.diagonal (fun _ : {j : n // j = i} => μ)) 0 0
+        (M.submatrix (fun j : {j : n // j ≠ i} => j.val) (fun j : {j : n // j ≠ i} => j.val)) := by
+  rw [submatrix_sumCompl_eq_fromBlocks hcol]
+  congr 1
+  ext ⟨j, hj⟩ ⟨k, hk⟩
+  change M j k = 0
+  rw [hj, hrow, if_neg hk]
+
 /-- The characteristic polynomial of a matrix with a multiple $\alpha$ of a coordinate vector in
 the column $i_0$ loses a linear factor $X - \alpha$ when the row and the column $i_0$ are
 deleted. -/
-private theorem charpoly_eq_X_sub_C_mul_charpoly_submatrix {M : Matrix n n K} {i₀ : n} {α : K}
+theorem charpoly_eq_X_sub_C_mul_charpoly_submatrix {M : Matrix n n K} {i₀ : n} {α : K}
     [DecidableEq {i // ¬i = i₀}] (hcol : ∀ i, M i i₀ = if i = i₀ then α else 0) :
     M.charpoly = (X - C α) *
       (M.submatrix (Subtype.val : {i // ¬i = i₀} → n) Subtype.val).charpoly := by

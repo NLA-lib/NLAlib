@@ -5,9 +5,11 @@ Authors: NLAlib contributors
 -/
 module
 
+public import Mathlib.LinearAlgebra.Basis.VectorSpace
 public import Mathlib.LinearAlgebra.Eigenspace.Zero
 public import Mathlib.LinearAlgebra.Matrix.Charpoly.Eigs
 public import Mathlib.LinearAlgebra.Matrix.Rank
+public import NLAlib.Matrix.Spectral.EigenvalueListing
 
 /-!
 # Left and right eigenvectors
@@ -28,6 +30,12 @@ $\mathbf{A} - \mu\mathbf{I}$ is a nonzero multiple of $\mathbf{x}\mathbf{y}^{\ma
 * `NLAlib.rootMultiplicity_charpoly_eq_one_iff_dotProduct_ne_zero`: simple eigenvalues through
   the pairing.
 * `NLAlib.exists_adjugate_eq_smul_vecMulVec`: the adjugate at a geometrically simple eigenvalue.
+* `NLAlib.exists_inv_mul_mul_apply_eq_of_dotProduct_ne_zero`: paired-basis deflation with a
+  normalized inverse row and the corresponding rank-one projector.
+* `NLAlib.exists_inv_mul_mul_apply_eq_of_rootMultiplicity_eq_one`: a simple eigenvalue is
+  excluded from the complementary block.
+* `NLAlib.nonsing_inv_mul_mul_apply_eq_dotProduct_mulVec_div`: the perturbation entry in a
+  paired basis.
 -/
 
 @[expose] public section
@@ -301,5 +309,260 @@ theorem exists_adjugate_eq_smul_vecMulVec {M : Matrix n n K} {x y : n → K} (hx
     rw [hadj, ← hγ, Matrix.vecMulVec_smul]
   refine ⟨γ, fun hzero => adjugate_ne_zero_of_finrank_ker_eq_one h ?_, hform⟩
   rw [hform, hzero, zero_smul]
+
+/-! ### Paired bases and spectral deflation -/
+
+omit [DecidableEq n] in
+/-- Left multiplication acts on any scalar multiple of a right eigenvector's outer product by
+its eigenvalue: if $\mathbf{A}\mathbf{x}=\mu\mathbf{x}$, then
+$\mathbf{A}(c\mathbf{x}\mathbf{y}^{\mathsf{T}})=
+\mu(c\mathbf{x}\mathbf{y}^{\mathsf{T}})$ for every scalar $c$ and vector $\mathbf{y}$.
+Generalizes the left half of `NLAlib.mul_normalized_vecMulVec_eq_smul` from
+`tchen-research/NLAlib` at `77514ce42a0e437d837797a063ac161f41022730`. -/
+theorem mul_smul_vecMulVec_eq_smul {A : Matrix n n K} {x y : n → K}
+    {μ : K} (hx : A *ᵥ x = μ • x) (c : K) :
+    A * (c • Matrix.vecMulVec x y) = μ • (c • Matrix.vecMulVec x y) := by
+  rw [Matrix.mul_smul, Matrix.mul_vecMulVec, hx, Matrix.smul_vecMulVec]
+  exact smul_comm _ _ _
+
+omit [DecidableEq n] in
+/-- Right multiplication acts on any scalar multiple of a left eigenvector's outer product by
+its eigenvalue: if $\mathbf{y}^{\mathsf{T}}\mathbf{A}=\mu\mathbf{y}^{\mathsf{T}}$, then
+$(c\mathbf{x}\mathbf{y}^{\mathsf{T}})\mathbf{A}=
+\mu(c\mathbf{x}\mathbf{y}^{\mathsf{T}})$ for every scalar $c$ and vector $\mathbf{x}$.
+Generalizes the right half of `NLAlib.mul_normalized_vecMulVec_eq_smul` from
+`tchen-research/NLAlib` at `77514ce42a0e437d837797a063ac161f41022730`. -/
+theorem smul_vecMulVec_mul_eq_smul {A : Matrix n n K} {x y : n → K}
+    {μ : K} (hy : y ᵥ* A = μ • y) (c : K) :
+    (c • Matrix.vecMulVec x y) * A = μ • (c • Matrix.vecMulVec x y) := by
+  rw [Matrix.smul_mul, Matrix.vecMulVec_mul, hy, Matrix.vecMulVec_smul]
+  exact smul_comm _ _ _
+
+
+open Module Polynomial in
+private theorem inv_smul_vecMulVec_eq_mul_diagonal_mul_inv
+    (S : Matrix n n K) (i : n) (x y : n → K)
+    (hcol : Matrix.col S i = x) (hrow : ∀ j, S⁻¹ i j = y j / (y ⬝ᵥ x)) :
+    (y ⬝ᵥ x)⁻¹ • Matrix.vecMulVec x y =
+      S * Matrix.diagonal (Pi.single i 1) * S⁻¹ := by
+  ext k l
+  rw [Matrix.mul_apply]
+  simp only [Matrix.mul_diagonal, Pi.single_apply, mul_ite, mul_one, mul_zero,
+    ite_mul, zero_mul, Finset.sum_ite_eq', Finset.mem_univ, ite_true, hrow]
+  have hkl : S k i = x k := congrFun hcol k
+  rw [hkl]
+  simp only [Matrix.smul_apply, Matrix.vecMulVec_apply, smul_eq_mul, div_eq_mul_inv]
+  ring
+
+open Module Polynomial in
+/-- **Left-right eigenvector deflation.** If $\mathbf{A}\mathbf{x}=\mu\mathbf{x}$ and
+$\mathbf{y}^{\mathsf{T}}\mathbf{A}=\mu\mathbf{y}^{\mathsf{T}}$ with
+$\mathbf{y}^{\mathsf{T}}\mathbf{x}\ne0$, an invertible $\mathbf{S}$ has a column $\mathbf{x}$
+and the corresponding inverse row
+$$\frac{\mathbf{y}^{\mathsf{T}}}{\mathbf{y}^{\mathsf{T}}\mathbf{x}}.$$
+That coordinate of
+$\mathbf{S}^{-1}\mathbf{A}\mathbf{S}$ has diagonal entry $\mu$ and all other row and column
+entries zero. The normalized outer product is the conjugate of that coordinate projector.
+[HornJohnson2013, Theorem 1.4.7], generalized to arbitrary fields and finite index types, with
+bilinear left rows in place of conjugated columns.
+Adapted from `NLAlib.exists_isolated_eigenvector_similarity` in `tchen-research/NLAlib` at
+`77514ce42a0e437d837797a063ac161f41022730`.
+Result: left-right-eigenvectors -/
+theorem exists_inv_mul_mul_apply_eq_of_dotProduct_ne_zero {A : Matrix n n K} {x y : n → K} {μ : K}
+    (hAx : A *ᵥ x = μ • x) (hyA : y ᵥ* A = μ • y) (hpair : y ⬝ᵥ x ≠ 0) :
+    ∃ (S : Matrix n n K) (i : n), IsUnit S ∧ Matrix.col S i = x ∧
+      (∀ j, S⁻¹ i j = y j / (y ⬝ᵥ x)) ∧
+      (∀ j, (S⁻¹ * A * S) j i = if j = i then μ else 0) ∧
+      (∀ j, (S⁻¹ * A * S) i j = if j = i then μ else 0) ∧
+      (y ⬝ᵥ x)⁻¹ • Matrix.vecMulVec x y =
+        S * Matrix.diagonal (Pi.single i 1) * S⁻¹ := by
+  classical
+  let ℓ : (n → K) →ₗ[K] K :=
+    { toFun z := y ⬝ᵥ z
+      map_add' _ _ := dotProduct_add _ _ _
+      map_smul' c z := by rw [dotProduct_smul]; rfl }
+  obtain ⟨s, b, j, hx, hcoord⟩ := exists_basis_of_pairing_ne_zero (f := ℓ) (v := x) hpair
+  let : Fintype s := FiniteDimensional.fintypeBasisIndex b
+  have hcard : Fintype.card s = Fintype.card n := by
+    rw [← Module.finrank_eq_card_basis b, Module.finrank_fintype_fun_eq_card]
+  let e : s ≃ n := Fintype.equivOfCardEq hcard
+  let c : Basis n K (n → K) := b.reindex e
+  let i : n := e j
+  let p := Pi.basisFun K n
+  let S : Matrix n n K := p.toMatrix c
+  let : Invertible S := Basis.invertibleToMatrix p c
+  have hS : IsUnit S := isUnit_of_invertible S
+  have hci : c i = x := by
+    simpa only [c, i, Basis.reindex_apply, Equiv.symm_apply_apply] using hx.symm
+  have hcol : Matrix.col S i = x := by
+    funext k
+    simpa only [S, p, Matrix.col_apply, Basis.toMatrix_apply, Pi.basisFun_repr] using congrFun hci k
+  have hℓ : ℓ = (y ⬝ᵥ x) • c.coord i := by
+    apply LinearMap.ext
+    intro z
+    have h := LinearMap.congr_fun hcoord z
+    simpa only [LinearMap.smul_apply, ℓ, LinearMap.coe_mk, AddHom.coe_mk,
+      Basis.coord_apply, c, i, Basis.repr_reindex_apply, Equiv.symm_apply_apply] using h
+  have hSinv : S⁻¹ = c.toMatrix p :=
+    Matrix.inv_eq_left_inv (Basis.toMatrix_mul_toMatrix_flip c p)
+  have hrow (k : n) : S⁻¹ i k = y k / (y ⬝ᵥ x) := by
+    have h := LinearMap.congr_fun hℓ (p k)
+    have hval : y k = (y ⬝ᵥ x) * (c.repr (p k) i) := by
+      simpa only [ℓ, p, LinearMap.coe_mk, AddHom.coe_mk, Pi.basisFun_apply, dotProduct_single,
+        mul_one, LinearMap.smul_apply, smul_eq_mul, Basis.coord_apply] using h
+    rw [hSinv, Basis.toMatrix_apply]
+    apply (eq_div_iff hpair).mpr
+    simpa only [mul_comm] using hval.symm
+  have hM : S⁻¹ * A * S = A.toLin'.toMatrix c c := by
+    have hstd : A.toLin'.toMatrix p p = A := by
+      simpa only [p, Matrix.toLin_eq_toLin'] using LinearMap.toMatrix_toLin p p A
+    rw [hSinv]
+    nth_rw 1 [← hstd]
+    exact basis_toMatrix_mul_linearMap_toMatrix_mul_basis_toMatrix c p c p A.toLin'
+  have hright (k : n) : (S⁻¹ * A * S) k i = if k = i then μ else 0 := by
+    rw [hM, LinearMap.toMatrix_apply, hci, Matrix.toLin'_apply, hAx,
+      map_smul, ← hci, c.repr_self]
+    simp only [Finsupp.smul_apply, Finsupp.single_apply, smul_eq_mul, mul_ite,
+      mul_one, mul_zero, eq_comm]
+  have hleft (z : n → K) : c.coord i (A *ᵥ z) = μ * c.coord i z := by
+    have h : ℓ (A *ᵥ z) = μ * ℓ z := by
+      change y ⬝ᵥ (A *ᵥ z) = μ * (y ⬝ᵥ z)
+      rw [Matrix.dotProduct_mulVec, hyA, smul_dotProduct]
+      rfl
+    rw [hℓ, LinearMap.smul_apply, LinearMap.smul_apply, smul_eq_mul, smul_eq_mul] at h
+    apply mul_left_cancel₀ hpair
+    convert h using 1
+    ring
+  have htop (k : n) : (S⁻¹ * A * S) i k = if k = i then μ else 0 := by
+    rw [hM, LinearMap.toMatrix_apply]
+    change c.coord i (A *ᵥ c k) = _
+    rw [hleft, Basis.coord_apply, c.repr_self]
+    simp only [Finsupp.single_apply, mul_ite, mul_one, mul_zero]
+  refine ⟨S, i, hS, hcol, hrow, hright, htop, ?_⟩
+  exact inv_smul_vecMulVec_eq_mul_diagonal_mul_inv S i x y hcol hrow
+
+open Module Polynomial in
+/-- If column $i$ of $\mathbf{M}$ is $\mu\mathbf{e}_i$ and $\mu$ is a simple root of its
+characteristic polynomial, the principal submatrix deleting $i$ has no eigenvalue $\mu$.
+[HornJohnson2013, Lemma 6.3.10], in isolated coordinates; the row need not be isolated.
+Adapted from `NLAlib.not_mem_spectrum_submatrix_of_isolated_coordinate_of_simple` in
+`tchen-research/NLAlib` at `77514ce42a0e437d837797a063ac161f41022730`. -/
+theorem not_mem_spectrum_submatrix_of_rootMultiplicity_eq_one
+    (M : Matrix n n K) (i : n) (μ : K)
+    (hcol : ∀ j, M j i = if j = i then μ else 0)
+    (hμ : M.charpoly.rootMultiplicity μ = 1) :
+    μ ∉ spectrum K
+      (M.submatrix (fun j : {j : n // j ≠ i} => j.val) (fun j : {j : n // j ≠ i} => j.val)) := by
+  classical
+  let B := M.submatrix (fun j : {j : n // j ≠ i} => j.val) (fun j : {j : n // j ≠ i} => j.val)
+  have hfactor : M.charpoly = (X - C μ) * B.charpoly :=
+    charpoly_eq_X_sub_C_mul_charpoly_submatrix hcol
+  have hprod : (X - C μ) * B.charpoly ≠ 0 := hfactor ▸ M.charpoly_monic.ne_zero
+  rw [hfactor, Polynomial.rootMultiplicity_mul hprod] at hμ
+  simp only [Polynomial.rootMultiplicity_X_sub_C] at hμ
+  have hB : B.charpoly.rootMultiplicity μ = 0 := Nat.add_eq_left.mp hμ
+  intro hspec
+  have hroot := Matrix.mem_spectrum_iff_isRoot_charpoly.mp hspec
+  have hpos := Polynomial.rootMultiplicity_pos'.mpr ⟨B.charpoly_monic.ne_zero, hroot⟩
+  rw [hB] at hpos
+  exact (Nat.lt_irrefl 0) hpos
+
+open Module Polynomial in
+/-- Nonzero right and left eigenvectors $\mathbf{x},\mathbf{y}$ for a simple eigenvalue
+$\mu$ admit an invertible paired basis with column $\mathbf{x}$, inverse row
+$\mathbf{y}^{\mathsf{T}}/(\mathbf{y}^{\mathsf{T}}\mathbf{x})$, and isolated coordinate
+$\mu$. The complementary principal block does not have $\mu$ in its spectrum.
+[HornJohnson2013, Lemma 6.3.10], over an arbitrary field, without algebraic closure.
+Adapted from `NLAlib.exists_simple_eigenvalue_isolated_similarity` in `tchen-research/NLAlib` at
+`77514ce42a0e437d837797a063ac161f41022730`. -/
+theorem exists_inv_mul_mul_apply_eq_of_rootMultiplicity_eq_one
+    {A : Matrix n n K} {x y : n → K} {μ : K} (hx : x ≠ 0) (hy : y ≠ 0)
+    (hAx : A *ᵥ x = μ • x) (hyA : y ᵥ* A = μ • y)
+    (hμ : A.charpoly.rootMultiplicity μ = 1) :
+    ∃ (S : Matrix n n K) (i : n), IsUnit S ∧ Matrix.col S i = x ∧
+      (∀ j, S⁻¹ i j = y j / (y ⬝ᵥ x)) ∧
+      (∀ j, (S⁻¹ * A * S) j i = if j = i then μ else 0) ∧
+      (∀ j, (S⁻¹ * A * S) i j = if j = i then μ else 0) ∧
+      μ ∉ spectrum K ((S⁻¹ * A * S).submatrix
+        (fun j : {j : n // j ≠ i} => j.val) (fun j : {j : n // j ≠ i} => j.val)) := by
+  have hxmem : x ∈ Module.End.eigenspace A.toLin' μ :=
+    Module.End.mem_eigenspace_iff.mpr hAx
+  have hdim : Module.finrank K (Module.End.eigenspace A.toLin' μ) = 1 := by
+    apply Nat.le_antisymm
+    · have hle := Submodule.finrank_mono
+        (Module.End.eigenspace_le_maxGenEigenspace (f := A.toLin') (μ := μ))
+      rwa [LinearMap.finrank_maxGenEigenspace_eq, Matrix.charpoly_toLin', hμ] at hle
+    · have hle := Submodule.finrank_mono
+        ((Submodule.span_singleton_le_iff_mem x _).mpr hxmem)
+      rwa [finrank_span_singleton hx] at hle
+  have hpair := (rootMultiplicity_charpoly_eq_one_iff_dotProduct_ne_zero
+    hx hy hAx hyA hdim).mp hμ
+  obtain ⟨S, i, hS, hcol, hrow, hright, hleft, hproj⟩ :=
+    exists_inv_mul_mul_apply_eq_of_dotProduct_ne_zero hAx hyA hpair
+  have hchar : (S⁻¹ * A * S).charpoly = A.charpoly :=
+    charpoly_mul_mul_of_mul_eq_one
+      (Matrix.nonsing_inv_mul S (S.isUnit_iff_isUnit_det.mp hS)) A
+  exact ⟨S, i, hS, hcol, hrow, hright, hleft,
+    not_mem_spectrum_submatrix_of_rootMultiplicity_eq_one (S⁻¹ * A * S) i μ
+      hright (by simpa only [hchar] using hμ)⟩
+
+/-- An isolated column of $\mathbf{S}^{-1}\mathbf{A}\mathbf{S}$ with value $\mu$ makes the
+corresponding column of the invertible $\mathbf{S}$ a right eigenvector of $\mathbf{A}$.
+Only the transformed column, not its row, is prescribed.
+[HornJohnson2013, Theorem 1.4.7], the right-eigenvector part of the converse.
+Adapted from `NLAlib.eigenpair_of_isolated_similarity` in `tchen-research/NLAlib` at
+`77514ce42a0e437d837797a063ac161f41022730`. -/
+theorem mulVec_col_eq_smul_of_inv_mul_mul_apply_eq
+    (A S : Matrix n n K) (i : n) (μ : K) (hS : IsUnit S)
+    (hcol : ∀ j, (S⁻¹ * A * S) j i = if j = i then μ else 0) :
+    A *ᵥ Matrix.col S i = μ • Matrix.col S i := by
+  let := hS.nonempty_invertible.some
+  have hAS : A * S = S * (S⁻¹ * A * S) := by
+    simp only [← Matrix.mul_assoc, Matrix.mul_inv_of_invertible, Matrix.one_mul]
+  funext j
+  change (A * S) j i = μ * S j i
+  rw [hAS, Matrix.mul_apply]
+  simp only [hcol, mul_ite, mul_zero, Finset.sum_ite_eq', Finset.mem_univ, ite_true]
+  exact mul_comm _ _
+
+/-- An isolated row of $\mathbf{S}^{-1}\mathbf{A}\mathbf{S}$ with value $\mu$ makes the
+corresponding row of the inverse of $\mathbf{S}$ a left eigenvector of $\mathbf{A}$.
+Only the transformed row, not its column, is prescribed.
+[HornJohnson2013, Theorem 1.4.7], the left-eigenvector part of the converse.
+Adapted from `NLAlib.eigenpair_of_isolated_similarity` in `tchen-research/NLAlib` at
+`77514ce42a0e437d837797a063ac161f41022730`. -/
+theorem vecMul_eq_smul_of_inv_mul_mul_apply_eq
+    (A S : Matrix n n K) (i : n) (μ : K) (hS : IsUnit S)
+    (hrow : ∀ j, (S⁻¹ * A * S) i j = if j = i then μ else 0) :
+    (fun j => S⁻¹ i j) ᵥ* A = μ • (fun j => S⁻¹ i j) := by
+  let := hS.nonempty_invertible.some
+  have hSA : S⁻¹ * A = (S⁻¹ * A * S) * S⁻¹ := by
+    simp only [Matrix.mul_assoc, Matrix.mul_inv_of_invertible, Matrix.mul_one]
+  funext j
+  change (S⁻¹ * A) i j = μ * S⁻¹ i j
+  rw [hSA, Matrix.mul_apply]
+  simp only [hrow, ite_mul, zero_mul, Finset.sum_ite_eq', Finset.mem_univ, ite_true]
+
+open Module Polynomial in
+/-- If column $i$ of $\mathbf{S}$ is $\mathbf{x}$ and row $i$ of its inverse is
+$\mathbf{y}^{\mathsf{T}}/(\mathbf{y}^{\mathsf{T}}\mathbf{x})$, then the diagonal entry of a
+perturbation in that basis is
+$$(\mathbf{S}^{-1}\mathbf{E}\mathbf{S})_{i,i}=
+\frac{\mathbf{y}^{\mathsf{T}}\mathbf{E}\mathbf{x}}
+{\mathbf{y}^{\mathsf{T}}\mathbf{x}}\,.$$
+This is the coefficient used in first-order eigenvalue perturbation.
+Adapted from `NLAlib.nonsing_inv_mul_mul_apply_eq_dotProduct_mulVec_div` in
+`tchen-research/NLAlib` at `77514ce42a0e437d837797a063ac161f41022730`. -/
+theorem nonsing_inv_mul_mul_apply_eq_dotProduct_mulVec_div
+    (S E : Matrix n n K) (i : n) (x y : n → K)
+    (hcol : Matrix.col S i = x) (hrow : ∀ j, S⁻¹ i j = y j / (y ⬝ᵥ x)) :
+    (S⁻¹ * E * S) i i = (y ⬝ᵥ (E *ᵥ x)) / (y ⬝ᵥ x) := by
+  rw [Matrix.mul_assoc]
+  change (fun j => S⁻¹ i j) ⬝ᵥ (E *ᵥ Matrix.col S i) = _
+  rw [hcol]
+  have hrowfun : (fun j => S⁻¹ i j) = (y ⬝ᵥ x)⁻¹ • y := by
+    funext j
+    simp only [hrow, Pi.smul_apply, smul_eq_mul, div_eq_mul_inv, mul_comm]
+  rw [hrowfun, smul_dotProduct, smul_eq_mul, div_eq_mul_inv, mul_comm]
 
 end NLAlib

@@ -1,13 +1,49 @@
 # `NLAlib/Ops`: the new core of the model of computation
 
-Status: fourth build (base edits after the two reviews), 2026-11-10, branch `feat/ops-core`.
+Status: fifth step (the liberal counted judgment, joint witnesses, success companions) on the
+fourth build (base edits after the two reviews), 2026-11-10, branch `feat/ops-core`.
 Self-contained: every file imports only Mathlib and other files of this directory. Nothing of
 `NLAlib/Computation` is used. Design: `docs/design/Computation-Operations.md` (revision 3) on
 branch `design/operations-redesign`; layout and profiles after
 `docs/design/Library-Organization.md` (branch `design/library-organization`, approved). Reviews:
 `Review-Fable-OpsCore.md`, `Review-COMPDYN-OpsCore.md`. No registry, no targets, no ports yet.
 
-## What this step changed
+## Step 5: what the logic-layer and tools lanes asked of the core
+
+1. **`RunsFromWL`** (`Counted.lean`), the counted judgment for partial correctness, requested by
+   the logic-layer lane (its D12; `Review-Core-OpsLogic.md`, item 4), who consume it:
+   `∀ st', exec I W τ s ρ st = some st' → ∃ c, St.Reach st st' c p ∧ Q c st'.mem`. Rules, in
+   parallel with `RunsFromW`: `skip`, `abort` (vacuous), `seq`, `call` (from a liberal `Wp`),
+   `ite` (for every Boolean the test may return), `bindIdx` (for every value within the bound
+   that the query may return; the body is charged at that value), `alloc`, `frame` (under
+   liveness), `loop`, `whileFuel`, `mono`, `and`, `of_static` (the static count and workspace
+   with no hypothesis: `exec_within`), `of_wp` (a liberal `Wp` and the static count). Bridges:
+   `of_runsFromW` (total gives liberal), `runsFromW` (liberal and a total `Wp` give total),
+   `exec_init` and `runsL` (from the initial state), `RunsFromWL.link` (the liberal form of
+   `RunsW.link`) and `Table.AccountsW.of_runsFromWL` (the certificate of a table from the
+   judgment). `splitTable_accountsW` is reproved through the rules, in eight lines, where it
+   unfolded `exec` before. `Counted.lean` now imports `Transfer.lean`.
+2. **Joint witnesses** for the contract sets the target linter (`NLAlib/Ops/Tools`, rule (c))
+   found without one, each a theorem `exists_…` of the form `∃ …, C₁ ∧ C₂ ∧ …`:
+   `Blas.exists_isSum` (`IsScalar`, `StdModel`, `IsSum` for every error function nonnegative on
+   the admitted lengths), `exists_isArith`, `exists_isIdle_isToNat`, `exists_isNoisy` (every
+   noise function), `exists_isNoisy_isNoisyMv` (with the conditional law and the law of the
+   tape), `exists_isNoisyMv`, `exists_isRandLin_isTapeLaw` (`IsRandLin`, `TapeLocal`,
+   `IsTapeLaw`, `IsStdLaw`, `IsIsotropic`), `exists_isSrLo_isTapeLaw`. `isNoisyMv_noiseFn` stays
+   as the lemma the linked corollary applies; its witness form is `exists_isNoisyMv`.
+3. **Success companions** (`Examples/Liberal.lean`): one mode-generic `wp_scale` gives
+   `runsL_scale` and `runs_scale`; `div_link_total` and `div_accounts` give `runs_scale_link`
+   (closed counts). `IsRecipMul` takes the mode. The vacuity fixture is an `example` under a
+   section docstring, over the same contracts as `runsL_scale_link`; no named liberal statement
+   about the failing table remains.
+
+After this step the linter's scan has no finding of the classes (b), (c), (e); the nine
+remaining are (d), the bounds `Count.push … (Profile.cost …)` of the linked corollaries.
+Elaboration (seconds): `Counted` 2.4, `Examples/Split` 2.6, `Examples/Liberal` 3.3,
+`Examples/RandomWitness` 3.9, `Examples/Dot` 4.3, `Examples/NoisyMath` 3.2,
+`Examples/StochRound` 5.0, `Profiles/BlasCert` 3.1.
+
+## What the fourth build changed
 
 The nine base edits that both reviews asked for before anything is built on the core.
 
@@ -41,8 +77,8 @@ The nine base edits that both reviews asked for before anything is built on the 
 7. **Precision tags** (`Catalog/Tagged.lean`): `Tagged π G`, `CastOp π ρ`.
 8. Per-block operands and strides: **not done** (see "Not done").
 9. **Liberal statements, the tape, the README.** `wp_abort_liberal`,
-   `Impl.meets_liberal_abort`, `Interp.link_meets_liberal_of_abort` and the fixture
-   `runsL_scale_link_abort`: a liberal corollary holds for a table that fails, so it is never a
+   `Impl.meets_liberal_abort`, `Interp.link_meets_liberal_of_abort` and the fixture at the end
+   of `Examples/Liberal.lean`: a liberal corollary holds for a table that fails, so it is never a
    result without a statement of success. A `Contract` no longer receives the tape: it declares
    a stream and a window and is given the entries of that window (`Contract.on`). Timings and
    counts below are measured.
@@ -66,7 +102,7 @@ The nine base edits that both reviews asked for before anything is built on the 
 | `Cert.lean` | **`Impl.Meets`**, `Interp.link_meets`, `Interp.link_isFn`, `Impl.meets_rel`, `Impl.meets_fn_of_run`, the bridge `Impl.Meets.runs`, `runs_rel`, `runsL`; `Interp.IsFn.meets_rel`; liberal vacuity |
 | `Tactic.lean` | **`wp_call`**, with `wp_adm`, `wp_side`, `wp_read`, `wp_shape`, `wp_dom`, `wp_intro` |
 | `Frame.lean`, `StoreSimp.lean`, `Attr.lean` | Reads through updates; footprints (`Store.EqOff`, `peel`, `eq_updBlock₂`, `isSome_readBlock`); `store_simp`, `store_side`; simp sets `storeNF`, `admNF` |
-| `Counted.lean` | **`RunsFromW`** with a rule per constructor |
+| `Counted.lean` | **`RunsFromW`** and **`RunsFromWL`** (partial correctness) with a rule per constructor; `RunsFromWL.of_static`, `RunsFromWL.link`, `Table.AccountsW.of_runsFromWL` |
 | `Window.lean` | `drawRel`, `wp_loop_fill` |
 | `Law.lean` | `RunsLaw`, `Impl.Meets.runsLaw`, `Profile.Certifies.runsLaw`, failure probabilities, `runVal` |
 | `Profile.lean` | Groups (`Has`, `Apart`), `Profile`, `Profile.Certifies`, `over`, `iter` |
@@ -164,11 +200,29 @@ Examples of the forms: `dotRel` (two inputs, one cell), `axpyRel` (in place), `m
 * Fixture `Examples/Split.lean`: a split `k₊` read from the store, kernels at `k₊` and
   `k - k₊`. `runsW_split` gives the exact counts; `weight_split_le` gives
   `T k₊ + T (k - k₊) ≤ T k` for every superadditive `T`; `splitTable_accountsW` certifies the
-  split as an implementation; `runsW_twice_link` gives `2 T k` for a linked algorithm.
-* What is missing: a counted judgment for partial correctness. `AccountsW.impl` speaks of every
-  successful run, so the fixture proves it by unfolding `exec` on its small tree. For a large
-  implementation with data-dependent counts this needs `RunsFromWL` ("if the counted run
-  succeeds, …") with the same rules.
+  split as an implementation, by the rules of `RunsFromWL`; `runsW_twice_link` gives `2 T k` for a linked algorithm.
+* `RunsFromWL I W τ s ρ st p Q`: the same for partial correctness: for every successful
+  counted run from `st`, within the workspace `p`, `Q` holds of the counts added and the memory.
+  The rules have the names of those of `RunsFromW` and are read in parallel; the differences:
+
+  | Rule | `RunsFromW` is given | `RunsFromWL` asks |
+  |---|---|---|
+  | `call` | a total `Wp` of the call | a liberal `Wp` (`fun _ _ => trivial` for the counts alone) |
+  | `ite` | the Boolean of the test | the branch for every Boolean the test may return |
+  | `bindIdx` | the value read, within the bound | the body for every value within the bound that the query may return |
+  | `frame` | live arguments | the body under the hypothesis that they are live |
+  | `whileFuel` | the Boolean of each round | each round for every Boolean |
+  | `abort` | (no rule) | nothing |
+  | `of_static` | (needs a total `Wp`: `of_wp`) | nothing: `c ≤ staticCost`, workspace `staticPeak` |
+
+  `seq`, `alloc`, `loop`, `mono`, `skip` are the same statements. `of_runsFromW` and `runsFromW`
+  go between the two; `RunsFromWL.and` joins two postconditions of one run (the counts added
+  are determined by the run), so a data-dependent bound from the rules and a static one from
+  `of_static` combine.
+* `Table.AccountsW.of_runsFromWL`: the certificate of a table is, for every implementation,
+  `RunsFromWL I W₂ τ R.body (Env.frame d a) st (W₁ o d) fun c _ => w₂ c ≤ t o d` from every
+  state. `splitTable_accountsW` is proved this way: `bindIdx`, `seq`, two `call`.
+  `RunsFromWL.link` is `RunsW.link` for partial correctness.
 
 ## Loops and queries
 
@@ -230,7 +284,7 @@ Unchanged in content since the third build; the forms are now instances of `Bloc
 | `Mixed` | two precisions and a cast | `sumSeq_spec_at` | `runs_mulAddMixed`, `exists_isMixed` |
 | `Loops` | halving with early exit; a hundred buffers | | `wp_halve`, `runs_halve` (counts `Nat.size v`), `wpL_halveStrict`, `read_of_hundred` |
 | `Control` | `whileFuel` at the cap, `whileStrict`, the round count in the continuation, `bindIdx` | | examples by `rfl` |
-| `Liberal` | liberal mode, and its vacuity | `div_link_liberal` | `runsL_scale`, `runsL_scale_link`, `runsL_scale_link_abort` |
+| `Liberal` | both modes from one run lemma (`wp_scale`), and the vacuity of a liberal statement (an `example`) | `div_link_liberal`, `div_link_total`, `div_accounts` | `runsL_scale` with `runs_scale`; `runsL_scale_link` with `runs_scale_link` |
 | `Dot`, `MatMul`, `Bits`, `RandomWitness` | exact certificates, bit level, witnesses | `dot_cert`, `mm_cert`, `ripple_cert` | unchanged in content |
 
 `srsum`, `halve`, `sq2`, `add3`, `scale` keep their statement on an explicit environment: they
@@ -238,7 +292,11 @@ were not in the list to restate.
 
 Witnesses: `exists_isScalar`, `stdModel_infl`, `Blas.exists_isBlas1`, `exists_isCmp`,
 `exists_isMixed`, `exists_isHalving`, `exists_isRecipMul`, `exists_isTapeLaw`,
-`exists_isRandLin`, `isNoisyMv_noiseFn`, `exists_isSrLo`, `memLp_quadForm_gaussian`. The
+`exists_isRandLin`, `exists_isRandLin_isTapeLaw`, `exists_isNoisyMv`, `exists_isNoisy`,
+`exists_isNoisy_isNoisyMv`, `exists_isSrLo`, `exists_isSrLo_isTapeLaw`, `Blas.exists_isSum`,
+`exists_isArith`, `exists_isIdle_isToNat`, `memLp_quadForm_gaussian`. A witness is a theorem
+`exists_…` whose statement is a conjunction under existential quantifiers, covering the whole
+contract set of a target (the convention the target linter reads). The
 level-1 witness is still exact arithmetic; `stdModel_infl` gives a machine that is not exact for
 the scalar model.
 
@@ -302,7 +360,6 @@ under 600 lines, proofs under 80; `scripts/check_rules.py` leaves the same class
   the lengths from the `BlockRel`.
 * **Memory per tag.** The workspace is counted in cells of one size. A workspace per tag needs
   the tag on `alloc` and in the state of the counted run: a change of the evaluator.
-* **A counted judgment for partial correctness** (see "Counts that depend on the data").
 * **`AccountsW` whose bound depends on the data of the call.** The bound `t o d` is a function
   of the operation and the dimensions; a kernel whose weight depends on its data takes the
   bound as a dimension.
@@ -345,11 +402,11 @@ What a run proof still does by hand, in the order of the lines it costs in the t
 5. **Named states**: a checkpoint that generalises the current store with its facts.
 6. **A program notation with named variables**: the trees are positional, and an operand that
    is updated in place shifts the positions.
-7. **Counts**: `RunsFromW` has the rules; it has no tactic and no partial-correctness form.
+7. **Counts**: `RunsFromW` and `RunsFromWL` have the rules; they have no tactic.
 
 What to build on: `BlockRel` and `BlockRel.spec` for every contract; `wp_call_rel` (the other
 call rules are corollaries, and the tactic uses only the rules for one cell, one block, two
-blocks and the general one); `Impl.Meets` for every statement about a program; `RunsFromW` for
-counts; `storeNF` and `admNF` for what the tactics unfold. The tactic is a macro over
+blocks and the general one); `Impl.Meets` for every statement about a program; `RunsFromW` and
+`RunsFromWL` for counts; `storeNF` and `admNF` for what the tactics unfold. The tactic is a macro over
 `store_simp` and `store_side`: an index tactic or a footprint tactic plugged into `store_side`
 is used by `wp_call` at once.

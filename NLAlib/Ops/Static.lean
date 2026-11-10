@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import Mathlib.Tactic.Abel
 public import NLAlib.Ops.Exec
 
 /-!
@@ -19,6 +20,10 @@ its fuel, a `bindIdx` its worst value.
 by evaluating a function on the tree, never by a proof about loops, and
 `NLAlib.Ops.Runs.of_run` turns a statement about the memory (program logic) into the full
 statement with counts and workspace.
+## Main results
+
+* `NLAlib.Ops.exec_within`: soundness of the static count and workspace.
+* `NLAlib.Ops.Runs.of_run`: from a run to a run within its static budget.
 -/
 
 @[expose] public section
@@ -199,7 +204,7 @@ theorem exec_within {I : Interp Op K} {W : Op → List ℕ → ℕ} {τ : ℕ �
   | frame ds args body ih =>
     obtain ⟨d, hd, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨a, ha, h⟩ := Option.bind_eq_some_iff.mp h
-    simpa [staticCost, staticPeak, hd, Operand.offs_of_evalList ha] using ih h
+    simpa [staticCost, staticPeak, hd, Operand.evalList_off_of_evalList ha] using ih h
 
 /-- **A run within a budget** (total correctness with accounting): from the memory `m`, the
 counted run succeeds, its counts are at most `B`, its scratch cells at most `M`, and `Q` holds of

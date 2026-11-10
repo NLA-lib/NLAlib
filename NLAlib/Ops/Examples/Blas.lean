@@ -11,8 +11,8 @@ public import NLAlib.Ops.Examples.Dot
 # Example: a level of vector operations over scalar arithmetic
 
 The signature `NLAlib.Ops.Examples.BOp` has `dot`, `axpy` and the scalar operations. The
-contracts of `dot` and `axpy` are relational (`NLAlib.Ops.Examples.DotSpec`,
-`NLAlib.Ops.Examples.AxpySpec`): the outputs satisfy an error bound with parameters `εd n` and
+contracts of `dot` and `axpy` are relational (`NLAlib.Ops.Examples.dotSpec`,
+`NLAlib.Ops.Examples.axpySpec`): the outputs satisfy an error bound with parameters `εd n` and
 `εa`; the scalar operations keep their functional contract. `NLAlib.Ops.Examples.IsBlas` bundles
 them.
 
@@ -22,6 +22,13 @@ with `εd n = (1 + u) ^ (2 n) - 1` and `εa = 2 u + u ^ 2`, the accuracy paramet
 instantiation. `NLAlib.Ops.Examples.blas_accounts`: the accounting certificate, by evaluating
 the static cost of the two trees. `NLAlib.Ops.Examples.exists_isBlas`: the contracts can be met
 for every `u ≥ 0`.
+## Main results
+
+* `NLAlib.Ops.Examples.isBlas_link`: the induced interpretation meets the contracts of the
+  vector level.
+* `NLAlib.Ops.Examples.blas_accounts`: the accounting certificate of the table.
+* `NLAlib.Ops.Examples.abs_dec_add_mul_sub_le`: one rounded `y + α x`.
+* `NLAlib.Ops.Examples.exists_isBlas`: the contracts can be met.
 -/
 
 @[expose] public section
@@ -53,8 +60,8 @@ def AxpyErr (dec : K → ℝ) (e : ℝ) (n : ℕ) (al : K) (x y z : ℕ → K) :
     e * (|dec (y i)| + |dec al * dec (x i)|)
 
 /-- One rounded `y + α x`. -/
-theorem axpy_error {u : ℝ} {dec : K → ℝ} {M : Machine K} (hM : StdModel u dec M) (hu : 0 ≤ u)
-    (al x y : K) : |dec (M.add y (M.mul al x)) - (dec y + dec al * dec x)| ≤
+theorem abs_dec_add_mul_sub_le {u : ℝ} {dec : K → ℝ} {M : Machine K} (hM : StdModel u dec M)
+    (hu : 0 ≤ u) (al x y : K) : |dec (M.add y (M.mul al x)) - (dec y + dec al * dec x)| ≤
       (2 * u + u ^ 2) * (|dec y| + |dec al * dec x|) := by
   have h1 := hM.mul al x
   have h2 := hM.add y (M.mul al x)
@@ -98,7 +105,7 @@ variable [Inhabited K]
 /-- **The relational contract of `dot`**: on blocks in other buffers than the output cell, the
 cell receives a dot product up to the relative error `ε n`. Readability of the operands is needed
 only for success. -/
-def DotSpec (dec : K → ℝ) (ε : ℕ → ℝ) : Contract K := fun md d ins outs _ =>
+def dotSpec (dec : K → ℝ) (ε : ℕ → ℝ) : Contract K := fun md d ins outs _ =>
   { pre := fun m => ∃ n x y z, d = [n] ∧ ins = [x, y] ∧ outs = [z] ∧ x.1 ≠ z.1 ∧ y.1 ≠ z.1 ∧
       md.Needs ((m.store.readBlock x.1 x.2 n).isSome ∧ (m.store.readBlock y.1 y.2 n).isSome ∧
         z.2 < m.store.len z.1)
@@ -108,7 +115,7 @@ def DotSpec (dec : K → ℝ) (ε : ℕ → ℝ) : Contract K := fun md d ins ou
 
 /-- **The relational contract of `axpy`**, in place: with `α` and `x` in other buffers than `y`,
 the block `y` receives `y + α x` up to the componentwise relative error `ε`. -/
-def AxpySpec (dec : K → ℝ) (ε : ℝ) : Contract K := fun md d ins outs _ =>
+def axpySpec (dec : K → ℝ) (ε : ℝ) : Contract K := fun md d ins outs _ =>
   { pre := fun m => ∃ n al x y, d = [n] ∧ ins = [al, x, y] ∧ outs = [y] ∧ al.1 ≠ y.1 ∧
       x.1 ≠ y.1 ∧ md.Needs ((m.store.get al.1 al.2).isSome ∧
         (m.store.readBlock x.1 x.2 n).isSome ∧ (m.store.readBlock y.1 y.2 n).isSome)
@@ -122,17 +129,17 @@ def AxpySpec (dec : K → ℝ) (ε : ℝ) : Contract K := fun md d ins outs _ =>
 structure IsBlas (M : Machine K) (dec : K → ℝ) (εd : ℕ → ℝ) (εa : ℝ) (J : Interp BOp K) :
     Prop where
   /-- `dot`. -/
-  dot : J.Meets .total .dot (DotSpec dec εd)
+  dot : J.Meets .total .dot (dotSpec dec εd)
   /-- `axpy`. -/
-  axpy : J.Meets .total .axpy (AxpySpec dec εa)
+  axpy : J.Meets .total .axpy (axpySpec dec εa)
   /-- Scalar operations. -/
-  ar : ∀ a, J.IsFn .total (.ar a) (M.fn a) anyOperands
+  ar : ∀ a, J.IsFn .total (.ar a) (M.fn a) AnyOperands
 
 /-- A functional `dot` meeting the error bound meets the relational contract. -/
 theorem dotSpec_of_isFn {M : Machine K} {dec : K → ℝ} {ε : ℕ → ℝ} {J : Interp BOp K}
-    (hJ : J.IsFn .total .dot (dotFn M) disjointBufs)
+    (hJ : J.IsFn .total .dot (dotFn M) DisjointBufs)
     (hε : ∀ n a b, DotErr dec (ε n) n a b (dotF M a b n)) :
-    J.Meets .total .dot (DotSpec dec ε) := by
+    J.Meets .total .dot (dotSpec dec ε) := by
   rintro d ins outs τ m ⟨n, x, y, z, rfl, rfl, rfl, hxz, hyz, hn⟩
   obtain ⟨hx, hy, hz⟩ := hn rfl
   obtain ⟨xs, hxs⟩ := Option.isSome_iff_exists.mp hx
@@ -140,7 +147,7 @@ theorem dotSpec_of_isFn {M : Machine K} {dec : K → ℝ} {ε : ℕ → ℝ} {J 
   have happ : (dotFn M).apply [n] [x, y] z τ m = some (m.upd z (dotF M (vec xs) (vec ys) n)) :=
     BlockFn.apply_eq_some_iff.mpr ⟨[xs, ys], [_], by simp [Mem.readBlocks, hxs, hys, dotFn], rfl,
       by simpa using hz, rfl⟩
-  exact ⟨_, hJ.callS_eq (by simp [disjointBufs, hxz, hyz]) happ, n, x, y, z, xs, ys, _, rfl, rfl,
+  exact ⟨_, hJ.callS_eq (by simp [DisjointBufs, hxz, hyz]) happ, n, x, y, z, xs, ys, _, rfl, rfl,
     rfl, hxs, hys, hε n _ _, rfl⟩
 
 /-! ### The implementation of `axpy` -/
@@ -170,7 +177,7 @@ theorem wp_axpyImpl {M : Machine K} {I : Interp AOp K} (hI : IsArith M I) {md : 
     (hxy : x.1 ≠ y.1) (ha : m.store.get al.1 al.2 = some a)
     (hx : m.store.readBlock x.1 x.2 n = some xs) (hy : m.store.readBlock y.1 y.2 n = some ys)
     {Q : Mem K → Prop} (hQ : Q (m.updBlock y (axpyF M a (vec xs) (vec ys) n))) :
-    wp md I τ axpyImpl.body (Env.frame [n] [al, x, y, y]) Q m := by
+    Wp md I τ axpyImpl.body (Env.frame [n] [al, x, y, y]) Q m := by
   obtain ⟨s, p⟩ := m
   have hbal := Store.lt_length_of_get ha
   refine wp_alloc rfl (wp_loop rfl (fun i m' => ∃ tb : Buf K, tb.length = 1 ∧
@@ -217,10 +224,10 @@ theorem wp_axpyImpl {M : Machine K} {I : Interp AOp K} (hI : IsArith M I) {md : 
 /-- The `axpy` loop meets the relational contract when the machine meets the standard model. -/
 theorem axpyImpl_spec {M : Machine K} {I : Interp AOp K} (hI : IsArith M I) {u : ℝ} {dec : K → ℝ}
     (hM : StdModel u dec M) (hu : 0 ≤ u) (d : List ℕ) (ins outs : List (ℕ × ℕ)) (τ : ℕ → K)
-    (m : Mem K) (hpre : (AxpySpec dec (2 * u + u ^ 2) .total d ins outs τ).pre m) :
+    (m : Mem K) (hpre : (axpySpec dec (2 * u + u ^ 2) .total d ins outs τ).pre m) :
     axpyImpl.Fits d.length ins.length outs.length ∧
-      wp .total I τ axpyImpl.body (Env.frame d (ins ++ outs))
-        ((AxpySpec dec (2 * u + u ^ 2) .total d ins outs τ).post m) m := by
+      Wp .total I τ axpyImpl.body (Env.frame d (ins ++ outs))
+        ((axpySpec dec (2 * u + u ^ 2) .total d ins outs τ).post m) m := by
   obtain ⟨n, al, x, y, rfl, rfl, rfl, hal, hxy, hn⟩ := hpre
   obtain ⟨ha, hx, hy⟩ := hn rfl
   obtain ⟨a, ha⟩ := Option.isSome_iff_exists.mp ha
@@ -232,7 +239,7 @@ theorem axpyImpl_spec {M : Machine K} {I : Interp AOp K} (hI : IsArith M I) {u :
   have : vec (axpyF M a (vec xs) (vec ys) n) i = M.add (vec ys i) (M.mul a (vec xs i)) := by
     simp [vec, axpyF, List.getD_eq_getElem?_getD, hi]
   rw [this]
-  exact axpy_error hM hu _ _ _
+  exact abs_dec_add_mul_sub_le hM hu _ _ _
 
 /-! ### The table, its certificate, and the contracts of the induced interpretation -/
 
@@ -286,7 +293,7 @@ theorem isBlas_link {M : Machine K} {I : Interp AOp K} (hI : IsArith M I) {u : �
     (hM : StdModel u dec M) (hu : 0 ≤ u) :
     IsBlas M dec (fun n => (1 + u) ^ (2 * n) - 1) (2 * u + u ^ 2) (I.link blasTable) where
   dot := dotSpec_of_isFn (Interp.link_isFn rfl fun _ _ _ _ _ _ hadm h => dot_cert hI hadm h)
-    fun n a b => dotF_error hM hu a b n
+    fun n a b => abs_dec_dotF_sub_le hM hu a b n
   axpy := Interp.link_meets rfl (axpyImpl_spec hI hM hu)
   ar a := Interp.link_meets_kept rfl (hI a)
 

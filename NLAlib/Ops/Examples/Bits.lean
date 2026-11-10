@@ -14,14 +14,16 @@ The words are bits. `wadd [w] [x, y] [z]` adds two little-endian blocks of `w` b
 Its contract is functional (`NLAlib.Ops.Examples.IsWAdd`): the result is `f` of the inputs, for
 some `f` that is addition modulo `2 ^ w` on values (`NLAlib.Ops.Examples.AddMod`).
 
-* Abstract theorem (`NLAlib.Ops.Examples.add3_abstract`): two additions compute the sum of three
+## Main results
+
+* Abstract theorem (`NLAlib.Ops.Examples.runs_add3`): two additions compute the sum of three
   numbers modulo `2 ^ w`, with two calls at `[w]`.
 * The implementation (`NLAlib.Ops.Examples.rippleImpl`): a ripple-carry adder over the bit
   operations `xor3` and `maj`, with a carry cell. Its exact certificate
   (`NLAlib.Ops.Examples.ripple_cert`): the run is the block function of
   `NLAlib.Ops.Examples.rippleF`.
 * Mathematics (`NLAlib.Ops.Examples.addMod_ripple`): `rippleF` is addition modulo `2 ^ w`.
-* Corollary (`NLAlib.Ops.Examples.add3_linked`): the linked program, with its counts of bit
+* Corollary (`NLAlib.Ops.Examples.runs_add3_link`): the linked program, with its counts of bit
   operations, by the same linking step as every other level.
 -/
 
@@ -58,7 +60,7 @@ def bitFns : BitOp → BlockFn Bool
   | .maj => .tern fun x y c => some (maj x y c)
 
 /-- **The contract of the bit level**: each operation is its Boolean function. -/
-def IsBits (I : Interp BitOp Bool) : Prop := ∀ o, I.IsFn .total o (bitFns o) anyOperands
+def IsBits (I : Interp BitOp Bool) : Prop := ∀ o, I.IsFn .total o (bitFns o) AnyOperands
 
 /-! ### Mathematics: the ripple-carry adder on values -/
 
@@ -82,7 +84,7 @@ theorem bitsVal_lt (a : ℕ → Bool) (w : ℕ) : bitsVal a w < 2 ^ w := by
     nlinarith
 
 /-- The sum bits and the last carry are the sum of the two values. -/
-theorem ripple_val (a b : ℕ → Bool) (w : ℕ) :
+theorem bitsVal_sumBit_add (a b : ℕ → Bool) (w : ℕ) :
     bitsVal (sumBit a b) w + (carry a b w).toNat * 2 ^ w = bitsVal a w + bitsVal b w := by
   induction w with
   | zero => simp [bitsVal, carry]
@@ -111,7 +113,7 @@ theorem addMod_ripple : AddMod rippleF := by
     Finset.sum_congr rfl fun k hk => by
       have hk' := Finset.mem_range.mp hk
       simp [vec, rippleF, List.getD_eq_getElem?_getD, hk']
-  rw [hv, ← ripple_val (vec xs) (vec ys) w, Nat.add_mul_mod_self_right,
+  rw [hv, ← bitsVal_sumBit_add (vec xs) (vec ys) w, Nat.add_mul_mod_self_right,
     Nat.mod_eq_of_lt (bitsVal_lt _ _)]
 
 /-! ### The functional contract of the word level and an abstract theorem -/
@@ -153,7 +155,7 @@ theorem waddFn_apply_of {f : ℕ → List Bool → List Bool → List Bool} {w :
 /-- **The functional contract of `wadd`**: on input blocks in other buffers than the output, the
 result is `f` of the inputs. -/
 def IsWAdd (f : ℕ → List Bool → List Bool → List Bool) (I : Interp WOp Bool) : Prop :=
-  I.IsFn .total .wadd (waddFn f) disjointBufs
+  I.IsFn .total .wadd (waddFn f) DisjointBufs
 
 /-- `s := x + y; r := s + z` on `w`-bit numbers. Index variables: `w`, the offsets of `x`, `y`,
 `z`, `s`, `r`. -/
@@ -164,7 +166,7 @@ def add3 : Stmt WOp :=
 /-- **The abstract theorem of `add3`**, for every `f` that is addition modulo `2 ^ w` and every
 interpretation meeting the functional contract: two calls of `wadd` at `[w]`, and `r` holds the
 sum of the three numbers modulo `2 ^ w`. -/
-theorem add3_abstract {f : ℕ → List Bool → List Bool → List Bool} (hf : AddMod f)
+theorem runs_add3 {f : ℕ → List Bool → List Bool → List Bool} (hf : AddMod f)
     {I : Interp WOp Bool} (hI : IsWAdd f I) (W : WOp → List ℕ → ℕ) {τ : ℕ → Bool} {w : ℕ}
     {x y z s r : ℕ × ℕ} {m : Mem Bool} {xs ys zs : List Bool} (hxs : x.1 ≠ s.1)
     (hys : y.1 ≠ s.1) (hzs : z.1 ≠ s.1) (hsr : s.1 ≠ r.1) (hzr : z.1 ≠ r.1)
@@ -186,10 +188,10 @@ theorem add3_abstract {f : ℕ → List Bool → List Bool → List Bool} (hf : 
     exact Store.readBlock_congr fun i _ => Store.get_updBlock_of_buf_ne hzs _ _ _
   have h2 := waddFn_apply_of (f := f) (z := r) (τ := τ) hs' hz'
     (by rw [(hf w _ zs).1]; simpa using hr)
-  have hw : wp .total I τ add3 ⟨[w, x.2, y.2, z.2, s.2, r.2], [x.1, y.1, z.1, s.1, r.1]⟩
+  have hw : Wp .total I τ add3 ⟨[w, x.2, y.2, z.2, s.2, r.2], [x.1, y.1, z.1, s.1, r.1]⟩
       (· = (m.updBlock s (f w xs ys)).updBlock r (f w (f w xs ys) zs)) m :=
-    wp_seq (wp_call_fn hI (z := s) rfl rfl rfl (by simp [disjointBufs, hxs, hys]) h1
-      (wp_call_fn hI (z := r) rfl rfl rfl (by simp [disjointBufs, hsr, hzr]) h2 rfl))
+    wp_seq (wp_call_fn hI (z := s) rfl rfl rfl (by simp [DisjointBufs, hxs, hys]) h1
+      (wp_call_fn hI (z := r) rfl rfl rfl (by simp [DisjointBufs, hsr, hzr]) h2 rfl))
   obtain ⟨m', hrun, hpost⟩ := hw
   refine (Runs.of_run hrun hpost W).mono (by simp [add3, staticCost, useCost, two_nsmul])
     (by simp [add3, staticPeak]) fun m' h => ⟨_, _, h, ?_⟩
@@ -223,7 +225,7 @@ theorem wp_ripple_step {I : Interp BitOp Bool} (hI : IsBits I) {md : Mode} {τ :
     (hy : s.readBlock y.1 y.2 w = some ys) (hz : z.2 + w ≤ s.len z.1) {Q : Mem Bool → Prop}
     (hQ : Q ⟨s.updBlock z.1 z.2 (ripplePrefix (vec xs) (vec ys) (i + 1)) ++
       [[some (carry (vec xs) (vec ys) (i + 1))]], p⟩) :
-    wp md I τ (.seq
+    Wp md I τ (.seq
         (.call .xor3 [] [⟨0, .var 1 + .var 4⟩, ⟨1, .var 2 + .var 4⟩, ⟨3, .const 0⟩]
           [⟨2, .var 3 + .var 4⟩])
         (.call .maj [] [⟨0, .var 1 + .var 4⟩, ⟨1, .var 2 + .var 4⟩, ⟨3, .const 0⟩]
@@ -279,7 +281,7 @@ theorem wp_ripple_step {I : Interp BitOp Bool} (hI : IsBits I) {md : Mode} {τ :
 succeeds on inputs in other buffers than the output, the run of the adder is that block
 function. -/
 theorem ripple_cert {I : Interp BitOp Bool} (hI : IsBits I) {d : List ℕ} {ins : List (ℕ × ℕ)}
-    {z : ℕ × ℕ} {τ : ℕ → Bool} {m m' : Mem Bool} (hadm : disjointBufs d ins z)
+    {z : ℕ × ℕ} {τ : ℕ → Bool} {m m' : Mem Bool} (hadm : DisjointBufs d ins z)
     (h : (waddFn rippleF).apply d ins z τ m = some m') :
     rippleImpl.Fits d.length ins.length 1 ∧
       run I τ rippleImpl.body (Env.frame d (ins ++ [z])) m = some m' := by
@@ -334,7 +336,7 @@ theorem isWAdd_link {I : Interp BitOp Bool} (hI : IsBits I) :
 
 /-- **The concrete corollary**: `add3` linked down to bit operations computes the sum of three
 `w`-bit numbers modulo `2 ^ w`, within the pushed-forward counts and one scratch cell. -/
-theorem add3_linked {I : Interp BitOp Bool} (hI : IsBits I) {τ : ℕ → Bool} {w : ℕ}
+theorem runs_add3_link {I : Interp BitOp Bool} (hI : IsBits I) {τ : ℕ → Bool} {w : ℕ}
     {x y z s r : ℕ × ℕ} {m : Mem Bool} {xs ys zs : List Bool} (hxs : x.1 ≠ s.1)
     (hys : y.1 ≠ s.1) (hzs : z.1 ≠ s.1) (hsr : s.1 ≠ r.1) (hzr : z.1 ≠ r.1)
     (hx : m.store.readBlock x.1 x.2 w = some xs) (hy : m.store.readBlock y.1 y.2 w = some ys)
@@ -346,11 +348,11 @@ theorem add3_linked {I : Interp BitOp Bool} (hI : IsBits I) {τ : ℕ → Bool} 
       fun m' => ∃ ss rs, m' = (m.updBlock s ss).updBlock r rs ∧
         bitsVal (vec rs) w =
           (bitsVal (vec xs) w + bitsVal (vec ys) w + bitsVal (vec zs) w) % 2 ^ w :=
-  (add3_abstract addMod_ripple (isWAdd_link hI) (fun _ _ => 1) hxs hys hzs hsr hzr hx hy hz hs
+  (runs_add3 addMod_ripple (isWAdd_link hI) (fun _ _ => 1) hxs hys hzs hsr hzr hx hy hz hs
     hr).link (word_accounts I)
 
 /-- The bit-operation counts of the linked `add3`. -/
-theorem add3_count (w : ℕ) : Count.push wordCost (2 • Count.one .wadd [w]) =
+theorem push_wordCost_wadd (w : ℕ) : Count.push wordCost (2 • Count.one .wadd [w]) =
     2 • Count.one .zero [] + (2 * w) • (Count.one .xor3 [] + Count.one .maj []) := by
   simp only [map_nsmul, Count.push_one, wordCost]
   module

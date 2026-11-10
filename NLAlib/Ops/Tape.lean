@@ -15,12 +15,14 @@ The tape of draws is an argument of the evaluator, so an interpretation, and the
 induced by a table, is fixed before the sample. What a meaning may read of the tape is a clause
 of the access model, not of a contract:
 
+## Main results
+
 * `NLAlib.Ops.Interp.TapeLocal I o k`: at the memory `m` the meaning of `o` at the dimensions `d`
   depends on the tape only through the `k d` entries from the position `m.pos`, and advances the
   position by `k d`. `k = 0` is tape independence.
 * `NLAlib.Ops.run_follows`: under tape-local operations a run depends on the tape only through the
   entries between its first and last positions.
-* `NLAlib.Ops.run_pos_of_straight`: a tree without tests and index binders advances the position
+* `NLAlib.Ops.pos_of_run_of_straight`: a tree without tests and index binders advances the position
   by its static window `NLAlib.Ops.staticWindow`.
 * `NLAlib.Ops.Interp.TapeLocal.link` (**the window lemma**): the meaning induced by such an
   implementation is tape-local, with the window obtained by adding the windows of its calls.
@@ -199,7 +201,7 @@ def staticWindow (k : Op → List ℕ → ℕ) : Stmt Op → List ℕ → ℕ
       | _, _ => 0
   | _, _ => 0
 
-theorem iter_pos {f : ℕ → Mem K → Option (Mem K)} {c : ℕ → ℕ}
+theorem pos_of_iter {f : ℕ → Mem K → Option (Mem K)} {c : ℕ → ℕ}
     (h : ∀ i a b, f i a = some b → b.pos = a.pos + c i) {k : ℕ} {s s' : Mem K}
     (hk : iter f k s = some s') : s'.pos = s.pos + ∑ i ∈ Finset.range k, c i := by
   induction k generalizing s' with
@@ -209,7 +211,7 @@ theorem iter_pos {f : ℕ → Mem K → Option (Mem K)} {c : ℕ → ℕ}
     rw [h k a s' hb, ih ha, Finset.sum_range_succ, add_assoc]
 
 /-- A tree without tests and index binders advances the tape by its static window. -/
-theorem run_pos_of_straight {I : Interp Op K} {k : Op → List ℕ → ℕ}
+theorem pos_of_run_of_straight {I : Interp Op K} {k : Op → List ℕ → ℕ}
     (hI : ∀ o, I.TapeLocal o (k o)) {τ : ℕ → K} {s : Stmt Op} (hs : s.Straight) {ρ : Env}
     {m m' : Mem K} (h : run I τ s ρ m = some m') : m'.pos = m.pos + staticWindow k s ρ.idx := by
   induction s generalizing ρ m m' with
@@ -236,11 +238,11 @@ theorem run_pos_of_straight {I : Interp Op K} {k : Op → List ℕ → ℕ}
       ih (ρ := ρ.pushBuf m.store.length) (m := ⟨m.store.push n, m.pos⟩) hs h₂
   | loop n body ih =>
     obtain ⟨c, hc, h⟩ := Option.bind_eq_some_iff.mp h
-    simpa [staticWindow, hc] using iter_pos (fun i a b hb => ih hs hb) h
+    simpa [staticWindow, hc] using pos_of_iter (fun i a b hb => ih hs hb) h
   | frame ds args body ih =>
     obtain ⟨d, hd, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨i, hi, h⟩ := Option.bind_eq_some_iff.mp h
-    simpa [staticWindow, hd, Operand.offs_of_evalList hi] using ih hs h
+    simpa [staticWindow, hd, Operand.evalList_off_of_evalList hi] using ih hs h
 
 /-- **The window lemma.** The meaning induced by an implementation without tests and index
 binders over tape-local operations is tape-local, with the static window of the tree. -/
@@ -260,7 +262,7 @@ theorem Interp.TapeLocal.link {I : Interp Op₂ K} {k₂ : Op₂ → List ℕ �
       run I σ R.body (Env.frame d (ins ++ outs)) m = some m' →
       m'.pos = m.pos + w d ∧ run I σ' R.body (Env.frame d (ins ++ outs)) m = some m' := by
     intro σ σ' m' hσ hr
-    have hp : m'.pos = m.pos + w d := by rw [run_pos_of_straight hI hs hr, Env.idx_frame, hw']
+    have hp : m'.pos = m.pos + w d := by rw [pos_of_run_of_straight hI hs hr, Env.idx_frame, hw']
     refine ⟨hp, (run_follows hI σ σ' _ _ m m' hr).2 fun j hj hj' => ?_⟩
     have := hσ (j - m.pos) (by omega)
     rwa [Nat.add_sub_cancel' hj] at this

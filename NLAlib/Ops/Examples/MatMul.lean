@@ -13,14 +13,17 @@ public import NLAlib.Ops.Examples.Dot
 The contract of `mm` is functional: the result is `f` of the two input blocks, for some `f`
 (`NLAlib.Ops.Examples.mmFn`, `NLAlib.Ops.Examples.IsMM`). Properties of `f` are mathematics.
 
-* Abstract theorem (`NLAlib.Ops.Examples.sq2_abstract`): squaring a matrix twice, for every `f`:
+## Main results
+
+* Abstract theorem (`NLAlib.Ops.Examples.runs_sq2`): squaring a matrix twice, for every `f`:
   two calls at `[n, n, n]`, and the memory is given by `f`. Each call is one equation.
 * Exact certificate (`NLAlib.Ops.Examples.mm_cert`): the run of the triple loop
   `NLAlib.Ops.Examples.mmImpl` is the block function of `NLAlib.Ops.Examples.mmF`, the triple
   loop written as a function on lists through a machine. It reuses the accumulation loop of the
   dot product (`NLAlib.Ops.Examples.wp_dotLoop`) for each entry.
-* Mathematics (`NLAlib.Ops.Examples.mmF_error`): each entry of `mmF` is a rounded dot product.
-* Corollary (`NLAlib.Ops.Examples.sq2_linked`): the linked program computes `mmF`, within
+* Mathematics (`NLAlib.Ops.Examples.abs_dec_mmF_sub_le`): each entry of `mmF` is a rounded dot
+  product.
+* Corollary (`NLAlib.Ops.Examples.runs_sq2_link`): the linked program computes `mmF`, within
   `2 n² (lit + n (mul + add))` scalar operations and one scratch cell.
 -/
 
@@ -69,7 +72,7 @@ theorem mmFn_apply {f : ℕ → ℕ → ℕ → List K → List K → List K} {d
 result is `f` of the inputs, an `a × c` block. -/
 structure IsMM (f : ℕ → ℕ → ℕ → List K → List K → List K) (I : Interp MOp K) : Prop where
   /-- The operation is the block function of `f`. -/
-  isFn : I.IsFn .total .mm (mmFn f) disjointBufs
+  isFn : I.IsFn .total .mm (mmFn f) DisjointBufs
   /-- The result has `a c` entries. -/
   length : ∀ a b c As Bs, (f a b c As Bs).length = a * c
 
@@ -84,14 +87,15 @@ omit [Inhabited K] in
 /-- **The abstract theorem of `sq2`**, for every `f` and every interpretation meeting the
 functional contract: two calls of `mm` at `[n, n, n]`, the workspace of one, and the memory is
 given by `f`. -/
-theorem sq2_abstract {f : ℕ → ℕ → ℕ → List K → List K → List K} {I : Interp MOp K}
+theorem runs_sq2 {f : ℕ → ℕ → ℕ → List K → List K → List K} {I : Interp MOp K}
     (hI : IsMM f I) (W : MOp → List ℕ → ℕ) {τ : ℕ → K} {n : ℕ} {A P S : ℕ × ℕ} {m : Mem K}
     {As : List K} (hAP : A.1 ≠ P.1) (hPS : P.1 ≠ S.1)
     (hA : m.store.readBlock A.1 A.2 (n * n) = some As) (hP : P.2 + n * n ≤ m.store.len P.1)
     (hS : S.2 + n * n ≤ m.store.len S.1) :
     Runs I W τ sq2 ⟨[n, A.2, P.2, S.2], [A.1, P.1, S.1]⟩ m (2 • Count.one .mm [n, n, n])
       (W .mm [n, n, n])
-      (· = (m.updBlock P (f n n n As As)).updBlock S (f n n n (f n n n As As) (f n n n As As))) := by
+      (· = (m.updBlock P (f n n n As As)).updBlock S
+        (f n n n (f n n n As As) (f n n n As As))) := by
   have h1 : (mmFn f).apply [n, n, n] [A, A] P τ m = some (m.updBlock P (f n n n As As)) :=
     BlockFn.apply_eq_some_iff.mpr ⟨[As, As], _, by simp [Mem.readBlocks, hA, mmFn], rfl,
       by rw [hI.length]; exact hP, rfl⟩
@@ -105,11 +109,11 @@ theorem sq2_abstract {f : ℕ → ℕ → ℕ → List K → List K → List K} 
         (f n n n (f n n n As As) (f n n n As As))) :=
     BlockFn.apply_eq_some_iff.mpr ⟨[_, _], _, by simp [Mem.readBlocks, hPr, mmFn], rfl,
       by rw [hI.length]; simpa using hS, rfl⟩
-  have hw : wp .total I τ sq2 ⟨[n, A.2, P.2, S.2], [A.1, P.1, S.1]⟩
+  have hw : Wp .total I τ sq2 ⟨[n, A.2, P.2, S.2], [A.1, P.1, S.1]⟩
       (· = (m.updBlock P (f n n n As As)).updBlock S (f n n n (f n n n As As) (f n n n As As)))
       m :=
-    wp_seq (wp_call_fn hI.isFn (z := P) rfl rfl rfl (by simp [disjointBufs, hAP]) h1
-      (wp_call_fn hI.isFn (z := S) rfl rfl rfl (by simp [disjointBufs, hPS]) h2 rfl))
+    wp_seq (wp_call_fn hI.isFn (z := P) rfl rfl rfl (by simp [DisjointBufs, hAP]) h1
+      (wp_call_fn hI.isFn (z := S) rfl rfl rfl (by simp [DisjointBufs, hPS]) h2 rfl))
   obtain ⟨m', hrun, hpost⟩ := hw
   exact (Runs.of_run hrun hpost W).mono (by simp [sq2, staticCost, useCost, two_nsmul])
     (by simp [sq2, staticPeak]) fun _ h => h
@@ -153,7 +157,7 @@ theorem wp_mm_entry {M : Machine K} {I : Interp AOp K} (hI : IsArith M I) {md : 
     (hC : C.2 + a * c ≤ s.len C.1) (htb : tb.length = 1) {Q : Mem K → Prop}
     (hQ : ∀ tb' : Buf K, tb'.length = 1 →
       Q ⟨s.updBlock C.1 C.2 (mmPrefix M b c As Bs (i * c + j + 1)) ++ [tb'], p⟩) :
-    wp md I τ (dotLoop (.var 1) ⟨0, .var 3 + .var 6 * .var 1 + .var 8⟩
+    Wp md I τ (dotLoop (.var 1) ⟨0, .var 3 + .var 6 * .var 1 + .var 8⟩
         ⟨1, .var 4 + .var 8 * .var 2 + .var 7⟩ ⟨2, .var 5 + .var 6 * .var 2 + .var 7⟩
         ⟨3, .const 0⟩)
       ⟨[a, b, c, A.2, B.2, C.2, i, j], [A.1, B.1, C.1, s.length]⟩ Q
@@ -192,7 +196,7 @@ theorem wp_mm_entry {M : Machine K} {I : Interp AOp K} (hI : IsArith M I) {md : 
 /-- **The exact certificate of the triple loop**: where the block function of `mmF` succeeds on
 inputs in other buffers than the output, the run of `mmImpl` is that block function. -/
 theorem mm_cert {M : Machine K} {I : Interp AOp K} (hI : IsArith M I) {d : List ℕ}
-    {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : ℕ → K} {m m' : Mem K} (hadm : disjointBufs d ins z)
+    {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : ℕ → K} {m m' : Mem K} (hadm : DisjointBufs d ins z)
     (h : (mmFn (mmF M)).apply d ins z τ m = some m') :
     mmImpl.Fits d.length ins.length 1 ∧
       run I τ mmImpl.body (Env.frame d (ins ++ [z])) m = some m' := by
@@ -216,8 +220,8 @@ theorem mm_cert {M : Machine K} {I : Interp AOp K} (hI : IsArith M I) {d : List 
 /-! ### Mathematics: each entry is a rounded dot product -/
 
 /-- **The entrywise error of the rounded matrix product.** -/
-theorem mmF_error {u : ℝ} {dec : K → ℝ} {M : Machine K} (hM : StdModel u dec M) (hu : 0 ≤ u)
-    (a b c : ℕ) (As Bs : List K) {i j : ℕ} (hi : i < a) (hj : j < c) :
+theorem abs_dec_mmF_sub_le {u : ℝ} {dec : K → ℝ} {M : Machine K} (hM : StdModel u dec M)
+    (hu : 0 ≤ u) (a b c : ℕ) (As Bs : List K) {i j : ℕ} (hi : i < a) (hj : j < c) :
     |dec (vec (mmF M a b c As Bs) (i * c + j)) -
         ∑ k ∈ Finset.range b, dec (vec As (i * b + k)) * dec (vec Bs (k * c + j))| ≤
       ((1 + u) ^ (2 * b) - 1) *
@@ -234,7 +238,7 @@ theorem mmF_error {u : ℝ} {dec : K → ℝ} {M : Machine K} (hM : StdModel u d
       dotF M (fun k => vec As (i * b + k)) (fun k => vec Bs (k * c + j)) b := by
     simp [vec, mmF, mmPrefix, List.getD_eq_getElem?_getD, hlt, mmEntry, hdiv, hmod]
   rw [this]
-  exact dotF_error hM hu _ _ b
+  exact abs_dec_dotF_sub_le hM hu _ _ b
 
 /-! ### The corollary by linking -/
 
@@ -269,7 +273,7 @@ theorem isMM_link {M : Machine K} {I : Interp AOp K} (hI : IsArith M I) :
 /-- **The concrete corollary**: `sq2` linked with the triple loop computes the rounded products
 `mmF`, within the pushed-forward counts and one scratch cell. One application of the linking
 theorem. -/
-theorem sq2_linked {M : Machine K} {I : Interp AOp K} (hI : IsArith M I) {τ : ℕ → K} {n : ℕ}
+theorem runs_sq2_link {M : Machine K} {I : Interp AOp K} (hI : IsArith M I) {τ : ℕ → K} {n : ℕ}
     {A P S : ℕ × ℕ} {m : Mem K} {As : List K} (hAP : A.1 ≠ P.1) (hPS : P.1 ≠ S.1)
     (hA : m.store.readBlock A.1 A.2 (n * n) = some As) (hP : P.2 + n * n ≤ m.store.len P.1)
     (hS : S.2 + n * n ≤ m.store.len S.1) :
@@ -277,12 +281,12 @@ theorem sq2_linked {M : Machine K} {I : Interp AOp K} (hI : IsArith M I) {τ : �
       (Count.push mmCost (2 • Count.one .mm [n, n, n])) 1
       (· = (m.updBlock P (mmF M n n n As As)).updBlock S
         (mmF M n n n (mmF M n n n As As) (mmF M n n n As As))) :=
-  (sq2_abstract (isMM_link hI) (fun _ _ => 1) hAP hPS hA hP hS).link (mm_accounts I)
+  (runs_sq2 (isMM_link hI) (fun _ _ => 1) hAP hPS hA hP hS).link (mm_accounts I)
 
 omit [Inhabited K] in
 /-- The scalar counts of the linked `sq2`: `2 n²` literals and `2 n³` multiplications and
 additions. -/
-theorem sq2_count (n : ℕ) : Count.push mmCost (2 • Count.one .mm [n, n, n]) =
+theorem push_mmCost_mm (n : ℕ) : Count.push mmCost (2 • Count.one .mm [n, n, n]) =
     (2 * (n * n)) • Count.one (.lit 0) [] +
       (2 * (n * n * n)) • (Count.one .mul [] + Count.one .add []) := by
   simp only [map_nsmul, Count.push_one, mmCost]

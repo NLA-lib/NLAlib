@@ -11,16 +11,18 @@ public import NLAlib.Ops.Examples.Dot
 # Example: a partial-correctness corollary through the induced interpretation
 
 `div` is implemented by `t := recip y; z := x * t`, and `recip` fails on a word that decodes to
-zero. The contract of `div` (`NLAlib.Ops.Examples.DivSpec`) is mode-generic: readability of the
+zero. The contract of `div` (`NLAlib.Ops.Examples.divSpec`) is mode-generic: readability of the
 operands and a nonzero divisor are needed only for success (`Mode.Needs`), and are *conclusions*
 of a successful call.
 
-* Liberal abstract theorem (`NLAlib.Ops.Examples.scale_liberal`): dividing a block by a cell;
+## Main results
+
+* Liberal abstract theorem (`NLAlib.Ops.Examples.runsL_scale`): dividing a block by a cell;
   **if the run succeeds**, every entry is a rounded quotient and, if the block is not empty, the
   divisor is not zero. Nothing is assumed of the divisor.
 * Grounding in liberal mode (`NLAlib.Ops.Examples.div_link_liberal`): the induced interpretation
   meets the liberal contract of `div`.
-* Corollary (`NLAlib.Ops.Examples.scale_linked_liberal`): the same statement for the linked
+* Corollary (`NLAlib.Ops.Examples.runsL_scale_link`): the same statement for the linked
   program, by `RunsL.link`: liberal theorems transfer through the induced interpretation, with no
   certificate.
 -/
@@ -57,7 +59,7 @@ structure RecipModel (u : ℝ) (dec : K → ℝ) (recipF : K → Option K) (mulF
   mul : ∀ a b, |dec (mulF a b) - dec a * dec b| ≤ u * |dec a * dec b|
 
 /-- A quotient computed as a rounded product with a rounded reciprocal. -/
-theorem div_error {u A B t v : ℝ} (hu : 0 ≤ u) (ht : |t - 1 / B| ≤ u * |1 / B|)
+theorem abs_sub_div_le {u A B t v : ℝ} (hu : 0 ≤ u) (ht : |t - 1 / B| ≤ u * |1 / B|)
     (hv : |v - A * t| ≤ u * |A * t|) : |v - A / B| ≤ (2 * u + u ^ 2) * |A / B| := by
   rw [div_eq_mul_one_div A B, abs_mul A (1 / B)]
   rw [abs_mul] at hv
@@ -81,7 +83,7 @@ theorem div_error {u A B t v : ℝ} (hu : 0 ≤ u) (ht : |t - 1 / B| ≤ u * |1 
 /-- **The mode-generic contract of `div`**: with operands in the store, the quotient up to the
 relative error `ε`. Readability and a nonzero divisor are needed only for success, and hold after
 a successful call. -/
-def DivSpec (dec : K → ℝ) (ε : ℝ) : Contract K := fun md d ins outs _ =>
+def divSpec (dec : K → ℝ) (ε : ℝ) : Contract K := fun md d ins outs _ =>
   { pre := fun m => ∃ x y z, d = [] ∧ ins = [x, y] ∧ outs = [z] ∧ x.1 < m.store.length ∧
       y.1 < m.store.length ∧ z.1 < m.store.length ∧
       md.Needs (∃ a b, m.store.get x.1 x.2 = some a ∧ m.store.get y.1 y.2 = some b ∧
@@ -94,9 +96,9 @@ def DivSpec (dec : K → ℝ) (ε : ℝ) : Contract K := fun md d ins outs _ =>
 function. -/
 structure IsRecipMul (recipF : K → Option K) (mulF : K → K → K) (I : Interp ROp K) : Prop where
   /-- `recip`. -/
-  recip : I.IsFn .liberal .recip (.un recipF) anyOperands
+  recip : I.IsFn .liberal .recip (.un recipF) AnyOperands
   /-- `mul`. -/
-  mul : I.IsFn .liberal .mul (.bin fun a b => some (mulF a b)) anyOperands
+  mul : I.IsFn .liberal .mul (.bin fun a b => some (mulF a b)) AnyOperands
 
 /-! ### The implementation and its grounding in liberal mode -/
 
@@ -119,7 +121,7 @@ succeeds, the operands were readable, the divisor nonzero, and the result is the
 theorem div_link_liberal {recipF : K → Option K} {mulF : K → K → K} {I : Interp ROp K}
     (hI : IsRecipMul recipF mulF I) {u : ℝ} {dec : K → ℝ}
     (hM : RecipModel u dec recipF mulF) (hu : 0 ≤ u) :
-    (I.link divTable).Meets .liberal .div (DivSpec dec (2 * u + u ^ 2)) := by
+    (I.link divTable).Meets .liberal .div (divSpec dec (2 * u + u ^ 2)) := by
   refine Interp.link_meets (R := divImpl) rfl ?_
   rintro d ins outs τ ⟨s, p⟩ ⟨x, y, z, rfl, rfl, rfl, hbx, hby, hbz, -⟩
   refine ⟨⟨rfl, rfl, rfl⟩, wp_alloc rfl (wp_seq (wp_call_fn_liberal hI.recip (z := (s.length, 0))
@@ -143,7 +145,7 @@ theorem div_link_liberal {recipF : K → Option K} {mulF : K → K → K} {I : I
   obtain rfl : t = t' := by simpa using ht'
   obtain rfl := Option.some.inj hgm
   obtain ⟨hb0, hrec⟩ := hM.recip b t hg
-  refine ⟨x, y, z, a, b, mulF a t, rfl, rfl, hx', hy', hb0, div_error hu hrec (hM.mul a t), ?_⟩
+  refine ⟨x, y, z, a, b, mulF a t, rfl, rfl, hx', hy', hb0, abs_sub_div_le hu hrec (hM.mul a t), ?_⟩
   simp only [Mem.upd]
   rw [Store.upd_append_of_lt hbz, Store.pop_append_top]
 
@@ -166,8 +168,8 @@ def ScalePost (dec : K → ℝ) (ε : ℝ) (n : ℕ) (v s : ℕ × ℕ) (m m' : 
 /-- **A liberal abstract theorem**: for every interpretation meeting the liberal contract of
 `div`, if the run of `scale` succeeds then its conclusion holds. No hypothesis on the divisor or
 on the readability of the block. -/
-theorem scale_liberal {dec : K → ℝ} {ε : ℝ} {J : Interp DOp K}
-    (hJ : J.Meets .liberal .div (DivSpec dec ε)) {τ : ℕ → K} {n : ℕ} {v s : ℕ × ℕ} {m : Mem K}
+theorem runsL_scale {dec : K → ℝ} {ε : ℝ} {J : Interp DOp K}
+    (hJ : J.Meets .liberal .div (divSpec dec ε)) {τ : ℕ → K} {n : ℕ} {v s : ℕ × ℕ} {m : Mem K}
     (hvs : v.1 ≠ s.1) (hbv : v.1 < m.store.length) (hbs : s.1 < m.store.length) :
     RunsL J τ scale ⟨[n, v.2, s.2], [v.1, s.1]⟩ m (ScalePost dec ε n v s m) := by
   refine wp_liberal_iff.mp (wp_loop (k := n) rfl (fun i m' => ScalePost dec ε i v s m m')
@@ -199,14 +201,14 @@ theorem scale_liberal {dec : K → ℝ} {ε : ℝ} {J : Interp DOp K}
 /-- **The liberal corollary, through the induced interpretation**: if the linked program
 (reciprocals and multiplications) succeeds, the conclusion holds with `ε = 2 u + u ^ 2`. One
 application of `link_liberal`; no certificate and no proof about the loop. -/
-theorem scale_linked_liberal {recipF : K → Option K} {mulF : K → K → K} {I : Interp ROp K}
+theorem runsL_scale_link {recipF : K → Option K} {mulF : K → K → K} {I : Interp ROp K}
     (hI : IsRecipMul recipF mulF I) {u : ℝ} {dec : K → ℝ} (hM : RecipModel u dec recipF mulF)
     (hu : 0 ≤ u) {τ : ℕ → K} {n : ℕ} {v s : ℕ × ℕ} {m : Mem K} (hvs : v.1 ≠ s.1)
     (hbv : v.1 < m.store.length) (hbs : s.1 < m.store.length) :
     RunsL I τ (scale.link divTable) ⟨[n, v.2, s.2], [v.1, s.1]⟩ m
       (ScalePost dec (2 * u + u ^ 2) n v s m) :=
-  link_liberal (Ck := fun J => J.Meets .liberal .div (DivSpec dec (2 * u + u ^ 2)))
-    (fun _ hJ => scale_liberal hJ hvs hbv hbs) (div_link_liberal hI hM hu)
+  link_liberal (Ck := fun J => J.Meets .liberal .div (divSpec dec (2 * u + u ^ 2)))
+    (fun _ hJ => runsL_scale hJ hvs hbv hbs) (div_link_liberal hI hM hu)
 
 /-! ### Witness -/
 
@@ -231,7 +233,7 @@ theorem recipModel_exact {u : ℝ} (hu : 0 ≤ u) :
 theorem exists_isRecipMul {u : ℝ} (hu : 0 ≤ u) :
     ∃ (K : Type) (dec : K → ℝ) (recipF : K → Option K) (mulF : K → K → K) (I : Interp ROp K),
       RecipModel u dec recipF mulF ∧ IsRecipMul recipF mulF I ∧
-        (I.link divTable).Meets .liberal .div (DivSpec dec (2 * u + u ^ 2)) := by
+        (I.link divTable).Meets .liberal .div (divSpec dec (2 * u + u ^ 2)) := by
   let F : ROp → BlockFn ℝ := fun o => match o with
     | .recip => .un recipExact
     | .mul => .bin fun a b => some (a * b)

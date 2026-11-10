@@ -15,6 +15,12 @@ implemented over the vector level (`NLAlib.Ops.Examples.krylovTable`) by `dot` a
 that an algorithm over `KOp` is linked twice to reach scalar arithmetic. The contract of `nrm2`
 is relational and is proved for its implementation from the contracts of `dot` and `sqrt` alone:
 two calls by contract, no arithmetic unfolded.
+## Main results
+
+* `NLAlib.Ops.Examples.nrm2Impl_spec`: the implementation of `nrm2` meets its contract.
+* `NLAlib.Ops.Examples.isKrylov_link`: the induced interpretation meets the contracts of the
+  second level.
+* `NLAlib.Ops.Examples.krylov_accounts`: the accounting certificate of the table.
 -/
 
 @[expose] public section
@@ -33,7 +39,7 @@ inductive KOp where
 
 /-- **The relational contract of `nrm2`**: the cell receives a rounded square root (relative
 error `εs`) of a sum of squares computed up to the relative error `εd n`. -/
-def Nrm2Spec (dec : K → ℝ) (εd : ℕ → ℝ) (εs : ℝ) : Contract K := fun md d ins outs _ =>
+def nrm2Spec (dec : K → ℝ) (εd : ℕ → ℝ) (εs : ℝ) : Contract K := fun md d ins outs _ =>
   { pre := fun m => ∃ n x z, d = [n] ∧ ins = [x] ∧ outs = [z] ∧ x.1 ≠ z.1 ∧
       md.Needs ((m.store.readBlock x.1 x.2 n).isSome ∧ z.2 < m.store.len z.1)
     post := fun m m' => ∃ n x z xs σ ν, d = [n] ∧ ins = [x] ∧ outs = [z] ∧
@@ -44,13 +50,13 @@ def Nrm2Spec (dec : K → ℝ) (εd : ℕ → ℝ) (εs : ℝ) : Contract K := f
 structure IsKrylov (M : Machine K) (dec : K → ℝ) (εd : ℕ → ℝ) (εa εs : ℝ) (J : Interp KOp K) :
     Prop where
   /-- `nrm2`. -/
-  nrm2 : J.Meets .total .nrm2 (Nrm2Spec dec εd εs)
+  nrm2 : J.Meets .total .nrm2 (nrm2Spec dec εd εs)
   /-- `dot`. -/
-  dot : J.Meets .total (.bl .dot) (DotSpec dec εd)
+  dot : J.Meets .total (.bl .dot) (dotSpec dec εd)
   /-- `axpy`. -/
-  axpy : J.Meets .total (.bl .axpy) (AxpySpec dec εa)
+  axpy : J.Meets .total (.bl .axpy) (axpySpec dec εa)
   /-- Scalar operations. -/
-  ar : ∀ a, J.IsFn .total (.bl (.ar a)) (M.fn a) anyOperands
+  ar : ∀ a, J.IsFn .total (.bl (.ar a)) (M.fn a) AnyOperands
 
 /-- **The implementation of `nrm2`** over the vector level: `z := dot x x; z := sqrt z`. Index
 variables: `n`, the offsets of `x`, `z`. -/
@@ -65,10 +71,10 @@ def nrm2Impl : Impl BOp where
 meeting its contracts. Two calls by contract. -/
 theorem nrm2Impl_spec {M : Machine K} {dec : K → ℝ} {εd : ℕ → ℝ} {εa u : ℝ} {J : Interp BOp K}
     (hJ : IsBlas M dec εd εa J) (hM : StdModel u dec M) (d : List ℕ) (ins outs : List (ℕ × ℕ))
-    (τ : ℕ → K) (m : Mem K) (hpre : (Nrm2Spec dec εd u .total d ins outs τ).pre m) :
+    (τ : ℕ → K) (m : Mem K) (hpre : (nrm2Spec dec εd u .total d ins outs τ).pre m) :
     nrm2Impl.Fits d.length ins.length outs.length ∧
-      wp .total J τ nrm2Impl.body (Env.frame d (ins ++ outs))
-        ((Nrm2Spec dec εd u .total d ins outs τ).post m) m := by
+      Wp .total J τ nrm2Impl.body (Env.frame d (ins ++ outs))
+        ((nrm2Spec dec εd u .total d ins outs τ).post m) m := by
   obtain ⟨n, x, z, rfl, rfl, rfl, hxz, hn⟩ := hpre
   obtain ⟨hx, hz⟩ := hn rfl
   refine ⟨⟨rfl, rfl, rfl⟩, wp_seq (wp_call hJ.dot (d := [n]) (a := [x, x]) (b := [z]) rfl rfl rfl

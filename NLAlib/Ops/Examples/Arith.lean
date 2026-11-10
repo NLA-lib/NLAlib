@@ -19,6 +19,9 @@ at a unit roundoff `u` for a decoding `dec` (`NLAlib.Ops.Examples.StdModel`). Th
 the interpretation, the second is mathematics about functions.
 
 Witness (`NLAlib.Ops.Examples.exists_arith`): exact real arithmetic meets both for every `u ≥ 0`.
+## Main results
+
+* `NLAlib.Ops.Examples.exists_arith`: the contracts of scalar arithmetic can be met.
 -/
 
 @[expose] public section
@@ -68,12 +71,12 @@ def Machine.fn (M : Machine K) : AOp → BlockFn K
   | .sqrt => .un fun a => some (M.sqrt a)
 
 /-- No restriction on operands: scalar operations may alias. -/
-abbrev anyOperands : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop := fun _ _ _ => True
+abbrev AnyOperands : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop := fun _ _ _ => True
 
 /-- **The functional contract of scalar arithmetic**: every operation is the function of the
 machine `M`, on all operands. -/
 def IsArith (M : Machine K) (I : Interp AOp K) : Prop :=
-  ∀ o, I.IsFn .total o (M.fn o) anyOperands
+  ∀ o, I.IsFn .total o (M.fn o) AnyOperands
 
 /-- **The standard model** of rounded arithmetic at the unit roundoff `u`, for the decoding `dec`:
 a property of the functions of the machine. -/

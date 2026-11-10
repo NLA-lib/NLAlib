@@ -5,7 +5,10 @@ Authors: NLAlib contributors
 -/
 module
 
-public import Mathlib.Tactic
+public import Mathlib.Algebra.Order.Group.Nat
+public import Mathlib.Data.List.Basic
+public import Mathlib.Tactic.ByContra
+public import Mathlib.Tactic.SplitIfs
 
 /-!
 # The store and the memory of a run

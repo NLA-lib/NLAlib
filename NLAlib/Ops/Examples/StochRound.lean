@@ -27,7 +27,14 @@ meets the drawn contract with `g = f`, so the same `SrModel` holds) and
 
 An algorithm over the drawn operation, the stochastically rounded sum
 `NLAlib.Ops.Examples.srsum`: abstract theorem, sure error bound
-(`NLAlib.Ops.Examples.srsum_sure`, mathematics), and the corollary by linking.
+(`NLAlib.Ops.Examples.abs_dec_srsumF_sub_le`, mathematics), and the corollary by linking.
+## Main results
+
+* `NLAlib.Ops.Examples.isSrAddD_link`: the drawn contract, by linking.
+* `NLAlib.Ops.Examples.sraddD_tapeLocal`: the window of the drawn operation.
+* `NLAlib.Ops.Examples.runs_srsum`, `NLAlib.Ops.Examples.runs_srsum_link`: the sum, abstract and
+  linked.
+* `NLAlib.Ops.Examples.exists_isSrAdd`: the contracts can be met.
 -/
 
 @[expose] public section
@@ -67,9 +74,9 @@ structure SrModel (u β : ℝ) (dec : K → ℝ) (Ξ : Finset K) (f : K → K �
 /-- **Explicit randomness**: `sradd` is the function `f` of three cells; `draw` is the draw. -/
 structure IsSrAdd (f : K → K → K → K) (I : Interp S0 K) : Prop where
   /-- `sradd` is `f`. -/
-  sradd : I.IsFn .total .sradd (.tern fun a b ξ => some (f a b ξ)) anyOperands
+  sradd : I.IsFn .total .sradd (.tern fun a b ξ => some (f a b ξ)) AnyOperands
   /-- `draw` is the draw of the model. -/
-  draw : I.IsFn .total .draw .draw anyOperands
+  draw : I.IsFn .total .draw .draw AnyOperands
 
 /-- The block function of an operation of two cells that draws once: the result is `g` of the
 operands and of the tape window. -/
@@ -110,7 +117,7 @@ theorem drawBin_apply {g : K → K → K → K} {d : List ℕ} {ins : List (ℕ 
 /-- **As an operation that draws**: `sraddD` is the function `g` of its two cells and of its tape
 window. -/
 def IsSrAddD (g : K → K → K → K) (J : Interp S1 K) : Prop :=
-  J.IsFn .total .sraddD (drawBin g) anyOperands
+  J.IsFn .total .sraddD (drawBin g) AnyOperands
 
 /-! ### The drawing implementation and the transfer through linking -/
 
@@ -213,7 +220,7 @@ def srsumF (g : K → K → K → K) (z₀ : K) (x : ℕ → K) (τ : ℕ → K)
   | k + 1 => g (srsumF g z₀ x τ p k) (x k) (τ (p + k))
 
 /-- **The sure error of the stochastically rounded sum**, for every tape. -/
-theorem srsum_sure {u β : ℝ} {dec : K → ℝ} {Ξ : Finset K} {g : K → K → K → K}
+theorem abs_dec_srsumF_sub_le {u β : ℝ} {dec : K → ℝ} {Ξ : Finset K} {g : K → K → K → K}
     (hg : SrModel u β dec Ξ g) (hu : 0 ≤ u) (z₀ : K) (x τ : ℕ → K) (p n : ℕ) :
     |dec (srsumF g z₀ x τ p n) - (dec z₀ + ∑ k ∈ Finset.range n, dec (x k))| ≤
       ((1 + 2 * u) ^ n - 1) * (|dec z₀| + ∑ k ∈ Finset.range n, |dec (x k)|) := by
@@ -253,7 +260,7 @@ theorem srsum_sure {u β : ℝ} {dec : K → ℝ} {Ξ : Finset K} {g : K → K �
 
 /-- Each increment is conditionally unbiased up to `β u`, given the tape before its window: the
 contract of the drawn operation at the value reached. -/
-theorem srsum_increment {u β : ℝ} {dec : K → ℝ} {Ξ : Finset K} {g : K → K → K → K}
+theorem abs_sum_dec_srsumF_div_sub_le {u β : ℝ} {dec : K → ℝ} {Ξ : Finset K} {g : K → K → K → K}
     (hg : SrModel u β dec Ξ g) (z₀ : K) (x τ : ℕ → K) (p k : ℕ) :
     |(∑ ξ ∈ Ξ, dec (g (srsumF g z₀ x τ p k) (x k) ξ)) / Ξ.card -
         (dec (srsumF g z₀ x τ p k) + dec (x k))| ≤
@@ -265,13 +272,13 @@ variable [Inhabited K]
 /-- **The abstract theorem of `srsum`**, for every interpretation meeting the drawn contract:
 `n` calls, and the cell `z` holds the function `srsumF` of the `n` tape entries from the
 position, which advances by `n`. -/
-theorem srsum_abstract {g : K → K → K → K} {J : Interp S1 K} (hJ : IsSrAddD g J)
+theorem runs_srsum {g : K → K → K → K} {J : Interp S1 K} (hJ : IsSrAddD g J)
     (W : S1 → List ℕ → ℕ) {τ : ℕ → K} {n : ℕ} {x z : ℕ × ℕ} {m : Mem K} {xs : List K} {z₀ : K}
     (hxz : x.1 ≠ z.1) (hx : m.store.readBlock x.1 x.2 n = some xs)
     (hz : m.store.get z.1 z.2 = some z₀) :
     Runs J W τ srsum ⟨[n, x.2, z.2], [x.1, z.1]⟩ m (n • Count.one .sraddD []) (W .sraddD [])
       (· = (m.upd z (srsumF g z₀ (vec xs) τ m.pos n)).advance n) := by
-  have hw : wp .total J τ srsum ⟨[n, x.2, z.2], [x.1, z.1]⟩
+  have hw : Wp .total J τ srsum ⟨[n, x.2, z.2], [x.1, z.1]⟩
       (· = (m.upd z (srsumF g z₀ (vec xs) τ m.pos n)).advance n) m := by
     refine wp_loop (k := n) rfl
       (fun i m' => m' = (m.upd z (srsumF g z₀ (vec xs) τ m.pos i)).advance i) ?_ ?_ fun _ h => h
@@ -293,8 +300,8 @@ theorem srsum_abstract {g : K → K → K → K} {J : Interp S1 K} (hJ : IsSrAdd
 
 /-- **The concrete corollary**: the sum over the program that draws and calls `sradd`, by one
 application of the linking theorem: `n` draws and `n` `sradd`, one scratch cell, the result is
-`srsumF f` of the tape, and it meets the sure bound of `srsum_sure` for every tape. -/
-theorem srsum_linked {f : K → K → K → K} {I : Interp S0 K} (hI : IsSrAdd f I) {u β : ℝ}
+`srsumF f` of the tape, and it meets the sure bound of `abs_dec_srsumF_sub_le` for every tape. -/
+theorem runs_srsum_link {f : K → K → K → K} {I : Interp S0 K} (hI : IsSrAdd f I) {u β : ℝ}
     {dec : K → ℝ} {Ξ : Finset K} (hf : SrModel u β dec Ξ f) (hu : 0 ≤ u) {τ : ℕ → K} {n : ℕ}
     {x z : ℕ × ℕ} {m : Mem K} {xs : List K} {z₀ : K} (hxz : x.1 ≠ z.1)
     (hx : m.store.readBlock x.1 x.2 n = some xs) (hz : m.store.get z.1 z.2 = some z₀) :
@@ -303,8 +310,8 @@ theorem srsum_linked {f : K → K → K → K} {I : Interp S0 K} (hI : IsSrAdd f
       fun m' => ∃ v, m' = (m.upd z v).advance n ∧
         |dec v - (dec z₀ + ∑ k ∈ Finset.range n, dec (vec xs k))| ≤
           ((1 + 2 * u) ^ n - 1) * (|dec z₀| + ∑ k ∈ Finset.range n, |dec (vec xs k)|) :=
-  ((srsum_abstract (isSrAddD_link hI) (fun _ _ => 1) hxz hx hz).link (sr_accounts I)).mono
-    (by simp [srCost]) le_rfl fun _ h => ⟨_, h, srsum_sure hf hu _ _ _ _ _⟩
+  ((runs_srsum (isSrAddD_link hI) (fun _ _ => 1) hxz hx hz).link (sr_accounts I)).mono
+    (by simp [srCost]) le_rfl fun _ h => ⟨_, h, abs_dec_srsumF_sub_le hf hu _ _ _ _ _⟩
 
 /-! ### Witness -/
 

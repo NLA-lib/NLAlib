@@ -21,6 +21,10 @@ sizes.
 `frame` runs a body in a new environment made of the dimensions and operands it is given: it is
 the instance of a procedure, and linking (`NLAlib.Ops.Stmt.link`) turns a call into the frame of
 its implementation.
+## Main results
+
+* `NLAlib.Ops.Operand.evalList_append`, `NLAlib.Ops.Operand.evalList_off_of_evalList`: the
+  evaluation of operand lists.
 -/
 
 @[expose] public section
@@ -151,7 +155,7 @@ theorem evalList_append (ρ : Env) (as bs : List Operand) :
     cases a.eval ρ <;> cases evalList ρ as <;> cases evalList ρ bs <;> rfl
 
 /-- The offsets of evaluated operands are the values of their offset expressions. -/
-theorem offs_of_evalList {ρ : Env} {as : List Operand} {xs : List (ℕ × ℕ)}
+theorem evalList_off_of_evalList {ρ : Env} {as : List Operand} {xs : List (ℕ × ℕ)}
     (h : evalList ρ as = some xs) :
     IExp.evalList ρ.idx (as.map Operand.off) = some (xs.map Prod.snd) := by
   induction as generalizing xs with

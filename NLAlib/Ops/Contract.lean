@@ -27,6 +27,13 @@ Two forms.
 
 A contract says nothing of counts, workspaces or the tape positions an operation may read: those
 are fixed by the evaluator and the access model (`NLAlib.Ops.exec`, `NLAlib.Ops.Interp.TapeLocal`).
+## Main results
+
+* `NLAlib.Ops.Interp.IsFn.callS_eq`: under a functional contract a call is an equation.
+* `NLAlib.Ops.BlockFn.apply_bin_eq_some_iff` and its analogues: calls of scalar block functions,
+  on cells.
+* `NLAlib.Ops.Interp.ofFns_isFn`: an interpretation given by block functions meets their
+  functional contracts.
 -/
 
 @[expose] public section
@@ -49,7 +56,7 @@ namespace Mode
 def Needs (md : Mode) (p : Prop) : Prop := md = .total → p
 
 /-- The result `x` of a run satisfies `Q`, in the mode `md`. -/
-def holds (md : Mode) {α : Type} (x : Option α) (Q : α → Prop) : Prop :=
+def Holds (md : Mode) {α : Type} (x : Option α) (Q : α → Prop) : Prop :=
   match md with
   | .total => ∃ a, x = some a ∧ Q a
   | .liberal => ∀ a, x = some a → Q a
@@ -58,28 +65,28 @@ def holds (md : Mode) {α : Type} (x : Option α) (Q : α → Prop) : Prop :=
 @[simp] theorem needs_liberal (p : Prop) : liberal.Needs p ↔ True := by simp [Needs]
 
 theorem holds_total {α : Type} {x : Option α} {Q : α → Prop} :
-    total.holds x Q ↔ ∃ a, x = some a ∧ Q a := Iff.rfl
+    total.Holds x Q ↔ ∃ a, x = some a ∧ Q a := Iff.rfl
 
 theorem holds_liberal {α : Type} {x : Option α} {Q : α → Prop} :
-    liberal.holds x Q ↔ ∀ a, x = some a → Q a := Iff.rfl
+    liberal.Holds x Q ↔ ∀ a, x = some a → Q a := Iff.rfl
 
 theorem holds_some {md : Mode} {α : Type} {a : α} {Q : α → Prop} (h : Q a) :
-    md.holds (some a) Q := by
+    md.Holds (some a) Q := by
   cases md
   · exact ⟨a, rfl, h⟩
   · rintro b ⟨⟩
     exact h
 
-theorem holds.mono {md : Mode} {α : Type} {x : Option α} {Q Q' : α → Prop} (h : md.holds x Q)
-    (hQ : ∀ a, Q a → Q' a) : md.holds x Q' := by
+theorem Holds.mono {md : Mode} {α : Type} {x : Option α} {Q Q' : α → Prop} (h : md.Holds x Q)
+    (hQ : ∀ a, Q a → Q' a) : md.Holds x Q' := by
   cases md
   · obtain ⟨a, ha, hq⟩ := h
     exact ⟨a, ha, hQ a hq⟩
   · exact fun a ha => hQ a (h a ha)
 
 /-- A total statement holds in every mode. -/
-theorem holds.of_total {md : Mode} {α : Type} {x : Option α} {Q : α → Prop}
-    (h : total.holds x Q) : md.holds x Q := by
+theorem Holds.of_total {md : Mode} {α : Type} {x : Option α} {Q : α → Prop}
+    (h : total.Holds x Q) : md.Holds x Q := by
   cases md
   · exact h
   · obtain ⟨a, ha, hq⟩ := h
@@ -89,7 +96,7 @@ theorem holds.of_total {md : Mode} {α : Type} {x : Option α} {Q : α → Prop}
     exact hq
 
 theorem holds_bind {md : Mode} {α β : Type} {x : Option α} {f : α → Option β} {Q : β → Prop}
-    (h : md.holds x fun a => md.holds (f a) Q) : md.holds (x.bind f) Q := by
+    (h : md.Holds x fun a => md.Holds (f a) Q) : md.Holds (x.bind f) Q := by
   cases md
   · obtain ⟨a, rfl, b, hb, hq⟩ := h
     exact ⟨b, hb, hq⟩
@@ -98,7 +105,7 @@ theorem holds_bind {md : Mode} {α β : Type} {x : Option α} {f : α → Option
     exact h a ha b hb
 
 theorem holds_map {md : Mode} {α β : Type} {x : Option α} {g : α → β} {Q : β → Prop}
-    (h : md.holds x fun a => Q (g a)) : md.holds (x.map g) Q := by
+    (h : md.Holds x fun a => Q (g a)) : md.Holds (x.map g) Q := by
   cases md
   · obtain ⟨a, rfl, hq⟩ := h
     exact ⟨g a, rfl, hq⟩
@@ -122,7 +129,7 @@ abbrev Contract (K : Type) := Mode → List ℕ → List (ℕ × ℕ) → List (
 /-- **The operation `o` of `I` meets the contract `C`** in the mode `md`. -/
 def Interp.Meets (I : Interp Op K) (md : Mode) (o : Op) (C : Contract K) : Prop :=
   ∀ d ins outs τ m, (C md d ins outs τ).pre m →
-    md.holds (I.callS o d ins outs τ m) ((C md d ins outs τ).post m)
+    md.Holds (I.callS o d ins outs τ m) ((C md d ins outs τ).post m)
 
 /-- **A block function**: the output block as a function of the dimensions, the entries of the
 tape window and the input blocks. `win` is the length of the window (zero for an operation that

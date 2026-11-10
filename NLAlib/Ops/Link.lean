@@ -22,6 +22,11 @@ The interpretation of `Op₁` induced by a table and an interpretation of `Op₂
 `NLAlib.Ops.run_link`: **the linked program under `I` and the program under the induced
 interpretation end in the same memory, or both fail.** This is the refinement transfer, in both
 modes, with no certificate.
+## Main results
+
+* `NLAlib.Ops.run_link`: refinement transfer.
+* `NLAlib.Ops.Interp.link_callS_inl`: the call of an implemented operation under the induced
+  interpretation is the run of its implementation.
 -/
 
 @[expose] public section
@@ -117,7 +122,7 @@ theorem Interp.link_callS_inl (I : Interp Op₂ K) {T : Table Op₁ Op₂} {o : 
   split_ifs with hfit
   · cases hr : run I τ R.body (Env.frame d (ins ++ outs)) m with
     | none => rfl
-    | some m' => simp [run_shape hr]
+    | some m' => simp [shape_store_of_run hr]
   · rfl
 
 theorem Interp.link_test_inr (I : Interp Op₂ K) {T : Table Op₁ Op₂} {o : Op₁} {o' : Op₂}

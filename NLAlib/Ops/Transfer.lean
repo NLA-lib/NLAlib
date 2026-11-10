@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import Mathlib.Algebra.Module.End
 public import NLAlib.Ops.Link
 public import NLAlib.Ops.Static
 
@@ -13,6 +14,8 @@ public import NLAlib.Ops.Static
 
 A theorem about an algorithm under every interpretation meeting contracts becomes a theorem about
 the linked program, with no new proof about the algorithm.
+
+## Main results
 
 * **Counts.** `NLAlib.Ops.Count.push κ` is the additive map sending one call of `o` at the
   dimensions `d` to `κ o d`; with `κ` the cost of each implementation it is the push-forward of

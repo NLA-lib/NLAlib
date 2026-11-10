@@ -10,7 +10,10 @@ public import NLAlib.Ops.Examples.Arith
 /-!
 # Example: the dot product over scalar arithmetic
 
-* Mathematics (`NLAlib.Ops.Examples.dotF_error`): the recursive summation of rounded products,
+## Main results
+
+* Mathematics (`NLAlib.Ops.Examples.abs_dec_dotF_sub_le`): the recursive summation of rounded
+  products,
   as a function `NLAlib.Ops.Examples.dotF` of a machine, has the error `(1 + u) ^ (2 n) - 1`
   relative to the sum of the absolute values of the products. No program.
 * Program logic (`NLAlib.Ops.Examples.wp_dotLoop`): the accumulation loop
@@ -38,8 +41,8 @@ theorem dotF_succ (M : Machine K) (a b : ℕ → K) (n : ℕ) :
 /-! ### Mathematics -/
 
 /-- **The error of the rounded dot product**, on decoded values. -/
-theorem dotF_error {u : ℝ} {dec : K → ℝ} {M : Machine K} (hM : StdModel u dec M) (hu : 0 ≤ u)
-    (a b : ℕ → K) (n : ℕ) :
+theorem abs_dec_dotF_sub_le {u : ℝ} {dec : K → ℝ} {M : Machine K} (hM : StdModel u dec M)
+    (hu : 0 ≤ u) (a b : ℕ → K) (n : ℕ) :
     |dec (dotF M a b n) - ∑ k ∈ Finset.range n, dec (a k) * dec (b k)| ≤
       ((1 + u) ^ (2 * n) - 1) * ∑ k ∈ Finset.range n, |dec (a k) * dec (b k)| := by
   induction n with
@@ -104,7 +107,7 @@ theorem wp_dotLoop {M : Machine K} {I : Interp AOp K} (hI : IsArith M I) {md : M
     (hyz : by' ≠ bz) (hzl : oz < s.len bz) (ha : ∀ k < N, s.get bx (fx k) = some (a k))
     (hb : ∀ k < N, s.get by' (fy k) = some (b k)) {Q : Mem K → Prop}
     (hQ : ∀ tb' : Buf K, tb'.length = 1 → Q ⟨s.upd bz oz (dotF M a b N) ++ [tb'], p⟩) :
-    wp md I τ (dotLoop n x y z t) ρ Q ⟨s ++ [tb], p⟩ := by
+    Wp md I τ (dotLoop n x y z t) ρ Q ⟨s ++ [tb], p⟩ := by
   have hbz : bz < s.length := Store.lt_length_of_lt_len hzl
   refine wp_seq (wp_call_const (hI (.lit 0)) (z := (bz, oz)) rfl rfl (by simp [hz0]) trivial
     ?_ ?_)
@@ -183,7 +186,7 @@ theorem dotFn_apply {M : Machine K} {d : List ℕ} {ins : List (ℕ × ℕ)} {z 
   · simp [dotFn] at hfn
 
 /-- Operands in other buffers than the output. -/
-def disjointBufs : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop := fun _ ins z => ∀ a ∈ ins, a.1 ≠ z.1
+def DisjointBufs : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop := fun _ ins z => ∀ a ∈ ins, a.1 ≠ z.1
 
 /-- **The implementation of `dot`** over scalar arithmetic: a scratch cell and the accumulation
 loop. Index variables: `n`, the offsets of `x`, `y`, `z`, then the loop variable. -/
@@ -198,7 +201,7 @@ def dotImpl : Impl AOp where
 operands in other buffers than the output, the run of the implementation is the block function.
 A statement about words, with no error analysis. -/
 theorem dot_cert {M : Machine K} {I : Interp AOp K} (hI : IsArith M I) {d : List ℕ}
-    {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : ℕ → K} {m m' : Mem K} (hadm : disjointBufs d ins z)
+    {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : ℕ → K} {m m' : Mem K} (hadm : DisjointBufs d ins z)
     (h : (dotFn M).apply d ins z τ m = some m') :
     dotImpl.Fits d.length ins.length 1 ∧
       run I τ dotImpl.body (Env.frame d (ins ++ [z])) m = some m' := by

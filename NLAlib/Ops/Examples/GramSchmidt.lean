@@ -13,15 +13,18 @@ public import NLAlib.Ops.Examples.Krylov
 The algorithm `NLAlib.Ops.Examples.mgs` orthogonalizes a vector `w` against the `k` rows of `Q`
 and stores the `k` coefficients and the norm of the result in `R`.
 
+## Main results
+
 * Mathematics: the postcondition is the recurrence with local errors
   `NLAlib.Ops.Examples.MgsRec`, on decoded values; its analysis is not part of this file.
 * Program logic (`NLAlib.Ops.Examples.wp_mgs`): for every interpretation meeting the contracts of
   the second level, the run ends in a memory described by the recurrence.
-* The abstract theorem (`NLAlib.Ops.Examples.mgs_abstract`): the same with the call counts
+* The abstract theorem (`NLAlib.Ops.Examples.runs_mgs`): the same with the call counts
   `k (dot + neg + axpy) + nrm2` and two scratch cells, the counts by evaluating the static cost.
-* The corollary (`NLAlib.Ops.Examples.mgs_linked`): the program linked twice, down to scalar
+* The corollary (`NLAlib.Ops.Examples.runs_mgs_link`): the program linked twice, down to scalar
   arithmetic meeting the standard model at `u`, by two applications of `Runs.link`; its counts
-  are the push-forward through both tables, evaluated in `NLAlib.Ops.Examples.mgs_count`.
+  are the push-forward through both tables, evaluated in
+  `NLAlib.Ops.Examples.push_blasCost_push_krylovCost_mgsCount`.
 -/
 
 @[expose] public section
@@ -77,10 +80,10 @@ section StoreLemmas
 
 omit [Inhabited K]
 
-theorem mgsStore_length (s : Store K) (w R : ℕ × ℕ) (ws r : List K) :
+theorem length_mgsStore (s : Store K) (w R : ℕ × ℕ) (ws r : List K) :
     (mgsStore s w R ws r).length = s.length := by simp [mgsStore]
 
-theorem mgsStore_len (s : Store K) (w R : ℕ × ℕ) (ws r : List K) (b : ℕ) :
+theorem len_mgsStore (s : Store K) (w R : ℕ × ℕ) (ws r : List K) (b : ℕ) :
     (mgsStore s w R ws r).len b = s.len b := by simp [mgsStore]
 
 theorem mgsStore_readBlock_other {s : Store K} {w R : ℕ × ℕ} {b : ℕ} (hw : b ≠ w.1)
@@ -126,10 +129,10 @@ theorem wp_mgs_step {M : Machine K} {dec : K → ℝ} {εd : ℕ → ℝ} {εa �
       DotErr dec (εd n) n (fun i => vec qs (r.length * n + i)) (vec ws) ρ → dec t = -dec ρ →
       AxpyErr dec εa n t (fun i => vec qs (r.length * n + i)) (vec ws) (vec zs) →
       P ⟨mgsStore s w R zs (r ++ [ρ]) ++ [tb'], p⟩) :
-    wp .total J τ mgsBody ⟨[n, k, Q.2, w.2, R.2, r.length], [Q.1, w.1, R.1, s.length]⟩ P
+    Wp .total J τ mgsBody ⟨[n, k, Q.2, w.2, R.2, r.length], [Q.1, w.1, R.1, s.length]⟩ P
       ⟨mgsStore s w R ws r ++ [tb], p⟩ := by
   have hbR : R.1 < s.length := Store.lt_length_of_lt_len (i := R.2) (by omega)
-  have hL := fun ws' r' => mgsStore_length s w R ws' r'
+  have hL := fun ws' r' => length_mgsStore s w R ws' r'
   have hkn : r.length * n + n ≤ k * n := by
     have := Nat.mul_le_mul_right n hj
     rwa [Nat.succ_mul] at this
@@ -148,7 +151,7 @@ theorem wp_mgs_step {M : Machine K} {dec : K → ℝ} {εd : ℕ → ℝ} {εa �
     (b := [(R.1, R.2 + r.length)]) rfl rfl rfl ⟨n, _, _, _, rfl, rfl, rfl, hQR, hwR, ?_⟩ ?_)
   · refine (Mode.needs_total _).mpr ⟨by simp [hrowS], by simp [hwS _ _ _ hws], ?_⟩
     change R.2 + r.length < (mgsStore s w R ws r ++ [tb]).len R.1
-    rw [Store.len_append_of_lt (by rw [hL]; exact hbR), mgsStore_len]
+    rw [Store.len_append_of_lt (by rw [hL]; exact hbR), len_mgsStore]
     omega
   rintro m₁ ⟨n', x', y', z', xs, ys, ρ, hd, hi, ho, hxs, hys, herr, rfl⟩
   cases hd
@@ -219,7 +222,7 @@ theorem wp_mgs {M : Machine K} {dec : K → ℝ} {εd : ℕ → ℝ} {εa εs : 
     (hwR : w.1 ≠ R.1) (hbQ : Q.1 < m.store.length) (hbw : w.1 < m.store.length)
     (hq : m.store.readBlock Q.1 Q.2 (k * n) = some qs)
     (hw : m.store.readBlock w.1 w.2 n = some ws) (hR : R.2 + (k + 1) ≤ m.store.len R.1) :
-    wp .total J τ mgs ⟨[n, k, Q.2, w.2, R.2], [Q.1, w.1, R.1]⟩
+    Wp .total J τ mgs ⟨[n, k, Q.2, w.2, R.2], [Q.1, w.1, R.1]⟩
       (MgsPost dec εd εa εs n k w R qs ws m) m := by
   obtain ⟨s, p⟩ := m
   have hbR : R.1 < s.length := Store.lt_length_of_lt_len (i := R.2) (by simp at hR; omega)
@@ -235,7 +238,7 @@ theorem wp_mgs {M : Machine K} {dec : K → ℝ} {εd : ℕ → ℝ} {εa εs : 
     exact wp_mgs_step hJ hneg hj hQw hQR hwR hbQ hbw hq hw hR hws' htb
       fun ρ t zs tb' hz ht h1 h2 h3 => ⟨zs, r ++ [ρ], tb', hz, ht, hrec.step h1 h2 h3, rfl⟩
   · rintro m' ⟨ws', r, tb, hws', htb, hrec, rfl⟩
-    have hL := mgsStore_length s w R ws' r
+    have hL := length_mgsStore s w R ws' r
     refine wp_call hJ.nrm2 (d := [n]) (a := [w]) (b := [(R.1, R.2 + k)]) rfl rfl rfl
       ⟨n, _, _, rfl, rfl, rfl, hwR, (Mode.needs_total _).mpr ⟨?_, ?_⟩⟩ ?_
     · change ((mgsStore s w R ws' r ++ [tb]).readBlock w.1 w.2 n).isSome
@@ -243,7 +246,7 @@ theorem wp_mgs {M : Machine K} {dec : K → ℝ} {εd : ℕ → ℝ} {εa εs : 
         mgsStore_readBlock_w hwR hw hws']
       rfl
     · change R.2 + k < (mgsStore s w R ws' r ++ [tb]).len R.1
-      rw [Store.len_append_of_lt (by rw [hL]; exact hbR), mgsStore_len]
+      rw [Store.len_append_of_lt (by rw [hL]; exact hbR), len_mgsStore]
       simp at hR
       omega
     rintro m₂ ⟨n', x', z', xs, σ, ν, hd, hi, ho, hxs, h1, h2, rfl⟩
@@ -270,13 +273,13 @@ noncomputable def mgsCount (n k : ℕ) : Count KOp :=
 theorem staticCost_mgs (n k a b c : ℕ) : staticCost mgs [n, k, a, b, c] = mgsCount n k := by
   simp [mgs, mgsBody, staticCost, useCost, mgsCount, add_assoc]
 
-theorem staticPeak_mgs (n k a b c : ℕ) : staticPeak krylovWs mgs [n, k, a, b, c] ≤ 2 := by
+theorem staticPeak_mgs_le (n k a b c : ℕ) : staticPeak krylovWs mgs [n, k, a, b, c] ≤ 2 := by
   simp [mgs, mgsBody, staticPeak, krylovWs, blasWs]
 
 /-- **The abstract theorem of `mgs`**: for every interpretation meeting the contracts of the
 second level, the run terminates within `mgsCount n k` calls and two scratch cells, in a memory
 described by the recurrence with local errors. -/
-theorem mgs_abstract {M : Machine K} {dec : K → ℝ} {εd : ℕ → ℝ} {εa εs : ℝ} {J : Interp KOp K}
+theorem runs_mgs {M : Machine K} {dec : K → ℝ} {εd : ℕ → ℝ} {εa εs : ℝ} {J : Interp KOp K}
     (hJ : IsKrylov M dec εd εa εs J) (hneg : ∀ a, dec (M.neg a) = -dec a) {τ : ℕ → K}
     {n k : ℕ} {Q w R : ℕ × ℕ} {m : Mem K} {qs ws : List K} (hQw : Q.1 ≠ w.1) (hQR : Q.1 ≠ R.1)
     (hwR : w.1 ≠ R.1) (hbQ : Q.1 < m.store.length) (hbw : w.1 < m.store.length)
@@ -286,13 +289,13 @@ theorem mgs_abstract {M : Machine K} {dec : K → ℝ} {εd : ℕ → ℝ} {εa 
       (MgsPost dec εd εa εs n k w R qs ws m) := by
   obtain ⟨m', hrun, hpost⟩ := wp_mgs hJ hneg (τ := τ) hQw hQR hwR hbQ hbw hq hw hR
   exact (Runs.of_run hrun hpost krylovWs).mono (le_of_eq (staticCost_mgs ..))
-    (staticPeak_mgs ..) fun _ h => h
+    (staticPeak_mgs_le ..) fun _ h => h
 
 /-- **The concrete corollary**: `mgs` linked twice, down to scalar arithmetic meeting the
 standard model at the unit roundoff `u`. Two applications of the linking theorem; the accuracy
 parameters are those of the implementations, the counts are pushed forward through both tables,
 the workspace is unchanged. No proof about the algorithm or its loops. -/
-theorem mgs_linked {M : Machine K} {I : Interp AOp K} (hI : IsArith M I) {u : ℝ} {dec : K → ℝ}
+theorem runs_mgs_link {M : Machine K} {I : Interp AOp K} (hI : IsArith M I) {u : ℝ} {dec : K → ℝ}
     (hM : StdModel u dec M) (hu : 0 ≤ u) {τ : ℕ → K} {n k : ℕ} {Q w R : ℕ × ℕ} {m : Mem K}
     {qs ws : List K} (hQw : Q.1 ≠ w.1) (hQR : Q.1 ≠ R.1) (hwR : w.1 ≠ R.1)
     (hbQ : Q.1 < m.store.length) (hbw : w.1 < m.store.length)
@@ -302,13 +305,13 @@ theorem mgs_linked {M : Machine K} {I : Interp AOp K} (hI : IsArith M I) {u : �
       ⟨[n, k, Q.2, w.2, R.2], [Q.1, w.1, R.1]⟩ m
       (Count.push blasCost (Count.push krylovCost (mgsCount n k))) 2
       (MgsPost dec (fun n => (1 + u) ^ (2 * n) - 1) (2 * u + u ^ 2) u n k w R qs ws m) :=
-  ((mgs_abstract (isKrylov_link (isBlas_link hI hM hu) hM) hM.neg hQw hQR hwR hbQ hbw hq hw
+  ((runs_mgs (isKrylov_link (isBlas_link hI hM hu) hM) hM.neg hQw hQR hwR hbQ hbw hq hw
     hR).link (krylov_accounts _)).link (blas_accounts I)
 
 /-- **The scalar counts of the linked `mgs`**, by evaluating the push-forward through both
 tables: `k + 1` literals, `(2 k + 1) n` multiplications and additions, `k` negations, one square
 root. -/
-theorem mgs_count (n k : ℕ) :
+theorem push_blasCost_push_krylovCost_mgsCount (n k : ℕ) :
     Count.push blasCost (Count.push krylovCost (mgsCount n k)) =
       (k + 1) • Count.one (.lit 0) [] +
         ((2 * k + 1) * n) • (Count.one .mul [] + Count.one .add []) +

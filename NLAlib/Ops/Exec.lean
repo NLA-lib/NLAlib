@@ -15,13 +15,15 @@ public import NLAlib.Ops.Syntax
 An interpretation `NLAlib.Ops.Interp Op K` gives the meaning of every operation: the effect of a
 call on the memory (it is given the tape), the Boolean of a test, the number of an index use.
 
+## Main results
+
 Two evaluators:
 
 * `NLAlib.Ops.run`: the memory after a run. This is the meaning of a program.
 * `NLAlib.Ops.exec`: the same run with its accounting. The evaluator, not the interpretation,
   fixes the accounting: every use of an operation counts one at the key
   `(operation, dimensions)` (`NLAlib.Ops.Count`), a call raises the peak by the workspace that
-  the access model declares for it, and `alloc` by its length. `NLAlib.Ops.exec_mem`: the two
+  the access model declares for it, and `alloc` by its length. `NLAlib.Ops.map_mem_exec`: the two
   agree on the memory, failures included.
 
 A call that changes the shape of the store fails (`NLAlib.Ops.Interp.callS`).
@@ -170,7 +172,7 @@ theorem Option.map_bind_of_comm {α β α' β' : Type} {g : α → α'} {g' : β
   | none => rfl
   | some a => exact h a
 
-theorem iter_map {σ σ' : Type} {g : σ → σ'} {f : ℕ → σ → Option σ} {f' : ℕ → σ' → Option σ'}
+theorem map_iter {σ σ' : Type} {g : σ → σ'} {f : ℕ → σ → Option σ} {f' : ℕ → σ' → Option σ'}
     (h : ∀ i a, (f i a).map g = f' i (g a)) (k : ℕ) (s : σ) :
     (iter f k s).map g = iter f' k (g s) := by
   induction k with
@@ -179,7 +181,7 @@ theorem iter_map {σ σ' : Type} {g : σ → σ'} {f : ℕ → σ → Option σ}
     simp only [iter]
     rw [Option.map_bind_of_comm _ (h k), ih]
 
-theorem whileIter_map {σ σ' : Type} {g : σ → σ'} {test : σ → Option Bool} {tick : σ → σ}
+theorem map_whileIter {σ σ' : Type} {g : σ → σ'} {test : σ → Option Bool} {tick : σ → σ}
     {body : σ → Option σ} {test' : σ' → Option Bool} {body' : σ' → Option σ'}
     (ht : ∀ a, test a = test' (g a)) (hk : ∀ a, g (tick a) = g a)
     (hb : ∀ a, (body a).map g = body' (g a)) (k : ℕ) (s : σ) :
@@ -202,7 +204,7 @@ theorem whileIter_map {σ σ' : Type} {g : σ → σ'} {test : σ → Option Boo
         rw [Option.map_bind_of_comm _ (fun a => ih a), hb, hk]
 
 /-- **The counted run and the run end in the same memory, or both fail.** -/
-theorem exec_mem (I : Interp Op K) (W : Op → List ℕ → ℕ) (τ : ℕ → K) (s : Stmt Op) (ρ : Env)
+theorem map_mem_exec (I : Interp Op K) (W : Op → List ℕ → ℕ) (τ : ℕ → K) (s : Stmt Op) (ρ : Env)
     (st : St Op K) : (exec I W τ s ρ st).map (·.mem) = run I τ s ρ st.mem := by
   induction s generalizing ρ st with
   | skip => rfl
@@ -227,7 +229,7 @@ theorem exec_mem (I : Interp Op K) (W : Op → List ℕ → ℕ) (τ : ℕ → K
     cases fuel.eval ρ.idx <;> cases IExp.evalList ρ.idx ds <;> cases Operand.evalList ρ ins <;>
       try rfl
     rename_i k d a
-    exact whileIter_map (g := fun x : St Op K => x.mem) (tick := fun s => s.tick o d)
+    exact map_whileIter (g := fun x : St Op K => x.mem) (tick := fun s => s.tick o d)
       (test' := I.test o d a) (fun _ => rfl) (fun _ => rfl) (fun a => ih ρ a) k st
   | bindIdx o ins bound body ih =>
     simp only [exec, run]
@@ -250,7 +252,7 @@ theorem exec_mem (I : Interp Op K) (W : Op → List ℕ → ℕ) (τ : ℕ → K
     simp only [exec, run]
     cases n.eval ρ.idx with
     | none => rfl
-    | some k => exact iter_map (fun i a => ih (ρ.pushIdx i) a) _ _
+    | some k => exact map_iter (fun i a => ih (ρ.pushIdx i) a) _ _
   | frame ds args body ih =>
     simp only [exec, run]
     cases IExp.evalList ρ.idx ds <;> cases Operand.evalList ρ args <;> try rfl
@@ -260,7 +262,7 @@ theorem exec_mem (I : Interp Op K) (W : Op → List ℕ → ℕ) (τ : ℕ → K
 theorem exec_eq_some_of_run {I : Interp Op K} {τ : ℕ → K} {s : Stmt Op} {ρ : Env} {m m' : Mem K}
     (h : run I τ s ρ m = some m') (W : Op → List ℕ → ℕ) (st : St Op K) (hm : st.mem = m) :
     ∃ st', exec I W τ s ρ st = some st' ∧ st'.mem = m' := by
-  have e := exec_mem I W τ s ρ st
+  have e := map_mem_exec I W τ s ρ st
   rw [hm, h] at e
   obtain ⟨st', h1, h2⟩ := Option.map_eq_some_iff.mp e
   exact ⟨st', h1, h2⟩
@@ -268,7 +270,7 @@ theorem exec_eq_some_of_run {I : Interp Op K} {τ : ℕ → K} {s : Stmt Op} {ρ
 theorem run_of_exec {I : Interp Op K} {W : Op → List ℕ → ℕ} {τ : ℕ → K} {s : Stmt Op} {ρ : Env}
     {st st' : St Op K} (h : exec I W τ s ρ st = some st') :
     run I τ s ρ st.mem = some st'.mem := by
-  rw [← exec_mem I W τ s ρ st, h]
+  rw [← map_mem_exec I W τ s ρ st, h]
   rfl
 
 /-! ### A run keeps the shape of the store -/
@@ -308,7 +310,7 @@ theorem whileIter_rel {σ : Type} {R : σ → σ → Prop}
 
 /-- **A run keeps the shape of the store**: buffers are neither created, resized nor freed behind
 the program's back. -/
-theorem run_shape {I : Interp Op K} {τ : ℕ → K} {s : Stmt Op} {ρ : Env} {m m' : Mem K}
+theorem shape_store_of_run {I : Interp Op K} {τ : ℕ → K} {s : Stmt Op} {ρ : Env} {m m' : Mem K}
     (h : run I τ s ρ m = some m') : m'.store.shape = m.store.shape := by
   induction s generalizing ρ m m' with
   | skip => cases h; rfl

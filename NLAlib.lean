@@ -639,6 +639,7 @@ public import NLAlib.Ops.Examples.CgsQR
 public import NLAlib.Ops.Examples.Control
 public import NLAlib.Ops.Examples.Dot
 public import NLAlib.Ops.Examples.Gemm
+public import NLAlib.Ops.Examples.GemmW
 public import NLAlib.Ops.Examples.GramSchmidt
 public import NLAlib.Ops.Examples.Hutch
 public import NLAlib.Ops.Examples.HutchLinked

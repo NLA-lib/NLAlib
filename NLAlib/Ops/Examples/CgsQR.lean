@@ -289,7 +289,7 @@ omit [Has ScalarOp Op] [Has Blas1Op Op] [Inhabited K] in
 theorem injective_handles {a b c : ℕ} (hab : a ≠ b) (hac : a ≠ c) (hbc : b ≠ c) :
     Function.Injective ![a, b, c] := by
   intro i j h
-  fin_cases i <;> fin_cases j <;> simp_all
+  fin_cases i <;> fin_cases j <;> simp at h ⊢ <;> omega
 
 /-- **The certificate of `cgs`**: for every interpretation meeting the contracts of scalar
 arithmetic and of the level-1 operations at `ε`, `cgs` meets its contract, which has two output

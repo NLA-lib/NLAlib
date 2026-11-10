@@ -73,7 +73,7 @@ def GemmEntry (dec : K → ℝ) (e : ℝ) (n p : ℕ) (as bs : List K) (q : ℕ)
 
 /-- The componentwise forward bound of the matrix product:
 `|ĉ_ij - Σ_k a_ik b_kj| ≤ e Σ_k |a_ik| |b_kj|`. -/
-def GemmBound (dec : K → ℝ) (e : ℝ) (m n p : ℕ) (as bs cs : List K) : Prop :=
+def GemmForward (dec : K → ℝ) (e : ℝ) (m n p : ℕ) (as bs cs : List K) : Prop :=
   ∀ i < m, ∀ j < p,
     |dec (vec cs (i * p + j)) - ∑ k ∈ Finset.range n, dec (vec as (i * n + k)) *
       dec (vec bs (j * n + k))| ≤
@@ -92,7 +92,7 @@ def gemmRel (dec : K → ℝ) (e : ℕ → ℝ) : BlockRel K where
     | [m, _, p] => [m * p]
     | _ => []
   rel d X _ Y := match d, X, Y with
-    | [m, n, p], [as, bs], [cs] => GemmBound dec (e n) m n p as bs cs
+    | [m, n, p], [as, bs], [cs] => GemmForward dec (e n) m n p as bs cs
     | _, _, _ => False
 
 /-- The admitted operands of `gemm`: the length `n` is covered by the contract of `dot`, and `A`
@@ -104,7 +104,7 @@ and `B` are in other buffers than `C`. -/
 entry satisfies the componentwise forward bound. -/
 def GemmRounded (dec : K → ℝ) (e : ℝ) (m n p : ℕ) (C : ℕ × ℕ) (as bs : List K)
     (μ μ' : Mem K) : Prop :=
-  ∃ cs : List K, μ' = μ.updBlock C cs ∧ cs.length = m * p ∧ GemmBound dec e m n p as bs cs
+  ∃ cs : List K, μ' = μ.updBlock C cs ∧ cs.length = m * p ∧ GemmForward dec e m n p as bs cs
 
 /-- The invariant of both loops of `gemm`, after `c` entries. -/
 def GemmInv (dec : K → ℝ) (e : ℝ) (n p bC oC : ℕ) (as bs : List K) (μ : Mem K) (c : ℕ)

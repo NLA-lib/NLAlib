@@ -50,6 +50,10 @@ A side goal that the tactic cannot discharge is left, after the continuation, un
 
 namespace NLAlib.Ops
 
+/-- The memory after a call that writes one cell and reads no window, as `wp_call` leaves it. -/
+@[storeNF] theorem Mem.advance_zero_updBlocks_cell {K : Type} (m : Mem K) (z : ℕ × ℕ) (v : K) :
+    (m.updBlocks [z] [[v]]).advance 0 = m.upd z v := rfl
+
 /-- A side goal of the call rule that is a fact about the store or about the operands: the
 operands are admitted, live, in the domain, there is room. -/
 syntax "wp_side" (" [" Lean.Parser.Tactic.simpLemma,* "]")? : tactic

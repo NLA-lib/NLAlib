@@ -14,6 +14,8 @@ One rule for a call of an operation under a contract in operand form (`NLAlib.Op
 whatever the contract: relational, functional, with a window, with any number of input and
 output blocks.
 
+## Main results
+
 * `NLAlib.Ops.wp_call_rel`, **the** rule, in every mode: from the input blocks that are read,
   the continuation receives output blocks of the declared lengths, related to the inputs and to
   the window, written at the output operands, and the position advanced by the window.

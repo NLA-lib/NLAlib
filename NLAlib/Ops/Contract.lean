@@ -159,6 +159,21 @@ theorem shape_of_apply {f : BlockFn K} {d : List ℕ} {ins : List (ℕ × ℕ)} 
   obtain ⟨m₁, h₁, rfl⟩ := Option.map_eq_some_iff.mp h
   exact (Mem.shape_of_write h₁).1
 
+/-- The effect of a block function, unfolded. -/
+theorem apply_eq_some_iff {f : BlockFn K} {d : List ℕ} {ins : List (ℕ × ℕ)} {z : ℕ × ℕ}
+    {τ : ℕ → K} {m m' : Mem K} :
+    f.apply d ins z τ m = some m' ↔ ∃ xs ys, m.readBlocks ins (f.inLens d) = some xs ∧
+      f.fn d ((List.range (f.win d)).map fun j => τ (m.pos + j)) xs = some ys ∧
+      z.2 + ys.length ≤ m.store.len z.1 ∧ m' = (m.updBlock z ys).advance (f.win d) := by
+  simp only [apply, Option.bind_eq_some_iff, Option.map_eq_some_iff, Mem.write]
+  constructor
+  · rintro ⟨xs, hxs, ys, hys, m₁, hw, rfl⟩
+    split_ifs at hw with hlen
+    cases hw
+    exact ⟨xs, ys, hxs, hys, hlen, rfl⟩
+  · rintro ⟨xs, ys, hxs, hys, hlen, rfl⟩
+    exact ⟨xs, hxs, ys, hys, _, if_pos hlen, rfl⟩
+
 /-- A constant: no input, one cell. -/
 def const (v : K) : BlockFn K where
   inLens _ := []

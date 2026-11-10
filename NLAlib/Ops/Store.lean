@@ -138,6 +138,22 @@ theorem lt_length_of_get {s : Store K} {b i : ℕ} {a : K} (h : s.get b i = some
     b < s.length :=
   lt_length_of_lt_len (lt_len_of_get h)
 
+theorem upd_comm {s : Store K} {b i b' i' : ℕ} (h : b' ≠ b ∨ i' ≠ i) (v v' : K) :
+    (s.upd b i v).upd b' i' v' = (s.upd b' i' v').upd b i v := by
+  apply List.ext_getElem?
+  intro j
+  simp only [getElem?_upd]
+  by_cases h1 : b = j
+  · by_cases h2 : b' = j
+    · subst h1 h2
+      have hi : i' ≠ i := by simpa using h
+      simp only [↓reduceIte]
+      cases s[b']? with
+      | none => rfl
+      | some buf => exact congrArg some (List.set_comm _ _ hi.symm)
+    · simp [h1, h2]
+  · by_cases h2 : b' = j <;> simp [h1, h2]
+
 /-! ### Block updates -/
 
 @[simp] theorem updBlock_nil (s : Store K) (b off : ℕ) : s.updBlock b off [] = s := rfl
@@ -217,6 +233,31 @@ theorem get_updBlock {s : Store K} {b off : ℕ} {xs : List K} (hlen : off + xs.
       rw [show off + (j + 1) = off + 1 + j by omega, this]
       rfl
 
+/-- An update outside a block commutes with the block update. -/
+theorem upd_updBlock_comm {s : Store K} {b off b' i : ℕ} (h : b' ≠ b ∨ i < off) (xs : List K)
+    (v : K) : (s.updBlock b off xs).upd b' i v = (s.upd b' i v).updBlock b off xs := by
+  induction xs generalizing s off with
+  | nil => rfl
+  | cons x xs ih =>
+    rw [updBlock_cons, ih (by omega), updBlock_cons,
+      upd_comm (b := b) (i := off) (b' := b') (i' := i) (by omega)]
+
+/-- A block put over a block of the same length replaces it. -/
+theorem updBlock_updBlock {s : Store K} {b off : ℕ} {xs ys : List K}
+    (h : xs.length = ys.length) :
+    (s.updBlock b off xs).updBlock b off ys = s.updBlock b off ys := by
+  induction xs generalizing s off ys with
+  | nil =>
+    cases ys with
+    | nil => rfl
+    | cons y ys => simp at h
+  | cons x xs ih =>
+    cases ys with
+    | nil => simp at h
+    | cons y ys =>
+      rw [updBlock_cons, updBlock_cons, upd_updBlock_comm (Or.inr (by omega)), upd_upd,
+        ih (by simpa using h), updBlock_cons]
+
 /-! ### A scratch buffer on top -/
 
 theorem get_append_of_lt {s : Store K} {b : ℕ} (h : b < s.length) (t : Store K) (i : ℕ) :
@@ -267,6 +308,15 @@ theorem upd_append_top (s : Store K) (tb : Buf K) (i : ℕ) (v : K) :
       have : j - s.length ≠ 0 := by omega
       obtain ⟨k, hk⟩ := Nat.exists_eq_succ_of_ne_zero this
       simp [hk]
+
+theorem get_top {s : Store K} {b : ℕ} (hb : b = s.length) (tb : Buf K) (i : ℕ) :
+    (s ++ [tb]).get b i = (tb[i]?).join := hb ▸ get_append_top s tb i
+
+theorem len_top {s : Store K} {b : ℕ} (hb : b = s.length) (tb : Buf K) :
+    (s ++ [tb]).len b = tb.length := hb ▸ len_append_top s tb
+
+theorem upd_top {s : Store K} {b : ℕ} (hb : b = s.length) (tb : Buf K) (i : ℕ) (v : K) :
+    (s ++ [tb]).upd b i v = s ++ [tb.set i (some v)] := hb ▸ upd_append_top s tb i v
 
 @[simp] theorem pop_append_top (s : Store K) (tb : Buf K) : pop (s ++ [tb]) = s := by
   simp [pop]
@@ -334,6 +384,18 @@ theorem get_of_readBlock {s : Store K} {b off n : ℕ} {xs : List K}
   obtain ⟨hl, hg⟩ := readBlock_eq_some_iff.mp h
   rw [hg j hj, List.getD_eq_getElem?_getD, List.getElem?_eq_getElem (by omega)]
   rfl
+
+/-- A part of a block that was read. -/
+theorem readBlock_sub {s : Store K} {b off N : ℕ} {xs : List K}
+    (h : s.readBlock b off N = some xs) {o n : ℕ} (hn : o + n ≤ N) :
+    s.readBlock b (off + o) n = some ((xs.drop o).take n) := by
+  obtain ⟨hl, hg⟩ := readBlock_eq_some_iff.mp h
+  refine readBlock_eq_some_iff.mpr ⟨by simp; omega, fun j hj => ?_⟩
+  rw [add_assoc, hg (o + j) (by omega), List.getElem?_take_of_lt hj, List.getElem?_drop]
+
+theorem getD_drop_take (xs : List K) (o n j : ℕ) (hj : j < n) (d : K) :
+    ((xs.drop o).take n).getD j d = xs.getD (o + j) d := by
+  simp [List.getD_eq_getElem?_getD, List.getElem?_take_of_lt hj]
 
 /-- A block read sees only the cells of the block. -/
 theorem readBlock_congr {s s' : Store K} {b off n : ℕ}
@@ -426,6 +488,47 @@ theorem readBlocks_cons (m : Mem K) (a : ℕ × ℕ) (as : List (ℕ × ℕ)) (n
     m.readBlocks (a :: as) (n :: ns) =
       (m.store.readBlock a.1 a.2 n).bind fun x => (m.readBlocks as ns).map fun xs => x :: xs :=
   rfl
+
+/-- Reading two blocks. -/
+theorem readBlocks_two {m : Mem K} {as : List (ℕ × ℕ)} {p q : ℕ} {X : List (List K)}
+    (h : m.readBlocks as [p, q] = some X) : ∃ x y xs ys, as = [x, y] ∧
+      m.store.readBlock x.1 x.2 p = some xs ∧ m.store.readBlock y.1 y.2 q = some ys ∧
+      X = [xs, ys] := by
+  rcases as with _ | ⟨x, _ | ⟨y, _ | ⟨w, as⟩⟩⟩
+  · simp [readBlocks] at h
+  · simp [readBlocks] at h
+  · cases hx : m.store.readBlock x.1 x.2 p with
+    | none => simp [readBlocks, hx] at h
+    | some xs =>
+      cases hy : m.store.readBlock y.1 y.2 q with
+      | none => simp [readBlocks, hx, hy] at h
+      | some ys =>
+        simp only [readBlocks, hx, hy, Option.bind_some, Option.map_some, Option.some.injEq] at h
+        exact ⟨x, y, xs, ys, rfl, hx, hy, h.symm⟩
+  · simp [readBlocks] at h
+
+/-- Reading three blocks. -/
+theorem readBlocks_three {m : Mem K} {as : List (ℕ × ℕ)} {p q r : ℕ} {X : List (List K)}
+    (h : m.readBlocks as [p, q, r] = some X) : ∃ x y w xs ys ws, as = [x, y, w] ∧
+      m.store.readBlock x.1 x.2 p = some xs ∧ m.store.readBlock y.1 y.2 q = some ys ∧
+      m.store.readBlock w.1 w.2 r = some ws ∧ X = [xs, ys, ws] := by
+  rcases as with _ | ⟨x, _ | ⟨y, _ | ⟨w, _ | ⟨v, as⟩⟩⟩⟩
+  · simp [readBlocks] at h
+  · simp [readBlocks] at h
+  · simp [readBlocks] at h
+  · cases hx : m.store.readBlock x.1 x.2 p with
+    | none => simp [readBlocks, hx] at h
+    | some xs =>
+      cases hy : m.store.readBlock y.1 y.2 q with
+      | none => simp [readBlocks, hx, hy] at h
+      | some ys =>
+        cases hw : m.store.readBlock w.1 w.2 r with
+        | none => simp [readBlocks, hx, hy, hw] at h
+        | some ws =>
+          simp only [readBlocks, hx, hy, hw, Option.bind_some, Option.map_some,
+            Option.some.injEq] at h
+          exact ⟨x, y, w, xs, ys, ws, rfl, hx, hy, hw, h.symm⟩
+  · simp [readBlocks] at h
 
 end Mem
 

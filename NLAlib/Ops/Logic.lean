@@ -103,6 +103,55 @@ theorem wp_call_fn {o : Op} {f : BlockFn K} {adm : List ℕ → List (ℕ × ℕ
     wp md I τ (.call o ds ins outs) ρ Q m :=
   wp_of_run (by simp only [run, hd, ha, hb, Option.bind_some, hI.callS_eq hadm hf]) hQ
 
+/-- Call of a functional constant, on cells. -/
+theorem wp_call_const {o : Op} {v : K} {adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop}
+    (hI : I.IsFn .total o (.const v) adm) {ds : List IExp} {ins outs : List Operand} {d : List ℕ}
+    {z : ℕ × ℕ} (hd : IExp.evalList ρ.idx ds = some d) (ha : Operand.evalList ρ ins = some [])
+    (hb : Operand.evalList ρ outs = some [z]) (hadm : adm d [] z) (hz : z.2 < m.store.len z.1)
+    (hQ : Q (m.upd z v)) : wp md I τ (.call o ds ins outs) ρ Q m :=
+  wp_call_fn hI hd ha hb hadm (BlockFn.apply_const_eq_some_iff.mpr ⟨hz, rfl⟩) hQ
+
+/-- Call of a functional operation of one cell, on cells. -/
+theorem wp_call_un {o : Op} {g : K → Option K} {adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop}
+    (hI : I.IsFn .total o (.un g) adm) {ds : List IExp} {ins outs : List Operand} {d : List ℕ}
+    {x z : ℕ × ℕ} (hd : IExp.evalList ρ.idx ds = some d)
+    (ha : Operand.evalList ρ ins = some [x]) (hb : Operand.evalList ρ outs = some [z])
+    (hadm : adm d [x] z) {a v : K} (hx : m.store.get x.1 x.2 = some a) (hg : g a = some v)
+    (hz : z.2 < m.store.len z.1) (hQ : Q (m.upd z v)) : wp md I τ (.call o ds ins outs) ρ Q m :=
+  wp_call_fn hI hd ha hb hadm (BlockFn.apply_un_eq_some_iff.mpr ⟨a, v, hx, hg, hz, rfl⟩) hQ
+
+/-- Call of a functional operation of two cells, on cells. -/
+theorem wp_call_bin {o : Op} {g : K → K → Option K}
+    {adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop} (hI : I.IsFn .total o (.bin g) adm)
+    {ds : List IExp} {ins outs : List Operand} {d : List ℕ} {x y z : ℕ × ℕ}
+    (hd : IExp.evalList ρ.idx ds = some d) (ha : Operand.evalList ρ ins = some [x, y])
+    (hb : Operand.evalList ρ outs = some [z]) (hadm : adm d [x, y] z) {a b v : K}
+    (hx : m.store.get x.1 x.2 = some a) (hy : m.store.get y.1 y.2 = some b)
+    (hg : g a b = some v) (hz : z.2 < m.store.len z.1) (hQ : Q (m.upd z v)) :
+    wp md I τ (.call o ds ins outs) ρ Q m :=
+  wp_call_fn hI hd ha hb hadm (BlockFn.apply_bin_eq_some_iff.mpr ⟨a, b, v, hx, hy, hg, hz, rfl⟩)
+    hQ
+
+/-- Call of a functional operation of three cells, on cells. -/
+theorem wp_call_tern {o : Op} {g : K → K → K → Option K}
+    {adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop} (hI : I.IsFn .total o (.tern g) adm)
+    {ds : List IExp} {ins outs : List Operand} {d : List ℕ} {x y w z : ℕ × ℕ}
+    (hd : IExp.evalList ρ.idx ds = some d) (ha : Operand.evalList ρ ins = some [x, y, w])
+    (hb : Operand.evalList ρ outs = some [z]) (hadm : adm d [x, y, w] z) {a b c v : K}
+    (hx : m.store.get x.1 x.2 = some a) (hy : m.store.get y.1 y.2 = some b)
+    (hw : m.store.get w.1 w.2 = some c) (hg : g a b c = some v) (hz : z.2 < m.store.len z.1)
+    (hQ : Q (m.upd z v)) : wp md I τ (.call o ds ins outs) ρ Q m :=
+  wp_call_fn hI hd ha hb hadm
+    (BlockFn.apply_tern_eq_some_iff.mpr ⟨a, b, c, v, hx, hy, hw, hg, hz, rfl⟩) hQ
+
+/-- A draw, on cells. -/
+theorem wp_call_draw {o : Op} {adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop}
+    (hI : I.IsFn .total o .draw adm) {ds : List IExp} {ins outs : List Operand} {d : List ℕ}
+    {z : ℕ × ℕ} (hd : IExp.evalList ρ.idx ds = some d) (ha : Operand.evalList ρ ins = some [])
+    (hb : Operand.evalList ρ outs = some [z]) (hadm : adm d [] z) (hz : z.2 < m.store.len z.1)
+    (hQ : Q ((m.upd z (τ m.pos)).advance 1)) : wp md I τ (.call o ds ins outs) ρ Q m :=
+  wp_call_fn hI hd ha hb hadm (BlockFn.apply_draw_eq_some_iff.mpr ⟨hz, rfl⟩) hQ
+
 theorem holds_iter {σ : Type} {f : ℕ → σ → Option σ} {k : ℕ} (Inv : ℕ → σ → Prop)
     (hstep : ∀ i < k, ∀ s, Inv i s → md.holds (f i s) (Inv (i + 1))) {s : σ} (h0 : Inv 0 s) :
     md.holds (iter f k s) (Inv k) := by

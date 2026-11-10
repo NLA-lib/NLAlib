@@ -493,9 +493,6 @@ structure Mem (K : Type) where
 
 namespace Mem
 
-/-- The memory with the store replaced. -/
-def setStore (m : Mem K) (s : Store K) : Mem K := ⟨s, m.pos⟩
-
 /-- Put `v` in the cell `z` (a handle and an offset). -/
 def upd (m : Mem K) (z : ℕ × ℕ) (v : K) : Mem K := ⟨m.store.upd z.1 z.2 v, m.pos⟩
 

@@ -67,6 +67,11 @@ theorem pairwise.err_dot (u : ℝ) (n : ℕ) :
   simp only [pairwise.err, level1Err, pairSumErr]
   ring
 
+omit [Apart Blas1Op ScalarOp Op] in
+/-- The linked program of the pairwise profile runs with the workspaces of the profile. -/
+theorem pairwise_wsLo (k : ℕ) : (pairwise (Op := Op) (Tst := Tst) k).wsLo = ws pairWs :=
+  Profile.iter_wsLo _ k
+
 /-! ### Certificates -/
 
 section Cert

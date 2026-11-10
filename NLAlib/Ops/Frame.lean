@@ -268,6 +268,9 @@ theorem refl (F : ℕ → ℕ → Prop) (s : Store K) : EqOff F s s := ⟨rfl, f
 theorem mono (h : EqOff F s s') (hF : ∀ b i, F b i → F' b i) : EqOff F' s s' :=
   ⟨h.1, fun b i hn => h.2 b i fun hf => hn (hF b i hf)⟩
 
+theorem trans {s'' : Store K} (h : EqOff F s s') (h' : EqOff F s' s'') : EqOff F s s'' :=
+  ⟨h'.1.trans h.1, fun b i hn => (h'.2 b i hn).trans (h.2 b i hn)⟩
+
 /-- A write inside the footprint. -/
 theorem upd (h : EqOff F s s') {b i : ℕ} (hF : F b i) (v : K) : EqOff F s (s'.upd b i v) :=
   ⟨by rw [shape_upd, h.1], fun b' i' hn => by

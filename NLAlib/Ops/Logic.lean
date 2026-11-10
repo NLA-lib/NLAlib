@@ -6,7 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Ops.Link
-public import NLAlib.Ops.Contract
+public import NLAlib.Ops.Blocks
 public import NLAlib.Ops.Static
 
 /-!
@@ -40,40 +40,40 @@ This is the part of the logic the examples need; the full logic sits on the same
 
 namespace NLAlib.Ops
 
-variable {Op Op₁ Op₂ K : Type}
+variable {Op Op₁ Op₂ Tst K : Type}
 
 /-- **The weakest precondition**: the run of `s` from `m` satisfies `Q`, in the mode `md`. -/
-def Wp (md : Mode) (I : Interp Op K) (τ : ℕ → K) (s : Stmt Op) (ρ : Env) (Q : Mem K → Prop)
+def Wp (md : Mode) (I : Interp Op Tst K) (τ : ℕ → K) (s : Stmt Op Tst) (ρ : Env) (Q : Mem K → Prop)
     (m : Mem K) : Prop :=
   md.Holds (run I τ s ρ m) Q
 
 section Rules
 
-variable {md : Mode} {I : Interp Op K} {τ : ℕ → K} {ρ : Env} {Q Q' : Mem K → Prop} {m : Mem K}
+variable {md : Mode} {I : Interp Op Tst K} {τ : ℕ → K} {ρ : Env} {Q Q' : Mem K → Prop} {m : Mem K}
 
-theorem wp_total_iff {s : Stmt Op} :
+theorem wp_total_iff {s : Stmt Op Tst} :
     Wp .total I τ s ρ Q m ↔ ∃ m', run I τ s ρ m = some m' ∧ Q m' := Iff.rfl
 
-theorem wp_liberal_iff {s : Stmt Op} :
+theorem wp_liberal_iff {s : Stmt Op Tst} :
     Wp .liberal I τ s ρ Q m ↔ RunsL I τ s ρ m Q := Iff.rfl
 
 /-- A run equation is a total `Wp`, in every mode. -/
-theorem wp_of_run {s : Stmt Op} {m' : Mem K} (h : run I τ s ρ m = some m') (hQ : Q m') :
+theorem wp_of_run {s : Stmt Op Tst} {m' : Mem K} (h : run I τ s ρ m = some m') (hQ : Q m') :
     Wp md I τ s ρ Q m :=
   Mode.Holds.of_total ⟨m', h, hQ⟩
 
-theorem run_of_wp {s : Stmt Op} {m' : Mem K} (h : Wp .total I τ s ρ (· = m') m) :
+theorem run_of_wp {s : Stmt Op Tst} {m' : Mem K} (h : Wp .total I τ s ρ (· = m') m) :
     run I τ s ρ m = some m' := by
   obtain ⟨m₁, h₁, rfl⟩ := h
   exact h₁
 
 /-- Consequence. -/
-theorem Wp.mono {s : Stmt Op} (h : Wp md I τ s ρ Q m) (hQ : ∀ m', Q m' → Q' m') :
+theorem Wp.mono {s : Stmt Op Tst} (h : Wp md I τ s ρ Q m) (hQ : ∀ m', Q m' → Q' m') :
     Wp md I τ s ρ Q' m :=
   Mode.Holds.mono h hQ
 
 /-- Two facts about one run. -/
-theorem Wp.and {s : Stmt Op} (h : Wp md I τ s ρ Q m) (h' : Wp md I τ s ρ Q' m) :
+theorem Wp.and {s : Stmt Op Tst} (h : Wp md I τ s ρ Q m) (h' : Wp md I τ s ρ Q' m) :
     Wp md I τ s ρ (fun m' => Q m' ∧ Q' m') m := by
   cases md
   · obtain ⟨a, ha, hq⟩ := h
@@ -86,7 +86,7 @@ theorem Wp.and {s : Stmt Op} (h : Wp md I τ s ρ Q m) (h' : Wp md I τ s ρ Q' 
 theorem wp_skip (h : Q m) : Wp md I τ .skip ρ Q m := Mode.holds_some h
 
 /-- Sequence. -/
-theorem wp_seq {s t : Stmt Op} (h : Wp md I τ s ρ (Wp md I τ t ρ Q) m) :
+theorem wp_seq {s t : Stmt Op Tst} (h : Wp md I τ s ρ (Wp md I τ t ρ Q) m) :
     Wp md I τ (.seq s t) ρ Q m :=
   Mode.holds_bind h
 
@@ -179,7 +179,7 @@ theorem holds_iter {σ : Type} {f : ℕ → σ → Option σ} {k : ℕ} (Inv : �
       hstep k (by omega) a ha)
 
 /-- **Loop**, with an invariant indexed by the number of iterations done. -/
-theorem wp_loop {n : IExp} {body : Stmt Op} {k : ℕ} (hn : n.eval ρ.idx = some k)
+theorem wp_loop {n : IExp} {body : Stmt Op Tst} {k : ℕ} (hn : n.eval ρ.idx = some k)
     (Inv : ℕ → Mem K → Prop) (h0 : Inv 0 m)
     (hstep : ∀ i < k, ∀ m, Inv i m → Wp md I τ body (ρ.pushIdx i) (Inv (i + 1)) m)
     (hQ : ∀ m, Inv k m → Q m) : Wp md I τ (.loop n body) ρ Q m := by
@@ -187,21 +187,21 @@ theorem wp_loop {n : IExp} {body : Stmt Op} {k : ℕ} (hn : n.eval ρ.idx = some
   exact (holds_iter Inv hstep h0).mono hQ
 
 /-- Scratch buffer: the body runs with the new buffer on top, which is then popped. -/
-theorem wp_alloc {len : IExp} {body : Stmt Op} {n : ℕ} (hn : len.eval ρ.idx = some n)
+theorem wp_alloc {len : IExp} {body : Stmt Op Tst} {n : ℕ} (hn : len.eval ρ.idx = some n)
     (h : Wp md I τ body (ρ.pushBuf m.store.length) (fun m' => Q ⟨m'.store.pop, m'.pos⟩)
       ⟨m.store.push n, m.pos⟩) : Wp md I τ (.alloc len body) ρ Q m := by
   simp only [Wp, run, hn, Option.bind_some]
   exact Mode.holds_map h
 
 /-- Procedure instance. -/
-theorem wp_frame {ds : List IExp} {args : List Operand} {body : Stmt Op} {d : List ℕ}
+theorem wp_frame {ds : List IExp} {args : List Operand} {body : Stmt Op Tst} {d : List ℕ}
     {a : List (ℕ × ℕ)} (hd : IExp.evalList ρ.idx ds = some d)
-    (ha : Operand.evalList ρ args = some a) (h : Wp md I τ body (Env.frame d a) Q m) :
-    Wp md I τ (.frame ds args body) ρ Q m := by
-  simpa only [Wp, run, hd, ha, Option.bind_some] using h
+    (ha : Operand.evalList ρ args = some a) (hl : m.Live a)
+    (h : Wp md I τ body (Env.frame d a) Q m) : Wp md I τ (.frame ds args body) ρ Q m := by
+  simpa only [Wp, run, hd, ha, Option.bind_some, if_pos hl] using h
 
 /-- Branch, on the Boolean of the test. -/
-theorem wp_ite {o : Op} {ds : List IExp} {ins : List Operand} {t e : Stmt Op} {d : List ℕ}
+theorem wp_ite {o : Tst} {ds : List IExp} {ins : List Operand} {t e : Stmt Op Tst} {d : List ℕ}
     {a : List (ℕ × ℕ)} {c : Bool} (hd : IExp.evalList ρ.idx ds = some d)
     (ha : Operand.evalList ρ ins = some a) (hc : I.test o d a m = some c)
     (h : Wp md I τ (if c then t else e) ρ Q m) : Wp md I τ (.ite o ds ins t e) ρ Q m := by
@@ -209,7 +209,7 @@ theorem wp_ite {o : Op} {ds : List IExp} {ins : List Operand} {t e : Stmt Op} {d
   cases c <;> simpa [Wp] using h
 
 /-- Index binder, on the number returned, which must be within the bound. -/
-theorem wp_bindIdx {o : Op} {ins : List Operand} {bound : IExp} {body : Stmt Op}
+theorem wp_bindIdx {o : Tst} {ins : List Operand} {bound : IExp} {body : Stmt Op Tst}
     {a : List (ℕ × ℕ)} {B v : ℕ} (ha : Operand.evalList ρ ins = some a)
     (hB : bound.eval ρ.idx = some B) (hv : I.index o a m = some v) (hle : v ≤ B)
     (h : Wp md I τ body (ρ.pushIdx v) Q m) : Wp md I τ (.bindIdx o ins bound body) ρ Q m := by
@@ -220,20 +220,29 @@ end Rules
 /-! ### Grounding: the induced interpretation meets a contract -/
 
 /-- **Grounding a relational contract**: the induced interpretation meets the contract of an
-implemented operation when the implementation satisfies it as a program. -/
-theorem Interp.link_meets {I : Interp Op₂ K} {T : Table Op₁ Op₂} {o : Op₁} {R : Impl Op₂}
-    (hT : T o = .inl R) {md : Mode} {C : Contract K}
+implemented operation when the implementation satisfies it as a program, on operands that are
+buffers of the store (the evaluator rejects the others; in total mode the precondition must give
+that they are). -/
+theorem Interp.link_meets {I : Interp Op₂ Tst K} {T : Table Op₁ Op₂ Tst} {o : Op₁}
+    {R : Impl Op₂ Tst} (hT : T o = .inl R) {md : Mode} {C : Contract K}
     (h : ∀ d ins outs τ m, (C md d ins outs τ).pre m →
-      R.Fits d.length ins.length outs.length ∧
-        Wp md I τ R.body (Env.frame d (ins ++ outs)) ((C md d ins outs τ).post m) m) :
+      md.Needs (m.Live (ins ++ outs)) ∧ (m.Live (ins ++ outs) →
+        R.Fits d.length ins.length outs.length ∧
+          Wp md I τ R.body (Env.frame d (ins ++ outs)) ((C md d ins outs τ).post m) m)) :
     (I.link T).Meets md o C := by
   intro d ins outs τ m hpre
-  obtain ⟨hfit, hw⟩ := h d ins outs τ m hpre
-  rw [Interp.link_callS_inl I hT, if_pos hfit]
-  exact hw
+  obtain ⟨hl, hw⟩ := h d ins outs τ m hpre
+  rw [Interp.link_callS_inl I hT]
+  by_cases hlive : m.Live (ins ++ outs)
+  · rw [if_pos hlive, if_pos (hw hlive).1]
+    exact (hw hlive).2
+  · rw [if_neg hlive]
+    cases md
+    · exact absurd (hl rfl) hlive
+    · exact fun _ h => by cases h
 
 /-- A kept operation meets the contracts it meets below. -/
-theorem Interp.link_meets_kept {I : Interp Op₂ K} {T : Table Op₁ Op₂} {o : Op₁} {o' : Op₂}
+theorem Interp.link_meets_kept {I : Interp Op₂ Tst K} {T : Table Op₁ Op₂ Tst} {o : Op₁} {o' : Op₂}
     (hT : T o = .inr o') {md : Mode} {C : Contract K} (h : I.Meets md o' C) :
     (I.link T).Meets md o C := by
   intro d ins outs τ m hpre
@@ -242,7 +251,7 @@ theorem Interp.link_meets_kept {I : Interp Op₂ K} {T : Table Op₁ Op₂} {o :
 
 /-- **Grounding a functional contract** (the exact certificate): on admitted operands, where the
 block function succeeds, the run of the implementation is the block function. -/
-theorem Interp.link_isFn {I : Interp Op₂ K} {T : Table Op₁ Op₂} {o : Op₁} {R : Impl Op₂}
+theorem Interp.link_isFn {I : Interp Op₂ Tst K} {T : Table Op₁ Op₂ Tst} {o : Op₁} {R : Impl Op₂ Tst}
     (hT : T o = .inl R) {f : BlockFn K} {adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop}
     (h : ∀ d ins z τ m m', adm d ins z → f.apply d ins z τ m = some m' →
       R.Fits d.length ins.length 1 ∧ run I τ R.body (Env.frame d (ins ++ [z])) m = some m') :
@@ -251,6 +260,6 @@ theorem Interp.link_isFn {I : Interp Op₂ K} {T : Table Op₁ Op₂} {o : Op₁
   rintro d ins outs τ m ⟨z, rfl, hadm, hn⟩
   obtain ⟨m', hm'⟩ := Option.isSome_iff_exists.mp (hn rfl)
   obtain ⟨hfit, hr⟩ := h d ins z τ m m' hadm hm'
-  exact ⟨hfit, m', hr, z, rfl, hm'⟩
+  exact ⟨fun _ => (BlockFn.apply_eq_some_iff.mp hm').1, fun _ => ⟨hfit, m', hr, z, rfl, hm'⟩⟩
 
 end NLAlib.Ops

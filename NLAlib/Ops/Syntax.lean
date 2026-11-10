@@ -41,12 +41,18 @@ inductive IExp where
   | add (a b : IExp)
   /-- A product. -/
   | mul (a b : IExp)
+  /-- A truncated difference. -/
+  | sub (a b : IExp)
+  /-- A quotient, rounded down (zero when the divisor is zero). -/
+  | div (a b : IExp)
   deriving DecidableEq, Repr
 
 namespace IExp
 
 instance : Add IExp := ⟨.add⟩
 instance : Mul IExp := ⟨.mul⟩
+instance : Sub IExp := ⟨.sub⟩
+instance : Div IExp := ⟨.div⟩
 
 /-- The value of an index expression; `none` at an unbound variable. -/
 def eval (idx : List ℕ) : IExp → Option ℕ
@@ -54,6 +60,8 @@ def eval (idx : List ℕ) : IExp → Option ℕ
   | .const n => some n
   | .add a b => (a.eval idx).bind fun x => (b.eval idx).map fun y => x + y
   | .mul a b => (a.eval idx).bind fun x => (b.eval idx).map fun y => x * y
+  | .sub a b => (a.eval idx).bind fun x => (b.eval idx).map fun y => x - y
+  | .div a b => (a.eval idx).bind fun x => (b.eval idx).map fun y => x / y
 
 @[simp] theorem eval_var (idx : List ℕ) (i : ℕ) : (var i).eval idx = idx[i]? := rfl
 @[simp] theorem eval_const (idx : List ℕ) (n : ℕ) : (const n).eval idx = some n := rfl
@@ -61,6 +69,11 @@ def eval (idx : List ℕ) : IExp → Option ℕ
     (a + b).eval idx = (a.eval idx).bind fun x => (b.eval idx).map fun y => x + y := rfl
 @[simp] theorem eval_mul (idx : List ℕ) (a b : IExp) :
     (a * b).eval idx = (a.eval idx).bind fun x => (b.eval idx).map fun y => x * y := rfl
+
+@[simp] theorem eval_sub (idx : List ℕ) (a b : IExp) :
+    (a - b).eval idx = (a.eval idx).bind fun x => (b.eval idx).map fun y => x - y := rfl
+@[simp] theorem eval_div (idx : List ℕ) (a b : IExp) :
+    (a / b).eval idx = (a.eval idx).bind fun x => (b.eval idx).map fun y => x / y := rfl
 
 /-- The values of a list of index expressions. -/
 def evalList (idx : List ℕ) : List IExp → Option (List ℕ)
@@ -169,31 +182,48 @@ theorem evalList_off_of_evalList {ρ : Env} {as : List Operand} {xs : List (ℕ 
 
 end Operand
 
-/-- **Programs** over the operations `Op`: first-order trees whose only effects are calls. -/
-inductive Stmt (Op : Type) where
+/-- **Programs** over the operations `Op` and the queries `Tst`: first-order trees whose only
+effects are calls of operations. A query is a name used as a test or as an index; it is a
+primitive of the access model and is never implemented, so linking leaves it alone. -/
+inductive Stmt (Op Tst : Type) where
   /-- Do nothing. -/
   | skip
   /-- Fail. An implementation called outside its shape fails; it never skips. -/
   | abort
   /-- Sequence. -/
-  | seq (s t : Stmt Op)
-  /-- Call the operation `o` at the dimensions `dims` on the operands `ins` and `outs`. -/
+  | seq (s t : Stmt Op Tst)
+  /-- Call the operation `o` at the dimensions `dims` on the operands `ins` and `outs`. The run
+  fails if an operand handle is not a buffer of the store. -/
   | call (o : Op) (dims : List IExp) (ins outs : List Operand)
-  /-- Branch on the Boolean returned by the test `o`. -/
-  | ite (o : Op) (dims : List IExp) (ins : List Operand) (t e : Stmt Op)
-  /-- Run `body` while the test `o` returns true; the run fails if the test still holds after
+  /-- Branch on the Boolean returned by the test `q`. -/
+  | ite (q : Tst) (dims : List IExp) (ins : List Operand) (t e : Stmt Op Tst)
+  /-- Run `body` while the test `q` returns true; the run fails if the test still holds after
   `fuel` runs of the body. -/
-  | whileFuel (fuel : IExp) (o : Op) (dims : List IExp) (ins : List Operand) (body : Stmt Op)
-  /-- Bind a new index variable to the number returned by the index operation `o`; the run fails
+  | whileFuel (fuel : IExp) (q : Tst) (dims : List IExp) (ins : List Operand)
+      (body : Stmt Op Tst)
+  /-- Bind a new index variable to the number returned by the index query `q`; the run fails
   if the number exceeds `bound`. -/
-  | bindIdx (o : Op) (ins : List Operand) (bound : IExp) (body : Stmt Op)
+  | bindIdx (q : Tst) (ins : List Operand) (bound : IExp) (body : Stmt Op Tst)
   /-- Bind a new buffer variable to a scratch buffer of `len` uninitialised cells, freed after
   `body`. -/
-  | alloc (len : IExp) (body : Stmt Op)
+  | alloc (len : IExp) (body : Stmt Op Tst)
   /-- Run `body` for the values `0, …, n - 1` of a new index variable. -/
-  | loop (n : IExp) (body : Stmt Op)
+  | loop (n : IExp) (body : Stmt Op Tst)
   /-- A procedure instance: run `body` in the environment `Env.frame` of the dimensions and
-  operands. -/
-  | frame (dims : List IExp) (args : List Operand) (body : Stmt Op)
+  operands. The run fails if an operand handle is not a buffer of the store. -/
+  | frame (dims : List IExp) (args : List Operand) (body : Stmt Op Tst)
+
+namespace Stmt
+
+variable {Op Tst : Type}
+
+/-- Run `body` if the size `e` is zero: a loop of `1 - e` rounds. Its index variable is not
+used. -/
+def ifZero (e : IExp) (body : Stmt Op Tst) : Stmt Op Tst := .loop (.const 1 - e) body
+
+/-- Run `body` if the size `e` is positive: a loop of `1 - (1 - e)` rounds. -/
+def ifPos (e : IExp) (body : Stmt Op Tst) : Stmt Op Tst := .loop (.const 1 - (.const 1 - e)) body
+
+end Stmt
 
 end NLAlib.Ops

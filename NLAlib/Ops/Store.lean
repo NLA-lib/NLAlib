@@ -507,6 +507,27 @@ def advance (m : Mem K) (k : ℕ) : Mem K := ⟨m.store, m.pos + k⟩
 def write (m : Mem K) (z : ℕ × ℕ) (ys : List K) : Option (Mem K) :=
   if z.2 + ys.length ≤ m.store.len z.1 then some (m.updBlock z ys) else none
 
+/-- The handles of the operands `l` are buffers of the store. -/
+def Live (m : Mem K) (l : List (ℕ × ℕ)) : Prop := ∀ x ∈ l, x.1 < m.store.length
+
+instance (m : Mem K) (l : List (ℕ × ℕ)) : Decidable (m.Live l) := by
+  unfold Live
+  infer_instance
+
+@[simp] theorem live_nil (m : Mem K) : m.Live [] := by simp [Live]
+
+@[simp] theorem live_cons (m : Mem K) (x : ℕ × ℕ) (l : List (ℕ × ℕ)) :
+    m.Live (x :: l) ↔ x.1 < m.store.length ∧ m.Live l := by simp [Live]
+
+theorem live_append (m : Mem K) (l l' : List (ℕ × ℕ)) :
+    m.Live (l ++ l') ↔ m.Live l ∧ m.Live l' := by
+  simp only [Live, List.mem_append]
+  exact ⟨fun h => ⟨fun x hx => h x (Or.inl hx), fun x hx => h x (Or.inr hx)⟩,
+    fun h x hx => hx.elim (h.1 x) (h.2 x)⟩
+
+theorem Live.congr {m m' : Mem K} {l : List (ℕ × ℕ)} (h : m.Live l)
+    (hs : m'.store.length = m.store.length) : m'.Live l := fun x hx => hs ▸ h x hx
+
 /-- Read the blocks at `as` with the lengths `ns`; `none` if a read fails or the two lists have
 different lengths. -/
 def readBlocks (m : Mem K) : List (ℕ × ℕ) → List ℕ → Option (List (List K))

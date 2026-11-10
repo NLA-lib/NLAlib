@@ -75,7 +75,7 @@ abbrev AnyOperands : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop := f
 
 /-- **The functional contract of scalar arithmetic**: every operation is the function of the
 machine `M`, on all operands. -/
-def IsArith (M : Machine K) (I : Interp AOp K) : Prop :=
+def IsArith (M : Machine K) (I : Interp AOp Empty K) : Prop :=
   ∀ o, I.IsFn .total o (M.fn o) AnyOperands
 
 /-- **The standard model** of rounded arithmetic at the unit roundoff `u`, for the decoding `dec`:
@@ -122,7 +122,7 @@ theorem stdModel_exact {u : ℝ} (hu : 0 ≤ u) : StdModel u id exactMachine whe
 /-- **Witness**: for every `u ≥ 0` there are a carrier, a decoding, a machine meeting the
 standard model and an interpretation meeting the functional contract. -/
 theorem exists_arith {u : ℝ} (hu : 0 ≤ u) :
-    ∃ (K : Type) (dec : K → ℝ) (M : Machine K) (I : Interp AOp K),
+    ∃ (K : Type) (dec : K → ℝ) (M : Machine K) (I : Interp AOp Empty K),
       StdModel u dec M ∧ IsArith M I :=
   ⟨ℝ, id, exactMachine, Interp.ofFns exactMachine.fn, stdModel_exact hu,
     fun o => Interp.ofFns_isFn _ _ o _⟩

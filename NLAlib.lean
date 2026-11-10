@@ -615,14 +615,12 @@ public import NLAlib.Matrix.Subspaces.OrthonormalDilation
 public import NLAlib.Matrix.Subspaces.PrincipalAngles
 public import NLAlib.Matrix.Subspaces.ProjectorPair
 public import NLAlib.Matrix.Subspaces.Tangent
+public import NLAlib.Ops.Blocks
 public import NLAlib.Ops.Contract
 public import NLAlib.Ops.Examples.Arith
 public import NLAlib.Ops.Examples.Bits
-public import NLAlib.Ops.Examples.Blas
 public import NLAlib.Ops.Examples.Control
 public import NLAlib.Ops.Examples.Dot
-public import NLAlib.Ops.Examples.GramSchmidt
-public import NLAlib.Ops.Examples.Krylov
 public import NLAlib.Ops.Examples.Liberal
 public import NLAlib.Ops.Examples.MatMul
 public import NLAlib.Ops.Examples.StochRound

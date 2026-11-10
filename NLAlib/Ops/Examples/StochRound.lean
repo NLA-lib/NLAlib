@@ -72,7 +72,7 @@ structure SrModel (u β : ℝ) (dec : K → ℝ) (Ξ : Finset K) (f : K → K �
 /-! ### The two contracts -/
 
 /-- **Explicit randomness**: `sradd` is the function `f` of three cells; `draw` is the draw. -/
-structure IsSrAdd (f : K → K → K → K) (I : Interp S0 K) : Prop where
+structure IsSrAdd (f : K → K → K → K) (I : Interp S0 Empty K) : Prop where
   /-- `sradd` is `f`. -/
   sradd : I.IsFn .total .sradd (.tern fun a b ξ => some (f a b ξ)) AnyOperands
   /-- `draw` is the draw of the model. -/
@@ -92,7 +92,8 @@ theorem drawBin_apply_of {g : K → K → K → K} {x y z : ℕ × ℕ} {τ : �
     (hx : m.store.get x.1 x.2 = some a) (hy : m.store.get y.1 y.2 = some b)
     (hz : z.2 < m.store.len z.1) :
     (drawBin g).apply [] [x, y] z τ m = some ((m.upd z (g a b (τ m.pos))).advance 1) :=
-  BlockFn.apply_eq_some_iff.mpr ⟨[[a], [b]], [g a b (τ m.pos)],
+  BlockFn.apply_eq_some_iff.mpr ⟨by simp [Store.lt_length_of_get hx, Store.lt_length_of_get hy,
+    Store.lt_length_of_lt_len hz], [[a], [b]], [g a b (τ m.pos)],
     by simp [drawBin, Mem.readBlocks, BlockFn.readBlock_one, hx, hy], by simp [drawBin],
     by simpa using hz, rfl⟩
 
@@ -102,7 +103,7 @@ theorem drawBin_apply {g : K → K → K → K} {d : List ℕ} {ins : List (ℕ 
     ∃ x y a b, d = [] ∧ ins = [x, y] ∧ m.store.get x.1 x.2 = some a ∧
       m.store.get y.1 y.2 = some b ∧ z.2 < m.store.len z.1 ∧
       m' = (m.upd z (g a b (τ m.pos))).advance 1 := by
-  obtain ⟨X, v, hread, hfn, hlen, rfl⟩ := BlockFn.apply_eq_some_iff.mp h
+  obtain ⟨hlive, X, v, hread, hfn, hlen, rfl⟩ := BlockFn.apply_eq_some_iff.mp h
   obtain ⟨x, y, xs, ys, rfl, hx, hy, rfl⟩ := Mem.readBlocks_two hread
   rw [BlockFn.readBlock_one] at hx hy
   obtain ⟨a, ha, rfl⟩ := Option.map_eq_some_iff.mp hx
@@ -116,14 +117,14 @@ theorem drawBin_apply {g : K → K → K → K} {d : List ℕ} {ins : List (ℕ 
 
 /-- **As an operation that draws**: `sraddD` is the function `g` of its two cells and of its tape
 window. -/
-def IsSrAddD (g : K → K → K → K) (J : Interp S1 K) : Prop :=
+def IsSrAddD (g : K → K → K → K) (J : Interp S1 Empty K) : Prop :=
   J.IsFn .total .sraddD (drawBin g) AnyOperands
 
 /-! ### The drawing implementation and the transfer through linking -/
 
 /-- **The implementation of `sraddD`**: draw into a scratch cell, then `sradd`. Index variables:
 the offsets of `x`, `y`, `z`. -/
-def sraddDImpl : Impl S0 where
+def sraddDImpl : Impl S0 Empty where
   nd := 0
   nin := 2
   nout := 1
@@ -131,12 +132,12 @@ def sraddDImpl : Impl S0 where
     (.call .sradd [] [⟨0, .var 0⟩, ⟨1, .var 1⟩, ⟨3, .const 0⟩] [⟨2, .var 2⟩]))
 
 /-- The table: `sraddD` by the drawing program. -/
-def srTable : Table S1 S0
+def srTable : Table S1 S0 Empty
   | .sraddD => .inl sraddDImpl
 
 /-- **The exact certificate of the drawing program**: its run is the block function of `f` with
 the window entry as random word. -/
-theorem sraddD_cert {f : K → K → K → K} {I : Interp S0 K} (hI : IsSrAdd f I) {d : List ℕ}
+theorem sraddD_cert {f : K → K → K → K} {I : Interp S0 Empty K} (hI : IsSrAdd f I) {d : List ℕ}
     {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : ℕ → K} {m m' : Mem K}
     (h : (drawBin f).apply d ins z τ m = some m') :
     sraddDImpl.Fits d.length ins.length 1 ∧
@@ -173,7 +174,7 @@ theorem sraddD_cert {f : K → K → K → K} {I : Interp S0 K} (hI : IsSrAdd f 
 /-- **The contract transfers through linking**: the induced interpretation meets the drawn
 contract with the same function `f`; so whatever `SrModel` holds of `f` holds of the drawn
 operation, with the expectation over the window entry. -/
-theorem isSrAddD_link {f : K → K → K → K} {I : Interp S0 K} (hI : IsSrAdd f I) :
+theorem isSrAddD_link {f : K → K → K → K} {I : Interp S0 Empty K} (hI : IsSrAdd f I) :
     IsSrAddD f (I.link srTable) :=
   Interp.link_isFn rfl fun _ _ _ _ _ _ _ h => sraddD_cert hI h
 
@@ -185,7 +186,7 @@ def srWindow : S0 → List ℕ → ℕ
 
 /-- **The window of the drawn operation**, by the window lemma: the induced meaning reads one
 entry of the tape at the position and advances by one. -/
-theorem sraddD_tapeLocal {I : Interp S0 K} (hI : ∀ o, I.TapeLocal o (srWindow o)) :
+theorem sraddD_tapeLocal {I : Interp S0 Empty K} (hI : ∀ o, I.TapeLocal o (srWindow o)) :
     (I.link srTable).TapeLocal .sraddD fun _ => 1 :=
   Interp.TapeLocal.link hI (o := S1.sraddD) rfl (by simp [Stmt.Straight, sraddDImpl])
     fun d offs hd ho => by
@@ -194,11 +195,12 @@ theorem sraddD_tapeLocal {I : Interp S0 K} (hI : ∀ o, I.TapeLocal o (srWindow 
       simp [staticWindow, sraddDImpl, srWindow]
 
 /-- The cost of the drawn operation: one draw and one `sradd`. -/
-noncomputable def srCost : S1 → List ℕ → Count S0
+noncomputable def srCost : S1 → List ℕ → Count S0 Empty
   | .sraddD, _ => Count.one .draw [] + Count.one .sradd []
 
 /-- The accounting certificate of the drawing program. -/
-theorem sr_accounts (I : Interp S0 K) : srTable.Accounts I (fun _ _ => 0) srCost fun _ _ => 1 := by
+theorem sr_accounts (I : Interp S0 Empty K) : srTable.Accounts I
+    (fun _ _ => 0) srCost fun _ _ => 1 := by
   refine Table.accounts_of_static ?_ (fun o o' hT => by cases o; cases hT) I
   intro o R hT d offs hd ho
   cases o
@@ -211,7 +213,7 @@ theorem sr_accounts (I : Interp S0 K) : srTable.Accounts I (fun _ _ => 0) srCost
 
 /-- `z := z ⊕ x_0 ⊕ … ⊕ x_{n-1}` with stochastically rounded additions. Index variables: `n`,
 the offsets of `x`, `z`, then the loop variable. -/
-def srsum : Stmt S1 :=
+def srsum : Stmt S1 Empty :=
   .loop (.var 0) (.call .sraddD [] [⟨1, .var 2⟩, ⟨0, .var 1 + .var 3⟩] [⟨1, .var 2⟩])
 
 /-- The stochastically rounded sum as a function of the tape entries from the position `p`. -/
@@ -272,7 +274,7 @@ variable [Inhabited K]
 /-- **The abstract theorem of `srsum`**, for every interpretation meeting the drawn contract:
 `n` calls, and the cell `z` holds the function `srsumF` of the `n` tape entries from the
 position, which advances by `n`. -/
-theorem runs_srsum {g : K → K → K → K} {J : Interp S1 K} (hJ : IsSrAddD g J)
+theorem runs_srsum {g : K → K → K → K} {J : Interp S1 Empty K} (hJ : IsSrAddD g J)
     (W : S1 → List ℕ → ℕ) {τ : ℕ → K} {n : ℕ} {x z : ℕ × ℕ} {m : Mem K} {xs : List K} {z₀ : K}
     (hxz : x.1 ≠ z.1) (hx : m.store.readBlock x.1 x.2 n = some xs)
     (hz : m.store.get z.1 z.2 = some z₀) :
@@ -301,7 +303,7 @@ theorem runs_srsum {g : K → K → K → K} {J : Interp S1 K} (hJ : IsSrAddD g 
 /-- **The concrete corollary**: the sum over the program that draws and calls `sradd`, by one
 application of the linking theorem: `n` draws and `n` `sradd`, one scratch cell, the result is
 `srsumF f` of the tape, and it meets the sure bound of `abs_dec_srsumF_sub_le` for every tape. -/
-theorem runs_srsum_link {f : K → K → K → K} {I : Interp S0 K} (hI : IsSrAdd f I) {u β : ℝ}
+theorem runs_srsum_link {f : K → K → K → K} {I : Interp S0 Empty K} (hI : IsSrAdd f I) {u β : ℝ}
     {dec : K → ℝ} {Ξ : Finset K} (hf : SrModel u β dec Ξ f) (hu : 0 ≤ u) {τ : ℕ → K} {n : ℕ}
     {x z : ℕ × ℕ} {m : Mem K} {xs : List K} {z₀ : K} (hxz : x.1 ≠ z.1)
     (hx : m.store.readBlock x.1 x.2 n = some xs) (hz : m.store.get z.1 z.2 = some z₀) :
@@ -341,7 +343,7 @@ theorem srModel_srExact {u β : ℝ} (hu : 0 ≤ u) (hβ : 0 ≤ β) :
 and an interpretation meeting the explicit contract, with tape-local operations; hence also the
 drawn contract, by linking. -/
 theorem exists_isSrAdd {u β : ℝ} (hu : 0 ≤ u) (hβ : 0 ≤ β) :
-    ∃ (K : Type) (dec : K → ℝ) (Ξ : Finset K) (f : K → K → K → K) (I : Interp S0 K),
+    ∃ (K : Type) (dec : K → ℝ) (Ξ : Finset K) (f : K → K → K → K) (I : Interp S0 Empty K),
       SrModel u β dec Ξ f ∧ IsSrAdd f I ∧ (∀ o, I.TapeLocal o (srWindow o)) ∧
         IsSrAddD f (I.link srTable) := by
   let F : S0 → BlockFn ℝ := fun o => match o with

@@ -12,7 +12,7 @@ public import NLAlib.Ops.Syntax
 /-!
 # Interpretations and the evaluator
 
-An interpretation `NLAlib.Ops.Interp Op K` gives the meaning of every operation: the effect of a
+An interpretation `NLAlib.Ops.Interp Op Tst K` gives the meaning of every operation: the effect of a
 call on the memory (it is given the tape), the Boolean of a test, the number of an index use.
 
 ## Main results
@@ -33,29 +33,44 @@ A call that changes the shape of the store fails (`NLAlib.Ops.Interp.callS`).
 
 namespace NLAlib.Ops
 
-variable {Op K : Type}
+variable {Op Tst K : Type}
 
 /-- **An interpretation**: the meaning of every operation. `call` is the effect of a call at its
 dimensions, input and output operands on the memory, given the tape; `test` and `index` are the
 Boolean and the number an operation returns when it is used as a test or as an index. -/
-structure Interp (Op K : Type) where
+structure Interp (Op Tst K : Type) where
   /-- The effect of a call. -/
   call : Op → List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → (ℕ → K) → Mem K → Option (Mem K)
   /-- The Boolean of a test. -/
-  test : Op → List ℕ → List (ℕ × ℕ) → Mem K → Option Bool
+  test : Tst → List ℕ → List (ℕ × ℕ) → Mem K → Option Bool
   /-- The number of an index use. -/
-  index : Op → List (ℕ × ℕ) → Mem K → Option ℕ
+  index : Tst → List (ℕ × ℕ) → Mem K → Option ℕ
 
-/-- The call of the evaluator: the call of the interpretation, failing if it changes the shape of
-the store. -/
-def Interp.callS (I : Interp Op K) (o : Op) (d : List ℕ) (ins outs : List (ℕ × ℕ)) (τ : ℕ → K)
-    (m : Mem K) : Option (Mem K) :=
-  (I.call o d ins outs τ m).bind fun m' =>
-    if m'.store.shape = m.store.shape then some m' else none
+/-- The call of the evaluator: the call of the interpretation, failing if an operand handle is
+not a buffer of the store, or if the call changes the shape of the store. -/
+def Interp.callS (I : Interp Op Tst K) (o : Op) (d : List ℕ) (ins outs : List (ℕ × ℕ))
+    (τ : ℕ → K) (m : Mem K) : Option (Mem K) :=
+  if m.Live (ins ++ outs) then
+    (I.call o d ins outs τ m).bind fun m' =>
+      if m'.store.shape = m.store.shape then some m' else none
+  else none
 
-theorem Interp.shape_of_callS {I : Interp Op K} {o : Op} {d : List ℕ} {ins outs : List (ℕ × ℕ)}
-    {τ : ℕ → K} {m m' : Mem K} (h : I.callS o d ins outs τ m = some m') :
-    m'.store.shape = m.store.shape := by
+theorem Interp.callS_of_live {I : Interp Op Tst K} {o : Op} {d : List ℕ}
+    {ins outs : List (ℕ × ℕ)} {τ : ℕ → K} {m : Mem K} (h : m.Live (ins ++ outs)) :
+    I.callS o d ins outs τ m = (I.call o d ins outs τ m).bind fun m' =>
+      if m'.store.shape = m.store.shape then some m' else none := if_pos h
+
+theorem Interp.live_of_callS {I : Interp Op Tst K} {o : Op} {d : List ℕ}
+    {ins outs : List (ℕ × ℕ)} {τ : ℕ → K} {m m' : Mem K}
+    (h : I.callS o d ins outs τ m = some m') : m.Live (ins ++ outs) := by
+  unfold Interp.callS at h
+  split_ifs at h with hl
+  exact hl
+
+theorem Interp.shape_of_callS {I : Interp Op Tst K} {o : Op} {d : List ℕ}
+    {ins outs : List (ℕ × ℕ)} {τ : ℕ → K} {m m' : Mem K}
+    (h : I.callS o d ins outs τ m = some m') : m'.store.shape = m.store.shape := by
+  rw [Interp.callS_of_live (Interp.live_of_callS h)] at h
   obtain ⟨m₁, -, h⟩ := Option.bind_eq_some_iff.mp h
   split_ifs at h with hs
   cases h
@@ -77,23 +92,24 @@ def whileIter {σ : Type} (test : σ → Option Bool) (tick : σ → σ) (body :
 
 /-- **The run**: the memory after a program, in the environment `ρ`, under the interpretation `I`
 and the tape `τ`; `none` is failure. -/
-def run (I : Interp Op K) (τ : ℕ → K) : Stmt Op → Env → Mem K → Option (Mem K)
+def run (I : Interp Op Tst K) (τ : ℕ → K) :
+    Stmt Op Tst → Env → Mem K → Option (Mem K)
   | .skip, _, m => some m
   | .abort, _, _ => none
   | .seq s t, ρ, m => (run I τ s ρ m).bind (run I τ t ρ)
   | .call o ds ins outs, ρ, m =>
       (IExp.evalList ρ.idx ds).bind fun d => (Operand.evalList ρ ins).bind fun a =>
         (Operand.evalList ρ outs).bind fun b => I.callS o d a b τ m
-  | .ite o ds ins t e, ρ, m =>
+  | .ite q ds ins t e, ρ, m =>
       (IExp.evalList ρ.idx ds).bind fun d => (Operand.evalList ρ ins).bind fun a =>
-        (I.test o d a m).bind fun c => if c then run I τ t ρ m else run I τ e ρ m
-  | .whileFuel fuel o ds ins body, ρ, m =>
+        (I.test q d a m).bind fun c => if c then run I τ t ρ m else run I τ e ρ m
+  | .whileFuel fuel q ds ins body, ρ, m =>
       (fuel.eval ρ.idx).bind fun k => (IExp.evalList ρ.idx ds).bind fun d =>
         (Operand.evalList ρ ins).bind fun a =>
-          whileIter (I.test o d a) id (run I τ body ρ) k m
-  | .bindIdx o ins bound body, ρ, m =>
+          whileIter (I.test q d a) id (run I τ body ρ) k m
+  | .bindIdx q ins bound body, ρ, m =>
       (Operand.evalList ρ ins).bind fun a => (bound.eval ρ.idx).bind fun B =>
-        (I.index o a m).bind fun v => if v ≤ B then run I τ body (ρ.pushIdx v) m else none
+        (I.index q a m).bind fun v => if v ≤ B then run I τ body (ρ.pushIdx v) m else none
   | .alloc len body, ρ, m =>
       (len.eval ρ.idx).bind fun n =>
         (run I τ body (ρ.pushBuf m.store.length) ⟨m.store.push n, m.pos⟩).map fun m' =>
@@ -102,36 +118,41 @@ def run (I : Interp Op K) (τ : ℕ → K) : Stmt Op → Env → Mem K → Optio
       (n.eval ρ.idx).bind fun k => iter (fun i m => run I τ body (ρ.pushIdx i) m) k m
   | .frame ds args body, ρ, m =>
       (IExp.evalList ρ.idx ds).bind fun d => (Operand.evalList ρ args).bind fun a =>
-        run I τ body (Env.frame d a) m
+        if m.Live a then run I τ body (Env.frame d a) m else none
 
-/-- **Counts**: the number of uses of each operation at each list of dimensions. -/
-abbrev Count (Op : Type) := Op × List ℕ →₀ ℕ
+/-- **Counts**: the number of uses of each operation and of each query at each list of
+dimensions. -/
+abbrev Count (Op Tst : Type) := (Op ⊕ Tst) × List ℕ →₀ ℕ
 
-/-- One use of the operation `o` at the dimensions `d`. -/
-noncomputable def Count.one (o : Op) (d : List ℕ) : Count Op := Finsupp.single (o, d) 1
+/-- One call of the operation `o` at the dimensions `d`. -/
+noncomputable def Count.one (o : Op) (d : List ℕ) : Count Op Tst := Finsupp.single (.inl o, d) 1
+
+/-- One use of the query `q` at the dimensions `d`. -/
+noncomputable def Count.test (q : Tst) (d : List ℕ) : Count Op Tst :=
+  Finsupp.single (.inr q, d) 1
 
 /-- The state of a counted run: the memory, the counts, the live scratch cells and their peak. -/
-structure St (Op K : Type) where
+structure St (Op Tst K : Type) where
   /-- The memory. -/
   mem : Mem K
   /-- The counts so far. -/
-  cost : Count Op
+  cost : Count Op Tst
   /-- The scratch cells now allocated. -/
   cur : ℕ
   /-- The peak of scratch cells, workspaces of operations included. -/
   peak : ℕ
 
 /-- The state at the start of a run: no counts, no scratch. -/
-def St.init (m : Mem K) : St Op K := ⟨m, 0, 0, 0⟩
+def St.init (m : Mem K) : St Op Tst K := ⟨m, 0, 0, 0⟩
 
-/-- Count one use of `o` at `d`. -/
-noncomputable def St.tick (st : St Op K) (o : Op) (d : List ℕ) : St Op K :=
-  ⟨st.mem, st.cost + Count.one o d, st.cur, st.peak⟩
+/-- Count one use of the query `q` at `d`. -/
+noncomputable def St.tick (st : St Op Tst K) (q : Tst) (d : List ℕ) : St Op Tst K :=
+  ⟨st.mem, st.cost + Count.test q d, st.cur, st.peak⟩
 
 /-- **The counted run.** `W o d` is the workspace, in cells, that the access model declares for a
 call of `o` at the dimensions `d`. -/
-noncomputable def exec (I : Interp Op K) (W : Op → List ℕ → ℕ) (τ : ℕ → K) :
-    Stmt Op → Env → St Op K → Option (St Op K)
+noncomputable def exec (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : ℕ → K) :
+    Stmt Op Tst → Env → St Op Tst K → Option (St Op Tst K)
   | .skip, _, st => some st
   | .abort, _, _ => none
   | .seq s t, ρ, st => (exec I W τ s ρ st).bind (exec I W τ t ρ)
@@ -139,18 +160,18 @@ noncomputable def exec (I : Interp Op K) (W : Op → List ℕ → ℕ) (τ : ℕ
       (IExp.evalList ρ.idx ds).bind fun d => (Operand.evalList ρ ins).bind fun a =>
         (Operand.evalList ρ outs).bind fun b => (I.callS o d a b τ st.mem).map fun m' =>
           ⟨m', st.cost + Count.one o d, st.cur, max st.peak (st.cur + W o d)⟩
-  | .ite o ds ins t e, ρ, st =>
+  | .ite q ds ins t e, ρ, st =>
       (IExp.evalList ρ.idx ds).bind fun d => (Operand.evalList ρ ins).bind fun a =>
-        (I.test o d a st.mem).bind fun c =>
-          if c then exec I W τ t ρ (st.tick o d) else exec I W τ e ρ (st.tick o d)
-  | .whileFuel fuel o ds ins body, ρ, st =>
+        (I.test q d a st.mem).bind fun c =>
+          if c then exec I W τ t ρ (st.tick q d) else exec I W τ e ρ (st.tick q d)
+  | .whileFuel fuel q ds ins body, ρ, st =>
       (fuel.eval ρ.idx).bind fun k => (IExp.evalList ρ.idx ds).bind fun d =>
         (Operand.evalList ρ ins).bind fun a =>
-          whileIter (fun s => I.test o d a s.mem) (fun s => s.tick o d) (exec I W τ body ρ) k st
-  | .bindIdx o ins bound body, ρ, st =>
+          whileIter (fun s => I.test q d a s.mem) (fun s => s.tick q d) (exec I W τ body ρ) k st
+  | .bindIdx q ins bound body, ρ, st =>
       (Operand.evalList ρ ins).bind fun a => (bound.eval ρ.idx).bind fun B =>
-        (I.index o a st.mem).bind fun v =>
-          if v ≤ B then exec I W τ body (ρ.pushIdx v) (st.tick o []) else none
+        (I.index q a st.mem).bind fun v =>
+          if v ≤ B then exec I W τ body (ρ.pushIdx v) (st.tick q []) else none
   | .alloc len body, ρ, st =>
       (len.eval ρ.idx).bind fun n =>
         (exec I W τ body (ρ.pushBuf st.mem.store.length)
@@ -161,7 +182,7 @@ noncomputable def exec (I : Interp Op K) (W : Op → List ℕ → ℕ) (τ : ℕ
       (n.eval ρ.idx).bind fun k => iter (fun i st => exec I W τ body (ρ.pushIdx i) st) k st
   | .frame ds args body, ρ, st =>
       (IExp.evalList ρ.idx ds).bind fun d => (Operand.evalList ρ args).bind fun a =>
-        exec I W τ body (Env.frame d a) st
+        if st.mem.Live a then exec I W τ body (Env.frame d a) st else none
 
 /-! ### The counted run and the run agree on the memory -/
 
@@ -204,8 +225,9 @@ theorem map_whileIter {σ σ' : Type} {g : σ → σ'} {test : σ → Option Boo
         rw [Option.map_bind_of_comm _ (fun a => ih a), hb, hk]
 
 /-- **The counted run and the run end in the same memory, or both fail.** -/
-theorem map_mem_exec (I : Interp Op K) (W : Op → List ℕ → ℕ) (τ : ℕ → K) (s : Stmt Op) (ρ : Env)
-    (st : St Op K) : (exec I W τ s ρ st).map (·.mem) = run I τ s ρ st.mem := by
+theorem map_mem_exec (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : ℕ → K) (s : Stmt Op Tst)
+    (ρ : Env)
+    (st : St Op Tst K) : (exec I W τ s ρ st).map (·.mem) = run I τ s ρ st.mem := by
   induction s generalizing ρ st with
   | skip => rfl
   | abort => rfl
@@ -216,27 +238,27 @@ theorem map_mem_exec (I : Interp Op K) (W : Op → List ℕ → ℕ) (τ : ℕ �
     simp only [exec, run]
     cases IExp.evalList ρ.idx ds <;> cases Operand.evalList ρ ins <;>
       cases Operand.evalList ρ outs <;> simp [Option.map_map, Function.comp_def]
-  | ite o ds ins t e iht ihe =>
+  | ite q ds ins t e iht ihe =>
     simp only [exec, run]
     cases IExp.evalList ρ.idx ds <;> cases Operand.evalList ρ ins <;> try rfl
     rename_i d a
     simp only [Option.bind_some]
-    cases I.test o d a st.mem with
+    cases I.test q d a st.mem with
     | none => rfl
     | some c => cases c <;> simp [iht, ihe, St.tick]
-  | whileFuel fuel o ds ins body ih =>
+  | whileFuel fuel q ds ins body ih =>
     simp only [exec, run]
     cases fuel.eval ρ.idx <;> cases IExp.evalList ρ.idx ds <;> cases Operand.evalList ρ ins <;>
       try rfl
     rename_i k d a
-    exact map_whileIter (g := fun x : St Op K => x.mem) (tick := fun s => s.tick o d)
-      (test' := I.test o d a) (fun _ => rfl) (fun _ => rfl) (fun a => ih ρ a) k st
-  | bindIdx o ins bound body ih =>
+    exact map_whileIter (g := fun x : St Op Tst K => x.mem) (tick := fun s => s.tick q d)
+      (test' := I.test q d a) (fun _ => rfl) (fun _ => rfl) (fun a => ih ρ a) k st
+  | bindIdx q ins bound body ih =>
     simp only [exec, run]
     cases Operand.evalList ρ ins <;> cases bound.eval ρ.idx <;> try rfl
     rename_i a B
     simp only [Option.bind_some]
-    cases I.index o a st.mem with
+    cases I.index q a st.mem with
     | none => rfl
     | some v => by_cases hv : v ≤ B <;> simp [hv, ih, St.tick]
   | alloc len body ih =>
@@ -256,19 +278,24 @@ theorem map_mem_exec (I : Interp Op K) (W : Op → List ℕ → ℕ) (τ : ℕ �
   | frame ds args body ih =>
     simp only [exec, run]
     cases IExp.evalList ρ.idx ds <;> cases Operand.evalList ρ args <;> try rfl
-    exact ih _ _
+    simp only [Option.bind_some]
+    split_ifs
+    · exact ih _ _
+    · rfl
 
 /-- A counted run succeeds exactly when the run does. -/
-theorem exec_eq_some_of_run {I : Interp Op K} {τ : ℕ → K} {s : Stmt Op} {ρ : Env} {m m' : Mem K}
-    (h : run I τ s ρ m = some m') (W : Op → List ℕ → ℕ) (st : St Op K) (hm : st.mem = m) :
+theorem exec_eq_some_of_run {I : Interp Op Tst K} {τ : ℕ → K} {s : Stmt Op Tst} {ρ : Env}
+    {m m' : Mem K}
+    (h : run I τ s ρ m = some m') (W : Op → List ℕ → ℕ) (st : St Op Tst K) (hm : st.mem = m) :
     ∃ st', exec I W τ s ρ st = some st' ∧ st'.mem = m' := by
   have e := map_mem_exec I W τ s ρ st
   rw [hm, h] at e
   obtain ⟨st', h1, h2⟩ := Option.map_eq_some_iff.mp e
   exact ⟨st', h1, h2⟩
 
-theorem run_of_exec {I : Interp Op K} {W : Op → List ℕ → ℕ} {τ : ℕ → K} {s : Stmt Op} {ρ : Env}
-    {st st' : St Op K} (h : exec I W τ s ρ st = some st') :
+theorem run_of_exec {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ : ℕ → K} {s : Stmt Op Tst}
+    {ρ : Env}
+    {st st' : St Op Tst K} (h : exec I W τ s ρ st = some st') :
     run I τ s ρ st.mem = some st'.mem := by
   rw [← map_mem_exec I W τ s ρ st, h]
   rfl
@@ -310,7 +337,8 @@ theorem whileIter_rel {σ : Type} {R : σ → σ → Prop}
 
 /-- **A run keeps the shape of the store**: buffers are neither created, resized nor freed behind
 the program's back. -/
-theorem shape_store_of_run {I : Interp Op K} {τ : ℕ → K} {s : Stmt Op} {ρ : Env} {m m' : Mem K}
+theorem shape_store_of_run {I : Interp Op Tst K} {τ : ℕ → K} {s : Stmt Op Tst} {ρ : Env}
+    {m m' : Mem K}
     (h : run I τ s ρ m = some m') : m'.store.shape = m.store.shape := by
   induction s generalizing ρ m m' with
   | skip => cases h; rfl
@@ -323,20 +351,20 @@ theorem shape_store_of_run {I : Interp Op K} {τ : ℕ → K} {s : Stmt Op} {ρ 
     obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨b, -, h⟩ := Option.bind_eq_some_iff.mp h
     exact Interp.shape_of_callS h
-  | ite o ds ins t e iht ihe =>
+  | ite q ds ins t e iht ihe =>
     obtain ⟨d, -, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨c, -, h⟩ := Option.bind_eq_some_iff.mp h
     cases c
     · exact ihe h
     · exact iht h
-  | whileFuel fuel o ds ins body ih =>
+  | whileFuel fuel q ds ins body ih =>
     obtain ⟨k, -, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨d, -, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
     exact whileIter_rel (R := fun a b : Mem K => b.store.shape = a.store.shape)
       (fun _ _ _ h1 h2 => h2.trans h1) (fun _ => rfl) (fun _ _ hb => ih hb) h
-  | bindIdx o ins bound body ih =>
+  | bindIdx q ins bound body ih =>
     obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨B, -, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨v, -, h⟩ := Option.bind_eq_some_iff.mp h
@@ -357,6 +385,7 @@ theorem shape_store_of_run {I : Interp Op K} {τ : ℕ → K} {s : Stmt Op} {ρ 
   | frame ds args body ih =>
     obtain ⟨d, -, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
+    split_ifs at h
     exact ih h
 
 end NLAlib.Ops

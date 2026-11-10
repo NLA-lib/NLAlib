@@ -30,23 +30,27 @@ statement with counts and workspace.
 
 namespace NLAlib.Ops
 
-variable {Op K : Type}
+variable {Op Tst K : Type}
 
 /-- The count of one use of `o` at the dimensions `ds`, when they evaluate. -/
-noncomputable def useCost (o : Op) (ds : List IExp) (idx : List ℕ) : Count Op :=
+noncomputable def useCost (o : Op) (ds : List IExp) (idx : List ℕ) : Count Op Tst :=
   ((IExp.evalList idx ds).map (Count.one o)).getD 0
 
+/-- The count of one use of the query `q` at the dimensions `ds`, when they evaluate. -/
+noncomputable def testCost (q : Tst) (ds : List IExp) (idx : List ℕ) : Count Op Tst :=
+  ((IExp.evalList idx ds).map (Count.test q)).getD 0
+
 /-- **The static count** of a tree at the values `idx` of its index variables. -/
-noncomputable def staticCost : Stmt Op → List ℕ → Count Op
+noncomputable def staticCost : Stmt Op Tst → List ℕ → Count Op Tst
   | .skip, _ => 0
   | .abort, _ => 0
   | .seq s t, idx => staticCost s idx + staticCost t idx
   | .call o ds _ _, idx => useCost o ds idx
-  | .ite o ds _ t e, idx => useCost o ds idx + (staticCost t idx ⊔ staticCost e idx)
-  | .whileFuel fuel o ds _ body, idx =>
-      ((fuel.eval idx).getD 0) • (useCost o ds idx + staticCost body idx) + useCost o ds idx
-  | .bindIdx o _ bound body, idx =>
-      Count.one o [] +
+  | .ite q ds _ t e, idx => testCost q ds idx + (staticCost t idx ⊔ staticCost e idx)
+  | .whileFuel fuel q ds _ body, idx =>
+      ((fuel.eval idx).getD 0) • (testCost q ds idx + staticCost body idx) + testCost q ds idx
+  | .bindIdx q _ bound body, idx =>
+      Count.test q [] +
         (Finset.range ((bound.eval idx).getD 0 + 1)).sup fun v => staticCost body (idx ++ [v])
   | .alloc _ body, idx => staticCost body idx
   | .loop n body, idx =>
@@ -58,7 +62,7 @@ noncomputable def staticCost : Stmt Op → List ℕ → Count Op
 
 /-- **The static workspace** of a tree: a bound on the scratch cells above those live at its
 start, with the workspace `W` of each call. -/
-def staticPeak (W : Op → List ℕ → ℕ) : Stmt Op → List ℕ → ℕ
+def staticPeak (W : Op → List ℕ → ℕ) : Stmt Op Tst → List ℕ → ℕ
   | .skip, _ => 0
   | .abort, _ => 0
   | .seq s t, idx => max (staticPeak W s idx) (staticPeak W t idx)
@@ -77,14 +81,14 @@ def staticPeak (W : Op → List ℕ → ℕ) : Stmt Op → List ℕ → ℕ
 
 /-- The state `b` is reached from `a` within the counts `c` and the workspace `p`: same live
 cells, at most `c` more counts, peak at most `p` above the live cells. -/
-def St.Within (a b : St Op K) (c : Count Op) (p : ℕ) : Prop :=
+def St.Within (a b : St Op Tst K) (c : Count Op Tst) (p : ℕ) : Prop :=
   b.cur = a.cur ∧ b.cost ≤ a.cost + c ∧ b.peak ≤ max a.peak (a.cur + p)
 
 namespace St.Within
 
-theorem refl (a : St Op K) : St.Within a a 0 0 := ⟨rfl, by simp, by simp⟩
+theorem refl (a : St Op Tst K) : St.Within a a 0 0 := ⟨rfl, by simp, by simp⟩
 
-theorem trans {a b d : St Op K} {c c' : Count Op} {p p' : ℕ} (h : St.Within a b c p)
+theorem trans {a b d : St Op Tst K} {c c' : Count Op Tst} {p p' : ℕ} (h : St.Within a b c p)
     (h' : St.Within b d c' p') : St.Within a d (c + c') (max p p') := by
   obtain ⟨h1, h2, h3⟩ := h
   obtain ⟨h1', h2', h3'⟩ := h'
@@ -95,18 +99,20 @@ theorem trans {a b d : St Op K} {c c' : Count Op} {p p' : ℕ} (h : St.Within a 
   · rw [h1] at h3'
     omega
 
-theorem mono {a b : St Op K} {c c' : Count Op} {p p' : ℕ} (h : St.Within a b c p) (hc : c ≤ c')
+theorem mono {a b : St Op Tst K} {c c' : Count Op Tst} {p p' : ℕ} (h : St.Within a b c p)
+    (hc : c ≤ c')
     (hp : p ≤ p') : St.Within a b c' p' := by
   obtain ⟨h1, h2, h3⟩ := h
   exact ⟨h1, h2.trans (by gcongr), by omega⟩
 
-theorem tick (a : St Op K) (o : Op) (d : List ℕ) : St.Within a (a.tick o d) (Count.one o d) 0 :=
+theorem tick (a : St Op Tst K) (q : Tst) (d : List ℕ) :
+    St.Within a (a.tick q d) (Count.test q d) 0 :=
   ⟨rfl, le_rfl, by simp [St.tick]⟩
 
 end St.Within
 
-theorem iter_within {f : ℕ → St Op K → Option (St Op K)} {c : ℕ → Count Op} {p : ℕ → ℕ}
-    (h : ∀ i a b, f i a = some b → St.Within a b (c i) (p i)) {k : ℕ} {s s' : St Op K}
+theorem iter_within {f : ℕ → St Op Tst K → Option (St Op Tst K)} {c : ℕ → Count Op Tst} {p : ℕ → ℕ}
+    (h : ∀ i a b, f i a = some b → St.Within a b (c i) (p i)) {k : ℕ} {s s' : St Op Tst K}
     (hk : iter f k s = some s') :
     St.Within s s' (∑ i ∈ Finset.range k, c i) ((Finset.range k).sup p) := by
   induction k generalizing s' with
@@ -117,10 +123,10 @@ theorem iter_within {f : ℕ → St Op K → Option (St Op K)} {c : ℕ → Coun
     rw [Finset.range_add_one, Finset.sup_insert]
     exact le_of_eq (max_comm _ _)
 
-theorem whileIter_within {test : St Op K → Option Bool} {tick : St Op K → St Op K}
-    {body : St Op K → Option (St Op K)} {c cb : Count Op} {pb : ℕ}
+theorem whileIter_within {test : St Op Tst K → Option Bool} {tick : St Op Tst K → St Op Tst K}
+    {body : St Op Tst K → Option (St Op Tst K)} {c cb : Count Op Tst} {pb : ℕ}
     (ht : ∀ a, St.Within a (tick a) c 0) (h : ∀ a b, body a = some b → St.Within a b cb pb)
-    {k : ℕ} {s s' : St Op K} (hk : whileIter test tick body k s = some s') :
+    {k : ℕ} {s s' : St Op Tst K} (hk : whileIter test tick body k s = some s') :
     St.Within s s' (k • (c + cb) + c) pb := by
   induction k generalizing s with
   | zero =>
@@ -145,8 +151,9 @@ theorem whileIter_within {test : St Op K → Option Bool} {tick : St Op K → St
 
 /-- **Soundness of the static count and workspace**: a successful counted run keeps the live
 cells, adds at most the static count and stays within the static workspace. -/
-theorem exec_within {I : Interp Op K} {W : Op → List ℕ → ℕ} {τ : ℕ → K} {s : Stmt Op} {ρ : Env}
-    {st st' : St Op K} (h : exec I W τ s ρ st = some st') :
+theorem exec_within {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ : ℕ → K} {s : Stmt Op Tst}
+    {ρ : Env}
+    {st st' : St Op Tst K} (h : exec I W τ s ρ st = some st') :
     St.Within st st' (staticCost s ρ.idx) (staticPeak W s ρ.idx) := by
   induction s generalizing ρ st st' with
   | skip => cases h; exact St.Within.refl _
@@ -164,7 +171,7 @@ theorem exec_within {I : Interp Op K} {W : Op → List ℕ → ℕ} {τ : ℕ �
     obtain ⟨d, hd, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨c, -, h⟩ := Option.bind_eq_some_iff.mp h
-    have hu : useCost o ds ρ.idx = Count.one o d := by simp [useCost, hd]
+    have hu : testCost (Op := Op) o ds ρ.idx = Count.test o d := by simp [testCost, hd]
     cases c
     · exact ((St.Within.tick st o d).trans (ihe h)).mono
         (by simp only [staticCost, hu]; gcongr; exact le_sup_right) (by simp [staticPeak])
@@ -174,7 +181,7 @@ theorem exec_within {I : Interp Op K} {W : Op → List ℕ → ℕ} {τ : ℕ �
     obtain ⟨k, hk, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨d, hd, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
-    have hu : useCost o ds ρ.idx = Count.one o d := by simp [useCost, hd]
+    have hu : testCost (Op := Op) o ds ρ.idx = Count.test o d := by simp [testCost, hd]
     simpa [staticCost, staticPeak, hk, hu] using
       whileIter_within (fun a => St.Within.tick a o d) (fun _ _ hb => ih hb) h
   | bindIdx o ins bound body ih =>
@@ -204,31 +211,35 @@ theorem exec_within {I : Interp Op K} {W : Op → List ℕ → ℕ} {τ : ℕ �
   | frame ds args body ih =>
     obtain ⟨d, hd, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨a, ha, h⟩ := Option.bind_eq_some_iff.mp h
+    split_ifs at h
     simpa [staticCost, staticPeak, hd, Operand.evalList_off_of_evalList ha] using ih h
 
 /-- **A run within a budget** (total correctness with accounting): from the memory `m`, the
 counted run succeeds, its counts are at most `B`, its scratch cells at most `M`, and `Q` holds of
 the final memory. -/
-def Runs (I : Interp Op K) (W : Op → List ℕ → ℕ) (τ : ℕ → K) (s : Stmt Op) (ρ : Env) (m : Mem K)
-    (B : Count Op) (M : ℕ) (Q : Mem K → Prop) : Prop :=
+def Runs (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : ℕ → K) (s : Stmt Op Tst) (ρ : Env)
+    (m : Mem K)
+    (B : Count Op Tst) (M : ℕ) (Q : Mem K → Prop) : Prop :=
   ∃ st', exec I W τ s ρ (St.init m) = some st' ∧ st'.cost ≤ B ∧ st'.peak ≤ M ∧ Q st'.mem
 
 /-- **A refinement statement** (partial correctness): if the run succeeds, `Q` holds of the final
 memory. -/
-def RunsL (I : Interp Op K) (τ : ℕ → K) (s : Stmt Op) (ρ : Env) (m : Mem K) (Q : Mem K → Prop) :
+def RunsL (I : Interp Op Tst K) (τ : ℕ → K) (s : Stmt Op Tst) (ρ : Env) (m : Mem K)
+    (Q : Mem K → Prop) :
     Prop :=
   ∀ m', run I τ s ρ m = some m' → Q m'
 
 /-- A successful run with `Q` is a run within the static count and workspace. -/
-theorem Runs.of_run {I : Interp Op K} {τ : ℕ → K} {s : Stmt Op} {ρ : Env} {m m' : Mem K}
+theorem Runs.of_run {I : Interp Op Tst K} {τ : ℕ → K} {s : Stmt Op Tst} {ρ : Env} {m m' : Mem K}
     {Q : Mem K → Prop} (h : run I τ s ρ m = some m') (hQ : Q m') (W : Op → List ℕ → ℕ) :
     Runs I W τ s ρ m (staticCost s ρ.idx) (staticPeak W s ρ.idx) Q := by
   obtain ⟨st', hst, hm⟩ := exec_eq_some_of_run h W (St.init m) rfl
   obtain ⟨-, h2, h3⟩ := exec_within hst
   exact ⟨st', hst, by simpa [St.init] using h2, by simpa [St.init] using h3, hm ▸ hQ⟩
 
-theorem Runs.mono {I : Interp Op K} {W : Op → List ℕ → ℕ} {τ : ℕ → K} {s : Stmt Op} {ρ : Env}
-    {m : Mem K} {B B' : Count Op} {M M' : ℕ} {Q Q' : Mem K → Prop} (h : Runs I W τ s ρ m B M Q)
+theorem Runs.mono {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ : ℕ → K} {s : Stmt Op Tst}
+    {ρ : Env}
+    {m : Mem K} {B B' : Count Op Tst} {M M' : ℕ} {Q Q' : Mem K → Prop} (h : Runs I W τ s ρ m B M Q)
     (hB : B ≤ B') (hM : M ≤ M') (hQ : ∀ m', Q m' → Q' m') : Runs I W τ s ρ m B' M' Q' := by
   obtain ⟨st', h1, h2, h3, h4⟩ := h
   exact ⟨st', h1, h2.trans hB, h3.trans hM, hQ _ h4⟩

@@ -35,6 +35,10 @@ inductive COp where
   | dec
   /-- Increment a cell. -/
   | inc
+  deriving DecidableEq
+
+/-- Queries on counters. -/
+inductive CTst where
   /-- Test: the cell is not zero. -/
   | nz
   /-- Index: the number in the cell. -/
@@ -42,7 +46,7 @@ inductive COp where
   deriving DecidableEq
 
 /-- A concrete interpretation on natural-number words. -/
-def ctlInterp : Interp COp ℕ where
+def ctlInterp : Interp COp CTst ℕ where
   call o d ins outs τ m :=
     match o, outs with
     | .dec, [z] => (BlockFn.un fun a => some (a - 1)).apply d ins z τ m
@@ -77,18 +81,18 @@ theorem index_ctlInterp_toNat (x : ℕ × ℕ) (m : Mem ℕ) (v : ℕ) (h : m.st
     ctlInterp.index .toNat [x] m = some v := h
 
 /-- Move the counter in cell `0` to cell `1`, one unit at a time, with fuel `5`. -/
-def countdown : Stmt COp :=
+def countdown : Stmt COp CTst :=
   .whileFuel (.const 5) .nz [] [⟨0, .const 0⟩]
     (.seq (.call .dec [] [⟨0, .const 0⟩] [⟨0, .const 0⟩])
       (.call .inc [] [⟨0, .const 1⟩] [⟨0, .const 1⟩]))
 
 /-- Add the number in cell `0`, at most `4`, to cell `1`. -/
-def addIdx : Stmt COp :=
+def addIdx : Stmt COp CTst :=
   .bindIdx .toNat [⟨0, .const 0⟩] (.const 4)
     (.loop (.var 0) (.call .inc [] [⟨0, .const 1⟩] [⟨0, .const 1⟩]))
 
 /-- Increment cell `1` if cell `0` is not zero. -/
-def incIf : Stmt COp :=
+def incIf : Stmt COp CTst :=
   .ite .nz [] [⟨0, .const 0⟩] (.call .inc [] [⟨0, .const 1⟩] [⟨0, .const 1⟩]) .skip
 
 /-- The memory with one buffer of two cells holding `a` and `b`. -/
@@ -110,9 +114,9 @@ example : run ctlInterp (fun _ => 0) incIf ⟨[], [0]⟩ (twoCells 2 0) = some (
 
 example : run ctlInterp (fun _ => 0) incIf ⟨[], [0]⟩ (twoCells 0 0) = some (twoCells 0 0) := by rfl
 
-/-- A test of an implemented operation is rejected by linking: the linked program aborts. -/
-example (R : Impl COp) :
-    (incIf.link (fun o => if o = .nz then .inl R else .inr o : Table COp COp)) = .abort := by
-  simp [incIf, Stmt.link]
+/-- Linking leaves queries alone: no table can implement a test. -/
+example (T : Table COp COp CTst) :
+    incIf.link T = .ite .nz [] [⟨0, .const 0⟩]
+      ((Stmt.call .inc [] [⟨0, .const 1⟩] [⟨0, .const 1⟩]).link T) .skip := rfl
 
 end NLAlib.Ops.Examples

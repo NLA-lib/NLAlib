@@ -57,7 +57,7 @@ theorem mmFn_apply {f : ℕ → ℕ → ℕ → List K → List K → List K} {d
     ∃ a b c A B As Bs, d = [a, b, c] ∧ ins = [A, B] ∧
       m.store.readBlock A.1 A.2 (a * b) = some As ∧ m.store.readBlock B.1 B.2 (b * c) = some Bs ∧
       z.2 + (f a b c As Bs).length ≤ m.store.len z.1 ∧ m' = m.updBlock z (f a b c As Bs) := by
-  obtain ⟨X, v, hread, hfn, hlen, rfl⟩ := BlockFn.apply_eq_some_iff.mp h
+  obtain ⟨hlive, X, v, hread, hfn, hlen, rfl⟩ := BlockFn.apply_eq_some_iff.mp h
   rcases d with _ | ⟨a, _ | ⟨b, _ | ⟨c, _ | ⟨e, d⟩⟩⟩⟩
   · simp [mmFn] at hfn
   · simp [mmFn] at hfn
@@ -70,7 +70,7 @@ theorem mmFn_apply {f : ℕ → ℕ → ℕ → List K → List K → List K} {d
 
 /-- **The functional contract of `mm`**: on input blocks in other buffers than the output, the
 result is `f` of the inputs, an `a × c` block. -/
-structure IsMM (f : ℕ → ℕ → ℕ → List K → List K → List K) (I : Interp MOp K) : Prop where
+structure IsMM (f : ℕ → ℕ → ℕ → List K → List K → List K) (I : Interp MOp Empty K) : Prop where
   /-- The operation is the block function of `f`. -/
   isFn : I.IsFn .total .mm (mmFn f) DisjointBufs
   /-- The result has `a c` entries. -/
@@ -79,7 +79,7 @@ structure IsMM (f : ℕ → ℕ → ℕ → List K → List K → List K) (I : I
 /-! ### The abstract theorem: squaring twice -/
 
 /-- `P := A A; S := P P` on `n × n` blocks. Index variables: `n`, the offsets of `A`, `P`, `S`. -/
-def sq2 : Stmt MOp :=
+def sq2 : Stmt MOp Empty :=
   .seq (.call .mm [.var 0, .var 0, .var 0] [⟨0, .var 1⟩, ⟨0, .var 1⟩] [⟨1, .var 2⟩])
     (.call .mm [.var 0, .var 0, .var 0] [⟨1, .var 2⟩, ⟨1, .var 2⟩] [⟨2, .var 3⟩])
 
@@ -87,17 +87,18 @@ omit [Inhabited K] in
 /-- **The abstract theorem of `sq2`**, for every `f` and every interpretation meeting the
 functional contract: two calls of `mm` at `[n, n, n]`, the workspace of one, and the memory is
 given by `f`. -/
-theorem runs_sq2 {f : ℕ → ℕ → ℕ → List K → List K → List K} {I : Interp MOp K}
+theorem runs_sq2 {f : ℕ → ℕ → ℕ → List K → List K → List K} {I : Interp MOp Empty K}
     (hI : IsMM f I) (W : MOp → List ℕ → ℕ) {τ : ℕ → K} {n : ℕ} {A P S : ℕ × ℕ} {m : Mem K}
     {As : List K} (hAP : A.1 ≠ P.1) (hPS : P.1 ≠ S.1)
     (hA : m.store.readBlock A.1 A.2 (n * n) = some As) (hP : P.2 + n * n ≤ m.store.len P.1)
-    (hS : S.2 + n * n ≤ m.store.len S.1) :
+    (hS : S.2 + n * n ≤ m.store.len S.1) (hl : m.Live [A, P, S]) :
     Runs I W τ sq2 ⟨[n, A.2, P.2, S.2], [A.1, P.1, S.1]⟩ m (2 • Count.one .mm [n, n, n])
       (W .mm [n, n, n])
       (· = (m.updBlock P (f n n n As As)).updBlock S
         (f n n n (f n n n As As) (f n n n As As))) := by
   have h1 : (mmFn f).apply [n, n, n] [A, A] P τ m = some (m.updBlock P (f n n n As As)) :=
-    BlockFn.apply_eq_some_iff.mpr ⟨[As, As], _, by simp [Mem.readBlocks, hA, mmFn], rfl,
+    BlockFn.apply_eq_some_iff.mpr ⟨by simp_all, [As, As], _, by simp
+    [Mem.readBlocks, hA, mmFn], rfl,
       by rw [hI.length]; exact hP, rfl⟩
   have hPr : (m.store.updBlock P.1 P.2 (f n n n As As)).readBlock P.1 P.2 (n * n) =
       some (f n n n As As) := by
@@ -107,7 +108,7 @@ theorem runs_sq2 {f : ℕ → ℕ → ℕ → List K → List K → List K} {I :
   have h2 : (mmFn f).apply [n, n, n] [P, P] S τ (m.updBlock P (f n n n As As)) =
       some ((m.updBlock P (f n n n As As)).updBlock S
         (f n n n (f n n n As As) (f n n n As As))) :=
-    BlockFn.apply_eq_some_iff.mpr ⟨[_, _], _, by simp [Mem.readBlocks, hPr, mmFn], rfl,
+    BlockFn.apply_eq_some_iff.mpr ⟨by simp_all, [_, _], _, by simp [Mem.readBlocks, hPr, mmFn], rfl,
       by rw [hI.length]; simpa using hS, rfl⟩
   have hw : Wp .total I τ sq2 ⟨[n, A.2, P.2, S.2], [A.1, P.1, S.1]⟩
       (· = (m.updBlock P (f n n n As As)).updBlock S (f n n n (f n n n As As) (f n n n As As)))
@@ -141,7 +142,7 @@ theorem length_mmPrefix (M : Machine K) (b c : ℕ) (As Bs : List K) (N : ℕ) :
 
 /-- **The implementation of `mm`**: a scratch cell, and for each entry the accumulation loop.
 Index variables: `a`, `b`, `c`, the offsets of `A`, `B`, `C`, then `i`, `j`, `k`. -/
-def mmImpl : Impl AOp where
+def mmImpl : Impl AOp Empty where
   nd := 3
   nin := 2
   nout := 1
@@ -150,7 +151,8 @@ def mmImpl : Impl AOp where
       ⟨2, .var 5 + .var 6 * .var 2 + .var 7⟩ ⟨3, .const 0⟩)))
 
 /-- One entry: the accumulation loop appends entry `i c + j` to the block written so far. -/
-theorem wp_mm_entry {M : Machine K} {I : Interp AOp K} (hI : IsArith M I) {md : Mode} {τ : ℕ → K}
+theorem wp_mm_entry {M : Machine K} {I : Interp AOp Empty K} (hI : IsArith M I) {md : Mode}
+    {τ : ℕ → K}
     {a b c i j : ℕ} (hi : i < a) (hj : j < c) {A B C : ℕ × ℕ} {s : Store K} {p : ℕ}
     {As Bs : List K} {tb : Buf K} (hAC : A.1 ≠ C.1) (hBC : B.1 ≠ C.1)
     (hA : s.readBlock A.1 A.2 (a * b) = some As) (hB : s.readBlock B.1 B.2 (b * c) = some Bs)
@@ -195,7 +197,7 @@ theorem wp_mm_entry {M : Machine K} {I : Interp AOp K} (hI : IsArith M I) {md : 
 
 /-- **The exact certificate of the triple loop**: where the block function of `mmF` succeeds on
 inputs in other buffers than the output, the run of `mmImpl` is that block function. -/
-theorem mm_cert {M : Machine K} {I : Interp AOp K} (hI : IsArith M I) {d : List ℕ}
+theorem mm_cert {M : Machine K} {I : Interp AOp Empty K} (hI : IsArith M I) {d : List ℕ}
     {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : ℕ → K} {m m' : Mem K} (hadm : DisjointBufs d ins z)
     (h : (mmFn (mmF M)).apply d ins z τ m = some m') :
     mmImpl.Fits d.length ins.length 1 ∧
@@ -243,18 +245,18 @@ theorem abs_dec_mmF_sub_le {u : ℝ} {dec : K → ℝ} {M : Machine K} (hM : Std
 /-! ### The corollary by linking -/
 
 /-- The table: `mm` by the triple loop. -/
-def mmTable : Table MOp AOp
+def mmTable : Table MOp AOp Empty
   | .mm => .inl mmImpl
 
 /-- The cost of one `mm` at `[a, b, c]` in scalar operations. -/
-noncomputable def mmCost : MOp → List ℕ → Count AOp
+noncomputable def mmCost : MOp → List ℕ → Count AOp Empty
   | .mm, [a, b, c] =>
       (a * c) • (Count.one (.lit 0) [] + b • (Count.one .mul [] + Count.one .add []))
   | .mm, _ => 0
 
 omit [Inhabited K] in
 /-- The accounting certificate of the triple loop, by evaluating its static cost. -/
-theorem mm_accounts (I : Interp AOp K) :
+theorem mm_accounts (I : Interp AOp Empty K) :
     mmTable.Accounts I (fun _ _ => 0) mmCost (fun _ _ => 1) := by
   refine Table.accounts_of_static ?_ (fun o o' hT => by cases o; cases hT) I
   intro o R hT d offs hd ho
@@ -265,7 +267,7 @@ theorem mm_accounts (I : Interp AOp K) :
   simp [mmImpl, dotLoop, staticCost, staticPeak, useCost, mmCost, mul_smul]
 
 /-- The induced interpretation meets the functional contract of `mm` with `f = mmF M`. -/
-theorem isMM_link {M : Machine K} {I : Interp AOp K} (hI : IsArith M I) :
+theorem isMM_link {M : Machine K} {I : Interp AOp Empty K} (hI : IsArith M I) :
     IsMM (mmF M) (I.link mmTable) where
   isFn := Interp.link_isFn rfl fun _ _ _ _ _ _ hadm h => mm_cert hI hadm h
   length a b c As Bs := length_mmPrefix M b c As Bs (a * c)
@@ -273,15 +275,16 @@ theorem isMM_link {M : Machine K} {I : Interp AOp K} (hI : IsArith M I) :
 /-- **The concrete corollary**: `sq2` linked with the triple loop computes the rounded products
 `mmF`, within the pushed-forward counts and one scratch cell. One application of the linking
 theorem. -/
-theorem runs_sq2_link {M : Machine K} {I : Interp AOp K} (hI : IsArith M I) {τ : ℕ → K} {n : ℕ}
+theorem runs_sq2_link {M : Machine K} {I : Interp AOp Empty K} (hI : IsArith M I) {τ : ℕ → K}
+    {n : ℕ}
     {A P S : ℕ × ℕ} {m : Mem K} {As : List K} (hAP : A.1 ≠ P.1) (hPS : P.1 ≠ S.1)
     (hA : m.store.readBlock A.1 A.2 (n * n) = some As) (hP : P.2 + n * n ≤ m.store.len P.1)
-    (hS : S.2 + n * n ≤ m.store.len S.1) :
+    (hS : S.2 + n * n ≤ m.store.len S.1) (hl : m.Live [A, P, S]) :
     Runs I (fun _ _ => 0) τ (sq2.link mmTable) ⟨[n, A.2, P.2, S.2], [A.1, P.1, S.1]⟩ m
       (Count.push mmCost (2 • Count.one .mm [n, n, n])) 1
       (· = (m.updBlock P (mmF M n n n As As)).updBlock S
         (mmF M n n n (mmF M n n n As As) (mmF M n n n As As))) :=
-  (runs_sq2 (isMM_link hI) (fun _ _ => 1) hAP hPS hA hP hS).link (mm_accounts I)
+  (runs_sq2 (isMM_link hI) (fun _ _ => 1) hAP hPS hA hP hS hl).link (mm_accounts I)
 
 omit [Inhabited K] in
 /-- The scalar counts of the linked `sq2`: `2 n²` literals and `2 n³` multiplications and
@@ -295,7 +298,7 @@ theorem push_mmCost_mm (n : ℕ) : Count.push mmCost (2 • Count.one .mm [n, n,
 /-- **Witness**: the functional contract of `mm` can be met, with an `f` meeting the entrywise
 error bound, for every `u ≥ 0`. -/
 theorem exists_isMM {u : ℝ} (hu : 0 ≤ u) :
-    ∃ (K : Type) (_ : Inhabited K) (dec : K → ℝ) (M : Machine K) (I : Interp MOp K),
+    ∃ (K : Type) (_ : Inhabited K) (dec : K → ℝ) (M : Machine K) (I : Interp MOp Empty K),
       StdModel u dec M ∧ IsMM (mmF M) I :=
   ⟨ℝ, ⟨0⟩, id, exactMachine, (Interp.ofFns exactMachine.fn).link mmTable, stdModel_exact hu,
     isMM_link fun o => Interp.ofFns_isFn _ _ o _⟩

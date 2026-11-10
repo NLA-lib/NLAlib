@@ -91,13 +91,14 @@ theorem abs_dec_dotF_sub_le {u : ℝ} {dec : K → ℝ} {M : Machine K} (hM : St
 
 /-- The accumulation loop: `z := 0; for k < n: t := x * y; z := z + t`. The operands `x`, `y` may
 depend on the loop variable. -/
-def dotLoop (n : IExp) (x y z t : Operand) : Stmt AOp :=
+def dotLoop (n : IExp) (x y z t : Operand) : Stmt AOp Empty :=
   .seq (.call (.lit 0) [] [] [z])
     (.loop n (.seq (.call .mul [] [x, y] [t]) (.call .add [] [z, t] [z])))
 
 /-- **The accumulation loop computes `dotF`** in the cell `z`, for a store with one scratch cell
 on top (the operand `t`), input cells in other buffers than `z`. -/
-theorem wp_dotLoop {M : Machine K} {I : Interp AOp K} (hI : IsArith M I) {md : Mode} {τ : ℕ → K}
+theorem wp_dotLoop {M : Machine K} {I : Interp AOp Empty K} (hI : IsArith M I) {md : Mode}
+    {τ : ℕ → K}
     {ρ : Env} {n : IExp} {x y z t : Operand} {N bx by' bz oz : ℕ} {fx fy : ℕ → ℕ} {s : Store K}
     {tb : Buf K} {p : ℕ} {a b : ℕ → K} (hn : n.eval ρ.idx = some N)
     (hz0 : z.eval ρ = some (bz, oz)) (hx : ∀ k, x.eval (ρ.pushIdx k) = some (bx, fx k))
@@ -176,7 +177,7 @@ theorem dotFn_apply {M : Machine K} {d : List ℕ} {ins : List (ℕ × ℕ)} {z 
     ∃ n x y xs ys, d = [n] ∧ ins = [x, y] ∧ m.store.readBlock x.1 x.2 n = some xs ∧
       m.store.readBlock y.1 y.2 n = some ys ∧ z.2 < m.store.len z.1 ∧
       m' = m.upd z (dotF M (fun k => xs.getD k default) (fun k => ys.getD k default) n) := by
-  obtain ⟨X, v, hread, hfn, hlen, rfl⟩ := BlockFn.apply_eq_some_iff.mp h
+  obtain ⟨hlive, X, v, hread, hfn, hlen, rfl⟩ := BlockFn.apply_eq_some_iff.mp h
   rcases d with _ | ⟨n, _ | ⟨n', d⟩⟩
   · simp [dotFn] at hfn
   · obtain ⟨x, y, xs, ys, rfl, hx, hy, rfl⟩ := Mem.readBlocks_two hread
@@ -190,7 +191,7 @@ def DisjointBufs : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop := fun
 
 /-- **The implementation of `dot`** over scalar arithmetic: a scratch cell and the accumulation
 loop. Index variables: `n`, the offsets of `x`, `y`, `z`, then the loop variable. -/
-def dotImpl : Impl AOp where
+def dotImpl : Impl AOp Empty where
   nd := 1
   nin := 2
   nout := 1
@@ -200,7 +201,7 @@ def dotImpl : Impl AOp where
 /-- **The exact certificate of `dotImpl`**: where the block function of `dot` succeeds on
 operands in other buffers than the output, the run of the implementation is the block function.
 A statement about words, with no error analysis. -/
-theorem dot_cert {M : Machine K} {I : Interp AOp K} (hI : IsArith M I) {d : List ℕ}
+theorem dot_cert {M : Machine K} {I : Interp AOp Empty K} (hI : IsArith M I) {d : List ℕ}
     {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : ℕ → K} {m m' : Mem K} (hadm : DisjointBufs d ins z)
     (h : (dotFn M).apply d ins z τ m = some m') :
     dotImpl.Fits d.length ins.length 1 ∧

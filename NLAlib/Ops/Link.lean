@@ -15,6 +15,8 @@ An implementation of the operations `Op₁` over the operations `Op₂` is a tab
 kept as an operation of `Op₂`. Linking (`NLAlib.Ops.Stmt.link`) turns each call of an implemented
 operation into the frame of its tree; a call whose numbers of dimensions and operands do not fit
 the implementation becomes `abort`. The linked program is a first-order tree for all sizes.
+Queries (tests and index uses) have their own names `Tst`, which no table maps: they are
+primitives and linking leaves them alone.
 
 The interpretation of `Op₁` induced by a table and an interpretation of `Op₂`
 (`NLAlib.Ops.Interp.link`): an implemented operation means the run of its tree.
@@ -27,18 +29,21 @@ modes, with no certificate.
 * `NLAlib.Ops.run_link`: refinement transfer.
 * `NLAlib.Ops.Interp.link_callS_inl`: the call of an implemented operation under the induced
   interpretation is the run of its implementation.
+* `NLAlib.Ops.Stmt.link_comp`, `NLAlib.Ops.Interp.link_comp`: linking through two tables is
+  linking through their composition `NLAlib.Ops.Table.comp`; `NLAlib.Ops.Table.iter` is the
+  `k`-fold composition of a table of a signature over itself, which is how recursion is linked.
 -/
 
 @[expose] public section
 
 namespace NLAlib.Ops
 
-variable {Op₁ Op₂ K : Type}
+variable {Op Op₁ Op₂ Op₃ Tst K : Type}
 
 /-- An implementation of an operation: a tree whose index variables are the `nd` dimensions of the
 call followed by the offsets of its operands, and whose buffer variables are the `nin` input and
 `nout` output operands. -/
-structure Impl (Op : Type) where
+structure Impl (Op Tst : Type) where
   /-- The number of dimensions. -/
   nd : ℕ
   /-- The number of input operands. -/
@@ -46,20 +51,19 @@ structure Impl (Op : Type) where
   /-- The number of output operands. -/
   nout : ℕ
   /-- The tree. -/
-  body : Stmt Op
+  body : Stmt Op Tst
 
 /-- **An implementation of `Op₁` over `Op₂`**: for each operation of `Op₁`, a tree over `Op₂` or
-an operation of `Op₂`. -/
-abbrev Table (Op₁ Op₂ : Type) := Op₁ → Impl Op₂ ⊕ Op₂
+an operation of `Op₂`. Queries are not in the table. -/
+abbrev Table (Op₁ Op₂ Tst : Type) := Op₁ → Impl Op₂ Tst ⊕ Op₂
 
 /-- The numbers of dimensions and operands fit the implementation. -/
-abbrev Impl.Fits {Op : Type} (R : Impl Op) (nd nin nout : ℕ) : Prop :=
+abbrev Impl.Fits (R : Impl Op Tst) (nd nin nout : ℕ) : Prop :=
   nd = R.nd ∧ nin = R.nin ∧ nout = R.nout
 
 /-- **Linking**: each call of an implemented operation becomes the frame of its implementation
-(`abort` if the numbers of dimensions and operands do not fit); a kept operation is renamed. An
-implemented operation cannot be used as a test or as an index. -/
-def Stmt.link (T : Table Op₁ Op₂) : Stmt Op₁ → Stmt Op₂
+(`abort` if the numbers of dimensions and operands do not fit); a kept operation is renamed. -/
+def Stmt.link (T : Table Op₁ Op₂ Tst) : Stmt Op₁ Tst → Stmt Op₂ Tst
   | .skip => .skip
   | .abort => .abort
   | .seq s t => .seq (s.link T) (t.link T)
@@ -69,26 +73,17 @@ def Stmt.link (T : Table Op₁ Op₂) : Stmt Op₁ → Stmt Op₂
           if R.Fits ds.length ins.length outs.length then .frame ds (ins ++ outs) R.body
           else .abort
       | .inr o' => .call o' ds ins outs
-  | .ite o ds ins t e =>
-      match T o with
-      | .inl _ => .abort
-      | .inr o' => .ite o' ds ins (t.link T) (e.link T)
-  | .whileFuel fuel o ds ins body =>
-      match T o with
-      | .inl _ => .abort
-      | .inr o' => .whileFuel fuel o' ds ins (body.link T)
-  | .bindIdx o ins bound body =>
-      match T o with
-      | .inl _ => .abort
-      | .inr o' => .bindIdx o' ins bound (body.link T)
+  | .ite q ds ins t e => .ite q ds ins (t.link T) (e.link T)
+  | .whileFuel fuel q ds ins body => .whileFuel fuel q ds ins (body.link T)
+  | .bindIdx q ins bound body => .bindIdx q ins bound (body.link T)
   | .alloc len body => .alloc len (body.link T)
   | .loop n body => .loop n (body.link T)
   | .frame ds args body => .frame ds args (body.link T)
 
 /-- **The interpretation of `Op₁` induced by a table over `Op₂`**: an implemented operation means
 the run of its implementation under `I` with the tape it is given; a kept operation means what it
-means under `I`. -/
-def Interp.link (I : Interp Op₂ K) (T : Table Op₁ Op₂) : Interp Op₁ K where
+means under `I`; a query means what it means under `I`. -/
+def Interp.link (I : Interp Op₂ Tst K) (T : Table Op₁ Op₂ Tst) : Interp Op₁ Tst K where
   call o d ins outs τ m :=
     match T o with
     | .inl R =>
@@ -96,56 +91,35 @@ def Interp.link (I : Interp Op₂ K) (T : Table Op₁ Op₂) : Interp Op₁ K wh
           run I τ R.body (Env.frame d (ins ++ outs)) m
         else none
     | .inr o' => I.call o' d ins outs τ m
-  test o d a m :=
-    match T o with
-    | .inl _ => none
-    | .inr o' => I.test o' d a m
-  index o a m :=
-    match T o with
-    | .inl _ => none
-    | .inr o' => I.index o' a m
+  test := I.test
+  index := I.index
 
-theorem Interp.link_callS_inr (I : Interp Op₂ K) {T : Table Op₁ Op₂} {o : Op₁} {o' : Op₂}
+theorem Interp.link_callS_inr (I : Interp Op₂ Tst K) {T : Table Op₁ Op₂ Tst} {o : Op₁} {o' : Op₂}
     (hT : T o = .inr o') (d : List ℕ) (ins outs : List (ℕ × ℕ)) (τ : ℕ → K) (m : Mem K) :
     (I.link T).callS o d ins outs τ m = I.callS o' d ins outs τ m := by
   simp only [Interp.callS, Interp.link, hT]
 
 /-- The call of an implemented operation under the induced interpretation is the run of its
-implementation: the run keeps the shape of the store by itself. -/
-theorem Interp.link_callS_inl (I : Interp Op₂ K) {T : Table Op₁ Op₂} {o : Op₁} {R : Impl Op₂}
-    (hT : T o = .inl R) (d : List ℕ) (ins outs : List (ℕ × ℕ)) (τ : ℕ → K) (m : Mem K) :
+implementation on live operands: the run keeps the shape of the store by itself. -/
+theorem Interp.link_callS_inl (I : Interp Op₂ Tst K) {T : Table Op₁ Op₂ Tst} {o : Op₁}
+    {R : Impl Op₂ Tst} (hT : T o = .inl R) (d : List ℕ) (ins outs : List (ℕ × ℕ)) (τ : ℕ → K)
+    (m : Mem K) :
     (I.link T).callS o d ins outs τ m =
-      if R.Fits d.length ins.length outs.length then
-        run I τ R.body (Env.frame d (ins ++ outs)) m
+      if m.Live (ins ++ outs) then
+        if R.Fits d.length ins.length outs.length then
+          run I τ R.body (Env.frame d (ins ++ outs)) m
+        else none
       else none := by
   simp only [Interp.callS, Interp.link, hT]
-  split_ifs with hfit
+  split_ifs with hl hfit
   · cases hr : run I τ R.body (Env.frame d (ins ++ outs)) m with
     | none => rfl
     | some m' => simp [shape_store_of_run hr]
   · rfl
-
-theorem Interp.link_test_inr (I : Interp Op₂ K) {T : Table Op₁ Op₂} {o : Op₁} {o' : Op₂}
-    (hT : T o = .inr o') : (I.link T).test o = I.test o' := by
-  funext d a m
-  simp only [Interp.link, hT]
-
-theorem Interp.link_index_inr (I : Interp Op₂ K) {T : Table Op₁ Op₂} {o : Op₁} {o' : Op₂}
-    (hT : T o = .inr o') : (I.link T).index o = I.index o' := by
-  funext a m
-  simp only [Interp.link, hT]
-
-theorem Interp.link_test_inl (I : Interp Op₂ K) {T : Table Op₁ Op₂} {o : Op₁} {R : Impl Op₂}
-    (hT : T o = .inl R) (d : List ℕ) (a : List (ℕ × ℕ)) (m : Mem K) :
-    (I.link T).test o d a m = none := by
-  simp only [Interp.link, hT]
-
-theorem Interp.link_index_inl (I : Interp Op₂ K) {T : Table Op₁ Op₂} {o : Op₁} {R : Impl Op₂}
-    (hT : T o = .inl R) (a : List (ℕ × ℕ)) (m : Mem K) : (I.link T).index o a m = none := by
-  simp only [Interp.link, hT]
+  · rfl
 
 /-- The run of a linked call. -/
-theorem run_link_call (I : Interp Op₂ K) (T : Table Op₁ Op₂) (τ : ℕ → K) (o : Op₁)
+theorem run_link_call (I : Interp Op₂ Tst K) (T : Table Op₁ Op₂ Tst) (τ : ℕ → K) (o : Op₁)
     (ds : List IExp) (ins outs : List Operand) (ρ : Env) (m : Mem K) :
     run I τ ((Stmt.call o ds ins outs).link T) ρ m =
       run (I.link T) τ (.call o ds ins outs) ρ m := by
@@ -165,43 +139,100 @@ theorem run_link_call (I : Interp Op₂ K) (T : Table Op₁ Op₂) (τ : ℕ →
           have h1 := IExp.length_of_evalList hd
           have h2 := Operand.length_of_evalList ha
           have h3 := Operand.length_of_evalList hb
-          split_ifs with hfit <;>
-            simp [run, hd, ha, hb, Operand.evalList_append, h1, h2, h3, hfit]
+          have hfe : R.Fits d.length a.length b.length ↔
+              R.Fits ds.length ins.length outs.length := by rw [h1, h2, h3]
+          simp only [Option.bind_some]
+          by_cases hfit : R.Fits ds.length ins.length outs.length
+          · rw [if_pos hfit, if_pos (hfe.mpr hfit)]
+            simp [run, hd, ha, hb, Operand.evalList_append]
+          · rw [if_neg hfit, if_neg (hfe.not.mpr hfit)]
+            simp [run]
 
 /-- **Refinement transfer.** The linked program under `I` and the program under the induced
 interpretation end in the same memory, or both fail. No certificate is needed. -/
-theorem run_link (I : Interp Op₂ K) (T : Table Op₁ Op₂) (τ : ℕ → K) (s : Stmt Op₁) (ρ : Env)
-    (m : Mem K) : run I τ (s.link T) ρ m = run (I.link T) τ s ρ m := by
+theorem run_link (I : Interp Op₂ Tst K) (T : Table Op₁ Op₂ Tst) (τ : ℕ → K) (s : Stmt Op₁ Tst)
+    (ρ : Env) (m : Mem K) : run I τ (s.link T) ρ m = run (I.link T) τ s ρ m := by
   induction s generalizing ρ m with
   | skip => rfl
   | abort => rfl
   | seq s t ihs iht => simp only [Stmt.link, run, ihs, iht]
   | call o ds ins outs => exact run_link_call I T τ o ds ins outs ρ m
-  | ite o ds ins t e iht ihe =>
-    cases hT : T o with
-    | inr o' => simp only [Stmt.link, hT, run, iht, ihe, Interp.link_test_inr I hT]
-    | inl R =>
-      simp only [Stmt.link, hT, run, Interp.link_test_inl I hT]
-      cases IExp.evalList ρ.idx ds <;> cases Operand.evalList ρ ins <;> rfl
-  | whileFuel fuel o ds ins body ih =>
-    cases hT : T o with
-    | inr o' =>
-      have hb : run I τ (Stmt.link T body) ρ = run (I.link T) τ body ρ := funext (ih ρ)
-      simp only [Stmt.link, hT, run, hb, Interp.link_test_inr I hT]
-    | inl R =>
-      simp only [Stmt.link, hT, run]
-      cases fuel.eval ρ.idx <;> cases IExp.evalList ρ.idx ds <;>
-        cases Operand.evalList ρ ins <;> try rfl
-      rename_i k d a
-      cases k <;> simp [whileIter, Interp.link_test_inl I hT]
-  | bindIdx o ins bound body ih =>
-    cases hT : T o with
-    | inr o' => simp only [Stmt.link, hT, run, ih, Interp.link_index_inr I hT]
-    | inl R =>
-      simp only [Stmt.link, hT, run, Interp.link_index_inl I hT]
-      cases Operand.evalList ρ ins <;> cases bound.eval ρ.idx <;> rfl
+  | ite q ds ins t e iht ihe => simp only [Stmt.link, run, iht, ihe, Interp.link]
+  | whileFuel fuel q ds ins body ih =>
+    have hb : run I τ (Stmt.link T body) ρ = run (I.link T) τ body ρ := funext (ih ρ)
+    simp only [Stmt.link, run, hb, Interp.link]
+  | bindIdx q ins bound body ih => simp only [Stmt.link, run, ih, Interp.link]
   | alloc len body ih => simp only [Stmt.link, run, ih]
   | loop n body ih => simp only [Stmt.link, run, ih]
   | frame ds args body ih => simp only [Stmt.link, run, ih]
+
+/-! ### Composition of tables -/
+
+/-- **The composition of two tables**: the trees of `T₁` linked through `T₂`. -/
+def Table.comp (T₁ : Table Op₁ Op₂ Tst) (T₂ : Table Op₂ Op₃ Tst) : Table Op₁ Op₃ Tst := fun o =>
+  match T₁ o with
+  | .inl R => .inl ⟨R.nd, R.nin, R.nout, R.body.link T₂⟩
+  | .inr o' => T₂ o'
+
+/-- The table that keeps every operation. -/
+def Table.id : Table Op Op Tst := fun o => .inr o
+
+/-- **The `k`-fold composition of a table of a signature over itself.** An operation implemented
+by calls of itself at smaller dimensions is linked this way, with `k` a bound on the depth. -/
+def Table.iter (T : Table Op Op Tst) : ℕ → Table Op Op Tst
+  | 0 => Table.id
+  | k + 1 => T.comp (T.iter k)
+
+/-- **Linking through two tables is linking through their composition.** -/
+theorem Stmt.link_comp (T₁ : Table Op₁ Op₂ Tst) (T₂ : Table Op₂ Op₃ Tst) (s : Stmt Op₁ Tst) :
+    (s.link T₁).link T₂ = s.link (T₁.comp T₂) := by
+  induction s with
+  | skip => rfl
+  | abort => rfl
+  | seq s t ihs iht => simp only [Stmt.link, ihs, iht]
+  | call o ds ins outs =>
+    cases hT : T₁ o with
+    | inr o' => simp only [Stmt.link, Table.comp, hT]
+    | inl R =>
+      simp only [Stmt.link, Table.comp, hT]
+      split_ifs <;> rfl
+  | ite q ds ins t e iht ihe => simp only [Stmt.link, iht, ihe]
+  | whileFuel fuel q ds ins body ih => simp only [Stmt.link, ih]
+  | bindIdx q ins bound body ih => simp only [Stmt.link, ih]
+  | alloc len body ih => simp only [Stmt.link, ih]
+  | loop n body ih => simp only [Stmt.link, ih]
+  | frame ds args body ih => simp only [Stmt.link, ih]
+
+/-- The interpretation induced through two tables is the one induced by their composition. -/
+theorem Interp.link_comp (I : Interp Op₃ Tst K) (T₁ : Table Op₁ Op₂ Tst)
+    (T₂ : Table Op₂ Op₃ Tst) : (I.link T₂).link T₁ = I.link (T₁.comp T₂) := by
+  have hc : ((I.link T₂).link T₁).call = (I.link (T₁.comp T₂)).call := by
+    funext o d ins outs τ m
+    cases hT : T₁ o with
+    | inr o' => simp only [Interp.link, Table.comp, hT]
+    | inl R => simp only [Interp.link, Table.comp, hT, run_link]
+  cases h1 : (I.link T₂).link T₁
+  cases h2 : I.link (T₁.comp T₂)
+  rw [h1, h2] at hc
+  have ht : ((I.link T₂).link T₁).test = (I.link (T₁.comp T₂)).test := rfl
+  have hi : ((I.link T₂).link T₁).index = (I.link (T₁.comp T₂)).index := rfl
+  rw [h1, h2] at ht hi
+  simp only at hc ht hi
+  rw [hc, ht, hi]
+
+@[simp] theorem Stmt.link_id (s : Stmt Op Tst) : s.link Table.id = s := by
+  induction s with
+  | skip => rfl
+  | abort => rfl
+  | seq s t ihs iht => simp only [Stmt.link, ihs, iht]
+  | call o ds ins outs => rfl
+  | ite q ds ins t e iht ihe => simp only [Stmt.link, iht, ihe]
+  | whileFuel fuel q ds ins body ih => simp only [Stmt.link, ih]
+  | bindIdx q ins bound body ih => simp only [Stmt.link, ih]
+  | alloc len body ih => simp only [Stmt.link, ih]
+  | loop n body ih => simp only [Stmt.link, ih]
+  | frame ds args body ih => simp only [Stmt.link, ih]
+
+@[simp] theorem Interp.link_id (I : Interp Op Tst K) : I.link Table.id = I := rfl
 
 end NLAlib.Ops

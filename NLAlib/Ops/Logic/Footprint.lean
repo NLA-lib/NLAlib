@@ -371,9 +371,19 @@ syntax "fp_mem" (" [" Lean.Parser.Tactic.simpLemma,* "]")? : tactic
 macro_rules
   | `(tactic| fp_mem) => `(tactic| fp_mem [])
   | `(tactic| fp_mem [$ts,*]) => `(tactic| first
-      | (simp only [fpNF, $ts,*]; done)
-      | (simp only [fpNF, $ts,*] <;> (try intros) <;> idx)
+      | (simp only [fpNF, storeNF, $ts,*]; done)
+      | (simp only [fpNF, storeNF, $ts,*] <;> (try intros) <;> idx)
       | fail "fp_mem: the cell is not shown to be in (or out of) the footprint")
+
+/-- **`fp_sub`**: an inclusion of footprints `F ≤ G`. See `fp_mem`. -/
+syntax "fp_sub" (" [" Lean.Parser.Tactic.simpLemma,* "]")? : tactic
+
+macro_rules
+  | `(tactic| fp_sub) => `(tactic| fp_sub [])
+  | `(tactic| fp_sub [$ts,*]) => `(tactic| first
+      | exact le_rfl
+      | (intro b i h; simp only [fpNF, storeNF, $ts,*] at h ⊢; idx)
+      | fail "fp_sub: the footprint is not shown to be included")
 
 /-- **`disjoint`**: a goal `Fp.Disj F G`, `Fp.Apart zs ls`, `b ≠ b'` of handles, or the side
 condition `∀ j < n, ¬ F b (o + j)` of a kept block. Same method as `fp_mem`; the facts of an
@@ -384,10 +394,10 @@ syntax "disjoint" (" [" Lean.Parser.Tactic.simpLemma,* "]")? : tactic
 macro_rules
   | `(tactic| disjoint) => `(tactic| disjoint [])
   | `(tactic| disjoint [$ts,*]) => `(tactic| first
-      | (simp only [fpNF, Fp.Apart, $ts,*]; done)
-      | (simp only [fpNF, Fp.Apart, $ts,*] <;> (try intros) <;> idx)
-      | (simp [fpNF, Fp.Apart, $ts,*]; done)
-      | (simp [fpNF, Fp.Apart, $ts,*] <;> (try intros) <;> idx)
+      | (simp only [fpNF, storeNF, Fp.Apart, $ts,*]; done)
+      | (simp only [fpNF, storeNF, Fp.Apart, $ts,*] <;> (try intros) <;> idx)
+      | (simp [fpNF, storeNF, Fp.Apart, $ts,*]; done)
+      | (simp [fpNF, storeNF, Fp.Apart, $ts,*] <;> (try intros) <;> idx)
       | fail "disjoint: the footprints are not shown to be disjoint")
 
 end NLAlib.Ops

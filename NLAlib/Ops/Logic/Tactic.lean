@@ -7,6 +7,7 @@ module
 
 public import NLAlib.Ops.Logic.Loop
 public import NLAlib.Ops.Logic.Scalar
+public import NLAlib.Ops.Logic.Step
 
 /-!
 # The tactics of a program proof
@@ -59,16 +60,6 @@ The tactics `step`, `frame`, `fp_sub`, `checkpoint`, `alloc`, `loop_inv`, `keep`
 
 namespace NLAlib.Ops
 
-/-- **`fp_sub`**: an inclusion of footprints `F ≤ G`. See `fp_mem`. -/
-syntax "fp_sub" (" [" Lean.Parser.Tactic.simpLemma,* "]")? : tactic
-
-macro_rules
-  | `(tactic| fp_sub) => `(tactic| fp_sub [])
-  | `(tactic| fp_sub [$ts,*]) => `(tactic| first
-      | exact le_rfl
-      | (intro b i h; simp only [fpNF, $ts,*] at h ⊢; idx)
-      | fail "fp_sub: the footprint is not shown to be included")
-
 /-- **`frame`**: a goal `s.EqOff F s'` where `s'` is a chain of updates (`upd`, `updBlock`,
 `updBlocks`, `push`/`pop`) over `s` or over a store `s₁` with a frame `hfr : s.EqOff G s₁` in the
 context. Peels the updates (`Store.EqOff.upd`, `Store.EqOff.updBlock_of_le`), closes the
@@ -91,15 +82,6 @@ macro_rules
              $ts,*]; fp_sub [$ts,*])
          | fp_sub [$ts,*])
        all_goals fail "frame: a write is not shown to be in the footprint"))
-
-/-- **`step h [facts] as m₁ with x hx`**: the call step in named form. See the module docstring.
-Phase B. -/
-syntax "step " term:max (" [" Lean.Parser.Tactic.simpLemma,* "]")? (&" as " ident)?
-  (" with" (ppSpace colGt ident)+)? : tactic
-
-macro_rules
-  | `(tactic| step $_h $[[$_ts,*]]? $[as $_m]? $[with $_ids*]?) =>
-    `(tactic| fail "step: phase B")
 
 /-- **`checkpoint m₁`**: generalise the current memory (a chain of updates) into the fresh name
 `m₁`, with the running frame (by `frame`), the lengths and the reads of the context restated

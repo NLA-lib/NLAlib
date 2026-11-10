@@ -34,6 +34,14 @@ variable {K : Type}
 abbrev IsArith (M : Machine K) (I : Interp ScalarOp Empty K) : Prop :=
   ∀ o, I.IsFn .total o (M.fn o) AnyOperands
 
+/-- **Witness**: for every `u ≥ 0` there are a machine meeting the standard model and an
+interpretation meeting `IsArith`, by exact arithmetic. -/
+theorem exists_isArith {u : ℝ} (hu : 0 ≤ u) :
+    ∃ (K : Type) (dec : K → ℝ) (M : Machine K) (I : Interp ScalarOp Empty K),
+      StdModel u dec M ∧ IsArith M I :=
+  ⟨ℝ, id, exactMachine, Interp.ofFns exactMachine.fn, stdModel_exact hu,
+    fun o => Interp.ofFns_isFn _ _ o _⟩
+
 /-- The recursive summation of the rounded products `a k * b k`, `k < n`, by a machine. -/
 def dotF (M : Machine K) (a b : ℕ → K) (n : ℕ) : K :=
   (List.range n).foldl (fun acc k => M.add acc (M.mul (a k) (b k))) (M.lit 0)

@@ -29,7 +29,8 @@ uses.
   `𝔼 ‖v_{j+1}‖² = 𝔼 ‖A v_j‖² + n σ² 𝔼 ‖v_j‖²`: the cross term vanishes because the noise has
   mean zero given the history, and its variance `σ² ‖v_j‖² n` depends on the history.
 * `NLAlib.Ops.Examples.integral_noisyIter`: `𝔼 v_j = A^j v₀`.
-* `NLAlib.Ops.Examples.isNoisyMv_noiseFn`: the function `A v + σ ‖v‖ dec w` meets the contract
+* `NLAlib.Ops.Examples.isNoisyMv_noiseFn`, `NLAlib.Ops.Examples.exists_isNoisyMv`: the function
+  `A v + σ ‖v‖ dec w` meets the contract
   when the draws decode to a standard law.
 -/
 
@@ -234,5 +235,13 @@ theorem isNoisyMv_noiseFn {dec : K → ℝ} (hdec : Measurable dec) {μ : Measur
       measurable_pi_lambda _ fun j => hdec.comp (measurable_pi_apply j)
     rw [condLaw, probeLaw, Measure.map_map (IsNoisyMv.measurable_affine _ _) hm]
     rfl
+
+/-- **Witness**: for every matrix, every `σ` and every law of the draws that decodes to a
+standard law, there are an isotropic noise law and a noise function meeting the contract. -/
+theorem exists_isNoisyMv {dec : K → ℝ} (hdec : Measurable dec) {μ : Measure K}
+    (hstd : IsStdLaw (μ.map dec)) (A : Matrix (Fin n) (Fin n) ℝ) (σ : ℝ) :
+    ∃ (ν : Measure (Fin n → ℝ)) (N : (Fin n → ℝ) → (Fin n → K) → Fin n → ℝ),
+      IsNoisyMv A σ ν μ N :=
+  ⟨_, _, isNoisyMv_noiseFn hdec hstd A σ⟩
 
 end NLAlib.Ops.Examples

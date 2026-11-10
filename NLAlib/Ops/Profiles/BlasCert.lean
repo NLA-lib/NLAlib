@@ -256,4 +256,28 @@ theorem exists_isBlas1 {u : ℝ} (hu : 0 ≤ u) :
   exact ⟨ℝ, ⟨0⟩, id, exactMachine, _, stdModel_exact hu,
     (seq_certifies (stdModel_exact hu) hu _).meets _ hI⟩
 
+/-- **Witness for the contract of `sum` alone**, jointly with scalar arithmetic: for every
+`u ≥ 0`, every error function that is nonnegative on the admitted lengths and every set of
+admitted lengths, by exact summation. This is the contract set of the implementations over
+`sum` (`dotSum_spec`, `nrm2Sum_spec`, `sumPairwise_spec`). -/
+theorem exists_isSum {u : ℝ} (hu : 0 ≤ u) (e : ℕ → ℝ) (ok : ℕ → Prop)
+    (he : ∀ n, ok n → 0 ≤ e n) :
+    ∃ (K : Type) (_ : Inhabited K) (dec : K → ℝ) (M : Machine K)
+      (J : Interp (ScalarOp ⊕ Blas1Op) Empty K),
+      StdModel u dec M ∧ IsScalar M J ∧ IsSum dec e ok J := by
+  let F : ScalarOp ⊕ Blas1Op → BlockFn ℝ := fun o => o.elim exactMachine.fn fun _ =>
+    .of1 1 (fun d => d.headD 0) (fun _ => 1) fun d x =>
+      some [∑ k ∈ Finset.range (d.headD 0), x.getD k 0]
+  have hI : IsScalar exactMachine (Interp.ofFns F : Interp (ScalarOp ⊕ Blas1Op) Empty ℝ) :=
+    isScalar_ofFns _ _ fun _ => rfl
+  refine ⟨ℝ, ⟨0⟩, id, exactMachine, _, stdModel_exact hu, hI, ?_⟩
+  refine (Interp.ofFns_isFn F .total (.inr .sum) AnyOperands).meets_rel (fun _ _ _ _ => trivial)
+    rfl rfl (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) ?_
+  intro d w xs m ins outs hnd _ hadm hr _
+  obtain ⟨k, rfl⟩ := List.length_eq_one_iff.mp hnd
+  obtain ⟨x, xs, rfl, hx, rfl⟩ := Mem.readBlocks_one hr
+  refine ⟨[[∑ j ∈ Finset.range k, xs.getD j 0]], by simp [F, BlockFn.of1], rfl, ?_⟩
+  simp only [sumRel, IsSumErr, vec, id, List.headD_cons, sub_self, abs_zero]
+  exact mul_nonneg (he k hadm.1) (Finset.sum_nonneg fun _ _ => abs_nonneg _)
+
 end NLAlib.Ops.Blas

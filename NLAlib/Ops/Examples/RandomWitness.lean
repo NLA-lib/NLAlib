@@ -7,6 +7,7 @@ module
 
 public import NLAlib.Ops.Catalog.Isotropic
 public import NLAlib.Ops.Catalog.Random
+public import NLAlib.Ops.Examples.Noisy
 public import NLAlib.Ops.TapeLaw
 
 /-!
@@ -22,6 +23,11 @@ The hypotheses of the randomized examples can be met jointly.
 * `NLAlib.Ops.Examples.exists_isRandLin`: for every matrix there is an interpretation over the
   real numbers, in exact arithmetic, that meets the contracts `IsRandLin` with tape-local
   operations at the registered windows.
+* `NLAlib.Ops.Examples.exists_isRandLin_isTapeLaw`: the joint witness at the law level
+  (interpretation, tape with the standard laws, standard decoded stream, isotropic probes).
+* `NLAlib.Ops.Examples.exists_isNoisy`, `NLAlib.Ops.Examples.exists_isNoisy_isNoisyMv`: the
+  contract of the noisy product for every noise function, and jointly with the conditional law
+  of the noise and the law of the tape.
 * `NLAlib.Ops.Examples.memLp_quadForm_gaussian`: the quadratic form of a Gaussian probe is
   square integrable, the hypothesis of the variance of the Girard–Hutchinson estimator.
 * `NLAlib.Ops.Examples.sqNorm_mulVec_le`: every matrix satisfies the norm bound assumed of the
@@ -171,5 +177,60 @@ theorem exists_isRandLin (A : Matrix (Fin n) (Fin n) ℝ) :
   · exact (hfn .gauss).meets_drawRel fun _ _ _ _ => trivial
   · have := Interp.ofFns_tapeLocal (Tst := Tst) (randFns A) o
     cases o <;> exact this
+
+/-- **Joint witness of the randomized examples at the law level**: for every matrix, an
+interpretation meeting the contracts of the exact operations and the draws with tape-local
+operations, a random tape with the standard laws, whose Gaussian stream decodes to a standard
+law and whose probes are isotropic. This is the contract set of `runsLaw_hutch`,
+`runsLaw_hutch_link` and `runsLaw_npow_link`. -/
+theorem exists_isRandLin_isTapeLaw (A : Matrix (Fin n) (Fin n) ℝ) :
+    ∃ (I : Interp ROp Tst ℝ) (Ω : Type) (_ : MeasurableSpace Ω) (P : Measure Ω)
+      (ξ : Ω → Tape ℝ), IsRandLin id A I ∧ (∀ o, I.TapeLocal o (randWindow o)) ∧
+        IsTapeLaw stdLaw P ξ ∧ IsStdLaw ((stdLaw Stream.gauss).map id) ∧
+        IsIsotropic (probeLaw id (stdLaw Stream.gauss) n) := by
+  obtain ⟨I, h1, h2⟩ := exists_isRandLin (Tst := Tst) A
+  obtain ⟨Ω, mΩ, P, ξ, h3⟩ := exists_isTapeLaw_stdLaw
+  exact ⟨I, Ω, mΩ, P, ξ, h1, h2, h3, isStdLaw_stdLaw_gauss, isIsotropic_probeLaw_stdLaw n⟩
+
+/-! ### The noisy product -/
+
+/-- The block function of a noisy product over the reals: the output block is `N` of the input
+block and of the window. -/
+noncomputable def nmvFn (N : (Fin n → ℝ) → (Fin n → ℝ) → Fin n → ℝ) : BlockFn ℝ where
+  nd := 1
+  stream := Stream.gauss
+  win d := d.headD 0
+  inLens d := [d.headD 0]
+  outLens d := [d.headD 0]
+  fn _ w xs := match xs with
+    | [x] => some [List.ofFn (N (decv id n x) fun i => vec w i)]
+    | _ => none
+
+/-- **Witness**: the contract of `nmv` can be met for every noise function, by the
+interpretation that applies it to the window. -/
+theorem exists_isNoisy (N : (Fin n → ℝ) → (Fin n → ℝ) → Fin n → ℝ) :
+    ∃ J : Interp NOp Tst ℝ, IsNoisy id N J := by
+  refine ⟨Interp.ofFns fun _ => nmvFn N,
+    (Interp.ofFns_isFn (Tst := Tst) (fun _ : NOp => nmvFn N) .total .nmv AnyOperands).meets_rel
+      (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) ?_⟩
+  intro d w xs m ins outs hnd _ hadm hr _
+  obtain ⟨k, rfl⟩ := List.length_eq_one_iff.mp hnd
+  obtain rfl : k = n := hadm.1
+  obtain ⟨x, xs, rfl, hx, rfl⟩ := Mem.readBlocks_one hr
+  exact ⟨[List.ofFn (N (decv id k xs) fun i => vec w i)], rfl, by simp [nmvRel],
+    by simp [nmvRel, decv_ofFn]⟩
+
+/-- **Joint witness of the noisy power iteration at the law level**: for every matrix and every
+`σ`, an interpretation meeting the contract of `nmv` for a noise function with the conditional
+law of `A v + σ ‖v‖ g`, `g` isotropic, and a random tape with the standard laws. This is the
+contract set of `runsLaw_npow`. -/
+theorem exists_isNoisy_isNoisyMv (A : Matrix (Fin n) (Fin n) ℝ) (σ : ℝ) :
+    ∃ (J : Interp NOp Tst ℝ) (N : (Fin n → ℝ) → (Fin n → ℝ) → Fin n → ℝ)
+      (ν : Measure (Fin n → ℝ)) (Ω : Type) (_ : MeasurableSpace Ω) (P : Measure Ω)
+      (ξ : Ω → Tape ℝ), IsNoisy id N J ∧ IsNoisyMv A σ ν (stdLaw Stream.gauss) N ∧
+        IsTapeLaw stdLaw P ξ := by
+  obtain ⟨J, hJ⟩ := exists_isNoisy (Tst := Tst) (noiseFn id A σ)
+  obtain ⟨Ω, mΩ, P, ξ, h⟩ := exists_isTapeLaw_stdLaw
+  exact ⟨J, _, _, Ω, mΩ, P, ξ, hJ, isNoisyMv_noiseFn measurable_id isStdLaw_stdLaw_gauss A σ, h⟩
 
 end NLAlib.Ops.Examples

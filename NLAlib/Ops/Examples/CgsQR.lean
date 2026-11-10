@@ -186,4 +186,56 @@ theorem wp_cgs {M : Machine K} {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → P
         (hc j hj).2⟩⟩
     simpa [Store.inBuf, hS1] using h
 
+/-! ### The abstract theorem -/
+
+omit [Inhabited K] in
+/-- The calls of column `j`: `j` times `dot`, `neg`, `axpy`, and two `copy`, one `nrm2`, one
+`scal`. -/
+noncomputable def cgsColCount (n j : ℕ) : Count Op Tst :=
+  j • Count.one (Has.inj Blas1Op.dot) [n] + (Count.one (Has.inj Blas1Op.copy) [n] +
+    (j • (Count.one (Has.inj ScalarOp.neg) [] + Count.one (Has.inj Blas1Op.axpy) [n]) +
+      (Count.one (Has.inj Blas1Op.nrm2) [n] + (Count.one (Has.inj Blas1Op.scal) [n] +
+        Count.one (Has.inj Blas1Op.copy) [n]))))
+
+omit [Inhabited K] in
+/-- The call counts of `cgs`: the columns, added up. -/
+noncomputable def cgsCount (n p : ℕ) : Count Op Tst := ∑ j ∈ Finset.range p, cgsColCount n j
+
+/-- The workspace of `cgs`: the scratch cell, the work vector and the workspace of the operation
+that needs most. -/
+def cgsPeak (W : Op → List ℕ → ℕ) (n : ℕ) : ℕ :=
+  1 + (n + max (W (Has.inj Blas1Op.dot) [n]) (max (W (Has.inj Blas1Op.copy) [n])
+    (max (max (W (Has.inj ScalarOp.neg) []) (W (Has.inj Blas1Op.axpy) [n]))
+      (max (W (Has.inj Blas1Op.nrm2) [n]) (W (Has.inj Blas1Op.scal) [n])))))
+
+omit [Inhabited K] in
+theorem staticCost_cgs (n p a b c : ℕ) :
+    staticCost (cgs (Op := Op) (Tst := Tst)) [n, p, a, b, c] = cgsCount n p := by
+  simp [cgs, cgsCol, cgsDots, cgsProj, staticCost, useCost, cgsCount, cgsColCount]
+
+omit [Inhabited K] in
+theorem staticPeak_cgs_le (W : Op → List ℕ → ℕ) (n p a b c : ℕ) :
+    staticPeak W (cgs (Op := Op) (Tst := Tst)) [n, p, a, b, c] ≤ cgsPeak W n := by
+  simp only [cgs, cgsCol, cgsDots, cgsProj, staticPeak, cgsPeak]
+  refine Nat.add_le_add_left (Nat.add_le_add_left (Finset.sup_le fun j _ => ?_) _) _
+  simp only [Finset.sup_le_iff, max_le_iff]
+  simp
+
+/-- **The abstract theorem of `cgs`**: for every interpretation meeting the contracts of scalar
+arithmetic and of the level-1 operations at `ε`, the run terminates within `cgsCount n p` calls
+and `cgsPeak W n` scratch cells, writes only `Q` and `R`, and every computed column satisfies
+`CgsCol`. -/
+theorem runs_cgs_rounded {M : Machine K} {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop}
+    {J : Interp Op Tst K} (hS : IsScalar M J) (hJ : IsBlas1 dec ε ok J)
+    (hneg : ∀ x, dec (M.neg x) = -dec x) (W : Op → List ℕ → ℕ) {τ : ℕ → K}
+    {n p oA oQ oR : ℕ} {B : Fin 3 → ℕ} {μ : Mem K} {as : List K} (hok : ok n)
+    (hB : Function.Injective B) (hl : ∀ i, B i < μ.store.length)
+    (hA : μ.store.readBlock (B 0) oA (p * n) = some as)
+    (hQ : oQ + p * n ≤ μ.store.len (B 1)) (hR : oR + p * p ≤ μ.store.len (B 2)) :
+    Runs J W τ cgs ⟨[n, p, oA, oQ, oR], [B 0, B 1, B 2]⟩ μ (cgsCount n p) (cgsPeak W n)
+      (CgsRounded dec ε n p (B 1) oQ (B 2) oR as μ) := by
+  obtain ⟨μ', hrun, hpost⟩ := wp_cgs hS hJ hneg (τ := τ) hok hB hl hA hQ hR
+  exact (Runs.of_run hrun hpost W).mono (le_of_eq (staticCost_cgs ..)) (staticPeak_cgs_le ..)
+    fun _ h => h
+
 end NLAlib.Ops.Examples

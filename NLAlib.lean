@@ -624,8 +624,14 @@ public import NLAlib.Ops.Catalog.Blas1
 public import NLAlib.Ops.Catalog.Scalar
 public import NLAlib.Ops.Contract
 public import NLAlib.Ops.Examples.Bits
+public import NLAlib.Ops.Examples.Cgs
+public import NLAlib.Ops.Examples.CgsLinked
+public import NLAlib.Ops.Examples.CgsMath
+public import NLAlib.Ops.Examples.CgsQR
 public import NLAlib.Ops.Examples.Control
 public import NLAlib.Ops.Examples.Dot
+public import NLAlib.Ops.Examples.Gemm
+public import NLAlib.Ops.Examples.GramSchmidt
 public import NLAlib.Ops.Examples.Liberal
 public import NLAlib.Ops.Examples.MatMul
 public import NLAlib.Ops.Examples.StochRound

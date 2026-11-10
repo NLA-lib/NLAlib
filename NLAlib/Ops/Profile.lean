@@ -119,6 +119,12 @@ theorem Certifies.of_accounts {P : Profile Op Lo Tst} {Base : Interp Lo Tst K �
     (hacc : ∀ I : Interp Lo Tst K, P.table.Accounts I P.wsLo P.cost P.ws) : P.Certifies Base Ck :=
   ⟨hm, fun I _ _ _ _ _ _ _ h => h.link (hacc I)⟩
 
+/-- A certificate serves a stronger base and weaker contracts. -/
+theorem Certifies.mono {P : Profile Op Lo Tst} {Base Base' : Interp Lo Tst K → Prop}
+    {Ck Ck' : Interp Op Tst K → Prop} (h : P.Certifies Base Ck) (hB : ∀ I, Base' I → Base I)
+    (hC : ∀ J, Ck J → Ck' J) : P.Certifies Base' Ck' :=
+  ⟨fun I hI => hC _ (h.meets I (hB I hI)), h.transfer⟩
+
 /-- **The corollary for any algorithm and any certified profile**: a theorem proved for every
 interpretation meeting `Ck` holds for the linked program over every interpretation meeting
 `Base`, with the counts pushed forward and the same workspace. -/

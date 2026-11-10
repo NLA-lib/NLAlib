@@ -212,4 +212,46 @@ theorem wp_copyLoop {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {m
     rw [List.take_of_length_le (by omega)] at hr
     simpa [hfr.eq_updBlock hr, Mem.updBlock] using hQ
 
+/-- **The `axpy` loop meets the contract of `axpy`** with the error `(1 + u) ^ 2 - 1`. -/
+theorem axpyLoop_spec {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {u : ℝ}
+    {dec : K → ℝ} (hM : StdModel u dec M) (hu : 0 ≤ u) (ok : ℕ → Prop) :
+    (axpyLoop (Op := Op) (Tst := Tst)).MeetsRel I (axpyRel dec ((1 + u) ^ 2 - 1)) (InPlace ok) := by
+  intro d ins z τ m X hnd hadm hl hr hz
+  obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hnd
+  obtain ⟨al, x, y, as, xs, ys, rfl, ha, hx, hy, rfl⟩ := Mem.readBlocks_three hr
+  obtain ⟨pre, hpre, hne⟩ := hadm.2
+  obtain ⟨rfl, hz'⟩ := List.append_inj' (s₁ := [al, x]) (t₁ := [y]) hpre rfl
+  obtain rfl : y = z := by simpa using hz'
+  obtain ⟨a, rfl⟩ := List.length_eq_one_iff.mp (Store.length_of_readBlock ha)
+  have ha' : m.store.get al.1 al.2 = some a := by
+    simpa using Store.get_of_readBlock ha Nat.zero_lt_one a
+  exact ⟨⟨rfl, rfl, rfl⟩, wp_axpyLoop hI (hne al (by simp)) (hne x (by simp))
+    (by simpa using hl) ha' hx hy
+    ⟨_, length_axpyF .., isAxpyErr_axpyF hM hu a (vec xs) (vec ys) n, rfl⟩⟩
+
+/-- **The `scal` loop meets the contract of `scal`** with the error `u`. -/
+theorem scalLoop_spec {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {u : ℝ}
+    {dec : K → ℝ} (hM : StdModel u dec M) (ok : ℕ → Prop) :
+    (scalLoop (Op := Op) (Tst := Tst)).MeetsRel I (scalRel dec u) (InPlace ok) := by
+  intro d ins z τ m X hnd hadm hl hr hz
+  obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hnd
+  obtain ⟨al, x, as, xs, rfl, ha, hx, rfl⟩ := Mem.readBlocks_two hr
+  obtain ⟨pre, hpre, hne⟩ := hadm.2
+  obtain ⟨rfl, hz'⟩ := List.append_inj' (s₁ := [al]) (t₁ := [x]) hpre rfl
+  obtain rfl : x = z := by simpa using hz'
+  obtain ⟨a, rfl⟩ := List.length_eq_one_iff.mp (Store.length_of_readBlock ha)
+  have ha' : m.store.get al.1 al.2 = some a := by
+    simpa using Store.get_of_readBlock ha Nat.zero_lt_one a
+  exact ⟨⟨rfl, rfl, rfl⟩, wp_scalLoop hI (hne al (by simp)) ha' hx
+    ⟨_, length_scalF .., isScalErr_scalF hM a (vec xs) n, rfl⟩⟩
+
+/-- **The `copy` loop meets the contract of `copy`.** -/
+theorem copyLoop_spec {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
+    (ok : ℕ → Prop) : (copyLoop (Op := Op) (Tst := Tst)).MeetsRel I copyRel (OutApart ok) := by
+  intro d ins z τ m X hnd hadm hl hr hz
+  obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hnd
+  obtain ⟨x, xs, rfl, hx, rfl⟩ := Mem.readBlocks_one hr
+  exact ⟨⟨rfl, rfl, rfl⟩, wp_copyLoop hI (hadm.2 x (by simp)) hx (by simpa [copyRel] using hz)
+    ⟨xs, Store.length_of_readBlock hx, rfl, rfl⟩⟩
+
 end NLAlib.Ops

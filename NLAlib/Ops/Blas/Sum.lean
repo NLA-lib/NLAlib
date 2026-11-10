@@ -145,6 +145,18 @@ theorem wp_sumSeq {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {md 
   · store_simp
   · simp [seqF, Nat.add_comm]
 
+/-- **Sequential summation meets the contract of `sum`** with the error
+`(1 + u) ^ (n - 1) - 1`, for every length. -/
+theorem sumSeq_spec {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {u : ℝ}
+    {dec : K → ℝ} (hM : StdModel u dec M) (hu : 0 ≤ u) (ok : ℕ → Prop) :
+    (sumSeq (Op := Op) (Tst := Tst)).MeetsRel I (sumRel dec fun n => (1 + u) ^ (n - 1) - 1)
+      (OutApart ok) := by
+  intro d ins z τ m xs hnd hadm hl hr hz
+  obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hnd
+  obtain ⟨x, xs, rfl, hx, rfl⟩ := Mem.readBlocks_one hr
+  exact ⟨⟨rfl, rfl, rfl⟩, wp_sumSeq hI (hadm.2 x (by simp)) hx (by simpa [sumRel] using hz)
+    ⟨[_], rfl, isSumErr_sumSeqF hM hu _ n, rfl⟩⟩
+
 end
 
 /-! ### Pairwise summation -/
@@ -279,6 +291,27 @@ theorem wp_sumPairwise {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
   · refine ⟨M.add v₁ v₂, IsSumErr.pairwise hM hu h2 h₁ h₂, ?_⟩
     store_simp
     rfl
+
+/-- **Pairwise summation meets the contract of `sum`** for the lengths `n` with
+`⌈log₂ n⌉ < k + 1`, over an interpretation whose `sum` meets it for `⌈log₂ n⌉ < k`: one level of
+the recursion. -/
+theorem sumPairwise_spec {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {u : ℝ}
+    {dec : K → ℝ} (hM : StdModel u dec M) (hu : 0 ≤ u) {k : ℕ}
+    (hS : IsSum dec (fun n => (1 + u) ^ Nat.clog 2 n - 1) (fun n => Nat.clog 2 n < k) I) :
+    (sumPairwise (Op := Op) (Tst := Tst)).MeetsRel I
+      (sumRel dec fun n => (1 + u) ^ Nat.clog 2 n - 1)
+      (OutApart fun n => Nat.clog 2 n < k + 1) := by
+  intro d ins z τ m xs hnd hadm hl hr hz
+  obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hnd
+  obtain ⟨x, xs, rfl, hx, rfl⟩ := Mem.readBlocks_one hr
+  have hk : Nat.clog 2 n < k + 1 := hadm.1
+  replace hx : m.store.readBlock x.1 x.2 n = some xs := hx
+  refine ⟨⟨rfl, rfl, rfl⟩, (wp_sumPairwise hI hM hu hS (fun h2 => ?_) hl hx
+    (by simpa [sumRel] using hz)).mono fun m' ⟨v, hv, e⟩ => ⟨[v], rfl, hv, e⟩⟩
+  have h1 : Nat.clog 2 (n - n / 2) < k := by
+    rw [Nat.clog_of_two_le (by norm_num) h2, show (n + 2 - 1) / 2 = n - n / 2 by omega] at hk
+    omega
+  exact ⟨lt_of_le_of_lt (Nat.clog_mono_right 2 (by omega)) h1, h1⟩
 
 end
 

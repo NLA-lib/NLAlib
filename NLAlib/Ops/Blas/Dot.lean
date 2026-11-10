@@ -180,6 +180,32 @@ theorem wp_nrm2Sum {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {u 
   simp only [Mem.upd, Store.upd_upd]
   rw [Store.pop_upd_of_lt (by omega), hfr.pop_eq]
 
+/-- **`dotSum` meets the contract of `dot`** with the error `(1 + u) (1 + es n) - 1`, over an
+interpretation whose `sum` has the error `es`. -/
+theorem dotSum_spec {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {u : ℝ}
+    {dec : K → ℝ} (hM : StdModel u dec M) {es : ℕ → ℝ} {ok : ℕ → Prop} (hS : IsSum dec es ok I)
+    (hes : ∀ n, 0 ≤ es n) :
+    (dotSum (Op := Op) (Tst := Tst)).MeetsRel I (dotRel dec fun n => (1 + u) * (1 + es n) - 1)
+      (OutApart ok) := by
+  intro d ins z τ m xs hnd hadm hl hr hz
+  obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hnd
+  obtain ⟨x, y, xs, ys, rfl, hx, hy, rfl⟩ := Mem.readBlocks_two hr
+  exact ⟨⟨rfl, rfl, rfl⟩, (wp_dotSum hI hM hS (hes n) hadm.1 hl hx hy
+    (by simpa [dotRel] using hz)).mono fun m' ⟨v, hv, e⟩ => ⟨[v], rfl, hv, e⟩⟩
+
+/-- **`nrm2Sum` meets the contract of `nrm2`**, over an interpretation whose `sum` has the error
+`es`. -/
+theorem nrm2Sum_spec {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {u : ℝ}
+    {dec : K → ℝ} (hM : StdModel u dec M) {es : ℕ → ℝ} {ok : ℕ → Prop} (hS : IsSum dec es ok I)
+    (hes : ∀ n, 0 ≤ es n) :
+    (nrm2Sum (Op := Op) (Tst := Tst)).MeetsRel I
+      (nrm2Rel dec (fun n => (1 + u) * (1 + es n) - 1) u) (OutApart ok) := by
+  intro d ins z τ m xs hnd hadm hl hr hz
+  obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hnd
+  obtain ⟨x, xs, rfl, hx, rfl⟩ := Mem.readBlocks_one hr
+  exact ⟨⟨rfl, rfl, rfl⟩, (wp_nrm2Sum hI hM hS (hes n) hadm.1 hl hx
+    (by simpa [nrm2Rel] using hz)).mono fun m' ⟨v, hv, e⟩ => ⟨[v], rfl, hv, e⟩⟩
+
 end
 
 end NLAlib.Ops

@@ -187,16 +187,23 @@ end Rules
 
 /-! ### Grounding a relational contract in operand form -/
 
-/-- **Grounding a relational contract in operand form**: on admitted, live operands, with the
-input blocks `xs` read and room for the output, the implementation fits and its run writes an
-output block related to `xs` and nothing else. -/
+/-- **The implementation `R` meets the relational contract `B`** over the interpretation `I`: on
+admitted, live operands, with the input blocks `xs` read and room for the output, it fits and its
+run writes an output block related to `xs` and nothing else. This is the certificate of an
+implementation, independent of any table. -/
+def Impl.MeetsRel (R : Impl Op Tst) (I : Interp Op Tst K) (B : BlockRel K)
+    (adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop) : Prop :=
+  ∀ (d : List ℕ) (ins : List (ℕ × ℕ)) (z : ℕ × ℕ) (τ : ℕ → K) (m : Mem K) (xs : List (List K)),
+    d.length = B.nd → adm d ins z → m.Live (ins ++ [z]) →
+    m.readBlocks ins (B.inLens d) = some xs → z.2 + B.outLen d ≤ m.store.len z.1 →
+    R.Fits d.length ins.length 1 ∧ Wp .total I τ R.body (Env.frame d (ins ++ [z]))
+      (fun m' => ∃ ys, ys.length = B.outLen d ∧ B.rel d xs ys ∧ m' = m.updBlock z ys) m
+
+/-- **Grounding a relational contract in operand form**: the induced interpretation meets the
+contract of an operation whose implementation meets it. -/
 theorem Interp.link_meets_rel {I : Interp Op₂ Tst K} {T : Table Op₁ Op₂ Tst} {o : Op₁}
     {R : Impl Op₂ Tst} (hT : T o = .inl R) {B : BlockRel K}
-    {adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop}
-    (h : ∀ d ins z τ m xs, d.length = B.nd → adm d ins z → m.Live (ins ++ [z]) →
-      m.readBlocks ins (B.inLens d) = some xs → z.2 + B.outLen d ≤ m.store.len z.1 →
-      R.Fits d.length ins.length 1 ∧ Wp .total I τ R.body (Env.frame d (ins ++ [z]))
-        (fun m' => ∃ ys, ys.length = B.outLen d ∧ B.rel d xs ys ∧ m' = m.updBlock z ys) m) :
+    {adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop} (h : R.MeetsRel I B adm) :
     (I.link T).Meets .total o (B.spec adm) := by
   refine Interp.link_meets hT ?_
   rintro d ins outs τ m ⟨z, rfl, hnd, hadm, hn⟩

@@ -634,6 +634,8 @@ public import NLAlib.Ops.Frame
 public import NLAlib.Ops.Link
 public import NLAlib.Ops.Logic
 public import NLAlib.Ops.Profile
+public import NLAlib.Ops.Profiles.Blas
+public import NLAlib.Ops.Profiles.BlasCert
 public import NLAlib.Ops.Rules
 public import NLAlib.Ops.Static
 public import NLAlib.Ops.Store

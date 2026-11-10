@@ -55,7 +55,8 @@ structure CSt (Op Tst K : Type) where
   peak : ℕ
 
 /-- The state of the core that a computable state stands for. -/
-noncomputable def CSt.toSt (c : CSt Op Tst K) : St Op Tst K := ⟨c.mem, logCount c.log, c.cur, c.peak⟩
+noncomputable def CSt.toSt (c : CSt Op Tst K) : St Op Tst K :=
+  ⟨c.mem, logCount c.log, c.cur, c.peak⟩
 
 /-- The start of a run: no counts, no scratch. -/
 def CSt.init (m : Mem K) : CSt Op Tst K := ⟨m, [], 0, 0⟩

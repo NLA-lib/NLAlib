@@ -58,38 +58,63 @@ instance : Div IExp := ⟨.div⟩
 def eval (idx : List ℕ) : IExp → Option ℕ
   | .var i => idx[i]?
   | .const n => some n
-  | .add a b => (a.eval idx).bind fun x => (b.eval idx).map fun y => x + y
-  | .mul a b => (a.eval idx).bind fun x => (b.eval idx).map fun y => x * y
-  | .sub a b => (a.eval idx).bind fun x => (b.eval idx).map fun y => x - y
-  | .div a b => (a.eval idx).bind fun x => (b.eval idx).map fun y => x / y
+  | .add a b => match a.eval idx, b.eval idx with
+    | some x, some y => some (x + y)
+    | _, _ => none
+  | .mul a b => match a.eval idx, b.eval idx with
+    | some x, some y => some (x * y)
+    | _, _ => none
+  | .sub a b => match a.eval idx, b.eval idx with
+    | some x, some y => some (x - y)
+    | _, _ => none
+  | .div a b => match a.eval idx, b.eval idx with
+    | some x, some y => some (x / y)
+    | _, _ => none
 
 @[simp] theorem eval_var (idx : List ℕ) (i : ℕ) : (var i).eval idx = idx[i]? := rfl
 @[simp] theorem eval_const (idx : List ℕ) (n : ℕ) : (const n).eval idx = some n := rfl
 @[simp] theorem eval_add (idx : List ℕ) (a b : IExp) :
-    (a + b).eval idx = (a.eval idx).bind fun x => (b.eval idx).map fun y => x + y := rfl
+    (a + b).eval idx = (a.eval idx).bind fun x => (b.eval idx).map fun y => x + y := by
+  change (IExp.add a b).eval idx = _
+  simp only [eval]
+  cases a.eval idx <;> cases b.eval idx <;> rfl
 @[simp] theorem eval_mul (idx : List ℕ) (a b : IExp) :
-    (a * b).eval idx = (a.eval idx).bind fun x => (b.eval idx).map fun y => x * y := rfl
+    (a * b).eval idx = (a.eval idx).bind fun x => (b.eval idx).map fun y => x * y := by
+  change (IExp.mul a b).eval idx = _
+  simp only [eval]
+  cases a.eval idx <;> cases b.eval idx <;> rfl
 
 @[simp] theorem eval_sub (idx : List ℕ) (a b : IExp) :
-    (a - b).eval idx = (a.eval idx).bind fun x => (b.eval idx).map fun y => x - y := rfl
+    (a - b).eval idx = (a.eval idx).bind fun x => (b.eval idx).map fun y => x - y := by
+  change (IExp.sub a b).eval idx = _
+  simp only [eval]
+  cases a.eval idx <;> cases b.eval idx <;> rfl
 @[simp] theorem eval_div (idx : List ℕ) (a b : IExp) :
-    (a / b).eval idx = (a.eval idx).bind fun x => (b.eval idx).map fun y => x / y := rfl
+    (a / b).eval idx = (a.eval idx).bind fun x => (b.eval idx).map fun y => x / y := by
+  change (IExp.div a b).eval idx = _
+  simp only [eval]
+  cases a.eval idx <;> cases b.eval idx <;> rfl
 
 /-- The values of a list of index expressions. -/
 def evalList (idx : List ℕ) : List IExp → Option (List ℕ)
   | [] => some []
-  | e :: es => (e.eval idx).bind fun x => (evalList idx es).map fun xs => x :: xs
+  | e :: es => match e.eval idx, evalList idx es with
+    | some x, some xs => some (x :: xs)
+    | _, _ => none
 
 @[simp] theorem evalList_nil (idx : List ℕ) : evalList idx [] = some [] := rfl
 @[simp] theorem evalList_cons (idx : List ℕ) (e : IExp) (es : List IExp) :
     evalList idx (e :: es) =
-      (e.eval idx).bind fun x => (evalList idx es).map fun xs => x :: xs := rfl
+      (e.eval idx).bind fun x => (evalList idx es).map fun xs => x :: xs := by
+  simp only [evalList]
+  cases e.eval idx <;> cases evalList idx es <;> rfl
 
 theorem length_of_evalList {idx : List ℕ} {es : List IExp} {xs : List ℕ}
     (h : evalList idx es = some xs) : xs.length = es.length := by
   induction es generalizing xs with
   | nil => cases h; rfl
   | cons e es ih =>
+    rw [evalList_cons] at h
     obtain ⟨x, -, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨ys, hys, rfl⟩ := Option.map_eq_some_iff.mp h
     simp [ih hys]
@@ -138,22 +163,34 @@ namespace Operand
 
 /-- The handle and the offset of an operand. -/
 def eval (ρ : Env) (a : Operand) : Option (ℕ × ℕ) :=
-  (ρ.buf[a.buf]?).bind fun b => (a.off.eval ρ.idx).map fun o => (b, o)
+  match ρ.buf[a.buf]?, a.off.eval ρ.idx with
+  | some b, some o => some (b, o)
+  | _, _ => none
 
 /-- The handles and offsets of a list of operands. -/
 def evalList (ρ : Env) : List Operand → Option (List (ℕ × ℕ))
   | [] => some []
-  | a :: as => (a.eval ρ).bind fun x => (evalList ρ as).map fun xs => x :: xs
+  | a :: as => match a.eval ρ, evalList ρ as with
+    | some x, some xs => some (x :: xs)
+    | _, _ => none
+
+theorem eval_eq (ρ : Env) (a : Operand) :
+    a.eval ρ = (ρ.buf[a.buf]?).bind fun b => (a.off.eval ρ.idx).map fun o => (b, o) := by
+  simp only [eval]
+  cases ρ.buf[a.buf]? <;> cases a.off.eval ρ.idx <;> rfl
 
 @[simp] theorem evalList_nil (ρ : Env) : evalList ρ [] = some [] := rfl
 @[simp] theorem evalList_cons (ρ : Env) (a : Operand) (as : List Operand) :
-    evalList ρ (a :: as) = (a.eval ρ).bind fun x => (evalList ρ as).map fun xs => x :: xs := rfl
+    evalList ρ (a :: as) = (a.eval ρ).bind fun x => (evalList ρ as).map fun xs => x :: xs := by
+  simp only [evalList]
+  cases a.eval ρ <;> cases evalList ρ as <;> rfl
 
 theorem length_of_evalList {ρ : Env} {as : List Operand} {xs : List (ℕ × ℕ)}
     (h : evalList ρ as = some xs) : xs.length = as.length := by
   induction as generalizing xs with
   | nil => cases h; rfl
   | cons a as ih =>
+    rw [evalList_cons] at h
     obtain ⟨x, -, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨ys, hys, rfl⟩ := Option.map_eq_some_iff.mp h
     simp [ih hys]
@@ -174,8 +211,10 @@ theorem evalList_off_of_evalList {ρ : Env} {as : List Operand} {xs : List (ℕ 
   induction as generalizing xs with
   | nil => cases h; rfl
   | cons a as ih =>
+    rw [evalList_cons] at h
     obtain ⟨x, hx, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨ys, hys, rfl⟩ := Option.map_eq_some_iff.mp h
+    rw [eval_eq] at hx
     obtain ⟨b, -, hx⟩ := Option.bind_eq_some_iff.mp hx
     obtain ⟨o, ho, rfl⟩ := Option.map_eq_some_iff.mp hx
     simp [ho, ih hys]

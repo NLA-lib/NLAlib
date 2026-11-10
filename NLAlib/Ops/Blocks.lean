@@ -318,6 +318,20 @@ theorem apply_of3_eq_some_iff {nd : ℕ} {l₁ l₂ l₃ : List ℕ → ℕ}
 
 end BlockFn
 
+/-- A list as a vector, with the default word outside. -/
+abbrev vec [Inhabited K] (xs : List K) : ℕ → K := fun k => xs.getD k default
+
+theorem vec_append_left [Inhabited K] {xs : List K} {i : ℕ} (h : i < xs.length) (ys : List K) :
+    vec (xs ++ ys) i = vec xs i := by
+  simp [vec, List.getD_eq_getElem?_getD, List.getElem?_append_left h]
+
+theorem vec_concat [Inhabited K] (xs : List K) (v : K) : vec (xs ++ [v]) xs.length = v := by
+  simp [vec, List.getD_eq_getElem?_getD]
+
+theorem vec_append_right [Inhabited K] (xs ys : List K) (i : ℕ) :
+    vec (xs ++ ys) (xs.length + i) = vec ys i := by
+  simp [vec, List.getD_eq_getElem?_getD, List.getElem?_append_right]
+
 /-! ### Relational contracts in operand form -/
 
 /-- **A block relation**: a relational contract in operand form. At `nd` dimensions `d`, the

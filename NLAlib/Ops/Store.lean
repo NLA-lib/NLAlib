@@ -555,6 +555,9 @@ def readBlocks (m : Mem K) : List (ℕ × ℕ) → List ℕ → Option (List (Li
 
 theorem updBlock_singleton (m : Mem K) (z : ℕ × ℕ) (v : K) : m.updBlock z [v] = m.upd z v := rfl
 
+@[simp] theorem upd_upd (m : Mem K) (z : ℕ × ℕ) (v w : K) : (m.upd z v).upd z w = m.upd z w := by
+  simp [upd]
+
 theorem write_eq_some {m : Mem K} {z : ℕ × ℕ} {ys : List K}
     (h : z.2 + ys.length ≤ m.store.len z.1) : m.write z ys = some (m.updBlock z ys) :=
   if_pos h

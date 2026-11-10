@@ -142,7 +142,7 @@ theorem length_mmPrefix (M : Machine K) (b c : ℕ) (As Bs : List K) (N : ℕ) :
 
 /-- **The implementation of `mm`**: a scratch cell, and for each entry the accumulation loop.
 Index variables: `a`, `b`, `c`, the offsets of `A`, `B`, `C`, then `i`, `j`, `k`. -/
-def mmImpl : Impl AOp Empty where
+def mmImpl : Impl ScalarOp Empty where
   nd := 3
   nin := 2
   nout := 1
@@ -151,7 +151,7 @@ def mmImpl : Impl AOp Empty where
       ⟨2, .var 5 + .var 6 * .var 2 + .var 7⟩ ⟨3, .const 0⟩)))
 
 /-- One entry: the accumulation loop appends entry `i c + j` to the block written so far. -/
-theorem wp_mm_entry {M : Machine K} {I : Interp AOp Empty K} (hI : IsArith M I) {md : Mode}
+theorem wp_mm_entry {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I) {md : Mode}
     {τ : ℕ → K}
     {a b c i j : ℕ} (hi : i < a) (hj : j < c) {A B C : ℕ × ℕ} {s : Store K} {p : ℕ}
     {As Bs : List K} {tb : Buf K} (hAC : A.1 ≠ C.1) (hBC : B.1 ≠ C.1)
@@ -197,7 +197,7 @@ theorem wp_mm_entry {M : Machine K} {I : Interp AOp Empty K} (hI : IsArith M I) 
 
 /-- **The exact certificate of the triple loop**: where the block function of `mmF` succeeds on
 inputs in other buffers than the output, the run of `mmImpl` is that block function. -/
-theorem mm_cert {M : Machine K} {I : Interp AOp Empty K} (hI : IsArith M I) {d : List ℕ}
+theorem mm_cert {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I) {d : List ℕ}
     {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : ℕ → K} {m m' : Mem K} (hadm : DisjointBufs d ins z)
     (h : (mmFn (mmF M)).apply d ins z τ m = some m') :
     mmImpl.Fits d.length ins.length 1 ∧
@@ -245,18 +245,18 @@ theorem abs_dec_mmF_sub_le {u : ℝ} {dec : K → ℝ} {M : Machine K} (hM : Std
 /-! ### The corollary by linking -/
 
 /-- The table: `mm` by the triple loop. -/
-def mmTable : Table MOp AOp Empty
+def mmTable : Table MOp ScalarOp Empty
   | .mm => .inl mmImpl
 
 /-- The cost of one `mm` at `[a, b, c]` in scalar operations. -/
-noncomputable def mmCost : MOp → List ℕ → Count AOp Empty
+noncomputable def mmCost : MOp → List ℕ → Count ScalarOp Empty
   | .mm, [a, b, c] =>
       (a * c) • (Count.one (.lit 0) [] + b • (Count.one .mul [] + Count.one .add []))
   | .mm, _ => 0
 
 omit [Inhabited K] in
 /-- The accounting certificate of the triple loop, by evaluating its static cost. -/
-theorem mm_accounts (I : Interp AOp Empty K) :
+theorem mm_accounts (I : Interp ScalarOp Empty K) :
     mmTable.Accounts I (fun _ _ => 0) mmCost (fun _ _ => 1) := by
   refine Table.accounts_of_static ?_ (fun o o' hT => by cases o; cases hT) I
   intro o R hT d offs hd ho
@@ -267,7 +267,7 @@ theorem mm_accounts (I : Interp AOp Empty K) :
   simp [mmImpl, dotLoop, staticCost, staticPeak, useCost, mmCost, mul_smul]
 
 /-- The induced interpretation meets the functional contract of `mm` with `f = mmF M`. -/
-theorem isMM_link {M : Machine K} {I : Interp AOp Empty K} (hI : IsArith M I) :
+theorem isMM_link {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I) :
     IsMM (mmF M) (I.link mmTable) where
   isFn := Interp.link_isFn rfl fun _ _ _ _ _ _ hadm h => mm_cert hI hadm h
   length a b c As Bs := length_mmPrefix M b c As Bs (a * c)
@@ -275,7 +275,7 @@ theorem isMM_link {M : Machine K} {I : Interp AOp Empty K} (hI : IsArith M I) :
 /-- **The concrete corollary**: `sq2` linked with the triple loop computes the rounded products
 `mmF`, within the pushed-forward counts and one scratch cell. One application of the linking
 theorem. -/
-theorem runs_sq2_link {M : Machine K} {I : Interp AOp Empty K} (hI : IsArith M I) {τ : ℕ → K}
+theorem runs_sq2_link {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I) {τ : ℕ → K}
     {n : ℕ}
     {A P S : ℕ × ℕ} {m : Mem K} {As : List K} (hAP : A.1 ≠ P.1) (hPS : P.1 ≠ S.1)
     (hA : m.store.readBlock A.1 A.2 (n * n) = some As) (hP : P.2 + n * n ≤ m.store.len P.1)

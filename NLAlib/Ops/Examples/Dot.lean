@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Ops.Examples.Arith
+public import NLAlib.Ops.Catalog.Scalar
 
 /-!
 # Example: the dot product over scalar arithmetic
@@ -29,6 +29,10 @@ public import NLAlib.Ops.Examples.Arith
 namespace NLAlib.Ops.Examples
 
 variable {K : Type}
+
+/-- The functional contract of scalar arithmetic, for a signature that is the scalar group. -/
+abbrev IsArith (M : Machine K) (I : Interp ScalarOp Empty K) : Prop :=
+  ∀ o, I.IsFn .total o (M.fn o) AnyOperands
 
 /-- The recursive summation of the rounded products `a k * b k`, `k < n`, by a machine. -/
 def dotF (M : Machine K) (a b : ℕ → K) (n : ℕ) : K :=
@@ -91,13 +95,13 @@ theorem abs_dec_dotF_sub_le {u : ℝ} {dec : K → ℝ} {M : Machine K} (hM : St
 
 /-- The accumulation loop: `z := 0; for k < n: t := x * y; z := z + t`. The operands `x`, `y` may
 depend on the loop variable. -/
-def dotLoop (n : IExp) (x y z t : Operand) : Stmt AOp Empty :=
+def dotLoop (n : IExp) (x y z t : Operand) : Stmt ScalarOp Empty :=
   .seq (.call (.lit 0) [] [] [z])
     (.loop n (.seq (.call .mul [] [x, y] [t]) (.call .add [] [z, t] [z])))
 
 /-- **The accumulation loop computes `dotF`** in the cell `z`, for a store with one scratch cell
 on top (the operand `t`), input cells in other buffers than `z`. -/
-theorem wp_dotLoop {M : Machine K} {I : Interp AOp Empty K} (hI : IsArith M I) {md : Mode}
+theorem wp_dotLoop {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I) {md : Mode}
     {τ : ℕ → K}
     {ρ : Env} {n : IExp} {x y z t : Operand} {N bx by' bz oz : ℕ} {fx fy : ℕ → ℕ} {s : Store K}
     {tb : Buf K} {p : ℕ} {a b : ℕ → K} (hn : n.eval ρ.idx = some N)
@@ -159,9 +163,6 @@ theorem wp_dotLoop {M : Machine K} {I : Interp AOp Empty K} (hI : IsArith M I) {
 
 variable [Inhabited K]
 
-/-- A list as a vector, with the default word outside. -/
-abbrev vec (xs : List K) : ℕ → K := fun k => xs.getD k default
-
 /-- The block function of `dot` at the dimension `[n]`: two blocks of length `n` to one cell. -/
 def dotFn (M : Machine K) : BlockFn K where
   inLens d := match d with
@@ -191,7 +192,7 @@ def DisjointBufs : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop := fun
 
 /-- **The implementation of `dot`** over scalar arithmetic: a scratch cell and the accumulation
 loop. Index variables: `n`, the offsets of `x`, `y`, `z`, then the loop variable. -/
-def dotImpl : Impl AOp Empty where
+def dotImpl : Impl ScalarOp Empty where
   nd := 1
   nin := 2
   nout := 1
@@ -201,7 +202,7 @@ def dotImpl : Impl AOp Empty where
 /-- **The exact certificate of `dotImpl`**: where the block function of `dot` succeeds on
 operands in other buffers than the output, the run of the implementation is the block function.
 A statement about words, with no error analysis. -/
-theorem dot_cert {M : Machine K} {I : Interp AOp Empty K} (hI : IsArith M I) {d : List ℕ}
+theorem dot_cert {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I) {d : List ℕ}
     {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : ℕ → K} {m m' : Mem K} (hadm : DisjointBufs d ins z)
     (h : (dotFn M).apply d ins z τ m = some m') :
     dotImpl.Fits d.length ins.length 1 ∧

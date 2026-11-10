@@ -474,6 +474,11 @@ theorem readBlock_updBlock_of_readBlock {s : Store K} {b off n : ℕ} {xs ys : L
   · subst hx
     exact readBlock_updBlock_self (le_len_of_readBlock h hn)
 
+/-- A block read below buffers pushed on top. -/
+theorem readBlock_append_of_lt {s : Store K} {b : ℕ} (h : b < s.length) (t : Store K)
+    (off n : ℕ) : (s ++ t).readBlock b off n = s.readBlock b off n :=
+  readBlock_congr fun _ _ => get_append_of_lt h t _
+
 end Store
 
 /-- The memory of a run: the store and the position on the tape of draws. -/

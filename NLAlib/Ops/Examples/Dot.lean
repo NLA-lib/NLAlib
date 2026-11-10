@@ -155,6 +155,9 @@ theorem wp_dotLoop {M : Machine K} {I : Interp AOp K} (hI : IsArith M I) {md : M
 
 variable [Inhabited K]
 
+/-- A list as a vector, with the default word outside. -/
+abbrev vec (xs : List K) : ℕ → K := fun k => xs.getD k default
+
 /-- The block function of `dot` at the dimension `[n]`: two blocks of length `n` to one cell. -/
 def dotFn (M : Machine K) : BlockFn K where
   inLens d := match d with

@@ -95,9 +95,6 @@ theorem AxpyErr.congr {dec : K → ℝ} {e : ℝ} {n : ℕ} {al : K} {x y z x' y
 
 variable [Inhabited K]
 
-/-- A list as a vector, with the default word outside. -/
-abbrev vec (xs : List K) : ℕ → K := fun k => xs.getD k default
-
 /-- **The relational contract of `dot`**: on blocks in other buffers than the output cell, the
 cell receives a dot product up to the relative error `ε n`. Readability of the operands is needed
 only for success. -/

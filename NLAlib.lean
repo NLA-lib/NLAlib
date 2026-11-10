@@ -626,6 +626,7 @@ public import NLAlib.Ops.Catalog.Compare
 public import NLAlib.Ops.Catalog.Isotropic
 public import NLAlib.Ops.Catalog.Random
 public import NLAlib.Ops.Catalog.Scalar
+public import NLAlib.Ops.Catalog.Tagged
 public import NLAlib.Ops.Cert
 public import NLAlib.Ops.Contract
 public import NLAlib.Ops.Counted
@@ -643,6 +644,7 @@ public import NLAlib.Ops.Examples.HutchLinked
 public import NLAlib.Ops.Examples.Liberal
 public import NLAlib.Ops.Examples.Loops
 public import NLAlib.Ops.Examples.MatMul
+public import NLAlib.Ops.Examples.Mixed
 public import NLAlib.Ops.Examples.Noisy
 public import NLAlib.Ops.Examples.NoisyLinked
 public import NLAlib.Ops.Examples.NoisyMath

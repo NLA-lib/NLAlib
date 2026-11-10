@@ -120,6 +120,7 @@ macro_rules
       first
         | (intro v hv
            cases Option.some.inj hv
+           clear hv
            try simp only [storeNF, Mem.advance_zero, Mem.updBlock_singleton])
         | (try simp only [Mem.advance_zero]))
   | `(tactic| wp_intro $ids*) => `(tactic|

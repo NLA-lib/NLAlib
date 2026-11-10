@@ -70,6 +70,39 @@ they state a signature; where they are not, this list wins):
 
 ---
 
+## Phase B status (2026-11-10)
+
+* **All statements of `Logic/` are proved**; no `sorry` in `NLAlib/Ops`. `RunsFromWL` is the
+  core's (`Counted.lean`, merged from `feat/ops-core` @a2e158c0); `Logic/Count.lean` keeps
+  `RunsFromW.of_writes`, the closed forms and `count_eval`.
+* **Tactics implemented**: `step` (named call step, shape by the outputs, `Writes.seq_le` /
+  `then_` / `mono` / `wp`), `kept` (a block or cell found at this or an earlier memory, across
+  frames, agreements below a handle, as a sub-block, or a cell as a block of one: frame-carry
+  is lazy, where the fact is used), `reads` (the blocks a call reads, one `kept` each),
+  `frame_facts` (lengths through frames and agreements), `room` (live handles and room),
+  `cert_intro` (header as the builder's; names `μ`, `τ`, `hadm`, `hl`, `hz`, `h<x>`),
+  `count_eval` (static and pushed-forward counts in closed form; simp set `countNF` in the
+  core's `Attr.lean`), `idx` (omega, product generation `idx_prod`, `idxNF`; `idx!` adds
+  `nlinarith`), `fp_mem`, `fp_sub`, `disjoint`, `frame`. Still stubs: `checkpoint`, `alloc as`,
+  `loop_inv`, `keep` (the examples use `writes_alloc`, `writes_loop`, the fill rules and `kept`
+  directly); `decode` is provisional; the printer (D17) is not built yet.
+* **Examples re-proved** (next to the old proofs, which are not deleted yet):
+  `Examples/GemmW.lean` (`gemm_spec_w`, 18 lines, relational 2-D fill),
+  `Examples/MgsW.lean` (`mgs_spec_w`, 28 lines), `Examples/CgsW.lean` (`cgsCol_w` 52 lines,
+  `cgs_spec_w` 47 lines). They replace, line for line: gemm `GemmInv`, `div_mod_of_lt`,
+  `wp_gemm`, `gemm_spec` (69 lines); MGS `MgsInv`, `wp_mgs_step`, `wp_mgs`, `mgs_spec` (96);
+  CGS `CgsBuf`, `cgsEnv`, `wp_cgsDots`, `wp_cgsProj`, `cgsColFp`, `wp_cgsCol`, `cgsH`,
+  `cgsH_injective`, `CgsRounded`, `wp_cgs`, `injective_handles`, `cgs_spec` (289).
+  Totals in the README's count (run proofs + contract and certificate): gemm 134 → 83,
+  MGS 172 → 104, CGS 410 → 220. The rest is statements that do not change (contracts,
+  postconditions, counts and peaks, the abstract theorem, `CgsCols`).
+* **Linked corollaries**: the nine findings of `#ops_lint` rule (d) are closed (closed-form
+  counts by `count_eval`); the scan reports one remaining finding, `Impl.meets_of_writes`, a
+  rule of the logic layer that the scan now sees because examples import `Logic/` (the scan's
+  scope should exclude `NLAlib.Ops.Logic`).
+
+---
+
 ## 0. Summary
 
 **The diagnosis** (README "For the logic layer", measured): calls are one line already

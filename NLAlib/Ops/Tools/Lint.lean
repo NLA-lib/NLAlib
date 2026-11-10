@@ -39,8 +39,9 @@ A **headline** is a theorem whose conclusion contains `Runs`, `RunsW`, `RunsL`, 
   implementation that a table or profile uses is exempt.
 
 Commands: `#ops_lint c₁ c₂ …` (an error per violation, an information if it passes) and
-`#ops_lint_scan` (all headlines of the modules `NLAlib.Ops.*` other than the core files and the
-tools; one line per theorem; an information).
+`#ops_lint_scan` (all headlines of the modules `NLAlib.Ops.*` other than the core files, the
+program logic `NLAlib.Ops.Logic.*` (generic rules, not headlines) and the tools; one line per
+theorem; an information).
 -/
 
 namespace NLAlib.Ops.Tools.Lint
@@ -402,12 +403,14 @@ def lintDecl (ctx : Ctx) (n : Name) : MetaM (Array (String × String)) := do
           out := out.push ("f", s!"the algorithm's tree calls the ξ-taking primitive `{c}`")
     return out.toList.eraseDups.toArray
 
-/-- The headline theorems of the library modules other than the core and the tools. -/
+/-- The headline theorems of the library modules other than the core, the program logic and the
+tools. -/
 def scanTargets : MetaM (Array Name) := do
   let env ← getEnv
   let mut out := #[]
   for mod in env.header.moduleNames do
-    if !(`NLAlib.Ops).isPrefixOf mod || (`NLAlib.Ops.Tools).isPrefixOf mod then continue
+    if !(`NLAlib.Ops).isPrefixOf mod || (`NLAlib.Ops.Tools).isPrefixOf mod ||
+      (`NLAlib.Ops.Logic).isPrefixOf mod then continue
     if mod.getNumParts ≤ 3 then continue
     for n in ← modConsts mod do
       let some (.thmInfo ci) := env.find? n | continue

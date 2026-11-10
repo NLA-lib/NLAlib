@@ -32,16 +32,9 @@ theorem mgs_spec_w {M : Machine K} {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ �
     {J : Interp Op Tst K} (hS : IsScalar M J) (hJ : IsBlas1 dec ε ok J)
     (hneg : ∀ a, dec (M.neg a) = -dec a) :
     (mgsImpl (Op := Op) (Tst := Tst)).Meets J .total ((mgsRel dec ε).spec (MgsOperands ok)) := by
-  refine Impl.meets_of_writes fun d ins outs τ μ X hnd hadm hl hr _ hz => ?_
-  obtain ⟨n, k, rfl⟩ := List.length_eq_two.mp hnd
-  obtain ⟨hok, Q, w, R, rfl, rfl, hQw, hQR, hwR⟩ := hadm
-  obtain ⟨Q', w', qs, ws, e, hq, hw, rfl⟩ := Mem.readBlocks_two hr
-  cases e
-  simp only [storeNF, Mem.room_cons, List.headD_cons] at hz hok
-  obtain ⟨hwz, hRz, -⟩ := hz
-  obtain ⟨hQl, hwl, -, hRl⟩ : Q.1 < μ.store.length ∧ w.1 < μ.store.length ∧
-      w.1 < μ.store.length ∧ R.1 < μ.store.length := by simpa using hl
-  refine ⟨⟨rfl, rfl, rfl⟩, writes_alloc rfl fun s₁ hs₁ ht hB => ?_⟩
+  cert_intro [n, k] (Q, x) → (w, R) reads (qs, ws)
+  obtain ⟨hok, rfl, hQw, hQR, hwR⟩ := hadm
+  refine writes_alloc rfl fun s₁ hs₁ ht hB => ?_
   refine Writes.seq_le (writes_loop rfl
     (fun j => Store.inBlock w.1 w.2 n ⊔ Store.inBlock R.1 R.2 j ⊔ Store.inBuf μ.store.length)
     (fun j _ => by fp_sub)

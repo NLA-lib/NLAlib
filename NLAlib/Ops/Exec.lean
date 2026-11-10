@@ -1,0 +1,348 @@
+/-
+Copyright (c) 2026 NLAlib contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: NLAlib contributors
+-/
+module
+
+public import Mathlib.Algebra.BigOperators.Finsupp.Basic
+public import Mathlib.Data.Finsupp.Order
+public import NLAlib.Ops.Syntax
+
+/-!
+# Interpretations and the evaluator
+
+An interpretation `NLAlib.Ops.Interp Op K` gives the meaning of every operation: the effect of a
+call on the memory (it is given the tape), the Boolean of a test, the number of an index use.
+
+Two evaluators:
+
+* `NLAlib.Ops.run`: the memory after a run. This is the meaning of a program.
+* `NLAlib.Ops.exec`: the same run with its accounting. The evaluator, not the interpretation,
+  fixes the accounting: every use of an operation counts one at the key
+  `(operation, dimensions)` (`NLAlib.Ops.Count`), a call raises the peak by the workspace that
+  the access model declares for it, and `alloc` by its length. `NLAlib.Ops.exec_mem`: the two
+  agree on the memory, failures included.
+
+A call that changes the shape of the store fails (`NLAlib.Ops.Interp.callS`).
+-/
+
+@[expose] public section
+
+namespace NLAlib.Ops
+
+variable {Op K : Type}
+
+/-- **An interpretation**: the meaning of every operation. `call` is the effect of a call at its
+dimensions, input and output operands on the memory, given the tape; `test` and `index` are the
+Boolean and the number an operation returns when it is used as a test or as an index. -/
+structure Interp (Op K : Type) where
+  /-- The effect of a call. -/
+  call : Op → List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → (ℕ → K) → Mem K → Option (Mem K)
+  /-- The Boolean of a test. -/
+  test : Op → List ℕ → List (ℕ × ℕ) → Mem K → Option Bool
+  /-- The number of an index use. -/
+  index : Op → List (ℕ × ℕ) → Mem K → Option ℕ
+
+/-- The call of the evaluator: the call of the interpretation, failing if it changes the shape of
+the store. -/
+def Interp.callS (I : Interp Op K) (o : Op) (d : List ℕ) (ins outs : List (ℕ × ℕ)) (τ : ℕ → K)
+    (m : Mem K) : Option (Mem K) :=
+  (I.call o d ins outs τ m).bind fun m' =>
+    if m'.store.shape = m.store.shape then some m' else none
+
+theorem Interp.shape_of_callS {I : Interp Op K} {o : Op} {d : List ℕ} {ins outs : List (ℕ × ℕ)}
+    {τ : ℕ → K} {m m' : Mem K} (h : I.callS o d ins outs τ m = some m') :
+    m'.store.shape = m.store.shape := by
+  obtain ⟨m₁, -, h⟩ := Option.bind_eq_some_iff.mp h
+  split_ifs at h with hs
+  cases h
+  exact hs
+
+/-- Bounded iteration. -/
+def iter {σ : Type} (f : ℕ → σ → Option σ) : ℕ → σ → Option σ
+  | 0, s => some s
+  | k + 1, s => (iter f k s).bind (f k)
+
+/-- Iteration while a test holds, at most `k` times; `tick` is applied after each test. -/
+def whileIter {σ : Type} (test : σ → Option Bool) (tick : σ → σ) (body : σ → Option σ) :
+    ℕ → σ → Option σ
+  | 0, s => some s
+  | k + 1, s => (test s).bind fun b =>
+      if b then (body (tick s)).bind (whileIter test tick body k) else some (tick s)
+
+/-- **The run**: the memory after a program, in the environment `ρ`, under the interpretation `I`
+and the tape `τ`; `none` is failure. -/
+def run (I : Interp Op K) (τ : ℕ → K) : Stmt Op → Env → Mem K → Option (Mem K)
+  | .skip, _, m => some m
+  | .abort, _, _ => none
+  | .seq s t, ρ, m => (run I τ s ρ m).bind (run I τ t ρ)
+  | .call o ds ins outs, ρ, m =>
+      (IExp.evalList ρ.idx ds).bind fun d => (Operand.evalList ρ ins).bind fun a =>
+        (Operand.evalList ρ outs).bind fun b => I.callS o d a b τ m
+  | .ite o ds ins t e, ρ, m =>
+      (IExp.evalList ρ.idx ds).bind fun d => (Operand.evalList ρ ins).bind fun a =>
+        (I.test o d a m).bind fun c => if c then run I τ t ρ m else run I τ e ρ m
+  | .whileFuel fuel o ds ins body, ρ, m =>
+      (fuel.eval ρ.idx).bind fun k => (IExp.evalList ρ.idx ds).bind fun d =>
+        (Operand.evalList ρ ins).bind fun a =>
+          whileIter (I.test o d a) id (run I τ body ρ) k m
+  | .bindIdx o ins bound body, ρ, m =>
+      (Operand.evalList ρ ins).bind fun a => (bound.eval ρ.idx).bind fun B =>
+        (I.index o a m).bind fun v => if v ≤ B then run I τ body (ρ.pushIdx v) m else none
+  | .alloc len body, ρ, m =>
+      (len.eval ρ.idx).bind fun n =>
+        (run I τ body (ρ.pushBuf m.store.length) ⟨m.store.push n, m.pos⟩).map fun m' =>
+          ⟨m'.store.pop, m'.pos⟩
+  | .loop n body, ρ, m =>
+      (n.eval ρ.idx).bind fun k => iter (fun i m => run I τ body (ρ.pushIdx i) m) k m
+  | .frame ds args body, ρ, m =>
+      (IExp.evalList ρ.idx ds).bind fun d => (Operand.evalList ρ args).bind fun a =>
+        run I τ body (Env.frame d a) m
+
+/-- **Counts**: the number of uses of each operation at each list of dimensions. -/
+abbrev Count (Op : Type) := Op × List ℕ →₀ ℕ
+
+/-- One use of the operation `o` at the dimensions `d`. -/
+noncomputable def Count.one (o : Op) (d : List ℕ) : Count Op := Finsupp.single (o, d) 1
+
+/-- The state of a counted run: the memory, the counts, the live scratch cells and their peak. -/
+structure St (Op K : Type) where
+  /-- The memory. -/
+  mem : Mem K
+  /-- The counts so far. -/
+  cost : Count Op
+  /-- The scratch cells now allocated. -/
+  cur : ℕ
+  /-- The peak of scratch cells, workspaces of operations included. -/
+  peak : ℕ
+
+/-- The state at the start of a run: no counts, no scratch. -/
+def St.init (m : Mem K) : St Op K := ⟨m, 0, 0, 0⟩
+
+/-- Count one use of `o` at `d`. -/
+noncomputable def St.tick (st : St Op K) (o : Op) (d : List ℕ) : St Op K :=
+  ⟨st.mem, st.cost + Count.one o d, st.cur, st.peak⟩
+
+/-- **The counted run.** `W o d` is the workspace, in cells, that the access model declares for a
+call of `o` at the dimensions `d`. -/
+noncomputable def exec (I : Interp Op K) (W : Op → List ℕ → ℕ) (τ : ℕ → K) :
+    Stmt Op → Env → St Op K → Option (St Op K)
+  | .skip, _, st => some st
+  | .abort, _, _ => none
+  | .seq s t, ρ, st => (exec I W τ s ρ st).bind (exec I W τ t ρ)
+  | .call o ds ins outs, ρ, st =>
+      (IExp.evalList ρ.idx ds).bind fun d => (Operand.evalList ρ ins).bind fun a =>
+        (Operand.evalList ρ outs).bind fun b => (I.callS o d a b τ st.mem).map fun m' =>
+          ⟨m', st.cost + Count.one o d, st.cur, max st.peak (st.cur + W o d)⟩
+  | .ite o ds ins t e, ρ, st =>
+      (IExp.evalList ρ.idx ds).bind fun d => (Operand.evalList ρ ins).bind fun a =>
+        (I.test o d a st.mem).bind fun c =>
+          if c then exec I W τ t ρ (st.tick o d) else exec I W τ e ρ (st.tick o d)
+  | .whileFuel fuel o ds ins body, ρ, st =>
+      (fuel.eval ρ.idx).bind fun k => (IExp.evalList ρ.idx ds).bind fun d =>
+        (Operand.evalList ρ ins).bind fun a =>
+          whileIter (fun s => I.test o d a s.mem) (fun s => s.tick o d) (exec I W τ body ρ) k st
+  | .bindIdx o ins bound body, ρ, st =>
+      (Operand.evalList ρ ins).bind fun a => (bound.eval ρ.idx).bind fun B =>
+        (I.index o a st.mem).bind fun v =>
+          if v ≤ B then exec I W τ body (ρ.pushIdx v) (st.tick o []) else none
+  | .alloc len body, ρ, st =>
+      (len.eval ρ.idx).bind fun n =>
+        (exec I W τ body (ρ.pushBuf st.mem.store.length)
+          ⟨⟨st.mem.store.push n, st.mem.pos⟩, st.cost, st.cur + n,
+            max st.peak (st.cur + n)⟩).map fun st' =>
+          ⟨⟨st'.mem.store.pop, st'.mem.pos⟩, st'.cost, st.cur, st'.peak⟩
+  | .loop n body, ρ, st =>
+      (n.eval ρ.idx).bind fun k => iter (fun i st => exec I W τ body (ρ.pushIdx i) st) k st
+  | .frame ds args body, ρ, st =>
+      (IExp.evalList ρ.idx ds).bind fun d => (Operand.evalList ρ args).bind fun a =>
+        exec I W τ body (Env.frame d a) st
+
+/-! ### The counted run and the run agree on the memory -/
+
+theorem Option.map_bind_of_comm {α β α' β' : Type} {g : α → α'} {g' : β → β'}
+    {f : α → Option β} {f' : α' → Option β'} (x : Option α)
+    (h : ∀ a, (f a).map g' = f' (g a)) : (x.bind f).map g' = (x.map g).bind f' := by
+  cases x with
+  | none => rfl
+  | some a => exact h a
+
+theorem iter_map {σ σ' : Type} {g : σ → σ'} {f : ℕ → σ → Option σ} {f' : ℕ → σ' → Option σ'}
+    (h : ∀ i a, (f i a).map g = f' i (g a)) (k : ℕ) (s : σ) :
+    (iter f k s).map g = iter f' k (g s) := by
+  induction k with
+  | zero => rfl
+  | succ k ih =>
+    simp only [iter]
+    rw [Option.map_bind_of_comm _ (h k), ih]
+
+theorem whileIter_map {σ σ' : Type} {g : σ → σ'} {test : σ → Option Bool} {tick : σ → σ}
+    {body : σ → Option σ} {test' : σ' → Option Bool} {body' : σ' → Option σ'}
+    (ht : ∀ a, test a = test' (g a)) (hk : ∀ a, g (tick a) = g a)
+    (hb : ∀ a, (body a).map g = body' (g a)) (k : ℕ) (s : σ) :
+    (whileIter test tick body k s).map g = whileIter test' id body' k (g s) := by
+  induction k generalizing s with
+  | zero => rfl
+  | succ k ih =>
+    simp only [whileIter, ← ht]
+    cases test s with
+    | none => rfl
+    | some b =>
+      cases b with
+      | false => simp [hk]
+      | true =>
+        simp only [Option.bind_some, if_true, id]
+        rw [Option.map_bind_of_comm _ (fun a => ih a), hb, hk]
+
+/-- **The counted run and the run end in the same memory, or both fail.** -/
+theorem exec_mem (I : Interp Op K) (W : Op → List ℕ → ℕ) (τ : ℕ → K) (s : Stmt Op) (ρ : Env)
+    (st : St Op K) : (exec I W τ s ρ st).map (·.mem) = run I τ s ρ st.mem := by
+  induction s generalizing ρ st with
+  | skip => rfl
+  | abort => rfl
+  | seq s t ihs iht =>
+    simp only [exec, run]
+    rw [Option.map_bind_of_comm _ (fun a => iht ρ a), ihs]
+  | call o ds ins outs =>
+    simp only [exec, run]
+    cases IExp.evalList ρ.idx ds <;> cases Operand.evalList ρ ins <;>
+      cases Operand.evalList ρ outs <;> simp [Option.map_map, Function.comp_def]
+  | ite o ds ins t e iht ihe =>
+    simp only [exec, run]
+    cases IExp.evalList ρ.idx ds <;> cases Operand.evalList ρ ins <;> try rfl
+    rename_i d a
+    simp only [Option.bind_some]
+    cases I.test o d a st.mem with
+    | none => rfl
+    | some c => cases c <;> simp [iht, ihe, St.tick]
+  | whileFuel fuel o ds ins body ih =>
+    simp only [exec, run]
+    cases fuel.eval ρ.idx <;> cases IExp.evalList ρ.idx ds <;> cases Operand.evalList ρ ins <;>
+      try rfl
+    rename_i k d a
+    exact whileIter_map (g := fun x : St Op K => x.mem) (tick := fun s => s.tick o d)
+      (test' := I.test o d a) (fun _ => rfl) (fun _ => rfl) (fun a => ih ρ a) k st
+  | bindIdx o ins bound body ih =>
+    simp only [exec, run]
+    cases Operand.evalList ρ ins <;> cases bound.eval ρ.idx <;> try rfl
+    rename_i a B
+    simp only [Option.bind_some]
+    cases I.index o a st.mem with
+    | none => rfl
+    | some v => by_cases hv : v ≤ B <;> simp [hv, ih, St.tick]
+  | alloc len body ih =>
+    simp only [exec, run]
+    cases len.eval ρ.idx with
+    | none => rfl
+    | some n =>
+      have h := ih (ρ.pushBuf st.mem.store.length)
+        ⟨⟨st.mem.store.push n, st.mem.pos⟩, st.cost, st.cur + n, max st.peak (st.cur + n)⟩
+      simp only [Option.bind_some, ← h, Option.map_map]
+      rfl
+  | loop n body ih =>
+    simp only [exec, run]
+    cases n.eval ρ.idx with
+    | none => rfl
+    | some k => exact iter_map (fun i a => ih (ρ.pushIdx i) a) _ _
+  | frame ds args body ih =>
+    simp only [exec, run]
+    cases IExp.evalList ρ.idx ds <;> cases Operand.evalList ρ args <;> try rfl
+    exact ih _ _
+
+/-- A counted run succeeds exactly when the run does. -/
+theorem exec_eq_some_of_run {I : Interp Op K} {τ : ℕ → K} {s : Stmt Op} {ρ : Env} {m m' : Mem K}
+    (h : run I τ s ρ m = some m') (W : Op → List ℕ → ℕ) (st : St Op K) (hm : st.mem = m) :
+    ∃ st', exec I W τ s ρ st = some st' ∧ st'.mem = m' := by
+  have e := exec_mem I W τ s ρ st
+  rw [hm, h] at e
+  obtain ⟨st', h1, h2⟩ := Option.map_eq_some_iff.mp e
+  exact ⟨st', h1, h2⟩
+
+theorem run_of_exec {I : Interp Op K} {W : Op → List ℕ → ℕ} {τ : ℕ → K} {s : Stmt Op} {ρ : Env}
+    {st st' : St Op K} (h : exec I W τ s ρ st = some st') :
+    run I τ s ρ st.mem = some st'.mem := by
+  rw [← exec_mem I W τ s ρ st, h]
+  rfl
+
+/-! ### A run keeps the shape of the store -/
+
+theorem iter_rel {σ : Type} {R : σ → σ → Prop} (hrefl : ∀ a, R a a)
+    (htrans : ∀ a b c, R a b → R b c → R a c) {f : ℕ → σ → Option σ}
+    (h : ∀ i a b, f i a = some b → R a b) {k : ℕ} {s s' : σ} (hk : iter f k s = some s') :
+    R s s' := by
+  induction k generalizing s' with
+  | zero => cases hk; exact hrefl _
+  | succ k ih =>
+    obtain ⟨a, ha, hb⟩ := Option.bind_eq_some_iff.mp hk
+    exact htrans _ _ _ (ih ha) (h k a s' hb)
+
+theorem whileIter_rel {σ : Type} {R : σ → σ → Prop} (hrefl : ∀ a, R a a)
+    (htrans : ∀ a b c, R a b → R b c → R a c) {test : σ → Option Bool} {tick : σ → σ}
+    {body : σ → Option σ} (ht : ∀ a, R a (tick a)) (h : ∀ a b, body a = some b → R a b) {k : ℕ}
+    {s s' : σ} (hk : whileIter test tick body k s = some s') : R s s' := by
+  induction k generalizing s with
+  | zero => cases hk; exact hrefl _
+  | succ k ih =>
+    obtain ⟨b, -, hb⟩ := Option.bind_eq_some_iff.mp hk
+    cases b with
+    | false =>
+      simp only [Bool.false_eq_true, if_false, Option.some.injEq] at hb
+      exact hb ▸ ht s
+    | true =>
+      simp only [if_true] at hb
+      obtain ⟨a, ha, hb⟩ := Option.bind_eq_some_iff.mp hb
+      exact htrans _ _ _ (ht s) (htrans _ _ _ (h _ _ ha) (ih hb))
+
+/-- **A run keeps the shape of the store**: buffers are neither created, resized nor freed behind
+the program's back. -/
+theorem run_shape {I : Interp Op K} {τ : ℕ → K} {s : Stmt Op} {ρ : Env} {m m' : Mem K}
+    (h : run I τ s ρ m = some m') : m'.store.shape = m.store.shape := by
+  induction s generalizing ρ m m' with
+  | skip => cases h; rfl
+  | abort => cases h
+  | seq s t ihs iht =>
+    obtain ⟨a, ha, hb⟩ := Option.bind_eq_some_iff.mp h
+    exact (iht hb).trans (ihs ha)
+  | call o ds ins outs =>
+    obtain ⟨d, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨b, -, h⟩ := Option.bind_eq_some_iff.mp h
+    exact Interp.shape_of_callS h
+  | ite o ds ins t e iht ihe =>
+    obtain ⟨d, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨c, -, h⟩ := Option.bind_eq_some_iff.mp h
+    cases c
+    · exact ihe h
+    · exact iht h
+  | whileFuel fuel o ds ins body ih =>
+    obtain ⟨k, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨d, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
+    exact whileIter_rel (R := fun a b : Mem K => b.store.shape = a.store.shape) (fun _ => rfl)
+      (fun _ _ _ h1 h2 => h2.trans h1) (fun _ => rfl) (fun _ _ hb => ih hb) h
+  | bindIdx o ins bound body ih =>
+    obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨B, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨v, -, h⟩ := Option.bind_eq_some_iff.mp h
+    split_ifs at h
+    exact ih h
+  | alloc len body ih =>
+    obtain ⟨n, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨m₂, h₂, rfl⟩ := Option.map_eq_some_iff.mp h
+    have := ih h₂
+    simp only [Store.push, Store.shape_append] at this
+    change m₂.store.pop.shape = m.store.shape
+    rw [Store.shape_pop, this]
+    simp [Store.shape]
+  | loop n body ih =>
+    obtain ⟨k, -, h⟩ := Option.bind_eq_some_iff.mp h
+    exact iter_rel (R := fun a b : Mem K => b.store.shape = a.store.shape) (fun _ => rfl)
+      (fun _ _ _ h1 h2 => h2.trans h1) (fun _ _ _ hb => ih hb) h
+  | frame ds args body ih =>
+    obtain ⟨d, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
+    exact ih h
+
+end NLAlib.Ops

@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.Ops.Cert
 public import NLAlib.Ops.Profile
 public import NLAlib.Ops.TapeLaw
 
@@ -17,6 +18,8 @@ these statements transfer from an algorithm to the linked program by lemmas prov
 
 ## Main results
 
+* `NLAlib.Ops.Impl.Meets.runsLaw`: the bridge from the certificate of a program to its law-level
+  statement.
 * `NLAlib.Ops.RunsLaw`: the shape of a law-level theorem. For every sample the run succeeds
   within the counts and the workspace with an output `X ω`, and the random variable `X` satisfies
   a statement `Φ` (an expectation, a variance, a tail bound).
@@ -65,6 +68,49 @@ theorem runVal_link {E : Type} [Zero E] (I : Interp Lo Tst K) (T : Table Op Lo T
     (s : Stmt Op Tst) (ρ : Env) (m : Mem K) (obs : Mem K → E) :
     runVal I τ (s.link T) ρ m obs = runVal (I.link T) τ s ρ m obs := by
   rw [runVal, run_link, runVal]
+
+/-- Consequence for a law-level statement: a weaker postcondition. -/
+theorem RunsLaw.mono {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {ξ : Ω → Tape K}
+    {s : Stmt Op Tst} {ρ : Env} {m : Mem K} {B B' : Count Op Tst} {M M' : ℕ}
+    {Q Q' : α → Mem K → Prop} {Φ : (Ω → α) → Prop} (h : RunsLaw I W ξ s ρ m B M Q Φ)
+    (hB : B ≤ B') (hM : M ≤ M') (hQ : ∀ x m', Q x m' → Q' x m') :
+    RunsLaw I W ξ s ρ m B' M' Q' Φ := by
+  obtain ⟨X, hX, hΦ⟩ := h
+  exact ⟨X, fun ω => (hX ω).mono hB hM (hQ _), hΦ⟩
+
+/-- **The bridge, law-level form.** A certificate in total mode in operand form gives the
+law-level statement of the tree. For every sample the run terminates within its static counts and
+workspace and writes output blocks related to the inputs and to the window of the tape of the
+sample; `X ω` is the observable `obs` of these blocks. So every property `Φ` of a random variable
+that the relation implies, sample by sample, holds of `X`. The mathematics of a randomized
+algorithm is the proof of `hΦ`, from the relation and the law of the tape; no program is in it. -/
+theorem Impl.Meets.runsLaw {R : Impl Op Tst} {I : Interp Op Tst K} {B : BlockRel K}
+    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (h : R.Meets I .total (B.spec adm))
+    (W : Op → List ℕ → ℕ) (ξ : Ω → Tape K) (obs : List (List K) → α) {d : List ℕ}
+    {ins outs : List (ℕ × ℕ)} {m : Mem K} {xs : List (List K)} (hnd : d.length = B.nd)
+    (hadm : adm d ins outs) (hl : m.Live (ins ++ outs))
+    (hr : m.readBlocks ins (B.inLens d) = some xs)
+    (hdom : ∀ ω, B.dom d xs ((ξ ω).window B.stream m.pos (B.win d)))
+    (hz : m.Room outs (B.outLens d)) {Φ : (Ω → α) → Prop}
+    (hΦ : ∀ X : Ω → α, (∀ ω, ∃ ys, X ω = obs ys ∧ ys.map List.length = B.outLens d ∧
+      B.rel d xs ((ξ ω).window B.stream m.pos (B.win d)) ys) → Φ X) :
+    RunsLaw I W ξ R.body (Env.frame d (ins ++ outs)) m
+      (staticCost R.body (d ++ (ins ++ outs).map Prod.snd))
+      (staticPeak W R.body (d ++ (ins ++ outs).map Prod.snd))
+      (fun x m' => ∃ ys, obs ys = x ∧ ys.map List.length = B.outLens d ∧
+        m' = (m.updBlocks outs ys).advance (B.win d)) Φ := by
+  have key : ∀ ω, ∃ ys, (ys.map List.length = B.outLens d ∧
+      B.rel d xs ((ξ ω).window B.stream m.pos (B.win d)) ys) ∧
+      Runs I W (ξ ω) R.body (Env.frame d (ins ++ outs)) m
+        (staticCost R.body (d ++ (ins ++ outs).map Prod.snd))
+        (staticPeak W R.body (d ++ (ins ++ outs).map Prod.snd))
+        (fun m' => m' = (m.updBlocks outs ys).advance (B.win d)) := fun ω => by
+    obtain ⟨st', h1, h2, h3, ys, hlen, hrel, e⟩ :=
+      h.runs_rel W (τ := ξ ω) hnd hadm hl hr (hdom ω) hz
+    exact ⟨ys, ⟨hlen, hrel⟩, st', h1, h2, h3, e⟩
+  choose Y hY hruns using key
+  exact ⟨fun ω => obs (Y ω), fun ω => (hruns ω).mono le_rfl le_rfl
+    fun m' e => ⟨Y ω, rfl, (hY ω).1, e⟩, hΦ _ fun ω => ⟨Y ω, rfl, hY ω⟩⟩
 
 namespace Profile.Certifies
 

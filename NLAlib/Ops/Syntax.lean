@@ -13,7 +13,12 @@ public import NLAlib.Ops.Store
 A program `NLAlib.Ops.Stmt Op` is a first-order tree over the operation names `Op`. Its only
 effects are calls of operations. An operation is used in one of three ways: `call` (it writes
 cells), a test (`ite`, `whileFuel`: it returns a Boolean) or an index (`bindIdx`: it returns a
-number, and the run fails if the number exceeds the bound). There is no Lean function in a tree:
+number, and the run fails if the conversion fails or the number exceeds the bound).
+
+`whileFuel` is the loop of an iteration with a stopping test: it binds the round index in the
+test and in the body, stops at the cap without failing, and hands the number of rounds done to
+its continuation. The strict loop, which fails if the test still holds at the cap, is
+`NLAlib.Ops.Stmt.whileStrict`. There is no Lean function in a tree:
 index variables and buffer variables are positions in the environment (`NLAlib.Ops.Env`), a
 binder appends to it, and sizes are index expressions `NLAlib.Ops.IExp`. So one tree serves all
 sizes.
@@ -236,10 +241,13 @@ inductive Stmt (Op Tst : Type) where
   | call (o : Op) (dims : List IExp) (ins outs : List Operand)
   /-- Branch on the Boolean returned by the test `q`. -/
   | ite (q : Tst) (dims : List IExp) (ins : List Operand) (t e : Stmt Op Tst)
-  /-- Run `body` while the test `q` returns true; the run fails if the test still holds after
-  `fuel` runs of the body. -/
+  /-- A counted loop with a test that exits early. Round `i` (a new index variable, in the
+  dimensions and operands of the test and in `body`) evaluates the test `q` and runs `body` if it
+  returns true; the loop ends at the first round whose test returns false, or after `fuel`
+  rounds, without a further test. Then `k` runs with the new index variable bound to the number
+  of rounds done. -/
   | whileFuel (fuel : IExp) (q : Tst) (dims : List IExp) (ins : List Operand)
-      (body : Stmt Op Tst)
+      (body k : Stmt Op Tst)
   /-- Bind a new index variable to the number returned by the index query `q`; the run fails
   if the number exceeds `bound`. -/
   | bindIdx (q : Tst) (ins : List Operand) (bound : IExp) (body : Stmt Op Tst)
@@ -262,6 +270,14 @@ def ifZero (e : IExp) (body : Stmt Op Tst) : Stmt Op Tst := .loop (.const 1 - e)
 
 /-- Run `body` if the size `e` is positive: a loop of `1 - (1 - e)` rounds. -/
 def ifPos (e : IExp) (body : Stmt Op Tst) : Stmt Op Tst := .loop (.const 1 - (.const 1 - e)) body
+
+/-- **The strict loop**: run `body` while the test `q` returns true, and fail if it still holds
+after `fuel` rounds. The fuel is a bound, never a truncation. `nidx` is the number of index
+variables in scope: the round index is the variable `nidx` in the test and in `body`. The loop
+is given one more round than the fuel and fails if that round is reached. -/
+def whileStrict (nidx : ℕ) (fuel : IExp) (q : Tst) (dims : List IExp) (ins : List Operand)
+    (body : Stmt Op Tst) : Stmt Op Tst :=
+  .whileFuel (fuel + .const 1) q dims ins (.seq (ifZero (fuel - .var nidx) .abort) body) .skip
 
 end Stmt
 

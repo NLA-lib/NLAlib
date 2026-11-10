@@ -74,7 +74,7 @@ def Stmt.link (T : Table Op₁ Op₂ Tst) : Stmt Op₁ Tst → Stmt Op₂ Tst
           else .abort
       | .inr o' => .call o' ds ins outs
   | .ite q ds ins t e => .ite q ds ins (t.link T) (e.link T)
-  | .whileFuel fuel q ds ins body => .whileFuel fuel q ds ins (body.link T)
+  | .whileFuel fuel q ds ins body k => .whileFuel fuel q ds ins (body.link T) (k.link T)
   | .bindIdx q ins bound body => .bindIdx q ins bound (body.link T)
   | .alloc len body => .alloc len (body.link T)
   | .loop n body => .loop n (body.link T)
@@ -158,9 +158,10 @@ theorem run_link (I : Interp Op₂ Tst K) (T : Table Op₁ Op₂ Tst) (τ : Tape
   | seq s t ihs iht => simp only [Stmt.link, run, ihs, iht]
   | call o ds ins outs => exact run_link_call I T τ o ds ins outs ρ m
   | ite q ds ins t e iht ihe => simp only [Stmt.link, run, iht, ihe, Interp.link]
-  | whileFuel fuel q ds ins body ih =>
-    have hb : run I τ (Stmt.link T body) ρ = run (I.link T) τ body ρ := funext (ih ρ)
-    simp only [Stmt.link, run, hb, Interp.link]
+  | whileFuel fuel q ds ins body k ih ihk =>
+    have hb : ∀ i, run I τ (Stmt.link T body) (ρ.pushIdx i) =
+        run (I.link T) τ body (ρ.pushIdx i) := fun i => funext (ih _)
+    simp only [Stmt.link, run, hb, ihk, Interp.link, Interp.testAt]
   | bindIdx q ins bound body ih => simp only [Stmt.link, run, ih, Interp.link]
   | alloc len body ih => simp only [Stmt.link, run, ih]
   | loop n body ih => simp only [Stmt.link, run, ih]
@@ -197,7 +198,7 @@ theorem Stmt.link_comp (T₁ : Table Op₁ Op₂ Tst) (T₂ : Table Op₂ Op₃ 
       simp only [Stmt.link, Table.comp, hT]
       split_ifs <;> rfl
   | ite q ds ins t e iht ihe => simp only [Stmt.link, iht, ihe]
-  | whileFuel fuel q ds ins body ih => simp only [Stmt.link, ih]
+  | whileFuel fuel q ds ins body k ih ihk => simp only [Stmt.link, ih, ihk]
   | bindIdx q ins bound body ih => simp only [Stmt.link, ih]
   | alloc len body ih => simp only [Stmt.link, ih]
   | loop n body ih => simp only [Stmt.link, ih]
@@ -227,7 +228,7 @@ theorem Interp.link_comp (I : Interp Op₃ Tst K) (T₁ : Table Op₁ Op₂ Tst)
   | seq s t ihs iht => simp only [Stmt.link, ihs, iht]
   | call o ds ins outs => rfl
   | ite q ds ins t e iht ihe => simp only [Stmt.link, iht, ihe]
-  | whileFuel fuel q ds ins body ih => simp only [Stmt.link, ih]
+  | whileFuel fuel q ds ins body k ih ihk => simp only [Stmt.link, ih, ihk]
   | bindIdx q ins bound body ih => simp only [Stmt.link, ih]
   | alloc len body ih => simp only [Stmt.link, ih]
   | loop n body ih => simp only [Stmt.link, ih]

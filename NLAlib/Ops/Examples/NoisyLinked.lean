@@ -54,15 +54,17 @@ def nmvImpl (σ : ℚ) : Impl ROp Tst where
 and the vector draw: the output decodes to `A v + σ ‖v‖ dec w` for the window `w` it drew. -/
 theorem nmvImpl_spec {dec : K → ℝ} {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp ROp Tst K}
     (hI : IsRandLin dec A I) (σ : ℚ) :
-    (nmvImpl (Tst := Tst) σ).MeetsWin I (nmvRel dec (noiseFn dec A σ)) (OutApart (· = n)) := by
-  intro d ins z τ m X hnd hadm hl hr hz
+    (nmvImpl (Tst := Tst) σ).Meets I .total
+      ((nmvRel dec (noiseFn dec A σ)).spec (OutApart (· = n))) := by
+  refine Impl.meets_rel fun d ins outs τ m X hnd hadm hl hr _ hz => ?_
   obtain ⟨n', rfl⟩ := List.length_eq_one_iff.mp hnd
   obtain rfl : n' = n := hadm.1
   obtain ⟨x, xs, rfl, hx, rfl⟩ := Mem.readBlocks_one hr
-  have hxz : x.1 ≠ z.1 := hadm.2 x (by simp)
+  obtain ⟨z, rfl, hz'⟩ := Mem.room_one hz
+  have hxz : x.1 ≠ z.1 := hadm.2 x (by simp) z (by simp)
   obtain ⟨s, p⟩ := m
   obtain ⟨hlx, hlz⟩ : x.1 < s.length ∧ z.1 < s.length := by simpa using hl
-  replace hz : z.2 + n' ≤ s.len z.1 := hz
+  replace hz : z.2 + n' ≤ s.len z.1 := hz'
   replace hx : s.readBlock x.1 x.2 n' = some xs := hx
   have hl1 : (s.push n').length = s.length + 1 := Store.length_push _ _
   have hlt : ((s.push n').push 1).len (s.length + 1) = 1 := by rw [← hl1, Store.len_push_top]
@@ -71,47 +73,20 @@ theorem nmvImpl_spec {dec : K → ℝ} {A : Matrix (Fin n) (Fin n) ℝ} {I : Int
   have hlz' : ((s.push n').push 1).len z.1 = s.len z.1 := by
     rw [Store.len_push_of_lt (by simp; omega), Store.len_push_of_lt hlz]
   refine ⟨⟨rfl, rfl, rfl⟩, wp_alloc rfl (wp_alloc rfl ?_)⟩
-  -- the exact product, into `y`
-  refine wp_seq (wp_call_rel hI.matvec rfl rfl rfl rfl ⟨rfl, by simpa using hxz⟩ ?_
-    (xs := [xs]) ?_ ?_ fun ws hwl hws => ?_)
-  · store_simp
-  · store_simp
-  · store_simp
-  replace hwl : ws.length = n' := hwl
-  -- the probe, into the scratch block
-  refine wp_seq (wp_call_win hI.gauss (k := n') (l := n') rfl rfl rfl rfl rfl rfl
-    ⟨rfl, by simp⟩ ?_ (xs := []) rfl ?_ fun gs hgl hgs => ?_)
-  · store_simp
-  · store_simp
-  obtain rfl : gs = τ.window Stream.gauss p n' := hgs
-  -- the norm of `x` and its multiple by `σ`, in the scratch cell
-  refine wp_seq (wp_call_rel_cell hI.nrm2 rfl rfl rfl rfl rfl ⟨rfl, by simp; omega⟩ ?_
-    (xs := [xs]) ?_ ?_ fun t ht => ?_)
-  · store_simp
-  · store_simp
-  · store_simp
-  refine wp_seq (wp_call_rel_cell (hI.mulc σ) rfl rfl rfl rfl rfl trivial ?_ (xs := [[t]]) ?_
-    ?_ fun t' ht' => ?_)
-  · store_simp
-  · store_simp [BlockFn.readBlock_one]
-  · store_simp
-  -- the update of `y`
-  refine wp_call_rel hI.axpy rfl rfl rfl rfl ⟨rfl, [_, _], rfl, by simp; omega⟩ ?_
-    (xs := [[t'], τ.window Stream.gauss p n', ws]) ?_ ?_ fun zs hzl hzs => ⟨zs, hzl, ?_, ?_⟩
-  · store_simp
-  · store_simp [BlockFn.readBlock_one]
-  · store_simp
-  · replace hws : decv dec n' ws = A.mulVec (decv dec n' xs) := hws
-    replace ht : dec t = √(∑ i, decv dec n' xs i ^ 2) := ht
-    replace ht' : dec t' = σ * dec t := ht'
-    replace hzs : decv dec n' zs = fun i => decv dec n' ws i +
-      dec t' * decv dec n' (τ.window Stream.gauss p n') i := hzs
-    change decv dec n' zs = noiseFn dec A σ (decv dec n' xs)
+  -- the exact product into `y`, the probe into the scratch block, the norm of `x` and its
+  -- multiple by `σ` in the scratch cell, the update of `y`
+  wp_call hI.matvec with ws hwl hws
+  wp_call hI.gauss with gs hgl hgs
+  obtain rfl : gs = τ.window Stream.gauss p n' := (List.cons.inj hgs).1
+  wp_call hI.nrm2 with t ht
+  wp_call (hI.mulc σ) with t' ht'
+  wp_call hI.axpy with zs hzl hzs
+  refine ⟨[zs], by simp [hzl], ?_, ?_⟩
+  · change decv dec n' zs = noiseFn dec A σ (decv dec n' xs)
       fun i => vec (τ.window Stream.gauss p n') i
     rw [hzs, hws, ht', ht]
     rfl
-  · replace hzl : zs.length = n' := hzl
-    have hfr : ((s.push n').push 1).EqOff ((Store.inBlock z.1 z.2 n' ⊔ Store.inBuf s.length) ⊔
+  · have hfr : ((s.push n').push 1).EqOff ((Store.inBlock z.1 z.2 n' ⊔ Store.inBuf s.length) ⊔
         Store.inBuf (s.push n').length)
         (((((((s.push n').push 1).updBlock z.1 z.2 ws).updBlock s.length 0
           (τ.window Stream.gauss p n')).upd (s.push n').length 0 t).upd (s.push n').length 0
@@ -121,7 +96,7 @@ theorem nmvImpl_spec {dec : K → ℝ} {A : Matrix (Fin n) (Fin n) ℝ} {I : Int
         Or.inl (Or.inr rfl)).upd (Or.inr rfl) _).upd (Or.inr rfl) _).updBlock fun j hj =>
         Or.inl (Or.inl ⟨rfl, by omega, by omega⟩)
     have hrd := hfr.pop.pop.eq_updBlock (xs := zs) (by store_simp)
-    simp only [Mem.updBlock, Mem.advance, Mem.upd] at hrd ⊢
+    simp only [Mem.updBlock, Mem.advance, Mem.upd, Mem.updBlocks] at hrd ⊢
     rw [← hrd]
     rfl
 
@@ -140,7 +115,7 @@ noncomputable def noisy (σ : ℚ) : Profile NOp ROp Tst where
 that the law of the tape assigns to the call, by the window lemma. -/
 theorem noisy_certifies (dec : K → ℝ) (A : Matrix (Fin n) (Fin n) ℝ) (σ : ℚ) :
     (noisy (Tst := Tst) σ).Certifies (IsRandLin dec A) (IsNoisy dec (noiseFn dec A σ)) := by
-  refine .of_accounts (fun I hI => Interp.link_meets_win (o := NOp.nmv) rfl (nmvImpl_spec hI σ))
+  refine .of_accounts (fun I hI => Interp.link_meets (o := NOp.nmv) rfl (nmvImpl_spec hI σ))
     (fun I => Table.accounts_of_static ?_ (fun o o' hT => by cases hT) I) fun I _ hloc o => ?_
   · intro o R hT d offs hd ho
     cases hT
@@ -181,17 +156,16 @@ theorem runsLaw_npow_link [MeasurableSpace K] {dec : K → ℝ} {A : Matrix (Fin
     (hloc : ∀ o, I.TapeLocal o (randWindow o)) {law : ℕ → Measure K} (hdec : Measurable dec)
     (hstd : IsStdLaw ((law Stream.gauss).map dec)) (ha : 0 ≤ a)
     (hA : ∀ v, sqNorm (A.mulVec v) ≤ a * sqNorm v) {Ω : Type} {mΩ : MeasurableSpace Ω}
-    {P : Measure Ω} {ξ : Ω → Tape K} (h : IsTapeLaw law P ξ) {k : ℕ} {x y : ℕ × ℕ}
-    {m : Mem K} {xs₀ : List K} (hxy : x.1 ≠ y.1) (hl : m.Live [x, y])
-    (hx : m.store.readBlock x.1 x.2 n = some xs₀) (hxl : x.2 + n ≤ m.store.len x.1)
-    (hy : y.2 + n ≤ m.store.len y.1) :
+    {P : Measure Ω} {ξ : Ω → Tape K} (h : IsTapeLaw law P ξ) {k : ℕ} {x : ℕ × ℕ}
+    {m : Mem K} {xs₀ : List K} (hx : m.store.readBlock x.1 x.2 n = some xs₀)
+    (hxl : x.2 + n ≤ m.store.len x.1) (hlx : x.1 < m.store.length) :
     RunsLaw I (fun _ _ => 0) ξ (npow.link (noisyDraws σ).table)
-      ⟨[k, n, x.2, y.2], [x.1, y.1]⟩ m (Count.push (noisyDraws σ).cost (npowCount k n)) (n + 1)
-      (NpowPost dec n k x y m) fun X =>
+      (Env.frame [k, n] [x, x]) m (Count.push (noisyDraws σ).cost (npowCount k n))
+      (n + (n + 1)) (NpowPost dec n k x m) fun X =>
         (∀ i, ∫ ω, X ω i ∂P = (A ^ (2 * k)).mulVec (decv dec n xs₀) i) ∧
         ∫ ω, sqNorm (X ω) ∂P ≤ (a + n * (σ : ℝ) ^ 2) ^ (2 * k) * sqNorm (decv dec n xs₀) :=
   (noisyDraws_certifies dec A σ).runsLaw (ξ := ξ)
-    (fun _ hJ _ => runsLaw_npow hJ (isNoisyMv_noiseFn hdec hstd A σ) ha hA h _ hxy hl hx hxl hy)
+    (fun _ hJ _ => runsLaw_npow hJ (isNoisyMv_noiseFn hdec hstd A σ) ha hA h _ hx hxl hlx)
     hI hloc
 
 end NLAlib.Ops.Examples

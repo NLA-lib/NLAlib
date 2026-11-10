@@ -28,8 +28,13 @@ the linked program, with no new proof about the algorithm.
 * `NLAlib.Ops.exec_link`: the simulation. `NLAlib.Ops.Runs.link`, `NLAlib.Ops.link_total`: total
   correctness with counts pushed forward and the same workspace. `NLAlib.Ops.RunsL.link`,
   `NLAlib.Ops.link_liberal`: partial correctness, through the induced interpretation only.
-  `NLAlib.Ops.exec_link_weight`: a weighted, data-dependent bound on the counts of one run.
   `NLAlib.Ops.fail_subset`: failure events, sample by sample.
+* **Weighted, data-dependent counts.** `NLAlib.Ops.Table.AccountsW`: each implementation adds at
+  most `t o d` to a weight of the lower counts; its counts need not be uniform in the data.
+  `NLAlib.Ops.RunsW.link`, `NLAlib.Ops.exec_link_weight`: a bound on the weight of the counts of
+  one run of the algorithm, which may depend on the final memory, is the same bound for the
+  linked program. The simulation is one induction for the counts and for every weight
+  (`NLAlib.Ops.Table.Accounts.toW`).
 -/
 
 @[expose] public section
@@ -134,23 +139,75 @@ theorem Table.accounts_of_static {T : Table Op₁ Op₂ Tst} {W₂ : Op₂ → L
     exact (exec_within h).mono h1 h2
   kept := hkept
 
+/-- **The weighted accounting certificate of a table.** `w₂` is a weight of the lower counts
+(an additive map to an ordered monoid `A`: flops, kernel work `T(k)`, the counts themselves) and
+`t o d` bounds the weight of one call of `o` at the dimensions `d`. Every successful run of an
+implementation adds at most `t o d` to the weight and stays within the workspace of its
+operation. The counts of a run of an implementation may depend on the data (a split read from
+the store, a loop with early exit); only their weight is bounded. Nothing about values. -/
+structure Table.AccountsW {A : Type} [AddCommMonoid A] [PartialOrder A] (T : Table Op₁ Op₂ Tst)
+    (I : Interp Op₂ Tst K) (W₂ : Op₂ → List ℕ → ℕ) (w₂ : Count Op₂ Tst →+ A)
+    (t : Op₁ → List ℕ → A) (W₁ : Op₁ → List ℕ → ℕ) : Prop where
+  /-- Implemented operations. -/
+  impl : ∀ o R, T o = .inl R → ∀ (τ : Tape K) (d : List ℕ) (a : List (ℕ × ℕ)) (st st'
+      : St Op₂ Tst K),
+    d.length = R.nd → a.length = R.nin + R.nout →
+    exec I W₂ τ R.body (Env.frame d a) st = some st' →
+      st'.cur = st.cur ∧ w₂ st'.cost ≤ w₂ st.cost + t o d ∧
+        st'.peak ≤ max st.peak (st.cur + W₁ o d)
+  /-- Kept operations. -/
+  kept : ∀ o o', T o = .inr o' → ∀ d, w₂ (Count.one o' d) ≤ t o d ∧ W₂ o' d ≤ W₁ o d
+
+/-- The weight of the upper counts that a weighted certificate compares with: one call of `o` at
+`d` weighs `t o d`, one use of a query what it weighs below. -/
+noncomputable def Count.upper {A : Type} [AddCommMonoid A] (w₂ : Count Op₂ Tst →+ A)
+    (t : Op₁ → List ℕ → A) : Count Op₁ Tst →+ A :=
+  Count.lift (Sum.elim t fun q d => w₂ (Count.test q d))
+
+@[simp] theorem Count.upper_one {A : Type} [AddCommMonoid A] (w₂ : Count Op₂ Tst →+ A)
+    (t : Op₁ → List ℕ → A) (o : Op₁) (d : List ℕ) : Count.upper w₂ t (Count.one o d) = t o d := by
+  simp [Count.upper, Count.lift, Count.one]
+
+@[simp] theorem Count.upper_test {A : Type} [AddCommMonoid A] (w₂ : Count Op₂ Tst →+ A)
+    (t : Op₁ → List ℕ → A) (q : Tst) (d : List ℕ) :
+    Count.upper w₂ t (Count.test q d) = w₂ (Count.test q d) := by
+  simp [Count.upper, Count.lift, Count.test]
+
+/-- With the counts themselves as weight, the upper weight is the push-forward. -/
+theorem Count.upper_id (κ : Op₁ → List ℕ → Count Op₂ Tst) :
+    Count.upper (AddMonoidHom.id (Count Op₂ Tst)) κ = Count.push κ := rfl
+
+/-- The accounting certificate is the weighted one for the counts themselves. -/
+theorem Table.Accounts.toW {T : Table Op₁ Op₂ Tst} {I : Interp Op₂ Tst K}
+    {W₂ : Op₂ → List ℕ → ℕ} {κ : Op₁ → List ℕ → Count Op₂ Tst} {W₁ : Op₁ → List ℕ → ℕ}
+    (h : T.Accounts I W₂ κ W₁) : T.AccountsW I W₂ (AddMonoidHom.id _) κ W₁ where
+  impl o R hT τ d a st st' hd ha hrun := h.impl o R hT τ d a st st' hd ha hrun
+  kept := h.kept
+
 /-- The simulation relation between a run of the algorithm under the induced interpretation and
-the run of the linked program: same memory and live cells; lower counts within the push-forward
-of the upper counts; lower peak within the upper peak. -/
-structure Sim (κ : Op₁ → List ℕ → Count Op₂ Tst) (a : St Op₁ Tst K) (c : St Op₂ Tst K) : Prop where
+the run of the linked program: same memory and live cells; the weight of the lower counts within
+the weight of the upper counts; lower peak within the upper peak. -/
+structure Sim {A : Type} [AddCommMonoid A] [PartialOrder A] (w₂ : Count Op₂ Tst →+ A)
+    (t : Op₁ → List ℕ → A) (a : St Op₁ Tst K) (c : St Op₂ Tst K) : Prop where
   /-- Same memory. -/
   mem : c.mem = a.mem
   /-- Same live scratch cells. -/
   cur : c.cur = a.cur
-  /-- Counts within the push-forward. -/
-  cost : c.cost ≤ Count.push κ a.cost
+  /-- Weight within the weight. -/
+  cost : w₂ c.cost ≤ Count.upper w₂ t a.cost
   /-- Peak within the peak. -/
   peak : c.peak ≤ a.peak
 
-theorem Sim.tick {κ : Op₁ → List ℕ → Count Op₂ Tst} {a : St Op₁ Tst K} {c : St Op₂ Tst K}
-    (hs : Sim κ a c) (q : Tst) (d : List ℕ) : Sim κ (a.tick q d) (c.tick q d) :=
+section Link
+
+variable {A : Type} [AddCommMonoid A] [PartialOrder A] [IsOrderedAddMonoid A]
+  {T : Table Op₁ Op₂ Tst} {I : Interp Op₂ Tst K} {W₂ : Op₂ → List ℕ → ℕ}
+  {w₂ : Count Op₂ Tst →+ A} {t : Op₁ → List ℕ → A} {W₁ : Op₁ → List ℕ → ℕ}
+
+theorem Sim.tick {a : St Op₁ Tst K} {c : St Op₂ Tst K} (hs : Sim w₂ t a c) (q : Tst)
+    (d : List ℕ) : Sim w₂ t (a.tick q d) (c.tick q d) :=
   ⟨hs.mem, hs.cur, by
-    simp only [St.tick, map_add, Count.push_test]
+    simp only [St.tick, map_add, Count.upper_test]
     exact add_le_add hs.cost le_rfl, hs.peak⟩
 
 theorem iter_sim {σ σ' : Type} (R : σ → σ' → Prop) {f : ℕ → σ → Option σ}
@@ -170,47 +227,38 @@ theorem iter_sim {σ σ' : Type} (R : σ → σ' → Prop) {f : ℕ → σ → O
     obtain ⟨s₁', h2', hR₁⟩ := hf k sm s₁ sm' hR' h2
     exact ⟨s₁', by simp only [iter, h1', Option.bind_some, h2'], hR₁⟩
 
-theorem whileIter_sim {σ σ' : Type} (R : σ → σ' → Prop) {test : σ → Option Bool} {tick : σ → σ}
-    {body : σ → Option σ} {test' : σ' → Option Bool} {tick' : σ' → σ'} {body' : σ' → Option σ'}
-    (ht : ∀ s s', R s s' → test' s' = test s) (hk : ∀ s s', R s s' → R (tick s) (tick' s'))
-    (hb : ∀ s s₁ s', R s s' → body s = some s₁ → ∃ s₁', body' s' = some s₁' ∧ R s₁ s₁') :
-    ∀ n s s₁ s', R s s' → whileIter test tick body n s = some s₁ →
-      ∃ s₁', whileIter test' tick' body' n s' = some s₁' ∧ R s₁ s₁' := by
+theorem whileIter_sim {σ σ' : Type} (R : σ → σ' → Prop) {test : ℕ → σ → Option (Bool × σ)}
+    {body : ℕ → σ → Option σ} {test' : ℕ → σ' → Option (Bool × σ')}
+    {body' : ℕ → σ' → Option σ'}
+    (ht : ∀ i s bs s', R s s' → test i s = some bs →
+      ∃ s₁', test' i s' = some (bs.1, s₁') ∧ R bs.2 s₁')
+    (hb : ∀ i s s₁ s', R s s' → body i s = some s₁ → ∃ s₁', body' i s' = some s₁' ∧ R s₁ s₁') :
+    ∀ n i s js s', R s s' → whileIter test body n i s = some js →
+      ∃ s₁', whileIter test' body' n i s' = some (js.1, s₁') ∧ R js.2 s₁' := by
   intro n
   induction n with
   | zero =>
-    intro s s₁ s' hR hr
-    obtain ⟨b, hb', hr⟩ := Option.bind_eq_some_iff.mp hr
-    cases b with
-    | true => simp at hr
-    | false =>
-      simp only [Bool.false_eq_true, if_false, Option.some.injEq] at hr
-      exact ⟨tick' s', by simp [whileIter, ht s s' hR, hb'], hr ▸ hk s s' hR⟩
+    intro i s js s' hR hr
+    cases hr
+    exact ⟨s', rfl, hR⟩
   | succ k ih =>
-    intro s s₁ s' hR hr
-    obtain ⟨b, hb', hr⟩ := Option.bind_eq_some_iff.mp hr
-    cases b with
-    | false =>
-      simp only [Bool.false_eq_true, if_false, Option.some.injEq] at hr
-      exact ⟨tick' s', by simp [whileIter, ht s s' hR, hb'], hr ▸ hk s s' hR⟩
-    | true =>
-      simp only [if_true] at hr
-      obtain ⟨sm, h1, h2⟩ := Option.bind_eq_some_iff.mp hr
-      obtain ⟨sm', h1', hR'⟩ := hb _ sm _ (hk s s' hR) h1
-      obtain ⟨s₁', h2', hR₁⟩ := ih sm s₁ sm' hR' h2
-      exact ⟨s₁', by simp [whileIter, ht s s' hR, hb', h1', h2'], hR₁⟩
-
-section Link
-
-variable {T : Table Op₁ Op₂ Tst} {I : Interp Op₂ Tst K} {W₂ : Op₂ → List ℕ → ℕ}
-  {κ : Op₁ → List ℕ → Count Op₂ Tst} {W₁ : Op₁ → List ℕ → ℕ}
+    intro i s js s' hR hr
+    obtain ⟨bs, hbs, hr⟩ := Option.bind_eq_some_iff.mp hr
+    obtain ⟨st', ht', hR'⟩ := ht i s bs s' hR hbs
+    split_ifs at hr with hc
+    · obtain ⟨sm, h1, h2⟩ := Option.bind_eq_some_iff.mp hr
+      obtain ⟨sm', h1', hRm⟩ := hb i _ sm _ hR' h1
+      obtain ⟨s₁', h2', hR₁⟩ := ih (i + 1) sm js sm' hRm h2
+      exact ⟨s₁', by simp [whileIter, ht', hc, h1', h2'], hR₁⟩
+    · cases hr
+      exact ⟨st', by simp [whileIter, ht', hc], hR'⟩
 
 /-- The simulation of one call: a kept operation by itself, an implemented one by the certificate
 of its implementation. -/
-theorem exec_link_call (hacc : T.Accounts I W₂ κ W₁) (τ : Tape K) {o : Op₁} {ds : List IExp}
-    {ins outs : List Operand} {ρ : Env} {a a₁ : St Op₁ Tst K} {c : St Op₂ Tst K} (hs : Sim κ a c)
-    (h : exec (I.link T) W₁ τ (.call o ds ins outs) ρ a = some a₁) :
-    ∃ c₁, exec I W₂ τ ((Stmt.call o ds ins outs).link T) ρ c = some c₁ ∧ Sim κ a₁ c₁ := by
+theorem exec_link_call (hacc : T.AccountsW I W₂ w₂ t W₁) (τ : Tape K) {o : Op₁} {ds : List IExp}
+    {ins outs : List Operand} {ρ : Env} {a a₁ : St Op₁ Tst K} {c : St Op₂ Tst K}
+    (hs : Sim w₂ t a c) (h : exec (I.link T) W₁ τ (.call o ds ins outs) ρ a = some a₁) :
+    ∃ c₁, exec I W₂ τ ((Stmt.call o ds ins outs).link T) ρ c = some c₁ ∧ Sim w₂ t a₁ c₁ := by
   obtain ⟨d, hd, h⟩ := Option.bind_eq_some_iff.mp h
   obtain ⟨i, hi, h⟩ := Option.bind_eq_some_iff.mp h
   obtain ⟨b, hb, h⟩ := Option.bind_eq_some_iff.mp h
@@ -220,7 +268,7 @@ theorem exec_link_call (hacc : T.Accounts I W₂ κ W₁) (τ : Tape K) {o : Op�
     rw [Interp.link_callS_inr I hT, ← hs.mem] at hcall
     refine ⟨⟨m', c.cost + Count.one o' d, c.cur, max c.peak (c.cur + W₂ o' d)⟩, by
       simp [Stmt.link, hT, exec, hd, hi, hb, hcall], rfl, hs.cur, ?_, ?_⟩
-    · simp only [map_add, Count.push_one]
+    · simp only [map_add, Count.upper_one]
       exact add_le_add hs.cost (hacc.kept o o' hT d).1
     · rw [hs.cur]
       exact max_le_max hs.peak (Nat.add_le_add_left (hacc.kept o o' hT d).2 _)
@@ -241,18 +289,19 @@ theorem exec_link_call (hacc : T.Accounts I W₂ κ W₁) (τ : Tape K) {o : Op�
         simp only [Stmt.link, hT]
         exact if_pos hfit'
       simp [hl', exec, hd, hi, hb, Operand.evalList_append, hc, hs.mem, hl]
-    · simp only [map_add, Count.push_one]
+    · simp only [map_add, Count.upper_one]
       exact w2.trans (add_le_add hs.cost le_rfl)
     · rw [hs.cur] at w3
       exact w3.trans (max_le_max hs.peak le_rfl)
 
 /-- **The simulation theorem**: a successful counted run of the algorithm under the induced
 interpretation is matched by a counted run of the linked program under the lower interpretation,
-with the same memory, counts within the push-forward and peak within the peak. -/
-theorem exec_link (hacc : T.Accounts I W₂ κ W₁) (τ : Tape K) (s : Stmt Op₁ Tst) :
-    ∀ (ρ : Env) (a a₁ : St Op₁ Tst K) (c : St Op₂ Tst K), Sim κ a c →
+with the same memory, the weight of its counts within the weight of the upper counts and its
+peak within the peak. One induction serves the counts themselves and every weight. -/
+theorem exec_link (hacc : T.AccountsW I W₂ w₂ t W₁) (τ : Tape K) (s : Stmt Op₁ Tst) :
+    ∀ (ρ : Env) (a a₁ : St Op₁ Tst K) (c : St Op₂ Tst K), Sim w₂ t a c →
       exec (I.link T) W₁ τ s ρ a = some a₁ →
-      ∃ c₁, exec I W₂ τ (s.link T) ρ c = some c₁ ∧ Sim κ a₁ c₁ := by
+      ∃ c₁, exec I W₂ τ (s.link T) ρ c = some c₁ ∧ Sim w₂ t a₁ c₁ := by
   induction s with
   | skip => intro ρ a a₁ c hs h; cases h; exact ⟨c, rfl, hs⟩
   | abort => intro ρ a a₁ c hs h; cases h
@@ -277,16 +326,22 @@ theorem exec_link (hacc : T.Accounts I W₂ κ W₁) (τ : Tape K) (s : Stmt Op�
     | true =>
       obtain ⟨c₁, hc, hs₁⟩ := iht ρ _ a₁ _ hs' (by simpa using h)
       exact ⟨c₁, by simp [Stmt.link, exec, hd, hi, hb', hc], hs₁⟩
-  | whileFuel fuel q ds ins body ih =>
+  | whileFuel fuel q ds ins body k ih ihk =>
     intro ρ a a₁ c hs h
-    obtain ⟨k, hk, h⟩ := Option.bind_eq_some_iff.mp h
-    obtain ⟨d, hd, h⟩ := Option.bind_eq_some_iff.mp h
-    obtain ⟨i, hi, h⟩ := Option.bind_eq_some_iff.mp h
-    obtain ⟨c₁, hc, hs₁⟩ := whileIter_sim (Sim κ) (test' := fun s => I.test q d i s.mem)
-      (tick' := fun s => s.tick q d) (body' := exec I W₂ τ (body.link T) ρ)
-      (fun s s' hR => by rw [hR.mem]; rfl)
-      (fun s s' hR => hR.tick q d) (fun s s₁ s' hR hb => ih ρ s s₁ s' hR hb) k a a₁ c hs h
-    exact ⟨c₁, by simp [Stmt.link, exec, hk, hd, hi, hc], hs₁⟩
+    obtain ⟨n, hn, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨jst, hw, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨cm, hc, hsm⟩ := whileIter_sim (Sim w₂ t)
+      (test' := fun i st => I.testSt q ds ins (ρ.pushIdx i) st)
+      (body' := fun i => exec I W₂ τ (body.link T) (ρ.pushIdx i))
+      (fun i s bs s' hR hbs => by
+        obtain ⟨d, hd, hbs⟩ := Option.bind_eq_some_iff.mp hbs
+        obtain ⟨x, hx, hbs⟩ := Option.bind_eq_some_iff.mp hbs
+        obtain ⟨b, hb, rfl⟩ := Option.map_eq_some_iff.mp hbs
+        have hb' : I.test q d x s'.mem = some b := by rw [hR.mem]; exact hb
+        exact ⟨s'.tick q d, by rw [Interp.testSt_eq hd hx, hb']; rfl, hR.tick q d⟩)
+      (fun i s s₁ s' hR hb => ih _ s s₁ s' hR hb) n 0 a jst c hs hw
+    obtain ⟨c₁, hc₁, hs₁⟩ := ihk _ _ a₁ _ hsm h
+    exact ⟨c₁, by simp [Stmt.link, exec, hn, hc, hc₁], hs₁⟩
   | bindIdx q ins bound body ih =>
     intro ρ a a₁ c hs h
     obtain ⟨i, hi, h⟩ := Option.bind_eq_some_iff.mp h
@@ -314,7 +369,7 @@ theorem exec_link (hacc : T.Accounts I W₂ κ W₁) (τ : Tape K) (s : Stmt Op�
   | loop n body ih =>
     intro ρ a a₁ c hs h
     obtain ⟨k, hk, h⟩ := Option.bind_eq_some_iff.mp h
-    obtain ⟨c₁, hc, hs₁⟩ := iter_sim (Sim κ)
+    obtain ⟨c₁, hc, hs₁⟩ := iter_sim (Sim w₂ t)
       (f' := fun i st => exec I W₂ τ (body.link T) (ρ.pushIdx i) st)
       (fun i s s₁ s' hR hb => ih _ s s₁ s' hR hb) k a a₁ c hs h
     exact ⟨c₁, by simp only [Stmt.link, exec, hk, Option.bind_some, hc], hs₁⟩
@@ -326,6 +381,26 @@ theorem exec_link (hacc : T.Accounts I W₂ κ W₁) (τ : Tape K) (s : Stmt Op�
     obtain ⟨c₁, hc, hs₁⟩ := ih _ a a₁ c hs h
     exact ⟨c₁, by simp [Stmt.link, exec, hd, hi, hc, hs.mem, hl], hs₁⟩
 
+/-- **Linking a run whose postcondition sees the counts.** Under a weighted certificate, the
+linked program runs within the same workspace, and the weight of its counts is at most the
+weight of counts `c₁` of the algorithm that satisfy the postcondition. A bound on the weight of
+the algorithm's counts, whatever it depends on, is a bound on the weight of the program's. -/
+theorem RunsW.link (hacc : T.AccountsW I W₂ w₂ t W₁) {τ : Tape K} {s : Stmt Op₁ Tst} {ρ : Env}
+    {m : Mem K} {M : ℕ} {Q : Count Op₁ Tst → Mem K → Prop}
+    (h : RunsW (I.link T) W₁ τ s ρ m M Q) :
+    RunsW I W₂ τ (s.link T) ρ m M fun c m' => ∃ c₁, w₂ c ≤ Count.upper w₂ t c₁ ∧ Q c₁ m' := by
+  obtain ⟨a₁, hrun, hpeak, hQ⟩ := h
+  obtain ⟨c₁, hc, hs₁⟩ := exec_link hacc τ s ρ (St.init m) a₁ (St.init m)
+    ⟨rfl, rfl, by simp [St.init], le_rfl⟩ hrun
+  exact ⟨c₁, hc, hs₁.peak.trans hpeak, a₁.cost, hs₁.cost, hs₁.mem ▸ hQ⟩
+
+end Link
+
+section Link
+
+variable {T : Table Op₁ Op₂ Tst} {I : Interp Op₂ Tst K} {W₂ : Op₂ → List ℕ → ℕ}
+  {κ : Op₁ → List ℕ → Count Op₂ Tst} {W₁ : Op₁ → List ℕ → ℕ}
+
 /-- **Linking, total correctness with accounting.** If the algorithm runs within `B`, `M` under
 the induced interpretation, the linked program runs under the lower interpretation within the
 pushed-forward counts and the same workspace, with the same postcondition. -/
@@ -334,9 +409,10 @@ theorem Runs.link (hacc : T.Accounts I W₂ κ W₁) {τ : Tape K} {s : Stmt Op�
     (h : Runs (I.link T) W₁ τ s ρ m B M Q) :
     Runs I W₂ τ (s.link T) ρ m (Count.push κ B) M Q := by
   obtain ⟨a₁, hrun, hcost, hpeak, hQ⟩ := h
-  obtain ⟨c₁, hc, hs₁⟩ := exec_link hacc τ s ρ (St.init m) a₁ (St.init m)
+  obtain ⟨c₁, hc, hs₁⟩ := exec_link hacc.toW τ s ρ (St.init m) a₁ (St.init m)
     ⟨rfl, rfl, by simp [St.init], le_rfl⟩ hrun
-  exact ⟨c₁, hc, hs₁.cost.trans (Count.push_mono κ hcost), hs₁.peak.trans hpeak, hs₁.mem ▸ hQ⟩
+  exact ⟨c₁, hc, (show c₁.cost ≤ Count.push κ a₁.cost from hs₁.cost).trans
+    (Count.push_mono κ hcost), hs₁.peak.trans hpeak, hs₁.mem ▸ hQ⟩
 
 /-- **Linking a theorem proved for every interpretation meeting contracts** `Ck`: it holds for
 the linked program as soon as the induced interpretation meets `Ck`, that is, the implementations
@@ -347,19 +423,6 @@ theorem link_total {Ck : Interp Op₁ Tst K → Prop} {τ : Tape K} {s : Stmt Op
     (hk : Ck (I.link T)) (hacc : T.Accounts I W₂ κ W₁) :
     Runs I W₂ τ (s.link T) ρ m (Count.push κ B) M Q :=
   (hT _ hk).link hacc
-
-/-- **Weighted, data-dependent counts.** A bound `w₁ cost ≤ t` on the final count of one run of
-the algorithm becomes `w₂ cost ≤ t` for the linked run, for every monotone `w₂` with
-`w₂ ∘ push κ ≤ w₁`. -/
-theorem exec_link_weight (hacc : T.Accounts I W₂ κ W₁) {τ : Tape K} {s : Stmt Op₁ Tst} {ρ : Env}
-    {m : Mem K} {a₁ : St Op₁ Tst K} {w₁ : Count Op₁ Tst → ℕ} {w₂ : Count Op₂ Tst → ℕ}
-    (hw₂ : Monotone w₂)
-    (hww : ∀ x, w₂ (Count.push κ x) ≤ w₁ x)
-    (hrun : exec (I.link T) W₁ τ s ρ (St.init m) = some a₁) {t : ℕ} (ht : w₁ a₁.cost ≤ t) :
-    ∃ c₁, exec I W₂ τ (s.link T) ρ (St.init m) = some c₁ ∧ c₁.mem = a₁.mem ∧ w₂ c₁.cost ≤ t := by
-  obtain ⟨c₁, hc, hs₁⟩ := exec_link hacc τ s ρ (St.init m) a₁ (St.init m)
-    ⟨rfl, rfl, by simp [St.init], le_rfl⟩ hrun
-  exact ⟨c₁, hc, hs₁.mem, (hw₂ hs₁.cost).trans ((hww _).trans ht)⟩
 
 /-- **Probability.** The interpretation is fixed before the sample `ω`; the tape, the start and
 the postcondition may depend on it. The failure event of the linked program is inside the failure
@@ -372,6 +435,18 @@ theorem fail_subset (hacc : T.Accounts I W₂ κ W₁) {Ω : Type} {τ : Ω → 
   fun _ hω hR => hω (hR.link hacc)
 
 end Link
+
+/-- **Weighted, data-dependent counts.** A bound `t`, which may depend on the final memory, on
+the weight of the counts of one run of the algorithm becomes the same bound on the weight of the
+counts of the linked run. The weight below is `w₂`; one call of `o` at `d` weighs `u o d` above,
+and the weighted certificate says that this covers its implementation. -/
+theorem exec_link_weight {T : Table Op₁ Op₂ Tst} {I : Interp Op₂ Tst K} {W₂ : Op₂ → List ℕ → ℕ}
+    {W₁ : Op₁ → List ℕ → ℕ} {w₂ : Count Op₂ Tst →+ ℕ} {u : Op₁ → List ℕ → ℕ}
+    (hacc : T.AccountsW I W₂ w₂ u W₁) {τ : Tape K} {s : Stmt Op₁ Tst} {ρ : Env} {m : Mem K}
+    {M : ℕ} {t : Mem K → ℕ} {Q : Mem K → Prop}
+    (h : RunsW (I.link T) W₁ τ s ρ m M fun c m' => Count.upper w₂ u c ≤ t m' ∧ Q m') :
+    RunsW I W₂ τ (s.link T) ρ m M fun c m' => w₂ c ≤ t m' ∧ Q m' :=
+  (h.link hacc).mono le_rfl fun _ _ ⟨_, h1, h2, h3⟩ => ⟨h1.trans h2, h3⟩
 
 /-- **Linking, partial correctness.** A refinement statement under the induced interpretation is
 one about the linked program. No certificate. -/

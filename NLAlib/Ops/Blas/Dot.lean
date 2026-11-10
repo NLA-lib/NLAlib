@@ -142,11 +142,7 @@ theorem wp_dotSum {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {u :
   · exact fun k hk => by store_simp [Store.get_of_readBlock hy hk default]
   have hlen : s'.length = m.store.length + 1 := by rw [hfr.length_eq, Store.length_push]
   have hlenz : s'.len z.1 = m.store.len z.1 := by rw [hfr.len_eq, Store.len_push_of_lt hlz]
-  refine wp_call_rel_cell hS rfl rfl rfl rfl rfl ⟨hok, by simp; omega⟩ ?_
-    (xs := [(List.range n).map fun k => M.mul (vec xs k) (vec ys k)]) ?_ ?_ fun v hv => ?_
-  · store_simp
-  · store_simp
-  · store_simp
+  wp_call hS with v hv
   refine ⟨v, isDotErr_of_isSumErr hM hes (fun k hk => vec_map_range _ hk) hv, ?_⟩
   simp only [Mem.upd]
   rw [Store.pop_upd_of_lt (by omega), hfr.pop_eq]
@@ -167,14 +163,8 @@ theorem wp_nrm2Sum {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {u 
     (fun _ => rfl) (fun _ => rfl) hlx.ne hlx.ne (by simp) hg hg fun s' hfr hr => ?_))
   have hlen : s'.length = m.store.length + 1 := by rw [hfr.length_eq, Store.length_push]
   have hlenz : s'.len z.1 = m.store.len z.1 := by rw [hfr.len_eq, Store.len_push_of_lt hlz]
-  refine wp_seq (wp_call_rel_cell hS rfl rfl rfl rfl rfl ⟨hok, by simp; omega⟩ ?_
-    (xs := [(List.range n).map fun k => M.mul (vec xs k) (vec xs k)]) ?_ ?_ fun σ hσ => ?_)
-  · store_simp
-  · store_simp
-  · store_simp
-  refine wp_call_un (hI .sqrt) rfl rfl rfl trivial (a := σ) ?_ rfl ?_ ?_
-  · store_simp
-  · store_simp
+  wp_call hS with σ hσ
+  wp_call (hI .sqrt)
   refine ⟨M.sqrt σ, ⟨σ, isDotErr_of_isSumErr hM hes (fun k hk => vec_map_range _ hk) hσ,
     hM.sqrt σ⟩, ?_⟩
   simp only [Mem.upd, Store.upd_upd]
@@ -185,26 +175,28 @@ interpretation whose `sum` has the error `es`. -/
 theorem dotSum_spec {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {u : ℝ}
     {dec : K → ℝ} (hM : StdModel u dec M) {es : ℕ → ℝ} {ok : ℕ → Prop} (hS : IsSum dec es ok I)
     (hes : ∀ n, 0 ≤ es n) :
-    (dotSum (Op := Op) (Tst := Tst)).MeetsRel I (dotRel dec fun n => (1 + u) * (1 + es n) - 1)
-      (OutApart ok) := by
-  intro d ins z τ m xs hnd hadm hl hr hz
+    (dotSum (Op := Op) (Tst := Tst)).Meets I .total
+      ((dotRel dec fun n => (1 + u) * (1 + es n) - 1).spec (OutApart ok)) := by
+  refine Impl.meets_rel fun d ins outs τ m xs hnd hadm hl hr _ hz => ?_
   obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hnd
   obtain ⟨x, y, xs, ys, rfl, hx, hy, rfl⟩ := Mem.readBlocks_two hr
+  obtain ⟨z, rfl, hz'⟩ := Mem.room_one hz
   exact ⟨⟨rfl, rfl, rfl⟩, (wp_dotSum hI hM hS (hes n) hadm.1 hl hx hy
-    (by simpa [dotRel] using hz)).mono fun m' ⟨v, hv, e⟩ => ⟨[v], rfl, hv, e⟩⟩
+    (by omega)).mono fun m' ⟨v, hv, e⟩ => ⟨[[v]], rfl, hv, e⟩⟩
 
 /-- **`nrm2Sum` meets the contract of `nrm2`**, over an interpretation whose `sum` has the error
 `es`. -/
 theorem nrm2Sum_spec {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {u : ℝ}
     {dec : K → ℝ} (hM : StdModel u dec M) {es : ℕ → ℝ} {ok : ℕ → Prop} (hS : IsSum dec es ok I)
     (hes : ∀ n, 0 ≤ es n) :
-    (nrm2Sum (Op := Op) (Tst := Tst)).MeetsRel I
-      (nrm2Rel dec (fun n => (1 + u) * (1 + es n) - 1) u) (OutApart ok) := by
-  intro d ins z τ m xs hnd hadm hl hr hz
+    (nrm2Sum (Op := Op) (Tst := Tst)).Meets I .total
+      ((nrm2Rel dec (fun n => (1 + u) * (1 + es n) - 1) u).spec (OutApart ok)) := by
+  refine Impl.meets_rel fun d ins outs τ m xs hnd hadm hl hr _ hz => ?_
   obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hnd
   obtain ⟨x, xs, rfl, hx, rfl⟩ := Mem.readBlocks_one hr
+  obtain ⟨z, rfl, hz'⟩ := Mem.room_one hz
   exact ⟨⟨rfl, rfl, rfl⟩, (wp_nrm2Sum hI hM hS (hes n) hadm.1 hl hx
-    (by simpa [nrm2Rel] using hz)).mono fun m' ⟨v, hv, e⟩ => ⟨[v], rfl, hv, e⟩⟩
+    (by omega)).mono fun m' ⟨v, hv, e⟩ => ⟨[[v]], rfl, hv, e⟩⟩
 
 end
 

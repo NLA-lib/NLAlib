@@ -42,31 +42,33 @@ inductive MOp where
 
 /-- The block function of `mm` given the function `f` on the two blocks. -/
 def mmFn (f : ℕ → ℕ → ℕ → List K → List K → List K) : BlockFn K where
+  nd := 3
   inLens d := match d with
     | [a, b, c] => [a * b, b * c]
     | _ => []
+  outLens d := match d with
+    | [a, _, c] => [a * c]
+    | _ => []
   fn d _ xs := match d, xs with
-    | [a, b, c], [As, Bs] => some (f a b c As Bs)
+    | [a, b, c], [As, Bs] => some [f a b c As Bs]
     | _, _ => none
 
 omit [Inhabited K] in
 /-- What a successful call of the block function of `mm` is. -/
 theorem mmFn_apply {f : ℕ → ℕ → ℕ → List K → List K → List K} {d : List ℕ}
-    {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : Tape K} {m m' : Mem K}
-    (h : (mmFn f).apply d ins z τ m = some m') :
-    ∃ a b c A B As Bs, d = [a, b, c] ∧ ins = [A, B] ∧
+    {ins outs : List (ℕ × ℕ)} {τ : Tape K} {m m' : Mem K}
+    (h : (mmFn f).apply d ins outs τ m = some m') :
+    ∃ a b c A B z As Bs, d = [a, b, c] ∧ ins = [A, B] ∧ outs = [z] ∧
       m.store.readBlock A.1 A.2 (a * b) = some As ∧ m.store.readBlock B.1 B.2 (b * c) = some Bs ∧
-      z.2 + (f a b c As Bs).length ≤ m.store.len z.1 ∧ m' = m.updBlock z (f a b c As Bs) := by
-  obtain ⟨hlive, X, v, hread, hfn, hlen, rfl⟩ := BlockFn.apply_eq_some_iff.mp h
-  rcases d with _ | ⟨a, _ | ⟨b, _ | ⟨c, _ | ⟨e, d⟩⟩⟩⟩
-  · simp [mmFn] at hfn
-  · simp [mmFn] at hfn
-  · simp [mmFn] at hfn
-  · obtain ⟨A, B, As, Bs, rfl, hA, hB, rfl⟩ := Mem.readBlocks_two hread
-    simp only [mmFn, Option.some.injEq] at hfn
-    subst hfn
-    exact ⟨a, b, c, A, B, As, Bs, rfl, rfl, hA, hB, hlen, rfl⟩
-  · simp [mmFn] at hfn
+      (f a b c As Bs).length = a * c ∧ z.2 + a * c ≤ m.store.len z.1 ∧
+      m' = m.updBlock z (f a b c As Bs) := by
+  obtain ⟨hnd, hlive, X, v, hread, hfn, hlen, hroom, rfl⟩ := BlockFn.apply_eq_some_iff.mp h
+  obtain ⟨a, b, c, rfl⟩ := List.length_eq_three.mp hnd
+  obtain ⟨A, B, As, Bs, rfl, hA, hB, rfl⟩ := Mem.readBlocks_two hread
+  obtain ⟨z, rfl, hz⟩ := Mem.room_one hroom
+  simp only [mmFn, Option.some.injEq] at hfn
+  subst hfn
+  exact ⟨a, b, c, A, B, z, As, Bs, rfl, rfl, rfl, hA, hB, by simpa [mmFn] using hlen, hz, rfl⟩
 
 /-- **The functional contract of `mm`**: on input blocks in other buffers than the output, the
 result is `f` of the inputs, an `a × c` block. -/
@@ -98,25 +100,25 @@ theorem runs_sq2 {f : ℕ → ℕ → ℕ → List K → List K → List K} {I :
         (f n n n (f n n n As As) (f n n n As As))) := by
   obtain ⟨lA, lP, lS⟩ : A.1 < m.store.length ∧ P.1 < m.store.length ∧ S.1 < m.store.length := by
     simpa using hl
-  have h1 : (mmFn f).apply [n, n, n] [A, A] P τ m = some (m.updBlock P (f n n n As As)) :=
-    BlockFn.apply_eq_some_iff.mpr ⟨by store_simp, [As, As], _, by simp
-    [Mem.readBlocks, hA, mmFn], rfl,
-      by rw [hI.length]; exact hP, rfl⟩
+  have h1 : (mmFn f).apply [n, n, n] [A, A] [P] τ m = some (m.updBlock P (f n n n As As)) :=
+    BlockFn.apply_eq_some_iff.mpr ⟨rfl, by store_simp, [As, As], [f n n n As As], by simp
+    [Mem.readBlocks, hA, mmFn], rfl, by simp [mmFn, hI.length], ⟨hP, trivial⟩, rfl⟩
   have hPr : (m.store.updBlock P.1 P.2 (f n n n As As)).readBlock P.1 P.2 (n * n) =
       some (f n n n As As) := by
     have := Store.readBlock_updBlock_self (s := m.store) (b := P.1) (off := P.2)
       (xs := f n n n As As) (by rw [hI.length]; exact hP)
     rwa [hI.length] at this
-  have h2 : (mmFn f).apply [n, n, n] [P, P] S τ (m.updBlock P (f n n n As As)) =
+  have h2 : (mmFn f).apply [n, n, n] [P, P] [S] τ (m.updBlock P (f n n n As As)) =
       some ((m.updBlock P (f n n n As As)).updBlock S
         (f n n n (f n n n As As) (f n n n As As))) :=
-    BlockFn.apply_eq_some_iff.mpr ⟨by store_simp, [_, _], _,
-      by simp [Mem.readBlocks, hPr, mmFn], rfl, by rw [hI.length]; simpa using hS, rfl⟩
+    BlockFn.apply_eq_some_iff.mpr ⟨rfl, by store_simp, [_, _], [_],
+      by simp [Mem.readBlocks, hPr, mmFn], rfl, by simp [mmFn, hI.length],
+      ⟨by simpa using hS, trivial⟩, rfl⟩
   have hw : Wp .total I τ sq2 ⟨[n, A.2, P.2, S.2], [A.1, P.1, S.1]⟩
       (· = (m.updBlock P (f n n n As As)).updBlock S (f n n n (f n n n As As) (f n n n As As)))
       m :=
-    wp_seq (wp_call_fn hI.isFn (z := P) rfl rfl rfl (by simp [DisjointBufs, hAP]) h1
-      (wp_call_fn hI.isFn (z := S) rfl rfl rfl (by simp [DisjointBufs, hPS]) h2 rfl))
+    wp_seq (wp_call_fn hI.isFn (b := [P]) rfl rfl rfl (by simp [DisjointBufs, hAP]) h1
+      (wp_call_fn hI.isFn (b := [S]) rfl rfl rfl (by simp [DisjointBufs, hPS]) h2 rfl))
   obtain ⟨m', hrun, hpost⟩ := hw
   exact (Runs.of_run hrun hpost W).mono (by simp [sq2, staticCost, useCost, two_nsmul])
     (by simp [sq2, staticPeak]) fun _ h => h
@@ -200,13 +202,13 @@ theorem wp_mm_entry {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith 
 /-- **The exact certificate of the triple loop**: where the block function of `mmF` succeeds on
 inputs in other buffers than the output, the run of `mmImpl` is that block function. -/
 theorem mm_cert {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I) {d : List ℕ}
-    {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : Tape K} {m m' : Mem K} (hadm : DisjointBufs d ins z)
-    (h : (mmFn (mmF M)).apply d ins z τ m = some m') :
-    mmImpl.Fits d.length ins.length 1 ∧
-      run I τ mmImpl.body (Env.frame d (ins ++ [z])) m = some m' := by
-  obtain ⟨a, b, c, A, B, As, Bs, rfl, rfl, hA, hB, hlen, rfl⟩ := mmFn_apply h
+    {ins outs : List (ℕ × ℕ)} {τ : Tape K} {m m' : Mem K} (hadm : DisjointBufs d ins outs)
+    (h : (mmFn (mmF M)).apply d ins outs τ m = some m') :
+    mmImpl.Fits d.length ins.length outs.length ∧
+      run I τ mmImpl.body (Env.frame d (ins ++ outs)) m = some m' := by
+  obtain ⟨a, b, c, A, B, z, As, Bs, rfl, rfl, rfl, hA, hB, -, hC, rfl⟩ := mmFn_apply h
   obtain ⟨s, p⟩ := m
-  have hC : z.2 + a * c ≤ s.len z.1 := by simpa [mmF, length_mmPrefix] using hlen
+  replace hC : z.2 + a * c ≤ s.len z.1 := hC
   refine ⟨⟨rfl, rfl, rfl⟩, run_of_wp (wp_alloc rfl (wp_loop (k := a) rfl
     (fun i m' => ∃ tb : Buf K, tb.length = 1 ∧
       m' = ⟨s.updBlock z.1 z.2 (mmPrefix M b c As Bs (i * c)) ++ [tb], p⟩)
@@ -216,7 +218,8 @@ theorem mm_cert {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I)
       m' = ⟨s.updBlock z.1 z.2 (mmPrefix M b c As Bs (i * c + j)) ++ [tb], p⟩) ⟨tb, htb, rfl⟩ ?_
       (fun m' ⟨tb', h1, h2⟩ => ⟨tb', h1, by rw [h2, Nat.succ_mul]⟩)
     rintro j hj m' ⟨tb, htb, rfl⟩
-    exact wp_mm_entry hI hi hj (hadm A (by simp)) (hadm B (by simp)) hA hB hC htb
+    exact wp_mm_entry hI hi hj (hadm A (by simp) z (by simp)) (hadm B (by simp) z (by simp)) hA
+      hB hC htb
       fun tb' h => ⟨tb', h, rfl⟩
   · rintro m' ⟨tb, _, rfl⟩
     simp [Mem.updBlock, mmF]

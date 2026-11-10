@@ -109,11 +109,7 @@ theorem wp_cgsDots (hJ : IsBlas1 dec ε ok J) (hok : ok n) (hH : Function.Inject
   have hrq := hfr.readBlock_of (Store.readBlock_sub hq hin) (by store_side [hH.eq_iff])
   have hra := hfr.readBlock_of ha (by store_side [hH.eq_iff])
   have hrl := Store.length_of_readBlock hr
-  refine wp_call_rel_cell hJ.dot rfl rfl rfl rfl rfl ⟨hok, by simp [hH.eq_iff]⟩ ?_
-    (xs := [(qs.drop (i * n)).take n, a]) ?_ ?_ fun v hv => ?_
-  · store_simp
-  · store_simp
-  · store_simp
+  wp_call hJ.dot [hH.eq_iff] with v hv
   refine ⟨_, rp ++ [v], rfl, (hfr.mono fun b q h => ⟨h.1, h.2.1, by have := h.2.2; omega⟩).upd
     ⟨rfl, by omega, by omega⟩ _, Store.readBlock_upd_concat hr (by omega) _, fun i' hi' => ?_⟩
   obtain hlt | heq : i' < i ∨ i' = i := by omega
@@ -153,15 +149,8 @@ theorem wp_cgsProj (hS : IsScalar M J) (hJ : IsBlas1 dec ε ok J)
   have hrq := hfr.readBlock_of (Store.readBlock_sub hq hin) (by store_side [hH.eq_iff])
   have hgr : s₁.get (H .R) (oR + j * p + i) = some (vec rp i) :=
     (hfr.get_eq (by store_side [hH.eq_iff])).trans (Store.get_of_readBlock hr hi default)
-  refine wp_seq (wp_call_un (hS .neg) rfl rfl rfl trivial hgr rfl (by store_simp) ?_)
-  have hrt : (s₁.upd (H .t) 0 (M.neg (vec rp i))).readBlock (H .t) 0 1 =
-      some [M.neg (vec rp i)] := Store.readBlock_one_of_get (by store_simp)
-  refine wp_call_rel hJ.axpy rfl rfl rfl rfl ⟨hok, [_, _], rfl, by simp [hH.eq_iff]⟩ ?_
-    (xs := [[M.neg (vec rp i)], (qs.drop (i * n)).take n, w]) ?_ ?_ fun zs hzl hzs => ?_
-  · store_simp
-  · store_simp [hH.eq_iff]
-  · store_simp
-  replace hzl : zs.length = n := hzl
+  wp_call (hS .neg)
+  wp_call hJ.axpy [hH.eq_iff] with zs hzl hzs
   refine ⟨_, zs, rfl, (hfr.upd (Or.inl rfl) _).updBlock fun _ _ => Or.inr rfl, hzl,
     by store_simp [hH.eq_iff], hc.step (hneg _) (hzs.congr
       (fun k hk => Store.getD_drop_take qs _ _ _ hk default) (fun _ _ => rfl) fun _ _ => rfl)⟩
@@ -192,12 +181,8 @@ theorem wp_cgsCol (hS : IsScalar M J) (hJ : IsBlas1 dec ε ok J)
   have hq1 := hf1.readBlock_of hq (by store_side [hH.eq_iff])
   have ha1 := hf1.readBlock_of ha (by store_side [hH.eq_iff])
   -- the work vector
-  refine wp_seq (wp_call_rel hJ.copy rfl rfl rfl rfl ⟨hok, by simp [hH.eq_iff]⟩ ?_ (xs := [a])
-    ?_ ?_ fun ys hyl hys => ?_)
-  · store_simp
-  · store_simp
-  · store_simp [hlen1]
-  obtain rfl : a = ys := by simpa [copyRel] using hys
+  wp_call hJ.copy [hH.eq_iff, hlen1] with ys hyl hys
+  obtain rfl : a = ys := (List.cons.inj hys).1.symm
   -- the updates
   refine wp_seq (wp_cgsProj hS hJ hneg hok hH (by store_simp) (qs := qs) (rp := rp) (w₀ := a)
     (by store_simp [hH.eq_iff]) (by store_simp [hH.eq_iff]) (by store_simp [hlen1])
@@ -207,27 +192,12 @@ theorem wp_cgsCol (hS : IsScalar M J) (hJ : IsBlas1 dec ε ok J)
   have hr3 : s₃.readBlock (H .R) (oR + j * p) j = some rp :=
     hf3.readBlock_of (by store_simp [hH.eq_iff]) (by store_side [hH.eq_iff])
   -- the norm
-  refine wp_seq (wp_call_rel_cell hJ.nrm2 rfl rfl rfl rfl rfl ⟨hok, by simp [hH.eq_iff]⟩ ?_
-    (xs := [w]) ?_ ?_ fun ρ hρ => ?_)
-  · store_simp
-  · store_simp
-  · store_simp [hlen3]
+  wp_call hJ.nrm2 [hH.eq_iff, hlen3] with ρ hρ
   -- the scaling
-  have hgρ : ((s₃.upd (H .R) (oR + j * p + j) ρ).readBlock (H .R) (oR + j * p + j) 1) =
-      some [ρ] := Store.readBlock_one_of_get (by store_simp [hlen3])
-  refine wp_seq (wp_call_rel hJ.scal rfl rfl rfl rfl ⟨hok, [_], rfl, by simp [hH.eq_iff]⟩ ?_
-    (xs := [[ρ], w]) ?_ ?_ fun zs hzl hzs => ?_)
-  · store_simp
-  · store_simp [hH.eq_iff]
-  · store_simp [hlen3]
-  replace hzl : zs.length = n := hzl
+  wp_call hJ.scal [hH.eq_iff, hlen3] with zs hzl hzs
   -- the column of `Q`
-  refine wp_call_rel hJ.copy rfl rfl rfl rfl ⟨hok, by simp [hH.eq_iff]⟩ ?_ (xs := [zs]) ?_ ?_
-    fun ys hyl hys => ?_
-  · store_simp
-  · store_simp [hlen3]
-  · store_simp [hlen3]
-  obtain rfl : zs = ys := by simpa [copyRel] using hys
+  wp_call hJ.copy [hH.eq_iff, hlen3] with ys hyl hys
+  obtain rfl : zs = ys := (List.cons.inj hys).1.symm
   refine hP _ rp ρ zs ?_ ?_ (by store_simp [hlen3]) ⟨hd, w, hc, hρ, hzs⟩
   · refine ((((hf1.mono fun b i h => ?_).updBlock fun _ _ => Or.inr rfl).trans
       (hf3.mono fun b i h => ?_)).upd (Or.inl (Or.inl (Or.inl ⟨rfl, by omega, by omega⟩)))

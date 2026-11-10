@@ -14,9 +14,9 @@ public import NLAlib.Ops.Static
 
 Weakest preconditions by definition, since the run is deterministic:
 `NLAlib.Ops.Wp md I τ s ρ Q m` says that the run of `s` from `m` satisfies `Q`, in the mode `md`.
-One rule per constructor; a call is replaced by its contract (`NLAlib.Ops.wp_call`) or, for a
-functional operation, by an equation (`NLAlib.Ops.wp_call_fn`); a loop needs an invariant
-(`NLAlib.Ops.wp_loop`). Every rule is mode-generic.
+One rule per constructor, each mode-generic; a call is replaced by its contract
+(`NLAlib.Ops.wp_call`, and `NLAlib.Ops.wp_call_rel` in `NLAlib.Ops.Rules` for the contracts in
+operand form); a loop needs an invariant (`NLAlib.Ops.wp_loop`, `NLAlib.Ops.wp_whileFuel`).
 
 Frame: contracts state the memory after a call as an update of the memory before
 (`NLAlib.Ops.Mem.upd`, `NLAlib.Ops.Mem.updBlock`), so what a call keeps is read off by the store
@@ -24,16 +24,16 @@ lemmas (`NLAlib.Ops.Store.get_upd_of_ne`, `NLAlib.Ops.Store.get_updBlock_of_buf_
 `NLAlib.Ops.Store.get_append_of_lt` for scratch on top), and facts about one run are combined by
 `NLAlib.Ops.Wp.and`.
 
-Grounding: `NLAlib.Ops.Interp.link_meets` and `NLAlib.Ops.Interp.link_isFn` reduce "the induced
-interpretation meets the contract of `o`" to a `Wp` statement, or a run equation, about the
-implementation of `o`.
-
 This is the part of the logic the examples need; the full logic sits on the same definitions.
+
 ## Main results
 
-* `NLAlib.Ops.wp_seq`, `NLAlib.Ops.wp_call`, `NLAlib.Ops.wp_call_fn`, `NLAlib.Ops.wp_loop`,
-  `NLAlib.Ops.wp_alloc`: the rules.
-* `NLAlib.Ops.Interp.link_meets`, `NLAlib.Ops.Interp.link_isFn`: grounding.
+* `NLAlib.Ops.wp_seq`, `NLAlib.Ops.wp_call`, `NLAlib.Ops.wp_loop`, `NLAlib.Ops.wp_alloc`,
+  `NLAlib.Ops.wp_ite`, `NLAlib.Ops.wp_bindIdx`, `NLAlib.Ops.wp_frame`: the rules.
+* `NLAlib.Ops.wp_whileFuel`: the loop with early exit, with an invariant indexed by the rounds
+  done; the continuation is proved at the round of the exit and at the cap.
+* `NLAlib.Ops.wp_ifZero`, `NLAlib.Ops.wp_ifPos`: branches on a size.
+* `NLAlib.Ops.wp_abort_liberal`: in liberal mode a failing run satisfies everything.
 -/
 
 @[expose] public section
@@ -85,89 +85,23 @@ theorem Wp.and {s : Stmt Op Tst} (h : Wp md I τ s ρ Q m) (h' : Wp md I τ s ρ
 
 theorem wp_skip (h : Q m) : Wp md I τ .skip ρ Q m := Mode.holds_some h
 
+/-- **In liberal mode a failing run satisfies every postcondition.** A liberal statement says
+nothing of success: it is never a result by itself (`NLAlib.Ops.RunsL`). -/
+theorem wp_abort_liberal : Wp .liberal I τ .abort ρ Q m := fun _ h => by cases h
+
 /-- Sequence. -/
 theorem wp_seq {s t : Stmt Op Tst} (h : Wp md I τ s ρ (Wp md I τ t ρ Q) m) :
     Wp md I τ (.seq s t) ρ Q m :=
   Mode.holds_bind h
 
-/-- **Call by contract.** -/
+/-- **Call by contract.** The contract is given the window of the tape at the position. -/
 theorem wp_call {o : Op} {C : Contract K} (hI : I.Meets md o C) {ds : List IExp}
     {ins outs : List Operand} {d : List ℕ} {a b : List (ℕ × ℕ)}
     (hd : IExp.evalList ρ.idx ds = some d) (ha : Operand.evalList ρ ins = some a)
-    (hb : Operand.evalList ρ outs = some b) (hpre : (C md d a b τ).pre m)
-    (hQ : ∀ m', (C md d a b τ).post m m' → Q m') : Wp md I τ (.call o ds ins outs) ρ Q m := by
+    (hb : Operand.evalList ρ outs = some b) (hpre : (C.on md d a b τ m).pre m)
+    (hQ : ∀ m', (C.on md d a b τ m).post m m' → Q m') : Wp md I τ (.call o ds ins outs) ρ Q m := by
   simp only [Wp, run, hd, ha, hb, Option.bind_some]
   exact (hI d a b τ m hpre).mono hQ
-
-/-- **Call of a functional operation**: an equation. -/
-theorem wp_call_fn {o : Op} {f : BlockFn K} {adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop}
-    (hI : I.IsFn .total o f adm) {ds : List IExp} {ins outs : List Operand} {d : List ℕ}
-    {a : List (ℕ × ℕ)} {z : ℕ × ℕ} (hd : IExp.evalList ρ.idx ds = some d)
-    (ha : Operand.evalList ρ ins = some a) (hb : Operand.evalList ρ outs = some [z])
-    (hadm : adm d a z) {m' : Mem K} (hf : f.apply d a z τ m = some m') (hQ : Q m') :
-    Wp md I τ (.call o ds ins outs) ρ Q m :=
-  wp_of_run (by simp only [run, hd, ha, hb, Option.bind_some, hI.callS_eq hadm hf]) hQ
-
-/-- **Call of a functional operation, partial correctness**: if the call succeeds, it is the
-block function. -/
-theorem wp_call_fn_liberal {o : Op} {f : BlockFn K} {adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop}
-    (hI : I.IsFn .liberal o f adm) {ds : List IExp} {ins outs : List Operand} {d : List ℕ}
-    {a : List (ℕ × ℕ)} {z : ℕ × ℕ} (hd : IExp.evalList ρ.idx ds = some d)
-    (ha : Operand.evalList ρ ins = some a) (hb : Operand.evalList ρ outs = some [z])
-    (hadm : adm d a z) (hQ : ∀ m', f.apply d a z τ m = some m' → Q m') :
-    Wp .liberal I τ (.call o ds ins outs) ρ Q m := by
-  intro m' hrun
-  simp only [run, hd, ha, hb, Option.bind_some] at hrun
-  exact hQ m' (hI.apply_of_callS hadm hrun)
-
-/-- Call of a functional constant, on cells. -/
-theorem wp_call_const {o : Op} {v : K} {adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop}
-    (hI : I.IsFn .total o (.const v) adm) {ds : List IExp} {ins outs : List Operand} {d : List ℕ}
-    {z : ℕ × ℕ} (hd : IExp.evalList ρ.idx ds = some d) (ha : Operand.evalList ρ ins = some [])
-    (hb : Operand.evalList ρ outs = some [z]) (hadm : adm d [] z) (hz : z.2 < m.store.len z.1)
-    (hQ : Q (m.upd z v)) : Wp md I τ (.call o ds ins outs) ρ Q m :=
-  wp_call_fn hI hd ha hb hadm (BlockFn.apply_const_eq_some_iff.mpr ⟨hz, rfl⟩) hQ
-
-/-- Call of a functional operation of one cell, on cells. -/
-theorem wp_call_un {o : Op} {g : K → Option K} {adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop}
-    (hI : I.IsFn .total o (.un g) adm) {ds : List IExp} {ins outs : List Operand} {d : List ℕ}
-    {x z : ℕ × ℕ} (hd : IExp.evalList ρ.idx ds = some d)
-    (ha : Operand.evalList ρ ins = some [x]) (hb : Operand.evalList ρ outs = some [z])
-    (hadm : adm d [x] z) {a v : K} (hx : m.store.get x.1 x.2 = some a) (hg : g a = some v)
-    (hz : z.2 < m.store.len z.1) (hQ : Q (m.upd z v)) : Wp md I τ (.call o ds ins outs) ρ Q m :=
-  wp_call_fn hI hd ha hb hadm (BlockFn.apply_un_eq_some_iff.mpr ⟨a, v, hx, hg, hz, rfl⟩) hQ
-
-/-- Call of a functional operation of two cells, on cells. -/
-theorem wp_call_bin {o : Op} {g : K → K → Option K}
-    {adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop} (hI : I.IsFn .total o (.bin g) adm)
-    {ds : List IExp} {ins outs : List Operand} {d : List ℕ} {x y z : ℕ × ℕ}
-    (hd : IExp.evalList ρ.idx ds = some d) (ha : Operand.evalList ρ ins = some [x, y])
-    (hb : Operand.evalList ρ outs = some [z]) (hadm : adm d [x, y] z) {a b v : K}
-    (hx : m.store.get x.1 x.2 = some a) (hy : m.store.get y.1 y.2 = some b)
-    (hg : g a b = some v) (hz : z.2 < m.store.len z.1) (hQ : Q (m.upd z v)) :
-    Wp md I τ (.call o ds ins outs) ρ Q m :=
-  wp_call_fn hI hd ha hb hadm (BlockFn.apply_bin_eq_some_iff.mpr ⟨a, b, v, hx, hy, hg, hz, rfl⟩)
-    hQ
-
-/-- Call of a functional operation of three cells, on cells. -/
-theorem wp_call_tern {o : Op} {g : K → K → K → Option K}
-    {adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop} (hI : I.IsFn .total o (.tern g) adm)
-    {ds : List IExp} {ins outs : List Operand} {d : List ℕ} {x y w z : ℕ × ℕ}
-    (hd : IExp.evalList ρ.idx ds = some d) (ha : Operand.evalList ρ ins = some [x, y, w])
-    (hb : Operand.evalList ρ outs = some [z]) (hadm : adm d [x, y, w] z) {a b c v : K}
-    (hx : m.store.get x.1 x.2 = some a) (hy : m.store.get y.1 y.2 = some b)
-    (hw : m.store.get w.1 w.2 = some c) (hg : g a b c = some v) (hz : z.2 < m.store.len z.1)
-    (hQ : Q (m.upd z v)) : Wp md I τ (.call o ds ins outs) ρ Q m :=
-  wp_call_fn hI hd ha hb hadm
-    (BlockFn.apply_tern_eq_some_iff.mpr ⟨a, b, c, v, hx, hy, hw, hg, hz, rfl⟩) hQ
-
-/-- A draw, on cells. -/
-theorem wp_call_draw {o : Op} {st : ℕ} {adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop}
-    (hI : I.IsFn .total o (.draw st) adm) {ds : List IExp} {ins outs : List Operand} {d : List ℕ}
-    {z : ℕ × ℕ} (hd : IExp.evalList ρ.idx ds = some d) (ha : Operand.evalList ρ ins = some [])
-    (hb : Operand.evalList ρ outs = some [z]) (hadm : adm d [] z) (hz : z.2 < m.store.len z.1)
-    (hQ : Q ((m.upd z (τ m.pos st)).advance 1)) : Wp md I τ (.call o ds ins outs) ρ Q m :=
-  wp_call_fn hI hd ha hb hadm (BlockFn.apply_draw_eq_some_iff.mpr ⟨hz, rfl⟩) hQ
 
 theorem holds_iter {σ : Type} {f : ℕ → σ → Option σ} {k : ℕ} (Inv : ℕ → σ → Prop)
     (hstep : ∀ i < k, ∀ s, Inv i s → md.Holds (f i s) (Inv (i + 1))) {s : σ} (h0 : Inv 0 s) :
@@ -215,51 +149,76 @@ theorem wp_bindIdx {o : Tst} {ins : List Operand} {bound : IExp} {body : Stmt Op
     (h : Wp md I τ body (ρ.pushIdx v) Q m) : Wp md I τ (.bindIdx o ins bound body) ρ Q m := by
   simpa only [Wp, run, ha, hB, hv, Option.bind_some, if_pos hle] using h
 
+
+theorem holds_whileIter {test : ℕ → Mem K → Option Bool} {body : ℕ → Mem K → Option (Mem K)}
+    (Inv : ℕ → Mem K → Prop) {P : ℕ × Mem K → Prop} {n : ℕ}
+    (hstep : ∀ i < n, ∀ m, Inv i m → md.Holds (test i m) fun c =>
+      if c then md.Holds (body i m) (Inv (i + 1)) else P (i, m))
+    (hcap : ∀ m, Inv n m → P (n, m)) :
+    ∀ (r i : ℕ) (m : Mem K), i + r = n → Inv i m →
+      md.Holds (whileIter (fun i m => (test i m).map fun b => (b, m)) body r i m) P := by
+  intro r
+  induction r with
+  | zero =>
+    intro i m hi hinv
+    obtain rfl : i = n := by omega
+    exact Mode.holds_some (hcap m hinv)
+  | succ r ih =>
+    intro i m hi hinv
+    refine Mode.holds_bind (Mode.holds_map ((hstep i (by omega) m hinv).mono fun c hc => ?_))
+    cases c with
+    | false => exact Mode.holds_some (by simpa using hc)
+    | true =>
+      simp only [if_true] at hc ⊢
+      exact Mode.holds_bind (hc.mono fun m₁ h₁ => ih (i + 1) m₁ (by omega) h₁)
+
+/-- **The loop with early exit.** `Inv i` is an invariant of the memory after `i` rounds. At a
+round below the cap the test is evaluated: if it holds the body keeps the invariant, otherwise
+the continuation runs with the round index. At the cap the continuation runs without a test. -/
+theorem wp_whileFuel {fuel : IExp} {q : Tst} {ds : List IExp} {ins : List Operand}
+    {body k : Stmt Op Tst} {n : ℕ} (hn : fuel.eval ρ.idx = some n) (Inv : ℕ → Mem K → Prop)
+    (h0 : Inv 0 m)
+    (hstep : ∀ i < n, ∀ m, Inv i m → md.Holds (I.testAt q ds ins (ρ.pushIdx i) m) fun c =>
+      if c then Wp md I τ body (ρ.pushIdx i) (Inv (i + 1)) m
+      else Wp md I τ k (ρ.pushIdx i) Q m)
+    (hcap : ∀ m, Inv n m → Wp md I τ k (ρ.pushIdx n) Q m) :
+    Wp md I τ (.whileFuel fuel q ds ins body k) ρ Q m := by
+  simp only [Wp, run, hn, Option.bind_some]
+  exact Mode.holds_bind (holds_whileIter (P := fun jm => Wp md I τ k (ρ.pushIdx jm.1) Q jm.2) Inv
+    hstep hcap n 0 m (by omega) h0)
+
+/-- A test whose Boolean is known. -/
+theorem holds_testAt {q : Tst} {ds : List IExp} {ins : List Operand} {d : List ℕ}
+    {a : List (ℕ × ℕ)} {c : Bool} {P : Bool → Prop} (hd : IExp.evalList ρ.idx ds = some d)
+    (ha : Operand.evalList ρ ins = some a) (hc : I.test q d a m = some c) (h : P c) :
+    md.Holds (I.testAt q ds ins ρ m) P := by
+  rw [Interp.testAt_eq hd ha, hc]
+  exact Mode.holds_some h
+
+/-! ### Branches on a size -/
+
+/-- A branch on a size being zero. -/
+theorem wp_ifZero {e : IExp} {body : Stmt Op Tst} {n : ℕ} (he : e.eval ρ.idx = some n)
+    (h : if n = 0 then Wp md I τ body (ρ.pushIdx 0) Q m else Q m) :
+    Wp md I τ (.ifZero e body) ρ Q m := by
+  rcases Nat.eq_zero_or_pos n with rfl | hn
+  · rw [if_pos rfl] at h
+    simpa [Wp, Stmt.ifZero, run, he, iter] using h
+  · rw [if_neg (by omega)] at h
+    have h1 : 1 - n = 0 := by omega
+    simpa [Wp, Stmt.ifZero, run, he, h1, iter] using Mode.holds_some (md := md) h
+
+/-- A branch on a size being positive. -/
+theorem wp_ifPos {e : IExp} {body : Stmt Op Tst} {n : ℕ} (he : e.eval ρ.idx = some n)
+    (h : if 0 < n then Wp md I τ body (ρ.pushIdx 0) Q m else Q m) :
+    Wp md I τ (.ifPos e body) ρ Q m := by
+  rcases Nat.eq_zero_or_pos n with rfl | hn
+  · rw [if_neg (lt_irrefl 0)] at h
+    simpa [Wp, Stmt.ifPos, run, he, iter] using Mode.holds_some (md := md) h
+  · rw [if_pos hn] at h
+    have h1 : 1 - (1 - n) = 1 := by omega
+    simpa [Wp, Stmt.ifPos, run, he, h1, iter] using h
+
 end Rules
-
-/-! ### Grounding: the induced interpretation meets a contract -/
-
-/-- **Grounding a relational contract**: the induced interpretation meets the contract of an
-implemented operation when the implementation satisfies it as a program, on operands that are
-buffers of the store (the evaluator rejects the others; in total mode the precondition must give
-that they are). -/
-theorem Interp.link_meets {I : Interp Op₂ Tst K} {T : Table Op₁ Op₂ Tst} {o : Op₁}
-    {R : Impl Op₂ Tst} (hT : T o = .inl R) {md : Mode} {C : Contract K}
-    (h : ∀ d ins outs τ m, (C md d ins outs τ).pre m →
-      md.Needs (m.Live (ins ++ outs)) ∧ (m.Live (ins ++ outs) →
-        R.Fits d.length ins.length outs.length ∧
-          Wp md I τ R.body (Env.frame d (ins ++ outs)) ((C md d ins outs τ).post m) m)) :
-    (I.link T).Meets md o C := by
-  intro d ins outs τ m hpre
-  obtain ⟨hl, hw⟩ := h d ins outs τ m hpre
-  rw [Interp.link_callS_inl I hT]
-  by_cases hlive : m.Live (ins ++ outs)
-  · rw [if_pos hlive, if_pos (hw hlive).1]
-    exact (hw hlive).2
-  · rw [if_neg hlive]
-    cases md
-    · exact absurd (hl rfl) hlive
-    · exact fun _ h => by cases h
-
-/-- A kept operation meets the contracts it meets below. -/
-theorem Interp.link_meets_kept {I : Interp Op₂ Tst K} {T : Table Op₁ Op₂ Tst} {o : Op₁} {o' : Op₂}
-    (hT : T o = .inr o') {md : Mode} {C : Contract K} (h : I.Meets md o' C) :
-    (I.link T).Meets md o C := by
-  intro d ins outs τ m hpre
-  rw [Interp.link_callS_inr I hT]
-  exact h d ins outs τ m hpre
-
-/-- **Grounding a functional contract** (the exact certificate): on admitted operands, where the
-block function succeeds, the run of the implementation is the block function. -/
-theorem Interp.link_isFn {I : Interp Op₂ Tst K} {T : Table Op₁ Op₂ Tst} {o : Op₁} {R : Impl Op₂ Tst}
-    (hT : T o = .inl R) {f : BlockFn K} {adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop}
-    (h : ∀ d ins z τ m m', adm d ins z → f.apply d ins z τ m = some m' →
-      R.Fits d.length ins.length 1 ∧ run I τ R.body (Env.frame d (ins ++ [z])) m = some m') :
-    (I.link T).IsFn .total o f adm := by
-  refine Interp.link_meets hT ?_
-  rintro d ins outs τ m ⟨z, rfl, hadm, hn⟩
-  obtain ⟨m', hm'⟩ := Option.isSome_iff_exists.mp (hn rfl)
-  obtain ⟨hfit, hr⟩ := h d ins z τ m m' hadm hm'
-  exact ⟨fun _ => (BlockFn.apply_eq_some_iff.mp hm').1, fun _ => ⟨hfit, m', hr, z, rfl, hm'⟩⟩
 
 end NLAlib.Ops

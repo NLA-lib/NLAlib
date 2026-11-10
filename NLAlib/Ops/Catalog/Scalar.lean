@@ -6,7 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import Mathlib.Analysis.SpecialFunctions.Pow.Real
-public import NLAlib.Ops.Rules
+public import NLAlib.Ops.Tactic
 public import NLAlib.Ops.Profile
 
 /-!
@@ -81,7 +81,7 @@ structure Machine (K : Type) where
 variable {K Op Tst : Type}
 
 /-- The block function of each scalar operation of a machine. -/
-def Machine.fn (M : Machine K) : ScalarOp → BlockFn K
+@[storeNF] def Machine.fn (M : Machine K) : ScalarOp → BlockFn K
   | .lit q => .const (M.lit q)
   | .add => .bin fun a b => some (M.add a b)
   | .sub => .bin fun a b => some (M.sub a b)
@@ -92,7 +92,7 @@ def Machine.fn (M : Machine K) : ScalarOp → BlockFn K
   | .copy => .un fun a => some a
 
 /-- No restriction on operands: scalar operations may alias. -/
-abbrev AnyOperands : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop := fun _ _ _ => True
+abbrev AnyOperands : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop := fun _ _ _ => True
 
 /-- **The functional contract of scalar arithmetic**: every scalar operation of the signature is
 the function of the machine `M`, on all operands. -/

@@ -106,14 +106,16 @@ theorem decv_ofFn (v : Fin n → ℝ) : decv id n (List.ofFn v) = v :=
 noncomputable def randFns (A : Matrix (Fin n) (Fin n) ℝ) : ROp → BlockFn ℝ
   | .draw => .draw Stream.gauss
   | .gauss => .drawVec Stream.gauss
-  | .matvec => .of1 1 (fun d => d.headD 0) fun _ x => some (List.ofFn (A.mulVec (decv id n x)))
-  | .dot => .of2 1 (fun d => d.headD 0) (fun d => d.headD 0) fun _ x y =>
+  | .matvec => .of1 1 (fun d => d.headD 0) (fun d => d.headD 0) fun _ x =>
+      some (List.ofFn (A.mulVec (decv id n x)))
+  | .dot => .of2 1 (fun d => d.headD 0) (fun d => d.headD 0) (fun _ => 1) fun _ x y =>
       some [∑ i, decv id n x i * decv id n y i]
   | .add => .bin fun a b => some (a + b)
-  | .nrm2 => .of1 1 (fun d => d.headD 0) fun _ x => some [√(∑ i, decv id n x i ^ 2)]
+  | .nrm2 => .of1 1 (fun d => d.headD 0) (fun _ => 1) fun _ x =>
+      some [√(∑ i, decv id n x i ^ 2)]
   | .mulc q => .un fun a => some (q * a)
-  | .axpy => .of3 1 (fun _ => 1) (fun d => d.headD 0) (fun d => d.headD 0) fun _ a x y =>
-      some (List.ofFn fun i => decv id n y i + vec a 0 * decv id n x i)
+  | .axpy => .of3 1 (fun _ => 1) (fun d => d.headD 0) (fun d => d.headD 0) (fun d => d.headD 0)
+      fun _ a x y => some (List.ofFn fun i => decv id n y i + vec a 0 * decv id n x i)
 
 /-- **Witness**: for every matrix, the interpretation by exact real arithmetic meets the
 contracts of the randomized examples, and its operations read the tape only in the registered
@@ -122,41 +124,47 @@ theorem exists_isRandLin (A : Matrix (Fin n) (Fin n) ℝ) :
     ∃ I : Interp ROp Tst ℝ, IsRandLin id A I ∧ ∀ o, I.TapeLocal o (randWindow o) := by
   have hfn := fun o => Interp.ofFns_isFn (Tst := Tst) (randFns A) .total o AnyOperands
   refine ⟨Interp.ofFns (randFns A), ⟨⟨hfn .draw, ?_, ?_, ?_, ?_, fun q => ?_, ?_⟩, ?_⟩, fun o => ?_⟩
-  · refine (hfn .matvec).meets_rel (fun _ _ _ _ => trivial) (fun _ => rfl) (fun _ => rfl) ?_
-    intro d w xs m ins z hnd hadm hr
+  · refine (hfn .matvec).meets_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl)
+      (fun _ => rfl) (fun _ => rfl) ?_
+    intro d w xs m ins outs hnd _ hadm hr _
     obtain ⟨k, rfl⟩ := List.length_eq_one_iff.mp hnd
     obtain rfl : n = k := hadm.1.symm
     obtain ⟨x, xs, rfl, hx, rfl⟩ := Mem.readBlocks_one hr
-    exact ⟨List.ofFn (A.mulVec (decv id n xs)), by simp [randFns, BlockFn.of1],
+    exact ⟨[List.ofFn (A.mulVec (decv id n xs))], by simp [randFns, BlockFn.of1],
       by simp [matvecRel], decv_ofFn _⟩
-  · refine (hfn .dot).meets_rel (fun _ _ _ _ => trivial) (fun _ => rfl) (fun _ => rfl) ?_
-    intro d w xs m ins z hnd hadm hr
+  · refine (hfn .dot).meets_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl)
+      (fun _ => rfl) (fun _ => rfl) ?_
+    intro d w xs m ins outs hnd _ hadm hr _
     obtain ⟨k, rfl⟩ := List.length_eq_one_iff.mp hnd
     obtain ⟨x, y, xs, ys, rfl, hx, hy, rfl⟩ := Mem.readBlocks_two hr
-    exact ⟨[∑ i, decv id n xs i * decv id n ys i], by simp [randFns, BlockFn.of2], rfl, rfl⟩
-  · refine (hfn .add).meets_rel (fun _ _ _ _ => trivial) (fun _ => rfl) (fun _ => rfl) ?_
-    intro d w xs m ins z hnd hadm hr
+    exact ⟨[[∑ i, decv id n xs i * decv id n ys i]], by simp [randFns, BlockFn.of2], rfl, rfl⟩
+  · refine (hfn .add).meets_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl)
+      (fun _ => rfl) (fun _ => rfl) ?_
+    intro d w xs m ins outs hnd _ hadm hr _
     obtain ⟨x, y, xs, ys, rfl, hx, hy, rfl⟩ := Mem.readBlocks_two hr
     obtain ⟨a, rfl⟩ := List.length_eq_one_iff.mp (Store.length_of_readBlock hx)
     obtain ⟨b, rfl⟩ := List.length_eq_one_iff.mp (Store.length_of_readBlock hy)
-    exact ⟨[a + b], by simp [randFns, BlockFn.bin], rfl, rfl⟩
-  · refine (hfn .nrm2).meets_rel (fun _ _ _ _ => trivial) (fun _ => rfl) (fun _ => rfl) ?_
-    intro d w xs m ins z hnd hadm hr
+    exact ⟨[[a + b]], by simp [randFns, BlockFn.bin], rfl, rfl⟩
+  · refine (hfn .nrm2).meets_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl)
+      (fun _ => rfl) (fun _ => rfl) ?_
+    intro d w xs m ins outs hnd _ hadm hr _
     obtain ⟨k, rfl⟩ := List.length_eq_one_iff.mp hnd
     obtain ⟨x, xs, rfl, hx, rfl⟩ := Mem.readBlocks_one hr
-    exact ⟨[√(∑ i, decv id n xs i ^ 2)], by simp [randFns, BlockFn.of1], rfl, rfl⟩
-  · refine (hfn (.mulc q)).meets_rel (fun _ _ _ _ => trivial) (fun _ => rfl) (fun _ => rfl) ?_
-    intro d w xs m ins z hnd hadm hr
+    exact ⟨[[√(∑ i, decv id n xs i ^ 2)]], by simp [randFns, BlockFn.of1], rfl, rfl⟩
+  · refine (hfn (.mulc q)).meets_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl)
+      (fun _ => rfl) (fun _ => rfl) ?_
+    intro d w xs m ins outs hnd _ hadm hr _
     obtain ⟨x, xs, rfl, hx, rfl⟩ := Mem.readBlocks_one hr
     obtain ⟨a, rfl⟩ := List.length_eq_one_iff.mp (Store.length_of_readBlock hx)
-    exact ⟨[(q : ℝ) * a], by simp [randFns, BlockFn.un], rfl, rfl⟩
-  · refine (hfn .axpy).meets_rel (fun _ _ _ _ => trivial) (fun _ => rfl) (fun _ => rfl) ?_
-    intro d w xs m ins z hnd hadm hr
+    exact ⟨[[(q : ℝ) * a]], by simp [randFns, BlockFn.un], rfl, rfl⟩
+  · refine (hfn .axpy).meets_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl)
+      (fun _ => rfl) (fun _ => rfl) ?_
+    intro d w xs m ins outs hnd _ hadm hr _
     obtain ⟨k, rfl⟩ := List.length_eq_one_iff.mp hnd
     obtain rfl : n = k := hadm.1.symm
     obtain ⟨a, x, y, as, xs, ys, rfl, ha, hx, hy, rfl⟩ := Mem.readBlocks_three hr
     obtain ⟨a, rfl⟩ := List.length_eq_one_iff.mp (Store.length_of_readBlock ha)
-    exact ⟨List.ofFn fun i => decv id n ys i + vec [a] 0 * decv id n xs i,
+    exact ⟨[List.ofFn fun i => decv id n ys i + vec [a] 0 * decv id n xs i],
       by simp [randFns, BlockFn.of3], by simp [axpyExRel], by
       simp only [axpyExRel, decv_ofFn]
       rfl⟩

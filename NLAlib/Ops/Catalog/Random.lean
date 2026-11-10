@@ -63,86 +63,66 @@ theorem vec_window [Inhabited K] (τ : Tape K) (s p : ℕ) {k i : ℕ} (hi : i <
   simp [vec, Tape.window, List.getD_eq_getElem?_getD, hi]
 
 /-- `matvec`: the product by the matrix `A`, exactly. -/
+@[simps (attr := storeNF)]
 def matvecRel (dec : K → ℝ) {n : ℕ} (A : Matrix (Fin n) (Fin n) ℝ) : BlockRel K where
   nd := 1
   inLens d := [d.headD 0]
-  outLen d := d.headD 0
-  rel _ X ys := match X with
-    | [xs] => decv dec n ys = A.mulVec (decv dec n xs)
-    | _ => False
+  outLens d := [d.headD 0]
+  rel _ X _ Y := match X, Y with
+    | [xs], [ys] => decv dec n ys = A.mulVec (decv dec n xs)
+    | _, _ => False
 
 /-- `dot`, exactly, at the length `n`. -/
+@[simps (attr := storeNF)]
 def dotExRel (dec : K → ℝ) (n : ℕ) : BlockRel K where
   nd := 1
   inLens d := [d.headD 0, d.headD 0]
-  outLen _ := 1
-  rel _ X ys := match X, ys with
-    | [xs, zs], [v] => dec v = ∑ i, decv dec n xs i * decv dec n zs i
+  outLens _ := [1]
+  rel _ X _ ys := match X, ys with
+    | [xs, zs], [[v]] => dec v = ∑ i, decv dec n xs i * decv dec n zs i
     | _, _ => False
 
 omit [Inhabited K] in
 /-- `add`, exactly. -/
+@[simps (attr := storeNF)]
 def addExRel (dec : K → ℝ) : BlockRel K where
   nd := 0
   inLens _ := [1, 1]
-  outLen _ := 1
-  rel _ X ys := match X, ys with
-    | [[a], [b]], [v] => dec v = dec a + dec b
+  outLens _ := [1]
+  rel _ X _ ys := match X, ys with
+    | [[a], [b]], [[v]] => dec v = dec a + dec b
     | _, _ => False
 
 /-- `nrm2`, exactly, at the length `n`. -/
+@[simps (attr := storeNF)]
 def nrm2ExRel (dec : K → ℝ) (n : ℕ) : BlockRel K where
   nd := 1
   inLens d := [d.headD 0]
-  outLen _ := 1
-  rel _ X ys := match X, ys with
-    | [xs], [v] => dec v = √(∑ i, decv dec n xs i ^ 2)
+  outLens _ := [1]
+  rel _ X _ ys := match X, ys with
+    | [xs], [[v]] => dec v = √(∑ i, decv dec n xs i ^ 2)
     | _, _ => False
 
 omit [Inhabited K] in
 /-- `mulc q`: the product by the constant `q`, exactly. -/
+@[simps (attr := storeNF)]
 def mulcRel (dec : K → ℝ) (q : ℚ) : BlockRel K where
   nd := 0
   inLens _ := [1]
-  outLen _ := 1
-  rel _ X ys := match X, ys with
-    | [[a]], [v] => dec v = q * dec a
+  outLens _ := [1]
+  rel _ X _ ys := match X, ys with
+    | [[a]], [[v]] => dec v = q * dec a
     | _, _ => False
 
 /-- `axpy`, exactly, at the length `n`. -/
+@[simps (attr := storeNF)]
 def axpyExRel (dec : K → ℝ) (n : ℕ) : BlockRel K where
   nd := 1
   inLens d := [1, d.headD 0, d.headD 0]
-  outLen d := d.headD 0
-  rel _ X zs := match X with
-    | [[a], xs, ys] => decv dec n zs = fun i => decv dec n ys i + dec a * decv dec n xs i
-    | _ => False
-
-@[storeNF] theorem matvecRel_inLens (dec : K → ℝ) {n : ℕ} (A : Matrix (Fin n) (Fin n) ℝ)
-    (d : List ℕ) : (matvecRel dec A).inLens d = [d.headD 0] := rfl
-
-@[storeNF] theorem matvecRel_outLen (dec : K → ℝ) {n : ℕ} (A : Matrix (Fin n) (Fin n) ℝ)
-    (d : List ℕ) : (matvecRel dec A).outLen d = d.headD 0 := rfl
-
-@[storeNF] theorem dotExRel_inLens (dec : K → ℝ) (n : ℕ) (d : List ℕ) :
-    (dotExRel dec n).inLens d = [d.headD 0, d.headD 0] := rfl
-
-omit [Inhabited K] in
-@[storeNF] theorem addExRel_inLens (dec : K → ℝ) (d : List ℕ) :
-    (addExRel dec).inLens d = [1, 1] := rfl
-
-@[storeNF] theorem nrm2ExRel_inLens (dec : K → ℝ) (n : ℕ) (d : List ℕ) :
-    (nrm2ExRel dec n).inLens d = [d.headD 0] := rfl
-
-omit [Inhabited K] in
-@[storeNF] theorem mulcRel_inLens (dec : K → ℝ) (q : ℚ) (d : List ℕ) :
-    (mulcRel dec q).inLens d = [1] := rfl
-
-@[storeNF] theorem axpyExRel_inLens (dec : K → ℝ) (n : ℕ) (d : List ℕ) :
-    (axpyExRel dec n).inLens d = [1, d.headD 0, d.headD 0] := rfl
-
-@[storeNF] theorem axpyExRel_outLen (dec : K → ℝ) (n : ℕ) (d : List ℕ) :
-    (axpyExRel dec n).outLen d = d.headD 0 := rfl
+  outLens d := [d.headD 0]
+  rel _ X _ Z := match X, Z with
+    | [[a], xs, ys], [zs] => decv dec n zs = fun i => decv dec n ys i + dec a * decv dec n xs i
+    | _, _ => False
 
 /-- **The contracts of the operator and of the exact level-1 operations**, with the scalar draw:
 what the vector draw is implemented over. -/

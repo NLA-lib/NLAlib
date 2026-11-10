@@ -89,40 +89,42 @@ structure IsSrLo (f : K → K → K → K) (I : Interp SrLo Empty K) : Prop wher
 /-- The block function of an operation of two cells with one hidden uniform draw: the result is
 `g` of the operands and of the window entry. -/
 def drawBin (g : K → K → K → K) : BlockFn K where
+  nd := 0
   stream := Stream.unif
   win _ := 1
   inLens _ := [1, 1]
-  fn d w xs := match d, w, xs with
-    | [], [ξ], [[a], [b]] => some [g a b ξ]
-    | _, _, _ => none
+  outLens _ := [1]
+  fn _ w xs := match w, xs with
+    | [ξ], [[a], [b]] => some [[g a b ξ]]
+    | _, _ => none
 
 /-- A call of `drawBin`, on cells. -/
 theorem drawBin_apply_of {g : K → K → K → K} {x y z : ℕ × ℕ} {τ : Tape K} {m : Mem K} {a b : K}
     (hx : m.store.get x.1 x.2 = some a) (hy : m.store.get y.1 y.2 = some b)
     (hz : z.2 < m.store.len z.1) :
-    (drawBin g).apply [] [x, y] z τ m =
+    (drawBin g).apply [] [x, y] [z] τ m =
       some ((m.upd z (g a b (τ m.pos Stream.unif))).advance 1) :=
-  BlockFn.apply_eq_some_iff.mpr ⟨by simp [Store.lt_length_of_get hx, Store.lt_length_of_get hy,
-    Store.lt_length_of_lt_len hz], [[a], [b]], [g a b (τ m.pos Stream.unif)],
-    by simp [drawBin, Mem.readBlocks, BlockFn.readBlock_one, hx, hy],
-    by simp [drawBin, Tape.window_one], by simpa using hz, rfl⟩
+  BlockFn.apply_eq_some_iff.mpr ⟨rfl, by simp [Store.lt_length_of_get hx,
+    Store.lt_length_of_get hy, Store.lt_length_of_lt_len hz], [[a], [b]],
+    [[g a b (τ m.pos Stream.unif)]], BlockFn.readBlocks_cells_two.mpr ⟨a, b, hx, hy, rfl⟩,
+    by simp [drawBin, Tape.window_one], rfl, ⟨hz, trivial⟩, rfl⟩
 
 /-- What a successful call of `drawBin` is. -/
-theorem drawBin_apply {g : K → K → K → K} {d : List ℕ} {ins : List (ℕ × ℕ)} {z : ℕ × ℕ}
-    {τ : Tape K} {m m' : Mem K} (h : (drawBin g).apply d ins z τ m = some m') :
-    ∃ x y a b, d = [] ∧ ins = [x, y] ∧ m.store.get x.1 x.2 = some a ∧
+theorem drawBin_apply {g : K → K → K → K} {d : List ℕ} {ins outs : List (ℕ × ℕ)}
+    {τ : Tape K} {m m' : Mem K} (h : (drawBin g).apply d ins outs τ m = some m') :
+    ∃ x y z a b, d = [] ∧ ins = [x, y] ∧ outs = [z] ∧ m.store.get x.1 x.2 = some a ∧
       m.store.get y.1 y.2 = some b ∧ z.2 < m.store.len z.1 ∧
       m' = (m.upd z (g a b (τ m.pos Stream.unif))).advance 1 := by
-  obtain ⟨hlive, X, v, hread, hfn, hlen, rfl⟩ := BlockFn.apply_eq_some_iff.mp h
+  obtain ⟨hnd, hlive, X, v, hread, hfn, hlen, hroom, rfl⟩ := BlockFn.apply_eq_some_iff.mp h
+  obtain rfl : d = [] := List.length_eq_zero_iff.mp hnd
   obtain ⟨x, y, xs, ys, rfl, hx, hy, rfl⟩ := Mem.readBlocks_two hread
+  obtain ⟨z, rfl, hz⟩ := Mem.room_one hroom
   rw [BlockFn.readBlock_one] at hx hy
   obtain ⟨a, ha, rfl⟩ := Option.map_eq_some_iff.mp hx
   obtain ⟨b, hb, rfl⟩ := Option.map_eq_some_iff.mp hy
-  rcases d with _ | ⟨n, d⟩
-  · simp only [drawBin, Tape.window_one, Option.some.injEq] at hfn
-    subst hfn
-    exact ⟨x, y, a, b, rfl, rfl, ha, hb, by simpa using hlen, rfl⟩
-  · simp [drawBin] at hfn
+  simp only [drawBin, Tape.window_one, Option.some.injEq] at hfn
+  subst hfn
+  exact ⟨x, y, z, a, b, rfl, rfl, rfl, ha, hb, hz, rfl⟩
 
 /-- **The contract of `srAdd`**, conditional on the history: at every memory the result is the
 function `g` of the two operands and of the next entry of the uniform stream, which the
@@ -149,11 +151,11 @@ def srTable : Table SrOp SrLo Empty
 /-- **The exact certificate of the drawing program**: its run is the block function of `f` with
 the window entry as random word. -/
 theorem srAdd_cert {f : K → K → K → K} {I : Interp SrLo Empty K} (hI : IsSrLo f I) {d : List ℕ}
-    {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : Tape K} {m m' : Mem K}
-    (h : (drawBin f).apply d ins z τ m = some m') :
-    srAddImpl.Fits d.length ins.length 1 ∧
-      run I τ srAddImpl.body (Env.frame d (ins ++ [z])) m = some m' := by
-  obtain ⟨x, y, a, b, rfl, rfl, hx, hy, hz, rfl⟩ := drawBin_apply h
+    {ins outs : List (ℕ × ℕ)} {τ : Tape K} {m m' : Mem K}
+    (h : (drawBin f).apply d ins outs τ m = some m') :
+    srAddImpl.Fits d.length ins.length outs.length ∧
+      run I τ srAddImpl.body (Env.frame d (ins ++ outs)) m = some m' := by
+  obtain ⟨x, y, z, a, b, rfl, rfl, rfl, hx, hy, hz, rfl⟩ := drawBin_apply h
   obtain ⟨s, p⟩ := m
   have hbz : z.1 < s.length := Store.lt_length_of_lt_len hz
   refine ⟨⟨rfl, rfl, rfl⟩, run_of_wp (wp_alloc rfl (wp_seq (wp_call_draw hI.draw
@@ -339,8 +341,9 @@ theorem runs_srsum {g : K → K → K → K} {J : Interp SrOp Empty K} (hJ : IsS
       (fun i m' => m' = (m.upd z (srsumF g z₀ (vec xs) τ m.pos i)).advance i) ?_ ?_ fun _ h => h
     · simp [srsumF, Mem.upd, Mem.advance, Store.upd_of_get hz]
     · rintro i hi m' rfl
-      refine wp_call_fn hJ (z := z) rfl rfl rfl trivial (drawBin_apply_of (a := srsumF g z₀ (vec xs)
-        τ m.pos i) (b := vec xs i) (Store.get_upd_self (Store.lt_len_of_get hz) _) ?_ ?_) ?_
+      refine wp_call_fn hJ (b := [z]) rfl rfl rfl trivial (drawBin_apply_of
+        (a := srsumF g z₀ (vec xs) τ m.pos i) (b := vec xs i)
+        (Store.get_upd_self (Store.lt_len_of_get hz) _) ?_ ?_) ?_
       · change (m.store.upd z.1 z.2 _).get x.1 (x.2 + i) = some _
         rw [Store.get_upd_of_ne (Or.inl hxz)]
         exact Store.get_of_readBlock hx hi default

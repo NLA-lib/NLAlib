@@ -165,30 +165,32 @@ variable [Inhabited K]
 
 /-- The block function of `dot` at the dimension `[n]`: two blocks of length `n` to one cell. -/
 def dotFn (M : Machine K) : BlockFn K where
-  inLens d := match d with
-    | [n] => [n, n]
-    | _ => []
-  fn d _ xs := match d, xs with
-    | [n], [xs, ys] => some [dotF M (fun k => xs.getD k default) (fun k => ys.getD k default) n]
-    | _, _ => none
+  nd := 1
+  inLens d := [d.headD 0, d.headD 0]
+  outLens _ := [1]
+  fn d _ xs := match xs with
+    | [xs, ys] => some [[dotF M (fun k => xs.getD k default) (fun k => ys.getD k default)
+        (d.headD 0)]]
+    | _ => none
 
 /-- What a successful call of the block function of `dot` is. -/
-theorem dotFn_apply {M : Machine K} {d : List ℕ} {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : Tape K}
-    {m m' : Mem K} (h : (dotFn M).apply d ins z τ m = some m') :
-    ∃ n x y xs ys, d = [n] ∧ ins = [x, y] ∧ m.store.readBlock x.1 x.2 n = some xs ∧
+theorem dotFn_apply {M : Machine K} {d : List ℕ} {ins outs : List (ℕ × ℕ)} {τ : Tape K}
+    {m m' : Mem K} (h : (dotFn M).apply d ins outs τ m = some m') :
+    ∃ n x y z xs ys, d = [n] ∧ ins = [x, y] ∧ outs = [z] ∧
+      m.store.readBlock x.1 x.2 n = some xs ∧
       m.store.readBlock y.1 y.2 n = some ys ∧ z.2 < m.store.len z.1 ∧
       m' = m.upd z (dotF M (fun k => xs.getD k default) (fun k => ys.getD k default) n) := by
-  obtain ⟨hlive, X, v, hread, hfn, hlen, rfl⟩ := BlockFn.apply_eq_some_iff.mp h
-  rcases d with _ | ⟨n, _ | ⟨n', d⟩⟩
-  · simp [dotFn] at hfn
-  · obtain ⟨x, y, xs, ys, rfl, hx, hy, rfl⟩ := Mem.readBlocks_two hread
-    simp only [dotFn, Option.some.injEq] at hfn
-    subst hfn
-    exact ⟨n, x, y, xs, ys, rfl, rfl, hx, hy, by simpa using hlen, rfl⟩
-  · simp [dotFn] at hfn
+  obtain ⟨hnd, hlive, X, v, hread, hfn, hlen, hroom, rfl⟩ := BlockFn.apply_eq_some_iff.mp h
+  obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hnd
+  obtain ⟨x, y, xs, ys, rfl, hx, hy, rfl⟩ := Mem.readBlocks_two hread
+  obtain ⟨z, rfl, hz⟩ := Mem.room_one hroom
+  simp only [dotFn, Option.some.injEq] at hfn
+  subst hfn
+  exact ⟨n, x, y, z, xs, ys, rfl, rfl, rfl, hx, hy, hz, rfl⟩
 
-/-- Operands in other buffers than the output. -/
-def DisjointBufs : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop := fun _ ins z => ∀ a ∈ ins, a.1 ≠ z.1
+/-- Operands in other buffers than the outputs. -/
+def DisjointBufs : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop :=
+  fun _ ins outs => ∀ a ∈ ins, ∀ z ∈ outs, a.1 ≠ z.1
 
 /-- **The implementation of `dot`** over scalar arithmetic: a scratch cell and the accumulation
 loop. Index variables: `n`, the offsets of `x`, `y`, `z`, then the loop variable. -/
@@ -203,15 +205,15 @@ def dotImpl : Impl ScalarOp Empty where
 operands in other buffers than the output, the run of the implementation is the block function.
 A statement about words, with no error analysis. -/
 theorem dot_cert {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I) {d : List ℕ}
-    {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : Tape K} {m m' : Mem K} (hadm : DisjointBufs d ins z)
-    (h : (dotFn M).apply d ins z τ m = some m') :
-    dotImpl.Fits d.length ins.length 1 ∧
-      run I τ dotImpl.body (Env.frame d (ins ++ [z])) m = some m' := by
-  obtain ⟨n, x, y, xs, ys, rfl, rfl, hx, hy, hz, rfl⟩ := dotFn_apply h
+    {ins outs : List (ℕ × ℕ)} {τ : Tape K} {m m' : Mem K} (hadm : DisjointBufs d ins outs)
+    (h : (dotFn M).apply d ins outs τ m = some m') :
+    dotImpl.Fits d.length ins.length outs.length ∧
+      run I τ dotImpl.body (Env.frame d (ins ++ outs)) m = some m' := by
+  obtain ⟨n, x, y, z, xs, ys, rfl, rfl, rfl, hx, hy, hz, rfl⟩ := dotFn_apply h
   refine ⟨⟨rfl, rfl, rfl⟩, run_of_wp (wp_alloc rfl ?_)⟩
   exact wp_dotLoop hI (s := m.store) (tb := List.replicate 1 none) (fx := fun k => x.2 + k)
     (fy := fun k => y.2 + k) rfl rfl (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) (fun _ => rfl)
-    rfl (hadm x (by simp)) (hadm y (by simp)) hz
+    rfl (hadm x (by simp) z (by simp)) (hadm y (by simp) z (by simp)) hz
     (fun k hk => Store.get_of_readBlock hx hk default)
     (fun k hk => Store.get_of_readBlock hy hk default) (fun tb' _ => by simp [Mem.upd])
 

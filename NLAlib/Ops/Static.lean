@@ -47,8 +47,10 @@ noncomputable def staticCost : Stmt Op Tst → List ℕ → Count Op Tst
   | .seq s t, idx => staticCost s idx + staticCost t idx
   | .call o ds _ _, idx => useCost o ds idx
   | .ite q ds _ t e, idx => testCost q ds idx + (staticCost t idx ⊔ staticCost e idx)
-  | .whileFuel fuel q ds _ body, idx =>
-      ((fuel.eval idx).getD 0) • (testCost q ds idx + staticCost body idx) + testCost q ds idx
+  | .whileFuel fuel q ds _ body k, idx =>
+      ∑ i ∈ Finset.range ((fuel.eval idx).getD 0),
+          (testCost q ds (idx ++ [i]) + staticCost body (idx ++ [i])) +
+        (Finset.range ((fuel.eval idx).getD 0 + 1)).sup fun j => staticCost k (idx ++ [j])
   | .bindIdx q _ bound body, idx =>
       Count.test q [] +
         (Finset.range ((bound.eval idx).getD 0 + 1)).sup fun v => staticCost body (idx ++ [v])
@@ -68,7 +70,9 @@ def staticPeak (W : Op → List ℕ → ℕ) : Stmt Op Tst → List ℕ → ℕ
   | .seq s t, idx => max (staticPeak W s idx) (staticPeak W t idx)
   | .call o ds _ _, idx => ((IExp.evalList idx ds).map (W o)).getD 0
   | .ite _ _ _ t e, idx => max (staticPeak W t idx) (staticPeak W e idx)
-  | .whileFuel _ _ _ _ body, idx => staticPeak W body idx
+  | .whileFuel fuel _ _ _ body k, idx =>
+      max ((Finset.range ((fuel.eval idx).getD 0)).sup fun i => staticPeak W body (idx ++ [i]))
+        ((Finset.range ((fuel.eval idx).getD 0 + 1)).sup fun j => staticPeak W k (idx ++ [j]))
   | .bindIdx _ _ bound body, idx =>
       (Finset.range ((bound.eval idx).getD 0 + 1)).sup fun v => staticPeak W body (idx ++ [v])
   | .alloc len body, idx => (len.eval idx).getD 0 + staticPeak W body idx
@@ -123,31 +127,38 @@ theorem iter_within {f : ℕ → St Op Tst K → Option (St Op Tst K)} {c : ℕ 
     rw [Finset.range_add_one, Finset.sup_insert]
     exact le_of_eq (max_comm _ _)
 
-theorem whileIter_within {test : St Op Tst K → Option Bool} {tick : St Op Tst K → St Op Tst K}
-    {body : St Op Tst K → Option (St Op Tst K)} {c cb : Count Op Tst} {pb : ℕ}
-    (ht : ∀ a, St.Within a (tick a) c 0) (h : ∀ a b, body a = some b → St.Within a b cb pb)
-    {k : ℕ} {s s' : St Op Tst K} (hk : whileIter test tick body k s = some s') :
-    St.Within s s' (k • (c + cb) + c) pb := by
-  induction k generalizing s with
-  | zero =>
-    obtain ⟨b, -, hb⟩ := Option.bind_eq_some_iff.mp hk
-    cases b with
-    | false =>
-      simp only [Bool.false_eq_true, if_false, Option.some.injEq] at hb
-      exact hb ▸ (ht s).mono le_add_self zero_le
-    | true => simp at hb
-  | succ k ih =>
-    obtain ⟨b, -, hb⟩ := Option.bind_eq_some_iff.mp hk
-    cases b with
-    | false =>
-      simp only [Bool.false_eq_true, if_false, Option.some.injEq] at hb
-      exact hb ▸ (ht s).mono le_add_self zero_le
-    | true =>
-      simp only [if_true] at hb
-      obtain ⟨a, ha, hb⟩ := Option.bind_eq_some_iff.mp hb
-      refine (((ht s).trans (h _ _ ha)).trans (ih hb)).mono (le_of_eq ?_) (by simp)
-      rw [succ_nsmul]
-      abel
+/-- A loop with early exit stays within the sum over the rounds it may do of the counts `c i` of
+one round (test and body), and within the largest workspace of a body. -/
+theorem whileIter_within {test : ℕ → St Op Tst K → Option (Bool × St Op Tst K)}
+    {body : ℕ → St Op Tst K → Option (St Op Tst K)} {ct cb : ℕ → Count Op Tst} {p : ℕ → ℕ}
+    (ht : ∀ i a bs, test i a = some bs → St.Within a bs.2 (ct i) 0)
+    (h : ∀ i a b, body i a = some b → St.Within a b (cb i) (p i)) {r i : ℕ}
+    {s : St Op Tst K} {js : ℕ × St Op Tst K} (hk : whileIter test body r i s = some js) :
+    St.Within s js.2 (∑ l ∈ Finset.range r, (ct (i + l) + cb (i + l)))
+      ((Finset.range r).sup fun l => p (i + l)) := by
+  induction r generalizing i s with
+  | zero => cases hk; simpa using St.Within.refl s
+  | succ r ih =>
+    obtain ⟨bs, hbs, hb⟩ := Option.bind_eq_some_iff.mp hk
+    have hsum : ct i + cb i + ∑ l ∈ Finset.range r, (ct (i + 1 + l) + cb (i + 1 + l)) =
+        ∑ l ∈ Finset.range (r + 1), (ct (i + l) + cb (i + l)) := by
+      rw [Finset.sum_range_succ', add_comm]
+      simp [Nat.add_assoc, Nat.add_comm 1]
+    have hsup : max (p i) ((Finset.range r).sup fun l => p (i + 1 + l)) ≤
+        (Finset.range (r + 1)).sup fun l => p (i + l) := by
+      refine max_le (Finset.le_sup (f := fun l => p (i + l)) (b := 0) (by simp)) ?_
+      refine Finset.sup_le fun l hl => ?_
+      have := Finset.le_sup (f := fun l => p (i + l)) (s := Finset.range (r + 1)) (b := l + 1)
+        (by simpa using Finset.mem_range.mp hl)
+      simpa [Nat.add_assoc, Nat.add_comm 1] using this
+    split_ifs at hb with hc
+    · obtain ⟨a, ha, hb⟩ := Option.bind_eq_some_iff.mp hb
+      refine (((ht i s bs hbs).trans (h i _ a ha)).trans (ih hb)).mono (le_of_eq hsum) ?_
+      simpa using hsup
+    · cases hb
+      refine (ht i s bs hbs).mono ?_ (Nat.zero_le _)
+      rw [← hsum, add_assoc]
+      exact le_self_add
 
 /-- **Soundness of the static count and workspace**: a successful counted run keeps the live
 cells, adds at most the static count and stays within the static workspace. -/
@@ -177,13 +188,33 @@ theorem exec_within {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ : Ta
         (by simp only [staticCost, hu]; gcongr; exact le_sup_right) (by simp [staticPeak])
     · exact ((St.Within.tick st o d).trans (iht h)).mono
         (by simp only [staticCost, hu]; gcongr; exact le_sup_left) (by simp [staticPeak])
-  | whileFuel fuel o ds ins body ih =>
-    obtain ⟨k, hk, h⟩ := Option.bind_eq_some_iff.mp h
-    obtain ⟨d, hd, h⟩ := Option.bind_eq_some_iff.mp h
-    obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
-    have hu : testCost (Op := Op) o ds ρ.idx = Count.test o d := by simp [testCost, hd]
-    simpa [staticCost, staticPeak, hk, hu] using
-      whileIter_within (fun a => St.Within.tick a o d) (fun _ _ hb => ih hb) h
+  | whileFuel fuel o ds ins body k ih ihk =>
+    obtain ⟨n, hn, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨jst, hw, h⟩ := Option.bind_eq_some_iff.mp h
+    have hj := (whileIter_rel (R := fun _ _ : St Op Tst K => True) (fun _ => trivial)
+      (fun _ _ _ _ _ => trivial) (fun _ _ _ _ => trivial) (fun _ _ _ _ => trivial) hw).2.2
+    have h1 := whileIter_within (ct := fun i => testCost o ds (ρ.idx ++ [i]))
+      (cb := fun i => staticCost body (ρ.idx ++ [i]))
+      (p := fun i => staticPeak W body (ρ.idx ++ [i])) (fun i a bs hbs => ?_)
+      (fun i _ _ hb => ih hb) hw
+    · have hmem : jst.1 ∈ Finset.range (n + 1) := by
+        simp only [Finset.mem_range]
+        omega
+      refine (h1.trans (ihk h)).mono ?_ ?_
+      · simp only [staticCost, hn, Option.getD_some, zero_add]
+        gcongr
+        exact Finset.le_sup (f := fun j => staticCost k (ρ.idx ++ [j])) hmem
+      · simp only [staticPeak, hn, Option.getD_some, zero_add]
+        exact max_le_max le_rfl
+          (Finset.le_sup (f := fun j => staticPeak W k (ρ.idx ++ [j])) hmem)
+    · obtain ⟨d, hd, -, e⟩ := Interp.testSt_eq_some hbs
+      rw [e]
+      have hu : testCost (Op := Op) o ds (ρ.idx ++ [i]) = Count.test o d := by
+        simp only [testCost]
+        rw [show ρ.idx ++ [i] = (ρ.pushIdx i).idx from rfl, hd]
+        rfl
+      rw [hu]
+      exact St.Within.tick a o d
   | bindIdx o ins bound body ih =>
     obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨B, hB, h⟩ := Option.bind_eq_some_iff.mp h
@@ -221,6 +252,27 @@ def Runs (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : Tape K) (s : 
     (m : Mem K)
     (B : Count Op Tst) (M : ℕ) (Q : Mem K → Prop) : Prop :=
   ∃ st', exec I W τ s ρ (St.init m) = some st' ∧ st'.cost ≤ B ∧ st'.peak ≤ M ∧ Q st'.mem
+
+/-- **A run whose postcondition sees the counts**: from the memory `m`, the counted run succeeds
+within the workspace `M`, and `Q` holds of the final counts and the final memory. This is the
+form of a statement whose bound on the counts depends on the data, or is a weighted bound. -/
+def RunsW (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : Tape K) (s : Stmt Op Tst) (ρ : Env)
+    (m : Mem K) (M : ℕ) (Q : Count Op Tst → Mem K → Prop) : Prop :=
+  ∃ st', exec I W τ s ρ (St.init m) = some st' ∧ st'.peak ≤ M ∧ Q st'.cost st'.mem
+
+/-- A run within a budget is a run whose counts are within the budget. -/
+theorem runs_iff_runsW {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ : Tape K}
+    {s : Stmt Op Tst} {ρ : Env} {m : Mem K} {B : Count Op Tst} {M : ℕ} {Q : Mem K → Prop} :
+    Runs I W τ s ρ m B M Q ↔ RunsW I W τ s ρ m M fun c m' => c ≤ B ∧ Q m' :=
+  ⟨fun ⟨st', h1, h2, h3, h4⟩ => ⟨st', h1, h3, h2, h4⟩,
+    fun ⟨st', h1, h3, h2, h4⟩ => ⟨st', h1, h2, h3, h4⟩⟩
+
+theorem RunsW.mono {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ : Tape K} {s : Stmt Op Tst}
+    {ρ : Env} {m : Mem K} {M M' : ℕ} {Q Q' : Count Op Tst → Mem K → Prop}
+    (h : RunsW I W τ s ρ m M Q) (hM : M ≤ M') (hQ : ∀ c m', Q c m' → Q' c m') :
+    RunsW I W τ s ρ m M' Q' := by
+  obtain ⟨st', h1, h2, h3⟩ := h
+  exact ⟨st', h1, h2.trans hM, hQ _ _ h3⟩
 
 /-- **A refinement statement** (partial correctness): if the run succeeds, `Q` holds of the final
 memory. -/

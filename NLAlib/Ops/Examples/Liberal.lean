@@ -83,13 +83,26 @@ theorem abs_sub_div_le {u A B t v : ℝ} (hu : 0 ≤ u) (ht : |t - 1 / B| ≤ u 
 /-- **The mode-generic contract of `div`**: the quotient up to the
 relative error `ε`. Readability and a nonzero divisor are needed only for success, and hold after
 a successful call. -/
-def divSpec (dec : K → ℝ) (ε : ℝ) : Contract K := fun md d ins outs _ =>
-  { pre := fun m => ∃ x y z, d = [] ∧ ins = [x, y] ∧ outs = [z] ∧
-      md.Needs (∃ a b, m.store.get x.1 x.2 = some a ∧ m.store.get y.1 y.2 = some b ∧
-        dec b ≠ 0 ∧ z.2 < m.store.len z.1)
-    post := fun m m' => ∃ x y z a b v, ins = [x, y] ∧ outs = [z] ∧
-      m.store.get x.1 x.2 = some a ∧ m.store.get y.1 y.2 = some b ∧ dec b ≠ 0 ∧
-      |dec v - dec a / dec b| ≤ ε * |dec a / dec b| ∧ m' = m.upd z v }
+def divSpec (dec : K → ℝ) (ε : ℝ) : Contract K where
+  spec md d ins outs _ :=
+    { pre := fun m => ∃ x y z, d = [] ∧ ins = [x, y] ∧ outs = [z] ∧
+        md.Needs (∃ a b, m.store.get x.1 x.2 = some a ∧ m.store.get y.1 y.2 = some b ∧
+          dec b ≠ 0 ∧ z.2 < m.store.len z.1)
+      post := fun m m' => ∃ x y z a b v, ins = [x, y] ∧ outs = [z] ∧
+        m.store.get x.1 x.2 = some a ∧ m.store.get y.1 y.2 = some b ∧ dec b ≠ 0 ∧
+        |dec v - dec a / dec b| ≤ ε * |dec a / dec b| ∧ m' = m.upd z v }
+
+theorem divSpec_pre {dec : K → ℝ} {ε : ℝ} {md : Mode} {d : List ℕ} {ins outs : List (ℕ × ℕ)}
+    {τ : Tape K} {m : Mem K} : ((divSpec dec ε).on md d ins outs τ m).pre m ↔
+      ∃ x y z, d = [] ∧ ins = [x, y] ∧ outs = [z] ∧
+        md.Needs (∃ a b, m.store.get x.1 x.2 = some a ∧ m.store.get y.1 y.2 = some b ∧
+          dec b ≠ 0 ∧ z.2 < m.store.len z.1) := Iff.rfl
+
+theorem divSpec_post {dec : K → ℝ} {ε : ℝ} {md : Mode} {d : List ℕ} {ins outs : List (ℕ × ℕ)}
+    {τ : Tape K} {m m' : Mem K} : ((divSpec dec ε).on md d ins outs τ m).post m m' ↔
+      ∃ x y z a b v, ins = [x, y] ∧ outs = [z] ∧
+        m.store.get x.1 x.2 = some a ∧ m.store.get y.1 y.2 = some b ∧ dec b ≠ 0 ∧
+        |dec v - dec a / dec b| ≤ ε * |dec a / dec b| ∧ m' = m.upd z v := Iff.rfl
 
 /-- **The liberal contracts of the lower level**: a successful call of `recip` or `mul` is the
 function. -/
@@ -123,11 +136,13 @@ theorem div_link_liberal {recipF : K → Option K} {mulF : K → K → K} {I : I
     (hM : RecipModel u dec recipF mulF) (hu : 0 ≤ u) :
     (I.link divTable).Meets .liberal .div (divSpec dec (2 * u + u ^ 2)) := by
   refine Interp.link_meets (R := divImpl) rfl ?_
-  rintro d ins outs τ ⟨s, p⟩ ⟨x, y, z, rfl, rfl, rfl, -⟩
+  intro d ins outs τ m hpre
+  obtain ⟨s, p⟩ := m
+  obtain ⟨x, y, z, rfl, rfl, rfl, -⟩ := divSpec_pre.mp hpre
   refine ⟨by simp, fun hl => ?_⟩
   obtain ⟨hbx, hby, hbz⟩ : x.1 < s.length ∧ y.1 < s.length ∧ z.1 < s.length := by simpa using hl
-  refine ⟨⟨rfl, rfl, rfl⟩, wp_alloc rfl (wp_seq (wp_call_fn_liberal hI.recip (z := (s.length, 0))
-    rfl rfl rfl trivial fun m₁ h₁ => ?_))⟩
+  refine ⟨⟨rfl, rfl, rfl⟩, wp_alloc rfl (wp_seq (wp_call_fn_liberal hI.recip
+    (b := [(s.length, 0)]) rfl rfl rfl rfl trivial fun m₁ h₁ => ?_))⟩
   obtain ⟨b, t, hy, hg, -, rfl⟩ := BlockFn.apply_un_eq_some_iff.mp h₁
   have hy' : s.get y.1 y.2 = some b := by
     rw [← Store.get_append_of_lt hby [List.replicate 1 none]]
@@ -137,7 +152,7 @@ theorem div_link_liberal {recipF : K → Option K} {mulF : K → K → K} {I : I
     rw [Store.upd_append_top]
     rfl
   rw [e1]
-  refine wp_call_fn_liberal hI.mul (z := z) rfl rfl rfl trivial fun m₂ h₂ => ?_
+  refine wp_call_fn_liberal hI.mul (b := [z]) rfl rfl rfl rfl trivial fun m₂ h₂ => ?_
   obtain ⟨a, t', v, hx, ht, hgm, -, rfl⟩ := BlockFn.apply_bin_eq_some_iff.mp h₂
   have hx' : s.get x.1 x.2 = some a := by
     rw [← Store.get_append_of_lt hbx [[some t]]]
@@ -147,7 +162,8 @@ theorem div_link_liberal {recipF : K → Option K} {mulF : K → K → K} {I : I
   obtain rfl : t = t' := by simpa using ht'
   obtain rfl := Option.some.inj hgm
   obtain ⟨hb0, hrec⟩ := hM.recip b t hg
-  refine ⟨x, y, z, a, b, mulF a t, rfl, rfl, hx', hy', hb0, abs_sub_div_le hu hrec (hM.mul a t), ?_⟩
+  refine divSpec_post.mpr ⟨x, y, z, a, b, mulF a t, rfl, rfl, hx', hy', hb0,
+    abs_sub_div_le hu hrec (hM.mul a t), ?_⟩
   simp only [Mem.upd]
   rw [Store.upd_append_of_lt hbz, Store.pop_append_top]
 
@@ -178,8 +194,9 @@ theorem runsL_scale {dec : K → ℝ} {ε : ℝ} {J : Interp DOp Empty K}
     ⟨[], rfl, rfl, fun j hj => absurd hj (Nat.not_lt_zero j)⟩ ?_ fun _ h => h)
   rintro i hi m' ⟨zs, hzl, rfl, hzs⟩
   refine wp_call hJ (d := []) (a := [(v.1, v.2 + i), s]) (b := [(v.1, v.2 + i)]) rfl rfl rfl
-    ⟨_, _, _, rfl, rfl, rfl, by simp⟩ ?_
-  rintro m₂ ⟨x', y', z', a, b, w, hi', ho', hx, hy, hb0, herr, rfl⟩
+    (divSpec_pre.mpr ⟨_, _, _, rfl, rfl, rfl, by simp⟩) ?_
+  intro m₂ hpost
+  obtain ⟨x', y', z', a, b, w, hi', ho', hx, hy, hb0, herr, rfl⟩ := divSpec_post.mp hpost
   cases hi'
   cases ho'
   have hx' : m.store.get v.1 (v.2 + i) = some a := by
@@ -209,6 +226,25 @@ theorem runsL_scale_link {recipF : K → Option K} {mulF : K → K → K} {I : I
       (ScalePost dec (2 * u + u ^ 2) n v s m) :=
   link_liberal (Ck := fun J => J.Meets .liberal .div (divSpec dec (2 * u + u ^ 2)))
     (fun _ hJ => runsL_scale hJ hvs) (div_link_liberal hI hM hu)
+
+/-! ### A liberal statement can be vacuous -/
+
+/-- The table whose implementation of `div` fails. -/
+def abortTable : Table DOp ROp Empty
+  | .div => .inl ⟨0, 2, 1, .abort⟩
+
+/-- **The liberal corollary holds for the table that fails, with the error `0`**: the linked
+program never succeeds, so "if it succeeds the quotients are exact" is true and says nothing.
+A liberal theorem is therefore never a result by itself: it is registered only together with a
+statement of success (here `NLAlib.Ops.Examples.exists_isRecipMul` and a range on which the
+reciprocal is defined). -/
+theorem runsL_scale_link_abort (I : Interp ROp Empty K) (dec : K → ℝ) {τ : Tape K} {n : ℕ}
+    {v s : ℕ × ℕ} {m : Mem K} (hvs : v.1 ≠ s.1) :
+    RunsL I τ (scale.link abortTable) ⟨[n, v.2, s.2], [v.1, s.1]⟩ m
+      (ScalePost dec 0 n v s m) :=
+  link_liberal (Ck := fun J => J.Meets .liberal .div (divSpec dec 0))
+    (fun _ hJ => runsL_scale hJ hvs)
+    (Interp.link_meets_liberal_of_abort (R := ⟨0, 2, 1, .abort⟩) rfl rfl _)
 
 /-! ### Witness -/
 

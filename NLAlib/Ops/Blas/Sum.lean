@@ -149,13 +149,14 @@ theorem wp_sumSeq {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {md 
 `(1 + u) ^ (n - 1) - 1`, for every length. -/
 theorem sumSeq_spec {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {u : ℝ}
     {dec : K → ℝ} (hM : StdModel u dec M) (hu : 0 ≤ u) (ok : ℕ → Prop) :
-    (sumSeq (Op := Op) (Tst := Tst)).MeetsRel I (sumRel dec fun n => (1 + u) ^ (n - 1) - 1)
-      (OutApart ok) := by
-  intro d ins z τ m xs hnd hadm hl hr hz
+    (sumSeq (Op := Op) (Tst := Tst)).Meets I .total
+      ((sumRel dec fun n => (1 + u) ^ (n - 1) - 1).spec (OutApart ok)) := by
+  refine Impl.meets_rel fun d ins outs τ m xs hnd hadm hl hr _ hz => ?_
   obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hnd
   obtain ⟨x, xs, rfl, hx, rfl⟩ := Mem.readBlocks_one hr
-  exact ⟨⟨rfl, rfl, rfl⟩, wp_sumSeq hI (hadm.2 x (by simp)) hx (by simpa [sumRel] using hz)
-    ⟨[_], rfl, isSumErr_sumSeqF hM hu _ n, rfl⟩⟩
+  obtain ⟨z, rfl, hz'⟩ := Mem.room_one hz
+  exact ⟨⟨rfl, rfl, rfl⟩, wp_sumSeq hI (hadm.2 x (by simp) z (by simp)) hx (by omega)
+    ⟨[[_]], rfl, isSumErr_sumSeqF hM hu _ n, rfl⟩⟩
 
 end
 
@@ -273,24 +274,14 @@ theorem wp_sumPairwise {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
   rw [if_neg (by omega)]
   refine wp_ifPos (n := n / 2) rfl ?_
   rw [if_pos (by omega)]
-  refine wp_alloc rfl (wp_seq ?_)
-  refine wp_call_rel_cell hS rfl rfl rfl rfl rfl ⟨(hok h2).1, by simp; omega⟩ ?_
-    (xs := [xs.take (n / 2)]) ?_ ?_ fun v₁ h₁ => wp_seq ?_
-  · store_simp
-  · store_simp
-  · store_simp
-  refine wp_call_rel_cell hS rfl rfl rfl rfl rfl ⟨(hok h2).2, by simp; omega⟩ ?_
-    (xs := [xs.drop (n / 2)]) ?_ ?_ fun v₂ h₂ => ?_
-  · store_simp
-  · store_simp
-  · store_simp
-  refine wp_call_bin (hI .add) rfl rfl rfl trivial (a := v₁) (b := v₂) ?_ ?_ rfl ?_ ?_
-  · store_simp
-  · store_simp
-  · store_simp
-  · refine ⟨M.add v₁ v₂, IsSumErr.pairwise hM hu h2 h₁ h₂, ?_⟩
-    store_simp
-    rfl
+  obtain ⟨hk₁, hk₂⟩ := hok h2
+  refine wp_alloc rfl ?_
+  wp_call hS with v₁ h₁
+  wp_call hS with v₂ h₂
+  wp_call (hI .add)
+  refine ⟨M.add v₁ v₂, IsSumErr.pairwise hM hu h2 h₁ h₂, ?_⟩
+  store_simp
+  rfl
 
 /-- **Pairwise summation meets the contract of `sum`** for the lengths `n` with
 `⌈log₂ n⌉ < k + 1`, over an interpretation whose `sum` meets it for `⌈log₂ n⌉ < k`: one level of
@@ -298,16 +289,17 @@ the recursion. -/
 theorem sumPairwise_spec {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {u : ℝ}
     {dec : K → ℝ} (hM : StdModel u dec M) (hu : 0 ≤ u) {k : ℕ}
     (hS : IsSum dec (fun n => (1 + u) ^ Nat.clog 2 n - 1) (fun n => Nat.clog 2 n < k) I) :
-    (sumPairwise (Op := Op) (Tst := Tst)).MeetsRel I
-      (sumRel dec fun n => (1 + u) ^ Nat.clog 2 n - 1)
-      (OutApart fun n => Nat.clog 2 n < k + 1) := by
-  intro d ins z τ m xs hnd hadm hl hr hz
+    (sumPairwise (Op := Op) (Tst := Tst)).Meets I .total
+      ((sumRel dec fun n => (1 + u) ^ Nat.clog 2 n - 1).spec
+        (OutApart fun n => Nat.clog 2 n < k + 1)) := by
+  refine Impl.meets_rel fun d ins outs τ m xs hnd hadm hl hr _ hz => ?_
   obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hnd
   obtain ⟨x, xs, rfl, hx, rfl⟩ := Mem.readBlocks_one hr
+  obtain ⟨z, rfl, hz'⟩ := Mem.room_one hz
   have hk : Nat.clog 2 n < k + 1 := hadm.1
   replace hx : m.store.readBlock x.1 x.2 n = some xs := hx
   refine ⟨⟨rfl, rfl, rfl⟩, (wp_sumPairwise hI hM hu hS (fun h2 => ?_) hl hx
-    (by simpa [sumRel] using hz)).mono fun m' ⟨v, hv, e⟩ => ⟨[v], rfl, hv, e⟩⟩
+    (by omega)).mono fun m' ⟨v, hv, e⟩ => ⟨[[v]], rfl, hv, e⟩⟩
   have h1 : Nat.clog 2 (n - n / 2) < k := by
     rw [Nat.clog_of_two_le (by norm_num) h2, show (n + 2 - 1) / 2 = n - n / 2 by omega] at hk
     omega

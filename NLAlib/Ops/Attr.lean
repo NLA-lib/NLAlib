@@ -16,10 +16,16 @@ operation reads and writes), so that the obligations of the call rules are compu
 
 ## Main results
 
-* `storeNF`: the simp attribute.
+* `storeNF`: the simp attribute. A catalog file tags its contracts in operand form with it, so
+  that their shapes and relations are unfolded at a call.
+* `admNF`: the simp attribute of the predicates on admitted operands.
 -/
 
 @[expose] public section
 
 /-- The simp set of `store_simp`: unfolding lemmas of the shapes of contracts. -/
 register_simp_attr storeNF
+
+/-- The simp set that unfolds the predicates on admitted operands of the catalog, for the side
+goals of the call rule (`wp_side`). -/
+register_simp_attr admNF

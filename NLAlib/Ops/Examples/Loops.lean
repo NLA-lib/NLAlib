@@ -7,6 +7,7 @@ module
 
 public import Mathlib.Data.Nat.Size
 public import NLAlib.Ops.Counted
+public import NLAlib.Ops.Tactic
 
 /-!
 # Example: a loop whose length comes from the data, and a hundred buffers
@@ -21,9 +22,9 @@ to.
   decoded state (`dec a = v / 2 ^ i` after `i` rounds) and the bound `Nat.size v` from the
   mathematics; the fuel only has to be at least that.
 * `NLAlib.Ops.Examples.runs_halve`: the same with counts that depend on the data,
-  `Nat.size v` calls of `half` and `Nat.size v + 1` tests, by `RunsFrom.whileFuel`. The loop
+  `Nat.size v` calls of `half` and `Nat.size v + 1` tests, by `RunsFromW.whileFuel`. The loop
   leaves before the fuel is used up, and the fuel does not appear in the bound.
-* `NLAlib.Ops.Examples.wpL_halve`: partial correctness with no bound at all.
+* `NLAlib.Ops.Examples.wpL_halveStrict`: partial correctness with no bound at all.
 * `NLAlib.Ops.Examples.exists_isHalving`: the contracts can be met.
 
 **A hundred buffers.** `NLAlib.Ops.Examples.read_of_hundred`: reads through writes to other
@@ -73,32 +74,47 @@ theorem exists_isHalving : ∃ (K : Type) (dec : K → ℕ) (h : K → K) (I : I
       dec_half := fun _ => rfl
       nz := fun _ _ _ _ hx => by simp [hx] }⟩
 
-/-- Halve the word `x` while it is not zero. Index variables: the fuel, the offset of `x`. -/
+/-- Halve the word `x` while it is not zero, for at most the fuel. Index variables: the fuel,
+the offset of `x`, then the round index. -/
 def halve : Stmt HOp HTst :=
-  .whileFuel (.var 0) .nz [] [⟨0, .var 1⟩] (.call .half [] [⟨0, .var 1⟩] [⟨0, .var 1⟩])
+  .whileFuel (.var 0) .nz [] [⟨0, .var 1⟩] (.call .half [] [⟨0, .var 1⟩] [⟨0, .var 1⟩]) .skip
+
+/-- The same loop, strict: the run fails if the word is not zero after the fuel. -/
+def halveStrict : Stmt HOp HTst :=
+  .whileStrict 2 (.var 0) .nz [] [⟨0, .var 1⟩] (.call .half [] [⟨0, .var 1⟩] [⟨0, .var 1⟩])
 
 /-- The invariant after `i` rounds: the cell holds a word that decodes to `v / 2 ^ i`. -/
 def HalveInv (dec : K → ℕ) (m : Mem K) (x : ℕ × ℕ) (v : ℕ) (i : ℕ) (m' : Mem K) : Prop :=
   ∃ a, m' = m.upd x a ∧ dec a = v / 2 ^ i
 
+/-- The test under the invariant: its Boolean, and it holds only below the bit length. -/
 theorem halveInv_test {dec : K → ℕ} {h : K → K} {I : Interp HOp HTst K}
     (hI : IsHalving dec h I) {m : Mem K} {x : ℕ × ℕ} {v : ℕ} (hx : x.2 < m.store.len x.1)
     (i : ℕ) (m' : Mem K) (hinv : HalveInv dec m x v i m') :
-    ∃ b, I.test .nz [] [x] m' = some b ∧ (b = true → i < Nat.size v) := by
+    ∃ b, I.test .nz [] [x] m' = some b ∧ (b = true → i < Nat.size v) ∧
+      (b = false → ∃ a', m' = m.upd x a' ∧ dec a' = 0) := by
   obtain ⟨a, rfl, ha⟩ := hinv
-  refine ⟨_, hI.nz [] x _ a (by store_simp), fun hb => ?_⟩
+  refine ⟨_, hI.nz [] x _ a (by store_simp), fun hb => ?_, fun hb => ⟨a, rfl, by simpa using hb⟩⟩
   rw [decide_eq_true_eq, ha, Nat.div_ne_zero_iff] at hb
   exact Nat.lt_size.mpr hb.2
 
 theorem halveInv_step {dec : K → ℕ} {h : K → K} {I : Interp HOp HTst K}
     (hI : IsHalving dec h I) {τ : Tape K} {k : ℕ} {m : Mem K} {x : ℕ × ℕ} {v : ℕ}
     (hx : x.2 < m.store.len x.1) (i : ℕ) (m' : Mem K) (hinv : HalveInv dec m x v i m') :
-    Wp .total I τ (.call .half [] [⟨0, .var 1⟩] [⟨0, .var 1⟩]) ⟨[k, x.2], [x.1]⟩
-      (HalveInv dec m x v (i + 1)) m' := by
+    Wp .total I τ (.call .half [] [⟨0, .var 1⟩] [⟨0, .var 1⟩])
+      ((⟨[k, x.2], [x.1]⟩ : Env).pushIdx i) (HalveInv dec m x v (i + 1)) m' := by
   obtain ⟨a, rfl, ha⟩ := hinv
   refine wp_call_un hI.half rfl rfl rfl trivial (a := a) (by store_simp) rfl (by store_simp)
     ⟨h a, by simp, ?_⟩
   rw [hI.dec_half, ha, Nat.div_div_eq_div_mul, pow_succ]
+
+/-- At the cap, if the fuel is at least the bit length, the word decodes to zero. -/
+theorem halveInv_cap {dec : K → ℕ} {m : Mem K} {x : ℕ × ℕ} {v k : ℕ} (hk : Nat.size v ≤ k)
+    (m' : Mem K) (hinv : HalveInv dec m x v k m') : ∃ a', m' = m.upd x a' ∧ dec a' = 0 := by
+  obtain ⟨a, rfl, ha⟩ := hinv
+  refine ⟨a, rfl, ?_⟩
+  rw [ha, Nat.div_eq_of_lt]
+  exact (Nat.lt_size_self v).trans_le (Nat.pow_le_pow_right (by norm_num) hk)
 
 /-- **Total correctness of the halving loop**, with the bound on the rounds from the
 mathematics: if the fuel is at least the bit length of the decoded number, the run ends with a
@@ -108,16 +124,18 @@ theorem wp_halve {dec : K → ℕ} {h : K → K} {I : Interp HOp HTst K} (hI : I
     (hk : Nat.size (dec a) ≤ k) :
     Wp .total I τ halve ⟨[k, x.2], [x.1]⟩ (fun m' => ∃ a', m' = m.upd x a' ∧ dec a' = 0) m := by
   have hlt := Store.lt_len_of_get hx
-  refine wp_whileFuel rfl rfl rfl (HalveInv dec m x (dec a)) (Nat.size (dec a)) hk
-    ⟨a, by simp [Mem.upd, Store.upd_of_get hx], by simp⟩ (halveInv_test hI hlt)
-    (fun i m' hinv _ => halveInv_step hI hlt i m' hinv) ?_
-  rintro i m' - ⟨a', rfl, ha'⟩ hf
-  rw [hI.nz [] x _ a' (by store_simp)] at hf
-  exact ⟨a', rfl, by simpa using hf⟩
+  refine wp_whileFuel rfl (HalveInv dec m x (dec a))
+    ⟨a, by simp [Mem.upd, Store.upd_of_get hx], by simp⟩ (fun i _ m' hinv => ?_)
+    fun m' hinv => wp_skip (halveInv_cap hk m' hinv)
+  obtain ⟨b, hb, -, hf⟩ := halveInv_test hI hlt i m' hinv
+  refine holds_testAt rfl rfl hb ?_
+  cases b with
+  | true => exact halveInv_step hI hlt i m' hinv
+  | false => exact wp_skip (hf rfl)
 
-/-- **The halving loop with counts that depend on the data**: `Nat.size v` calls of `half` and
-`Nat.size v + 1` tests, where `v` is the number the word decodes to; the fuel is not in the
-bound. -/
+/-- **The halving loop with counts that depend on the data**: at most `Nat.size v` calls of
+`half` and `Nat.size v + 1` tests, where `v` is the number the word decodes to; the fuel is not
+in the bound. The counts are carried by the logic, round by round. -/
 theorem runs_halve {dec : K → ℕ} {h : K → K} {I : Interp HOp HTst K} (hI : IsHalving dec h I)
     (W : HOp → List ℕ → ℕ) {τ : Tape K} {k : ℕ} {m : Mem K} {x : ℕ × ℕ} {a : K}
     (hx : m.store.get x.1 x.2 = some a) (hk : Nat.size (dec a) ≤ k) :
@@ -125,29 +143,54 @@ theorem runs_halve {dec : K → ℕ} {h : K → K} {I : Interp HOp HTst K} (hI :
       (Nat.size (dec a) • (Count.test .nz [] + Count.one .half []) + Count.test .nz [])
       (W .half []) (fun m' => ∃ a', m' = m.upd x a' ∧ dec a' = 0) := by
   have hlt := Store.lt_len_of_get hx
-  refine ((RunsFrom.whileFuel rfl rfl rfl (HalveInv dec m x (dec a)) (Nat.size (dec a)) hk
-    ⟨a, by simp [St.init, Mem.upd, Store.upd_of_get hx], by simp⟩ (halveInv_test hI hlt)
-    fun i st hinv _ => (RunsFrom.of_wp (halveInv_step hI hlt i st.mem hinv)).mono
-      (by simp [staticCost, useCost]) (by simp [staticPeak]) fun _ h => h).mono le_rfl le_rfl
-    ?_).runs
-  rintro m' ⟨i, -, ⟨a', rfl, ha'⟩, hf⟩
-  rw [hI.nz [] x _ a' (by store_simp)] at hf
-  exact ⟨a', rfl, by simpa using hf⟩
+  have hmono : ∀ i ≤ Nat.size (dec a), i • (Count.test (Op := HOp) HTst.nz [] +
+      Count.one .half []) ≤ Nat.size (dec a) • (Count.test .nz [] + Count.one .half []) +
+        Count.test .nz [] := fun i hi => (nsmul_le_nsmul_left zero_le hi).trans le_self_add
+  refine (RunsFromW.whileFuel (p := W .half []) rfl (fun i c m' => HalveInv dec m x (dec a) i m' ∧
+    i ≤ Nat.size (dec a) ∧ c = i • (Count.test .nz [] + Count.one .half []))
+    ⟨⟨a, by simp [St.init, Mem.upd, Store.upd_of_get hx], by simp⟩, Nat.zero_le _, by simp⟩
+    (fun i _ st c ⟨hinv, hi, hc⟩ => ?_) fun st c ⟨hinv, hi, hc⟩ => ?_).runs
+  · obtain ⟨b, hb, ht, hf⟩ := halveInv_test hI hlt i st.mem hinv
+    refine ⟨[], [x], b, rfl, rfl, hb, ?_⟩
+    cases b with
+    | true =>
+      rw [if_pos rfl]
+      refine (RunsFromW.call (W := W) (st := st.tick HTst.nz []) rfl
+        (halveInv_step hI hlt i st.mem hinv)).mono le_rfl ?_
+      rintro c' m' ⟨rfl, hinv'⟩
+      exact ⟨hinv', ht rfl, by rw [hc, succ_nsmul]⟩
+    | false =>
+      rw [if_neg (by simp)]
+      refine RunsFromW.skip ⟨?_, hf rfl⟩
+      rw [hc, add_zero]
+      exact add_le_add (nsmul_le_nsmul_left zero_le hi) le_rfl
+  · exact RunsFromW.skip ⟨by rw [hc, add_zero]; exact hmono _ hi, halveInv_cap hk st.mem hinv⟩
 
-/-- **Partial correctness of the halving loop**, with no bound: if the run succeeds, whatever
-the fuel, the word decodes to zero. -/
-theorem wpL_halve {dec : K → ℕ} {h : K → K} {I : Interp HOp HTst K} (hI : IsHalving dec h I)
-    {τ : Tape K} {k : ℕ} {m : Mem K} {x : ℕ × ℕ} {a : K} (hx : m.store.get x.1 x.2 = some a) :
-    Wp .liberal I τ halve ⟨[k, x.2], [x.1]⟩ (fun m' => ∃ a', m' = m.upd x a' ∧ dec a' = 0) m := by
+/-- **Partial correctness of the strict halving loop**, with no bound: if the run succeeds,
+whatever the fuel, the word decodes to zero. (For the loop that stops at the cap this is false:
+it succeeds with a word that is not zero.) -/
+theorem wpL_halveStrict {dec : K → ℕ} {h : K → K} {I : Interp HOp HTst K}
+    (hI : IsHalving dec h I) {τ : Tape K} {k : ℕ} {m : Mem K} {x : ℕ × ℕ} {a : K}
+    (hx : m.store.get x.1 x.2 = some a) :
+    Wp .liberal I τ halveStrict ⟨[k, x.2], [x.1]⟩
+      (fun m' => ∃ a', m' = m.upd x a' ∧ dec a' = 0) m := by
   have hlt := Store.lt_len_of_get hx
-  refine wp_whileFuel_liberal rfl rfl (fun m' => ∃ a', m' = m.upd x a')
-    ⟨a, by simp [Mem.upd, Store.upd_of_get hx]⟩ ?_ ?_
-  · rintro m' ⟨a', rfl⟩ -
-    exact Mode.Holds.of_total (wp_call_un hI.half rfl rfl rfl trivial (a := a') (by store_simp)
-      rfl (by store_simp) ⟨h a', by simp⟩)
-  · rintro m' ⟨a', rfl⟩ hf
-    rw [hI.nz [] x _ a' (by store_simp)] at hf
-    exact ⟨a', rfl, by simpa using hf⟩
+  refine wp_whileFuel (n := k + 1) rfl (fun i m' => (∃ a', m' = m.upd x a') ∧ i ≤ k)
+    ⟨⟨a, by simp [Mem.upd, Store.upd_of_get hx]⟩, Nat.zero_le _⟩ ?_
+    fun m' hinv => absurd hinv.2 (by omega)
+  rintro i hi m' ⟨⟨a', rfl⟩, -⟩
+  refine holds_testAt rfl rfl (hI.nz [] x _ a' (by store_simp)) ?_
+  by_cases hd : dec a' ≠ 0
+  · rw [decide_eq_true hd, if_pos rfl]
+    refine wp_seq (wp_ifZero (n := k - i) rfl ?_)
+    by_cases hki : k - i = 0
+    · rw [if_pos hki]
+      exact wp_abort_liberal
+    · rw [if_neg hki]
+      exact Mode.Holds.of_total (wp_call_un hI.half rfl rfl rfl trivial (a := a') (by store_simp)
+        rfl (by store_simp) ⟨⟨h a', by simp⟩, by omega⟩)
+  · rw [decide_eq_false hd, if_neg (by simp)]
+    exact wp_skip ⟨a', rfl, by simpa using hd⟩
 
 /-- **A hundred buffers, one disjointness hypothesis**: reads after writes to other buffers of
 an injective family, a scratch buffer included. -/

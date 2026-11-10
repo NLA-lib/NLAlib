@@ -619,11 +619,13 @@ public import NLAlib.Ops.Attr
 public import NLAlib.Ops.Blas.Dot
 public import NLAlib.Ops.Blas.Level1
 public import NLAlib.Ops.Blas.Sum
+public import NLAlib.Ops.BlockRel
 public import NLAlib.Ops.Blocks
 public import NLAlib.Ops.Catalog.Blas1
 public import NLAlib.Ops.Catalog.Isotropic
 public import NLAlib.Ops.Catalog.Random
 public import NLAlib.Ops.Catalog.Scalar
+public import NLAlib.Ops.Cert
 public import NLAlib.Ops.Contract
 public import NLAlib.Ops.Counted
 public import NLAlib.Ops.Examples.Bits
@@ -659,6 +661,7 @@ public import NLAlib.Ops.Static
 public import NLAlib.Ops.Store
 public import NLAlib.Ops.StoreSimp
 public import NLAlib.Ops.Stream
+public import NLAlib.Ops.Tactic
 public import NLAlib.Ops.Syntax
 public import NLAlib.Ops.Tape
 public import NLAlib.Ops.TapeLaw

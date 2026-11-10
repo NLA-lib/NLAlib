@@ -120,37 +120,36 @@ theorem addMod_ripple : AddMod rippleF := by
 
 /-- The block function of `wadd` given the function `f` on the two blocks. -/
 def waddFn (f : ℕ → List Bool → List Bool → List Bool) : BlockFn Bool where
-  inLens d := match d with
-    | [w] => [w, w]
-    | _ => []
-  fn d _ xs := match d, xs with
-    | [w], [xs, ys] => some (f w xs ys)
-    | _, _ => none
+  nd := 1
+  inLens d := [d.headD 0, d.headD 0]
+  outLens d := [d.headD 0]
+  fn d _ xs := match xs with
+    | [xs, ys] => some [f (d.headD 0) xs ys]
+    | _ => none
 
 /-- What a successful call of the block function of `wadd` is. -/
 theorem waddFn_apply {f : ℕ → List Bool → List Bool → List Bool} {d : List ℕ}
-    {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : Tape Bool} {m m' : Mem Bool}
-    (h : (waddFn f).apply d ins z τ m = some m') :
-    ∃ w x y xs ys, d = [w] ∧ ins = [x, y] ∧ m.store.readBlock x.1 x.2 w = some xs ∧
-      m.store.readBlock y.1 y.2 w = some ys ∧ z.2 + (f w xs ys).length ≤ m.store.len z.1 ∧
-      m' = m.updBlock z (f w xs ys) := by
-  obtain ⟨hlive, X, v, hread, hfn, hlen, rfl⟩ := BlockFn.apply_eq_some_iff.mp h
-  rcases d with _ | ⟨w, _ | ⟨w', d⟩⟩
-  · simp [waddFn] at hfn
-  · obtain ⟨x, y, xs, ys, rfl, hx, hy, rfl⟩ := Mem.readBlocks_two hread
-    simp only [waddFn, Option.some.injEq] at hfn
-    subst hfn
-    exact ⟨w, x, y, xs, ys, rfl, rfl, hx, hy, hlen, rfl⟩
-  · simp [waddFn] at hfn
+    {ins outs : List (ℕ × ℕ)} {τ : Tape Bool} {m m' : Mem Bool}
+    (h : (waddFn f).apply d ins outs τ m = some m') :
+    ∃ w x y z xs ys, d = [w] ∧ ins = [x, y] ∧ outs = [z] ∧
+      m.store.readBlock x.1 x.2 w = some xs ∧ m.store.readBlock y.1 y.2 w = some ys ∧
+      (f w xs ys).length = w ∧ z.2 + w ≤ m.store.len z.1 ∧ m' = m.updBlock z (f w xs ys) := by
+  obtain ⟨hnd, hlive, X, v, hread, hfn, hlen, hroom, rfl⟩ := BlockFn.apply_eq_some_iff.mp h
+  obtain ⟨w, rfl⟩ := List.length_eq_one_iff.mp hnd
+  obtain ⟨x, y, xs, ys, rfl, hx, hy, rfl⟩ := Mem.readBlocks_two hread
+  obtain ⟨z, rfl, hz⟩ := Mem.room_one hroom
+  simp only [waddFn, Option.some.injEq] at hfn
+  subst hfn
+  exact ⟨w, x, y, z, xs, ys, rfl, rfl, rfl, hx, hy, by simpa [waddFn] using hlen, hz, rfl⟩
 
 /-- A call of the block function of `wadd`, on readable blocks. -/
 theorem waddFn_apply_of {f : ℕ → List Bool → List Bool → List Bool} {w : ℕ} {x y z : ℕ × ℕ}
     {τ : Tape Bool} {m : Mem Bool} {xs ys : List Bool}
     (hx : m.store.readBlock x.1 x.2 w = some xs) (hy : m.store.readBlock y.1 y.2 w = some ys)
-    (hz : z.2 + (f w xs ys).length ≤ m.store.len z.1) (hl : m.Live [x, y, z]) :
-    (waddFn f).apply [w] [x, y] z τ m = some (m.updBlock z (f w xs ys)) :=
-  BlockFn.apply_eq_some_iff.mpr ⟨hl, [xs, ys], _, by simp [Mem.readBlocks, hx, hy, waddFn], rfl, hz,
-    rfl⟩
+    (hlen : (f w xs ys).length = w) (hz : z.2 + w ≤ m.store.len z.1) (hl : m.Live [x, y, z]) :
+    (waddFn f).apply [w] [x, y] [z] τ m = some (m.updBlock z (f w xs ys)) :=
+  BlockFn.apply_eq_some_iff.mpr ⟨rfl, hl, [xs, ys], [f w xs ys],
+    by simp [Mem.readBlocks, hx, hy, waddFn], rfl, by simp [waddFn, hlen], ⟨hz, trivial⟩, rfl⟩
 
 /-- **The functional contract of `wadd`**: on input blocks in other buffers than the output, the
 result is `f` of the inputs. -/
@@ -180,8 +179,7 @@ theorem runs_add3 {f : ℕ → List Bool → List Bool → List Bool} (hf : AddM
           (bitsVal (vec xs) w + bitsVal (vec ys) w + bitsVal (vec zs) w) % 2 ^ w := by
   obtain ⟨lx, ly, lz, ls, lr⟩ : x.1 < m.store.length ∧ y.1 < m.store.length ∧
       z.1 < m.store.length ∧ s.1 < m.store.length ∧ r.1 < m.store.length := by simpa using hl
-  have h1 := waddFn_apply_of (f := f) (z := s) (τ := τ) hx hy (by rw [(hf w xs ys).1]; exact hs)
-    (by store_simp)
+  have h1 := waddFn_apply_of (f := f) (z := s) (τ := τ) hx hy (hf w xs ys).1 hs (by store_simp)
   have hs' : (m.updBlock s (f w xs ys)).store.readBlock s.1 s.2 w = some (f w xs ys) := by
     have := Store.readBlock_updBlock_self (s := m.store) (b := s.1) (off := s.2)
       (xs := f w xs ys) (by rw [(hf w xs ys).1]; exact hs)
@@ -189,12 +187,12 @@ theorem runs_add3 {f : ℕ → List Bool → List Bool → List Bool} (hf : AddM
   have hz' : (m.updBlock s (f w xs ys)).store.readBlock z.1 z.2 w = some zs := by
     rw [← hz]
     exact Store.readBlock_congr fun i _ => Store.get_updBlock_of_buf_ne hzs _ _ _
-  have h2 := waddFn_apply_of (f := f) (z := r) (τ := τ) hs' hz'
-    (by rw [(hf w _ zs).1]; simpa using hr) (by store_simp)
+  have h2 := waddFn_apply_of (f := f) (z := r) (τ := τ) hs' hz' (hf w _ zs).1
+    (by simpa using hr) (by store_simp)
   have hw : Wp .total I τ add3 ⟨[w, x.2, y.2, z.2, s.2, r.2], [x.1, y.1, z.1, s.1, r.1]⟩
       (· = (m.updBlock s (f w xs ys)).updBlock r (f w (f w xs ys) zs)) m :=
-    wp_seq (wp_call_fn hI (z := s) rfl rfl rfl (by simp [DisjointBufs, hxs, hys]) h1
-      (wp_call_fn hI (z := r) rfl rfl rfl (by simp [DisjointBufs, hsr, hzr]) h2 rfl))
+    wp_seq (wp_call_fn hI (b := [s]) rfl rfl rfl (by simp [DisjointBufs, hxs, hys]) h1
+      (wp_call_fn hI (b := [r]) rfl rfl rfl (by simp [DisjointBufs, hsr, hzr]) h2 rfl))
   obtain ⟨m', hrun, hpost⟩ := hw
   refine (Runs.of_run hrun hpost W).mono (by simp [add3, staticCost, useCost, two_nsmul])
     (by simp [add3, staticPeak]) fun m' h => ⟨_, _, h, ?_⟩
@@ -283,14 +281,14 @@ theorem wp_ripple_step {I : Interp BitOp Empty Bool} (hI : IsBits I) {md : Mode}
 /-- **The exact certificate of the ripple-carry adder**: where the block function of `rippleF`
 succeeds on inputs in other buffers than the output, the run of the adder is that block
 function. -/
-theorem ripple_cert {I : Interp BitOp Empty Bool} (hI : IsBits I) {d : List ℕ} {ins : List (ℕ × ℕ)}
-    {z : ℕ × ℕ} {τ : Tape Bool} {m m' : Mem Bool} (hadm : DisjointBufs d ins z)
-    (h : (waddFn rippleF).apply d ins z τ m = some m') :
-    rippleImpl.Fits d.length ins.length 1 ∧
-      run I τ rippleImpl.body (Env.frame d (ins ++ [z])) m = some m' := by
-  obtain ⟨w, x, y, xs, ys, rfl, rfl, hx, hy, hlen, rfl⟩ := waddFn_apply h
+theorem ripple_cert {I : Interp BitOp Empty Bool} (hI : IsBits I) {d : List ℕ}
+    {ins outs : List (ℕ × ℕ)} {τ : Tape Bool} {m m' : Mem Bool}
+    (hadm : DisjointBufs d ins outs) (h : (waddFn rippleF).apply d ins outs τ m = some m') :
+    rippleImpl.Fits d.length ins.length outs.length ∧
+      run I τ rippleImpl.body (Env.frame d (ins ++ outs)) m = some m' := by
+  obtain ⟨w, x, y, z, xs, ys, rfl, rfl, rfl, hx, hy, -, hz, rfl⟩ := waddFn_apply h
   obtain ⟨s, p⟩ := m
-  have hz : z.2 + w ≤ s.len z.1 := by simpa [rippleF] using hlen
+  replace hz : z.2 + w ≤ s.len z.1 := hz
   refine ⟨⟨rfl, rfl, rfl⟩, run_of_wp (wp_alloc rfl (wp_seq (wp_call_const (hI .zero)
     (z := (s.length, 0)) rfl rfl rfl trivial ?_ ?_)))⟩
   · change 0 < (s ++ [List.replicate 1 none]).len s.length
@@ -306,7 +304,8 @@ theorem ripple_cert {I : Interp BitOp Empty Bool} (hI : IsBits I) {d : List ℕ}
     ⟨s.updBlock z.1 z.2 (ripplePrefix (vec xs) (vec ys) i) ++
       [[some (carry (vec xs) (vec ys) i)]], p⟩) rfl ?_ ?_
   · rintro i hi m' rfl
-    exact wp_ripple_step hI hi (hadm x (by simp)) (hadm y (by simp)) hx hy hz rfl
+    exact wp_ripple_step hI hi (hadm x (by simp) z (by simp)) (hadm y (by simp) z (by simp)) hx
+      hy hz rfl
   · rintro m' rfl
     simp [Mem.updBlock, rippleF, ripplePrefix]
 

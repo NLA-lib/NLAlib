@@ -40,19 +40,17 @@ def gaussLoopImpl : Impl ROp Tst where
 window of `n` entries, in order. -/
 theorem gaussLoopImpl_spec {I : Interp ROp Tst K}
     (hI : I.IsFn .total .draw (.draw Stream.gauss) AnyOperands)
-    (adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop) :
-    (gaussLoopImpl (Tst := Tst)).MeetsWin I (drawRel Stream.gauss) adm := by
-  intro d ins z τ m xs hnd hadm hl hr hz
+    (adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop) :
+    (gaussLoopImpl (Tst := Tst)).Meets I .total ((drawRel Stream.gauss).spec adm) := by
+  refine Impl.meets_rel fun d ins outs τ m xs hnd hadm hl hr _ hz => ?_
   obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hnd
-  obtain rfl : ins = [] := by
-    rcases ins with _ | ⟨a, ins⟩
-    · rfl
-    · simp [drawRel, Mem.readBlocks] at hr
+  obtain ⟨rfl, rfl⟩ := Mem.readBlocks_zero hr
+  obtain ⟨z, rfl, hz'⟩ := Mem.room_one hz
   obtain ⟨S, p⟩ := m
-  replace hz : z.2 + n ≤ S.len z.1 := by simpa [drawRel] using hz
+  replace hz : z.2 + n ≤ S.len z.1 := hz'
   refine ⟨⟨rfl, rfl, rfl⟩, wp_loop_fill (b := z.1) (o := z.2)
     (fun i => τ (p + i) Stream.gauss) (fun i => p + i) rfl (fun i hi s' hfr _ => ?_) hz
-    fun s' hfr hr' => ⟨τ.window Stream.gauss p n, by simp [drawRel], rfl, ?_⟩⟩
+    fun s' hfr hr' => ⟨[τ.window Stream.gauss p n], by simp [drawRel], rfl, ?_⟩⟩
   · exact wp_call_draw hI (z := (z.1, z.2 + i)) rfl rfl rfl trivial
       (by change z.2 + i < s'.len z.1; rw [hfr.len_eq]; omega) rfl
   · change (⟨s', p + n⟩ : Mem K) = ⟨S.updBlock z.1 z.2 (τ.window Stream.gauss p n), p + n⟩
@@ -94,7 +92,7 @@ theorem gaussLoop_certifies [Inhabited K] (dec : K → ℝ) {n : ℕ}
         nrm2 := Interp.link_meets_kept (o' := ROp.nrm2) rfl hI.nrm2
         mulc := fun q => Interp.link_meets_kept (o' := ROp.mulc q) rfl (hI.mulc q)
         axpy := Interp.link_meets_kept (o' := ROp.axpy) rfl hI.axpy
-        gauss := Interp.link_meets_win (o := ROp.gauss) rfl (gaussLoopImpl_spec hI.draw _) }
+        gauss := Interp.link_meets (o := ROp.gauss) rfl (gaussLoopImpl_spec hI.draw _) }
   · intro o R hT d offs hd ho
     cases o <;> cases hT
     obtain ⟨k, rfl⟩ := List.length_eq_one_iff.mp hd

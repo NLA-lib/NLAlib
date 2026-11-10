@@ -88,11 +88,11 @@ theorem level1_certifies (hM : StdModel u dec M) (hu : 0 ≤ u) {es : ℕ → �
   .of_accounts (fun I ⟨hI, hS⟩ =>
     ⟨fun a => Interp.link_meets_kept (by simp [level1, level1Table]) (hI a),
     { sum := Interp.link_meets_kept (by simp [level1, level1Table]) hS
-      dot := Interp.link_meets_rel (by simp [level1, level1Table]) (dotSum_spec hI hM hS hes)
-      axpy := Interp.link_meets_rel (by simp [level1, level1Table]) (axpyLoop_spec hI hM hu ok)
-      nrm2 := Interp.link_meets_rel (by simp [level1, level1Table]) (nrm2Sum_spec hI hM hS hes)
-      scal := Interp.link_meets_rel (by simp [level1, level1Table]) (scalLoop_spec hI hM ok)
-      copy := Interp.link_meets_rel (by simp [level1, level1Table]) (copyLoop_spec hI ok) }⟩)
+      dot := Interp.link_meets (by simp [level1, level1Table]) (dotSum_spec hI hM hS hes)
+      axpy := Interp.link_meets (by simp [level1, level1Table]) (axpyLoop_spec hI hM hu ok)
+      nrm2 := Interp.link_meets (by simp [level1, level1Table]) (nrm2Sum_spec hI hM hS hes)
+      scal := Interp.link_meets (by simp [level1, level1Table]) (scalLoop_spec hI hM ok)
+      copy := Interp.link_meets (by simp [level1, level1Table]) (copyLoop_spec hI ok) }⟩)
     (level1_accounts wsum) fun I _ => Profile.tapeLocal_noDraw rfl rfl I
 
 /-- **The certificate of sequential summation.** -/
@@ -101,7 +101,7 @@ theorem sumSeq_certifies (hM : StdModel u dec M) (hu : 0 ≤ u) (ok : ℕ → Pr
       (fun J => IsScalar M J ∧ IsSum dec (seqSumErr u) ok J) :=
   .of_accounts (fun I hI =>
     ⟨fun a => Interp.link_meets_kept (by simp [sumSeq, sumSeqTable]) (hI a),
-      Interp.link_meets_rel (by simp [sumSeq, sumSeqTable]) (sumSeq_spec hI hM hu ok)⟩)
+      Interp.link_meets (by simp [sumSeq, sumSeqTable]) (sumSeq_spec hI hM hu ok)⟩)
     sumSeq_accounts fun I _ => Profile.tapeLocal_noDraw rfl rfl I
 
 /-- **One level of pairwise summation**: from the lengths of depth below `k` to those of depth
@@ -112,7 +112,7 @@ theorem sumPairwise_certifies (hM : StdModel u dec M) (hu : 0 ≤ u) (k : ℕ) :
       (fun J => IsScalar M J ∧ IsSum dec (pairSumErr u) (fun n => Nat.clog 2 n < k + 1) J) :=
   .of_accounts (fun I ⟨hI, hS⟩ =>
     ⟨fun a => Interp.link_meets_kept (by simp [sumPairwise, sumPairwiseTable]) (hI a),
-      Interp.link_meets_rel (by simp [sumPairwise, sumPairwiseTable])
+      Interp.link_meets (by simp [sumPairwise, sumPairwiseTable])
         (sumPairwise_spec hI hM hu hS)⟩)
     sumPairwise_accounts fun I _ => Profile.tapeLocal_noDraw rfl rfl I
 
@@ -124,7 +124,7 @@ theorem sumPairwise_iter_certifies (hM : StdModel u dec M) (hu : 0 ≤ u) (k : �
   (Profile.Certifies.iter (C := fun k J => IsScalar M J ∧
     IsSum dec (pairSumErr u) (fun n => Nat.clog 2 n < k) J)
     (sumPairwise_certifies hM hu) rfl rfl k).mono
-    (fun _ hI => ⟨hI, fun _ _ _ _ _ ⟨_, _, _, hadm, _⟩ => absurd hadm.1 (Nat.not_lt_zero _)⟩)
+    (fun _ hI => ⟨hI, fun _ _ _ _ _ ⟨_, hadm, _⟩ => absurd hadm.1 (Nat.not_lt_zero _)⟩)
     fun _ h => h
 
 /-- **The certificate of the profile of sequential summation.** -/

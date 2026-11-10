@@ -308,11 +308,14 @@ theorem readBlock_of (h : EqOff F s s') {b off n : ℕ} {xs : List K}
     (hr : s.readBlock b off n = some xs) (hF : ∀ j < n, ¬ F b (off + j)) :
     s'.readBlock b off n = some xs := (h.readBlock_eq hF).trans hr
 
-/-- **A store that agrees with `s` off a block and holds `xs` in it is `s.updBlock b off xs`.** -/
-theorem eq_updBlock {b off n : ℕ} {xs : List K} (h : EqOff (inBlock b off n) s s')
-    (hr : s'.readBlock b off n = some xs) : s' = s.updBlock b off xs := by
+/-- **Peeling a block off a footprint**: a store that agrees with `s` off `F` and a block, and
+holds `xs` in the block, agrees with `s.updBlock b off xs` off `F`. Applied once per block that a
+run writes, it turns a frame and the blocks read back into an equation
+(`NLAlib.Ops.Store.EqOff.eq_of_empty`). -/
+theorem peel {b off n : ℕ} {xs : List K} (h : EqOff (F ⊔ inBlock b off n) s s')
+    (hr : s'.readBlock b off n = some xs) : EqOff F (s.updBlock b off xs) s' := by
   obtain ⟨hl, hg⟩ := readBlock_eq_some_iff.mp hr
-  refine ext_get (by rw [shape_updBlock, h.1]) fun b' i => ?_
+  refine ⟨by rw [shape_updBlock, h.1], fun b' i hF => ?_⟩
   by_cases hin : inBlock b off n b' i
   · obtain ⟨rfl, h1, h2⟩ := hin
     have hlen : off + xs.length ≤ s.len b' := by
@@ -321,7 +324,7 @@ theorem eq_updBlock {b off n : ℕ} {xs : List K} (h : EqOff (inBlock b off n) s
     have := hg (i - off) (by omega)
     rw [show off + (i - off) = i by omega] at this
     rw [this, ← get_updBlock hlen (j := i - off) (by omega), show off + (i - off) = i by omega]
-  · rw [h.2 b' i hin]
+  · rw [h.2 b' i (by simp [hF, hin])]
     simp only [inBlock, not_and, not_lt] at hin
     by_cases hb : b' = b
     · subst hb
@@ -329,6 +332,23 @@ theorem eq_updBlock {b off n : ℕ} {xs : List K} (h : EqOff (inBlock b off n) s
       · rw [get_updBlock_of_lt hlt]
       · rw [get_updBlock_of_ge (by have := hin rfl (by omega); omega)]
     · rw [get_updBlock_of_buf_ne hb]
+
+/-- A store that agrees with `s` everywhere is `s`. -/
+theorem eq_of_empty (h : EqOff (fun _ _ => False) s s') : s' = s :=
+  ext_get h.1 fun b i => h.2 b i not_false
+
+/-- **A store that agrees with `s` off a block and holds `xs` in it is `s.updBlock b off xs`.** -/
+theorem eq_updBlock {b off n : ℕ} {xs : List K} (h : EqOff (inBlock b off n) s s')
+    (hr : s'.readBlock b off n = some xs) : s' = s.updBlock b off xs :=
+  (peel (F := fun _ _ => False) (h.mono fun _ _ hf => Or.inr hf) hr).eq_of_empty
+
+/-- **A store that agrees with `s` off two blocks and holds `xs` and `ys` in them** is `s` with
+the two blocks written, the second after the first. -/
+theorem eq_updBlock₂ {b off n b' off' n' : ℕ} {xs ys : List K}
+    (h : EqOff (inBlock b off n ⊔ inBlock b' off' n') s s')
+    (hr : s'.readBlock b off n = some xs) (hr' : s'.readBlock b' off' n' = some ys) :
+    s' = (s.updBlock b off xs).updBlock b' off' ys :=
+  ((h.mono fun _ _ hf => hf.symm).peel hr).eq_updBlock hr'
 
 /-- **The frame after a scratch buffer is freed**: a run on `s.push n` that kept the store off
 `F` and the scratch buffer leaves, after the pop, a store that agrees with `s` off `F`. -/

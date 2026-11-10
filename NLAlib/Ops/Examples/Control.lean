@@ -48,10 +48,9 @@ inductive CTst where
 /-- A concrete interpretation on natural-number words. -/
 def ctlInterp : Interp COp CTst ℕ where
   call o d ins outs τ m :=
-    match o, outs with
-    | .dec, [z] => (BlockFn.un fun a => some (a - 1)).apply d ins z τ m
-    | .inc, [z] => (BlockFn.un fun a => some (a + 1)).apply d ins z τ m
-    | _, _ => none
+    match o with
+    | .dec => (BlockFn.un fun a => some (a - 1)).apply d ins outs τ m
+    | .inc => (BlockFn.un fun a => some (a + 1)).apply d ins outs τ m
   test o _ a m :=
     match o, a with
     | .nz, [x] => (m.store.get x.1 x.2).map fun v => v != 0
@@ -80,11 +79,23 @@ theorem isTest_ctlInterp_nz :
 theorem index_ctlInterp_toNat (x : ℕ × ℕ) (m : Mem ℕ) (v : ℕ) (h : m.store.get x.1 x.2 = some v) :
     ctlInterp.index .toNat [x] m = some v := h
 
-/-- Move the counter in cell `0` to cell `1`, one unit at a time, with fuel `5`. -/
+/-- Move the counter in cell `0` to cell `1`, one unit at a time, for at most `5` rounds. -/
 def countdown : Stmt COp CTst :=
   .whileFuel (.const 5) .nz [] [⟨0, .const 0⟩]
     (.seq (.call .dec [] [⟨0, .const 0⟩] [⟨0, .const 0⟩])
+      (.call .inc [] [⟨0, .const 1⟩] [⟨0, .const 1⟩])) .skip
+
+/-- The same loop, strict: the run fails if the counter is not zero after `5` rounds. -/
+def countdownStrict : Stmt COp CTst :=
+  .whileStrict 0 (.const 5) .nz [] [⟨0, .const 0⟩]
+    (.seq (.call .dec [] [⟨0, .const 0⟩] [⟨0, .const 0⟩])
       (.call .inc [] [⟨0, .const 1⟩] [⟨0, .const 1⟩]))
+
+/-- Decrement cell `0` while it is not zero, for at most `5` rounds; then add **the number of
+rounds done** to cell `1`: the continuation of the loop is given the round index. -/
+def countRounds : Stmt COp CTst :=
+  .whileFuel (.const 5) .nz [] [⟨0, .const 0⟩] (.call .dec [] [⟨0, .const 0⟩] [⟨0, .const 0⟩])
+    (.loop (.var 0) (.call .inc [] [⟨0, .const 1⟩] [⟨0, .const 1⟩]))
 
 /-- Add the number in cell `0`, at most `4`, to cell `1`. -/
 def addIdx : Stmt COp CTst :=
@@ -101,8 +112,23 @@ def twoCells (a b : ℕ) : Mem ℕ := ⟨[[some a, some b]], 0⟩
 example : run ctlInterp (fun _ => 0) countdown ⟨[], [0]⟩ (twoCells 3 0) = some (twoCells 0 3) := by
   rfl
 
-/-- Fuel exhausted with the test still true: the run fails. -/
-example : run ctlInterp (fun _ => 0) countdown ⟨[], [0]⟩ (twoCells 7 0) = none := by rfl
+/-- At the cap the loop stops, with the current state: no failure. -/
+example : run ctlInterp (fun _ => 0) countdown ⟨[], [0]⟩ (twoCells 7 0) = some (twoCells 2 5) := by
+  rfl
+
+example : run ctlInterp (fun _ => 0) countdownStrict ⟨[], [0]⟩ (twoCells 3 0) =
+    some (twoCells 0 3) := by rfl
+
+/-- The strict loop: the test still holds after the fuel, the run fails. -/
+example : run ctlInterp (fun _ => 0) countdownStrict ⟨[], [0]⟩ (twoCells 7 0) = none := by rfl
+
+/-- The continuation receives the number of rounds done: `3` when the test ends the loop. -/
+example : run ctlInterp (fun _ => 0) countRounds ⟨[], [0]⟩ (twoCells 3 0) =
+    some (twoCells 0 3) := by rfl
+
+/-- The continuation receives the number of rounds done: the cap `5` when it is reached. -/
+example : run ctlInterp (fun _ => 0) countRounds ⟨[], [0]⟩ (twoCells 7 10) =
+    some (twoCells 2 15) := by rfl
 
 example : run ctlInterp (fun _ => 0) addIdx ⟨[], [0]⟩ (twoCells 3 10) = some (twoCells 3 13) := by
   rfl

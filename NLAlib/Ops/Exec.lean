@@ -28,6 +28,8 @@ Two evaluators:
   agree on the memory, failures included.
 
 A call that changes the shape of the store fails (`NLAlib.Ops.Interp.callS`).
+
+`NLAlib.Ops.cost_le_of_exec`: a counted run only adds counts.
 -/
 
 @[expose] public section
@@ -82,14 +84,26 @@ def iter {σ : Type} (f : ℕ → σ → Option σ) : ℕ → σ → Option σ
   | 0, s => some s
   | k + 1, s => (iter f k s).bind (f k)
 
-/-- Iteration while a test holds: the body runs at most `k` times, and the iteration fails if the
-test still holds after `k` runs of the body (fuel is a bound, never a silent truncation). `tick`
-is applied after each test. -/
-def whileIter {σ : Type} (test : σ → Option Bool) (tick : σ → σ) (body : σ → Option σ) :
-    ℕ → σ → Option σ
-  | 0, s => (test s).bind fun b => if b then none else some (tick s)
-  | k + 1, s => (test s).bind fun b =>
-      if b then (body (tick s)).bind (whileIter test tick body k) else some (tick s)
+/-- **The loop with early exit**: at most `r` more rounds, from the round `i`. A round applies
+`test` (which returns the Boolean and the state after the test); if it holds the round runs
+`body` and the loop goes on, otherwise the loop ends. The result is the number of rounds done and
+the state. At the cap the loop ends without a test. -/
+def whileIter {σ : Type} (test : ℕ → σ → Option (Bool × σ)) (body : ℕ → σ → Option σ) :
+    ℕ → ℕ → σ → Option (ℕ × σ)
+  | 0, i, s => some (i, s)
+  | r + 1, i, s => (test i s).bind fun bs =>
+      if bs.1 then (body i bs.2).bind (whileIter test body r (i + 1)) else some (i, bs.2)
+
+/-- The Boolean of the test `q` at the dimensions `ds` and the operands `ins`, in the
+environment `ρ`. -/
+def Interp.testAt (I : Interp Op Tst K) (q : Tst) (ds : List IExp) (ins : List Operand) (ρ : Env)
+    (m : Mem K) : Option Bool :=
+  (IExp.evalList ρ.idx ds).bind fun d => (Operand.evalList ρ ins).bind fun a => I.test q d a m
+
+theorem Interp.testAt_eq {I : Interp Op Tst K} {q : Tst} {ds : List IExp} {ins : List Operand}
+    {ρ : Env} {m : Mem K} {d : List ℕ} {a : List (ℕ × ℕ)} (hd : IExp.evalList ρ.idx ds = some d)
+    (ha : Operand.evalList ρ ins = some a) : I.testAt q ds ins ρ m = I.test q d a m := by
+  simp [Interp.testAt, hd, ha]
 
 /-- **The run**: the memory after a program, in the environment `ρ`, under the interpretation `I`
 and the tape `τ`; `none` is failure. -/
@@ -104,10 +118,11 @@ def run (I : Interp Op Tst K) (τ : Tape K) :
   | .ite q ds ins t e, ρ, m =>
       (IExp.evalList ρ.idx ds).bind fun d => (Operand.evalList ρ ins).bind fun a =>
         (I.test q d a m).bind fun c => if c then run I τ t ρ m else run I τ e ρ m
-  | .whileFuel fuel q ds ins body, ρ, m =>
-      (fuel.eval ρ.idx).bind fun k => (IExp.evalList ρ.idx ds).bind fun d =>
-        (Operand.evalList ρ ins).bind fun a =>
-          whileIter (I.test q d a) id (run I τ body ρ) k m
+  | .whileFuel fuel q ds ins body k, ρ, m =>
+      (fuel.eval ρ.idx).bind fun n =>
+        (whileIter (fun i m => (I.testAt q ds ins (ρ.pushIdx i) m).map fun b => (b, m))
+          (fun i => run I τ body (ρ.pushIdx i)) n 0 m).bind fun jm =>
+            run I τ k (ρ.pushIdx jm.1) jm.2
   | .bindIdx q ins bound body, ρ, m =>
       (Operand.evalList ρ ins).bind fun a => (bound.eval ρ.idx).bind fun B =>
         (I.index q a m).bind fun v => if v ≤ B then run I τ body (ρ.pushIdx v) m else none
@@ -150,6 +165,30 @@ def St.init (m : Mem K) : St Op Tst K := ⟨m, 0, 0, 0⟩
 noncomputable def St.tick (st : St Op Tst K) (q : Tst) (d : List ℕ) : St Op Tst K :=
   ⟨st.mem, st.cost + Count.test q d, st.cur, st.peak⟩
 
+/-- The counted test of a loop round: the Boolean of the test `q` and the state with one more
+use of `q` at its dimensions. -/
+noncomputable def Interp.testSt (I : Interp Op Tst K) (q : Tst) (ds : List IExp)
+    (ins : List Operand) (ρ : Env) (st : St Op Tst K) : Option (Bool × St Op Tst K) :=
+  (IExp.evalList ρ.idx ds).bind fun d => (Operand.evalList ρ ins).bind fun a =>
+    (I.test q d a st.mem).map fun b => (b, st.tick q d)
+
+theorem Interp.testSt_eq {I : Interp Op Tst K} {q : Tst} {ds : List IExp} {ins : List Operand}
+    {ρ : Env} {st : St Op Tst K} {d : List ℕ} {a : List (ℕ × ℕ)}
+    (hd : IExp.evalList ρ.idx ds = some d) (ha : Operand.evalList ρ ins = some a) :
+    I.testSt q ds ins ρ st = (I.test q d a st.mem).map fun b => (b, st.tick q d) := by
+  simp [Interp.testSt, hd, ha]
+
+/-- A counted test that succeeds: the dimensions, the Boolean and the state. -/
+theorem Interp.testSt_eq_some {I : Interp Op Tst K} {q : Tst} {ds : List IExp}
+    {ins : List Operand} {ρ : Env} {st : St Op Tst K} {bs : Bool × St Op Tst K}
+    (h : I.testSt q ds ins ρ st = some bs) :
+    ∃ d, IExp.evalList ρ.idx ds = some d ∧ I.testAt q ds ins ρ st.mem = some bs.1 ∧
+      bs.2 = st.tick q d := by
+  obtain ⟨d, hd, h⟩ := Option.bind_eq_some_iff.mp h
+  obtain ⟨a, ha, h⟩ := Option.bind_eq_some_iff.mp h
+  obtain ⟨b, hb, rfl⟩ := Option.map_eq_some_iff.mp h
+  exact ⟨d, hd, by simp [Interp.testAt, hd, ha, hb], rfl⟩
+
 /-- **The counted run.** `W o d` is the workspace, in cells, that the access model declares for a
 call of `o` at the dimensions `d`. -/
 noncomputable def exec (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : Tape K) :
@@ -165,10 +204,11 @@ noncomputable def exec (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ :
       (IExp.evalList ρ.idx ds).bind fun d => (Operand.evalList ρ ins).bind fun a =>
         (I.test q d a st.mem).bind fun c =>
           if c then exec I W τ t ρ (st.tick q d) else exec I W τ e ρ (st.tick q d)
-  | .whileFuel fuel q ds ins body, ρ, st =>
-      (fuel.eval ρ.idx).bind fun k => (IExp.evalList ρ.idx ds).bind fun d =>
-        (Operand.evalList ρ ins).bind fun a =>
-          whileIter (fun s => I.test q d a s.mem) (fun s => s.tick q d) (exec I W τ body ρ) k st
+  | .whileFuel fuel q ds ins body k, ρ, st =>
+      (fuel.eval ρ.idx).bind fun n =>
+        (whileIter (fun i st => I.testSt q ds ins (ρ.pushIdx i) st)
+          (fun i => exec I W τ body (ρ.pushIdx i)) n 0 st).bind fun jst =>
+            exec I W τ k (ρ.pushIdx jst.1) jst.2
   | .bindIdx q ins bound body, ρ, st =>
       (Operand.evalList ρ ins).bind fun a => (bound.eval ρ.idx).bind fun B =>
         (I.index q a st.mem).bind fun v =>
@@ -203,27 +243,25 @@ theorem map_iter {σ σ' : Type} {g : σ → σ'} {f : ℕ → σ → Option σ}
     simp only [iter]
     rw [Option.map_bind_of_comm _ (h k), ih]
 
-theorem map_whileIter {σ σ' : Type} {g : σ → σ'} {test : σ → Option Bool} {tick : σ → σ}
-    {body : σ → Option σ} {test' : σ' → Option Bool} {body' : σ' → Option σ'}
-    (ht : ∀ a, test a = test' (g a)) (hk : ∀ a, g (tick a) = g a)
-    (hb : ∀ a, (body a).map g = body' (g a)) (k : ℕ) (s : σ) :
-    (whileIter test tick body k s).map g = whileIter test' id body' k (g s) := by
-  induction k generalizing s with
-  | zero =>
+theorem map_whileIter {σ σ' : Type} {g : σ → σ'} {test : ℕ → σ → Option (Bool × σ)}
+    {body : ℕ → σ → Option σ} {test' : ℕ → σ' → Option (Bool × σ')}
+    {body' : ℕ → σ' → Option σ'}
+    (ht : ∀ i a, (test i a).map (Prod.map id g) = test' i (g a))
+    (hb : ∀ i a, (body i a).map g = body' i (g a)) (r i : ℕ) (s : σ) :
+    (whileIter test body r i s).map (Prod.map id g) = whileIter test' body' r i (g s) := by
+  induction r generalizing i s with
+  | zero => rfl
+  | succ r ih =>
     simp only [whileIter, ← ht]
-    cases test s with
+    cases test i s with
     | none => rfl
-    | some b => cases b <;> simp [hk]
-  | succ k ih =>
-    simp only [whileIter, ← ht]
-    cases test s with
-    | none => rfl
-    | some b =>
+    | some bs =>
+      obtain ⟨b, s₁⟩ := bs
       cases b with
-      | false => simp [hk]
+      | false => rfl
       | true =>
-        simp only [Option.bind_some, if_true, id]
-        rw [Option.map_bind_of_comm _ (fun a => ih a), hb, hk]
+        simp only [Option.bind_some, if_true, Option.map_some, Prod.map_apply, id]
+        rw [Option.map_bind_of_comm _ (fun a => ih (i + 1) a), hb]
 
 /-- **The counted run and the run end in the same memory, or both fail.** -/
 theorem map_mem_exec (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : Tape K) (s : Stmt Op Tst)
@@ -247,13 +285,25 @@ theorem map_mem_exec (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : T
     cases I.test q d a st.mem with
     | none => rfl
     | some c => cases c <;> simp [iht, ihe, St.tick]
-  | whileFuel fuel q ds ins body ih =>
+  | whileFuel fuel q ds ins body k ih ihk =>
     simp only [exec, run]
-    cases fuel.eval ρ.idx <;> cases IExp.evalList ρ.idx ds <;> cases Operand.evalList ρ ins <;>
-      try rfl
-    rename_i k d a
-    exact map_whileIter (g := fun x : St Op Tst K => x.mem) (tick := fun s => s.tick q d)
-      (test' := I.test q d a) (fun _ => rfl) (fun _ => rfl) (fun a => ih ρ a) k st
+    cases fuel.eval ρ.idx with
+    | none => rfl
+    | some n =>
+      simp only [Option.bind_some]
+      rw [Option.map_bind_of_comm (g := Prod.map id fun x : St Op Tst K => x.mem)
+        (f' := fun jm : ℕ × Mem K => run I τ k (ρ.pushIdx jm.1) jm.2) _
+        (fun a => ihk (ρ.pushIdx a.1) a.2)]
+      rw [map_whileIter (g := fun x : St Op Tst K => x.mem)
+        (test' := fun i m => (I.testAt q ds ins (ρ.pushIdx i) m).map fun b => (b, m))
+        (body' := fun i => run I τ body (ρ.pushIdx i)) (fun i a => ?_)
+        (fun i a => ih (ρ.pushIdx i) a)]
+      · simp only [Interp.testSt, Interp.testAt]
+        cases IExp.evalList (ρ.pushIdx i).idx ds <;>
+          cases Operand.evalList (ρ.pushIdx i) ins <;> try rfl
+        rename_i d a'
+        simp only [Option.bind_some]
+        cases I.test q d a' a.mem <;> rfl
   | bindIdx q ins bound body ih =>
     simp only [exec, run]
     cases Operand.evalList ρ ins <;> cases bound.eval ρ.idx <;> try rfl
@@ -313,28 +363,23 @@ theorem iter_rel {σ : Type} {R : σ → σ → Prop} (hrefl : ∀ a, R a a)
     obtain ⟨a, ha, hb⟩ := Option.bind_eq_some_iff.mp hk
     exact htrans _ _ _ (ih ha) (h k a s' hb)
 
-theorem whileIter_rel {σ : Type} {R : σ → σ → Prop}
-    (htrans : ∀ a b c, R a b → R b c → R a c) {test : σ → Option Bool} {tick : σ → σ}
-    {body : σ → Option σ} (ht : ∀ a, R a (tick a)) (h : ∀ a b, body a = some b → R a b) {k : ℕ}
-    {s s' : σ} (hk : whileIter test tick body k s = some s') : R s s' := by
-  induction k generalizing s with
-  | zero =>
-    obtain ⟨b, -, hb⟩ := Option.bind_eq_some_iff.mp hk
-    cases b with
-    | false =>
-      simp only [Bool.false_eq_true, if_false, Option.some.injEq] at hb
-      exact hb ▸ ht s
-    | true => simp at hb
-  | succ k ih =>
-    obtain ⟨b, -, hb⟩ := Option.bind_eq_some_iff.mp hk
-    cases b with
-    | false =>
-      simp only [Bool.false_eq_true, if_false, Option.some.injEq] at hb
-      exact hb ▸ ht s
-    | true =>
-      simp only [if_true] at hb
-      obtain ⟨a, ha, hb⟩ := Option.bind_eq_some_iff.mp hb
-      exact htrans _ _ _ (ht s) (htrans _ _ _ (h _ _ ha) (ih hb))
+/-- A relation that every test and every body keeps holds between the start and the end of a loop
+with early exit, which does at most the rounds it is given. -/
+theorem whileIter_rel {σ : Type} {R : σ → σ → Prop} (hrefl : ∀ a, R a a)
+    (htrans : ∀ a b c, R a b → R b c → R a c) {test : ℕ → σ → Option (Bool × σ)}
+    {body : ℕ → σ → Option σ} (ht : ∀ i a bs, test i a = some bs → R a bs.2)
+    (h : ∀ i a b, body i a = some b → R a b) {r i : ℕ} {s : σ} {js : ℕ × σ}
+    (hk : whileIter test body r i s = some js) : R s js.2 ∧ i ≤ js.1 ∧ js.1 ≤ i + r := by
+  induction r generalizing i s with
+  | zero => cases hk; exact ⟨hrefl _, le_rfl, le_rfl⟩
+  | succ r ih =>
+    obtain ⟨bs, hbs, hb⟩ := Option.bind_eq_some_iff.mp hk
+    split_ifs at hb with hc
+    · obtain ⟨a, ha, hb⟩ := Option.bind_eq_some_iff.mp hb
+      obtain ⟨h1, h2, h3⟩ := ih hb
+      exact ⟨htrans _ _ _ (ht i s bs hbs) (htrans _ _ _ (h _ _ _ ha) h1), by omega, by omega⟩
+    · cases hb
+      exact ⟨ht i s bs hbs, le_rfl, by omega⟩
 
 /-- **A run keeps the shape of the store**: buffers are neither created, resized nor freed behind
 the program's back. -/
@@ -359,12 +404,14 @@ theorem shape_store_of_run {I : Interp Op Tst K} {τ : Tape K} {s : Stmt Op Tst}
     cases c
     · exact ihe h
     · exact iht h
-  | whileFuel fuel q ds ins body ih =>
-    obtain ⟨k, -, h⟩ := Option.bind_eq_some_iff.mp h
-    obtain ⟨d, -, h⟩ := Option.bind_eq_some_iff.mp h
-    obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
-    exact whileIter_rel (R := fun a b : Mem K => b.store.shape = a.store.shape)
-      (fun _ _ _ h1 h2 => h2.trans h1) (fun _ => rfl) (fun _ _ hb => ih hb) h
+  | whileFuel fuel q ds ins body k ih ihk =>
+    obtain ⟨n, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨jm, hw, h⟩ := Option.bind_eq_some_iff.mp h
+    refine (ihk h).trans (whileIter_rel (R := fun a b : Mem K => b.store.shape = a.store.shape)
+      (fun _ => rfl) (fun _ _ _ h1 h2 => h2.trans h1) (fun i a bs hbs => ?_)
+      (fun _ _ _ hb => ih hb) hw).1
+    obtain ⟨b, -, rfl⟩ := Option.map_eq_some_iff.mp hbs
+    rfl
   | bindIdx q ins bound body ih =>
     obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨B, -, h⟩ := Option.bind_eq_some_iff.mp h
@@ -383,6 +430,63 @@ theorem shape_store_of_run {I : Interp Op Tst K} {τ : Tape K} {s : Stmt Op Tst}
     obtain ⟨k, -, h⟩ := Option.bind_eq_some_iff.mp h
     exact iter_rel (R := fun a b : Mem K => b.store.shape = a.store.shape) (fun _ => rfl)
       (fun _ _ _ h1 h2 => h2.trans h1) (fun _ _ _ hb => ih hb) h
+  | frame ds args body ih =>
+    obtain ⟨d, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
+    split_ifs at h
+    exact ih h
+
+/-! ### A counted run only adds counts -/
+
+/-- **A counted run only adds counts**, so the counts of a run from a state are those of the
+state plus an increment. -/
+theorem cost_le_of_exec {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ : Tape K}
+    {s : Stmt Op Tst} {ρ : Env} {st st' : St Op Tst K} (h : exec I W τ s ρ st = some st') :
+    st.cost ≤ st'.cost := by
+  induction s generalizing ρ st st' with
+  | skip => cases h; exact le_rfl
+  | abort => cases h
+  | seq s t ihs iht =>
+    obtain ⟨a, ha, hb⟩ := Option.bind_eq_some_iff.mp h
+    exact (ihs ha).trans (iht hb)
+  | call o ds ins outs =>
+    obtain ⟨d, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨b, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨m', -, rfl⟩ := Option.map_eq_some_iff.mp h
+    exact le_self_add
+  | ite q ds ins t e iht ihe =>
+    obtain ⟨d, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨c, -, h⟩ := Option.bind_eq_some_iff.mp h
+    have ht : st.cost ≤ (st.tick q d).cost := le_self_add
+    cases c
+    · exact ht.trans (ihe h)
+    · exact ht.trans (iht h)
+  | whileFuel fuel q ds ins body k ih ihk =>
+    obtain ⟨n, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨jst, hw, h⟩ := Option.bind_eq_some_iff.mp h
+    refine (whileIter_rel (R := fun a b : St Op Tst K => a.cost ≤ b.cost) (fun _ => le_rfl)
+      (fun _ _ _ h1 h2 => h1.trans h2) (fun i a bs hbs => ?_) (fun _ _ _ hb => ih hb) hw).1.trans
+      (ihk h)
+    obtain ⟨d, -, -, e⟩ := Interp.testSt_eq_some hbs
+    rw [e]
+    exact le_self_add
+  | bindIdx q ins bound body ih =>
+    obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨B, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨v, -, h⟩ := Option.bind_eq_some_iff.mp h
+    split_ifs at h
+    exact (le_self_add : st.cost ≤ (st.tick q []).cost).trans (ih h)
+  | alloc len body ih =>
+    obtain ⟨n, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨st₂, h₂, rfl⟩ := Option.map_eq_some_iff.mp h
+    have h₃ := ih h₂
+    exact h₃
+  | loop n body ih =>
+    obtain ⟨k, -, h⟩ := Option.bind_eq_some_iff.mp h
+    exact iter_rel (R := fun a b : St Op Tst K => a.cost ≤ b.cost) (fun _ => le_rfl)
+      (fun _ _ _ h1 h2 => h1.trans h2) (fun _ _ _ hb => ih hb) h
   | frame ds args body ih =>
     obtain ⟨d, -, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h

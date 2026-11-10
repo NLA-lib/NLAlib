@@ -6,7 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Ops.Link
-public import NLAlib.Ops.Contract
+public import NLAlib.Ops.Blocks
 
 /-!
 # Tapes
@@ -72,31 +72,29 @@ theorem iter {f f' : ℕ → Mem K → Option (Mem K)} (h : ∀ i, Follows τ τ
     exact ⟨le_rfl, fun _ => rfl⟩
   | succ k ih => exact ih.bind (h k)
 
-theorem whileIter (test : Mem K → Option Bool) {body body' : Mem K → Option (Mem K)}
-    (h : Follows τ τ' body body') (k : ℕ) :
-    Follows τ τ' (whileIter test id body k) (whileIter test id body' k) := by
-  induction k with
-  | zero =>
+theorem whileIter (test : ℕ → Mem K → Option Bool) {body body' k k' : ℕ → Mem K → Option (Mem K)}
+    (h : ∀ i, Follows τ τ' (body i) (body' i)) (hk : ∀ j, Follows τ τ' (k j) (k' j)) (r i : ℕ) :
+    Follows τ τ'
+      (fun m => (whileIter (fun i m => (test i m).map fun b => (b, m)) body r i m).bind
+        fun jm => k jm.1 jm.2)
+      (fun m => (whileIter (fun i m => (test i m).map fun b => (b, m)) body' r i m).bind
+        fun jm => k' jm.1 jm.2) := by
+  induction r generalizing i with
+  | zero => simpa [NLAlib.Ops.whileIter] using hk i
+  | succ r ih =>
     intro a b hab
-    obtain ⟨c, hc, hb⟩ := Option.bind_eq_some_iff.mp hab
-    cases c with
-    | true => simp at hb
-    | false =>
-      simp only [Bool.false_eq_true, if_false, id, Option.some.injEq] at hb
-      subst hb
-      exact ⟨le_rfl, fun _ => by simp [NLAlib.Ops.whileIter, hc]⟩
-  | succ k ih =>
-    intro a b hab
-    obtain ⟨c, hc, hb⟩ := Option.bind_eq_some_iff.mp hab
-    cases c with
-    | false =>
-      simp only [Bool.false_eq_true, if_false, id, Option.some.injEq] at hb
-      subst hb
-      exact ⟨le_rfl, fun _ => by simp [NLAlib.Ops.whileIter, hc]⟩
-    | true =>
-      simp only [if_true, id] at hb
-      obtain ⟨h1, h2⟩ := (h.bind ih) a b hb
-      exact ⟨h1, fun hag => by simpa [NLAlib.Ops.whileIter, hc] using h2 hag⟩
+    cases hc : test i a with
+    | none => simp [NLAlib.Ops.whileIter, hc] at hab
+    | some c =>
+      cases c with
+      | false =>
+        simp only [NLAlib.Ops.whileIter, hc, Option.map_some, Option.bind_some,
+          Bool.false_eq_true, if_false] at hab ⊢
+        exact hk i a b hab
+      | true =>
+        simp only [NLAlib.Ops.whileIter, hc, Option.map_some, Option.bind_some, if_true,
+          Option.bind_assoc] at hab ⊢
+        exact ((h i).bind (ih (i + 1))) a b hab
 
 end Follows
 
@@ -144,13 +142,12 @@ theorem run_follows {I : Interp Op Tst K} {k : Op → List ℕ → ℕ} (hI : �
     | true =>
       obtain ⟨h1, h2⟩ := iht ρ a b (by simpa using h)
       exact ⟨h1, fun hag => by simp [run, hd, hi, hc, h2 hag]⟩
-  | whileFuel fuel q ds ins body ih =>
+  | whileFuel fuel q ds ins body k ih ihk =>
     intro a b h
     obtain ⟨n, hn, h⟩ := Option.bind_eq_some_iff.mp h
-    obtain ⟨d, hd, h⟩ := Option.bind_eq_some_iff.mp h
-    obtain ⟨i, hi, h⟩ := Option.bind_eq_some_iff.mp h
-    obtain ⟨h1, h2⟩ := Follows.whileIter (I.test q d i) (ih ρ) n a b h
-    exact ⟨h1, fun hag => by simp [run, hn, hd, hi, h2 hag]⟩
+    obtain ⟨h1, h2⟩ := Follows.whileIter (fun i => I.testAt q ds ins (ρ.pushIdx i))
+      (fun i => ih (ρ.pushIdx i)) (fun j => ihk (ρ.pushIdx j)) n 0 a b h
+    exact ⟨h1, fun hag => by simp only [run, hn, Option.bind_some]; exact h2 hag⟩
   | bindIdx q ins bound body ih =>
     intro a b h
     obtain ⟨i, hi, h⟩ := Option.bind_eq_some_iff.mp h
@@ -185,7 +182,7 @@ def Stmt.Straight : Stmt Op Tst → Prop
   | .seq s t => s.Straight ∧ t.Straight
   | .call _ _ _ _ => True
   | .ite _ _ _ _ _ => False
-  | .whileFuel _ _ _ _ _ => False
+  | .whileFuel _ _ _ _ _ _ => False
   | .bindIdx _ _ _ _ => False
   | .alloc _ body => body.Straight
   | .loop _ body => body.Straight
@@ -233,7 +230,7 @@ theorem pos_of_run_of_straight {I : Interp Op Tst K} {k : Op → List ℕ → �
     cases hb
     simpa [staticWindow, hd] using (hI o d i z m τ τ fun _ _ => rfl).2 m' h₁
   | ite q ds ins t e iht ihe => exact hs.elim
-  | whileFuel fuel q ds ins body ih => exact hs.elim
+  | whileFuel fuel q ds ins body k ih ihk => exact hs.elim
   | bindIdx q ins bound body ih => exact hs.elim
   | alloc len body ih =>
     obtain ⟨n, hn, h⟩ := Option.bind_eq_some_iff.mp h
@@ -315,12 +312,13 @@ theorem pos_of_run_of_indep {I : Interp Op Tst K} (hI : ∀ o, I.TapeLocal o fun
     cases c
     · exact ihe h
     · exact iht h
-  | whileFuel fuel q ds ins body ih =>
-    obtain ⟨k, -, h⟩ := Option.bind_eq_some_iff.mp h
-    obtain ⟨d, -, h⟩ := Option.bind_eq_some_iff.mp h
-    obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
-    exact whileIter_rel (R := fun a b : Mem K => b.pos = a.pos)
-      (fun _ _ _ h1 h2 => h2.trans h1) (fun _ => rfl) (fun _ _ hb => ih hb) h
+  | whileFuel fuel q ds ins body k ih ihk =>
+    obtain ⟨n, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨jm, hw, h⟩ := Option.bind_eq_some_iff.mp h
+    refine (ihk h).trans (whileIter_rel (R := fun a b : Mem K => b.pos = a.pos) (fun _ => rfl)
+      (fun _ _ _ h1 h2 => h2.trans h1) (fun i a bs hbs => ?_) (fun _ _ _ hb => ih hb) hw).1
+    obtain ⟨b, -, rfl⟩ := Option.map_eq_some_iff.mp hbs
+    rfl
   | bindIdx q ins bound body ih =>
     obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨B, -, h⟩ := Option.bind_eq_some_iff.mp h
@@ -375,15 +373,10 @@ theorem Interp.ofFns_tapeLocal (F : Op → BlockFn K) (o : Op) :
   intro d ins outs m τ τ' hag
   have hmap : τ.window (F o).stream m.pos ((F o).win d) =
       τ'.window (F o).stream m.pos ((F o).win d) := Tape.window_congr hag _
-  rcases outs with _ | ⟨z, _ | ⟨z', outs⟩⟩
-  · exact ⟨rfl, fun m' h => by cases h⟩
-  · simp only [Interp.ofFns, BlockFn.apply, hmap, true_and]
-    intro m' h
-    split_ifs at h
-    obtain ⟨xs, -, h⟩ := Option.bind_eq_some_iff.mp h
-    obtain ⟨ys, -, h⟩ := Option.bind_eq_some_iff.mp h
-    obtain ⟨m₁, h₁, rfl⟩ := Option.map_eq_some_iff.mp h
-    simp [(Mem.shape_of_write h₁).2]
-  · exact ⟨rfl, fun m' h => by cases h⟩
+  simp only [Interp.ofFns, BlockFn.apply, hmap, true_and]
+  intro m' h
+  have h' : (F o).apply d ins outs τ' m = some m' := h
+  obtain ⟨-, -, xs, ys, -, -, -, -, rfl⟩ := BlockFn.apply_eq_some_iff.mp h'
+  simp
 
 end NLAlib.Ops

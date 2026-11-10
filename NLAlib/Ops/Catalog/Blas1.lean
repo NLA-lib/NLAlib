@@ -96,99 +96,76 @@ theorem IsAxpyErr.congr {dec : K → ℝ} {e : ℝ} {n : ℕ} {al : K} {x y z x'
 /-! ### Contracts -/
 
 /-- Admitted operands of an operation that writes a result apart from its inputs: the length is
-covered and the inputs are in other buffers than the output. -/
-def OutApart (ok : ℕ → Prop) : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop :=
-  fun d ins z => ok (d.headD 0) ∧ ∀ a ∈ ins, a.1 ≠ z.1
+covered and the inputs are in other buffers than the outputs. -/
+@[admNF] def OutApart (ok : ℕ → Prop) : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop :=
+  fun d ins outs => ok (d.headD 0) ∧ ∀ a ∈ ins, ∀ z ∈ outs, a.1 ≠ z.1
 
 /-- Admitted operands of an operation that updates its last input in place: the length is
-covered, the last input is the output, the others are in other buffers. -/
-def InPlace (ok : ℕ → Prop) : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop :=
-  fun d ins z => ok (d.headD 0) ∧ ∃ pre, ins = pre ++ [z] ∧ ∀ a ∈ pre, a.1 ≠ z.1
+covered, the output is the last input, the other inputs are in other buffers. -/
+@[admNF] def InPlace (ok : ℕ → Prop) : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop :=
+  fun d ins outs => ok (d.headD 0) ∧ outs = ins.getLast?.toList ∧
+    ∀ a ∈ ins.dropLast, ∀ z ∈ outs, a.1 ≠ z.1
 
 variable [Inhabited K]
 
 /-- `sum`: one block of length `n` to one cell. -/
+@[simps (attr := storeNF)]
 def sumRel (dec : K → ℝ) (e : ℕ → ℝ) : BlockRel K where
   nd := 1
   inLens d := [d.headD 0]
-  outLen _ := 1
-  rel d X ys := match X, ys with
-    | [xs], [v] => IsSumErr dec (e (d.headD 0)) (d.headD 0) (vec xs) v
+  outLens _ := [1]
+  rel d X _ ys := match X, ys with
+    | [xs], [[v]] => IsSumErr dec (e (d.headD 0)) (d.headD 0) (vec xs) v
     | _, _ => False
 
 /-- `dot`: two blocks of length `n` to one cell. -/
+@[simps (attr := storeNF)]
 def dotRel (dec : K → ℝ) (e : ℕ → ℝ) : BlockRel K where
   nd := 1
   inLens d := [d.headD 0, d.headD 0]
-  outLen _ := 1
-  rel d X ys := match X, ys with
-    | [xs, zs], [v] => IsDotErr dec (e (d.headD 0)) (d.headD 0) (vec xs) (vec zs) v
+  outLens _ := [1]
+  rel d X _ ys := match X, ys with
+    | [xs, zs], [[v]] => IsDotErr dec (e (d.headD 0)) (d.headD 0) (vec xs) (vec zs) v
     | _, _ => False
 
 /-- `axpy`: a cell and two blocks of length `n` to the second block. -/
+@[simps (attr := storeNF)]
 def axpyRel (dec : K → ℝ) (e : ℝ) : BlockRel K where
   nd := 1
   inLens d := [1, d.headD 0, d.headD 0]
-  outLen d := d.headD 0
-  rel d X zs := match X with
-    | [[a], xs, ys] => IsAxpyErr dec e (d.headD 0) a (vec xs) (vec ys) (vec zs)
-    | _ => False
+  outLens d := [d.headD 0]
+  rel d X _ ys := match X, ys with
+    | [[a], xs, ys], [zs] => IsAxpyErr dec e (d.headD 0) a (vec xs) (vec ys) (vec zs)
+    | _, _ => False
 
 /-- `nrm2`: one block of length `n` to one cell. -/
+@[simps (attr := storeNF)]
 def nrm2Rel (dec : K → ℝ) (ed : ℕ → ℝ) (es : ℝ) : BlockRel K where
   nd := 1
   inLens d := [d.headD 0]
-  outLen _ := 1
-  rel d X ys := match X, ys with
-    | [xs], [v] => IsNrm2Err dec (ed (d.headD 0)) es (d.headD 0) (vec xs) v
+  outLens _ := [1]
+  rel d X _ ys := match X, ys with
+    | [xs], [[v]] => IsNrm2Err dec (ed (d.headD 0)) es (d.headD 0) (vec xs) v
     | _, _ => False
 
 /-- `scal`: a cell and a block of length `n` to the block. -/
+@[simps (attr := storeNF)]
 def scalRel (dec : K → ℝ) (e : ℝ) : BlockRel K where
   nd := 1
   inLens d := [1, d.headD 0]
-  outLen d := d.headD 0
-  rel d X zs := match X with
-    | [[a], xs] => IsScalErr dec e (d.headD 0) a (vec xs) (vec zs)
-    | _ => False
+  outLens d := [d.headD 0]
+  rel d X _ ys := match X, ys with
+    | [[a], xs], [zs] => IsScalErr dec e (d.headD 0) a (vec xs) (vec zs)
+    | _, _ => False
 
 omit [Inhabited K] in
 /-- `copy`: a block of length `n` to a block; exact. -/
+@[simps (attr := storeNF)]
 def copyRel : BlockRel K where
   nd := 1
   inLens d := [d.headD 0]
-  outLen d := d.headD 0
-  rel _ X zs := X = [zs]
-
-omit [Inhabited K] in
-@[storeNF] theorem headD_singleton (n d : ℕ) : [n].headD d = n := rfl
-
-@[storeNF] theorem sumRel_inLens (dec : K → ℝ) (e : ℕ → ℝ) (d : List ℕ) :
-    (sumRel dec e).inLens d = [d.headD 0] := rfl
-
-@[storeNF] theorem dotRel_inLens (dec : K → ℝ) (e : ℕ → ℝ) (d : List ℕ) :
-    (dotRel dec e).inLens d = [d.headD 0, d.headD 0] := rfl
-
-@[storeNF] theorem axpyRel_inLens (dec : K → ℝ) (e : ℝ) (d : List ℕ) :
-    (axpyRel dec e).inLens d = [1, d.headD 0, d.headD 0] := rfl
-
-@[storeNF] theorem axpyRel_outLen (dec : K → ℝ) (e : ℝ) (d : List ℕ) :
-    (axpyRel dec e).outLen d = d.headD 0 := rfl
-
-@[storeNF] theorem nrm2Rel_inLens (dec : K → ℝ) (ed : ℕ → ℝ) (es : ℝ) (d : List ℕ) :
-    (nrm2Rel dec ed es).inLens d = [d.headD 0] := rfl
-
-@[storeNF] theorem scalRel_inLens (dec : K → ℝ) (e : ℝ) (d : List ℕ) :
-    (scalRel dec e).inLens d = [1, d.headD 0] := rfl
-
-@[storeNF] theorem scalRel_outLen (dec : K → ℝ) (e : ℝ) (d : List ℕ) :
-    (scalRel dec e).outLen d = d.headD 0 := rfl
-
-omit [Inhabited K] in
-@[storeNF] theorem copyRel_inLens (d : List ℕ) : (copyRel (K := K)).inLens d = [d.headD 0] := rfl
-
-omit [Inhabited K] in
-@[storeNF] theorem copyRel_outLen (d : List ℕ) : (copyRel (K := K)).outLen d = d.headD 0 := rfl
+  outLens d := [d.headD 0]
+  rel _ X _ ys := ys = X
 
 /-- **The accuracy parameters of the level-1 operations.** -/
 structure Blas1Err where

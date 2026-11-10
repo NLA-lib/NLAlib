@@ -73,7 +73,7 @@ theorem writes_fill {n : IExp} {body : Stmt Op Tst} {N b o : ℕ} (hn : n.eval �
 /-- **The two loops that fill a matrix by columns** in the layout `L`: round `(j, i)` writes the
 entry `A i j` in its cell and moves the position from `pos (j * rows + i)` to the next. The
 2-D form of `writes_fill` (the fill of a Gaussian test matrix from the tape). -/
-theorem writes_fill₂ {n₁ n₂ : IExp} {body : Stmt Op Tst} (L : MatLayout)
+theorem writes_fill₂ {n₁ n₂ : IExp} {body : Stmt Op Tst} (L : MatLayout) (hL : L.Valid)
     (hn₁ : n₁.eval ρ.idx = some L.cols) (hn₂ : ∀ j, n₂.eval (ρ.pushIdx j).idx = some L.rows)
     (A : ℕ → ℕ → K) (pos : ℕ → ℕ) (hpos : m.pos = pos 0)
     (hstep : ∀ j < L.cols, ∀ i < L.rows, ∀ m', m.store.EqOff (L.upto j i) m'.store →
@@ -88,7 +88,7 @@ theorem writes_fill₂ {n₁ n₂ : IExp} {body : Stmt Op Tst} (L : MatLayout)
 relational calls): round `i` writes some `x` with `R i x` in the cell `o + i`; at the end the
 block holds a vector all of whose entries satisfy `R`. The fill pattern of `gemm`, of the
 coefficients of Gram–Schmidt, of a loop of dot products. -/
-theorem writes_fillRel {n : IExp} {body : Stmt Op Tst} {N b o : ℕ}
+theorem writes_fillRel [Nonempty K] {n : IExp} {body : Stmt Op Tst} {N b o : ℕ}
     (hn : n.eval ρ.idx = some N) (R : ℕ → K → Prop) (pos : ℕ → ℕ) (hpos : m.pos = pos 0)
     (hstep : ∀ i < N, ∀ m', m.store.EqOff (Store.inBlock b o i) m'.store →
       (∃ v : ℕ → K, m'.store.HoldsVec b o i v ∧ ∀ i' < i, R i' (v i')) → m'.pos = pos i →
@@ -100,8 +100,9 @@ theorem writes_fillRel {n : IExp} {body : Stmt Op Tst} {N b o : ℕ}
 
 /-- **The two loops that fill a matrix with values known only by a relation**, by columns in the
 layout `L` (a matrix stored by rows is the layout of its transpose). -/
-theorem writes_fillRel₂ {n₁ n₂ : IExp} {body : Stmt Op Tst} (L : MatLayout)
-    (hn₁ : n₁.eval ρ.idx = some L.cols) (hn₂ : ∀ j, n₂.eval (ρ.pushIdx j).idx = some L.rows)
+theorem writes_fillRel₂ [Nonempty K] {n₁ n₂ : IExp} {body : Stmt Op Tst} (L : MatLayout)
+    (hL : L.Valid) (hn₁ : n₁.eval ρ.idx = some L.cols)
+    (hn₂ : ∀ j, n₂.eval (ρ.pushIdx j).idx = some L.rows)
     (R : ℕ → ℕ → K → Prop) (pos : ℕ → ℕ) (hpos : m.pos = pos 0)
     (hstep : ∀ j < L.cols, ∀ i < L.rows, ∀ m', m.store.EqOff (L.upto j i) m'.store →
       (∃ A : ℕ → ℕ → K, m'.store.HoldsMatUpto L A j i ∧
@@ -131,6 +132,21 @@ theorem writes_whileFuel {fuel : IExp} {q : Tst} {ds : List IExp} {ins : List Op
     (hcap : ∀ m', m.store.EqOff (F N) m'.store → Inv N m' →
       Writes md I τ k (ρ.pushIdx N) G P m') :
     Writes md I τ (.whileFuel fuel q ds ins body k) ρ (F N ⊔ G) P m := by sorry
+
+/-- **The strict loop** (`Stmt.whileStrict`): the loop with early exit that fails if the test
+still holds after the fuel. `nidx` is the number of index variables in scope. At the round `N`
+(the fuel) the test must fail (only for success: in liberal mode a run that reaches it fails). -/
+theorem writes_whileStrict {nidx : ℕ} {fuel : IExp} {q : Tst} {ds : List IExp}
+    {ins : List Operand} {body : Stmt Op Tst} {N : ℕ} (hn : fuel.eval ρ.idx = some N)
+    (hnidx : ρ.idx.length = nidx) (F : ℕ → Fp) (hF : ∀ i < N, F i ≤ F (i + 1))
+    (Inv : ℕ → Mem K → Prop) (P : Mem K → Prop) (h0 : Inv 0 m)
+    (hstep : ∀ i < N, ∀ m', m.store.EqOff (F i) m'.store → Inv i m' →
+      md.Holds (I.testAt q ds ins (ρ.pushIdx i) m') fun c =>
+        if c then Writes md I τ body (ρ.pushIdx i) (F (i + 1)) (Inv (i + 1)) m' else P m')
+    (hcap : ∀ m', m.store.EqOff (F N) m'.store → Inv N m' →
+      md.Holds (I.testAt q ds ins (ρ.pushIdx N) m') fun c =>
+        md.Needs (c = false) ∧ (c = false → P m')) :
+    Writes md I τ (Stmt.whileStrict nidx fuel q ds ins body) ρ (F N) P m := by sorry
 
 /-- A branch on a size being positive. -/
 theorem writes_ifPos {e : IExp} {body : Stmt Op Tst} {n : ℕ} {F : Fp} {P : Mem K → Prop}

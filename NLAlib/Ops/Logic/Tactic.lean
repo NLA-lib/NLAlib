@@ -66,12 +66,12 @@ macro_rules
   | `(tactic| fp_sub) => `(tactic| fp_sub [])
   | `(tactic| fp_sub [$ts,*]) => `(tactic| first
       | exact le_rfl
-      | (intro b i h; simp only [fpNF, $ts,*] at h ⊢; omega)
+      | (intro b i h; simp only [fpNF, $ts,*] at h ⊢; idx)
       | fail "fp_sub: the footprint is not shown to be included")
 
 /-- **`frame`**: a goal `s.EqOff F s'` where `s'` is a chain of updates (`upd`, `updBlock`,
 `updBlocks`, `push`/`pop`) over `s` or over a store `s₁` with a frame `hfr : s.EqOff G s₁` in the
-context. Peels the updates (`Store.EqOff.upd_of_mem`, `Store.EqOff.updBlock_of_le`), closes the
+context. Peels the updates (`Store.EqOff.upd`, `Store.EqOff.updBlock_of_le`), closes the
 base by `Store.EqOff.refl` or by a frame hypothesis and an inclusion, and proves every membership
 and inclusion with `fp_mem` (and `idx`). Fails naming the first write that is not in the
 footprint. -/
@@ -84,15 +84,17 @@ macro_rules
        repeat' (first
          | exact Store.EqOff.refl _ _
          | refine Store.EqOff.updBlock_of_le ?_ ?_
-         | refine Store.EqOff.upd_of_mem ?_ ?_ _
-         | exact Store.EqOff.of_le (by assumption) (by fp_sub [$ts,*])
+         | refine Store.EqOff.upd ?_ ?_ _
+         | exact Store.EqOff.mono (by assumption) (by fp_sub [$ts,*])
          | fp_mem [$ts,*]
-         | fp_sub [$ts,*]
-         | fail "frame: a write is not shown to be in the footprint")))
+         | (simp only [List.length_cons, List.length_nil, List.length_append, Nat.reduceAdd,
+             $ts,*]; fp_sub [$ts,*])
+         | fp_sub [$ts,*])
+       all_goals fail "frame: a write is not shown to be in the footprint"))
 
 /-- **`step h [facts] as m₁ with x hx`**: the call step in named form. See the module docstring.
 Phase B. -/
-syntax "step " term:max (" [" Lean.Parser.Tactic.simpLemma,* "]")? (" as " ident)?
+syntax "step " term:max (" [" Lean.Parser.Tactic.simpLemma,* "]")? (&" as " ident)?
   (" with" (ppSpace colGt ident)+)? : tactic
 
 macro_rules
@@ -110,7 +112,7 @@ macro_rules
 /-- **`alloc as t₁ … tₖ`**: the allocation rule (`NLAlib.Ops.writes_alloc`,
 `NLAlib.Ops.writes_allocs`) with the handles named, their lengths and the facts of the store
 below them introduced, and their footprints added. Phase B. -/
-syntax "alloc " "as" (ppSpace colGt ident)+ : tactic
+syntax "alloc " &"as" (ppSpace colGt ident)+ : tactic
 
 macro_rules
   | `(tactic| alloc as $_ids*) => `(tactic| fail "alloc: phase B")
@@ -135,7 +137,7 @@ macro "keep" : tactic => `(tactic| fail "keep: phase B")
 and the operands by the header (the same header as the builder's), unfolds the admitted operands
 (`admNF`) and the blocks read, and leaves the body as a `Writes` with the named facts. Phase B. -/
 syntax "cert_intro " "[" ident,* "]" " (" ident,* ")" " → " "(" ident,* ")"
-  (" reads " "(" ident,* ")")? : tactic
+  (&" reads " "(" ident,* ")")? : tactic
 
 macro_rules
   | `(tactic| cert_intro [$_ds,*] ($_ins,*) → ($_outs,*) $[reads ($_xs,*)]?) =>

@@ -97,17 +97,24 @@ fill by columns after `j * rows + i` entries. -/
 def upto (L : MatLayout) (j i : ℕ) : Fp := fun b x => b = L.buf ∧
   ((∃ i' < L.rows, ∃ j' < j, x = L.cell i' j') ∨ (∃ i' < i, x = L.cell i' j))
 
+@[fpNF] theorem fp_apply (L : MatLayout) (b x : ℕ) :
+    L.fp b x ↔ b = L.buf ∧ ∃ i < L.rows, ∃ j < L.cols, x = L.cell i j := Iff.rfl
+
+@[fpNF] theorem upto_apply (L : MatLayout) (j i b x : ℕ) :
+    L.upto j i b x ↔ b = L.buf ∧
+      ((∃ i' < L.rows, ∃ j' < j, x = L.cell i' j') ∨ (∃ i' < i, x = L.cell i' j)) := Iff.rfl
+
 /-- A valid layout lies in one block. -/
 theorem fp_le_inBlock {L : MatLayout} (hL : L.Valid) :
     L.fp ≤ Store.inBlock L.buf L.off (L.cols * L.ld) := by sorry
 
-/-- Column `j` is a block. -/
-theorem col_fp (L : MatLayout) (j : ℕ) :
-    Store.inBlock L.buf (L.off + j * L.ld) L.rows ≤ L.fp ⊔ fun _ _ => ¬ j < L.cols := by sorry
+/-- Column `j` is a block of the layout. -/
+theorem col_fp (L : MatLayout) {j : ℕ} (hj : j < L.cols) :
+    Store.inBlock L.buf (L.off + j * L.ld) L.rows ≤ L.fp := by sorry
 
 /-- Two ranges of columns of one valid layout are disjoint: block-level disjointness in one
 buffer. -/
-theorem disj_of_cols {L : MatLayout} (hL : L.Valid) {j₁ n₁ j₂ n₂ : ℕ} (h : j₁ + n₁ ≤ j₂) :
+theorem disj_of_cols (L : MatLayout) {j₁ n₁ j₂ n₂ : ℕ} (h : j₁ + n₁ ≤ j₂) :
     Fp.Disj (Store.inBlock L.buf (L.off + j₁ * L.ld) (n₁ * L.ld))
       (Store.inBlock L.buf (L.off + j₂ * L.ld) (n₂ * L.ld)) := by sorry
 
@@ -147,6 +154,19 @@ theorem holdsMat_of_cols {s : Store K} {L : MatLayout} {A : ℕ → ℕ → K}
 
 theorem readsOnly_holdsMat (L : MatLayout) (A : ℕ → ℕ → K) :
     ReadsOnly L.fp fun s : Store K => s.HoldsMat L A := by sorry
+
+/-- **A dense matrix is a flat block** (the bridge to the contracts in operand form, whose
+blocks are flat lists): with `rows = ld`, the layout is the block of `cols * rows` cells, entry
+`(i, j)` at `j * rows + i`. -/
+theorem HoldsMat.readBlock [Inhabited K] {s : Store K} {L : MatLayout} {A : ℕ → ℕ → K}
+    (h : s.HoldsMat L A) (hL : L.rows = L.ld) :
+    ∃ ys, s.readBlock L.buf L.off (L.cols * L.rows) = some ys ∧ ys.length = L.cols * L.rows ∧
+      ∀ i < L.rows, ∀ j < L.cols, vec ys (j * L.rows + i) = A i j := by sorry
+
+/-- The converse: a flat block of `cols * rows` cells holds the matrix of its entries. -/
+theorem holdsMat_of_readBlock [Inhabited K] {s : Store K} {L : MatLayout} {ys : List K}
+    (hL : L.rows = L.ld) (h : s.readBlock L.buf L.off (L.cols * L.rows) = some ys) :
+    s.HoldsMat L (fun i j => vec ys (j * L.rows + i)) := by sorry
 
 theorem holdsMatUpto_cols {s : Store K} {L : MatLayout} {A : ℕ → ℕ → K} :
     s.HoldsMatUpto L A L.cols 0 ↔ s.HoldsMat L A := by sorry

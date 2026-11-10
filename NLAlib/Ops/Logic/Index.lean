@@ -62,7 +62,8 @@ namespace NLAlib.Ops
 Method (phase B): `omega`; then, for every hypothesis `i < k` (or `i ≤ k`) in the context and
 every product `i * n` (or `n * i`) in the goal or the context, add `i * n + n ≤ k * n`
 (`Idx.mul_add_le_mul`), normalise products to sums of monomials (`ring_nf`, monomials are atoms
-for `omega`), rewrite `idxNF`, and run `omega` again; `nlinarith` as the last resort. It never
+for `omega`), rewrite `idxNF` (side conditions by `omega`), and run `omega` again. `nlinarith`
+only in `idx!`. It never
 leaves a goal: it closes it or fails with the goal. It is the discharger of `store_side`,
 `fp_mem` and `disjoint`, so every side condition with an offset goes through it. -/
 syntax "idx" (" [" Lean.Parser.Tactic.simpLemma,* "]")? : tactic
@@ -71,9 +72,18 @@ macro_rules
   | `(tactic| idx) => `(tactic| idx [])
   | `(tactic| idx [$ts,*]) => `(tactic| first
       | omega
-      | (simp only [idxNF, $ts,*]; done)
-      | (simp only [idxNF, $ts,*]; omega)
-      | nlinarith
+      | (simp (disch := omega) only [idxNF, $ts,*]; done)
+      | (simp (disch := omega) only [idxNF, $ts,*]; omega)
       | fail "idx: the index fact is not proved")
+
+/-- **`idx!`**: `idx`, then `nlinarith` (slow; for the goals that product generation misses). -/
+syntax "idx!" (" [" Lean.Parser.Tactic.simpLemma,* "]")? : tactic
+
+macro_rules
+  | `(tactic| idx!) => `(tactic| idx! [])
+  | `(tactic| idx! [$ts,*]) => `(tactic| first
+      | idx [$ts,*]
+      | nlinarith
+      | fail "idx!: the index fact is not proved")
 
 end NLAlib.Ops

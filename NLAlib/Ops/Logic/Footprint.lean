@@ -7,6 +7,7 @@ module
 
 public import NLAlib.Ops.Tactic
 public import NLAlib.Ops.Logic.Attr
+public import NLAlib.Ops.Logic.Index
 
 /-!
 # Footprints, disjointness and kept facts
@@ -50,6 +51,12 @@ def blocks : List (ℕ × ℕ) → List ℕ → Fp
   | z :: zs, l :: ls => Store.inBlock z.1 z.2 l ⊔ blocks zs ls
   | _, _ => ⊥
 
+/-- The buffers from the handle `L` on: the scratch buffers of an allocation chain. -/
+def above (L : ℕ) : Fp := fun b _ => L ≤ b
+
+/-- The cells of a list, one each. -/
+def cells (zs : List (ℕ × ℕ)) : Fp := fun b i => (b, i) ∈ zs
+
 /-- Two footprints are disjoint. -/
 def Disj (F G : Fp) : Prop := ∀ b i, F b i → G b i → False
 
@@ -72,6 +79,10 @@ def Apart : List (ℕ × ℕ) → List ℕ → Prop
 @[fpNF] theorem sup_apply (F G : Fp) (b i : ℕ) : (F ⊔ G) b i ↔ F b i ∨ G b i := Iff.rfl
 
 @[fpNF] theorem bot_apply (b i : ℕ) : (⊥ : Fp) b i ↔ False := Iff.rfl
+
+@[fpNF] theorem above_apply (L b i : ℕ) : above L b i ↔ L ≤ b := Iff.rfl
+
+@[fpNF] theorem cells_apply (zs : List (ℕ × ℕ)) (b i : ℕ) : cells zs b i ↔ (b, i) ∈ zs := Iff.rfl
 
 @[fpNF] theorem le_iff (F G : Fp) : F ≤ G ↔ ∀ b i, F b i → G b i := Iff.rfl
 
@@ -113,10 +124,11 @@ end Fp
 
 namespace Store
 
-/-- **A store predicate reads only the cells `G`**: it holds of every store of the same shape
-that agrees on `G`. Shapes (lengths of buffers) are always read. -/
+/-- **A store predicate reads only the cells `G`**: it holds of every store that agrees with
+one where it holds on the cells of `G`. Lengths of buffers are not read (they are kept by every
+frame, `Store.EqOff.len_eq`, and by every allocation, `Store.Below`). -/
 def ReadsOnly (G : Fp) (P : Store K → Prop) : Prop :=
-  ∀ s s', s'.shape = s.shape → (∀ b i, G b i → s'.get b i = s.get b i) → P s → P s'
+  ∀ s s', (∀ b i, G b i → s'.get b i = s.get b i) → P s → P s'
 
 theorem readsOnly_readBlock (b o n : ℕ) (xs : List K) :
     ReadsOnly (inBlock b o n) fun s => s.readBlock b o n = some xs := by sorry
@@ -124,15 +136,38 @@ theorem readsOnly_readBlock (b o n : ℕ) (xs : List K) :
 theorem readsOnly_get (b i : ℕ) (v : K) :
     ReadsOnly (inBlock b i 1) fun s => s.get b i = some v := by sorry
 
-/-- A fact about the lengths of the buffers reads no cell. -/
-theorem readsOnly_shape (P : List ℕ → Prop) : ReadsOnly (⊥ : Fp) fun s : Store K => P s.shape :=
-  fun _ _ hs _ h => by simpa only [hs] using h
-
 theorem ReadsOnly.and {G G' : Fp} {P P' : Store K → Prop} (h : ReadsOnly G P)
     (h' : ReadsOnly G' P') : ReadsOnly (G ⊔ G') fun s => P s ∧ P' s := by sorry
 
 theorem ReadsOnly.mono {G G' : Fp} {P : Store K → Prop} (h : ReadsOnly G P) (hG : G ≤ G') :
     ReadsOnly G' P := by sorry
+
+/-- **Agreement below a handle**: the buffers below `L` have the same lengths and cells in `s`
+and `s'`. The relation between a store and the store of a block with scratch buffers on top
+(`NLAlib.Ops.writes_alloc`), in both directions. -/
+def Below (L : ℕ) (s s' : Store K) : Prop :=
+  ∀ b < L, s'.len b = s.len b ∧ ∀ i, s'.get b i = s.get b i
+
+theorem Below.symm {L : ℕ} {s s' : Store K} (h : Below L s s') : Below L s' s := by sorry
+
+theorem Below.trans {L : ℕ} {s s' s'' : Store K} (h : Below L s s') (h' : Below L s' s'') :
+    Below L s s'' := by sorry
+
+theorem Below.readBlock {L : ℕ} {s s' : Store K} (h : Below L s s') {b : ℕ} (hb : b < L)
+    (o n : ℕ) : s'.readBlock b o n = s.readBlock b o n := by sorry
+
+/-- **A kept fact across an allocation**: a fact that reads only buffers below `L` is kept by
+agreement below `L`. -/
+theorem Below.keep {L : ℕ} {s s' : Store K} {G : Fp} {P : Store K → Prop} (h : Below L s s')
+    (hP : ReadsOnly G P) (hG : ∀ b i, G b i → b < L) (hp : P s) : P s' := by sorry
+
+/-- A store with buffers pushed on top agrees below its length. -/
+theorem below_push (s : Store K) (n : ℕ) : Below s.length s (s.push n) := by sorry
+
+/-- A frame below `L` composes with agreement: the frame transported through an allocation. -/
+theorem EqOff.below {L : ℕ} {F : Fp} {s s' t t' : Store K} (h : EqOff F t t') (hs : Below L s t)
+    (hs' : Below L s' t') (hl : s'.length = s.length) (hsl : s.length = L) : EqOff F s s' := by
+  sorry
 
 namespace EqOff
 
@@ -146,16 +181,9 @@ theorem keep {P : Store K → Prop} (h : EqOff F s s') (hP : ReadsOnly G P) (hD 
 current one, after one more step. -/
 theorem trans' (h : EqOff F s s') (h' : EqOff G s' s'') : EqOff (F ⊔ G) s s'' := by sorry
 
-/-- A write inside the footprint, in the form of the `frame` tactic: a membership goal. -/
-theorem upd_of_mem (h : EqOff F s s') {b i : ℕ} (hF : F b i) (v : K) :
-    EqOff F s (s'.upd b i v) := h.upd hF v
-
 /-- A block write inside the footprint, in the form of the `frame` tactic: an inclusion goal. -/
 theorem updBlock_of_le (h : EqOff F s s') {b o : ℕ} {xs : List K}
     (hF : inBlock b o xs.length ≤ F) : EqOff F s (s'.updBlock b o xs) := by sorry
-
-/-- The frame of nothing written, against a larger footprint: the base of the `frame` tactic. -/
-theorem of_le (h : EqOff G s s') (hF : G ≤ F) : EqOff F s s' := h.mono hF
 
 end EqOff
 
@@ -169,15 +197,17 @@ theorem eqOff_updBlocks {F : Fp} {m : Mem K} {s : Store K} (h : s.EqOff F m.stor
     s.EqOff F (m.updBlocks zs ys).store := by sorry
 
 /-- **The equation of a contract in operand form, from a frame and the blocks read back**, for
-any number of pairwise disjoint output blocks. Generalises `Store.EqOff.eq_updBlock₂`; used once
-in `NLAlib.Ops.Impl.meets_of_writes`, so a certificate never rebuilds the equation by hand. -/
+any number of output blocks (when two overlap, both read back the same cells, so the order of
+the writes does not matter). Generalises `Store.EqOff.eq_updBlock₂`; used once in
+`NLAlib.Ops.Impl.meets_of_writes`, so a certificate never rebuilds the equation by hand. -/
 theorem eq_updBlocks_of_eqOff {m m' : Mem K} {zs : List (ℕ × ℕ)} {ls : List ℕ}
-    {ys : List (List K)} (h : m.store.EqOff (Fp.blocks zs ls) m'.store) (hap : Fp.Apart zs ls)
+    {ys : List (List K)} (h : m.store.EqOff (Fp.blocks zs ls) m'.store)
     (hr : m'.readBlocks zs ls = some ys) (hpos : m'.pos = m.pos) : m' = m.updBlocks zs ys := by
   sorry
 
-/-- Reading several blocks, one at a time (for `cert_intro`). -/
-@[simp, storeNF] theorem readBlocks_cons_eq_some {m : Mem K} {a : ℕ × ℕ} {as : List (ℕ × ℕ)}
+/-- Reading several blocks, one at a time (for `cert_intro`, by name: not a simp lemma, so that
+the core's `store_simp` is unchanged). -/
+theorem readBlocks_cons_eq_some {m : Mem K} {a : ℕ × ℕ} {as : List (ℕ × ℕ)}
     {n : ℕ} {ns : List ℕ} {X : List (List K)} :
     m.readBlocks (a :: as) (n :: ns) = some X ↔
       ∃ x xs, m.store.readBlock a.1 a.2 n = some x ∧ m.readBlocks as ns = some xs ∧
@@ -196,29 +226,32 @@ attribute [fpNF] true_and and_true or_true true_or eq_self_iff_true not_or not_a
   and_self or_self false_or or_false false_and and_false not_false_eq_true not_true_eq_false
   imp_false
 
-/-- **`fp_mem`**: a membership goal `F b i` or `¬ F b i`, or an inclusion `F ≤ G`, where the
-footprints are built from `inBlock`, `inBuf`, `⊔`, `⊥`, `Fp.blocks` and layouts. Unfolds them
-(`fpNF`), splits the cases, and closes the arithmetic with `idx` (handles are numbers: an
-injective family `hH` is passed as `fp_mem [hH.eq_iff]`). Fails with the goal it could not close;
-never leaves a goal. -/
+/-- **`fp_mem`**: a membership goal `F b i` or `¬ F b i`, where the footprints are built from
+`inBlock`, `inBuf`, `⊔`, `⊥`, `Fp.blocks`, `Fp.above`, `Fp.cells` and layouts. Unfolds them
+(`fpNF`) and closes the arithmetic with `idx` (handles are numbers: an injective family `hH` is
+passed as `fp_mem [hH.eq_iff]`). Fails with the goal it could not close; never leaves a goal. -/
 syntax "fp_mem" (" [" Lean.Parser.Tactic.simpLemma,* "]")? : tactic
 
 macro_rules
   | `(tactic| fp_mem) => `(tactic| fp_mem [])
   | `(tactic| fp_mem [$ts,*]) => `(tactic| first
       | (simp only [fpNF, $ts,*]; done)
-      | (simp only [fpNF, $ts,*] <;> (try intros) <;> omega)
+      | (simp only [fpNF, $ts,*] <;> (try intros) <;> idx)
       | fail "fp_mem: the cell is not shown to be in (or out of) the footprint")
 
 /-- **`disjoint`**: a goal `Fp.Disj F G`, `Fp.Apart zs ls`, `b ≠ b'` of handles, or the side
-condition `∀ j < n, ¬ F b (o + j)` of a kept block. Same method as `fp_mem`. -/
+condition `∀ j < n, ¬ F b (o + j)` of a kept block. Same method as `fp_mem`; the facts of an
+injective family of handles are passed as `[hH.eq_iff]` and reduce `H x = H y` to `x = y`,
+decided by `simp`. -/
 syntax "disjoint" (" [" Lean.Parser.Tactic.simpLemma,* "]")? : tactic
 
 macro_rules
   | `(tactic| disjoint) => `(tactic| disjoint [])
   | `(tactic| disjoint [$ts,*]) => `(tactic| first
       | (simp only [fpNF, Fp.Apart, $ts,*]; done)
-      | (simp only [fpNF, Fp.Apart, $ts,*] <;> (try intros) <;> omega)
+      | (simp only [fpNF, Fp.Apart, $ts,*] <;> (try intros) <;> idx)
+      | (simp [fpNF, Fp.Apart, $ts,*]; done)
+      | (simp [fpNF, Fp.Apart, $ts,*] <;> (try intros) <;> idx)
       | fail "disjoint: the footprints are not shown to be disjoint")
 
 end NLAlib.Ops

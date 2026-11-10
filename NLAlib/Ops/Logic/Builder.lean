@@ -53,7 +53,16 @@ buffer it is `e` (and `X` alone is offset `0`). Index expressions are names, num
 The keywords `call`, `alloc`, `index`, `abort`, `ifPos`, `ifZero` are not reserved: they stay
 usable as identifiers elsewhere.
 
-An unknown name, a buffer used as an index or an index used as a buffer is an error at the name.
+An unknown name, a buffer used as an index or an index used as a buffer is an error at the name;
+so is a dimension declared twice or also an operand, and a binder (`for`, `let`, `while`) that
+shadows a name of the header. The offset variable of an operand `X` is named `X_off` and may be
+used in index expressions.
+
+**The offset convention is frozen** (it is part of the identity of every registered tree): `X[e]`
+for an operand is `.var X_off` plus the top-level `+`-summands of `e`, added from the left; a
+parenthesised summand, a `-`, `*` or `/` stays one summand; `X` alone is `.var X_off`. For
+scratch, `X[e]` is `e` and `X` is `.const 0`. Numerals are `.const n`; `+ - * /` are the `IExp`
+instances.
 
 ## Main results
 
@@ -173,6 +182,13 @@ meta def Scope.pushIdx (sc : Scope) (x : Name) : Scope := { sc with idx := sc.id
 /-- Bind a new buffer variable (scratch). -/
 meta def Scope.pushBuf (sc : Scope) (x : Name) : Scope := { sc with buf := sc.buf.push (x, none) }
 
+/-- A binder of the body may not shadow a name of the header (a dimension, an operand or the
+offset variable `X_off` of an operand). -/
+meta def Scope.fresh (sc : Scope) (x : TSyntax `ident) : MacroM Unit := do
+  let n := x.getId
+  if (sc.idx.extract 0 sc.nIdx).contains n || ((sc.buf.extract 0 sc.nBuf).map Prod.fst).contains n
+  then Macro.throwErrorAt x s!"ops%: `{n}` shadows a name of the header"
+
 /-- A natural number literal. -/
 meta def lit (n : Nat) : TSyntax `term := ⟨Syntax.mkNumLit (toString n)⟩
 
@@ -242,8 +258,10 @@ meta def seqE (sc : Scope) : Nat → List (TSyntax `opsStmt) → MacroM (TSyntax
   | f + 1, s :: rest => do
     match s with
     | `(opsStmt| let $t:ident ← alloc $len) =>
+      sc.fresh t
       `(Stmt.alloc $(← idxE sc depth len) $(← seqE (sc.pushBuf t.getId) f rest))
     | `(opsStmt| let $v:ident ← index $q ($as,*) ≤ $bd) =>
+      sc.fresh v
       `(Stmt.bindIdx $q $(← argL sc as.getElems) $(← idxE sc depth bd)
         $(← seqE (sc.pushIdx v.getId) f rest))
     | _ =>
@@ -266,11 +284,13 @@ meta def stmtE (sc : Scope) : Nat → TSyntax `opsStmt → MacroM (TSyntax `term
     | `(opsStmt| call $o [$ds,*] ($as,*) → ($zs,*)) =>
       `(Stmt.call $o $(← idxL sc ds.getElems) $(← argL sc as.getElems) $(← argL sc zs.getElems))
     | `(opsStmt| for $i:ident < $n $b:opsBlock) =>
+      sc.fresh i
       `(Stmt.loop $(← idxE sc depth n) $(← blockE (sc.pushIdx i.getId) f b))
     | `(opsStmt| if $q [$ds,*] ($as,*) $t:opsBlock else $e:opsBlock) =>
       `(Stmt.ite $q $(← idxL sc ds.getElems) $(← argL sc as.getElems) $(← blockE sc f t)
         $(← blockE sc f e))
     | `(opsStmt| while $i:ident < $fu, $q [$ds,*] ($as,*) $b:opsBlock then $k:opsBlock) =>
+      sc.fresh i
       let sc' := sc.pushIdx i.getId
       `(Stmt.whileFuel $(← idxE sc depth fu) $q $(← idxL sc' ds.getElems)
         $(← argL sc' as.getElems)
@@ -286,24 +306,33 @@ meta def stmtE (sc : Scope) : Nat → TSyntax `opsStmt → MacroM (TSyntax `term
 
 end
 
-/-- The scope of a header: dimensions, then the offsets and the handles of the operands. -/
-meta def header (ds ins outs : Array Ident) : Scope :=
+/-- The scope of a header: dimensions, then the offsets and the handles of the operands. The
+names of the dimensions are distinct and differ from the operands and their offset variables;
+an operand name may repeat (an operand updated in place, which denotes its first occurrence). -/
+meta def header (ds ins outs : Array Ident) : MacroM Scope := do
   let ops := ins ++ outs
-  let idx := ds.map (·.getId) ++ ops.map (·.getId.appendAfter "_off")
+  let offs := ops.map (·.getId.appendAfter "_off")
+  for h : k in [0:ds.size] do
+    let x := ds[k]
+    if (ds.extract 0 k).any (·.getId == x.getId) then
+      Macro.throwErrorAt x s!"ops%: the dimension `{x.getId}` is declared twice"
+    if ops.any (·.getId == x.getId) || offs.contains x.getId then
+      Macro.throwErrorAt x s!"ops%: the dimension `{x.getId}` is also an operand"
+  let idx := ds.map (·.getId) ++ offs
   let buf := (ops.zipIdx).map fun (x, j) => (x.getId, some (ds.size + j))
-  { idx, buf, nIdx := idx.size, nBuf := buf.size }
+  return { idx, buf, nIdx := idx.size, nBuf := buf.size }
 
 end Builder
 
 open Lean in
 macro_rules
   | `(ops% [$ds,*] ($ins,*) → ($outs,*) $b:opsBlock) =>
-    Builder.blockE (Builder.header ds.getElems ins.getElems outs.getElems) Builder.depth b
+    do Builder.blockE (← Builder.header ds.getElems ins.getElems outs.getElems) Builder.depth b
 
 open Lean in
 macro_rules
   | `(opsImpl% [$ds,*] ($ins,*) → ($outs,*) $b:opsBlock) => do
-    let body ← Builder.blockE (Builder.header ds.getElems ins.getElems outs.getElems)
+    let body ← Builder.blockE (← Builder.header ds.getElems ins.getElems outs.getElems)
       Builder.depth b
     `(Impl.mk $(Builder.lit ds.getElems.size) $(Builder.lit ins.getElems.size)
       $(Builder.lit outs.getElems.size) $body)

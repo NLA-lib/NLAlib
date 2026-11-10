@@ -20,6 +20,56 @@ builds ordinary proof terms, and the builder is a macro whose output is a plain 
 
 ---
 
+## Amendment after review (2026-11-10)
+
+Reviews: `reports/Review-Core-OpsLogic.md` (core lane, with Lean counterexamples) and Fable's.
+Both approve after these fixes. Changes to the statements (the sections below are updated where
+they state a signature; where they are not, this list wins):
+
+* **False statements fixed.** `writes_fill₂`, `writes_fillRel₂` take `hL : L.Valid` (two entries
+  shared a cell otherwise; refuted in Lean). `writes_scalarBlock` is stated for `.total` with the
+  room unconditional (the catalog's scalar contracts are total-only; a liberal statement was
+  refuted). `writes_fillRel`, `writes_fillRel₂` take `[Nonempty K]`.
+* **Modes, honestly.** The rules are mode-generic, but the catalog states `IsScalar`/`IsBlas1`
+  in total mode only: a proof that calls the catalog is a total proof, and its liberal corollary
+  comes by `Writes.of_total` under the same hypotheses. "One proof gives both modes" holds only
+  for programs over contracts stated for every mode.
+* **Syntax.** `as` and `reads` are non-reserved in the tactics (`&" as "`, `&" reads "`).
+* **Root.** No module of `Logic/` is imported by `NLAlib.lean` until `Logic/` is sorry-free;
+  it is built by explicit targets.
+* **M1.** `Mem.eq_updBlocks_of_eqOff` and `Impl.meets_of_writes` no longer ask `Fp.Apart`
+  (overlapping outputs read back the same cells); apartness only for reading back a call.
+* **M2/M3. Facts across an allocation.** `Store.ReadsOnly` reads cells only (no shape);
+  `Store.Below L s s'` (same lengths and cells below `L`) with `Below.keep`, `Below.readBlock`,
+  `below_push`, `EqOff.below`. `writes_alloc(s)`: the body is proved for every `s₁` with the
+  declared lengths and `Below L m.store s₁`; the postcondition is asked of every store of length
+  `L` that agrees below `L` with the final one, so no `pop`/`take` appears in a goal.
+* **M4.** `Writes.seq_le`: the continuation is proved against the declared footprint.
+* **M5.** `alloc as` states the `lens` list of the nested `.alloc`s it sees (the builder emits
+  them), so `writes_allocs` applies by `change` to `Stmt.allocs`.
+* **Scalar blocks and tags.** `ScalarIns Op` carries the operation itself (any tag), the rule
+  takes `ScalarCall I o g` per instruction (`IsScalar.scalarCall` gives it at a tag), so mixed
+  precision is one block. The builder will emit plain nested calls; the tactic `change`s them
+  into `Stmt.scalarBlock` (D7).
+* **More rules.** `writes_ite_holds`, `writes_bindIdx_holds` (the test or index under
+  `md.Holds`), `writes_frame`, `writes_whileStrict`.
+* **Bridge.** `Store.HoldsMat.readBlock`, `Store.holdsMat_of_readBlock` (dense matrix ↔ flat
+  block, `rows = ld`), for `meets_of_writes`.
+* **Tactics.** `frame` ends with `all_goals fail` and normalises lengths; `fp_mem`, `fp_sub`,
+  `disjoint` use `idx`; `fpNF` covers `Fp.above`, `Fp.cells`, `MatLayout.fp`,
+  `MatLayout.upto`; `idx` has no `nlinarith` (`idx!` has it; D10a); `idxNF` side conditions by
+  `omega`; `Mem.readBlocks_cons_eq_some` is not a simp lemma. `keep` is lazy: facts are
+  transported where used against the running frame, not after every step (finding 8).
+* **Builder.** Errors on a dimension declared twice or also an operand, and on a binder that
+  shadows a name of the header; `X_off` documented; the offset convention is frozen (§12).
+  The printer (D17) comes first in phase B.
+* **D12 changed.** `RunsFromWL` goes in the core's `Counted.lean` (core lane, complete rule set).
+  `Logic/Count.lean` keeps its statements unproved until then and will consume the core's.
+* Duplicates of core lemmas removed (`EqOff.of_le`, `EqOff.upd_of_mem`); `disj_of_cols` takes
+  no `Valid`; `col_fp` takes `j < L.cols`.
+
+---
+
 ## 0. Summary
 
 **The diagnosis** (README "For the logic layer", measured): calls are one line already

@@ -78,6 +78,13 @@ theorem seq (h : Writes md I τ c ρ F P m)
     (h' : ∀ m', m.store.EqOff F m'.store → P m' → Writes md I τ c' ρ G P' m') :
     Writes md I τ (.seq c c') ρ (F ⊔ G) P' m := by sorry
 
+/-- Sequence against a declared footprint: the first part writes inside `F`, and the rest is
+proved against `F` itself, so the footprint of the whole is the declared one (no `⊔` to
+collapse at the end). -/
+theorem seq_le (h : Writes md I τ c ρ G P m) (hG : G ≤ F)
+    (h' : ∀ m', m.store.EqOff G m'.store → P m' → Writes md I τ c' ρ F P' m') :
+    Writes md I τ (.seq c c') ρ F P' m := by sorry
+
 /-- Consequence: a larger footprint, a weaker postcondition (which may use the frame). -/
 theorem mono (h : Writes md I τ c ρ F P m) (hF : F ≤ G)
     (hP : ∀ m', m.store.EqOff F m'.store → P m' → P' m') : Writes md I τ c ρ G P' m := by sorry
@@ -185,37 +192,37 @@ theorem writes_call_bin {o : Op} {g : K → K → Option K}
 /-! ### Scratch buffers -/
 
 /-- **A scratch buffer as a named state.** The body is proved from every store `s₁` with one more
-buffer, of length `n`, at the handle `m.store.length`, that agrees with the store below it; its
-footprint may include the new buffer, which is gone after the pop. -/
+buffer, of length `n`, at the handle `L = m.store.length`, that agrees with the store below `L`;
+its footprint may include the new buffer. The postcondition is asked of every store of length `L`
+that agrees with the final one below `L` (the store after the pop is one), so no `pop` appears
+in a goal, and a fact about the buffers below `L` transfers by `Store.Below.keep`. -/
 theorem writes_alloc {len : IExp} {body : Stmt Op Tst} {n : ℕ} (hn : len.eval ρ.idx = some n)
     {F : Fp} {P : Mem K → Prop}
     (h : ∀ s₁ : Store K, s₁.length = m.store.length + 1 → s₁.len m.store.length = n →
-      (∀ b, b < m.store.length → s₁.len b = m.store.len b) →
-      (∀ b off k, b < m.store.length → s₁.readBlock b off k = m.store.readBlock b off k) →
+      Store.Below m.store.length m.store s₁ →
       Writes md I τ body (ρ.pushBuf m.store.length) (F ⊔ Store.inBuf m.store.length)
-        (fun m' => P ⟨m'.store.pop, m'.pos⟩) ⟨s₁, m.pos⟩) :
+        (fun m' => ∀ s₂ : Store K, s₂.length = m.store.length →
+          Store.Below m.store.length m'.store s₂ → P ⟨s₂, m'.pos⟩) ⟨s₁, m.pos⟩) :
     Writes md I τ (.alloc len body) ρ F P m := by sorry
 
-/-- Nested scratch buffers of the lengths `lens`, the last innermost. -/
+/-- Nested scratch buffers of the lengths `lens`, the last innermost (the builder writes the
+nested `.alloc`s, which are this by `rfl`). -/
 def Stmt.allocs : List IExp → Stmt Op Tst → Stmt Op Tst
   | [], body => body
   | l :: ls, body => .alloc l (Stmt.allocs ls body)
 
-/-- The buffers from the handle `L` on. -/
-def Fp.above (L : ℕ) : Fp := fun b _ => L ≤ b
-
 /-- **An allocation chain**: `k` scratch buffers at the handles `L, L + 1, …, L + k - 1`
 (`L = m.store.length`) with their lengths, as one named state; after the body they are all
-freed. This is the rule for the blocks that allocate seven or eight buffers. -/
+freed. The rule for the blocks that allocate seven or eight buffers. -/
 theorem writes_allocs {lens : List IExp} {body : Stmt Op Tst} {ns : List ℕ}
     (hn : IExp.evalList ρ.idx lens = some ns) {F : Fp} {P : Mem K → Prop}
     (h : ∀ s₁ : Store K, s₁.length = m.store.length + ns.length →
       (∀ i (hi : i < ns.length), s₁.len (m.store.length + i) = ns[i]) →
-      (∀ b, b < m.store.length → s₁.len b = m.store.len b) →
-      (∀ b off k, b < m.store.length → s₁.readBlock b off k = m.store.readBlock b off k) →
+      Store.Below m.store.length m.store s₁ →
       Writes md I τ body ⟨ρ.idx, ρ.buf ++ (List.range ns.length).map (m.store.length + ·)⟩
         (F ⊔ Fp.above m.store.length)
-        (fun m' => P ⟨m'.store.take m.store.length, m'.pos⟩) ⟨s₁, m.pos⟩) :
+        (fun m' => ∀ s₂ : Store K, s₂.length = m.store.length →
+          Store.Below m.store.length m'.store s₂ → P ⟨s₂, m'.pos⟩) ⟨s₁, m.pos⟩) :
     Writes md I τ (Stmt.allocs lens body) ρ F P m := by sorry
 
 /-! ### Branches and indices -/
@@ -227,12 +234,35 @@ theorem writes_ite {q : Tst} {ds : List IExp} {ins : List Operand} {t e : Stmt O
     (hc : I.test q d a m = some c) (h : Writes md I τ (if c then t else e) ρ F P m) :
     Writes md I τ (.ite q ds ins t e) ρ F P m := by sorry
 
+/-- Branch, in the form of a liberal proof: the test is evaluated under `md.Holds` (a liberal
+proof does not have to show that it succeeds). -/
+theorem writes_ite_holds {q : Tst} {ds : List IExp} {ins : List Operand} {t e : Stmt Op Tst}
+    {F : Fp} {P : Mem K → Prop}
+    (h : md.Holds (I.testAt q ds ins ρ m) fun c => Writes md I τ (if c then t else e) ρ F P m) :
+    Writes md I τ (.ite q ds ins t e) ρ F P m := by sorry
+
 /-- Index binder, on the number returned, within the bound. -/
 theorem writes_bindIdx {q : Tst} {ins : List Operand} {bound : IExp} {body : Stmt Op Tst}
     {a : List (ℕ × ℕ)} {B v : ℕ} {F : Fp} {P : Mem K → Prop}
     (ha : Operand.evalList ρ ins = some a) (hB : bound.eval ρ.idx = some B)
     (hv : I.index q a m = some v) (hle : v ≤ B) (h : Writes md I τ body (ρ.pushIdx v) F P m) :
     Writes md I τ (.bindIdx q ins bound body) ρ F P m := by sorry
+
+/-- Index binder, in the form of a liberal proof: the number is read under `md.Holds`; the body
+is proved at it, and success needs it within the bound. -/
+theorem writes_bindIdx_holds {q : Tst} {ins : List Operand} {bound : IExp} {body : Stmt Op Tst}
+    {a : List (ℕ × ℕ)} {B : ℕ} {F : Fp} {P : Mem K → Prop}
+    (ha : Operand.evalList ρ ins = some a) (hB : bound.eval ρ.idx = some B)
+    (h : md.Holds (I.index q a m) fun v =>
+      md.Needs (v ≤ B) ∧ (v ≤ B → Writes md I τ body (ρ.pushIdx v) F P m)) :
+    Writes md I τ (.bindIdx q ins bound body) ρ F P m := by sorry
+
+/-- A procedure instance: the body runs in the environment of its dimensions and operands. -/
+theorem writes_frame {ds : List IExp} {args : List Operand} {body : Stmt Op Tst} {d : List ℕ}
+    {a : List (ℕ × ℕ)} {F : Fp} {P : Mem K → Prop} (hd : IExp.evalList ρ.idx ds = some d)
+    (ha : Operand.evalList ρ args = some a) (hl : m.Live a)
+    (h : Writes md I τ body (Env.frame d a) F P m) :
+    Writes md I τ (.frame ds args body) ρ F P m := by sorry
 
 /-- **Index binder from the access model**: the number is the conversion `f` of the cells read
 (`Interp.IsIndex`); the body is proved at that number. -/
@@ -268,7 +298,7 @@ theorem Impl.meets_of_writes {R : Impl Op Tst} {I : Interp Op Tst K} {B : BlockR
       d.length = B.nd → adm d ins outs → m.Live (ins ++ outs) →
       m.readBlocks ins (B.inLens d) = some xs →
       B.dom d xs (τ.window B.stream m.pos (B.win d)) → m.Room outs (B.outLens d) →
-      R.Fits d.length ins.length outs.length ∧ Fp.Apart outs (B.outLens d) ∧
+      R.Fits d.length ins.length outs.length ∧
         Writes .total I τ R.body (Env.frame d (ins ++ outs)) (Fp.blocks outs (B.outLens d))
           (fun m' => m'.pos = m.pos + B.win d ∧ ∃ ys, m'.readBlocks outs (B.outLens d) = some ys ∧
             B.rel d xs (τ.window B.stream m.pos (B.win d)) ys) m) :

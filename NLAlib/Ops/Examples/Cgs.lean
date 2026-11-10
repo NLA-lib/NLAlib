@@ -50,33 +50,35 @@ inductive CgsBuf where
   deriving DecidableEq
 
 /-- The coefficients of column `j`: `r_ij := q_iᵀ a_j` for `i < j`. Index variables: `n`, `p`,
-the offsets of `A`, `Q`, `R`, `j`, then `i`; buffer variables: `A`, `Q`, `R`, `t`, `v`. -/
+the offsets of `A`, `R`, `Q`, `R`, `j`, then `i`; buffer variables: `A`, `R`, `Q`, `R`, `t`,
+`v` (the inputs `A`, `R` and the outputs `Q`, `R`: `R` is updated in place). -/
 def cgsDots : Stmt Op Tst :=
-  .loop (.var 5) (.call (Has.inj Blas1Op.dot) [.var 0]
-    [⟨1, .var 3 + .var 6 * .var 0⟩, ⟨0, .var 2 + .var 5 * .var 0⟩]
-    [⟨2, .var 4 + .var 5 * .var 1 + .var 6⟩])
+  .loop (.var 6) (.call (Has.inj Blas1Op.dot) [.var 0]
+    [⟨2, .var 4 + .var 7 * .var 0⟩, ⟨0, .var 2 + .var 6 * .var 0⟩]
+    [⟨3, .var 5 + .var 6 * .var 1 + .var 7⟩])
 
 /-- The updates of column `j`: `t := -r_ij; v := v + t q_i` for `i < j`. -/
 def cgsProj : Stmt Op Tst :=
-  .loop (.var 5) (.seq
-    (.call (Has.inj ScalarOp.neg) [] [⟨2, .var 4 + .var 5 * .var 1 + .var 6⟩] [⟨3, .const 0⟩])
+  .loop (.var 6) (.seq
+    (.call (Has.inj ScalarOp.neg) [] [⟨3, .var 5 + .var 6 * .var 1 + .var 7⟩] [⟨4, .const 0⟩])
     (.call (Has.inj Blas1Op.axpy) [.var 0]
-      [⟨3, .const 0⟩, ⟨1, .var 3 + .var 6 * .var 0⟩, ⟨4, .const 0⟩] [⟨4, .const 0⟩]))
+      [⟨4, .const 0⟩, ⟨2, .var 4 + .var 7 * .var 0⟩, ⟨5, .const 0⟩] [⟨5, .const 0⟩]))
 
 /-- **Column `j` of classical Gram–Schmidt.** -/
 def cgsCol : Stmt Op Tst :=
   .seq cgsDots
-    (.seq (.call (Has.inj Blas1Op.copy) [.var 0] [⟨0, .var 2 + .var 5 * .var 0⟩] [⟨4, .const 0⟩])
+    (.seq (.call (Has.inj Blas1Op.copy) [.var 0] [⟨0, .var 2 + .var 6 * .var 0⟩] [⟨5, .const 0⟩])
     (.seq cgsProj
-    (.seq (.call (Has.inj Blas1Op.nrm2) [.var 0] [⟨4, .const 0⟩]
-      [⟨2, .var 4 + .var 5 * .var 1 + .var 5⟩])
+    (.seq (.call (Has.inj Blas1Op.nrm2) [.var 0] [⟨5, .const 0⟩]
+      [⟨3, .var 5 + .var 6 * .var 1 + .var 6⟩])
     (.seq (.call (Has.inj Blas1Op.scal) [.var 0]
-      [⟨2, .var 4 + .var 5 * .var 1 + .var 5⟩, ⟨4, .const 0⟩] [⟨4, .const 0⟩])
-    (.call (Has.inj Blas1Op.copy) [.var 0] [⟨4, .const 0⟩] [⟨1, .var 3 + .var 5 * .var 0⟩])))))
+      [⟨3, .var 5 + .var 6 * .var 1 + .var 6⟩, ⟨5, .const 0⟩] [⟨5, .const 0⟩])
+    (.call (Has.inj Blas1Op.copy) [.var 0] [⟨5, .const 0⟩] [⟨2, .var 4 + .var 6 * .var 0⟩])))))
 
-/-- The environment of a column: the sizes, the offsets, the column index, the five buffers. -/
+/-- The environment of a column: the sizes, the offsets, the column index, the buffers of the
+operands `A`, `R`, `Q`, `R` and the two scratch buffers. -/
 abbrev cgsEnv (H : CgsBuf → ℕ) (n p oA oQ oR j : ℕ) : Env :=
-  ⟨[n, p, oA, oQ, oR, j], [H .A, H .Q, H .R, H .t, H .v]⟩
+  ⟨[n, p, oA, oR, oQ, oR, j], [H .A, H .R, H .Q, H .R, H .t, H .v]⟩
 
 variable [Inhabited K] {M : Machine K} {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop}
   {J : Interp Op Tst K} {τ : Tape K} {H : CgsBuf → ℕ} {n p oA oQ oR j : ℕ} {s : Store K}

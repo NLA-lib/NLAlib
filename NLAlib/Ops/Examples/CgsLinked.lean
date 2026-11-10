@@ -12,7 +12,7 @@ public import NLAlib.Ops.Examples.CgsQR
 
 ## Main results
 
-* `NLAlib.Ops.Examples.CgsRounded.backward` (mathematics on the final memory): the computed
+* `NLAlib.Ops.Examples.CgsOut.backward` (mathematics on the final memory): the computed
   factors satisfy, in every column `j` whose diagonal entry is not zero,
   `|a_j - Σ_{i≤j} r̂_ij q̂_i| ≤ ((1 + ε_scal) (1 + ε_axpy) ^ j - 1)
   (|a_j| + Σ_{i<j} |r̂_ij| |q̂_i|)`,
@@ -34,28 +34,37 @@ open NLAlib.Ops
 variable {K Op Tst : Type} [Has ScalarOp Op] [Has Blas1Op Op] [Inhabited K]
 
 omit [Has ScalarOp Op] [Has Blas1Op Op] in
-/-- **The componentwise backward error of the computed factorization.** `r i j` is entry
-`(i, j)` of `R̂`, read from the final memory; `qs` is `Q̂` by columns. -/
-theorem CgsRounded.backward {dec : K → ℝ} {ε : Blas1Err} {n p bQ oQ bR oR : ℕ} {as : List K}
-    {μ μ' : Mem K} (h : CgsRounded dec ε n p bQ oQ bR oR as μ μ') (hax : 0 ≤ ε.axpy)
+/-- **The componentwise backward error of the computed factorization.** `rs` is `R̂` and `qs` is
+`Q̂`, by columns; `r i j` is entry `(i, j)` of `R̂`. -/
+theorem CgsOut.backward {dec : K → ℝ} {ε : Blas1Err} {n p : ℕ} {as qs rs : List K}
+    (h : CgsOut dec ε n p as qs rs) (hlen : rs.length = p * p) (hax : 0 ≤ ε.axpy)
     (hsc : 0 ≤ ε.scal) :
-    ∃ (qs : List K) (r : ℕ → ℕ → K), μ'.store.readBlock bQ oQ (p * n) = some qs ∧
-      (∀ j < p, ∀ i ≤ j, μ'.store.get bR (oR + j * p + i) = some (r i j)) ∧
+    ∃ r : ℕ → ℕ → K, (∀ j < p, ∀ i ≤ j, vec rs (j * p + i) = r i j) ∧
       ∀ j < p, dec (r j j) ≠ 0 → ∀ l < n,
         |dec (vec as (j * n + l)) -
             ∑ i ∈ Finset.range (j + 1), dec (r i j) * dec (vec qs (i * n + l))| ≤
           ((1 + ε.scal) * (1 + ε.axpy) ^ j - 1) * (|dec (vec as (j * n + l))| +
             ∑ i ∈ Finset.range j, |dec (r i j) * dec (vec qs (i * n + l))|) := by
-  obtain ⟨-, -, qs, rp, ρ, hq, hc⟩ := h
+  obtain ⟨rp, ρ, hc⟩ := h
   have hrl : ∀ j < p, (rp j).length = j := fun j hj => by
-    simpa using Store.length_of_readBlock (hc j hj).1
+    have hjp : j * p + (j + 1) ≤ p * p := by
+      have := Nat.mul_le_mul_right p hj
+      rw [Nat.succ_mul] at this
+      omega
+    have := congrArg List.length (hc j hj).1
+    simp only [List.length_take, List.length_drop, List.length_append, List.length_singleton]
+      at this
+    have hrs : rs.length = p * p := hlen
+    omega
   have hr : ∀ j < p, ∀ i < j, vec (rp j ++ [ρ j]) i = vec (rp j) i := fun j hj i hi =>
     vec_append_left (by rw [hrl j hj]; exact hi) _
   have hρ : ∀ j < p, vec (rp j ++ [ρ j]) j = ρ j := fun j hj => by
     have := vec_concat (rp j) (ρ j)
     rwa [hrl j hj] at this
-  refine ⟨qs, fun i j => vec (rp j ++ [ρ j]) i, hq,
-    fun j hj i hi => Store.get_of_readBlock (hc j hj).1 (by omega) default, fun j hj h0 l hl => ?_⟩
+  refine ⟨fun i j => vec (rp j ++ [ρ j]) i, fun j hj i hi => by
+    change vec rs (j * p + i) = vec (rp j ++ [ρ j]) i
+    rw [← (hc j hj).1]
+    exact (Store.getD_drop_take rs _ _ _ (by omega) default).symm, fun j hj h0 l hl => ?_⟩
   dsimp only at h0 ⊢
   rw [hρ j hj] at h0
   have hb := (hc j hj).2.backward hax hsc h0 l hl
@@ -90,32 +99,35 @@ theorem cgs_backward_const (u : ℝ) (j : ℕ) :
 variable [Apart Blas1Op ScalarOp Op] {M : Machine K} {u : ℝ} {dec : K → ℝ}
 
 /-- **`cgs` under sequential summation**: over scalar arithmetic meeting the standard model at
-`u`, the linked program computes factors meeting `CgsRounded` at the constants of the profile,
+`u`, the linked program computes factors meeting `CgsFactored` at the constants of the profile,
 within the pushed-forward counts. One application of the certificate of the profile. -/
 theorem runs_cgs_link_seq (hM : StdModel u dec M) (hu : 0 ≤ u) {I : Interp Op Tst K}
-    (hI : IsScalar M I) {τ : Tape K} {n p oA oQ oR : ℕ} {B : Fin 3 → ℕ} {μ : Mem K}
-    {as : List K} (hB : Function.Injective B) (hl : ∀ i, B i < μ.store.length)
-    (hA : μ.store.readBlock (B 0) oA (p * n) = some as)
-    (hQ : oQ + p * n ≤ μ.store.len (B 1)) (hR : oR + p * p ≤ μ.store.len (B 2)) :
-    Runs I (Blas.ws 0) τ (cgs.link Blas.seq.table) ⟨[n, p, oA, oQ, oR], [B 0, B 1, B 2]⟩ μ
+    (hI : IsScalar M I) {τ : Tape K} {n p : ℕ} {A Q R : ℕ × ℕ} {μ : Mem K}
+    {as r₀ : List K} (hAQ : A.1 ≠ Q.1) (hAR : A.1 ≠ R.1) (hQR : Q.1 ≠ R.1)
+    (hl : μ.Live [A, Q, R]) (hA : μ.store.readBlock A.1 A.2 (p * n) = some as)
+    (hR₀ : μ.store.readBlock R.1 R.2 (p * p) = some r₀)
+    (hQ : Q.2 + p * n ≤ μ.store.len Q.1) (hR : R.2 + p * p ≤ μ.store.len R.1) :
+    Runs I (Blas.ws 0) τ (cgs.link Blas.seq.table) (Env.frame [n, p] [A, R, Q, R]) μ
       (Count.push Blas.seq.cost (cgsCount n p)) (cgsPeak (Blas.ws 0 : Op → List ℕ → ℕ) n)
-      (CgsRounded dec (Blas.seq.err u) n p (B 1) oQ (B 2) oR as μ) :=
+      (CgsFactored dec (Blas.seq.err u) n p Q R as μ) :=
   (Blas.seq_certifies hM hu fun _ => True).runs
-    (fun _ hJ => runs_cgs_rounded hJ.1 hJ.2 hM.neg _ trivial hB hl hA hQ hR) hI
+    (fun _ hJ => runs_cgs_rounded hJ.1 hJ.2 hM.neg _ trivial hAQ hAR hQR hl hA hR₀ hQ hR) hI
 
 /-- **`cgs` under pairwise summation** of depth `k`, for `⌈log₂ n⌉ < k`. -/
 theorem runs_cgs_link_pairwise (hM : StdModel u dec M) (hu : 0 ≤ u) {I : Interp Op Tst K}
-    (hI : IsScalar M I) {τ : Tape K} {k n p oA oQ oR : ℕ} (hk : Nat.clog 2 n < k)
-    {B : Fin 3 → ℕ} {μ : Mem K} {as : List K} (hB : Function.Injective B)
-    (hl : ∀ i, B i < μ.store.length) (hA : μ.store.readBlock (B 0) oA (p * n) = some as)
-    (hQ : oQ + p * n ≤ μ.store.len (B 1)) (hR : oR + p * p ≤ μ.store.len (B 2)) :
+    (hI : IsScalar M I) {τ : Tape K} {k n p : ℕ} (hk : Nat.clog 2 n < k)
+    {A Q R : ℕ × ℕ} {μ : Mem K} {as r₀ : List K} (hAQ : A.1 ≠ Q.1) (hAR : A.1 ≠ R.1)
+    (hQR : Q.1 ≠ R.1) (hl : μ.Live [A, Q, R])
+    (hA : μ.store.readBlock A.1 A.2 (p * n) = some as)
+    (hR₀ : μ.store.readBlock R.1 R.2 (p * p) = some r₀)
+    (hQ : Q.2 + p * n ≤ μ.store.len Q.1) (hR : R.2 + p * p ≤ μ.store.len R.1) :
     Runs I (Blas.ws Blas.pairWs) τ (cgs.link (Blas.pairwise k).table)
-      ⟨[n, p, oA, oQ, oR], [B 0, B 1, B 2]⟩ μ
+      (Env.frame [n, p] [A, R, Q, R]) μ
       (Count.push (Blas.pairwise k).cost (cgsCount n p))
       (cgsPeak (Blas.ws Blas.pairWs : Op → List ℕ → ℕ) n)
-      (CgsRounded dec (Blas.pairwise.err u) n p (B 1) oQ (B 2) oR as μ) := by
+      (CgsFactored dec (Blas.pairwise.err u) n p Q R as μ) := by
   have h := (Blas.pairwise_certifies hM hu k).runs (τ := τ)
-    (fun _ hJ => runs_cgs_rounded hJ.1 hJ.2 hM.neg _ hk hB hl hA hQ hR) hI
+    (fun _ hJ => runs_cgs_rounded hJ.1 hJ.2 hM.neg _ hk hAQ hAR hQR hl hA hR₀ hQ hR) hI
   rwa [Blas.pairwise_wsLo] at h
 
 omit [Inhabited K] in
@@ -137,17 +149,16 @@ theorem push_seq_cgsColCount (n j : ℕ) :
 /-- **The backward error of the linked `cgs`**, under either profile: in every column `j` whose
 diagonal entry is not zero, `|a_j - Σ_{i≤j} r̂_ij q̂_i| ≤ ((1 + u) ^ (2 j + 1) - 1)
 (|a_j| + Σ_{i<j} |r̂_ij| |q̂_i|)` entry by entry. -/
-theorem CgsRounded.backward_std {es : ℕ → ℝ} {n p bQ oQ bR oR : ℕ} {as : List K} {μ μ' : Mem K}
-    (hu : 0 ≤ u) (h : CgsRounded dec (Blas.level1Err u es) n p bQ oQ bR oR as μ μ') :
-    ∃ (qs : List K) (r : ℕ → ℕ → K), μ'.store.readBlock bQ oQ (p * n) = some qs ∧
-      (∀ j < p, ∀ i ≤ j, μ'.store.get bR (oR + j * p + i) = some (r i j)) ∧
+theorem CgsOut.backward_std {es : ℕ → ℝ} {n p : ℕ} {as qs rs : List K} (hu : 0 ≤ u)
+    (h : CgsOut dec (Blas.level1Err u es) n p as qs rs) (hlen : rs.length = p * p) :
+    ∃ r : ℕ → ℕ → K, (∀ j < p, ∀ i ≤ j, vec rs (j * p + i) = r i j) ∧
       ∀ j < p, dec (r j j) ≠ 0 → ∀ l < n,
         |dec (vec as (j * n + l)) -
             ∑ i ∈ Finset.range (j + 1), dec (r i j) * dec (vec qs (i * n + l))| ≤
           ((1 + u) ^ (2 * j + 1) - 1) * (|dec (vec as (j * n + l))| +
             ∑ i ∈ Finset.range j, |dec (r i j) * dec (vec qs (i * n + l))|) := by
-  obtain ⟨qs, r, h1, h2, h3⟩ := h.backward (by simp only [Blas.level1Err]; nlinarith) hu
-  refine ⟨qs, r, h1, h2, fun j hj h0 l hl => ?_⟩
+  obtain ⟨r, h2, h3⟩ := h.backward hlen (by simp only [Blas.level1Err]; nlinarith) hu
+  refine ⟨r, h2, fun j hj h0 l hl => ?_⟩
   have := h3 j hj h0 l hl
   rwa [show (Blas.level1Err u es).scal = u from rfl,
     show (Blas.level1Err u es).axpy = (1 + u) ^ 2 - 1 from rfl, cgs_backward_const] at this

@@ -247,6 +247,29 @@ theorem pop_updBlock_top {s : Store K} {b : ℕ} (h : b + 1 = s.length) (off : �
   | nil => rfl
   | cons x xs ih => rw [updBlock_cons, ih (by simpa using h), pop_upd_top h]
 
+/-- A block is readable exactly when its cells are. -/
+theorem isSome_readBlock_iff {s : Store K} {b off n : ℕ} :
+    (s.readBlock b off n).isSome ↔ ∀ j < n, (s.get b (off + j)).isSome := by
+  induction n generalizing off with
+  | zero => simp
+  | succ n ih =>
+    rw [readBlock_succ]
+    cases hg : s.get b off with
+    | none =>
+      simp only [Option.bind_none, Option.isSome_none, Bool.false_eq_true, false_iff, not_forall]
+      exact ⟨0, by omega, by simp [hg]⟩
+    | some a =>
+      simp only [Option.bind_some, Option.isSome_map, ih]
+      constructor
+      · intro h j hj
+        rcases j with _ | j
+        · simp [hg]
+        · have := h j (by omega)
+          rwa [show off + 1 + j = off + (j + 1) by omega] at this
+      · intro h j hj
+        have := h (j + 1) (by omega)
+        rwa [show off + (j + 1) = off + 1 + j by omega] at this
+
 /-! ### Footprints and frames -/
 
 /-- The cells `off, …, off + n - 1` of the buffer `b`. -/
@@ -349,6 +372,19 @@ theorem eq_updBlock₂ {b off n b' off' n' : ℕ} {xs ys : List K}
     (hr : s'.readBlock b off n = some xs) (hr' : s'.readBlock b' off' n' = some ys) :
     s' = (s.updBlock b off xs).updBlock b' off' ys :=
   ((h.mono fun _ _ hf => hf.symm).peel hr).eq_updBlock hr'
+
+/-- **A readable block stays readable** in a store that agrees with `s` off a footprint, if the
+cells of the footprint in the block are readable in the new store. For an output block that a
+program writes only in part (the upper triangle of a factor). -/
+theorem isSome_readBlock (h : EqOff F s s') {b off n : ℕ} (hr : (s.readBlock b off n).isSome)
+    (hF : ∀ j < n, F b (off + j) → (s'.get b (off + j)).isSome) :
+    (s'.readBlock b off n).isSome := by
+  rw [isSome_readBlock_iff] at hr ⊢
+  intro j hj
+  by_cases hf : F b (off + j)
+  · exact hF j hj hf
+  · rw [h.2 b _ hf]
+    exact hr j hj
 
 /-- **The frame after a scratch buffer is freed**: a run on `s.push n` that kept the store off
 `F` and the scratch buffer leaves, after the pop, a store that agrees with `s` off `F`. -/

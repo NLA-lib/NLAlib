@@ -24,8 +24,6 @@ the block need no initialisation: the evaluation reads the updated cell function
 the cells written; division is total in the machine, and its meaning at zero is the business of
 the arithmetic contract (`StdModel.div`), not of the block.
 
-**Phase A**: statements only (`sorry`).
-
 ## Main results
 
 * `NLAlib.Ops.ScalarIns`, `NLAlib.Ops.Stmt.scalarBlock`, `NLAlib.Ops.ScalarIns.evalBlock`.
@@ -82,9 +80,46 @@ def ScalarCall (I : Interp Op Tst K) (o : Op) (g : List K → Option K) : Prop :
     m.Live (ins ++ [z]) → ins.mapM (fun a => m.store.get a.1 a.2) = some vs →
     z.2 < m.store.len z.1 → g vs = some v → I.callS o [] ins [z] τ m = some (m.upd z v)
 
+theorem mapM_cons_eq_some {α : Type} {f : α → Option K} {x : α} {l : List α} {vs : List K} :
+    (x :: l).mapM f = some vs ↔ ∃ v vs', f x = some v ∧ l.mapM f = some vs' ∧ vs = v :: vs' := by
+  rw [List.mapM_cons]
+  cases hx : f x <;> cases hl : l.mapM f <;> simp [eq_comm]
+
+theorem mapM_nil_eq_some {α : Type} {f : α → Option K} {vs : List K} :
+    ([] : List α).mapM f = some vs ↔ vs = [] := by simp [eq_comm]
+
+/-- The cells read hold words, so their buffers are live. -/
+theorem live_of_mapM {m : Mem K} {ins : List (ℕ × ℕ)} {vs : List K}
+    (h : ins.mapM (fun a => m.store.get a.1 a.2) = some vs) : m.Live ins := by
+  induction ins generalizing vs with
+  | nil => simp
+  | cons x ins ih =>
+    obtain ⟨v, vs', hv, hvs, rfl⟩ := mapM_cons_eq_some.mp h
+    exact (Mem.live_cons _ _ _).mpr ⟨Store.lt_length_of_get hv, ih hvs⟩
+
 /-- The scalar contract of the catalog, at any tag, as functions of cells. -/
 theorem IsScalar.scalarCall [Has ScalarOp Op] {M : Machine K} {I : Interp Op Tst K}
-    (hS : IsScalar M I) (a : ScalarOp) : ScalarCall I (Has.inj a) (M.eval a) := by sorry
+    (hS : IsScalar M I) (a : ScalarOp) : ScalarCall I (Has.inj a) (M.eval a) := by
+  intro ins z τ m vs v _ hvs hz hg
+  refine (hS a).callS_eq (d := []) (ins := ins) (outs := [z]) trivial ?_
+  rcases ins with _ | ⟨x, _ | ⟨y, _ | ⟨w, ins⟩⟩⟩
+  · obtain rfl := mapM_nil_eq_some.mp hvs
+    cases a <;> simp only [Machine.eval, reduceCtorEq, Option.some.injEq] at hg
+    subst hg
+    exact BlockFn.apply_const_eq_some_iff.mpr ⟨hz, rfl⟩
+  · obtain ⟨u, vs', hu, hvs', rfl⟩ := mapM_cons_eq_some.mp hvs
+    obtain rfl := mapM_nil_eq_some.mp hvs'
+    cases a <;> simp only [Machine.eval, reduceCtorEq, Option.some.injEq] at hg <;> subst hg <;>
+      exact BlockFn.apply_un_eq_some_iff.mpr ⟨u, _, hu, rfl, hz, rfl⟩
+  · obtain ⟨u, vs', hu, hvs', rfl⟩ := mapM_cons_eq_some.mp hvs
+    obtain ⟨u', vs'', hu', hvs'', rfl⟩ := mapM_cons_eq_some.mp hvs'
+    obtain rfl := mapM_nil_eq_some.mp hvs''
+    cases a <;> simp only [Machine.eval, reduceCtorEq, Option.some.injEq] at hg <;> subst hg <;>
+      exact BlockFn.apply_bin_eq_some_iff.mpr ⟨u, u', _, hu, hu', rfl, hz, rfl⟩
+  · obtain ⟨u, vs', hu, hvs', rfl⟩ := mapM_cons_eq_some.mp hvs
+    obtain ⟨u', vs'', hu', hvs'', rfl⟩ := mapM_cons_eq_some.mp hvs'
+    obtain ⟨u'', vs''', hu'', hvs''', rfl⟩ := mapM_cons_eq_some.mp hvs''
+    cases a <;> simp [Machine.eval] at hg
 
 /-- **The evaluation of a block** on a cell function, given the function `sem` of each operation:
 the cells written, in order, with their values; each instruction reads the cells as updated by
@@ -119,16 +154,97 @@ theorem writes_scalarBlock {I : Interp Op Tst K} {τ : Tape K} {ρ : Env} {m : M
     (hev : ScalarIns.evalBlock sem ρ xs m.store.cellFn = some ws)
     (hroom : ∀ w ∈ ws, w.1.2 < m.store.len w.1.1) :
     Writes .total I τ (Stmt.scalarBlock xs) ρ (Fp.cells (ws.map Prod.fst))
-      (fun m' => m' = m.updCells ws) m := by sorry
-
-/-- The value of a cell after the block: the last value written to it. -/
-theorem get_updCells {m : Mem K} {ws : List ((ℕ × ℕ) × K)} {z : ℕ × ℕ} {v : K}
-    (hz : ws.reverse.lookup z = some v) (hl : z.2 < m.store.len z.1) :
-    (m.updCells ws).store.get z.1 z.2 = some v := by sorry
+      (fun m' => m' = m.updCells ws) m := by
+  suffices key : ∀ (m : Mem K) (ws : List ((ℕ × ℕ) × K)),
+      ScalarIns.evalBlock sem ρ xs m.store.cellFn = some ws →
+      (∀ w ∈ ws, w.1.2 < m.store.len w.1.1) →
+      run I τ (Stmt.scalarBlock xs) ρ m = some (m.updCells ws) ∧
+        m.store.EqOff (Fp.cells (ws.map Prod.fst)) (m.updCells ws).store from
+    wp_of_run (key m ws hev hroom).1 ⟨(key m ws hev hroom).2, rfl⟩
+  clear hev hroom ws m
+  induction xs with
+  | nil =>
+    intro m ws hev _
+    simp only [ScalarIns.evalBlock, Option.some.injEq] at hev
+    subst hev
+    exact ⟨rfl, Store.EqOff.refl _ _⟩
+  | cons x xs ih =>
+    intro m ws hev hroom
+    simp only [ScalarIns.evalBlock] at hev
+    obtain ⟨a, ha, hev⟩ := Option.bind_eq_some_iff.mp hev
+    obtain ⟨vs, hvs, hev⟩ := Option.bind_eq_some_iff.mp hev
+    obtain ⟨z, hz, hev⟩ := Option.bind_eq_some_iff.mp hev
+    obtain ⟨v, hv, hev⟩ := Option.bind_eq_some_iff.mp hev
+    obtain ⟨ws', hws', rfl⟩ := Option.map_eq_some_iff.mp hev
+    have hzl : z.2 < m.store.len z.1 := hroom (z, v) (by simp)
+    have hcall : I.callS x.op [] a [z] τ m = some (m.upd z v) :=
+      hS x (by simp) a z τ m vs v ((Mem.live_append _ _ _).mpr ⟨live_of_mapM hvs,
+        by simpa using Store.lt_length_of_lt_len hzl⟩) hvs hzl hv
+    have hcell : (m.upd z v).store.cellFn = Function.update m.store.cellFn z (some v) := by
+      funext y
+      by_cases hy : y = z
+      · subst hy
+        simp [Store.cellFn, Store.get_upd_self hzl]
+      · rw [Function.update_of_ne hy]
+        simp only [Store.cellFn, Mem.store_upd]
+        exact Store.get_upd_of_ne (by
+          by_contra hc
+          push Not at hc
+          exact hy (Prod.ext hc.1 hc.2)) v
+    have hrun1 : run I τ x.stmt ρ m = some (m.upd z v) := by
+      simp [ScalarIns.stmt, run, ha, Operand.evalList, hz, hcall]
+    obtain ⟨hrun, hfr⟩ := ih (fun y hy => hS y (by simp [hy])) (m.upd z v) ws'
+      (by rw [hcell]; exact hws') fun w hw => by
+        simpa using hroom w (by simp [hw])
+    refine ⟨?_, ?_⟩
+    · cases xs with
+      | nil =>
+        simp only [ScalarIns.evalBlock, Option.some.injEq] at hws'
+        subst hws'
+        exact hrun1
+      | cons y ys =>
+        change (run I τ x.stmt ρ m).bind (run I τ (Stmt.scalarBlock (y :: ys)) ρ) = _
+        rw [hrun1, Option.bind_some, hrun]
+        rfl
+    · refine ((Store.EqOff.refl _ _).upd (show Fp.cells _ z.1 z.2 by simp [Fp.cells]) v).trans
+        (hfr.mono fun b i h => ?_)
+      simp only [Fp.cells, List.map_cons, List.mem_cons] at h ⊢
+      exact Or.inr h
 
 /-- A cell not written by the block keeps its value. -/
 theorem get_updCells_of_notMem {m : Mem K} {ws : List ((ℕ × ℕ) × K)} {z : ℕ × ℕ}
     (hz : z ∉ ws.map Prod.fst) : (m.updCells ws).store.get z.1 z.2 = m.store.get z.1 z.2 := by
-  sorry
+  induction ws generalizing m with
+  | nil => rfl
+  | cons w ws ih =>
+    simp only [List.map_cons, List.mem_cons, not_or] at hz
+    simp only [Mem.updCells]
+    rw [ih hz.2]
+    simp only [Mem.store_upd]
+    exact Store.get_upd_of_ne (by
+      by_contra hc
+      exact hz.1 (Prod.ext (not_not.mp (not_or.mp hc).1) (not_not.mp (not_or.mp hc).2))) _
+
+/-- Writing a list of cells in two parts. -/
+theorem updCells_append (m : Mem K) (ws₁ ws₂ : List ((ℕ × ℕ) × K)) :
+    m.updCells (ws₁ ++ ws₂) = (m.updCells ws₁).updCells ws₂ := by
+  induction ws₁ generalizing m with
+  | nil => rfl
+  | cons w ws ih => exact ih _
+
+theorem len_updCells (m : Mem K) (ws : List ((ℕ × ℕ) × K)) (b : ℕ) :
+    (m.updCells ws).store.len b = m.store.len b := by
+  induction ws generalizing m with
+  | nil => rfl
+  | cons w ws ih => rw [Mem.updCells, ih]; simp
+
+/-- **The value of a cell after the block**: the last value written to it (one lemma per output
+word, not one `simp` over the whole block). -/
+theorem get_updCells {m : Mem K} {ws₁ ws₂ : List ((ℕ × ℕ) × K)} {z : ℕ × ℕ} {v : K}
+    (hl : z.2 < m.store.len z.1) (hz : z ∉ ws₂.map Prod.fst) :
+    (m.updCells (ws₁ ++ (z, v) :: ws₂)).store.get z.1 z.2 = some v := by
+  rw [updCells_append, Mem.updCells, get_updCells_of_notMem hz]
+  simp only [Mem.store_upd]
+  exact Store.get_upd_self (by rw [len_updCells]; exact hl) v
 
 end NLAlib.Ops

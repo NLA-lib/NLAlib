@@ -27,8 +27,6 @@ by hand in every proof.
 * `NLAlib.Ops.MatLayout.fp`: the cells of the layout (its footprint); `MatLayout.upto`: the cells
   of the columns before `j` and of column `j` before row `i` (the footprint of a fill).
 
-**Phase A**: statements only (`sorry`).
-
 ## Main results
 
 * `NLAlib.Ops.Store.holdsVec_iff_readBlock`: a vector is a block read.
@@ -52,18 +50,30 @@ def HoldsVec (s : Store K) (b o n : ℕ) (v : ℕ → K) : Prop :=
   ∀ i < n, s.get b (o + i) = some (v i)
 
 theorem holdsVec_iff_readBlock {s : Store K} {b o n : ℕ} {v : ℕ → K} :
-    s.HoldsVec b o n v ↔ s.readBlock b o n = some ((List.range n).map v) := by sorry
+    s.HoldsVec b o n v ↔ s.readBlock b o n = some ((List.range n).map v) := by
+  rw [readBlock_eq_some_iff]
+  constructor
+  · intro h
+    exact ⟨by simp, fun j hj => by rw [h j hj]; simp [hj]⟩
+  · intro h i hi
+    rw [h.2 i hi]
+    simp [hi]
 
 /-- A block read holds the vector of its list. -/
 theorem holdsVec_of_readBlock [Inhabited K] {s : Store K} {b o n : ℕ} {xs : List K}
-    (h : s.readBlock b o n = some xs) : s.HoldsVec b o n (vec xs) := by sorry
+    (h : s.readBlock b o n = some xs) : s.HoldsVec b o n (vec xs) :=
+  fun _ hi => get_of_readBlock h hi default
 
 theorem readsOnly_holdsVec (b o n : ℕ) (v : ℕ → K) :
-    ReadsOnly (inBlock b o n) fun s : Store K => s.HoldsVec b o n v := by sorry
+    ReadsOnly (inBlock b o n) fun s : Store K => s.HoldsVec b o n v := fun _ _ hg hp i hi =>
+  (hg b (o + i) ⟨rfl, by omega, by omega⟩).trans (hp i hi)
 
 /-- A vector extended by one cell. -/
 theorem HoldsVec.snoc {s : Store K} {b o n : ℕ} {v : ℕ → K} (h : s.HoldsVec b o n v)
-    (hn : s.get b (o + n) = some (v n)) : s.HoldsVec b o (n + 1) v := by sorry
+    (hn : s.get b (o + n) = some (v n)) : s.HoldsVec b o (n + 1) v := fun i hi => by
+  rcases Nat.lt_succ_iff_lt_or_eq.mp hi with hi | rfl
+  · exact h i hi
+  · exact hn
 
 end Store
 
@@ -106,28 +116,78 @@ def upto (L : MatLayout) (j i : ℕ) : Fp := fun b x => b = L.buf ∧
 
 /-- A valid layout lies in one block. -/
 theorem fp_le_inBlock {L : MatLayout} (hL : L.Valid) :
-    L.fp ≤ Store.inBlock L.buf L.off (L.cols * L.ld) := by sorry
+    L.fp ≤ Store.inBlock L.buf L.off (L.cols * L.ld) := by
+  rintro b x ⟨rfl, i, hi, j, hj, rfl⟩
+  have := Idx.mul_add_le_mul hj L.ld
+  unfold Valid at hL
+  exact ⟨rfl, by simp only [cell]; omega, by simp only [cell]; omega⟩
 
 /-- Column `j` is a block of the layout. -/
 theorem col_fp (L : MatLayout) {j : ℕ} (hj : j < L.cols) :
-    Store.inBlock L.buf (L.off + j * L.ld) L.rows ≤ L.fp := by sorry
+    Store.inBlock L.buf (L.off + j * L.ld) L.rows ≤ L.fp := by
+  rintro b x ⟨rfl, h1, h2⟩
+  exact ⟨rfl, x - (L.off + j * L.ld), by omega, j, hj, by simp only [cell]; omega⟩
 
 /-- Two ranges of columns of one valid layout are disjoint: block-level disjointness in one
 buffer. -/
 theorem disj_of_cols (L : MatLayout) {j₁ n₁ j₂ n₂ : ℕ} (h : j₁ + n₁ ≤ j₂) :
     Fp.Disj (Store.inBlock L.buf (L.off + j₁ * L.ld) (n₁ * L.ld))
-      (Store.inBlock L.buf (L.off + j₂ * L.ld) (n₂ * L.ld)) := by sorry
+      (Store.inBlock L.buf (L.off + j₂ * L.ld) (n₂ * L.ld)) := by
+  refine Fp.disj_inBlock_of_le ?_
+  have := Nat.mul_le_mul_right L.ld h
+  rw [Nat.add_mul] at this
+  omega
 
-theorem upto_zero (L : MatLayout) : L.upto 0 0 = ⊥ := by sorry
+theorem upto_zero (L : MatLayout) : L.upto 0 0 = ⊥ := by
+  funext b x
+  apply propext
+  simp only [upto]
+  constructor
+  · rintro ⟨-, ⟨_, _, _, hj, _⟩ | ⟨_, hi, _⟩⟩ <;> omega
+  · exact False.elim
 
 /-- The fill footprint after a whole column. -/
-theorem upto_col (L : MatLayout) (j : ℕ) : L.upto j L.rows = L.upto (j + 1) 0 := by sorry
+theorem upto_col (L : MatLayout) (j : ℕ) : L.upto j L.rows = L.upto (j + 1) 0 := by
+  funext b x
+  apply propext
+  simp only [upto]
+  constructor
+  · rintro ⟨hb, ⟨i, hi, j', hj, rfl⟩ | ⟨i, hi, rfl⟩⟩
+    · exact ⟨hb, Or.inl ⟨i, hi, j', by omega, rfl⟩⟩
+    · exact ⟨hb, Or.inl ⟨i, hi, j, by omega, rfl⟩⟩
+  · rintro ⟨hb, ⟨i, hi, j', hj, rfl⟩ | ⟨i, hi, -⟩⟩
+    · rcases Nat.lt_succ_iff_lt_or_eq.mp hj with hj | rfl
+      · exact ⟨hb, Or.inl ⟨i, hi, j', hj, rfl⟩⟩
+      · exact ⟨hb, Or.inr ⟨i, hi, rfl⟩⟩
+    · omega
 
 /-- The fill footprint after one more entry. -/
 theorem upto_succ (L : MatLayout) (j i : ℕ) :
-    L.upto j (i + 1) = L.upto j i ⊔ Store.inBlock L.buf (L.cell i j) 1 := by sorry
+    L.upto j (i + 1) = L.upto j i ⊔ Store.inBlock L.buf (L.cell i j) 1 := by
+  funext b x
+  apply propext
+  simp only [upto, Pi.sup_apply, sup_Prop_eq, Store.inBlock]
+  constructor
+  · rintro ⟨hb, h | ⟨i', hi, rfl⟩⟩
+    · exact Or.inl ⟨hb, Or.inl h⟩
+    · rcases Nat.lt_succ_iff_lt_or_eq.mp hi with hi | rfl
+      · exact Or.inl ⟨hb, Or.inr ⟨i', hi, rfl⟩⟩
+      · exact Or.inr ⟨hb, le_rfl, by omega⟩
+  · rintro (⟨hb, h | ⟨i', hi, rfl⟩⟩ | ⟨hb, h1, h2⟩)
+    · exact ⟨hb, Or.inl h⟩
+    · exact ⟨hb, Or.inr ⟨i', by omega, rfl⟩⟩
+    · exact ⟨hb, Or.inr ⟨i, by omega, by omega⟩⟩
 
-theorem upto_cols (L : MatLayout) : L.upto L.cols 0 = L.fp := by sorry
+theorem upto_cols (L : MatLayout) : L.upto L.cols 0 = L.fp := by
+  funext b x
+  apply propext
+  simp only [upto, fp]
+  constructor
+  · rintro ⟨hb, h | ⟨_, hi, _⟩⟩
+    · exact ⟨hb, h⟩
+    · omega
+  · rintro ⟨hb, h⟩
+    exact ⟨hb, Or.inl h⟩
 
 end MatLayout
 
@@ -145,15 +205,17 @@ def HoldsMatUpto (s : Store K) (L : MatLayout) (A : ℕ → ℕ → K) (j i : �
 
 /-- A column of a matrix is a vector. -/
 theorem HoldsMat.col {s : Store K} {L : MatLayout} {A : ℕ → ℕ → K} (h : s.HoldsMat L A) {j : ℕ}
-    (hj : j < L.cols) : s.HoldsVec L.buf (L.off + j * L.ld) L.rows (fun i => A i j) := by sorry
+    (hj : j < L.cols) : s.HoldsVec L.buf (L.off + j * L.ld) L.rows (fun i => A i j) :=
+  fun i hi => h i hi j hj
 
 /-- A matrix from its columns. -/
 theorem holdsMat_of_cols {s : Store K} {L : MatLayout} {A : ℕ → ℕ → K}
     (h : ∀ j < L.cols, s.HoldsVec L.buf (L.off + j * L.ld) L.rows (fun i => A i j)) :
-    s.HoldsMat L A := by sorry
+    s.HoldsMat L A := fun i hi j hj => h j hj i hi
 
 theorem readsOnly_holdsMat (L : MatLayout) (A : ℕ → ℕ → K) :
-    ReadsOnly L.fp fun s : Store K => s.HoldsMat L A := by sorry
+    ReadsOnly L.fp fun s : Store K => s.HoldsMat L A := fun _ _ hg hp i hi j hj =>
+  (hg _ _ ⟨rfl, i, hi, j, hj, rfl⟩).trans (hp i hi j hj)
 
 /-- **A dense matrix is a flat block** (the bridge to the contracts in operand form, whose
 blocks are flat lists): with `rows = ld`, the layout is the block of `cols * rows` cells, entry
@@ -161,15 +223,31 @@ blocks are flat lists): with `rows = ld`, the layout is the block of `cols * row
 theorem HoldsMat.readBlock [Inhabited K] {s : Store K} {L : MatLayout} {A : ℕ → ℕ → K}
     (h : s.HoldsMat L A) (hL : L.rows = L.ld) :
     ∃ ys, s.readBlock L.buf L.off (L.cols * L.rows) = some ys ∧ ys.length = L.cols * L.rows ∧
-      ∀ i < L.rows, ∀ j < L.cols, vec ys (j * L.rows + i) = A i j := by sorry
+      ∀ i < L.rows, ∀ j < L.cols, vec ys (j * L.rows + i) = A i j := by
+  refine ⟨(List.range (L.cols * L.rows)).map fun q => A (q % L.rows) (q / L.rows), ?_, by simp,
+    fun i hi j hj => ?_⟩
+  · refine holdsVec_iff_readBlock.mp fun q hq => ?_
+    have hr : 0 < L.rows := Nat.pos_of_ne_zero fun h0 => by simp [h0] at hq
+    have e : L.off + q = L.cell (q % L.rows) (q / L.rows) := by
+      simp only [MatLayout.cell, ← hL]
+      have := Nat.div_add_mod q L.rows
+      rw [Nat.mul_comm] at this
+      omega
+    rw [e]
+    exact h _ (Nat.mod_lt _ hr) _ (by rw [Nat.div_lt_iff_lt_mul hr]; exact hq)
+  · have hq : j * L.rows + i < L.cols * L.rows := Idx.add_lt_mul hj hi
+    simp [vec, List.getD_eq_getElem?_getD, hq, Idx.div_add hi, Idx.mod_add hi]
 
 /-- The converse: a flat block of `cols * rows` cells holds the matrix of its entries. -/
 theorem holdsMat_of_readBlock [Inhabited K] {s : Store K} {L : MatLayout} {ys : List K}
     (hL : L.rows = L.ld) (h : s.readBlock L.buf L.off (L.cols * L.rows) = some ys) :
-    s.HoldsMat L (fun i j => vec ys (j * L.rows + i)) := by sorry
+    s.HoldsMat L (fun i j => vec ys (j * L.rows + i)) := fun i hi j hj => by
+  have := get_of_readBlock h (Idx.add_lt_mul hj hi) default
+  simpa [MatLayout.cell, ← hL, Nat.add_assoc] using this
 
 theorem holdsMatUpto_cols {s : Store K} {L : MatLayout} {A : ℕ → ℕ → K} :
-    s.HoldsMatUpto L A L.cols 0 ↔ s.HoldsMat L A := by sorry
+    s.HoldsMatUpto L A L.cols 0 ↔ s.HoldsMat L A :=
+  ⟨fun h i hi j hj => h.1 i hi j hj, fun h => ⟨fun i hi j hj => h i hi j hj, fun _ hi => by omega⟩⟩
 
 end Store
 
@@ -177,7 +255,7 @@ end Store
 
 /-- An entry of a slice of a list is an entry of the list. -/
 @[decodeNF] theorem vec_drop_take [Inhabited K] {xs : List K} {a n i : ℕ} (h : i < n) :
-    vec ((xs.drop a).take n) i = vec xs (a + i) := by sorry
+    vec ((xs.drop a).take n) i = vec xs (a + i) := Store.getD_drop_take xs a n i h default
 
 /-- The decoded vector of length `n`. -/
 def decVec (dec : K → ℝ) (n : ℕ) (v : ℕ → K) : Fin n → ℝ := fun i => dec (v i)

@@ -22,8 +22,6 @@ before `q` are registered with `fun_prop` on the synonym, with the position cond
 goal (discharged by `omega`). So `fun_prop (disch := omega)` proves the measurability of any
 measurable function of the entries before `q`.
 
-**Phase A**: statements only (`sorry`).
-
 ## Main results
 
 * `NLAlib.Ops.Tape.PastAt`, `NLAlib.Ops.Tape.measurable_past_iff`.
@@ -57,10 +55,11 @@ def pastWindow (ξ : Ω → Tape K) (q s p k : ℕ) : PastAt ξ q → Fin k → 
 
 /-- An entry before `q` is measurable with respect to the past of `q`. -/
 @[fun_prop] theorem measurable_pastEntry {ξ : Ω → Tape K} {q i : ℕ} (s : ℕ) (h : i < q) :
-    Measurable (pastEntry ξ q i s) := by sorry
+    Measurable (pastEntry ξ q i s) :=
+  measurable_entry (ξ := ξ) (S := Set.Iio q) (Set.mem_Iio.mpr h) s
 
 /-- A window that ends at or before `q` is measurable with respect to the past of `q`. -/
 @[fun_prop] theorem measurable_pastWindow {ξ : Ω → Tape K} {q p k : ℕ} (s : ℕ) (h : p + k ≤ q) :
-    Measurable (pastWindow ξ q s p k) := by sorry
+    Measurable (pastWindow ξ q s p k) := measurable_windowFn_past h s
 
 end NLAlib.Ops.Tape

@@ -23,7 +23,8 @@ Two things a program proof does with counts:
   `Table.AccountsW` is proved for a large implementation without unfolding `exec`. And the bridge
   from a block specification: `NLAlib.Ops.RunsFromW.of_writes`.
 
-**Phase A**: statements only (`sorry`).
+The statements of `RunsFromWL` stay unproved here: the judgment moves to the core's
+`NLAlib.Ops.Counted` (decision D12), and this file will use the core's version.
 
 ## Main results
 
@@ -43,7 +44,8 @@ judgment for the parts whose counts do not depend on the data. -/
 theorem RunsFromW.of_writes {s : Stmt Op Tst} {st : St Op Tst K} {F : Fp} {P : Mem K → Prop}
     (h : Writes .total I τ s ρ F P st.mem) :
     RunsFromW I W τ s ρ st (staticPeak W s ρ.idx) fun c m' =>
-      c ≤ staticCost s ρ.idx ∧ st.mem.store.EqOff F m'.store ∧ P m' := by sorry
+      c ≤ staticCost s ρ.idx ∧ st.mem.store.EqOff F m'.store ∧ P m' :=
+  RunsFromW.of_wp h
 
 /-- **The counted judgment, partial correctness**: if the counted run of `s` from `st` succeeds,
 it stays within the workspace `p` above the live cells, and `Q` holds of the counts added and of
@@ -103,7 +105,18 @@ theorem sum_range_nsmul (p : ℕ) (c : Count Op Tst) : ∑ _j ∈ Finset.range p
 /-- A count proportional to the round over a range: `Σ_{j < p} j c = (p (p - 1) / 2) c`, the
 triangle of classical Gram–Schmidt. -/
 theorem sum_range_id_nsmul (p : ℕ) (c : Count Op Tst) :
-    ∑ j ∈ Finset.range p, j • c = (p * (p - 1) / 2) • c := by sorry
+    ∑ j ∈ Finset.range p, j • c = (p * (p - 1) / 2) • c := by
+  induction p with
+  | zero => simp
+  | succ p ih =>
+    rw [Finset.sum_range_succ, ih, ← add_nsmul]
+    congr 1
+    rcases p with _ | q
+    · rfl
+    · have : (q + 1 + 1) * (q + 1 + 1 - 1) = (q + 1) * (q + 1 - 1) + 2 * (q + 1) := by
+        simp only [Nat.add_sub_cancel, Nat.add_mul, Nat.mul_add, Nat.mul_one, Nat.one_mul]
+        omega
+      omega
 
 end Count
 

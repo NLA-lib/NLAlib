@@ -29,8 +29,6 @@ an `EqOff` chain from the start of the loop, and the invariant never says `∃ s
   only by a relation (the outputs of relational calls: `gemm`, coefficients).
 * `NLAlib.Ops.writes_whileFuel`: the loop with early exit.
 * `NLAlib.Ops.writes_ifPos`, `NLAlib.Ops.writes_ifZero`: branches on a size.
-
-**Phase A**: statements only (`sorry`).
 -/
 
 @[expose] public section
@@ -40,12 +38,48 @@ namespace NLAlib.Ops
 variable {Op Tst K : Type} {md : Mode} {I : Interp Op Tst K} {τ : Tape K} {ρ : Env}
   {m : Mem K}
 
+/-- A footprint family increasing up to `N` is increasing from `0`. -/
+theorem Fp.le_of_chain {G : ℕ → Fp} {N : ℕ} (hG : ∀ i < N, G i ≤ G (i + 1)) :
+    ∀ i j, i ≤ j → j ≤ N → G i ≤ G j := by
+  intro i j hij hjN
+  induction j with
+  | zero => obtain rfl : i = 0 := by omega
+            exact le_rfl
+  | succ j ih =>
+    rcases Nat.lt_succ_iff_lt_or_eq.mp (Nat.lt_succ_of_le hij) with h | h
+    · exact (ih (by omega) (by omega)).trans (hG j (by omega))
+    · rw [h]
+
+/-- An index expression evaluates the same after more variables are bound. -/
+theorem IExp.eval_append {e : IExp} {idx : List ℕ} {v : ℕ} (h : e.eval idx = some v)
+    (l : List ℕ) : e.eval (idx ++ l) = some v := by
+  induction e generalizing v with
+  | var i =>
+    simp only [IExp.eval] at h ⊢
+    obtain ⟨hi, -⟩ := List.getElem?_eq_some_iff.mp h
+    rw [List.getElem?_append_left hi]
+    exact h
+  | const n => exact h
+  | add a b iha ihb | mul a b iha ihb | sub a b iha ihb | div a b iha ihb =>
+    simp only [IExp.eval] at h ⊢
+    cases ha : a.eval idx with
+    | none => simp [ha] at h
+    | some x => cases hb : b.eval idx with
+      | none => simp [ha, hb] at h
+      | some y =>
+        simp only [ha, hb] at h
+        rw [iha ha, ihb hb]
+        exact h
+
 /-- **The counted loop**, in the standard invariant form. -/
 theorem writes_loop {n : IExp} {body : Stmt Op Tst} {N : ℕ} (hn : n.eval ρ.idx = some N)
     (F : ℕ → Fp) (hF : ∀ i < N, F i ≤ F (i + 1)) (P : ℕ → Mem K → Prop) (h0 : P 0 m)
     (hstep : ∀ i < N, ∀ m', m.store.EqOff (F i) m'.store → P i m' →
       Writes md I τ body (ρ.pushIdx i) (F (i + 1)) (P (i + 1)) m') :
-    Writes md I τ (.loop n body) ρ (F N) (P N) m := by sorry
+    Writes md I τ (.loop n body) ρ (F N) (P N) m :=
+  wp_loop hn (fun i m' => m.store.EqOff (F i) m'.store ∧ P i m') ⟨Store.EqOff.refl _ _, h0⟩
+    (fun i hi m' hm => Wp.mono (hstep i hi m' hm.1 hm.2) fun _ hm' =>
+      ⟨(hm.1.mono (hF i hi)).trans hm'.1, hm'.2⟩) fun _ h => h
 
 /-- **Two nested counted loops**, with an invariant indexed by the row `i` and the column `j`;
 the end of a row is the start of the next (`hnext`). -/
@@ -56,7 +90,14 @@ theorem writes_loop₂ {n₁ n₂ : IExp} {body : Stmt Op Tst} {M N : ℕ}
     (hnext : ∀ i < M, ∀ m', P i N m' → P (i + 1) 0 m')
     (hstep : ∀ i < M, ∀ j < N, ∀ m', m.store.EqOff (F i j) m'.store → P i j m' →
       Writes md I τ body ((ρ.pushIdx i).pushIdx j) (F i (j + 1)) (P i (j + 1)) m') :
-    Writes md I τ (.loop n₁ (.loop n₂ body)) ρ (F M 0) (P M 0) m := by sorry
+    Writes md I τ (.loop n₁ (.loop n₂ body)) ρ (F M 0) (P M 0) m := by
+  refine writes_loop hn₁ (fun i => F i 0) (fun i hi => (Fp.le_of_chain (hF i hi) 0 N (by omega)
+    le_rfl).trans (hrow i hi)) (fun i => P i 0) h0 fun i hi m' hfr hp => ?_
+  refine Writes.mono (writes_loop (hn₂ i) (fun j => F i j) (hF i hi)
+    (fun j m'' => m.store.EqOff (F i j) m''.store ∧ P i j m'') ⟨hfr, hp⟩
+    fun j hj m'' _ hm => Writes.mono (hstep i hi j hj m'' hm.1 hm.2) le_rfl
+      fun _ hfr' hp' => ⟨(hm.1.mono (hF i hi j hj)).trans hfr', hp'⟩) (hrow i hi)
+    fun _ _ hm => hnext i hi _ hm.2
 
 /-- **The loop that fills a vector**: round `i` writes `v i` in the cell `o + i` of `b` and
 moves the position from `pos i` to `pos (i + 1)`; it may read the entries already written and
@@ -68,7 +109,15 @@ theorem writes_fill {n : IExp} {body : Stmt Op Tst} {N b o : ℕ} (hn : n.eval �
       Writes md I τ body (ρ.pushIdx i) (Store.inBlock b (o + i) 1)
         (fun m'' => m''.store.get b (o + i) = some (v i) ∧ m''.pos = pos (i + 1)) m') :
     Writes md I τ (.loop n body) ρ (Store.inBlock b o N)
-      (fun m' => m'.store.HoldsVec b o N v ∧ m'.pos = pos N) m := by sorry
+      (fun m' => m'.store.HoldsVec b o N v ∧ m'.pos = pos N) m :=
+  writes_loop hn (fun i => Store.inBlock b o i)
+    (fun i _ => Fp.inBlock_le_inBlock le_rfl (by omega))
+    (fun i m' => m'.store.HoldsVec b o i v ∧ m'.pos = pos i)
+    ⟨fun _ h => absurd h (Nat.not_lt_zero _), hpos⟩ fun i hi m' hfr hm =>
+      Writes.mono (hstep i hi m' hfr hm.1 hm.2) (Fp.inBlock_le_inBlock (by omega) (by omega))
+        fun m'' hfr' hm' => ⟨Store.HoldsVec.snoc (hfr'.keep (Store.readsOnly_holdsVec b o i v)
+          (fun _ _ h₁ h₂ => by obtain ⟨-, h₁, -⟩ := h₁; obtain ⟨-, -, h₂⟩ := h₂; omega) hm.1)
+          hm'.1, hm'.2⟩
 
 /-- **The two loops that fill a matrix by columns** in the layout `L`: round `(j, i)` writes the
 entry `A i j` in its cell and moves the position from `pos (j * rows + i)` to the next. The
@@ -82,7 +131,41 @@ theorem writes_fill₂ {n₁ n₂ : IExp} {body : Stmt Op Tst} (L : MatLayout) (
         (fun m'' => m''.store.get L.buf (L.cell i j) = some (A i j) ∧
           m''.pos = pos (j * L.rows + i + 1)) m') :
     Writes md I τ (.loop n₁ (.loop n₂ body)) ρ L.fp
-      (fun m' => m'.store.HoldsMat L A ∧ m'.pos = pos (L.cols * L.rows)) m := by sorry
+      (fun m' => m'.store.HoldsMat L A ∧ m'.pos = pos (L.cols * L.rows)) m := by
+  have h := writes_loop₂ (P := fun j i m' => m'.store.HoldsMatUpto L A j i ∧
+      m'.pos = pos (j * L.rows + i)) hn₁ hn₂ (fun j i => L.upto j i)
+    (fun j _ i _ => by rw [MatLayout.upto_succ]; exact le_sup_left)
+    (fun j _ => by rw [MatLayout.upto_col])
+    ⟨⟨fun _ _ _ h => absurd h (Nat.not_lt_zero _), fun _ h => absurd h (Nat.not_lt_zero _)⟩,
+      by simpa using hpos⟩
+    (fun j _ m' hm => ⟨⟨fun i' hi' j' hj' => by
+        rcases Nat.lt_succ_iff_lt_or_eq.mp hj' with hj' | rfl
+        · exact hm.1.1 i' hi' j' hj'
+        · exact hm.1.2 i' hi', fun _ h => absurd h (Nat.not_lt_zero _)⟩,
+      by rw [hm.2, Nat.succ_mul, Nat.add_zero]⟩)
+    fun j hj i hi m' hfr hm => Writes.mono (hstep j hj i hi m' hfr hm.1 hm.2)
+      (by rw [MatLayout.upto_succ]; exact le_sup_right) fun m'' hfr' hm' => ⟨⟨?_, ?_⟩, hm'.2⟩
+  · rw [MatLayout.upto_cols] at h
+    exact Writes.mono h le_rfl fun _ _ hm => ⟨Store.holdsMatUpto_cols.mp hm.1, by
+      rw [hm.2, Nat.add_zero]⟩
+  · intro i' hi' j' hj'
+    rw [hfr'.get_eq fun hc => ?_]
+    · exact hm.1.1 i' hi' j' hj'
+    · obtain ⟨-, h1, h2⟩ := hc
+      have := Idx.mul_add_le_mul hj' L.ld
+      unfold MatLayout.Valid at hL
+      simp only [MatLayout.cell] at h1 h2
+      have := Nat.mul_le_mul_right L.ld (show j' + 1 ≤ j by omega)
+      rw [Nat.succ_mul] at this
+      omega
+  · intro i' hi'
+    rcases Nat.lt_succ_iff_lt_or_eq.mp hi' with hi' | rfl
+    · rw [hfr'.get_eq fun hc => ?_]
+      · exact hm.1.2 i' hi'
+      · obtain ⟨-, h1, h2⟩ := hc
+        simp only [MatLayout.cell] at h1 h2
+        omega
+    · exact hm'.1
 
 /-- **The loop that fills a vector with values known only by a relation** (the outputs of
 relational calls): round `i` writes some `x` with `R i x` in the cell `o + i`; at the end the
@@ -96,7 +179,25 @@ theorem writes_fillRel [Nonempty K] {n : IExp} {body : Stmt Op Tst} {N b o : ℕ
         (fun m'' => (∃ x, m''.store.get b (o + i) = some x ∧ R i x) ∧ m''.pos = pos (i + 1)) m') :
     Writes md I τ (.loop n body) ρ (Store.inBlock b o N)
       (fun m' => (∃ v : ℕ → K, m'.store.HoldsVec b o N v ∧ ∀ i < N, R i (v i)) ∧
-        m'.pos = pos N) m := by sorry
+        m'.pos = pos N) m := by
+  refine writes_loop hn (fun i => Store.inBlock b o i)
+    (fun i _ => Fp.inBlock_le_inBlock le_rfl (by omega))
+    (fun i m' => (∃ v : ℕ → K, m'.store.HoldsVec b o i v ∧ ∀ i' < i, R i' (v i')) ∧
+      m'.pos = pos i)
+    ⟨⟨fun _ => Classical.arbitrary K, fun _ h => absurd h (Nat.not_lt_zero _),
+      fun _ h => absurd h (Nat.not_lt_zero _)⟩, hpos⟩ fun i hi m' hfr hm => ?_
+  obtain ⟨⟨v, hv, hR⟩, hp⟩ := hm
+  refine Writes.mono (hstep i hi m' hfr ⟨v, hv, hR⟩ hp)
+    (Fp.inBlock_le_inBlock (by omega) (by omega)) fun m'' hfr' ⟨⟨x, hx, hRx⟩, hp'⟩ => ?_
+  have hv' := hfr'.keep (Store.readsOnly_holdsVec b o i v)
+    (fun _ _ h₁ h₂ => by obtain ⟨-, h₁, -⟩ := h₁; obtain ⟨-, -, h₂⟩ := h₂; omega) hv
+  refine ⟨⟨fun j => if j = i then x else v j, fun j hj => ?_, fun j hj => ?_⟩, hp'⟩
+  · rcases Nat.lt_succ_iff_lt_or_eq.mp hj with hj | rfl
+    · dsimp only; rw [if_neg (by omega)]; exact hv' j hj
+    · dsimp only; rw [if_pos rfl]; exact hx
+  · rcases Nat.lt_succ_iff_lt_or_eq.mp hj with hj | rfl
+    · dsimp only; rw [if_neg (by omega)]; exact hR j hj
+    · dsimp only; rw [if_pos rfl]; exact hRx
 
 /-- **The two loops that fill a matrix with values known only by a relation**, by columns in the
 layout `L` (a matrix stored by rows is the layout of its transpose). -/
@@ -114,7 +215,51 @@ theorem writes_fillRel₂ [Nonempty K] {n₁ n₂ : IExp} {body : Stmt Op Tst} (
     Writes md I τ (.loop n₁ (.loop n₂ body)) ρ L.fp
       (fun m' => (∃ A : ℕ → ℕ → K, m'.store.HoldsMat L A ∧
         ∀ i < L.rows, ∀ j < L.cols, R i j (A i j)) ∧ m'.pos = pos (L.cols * L.rows)) m := by
-  sorry
+  have h := writes_loop₂ (P := fun j i m' => (∃ A : ℕ → ℕ → K, m'.store.HoldsMatUpto L A j i ∧
+        (∀ i' < L.rows, ∀ j' < j, R i' j' (A i' j')) ∧ ∀ i' < i, R i' j (A i' j)) ∧
+      m'.pos = pos (j * L.rows + i)) hn₁ hn₂ (fun j i => L.upto j i)
+    (fun j _ i _ => by rw [MatLayout.upto_succ]; exact le_sup_left)
+    (fun j _ => by rw [MatLayout.upto_col])
+    ⟨⟨fun _ _ => Classical.arbitrary K, ⟨fun _ _ _ h => absurd h (Nat.not_lt_zero _),
+      fun _ h => absurd h (Nat.not_lt_zero _)⟩, fun _ _ _ h => absurd h (Nat.not_lt_zero _),
+      fun _ h => absurd h (Nat.not_lt_zero _)⟩, by simpa using hpos⟩
+    (fun j _ m' ⟨⟨A, hA, hR₁, hR₂⟩, hp⟩ => ⟨⟨A, ⟨fun i' hi' j' hj' => by
+        rcases Nat.lt_succ_iff_lt_or_eq.mp hj' with hj' | rfl
+        · exact hA.1 i' hi' j' hj'
+        · exact hA.2 i' hi', fun _ h => absurd h (Nat.not_lt_zero _)⟩, fun i' hi' j' hj' => by
+        rcases Nat.lt_succ_iff_lt_or_eq.mp hj' with hj' | rfl
+        · exact hR₁ i' hi' j' hj'
+        · exact hR₂ i' hi', fun _ h => absurd h (Nat.not_lt_zero _)⟩,
+      by rw [hp, Nat.succ_mul, Nat.add_zero]⟩)
+    fun j hj i hi m' hfr hm => Writes.mono (hstep j hj i hi m' hfr hm.1 hm.2)
+      (by rw [MatLayout.upto_succ]; exact le_sup_right) fun m'' hfr' hm' => ?_
+  · rw [MatLayout.upto_cols] at h
+    exact Writes.mono h le_rfl fun _ _ ⟨⟨A, hA, hR, _⟩, hp⟩ =>
+      ⟨⟨A, Store.holdsMatUpto_cols.mp hA, hR⟩, by rw [hp, Nat.add_zero]⟩
+  obtain ⟨⟨A, hA, hR₁, hR₂⟩, -⟩ := hm
+  obtain ⟨⟨x, hx, hRx⟩, hp'⟩ := hm'
+  have hold : ∀ i' j', (j' < j ∧ i' < L.rows) ∨ (j' = j ∧ i' < i) →
+      m''.store.get L.buf (L.cell i' j') = m'.store.get L.buf (L.cell i' j') := by
+    intro i' j' hc
+    refine hfr'.get_eq fun hin => ?_
+    obtain ⟨-, h1, h2⟩ := hin
+    unfold MatLayout.Valid at hL
+    simp only [MatLayout.cell] at h1 h2
+    rcases hc with ⟨hj', hi'⟩ | ⟨rfl, hi'⟩
+    · have := Nat.mul_le_mul_right L.ld (show j' + 1 ≤ j by omega)
+      rw [Nat.succ_mul] at this
+      omega
+    · omega
+  refine ⟨⟨fun i' j' => if j' = j ∧ i' = i then x else A i' j', ⟨fun i' hi' j' hj' => ?_,
+    fun i' hi' => ?_⟩, fun i' hi' j' hj' => ?_, fun i' hi' => ?_⟩, hp'⟩
+  · dsimp only; rw [if_neg (by omega), hold i' j' (Or.inl ⟨hj', hi'⟩)]; exact hA.1 i' hi' j' hj'
+  · rcases Nat.lt_succ_iff_lt_or_eq.mp hi' with hi' | rfl
+    · dsimp only; rw [if_neg (by omega), hold i' j (Or.inr ⟨rfl, hi'⟩)]; exact hA.2 i' hi'
+    · dsimp only; rw [if_pos ⟨rfl, rfl⟩]; exact hx
+  · dsimp only; rw [if_neg (by omega)]; exact hR₁ i' hi' j' hj'
+  · rcases Nat.lt_succ_iff_lt_or_eq.mp hi' with hi' | rfl
+    · dsimp only; rw [if_neg (by omega)]; exact hR₂ i' hi'
+    · dsimp only; rw [if_pos ⟨rfl, rfl⟩]; exact hRx
 
 /-- **The loop with early exit**, in the standard invariant form. At a round below the cap the
 test is evaluated (its Boolean is known from the access model: `IsCmp`, `holds_testAt`): if it
@@ -131,7 +276,16 @@ theorem writes_whileFuel {fuel : IExp} {q : Tst} {ds : List IExp} {ins : List Op
         else Writes md I τ k (ρ.pushIdx i) G P m')
     (hcap : ∀ m', m.store.EqOff (F N) m'.store → Inv N m' →
       Writes md I τ k (ρ.pushIdx N) G P m') :
-    Writes md I τ (.whileFuel fuel q ds ins body k) ρ (F N ⊔ G) P m := by sorry
+    Writes md I τ (.whileFuel fuel q ds ins body k) ρ (F N ⊔ G) P m := by
+  have hle := Fp.le_of_chain hF
+  refine wp_whileFuel hn (fun i m' => m.store.EqOff (F i) m'.store ∧ Inv i m')
+    ⟨Store.EqOff.refl _ _, h0⟩ (fun i hi m' hm => (hstep i hi m' hm.1 hm.2).mono fun c hc => ?_)
+    fun m' hm => Wp.mono (hcap m' hm.1 hm.2) fun _ hm' => ⟨hm.1.trans' hm'.1, hm'.2⟩
+  cases c with
+  | true => exact Wp.mono hc fun _ hm' => ⟨(hm.1.mono (hF i hi)).trans hm'.1, hm'.2⟩
+  | false =>
+    exact Wp.mono hc fun _ hm' => ⟨(hm.1.trans' hm'.1).mono fun b j h =>
+      h.elim (fun h => Or.inl (hle i N (by omega) le_rfl b j h)) Or.inr, hm'.2⟩
 
 /-- **The strict loop** (`Stmt.whileStrict`): the loop with early exit that fails if the test
 still holds after the fuel. `nidx` is the number of index variables in scope. At the round `N`
@@ -146,18 +300,63 @@ theorem writes_whileStrict {nidx : ℕ} {fuel : IExp} {q : Tst} {ds : List IExp}
     (hcap : ∀ m', m.store.EqOff (F N) m'.store → Inv N m' →
       md.Holds (I.testAt q ds ins (ρ.pushIdx N) m') fun c =>
         md.Needs (c = false) ∧ (c = false → P m')) :
-    Writes md I τ (Stmt.whileStrict nidx fuel q ds ins body) ρ (F N) P m := by sorry
+    Writes md I τ (Stmt.whileStrict nidx fuel q ds ins body) ρ (F N) P m := by
+  have hN1 : (fuel + IExp.const 1).eval ρ.idx = some (N + 1) := by simp [hn]
+  have hz : ∀ i, (fuel - IExp.var nidx).eval (ρ.pushIdx i).idx = some (N - i) := by
+    intro i
+    simp [IExp.eval_append hn, ← hnidx]
+  have hmin : min (N + 1) N = N := by omega
+  refine Writes.mono (writes_whileFuel hN1 (fun i => F (min i N)) (fun i hi => ?_) ⊥
+      (fun i m' => i ≤ N ∧ Inv i m') P ⟨Nat.zero_le _, h0⟩
+      (fun i hi m' hfr hm => ?_) fun m' _ hm => absurd hm.1 (by omega))
+    (fun b j h => h.elim (fun h => by rwa [hmin] at h) False.elim) fun _ _ h => h
+  · rcases Nat.lt_succ_iff_lt_or_eq.mp hi with hi | rfl
+    · rw [min_eq_left (by omega), min_eq_left (by omega)]
+      exact hF i hi
+    · rw [min_self, hmin]
+  · obtain ⟨hiN, hinv⟩ := hm
+    rcases Nat.lt_or_eq_of_le hiN with hlt | rfl
+    · rw [min_eq_left hiN] at hfr
+      refine (hstep i hlt m' hfr hinv).mono fun c hc => ?_
+      cases c with
+      | true =>
+        exact wp_seq (wp_ifZero (hz i) (by
+          rw [if_neg (by omega)]
+          exact Wp.mono hc fun m'' hm'' =>
+            ⟨by rw [min_eq_left (show i + 1 ≤ N by omega)]; exact hm''.1, by omega, hm''.2⟩))
+      | false => exact Writes.skip hc
+    · rw [min_self] at hfr
+      refine (hcap m' hfr hinv).mono fun c hc => ?_
+      cases c with
+      | true =>
+        cases md with
+        | total => exact absurd (hc.1 rfl) (by decide)
+        | liberal =>
+          rw [if_pos rfl]
+          unfold Writes
+          refine wp_seq (wp_ifZero (hz i) ?_)
+          rw [if_pos (by simp)]
+          exact wp_abort_liberal
+      | false => exact Writes.skip (hc.2 rfl)
 
 /-- A branch on a size being positive. -/
 theorem writes_ifPos {e : IExp} {body : Stmt Op Tst} {n : ℕ} {F : Fp} {P : Mem K → Prop}
     (he : e.eval ρ.idx = some n)
     (h : if 0 < n then Writes md I τ body (ρ.pushIdx 0) F P m else P m) :
-    Writes md I τ (.ifPos e body) ρ F P m := by sorry
+    Writes md I τ (.ifPos e body) ρ F P m := by
+  refine wp_ifPos he ?_
+  split_ifs at h ⊢ with hn
+  · exact h
+  · exact ⟨Store.EqOff.refl _ _, h⟩
 
 /-- A branch on a size being zero. -/
 theorem writes_ifZero {e : IExp} {body : Stmt Op Tst} {n : ℕ} {F : Fp} {P : Mem K → Prop}
     (he : e.eval ρ.idx = some n)
     (h : if n = 0 then Writes md I τ body (ρ.pushIdx 0) F P m else P m) :
-    Writes md I τ (.ifZero e body) ρ F P m := by sorry
+    Writes md I τ (.ifZero e body) ρ F P m := by
+  refine wp_ifZero he ?_
+  split_ifs at h ⊢ with hn
+  · exact h
+  · exact ⟨Store.EqOff.refl _ _, h⟩
 
 end NLAlib.Ops

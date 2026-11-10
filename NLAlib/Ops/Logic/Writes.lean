@@ -27,8 +27,6 @@ Every rule is **mode-generic**: what is needed only for success (live handles, r
 room, a nonzero divisor) is under `md.Needs`, and a successful liberal run gives it back in the
 postcondition. One proof gives the total statement and the refinement.
 
-**Phase A**: statements only (`sorry`).
-
 ## Main results
 
 * `NLAlib.Ops.Writes`, `NLAlib.Ops.Writes.then_` (the named step), `NLAlib.Ops.Writes.seq`,
@@ -76,27 +74,33 @@ theorem then_ (h : Writes md I τ c ρ F P m)
 /-- Sequence: the footprints are joined. -/
 theorem seq (h : Writes md I τ c ρ F P m)
     (h' : ∀ m', m.store.EqOff F m'.store → P m' → Writes md I τ c' ρ G P' m') :
-    Writes md I τ (.seq c c') ρ (F ⊔ G) P' m := by sorry
+    Writes md I τ (.seq c c') ρ (F ⊔ G) P' m :=
+  wp_seq (Wp.mono h fun m' hm => Wp.mono (h' m' hm.1 hm.2) fun _ hm' => ⟨hm.1.trans' hm'.1, hm'.2⟩)
 
 /-- Sequence against a declared footprint: the first part writes inside `F`, and the rest is
 proved against `F` itself, so the footprint of the whole is the declared one (no `⊔` to
 collapse at the end). -/
 theorem seq_le (h : Writes md I τ c ρ G P m) (hG : G ≤ F)
     (h' : ∀ m', m.store.EqOff G m'.store → P m' → Writes md I τ c' ρ F P' m') :
-    Writes md I τ (.seq c c') ρ F P' m := by sorry
+    Writes md I τ (.seq c c') ρ F P' m :=
+  wp_seq (Wp.mono h fun m' hm => Wp.mono (h' m' hm.1 hm.2) fun _ hm' =>
+    ⟨(hm.1.mono hG).trans hm'.1, hm'.2⟩)
 
 /-- Consequence: a larger footprint, a weaker postcondition (which may use the frame). -/
 theorem mono (h : Writes md I τ c ρ F P m) (hF : F ≤ G)
-    (hP : ∀ m', m.store.EqOff F m'.store → P m' → P' m') : Writes md I τ c ρ G P' m := by sorry
+    (hP : ∀ m', m.store.EqOff F m'.store → P m' → P' m') : Writes md I τ c ρ G P' m :=
+  Wp.mono h fun m' hm => ⟨hm.1.mono hF, hP m' hm.1 hm.2⟩
 
 /-- Two facts about one run. -/
 theorem and (h : Writes md I τ c ρ F P m) (h' : Writes md I τ c ρ G P' m) :
-    Writes md I τ c ρ F (fun m' => P m' ∧ P' m') m := by sorry
+    Writes md I τ c ρ F (fun m' => P m' ∧ P' m') m :=
+  (Wp.and h h').mono fun _ hm => ⟨hm.1.1, hm.1.2, hm.2.2⟩
 
 /-- **Frame-carry**: a fact about the store that reads only cells off the footprint is kept. -/
 theorem keep (h : Writes md I τ c ρ F P m) {G : Fp} {P₀ : Store K → Prop}
     (hP : Store.ReadsOnly G P₀) (hD : Fp.Disj F G) (hp : P₀ m.store) :
-    Writes md I τ c ρ F (fun m' => P m' ∧ P₀ m'.store) m := by sorry
+    Writes md I τ c ρ F (fun m' => P m' ∧ P₀ m'.store) m :=
+  Wp.mono h fun _ hm => ⟨hm.1, hm.2, hm.1.keep hP hD hp⟩
 
 /-- Nothing is written. -/
 theorem skip (h : P m) : Writes md I τ .skip ρ ⊥ P m := wp_skip ⟨Store.EqOff.refl _ _, h⟩
@@ -129,7 +133,26 @@ theorem writes_call {o : Op} {R : BlockRel K}
     Writes md I τ (.call o ds ins outs) ρ (Fp.blocks b ls)
       (fun m' => m'.pos = m.pos + k ∧ ∃ xs ys, m.readBlocks a (R.inLens d) = some xs ∧
         m'.readBlocks b ls = some ys ∧ R.rel d xs (τ.window R.stream m.pos k) ys) m := by
-  sorry
+  have key : ∀ xs ys, m.readBlocks a (R.inLens d) = some xs → m.Room b ls →
+      ys.map List.length = ls → R.rel d xs (τ.window R.stream m.pos k) ys →
+      m.store.EqOff (Fp.blocks b ls) ((m.updBlocks b ys).advance k).store ∧
+        (((m.updBlocks b ys).advance k).pos = m.pos + k ∧ ∃ xs ys',
+          m.readBlocks a (R.inLens d) = some xs ∧
+          ((m.updBlocks b ys).advance k).readBlocks b ls = some ys' ∧
+          R.rel d xs (τ.window R.stream m.pos k) ys') := by
+    intro xs ys hr hz hl hrel
+    subst hl
+    refine ⟨Mem.eqOff_updBlocks (Store.EqOff.refl _ _) le_rfl, by simp, xs, ys, hr, ?_, hrel⟩
+    rw [Mem.readBlocks_congr (m' := (m.updBlocks b ys).advance k) (m := m.updBlocks b ys) rfl]
+    exact Mem.readBlocks_updBlocks hap hz
+  cases md with
+  | total =>
+    obtain ⟨hl, ⟨xs, hr, hdom⟩, hz⟩ := hpre rfl
+    exact wp_call_rel hI hd ha hb hnd hk hls hadm hl hr hdom hz fun ys hys hrel =>
+      key xs ys hr hz hys hrel
+  | liberal =>
+    exact wp_call_rel_liberal hI hd ha hb hnd hk hls hadm fun xs ys _ hr hz hys hrel =>
+      key xs ys hr hz hys hrel
 
 /-- The call rule with a footprint for **one output block**: the block is read back. -/
 theorem writes_call1 {o : Op} {R : BlockRel K}
@@ -143,7 +166,12 @@ theorem writes_call1 {o : Op} {R : BlockRel K}
     Writes md I τ (.call o ds ins outs) ρ (Store.inBlock z.1 z.2 l)
       (fun m' => m'.pos = m.pos + k ∧ ∃ xs y, m.readBlocks a (R.inLens d) = some xs ∧
         m'.store.readBlock z.1 z.2 l = some y ∧ R.rel d xs (τ.window R.stream m.pos k) [y]) m := by
-  sorry
+  refine (writes_call hI hd ha hb hnd hk hls hadm ⟨fun _ _ _ h => h, trivial⟩
+    fun h => ⟨(hpre h).1, (hpre h).2.1, (hpre h).2.2, trivial⟩).mono
+    (fun _ _ h => h.elim id False.elim) fun m' _ ⟨hpos, xs, ys, hxs, hys, hrel⟩ => ?_
+  obtain ⟨y, ys', hy, hys', rfl⟩ := Mem.readBlocks_cons_eq_some.mp hys
+  obtain rfl : ys' = [] := by simpa [Mem.readBlocks] using hys'.symm
+  exact ⟨hpos, xs, y, hxs, hy, hrel⟩
 
 /-- The call rule with a footprint for **one output cell**. -/
 theorem writes_call_cell {o : Op} {R : BlockRel K}
@@ -157,7 +185,12 @@ theorem writes_call_cell {o : Op} {R : BlockRel K}
     Writes md I τ (.call o ds ins outs) ρ (Store.inBlock z.1 z.2 1)
       (fun m' => m'.pos = m.pos + k ∧ ∃ xs v, m.readBlocks a (R.inLens d) = some xs ∧
         m'.store.get z.1 z.2 = some v ∧ R.rel d xs (τ.window R.stream m.pos k) [[v]]) m := by
-  sorry
+  refine (writes_call1 hI hd ha hb hnd hk hls hadm
+    fun h => ⟨(hpre h).1, (hpre h).2.1, by have := (hpre h).2.2; omega⟩).mono le_rfl
+    fun m' _ ⟨hpos, xs, y, hxs, hy, hrel⟩ => ?_
+  obtain ⟨hl, hg⟩ := Store.readBlock_eq_some_iff.mp hy
+  obtain ⟨v, rfl⟩ := List.length_eq_one_iff.mp hl
+  exact ⟨hpos, xs, v, hxs, by simpa using hg 0 (by omega), hrel⟩
 
 /-- The call rule with a footprint for **two output blocks**, apart. -/
 theorem writes_call2 {o : Op} {R : BlockRel K}
@@ -174,7 +207,15 @@ theorem writes_call2 {o : Op} {R : BlockRel K}
       (fun m' => m'.pos = m.pos + k ∧ ∃ xs y₁ y₂, m.readBlocks a (R.inLens d) = some xs ∧
         m'.store.readBlock z₁.1 z₁.2 l₁ = some y₁ ∧ m'.store.readBlock z₂.1 z₂.2 l₂ = some y₂ ∧
         R.rel d xs (τ.window R.stream m.pos k) [y₁, y₂]) m := by
-  sorry
+  refine (writes_call hI hd ha hb hnd hk hls hadm ⟨fun b i h₁ h₂ => ?_, ⟨fun _ _ _ h => h, trivial⟩⟩
+    fun h => ⟨(hpre h).1, (hpre h).2.1, (hpre h).2.2.1, (hpre h).2.2.2, trivial⟩).mono
+    (fun _ _ h => h.elim Or.inl fun h => h.elim Or.inr False.elim)
+    fun m' _ ⟨hpos, xs, ys, hxs, hys, hrel⟩ => ?_
+  · exact hap b i h₁ (h₂.elim id False.elim)
+  obtain ⟨y₁, ys', hy₁, hys', rfl⟩ := Mem.readBlocks_cons_eq_some.mp hys
+  obtain ⟨y₂, ys'', hy₂, hys'', rfl⟩ := Mem.readBlocks_cons_eq_some.mp hys'
+  obtain rfl : ys'' = [] := by simpa [Mem.readBlocks] using hys''.symm
+  exact ⟨hpos, xs, y₁, y₂, hxs, hy₁, hy₂, hrel⟩
 
 /-- **A functional operation of two cells** (scalar arithmetic): the value is computed, and the
 written cell holds it. -/
@@ -187,7 +228,15 @@ theorem writes_call_bin {o : Op} {g : K → K → Option K}
     (hpre : md.Needs (m.Live [x, y, z] ∧ z.2 < m.store.len z.1)) :
     Writes md I τ (.call o [] ins outs) ρ (Store.inBlock z.1 z.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.get z.1 z.2 = some w) m := by
-  sorry
+  have hr : m.readBlocks [x, y] [1, 1] = some [[u], [v]] := by
+    simp [Mem.readBlocks, Store.readBlock, hx, hy]
+  refine (writes_call_cell (R := (BlockFn.bin g).rel) hI rfl ha hb rfl rfl rfl hadm
+    fun h => ⟨(hpre h).1, ⟨[[u], [v]], hr, [[w]], by simp [BlockFn.bin, hg], rfl⟩,
+      (hpre h).2⟩).mono le_rfl fun m' _ ⟨hpos, xs, w', hxs, hw', hrel⟩ => ?_
+  obtain rfl : xs = [[u], [v]] := Option.some.inj (hxs.symm.trans hr)
+  have e : w = w' := by simpa [BlockFn.bin, hg] using hrel
+  subst e
+  exact ⟨by simpa using hpos, hw'⟩
 
 /-! ### Scratch buffers -/
 
@@ -203,7 +252,11 @@ theorem writes_alloc {len : IExp} {body : Stmt Op Tst} {n : ℕ} (hn : len.eval 
       Writes md I τ body (ρ.pushBuf m.store.length) (F ⊔ Store.inBuf m.store.length)
         (fun m' => ∀ s₂ : Store K, s₂.length = m.store.length →
           Store.Below m.store.length m'.store s₂ → P ⟨s₂, m'.pos⟩) ⟨s₁, m.pos⟩) :
-    Writes md I τ (.alloc len body) ρ F P m := by sorry
+    Writes md I τ (.alloc len body) ρ F P m := by
+  refine wp_alloc hn (Wp.mono (h _ (by simp) (by simp) (Store.below_push _ _))
+    fun m' ⟨hfr, hP⟩ => ⟨Store.EqOff.pop hfr, hP _ ?_ (Store.below_pop ?_)⟩)
+  · rw [Store.length_pop, hfr.length_eq, Store.length_push]; rfl
+  · rw [hfr.length_eq, Store.length_push]
 
 /-- Nested scratch buffers of the lengths `lens`, the last innermost (the builder writes the
 nested `.alloc`s, which are this by `rfl`). -/
@@ -223,7 +276,50 @@ theorem writes_allocs {lens : List IExp} {body : Stmt Op Tst} {ns : List ℕ}
         (F ⊔ Fp.above m.store.length)
         (fun m' => ∀ s₂ : Store K, s₂.length = m.store.length →
           Store.Below m.store.length m'.store s₂ → P ⟨s₂, m'.pos⟩) ⟨s₁, m.pos⟩) :
-    Writes md I τ (Stmt.allocs lens body) ρ F P m := by sorry
+    Writes md I τ (Stmt.allocs lens body) ρ F P m := by
+  induction lens generalizing m ρ ns F P with
+  | nil =>
+    simp only [IExp.evalList_nil, Option.some.injEq] at hn
+    subst hn
+    have h0 := h m.store (by simp) (fun i hi => absurd hi (by simp)) (Store.Below.refl _ _)
+    have e : (⟨ρ.idx, ρ.buf ++ (List.range ([] : List ℕ).length).map (m.store.length + ·)⟩ :
+        Env) = ρ := by
+      cases ρ; simp
+    rw [e] at h0
+    exact Wp.mono h0 fun m' ⟨hfr, hP⟩ =>
+      ⟨hfr.of_above, hP m'.store hfr.length_eq (Store.Below.refl _ _)⟩
+  | cons l ls ih =>
+    rw [IExp.evalList_cons] at hn
+    obtain ⟨n, hl, hn⟩ := Option.bind_eq_some_iff.mp hn
+    obtain ⟨ns', hns', rfl⟩ := Option.map_eq_some_iff.mp hn
+    refine writes_alloc hl fun s₁ hs₁ hs₁L hs₁B => ?_
+    refine ih (m := ⟨s₁, m.pos⟩) (ρ := ρ.pushBuf m.store.length) (by simpa using hns')
+      fun s₂ hs₂ hlens hB => ?_
+    simp only at hs₂ hlens hB ⊢
+    have h₂ := h s₂ (by simp [hs₂, hs₁]; omega) (fun i hi => ?_)
+      (hs₁B.trans (hB.mono (by omega)))
+    · have e : (⟨ρ.idx, ρ.buf ++ (List.range (n :: ns').length).map (m.store.length + ·)⟩ : Env) =
+          ⟨(ρ.pushBuf m.store.length).idx,
+            (ρ.pushBuf m.store.length).buf ++ (List.range ns'.length).map (s₁.length + ·)⟩ := by
+        simp only [List.length_cons, List.range_succ_eq_map, List.map_cons, List.map_map,
+          Env.idx_pushBuf, Env.buf_pushBuf, hs₁, List.append_assoc, List.singleton_append,
+          Nat.add_zero]
+        congr 3
+        refine List.map_congr_left fun i _ => ?_
+        simp only [Function.comp_apply]
+        omega
+      rw [e] at h₂
+      refine Writes.mono h₂ (fun b i hb => ?_) fun m' _ hP s₃ hs₃ hB₃ s₄ hs₄ hB₄ =>
+        hP s₄ hs₄ ((hB₃.mono (by omega)).trans hB₄)
+      rcases hb with hb | hb
+      · exact Or.inl (Or.inl hb)
+      · by_cases hbL : b = m.store.length
+        · exact Or.inl (Or.inr hbL)
+        · exact Or.inr (show s₁.length ≤ b by simp only [Fp.above] at hb; omega)
+    · rcases i with _ | i
+      · simpa [(hB m.store.length (by omega)).1] using hs₁L
+      · have := hlens i (by simpa using hi)
+        simpa [hs₁, Nat.add_assoc, Nat.add_comm 1 i] using this
 
 /-! ### Branches and indices -/
 
@@ -232,21 +328,27 @@ theorem writes_ite {q : Tst} {ds : List IExp} {ins : List Operand} {t e : Stmt O
     {d : List ℕ} {a : List (ℕ × ℕ)} {c : Bool} {F : Fp} {P : Mem K → Prop}
     (hd : IExp.evalList ρ.idx ds = some d) (ha : Operand.evalList ρ ins = some a)
     (hc : I.test q d a m = some c) (h : Writes md I τ (if c then t else e) ρ F P m) :
-    Writes md I τ (.ite q ds ins t e) ρ F P m := by sorry
+    Writes md I τ (.ite q ds ins t e) ρ F P m := wp_ite hd ha hc h
 
 /-- Branch, in the form of a liberal proof: the test is evaluated under `md.Holds` (a liberal
 proof does not have to show that it succeeds). -/
 theorem writes_ite_holds {q : Tst} {ds : List IExp} {ins : List Operand} {t e : Stmt Op Tst}
     {F : Fp} {P : Mem K → Prop}
     (h : md.Holds (I.testAt q ds ins ρ m) fun c => Writes md I τ (if c then t else e) ρ F P m) :
-    Writes md I τ (.ite q ds ins t e) ρ F P m := by sorry
+    Writes md I τ (.ite q ds ins t e) ρ F P m := by
+  have e : run I τ (.ite q ds ins t e) ρ m =
+      (I.testAt q ds ins ρ m).bind fun c => if c then run I τ t ρ m else run I τ e ρ m := by
+    simp only [run, Interp.testAt, Option.bind_assoc]
+  unfold Writes Wp
+  rw [e]
+  exact Mode.holds_bind (h.mono fun c hc => by cases c <;> simpa [Writes, Wp] using hc)
 
 /-- Index binder, on the number returned, within the bound. -/
 theorem writes_bindIdx {q : Tst} {ins : List Operand} {bound : IExp} {body : Stmt Op Tst}
     {a : List (ℕ × ℕ)} {B v : ℕ} {F : Fp} {P : Mem K → Prop}
     (ha : Operand.evalList ρ ins = some a) (hB : bound.eval ρ.idx = some B)
     (hv : I.index q a m = some v) (hle : v ≤ B) (h : Writes md I τ body (ρ.pushIdx v) F P m) :
-    Writes md I τ (.bindIdx q ins bound body) ρ F P m := by sorry
+    Writes md I τ (.bindIdx q ins bound body) ρ F P m := wp_bindIdx ha hB hv hle h
 
 /-- Index binder, in the form of a liberal proof: the number is read under `md.Holds`; the body
 is proved at it, and success needs it within the bound. -/
@@ -255,14 +357,24 @@ theorem writes_bindIdx_holds {q : Tst} {ins : List Operand} {bound : IExp} {body
     (ha : Operand.evalList ρ ins = some a) (hB : bound.eval ρ.idx = some B)
     (h : md.Holds (I.index q a m) fun v =>
       md.Needs (v ≤ B) ∧ (v ≤ B → Writes md I τ body (ρ.pushIdx v) F P m)) :
-    Writes md I τ (.bindIdx q ins bound body) ρ F P m := by sorry
+    Writes md I τ (.bindIdx q ins bound body) ρ F P m := by
+  unfold Writes Wp
+  simp only [run, ha, hB, Option.bind_some]
+  refine Mode.holds_bind (h.mono fun v hv => ?_)
+  by_cases hle : v ≤ B
+  · rw [if_pos hle]
+    exact hv.2 hle
+  · rw [if_neg hle]
+    cases md with
+    | total => exact absurd (hv.1 rfl) hle
+    | liberal => exact fun _ h => by cases h
 
 /-- A procedure instance: the body runs in the environment of its dimensions and operands. -/
 theorem writes_frame {ds : List IExp} {args : List Operand} {body : Stmt Op Tst} {d : List ℕ}
     {a : List (ℕ × ℕ)} {F : Fp} {P : Mem K → Prop} (hd : IExp.evalList ρ.idx ds = some d)
     (ha : Operand.evalList ρ args = some a) (hl : m.Live a)
     (h : Writes md I τ body (Env.frame d a) F P m) :
-    Writes md I τ (.frame ds args body) ρ F P m := by sorry
+    Writes md I τ (.frame ds args body) ρ F P m := wp_frame hd ha hl h
 
 /-- **Index binder from the access model**: the number is the conversion `f` of the cells read
 (`Interp.IsIndex`); the body is proved at that number. -/
@@ -272,7 +384,8 @@ theorem writes_bindIdx_of_isIndex {q : Tst} {f : List K → Option ℕ} (hI : I.
     (ha : Operand.evalList ρ ins = some a) (hB : bound.eval ρ.idx = some B)
     (hr : m.readBlocks a (a.map fun _ => 1) = some xs) (hf : f xs.flatten = some v)
     (hle : v ≤ B) (h : Writes md I τ body (ρ.pushIdx v) F P m) :
-    Writes md I τ (.bindIdx q ins bound body) ρ F P m := by sorry
+    Writes md I τ (.bindIdx q ins bound body) ρ F P m :=
+  writes_bindIdx ha hB ((hI a m xs hr).trans hf) hle h
 
 /-! ### Named states for chains -/
 
@@ -302,6 +415,12 @@ theorem Impl.meets_of_writes {R : Impl Op Tst} {I : Interp Op Tst K} {B : BlockR
         Writes .total I τ R.body (Env.frame d (ins ++ outs)) (Fp.blocks outs (B.outLens d))
           (fun m' => m'.pos = m.pos + B.win d ∧ ∃ ys, m'.readBlocks outs (B.outLens d) = some ys ∧
             B.rel d xs (τ.window B.stream m.pos (B.win d)) ys) m) :
-    R.Meets I .total (B.spec adm) := by sorry
+    R.Meets I .total (B.spec adm) := by
+  refine Impl.meets_rel fun d ins outs τ m xs hnd hadm hl hr hdom hz => ?_
+  obtain ⟨hfit, hw⟩ := h d ins outs τ m xs hnd hadm hl hr hdom hz
+  refine ⟨hfit, Wp.mono hw fun m' ⟨hfr, hpos, ys, hys, hrel⟩ =>
+    ⟨ys, Mem.map_length_of_readBlocks hys, hrel, ?_⟩⟩
+  rw [← Mem.updBlocks_advance]
+  exact Mem.eq_updBlocks_of_eqOff (m := m.advance (B.win d)) hfr hys hpos
 
 end NLAlib.Ops

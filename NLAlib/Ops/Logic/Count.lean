@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Ops.Counted
+public import Mathlib.Tactic.Module
 public import NLAlib.Ops.Logic.Writes
 
 /-!
@@ -69,14 +70,24 @@ theorem sum_range_id_nsmul (p : ℕ) (c : Count Op Tst) :
 
 end Count
 
-/-- **`count_eval`**: a goal `staticCost s idx = C` or `≤ C`, or `Count.push T c = C`, with `C` in
-closed form. Unfolds `staticCost` and `useCost` on the tree, evaluates the index expressions,
-distributes `•` and `Count.push` over the sums (`map_add`, `map_nsmul`, the cost lemmas of the
-profile), rewrites `Count.sum_range_nsmul`, `Count.sum_range_id_nsmul`, and closes by `abel`
-(with `ring_nf` on the coefficients). Fails with the remaining goal. Phase B; provisional
-implementation. -/
-macro "count_eval" : tactic => `(tactic| first
-  | (simp [staticCost, useCost, Count.sum_range_nsmul, Count.sum_range_id_nsmul]; done)
-  | fail "count_eval: the count is not put in the closed form of the goal")
+/-- **`count_eval [facts]`**: a goal `C₁ = C₂` or `C₁ ≤ C₂` between counts, where `C₁` is a
+pushed-forward count (`Count.push T c`), a static count (`staticCost s idx`) or a sum over a
+range, and `C₂` a closed form. Unfolds `staticCost`/`useCost` and the given definitions,
+distributes `Count.push` over sums and multiples (`map_add`, `map_nsmul`, `map_sum`,
+`Count.push_one`), rewrites the costs of the profiles (`countNF`: `Blas.seq_cost_dot`, …; the
+side conditions of the pairwise profile by `omega` from the context), evaluates the sums over
+ranges (`Count.sum_range_nsmul`, `Count.sum_range_id_nsmul`, `Finset.sum_add_distrib`), and
+closes by `module`. Fails with the goal if the closed form does not match. -/
+syntax "count_eval" (" [" Lean.Parser.Tactic.simpLemma,* "]")? : tactic
+
+macro_rules
+  | `(tactic| count_eval) => `(tactic| count_eval [])
+  | `(tactic| count_eval [$ts,*]) => `(tactic| first
+      | (refine le_of_eq ?_; count_eval [$ts,*])
+      | ((try simp (disch := omega) only [countNF, staticCost, useCost, testCost, map_add,
+            map_nsmul, map_sum, Count.push_one, Finset.sum_add_distrib, Count.sum_range_id_nsmul,
+            Finset.sum_const, Finset.card_range, List.headD_cons, smul_add, $ts,*])
+         first | done | rfl | module | abel)
+      | fail "count_eval: the count is not put in the closed form of the goal")
 
 end NLAlib.Ops

@@ -29,3 +29,7 @@ register_simp_attr storeNF
 /-- The simp set that unfolds the predicates on admitted operands of the catalog, for the side
 goals of the call rule (`wp_side`). -/
 register_simp_attr admNF
+
+/-- The simp set of `count_eval`: the costs of the operations in the profiles, so that a
+pushed-forward count evaluates to a closed form. -/
+register_simp_attr countNF

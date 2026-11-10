@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.Ops.Logic.Count
 public import NLAlib.Ops.Examples.Dot
 
 /-!
@@ -346,18 +347,17 @@ theorem runs_add3_link {I : Interp BitOp Empty Bool} (hI : IsBits I) {τ : Tape 
     (hr : r.2 + w ≤ m.store.len r.1) (hl : m.Live [x, y, z, s, r]) :
     Runs I (fun _ _ => 0) τ (add3.link wordTable)
       ⟨[w, x.2, y.2, z.2, s.2, r.2], [x.1, y.1, z.1, s.1, r.1]⟩ m
-      (Count.push wordCost (2 • Count.one .wadd [w])) 1
+      (2 • Count.one .zero [] + (2 * w) • (Count.one .xor3 [] + Count.one .maj [])) 1
       fun m' => ∃ ss rs, m' = (m.updBlock s ss).updBlock r rs ∧
         bitsVal (vec rs) w =
           (bitsVal (vec xs) w + bitsVal (vec ys) w + bitsVal (vec zs) w) % 2 ^ w :=
-  (runs_add3 addMod_ripple (isWAdd_link hI) (fun _ _ => 1) hxs hys hzs hsr hzr hx hy hz hs
-    hr hl).link (word_accounts I)
+  ((runs_add3 addMod_ripple (isWAdd_link hI) (fun _ _ => 1) hxs hys hzs hsr hzr hx hy hz hs
+    hr hl).link (word_accounts I)).mono (by count_eval [wordCost]) le_rfl fun _ h => h
 
 /-- The bit-operation counts of the linked `add3`. -/
 theorem push_wordCost_wadd (w : ℕ) : Count.push wordCost (2 • Count.one .wadd [w]) =
     2 • Count.one .zero [] + (2 * w) • (Count.one .xor3 [] + Count.one .maj []) := by
-  simp only [map_nsmul, Count.push_one, wordCost]
-  module
+  count_eval [wordCost]
 
 /-- **Witness**: the bit operations exist, and with them the functional contract of `wadd` is
 met by a function that is addition modulo `2 ^ w`. -/

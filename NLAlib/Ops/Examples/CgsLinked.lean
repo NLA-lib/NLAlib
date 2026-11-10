@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.Ops.Logic.Count
 public import NLAlib.Ops.Examples.CgsQR
 
 /-!
@@ -108,10 +109,15 @@ theorem runs_cgs_link_seq (hM : StdModel u dec M) (hu : 0 ≤ u) {I : Interp Op 
     (hR₀ : μ.store.readBlock R.1 R.2 (p * p) = some r₀)
     (hQ : Q.2 + p * n ≤ μ.store.len Q.1) (hR : R.2 + p * p ≤ μ.store.len R.1) :
     Runs I (Blas.ws 0) τ (cgs.link Blas.seq.table) (Env.frame [n, p] [A, R, Q, R]) μ
-      (Count.push Blas.seq.cost (cgsCount n p)) (cgsPeak (Blas.ws 0 : Op → List ℕ → ℕ) n)
-      (CgsFactored dec (Blas.seq.err u) n p Q R as μ) :=
-  (Blas.seq_certifies hM hu fun _ => True).runs
-    (fun _ hJ => runs_cgs_rounded hJ.1 hJ.2 hM.neg _ trivial hAQ hAR hQR hl hA hR₀ hQ hR) hI
+      ((p * (p - 1) / 2) • (n • Blas.sc .mul + (Blas.sc (.lit 0) + ((1 - (1 - n)) • Blas.sc .copy +
+          (n - 1) • Blas.sc .add)) + (Blas.sc .neg + n • (Blas.sc .mul + Blas.sc .add))) +
+        p • (n • Blas.sc .copy + (n • Blas.sc .mul + (Blas.sc (.lit 0) + ((1 - (1 - n)) •
+          Blas.sc .copy + (n - 1) • Blas.sc .add) + Blas.sc .sqrt) +
+          (n • Blas.sc .div + n • Blas.sc .copy))))
+      (cgsPeak (Blas.ws 0 : Op → List ℕ → ℕ) n) (CgsFactored dec (Blas.seq.err u) n p Q R as μ) :=
+  ((Blas.seq_certifies hM hu fun _ => True).runs
+    (fun _ hJ => runs_cgs_rounded hJ.1 hJ.2 hM.neg _ trivial hAQ hAR hQR hl hA hR₀ hQ hR) hI).mono
+    (by count_eval [cgsCount, cgsColCount]) le_rfl fun _ h => h
 
 /-- **`cgs` under pairwise summation** of depth `k`, for `⌈log₂ n⌉ < k`. -/
 theorem runs_cgs_link_pairwise (hM : StdModel u dec M) (hu : 0 ≤ u) {I : Interp Op Tst K}
@@ -123,12 +129,16 @@ theorem runs_cgs_link_pairwise (hM : StdModel u dec M) (hu : 0 ≤ u) {I : Inter
     (hQ : Q.2 + p * n ≤ μ.store.len Q.1) (hR : R.2 + p * p ≤ μ.store.len R.1) :
     Runs I (Blas.ws Blas.pairWs) τ (cgs.link (Blas.pairwise k).table)
       (Env.frame [n, p] [A, R, Q, R]) μ
-      (Count.push (Blas.pairwise k).cost (cgsCount n p))
+      ((p * (p - 1) / 2) • (n • Blas.sc .mul + Blas.pairCount n +
+          (Blas.sc .neg + n • (Blas.sc .mul + Blas.sc .add))) +
+        p • (n • Blas.sc .copy + (n • Blas.sc .mul + (Blas.pairCount n + Blas.sc .sqrt)) +
+          (n • Blas.sc .div + n • Blas.sc .copy)))
       (cgsPeak (Blas.ws Blas.pairWs : Op → List ℕ → ℕ) n)
       (CgsFactored dec (Blas.pairwise.err u) n p Q R as μ) := by
   have h := (Blas.pairwise_certifies hM hu k).runs (τ := τ)
     (fun _ hJ => runs_cgs_rounded hJ.1 hJ.2 hM.neg _ hk hAQ hAR hQR hl hA hR₀ hQ hR) hI
-  rwa [Blas.pairwise_wsLo] at h
+  rw [Blas.pairwise_wsLo] at h
+  exact h.mono (by count_eval [cgsCount, cgsColCount]) le_rfl fun _ h => h
 
 omit [Inhabited K] in
 /-- **The scalar counts of column `j` of `cgs` under sequential summation**, by evaluating the
@@ -142,9 +152,7 @@ theorem push_seq_cgsColCount (n j : ℕ) :
       (j • (Blas.sc .neg + n • (Blas.sc .mul + Blas.sc .add)) +
       (n • Blas.sc .mul + (Blas.sc (.lit 0) + ((1 - (1 - n)) • Blas.sc .copy +
         (n - 1) • Blas.sc .add) + Blas.sc .sqrt) + (n • Blas.sc .div + n • Blas.sc .copy)))) := by
-  simp only [cgsColCount, map_add, map_nsmul, Count.push_one, Blas.seq_cost_dot,
-    Blas.seq_cost_axpy, Blas.seq_cost_nrm2, Blas.seq_cost_scal, Blas.seq_cost_copy,
-    Blas.seq_cost_scalar]
+  count_eval [cgsColCount]
 
 /-- **The backward error of the linked `cgs`**, under either profile: in every column `j` whose
 diagonal entry is not zero, `|a_j - Σ_{i≤j} r̂_ij q̂_i| ≤ ((1 + u) ^ (2 j + 1) - 1)

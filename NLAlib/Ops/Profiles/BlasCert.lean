@@ -204,40 +204,65 @@ theorem sumPairwise_iter_cost_sum (k n : ℕ) (h : Nat.clog 2 n < k) :
 
 /-- **The cost of `dot` in the profile of sequential summation**: `n` multiplications, a literal,
 a copy if `n ≥ 1`, and `n - 1` additions. -/
-theorem seq_cost_dot (n : ℕ) :
+@[countNF] theorem seq_cost_dot (n : ℕ) :
     (seq (Op := Op) (Tst := Tst)).cost (Has.inj Blas1Op.dot) [n] =
       n • sc .mul + (sc (.lit 0) + ((1 - (1 - n)) • sc .copy + (n - 1) • sc .add)) := by
   simp [seq, Profile.over, level1, level1Cost, sumSeq, sumSeqCost]
 
 /-- **The cost of `dot` in the profile of pairwise summation** of depth `k`, for
 `⌈log₂ n⌉ < k`: `n` multiplications, `n` copies and `n - 1` additions. -/
-theorem pairwise_cost_dot (k n : ℕ) (h : Nat.clog 2 n < k) :
+@[countNF] theorem pairwise_cost_dot (k n : ℕ) (h : Nat.clog 2 n < k) :
     (pairwise (Op := Op) (Tst := Tst) k).cost (Has.inj Blas1Op.dot) [n] =
       n • sc .mul + pairCount n := by
   simp only [pairwise, Profile.over, level1, level1Cost, Has.proj_inj, map_add, map_nsmul,
     Count.push_one]
   rw [sumPairwise_iter_cost_kept k (by simp), sumPairwise_iter_cost_sum k n h]
 
+/-- The costs of the other operations in the profile of pairwise summation of depth `k`, for
+`⌈log₂ n⌉ < k`. -/
+@[countNF] theorem pairwise_cost_nrm2 (k n : ℕ) (h : Nat.clog 2 n < k) :
+    (pairwise (Op := Op) (Tst := Tst) k).cost (Has.inj Blas1Op.nrm2) [n] =
+      n • sc .mul + (pairCount n + sc .sqrt) := by
+  simp [pairwise, Profile.over, level1, level1Cost, sumPairwise_iter_cost_kept,
+    sumPairwise_iter_cost_sum k n h]
+
+@[countNF] theorem pairwise_cost_axpy (k n : ℕ) :
+    (pairwise (Op := Op) (Tst := Tst) k).cost (Has.inj Blas1Op.axpy) [n] =
+      n • (sc .mul + sc .add) := by
+  simp [pairwise, Profile.over, level1, level1Cost, sumPairwise_iter_cost_kept]
+
+@[countNF] theorem pairwise_cost_scal (k n : ℕ) :
+    (pairwise (Op := Op) (Tst := Tst) k).cost (Has.inj Blas1Op.scal) [n] = n • sc .div := by
+  simp [pairwise, Profile.over, level1, level1Cost, sumPairwise_iter_cost_kept]
+
+@[countNF] theorem pairwise_cost_copy (k n : ℕ) :
+    (pairwise (Op := Op) (Tst := Tst) k).cost (Has.inj Blas1Op.copy) [n] = n • sc .copy := by
+  simp [pairwise, Profile.over, level1, level1Cost, sumPairwise_iter_cost_kept]
+
+@[countNF] theorem pairwise_cost_scalar (k : ℕ) (a : ScalarOp) (d : List ℕ) :
+    (pairwise (Op := Op) (Tst := Tst) k).cost (Has.inj a) d = Count.one (Has.inj a) d := by
+  simp [pairwise, Profile.over, level1, level1Cost, sumPairwise_iter_cost_kept]
+
 /-- The costs of the other operations in the profile of sequential summation. -/
-theorem seq_cost_nrm2 (n : ℕ) :
+@[countNF] theorem seq_cost_nrm2 (n : ℕ) :
     (seq (Op := Op) (Tst := Tst)).cost (Has.inj Blas1Op.nrm2) [n] =
       n • sc .mul + (sc (.lit 0) + ((1 - (1 - n)) • sc .copy + (n - 1) • sc .add) + sc .sqrt) := by
   simp [seq, Profile.over, level1, level1Cost, sumSeq, sumSeqCost]
 
-theorem seq_cost_axpy (n : ℕ) :
+@[countNF] theorem seq_cost_axpy (n : ℕ) :
     (seq (Op := Op) (Tst := Tst)).cost (Has.inj Blas1Op.axpy) [n] =
       n • (sc .mul + sc .add) := by
   simp [seq, Profile.over, level1, level1Cost, sumSeq, sumSeqCost]
 
-theorem seq_cost_scal (n : ℕ) :
+@[countNF] theorem seq_cost_scal (n : ℕ) :
     (seq (Op := Op) (Tst := Tst)).cost (Has.inj Blas1Op.scal) [n] = n • sc .div := by
   simp [seq, Profile.over, level1, level1Cost, sumSeq, sumSeqCost]
 
-theorem seq_cost_copy (n : ℕ) :
+@[countNF] theorem seq_cost_copy (n : ℕ) :
     (seq (Op := Op) (Tst := Tst)).cost (Has.inj Blas1Op.copy) [n] = n • sc .copy := by
   simp [seq, Profile.over, level1, level1Cost, sumSeq, sumSeqCost]
 
-theorem seq_cost_scalar (a : ScalarOp) (d : List ℕ) :
+@[countNF] theorem seq_cost_scalar (a : ScalarOp) (d : List ℕ) :
     (seq (Op := Op) (Tst := Tst)).cost (Has.inj a) d = Count.one (Has.inj a) d := by
   simp [seq, Profile.over, level1, level1Cost, sumSeq, sumSeqCost]
 

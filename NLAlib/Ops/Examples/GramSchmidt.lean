@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.Ops.Logic.Count
 public import NLAlib.Ops.Profiles.BlasCert
 
 /-!
@@ -274,10 +275,14 @@ theorem runs_mgs_link_seq {M : Machine K} {u : ℝ} {dec : K → ℝ} (hM : StdM
     (hw : μ.store.readBlock w.1 w.2 n = some ws) (hwl : w.2 + n ≤ μ.store.len w.1)
     (hR : R.2 + (k + 1) ≤ μ.store.len R.1) :
     Runs I (Blas.ws 0) τ (mgs.link Blas.seq.table) (Env.frame [n, k] [Q, w, w, R]) μ
-      (Count.push Blas.seq.cost (mgsCount n k)) (mgsPeak (Blas.ws 0 : Op → List ℕ → ℕ) n)
-      (MgsRounded dec (Blas.seq.err u) n k w R qs ws μ) :=
-  (Blas.seq_certifies hM hu fun _ => True).runs
-    (fun _ hJ => runs_mgs_rounded hJ.1 hJ.2 hM.neg _ trivial hQw hQR hwR hl hq hw hwl hR) hI
+      (k • (n • Blas.sc .mul + (Blas.sc (.lit 0) + ((1 - (1 - n)) • Blas.sc .copy +
+          (n - 1) • Blas.sc .add)) + (Blas.sc .neg + n • (Blas.sc .mul + Blas.sc .add))) +
+        (n • Blas.sc .mul + (Blas.sc (.lit 0) + ((1 - (1 - n)) • Blas.sc .copy +
+          (n - 1) • Blas.sc .add) + Blas.sc .sqrt)))
+      (mgsPeak (Blas.ws 0 : Op → List ℕ → ℕ) n) (MgsRounded dec (Blas.seq.err u) n k w R qs ws μ) :=
+  ((Blas.seq_certifies hM hu fun _ => True).runs
+    (fun _ hJ => runs_mgs_rounded hJ.1 hJ.2 hM.neg _ trivial hQw hQR hwR hl hq hw hwl hR) hI).mono
+    (by count_eval [mgsCount]) le_rfl fun _ h => h
 
 omit [Inhabited K] in
 /-- **The scalar counts of the linked `mgs`**, by evaluating the push-forward. -/
@@ -287,7 +292,6 @@ theorem push_seq_mgsCount (n k : ℕ) :
         (n - 1) • Blas.sc .add)) + (Blas.sc .neg + n • (Blas.sc .mul + Blas.sc .add))) +
       (n • Blas.sc .mul + (Blas.sc (.lit 0) + ((1 - (1 - n)) • Blas.sc .copy +
         (n - 1) • Blas.sc .add) + Blas.sc .sqrt)) := by
-  simp only [mgsCount, map_add, map_nsmul, Count.push_one, Blas.seq_cost_dot,
-    Blas.seq_cost_axpy, Blas.seq_cost_nrm2, Blas.seq_cost_scalar]
+  count_eval [mgsCount]
 
 end NLAlib.Ops.Examples

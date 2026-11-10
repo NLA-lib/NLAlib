@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.Ops.Logic.Count
 public import NLAlib.Ops.Examples.Noisy
 public import NLAlib.Ops.Profiles.Random
 
@@ -160,12 +161,13 @@ theorem runsLaw_npow_link [MeasurableSpace K] {dec : K → ℝ} {A : Matrix (Fin
     {m : Mem K} {xs₀ : List K} (hx : m.store.readBlock x.1 x.2 n = some xs₀)
     (hxl : x.2 + n ≤ m.store.len x.1) (hlx : x.1 < m.store.length) :
     RunsLaw I (fun _ _ => 0) ξ (npow.link (noisyDraws σ).table)
-      (Env.frame [k, n] [x, x]) m (Count.push (noisyDraws σ).cost (npowCount k n))
+      (Env.frame [k, n] [x, x]) m (k • (2 • (Count.one .matvec [n] + (n • Count.one .draw [] +
+        (Count.one .nrm2 [n] + (Count.one (.mulc σ) [] + Count.one .axpy [n]))))))
       (n + (n + 1)) (NpowPost dec n k x m) fun X =>
         (∀ i, ∫ ω, X ω i ∂P = (A ^ (2 * k)).mulVec (decv dec n xs₀) i) ∧
         ∫ ω, sqNorm (X ω) ∂P ≤ (a + n * (σ : ℝ) ^ 2) ^ (2 * k) * sqNorm (decv dec n xs₀) :=
-  (noisyDraws_certifies dec A σ).runsLaw (ξ := ξ)
+  ((noisyDraws_certifies dec A σ).runsLaw (ξ := ξ)
     (fun _ hJ _ => runsLaw_npow hJ (isNoisyMv_noiseFn hdec hstd A σ) ha hA h _ hx hxl hlx)
-    hI hloc
+    hI hloc).mono (le_of_eq (push_noisyDraws_npowCount σ k n)) le_rfl fun _ _ h => h
 
 end NLAlib.Ops.Examples

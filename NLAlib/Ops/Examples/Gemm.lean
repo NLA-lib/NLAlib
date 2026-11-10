@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.Ops.Logic.Count
 public import NLAlib.Ops.Profiles.BlasCert
 
 /-!
@@ -228,10 +229,12 @@ theorem runs_gemm_link_seq {dec : K → ℝ} (hM : StdModel u dec M) (hu : 0 ≤
     (hB : μ.store.readBlock B.1 B.2 (p * n) = some bs)
     (hC : C.2 + m * p ≤ μ.store.len C.1) :
     Runs I (Blas.ws 0) τ (gemm.link Blas.seq.table) (Env.frame [m, n, p] [A, B, C]) μ
-      (Count.push Blas.seq.cost (gemmCount m n p)) (Blas.ws 0 (Has.inj Blas1Op.dot : Op) [n])
+      ((m * p) • (n • Blas.sc .mul + (Blas.sc (.lit 0) + ((1 - (1 - n)) • Blas.sc .copy +
+        (n - 1) • Blas.sc .add)))) (Blas.ws 0 (Has.inj Blas1Op.dot : Op) [n])
       (GemmRounded dec ((1 + u) ^ n - 1) m n p C as bs μ) :=
-  Blas.seq.err_dot u hn ▸ (Blas.seq_certifies hM hu fun _ => True).runs
-    (fun _ hJ => runs_gemm_rounded hJ.2 _ trivial hAC hBC hl hA hB hC) hI
+  (Blas.seq.err_dot u hn ▸ (Blas.seq_certifies hM hu fun _ => True).runs
+    (fun _ hJ => runs_gemm_rounded hJ.2 _ trivial hAC hBC hl hA hB hC) hI).mono
+    (by count_eval [gemmCount]) le_rfl fun _ h => h
 
 /-- **`gemm` under pairwise summation** of depth `k`, for `⌈log₂ n⌉ < k`:
 `|Ĉ - A B| ≤ ((1 + u) ^ (⌈log₂ n⌉ + 1) - 1) |A| |B|` componentwise. -/
@@ -244,12 +247,13 @@ theorem runs_gemm_link_pairwise {dec : K → ℝ} (hM : StdModel u dec M) (hu : 
     (hC : C.2 + m * p ≤ μ.store.len C.1) :
     Runs I (Blas.ws Blas.pairWs) τ (gemm.link (Blas.pairwise k).table)
       (Env.frame [m, n, p] [A, B, C]) μ
-      (Count.push (Blas.pairwise k).cost (gemmCount m n p))
+      ((m * p) • (n • Blas.sc .mul + Blas.pairCount n))
       (Blas.ws Blas.pairWs (Has.inj Blas1Op.dot : Op) [n])
       (GemmRounded dec ((1 + u) ^ (Nat.clog 2 n + 1) - 1) m n p C as bs μ) := by
   have h := (Blas.pairwise_certifies hM hu k).runs (τ := τ)
     (fun _ hJ => runs_gemm_rounded hJ.2 _ hk hAC hBC hl hA hB hC) hI
-  rwa [Blas.pairwise_wsLo, Blas.pairwise.err_dot] at h
+  rw [Blas.pairwise_wsLo, Blas.pairwise.err_dot] at h
+  exact h.mono (by count_eval [gemmCount]) le_rfl fun _ h => h
 
 omit [Inhabited K] in
 /-- **The scalar counts of `gemm` under sequential summation**: per entry, `n` multiplications,
@@ -258,7 +262,7 @@ theorem push_seq_gemmCount (m n p : ℕ) :
     Count.push Blas.seq.cost (gemmCount (Op := Op) (Tst := Tst) m n p) =
       (m * p) • (n • Blas.sc .mul + (Blas.sc (.lit 0) + ((1 - (1 - n)) • Blas.sc .copy +
         (n - 1) • Blas.sc .add))) := by
-  simp only [gemmCount, map_nsmul, Count.push_one, Blas.seq_cost_dot]
+  count_eval [gemmCount]
 
 omit [Inhabited K] in
 /-- **The scalar counts of `gemm` under pairwise summation**: per entry, `n` multiplications,
@@ -266,6 +270,6 @@ omit [Inhabited K] in
 theorem push_pairwise_gemmCount (k m n p : ℕ) (hk : Nat.clog 2 n < k) :
     Count.push (Blas.pairwise k).cost (gemmCount (Op := Op) (Tst := Tst) m n p) =
       (m * p) • (n • Blas.sc .mul + Blas.pairCount n) := by
-  simp only [gemmCount, map_nsmul, Count.push_one, Blas.pairwise_cost_dot k n hk]
+  count_eval [gemmCount]
 
 end NLAlib.Ops.Examples

@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.Ops.Logic.Count
 public import NLAlib.Ops.Examples.Hutch
 public import NLAlib.Ops.Profiles.Random
 
@@ -40,12 +41,14 @@ theorem runsLaw_hutch_link {dec : K → ℝ} {n : ℕ} {A : Matrix (Fin n) (Fin 
     (hq : MemLp (quadForm A) 2 (probeLaw dec (law Stream.gauss) n)) {N : ℕ} (hN : 0 < N)
     {e : ℕ × ℕ} {m : Mem K} {z₀ : K} (he : m.store.get e.1 e.2 = some z₀) (hz : dec z₀ = 0) :
     RunsLaw I (fun _ _ => 0) ξ (hutch.link Rand.gaussLoop.table) (Env.frame [N, n] [e, e]) m
-      (Count.push Rand.gaussLoop.cost (hutchCount N n)) (n + (n + 1))
+      (N • (n • Count.one .draw [] + (Count.one .matvec [n] + (Count.one .dot [n] +
+        Count.one .add [])))) (n + (n + 1))
       (HutchPost dec N n e m) fun X => ∫ ω, X ω / N ∂P = A.trace ∧
         Var[fun ω => X ω / N; P] = Var[quadForm A; probeLaw dec (law Stream.gauss) n] / N := by
   have := (Rand.gaussLoop_certifies dec A).runsLaw (ξ := ξ)
     (fun J hJ _ => runsLaw_hutch hJ h hdec hiso hq _ hN he hz) hI hloc
-  simpa [Rand.gaussLoop, hutchPeak] using this
+  simpa [Rand.gaussLoop, hutchPeak] using
+    this.mono (by count_eval [hutchCount, Rand.gaussLoop, Rand.gaussCost]) le_rfl fun _ _ h => h
 
 omit [Inhabited K] [MeasurableSpace K] in
 /-- **The counts of the linked estimator**: per probe, `n` scalar draws, a product, a dot product

@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.Ops.Logic.Count
 public import NLAlib.Ops.Examples.Dot
 
 /-!
@@ -286,10 +287,12 @@ theorem runs_sq2_link {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArit
     (hA : m.store.readBlock A.1 A.2 (n * n) = some As) (hP : P.2 + n * n ≤ m.store.len P.1)
     (hS : S.2 + n * n ≤ m.store.len S.1) (hl : m.Live [A, P, S]) :
     Runs I (fun _ _ => 0) τ (sq2.link mmTable) ⟨[n, A.2, P.2, S.2], [A.1, P.1, S.1]⟩ m
-      (Count.push mmCost (2 • Count.one .mm [n, n, n])) 1
+      ((2 * (n * n)) • Count.one (.lit 0) [] +
+        (2 * (n * n * n)) • (Count.one .mul [] + Count.one .add [])) 1
       (· = (m.updBlock P (mmF M n n n As As)).updBlock S
         (mmF M n n n (mmF M n n n As As) (mmF M n n n As As))) :=
-  (runs_sq2 (isMM_link hI) (fun _ _ => 1) hAP hPS hA hP hS hl).link (mm_accounts I)
+  ((runs_sq2 (isMM_link hI) (fun _ _ => 1) hAP hPS hA hP hS hl).link (mm_accounts I)).mono
+    (by count_eval [mmCost]) le_rfl fun _ h => h
 
 omit [Inhabited K] in
 /-- The scalar counts of the linked `sq2`: `2 n²` literals and `2 n³` multiplications and
@@ -297,8 +300,7 @@ additions. -/
 theorem push_mmCost_mm (n : ℕ) : Count.push mmCost (2 • Count.one .mm [n, n, n]) =
     (2 * (n * n)) • Count.one (.lit 0) [] +
       (2 * (n * n * n)) • (Count.one .mul [] + Count.one .add []) := by
-  simp only [map_nsmul, Count.push_one, mmCost]
-  module
+  count_eval [mmCost]
 
 /-- **Witness**: the functional contract of `mm` can be met, with an `f` meeting the entrywise
 error bound, for every `u ≥ 0`. -/

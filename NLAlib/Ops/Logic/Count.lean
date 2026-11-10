@@ -17,19 +17,15 @@ Two things a program proof does with counts:
   theorem states it in closed form (`m p • dot [n]`, `(p (p - 1) / 2) • (neg + axpy) + …`). The
   tactic `count_eval` unfolds `staticCost` on the tree, evaluates the index expressions and
   rewrites the sums of `NLAlib.Ops.Count.sum_range_nsmul` and `sum_range_id_nsmul` (phase B).
-* **Counts that depend on the data**, by `RunsFromW` (`NLAlib.Ops.Counted`). What is missing is
+* **Counts that depend on the data**, by `RunsFromW` (`NLAlib.Ops.Counted`), and
   the partial-correctness form: `NLAlib.Ops.RunsFromWL` ("if the counted run succeeds, `Q` holds
-  of the counts added and the memory"), with one rule per constructor, so that
-  `Table.AccountsW` is proved for a large implementation without unfolding `exec`. And the bridge
-  from a block specification: `NLAlib.Ops.RunsFromW.of_writes`.
-
-The statements of `RunsFromWL` stay unproved here: the judgment moves to the core's
-`NLAlib.Ops.Counted` (decision D12), and this file will use the core's version.
+  of the counts added and the memory"), with one rule per constructor: it is the core's
+  (`NLAlib.Ops.Counted`, decision D12). Here: the bridge from a block specification,
+  `NLAlib.Ops.RunsFromW.of_writes`.
 
 ## Main results
 
 * `NLAlib.Ops.RunsFromW.of_writes`: a block specification with its static counts.
-* `NLAlib.Ops.RunsFromWL` and its rules `skip`, `seq`, `call`, `loop`, `bindIdx`, `of_runsFromW`.
 * `NLAlib.Ops.Count.sum_range_nsmul`, `NLAlib.Ops.Count.sum_range_id_nsmul`: closed forms.
 -/
 
@@ -46,53 +42,6 @@ theorem RunsFromW.of_writes {s : Stmt Op Tst} {st : St Op Tst K} {F : Fp} {P : M
     RunsFromW I W τ s ρ st (staticPeak W s ρ.idx) fun c m' =>
       c ≤ staticCost s ρ.idx ∧ st.mem.store.EqOff F m'.store ∧ P m' :=
   RunsFromW.of_wp h
-
-/-- **The counted judgment, partial correctness**: if the counted run of `s` from `st` succeeds,
-it stays within the workspace `p` above the live cells, and `Q` holds of the counts added and of
-the final memory. It says nothing of success: a target never rests on it alone. -/
-def RunsFromWL (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : Tape K) (s : Stmt Op Tst)
-    (ρ : Env) (st : St Op Tst K) (p : ℕ) (Q : Count Op Tst → Mem K → Prop) : Prop :=
-  ∀ st', exec I W τ s ρ st = some st' → ∃ c, St.Reach st st' c p ∧ Q c st'.mem
-
-namespace RunsFromWL
-
-variable {st : St Op Tst K} {p p' : ℕ} {Q Q' : Count Op Tst → Mem K → Prop}
-
-theorem skip (h : Q 0 st.mem) : RunsFromWL I W τ .skip ρ st p Q := by sorry
-
-/-- Sequence: the continuation from every state the first part may reach. -/
-theorem seq {s t : Stmt Op Tst} (h : RunsFromWL I W τ s ρ st p Q')
-    (h' : ∀ st' c, Q' c st'.mem → RunsFromWL I W τ t ρ st' p' fun c' m => Q (c + c') m) :
-    RunsFromWL I W τ (.seq s t) ρ st (max p p') Q := by sorry
-
-/-- A call: one count at its dimensions, and the workspace of the operation; the memory from any
-liberal `Wp` of the call. -/
-theorem call {o : Op} {ds : List IExp} {ins outs : List Operand} {d : List ℕ} {P : Mem K → Prop}
-    (hd : IExp.evalList ρ.idx ds = some d)
-    (h : Wp .liberal I τ (.call o ds ins outs) ρ P st.mem) :
-    RunsFromWL I W τ (.call o ds ins outs) ρ st (W o d) fun c m => c = Count.one o d ∧ P m := by
-  sorry
-
-/-- A loop, with an invariant on the counts added so far and the memory. -/
-theorem loop {n : IExp} {body : Stmt Op Tst} {k : ℕ} (hn : n.eval ρ.idx = some k)
-    (Inv : ℕ → Count Op Tst → Mem K → Prop) (h0 : Inv 0 0 st.mem)
-    (hstep : ∀ i < k, ∀ st' c, Inv i c st'.mem →
-      RunsFromWL I W τ body (ρ.pushIdx i) st' p fun c' m => Inv (i + 1) (c + c') m) :
-    RunsFromWL I W τ (.loop n body) ρ st p (Inv k) := by sorry
-
-/-- An index binder: one use of the query, then the body at **every** value the query may
-return within the bound (the value is not known in partial correctness). -/
-theorem bindIdx {q : Tst} {ins : List Operand} {bound : IExp} {body : Stmt Op Tst} {B : ℕ}
-    (hB : bound.eval ρ.idx = some B)
-    (h : ∀ v ≤ B, RunsFromWL I W τ body (ρ.pushIdx v) (st.tick q []) p
-      fun c m => Q (Count.test q [] + c) m) :
-    RunsFromWL I W τ (.bindIdx q ins bound body) ρ st p Q := by sorry
-
-/-- A total counted run is a liberal one. -/
-theorem of_runsFromW {s : Stmt Op Tst} (h : RunsFromW I W τ s ρ st p Q) :
-    RunsFromWL I W τ s ρ st p Q := by sorry
-
-end RunsFromWL
 
 /-! ### Closed forms -/
 

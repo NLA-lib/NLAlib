@@ -179,7 +179,8 @@ inductive Stmt (Op : Type) where
   | call (o : Op) (dims : List IExp) (ins outs : List Operand)
   /-- Branch on the Boolean returned by the test `o`. -/
   | ite (o : Op) (dims : List IExp) (ins : List Operand) (t e : Stmt Op)
-  /-- Run `body` while the test `o` returns true, at most `fuel` times. -/
+  /-- Run `body` while the test `o` returns true; the run fails if the test still holds after
+  `fuel` runs of the body. -/
   | whileFuel (fuel : IExp) (o : Op) (dims : List IExp) (ins : List Operand) (body : Stmt Op)
   /-- Bind a new index variable to the number returned by the index operation `o`; the run fails
   if the number exceeds `bound`. -/

@@ -64,10 +64,12 @@ def iter {σ : Type} (f : ℕ → σ → Option σ) : ℕ → σ → Option σ
   | 0, s => some s
   | k + 1, s => (iter f k s).bind (f k)
 
-/-- Iteration while a test holds, at most `k` times; `tick` is applied after each test. -/
+/-- Iteration while a test holds: the body runs at most `k` times, and the iteration fails if the
+test still holds after `k` runs of the body (fuel is a bound, never a silent truncation). `tick`
+is applied after each test. -/
 def whileIter {σ : Type} (test : σ → Option Bool) (tick : σ → σ) (body : σ → Option σ) :
     ℕ → σ → Option σ
-  | 0, s => some s
+  | 0, s => (test s).bind fun b => if b then none else some (tick s)
   | k + 1, s => (test s).bind fun b =>
       if b then (body (tick s)).bind (whileIter test tick body k) else some (tick s)
 
@@ -183,7 +185,11 @@ theorem whileIter_map {σ σ' : Type} {g : σ → σ'} {test : σ → Option Boo
     (hb : ∀ a, (body a).map g = body' (g a)) (k : ℕ) (s : σ) :
     (whileIter test tick body k s).map g = whileIter test' id body' k (g s) := by
   induction k generalizing s with
-  | zero => rfl
+  | zero =>
+    simp only [whileIter, ← ht]
+    cases test s with
+    | none => rfl
+    | some b => cases b <;> simp [hk]
   | succ k ih =>
     simp only [whileIter, ← ht]
     cases test s with
@@ -277,12 +283,18 @@ theorem iter_rel {σ : Type} {R : σ → σ → Prop} (hrefl : ∀ a, R a a)
     obtain ⟨a, ha, hb⟩ := Option.bind_eq_some_iff.mp hk
     exact htrans _ _ _ (ih ha) (h k a s' hb)
 
-theorem whileIter_rel {σ : Type} {R : σ → σ → Prop} (hrefl : ∀ a, R a a)
+theorem whileIter_rel {σ : Type} {R : σ → σ → Prop}
     (htrans : ∀ a b c, R a b → R b c → R a c) {test : σ → Option Bool} {tick : σ → σ}
     {body : σ → Option σ} (ht : ∀ a, R a (tick a)) (h : ∀ a b, body a = some b → R a b) {k : ℕ}
     {s s' : σ} (hk : whileIter test tick body k s = some s') : R s s' := by
   induction k generalizing s with
-  | zero => cases hk; exact hrefl _
+  | zero =>
+    obtain ⟨b, -, hb⟩ := Option.bind_eq_some_iff.mp hk
+    cases b with
+    | false =>
+      simp only [Bool.false_eq_true, if_false, Option.some.injEq] at hb
+      exact hb ▸ ht s
+    | true => simp at hb
   | succ k ih =>
     obtain ⟨b, -, hb⟩ := Option.bind_eq_some_iff.mp hk
     cases b with
@@ -320,7 +332,7 @@ theorem run_shape {I : Interp Op K} {τ : ℕ → K} {s : Stmt Op} {ρ : Env} {m
     obtain ⟨k, -, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨d, -, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
-    exact whileIter_rel (R := fun a b : Mem K => b.store.shape = a.store.shape) (fun _ => rfl)
+    exact whileIter_rel (R := fun a b : Mem K => b.store.shape = a.store.shape)
       (fun _ _ _ h1 h2 => h2.trans h1) (fun _ => rfl) (fun _ _ hb => ih hb) h
   | bindIdx o ins bound body ih =>
     obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h

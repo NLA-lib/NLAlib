@@ -118,7 +118,13 @@ theorem whileIter_within {test : St Op K → Option Bool} {tick : St Op K → St
     {k : ℕ} {s s' : St Op K} (hk : whileIter test tick body k s = some s') :
     St.Within s s' (k • (c + cb) + c) pb := by
   induction k generalizing s with
-  | zero => cases hk; exact (St.Within.refl _).mono zero_le zero_le
+  | zero =>
+    obtain ⟨b, -, hb⟩ := Option.bind_eq_some_iff.mp hk
+    cases b with
+    | false =>
+      simp only [Bool.false_eq_true, if_false, Option.some.injEq] at hb
+      exact hb ▸ (ht s).mono le_add_self zero_le
+    | true => simp at hb
   | succ k ih =>
     obtain ⟨b, -, hb⟩ := Option.bind_eq_some_iff.mp hk
     cases b with

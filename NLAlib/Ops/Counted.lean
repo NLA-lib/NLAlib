@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Ops.Rules
+public import NLAlib.Ops.Transfer
 
 /-!
 # Counts in the logic, where they depend on the data
@@ -27,12 +28,29 @@ and `NLAlib.Ops.RunsFromW.of_wp` takes everything whose counts do not depend on 
 (`NLAlib.Ops.RunsFromW.runsW`) or a `NLAlib.Ops.Runs` (`NLAlib.Ops.RunsFromW.runs`), which
 linking transfers (`NLAlib.Ops.RunsW.link`, `NLAlib.Ops.exec_link_weight`).
 
+`NLAlib.Ops.RunsFromWL` is the same judgment for **partial correctness**: if the counted run
+from the state succeeds, it stays within the workspace and the postcondition holds of the counts
+added and the final memory. It has the same rules, read in parallel: where the total rule is
+given the Boolean of a test, the value of a conversion or a live frame, the liberal rule is
+proved for every Boolean the test may return, every value within the bound, and under the
+hypothesis that the frame is live; `abort` is vacuous. `NLAlib.Ops.RunsFromWL.of_static` is the
+static count with no hypothesis at all (`NLAlib.Ops.exec_within`). It says nothing of success, so
+a target never rests on it alone; what it is for is the accounting certificate of an
+implementation, which speaks of every successful run
+(`NLAlib.Ops.Table.AccountsW.of_runsFromWL`).
+
 ## Main results
 
 * `NLAlib.Ops.RunsFromW`: the judgment.
 * `NLAlib.Ops.RunsFromW.seq`, `NLAlib.Ops.RunsFromW.bindIdx`, `NLAlib.Ops.RunsFromW.loop`,
   `NLAlib.Ops.RunsFromW.whileFuel` and the other rules.
 * `NLAlib.Ops.RunsFromW.of_wp`, `NLAlib.Ops.RunsFromW.runsW`, `NLAlib.Ops.RunsFromW.runs`.
+* `NLAlib.Ops.RunsFromWL`: the liberal judgment, with `skip`, `abort`, `seq`, `call`, `ite`,
+  `bindIdx`, `alloc`, `frame`, `loop`, `whileFuel`, `mono`, `and`, `of_static`, `of_wp`.
+* `NLAlib.Ops.RunsFromWL.of_runsFromW`, `NLAlib.Ops.RunsFromWL.runsFromW`: total and liberal.
+* `NLAlib.Ops.RunsFromWL.link`, `NLAlib.Ops.Table.AccountsW.of_runsFromWL`,
+  `NLAlib.Ops.RunsFromWL.runsL`, `NLAlib.Ops.RunsFromWL.exec_init`: linking and the forms from
+  the initial state.
 -/
 
 @[expose] public section
@@ -244,5 +262,297 @@ theorem runs {s : Stmt Op Tst} {m : Mem K} {B : Count Op Tst} {P : Mem K → Pro
   runs_iff_runsW.mpr h.runsW
 
 end RunsFromW
+
+/-- **A counted run from a state, partial correctness**: if the counted run of `s` from `st`
+succeeds, it stays within the workspace `p` above the live cells, and `Q` holds of the counts
+that the run added and of the final memory. It says nothing of success: a target never rests on
+it alone. -/
+def RunsFromWL (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : Tape K) (s : Stmt Op Tst)
+    (ρ : Env) (st : St Op Tst K) (p : ℕ) (Q : Count Op Tst → Mem K → Prop) : Prop :=
+  ∀ st', exec I W τ s ρ st = some st' → ∃ c, St.Reach st st' c p ∧ Q c st'.mem
+
+namespace RunsFromWL
+
+variable {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ : Tape K} {ρ : Env} {st : St Op Tst K}
+  {p p' : ℕ} {Q Q' : Count Op Tst → Mem K → Prop}
+
+/-- A total counted run is a liberal one. -/
+theorem of_runsFromW {s : Stmt Op Tst} (h : RunsFromW I W τ s ρ st p Q) :
+    RunsFromWL I W τ s ρ st p Q := by
+  obtain ⟨st', c, h1, h2, h3⟩ := h
+  intro st'' hst
+  obtain rfl : st' = st'' := Option.some.inj (h1.symm.trans hst)
+  exact ⟨c, h2, h3⟩
+
+/-- A liberal counted run of a program that succeeds (a total `Wp`, with any postcondition) is a
+total one. -/
+theorem runsFromW {s : Stmt Op Tst} {P : Mem K → Prop} (h : RunsFromWL I W τ s ρ st p Q)
+    (hs : Wp .total I τ s ρ P st.mem) :
+    RunsFromW I W τ s ρ st p fun c m => Q c m ∧ P m := by
+  obtain ⟨m', hrun, hP⟩ := hs
+  obtain ⟨st', hst, hm⟩ := exec_eq_some_of_run hrun W st rfl
+  obtain ⟨c, h1, h2⟩ := h st' hst
+  exact ⟨st', c, hst, h1, h2, hm ▸ hP⟩
+
+/-- **The static count and workspace, with no hypothesis**: every successful counted run is
+within them (`NLAlib.Ops.exec_within`). -/
+theorem of_static (s : Stmt Op Tst) :
+    RunsFromWL I W τ s ρ st (staticPeak W s ρ.idx) fun c _ => c ≤ staticCost s ρ.idx := by
+  intro st' hst
+  obtain ⟨h1, h2, h3⟩ := exec_within hst
+  obtain ⟨c, hc⟩ := exists_add_of_le (cost_le_of_exec hst)
+  exact ⟨c, ⟨hc, h1, h3⟩, by rwa [hc, add_le_add_iff_left] at h2⟩
+
+/-- Everything whose counts do not depend on the data: a liberal `Wp` and the static cost. -/
+theorem of_wp {s : Stmt Op Tst} {P : Mem K → Prop} (h : Wp .liberal I τ s ρ P st.mem) :
+    RunsFromWL I W τ s ρ st (staticPeak W s ρ.idx) fun c m => c ≤ staticCost s ρ.idx ∧ P m := by
+  intro st' hst
+  obtain ⟨c, h1, h2⟩ := of_static s st' hst
+  exact ⟨c, h1, h2, h _ (run_of_exec hst)⟩
+
+theorem mono {s : Stmt Op Tst} (h : RunsFromWL I W τ s ρ st p Q) (hp : p ≤ p')
+    (hQ : ∀ c m, Q c m → Q' c m) : RunsFromWL I W τ s ρ st p' Q' := by
+  intro st' hst
+  obtain ⟨c, ⟨h2, h3, h4⟩, h5⟩ := h st' hst
+  exact ⟨c, ⟨h2, h3, by omega⟩, hQ _ _ h5⟩
+
+/-- Two postconditions of the same run hold together: the counts added are determined by the
+run. -/
+theorem and {s : Stmt Op Tst} (h : RunsFromWL I W τ s ρ st p Q)
+    (h' : RunsFromWL I W τ s ρ st p' Q') :
+    RunsFromWL I W τ s ρ st (min p p') fun c m => Q c m ∧ Q' c m := by
+  intro st' hst
+  obtain ⟨c, ⟨h2, h3, h4⟩, h5⟩ := h st' hst
+  obtain ⟨c', ⟨h2', -, h4'⟩, h5'⟩ := h' st' hst
+  obtain rfl : c = c' := add_left_cancel (h2.symm.trans h2')
+  exact ⟨c, ⟨h2, h3, by omega⟩, h5, h5'⟩
+
+theorem skip (h : Q 0 st.mem) : RunsFromWL I W τ .skip ρ st p Q :=
+  of_runsFromW (RunsFromW.skip h)
+
+/-- **Failure**: nothing to prove. An implementation that fails outside its shape is accounted
+for at no cost. -/
+theorem abort : RunsFromWL I W τ .abort ρ st p Q := fun _ h => by cases h
+
+/-- **Sequence**: the continuation is proved from every state the first part may reach, with
+the counts so far; its bound may depend on both. The workspaces take their maximum. -/
+theorem seq {s t : Stmt Op Tst} (h : RunsFromWL I W τ s ρ st p Q')
+    (h' : ∀ st' c, Q' c st'.mem → RunsFromWL I W τ t ρ st' p' fun c' m => Q (c + c') m) :
+    RunsFromWL I W τ (.seq s t) ρ st (max p p') Q := by
+  intro st₂ hst
+  obtain ⟨st₁, h1, h4⟩ := Option.bind_eq_some_iff.mp hst
+  obtain ⟨c₁, h2, h3⟩ := h st₁ h1
+  obtain ⟨c₂, h5, h6⟩ := h' st₁ c₁ h3 st₂ h4
+  exact ⟨c₁ + c₂, h2.trans h5, h6⟩
+
+/-- **A call**: one call at its dimensions, and the workspace of the operation. The memory is
+taken from a liberal `Wp`, by any call rule (`fun _ _ => trivial` when only the counts
+matter). -/
+theorem call {o : Op} {ds : List IExp} {ins outs : List Operand} {d : List ℕ}
+    {P : Mem K → Prop} (hd : IExp.evalList ρ.idx ds = some d)
+    (h : Wp .liberal I τ (.call o ds ins outs) ρ P st.mem) :
+    RunsFromWL I W τ (.call o ds ins outs) ρ st (W o d) fun c m => c = Count.one o d ∧ P m := by
+  intro st' hst
+  have hP := h _ (run_of_exec hst)
+  simp only [exec, hd, Option.bind_some] at hst
+  obtain ⟨a, -, hst⟩ := Option.bind_eq_some_iff.mp hst
+  obtain ⟨b, -, hst⟩ := Option.bind_eq_some_iff.mp hst
+  obtain ⟨m', -, rfl⟩ := Option.map_eq_some_iff.mp hst
+  exact ⟨Count.one o d, ⟨rfl, rfl, le_rfl⟩, rfl, hP⟩
+
+/-- **Branch**: one use of the test, then the branch taken, for every Boolean that the test may
+return. -/
+theorem ite {q : Tst} {ds : List IExp} {ins : List Operand} {t e : Stmt Op Tst} {d : List ℕ}
+    {a : List (ℕ × ℕ)} (hd : IExp.evalList ρ.idx ds = some d)
+    (ha : Operand.evalList ρ ins = some a)
+    (h : ∀ b, I.test q d a st.mem = some b →
+      RunsFromWL I W τ (if b then t else e) ρ (st.tick q d) p
+        fun c m => Q (Count.test q d + c) m) : RunsFromWL I W τ (.ite q ds ins t e) ρ st p Q := by
+  intro st' hst
+  simp only [exec, hd, ha, Option.bind_some] at hst
+  obtain ⟨b, hb, hst⟩ := Option.bind_eq_some_iff.mp hst
+  obtain ⟨c, h2, h3⟩ := h b hb st' (by cases b <;> simpa using hst)
+  exact ⟨Count.test q d + c, by simpa using (St.Reach.tick st q d p).trans h2, h3⟩
+
+/-- **Index binder**: one use of the query, then the body at every value within the bound that
+the query may return; the body **receives the value read** and is charged for that value
+only. -/
+theorem bindIdx {q : Tst} {ins : List Operand} {bound : IExp} {body : Stmt Op Tst}
+    {a : List (ℕ × ℕ)} {B : ℕ} (ha : Operand.evalList ρ ins = some a)
+    (hB : bound.eval ρ.idx = some B)
+    (h : ∀ v ≤ B, I.index q a st.mem = some v →
+      RunsFromWL I W τ body (ρ.pushIdx v) (st.tick q []) p
+        fun c m => Q (Count.test q [] + c) m) :
+    RunsFromWL I W τ (.bindIdx q ins bound body) ρ st p Q := by
+  intro st' hst
+  simp only [exec, ha, hB, Option.bind_some] at hst
+  obtain ⟨v, hv, hst⟩ := Option.bind_eq_some_iff.mp hst
+  split_ifs at hst with hle
+  obtain ⟨c, h2, h3⟩ := h v hle hv st' hst
+  exact ⟨Count.test q [] + c, by simpa using (St.Reach.tick st q [] p).trans h2, h3⟩
+
+/-- **Scratch buffer**: the body runs with the new buffer on top, which is then popped; the
+workspace is that of the body above the buffer. -/
+theorem alloc {len : IExp} {body : Stmt Op Tst} {n : ℕ} (hn : len.eval ρ.idx = some n)
+    (h : RunsFromWL I W τ body (ρ.pushBuf st.mem.store.length)
+      ⟨⟨st.mem.store.push n, st.mem.pos⟩, st.cost, st.cur + n, max st.peak (st.cur + n)⟩ p
+      fun c m' => Q c ⟨m'.store.pop, m'.pos⟩) :
+    RunsFromWL I W τ (.alloc len body) ρ st (n + p) Q := by
+  intro st' hst
+  simp only [exec, hn, Option.bind_some] at hst
+  obtain ⟨st₂, h₂, rfl⟩ := Option.map_eq_some_iff.mp hst
+  obtain ⟨c, ⟨h2, h3, h4⟩, h5⟩ := h st₂ h₂
+  refine ⟨c, ⟨h2, rfl, ?_⟩, h5⟩
+  simp only at h4 ⊢
+  omega
+
+/-- Procedure instance: the body, when the arguments are live. -/
+theorem frame {ds : List IExp} {args : List Operand} {body : Stmt Op Tst} {d : List ℕ}
+    {a : List (ℕ × ℕ)} (hd : IExp.evalList ρ.idx ds = some d)
+    (ha : Operand.evalList ρ args = some a)
+    (h : st.mem.Live a → RunsFromWL I W τ body (Env.frame d a) st p Q) :
+    RunsFromWL I W τ (.frame ds args body) ρ st p Q := by
+  intro st' hst
+  simp only [exec, hd, ha, Option.bind_some] at hst
+  split_ifs at hst with hl
+  exact h hl st' hst
+
+/-- **Loop**, with an invariant on the counts added so far and the memory, indexed by the number
+of rounds done: the bound of a round comes from the invariant. -/
+theorem loop {n : IExp} {body : Stmt Op Tst} {k : ℕ} (hn : n.eval ρ.idx = some k)
+    (Inv : ℕ → Count Op Tst → Mem K → Prop) (h0 : Inv 0 0 st.mem)
+    (hstep : ∀ i < k, ∀ st' c, Inv i c st'.mem →
+      RunsFromWL I W τ body (ρ.pushIdx i) st' p fun c' m => Inv (i + 1) (c + c') m) :
+    RunsFromWL I W τ (.loop n body) ρ st p (Inv k) := by
+  have key : ∀ j ≤ k, ∀ st', iter (fun i st => exec I W τ body (ρ.pushIdx i) st) j st =
+      some st' → ∃ c, St.Reach st st' c p ∧ Inv j c st'.mem := by
+    intro j
+    induction j with
+    | zero =>
+      rintro - st' ⟨⟩
+      exact ⟨0, St.Reach.refl st p, h0⟩
+    | succ j ih =>
+      intro hj st₂ hst
+      obtain ⟨st₁, h1, h4⟩ := Option.bind_eq_some_iff.mp hst
+      obtain ⟨c₁, h2, h3⟩ := ih (by omega) st₁ h1
+      obtain ⟨c₂, h5, h6⟩ := hstep j (by omega) st₁ c₁ h3 st₂ h4
+      exact ⟨c₁ + c₂, by simpa using h2.trans h5, h6⟩
+  intro st' hst
+  simp only [exec, hn, Option.bind_some] at hst
+  exact key k le_rfl st' hst
+
+/-- **The loop with early exit**, with an invariant on the counts added so far and the memory.
+At a round below the cap the test is used once, and for every Boolean it may return: if it holds
+the body keeps the invariant, otherwise the continuation runs with the round index. At the cap
+the continuation runs without a test. The counts are those of the rounds that were done. -/
+theorem whileFuel {fuel : IExp} {q : Tst} {ds : List IExp} {ins : List Operand}
+    {body k : Stmt Op Tst} {n : ℕ} (hn : fuel.eval ρ.idx = some n)
+    (Inv : ℕ → Count Op Tst → Mem K → Prop) (h0 : Inv 0 0 st.mem)
+    (hstep : ∀ i < n, ∀ (st' : St Op Tst K) c, Inv i c st'.mem → ∃ d a,
+      IExp.evalList (ρ.pushIdx i).idx ds = some d ∧ Operand.evalList (ρ.pushIdx i) ins = some a ∧
+      ∀ b, I.test q d a st'.mem = some b →
+        if b then RunsFromWL I W τ body (ρ.pushIdx i) (st'.tick q d) p
+            fun c' m => Inv (i + 1) (c + (Count.test q d + c')) m
+          else RunsFromWL I W τ k (ρ.pushIdx i) (st'.tick q d) p
+            fun c' m => Q (c + (Count.test q d + c')) m)
+    (hcap : ∀ (st' : St Op Tst K) c, Inv n c st'.mem →
+      RunsFromWL I W τ k (ρ.pushIdx n) st' p fun c' m => Q (c + c') m) :
+    RunsFromWL I W τ (.whileFuel fuel q ds ins body k) ρ st p Q := by
+  have key : ∀ (r i : ℕ) (st₁ : St Op Tst K) (c₁ : Count Op Tst), i + r = n →
+      St.Reach st st₁ c₁ p → Inv i c₁ st₁.mem → ∀ st',
+        ((whileIter (fun i st => I.testSt q ds ins (ρ.pushIdx i) st)
+          (fun i => exec I W τ body (ρ.pushIdx i)) r i st₁).bind fun jst =>
+            exec I W τ k (ρ.pushIdx jst.1) jst.2) = some st' →
+        ∃ c, St.Reach st st' c p ∧ Q c st'.mem := by
+    intro r
+    induction r with
+    | zero =>
+      intro i st₁ c₁ hi hr hinv st' hst
+      obtain rfl : i = n := by omega
+      obtain ⟨c₂, h2, h3⟩ := hcap st₁ c₁ hinv st' (by simpa [whileIter] using hst)
+      exact ⟨c₁ + c₂, by simpa using hr.trans h2, h3⟩
+    | succ r ih =>
+      intro i st₁ c₁ hi hr hinv st' hst
+      obtain ⟨d, a, hd, ha, hrun⟩ := hstep i (by omega) st₁ c₁ hinv
+      have hr' := hr.trans (St.Reach.tick st₁ q d p)
+      simp only [whileIter, Interp.testSt_eq hd ha, Option.bind_assoc] at hst
+      obtain ⟨bs, hbs, hst⟩ := Option.bind_eq_some_iff.mp hst
+      obtain ⟨b, hb, rfl⟩ := Option.map_eq_some_iff.mp hbs
+      have hrun := hrun b hb
+      cases b with
+      | false =>
+        obtain ⟨c₂, h2, h3⟩ := hrun st' (by simpa using hst)
+        exact ⟨c₁ + Count.test q d + c₂, by simpa using hr'.trans h2,
+          by simpa [add_assoc] using h3⟩
+      | true =>
+        simp only [if_true, Option.bind_assoc] at hst hrun
+        obtain ⟨st₂, h1, hst⟩ := Option.bind_eq_some_iff.mp hst
+        obtain ⟨c₂, h2, h3⟩ := hrun st₂ h1
+        exact ih (i + 1) st₂ (c₁ + Count.test q d + c₂) (by omega)
+          (by simpa using hr'.trans h2) (by simpa [add_assoc] using h3) st' hst
+  intro st' hst
+  simp only [exec, hn, Option.bind_some] at hst
+  exact key n 0 st 0 (by omega) (St.Reach.refl st p) h0 st' hst
+
+/-- From the initial state: every successful counted run is within the workspace, and the
+postcondition holds of its counts and its memory. -/
+theorem exec_init {s : Stmt Op Tst} {m : Mem K} (h : RunsFromWL I W τ s ρ (St.init m) p Q)
+    {st' : St Op Tst K} (hst : exec I W τ s ρ (St.init m) = some st') :
+    st'.peak ≤ p ∧ Q st'.cost st'.mem := by
+  obtain ⟨c, ⟨h2, -, h3⟩, h4⟩ := h st' hst
+  have e : st'.cost = c := by simpa [St.init] using h2
+  exact ⟨by simpa [St.init] using h3, e ▸ h4⟩
+
+/-- A liberal counted run is a refinement statement, for the part of the postcondition that
+every count satisfies. -/
+theorem runsL {s : Stmt Op Tst} {m : Mem K} {P : Mem K → Prop}
+    (h : RunsFromWL I W τ s ρ (St.init m) p fun _ m' => P m') : RunsL I τ s ρ m P := by
+  intro m' hrun
+  obtain ⟨st', hst, rfl⟩ := exec_eq_some_of_run hrun W (St.init m) rfl
+  exact (h.exec_init hst).2
+
+end RunsFromWL
+
+section Link
+
+variable {Op₁ Op₂ A : Type} [AddCommMonoid A] [PartialOrder A] [IsOrderedAddMonoid A]
+  {T : Table Op₁ Op₂ Tst} {I : Interp Op₂ Tst K} {W₂ : Op₂ → List ℕ → ℕ}
+  {w₂ : Count Op₂ Tst →+ A} {t : Op₁ → List ℕ → A} {W₁ : Op₁ → List ℕ → ℕ}
+
+/-- **The weighted accounting certificate from the liberal judgment**: the body of every
+implementation, in its frame and from every state, adds counts of weight at most `t o d` within
+the workspace of its operation. This is what the rules of `RunsFromWL` prove. -/
+theorem Table.AccountsW.of_runsFromWL
+    (himpl : ∀ o R, T o = .inl R → ∀ (τ : Tape K) (d : List ℕ) (a : List (ℕ × ℕ))
+      (st : St Op₂ Tst K), d.length = R.nd → a.length = R.nin + R.nout →
+      RunsFromWL I W₂ τ R.body (Env.frame d a) st (W₁ o d) fun c _ => w₂ c ≤ t o d)
+    (hkept : ∀ o o', T o = .inr o' → ∀ d, w₂ (Count.one o' d) ≤ t o d ∧ W₂ o' d ≤ W₁ o d) :
+    T.AccountsW I W₂ w₂ t W₁ where
+  kept := hkept
+  impl o R hT τ d a st st' hd ha h := by
+    obtain ⟨c, ⟨h1, h2, h3⟩, hc⟩ := himpl o R hT τ d a st hd ha st' h
+    exact ⟨h2, by rw [h1, map_add]; exact add_le_add le_rfl hc, h3⟩
+
+/-- **Linking a liberal counted run.** Under a weighted certificate, if the linked program
+succeeds, the weight of its counts is at most the weight of counts `c₁` of the algorithm that
+satisfy the postcondition, within the same workspace (`NLAlib.Ops.RunsW.link`, liberal). -/
+theorem RunsFromWL.link (hacc : T.AccountsW I W₂ w₂ t W₁) {τ : Tape K} {s : Stmt Op₁ Tst}
+    {ρ : Env} {m : Mem K} {p : ℕ} {Q : Count Op₁ Tst → Mem K → Prop}
+    (h : RunsFromWL (I.link T) W₁ τ s ρ (St.init m) p Q) :
+    RunsFromWL I W₂ τ (s.link T) ρ (St.init m) p
+      fun c m' => ∃ c₁, w₂ c ≤ Count.upper w₂ t c₁ ∧ Q c₁ m' := by
+  intro c₁ hc
+  have hrun : run (I.link T) τ s ρ m = some c₁.mem := by
+    rw [← run_link]
+    exact run_of_exec hc
+  obtain ⟨a₁, ha, -⟩ := exec_eq_some_of_run hrun W₁ (St.init m) rfl
+  obtain ⟨c₁', hc', hs⟩ := exec_link hacc τ s ρ (St.init m) a₁ (St.init m)
+    ⟨rfl, rfl, by simp [St.init], le_rfl⟩ ha
+  obtain rfl : c₁' = c₁ := Option.some.inj (hc'.symm.trans hc)
+  obtain ⟨hp, hQ⟩ := h.exec_init ha
+  exact ⟨c₁'.cost, ⟨by simp [St.init], hs.cur.trans (exec_within ha).1,
+    by simpa [St.init] using hs.peak.trans hp⟩, a₁.cost, hs.cost, hs.mem ▸ hQ⟩
+
+end Link
 
 end NLAlib.Ops

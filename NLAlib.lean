@@ -636,6 +636,8 @@ public import NLAlib.Ops.Examples.Cgs
 public import NLAlib.Ops.Examples.CgsLinked
 public import NLAlib.Ops.Examples.CgsMath
 public import NLAlib.Ops.Examples.CgsQR
+public import NLAlib.Ops.Examples.CgsW
+public import NLAlib.Ops.Examples.CgsWrites
 public import NLAlib.Ops.Examples.Control
 public import NLAlib.Ops.Examples.Dot
 public import NLAlib.Ops.Examples.Gemm

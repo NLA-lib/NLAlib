@@ -159,10 +159,10 @@ macro_rules
          · assumption
          · idx [$ts,*]
          · kept [$ts,*])
+      | (apply Store.readBlock_one_of_get; kept [$ts,*])
       | (apply Store.readBlock_sub
          · assumption
          · idx [$ts,*])
-      | (apply Store.readBlock_one_of_get; kept [$ts,*])
       | fail "kept: the block is not found in the context, at this or an earlier memory")
 
 open Lean Meta Elab Tactic in
@@ -209,6 +209,19 @@ elab "reads" : tactic => withMainContext do
     throwError "reads: the blocks read do not match"
   g.assign pf
   replaceMainGoal []
+
+/-- **`room [facts]`**: a goal that the handles of a call are live or that there is room for an
+output, at a named memory: rewrites the lengths through the frames and agreements of the context
+(`frame_facts`), the conditions by `idx`, and closes by `idx`. -/
+syntax "room" (" [" Lean.Parser.Tactic.simpLemma,* "]")? : tactic
+
+macro_rules
+  | `(tactic| room) => `(tactic| room [])
+  | `(tactic| room [$ts,*]) => `(tactic|
+      (simp (disch := idx) only [*, Mem.live_cons, Mem.live_nil, List.cons_append,
+          List.nil_append, and_true, true_and, $ts,*]
+       try idx [$ts,*]
+       done))
 
 /-- **`step h [facts] as m₁ hfr₁ ⟨pat⟩`**: the call step in named form. The goal is a `Wp` or a
 `Writes` of a call, or of a call followed by more (`.seq (.call …) c`). `h` says that the
@@ -272,11 +285,11 @@ macro_rules
        try (case' hls => first | wp_shape | skip)
        try (case' hr => first | reads | skip)
        try (case' hadm => first | wp_adm [$ts,*] | skip)
-       try (case' hlive => first | wp_side [$ts,*] | (simp only [*]; idx [$ts,*]) | skip)
+       try (case' hlive => first | room [$ts,*] | wp_side [$ts,*] | skip)
        try (case' hdom => first | wp_dom [$ts,*] | skip)
-       try (case' hz => first | wp_side [$ts,*] | (simp only [*]; idx [$ts,*]) | skip)
-       try (case' hz₁ => first | wp_side [$ts,*] | (simp only [*]; idx [$ts,*]) | skip)
-       try (case' hz₂ => first | wp_side [$ts,*] | (simp only [*]; idx [$ts,*]) | skip)
+       try (case' hz => first | room [$ts,*] | wp_side [$ts,*] | skip)
+       try (case' hz₁ => first | room [$ts,*] | wp_side [$ts,*] | skip)
+       try (case' hz₂ => first | room [$ts,*] | wp_side [$ts,*] | skip)
        try (case' hap => first | disjoint [$ts,*] | skip)
        try (case' hle => first | fp_sub [$ts,*] | skip)
        case' hQ =>

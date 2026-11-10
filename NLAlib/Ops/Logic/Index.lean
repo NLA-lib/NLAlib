@@ -139,3 +139,5 @@ macro_rules
       | fail "idx!: the index fact is not proved")
 
 end NLAlib.Ops
+
+attribute [idxNF] Nat.add_mul Nat.mul_add Nat.one_mul Nat.mul_one

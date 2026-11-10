@@ -193,28 +193,30 @@ theorem exec_within {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ : Ta
     obtain ⟨jst, hw, h⟩ := Option.bind_eq_some_iff.mp h
     have hj := (whileIter_rel (R := fun _ _ : St Op Tst K => True) (fun _ => trivial)
       (fun _ _ _ _ _ => trivial) (fun _ _ _ _ => trivial) (fun _ _ _ _ => trivial) hw).2.2
-    have h1 := whileIter_within (ct := fun i => testCost o ds (ρ.idx ++ [i]))
-      (cb := fun i => staticCost body (ρ.idx ++ [i]))
-      (p := fun i => staticPeak W body (ρ.idx ++ [i])) (fun i a bs hbs => ?_)
-      (fun i _ _ hb => ih hb) hw
-    · have hmem : jst.1 ∈ Finset.range (n + 1) := by
-        simp only [Finset.mem_range]
-        omega
-      refine (h1.trans (ihk h)).mono ?_ ?_
-      · simp only [staticCost, hn, Option.getD_some, zero_add]
-        gcongr
-        exact Finset.le_sup (f := fun j => staticCost k (ρ.idx ++ [j])) hmem
-      · simp only [staticPeak, hn, Option.getD_some, zero_add]
-        exact max_le_max le_rfl
-          (Finset.le_sup (f := fun j => staticPeak W k (ρ.idx ++ [j])) hmem)
-    · obtain ⟨d, hd, -, e⟩ := Interp.testSt_eq_some hbs
-      rw [e]
+    have ht : ∀ i a bs, I.testSt o ds ins (ρ.pushIdx i) a = some bs →
+        St.Within a bs.2 (testCost o ds (ρ.idx ++ [i])) 0 := fun i a bs hbs => by
+      obtain ⟨d, hd, -, e⟩ := Interp.testSt_eq_some hbs
       have hu : testCost (Op := Op) o ds (ρ.idx ++ [i]) = Count.test o d := by
         simp only [testCost]
         rw [show ρ.idx ++ [i] = (ρ.pushIdx i).idx from rfl, hd]
         rfl
-      rw [hu]
+      rw [e, hu]
       exact St.Within.tick a o d
+    have hb : ∀ i a b, exec I W τ body (ρ.pushIdx i) a = some b →
+        St.Within a b (staticCost body (ρ.idx ++ [i])) (staticPeak W body (ρ.idx ++ [i])) :=
+      fun i a b hb => ih (ρ := ρ.pushIdx i) hb
+    have hk : St.Within jst.2 st' (staticCost k (ρ.idx ++ [jst.1]))
+        (staticPeak W k (ρ.idx ++ [jst.1])) := ihk (ρ := ρ.pushIdx jst.1) h
+    have hmem : jst.1 ∈ Finset.range (n + 1) := by
+      simp only [Finset.mem_range]
+      omega
+    refine ((whileIter_within ht hb hw).trans hk).mono ?_ ?_
+    · simp only [staticCost, hn, Option.getD_some, zero_add]
+      gcongr
+      exact Finset.le_sup (f := fun j => staticCost k (ρ.idx ++ [j])) hmem
+    · simp only [staticPeak, hn, Option.getD_some, zero_add]
+      exact max_le_max le_rfl
+        (Finset.le_sup (f := fun j => staticPeak W k (ρ.idx ++ [j])) hmem)
   | bindIdx o ins bound body ih =>
     obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨B, hB, h⟩ := Option.bind_eq_some_iff.mp h

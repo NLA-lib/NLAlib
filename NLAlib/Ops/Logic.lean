@@ -103,6 +103,18 @@ theorem wp_call_fn {o : Op} {f : BlockFn K} {adm : List ℕ → List (ℕ × ℕ
     wp md I τ (.call o ds ins outs) ρ Q m :=
   wp_of_run (by simp only [run, hd, ha, hb, Option.bind_some, hI.callS_eq hadm hf]) hQ
 
+/-- **Call of a functional operation, partial correctness**: if the call succeeds, it is the
+block function. -/
+theorem wp_call_fn_liberal {o : Op} {f : BlockFn K} {adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop}
+    (hI : I.IsFn .liberal o f adm) {ds : List IExp} {ins outs : List Operand} {d : List ℕ}
+    {a : List (ℕ × ℕ)} {z : ℕ × ℕ} (hd : IExp.evalList ρ.idx ds = some d)
+    (ha : Operand.evalList ρ ins = some a) (hb : Operand.evalList ρ outs = some [z])
+    (hadm : adm d a z) (hQ : ∀ m', f.apply d a z τ m = some m' → Q m') :
+    wp .liberal I τ (.call o ds ins outs) ρ Q m := by
+  intro m' hrun
+  simp only [run, hd, ha, hb, Option.bind_some] at hrun
+  exact hQ m' (hI.apply_of_callS hadm hrun)
+
 /-- Call of a functional constant, on cells. -/
 theorem wp_call_const {o : Op} {v : K} {adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop}
     (hI : I.IsFn .total o (.const v) adm) {ds : List IExp} {ins outs : List Operand} {d : List ℕ}

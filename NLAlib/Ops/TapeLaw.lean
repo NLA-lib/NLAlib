@@ -10,7 +10,7 @@ public import Mathlib.MeasureTheory.Integral.Prod
 public import Mathlib.Probability.HasLawExists
 public import Mathlib.Probability.Independence.Basic
 public import Mathlib.Probability.Process.Filtration
-public import NLAlib.Ops.Store
+public import NLAlib.Ops.Stream
 
 /-!
 # The law of the tape

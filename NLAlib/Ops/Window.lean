@@ -177,7 +177,8 @@ def drawRel (s : ℕ) : WinRel K where
 
 /-- The vector draw of the model meets the contract of the vector draw. -/
 theorem Interp.IsFn.meets_drawRel {I : Interp Op Tst K} {o : Op} {s : ℕ}
-    {adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop} (h : I.IsFn .total o (.drawVec s) adm) :
+    {adm adm' : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop} (h : I.IsFn .total o (.drawVec s) adm')
+    (hsub : ∀ d ins z, adm d ins z → adm' d ins z) :
     I.Meets .total o ((drawRel s).spec adm) := by
   rintro d ins outs τ m ⟨z, rfl, hnd, hadm, hn⟩
   obtain ⟨hl, hr, hz⟩ := hn rfl
@@ -190,6 +191,7 @@ theorem Interp.IsFn.meets_drawRel {I : Interp Op Tst K} {o : Op} {s : ℕ}
       some ((m.updBlock z (τ.window s m.pos n)).advance n) :=
     BlockFn.apply_eq_some_iff.mpr
       ⟨hl, [], τ.window s m.pos n, rfl, rfl, by simpa [drawRel] using hz, rfl⟩
-  exact ⟨_, h.callS_eq hadm ha, z, [], τ.window s m.pos n, rfl, rfl, by simp [drawRel], rfl, rfl⟩
+  exact ⟨_, h.callS_eq (hsub _ _ _ hadm) ha, z, [], τ.window s m.pos n, rfl, rfl,
+    by simp [drawRel], rfl, rfl⟩
 
 end NLAlib.Ops

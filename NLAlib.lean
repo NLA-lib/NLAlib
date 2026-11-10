@@ -643,6 +643,7 @@ public import NLAlib.Ops.Examples.MatMul
 public import NLAlib.Ops.Examples.Noisy
 public import NLAlib.Ops.Examples.NoisyLinked
 public import NLAlib.Ops.Examples.NoisyMath
+public import NLAlib.Ops.Examples.RandomWitness
 public import NLAlib.Ops.Examples.StochRound
 public import NLAlib.Ops.Exec
 public import NLAlib.Ops.Frame
@@ -657,6 +658,7 @@ public import NLAlib.Ops.Rules
 public import NLAlib.Ops.Static
 public import NLAlib.Ops.Store
 public import NLAlib.Ops.StoreSimp
+public import NLAlib.Ops.Stream
 public import NLAlib.Ops.Syntax
 public import NLAlib.Ops.Tape
 public import NLAlib.Ops.TapeLaw

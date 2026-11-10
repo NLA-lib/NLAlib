@@ -7,6 +7,7 @@ module
 
 public import Mathlib.Algebra.BigOperators.Finsupp.Basic
 public import Mathlib.Data.Finsupp.Order
+public import NLAlib.Ops.Stream
 public import NLAlib.Ops.Syntax
 
 /-!

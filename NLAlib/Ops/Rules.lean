@@ -215,6 +215,27 @@ theorem Interp.link_meets_rel {I : Interp Op₂ Tst K} {T : Table Op₁ Op₂ Ts
   exact ⟨fun _ => hl, fun _ => ⟨hfit, hw.mono fun m' ⟨ys, h1, h2, h3⟩ =>
     ⟨z, xs, ys, rfl, hxs, h1, h2, h3⟩⟩⟩
 
+/-- **A functional operation meets a relational contract that its values satisfy.** For
+witnesses and model primitives: the block function has no window and the lengths of the
+relation, and on blocks that were read its value has the declared length and is related to
+them. -/
+theorem Interp.IsFn.meets_rel {I : Interp Op Tst K} {o : Op} {f : BlockFn K}
+    {adm' : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop} (h : I.IsFn .total o f adm') {R : BlockRel K}
+    {adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop} (hadm : ∀ d ins z, adm d ins z → adm' d ins z)
+    (hwin : ∀ d, f.win d = 0) (hin : ∀ d, f.inLens d = R.inLens d)
+    (hf : ∀ d w xs (m : Mem K) ins z, d.length = R.nd → adm d ins z →
+      m.readBlocks ins (R.inLens d) = some xs →
+      ∃ ys, f.fn d w xs = some ys ∧ ys.length = R.outLen d ∧ R.rel d xs ys) :
+    I.Meets .total o (R.spec adm) := by
+  rintro d ins outs τ m ⟨z, rfl, hnd, hadm', hn⟩
+  obtain ⟨hl, hr, hz⟩ := hn rfl
+  obtain ⟨xs, hxs⟩ := Option.isSome_iff_exists.mp hr
+  obtain ⟨ys, hys, hlen, hrel⟩ := hf d _ xs m ins z hnd hadm' hxs
+  have ha := BlockFn.apply_of_read (f := f) (τ := τ) hl (by rw [hin]; exact hxs) hys
+    (by rw [hlen]; exact hz)
+  rw [hwin] at ha
+  exact ⟨_, h.callS_eq (hadm _ _ _ hadm') ha, z, xs, ys, rfl, hxs, hlen, hrel, rfl⟩
+
 /-- A kept operation meets the relational contracts it meets below. -/
 theorem Interp.link_meets_rel_kept {I : Interp Op₂ Tst K} {T : Table Op₁ Op₂ Tst} {o : Op₁}
     {o' : Op₂} (hT : T o = .inr o') {md : Mode} {C : Contract K} (h : I.Meets md o' C) :

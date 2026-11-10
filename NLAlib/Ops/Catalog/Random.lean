@@ -18,7 +18,11 @@ product by a fixed matrix, and the level-1 operations they need. The contracts
 (`NLAlib.Ops.decv`): the result decodes to the exact value. The vector draw has the contract
 `NLAlib.Ops.drawRel` of visible randomness.
 
-`NLAlib.Ops.IsRandBase` is the set without the vector draw, over which it is implemented.
+## Main results
+
+* `NLAlib.Ops.IsRandBase`: the contracts without the vector draw, over which it is implemented.
+* `NLAlib.Ops.IsRandLin`: the contracts of the randomized examples.
+* `NLAlib.Ops.randWindow`: the tape windows of the operations, registered with the access model.
 -/
 
 @[expose] public section

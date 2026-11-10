@@ -11,9 +11,13 @@ public import NLAlib.Ops.Profiles.Random
 /-!
 # The Girard–Hutchinson estimator, linked: probes drawn entry by entry
 
-One application of the law-level linking lemma to the profile `Rand.gaussLoop`: the program
-that draws each probe by `n` scalar draws has the same law-level statement, with the counts
-pushed forward (`NLAlib.Ops.Examples.push_gaussLoop_hutchCount`) and the same scratch cells.
+One application of the law-level linking lemma to the profile `Rand.gaussLoop`.
+
+## Main results
+
+* `NLAlib.Ops.Examples.runsLaw_hutch_link`: the program that draws each probe by `n` scalar
+  draws has the same law-level statement, within the same scratch cells.
+* `NLAlib.Ops.Examples.push_gaussLoop_hutchCount`: its counts, pushed forward.
 -/
 
 @[expose] public section

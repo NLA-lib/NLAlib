@@ -12,7 +12,9 @@ public import NLAlib.Ops.TapeLaw
 /-!
 # Witnesses for the randomized examples
 
-The hypotheses of the randomized examples can be met jointly:
+The hypotheses of the randomized examples can be met jointly.
+
+## Main results
 
 * `NLAlib.Ops.Examples.stdLaw`: the laws of the streams of a real tape: uniform on `[0, 1]`,
   standard Gaussian. `NLAlib.Ops.Examples.exists_isTapeLaw_stdLaw`: there is a tape with these

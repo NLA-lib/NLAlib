@@ -10,12 +10,16 @@ public import Mathlib.Data.List.Basic
 /-!
 # The tape of draws
 
-A tape `NLAlib.Ops.Tape K` holds, at each position, one entry of each stream; a stream is a
-source of independent draws of one distribution (`NLAlib.Ops.Stream.unif`,
-`NLAlib.Ops.Stream.gauss`, `NLAlib.Ops.Stream.sign`). The memory of a run has one position; an
-operation with a window of `k` entries reads `k` positions, in the streams it names, and
-advances the position by `k`. Which law a stream has is fixed by the access model
-(`NLAlib.Ops.IsTapeLaw`).
+The memory of a run has one position on the tape; an operation with a window of `k` entries
+reads `k` positions, in the streams it names, and advances the position by `k`. Which law a
+stream has is fixed by the access model (`NLAlib.Ops.IsTapeLaw`).
+
+## Main results
+
+* `NLAlib.Ops.Tape`: a tape holds, at each position, one entry of each stream; a stream is a
+  source of independent draws of one distribution (`NLAlib.Ops.Stream.unif`,
+  `NLAlib.Ops.Stream.gauss`, `NLAlib.Ops.Stream.sign`).
+* `NLAlib.Ops.Tape.window`: the window of `k` entries of a stream from a position.
 -/
 
 @[expose] public section

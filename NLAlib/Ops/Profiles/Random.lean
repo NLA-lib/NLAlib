@@ -12,10 +12,14 @@ public import NLAlib.Ops.Profile
 # Profile: the vector draw by scalar draws
 
 `NLAlib.Ops.Rand.gaussLoop` implements the vector draw `gauss [n] [] [g]` by a loop of `n`
-scalar draws and keeps every other operation. Its certificate
-(`NLAlib.Ops.Rand.gaussLoop_certifies`) gives the contract of the vector draw, the counts
-(`n` draws), and the tape window by the window lemma: the `n` entries the loop reads are the
-window that the law of the tape assigns to the call.
+scalar draws and keeps every other operation.
+
+## Main results
+
+* `NLAlib.Ops.Rand.gaussLoopImpl_spec`: the loop meets the contract of the vector draw.
+* `NLAlib.Ops.Rand.gaussLoop_certifies`: the certificate: the contract of the vector draw, the
+  counts (`n` draws), and the tape window by the window lemma: the `n` entries the loop reads
+  are the window that the law of the tape assigns to the call.
 -/
 
 @[expose] public section

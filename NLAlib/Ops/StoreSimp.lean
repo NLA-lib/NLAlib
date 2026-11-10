@@ -92,7 +92,7 @@ macro_rules
         Store.len_push_top, Store.pop_push, Store.pop_upd_of_lt, Store.pop_upd_top,
         Store.pop_updBlock_of_lt, Store.pop_updBlock_top, Store.readBlock_pop_of_lt,
         Store.get_pop_of_lt, Store.len_pop_of_lt, Option.bind_some, Option.map_some,
-        Option.isSome_some, and_self, and_true, true_and]) <;> try omega)
+        Option.isSome_some, and_self, and_true, true_and, implies_true]) <;> try omega)
   | `(tactic| store_simp [$ts,*]) => `(tactic|
       (try simp (disch := store_side [$ts,*]) only [*, storeNF, Mem.store_upd, Mem.pos_upd,
         Mem.store_updBlock, Mem.pos_updBlock,
@@ -108,6 +108,6 @@ macro_rules
         Store.len_push_top, Store.pop_push, Store.pop_upd_of_lt, Store.pop_upd_top,
         Store.pop_updBlock_of_lt, Store.pop_updBlock_top, Store.readBlock_pop_of_lt,
         Store.get_pop_of_lt, Store.len_pop_of_lt, Option.bind_some, Option.map_some,
-        Option.isSome_some, and_self, and_true, true_and, $ts,*]) <;> try omega)
+        Option.isSome_some, and_self, and_true, true_and, implies_true, $ts,*]) <;> try omega)
 
 end NLAlib.Ops

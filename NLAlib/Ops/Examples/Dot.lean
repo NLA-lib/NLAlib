@@ -188,7 +188,8 @@ def dotImpl : Impl AOp where
   nd := 1
   nin := 2
   nout := 1
-  body := .alloc 1 (dotLoop (.var 0) ⟨0, .var 1 + .var 4⟩ ⟨1, .var 2 + .var 4⟩ ⟨2, .var 3⟩ ⟨3, 0⟩)
+  body := .alloc (.const 1)
+    (dotLoop (.var 0) ⟨0, .var 1 + .var 4⟩ ⟨1, .var 2 + .var 4⟩ ⟨2, .var 3⟩ ⟨3, .const 0⟩)
 
 /-- **The exact certificate of `dotImpl`**: where the block function of `dot` succeeds on
 operands in other buffers than the output, the run of the implementation is the block function.

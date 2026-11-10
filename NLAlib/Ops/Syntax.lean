@@ -41,7 +41,6 @@ inductive IExp where
 
 namespace IExp
 
-instance (n : ℕ) : OfNat IExp n := ⟨.const n⟩
 instance : Add IExp := ⟨.add⟩
 instance : Mul IExp := ⟨.mul⟩
 
@@ -54,7 +53,6 @@ def eval (idx : List ℕ) : IExp → Option ℕ
 
 @[simp] theorem eval_var (idx : List ℕ) (i : ℕ) : (var i).eval idx = idx[i]? := rfl
 @[simp] theorem eval_const (idx : List ℕ) (n : ℕ) : (const n).eval idx = some n := rfl
-@[simp] theorem eval_ofNat (idx : List ℕ) (n : ℕ) : (OfNat.ofNat n : IExp).eval idx = some n := rfl
 @[simp] theorem eval_add (idx : List ℕ) (a b : IExp) :
     (a + b).eval idx = (a.eval idx).bind fun x => (b.eval idx).map fun y => x + y := rfl
 @[simp] theorem eval_mul (idx : List ℕ) (a b : IExp) :

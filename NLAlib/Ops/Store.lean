@@ -121,6 +121,34 @@ theorem get_upd_of_ne {s : Store K} {b i b' i' : ℕ} (h : b' ≠ b ∨ i' ≠ i
   simp only [getElem?_upd]
   by_cases h : b = j <;> cases s[j]? <;> simp [h]
 
+/-- Putting in a cell the value it holds changes nothing. -/
+theorem upd_of_get {s : Store K} {b i : ℕ} {v : K} (h : s.get b i = some v) :
+    s.upd b i v = s := by
+  apply List.ext_getElem?
+  intro j
+  rw [getElem?_upd]
+  by_cases hbj : b = j
+  · subst hbj
+    simp only [get] at h
+    rw [if_pos rfl]
+    cases hs : s[b]? with
+    | none => rfl
+    | some buf =>
+      simp only [hs, Option.bind_some] at h
+      have hi : buf[i]? = some (some v) := by
+        cases hb : buf[i]? with
+        | none => simp [hb] at h
+        | some c => simpa [hb] using h
+      refine congrArg some (List.ext_getElem? fun k => ?_)
+      rw [List.getElem?_set]
+      by_cases hik : i = k
+      · subst hik
+        rw [if_pos rfl, hi, if_pos]
+        by_contra hc
+        simp [List.getElem?_eq_none (not_lt.mp hc)] at hi
+      · rw [if_neg hik]
+  · rw [if_neg hbj]
+
 theorem lt_len_of_get {s : Store K} {b i : ℕ} {a : K} (h : s.get b i = some a) : i < s.len b := by
   simp only [get, len] at h ⊢
   cases hb : s[b]? with
@@ -415,6 +443,36 @@ theorem readBlock_updBlock_self {s : Store K} {b off : ℕ} {xs : List K}
     (hlen : off + xs.length ≤ s.len b) :
     (s.updBlock b off xs).readBlock b off xs.length = some xs :=
   readBlock_eq_some_iff.mpr ⟨rfl, fun _ hj => get_updBlock hlen hj⟩
+
+/-- Putting back a block that was read changes nothing. -/
+theorem updBlock_of_readBlock {s : Store K} {b off n : ℕ} {xs : List K}
+    (h : s.readBlock b off n = some xs) : s.updBlock b off xs = s := by
+  induction n generalizing off xs with
+  | zero => cases h; rfl
+  | succ n ih =>
+    rw [readBlock_succ] at h
+    obtain ⟨x, hx, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨ys, hys, rfl⟩ := Option.map_eq_some_iff.mp h
+    rw [updBlock_cons, upd_of_get hx, ih hys]
+
+/-- A block that was read lies inside its buffer, unless it is empty. -/
+theorem le_len_of_readBlock {s : Store K} {b off n : ℕ} {xs : List K}
+    (h : s.readBlock b off n = some xs) (hn : 0 < n) : off + n ≤ s.len b := by
+  obtain ⟨hl, hg⟩ := readBlock_eq_some_iff.mp h
+  have h1 := hg (n - 1) (by omega)
+  rw [List.getElem?_eq_getElem (by omega)] at h1
+  have := lt_len_of_get h1
+  omega
+
+/-- Reading back a block put over a readable block of the same length. -/
+theorem readBlock_updBlock_of_readBlock {s : Store K} {b off n : ℕ} {xs ys : List K}
+    (h : s.readBlock b off n = some ys) (hx : xs.length = n) :
+    (s.updBlock b off xs).readBlock b off n = some xs := by
+  rcases Nat.eq_zero_or_pos n with rfl | hn
+  · rw [List.length_eq_zero_iff.mp hx]
+    rfl
+  · subst hx
+    exact readBlock_updBlock_self (le_len_of_readBlock h hn)
 
 end Store
 

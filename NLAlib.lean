@@ -622,6 +622,7 @@ public import NLAlib.Ops.Blas.Sum
 public import NLAlib.Ops.BlockRel
 public import NLAlib.Ops.Blocks
 public import NLAlib.Ops.Catalog.Blas1
+public import NLAlib.Ops.Catalog.Compare
 public import NLAlib.Ops.Catalog.Isotropic
 public import NLAlib.Ops.Catalog.Random
 public import NLAlib.Ops.Catalog.Scalar
@@ -646,6 +647,7 @@ public import NLAlib.Ops.Examples.Noisy
 public import NLAlib.Ops.Examples.NoisyLinked
 public import NLAlib.Ops.Examples.NoisyMath
 public import NLAlib.Ops.Examples.RandomWitness
+public import NLAlib.Ops.Examples.Split
 public import NLAlib.Ops.Examples.StochRound
 public import NLAlib.Ops.Exec
 public import NLAlib.Ops.Frame

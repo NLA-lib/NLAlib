@@ -455,4 +455,17 @@ theorem exists_isSrLo {u : ℝ} (hu : 0 ≤ u) (μ : Measure ℝ) [IsProbability
   refine ⟨srWit u μ, Interp.ofFns F, srModel_srWit hu μ, hI, fun o => ?_, isSrAdd_link hI⟩
   cases o <;> exact Interp.ofFns_tapeLocal F _
 
+/-- **Witness with the law of the tape**: the contracts of `exists_isSrLo` together with a random
+tape whose uniform stream has the law of the model, for every family of laws. This is the
+contract set of `runsLaw_srsum` and `runsLaw_srsum_link`. -/
+theorem exists_isSrLo_isTapeLaw {u : ℝ} (hu : 0 ≤ u) (law : ℕ → Measure ℝ)
+    [∀ s, IsProbabilityMeasure (law s)] :
+    ∃ (f : ℝ → ℝ → ℝ → ℝ) (I : Interp SrLo Empty ℝ) (Ω : Type) (_ : MeasurableSpace Ω)
+      (P : Measure Ω) (ξ : Ω → Tape ℝ),
+      SrModel u id (law Stream.unif) f ∧ IsSrLo f I ∧ (∀ o, I.TapeLocal o (srWindow o)) ∧
+        IsSrAdd f (I.link srTable) ∧ IsTapeLaw law P ξ := by
+  obtain ⟨f, I, h1, h2, h3, h4⟩ := exists_isSrLo hu (law Stream.unif)
+  obtain ⟨Ω, mΩ, P, ξ, h5⟩ := exists_isTapeLaw law
+  exact ⟨f, I, Ω, mΩ, P, ξ, h1, h2, h3, h4, h5⟩
+
 end NLAlib.Ops.Examples

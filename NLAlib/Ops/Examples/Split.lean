@@ -18,6 +18,7 @@ logic that carries the counts (`NLAlib.Ops.RunsFromW`) charges the value read.
 
 ## Main results
 
+* `NLAlib.Ops.Examples.exists_isIdle_isToNat`: the contract set of the fixture can be met.
 * `NLAlib.Ops.Examples.runsW_split`: the exact counts of one run, through `bindIdx` and `seq`.
 * `NLAlib.Ops.Examples.weight_split_le`: for every superadditive `T`, the weighted count of the
   run is at most `T k`: `T k₊ + T (k - k₊) ≤ T k`. Tight, and for all `T` at once.
@@ -59,6 +60,29 @@ theorem wp_idle {J : Interp Op IdxTst K} {o : Op}
   refine wp_call_rel hK (d := [n]) (a := []) (b := []) (by simp [he]) rfl rfl rfl rfl rfl trivial
     (by simp) rfl trivial trivial fun ys _ hys => ?_
   obtain rfl : ys = [] := hys
+  rfl
+
+/-- The interpretation of the witness: every operation is an idle kernel, the conversion is the
+floor of a nonnegative real cell. -/
+noncomputable def idleInterp (Op : Type) : Interp Op IdxTst ℝ where
+  call _ d ins outs τ m := (BlockFn.mk 1 0 (fun _ => 0) (fun _ => []) (fun _ => [])
+    fun _ _ _ => some []).apply d ins outs τ m
+  test _ _ _ _ := none
+  index _ a m := (m.readBlocks a (a.map fun _ => 1)).bind fun xs => toNatFn id xs.flatten
+
+/-- **Witness**: the contract of an idle kernel and the contract of the conversion can be met
+together, for every signature and every kernel. -/
+theorem exists_isIdle_isToNat (o : Op) : ∃ (K : Type) (dec : K → ℝ) (J : Interp Op IdxTst K),
+    J.Meets .total o ((idleRel (K := K)).spec AnyOperands) ∧ IsToNat dec J := by
+  have hfn : (idleInterp Op).IsFn .total o (BlockFn.mk 1 0 (fun _ => 0) (fun _ => [])
+      (fun _ => []) fun _ _ _ => some []) AnyOperands :=
+    Interp.ofFns_isFn (Tst := IdxTst) (fun _ : Op => BlockFn.mk 1 0 (fun _ => 0) (fun _ => [])
+      (fun _ => []) fun _ _ _ => some []) .total o AnyOperands
+  refine ⟨ℝ, id, idleInterp Op, hfn.meets_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl)
+    (fun _ => rfl) (fun _ => rfl) fun _ _ _ _ _ _ _ _ _ _ _ => ⟨[], rfl, rfl, rfl⟩,
+    fun a m xs h => ?_⟩
+  change ((m.readBlocks a (a.map fun _ => 1)).bind fun xs => toNatFn id xs.flatten) = _
+  rw [h]
   rfl
 
 /-- **The exact counts of a split**, carried by the logic: one conversion, one call at the size
@@ -112,34 +136,23 @@ def splitTable : Table SOp LOp IdxTst := fun _ => .inl splitImpl
 
 /-- **The weighted accounting certificate of the split**, for every superadditive weight `T`:
 a run of the implementation of `work [k]` adds at most `T k` to the weight, whatever the split
-it reads. No hypothesis on the lower interpretation. -/
+it reads. No hypothesis on the lower interpretation. By the rules of the liberal counted
+judgment (`NLAlib.Ops.RunsFromWL`): the index binder at the value read, two calls. -/
 theorem splitTable_accountsW (I : Interp LOp IdxTst K) {T : ℕ → ℕ}
     (hT : ∀ a b, T a + T b ≤ T (a + b)) :
     splitTable.AccountsW I (fun _ _ => 0) (kernWeight T) (fun _ d => T (d.headD 0))
-      (fun _ _ => 0) where
-  kept o o' h := by cases h
-  impl o R hT' τ d a st st' hd ha h := by
-    cases hT'
-    obtain ⟨k, rfl⟩ := List.length_eq_one_iff.mp hd
-    obtain ⟨x, rfl⟩ := List.length_eq_one_iff.mp ha
-    simp only [splitImpl, split, exec] at h
-    obtain ⟨a', ha', h⟩ := Option.bind_eq_some_iff.mp h
-    obtain ⟨B, hB, h⟩ := Option.bind_eq_some_iff.mp h
-    obtain ⟨v, -, h⟩ := Option.bind_eq_some_iff.mp h
-    obtain rfl : k = B := by simpa [Env.frame] using hB
-    split_ifs at h with hv
-    obtain ⟨st₁, h₁, h⟩ := Option.bind_eq_some_iff.mp h
-    simp only [Env.frame, Env.pushIdx, IExp.evalList_cons, IExp.evalList_nil, IExp.eval_var,
-      IExp.eval_sub, Operand.evalList_nil, Option.bind_some, Option.map_some,
-      Option.map_eq_some_iff, List.map_cons, List.map_nil, List.cons_append, List.nil_append,
-      List.getElem?_cons_zero, List.getElem?_cons_succ] at h₁ h
-    obtain ⟨m₁, -, rfl⟩ := h₁
-    obtain ⟨m₂, -, rfl⟩ := h
-    refine ⟨rfl, ?_, by simp [St.tick]⟩
-    simp only [St.tick, map_add, List.headD_cons]
-    have := weight_split_le hT LOp.base hv
-    simp only [map_add] at this
-    omega
+      (fun _ _ => 0) := by
+  refine Table.AccountsW.of_runsFromWL (fun o R hR τ d a st hd ha => ?_) fun o o' h => by cases h
+  cases hR
+  obtain ⟨k, rfl⟩ := List.length_eq_one_iff.mp hd
+  obtain ⟨x, rfl⟩ := List.length_eq_one_iff.mp ha
+  refine RunsFromWL.bindIdx (B := k) rfl rfl fun v hv _ => ?_
+  refine (RunsFromWL.seq (Q := fun c _ => c = Count.one LOp.base [v] + Count.one LOp.base [k - v])
+    (RunsFromWL.call (d := [v]) rfl fun _ _ => trivial) fun st' c hc =>
+    (RunsFromWL.call (d := [k - v]) rfl fun _ _ => trivial).mono le_rfl ?_).mono (by simp) ?_
+  · exact fun c' _ hc' => hc.1 ▸ hc'.1 ▸ rfl
+  · rintro c - rfl
+    exact weight_split_le hT LOp.base hv
 
 /-! ### An algorithm over the kernel, linked -/
 

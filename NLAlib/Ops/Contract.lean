@@ -299,6 +299,36 @@ theorem Interp.IsFn.apply_of_callS {I : Interp Op K} {o : Op} {f : BlockFn K}
   cases hz
   exact h₂
 
+/-- **The interpretation whose operations are given block functions** (model primitives, concrete
+formats, witnesses): a call with one output operand is `apply`; nothing is a test or an index. -/
+def Interp.ofFns (F : Op → BlockFn K) : Interp Op K where
+  call o d ins outs τ m :=
+    match outs with
+    | [z] => (F o).apply d ins z τ m
+    | _ => none
+  test _ _ _ _ := none
+  index _ _ _ := none
+
+theorem Interp.ofFns_callS (F : Op → BlockFn K) (o : Op) (d : List ℕ) (ins : List (ℕ × ℕ))
+    (z : ℕ × ℕ) (τ : ℕ → K) (m : Mem K) :
+    (Interp.ofFns F).callS o d ins [z] τ m = (F o).apply d ins z τ m := by
+  simp only [Interp.callS, Interp.ofFns]
+  cases h : (F o).apply d ins z τ m with
+  | none => rfl
+  | some m' => simp [BlockFn.shape_of_apply h]
+
+/-- An interpretation given by block functions meets their functional contracts, in both modes
+and on all operands. -/
+theorem Interp.ofFns_isFn (F : Op → BlockFn K) (md : Mode) (o : Op)
+    (adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop) : (Interp.ofFns F).IsFn md o (F o) adm := by
+  rintro d ins outs τ m ⟨z, rfl, -, hn⟩
+  rw [Interp.ofFns_callS]
+  cases md with
+  | total =>
+    obtain ⟨m', hm'⟩ := Option.isSome_iff_exists.mp (hn rfl)
+    exact ⟨m', hm', z, rfl, hm'⟩
+  | liberal => exact fun m' hm' => ⟨z, rfl, hm'⟩
+
 /-- The exactness of a test, imposed by the access model: the Boolean is the function `f` of the
 input blocks. -/
 def Interp.IsTest (I : Interp Op K) (o : Op) (lens : List ℕ → List ℕ)

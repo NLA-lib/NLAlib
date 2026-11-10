@@ -335,6 +335,25 @@ theorem get_of_readBlock {s : Store K} {b off n : ℕ} {xs : List K}
   rw [hg j hj, List.getD_eq_getElem?_getD, List.getElem?_eq_getElem (by omega)]
   rfl
 
+/-- A block read sees only the cells of the block. -/
+theorem readBlock_congr {s s' : Store K} {b off n : ℕ}
+    (h : ∀ j < n, s'.get b (off + j) = s.get b (off + j)) :
+    s'.readBlock b off n = s.readBlock b off n := by
+  induction n generalizing off with
+  | zero => rfl
+  | succ n ih =>
+    have h0 := h 0 (by omega)
+    rw [Nat.add_zero] at h0
+    rw [readBlock_succ, readBlock_succ, h0, ih fun j hj => by
+      have := h (j + 1) (by omega)
+      rwa [show off + (j + 1) = off + 1 + j by omega] at this]
+
+/-- Reading back a block that was just put. -/
+theorem readBlock_updBlock_self {s : Store K} {b off : ℕ} {xs : List K}
+    (hlen : off + xs.length ≤ s.len b) :
+    (s.updBlock b off xs).readBlock b off xs.length = some xs :=
+  readBlock_eq_some_iff.mpr ⟨rfl, fun _ hj => get_updBlock hlen hj⟩
+
 end Store
 
 /-- The memory of a run: the store and the position on the tape of draws. -/

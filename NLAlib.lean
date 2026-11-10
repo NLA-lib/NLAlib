@@ -631,6 +631,7 @@ public import NLAlib.Ops.Cert
 public import NLAlib.Ops.Contract
 public import NLAlib.Ops.Counted
 public import NLAlib.Ops.Examples.Bits
+public import NLAlib.Ops.Examples.Built
 public import NLAlib.Ops.Examples.Cgs
 public import NLAlib.Ops.Examples.CgsLinked
 public import NLAlib.Ops.Examples.CgsMath
@@ -644,6 +645,7 @@ public import NLAlib.Ops.Examples.HutchLinked
 public import NLAlib.Ops.Examples.Liberal
 public import NLAlib.Ops.Examples.Loops
 public import NLAlib.Ops.Examples.MatMul
+public import NLAlib.Ops.Examples.MgsW
 public import NLAlib.Ops.Examples.Mixed
 public import NLAlib.Ops.Examples.Noisy
 public import NLAlib.Ops.Examples.NoisyLinked
@@ -656,6 +658,18 @@ public import NLAlib.Ops.Frame
 public import NLAlib.Ops.Law
 public import NLAlib.Ops.Link
 public import NLAlib.Ops.Logic
+public import NLAlib.Ops.Logic.Attr
+public import NLAlib.Ops.Logic.Builder
+public import NLAlib.Ops.Logic.Count
+public import NLAlib.Ops.Logic.Footprint
+public import NLAlib.Ops.Logic.Index
+public import NLAlib.Ops.Logic.Layout
+public import NLAlib.Ops.Logic.Loop
+public import NLAlib.Ops.Logic.Scalar
+public import NLAlib.Ops.Logic.Step
+public import NLAlib.Ops.Logic.Tactic
+public import NLAlib.Ops.Logic.TapeMeas
+public import NLAlib.Ops.Logic.Writes
 public import NLAlib.Ops.Profile
 public import NLAlib.Ops.Profiles.Blas
 public import NLAlib.Ops.Profiles.BlasCert

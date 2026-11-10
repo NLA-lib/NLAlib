@@ -6,7 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import Mathlib.Tactic.Linarith
-public meta import Lean.Elab.Tactic
+public meta import Lean.Elab.Tactic.Basic
 public import NLAlib.Ops.Logic.Attr
 
 /-!

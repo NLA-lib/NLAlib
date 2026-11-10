@@ -111,7 +111,7 @@ theorem CgsCol.backward {dec : K → ℝ} {ε : Blas1Err} {n j : ℕ} {Qp a rp :
   intro l hl
   obtain ⟨w, hc, -, hs⟩ := h.proj
   have h1 := hc.abs_sub_le hax l hl
-  have h2 := hs l hl
+  have h2 := hs hρ l hl
   have hX : |dec (vec a l) - ∑ k ∈ Finset.range j, dec (vec rp k) * dec (vec Qp (k * n + l))| ≤
       |dec (vec a l)| + ∑ k ∈ Finset.range j, |dec (vec rp k) * dec (vec Qp (k * n + l))| :=
     (abs_sub _ _).trans (add_le_add le_rfl (Finset.abs_sum_le_sum_abs _ _))

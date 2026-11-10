@@ -101,11 +101,11 @@ omit [Has ScalarOp Op] in
 /-- The error of the `scal` loop: `u`, componentwise. -/
 theorem isScalErr_scalF {u : ℝ} {dec : K → ℝ} {M : Machine K} (hM : StdModel u dec M) (a : K)
     (x : ℕ → K) (n : ℕ) : IsScalErr dec u n a x (vec (scalF M a x n)) := by
-  intro i hi
+  intro ha i hi
   have : vec (scalF M a x n) i = M.div (x i) a := by
     simp [vec, scalF, List.getD_eq_getElem?_getD, hi]
   rw [this]
-  exact hM.div _ _
+  exact hM.div _ _ ha
 
 /-- **The run of the `axpy` loop** replaces the block `y` by `axpyF`. -/
 theorem wp_axpyLoop {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {md : Mode}

@@ -21,8 +21,14 @@ The group `NLAlib.Ops.ScalarOp` of scalar operations and its two contracts.
   is a parameter; nothing fixes one precision. The model is unconditional: it has no overflow or
   underflow, so a bounded format meets it only on a safe range, which is another contract.
 
-Witness: exact real arithmetic meets both for every `u ≥ 0`
-(`NLAlib.Ops.exists_isScalar`); a rounding witness is in `NLAlib.Ops.Catalog.RoundNearest`.
+Division is specified only for a divisor that decodes to a nonzero number, and the square root
+only for a nonnegative argument: outside, the model says nothing of the result, so no theorem
+can be proved through a division by zero. Every literal is rounded (`StdModel.lit`), so zero is
+exact.
+
+Witnesses: exact real arithmetic meets both for every `u ≥ 0` (`NLAlib.Ops.exists_isScalar`),
+and so does the machine that inflates every result by the factor `1 + u`
+(`NLAlib.Ops.stdModel_infl`), which is not exact and attains the bounds.
 
 ## Main results
 
@@ -96,20 +102,25 @@ def IsScalar [Has ScalarOp Op] (M : Machine K) (I : Interp Op Tst K) : Prop :=
 /-- **The standard model** of rounded arithmetic at the unit roundoff `u`, for the decoding `dec`:
 a property of the functions of the machine. No overflow, no underflow. -/
 structure StdModel (u : ℝ) (dec : K → ℝ) (M : Machine K) : Prop where
-  /-- Zero is exact. -/
-  zero : dec (M.lit 0) = 0
+  /-- A literal is rounded. -/
+  lit : ∀ q : ℚ, |dec (M.lit q) - q| ≤ u * |(q : ℝ)|
   /-- Rounded addition. -/
   add : ∀ a b, |dec (M.add a b) - (dec a + dec b)| ≤ u * |dec a + dec b|
   /-- Rounded subtraction. -/
   sub : ∀ a b, |dec (M.sub a b) - (dec a - dec b)| ≤ u * |dec a - dec b|
   /-- Rounded multiplication. -/
   mul : ∀ a b, |dec (M.mul a b) - dec a * dec b| ≤ u * |dec a * dec b|
-  /-- Rounded division. -/
-  div : ∀ a b, |dec (M.div a b) - dec a / dec b| ≤ u * |dec a / dec b|
+  /-- Rounded division, by a divisor that is not zero. Nothing is said of a division by zero. -/
+  div : ∀ a b, dec b ≠ 0 → |dec (M.div a b) - dec a / dec b| ≤ u * |dec a / dec b|
   /-- Negation is exact. -/
   neg : ∀ a, dec (M.neg a) = -dec a
   /-- Rounded square root of a nonnegative number. -/
   sqrt : ∀ a, 0 ≤ dec a → |dec (M.sqrt a) - √(dec a)| ≤ u * √(dec a)
+
+/-- Zero is exact. -/
+theorem StdModel.zero {u : ℝ} {dec : K → ℝ} {M : Machine K} (hM : StdModel u dec M) :
+    dec (M.lit 0) = 0 := by
+  simpa using hM.lit 0
 
 /-- A number within the relative error `e` of `x` is at most `(1 + e) |x|` in absolute value. -/
 theorem abs_le_of_abs_sub_le {r x e : ℝ} (h : |r - x| ≤ e * |x|) : |r| ≤ (1 + e) * |x| := by
@@ -148,7 +159,9 @@ noncomputable def exactMachine : Machine ℝ where
   sqrt a := √a
 
 theorem stdModel_exact {u : ℝ} (hu : 0 ≤ u) : StdModel u id exactMachine where
-  zero := by simp [exactMachine]
+  lit q := by
+    simp only [exactMachine, id, sub_self, abs_zero]
+    exact mul_nonneg hu (abs_nonneg _)
   add a b := by
     simp only [exactMachine, id, sub_self, abs_zero]
     exact mul_nonneg hu (abs_nonneg _)
@@ -158,13 +171,39 @@ theorem stdModel_exact {u : ℝ} (hu : 0 ≤ u) : StdModel u id exactMachine whe
   mul a b := by
     simp only [exactMachine, id, sub_self, abs_zero]
     exact mul_nonneg hu (abs_nonneg _)
-  div a b := by
+  div a b _ := by
     simp only [exactMachine, id, sub_self, abs_zero]
     exact mul_nonneg hu (abs_nonneg _)
   neg a := rfl
   sqrt a _ := by
     simp only [exactMachine, id, sub_self, abs_zero]
     exact mul_nonneg hu (Real.sqrt_nonneg _)
+
+/-- The machine that inflates every rounded result by the factor `1 + u`: not exact, and the
+bounds of the standard model are attained. -/
+noncomputable def inflMachine (u : ℝ) : Machine ℝ where
+  lit q := q * (1 + u)
+  add a b := (a + b) * (1 + u)
+  sub a b := (a - b) * (1 + u)
+  mul a b := a * b * (1 + u)
+  div a b := a / b * (1 + u)
+  neg a := -a
+  sqrt a := √a * (1 + u)
+
+theorem abs_mul_one_add_sub (u x : ℝ) (hu : 0 ≤ u) : |x * (1 + u) - x| ≤ u * |x| := by
+  rw [show x * (1 + u) - x = u * x by ring, abs_mul, abs_of_nonneg hu]
+
+/-- **A witness that is not exact**: the inflating machine meets the standard model at `u`. -/
+theorem stdModel_infl {u : ℝ} (hu : 0 ≤ u) : StdModel u id (inflMachine u) where
+  lit q := abs_mul_one_add_sub u q hu
+  add a b := abs_mul_one_add_sub u (a + b) hu
+  sub a b := abs_mul_one_add_sub u (a - b) hu
+  mul a b := abs_mul_one_add_sub u (a * b) hu
+  div a b _ := abs_mul_one_add_sub u (a / b) hu
+  neg a := rfl
+  sqrt a _ := by
+    have := abs_mul_one_add_sub u (√a) hu
+    rwa [abs_of_nonneg (Real.sqrt_nonneg _)] at this
 
 /-- An interpretation given by the block functions of a machine on the scalar operations (and
 anything on the others) meets the functional contract. -/

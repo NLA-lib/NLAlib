@@ -71,9 +71,10 @@ up to `ed`. -/
 def IsNrm2Err (dec : K → ℝ) (ed es : ℝ) (n : ℕ) (x : ℕ → K) (ν : K) : Prop :=
   ∃ σ, IsDotErr dec ed n x x σ ∧ (0 ≤ dec σ → |dec ν - √(dec σ)| ≤ es * √(dec σ))
 
-/-- `z` is `x / α` up to the componentwise relative error `e`. -/
+/-- `z` is `x / α` up to the componentwise relative error `e`, when `α` is not zero. Nothing is
+said of a division by zero. -/
 def IsScalErr (dec : K → ℝ) (e : ℝ) (n : ℕ) (al : K) (x z : ℕ → K) : Prop :=
-  ∀ i < n, |dec (z i) - dec (x i) / dec al| ≤ e * |dec (x i) / dec al|
+  dec al ≠ 0 → ∀ i < n, |dec (z i) - dec (x i) / dec al| ≤ e * |dec (x i) / dec al|
 
 theorem IsDotErr.congr {dec : K → ℝ} {e : ℝ} {n : ℕ} {a b a' b' : ℕ → K} {v : K}
     (h : IsDotErr dec e n a b v) (ha : ∀ i < n, a i = a' i) (hb : ∀ i < n, b i = b' i) :

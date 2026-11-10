@@ -82,22 +82,25 @@ def argByName (c : Name) (args : Array Expr) (nm : Name) : MetaM (Option Expr) :
     return none
 
 /-- The occurrences of headline judgments in an expression. -/
-partial def findOccs (e : Expr) (ex : Array Expr) : MetaM (Array Occ) := do
-  let e ← instantiateMVars e
-  if let some c := e.getAppFn.constName? then
-    if let some h := heads.find? (·.name == c) then
-      return #[⟨h, e.getAppArgs, ex⟩]
-    if c == ``Exists && e.getAppNumArgs == 2 then
-      return ← lambdaTelescope e.appArg! fun xs b => findOccs b (ex ++ xs)
-  match e with
-  | .forallE .. => forallTelescope e fun _ b => findOccs b ex
-  | .lam .. => lambdaTelescope e fun _ b => findOccs b ex
-  | .app .. =>
-    if [``And, ``Or, ``Iff, ``Not].contains (e.getAppFn.constName?.getD .anonymous) then
-      e.getAppArgs.foldlM (fun acc a => return acc ++ (← findOccs a ex)) #[]
-    else return #[]
-  | .mdata _ b => findOccs b ex
-  | _ => return #[]
+def findOccs (e : Expr) (ex : Array Expr) (fuel : ℕ := 64) : MetaM (Array Occ) := do
+  match fuel with
+  | 0 => return #[]
+  | f + 1 =>
+    let e ← instantiateMVars e
+    if let some c := e.getAppFn.constName? then
+      if let some h := heads.find? (·.name == c) then
+        return #[⟨h, e.getAppArgs, ex⟩]
+      if c == ``Exists && e.getAppNumArgs == 2 then
+        return ← lambdaTelescope e.appArg! fun xs b => findOccs b (ex ++ xs) f
+    match e with
+    | .forallE .. => forallTelescope e fun _ b => findOccs b ex f
+    | .lam .. => lambdaTelescope e fun _ b => findOccs b ex f
+    | .app .. =>
+      if [``And, ``Or, ``Iff, ``Not].contains (e.getAppFn.constName?.getD .anonymous) then
+        e.getAppArgs.foldlM (fun acc a => return acc ++ (← findOccs a ex f)) #[]
+      else return #[]
+    | .mdata _ b => findOccs b ex f
+    | _ => return #[]
 
 /-- A constant of the library. -/
 def inLib (n : Name) : Bool := (`NLAlib).isPrefixOf n
@@ -137,12 +140,15 @@ def reach (e : Expr) : MetaM (Array Name) := do
   return out
 
 /-- Peel `Stmt.link`: the algorithm's tree and the tables. -/
-partial def peelLink (s : Expr) : Expr × Array Expr :=
-  if s.isAppOf ``NLAlib.Ops.Stmt.link && s.getAppNumArgs ≥ 2 then
-    let a := s.getAppArgs
-    let (t, ts) := peelLink a[a.size - 1]!
-    (t, ts.push a[a.size - 2]!)
-  else (s, #[])
+def peelLink (s : Expr) (fuel : ℕ := 64) : Expr × Array Expr :=
+  match fuel with
+  | 0 => (s, #[])
+  | f + 1 =>
+    if s.isAppOf ``NLAlib.Ops.Stmt.link && s.getAppNumArgs ≥ 2 then
+      let a := s.getAppArgs
+      let (t, ts) := peelLink a[a.size - 1]! f
+      (t, ts.push a[a.size - 2]!)
+    else (s, #[])
 
 /-- A variable a uniform program may mention: a size, a rational, a type or an instance. -/
 def allowedInProg (x : Expr) : MetaM Bool := do
@@ -242,16 +248,19 @@ def contractSet (hyps : Array Expr) (I : Expr) : MetaM NameSet := do
   return set
 
 /-- The interpretation of an occurrence, and what is wrong with it. -/
-partial def interpIssue (I : Expr) (ex : Array Expr) : MetaM (Option String) := do
-  if I.isFVar then
-    if ex.contains I then return some "the interpretation is existentially quantified"
-    return none
-  if I.isAppOf ``NLAlib.Ops.Interp.link && I.getAppNumArgs ≥ 2 then
-    return ← interpIssue (I.getArg! (I.getAppNumArgs - 2)) ex
-  if let some c := I.getAppFn.constName? then
-    if registered (← getEnv) .model c then return none
-  let hd := (I.getAppFn.constName?.map toString).getD "a non-constant"
-  return some s!"the interpretation is a specific term (head `{hd}`), not a variable"
+def interpIssue (I : Expr) (ex : Array Expr) (fuel : ℕ := 64) : MetaM (Option String) := do
+  match fuel with
+  | 0 => return some "the interpretation is too deeply linked"
+  | f + 1 =>
+    if I.isFVar then
+      if ex.contains I then return some "the interpretation is existentially quantified"
+      return none
+    if I.isAppOf ``NLAlib.Ops.Interp.link && I.getAppNumArgs ≥ 2 then
+      return ← interpIssue (I.getArg! (I.getAppNumArgs - 2)) ex f
+    if let some c := I.getAppFn.constName? then
+      if registered (← getEnv) .model c then return none
+    let hd := (I.getAppFn.constName?.map toString).getD "a non-constant"
+    return some s!"the interpretation is a specific term (head `{hd}`), not a variable"
 
 /-- A program key: the head constants of the algorithm's tree and of its tables. -/
 def progKey (p : Expr) : Option Name :=

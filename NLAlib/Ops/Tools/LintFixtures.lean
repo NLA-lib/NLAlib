@@ -1,0 +1,154 @@
+/-
+Copyright (c) 2026 NLAlib contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: NLAlib contributors
+-/
+import NLAlib.Ops.Tools.Lint
+import NLAlib.Ops.Examples.Gemm
+import NLAlib.Ops.Examples.StochRound
+
+/-!
+# Tools: fixtures of the target linter
+
+Outside the trusted base. Each cheat of the Fable review is a true theorem here whose
+**statement** breaks one rule; `#guard_msgs` records what `#ops_lint` says of it. The accepted
+statements are headlines of the examples.
+-/
+
+namespace NLAlib.Ops.Tools.LintFixtures
+
+open NLAlib.Ops NLAlib.Ops.Examples
+
+variable {K : Type}
+
+theorem runs_skip {Op Tst : Type} (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : Tape K)
+    (ρ : Env) (m : Mem K) : Runs I W τ .skip ρ m 0 0 (· = m) :=
+  ⟨St.init m, rfl, le_rfl, le_rfl, rfl⟩
+
+/-! ### (a) A program that depends on the memory -/
+
+/-- A tree chosen by looking at the memory (here `skip` either way). -/
+def memProg (m : Mem K) : Stmt ScalarOp Empty := if m.pos = 0 then .skip else .skip
+
+theorem cheat_memProg {M : Machine K} {u : ℝ} {dec : K → ℝ} (_hM : StdModel u dec M)
+    {I : Interp ScalarOp Empty K} (_hI : IsScalar M I) (W : ScalarOp → List ℕ → ℕ) (τ : Tape K)
+    (ρ : Env) (m : Mem K) : Runs I W τ (memProg m) ρ m 0 0 (· = m) := by
+  unfold memProg
+  split <;> exact runs_skip I W τ ρ m
+
+/-! ### (b) An existential and a specific interpretation -/
+
+theorem cheat_exists :
+    ∃ I : Interp ScalarOp Empty ℚ, Runs I (fun _ _ => 0) (fun _ _ => 0) .skip ⟨[], []⟩ ⟨[], 0⟩
+      0 0 (· = ⟨[], 0⟩) :=
+  ⟨Interp.ofFns fun _ => .const 0, runs_skip _ _ _ _ _⟩
+
+theorem cheat_specific :
+    Runs (Interp.ofFns fun _ => .const 0 : Interp ScalarOp Empty ℚ) (fun _ _ => 0)
+      (fun _ _ => 0) .skip ⟨[], []⟩ ⟨[], 0⟩ 0 0 (· = ⟨[], 0⟩) :=
+  runs_skip _ _ _ _ _
+
+/-! ### (c) A contract without a witness -/
+
+/-- A contract that no interpretation meets. -/
+structure Oracle (I : Interp ScalarOp Empty K) : Prop where
+  /-- Never. -/
+  never : False
+
+/-- One addition. -/
+def oneAdd : Stmt ScalarOp Empty := .call .add [] [⟨0, .const 0⟩, ⟨0, .const 0⟩] [⟨0, .const 0⟩]
+
+theorem cheat_noWitness {I : Interp ScalarOp Empty K} (hI : Oracle I) (W : ScalarOp → List ℕ → ℕ)
+    (τ : Tape K) (ρ : Env) (m : Mem K) : Runs I W τ oneAdd ρ m 0 0 fun _ => False :=
+  hI.never.elim
+
+/-! ### (e) A liberal headline over a table of aborts -/
+
+/-- Every scalar operation implemented by `abort`. -/
+def abortT : Table ScalarOp ScalarOp Empty := fun _ => .inl ⟨0, 2, 1, .abort⟩
+
+theorem cheat_liberalAbort {M : Machine K} {u : ℝ} {dec : K → ℝ} (_hM : StdModel u dec M)
+    {I : Interp ScalarOp Empty K} (_hI : IsScalar M I) (τ : Tape K) (ρ : Env) (m : Mem K) :
+    RunsL I τ (oneAdd.link abortT) ρ m fun _ => False := by
+  intro m' h
+  simp only [oneAdd, abortT, Stmt.link, Impl.Fits, List.length_nil, List.length_cons, and_self,
+    if_true, run, Option.bind_eq_some_iff] at h
+  obtain ⟨_, -, _, -, h⟩ := h
+  split_ifs at h
+
+/-! ### (f) A ξ-taking primitive in an algorithm -/
+
+/-- A tree that contains `sraddXi` (in a branch never taken). -/
+def xiProg : Stmt SrLo Empty :=
+  .ifZero (.const 1) (.call .sraddXi [] [⟨0, .const 0⟩, ⟨0, .const 0⟩, ⟨0, .const 0⟩]
+    [⟨0, .const 0⟩])
+
+theorem cheat_xi [MeasurableSpace K] {u : ℝ} {dec : K → ℝ} {μ : MeasureTheory.Measure K}
+    {f : K → K → K → K} (_hf : SrModel u dec μ f) {I : Interp SrLo Empty K} (_hI : IsSrLo f I)
+    (W : SrLo → List ℕ → ℕ) (τ : Tape K) (ρ : Env) (m : Mem K) :
+    Runs I W τ xiProg ρ m 0 0 (· = m) :=
+  ⟨St.init m, rfl, le_rfl, le_rfl, rfl⟩
+
+/-! ### Each cheat is rejected by its rule -/
+
+/--
+error: ops_lint (a) `NLAlib.Ops.Tools.LintFixtures.cheat_memProg`: the program mentions `m` :
+Mem K, not a size
+-/
+#guard_msgs (whitespace := lax) in
+#ops_lint cheat_memProg
+
+/--
+error: ops_lint (b) `NLAlib.Ops.Tools.LintFixtures.cheat_exists`: the interpretation is
+existentially quantified
+-/
+#guard_msgs (whitespace := lax) in
+#ops_lint cheat_exists
+
+/--
+error: ops_lint (b) `NLAlib.Ops.Tools.LintFixtures.cheat_specific`: the interpretation is a
+specific term (head `NLAlib.Ops.Interp.ofFns`), not a variable
+-/
+#guard_msgs (whitespace := lax) in
+#ops_lint cheat_specific
+
+/--
+error: ops_lint (c) `NLAlib.Ops.Tools.LintFixtures.cheat_noWitness`: no joint witness for the
+contract set [NLAlib.Ops.Tools.LintFixtures.Oracle]
+-/
+#guard_msgs (whitespace := lax) in
+#ops_lint cheat_noWitness
+
+/--
+error: ops_lint (e) `NLAlib.Ops.Tools.LintFixtures.cheat_liberalAbort`: a liberal statement
+without a success statement about the same program
+-/
+#guard_msgs (whitespace := lax) in
+#ops_lint cheat_liberalAbort
+
+/--
+error: ops_lint (f) `NLAlib.Ops.Tools.LintFixtures.cheat_xi`: the algorithm's tree calls the
+ξ-taking primitive `NLAlib.Ops.Examples.SrLo.sraddXi`
+-/
+#guard_msgs (whitespace := lax) in
+#ops_lint cheat_xi
+
+/-! ### Headlines of the examples are accepted -/
+
+/-- info: ops_lint: `NLAlib.Ops.Examples.runs_gemm_rounded` passes (a)-(f) -/
+#guard_msgs in
+#ops_lint NLAlib.Ops.Examples.runs_gemm_rounded
+
+/-- info: ops_lint: `NLAlib.Ops.Examples.gemm_spec` passes (a)-(f) -/
+#guard_msgs in
+#ops_lint NLAlib.Ops.Examples.gemm_spec
+
+/-- info: ops_lint: `NLAlib.Ops.Examples.runs_srsum` passes (a)-(f) -/
+#guard_msgs in
+#ops_lint NLAlib.Ops.Examples.runs_srsum
+
+/-- info: ops_lint: `NLAlib.Ops.sumSeq_spec` passes (a)-(f) -/
+#guard_msgs in
+#ops_lint NLAlib.Ops.sumSeq_spec
+
+end NLAlib.Ops.Tools.LintFixtures

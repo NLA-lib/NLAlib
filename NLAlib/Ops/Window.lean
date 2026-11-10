@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Ops.Frame
+public import NLAlib.Ops.StoreSimp
 public import NLAlib.Ops.Rules
 public import NLAlib.Ops.Tape
 
@@ -165,6 +166,14 @@ def drawRel (s : ℕ) : WinRel K where
   inLens _ := []
   outLen d := d.headD 0
   rel _ _ w ys := ys = w
+
+@[storeNF] theorem drawRel_win (s : ℕ) (d : List ℕ) :
+    (drawRel (K := K) s).win d = d.headD 0 := rfl
+
+@[storeNF] theorem drawRel_inLens (s : ℕ) (d : List ℕ) : (drawRel (K := K) s).inLens d = [] := rfl
+
+@[storeNF] theorem drawRel_outLen (s : ℕ) (d : List ℕ) :
+    (drawRel (K := K) s).outLen d = d.headD 0 := rfl
 
 /-- The vector draw of the model meets the contract of the vector draw. -/
 theorem Interp.IsFn.meets_drawRel {I : Interp Op Tst K} {o : Op} {s : ℕ}

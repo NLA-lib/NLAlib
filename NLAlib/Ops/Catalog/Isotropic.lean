@@ -200,4 +200,32 @@ theorem integral_quadForm (h : IsIsotropic ν) (A : Matrix (Fin n) (Fin n) ℝ) 
 
 end IsIsotropic
 
+theorem quadForm_eq_sum_mulVec {n : ℕ} (A : Matrix (Fin n) (Fin n) ℝ) (g : Fin n → ℝ) :
+    quadForm A g = ∑ i, g i * A.mulVec g i := by
+  simp [quadForm, Matrix.mulVec, dotProduct, Finset.mul_sum, mul_assoc]
+
+theorem measurable_mulVec {n : ℕ} (A : Matrix (Fin n) (Fin n) ℝ) :
+    Measurable fun v : Fin n → ℝ => A.mulVec v :=
+  measurable_pi_lambda _ fun i => by
+    have : (fun v : Fin n → ℝ => A.mulVec v i) = fun v => ∑ j, A i j * v j := by
+      funext v
+      simp [Matrix.mulVec, dotProduct]
+    rw [this]
+    exact Finset.measurable_sum _ fun j _ => (measurable_pi_apply j).const_mul _
+
+/-- **The law of a decoded probe**: `n` independent draws of `μ`, decoded. -/
+noncomputable def probeLaw {K : Type} [MeasurableSpace K] (dec : K → ℝ) (μ : Measure K) (n : ℕ) :
+    Measure (Fin n → ℝ) :=
+  (Measure.pi fun _ : Fin n => μ).map fun w i => dec (w i)
+
+/-- A probe of draws that decode to a standard law is isotropic. -/
+theorem isIsotropic_probeLaw {K : Type} [MeasurableSpace K] {dec : K → ℝ} {μ : Measure K}
+    (hdec : Measurable dec) (h : IsStdLaw (μ.map dec)) (n : ℕ) :
+    IsIsotropic (probeLaw dec μ n) := by
+  have := h.prob
+  have e : probeLaw dec μ n = Measure.pi fun _ : Fin n => μ.map dec :=
+    Measure.pi_map_pi fun _ => hdec.aemeasurable
+  rw [e]
+  exact h.isIsotropic_pi n
+
 end NLAlib.Ops

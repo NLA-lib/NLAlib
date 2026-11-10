@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Ops.Examples.CgsMath
+public import NLAlib.Ops.Logic.Tactic
 public import NLAlib.Ops.Profiles.BlasCert
 
 /-!
@@ -16,15 +17,13 @@ matrix stored by columns: the coefficients `r_ij := q_iᵀ a_j` (`cgsDots`), the
 `v := a_j`, the updates `v := v - r_ij q_i` (`cgsProj`), `r_jj := ‖v‖`, `v := v / r_jj`,
 `q_j := v`. It calls `dot`, `copy`, `axpy`, `nrm2`, `scal` and the scalar negation.
 
-The five buffers (`A`, `Q`, `R`, a scratch cell `t`, the work vector `v`) are an injective
-family indexed by `NLAlib.Ops.Examples.CgsBuf`, so that all disjointness is one hypothesis.
-
 ## Main results
 
-* `NLAlib.Ops.Examples.wp_cgsDots`, `NLAlib.Ops.Examples.wp_cgsProj`: the two loops.
-* `NLAlib.Ops.Examples.wp_cgsCol`: the column, for every interpretation meeting the contracts:
-  the store changes only in column `j` of `Q`, column `j` of `R` and the two scratch buffers,
-  and the new entries are described by `NLAlib.Ops.Examples.CgsCol`.
+* `NLAlib.Ops.Examples.cgsCol_writes`: the column as one block specification, for every
+  interpretation meeting the contracts: the store changes only in column `j` of `R` (up to the
+  diagonal), column `j` of `Q` and the two scratch buffers, and the new entries are described by
+  `NLAlib.Ops.Examples.CgsCol`. Proved in the program logic (`NLAlib.Ops.Logic`): a relational
+  fill (the coefficients), a loop of updates and three steps.
 -/
 
 @[expose] public section
@@ -34,20 +33,6 @@ namespace NLAlib.Ops.Examples
 open NLAlib.Ops
 
 variable {K Op Tst : Type} [Has ScalarOp Op] [Has Blas1Op Op]
-
-/-- The buffers of classical Gram–Schmidt. -/
-inductive CgsBuf where
-  /-- The matrix `A`, `n × p` by columns. -/
-  | A
-  /-- The matrix `Q`, `n × p` by columns. -/
-  | Q
-  /-- The matrix `R`, `p × p` by columns. -/
-  | R
-  /-- A scratch cell. -/
-  | t
-  /-- The work vector, `n` cells. -/
-  | v
-  deriving DecidableEq
 
 /-- The coefficients of column `j`: `r_ij := q_iᵀ a_j` for `i < j`. Index variables: `n`, `p`,
 the offsets of `A`, `R`, `Q`, `R`, `j`, then `i`; buffer variables: `A`, `R`, `Q`, `R`, `t`,
@@ -75,139 +60,59 @@ def cgsCol : Stmt Op Tst :=
       [⟨3, .var 5 + .var 6 * .var 1 + .var 6⟩, ⟨5, .const 0⟩] [⟨5, .const 0⟩])
     (.call (Has.inj Blas1Op.copy) [.var 0] [⟨5, .const 0⟩] [⟨2, .var 4 + .var 6 * .var 0⟩])))))
 
-/-- The environment of a column: the sizes, the offsets, the column index, the buffers of the
-operands `A`, `R`, `Q`, `R` and the two scratch buffers. -/
-abbrev cgsEnv (H : CgsBuf → ℕ) (n p oA oQ oR j : ℕ) : Env :=
-  ⟨[n, p, oA, oR, oQ, oR, j], [H .A, H .R, H .Q, H .R, H .t, H .v]⟩
+variable [Inhabited K]
 
-variable [Inhabited K] {M : Machine K} {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop}
-  {J : Interp Op Tst K} {τ : Tape K} {H : CgsBuf → ℕ} {n p oA oQ oR j : ℕ} {s : Store K}
-  {pos : ℕ} {qs a : List K}
-
-omit [Has ScalarOp Op] in
-/-- **The coefficients of a column**: the block of `R` receives `j` dot products; nothing else
-is written. -/
-theorem wp_cgsDots (hJ : IsBlas1 dec ε ok J) (hok : ok n) (hH : Function.Injective H)
-    (hl : ∀ b, H b < s.length) (hq : s.readBlock (H .Q) oQ (j * n) = some qs)
-    (ha : s.readBlock (H .A) (oA + j * n) n = some a)
-    (hR : oR + j * p + j ≤ s.len (H .R)) {P : Mem K → Prop}
-    (hP : ∀ s₁ rp, s.EqOff (Store.inBlock (H .R) (oR + j * p) j) s₁ →
-      s₁.readBlock (H .R) (oR + j * p) j = some rp →
-      (∀ i < j, IsDotErr dec (ε.dot n) n (fun l => vec qs (i * n + l)) (vec a) (vec rp i)) →
-      P ⟨s₁, pos⟩) :
-    Wp .total J τ cgsDots (cgsEnv H n p oA oQ oR j) P ⟨s, pos⟩ := by
-  refine wp_loop (k := j) rfl (fun i μ' => ∃ s₁ rp, μ' = ⟨s₁, pos⟩ ∧
-    s.EqOff (Store.inBlock (H .R) (oR + j * p) i) s₁ ∧
-    s₁.readBlock (H .R) (oR + j * p) i = some rp ∧
-    ∀ i' < i, IsDotErr dec (ε.dot n) n (fun l => vec qs (i' * n + l)) (vec a) (vec rp i'))
-    ⟨s, [], rfl, Store.EqOff.refl _ _, rfl, by simp⟩ ?_
-    fun μ' ⟨s₁, rp, e, h1, h2, h3⟩ => e ▸ hP s₁ rp h1 h2 h3
-  rintro i hi μ' ⟨s₁, rp, rfl, hfr, hr, hd⟩
-  have hin : i * n + n ≤ j * n := by
-    have := Nat.mul_le_mul_right n hi
-    rwa [Nat.succ_mul] at this
-  have hlen := hfr.len_eq (H .R)
-  have hlive : ∀ b, H b < s₁.length := fun b => hfr.length_eq ▸ hl b
-  have hrq := hfr.readBlock_of (Store.readBlock_sub hq hin) (by store_side [hH.eq_iff])
-  have hra := hfr.readBlock_of ha (by store_side [hH.eq_iff])
-  have hrl := Store.length_of_readBlock hr
-  wp_call hJ.dot [hH.eq_iff] with v hv
-  refine ⟨_, rp ++ [v], rfl, (hfr.mono fun b q h => ⟨h.1, h.2.1, by have := h.2.2; omega⟩).upd
-    ⟨rfl, by omega, by omega⟩ _, Store.readBlock_upd_concat hr (by omega) _, fun i' hi' => ?_⟩
-  obtain hlt | heq : i' < i ∨ i' = i := by omega
-  · rw [vec_append_left (hrl ▸ hlt)]
-    exact hd i' hlt
-  · rw [heq, ← hrl, vec_concat, hrl]
-    exact IsDotErr.congr hv (fun k hk => Store.getD_drop_take qs _ _ _ hk default)
-      fun _ _ => rfl
-
-/-- **The updates of a column**: the work vector goes through the chain of updates; only the two
-scratch buffers are written. -/
-theorem wp_cgsProj (hS : IsScalar M J) (hJ : IsBlas1 dec ε ok J)
-    (hneg : ∀ x, dec (M.neg x) = -dec x) (hok : ok n) (hH : Function.Injective H)
-    (hl : ∀ b, H b < s.length) {rp w₀ : List K}
-    (hq : s.readBlock (H .Q) oQ (j * n) = some qs)
-    (hr : s.readBlock (H .R) (oR + j * p) j = some rp)
-    (hv : s.readBlock (H .v) 0 n = some w₀) (ht : 0 < s.len (H .t)) (hvl : n ≤ s.len (H .v))
-    {P : Mem K → Prop}
-    (hP : ∀ s₁ w, s.EqOff (Store.inBuf (H .t) ⊔ Store.inBuf (H .v)) s₁ → w.length = n →
-      s₁.readBlock (H .v) 0 n = some w →
-      AxpyChain dec ε.axpy n (fun i l => vec qs (i * n + l)) (vec rp) (vec w₀) j (vec w) →
-      P ⟨s₁, pos⟩) :
-    Wp .total J τ cgsProj (cgsEnv H n p oA oQ oR j) P ⟨s, pos⟩ := by
-  refine wp_loop (k := j) rfl (fun i μ' => ∃ s₁ w, μ' = ⟨s₁, pos⟩ ∧
-    s.EqOff (Store.inBuf (H .t) ⊔ Store.inBuf (H .v)) s₁ ∧ w.length = n ∧
-    s₁.readBlock (H .v) 0 n = some w ∧
-    AxpyChain dec ε.axpy n (fun i l => vec qs (i * n + l)) (vec rp) (vec w₀) i (vec w))
-    ⟨s, w₀, rfl, Store.EqOff.refl _ _, Store.length_of_readBlock hv, hv, .zero⟩ ?_
-    fun μ' ⟨s₁, w, e, h1, h2, h3, h4⟩ => e ▸ hP s₁ w h1 h2 h3 h4
-  rintro i hi μ' ⟨s₁, w, rfl, hfr, hwl, hw, hc⟩
-  have hin : i * n + n ≤ j * n := by
-    have := Nat.mul_le_mul_right n hi
-    rwa [Nat.succ_mul] at this
-  have hlt := hfr.len_eq (H .t)
-  have hlv := hfr.len_eq (H .v)
-  have hlive : ∀ b, H b < s₁.length := fun b => hfr.length_eq ▸ hl b
-  have hrq := hfr.readBlock_of (Store.readBlock_sub hq hin) (by store_side [hH.eq_iff])
-  have hgr : s₁.get (H .R) (oR + j * p + i) = some (vec rp i) :=
-    (hfr.get_eq (by store_side [hH.eq_iff])).trans (Store.get_of_readBlock hr hi default)
-  wp_call (hS .neg)
-  wp_call hJ.axpy [hH.eq_iff] with zs hzl hzs
-  refine ⟨_, zs, rfl, (hfr.upd (Or.inl rfl) _).updBlock fun _ _ => Or.inr rfl, hzl,
-    by store_simp [hH.eq_iff], hc.step (hneg _) (hzs.congr
-      (fun k hk => Store.getD_drop_take qs _ _ _ hk default) (fun _ _ => rfl) fun _ _ => rfl)⟩
-
-/-- The cells a column may write: column `j` of `R` and of `Q`, and the scratch buffers. -/
-def cgsColFp (H : CgsBuf → ℕ) (n p oQ oR j : ℕ) : ℕ → ℕ → Prop :=
-  Store.inBlock (H .R) (oR + j * p) (j + 1) ⊔ Store.inBlock (H .Q) (oQ + j * n) n ⊔
-    Store.inBuf (H .t) ⊔ Store.inBuf (H .v)
-
-/-- **Column `j` of classical Gram–Schmidt**, for every interpretation meeting the contracts:
-from the `j` previous columns `qs` of `Q` and the column `a` of `A`, the run writes column `j` of
-`R` and of `Q` (and the scratch buffers), and the new entries satisfy `CgsCol`. -/
-theorem wp_cgsCol (hS : IsScalar M J) (hJ : IsBlas1 dec ε ok J)
-    (hneg : ∀ x, dec (M.neg x) = -dec x) (hok : ok n) (hH : Function.Injective H)
-    (hl : ∀ b, H b < s.length) (hq : s.readBlock (H .Q) oQ (j * n) = some qs)
-    (ha : s.readBlock (H .A) (oA + j * n) n = some a)
-    (hR : oR + j * p + j < s.len (H .R)) (hQ : oQ + j * n + n ≤ s.len (H .Q))
-    (ht : 0 < s.len (H .t)) (hvl : n ≤ s.len (H .v)) {P : Mem K → Prop}
-    (hP : ∀ s₁ rp ρ qj, s.EqOff (cgsColFp H n p oQ oR j) s₁ →
-      s₁.readBlock (H .R) (oR + j * p) (j + 1) = some (rp ++ [ρ]) →
-      s₁.readBlock (H .Q) (oQ + j * n) n = some qj → CgsCol dec ε n j qs a rp ρ qj →
-      P ⟨s₁, pos⟩) :
-    Wp .total J τ cgsCol (cgsEnv H n p oA oQ oR j) P ⟨s, pos⟩ := by
-  have hal := Store.length_of_readBlock ha
-  refine wp_seq (wp_cgsDots hJ hok hH hl hq ha (by omega) fun s₁ rp hf1 hr1 hd => ?_)
-  have hl1 : ∀ b, H b < s₁.length := fun b => hf1.length_eq ▸ hl b
-  have hlen1 := fun b => hf1.len_eq b
-  have hq1 := hf1.readBlock_of hq (by store_side [hH.eq_iff])
-  have ha1 := hf1.readBlock_of ha (by store_side [hH.eq_iff])
-  -- the work vector
-  wp_call hJ.copy [hH.eq_iff, hlen1] with ys hyl hys
-  obtain rfl : a = ys := (List.cons.inj hys).1.symm
-  -- the updates
-  refine wp_seq (wp_cgsProj hS hJ hneg hok hH (by store_simp) (qs := qs) (rp := rp) (w₀ := a)
-    (by store_simp [hH.eq_iff]) (by store_simp [hH.eq_iff]) (by store_simp [hlen1])
-    (by store_simp [hlen1]) (by store_simp [hlen1]) fun s₃ w hf3 hwl hw hc => ?_)
-  have hl3 : ∀ b, H b < s₃.length := fun b => by rw [hf3.length_eq]; store_simp
-  have hlen3 : ∀ b, s₃.len b = s.len b := fun b => by rw [hf3.len_eq]; store_simp [hlen1]
-  have hr3 : s₃.readBlock (H .R) (oR + j * p) j = some rp :=
-    hf3.readBlock_of (by store_simp [hH.eq_iff]) (by store_side [hH.eq_iff])
-  -- the norm
-  wp_call hJ.nrm2 [hH.eq_iff, hlen3] with ρ hρ
-  -- the scaling
-  wp_call hJ.scal [hH.eq_iff, hlen3] with zs hzl hzs
-  -- the column of `Q`
-  wp_call hJ.copy [hH.eq_iff, hlen3] with ys hyl hys
-  obtain rfl : zs = ys := (List.cons.inj hys).1.symm
-  refine hP _ rp ρ zs ?_ ?_ (by store_simp [hlen3]) ⟨hd, w, hc, hρ, hzs⟩
-  · refine ((((hf1.mono fun b i h => ?_).updBlock fun _ _ => Or.inr rfl).trans
-      (hf3.mono fun b i h => ?_)).upd (Or.inl (Or.inl (Or.inl ⟨rfl, by omega, by omega⟩)))
-      _).updBlock (fun _ _ => Or.inr rfl) |>.updBlock
-      fun i hi => Or.inl (Or.inl (Or.inr ⟨rfl, by omega, by omega⟩))
-    · exact Or.inl (Or.inl (Or.inl ⟨h.1, h.2.1, by have := h.2.2; omega⟩))
-    · exact h.elim (fun h => Or.inl (Or.inr h)) Or.inr
-  · store_simp [hH.eq_iff]
-    exact Store.readBlock_upd_concat hr3 (by rw [hlen3]; omega) _
+/-- **Column `j` of `cgs`** as one block specification, from facts at its first memory: the
+coefficients (a relational fill of column `j` of `R`), the work vector, the updates (a loop), the
+norm, the scaling and the copy into column `j` of `Q`. -/
+theorem cgsCol_writes {M : Machine K} {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop}
+    {J : Interp Op Tst K} (hS : IsScalar M J) (hJ : IsBlas1 dec ε ok J)
+    (hneg : ∀ x, dec (M.neg x) = -dec x) {τ : Tape K} {n p j L : ℕ} {A Q R : ℕ × ℕ}
+    {m₁ : Mem K} {qs a : List K} (hok : ok n) (_hAQ : A.1 ≠ Q.1) (hAR : A.1 ≠ R.1)
+    (hQR : Q.1 ≠ R.1) (hL : A.1 < L ∧ R.1 < L ∧ Q.1 < L) (hlen : m₁.store.length = L + 2)
+    (hqs : m₁.store.readBlock Q.1 Q.2 (j * n) = some qs)
+    (ha : m₁.store.readBlock A.1 (A.2 + j * n) n = some a)
+    (hRz : R.2 + j * p + j < m₁.store.len R.1) (hQz : Q.2 + j * n + n ≤ m₁.store.len Q.1)
+    (ht : m₁.store.len L = 1) (hv : m₁.store.len (L + 1) = n) :
+    Writes .total J τ cgsCol
+      ((((Env.frame [n, p] ([A, R] ++ [Q, R])).pushBuf L).pushBuf (L + 1)).pushIdx j)
+      (Store.inBlock R.1 (R.2 + j * p) (j + 1) ⊔ Store.inBlock Q.1 (Q.2 + j * n) n ⊔
+        Store.inBuf L ⊔ Store.inBuf (L + 1))
+      (fun m' => m'.pos = m₁.pos ∧ ∃ rp ρ qj,
+        m'.store.readBlock R.1 (R.2 + j * p) (j + 1) = some (rp ++ [ρ]) ∧
+        m'.store.readBlock Q.1 (Q.2 + j * n) n = some qj ∧ CgsCol dec ε n j qs a rp ρ qj) m₁ := by
+  -- the coefficients `r_ij := q_iᵀ a_j`, `i < j`
+  refine Writes.seq_le (writes_fillRel (b := R.1) (o := R.2 + j * p) rfl (fun i x =>
+      IsDotErr dec (ε.dot n) n (fun l => vec qs (i * n + l)) (vec a) x) (fun _ => m₁.pos) rfl
+      fun i hi m₃ hfr₃ _ hpos₃ => ?_) (by fp_sub) fun m₃ hfr₃ ⟨⟨v, hvH, hvR⟩, hpos₃⟩ => ?_
+  · step hJ.dot as m₄ hfr₄ ⟨hpos₄, x, hx, hrel⟩
+    exact ⟨⟨x, hx, hrel.congr (fun l hl => vec_drop_take hl) fun _ _ => rfl⟩,
+      by simp [hpos₄, hpos₃]⟩
+  -- the work vector `v := a_j`
+  step hJ.copy as m₄ hfr₄ ⟨hpos₄, w₀, hw₀, hwa⟩
+  subst w₀
+  -- the updates `v := v - r_ij q_i`, `i < j`
+  have hrp := Store.holdsVec_iff_readBlock.mp hvH
+  refine Writes.seq_le (writes_loop rfl (fun _ => Store.inBuf L ⊔ Store.inBuf (L + 1))
+      (fun _ _ => le_rfl)
+      (fun i m' => m'.pos = m₁.pos ∧ ∃ w, m'.store.readBlock (L + 1) 0 n = some w ∧
+        AxpyChain dec ε.axpy n (fun i l => vec qs (i * n + l)) (vec ((List.range j).map v))
+          (vec a) i (vec w))
+      ⟨by simp [hpos₄, hpos₃], _, hw₀, .zero⟩ fun i hi m₅ hfr₅ ⟨hpos₅, w, hw, hc⟩ => ?_)
+    (by fp_sub) fun m₅ hfr₅ ⟨hpos₅, w, hw, hc⟩ => ?_
+  · have hvi := hvH i hi
+    step (hS .neg) as m₆ hfr₆ ⟨hpos₆, t, ht, htrel⟩
+    step hJ.axpy as m₇ hfr₇ ⟨hpos₇, zs, hzs, hzrel⟩
+    exact ⟨by simp [hpos₇, hpos₆, hpos₅], zs, hzs, hc.step
+      (by rw [← htrel]; simpa only [vec_map_range v hi] using hneg (v i))
+      (hzrel.congr (fun l hl => vec_drop_take hl) (fun _ _ => rfl) fun _ _ => rfl)⟩
+  -- the norm, the scaling, the copy into `Q`
+  step hJ.nrm2 as m₆ hfr₆ ⟨hpos₆, ρ, hρ, hρrel⟩
+  step hJ.scal as m₇ hfr₇ ⟨hpos₇, zs, hzs, hzrel⟩
+  step hJ.copy as m₈ hfr₈ ⟨hpos₈, qj, hqj, hqz⟩
+  subst qj
+  exact ⟨by simp [hpos₈, hpos₇, hpos₆, hpos₅], _, ρ, zs,
+    Store.readBlock_succ_of (by kept) (by kept), hqj,
+    ⟨fun i hi => by simpa only [vec_map_range v hi] using hvR i hi, w, hc, hρrel, hzrel⟩⟩
 
 end NLAlib.Ops.Examples

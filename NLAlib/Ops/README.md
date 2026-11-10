@@ -350,6 +350,19 @@ Checks on these modules: `lake build --wfail` clean; no `sorry`, no `set_option`
 under 600 lines, proofs under 80; `scripts/check_rules.py` leaves the same classes as before
 (E6 and P1, keyed to the old core and the layer table, and P2 for `Attr.lean`).
 
+### The logic layer (phase B, 2026-11-10)
+
+The certificates of `gemm`, modified and classical Gram–Schmidt are proved in the program logic
+(`NLAlib.Ops.Logic`, `docs/design/Ops-ProgramLogic.md`), with the same names and statements as
+before; the old `wp` run proofs are deleted. Proof lines: `gemm_spec` 18 (relational 2-D fill),
+`mgs_spec` 28, `cgsCol_writes` 52 and `cgs_spec` 47. Run proofs plus contract and certificate,
+by the count of the table above: `gemm` 134 → 83, modified Gram–Schmidt 172 → 104, classical
+Gram–Schmidt 410 → 220. Files: `Gemm` 275 → 208 lines, `GramSchmidt` 297 → 231, `Cgs`
+213 → 118, `CgsQR` 358 → 257. Elaboration (`scripts/ops/audit.py`, `lake env lean`, two
+threads): `Gemm` 4.8 s, `GramSchmidt` 8.7 s, `Cgs` 12.2 s, `CgsQR` 4.7 s; all 79 files of
+`NLAlib/Ops` (tools included) 261.2 s. The tables above are of the earlier step and are kept as
+they were measured.
+
 ## Not done, and why
 
 * **Item 8, per-block operands and strides.** Not cheap. Admissibility by block needs the

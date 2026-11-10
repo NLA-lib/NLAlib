@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Ops.Logic.Count
+public import NLAlib.Ops.Logic.Tactic
 public import NLAlib.Ops.Profiles.BlasCert
 
 /-!
@@ -13,14 +14,15 @@ public import NLAlib.Ops.Profiles.BlasCert
 
 The algorithm `NLAlib.Ops.Examples.mgs` orthogonalizes a vector `w` against the `k` rows of `Q`
 and stores the `k` coefficients and the norm of the result in `R`. This is the example of the
-first build, proved again with the rules on given operands, `store_simp` and frames.
+first build, proved in the program logic (`NLAlib.Ops.Logic`) with block specifications.
 
 ## Main results
 
 * Mathematics: the postcondition is the recurrence with local errors
   `NLAlib.Ops.Examples.MgsRec`, on decoded values; its analysis is not part of this file.
-* Program logic (`NLAlib.Ops.Examples.wp_mgs`): for every interpretation meeting the contracts,
-  the run ends in a memory described by the recurrence.
+* The certificate (`NLAlib.Ops.Examples.mgs_spec`): for every interpretation meeting the
+  contracts, `mgs` meets its contract in operand form (`NLAlib.Ops.Examples.mgsRel`): one
+  allocation, one loop in the standard invariant form, a named step per call.
 * The abstract theorem (`NLAlib.Ops.Examples.runs_mgs_rounded`): the same with the call counts
   `k (dot + neg + axpy) + nrm2`, by evaluating the static cost.
 * The corollary (`NLAlib.Ops.Examples.runs_mgs_link_seq`): the program linked through the
@@ -73,7 +75,7 @@ def mgs : Stmt Op Tst :=
 `w`, `R`. -/
 def mgsImpl : Impl Op Tst := ⟨2, 2, 2, mgs⟩
 
-/-! ### Program logic -/
+/-! ### The contract -/
 
 variable [Inhabited K]
 
@@ -113,89 +115,6 @@ def MgsRounded (dec : K → ℝ) (ε : Blas1Err) (n k : ℕ) (w R : ℕ × ℕ) 
   ∃ ws' rν : List K, ws'.length = n ∧ rν.length = k + 1 ∧ MgsOut dec ε n k qs ws ws' rν ∧
     μ' = (μ.updBlock w ws').updBlock R rν
 
-/-- The invariant of the loop of `mgs` after `j` steps, on the store with the scratch cell. -/
-def MgsInv (dec : K → ℝ) (ε : Blas1Err) (n bw ow bR oR : ℕ) (qs ws : List K) (μ : Mem K)
-    (j : ℕ) (μ' : Mem K) : Prop :=
-  ∃ (s' : Store K) (ws' r : List K), μ' = ⟨s', μ.pos⟩ ∧ ws'.length = n ∧
-    (μ.store.push 1).EqOff
-      (Store.inBlock bw ow n ⊔ Store.inBlock bR oR j ⊔ Store.inBuf μ.store.length) s' ∧
-    s'.readBlock bw ow n = some ws' ∧ s'.readBlock bR oR j = some r ∧
-    MgsRec dec (ε.dot n) ε.axpy n (fun j i => vec qs (j * n + i)) (vec ws) j (vec ws') r
-
-/-- **One step of the loop**, by the contracts of `dot`, `neg` and `axpy`. -/
-theorem wp_mgs_step {M : Machine K} {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop}
-    {J : Interp Op Tst K} (hS : IsScalar M J) (hJ : IsBlas1 dec ε ok J)
-    (hneg : ∀ a, dec (M.neg a) = -dec a) {τ : Tape K} {n k j : ℕ} {Q w R : ℕ × ℕ}
-    {μ μ₁ : Mem K} {qs ws : List K} (hok : ok n) (hQw : Q.1 ≠ w.1) (hQR : Q.1 ≠ R.1)
-    (hwR : w.1 ≠ R.1) (hl : μ.Live [Q, w, R]) (hj : j < k)
-    (hq : μ.store.readBlock Q.1 Q.2 (k * n) = some qs)
-    (hwl : w.2 + n ≤ μ.store.len w.1) (hR : R.2 + (k + 1) ≤ μ.store.len R.1)
-    (hinv : MgsInv dec ε n w.1 w.2 R.1 R.2 qs ws μ j μ₁) :
-    Wp .total J τ mgsBody
-      (((Env.frame [n, k] [Q, w, w, R]).pushBuf μ.store.length).pushIdx j)
-      (MgsInv dec ε n w.1 w.2 R.1 R.2 qs ws μ (j + 1)) μ₁ := by
-  obtain ⟨s', ws', r, rfl, hws, hfr, hw, hr, hrec⟩ := hinv
-  obtain ⟨h0, h1, h2⟩ : Q.1 < μ.store.length ∧ w.1 < μ.store.length ∧
-      R.1 < μ.store.length := by simpa using hl
-  have hjn : j * n + n ≤ k * n := by
-    have := Nat.mul_le_mul_right n hj
-    rwa [Nat.succ_mul] at this
-  have hlen : s'.length = μ.store.length + 1 := by rw [hfr.length_eq, Store.length_push]
-  have hlR : s'.len R.1 = μ.store.len R.1 := by rw [hfr.len_eq, Store.len_push_of_lt h2]
-  have hlt : s'.len μ.store.length = 1 := by rw [hfr.len_eq, Store.len_push_top]
-  have hlw : s'.len w.1 = μ.store.len w.1 := by rw [hfr.len_eq, Store.len_push_of_lt h1]
-  have hrow := hfr.readBlock_of (by store_simp [Store.readBlock_sub hq hjn] :
-    (μ.store.push 1).readBlock Q.1 (Q.2 + j * n) n = some ((qs.drop (j * n)).take n))
-    (by store_side)
-  have hrowv : ∀ i < n, vec ((qs.drop (j * n)).take n) i = vec qs (j * n + i) :=
-    fun i hi => Store.getD_drop_take qs _ _ _ hi default
-  -- the coefficient, its negation in the scratch cell, the update of `w`
-  wp_call hJ.dot with ρ hρ
-  wp_call (hS .neg)
-  wp_call hJ.axpy with zs hzl hzs
-  refine ⟨_, zs, r ++ [ρ], rfl, hzl, (((hfr.mono fun b i h => ?_).upd
-    (Or.inl (Or.inr ⟨rfl, by omega, by omega⟩)) _).upd (Or.inr rfl) _).updBlock
-    fun i hi => Or.inl (Or.inl ⟨rfl, by omega, by rw [hzl] at hi; omega⟩), ?_, ?_,
-    hrec.step (hρ.congr hrowv fun _ _ => rfl) (hneg ρ)
-      (hzs.congr hrowv (fun _ _ => rfl) fun _ _ => rfl)⟩
-  · exact h.imp (Or.imp id fun h => ⟨h.1, h.2.1, by have := h.2.2; omega⟩) id
-  · store_simp
-  · store_simp
-    exact Store.readBlock_upd_concat hr (by omega) _
-
-/-- **The run of `mgs`**, for every interpretation meeting the contracts: `Q`, `w`, `R` in three
-buffers, `Q` and `w` readable, `R` with room for `k + 1` cells. -/
-theorem wp_mgs {M : Machine K} {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop}
-    {J : Interp Op Tst K} (hS : IsScalar M J) (hJ : IsBlas1 dec ε ok J)
-    (hneg : ∀ a, dec (M.neg a) = -dec a) {τ : Tape K} {n k : ℕ} {Q w R : ℕ × ℕ}
-    {μ : Mem K} {qs ws : List K} (hok : ok n) (hQw : Q.1 ≠ w.1) (hQR : Q.1 ≠ R.1)
-    (hwR : w.1 ≠ R.1) (hl : μ.Live [Q, w, R])
-    (hq : μ.store.readBlock Q.1 Q.2 (k * n) = some qs)
-    (hw : μ.store.readBlock w.1 w.2 n = some ws) (hwl : w.2 + n ≤ μ.store.len w.1)
-    (hR : R.2 + (k + 1) ≤ μ.store.len R.1) :
-    Wp .total J τ mgs (Env.frame [n, k] [Q, w, w, R]) (MgsRounded dec ε n k w R qs ws μ) μ := by
-  obtain ⟨h0, h1, h2⟩ : Q.1 < μ.store.length ∧ w.1 < μ.store.length ∧
-      R.1 < μ.store.length := by simpa using hl
-  refine wp_alloc rfl (wp_seq (wp_loop (k := k) rfl (MgsInv dec ε n w.1 w.2 R.1 R.2 qs ws μ)
-    ⟨_, ws, [], rfl, Store.length_of_readBlock hw, Store.EqOff.refl _ _, by store_simp, rfl,
-      .zero⟩ (fun j hj μ₁ hinv => wp_mgs_step hS hJ hneg hok hQw hQR hwR hl hj hq
-        hwl hR hinv) ?_))
-  rintro μ₁ ⟨s', ws', r, rfl, hws, hfr, hw', hr, hrec⟩
-  have hlen : s'.length = μ.store.length + 1 := by rw [hfr.length_eq, Store.length_push]
-  have hlR : s'.len R.1 = μ.store.len R.1 := by rw [hfr.len_eq, Store.len_push_of_lt h2]
-  wp_call hJ.nrm2 with ν hν
-  refine ⟨ws', r ++ [ν], hws, by simp [Store.length_of_readBlock hr], ⟨r, ν, rfl, hrec, hν⟩, ?_⟩
-  have hfr' : μ.store.EqOff (Store.inBlock w.1 w.2 n ⊔ Store.inBlock R.1 R.2 (k + 1))
-      ((s'.upd R.1 (R.2 + k) ν).pop) := by
-    refine Store.EqOff.pop ((hfr.mono fun b i h => ?_).upd
-      (Or.inl (Or.inr ⟨rfl, by omega, by omega⟩)) _)
-    exact h.imp (Or.imp id fun h => ⟨h.1, h.2.1, by have := h.2.2; omega⟩) id
-  have e := hfr'.eq_updBlock₂ (xs := ws') (ys := r ++ [ν]) (by store_simp) (by
-    store_simp
-    exact Store.readBlock_upd_concat (by rw [Store.readBlock_pop_of_lt (by omega)]; exact hr)
-      (by rw [Store.len_pop_of_lt (by omega)]; omega) _)
-  simp only [Mem.upd, Mem.updBlock, e]
-
 /-! ### The certificate, the abstract theorem and its corollary by linking -/
 
 omit [Inhabited K] in
@@ -223,20 +142,35 @@ theorem staticPeak_mgs_le (W : Op → List ℕ → ℕ) (n k a b b' c : ℕ) :
 
 /-- **The certificate of `mgs`**: for every interpretation meeting the contracts of scalar
 arithmetic and of the level-1 operations, `mgs` meets its contract, which has two output blocks.
-So `mgs` is an operation (an orthogonalisation step) for the algorithms above it. -/
+So `mgs` is an operation (an orthogonalisation step) for the algorithms above it. Proved by block
+specifications. -/
 theorem mgs_spec {M : Machine K} {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop}
     {J : Interp Op Tst K} (hS : IsScalar M J) (hJ : IsBlas1 dec ε ok J)
     (hneg : ∀ a, dec (M.neg a) = -dec a) :
     (mgsImpl (Op := Op) (Tst := Tst)).Meets J .total ((mgsRel dec ε).spec (MgsOperands ok)) := by
-  refine Impl.meets_rel fun d ins outs τ μ X hnd hadm hl hr _ hz => ?_
-  obtain ⟨n, k, rfl⟩ := List.length_eq_two.mp hnd
-  obtain ⟨hok, Q, w, R, rfl, rfl, hQw, hQR, hwR⟩ := hadm
-  obtain ⟨Q', w', qs, ws, e, hq, hw, rfl⟩ := Mem.readBlocks_two hr
-  cases e
-  refine ⟨⟨rfl, rfl, rfl⟩, (wp_mgs hS hJ hneg hok hQw hQR hwR (by simpa using hl) hq hw
-    hz.1 hz.2.1).mono ?_⟩
-  rintro μ' ⟨ws', rν, h1, h2, h3, rfl⟩
-  exact ⟨[ws', rν], by simp [h1, h2], h3, rfl⟩
+  cert_intro [n, k] (Q, x) → (w, R) reads (qs, ws)
+  obtain ⟨hok, rfl, hQw, hQR, hwR⟩ := hadm
+  refine writes_alloc rfl fun s₁ hs₁ ht hB => ?_
+  refine Writes.seq_le (writes_loop rfl
+    (fun j => Store.inBlock w.1 w.2 n ⊔ Store.inBlock R.1 R.2 j ⊔ Store.inBuf μ.store.length)
+    (fun j _ => by fp_sub)
+    (fun j m' => m'.pos = μ.pos ∧ ∃ ws' r, m'.store.readBlock w.1 w.2 n = some ws' ∧
+      m'.store.readBlock R.1 R.2 j = some r ∧
+      MgsRec dec (ε.dot n) ε.axpy n (fun j i => vec qs (j * n + i)) (vec ws) j (vec ws') r)
+    ⟨rfl, ws, [], by kept, rfl, .zero⟩ fun j hj m₁ hfr ⟨hpos, ws', r, hw', hr', hrec⟩ => ?_)
+    (by fp_sub) fun m₁ hfr ⟨hpos, ws', r, hw', hr', hrec⟩ => ?_
+  · step hJ.dot as m₂ hfr₂ ⟨hpos₂, ρ, hρ, hρrel⟩
+    step (hS .neg) as m₃ hfr₃ ⟨hpos₃, t, ht, htrel⟩
+    step hJ.axpy as m₄ hfr₄ ⟨hpos₄, zs, hzs, hzrel⟩
+    exact ⟨by rw [hpos₄, hpos₃, hpos₂, hpos], zs, r ++ [ρ], hzs,
+      Store.readBlock_succ_of (by kept) (by kept),
+      hrec.step (hρrel.congr (fun i hi => vec_drop_take hi) fun _ _ => rfl) (htrel ▸ hneg ρ)
+        (hzrel.congr (fun i hi => vec_drop_take hi) (fun _ _ => rfl) fun _ _ => rfl)⟩
+  · step hJ.nrm2 as m₂ hfr₂ ⟨hpos₂, ν, hν, hνrel⟩
+    intro s₂ _ hB₂
+    exact ⟨by simp [hpos₂, hpos], [ws', r ++ [ν]], Mem.readBlocks_of_cons (by kept)
+      (Mem.readBlocks_of_cons (Store.readBlock_succ_of (by kept) (by kept)) rfl),
+      r, ν, rfl, hrec, hνrel⟩
 
 /-- **The abstract theorem of `mgs`**, from its certificate by the bridge: for every
 interpretation meeting the contracts of scalar arithmetic and of the level-1 operations, the run

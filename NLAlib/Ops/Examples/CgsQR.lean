@@ -15,12 +15,16 @@ columns, by `p` runs of `NLAlib.Ops.Examples.cgsCol`, with a scratch cell and a 
 
 ## Main results
 
+* The certificate (`NLAlib.Ops.Examples.cgs_spec`): for every interpretation meeting the
+  contracts of scalar arithmetic and of the level-1 operations at `ε`, `cgs` meets its contract
+  in operand form (`NLAlib.Ops.Examples.cgsRel`); proved in the program logic
+  (`NLAlib.Ops.Logic`) from the column `NLAlib.Ops.Examples.cgsCol_writes`.
 * Abstract theorem (`NLAlib.Ops.Examples.runs_cgs_rounded`): for every interpretation meeting
   the contracts of scalar arithmetic and of the level-1 operations at `ε`, the run terminates
   within `NLAlib.Ops.Examples.cgsCount n p` calls, writes only the blocks `Q` and `R`, and every
   column of the computed factors satisfies `NLAlib.Ops.Examples.CgsCol`
-  (`NLAlib.Ops.Examples.CgsRounded`).
-* Backward error (`NLAlib.Ops.Examples.CgsRounded.backward`, mathematics): if no diagonal entry
+  (`NLAlib.Ops.Examples.CgsFactored`).
+* Backward error (`NLAlib.Ops.Examples.CgsOut.backward`, mathematics): if no diagonal entry
   of `R̂` is zero, `|A - Q̂ R̂| ≤ ((1 + ε_scal) (1 + ε_axpy) ^ j - 1) (|A| + |Q̂| |R̂|)` entry by
   entry in column `j` (the last factor without the diagonal term).
 * Corollaries (`NLAlib.Ops.Examples.runs_cgs_link_seq`,
@@ -50,21 +54,6 @@ def cgs : Stmt Op Tst := .alloc (.const 1) (.alloc (.var 0) (.loop (.var 1) cgsC
 `Q`, `R`. -/
 def cgsImpl : Impl Op Tst := ⟨2, 2, 2, cgs⟩
 
-/-- The buffers of a run of `cgs`: the three operands and the two scratch buffers on top of a
-store of length `L`. -/
-def cgsH (B : Fin 3 → ℕ) (L : ℕ) : CgsBuf → ℕ
-  | .A => B 0
-  | .Q => B 1
-  | .R => B 2
-  | .t => L
-  | .v => L + 1
-
-theorem cgsH_injective {B : Fin 3 → ℕ} (hB : Function.Injective B) {L : ℕ}
-    (hl : ∀ i, B i < L) : Function.Injective (cgsH B L) := by
-  have h0 := hl 0; have h1 := hl 1; have h2 := hl 2
-  intro x y h
-  cases x <;> cases y <;> simp [cgsH, hB.eq_iff] at h ⊢ <;> omega
-
 variable [Inhabited K]
 
 /-- The columns computed so far: the first `j` columns of `Q` are `qs`, and each of them, with
@@ -75,16 +64,6 @@ def CgsCols (dec : K → ℝ) (ε : Blas1Err) (n p bQ oQ bR oR : ℕ) (as : List
     ∀ j' < j, s'.readBlock bR (oR + j' * p) (j' + 1) = some (rp j' ++ [ρ j']) ∧
       CgsCol dec ε n j' (qs.take (j' * n)) ((as.drop (j' * n)).take n) (rp j') (ρ j')
         ((qs.drop (j' * n)).take n)
-
-/-- **The memory after `cgs`**: only the blocks `Q` and `R` are written, the computed columns
-satisfy `CgsCol`, and the block `R` is still readable if it was (its lower triangle is not
-written). -/
-def CgsRounded (dec : K → ℝ) (ε : Blas1Err) (n p bQ oQ bR oR : ℕ) (as : List K)
-    (μ μ' : Mem K) : Prop :=
-  μ'.pos = μ.pos ∧
-    μ.store.EqOff (Store.inBlock bQ oQ (p * n) ⊔ Store.inBlock bR oR (p * p)) μ'.store ∧
-    CgsCols dec ε n p bQ oQ bR oR as p μ'.store ∧
-    ((μ.store.readBlock bR oR (p * p)).isSome → (μ'.store.readBlock bR oR (p * p)).isSome)
 
 omit [Has ScalarOp Op] [Has Blas1Op Op] in
 /-- The columns computed so far, after one more column. -/
@@ -124,92 +103,7 @@ theorem CgsCols.succ {dec : K → ℝ} {ε : Blas1Err} {n p bQ oQ bR oR j : ℕ}
     rw [Function.update_self, Function.update_self, List.take_left' hql, e3]
     exact ⟨hRj, hcol qs hq⟩
 
-/-- **The run of `cgs`**, for every interpretation meeting the contracts. -/
-theorem wp_cgs {M : Machine K} {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop}
-    {J : Interp Op Tst K} (hS : IsScalar M J) (hJ : IsBlas1 dec ε ok J)
-    (hneg : ∀ x, dec (M.neg x) = -dec x) {τ : Tape K} {n p oA oQ oR : ℕ} {B : Fin 3 → ℕ}
-    {μ : Mem K} {as : List K} (hok : ok n) (hB : Function.Injective B)
-    (hl : ∀ i, B i < μ.store.length) (hA : μ.store.readBlock (B 0) oA (p * n) = some as)
-    (hQ : oQ + p * n ≤ μ.store.len (B 1)) (hR : oR + p * p ≤ μ.store.len (B 2)) :
-    Wp .total J τ cgs ⟨[n, p, oA, oR, oQ, oR], [B 0, B 2, B 1, B 2]⟩
-      (CgsRounded dec ε n p (B 1) oQ (B 2) oR as μ) μ := by
-  have h0 := hl 0; have h1 := hl 1; have h2 := hl 2
-  have hH := cgsH_injective hB hl
-  have hS1 : (μ.store.push 1).length = μ.store.length + 1 := Store.length_push _ _
-  refine wp_alloc rfl (wp_alloc rfl ?_)
-  simp only [hS1]
-  have hlS : ∀ b, cgsH B μ.store.length b < ((μ.store.push 1).push n).length := fun b => by
-    cases b <;> simp [cgsH] <;> omega
-  have hlen : ∀ i, ((μ.store.push 1).push n).len (B i) = μ.store.len (B i) := fun i => by
-    rw [Store.len_push_of_lt (Store.lt_length_push (hl i) 1), Store.len_push_of_lt (hl i)]
-  have hlt : ((μ.store.push 1).push n).len μ.store.length = 1 := by
-    rw [Store.len_push_of_lt (by simp), Store.len_push_top]
-  have hlv : ((μ.store.push 1).push n).len (μ.store.length + 1) = n := by
-    rw [← hS1, Store.len_push_top]
-  have hAS : ((μ.store.push 1).push n).readBlock (B 0) oA (p * n) = some as := by
-    rw [Store.readBlock_push_of_lt (Store.lt_length_push h0 1), Store.readBlock_push_of_lt h0, hA]
-  refine wp_loop (k := p) rfl (fun j μ' => ∃ s', μ' = ⟨s', μ.pos⟩ ∧
-    ((μ.store.push 1).push n).EqOff (Store.inBlock (B 1) oQ (p * n) ⊔
-      Store.inBlock (B 2) oR (p * p) ⊔ Store.inBuf μ.store.length ⊔
-      Store.inBuf (μ.store.length + 1)) s' ∧ CgsCols dec ε n p (B 1) oQ (B 2) oR as j s' ∧
-      ((μ.store.readBlock (B 2) oR (p * p)).isSome → (s'.readBlock (B 2) oR (p * p)).isSome))
-    ⟨_, rfl, Store.EqOff.refl _ _, ⟨[], fun _ => [], fun _ => default, by simp, by simp⟩,
-      fun h => by
-        rwa [Store.readBlock_push_of_lt (Store.lt_length_push h2 1),
-          Store.readBlock_push_of_lt h2]⟩ ?_ ?_
-  · rintro j hj μ' ⟨s', rfl, hfr, hcols, hrd⟩
-    obtain ⟨qs, -, -, hq, -⟩ := id hcols
-    have hjn : j * n + n ≤ p * n := by
-      have := Nat.mul_le_mul_right n hj
-      rwa [Nat.succ_mul] at this
-    have hjp : j * p + p ≤ p * p := by
-      have := Nat.mul_le_mul_right p hj
-      rwa [Nat.succ_mul] at this
-    have ha := hfr.readBlock_of (Store.readBlock_sub hAS hjn) (by store_side [hB.eq_iff])
-    refine wp_cgsCol (H := cgsH B μ.store.length) hS hJ hneg hok hH
-      (fun b => hfr.length_eq ▸ hlS b) hq ha (by rw [hfr.len_eq]; simp only [cgsH, hlen]; omega)
-      (by rw [hfr.len_eq]; simp only [cgsH, hlen]; omega)
-      (by rw [hfr.len_eq]; simp only [cgsH, hlt]; omega)
-      (by rw [hfr.len_eq]; simp only [cgsH, hlv]; omega)
-      fun s₁ rpj ρj qj hfj hRj hQj hcol => ⟨s₁, rfl, hfr.trans (hfj.mono fun b i h => ?_),
-        hcols.succ hfj hj (fun i hi => ?_) (fun i hi => ?_) hRj hQj fun qs' hq' => ?_,
-        fun h0 => hfj.isSome_readBlock (hrd h0) fun i hi hF => ?_⟩
-    · simp only [cgsColFp, cgsH, Pi.sup_apply, sup_Prop_eq, Store.inBlock, Store.inBuf] at h ⊢
-      omega
-    · simp only [cgsColFp, cgsH, Pi.sup_apply, sup_Prop_eq, Store.inBlock, Store.inBuf,
-        hB.eq_iff]
-      simp
-      omega
-    · simp only [cgsColFp, cgsH, Pi.sup_apply, sup_Prop_eq, Store.inBlock, Store.inBuf,
-        hB.eq_iff]
-      simp
-      omega
-    · obtain rfl : qs' = qs := Option.some.inj (hq'.symm.trans hq)
-      exact hcol
-    · have hin : oR + j * p ≤ oR + i ∧ oR + i < oR + j * p + (j + 1) := by
-        simp only [cgsColFp, Pi.sup_apply, sup_Prop_eq] at hF
-        rcases hF with ((hF | hF) | hF) | hF
-        · exact hF.2
-        · exact absurd (hB hF.1) (by decide)
-        · exact absurd hF (Nat.ne_of_lt h2)
-        · exact absurd hF (Nat.ne_of_lt (Nat.lt_succ_of_lt h2))
-      have := Store.get_of_readBlock hRj (j := oR + i - (oR + j * p)) (by omega) default
-      rw [show oR + j * p + (oR + i - (oR + j * p)) = oR + i by omega] at this
-      exact Option.isSome_iff_exists.mpr ⟨_, this⟩
-  · rintro μ' ⟨s', rfl, hfr, hcols, hrd⟩
-    have hlen' : s'.length = μ.store.length + 2 := by
-      rw [hfr.length_eq, Store.length_push, Store.length_push]
-    have hpop : ∀ b off k, b < μ.store.length →
-        s'.pop.pop.readBlock b off k = s'.readBlock b off k := fun b off k hb => by
-      rw [Store.readBlock_pop_of_lt (by rw [Store.length_pop]; omega),
-        Store.readBlock_pop_of_lt (by omega)]
-    obtain ⟨qs, rp, ρ, hq, hc⟩ := hcols
-    refine ⟨rfl, Store.EqOff.pop (Store.EqOff.pop (hfr.mono fun b i h => ?_)),
-      ⟨qs, rp, ρ, (hpop _ _ _ h1).trans hq, fun j hj => ⟨(hpop _ _ _ h2).trans (hc j hj).1,
-        (hc j hj).2⟩⟩, fun h0 => by rw [hpop _ _ _ h2]; exact hrd h0⟩
-    simpa [Store.inBuf, hS1] using h
-
-/-! ### The abstract theorem -/
+/-! ### The counts -/
 
 omit [Inhabited K] in
 /-- The calls of column `j`: `j` times `dot`, `neg`, `axpy`, and two `copy`, one `nrm2`, one
@@ -284,51 +178,56 @@ def CgsFactored (dec : K → ℝ) (ε : Blas1Err) (n p : ℕ) (Q R : ℕ × ℕ)
   ∃ qs rs : List K, qs.length = p * n ∧ rs.length = p * p ∧ CgsOut dec ε n p as qs rs ∧
     μ' = (μ.updBlock Q qs).updBlock R rs
 
-omit [Has ScalarOp Op] [Has Blas1Op Op] [Inhabited K] in
-/-- Three different handles are an injective family. -/
-theorem injective_handles {a b c : ℕ} (hab : a ≠ b) (hac : a ≠ c) (hbc : b ≠ c) :
-    Function.Injective ![a, b, c] := by
-  intro i j h
-  fin_cases i <;> fin_cases j <;> simp at h ⊢ <;> omega
-
 /-- **The certificate of `cgs`**: for every interpretation meeting the contracts of scalar
 arithmetic and of the level-1 operations at `ε`, `cgs` meets its contract, which has two output
-blocks. -/
+blocks. Proved by block specifications: two allocations, the loop over the columns in the
+standard invariant form, and `cgsCol_writes` in each column. -/
 theorem cgs_spec {M : Machine K} {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop}
     {J : Interp Op Tst K} (hS : IsScalar M J) (hJ : IsBlas1 dec ε ok J)
     (hneg : ∀ x, dec (M.neg x) = -dec x) :
     (cgsImpl (Op := Op) (Tst := Tst)).Meets J .total ((cgsRel dec ε).spec (CgsOperands ok)) := by
-  refine Impl.meets_rel fun d ins outs τ μ X hnd hadm hl hr _ hz => ?_
-  obtain ⟨n, p, rfl⟩ := List.length_eq_two.mp hnd
-  obtain ⟨hok, A, Q, R, rfl, rfl, hAQ, hAR, hQR⟩ := hadm
-  obtain ⟨A', R', as, r₀, e, hA, hR₀, rfl⟩ := Mem.readBlocks_two hr
-  cases e
-  obtain ⟨hlA, hlR, hlQ, -⟩ : A.1 < μ.store.length ∧ R.1 < μ.store.length ∧
-      Q.1 < μ.store.length ∧ R.1 < μ.store.length := by simpa using hl
-  have hlB : ∀ i, ![A.1, Q.1, R.1] i < μ.store.length := fun i => by
-    fin_cases i <;> simpa
-  refine ⟨⟨rfl, rfl, rfl⟩, (wp_cgs hS hJ hneg (B := ![A.1, Q.1, R.1]) (τ := τ) hok
-    (injective_handles hAQ hAR hQR) hlB hA hz.1 hz.2.1).mono ?_⟩
-  rintro ⟨s', q⟩ ⟨hpos, hfr, ⟨qs, rp, ρ, hq, hc⟩, hrd⟩
-  obtain ⟨rs, hrs⟩ := Option.isSome_iff_exists.mp (hrd (by
-    change (μ.store.readBlock R.1 R.2 (p * p)).isSome
-    simp [hR₀]))
-  replace hrs : s'.readBlock R.1 R.2 (p * p) = some rs := hrs
-  replace hq : s'.readBlock Q.1 Q.2 (p * n) = some qs := hq
-  refine ⟨[qs, rs], by simp [Store.length_of_readBlock hq, Store.length_of_readBlock hrs],
-    ⟨rp, ρ, fun j hj => ⟨?_, (hc j hj).2⟩⟩, ?_⟩
-  · have hjp : j * p + (j + 1) ≤ p * p := by
-      have := Nat.mul_le_mul_right p hj
-      rw [Nat.succ_mul] at this
-      omega
-    have h1 := Store.readBlock_sub hrs hjp
-    have h2 : s'.readBlock R.1 (R.2 + j * p) (j + 1) = some (rp j ++ [ρ j]) := (hc j hj).1
-    exact Option.some.inj (h1.symm.trans h2)
-  · obtain rfl : q = μ.pos := hpos
-    have e := Store.EqOff.eq_updBlock₂ (s := μ.store) (s' := s') hfr hq hrs
-    simp only [Mem.updBlocks_cons, Mem.updBlocks_nil, Mem.updBlock, Mem.advance]
-    rw [e]
-    rfl
+  cert_intro [n, p] (A, R₀) → (Q, R) reads (as, r₀)
+  obtain ⟨hok, rfl, hAQ, hAR, hQR⟩ := hadm
+  refine writes_alloc rfl fun s₁ hs₁ ht hB₁ => writes_alloc rfl fun s₂ hs₂ hv hB₂ => ?_
+  simp only [hs₁] at hs₂ hv hB₂ ⊢
+  refine Writes.mono (writes_loop rfl (fun j => Store.inBlock Q.1 Q.2 (j * n) ⊔
+      Store.inBlock R.1 R.2 (j * p) ⊔ Store.inBuf μ.store.length ⊔
+      Store.inBuf (μ.store.length + 1)) (fun j hj => by fp_sub)
+    (fun j m' => m'.pos = μ.pos ∧ CgsCols dec ε n p Q.1 Q.2 R.1 R.2 as j m'.store ∧
+      (m'.store.readBlock R.1 R.2 (p * p)).isSome)
+    ⟨rfl, ⟨[], fun _ => [], fun _ => default, by simp, by simp⟩, by
+      rw [Store.Below.readBlock_of (hB₁.trans (hB₂.mono (by omega))) hl.2.1 (o := R.2)
+        (n := p * p) hr₀]; rfl⟩
+    fun j hj m₁ hfr ⟨hpos, hcols, hRs⟩ => ?_) (by fp_sub) fun m' _ ⟨hpos, hcols, hRs⟩ => ?_
+  · obtain ⟨qs, -, -, hqs, -⟩ := id hcols
+    refine Writes.mono (F := Store.inBlock R.1 (R.2 + j * p) (j + 1) ⊔
+        Store.inBlock Q.1 (Q.2 + j * n) n ⊔ Store.inBuf μ.store.length ⊔
+        Store.inBuf (μ.store.length + 1))
+      (P := fun m' => m'.pos = m₁.pos ∧ ∃ rp ρ qj,
+        m'.store.readBlock R.1 (R.2 + j * p) (j + 1) = some (rp ++ [ρ]) ∧
+        m'.store.readBlock Q.1 (Q.2 + j * n) n = some qj ∧
+        CgsCol dec ε n j qs ((as.drop (j * n)).take n) rp ρ qj) ?_ (by fp_sub)
+      fun m₂ hfr₂ ⟨hpos₂, rp, ρ, qj, hRj, hQj, hcol⟩ => ⟨hpos₂.trans hpos,
+        hcols.succ hfr₂ hj (fun i hi => by disjoint) (fun i hi => by disjoint) hRj hQj
+          fun qs' hq' => Option.some.inj (hq'.symm.trans hqs) ▸ hcol, ?_⟩
+    · frame_facts
+      exact cgsCol_writes hS hJ hneg hok hAQ hAR hQR ⟨hl.1, hl.2.1, hl.2.2.1⟩ (by room) hqs
+        (by kept) (by room) (by room) (by room) (by room)
+    · refine hfr₂.isSome_readBlock hRs fun i hi hG => ?_
+      have hi' : R.2 + j * p ≤ R.2 + i ∧ R.2 + i < R.2 + j * p + (j + 1) := by
+        simp only [fpNF] at hG; omega
+      have := Store.get_of_readBlock hRj (j := i - j * p) (by omega) default
+      rw [show R.2 + j * p + (i - j * p) = R.2 + i by omega] at this
+      simp [this]
+  · intro s₃ _ hB₃ s₄ _ hB₄
+    obtain ⟨qs, rp, ρ, hq, hc⟩ := hcols
+    obtain ⟨rs, hrs⟩ := Option.isSome_iff_exists.mp hRs
+    have hB := (hB₃.mono (by omega)).trans hB₄
+    refine ⟨by simp [hpos], [qs, rs], Mem.readBlocks_of_cons (hB.readBlock_of hl.2.2.1 hq)
+      (Mem.readBlocks_of_cons (hB.readBlock_of hl.2.1 hrs) rfl), rp, ρ,
+      fun j hj => ⟨Option.some.inj ((Store.readBlock_sub hrs
+        (show j * p + (j + 1) ≤ p * p by idx)).symm.trans
+        (hc j hj).1), (hc j hj).2⟩⟩
 
 /-- **The abstract theorem of `cgs`**, from its certificate by the bridge: for every
 interpretation meeting the contracts of scalar arithmetic and of the level-1 operations at `ε`,

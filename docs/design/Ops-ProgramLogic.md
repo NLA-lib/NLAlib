@@ -86,20 +86,26 @@ they state a signature; where they are not, this list wins):
   `nlinarith`), `fp_mem`, `fp_sub`, `disjoint`, `frame`. Still stubs: `checkpoint`, `alloc as`,
   `loop_inv`, `keep` (the examples use `writes_alloc`, `writes_loop`, the fill rules and `kept`
   directly); `decode` is provisional; the printer (D17) is not built yet.
-* **Examples re-proved** (next to the old proofs, which are not deleted yet):
-  `Examples/GemmW.lean` (`gemm_spec_w`, 18 lines, relational 2-D fill),
-  `Examples/MgsW.lean` (`mgs_spec_w`, 28 lines), `Examples/CgsW.lean` (`cgsCol_w` 52 lines,
-  `cgs_spec_w` 47 lines). They replace, line for line: gemm `GemmInv`, `div_mod_of_lt`,
-  `wp_gemm`, `gemm_spec` (69 lines); MGS `MgsInv`, `wp_mgs_step`, `wp_mgs`, `mgs_spec` (96);
-  CGS `CgsBuf`, `cgsEnv`, `wp_cgsDots`, `wp_cgsProj`, `cgsColFp`, `wp_cgsCol`, `cgsH`,
-  `cgsH_injective`, `CgsRounded`, `wp_cgs`, `injective_handles`, `cgs_spec` (289).
-  Totals in the README's count (run proofs + contract and certificate): gemm 134 → 83,
-  MGS 172 → 104, CGS 410 → 220. The rest is statements that do not change (contracts,
-  postconditions, counts and peaks, the abstract theorem, `CgsCols`).
+* **Examples re-proved; the old `wp` proofs are deleted** (approved by the core lane, no
+  backwards compatibility). The certificates keep their names and statements (checked
+  syntactically equal to the old ones before the deletion) and live in the files of their
+  algorithms: `Examples/Gemm.lean` (`gemm_spec`, 18 lines, relational 2-D fill),
+  `Examples/GramSchmidt.lean` (`mgs_spec`, 28 lines), `Examples/Cgs.lean` (the column
+  `cgsCol_writes`, 52 lines) and `Examples/CgsQR.lean` (`cgs_spec`, 47 lines); the transitional
+  files `GemmW`, `MgsW`, `CgsW` are gone. Deleted, line for line: gemm `GemmEntry`, `GemmInv`,
+  `div_mod_of_lt`, `wp_gemm`, `GemmInv.rounded` and the old `gemm_spec` (69 lines); MGS
+  `MgsInv`, `wp_mgs_step`, `wp_mgs` and the old `mgs_spec` (96); CGS `CgsBuf`, `cgsEnv`,
+  `wp_cgsDots`, `wp_cgsProj`, `cgsColFp`, `wp_cgsCol`, `cgsH`, `cgsH_injective`, `CgsRounded`,
+  `wp_cgs`, `injective_handles` and the old `cgs_spec` (289). The abstract theorems and linked
+  corollaries (`runs_*_rounded`, `runs_*_link_*`) are unchanged and go through the new
+  certificates. Totals in the README's count (run proofs + contract and certificate): gemm
+  134 → 83, MGS 172 → 104, CGS 410 → 220; files: `Gemm` 275 → 208 lines, `GramSchmidt`
+  297 → 231, `Cgs` 213 → 118, `CgsQR` 358 → 257. The rest is statements that do not change
+  (contracts, postconditions, counts and peaks, the abstract theorem, `CgsCols`).
 * **Linked corollaries**: the nine findings of `#ops_lint` rule (d) are closed (closed-form
-  counts by `count_eval`); the scan reports one remaining finding, `Impl.meets_of_writes`, a
-  rule of the logic layer that the scan now sees because examples import `Logic/` (the scan's
-  scope should exclude `NLAlib.Ops.Logic`).
+  counts by `count_eval`). The tools of the core lane (`feat/ops-tools` @3512f807:
+  `NLAlib/Ops/Tools/`, `scripts/ops/`) are merged; their scan skips `NLAlib.Ops.Logic.*`, so
+  `Impl.meets_of_writes` is no longer reported.
 
 ---
 
@@ -141,7 +147,7 @@ writes programs with names and elaborates to the same `Stmt` term as the positio
 | `Logic/TapeMeas.lean` | `Tape.PastAt`, `pastEntry`, `pastWindow`, `fun_prop` leaves | 3 |
 | `Logic/Tactic.lean` | `step`, `frame`, `fp_sub`, `checkpoint`, `alloc as`, `loop_inv`, `keep`, `cert_intro`, `decode` | (syntax) |
 | `Examples/Built.lean` | builder = hand-written trees for `mgs`, `mgsImpl`, `gemm`, `cgs`, and the other constructs, by `rfl` | 5 examples |
-| `Examples/CgsWrites.lean` | `cgsCol_writes`, `cgs_spec_writes` (statements), `splitB` (S2 block in the builder, `rfl`) | 2 + 1 example |
+| `Examples/CgsWrites.lean` | `cgsCol_writes`, `cgs_spec_writes` (statements; phase B proved them as `cgsCol_writes` in `Examples/Cgs.lean` and `cgs_spec` in `Examples/CgsQR.lean`), `splitB` (S2 block in the builder, `rfl`) | 2 + 1 example |
 
 102 theorem statements in `Logic/` (76 with `sorry`, 26 proved by one line), 2 in
 `Examples/CgsWrites.lean`; about 30 definitions; 9 tactic syntaxes besides `fp_mem`, `disjoint`,

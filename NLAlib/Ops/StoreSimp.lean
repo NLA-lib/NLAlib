@@ -12,6 +12,8 @@ public import NLAlib.Ops.Frame
 /-!
 # Automation for reads after writes
 
+## Main results
+
 * `store_side [facts]` proves the side conditions of the store lemmas: two handles are different,
   a handle is a buffer of the store, an offset is in or out of a block, a cell is in or out of a
   footprint. It uses the hypotheses, linear arithmetic, and the given facts as rewriting rules.
@@ -23,7 +25,7 @@ handles of a hundred buffers are told apart by deciding `i ≠ j` on the indices
 hypothesis. Hypotheses `b ≠ b'` in the context work too.
 -/
 
-public section
+@[expose] public section
 
 namespace NLAlib.Ops
 

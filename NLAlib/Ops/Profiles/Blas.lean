@@ -14,6 +14,8 @@ public import NLAlib.Ops.Blas.Sum
 
 Three tables of a signature over itself, each implementing some operations and keeping the rest:
 
+## Main results
+
 * `NLAlib.Ops.Blas.level1`: `dot`, `nrm2` over `sum`; `axpy`, `scal`, `copy` as loops;
 * `NLAlib.Ops.Blas.sumSeq`: `sum` by sequential summation;
 * `NLAlib.Ops.Blas.sumPairwise`: `sum` by pairwise summation, one level of the recursion.

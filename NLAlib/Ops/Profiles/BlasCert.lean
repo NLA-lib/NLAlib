@@ -10,6 +10,8 @@ public import NLAlib.Ops.Profiles.Blas
 /-!
 # Certificates and costs of the two level-1 profiles
 
+## Main results
+
 * Constants: `NLAlib.Ops.Blas.seq.err u`, `NLAlib.Ops.Blas.pairwise.err u`, with the `dot` errors
   `(1 + u) ^ n - 1` and `(1 + u) ^ (⌈log₂ n⌉ + 1) - 1`.
 * Certificates: `NLAlib.Ops.Blas.seq_certifies`, `NLAlib.Ops.Blas.pairwise_certifies`, over every

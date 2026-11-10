@@ -178,8 +178,10 @@ theorem runs_add3 {f : ℕ → List Bool → List Bool → List Bool} (hf : AddM
       fun m' => ∃ ss rs, m' = (m.updBlock s ss).updBlock r rs ∧
         bitsVal (vec rs) w =
           (bitsVal (vec xs) w + bitsVal (vec ys) w + bitsVal (vec zs) w) % 2 ^ w := by
+  obtain ⟨lx, ly, lz, ls, lr⟩ : x.1 < m.store.length ∧ y.1 < m.store.length ∧
+      z.1 < m.store.length ∧ s.1 < m.store.length ∧ r.1 < m.store.length := by simpa using hl
   have h1 := waddFn_apply_of (f := f) (z := s) (τ := τ) hx hy (by rw [(hf w xs ys).1]; exact hs)
-    (by simp_all)
+    (by store_simp)
   have hs' : (m.updBlock s (f w xs ys)).store.readBlock s.1 s.2 w = some (f w xs ys) := by
     have := Store.readBlock_updBlock_self (s := m.store) (b := s.1) (off := s.2)
       (xs := f w xs ys) (by rw [(hf w xs ys).1]; exact hs)
@@ -188,7 +190,7 @@ theorem runs_add3 {f : ℕ → List Bool → List Bool → List Bool} (hf : AddM
     rw [← hz]
     exact Store.readBlock_congr fun i _ => Store.get_updBlock_of_buf_ne hzs _ _ _
   have h2 := waddFn_apply_of (f := f) (z := r) (τ := τ) hs' hz'
-    (by rw [(hf w _ zs).1]; simpa using hr) (by simp_all)
+    (by rw [(hf w _ zs).1]; simpa using hr) (by store_simp)
   have hw : Wp .total I τ add3 ⟨[w, x.2, y.2, z.2, s.2, r.2], [x.1, y.1, z.1, s.1, r.1]⟩
       (· = (m.updBlock s (f w xs ys)).updBlock r (f w (f w xs ys) zs)) m :=
     wp_seq (wp_call_fn hI (z := s) rfl rfl rfl (by simp [DisjointBufs, hxs, hys]) h1

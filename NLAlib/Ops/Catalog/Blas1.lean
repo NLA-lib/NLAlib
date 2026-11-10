@@ -20,6 +20,12 @@ budget for a recursive implementation).
 
 An algorithm states its theorem against `IsBlas1` (and `IsScalar` if it calls scalar
 operations), never against an implementation.
+
+## Main results
+
+* `NLAlib.Ops.IsBlas1`: the contract set of the level-1 operations.
+* `NLAlib.Ops.IsDotErr.congr`, `NLAlib.Ops.IsAxpyErr.congr`: the error predicates read their
+  vectors only below the length.
 -/
 
 @[expose] public section

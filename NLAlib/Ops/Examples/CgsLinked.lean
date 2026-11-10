@@ -10,6 +10,8 @@ public import NLAlib.Ops.Examples.CgsQR
 /-!
 # Classical Gram–Schmidt: the backward error and the two profiles
 
+## Main results
+
 * `NLAlib.Ops.Examples.CgsRounded.backward` (mathematics on the final memory): the computed
   factors satisfy, in every column `j` whose diagonal entry is not zero,
   `|a_j - Σ_{i≤j} r̂_ij q̂_i| ≤ ((1 + ε_scal) (1 + ε_axpy) ^ j - 1)

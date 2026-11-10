@@ -96,8 +96,10 @@ theorem runs_sq2 {f : ℕ → ℕ → ℕ → List K → List K → List K} {I :
       (W .mm [n, n, n])
       (· = (m.updBlock P (f n n n As As)).updBlock S
         (f n n n (f n n n As As) (f n n n As As))) := by
+  obtain ⟨lA, lP, lS⟩ : A.1 < m.store.length ∧ P.1 < m.store.length ∧ S.1 < m.store.length := by
+    simpa using hl
   have h1 : (mmFn f).apply [n, n, n] [A, A] P τ m = some (m.updBlock P (f n n n As As)) :=
-    BlockFn.apply_eq_some_iff.mpr ⟨by simp_all, [As, As], _, by simp
+    BlockFn.apply_eq_some_iff.mpr ⟨by store_simp, [As, As], _, by simp
     [Mem.readBlocks, hA, mmFn], rfl,
       by rw [hI.length]; exact hP, rfl⟩
   have hPr : (m.store.updBlock P.1 P.2 (f n n n As As)).readBlock P.1 P.2 (n * n) =
@@ -108,8 +110,8 @@ theorem runs_sq2 {f : ℕ → ℕ → ℕ → List K → List K → List K} {I :
   have h2 : (mmFn f).apply [n, n, n] [P, P] S τ (m.updBlock P (f n n n As As)) =
       some ((m.updBlock P (f n n n As As)).updBlock S
         (f n n n (f n n n As As) (f n n n As As))) :=
-    BlockFn.apply_eq_some_iff.mpr ⟨by simp_all, [_, _], _, by simp [Mem.readBlocks, hPr, mmFn], rfl,
-      by rw [hI.length]; simpa using hS, rfl⟩
+    BlockFn.apply_eq_some_iff.mpr ⟨by store_simp, [_, _], _,
+      by simp [Mem.readBlocks, hPr, mmFn], rfl, by rw [hI.length]; simpa using hS, rfl⟩
   have hw : Wp .total I τ sq2 ⟨[n, A.2, P.2, S.2], [A.1, P.1, S.1]⟩
       (· = (m.updBlock P (f n n n As As)).updBlock S (f n n n (f n n n As As) (f n n n As As)))
       m :=

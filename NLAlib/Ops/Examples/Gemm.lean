@@ -14,6 +14,8 @@ public import NLAlib.Ops.Profiles.BlasCert
 rows, `B` is `n × p` stored by columns (so that a row of `A` and a column of `B` are contiguous
 blocks), `C` is `m × p` stored by rows.
 
+## Main results
+
 * Mathematics: the postcondition `NLAlib.Ops.Examples.GemmRounded` is the classical componentwise
   forward bound `|ĉ_ij - Σ_k a_ik b_kj| ≤ ε Σ_k |a_ik| |b_kj|`; nothing else is needed.
 * Abstract theorem (`NLAlib.Ops.Examples.runs_gemm_rounded`): for every interpretation meeting

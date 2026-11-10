@@ -11,6 +11,8 @@ public import NLAlib.Ops.StoreSimp
 /-!
 # Rules on given operands, and rules for loops whose length is not a size
 
+## Main results
+
 * Calls on given operands. `NLAlib.Ops.wp_call_rel`: a call of an operation under a relational
   contract in operand form (`NLAlib.Ops.BlockRel`), from the blocks that are read; the
   continuation receives the output block and its relation to them, with nothing to identify

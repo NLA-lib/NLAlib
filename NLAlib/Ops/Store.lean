@@ -576,47 +576,6 @@ theorem readBlocks_cons (m : Mem K) (a : ℕ × ℕ) (as : List (ℕ × ℕ)) (n
       (m.store.readBlock a.1 a.2 n).bind fun x => (m.readBlocks as ns).map fun xs => x :: xs :=
   rfl
 
-/-- Reading two blocks. -/
-theorem readBlocks_two {m : Mem K} {as : List (ℕ × ℕ)} {p q : ℕ} {X : List (List K)}
-    (h : m.readBlocks as [p, q] = some X) : ∃ x y xs ys, as = [x, y] ∧
-      m.store.readBlock x.1 x.2 p = some xs ∧ m.store.readBlock y.1 y.2 q = some ys ∧
-      X = [xs, ys] := by
-  rcases as with _ | ⟨x, _ | ⟨y, _ | ⟨w, as⟩⟩⟩
-  · simp [readBlocks] at h
-  · simp [readBlocks] at h
-  · cases hx : m.store.readBlock x.1 x.2 p with
-    | none => simp [readBlocks, hx] at h
-    | some xs =>
-      cases hy : m.store.readBlock y.1 y.2 q with
-      | none => simp [readBlocks, hx, hy] at h
-      | some ys =>
-        simp only [readBlocks, hx, hy, Option.bind_some, Option.map_some, Option.some.injEq] at h
-        exact ⟨x, y, xs, ys, rfl, hx, hy, h.symm⟩
-  · simp [readBlocks] at h
-
-/-- Reading three blocks. -/
-theorem readBlocks_three {m : Mem K} {as : List (ℕ × ℕ)} {p q r : ℕ} {X : List (List K)}
-    (h : m.readBlocks as [p, q, r] = some X) : ∃ x y w xs ys ws, as = [x, y, w] ∧
-      m.store.readBlock x.1 x.2 p = some xs ∧ m.store.readBlock y.1 y.2 q = some ys ∧
-      m.store.readBlock w.1 w.2 r = some ws ∧ X = [xs, ys, ws] := by
-  rcases as with _ | ⟨x, _ | ⟨y, _ | ⟨w, _ | ⟨v, as⟩⟩⟩⟩
-  · simp [readBlocks] at h
-  · simp [readBlocks] at h
-  · simp [readBlocks] at h
-  · cases hx : m.store.readBlock x.1 x.2 p with
-    | none => simp [readBlocks, hx] at h
-    | some xs =>
-      cases hy : m.store.readBlock y.1 y.2 q with
-      | none => simp [readBlocks, hx, hy] at h
-      | some ys =>
-        cases hw : m.store.readBlock w.1 w.2 r with
-        | none => simp [readBlocks, hx, hy, hw] at h
-        | some ws =>
-          simp only [readBlocks, hx, hy, hw, Option.bind_some, Option.map_some,
-            Option.some.injEq] at h
-          exact ⟨x, y, w, xs, ys, ws, rfl, hx, hy, hw, h.symm⟩
-  · simp [readBlocks] at h
-
 end Mem
 
 end NLAlib.Ops

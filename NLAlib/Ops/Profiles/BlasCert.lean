@@ -215,6 +215,29 @@ theorem pairwise_cost_dot (k n : ℕ) (h : Nat.clog 2 n < k) :
     Count.push_one]
   rw [sumPairwise_iter_cost_kept k (by simp), sumPairwise_iter_cost_sum k n h]
 
+/-- The costs of the other operations in the profile of sequential summation. -/
+theorem seq_cost_nrm2 (n : ℕ) :
+    (seq (Op := Op) (Tst := Tst)).cost (Has.inj Blas1Op.nrm2) [n] =
+      n • sc .mul + (sc (.lit 0) + ((1 - (1 - n)) • sc .copy + (n - 1) • sc .add) + sc .sqrt) := by
+  simp [seq, Profile.over, level1, level1Cost, sumSeq, sumSeqCost]
+
+theorem seq_cost_axpy (n : ℕ) :
+    (seq (Op := Op) (Tst := Tst)).cost (Has.inj Blas1Op.axpy) [n] =
+      n • (sc .mul + sc .add) := by
+  simp [seq, Profile.over, level1, level1Cost, sumSeq, sumSeqCost]
+
+theorem seq_cost_scal (n : ℕ) :
+    (seq (Op := Op) (Tst := Tst)).cost (Has.inj Blas1Op.scal) [n] = n • sc .div := by
+  simp [seq, Profile.over, level1, level1Cost, sumSeq, sumSeqCost]
+
+theorem seq_cost_copy (n : ℕ) :
+    (seq (Op := Op) (Tst := Tst)).cost (Has.inj Blas1Op.copy) [n] = n • sc .copy := by
+  simp [seq, Profile.over, level1, level1Cost, sumSeq, sumSeqCost]
+
+theorem seq_cost_scalar (a : ScalarOp) (d : List ℕ) :
+    (seq (Op := Op) (Tst := Tst)).cost (Has.inj a) d = Count.one (Has.inj a) d := by
+  simp [seq, Profile.over, level1, level1Cost, sumSeq, sumSeqCost]
+
 /-! ### Witness -/
 
 /-- **Witness**: the contracts of scalar arithmetic and of the level-1 operations can be met

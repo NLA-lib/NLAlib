@@ -64,13 +64,20 @@ end NLAlib.Ops.Idx
 
 namespace NLAlib.Ops
 
-/-- The products `x * y` of natural numbers in an expression. -/
-meta partial def Idx.products (e : Lean.Expr) : Array (Lean.Expr × Lean.Expr) :=
-  let rest := e.getAppArgs.foldl (fun acc a => acc ++ Idx.products a) #[]
-  match e.getAppFnArgs with
-  | (``HMul.hMul, #[ty, _, _, _, x, y]) =>
-    if ty.isConstOf ``Nat then rest.push (x, y) else rest
-  | _ => rest
+/-- The products `x * y` of natural numbers in an expression, searched to depth `fuel`. -/
+meta def Idx.productsAux : ℕ → Lean.Expr → Array (Lean.Expr × Lean.Expr)
+  | 0, _ => #[]
+  | fuel + 1, e =>
+    let rest := e.getAppArgs.foldl (fun acc a => acc ++ Idx.productsAux fuel a) #[]
+    match e.getAppFnArgs with
+    | (``HMul.hMul, #[ty, _, _, _, x, y]) =>
+      if ty.isConstOf ``Nat then rest.push (x, y) else rest
+    | _ => rest
+
+/-- The products `x * y` of natural numbers in an expression (to depth 64; goals are far
+shallower). -/
+meta def Idx.products (e : Lean.Expr) : Array (Lean.Expr × Lean.Expr) :=
+  Idx.productsAux 64 e
 
 open Lean Meta Elab Tactic in
 /-- **Product generation** for `idx`: for every hypothesis `i < k` or `i ≤ k` on natural numbers

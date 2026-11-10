@@ -35,13 +35,13 @@ variable {Op Tst K : Type}
 /-- **A counted run from a state**: the counted run of `s` from `st` succeeds, adds at most the
 counts `c`, stays within the workspace `p` above the live cells, and `Q` holds of the final
 memory. -/
-def RunsFrom (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : ℕ → K) (s : Stmt Op Tst) (ρ : Env)
+def RunsFrom (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : Tape K) (s : Stmt Op Tst) (ρ : Env)
     (st : St Op Tst K) (c : Count Op Tst) (p : ℕ) (Q : Mem K → Prop) : Prop :=
   ∃ st', exec I W τ s ρ st = some st' ∧ St.Within st st' c p ∧ Q st'.mem
 
 namespace RunsFrom
 
-variable {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ : ℕ → K} {ρ : Env} {st : St Op Tst K}
+variable {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ : Tape K} {ρ : Env} {st : St Op Tst K}
   {c c' : Count Op Tst} {p p' : ℕ} {Q Q' : Mem K → Prop}
 
 /-- Everything whose counts do not depend on the data: a total `Wp` and the static cost. -/

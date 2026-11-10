@@ -105,14 +105,15 @@ def pairWs (n : ℕ) : ℕ := 2 * Nat.clog 2 n
 
 /-- `dot`, `nrm2` over `sum`; `axpy`, `scal`, `copy` as loops. -/
 noncomputable def level1 (wsum : ℕ → ℕ) : Profile Op Op Tst :=
-  ⟨level1Table, level1Cost, ws wsum, ws wsum⟩
+  { table := level1Table, cost := level1Cost, ws := ws wsum, wsLo := ws wsum }
 
 /-- `sum` by sequential summation. -/
-noncomputable def sumSeq : Profile Op Op Tst := ⟨sumSeqTable, sumSeqCost, ws 0, ws 0⟩
+noncomputable def sumSeq : Profile Op Op Tst :=
+  { table := sumSeqTable, cost := sumSeqCost, ws := ws 0, wsLo := ws 0 }
 
 /-- `sum` by pairwise summation, one level. -/
 noncomputable def sumPairwise : Profile Op Op Tst :=
-  ⟨sumPairwiseTable, sumPairwiseCost, ws pairWs, ws pairWs⟩
+  { table := sumPairwiseTable, cost := sumPairwiseCost, ws := ws pairWs, wsLo := ws pairWs }
 
 /-- **The profile of sequential summation.** -/
 noncomputable def seq : Profile Op Op Tst := (level1 0).over sumSeq

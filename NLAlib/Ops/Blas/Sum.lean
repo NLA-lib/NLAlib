@@ -118,7 +118,7 @@ variable [Inhabited K]
 
 /-- **The run of sequential summation** writes `sumSeqF` of the block in the cell `z`. -/
 theorem wp_sumSeq {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {md : Mode}
-    {τ : ℕ → K} {n : ℕ} {x z : ℕ × ℕ} {m : Mem K} {xs : List K} (hxz : x.1 ≠ z.1)
+    {τ : Tape K} {n : ℕ} {x z : ℕ × ℕ} {m : Mem K} {xs : List K} (hxz : x.1 ≠ z.1)
     (hx : m.store.readBlock x.1 x.2 n = some xs) (hz : z.2 < m.store.len z.1)
     {Q : Mem K → Prop} (hQ : Q (m.upd z (sumSeqF M (vec xs) n))) :
     Wp md I τ (sumSeq (Op := Op) (Tst := Tst)).body (Env.frame [n] [x, z]) Q m := by
@@ -231,7 +231,7 @@ variable [Inhabited K]
 on the two halves: the cell `z` receives a sum within `(1 + u) ^ ⌈log₂ n⌉ - 1`. -/
 theorem wp_sumPairwise {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {u : ℝ}
     {dec : K → ℝ} (hM : StdModel u dec M) (hu : 0 ≤ u) {ok : ℕ → Prop}
-    (hS : IsSum dec (fun n => (1 + u) ^ Nat.clog 2 n - 1) ok I) {τ : ℕ → K} {n : ℕ}
+    (hS : IsSum dec (fun n => (1 + u) ^ Nat.clog 2 n - 1) ok I) {τ : Tape K} {n : ℕ}
     {x z : ℕ × ℕ} {m : Mem K} {xs : List K} (hok : 2 ≤ n → ok (n / 2) ∧ ok (n - n / 2))
     (hl : m.Live [x, z]) (hx : m.store.readBlock x.1 x.2 n = some xs)
     (hz : z.2 < m.store.len z.1) :

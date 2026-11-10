@@ -95,14 +95,14 @@ def Interp.link (I : Interp Op₂ Tst K) (T : Table Op₁ Op₂ Tst) : Interp Op
   index := I.index
 
 theorem Interp.link_callS_inr (I : Interp Op₂ Tst K) {T : Table Op₁ Op₂ Tst} {o : Op₁} {o' : Op₂}
-    (hT : T o = .inr o') (d : List ℕ) (ins outs : List (ℕ × ℕ)) (τ : ℕ → K) (m : Mem K) :
+    (hT : T o = .inr o') (d : List ℕ) (ins outs : List (ℕ × ℕ)) (τ : Tape K) (m : Mem K) :
     (I.link T).callS o d ins outs τ m = I.callS o' d ins outs τ m := by
   simp only [Interp.callS, Interp.link, hT]
 
 /-- The call of an implemented operation under the induced interpretation is the run of its
 implementation on live operands: the run keeps the shape of the store by itself. -/
 theorem Interp.link_callS_inl (I : Interp Op₂ Tst K) {T : Table Op₁ Op₂ Tst} {o : Op₁}
-    {R : Impl Op₂ Tst} (hT : T o = .inl R) (d : List ℕ) (ins outs : List (ℕ × ℕ)) (τ : ℕ → K)
+    {R : Impl Op₂ Tst} (hT : T o = .inl R) (d : List ℕ) (ins outs : List (ℕ × ℕ)) (τ : Tape K)
     (m : Mem K) :
     (I.link T).callS o d ins outs τ m =
       if m.Live (ins ++ outs) then
@@ -119,7 +119,7 @@ theorem Interp.link_callS_inl (I : Interp Op₂ Tst K) {T : Table Op₁ Op₂ Ts
   · rfl
 
 /-- The run of a linked call. -/
-theorem run_link_call (I : Interp Op₂ Tst K) (T : Table Op₁ Op₂ Tst) (τ : ℕ → K) (o : Op₁)
+theorem run_link_call (I : Interp Op₂ Tst K) (T : Table Op₁ Op₂ Tst) (τ : Tape K) (o : Op₁)
     (ds : List IExp) (ins outs : List Operand) (ρ : Env) (m : Mem K) :
     run I τ ((Stmt.call o ds ins outs).link T) ρ m =
       run (I.link T) τ (.call o ds ins outs) ρ m := by
@@ -150,7 +150,7 @@ theorem run_link_call (I : Interp Op₂ Tst K) (T : Table Op₁ Op₂ Tst) (τ :
 
 /-- **Refinement transfer.** The linked program under `I` and the program under the induced
 interpretation end in the same memory, or both fail. No certificate is needed. -/
-theorem run_link (I : Interp Op₂ Tst K) (T : Table Op₁ Op₂ Tst) (τ : ℕ → K) (s : Stmt Op₁ Tst)
+theorem run_link (I : Interp Op₂ Tst K) (T : Table Op₁ Op₂ Tst) (τ : Tape K) (s : Stmt Op₁ Tst)
     (ρ : Env) (m : Mem K) : run I τ (s.link T) ρ m = run (I.link T) τ s ρ m := by
   induction s generalizing ρ m with
   | skip => rfl

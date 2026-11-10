@@ -83,7 +83,7 @@ def GemmInv (dec : K → ℝ) (e : ℝ) (n p bC oC : ℕ) (as bs : List K) (μ :
 /-- **The run of `gemm`**, for every interpretation meeting the level-1 contracts. The handles
 are an injective family. -/
 theorem wp_gemm {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop} {J : Interp Op Tst K}
-    (hJ : IsBlas1 dec ε ok J) {τ : ℕ → K} {m n p oA oB oC : ℕ} {H : Fin 3 → ℕ} {μ : Mem K}
+    (hJ : IsBlas1 dec ε ok J) {τ : Tape K} {m n p oA oB oC : ℕ} {H : Fin 3 → ℕ} {μ : Mem K}
     {as bs : List K} (hok : ok n) (hH : Function.Injective H) (hl : ∀ i, H i < μ.store.length)
     (hA : μ.store.readBlock (H 0) oA (m * n) = some as)
     (hB : μ.store.readBlock (H 1) oB (p * n) = some bs)
@@ -136,7 +136,7 @@ theorem wp_gemm {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop} {J : Inter
 at `ε` for the length `n`, the run terminates within `m p` calls of `dot` and the workspace of
 one, and the computed product satisfies the componentwise forward bound with `ε.dot n`. -/
 theorem runs_gemm_rounded {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop} {J : Interp Op Tst K}
-    (hJ : IsBlas1 dec ε ok J) (W : Op → List ℕ → ℕ) {τ : ℕ → K} {m n p oA oB oC : ℕ}
+    (hJ : IsBlas1 dec ε ok J) (W : Op → List ℕ → ℕ) {τ : Tape K} {m n p oA oB oC : ℕ}
     {H : Fin 3 → ℕ} {μ : Mem K} {as bs : List K} (hok : ok n) (hH : Function.Injective H)
     (hl : ∀ i, H i < μ.store.length) (hA : μ.store.readBlock (H 0) oA (m * n) = some as)
     (hB : μ.store.readBlock (H 1) oB (p * n) = some bs)
@@ -169,7 +169,7 @@ variable [Has ScalarOp Op] [Apart Blas1Op ScalarOp Op] {M : Machine K} {u : ℝ}
 componentwise (`n ≥ 1`), within the pushed-forward counts and `n` scratch cells. One application
 of the certificate of the profile. -/
 theorem runs_gemm_link_seq {dec : K → ℝ} (hM : StdModel u dec M) (hu : 0 ≤ u)
-    {I : Interp Op Tst K} (hI : IsScalar M I) {τ : ℕ → K} {m n p oA oB oC : ℕ} (hn : 1 ≤ n)
+    {I : Interp Op Tst K} (hI : IsScalar M I) {τ : Tape K} {m n p oA oB oC : ℕ} (hn : 1 ≤ n)
     {H : Fin 3 → ℕ} {μ : Mem K} {as bs : List K} (hH : Function.Injective H)
     (hl : ∀ i, H i < μ.store.length) (hA : μ.store.readBlock (H 0) oA (m * n) = some as)
     (hB : μ.store.readBlock (H 1) oB (p * n) = some bs)
@@ -183,7 +183,7 @@ theorem runs_gemm_link_seq {dec : K → ℝ} (hM : StdModel u dec M) (hu : 0 ≤
 /-- **`gemm` under pairwise summation** of depth `k`, for `⌈log₂ n⌉ < k`:
 `|Ĉ - A B| ≤ ((1 + u) ^ (⌈log₂ n⌉ + 1) - 1) |A| |B|` componentwise. -/
 theorem runs_gemm_link_pairwise {dec : K → ℝ} (hM : StdModel u dec M) (hu : 0 ≤ u)
-    {I : Interp Op Tst K} (hI : IsScalar M I) {τ : ℕ → K} {k m n p oA oB oC : ℕ}
+    {I : Interp Op Tst K} (hI : IsScalar M I) {τ : Tape K} {k m n p oA oB oC : ℕ}
     (hk : Nat.clog 2 n < k) {H : Fin 3 → ℕ} {μ : Mem K} {as bs : List K}
     (hH : Function.Injective H) (hl : ∀ i, H i < μ.store.length)
     (hA : μ.store.readBlock (H 0) oA (m * n) = some as)

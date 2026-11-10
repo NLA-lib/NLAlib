@@ -129,7 +129,7 @@ def waddFn (f : ℕ → List Bool → List Bool → List Bool) : BlockFn Bool wh
 
 /-- What a successful call of the block function of `wadd` is. -/
 theorem waddFn_apply {f : ℕ → List Bool → List Bool → List Bool} {d : List ℕ}
-    {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : ℕ → Bool} {m m' : Mem Bool}
+    {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : Tape Bool} {m m' : Mem Bool}
     (h : (waddFn f).apply d ins z τ m = some m') :
     ∃ w x y xs ys, d = [w] ∧ ins = [x, y] ∧ m.store.readBlock x.1 x.2 w = some xs ∧
       m.store.readBlock y.1 y.2 w = some ys ∧ z.2 + (f w xs ys).length ≤ m.store.len z.1 ∧
@@ -145,7 +145,7 @@ theorem waddFn_apply {f : ℕ → List Bool → List Bool → List Bool} {d : Li
 
 /-- A call of the block function of `wadd`, on readable blocks. -/
 theorem waddFn_apply_of {f : ℕ → List Bool → List Bool → List Bool} {w : ℕ} {x y z : ℕ × ℕ}
-    {τ : ℕ → Bool} {m : Mem Bool} {xs ys : List Bool}
+    {τ : Tape Bool} {m : Mem Bool} {xs ys : List Bool}
     (hx : m.store.readBlock x.1 x.2 w = some xs) (hy : m.store.readBlock y.1 y.2 w = some ys)
     (hz : z.2 + (f w xs ys).length ≤ m.store.len z.1) (hl : m.Live [x, y, z]) :
     (waddFn f).apply [w] [x, y] z τ m = some (m.updBlock z (f w xs ys)) :=
@@ -167,7 +167,7 @@ def add3 : Stmt WOp Empty :=
 interpretation meeting the functional contract: two calls of `wadd` at `[w]`, and `r` holds the
 sum of the three numbers modulo `2 ^ w`. -/
 theorem runs_add3 {f : ℕ → List Bool → List Bool → List Bool} (hf : AddMod f)
-    {I : Interp WOp Empty Bool} (hI : IsWAdd f I) (W : WOp → List ℕ → ℕ) {τ : ℕ → Bool} {w : ℕ}
+    {I : Interp WOp Empty Bool} (hI : IsWAdd f I) (W : WOp → List ℕ → ℕ) {τ : Tape Bool} {w : ℕ}
     {x y z s r : ℕ × ℕ} {m : Mem Bool} {xs ys zs : List Bool} (hxs : x.1 ≠ s.1)
     (hys : y.1 ≠ s.1) (hzs : z.1 ≠ s.1) (hsr : s.1 ≠ r.1) (hzr : z.1 ≠ r.1)
     (hx : m.store.readBlock x.1 x.2 w = some xs) (hy : m.store.readBlock y.1 y.2 w = some ys)
@@ -222,7 +222,7 @@ theorem ripplePrefix_succ (a b : ℕ → Bool) (i : ℕ) :
   simp [ripplePrefix, List.range_succ]
 
 /-- One position of the adder: the sum bit is appended to the block, the carry cell is updated. -/
-theorem wp_ripple_step {I : Interp BitOp Empty Bool} (hI : IsBits I) {md : Mode} {τ : ℕ → Bool}
+theorem wp_ripple_step {I : Interp BitOp Empty Bool} (hI : IsBits I) {md : Mode} {τ : Tape Bool}
     {w i : ℕ} (hi : i < w) {x y z : ℕ × ℕ} {s : Store Bool} {p : ℕ} {xs ys : List Bool}
     (hxz : x.1 ≠ z.1) (hyz : y.1 ≠ z.1) (hx : s.readBlock x.1 x.2 w = some xs)
     (hy : s.readBlock y.1 y.2 w = some ys) (hz : z.2 + w ≤ s.len z.1) {Q : Mem Bool → Prop}
@@ -284,7 +284,7 @@ theorem wp_ripple_step {I : Interp BitOp Empty Bool} (hI : IsBits I) {md : Mode}
 succeeds on inputs in other buffers than the output, the run of the adder is that block
 function. -/
 theorem ripple_cert {I : Interp BitOp Empty Bool} (hI : IsBits I) {d : List ℕ} {ins : List (ℕ × ℕ)}
-    {z : ℕ × ℕ} {τ : ℕ → Bool} {m m' : Mem Bool} (hadm : DisjointBufs d ins z)
+    {z : ℕ × ℕ} {τ : Tape Bool} {m m' : Mem Bool} (hadm : DisjointBufs d ins z)
     (h : (waddFn rippleF).apply d ins z τ m = some m') :
     rippleImpl.Fits d.length ins.length 1 ∧
       run I τ rippleImpl.body (Env.frame d (ins ++ [z])) m = some m' := by
@@ -339,7 +339,7 @@ theorem isWAdd_link {I : Interp BitOp Empty Bool} (hI : IsBits I) :
 
 /-- **The concrete corollary**: `add3` linked down to bit operations computes the sum of three
 `w`-bit numbers modulo `2 ^ w`, within the pushed-forward counts and one scratch cell. -/
-theorem runs_add3_link {I : Interp BitOp Empty Bool} (hI : IsBits I) {τ : ℕ → Bool} {w : ℕ}
+theorem runs_add3_link {I : Interp BitOp Empty Bool} (hI : IsBits I) {τ : Tape Bool} {w : ℕ}
     {x y z s r : ℕ × ℕ} {m : Mem Bool} {xs ys zs : List Bool} (hxs : x.1 ≠ s.1)
     (hys : y.1 ≠ s.1) (hzs : z.1 ≠ s.1) (hsr : s.1 ≠ r.1) (hzr : z.1 ≠ r.1)
     (hx : m.store.readBlock x.1 x.2 w = some xs) (hy : m.store.readBlock y.1 y.2 w = some ys)
@@ -369,7 +369,7 @@ theorem exists_isWAdd :
     isWAdd_link fun o => Interp.ofFns_isFn _ _ o _⟩
 
 /-- A run of the linked adder on words: `5 + 6 = 3` modulo `8`, on three-bit blocks. -/
-example : run (Interp.ofFns bitFns) (fun _ => false) rippleImpl.body
+example : run (Interp.ofFns bitFns) (fun _ _ => false) rippleImpl.body
     (Env.frame [3] [(0, 0), (1, 0), (2, 0)])
     ⟨[[some true, some false, some true], [some false, some true, some true],
       [none, none, none]], 0⟩ =

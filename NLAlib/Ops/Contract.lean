@@ -122,7 +122,7 @@ structure OpSpec (K : Type) where
 
 /-- **A contract** for an operation: a specification for each mode, list of dimensions, input and
 output operands, and tape. -/
-abbrev Contract (K : Type) := Mode → List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → (ℕ → K) → OpSpec K
+abbrev Contract (K : Type) := Mode → List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Tape K → OpSpec K
 
 /-- **The operation `o` of `I` meets the contract `C`** in the mode `md`. -/
 def Interp.Meets (I : Interp Op Tst K) (md : Mode) (o : Op) (C : Contract K) : Prop :=
@@ -140,8 +140,10 @@ theorem Interp.Meets.mono {I : Interp Op Tst K} {md : Mode} {o : Op} {C C' : Con
 
 /-- **A block function**: the output block as a function of the dimensions, the entries of the
 tape window and the input blocks. `win` is the length of the window (zero for an operation that
-does not draw), `inLens` the lengths of the input blocks. -/
+does not draw), in the stream `stream`, `inLens` the lengths of the input blocks. -/
 structure BlockFn (K : Type) where
+  /-- The stream of the tape that the window is read from. -/
+  stream : ℕ := 0
   /-- The length of the tape window read at the dimensions. -/
   win : List ℕ → ℕ := fun _ => 0
   /-- The lengths of the input blocks at the dimensions. -/
@@ -154,11 +156,11 @@ namespace BlockFn
 /-- The effect of a block function on the memory: read the input blocks and the tape window,
 apply the function, write the output block at `z`, advance the tape. It fails if an operand
 handle is not a buffer of the store. -/
-def apply (f : BlockFn K) (d : List ℕ) (ins : List (ℕ × ℕ)) (z : ℕ × ℕ) (τ : ℕ → K) (m : Mem K) :
+def apply (f : BlockFn K) (d : List ℕ) (ins : List (ℕ × ℕ)) (z : ℕ × ℕ) (τ : Tape K) (m : Mem K) :
     Option (Mem K) :=
   if m.Live (ins ++ [z]) then
     (m.readBlocks ins (f.inLens d)).bind fun xs =>
-      (f.fn d ((List.range (f.win d)).map fun j => τ (m.pos + j)) xs).bind fun ys =>
+      (f.fn d (τ.window f.stream m.pos (f.win d)) xs).bind fun ys =>
         (m.write z ys).map fun m' => m'.advance (f.win d)
   else none
 
@@ -169,7 +171,7 @@ def spec (f : BlockFn K) (adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ �
     { pre := fun m => ∃ z, outs = [z] ∧ adm d ins z ∧ md.Needs (f.apply d ins z τ m).isSome
       post := fun m m' => ∃ z, outs = [z] ∧ f.apply d ins z τ m = some m' }
 
-theorem shape_of_apply {f : BlockFn K} {d : List ℕ} {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : ℕ → K}
+theorem shape_of_apply {f : BlockFn K} {d : List ℕ} {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : Tape K}
     {m m' : Mem K} (h : f.apply d ins z τ m = some m') : m'.store.shape = m.store.shape := by
   unfold apply at h
   split_ifs at h
@@ -180,10 +182,10 @@ theorem shape_of_apply {f : BlockFn K} {d : List ℕ} {ins : List (ℕ × ℕ)} 
 
 /-- The effect of a block function, unfolded. -/
 theorem apply_eq_some_iff {f : BlockFn K} {d : List ℕ} {ins : List (ℕ × ℕ)} {z : ℕ × ℕ}
-    {τ : ℕ → K} {m m' : Mem K} :
+    {τ : Tape K} {m m' : Mem K} :
     f.apply d ins z τ m = some m' ↔ m.Live (ins ++ [z]) ∧
       ∃ xs ys, m.readBlocks ins (f.inLens d) = some xs ∧
-      f.fn d ((List.range (f.win d)).map fun j => τ (m.pos + j)) xs = some ys ∧
+      f.fn d (τ.window f.stream m.pos (f.win d)) xs = some ys ∧
       z.2 + ys.length ≤ m.store.len z.1 ∧ m' = (m.updBlock z ys).advance (f.win d) := by
   unfold apply
   by_cases hl : m.Live (ins ++ [z])
@@ -208,7 +210,7 @@ def Interp.IsFn (I : Interp Op Tst K) (md : Mode) (o : Op) (f : BlockFn K)
 /-- **A call of a functional operation is an equation.** -/
 theorem Interp.IsFn.callS_eq {I : Interp Op Tst K} {o : Op} {f : BlockFn K}
     {adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop} (h : I.IsFn .total o f adm) {d : List ℕ}
-    {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : ℕ → K} {m m' : Mem K} (hadm : adm d ins z)
+    {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : Tape K} {m m' : Mem K} (hadm : adm d ins z)
     (ha : f.apply d ins z τ m = some m') : I.callS o d ins [z] τ m = some m' := by
   obtain ⟨m₁, h₁, z', hz, h₂⟩ := h d ins [z] τ m ⟨z, rfl, hadm, by simp [ha]⟩
   cases hz
@@ -217,7 +219,7 @@ theorem Interp.IsFn.callS_eq {I : Interp Op Tst K} {o : Op} {f : BlockFn K}
 /-- In liberal mode: a successful call of a functional operation is `apply`. -/
 theorem Interp.IsFn.apply_of_callS {I : Interp Op Tst K} {o : Op} {f : BlockFn K}
     {adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop} (h : I.IsFn .liberal o f adm) {d : List ℕ}
-    {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : ℕ → K} {m m' : Mem K} (hadm : adm d ins z)
+    {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : Tape K} {m m' : Mem K} (hadm : adm d ins z)
     (hc : I.callS o d ins [z] τ m = some m') : f.apply d ins z τ m = some m' := by
   obtain ⟨z', hz, h₂⟩ := h d ins [z] τ m ⟨z, rfl, hadm, by simp⟩ m' hc
   cases hz
@@ -234,7 +236,7 @@ def Interp.ofFns (F : Op → BlockFn K) : Interp Op Tst K where
   index _ _ _ := none
 
 theorem Interp.ofFns_callS (F : Op → BlockFn K) (o : Op) (d : List ℕ) (ins : List (ℕ × ℕ))
-    (z : ℕ × ℕ) (τ : ℕ → K) (m : Mem K) :
+    (z : ℕ × ℕ) (τ : Tape K) (m : Mem K) :
     (Interp.ofFns F : Interp Op Tst K).callS o d ins [z] τ m = (F o).apply d ins z τ m := by
   by_cases hl : m.Live (ins ++ [z])
   · simp only [Interp.callS, Interp.ofFns, hl, if_true]

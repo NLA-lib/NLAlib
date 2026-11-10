@@ -67,7 +67,7 @@ def prodLoop (n : IExp) (x y t : Operand) : Stmt Op Tst :=
 /-- **The product loop** fills the block `t` from offset zero with the rounded products and
 writes nothing else. -/
 theorem wp_prodLoop {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {md : Mode}
-    {τ : ℕ → K} {ρ : Env} {n : IExp} {x y t : Operand} {N bx by' bt ox oy : ℕ} {S : Store K}
+    {τ : Tape K} {ρ : Env} {n : IExp} {x y t : Operand} {N bx by' bt ox oy : ℕ} {S : Store K}
     {p : ℕ} {a b : ℕ → K} (hn : n.eval ρ.idx = some N)
     (hx : ∀ k, x.eval (ρ.pushIdx k) = some (bx, ox + k))
     (hy : ∀ k, y.eval (ρ.pushIdx k) = some (by', oy + k))
@@ -127,7 +127,7 @@ theorem vec_map_range [Inhabited K] (f : ℕ → K) {n k : ℕ} (hk : k < n) :
 /-- **The run of `dotSum`**, over an interpretation whose `sum` has the error `es`. -/
 theorem wp_dotSum {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {u : ℝ}
     {dec : K → ℝ} (hM : StdModel u dec M) {es : ℕ → ℝ} {ok : ℕ → Prop}
-    (hS : IsSum dec es ok I) {τ : ℕ → K} {n : ℕ} {x y z : ℕ × ℕ} {m : Mem K} {xs ys : List K}
+    (hS : IsSum dec es ok I) {τ : Tape K} {n : ℕ} {x y z : ℕ × ℕ} {m : Mem K} {xs ys : List K}
     (hes : 0 ≤ es n) (hok : ok n) (hl : m.Live [x, y, z])
     (hx : m.store.readBlock x.1 x.2 n = some xs) (hy : m.store.readBlock y.1 y.2 n = some ys)
     (hz : z.2 < m.store.len z.1) :
@@ -154,7 +154,7 @@ theorem wp_dotSum {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {u :
 /-- **The run of `nrm2Sum`**, over an interpretation whose `sum` has the error `es`. -/
 theorem wp_nrm2Sum {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {u : ℝ}
     {dec : K → ℝ} (hM : StdModel u dec M) {es : ℕ → ℝ} {ok : ℕ → Prop}
-    (hS : IsSum dec es ok I) {τ : ℕ → K} {n : ℕ} {x z : ℕ × ℕ} {m : Mem K} {xs : List K}
+    (hS : IsSum dec es ok I) {τ : Tape K} {n : ℕ} {x z : ℕ × ℕ} {m : Mem K} {xs : List K}
     (hes : 0 ≤ es n) (hok : ok n) (hl : m.Live [x, z])
     (hx : m.store.readBlock x.1 x.2 n = some xs) (hz : z.2 < m.store.len z.1) :
     Wp .total I τ (nrm2Sum (Op := Op) (Tst := Tst)).body (Env.frame [n] [x, z])

@@ -119,7 +119,7 @@ theorem CgsCols.succ {dec : K → ℝ} {ε : Blas1Err} {n p bQ oQ bR oR j : ℕ}
 /-- **The run of `cgs`**, for every interpretation meeting the contracts. -/
 theorem wp_cgs {M : Machine K} {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop}
     {J : Interp Op Tst K} (hS : IsScalar M J) (hJ : IsBlas1 dec ε ok J)
-    (hneg : ∀ x, dec (M.neg x) = -dec x) {τ : ℕ → K} {n p oA oQ oR : ℕ} {B : Fin 3 → ℕ}
+    (hneg : ∀ x, dec (M.neg x) = -dec x) {τ : Tape K} {n p oA oQ oR : ℕ} {B : Fin 3 → ℕ}
     {μ : Mem K} {as : List K} (hok : ok n) (hB : Function.Injective B)
     (hl : ∀ i, B i < μ.store.length) (hA : μ.store.readBlock (B 0) oA (p * n) = some as)
     (hQ : oQ + p * n ≤ μ.store.len (B 1)) (hR : oR + p * p ≤ μ.store.len (B 2)) :
@@ -227,7 +227,7 @@ and `cgsPeak W n` scratch cells, writes only `Q` and `R`, and every computed col
 `CgsCol`. -/
 theorem runs_cgs_rounded {M : Machine K} {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop}
     {J : Interp Op Tst K} (hS : IsScalar M J) (hJ : IsBlas1 dec ε ok J)
-    (hneg : ∀ x, dec (M.neg x) = -dec x) (W : Op → List ℕ → ℕ) {τ : ℕ → K}
+    (hneg : ∀ x, dec (M.neg x) = -dec x) (W : Op → List ℕ → ℕ) {τ : Tape K}
     {n p oA oQ oR : ℕ} {B : Fin 3 → ℕ} {μ : Mem K} {as : List K} (hok : ok n)
     (hB : Function.Injective B) (hl : ∀ i, B i < μ.store.length)
     (hA : μ.store.readBlock (B 0) oA (p * n) = some as)

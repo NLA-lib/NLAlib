@@ -102,7 +102,7 @@ def dotLoop (n : IExp) (x y z t : Operand) : Stmt ScalarOp Empty :=
 /-- **The accumulation loop computes `dotF`** in the cell `z`, for a store with one scratch cell
 on top (the operand `t`), input cells in other buffers than `z`. -/
 theorem wp_dotLoop {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I) {md : Mode}
-    {τ : ℕ → K}
+    {τ : Tape K}
     {ρ : Env} {n : IExp} {x y z t : Operand} {N bx by' bz oz : ℕ} {fx fy : ℕ → ℕ} {s : Store K}
     {tb : Buf K} {p : ℕ} {a b : ℕ → K} (hn : n.eval ρ.idx = some N)
     (hz0 : z.eval ρ = some (bz, oz)) (hx : ∀ k, x.eval (ρ.pushIdx k) = some (bx, fx k))
@@ -173,7 +173,7 @@ def dotFn (M : Machine K) : BlockFn K where
     | _, _ => none
 
 /-- What a successful call of the block function of `dot` is. -/
-theorem dotFn_apply {M : Machine K} {d : List ℕ} {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : ℕ → K}
+theorem dotFn_apply {M : Machine K} {d : List ℕ} {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : Tape K}
     {m m' : Mem K} (h : (dotFn M).apply d ins z τ m = some m') :
     ∃ n x y xs ys, d = [n] ∧ ins = [x, y] ∧ m.store.readBlock x.1 x.2 n = some xs ∧
       m.store.readBlock y.1 y.2 n = some ys ∧ z.2 < m.store.len z.1 ∧
@@ -203,7 +203,7 @@ def dotImpl : Impl ScalarOp Empty where
 operands in other buffers than the output, the run of the implementation is the block function.
 A statement about words, with no error analysis. -/
 theorem dot_cert {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I) {d : List ℕ}
-    {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : ℕ → K} {m m' : Mem K} (hadm : DisjointBufs d ins z)
+    {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : Tape K} {m m' : Mem K} (hadm : DisjointBufs d ins z)
     (h : (dotFn M).apply d ins z τ m = some m') :
     dotImpl.Fits d.length ins.length 1 ∧
       run I τ dotImpl.body (Env.frame d (ins ++ [z])) m = some m' := by

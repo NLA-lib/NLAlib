@@ -151,7 +151,7 @@ theorem whileIter_within {test : St Op Tst K → Option Bool} {tick : St Op Tst 
 
 /-- **Soundness of the static count and workspace**: a successful counted run keeps the live
 cells, adds at most the static count and stays within the static workspace. -/
-theorem exec_within {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ : ℕ → K} {s : Stmt Op Tst}
+theorem exec_within {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ : Tape K} {s : Stmt Op Tst}
     {ρ : Env}
     {st st' : St Op Tst K} (h : exec I W τ s ρ st = some st') :
     St.Within st st' (staticCost s ρ.idx) (staticPeak W s ρ.idx) := by
@@ -217,27 +217,27 @@ theorem exec_within {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ : �
 /-- **A run within a budget** (total correctness with accounting): from the memory `m`, the
 counted run succeeds, its counts are at most `B`, its scratch cells at most `M`, and `Q` holds of
 the final memory. -/
-def Runs (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : ℕ → K) (s : Stmt Op Tst) (ρ : Env)
+def Runs (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : Tape K) (s : Stmt Op Tst) (ρ : Env)
     (m : Mem K)
     (B : Count Op Tst) (M : ℕ) (Q : Mem K → Prop) : Prop :=
   ∃ st', exec I W τ s ρ (St.init m) = some st' ∧ st'.cost ≤ B ∧ st'.peak ≤ M ∧ Q st'.mem
 
 /-- **A refinement statement** (partial correctness): if the run succeeds, `Q` holds of the final
 memory. -/
-def RunsL (I : Interp Op Tst K) (τ : ℕ → K) (s : Stmt Op Tst) (ρ : Env) (m : Mem K)
+def RunsL (I : Interp Op Tst K) (τ : Tape K) (s : Stmt Op Tst) (ρ : Env) (m : Mem K)
     (Q : Mem K → Prop) :
     Prop :=
   ∀ m', run I τ s ρ m = some m' → Q m'
 
 /-- A successful run with `Q` is a run within the static count and workspace. -/
-theorem Runs.of_run {I : Interp Op Tst K} {τ : ℕ → K} {s : Stmt Op Tst} {ρ : Env} {m m' : Mem K}
+theorem Runs.of_run {I : Interp Op Tst K} {τ : Tape K} {s : Stmt Op Tst} {ρ : Env} {m m' : Mem K}
     {Q : Mem K → Prop} (h : run I τ s ρ m = some m') (hQ : Q m') (W : Op → List ℕ → ℕ) :
     Runs I W τ s ρ m (staticCost s ρ.idx) (staticPeak W s ρ.idx) Q := by
   obtain ⟨st', hst, hm⟩ := exec_eq_some_of_run h W (St.init m) rfl
   obtain ⟨-, h2, h3⟩ := exec_within hst
   exact ⟨st', hst, by simpa [St.init] using h2, by simpa [St.init] using h3, hm ▸ hQ⟩
 
-theorem Runs.mono {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ : ℕ → K} {s : Stmt Op Tst}
+theorem Runs.mono {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ : Tape K} {s : Stmt Op Tst}
     {ρ : Env}
     {m : Mem K} {B B' : Count Op Tst} {M M' : ℕ} {Q Q' : Mem K → Prop} (h : Runs I W τ s ρ m B M Q)
     (hB : B ≤ B') (hM : M ≤ M') (hQ : ∀ m', Q m' → Q' m') : Runs I W τ s ρ m B' M' Q' := by

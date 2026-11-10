@@ -40,7 +40,7 @@ dimensions, input and output operands on the memory, given the tape; `test` and 
 Boolean and the number an operation returns when it is used as a test or as an index. -/
 structure Interp (Op Tst K : Type) where
   /-- The effect of a call. -/
-  call : Op → List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → (ℕ → K) → Mem K → Option (Mem K)
+  call : Op → List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Tape K → Mem K → Option (Mem K)
   /-- The Boolean of a test. -/
   test : Tst → List ℕ → List (ℕ × ℕ) → Mem K → Option Bool
   /-- The number of an index use. -/
@@ -49,26 +49,26 @@ structure Interp (Op Tst K : Type) where
 /-- The call of the evaluator: the call of the interpretation, failing if an operand handle is
 not a buffer of the store, or if the call changes the shape of the store. -/
 def Interp.callS (I : Interp Op Tst K) (o : Op) (d : List ℕ) (ins outs : List (ℕ × ℕ))
-    (τ : ℕ → K) (m : Mem K) : Option (Mem K) :=
+    (τ : Tape K) (m : Mem K) : Option (Mem K) :=
   if m.Live (ins ++ outs) then
     (I.call o d ins outs τ m).bind fun m' =>
       if m'.store.shape = m.store.shape then some m' else none
   else none
 
 theorem Interp.callS_of_live {I : Interp Op Tst K} {o : Op} {d : List ℕ}
-    {ins outs : List (ℕ × ℕ)} {τ : ℕ → K} {m : Mem K} (h : m.Live (ins ++ outs)) :
+    {ins outs : List (ℕ × ℕ)} {τ : Tape K} {m : Mem K} (h : m.Live (ins ++ outs)) :
     I.callS o d ins outs τ m = (I.call o d ins outs τ m).bind fun m' =>
       if m'.store.shape = m.store.shape then some m' else none := if_pos h
 
 theorem Interp.live_of_callS {I : Interp Op Tst K} {o : Op} {d : List ℕ}
-    {ins outs : List (ℕ × ℕ)} {τ : ℕ → K} {m m' : Mem K}
+    {ins outs : List (ℕ × ℕ)} {τ : Tape K} {m m' : Mem K}
     (h : I.callS o d ins outs τ m = some m') : m.Live (ins ++ outs) := by
   unfold Interp.callS at h
   split_ifs at h with hl
   exact hl
 
 theorem Interp.shape_of_callS {I : Interp Op Tst K} {o : Op} {d : List ℕ}
-    {ins outs : List (ℕ × ℕ)} {τ : ℕ → K} {m m' : Mem K}
+    {ins outs : List (ℕ × ℕ)} {τ : Tape K} {m m' : Mem K}
     (h : I.callS o d ins outs τ m = some m') : m'.store.shape = m.store.shape := by
   rw [Interp.callS_of_live (Interp.live_of_callS h)] at h
   obtain ⟨m₁, -, h⟩ := Option.bind_eq_some_iff.mp h
@@ -92,7 +92,7 @@ def whileIter {σ : Type} (test : σ → Option Bool) (tick : σ → σ) (body :
 
 /-- **The run**: the memory after a program, in the environment `ρ`, under the interpretation `I`
 and the tape `τ`; `none` is failure. -/
-def run (I : Interp Op Tst K) (τ : ℕ → K) :
+def run (I : Interp Op Tst K) (τ : Tape K) :
     Stmt Op Tst → Env → Mem K → Option (Mem K)
   | .skip, _, m => some m
   | .abort, _, _ => none
@@ -151,7 +151,7 @@ noncomputable def St.tick (st : St Op Tst K) (q : Tst) (d : List ℕ) : St Op Ts
 
 /-- **The counted run.** `W o d` is the workspace, in cells, that the access model declares for a
 call of `o` at the dimensions `d`. -/
-noncomputable def exec (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : ℕ → K) :
+noncomputable def exec (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : Tape K) :
     Stmt Op Tst → Env → St Op Tst K → Option (St Op Tst K)
   | .skip, _, st => some st
   | .abort, _, _ => none
@@ -225,7 +225,7 @@ theorem map_whileIter {σ σ' : Type} {g : σ → σ'} {test : σ → Option Boo
         rw [Option.map_bind_of_comm _ (fun a => ih a), hb, hk]
 
 /-- **The counted run and the run end in the same memory, or both fail.** -/
-theorem map_mem_exec (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : ℕ → K) (s : Stmt Op Tst)
+theorem map_mem_exec (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : Tape K) (s : Stmt Op Tst)
     (ρ : Env)
     (st : St Op Tst K) : (exec I W τ s ρ st).map (·.mem) = run I τ s ρ st.mem := by
   induction s generalizing ρ st with
@@ -284,7 +284,7 @@ theorem map_mem_exec (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : �
     · rfl
 
 /-- A counted run succeeds exactly when the run does. -/
-theorem exec_eq_some_of_run {I : Interp Op Tst K} {τ : ℕ → K} {s : Stmt Op Tst} {ρ : Env}
+theorem exec_eq_some_of_run {I : Interp Op Tst K} {τ : Tape K} {s : Stmt Op Tst} {ρ : Env}
     {m m' : Mem K}
     (h : run I τ s ρ m = some m') (W : Op → List ℕ → ℕ) (st : St Op Tst K) (hm : st.mem = m) :
     ∃ st', exec I W τ s ρ st = some st' ∧ st'.mem = m' := by
@@ -293,7 +293,7 @@ theorem exec_eq_some_of_run {I : Interp Op Tst K} {τ : ℕ → K} {s : Stmt Op 
   obtain ⟨st', h1, h2⟩ := Option.map_eq_some_iff.mp e
   exact ⟨st', h1, h2⟩
 
-theorem run_of_exec {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ : ℕ → K} {s : Stmt Op Tst}
+theorem run_of_exec {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ : Tape K} {s : Stmt Op Tst}
     {ρ : Env}
     {st st' : St Op Tst K} (h : exec I W τ s ρ st = some st') :
     run I τ s ρ st.mem = some st'.mem := by
@@ -337,7 +337,7 @@ theorem whileIter_rel {σ : Type} {R : σ → σ → Prop}
 
 /-- **A run keeps the shape of the store**: buffers are neither created, resized nor freed behind
 the program's back. -/
-theorem shape_store_of_run {I : Interp Op Tst K} {τ : ℕ → K} {s : Stmt Op Tst} {ρ : Env}
+theorem shape_store_of_run {I : Interp Op Tst K} {τ : Tape K} {s : Stmt Op Tst} {ρ : Env}
     {m m' : Mem K}
     (h : run I τ s ρ m = some m') : m'.store.shape = m.store.shape := by
   induction s generalizing ρ m m' with

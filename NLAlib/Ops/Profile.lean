@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Ops.Transfer
+public import NLAlib.Ops.Tape
 
 /-!
 # Signatures made of groups, and profiles
@@ -98,6 +99,10 @@ structure Profile (Op Lo Tst : Type) where
   ws : Op → List ℕ → ℕ
   /-- The workspace of each lower operation. -/
   wsLo : Lo → List ℕ → ℕ
+  /-- The tape window of each operation: the number of positions a call may read. -/
+  win : Op → List ℕ → ℕ := fun _ _ => 0
+  /-- The tape window of each lower operation. -/
+  winLo : Lo → List ℕ → ℕ := fun _ _ => 0
 
 namespace Profile
 
@@ -108,28 +113,42 @@ structure Certifies (P : Profile Op Lo Tst) (Base : Interp Lo Tst K → Prop)
   meets : ∀ I, Base I → Ck (I.link P.table)
   /-- A run within a budget under the linked interpretation is a run of the linked program
   within the pushed-forward budget. -/
-  transfer : ∀ (I : Interp Lo Tst K) (τ : ℕ → K) (s : Stmt Op Tst) (ρ : Env) (m : Mem K)
+  transfer : ∀ (I : Interp Lo Tst K) (τ : Tape K) (s : Stmt Op Tst) (ρ : Env) (m : Mem K)
     (B : Count Op Tst) (M : ℕ) (Q : Mem K → Prop), Runs (I.link P.table) P.ws τ s ρ m B M Q →
       Runs I P.wsLo τ (s.link P.table) ρ m (Count.push P.cost B) M Q
+  /-- Over lower operations that read the tape only in their windows, the linked operations read
+  it only in theirs: the draws of an implementation are those the law of the tape assigns to it. -/
+  tapeLocal : ∀ I : Interp Lo Tst K, Base I → (∀ o, I.TapeLocal o (P.winLo o)) →
+    ∀ o, (I.link P.table).TapeLocal o (P.win o)
+
+/-- The tape clause of a profile that does not draw: over tape-independent operations every linked
+operation is tape-independent, whatever its implementation. -/
+theorem tapeLocal_noDraw {P : Profile Op Lo Tst} (hw : P.win = fun _ _ => 0)
+    (hl : P.winLo = fun _ _ => 0) (I : Interp Lo Tst K)
+    (hI : ∀ o, I.TapeLocal o (P.winLo o)) (o : Op) : (I.link P.table).TapeLocal o (P.win o) := by
+  rw [hw]
+  exact Interp.TapeLocal.link_zero (fun o => by simpa [hl] using hI o) P.table o
 
 /-- A certificate from the contracts of the induced interpretation and the accounting certificate
 of the table. -/
 theorem Certifies.of_accounts {P : Profile Op Lo Tst} {Base : Interp Lo Tst K → Prop}
     {Ck : Interp Op Tst K → Prop} (hm : ∀ I, Base I → Ck (I.link P.table))
-    (hacc : ∀ I : Interp Lo Tst K, P.table.Accounts I P.wsLo P.cost P.ws) : P.Certifies Base Ck :=
-  ⟨hm, fun I _ _ _ _ _ _ _ h => h.link (hacc I)⟩
+    (hacc : ∀ I : Interp Lo Tst K, P.table.Accounts I P.wsLo P.cost P.ws)
+    (htl : ∀ I : Interp Lo Tst K, Base I → (∀ o, I.TapeLocal o (P.winLo o)) →
+      ∀ o, (I.link P.table).TapeLocal o (P.win o)) : P.Certifies Base Ck :=
+  ⟨hm, fun I _ _ _ _ _ _ _ h => h.link (hacc I), htl⟩
 
 /-- A certificate serves a stronger base and weaker contracts. -/
 theorem Certifies.mono {P : Profile Op Lo Tst} {Base Base' : Interp Lo Tst K → Prop}
     {Ck Ck' : Interp Op Tst K → Prop} (h : P.Certifies Base Ck) (hB : ∀ I, Base' I → Base I)
     (hC : ∀ J, Ck J → Ck' J) : P.Certifies Base' Ck' :=
-  ⟨fun I hI => hC _ (h.meets I (hB I hI)), h.transfer⟩
+  ⟨fun I hI => hC _ (h.meets I (hB I hI)), h.transfer, fun I hI => h.tapeLocal I (hB I hI)⟩
 
 /-- **The corollary for any algorithm and any certified profile**: a theorem proved for every
 interpretation meeting `Ck` holds for the linked program over every interpretation meeting
 `Base`, with the counts pushed forward and the same workspace. -/
 theorem Certifies.runs {P : Profile Op Lo Tst} {Base : Interp Lo Tst K → Prop}
-    {Ck : Interp Op Tst K → Prop} (h : P.Certifies Base Ck) {τ : ℕ → K} {s : Stmt Op Tst}
+    {Ck : Interp Op Tst K → Prop} (h : P.Certifies Base Ck) {τ : Tape K} {s : Stmt Op Tst}
     {ρ : Env} {m : Mem K} {B : Count Op Tst} {M : ℕ} {Q : Mem K → Prop}
     (hT : ∀ J, Ck J → Runs J P.ws τ s ρ m B M Q) {I : Interp Lo Tst K} (hI : Base I) :
     Runs I P.wsLo τ (s.link P.table) ρ m (Count.push P.cost B) M Q :=
@@ -141,12 +160,17 @@ noncomputable def over (P : Profile Op Mid Tst) (Q : Profile Mid Lo Tst) : Profi
   cost o d := Count.push Q.cost (P.cost o d)
   ws := P.ws
   wsLo := Q.wsLo
+  win := P.win
+  winLo := Q.winLo
 
 /-- **Certificates compose along a tower.** -/
 theorem Certifies.over {P : Profile Op Mid Tst} {Q : Profile Mid Lo Tst}
     {C₀ : Interp Lo Tst K → Prop} {C₁ : Interp Mid Tst K → Prop} {C₂ : Interp Op Tst K → Prop}
-    (hP : P.Certifies C₁ C₂) (hQ : Q.Certifies C₀ C₁) (hws : P.wsLo = Q.ws) :
-    (P.over Q).Certifies C₀ C₂ where
+    (hP : P.Certifies C₁ C₂) (hQ : Q.Certifies C₀ C₁) (hws : P.wsLo = Q.ws)
+    (hwin : P.winLo = Q.win) : (P.over Q).Certifies C₀ C₂ where
+  tapeLocal I hI hloc o := by
+    have := hP.tapeLocal _ (hQ.meets I hI) (hwin ▸ hQ.tapeLocal I hI hloc) o
+    rwa [Interp.link_comp] at this
   meets I hI := by
     have := hP.meets _ (hQ.meets I hI)
     rwa [Interp.link_comp] at this
@@ -161,21 +185,25 @@ theorem Certifies.over {P : Profile Op Mid Tst} {Q : Profile Mid Lo Tst}
     exact h3
 
 /-- The profile that keeps every operation. -/
-noncomputable def id (W : Op → List ℕ → ℕ) : Profile Op Op Tst where
+noncomputable def id (W : Op → List ℕ → ℕ) (V : Op → List ℕ → ℕ := fun _ _ => 0) :
+    Profile Op Op Tst where
   table := Table.id
   cost := Count.one
   ws := W
   wsLo := W
+  win := V
+  winLo := V
 
-theorem certifies_id (W : Op → List ℕ → ℕ) (C : Interp Op Tst K → Prop) :
-    (Profile.id (Tst := Tst) W).Certifies C C where
+theorem certifies_id (W V : Op → List ℕ → ℕ) (C : Interp Op Tst K → Prop) :
+    (Profile.id (Tst := Tst) W V).Certifies C C where
   meets I hI := hI
+  tapeLocal I _ hloc o := Interp.TapeLocal.link_kept rfl (hloc o)
   transfer I τ s ρ m B M Q h := by
     simpa [Profile.id] using h
 
 /-- **The `k`-fold iterate of a profile of a signature over itself.** -/
 noncomputable def iter (P : Profile Op Op Tst) : ℕ → Profile Op Op Tst
-  | 0 => Profile.id P.ws
+  | 0 => Profile.id P.ws P.win
   | k + 1 => P.over (P.iter k)
 
 @[simp] theorem iter_ws (P : Profile Op Op Tst) (k : ℕ) : (P.iter k).ws = P.ws := by
@@ -186,6 +214,9 @@ theorem iter_wsLo (P : Profile Op Op Tst) (k : ℕ) :
   induction k with
   | zero => rfl
   | succ k ih => exact ih
+
+@[simp] theorem iter_win (P : Profile Op Op Tst) (k : ℕ) : (P.iter k).win = P.win := by
+  cases k <;> rfl
 
 @[simp] theorem iter_table (P : Profile Op Op Tst) (k : ℕ) :
     (P.iter k).table = P.table.iter k := by
@@ -202,11 +233,12 @@ theorem iter_cost_succ (P : Profile Op Op Tst) (k : ℕ) (o : Op) (d : List ℕ)
 depth `k + 1`, its `k`-fold iterate takes the contracts of depth `0` to those of depth `k`, with
 the counts pushed forward `k` times. -/
 theorem Certifies.iter {P : Profile Op Op Tst} {C : ℕ → Interp Op Tst K → Prop}
-    (h : ∀ k, P.Certifies (C k) (C (k + 1))) (hws : P.wsLo = P.ws) (k : ℕ) :
+    (h : ∀ k, P.Certifies (C k) (C (k + 1))) (hws : P.wsLo = P.ws) (hwin : P.winLo = P.win)
+    (k : ℕ) :
     (P.iter k).Certifies (C 0) (C k) := by
   induction k with
-  | zero => exact certifies_id _ _
-  | succ k ih => exact (h k).over ih (by rw [hws, iter_ws])
+  | zero => exact certifies_id _ _ _
+  | succ k ih => exact (h k).over ih (by rw [hws, iter_ws]) (by rw [hwin, iter_win])
 
 end Profile
 

@@ -43,13 +43,13 @@ namespace NLAlib.Ops
 variable {Op Op₁ Op₂ Tst K : Type}
 
 /-- **The weakest precondition**: the run of `s` from `m` satisfies `Q`, in the mode `md`. -/
-def Wp (md : Mode) (I : Interp Op Tst K) (τ : ℕ → K) (s : Stmt Op Tst) (ρ : Env) (Q : Mem K → Prop)
+def Wp (md : Mode) (I : Interp Op Tst K) (τ : Tape K) (s : Stmt Op Tst) (ρ : Env) (Q : Mem K → Prop)
     (m : Mem K) : Prop :=
   md.Holds (run I τ s ρ m) Q
 
 section Rules
 
-variable {md : Mode} {I : Interp Op Tst K} {τ : ℕ → K} {ρ : Env} {Q Q' : Mem K → Prop} {m : Mem K}
+variable {md : Mode} {I : Interp Op Tst K} {τ : Tape K} {ρ : Env} {Q Q' : Mem K → Prop} {m : Mem K}
 
 theorem wp_total_iff {s : Stmt Op Tst} :
     Wp .total I τ s ρ Q m ↔ ∃ m', run I τ s ρ m = some m' ∧ Q m' := Iff.rfl
@@ -162,11 +162,11 @@ theorem wp_call_tern {o : Op} {g : K → K → K → Option K}
     (BlockFn.apply_tern_eq_some_iff.mpr ⟨a, b, c, v, hx, hy, hw, hg, hz, rfl⟩) hQ
 
 /-- A draw, on cells. -/
-theorem wp_call_draw {o : Op} {adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop}
-    (hI : I.IsFn .total o .draw adm) {ds : List IExp} {ins outs : List Operand} {d : List ℕ}
+theorem wp_call_draw {o : Op} {st : ℕ} {adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop}
+    (hI : I.IsFn .total o (.draw st) adm) {ds : List IExp} {ins outs : List Operand} {d : List ℕ}
     {z : ℕ × ℕ} (hd : IExp.evalList ρ.idx ds = some d) (ha : Operand.evalList ρ ins = some [])
     (hb : Operand.evalList ρ outs = some [z]) (hadm : adm d [] z) (hz : z.2 < m.store.len z.1)
-    (hQ : Q ((m.upd z (τ m.pos)).advance 1)) : Wp md I τ (.call o ds ins outs) ρ Q m :=
+    (hQ : Q ((m.upd z (τ m.pos st)).advance 1)) : Wp md I τ (.call o ds ins outs) ρ Q m :=
   wp_call_fn hI hd ha hb hadm (BlockFn.apply_draw_eq_some_iff.mpr ⟨hz, rfl⟩) hQ
 
 theorem holds_iter {σ : Type} {f : ℕ → σ → Option σ} {k : ℕ} (Inv : ℕ → σ → Prop)

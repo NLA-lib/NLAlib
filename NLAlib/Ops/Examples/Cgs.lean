@@ -79,7 +79,7 @@ abbrev cgsEnv (H : CgsBuf → ℕ) (n p oA oQ oR j : ℕ) : Env :=
   ⟨[n, p, oA, oQ, oR, j], [H .A, H .Q, H .R, H .t, H .v]⟩
 
 variable [Inhabited K] {M : Machine K} {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop}
-  {J : Interp Op Tst K} {τ : ℕ → K} {H : CgsBuf → ℕ} {n p oA oQ oR j : ℕ} {s : Store K}
+  {J : Interp Op Tst K} {τ : Tape K} {H : CgsBuf → ℕ} {n p oA oQ oR j : ℕ} {s : Store K}
   {pos : ℕ} {qs a : List K}
 
 omit [Has ScalarOp Op] in

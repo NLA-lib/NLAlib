@@ -109,7 +109,7 @@ theorem isScalErr_scalF {u : ℝ} {dec : K → ℝ} {M : Machine K} (hM : StdMod
 
 /-- **The run of the `axpy` loop** replaces the block `y` by `axpyF`. -/
 theorem wp_axpyLoop {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {md : Mode}
-    {τ : ℕ → K} {n : ℕ} {al x y : ℕ × ℕ} {m : Mem K} {a : K} {xs ys : List K}
+    {τ : Tape K} {n : ℕ} {al x y : ℕ × ℕ} {m : Mem K} {a : K} {xs ys : List K}
     (hal : al.1 ≠ y.1) (hxy : x.1 ≠ y.1) (hl : m.Live [al, x, y])
     (ha : m.store.get al.1 al.2 = some a) (hx : m.store.readBlock x.1 x.2 n = some xs)
     (hy : m.store.readBlock y.1 y.2 n = some ys) {Q : Mem K → Prop}
@@ -156,7 +156,7 @@ theorem wp_axpyLoop {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {m
 
 /-- **The run of the `scal` loop** replaces the block `x` by `scalF`. -/
 theorem wp_scalLoop {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {md : Mode}
-    {τ : ℕ → K} {n : ℕ} {al x : ℕ × ℕ} {m : Mem K} {a : K} {xs : List K} (hal : al.1 ≠ x.1)
+    {τ : Tape K} {n : ℕ} {al x : ℕ × ℕ} {m : Mem K} {a : K} {xs : List K} (hal : al.1 ≠ x.1)
     (ha : m.store.get al.1 al.2 = some a) (hx : m.store.readBlock x.1 x.2 n = some xs)
     {Q : Mem K → Prop} (hQ : Q (m.updBlock x (scalF M a (vec xs) n))) :
     Wp md I τ (scalLoop (Op := Op) (Tst := Tst)).body (Env.frame [n] [al, x, x]) Q m := by
@@ -184,7 +184,7 @@ theorem wp_scalLoop {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {m
 
 /-- **The run of the `copy` loop** replaces the block `y` by the block `x`. -/
 theorem wp_copyLoop {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {md : Mode}
-    {τ : ℕ → K} {n : ℕ} {x y : ℕ × ℕ} {m : Mem K} {xs : List K} (hxy : x.1 ≠ y.1)
+    {τ : Tape K} {n : ℕ} {x y : ℕ × ℕ} {m : Mem K} {xs : List K} (hxy : x.1 ≠ y.1)
     (hx : m.store.readBlock x.1 x.2 n = some xs) (hy : y.2 + n ≤ m.store.len y.1)
     {Q : Mem K → Prop} (hQ : Q (m.updBlock y xs)) :
     Wp md I τ (copyLoop (Op := Op) (Tst := Tst)).body (Env.frame [n] [x, y]) Q m := by

@@ -91,7 +91,7 @@ theorem halveInv_test {dec : K → ℕ} {h : K → K} {I : Interp HOp HTst K}
   exact Nat.lt_size.mpr hb.2
 
 theorem halveInv_step {dec : K → ℕ} {h : K → K} {I : Interp HOp HTst K}
-    (hI : IsHalving dec h I) {τ : ℕ → K} {k : ℕ} {m : Mem K} {x : ℕ × ℕ} {v : ℕ}
+    (hI : IsHalving dec h I) {τ : Tape K} {k : ℕ} {m : Mem K} {x : ℕ × ℕ} {v : ℕ}
     (hx : x.2 < m.store.len x.1) (i : ℕ) (m' : Mem K) (hinv : HalveInv dec m x v i m') :
     Wp .total I τ (.call .half [] [⟨0, .var 1⟩] [⟨0, .var 1⟩]) ⟨[k, x.2], [x.1]⟩
       (HalveInv dec m x v (i + 1)) m' := by
@@ -104,7 +104,7 @@ theorem halveInv_step {dec : K → ℕ} {h : K → K} {I : Interp HOp HTst K}
 mathematics: if the fuel is at least the bit length of the decoded number, the run ends with a
 word that decodes to zero. -/
 theorem wp_halve {dec : K → ℕ} {h : K → K} {I : Interp HOp HTst K} (hI : IsHalving dec h I)
-    {τ : ℕ → K} {k : ℕ} {m : Mem K} {x : ℕ × ℕ} {a : K} (hx : m.store.get x.1 x.2 = some a)
+    {τ : Tape K} {k : ℕ} {m : Mem K} {x : ℕ × ℕ} {a : K} (hx : m.store.get x.1 x.2 = some a)
     (hk : Nat.size (dec a) ≤ k) :
     Wp .total I τ halve ⟨[k, x.2], [x.1]⟩ (fun m' => ∃ a', m' = m.upd x a' ∧ dec a' = 0) m := by
   have hlt := Store.lt_len_of_get hx
@@ -119,7 +119,7 @@ theorem wp_halve {dec : K → ℕ} {h : K → K} {I : Interp HOp HTst K} (hI : I
 `Nat.size v + 1` tests, where `v` is the number the word decodes to; the fuel is not in the
 bound. -/
 theorem runs_halve {dec : K → ℕ} {h : K → K} {I : Interp HOp HTst K} (hI : IsHalving dec h I)
-    (W : HOp → List ℕ → ℕ) {τ : ℕ → K} {k : ℕ} {m : Mem K} {x : ℕ × ℕ} {a : K}
+    (W : HOp → List ℕ → ℕ) {τ : Tape K} {k : ℕ} {m : Mem K} {x : ℕ × ℕ} {a : K}
     (hx : m.store.get x.1 x.2 = some a) (hk : Nat.size (dec a) ≤ k) :
     Runs I W τ halve ⟨[k, x.2], [x.1]⟩ m
       (Nat.size (dec a) • (Count.test .nz [] + Count.one .half []) + Count.test .nz [])
@@ -137,7 +137,7 @@ theorem runs_halve {dec : K → ℕ} {h : K → K} {I : Interp HOp HTst K} (hI :
 /-- **Partial correctness of the halving loop**, with no bound: if the run succeeds, whatever
 the fuel, the word decodes to zero. -/
 theorem wpL_halve {dec : K → ℕ} {h : K → K} {I : Interp HOp HTst K} (hI : IsHalving dec h I)
-    {τ : ℕ → K} {k : ℕ} {m : Mem K} {x : ℕ × ℕ} {a : K} (hx : m.store.get x.1 x.2 = some a) :
+    {τ : Tape K} {k : ℕ} {m : Mem K} {x : ℕ × ℕ} {a : K} (hx : m.store.get x.1 x.2 = some a) :
     Wp .liberal I τ halve ⟨[k, x.2], [x.1]⟩ (fun m' => ∃ a', m' = m.upd x a' ∧ dec a' = 0) m := by
   have hlt := Store.lt_len_of_get hx
   refine wp_whileFuel_liberal rfl rfl (fun m' => ∃ a', m' = m.upd x a')

@@ -171,7 +171,7 @@ def ScalePost (dec : K → ℝ) (ε : ℝ) (n : ℕ) (v s : ℕ × ℕ) (m m' : 
 `div`, if the run of `scale` succeeds then its conclusion holds. No hypothesis on the divisor, on
 the readability of the block or on the handles: the evaluator rejects a handle outside the store. -/
 theorem runsL_scale {dec : K → ℝ} {ε : ℝ} {J : Interp DOp Empty K}
-    (hJ : J.Meets .liberal .div (divSpec dec ε)) {τ : ℕ → K} {n : ℕ} {v s : ℕ × ℕ} {m : Mem K}
+    (hJ : J.Meets .liberal .div (divSpec dec ε)) {τ : Tape K} {n : ℕ} {v s : ℕ × ℕ} {m : Mem K}
     (hvs : v.1 ≠ s.1) :
     RunsL J τ scale ⟨[n, v.2, s.2], [v.1, s.1]⟩ m (ScalePost dec ε n v s m) := by
   refine wp_liberal_iff.mp (wp_loop (k := n) rfl (fun i m' => ScalePost dec ε i v s m m')
@@ -204,7 +204,7 @@ theorem runsL_scale {dec : K → ℝ} {ε : ℝ} {J : Interp DOp Empty K}
 application of `link_liberal`; no certificate and no proof about the loop. -/
 theorem runsL_scale_link {recipF : K → Option K} {mulF : K → K → K} {I : Interp ROp Empty K}
     (hI : IsRecipMul recipF mulF I) {u : ℝ} {dec : K → ℝ} (hM : RecipModel u dec recipF mulF)
-    (hu : 0 ≤ u) {τ : ℕ → K} {n : ℕ} {v s : ℕ × ℕ} {m : Mem K} (hvs : v.1 ≠ s.1) :
+    (hu : 0 ≤ u) {τ : Tape K} {n : ℕ} {v s : ℕ × ℕ} {m : Mem K} (hvs : v.1 ≠ s.1) :
     RunsL I τ (scale.link divTable) ⟨[n, v.2, s.2], [v.1, s.1]⟩ m
       (ScalePost dec (2 * u + u ^ 2) n v s m) :=
   link_liberal (Ck := fun J => J.Meets .liberal .div (divSpec dec (2 * u + u ^ 2)))

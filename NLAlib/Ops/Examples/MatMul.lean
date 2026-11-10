@@ -52,7 +52,7 @@ def mmFn (f : ℕ → ℕ → ℕ → List K → List K → List K) : BlockFn K 
 omit [Inhabited K] in
 /-- What a successful call of the block function of `mm` is. -/
 theorem mmFn_apply {f : ℕ → ℕ → ℕ → List K → List K → List K} {d : List ℕ}
-    {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : ℕ → K} {m m' : Mem K}
+    {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : Tape K} {m m' : Mem K}
     (h : (mmFn f).apply d ins z τ m = some m') :
     ∃ a b c A B As Bs, d = [a, b, c] ∧ ins = [A, B] ∧
       m.store.readBlock A.1 A.2 (a * b) = some As ∧ m.store.readBlock B.1 B.2 (b * c) = some Bs ∧
@@ -88,7 +88,7 @@ omit [Inhabited K] in
 functional contract: two calls of `mm` at `[n, n, n]`, the workspace of one, and the memory is
 given by `f`. -/
 theorem runs_sq2 {f : ℕ → ℕ → ℕ → List K → List K → List K} {I : Interp MOp Empty K}
-    (hI : IsMM f I) (W : MOp → List ℕ → ℕ) {τ : ℕ → K} {n : ℕ} {A P S : ℕ × ℕ} {m : Mem K}
+    (hI : IsMM f I) (W : MOp → List ℕ → ℕ) {τ : Tape K} {n : ℕ} {A P S : ℕ × ℕ} {m : Mem K}
     {As : List K} (hAP : A.1 ≠ P.1) (hPS : P.1 ≠ S.1)
     (hA : m.store.readBlock A.1 A.2 (n * n) = some As) (hP : P.2 + n * n ≤ m.store.len P.1)
     (hS : S.2 + n * n ≤ m.store.len S.1) (hl : m.Live [A, P, S]) :
@@ -154,7 +154,7 @@ def mmImpl : Impl ScalarOp Empty where
 
 /-- One entry: the accumulation loop appends entry `i c + j` to the block written so far. -/
 theorem wp_mm_entry {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I) {md : Mode}
-    {τ : ℕ → K}
+    {τ : Tape K}
     {a b c i j : ℕ} (hi : i < a) (hj : j < c) {A B C : ℕ × ℕ} {s : Store K} {p : ℕ}
     {As Bs : List K} {tb : Buf K} (hAC : A.1 ≠ C.1) (hBC : B.1 ≠ C.1)
     (hA : s.readBlock A.1 A.2 (a * b) = some As) (hB : s.readBlock B.1 B.2 (b * c) = some Bs)
@@ -200,7 +200,7 @@ theorem wp_mm_entry {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith 
 /-- **The exact certificate of the triple loop**: where the block function of `mmF` succeeds on
 inputs in other buffers than the output, the run of `mmImpl` is that block function. -/
 theorem mm_cert {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I) {d : List ℕ}
-    {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : ℕ → K} {m m' : Mem K} (hadm : DisjointBufs d ins z)
+    {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : Tape K} {m m' : Mem K} (hadm : DisjointBufs d ins z)
     (h : (mmFn (mmF M)).apply d ins z τ m = some m') :
     mmImpl.Fits d.length ins.length 1 ∧
       run I τ mmImpl.body (Env.frame d (ins ++ [z])) m = some m' := by
@@ -277,7 +277,7 @@ theorem isMM_link {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M 
 /-- **The concrete corollary**: `sq2` linked with the triple loop computes the rounded products
 `mmF`, within the pushed-forward counts and one scratch cell. One application of the linking
 theorem. -/
-theorem runs_sq2_link {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I) {τ : ℕ → K}
+theorem runs_sq2_link {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I) {τ : Tape K}
     {n : ℕ}
     {A P S : ℕ × ℕ} {m : Mem K} {As : List K} (hAP : A.1 ≠ P.1) (hPS : P.1 ≠ S.1)
     (hA : m.store.readBlock A.1 A.2 (n * n) = some As) (hP : P.2 + n * n ≤ m.store.len P.1)

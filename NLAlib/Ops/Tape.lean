@@ -37,20 +37,20 @@ variable {Op Op₁ Op₂ Tst K : Type}
 
 /-- **Tape locality** of the operation `o` with the window `k`. -/
 def Interp.TapeLocal (I : Interp Op Tst K) (o : Op) (k : List ℕ → ℕ) : Prop :=
-  ∀ d ins outs m (τ τ' : ℕ → K), (∀ j < k d, τ (m.pos + j) = τ' (m.pos + j)) →
+  ∀ d ins outs m (τ τ' : Tape K), (∀ j < k d, τ (m.pos + j) = τ' (m.pos + j)) →
     I.call o d ins outs τ m = I.call o d ins outs τ' m ∧
       ∀ m', I.call o d ins outs τ m = some m' → m'.pos = m.pos + k d
 
 /-- `f'`, a step under the tape `τ'`, follows `f`, the step under `τ`: a successful `f` does not
 move the position back, and `f'` gives the same result if the tapes agree between the two
 positions. -/
-def Follows (τ τ' : ℕ → K) (f f' : Mem K → Option (Mem K)) : Prop :=
+def Follows (τ τ' : Tape K) (f f' : Mem K → Option (Mem K)) : Prop :=
   ∀ a b, f a = some b →
     a.pos ≤ b.pos ∧ ((∀ j, a.pos ≤ j → j < b.pos → τ j = τ' j) → f' a = some b)
 
 namespace Follows
 
-variable {τ τ' : ℕ → K}
+variable {τ τ' : Tape K}
 
 theorem bind {f f' g g' : Mem K → Option (Mem K)} (hf : Follows τ τ' f f')
     (hg : Follows τ τ' g g') :
@@ -102,7 +102,7 @@ end Follows
 
 /-- The call of the evaluator under a tape-local operation. -/
 theorem Interp.TapeLocal.callS {I : Interp Op Tst K} {o : Op} {k : List ℕ → ℕ}
-    (h : I.TapeLocal o k) (d : List ℕ) (ins outs : List (ℕ × ℕ)) (τ τ' : ℕ → K) :
+    (h : I.TapeLocal o k) (d : List ℕ) (ins outs : List (ℕ × ℕ)) (τ τ' : Tape K) :
     Follows τ τ' (I.callS o d ins outs τ) (I.callS o d ins outs τ') := by
   intro a b hab
   have hl := Interp.live_of_callS hab
@@ -120,7 +120,7 @@ theorem Interp.TapeLocal.callS {I : Interp Op Tst K} {o : Op} {k : List ℕ → 
 /-- **Under tape-local operations, a run depends on the tape only through the entries between its
 first and last positions.** -/
 theorem run_follows {I : Interp Op Tst K} {k : Op → List ℕ → ℕ} (hI : ∀ o, I.TapeLocal o (k o))
-    (τ τ' : ℕ → K) (s : Stmt Op Tst) (ρ : Env) : Follows τ τ' (run I τ s ρ) (run I τ' s ρ) := by
+    (τ τ' : Tape K) (s : Stmt Op Tst) (ρ : Env) : Follows τ τ' (run I τ s ρ) (run I τ' s ρ) := by
   induction s generalizing ρ with
   | skip => exact fun a b h => by cases h; exact ⟨le_rfl, fun _ => rfl⟩
   | abort => exact fun a b h => by cases h
@@ -215,7 +215,7 @@ theorem pos_of_iter {f : ℕ → Mem K → Option (Mem K)} {c : ℕ → ℕ}
 
 /-- A tree without tests and index binders advances the tape by its static window. -/
 theorem pos_of_run_of_straight {I : Interp Op Tst K} {k : Op → List ℕ → ℕ}
-    (hI : ∀ o, I.TapeLocal o (k o)) {τ : ℕ → K} {s : Stmt Op Tst} (hs : s.Straight) {ρ : Env}
+    (hI : ∀ o, I.TapeLocal o (k o)) {τ : Tape K} {s : Stmt Op Tst} (hs : s.Straight) {ρ : Env}
     {m m' : Mem K} (h : run I τ s ρ m = some m') : m'.pos = m.pos + staticWindow k s ρ.idx := by
   induction s generalizing ρ m m' with
   | skip => cases h; rfl
@@ -262,7 +262,7 @@ theorem Interp.TapeLocal.link {I : Interp Op₂ Tst K} {k₂ : Op₂ → List �
   swap
   · exact ⟨rfl, fun m' h => by cases h⟩
   have hw' := hw d ((ins ++ outs).map Prod.snd) hfit.1 (by simp [hfit.2.1, hfit.2.2])
-  have key : ∀ (σ σ' : ℕ → K) (m' : Mem K),
+  have key : ∀ (σ σ' : Tape K) (m' : Mem K),
       (∀ j < w d, σ (m.pos + j) = σ' (m.pos + j)) →
       run I σ R.body (Env.frame d (ins ++ outs)) m = some m' →
       m'.pos = m.pos + w d ∧ run I σ' R.body (Env.frame d (ins ++ outs)) m = some m' := by
@@ -289,13 +289,92 @@ theorem Interp.TapeLocal.link_kept {I : Interp Op₂ Tst K} {T : Table Op₁ Op�
   simp only [Interp.link, hT]
   exact h d ins outs m τ τ' hag
 
+/-- Over tape-independent operations a run does not move the position. -/
+theorem pos_of_run_of_indep {I : Interp Op Tst K} (hI : ∀ o, I.TapeLocal o fun _ => 0)
+    {τ : Tape K} {s : Stmt Op Tst} {ρ : Env} {m m' : Mem K} (h : run I τ s ρ m = some m') :
+    m'.pos = m.pos := by
+  induction s generalizing ρ m m' with
+  | skip => cases h; rfl
+  | abort => cases h
+  | seq s t ihs iht =>
+    obtain ⟨a, ha, hb⟩ := Option.bind_eq_some_iff.mp h
+    exact (iht hb).trans (ihs ha)
+  | call o ds ins outs =>
+    obtain ⟨d, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨i, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨z, -, h⟩ := Option.bind_eq_some_iff.mp h
+    rw [Interp.callS_of_live (Interp.live_of_callS h)] at h
+    obtain ⟨m₁, h₁, hb⟩ := Option.bind_eq_some_iff.mp h
+    split_ifs at hb
+    cases hb
+    simpa using (hI o d i z m τ τ fun _ _ => rfl).2 m' h₁
+  | ite q ds ins t e iht ihe =>
+    obtain ⟨d, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨c, -, h⟩ := Option.bind_eq_some_iff.mp h
+    cases c
+    · exact ihe h
+    · exact iht h
+  | whileFuel fuel q ds ins body ih =>
+    obtain ⟨k, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨d, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
+    exact whileIter_rel (R := fun a b : Mem K => b.pos = a.pos)
+      (fun _ _ _ h1 h2 => h2.trans h1) (fun _ => rfl) (fun _ _ hb => ih hb) h
+  | bindIdx q ins bound body ih =>
+    obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨B, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨v, -, h⟩ := Option.bind_eq_some_iff.mp h
+    split_ifs at h
+    exact ih h
+  | alloc len body ih =>
+    obtain ⟨n, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨m₂, h₂, rfl⟩ := Option.map_eq_some_iff.mp h
+    exact ih (ρ := ρ.pushBuf m.store.length) (m := ⟨m.store.push n, m.pos⟩) (m' := m₂) h₂
+  | loop n body ih =>
+    obtain ⟨k, -, h⟩ := Option.bind_eq_some_iff.mp h
+    exact iter_rel (R := fun a b : Mem K => b.pos = a.pos) (fun _ => rfl)
+      (fun _ _ _ h1 h2 => h2.trans h1) (fun _ _ _ hb => ih hb) h
+  | frame ds args body ih =>
+    obtain ⟨d, -, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
+    split_ifs at h
+    exact ih h
+
+/-- **Linking preserves tape independence**, for every implementation: over operations that do
+not read the tape, no induced meaning reads it, tests and index binders included. -/
+theorem Interp.TapeLocal.link_zero {I : Interp Op₂ Tst K} (hI : ∀ o, I.TapeLocal o fun _ => 0)
+    (T : Table Op₁ Op₂ Tst) (o : Op₁) : (I.link T).TapeLocal o fun _ => 0 := by
+  cases hT : T o with
+  | inr o' => exact Interp.TapeLocal.link_kept hT (hI o')
+  | inl R =>
+    intro d ins outs m τ τ' _
+    simp only [Interp.link, hT]
+    split_ifs with hfit
+    swap
+    · exact ⟨rfl, fun m' h => by cases h⟩
+    have key : ∀ (σ σ' : Tape K) (m' : Mem K),
+        run I σ R.body (Env.frame d (ins ++ outs)) m = some m' →
+        run I σ' R.body (Env.frame d (ins ++ outs)) m = some m' := fun σ σ' m' hr =>
+      (run_follows hI σ σ' _ _ m m' hr).2 fun j hj hj' => by
+        have := pos_of_run_of_indep hI hr
+        omega
+    refine ⟨?_, fun m' h => by simpa using pos_of_run_of_indep hI h⟩
+    cases hr : run I τ R.body (Env.frame d (ins ++ outs)) m with
+    | some m' => exact (key τ τ' m' hr).symm
+    | none =>
+      cases hr' : run I τ' R.body (Env.frame d (ins ++ outs)) m with
+      | none => rfl
+      | some m' =>
+        rw [key τ' τ m' hr'] at hr
+        cases hr
+
 /-- Block functions are tape-local with their window. -/
 theorem Interp.ofFns_tapeLocal (F : Op → BlockFn K) (o : Op) :
     (Interp.ofFns F : Interp Op Tst K).TapeLocal o (F o).win := by
   intro d ins outs m τ τ' hag
-  have hmap : ((List.range ((F o).win d)).map fun j => τ (m.pos + j)) =
-      (List.range ((F o).win d)).map fun j => τ' (m.pos + j) :=
-    List.map_congr_left fun j hj => hag j (List.mem_range.mp hj)
+  have hmap : τ.window (F o).stream m.pos ((F o).win d) =
+      τ'.window (F o).stream m.pos ((F o).win d) := Tape.window_congr hag _
   rcases outs with _ | ⟨z, _ | ⟨z', outs⟩⟩
   · exact ⟨rfl, fun m' h => by cases h⟩
   · simp only [Interp.ofFns, BlockFn.apply, hmap, true_and]

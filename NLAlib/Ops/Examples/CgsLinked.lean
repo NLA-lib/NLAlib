@@ -93,7 +93,7 @@ variable [Apart Blas1Op ScalarOp Op] {M : Machine K} {u : ℝ} {dec : K → ℝ}
 `u`, the linked program computes factors meeting `CgsRounded` at the constants of the profile,
 within the pushed-forward counts. One application of the certificate of the profile. -/
 theorem runs_cgs_link_seq (hM : StdModel u dec M) (hu : 0 ≤ u) {I : Interp Op Tst K}
-    (hI : IsScalar M I) {τ : ℕ → K} {n p oA oQ oR : ℕ} {B : Fin 3 → ℕ} {μ : Mem K}
+    (hI : IsScalar M I) {τ : Tape K} {n p oA oQ oR : ℕ} {B : Fin 3 → ℕ} {μ : Mem K}
     {as : List K} (hB : Function.Injective B) (hl : ∀ i, B i < μ.store.length)
     (hA : μ.store.readBlock (B 0) oA (p * n) = some as)
     (hQ : oQ + p * n ≤ μ.store.len (B 1)) (hR : oR + p * p ≤ μ.store.len (B 2)) :
@@ -105,7 +105,7 @@ theorem runs_cgs_link_seq (hM : StdModel u dec M) (hu : 0 ≤ u) {I : Interp Op 
 
 /-- **`cgs` under pairwise summation** of depth `k`, for `⌈log₂ n⌉ < k`. -/
 theorem runs_cgs_link_pairwise (hM : StdModel u dec M) (hu : 0 ≤ u) {I : Interp Op Tst K}
-    (hI : IsScalar M I) {τ : ℕ → K} {k n p oA oQ oR : ℕ} (hk : Nat.clog 2 n < k)
+    (hI : IsScalar M I) {τ : Tape K} {k n p oA oQ oR : ℕ} (hk : Nat.clog 2 n < k)
     {B : Fin 3 → ℕ} {μ : Mem K} {as : List K} (hB : Function.Injective B)
     (hl : ∀ i, B i < μ.store.length) (hA : μ.store.readBlock (B 0) oA (p * n) = some as)
     (hQ : oQ + p * n ≤ μ.store.len (B 1)) (hR : oR + p * p ≤ μ.store.len (B 2)) :

@@ -484,6 +484,34 @@ theorem readBlock_append_of_lt {s : Store K} {b : ℕ} (h : b < s.length) (t : S
 
 end Store
 
+/-- **The tape of draws**: the entry at each position of each stream, `τ i s`. A stream is a
+source of independent draws of one distribution; a position holds one entry of every stream. -/
+abbrev Tape (K : Type) := ℕ → ℕ → K
+
+/-- The stream of uniform draws. Which law a stream has is fixed by the access model
+(`NLAlib.Ops.IsTapeLaw`); the names only keep the streams apart. -/
+abbrev Stream.unif : ℕ := 0
+
+/-- The stream of standard Gaussian draws. -/
+abbrev Stream.gauss : ℕ := 1
+
+/-- The stream of random signs. -/
+abbrev Stream.sign : ℕ := 2
+
+/-- The window of `k` entries of the stream `s` from the position `p`. -/
+def Tape.window (τ : Tape K) (s p k : ℕ) : List K := (List.range k).map fun j => τ (p + j) s
+
+@[simp] theorem Tape.length_window (τ : Tape K) (s p k : ℕ) : (τ.window s p k).length = k := by
+  simp [Tape.window]
+
+theorem Tape.window_one (τ : Tape K) (s p : ℕ) : τ.window s p 1 = [τ p s] := by
+  simp [Tape.window]
+
+/-- Tapes that agree on the positions of a window have the same window. -/
+theorem Tape.window_congr {τ τ' : Tape K} {p k : ℕ} (h : ∀ j < k, τ (p + j) = τ' (p + j))
+    (s : ℕ) : τ.window s p k = τ'.window s p k :=
+  List.map_congr_left fun j hj => congrFun (h j (List.mem_range.mp hj)) s
+
 /-- The memory of a run: the store and the position on the tape of draws. -/
 structure Mem (K : Type) where
   /-- The store. -/

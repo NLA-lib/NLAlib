@@ -92,7 +92,7 @@ def MgsInv (dec : K → ℝ) (ε : Blas1Err) (n bw ow bR oR : ℕ) (qs ws : List
 /-- **One step of the loop**, by the contracts of `dot`, `neg` and `axpy`. -/
 theorem wp_mgs_step {M : Machine K} {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop}
     {J : Interp Op Tst K} (hS : IsScalar M J) (hJ : IsBlas1 dec ε ok J)
-    (hneg : ∀ a, dec (M.neg a) = -dec a) {τ : ℕ → K} {n k oQ ow oR j : ℕ} {H : Fin 3 → ℕ}
+    (hneg : ∀ a, dec (M.neg a) = -dec a) {τ : Tape K} {n k oQ ow oR j : ℕ} {H : Fin 3 → ℕ}
     {μ μ₁ : Mem K} {qs ws : List K} (hok : ok n) (hH : Function.Injective H)
     (hl : ∀ i, H i < μ.store.length) (hj : j < k)
     (hq : μ.store.readBlock (H 0) oQ (k * n) = some qs)
@@ -148,7 +148,7 @@ theorem wp_mgs_step {M : Machine K} {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ 
 buffers, `Q` and `w` readable, `R` with room for `k + 1` cells. -/
 theorem wp_mgs {M : Machine K} {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop}
     {J : Interp Op Tst K} (hS : IsScalar M J) (hJ : IsBlas1 dec ε ok J)
-    (hneg : ∀ a, dec (M.neg a) = -dec a) {τ : ℕ → K} {n k oQ ow oR : ℕ} {H : Fin 3 → ℕ}
+    (hneg : ∀ a, dec (M.neg a) = -dec a) {τ : Tape K} {n k oQ ow oR : ℕ} {H : Fin 3 → ℕ}
     {μ : Mem K} {qs ws : List K} (hok : ok n) (hH : Function.Injective H)
     (hl : ∀ i, H i < μ.store.length) (hq : μ.store.readBlock (H 0) oQ (k * n) = some qs)
     (hw : μ.store.readBlock (H 1) ow n = some ws) (hwl : ow + n ≤ μ.store.len (H 1))
@@ -205,7 +205,7 @@ arithmetic and of the level-1 operations, the run terminates within `mgsCount n 
 the memory is described by the recurrence with local errors. -/
 theorem runs_mgs_rounded {M : Machine K} {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop}
     {J : Interp Op Tst K} (hS : IsScalar M J) (hJ : IsBlas1 dec ε ok J)
-    (hneg : ∀ a, dec (M.neg a) = -dec a) (W : Op → List ℕ → ℕ) {τ : ℕ → K}
+    (hneg : ∀ a, dec (M.neg a) = -dec a) (W : Op → List ℕ → ℕ) {τ : Tape K}
     {n k oQ ow oR : ℕ} {H : Fin 3 → ℕ} {μ : Mem K} {qs ws : List K} (hok : ok n)
     (hH : Function.Injective H) (hl : ∀ i, H i < μ.store.length)
     (hq : μ.store.readBlock (H 0) oQ (k * n) = some qs)
@@ -224,7 +224,7 @@ scalar arithmetic meeting the standard model at the unit roundoff `u`. One appli
 certificate of the profile; the accuracy parameters are those of the profile, the counts are
 pushed forward. No proof about the algorithm or its loops. -/
 theorem runs_mgs_link_seq {M : Machine K} {u : ℝ} {dec : K → ℝ} (hM : StdModel u dec M)
-    (hu : 0 ≤ u) {I : Interp Op Tst K} (hI : IsScalar M I) {τ : ℕ → K} {n k oQ ow oR : ℕ}
+    (hu : 0 ≤ u) {I : Interp Op Tst K} (hI : IsScalar M I) {τ : Tape K} {n k oQ ow oR : ℕ}
     {H : Fin 3 → ℕ} {μ : Mem K} {qs ws : List K} (hH : Function.Injective H)
     (hl : ∀ i, H i < μ.store.length) (hq : μ.store.readBlock (H 0) oQ (k * n) = some qs)
     (hw : μ.store.readBlock (H 1) ow n = some ws) (hwl : ow + n ≤ μ.store.len (H 1))

@@ -95,25 +95,25 @@ end Mem
 namespace BlockFn
 
 /-- The effect of a block function on live operands. -/
-def applyL (f : BlockFn K) (d : List ℕ) (ins : List (ℕ × ℕ)) (z : ℕ × ℕ) (τ : ℕ → K)
+def applyL (f : BlockFn K) (d : List ℕ) (ins : List (ℕ × ℕ)) (z : ℕ × ℕ) (τ : Tape K)
     (m : Mem K) : Option (Mem K) :=
   (m.readBlocks ins (f.inLens d)).bind fun xs =>
-    (f.fn d ((List.range (f.win d)).map fun j => τ (m.pos + j)) xs).bind fun ys =>
+    (f.fn d (τ.window f.stream m.pos (f.win d)) xs).bind fun ys =>
       (m.write z ys).map fun m' => m'.advance (f.win d)
 
-theorem apply_of_live {f : BlockFn K} {d : List ℕ} {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : ℕ → K}
+theorem apply_of_live {f : BlockFn K} {d : List ℕ} {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : Tape K}
     {m : Mem K} (h : m.Live (ins ++ [z])) : f.apply d ins z τ m = f.applyL d ins z τ m :=
   if_pos h
 
 theorem apply_of_not_live {f : BlockFn K} {d : List ℕ} {ins : List (ℕ × ℕ)} {z : ℕ × ℕ}
-    {τ : ℕ → K} {m : Mem K} (h : ¬ m.Live (ins ++ [z])) : f.apply d ins z τ m = none :=
+    {τ : Tape K} {m : Mem K} (h : ¬ m.Live (ins ++ [z])) : f.apply d ins z τ m = none :=
   if_neg h
 
 /-- **A call from the blocks that were read.** -/
-theorem apply_of_read {f : BlockFn K} {d : List ℕ} {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : ℕ → K}
+theorem apply_of_read {f : BlockFn K} {d : List ℕ} {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : Tape K}
     {m : Mem K} {xs : List (List K)} {ys : List K} (hl : m.Live (ins ++ [z]))
     (hread : m.readBlocks ins (f.inLens d) = some xs)
-    (hfn : f.fn d ((List.range (f.win d)).map fun j => τ (m.pos + j)) xs = some ys)
+    (hfn : f.fn d (τ.window f.stream m.pos (f.win d)) xs = some ys)
     (hz : z.2 + ys.length ≤ m.store.len z.1) :
     f.apply d ins z τ m = some ((m.updBlock z ys).advance (f.win d)) :=
   apply_eq_some_iff.mpr ⟨hl, xs, ys, hread, hfn, hz, rfl⟩
@@ -146,12 +146,22 @@ def tern (g : K → K → K → Option K) : BlockFn K where
     | [[a], [b], [c]] => (g a b c).map fun v => [v]
     | _ => none
 
-/-- A draw: the next entry of the tape, in one cell. -/
-def draw : BlockFn K where
+/-- A draw: the next entry of the stream `s` of the tape, in one cell. -/
+def draw (s : ℕ) : BlockFn K where
+  stream := s
   win _ := 1
   inLens _ := []
   fn _ w xs := match w, xs with
     | [ξ], [] => some [ξ]
+    | _, _ => none
+
+/-- A vector draw at one dimension `n`: the next `n` entries of the stream `s`, in a block. -/
+def drawVec (s : ℕ) : BlockFn K where
+  stream := s
+  win d := d.headD 0
+  inLens _ := []
+  fn d w xs := match d, xs with
+    | [_], [] => some w
     | _, _ => none
 
 theorem readBlock_one (s : Store K) (b off : ℕ) :
@@ -165,7 +175,7 @@ theorem write_one (m : Mem K) (z : ℕ × ℕ) (v : K) :
   rfl
 
 /-- A call of a constant, on cells. -/
-theorem apply_const_eq_some_iff {v : K} {d : List ℕ} {z : ℕ × ℕ} {τ : ℕ → K} {m m' : Mem K} :
+theorem apply_const_eq_some_iff {v : K} {d : List ℕ} {z : ℕ × ℕ} {τ : Tape K} {m m' : Mem K} :
     (const v).apply d [] z τ m = some m' ↔ z.2 < m.store.len z.1 ∧ m' = m.upd z v := by
   by_cases hl : m.Live ([] ++ [z])
   swap
@@ -178,7 +188,7 @@ theorem apply_const_eq_some_iff {v : K} {d : List ℕ} {z : ℕ × ℕ} {τ : �
   split_ifs with h <;> simp [h, eq_comm]
 
 /-- A call of a function of one cell, on cells. -/
-theorem apply_un_eq_some_iff {g : K → Option K} {d : List ℕ} {x z : ℕ × ℕ} {τ : ℕ → K}
+theorem apply_un_eq_some_iff {g : K → Option K} {d : List ℕ} {x z : ℕ × ℕ} {τ : Tape K}
     {m m' : Mem K} :
     (un g).apply d [x] z τ m = some m' ↔ ∃ a v, m.store.get x.1 x.2 = some a ∧ g a = some v ∧
       z.2 < m.store.len z.1 ∧ m' = m.upd z v := by
@@ -199,7 +209,7 @@ theorem apply_un_eq_some_iff {g : K → Option K} {d : List ℕ} {x z : ℕ × �
         simp [applyL, un, Mem.readBlocks_cons, readBlock_one, hx, hg, write_one, h, eq_comm]
 
 /-- A call of a function of two cells, on cells. -/
-theorem apply_bin_eq_some_iff {g : K → K → Option K} {d : List ℕ} {x y z : ℕ × ℕ} {τ : ℕ → K}
+theorem apply_bin_eq_some_iff {g : K → K → Option K} {d : List ℕ} {x y z : ℕ × ℕ} {τ : Tape K}
     {m m' : Mem K} :
     (bin g).apply d [x, y] z τ m = some m' ↔ ∃ a b v, m.store.get x.1 x.2 = some a ∧
       m.store.get y.1 y.2 = some b ∧ g a b = some v ∧ z.2 < m.store.len z.1 ∧
@@ -225,7 +235,7 @@ theorem apply_bin_eq_some_iff {g : K → K → Option K} {d : List ℕ} {x y z :
 
 /-- A call of a function of three cells, on cells. -/
 theorem apply_tern_eq_some_iff {g : K → K → K → Option K} {d : List ℕ} {x y w z : ℕ × ℕ}
-    {τ : ℕ → K} {m m' : Mem K} :
+    {τ : Tape K} {m m' : Mem K} :
     (tern g).apply d [x, y, w] z τ m = some m' ↔ ∃ a b c v, m.store.get x.1 x.2 = some a ∧
       m.store.get y.1 y.2 = some b ∧ m.store.get w.1 w.2 = some c ∧ g a b c = some v ∧
       z.2 < m.store.len z.1 ∧ m' = m.upd z v := by
@@ -254,9 +264,9 @@ theorem apply_tern_eq_some_iff {g : K → K → K → Option K} {d : List ℕ} {
               eq_comm]
 
 /-- A draw, on cells: the cell receives the tape entry at the position, which advances. -/
-theorem apply_draw_eq_some_iff {d : List ℕ} {z : ℕ × ℕ} {τ : ℕ → K} {m m' : Mem K} :
-    (draw : BlockFn K).apply d [] z τ m = some m' ↔
-      z.2 < m.store.len z.1 ∧ m' = (m.upd z (τ m.pos)).advance 1 := by
+theorem apply_draw_eq_some_iff {s : ℕ} {d : List ℕ} {z : ℕ × ℕ} {τ : Tape K} {m m' : Mem K} :
+    (draw s : BlockFn K).apply d [] z τ m = some m' ↔
+      z.2 < m.store.len z.1 ∧ m' = (m.upd z (τ m.pos s)).advance 1 := by
   by_cases hl : m.Live ([] ++ [z])
   swap
   · rw [apply_of_not_live hl]
@@ -264,8 +274,7 @@ theorem apply_draw_eq_some_iff {d : List ℕ} {z : ℕ × ℕ} {τ : ℕ → K} 
     obtain ⟨hz, -⟩ := h
     simp [Store.lt_length_of_lt_len hz]
   rw [apply_of_live hl]
-  simp only [applyL, draw, Mem.readBlocks_nil, Option.bind_some, List.range_one, List.map_cons,
-    List.map_nil, Nat.add_zero, write_one]
+  simp only [applyL, draw, Mem.readBlocks_nil, Option.bind_some, Tape.window_one, write_one]
   split_ifs with h <;> simp [h, eq_comm]
 
 
@@ -302,7 +311,7 @@ def of3 (nd : ℕ) (l₁ l₂ l₃ : List ℕ → ℕ)
 
 /-- A call of a function of one block, on blocks. -/
 theorem apply_of1_eq_some_iff {nd : ℕ} {l : List ℕ → ℕ} {g : List ℕ → List K → Option (List K)}
-    {d : List ℕ} {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : ℕ → K} {m m' : Mem K} :
+    {d : List ℕ} {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : Tape K} {m m' : Mem K} :
     (of1 nd l g).apply d ins z τ m = some m' ↔ d.length = nd ∧ ∃ x xs v, ins = [x] ∧
       m.Live [x, z] ∧ m.store.readBlock x.1 x.2 (l d) = some xs ∧ g d xs = some v ∧
       z.2 + v.length ≤ m.store.len z.1 ∧ m' = m.updBlock z v := by
@@ -320,7 +329,7 @@ theorem apply_of1_eq_some_iff {nd : ℕ} {l : List ℕ → ℕ} {g : List ℕ �
 /-- A call of a function of two blocks, on blocks. -/
 theorem apply_of2_eq_some_iff {nd : ℕ} {l₁ l₂ : List ℕ → ℕ}
     {g : List ℕ → List K → List K → Option (List K)} {d : List ℕ} {ins : List (ℕ × ℕ)}
-    {z : ℕ × ℕ} {τ : ℕ → K} {m m' : Mem K} :
+    {z : ℕ × ℕ} {τ : Tape K} {m m' : Mem K} :
     (of2 nd l₁ l₂ g).apply d ins z τ m = some m' ↔ d.length = nd ∧ ∃ x y xs ys v,
       ins = [x, y] ∧ m.Live [x, y, z] ∧ m.store.readBlock x.1 x.2 (l₁ d) = some xs ∧
       m.store.readBlock y.1 y.2 (l₂ d) = some ys ∧ g d xs ys = some v ∧
@@ -340,7 +349,7 @@ theorem apply_of2_eq_some_iff {nd : ℕ} {l₁ l₂ : List ℕ → ℕ}
 /-- A call of a function of three blocks, on blocks. -/
 theorem apply_of3_eq_some_iff {nd : ℕ} {l₁ l₂ l₃ : List ℕ → ℕ}
     {g : List ℕ → List K → List K → List K → Option (List K)} {d : List ℕ}
-    {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : ℕ → K} {m m' : Mem K} :
+    {ins : List (ℕ × ℕ)} {z : ℕ × ℕ} {τ : Tape K} {m m' : Mem K} :
     (of3 nd l₁ l₂ l₃ g).apply d ins z τ m = some m' ↔ d.length = nd ∧ ∃ x y w xs ys ws v,
       ins = [x, y, w] ∧ m.Live [x, y, w, z] ∧ m.store.readBlock x.1 x.2 (l₁ d) = some xs ∧
       m.store.readBlock y.1 y.2 (l₂ d) = some ys ∧ m.store.readBlock w.1 w.2 (l₃ d) = some ws ∧

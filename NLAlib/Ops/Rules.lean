@@ -33,7 +33,7 @@ variable {Op Op₁ Op₂ Tst K : Type}
 
 section Rules
 
-variable {md : Mode} {I : Interp Op Tst K} {τ : ℕ → K} {ρ : Env} {Q : Mem K → Prop} {m : Mem K}
+variable {md : Mode} {I : Interp Op Tst K} {τ : Tape K} {ρ : Env} {Q : Mem K → Prop} {m : Mem K}
 
 /-- **Call under a relational contract, on given operands**: the input blocks `xs` are read, the
 output block `ys` has the declared length and is related to `xs`. -/
@@ -72,7 +72,7 @@ theorem wp_call_fn_read {o : Op} {f : BlockFn K} {adm : List ℕ → List (ℕ �
     (ha : Operand.evalList ρ ins = some a) (hb : Operand.evalList ρ outs = some [z])
     (hadm : adm d a z) (hl : m.Live (a ++ [z])) {xs : List (List K)} {ys : List K}
     (hr : m.readBlocks a (f.inLens d) = some xs)
-    (hfn : f.fn d ((List.range (f.win d)).map fun j => τ (m.pos + j)) xs = some ys)
+    (hfn : f.fn d (τ.window f.stream m.pos (f.win d)) xs = some ys)
     (hz : z.2 + ys.length ≤ m.store.len z.1) (hQ : Q ((m.updBlock z ys).advance (f.win d))) :
     Wp md I τ (.call o ds ins outs) ρ Q m :=
   wp_call_fn hI hd ha hb hadm (BlockFn.apply_of_read hl hr hfn hz) hQ
@@ -195,7 +195,7 @@ run writes an output block related to `xs` and nothing else. This is the certifi
 implementation, independent of any table. -/
 def Impl.MeetsRel (R : Impl Op Tst) (I : Interp Op Tst K) (B : BlockRel K)
     (adm : List ℕ → List (ℕ × ℕ) → ℕ × ℕ → Prop) : Prop :=
-  ∀ (d : List ℕ) (ins : List (ℕ × ℕ)) (z : ℕ × ℕ) (τ : ℕ → K) (m : Mem K) (xs : List (List K)),
+  ∀ (d : List ℕ) (ins : List (ℕ × ℕ)) (z : ℕ × ℕ) (τ : Tape K) (m : Mem K) (xs : List (List K)),
     d.length = B.nd → adm d ins z → m.Live (ins ++ [z]) →
     m.readBlocks ins (B.inLens d) = some xs → z.2 + B.outLen d ≤ m.store.len z.1 →
     R.Fits d.length ins.length 1 ∧ Wp .total I τ R.body (Env.frame d (ins ++ [z]))

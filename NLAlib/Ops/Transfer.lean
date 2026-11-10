@@ -113,7 +113,7 @@ costs itself and has at most the same workspace. Nothing about values. -/
 structure Table.Accounts (T : Table Op₁ Op₂ Tst) (I : Interp Op₂ Tst K) (W₂ : Op₂ → List ℕ → ℕ)
     (κ : Op₁ → List ℕ → Count Op₂ Tst) (W₁ : Op₁ → List ℕ → ℕ) : Prop where
   /-- Implemented operations. -/
-  impl : ∀ o R, T o = .inl R → ∀ (τ : ℕ → K) (d : List ℕ) (a : List (ℕ × ℕ)) (st st'
+  impl : ∀ o R, T o = .inl R → ∀ (τ : Tape K) (d : List ℕ) (a : List (ℕ × ℕ)) (st st'
       : St Op₂ Tst K),
     d.length = R.nd → a.length = R.nin + R.nout →
     exec I W₂ τ R.body (Env.frame d a) st = some st' → St.Within st st' (κ o d) (W₁ o d)
@@ -207,7 +207,7 @@ variable {T : Table Op₁ Op₂ Tst} {I : Interp Op₂ Tst K} {W₂ : Op₂ → 
 
 /-- The simulation of one call: a kept operation by itself, an implemented one by the certificate
 of its implementation. -/
-theorem exec_link_call (hacc : T.Accounts I W₂ κ W₁) (τ : ℕ → K) {o : Op₁} {ds : List IExp}
+theorem exec_link_call (hacc : T.Accounts I W₂ κ W₁) (τ : Tape K) {o : Op₁} {ds : List IExp}
     {ins outs : List Operand} {ρ : Env} {a a₁ : St Op₁ Tst K} {c : St Op₂ Tst K} (hs : Sim κ a c)
     (h : exec (I.link T) W₁ τ (.call o ds ins outs) ρ a = some a₁) :
     ∃ c₁, exec I W₂ τ ((Stmt.call o ds ins outs).link T) ρ c = some c₁ ∧ Sim κ a₁ c₁ := by
@@ -249,7 +249,7 @@ theorem exec_link_call (hacc : T.Accounts I W₂ κ W₁) (τ : ℕ → K) {o : 
 /-- **The simulation theorem**: a successful counted run of the algorithm under the induced
 interpretation is matched by a counted run of the linked program under the lower interpretation,
 with the same memory, counts within the push-forward and peak within the peak. -/
-theorem exec_link (hacc : T.Accounts I W₂ κ W₁) (τ : ℕ → K) (s : Stmt Op₁ Tst) :
+theorem exec_link (hacc : T.Accounts I W₂ κ W₁) (τ : Tape K) (s : Stmt Op₁ Tst) :
     ∀ (ρ : Env) (a a₁ : St Op₁ Tst K) (c : St Op₂ Tst K), Sim κ a c →
       exec (I.link T) W₁ τ s ρ a = some a₁ →
       ∃ c₁, exec I W₂ τ (s.link T) ρ c = some c₁ ∧ Sim κ a₁ c₁ := by
@@ -329,8 +329,9 @@ theorem exec_link (hacc : T.Accounts I W₂ κ W₁) (τ : ℕ → K) (s : Stmt 
 /-- **Linking, total correctness with accounting.** If the algorithm runs within `B`, `M` under
 the induced interpretation, the linked program runs under the lower interpretation within the
 pushed-forward counts and the same workspace, with the same postcondition. -/
-theorem Runs.link (hacc : T.Accounts I W₂ κ W₁) {τ : ℕ → K} {s : Stmt Op₁ Tst} {ρ : Env} {m : Mem K}
-    {B : Count Op₁ Tst} {M : ℕ} {Q : Mem K → Prop} (h : Runs (I.link T) W₁ τ s ρ m B M Q) :
+theorem Runs.link (hacc : T.Accounts I W₂ κ W₁) {τ : Tape K} {s : Stmt Op₁ Tst} {ρ : Env}
+    {m : Mem K} {B : Count Op₁ Tst} {M : ℕ} {Q : Mem K → Prop}
+    (h : Runs (I.link T) W₁ τ s ρ m B M Q) :
     Runs I W₂ τ (s.link T) ρ m (Count.push κ B) M Q := by
   obtain ⟨a₁, hrun, hcost, hpeak, hQ⟩ := h
   obtain ⟨c₁, hc, hs₁⟩ := exec_link hacc τ s ρ (St.init m) a₁ (St.init m)
@@ -340,7 +341,7 @@ theorem Runs.link (hacc : T.Accounts I W₂ κ W₁) {τ : ℕ → K} {s : Stmt 
 /-- **Linking a theorem proved for every interpretation meeting contracts** `Ck`: it holds for
 the linked program as soon as the induced interpretation meets `Ck`, that is, the implementations
 meet their specifications. -/
-theorem link_total {Ck : Interp Op₁ Tst K → Prop} {τ : ℕ → K} {s : Stmt Op₁ Tst} {ρ : Env}
+theorem link_total {Ck : Interp Op₁ Tst K → Prop} {τ : Tape K} {s : Stmt Op₁ Tst} {ρ : Env}
     {m : Mem K}
     {B : Count Op₁ Tst} {M : ℕ} {Q : Mem K → Prop} (hT : ∀ J, Ck J → Runs J W₁ τ s ρ m B M Q)
     (hk : Ck (I.link T)) (hacc : T.Accounts I W₂ κ W₁) :
@@ -350,7 +351,7 @@ theorem link_total {Ck : Interp Op₁ Tst K → Prop} {τ : ℕ → K} {s : Stmt
 /-- **Weighted, data-dependent counts.** A bound `w₁ cost ≤ t` on the final count of one run of
 the algorithm becomes `w₂ cost ≤ t` for the linked run, for every monotone `w₂` with
 `w₂ ∘ push κ ≤ w₁`. -/
-theorem exec_link_weight (hacc : T.Accounts I W₂ κ W₁) {τ : ℕ → K} {s : Stmt Op₁ Tst} {ρ : Env}
+theorem exec_link_weight (hacc : T.Accounts I W₂ κ W₁) {τ : Tape K} {s : Stmt Op₁ Tst} {ρ : Env}
     {m : Mem K} {a₁ : St Op₁ Tst K} {w₁ : Count Op₁ Tst → ℕ} {w₂ : Count Op₂ Tst → ℕ}
     (hw₂ : Monotone w₂)
     (hww : ∀ x, w₂ (Count.push κ x) ≤ w₁ x)
@@ -364,7 +365,7 @@ theorem exec_link_weight (hacc : T.Accounts I W₂ κ W₁) {τ : ℕ → K} {s 
 the postcondition may depend on it. The failure event of the linked program is inside the failure
 event of the algorithm under the induced interpretation, so a bound on the probability of the
 latter bounds the former. -/
-theorem fail_subset (hacc : T.Accounts I W₂ κ W₁) {Ω : Type} {τ : Ω → ℕ → K} {s : Stmt Op₁ Tst}
+theorem fail_subset (hacc : T.Accounts I W₂ κ W₁) {Ω : Type} {τ : Ω → Tape K} {s : Stmt Op₁ Tst}
     {ρ : Env} {m : Ω → Mem K} {B : Count Op₁ Tst} {M : ℕ} {Q : Ω → Mem K → Prop} :
     {ω | ¬ Runs I W₂ (τ ω) (s.link T) ρ (m ω) (Count.push κ B) M (Q ω)} ⊆
       {ω | ¬ Runs (I.link T) W₁ (τ ω) s ρ (m ω) B M (Q ω)} :=
@@ -374,7 +375,7 @@ end Link
 
 /-- **Linking, partial correctness.** A refinement statement under the induced interpretation is
 one about the linked program. No certificate. -/
-theorem RunsL.link {T : Table Op₁ Op₂ Tst} {I : Interp Op₂ Tst K} {τ : ℕ → K} {s : Stmt Op₁ Tst}
+theorem RunsL.link {T : Table Op₁ Op₂ Tst} {I : Interp Op₂ Tst K} {τ : Tape K} {s : Stmt Op₁ Tst}
     {ρ : Env}
     {m : Mem K} {Q : Mem K → Prop} (h : RunsL (I.link T) τ s ρ m Q) :
     RunsL I τ (s.link T) ρ m Q := by
@@ -385,7 +386,7 @@ theorem RunsL.link {T : Table Op₁ Op₂ Tst} {I : Interp Op₂ Tst K} {τ : �
 /-- **Linking a refinement theorem proved for every interpretation meeting contracts** `Ck`:
 only through the induced interpretation. -/
 theorem link_liberal {T : Table Op₁ Op₂ Tst} {I : Interp Op₂ Tst K} {Ck : Interp Op₁ Tst K → Prop}
-    {τ : ℕ → K} {s : Stmt Op₁ Tst} {ρ : Env} {m : Mem K} {Q : Mem K → Prop}
+    {τ : Tape K} {s : Stmt Op₁ Tst} {ρ : Env} {m : Mem K} {Q : Mem K → Prop}
     (hT : ∀ J, Ck J → RunsL J τ s ρ m Q) (hk : Ck (I.link T)) : RunsL I τ (s.link T) ρ m Q :=
   (hT _ hk).link
 

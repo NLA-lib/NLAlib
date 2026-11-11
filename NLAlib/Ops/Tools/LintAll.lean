@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 import NLAlib.Ops.Tools.Lint
 import NLAlib.Ops.Attr
+import NLAlib.Ops.Blas.Decoded
 import NLAlib.Ops.Blas.Dot
 import NLAlib.Ops.Blas.Level1
 import NLAlib.Ops.Blas.Sum
@@ -20,6 +21,7 @@ import NLAlib.Ops.Catalog.Tagged
 import NLAlib.Ops.Cert
 import NLAlib.Ops.Contract
 import NLAlib.Ops.Counted
+import NLAlib.Ops.Examples.Bilinear
 import NLAlib.Ops.Examples.Bits
 import NLAlib.Ops.Examples.Built
 import NLAlib.Ops.Examples.Cgs

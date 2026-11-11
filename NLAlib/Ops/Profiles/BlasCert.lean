@@ -190,6 +190,19 @@ theorem sumPairwise_iter_cost_kept (k : ℕ) {o : Op}
       · rfl
     rw [this, Count.push_one, ih]
 
+omit [Apart Blas1Op ScalarOp Op] in
+/-- An operation outside BLAS1 retains its primitive charge under sequential BLAS. -/
+theorem seq_cost_kept {o : Op} (ho : Has.proj (G := Blas1Op) o = none) (d : List ℕ) :
+    (seq (Op := Op) (Tst := Tst)).cost o d = Count.one o d := by
+  simp [seq, Profile.over, level1, level1Cost, sumSeq, sumSeqCost, ho]
+
+omit [Apart Blas1Op ScalarOp Op] in
+/-- An operation outside BLAS1 retains its primitive charge under pairwise BLAS. -/
+theorem pairwise_cost_kept (k : ℕ) {o : Op} (ho : Has.proj (G := Blas1Op) o = none)
+    (d : List ℕ) : (pairwise (Op := Op) (Tst := Tst) k).cost o d = Count.one o d := by
+  simp only [pairwise, Profile.over, level1, level1Cost, ho, Count.push_one]
+  exact sumPairwise_iter_cost_kept k (by simp [ho]) d
+
 /-- **The cost of pairwise summation of depth `k`**, by evaluating the `k`-fold push-forward:
 for `⌈log₂ n⌉ < k`, the count `pairCount n`. No call of `sum` is left. -/
 theorem sumPairwise_iter_cost_sum (k n : ℕ) (h : Nat.clog 2 n < k) :

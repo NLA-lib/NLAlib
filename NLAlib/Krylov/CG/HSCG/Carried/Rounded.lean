@@ -137,19 +137,23 @@ theorem runs_step {M : Machine K} {dec : K → ℝ} {n : ℕ} {u : ℝ} {ε : Bl
     (hr : μ.store.readBlock r.1 r.2 n = some rs)
     (hp : μ.store.readBlock p.1 p.2 n = some ps) (hv : μ.store.get v.1 v.2 = some rr)
     (hed : ε.dot n < 1) (hrne : decv dec n rs ≠ 0)
-    (hrr : IsDotErr dec (ε.dot n) n (vec rs) (vec rs) rr)
+    (hrr : |dec rr - decv dec n rs ⬝ᵥ decv dec n rs| ≤
+      ε.dot n * ∑ i : Fin n, |decv dec n rs i * decv dec n rs i|)
     (hmargin : ε.dot n * ∑ i : Fin n, |decv dec n ps i * (A *ᵥ decv dec n ps) i| <
       decv dec n ps ⬝ᵥ (A *ᵥ decv dec n ps))
     (hz : μ.Room [x, r, p, v] [n, n, n, 1]) :
     Runs I W τ step (Env.frame [n] [x, r, p, v, x, r, p, v]) μ (stepCount n) (stepPeak W n)
       ((stepRel u ε dec A).Post [n] [xs, rs, ps, [rr]] [x, r, p, v] [] μ) := by
+  have hrr' : IsDotErr dec (ε.dot n) n (vec rs) (vec rs) rr := by
+    simpa only [IsDotErr, dotProduct_decv, decv,
+      Fin.sum_univ_eq_sum_range (fun i : ℕ => |dec (vec rs i) * dec (vec rs i)|)] using hrr
   refine ((step_spec hS hM hB hok hA).runs_rel W (τ := τ) (d := [n])
     (ins := [x, r, p, v]) (outs := [x, r, p, v]) (xs := [xs, rs, ps, [rr]]) rfl
     ⟨rfl, x, r, p, v, rfl, rfl, hxr, hxp, hxv, hrp, hrv, hpv⟩
     ((μ.live_append _ _).mpr ⟨hl, hl⟩)
     (Mem.readBlocks_of_cons hx (Mem.readBlocks_of_cons hr (Mem.readBlocks_of_cons hp
       (Mem.readBlocks_of_cons (Store.readBlock_one_of_get hv) rfl))))
-    ⟨hed, hrne, hrr, hmargin⟩ hz).mono
+    ⟨hed, hrne, hrr', hmargin⟩ hz).mono
       (le_of_eq (staticCost_step ..)) (staticPeak_step_le ..) ?_
   intro μ' hpost
   exact hpost

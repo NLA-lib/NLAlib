@@ -67,7 +67,8 @@ theorem runs_rounded_step_seq {M : Machine K} {dec : K → ℝ} {n : ℕ} {u : �
     (hr : μ.store.readBlock r.1 r.2 n = some rs)
     (hp : μ.store.readBlock p.1 p.2 n = some ps) (hv : μ.store.get v.1 v.2 = some rr)
     (hed : (Blas.seq.err u).dot n < 1) (hrne : decv dec n rs ≠ 0)
-    (hrr : IsDotErr dec ((Blas.seq.err u).dot n) n (vec rs) (vec rs) rr)
+    (hrr : |dec rr - decv dec n rs ⬝ᵥ decv dec n rs| ≤
+      (Blas.seq.err u).dot n * ∑ i : Fin n, |decv dec n rs i * decv dec n rs i|)
     (hmargin : (Blas.seq.err u).dot n *
       ∑ i : Fin n, |decv dec n ps i * (A *ᵥ decv dec n ps) i| <
         decv dec n ps ⬝ᵥ (A *ᵥ decv dec n ps))

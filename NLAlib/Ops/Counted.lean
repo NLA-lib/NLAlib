@@ -48,9 +48,10 @@ implementation, which speaks of every successful run
 * `NLAlib.Ops.RunsFromWL`: the liberal judgment, with `skip`, `abort`, `seq`, `call`, `ite`,
   `bindIdx`, `alloc`, `frame`, `loop`, `whileFuel`, `mono`, `and`, `of_static`, `of_wp`.
 * `NLAlib.Ops.RunsFromWL.of_runsFromW`, `NLAlib.Ops.RunsFromWL.runsFromW`: total and liberal.
-* `NLAlib.Ops.RunsFromWL.link`, `NLAlib.Ops.Table.AccountsW.of_runsFromWL`,
-  `NLAlib.Ops.RunsFromWL.runsL`, `NLAlib.Ops.RunsFromWL.exec_init`: linking and the forms from
-  the initial state.
+* `NLAlib.Ops.RunsFromWL.link_from`, `NLAlib.Ops.RunsFromWL.link`: linking from counted
+  states and from the initial state.
+* `NLAlib.Ops.Table.AccountsW.of_runsFromWL`, `NLAlib.Ops.RunsFromWL.runsL`,
+  `NLAlib.Ops.RunsFromWL.exec_init`: the table certificate and the forms from the initial state.
 -/
 
 @[expose] public section
@@ -533,25 +534,55 @@ theorem Table.AccountsW.of_runsFromWL
     obtain ⟨c, ⟨h1, h2, h3⟩, hc⟩ := himpl o R hT τ d a st hd ha st' h
     exact ⟨h2, by rw [h1, map_add]; exact add_le_add le_rfl hc, h3⟩
 
-/-- **Linking a liberal counted run.** Under a weighted certificate, if the linked program
-succeeds, the weight of its counts is at most the weight of counts `c₁` of the algorithm that
-satisfy the postcondition, within the same workspace (`NLAlib.Ops.RunsW.link`, liberal). -/
+/-- Link a liberal counted segment from states with the same memory and live cells. The upper
+starting peak must fit within the lower segment's peak bound. If the linked segment succeeds,
+its added counts have weight at most the upper weight of the counts added by the algorithm
+segment, which satisfy its postcondition. -/
+theorem RunsFromWL.link_from (hacc : T.AccountsW I W₂ w₂ t W₁) {τ : Tape K} {s : Stmt Op₁ Tst}
+    {ρ : Env} {a : St Op₁ Tst K} {c : St Op₂ Tst K} {p : ℕ} {Q : Count Op₁ Tst → Mem K → Prop}
+    (h : RunsFromWL (I.link T) W₁ τ s ρ a p Q) (hmem : c.mem = a.mem) (hcur : c.cur = a.cur)
+    (hpeak : a.peak ≤ max c.peak (c.cur + p)) :
+    RunsFromWL I W₂ τ (s.link T) ρ c p
+      fun dc m' => ∃ da, w₂ dc ≤ Count.upper w₂ t da ∧ Q da m' := by
+  intro result hresult
+  have hrun : run (I.link T) τ s ρ a.mem = some result.mem := by
+    rw [← hmem, ← run_link]
+    exact run_of_exec hresult
+  let a₀ : St Op₁ Tst K := ⟨a.mem, 0, a.cur, 0⟩
+  let c₀ : St Op₂ Tst K := ⟨c.mem, 0, c.cur, 0⟩
+  obtain ⟨a₁, ha, -⟩ := exec_eq_some_of_run hrun W₁ a₀ rfl
+  obtain ⟨c₁, hc, hsim⟩ := exec_link hacc τ s ρ a₀ a₁ c₀
+    ⟨hmem, hcur, by simp [a₀, c₀], le_rfl⟩ ha
+  have ha' := map_addHistory_exec (I.link T) W₁ τ s ρ a₀ a.cost a.peak
+  have hc' := map_addHistory_exec I W₂ τ (s.link T) ρ c₀ c.cost c.peak
+  have hstartA : St.addHistory a.cost a.peak a₀ = a := by simp [a₀, St.addHistory]
+  have hstartC : St.addHistory c.cost c.peak c₀ = c := by simp [c₀, St.addHistory]
+  rw [ha, Option.map_some, hstartA] at ha'
+  rw [hc, Option.map_some, hstartC] at hc'
+  have hEq := Option.some.inj (hresult.symm.trans hc'.symm)
+  subst result
+  obtain ⟨da, ⟨hcost, hcur', hpeak'⟩, hQ⟩ := h _ ha'.symm
+  have hda : a₁.cost = da := add_left_cancel hcost
+  subst da
+  refine ⟨c₁.cost, ⟨rfl, hsim.cur.trans (hcur'.trans hcur.symm), ?_⟩,
+    a₁.cost, hsim.cost, hsim.mem ▸ hQ⟩
+  change max a.peak a₁.peak ≤ max a.peak (a.cur + p) at hpeak'
+  change max c.peak c₁.peak ≤ max c.peak (c.cur + p)
+  rw [hcur] at hpeak ⊢
+  apply max_le (Nat.le_max_left ..)
+  calc
+    c₁.peak ≤ a₁.peak := hsim.peak
+    _ ≤ max a.peak a₁.peak := Nat.le_max_right ..
+    _ ≤ max a.peak (a.cur + p) := hpeak'
+    _ ≤ max c.peak (a.cur + p) := max_le hpeak (Nat.le_max_right ..)
+
+/-- Linking a liberal counted run from the initial state. -/
 theorem RunsFromWL.link (hacc : T.AccountsW I W₂ w₂ t W₁) {τ : Tape K} {s : Stmt Op₁ Tst}
     {ρ : Env} {m : Mem K} {p : ℕ} {Q : Count Op₁ Tst → Mem K → Prop}
     (h : RunsFromWL (I.link T) W₁ τ s ρ (St.init m) p Q) :
     RunsFromWL I W₂ τ (s.link T) ρ (St.init m) p
-      fun c m' => ∃ c₁, w₂ c ≤ Count.upper w₂ t c₁ ∧ Q c₁ m' := by
-  intro c₁ hc
-  have hrun : run (I.link T) τ s ρ m = some c₁.mem := by
-    rw [← run_link]
-    exact run_of_exec hc
-  obtain ⟨a₁, ha, -⟩ := exec_eq_some_of_run hrun W₁ (St.init m) rfl
-  obtain ⟨c₁', hc', hs⟩ := exec_link hacc τ s ρ (St.init m) a₁ (St.init m)
-    ⟨rfl, rfl, by simp [St.init], le_rfl⟩ ha
-  obtain rfl : c₁' = c₁ := Option.some.inj (hc'.symm.trans hc)
-  obtain ⟨hp, hQ⟩ := h.exec_init ha
-  exact ⟨c₁'.cost, ⟨by simp [St.init], hs.cur.trans (exec_within ha).1,
-    by simpa [St.init] using hs.peak.trans hp⟩, a₁.cost, hs.cost, hs.mem ▸ hQ⟩
+      fun c m' => ∃ c₁, w₂ c ≤ Count.upper w₂ t c₁ ∧ Q c₁ m' :=
+  h.link_from hacc rfl rfl (Nat.zero_le _)
 
 end Link
 

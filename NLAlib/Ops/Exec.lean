@@ -161,6 +161,10 @@ structure St (Op Tst K : Type) where
 /-- The state at the start of a run: no counts, no scratch. -/
 def St.init (m : Mem K) : St Op Tst K := ⟨m, 0, 0, 0⟩
 
+/-- Include the counts and peak of a preceding run, keeping memory and live cells. -/
+noncomputable def St.addHistory (cost : Count Op Tst) (peak : ℕ) (st : St Op Tst K) : St Op Tst K :=
+  { st with cost := cost + st.cost, peak := max peak st.peak }
+
 /-- Count one use of the query `q` at `d`. -/
 noncomputable def St.tick (st : St Op Tst K) (q : Tst) (d : List ℕ) : St Op Tst K :=
   ⟨st.mem, st.cost + Count.test q d, st.cur, st.peak⟩
@@ -262,6 +266,88 @@ theorem map_whileIter {σ σ' : Type} {g : σ → σ'} {test : ℕ → σ → Op
       | true =>
         simp only [Option.bind_some, if_true, Option.map_some, Prod.map_apply, id]
         rw [Option.map_bind_of_comm _ (fun a => ih (i + 1) a), hb]
+
+/-- The evaluator carries the previous counts and peak through a run independently of the
+memory, live cells and accounting of the new segment. -/
+theorem map_addHistory_exec (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : Tape K)
+    (s : Stmt Op Tst) (ρ : Env) (st : St Op Tst K) (cost : Count Op Tst) (peak : ℕ) :
+    (exec I W τ s ρ st).map (St.addHistory cost peak) =
+      exec I W τ s ρ (St.addHistory cost peak st) := by
+  have mem (a : St Op Tst K) : (St.addHistory cost peak a).mem = a.mem := rfl
+  have tick (a : St Op Tst K) (q : Tst) (d : List ℕ) :
+      St.addHistory cost peak (a.tick q d) = (St.addHistory cost peak a).tick q d := by
+    simp [St.addHistory, St.tick, add_assoc]
+  induction s generalizing ρ st with
+  | skip => rfl
+  | abort => rfl
+  | seq s t ihs iht =>
+    simp only [exec]
+    rw [Option.map_bind_of_comm _ (iht ρ), ihs]
+  | call o ds ins outs =>
+    simp only [exec, mem]
+    cases IExp.evalList ρ.idx ds <;> cases Operand.evalList ρ ins <;>
+      cases Operand.evalList ρ outs <;> simp [Option.map_map, Function.comp_def, add_assoc,
+        Nat.max_assoc, St.addHistory]
+  | ite q ds ins t e iht ihe =>
+    simp only [exec, mem]
+    cases IExp.evalList ρ.idx ds <;> cases Operand.evalList ρ ins <;> try rfl
+    rename_i d a
+    simp only [Option.bind_some]
+    cases I.test q d a st.mem with
+    | none => rfl
+    | some b =>
+      simp only [Option.bind_some]
+      split_ifs
+      · rw [iht, tick]
+      · rw [ihe, tick]
+  | whileFuel fuel q ds ins body k ih ihk =>
+    simp only [exec]
+    cases fuel.eval ρ.idx with
+    | none => rfl
+    | some n =>
+      simp only [Option.bind_some]
+      rw [Option.map_bind_of_comm (g := Prod.map id (St.addHistory cost peak))
+        (f' := fun js : ℕ × St Op Tst K => exec I W τ k (ρ.pushIdx js.1) js.2) _
+        (fun a => ihk (ρ.pushIdx a.1) a.2)]
+      rw [map_whileIter (fun i a => ?_) (fun i a => ih (ρ.pushIdx i) a)]
+      simp only [Interp.testSt, mem]
+      cases IExp.evalList (ρ.pushIdx i).idx ds <;>
+        cases Operand.evalList (ρ.pushIdx i) ins <;> try rfl
+      simp [Option.map_map, Function.comp_def, tick]
+  | bindIdx q ins bound body ih =>
+    simp only [exec, mem]
+    cases Operand.evalList ρ ins <;> cases bound.eval ρ.idx <;> try rfl
+    rename_i a B
+    simp only [Option.bind_some]
+    cases I.index q a st.mem with
+    | none => rfl
+    | some v =>
+      simp only [Option.bind_some]
+      split_ifs
+      · rw [ih, tick]
+      · rfl
+  | alloc len body ih =>
+    simp only [exec]
+    cases len.eval ρ.idx with
+    | none => rfl
+    | some n =>
+      have h := ih (ρ.pushBuf st.mem.store.length)
+        ⟨⟨st.mem.store.push n, st.mem.pos⟩, st.cost, st.cur + n, max st.peak (st.cur + n)⟩
+      simp only [St.addHistory] at h
+      simp only [Option.bind_some, St.addHistory, Nat.max_assoc, ← h, Option.map_map]
+      rfl
+  | loop n body ih =>
+    simp only [exec]
+    cases n.eval ρ.idx with
+    | none => rfl
+    | some k => exact map_iter (fun i a => ih (ρ.pushIdx i) a) k st
+  | frame ds args body ih =>
+    simp only [exec, mem]
+    cases IExp.evalList ρ.idx ds <;> cases Operand.evalList ρ args <;> try rfl
+    simp only [Option.bind_some]
+    split_ifs
+    · exact ih _ _
+    · rfl
 
 /-- **The counted run and the run end in the same memory, or both fail.** -/
 theorem map_mem_exec (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : Tape K) (s : Stmt Op Tst)

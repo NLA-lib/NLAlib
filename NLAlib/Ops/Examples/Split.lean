@@ -225,4 +225,24 @@ theorem runsW_twice_link {I : Interp LOp IdxTst K} {dec : K → ℝ}
   refine (Count.lift_mono _ hc).trans (le_of_eq ?_)
   simp [twice, staticCost, useCost, Count.lift, Count.one, two_mul]
 
+-- The linked segment uses the same weight bound with scratch already live and separate
+-- accounting histories. It may fail, so no contract on the interpretation is required.
+example (I : Interp LOp IdxTst K) {T : ℕ → ℕ} (hT : ∀ a b, T a + T b ≤ T (a + b))
+    (τ : Tape K) (k : ℕ) (x : ℕ × ℕ) (m : Mem K)
+    (upperCost : Count SOp IdxTst) (lowerCost : Count LOp IdxTst) :
+    RunsFromWL I (fun _ _ => 0) τ (twice.link splitTable) ⟨[k, x.2], [x.1]⟩
+      ⟨m, lowerCost, 3, 5⟩ 0 fun c _ => kernWeight T c ≤ 2 * T k := by
+  let ρ : Env := ⟨[k, x.2], [x.1]⟩
+  let a : St SOp IdxTst K := ⟨m, upperCost, 3, 4⟩
+  have h : RunsFromWL (I.link splitTable) (fun _ _ => 0) τ twice ρ a 0
+      (fun c _ => c ≤ staticCost twice ρ.idx) := by
+    simpa [ρ, twice, staticPeak, IExp.eval] using
+      (RunsFromWL.of_static (I := I.link splitTable) (W := fun _ _ => 0)
+        (τ := τ) (s := twice) (ρ := ρ) (st := a))
+  have hp : 4 ≤ max 5 (3 + 0) := by omega
+  refine (h.link_from (splitTable_accountsW I hT) rfl rfl hp).mono le_rfl ?_
+  rintro c _ ⟨da, hw, hda⟩
+  refine hw.trans ((Count.lift_mono _ hda).trans (le_of_eq ?_))
+  simp [ρ, twice, staticCost, useCost, Count.lift, Count.one, two_mul]
+
 end NLAlib.Ops.Examples

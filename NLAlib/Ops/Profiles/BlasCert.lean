@@ -135,7 +135,7 @@ theorem seq_certifies (hM : StdModel u dec M) (hu : 0 ≤ u) (ok : ℕ → Prop)
 
 /-- Sequential BLAS1 over exact scalar arithmetic meets the exact decoded contracts. -/
 theorem seq_certifies_exact (hM : ExactModel dec M) (ok : ℕ → Prop) :
-    (seq (Op := Op) (Tst := Tst)).Certifies (fun I => IsScalar M I)
+    (seq (Op := Op) (Tst := Tst)).Refines (fun I => IsScalar M I)
       (fun J => IsScalar M J ∧ IsExactBlas1 dec ok J) := by
   have hsum : seqSumErr 0 = fun _ => 0 := by
     funext n
@@ -156,7 +156,7 @@ theorem pairwise_certifies (hM : StdModel u dec M) (hu : 0 ≤ u) (k : ℕ) :
 /-- Pairwise BLAS1 over exact scalar arithmetic meets the exact contracts at the lengths covered
 by the recursion depth. -/
 theorem pairwise_certifies_exact (hM : ExactModel dec M) (k : ℕ) :
-    (pairwise (Op := Op) (Tst := Tst) k).Certifies (fun I => IsScalar M I)
+    (pairwise (Op := Op) (Tst := Tst) k).Refines (fun I => IsScalar M I)
       (fun J => IsScalar M J ∧ IsExactBlas1 dec (fun n => Nat.clog 2 n < k) J) := by
   have hsum : pairSumErr 0 = fun _ => 0 := by
     funext n

@@ -100,8 +100,8 @@ noncomputable def solveCount (n cap : ℕ) : Count Op Tst :=
 
 /-- Static accounting of a single round retains its actual growing basis prefix. -/
 theorem staticCost_advance (n cap b v c j : ℕ) :
-    staticCost (advance (Op := Op) (Tst := Tst)) [n,cap,b,v,c,j] = advanceCount n j := by
-  simp [advance, updateAndSweep, saveAndNormalize, preNorm, staticCost, useCost, testCost,
+    stmtCost (advance (Op := Op) (Tst := Tst)) [n,cap,b,v,c,j] = advanceCount n j := by
+  simp [advance, updateAndSweep, saveAndNormalize, preNorm, stmtCost, useCost, testCost,
     Lanczos.staticCost_update,
     Lanczos.staticCost_normalize, staticCost_cgs2, advanceCount, Lanczos.advanceCount,
     preNormCount]
@@ -109,14 +109,14 @@ theorem staticCost_advance (n cap b v c j : ℕ) :
 
 /-- Every capped projection is charged, including columns before the final breakdown test. -/
 theorem staticCost_solve (n cap b v c : ℕ) :
-    staticCost (solve (Op := Op) (Tst := Tst)) [n,cap,b,v,c] = solveCount n cap := by
+    stmtCost (solve (Op := Op) (Tst := Tst)) [n,cap,b,v,c] = solveCount n cap := by
   have hsum : ∑ j ∈ Finset.range cap, ((j + 1) * 2) = cap * (cap + 1) := by
     induction cap with
     | zero => simp
     | succ cap ih => rw [Finset.sum_range_succ, ih]; ring
   have hsup : (Finset.range (cap + 1)).sup (fun _ => (0 : Count Op Tst)) = 0 :=
     le_antisymm (Finset.sup_le fun _ _ => le_rfl) zero_le
-  simp [solve, rounds, Lanczos.initializeState, staticCost, useCost, testCost,
+  simp [solve, rounds, Lanczos.initializeState, stmtCost, useCost, testCost,
     Lanczos.staticCost_zero,
     Lanczos.staticCost_normalize, staticCost_advance, advanceCount, solveCount,
     cgs2Count, cgsPassCount, ← mul_nsmul, Finset.sum_add_distrib,
@@ -132,13 +132,13 @@ def primitivePeak (W : Op → List ℕ → ℕ) (n : ℕ) : ℕ :=
 
 /-- At round j the reusable coefficient scratch has j+1 cells, plus one scalar cell. -/
 theorem staticPeak_advance_le (W : Op → List ℕ → ℕ) (n cap b v c j : ℕ) :
-    staticPeak W (advance (Op := Op) (Tst := Tst)) [n,cap,b,v,c,j] ≤
+    stmtPeak W (advance (Op := Op) (Tst := Tst)) [n,cap,b,v,c,j] ≤
       j + 2 + primitivePeak W n := by
   have hcgs := staticPeak_cgs2_le (Op := Op) (Tst := Tst) W n (j+1) v 0 0
   simp only [cgs2Peak, cgsPassPeak] at hcgs
   unfold primitivePeak
   simp [advance, updateAndSweep, saveAndNormalize, preNorm, Lanczos.update,
-    Lanczos.normalize, staticPeak]
+    Lanczos.normalize, stmtPeak]
   omega
 
 /-- Two n-vectors and two scalar cells are held throughout; at most cap coefficients and one
@@ -149,9 +149,9 @@ def solvePeak (W : Op → List ℕ → ℕ) (n cap : ℕ) : ℕ :=
 /-- All scratch is bounded independently of how early breakdown occurs. Output arrays are
 caller-owned and therefore excluded from this additional-workspace bound. -/
 theorem staticPeak_solve_le (W : Op → List ℕ → ℕ) (n cap b v c : ℕ) :
-    staticPeak W (solve (Op := Op) (Tst := Tst)) [n,cap,b,v,c] ≤ solvePeak W n cap := by
+    stmtPeak W (solve (Op := Op) (Tst := Tst)) [n,cap,b,v,c] ≤ solvePeak W n cap := by
   have hrounds : (Finset.range cap).sup (fun j =>
-      staticPeak W (advance (Op := Op) (Tst := Tst)) [n,cap,b,v,c,j]) ≤
+      stmtPeak W (advance (Op := Op) (Tst := Tst)) [n,cap,b,v,c,j]) ≤
       cap + 1 + primitivePeak W n := by
     apply Finset.sup_le
     intro j hj
@@ -161,7 +161,7 @@ theorem staticPeak_solve_le (W : Op → List ℕ → ℕ) (n cap b v c : ℕ) :
   have hz₂ := Lanczos.staticPeak_zero_le (Op := Op) (Tst := Tst) W (3*cap+2) c
   have hz₃ := Lanczos.staticPeak_zero_le (Op := Op) (Tst := Tst) W n 0
   simp only [solvePeak, primitivePeak] at hrounds ⊢
-  simp [solve, rounds, Lanczos.initializeState, Lanczos.normalize, staticPeak]
+  simp [solve, rounds, Lanczos.initializeState, Lanczos.normalize, stmtPeak]
   omega
 
 end NLAlib.Krylov.Lanczos.Reorth

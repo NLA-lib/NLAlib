@@ -58,7 +58,7 @@ theorem initialize_spec {M : Machine K} {dec : K → ℝ} {n : ℕ}
     (hS : IsScalar M I) (hM : ExactModel dec M)
     (hB : IsExactBlas1 dec (fun _ => True) I) (hA : IsExactMatvec dec A I)
     (hP : IsExactPreconditioner dec P I) :
-    (initializeImpl (Op := Op) (Tst := Tst)).Meets I .total
+    (initializeImpl (Op := Op) (Tst := Tst)).Triple I .total
       ((initializeRel dec A P).spec (InitializeOperands n)) := by
   cert_intro [m] (b, x) → (x', r, z, p) reads (bs, xs)
   obtain ⟨hd, hx, hbx, hbr, hbz, hbp, hxr, hxz, hxp, hrz, hrp, hzp⟩ := hadm

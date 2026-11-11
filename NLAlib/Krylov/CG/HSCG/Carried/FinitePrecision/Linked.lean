@@ -58,7 +58,7 @@ theorem runs_solve_seq {M : Machine K} {dec : K → ℝ} {u e : ℝ}
     (hl : μ.Live [b, x, r, p, v]) (hbs : μ.store.readBlock b.1 b.2 n = some bs)
     (hxs : μ.store.readBlock x.1 x.2 n = some xs) (hx0 : decv dec n xs = 0)
     (hz : μ.Room [x, r, p, v] [n, n, n, 1]) :
-    Runs I (Blas.ws 0) τ (solve.link (Blas.seq (Op := Op) (Tst := Tst)).table)
+    ConditionalRuns I (Blas.ws 0) τ (solve.link (Blas.seq (Op := Op) (Tst := Tst)).table)
       (Env.frame [n, cap] [b, x, x, r, p, v]) μ (seqSolveCount n cap) (2 * n + 4)
       (fun μ' => μ'.pos = μ.pos ∧
         Output dec A (decv dec n bs) e cap x r p v μ') := by

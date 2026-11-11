@@ -70,16 +70,16 @@ def stepPeak (W : Op → List ℕ → ℕ) (n : ℕ) : ℕ :=
 
 /-- Static evaluation counts the two dot products and the retained scalar copy. -/
 theorem staticCost_step (n a b c d a' b' c' d' : ℕ) :
-    staticCost (step (Op := Op) (Tst := Tst)) [n, a, b, c, d, a', b', c', d'] =
+    stmtCost (step (Op := Op) (Tst := Tst)) [n, a, b, c, d, a', b', c', d'] =
       stepCount n := by
-  simp [step, staticCost, stepCount, useCost, IExp.evalList, IExp.eval]
+  simp [step, stmtCost, stepCount, useCost, IExp.evalList, IExp.eval]
   module
 
 /-- One vector, three cells and the largest call workspace bound the round's scratch. -/
 theorem staticPeak_step_le (W : Op → List ℕ → ℕ) (n a b c d a' b' c' d' : ℕ) :
-    staticPeak W (step (Op := Op) (Tst := Tst)) [n, a, b, c, d, a', b', c', d'] ≤
+    stmtPeak W (step (Op := Op) (Tst := Tst)) [n, a, b, c, d, a', b', c', d'] ≤
       stepPeak W n := by
-  simp [step, staticPeak, stepPeak]
+  simp [step, stmtPeak, stepPeak]
   omega
 
 
@@ -104,15 +104,15 @@ noncomputable def roundsCount (n cap : ℕ) : Count Op Tst :=
 
 /-- Static loop accounting includes comparison queries as well as operation calls. -/
 theorem staticCost_rounds (n cap a b c d a' b' c' d' : ℕ) :
-    staticCost (rounds (Op := Op) (Tst := Tst)) [n, cap, a, b, c, d, a', b', c', d'] =
+    stmtCost (rounds (Op := Op) (Tst := Tst)) [n, cap, a, b, c, d, a', b', c', d'] =
       roundsCount n cap := by
-  simp [rounds, staticCost, testCost, IExp.evalList, IExp.eval, staticCost_step, roundsCount]
+  simp [rounds, stmtCost, testCost, IExp.evalList, IExp.eval, staticCost_step, roundsCount]
 
 /-- Early exit and the cap share the same reusable round workspace. -/
 theorem staticPeak_rounds_le (W : Op → List ℕ → ℕ) (n cap a b c d a' b' c' d' : ℕ) :
-    staticPeak W (rounds (Op := Op) (Tst := Tst))
+    stmtPeak W (rounds (Op := Op) (Tst := Tst))
       [n, cap, a, b, c, d, a', b', c', d'] ≤ stepPeak W n := by
-  simp only [rounds, staticPeak]
+  simp only [rounds, stmtPeak]
   apply max_le
   · apply Finset.sup_le
     intro i hi
@@ -143,16 +143,16 @@ def initializePeak (W : Op → List ℕ → ℕ) (n : ℕ) : ℕ :=
 
 /-- Static accounting includes the retained initial residual product. -/
 theorem staticCost_initialize (n a b c d e f : ℕ) :
-    staticCost (initializeState (Op := Op) (Tst := Tst)) [n, a, b, c, d, e, f] =
+    stmtCost (initializeState (Op := Op) (Tst := Tst)) [n, a, b, c, d, e, f] =
       initializeCount n := by
-  simp [initializeState, staticCost, IExp.evalList, IExp.eval,
+  simp [initializeState, stmtCost, IExp.evalList, IExp.eval,
     HSCG.staticCost_initialize, useCost, initializeCount]
 
 /-- The retained scalar is caller storage, so initialization adds no allocation for it. -/
 theorem staticPeak_initialize_le (W : Op → List ℕ → ℕ) (n a b c d e f : ℕ) :
-    staticPeak W (initializeState (Op := Op) (Tst := Tst)) [n, a, b, c, d, e, f] ≤
+    stmtPeak W (initializeState (Op := Op) (Tst := Tst)) [n, a, b, c, d, e, f] ≤
       initializePeak W n := by
-  simpa [initializeState, staticPeak, IExp.evalList, IExp.eval, initializePeak] using
+  simpa [initializeState, stmtPeak, IExp.evalList, IExp.eval, initializePeak] using
     max_le_max (HSCG.staticPeak_initialize_le W n a b c d e) le_rfl
 
 variable [Has CmpTst Tst]
@@ -179,16 +179,16 @@ def solvePeak (W : Op → List ℕ → ℕ) (n : ℕ) : ℕ :=
 
 /-- The complete program budget follows by evaluating its two framed components. -/
 theorem staticCost_solve (n cap a b c d e f : ℕ) :
-    staticCost (solve (Op := Op) (Tst := Tst)) [n, cap, a, b, c, d, e, f] =
+    stmtCost (solve (Op := Op) (Tst := Tst)) [n, cap, a, b, c, d, e, f] =
       solveCount n cap := by
-  simp [solve, staticCost, IExp.evalList, IExp.eval, staticCost_initialize,
+  simp [solve, stmtCost, IExp.evalList, IExp.eval, staticCost_initialize,
     staticCost_rounds, solveCount]
 
 /-- The complete solver's peak is bounded independently of its cap. -/
 theorem staticPeak_solve_le (W : Op → List ℕ → ℕ) (n cap a b c d e f : ℕ) :
-    staticPeak W (solve (Op := Op) (Tst := Tst)) [n, cap, a, b, c, d, e, f] ≤
+    stmtPeak W (solve (Op := Op) (Tst := Tst)) [n, cap, a, b, c, d, e, f] ≤
       solvePeak W n := by
-  simpa [solve, staticPeak, IExp.evalList, IExp.eval, solvePeak] using
+  simpa [solve, stmtPeak, IExp.evalList, IExp.eval, solvePeak] using
     max_le_max (staticPeak_initialize_le W n a b c d e f)
       (staticPeak_rounds_le W n cap c d e f c d e f)
 

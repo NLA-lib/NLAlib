@@ -295,8 +295,8 @@ theorem map_whileIter {σ σ' : Type} {g : σ → σ'} {test : ℕ → σ → Op
 memory, live cells and accounting of the new segment. -/
 theorem map_addHistory_exec (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : Tape K)
     (s : Stmt Op Tst) (ρ : Env) (st : St Op Tst K) (cost : Count Op Tst) (peak : ℕ) :
-    (exec I W τ s ρ st).map (St.addHistory cost peak) =
-      exec I W τ s ρ (St.addHistory cost peak st) := by
+    (evalCounted I W τ s ρ st).map (St.addHistory cost peak) =
+      evalCounted I W τ s ρ (St.addHistory cost peak st) := by
   have mem (a : St Op Tst K) : (St.addHistory cost peak a).mem = a.mem := rfl
   have tick (a : St Op Tst K) (q : Tst) (d : List ℕ) :
       St.addHistory cost peak (a.tick q d) = (St.addHistory cost peak a).tick q d := by
@@ -305,15 +305,15 @@ theorem map_addHistory_exec (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) 
   | skip => rfl
   | abort => rfl
   | seq s t ihs iht =>
-    simp only [exec]
+    simp only [evalCounted]
     rw [Option.map_bind_of_comm _ (iht ρ), ihs]
   | call o ds ins outs =>
-    simp only [exec, mem]
+    simp only [evalCounted, mem]
     cases IExp.evalList ρ.idx ds <;> cases Operand.evalList ρ ins <;>
       cases Operand.evalList ρ outs <;> simp [Option.map_map, Function.comp_def, add_assoc,
         Nat.max_assoc, St.addHistory]
   | ite q ds ins t e iht ihe =>
-    simp only [exec, mem]
+    simp only [evalCounted, mem]
     cases IExp.evalList ρ.idx ds <;> cases Operand.evalList ρ ins <;> try rfl
     rename_i d a
     simp only [Option.bind_some]
@@ -325,13 +325,13 @@ theorem map_addHistory_exec (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) 
       · rw [iht, tick]
       · rw [ihe, tick]
   | whileFuel fuel q ds ins body k ih ihk =>
-    simp only [exec]
+    simp only [evalCounted]
     cases fuel.eval ρ.idx with
     | none => rfl
     | some n =>
       simp only [Option.bind_some]
       rw [Option.map_bind_of_comm (g := Prod.map id (St.addHistory cost peak))
-        (f' := fun js : ℕ × St Op Tst K => exec I W τ k (ρ.pushIdx js.1) js.2) _
+        (f' := fun js : ℕ × St Op Tst K => evalCounted I W τ k (ρ.pushIdx js.1) js.2) _
         (fun a => ihk (ρ.pushIdx a.1) a.2)]
       rw [map_whileIter (fun i a => ?_) (fun i a => ih (ρ.pushIdx i) a)]
       simp only [Interp.testSt, mem]
@@ -339,7 +339,7 @@ theorem map_addHistory_exec (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) 
         cases Operand.evalList (ρ.pushIdx i) ins <;> try rfl
       simp [Option.map_map, Function.comp_def, tick]
   | bindIdx q ins bound body ih =>
-    simp only [exec, mem]
+    simp only [evalCounted, mem]
     cases Operand.evalList ρ ins <;> cases bound.eval ρ.idx <;> try rfl
     rename_i a B
     simp only [Option.bind_some]
@@ -350,23 +350,24 @@ theorem map_addHistory_exec (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) 
       split_ifs
       · rw [ih, tick]
       · rfl
-  | alloc len body ih =>
-    simp only [exec]
+  | allocAs fmt len body ih =>
+    simp only [evalCounted]
     cases len.eval ρ.idx with
     | none => rfl
     | some n =>
       have h := ih (ρ.pushBuf st.mem.store.length)
-        ⟨⟨st.mem.store.push n, st.mem.pos⟩, st.cost, st.cur + n, max st.peak (st.cur + n)⟩
+        ⟨⟨st.mem.store.push n, st.mem.pos⟩, st.cost, st.cur + fmt.bytes * n,
+          max st.peak (st.cur + fmt.bytes * n)⟩
       simp only [St.addHistory] at h
       simp only [Option.bind_some, St.addHistory, Nat.max_assoc, ← h, Option.map_map]
       rfl
   | loop n body ih =>
-    simp only [exec]
+    simp only [evalCounted]
     cases n.eval ρ.idx with
     | none => rfl
     | some k => exact map_iter (fun i a => ih (ρ.pushIdx i) a) k st
   | frame ds args body ih =>
-    simp only [exec, mem]
+    simp only [evalCounted, mem]
     cases IExp.evalList ρ.idx ds <;> cases Operand.evalList ρ args <;> try rfl
     simp only [Option.bind_some]
     split_ifs

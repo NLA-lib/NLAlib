@@ -53,7 +53,7 @@ def zeroRel (v : K) : BlockRel K where
 
 /-- The literal fill succeeds for every admitted output block under its scalar contract. -/
 theorem zero_spec {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I) :
-    (zeroImpl (Op := Op) (Tst := Tst)).Meets I .total ((zeroRel (M.lit 0)).spec AnyOperands) := by
+    (zeroImpl (Op := Op) (Tst := Tst)).Triple I .total ((zeroRel (M.lit 0)).spec AnyOperands) := by
   cert_intro [n] () → (q) reads ()
   have hq : q.1 < μ.store.length := by simpa only [Mem.live_cons, Mem.live_nil, and_true] using hl
   have hqn : q.2 + n ≤ μ.store.len q.1 := by

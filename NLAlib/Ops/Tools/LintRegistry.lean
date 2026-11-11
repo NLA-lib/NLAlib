@@ -3,12 +3,15 @@ Copyright (c) 2026 NLAlib contributors. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: NLAlib contributors
 -/
-import Lean
+module
+
+public meta import Lean
 
 /-!
 # Tools: the registry of the target linter
 
-Outside the trusted base. Three kinds of names that the target linter
+Diagnostic linter registration; formal certification is independent of these registrations.
+Three kinds of names that the target linter
 (`NLAlib/Ops/Tools/Lint.lean`) cannot infer from types, registered by commands:
 
 * `ops_register_xi c₁ c₂ …`: operations that take a random word as an operand (`sraddXi`), which
@@ -17,7 +20,15 @@ Outside the trusted base. Three kinds of names that the target linter
 * `ops_register_model c₁ …`: model primitives, interpretations a headline may name instead of
   quantifying over them.
 * `ops_register_witness c₁ …`: witness theorems whose name does not start with `exists_`.
+
+## Main results
+
+The registration commands record names used by conditional headline guidance.
 -/
+
+@[expose] public section
+
+meta section
 
 namespace NLAlib.Ops.Tools.Lint
 

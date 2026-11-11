@@ -74,19 +74,19 @@ def roundPeak (W : Op → List ℕ → ℕ) (n : ℕ) : ℕ := HSCG.stepPeak W n
 
 /-- The static evaluator counts both the CG recurrence and its complete projection sweep. -/
 theorem staticCost_round (n k x r p q x' r' p' : ℕ) :
-    staticCost (round (Op := Op) (Tst := Tst)) [n, k, x, r, p, q, x', r', p'] =
+    stmtCost (round (Op := Op) (Tst := Tst)) [n, k, x, r, p, q, x', r', p'] =
       roundCount n k := by
-  simp [round, update, direction, sweep, staticCost, useCost, roundCount, HSCG.stepCount,
+  simp [round, update, direction, sweep, stmtCost, useCost, roundCount, HSCG.stepCount,
     sweepCount]
   module
 
 /-- The sweep reuses the outer vector scratch and adds only its two temporary scalar cells. -/
 theorem staticPeak_round_le (W : Op → List ℕ → ℕ) (n k x r p q x' r' p' : ℕ) :
-    staticPeak W (round (Op := Op) (Tst := Tst)) [n, k, x, r, p, q, x', r', p'] ≤
+    stmtPeak W (round (Op := Op) (Tst := Tst)) [n, k, x, r, p, q, x', r', p'] ≤
       roundPeak W n := by
   have hs := staticPeak_sweep_le (Op := Op) (Tst := Tst) W n k q r r
   simp only [sweepPeak] at hs
-  simp [round, update, direction, staticPeak, roundPeak, HSCG.stepPeak]
+  simp [round, update, direction, stmtPeak, roundPeak, HSCG.stepPeak]
   omega
 
 end NLAlib.Krylov.CG.Reorth

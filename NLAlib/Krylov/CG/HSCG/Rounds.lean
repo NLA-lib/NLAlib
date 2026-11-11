@@ -80,7 +80,7 @@ theorem rounds_spec {M : Machine K} {dec : K → ℝ} {n : ℕ}
     {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K}
     (hS : IsScalar M I) (hM : ExactModel dec M)
     (hB : IsExactBlas1 dec (fun _ => True) I) (hA : IsExactMatvec dec A I) :
-    (roundsImpl (Op := Op) (Tst := Tst)).Meets I .total
+    (roundsImpl (Op := Op) (Tst := Tst)).Triple I .total
       ((roundsRel dec A).spec (RoundsOperands n)) := by
   cert_intro [m, k] (x, r, p) → (x', r', p') reads (xs, rs, ps)
   obtain ⟨hd, hx, hr, hp, hxr, hxp, hrp⟩ := hadm
@@ -109,7 +109,7 @@ theorem runs_rounds {M : Machine K} {dec : K → ℝ} {n : ℕ}
     (hp : μ.store.readBlock p.1 p.2 n = some ps)
     (hdom : ∀ j < k, Nonbreakdown A ((cgStep A)^[j] (decodedState dec n xs rs ps)))
     (hz : μ.Room [x, r, p] [n, n, n]) :
-    Runs I W τ rounds (Env.frame [n, k] [x, r, p, x, r, p]) μ
+    ConditionalRuns I W τ rounds (Env.frame [n, k] [x, r, p, x, r, p]) μ
       (k • stepCount n) (stepPeak W n)
       ((roundsRel dec A).Post [n, k] [xs, rs, ps] [x, r, p] [] μ) := by
   refine ((rounds_spec hS hM hB hA).runs_rel W (d := [n, k]) (ins := [x, r, p])

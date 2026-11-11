@@ -186,7 +186,7 @@ standard invariant form, and `cgsCol_writes` in each column. -/
 theorem cgs_spec {M : Machine K} {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop}
     {J : Interp Op Tst K} (hS : IsScalar M J) (hJ : IsBlas1 dec ε ok J)
     (hneg : ∀ x, dec (M.neg x) = -dec x) :
-    (cgsImpl (Op := Op) (Tst := Tst)).Meets J .total ((cgsRel dec ε).spec (CgsOperands ok)) := by
+    (cgsImpl (Op := Op) (Tst := Tst)).Triple J .total ((cgsRel dec ε).spec (CgsOperands ok)) := by
   cert_intro [n, p] (A, R₀) → (Q, R) reads (as, r₀)
   obtain ⟨hok, rfl, hAQ, hAR, hQR⟩ := hadm
   refine writes_alloc rfl fun s₁ hs₁ ht hB₁ => writes_alloc rfl fun s₂ hs₂ hv hB₂ => ?_

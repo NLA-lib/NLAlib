@@ -235,14 +235,14 @@ example (I : Interp LOp IdxTst K) {T : ℕ → ℕ} (hT : ∀ a b, T a + T b ≤
   let ρ : Env := ⟨[k, x.2], [x.1]⟩
   let a : St SOp IdxTst K := ⟨m, upperCost, 3, 4⟩
   have h : RunsFromWL (I.link splitTable) (fun _ _ => 0) τ twice ρ a 0
-      (fun c _ => c ≤ staticCost twice ρ.idx) := by
-    simpa [ρ, twice, staticPeak, IExp.eval] using
+      (fun c _ => c ≤ stmtCost twice ρ.idx) := by
+    simpa [ρ, twice, stmtPeak, IExp.eval] using
       (RunsFromWL.of_static (I := I.link splitTable) (W := fun _ _ => 0)
         (τ := τ) (s := twice) (ρ := ρ) (st := a))
   have hp : 4 ≤ max 5 (3 + 0) := by omega
   refine (h.link_from (splitTable_accountsW I hT) rfl rfl hp).mono le_rfl ?_
   rintro c _ ⟨da, hw, hda⟩
   refine hw.trans ((Count.lift_mono _ hda).trans (le_of_eq ?_))
-  simp [ρ, twice, staticCost, useCost, Count.lift, Count.one, two_mul]
+  simp [ρ, twice, stmtCost, useCost, Count.lift, Count.one, two_mul]
 
 end NLAlib.Ops.Examples

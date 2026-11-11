@@ -3,17 +3,25 @@ Copyright (c) 2026 NLAlib contributors. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: NLAlib contributors
 -/
-import NLAlib.Ops.Tools.Lint
-import NLAlib.Ops.Examples.Gemm
-import NLAlib.Ops.Examples.StochRound
+module
+
+public meta import NLAlib.Ops.Tools.Lint
+public import NLAlib.Ops.Examples.Gemm
+public import NLAlib.Ops.Examples.StochRound
 
 /-!
 # Tools: fixtures of the target linter
 
-Outside the trusted base. Each cheat of the Fable review is a true theorem here whose
+Diagnostic regressions. Each cheat of the Fable review is a true theorem here whose
 **statement** breaks one rule; `#guard_msgs` records what `#ops_lint` says of it. The accepted
 statements are headlines of the examples.
+
+## Main results
+
+The guarded commands reject misleading conditional statements and distinguish canonical schemas.
 -/
+
+@[expose] public section
 
 namespace NLAlib.Ops.Tools.LintFixtures
 
@@ -22,7 +30,7 @@ open NLAlib.Ops NLAlib.Ops.Examples
 variable {K : Type}
 
 theorem runs_skip {Op Tst : Type} (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : Tape K)
-    (ρ : Env) (m : Mem K) : Runs I W τ .skip ρ m 0 0 (· = m) :=
+    (ρ : Env) (m : Mem K) : ConditionalRuns I W τ .skip ρ m 0 0 (· = m) :=
   ⟨St.init m, rfl, le_rfl, le_rfl, rfl⟩
 
 /-! ### (a) A program that depends on the memory -/
@@ -32,13 +40,13 @@ def memProg (m : Mem K) : Stmt ScalarOp Empty := if m.pos = 0 then .skip else .s
 
 theorem cheat_memProg {M : Machine K} {u : ℝ} {dec : K → ℝ} (_hM : StdModel u dec M)
     {I : Interp ScalarOp Empty K} (_hI : IsScalar M I) (W : ScalarOp → List ℕ → ℕ) (τ : Tape K)
-    (ρ : Env) (m : Mem K) : Runs I W τ (memProg m) ρ m 0 0 (· = m) := by
+    (ρ : Env) (m : Mem K) : ConditionalRuns I W τ (memProg m) ρ m 0 0 (· = m) := by
   unfold memProg
   split <;> exact runs_skip I W τ ρ m
 
 theorem cheat_nestedMem {M : Machine K} {u : ℝ} {dec : K → ℝ} (_hM : StdModel u dec M)
     {I : Interp ScalarOp Empty K} (_hI : IsScalar M I) (W : ScalarOp → List ℕ → ℕ) (τ : Tape K)
-    (ρ : Env) : True ∧ (∀ m, Runs I W τ (memProg m) ρ m 0 0 (· = m)) :=
+    (ρ : Env) : True ∧ (∀ m, ConditionalRuns I W τ (memProg m) ρ m 0 0 (· = m)) :=
   ⟨trivial, cheat_memProg _hM _hI W τ ρ⟩
 
 /-- A loop with the number of repetitions baked into the tree. -/
@@ -46,18 +54,19 @@ def sizeProg (n : ℕ) : Stmt ScalarOp Empty := .loop (.const n) .skip
 
 theorem cheat_existsSize {M : Machine K} {u : ℝ} {dec : K → ℝ} (_hM : StdModel u dec M)
     {I : Interp ScalarOp Empty K} (_hI : IsScalar M I) (W : ScalarOp → List ℕ → ℕ) (τ : Tape K)
-    (ρ : Env) (m : Mem K) : ∃ n, Runs I W τ (sizeProg n) ρ m 0 0 (· = m) :=
+    (ρ : Env) (m : Mem K) : ∃ n, ConditionalRuns I W τ (sizeProg n) ρ m 0 0 (· = m) :=
   ⟨0, St.init m, rfl, le_rfl, le_rfl, rfl⟩
 
 /-! ### (b) An existential and a specific interpretation -/
 
 theorem cheat_exists :
-    ∃ I : Interp ScalarOp Empty ℚ, Runs I (fun _ _ => 0) (fun _ _ => 0) .skip ⟨[], []⟩ ⟨[], 0⟩
+    ∃ I : Interp ScalarOp Empty ℚ, ConditionalRuns I (fun _ _ => 0) (fun _ _ => 0)
+      .skip ⟨[], []⟩ ⟨[], 0⟩
       0 0 (· = ⟨[], 0⟩) :=
   ⟨Interp.ofFns fun _ => .const 0, runs_skip _ _ _ _ _⟩
 
 theorem cheat_specific :
-    Runs (Interp.ofFns fun _ => .const 0 : Interp ScalarOp Empty ℚ) (fun _ _ => 0)
+    ConditionalRuns (Interp.ofFns fun _ => .const 0 : Interp ScalarOp Empty ℚ) (fun _ _ => 0)
       (fun _ _ => 0) .skip ⟨[], []⟩ ⟨[], 0⟩ 0 0 (· = ⟨[], 0⟩) :=
   runs_skip _ _ _ _ _
 
@@ -65,12 +74,13 @@ theorem cheat_linkPinned {M : Machine K} {u : ℝ} {dec : K → ℝ} (_hM : StdM
     {I : Interp ScalarOp Empty K} (_hI : IsScalar M I)
     (_hfix : True ∧ I = Interp.ofFns (fun _ => .un some)) (W : ScalarOp → List ℕ → ℕ)
     (τ : Tape K) (ρ : Env) (m : Mem K) :
-    Runs (I.link (Table.id : Table ScalarOp ScalarOp Empty)) W τ .skip ρ m 0 0 (· = m) :=
+    ConditionalRuns (I.link (Table.id : Table ScalarOp ScalarOp Empty)) W τ .skip ρ m 0 0 (· = m) :=
   runs_skip _ W τ ρ m
 
 theorem runs_nested {M : Machine K} {u : ℝ} {dec : K → ℝ} (_hM : StdModel u dec M)
     (W : ScalarOp → List ℕ → ℕ) (τ : Tape K) (ρ : Env) (m : Mem K) :
-    True ∧ (∀ I : Interp ScalarOp Empty K, IsScalar M I → Runs I W τ .skip ρ m 0 0 (· = m)) :=
+    True ∧ (∀ I : Interp ScalarOp Empty K, IsScalar M I →
+      ConditionalRuns I W τ .skip ρ m 0 0 (· = m)) :=
   ⟨trivial, fun I _ => runs_skip I W τ ρ m⟩
 
 /-! ### (c) A contract without a witness -/
@@ -84,7 +94,7 @@ structure Oracle (I : Interp ScalarOp Empty K) : Prop where
 def oneAdd : Stmt ScalarOp Empty := .call .add [] [⟨0, .const 0⟩, ⟨0, .const 0⟩] [⟨0, .const 0⟩]
 
 theorem cheat_noWitness {I : Interp ScalarOp Empty K} (hI : Oracle I) (W : ScalarOp → List ℕ → ℕ)
-    (τ : Tape K) (ρ : Env) (m : Mem K) : Runs I W τ oneAdd ρ m 0 0 fun _ => False :=
+    (τ : Tape K) (ρ : Env) (m : Mem K) : ConditionalRuns I W τ oneAdd ρ m 0 0 fun _ => False :=
   hI.never.elim
 
 /-- An interpretation with a constant test. -/
@@ -108,7 +118,7 @@ theorem exists_nestedSeparateWitnesses : ∃ I, Accepts I ∧ (∃ J, Rejects J)
 
 theorem cheat_separateWitnesses (I : Interp Empty Unit Unit) (_hA : Accepts I) (_hR : Rejects I)
     (W : Empty → List ℕ → ℕ) (τ : Tape Unit) (ρ : Env) (m : Mem Unit) :
-    Runs I W τ .skip ρ m 0 0 (· = m) :=
+    ConditionalRuns I W τ .skip ρ m 0 0 (· = m) :=
   runs_skip I W τ ρ m
 
 /-! ### (e) A liberal headline over a table of aborts -/
@@ -118,20 +128,20 @@ def abortT : Table ScalarOp ScalarOp Empty := fun _ => .inl ⟨0, 2, 1, .abort�
 
 theorem cheat_liberalAbort {M : Machine K} {u : ℝ} {dec : K → ℝ} (_hM : StdModel u dec M)
     {I : Interp ScalarOp Empty K} (_hI : IsScalar M I) (τ : Tape K) (ρ : Env) (m : Mem K) :
-    RunsL I τ (oneAdd.link abortT) ρ m fun _ => False := by
+    ConditionalRunsL I τ (oneAdd.link abortT) ρ m fun _ => False := by
   intro m' h
   simp only [oneAdd, abortT, Stmt.link, Impl.Fits, List.length_nil, List.length_cons, and_self,
-    if_true, run, Option.bind_eq_some_iff] at h
+    if_true, eval, Option.bind_eq_some_iff] at h
   obtain ⟨_, -, _, -, h⟩ := h
   split_ifs at h
 
 /-- A matching name alone is insufficient. -/
 theorem cheat_liberalAbort_success : True := trivial
 
-/-- A disjunction containing a total run can hold when the run fails. -/
+/-- A disjunction containing a total eval can hold when the eval fails. -/
 theorem cheat_disjunctiveCompanion (I : Interp ScalarOp Empty K) (W : ScalarOp → List ℕ → ℕ)
     (τ : Tape K) (ρ : Env) (m : Mem K) :
-    True ∨ Runs I W τ (oneAdd.link abortT) ρ m 0 0 (fun _ => False) :=
+    True ∨ ConditionalRuns I W τ (oneAdd.link abortT) ρ m 0 0 (fun _ => False) :=
   Or.inl trivial
 
 /-- An implementation that always fails. -/
@@ -140,36 +150,37 @@ def abortImpl : Impl ScalarOp Empty := ⟨0, 2, 1, .abort⟩
 theorem cheat_liberalCertificate {M : Machine K} {u : ℝ} {dec : K → ℝ} (_hM : StdModel u dec M)
     {I : Interp ScalarOp Empty K} (_hI : IsScalar M I) (C : Contract K)
     (hfit : ∀ d ins outs τ m, (C.on .liberal d ins outs τ m).pre m →
-      d.length = 0 ∧ ins.length = 2 ∧ outs.length = 1) : abortImpl.Meets I .liberal C :=
+      d.length = 0 ∧ ins.length = 2 ∧ outs.length = 1) : abortImpl.Triple I .liberal C :=
   Impl.meets_liberal_abort 0 2 1 I C hfit
 
 /-- Wrapping the liberal mode in `id` supplies no evidence of success. -/
 theorem cheat_nonliteralModeCompanion {M : Machine K} {u : ℝ} {dec : K → ℝ}
     (_hM : StdModel u dec M) {I : Interp ScalarOp Empty K} (_hI : IsScalar M I) (C : Contract K)
     (hfit : ∀ d ins outs τ m, (C.on .liberal d ins outs τ m).pre m →
-      d.length = 0 ∧ ins.length = 2 ∧ outs.length = 1) : abortImpl.Meets I (id .liberal) C :=
+      d.length = 0 ∧ ins.length = 2 ∧ outs.length = 1) : abortImpl.Triple I (id .liberal) C :=
   cheat_liberalCertificate _hM _hI C hfit
 
 /-- A single definition can describe both a successful program and a failing one. -/
 def sizeBranch (n : ℕ) : Stmt ScalarOp Empty := if n = 0 then .skip else .abort
 
 theorem cheat_companionAtZero (I : Interp ScalarOp Empty K) (W : ScalarOp → List ℕ → ℕ)
-    (τ : Tape K) (ρ : Env) (m : Mem K) : Runs I W τ (sizeBranch 0) ρ m 0 0 (· = m) := by
+    (τ : Tape K) (ρ : Env) (m : Mem K) : ConditionalRuns I W τ (sizeBranch 0) ρ m 0 0 (· = m) := by
   simpa [sizeBranch] using runs_skip I W τ ρ m
 
 theorem cheat_liberalAtOne {M : Machine K} {u : ℝ} {dec : K → ℝ} (_hM : StdModel u dec M)
     {I : Interp ScalarOp Empty K} (_hI : IsScalar M I) (τ : Tape K) (ρ : Env) (m : Mem K) :
-    RunsL I τ (sizeBranch 1) ρ m fun _ => False := by
+    ConditionalRunsL I τ (sizeBranch 1) ρ m fun _ => False := by
   intro m' h
-  simp [sizeBranch, run] at h
+  simp [sizeBranch, eval] at h
 
 theorem cheat_existsSuccess (I : Interp ScalarOp Empty K) (W : ScalarOp → List ℕ → ℕ)
-    (τ : Tape K) (ρ : Env) (m : Mem K) : ∃ n, Runs I W τ (sizeBranch n) ρ m 0 0 (· = m) :=
+    (τ : Tape K) (ρ : Env) (m : Mem K) :
+    ∃ n, ConditionalRuns I W τ (sizeBranch n) ρ m 0 0 (· = m) :=
   ⟨0, cheat_companionAtZero I W τ ρ m⟩
 
 theorem cheat_liberalAtAnySize {M : Machine K} {u : ℝ} {dec : K → ℝ} (_hM : StdModel u dec M)
     {I : Interp ScalarOp Empty K} (_hI : IsScalar M I) (τ : Tape K) (ρ : Env) (m : Mem K) (n : ℕ) :
-    RunsL I τ (sizeBranch n) ρ m fun _ => True := fun _ _ => trivial
+    ConditionalRunsL I τ (sizeBranch n) ρ m fun _ => True := fun _ _ => trivial
 
 /-! ### (f) A ξ-taking primitive in an algorithm -/
 
@@ -181,7 +192,7 @@ def xiProg : Stmt SrLo Empty :=
 theorem cheat_xi [MeasurableSpace K] {u : ℝ} {dec : K → ℝ} {μ : MeasureTheory.Measure K}
     {f : K → K → K → K} (_hf : SrModel u dec μ f) {I : Interp SrLo Empty K} (_hI : IsSrLo f I)
     (W : SrLo → List ℕ → ℕ) (τ : Tape K) (ρ : Env) (m : Mem K) :
-    Runs I W τ xiProg ρ m 0 0 (· = m) :=
+    ConditionalRuns I W τ xiProg ρ m 0 0 (· = m) :=
   ⟨St.init m, rfl, le_rfl, le_rfl, rfl⟩
 
 /-! ### Each cheat is rejected by its rule -/
@@ -304,5 +315,39 @@ error: ops_lint (f) `NLAlib.Ops.Tools.LintFixtures.cheat_xi`: the algorithm's tr
 /-- info: ops_lint: `NLAlib.Ops.sumSeq_spec` passes (a)-(f) -/
 #guard_msgs in
 #ops_lint NLAlib.Ops.sumSeq_spec
+
+/-! ### Canonical and profile schemas never silently pass conditional guidance -/
+
+/-- A canonical statement retains its own schema instead of becoming a raw run. -/
+theorem canonical_runs {Op Tst : Type} {r b : ℕ} {P : Problem K r b}
+    {p : Program Op Tst r b} {M : AccessModel Op Tst P} {S : Specification Op Tst P}
+    (h : Runs p M S) : Runs p M S := h
+
+/-- The public certification abbreviation is also recognized explicitly. -/
+theorem canonical_certifies {Op Tst : Type} {r b : ℕ} {P : Problem K r b}
+    {p : Program Op Tst r b} {M : AccessModel Op Tst P} {S : Specification Op Tst P}
+    (h : p.Certifies M S) : p.Certifies M S := h
+
+/-- A fixed implementation adapter remains a canonical statement. -/
+theorem canonical_meets {Op Tst : Type} {R : Impl Op Tst} {b : ℕ}
+    {P : Problem K R.nd b} {ins outs : List Operand} {M : AccessModel Op Tst P}
+    {S : Specification Op Tst P} (h : R.Meets ins outs M S) : R.Meets ins outs M S := h
+
+/-- A profile refinement is a conditional consumer, not canonical certification. -/
+theorem conditional_refines {Op Lo Tst : Type} {P : Profile Op Lo Tst}
+    {Base : Interp Lo Tst K → Prop} {Ck : Interp Op Tst K → Prop}
+    (h : P.Refines Base Ck) : P.Refines Base Ck := h
+
+/-- Ordinary propositions must not get an accidental empty-check pass. -/
+theorem unrecognized : True := trivial
+
+open Lean Elab Command in
+run_cmd liftTermElabM do
+  let ctx ← Lint.mkCtx
+  for n in [``canonical_runs, ``canonical_certifies, ``canonical_meets,
+      ``conditional_refines, ``unrecognized] do
+    let violations ← Lint.lintDecl ctx n
+    unless violations.map Prod.fst == #["schema"] do
+      throwError "expected explicit schema diagnostic for {n}; got {violations}"
 
 end NLAlib.Ops.Tools.LintFixtures

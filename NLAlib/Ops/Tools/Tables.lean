@@ -3,13 +3,16 @@ Copyright (c) 2026 NLAlib contributors. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: NLAlib contributors
 -/
-import NLAlib.Ops.Examples.NoisyLinked
-import NLAlib.Ops.Profiles.Blas
+module
+
+public import NLAlib.Ops.Examples.NoisyLinked
+public import NLAlib.Ops.Profiles.Blas
 
 /-!
 # Tools: computable tables of the profiles
 
-Outside the trusted base. A `Profile` is a noncomputable structure (its cost field is a
+Diagnostic and compute support; formal guarantees are independent of this output.
+A `Profile` is a noncomputable structure (its cost field is a
 `Count`), so `#eval` cannot project its table. The tables themselves are computable; this file
 names them and proves each equal to the table of its profile, so that the program linked here is
 the program of the corollaries.
@@ -20,7 +23,13 @@ the program of the corollaries.
 * `NLAlib.Ops.Tools.gaussTable`: `Rand.gaussLoop.table`.
 * `NLAlib.Ops.Tools.noisyTable σ`, `NLAlib.Ops.Tools.noisyDrawsTable σ`: the tables of
   `Examples.noisy σ` and `Examples.noisyDraws σ`.
+
+## Main results
+
+The computable tables agree with the tables of the corresponding refinement profiles.
 -/
+
+@[expose] public section
 
 namespace NLAlib.Ops.Tools
 

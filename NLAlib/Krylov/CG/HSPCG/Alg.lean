@@ -202,56 +202,56 @@ def solvePeak (W : Op → List ℕ → ℕ) (n : ℕ) : ℕ :=
 
 /-- Static evaluation counts all thirteen operations of one PCG round. -/
 theorem staticCost_step (n a b c d a' b' c' d' : ℕ) :
-    staticCost (step (Op := Op) (Tst := Tst)) [n, a, b, c, d, a', b', c', d'] =
+    stmtCost (step (Op := Op) (Tst := Tst)) [n, a, b, c, d, a', b', c', d'] =
       stepCount n := by
-  simp [step, stepCount, staticCost, useCost, IExp.evalList, IExp.eval]
+  simp [step, stepCount, stmtCost, useCost, IExp.evalList, IExp.eval]
   abel
 
 /-- The round's static workspace is bounded by its scratch plus the largest call workspace. -/
 theorem staticPeak_step_le (W : Op → List ℕ → ℕ) (n a b c d a' b' c' d' : ℕ) :
-    staticPeak W (step (Op := Op) (Tst := Tst)) [n, a, b, c, d, a', b', c', d'] ≤
+    stmtPeak W (step (Op := Op) (Tst := Tst)) [n, a, b, c, d, a', b', c', d'] ≤
       stepPeak W n := by
-  simp [step, staticPeak, stepPeak]
+  simp [step, stmtPeak, stepPeak]
   omega
 
 /-- Static evaluation counts the initializer operations. -/
 theorem staticCost_initialize (n b x x' r z p : ℕ) :
-    staticCost (initializeState (Op := Op) (Tst := Tst)) [n, b, x, x', r, z, p] =
+    stmtCost (initializeState (Op := Op) (Tst := Tst)) [n, b, x, x', r, z, p] =
       initializeCount n := by
-  simp [initializeState, initializeCount, staticCost, useCost, IExp.evalList, IExp.eval]
+  simp [initializeState, initializeCount, stmtCost, useCost, IExp.evalList, IExp.eval]
   abel
 
 /-- Initialization has its declared static workspace. -/
 theorem staticPeak_initialize_le (W : Op → List ℕ → ℕ) (n b x x' r z p : ℕ) :
-    staticPeak W (initializeState (Op := Op) (Tst := Tst)) [n, b, x, x', r, z, p] ≤
+    stmtPeak W (initializeState (Op := Op) (Tst := Tst)) [n, b, x, x', r, z, p] ≤
       initializePeak W n := by
-  simp [initializeState, staticPeak, initializePeak]
+  simp [initializeState, stmtPeak, initializePeak]
   omega
 
 /-- The loop's evaluator count is exactly the number of rounds times the round count. -/
 theorem staticCost_rounds (n k a b c d a' b' c' d' : ℕ) :
-    staticCost (rounds (Op := Op) (Tst := Tst)) [n, k, a, b, c, d, a', b', c', d'] =
+    stmtCost (rounds (Op := Op) (Tst := Tst)) [n, k, a, b, c, d, a', b', c', d'] =
       k • stepCount n := by
-  simp [rounds, staticCost, IExp.eval, IExp.evalList, staticCost_step]
+  simp [rounds, stmtCost, IExp.eval, IExp.evalList, staticCost_step]
 
 /-- All rounds share the same scratch bound. -/
 theorem staticPeak_rounds_le (W : Op → List ℕ → ℕ) (n k a b c d a' b' c' d' : ℕ) :
-    staticPeak W (rounds (Op := Op) (Tst := Tst)) [n, k, a, b, c, d, a', b', c', d'] ≤
+    stmtPeak W (rounds (Op := Op) (Tst := Tst)) [n, k, a, b, c, d, a', b', c', d'] ≤
       stepPeak W n := by
-  simp only [rounds, staticPeak]
+  simp only [rounds, stmtPeak]
   exact Finset.sup_le fun i _ => by
     simpa [IExp.eval, IExp.evalList, Operand.off] using staticPeak_step_le W n a b c d a b c d
 
 /-- The complete evaluator budget composes initialization with the round loop. -/
 theorem staticCost_solve (n k b x x' r z p : ℕ) :
-    staticCost (solve (Op := Op) (Tst := Tst)) [n, k, b, x, x', r, z, p] = solveCount n k := by
-  simp [solve, staticCost, IExp.eval, IExp.evalList, staticCost_initialize,
+    stmtCost (solve (Op := Op) (Tst := Tst)) [n, k, b, x, x', r, z, p] = solveCount n k := by
+  simp [solve, stmtCost, IExp.eval, IExp.evalList, staticCost_initialize,
     staticCost_rounds, solveCount]
 
 /-- The complete evaluator workspace is bounded by the larger block workspace. -/
 theorem staticPeak_solve_le (W : Op → List ℕ → ℕ) (n k b x x' r z p : ℕ) :
-    staticPeak W (solve (Op := Op) (Tst := Tst)) [n, k, b, x, x', r, z, p] ≤ solvePeak W n := by
-  simp only [solve, staticPeak, solvePeak]
+    stmtPeak W (solve (Op := Op) (Tst := Tst)) [n, k, b, x, x', r, z, p] ≤ solvePeak W n := by
+  simp only [solve, stmtPeak, solvePeak]
   exact max_le_max
     (by simpa [IExp.eval, IExp.evalList] using staticPeak_initialize_le W n b x x' r z p)
     (by simpa [IExp.eval, IExp.evalList] using staticPeak_rounds_le W n k x' r z p x' r z p)

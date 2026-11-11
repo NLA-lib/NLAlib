@@ -56,7 +56,7 @@ theorem normalize_rounded_spec {M : Machine K} {dec : K → ℝ} {n : ℕ}
     {u : ℝ} {ε : Blas1Err} {I : Interp Op Tst K}
     {ok : ℕ → Prop} (hS : IsScalar M I) (hM : StdModel u dec M) (hu : u < 1) (hd : ε.dot n < 1)
     (hB : IsBlas1 dec ε ok I) (hok : ok n) (hCmp : IsCmp dec I) :
-    (normalizeImpl (Op := Op) (Tst := Tst)).Meets I .total
+    (normalizeImpl (Op := Op) (Tst := Tst)).Triple I .total
       ((normalizeRoundedRel dec (ε.dot n) u ε.scal n).spec (NormalizeOperands n)) := by
   classical
   cert_intro [m] (w, s, q, b) → (q', b') reads (ws, ss, qs, bs)

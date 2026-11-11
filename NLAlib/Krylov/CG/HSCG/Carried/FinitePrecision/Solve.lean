@@ -106,13 +106,13 @@ theorem runs_solve {M : Machine K} {dec : K → ℝ} {u e : ℝ} {ε : Blas1Err}
     (hl : μ.Live [b, x, r, p, v]) (hbs : μ.store.readBlock b.1 b.2 n = some bs)
     (hxs : μ.store.readBlock x.1 x.2 n = some xs) (hx0 : decv dec n xs = 0)
     (hz : μ.Room [x, r, p, v] [n, n, n, 1]) :
-    Runs I W τ solve (Env.frame [n, cap] [b, x, x, r, p, v]) μ
+    ConditionalRuns I W τ solve (Env.frame [n, cap] [b, x, x, r, p, v]) μ
       (solveCount n cap) (solvePeak W n)
       (fun μ' => μ'.pos = μ.pos ∧ Output dec A (decv dec n bs) e cap x r p v μ') := by
   have hw := solve_writes hS hM hB hok hA hCmp hAT ha hspec hu hd haa hue hde hae he hprec
     hwindow (τ := τ) hbx hbr hbp hbv hxr hxp hxv hrp hrv hpv hl hbs hxs hx0 hz
   obtain ⟨μ', hrun, hpost⟩ := hw.wp fun _ _ h => h
-  refine (Runs.of_run (Q := fun μ' => μ'.pos = μ.pos ∧ ∃ m ≤ cap, ∃ s rho,
+  refine (ConditionalRuns.of_run (Q := fun μ' => μ'.pos = μ.pos ∧ ∃ m ≤ cap, ∃ s rho,
     StoresValues dec n x r p v s rho μ' ∧ IsPrefix A (decv dec n bs) e m s rho ∧
       (m < cap → s.r = 0)) hrun hpost W).mono (le_of_eq (staticCost_solve ..))
     (staticPeak_solve_le ..) ?_

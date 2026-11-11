@@ -84,6 +84,18 @@ def stmtPeak (W : Op → List ℕ → ℕ) : Stmt Op Tst → List ℕ → ℕ
       | some d, some o => stmtPeak W body (d ++ o)
       | _, _ => 0
 
+/-- A legacy one-unit allocation adds no primitive calls to its body. Structural allocation
+instructions are included separately by canonical program instrumentation. -/
+@[simp] theorem stmtCost_alloc (len : IExp) (body : Stmt Op Tst) (idx : List ℕ) :
+    stmtCost (.alloc len body) idx = stmtCost body idx := rfl
+
+/-- The legacy allocation helper reserves one abstract unit per cell. Explicit storage
+formats instead use `Stmt.allocAs` and its format-dependent byte width. -/
+@[simp] theorem stmtPeak_alloc (W : Op → List ℕ → ℕ) (len : IExp)
+    (body : Stmt Op Tst) (idx : List ℕ) :
+    stmtPeak W (.alloc len body) idx = (len.eval idx).getD 0 + stmtPeak W body idx := by
+  simp only [Stmt.alloc, stmtPeak, StorageFormat.bytes_cell, one_mul]
+
 /-- The state `b` is reached from `a` within the counts `c` and the workspace `p`: same live
 payload bytes, at most `c` more counts, peak at most `p` above the live payload bytes. -/
 def St.Within (a b : St Op Tst K) (c : Count Op Tst) (p : ℕ) : Prop :=

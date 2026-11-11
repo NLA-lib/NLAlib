@@ -100,7 +100,7 @@ theorem solve_spec {M : Machine K} {dec : K → ℝ} {n : ℕ}
     (hS : IsScalar M I) (hM : ExactModel dec M)
     (hB : IsExactBlas1 dec (fun _ => True) I) (hA : IsExactMatvec dec A I)
     (hCmp : IsCmp dec I) (hPos : A.PosDef) :
-    (solveImpl (Op := Op) (Tst := Tst)).Meets I .total
+    (solveImpl (Op := Op) (Tst := Tst)).Triple I .total
       ((solveRel dec A).spec (SolveOperands n)) := by
   cert_intro [m, cap] (b, x) → (x', r, p, v) reads (bs, xs)
   obtain ⟨hd, hx, hbx, hbr, hbp, hbv, hxr, hxp, hxv, hrp, hrv, hpv⟩ := hadm
@@ -129,7 +129,7 @@ theorem runs_solve {M : Machine K} {dec : K → ℝ} {n : ℕ}
     (hl : μ.Live [b, x, r, p, v]) (hbs : μ.store.readBlock b.1 b.2 n = some bs)
     (hxs : μ.store.readBlock x.1 x.2 n = some xs)
     (hz : μ.Room [x, r, p, v] [n, n, n, 1]) :
-    Runs I W τ solve (Env.frame [n, cap] [b, x, x, r, p, v]) μ
+    ConditionalRuns I W τ solve (Env.frame [n, cap] [b, x, x, r, p, v]) μ
       (solveCount n cap) (solvePeak W n)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ ys, μ'.store.readBlock x.1 x.2 n = some ys ∧
         decv dec n ys = cgIterate A (decv dec n bs) (decv dec n xs)
@@ -137,7 +137,7 @@ theorem runs_solve {M : Machine K} {dec : K → ℝ} {n : ℕ}
   have hw := solve_writes hS hM hB hA hCmp hPos (τ := τ) (cap := cap)
     hbx hbr hbp hbv hxr hxp hxv hrp hrv hpv hl hbs hxs hz
   obtain ⟨μ', hrun, hpos, hstate⟩ := hw.wp fun _ _ h => h
-  refine (Runs.of_run (Q := fun μ' => μ'.pos = μ.pos ∧ StoresState dec n x r p v
+  refine (ConditionalRuns.of_run (Q := fun μ' => μ'.pos = μ.pos ∧ StoresState dec n x r p v
     (cgState A (decv dec n bs) (decv dec n xs)
       (min cap (krylovGrade A (decv dec n bs - A *ᵥ decv dec n xs)))) μ')
     hrun ⟨hpos, hstate⟩ W).mono (le_of_eq (staticCost_solve ..)) (staticPeak_solve_le ..) ?_
@@ -161,7 +161,7 @@ theorem runs_solve_dim {M : Machine K} {dec : K → ℝ} {n : ℕ}
     (hl : μ.Live [b, x, r, p, v]) (hbs : μ.store.readBlock b.1 b.2 n = some bs)
     (hxs : μ.store.readBlock x.1 x.2 n = some xs)
     (hz : μ.Room [x, r, p, v] [n, n, n, 1]) :
-    Runs I W τ solve (Env.frame [n, n] [b, x, x, r, p, v]) μ
+    ConditionalRuns I W τ solve (Env.frame [n, n] [b, x, x, r, p, v]) μ
       (solveCount n n) (solvePeak W n)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ ys, μ'.store.readBlock x.1 x.2 n = some ys ∧
         A *ᵥ decv dec n ys = decv dec n bs) := by

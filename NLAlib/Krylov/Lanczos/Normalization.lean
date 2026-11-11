@@ -61,7 +61,7 @@ successful normalization in both branches. No nonzero-input premise is needed. -
 theorem normalize_spec {M : Machine K} {dec : K → ℝ} {n : ℕ} {I : Interp Op Tst K}
     {ok : ℕ → Prop} (hS : IsScalar M I) (hM : ExactModel dec M)
     (hB : IsExactBlas1 dec ok I) (hok : ok n) (hCmp : IsCmp dec I) :
-    (normalizeImpl (Op := Op) (Tst := Tst)).Meets I .total
+    (normalizeImpl (Op := Op) (Tst := Tst)).Triple I .total
       ((normalizeRel dec n).spec (NormalizeOperands n)) := by
   classical
   cert_intro [m] (w, s, q, b) → (q', b') reads (ws, ss, qs, bs)

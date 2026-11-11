@@ -19,9 +19,10 @@ The model must provide a joint realization of those exact contracts at every adm
 `Problem` requires an admitted size and an input at every admitted size. The model supplies an
 actual word, so universal tape quantification cannot be vacuous.
 
-Canonical `exec p I resources formats tape sizes memory` always elaborates index arithmetic, operand addressing,
-control and allocations into explicit structural counters. Original operations, structural
-instructions and queries have distinct keys. Allocation and release carry their actual lengths.
+Canonical `exec p I resources formats tape sizes memory` always elaborates index arithmetic,
+operand addressing, control and allocations into explicit structural counters. Original operations,
+structural instructions and queries have distinct keys. Allocation and release carry
+`[format.bytes, elementCount]`, so weights can account for both width and capacity.
 The interpretation cannot turn accounting off. `exec_mem` proves exact agreement with the memory
 semantics `run`, including failures. Structural elaboration is an internal part of the evaluator,
 not an optional wrapper around a different certification API.
@@ -40,15 +41,17 @@ Certificates separately bound scratch, initial-plus-scratch payload, work, span 
 Primitive workspace is in the same modeled byte units; queries reserve the largest workspace
 among actual executed query keys, conservatively added to the allocation/primitive peak.
 `stmtPeak_instrument` proves the allocation/primitive part is unchanged by elaboration.
-`ResourceModel.work` and `span` weight the FULL count. Work and span use the same normalized cost units;
+`ResourceModel.work` and `span` weight the full count. Work and span use the same cost units;
 FLOPs and seconds cannot be mixed in the span<=work comparison. Span permits internal primitive
 parallelism but adds across sequential calls; no fork/scheduler/work-P speedup is inferred.
 The per-key span<=work laws imply `ResourceModel.span_le_work` for the entire execution.
 
 Format widths are model declarations, not a proof that arbitrary K values fit those bits.
-Tagging exact real-valued words fp64 does not establish a physical64bit representation.
+Tagging exact real-valued words fp64 does not establish a physical 64-bit representation.
 Physical byte/time claims require faithful storage encodings and justified primitive resource
 models. Payload accounting excludes metadata, allocator headers/alignment, code and tape.
+Oracle or backend storage included in a memory claim is declared as input payload or covered
+by its resource model; an opaque matvec does not automatically account for a stored matrix.
 See [resource design](../../docs/design/Ops-Resources.md) and `Examples/Resources.lean`.
 
 ## Certification
@@ -56,8 +59,9 @@ See [resource design](../../docs/design/Ops-Resources.md) and `Examples/Resource
 `Runs p model specification`, also written `p.Certifies model specification`, requires successful
 canonical execution at every admitted size and input, under every interpretation satisfying
 exactly the declared contracts and every tape. The budget, peak workspace and postcondition refer
-to that same execution. `Specification` fixes all resource budgets and the postcondition independently of the
-program. `Algorithm model specification` packages one fixed program and this total proof.
+to that same execution. `Specification` fixes all resource budgets and the postcondition
+independently of the program. `Algorithm model specification` packages one fixed program and
+this total proof.
 
 `Algorithm.ofWp` uses the total statement logic and full structural bounds to construct the
 certificate. `Algorithm.link` takes a fixed implementation table and verifies the entire lower
@@ -80,6 +84,24 @@ form the proof calculus. `Wp` and its constructor rules can express total or lib
 These constructions do not assert model realizability or uniformity of a runtime tree family.
 They are useful ingredients for a canonical certificate, not substitutes for one.
 
+`ConditionalRuns` is a total execution theorem under its explicit input and interpretation
+hypotheses. It does not assume that execution succeeds. The liberal form `ConditionalRunsL`
+is partial correctness and is useful only as an internal proof step toward a total result.
+
+The named builder in `Logic/Builder.lean` elaborates to the same statement trees. Use
+`let t ← allocAs format n` for explicitly formatted scratch. The legacy `alloc n` helper
+allocates abstract one-unit cells; it does not select a floating-point representation.
+`Logic/Writes.lean` provides format-aware single and chained allocation rules, and
+`Logic/Tactic.lean` supplies `alloc as`, `loop_inv`, `keep`, and `checkpoint` for block proofs.
+
+The catalog supplies exact and standard-error scalar contracts, exact and error-bounded BLAS1,
+and matrix-vector and comparison contracts. Sequential and pairwise BLAS profiles prove their
+contracts through `Profile.Refines`. The CG, PCG, and Lanczos developments use this conditional
+proof layer; a canonical certificate additionally fixes the problem, realized model, and full
+resource specification.
+The existing BLAS profiles allocate abstract `.cell` scratch. A format-specific specialization
+uses explicitly formatted allocation and workspace measured in the same modeled byte units.
+
 ## Files
 
 | File | Role |
@@ -95,6 +117,7 @@ They are useful ingredients for a canonical certificate, not substitutes for one
 | `Tape.lean`, `TapeLaw.lean`, `Law.lean` | Tape locality, laws and output observations |
 | `Catalog/`, `Blas/`, `Profiles/` | Operation contracts and conditional implementations |
 | `Examples/Certification.lean` | Repeated-addition certificate and adversarial regressions |
+| `Examples/Resources.lean` | Mixed-format storage, workspace, and work/span certificates |
 
 The regressions address the canonical interfaces directly: impossible joint models, vacuous
 inputs/tapes, runtime tree factories, failed execution, undeclared calls, omitted structural work,

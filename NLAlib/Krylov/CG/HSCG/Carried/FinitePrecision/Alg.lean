@@ -54,16 +54,16 @@ def solvePeak (W : Op → List ℕ → ℕ) (n : ℕ) : ℕ :=
 
 /-- Evaluating the uniform solver gives its stated abstract operation budget. -/
 theorem staticCost_solve (n cap a b c d e f : ℕ) :
-    staticCost (solve (Op := Op) (Tst := Tst)) [n, cap, a, b, c, d, e, f] =
+    stmtCost (solve (Op := Op) (Tst := Tst)) [n, cap, a, b, c, d, e, f] =
       solveCount n cap := by
-  simp [solve, staticCost, IExp.evalList, IExp.eval, staticCost_initialize,
+  simp [solve, stmtCost, IExp.evalList, IExp.eval, staticCost_initialize,
     Carried.staticCost_rounds, solveCount]
 
 /-- The static solver workspace is independent of the cap. -/
 theorem staticPeak_solve_le (W : Op → List ℕ → ℕ) (n cap a b c d e f : ℕ) :
-    staticPeak W (solve (Op := Op) (Tst := Tst)) [n, cap, a, b, c, d, e, f] ≤
+    stmtPeak W (solve (Op := Op) (Tst := Tst)) [n, cap, a, b, c, d, e, f] ≤
       solvePeak W n := by
-  simpa [solve, staticPeak, IExp.evalList, IExp.eval, solvePeak] using
+  simpa [solve, stmtPeak, IExp.evalList, IExp.eval, solvePeak] using
     max_le_max (staticPeak_initialize_le W n a b c d e f)
       (Carried.staticPeak_rounds_le W n cap c d e f c d e f)
 

@@ -99,7 +99,7 @@ theorem solve_spec {M : Machine K} {dec : K → ℝ} {n : ℕ}
     {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K} {ok : ℕ → Prop}
     (hS : IsScalar M I) (hM : ExactModel dec M) (hB : IsExactBlas1 dec ok I)
     (hok : ok n) (hA : IsExactMatvec dec A I) (hCmp : IsCmp dec I) :
-    (solveImpl (Op := Op) (Tst := Tst)).Meets I .total
+    (solveImpl (Op := Op) (Tst := Tst)).Triple I .total
       ((solveRel dec A).spec (SolveOperands n)) := by
   cert_intro [m, cap] (b) → (v, c) reads (bs)
   obtain ⟨hd, hBV, hBC, hVC⟩ := hadm
@@ -121,14 +121,14 @@ theorem runs_solve {M : Machine K} {dec : K → ℝ} {n cap : ℕ}
     (hBV : B.1 ≠ V.1) (hBC : B.1 ≠ C.1) (hVC : V.1 ≠ C.1)
     (hl : μ.Live [B, V, C]) (hb : μ.store.readBlock B.1 B.2 n = some bs)
     (hz : μ.Room [V, C] [(cap + 1) * n, 2 * cap + 2]) :
-    Runs I W τ solve (Env.frame [n, cap] [B, V, C]) μ (solveCount n cap) (solvePeak W n)
+    ConditionalRuns I W τ solve (Env.frame [n, cap] [B, V, C]) μ (solveCount n cap) (solvePeak W n)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ vs cs,
         μ'.store.readBlock V.1 V.2 ((cap + 1) * n) = some vs ∧
         μ'.store.readBlock C.1 C.2 (2 * cap + 2) = some cs ∧
         Output dec A (decv dec n bs) cap vs cs) := by
   have hw := solve_writes hS hM hB hok hA hCmp (τ := τ) hBV hBC hVC hl hb hz
   obtain ⟨μ', hrun, hout⟩ := hw.wp fun _ _ h => h
-  exact (Runs.of_run hrun hout W).mono (le_of_eq (staticCost_solve ..))
+  exact (ConditionalRuns.of_run hrun hout W).mono (le_of_eq (staticCost_solve ..))
     (staticPeak_solve_le ..) (fun _ h => h)
 
 end NLAlib.Krylov.Lanczos

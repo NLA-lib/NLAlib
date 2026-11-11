@@ -3,26 +3,50 @@ Copyright (c) 2026 NLAlib contributors. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: NLAlib contributors
 -/
-import NLAlib.Ops.Tools.Run
-import NLAlib.Ops.Tools.Tables
-import NLAlib.Ops.Examples.CgsLinked
-import NLAlib.Ops.Examples.Control
-import NLAlib.Ops.Examples.Gemm
-import NLAlib.Ops.Examples.GramSchmidt
-import NLAlib.Ops.Examples.HutchLinked
+module
+
+public import NLAlib.Ops.Tools.Run
+public meta import NLAlib.Ops.Tools.Run
+public import NLAlib.Ops.Tools.Tables
+public meta import NLAlib.Ops.Tools.Tables
+public import NLAlib.Ops.Tools.Machines
+public meta import NLAlib.Ops.Tools.Machines
+public import NLAlib.Ops.Link
+public meta import NLAlib.Ops.Link
+public import NLAlib.Ops.Examples.Noisy
+public meta import NLAlib.Ops.Examples.Noisy
+public import NLAlib.Ops.Examples.Hutch
+public meta import NLAlib.Ops.Examples.Hutch
+public import NLAlib.Ops.Examples.CgsLinked
+public meta import NLAlib.Ops.Examples.CgsLinked
+public import NLAlib.Ops.Examples.Control
+public meta import NLAlib.Ops.Examples.Control
+public import NLAlib.Ops.Examples.Gemm
+public meta import NLAlib.Ops.Examples.Gemm
+public import NLAlib.Ops.Examples.GramSchmidt
+public meta import NLAlib.Ops.Examples.GramSchmidt
+public import NLAlib.Ops.Examples.HutchLinked
+public meta import NLAlib.Ops.Examples.HutchLinked
 
 /-!
 # Tools: the evaluator on the test cases
 
-Outside the trusted base. Each `#eval` runs a program of `NLAlib/Ops/Examples` on a small input
+Diagnostic and compute support; formal guarantees are independent of this output.
+Each `#eval` runs a program of `NLAlib/Ops/Examples` on a small input
 and prints the final memory, the counts per (operation, dimensions) of the run, its peak of
-scratch cells, and the static bounds `staticCost`/`staticPeak` of the tree. Programs are run at
+scratch payload bytes, and the static bounds `stmtCost`/`stmtPeak` of the tree. Programs are run at
 the level of their algorithm (the operations of the catalog interpreted by
 `NLAlib.Ops.Tools.blasFn` or `NLAlib.Ops.Tools.randFn`) and linked through the tables of the
 profiles (`NLAlib.Ops.Tools.seqTable`, …), down to scalar operations and scalar draws.
 
 Run with `lake env lean NLAlib/Ops/Tools/Demo.lean` (after building the imports).
+
+## Main results
+
+The executable examples replay raw conditional programs and display their diagnostic reports.
 -/
+
+@[expose] public section
 
 namespace NLAlib.Ops.Tools.Demo
 
@@ -114,7 +138,7 @@ def cgsBufs : List (List (Option ℚ)) := [vals [3, 4, 0, 4, 3, 0], vals [0, 0, 
 /-! ### Rectangular matrix-vector products -/
 
 private def runMatvec (A : List (List ℚ)) (m n : ℕ) (x : List ℚ) : Option (Mem ℚ) :=
-  run (withQueries (operatorFn A)) (fun _ _ => 0)
+  eval (withQueries (operatorFn A)) (fun _ _ => 0)
     (.call .matvec [.const m, .const n] [⟨0, .const 0⟩] [⟨1, .const 0⟩])
     (frameOf [] [0, 1]) (memOf [vals x, blank m])
 

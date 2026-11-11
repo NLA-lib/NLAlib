@@ -147,7 +147,7 @@ specifications. -/
 theorem mgs_spec {M : Machine K} {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop}
     {J : Interp Op Tst K} (hS : IsScalar M J) (hJ : IsBlas1 dec ε ok J)
     (hneg : ∀ a, dec (M.neg a) = -dec a) :
-    (mgsImpl (Op := Op) (Tst := Tst)).Meets J .total ((mgsRel dec ε).spec (MgsOperands ok)) := by
+    (mgsImpl (Op := Op) (Tst := Tst)).Triple J .total ((mgsRel dec ε).spec (MgsOperands ok)) := by
   cert_intro [n, k] (Q, x) → (w, R) reads (qs, ws)
   obtain ⟨hok, rfl, hQw, hQR, hwR⟩ := hadm
   refine writes_alloc rfl fun s₁ hs₁ ht hB => ?_

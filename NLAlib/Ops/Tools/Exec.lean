@@ -3,26 +3,35 @@ Copyright (c) 2026 NLAlib contributors. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: NLAlib contributors
 -/
-import NLAlib.Ops.Static
+module
+
+public import NLAlib.Ops.Static
 
 /-!
-# Tools: the counted run and the static count, computably
+# Tools: raw conditional evaluation and static counts, computably
 
-Outside the trusted base: nothing in `NLAlib.Ops` imports this file, and no theorem of the
-library depends on it. It makes the evaluator of the core runnable by `#eval`.
+These raw diagnostics do not check program formats or apply mandatory instrumentation.
+Canonical certification uses `Program`, `Runs`, and `Algorithm`.
 
-`NLAlib.Ops.run` is computable as it stands. `NLAlib.Ops.exec` and `NLAlib.Ops.staticCost` are
+Diagnostic and compute support included by the library umbrella. Core certification does not
+depend on diagnostic output. This file makes the raw evaluator runnable by `#eval`.
+
+`NLAlib.Ops.eval` is computable as it stands. `NLAlib.Ops.evalCounted` and `NLAlib.Ops.stmtCost` are
 not, because counts are finitely supported functions (`Finsupp`). This file gives a computable
 twin of each and proves it equal to the core's definition; the core is not changed.
 
+## Main results
+
 * `NLAlib.Ops.Tools.execC`: the counted run with the counts kept as a log of keys
   `(operation or query, dimensions)`. `NLAlib.Ops.Tools.map_toSt_execC`: mapped to a state of
-  the core (`CSt.toSt`, the log summed into a `Count`), it is `exec`.
+  the core (`CSt.toSt`, the log summed into a `Count`), it is `evalCounted`.
 * `NLAlib.Ops.Tools.staticAt`: the static count at one key.
-  `NLAlib.Ops.Tools.staticAt_eq`: it is `staticCost` evaluated at that key.
+  `NLAlib.Ops.Tools.staticAt_eq`: it is `stmtCost` evaluated at that key.
 * `NLAlib.Ops.Tools.staticKeys`: the keys a tree can count (a list, possibly with repetitions);
   `NLAlib.Ops.Tools.staticAt_eq_zero`: every other key has static count zero.
 -/
+
+@[expose] public section
 
 namespace NLAlib.Ops.Tools
 
@@ -49,9 +58,9 @@ structure CSt (Op Tst K : Type) where
   mem : Mem K
   /-- The keys counted so far, most recent first. -/
   log : List (Key Op Tst)
-  /-- The scratch cells now allocated. -/
+  /-- The scratch payload bytes now allocated. -/
   cur : ℕ
-  /-- The peak of scratch cells. -/
+  /-- The peak of scratch payload bytes. -/
   peak : ℕ
 
 /-- The state of the core that a computable state stands for. -/
@@ -77,7 +86,7 @@ def testC (I : Interp Op Tst K) (q : Tst) (ds : List IExp) (ins : List Operand) 
   (IExp.evalList ρ.idx ds).bind fun d => (Operand.evalList ρ ins).bind fun a =>
     (I.test q d a c.mem).map fun b => (b, c.tick q d)
 
-/-- **The counted run, computably**: `exec` with the counts as a log. -/
+/-- **The counted run, computably**: `evalCounted` with the counts as a log. -/
 def execC (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : Tape K) :
     Stmt Op Tst → Env → CSt Op Tst K → Option (CSt Op Tst K)
   | .skip, _, st => some st
@@ -100,11 +109,11 @@ def execC (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : Tape K) :
       (Operand.evalList ρ ins).bind fun a => (bound.eval ρ.idx).bind fun B =>
         (I.index q a st.mem).bind fun v =>
           if v ≤ B then execC I W τ body (ρ.pushIdx v) (st.tick q []) else none
-  | .alloc len body, ρ, st =>
+  | .allocAs fmt len body, ρ, st =>
       (len.eval ρ.idx).bind fun n =>
         (execC I W τ body (ρ.pushBuf st.mem.store.length)
-          ⟨⟨st.mem.store.push n, st.mem.pos⟩, st.log, st.cur + n,
-            max st.peak (st.cur + n)⟩).map fun st' =>
+          ⟨⟨st.mem.store.push n, st.mem.pos⟩, st.log, st.cur + fmt.bytes * n,
+            max st.peak (st.cur + fmt.bytes * n)⟩).map fun st' =>
           ⟨⟨st'.mem.store.pop, st'.mem.pos⟩, st'.log, st.cur, st'.peak⟩
   | .loop n body, ρ, st =>
       (n.eval ρ.idx).bind fun k => iter (fun i st => execC I W τ body (ρ.pushIdx i) st) k st
@@ -124,20 +133,20 @@ theorem map_testC (I : Interp Op Tst K) (q : Tst) (ds : List IExp) (ins : List O
 /-- **The computable counted run is the counted run of the core.** -/
 theorem map_toSt_execC (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : Tape K)
     (s : Stmt Op Tst) (ρ : Env) (c : CSt Op Tst K) :
-    (execC I W τ s ρ c).map CSt.toSt = exec I W τ s ρ c.toSt := by
+    (execC I W τ s ρ c).map CSt.toSt = evalCounted I W τ s ρ c.toSt := by
   induction s generalizing ρ c with
   | skip => rfl
   | abort => rfl
   | seq s t ihs iht =>
-    simp only [execC, exec]
+    simp only [execC, evalCounted]
     rw [Option.map_bind_of_comm _ (fun a => iht ρ a), ihs]
   | call o ds ins outs =>
-    simp only [execC, exec]
+    simp only [execC, evalCounted]
     cases IExp.evalList ρ.idx ds <;> cases Operand.evalList ρ ins <;>
       cases Operand.evalList ρ outs <;> simp [Option.map_map, Function.comp_def, CSt.toSt,
         Count.one]
   | ite q ds ins t e iht ihe =>
-    simp only [execC, exec]
+    simp only [execC, evalCounted]
     cases IExp.evalList ρ.idx ds <;> cases Operand.evalList ρ ins <;> try rfl
     rename_i d a
     simp only [Option.bind_some, show c.toSt.mem = c.mem from rfl]
@@ -145,53 +154,55 @@ theorem map_toSt_execC (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ :
     | none => rfl
     | some b => cases b <;> simp [iht, ihe, ← CSt.toSt_tick]
   | whileFuel fuel q ds ins body k ih ihk =>
-    simp only [execC, exec]
+    simp only [execC, evalCounted]
     cases fuel.eval ρ.idx with
     | none => rfl
     | some n =>
       simp only [Option.bind_some]
       rw [Option.map_bind_of_comm (g := Prod.map id CSt.toSt)
-        (f' := fun jst : ℕ × St Op Tst K => exec I W τ k (ρ.pushIdx jst.1) jst.2) _
+        (f' := fun jst : ℕ × St Op Tst K => evalCounted I W τ k (ρ.pushIdx jst.1) jst.2) _
         (fun a => ihk (ρ.pushIdx a.1) a.2)]
       rw [map_whileIter (fun i a => map_testC I q ds ins (ρ.pushIdx i) a)
         (fun i a => ih (ρ.pushIdx i) a)]
   | bindIdx q ins bound body ih =>
-    simp only [execC, exec]
+    simp only [execC, evalCounted]
     cases Operand.evalList ρ ins <;> cases bound.eval ρ.idx <;> try rfl
     rename_i a B
     simp only [Option.bind_some, show c.toSt.mem = c.mem from rfl]
     cases I.index q a c.mem with
     | none => rfl
     | some v => by_cases hv : v ≤ B <;> simp [hv, ih, ← CSt.toSt_tick]
-  | alloc len body ih =>
-    simp only [execC, exec]
+  | allocAs fmt len body ih =>
+    simp only [execC, evalCounted]
     cases len.eval ρ.idx with
     | none => rfl
     | some n =>
       have h := ih (ρ.pushBuf c.mem.store.length)
-        ⟨⟨c.mem.store.push n, c.mem.pos⟩, c.log, c.cur + n, max c.peak (c.cur + n)⟩
+        ⟨⟨c.mem.store.push n, c.mem.pos⟩, c.log, c.cur + fmt.bytes * n,
+          max c.peak (c.cur + fmt.bytes * n)⟩
       simp only [Option.bind_some]
-      change _ = Option.map _ (exec I W τ body (ρ.pushBuf c.mem.store.length) (CSt.toSt
-        ⟨⟨c.mem.store.push n, c.mem.pos⟩, c.log, c.cur + n, max c.peak (c.cur + n)⟩))
+      change _ = Option.map _ (evalCounted I W τ body (ρ.pushBuf c.mem.store.length) (CSt.toSt
+        ⟨⟨c.mem.store.push n, c.mem.pos⟩, c.log, c.cur + fmt.bytes * n,
+          max c.peak (c.cur + fmt.bytes * n)⟩))
       rw [← h, Option.map_map, Option.map_map]
       rfl
   | loop n body ih =>
-    simp only [execC, exec]
+    simp only [execC, evalCounted]
     cases n.eval ρ.idx with
     | none => rfl
     | some k => exact map_iter (fun i a => ih (ρ.pushIdx i) a) _ _
   | frame ds args body ih =>
-    simp only [execC, exec]
+    simp only [execC, evalCounted]
     cases IExp.evalList ρ.idx ds <;> cases Operand.evalList ρ args <;> try rfl
     simp only [Option.bind_some, show c.toSt.mem = c.mem from rfl]
     split_ifs
     · exact ih _ _
     · rfl
 
-/-- The computable counted run from the start state is `exec` from `St.init`. -/
+/-- The computable counted run from the start state is `evalCounted` from `St.init`. -/
 theorem map_toSt_execC_init (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : Tape K)
     (s : Stmt Op Tst) (ρ : Env) (m : Mem K) :
-    (execC I W τ s ρ (CSt.init m)).map CSt.toSt = exec I W τ s ρ (St.init m) :=
+    (execC I W τ s ρ (CSt.init m)).map CSt.toSt = evalCounted I W τ s ρ (St.init m) :=
   map_toSt_execC I W τ s ρ (CSt.init m)
 
 /-! ### The static count at a key -/
@@ -220,7 +231,7 @@ def staticAt : Stmt Op Tst → List ℕ → Key Op Tst → ℕ
   | .bindIdx q _ bound body, idx, k =>
       (if (.inr q, []) = k then 1 else 0) +
         (Finset.range ((bound.eval idx).getD 0 + 1)).sup fun v => staticAt body (idx ++ [v]) k
-  | .alloc _ body, idx, k => staticAt body idx k
+  | .allocAs _ _ body, idx, k => staticAt body idx k
   | .loop n body, idx, k =>
       ∑ i ∈ Finset.range ((n.eval idx).getD 0), staticAt body (idx ++ [i]) k
   | .frame ds args body, idx, k =>
@@ -248,22 +259,22 @@ theorem finsetSup_apply {ι : Type} (s : Finset ι) (f : ι → Count Op Tst) (k
 
 /-- **The computable static count is the static count of the core.** -/
 theorem staticAt_eq (s : Stmt Op Tst) (idx : List ℕ) (k : Key Op Tst) :
-    staticAt s idx k = staticCost s idx k := by
+    staticAt s idx k = stmtCost s idx k := by
   induction s generalizing idx with
   | skip => rfl
   | abort => rfl
-  | seq s t ihs iht => simp [staticAt, staticCost, ihs, iht]
-  | call o ds ins outs => simp [staticAt, staticCost, useCost_apply]
+  | seq s t ihs iht => simp [staticAt, stmtCost, ihs, iht]
+  | call o ds ins outs => simp [staticAt, stmtCost, useCost_apply]
   | ite q ds ins t e iht ihe =>
-    simp [staticAt, staticCost, iht, ihe, testCost_apply, Finsupp.sup_apply]
+    simp [staticAt, stmtCost, iht, ihe, testCost_apply, Finsupp.sup_apply]
   | whileFuel fuel q ds ins body c ih ihc =>
-    simp [staticAt, staticCost, ih, ihc, testCost_apply, finsetSup_apply]
+    simp [staticAt, stmtCost, ih, ihc, testCost_apply, finsetSup_apply]
   | bindIdx q ins bound body ih =>
-    simp [staticAt, staticCost, ih, Count.test, Finsupp.single_apply, finsetSup_apply]
-  | alloc len body ih => simp [staticAt, staticCost, ih]
-  | loop n body ih => simp [staticAt, staticCost, ih, Finsupp.finsetSum_apply]
+    simp [staticAt, stmtCost, ih, Count.test, Finsupp.single_apply, finsetSup_apply]
+  | allocAs fmt len body ih => simp [staticAt, stmtCost, ih]
+  | loop n body ih => simp [staticAt, stmtCost, ih, Finsupp.finsetSum_apply]
   | frame ds args body ih =>
-    simp only [staticAt, staticCost]
+    simp only [staticAt, stmtCost]
     cases IExp.evalList idx ds <;> cases IExp.evalList idx (args.map Operand.off) <;> simp [ih]
 
 end Static
@@ -288,7 +299,7 @@ def staticKeys : Stmt Op Tst → List ℕ → List (Key Op Tst)
   | .bindIdx q _ bound body, idx =>
       (.inr q, []) :: (List.range ((bound.eval idx).getD 0 + 1)).flatMap fun v =>
         staticKeys body (idx ++ [v])
-  | .alloc _ body, idx => staticKeys body idx
+  | .allocAs _ _ body, idx => staticKeys body idx
   | .loop n body, idx =>
       (List.range ((n.eval idx).getD 0)).flatMap fun i => staticKeys body (idx ++ [i])
   | .frame ds args body, idx =>
@@ -336,13 +347,16 @@ theorem staticAt_eq_zero [DecidableEq Op] [DecidableEq Tst] (s : Stmt Op Tst) (i
     simp only [staticAt, if_neg (Ne.symm h.1), zero_add]
     exact Nat.eq_zero_of_le_zero
       (Finset.sup_le fun v hv => (ih _ (h.2 v (Finset.mem_range.mp hv))).le)
-  | alloc len body ih => exact ih _ h
+  | allocAs fmt len body ih => exact ih _ h
   | loop n body ih =>
     simp only [staticKeys, List.mem_flatMap, List.mem_range, not_exists, not_and] at h
     exact Finset.sum_eq_zero fun i hi => ih _ (h i (Finset.mem_range.mp hi))
   | frame ds args body ih =>
     simp only [staticKeys] at h
     simp only [staticAt]
-    split <;> simp_all
+    cases hd : IExp.evalList idx ds <;>
+      cases ho : IExp.evalList idx (args.map Operand.off) <;>
+      simp only [hd, ho] at h ⊢
+    exact ih _ h
 
 end NLAlib.Ops.Tools

@@ -11,7 +11,7 @@ public import NLAlib.Ops.Transfer
 /-!
 # Counts in the logic, where they depend on the data
 
-`NLAlib.Ops.Runs.of_run` bounds counts by the static cost. This bound charges `bindIdx` at every
+`NLAlib.Ops.ConditionalRuns.of_run` bounds counts by the static cost. It charges `bindIdx` at every
 value up to its bound and covers all branches and loop iterations. `NLAlib.Ops.RunsFromW` gives
 its postcondition **the counts that the eval added** and the final memory. The bound can depend
 on the data, on the starting state of a continuation, and on weights such as a superadditive

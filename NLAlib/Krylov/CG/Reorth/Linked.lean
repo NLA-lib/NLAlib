@@ -90,7 +90,7 @@ theorem runs_solve_seq {M : Machine K} {dec : K → ℝ} {n cap : ℕ}
     (hxr : x.1 ≠ r.1) (hxp : x.1 ≠ p.1) (hrp : r.1 ≠ p.1)
     (hl : μ.Live [b, x, r, p]) (hbs : μ.store.readBlock b.1 b.2 n = some bs)
     (hxs : μ.store.readBlock x.1 x.2 n = some xs) (hz : μ.Room [x, r, p] [n, n, n]) :
-    Runs I (Blas.ws 0) τ (solve.link (Blas.seq (Op := Op) (Tst := Tst)).table)
+    ConditionalRuns I (Blas.ws 0) τ (solve.link (Blas.seq (Op := Op) (Tst := Tst)).table)
       (Env.frame [n, cap] [b, x, x, r, p]) μ (seqSolveCount n cap) (cap * n + 3 * n + 8)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ ys, μ'.store.readBlock x.1 x.2 n = some ys ∧
         decv dec n ys = cgIterate A (decv dec n bs) (decv dec n xs)

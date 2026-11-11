@@ -101,7 +101,7 @@ theorem solve_spec {M : Machine K} {dec : K → ℝ} {n : ℕ}
     (hS : IsScalar M I) (hM : ExactModel dec M)
     (hB : IsExactBlas1 dec (fun _ => True) I) (hA : IsExactMatvec dec A I)
     (hP : IsExactPreconditioner dec P I) (hPos : A.PosDef) (hPPos : P.PosDef) :
-    (solveImpl (Op := Op) (Tst := Tst)).Meets I .total
+    (solveImpl (Op := Op) (Tst := Tst)).Triple I .total
       ((solveRel dec A P).spec (SolveOperands n)) := by
   cert_intro [m, k] (b, x) → (x', r, z, p) reads (bs, xs)
   obtain ⟨hd, hx, hbx, hbr, hbz, hbp, hxr, hxz, hxp, hrz, hrp, hzp⟩ := hadm
@@ -143,13 +143,14 @@ theorem runs_solve {M : Machine K} {dec : K → ℝ} {n : ℕ}
     (hxs : μ.store.readBlock x.1 x.2 n = some xs)
     (hk : k ≤ krylovGrade (P * A) (P *ᵥ (decv dec n bs - A *ᵥ decv dec n xs)))
     (hz : μ.Room [x, r, z, p] [n, n, n, n]) :
-    Runs I W τ solve (Env.frame [n, k] [b, x, x, r, z, p]) μ (solveCount n k) (solvePeak W n)
+    ConditionalRuns I W τ solve (Env.frame [n, k] [b, x, x, r, z, p]) μ
+      (solveCount n k) (solvePeak W n)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ ys, μ'.store.readBlock x.1 x.2 n = some ys ∧
         decv dec n ys = pcgIterate A P (decv dec n bs) (decv dec n xs) k) := by
   have hw := solve_writes hS hM hB hA hP hPos hPPos (τ := τ)
     hbx hbr hbz hbp hxr hxz hxp hrz hrp hzp hl hbs hxs hk hz
   obtain ⟨μ', hrun, hpos, hstate⟩ := hw.wp fun _ _ h => h
-  refine (Runs.of_run (Q := fun μ' => μ'.pos = μ.pos ∧ StoresState dec n x r z p
+  refine (ConditionalRuns.of_run (Q := fun μ' => μ'.pos = μ.pos ∧ StoresState dec n x r z p
     (pcgState A P (decv dec n bs) (decv dec n xs) k) μ') hrun ⟨hpos, hstate⟩ W).mono
     (le_of_eq (staticCost_solve ..))
     (staticPeak_solve_le ..) ?_

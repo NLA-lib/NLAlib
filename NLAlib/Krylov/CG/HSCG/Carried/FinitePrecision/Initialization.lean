@@ -59,7 +59,7 @@ noncomputable def initializeRel (dec : K → ℝ) (ed : ℝ) (n : ℕ) : BlockRe
 error; this total certificate includes zero right-hand sides and empty dimensions. -/
 theorem initialize_spec {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop} {n : ℕ}
     {I : Interp Op Tst K} (hB : IsBlas1 dec ε ok I) (hok : ok n) :
-    (initializeImpl (Op := Op) (Tst := Tst)).Meets I .total
+    (initializeImpl (Op := Op) (Tst := Tst)).Triple I .total
       ((initializeRel dec (ε.dot n) n).spec (Carried.SolveOperands n)) := by
   cert_intro [m] (b, x) → (x', r, p, v) reads (bs, xs)
   obtain ⟨hd, hx, hbx, hbr, hbp, hbv, hxr, hxp, hxv, hrp, hrv, hpv⟩ := hadm
@@ -85,15 +85,15 @@ def initializePeak (W : Op → List ℕ → ℕ) (n : ℕ) : ℕ :=
 
 /-- Static evaluation computes exactly the three initialization calls. -/
 theorem staticCost_initialize (n b x x' r p v : ℕ) :
-    staticCost (initializeState (Op := Op) (Tst := Tst)) [n, b, x, x', r, p, v] =
+    stmtCost (initializeState (Op := Op) (Tst := Tst)) [n, b, x, x', r, p, v] =
       initializeCount n := by
-  simp [initializeState, initializeCount, staticCost, useCost, IExp.evalList, IExp.eval]
+  simp [initializeState, initializeCount, stmtCost, useCost, IExp.evalList, IExp.eval]
   module
 
 /-- The caller's four state buffers require no initialization scratch allocation. -/
 theorem staticPeak_initialize_le (W : Op → List ℕ → ℕ) (n b x x' r p v : ℕ) :
-    staticPeak W (initializeState (Op := Op) (Tst := Tst)) [n, b, x, x', r, p, v] ≤
+    stmtPeak W (initializeState (Op := Op) (Tst := Tst)) [n, b, x, x', r, p, v] ≤
       initializePeak W n := by
-  simp [initializeState, staticPeak, initializePeak]
+  simp [initializeState, stmtPeak, initializePeak]
 
 end NLAlib.Krylov.CG.HSCG.Carried.Rounded

@@ -59,14 +59,14 @@ def cgsPassPeak (W : Op → List ℕ → ℕ) (n : ℕ) : ℕ :=
 
 /-- Static accounting counts the complete coefficient and update phases. -/
 theorem staticCost_cgsPass (n k q w w' h : ℕ) :
-    staticCost (cgsPass (Op := Op) (Tst := Tst)) [n, k, q, w, w', h] = cgsPassCount n k := by
-  simp [cgsPass, staticCost, useCost, cgsPassCount]
+    stmtCost (cgsPass (Op := Op) (Tst := Tst)) [n, k, q, w, w', h] = cgsPassCount n k := by
+  simp [cgsPass, stmtCost, useCost, cgsPassCount]
   module
 
 /-- The two phases reuse a single scalar scratch cell. -/
 theorem staticPeak_cgsPass_le (W : Op → List ℕ → ℕ) (n k q w w' h : ℕ) :
-    staticPeak W (cgsPass (Op := Op) (Tst := Tst)) [n, k, q, w, w', h] ≤ cgsPassPeak W n := by
-  simp only [cgsPass, staticPeak, cgsPassPeak]
+    stmtPeak W (cgsPass (Op := Op) (Tst := Tst)) [n, k, q, w, w', h] ≤ cgsPassPeak W n := by
+  simp only [cgsPass, Stmt.alloc, stmtPeak, cgsPassPeak]
   refine Nat.add_le_add_left (max_le_max (Finset.sup_le fun j _ => ?_)
     (Finset.sup_le fun j _ => ?_)) _ <;> simp
 
@@ -112,7 +112,7 @@ theorem cgsPass_spec {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ} {ea : 
     (hD : I.Meets .total (Has.inj Blas1Op.dot) ((dotRel dec ed).spec (OutApart ok)))
     (hA : I.Meets .total (Has.inj Blas1Op.axpy) ((axpyRel dec ea).spec (InPlace ok)))
     (hneg : ∀ a, dec (M.neg a) = -dec a) :
-    (cgsPassImpl (Op := Op) (Tst := Tst)).Meets I .total
+    (cgsPassImpl (Op := Op) (Tst := Tst)).Triple I .total
       ((passRel dec ed ea).spec (PassOperands ok)) := by
   cert_intro [n, k] (Q, w) → (w', H) reads (qs, ws)
   obtain ⟨hok, hw, hQw, hQH, hwH⟩ := hadm

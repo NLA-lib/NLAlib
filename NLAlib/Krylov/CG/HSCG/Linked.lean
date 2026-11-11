@@ -119,7 +119,7 @@ theorem runs_step_seq {M : Machine K} {dec : K → ℝ} {n : ℕ}
     (hp : μ.store.readBlock p.1 p.2 n = some ps)
     (hdom : Nonbreakdown A (decodedState dec n xs rs ps))
     (hz : μ.Room [x, r, p] [n, n, n]) :
-    Runs I (Blas.ws 0) τ (step.link (Blas.seq (Op := Op) (Tst := Tst)).table)
+    ConditionalRuns I (Blas.ws 0) τ (step.link (Blas.seq (Op := Op) (Tst := Tst)).table)
       (Env.frame [n] [x, r, p, x, r, p]) μ (seqStepCount n) (3 * n + 5)
       ((stepRel dec A).Post [n] [xs, rs, ps] [x, r, p] [] μ) := by
   have hcert := Blas.seq_certifies_exact (Op := Op) (Tst := Tst) hM (fun _ => True)
@@ -142,7 +142,7 @@ theorem runs_solve_seq {M : Machine K} {dec : K → ℝ} {n : ℕ}
     (hxs : μ.store.readBlock x.1 x.2 n = some xs)
     (hk : k ≤ krylovGrade A (decv dec n bs - A *ᵥ decv dec n xs))
     (hz : μ.Room [x, r, p] [n, n, n]) :
-    Runs I (Blas.ws 0) τ (solve.link (Blas.seq (Op := Op) (Tst := Tst)).table)
+    ConditionalRuns I (Blas.ws 0) τ (solve.link (Blas.seq (Op := Op) (Tst := Tst)).table)
       (Env.frame [n, k] [b, x, x, r, p]) μ (seqSolveCount n k) (3 * n + 5)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ ys, μ'.store.readBlock x.1 x.2 n = some ys ∧
         decv dec n ys = cgIterate A (decv dec n bs) (decv dec n xs) k) := by

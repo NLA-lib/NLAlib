@@ -158,7 +158,7 @@ theorem writes_scalarBlock {I : Interp Op Tst K} {τ : Tape K} {ρ : Env} {m : M
   suffices key : ∀ (m : Mem K) (ws : List ((ℕ × ℕ) × K)),
       ScalarIns.evalBlock sem ρ xs m.store.cellFn = some ws →
       (∀ w ∈ ws, w.1.2 < m.store.len w.1.1) →
-      run I τ (Stmt.scalarBlock xs) ρ m = some (m.updCells ws) ∧
+      eval I τ (Stmt.scalarBlock xs) ρ m = some (m.updCells ws) ∧
         m.store.EqOff (Fp.cells (ws.map Prod.fst)) (m.updCells ws).store from
     wp_of_run (key m ws hev hroom).1 ⟨(key m ws hev hroom).2, rfl⟩
   clear hev hroom ws m
@@ -191,8 +191,8 @@ theorem writes_scalarBlock {I : Interp Op Tst K} {τ : Tape K} {ρ : Env} {m : M
           by_contra hc
           push Not at hc
           exact hy (Prod.ext hc.1 hc.2)) v
-    have hrun1 : run I τ x.stmt ρ m = some (m.upd z v) := by
-      simp [ScalarIns.stmt, run, ha, Operand.evalList, hz, hcall]
+    have hrun1 : eval I τ x.stmt ρ m = some (m.upd z v) := by
+      simp [ScalarIns.stmt, eval, ha, Operand.evalList, hz, hcall]
     obtain ⟨hrun, hfr⟩ := ih (fun y hy => hS y (by simp [hy])) (m.upd z v) ws'
       (by rw [hcell]; exact hws') fun w hw => by
         simpa using hroom w (by simp [hw])
@@ -203,7 +203,7 @@ theorem writes_scalarBlock {I : Interp Op Tst K} {τ : Tape K} {ρ : Env} {m : M
         subst hws'
         exact hrun1
       | cons y ys =>
-        change (run I τ x.stmt ρ m).bind (run I τ (Stmt.scalarBlock (y :: ys)) ρ) = _
+        change (eval I τ x.stmt ρ m).bind (eval I τ (Stmt.scalarBlock (y :: ys)) ρ) = _
         rw [hrun1, Option.bind_some, hrun]
         rfl
     · refine ((Store.EqOff.refl _ _).upd (show Fp.cells _ z.1 z.2 by simp [Fp.cells]) v).trans

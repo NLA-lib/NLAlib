@@ -91,7 +91,7 @@ theorem runs_rounded_step_seq {M : Machine K} {dec : K → ℝ} {n : ℕ} {u : �
       ∑ i : Fin n, |decv dec n ps i * (A *ᵥ decv dec n ps) i| <
         decv dec n ps ⬝ᵥ (A *ᵥ decv dec n ps))
     (hz : μ.Room [x, r, p, v] [n, n, n, 1]) :
-    Runs I (Blas.ws 0) τ (step.link (Blas.seq (Op := Op) (Tst := Tst)).table)
+    ConditionalRuns I (Blas.ws 0) τ (step.link (Blas.seq (Op := Op) (Tst := Tst)).table)
       (Env.frame [n] [x, r, p, v, x, r, p, v]) μ (seqStepCount n) (2 * n + 4)
       ((Rounded.stepRel u (Blas.seq.err u) dec A).Post
         [n] [xs, rs, ps, [rr]] [x, r, p, v] [] μ) := by
@@ -202,7 +202,7 @@ theorem runs_solve_seq {M : Machine K} {dec : K → ℝ} {n : ℕ}
     (hl : μ.Live [b, x, r, p, v]) (hbs : μ.store.readBlock b.1 b.2 n = some bs)
     (hxs : μ.store.readBlock x.1 x.2 n = some xs)
     (hz : μ.Room [x, r, p, v] [n, n, n, 1]) :
-    Runs I (Blas.ws 0) τ (solve.link (Blas.seq (Op := Op) (Tst := Tst)).table)
+    ConditionalRuns I (Blas.ws 0) τ (solve.link (Blas.seq (Op := Op) (Tst := Tst)).table)
       (Env.frame [n, cap] [b, x, x, r, p, v]) μ (seqSolveCount n cap) (2 * n + 4)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ ys, μ'.store.readBlock x.1 x.2 n = some ys ∧
         decv dec n ys = cgIterate A (decv dec n bs) (decv dec n xs)
@@ -230,7 +230,7 @@ theorem runs_solve_dim_seq {M : Machine K} {dec : K → ℝ} {n : ℕ}
     (hl : μ.Live [b, x, r, p, v]) (hbs : μ.store.readBlock b.1 b.2 n = some bs)
     (hxs : μ.store.readBlock x.1 x.2 n = some xs)
     (hz : μ.Room [x, r, p, v] [n, n, n, 1]) :
-    Runs I (Blas.ws 0) τ (solve.link (Blas.seq (Op := Op) (Tst := Tst)).table)
+    ConditionalRuns I (Blas.ws 0) τ (solve.link (Blas.seq (Op := Op) (Tst := Tst)).table)
       (Env.frame [n, n] [b, x, x, r, p, v]) μ (seqSolveCount n n) (2 * n + 4)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ ys, μ'.store.readBlock x.1 x.2 n = some ys ∧
         A *ᵥ decv dec n ys = decv dec n bs) := by

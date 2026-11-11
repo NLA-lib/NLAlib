@@ -74,7 +74,7 @@ theorem runs_cgs2 {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ} {ea : ℝ
     {Q w : ℕ × ℕ} {qs ws : List K} (hok : ok n) (hQw : Q.1 ≠ w.1)
     (hl : μ.Live [Q, w]) (hqs : μ.store.readBlock Q.1 Q.2 (k * n) = some qs)
     (hws : μ.store.readBlock w.1 w.2 n = some ws) (hz : μ.Room [w] [n]) :
-    Runs I W τ cgs2 (Env.frame [n, k] [Q, w, w]) μ (cgs2Count n k) (cgs2Peak W n k)
+    ConditionalRuns I W τ cgs2 (Env.frame [n, k] [Q, w, w]) μ (cgs2Count n k) (cgs2Peak W n k)
       ((twoPassRel dec ed ea).Post [n, k] [qs, ws] [w] [] μ) := by
   have hl' : μ.Live ([Q, w] ++ [w]) := by
     simp only [List.cons_append, List.nil_append, Mem.live_cons, Mem.live_nil, and_true] at hl ⊢

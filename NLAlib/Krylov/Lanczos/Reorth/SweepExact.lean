@@ -46,7 +46,7 @@ private theorem axpy_zero {dec : K → ℝ} {ok : ℕ → Prop} {I : Interp Op T
 theorem cgsPass_spec_exact {M : Machine K} {dec : K → ℝ} {ok : ℕ → Prop}
     {I : Interp Op Tst K} (hS : IsScalar M I) (hM : ExactModel dec M)
     (hB : IsExactBlas1 dec ok I) :
-    (cgsPassImpl (Op := Op) (Tst := Tst)).Meets I .total
+    (cgsPassImpl (Op := Op) (Tst := Tst)).Triple I .total
       ((passRel dec (fun _ => 0) 0).spec (PassOperands ok)) :=
   cgsPass_spec hS hB.dot_zero (axpy_zero hB) hM.neg
 
@@ -54,7 +54,7 @@ theorem cgsPass_spec_exact {M : Machine K} {dec : K → ℝ} {ok : ℕ → Prop}
 theorem cgs2_spec_exact {M : Machine K} {dec : K → ℝ} {ok : ℕ → Prop}
     {I : Interp Op Tst K} (hS : IsScalar M I) (hM : ExactModel dec M)
     (hB : IsExactBlas1 dec ok I) :
-    (cgs2Impl (Op := Op) (Tst := Tst)).Meets I .total
+    (cgs2Impl (Op := Op) (Tst := Tst)).Triple I .total
       ((twoPassRel dec (fun _ => 0) 0).spec (TwoPassOperands ok)) :=
   cgs2_spec hS hB.dot_zero (axpy_zero hB) hM.neg
 

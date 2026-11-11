@@ -85,7 +85,7 @@ theorem step_spec {M : Machine K} {dec : K → ℝ} {n : ℕ}
     {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K}
     (hS : IsScalar M I) (hM : ExactModel dec M)
     (hB : IsExactBlas1 dec (fun _ => True) I) (hA : IsExactMatvec dec A I) :
-    (stepImpl (Op := Op) (Tst := Tst)).Meets I .total
+    (stepImpl (Op := Op) (Tst := Tst)).Triple I .total
       ((stepRel dec A).spec (StepOperands n)) := by
   cert_intro [m] (x, r, p) → (x', r', p') reads (xs, rs, ps)
   obtain ⟨hd, hx, hr, hp, hxr, hxp, hrp⟩ := hadm
@@ -153,7 +153,7 @@ theorem runs_step {M : Machine K} {dec : K → ℝ} {n : ℕ}
     (hp : μ.store.readBlock p.1 p.2 n = some ps)
     (hdom : Nonbreakdown A (decodedState dec n xs rs ps))
     (hz : μ.Room [x, r, p] [n, n, n]) :
-    Runs I W τ step (Env.frame [n] [x, r, p, x, r, p]) μ
+    ConditionalRuns I W τ step (Env.frame [n] [x, r, p, x, r, p]) μ
       (stepCount n) (stepPeak W n)
       ((stepRel dec A).Post [n] [xs, rs, ps] [x, r, p] [] μ) := by
   refine ((step_spec hS hM hB hA).runs_rel W (d := [n]) (ins := [x, r, p])

@@ -99,7 +99,7 @@ theorem runs_solve_seq {M : Machine K} {dec : K → ℝ} {n cap : ℕ}
     (hBV : B.1 ≠ V.1) (hBC : B.1 ≠ C.1) (hVC : V.1 ≠ C.1)
     (hl : μ.Live [B, V, C]) (hb : μ.store.readBlock B.1 B.2 n = some bs)
     (hz : μ.Room [V, C] [(cap + 1) * n, 3 * cap + 2]) :
-    Runs I (Blas.ws 0) τ (solve.link (Blas.seq (Op := Op) (Tst := Tst)).table)
+    ConditionalRuns I (Blas.ws 0) τ (solve.link (Blas.seq (Op := Op) (Tst := Tst)).table)
       (Env.frame [n, cap] [B, V, C]) μ (seqSolveCount n cap) (3 * n + cap + 4)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ vs cs,
         μ'.store.readBlock V.1 V.2 ((cap + 1) * n) = some vs ∧

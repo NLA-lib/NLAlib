@@ -85,7 +85,7 @@ theorem rounds_spec {M : Machine K} {dec : K → ℝ} {n : ℕ}
     (hS : IsScalar M I) (hM : ExactModel dec M)
     (hB : IsExactBlas1 dec (fun _ => True) I) (hA : IsExactMatvec dec A I)
     (hP : IsExactPreconditioner dec P I) :
-    (roundsImpl (Op := Op) (Tst := Tst)).Meets I .total
+    (roundsImpl (Op := Op) (Tst := Tst)).Triple I .total
       ((roundsRel dec A P).spec (RoundsOperands n)) := by
   cert_intro [m, k] (x, r, z, p) → (x', r', z', p') reads (xs, rs, zs, ps)
   obtain ⟨hd, hx, hr, hz, hp, hxr, hxz, hxp, hrz, hrp, hzp⟩ := hadm

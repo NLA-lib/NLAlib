@@ -57,7 +57,7 @@ theorem runs_cgs2_seq {M : Machine K} {dec : K → ℝ} {u : ℝ} {I : Interp Op
     (hQw : Q.1 ≠ w.1) (hl : μ.Live [Q, w])
     (hqs : μ.store.readBlock Q.1 Q.2 (k * n) = some qs)
     (hws : μ.store.readBlock w.1 w.2 n = some ws) (hz : μ.Room [w] [n]) :
-    Runs I (Blas.ws 0) τ (cgs2.link (Blas.seq (Op := Op) (Tst := Tst)).table)
+    ConditionalRuns I (Blas.ws 0) τ (cgs2.link (Blas.seq (Op := Op) (Tst := Tst)).table)
       (Env.frame [n, k] [Q, w, w]) μ (cgs2SeqCount n k) (k + n + 2)
       ((twoPassRel dec (Blas.seq.err u).dot (Blas.seq.err u).axpy).Post
         [n, k] [qs, ws] [w] [] μ) := by

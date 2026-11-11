@@ -64,7 +64,7 @@ theorem runs_sweep {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
     {Q r : ℕ × ℕ} {qs rs : List K} (hQr : Q.1 ≠ r.1) (hl : μ.Live [Q, r])
     (hqs : μ.store.readBlock Q.1 Q.2 (k * n) = some qs)
     (hrs : μ.store.readBlock r.1 r.2 n = some rs) (hz : μ.Room [r] [n]) :
-    Runs I W τ sweep (Env.frame [n, k] [Q, r, r]) μ (sweepCount n k) (sweepPeak W n)
+    ConditionalRuns I W τ sweep (Env.frame [n, k] [Q, r, r]) μ (sweepCount n k) (sweepPeak W n)
       ((sweepRel dec).Post [n, k] [qs, rs] [r] [] μ) := by
   have hl' : μ.Live ([Q, r] ++ [r]) := by
     simp only [List.cons_append, List.nil_append, Mem.live_cons, Mem.live_nil, and_true] at hl ⊢

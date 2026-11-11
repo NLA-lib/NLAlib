@@ -78,31 +78,31 @@ def solvePeak (W : Op → List ℕ → ℕ) (n cap : ℕ) : ℕ :=
 
 /-- The evaluator includes all guards, saved residuals, and full-sweep calls in the budget. -/
 theorem staticCost_solve (n cap b x x' r p : ℕ) :
-    staticCost (solve (Op := Op) (Tst := Tst)) [n, cap, b, x, x', r, p] = solveCount n cap := by
+    stmtCost (solve (Op := Op) (Tst := Tst)) [n, cap, b, x, x', r, p] = solveCount n cap := by
   have htri : ∑ i ∈ Finset.range cap, (i + 1) = cap * (cap + 1) / 2 := by
     have h := Finset.sum_range_id (cap + 1)
     rw [Finset.sum_range_succ'] at h
     simpa [Nat.mul_comm] using h
   have hsup : (Finset.range (cap + 1)).sup (fun _ => (0 : Count Op Tst)) = 0 := by
     exact le_antisymm (Finset.sup_le fun _ _ => le_rfl) zero_le
-  simp [solve, rounds, advance, staticCost, useCost, testCost, staticCost_round,
+  simp [solve, rounds, advance, stmtCost, useCost, testCost, staticCost_round,
     HSCG.staticCost_initialize, roundCount, sweepCount, solveCount, projectionCount,
     Finset.sum_add_distrib, Finset.sum_nsmul_assoc, htri, hsup]
   module
 
 /-- Scoped history grows with the cap; temporary round storage is reused at every iteration. -/
 theorem staticPeak_solve_le (W : Op → List ℕ → ℕ) (n cap b x x' r p : ℕ) :
-    staticPeak W (solve (Op := Op) (Tst := Tst)) [n, cap, b, x, x', r, p] ≤
+    stmtPeak W (solve (Op := Op) (Tst := Tst)) [n, cap, b, x, x', r, p] ≤
       solvePeak W n cap := by
   have hin := HSCG.staticPeak_initialize_le (Op := Op) (Tst := Tst) W n b x x r p
   have hbody : (Finset.range cap).sup (fun i => max (W (Has.inj Blas1Op.copy) [n])
-      (max (staticPeak W round [n, i + 1, x, r, p, 0, x, r, p])
+      (max (stmtPeak W round [n, i + 1, x, r, p, 0, x, r, p])
         (W (Has.inj Blas1Op.dot) [n]))) ≤
       max (roundPeak W n) (max (W (Has.inj Blas1Op.copy) [n]) (W (Has.inj Blas1Op.dot) [n])) :=
     Finset.sup_le fun i _ => by
       have h := staticPeak_round_le (Op := Op) (Tst := Tst) W n (i + 1) x r p 0 x r p
       omega
-  simp [solve, rounds, advance, staticPeak, solvePeak]
+  simp [solve, rounds, advance, stmtPeak, solvePeak]
   omega
 
 end NLAlib.Krylov.CG.Reorth

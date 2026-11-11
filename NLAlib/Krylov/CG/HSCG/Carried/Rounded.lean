@@ -71,7 +71,7 @@ theorem step_spec {M : Machine K} {dec : K → ℝ} {n : ℕ} {u : ℝ} {ε : Bl
     {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K} {ok : ℕ → Prop}
     (hS : IsScalar M I) (hM : StdModel u dec M)
     (hB : IsBlas1 dec ε ok I) (hok : ok n) (hA : IsExactMatvec dec A I) :
-    (stepImpl (Op := Op) (Tst := Tst)).Meets I .total
+    (stepImpl (Op := Op) (Tst := Tst)).Triple I .total
       ((stepRel u ε dec A).spec (StepOperands n)) := by
   cert_intro [m] (x, r, p, v) → (x', r', p', v') reads (xs, rs, ps, vs)
   obtain ⟨hd, hx, hr, hp, hv, hxr, hxp, hxv, hrp, hrv, hpv⟩ := hadm
@@ -141,7 +141,8 @@ theorem runs_step {M : Machine K} {dec : K → ℝ} {n : ℕ} {u : ℝ} {ε : Bl
     (hmargin : ε.dot n * ∑ i : Fin n, |decv dec n ps i * (A *ᵥ decv dec n ps) i| <
       decv dec n ps ⬝ᵥ (A *ᵥ decv dec n ps))
     (hz : μ.Room [x, r, p, v] [n, n, n, 1]) :
-    Runs I W τ step (Env.frame [n] [x, r, p, v, x, r, p, v]) μ (stepCount n) (stepPeak W n)
+    ConditionalRuns I W τ step (Env.frame [n] [x, r, p, v, x, r, p, v]) μ
+      (stepCount n) (stepPeak W n)
       ((stepRel u ε dec A).Post [n] [xs, rs, ps, [rr]] [x, r, p, v] [] μ) := by
   have hrr' : IsDotErr dec (ε.dot n) n (vec rs) (vec rs) rr := by
     simpa only [IsDotErr, dotProduct_decv, decv,

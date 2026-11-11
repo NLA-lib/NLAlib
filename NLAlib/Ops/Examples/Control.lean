@@ -155,7 +155,7 @@ def branchOnPositive : Stmt CmpOp FlagTst :=
 example {K Lo : Type} {I : Interp Lo FlagTst K} {T : Table CmpOp Lo FlagTst}
     {R : Impl Lo FlagTst} (hT : T (.cmp .isPos) = .inl R)
     {dec : K → ℝ} {readFlag : K → Bool}
-    (hcmp : R.Meets I .total ((cmpRel dec readFlag .isPos).spec AnyOperands))
+    (hcmp : R.Triple I .total ((cmpRel dec readFlag .isPos).spec AnyOperands))
     (hflag : IsFlagTest readFlag I) {τ : Tape K} {m : Mem K} {a : K}
     (hx : m.store.get 0 0 = some a) (hpos : 0 < dec a)
     (hl : m.Live [(0, 0), (0, 1)]) (hz : 1 < m.store.len 0) :

@@ -59,14 +59,14 @@ def sweepPeak (W : Op → List ℕ → ℕ) (n : ℕ) : ℕ :=
 
 /-- The static evaluator counts every projection operation. -/
 theorem staticCost_sweep (n k q r r' : ℕ) :
-    staticCost (sweep (Op := Op) (Tst := Tst)) [n, k, q, r, r'] = sweepCount n k := by
-  simp [sweep, staticCost, useCost, sweepCount]
+    stmtCost (sweep (Op := Op) (Tst := Tst)) [n, k, q, r, r'] = sweepCount n k := by
+  simp [sweep, stmtCost, useCost, sweepCount]
   module
 
 /-- Scratch is reused at every column, including an empty sweep. -/
 theorem staticPeak_sweep_le (W : Op → List ℕ → ℕ) (n k q r r' : ℕ) :
-    staticPeak W (sweep (Op := Op) (Tst := Tst)) [n, k, q, r, r'] ≤ sweepPeak W n := by
-  simp only [sweep, staticPeak, sweepPeak]
+    stmtPeak W (sweep (Op := Op) (Tst := Tst)) [n, k, q, r, r'] ≤ sweepPeak W n := by
+  simp only [sweep, stmtPeak_alloc, stmtPeak, sweepPeak]
   refine Nat.add_le_add_left (Finset.sup_le fun j _ => ?_) _
   simp
 

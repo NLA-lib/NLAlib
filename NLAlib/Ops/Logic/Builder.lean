@@ -32,7 +32,8 @@ occurrence.
 
 ```
 call op [dims] (ins) → (outs)          -- Stmt.call
-let t ← alloc len                      -- Stmt.alloc, scoped over the rest of the block
+let t ← allocAs fmt len                -- explicit StorageFormat, scoped over the rest
+let t ← alloc len                      -- one-byte StorageFormat.cell, scoped over the rest
 let v ← index q (ins) ≤ bound          -- Stmt.bindIdx, scoped over the rest of the block
 for i < n { … }                        -- Stmt.loop
 if q [dims] (ins) { … } else { … }     -- Stmt.ite
@@ -112,8 +113,11 @@ syntax "skip" : opsStmt
 syntax &"abort" : opsStmt
 /-- `call op [dims] (ins) → (outs)`: a call. -/
 syntax &"call " term:max " [" opsIdx,* "]" " (" opsArg,* ")" " → " "(" opsArg,* ")" : opsStmt
-/-- `let t ← alloc len`: a scratch buffer for the rest of the block. -/
+/-- `let t ← alloc len`: one-byte-cell scratch for the rest of the block.
+Use `allocAs` when the resource model requires an explicit storage format. -/
 syntax "let " ident " ← " &"alloc " opsIdx : opsStmt
+/-- `let t ← allocAs fmt len`: explicitly formatted scratch for the rest of the block. -/
+syntax "let " ident " ← " &"allocAs " term:max opsIdx : opsStmt
 /-- `let v ← index q (ins) ≤ bound`: an index read from the store, for the rest of the
 block. -/
 syntax "let " ident " ← " &"index " term:max " (" opsArg,* ")" " ≤ " opsIdx : opsStmt
@@ -257,6 +261,9 @@ meta def seqE (sc : Scope) : Nat → List (TSyntax `opsStmt) → MacroM (TSyntax
   | _ + 1, [] => `(Stmt.skip)
   | f + 1, s :: rest => do
     match s with
+    | `(opsStmt| let $t:ident ← allocAs $fmt $len) =>
+      sc.fresh t
+      `(Stmt.allocAs $fmt $(← idxE sc depth len) $(← seqE (sc.pushBuf t.getId) f rest))
     | `(opsStmt| let $t:ident ← alloc $len) =>
       sc.fresh t
       `(Stmt.alloc $(← idxE sc depth len) $(← seqE (sc.pushBuf t.getId) f rest))
@@ -300,6 +307,7 @@ meta def stmtE (sc : Scope) : Nat → TSyntax `opsStmt → MacroM (TSyntax `term
     | `(opsStmt| ifZero $e $b:opsBlock) =>
       `(Stmt.ifZero $(← idxE sc depth e) $(← blockE (sc.pushIdx Name.anonymous) f b))
     | `(opsStmt| $b:opsBlock) => blockE sc f b
+    | `(opsStmt| let $_t:ident ← allocAs $_ $_) => seqE sc f [s]
     | `(opsStmt| let $_t:ident ← alloc $_) => seqE sc f [s]
     | `(opsStmt| let $_v:ident ← index $_ ($_,*) ≤ $_) => seqE sc f [s]
     | _ => Macro.throwErrorAt s "ops%: not a statement"

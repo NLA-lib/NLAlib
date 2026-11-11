@@ -49,14 +49,14 @@ def bilinearPeak (W : Op → List ℕ → ℕ) (m n : ℕ) : ℕ :=
   m + max (W (Has.inj OperatorOp.matvec) [m, n]) (W (Has.inj Blas1Op.dot) [m])
 
 /-- The static evaluator counts exactly the two abstract calls. -/
-theorem staticCost_bilinear (m n x y z : ℕ) :
-    staticCost (bilinear (Op := Op) (Tst := Tst)) [m, n, x, y, z] = bilinearCount m n := by
-  simp [bilinear, staticCost, useCost, bilinearCount]
+theorem stmtCost_bilinear (m n x y z : ℕ) :
+    stmtCost (bilinear (Op := Op) (Tst := Tst)) [m, n, x, y, z] = bilinearCount m n := by
+  simp [bilinear, stmtCost, useCost, bilinearCount]
 
 /-- The static workspace includes the intermediate vector and the two operation workspaces. -/
-theorem staticPeak_bilinear (W : Op → List ℕ → ℕ) (m n x y z : ℕ) :
-    staticPeak W (bilinear (Op := Op) (Tst := Tst)) [m, n, x, y, z] = bilinearPeak W m n := by
-  simp [bilinear, staticPeak, bilinearPeak]
+theorem stmtPeak_bilinear (W : Op → List ℕ → ℕ) (m n x y z : ℕ) :
+    stmtPeak W (bilinear (Op := Op) (Tst := Tst)) [m, n, x, y, z] = bilinearPeak W m n := by
+  simp [bilinear, stmtPeak, bilinearPeak]
 
 variable [Inhabited K]
 
@@ -95,7 +95,7 @@ theorem bilinear_spec {dec : K → ℝ} {m n : ℕ} {A : Matrix (Fin m) (Fin n) 
     {e : ℕ → ℝ} {ok : ℕ → Prop} {J : Interp Op Tst K} (hA : IsExactMatvec dec A J)
     (hD : J.Meets .total (Has.inj Blas1Op.dot) ((dotRel dec e).spec (OutApart ok)))
     (hok : ok m) :
-    (bilinearImpl (Op := Op) (Tst := Tst)).Meets J .total
+    (bilinearImpl (Op := Op) (Tst := Tst)).Triple J .total
       ((bilinearRel dec A (e m)).spec (BilinearOperands m n)) := by
   cert_intro [r, c] (x, y) → (z) reads (xs, ys)
   obtain ⟨rfl, rfl, hxz, hyz⟩ := hadm
@@ -132,12 +132,12 @@ theorem runs_bilinear_rounded {dec : K → ℝ} {m n : ℕ} {A : Matrix (Fin m) 
     {xs ys : List K} (hxz : x.1 ≠ z.1) (hyz : y.1 ≠ z.1) (hl : μ.Live [x, y, z])
     (hx : μ.store.readBlock x.1 x.2 m = some xs)
     (hy : μ.store.readBlock y.1 y.2 n = some ys) (hz : z.2 < μ.store.len z.1) :
-    Runs J W τ bilinear (Env.frame [m, n] [x, y, z]) μ (bilinearCount m n)
+    ConditionalRuns J W τ bilinear (Env.frame [m, n] [x, y, z]) μ (bilinearCount m n)
       (bilinearPeak W m n) (BilinearRounded dec A (e m) z xs ys μ) := by
   refine ((bilinear_spec hA hD hok).runs_rel W (d := [m, n]) (ins := [x, y]) (outs := [z])
     (τ := τ) (xs := [xs, ys]) rfl ⟨rfl, by simp [hxz, hyz]⟩ hl
     (by simp [bilinearRel, Mem.readBlocks, hx, hy]) trivial ⟨by omega, trivial⟩).mono
-    (le_of_eq (staticCost_bilinear ..)) (le_of_eq (staticPeak_bilinear ..)) ?_
+    (le_of_eq (stmtCost_bilinear ..)) (le_of_eq (stmtPeak_bilinear ..)) ?_
   rintro μ' ⟨Y, hlen, hrel, rfl⟩
   obtain ⟨vs, rfl, hvs⟩ := map_length_eq_one hlen
   obtain ⟨v, rfl⟩ := List.length_eq_one_iff.mp hvs
@@ -150,7 +150,7 @@ theorem runs_bilinear_exact {dec : K → ℝ} {m n : ℕ} {A : Matrix (Fin m) (F
     {x y z : ℕ × ℕ} {μ : Mem K} {xs ys : List K} (hxz : x.1 ≠ z.1) (hyz : y.1 ≠ z.1)
     (hl : μ.Live [x, y, z]) (hx : μ.store.readBlock x.1 x.2 m = some xs)
     (hy : μ.store.readBlock y.1 y.2 n = some ys) (hz : z.2 < μ.store.len z.1) :
-    Runs J W τ bilinear (Env.frame [m, n] [x, y, z]) μ (bilinearCount m n)
+    ConditionalRuns J W τ bilinear (Env.frame [m, n] [x, y, z]) μ (bilinearCount m n)
       (bilinearPeak W m n) (BilinearExact dec A z xs ys μ) :=
   (runs_bilinear_rounded hA hB.dot_zero hok W hxz hyz hl hx hy hz).mono le_rfl le_rfl
     fun _ h => h.exact
@@ -167,7 +167,7 @@ theorem runs_bilinear_link_seq {M : Machine K} {u : ℝ} {dec : K → ℝ}
     {x y z : ℕ × ℕ} {μ : Mem K} {xs ys : List K} (hxz : x.1 ≠ z.1) (hyz : y.1 ≠ z.1)
     (hl : μ.Live [x, y, z]) (hx : μ.store.readBlock x.1 x.2 m = some xs)
     (hy : μ.store.readBlock y.1 y.2 n = some ys) (hz : z.2 < μ.store.len z.1) :
-    Runs I (Blas.ws 0) τ (bilinear.link Blas.seq.table) (Env.frame [m, n] [x, y, z]) μ
+    ConditionalRuns I (Blas.ws 0) τ (bilinear.link Blas.seq.table) (Env.frame [m, n] [x, y, z]) μ
       (Count.one (Has.inj OperatorOp.matvec) [m, n] +
         (m • Blas.sc .mul + (Blas.sc (.lit 0) +
           ((1 - (1 - m)) • Blas.sc .copy + (m - 1) • Blas.sc .add)))) (2 * m)
@@ -197,7 +197,7 @@ theorem runs_bilinear_link_pairwise {M : Machine K} {u : ℝ} {dec : K → ℝ}
     {xs ys : List K} (hxz : x.1 ≠ z.1) (hyz : y.1 ≠ z.1) (hl : μ.Live [x, y, z])
     (hx : μ.store.readBlock x.1 x.2 m = some xs)
     (hy : μ.store.readBlock y.1 y.2 n = some ys) (hz : z.2 < μ.store.len z.1) :
-    Runs I (Blas.ws Blas.pairWs) τ (bilinear.link (Blas.pairwise k).table)
+    ConditionalRuns I (Blas.ws Blas.pairWs) τ (bilinear.link (Blas.pairwise k).table)
       (Env.frame [m, n] [x, y, z]) μ
       (Count.one (Has.inj OperatorOp.matvec) [m, n] +
         (m • Blas.sc .mul + Blas.pairCount m)) (2 * m + 2 * Nat.clog 2 m)
@@ -222,7 +222,7 @@ theorem runs_bilinear_link_seq_exact {M : Machine K} {dec : K → ℝ} (hM : Exa
     {xs ys : List K} (hxz : x.1 ≠ z.1) (hyz : y.1 ≠ z.1) (hl : μ.Live [x, y, z])
     (hx : μ.store.readBlock x.1 x.2 m = some xs)
     (hy : μ.store.readBlock y.1 y.2 n = some ys) (hz : z.2 < μ.store.len z.1) :
-    Runs I (Blas.ws 0) τ (bilinear.link Blas.seq.table) (Env.frame [m, n] [x, y, z]) μ
+    ConditionalRuns I (Blas.ws 0) τ (bilinear.link Blas.seq.table) (Env.frame [m, n] [x, y, z]) μ
       (Count.one (Has.inj OperatorOp.matvec) [m, n] +
         (m • Blas.sc .mul + (Blas.sc (.lit 0) +
           ((1 - (1 - m)) • Blas.sc .copy + (m - 1) • Blas.sc .add)))) (2 * m)
@@ -240,7 +240,7 @@ theorem runs_bilinear_link_pairwise_exact {M : Machine K} {dec : K → ℝ}
     (hxz : x.1 ≠ z.1) (hyz : y.1 ≠ z.1) (hl : μ.Live [x, y, z])
     (hx : μ.store.readBlock x.1 x.2 m = some xs)
     (hy : μ.store.readBlock y.1 y.2 n = some ys) (hz : z.2 < μ.store.len z.1) :
-    Runs I (Blas.ws Blas.pairWs) τ (bilinear.link (Blas.pairwise k).table)
+    ConditionalRuns I (Blas.ws Blas.pairWs) τ (bilinear.link (Blas.pairwise k).table)
       (Env.frame [m, n] [x, y, z]) μ
       (Count.one (Has.inj OperatorOp.matvec) [m, n] +
         (m • Blas.sc .mul + Blas.pairCount m)) (2 * m + 2 * Nat.clog 2 m)

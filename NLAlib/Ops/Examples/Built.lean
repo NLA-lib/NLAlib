@@ -132,7 +132,7 @@ example {K : Type} {M : Machine K} {J : Interp Op Tst K} (hS : IsScalar M J) :
       let t ← alloc 1;
       call (Has.inj ScalarOp.copy) [] (x) → (t);
       call (Has.inj ScalarOp.copy) [] (t) → (y)
-    }).Meets J .total ((BlockFn.un fun a : K => some a).rel.spec AnyOperands) := by
+    }).Triple J .total ((BlockFn.un fun a : K => some a).rel.spec AnyOperands) := by
   cert_intro [] (x) → (y) reads (xs)
   obtain ⟨a, rfl⟩ := List.length_eq_one_iff.mp (Store.length_of_readBlock hxs)
   alloc as t
@@ -226,7 +226,7 @@ example (b n : ℕ) : Fp.Apart [(b, 0), (b, n), (b, 2 * n)] [n, n, n] := by
 
 -- Four state blocks can be named and read back, with independent dimension lengths.
 example {K : Type} {I : Interp Op Tst K} :
-    (opsImpl% [a, b, c, d] (w, x, y, z) → (w', x', y', z') { skip }).Meets I .total
+    (opsImpl% [a, b, c, d] (w, x, y, z) → (w', x', y', z') { skip }).Triple I .total
       (({ nd := 4, inLens := id, outLens := id,
           rel := fun _ X _ Y => Y = X } : BlockRel K).spec
         (fun _ ins outs => ins = outs)) := by
@@ -235,5 +235,32 @@ example {K : Type} {I : Interp Op Tst K} :
   refine wp_skip ⟨Store.EqOff.refl _ _, ?_⟩
   exact ⟨by simp, [ws, xs, ys, zs],
     by simp [Mem.readBlocks, hws, hxs, hys, hzs], rfl⟩
+
+end NLAlib.Ops.Examples
+
+namespace NLAlib.Ops.Examples
+
+-- Explicit storage formats survive named builder elaboration without cell substitution.
+example : (ops% [n] () → () {
+    let x ← allocAs StorageFormat.fp32 n;
+    let y ← allocAs StorageFormat.fp64 (n * 2);
+    skip
+  } : Stmt Empty Empty) =
+    .allocAs .fp32 (.var 0) (.allocAs .fp64 (.var 0 * .const 2) .skip) := rfl
+
+-- A mixed-format prefix uses the same named-store authoring rule as legacy allocations.
+example {Op Tst K : Type} {I : Interp Op Tst K} {τ : Tape K} {μ : Mem K} :
+    Writes .total I τ
+      (.allocAs .fp32 (.const 1) (.allocAs .fp64 (.const 2) .skip))
+      ⟨[], []⟩ ⊥ (fun _ => True) μ := by
+  alloc as x y
+  exact wp_skip ⟨Store.EqOff.refl _ _, fun _ _ _ => True.intro⟩
+
+-- The counted authoring rule charges bytes for the explicit format, not scalar cells.
+example {Op Tst K : Type} {I : Interp Op Tst K} {τ : Tape K} {μ : Mem K} :
+    RunsFromW I (fun _ _ => 0) τ (.allocAs .fp64 (.const 2) .skip)
+      ⟨[], []⟩ (St.init μ) 16 (fun _ _ => True) := by
+  refine RunsFromW.alloc (format := .fp64) (len := .const 2) (n := 2) (p := 0) rfl ?_
+  exact RunsFromW.skip True.intro
 
 end NLAlib.Ops.Examples

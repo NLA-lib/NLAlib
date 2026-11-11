@@ -3,17 +3,22 @@ Copyright (c) 2026 NLAlib contributors. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: NLAlib contributors
 -/
-import Mathlib.Data.Rat.Sqrt
-import NLAlib.Ops.Catalog.Compare
-import NLAlib.Ops.Catalog.Random
+module
+
+public import Mathlib.Data.Rat.Sqrt
+public import NLAlib.Ops.Catalog.Compare
+public import NLAlib.Ops.Catalog.Random
 
 /-!
 # Tools: concrete machines and interpretations
 
-Outside the trusted base. Concrete carriers (`ℚ`, exact; `Float`) and the interpretations of the
+Diagnostic and compute support; formal guarantees are independent of this output.
+Concrete carriers (`ℚ`, exact; `Float`) and the interpretations of the
 catalog groups over them, so that a program can be run by `#eval`. None of these is a model
-primitive and no theorem uses them: they are sample interpretations, chosen to meet the exact
+primitive. They are sample interpretations, chosen to meet the exact
 contracts on `ℚ` (except `sqrt`, see below) and to be a plain sequential reference on `Float`.
+
+## Main results
 
 * `NLAlib.Ops.Tools.Concrete K`: a machine (`NLAlib.Ops.Machine K`), comparisons and the
   conversion to an index, for `ℚ` and `Float`. On `ℚ` the square root is `Rat.sqrt`, exact on
@@ -27,6 +32,8 @@ contracts on `ℚ` (except `sqrt`, see below) and to be a plain sequential refer
 * `NLAlib.Ops.Tools.signTape`, `NLAlib.Ops.Tools.constTape`: fixed concrete tapes.
 * `NLAlib.Ops.Tools.ShowKey`: names of operations for the reports.
 -/
+
+@[expose] public section
 
 namespace NLAlib.Ops.Tools
 

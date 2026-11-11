@@ -40,7 +40,8 @@ theorem runsLaw_hutch_link {dec : K → ℝ} {n : ℕ} {A : Matrix (Fin n) (Fin 
     (hiso : IsIsotropic (probeLaw dec (law Stream.gauss) n))
     (hq : MemLp (quadForm A) 2 (probeLaw dec (law Stream.gauss) n)) {N : ℕ} (hN : 0 < N)
     {e : ℕ × ℕ} {m : Mem K} {z₀ : K} (he : m.store.get e.1 e.2 = some z₀) (hz : dec z₀ = 0) :
-    ConditionalRunsLaw I (fun _ _ => 0) ξ (hutch.link Rand.gaussLoop.table) (Env.frame [N, n] [e, e]) m
+    ConditionalRunsLaw I (fun _ _ => 0) ξ (hutch.link Rand.gaussLoop.table)
+      (Env.frame [N, n] [e, e]) m
       (N • (n • Count.one .draw [] + (Count.one (.operator .matvec) [n, n] +
         (Count.one .dot [n] + Count.one .add [])))) (n + (n + 1))
       (HutchPost dec N n e m) fun X => ∫ ω, X ω / N ∂P = A.trace ∧

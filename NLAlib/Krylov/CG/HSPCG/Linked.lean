@@ -146,7 +146,7 @@ theorem runs_solve_seq {M : Machine K} {dec : K → ℝ} {n : ℕ}
     (hxs : μ.store.readBlock x.1 x.2 n = some xs)
     (hk : k ≤ krylovGrade (P * A) (P *ᵥ (decv dec n bs - A *ᵥ decv dec n xs)))
     (hz : μ.Room [x, r, z, p] [n, n, n, n]) :
-    Runs I (Blas.ws 0) τ (solve.link (Blas.seq (Op := Op) (Tst := Tst)).table)
+    ConditionalRuns I (Blas.ws 0) τ (solve.link (Blas.seq (Op := Op) (Tst := Tst)).table)
       (Env.frame [n, k] [b, x, x, r, z, p]) μ (seqSolveCount n k) (3 * n + 5)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ ys, μ'.store.readBlock x.1 x.2 n = some ys ∧
         decv dec n ys = pcgIterate A P (decv dec n bs) (decv dec n xs) k) := by
@@ -176,7 +176,7 @@ theorem runs_solve_seq_of_eq_krylovGrade {M : Machine K} {dec : K → ℝ} {n : 
     (hxs : μ.store.readBlock x.1 x.2 n = some xs)
     (hk : k = krylovGrade (P * A) (P *ᵥ (decv dec n bs - A *ᵥ decv dec n xs)))
     (hz : μ.Room [x, r, z, p] [n, n, n, n]) :
-    Runs I (Blas.ws 0) τ (solve.link (Blas.seq (Op := Op) (Tst := Tst)).table)
+    ConditionalRuns I (Blas.ws 0) τ (solve.link (Blas.seq (Op := Op) (Tst := Tst)).table)
       (Env.frame [n, k] [b, x, x, r, z, p]) μ (seqSolveCount n k) (3 * n + 5)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ ys, μ'.store.readBlock x.1 x.2 n = some ys ∧
         A *ᵥ decv dec n ys = decv dec n bs) := by

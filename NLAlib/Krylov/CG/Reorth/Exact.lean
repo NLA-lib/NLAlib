@@ -53,7 +53,7 @@ noncomputable def sweepRel (dec : K → ℝ) : BlockRel K where
 /-- Exact scalar and BLAS contracts implement the full sweep at all dimensions and ranks. -/
 theorem sweep_spec {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
     (hS : IsScalar M I) (hM : ExactModel dec M) (hB : IsExactBlas1 dec (fun _ => True) I) :
-    (sweepImpl (Op := Op) (Tst := Tst)).Meets I .total ((sweepRel dec).spec SweepOperands) := by
+    (sweepImpl (Op := Op) (Tst := Tst)).Triple I .total ((sweepRel dec).spec SweepOperands) := by
   cert_intro [n, k] (Q, r) → (r') reads (qs, rs)
   obtain ⟨hr, hQr⟩ := hadm
   subst r'

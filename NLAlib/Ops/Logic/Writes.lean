@@ -38,7 +38,7 @@ postcondition. One proof gives the total statement and the refinement.
   their handles and lengths; the frame after the pops is the caller's.
 * `NLAlib.Ops.writes_ite`, `NLAlib.Ops.writes_bindIdx`, `NLAlib.Ops.writes_bindIdx_of_isIndex`.
 * `NLAlib.Ops.Wp.named`: generalise a chain of updates into a fresh memory (checkpoint).
-* `NLAlib.Ops.Impl.meets_of_writes`: **a certificate from a block specification**; the
+* `NLAlib.Ops.Impl.meets_of_writes`: a conditional triple from a block specification; the
   equation of the contract is built once, here.
 -/
 
@@ -245,14 +245,15 @@ buffer, of length `n`, at the handle `L = m.store.length`, that agrees with the 
 its footprint may include the new buffer. The postcondition is asked of every store of length `L`
 that agrees with the final one below `L` (the store after the pop is one), so no `pop` appears
 in a goal, and a fact about the buffers below `L` transfers by `Store.Below.keep`. -/
-theorem writes_alloc {len : IExp} {body : Stmt Op Tst} {n : ℕ} (hn : len.eval ρ.idx = some n)
+theorem writes_alloc {format : StorageFormat} {len : IExp} {body : Stmt Op Tst} {n : ℕ}
+    (hn : len.eval ρ.idx = some n)
     {F : Fp} {P : Mem K → Prop}
     (h : ∀ s₁ : Store K, s₁.length = m.store.length + 1 → s₁.len m.store.length = n →
       Store.Below m.store.length m.store s₁ →
       Writes md I τ body (ρ.pushBuf m.store.length) (F ⊔ Store.inBuf m.store.length)
         (fun m' => ∀ s₂ : Store K, s₂.length = m.store.length →
           Store.Below m.store.length m'.store s₂ → P ⟨s₂, m'.pos⟩) ⟨s₁, m.pos⟩) :
-    Writes md I τ (.alloc len body) ρ F P m := by
+    Writes md I τ (.allocAs format len body) ρ F P m := by
   refine wp_alloc hn (Wp.mono (h _ (by simp) (by simp) (Store.below_push _ _))
     fun m' ⟨hfr, hP⟩ => ⟨Store.EqOff.pop hfr, hP _ ?_ (Store.below_pop ?_)⟩)
   · rw [Store.length_pop, hfr.length_eq, Store.length_push]; rfl
@@ -264,11 +265,17 @@ def Stmt.allocs : List IExp → Stmt Op Tst → Stmt Op Tst
   | [], body => body
   | l :: ls, body => .alloc l (Stmt.allocs ls body)
 
-/-- **An allocation chain**: `k` scratch buffers at the handles `L, L + 1, …, L + k - 1`
+/-- Nested scratch allocations with explicit formats, in outermost-first order. -/
+def Stmt.allocsAs : List (StorageFormat × IExp) → Stmt Op Tst → Stmt Op Tst
+  | [], body => body
+  | (format, len) :: allocations, body => .allocAs format len (Stmt.allocsAs allocations body)
+
+/-- A formatted allocation chain: scratch buffers at the handles `L, L + 1, …, L + k - 1`
 (`L = m.store.length`) with their lengths, as one named state; after the body they are all
 freed. The rule for the blocks that allocate seven or eight buffers. -/
-theorem writes_allocs {lens : List IExp} {body : Stmt Op Tst} {ns : List ℕ}
-    (hn : IExp.evalList ρ.idx lens = some ns) {F : Fp} {P : Mem K → Prop}
+theorem writes_allocsAs {allocations : List (StorageFormat × IExp)}
+    {body : Stmt Op Tst} {ns : List ℕ}
+    (hn : IExp.evalList ρ.idx (allocations.map Prod.snd) = some ns) {F : Fp} {P : Mem K → Prop}
     (h : ∀ s₁ : Store K, s₁.length = m.store.length + ns.length →
       (∀ i (hi : i < ns.length), s₁.len (m.store.length + i) = ns[i]) →
       Store.Below m.store.length m.store s₁ →
@@ -276,10 +283,10 @@ theorem writes_allocs {lens : List IExp} {body : Stmt Op Tst} {ns : List ℕ}
         (F ⊔ Fp.above m.store.length)
         (fun m' => ∀ s₂ : Store K, s₂.length = m.store.length →
           Store.Below m.store.length m'.store s₂ → P ⟨s₂, m'.pos⟩) ⟨s₁, m.pos⟩) :
-    Writes md I τ (Stmt.allocs lens body) ρ F P m := by
-  induction lens generalizing m ρ ns F P with
+    Writes md I τ (Stmt.allocsAs allocations body) ρ F P m := by
+  induction allocations generalizing m ρ ns F P with
   | nil =>
-    simp only [IExp.evalList_nil, Option.some.injEq] at hn
+    simp only [List.map_nil, IExp.evalList_nil, Option.some.injEq] at hn
     subst hn
     have h0 := h m.store (by simp) (fun i hi => absurd hi (by simp)) (Store.Below.refl _ _)
     have e : (⟨ρ.idx, ρ.buf ++ (List.range ([] : List ℕ).length).map (m.store.length + ·)⟩ :
@@ -288,11 +295,11 @@ theorem writes_allocs {lens : List IExp} {body : Stmt Op Tst} {ns : List ℕ}
     rw [e] at h0
     exact Wp.mono h0 fun m' ⟨hfr, hP⟩ =>
       ⟨hfr.of_above, hP m'.store hfr.length_eq (Store.Below.refl _ _)⟩
-  | cons l ls ih =>
-    rw [IExp.evalList_cons] at hn
+  | cons allocation allocations ih =>
+    rw [List.map_cons, IExp.evalList_cons] at hn
     obtain ⟨n, hl, hn⟩ := Option.bind_eq_some_iff.mp hn
     obtain ⟨ns', hns', rfl⟩ := Option.map_eq_some_iff.mp hn
-    refine writes_alloc hl fun s₁ hs₁ hs₁L hs₁B => ?_
+    refine writes_alloc (format := allocation.1) hl fun s₁ hs₁ hs₁L hs₁B => ?_
     refine ih (m := ⟨s₁, m.pos⟩) (ρ := ρ.pushBuf m.store.length) (by simpa using hns')
       fun s₂ hs₂ hlens hB => ?_
     simp only at hs₂ hlens hB ⊢
@@ -321,6 +328,28 @@ theorem writes_allocs {lens : List IExp} {body : Stmt Op Tst} {ns : List ℕ}
       · have := hlens i (by simpa using hi)
         simpa [hs₁, Nat.add_assoc, Nat.add_comm 1 i] using this
 
+/-- **An allocation chain**: `k` scratch buffers at the handles `L, L + 1, …, L + k - 1`
+(`L = m.store.length`) with their lengths, as one named state; after the body they are all
+freed. The rule for the blocks that allocate seven or eight buffers. -/
+theorem writes_allocs {lens : List IExp} {body : Stmt Op Tst} {ns : List ℕ}
+    (hn : IExp.evalList ρ.idx lens = some ns) {F : Fp} {P : Mem K → Prop}
+    (h : ∀ s₁ : Store K, s₁.length = m.store.length + ns.length →
+      (∀ i (hi : i < ns.length), s₁.len (m.store.length + i) = ns[i]) →
+      Store.Below m.store.length m.store s₁ →
+      Writes md I τ body ⟨ρ.idx, ρ.buf ++ (List.range ns.length).map (m.store.length + ·)⟩
+        (F ⊔ Fp.above m.store.length)
+        (fun m' => ∀ s₂ : Store K, s₂.length = m.store.length →
+          Store.Below m.store.length m'.store s₂ → P ⟨s₂, m'.pos⟩) ⟨s₁, m.pos⟩) :
+    Writes md I τ (Stmt.allocs lens body) ρ F P m := by
+  have e : Stmt.allocs lens body =
+      Stmt.allocsAs (lens.map fun len => (StorageFormat.cell, len)) body := by
+    clear hn
+    induction lens with
+    | nil => rfl
+    | cons len lens ih => simp only [Stmt.allocs, List.map_cons, Stmt.allocsAs, ih, Stmt.alloc]
+  rw [e]
+  exact writes_allocsAs (by simpa only [List.map_map, Function.comp_def, List.map_id'] using hn) h
+
 /-! ### Branches and indices -/
 
 /-- Branch, on the Boolean of the test. -/
@@ -336,9 +365,9 @@ theorem writes_ite_holds {q : Tst} {ds : List IExp} {ins : List Operand} {t e : 
     {F : Fp} {P : Mem K → Prop}
     (h : md.Holds (I.testAt q ds ins ρ m) fun c => Writes md I τ (if c then t else e) ρ F P m) :
     Writes md I τ (.ite q ds ins t e) ρ F P m := by
-  have e : run I τ (.ite q ds ins t e) ρ m =
-      (I.testAt q ds ins ρ m).bind fun c => if c then run I τ t ρ m else run I τ e ρ m := by
-    simp only [run, Interp.testAt, Option.bind_assoc]
+  have e : eval I τ (.ite q ds ins t e) ρ m =
+      (I.testAt q ds ins ρ m).bind fun c => if c then eval I τ t ρ m else eval I τ e ρ m := by
+    simp only [eval, Interp.testAt, Option.bind_assoc]
   unfold Writes Wp
   rw [e]
   exact Mode.holds_bind (h.mono fun c hc => by cases c <;> simpa [Writes, Wp] using hc)
@@ -359,7 +388,7 @@ theorem writes_bindIdx_holds {q : Tst} {ins : List Operand} {bound : IExp} {body
       md.Needs (v ≤ B) ∧ (v ≤ B → Writes md I τ body (ρ.pushIdx v) F P m)) :
     Writes md I τ (.bindIdx q ins bound body) ρ F P m := by
   unfold Writes Wp
-  simp only [run, ha, hB, Option.bind_some]
+  simp only [eval, ha, hB, Option.bind_some]
   refine Mode.holds_bind (h.mono fun v hv => ?_)
   by_cases hle : v ≤ B
   · rw [if_pos hle]
@@ -399,7 +428,7 @@ end Rules
 
 /-! ### Certificates from block specifications -/
 
-/-- **A certificate from a block specification.** On admitted, live operands with the inputs
+/-- A conditional triple from a block specification. On admitted, live operands with the inputs
 `xs` read and room for the outputs, the body writes only the output blocks, advances the
 position by the window, and the output blocks are read back related to the inputs: then the
 implementation meets the contract. The output blocks must be pairwise disjoint (the admitted
@@ -415,7 +444,7 @@ theorem Impl.meets_of_writes {R : Impl Op Tst} {I : Interp Op Tst K} {B : BlockR
         Writes .total I τ R.body (Env.frame d (ins ++ outs)) (Fp.blocks outs (B.outLens d))
           (fun m' => m'.pos = m.pos + B.win d ∧ ∃ ys, m'.readBlocks outs (B.outLens d) = some ys ∧
             B.rel d xs (τ.window B.stream m.pos (B.win d)) ys) m) :
-    R.Meets I .total (B.spec adm) := by
+    R.Triple I .total (B.spec adm) := by
   refine Impl.meets_rel fun d ins outs τ m xs hnd hadm hl hr hdom hz => ?_
   obtain ⟨hfit, hw⟩ := h d ins outs τ m xs hnd hadm hl hr hdom hz
   refine ⟨hfit, Wp.mono hw fun m' ⟨hfr, hpos, ys, hys, hrel⟩ =>
@@ -423,11 +452,12 @@ theorem Impl.meets_of_writes {R : Impl Op Tst} {I : Interp Op Tst K} {B : BlockR
   rw [← Mem.updBlocks_advance]
   exact Mem.eq_updBlocks_of_eqOff (m := m.advance (B.win d)) hfr hys hpos
 
-/-- A certified implementation writes only the output blocks of its contract. Its body can be
-used by a larger proof with the same contract postcondition and a frame on all other cells. -/
-theorem Impl.Meets.writes {R : Impl Op Tst} {I : Interp Op Tst K} {md : Mode} {B : BlockRel K}
+/-- A conditional implementation triple writes only the output blocks of its contract.
+Its body can be used by a larger proof with the same contract postcondition and a frame on all
+other cells. -/
+theorem Impl.Triple.writes {R : Impl Op Tst} {I : Interp Op Tst K} {md : Mode} {B : BlockRel K}
     {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop}
-    (h : R.Meets I md (B.spec adm)) {d : List ℕ} {ins outs : List (ℕ × ℕ)}
+    (h : R.Triple I md (B.spec adm)) {d : List ℕ} {ins outs : List (ℕ × ℕ)}
     {τ : Tape K} {m : Mem K} (hpre : ((B.spec adm).on md d ins outs τ m).pre m)
     (hlive : m.Live (ins ++ outs)) :
     Writes md I τ R.body (Env.frame d (ins ++ outs)) (Fp.blocks outs (B.outLens d))

@@ -3,21 +3,28 @@ Copyright (c) 2026 NLAlib contributors. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: NLAlib contributors
 -/
-import NLAlib.Ops.Tools.LintRegistry
-import NLAlib.Ops.Law
-import NLAlib.Ops.Profile
+module
+
+public meta import NLAlib.Ops.Tools.LintRegistry
+public meta import NLAlib.Ops.Law
+public meta import NLAlib.Ops.Profile
 
 /-!
 # Tools: the target linter
 
-Outside the trusted base. The core cannot enforce that a theorem says what it should; the rules
-of the Fable review (finding 2) and of the builder brief are rules on **statements**. This linter
-checks them mechanically on the statement of a theorem (never its proof).
+Canonical certification enforces a fixed symbolic program, realized
+access models, total execution, format typing, and full resource accounting in the core. This
+linter provides additional heuristic statement guidance for raw conditional proof consumers.
 
-A **headline** is a theorem whose conclusion contains `Runs`, `RunsW`, `RunsL`, `RunsLaw` or
-`Impl.Meets`. For each occurrence the linter checks:
+This is heuristic guidance for conditional judgments, not a certification boundary.
+Canonical `Runs`, `Program.Certifies`, and `Impl.Meets` are recognized but reported as
+unsupported by these conditional heuristics, never marked as passing them.
 
-* **(a) uniformity.** The program (the tree of `Runs …`, the implementation of `Impl.Meets`),
+A **conditional headline** contains `ConditionalRuns`, `ConditionalRunsW`, `ConditionalRunsL`,
+`ConditionalRunsLaw`, or `Impl.Triple`. For each conditional occurrence the linter checks:
+
+* **(a) uniformity.** The program (the tree of `ConditionalRuns …`, or the implementation
+  of `Impl.Triple`),
   with the tables of `Stmt.link` set apart, mentions no variable of the statement other than
   universally quantified sizes (`ℕ`), rational constants (`ℚ`), types and instances; and
   reaches no `noncomputable` definition (a function of the sizes that no machine computes).
@@ -29,26 +36,40 @@ A **headline** is a theorem whose conclusion contains `Runs`, `RunsW`, `RunsL`, 
   decoding, the law of the tape, …). Some witness theorem covers all of it at once. A witness is a
   theorem named `exists_…` (or registered by `ops_register_witness`). Its conclusion starts with
   one or more existential quantifiers, then states the `NLAlib` predicates together. The check
-  uses predicate heads, including parent structures and field predicates. It does not compare
-  arguments or verify parameter ranges, so distinct interpretations in the leading quantifiers
+  uses predicate heads, including parent structures and field predicates. It matches declarations,
+  not proof or axiom provenance. Core certification and the
+  independent safety/axiom audit provide those guarantees. It does not compare arguments or
+  verify parameter ranges, so distinct interpretations in the leading quantifiers
   can still satisfy the head check independently.
 * **(d) closed-form counts.** The counts and the workspace of the statement reach no
-  `Count.push`, `staticCost`, `staticPeak`, `Count.upper` or `Profile.cost`.
-* **(e) liberal headlines.** A liberal statement (`RunsL`, `Impl.Meets … .liberal`) has a
-  companion success statement (`Runs`, `RunsW`, `RunsLaw` or a total `Impl.Meets`) about the same
-  program. The companion is in the same module or named `<name>_success`. Its conclusion must
+  `Count.push`, `stmtCost`, `stmtPeak`, `staticCost`, `staticPeak`, `Count.upper` or `Profile.cost`.
+* **(e) liberal headlines.** A liberal statement (`ConditionalRunsL`,
+  `Impl.Triple … .liberal`) has a
+  companion success statement (`ConditionalRuns`, `ConditionalRunsW`, `ConditionalRunsLaw`,
+  or a total `Impl.Triple`) about the same program. The companion is in the same module or
+  named `<name>_success`. Its conclusion must
   establish the success judgment, either directly or in a conjunction. Programs are compared
   syntactically up to renaming of parameters, including the arguments of linked tables.
   The companion's program and interpretation must be independent of existential choices.
 * **(f) ξ only in tables.** The algorithm's tree (the program with its tables set apart) reaches
-  no ξ-taking primitive (`ops_register_xi`, or a constructor named `…Xi`). An `Impl.Meets` about an
+  no ξ-taking primitive (`ops_register_xi`, or a constructor named `…Xi`). An `Impl.Triple` about an
   implementation that a table or profile uses is exempt.
 
-Commands: `#ops_lint c₁ c₂ …` (an error per violation, an information if it passes) and
+Commands: `#ops_lint c₁ c₂ …` (an error per conditional violation, information for a pass
+or explicit `UNSUPPORTED` schema diagnostic) and
 `#ops_lint_scan` (all headlines of the modules `NLAlib.Ops.*` other than the core files, the
 program logic `NLAlib.Ops.Logic.*` (generic rules, not headlines) and the tools; one line per
 theorem; an information).
+
+## Main results
+
+`#ops_lint` and `#ops_lint_scan` provide conditional statement guidance and explicit
+schema diagnostics.
 -/
+
+@[expose] public section
+
+meta section
 
 namespace NLAlib.Ops.Tools.Lint
 
@@ -68,9 +89,15 @@ structure Head where
 
 /-- The headline judgments. -/
 def heads : List Head :=
-  [⟨``NLAlib.Ops.Runs, `s, [`B, `M], false⟩, ⟨``NLAlib.Ops.RunsW, `s, [`M, `Q], false⟩,
-   ⟨``NLAlib.Ops.RunsL, `s, [], true⟩, ⟨``NLAlib.Ops.RunsLaw, `s, [`B, `M], false⟩,
-   ⟨``NLAlib.Ops.Impl.Meets, `R, [], false⟩]
+  [⟨``NLAlib.Ops.ConditionalRuns, `s, [`B, `M], false⟩,
+   ⟨``NLAlib.Ops.ConditionalRunsW, `s, [`M, `Q], false⟩,
+   ⟨``NLAlib.Ops.ConditionalRunsL, `s, [], true⟩,
+   ⟨``NLAlib.Ops.ConditionalRunsLaw, `s, [`B, `M], false⟩,
+   ⟨``NLAlib.Ops.Impl.Triple, `R, [], false⟩,
+   ⟨``NLAlib.Ops.Runs, `p, [], false⟩,
+   ⟨``NLAlib.Ops.Program.Certifies, `p, [], false⟩,
+   ⟨``NLAlib.Ops.Impl.Meets, `R, [], false⟩,
+   ⟨``NLAlib.Ops.Profile.Refines, `P, [], false⟩]
 
 /-- An occurrence of a headline judgment in a conclusion. -/
 structure Occ where
@@ -204,42 +231,59 @@ def fieldHeads (h : Name) : MetaM (Array Name) := do
     if let some c := hd then if inLib c then out := out.push c
   return out
 
-/-- The `NLAlib` predicates a witness covers, with their parent structures and the predicates of
-their fields. Only leading existential quantifiers introduce witnesses for these predicates. -/
-def witnessHeads (ty : Expr) : MetaM NameSet := do
-  let rec conjuncts (e : Expr) (fuel : ℕ) : Array Expr :=
-    match fuel with
-    | 0 => #[]
-    | f + 1 =>
-      let e := e.consumeMData
-      if e.isAppOfArity ``And 2 then
-        conjuncts (e.getArg! 0) f ++ conjuncts (e.getArg! 1) f
-      else #[e]
-  let rec collect (e : Expr) (fuel : ℕ) (opened : Bool) : MetaM NameSet := do
-    match fuel with
-    | 0 => return {}
-    | f + 1 =>
-      let e := e.consumeMData
-      if e.isAppOfArity ``Exists 2 then
-        return ← lambdaTelescope e.appArg! fun _ b => collect b f true
-      unless opened do return {}
-      let mut s : NameSet := {}
-      for p in conjuncts e 64 do
-        if let some h ← headOf p then
-          if inLib h then
-            s := s.insert h
-            if isStructure (← getEnv) h then
-              for q in ← getAllParentStructures h do s := s.insert q
-              for q in ← fieldHeads h do s := s.insert q
-      return s
-  forallTelescope ty fun _ b => collect b 64 false
+namespace witnessHeads
+
+/-- Flatten conjunctions without opening independent existential branches. -/
+def conjuncts (e : Expr) (fuel : ℕ) : Array Expr :=
+  match fuel with
+  | 0 => #[]
+  | f + 1 =>
+    let e := e.consumeMData
+    if e.isAppOfArity ``And 2 then
+      conjuncts (e.getArg! 0) f ++ conjuncts (e.getArg! 1) f
+    else #[e]
+
+/-- Collect predicate heads only after opening the leading existential telescope. -/
+def collect (e : Expr) (fuel : ℕ) (opened : Bool) : MetaM NameSet := do
+  match fuel with
+  | 0 => return {}
+  | f + 1 =>
+    let e := e.consumeMData
+    if e.isAppOfArity ``Exists 2 then
+      return ← lambdaTelescope e.appArg! fun _ b => collect b f true
+    unless opened do return {}
+    let mut s : NameSet := {}
+    for p in conjuncts e 64 do
+      if let some h ← headOf p then
+        if inLib h then
+          s := s.insert h
+          if isStructure (← getEnv) h then
+            for q in ← getAllParentStructures h do s := s.insert q
+            for q in ← fieldHeads h do s := s.insert q
+    return s
+
+end witnessHeads
+
+/-- The `NLAlib` predicates a witness declaration covers, including parent structures and fields.
+Only leading existential quantifiers introduce witnesses for these predicates. -/
+def witnessHeads (ty : Expr) : MetaM NameSet :=
+  forallTelescope ty fun _ b => witnessHeads.collect b 64 false
+
+/-- Public module interfaces represent imported theorems by their statement as axiom info.
+This classifies declarations for guidance, not proof or axiom provenance. It neither trusts
+nor constructs a certificate. -/
+def proofStatement (ci : ConstantInfo) : Bool :=
+  match ci with
+  | .thmInfo _ | .axiomInfo _ => true
+  | _ => false
 
 /-- The witness theorems of the environment and what they cover. -/
 def witnesses : MetaM (Array (Name × NameSet)) := do
   let env ← getEnv
   let mut out := #[]
-  for (n, ci) in env.constants.toList do
-    let some (.thmInfo _) := some ci | continue
+  for (n, _) in env.constants.toList do
+    let some ci := env.find? n | continue
+    unless proofStatement ci do continue
     let isW := match n with
       | .str _ s => s.startsWith "exists_" && inLib n
       | _ => false
@@ -326,12 +370,13 @@ def modOf (n : Name) : CoreM Name := do
 /-- The keys of the programs that a theorem establishes succeed. -/
 def successKeysOf (n : Name) : MetaM (Array Expr) := do
   let env ← getEnv
-  let some (.thmInfo ci) := env.find? n | return #[]
+  let some ci := env.find? n | return #[]
+  unless proofStatement ci do return #[]
   let occs ← findOccs ci.type (successOnly := true)
   let mut keys := #[]
   for o in occs do
     if o.head.liberal then continue
-    if o.head.name == ``NLAlib.Ops.Impl.Meets then
+    if o.head.name == ``NLAlib.Ops.Impl.Triple then
       let some md ← argByName o.head.name o.args `md | continue
       let md ← withLCtx o.lctx o.localInsts (whnf md)
       unless md.isConstOf ``NLAlib.Ops.Mode.total do continue
@@ -353,8 +398,8 @@ def successKeys (mod : Name) : MetaM ExprSet := do
 def tableImpls : MetaM NameSet := do
   let env ← getEnv
   let mut s : NameSet := {}
-  for (n, ci) in env.constants.toList do
-    let some (.defnInfo d) := some ci | continue
+  for (n, _) in env.constants.toList do
+    let some (.defnInfo d) := env.find? n | continue
     if !inLib n then continue
     if !(← isTableLike d.type) then continue
     for c in d.value.getUsedConstants do s := s.insert c
@@ -362,7 +407,8 @@ def tableImpls : MetaM NameSet := do
 
 /-- The forbidden constants of closed-form counts. -/
 def countForbidden : List Name :=
-  [``NLAlib.Ops.Count.push, ``NLAlib.Ops.staticCost, ``NLAlib.Ops.staticPeak,
+  [``NLAlib.Ops.Count.push, ``NLAlib.Ops.stmtCost,
+   ``NLAlib.Ops.stmtPeak, ``NLAlib.Ops.staticCost, ``NLAlib.Ops.staticPeak,
    ``NLAlib.Ops.Count.upper, ``NLAlib.Ops.Profile.cost]
 
 /-- The context of a run of the linter: witnesses and table implementations, computed once. -/
@@ -371,6 +417,17 @@ structure Ctx where
   wits : Array (Name × NameSet)
   /-- The implementations of tables. -/
   impls : NameSet
+
+/-- Schemas that are recognized but are outside conditional headline guidance. -/
+def schemaIssue (h : Head) : Option String :=
+  if [``NLAlib.Ops.Runs, ``NLAlib.Ops.Program.Certifies,
+      ``NLAlib.Ops.Impl.Meets].contains h.name then
+    some ("canonical structural certificate: conditional (a)-(f) guidance does " ++
+      "not inspect this schema; totality, formats, and accounting are enforced by the core")
+  else if h.name == ``NLAlib.Ops.Profile.Refines then
+    some ("conditional profile refinement: (a)-(f) guidance does not " ++
+      "inspect this schema; it is not a canonical algorithm certificate")
+  else none
 
 /-- The violations of one occurrence, in the context of its binders. -/
 def lintOcc (ctx : Ctx) (n : Name) (o : Occ) : MetaM (Array (String × String)) :=
@@ -381,8 +438,11 @@ def lintOcc (ctx : Ctx) (n : Name) (o : Occ) : MetaM (Array (String × String)) 
       if ← isProp ty then pure (some ty) else pure none
     let mut out : Array (String × String) := #[]
     let h := o.head
-    let some p ← argByName h.name o.args h.prog | return #[]
-    let some I ← argByName h.name o.args `I | return #[]
+    if let some msg := schemaIssue h then return #[("schema", msg)]
+    let some p ← argByName h.name o.args h.prog |
+      return #[("schema", "recognized judgment has no supported program argument")]
+    let some I ← argByName h.name o.args `I |
+      return #[("schema", "recognized judgment has no supported interpretation argument")]
     let (tree, tables) := peelLink p
     -- (a)
     for x in (collectFVars {} (← instantiateMVars tree)).fvarIds do
@@ -427,7 +487,7 @@ def lintOcc (ctx : Ctx) (n : Name) (o : Occ) : MetaM (Array (String × String)) 
             out := out.push ("d", s!"the bound `{nm}` is not in closed form: it uses `{c}`")
     -- (e)
     let mdLib ← do
-      if h.name == ``NLAlib.Ops.Impl.Meets then
+      if h.name == ``NLAlib.Ops.Impl.Triple then
         match ← argByName h.name o.args `md with
         | some md => pure ((← whnf md).isConstOf ``NLAlib.Ops.Mode.liberal)
         | none => pure false
@@ -440,22 +500,25 @@ def lintOcc (ctx : Ctx) (n : Name) (o : Occ) : MetaM (Array (String × String)) 
         out := out.push ("e", "a liberal statement without a success statement about the \
           same program")
     -- (f)
-    let exempt := h.name == ``NLAlib.Ops.Impl.Meets &&
+    let exempt := h.name == ``NLAlib.Ops.Impl.Triple &&
       ((p.getAppFn.constName?).map ctx.impls.contains).getD false
     unless exempt do
       for c in ← xiPrims cs do
         out := out.push ("f", s!"the algorithm's tree calls the ξ-taking primitive `{c}`")
     return out
 
-/-- **The violations of a theorem**, as `(rule, message)`. -/
-def lintDecl (ctx : Ctx) (n : Name) : MetaM (Array (String × String)) := do
+/-- The violations of a theorem as `(rule, message)`. Diagnostics inspect the full environment;
+exported module views may hide theorem bodies and private helper declarations. -/
+def lintDecl (ctx : Ctx) (n : Name) :
+    MetaM (Array (String × String)) := withoutExporting do
   let occs ← findOccs (← getConstInfo n).type
+  if occs.isEmpty then return #[("schema", "no recognized headline judgment")]
   let out ← occs.foldlM (fun acc o => return acc ++ (← lintOcc ctx n o)) #[]
   return out.toList.eraseDups.toArray
 
 /-- The headline theorems of the library modules other than the core, the program logic and the
 tools. -/
-def scanTargets : MetaM (Array Name) := do
+def scanTargets : MetaM (Array Name) := withoutExporting do
   let env ← getEnv
   let mut out := #[]
   for mod in env.header.moduleNames do
@@ -463,14 +526,15 @@ def scanTargets : MetaM (Array Name) := do
       (`NLAlib.Ops.Logic).isPrefixOf mod then continue
     if mod.getNumParts ≤ 3 then continue
     for n in ← modConsts mod do
-      let some (.thmInfo ci) := env.find? n | continue
+      let some ci := env.find? n | continue
+      unless proofStatement ci do continue
       if n.isInternalDetail then continue
       let occs ← findOccs ci.type
       if !occs.isEmpty then out := out.push n
   return out.qsort (·.toString < ·.toString)
 
 /-- The context, computed once. -/
-def mkCtx : MetaM Ctx := return ⟨← witnesses, ← tableImpls⟩
+def mkCtx : MetaM Ctx := withoutExporting do return ⟨← witnesses, ← tableImpls⟩
 
 /-- `#ops_lint c …`: check the statements of the theorems. -/
 syntax (name := opsLint) "#ops_lint " ident+ : command
@@ -482,7 +546,9 @@ syntax (name := opsLint) "#ops_lint " ident+ : command
     let n ← realizeGlobalConstNoOverload id
     let vs ← lintDecl ctx n
     if vs.isEmpty then logInfoAt id m!"ops_lint: `{n}` passes (a)-(f)"
-    for (r, msg) in vs do logErrorAt id m!"ops_lint ({r}) `{n}`: {msg}"
+    for (r, msg) in vs do
+      if r == "schema" then logInfoAt id m!"ops_lint UNSUPPORTED ({r}) `{n}`: {msg}"
+      else logErrorAt id m!"ops_lint ({r}) `{n}`: {msg}"
 
 /-- `#ops_lint_scan`: lint every headline of the library modules; one line per theorem. -/
 syntax (name := opsLintScan) "#ops_lint_scan" : command
@@ -493,13 +559,18 @@ syntax (name := opsLintScan) "#ops_lint_scan" : command
   let ts ← scanTargets
   let mut lines : Array String := #[]
   let mut bad : ℕ := 0
+  let mut unsupported : ℕ := 0
   for n in ts do
     let vs ← lintDecl ctx n
     if vs.isEmpty then lines := lines.push s!"PASS {n}"
     else
-      bad := bad + 1
-      for (r, msg) in vs do lines := lines.push s!"FAIL ({r}) {n}: {msg}"
+      if vs.any (fun v => v.1 != "schema") then bad := bad + 1
+      if vs.any (fun v => v.1 == "schema") then unsupported := unsupported + 1
+      for (r, msg) in vs do
+        let status := if r == "schema" then "UNSUPPORTED" else "FAIL"
+        lines := lines.push s!"{status} ({r}) {n}: {msg}"
   let body := "\n".intercalate lines.toList
-  logInfo m!"ops_lint_scan: {ts.size} headlines, {bad} with violations\n{body}"
+  logInfo (m!"ops_lint_scan: {ts.size} headlines, {bad} with conditional violations, " ++
+    m!"{unsupported} with unsupported schemas\n{body}")
 
 end NLAlib.Ops.Tools.Lint

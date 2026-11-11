@@ -14,9 +14,9 @@ public import NLAlib.Ops.Logic.Writes
 
 Two things a program proof does with counts:
 
-* **Static counts in closed form.** `staticCost` of a tree is a sum over its loops; the abstract
+* **Static counts in closed form.** `stmtCost` of a tree is a sum over its loops; the abstract
   theorem states it in closed form (`m p • dot [n]`, `(p (p - 1) / 2) • (neg + axpy) + …`). The
-  tactic `count_eval` unfolds `staticCost` on the tree, evaluates the index expressions and
+  tactic `count_eval` unfolds `stmtCost` on the tree, evaluates the index expressions and
   rewrites the sums of `NLAlib.Ops.Count.sum_range_nsmul` and `sum_range_id_nsmul` (phase B).
 * **Counts that depend on the data**, by `RunsFromW` (`NLAlib.Ops.Counted`), and
   the partial-correctness form: `NLAlib.Ops.RunsFromWL` ("if the counted run succeeds, `Q` holds
@@ -40,8 +40,8 @@ variable {Op Tst K : Type} {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {
 judgment for the parts whose counts do not depend on the data. -/
 theorem RunsFromW.of_writes {s : Stmt Op Tst} {st : St Op Tst K} {F : Fp} {P : Mem K → Prop}
     (h : Writes .total I τ s ρ F P st.mem) :
-    RunsFromW I W τ s ρ st (staticPeak W s ρ.idx) fun c m' =>
-      c ≤ staticCost s ρ.idx ∧ st.mem.store.EqOff F m'.store ∧ P m' :=
+    RunsFromW I W τ s ρ st (stmtPeak W s ρ.idx) fun c m' =>
+      c ≤ stmtCost s ρ.idx ∧ st.mem.store.EqOff F m'.store ∧ P m' :=
   RunsFromW.of_wp h
 
 /-! ### Closed forms -/
@@ -71,8 +71,8 @@ theorem sum_range_id_nsmul (p : ℕ) (c : Count Op Tst) :
 end Count
 
 /-- **`count_eval [facts]`**: a goal `C₁ = C₂` or `C₁ ≤ C₂` between counts, where `C₁` is a
-pushed-forward count (`Count.push T c`), a static count (`staticCost s idx`) or a sum over a
-range, and `C₂` a closed form. Unfolds `staticCost`/`useCost` and the given definitions,
+pushed-forward count (`Count.push T c`), a static count (`stmtCost s idx`) or a sum over a
+range, and `C₂` a closed form. Unfolds `stmtCost`/`useCost` and the given definitions,
 distributes `Count.push` over sums and multiples (`map_add`, `map_nsmul`, `map_sum`,
 `Count.push_one`), rewrites the costs of the profiles (`countNF`: `Blas.seq_cost_dot`, …; the
 side conditions of the pairwise profile by `omega` from the context), evaluates the sums over
@@ -84,8 +84,9 @@ macro_rules
   | `(tactic| count_eval) => `(tactic| count_eval [])
   | `(tactic| count_eval [$ts,*]) => `(tactic| first
       | (refine le_of_eq ?_; count_eval [$ts,*])
-      | ((try simp (disch := omega) only [countNF, staticCost, useCost, testCost, map_add,
-            map_nsmul, map_sum, Count.push_one, Finset.sum_add_distrib, Count.sum_range_id_nsmul,
+      | ((try simp (disch := omega) only
+            [countNF, stmtCost, stmtCost_alloc, useCost, testCost, map_add, map_nsmul,
+            map_sum, Count.push_one, Finset.sum_add_distrib, Count.sum_range_id_nsmul,
             Finset.sum_const, Finset.card_range, List.headD_cons, smul_add, $ts,*])
          first | done | rfl | module | abel)
       | fail "count_eval: the count is not put in the closed form of the goal")

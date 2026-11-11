@@ -27,16 +27,16 @@ kernel. None of them silently leaves a side goal for the end of the proof.
 * `idx [facts]`: offset arithmetic. Leaves nothing.
 * `checkpoint m₁`: goal `Wp … m` with `m` a chain of updates. Leaves the goal at the fresh
   `m₁`, with its frame and reads.
-* `alloc as t₁ … tₖ`: goal `Writes … (.alloc …)` or `Writes … (Stmt.allocs …)`. Leaves the body
+* `alloc as t₁ … tₖ`: goal `Writes … (.allocAs …)` or `Writes … (Stmt.allocs …)`. Leaves the body
   at a fresh store, with the handles `tᵢ` and their lengths.
 * `loop_inv F P with …`: goal `Writes … (.loop …)`, alone or at the start of a sequence.
   Leaves the initial invariant, round and continuation when they need proofs.
 * `keep`: after a step. Restates for the new memory every read fact of the context that is off
   the step's footprint.
-* `cert_intro [n, k] (Q, w) → (w', R) reads (qs, ws)`: goal `R.Meets I .total (B.spec adm)`.
+* `cert_intro [n, k] (Q, w) → (w', R) reads (qs, ws)`: goal `R.Triple I .total (B.spec adm)`.
   Leaves the body as a `Writes`, with named dimensions, operands and inputs.
 * `decode`: layer-1 vectors and matrices of stored blocks. Leaves the mathematical goal.
-* `count_eval`: `staticCost s idx = C`. Leaves nothing.
+* `count_eval`: `stmtCost s idx = C`. Leaves nothing.
 
 `step` is the call step of `NLAlib.Ops.Tactic` (`wp_call`) on the footprint rules
 (`NLAlib.Ops.writes_call` and its shapes): it applies `Writes.then_` (or `Writes.seq`), picks the
@@ -95,25 +95,26 @@ open Lean Meta Elab Tactic in
 below them introduced, and their footprints added. Names the fresh store `s_t₁`, its length
 `hlen_t₁`, agreement with the caller `hbelow_t₁`, and each buffer length `htᵢ`; generated
 names gain suffixes when needed. The buffer names must be fresh and match a nonempty prefix of
-consecutive allocations. -/
+consecutive allocations, preserving each explicit storage format. -/
 elab "alloc " &"as" ids:(ppSpace colGt ident)+ : tactic => withMainContext do
   let target ← instantiateMVars (← getMainTarget)
   unless target.isAppOf ``Writes do throwError "alloc: expected a Writes goal"
   let args := target.getAppArgs
   let m := args.back!
   let mut body := args[args.size - 5]!
-  let mut lens : Array Expr := #[]
+  let mut allocations : Array Expr := #[]
   let mut names : Array Name := #[]
   for id in ids do
     if names.contains id.getId || ((← getLCtx).findFromUserName? id.getId).isSome then
       throwErrorAt id "alloc: buffer name is already in scope"
     names := names.push id.getId
     let stmt ← whnfD body
-    let (``Stmt.alloc, #[_, _, len, rest]) := stmt.getAppFnArgs
+    let (``Stmt.allocAs, #[_, _, format, len, rest]) := stmt.getAppFnArgs
       | throwErrorAt id "alloc: expected another consecutive allocation"
-    lens := lens.push len
+    allocations := allocations.push (← mkAppM ``Prod.mk #[format, len])
     body := rest
-  let lensTerm ← Term.exprToSyntax (← mkListLit (mkConst ``IExp) lens.toList)
+  let allocationType ← mkAppM ``Prod #[mkConst ``StorageFormat, mkConst ``IExp]
+  let allocationTerm ← Term.exprToSyntax (← mkListLit allocationType allocations.toList)
   let start ← mkAppM ``List.length #[← mkAppM ``Mem.store #[m]]
   for i in [:ids.size] do
     let id := ids[i]!
@@ -125,7 +126,7 @@ elab "alloc " &"as" ids:(ppSpace colGt ident)+ : tactic => withMainContext do
     let hlen ← mkIdent <$> getUnusedUserName (ids[0]!.getId.appendBefore "hlen_")
     let hsizes ← mkIdent <$> getUnusedUserName (ids[0]!.getId.appendBefore "hsizes_")
     let hbelow ← mkIdent <$> getUnusedUserName (ids[0]!.getId.appendBefore "hbelow_")
-    evalTactic (← `(tactic| refine writes_allocs (lens := $lensTerm) (by rfl) ?_))
+    evalTactic (← `(tactic| refine writes_allocsAs (allocations := $allocationTerm) (by rfl) ?_))
     evalTactic (← `(tactic| intro $store $hlen $hsizes $hbelow))
     for i in [:ids.size] do
       withMainContext do
@@ -293,7 +294,7 @@ theorem Mem.length_of_readBlocks {K : Type} {m : Mem K} {as : List (ℕ × ℕ)}
       simp [ih h']
 
 /-- **`cert_intro [n, k] (Q, w) → (w', R) reads (qs, ws)`**: a goal
-`R.Meets I .total (B.spec adm)`. Applies `NLAlib.Ops.Impl.meets_of_writes`, names the tape `τ`
+`R.Triple I .total (B.spec adm)`. Applies `NLAlib.Ops.Impl.meets_of_writes`, names the tape `τ`
 and the memory `μ`, splits the dimensions and the operands by the header (the same header as the
 builder's), the input blocks read into `qs`, `ws`, … with their facts `hqs`, `hws`, …, and
 unfolds the admitted operands into `hadm`, the live handles into `hl` and the room for the

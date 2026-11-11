@@ -98,7 +98,7 @@ theorem runs_solve {M : Machine K} {dec : K → ℝ} {n cap : ℕ}
     (hxr : x.1 ≠ r.1) (hxp : x.1 ≠ p.1) (hrp : r.1 ≠ p.1)
     (hl : μ.Live [b, x, r, p]) (hbs : μ.store.readBlock b.1 b.2 n = some bs)
     (hxs : μ.store.readBlock x.1 x.2 n = some xs) (hz : μ.Room [x, r, p] [n, n, n]) :
-    Runs I W τ solve (Env.frame [n, cap] [b, x, x, r, p]) μ
+    ConditionalRuns I W τ solve (Env.frame [n, cap] [b, x, x, r, p]) μ
       (solveCount n cap) (solvePeak W n cap)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ ys, μ'.store.readBlock x.1 x.2 n = some ys ∧
         decv dec n ys = cgIterate A (decv dec n bs) (decv dec n xs)
@@ -106,7 +106,7 @@ theorem runs_solve {M : Machine K} {dec : K → ℝ} {n cap : ℕ}
   have hw := solve_writes hS hM hB hA hCmp hPos (cap := cap) (τ := τ)
     hbx hbr hbp hxr hxp hrp hl hbs hxs hz
   obtain ⟨μ', hrun, hpos, hstate⟩ := hw.wp fun _ _ h => h
-  refine (Runs.of_run (Q := fun μ' => μ'.pos = μ.pos ∧ HSCG.StoresState dec n x r p
+  refine (ConditionalRuns.of_run (Q := fun μ' => μ'.pos = μ.pos ∧ HSCG.StoresState dec n x r p
     (cgState A (decv dec n bs) (decv dec n xs)
       (min cap (krylovGrade A (decv dec n bs - A *ᵥ decv dec n xs)))) μ')
     hrun ⟨hpos, hstate⟩ W).mono
@@ -127,7 +127,7 @@ theorem runs_solve_of_grade_le {M : Machine K} {dec : K → ℝ} {n cap : ℕ}
     (hl : μ.Live [b, x, r, p]) (hbs : μ.store.readBlock b.1 b.2 n = some bs)
     (hxs : μ.store.readBlock x.1 x.2 n = some xs) (hz : μ.Room [x, r, p] [n, n, n])
     (hcap : krylovGrade A (decv dec n bs - A *ᵥ decv dec n xs) ≤ cap) :
-    Runs I W τ solve (Env.frame [n, cap] [b, x, x, r, p]) μ
+    ConditionalRuns I W τ solve (Env.frame [n, cap] [b, x, x, r, p]) μ
       (solveCount n cap) (solvePeak W n cap)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ ys, μ'.store.readBlock x.1 x.2 n = some ys ∧
         A *ᵥ decv dec n ys = decv dec n bs) := by

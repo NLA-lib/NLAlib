@@ -62,7 +62,7 @@ theorem step_spec {M : Machine K} {dec : K → ℝ} {n : ℕ}
     {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K}
     (hS : IsScalar M I) (hM : ExactModel dec M)
     (hB : IsExactBlas1 dec (fun _ => True) I) (hA : IsExactMatvec dec A I) :
-    (stepImpl (Op := Op) (Tst := Tst)).Meets I .total
+    (stepImpl (Op := Op) (Tst := Tst)).Triple I .total
       ((stepRel dec A).spec (StepOperands n)) := by
   cert_intro [m] (x, r, p, v) → (x', r', p', v') reads (xs, rs, ps, vs)
   obtain ⟨hd, hx, hr, hp, hv, hxr, hxp, hxv, hrp, hrv, hpv⟩ := hadm

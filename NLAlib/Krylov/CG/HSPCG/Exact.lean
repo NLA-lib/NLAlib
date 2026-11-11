@@ -79,7 +79,7 @@ theorem step_spec {F : Machine K} {dec : K → ℝ} {n : ℕ}
     (hS : IsScalar F I) (hF : ExactModel dec F)
     (hB : IsExactBlas1 dec (fun _ => True) I) (hA : IsExactMatvec dec A I)
     (hM : IsExactPreconditioner dec M I) :
-    (stepImpl (Op := Op) (Tst := Tst)).Meets I .total
+    (stepImpl (Op := Op) (Tst := Tst)).Triple I .total
       ((stepRel dec A M).spec (StepOperands n)) := by
   cert_intro [m] (x, r, z, p) → (x', r', z', p') reads (xs, rs, zs, ps)
   obtain ⟨hd, hx, hr, hz, hp, hxr, hxz, hxp, hrz, hrp, hzp⟩ := hadm

@@ -47,14 +47,14 @@ def cgs2Peak (W : Op → List ℕ → ℕ) (n k : ℕ) : ℕ := k + cgsPassPeak 
 
 /-- Static accounting includes all coefficients and projection updates of both passes. -/
 theorem staticCost_cgs2 (n k q w w' : ℕ) :
-    staticCost (cgs2 (Op := Op) (Tst := Tst)) [n, k, q, w, w'] = cgs2Count n k := by
-  simp [cgs2, staticCost, staticCost_cgsPass, cgs2Count, two_nsmul]
+    stmtCost (cgs2 (Op := Op) (Tst := Tst)) [n, k, q, w, w'] = cgs2Count n k := by
+  simp [cgs2, stmtCost, staticCost_cgsPass, cgs2Count, two_nsmul]
 
 /-- The second pass reuses coefficient and scalar scratch from the first pass. -/
 theorem staticPeak_cgs2_le (W : Op → List ℕ → ℕ) (n k q w w' : ℕ) :
-    staticPeak W (cgs2 (Op := Op) (Tst := Tst)) [n, k, q, w, w'] ≤ cgs2Peak W n k := by
+    stmtPeak W (cgs2 (Op := Op) (Tst := Tst)) [n, k, q, w, w'] ≤ cgs2Peak W n k := by
   have h := staticPeak_cgsPass_le (Op := Op) (Tst := Tst) W n k q w w 0
-  simpa [cgs2, staticPeak, cgs2Peak] using Nat.add_le_add_left h k
+  simpa [cgs2, stmtPeak, cgs2Peak] using Nat.add_le_add_left h k
 
 variable [Inhabited K]
 
@@ -109,7 +109,7 @@ theorem cgs2_spec {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ} {ea : ℝ
     (hD : I.Meets .total (Has.inj Blas1Op.dot) ((dotRel dec ed).spec (OutApart ok)))
     (hA : I.Meets .total (Has.inj Blas1Op.axpy) ((axpyRel dec ea).spec (InPlace ok)))
     (hneg : ∀ a, dec (M.neg a) = -dec a) :
-    (cgs2Impl (Op := Op) (Tst := Tst)).Meets I .total
+    (cgs2Impl (Op := Op) (Tst := Tst)).Triple I .total
       ((twoPassRel dec ed ea).spec (TwoPassOperands ok)) := by
   cert_intro [n, k] (Q, w) → (w') reads (qs, ws)
   obtain ⟨hok, hw, hQw⟩ := hadm

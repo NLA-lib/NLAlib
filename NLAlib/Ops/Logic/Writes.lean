@@ -423,4 +423,18 @@ theorem Impl.meets_of_writes {R : Impl Op Tst} {I : Interp Op Tst K} {B : BlockR
   rw [← Mem.updBlocks_advance]
   exact Mem.eq_updBlocks_of_eqOff (m := m.advance (B.win d)) hfr hys hpos
 
+/-- A certified implementation writes only the output blocks of its contract. Its body can be
+used by a larger proof with the same contract postcondition and a frame on all other cells. -/
+theorem Impl.Meets.writes {R : Impl Op Tst} {I : Interp Op Tst K} {md : Mode} {B : BlockRel K}
+    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop}
+    (h : R.Meets I md (B.spec adm)) {d : List ℕ} {ins outs : List (ℕ × ℕ)}
+    {τ : Tape K} {m : Mem K} (hpre : ((B.spec adm).on md d ins outs τ m).pre m)
+    (hlive : m.Live (ins ++ outs)) :
+    Writes md I τ R.body (Env.frame d (ins ++ outs)) (Fp.blocks outs (B.outLens d))
+      (((B.spec adm).on md d ins outs τ m).post m) m := by
+  refine Wp.mono ((h d ins outs τ m hpre).2 hlive).2 fun m' hpost => ?_
+  obtain ⟨xs, hr, hroom, ys, hlen, hrel, rfl⟩ := hpost
+  exact ⟨Mem.eqOff_updBlocks (Store.EqOff.refl _ _) (by rw [hlen]), xs, hr, hroom,
+    ys, hlen, hrel, rfl⟩
+
 end NLAlib.Ops

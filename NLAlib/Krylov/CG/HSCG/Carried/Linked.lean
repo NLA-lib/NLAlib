@@ -29,6 +29,21 @@ namespace NLAlib.Krylov.CG.HSCG.Carried
 open Ops
 open scoped Matrix
 
+/-- Arbitrary real scalar arithmetic, exact matvec and decoded comparisons coexist on one
+interpretation. Their contracts retain the same machine and matrix. -/
+theorem exists_scalarMatvecCmp {Op Tst : Type} [Has ScalarOp Op] [Has OperatorOp Op]
+    [Has CmpTst Tst] [Apart ScalarOp OperatorOp Op] {m n : ℕ}
+    (M : Machine ℝ) (A : Matrix (Fin m) (Fin n) ℝ) :
+    ∃ I : Interp Op Tst ℝ, IsScalar M I ∧ IsExactMatvec id A I ∧ IsCmp id I := by
+  obtain ⟨I, hS, hA⟩ := exists_isScalar_isExactMatvec_ofMachine (Op := Op) (Tst := Tst) M A
+  let J : Interp Op Tst ℝ := { I with test := fun q d a μ => match Has.proj (G := CmpTst) q with
+    | some c => (μ.readBlocks a c.lens).map (c.fn id)
+    | none => I.test q d a μ }
+  have hCmp : IsCmp id J := by
+    intro c d a μ xs hread
+    simp only [J, Has.proj_inj, hread, Option.map_some]
+  exact ⟨J, hS, hA, hCmp⟩
+
 variable {K Op Tst : Type} [Inhabited K]
 variable [Has ScalarOp Op] [Has Blas1Op Op] [Has OperatorOp Op]
 variable [Apart Blas1Op ScalarOp Op] [Apart Blas1Op OperatorOp Op]
@@ -127,16 +142,26 @@ theorem exists_exactContracts [Apart ScalarOp OperatorOp Op] {n : ℕ}
     (A : Matrix (Fin n) (Fin n) ℝ) :
     ∃ I : Interp Op Tst ℝ, ExactModel id exactMachine ∧ IsScalar exactMachine I ∧
       IsExactBlas1 id (fun _ => True) I ∧ IsExactMatvec id A I ∧ IsCmp id I := by
-  obtain ⟨I, hM, hS, hB, hA⟩ := HSCG.exists_exactContracts (Op := Op) (Tst := Tst) A
-  let J : Interp Op Tst ℝ := { I with test := fun q d a m => match Has.proj (G := CmpTst) q with
-    | some c => (m.readBlocks a c.lens).map (c.fn id)
-    | none => I.test q d a m }
-  have hB' : IsExactBlas1 id (fun _ => True) J :=
-    ⟨hB.sum, hB.dot, hB.axpy, hB.nrm2, hB.scal, hB.copy⟩
-  have hCmp : IsCmp id J := by
-    intro c d a m xs hread
-    simp only [J, Has.proj_inj, hread, Option.map_some]
-  exact ⟨J, hM, hS, hB', hA, hCmp⟩
+  obtain ⟨I, hS, hA, hCmp⟩ := exists_scalarMatvecCmp (Op := Op) (Tst := Tst) exactMachine A
+  have hcert := Blas.seq_certifies_exact (Op := Op) (Tst := Tst)
+    exactModel_exactMachine (fun _ => True)
+  obtain ⟨hS', hB⟩ := hcert.meets I hS
+  have hA' : IsExactMatvec id A (I.link (Blas.seq (Op := Op) (Tst := Tst)).table) :=
+    Interp.link_meets_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec)) hA
+  exact ⟨_, exactModel_exactMachine, hS', hB, hA', hCmp⟩
+
+/-- Every real standard-model scalar machine has a joint sequential BLAS, exact matvec and
+comparison interpretation, with its own unit roundoff and scalar functions. -/
+theorem exists_stdContracts_ofMachine [Apart ScalarOp OperatorOp Op] {n : ℕ} {u : ℝ}
+    (M : Machine ℝ) (hM : StdModel u id M) (hu : 0 ≤ u) (A : Matrix (Fin n) (Fin n) ℝ) :
+    ∃ I : Interp Op Tst ℝ, StdModel u id M ∧ IsScalar M I ∧
+      IsBlas1 id (Blas.seq.err u) (fun _ => True) I ∧ IsExactMatvec id A I ∧ IsCmp id I := by
+  obtain ⟨I, hS, hA, hCmp⟩ := exists_scalarMatvecCmp (Op := Op) (Tst := Tst) M A
+  have hcert := Blas.seq_certifies (Op := Op) (Tst := Tst) hM hu (fun _ => True)
+  obtain ⟨hS', hB⟩ := hcert.meets I hS
+  have hA' : IsExactMatvec id A (I.link (Blas.seq (Op := Op) (Tst := Tst)).table) :=
+    Interp.link_meets_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec)) hA
+  exact ⟨_, hM, hS', hB, hA', hCmp⟩
 
 /-- Rounded scalar, sequential BLAS, exact operator and comparison contracts coexist for
 every nonnegative unit roundoff; the interpretation is concrete real arithmetic. -/
@@ -144,12 +169,22 @@ theorem exists_stdContracts [Apart ScalarOp OperatorOp Op] {n : ℕ}
     (u : ℝ) (hu : 0 ≤ u) (A : Matrix (Fin n) (Fin n) ℝ) :
     ∃ I : Interp Op Tst ℝ, StdModel u id exactMachine ∧ IsScalar exactMachine I ∧
       IsBlas1 id (Blas.seq.err u) (fun _ => True) I ∧ IsExactMatvec id A I ∧ IsCmp id I := by
-  obtain ⟨I, _, hS, _, hA, hCmp⟩ := exists_exactContracts (Op := Op) (Tst := Tst) A
-  have hcert := Blas.seq_certifies (Op := Op) (Tst := Tst) (stdModel_exact hu) hu (fun _ => True)
-  obtain ⟨hS', hB⟩ := hcert.meets I hS
-  have hA' : IsExactMatvec id A (I.link (Blas.seq (Op := Op) (Tst := Tst)).table) :=
-    Interp.link_meets_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec)) hA
-  exact ⟨_, stdModel_exact hu, hS', hB, hA', hCmp⟩
+  exact exists_stdContracts_ofMachine (Op := Op) (Tst := Tst)
+    exactMachine (stdModel_exact hu) hu A
+
+/-- A genuinely nonexact scalar machine jointly realizes the standard-model contracts and
+sequential BLAS: at positive roundoff, its computed `1+1` differs from two. -/
+theorem exists_inflContracts [Apart ScalarOp OperatorOp Op] {n : ℕ}
+    (u : ℝ) (hu : 0 < u) (A : Matrix (Fin n) (Fin n) ℝ) :
+    ∃ I : Interp Op Tst ℝ, StdModel u id (inflMachine u) ∧ IsScalar (inflMachine u) I ∧
+      IsBlas1 id (Blas.seq.err u) (fun _ => True) I ∧ IsExactMatvec id A I ∧ IsCmp id I ∧
+      (inflMachine u).add 1 1 ≠ 2 := by
+  obtain ⟨I, hM, hS, hB, hA, hCmp⟩ := exists_stdContracts_ofMachine (Op := Op) (Tst := Tst)
+    (inflMachine u) (stdModel_infl hu.le) hu.le A
+  refine ⟨I, hM, hS, hB, hA, hCmp, ?_⟩
+  change (1 + 1) * (1 + u) ≠ 2
+  intro h
+  nlinarith
 
 /-- Sequential BLAS transfers successful early-exit CG, including its scalar/test budget.
 The cap is arbitrary; the program stops safely if exact convergence occurs earlier. -/

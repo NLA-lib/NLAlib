@@ -44,7 +44,8 @@ noncomputable def seqStepCount (n : ℕ) : Count Op Tst :=
     Count.one (Has.inj OperatorOp.matvec) [n, n]
 
 omit [Apart Blas1Op ScalarOp Op] in
-private theorem seq_cost_matvec (n : ℕ) :
+/-- Sequential BLAS keeps the primitive matrix-vector operation and its call count. -/
+theorem seq_cost_matvec (n : ℕ) :
     (Blas.seq (Op := Op) (Tst := Tst)).cost (Has.inj OperatorOp.matvec) [n, n] =
       Count.one (Has.inj OperatorOp.matvec) [n, n] := by
   simp [Blas.seq, Profile.over, Blas.level1, Blas.level1Cost, Blas.sumSeq,

@@ -121,6 +121,28 @@ noncomputable def seq : Profile Op Op Tst := (level1 0).over sumSeq
 /-- **The profile of pairwise summation**, of depth `k`. -/
 noncomputable def pairwise (k : ℕ) : Profile Op Op Tst := (level1 pairWs).over (sumPairwise.iter k)
 
+omit [Apart Blas1Op ScalarOp Op] in
+/-- Sequential BLAS leaves operations outside the BLAS1 group as primitives. -/
+theorem seq_table_kept {o : Op} (ho : Has.proj (G := Blas1Op) o = none) :
+    (seq (Op := Op) (Tst := Tst)).table o = .inr o := by
+  simp [seq, Profile.over, level1, level1Table, sumSeq, sumSeqTable, Table.comp, ho]
+
+omit [Apart Blas1Op ScalarOp Op] in
+/-- Pairwise BLAS leaves operations outside the BLAS1 group as primitives at every depth. -/
+theorem pairwise_table_kept (k : ℕ) {o : Op} (ho : Has.proj (G := Blas1Op) o = none) :
+    (pairwise (Op := Op) (Tst := Tst) k).table o = .inr o := by
+  have ht : (sumPairwise (Op := Op) (Tst := Tst)).table o = .inr o := by
+    simp [sumPairwise, sumPairwiseTable, ho]
+  have hiter : ∀ j, (sumPairwise (Op := Op) (Tst := Tst)).table.iter j o = .inr o := by
+    intro j
+    induction j with
+    | zero => rfl
+    | succ j ih => simpa only [Table.iter, Table.comp, ht] using ih
+  simp only [pairwise, Profile.over, Profile.iter_table]
+  have hl : level1Table (Op := Op) (Tst := Tst) o = .inr o := by
+    simp [level1Table, ho]
+  simpa only [level1, Table.comp, hl] using hiter k
+
 /-! ### Accounting certificates -/
 
 theorem level1_accounts (wsum : ℕ → ℕ) (I : Interp Op Tst K) :

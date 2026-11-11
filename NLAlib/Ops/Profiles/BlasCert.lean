@@ -153,6 +153,18 @@ theorem pairwise_certifies (hM : StdModel u dec M) (hu : 0 ≤ u) (k : ℕ) :
     (sumPairwise_iter_certifies hM hu k) (by simp [level1, sumPairwise])
     (by simp [level1, sumPairwise])
 
+/-- Pairwise BLAS1 over exact scalar arithmetic meets the exact contracts at the lengths covered
+by the recursion depth. -/
+theorem pairwise_certifies_exact (hM : ExactModel dec M) (k : ℕ) :
+    (pairwise (Op := Op) (Tst := Tst) k).Certifies (fun I => IsScalar M I)
+      (fun J => IsScalar M J ∧ IsExactBlas1 dec (fun n => Nat.clog 2 n < k) J) := by
+  have hsum : pairSumErr 0 = fun _ => 0 := by
+    funext n
+    simp [pairSumErr]
+  refine (pairwise_certifies hM.toStdModel_zero le_rfl k).mono (fun _ h => h) ?_
+  rintro J ⟨hS, hB⟩
+  exact ⟨hS, IsBlas1.toExact (by simpa [pairwise.err, level1Err, hsum] using hB)⟩
+
 end Cert
 
 /-! ### Costs -/

@@ -320,4 +320,15 @@ theorem IsBlas1.toExact [Has Blas1Op Op] {dec : K → ℝ} {ok : ℕ → Prop}
     · simpa [scalExactRel, IsScalErr, sub_eq_zero] using hrel
     · contradiction
 
+/-- An exact dot product satisfies the relative-error contract with zero error. -/
+theorem IsExactBlas1.dot_zero [Has Blas1Op Op] {dec : K → ℝ} {ok : ℕ → Prop}
+    {J : Interp Op Tst K} (h : IsExactBlas1 dec ok J) :
+    J.Meets .total (Has.inj Blas1Op.dot) ((dotRel dec (fun _ => 0)).spec (OutApart ok)) := by
+  refine meets_replace_rel (rel := (dotRel dec (fun _ => 0)).rel) h.dot ?_
+  intro d X w Y hrel
+  simp only [dotExactRel_rel] at hrel
+  split at hrel
+  · simpa [dotRel, IsDotErr, sub_eq_zero] using hrel
+  · contradiction
+
 end NLAlib.Ops

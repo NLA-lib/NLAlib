@@ -146,20 +146,27 @@ def advance : Stmt Op Tst :=
 def rounds : Stmt Op Tst :=
   .whileFuel (.var 1) (Has.inj CmpTst.isPos) [] [⟨5, .const 0⟩] advance .skip
 
+/-- Initialize the shared output prefix and any extra coefficient suffix. Borrowed storage is
+B,V,C,Prev,t; the coefficient length is an explicit dimension so reorthogonalization can add ν.
+No work-vector buffer is needed during initialization. -/
+def initializeState : Stmt Op Tst :=
+  .seq (.frame [(.var 1 + .const 1) * .var 0] [⟨1, .var 4⟩] zero)
+    (.seq (.frame [.var 2] [⟨2, .var 5⟩] zero)
+      (.seq (.frame [.var 0] [⟨3, .var 6⟩] zero)
+        (.seq (.call (Has.inj Blas1Op.dot) [.var 0]
+          [⟨0, .var 3⟩, ⟨0, .var 3⟩] [⟨4, .var 7⟩])
+          (.frame [.var 0]
+            [⟨0, .var 3⟩, ⟨4, .var 7⟩, ⟨1, .var 4⟩,
+              ⟨2, .var 5 + .const 2 * .var 1 + .const 1⟩,
+              ⟨1, .var 4⟩, ⟨2, .var 5 + .const 2 * .var 1 + .const 1⟩] normalize))))
+
 /-- Initialize zero output tails and the previous vector, form the initial direction with a
 positive-only normalization, then execute at most cap rounds. [Paige1972, §2]. -/
 def solve : Stmt Op Tst :=
   .alloc (.var 0) (.alloc (.var 0) (.alloc (.const 2)
-    (.seq (.frame [(.var 1 + .const 1) * .var 0] [⟨1, .var 3⟩] zero)
-      (.seq (.frame [.const 2 * .var 1 + .const 2] [⟨2, .var 4⟩] zero)
-        (.seq (.frame [.var 0] [⟨3, .const 0⟩] zero)
-          (.seq (.call (Has.inj Blas1Op.dot) [.var 0]
-            [⟨0, .var 2⟩, ⟨0, .var 2⟩] [⟨5, .const 0⟩])
-            (.seq (.frame [.var 0]
-              [⟨0, .var 2⟩, ⟨5, .const 0⟩, ⟨1, .var 3⟩,
-                ⟨2, .var 4 + .const 2 * .var 1 + .const 1⟩,
-                ⟨1, .var 3⟩, ⟨2, .var 4 + .const 2 * .var 1 + .const 1⟩] normalize)
-              rounds)))))))
+    (.seq (.frame [.var 0, .var 1, .const 2 * .var 1 + .const 2]
+      [⟨0, .var 2⟩, ⟨1, .var 3⟩, ⟨2, .var 4⟩, ⟨3, .const 0⟩, ⟨5, .const 0⟩] initializeState)
+      rounds)))
 
 /-- The complete program has dimensions n,cap, one input and two packed outputs. -/
 def solveImpl : Impl Op Tst := ⟨2, 1, 2, solve⟩

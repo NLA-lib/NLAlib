@@ -69,14 +69,35 @@ theorem staticPeak_advance_le (W : Op → List ℕ → ℕ) (n cap b v c j : ℕ
   simp only [callPeak] at hu hn ⊢
   omega
 
+omit [Has OperatorOp Op] in
+/-- Initialization counts all requested coefficient cells, including any extra suffix. -/
+theorem staticCost_initialize (n cap len b v c p t : ℕ) :
+    staticCost (initializeState (Op := Op) (Tst := Tst)) [n, cap, len, b, v, c, p, t] =
+      zeroCount ((cap + 1) * n) + zeroCount len + zeroCount n +
+        Count.one (Has.inj Blas1Op.dot) [n] + normalizeCount n := by
+  simp [initializeState, staticCost, useCost, staticCost_zero, staticCost_normalize]
+  module
+
+/-- The borrowed initializer requires only a call workspace regardless of output lengths. -/
+theorem staticPeak_initialize_le (W : Op → List ℕ → ℕ) (n cap len b v c p t : ℕ) :
+    staticPeak W (initializeState (Op := Op) (Tst := Tst)) [n, cap, len, b, v, c, p, t] ≤
+      callPeak W n := by
+  have hzV := staticPeak_zero_le (Op := Op) (Tst := Tst) W ((cap + 1) * n) v
+  have hzC := staticPeak_zero_le (Op := Op) (Tst := Tst) W len c
+  have hzP := staticPeak_zero_le (Op := Op) (Tst := Tst) W n p
+  have hn := staticPeak_normalize_le (Tst := Tst) W n b t v (c + 2 * cap + 1) v
+    (c + 2 * cap + 1)
+  simp [initializeState, staticPeak]
+  simp only [callPeak] at hn ⊢
+  omega
+
 /-- Static accounting includes every initialized cell, input normalization and tested round. -/
 theorem staticCost_solve (n cap b v c : ℕ) :
     staticCost (solve (Op := Op) (Tst := Tst)) [n, cap, b, v, c] = solveCount n cap := by
   have hsup : (Finset.range (cap + 1)).sup (fun _ => (0 : Count Op Tst)) = 0 :=
     le_antisymm (Finset.sup_le fun _ _ => le_rfl) zero_le
-  simp [solve, rounds, staticCost, testCost, useCost, staticCost_zero,
-    staticCost_normalize, staticCost_advance, solveCount, hsup]
-  module
+  simp [solve, rounds, staticCost, testCost, staticCost_initialize,
+    staticCost_advance, solveCount, hsup]
 
 /-- Two scoped vectors, two cells and one call workspace suffice for the complete solver. -/
 def solvePeak (W : Op → List ℕ → ℕ) (n : ℕ) : ℕ := 2 * n + 2 + callPeak W n
@@ -84,15 +105,11 @@ def solvePeak (W : Op → List ℕ → ℕ) (n : ℕ) : ℕ := 2 * n + 2 + callP
 /-- The peak workspace does not grow with the iteration cap. -/
 theorem staticPeak_solve_le (W : Op → List ℕ → ℕ) (n cap b v c : ℕ) :
     staticPeak W (solve (Op := Op) (Tst := Tst)) [n, cap, b, v, c] ≤ solvePeak W n := by
-  have hzV := staticPeak_zero_le (Op := Op) (Tst := Tst) W ((cap + 1) * n) v
-  have hzC := staticPeak_zero_le (Op := Op) (Tst := Tst) W (2 * cap + 2) c
-  have hzP := staticPeak_zero_le (Op := Op) (Tst := Tst) W n 0
-  have hn := staticPeak_normalize_le (Tst := Tst) W n b 0 v (c + 2 * cap + 1) v (c + 2 * cap + 1)
+  have hi := staticPeak_initialize_le (Tst := Tst) W n cap (2 * cap + 2) b v c 0 0
   have hb : (Finset.range cap).sup
       (fun j => staticPeak W (advance (Op := Op) (Tst := Tst)) [n, cap, b, v, c, j]) ≤
       callPeak W n := Finset.sup_le fun j _ => staticPeak_advance_le (Tst := Tst) W n cap b v c j
   simp [solve, rounds, staticPeak, solvePeak]
-  simp only [callPeak] at hn hb ⊢
   omega
 
 end NLAlib.Krylov.Lanczos

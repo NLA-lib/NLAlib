@@ -32,10 +32,10 @@ open Ops
 variable {Op Tst : Type} [Has ScalarOp Op] [Has Blas1Op Op] [Has OperatorOp Op]
 
 /-- A standard CG round on `(X,R,P,rho)`, retaining the new residual self-product. Scratch
-consists of the matrix product, new direction and three scalar cells. -/
+consists of one vector and three scalar cells. The product buffer becomes the new direction
+after the residual update. -/
 def step : Stmt Op Tst := ops% [n] (X, R, P, rho) → (X, R, P, rho) {
   let Q ← alloc n;
-  let Z ← alloc n;
   let t ← alloc 3;
   call (Has.inj OperatorOp.matvec) [n, n] (P) → (Q);
   call (Has.inj Blas1Op.dot) [n] (P, Q) → (t[0]);
@@ -45,9 +45,9 @@ def step : Stmt Op Tst := ops% [n] (X, R, P, rho) → (X, R, P, rho) {
   call (Has.inj Blas1Op.axpy) [n] (t[1], Q, R) → (R);
   call (Has.inj Blas1Op.dot) [n] (R, R) → (t[2]);
   call (Has.inj ScalarOp.div) [] (t[2], rho) → (t[0]);
-  call (Has.inj Blas1Op.copy) [n] (R) → (Z);
-  call (Has.inj Blas1Op.axpy) [n] (t[0], P, Z) → (Z);
-  call (Has.inj Blas1Op.copy) [n] (Z) → (P);
+  call (Has.inj Blas1Op.copy) [n] (R) → (Q);
+  call (Has.inj Blas1Op.axpy) [n] (t[0], P, Q) → (Q);
+  call (Has.inj Blas1Op.copy) [n] (Q) → (P);
   call (Has.inj ScalarOp.copy) [] (t[2]) → (rho)
 }
 
@@ -63,7 +63,7 @@ noncomputable def stepCount (n : ℕ) : Count Op Tst :=
 
 /-- Scratch excludes the four persistent caller state blocks. -/
 def stepPeak (W : Op → List ℕ → ℕ) (n : ℕ) : ℕ :=
-  2 * n + 3 + max (W (Has.inj OperatorOp.matvec) [n, n])
+  n + 3 + max (W (Has.inj OperatorOp.matvec) [n, n])
     (max (W (Has.inj Blas1Op.dot) [n]) (max (W (Has.inj ScalarOp.div) [])
       (max (W (Has.inj Blas1Op.axpy) [n]) (max (W (Has.inj ScalarOp.neg) [])
         (max (W (Has.inj Blas1Op.copy) [n]) (W (Has.inj ScalarOp.copy) []))))))
@@ -75,7 +75,7 @@ theorem staticCost_step (n a b c d a' b' c' d' : ℕ) :
   simp [step, staticCost, stepCount, useCost, IExp.evalList, IExp.eval]
   module
 
-/-- Two vectors, three cells and the largest call workspace bound the round's scratch. -/
+/-- One vector, three cells and the largest call workspace bound the round's scratch. -/
 theorem staticPeak_step_le (W : Op → List ℕ → ℕ) (n a b c d a' b' c' d' : ℕ) :
     staticPeak W (step (Op := Op) (Tst := Tst)) [n, a, b, c, d, a', b', c', d'] ≤
       stepPeak W n := by

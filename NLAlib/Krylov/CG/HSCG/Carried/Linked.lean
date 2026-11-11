@@ -66,9 +66,9 @@ theorem push_stepCount_seq (n : ℕ) :
     Count.push (Blas.seq (Op := Op) (Tst := Tst)).cost (stepCount n) = seqStepCount n := by
   count_eval [stepCount, seqStepCount, HSCG.seq_cost_matvec]
 
-/-- Sequential dot-product scratch fits alongside the two vectors and three scalar cells. -/
+/-- Sequential dot-product scratch fits alongside the reused vector and three scalar cells. -/
 theorem stepPeak_seq_le (n : ℕ) :
-    stepPeak (Blas.ws (Op := Op) 0) n ≤ 3 * n + 4 := by
+    stepPeak (Blas.ws (Op := Op) 0) n ≤ 2 * n + 4 := by
   simp [stepPeak, Blas.ws]
   omega
 
@@ -92,7 +92,7 @@ theorem runs_rounded_step_seq {M : Machine K} {dec : K → ℝ} {n : ℕ} {u : �
         decv dec n ps ⬝ᵥ (A *ᵥ decv dec n ps))
     (hz : μ.Room [x, r, p, v] [n, n, n, 1]) :
     Runs I (Blas.ws 0) τ (step.link (Blas.seq (Op := Op) (Tst := Tst)).table)
-      (Env.frame [n] [x, r, p, v, x, r, p, v]) μ (seqStepCount n) (3 * n + 4)
+      (Env.frame [n] [x, r, p, v, x, r, p, v]) μ (seqStepCount n) (2 * n + 4)
       ((Rounded.stepRel u (Blas.seq.err u) dec A).Post
         [n] [xs, rs, ps, [rr]] [x, r, p, v] [] μ) := by
   have hcert := Blas.seq_certifies (Op := Op) (Tst := Tst) hM hu (fun _ => True)
@@ -137,7 +137,7 @@ theorem push_solveCount_seq (n cap : ℕ) :
     push_initializeCount_seq, push_stepCount_seq, seqSolveCount]
 
 /-- The sequential solver's scratch bound is independent of its cap. -/
-theorem solvePeak_seq_le (n : ℕ) : solvePeak (Blas.ws (Op := Op) 0) n ≤ 3 * n + 4 := by
+theorem solvePeak_seq_le (n : ℕ) : solvePeak (Blas.ws (Op := Op) 0) n ≤ 2 * n + 4 := by
   exact max_le ((initializePeak_seq_le n).trans (by omega)) (stepPeak_seq_le n)
 
 /-- Scalar, BLAS1, operator and comparison contracts have a common real interpretation. -/
@@ -203,7 +203,7 @@ theorem runs_solve_seq {M : Machine K} {dec : K → ℝ} {n : ℕ}
     (hxs : μ.store.readBlock x.1 x.2 n = some xs)
     (hz : μ.Room [x, r, p, v] [n, n, n, 1]) :
     Runs I (Blas.ws 0) τ (solve.link (Blas.seq (Op := Op) (Tst := Tst)).table)
-      (Env.frame [n, cap] [b, x, x, r, p, v]) μ (seqSolveCount n cap) (3 * n + 4)
+      (Env.frame [n, cap] [b, x, x, r, p, v]) μ (seqSolveCount n cap) (2 * n + 4)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ ys, μ'.store.readBlock x.1 x.2 n = some ys ∧
         decv dec n ys = cgIterate A (decv dec n bs) (decv dec n xs)
           (min cap (krylovGrade A (decv dec n bs - A *ᵥ decv dec n xs)))) := by
@@ -231,7 +231,7 @@ theorem runs_solve_dim_seq {M : Machine K} {dec : K → ℝ} {n : ℕ}
     (hxs : μ.store.readBlock x.1 x.2 n = some xs)
     (hz : μ.Room [x, r, p, v] [n, n, n, 1]) :
     Runs I (Blas.ws 0) τ (solve.link (Blas.seq (Op := Op) (Tst := Tst)).table)
-      (Env.frame [n, n] [b, x, x, r, p, v]) μ (seqSolveCount n n) (3 * n + 4)
+      (Env.frame [n, n] [b, x, x, r, p, v]) μ (seqSolveCount n n) (2 * n + 4)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ ys, μ'.store.readBlock x.1 x.2 n = some ys ∧
         A *ᵥ decv dec n ys = decv dec n bs) := by
   refine (runs_solve_seq hS hM hA hCmp hPos (τ := τ) (cap := n)

@@ -81,11 +81,10 @@ theorem step_spec {M : Machine K} {dec : K → ℝ} {n : ℕ} {u : ℝ} {ε : Bl
     IsDotErr dec (ε.dot n) n (vec rs) (vec rs) rr ∧ _ at hdom
   have hrr : μ.store.get v.1 v.2 = some rr := by
     simpa using Store.get_of_readBlock hvs (j := 0) (by omega) rr
-  refine writes_allocs (lens := [.var 0, .var 0, .const 3]) (ns := [n, n, 3]) rfl
+  refine writes_allocs (lens := [.var 0, .const 3]) (ns := [n, 3]) rfl
     fun s₁ hs₁ hlen hB₁ => ?_
   have hq : s₁.len μ.store.length = n := by simpa using hlen 0 (by simp)
-  have hz : s₁.len (μ.store.length + 1) = n := by simpa using hlen 1 (by simp)
-  have ht : s₁.len (μ.store.length + 2) = 3 := by simpa using hlen 2 (by simp)
+  have ht : s₁.len (μ.store.length + 1) = 3 := by simpa using hlen 1 (by simp)
   dsimp only [Env.frame, List.append, List.range_succ, List.range_zero, List.map,
     List.length_cons, List.length_nil, Nat.add_zero] at *
   step hA as m₁ hfr₁ ⟨hpos₁, qs, hqs, heq⟩

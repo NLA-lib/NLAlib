@@ -83,20 +83,29 @@ theorem exists_isExactMatvec {m n : ℕ} (A : Matrix (Fin m) (Fin n) ℝ) :
   exact ⟨Interp.ofFns F, (Interp.ofFns_isFn F .total .matvec AnyOperands).meets_matvec⟩
 
 omit [Inhabited K] in
-/-- Exact real scalar arithmetic and the rectangular matrix-vector contract can be realized
+/-- Any real scalar machine and the exact rectangular matrix-vector contract can be realized
 jointly on any signature where their operation groups are apart. -/
-theorem exists_isScalar_isExactMatvec [Has ScalarOp Op] [Has OperatorOp Op]
-    [Apart ScalarOp OperatorOp Op] {m n : ℕ} (A : Matrix (Fin m) (Fin n) ℝ) :
-    ∃ I : Interp Op Tst ℝ, IsScalar exactMachine I ∧ IsExactMatvec id A I := by
+theorem exists_isScalar_isExactMatvec_ofMachine [Has ScalarOp Op] [Has OperatorOp Op]
+    [Apart ScalarOp OperatorOp Op] (M : Machine ℝ) {m n : ℕ} (A : Matrix (Fin m) (Fin n) ℝ) :
+    ∃ I : Interp Op Tst ℝ, IsScalar M I ∧ IsExactMatvec id A I := by
   let F : Op → BlockFn ℝ := fun o =>
     match Has.proj (G := ScalarOp) o with
-    | some a => exactMachine.fn a
+    | some a => M.fn a
     | none => exactMatvecFn A
-  have hS : IsScalar exactMachine (Interp.ofFns F : Interp Op Tst ℝ) :=
+  have hS : IsScalar M (Interp.ofFns F : Interp Op Tst ℝ) :=
     isScalar_ofFns _ _ fun a => by simp [F]
   have hA := Interp.ofFns_isFn (Tst := Tst) F .total (Has.inj OperatorOp.matvec) AnyOperands
   have hf : F (Has.inj OperatorOp.matvec) = exactMatvecFn A := by simp [F]
   rw [hf] at hA
   exact ⟨Interp.ofFns F, hS, hA.meets_matvec⟩
+
+
+omit [Inhabited K] in
+/-- Exact real scalar arithmetic and the rectangular matrix-vector contract can be realized
+jointly on any signature where their operation groups are apart. -/
+theorem exists_isScalar_isExactMatvec [Has ScalarOp Op] [Has OperatorOp Op]
+    [Apart ScalarOp OperatorOp Op] {m n : ℕ} (A : Matrix (Fin m) (Fin n) ℝ) :
+    ∃ I : Interp Op Tst ℝ, IsScalar exactMachine I ∧ IsExactMatvec id A I :=
+  exists_isScalar_isExactMatvec_ofMachine exactMachine A
 
 end NLAlib.Ops

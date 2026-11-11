@@ -74,16 +74,9 @@ def rounds : Stmt Op Tst :=
 3*cap+2. C's ordinary prefix has length 2*cap+2, followed by cap preorthogonalization norms. -/
 def solve : Stmt Op Tst :=
   .alloc (.var 0) (.alloc (.var 0) (.alloc (.const 2)
-    (.seq (.frame [(.var 1 + .const 1) * .var 0] [⟨1, .var 3⟩] Lanczos.zero)
-      (.seq (.frame [.const 3 * .var 1 + .const 2] [⟨2, .var 4⟩] Lanczos.zero)
-        (.seq (.frame [.var 0] [⟨3, .const 0⟩] Lanczos.zero)
-          (.seq (.call (Has.inj Blas1Op.dot) [.var 0]
-            [⟨0, .var 2⟩, ⟨0, .var 2⟩] [⟨5, .const 0⟩])
-            (.seq (.frame [.var 0]
-              [⟨0, .var 2⟩, ⟨5, .const 0⟩, ⟨1, .var 3⟩,
-                ⟨2, .var 4 + .const 2 * .var 1 + .const 1⟩,
-                ⟨1, .var 3⟩, ⟨2, .var 4 + .const 2 * .var 1 + .const 1⟩] Lanczos.normalize)
-              rounds)))))))
+    (.seq (.frame [.var 0, .var 1, .const 3 * .var 1 + .const 2]
+      [⟨0, .var 2⟩, ⟨1, .var 3⟩, ⟨2, .var 4⟩, ⟨3, .const 0⟩, ⟨5, .const 0⟩]
+      Lanczos.initializeState) rounds)))
 
 /-- Two dimensions, one input and two packed outputs. -/
 def solveImpl : Impl Op Tst := ⟨2, 1, 2, solve⟩
@@ -123,7 +116,8 @@ theorem staticCost_solve (n cap b v c : ℕ) :
     | succ cap ih => rw [Finset.sum_range_succ, ih]; ring
   have hsup : (Finset.range (cap + 1)).sup (fun _ => (0 : Count Op Tst)) = 0 :=
     le_antisymm (Finset.sup_le fun _ _ => le_rfl) zero_le
-  simp [solve, rounds, staticCost, useCost, testCost, Lanczos.staticCost_zero,
+  simp [solve, rounds, Lanczos.initializeState, staticCost, useCost, testCost,
+    Lanczos.staticCost_zero,
     Lanczos.staticCost_normalize, staticCost_advance, advanceCount, solveCount,
     cgs2Count, cgsPassCount, ← mul_nsmul, Finset.sum_add_distrib,
     Finset.sum_nsmul_assoc, hsum, hsup]
@@ -167,7 +161,7 @@ theorem staticPeak_solve_le (W : Op → List ℕ → ℕ) (n cap b v c : ℕ) :
   have hz₂ := Lanczos.staticPeak_zero_le (Op := Op) (Tst := Tst) W (3*cap+2) c
   have hz₃ := Lanczos.staticPeak_zero_le (Op := Op) (Tst := Tst) W n 0
   simp only [solvePeak, primitivePeak] at hrounds ⊢
-  simp [solve, rounds, Lanczos.normalize, staticPeak]
+  simp [solve, rounds, Lanczos.initializeState, Lanczos.normalize, staticPeak]
   omega
 
 end NLAlib.Krylov.Lanczos.Reorth

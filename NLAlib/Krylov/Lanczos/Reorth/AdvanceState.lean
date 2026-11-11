@@ -29,6 +29,34 @@ open scoped Matrix
 variable {K Op Tst : Type} [Inhabited K]
 variable [Has ScalarOp Op] [Has Blas1Op Op] [Has OperatorOp Op] [Has CmpTst Tst]
 
+private theorem basis_prefix_decoded {dec : K → ℝ} {n cap j : ℕ}
+    {A : Matrix (Fin n) (Fin n) ℝ} {b : Fin n → ℝ} {V C : ℕ × ℕ} {s : Store K}
+    {basis : List K} (h : Prefix dec A b cap j V C s) (hj : j ≤ cap) (hAT : A.IsHermitian)
+    (hr : s.readBlock V.1 V.2 ((j + 1) * n) = some basis) :
+    ∀ l < j + 1, (fun i : Fin n => dec (vec basis (l * n + i))) =
+      (lanczosReorthState A b j).vecs l := by
+  intro l hl
+  funext i
+  have he := (h.basis l (by omega)).entry_of_basis_readBlock hr hl i
+  have hold : dec (vec basis (l * n + i)) = (lanczosState A b l).cur i := by
+    simpa only [basisValue_of_le A b (show l ≤ j by omega)] using he
+  have hvec := congrFun ((hAT.lanczosReorthState_toLanczosState b j).2 l) i
+  have hvec' : (lanczosReorthState A b j).vecs l i = (lanczosState A b l).cur i := by
+    simpa only [if_pos (show l ≤ j by omega)] using hvec
+  exact hold.trans hvec'.symm
+
+private theorem normalization_guard {n : ℕ} {w q : Fin n → ℝ} {σ : ℝ}
+    (hσ : σ = w ⬝ᵥ w) (hq : q = ‖WithLp.toLp 2 w‖⁻¹ • w) :
+    0 ≤ σ ∧ (0 < σ ↔ q ≠ 0) := by
+  have hσnorm : σ = ‖WithLp.toLp 2 w‖ ^ 2 :=
+    hσ.trans (EuclideanSpace.norm_toLp_sq_eq_dotProduct_self _).symm
+  have hzero : ‖WithLp.toLp 2 w‖ = 0 ↔ q = 0 := by
+    rw [hq]
+    simp only [smul_eq_zero, inv_eq_zero, norm_eq_zero, WithLp.toLp_eq_zero, or_self]
+  refine ⟨by rw [hσnorm]; positivity, ?_⟩
+  rw [hσnorm]
+  exact sq_pos_iff.trans (not_congr hzero)
+
 /-- The total exact round advances the initialized prefix and its zero-detecting guard. -/
 theorem advance_state_writes {M : Machine K} {dec : K → ℝ}
     {n cap j L B V C bo vo co : ℕ} {A : Matrix (Fin n) (Fin n) ℝ} {b : Fin n → ℝ}
@@ -61,17 +89,7 @@ theorem advance_state_writes {M : Machine K} {dec : K → ℝ}
   have hνzero' : dec ν₀ = 0 := by simpa only [nuValue, Nat.lt_irrefl, ↓reduceIte] using hνzero
   obtain ⟨basis, hbasis⟩ := exists_basis_readBlock (k := j + 1) (V := (V, vo))
     (fun l hl => h.basis l (by omega))
-  have hbasisdec : ∀ l < j + 1, (fun i : Fin n => dec (vec basis (l * n + i))) =
-      (lanczosReorthState A b j).vecs l := by
-    intro l hl
-    funext i
-    have he := (h.basis l (by omega)).entry_of_basis_readBlock hbasis hl i
-    have hold : dec (vec basis (l * n + i)) = (lanczosState A b l).cur i := by
-      simpa only [basisValue_of_le A b (show l ≤ j by omega)] using he
-    have hvec := congrFun ((hAT.lanczosReorthState_toLanczosState b j).2 l) i
-    have hvec' : (lanczosReorthState A b j).vecs l i = (lanczosState A b l).cur i := by
-      simpa only [if_pos (show l ≤ j by omega)] using hvec
-    exact hold.trans hvec'.symm
+  have hbasisdec := basis_prefix_decoded h.toPrefix (Nat.le_of_lt hj) hAT hbasis
   have hnroom : vo + (j + 1) * n + n ≤ μ.store.len V := by
     have hmul := Nat.mul_le_mul_right n (show j + 2 ≤ cap + 1 by omega)
     calc
@@ -123,16 +141,9 @@ theorem advance_state_writes {M : Machine K} {dec : K → ℝ}
   have hβold' := hβR.trans (congrArg LanczosState.beta hs')
   have hνold : dec ν = (lanczosState A b (j + 1)).beta := by
     simpa [lanczosState, lanczosStep, hrawold] using hnormν
-  have hσnorm : dec σ = ‖WithLp.toLp 2 (decv dec n reduced)‖ ^ 2 :=
-    hσdec.trans (EuclideanSpace.norm_toLp_sq_eq_dotProduct_self _).symm
-  have hzero : ‖WithLp.toLp 2 (decv dec n reduced)‖ = 0 ↔
-      (lanczosState A b (j + 1)).cur = 0 := by
-    rw [← hnextold, hnormalized]
-    simp only [smul_eq_zero, inv_eq_zero, norm_eq_zero, WithLp.toLp_eq_zero, or_self]
+  have hguard := normalization_guard hσdec (hnextold.symm.trans hnormalized)
   refine ⟨hpos, h.advance hj hVC hVL hCL (hfr.mono hfp) ⟨ys, hys, hnextold⟩
     ⟨α, hα, hαold⟩ ⟨β', hβ', hβold'⟩ ⟨ν, hν, hνold⟩
     ⟨qs, hprev, by simpa only [lanczosState, lanczosStep] using hqsdec⟩
-    ⟨σ, hσ, by rw [hσnorm]; positivity, ?_⟩⟩
-  rw [hσnorm]
-  exact sq_pos_iff.trans (not_congr hzero)
+    ⟨σ, hσ, hguard⟩⟩
 end NLAlib.Krylov.Lanczos.Reorth

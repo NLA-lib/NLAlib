@@ -19,8 +19,8 @@ A **headline** is a theorem whose conclusion contains `Runs`, `RunsW`, `RunsL`, 
 
 * **(a) uniformity.** The program (the tree of `Runs …`, the implementation of `Impl.Meets`),
   with the tables of `Stmt.link` set apart, mentions no variable of the statement other than
-  sizes (`ℕ`), rational constants (`ℚ`), types and instances; and reaches no `noncomputable`
-  definition (a function of the sizes that no machine computes).
+  universally quantified sizes (`ℕ`), rational constants (`ℚ`), types and instances; and
+  reaches no `noncomputable` definition (a function of the sizes that no machine computes).
 * **(b) universality.** The interpretation is a variable of the statement (or `Interp.link` of
   one, or a registered model primitive, `ops_register_model`), not existentially quantified, not
   fixed by an equation, and constrained by at least one hypothesis (its contracts).
@@ -73,8 +73,14 @@ structure Occ where
   head : Head
   /-- Its arguments. -/
   args : Array Expr
+  /-- Variables bound by universal quantifiers around it. -/
+  vars : Array Expr
   /-- Variables bound by existential quantifiers around it. -/
   exVars : Array Expr
+  /-- The local context in which the arguments were opened. -/
+  lctx : LocalContext
+  /-- The local instances of that context. -/
+  localInsts : LocalInstances
 
 /-- The argument of `c` bound to the binder `nm`. -/
 def argByName (c : Name) (args : Array Expr) (nm : Name) : MetaM (Option Expr) := do
@@ -85,26 +91,26 @@ def argByName (c : Name) (args : Array Expr) (nm : Name) : MetaM (Option Expr) :
 
 /-- The occurrences of headline judgments in an expression. For success statements, only
 descend through quantifiers and conjunctions. -/
-def findOccs (e : Expr) (ex : Array Expr) (fuel : ℕ := 64) (successOnly := false) :
-    MetaM (Array Occ) := do
+def findOccs (e : Expr) (fuel : ℕ := 64) (successOnly := false)
+    (vars : Array Expr := #[]) (ex : Array Expr := #[]) : MetaM (Array Occ) := do
   match fuel with
   | 0 => return #[]
   | f + 1 =>
     let e ← instantiateMVars e
     if let some c := e.getAppFn.constName? then
       if let some h := heads.find? (·.name == c) then
-        return #[⟨h, e.getAppArgs, ex⟩]
+        return #[⟨h, e.getAppArgs, vars, ex, ← getLCtx, ← getLocalInstances⟩]
       if c == ``Exists && e.getAppNumArgs == 2 then
-        return ← lambdaTelescope e.appArg! fun xs b => findOccs b (ex ++ xs) f successOnly
+        return ← lambdaTelescope e.appArg! fun xs b => findOccs b f successOnly vars (ex ++ xs)
     match e with
-    | .forallE .. => forallTelescope e fun _ b => findOccs b ex f successOnly
-    | .lam .. => lambdaTelescope e fun _ b => findOccs b ex f successOnly
+    | .forallE .. => forallTelescope e fun xs b => findOccs b f successOnly (vars ++ xs) ex
+    | .lam .. => lambdaTelescope e fun xs b => findOccs b f successOnly (vars ++ xs) ex
     | .app .. =>
       let c := e.getAppFn.constName?.getD .anonymous
       if c == ``And || (!successOnly && [``Or, ``Iff, ``Not].contains c) then
-        e.getAppArgs.foldlM (fun acc a => return acc ++ (← findOccs a ex f successOnly)) #[]
+        e.getAppArgs.foldlM (fun acc a => return acc ++ (← findOccs a f successOnly vars ex)) #[]
       else return #[]
-    | .mdata _ b => findOccs b ex f successOnly
+    | .mdata _ b => findOccs b f successOnly vars ex
     | _ => return #[]
 
 /-- A constant of the library. -/
@@ -230,7 +236,7 @@ def witnesses : MetaM (Array (Name × NameSet)) := do
       out := out.push (n, ← witnessHeads ci.type)
   return out
 
-/-- The contract set of a statement: the `NLAlib` predicates of the hypotheses on the
+/-- The contract set of a statement: the `NLAlib` predicates of the hypothesis types on the
 interpretation `I`, closed under the parameters they share. -/
 def contractSet (hyps : Array Expr) (I : Expr) : MetaM NameSet := do
   let mut vars : Array Expr := (collectFVars {} I).fvarIds.map Expr.fvar
@@ -241,7 +247,7 @@ def contractSet (hyps : Array Expr) (I : Expr) : MetaM NameSet := do
     changed := false
     for h : i in [:hyps.size] do
       if used[i]! then continue
-      let ty ← instantiateMVars (← inferType hyps[i])
+      let ty := hyps[i]
       let some hd ← headOf ty | continue
       if !inLib hd then continue
       if !(vars.any fun v => ty.containsFVar v.fvarId!) then continue
@@ -252,16 +258,34 @@ def contractSet (hyps : Array Expr) (I : Expr) : MetaM NameSet := do
         if !(← dataType (← instantiateMVars (← x.getType))) then vars := vars.push (.fvar x)
   return set
 
+/-- Whether a hypothesis fixes the interpretation by a direct equality, possibly in a
+conjunction. -/
+def pinsInterp (I hyp : Expr) (fuel : ℕ := 64) : Bool :=
+  match fuel with
+  | 0 => false
+  | f + 1 =>
+    let hyp := hyp.consumeMData
+    if hyp.isAppOfArity ``And 2 then
+      pinsInterp I (hyp.getArg! 0) f || pinsInterp I (hyp.getArg! 1) f
+    else if hyp.isAppOfArity ``Eq 3 then
+      let lhs := (hyp.getArg! 1).consumeMData
+      let rhs := (hyp.getArg! 2).consumeMData
+      lhs != rhs && (lhs == I || rhs == I)
+    else false
+
 /-- The interpretation of an occurrence, and what is wrong with it. -/
-def interpIssue (I : Expr) (ex : Array Expr) (fuel : ℕ := 64) : MetaM (Option String) := do
+def interpIssue (I : Expr) (ex hyps : Array Expr) (fuel : ℕ := 64) : MetaM (Option String) := do
   match fuel with
   | 0 => return some "the interpretation is too deeply linked"
   | f + 1 =>
+    let I := I.consumeMData
+    if hyps.any (pinsInterp I ·) then
+      return some "a hypothesis fixes the interpretation by an equation"
     if I.isFVar then
       if ex.contains I then return some "the interpretation is existentially quantified"
       return none
     if I.isAppOf ``NLAlib.Ops.Interp.link && I.getAppNumArgs ≥ 2 then
-      return ← interpIssue (I.getArg! (I.getAppNumArgs - 2)) ex f
+      return ← interpIssue (I.getArg! (I.getAppNumArgs - 2)) ex hyps f
     if let some c := I.getAppFn.constName? then
       if registered (← getEnv) .model c then return none
     let hd := (I.getAppFn.constName?.map toString).getD "a non-constant"
@@ -293,7 +317,7 @@ def modOf (n : Name) : CoreM Name := do
 def successKeysOf (n : Name) : MetaM (Array Name) := do
   let env ← getEnv
   let some (.thmInfo ci) := env.find? n | return #[]
-  let occs ← forallTelescope ci.type fun _ b => findOccs b #[] (successOnly := true)
+  let occs ← findOccs ci.type (successOnly := true)
   let mut keys := #[]
   for o in occs do
     if o.head.liberal then continue
@@ -335,83 +359,88 @@ structure Ctx where
   /-- The implementations of tables. -/
   impls : NameSet
 
+/-- The violations of one occurrence, in the context of its binders. -/
+def lintOcc (ctx : Ctx) (n : Name) (o : Occ) : MetaM (Array (String × String)) :=
+  withLCtx o.lctx o.localInsts do
+    let env ← getEnv
+    let hyps ← o.vars.filterMapM fun x => do
+      let ty ← instantiateMVars (← inferType x)
+      if ← isProp ty then pure (some ty) else pure none
+    let mut out : Array (String × String) := #[]
+    let h := o.head
+    let some p ← argByName h.name o.args h.prog | return #[]
+    let some I ← argByName h.name o.args `I | return #[]
+    let (tree, tables) := peelLink p
+    -- (a)
+    for x in (collectFVars {} (← instantiateMVars tree)).fvarIds do
+      if o.exVars.contains (.fvar x) then
+        out := out.push ("a", s!"the program mentions existential variable `{← x.getUserName}`")
+      else unless ← allowedInProg (.fvar x) do
+        out := out.push ("a", s!"the program mentions `{← x.getUserName}` : \
+          {← ppExpr (← x.getType)}, not a size")
+    for t in tables do
+      for x in (collectFVars {} (← instantiateMVars t)).fvarIds do
+        if o.exVars.contains (.fvar x) then
+          out := out.push ("a", s!"a table mentions existential variable `{← x.getUserName}`")
+        else unless ← allowedInProg (.fvar x) do
+          out := out.push ("a", s!"a table mentions `{← x.getUserName}`, not a size")
+    let cs ← reach tree
+    for c in cs do
+      if inLib c && isNoncomputable env c then
+        out := out.push ("a", s!"the program reaches the noncomputable `{c}`")
+    -- (b)
+    if let some msg ← interpIssue I o.exVars hyps then out := out.push ("b", msg)
+    -- (c)
+    let cset ← contractSet hyps I
+    let isModel := match I.getAppFn.constName? with
+      | some c => registered env .model c
+      | none => false
+    let interpBad := out.any (·.1 == "b")
+    if cset.isEmpty then
+      unless isModel || interpBad do
+        out := out.push ("b", "no hypothesis constrains the interpretation")
+    else if !(ctx.wits.any fun w => cset.toList.all w.2.contains) then
+      let score (w : Name × NameSet) := (cset.toList.filter w.2.contains).length
+      let best := ctx.wits.foldl (fun acc w => if score w > score acc then w else acc)
+        (`none, {})
+      let miss := if score best = 0 then "" else
+        s!"; best `{best.1}` misses {cset.toList.filter fun c => !best.2.contains c}"
+      out := out.push ("c", s!"no joint witness for the contract set {cset.toList}{miss}")
+    -- (d)
+    for nm in h.counts do
+      if let some e ← argByName h.name o.args nm then
+        for c in ← reach e do
+          if countForbidden.contains c then
+            out := out.push ("d", s!"the bound `{nm}` is not in closed form: it uses `{c}`")
+    -- (e)
+    let mdLib ← do
+      if h.name == ``NLAlib.Ops.Impl.Meets then
+        match ← argByName h.name o.args `md with
+        | some md => pure (md.isConstOf ``NLAlib.Ops.Mode.liberal)
+        | none => pure false
+      else pure false
+    if h.liberal || mdLib then
+      let ok ← match progKey p with
+        | some k => do
+          if (← successKeysOf (n.appendAfter "_success")).contains k then pure true
+          else pure ((← successKeys (← modOf n)).contains k)
+        | none => pure false
+      unless ok do
+        out := out.push ("e", "a liberal statement without a success statement about the \
+          same program")
+    -- (f)
+    let exempt := h.name == ``NLAlib.Ops.Impl.Meets &&
+      ((p.getAppFn.constName?).map ctx.impls.contains).getD false
+    unless exempt do
+      for c in ← xiPrims cs do
+        out := out.push ("f", s!"the algorithm's tree calls the ξ-taking primitive `{c}`")
+    return out
+
 /-- **The violations of a theorem**, as `(rule, message)`. -/
 def lintDecl (ctx : Ctx) (n : Name) : MetaM (Array (String × String)) := do
-  let env ← getEnv
-  let ci ← getConstInfo n
-  forallTelescope ci.type fun xs concl => do
-    let occs ← findOccs concl #[]
-    let hyps ← xs.filterM fun x => do isProp (← inferType x)
-    let mut out : Array (String × String) := #[]
-    for o in occs do
-      let h := o.head
-      let some p ← argByName h.name o.args h.prog | continue
-      let some I ← argByName h.name o.args `I | continue
-      let (tree, tables) := peelLink p
-      -- (a)
-      for x in (collectFVars {} (← instantiateMVars tree)).fvarIds do
-        unless ← allowedInProg (.fvar x) do
-          out := out.push ("a", s!"the program mentions `{← x.getUserName}` : \
-            {← ppExpr (← x.getType)}, not a size")
-      for t in tables do
-        for x in (collectFVars {} (← instantiateMVars t)).fvarIds do
-          unless ← allowedInProg (.fvar x) do
-            out := out.push ("a", s!"a table mentions `{← x.getUserName}`, not a size")
-      let cs ← reach tree
-      for c in cs do
-        if inLib c && isNoncomputable env c then
-          out := out.push ("a", s!"the program reaches the noncomputable `{c}`")
-      -- (b)
-      if let some msg ← interpIssue I o.exVars then out := out.push ("b", msg)
-      for hy in hyps do
-        let ty ← instantiateMVars (← inferType hy)
-        if ty.isAppOfArity ``Eq 3 && ((ty.getArg! 1) == I || (ty.getArg! 2) == I) then
-          out := out.push ("b", "a hypothesis fixes the interpretation by an equation")
-      -- (c)
-      let cset ← contractSet hyps I
-      let isModel := match I.getAppFn.constName? with
-        | some c => registered env .model c
-        | none => false
-      let interpBad := out.any (·.1 == "b")
-      if cset.isEmpty then
-        unless isModel || interpBad do
-          out := out.push ("b", "no hypothesis constrains the interpretation")
-      else if !(ctx.wits.any fun w => cset.toList.all w.2.contains) then
-        let score (w : Name × NameSet) := (cset.toList.filter w.2.contains).length
-        let best := ctx.wits.foldl (fun acc w => if score w > score acc then w else acc)
-          (`none, {})
-        let miss := if score best = 0 then "" else
-          s!"; best `{best.1}` misses {cset.toList.filter fun c => !best.2.contains c}"
-        out := out.push ("c", s!"no joint witness for the contract set {cset.toList}{miss}")
-      -- (d)
-      for nm in h.counts do
-        if let some e ← argByName h.name o.args nm then
-          for c in ← reach e do
-            if countForbidden.contains c then
-              out := out.push ("d", s!"the bound `{nm}` is not in closed form: it uses `{c}`")
-      -- (e)
-      let mdLib ← do
-        if h.name == ``NLAlib.Ops.Impl.Meets then
-          match ← argByName h.name o.args `md with
-          | some md => pure (md.isConstOf ``NLAlib.Ops.Mode.liberal)
-          | none => pure false
-        else pure false
-      if h.liberal || mdLib then
-        let ok ← match progKey p with
-          | some k => do
-            if (← successKeysOf (n.appendAfter "_success")).contains k then pure true
-            else pure ((← successKeys (← modOf n)).contains k)
-          | none => pure false
-        unless ok do
-          out := out.push ("e", "a liberal statement without a success statement about the \
-            same program")
-      -- (f)
-      let exempt := h.name == ``NLAlib.Ops.Impl.Meets &&
-        ((p.getAppFn.constName?).map ctx.impls.contains).getD false
-      unless exempt do
-        for c in ← xiPrims cs do
-          out := out.push ("f", s!"the algorithm's tree calls the ξ-taking primitive `{c}`")
-    return out.toList.eraseDups.toArray
+  let occs ← findOccs (← getConstInfo n).type
+  let out ← occs.foldlM (fun acc o => return acc ++ (← lintOcc ctx n o)) #[]
+  return out.toList.eraseDups.toArray
 
 /-- The headline theorems of the library modules other than the core, the program logic and the
 tools. -/
@@ -425,7 +454,7 @@ def scanTargets : MetaM (Array Name) := do
     for n in ← modConsts mod do
       let some (.thmInfo ci) := env.find? n | continue
       if n.isInternalDetail then continue
-      let occs ← forallTelescope ci.type fun _ b => findOccs b #[]
+      let occs ← findOccs ci.type
       if !occs.isEmpty then out := out.push n
   return out.qsort (·.toString < ·.toString)
 

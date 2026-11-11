@@ -36,6 +36,19 @@ theorem cheat_memProg {M : Machine K} {u : ℝ} {dec : K → ℝ} (_hM : StdMode
   unfold memProg
   split <;> exact runs_skip I W τ ρ m
 
+theorem cheat_nestedMem {M : Machine K} {u : ℝ} {dec : K → ℝ} (_hM : StdModel u dec M)
+    {I : Interp ScalarOp Empty K} (_hI : IsScalar M I) (W : ScalarOp → List ℕ → ℕ) (τ : Tape K)
+    (ρ : Env) : True ∧ (∀ m, Runs I W τ (memProg m) ρ m 0 0 (· = m)) :=
+  ⟨trivial, cheat_memProg _hM _hI W τ ρ⟩
+
+/-- A loop with the number of repetitions baked into the tree. -/
+def sizeProg (n : ℕ) : Stmt ScalarOp Empty := .loop (.const n) .skip
+
+theorem cheat_existsSize {M : Machine K} {u : ℝ} {dec : K → ℝ} (_hM : StdModel u dec M)
+    {I : Interp ScalarOp Empty K} (_hI : IsScalar M I) (W : ScalarOp → List ℕ → ℕ) (τ : Tape K)
+    (ρ : Env) (m : Mem K) : ∃ n, Runs I W τ (sizeProg n) ρ m 0 0 (· = m) :=
+  ⟨0, St.init m, rfl, le_rfl, le_rfl, rfl⟩
+
 /-! ### (b) An existential and a specific interpretation -/
 
 theorem cheat_exists :
@@ -47,6 +60,18 @@ theorem cheat_specific :
     Runs (Interp.ofFns fun _ => .const 0 : Interp ScalarOp Empty ℚ) (fun _ _ => 0)
       (fun _ _ => 0) .skip ⟨[], []⟩ ⟨[], 0⟩ 0 0 (· = ⟨[], 0⟩) :=
   runs_skip _ _ _ _ _
+
+theorem cheat_linkPinned {M : Machine K} {u : ℝ} {dec : K → ℝ} (_hM : StdModel u dec M)
+    {I : Interp ScalarOp Empty K} (_hI : IsScalar M I)
+    (_hfix : True ∧ I = Interp.ofFns (fun _ => .un some)) (W : ScalarOp → List ℕ → ℕ)
+    (τ : Tape K) (ρ : Env) (m : Mem K) :
+    Runs (I.link (Table.id : Table ScalarOp ScalarOp Empty)) W τ .skip ρ m 0 0 (· = m) :=
+  runs_skip _ W τ ρ m
+
+theorem runs_nested {M : Machine K} {u : ℝ} {dec : K → ℝ} (_hM : StdModel u dec M)
+    (W : ScalarOp → List ℕ → ℕ) (τ : Tape K) (ρ : Env) (m : Mem K) :
+    True ∧ (∀ I : Interp ScalarOp Empty K, IsScalar M I → Runs I W τ .skip ρ m 0 0 (· = m)) :=
+  ⟨trivial, fun I _ => runs_skip I W τ ρ m⟩
 
 /-! ### (c) A contract without a witness -/
 
@@ -124,6 +149,20 @@ Mem K, not a size
 #ops_lint cheat_memProg
 
 /--
+error: ops_lint (a) `NLAlib.Ops.Tools.LintFixtures.cheat_nestedMem`: the program mentions `m` :
+Mem K, not a size
+-/
+#guard_msgs (whitespace := lax) in
+#ops_lint cheat_nestedMem
+
+/--
+error: ops_lint (a) `NLAlib.Ops.Tools.LintFixtures.cheat_existsSize`: the program mentions
+existential variable `n`
+-/
+#guard_msgs (whitespace := lax) in
+#ops_lint cheat_existsSize
+
+/--
 error: ops_lint (b) `NLAlib.Ops.Tools.LintFixtures.cheat_exists`: the interpretation is
 existentially quantified
 -/
@@ -136,6 +175,13 @@ specific term (head `NLAlib.Ops.Interp.ofFns`), not a variable
 -/
 #guard_msgs (whitespace := lax) in
 #ops_lint cheat_specific
+
+/--
+error: ops_lint (b) `NLAlib.Ops.Tools.LintFixtures.cheat_linkPinned`: a hypothesis fixes the
+interpretation by an equation
+-/
+#guard_msgs (whitespace := lax) in
+#ops_lint cheat_linkPinned
 
 /--
 error: ops_lint (c) `NLAlib.Ops.Tools.LintFixtures.cheat_noWitness`: no joint witness for the
@@ -166,6 +212,10 @@ error: ops_lint (f) `NLAlib.Ops.Tools.LintFixtures.cheat_xi`: the algorithm's tr
 #ops_lint cheat_xi
 
 /-! ### Headlines of the examples are accepted -/
+
+/-- info: ops_lint: `NLAlib.Ops.Tools.LintFixtures.runs_nested` passes (a)-(f) -/
+#guard_msgs in
+#ops_lint runs_nested
 
 /-- info: ops_lint: `NLAlib.Ops.Examples.runs_gemm_rounded` passes (a)-(f) -/
 #guard_msgs in

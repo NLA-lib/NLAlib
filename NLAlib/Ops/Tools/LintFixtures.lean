@@ -150,6 +150,27 @@ theorem cheat_nonliteralModeCompanion {M : Machine K} {u : ℝ} {dec : K → ℝ
       d.length = 0 ∧ ins.length = 2 ∧ outs.length = 1) : abortImpl.Meets I (id .liberal) C :=
   cheat_liberalCertificate _hM _hI C hfit
 
+/-- A single definition can describe both a successful program and a failing one. -/
+def sizeBranch (n : ℕ) : Stmt ScalarOp Empty := if n = 0 then .skip else .abort
+
+theorem cheat_companionAtZero (I : Interp ScalarOp Empty K) (W : ScalarOp → List ℕ → ℕ)
+    (τ : Tape K) (ρ : Env) (m : Mem K) : Runs I W τ (sizeBranch 0) ρ m 0 0 (· = m) := by
+  simpa [sizeBranch] using runs_skip I W τ ρ m
+
+theorem cheat_liberalAtOne {M : Machine K} {u : ℝ} {dec : K → ℝ} (_hM : StdModel u dec M)
+    {I : Interp ScalarOp Empty K} (_hI : IsScalar M I) (τ : Tape K) (ρ : Env) (m : Mem K) :
+    RunsL I τ (sizeBranch 1) ρ m fun _ => False := by
+  intro m' h
+  simp [sizeBranch, run] at h
+
+theorem cheat_existsSuccess (I : Interp ScalarOp Empty K) (W : ScalarOp → List ℕ → ℕ)
+    (τ : Tape K) (ρ : Env) (m : Mem K) : ∃ n, Runs I W τ (sizeBranch n) ρ m 0 0 (· = m) :=
+  ⟨0, cheat_companionAtZero I W τ ρ m⟩
+
+theorem cheat_liberalAtAnySize {M : Machine K} {u : ℝ} {dec : K → ℝ} (_hM : StdModel u dec M)
+    {I : Interp ScalarOp Empty K} (_hI : IsScalar M I) (τ : Tape K) (ρ : Env) (m : Mem K) (n : ℕ) :
+    RunsL I τ (sizeBranch n) ρ m fun _ => True := fun _ _ => trivial
+
 /-! ### (f) A ξ-taking primitive in an algorithm -/
 
 /-- A tree that contains `sraddXi` (in a branch never taken). -/
@@ -233,6 +254,27 @@ without a success statement about the same program
 -/
 #guard_msgs (whitespace := lax) in
 #ops_lint cheat_liberalCertificate
+
+/--
+error: ops_lint (e) `NLAlib.Ops.Tools.LintFixtures.cheat_nonliteralModeCompanion`: a liberal
+statement without a success statement about the same program
+-/
+#guard_msgs (whitespace := lax) in
+#ops_lint cheat_nonliteralModeCompanion
+
+/--
+error: ops_lint (e) `NLAlib.Ops.Tools.LintFixtures.cheat_liberalAtOne`: a liberal statement
+without a success statement about the same program
+-/
+#guard_msgs (whitespace := lax) in
+#ops_lint cheat_liberalAtOne
+
+/--
+error: ops_lint (e) `NLAlib.Ops.Tools.LintFixtures.cheat_liberalAtAnySize`: a liberal statement
+without a success statement about the same program
+-/
+#guard_msgs (whitespace := lax) in
+#ops_lint cheat_liberalAtAnySize
 
 /--
 error: ops_lint (f) `NLAlib.Ops.Tools.LintFixtures.cheat_xi`: the algorithm's tree calls the

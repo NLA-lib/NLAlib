@@ -37,7 +37,9 @@ A **headline** is a theorem whose conclusion contains `Runs`, `RunsW`, `RunsL`, 
 * **(e) liberal headlines.** A liberal statement (`RunsL`, `Impl.Meets … .liberal`) has a
   companion success statement (`Runs`, `RunsW`, `RunsLaw` or a total `Impl.Meets`) about the same
   program. The companion is in the same module or named `<name>_success`. Its conclusion must
-  establish the success judgment, either directly or in a conjunction.
+  establish the success judgment, either directly or in a conjunction. Programs are compared
+  syntactically up to renaming of parameters, including the arguments of linked tables.
+  The companion's program and interpretation must be independent of existential choices.
 * **(f) ξ only in tables.** The algorithm's tree (the program with its tables set apart) reaches
   no ξ-taking primitive (`ops_register_xi`, or a constructor named `…Xi`). An `Impl.Meets` about an
   implementation that a table or profile uses is exempt.
@@ -300,11 +302,10 @@ def interpIssue (I : Expr) (ex hyps : Array Expr) (fuel : ℕ := 64) : MetaM (Op
     let hd := (I.getAppFn.constName?.map toString).getD "a non-constant"
     return some s!"the interpretation is a specific term (head `{hd}`), not a variable"
 
-/-- A program key: the head constants of the algorithm's tree and of its tables. -/
-def progKey (p : Expr) : Option Name :=
-  let (t, ts) := peelLink p
-  t.getAppFn.constName?.map fun c =>
-    ts.foldl (fun acc T => acc ++ (T.getAppFn.constName?.getD `_)) c
+/-- A program key that abstracts over free variables in their order of occurrence. -/
+def progKey (p : Expr) : Expr :=
+  let p := p.consumeMData
+  p.abstract ((collectFVars {} p).fvarIds.map Expr.fvar)
 
 /-- The constants declared in the module `mod` (the current module included). -/
 def modConsts (mod : Name) : CoreM (Array Name) := do
@@ -323,7 +324,7 @@ def modOf (n : Name) : CoreM Name := do
     | none => env.mainModule
 
 /-- The keys of the programs that a theorem establishes succeed. -/
-def successKeysOf (n : Name) : MetaM (Array Name) := do
+def successKeysOf (n : Name) : MetaM (Array Expr) := do
   let env ← getEnv
   let some (.thmInfo ci) := env.find? n | return #[]
   let occs ← findOccs ci.type (successOnly := true)
@@ -332,14 +333,17 @@ def successKeysOf (n : Name) : MetaM (Array Name) := do
     if o.head.liberal then continue
     if o.head.name == ``NLAlib.Ops.Impl.Meets then
       let some md ← argByName o.head.name o.args `md | continue
+      let md ← withLCtx o.lctx o.localInsts (whnf md)
       unless md.isConstOf ``NLAlib.Ops.Mode.total do continue
-    if let some p ← argByName o.head.name o.args o.head.prog then
-      if let some k := progKey p then keys := keys.push k
+    let some p ← argByName o.head.name o.args o.head.prog | continue
+    let some I ← argByName o.head.name o.args `I | continue
+    if o.exVars.any (fun x => p.containsFVar x.fvarId! || I.containsFVar x.fvarId!) then continue
+    keys := keys.push (progKey p)
   return keys
 
 /-- The success statements of a module: the keys of their programs. -/
-def successKeys (mod : Name) : MetaM NameSet := do
-  let mut s : NameSet := {}
+def successKeys (mod : Name) : MetaM ExprSet := do
+  let mut s : ExprSet := {}
   for n in ← modConsts mod do
     for k in ← successKeysOf n do
       s := s.insert k
@@ -425,15 +429,13 @@ def lintOcc (ctx : Ctx) (n : Name) (o : Occ) : MetaM (Array (String × String)) 
     let mdLib ← do
       if h.name == ``NLAlib.Ops.Impl.Meets then
         match ← argByName h.name o.args `md with
-        | some md => pure (md.isConstOf ``NLAlib.Ops.Mode.liberal)
+        | some md => pure ((← whnf md).isConstOf ``NLAlib.Ops.Mode.liberal)
         | none => pure false
       else pure false
     if h.liberal || mdLib then
-      let ok ← match progKey p with
-        | some k => do
-          if (← successKeysOf (n.appendAfter "_success")).contains k then pure true
-          else pure ((← successKeys (← modOf n)).contains k)
-        | none => pure false
+      let k := progKey p
+      let named := (← successKeysOf (n.appendAfter "_success")).contains k
+      let ok ← if named then pure true else pure ((← successKeys (← modOf n)).contains k)
       unless ok do
         out := out.push ("e", "a liberal statement without a success statement about the \
           same program")

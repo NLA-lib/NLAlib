@@ -54,12 +54,15 @@ and instances, and reaches no noncomputable definition; (b) the interpretation i
 the statement (or `Interp.link` of one, or `ops_register_model`), not under `∃`, not fixed by an
 equation, constrained by a hypothesis; (c) one witness covers the contract set jointly;
 (d) counts and workspace reach no `Count.push`/`staticCost`/`staticPeak`/`Count.upper`/
-`Profile.cost`; (e) a liberal statement has a success statement about the same program in its
-module (or a theorem `<name>_success`); (f) the algorithm's tree reaches no ξ-taking primitive.
+`Profile.cost`; (e) a liberal statement has a positive success theorem in its module or named
+`<name>_success`, with the same program and table arguments up to parameter renaming; (f) the
+algorithm's tree reaches no ξ-taking primitive.
 
 **Conventions proposed** (the linter reads them; no core change needed):
 * *Witness*: a theorem named `exists_…` whose statement is `∃ …, C₁ … ∧ C₂ … ∧ …`; it covers
-  the `NLAlib` predicates `Cᵢ` and their parent structures. Others: `ops_register_witness`.
+  the `NLAlib` predicates `Cᵢ` and their parent structures under a single leading existential
+  telescope. `ops_register_witness` admits other names. The checker compares predicate heads.
+  Review the shared arguments and parameter range in the witness statement.
   The *contract set* of a target is the `NLAlib` predicates of its hypotheses on the
   interpretation, closed under the parameters they share (machine, decoding, law, …).
 * *ξ-taking primitive*: a constructor named `…Xi`, or `ops_register_xi c`.

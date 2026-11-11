@@ -118,8 +118,9 @@ private def runMatvec (A : List (List ℚ)) (m n : ℕ) (x : List ℚ) : Option 
     (.call .matvec [.const m, .const n] [⟨0, .const 0⟩] [⟨1, .const 0⟩])
     (frameOf [] [0, 1]) (memOf [vals x, blank m])
 
-#guard (runMatvec [[1, 2, 3], [4, 5, 6]] 2 3 [1, 2, 3]).map (·.store) ==
-  some [vals [1, 2, 3], vals [14, 32]]
+example : runMatvec [[1, 2, 3], [4, 5, 6]] 2 3 [1, 2, 3] =
+    some (memOf [vals [1, 2, 3], vals [14, 32]]) := by
+  with_unfolding_all rfl
 
 example : runMatvec [] 0 2 [1, 2] = some (memOf [vals [1, 2], []]) := rfl
 

@@ -251,9 +251,9 @@ inductive Stmt (Op Tst : Type) where
   /-- Bind a new index variable to the number returned by the index query `q`; the run fails
   if the number exceeds `bound`. -/
   | bindIdx (q : Tst) (ins : List Operand) (bound : IExp) (body : Stmt Op Tst)
-  /-- Bind a new buffer variable to a scratch buffer of `len` uninitialised cells, freed after
-  `body`. -/
-  | alloc (len : IExp) (body : Stmt Op Tst)
+  /-- Bind a new buffer variable to `len` uninitialized elements of the declared storage format,
+  freed after `body`; payload charge is `format.bytes * len`. -/
+  | allocAs (format : StorageFormat) (len : IExp) (body : Stmt Op Tst)
   /-- Run `body` for the values `0, …, n - 1` of a new index variable. -/
   | loop (n : IExp) (body : Stmt Op Tst)
   /-- A procedure instance: run `body` in the environment `Env.frame` of the dimensions and
@@ -263,6 +263,10 @@ inductive Stmt (Op Tst : Type) where
 namespace Stmt
 
 variable {Op Tst : Type}
+
+/-- Allocate one-byte cells. Format-aware programs use `allocAs` explicitly. -/
+@[simp] def alloc (len : IExp) (body : Stmt Op Tst) : Stmt Op Tst :=
+  .allocAs .cell len body
 
 /-- Run `body` if the size `e` is zero: a loop of `1 - e` rounds. Its index variable is not
 used. -/
@@ -280,5 +284,201 @@ def whileStrict (nidx : ℕ) (fuel : IExp) (q : Tst) (dims : List IExp) (ins : L
   .whileFuel (fuel + .const 1) q dims ins (.seq (ifZero (fuel - .var nidx) .abort) body) .skip
 
 end Stmt
+
+
+/-- Structural instructions recorded in addition to the specified operations and queries. -/
+inductive Bookkeeping where
+  /-- Read an index variable. -/
+  | indexVar
+  /-- Read an index constant. -/
+  | indexConst
+  /-- Add indices. -/
+  | indexAdd
+  /-- Multiply indices. -/
+  | indexMul
+  /-- Subtract indices. -/
+  | indexSub
+  /-- Divide indices. -/
+  | indexDiv
+  /-- Resolve an operand's buffer and offset. -/
+  | operand
+  /-- A skipped statement. -/
+  | skip
+  /-- Sequence two statements. -/
+  | sequence
+  /-- Select a branch. -/
+  | branch
+  /-- Enter or leave a counted loop. -/
+  | loop
+  /-- Enter a loop round. -/
+  | round
+  /-- Finish a loop with early exit, including its final index-evaluation allowance. -/
+  | exit
+  /-- Check and bind an index returned by a query. -/
+  | bindIdx
+  /-- Allocate a buffer; the dimension is its length. -/
+  | allocate
+  /-- Release a buffer; the dimension is its length. -/
+  | release
+  /-- Enter a procedure frame. -/
+  | frame
+  deriving DecidableEq, Repr
+
+variable {Op Tst K : Type}
+
+/-- The structural operations needed to evaluate an index expression. -/
+def IExp.bookkeeping : IExp → List Bookkeeping
+  | .var _ => [.indexVar]
+  | .const _ => [.indexConst]
+  | .add a b => a.bookkeeping ++ b.bookkeeping ++ [.indexAdd]
+  | .mul a b => a.bookkeeping ++ b.bookkeeping ++ [.indexMul]
+  | .sub a b => a.bookkeeping ++ b.bookkeeping ++ [.indexSub]
+  | .div a b => a.bookkeeping ++ b.bookkeeping ++ [.indexDiv]
+
+/-- Structural operations for evaluating dimensions. -/
+def indexBookkeeping (ds : List IExp) : List Bookkeeping := ds.flatMap IExp.bookkeeping
+
+/-- Structural operations for resolving operands, including their offsets. -/
+def operandBookkeeping (as : List Operand) : List Bookkeeping :=
+  as.flatMap fun a => a.off.bookkeeping ++ [.operand]
+
+/-- A list of explicit structural instructions, each an identity operation on memory. -/
+def tally : List Bookkeeping → Stmt (Op ⊕ Bookkeeping) Tst
+  | [] => .skip
+  | k :: ks => .seq (.call (.inr k) [] [] []) (tally ks)
+
+/-- Instrument one fixed symbolic tree. No concrete sizes, inputs, interpretation or tape are
+arguments of this transformation. Every dimension expression and operand offset is accounted
+for, together with control and allocations. -/
+def Stmt.instrument : Stmt Op Tst → Stmt (Op ⊕ Bookkeeping) Tst
+  | .skip => tally [.skip]
+  | .abort => .abort
+  | .seq s t => .seq (tally [.sequence]) (.seq s.instrument t.instrument)
+  | .call o ds ins outs =>
+      .seq (tally (indexBookkeeping ds ++ operandBookkeeping (ins ++ outs)))
+        (.call (.inl o) ds ins outs)
+  | .ite q ds ins t e =>
+      .seq (tally (indexBookkeeping ds ++ operandBookkeeping ins ++ [.branch]))
+        (.ite q ds ins t.instrument e.instrument)
+  | .whileFuel fuel q ds ins body k =>
+      let testWork := indexBookkeeping ds ++ operandBookkeeping ins
+      .seq (tally (fuel.bookkeeping ++ [.loop]))
+        (.whileFuel fuel q ds ins
+          (.seq (tally (testWork ++ [.round])) body.instrument)
+          (.seq (tally (testWork ++ [.exit])) k.instrument))
+  | .bindIdx q ins bound body =>
+      .seq (tally (operandBookkeeping ins ++ bound.bookkeeping ++ [.bindIdx]))
+        (.bindIdx q ins bound body.instrument)
+  | .allocAs fmt len body =>
+      .seq (tally len.bookkeeping)
+        (.seq (.call (.inr .allocate) [.const fmt.bytes, len] [] [])
+          (.seq (.allocAs fmt len body.instrument)
+            (.call (.inr .release) [.const fmt.bytes, len] [] [])))
+  | .loop n body =>
+      .seq (tally (n.bookkeeping ++ [.loop]))
+        (.loop n (.seq (tally [.round]) body.instrument))
+  | .frame ds args body =>
+      .seq (tally (indexBookkeeping ds ++ operandBookkeeping args ++ [.frame]))
+        (.frame ds args body.instrument)
+
+
+/-- One fixed first-order tree for every size and input: `r` sizes and `b` initial buffers.
+There are no functions or callbacks in this structure. Operation identities and literals are
+fixed in the tree. Scope and liveness obligations are discharged by total correctness. -/
+structure Program (Op Tst : Type) (r b : ℕ) where
+  /-- The one tree executed at every size. -/
+  body : Stmt Op Tst
+
+namespace Program
+
+variable {Op Lo Tst K : Type} {r b : ℕ}
+
+/-- The only initial environment: sizes followed by the `b` zero offsets, and handles in order.
+The program does not supply an environment-building function. -/
+def environment (d : Fin r → ℕ) : Env :=
+  ⟨List.ofFn d ++ List.replicate b 0, List.range b⟩
+
+
+end Program
+
+/-- Storage formats of an operation's input and output operands. Storage and arithmetic
+precision are independent: a mixed dot may consume fp16 and produce fp32. -/
+structure OperandSignature where
+  /-- Storage representation of every input operand, in order. -/
+  inputs : List StorageFormat
+  /-- Storage representation of every output operand, in order. -/
+  outputs : List StorageFormat
+
+/-- One fixed execution configuration: storage signatures, workspace bytes and work/span costs.
+Work measures total work; span permits internal primitive parallelism. Source calls are
+sequential, so their spans add. This is not a scheduler or elapsed-time guarantee. -/
+structure ResourceModel (Op Tst : Type) where
+  /-- The permitted representations. Equality includes both identity and byte width. -/
+  formats : List StorageFormat
+  /-- Required operand storage formats for each primitive. -/
+  operation : Op → OperandSignature
+  /-- Required inputs for Boolean queries. -/
+  testInputs : Tst → List StorageFormat
+  /-- Required inputs for index queries. -/
+  indexInputs : Tst → List StorageFormat
+  /-- Additional temporary payload bytes of each primitive. -/
+  workspace : Op → List ℕ → ℕ
+  /-- Additional temporary payload bytes of either use of a query. -/
+  queryWorkspace : Tst → List ℕ → ℕ
+  /-- Total work of each primitive. -/
+  operationWork : Op → List ℕ → ℕ
+  /-- Internal critical path of each primitive in this configuration. -/
+  operationSpan : Op → List ℕ → ℕ
+  /-- Total work of queries. -/
+  queryWork : Tst → List ℕ → ℕ
+  /-- Internal critical path of queries. -/
+  querySpan : Tst → List ℕ → ℕ
+  /-- Work of structural instructions. -/
+  coreWork : Bookkeeping → List ℕ → ℕ
+  /-- Span of structural instructions. -/
+  coreSpan : Bookkeeping → List ℕ → ℕ
+  /-- A primitive's critical path cannot exceed its total work. -/
+  operation_span_le : ∀ o d, operationSpan o d ≤ operationWork o d
+  /-- A query's critical path cannot exceed its total work. -/
+  query_span_le : ∀ q d, querySpan q d ≤ queryWork q d
+  /-- A structural instruction's critical path cannot exceed its total work. -/
+  core_span_le : ∀ k d, coreSpan k d ≤ coreWork k d
+
+/-- Resolve operand storage representations in a lexical buffer context. Offsets do not
+change the backing buffer's representation. -/
+def Operand.formatList (ctx : List StorageFormat) : List Operand → Option (List StorageFormat)
+  | [] => some []
+  | a :: as => (ctx[a.buf]?).bind fun f => (formatList ctx as).map (f :: ·)
+
+/-- The buffer format discipline, checked independently of runtime sizes, values and tests.
+Frames inherit actual operand formats, including aliases; no construct retypes a buffer. -/
+def Stmt.wellTyped {Op Tst : Type} (R : ResourceModel Op Tst) :
+    Stmt Op Tst → List StorageFormat → Bool
+  | .skip, _ => true
+  | .abort, _ => true
+  | .seq s t, ctx => s.wellTyped R ctx && t.wellTyped R ctx
+  | .call o _ ins outs, ctx =>
+      decide (Operand.formatList ctx ins = some (R.operation o).inputs) &&
+        decide (Operand.formatList ctx outs = some (R.operation o).outputs)
+  | .ite q _ ins t e, ctx =>
+      decide (Operand.formatList ctx ins = some (R.testInputs q)) &&
+        t.wellTyped R ctx && e.wellTyped R ctx
+  | .whileFuel _ q _ ins body k, ctx =>
+      decide (Operand.formatList ctx ins = some (R.testInputs q)) &&
+        body.wellTyped R ctx && k.wellTyped R ctx
+  | .bindIdx q ins _ body, ctx =>
+      decide (Operand.formatList ctx ins = some (R.indexInputs q)) && body.wellTyped R ctx
+  | .allocAs f _ body, ctx => decide (f ∈ R.formats) && body.wellTyped R (ctx ++ [f])
+  | .loop _ body, ctx => body.wellTyped R ctx
+  | .frame _ args body, ctx =>
+      match Operand.formatList ctx args with
+      | some fs => body.wellTyped R fs
+      | none => false
+
+/-- A fixed program uses only declared formats and matches all primitive/query signatures. -/
+def Program.wellTyped {Op Tst : Type} {r b : ℕ} (p : Program Op Tst r b)
+    (R : ResourceModel Op Tst) (formats : Fin b → StorageFormat) : Bool :=
+  (List.ofFn formats).all (fun f => decide (f ∈ R.formats)) &&
+    p.body.wellTyped R (List.ofFn formats)
 
 end NLAlib.Ops

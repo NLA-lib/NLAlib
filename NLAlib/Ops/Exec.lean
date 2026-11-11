@@ -7,6 +7,7 @@ module
 
 public import Mathlib.Algebra.BigOperators.Finsupp.Basic
 public import Mathlib.Data.Finsupp.Order
+public import Mathlib.Algebra.Module.End
 public import NLAlib.Ops.Stream
 public import NLAlib.Ops.Syntax
 
@@ -18,18 +19,18 @@ call on the memory (it is given the tape), the Boolean of a test, the number of 
 
 ## Main results
 
-Two evaluators:
+The canonical entry points accept one fixed `Program` before its runtime sizes and inputs.
 
-* `NLAlib.Ops.run`: the memory after a run. This is the meaning of a program.
-* `NLAlib.Ops.exec`: the same run with its accounting. The evaluator, not the interpretation,
-  fixes the accounting: every use of an operation counts one at the key
-  `(operation, dimensions)` (`NLAlib.Ops.Count`), a call raises the peak by the workspace that
-  the access model declares for it, and `alloc` by its length. `NLAlib.Ops.map_mem_exec`: the two
-  agree on the memory, failures included.
+* `NLAlib.Ops.exec` always elaborates source index, address, allocation and control instructions
+  into explicit counted operations. A caller cannot disable this accounting.
+* `NLAlib.Ops.run` gives the memory result of the same fixed program.
+* `NLAlib.Ops.exec_mem` proves that the two agree, including failures.
+* `NLAlib.Ops.eval` and `NLAlib.Ops.evalCounted` interpret statement syntax for the conditional
+  proof calculus. Its primitive counts are not a canonical algorithm cost claim.
 
-A call that changes the shape of the store fails (`NLAlib.Ops.Interp.callS`).
-
-`NLAlib.Ops.cost_le_of_exec`: a counted run only adds counts.
+Every primitive or query is keyed by its declared identity and dimensions in `Count`.
+The evaluator enforces operand liveness and unchanged store shape through `Interp.callS`.
+`cost_le_of_exec` states that statement evaluation only adds primitive counts.
 -/
 
 @[expose] public section
@@ -107,34 +108,34 @@ theorem Interp.testAt_eq {I : Interp Op Tst K} {q : Tst} {ds : List IExp} {ins :
 
 /-- **The run**: the memory after a program, in the environment `ρ`, under the interpretation `I`
 and the tape `τ`; `none` is failure. -/
-def run (I : Interp Op Tst K) (τ : Tape K) :
+def eval (I : Interp Op Tst K) (τ : Tape K) :
     Stmt Op Tst → Env → Mem K → Option (Mem K)
   | .skip, _, m => some m
   | .abort, _, _ => none
-  | .seq s t, ρ, m => (run I τ s ρ m).bind (run I τ t ρ)
+  | .seq s t, ρ, m => (eval I τ s ρ m).bind (eval I τ t ρ)
   | .call o ds ins outs, ρ, m =>
       (IExp.evalList ρ.idx ds).bind fun d => (Operand.evalList ρ ins).bind fun a =>
         (Operand.evalList ρ outs).bind fun b => I.callS o d a b τ m
   | .ite q ds ins t e, ρ, m =>
       (IExp.evalList ρ.idx ds).bind fun d => (Operand.evalList ρ ins).bind fun a =>
-        (I.test q d a m).bind fun c => if c then run I τ t ρ m else run I τ e ρ m
+        (I.test q d a m).bind fun c => if c then eval I τ t ρ m else eval I τ e ρ m
   | .whileFuel fuel q ds ins body k, ρ, m =>
       (fuel.eval ρ.idx).bind fun n =>
         (whileIter (fun i m => (I.testAt q ds ins (ρ.pushIdx i) m).map fun b => (b, m))
-          (fun i => run I τ body (ρ.pushIdx i)) n 0 m).bind fun jm =>
-            run I τ k (ρ.pushIdx jm.1) jm.2
+          (fun i => eval I τ body (ρ.pushIdx i)) n 0 m).bind fun jm =>
+            eval I τ k (ρ.pushIdx jm.1) jm.2
   | .bindIdx q ins bound body, ρ, m =>
       (Operand.evalList ρ ins).bind fun a => (bound.eval ρ.idx).bind fun B =>
-        (I.index q a m).bind fun v => if v ≤ B then run I τ body (ρ.pushIdx v) m else none
-  | .alloc len body, ρ, m =>
+        (I.index q a m).bind fun v => if v ≤ B then eval I τ body (ρ.pushIdx v) m else none
+  | .allocAs _ len body, ρ, m =>
       (len.eval ρ.idx).bind fun n =>
-        (run I τ body (ρ.pushBuf m.store.length) ⟨m.store.push n, m.pos⟩).map fun m' =>
+        (eval I τ body (ρ.pushBuf m.store.length) ⟨m.store.push n, m.pos⟩).map fun m' =>
           ⟨m'.store.pop, m'.pos⟩
   | .loop n body, ρ, m =>
-      (n.eval ρ.idx).bind fun k => iter (fun i m => run I τ body (ρ.pushIdx i) m) k m
+      (n.eval ρ.idx).bind fun k => iter (fun i m => eval I τ body (ρ.pushIdx i) m) k m
   | .frame ds args body, ρ, m =>
       (IExp.evalList ρ.idx ds).bind fun d => (Operand.evalList ρ args).bind fun a =>
-        if m.Live a then run I τ body (Env.frame d a) m else none
+        if m.Live a then eval I τ body (Env.frame d a) m else none
 
 /-- **Counts**: the number of uses of each operation and of each query at each list of
 dimensions. -/
@@ -147,15 +148,37 @@ noncomputable def Count.one (o : Op) (d : List ℕ) : Count Op Tst := Finsupp.si
 noncomputable def Count.test (q : Tst) (d : List ℕ) : Count Op Tst :=
   Finsupp.single (.inr q, d) 1
 
-/-- The state of a counted run: the memory, the counts, the live scratch cells and their peak. -/
+namespace Count
+
+/-- The additive map sending one use of the name `k` at `d` to `f k d`. -/
+noncomputable def lift {A : Type} [AddCommMonoid A] (f : Op ⊕ Tst → List ℕ → A) :
+    Count Op Tst →+ A :=
+  Finsupp.liftAddHom fun k => (smulAddHom ℕ A).flip (f k.1 k.2)
+
+theorem lift_single {A : Type} [AddCommMonoid A] (f : Op ⊕ Tst → List ℕ → A)
+    (k : (Op ⊕ Tst) × List ℕ) (n : ℕ) : lift f (Finsupp.single k n) = n • f k.1 k.2 := by
+  simp [lift]
+
+theorem lift_mono {A : Type} [AddCommMonoid A] [PartialOrder A] [CanonicallyOrderedAdd A]
+    (f : Op ⊕ Tst → List ℕ → A) : Monotone (lift f) := by
+  intro a b hab
+  obtain ⟨c, rfl⟩ := exists_add_of_le hab
+  rw [map_add]
+  exact le_self_add
+
+
+end Count
+
+/-- The state of a counted run: the memory, the counts, the live scratch payload bytes and their
+  peak. -/
 structure St (Op Tst K : Type) where
   /-- The memory. -/
   mem : Mem K
   /-- The counts so far. -/
   cost : Count Op Tst
-  /-- The scratch cells now allocated. -/
+  /-- The scratch payload bytes now allocated. -/
   cur : ℕ
-  /-- The peak of scratch cells, workspaces of operations included. -/
+  /-- The peak of scratch payload bytes, workspaces of operations included. -/
   peak : ℕ
 
 /-- The state at the start of a run: no counts, no scratch. -/
@@ -193,13 +216,14 @@ theorem Interp.testSt_eq_some {I : Interp Op Tst K} {q : Tst} {ds : List IExp}
   obtain ⟨b, hb, rfl⟩ := Option.map_eq_some_iff.mp h
   exact ⟨d, hd, by simp [Interp.testAt, hd, ha, hb], rfl⟩
 
-/-- **The counted run.** `W o d` is the workspace, in cells, that the access model declares for a
+/-- **The counted run.** `W o d` is the workspace, in modeled payload bytes, that the access model
+  declares for a
 call of `o` at the dimensions `d`. -/
-noncomputable def exec (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : Tape K) :
+noncomputable def evalCounted (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : Tape K) :
     Stmt Op Tst → Env → St Op Tst K → Option (St Op Tst K)
   | .skip, _, st => some st
   | .abort, _, _ => none
-  | .seq s t, ρ, st => (exec I W τ s ρ st).bind (exec I W τ t ρ)
+  | .seq s t, ρ, st => (evalCounted I W τ s ρ st).bind (evalCounted I W τ t ρ)
   | .call o ds ins outs, ρ, st =>
       (IExp.evalList ρ.idx ds).bind fun d => (Operand.evalList ρ ins).bind fun a =>
         (Operand.evalList ρ outs).bind fun b => (I.callS o d a b τ st.mem).map fun m' =>
@@ -207,27 +231,27 @@ noncomputable def exec (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ :
   | .ite q ds ins t e, ρ, st =>
       (IExp.evalList ρ.idx ds).bind fun d => (Operand.evalList ρ ins).bind fun a =>
         (I.test q d a st.mem).bind fun c =>
-          if c then exec I W τ t ρ (st.tick q d) else exec I W τ e ρ (st.tick q d)
+          if c then evalCounted I W τ t ρ (st.tick q d) else evalCounted I W τ e ρ (st.tick q d)
   | .whileFuel fuel q ds ins body k, ρ, st =>
       (fuel.eval ρ.idx).bind fun n =>
         (whileIter (fun i st => I.testSt q ds ins (ρ.pushIdx i) st)
-          (fun i => exec I W τ body (ρ.pushIdx i)) n 0 st).bind fun jst =>
-            exec I W τ k (ρ.pushIdx jst.1) jst.2
+          (fun i => evalCounted I W τ body (ρ.pushIdx i)) n 0 st).bind fun jst =>
+            evalCounted I W τ k (ρ.pushIdx jst.1) jst.2
   | .bindIdx q ins bound body, ρ, st =>
       (Operand.evalList ρ ins).bind fun a => (bound.eval ρ.idx).bind fun B =>
         (I.index q a st.mem).bind fun v =>
-          if v ≤ B then exec I W τ body (ρ.pushIdx v) (st.tick q []) else none
-  | .alloc len body, ρ, st =>
+          if v ≤ B then evalCounted I W τ body (ρ.pushIdx v) (st.tick q []) else none
+  | .allocAs fmt len body, ρ, st =>
       (len.eval ρ.idx).bind fun n =>
-        (exec I W τ body (ρ.pushBuf st.mem.store.length)
-          ⟨⟨st.mem.store.push n, st.mem.pos⟩, st.cost, st.cur + n,
-            max st.peak (st.cur + n)⟩).map fun st' =>
+        (evalCounted I W τ body (ρ.pushBuf st.mem.store.length)
+          ⟨⟨st.mem.store.push n, st.mem.pos⟩, st.cost, st.cur + fmt.bytes * n,
+            max st.peak (st.cur + fmt.bytes * n)⟩).map fun st' =>
           ⟨⟨st'.mem.store.pop, st'.mem.pos⟩, st'.cost, st.cur, st'.peak⟩
   | .loop n body, ρ, st =>
-      (n.eval ρ.idx).bind fun k => iter (fun i st => exec I W τ body (ρ.pushIdx i) st) k st
+      (n.eval ρ.idx).bind fun k => iter (fun i st => evalCounted I W τ body (ρ.pushIdx i) st) k st
   | .frame ds args body, ρ, st =>
       (IExp.evalList ρ.idx ds).bind fun d => (Operand.evalList ρ args).bind fun a =>
-        if st.mem.Live a then exec I W τ body (Env.frame d a) st else none
+        if st.mem.Live a then evalCounted I W τ body (Env.frame d a) st else none
 
 /-! ### The counted run and the run agree on the memory -/
 
@@ -352,19 +376,19 @@ theorem map_addHistory_exec (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) 
 /-- **The counted run and the run end in the same memory, or both fail.** -/
 theorem map_mem_exec (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : Tape K) (s : Stmt Op Tst)
     (ρ : Env)
-    (st : St Op Tst K) : (exec I W τ s ρ st).map (·.mem) = run I τ s ρ st.mem := by
+    (st : St Op Tst K) : (evalCounted I W τ s ρ st).map (·.mem) = eval I τ s ρ st.mem := by
   induction s generalizing ρ st with
   | skip => rfl
   | abort => rfl
   | seq s t ihs iht =>
-    simp only [exec, run]
+    simp only [evalCounted, eval]
     rw [Option.map_bind_of_comm _ (fun a => iht ρ a), ihs]
   | call o ds ins outs =>
-    simp only [exec, run]
+    simp only [evalCounted, eval]
     cases IExp.evalList ρ.idx ds <;> cases Operand.evalList ρ ins <;>
       cases Operand.evalList ρ outs <;> simp [Option.map_map, Function.comp_def]
   | ite q ds ins t e iht ihe =>
-    simp only [exec, run]
+    simp only [evalCounted, eval]
     cases IExp.evalList ρ.idx ds <;> cases Operand.evalList ρ ins <;> try rfl
     rename_i d a
     simp only [Option.bind_some]
@@ -372,17 +396,17 @@ theorem map_mem_exec (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : T
     | none => rfl
     | some c => cases c <;> simp [iht, ihe, St.tick]
   | whileFuel fuel q ds ins body k ih ihk =>
-    simp only [exec, run]
+    simp only [evalCounted, eval]
     cases fuel.eval ρ.idx with
     | none => rfl
     | some n =>
       simp only [Option.bind_some]
       rw [Option.map_bind_of_comm (g := Prod.map id fun x : St Op Tst K => x.mem)
-        (f' := fun jm : ℕ × Mem K => run I τ k (ρ.pushIdx jm.1) jm.2) _
+        (f' := fun jm : ℕ × Mem K => eval I τ k (ρ.pushIdx jm.1) jm.2) _
         (fun a => ihk (ρ.pushIdx a.1) a.2)]
       rw [map_whileIter (g := fun x : St Op Tst K => x.mem)
         (test' := fun i m => (I.testAt q ds ins (ρ.pushIdx i) m).map fun b => (b, m))
-        (body' := fun i => run I τ body (ρ.pushIdx i)) (fun i a => ?_)
+        (body' := fun i => eval I τ body (ρ.pushIdx i)) (fun i a => ?_)
         (fun i a => ih (ρ.pushIdx i) a)]
       · simp only [Interp.testSt, Interp.testAt]
         cases IExp.evalList (ρ.pushIdx i).idx ds <;>
@@ -391,29 +415,30 @@ theorem map_mem_exec (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : T
         simp only [Option.bind_some]
         cases I.test q d a' a.mem <;> rfl
   | bindIdx q ins bound body ih =>
-    simp only [exec, run]
+    simp only [evalCounted, eval]
     cases Operand.evalList ρ ins <;> cases bound.eval ρ.idx <;> try rfl
     rename_i a B
     simp only [Option.bind_some]
     cases I.index q a st.mem with
     | none => rfl
     | some v => by_cases hv : v ≤ B <;> simp [hv, ih, St.tick]
-  | alloc len body ih =>
-    simp only [exec, run]
+  | allocAs fmt len body ih =>
+    simp only [evalCounted, eval]
     cases len.eval ρ.idx with
     | none => rfl
     | some n =>
       have h := ih (ρ.pushBuf st.mem.store.length)
-        ⟨⟨st.mem.store.push n, st.mem.pos⟩, st.cost, st.cur + n, max st.peak (st.cur + n)⟩
+        ⟨⟨st.mem.store.push n, st.mem.pos⟩, st.cost, st.cur + fmt.bytes * n, max st.peak (st.cur +
+          fmt.bytes * n)⟩
       simp only [Option.bind_some, ← h, Option.map_map]
       rfl
   | loop n body ih =>
-    simp only [exec, run]
+    simp only [evalCounted, eval]
     cases n.eval ρ.idx with
     | none => rfl
     | some k => exact map_iter (fun i a => ih (ρ.pushIdx i) a) _ _
   | frame ds args body ih =>
-    simp only [exec, run]
+    simp only [evalCounted, eval]
     cases IExp.evalList ρ.idx ds <;> cases Operand.evalList ρ args <;> try rfl
     simp only [Option.bind_some]
     split_ifs
@@ -423,8 +448,8 @@ theorem map_mem_exec (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : T
 /-- A counted run succeeds exactly when the run does. -/
 theorem exec_eq_some_of_run {I : Interp Op Tst K} {τ : Tape K} {s : Stmt Op Tst} {ρ : Env}
     {m m' : Mem K}
-    (h : run I τ s ρ m = some m') (W : Op → List ℕ → ℕ) (st : St Op Tst K) (hm : st.mem = m) :
-    ∃ st', exec I W τ s ρ st = some st' ∧ st'.mem = m' := by
+    (h : eval I τ s ρ m = some m') (W : Op → List ℕ → ℕ) (st : St Op Tst K) (hm : st.mem = m) :
+    ∃ st', evalCounted I W τ s ρ st = some st' ∧ st'.mem = m' := by
   have e := map_mem_exec I W τ s ρ st
   rw [hm, h] at e
   obtain ⟨st', h1, h2⟩ := Option.map_eq_some_iff.mp e
@@ -432,8 +457,8 @@ theorem exec_eq_some_of_run {I : Interp Op Tst K} {τ : Tape K} {s : Stmt Op Tst
 
 theorem run_of_exec {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ : Tape K} {s : Stmt Op Tst}
     {ρ : Env}
-    {st st' : St Op Tst K} (h : exec I W τ s ρ st = some st') :
-    run I τ s ρ st.mem = some st'.mem := by
+    {st st' : St Op Tst K} (h : evalCounted I W τ s ρ st = some st') :
+    eval I τ s ρ st.mem = some st'.mem := by
   rw [← map_mem_exec I W τ s ρ st, h]
   rfl
 
@@ -471,7 +496,7 @@ theorem whileIter_rel {σ : Type} {R : σ → σ → Prop} (hrefl : ∀ a, R a a
 the program's back. -/
 theorem shape_store_of_run {I : Interp Op Tst K} {τ : Tape K} {s : Stmt Op Tst} {ρ : Env}
     {m m' : Mem K}
-    (h : run I τ s ρ m = some m') : m'.store.shape = m.store.shape := by
+    (h : eval I τ s ρ m = some m') : m'.store.shape = m.store.shape := by
   induction s generalizing ρ m m' with
   | skip => cases h; rfl
   | abort => cases h
@@ -504,7 +529,7 @@ theorem shape_store_of_run {I : Interp Op Tst K} {τ : Tape K} {s : Stmt Op Tst}
     obtain ⟨v, -, h⟩ := Option.bind_eq_some_iff.mp h
     split_ifs at h
     exact ih h
-  | alloc len body ih =>
+  | allocAs fmt len body ih =>
     obtain ⟨n, -, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨m₂, h₂, rfl⟩ := Option.map_eq_some_iff.mp h
     have := ih h₂
@@ -527,7 +552,7 @@ theorem shape_store_of_run {I : Interp Op Tst K} {τ : Tape K} {s : Stmt Op Tst}
 /-- **A counted run only adds counts**, so the counts of a run from a state are those of the
 state plus an increment. -/
 theorem cost_le_of_exec {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ : Tape K}
-    {s : Stmt Op Tst} {ρ : Env} {st st' : St Op Tst K} (h : exec I W τ s ρ st = some st') :
+    {s : Stmt Op Tst} {ρ : Env} {st st' : St Op Tst K} (h : evalCounted I W τ s ρ st = some st') :
     st.cost ≤ st'.cost := by
   induction s generalizing ρ st st' with
   | skip => cases h; exact le_rfl
@@ -564,7 +589,7 @@ theorem cost_le_of_exec {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ 
     obtain ⟨v, -, h⟩ := Option.bind_eq_some_iff.mp h
     split_ifs at h
     exact (le_self_add : st.cost ≤ (st.tick q []).cost).trans (ih h)
-  | alloc len body ih =>
+  | allocAs fmt len body ih =>
     obtain ⟨n, -, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨st₂, h₂, rfl⟩ := Option.map_eq_some_iff.mp h
     have h₃ := ih h₂
@@ -578,5 +603,197 @@ theorem cost_le_of_exec {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ 
     obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
     split_ifs at h
     exact ih h
+
+/-- The interpretation of instrumented programs: original calls are unchanged and bookkeeping
+calls preserve the memory. Queries are unchanged. -/
+def Interp.instrument (I : Interp Op Tst K) : Interp (Op ⊕ Bookkeeping) Tst K where
+  call o d ins outs τ m := o.elim (fun o => I.call o d ins outs τ m) (fun _ => some m)
+  test := I.test
+  index := I.index
+
+/-- Bookkeeping uses no scratch; original operations retain the specified workspaces. -/
+def instrumentWorkspace (W : Op → List ℕ → ℕ) : (Op ⊕ Bookkeeping) → List ℕ → ℕ
+  | .inl o, d => W o d
+  | .inr _, _ => 0
+
+/-- An original call keeps precisely its original meaning, including the shape and liveness
+checks of the evaluator. -/
+theorem Interp.callS_instrument_inl (I : Interp Op Tst K) (o : Op) (d : List ℕ)
+    (ins outs : List (ℕ × ℕ)) (τ : Tape K) (m : Mem K) :
+    I.instrument.callS (.inl o) d ins outs τ m = I.callS o d ins outs τ m := rfl
+
+/-- A structural call with no operands is the identity on memory. -/
+theorem Interp.callS_instrument_inr (I : Interp Op Tst K) (k : Bookkeeping) (d : List ℕ)
+    (τ : Tape K) (m : Mem K) : I.instrument.callS (.inr k) d [] [] τ m = some m := by
+  simp [Interp.callS, Interp.instrument, Mem.Live]
+
+/-- A tally always succeeds without changing the memory or tape position. -/
+theorem run_tally (I : Interp Op Tst K) (τ : Tape K) (ks : List Bookkeeping) (ρ : Env)
+    (m : Mem K) : eval I.instrument τ (tally ks) ρ m = some m := by
+  induction ks with
+  | nil => rfl
+  | cons k ks ih => simp [tally, eval, Interp.callS_instrument_inr, ih]
+
+/-- A structural call at one dimension evaluates that dimension and preserves the memory. -/
+theorem run_bookkeeping_dimension (I : Interp Op Tst K) (τ : Tape K) (k : Bookkeeping)
+    (e : IExp) (ρ : Env) (m : Mem K) :
+    eval I.instrument τ (.call (.inr k) [e] [] []) ρ m =
+      (e.eval ρ.idx).map (fun _ => m) := by
+  simp only [eval, IExp.evalList, Option.bind_some, Operand.evalList,
+    Interp.callS_instrument_inr]
+  cases e.eval ρ.idx <;> rfl
+
+/-- Instrumentation preserves exactly the result or failure of the original program. The
+additional instructions are visible in counts but cannot introduce a different computation. -/
+theorem run_instrument (I : Interp Op Tst K) (τ : Tape K) (s : Stmt Op Tst)
+    (ρ : Env) (m : Mem K) : eval I.instrument τ s.instrument ρ m = eval I τ s ρ m := by
+  induction s generalizing ρ m with
+  | skip => exact run_tally ..
+  | abort => rfl
+  | seq s t ihs iht => simp [Stmt.instrument, eval, run_tally, ihs, iht]
+  | call o ds ins outs => simp [Stmt.instrument, eval, run_tally, Interp.callS_instrument_inl]
+  | ite q ds ins t e iht ihe =>
+    simp only [Stmt.instrument, eval, run_tally, Option.bind_some,
+      show I.instrument.test = I.test from rfl, iht, ihe]
+  | whileFuel fuel q ds ins body k ih ihk =>
+    simp only [Stmt.instrument, eval, run_tally, Option.bind_some, ih, ihk,
+      show I.instrument.testAt = I.testAt from rfl]
+  | bindIdx q ins bound body ih =>
+    simp only [Stmt.instrument, eval, run_tally, Option.bind_some,
+      show I.instrument.index = I.index from rfl, ih]
+  | allocAs fmt len body ih =>
+    simp only [Stmt.instrument, eval, run_tally, Option.bind_some, IExp.evalList,
+      Operand.evalList, Interp.callS_instrument_inr, ih,
+      show (IExp.const fmt.bytes).eval ρ.idx = some fmt.bytes from rfl]
+    cases he : len.eval ρ.idx with
+    | none => rfl
+    | some n =>
+      simp only [Option.bind_some]
+      cases eval I τ body (ρ.pushBuf m.store.length) ⟨m.store.push n, m.pos⟩ <;> rfl
+  | loop n body ih =>
+    simp only [Stmt.instrument, eval, run_tally, Option.bind_some, ih]
+  | frame ds args body ih =>
+    simp only [Stmt.instrument, eval, run_tally, Option.bind_some, ih]
+
+
+
+/-- Total modeled work of the full canonical instruction count. -/
+noncomputable def ResourceModel.work (R : ResourceModel Op Tst) :
+    Count (Op ⊕ Bookkeeping) Tst →+ ℕ :=
+  Count.lift (Sum.elim (Sum.elim R.operationWork R.coreWork) R.queryWork)
+
+/-- Modeled critical path. Calls in this source language are sequential; only primitive-internal
+parallelism is represented by the supplied spans. -/
+noncomputable def ResourceModel.span (R : ResourceModel Op Tst) :
+    Count (Op ⊕ Bookkeeping) Tst →+ ℕ :=
+  Count.lift (Sum.elim (Sum.elim R.operationSpan R.coreSpan) R.querySpan)
+
+/-- Work budgets are monotone in the full instruction count. -/
+theorem ResourceModel.work_mono (R : ResourceModel Op Tst) : Monotone R.work :=
+  Count.lift_mono _
+
+/-- Span budgets are monotone in the full instruction count. -/
+theorem ResourceModel.span_mono (R : ResourceModel Op Tst) : Monotone R.span :=
+  Count.lift_mono _
+
+/-- The full modeled critical path never exceeds modeled total work. -/
+theorem ResourceModel.span_le_work (R : ResourceModel Op Tst)
+    (c : Count (Op ⊕ Bookkeeping) Tst) : R.span c ≤ R.work c := by
+  classical
+  induction c using Finsupp.induction with
+  | zero => simp
+  | @single_add k n c hk hn ih =>
+    rw [map_add, map_add]
+    apply add_le_add _ ih
+    rcases k with ⟨(o | b) | q, d⟩ <;>
+      simp only [ResourceModel.span, ResourceModel.work, Count.lift_single,
+        Sum.elim_inl, Sum.elim_inr, nsmul_eq_mul]
+    · exact Nat.mul_le_mul_left n (R.operation_span_le o d)
+    · exact Nat.mul_le_mul_left n (R.core_span_le b d)
+    · exact Nat.mul_le_mul_left n (R.query_span_le q d)
+
+/-- A shared reservation for the largest workspace of any executed query. Adding this to the
+explicit-allocation/primitive peak is conservative: it allows that query to coincide with the
+largest live allocation, even if that coincidence does not occur in the actual run. -/
+noncomputable def ResourceModel.queryReserve (R : ResourceModel Op Tst)
+    (c : Count (Op ⊕ Bookkeeping) Tst) : ℕ :=
+  c.support.sup fun k => k.1.elim (fun _ => 0) (fun q => R.queryWorkspace q k.2)
+
+/-- Increasing the instruction budget cannot reduce the query workspace reservation. -/
+theorem ResourceModel.queryReserve_mono (R : ResourceModel Op Tst) :
+    Monotone R.queryReserve := by
+  intro c c' h
+  exact Finset.sup_mono (Finsupp.support_mono h)
+
+/-- A configuration with zero query workspace needs no shared query reservation. -/
+theorem ResourceModel.queryReserve_of_zero (R : ResourceModel Op Tst)
+    (h : ∀ q d, R.queryWorkspace q d = 0) (c : Count (Op ⊕ Bookkeeping) Tst) :
+    R.queryReserve c = 0 := by
+  apply Finset.sup_eq_zero.mpr
+  intro k hk
+  rcases k with ⟨o | q, d⟩
+  · rfl
+  · exact h q d
+
+/-- Every executed query's declared workspace is included in the reservation. -/
+theorem ResourceModel.queryWorkspace_le {R : ResourceModel Op Tst}
+    {c : Count (Op ⊕ Bookkeeping) Tst} {q : Tst} {d : List ℕ}
+    (h : c (.inr q, d) ≠ 0) : R.queryWorkspace q d ≤ R.queryReserve c := by
+  exact Finset.le_sup (f := fun k =>
+    k.1.elim (fun _ => 0) (fun q => R.queryWorkspace q k.2)) (Finsupp.mem_support_iff.mpr h)
+
+/-- Add the conservative shared query reservation to scratch bytes, keeping the same memory,
+counts and live allocations. -/
+noncomputable def St.reserveQueries (st : St (Op ⊕ Bookkeeping) Tst K)
+    (R : ResourceModel Op Tst) : St (Op ⊕ Bookkeeping) Tst K :=
+  { st with peak := st.peak + R.queryReserve st.cost }
+
+/-- Canonical memory execution rejects undeclared/mismatched storage formats and a wrong initial
+buffer arity. Runtime sizes only enter the fixed environment after this format check. -/
+def run {r b : ℕ} (p : Program Op Tst r b) (I : Interp Op Tst K)
+    (R : ResourceModel Op Tst) (formats : Fin b → StorageFormat) (τ : Tape K)
+    (d : Fin r → ℕ) (m : Mem K) : Option (Mem K) :=
+  if p.wellTyped R formats = true ∧ m.store.length = b then
+    eval I τ p.body (Program.environment (b := b) d) m
+  else none
+
+/-- Canonical counted execution has mandatory format validation, structural instruction counts,
+format-sized allocation bytes, primitive workspace bytes and the shared query reservation. -/
+noncomputable def exec {r b : ℕ} (p : Program Op Tst r b) (I : Interp Op Tst K)
+    (R : ResourceModel Op Tst) (formats : Fin b → StorageFormat) (τ : Tape K)
+    (d : Fin r → ℕ) (m : Mem K) : Option (St (Op ⊕ Bookkeeping) Tst K) :=
+  if p.wellTyped R formats = true ∧ m.store.length = b then
+    (evalCounted I.instrument (instrumentWorkspace R.workspace) τ p.body.instrument
+      (Program.environment (b := b) d) (St.init m)).map (fun st => st.reserveQueries R)
+  else none
+
+/-- Successful raw accounting of a well-typed tree gives the canonical resource result. -/
+theorem exec_of_evalCounted {r b : ℕ} {p : Program Op Tst r b} {I : Interp Op Tst K}
+    {R : ResourceModel Op Tst} {formats : Fin b → StorageFormat} {τ : Tape K}
+    {d : Fin r → ℕ} {m : Mem K} {st : St (Op ⊕ Bookkeeping) Tst K}
+    (ht : p.wellTyped R formats = true) (hlen : m.store.length = b)
+    (h : evalCounted I.instrument (instrumentWorkspace R.workspace) τ p.body.instrument
+      (Program.environment (b := b) d) (St.init m) = some st) :
+    exec p I R formats τ d m = some (st.reserveQueries R) := by
+  simp [exec, ht, hlen, h]
+
+/-- Canonical execution agrees with the checked memory semantics, including failures. -/
+theorem exec_mem {r b : ℕ} (p : Program Op Tst r b) (I : Interp Op Tst K)
+    (R : ResourceModel Op Tst) (formats : Fin b → StorageFormat) (τ : Tape K)
+    (d : Fin r → ℕ) (m : Mem K) :
+    (exec p I R formats τ d m).map St.mem = run p I R formats τ d m := by
+  simp only [exec, run]
+  split_ifs
+  · rw [Option.map_map]
+    change (evalCounted I.instrument (instrumentWorkspace R.workspace) τ p.body.instrument
+      (Program.environment (b := b) d) (St.init m)).map St.mem = _
+    rw [map_mem_exec, run_instrument]
+    rfl
+  · rfl
+
+/-- Method form of canonical format-checked memory execution. -/
+def Program.run {r b : ℕ} (p : Program Op Tst r b) (I : Interp Op Tst K)
+    (R : ResourceModel Op Tst) (formats : Fin b → StorageFormat) (τ : Tape K)
+    (d : Fin r → ℕ) (m : Mem K) : Option (Mem K) := Ops.run p I R formats τ d m
 
 end NLAlib.Ops

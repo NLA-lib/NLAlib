@@ -2,6 +2,50 @@
 
 Part of the [contributor guide](../../CONTRIBUTING.md).
 
+## Structural certificates in the new Ops core
+
+The Ops core's algorithm interface is `NLAlib.Ops.Algorithm`, described in
+`docs/design/Ops-Certification.md` and `NLAlib/Ops/README.md`. A published Ops claim fixes its
+`Problem`, `AccessModel`, and `Specification`, and asks for one `Algorithm` of those types.
+For a fixed registered program, the theorem shape is
+`theorem result : program.Certifies model specification` (`Ops.Program.Certifies`).
+An `Algorithm` is one program together with exactly this proof.
+The specification does not take a tree-building callback. Concrete sizes and input data are
+bound inside the certificate's correctness field, after its one `Program` has been fixed.
+
+The model assumptions are exactly its declared operation and query contracts; no arbitrary
+stronger interpreter predicate is accepted. Those contracts must be jointly realizable at every
+admitted input; inhabited inputs
+and tapes are required. Correctness is total, on the same instrumented execution whose counts
+include the specified calls, queries, index evaluation, addressing, control and allocations.
+A liberal lemma is proof infrastructure and cannot replace that field. Linking takes one
+fixed table and checks the full instrumented lower tree against the lower specification.
+Lint is optional guidance and is never an assumption or proof of these guarantees.
+
+The fixed resource model declares permitted storage representations, operand signatures,
+primitive/query workspace, and explicit operation/query/structural work and span. Canonical
+execution checks input buffer formats and every call, including aliased frames, before running.
+`allocAs format n` charges `format.bytes * n`; legacy `alloc n` means abstract `.cell` width1
+and is not implicitly reinterpreted as fp32/fp64. Buffer capacities include uninitialized slots.
+A certificate bounds scratch payload, total initial-plus-scratch payload, work, span and full
+instruction counts. Query workspace uses a conservative shared maximum for executed queries.
+Allocation/release count dimensions are `[format.bytes, elementCount]`.
+
+Spans describe internal parallelism of primitives in one specified configuration and add across
+this sequential program. No scheduler bound or work/P speedup is inferred. For the same query
+identity/dimensions, cost/workspace weights cover both Boolean and index uses; use separate
+names for different costs. Models for physical bytes/time must justify their representation and
+implementation: opaque K and format tags alone do not prove finite encodability or runtime.
+See `docs/design/Ops-Resources.md` and `Ops.Examples.Resources.mixedAlgorithm` for the mixed-format certificate.
+
+Operation meanings and primitive costs, the admitted input domain and buffers, and the claimed
+postcondition remain reviewed specifications. The explicit index instructions have abstract
+unit-operation cost; a bit-cost interpretation needs its own model. Initial buffers are counted
+as specified inputs, while the scratch budget measures cells above them. No existing target
+is converted to this interface or registered without the usual target approval.
+
+## Existing Computation targets
+
 Algorithms analysed for their cost are programs over memory buffers (`NLAlib/Computation`,
 `docs/design/Computation.md`). A program `<spec>Prog` is written with the builder in its topic
 file, next to its specification, and compiled once, at symbolic sizes, into one first-order tree

@@ -643,6 +643,7 @@ public import NLAlib.Ops.Counted
 public import NLAlib.Ops.Examples.Bilinear
 public import NLAlib.Ops.Examples.Bits
 public import NLAlib.Ops.Examples.Built
+public import NLAlib.Ops.Examples.Certification
 public import NLAlib.Ops.Examples.Cgs
 public import NLAlib.Ops.Examples.CgsLinked
 public import NLAlib.Ops.Examples.CgsMath
@@ -662,6 +663,7 @@ public import NLAlib.Ops.Examples.Noisy
 public import NLAlib.Ops.Examples.NoisyLinked
 public import NLAlib.Ops.Examples.NoisyMath
 public import NLAlib.Ops.Examples.RandomWitness
+public import NLAlib.Ops.Examples.Resources
 public import NLAlib.Ops.Examples.Split
 public import NLAlib.Ops.Examples.StochRound
 public import NLAlib.Ops.Exec
@@ -690,8 +692,8 @@ public import NLAlib.Ops.Static
 public import NLAlib.Ops.Store
 public import NLAlib.Ops.StoreSimp
 public import NLAlib.Ops.Stream
-public import NLAlib.Ops.Tactic
 public import NLAlib.Ops.Syntax
+public import NLAlib.Ops.Tactic
 public import NLAlib.Ops.Tape
 public import NLAlib.Ops.TapeLaw
 public import NLAlib.Ops.Transfer

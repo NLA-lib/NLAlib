@@ -13,7 +13,7 @@ public import NLAlib.Ops.Transfer
 
 `NLAlib.Ops.Runs.of_run` bounds counts by the static cost. This bound charges `bindIdx` at every
 value up to its bound and covers all branches and loop iterations. `NLAlib.Ops.RunsFromW` gives
-its postcondition **the counts that the run added** and the final memory. The bound can depend
+its postcondition **the counts that the eval added** and the final memory. The bound can depend
 on the data, on the starting state of a continuation, and on weights such as a superadditive
 function of the dimensions.
 
@@ -21,9 +21,10 @@ One rule per constructor: `skip`, `seq` (the continuation is proved from the sta
 counts reached), `call` (one call, at its dimensions), `ite`, `bindIdx` (charged at the value
 read), `alloc`, `loop` (an invariant on the counts so far and the memory), `whileFuel`, `frame`;
 and `NLAlib.Ops.RunsFromW.of_wp` takes everything whose counts do not depend on the data from
-`Wp` with its static cost. A `RunsFromW` from the initial state is a `NLAlib.Ops.RunsW`
-(`NLAlib.Ops.RunsFromW.runsW`) or a `NLAlib.Ops.Runs` (`NLAlib.Ops.RunsFromW.runs`), which
-linking transfers (`NLAlib.Ops.RunsW.link`, `NLAlib.Ops.exec_link_weight`).
+`Wp` with its static cost. A `RunsFromW` from the initial state is a `NLAlib.Ops.ConditionalRunsW`
+(`NLAlib.Ops.RunsFromW.runsW`) or a `NLAlib.Ops.ConditionalRuns` (`NLAlib.Ops.RunsFromW.runs`),
+  which
+linking transfers (`NLAlib.Ops.ConditionalRunsW.link`, `NLAlib.Ops.exec_link_weight`).
 
 `NLAlib.Ops.RunsFromWL` is the same judgment for **partial correctness**: if the counted run
 from the state succeeds, it stays within the workspace and the postcondition holds of the counts
@@ -57,7 +58,8 @@ namespace NLAlib.Ops
 
 variable {Op Tst K : Type}
 
-/-- The state `b` is reached from `a` with exactly the counts `c` added, the same live cells and
+/-- The state `b` is reached from `a` with exactly the counts `c` added, the same live payload
+  bytes and
 a peak at most `p` above them. -/
 def St.Reach (a b : St Op Tst K) (c : Count Op Tst) (p : ℕ) : Prop :=
   b.cost = a.cost + c ∧ b.cur = a.cur ∧ b.peak ≤ max a.peak (a.cur + p)
@@ -80,11 +82,12 @@ theorem tick (a : St Op Tst K) (q : Tst) (d : List ℕ) (p : ℕ) :
 end St.Reach
 
 /-- **A counted run from a state, whose postcondition sees the counts**: the counted run of `s`
-from `st` succeeds, stays within the workspace `p` above the live cells, and `Q` holds of the
+from `st` succeeds, stays within the workspace `p` above the live payload bytes, and `Q` holds of
+  the
 counts that the run added and of the final memory. -/
 def RunsFromW (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : Tape K) (s : Stmt Op Tst)
     (ρ : Env) (st : St Op Tst K) (p : ℕ) (Q : Count Op Tst → Mem K → Prop) : Prop :=
-  ∃ st' c, exec I W τ s ρ st = some st' ∧ St.Reach st st' c p ∧ Q c st'.mem
+  ∃ st' c, evalCounted I W τ s ρ st = some st' ∧ St.Reach st st' c p ∧ Q c st'.mem
 
 namespace RunsFromW
 
@@ -93,7 +96,7 @@ variable {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ : Tape K} {ρ :
 
 /-- Everything whose counts do not depend on the data: a total `Wp` and the static cost. -/
 theorem of_wp {s : Stmt Op Tst} {P : Mem K → Prop} (h : Wp .total I τ s ρ P st.mem) :
-    RunsFromW I W τ s ρ st (staticPeak W s ρ.idx) fun c m => c ≤ staticCost s ρ.idx ∧ P m := by
+    RunsFromW I W τ s ρ st (stmtPeak W s ρ.idx) fun c m => c ≤ stmtCost s ρ.idx ∧ P m := by
   obtain ⟨m', hrun, hQ⟩ := h
   obtain ⟨st', hst, hm⟩ := exec_eq_some_of_run hrun W st rfl
   obtain ⟨h1, h2, h3⟩ := exec_within hst
@@ -115,7 +118,7 @@ theorem seq {s t : Stmt Op Tst} (h : RunsFromW I W τ s ρ st p Q')
     RunsFromW I W τ (.seq s t) ρ st (max p p') Q := by
   obtain ⟨st₁, c₁, h1, h2, h3⟩ := h
   obtain ⟨st₂, c₂, h4, h5, h6⟩ := h' st₁ c₁ h3
-  exact ⟨st₂, c₁ + c₂, by simp only [exec, h1, Option.bind_some, h4], h2.trans h5, h6⟩
+  exact ⟨st₂, c₁ + c₂, by simp only [evalCounted, h1, Option.bind_some, h4], h2.trans h5, h6⟩
 
 /-- **A call**: one call at its dimensions, and the workspace of the operation. The memory is
 taken from `Wp`, by any call rule. -/
@@ -124,11 +127,11 @@ theorem call {o : Op} {ds : List IExp} {ins outs : List Operand} {d : List ℕ}
     (h : Wp .total I τ (.call o ds ins outs) ρ P st.mem) :
     RunsFromW I W τ (.call o ds ins outs) ρ st (W o d) fun c m => c = Count.one o d ∧ P m := by
   obtain ⟨m', hrun, hP⟩ := h
-  simp only [run, hd, Option.bind_some] at hrun
+  simp only [eval, hd, Option.bind_some] at hrun
   obtain ⟨a, ha, hrun⟩ := Option.bind_eq_some_iff.mp hrun
   obtain ⟨b, hb, hrun⟩ := Option.bind_eq_some_iff.mp hrun
   exact ⟨⟨m', st.cost + Count.one o d, st.cur, max st.peak (st.cur + W o d)⟩, Count.one o d,
-    by simp [exec, hd, ha, hb, hrun], ⟨rfl, rfl, le_rfl⟩, rfl, hP⟩
+    by simp [evalCounted, hd, ha, hb, hrun], ⟨rfl, rfl, le_rfl⟩, rfl, hP⟩
 
 /-- **Branch**: one use of the test, then the branch taken. -/
 theorem ite {q : Tst} {ds : List IExp} {ins : List Operand} {t e : Stmt Op Tst} {d : List ℕ}
@@ -138,7 +141,7 @@ theorem ite {q : Tst} {ds : List IExp} {ins : List Operand} {t e : Stmt Op Tst} 
       fun c m => Q (Count.test q d + c) m) : RunsFromW I W τ (.ite q ds ins t e) ρ st p Q := by
   obtain ⟨st', c, h1, h2, h3⟩ := h
   refine ⟨st', Count.test q d + c, ?_, by simpa using (St.Reach.tick st q d p).trans h2, h3⟩
-  cases b <;> simpa [exec, hd, ha, hb] using h1
+  cases b <;> simpa [evalCounted, hd, ha, hb] using h1
 
 /-- **Index binder**: one use of the query, then the body **at the value read**, which is
 charged for that value only. -/
@@ -149,19 +152,21 @@ theorem bindIdx {q : Tst} {ins : List Operand} {bound : IExp} {body : Stmt Op Ts
       fun c m => Q (Count.test q [] + c) m) :
     RunsFromW I W τ (.bindIdx q ins bound body) ρ st p Q := by
   obtain ⟨st', c, h1, h2, h3⟩ := h
-  exact ⟨st', Count.test q [] + c, by simpa [exec, ha, hB, hv, hle] using h1,
+  exact ⟨st', Count.test q [] + c, by simpa [evalCounted, ha, hB, hv, hle] using h1,
     by simpa using (St.Reach.tick st q [] p).trans h2, h3⟩
 
 /-- **Scratch buffer**: the body runs with the new buffer on top, which is then popped; the
 workspace is that of the body above the buffer. -/
-theorem alloc {len : IExp} {body : Stmt Op Tst} {n : ℕ} (hn : len.eval ρ.idx = some n)
+theorem alloc {format : StorageFormat} {len : IExp} {body : Stmt Op Tst} {n : ℕ} (hn : len.eval
+  ρ.idx = some n)
     (h : RunsFromW I W τ body (ρ.pushBuf st.mem.store.length)
-      ⟨⟨st.mem.store.push n, st.mem.pos⟩, st.cost, st.cur + n, max st.peak (st.cur + n)⟩ p
+      ⟨⟨st.mem.store.push n, st.mem.pos⟩, st.cost, st.cur + format.bytes * n, max st.peak (st.cur
+        + format.bytes * n)⟩ p
       fun c m' => Q c ⟨m'.store.pop, m'.pos⟩) :
-    RunsFromW I W τ (.alloc len body) ρ st (n + p) Q := by
+    RunsFromW I W τ (.allocAs format len body) ρ st (format.bytes * n + p) Q := by
   obtain ⟨st', c, h1, ⟨h2, h3, h4⟩, h5⟩ := h
   refine ⟨⟨⟨st'.mem.store.pop, st'.mem.pos⟩, st'.cost, st.cur, st'.peak⟩, c,
-    by simp only [exec, hn, Option.bind_some, h1, Option.map_some], ⟨h2, rfl, ?_⟩, h5⟩
+    by simp only [evalCounted, hn, Option.bind_some, h1, Option.map_some], ⟨h2, rfl, ?_⟩, h5⟩
   simp only at h4 ⊢
   omega
 
@@ -172,7 +177,7 @@ theorem frame {ds : List IExp} {args : List Operand} {body : Stmt Op Tst} {d : L
     (h : RunsFromW I W τ body (Env.frame d a) st p Q) :
     RunsFromW I W τ (.frame ds args body) ρ st p Q := by
   obtain ⟨st', c, h1, h2, h3⟩ := h
-  exact ⟨st', c, by simpa only [exec, hd, ha, Option.bind_some, if_pos hl] using h1, h2, h3⟩
+  exact ⟨st', c, by simpa only [evalCounted, hd, ha, Option.bind_some, if_pos hl] using h1, h2, h3⟩
 
 /-- **Loop**, with an invariant on the counts added so far and the memory, indexed by the number
 of rounds done: the bound of a round comes from the invariant. -/
@@ -181,7 +186,7 @@ theorem loop {n : IExp} {body : Stmt Op Tst} {k : ℕ} (hn : n.eval ρ.idx = som
     (hstep : ∀ i < k, ∀ st' c, Inv i c st'.mem →
       RunsFromW I W τ body (ρ.pushIdx i) st' p fun c' m => Inv (i + 1) (c + c') m) :
     RunsFromW I W τ (.loop n body) ρ st p (Inv k) := by
-  have key : ∀ j ≤ k, ∃ st' c, iter (fun i st => exec I W τ body (ρ.pushIdx i) st) j st =
+  have key : ∀ j ≤ k, ∃ st' c, iter (fun i st => evalCounted I W τ body (ρ.pushIdx i) st) j st =
       some st' ∧ St.Reach st st' c p ∧ Inv j c st'.mem := by
     intro j
     induction j with
@@ -193,7 +198,7 @@ theorem loop {n : IExp} {body : Stmt Op Tst} {k : ℕ} (hn : n.eval ρ.idx = som
       exact ⟨st₂, c₁ + c₂, by simp only [iter, h1, Option.bind_some, h4],
         by simpa using h2.trans h5, h6⟩
   obtain ⟨st', c, h1, h2, h3⟩ := key k le_rfl
-  exact ⟨st', c, by simp only [exec, hn, Option.bind_some, h1], h2, h3⟩
+  exact ⟨st', c, by simp only [evalCounted, hn, Option.bind_some, h1], h2, h3⟩
 
 /-- **The loop with early exit**, with an invariant on the counts added so far and the memory.
 At a round below the cap the test is used once: if it holds the body keeps the invariant,
@@ -215,8 +220,8 @@ theorem whileFuel {fuel : IExp} {q : Tst} {ds : List IExp} {ins : List Operand}
   have key : ∀ (r i : ℕ) (st₁ : St Op Tst K) (c₁ : Count Op Tst), i + r = n →
       St.Reach st st₁ c₁ p → Inv i c₁ st₁.mem → ∃ st' c,
         ((whileIter (fun i st => I.testSt q ds ins (ρ.pushIdx i) st)
-          (fun i => exec I W τ body (ρ.pushIdx i)) r i st₁).bind fun jst =>
-            exec I W τ k (ρ.pushIdx jst.1) jst.2) = some st' ∧
+          (fun i => evalCounted I W τ body (ρ.pushIdx i)) r i st₁).bind fun jst =>
+            evalCounted I W τ k (ρ.pushIdx jst.1) jst.2) = some st' ∧
         St.Reach st st' c p ∧ Q c st'.mem := by
     intro r
     induction r with
@@ -243,11 +248,11 @@ theorem whileFuel {fuel : IExp} {q : Tst} {ds : List IExp} {ins : List Operand}
           (by simpa using hr'.trans h2) (by simpa [add_assoc] using h3)
         exact ⟨st₃, c₃, by simpa [whileIter, ht, h1, Option.bind_assoc] using h4, h5, h6⟩
   obtain ⟨st', c, h1, h2, h3⟩ := key n 0 st 0 (by omega) (St.Reach.refl st p) h0
-  exact ⟨st', c, by simp only [exec, hn, Option.bind_some, h1], h2, h3⟩
+  exact ⟨st', c, by simp only [evalCounted, hn, Option.bind_some, h1], h2, h3⟩
 
 /-- A counted run from the initial state is a run whose postcondition sees the counts. -/
 theorem runsW {s : Stmt Op Tst} {m : Mem K} (h : RunsFromW I W τ s ρ (St.init m) p Q) :
-    RunsW I W τ s ρ m p Q := by
+    ConditionalRunsW I W τ s ρ m p Q := by
   obtain ⟨st', c, h1, ⟨h2, -, h3⟩, h4⟩ := h
   refine ⟨st', h1, by simpa [St.init] using h3, ?_⟩
   have e : st'.cost = c := by simpa [St.init] using h2
@@ -256,18 +261,20 @@ theorem runsW {s : Stmt Op Tst} {m : Mem K} (h : RunsFromW I W τ s ρ (St.init 
 /-- A counted run from the initial state whose counts are within `B` is a run within the
 budget. -/
 theorem runs {s : Stmt Op Tst} {m : Mem K} {B : Count Op Tst} {P : Mem K → Prop}
-    (h : RunsFromW I W τ s ρ (St.init m) p fun c m' => c ≤ B ∧ P m') : Runs I W τ s ρ m B p P :=
+    (h : RunsFromW I W τ s ρ (St.init m) p fun c m' => c ≤ B ∧ P m') : ConditionalRuns I W τ s ρ m
+      B p P :=
   runs_iff_runsW.mpr h.runsW
 
 end RunsFromW
 
 /-- **A counted run from a state, partial correctness**: if the counted run of `s` from `st`
-succeeds, it stays within the workspace `p` above the live cells, and `Q` holds of the counts
+succeeds, it stays within the workspace `p` above the live payload bytes, and `Q` holds of the
+  counts
 that the run added and of the final memory. It says nothing of success: a target never rests on
 it alone. -/
 def RunsFromWL (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : Tape K) (s : Stmt Op Tst)
     (ρ : Env) (st : St Op Tst K) (p : ℕ) (Q : Count Op Tst → Mem K → Prop) : Prop :=
-  ∀ st', exec I W τ s ρ st = some st' → ∃ c, St.Reach st st' c p ∧ Q c st'.mem
+  ∀ st', evalCounted I W τ s ρ st = some st' → ∃ c, St.Reach st st' c p ∧ Q c st'.mem
 
 namespace RunsFromWL
 
@@ -295,7 +302,7 @@ theorem runsFromW {s : Stmt Op Tst} {P : Mem K → Prop} (h : RunsFromWL I W τ 
 /-- **The static count and workspace, with no hypothesis**: every successful counted run is
 within them (`NLAlib.Ops.exec_within`). -/
 theorem of_static (s : Stmt Op Tst) :
-    RunsFromWL I W τ s ρ st (staticPeak W s ρ.idx) fun c _ => c ≤ staticCost s ρ.idx := by
+    RunsFromWL I W τ s ρ st (stmtPeak W s ρ.idx) fun c _ => c ≤ stmtCost s ρ.idx := by
   intro st' hst
   obtain ⟨h1, h2, h3⟩ := exec_within hst
   obtain ⟨c, hc⟩ := exists_add_of_le (cost_le_of_exec hst)
@@ -303,7 +310,7 @@ theorem of_static (s : Stmt Op Tst) :
 
 /-- Everything whose counts do not depend on the data: a liberal `Wp` and the static cost. -/
 theorem of_wp {s : Stmt Op Tst} {P : Mem K → Prop} (h : Wp .liberal I τ s ρ P st.mem) :
-    RunsFromWL I W τ s ρ st (staticPeak W s ρ.idx) fun c m => c ≤ staticCost s ρ.idx ∧ P m := by
+    RunsFromWL I W τ s ρ st (stmtPeak W s ρ.idx) fun c m => c ≤ stmtCost s ρ.idx ∧ P m := by
   intro st' hst
   obtain ⟨c, h1, h2⟩ := of_static s st' hst
   exact ⟨c, h1, h2, h _ (run_of_exec hst)⟩
@@ -352,7 +359,7 @@ theorem call {o : Op} {ds : List IExp} {ins outs : List Operand} {d : List ℕ}
     RunsFromWL I W τ (.call o ds ins outs) ρ st (W o d) fun c m => c = Count.one o d ∧ P m := by
   intro st' hst
   have hP := h _ (run_of_exec hst)
-  simp only [exec, hd, Option.bind_some] at hst
+  simp only [evalCounted, hd, Option.bind_some] at hst
   obtain ⟨a, -, hst⟩ := Option.bind_eq_some_iff.mp hst
   obtain ⟨b, -, hst⟩ := Option.bind_eq_some_iff.mp hst
   obtain ⟨m', -, rfl⟩ := Option.map_eq_some_iff.mp hst
@@ -367,7 +374,7 @@ theorem ite {q : Tst} {ds : List IExp} {ins : List Operand} {t e : Stmt Op Tst} 
       RunsFromWL I W τ (if b then t else e) ρ (st.tick q d) p
         fun c m => Q (Count.test q d + c) m) : RunsFromWL I W τ (.ite q ds ins t e) ρ st p Q := by
   intro st' hst
-  simp only [exec, hd, ha, Option.bind_some] at hst
+  simp only [evalCounted, hd, ha, Option.bind_some] at hst
   obtain ⟨b, hb, hst⟩ := Option.bind_eq_some_iff.mp hst
   obtain ⟨c, h2, h3⟩ := h b hb st' (by cases b <;> simpa using hst)
   exact ⟨Count.test q d + c, by simpa using (St.Reach.tick st q d p).trans h2, h3⟩
@@ -383,7 +390,7 @@ theorem bindIdx {q : Tst} {ins : List Operand} {bound : IExp} {body : Stmt Op Ts
         fun c m => Q (Count.test q [] + c) m) :
     RunsFromWL I W τ (.bindIdx q ins bound body) ρ st p Q := by
   intro st' hst
-  simp only [exec, ha, hB, Option.bind_some] at hst
+  simp only [evalCounted, ha, hB, Option.bind_some] at hst
   obtain ⟨v, hv, hst⟩ := Option.bind_eq_some_iff.mp hst
   split_ifs at hst with hle
   obtain ⟨c, h2, h3⟩ := h v hle hv st' hst
@@ -391,13 +398,15 @@ theorem bindIdx {q : Tst} {ins : List Operand} {bound : IExp} {body : Stmt Op Ts
 
 /-- **Scratch buffer**: the body runs with the new buffer on top, which is then popped; the
 workspace is that of the body above the buffer. -/
-theorem alloc {len : IExp} {body : Stmt Op Tst} {n : ℕ} (hn : len.eval ρ.idx = some n)
+theorem alloc {format : StorageFormat} {len : IExp} {body : Stmt Op Tst} {n : ℕ} (hn : len.eval
+  ρ.idx = some n)
     (h : RunsFromWL I W τ body (ρ.pushBuf st.mem.store.length)
-      ⟨⟨st.mem.store.push n, st.mem.pos⟩, st.cost, st.cur + n, max st.peak (st.cur + n)⟩ p
+      ⟨⟨st.mem.store.push n, st.mem.pos⟩, st.cost, st.cur + format.bytes * n, max st.peak (st.cur
+        + format.bytes * n)⟩ p
       fun c m' => Q c ⟨m'.store.pop, m'.pos⟩) :
-    RunsFromWL I W τ (.alloc len body) ρ st (n + p) Q := by
+    RunsFromWL I W τ (.allocAs format len body) ρ st (format.bytes * n + p) Q := by
   intro st' hst
-  simp only [exec, hn, Option.bind_some] at hst
+  simp only [evalCounted, hn, Option.bind_some] at hst
   obtain ⟨st₂, h₂, rfl⟩ := Option.map_eq_some_iff.mp hst
   obtain ⟨c, ⟨h2, h3, h4⟩, h5⟩ := h st₂ h₂
   refine ⟨c, ⟨h2, rfl, ?_⟩, h5⟩
@@ -411,7 +420,7 @@ theorem frame {ds : List IExp} {args : List Operand} {body : Stmt Op Tst} {d : L
     (h : st.mem.Live a → RunsFromWL I W τ body (Env.frame d a) st p Q) :
     RunsFromWL I W τ (.frame ds args body) ρ st p Q := by
   intro st' hst
-  simp only [exec, hd, ha, Option.bind_some] at hst
+  simp only [evalCounted, hd, ha, Option.bind_some] at hst
   split_ifs at hst with hl
   exact h hl st' hst
 
@@ -422,7 +431,7 @@ theorem loop {n : IExp} {body : Stmt Op Tst} {k : ℕ} (hn : n.eval ρ.idx = som
     (hstep : ∀ i < k, ∀ st' c, Inv i c st'.mem →
       RunsFromWL I W τ body (ρ.pushIdx i) st' p fun c' m => Inv (i + 1) (c + c') m) :
     RunsFromWL I W τ (.loop n body) ρ st p (Inv k) := by
-  have key : ∀ j ≤ k, ∀ st', iter (fun i st => exec I W τ body (ρ.pushIdx i) st) j st =
+  have key : ∀ j ≤ k, ∀ st', iter (fun i st => evalCounted I W τ body (ρ.pushIdx i) st) j st =
       some st' → ∃ c, St.Reach st st' c p ∧ Inv j c st'.mem := by
     intro j
     induction j with
@@ -436,7 +445,7 @@ theorem loop {n : IExp} {body : Stmt Op Tst} {k : ℕ} (hn : n.eval ρ.idx = som
       obtain ⟨c₂, h5, h6⟩ := hstep j (by omega) st₁ c₁ h3 st₂ h4
       exact ⟨c₁ + c₂, by simpa using h2.trans h5, h6⟩
   intro st' hst
-  simp only [exec, hn, Option.bind_some] at hst
+  simp only [evalCounted, hn, Option.bind_some] at hst
   exact key k le_rfl st' hst
 
 /-- **The loop with early exit**, with an invariant on the counts added so far and the memory.
@@ -459,8 +468,8 @@ theorem whileFuel {fuel : IExp} {q : Tst} {ds : List IExp} {ins : List Operand}
   have key : ∀ (r i : ℕ) (st₁ : St Op Tst K) (c₁ : Count Op Tst), i + r = n →
       St.Reach st st₁ c₁ p → Inv i c₁ st₁.mem → ∀ st',
         ((whileIter (fun i st => I.testSt q ds ins (ρ.pushIdx i) st)
-          (fun i => exec I W τ body (ρ.pushIdx i)) r i st₁).bind fun jst =>
-            exec I W τ k (ρ.pushIdx jst.1) jst.2) = some st' →
+          (fun i => evalCounted I W τ body (ρ.pushIdx i)) r i st₁).bind fun jst =>
+            evalCounted I W τ k (ρ.pushIdx jst.1) jst.2) = some st' →
         ∃ c, St.Reach st st' c p ∧ Q c st'.mem := by
     intro r
     induction r with
@@ -489,13 +498,13 @@ theorem whileFuel {fuel : IExp} {q : Tst} {ds : List IExp} {ins : List Operand}
         exact ih (i + 1) st₂ (c₁ + Count.test q d + c₂) (by omega)
           (by simpa using hr'.trans h2) (by simpa [add_assoc] using h3) st' hst
   intro st' hst
-  simp only [exec, hn, Option.bind_some] at hst
+  simp only [evalCounted, hn, Option.bind_some] at hst
   exact key n 0 st 0 (by omega) (St.Reach.refl st p) h0 st' hst
 
 /-- From the initial state: every successful counted run is within the workspace, and the
 postcondition holds of its counts and its memory. -/
 theorem exec_init {s : Stmt Op Tst} {m : Mem K} (h : RunsFromWL I W τ s ρ (St.init m) p Q)
-    {st' : St Op Tst K} (hst : exec I W τ s ρ (St.init m) = some st') :
+    {st' : St Op Tst K} (hst : evalCounted I W τ s ρ (St.init m) = some st') :
     st'.peak ≤ p ∧ Q st'.cost st'.mem := by
   obtain ⟨c, ⟨h2, -, h3⟩, h4⟩ := h st' hst
   have e : st'.cost = c := by simpa [St.init] using h2
@@ -504,7 +513,7 @@ theorem exec_init {s : Stmt Op Tst} {m : Mem K} (h : RunsFromWL I W τ s ρ (St.
 /-- A liberal counted run is a refinement statement, for the part of the postcondition that
 every count satisfies. -/
 theorem runsL {s : Stmt Op Tst} {m : Mem K} {P : Mem K → Prop}
-    (h : RunsFromWL I W τ s ρ (St.init m) p fun _ m' => P m') : RunsL I τ s ρ m P := by
+    (h : RunsFromWL I W τ s ρ (St.init m) p fun _ m' => P m') : ConditionalRunsL I τ s ρ m P := by
   intro m' hrun
   obtain ⟨st', hst, rfl⟩ := exec_eq_some_of_run hrun W (St.init m) rfl
   exact (h.exec_init hst).2
@@ -544,7 +553,7 @@ theorem RunsFromWL.link_from (hacc : T.AccountsW I W₂ w₂ t W₁)
     RunsFromWL I W₂ τ (s.link T) ρ c p
       fun dc m' => ∃ da, w₂ dc ≤ Count.upper w₂ t da ∧ Q da m' := by
   intro result hresult
-  have hrun : run (I.link T) τ s ρ a.mem = some result.mem := by
+  have hrun : eval (I.link T) τ s ρ a.mem = some result.mem := by
     rw [← hmem, ← run_link]
     exact run_of_exec hresult
   let a₀ : St Op₁ Tst K := ⟨a.mem, 0, a.cur, 0⟩
@@ -586,7 +595,7 @@ theorem RunsFromW.link_from (hacc : T.AccountsW I W₂ w₂ t W₁)
   exact (((RunsFromWL.of_runsFromW h).link_from hacc hmem hcur hpeak).runsFromW hs).mono
     le_rfl fun _ _ hQ => hQ.1
 
-/-- Linking a liberal counted run from the initial state. -/
+/-- Linking a liberal counted eval from the initial state. -/
 theorem RunsFromWL.link (hacc : T.AccountsW I W₂ w₂ t W₁) {m : Mem K}
     (h : RunsFromWL (I.link T) W₁ τ s ρ (St.init m) p Q) :
     RunsFromWL I W₂ τ (s.link T) ρ (St.init m) p

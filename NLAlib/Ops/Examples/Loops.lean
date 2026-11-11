@@ -139,7 +139,7 @@ in the bound. The counts are carried by the logic, round by round. -/
 theorem runs_halve {dec : K → ℕ} {h : K → K} {I : Interp HOp HTst K} (hI : IsHalving dec h I)
     (W : HOp → List ℕ → ℕ) {τ : Tape K} {k : ℕ} {m : Mem K} {x : ℕ × ℕ} {a : K}
     (hx : m.store.get x.1 x.2 = some a) (hk : Nat.size (dec a) ≤ k) :
-    Runs I W τ halve ⟨[k, x.2], [x.1]⟩ m
+    ConditionalRuns I W τ halve ⟨[k, x.2], [x.1]⟩ m
       (Nat.size (dec a) • (Count.test .nz [] + Count.one .half []) + Count.test .nz [])
       (W .half []) (fun m' => ∃ a', m' = m.upd x a' ∧ dec a' = 0) := by
   have hlt := Store.lt_len_of_get hx

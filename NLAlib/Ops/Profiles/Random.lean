@@ -41,7 +41,7 @@ window of `n` entries, in order. -/
 theorem gaussLoopImpl_spec {I : Interp ROp Tst K}
     (hI : I.IsFn .total .draw (.draw Stream.gauss) AnyOperands)
     (adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop) :
-    (gaussLoopImpl (Tst := Tst)).Meets I .total ((drawRel Stream.gauss).spec adm) := by
+    (gaussLoopImpl (Tst := Tst)).Triple I .total ((drawRel Stream.gauss).spec adm) := by
   refine Impl.meets_rel fun d ins outs τ m xs hnd hadm hl hr _ hz => ?_
   obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hnd
   obtain ⟨rfl, rfl⟩ := Mem.readBlocks_zero hr
@@ -81,7 +81,7 @@ noncomputable def gaussLoop : Profile ROp ROp Tst where
 them and the contract of the vector draw. -/
 theorem gaussLoop_certifies [Inhabited K] (dec : K → ℝ) {n : ℕ}
     (A : Matrix (Fin n) (Fin n) ℝ) :
-    (gaussLoop (Tst := Tst)).Certifies (IsRandBase dec A) (IsRandLin dec A) := by
+    (gaussLoop (Tst := Tst)).Refines (IsRandBase dec A) (IsRandLin dec A) := by
   refine .of_accounts (fun I hI => ?_) (fun I => Table.accounts_of_static ?_ ?_ I)
     fun I _ hloc o => ?_
   · exact
@@ -97,7 +97,7 @@ theorem gaussLoop_certifies [Inhabited K] (dec : K → ℝ) {n : ℕ}
     cases o <;> cases hT
     obtain ⟨k, rfl⟩ := List.length_eq_one_iff.mp hd
     obtain ⟨a, rfl⟩ := List.length_eq_one_iff.mp ho
-    simp [gaussLoop, gaussLoopImpl, gaussCost, staticCost, staticPeak, useCost]
+    simp [gaussLoop, gaussLoopImpl, gaussCost, stmtCost, stmtPeak, useCost]
   · intro o o' hT d
     cases o <;> cases hT <;> simp [gaussLoop, gaussCost]
   · cases o

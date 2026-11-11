@@ -79,12 +79,12 @@ def npowImpl : Impl NOp Tst := ⟨2, 1, 1, npow⟩
 noncomputable def npowCount (k n : ℕ) : Count NOp Tst := k • (2 • Count.one .nmv [n])
 
 theorem staticCost_npow (k n a b : ℕ) :
-    staticCost (npow (Tst := Tst)) [k, n, a, b] = npowCount k n := by
-  simp [npow, staticCost, useCost, npowCount, two_nsmul]
+    stmtCost (npow (Tst := Tst)) [k, n, a, b] = npowCount k n := by
+  simp [npow, stmtCost, useCost, npowCount, two_nsmul]
 
 theorem staticPeak_npow_le (W : NOp → List ℕ → ℕ) (k n a b : ℕ) :
-    staticPeak W (npow (Tst := Tst)) [k, n, a, b] ≤ n + W .nmv [n] := by
-  simp only [npow, staticPeak]
+    stmtPeak W (npow (Tst := Tst)) [k, n, a, b] ≤ n + W .nmv [n] := by
+  simp only [npow, Stmt.alloc, stmtPeak, StorageFormat.bytes_cell, Nat.one_mul]
   exact Nat.add_le_add (by simp) (Finset.sup_le fun i _ => by simp)
 
 omit [Inhabited K] in
@@ -180,7 +180,7 @@ theorem wp_npow {dec : K → ℝ} {N : (Fin n → ℝ) → (Fin n → K) → Fin
 `npow` meets its contract with a window. -/
 theorem npow_spec {dec : K → ℝ} {N : (Fin n → ℝ) → (Fin n → K) → Fin n → ℝ}
     {J : Interp NOp Tst K} (hJ : IsNoisy dec N J) :
-    (npowImpl (Tst := Tst)).Meets J .total ((npowRel dec N).spec (NpowOperands n)) := by
+    (npowImpl (Tst := Tst)).Triple J .total ((npowRel dec N).spec (NpowOperands n)) := by
   refine Impl.meets_rel fun d ins outs τ m X hnd hadm hl hr _ hz => ?_
   obtain ⟨k, n', rfl⟩ := List.length_eq_two.mp hnd
   obtain ⟨rfl, rfl⟩ : n' = n ∧ outs = ins := hadm
@@ -202,7 +202,7 @@ theorem runsLaw_npow [MeasurableSpace K] {dec : K → ℝ}
     {P : Measure Ω} {ξ : Ω → Tape K} (h : IsTapeLaw law P ξ) (W : NOp → List ℕ → ℕ) {k : ℕ}
     {x : ℕ × ℕ} {m : Mem K} {xs₀ : List K} (hx : m.store.readBlock x.1 x.2 n = some xs₀)
     (hxl : x.2 + n ≤ m.store.len x.1) (hlx : x.1 < m.store.length) :
-    RunsLaw J W ξ npow (Env.frame [k, n] [x, x]) m (npowCount k n) (n + W .nmv [n])
+    ConditionalRunsLaw J W ξ npow (Env.frame [k, n] [x, x]) m (npowCount k n) (n + W .nmv [n])
       (NpowPost dec n k x m) fun X =>
         (∀ i, ∫ ω, X ω i ∂P = (A ^ (2 * k)).mulVec (decv dec n xs₀) i) ∧
         ∫ ω, sqNorm (X ω) ∂P ≤ (a + n * σ ^ 2) ^ (2 * k) * sqNorm (decv dec n xs₀) := by

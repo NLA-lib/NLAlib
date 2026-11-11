@@ -91,7 +91,7 @@ theorem runsW_split {J : Interp Op IdxTst K} {o : Op} {dec : K → ℝ}
     (hK : J.Meets .total o ((idleRel (K := K)).spec AnyOperands)) (hidx : IsToNat dec J)
     (W : Op → List ℕ → ℕ) {τ : Tape K} {k : ℕ} {x : ℕ × ℕ} {m : Mem K} {w : K}
     (hx : m.store.get x.1 x.2 = some w) (h0 : 0 ≤ dec w) (hle : ⌊dec w⌋₊ ≤ k) :
-    RunsW J W τ (split o) ⟨[k, x.2], [x.1]⟩ m (max (W o [⌊dec w⌋₊]) (W o [k - ⌊dec w⌋₊]))
+    ConditionalRunsW J W τ (split o) ⟨[k, x.2], [x.1]⟩ m (max (W o [⌊dec w⌋₊]) (W o [k - ⌊dec w⌋₊]))
       fun c m' => m' = m ∧ c = Count.test .toNat [] +
         (Count.one o [⌊dec w⌋₊] + Count.one o [k - ⌊dec w⌋₊]) := by
   refine (RunsFromW.bindIdx (st := St.init m) rfl rfl (hidx.index_eq hx h0) hle
@@ -169,7 +169,7 @@ def workRel (dec : K → ℝ) : BlockRel K where
 conversion. -/
 theorem splitImpl_spec {I : Interp LOp IdxTst K} {dec : K → ℝ}
     (hK : I.Meets .total .base ((idleRel (K := K)).spec AnyOperands)) (hidx : IsToNat dec I) :
-    splitImpl.Meets I .total ((workRel dec).spec AnyOperands) := by
+    splitImpl.Triple I .total ((workRel dec).spec AnyOperands) := by
   refine Impl.meets_rel fun d ins outs τ m X hnd _ hl hr hdom hz => ?_
   obtain ⟨k, rfl⟩ := List.length_eq_one_iff.mp hnd
   obtain ⟨w, rfl, h0, hle⟩ := hdom
@@ -204,7 +204,7 @@ theorem runsW_twice_link {I : Interp LOp IdxTst K} {dec : K → ℝ}
     {T : ℕ → ℕ} (hT : ∀ a b, T a + T b ≤ T (a + b)) {τ : Tape K} {k : ℕ} {x : ℕ × ℕ}
     {m : Mem K} {w : K} (hx : m.store.get x.1 x.2 = some w) (h0 : 0 ≤ dec w)
     (hle : ⌊dec w⌋₊ ≤ k) :
-    RunsW I (fun _ _ => 0) τ (twice.link splitTable) ⟨[k, x.2], [x.1]⟩ m 0
+    ConditionalRunsW I (fun _ _ => 0) τ (twice.link splitTable) ⟨[k, x.2], [x.1]⟩ m 0
       fun c m' => kernWeight T c ≤ 2 * T k ∧ m' = m := by
   have hW : (I.link splitTable).Meets .total .work ((workRel dec).spec AnyOperands) :=
     Interp.link_meets rfl (splitImpl_spec hK hidx)
@@ -219,11 +219,11 @@ theorem runsW_twice_link {I : Interp LOp IdxTst K} {dec : K → ℝ}
     rfl
   obtain ⟨m', hrun, rfl⟩ : Wp .total (I.link splitTable) τ twice ⟨[k, x.2], [x.1]⟩ (· = m) m :=
     wp_seq ((hcall m rfl).mono fun m' e => hcall m' e)
-  have hruns := runs_iff_runsW.mp (Runs.of_run hrun rfl fun _ _ => 0)
+  have hruns := runs_iff_runsW.mp (ConditionalRuns.of_run hrun rfl fun _ _ => 0)
   refine exec_link_weight (t := fun _ => 2 * T k) (splitTable_accountsW I hT)
-    (hruns.mono (by simp [twice, staticPeak]) fun c m' ⟨hc, hm⟩ => ⟨?_, hm.symm⟩)
+    (hruns.mono (by simp [twice, stmtPeak]) fun c m' ⟨hc, hm⟩ => ⟨?_, hm.symm⟩)
   refine (Count.lift_mono _ hc).trans (le_of_eq ?_)
-  simp [twice, staticCost, useCost, Count.lift, Count.one, two_mul]
+  simp [twice, stmtCost, useCost, Count.lift, Count.one, two_mul]
 
 -- The linked segment uses the same weight bound with scratch already live and separate
 -- accounting histories. It may fail, so no contract on the interpretation is required.

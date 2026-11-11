@@ -95,7 +95,7 @@ theorem runs_sq2 {f : ℕ → ℕ → ℕ → List K → List K → List K} {I :
     {As : List K} (hAP : A.1 ≠ P.1) (hPS : P.1 ≠ S.1)
     (hA : m.store.readBlock A.1 A.2 (n * n) = some As) (hP : P.2 + n * n ≤ m.store.len P.1)
     (hS : S.2 + n * n ≤ m.store.len S.1) (hl : m.Live [A, P, S]) :
-    Runs I W τ sq2 ⟨[n, A.2, P.2, S.2], [A.1, P.1, S.1]⟩ m (2 • Count.one .mm [n, n, n])
+    ConditionalRuns I W τ sq2 ⟨[n, A.2, P.2, S.2], [A.1, P.1, S.1]⟩ m (2 • Count.one .mm [n, n, n])
       (W .mm [n, n, n])
       (· = (m.updBlock P (f n n n As As)).updBlock S
         (f n n n (f n n n As As) (f n n n As As))) := by
@@ -121,8 +121,8 @@ theorem runs_sq2 {f : ℕ → ℕ → ℕ → List K → List K → List K} {I :
     wp_seq (wp_call_fn hI.isFn (b := [P]) rfl rfl rfl (by simp [DisjointBufs, hAP]) h1
       (wp_call_fn hI.isFn (b := [S]) rfl rfl rfl (by simp [DisjointBufs, hPS]) h2 rfl))
   obtain ⟨m', hrun, hpost⟩ := hw
-  exact (Runs.of_run hrun hpost W).mono (by simp [sq2, staticCost, useCost, two_nsmul])
-    (by simp [sq2, staticPeak]) fun _ h => h
+  exact (ConditionalRuns.of_run hrun hpost W).mono (by simp [sq2, stmtCost, useCost, two_nsmul])
+    (by simp [sq2, stmtPeak]) fun _ h => h
 
 /-! ### The implementation: a triple loop, as a function and as a tree -/
 
@@ -206,7 +206,7 @@ theorem mm_cert {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I)
     {ins outs : List (ℕ × ℕ)} {τ : Tape K} {m m' : Mem K} (hadm : DisjointBufs d ins outs)
     (h : (mmFn (mmF M)).apply d ins outs τ m = some m') :
     mmImpl.Fits d.length ins.length outs.length ∧
-      run I τ mmImpl.body (Env.frame d (ins ++ outs)) m = some m' := by
+      eval I τ mmImpl.body (Env.frame d (ins ++ outs)) m = some m' := by
   obtain ⟨a, b, c, A, B, z, As, Bs, rfl, rfl, rfl, hA, hB, -, hC, rfl⟩ := mmFn_apply h
   obtain ⟨s, p⟩ := m
   replace hC : z.2 + a * c ≤ s.len z.1 := hC
@@ -270,7 +270,7 @@ theorem mm_accounts (I : Interp ScalarOp Empty K) :
   cases hT
   obtain ⟨a, b, c, rfl⟩ := List.length_eq_three.mp hd
   obtain ⟨x, y, z, rfl⟩ := List.length_eq_three.mp ho
-  simp [mmImpl, dotLoop, staticCost, staticPeak, useCost, mmCost, mul_smul]
+  simp [mmImpl, dotLoop, stmtCost, stmtPeak, useCost, mmCost, mul_smul]
 
 /-- The induced interpretation meets the functional contract of `mm` with `f = mmF M`. -/
 theorem isMM_link {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I) :
@@ -286,7 +286,7 @@ theorem runs_sq2_link {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArit
     {A P S : ℕ × ℕ} {m : Mem K} {As : List K} (hAP : A.1 ≠ P.1) (hPS : P.1 ≠ S.1)
     (hA : m.store.readBlock A.1 A.2 (n * n) = some As) (hP : P.2 + n * n ≤ m.store.len P.1)
     (hS : S.2 + n * n ≤ m.store.len S.1) (hl : m.Live [A, P, S]) :
-    Runs I (fun _ _ => 0) τ (sq2.link mmTable) ⟨[n, A.2, P.2, S.2], [A.1, P.1, S.1]⟩ m
+    ConditionalRuns I (fun _ _ => 0) τ (sq2.link mmTable) ⟨[n, A.2, P.2, S.2], [A.1, P.1, S.1]⟩ m
       ((2 * (n * n)) • Count.one (.lit 0) [] +
         (2 * (n * n * n)) • (Count.one .mul [] + Count.one .add [])) 1
       (· = (m.updBlock P (mmF M n n n As As)).updBlock S

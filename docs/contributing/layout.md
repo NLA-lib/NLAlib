@@ -11,6 +11,8 @@ NLAlib/
   Computation/     programs over memory buffers: syntax, runs, counts, memory,
                    substitution, kernel calls, arithmetic models, BLAS kernels,
                    oracle implementations                                         (layer 0)
+  Ops/             operation contracts, fixed symbolic programs, explicit accounting
+                   and structural algorithm certification                         (layer 0)
   Matrix/          deterministic matrix analysis                                  (layer 0)
   Polynomial/      scalar approximation theory and the function classes it
                    approximates                                                   (layer 0)
@@ -55,6 +57,8 @@ A folder may import less than its number allows: its `layers.toml` entry lists t
 it may import, the rule that checks it and the reason. ForMathlib imports nothing else in NLAlib
 [P1]; a file in `NLAlib/Computation` imports only Mathlib, `NLAlib.ForMathlib` and
 `NLAlib.Computation` [E5], so that a program over the library's objects lives in its topic file;
+a file in `NLAlib/Ops` imports only Mathlib and `NLAlib.Ops` [P1], keeping the operation
+semantics, logic and certification self-contained;
 a file in `NLAlib/Polynomial` imports only Mathlib, `NLAlib.ForMathlib` and `NLAlib.Polynomial`
 [P11], so that the layer can go upstream to Mathlib as a whole, and while P11 holds the layer
 keeps its headline scalar results and is exempt from P9.

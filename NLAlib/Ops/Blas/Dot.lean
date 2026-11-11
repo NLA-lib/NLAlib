@@ -175,7 +175,7 @@ interpretation whose `sum` has the error `es`. -/
 theorem dotSum_spec {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {u : ℝ}
     {dec : K → ℝ} (hM : StdModel u dec M) {es : ℕ → ℝ} {ok : ℕ → Prop} (hS : IsSum dec es ok I)
     (hes : ∀ n, 0 ≤ es n) :
-    (dotSum (Op := Op) (Tst := Tst)).Meets I .total
+    (dotSum (Op := Op) (Tst := Tst)).Triple I .total
       ((dotRel dec fun n => (1 + u) * (1 + es n) - 1).spec (OutApart ok)) := by
   refine Impl.meets_rel fun d ins outs τ m xs hnd hadm hl hr _ hz => ?_
   obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hnd
@@ -189,7 +189,7 @@ theorem dotSum_spec {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {u
 theorem nrm2Sum_spec {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {u : ℝ}
     {dec : K → ℝ} (hM : StdModel u dec M) {es : ℕ → ℝ} {ok : ℕ → Prop} (hS : IsSum dec es ok I)
     (hes : ∀ n, 0 ≤ es n) :
-    (nrm2Sum (Op := Op) (Tst := Tst)).Meets I .total
+    (nrm2Sum (Op := Op) (Tst := Tst)).Triple I .total
       ((nrm2Rel dec (fun n => (1 + u) * (1 + es n) - 1) u).spec (OutApart ok)) := by
   refine Impl.meets_rel fun d ins outs τ m xs hnd hadm hl hr _ hz => ?_
   obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hnd

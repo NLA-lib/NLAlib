@@ -110,36 +110,36 @@ def incIf : Stmt COp CTst :=
 /-- The memory with one buffer of two cells holding `a` and `b`. -/
 def twoCells (a b : ℕ) : Mem ℕ := ⟨[[some a, some b]], 0⟩
 
-example : run ctlInterp (fun _ => 0) countdown ⟨[], [0]⟩ (twoCells 3 0) = some (twoCells 0 3) := by
+example : eval ctlInterp (fun _ => 0) countdown ⟨[], [0]⟩ (twoCells 3 0) = some (twoCells 0 3) := by
   rfl
 
 /-- At the cap the loop stops, with the current state: no failure. -/
-example : run ctlInterp (fun _ => 0) countdown ⟨[], [0]⟩ (twoCells 7 0) = some (twoCells 2 5) := by
+example : eval ctlInterp (fun _ => 0) countdown ⟨[], [0]⟩ (twoCells 7 0) = some (twoCells 2 5) := by
   rfl
 
-example : run ctlInterp (fun _ => 0) countdownStrict ⟨[], [0]⟩ (twoCells 3 0) =
+example : eval ctlInterp (fun _ => 0) countdownStrict ⟨[], [0]⟩ (twoCells 3 0) =
     some (twoCells 0 3) := by rfl
 
 /-- The strict loop: the test still holds after the fuel, the run fails. -/
-example : run ctlInterp (fun _ => 0) countdownStrict ⟨[], [0]⟩ (twoCells 7 0) = none := by rfl
+example : eval ctlInterp (fun _ => 0) countdownStrict ⟨[], [0]⟩ (twoCells 7 0) = none := by rfl
 
 /-- The continuation receives the number of rounds done: `3` when the test ends the loop. -/
-example : run ctlInterp (fun _ => 0) countRounds ⟨[], [0]⟩ (twoCells 3 0) =
+example : eval ctlInterp (fun _ => 0) countRounds ⟨[], [0]⟩ (twoCells 3 0) =
     some (twoCells 0 3) := by rfl
 
 /-- The continuation receives the number of rounds done: the cap `5` when it is reached. -/
-example : run ctlInterp (fun _ => 0) countRounds ⟨[], [0]⟩ (twoCells 7 10) =
+example : eval ctlInterp (fun _ => 0) countRounds ⟨[], [0]⟩ (twoCells 7 10) =
     some (twoCells 2 15) := by rfl
 
-example : run ctlInterp (fun _ => 0) addIdx ⟨[], [0]⟩ (twoCells 3 10) = some (twoCells 3 13) := by
+example : eval ctlInterp (fun _ => 0) addIdx ⟨[], [0]⟩ (twoCells 3 10) = some (twoCells 3 13) := by
   rfl
 
 /-- The index exceeds the bound: the run fails, nothing is clamped. -/
-example : run ctlInterp (fun _ => 0) addIdx ⟨[], [0]⟩ (twoCells 5 10) = none := by rfl
+example : eval ctlInterp (fun _ => 0) addIdx ⟨[], [0]⟩ (twoCells 5 10) = none := by rfl
 
-example : run ctlInterp (fun _ => 0) incIf ⟨[], [0]⟩ (twoCells 2 0) = some (twoCells 2 1) := by rfl
+example : eval ctlInterp (fun _ => 0) incIf ⟨[], [0]⟩ (twoCells 2 0) = some (twoCells 2 1) := by rfl
 
-example : run ctlInterp (fun _ => 0) incIf ⟨[], [0]⟩ (twoCells 0 0) = some (twoCells 0 0) := by rfl
+example : eval ctlInterp (fun _ => 0) incIf ⟨[], [0]⟩ (twoCells 0 0) = some (twoCells 0 0) := by rfl
 
 /-- Linking leaves queries alone: no table can implement a test. -/
 example (T : Table COp COp CTst) :

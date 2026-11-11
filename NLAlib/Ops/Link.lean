@@ -53,6 +53,15 @@ structure Impl (Op Tst : Type) where
   /-- The tree. -/
   body : Stmt Op Tst
 
+/-- Place a fixed implementation in a fixed initial buffer interface. Operand aliases are
+preserved: the input and output lists are syntax, not a runtime environment callback. A wrong
+arity elaborates to failure and therefore cannot obtain a total certificate. -/
+def Impl.program (R : Impl Op Tst) (b : ℕ) (ins outs : List Operand) :
+    Program Op Tst R.nd b :=
+  ⟨if ins.length = R.nin ∧ outs.length = R.nout then
+    .frame (List.ofFn fun i : Fin R.nd => IExp.var i.val) (ins ++ outs) R.body
+  else .abort⟩
+
 /-- **An implementation of `Op₁` over `Op₂`**: for each operation of `Op₁`, a tree over `Op₂` or
 an operation of `Op₂`. Queries are not in the table. -/
 abbrev Table (Op₁ Op₂ Tst : Type) := Op₁ → Impl Op₂ Tst ⊕ Op₂
@@ -76,7 +85,7 @@ def Stmt.link (T : Table Op₁ Op₂ Tst) : Stmt Op₁ Tst → Stmt Op₂ Tst
   | .ite q ds ins t e => .ite q ds ins (t.link T) (e.link T)
   | .whileFuel fuel q ds ins body k => .whileFuel fuel q ds ins (body.link T) (k.link T)
   | .bindIdx q ins bound body => .bindIdx q ins bound (body.link T)
-  | .alloc len body => .alloc len (body.link T)
+  | .allocAs fmt len body => .allocAs fmt len (body.link T)
   | .loop n body => .loop n (body.link T)
   | .frame ds args body => .frame ds args (body.link T)
 
@@ -88,7 +97,7 @@ def Interp.link (I : Interp Op₂ Tst K) (T : Table Op₁ Op₂ Tst) : Interp Op
     match T o with
     | .inl R =>
         if R.Fits d.length ins.length outs.length then
-          run I τ R.body (Env.frame d (ins ++ outs)) m
+          eval I τ R.body (Env.frame d (ins ++ outs)) m
         else none
     | .inr o' => I.call o' d ins outs τ m
   test := I.test
@@ -107,12 +116,12 @@ theorem Interp.link_callS_inl (I : Interp Op₂ Tst K) {T : Table Op₁ Op₂ Ts
     (I.link T).callS o d ins outs τ m =
       if m.Live (ins ++ outs) then
         if R.Fits d.length ins.length outs.length then
-          run I τ R.body (Env.frame d (ins ++ outs)) m
+          eval I τ R.body (Env.frame d (ins ++ outs)) m
         else none
       else none := by
   simp only [Interp.callS, Interp.link, hT]
   split_ifs with hl hfit
-  · cases hr : run I τ R.body (Env.frame d (ins ++ outs)) m with
+  · cases hr : eval I τ R.body (Env.frame d (ins ++ outs)) m with
     | none => rfl
     | some m' => simp [shape_store_of_run hr]
   · rfl
@@ -121,20 +130,20 @@ theorem Interp.link_callS_inl (I : Interp Op₂ Tst K) {T : Table Op₁ Op₂ Ts
 /-- The run of a linked call. -/
 theorem run_link_call (I : Interp Op₂ Tst K) (T : Table Op₁ Op₂ Tst) (τ : Tape K) (o : Op₁)
     (ds : List IExp) (ins outs : List Operand) (ρ : Env) (m : Mem K) :
-    run I τ ((Stmt.call o ds ins outs).link T) ρ m =
-      run (I.link T) τ (.call o ds ins outs) ρ m := by
+    eval I τ ((Stmt.call o ds ins outs).link T) ρ m =
+      eval (I.link T) τ (.call o ds ins outs) ρ m := by
   cases hT : T o with
-  | inr o' => simp only [Stmt.link, hT, run, Interp.link_callS_inr I hT]
+  | inr o' => simp only [Stmt.link, hT, eval, Interp.link_callS_inr I hT]
   | inl R =>
-    simp only [Stmt.link, hT, run, Interp.link_callS_inl I hT]
+    simp only [Stmt.link, hT, eval, Interp.link_callS_inl I hT]
     cases hd : IExp.evalList ρ.idx ds with
-    | none => split_ifs <;> simp [run, hd]
+    | none => split_ifs <;> simp [eval, hd]
     | some d =>
       cases ha : Operand.evalList ρ ins with
-      | none => split_ifs <;> simp [run, hd, ha, Operand.evalList_append]
+      | none => split_ifs <;> simp [eval, hd, ha, Operand.evalList_append]
       | some a =>
         cases hb : Operand.evalList ρ outs with
-        | none => split_ifs <;> simp [run, hd, ha, hb, Operand.evalList_append]
+        | none => split_ifs <;> simp [eval, hd, ha, hb, Operand.evalList_append]
         | some b =>
           have h1 := IExp.length_of_evalList hd
           have h2 := Operand.length_of_evalList ha
@@ -144,28 +153,28 @@ theorem run_link_call (I : Interp Op₂ Tst K) (T : Table Op₁ Op₂ Tst) (τ :
           simp only [Option.bind_some]
           by_cases hfit : R.Fits ds.length ins.length outs.length
           · rw [if_pos hfit, if_pos (hfe.mpr hfit)]
-            simp [run, hd, ha, hb, Operand.evalList_append]
+            simp [eval, hd, ha, hb, Operand.evalList_append]
           · rw [if_neg hfit, if_neg (hfe.not.mpr hfit)]
-            simp [run]
+            simp [eval]
 
 /-- **Refinement transfer.** The linked program under `I` and the program under the induced
 interpretation end in the same memory, or both fail. No certificate is needed. -/
 theorem run_link (I : Interp Op₂ Tst K) (T : Table Op₁ Op₂ Tst) (τ : Tape K) (s : Stmt Op₁ Tst)
-    (ρ : Env) (m : Mem K) : run I τ (s.link T) ρ m = run (I.link T) τ s ρ m := by
+    (ρ : Env) (m : Mem K) : eval I τ (s.link T) ρ m = eval (I.link T) τ s ρ m := by
   induction s generalizing ρ m with
   | skip => rfl
   | abort => rfl
-  | seq s t ihs iht => simp only [Stmt.link, run, ihs, iht]
+  | seq s t ihs iht => simp only [Stmt.link, eval, ihs, iht]
   | call o ds ins outs => exact run_link_call I T τ o ds ins outs ρ m
-  | ite q ds ins t e iht ihe => simp only [Stmt.link, run, iht, ihe, Interp.link]
+  | ite q ds ins t e iht ihe => simp only [Stmt.link, eval, iht, ihe, Interp.link]
   | whileFuel fuel q ds ins body k ih ihk =>
-    have hb : ∀ i, run I τ (Stmt.link T body) (ρ.pushIdx i) =
-        run (I.link T) τ body (ρ.pushIdx i) := fun i => funext (ih _)
-    simp only [Stmt.link, run, hb, ihk, Interp.link, Interp.testAt]
-  | bindIdx q ins bound body ih => simp only [Stmt.link, run, ih, Interp.link]
-  | alloc len body ih => simp only [Stmt.link, run, ih]
-  | loop n body ih => simp only [Stmt.link, run, ih]
-  | frame ds args body ih => simp only [Stmt.link, run, ih]
+    have hb : ∀ i, eval I τ (Stmt.link T body) (ρ.pushIdx i) =
+        eval (I.link T) τ body (ρ.pushIdx i) := fun i => funext (ih _)
+    simp only [Stmt.link, eval, hb, ihk, Interp.link, Interp.testAt]
+  | bindIdx q ins bound body ih => simp only [Stmt.link, eval, ih, Interp.link]
+  | allocAs fmt len body ih => simp only [Stmt.link, eval, ih]
+  | loop n body ih => simp only [Stmt.link, eval, ih]
+  | frame ds args body ih => simp only [Stmt.link, eval, ih]
 
 /-! ### Composition of tables -/
 
@@ -200,7 +209,7 @@ theorem Stmt.link_comp (T₁ : Table Op₁ Op₂ Tst) (T₂ : Table Op₂ Op₃ 
   | ite q ds ins t e iht ihe => simp only [Stmt.link, iht, ihe]
   | whileFuel fuel q ds ins body k ih ihk => simp only [Stmt.link, ih, ihk]
   | bindIdx q ins bound body ih => simp only [Stmt.link, ih]
-  | alloc len body ih => simp only [Stmt.link, ih]
+  | allocAs fmt len body ih => simp only [Stmt.link, ih]
   | loop n body ih => simp only [Stmt.link, ih]
   | frame ds args body ih => simp only [Stmt.link, ih]
 
@@ -230,10 +239,32 @@ theorem Interp.link_comp (I : Interp Op₃ Tst K) (T₁ : Table Op₁ Op₂ Tst)
   | ite q ds ins t e iht ihe => simp only [Stmt.link, iht, ihe]
   | whileFuel fuel q ds ins body k ih ihk => simp only [Stmt.link, ih, ihk]
   | bindIdx q ins bound body ih => simp only [Stmt.link, ih]
-  | alloc len body ih => simp only [Stmt.link, ih]
+  | allocAs fmt len body ih => simp only [Stmt.link, ih]
   | loop n body ih => simp only [Stmt.link, ih]
   | frame ds args body ih => simp only [Stmt.link, ih]
 
 @[simp] theorem Interp.link_id (I : Interp Op Tst K) : I.link Table.id = I := rfl
+
+
+namespace Program
+
+variable {Lo : Type} {r b : ℕ}
+/-- Linking takes one fixed table, independent of the concrete sizes and data. -/
+def link (p : Program Op Tst r b) (T : Table Op Lo Tst) : Program Lo Tst r b :=
+  ⟨p.body.link T⟩
+
+/-- Linking preserves checked memory execution when both fixed trees satisfy their models. -/
+theorem run_link (p : Program Op Tst r b) (T : Table Op Lo Tst) (I : Interp Lo Tst K)
+    (R : ResourceModel Op Tst) (L : ResourceModel Lo Tst) (formats : Fin b → StorageFormat)
+    (τ : Tape K) (d : Fin r → ℕ) (m : Mem K)
+    (ht : p.wellTyped R formats = true) (hl : (p.link T).wellTyped L formats = true) :
+    (p.link T).run I L formats τ d m = p.run (I.link T) R formats τ d m := by
+  simp only [Program.run, Ops.run, ht, hl, true_and]
+  split_ifs
+  · exact Ops.run_link I T τ p.body (environment (b := b) d) m
+  · rfl
+
+
+end Program
 
 end NLAlib.Ops

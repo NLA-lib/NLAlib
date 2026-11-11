@@ -23,6 +23,13 @@ rule = "E5"
 reason = "a program over the library's objects lives in its topic file, not in Computation"
 
 [[layer]]
+folder = "Ops"
+layer = 0
+imports = []
+rule = "P1"
+reason = "the operation core is self-contained and depends only on Mathlib and Ops"
+
+[[layer]]
 folder = "Matrix"
 layer = 0
 

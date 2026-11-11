@@ -25,9 +25,10 @@ of a successful call.
 * Grounding (`NLAlib.Ops.Examples.div_link_liberal`, `NLAlib.Ops.Examples.div_link_total`): the
   induced interpretation meets the contract of `div`, in liberal mode with no hypothesis, in
   total mode when the reciprocal is defined away from zero.
-* Corollaries for the linked program: `NLAlib.Ops.Examples.runsL_scale_link` by `RunsL.link`
+* Corollaries for the linked program: `NLAlib.Ops.Examples.runsL_scale_link` by
+  `ConditionalRunsL.link`
   (no certificate), and its success companion `NLAlib.Ops.Examples.runs_scale_link` by
-  `Runs.link`, with `n` reciprocals and `n` multiplications in one scratch cell.
+  `ConditionalRuns.link`, with `n` reciprocals and `n` multiplications in one scratch cell.
 * A fixture, not a result (the last `example`): the liberal corollary also holds for a table
   whose implementation fails. A liberal statement is registered only with its success companion.
 -/
@@ -216,7 +217,7 @@ theorem div_accounts (I : Interp ROp Empty K) :
   intro o R hT d offs hd ho
   cases o
   cases hT
-  simp [divImpl, staticCost, staticPeak, useCost, divCost]
+  simp [divImpl, stmtCost, stmtPeak, useCost, divCost]
 
 /-! ### The abstract theorems, liberal and total, and their corollaries -/
 
@@ -281,7 +282,7 @@ Its success companion is `runs_scale`. -/
 theorem runsL_scale {dec : K → ℝ} {ε : ℝ} {J : Interp DOp Empty K}
     (hJ : J.Meets .liberal .div (divSpec dec ε)) {τ : Tape K} {n : ℕ} {v s : ℕ × ℕ} {m : Mem K}
     (hvs : v.1 ≠ s.1) :
-    RunsL J τ scale ⟨[n, v.2, s.2], [v.1, s.1]⟩ m (ScalePost dec ε n v s m) :=
+    ConditionalRunsL J τ scale ⟨[n, v.2, s.2], [v.1, s.1]⟩ m (ScalePost dec ε n v s m) :=
   wp_liberal_iff.mp (wp_scale hJ hvs fun h => nomatch h)
 
 /-- **The success companion**: for every interpretation meeting the total contract of `div`, on
@@ -292,11 +293,11 @@ theorem runs_scale {dec : K → ℝ} {ε : ℝ} {J : Interp DOp Empty K}
     {v s : ℕ × ℕ} {m : Mem K} {xs : List K} {b : K} (hvs : v.1 ≠ s.1)
     (hv : m.store.readBlock v.1 v.2 n = some xs) (hs : m.store.get s.1 s.2 = some b)
     (hb : dec b ≠ 0) :
-    Runs J W τ scale ⟨[n, v.2, s.2], [v.1, s.1]⟩ m (n • Count.one .div []) (W .div [])
+    ConditionalRuns J W τ scale ⟨[n, v.2, s.2], [v.1, s.1]⟩ m (n • Count.one .div []) (W .div [])
       (ScalePost dec ε n v s m) := by
   obtain ⟨m', hrun, hQ⟩ := wp_scale hJ (τ := τ) hvs fun _ => ⟨xs, b, hv, hs, hb⟩
-  exact (Runs.of_run hrun hQ W).mono (by simp [scale, staticCost, useCost])
-    (by simp [scale, staticPeak]) fun _ h => h
+  exact (ConditionalRuns.of_run hrun hQ W).mono (by simp [scale, stmtCost, useCost])
+    (by simp [scale, stmtPeak]) fun _ h => h
 
 /-- **The liberal corollary, through the induced interpretation**: if the linked program
 (reciprocals and multiplications) succeeds, the conclusion holds with `ε = 2 u + u ^ 2`. One
@@ -306,7 +307,7 @@ theorem runsL_scale_link {recipF : K → Option K} {mulF : K → K → K} {I : I
     (hI : IsRecipMul .liberal recipF mulF I) {u : ℝ} {dec : K → ℝ}
     (hM : RecipModel u dec recipF mulF)
     (hu : 0 ≤ u) {τ : Tape K} {n : ℕ} {v s : ℕ × ℕ} {m : Mem K} (hvs : v.1 ≠ s.1) :
-    RunsL I τ (scale.link divTable) ⟨[n, v.2, s.2], [v.1, s.1]⟩ m
+    ConditionalRunsL I τ (scale.link divTable) ⟨[n, v.2, s.2], [v.1, s.1]⟩ m
       (ScalePost dec (2 * u + u ^ 2) n v s m) :=
   link_liberal (Ck := fun J => J.Meets .liberal .div (divSpec dec (2 * u + u ^ 2)))
     (fun _ hJ => runsL_scale hJ hvs) (div_link_liberal hI hM hu)
@@ -315,14 +316,14 @@ theorem runsL_scale_link {recipF : K → Option K} {mulF : K → K → K} {I : I
 and the multiplication, with a reciprocal defined away from zero, on a readable block and a
 nonzero divisor the linked program runs with `n` reciprocals and `n` multiplications in one
 scratch cell, and the conclusion holds with `ε = 2 u + u ^ 2`. One application of
-`Runs.link`. -/
+`ConditionalRuns.link`. -/
 theorem runs_scale_link {recipF : K → Option K} {mulF : K → K → K} {I : Interp ROp Empty K}
     (hI : IsRecipMul .total recipF mulF I) {u : ℝ} {dec : K → ℝ}
     (hM : RecipModel u dec recipF mulF) (hdef : ∀ b, dec b ≠ 0 → (recipF b).isSome) (hu : 0 ≤ u)
     {τ : Tape K} {n : ℕ} {v s : ℕ × ℕ} {m : Mem K} {xs : List K} {b : K} (hvs : v.1 ≠ s.1)
     (hv : m.store.readBlock v.1 v.2 n = some xs) (hs : m.store.get s.1 s.2 = some b)
     (hb : dec b ≠ 0) :
-    Runs I (fun _ _ => 0) τ (scale.link divTable) ⟨[n, v.2, s.2], [v.1, s.1]⟩ m
+    ConditionalRuns I (fun _ _ => 0) τ (scale.link divTable) ⟨[n, v.2, s.2], [v.1, s.1]⟩ m
       (n • (Count.one .recip [] + Count.one .mul [])) 1
       (ScalePost dec (2 * u + u ^ 2) n v s m) :=
   ((runs_scale (div_link_total hI hM hdef hu) (fun _ _ => 1) hvs hv hs hb).link
@@ -344,7 +345,7 @@ def abortTable : Table DOp ROp Empty
 example {recipF : K → Option K} {mulF : K → K → K} {I : Interp ROp Empty K}
     (_hI : IsRecipMul .liberal recipF mulF I) (dec : K → ℝ) {τ : Tape K} {n : ℕ}
     {v s : ℕ × ℕ} {m : Mem K} (hvs : v.1 ≠ s.1) :
-    RunsL I τ (scale.link abortTable) ⟨[n, v.2, s.2], [v.1, s.1]⟩ m
+    ConditionalRunsL I τ (scale.link abortTable) ⟨[n, v.2, s.2], [v.1, s.1]⟩ m
       (ScalePost dec 0 n v s m) :=
   link_liberal (Ck := fun J => J.Meets .liberal .div (divSpec dec 0))
     (fun _ hJ => runsL_scale hJ hvs)

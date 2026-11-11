@@ -173,7 +173,7 @@ theorem runs_add3 {f : ℕ → List Bool → List Bool → List Bool} (hf : AddM
     (hx : m.store.readBlock x.1 x.2 w = some xs) (hy : m.store.readBlock y.1 y.2 w = some ys)
     (hz : m.store.readBlock z.1 z.2 w = some zs) (hs : s.2 + w ≤ m.store.len s.1)
     (hr : r.2 + w ≤ m.store.len r.1) (hl : m.Live [x, y, z, s, r]) :
-    Runs I W τ add3 ⟨[w, x.2, y.2, z.2, s.2, r.2], [x.1, y.1, z.1, s.1, r.1]⟩ m
+    ConditionalRuns I W τ add3 ⟨[w, x.2, y.2, z.2, s.2, r.2], [x.1, y.1, z.1, s.1, r.1]⟩ m
       (2 • Count.one .wadd [w]) (W .wadd [w])
       fun m' => ∃ ss rs, m' = (m.updBlock s ss).updBlock r rs ∧
         bitsVal (vec rs) w =
@@ -195,8 +195,8 @@ theorem runs_add3 {f : ℕ → List Bool → List Bool → List Bool} (hf : AddM
     wp_seq (wp_call_fn hI (b := [s]) rfl rfl rfl (by simp [DisjointBufs, hxs, hys]) h1
       (wp_call_fn hI (b := [r]) rfl rfl rfl (by simp [DisjointBufs, hsr, hzr]) h2 rfl))
   obtain ⟨m', hrun, hpost⟩ := hw
-  refine (Runs.of_run hrun hpost W).mono (by simp [add3, staticCost, useCost, two_nsmul])
-    (by simp [add3, staticPeak]) fun m' h => ⟨_, _, h, ?_⟩
+  refine (ConditionalRuns.of_run hrun hpost W).mono (by simp [add3, stmtCost, useCost, two_nsmul])
+    (by simp [add3, stmtPeak]) fun m' h => ⟨_, _, h, ?_⟩
   rw [(hf w _ zs).2, (hf w xs ys).2, Nat.mod_add_mod]
 
 /-! ### The implementation over bit operations and its exact certificate -/
@@ -286,7 +286,7 @@ theorem ripple_cert {I : Interp BitOp Empty Bool} (hI : IsBits I) {d : List ℕ}
     {ins outs : List (ℕ × ℕ)} {τ : Tape Bool} {m m' : Mem Bool}
     (hadm : DisjointBufs d ins outs) (h : (waddFn rippleF).apply d ins outs τ m = some m') :
     rippleImpl.Fits d.length ins.length outs.length ∧
-      run I τ rippleImpl.body (Env.frame d (ins ++ outs)) m = some m' := by
+      eval I τ rippleImpl.body (Env.frame d (ins ++ outs)) m = some m' := by
   obtain ⟨w, x, y, z, xs, ys, rfl, rfl, rfl, hx, hy, -, hz, rfl⟩ := waddFn_apply h
   obtain ⟨s, p⟩ := m
   replace hz : z.2 + w ≤ s.len z.1 := hz
@@ -330,7 +330,7 @@ theorem word_accounts (I : Interp BitOp Empty Bool) :
   cases hT
   obtain ⟨w, rfl⟩ := List.length_eq_one_iff.mp hd
   obtain ⟨a, b, c, rfl⟩ := List.length_eq_three.mp ho
-  simp [rippleImpl, staticCost, staticPeak, useCost, wordCost]
+  simp [rippleImpl, stmtCost, stmtPeak, useCost, wordCost]
 
 /-- The induced interpretation meets the functional contract of `wadd` with `f = rippleF`. -/
 theorem isWAdd_link {I : Interp BitOp Empty Bool} (hI : IsBits I) :
@@ -345,7 +345,7 @@ theorem runs_add3_link {I : Interp BitOp Empty Bool} (hI : IsBits I) {τ : Tape 
     (hx : m.store.readBlock x.1 x.2 w = some xs) (hy : m.store.readBlock y.1 y.2 w = some ys)
     (hz : m.store.readBlock z.1 z.2 w = some zs) (hs : s.2 + w ≤ m.store.len s.1)
     (hr : r.2 + w ≤ m.store.len r.1) (hl : m.Live [x, y, z, s, r]) :
-    Runs I (fun _ _ => 0) τ (add3.link wordTable)
+    ConditionalRuns I (fun _ _ => 0) τ (add3.link wordTable)
       ⟨[w, x.2, y.2, z.2, s.2, r.2], [x.1, y.1, z.1, s.1, r.1]⟩ m
       (2 • Count.one .zero [] + (2 * w) • (Count.one .xor3 [] + Count.one .maj [])) 1
       fun m' => ∃ ss rs, m' = (m.updBlock s ss).updBlock r rs ∧
@@ -368,7 +368,7 @@ theorem exists_isWAdd :
     isWAdd_link fun o => Interp.ofFns_isFn _ _ o _⟩
 
 /-- A run of the linked adder on words: `5 + 6 = 3` modulo `8`, on three-bit blocks. -/
-example : run (Interp.ofFns bitFns) (fun _ _ => false) rippleImpl.body
+example : eval (Interp.ofFns bitFns) (fun _ _ => false) rippleImpl.body
     (Env.frame [3] [(0, 0), (1, 0), (2, 0)])
     ⟨[[some true, some false, some true], [some false, some true, some true],
       [none, none, none]], 0⟩ =

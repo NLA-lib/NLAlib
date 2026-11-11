@@ -108,7 +108,7 @@ theorem runs_cgs_link_seq (hM : StdModel u dec M) (hu : 0 ≤ u) {I : Interp Op 
     (hl : μ.Live [A, Q, R]) (hA : μ.store.readBlock A.1 A.2 (p * n) = some as)
     (hR₀ : μ.store.readBlock R.1 R.2 (p * p) = some r₀)
     (hQ : Q.2 + p * n ≤ μ.store.len Q.1) (hR : R.2 + p * p ≤ μ.store.len R.1) :
-    Runs I (Blas.ws 0) τ (cgs.link Blas.seq.table) (Env.frame [n, p] [A, R, Q, R]) μ
+    ConditionalRuns I (Blas.ws 0) τ (cgs.link Blas.seq.table) (Env.frame [n, p] [A, R, Q, R]) μ
       ((p * (p - 1) / 2) • (n • Blas.sc .mul + (Blas.sc (.lit 0) + ((1 - (1 - n)) • Blas.sc .copy +
           (n - 1) • Blas.sc .add)) + (Blas.sc .neg + n • (Blas.sc .mul + Blas.sc .add))) +
         p • (n • Blas.sc .copy + (n • Blas.sc .mul + (Blas.sc (.lit 0) + ((1 - (1 - n)) •
@@ -127,7 +127,7 @@ theorem runs_cgs_link_pairwise (hM : StdModel u dec M) (hu : 0 ≤ u) {I : Inter
     (hA : μ.store.readBlock A.1 A.2 (p * n) = some as)
     (hR₀ : μ.store.readBlock R.1 R.2 (p * p) = some r₀)
     (hQ : Q.2 + p * n ≤ μ.store.len Q.1) (hR : R.2 + p * p ≤ μ.store.len R.1) :
-    Runs I (Blas.ws Blas.pairWs) τ (cgs.link (Blas.pairwise k).table)
+    ConditionalRuns I (Blas.ws Blas.pairWs) τ (cgs.link (Blas.pairwise k).table)
       (Env.frame [n, p] [A, R, Q, R]) μ
       ((p * (p - 1) / 2) • (n • Blas.sc .mul + Blas.pairCount n +
           (Blas.sc .neg + n • (Blas.sc .mul + Blas.sc .add))) +

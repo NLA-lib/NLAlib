@@ -153,15 +153,15 @@ theorem level1_accounts (wsum : ℕ → ℕ) (I : Interp Op Tst K) :
     rcases h : Has.proj (G := Blas1Op) o with _ | (_ | _ | _ | _ | _ | _) <;>
       simp only [h] at hT <;> cases hT <;> obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hd
     · obtain ⟨a, b, c, rfl⟩ := List.length_eq_three.mp ho
-      simp [dotSum, prodLoop, staticCost, staticPeak, useCost, level1Cost, ws, h]
+      simp [dotSum, prodLoop, stmtCost, stmtPeak, useCost, level1Cost, ws, h]
     · obtain ⟨a, b, c, e, rfl⟩ := List.length_eq_four.mp ho
-      simp [axpyLoop, staticCost, staticPeak, useCost, level1Cost, ws, h]
+      simp [axpyLoop, stmtCost, stmtPeak, useCost, level1Cost, ws, h]
     · obtain ⟨a, b, rfl⟩ := List.length_eq_two.mp ho
-      simp [nrm2Sum, prodLoop, staticCost, staticPeak, useCost, level1Cost, ws, h]
+      simp [nrm2Sum, prodLoop, stmtCost, stmtPeak, useCost, level1Cost, ws, h]
     · obtain ⟨a, b, c, rfl⟩ := List.length_eq_three.mp ho
-      simp [scalLoop, staticCost, staticPeak, useCost, level1Cost, ws, h]
+      simp [scalLoop, stmtCost, stmtPeak, useCost, level1Cost, ws, h]
     · obtain ⟨a, b, rfl⟩ := List.length_eq_two.mp ho
-      simp [copyLoop, staticCost, staticPeak, useCost, level1Cost, ws, h]
+      simp [copyLoop, stmtCost, stmtPeak, useCost, level1Cost, ws, h]
   · intro o o' hT d
     simp only [level1Table] at hT
     rcases h : Has.proj (G := Blas1Op) o with _ | (_ | _ | _ | _ | _ | _) <;>
@@ -176,7 +176,7 @@ theorem sumSeq_accounts (I : Interp Op Tst K) :
       simp only [h] at hT <;> cases hT
     obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hd
     obtain ⟨a, b, rfl⟩ := List.length_eq_two.mp ho
-    simp [NLAlib.Ops.sumSeq, Stmt.ifPos, staticCost, staticPeak, useCost, sumSeqCost, ws, h]
+    simp [NLAlib.Ops.sumSeq, Stmt.ifPos, stmtCost, stmtPeak, useCost, sumSeqCost, ws, h]
   · intro o o' hT d
     simp only [sumSeqTable] at hT
     rcases h : Has.proj (G := Blas1Op) o with _ | (_ | _ | _ | _ | _ | _) <;>
@@ -200,16 +200,16 @@ theorem sumPairwise_accounts (I : Interp Op Tst K) :
       simp only [h] at hT <;> cases hT
     obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hd
     obtain ⟨a, b, rfl⟩ := List.length_eq_two.mp ho
-    refine ⟨by simp [NLAlib.Ops.sumPairwise, Stmt.ifPos, Stmt.ifZero, staticCost, useCost,
+    refine ⟨by simp [NLAlib.Ops.sumPairwise, Stmt.ifPos, Stmt.ifZero, stmtCost, useCost,
       sumPairwiseCost, h, mul_smul, add_assoc], ?_⟩
     rcases Nat.lt_or_ge n 2 with hn | hn
     · have h0 : n / 2 = 0 := by omega
-      simp [NLAlib.Ops.sumPairwise, Stmt.ifPos, Stmt.ifZero, staticPeak, ws, h, h0]
+      simp [NLAlib.Ops.sumPairwise, Stmt.ifPos, Stmt.ifZero, stmtPeak, ws, h, h0]
     · have h1 : 1 - (1 - n / 2) = 1 := by omega
       have h2 : 1 - n = 0 := by omega
       have h3 : 1 - (n - 1) = 0 := by omega
       have := pairWs_step hn
-      simp [NLAlib.Ops.sumPairwise, Stmt.ifPos, Stmt.ifZero, staticPeak, ws, h, h1, h2, h3]
+      simp [NLAlib.Ops.sumPairwise, Stmt.ifPos, Stmt.ifZero, stmtPeak, ws, h, h1, h2, h3]
       omega
   · intro o o' hT d
     simp only [sumPairwiseTable] at hT

@@ -39,6 +39,37 @@ The memory `NLAlib.Ops.Mem` of a run is the store and the position on the tape o
 
 namespace NLAlib.Ops
 
+/-- A fixed-width storage representation. Both identity and positive payload byte width are
+part of the format, so equal names with different widths are not interchangeable formats. -/
+structure StorageFormat where
+  /-- Representation identifier, fixed by the operation model. -/
+  name : ℕ
+  /-- Payload bytes per element minus one; zero-byte cells cannot be declared. -/
+  bytesMinusOne : ℕ
+  deriving DecidableEq, Repr
+
+/-- Positive modeled payload byte width of a representation. A physical interpretation
+requires a faithful encoding of its opaque words. -/
+def StorageFormat.bytes (f : StorageFormat) : ℕ := f.bytesMinusOne + 1
+
+/-- The abstract unit-width cell used by representation-erased scalar proof examples.
+It is not a physical one-byte encoding of an arbitrary carrier. -/
+def StorageFormat.cell : StorageFormat := ⟨0, 0⟩
+/-- Legacy abstract cells retain unit-width accounting. -/
+@[simp] theorem StorageFormat.bytes_cell : StorageFormat.cell.bytes = 1 := rfl
+
+/-- IEEE binary16 storage. Arithmetic/accumulation precision is specified separately. -/
+def StorageFormat.fp16 : StorageFormat := ⟨1, 1⟩
+/-- Bfloat16 storage, distinct from binary16 despite equal width. -/
+def StorageFormat.bf16 : StorageFormat := ⟨2, 1⟩
+/-- IEEE binary32 storage. -/
+def StorageFormat.fp32 : StorageFormat := ⟨3, 3⟩
+/-- IEEE binary64 storage. -/
+def StorageFormat.fp64 : StorageFormat := ⟨4, 7⟩
+
+/-- Every declared cell has a positive payload size. -/
+theorem StorageFormat.bytes_pos (f : StorageFormat) : 0 < f.bytes := Nat.zero_lt_succ _
+
 /-- A buffer: a list of possibly uninitialised cells. -/
 abbrev Buf (K : Type) := List (Option K)
 

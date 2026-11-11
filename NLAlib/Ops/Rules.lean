@@ -78,7 +78,7 @@ theorem wp_call_rel_liberal {o : Op} {R : BlockRel K}
       Q ((m.updBlocks b ys).advance k)) : Wp .liberal I τ (.call o ds ins outs) ρ Q m := by
   subst hk hls
   intro m' hrun
-  simp only [run, hd, ha, hb, Option.bind_some] at hrun
+  simp only [eval, hd, ha, hb, Option.bind_some] at hrun
   obtain ⟨xs, hr, hroom, ys, hlen, hrel, rfl⟩ := hI d a b τ m ⟨hnd, hadm, by simp⟩ m' hrun
   exact hQ xs ys (Interp.live_of_callS hrun) hr hroom hlen hrel
 
@@ -140,7 +140,7 @@ theorem wp_call_fn {o : Op} {f : BlockFn K}
     (hd : IExp.evalList ρ.idx ds = some d) (ha : Operand.evalList ρ ins = some a)
     (hb : Operand.evalList ρ outs = some b) (hadm : adm d a b) {m' : Mem K}
     (hf : f.apply d a b τ m = some m') (hQ : Q m') : Wp md I τ (.call o ds ins outs) ρ Q m :=
-  wp_of_run (by simp only [run, hd, ha, hb, Option.bind_some, hI.callS_eq hadm hf]) hQ
+  wp_of_run (by simp only [eval, hd, ha, hb, Option.bind_some, hI.callS_eq hadm hf]) hQ
 
 /-- **Call of a functional operation, partial correctness**: if the call succeeds, it is the
 block function. -/
@@ -152,7 +152,7 @@ theorem wp_call_fn_liberal {o : Op} {f : BlockFn K}
     (hQ : ∀ m', f.apply d a b τ m = some m' → Q m') :
     Wp .liberal I τ (.call o ds ins outs) ρ Q m := by
   intro m' hrun
-  simp only [run, hd, ha, hb, Option.bind_some] at hrun
+  simp only [eval, hd, ha, hb, Option.bind_some] at hrun
   exact hQ m' (hI.apply_of_callS hnd hadm hrun)
 
 /-- Call of a functional constant, on cells. -/

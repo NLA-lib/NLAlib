@@ -127,13 +127,14 @@ def cgsPeak (W : Op → List ℕ → ℕ) (n : ℕ) : ℕ :=
 
 omit [Inhabited K] in
 theorem staticCost_cgs (n p a b c c' : ℕ) :
-    staticCost (cgs (Op := Op) (Tst := Tst)) [n, p, a, c, b, c'] = cgsCount n p := by
-  simp [cgs, cgsCol, cgsDots, cgsProj, staticCost, useCost, cgsCount, cgsColCount]
+    stmtCost (cgs (Op := Op) (Tst := Tst)) [n, p, a, c, b, c'] = cgsCount n p := by
+  simp [cgs, cgsCol, cgsDots, cgsProj, stmtCost, useCost, cgsCount, cgsColCount]
 
 omit [Inhabited K] in
 theorem staticPeak_cgs_le (W : Op → List ℕ → ℕ) (n p a b c c' : ℕ) :
-    staticPeak W (cgs (Op := Op) (Tst := Tst)) [n, p, a, c, b, c'] ≤ cgsPeak W n := by
-  simp only [cgs, cgsCol, cgsDots, cgsProj, staticPeak, cgsPeak]
+    stmtPeak W (cgs (Op := Op) (Tst := Tst)) [n, p, a, c, b, c'] ≤ cgsPeak W n := by
+  simp only [cgs, cgsCol, cgsDots, cgsProj, Stmt.alloc, stmtPeak,
+    StorageFormat.bytes_cell, Nat.one_mul, cgsPeak]
   refine Nat.add_le_add_left (Nat.add_le_add_left (Finset.sup_le fun j _ => ?_) _) _
   simp only [Finset.sup_le_iff, max_le_iff]
   simp
@@ -242,7 +243,7 @@ theorem runs_cgs_rounded {M : Machine K} {dec : K → ℝ} {ε : Blas1Err} {ok :
     (hA : μ.store.readBlock A.1 A.2 (p * n) = some as)
     (hR₀ : μ.store.readBlock R.1 R.2 (p * p) = some r₀)
     (hQ : Q.2 + p * n ≤ μ.store.len Q.1) (hR : R.2 + p * p ≤ μ.store.len R.1) :
-    Runs J W τ cgs (Env.frame [n, p] [A, R, Q, R]) μ (cgsCount n p) (cgsPeak W n)
+    ConditionalRuns J W τ cgs (Env.frame [n, p] [A, R, Q, R]) μ (cgsCount n p) (cgsPeak W n)
       (CgsFactored dec ε n p Q R as μ) := by
   obtain ⟨hlA, hlQ, hlR⟩ : A.1 < μ.store.length ∧ Q.1 < μ.store.length ∧
       R.1 < μ.store.length := by simpa using hl

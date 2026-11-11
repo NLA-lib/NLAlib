@@ -75,7 +75,7 @@ theorem runs_mulAddMixed {Ml Mh : Machine K} {c : K → K} {ul uh : ℝ} {dec : 
     {x y w z : ℕ × ℕ} {m : Mem K} {a b e : K} (hx : m.store.get x.1 x.2 = some a)
     (hy : m.store.get y.1 y.2 = some b) (hw : m.store.get w.1 w.2 = some e)
     (hz : z.2 < m.store.len z.1) :
-    Runs I W τ (mulAddMixed Lo Hi) ⟨[x.2, y.2, w.2, z.2], [x.1, y.1, w.1, z.1]⟩ m
+    ConditionalRuns I W τ (mulAddMixed Lo Hi) ⟨[x.2, y.2, w.2, z.2], [x.1, y.1, w.1, z.1]⟩ m
       (mulAddMixedCount Lo Hi)
       (1 + max (W (Tagged.inj Lo ScalarOp.mul) []) (max (W (Has.inj (CastOp.cast : CastOp Lo Hi))
         []) (W (Tagged.inj Hi ScalarOp.add) [])))
@@ -98,9 +98,9 @@ theorem runs_mulAddMixed {Ml Mh : Machine K} {c : K → K} {ul uh : ℝ} {dec : 
     rw [hc.eq_of_zero] at h2
     exact abs_mixed_le huh h1 h2
   obtain ⟨m', hrun, hpost⟩ := hwp
-  exact (Runs.of_run hrun hpost W).mono
-    (by simp [mulAddMixed, mulAddMixedCount, staticCost, useCost])
-    (by simp [mulAddMixed, staticPeak]) fun _ h => h
+  exact (ConditionalRuns.of_run hrun hpost W).mono
+    (by simp [mulAddMixed, mulAddMixedCount, stmtCost, useCost])
+    (by simp [mulAddMixed, stmtPeak]) fun _ h => h
 
 /-! ### An implementation at a tag: nothing is rewritten -/
 
@@ -116,7 +116,7 @@ def sumSeqAt (π : Type) [Has (Tagged π ScalarOp) Op] : Impl Op Tst :=
 summation: the unit roundoff is that of the machine of the tag. -/
 theorem sumSeq_spec_at {M : Machine K} {I : Interp Op Tst K} (hI : IsScalarAt π M I) {u : ℝ}
     {dec : K → ℝ} (hM : StdModel u dec M) (hu : 0 ≤ u) (ok : ℕ → Prop) :
-    (sumSeqAt (Op := Op) (Tst := Tst) π).Meets I .total
+    (sumSeqAt (Op := Op) (Tst := Tst) π).Triple I .total
       ((sumRel dec fun n => (1 + u) ^ (n - 1) - 1).spec (OutApart ok)) :=
   @sumSeq_spec K Op Tst (Tagged.has π) _ M I hI.isScalar u dec hM hu ok
 

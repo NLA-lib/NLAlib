@@ -24,7 +24,7 @@ advances by the length of the window. The operation takes no random operand. Two
   and no operation hands them out, so it cannot compute with them.
 
 The call rule is the one rule `NLAlib.Ops.wp_call_rel`, and the certificate of an implementation
-that draws into its own scratch is the one certificate `NLAlib.Ops.Impl.Meets`.
+that draws into its own scratch is the one certificate `NLAlib.Ops.Impl.Triple`.
 
 The statement about the law is separate and is mathematics: with the law of the tape
 (`NLAlib.Ops.IsTapeLaw`), the window of a call at the position `p` is independent of the past of

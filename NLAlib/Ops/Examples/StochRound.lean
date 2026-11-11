@@ -35,7 +35,7 @@ The algorithm is the stochastically rounded sum `NLAlib.Ops.Examples.srsum`.
 * `NLAlib.Ops.Examples.sr_certifies`: the certificate of the profile (contract by linking,
   counts, window by the window lemma).
 * `NLAlib.Ops.Examples.runsLaw_srsum_link`: the corollary for the program that draws, one
-  application of `Profile.Certifies.runsLaw`: `n` draws, `n` `sraddXi`, one scratch cell.
+  application of `Profile.Refines.runsLaw`: `n` draws, `n` `sraddXi`, one scratch cell.
 * `NLAlib.Ops.Examples.exists_isSrLo`: the contracts can be met.
 -/
 
@@ -154,7 +154,7 @@ theorem srAdd_cert {f : K → K → K → K} {I : Interp SrLo Empty K} (hI : IsS
     {ins outs : List (ℕ × ℕ)} {τ : Tape K} {m m' : Mem K}
     (h : (drawBin f).apply d ins outs τ m = some m') :
     srAddImpl.Fits d.length ins.length outs.length ∧
-      run I τ srAddImpl.body (Env.frame d (ins ++ outs)) m = some m' := by
+      eval I τ srAddImpl.body (Env.frame d (ins ++ outs)) m = some m' := by
   obtain ⟨x, y, z, a, b, rfl, rfl, rfl, hx, hy, hz, rfl⟩ := drawBin_apply h
   obtain ⟨s, p⟩ := m
   have hbz : z.1 < s.length := Store.lt_length_of_lt_len hz
@@ -208,7 +208,7 @@ noncomputable def srProfile : Profile SrOp SrLo Empty where
 
 /-- **The certificate of the profile.** The window is given by the window lemma: the scratch
 draw of the implementation is the one entry the law of the tape assigns to the call. -/
-theorem sr_certifies (f : K → K → K → K) : srProfile.Certifies (IsSrLo f) (IsSrAdd f) := by
+theorem sr_certifies (f : K → K → K → K) : srProfile.Refines (IsSrLo f) (IsSrAdd f) := by
   refine .of_accounts (fun I hI => isSrAdd_link hI) (fun I => Table.accounts_of_static ?_
     (fun o o' hT => by cases o; cases hT) I) fun I _ hloc o => ?_
   · intro o R hT d offs hd ho
@@ -216,7 +216,7 @@ theorem sr_certifies (f : K → K → K → K) : srProfile.Certifies (IsSrLo f) 
     cases hT
     obtain rfl := List.length_eq_zero_iff.mp hd
     obtain ⟨a, b, c, rfl⟩ := List.length_eq_three.mp ho
-    simp [srProfile, srAddImpl, staticCost, staticPeak, useCost]
+    simp [srProfile, srAddImpl, stmtCost, stmtPeak, useCost]
   · cases o
     exact Interp.TapeLocal.link hloc (o := SrOp.srAdd) rfl (by simp [Stmt.Straight, srAddImpl])
       fun d offs hd ho => by
@@ -322,7 +322,7 @@ theorem integral_dec_srsumF {u : ℝ} {dec : K → ℝ} {law : ℕ → Measure K
 
 end Math
 
-section Runs
+section ConditionalRuns
 
 variable [Inhabited K]
 
@@ -333,7 +333,8 @@ theorem runs_srsum {g : K → K → K → K} {J : Interp SrOp Empty K} (hJ : IsS
     (W : SrOp → List ℕ → ℕ) {τ : Tape K} {n : ℕ} {x z : ℕ × ℕ} {m : Mem K} {xs : List K} {z₀ : K}
     (hxz : x.1 ≠ z.1) (hx : m.store.readBlock x.1 x.2 n = some xs)
     (hz : m.store.get z.1 z.2 = some z₀) :
-    Runs J W τ srsum ⟨[n, x.2, z.2], [x.1, z.1]⟩ m (n • Count.one .srAdd []) (W .srAdd [])
+    ConditionalRuns J W τ srsum ⟨[n, x.2, z.2], [x.1, z.1]⟩ m (n • Count.one .srAdd []) (W .srAdd
+      [])
       (· = (m.upd z (srsumF g z₀ (vec xs) τ m.pos n)).advance n) := by
   have hw : Wp .total J τ srsum ⟨[n, x.2, z.2], [x.1, z.1]⟩
       (· = (m.upd z (srsumF g z₀ (vec xs) τ m.pos n)).advance n) m := by
@@ -352,8 +353,9 @@ theorem runs_srsum {g : K → K → K → K} {J : Interp SrOp Empty K} (hJ : IsS
         exact Store.lt_len_of_get hz
       · simp [Mem.upd, Mem.advance, srsumF, add_assoc]
   obtain ⟨m', hrun, hpost⟩ := hw
-  refine (Runs.of_run hrun hpost W).mono (by simp [srsum, staticCost, useCost]) ?_ fun _ h => h
-  simp only [srsum, staticPeak, IExp.evalList_nil, Option.map_some, Option.getD_some]
+  refine (ConditionalRuns.of_run hrun hpost W).mono (by simp [srsum, stmtCost, useCost]) ?_ fun _
+    h => h
+  simp only [srsum, stmtPeak, IExp.evalList_nil, Option.map_some, Option.getD_some]
   exact Finset.sup_le fun _ _ => le_rfl
 
 variable [MeasurableSpace K]
@@ -375,7 +377,8 @@ theorem runsLaw_srsum {g : K → K → K → K} {J : Interp SrOp Empty K} (hJ : 
     (W : SrOp → List ℕ → ℕ) {n : ℕ} {x z : ℕ × ℕ} {m : Mem K} {xs : List K} {z₀ : K}
     (hxz : x.1 ≠ z.1) (hx : m.store.readBlock x.1 x.2 n = some xs)
     (hz : m.store.get z.1 z.2 = some z₀) :
-    RunsLaw J W ξ srsum ⟨[n, x.2, z.2], [x.1, z.1]⟩ m (n • Count.one .srAdd []) (W .srAdd [])
+    ConditionalRunsLaw J W ξ srsum ⟨[n, x.2, z.2], [x.1, z.1]⟩ m (n • Count.one .srAdd []) (W
+      .srAdd [])
       (SrsumPost dec u n z z₀ xs m)
       fun X => ∫ ω, X ω ∂P = dec z₀ + ∑ k ∈ Finset.range n, dec (vec xs k) :=
   ⟨fun ω => dec (srsumF g z₀ (vec xs) (ξ ω) m.pos n), fun _ =>
@@ -392,14 +395,14 @@ theorem runsLaw_srsum_link {f : K → K → K → K} {I : Interp SrLo Empty K} (
     {P : Measure Ω} {ξ : Ω → Tape K} (h : IsTapeLaw law P ξ) {n : ℕ} {x z : ℕ × ℕ} {m : Mem K}
     {xs : List K} {z₀ : K} (hxz : x.1 ≠ z.1) (hx : m.store.readBlock x.1 x.2 n = some xs)
     (hz : m.store.get z.1 z.2 = some z₀) :
-    RunsLaw I (fun _ _ => 0) ξ (srsum.link srTable) ⟨[n, x.2, z.2], [x.1, z.1]⟩ m
+    ConditionalRunsLaw I (fun _ _ => 0) ξ (srsum.link srTable) ⟨[n, x.2, z.2], [x.1, z.1]⟩ m
       (n • (Count.one .draw [] + Count.one .sraddXi [])) 1 (SrsumPost dec u n z z₀ xs m)
       fun X => ∫ ω, X ω ∂P = dec z₀ + ∑ k ∈ Finset.range n, dec (vec xs k) := by
   have := (sr_certifies f).runsLaw (ξ := ξ)
     (fun J hJ _ => runsLaw_srsum hJ hf hu h _ hxz hx hz) hI hloc
   simpa [srProfile] using this
 
-end Runs
+end ConditionalRuns
 
 /-! ### Witness -/
 

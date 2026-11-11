@@ -149,7 +149,7 @@ theorem wp_sumSeq {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {md 
 `(1 + u) ^ (n - 1) - 1`, for every length. -/
 theorem sumSeq_spec {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {u : ℝ}
     {dec : K → ℝ} (hM : StdModel u dec M) (hu : 0 ≤ u) (ok : ℕ → Prop) :
-    (sumSeq (Op := Op) (Tst := Tst)).Meets I .total
+    (sumSeq (Op := Op) (Tst := Tst)).Triple I .total
       ((sumRel dec fun n => (1 + u) ^ (n - 1) - 1).spec (OutApart ok)) := by
   refine Impl.meets_rel fun d ins outs τ m xs hnd hadm hl hr _ hz => ?_
   obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hnd
@@ -289,7 +289,7 @@ the recursion. -/
 theorem sumPairwise_spec {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {u : ℝ}
     {dec : K → ℝ} (hM : StdModel u dec M) (hu : 0 ≤ u) {k : ℕ}
     (hS : IsSum dec (fun n => (1 + u) ^ Nat.clog 2 n - 1) (fun n => Nat.clog 2 n < k) I) :
-    (sumPairwise (Op := Op) (Tst := Tst)).Meets I .total
+    (sumPairwise (Op := Op) (Tst := Tst)).Triple I .total
       ((sumRel dec fun n => (1 + u) ^ Nat.clog 2 n - 1).spec
         (OutApart fun n => Nat.clog 2 n < k + 1)) := by
   refine Impl.meets_rel fun d ins outs τ m xs hnd hadm hl hr _ hz => ?_

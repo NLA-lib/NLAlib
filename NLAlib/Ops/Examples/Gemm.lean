@@ -25,8 +25,8 @@ blocks), `C` is `m × p` stored by rows.
   (`NLAlib.Ops.Examples.gemmRel`). This is the statement of an implementation of an operation;
   it is proved in the program logic (`NLAlib.Ops.Logic`) by the relational 2-D fill rule.
 * Abstract theorem (`NLAlib.Ops.Examples.runs_gemm_rounded`), from the certificate by the
-  bridge `NLAlib.Ops.Impl.Meets.runs_rel`: `m p` calls of `dot` at the length `n`.
-* Corollaries, one application of `Profile.Certifies.runs` each
+  bridge `NLAlib.Ops.Impl.Triple.runs_rel`: `m p` calls of `dot` at the length `n`.
+* Corollaries, one application of `Profile.Refines.runs` each
   (`NLAlib.Ops.Examples.runs_gemm_link_seq`, `NLAlib.Ops.Examples.runs_gemm_link_pairwise`):
   `ε = (1 + u) ^ n - 1` under sequential summation and `(1 + u) ^ (⌈log₂ n⌉ + 1) - 1` under
   pairwise summation, with the scalar counts of
@@ -54,13 +54,13 @@ noncomputable def gemmCount (m n p : ℕ) : Count Op Tst :=
   (m * p) • Count.one (Has.inj Blas1Op.dot) [n]
 
 theorem staticCost_gemm (m n p a b c : ℕ) :
-    staticCost (gemm (Op := Op) (Tst := Tst)) [m, n, p, a, b, c] = gemmCount m n p := by
-  simp [gemm, staticCost, useCost, gemmCount, mul_smul]
+    stmtCost (gemm (Op := Op) (Tst := Tst)) [m, n, p, a, b, c] = gemmCount m n p := by
+  simp [gemm, stmtCost, useCost, gemmCount, mul_smul]
 
 theorem staticPeak_gemm_le (W : Op → List ℕ → ℕ) (m n p a b c : ℕ) :
-    staticPeak W (gemm (Op := Op) (Tst := Tst)) [m, n, p, a, b, c] ≤
+    stmtPeak W (gemm (Op := Op) (Tst := Tst)) [m, n, p, a, b, c] ≤
       W (Has.inj Blas1Op.dot) [n] := by
-  simp only [gemm, staticPeak]
+  simp only [gemm, stmtPeak]
   exact Finset.sup_le fun i _ => Finset.sup_le fun j _ => by simp
 
 /-- **`gemm` as an implementation**: three dimensions `m`, `n`, `p`, two inputs `A`, `B`, one
@@ -111,7 +111,7 @@ algorithms above it. Proved with the relational 2-D fill rule: `C` is the layout
 columns, one `step` per entry. -/
 theorem gemm_spec {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop} {J : Interp Op Tst K}
     (hJ : IsBlas1 dec ε ok J) :
-    (gemmImpl (Op := Op) (Tst := Tst)).Meets J .total
+    (gemmImpl (Op := Op) (Tst := Tst)).Triple J .total
       ((gemmRel dec ε.dot).spec (GemmOperands ok)) := by
   cert_intro [m, n, p] (A, B) → (C) reads (as, bs)
   refine Writes.mono (writes_fillRel₂ ⟨C.1, C.2, p, m, p⟩ le_rfl rfl (fun _ => rfl)
@@ -137,7 +137,7 @@ theorem runs_gemm_rounded {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop} 
     (hl : μ.Live [A, B, C]) (hA : μ.store.readBlock A.1 A.2 (m * n) = some as)
     (hB : μ.store.readBlock B.1 B.2 (p * n) = some bs)
     (hC : C.2 + m * p ≤ μ.store.len C.1) :
-    Runs J W τ gemm (Env.frame [m, n, p] [A, B, C]) μ (gemmCount m n p)
+    ConditionalRuns J W τ gemm (Env.frame [m, n, p] [A, B, C]) μ (gemmCount m n p)
       (W (Has.inj Blas1Op.dot) [n]) (GemmRounded dec (ε.dot n) m n p C as bs μ) := by
   refine ((gemm_spec hJ).runs_rel W (d := [m, n, p]) (ins := [A, B]) (outs := [C]) (τ := τ)
     (xs := [as, bs]) rfl
@@ -161,7 +161,7 @@ theorem runs_gemm_link_seq {dec : K → ℝ} (hM : StdModel u dec M) (hu : 0 ≤
     (hl : μ.Live [A, B, C]) (hA : μ.store.readBlock A.1 A.2 (m * n) = some as)
     (hB : μ.store.readBlock B.1 B.2 (p * n) = some bs)
     (hC : C.2 + m * p ≤ μ.store.len C.1) :
-    Runs I (Blas.ws 0) τ (gemm.link Blas.seq.table) (Env.frame [m, n, p] [A, B, C]) μ
+    ConditionalRuns I (Blas.ws 0) τ (gemm.link Blas.seq.table) (Env.frame [m, n, p] [A, B, C]) μ
       ((m * p) • (n • Blas.sc .mul + (Blas.sc (.lit 0) + ((1 - (1 - n)) • Blas.sc .copy +
         (n - 1) • Blas.sc .add)))) (Blas.ws 0 (Has.inj Blas1Op.dot : Op) [n])
       (GemmRounded dec ((1 + u) ^ n - 1) m n p C as bs μ) :=
@@ -178,7 +178,7 @@ theorem runs_gemm_link_pairwise {dec : K → ℝ} (hM : StdModel u dec M) (hu : 
     (hA : μ.store.readBlock A.1 A.2 (m * n) = some as)
     (hB : μ.store.readBlock B.1 B.2 (p * n) = some bs)
     (hC : C.2 + m * p ≤ μ.store.len C.1) :
-    Runs I (Blas.ws Blas.pairWs) τ (gemm.link (Blas.pairwise k).table)
+    ConditionalRuns I (Blas.ws Blas.pairWs) τ (gemm.link (Blas.pairwise k).table)
       (Env.frame [m, n, p] [A, B, C]) μ
       ((m * p) • (n • Blas.sc .mul + Blas.pairCount n))
       (Blas.ws Blas.pairWs (Has.inj Blas1Op.dot : Op) [n])

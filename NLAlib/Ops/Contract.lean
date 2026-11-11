@@ -23,7 +23,8 @@ Every contract of the library is written in **operand form**, `NLAlib.Ops.BlockR
 `NLAlib.Ops.BlockRel`): functional, relational and with a window are one structure.
 
 A contract says nothing of counts, workspaces or the tape positions an operation may read: those
-are fixed by the evaluator and the access model (`NLAlib.Ops.exec`, `NLAlib.Ops.Interp.TapeLocal`).
+are fixed by the evaluator and the access model (`NLAlib.Ops.evalCounted`,
+  `NLAlib.Ops.Interp.TapeLocal`).
 
 The exactness of tests and index conversions is imposed by the access model
 (`NLAlib.Ops.Interp.IsTest`, `NLAlib.Ops.Interp.IsIndex`); a conversion may fail.
@@ -163,5 +164,90 @@ def Interp.IsTest (I : Interp Op Tst K) (o : Tst) (lens : List ℕ → List ℕ)
 non-integral value, a value that is not a number): no clamping. -/
 def Interp.IsIndex (I : Interp Op Tst K) (o : Tst) (f : List K → Option ℕ) : Prop :=
   ∀ a m xs, m.readBlocks a (a.map fun _ => 1) = some xs → I.index o a m = f xs.flatten
+
+/-- The specified input domain. Buffers are supplied explicitly with a proof of admissibility;
+there is no host callback that computes their contents from the semantic data or sizes.
+Inhabitedness is required at every admitted size, and at least one size is admitted. -/
+structure Problem (K : Type) (r b : ℕ) where
+  /-- Storage representations of the supplied buffers, fixed before runtime inputs. -/
+  formats : Fin b → StorageFormat
+  /-- The admitted sizes. -/
+  valid : (Fin r → ℕ) → Prop
+  /-- The semantic problem data at each size. -/
+  Data : (Fin r → ℕ) → Type
+  /-- Which supplied raw buffers represent the declared data and outputs. This is part of the
+  specified problem, and is a proposition rather than a preprocessing function. -/
+  admissible : (d : Fin r → ℕ) → Data d → (Fin b → Buf K) → Prop
+  /-- There is at least one admitted size. -/
+  admitted : ∃ d, valid d
+  /-- Every admitted size has semantic data and actual raw buffers satisfying the relation. -/
+  supply : ∀ d, valid d → ∃ x : Data d, ∃ buffers, admissible d x buffers
+
+/-- A problem input is semantic data together with explicitly supplied raw buffers and their
+admissibility proof. No algorithm-dependent input encoding or initializer is executed. -/
+def Problem.Input {K : Type} {r b : ℕ} (P : Problem K r b) (d : Fin r → ℕ) : Type :=
+  { x : P.Data d × (Fin b → Buf K) // P.admissible d x.1 x.2 }
+
+/-- The supply obligation provides an actual input at every admitted size. -/
+theorem Problem.inputs_exist {K : Type} {r b : ℕ} (P : Problem K r b)
+    (d : Fin r → ℕ) (hd : P.valid d) : Nonempty (P.Input d) := by
+  obtain ⟨x, buffers, h⟩ := P.supply d hd
+  exact ⟨⟨⟨x, buffers⟩, h⟩⟩
+
+/-- Initial memory is exactly the explicitly supplied raw buffers, with tape position zero.
+The only conversion is listing their fixed finite set of handles; no word is computed here. -/
+def Problem.initial {K : Type} {r b : ℕ} (P : Problem K r b) (d : Fin r → ℕ)
+    (x : P.Input d) : Mem K := ⟨List.ofFn x.val.2, 0⟩
+
+
+
+/-- Payload bytes of all supplied buffers, including initially uninitialized output slots. -/
+def Problem.initialBytes {K : Type} {r b : ℕ} (P : Problem K r b) (d : Fin r → ℕ)
+    (x : P.Input d) : ℕ :=
+  (List.ofFn fun i : Fin b => (P.formats i).bytes * (x.val.2 i).length).sum
+
+/-- A declared query contract. Relations may describe success, failure, and data dependence;
+they receive exactly the arguments visible to the query, with no tape or evaluator callback. -/
+structure QueryContract (K : Type) where
+  /-- Contract of a Boolean query, including its possible failure. -/
+  test : List ℕ → List (ℕ × ℕ) → Mem K → Option Bool → Prop
+  /-- Contract of an index query, including its possible failure. -/
+  index : List (ℕ × ℕ) → Mem K → Option ℕ → Prop
+
+/-- Both forms of a declared query satisfy their exact contract. -/
+def Interp.MeetsQuery (I : Interp Op Tst K) (q : Tst) (C : QueryContract K) : Prop :=
+  (∀ d a m, C.test d a m (I.test q d a m)) ∧
+    (∀ a m, C.index a m (I.index q a m))
+
+/-- A closed operation model. Its only interpretation assumptions are satisfaction of the
+specified operation and query contracts. In particular it cannot assume whole-program success,
+a desired output, or an unrelated predicate of the interpreter. All contracts are realized
+jointly at the exact same parameters for every admitted input. -/
+structure AccessModel (Op Tst : Type) {K : Type} {r b : ℕ} (P : Problem K r b) where
+  /-- An actual word, so the universally quantified tape type is inhabited. -/
+  word : K
+  /-- A contract for every permitted operation. The operation type is the closed signature;
+  there is no constructor for invoking an operation outside it. -/
+  operation : (d : Fin r → ℕ) → P.Input d → Op → Contract K
+  /-- Every permitted query also has a declared contract. -/
+  query : (d : Fin r → ℕ) → P.Input d → Tst → QueryContract K
+  /-- One fixed storage/work/span/workspace configuration. -/
+  resources : ResourceModel Op Tst
+  /-- Exactly the declared primitive contracts have a joint realization, at these parameters. -/
+  realize : ∀ d, P.valid d → ∀ x : P.Input d, ∃ I : Interp Op Tst K,
+    (∀ o, I.Meets .total o (operation d x o)) ∧
+      (∀ q, I.MeetsQuery q (query d x q))
+
+/-- Primitive workspace bytes from the fixed resource model. -/
+def AccessModel.workspace {Op Tst K : Type} {r b : ℕ} {P : Problem K r b}
+    (M : AccessModel Op Tst P) : Op → List ℕ → ℕ := M.resources.workspace
+
+/-- The interpretation assumptions are derived solely from declared local contracts. There is
+no user-supplied stronger assumption or whole-program proposition in this definition. -/
+def AccessModel.contracts {Op Tst K : Type} {r b : ℕ} {P : Problem K r b}
+    (M : AccessModel Op Tst P) (d : Fin r → ℕ) (x : P.Input d)
+    (I : Interp Op Tst K) : Prop :=
+  (∀ o, I.Meets .total o (M.operation d x o)) ∧
+    (∀ q, I.MeetsQuery q (M.query d x q))
 
 end NLAlib.Ops

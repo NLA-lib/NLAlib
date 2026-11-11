@@ -131,13 +131,13 @@ def mgsPeak (W : Op → List ℕ → ℕ) (n : ℕ) : ℕ :=
 
 omit [Inhabited K] in
 theorem staticCost_mgs (n k a b b' c : ℕ) :
-    staticCost (mgs (Op := Op) (Tst := Tst)) [n, k, a, b, b', c] = mgsCount n k := by
-  simp [mgs, mgsBody, staticCost, useCost, mgsCount]
+    stmtCost (mgs (Op := Op) (Tst := Tst)) [n, k, a, b, b', c] = mgsCount n k := by
+  simp [mgs, mgsBody, stmtCost, useCost, mgsCount]
 
 omit [Inhabited K] in
 theorem staticPeak_mgs_le (W : Op → List ℕ → ℕ) (n k a b b' c : ℕ) :
-    staticPeak W (mgs (Op := Op) (Tst := Tst)) [n, k, a, b, b', c] ≤ mgsPeak W n := by
-  simp only [mgs, mgsBody, staticPeak, mgsPeak]
+    stmtPeak W (mgs (Op := Op) (Tst := Tst)) [n, k, a, b, b', c] ≤ mgsPeak W n := by
+  simp only [mgs, mgsBody, Stmt.alloc, stmtPeak, StorageFormat.bytes_cell, Nat.one_mul, mgsPeak]
   refine Nat.add_le_add_left (max_le_max (Finset.sup_le fun j _ => ?_) ?_) _ <;> simp
 
 /-- **The certificate of `mgs`**: for every interpretation meeting the contracts of scalar
@@ -184,7 +184,7 @@ theorem runs_mgs_rounded {M : Machine K} {dec : K → ℝ} {ε : Blas1Err} {ok :
     (hq : μ.store.readBlock Q.1 Q.2 (k * n) = some qs)
     (hw : μ.store.readBlock w.1 w.2 n = some ws) (hwl : w.2 + n ≤ μ.store.len w.1)
     (hR : R.2 + (k + 1) ≤ μ.store.len R.1) :
-    Runs J W τ mgs (Env.frame [n, k] [Q, w, w, R]) μ (mgsCount n k) (mgsPeak W n)
+    ConditionalRuns J W τ mgs (Env.frame [n, k] [Q, w, w, R]) μ (mgsCount n k) (mgsPeak W n)
       (MgsRounded dec ε n k w R qs ws μ) := by
   refine ((mgs_spec hS hJ hneg).runs_rel W (d := [n, k]) (ins := [Q, w]) (outs := [w, R])
     (τ := τ) (xs := [qs, ws]) rfl ⟨hok, Q, w, R, rfl, rfl, hQw, hQR, hwR⟩
@@ -208,7 +208,7 @@ theorem runs_mgs_link_seq {M : Machine K} {u : ℝ} {dec : K → ℝ} (hM : StdM
     (hq : μ.store.readBlock Q.1 Q.2 (k * n) = some qs)
     (hw : μ.store.readBlock w.1 w.2 n = some ws) (hwl : w.2 + n ≤ μ.store.len w.1)
     (hR : R.2 + (k + 1) ≤ μ.store.len R.1) :
-    Runs I (Blas.ws 0) τ (mgs.link Blas.seq.table) (Env.frame [n, k] [Q, w, w, R]) μ
+    ConditionalRuns I (Blas.ws 0) τ (mgs.link Blas.seq.table) (Env.frame [n, k] [Q, w, w, R]) μ
       (k • (n • Blas.sc .mul + (Blas.sc (.lit 0) + ((1 - (1 - n)) • Blas.sc .copy +
           (n - 1) • Blas.sc .add)) + (Blas.sc .neg + n • (Blas.sc .mul + Blas.sc .add))) +
         (n • Blas.sc .mul + (Blas.sc (.lit 0) + ((1 - (1 - n)) • Blas.sc .copy +

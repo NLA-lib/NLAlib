@@ -215,7 +215,7 @@ theorem wp_copyLoop {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {m
 /-- **The `axpy` loop meets the contract of `axpy`** with the error `(1 + u) ^ 2 - 1`. -/
 theorem axpyLoop_spec {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {u : ℝ}
     {dec : K → ℝ} (hM : StdModel u dec M) (hu : 0 ≤ u) (ok : ℕ → Prop) :
-    (axpyLoop (Op := Op) (Tst := Tst)).Meets I .total
+    (axpyLoop (Op := Op) (Tst := Tst)).Triple I .total
       ((axpyRel dec ((1 + u) ^ 2 - 1)).spec (InPlace ok)) := by
   refine Impl.meets_rel fun d ins outs τ m X hnd hadm hl hr _ hz => ?_
   obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hnd
@@ -232,7 +232,7 @@ theorem axpyLoop_spec {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) 
 /-- **The `scal` loop meets the contract of `scal`** with the error `u`. -/
 theorem scalLoop_spec {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {u : ℝ}
     {dec : K → ℝ} (hM : StdModel u dec M) (ok : ℕ → Prop) :
-    (scalLoop (Op := Op) (Tst := Tst)).Meets I .total ((scalRel dec u).spec (InPlace ok)) := by
+    (scalLoop (Op := Op) (Tst := Tst)).Triple I .total ((scalRel dec u).spec (InPlace ok)) := by
   refine Impl.meets_rel fun d ins outs τ m X hnd hadm hl hr _ hz => ?_
   obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hnd
   obtain ⟨al, x, as, xs, rfl, ha, hx, rfl⟩ := Mem.readBlocks_two hr
@@ -247,7 +247,7 @@ theorem scalLoop_spec {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) 
 /-- **The `copy` loop meets the contract of `copy`.** -/
 theorem copyLoop_spec {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     (ok : ℕ → Prop) :
-    (copyLoop (Op := Op) (Tst := Tst)).Meets I .total (copyRel.spec (OutApart ok)) := by
+    (copyLoop (Op := Op) (Tst := Tst)).Triple I .total (copyRel.spec (OutApart ok)) := by
   refine Impl.meets_rel fun d ins outs τ m X hnd hadm hl hr _ hz => ?_
   obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hnd
   obtain ⟨x, xs, rfl, hx, rfl⟩ := Mem.readBlocks_one hr

@@ -62,12 +62,12 @@ def hutchPeak (W : ROp → List ℕ → ℕ) (n : ℕ) : ℕ :=
     (max (W (.operator .matvec) [n, n]) (max (W .dot [n]) (W .add [])))))
 
 theorem staticCost_hutch (N n o o' : ℕ) :
-    staticCost (hutch (Tst := Tst)) [N, n, o, o'] = hutchCount N n := by
-  simp [hutch, staticCost, useCost, hutchCount]
+    stmtCost (hutch (Tst := Tst)) [N, n, o, o'] = hutchCount N n := by
+  simp [hutch, stmtCost, useCost, hutchCount]
 
 theorem staticPeak_hutch_le (W : ROp → List ℕ → ℕ) (N n o o' : ℕ) :
-    staticPeak W (hutch (Tst := Tst)) [N, n, o, o'] ≤ hutchPeak W n := by
-  simp only [hutch, staticPeak, hutchPeak]
+    stmtPeak W (hutch (Tst := Tst)) [N, n, o, o'] ≤ hutchPeak W n := by
+  simp only [hutch, Stmt.alloc, stmtPeak, StorageFormat.bytes_cell, Nat.one_mul, hutchPeak]
   refine Nat.add_le_add_left (Nat.add_le_add_left (Nat.add_le_add_left
     (Finset.sup_le fun i _ => ?_) _) _) _
   simp
@@ -266,7 +266,7 @@ meets its contract with a window. The statement of an implementation of an opera
 randomness. -/
 theorem hutch_spec {dec : K → ℝ} {n : ℕ} {A : Matrix (Fin n) (Fin n) ℝ} {J : Interp ROp Tst K}
     (hJ : IsRandLin dec A J) :
-    (hutchImpl (Tst := Tst)).Meets J .total ((hutchRel dec A).spec (HutchOperands n)) := by
+    (hutchImpl (Tst := Tst)).Triple J .total ((hutchRel dec A).spec (HutchOperands n)) := by
   refine Impl.meets_rel fun d ins outs τ m X hnd hadm hl hr _ hz => ?_
   obtain ⟨N, n', rfl⟩ := List.length_eq_two.mp hnd
   obtain ⟨rfl, rfl⟩ : n' = n ∧ outs = ins := hadm
@@ -299,7 +299,7 @@ theorem runsLaw_hutch {dec : K → ℝ} {n : ℕ} {A : Matrix (Fin n) (Fin n) �
     (hq : MemLp (quadForm A) 2 (probeLaw dec (law Stream.gauss) n)) (W : ROp → List ℕ → ℕ)
     {N : ℕ} (hN : 0 < N) {e : ℕ × ℕ} {m : Mem K} {z₀ : K} (he : m.store.get e.1 e.2 = some z₀)
     (hz : dec z₀ = 0) :
-    RunsLaw J W ξ hutch (Env.frame [N, n] [e, e]) m (hutchCount N n) (hutchPeak W n)
+    ConditionalRunsLaw J W ξ hutch (Env.frame [N, n] [e, e]) m (hutchCount N n) (hutchPeak W n)
       (HutchPost dec N n e m) fun X => ∫ ω, X ω / N ∂P = A.trace ∧
         Var[fun ω => X ω / N; P] = Var[quadForm A; probeLaw dec (law Stream.gauss) n] / N := by
   have hN' : (N : ℝ) ≠ 0 := Nat.cast_ne_zero.mpr hN.ne'

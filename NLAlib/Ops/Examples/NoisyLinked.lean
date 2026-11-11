@@ -55,7 +55,7 @@ def nmvImpl (σ : ℚ) : Impl ROp Tst where
 and the vector draw: the output decodes to `A v + σ ‖v‖ dec w` for the window `w` it drew. -/
 theorem nmvImpl_spec {dec : K → ℝ} {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp ROp Tst K}
     (hI : IsRandLin dec A I) (σ : ℚ) :
-    (nmvImpl (Tst := Tst) σ).Meets I .total
+    (nmvImpl (Tst := Tst) σ).Triple I .total
       ((nmvRel dec (noiseFn dec A σ)).spec (OutApart (· = n))) := by
   refine Impl.meets_rel fun d ins outs τ m X hnd hadm hl hr _ hz => ?_
   obtain ⟨n', rfl⟩ := List.length_eq_one_iff.mp hnd
@@ -121,14 +121,14 @@ noncomputable def noisy (σ : ℚ) : Profile NOp ROp Tst where
 /-- **The certificate of the profile.** The scratch draw of the implementation is the window
 that the law of the tape assigns to the call, by the window lemma. -/
 theorem noisy_certifies (dec : K → ℝ) (A : Matrix (Fin n) (Fin n) ℝ) (σ : ℚ) :
-    (noisy (Tst := Tst) σ).Certifies (IsRandLin dec A) (IsNoisy dec (noiseFn dec A σ)) := by
+    (noisy (Tst := Tst) σ).Refines (IsRandLin dec A) (IsNoisy dec (noiseFn dec A σ)) := by
   refine .of_accounts (fun I hI => Interp.link_meets (o := NOp.nmv) rfl (nmvImpl_spec hI σ))
     (fun I => Table.accounts_of_static ?_ (fun o o' hT => by cases hT) I) fun I _ hloc o => ?_
   · intro o R hT d offs hd ho
     cases hT
     obtain ⟨k, rfl⟩ := List.length_eq_one_iff.mp hd
     obtain ⟨a, b, rfl⟩ := List.length_eq_two.mp ho
-    simp [noisy, nmvImpl, staticCost, staticPeak, useCost]
+    simp [noisy, nmvImpl, stmtCost, stmtPeak, useCost]
   · cases o
     exact Interp.TapeLocal.link hloc (o := NOp.nmv) rfl (by simp [Stmt.Straight, nmvImpl])
       fun d offs hd ho => by
@@ -140,7 +140,7 @@ theorem noisy_certifies (dec : K → ℝ) (A : Matrix (Fin n) (Fin n) ℝ) (σ :
 noncomputable def noisyDraws (σ : ℚ) : Profile NOp ROp Tst := (noisy σ).over Rand.gaussLoop
 
 theorem noisyDraws_certifies (dec : K → ℝ) (A : Matrix (Fin n) (Fin n) ℝ) (σ : ℚ) :
-    (noisyDraws (Tst := Tst) σ).Certifies (IsRandBase dec A) (IsNoisy dec (noiseFn dec A σ)) :=
+    (noisyDraws (Tst := Tst) σ).Refines (IsRandBase dec A) (IsNoisy dec (noiseFn dec A σ)) :=
   (noisy_certifies dec A σ).over (Rand.gaussLoop_certifies dec A) rfl rfl
 
 omit [Inhabited K] in
@@ -166,7 +166,7 @@ theorem runsLaw_npow_link [MeasurableSpace K] {dec : K → ℝ} {A : Matrix (Fin
     {P : Measure Ω} {ξ : Ω → Tape K} (h : IsTapeLaw law P ξ) {k : ℕ} {x : ℕ × ℕ}
     {m : Mem K} {xs₀ : List K} (hx : m.store.readBlock x.1 x.2 n = some xs₀)
     (hxl : x.2 + n ≤ m.store.len x.1) (hlx : x.1 < m.store.length) :
-    RunsLaw I (fun _ _ => 0) ξ (npow.link (noisyDraws σ).table)
+    ConditionalRunsLaw I (fun _ _ => 0) ξ (npow.link (noisyDraws σ).table)
       (Env.frame [k, n] [x, x]) m
       (k • (2 • (Count.one (.operator .matvec) [n, n] + (n • Count.one .draw [] +
         (Count.one .nrm2 [n] + (Count.one (.mulc σ) [] + Count.one .axpy [n]))))))

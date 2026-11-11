@@ -118,7 +118,7 @@ theorem Interp.TapeLocal.callS {I : Interp Op Tst K} {o : Op} {k : List ℕ → 
 /-- **Under tape-local operations, a run depends on the tape only through the entries between its
 first and last positions.** -/
 theorem run_follows {I : Interp Op Tst K} {k : Op → List ℕ → ℕ} (hI : ∀ o, I.TapeLocal o (k o))
-    (τ τ' : Tape K) (s : Stmt Op Tst) (ρ : Env) : Follows τ τ' (run I τ s ρ) (run I τ' s ρ) := by
+    (τ τ' : Tape K) (s : Stmt Op Tst) (ρ : Env) : Follows τ τ' (eval I τ s ρ) (eval I τ' s ρ) := by
   induction s generalizing ρ with
   | skip => exact fun a b h => by cases h; exact ⟨le_rfl, fun _ => rfl⟩
   | abort => exact fun a b h => by cases h
@@ -129,7 +129,7 @@ theorem run_follows {I : Interp Op Tst K} {k : Op → List ℕ → ℕ} (hI : �
     obtain ⟨i, hi, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨z, hz, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨h1, h2⟩ := (hI o).callS d i z τ τ' a b h
-    exact ⟨h1, fun hag => by simp [run, hd, hi, hz, h2 hag]⟩
+    exact ⟨h1, fun hag => by simp [eval, hd, hi, hz, h2 hag]⟩
   | ite q ds ins t e iht ihe =>
     intro a b h
     obtain ⟨d, hd, h⟩ := Option.bind_eq_some_iff.mp h
@@ -138,16 +138,16 @@ theorem run_follows {I : Interp Op Tst K} {k : Op → List ℕ → ℕ} (hI : �
     cases c with
     | false =>
       obtain ⟨h1, h2⟩ := ihe ρ a b (by simpa using h)
-      exact ⟨h1, fun hag => by simp [run, hd, hi, hc, h2 hag]⟩
+      exact ⟨h1, fun hag => by simp [eval, hd, hi, hc, h2 hag]⟩
     | true =>
       obtain ⟨h1, h2⟩ := iht ρ a b (by simpa using h)
-      exact ⟨h1, fun hag => by simp [run, hd, hi, hc, h2 hag]⟩
+      exact ⟨h1, fun hag => by simp [eval, hd, hi, hc, h2 hag]⟩
   | whileFuel fuel q ds ins body k ih ihk =>
     intro a b h
     obtain ⟨n, hn, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨h1, h2⟩ := Follows.whileIter (fun i => I.testAt q ds ins (ρ.pushIdx i))
       (fun i => ih (ρ.pushIdx i)) (fun j => ihk (ρ.pushIdx j)) n 0 a b h
-    exact ⟨h1, fun hag => by simp only [run, hn, Option.bind_some]; exact h2 hag⟩
+    exact ⟨h1, fun hag => by simp only [eval, hn, Option.bind_some]; exact h2 hag⟩
   | bindIdx q ins bound body ih =>
     intro a b h
     obtain ⟨i, hi, h⟩ := Option.bind_eq_some_iff.mp h
@@ -155,25 +155,25 @@ theorem run_follows {I : Interp Op Tst K} {k : Op → List ℕ → ℕ} (hI : �
     obtain ⟨v, hv, h⟩ := Option.bind_eq_some_iff.mp h
     split_ifs at h with hle
     obtain ⟨h1, h2⟩ := ih _ a b h
-    exact ⟨h1, fun hag => by simp [run, hi, hB, hv, hle, h2 hag]⟩
-  | alloc len body ih =>
+    exact ⟨h1, fun hag => by simp [eval, hi, hB, hv, hle, h2 hag]⟩
+  | allocAs fmt len body ih =>
     intro a b h
     obtain ⟨n, hn, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨m₂, h₂, rfl⟩ := Option.map_eq_some_iff.mp h
     obtain ⟨h1, h2⟩ := ih _ _ m₂ h₂
-    exact ⟨h1, fun hag => by simp [run, hn, h2 hag]⟩
+    exact ⟨h1, fun hag => by simp [eval, hn, h2 hag]⟩
   | loop n body ih =>
     intro a b h
     obtain ⟨c, hc, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨h1, h2⟩ := Follows.iter (fun i => ih (ρ.pushIdx i)) c a b h
-    exact ⟨h1, fun hag => by simp [run, hc, h2 hag]⟩
+    exact ⟨h1, fun hag => by simp [eval, hc, h2 hag]⟩
   | frame ds args body ih =>
     intro a b h
     obtain ⟨d, hd, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨i, hi, h⟩ := Option.bind_eq_some_iff.mp h
     split_ifs at h with hl
     obtain ⟨h1, h2⟩ := ih _ a b h
-    exact ⟨h1, fun hag => by simp [run, hd, hi, hl, h2 hag]⟩
+    exact ⟨h1, fun hag => by simp [eval, hd, hi, hl, h2 hag]⟩
 
 /-- A tree without tests and index binders: its uses of the tape are static. -/
 def Stmt.Straight : Stmt Op Tst → Prop
@@ -184,7 +184,7 @@ def Stmt.Straight : Stmt Op Tst → Prop
   | .ite _ _ _ _ _ => False
   | .whileFuel _ _ _ _ _ _ => False
   | .bindIdx _ _ _ _ => False
-  | .alloc _ body => body.Straight
+  | .allocAs _ _ body => body.Straight
   | .loop _ body => body.Straight
   | .frame _ _ body => body.Straight
 
@@ -192,7 +192,7 @@ def Stmt.Straight : Stmt Op Tst → Prop
 def staticWindow (k : Op → List ℕ → ℕ) : Stmt Op Tst → List ℕ → ℕ
   | .seq s t, idx => staticWindow k s idx + staticWindow k t idx
   | .call o ds _ _, idx => ((IExp.evalList idx ds).map (k o)).getD 0
-  | .alloc _ body, idx => staticWindow k body idx
+  | .allocAs _ _ body, idx => staticWindow k body idx
   | .loop n body, idx =>
       ∑ i ∈ Finset.range ((n.eval idx).getD 0), staticWindow k body (idx ++ [i])
   | .frame ds args body, idx =>
@@ -213,7 +213,7 @@ theorem pos_of_iter {f : ℕ → Mem K → Option (Mem K)} {c : ℕ → ℕ}
 /-- A tree without tests and index binders advances the tape by its static window. -/
 theorem pos_of_run_of_straight {I : Interp Op Tst K} {k : Op → List ℕ → ℕ}
     (hI : ∀ o, I.TapeLocal o (k o)) {τ : Tape K} {s : Stmt Op Tst} (hs : s.Straight) {ρ : Env}
-    {m m' : Mem K} (h : run I τ s ρ m = some m') : m'.pos = m.pos + staticWindow k s ρ.idx := by
+    {m m' : Mem K} (h : eval I τ s ρ m = some m') : m'.pos = m.pos + staticWindow k s ρ.idx := by
   induction s generalizing ρ m m' with
   | skip => cases h; rfl
   | abort => cases h
@@ -232,7 +232,7 @@ theorem pos_of_run_of_straight {I : Interp Op Tst K} {k : Op → List ℕ → �
   | ite q ds ins t e iht ihe => exact hs.elim
   | whileFuel fuel q ds ins body k ih ihk => exact hs.elim
   | bindIdx q ins bound body ih => exact hs.elim
-  | alloc len body ih =>
+  | allocAs fmt len body ih =>
     obtain ⟨n, hn, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨m₂, h₂, rfl⟩ := Option.map_eq_some_iff.mp h
     simpa [staticWindow] using
@@ -261,18 +261,18 @@ theorem Interp.TapeLocal.link {I : Interp Op₂ Tst K} {k₂ : Op₂ → List �
   have hw' := hw d ((ins ++ outs).map Prod.snd) hfit.1 (by simp [hfit.2.1, hfit.2.2])
   have key : ∀ (σ σ' : Tape K) (m' : Mem K),
       (∀ j < w d, σ (m.pos + j) = σ' (m.pos + j)) →
-      run I σ R.body (Env.frame d (ins ++ outs)) m = some m' →
-      m'.pos = m.pos + w d ∧ run I σ' R.body (Env.frame d (ins ++ outs)) m = some m' := by
+      eval I σ R.body (Env.frame d (ins ++ outs)) m = some m' →
+      m'.pos = m.pos + w d ∧ eval I σ' R.body (Env.frame d (ins ++ outs)) m = some m' := by
     intro σ σ' m' hσ hr
     have hp : m'.pos = m.pos + w d := by rw [pos_of_run_of_straight hI hs hr, Env.idx_frame, hw']
     refine ⟨hp, (run_follows hI σ σ' _ _ m m' hr).2 fun j hj hj' => ?_⟩
     have := hσ (j - m.pos) (by omega)
     rwa [Nat.add_sub_cancel' hj] at this
   refine ⟨?_, fun m' h => (key τ τ' m' hag h).1⟩
-  cases hr : run I τ R.body (Env.frame d (ins ++ outs)) m with
+  cases hr : eval I τ R.body (Env.frame d (ins ++ outs)) m with
   | some m' => exact (key τ τ' m' hag hr).2.symm
   | none =>
-    cases hr' : run I τ' R.body (Env.frame d (ins ++ outs)) m with
+    cases hr' : eval I τ' R.body (Env.frame d (ins ++ outs)) m with
     | none => rfl
     | some m' =>
       rw [(key τ' τ m' (fun j hj => (hag j hj).symm) hr').2] at hr
@@ -288,7 +288,7 @@ theorem Interp.TapeLocal.link_kept {I : Interp Op₂ Tst K} {T : Table Op₁ Op�
 
 /-- Over tape-independent operations a run does not move the position. -/
 theorem pos_of_run_of_indep {I : Interp Op Tst K} (hI : ∀ o, I.TapeLocal o fun _ => 0)
-    {τ : Tape K} {s : Stmt Op Tst} {ρ : Env} {m m' : Mem K} (h : run I τ s ρ m = some m') :
+    {τ : Tape K} {s : Stmt Op Tst} {ρ : Env} {m m' : Mem K} (h : eval I τ s ρ m = some m') :
     m'.pos = m.pos := by
   induction s generalizing ρ m m' with
   | skip => cases h; rfl
@@ -325,7 +325,7 @@ theorem pos_of_run_of_indep {I : Interp Op Tst K} (hI : ∀ o, I.TapeLocal o fun
     obtain ⟨v, -, h⟩ := Option.bind_eq_some_iff.mp h
     split_ifs at h
     exact ih h
-  | alloc len body ih =>
+  | allocAs fmt len body ih =>
     obtain ⟨n, -, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨m₂, h₂, rfl⟩ := Option.map_eq_some_iff.mp h
     exact ih (ρ := ρ.pushBuf m.store.length) (m := ⟨m.store.push n, m.pos⟩) (m' := m₂) h₂
@@ -352,16 +352,16 @@ theorem Interp.TapeLocal.link_zero {I : Interp Op₂ Tst K} (hI : ∀ o, I.TapeL
     swap
     · exact ⟨rfl, fun m' h => by cases h⟩
     have key : ∀ (σ σ' : Tape K) (m' : Mem K),
-        run I σ R.body (Env.frame d (ins ++ outs)) m = some m' →
-        run I σ' R.body (Env.frame d (ins ++ outs)) m = some m' := fun σ σ' m' hr =>
+        eval I σ R.body (Env.frame d (ins ++ outs)) m = some m' →
+        eval I σ' R.body (Env.frame d (ins ++ outs)) m = some m' := fun σ σ' m' hr =>
       (run_follows hI σ σ' _ _ m m' hr).2 fun j hj hj' => by
         have := pos_of_run_of_indep hI hr
         omega
     refine ⟨?_, fun m' h => by simpa using pos_of_run_of_indep hI h⟩
-    cases hr : run I τ R.body (Env.frame d (ins ++ outs)) m with
+    cases hr : eval I τ R.body (Env.frame d (ins ++ outs)) m with
     | some m' => exact (key τ τ' m' hr).symm
     | none =>
-      cases hr' : run I τ' R.body (Env.frame d (ins ++ outs)) m with
+      cases hr' : eval I τ' R.body (Env.frame d (ins ++ outs)) m with
       | none => rfl
       | some m' =>
         rw [key τ' τ m' hr'] at hr

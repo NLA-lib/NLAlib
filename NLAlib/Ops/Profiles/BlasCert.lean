@@ -17,7 +17,7 @@ public import NLAlib.Ops.Profiles.Blas
 * Certificates: `NLAlib.Ops.Blas.seq_certifies`, `NLAlib.Ops.Blas.pairwise_certifies`, over every
   interpretation of scalar arithmetic that is a machine meeting the standard model at `u`. The
   second is the recursion: one level (`NLAlib.Ops.Blas.sumPairwise_certifies`) iterated by
-  `NLAlib.Ops.Profile.Certifies.iter`.
+  `NLAlib.Ops.Profile.Refines.iter`.
 * Costs: `NLAlib.Ops.Blas.seq_cost_dot`, `NLAlib.Ops.Blas.pairwise_cost_dot`: `n`
   multiplications and `n - 1` additions in both; the pairwise count is the `k`-fold push-forward,
   evaluated by induction on the depth (`NLAlib.Ops.Blas.sumPairwise_iter_cost_sum`).
@@ -83,7 +83,7 @@ variable [Inhabited K] {M : Machine K} {u : ℝ} {dec : K → ℝ}
 /-- **The certificate of `level1`**, over scalar arithmetic and a `sum` of error `es`. -/
 theorem level1_certifies (hM : StdModel u dec M) (hu : 0 ≤ u) {es : ℕ → ℝ} (hes : ∀ n, 0 ≤ es n)
     (ok : ℕ → Prop) (wsum : ℕ → ℕ) :
-    (level1 (Op := Op) (Tst := Tst) wsum).Certifies (fun I => IsScalar M I ∧ IsSum dec es ok I)
+    (level1 (Op := Op) (Tst := Tst) wsum).Refines (fun I => IsScalar M I ∧ IsSum dec es ok I)
       (fun J => IsScalar M J ∧ IsBlas1 dec (level1Err u es) ok J) :=
   .of_accounts (fun I ⟨hI, hS⟩ =>
     ⟨fun a => Interp.link_meets_kept (by simp [level1, level1Table]) (hI a),
@@ -97,7 +97,7 @@ theorem level1_certifies (hM : StdModel u dec M) (hu : 0 ≤ u) {es : ℕ → �
 
 /-- **The certificate of sequential summation.** -/
 theorem sumSeq_certifies (hM : StdModel u dec M) (hu : 0 ≤ u) (ok : ℕ → Prop) :
-    (sumSeq (Op := Op) (Tst := Tst)).Certifies (fun I => IsScalar M I)
+    (sumSeq (Op := Op) (Tst := Tst)).Refines (fun I => IsScalar M I)
       (fun J => IsScalar M J ∧ IsSum dec (seqSumErr u) ok J) :=
   .of_accounts (fun I hI =>
     ⟨fun a => Interp.link_meets_kept (by simp [sumSeq, sumSeqTable]) (hI a),
@@ -107,7 +107,7 @@ theorem sumSeq_certifies (hM : StdModel u dec M) (hu : 0 ≤ u) (ok : ℕ → Pr
 /-- **One level of pairwise summation**: from the lengths of depth below `k` to those of depth
 below `k + 1`. -/
 theorem sumPairwise_certifies (hM : StdModel u dec M) (hu : 0 ≤ u) (k : ℕ) :
-    (sumPairwise (Op := Op) (Tst := Tst)).Certifies
+    (sumPairwise (Op := Op) (Tst := Tst)).Refines
       (fun I => IsScalar M I ∧ IsSum dec (pairSumErr u) (fun n => Nat.clog 2 n < k) I)
       (fun J => IsScalar M J ∧ IsSum dec (pairSumErr u) (fun n => Nat.clog 2 n < k + 1) J) :=
   .of_accounts (fun I ⟨hI, hS⟩ =>
@@ -119,9 +119,9 @@ theorem sumPairwise_certifies (hM : StdModel u dec M) (hu : 0 ≤ u) (k : ℕ) :
 /-- **Pairwise summation of depth `k`**, by iterating one level: over any scalar arithmetic,
 whatever `sum` means below. -/
 theorem sumPairwise_iter_certifies (hM : StdModel u dec M) (hu : 0 ≤ u) (k : ℕ) :
-    ((sumPairwise (Op := Op) (Tst := Tst)).iter k).Certifies (fun I => IsScalar M I)
+    ((sumPairwise (Op := Op) (Tst := Tst)).iter k).Refines (fun I => IsScalar M I)
       (fun J => IsScalar M J ∧ IsSum dec (pairSumErr u) (fun n => Nat.clog 2 n < k) J) :=
-  (Profile.Certifies.iter (C := fun k J => IsScalar M J ∧
+  (Profile.Refines.iter (C := fun k J => IsScalar M J ∧
     IsSum dec (pairSumErr u) (fun n => Nat.clog 2 n < k) J)
     (sumPairwise_certifies hM hu) rfl rfl k).mono
     (fun _ hI => ⟨hI, fun _ _ _ _ _ ⟨_, hadm, _⟩ => absurd hadm.1 (Nat.not_lt_zero _)⟩)
@@ -129,7 +129,7 @@ theorem sumPairwise_iter_certifies (hM : StdModel u dec M) (hu : 0 ≤ u) (k : �
 
 /-- **The certificate of the profile of sequential summation.** -/
 theorem seq_certifies (hM : StdModel u dec M) (hu : 0 ≤ u) (ok : ℕ → Prop) :
-    (seq (Op := Op) (Tst := Tst)).Certifies (fun I => IsScalar M I)
+    (seq (Op := Op) (Tst := Tst)).Refines (fun I => IsScalar M I)
       (fun J => IsScalar M J ∧ IsBlas1 dec (seq.err u) ok J) :=
   (level1_certifies hM hu (seqSumErr_nonneg hu) ok 0).over (sumSeq_certifies hM hu ok) rfl rfl
 
@@ -147,7 +147,7 @@ theorem seq_certifies_exact (hM : ExactModel dec M) (ok : ℕ → Prop) :
 /-- **The certificate of the profile of pairwise summation** of depth `k`, for the lengths `n`
 with `⌈log₂ n⌉ < k`. -/
 theorem pairwise_certifies (hM : StdModel u dec M) (hu : 0 ≤ u) (k : ℕ) :
-    (pairwise (Op := Op) (Tst := Tst) k).Certifies (fun I => IsScalar M I)
+    (pairwise (Op := Op) (Tst := Tst) k).Refines (fun I => IsScalar M I)
       (fun J => IsScalar M J ∧ IsBlas1 dec (pairwise.err u) (fun n => Nat.clog 2 n < k) J) :=
   (level1_certifies hM hu (pairSumErr_nonneg hu) _ pairWs).over
     (sumPairwise_iter_certifies hM hu k) (by simp [level1, sumPairwise])

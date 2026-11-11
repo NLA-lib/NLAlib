@@ -216,7 +216,7 @@ theorem dot_cert {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I
     {ins outs : List (ℕ × ℕ)} {τ : Tape K} {m m' : Mem K} (hadm : DisjointBufs d ins outs)
     (h : (dotFn M).apply d ins outs τ m = some m') :
     dotImpl.Fits d.length ins.length outs.length ∧
-      run I τ dotImpl.body (Env.frame d (ins ++ outs)) m = some m' := by
+      eval I τ dotImpl.body (Env.frame d (ins ++ outs)) m = some m' := by
   obtain ⟨n, x, y, z, xs, ys, rfl, rfl, rfl, hx, hy, hz, rfl⟩ := dotFn_apply h
   refine ⟨⟨rfl, rfl, rfl⟩, run_of_wp (wp_alloc rfl ?_)⟩
   exact wp_dotLoop hI (s := m.store) (tb := List.replicate 1 none) (fx := fun k => x.2 + k)

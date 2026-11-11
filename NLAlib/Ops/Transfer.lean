@@ -25,13 +25,15 @@ the linked program, with no new proof about the algorithm.
 * **The certificate** `NLAlib.Ops.Table.Accounts`: each implementation runs within the cost `κ`
   and the workspace declared for its operation. It follows from the static cost and workspace of
   the trees (`NLAlib.Ops.Table.accounts_of_static`) and says nothing of values.
-* `NLAlib.Ops.exec_link`: the simulation. `NLAlib.Ops.Runs.link`, `NLAlib.Ops.link_total`: total
-  correctness with counts pushed forward and the same workspace. `NLAlib.Ops.RunsL.link`,
+* `NLAlib.Ops.exec_link`: the simulation. `NLAlib.Ops.ConditionalRuns.link`,
+  `NLAlib.Ops.link_total`: total
+  correctness with counts pushed forward and the same workspace. `NLAlib.Ops.ConditionalRunsL.link`,
   `NLAlib.Ops.link_liberal`: partial correctness, through the induced interpretation only.
   `NLAlib.Ops.fail_subset`: failure events, sample by sample.
 * **Weighted, data-dependent counts.** `NLAlib.Ops.Table.AccountsW`: each implementation adds at
   most `t o d` to a weight of the lower counts; its counts need not be uniform in the data.
-  `NLAlib.Ops.RunsW.link`, `NLAlib.Ops.exec_link_weight`: a bound on the weight of the counts of
+  `NLAlib.Ops.ConditionalRunsW.link`, `NLAlib.Ops.exec_link_weight`: a bound on the weight of the
+    counts of
   one run of the algorithm, which may depend on the final memory, is the same bound for the
   linked program. The simulation is one induction for the counts and for every weight
   (`NLAlib.Ops.Table.Accounts.toW`).
@@ -45,22 +47,6 @@ variable {Op Op₁ Op₂ Op₃ Tst K : Type}
 
 namespace Count
 
-/-- The additive map sending one use of the name `k` at `d` to `f k d`. -/
-noncomputable def lift {A : Type} [AddCommMonoid A] (f : Op ⊕ Tst → List ℕ → A) :
-    Count Op Tst →+ A :=
-  Finsupp.liftAddHom fun k => (smulAddHom ℕ A).flip (f k.1 k.2)
-
-theorem lift_single {A : Type} [AddCommMonoid A] (f : Op ⊕ Tst → List ℕ → A)
-    (k : (Op ⊕ Tst) × List ℕ) (n : ℕ) : lift f (Finsupp.single k n) = n • f k.1 k.2 := by
-  simp [lift]
-
-theorem lift_mono {A : Type} [AddCommMonoid A] [PartialOrder A] [CanonicallyOrderedAdd A]
-    (f : Op ⊕ Tst → List ℕ → A) : Monotone (lift f) := by
-  intro a b hab
-  obtain ⟨c, rfl⟩ := exists_add_of_le hab
-  rw [map_add]
-  exact le_self_add
-
 /-- **The push-forward of counts**: the additive map sending one call of `o` at `d` to `κ o d`
 and keeping the uses of queries. -/
 noncomputable def push (κ : Op₁ → List ℕ → Count Op₂ Tst) : Count Op₁ Tst →+ Count Op₂ Tst :=
@@ -73,6 +59,43 @@ noncomputable def push (κ : Op₁ → List ℕ → Count Op₂ Tst) : Count Op�
 @[simp] theorem push_test (κ : Op₁ → List ℕ → Count Op₂ Tst) (q : Tst) (d : List ℕ) :
     push κ (Count.test q d) = Count.test q d := by
   simp [push, lift, Count.test]
+
+/-- The original-operation projection of a canonical count. This intentionally discards
+structural work; the full canonical budget still bounds the entire count before projection. -/
+noncomputable def original : Count (Op ⊕ Bookkeeping) Tst →+ Count Op Tst :=
+  push fun o d => o.elim (fun a => Count.one a d) (fun _ => 0)
+
+@[simp] theorem original_one (o : Op) (d : List ℕ) :
+    original (Count.one (.inl o) d : Count (Op ⊕ Bookkeeping) Tst) = Count.one o d := by
+  simp [original]
+
+@[simp] theorem original_bookkeeping (o : Bookkeeping) (d : List ℕ) :
+    original (Count.one (.inr o) d : Count (Op ⊕ Bookkeeping) Tst) = 0 := by
+  simp [original]
+
+@[simp] theorem original_test (q : Tst) (d : List ℕ) :
+    original (Count.test q d : Count (Op ⊕ Bookkeeping) Tst) = Count.test q d := by
+  simp [original]
+
+/-- Projection reads the original-operation and query coordinates exactly; structural
+counters cannot change them. -/
+theorem original_apply (c : Count (Op ⊕ Bookkeeping) Tst) (k : (Op ⊕ Tst) × List ℕ) :
+    original c k = c (k.1.elim (fun o => Sum.inl (Sum.inl o)) Sum.inr, k.2) := by
+  classical
+  induction c using Finsupp.induction with
+  | zero => simp
+  | @single_add a n f ha hn ih =>
+    rw [map_add, Finsupp.add_apply, Finsupp.add_apply, ih]
+    congr 1
+    obtain ⟨((o | b) | q), d⟩ := a <;> obtain ⟨o' | q', e⟩ := k <;>
+      simp [original, push, lift_single, Count.one, Count.test,
+        Finsupp.single_apply, eq_comm]
+
+/-- Weight the full canonical count. Every class of instruction has an explicit weight;
+there is no silent default for queries or structural work. -/
+noncomputable def totalWeight (op : Op → List ℕ → ℕ) (query : Tst → List ℕ → ℕ)
+    (core : Bookkeeping → List ℕ → ℕ) : Count (Op ⊕ Bookkeeping) Tst →+ ℕ :=
+  lift (Sum.elim (Sum.elim op core) query)
 
 theorem push_mono (κ : Op₁ → List ℕ → Count Op₂ Tst) : Monotone (push κ) := lift_mono _
 
@@ -121,7 +144,7 @@ structure Table.Accounts (T : Table Op₁ Op₂ Tst) (I : Interp Op₂ Tst K) (W
   impl : ∀ o R, T o = .inl R → ∀ (τ : Tape K) (d : List ℕ) (a : List (ℕ × ℕ)) (st st'
       : St Op₂ Tst K),
     d.length = R.nd → a.length = R.nin + R.nout →
-    exec I W₂ τ R.body (Env.frame d a) st = some st' → St.Within st st' (κ o d) (W₁ o d)
+    evalCounted I W₂ τ R.body (Env.frame d a) st = some st' → St.Within st st' (κ o d) (W₁ o d)
   /-- Kept operations. -/
   kept : ∀ o o', T o = .inr o' → ∀ d, Count.one o' d ≤ κ o d ∧ W₂ o' d ≤ W₁ o d
 
@@ -131,7 +154,7 @@ theorem Table.accounts_of_static {T : Table Op₁ Op₂ Tst} {W₂ : Op₂ → L
     {κ : Op₁ → List ℕ → Count Op₂ Tst} {W₁ : Op₁ → List ℕ → ℕ}
     (himpl : ∀ o R, T o = .inl R → ∀ d offs : List ℕ, d.length = R.nd →
       offs.length = R.nin + R.nout →
-      staticCost R.body (d ++ offs) ≤ κ o d ∧ staticPeak W₂ R.body (d ++ offs) ≤ W₁ o d)
+      stmtCost R.body (d ++ offs) ≤ κ o d ∧ stmtPeak W₂ R.body (d ++ offs) ≤ W₁ o d)
     (hkept : ∀ o o', T o = .inr o' → ∀ d, Count.one o' d ≤ κ o d ∧ W₂ o' d ≤ W₁ o d)
     (I : Interp Op₂ Tst K) : T.Accounts I W₂ κ W₁ where
   impl o R hT τ d a st st' hd ha h := by
@@ -152,7 +175,7 @@ structure Table.AccountsW {A : Type} [AddCommMonoid A] [PartialOrder A] (T : Tab
   impl : ∀ o R, T o = .inl R → ∀ (τ : Tape K) (d : List ℕ) (a : List (ℕ × ℕ)) (st st'
       : St Op₂ Tst K),
     d.length = R.nd → a.length = R.nin + R.nout →
-    exec I W₂ τ R.body (Env.frame d a) st = some st' →
+    evalCounted I W₂ τ R.body (Env.frame d a) st = some st' →
       st'.cur = st.cur ∧ w₂ st'.cost ≤ w₂ st.cost + t o d ∧
         st'.peak ≤ max st.peak (st.cur + W₁ o d)
   /-- Kept operations. -/
@@ -257,8 +280,8 @@ theorem whileIter_sim {σ σ' : Type} (R : σ → σ' → Prop) {test : ℕ → 
 of its implementation. -/
 theorem exec_link_call (hacc : T.AccountsW I W₂ w₂ t W₁) (τ : Tape K) {o : Op₁} {ds : List IExp}
     {ins outs : List Operand} {ρ : Env} {a a₁ : St Op₁ Tst K} {c : St Op₂ Tst K}
-    (hs : Sim w₂ t a c) (h : exec (I.link T) W₁ τ (.call o ds ins outs) ρ a = some a₁) :
-    ∃ c₁, exec I W₂ τ ((Stmt.call o ds ins outs).link T) ρ c = some c₁ ∧ Sim w₂ t a₁ c₁ := by
+    (hs : Sim w₂ t a c) (h : evalCounted (I.link T) W₁ τ (.call o ds ins outs) ρ a = some a₁) :
+    ∃ c₁, evalCounted I W₂ τ ((Stmt.call o ds ins outs).link T) ρ c = some c₁ ∧ Sim w₂ t a₁ c₁ := by
   obtain ⟨d, hd, h⟩ := Option.bind_eq_some_iff.mp h
   obtain ⟨i, hi, h⟩ := Option.bind_eq_some_iff.mp h
   obtain ⟨b, hb, h⟩ := Option.bind_eq_some_iff.mp h
@@ -267,7 +290,7 @@ theorem exec_link_call (hacc : T.AccountsW I W₂ w₂ t W₁) (τ : Tape K) {o 
   | inr o' =>
     rw [Interp.link_callS_inr I hT, ← hs.mem] at hcall
     refine ⟨⟨m', c.cost + Count.one o' d, c.cur, max c.peak (c.cur + W₂ o' d)⟩, by
-      simp [Stmt.link, hT, exec, hd, hi, hb, hcall], rfl, hs.cur, ?_, ?_⟩
+      simp [Stmt.link, hT, evalCounted, hd, hi, hb, hcall], rfl, hs.cur, ?_, ?_⟩
     · simp only [map_add, Count.upper_one]
       exact add_le_add hs.cost (hacc.kept o o' hT d).1
     · rw [hs.cur]
@@ -288,7 +311,7 @@ theorem exec_link_call (hacc : T.AccountsW I W₂ w₂ t W₁) (τ : Tape K) {o 
       have hl' : (Stmt.call o ds ins outs).link T = .frame ds (ins ++ outs) R.body := by
         simp only [Stmt.link, hT]
         exact if_pos hfit'
-      simp [hl', exec, hd, hi, hb, Operand.evalList_append, hc, hs.mem, hl]
+      simp [hl', evalCounted, hd, hi, hb, Operand.evalList_append, hc, hs.mem, hl]
     · simp only [map_add, Count.upper_one]
       exact w2.trans (add_le_add hs.cost le_rfl)
     · rw [hs.cur] at w3
@@ -300,8 +323,8 @@ with the same memory, the weight of its counts within the weight of the upper co
 peak within the peak. One induction serves the counts themselves and every weight. -/
 theorem exec_link (hacc : T.AccountsW I W₂ w₂ t W₁) (τ : Tape K) (s : Stmt Op₁ Tst) :
     ∀ (ρ : Env) (a a₁ : St Op₁ Tst K) (c : St Op₂ Tst K), Sim w₂ t a c →
-      exec (I.link T) W₁ τ s ρ a = some a₁ →
-      ∃ c₁, exec I W₂ τ (s.link T) ρ c = some c₁ ∧ Sim w₂ t a₁ c₁ := by
+      evalCounted (I.link T) W₁ τ s ρ a = some a₁ →
+      ∃ c₁, evalCounted I W₂ τ (s.link T) ρ c = some c₁ ∧ Sim w₂ t a₁ c₁ := by
   induction s with
   | skip => intro ρ a a₁ c hs h; cases h; exact ⟨c, rfl, hs⟩
   | abort => intro ρ a a₁ c hs h; cases h
@@ -310,7 +333,7 @@ theorem exec_link (hacc : T.AccountsW I W₂ w₂ t W₁) (τ : Tape K) (s : Stm
     obtain ⟨am, h1, h2⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨cm, hc1, hsm⟩ := ihs ρ a am c hs h1
     obtain ⟨c₁, hc2, hs₁⟩ := iht ρ am a₁ cm hsm h2
-    exact ⟨c₁, by simp only [Stmt.link, exec, hc1, Option.bind_some, hc2], hs₁⟩
+    exact ⟨c₁, by simp only [Stmt.link, evalCounted, hc1, Option.bind_some, hc2], hs₁⟩
   | call o ds ins outs => exact fun ρ a a₁ c hs h => exec_link_call hacc τ hs h
   | ite q ds ins t e iht ihe =>
     intro ρ a a₁ c hs h
@@ -322,17 +345,17 @@ theorem exec_link (hacc : T.AccountsW I W₂ w₂ t W₁) (τ : Tape K) (s : Stm
     cases b with
     | false =>
       obtain ⟨c₁, hc, hs₁⟩ := ihe ρ _ a₁ _ hs' (by simpa using h)
-      exact ⟨c₁, by simp [Stmt.link, exec, hd, hi, hb', hc], hs₁⟩
+      exact ⟨c₁, by simp [Stmt.link, evalCounted, hd, hi, hb', hc], hs₁⟩
     | true =>
       obtain ⟨c₁, hc, hs₁⟩ := iht ρ _ a₁ _ hs' (by simpa using h)
-      exact ⟨c₁, by simp [Stmt.link, exec, hd, hi, hb', hc], hs₁⟩
+      exact ⟨c₁, by simp [Stmt.link, evalCounted, hd, hi, hb', hc], hs₁⟩
   | whileFuel fuel q ds ins body k ih ihk =>
     intro ρ a a₁ c hs h
     obtain ⟨n, hn, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨jst, hw, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨cm, hc, hsm⟩ := whileIter_sim (Sim w₂ t)
       (test' := fun i st => I.testSt q ds ins (ρ.pushIdx i) st)
-      (body' := fun i => exec I W₂ τ (body.link T) (ρ.pushIdx i))
+      (body' := fun i => evalCounted I W₂ τ (body.link T) (ρ.pushIdx i))
       (fun i s bs s' hR hbs => by
         obtain ⟨d, hd, hbs⟩ := Option.bind_eq_some_iff.mp hbs
         obtain ⟨x, hx, hbs⟩ := Option.bind_eq_some_iff.mp hbs
@@ -341,7 +364,7 @@ theorem exec_link (hacc : T.AccountsW I W₂ w₂ t W₁) (τ : Tape K) (s : Stm
         exact ⟨s'.tick q d, by rw [Interp.testSt_eq hd hx, hb']; rfl, hR.tick q d⟩)
       (fun i s s₁ s' hR hb => ih _ s s₁ s' hR hb) n 0 a jst c hs hw
     obtain ⟨c₁, hc₁, hs₁⟩ := ihk _ _ a₁ _ hsm h
-    exact ⟨c₁, by simp [Stmt.link, exec, hn, hc, hc₁], hs₁⟩
+    exact ⟨c₁, by simp [Stmt.link, evalCounted, hn, hc, hc₁], hs₁⟩
   | bindIdx q ins bound body ih =>
     intro ρ a a₁ c hs h
     obtain ⟨i, hi, h⟩ := Option.bind_eq_some_iff.mp h
@@ -350,8 +373,8 @@ theorem exec_link (hacc : T.AccountsW I W₂ w₂ t W₁) (τ : Tape K) (s : Stm
     have hv' : I.index q i c.mem = some v := by rw [hs.mem]; exact hv
     split_ifs at h with hle
     obtain ⟨c₁, hc, hs₁⟩ := ih _ _ a₁ _ (hs.tick q []) h
-    exact ⟨c₁, by simp [Stmt.link, exec, hi, hB, hv', hle, hc], hs₁⟩
-  | alloc len body ih =>
+    exact ⟨c₁, by simp [Stmt.link, evalCounted, hi, hB, hv', hle, hc], hs₁⟩
+  | allocAs fmt len body ih =>
     intro ρ a a₁ c hs h
     obtain ⟨cm, cc, ccur, cpk⟩ := c
     obtain ⟨e1, e2, hcost, hpeak⟩ := hs
@@ -360,35 +383,38 @@ theorem exec_link (hacc : T.AccountsW I W₂ w₂ t W₁) (τ : Tape K) (s : Stm
     obtain ⟨n, hn, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨a₂, h₂, rfl⟩ := Option.map_eq_some_iff.mp h
     obtain ⟨c₂, hc, hs₂⟩ := ih _
-      ⟨⟨a.mem.store.push n, a.mem.pos⟩, a.cost, a.cur + n, max a.peak (a.cur + n)⟩ a₂
-      ⟨⟨a.mem.store.push n, a.mem.pos⟩, cc, a.cur + n, max cpk (a.cur + n)⟩
+      ⟨⟨a.mem.store.push n, a.mem.pos⟩, a.cost, a.cur + fmt.bytes * n, max a.peak (a.cur +
+        fmt.bytes * n)⟩ a₂
+      ⟨⟨a.mem.store.push n, a.mem.pos⟩, cc, a.cur + fmt.bytes * n, max cpk (a.cur + fmt.bytes * n)⟩
       ⟨rfl, rfl, hcost, max_le_max hpeak le_rfl⟩ h₂
     exact ⟨⟨⟨c₂.mem.store.pop, c₂.mem.pos⟩, c₂.cost, a.cur, c₂.peak⟩,
-      by simp only [Stmt.link, exec, hn, Option.bind_some, hc, Option.map_some],
+      by simp only [Stmt.link, evalCounted, hn, Option.bind_some, hc, Option.map_some],
       ⟨by simp only [hs₂.mem], rfl, hs₂.cost, hs₂.peak⟩⟩
   | loop n body ih =>
     intro ρ a a₁ c hs h
     obtain ⟨k, hk, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨c₁, hc, hs₁⟩ := iter_sim (Sim w₂ t)
-      (f' := fun i st => exec I W₂ τ (body.link T) (ρ.pushIdx i) st)
+      (f' := fun i st => evalCounted I W₂ τ (body.link T) (ρ.pushIdx i) st)
       (fun i s s₁ s' hR hb => ih _ s s₁ s' hR hb) k a a₁ c hs h
-    exact ⟨c₁, by simp only [Stmt.link, exec, hk, Option.bind_some, hc], hs₁⟩
+    exact ⟨c₁, by simp only [Stmt.link, evalCounted, hk, Option.bind_some, hc], hs₁⟩
   | frame ds args body ih =>
     intro ρ a a₁ c hs h
     obtain ⟨d, hd, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨i, hi, h⟩ := Option.bind_eq_some_iff.mp h
     split_ifs at h with hl
     obtain ⟨c₁, hc, hs₁⟩ := ih _ a a₁ c hs h
-    exact ⟨c₁, by simp [Stmt.link, exec, hd, hi, hc, hs.mem, hl], hs₁⟩
+    exact ⟨c₁, by simp [Stmt.link, evalCounted, hd, hi, hc, hs.mem, hl], hs₁⟩
 
 /-- **Linking a run whose postcondition sees the counts.** Under a weighted certificate, the
 linked program runs within the same workspace, and the weight of its counts is at most the
 weight of counts `c₁` of the algorithm that satisfy the postcondition. A bound on the weight of
 the algorithm's counts, whatever it depends on, is a bound on the weight of the program's. -/
-theorem RunsW.link (hacc : T.AccountsW I W₂ w₂ t W₁) {τ : Tape K} {s : Stmt Op₁ Tst} {ρ : Env}
+theorem ConditionalRunsW.link (hacc : T.AccountsW I W₂ w₂ t W₁) {τ : Tape K} {s : Stmt Op₁ Tst} {ρ
+  : Env}
     {m : Mem K} {M : ℕ} {Q : Count Op₁ Tst → Mem K → Prop}
-    (h : RunsW (I.link T) W₁ τ s ρ m M Q) :
-    RunsW I W₂ τ (s.link T) ρ m M fun c m' => ∃ c₁, w₂ c ≤ Count.upper w₂ t c₁ ∧ Q c₁ m' := by
+    (h : ConditionalRunsW (I.link T) W₁ τ s ρ m M Q) :
+    ConditionalRunsW I W₂ τ (s.link T) ρ m M fun c m' => ∃ c₁, w₂ c ≤ Count.upper w₂ t c₁ ∧ Q c₁
+      m' := by
   obtain ⟨a₁, hrun, hpeak, hQ⟩ := h
   obtain ⟨c₁, hc, hs₁⟩ := exec_link hacc τ s ρ (St.init m) a₁ (St.init m)
     ⟨rfl, rfl, by simp [St.init], le_rfl⟩ hrun
@@ -404,10 +430,10 @@ variable {T : Table Op₁ Op₂ Tst} {I : Interp Op₂ Tst K} {W₂ : Op₂ → 
 /-- **Linking, total correctness with accounting.** If the algorithm runs within `B`, `M` under
 the induced interpretation, the linked program runs under the lower interpretation within the
 pushed-forward counts and the same workspace, with the same postcondition. -/
-theorem Runs.link (hacc : T.Accounts I W₂ κ W₁) {τ : Tape K} {s : Stmt Op₁ Tst} {ρ : Env}
+theorem ConditionalRuns.link (hacc : T.Accounts I W₂ κ W₁) {τ : Tape K} {s : Stmt Op₁ Tst} {ρ : Env}
     {m : Mem K} {B : Count Op₁ Tst} {M : ℕ} {Q : Mem K → Prop}
-    (h : Runs (I.link T) W₁ τ s ρ m B M Q) :
-    Runs I W₂ τ (s.link T) ρ m (Count.push κ B) M Q := by
+    (h : ConditionalRuns (I.link T) W₁ τ s ρ m B M Q) :
+    ConditionalRuns I W₂ τ (s.link T) ρ m (Count.push κ B) M Q := by
   obtain ⟨a₁, hrun, hcost, hpeak, hQ⟩ := h
   obtain ⟨c₁, hc, hs₁⟩ := exec_link hacc.toW τ s ρ (St.init m) a₁ (St.init m)
     ⟨rfl, rfl, by simp [St.init], le_rfl⟩ hrun
@@ -419,9 +445,10 @@ the linked program as soon as the induced interpretation meets `Ck`, that is, th
 meet their specifications. -/
 theorem link_total {Ck : Interp Op₁ Tst K → Prop} {τ : Tape K} {s : Stmt Op₁ Tst} {ρ : Env}
     {m : Mem K}
-    {B : Count Op₁ Tst} {M : ℕ} {Q : Mem K → Prop} (hT : ∀ J, Ck J → Runs J W₁ τ s ρ m B M Q)
+    {B : Count Op₁ Tst} {M : ℕ} {Q : Mem K → Prop} (hT : ∀ J, Ck J → ConditionalRuns J W₁ τ s ρ m
+      B M Q)
     (hk : Ck (I.link T)) (hacc : T.Accounts I W₂ κ W₁) :
-    Runs I W₂ τ (s.link T) ρ m (Count.push κ B) M Q :=
+    ConditionalRuns I W₂ τ (s.link T) ρ m (Count.push κ B) M Q :=
   (hT _ hk).link hacc
 
 /-- **Probability.** The interpretation is fixed before the sample `ω`; the tape, the start and
@@ -430,8 +457,8 @@ event of the algorithm under the induced interpretation, so a bound on the proba
 latter bounds the former. -/
 theorem fail_subset (hacc : T.Accounts I W₂ κ W₁) {Ω : Type} {τ : Ω → Tape K} {s : Stmt Op₁ Tst}
     {ρ : Env} {m : Ω → Mem K} {B : Count Op₁ Tst} {M : ℕ} {Q : Ω → Mem K → Prop} :
-    {ω | ¬ Runs I W₂ (τ ω) (s.link T) ρ (m ω) (Count.push κ B) M (Q ω)} ⊆
-      {ω | ¬ Runs (I.link T) W₁ (τ ω) s ρ (m ω) B M (Q ω)} :=
+    {ω | ¬ ConditionalRuns I W₂ (τ ω) (s.link T) ρ (m ω) (Count.push κ B) M (Q ω)} ⊆
+      {ω | ¬ ConditionalRuns (I.link T) W₁ (τ ω) s ρ (m ω) B M (Q ω)} :=
   fun _ hω hR => hω (hR.link hacc)
 
 end Link
@@ -444,16 +471,17 @@ theorem exec_link_weight {T : Table Op₁ Op₂ Tst} {I : Interp Op₂ Tst K} {W
     {W₁ : Op₁ → List ℕ → ℕ} {w₂ : Count Op₂ Tst →+ ℕ} {u : Op₁ → List ℕ → ℕ}
     (hacc : T.AccountsW I W₂ w₂ u W₁) {τ : Tape K} {s : Stmt Op₁ Tst} {ρ : Env} {m : Mem K}
     {M : ℕ} {t : Mem K → ℕ} {Q : Mem K → Prop}
-    (h : RunsW (I.link T) W₁ τ s ρ m M fun c m' => Count.upper w₂ u c ≤ t m' ∧ Q m') :
-    RunsW I W₂ τ (s.link T) ρ m M fun c m' => w₂ c ≤ t m' ∧ Q m' :=
+    (h : ConditionalRunsW (I.link T) W₁ τ s ρ m M fun c m' => Count.upper w₂ u c ≤ t m' ∧ Q m') :
+    ConditionalRunsW I W₂ τ (s.link T) ρ m M fun c m' => w₂ c ≤ t m' ∧ Q m' :=
   (h.link hacc).mono le_rfl fun _ _ ⟨_, h1, h2, h3⟩ => ⟨h1.trans h2, h3⟩
 
 /-- **Linking, partial correctness.** A refinement statement under the induced interpretation is
 one about the linked program. No certificate. -/
-theorem RunsL.link {T : Table Op₁ Op₂ Tst} {I : Interp Op₂ Tst K} {τ : Tape K} {s : Stmt Op₁ Tst}
+theorem ConditionalRunsL.link {T : Table Op₁ Op₂ Tst} {I : Interp Op₂ Tst K} {τ : Tape K} {s :
+  Stmt Op₁ Tst}
     {ρ : Env}
-    {m : Mem K} {Q : Mem K → Prop} (h : RunsL (I.link T) τ s ρ m Q) :
-    RunsL I τ (s.link T) ρ m Q := by
+    {m : Mem K} {Q : Mem K → Prop} (h : ConditionalRunsL (I.link T) τ s ρ m Q) :
+    ConditionalRunsL I τ (s.link T) ρ m Q := by
   intro m' hm
   rw [run_link] at hm
   exact h m' hm
@@ -462,7 +490,8 @@ theorem RunsL.link {T : Table Op₁ Op₂ Tst} {I : Interp Op₂ Tst K} {τ : Ta
 only through the induced interpretation. -/
 theorem link_liberal {T : Table Op₁ Op₂ Tst} {I : Interp Op₂ Tst K} {Ck : Interp Op₁ Tst K → Prop}
     {τ : Tape K} {s : Stmt Op₁ Tst} {ρ : Env} {m : Mem K} {Q : Mem K → Prop}
-    (hT : ∀ J, Ck J → RunsL J τ s ρ m Q) (hk : Ck (I.link T)) : RunsL I τ (s.link T) ρ m Q :=
+    (hT : ∀ J, Ck J → ConditionalRunsL J τ s ρ m Q) (hk : Ck (I.link T)) : ConditionalRunsL I τ
+      (s.link T) ρ m Q :=
   (hT _ hk).link
 
 end NLAlib.Ops

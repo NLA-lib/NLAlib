@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Krylov.Lanczos.Reorth.TwoPass
+public import NLAlib.Krylov.Lanczos.Reorth.TwoPassInterface
 public import NLAlib.Ops.Blas.Decoded
 public import NLAlib.Krylov.Processes.LanczosReorthRecurrence
 
@@ -57,6 +57,18 @@ theorem cgs2_spec_exact {M : Machine K} {dec : K → ℝ} {ok : ℕ → Prop}
     (cgs2Impl (Op := Op) (Tst := Tst)).Meets I .total
       ((twoPassRel dec (fun _ => 0) 0).spec (TwoPassOperands ok)) :=
   cgs2_spec hS hB.dot_zero (axpy_zero hB) hM.neg
+
+/-- The exact two-pass certificate exposes the current vector read for composing a round. -/
+theorem cgs2_writes_exact {M : Machine K} {dec : K → ℝ} {ok : ℕ → Prop}
+    {I : Interp Op Tst K} (hS : IsScalar M I) (hM : ExactModel dec M)
+    (hB : IsExactBlas1 dec ok I) {n k : ℕ} {τ : Tape K} {μ : Mem K}
+    {Q w : ℕ × ℕ} {qs ws : List K} (hok : ok n) (hQw : Q.1 ≠ w.1)
+    (hl : μ.Live [Q, w]) (hqs : μ.store.readBlock Q.1 Q.2 (k * n) = some qs)
+    (hws : μ.store.readBlock w.1 w.2 n = some ws) (hz : μ.Room [w] [n]) :
+    Writes .total I τ cgs2 (Env.frame [n, k] [Q, w, w]) (Fp.blocks [w] [n])
+      (fun μ' => μ'.pos = μ.pos ∧ ∃ ws', μ'.store.readBlock w.1 w.2 n = some ws' ∧
+        TwoPassOut dec 0 0 n k qs ws ws') μ :=
+  cgs2_writes hS hB.dot_zero (axpy_zero hB) hM.neg hok hQw hl hqs hws hz
 
 omit [Has ScalarOp Op] [Has Blas1Op Op] in
 /-- Each exact coefficient uses the vector from the start of the classical pass. -/

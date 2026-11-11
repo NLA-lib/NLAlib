@@ -62,6 +62,32 @@ variable [Inhabited K]
 def TwoPassOut (dec : K → ℝ) (ed ea : ℝ) (n k : ℕ) (qs ws ws' : List K) : Prop :=
   ∃ mid h₁ h₂, PassOut dec ed ea n k qs ws mid h₁ ∧ PassOut dec ed ea n k qs mid ws' h₂
 
+omit [Has ScalarOp Op] [Has Blas1Op Op] in
+/-- The discarded coefficients of both passes still give an actual representation witness.
+The bound adds the two independently certified axpy chains, without assuming orthogonality. -/
+theorem TwoPassOut.backward {dec : K → ℝ} {ed ea : ℝ} {n k : ℕ}
+    {qs ws ws' : List K} (h : TwoPassOut dec ed ea n k qs ws ws') (ha : 0 ≤ ea) :
+    ∃ mid h₁ h₂ : List K, PassOut dec ed ea n k qs ws mid h₁ ∧
+      PassOut dec ed ea n k qs mid ws' h₂ ∧ ∀ i : Fin n,
+      |dec (vec ws' i) - (dec (vec ws i) - ∑ j ∈ Finset.range k,
+          (dec (vec h₁ j) + dec (vec h₂ j)) * dec (vec qs (j * n + i)))| ≤
+        ((1 + ea) ^ k - 1) * (|dec (vec ws i)| +
+          ∑ j ∈ Finset.range k, |dec (vec h₁ j) * dec (vec qs (j * n + i))|) +
+        ((1 + ea) ^ k - 1) * (|dec (vec mid i)| +
+          ∑ j ∈ Finset.range k, |dec (vec h₂ j) * dec (vec qs (j * n + i))|) := by
+  obtain ⟨mid, h₁, h₂, hp₁, hp₂⟩ := h
+  refine ⟨mid, h₁, h₂, hp₁, hp₂, fun i => ?_⟩
+  have hid : dec (vec ws' i) - (dec (vec ws i) - ∑ j ∈ Finset.range k,
+      (dec (vec h₁ j) + dec (vec h₂ j)) * dec (vec qs (j * n + i))) =
+      (dec (vec mid i) - (dec (vec ws i) - ∑ j ∈ Finset.range k,
+        dec (vec h₁ j) * dec (vec qs (j * n + i)))) +
+      (dec (vec ws' i) - (dec (vec mid i) - ∑ j ∈ Finset.range k,
+        dec (vec h₂ j) * dec (vec qs (j * n + i)))) := by
+    simp only [add_mul, Finset.sum_add_distrib]
+    ring
+  rw [hid]
+  exact (abs_add_le _ _).trans (add_le_add (hp₁.backward ha i) (hp₂.backward ha i))
+
 /-- The vector is updated in place in a buffer distinct from the read-only basis. -/
 @[admNF] def TwoPassOperands (ok : ℕ → Prop) :
     List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop :=

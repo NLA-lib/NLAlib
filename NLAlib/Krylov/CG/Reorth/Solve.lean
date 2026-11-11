@@ -19,6 +19,7 @@ division is attempted. The basis is scoped storage and only its initialized pref
 
 * `NLAlib.Krylov.CG.Reorth.solve_writes`: total execution from a stored right-hand side and guess.
 * `NLAlib.Krylov.CG.Reorth.runs_solve`: exact CG output with closed counts and workspace.
+* `NLAlib.Krylov.CG.Reorth.runs_solve_of_grade_le`: a sufficiently large cap returns a solution.
 -/
 
 @[expose] public section
@@ -113,5 +114,29 @@ theorem runs_solve {M : Machine K} {dec : K → ℝ} {n cap : ℕ}
   rintro μ'' ⟨hpos', hstate'⟩
   obtain ⟨ys, rs, ps, hy, _, _, hdecoded⟩ := state_reads hstate'
   exact ⟨hpos', ys, hy, (congrArg CGState.x hdecoded).trans (hPos.cgState_x_eq _ _ _)⟩
+
+/-- Once the cap covers the initial residual's grade, the computed output solves the system.
+Earlier convergence is successful, and no scalar division is attempted afterward. -/
+theorem runs_solve_of_grade_le {M : Machine K} {dec : K → ℝ} {n cap : ℕ}
+    {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K}
+    (hS : IsScalar M I) (hM : ExactModel dec M) (hB : IsExactBlas1 dec (fun _ => True) I)
+    (hA : IsExactMatvec dec A I) (hCmp : IsCmp dec I) (hPos : A.PosDef)
+    (W : Op → List ℕ → ℕ) {τ : Tape K} {μ : Mem K} {b x r p : ℕ × ℕ} {bs xs : List K}
+    (hbx : b.1 ≠ x.1) (hbr : b.1 ≠ r.1) (hbp : b.1 ≠ p.1)
+    (hxr : x.1 ≠ r.1) (hxp : x.1 ≠ p.1) (hrp : r.1 ≠ p.1)
+    (hl : μ.Live [b, x, r, p]) (hbs : μ.store.readBlock b.1 b.2 n = some bs)
+    (hxs : μ.store.readBlock x.1 x.2 n = some xs) (hz : μ.Room [x, r, p] [n, n, n])
+    (hcap : krylovGrade A (decv dec n bs - A *ᵥ decv dec n xs) ≤ cap) :
+    Runs I W τ solve (Env.frame [n, cap] [b, x, x, r, p]) μ
+      (solveCount n cap) (solvePeak W n cap)
+      (fun μ' => μ'.pos = μ.pos ∧ ∃ ys, μ'.store.readBlock x.1 x.2 n = some ys ∧
+        A *ᵥ decv dec n ys = decv dec n bs) := by
+  refine (runs_solve hS hM hB hA hCmp hPos W hbx hbr hbp hxr hxp hrp hl hbs hxs hz).mono
+    le_rfl le_rfl ?_
+  rintro μ' ⟨hpos, ys, hy, heq⟩
+  have hzero := (hPos.cgState_r_eq_zero_iff (decv dec n bs) (decv dec n xs)
+    (krylovGrade A (decv dec n bs - A *ᵥ decv dec n xs))).mpr le_rfl
+  rw [cgState_r_eq, hPos.cgState_x_eq, sub_eq_zero] at hzero
+  exact ⟨hpos, ys, hy, by rw [heq, Nat.min_eq_right hcap]; exact hzero.symm⟩
 
 end NLAlib.Krylov.CG.Reorth

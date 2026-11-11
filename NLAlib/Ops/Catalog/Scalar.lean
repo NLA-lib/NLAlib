@@ -117,6 +117,34 @@ structure StdModel (u : ℝ) (dec : K → ℝ) (M : Machine K) : Prop where
   /-- Rounded square root of a nonnegative number. -/
   sqrt : ∀ a, 0 ≤ dec a → |dec (M.sqrt a) - √(dec a)| ≤ u * √(dec a)
 
+/-- **Exact scalar arithmetic**: each operation computes its exact decoded value on its domain. -/
+structure ExactModel (dec : K → ℝ) (M : Machine K) : Prop where
+  /-- Exact literals. -/
+  lit : ∀ q : ℚ, dec (M.lit q) = q
+  /-- Exact addition. -/
+  add : ∀ a b, dec (M.add a b) = dec a + dec b
+  /-- Exact subtraction. -/
+  sub : ∀ a b, dec (M.sub a b) = dec a - dec b
+  /-- Exact multiplication. -/
+  mul : ∀ a b, dec (M.mul a b) = dec a * dec b
+  /-- Exact division by a nonzero divisor. -/
+  div : ∀ a b, dec b ≠ 0 → dec (M.div a b) = dec a / dec b
+  /-- Exact negation. -/
+  neg : ∀ a, dec (M.neg a) = -dec a
+  /-- Exact square root of a nonnegative value. -/
+  sqrt : ∀ a, 0 ≤ dec a → dec (M.sqrt a) = √(dec a)
+
+/-- Exact scalar arithmetic meets the standard model at zero unit roundoff. -/
+theorem ExactModel.toStdModel_zero {dec : K → ℝ} {M : Machine K} (h : ExactModel dec M) :
+    StdModel 0 dec M where
+  lit q := by simp [h.lit q]
+  add a b := by simp [h.add a b]
+  sub a b := by simp [h.sub a b]
+  mul a b := by simp [h.mul a b]
+  div a b hb := by simp [h.div a b hb]
+  neg := h.neg
+  sqrt a ha := by simp [h.sqrt a ha]
+
 /-- Zero is exact. -/
 theorem StdModel.zero {u : ℝ} {dec : K → ℝ} {M : Machine K} (hM : StdModel u dec M) :
     dec (M.lit 0) = 0 := by
@@ -157,6 +185,11 @@ noncomputable def exactMachine : Machine ℝ where
   div a b := a / b
   neg a := -a
   sqrt a := √a
+
+/-- The machine over the real numbers satisfies the exact model. -/
+theorem exactModel_exactMachine : ExactModel id exactMachine :=
+  ⟨fun _ => rfl, fun _ _ => rfl, fun _ _ => rfl, fun _ _ => rfl,
+    fun _ _ _ => rfl, fun _ => rfl, fun _ _ => rfl⟩
 
 theorem stdModel_exact {u : ℝ} (hu : 0 ≤ u) : StdModel u id exactMachine where
   lit q := by

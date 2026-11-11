@@ -109,6 +109,19 @@ The nine base edits that both reviews asked for before anything is built on the 
 | `Catalog/` | `Scalar`, `Blas1`, `Operator` (rectangular `matvec [m, n]`), `Compare` (flag-writing `CmpOp`, `FlagTst.isSet`, and the decoded queries), `Tagged`, `Isotropic`, `Random` |
 | `Blas/`, `Profiles/` | The level-1 implementations and the profiles `Blas.seq`, `Blas.pairwise k`, `Rand.gaussLoop` |
 
+### Exact arithmetic contracts
+
+`IsScalar M I` identifies the functions of the scalar machine. `ExactModel dec M` gives their
+decoded equations, with domain guards for division and square root. `IsExactBlas1 dec ok I`
+gives decoded equations for the admitted vector lengths. `Blas.seq_certifies_exact` realizes
+these contracts with the sequential profile, and `Blas.exists_isExactBlas1` witnesses the scalar
+and BLAS1 contracts jointly over the reals.
+
+`IsExactMatvec dec A I` specifies multiplication by a fixed matrix, with dimensions `[m, n]`
+for an input of length `n` and an output of length `m`. For a value-dependent branch, call
+`CmpOp.cmp` to write a flag and use `FlagTst.isSet` to read it. `Examples/Control` shows the
+branch after substituting a certified comparison implementation.
+
 ## The contract, the rule, the certificate
 
 ```lean

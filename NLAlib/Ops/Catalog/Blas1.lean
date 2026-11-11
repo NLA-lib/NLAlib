@@ -24,6 +24,7 @@ operations), never against an implementation.
 ## Main results
 
 * `NLAlib.Ops.IsBlas1`: the contract set of the level-1 operations.
+* `NLAlib.Ops.IsExactBlas1`: the same operations with exact decoded equations.
 * `NLAlib.Ops.IsDotErr.congr`, `NLAlib.Ops.IsAxpyErr.congr`: the error predicates read their
   vectors only below the length.
 -/
@@ -201,5 +202,122 @@ structure IsBlas1 [Has Blas1Op Op] (dec : K → ℝ) (ε : Blas1Err) (ok : ℕ �
 def IsSum [Has Blas1Op Op] (dec : K → ℝ) (e : ℕ → ℝ) (ok : ℕ → Prop) (J : Interp Op Tst K) :
     Prop :=
   J.Meets .total (Has.inj Blas1Op.sum) ((sumRel dec e).spec (OutApart ok))
+
+/-! ### Exact contracts -/
+
+/-- `sum` computes the sum of the decoded entries. -/
+@[simps (attr := storeNF)]
+def sumExactRel (dec : K → ℝ) : BlockRel K :=
+  { sumRel dec (fun _ => 0) with
+    rel := fun d X _ Y => match X, Y with
+      | [xs], [[v]] => dec v = ∑ i ∈ Finset.range (d.headD 0), dec (vec xs i)
+      | _, _ => False }
+
+/-- `dot` computes the dot product of the decoded blocks. -/
+@[simps (attr := storeNF)]
+def dotExactRel (dec : K → ℝ) : BlockRel K :=
+  { dotRel dec (fun _ => 0) with
+    rel := fun d X _ Y => match X, Y with
+      | [xs, ys], [[v]] =>
+        dec v = ∑ i ∈ Finset.range (d.headD 0), dec (vec xs i) * dec (vec ys i)
+      | _, _ => False }
+
+/-- `axpy` computes the decoded update `y + a x`. -/
+@[simps (attr := storeNF)]
+def axpyExactRel (dec : K → ℝ) : BlockRel K :=
+  { axpyRel dec 0 with
+    rel := fun d X _ Y => match X, Y with
+      | [[a], xs, ys], [zs] =>
+        ∀ i < d.headD 0, dec (vec zs i) = dec (vec ys i) + dec a * dec (vec xs i)
+      | _, _ => False }
+
+/-- `nrm2` computes the Euclidean norm of the decoded block. -/
+@[simps (attr := storeNF)]
+def nrm2ExactRel (dec : K → ℝ) : BlockRel K :=
+  { nrm2Rel dec (fun _ => 0) 0 with
+    rel := fun d X _ Y => match X, Y with
+      | [xs], [[v]] => dec v = √(∑ i ∈ Finset.range (d.headD 0), dec (vec xs i) ^ 2)
+      | _, _ => False }
+
+/-- `scal` divides each decoded entry by the decoded divisor when that divisor is nonzero. -/
+@[simps (attr := storeNF)]
+def scalExactRel (dec : K → ℝ) : BlockRel K :=
+  { scalRel dec 0 with
+    rel := fun d X _ Y => match X, Y with
+      | [[a], xs], [zs] =>
+        dec a ≠ 0 → ∀ i < d.headD 0, dec (vec zs i) = dec (vec xs i) / dec a
+      | _, _ => False }
+
+/-- **Exact BLAS1 contracts**: the level-1 operations compute their exact decoded values at the
+admitted lengths. -/
+structure IsExactBlas1 [Has Blas1Op Op] (dec : K → ℝ) (ok : ℕ → Prop)
+    (J : Interp Op Tst K) : Prop where
+  /-- `sum`. -/
+  sum : J.Meets .total (Has.inj Blas1Op.sum) ((sumExactRel dec).spec (OutApart ok))
+  /-- `dot`. -/
+  dot : J.Meets .total (Has.inj Blas1Op.dot) ((dotExactRel dec).spec (OutApart ok))
+  /-- `axpy`. -/
+  axpy : J.Meets .total (Has.inj Blas1Op.axpy) ((axpyExactRel dec).spec (InPlace ok))
+  /-- `nrm2`. -/
+  nrm2 : J.Meets .total (Has.inj Blas1Op.nrm2) ((nrm2ExactRel dec).spec (OutApart ok))
+  /-- `scal`. -/
+  scal : J.Meets .total (Has.inj Blas1Op.scal) ((scalExactRel dec).spec (InPlace ok))
+  /-- `copy`. -/
+  copy : J.Meets .total (Has.inj Blas1Op.copy) ((copyRel (K := K)).spec (OutApart ok))
+
+omit [Inhabited K] in
+private theorem meets_replace_rel {J : Interp Op Tst K} {o : Op} {R : BlockRel K}
+    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop}
+    {rel : List ℕ → List (List K) → List K → List (List K) → Prop}
+    (h : J.Meets .total o (R.spec adm))
+    (hrel : ∀ d X w Y, R.rel d X w Y → rel d X w Y) :
+    J.Meets .total o ({ R with rel := rel }.spec adm) := by
+  refine h.mono (fun _ _ _ _ _ hp => hp) ?_
+  intro d ins outs τ m m' _ hpost
+  obtain ⟨X, hread, hroom, Y, hlen, hR, hm⟩ := hpost
+  exact ⟨X, hread, hroom, Y, hlen, hrel _ _ _ _ hR, hm⟩
+
+/-- Level-1 operations whose error bounds are zero satisfy the exact contracts. -/
+theorem IsBlas1.toExact [Has Blas1Op Op] {dec : K → ℝ} {ok : ℕ → Prop}
+    {J : Interp Op Tst K} (h : IsBlas1 dec ⟨fun _ => 0, fun _ => 0, 0, 0, 0⟩ ok J) :
+    IsExactBlas1 dec ok J := by
+  refine ⟨?_, ?_, ?_, ?_, ?_, h.copy⟩
+  · refine meets_replace_rel (rel := (sumExactRel dec).rel) h.sum ?_
+    intro d X w Y hrel
+    simp only [sumRel_rel] at hrel
+    split at hrel
+    · simpa [sumExactRel, IsSumErr, sub_eq_zero] using hrel
+    · contradiction
+  · refine meets_replace_rel (rel := (dotExactRel dec).rel) h.dot ?_
+    intro d X w Y hrel
+    simp only [dotRel_rel] at hrel
+    split at hrel
+    · simpa [dotExactRel, IsDotErr, sub_eq_zero] using hrel
+    · contradiction
+  · refine meets_replace_rel (rel := (axpyExactRel dec).rel) h.axpy ?_
+    intro d X w Y hrel
+    simp only [axpyRel_rel] at hrel
+    split at hrel
+    · simpa [axpyExactRel, IsAxpyErr, sub_eq_zero] using hrel
+    · contradiction
+  · refine meets_replace_rel (rel := (nrm2ExactRel dec).rel) h.nrm2 ?_
+    intro d X w Y hrel
+    simp only [nrm2Rel_rel] at hrel
+    split at hrel
+    · rename_i xs v
+      obtain ⟨σ, hσ, hν⟩ := hrel
+      have hs : dec σ = ∑ i ∈ Finset.range (d.headD 0), dec (vec xs i) ^ 2 := by
+        simpa [IsDotErr, sub_eq_zero, pow_two] using hσ
+      have hnonneg : 0 ≤ dec σ := by
+        rw [hs]
+        exact Finset.sum_nonneg fun _ _ => sq_nonneg _
+      simpa [nrm2ExactRel, sub_eq_zero, hs] using hν hnonneg
+    · contradiction
+  · refine meets_replace_rel (rel := (scalExactRel dec).rel) h.scal ?_
+    intro d X w Y hrel
+    simp only [scalRel_rel] at hrel
+    split at hrel
+    · simpa [scalExactRel, IsScalErr, sub_eq_zero] using hrel
+    · contradiction
 
 end NLAlib.Ops

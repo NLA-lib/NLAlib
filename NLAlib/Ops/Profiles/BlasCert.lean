@@ -133,6 +133,17 @@ theorem seq_certifies (hM : StdModel u dec M) (hu : 0 ≤ u) (ok : ℕ → Prop)
       (fun J => IsScalar M J ∧ IsBlas1 dec (seq.err u) ok J) :=
   (level1_certifies hM hu (seqSumErr_nonneg hu) ok 0).over (sumSeq_certifies hM hu ok) rfl rfl
 
+/-- Sequential BLAS1 over exact scalar arithmetic meets the exact decoded contracts. -/
+theorem seq_certifies_exact (hM : ExactModel dec M) (ok : ℕ → Prop) :
+    (seq (Op := Op) (Tst := Tst)).Certifies (fun I => IsScalar M I)
+      (fun J => IsScalar M J ∧ IsExactBlas1 dec ok J) := by
+  have hsum : seqSumErr 0 = fun _ => 0 := by
+    funext n
+    simp [seqSumErr]
+  refine (seq_certifies hM.toStdModel_zero le_rfl ok).mono (fun _ h => h) ?_
+  rintro J ⟨hS, hB⟩
+  exact ⟨hS, IsBlas1.toExact (by simpa [seq.err, level1Err, hsum] using hB)⟩
+
 /-- **The certificate of the profile of pairwise summation** of depth `k`, for the lengths `n`
 with `⌈log₂ n⌉ < k`. -/
 theorem pairwise_certifies (hM : StdModel u dec M) (hu : 0 ≤ u) (k : ℕ) :
@@ -280,6 +291,17 @@ theorem exists_isBlas1 {u : ℝ} (hu : 0 ≤ u) :
     isScalar_ofFns _ _ fun _ => rfl
   exact ⟨ℝ, ⟨0⟩, id, exactMachine, _, stdModel_exact hu,
     (seq_certifies (stdModel_exact hu) hu _).meets _ hI⟩
+
+/-- Exact real scalar arithmetic and sequential BLAS1 meet their contracts jointly at every
+admitted length. -/
+theorem exists_isExactBlas1 (ok : ℕ → Prop) :
+    ∃ (M : Machine ℝ) (J : Interp (ScalarOp ⊕ Blas1Op) Tst ℝ),
+      ExactModel id M ∧ IsScalar M J ∧ IsExactBlas1 id ok J := by
+  let F : ScalarOp ⊕ Blas1Op → BlockFn ℝ := fun o => o.elim exactMachine.fn fun _ => .const 0
+  have hI : IsScalar exactMachine (Interp.ofFns F : Interp (ScalarOp ⊕ Blas1Op) Tst ℝ) :=
+    isScalar_ofFns _ _ fun _ => rfl
+  exact ⟨exactMachine, _, exactModel_exactMachine,
+    (seq_certifies_exact exactModel_exactMachine ok).meets _ hI⟩
 
 /-- **Witness for the contract of `sum` alone**, jointly with scalar arithmetic: for every
 `u ≥ 0`, every error function that is nonnegative on the admitted lengths and every set of

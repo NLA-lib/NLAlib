@@ -48,7 +48,7 @@ restated, and `keep` restates the reads. A side goal it cannot discharge makes i
 the goal (`step!` leaves it instead, under its name: `hadm`, `hpre`, `hap`).
 
 The allocation, counted-loop, call and certificate tactics use the proved footprint rules.
-`checkpoint` still has a placeholder implementation; `decode` is provisional.
+`decode` is provisional.
 
 ## Main results
 
@@ -83,13 +83,11 @@ macro_rules
          | fp_sub [$ts,*])
        all_goals fail "frame: a write is not shown to be in the footprint"))
 
-/-- **`checkpoint m₁`**: generalise the current memory (a chain of updates) into the fresh name
-`m₁`, with the running frame (by `frame`), the lengths and the reads of the context restated
-(`NLAlib.Ops.Wp.named`). Phase B. -/
+/-- **`checkpoint m₁`**: generalise the current `Writes` or `Wp` memory into the fresh name
+`m₁`, carrying the context's facts about it. Before generalizing, `keep` restates preserved
+reads and lengths. Existing frames are carried; a frame must already be proved in the context.
+No equality to the original update chain is retained. -/
 syntax "checkpoint " ident : tactic
-
-macro_rules
-  | `(tactic| checkpoint $_m) => `(tactic| fail "checkpoint: phase B")
 
 open Lean Meta Elab Tactic in
 /-- **`alloc as t₁ … tₖ`**: the allocation rule (`NLAlib.Ops.writes_alloc`,
@@ -241,6 +239,23 @@ elab "keep" : tactic => withMainContext do
       replaceMainGoal [goal]
       known := known.push candidate
   evalTactic (← `(tactic| frame_facts))
+
+open Lean Meta Elab Tactic in
+elab_rules : tactic
+  | `(tactic| checkpoint $name:ident) => withMainContext do
+    if ((← getLCtx).findFromUserName? name.getId).isSome then
+      throwErrorAt name "checkpoint: memory name is already in scope"
+    let target ← instantiateMVars (← getMainTarget)
+    unless target.isAppOf ``Writes || target.isAppOf ``Wp do
+      throwError "checkpoint: expected a Writes or Wp goal"
+    evalTactic (← `(tactic| keep))
+    withMainContext do
+      let target ← instantiateMVars (← getMainTarget)
+      let memory := target.getAppArgs.back!
+      let hyps := (← getLCtx).foldl (init := #[]) fun acc d => acc.push d.fvarId
+      let (_, _, goal) ← (← getMainGoal).generalizeHyp
+        #[{ expr := memory, xName? := some name.getId }] hyps
+      replaceMainGoal [goal]
 
 open Lean in
 /-- The lemma that splits a list of the given length into named elements. -/

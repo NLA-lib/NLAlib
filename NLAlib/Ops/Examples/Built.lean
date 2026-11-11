@@ -137,6 +137,8 @@ example {K : Type} {M : Machine K} {J : Interp Op Tst K} (hS : IsScalar M J) :
   obtain ⟨a, rfl⟩ := List.length_eq_one_iff.mp (Store.length_of_readBlock hxs)
   alloc as t
   step (hS .copy) as m₁ hfr₁ ⟨hpos₁, a₁, ha₁, hcopy₁⟩
+  checkpoint copied
+  have : copied.store.get t 0 = some a₁ := ha₁
   step (hS .copy) as m₂ hfr₂ ⟨hpos₂, a₂, ha₂, hcopy₂⟩
   intro s₂ hs₂ hB₂
   exact ⟨by simp [hpos₂, hpos₁], [[a₂]],
@@ -200,5 +202,17 @@ example {K : Type} {s s' : Store K} {b o n limit : ℕ} {v : ℕ → K}
     (h : Store.Below limit s s') (hb : b < limit) (hv : s.HoldsVec b o n v) :
     s'.HoldsVec b o n v := by
   keep
+
+-- A concrete update disappears while its read and caller frame remain usable.
+example {K : Type} {I : Interp Op Tst K} (τ : Tape K) (μ : Mem K)
+    (z : ℕ × ℕ) (a : K) (F : Fp)
+    (hr : (μ.upd z a).store.get z.1 z.2 = some a)
+    (hfr : μ.store.EqOff F (μ.upd z a).store) :
+    Wp .total I τ .skip ⟨[], []⟩
+      (fun m => m.store.get z.1 z.2 = some a) (μ.upd z a) := by
+  fail_if_success checkpoint μ
+  checkpoint current
+  have : μ.store.EqOff F current.store := hfr
+  exact wp_skip hr
 
 end NLAlib.Ops.Examples

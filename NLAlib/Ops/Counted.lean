@@ -11,14 +11,11 @@ public import NLAlib.Ops.Transfer
 /-!
 # Counts in the logic, where they depend on the data
 
-The counts of a program are its static cost (`NLAlib.Ops.Runs.of_run`), and the logic `Wp` does
-not carry them. The static cost is only a bound where the counts depend on the data: a size read
-from the store (`bindIdx` is charged at every value up to its bound), a branch, a loop with early
-exit. `NLAlib.Ops.RunsFromW` is the judgment that carries the counts exactly: a counted run from
-a state, whose postcondition is given **the counts that the run added** and the final memory.
-So a bound may depend on the data, the bound of a continuation may depend on the state it starts
-from, and a weighted bound (`∀ T` monotone and superadditive, …) is a postcondition like any
-other.
+`NLAlib.Ops.Runs.of_run` bounds counts by the static cost. This bound charges `bindIdx` at every
+value up to its bound and covers all branches and loop iterations. `NLAlib.Ops.RunsFromW` gives
+its postcondition **the counts that the run added** and the final memory. The bound can depend
+on the data, on the starting state of a continuation, and on weights such as a superadditive
+function of the dimensions.
 
 One rule per constructor: `skip`, `seq` (the continuation is proved from the state and the
 counts reached), `call` (one call, at its dimensions), `ite`, `bindIdx` (charged at the value
@@ -48,8 +45,8 @@ implementation, which speaks of every successful run
 * `NLAlib.Ops.RunsFromWL`: the liberal judgment, with `skip`, `abort`, `seq`, `call`, `ite`,
   `bindIdx`, `alloc`, `frame`, `loop`, `whileFuel`, `mono`, `and`, `of_static`, `of_wp`.
 * `NLAlib.Ops.RunsFromWL.of_runsFromW`, `NLAlib.Ops.RunsFromWL.runsFromW`: total and liberal.
-* `NLAlib.Ops.RunsFromWL.link_from`, `NLAlib.Ops.RunsFromWL.link`: linking from counted
-  states and from the initial state.
+* `NLAlib.Ops.RunsFromW.link_from`, `NLAlib.Ops.RunsFromWL.link_from`,
+  `NLAlib.Ops.RunsFromWL.link`: linking from counted states and from the initial state.
 * `NLAlib.Ops.Table.AccountsW.of_runsFromWL`, `NLAlib.Ops.RunsFromWL.runsL`,
   `NLAlib.Ops.RunsFromWL.exec_init`: the table certificate and the forms from the initial state.
 -/
@@ -534,12 +531,14 @@ theorem Table.AccountsW.of_runsFromWL
     obtain ⟨c, ⟨h1, h2, h3⟩, hc⟩ := himpl o R hT τ d a st hd ha st' h
     exact ⟨h2, by rw [h1, map_add]; exact add_le_add le_rfl hc, h3⟩
 
+variable {τ : Tape K} {s : Stmt Op₁ Tst} {ρ : Env} {p : ℕ} {Q : Count Op₁ Tst → Mem K → Prop}
+  {a : St Op₁ Tst K} {c : St Op₂ Tst K}
+
 /-- Link a liberal counted segment from states with the same memory and live cells. The upper
 starting peak must fit within the lower segment's peak bound. If the linked segment succeeds,
 its added counts have weight at most the upper weight of the counts added by the algorithm
 segment, which satisfy its postcondition. -/
-theorem RunsFromWL.link_from (hacc : T.AccountsW I W₂ w₂ t W₁) {τ : Tape K} {s : Stmt Op₁ Tst}
-    {ρ : Env} {a : St Op₁ Tst K} {c : St Op₂ Tst K} {p : ℕ} {Q : Count Op₁ Tst → Mem K → Prop}
+theorem RunsFromWL.link_from (hacc : T.AccountsW I W₂ w₂ t W₁)
     (h : RunsFromWL (I.link T) W₁ τ s ρ a p Q) (hmem : c.mem = a.mem) (hcur : c.cur = a.cur)
     (hpeak : a.peak ≤ max c.peak (c.cur + p)) :
     RunsFromWL I W₂ τ (s.link T) ρ c p
@@ -576,9 +575,19 @@ theorem RunsFromWL.link_from (hacc : T.AccountsW I W₂ w₂ t W₁) {τ : Tape 
     _ ≤ max a.peak (a.cur + p) := hpeak'
     _ ≤ max c.peak (a.cur + p) := max_le hpeak (Nat.le_max_right ..)
 
+/-- A total counted segment stays total after linking, with the same bounds as the liberal rule. -/
+theorem RunsFromW.link_from (hacc : T.AccountsW I W₂ w₂ t W₁)
+    (h : RunsFromW (I.link T) W₁ τ s ρ a p Q) (hmem : c.mem = a.mem) (hcur : c.cur = a.cur)
+    (hpeak : a.peak ≤ max c.peak (c.cur + p)) :
+    RunsFromW I W₂ τ (s.link T) ρ c p fun dc m' => ∃ da, w₂ dc ≤ Count.upper w₂ t da ∧ Q da m' := by
+  have hs : Wp .total I τ (s.link T) ρ (fun _ => True) c.mem := by
+    obtain ⟨a', _, ha, _, _⟩ := h
+    exact ⟨a'.mem, by simpa only [run_link, hmem] using run_of_exec ha, trivial⟩
+  exact (((RunsFromWL.of_runsFromW h).link_from hacc hmem hcur hpeak).runsFromW hs).mono
+    le_rfl fun _ _ hQ => hQ.1
+
 /-- Linking a liberal counted run from the initial state. -/
-theorem RunsFromWL.link (hacc : T.AccountsW I W₂ w₂ t W₁) {τ : Tape K} {s : Stmt Op₁ Tst}
-    {ρ : Env} {m : Mem K} {p : ℕ} {Q : Count Op₁ Tst → Mem K → Prop}
+theorem RunsFromWL.link (hacc : T.AccountsW I W₂ w₂ t W₁) {m : Mem K}
     (h : RunsFromWL (I.link T) W₁ τ s ρ (St.init m) p Q) :
     RunsFromWL I W₂ τ (s.link T) ρ (St.init m) p
       fun c m' => ∃ c₁, w₂ c ≤ Count.upper w₂ t c₁ ∧ Q c₁ m' :=

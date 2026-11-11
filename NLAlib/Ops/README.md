@@ -222,11 +222,11 @@ Examples of the forms: `dotRel` (two inputs, one cell), `axpyRel` (in place), `m
 * `Table.AccountsW.of_runsFromWL`: the certificate of a table is, for every implementation,
   `RunsFromWL I W₂ τ R.body (Env.frame d a) st (W₁ o d) fun c _ => w₂ c ≤ t o d` from every
   state. `splitTable_accountsW` is proved this way: `bindIdx`, `seq`, two `call`.
-  `RunsFromWL.link` is `RunsW.link` for partial correctness. `RunsFromWL.link_from` transfers
-  the counts added by a segment with scratch already live. The upper and lower starting states
-  agree on memory and live cells, and the upper starting peak fits within the lower segment's
-  peak bound. In `Examples/Split`, this gives the same weighted bound with different initial
-  counts and peaks at the two levels.
+  `RunsFromWL.link` is `RunsW.link` for partial correctness. `RunsFromW.link_from` and
+  `RunsFromWL.link_from` transfer the counts added by a segment with scratch already live.
+  The upper and lower starting states agree on memory and live cells, and the upper starting
+  peak fits within the lower segment's peak bound. In `Examples/Split`, this gives the same
+  weighted bound with different initial counts and peaks at the two levels.
 
 ## Loops and queries
 

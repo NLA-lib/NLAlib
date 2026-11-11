@@ -60,7 +60,8 @@ noncomputable def stepRel (dec : K → ℝ) {n : ℕ} (A : Matrix (Fin n) (Fin n
         decodedState dec n xs' rs' ps' = cgStep A (decodedState dec n xs rs ps)
     | _, _ => False
 
-private theorem decodedState_step {dec : K → ℝ} {n : ℕ}
+/-- The scalar CG coefficients and three vector equations determine the decoded next state. -/
+theorem decodedState_step {dec : K → ℝ} {n : ℕ}
     (A : Matrix (Fin n) (Fin n) ℝ) (xs rs ps xs' rs' ps' : List K) (a b : ℝ)
     (ha : a = (decv dec n rs ⬝ᵥ decv dec n rs) /
       (decv dec n ps ⬝ᵥ (A *ᵥ decv dec n ps)))

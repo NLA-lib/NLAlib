@@ -131,8 +131,10 @@ theorem exists_isRandLin (A : Matrix (Fin n) (Fin n) ℝ) :
       (fun _ => rfl) (fun _ => rfl) ?_
     intro d w xs m ins outs hnd _ hadm hr _
     obtain ⟨k, rfl⟩ := List.length_eq_one_iff.mp hnd
+    obtain rfl : n = k := hadm.1.symm
     obtain ⟨x, y, xs, ys, rfl, hx, hy, rfl⟩ := Mem.readBlocks_two hr
-    exact ⟨[[∑ i, decv id n xs i * decv id n ys i]], by simp [randFns, BlockFn.of2], rfl, rfl⟩
+    exact ⟨[[∑ i, decv id n xs i * decv id n ys i]], by simp [randFns, BlockFn.of2], rfl,
+      Fin.sum_univ_eq_sum_range (fun i => vec xs i * vec ys i) n⟩
   · refine (hfn .add).meets_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl)
       (fun _ => rfl) (fun _ => rfl) ?_
     intro d w xs m ins outs hnd _ hadm hr _
@@ -144,8 +146,10 @@ theorem exists_isRandLin (A : Matrix (Fin n) (Fin n) ℝ) :
       (fun _ => rfl) (fun _ => rfl) ?_
     intro d w xs m ins outs hnd _ hadm hr _
     obtain ⟨k, rfl⟩ := List.length_eq_one_iff.mp hnd
+    obtain rfl : n = k := hadm.1.symm
     obtain ⟨x, xs, rfl, hx, rfl⟩ := Mem.readBlocks_one hr
-    exact ⟨[[√(∑ i, decv id n xs i ^ 2)]], by simp [randFns, BlockFn.of1], rfl, rfl⟩
+    exact ⟨[[√(∑ i, decv id n xs i ^ 2)]], by simp [randFns, BlockFn.of1], rfl,
+      congrArg Real.sqrt (Fin.sum_univ_eq_sum_range (fun i => vec xs i ^ 2) n)⟩
   · refine (hfn (.mulc q)).meets_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl)
       (fun _ => rfl) (fun _ => rfl) ?_
     intro d w xs m ins outs hnd _ hadm hr _
@@ -160,9 +164,10 @@ theorem exists_isRandLin (A : Matrix (Fin n) (Fin n) ℝ) :
     obtain ⟨a, x, y, as, xs, ys, rfl, ha, hx, hy, rfl⟩ := Mem.readBlocks_three hr
     obtain ⟨a, rfl⟩ := List.length_eq_one_iff.mp (Store.length_of_readBlock ha)
     exact ⟨[List.ofFn fun i => decv id n ys i + vec [a] 0 * decv id n xs i],
-      by simp [randFns, BlockFn.of3], by simp [axpyExRel], by
-      simp only [axpyExRel, decv_ofFn]
-      rfl⟩
+      by simp [randFns, BlockFn.of3], by simp [axpyExactRel, axpyRel], by
+      intro j hj
+      exact congrFun (decv_ofFn (fun i : Fin n =>
+        decv id n ys i + vec [a] 0 * decv id n xs i)) ⟨j, hj⟩⟩
   · exact (hfn .gauss).meets_drawRel fun _ _ _ _ => trivial
   · have := Interp.ofFns_tapeLocal (Tst := Tst) (randFns A) o
     cases o

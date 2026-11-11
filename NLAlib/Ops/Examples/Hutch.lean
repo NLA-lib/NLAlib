@@ -240,12 +240,16 @@ theorem wp_hutch {dec : K → ℝ} {n : ℕ} {A : Matrix (Fin n) (Fin n) ℝ} {J
     obtain rfl : ws = τ.window Stream.gauss (p + i * n) n := (List.cons.inj hws).1
     wp_call hJ.matvec [List.getD_cons_succ, List.getD_cons_zero] with ys hyl hys
     wp_call hJ.dot with t ht
+    have hdot : dec t =
+        ∑ j : Fin n, decv dec n (τ.window Stream.gauss (p + i * n) n) j * decv dec n ys j := by
+      exact ht.trans (Fin.sum_univ_eq_sum_range (fun j : ℕ =>
+        dec (vec (τ.window Stream.gauss (p + i * n) n) j) * dec (vec ys j)) n).symm
     wp_call hJ.add with v' hv'
     refine ⟨_, v', _, rfl, by simp [Mem.advance, Mem.upd, Mem.updBlock]; ring,
       (((hfr.updBlock fun _ _ => Or.inl (Or.inl (Or.inr rfl))).updBlock
         fun _ _ => Or.inl (Or.inr rfl)).upd (Or.inr rfl) _).upd
         (Or.inl (Or.inl (Or.inl ⟨rfl, by omega, by omega⟩))) _, by store_simp, ?_⟩
-    rw [hv', hdv, ht, hys, decv_window, hutchF, hutchF, Finset.sum_range_succ,
+    rw [hv', hdv, hdot, hys, decv_window, hutchF, hutchF, Finset.sum_range_succ,
       quadForm_eq_sum_mulVec, add_assoc]
   · rintro m' ⟨s', v, q, rfl, rfl, hfr, hv, hdv⟩
     have h3 : s.EqOff (Store.inBlock be oe 1) s'.pop.pop.pop := hfr.pop.pop.pop

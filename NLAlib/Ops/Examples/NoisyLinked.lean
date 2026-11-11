@@ -85,7 +85,13 @@ theorem nmvImpl_spec {dec : K → ℝ} {A : Matrix (Fin n) (Fin n) ℝ} {I : Int
   refine ⟨[zs], by simp [hzl], ?_, ?_⟩
   · change decv dec n' zs = noiseFn dec A σ (decv dec n' xs)
       fun i => vec (τ.window Stream.gauss p n') i
-    rw [hzs, hws, ht', ht]
+    have haxpy : decv dec n' zs = fun i => decv dec n' ws i +
+        dec t' * decv dec n' (τ.window Stream.gauss p n') i :=
+      funext fun i => hzs i i.isLt
+    have hnorm : dec t = √(sqNorm (decv dec n' xs)) := by
+      exact ht.trans (congrArg Real.sqrt
+        (Fin.sum_univ_eq_sum_range (fun j : ℕ => dec (vec xs j) ^ 2) n')).symm
+    rw [haxpy, hws, ht', hnorm]
     rfl
   · have hfr : ((s.push n').push 1).EqOff ((Store.inBlock z.1 z.2 n' ⊔ Store.inBuf s.length) ⊔
         Store.inBuf (s.push n').length)

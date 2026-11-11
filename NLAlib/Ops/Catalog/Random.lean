@@ -69,16 +69,6 @@ theorem vec_window [Inhabited K] (τ : Tape K) (s p : ℕ) {k i : ℕ} (hi : i <
     vec (τ.window s p k) i = τ (p + i) s := by
   simp [vec, Tape.window, List.getD_eq_getElem?_getD, hi]
 
-/-- `dot`, exactly, at the length `n`. -/
-@[simps (attr := storeNF)]
-def dotExRel (dec : K → ℝ) (n : ℕ) : BlockRel K where
-  nd := 1
-  inLens d := [d.headD 0, d.headD 0]
-  outLens _ := [1]
-  rel _ X _ ys := match X, ys with
-    | [xs, zs], [[v]] => dec v = ∑ i, decv dec n xs i * decv dec n zs i
-    | _, _ => False
-
 omit [Inhabited K] in
 /-- `add`, exactly. -/
 @[simps (attr := storeNF)]
@@ -88,16 +78,6 @@ def addExRel (dec : K → ℝ) : BlockRel K where
   outLens _ := [1]
   rel _ X _ ys := match X, ys with
     | [[a], [b]], [[v]] => dec v = dec a + dec b
-    | _, _ => False
-
-/-- `nrm2`, exactly, at the length `n`. -/
-@[simps (attr := storeNF)]
-def nrm2ExRel (dec : K → ℝ) (n : ℕ) : BlockRel K where
-  nd := 1
-  inLens d := [d.headD 0]
-  outLens _ := [1]
-  rel _ X _ ys := match X, ys with
-    | [xs], [[v]] => dec v = √(∑ i, decv dec n xs i ^ 2)
     | _, _ => False
 
 omit [Inhabited K] in
@@ -111,16 +91,6 @@ def mulcRel (dec : K → ℝ) (q : ℚ) : BlockRel K where
     | [[a]], [[v]] => dec v = q * dec a
     | _, _ => False
 
-/-- `axpy`, exactly, at the length `n`. -/
-@[simps (attr := storeNF)]
-def axpyExRel (dec : K → ℝ) (n : ℕ) : BlockRel K where
-  nd := 1
-  inLens d := [1, d.headD 0, d.headD 0]
-  outLens d := [d.headD 0]
-  rel _ X _ Z := match X, Z with
-    | [[a], xs, ys], [zs] => decv dec n zs = fun i => decv dec n ys i + dec a * decv dec n xs i
-    | _, _ => False
-
 /-- **The contracts of the operator and of the exact level-1 operations**, with the scalar draw:
 what the vector draw is implemented over. -/
 structure IsRandBase (dec : K → ℝ) {n : ℕ} (A : Matrix (Fin n) (Fin n) ℝ)
@@ -130,15 +100,15 @@ structure IsRandBase (dec : K → ℝ) {n : ℕ} (A : Matrix (Fin n) (Fin n) ℝ
   /-- `matvec`. -/
   matvec : IsExactMatvec dec A J
   /-- `dot`. -/
-  dot : J.Meets .total .dot ((dotExRel dec n).spec (OutApart (· = n)))
+  dot : J.Meets .total .dot ((dotExactRel dec).spec (OutApart (· = n)))
   /-- `add`. -/
   add : J.Meets .total .add ((addExRel dec).spec AnyOperands)
   /-- `nrm2`. -/
-  nrm2 : J.Meets .total .nrm2 ((nrm2ExRel dec n).spec (OutApart (· = n)))
+  nrm2 : J.Meets .total .nrm2 ((nrm2ExactRel dec).spec (OutApart (· = n)))
   /-- `mulc`. -/
   mulc : ∀ q, J.Meets .total (.mulc q) ((mulcRel dec q).spec AnyOperands)
   /-- `axpy`. -/
-  axpy : J.Meets .total .axpy ((axpyExRel dec n).spec (InPlace (· = n)))
+  axpy : J.Meets .total .axpy ((axpyExactRel dec).spec (InPlace (· = n)))
 
 /-- **The contracts of the randomized examples**: the base and the vector draw. -/
 structure IsRandLin (dec : K → ℝ) {n : ℕ} (A : Matrix (Fin n) (Fin n) ℝ)

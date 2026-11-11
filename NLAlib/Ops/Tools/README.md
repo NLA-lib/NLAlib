@@ -4,7 +4,8 @@ Outside the trusted base: nothing in `NLAlib/Ops` imports these files, no theore
 depends on them, and they are not in `NLAlib.lean`. They are plain (non-`module`) files so that
 `#eval` can run the library's programs. Every Lean command below runs through
 `scripts/ops/lean_gated.sh` (waits for no other `lean` and workers-slice anon memory < 6 GB, then
-runs in `nlalib-workers.slice` with two threads).
+runs in `nlalib-workers.slice` with two threads). Gated commands share a per-user lock across
+worktrees.
 
 ## 1. Runnable evaluator and cost profiler (`Exec`, `Machines`, `Tables`, `Run`, `Demo`)
 
@@ -77,4 +78,5 @@ specific interpretation, contract without witness, liberal headline over a table
 and strings removed) for `sorry`, `admit`, `native_decide`, raised `maxHeartbeats`/
 `maxRecDepth`, `implemented_by`, `extern`, `unsafe`, `axiom`; environment scan of every constant
 of `NLAlib.Ops.*` (axioms only `propext`, `Classical.choice`, `Quot.sound`; no unsafe/partial;
-no `implemented_by`); per-file elaboration time. Exit status nonzero on a violation.
+no `implemented_by`); per-file elaboration time. The environment scan builds Ops modules with
+`--wfail`. The audit exits nonzero on a violation.

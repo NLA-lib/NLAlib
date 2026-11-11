@@ -31,7 +31,7 @@ FORBIDDEN = [
     (r"set_option\s+(synthInstance\.)?maxHeartbeats", "raised maxHeartbeats"),
     (r"set_option\s+maxRecDepth", "raised maxRecDepth"),
     (r"\bimplemented_by\b", "implemented_by"), (r"@\[\s*extern", "extern"),
-    (r"^\s*(private\s+|protected\s+)?unsafe\b", "unsafe"), (r"^\s*axiom\b", "axiom"),
+    (r"^[ \t]*(private\s+|protected\s+)?unsafe\b", "unsafe"), (r"^[ \t]*axiom\b", "axiom"),
 ]
 
 
@@ -41,21 +41,24 @@ def strip(src: str) -> str:
     while i < n:
         if src.startswith("/-", i):
             depth += 1
+            out.append("  ")
             i += 2
         elif depth and src.startswith("-/", i):
             depth -= 1
+            out.append("  ")
             i += 2
         elif depth:
             out.append("\n" if src[i] == "\n" else " ")
             i += 1
         elif src.startswith("--", i):
             j = src.find("\n", i)
+            out.append(" ")
             i = n if j < 0 else j
         elif src[i] == '"':
             j = i + 1
             while j < n and src[j] != '"':
                 j += 2 if src[j] == "\\" else 1
-            out.append('""')
+            out.append('"' + "\n" * src.count("\n", i, j) + '"')
             i = j + 1
         else:
             out.append(src[i])
@@ -74,26 +77,28 @@ def modname(p: pathlib.Path) -> str:
 def source_scan():
     bad = []
     for p in modules():
-        for k, line in enumerate(strip(p.read_text()).splitlines(), 1):
-            for pat, what in FORBIDDEN:
-                if re.search(pat, line):
-                    bad.append(f"{p.relative_to(ROOT)}:{k}: {what}")
+        source = strip(p.read_text())
+        findings = sorted((m.start(), what) for pat, what in FORBIDDEN
+                          for m in re.finditer(pat, source, re.MULTILINE))
+        for offset, what in findings:
+            line = source.count("\n", 0, offset) + 1
+            bad.append(f"{p.relative_to(ROOT)}:{line}: {what}")
     return bad
 
 
 def env_scan():
     mods = [modname(p) for p in modules()]
-    body = (ROOT / "scripts" / "ops" / "Audit.lean").read_text()
-    with tempfile.NamedTemporaryFile("w", suffix=".lean", delete=False) as f:
-        f.write("".join(f"import {m}\n" for m in mods) + "\n" + body)
-        tmp = f.name
-    build = subprocess.run(GATE + ["lake", "build"] + mods, cwd=ROOT, capture_output=True,
+    build = subprocess.run(GATE + ["lake", "build", "--wfail"] + mods, cwd=ROOT, capture_output=True,
                            text=True)
     if build.returncode != 0:
         return False, build.stdout[-3000:] + build.stderr[-3000:]
-    r = subprocess.run(GATE + ["lake", "env", "lean", tmp], cwd=ROOT, capture_output=True,
-                       text=True)
-    return r.returncode == 0 and "error" not in r.stdout, (r.stdout + r.stderr).strip()
+    body = (ROOT / "scripts" / "ops" / "Audit.lean").read_text()
+    with tempfile.TemporaryDirectory(prefix="nlalib-ops-audit-") as temp_dir:
+        probe = pathlib.Path(temp_dir) / "Audit.lean"
+        probe.write_text("".join(f"import {m}\n" for m in mods) + "\n" + body)
+        result = subprocess.run(GATE + ["lake", "env", "lean", str(probe)], cwd=ROOT,
+                                capture_output=True, text=True)
+    return result.returncode == 0, (result.stdout + result.stderr).strip()
 
 
 def times():

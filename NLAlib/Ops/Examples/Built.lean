@@ -143,4 +143,44 @@ example {K : Type} {M : Machine K} {J : Interp Op Tst K} (hS : IsScalar M J) :
     Mem.readBlocks_of_cons (Store.readBlock_one_of_get (by kept)) rfl,
     by simp [BlockFn.rel, BlockFn.un, hcopy₁, hcopy₂]⟩
 
+-- A repeated copy keeps a decoded invariant at a fresh memory in every round.
+example {K : Type} {M : Machine K} {J : Interp Op Tst K} (hS : IsScalar M J)
+    (τ : Tape K) (μ : Mem K) (n : ℕ) (x y : ℕ × ℕ) (a : K)
+    (hx : μ.store.get x.1 x.2 = some a) (hy : μ.store.get y.1 y.2 = some a)
+    (hxy : x.1 ≠ y.1) (hl : μ.Live [x, y]) :
+    Writes .total J τ
+      (.loop (.var 0) (.call (Has.inj ScalarOp.copy) [] [⟨0, .var 1⟩] [⟨1, .var 2⟩]))
+      (Env.frame [n] [x, y]) (Store.inBlock y.1 y.2 1)
+      (fun m' => m'.pos = μ.pos ∧ m'.store.get y.1 y.2 = some a) μ := by
+  have hylen := Store.lt_len_of_get hy
+  obtain ⟨hlx, hly⟩ : x.1 < μ.store.length ∧ y.1 < μ.store.length := by simpa using hl
+  fail_if_success loop_inv (fun _ => Store.inBlock y.1 y.2 1)
+    (fun _ m' => m'.pos = μ.pos) with i m'
+  loop_inv (fun _ => Store.inBlock y.1 y.2 1)
+    (fun _ m' => m'.pos = μ.pos ∧ m'.store.get y.1 y.2 = some a)
+    with j hj m₁ hfr hP
+  case round =>
+    step (hS .copy) as m₂ hfr₂ ⟨hpos₂, b, hb, hcopy⟩
+    exact ⟨hpos₂.trans hP.1, by simpa only [hcopy] using hb⟩
+
+-- Nested loops and a following statement retain explicit round and exit obligations.
+example {K : Type} {I : Interp Op Tst K} (τ : Tape K) (μ : Mem K) (n : ℕ) :
+    Writes .total I τ (.seq (.loop (.var 0) (.loop (.var 0) .skip)) .skip)
+      ⟨[n], []⟩ ⊥ (fun _ => True) μ := by
+  loop_inv (fun _ => ⊥) (fun _ _ => True) with i hi m₁ hfr hP
+  case round =>
+    loop_inv (fun _ => ⊥) (fun _ _ => True) with j hj m₂ hfr₂ hP₂
+    exact Writes.skip trivial
+  case exit =>
+    intro m₁ hfr hP
+    exact Writes.skip hP
+
+-- Invalid footprint families fail before the body, and unnamed rounds remain quantified.
+example {K : Type} {I : Interp Op Tst K} (τ : Tape K) (μ : Mem K) :
+    Writes .total I τ (.loop (.const 1) .skip) ⟨[], []⟩ ⊥ (fun _ => True) μ := by
+  fail_if_success loop_inv (fun i => Store.inBlock 0 0 (1 - i)) (fun _ _ => True)
+  loop_inv (fun _ => ⊥) (fun _ _ => True)
+  intro i hi m hfr hP
+  exact Writes.skip hP
+
 end NLAlib.Ops.Examples

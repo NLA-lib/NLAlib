@@ -47,8 +47,8 @@ of the block is replaced by `hfr.trans' hfr₁`, the lengths `hlen : ∀ b, m₁
 restated, and `keep` restates the reads. A side goal it cannot discharge makes it fail, naming
 the goal (`step!` leaves it instead, under its name: `hadm`, `hpre`, `hap`).
 
-The allocation, call and certificate tactics use the proved footprint rules. `checkpoint`,
-`loop_inv` and `keep` still have placeholder implementations; `decode` is provisional.
+The allocation, counted-loop, call and certificate tactics use the proved footprint rules.
+`checkpoint` and `keep` still have placeholder implementations; `decode` is provisional.
 
 ## Main results
 
@@ -141,14 +141,39 @@ elab "alloc " &"as" ids:(ppSpace colGt ident)+ : tactic => withMainContext do
           at $hsize:ident))
   evalTactic (← `(tactic| frame_facts))
 
-/-- **`loop_inv F P with i m' hfr hP`**: the loop rule of the goal's loop (`writes_loop`,
-`writes_loop₂`, `writes_fill`, `writes_fill₂`, `writes_whileFuel`) at the footprint family `F`
-and the invariant `P`; proves the monotonicity of `F` by `fp_sub`, leaves the start `P 0 m` and
-the round. Phase B. -/
+/-- **`loop_inv F P with i hi m' hfr hP`** applies `writes_loop` at footprint family `F` and
+invariant `P`, also when the loop begins a sequence. The bound is evaluated or found in the
+context; footprint monotonicity and inclusion are proved by `fp_sub`. Leaves `initial` when the
+initial invariant needs a proof, `round` for the body, and `exit` when the final invariant needs
+to be weakened or more statements follow. The optional five names introduce the round index,
+its bound, the fresh memory, its frame and the invariant. Nested loops use repeated
+`loop_inv`; fill and early-exit rules are applied directly. -/
 syntax "loop_inv " term:max ppSpace term:max (" with" (ppSpace colGt ident)+)? : tactic
 
+open Lean in
 macro_rules
-  | `(tactic| loop_inv $_F $_P $[with $_ids*]?) => `(tactic| fail "loop_inv: phase B")
+  | `(tactic| loop_inv $F $P $[with $ids*]?) => do
+    let introduce ← match ids with
+      | none => `(tactic| skip)
+      | some names =>
+        unless names.size == 5 do
+          Macro.throwError "loop_inv: expected five names for the round"
+        `(tactic| intro $names*)
+    `(tactic|
+      ((first
+        | refine Writes.seq_le
+            (writes_loop (N := ?_) (F := $F) (P := $P)
+              ?bound ?mono ?initial ?round) ?footprint ?exit
+        | refine Writes.mono
+            (writes_loop (N := ?_) (F := $F) (P := $P)
+              ?bound ?mono ?initial ?round) ?footprint ?exit)
+       case' bound =>
+         first | rfl | assumption | fail "loop_inv: the loop bound could not be evaluated"
+       case' mono => intro i hi; fp_sub
+       case' footprint => fp_sub
+       try (case' initial => first | assumption | rfl | trivial)
+       try (case' exit => intro m' hfr hP; exact hP)
+       case' round => $introduce:tactic))
 
 /-- **`keep`**: after a step from `m` to `m₁` with the frame `hfr₁`, restate for `m₁` every
 hypothesis `s.readBlock b o n = some xs`, `s.get b i = some v`, `HoldsVec`, `HoldsMat` about `m`

@@ -115,7 +115,7 @@ handles (`wp_side`, whose `simp` uses the context) see through the named states.
 elab "frame_facts" : tactic => withMainContext do
   let mut g ← getMainGoal
   let lctx ← getLCtx
-  let tys := lctx.foldl (init := #[]) fun acc d => acc.push d.type
+  let mut tys ← (lctx.foldl (init := #[]) fun acc d => acc.push d.type).mapM instantiateMVars
   for d in lctx do
     if d.isImplementationDetail then continue
     let ty ← instantiateMVars d.type
@@ -125,10 +125,11 @@ elab "frame_facts" : tactic => withMainContext do
       else #[]
     for c in cands do
       let pf ← mkAppM c #[d.toExpr]
-      let t ← inferType pf
-      if ← tys.anyM (fun u => isDefEq u t) then continue
+      let t ← instantiateMVars (← inferType pf)
+      if tys.contains t then continue
       let (_, g') ← (← g.assert `hlen t pf).intro1
       g := g'
+      tys := tys.push t
   replaceMainGoal [g]
 
 /-- **`kept [facts]`**: a goal `s.readBlock b o n = some ?xs` or `s.get b i = some ?v`. Closes it

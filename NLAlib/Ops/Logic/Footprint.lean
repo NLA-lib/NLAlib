@@ -395,9 +395,11 @@ macro_rules
   | `(tactic| disjoint) => `(tactic| disjoint [])
   | `(tactic| disjoint [$ts,*]) => `(tactic| first
       | (simp only [fpNF, storeNF, Fp.Apart, $ts,*]; done)
-      | (simp only [fpNF, storeNF, Fp.Apart, $ts,*] <;> (try intros) <;> idx)
+      | (simp only [fpNF, storeNF, Fp.Apart, $ts,*] <;>
+          (repeat' apply And.intro) <;> (try intros) <;> idx)
       | (simp [fpNF, storeNF, Fp.Apart, $ts,*]; done)
-      | (simp [fpNF, storeNF, Fp.Apart, $ts,*] <;> (try intros) <;> idx)
+      | (simp [fpNF, storeNF, Fp.Apart, $ts,*] <;>
+          (repeat' apply And.intro) <;> (try intros) <;> idx)
       | fail "disjoint: the footprints are not shown to be disjoint")
 
 end NLAlib.Ops

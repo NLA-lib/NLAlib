@@ -215,4 +215,13 @@ example {K : Type} {I : Interp Op Tst K} (τ : Tape K) (μ : Mem K)
   have : μ.store.EqOff F current.store := hfr
   exact wp_skip hr
 
+-- Multi-output calls require pairwise separation of all output blocks.
+example {x r p n : ℕ} (hxr : x ≠ r) (hxp : x ≠ p) (hrp : r ≠ p) :
+    Fp.Apart [(x, 0), (r, 0), (p, 0)] [n, n, n] := by
+  disjoint
+
+-- Distinct offsets in one buffer are allowed, including empty blocks.
+example (b n : ℕ) : Fp.Apart [(b, 0), (b, n), (b, 2 * n)] [n, n, n] := by
+  disjoint
+
 end NLAlib.Ops.Examples

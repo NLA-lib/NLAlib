@@ -19,6 +19,8 @@ as equations and bounds on finite decoded vectors for the mathematical layer.
 * `NLAlib.Ops.dotExactRel_decoded`, `NLAlib.Ops.axpyExactRel_decoded`,
   `NLAlib.Ops.copyRel_decoded`: exact vector equations.
 * `NLAlib.Ops.IsDotErr.decoded`: the componentwise dot-product bound over finite vectors.
+* `NLAlib.Ops.IsAxpyErr.decoded`, `NLAlib.Ops.IsScalErr.decoded`: the componentwise vector
+  bounds used in perturbed recurrences.
 -/
 
 @[expose] public section
@@ -59,5 +61,18 @@ theorem IsDotErr.decoded {e : ℝ} {xs ys : List K} {v : K}
       e * ∑ i : Fin n, |decv dec n xs i * decv dec n ys i| := by
   simpa only [IsDotErr, dotProduct_decv, decv,
     Fin.sum_univ_eq_sum_range (fun i : ℕ => |dec (vec xs i) * dec (vec ys i)|)] using h
+
+/-- The axpy error bound on every component of the decoded finite vectors. -/
+theorem IsAxpyErr.decoded {e : ℝ} {a : K} {xs ys zs : List K}
+    (h : IsAxpyErr dec e n a (vec xs) (vec ys) (vec zs)) (i : Fin n) :
+    |decv dec n zs i - (decv dec n ys i + dec a * decv dec n xs i)| ≤
+      e * (|decv dec n ys i| + |dec a * decv dec n xs i|) :=
+  h i i.isLt
+
+/-- The division error bound on every decoded component, under the nonzero-divisor guard. -/
+theorem IsScalErr.decoded {e : ℝ} {a : K} {xs zs : List K}
+    (h : IsScalErr dec e n a (vec xs) (vec zs)) (ha : dec a ≠ 0) (i : Fin n) :
+    |decv dec n zs i - decv dec n xs i / dec a| ≤ e * |decv dec n xs i / dec a| :=
+  h ha i i.isLt
 
 end NLAlib.Ops

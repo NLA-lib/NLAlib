@@ -111,12 +111,19 @@ def blas1Fn : Blas1Op → BlockFn K
 /-- The product of a matrix given by rows with a vector. -/
 def matvecL (A : List (List K)) (x : List K) : List K := A.map fun row => dotL row x
 
+/-- The matrix-vector operation on a matrix given by rows, with its dimensions checked. -/
+def operatorFn (A : List (List K)) : OperatorOp → BlockFn K
+  | .matvec => .of1 2 (·.getD 1 0) (·.headD 0) fun d x =>
+      if A.length == d.headD 0 && A.all (fun row => row.length == d.getD 1 0) then
+        some (matvecL A x)
+      else none
+
 /-- **The operations of `ROp`** for the matrix `A` (by rows): the draws read the Gaussian stream
 of the tape, the rest is the machine. -/
 def randFn (A : List (List K)) : ROp → BlockFn K
   | .draw => .draw Stream.gauss
   | .gauss => .drawVec Stream.gauss
-  | .matvec => .of1 1 (·.headD 0) (·.headD 0) fun _ x => some (matvecL A x)
+  | .operator o => operatorFn A o
   | .dot => blas1Fn .dot
   | .add => .bin fun a b => some ((mach K).add a b)
   | .nrm2 => blas1Fn .nrm2
@@ -211,8 +218,11 @@ instance : ShowKey Blas1Op := ⟨fun
   | .sum => "sum" | .dot => "dot" | .axpy => "axpy" | .nrm2 => "nrm2" | .scal => "scal"
   | .copy => "vcopy"⟩
 
+instance : ShowKey OperatorOp := ⟨fun | .matvec => "matvec"⟩
+
 instance : ShowKey ROp := ⟨fun
-  | .draw => "draw" | .gauss => "gauss" | .matvec => "matvec" | .dot => "dot" | .add => "add"
+  | .draw => "draw" | .gauss => "gauss" | .operator o => ShowKey.showKey o
+  | .dot => "dot" | .add => "add"
   | .nrm2 => "nrm2" | .mulc q => s!"mulc {q}" | .axpy => "axpy"⟩
 
 instance : ShowKey CmpTst := ⟨fun

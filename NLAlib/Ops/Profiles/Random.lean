@@ -86,7 +86,7 @@ theorem gaussLoop_certifies [Inhabited K] (dec : K → ℝ) {n : ℕ}
     fun I _ hloc o => ?_
   · exact
       { draw := Interp.link_meets_kept (o' := ROp.draw) rfl hI.draw
-        matvec := Interp.link_meets_kept (o' := ROp.matvec) rfl hI.matvec
+        matvec := Interp.link_meets_kept (o' := ROp.operator .matvec) rfl hI.matvec
         dot := Interp.link_meets_kept (o' := ROp.dot) rfl hI.dot
         add := Interp.link_meets_kept (o' := ROp.add) rfl hI.add
         nrm2 := Interp.link_meets_kept (o' := ROp.nrm2) rfl hI.nrm2

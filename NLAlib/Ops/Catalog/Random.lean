@@ -7,6 +7,7 @@ module
 
 public import Mathlib.LinearAlgebra.Matrix.Trace
 public import NLAlib.Ops.Catalog.Blas1
+public import NLAlib.Ops.Catalog.Operator
 public import NLAlib.Ops.Window
 
 /-!
@@ -37,8 +38,8 @@ inductive ROp where
   | draw
   /-- `gauss [n] [] [g]`: the next `n` entries of the Gaussian stream, in the block `g`. -/
   | gauss
-  /-- `matvec [n] [x] [y]`: `y := A x`. -/
-  | matvec
+  /-- An operation from the linear operator catalog. -/
+  | operator (op : OperatorOp)
   /-- `dot [n] [x, y] [z]`. -/
   | dot
   /-- `add [] [a, b] [z]`. -/
@@ -51,26 +52,22 @@ inductive ROp where
   | axpy
   deriving DecidableEq
 
-variable [Inhabited K]
+instance : Has OperatorOp ROp where
+  inj := .operator
+  proj
+    | .operator o => some o
+    | _ => none
+  proj_inj _ := rfl
+  inj_of_proj r o h := by
+    cases r <;> first | exact congrArg ROp.operator (Option.some.inj h).symm | cases h
 
-/-- A block of `n` words, decoded, as a vector. -/
-def decv (dec : K → ℝ) (n : ℕ) (xs : List K) : Fin n → ℝ := fun i => dec (vec xs i)
+variable [Inhabited K]
 
 omit [Inhabited K] in
 /-- An entry of a window. -/
 theorem vec_window [Inhabited K] (τ : Tape K) (s p : ℕ) {k i : ℕ} (hi : i < k) :
     vec (τ.window s p k) i = τ (p + i) s := by
   simp [vec, Tape.window, List.getD_eq_getElem?_getD, hi]
-
-/-- `matvec`: the product by the matrix `A`, exactly. -/
-@[simps (attr := storeNF)]
-def matvecRel (dec : K → ℝ) {n : ℕ} (A : Matrix (Fin n) (Fin n) ℝ) : BlockRel K where
-  nd := 1
-  inLens d := [d.headD 0]
-  outLens d := [d.headD 0]
-  rel _ X _ Y := match X, Y with
-    | [xs], [ys] => decv dec n ys = A.mulVec (decv dec n xs)
-    | _, _ => False
 
 /-- `dot`, exactly, at the length `n`. -/
 @[simps (attr := storeNF)]
@@ -131,7 +128,7 @@ structure IsRandBase (dec : K → ℝ) {n : ℕ} (A : Matrix (Fin n) (Fin n) ℝ
   /-- `draw` is the draw of the model, in the Gaussian stream. -/
   draw : J.IsFn .total .draw (.draw Stream.gauss) AnyOperands
   /-- `matvec`. -/
-  matvec : J.Meets .total .matvec ((matvecRel dec A).spec (OutApart (· = n)))
+  matvec : IsExactMatvec dec A J
   /-- `dot`. -/
   dot : J.Meets .total .dot ((dotExRel dec n).spec (OutApart (· = n)))
   /-- `add`. -/

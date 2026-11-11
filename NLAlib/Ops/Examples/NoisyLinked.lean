@@ -44,7 +44,7 @@ def nmvImpl (σ : ℚ) : Impl ROp Tst where
   nin := 1
   nout := 1
   body := .alloc (.var 0) (.alloc (.const 1)
-    (.seq (.call .matvec [.var 0] [⟨0, .var 1⟩] [⟨1, .var 2⟩])
+    (.seq (.call (.operator .matvec) [.var 0, .var 0] [⟨0, .var 1⟩] [⟨1, .var 2⟩])
       (.seq (.call .gauss [.var 0] [] [⟨2, .const 0⟩])
         (.seq (.call .nrm2 [.var 0] [⟨0, .var 1⟩] [⟨3, .const 0⟩])
           (.seq (.call (.mulc σ) [] [⟨3, .const 0⟩] [⟨3, .const 0⟩])
@@ -76,7 +76,7 @@ theorem nmvImpl_spec {dec : K → ℝ} {A : Matrix (Fin n) (Fin n) ℝ} {I : Int
   refine ⟨⟨rfl, rfl, rfl⟩, wp_alloc rfl (wp_alloc rfl ?_)⟩
   -- the exact product into `y`, the probe into the scratch block, the norm of `x` and its
   -- multiple by `σ` in the scratch cell, the update of `y`
-  wp_call hI.matvec with ws hwl hws
+  wp_call hI.matvec [List.getD_cons_succ, List.getD_cons_zero] with ws hwl hws
   wp_call hI.gauss with gs hgl hgs
   obtain rfl : gs = τ.window Stream.gauss p n' := (List.cons.inj hgs).1
   wp_call hI.nrm2 with t ht
@@ -105,8 +105,8 @@ theorem nmvImpl_spec {dec : K → ℝ} {A : Matrix (Fin n) (Fin n) ℝ} {I : Int
 norm, one product by `σ` and one `axpy` per call; `n + 1` scratch cells; a window of `n`. -/
 noncomputable def noisy (σ : ℚ) : Profile NOp ROp Tst where
   table _ := .inl (nmvImpl σ)
-  cost _ d := Count.one .matvec d + (Count.one .gauss d + (Count.one .nrm2 d +
-    (Count.one (.mulc σ) [] + Count.one .axpy d)))
+  cost _ d := Count.one (.operator .matvec) [d.headD 0, d.headD 0] +
+    (Count.one .gauss d + (Count.one .nrm2 d + (Count.one (.mulc σ) [] + Count.one .axpy d)))
   ws _ d := d.headD 0 + 1
   wsLo _ _ := 0
   win _ d := d.headD 0
@@ -142,8 +142,8 @@ omit [Inhabited K] in
 product, `n` scalar draws, one norm, one product by `σ` and one `axpy`. -/
 theorem push_noisyDraws_npowCount (σ : ℚ) (k n : ℕ) :
     Count.push (noisyDraws σ).cost (npowCount (Tst := Tst) k n) =
-      k • (2 • (Count.one .matvec [n] + (n • Count.one .draw [] + (Count.one .nrm2 [n] +
-        (Count.one (.mulc σ) [] + Count.one .axpy [n]))))) := by
+      k • (2 • (Count.one (.operator .matvec) [n, n] + (n • Count.one .draw [] +
+        (Count.one .nrm2 [n] + (Count.one (.mulc σ) [] + Count.one .axpy [n]))))) := by
   simp [npowCount, noisyDraws, Profile.over, noisy, Rand.gaussLoop, Rand.gaussCost]
 
 /-- **The corollary for the linked noisy power iteration.** Over every interpretation of the
@@ -161,7 +161,8 @@ theorem runsLaw_npow_link [MeasurableSpace K] {dec : K → ℝ} {A : Matrix (Fin
     {m : Mem K} {xs₀ : List K} (hx : m.store.readBlock x.1 x.2 n = some xs₀)
     (hxl : x.2 + n ≤ m.store.len x.1) (hlx : x.1 < m.store.length) :
     RunsLaw I (fun _ _ => 0) ξ (npow.link (noisyDraws σ).table)
-      (Env.frame [k, n] [x, x]) m (k • (2 • (Count.one .matvec [n] + (n • Count.one .draw [] +
+      (Env.frame [k, n] [x, x]) m
+      (k • (2 • (Count.one (.operator .matvec) [n, n] + (n • Count.one .draw [] +
         (Count.one .nrm2 [n] + (Count.one (.mulc σ) [] + Count.one .axpy [n]))))))
       (n + (n + 1)) (NpowPost dec n k x m) fun X =>
         (∀ i, ∫ ω, X ω i ∂P = (A ^ (2 * k)).mulVec (decv dec n xs₀) i) ∧

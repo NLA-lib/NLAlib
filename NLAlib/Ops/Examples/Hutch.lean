@@ -43,7 +43,7 @@ the algorithm. One input and one output, the cell `est`. Index variables: `N`, `
 def hutch : Stmt ROp Tst :=
   .alloc (.var 1) (.alloc (.var 1) (.alloc (.const 1) (.loop (.var 0)
     (.seq (.call .gauss [.var 1] [] [⟨2, .const 0⟩])
-      (.seq (.call .matvec [.var 1] [⟨2, .const 0⟩] [⟨3, .const 0⟩])
+      (.seq (.call (.operator .matvec) [.var 1, .var 1] [⟨2, .const 0⟩] [⟨3, .const 0⟩])
         (.seq (.call .dot [.var 1] [⟨2, .const 0⟩, ⟨3, .const 0⟩] [⟨4, .const 0⟩])
           (.call .add [] [⟨0, .var 2⟩, ⟨4, .const 0⟩] [⟨0, .var 2⟩])))))))
 
@@ -52,12 +52,14 @@ def hutchImpl : Impl ROp Tst := ⟨2, 1, 1, hutch⟩
 
 /-- The call counts of `hutch`: `N` vector draws, products, dot products and additions. -/
 noncomputable def hutchCount (N n : ℕ) : Count ROp Tst :=
-  N • (Count.one .gauss [n] + (Count.one .matvec [n] + (Count.one .dot [n] + Count.one .add [])))
+  N • (Count.one .gauss [n] + (Count.one (.operator .matvec) [n, n] +
+    (Count.one .dot [n] + Count.one .add [])))
 
 /-- The workspace of `hutch`: the probe, the product, one cell, and the workspace of the
 operation that needs most. -/
 def hutchPeak (W : ROp → List ℕ → ℕ) (n : ℕ) : ℕ :=
-  n + (n + (1 + max (W .gauss [n]) (max (W .matvec [n]) (max (W .dot [n]) (W .add [])))))
+  n + (n + (1 + max (W .gauss [n])
+    (max (W (.operator .matvec) [n, n]) (max (W .dot [n]) (W .add [])))))
 
 theorem staticCost_hutch (N n o o' : ℕ) :
     staticCost (hutch (Tst := Tst)) [N, n, o, o'] = hutchCount N n := by
@@ -236,7 +238,7 @@ theorem wp_hutch {dec : K → ℝ} {n : ℕ} {A : Matrix (Fin n) (Fin n) ℝ} {J
     -- the probe into `g`, the product into `y`, the quadratic form into `t`, the accumulation
     wp_call hJ.gauss with ws hwl hws
     obtain rfl : ws = τ.window Stream.gauss (p + i * n) n := (List.cons.inj hws).1
-    wp_call hJ.matvec with ys hyl hys
+    wp_call hJ.matvec [List.getD_cons_succ, List.getD_cons_zero] with ys hyl hys
     wp_call hJ.dot with t ht
     wp_call hJ.add with v' hv'
     refine ⟨_, v', _, rfl, by simp [Mem.advance, Mem.upd, Mem.updBlock]; ring,

@@ -41,8 +41,8 @@ theorem runsLaw_hutch_link {dec : K → ℝ} {n : ℕ} {A : Matrix (Fin n) (Fin 
     (hq : MemLp (quadForm A) 2 (probeLaw dec (law Stream.gauss) n)) {N : ℕ} (hN : 0 < N)
     {e : ℕ × ℕ} {m : Mem K} {z₀ : K} (he : m.store.get e.1 e.2 = some z₀) (hz : dec z₀ = 0) :
     RunsLaw I (fun _ _ => 0) ξ (hutch.link Rand.gaussLoop.table) (Env.frame [N, n] [e, e]) m
-      (N • (n • Count.one .draw [] + (Count.one .matvec [n] + (Count.one .dot [n] +
-        Count.one .add [])))) (n + (n + 1))
+      (N • (n • Count.one .draw [] + (Count.one (.operator .matvec) [n, n] +
+        (Count.one .dot [n] + Count.one .add [])))) (n + (n + 1))
       (HutchPost dec N n e m) fun X => ∫ ω, X ω / N ∂P = A.trace ∧
         Var[fun ω => X ω / N; P] = Var[quadForm A; probeLaw dec (law Stream.gauss) n] / N := by
   have := (Rand.gaussLoop_certifies dec A).runsLaw (ξ := ξ)
@@ -55,8 +55,8 @@ omit [Inhabited K] [MeasurableSpace K] in
 and an addition. -/
 theorem push_gaussLoop_hutchCount (N n : ℕ) :
     Count.push Rand.gaussLoop.cost (hutchCount (Tst := Tst) N n) =
-      N • (n • Count.one .draw [] + (Count.one .matvec [n] + (Count.one .dot [n] +
-        Count.one .add []))) := by
+      N • (n • Count.one .draw [] + (Count.one (.operator .matvec) [n, n] +
+        (Count.one .dot [n] + Count.one .add []))) := by
   simp [hutchCount, Rand.gaussLoop, Rand.gaussCost]
 
 end NLAlib.Ops.Examples

@@ -624,6 +624,7 @@ public import NLAlib.Ops.Blocks
 public import NLAlib.Ops.Catalog.Blas1
 public import NLAlib.Ops.Catalog.Compare
 public import NLAlib.Ops.Catalog.Isotropic
+public import NLAlib.Ops.Catalog.Operator
 public import NLAlib.Ops.Catalog.Random
 public import NLAlib.Ops.Catalog.Scalar
 public import NLAlib.Ops.Catalog.Tagged

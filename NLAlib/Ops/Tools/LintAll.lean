@@ -13,6 +13,7 @@ import NLAlib.Ops.Blocks
 import NLAlib.Ops.Catalog.Blas1
 import NLAlib.Ops.Catalog.Compare
 import NLAlib.Ops.Catalog.Isotropic
+import NLAlib.Ops.Catalog.Operator
 import NLAlib.Ops.Catalog.Random
 import NLAlib.Ops.Catalog.Scalar
 import NLAlib.Ops.Catalog.Tagged

@@ -106,7 +106,7 @@ The nine base edits that both reviews asked for before anything is built on the 
 | `Window.lean` | `drawRel`, `wp_loop_fill` |
 | `Law.lean` | `RunsLaw`, `Impl.Meets.runsLaw`, `Profile.Certifies.runsLaw`, failure probabilities, `runVal` |
 | `Profile.lean` | Groups (`Has`, `Apart`), `Profile`, `Profile.Certifies`, `over`, `iter` |
-| `Catalog/` | `Scalar` (`ScalarOp`, `Machine`, `IsScalar`, `StdModel`), `Blas1`, `Compare` (`CmpTst`, `IdxTst`, `IsCmp`, `IsToNat`), `Tagged` (`Tagged`, `IsScalarAt`, `CastOp`), `Isotropic`, `Random` |
+| `Catalog/` | `Scalar`, `Blas1`, `Operator` (rectangular `matvec [m, n]`), `Compare` (flag-writing `CmpOp`, `FlagTst.isSet`, and the decoded queries), `Tagged`, `Isotropic`, `Random` |
 | `Blas/`, `Profiles/` | The level-1 implementations and the profiles `Blas.seq`, `Blas.pairwise k`, `Rand.gaussLoop` |
 
 ## The contract, the rule, the certificate

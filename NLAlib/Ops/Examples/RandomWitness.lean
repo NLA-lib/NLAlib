@@ -105,15 +105,11 @@ theorem sqNorm_mulVec_le {n : ℕ} (A : Matrix (Fin n) (Fin n) ℝ) (v : Fin n �
 
 variable {n : ℕ} {Tst : Type}
 
-theorem decv_ofFn (v : Fin n → ℝ) : decv id n (List.ofFn v) = v :=
-  funext fun i => by simp [decv, vec, List.getD_eq_getElem?_getD]
-
 /-- The block functions of the operations of `ROp` over the real numbers, in exact arithmetic. -/
 noncomputable def randFns (A : Matrix (Fin n) (Fin n) ℝ) : ROp → BlockFn ℝ
   | .draw => .draw Stream.gauss
   | .gauss => .drawVec Stream.gauss
-  | .matvec => .of1 1 (fun d => d.headD 0) (fun d => d.headD 0) fun _ x =>
-      some (List.ofFn (A.mulVec (decv id n x)))
+  | .operator .matvec => exactMatvecFn A
   | .dot => .of2 1 (fun d => d.headD 0) (fun d => d.headD 0) (fun _ => 1) fun _ x y =>
       some [∑ i, decv id n x i * decv id n y i]
   | .add => .bin fun a b => some (a + b)
@@ -130,14 +126,7 @@ theorem exists_isRandLin (A : Matrix (Fin n) (Fin n) ℝ) :
     ∃ I : Interp ROp Tst ℝ, IsRandLin id A I ∧ ∀ o, I.TapeLocal o (randWindow o) := by
   have hfn := fun o => Interp.ofFns_isFn (Tst := Tst) (randFns A) .total o AnyOperands
   refine ⟨Interp.ofFns (randFns A), ⟨⟨hfn .draw, ?_, ?_, ?_, ?_, fun q => ?_, ?_⟩, ?_⟩, fun o => ?_⟩
-  · refine (hfn .matvec).meets_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl)
-      (fun _ => rfl) (fun _ => rfl) ?_
-    intro d w xs m ins outs hnd _ hadm hr _
-    obtain ⟨k, rfl⟩ := List.length_eq_one_iff.mp hnd
-    obtain rfl : n = k := hadm.1.symm
-    obtain ⟨x, xs, rfl, hx, rfl⟩ := Mem.readBlocks_one hr
-    exact ⟨[List.ofFn (A.mulVec (decv id n xs))], by simp [randFns, BlockFn.of1],
-      by simp [matvecRel], decv_ofFn _⟩
+  · exact Interp.IsFn.meets_matvec (A := A) (hfn (.operator .matvec))
   · refine (hfn .dot).meets_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl)
       (fun _ => rfl) (fun _ => rfl) ?_
     intro d w xs m ins outs hnd _ hadm hr _
@@ -176,7 +165,9 @@ theorem exists_isRandLin (A : Matrix (Fin n) (Fin n) ℝ) :
       rfl⟩
   · exact (hfn .gauss).meets_drawRel fun _ _ _ _ => trivial
   · have := Interp.ofFns_tapeLocal (Tst := Tst) (randFns A) o
-    cases o <;> exact this
+    cases o
+    case operator op => cases op; exact this
+    all_goals exact this
 
 /-- **Joint witness of the randomized examples at the law level**: for every matrix, an
 interpretation meeting the contracts of the exact operations and the draws with tape-local

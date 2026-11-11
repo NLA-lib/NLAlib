@@ -111,6 +111,22 @@ def cgsBufs : List (List (Option ℚ)) := [vals [3, 4, 0, 4, 3, 0], vals [0, 0, 
 #eval profileFrame (blasI ℚ) (Blas.ws 0) (signTape 0) (cgsB.link seqTable) [3, 2] [0, 1, 2, 1]
   cgsBufs
 
+/-! ### Rectangular matrix-vector products -/
+
+private def runMatvec (A : List (List ℚ)) (m n : ℕ) (x : List ℚ) : Option (Mem ℚ) :=
+  run (withQueries (operatorFn A)) (fun _ _ => 0)
+    (.call .matvec [.const m, .const n] [⟨0, .const 0⟩] [⟨1, .const 0⟩])
+    (frameOf [] [0, 1]) (memOf [vals x, blank m])
+
+#guard (runMatvec [[1, 2, 3], [4, 5, 6]] 2 3 [1, 2, 3]).map (·.store) ==
+  some [vals [1, 2, 3], vals [14, 32]]
+
+example : runMatvec [] 0 2 [1, 2] = some (memOf [vals [1, 2], []]) := rfl
+
+example : runMatvec [[], []] 2 0 [] = some (memOf [[], vals [0, 0]]) := rfl
+
+example : runMatvec [[1, 2], [3]] 2 2 [1, 2] = none := rfl
+
 /-! ### Girard–Hutchinson with a fixed tape of signs -/
 
 /-- A symmetric matrix of trace 9, by rows. -/

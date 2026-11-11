@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Ops.Blas.Decoded
+public import NLAlib.ForMathlib.Analysis.InnerProductSpace.PiL2
 
 /-!
 # Safe norm and normalization guards
@@ -67,5 +68,18 @@ theorem IsNrm2Err.pos_iff {ed es : ℝ} {n : ℕ} {xs : List K} {ν : K}
   · intro hp hz
     exact hp.ne' (h.eq_zero_of_decoded_eq_zero hz)
   · exact h.pos_of_ne_zero hd hs
+
+/-- At zero dot and square-root error, the computed norm is the exact Euclidean norm. -/
+theorem IsNrm2Err.eq_norm {n : ℕ} {xs : List K} {ν : K}
+    (h : IsNrm2Err dec 0 0 n (vec xs) ν) :
+    dec ν = ‖WithLp.toLp 2 (decv dec n xs)‖ := by
+  obtain ⟨σ, hσ, hν⟩ := h
+  have hσeq : dec σ = decv dec n xs ⬝ᵥ decv dec n xs := by
+    simpa [sub_eq_zero] using hσ.decoded
+  have hnorm : dec σ = ‖WithLp.toLp 2 (decv dec n xs)‖ ^ 2 :=
+    hσeq.trans (EuclideanSpace.norm_toLp_sq_eq_dotProduct_self _).symm
+  have hs := hν (by rw [hnorm]; positivity)
+  have hνeq : dec ν = √(dec σ) := by simpa [sub_eq_zero] using hs
+  rw [hνeq, hnorm, Real.sqrt_sq (norm_nonneg _)]
 
 end NLAlib.Ops

@@ -36,6 +36,56 @@ namespace NLAlib.Krylov.CG.HSCG
 
 open Ops
 
+/-- The three groups of operations used by a Hestenes–Stiefel round. -/
+inductive Signature where
+  /-- Scalar arithmetic. -/
+  | scalar (op : ScalarOp)
+  /-- Level-one vector operations. -/
+  | blas (op : Blas1Op)
+  /-- Matrix-vector products. -/
+  | operator (op : OperatorOp)
+  deriving DecidableEq
+
+instance : Has ScalarOp Signature where
+  inj := .scalar
+  proj
+    | .scalar o => some o
+    | _ => none
+  proj_inj _ := rfl
+  inj_of_proj o g h := by
+    cases o with
+    | scalar s => exact congrArg Signature.scalar (Option.some.inj h).symm
+    | blas _ => cases h
+    | operator _ => cases h
+
+instance : Has Blas1Op Signature where
+  inj := .blas
+  proj
+    | .blas o => some o
+    | _ => none
+  proj_inj _ := rfl
+  inj_of_proj o g h := by
+    cases o with
+    | scalar _ => cases h
+    | blas b => exact congrArg Signature.blas (Option.some.inj h).symm
+    | operator _ => cases h
+
+instance : Has OperatorOp Signature where
+  inj := .operator
+  proj
+    | .operator o => some o
+    | _ => none
+  proj_inj _ := rfl
+  inj_of_proj o g h := by
+    cases o with
+    | scalar _ => cases h
+    | blas _ => cases h
+    | operator a => exact congrArg Signature.operator (Option.some.inj h).symm
+
+instance : Apart Blas1Op ScalarOp Signature := ⟨fun _ => rfl⟩
+instance : Apart Blas1Op OperatorOp Signature := ⟨fun _ => rfl⟩
+instance : Apart ScalarOp OperatorOp Signature := ⟨fun _ => rfl⟩
+
 variable {Op Tst : Type} [Has ScalarOp Op] [Has Blas1Op Op] [Has OperatorOp Op]
 
 /-- One Hestenes–Stiefel round from `(X,R,P)` to `(X,R,P)`. Scratch consists of the product
@@ -61,6 +111,16 @@ def step : Stmt Op Tst := ops% [n] (X, R, P) → (X, R, P) {
 /-- One round is a block implementation with dimension `n` and three inputs and outputs. -/
 def stepImpl : Impl Op Tst := ⟨1, 3, 3, step⟩
 
+/-- Perform a prescribed number of active rounds from a stored CG state. Each round is
+framed using its block interface and frees its scratch before the next round. -/
+def rounds : Stmt Op Tst :=
+  .loop (.var 1) (.frame [.var 0]
+    [⟨0, .var 2⟩, ⟨1, .var 3⟩, ⟨2, .var 4⟩,
+      ⟨0, .var 2⟩, ⟨1, .var 3⟩, ⟨2, .var 4⟩] step)
+
+/-- A block of active rounds, with dimensions `n,k` and three state inputs and outputs. -/
+def roundsImpl : Impl Op Tst := ⟨2, 3, 3, rounds⟩
+
 /-- The counts of one round, including the copies used by the direction update. -/
 noncomputable def stepCount (n : ℕ) : Count Op Tst :=
   3 • Count.one (Has.inj Blas1Op.dot) [n] + Count.one (Has.inj OperatorOp.matvec) [n, n] +
@@ -84,5 +144,19 @@ theorem staticPeak_step_le (W : Op → List ℕ → ℕ) (n a b c a' b' c' : ℕ
     staticPeak W (step (Op := Op) (Tst := Tst)) [n, a, b, c, a', b', c'] ≤ stepPeak W n := by
   simp [step, staticPeak, stepPeak]
   omega
+
+/-- The static count of the round loop is the number of rounds times the per-round count. -/
+theorem staticCost_rounds (n k a b c a' b' c' : ℕ) :
+    staticCost (rounds (Op := Op) (Tst := Tst)) [n, k, a, b, c, a', b', c'] =
+      k • stepCount n := by
+  simp [rounds, staticCost, IExp.eval, IExp.evalList, staticCost_step]
+
+/-- The same scratch buffers suffice for every round because each call frees them. -/
+theorem staticPeak_rounds_le (W : Op → List ℕ → ℕ) (n k a b c a' b' c' : ℕ) :
+    staticPeak W (rounds (Op := Op) (Tst := Tst)) [n, k, a, b, c, a', b', c'] ≤
+      stepPeak W n := by
+  simp only [rounds, staticPeak]
+  exact Finset.sup_le fun i _ => by
+    simpa [IExp.eval, IExp.evalList, Operand.off] using staticPeak_step_le W n a b c a b c
 
 end NLAlib.Krylov.CG.HSCG

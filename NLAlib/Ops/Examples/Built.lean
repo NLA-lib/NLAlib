@@ -107,4 +107,40 @@ example (q : Tst) (o : Op) : (ops% [n] (x) → (y) {
           (.call o [.var 4, .var 3] [⟨0, .var 1⟩] [⟨1, .var 2 + .var 4⟩])
           (.ifPos (.var 4) (.call o [.var 4] [⟨0, .var 1⟩] [⟨1, .var 2⟩])))) := rfl
 
+-- Allocation chains expose one fresh store and named lengths, including zero-sized buffers.
+example {K : Type} {I : Interp Op Tst K} {md : Mode} (τ : Tape K) (μ : Mem K) (n : ℕ) :
+    Writes md I τ (.alloc (.var 0) (.alloc (.var 0 * .const 2) .skip))
+      ⟨[n], []⟩ ⊥ (fun _ => True) μ := by
+  fail_if_success alloc as t t
+  fail_if_success alloc as t u v
+  fail_if_success alloc as n
+  alloc as t u
+  have : s_t.len t = n := ht
+  have : s_t.len u = n * 2 := hu
+  exact wp_skip ⟨Store.EqOff.refl _ _, fun _ _ _ => True.intro⟩
+
+-- The tactic also recognizes the allocation-chain helper.
+example {K : Type} {I : Interp Op Tst K} (τ : Tape K) (μ : Mem K) :
+    Writes .total I τ (Stmt.allocs [.const 0] .skip) ⟨[], []⟩ ⊥ (fun _ => True) μ := by
+  alloc as t
+  have : s_t.len t = 0 := ht
+  exact wp_skip ⟨Store.EqOff.refl _ _, fun _ _ _ => True.intro⟩
+
+-- A caller read crosses allocation, two named calls, and release of the scratch buffer.
+example {K : Type} {M : Machine K} {J : Interp Op Tst K} (hS : IsScalar M J) :
+    (opsImpl% [] (x) → (y) {
+      let t ← alloc 1;
+      call (Has.inj ScalarOp.copy) [] (x) → (t);
+      call (Has.inj ScalarOp.copy) [] (t) → (y)
+    }).Meets J .total ((BlockFn.un fun a : K => some a).rel.spec AnyOperands) := by
+  cert_intro [] (x) → (y) reads (xs)
+  obtain ⟨a, rfl⟩ := List.length_eq_one_iff.mp (Store.length_of_readBlock hxs)
+  alloc as t
+  step (hS .copy) as m₁ hfr₁ ⟨hpos₁, a₁, ha₁, hcopy₁⟩
+  step (hS .copy) as m₂ hfr₂ ⟨hpos₂, a₂, ha₂, hcopy₂⟩
+  intro s₂ hs₂ hB₂
+  exact ⟨by simp [hpos₂, hpos₁], [[a₂]],
+    Mem.readBlocks_of_cons (Store.readBlock_one_of_get (by kept)) rfl,
+    by simp [BlockFn.rel, BlockFn.un, hcopy₁, hcopy₂]⟩
+
 end NLAlib.Ops.Examples

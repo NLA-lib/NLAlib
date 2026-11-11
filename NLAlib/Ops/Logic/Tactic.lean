@@ -47,8 +47,8 @@ of the block is replaced by `hfr.trans' hfr₁`, the lengths `hlen : ∀ b, m₁
 restated, and `keep` restates the reads. A side goal it cannot discharge makes it fail, naming
 the goal (`step!` leaves it instead, under its name: `hadm`, `hpre`, `hap`).
 
-**Phase A**: the syntax of each tactic with its contract; provisional implementations for
-`frame` and `fp_sub` (the others fail with "phase B").
+The allocation, call and certificate tactics use the proved footprint rules. `checkpoint`,
+`loop_inv` and `keep` still have placeholder implementations; `decode` is provisional.
 
 ## Main results
 
@@ -91,13 +91,55 @@ syntax "checkpoint " ident : tactic
 macro_rules
   | `(tactic| checkpoint $_m) => `(tactic| fail "checkpoint: phase B")
 
+open Lean Meta Elab Tactic in
 /-- **`alloc as t₁ … tₖ`**: the allocation rule (`NLAlib.Ops.writes_alloc`,
 `NLAlib.Ops.writes_allocs`) with the handles named, their lengths and the facts of the store
-below them introduced, and their footprints added. Phase B. -/
-syntax "alloc " &"as" (ppSpace colGt ident)+ : tactic
-
-macro_rules
-  | `(tactic| alloc as $_ids*) => `(tactic| fail "alloc: phase B")
+below them introduced, and their footprints added. Names the fresh store `s_t₁`, its length
+`hlen_t₁`, agreement with the caller `hbelow_t₁`, and each buffer length `htᵢ`; generated
+names gain suffixes when needed. The buffer names must be fresh and match a nonempty prefix of
+consecutive allocations. -/
+elab "alloc " &"as" ids:(ppSpace colGt ident)+ : tactic => withMainContext do
+  let target ← instantiateMVars (← getMainTarget)
+  unless target.isAppOf ``Writes do throwError "alloc: expected a Writes goal"
+  let args := target.getAppArgs
+  let m := args.back!
+  let mut body := args[args.size - 5]!
+  let mut lens : Array Expr := #[]
+  let mut names : Array Name := #[]
+  for id in ids do
+    if names.contains id.getId || ((← getLCtx).findFromUserName? id.getId).isSome then
+      throwErrorAt id "alloc: buffer name is already in scope"
+    names := names.push id.getId
+    let stmt ← whnfD body
+    let (``Stmt.alloc, #[_, _, len, rest]) := stmt.getAppFnArgs
+      | throwErrorAt id "alloc: expected another consecutive allocation"
+    lens := lens.push len
+    body := rest
+  let lensTerm ← Term.exprToSyntax (← mkListLit (mkConst ``IExp) lens.toList)
+  let start ← mkAppM ``List.length #[← mkAppM ``Mem.store #[m]]
+  for i in [:ids.size] do
+    let id := ids[i]!
+    let val ← mkAppM ``Nat.add #[start, mkNatLit i]
+    let valTerm ← Term.exprToSyntax val
+    evalTactic (← `(tactic| let $id : ℕ := $valTerm))
+  withMainContext do
+    let store ← mkIdent <$> getUnusedUserName (ids[0]!.getId.appendBefore "s_")
+    let hlen ← mkIdent <$> getUnusedUserName (ids[0]!.getId.appendBefore "hlen_")
+    let hsizes ← mkIdent <$> getUnusedUserName (ids[0]!.getId.appendBefore "hsizes_")
+    let hbelow ← mkIdent <$> getUnusedUserName (ids[0]!.getId.appendBefore "hbelow_")
+    evalTactic (← `(tactic| refine writes_allocs (lens := $lensTerm) (by rfl) ?_))
+    evalTactic (← `(tactic| intro $store $hlen $hsizes $hbelow))
+    for i in [:ids.size] do
+      withMainContext do
+        let id := ids[i]!
+        let hsize ← mkIdent <$> getUnusedUserName (id.getId.appendBefore "h")
+        let idx := quote i
+        evalTactic (← `(tactic| have $hsize := $hsizes $idx (by simp)))
+        evalTactic (← `(tactic| change ($store:ident).len $id = _ at $hsize:ident))
+        evalTactic (← `(tactic| simp only [List.getElem_cons_zero, List.getElem_cons_succ,
+          $id:ident, Nat.add_zero]
+          at $hsize:ident))
+  evalTactic (← `(tactic| frame_facts))
 
 /-- **`loop_inv F P with i m' hfr hP`**: the loop rule of the goal's loop (`writes_loop`,
 `writes_loop₂`, `writes_fill`, `writes_fill₂`, `writes_whileFuel`) at the footprint family `F`
@@ -187,7 +229,8 @@ macro_rules
       simp only [storeNF, List.headD_cons, List.getD_cons_zero, List.getD_cons_succ]
         at $(mkIdent `hr_0):ident $hz:ident))
     tacs := tacs.push (← `(tactic|
-      simp only [admNF, List.headD_cons, List.getD_cons_zero, List.getD_cons_succ, List.mem_cons,
+      try simp only [admNF, AnyOperands, List.headD_cons, List.getD_cons_zero, List.getD_cons_succ,
+        List.mem_cons,
         List.mem_nil_iff, or_false, forall_eq_or_imp, forall_eq, List.cons.injEq, and_true,
         and_assoc, exists_and_left, exists_eq_left', exists_eq_left, exists_eq_right,
         exists_eq_right_right, ne_eq] at $hadm:ident))

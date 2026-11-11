@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Krylov.LinearSystems.CGProgramRoundedBody
+public import NLAlib.Krylov.FinitePrecision.CGRunConstruction
 
 /-!
 # Successful rounded execution prefixes and the existing CG run model
@@ -64,83 +65,6 @@ theorem initial_cache_of_self_dot_execution (I : Interp P ι K C) (tag : P)
   have hrv : (fun i : Fin N => rv i) = b := by funext i; simp only [rv, dif_pos i.isLt]
   rw [hwdec, hrv] at heq hzero
   exact ⟨θ, heq, hθ, hwdec ▸ hnonneg, hzero⟩
-
-private theorem forall_lt_one {Q : ℕ → Prop} (h : Q 0) : ∀ j < 1, Q j := by
-  intro j hj
-  have : j = 0 := by omega
-  simpa only [this] using h
-
-private theorem forall_le_one {Q : ℕ → Prop} (h0 : Q 0) (h1 : Q 1) : ∀ j ≤ 1, Q j := by
-  intro j hj
-  rcases Nat.le_one_iff_eq_zero_or_eq_one.mp hj with rfl | rfl
-  · exact h0
-  · exact h1
-
-private noncomputable def oneStepRun (N : ℕ) (A : Matrix (Fin N) (Fin N) ℝ)
-    (b : Fin N → ℝ) (next : CGState ℝ (Fin N)) (sv : Fin N → ℝ)
-    (ε ν0 ν1 θ0 θ1 μ γ eγ δ eδ : ℝ) (hA : Aᵀ = A) (hε : 0 ≤ ε) (hεle : ε ≤ 1 / 100)
-    (hν0 : ν0 = ‖WithLp.toLp 2 b‖ ^ 2 * (1 + θ0))
-    (hν1 : ν1 = ‖WithLp.toLp 2 next.r‖ ^ 2 * (1 + θ1))
-    (hθ0 : |θ0| ≤ ε) (hθ1 : |θ1| ≤ ε) (hνpos : 0 < ν0) (hμpos : 0 < μ)
-    (hs : ‖WithLp.toLp 2 (A *ᵥ b - sv)‖ ≤ ε * specNorm A * ‖WithLp.toLp 2 b‖)
-    (hμ : |b ⬝ᵥ sv - μ| ≤ ε * ‖WithLp.toLp 2 b‖ * ‖WithLp.toLp 2 sv‖)
-    (hγ : γ = ν0 / μ * (1 + eγ)) (heγ : |eγ| ≤ ε)
-    (hδ : δ = ν1 / ν0 * (1 + eδ)) (heδ : |eδ| ≤ ε)
-    (hex : ‖WithLp.toLp 2 (γ • b - next.x)‖ ≤ ε * (|γ| * ‖WithLp.toLp 2 b‖))
-    (her : ‖WithLp.toLp 2 (b - γ • sv - next.r)‖ ≤
-      ε * (‖WithLp.toLp 2 b‖ + |γ| * ‖WithLp.toLp 2 sv‖))
-    (hep : ‖WithLp.toLp 2 (next.r + δ • b - next.p)‖ ≤
-      ε * (‖WithLp.toLp 2 next.r‖ + |δ| * ‖WithLp.toLp 2 b‖)) : CGRun N 1 := by
-  refine { A := A, b := b
-           x := fun j => if j = 0 then 0 else next.x
-           r := fun j => if j = 0 then b else next.r
-           p := fun j => if j = 0 then b else next.p
-           s := fun _ => sv
-           ν := fun j => if j = 0 then ν0 else ν1
-           μ := fun _ => μ
-           γ := fun _ => γ
-           δ := fun _ => δ
-           es := fun _ => -(A *ᵥ b - sv)
-           θ := fun j => if j = 0 then θ0 else θ1
-           eμ := fun _ => -(b ⬝ᵥ sv - μ)
-           eγ := fun _ => eγ
-           ex := fun _ => -(γ • b - next.x)
-           er := fun _ => -(b - γ • sv - next.r)
-           eδ := fun _ => eδ
-           ep := fun _ => -(next.r + δ • b - next.p)
-           ε := ε, transpose_A := hA, ε_nonneg := hε, k_pos := by omega, ε_le := hεle
-           x_zero := rfl, r_zero := rfl, p_zero := rfl
-           ν_eq := forall_le_one hν0 hν1
-           abs_θ_le := forall_le_one hθ0 hθ1
-           ν_pos := forall_lt_one hνpos
-           s_eq := forall_lt_one (by
-             simp only [ite_true, neg_sub, ← add_sub_assoc, add_sub_cancel_left])
-           norm_es_le := forall_lt_one (by
-             simpa only [ite_true, WithLp.toLp_neg, norm_neg] using hs)
-           μ_eq := forall_lt_one (by
-             simp only [ite_true, neg_sub, ← add_sub_assoc, add_sub_cancel_left])
-           abs_eμ_le := forall_lt_one (by simpa only [ite_true, abs_neg] using hμ)
-           μ_pos := forall_lt_one hμpos
-           γ_eq := forall_lt_one hγ
-           abs_eγ_le := forall_lt_one heγ
-           x_succ := forall_lt_one (by
-             simp only [ite_true, if_neg Nat.one_ne_zero, zero_add, neg_sub,
-               ← add_sub_assoc, add_sub_cancel_left])
-           norm_ex_le := forall_lt_one (by
-             simpa only [ite_true, WithLp.toLp_neg, norm_neg, WithLp.toLp_zero, norm_zero, zero_add]
-               using hex)
-           r_succ := forall_lt_one (by
-             simp only [ite_true, if_neg Nat.one_ne_zero, neg_sub,
-               ← add_sub_assoc, add_sub_cancel_left])
-           norm_er_le := forall_lt_one (by
-             simpa only [ite_true, WithLp.toLp_neg, norm_neg] using her)
-           δ_eq := forall_lt_one hδ
-           abs_eδ_le := forall_lt_one heδ
-           p_succ := forall_lt_one (by
-             simp only [ite_true, if_neg Nat.one_ne_zero, neg_sub,
-               ← add_sub_assoc, add_sub_cancel_left])
-           norm_ep_le := forall_lt_one (by
-             simpa only [ite_true, if_neg Nat.one_ne_zero, WithLp.toLp_neg, norm_neg] using hep) }
 
 /-- A nonzero first rounded step yields the EXISTING `CGRun N 1`, with actual physical
 output cells and actual cached/scalar/product words. The initial error is extracted from its
@@ -204,7 +128,7 @@ theorem cgRun_one_of_initial_dot_execution (I : Interp P ι K C) (tag : P)
   have hex' : ‖WithLp.toLp 2 (γ • b - next.x)‖ ≤
       cgImplementationRoundoffBound N (u tag) * (|γ| * ‖WithLp.toLp 2 b‖) := by
     simpa only [zero_add, WithLp.toLp_zero, norm_zero] using hex
-  let R := oneStepRun N A b next sv (cgImplementationRoundoffBound N (u tag))
+  let R := CGRun.ofOneStep N A b next sv (cgImplementationRoundoffBound N (u tag))
     ν ν1 θ0 θ1 μ γ eγ δ eδ hA
       (cgImplementationRoundoffBound_nonneg N (hsem.nonneg (p := tag) trivial)) hsmall
       hν0eq hν1eq hθ0 hθ1 hνpos hμpos hes heμ hγeq heγ hδeq heδ hex' her hep

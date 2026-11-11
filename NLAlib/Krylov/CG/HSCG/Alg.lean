@@ -28,6 +28,7 @@ to be the last input and the scaled input to use a different buffer.
 * `NLAlib.Krylov.CG.HSCG.step` is one round, as a uniform first-order tree.
 * `NLAlib.Krylov.CG.HSCG.staticCost_step` gives its operation counts.
 * `NLAlib.Krylov.CG.HSCG.staticPeak_step_le` bounds its scratch storage.
+* `NLAlib.Krylov.CG.HSCG.solve` initializes the state and executes a fixed horizon of rounds.
 -/
 
 @[expose] public section
@@ -158,5 +159,79 @@ theorem staticPeak_rounds_le (W : Op → List ℕ → ℕ) (n k a b c a' b' c' :
   simp only [rounds, staticPeak]
   exact Finset.sup_le fun i _ => by
     simpa [IExp.eval, IExp.evalList, Operand.off] using staticPeak_step_le W n a b c a b c
+
+/-- Set the residual and direction from the right-hand side and initial iterate.
+Scratch consists of one matrix-vector output and the scalar minus one. -/
+def initializeState : Stmt Op Tst := ops% [n] (B, X) → (X, R, P) {
+  let Q ← alloc n;
+  let t ← alloc 1;
+  call (Has.inj Blas1Op.copy) [n] (B) → (R);
+  call (Has.inj OperatorOp.matvec) [n, n] (X) → (Q);
+  call (Has.inj (ScalarOp.lit (-1))) [] () → (t);
+  call (Has.inj Blas1Op.axpy) [n] (t, Q, R) → (R);
+  call (Has.inj Blas1Op.copy) [n] (R) → (P)
+}
+
+/-- Initialization has one dimension, two input blocks and three state output blocks. -/
+def initializeImpl : Impl Op Tst := ⟨1, 2, 3, initializeState⟩
+
+/-- Initialization uses two copies, one product, the literal minus one and one axpy. -/
+noncomputable def initializeCount (n : ℕ) : Count Op Tst :=
+  2 • Count.one (Has.inj Blas1Op.copy) [n] + Count.one (Has.inj OperatorOp.matvec) [n, n] +
+    Count.one (Has.inj (ScalarOp.lit (-1))) [] + Count.one (Has.inj Blas1Op.axpy) [n]
+
+/-- The vector scratch, scalar scratch and largest operation workspace bound initialization. -/
+def initializePeak (W : Op → List ℕ → ℕ) (n : ℕ) : ℕ :=
+  n + 1 + max (W (Has.inj Blas1Op.copy) [n])
+    (max (W (Has.inj OperatorOp.matvec) [n, n])
+      (max (W (Has.inj (ScalarOp.lit (-1))) []) (W (Has.inj Blas1Op.axpy) [n])))
+
+/-- Static accounting gives the declared initialization counts. -/
+theorem staticCost_initialize (n b x x' r p : ℕ) :
+    staticCost (initializeState (Op := Op) (Tst := Tst)) [n, b, x, x', r, p] =
+      initializeCount n := by
+  count_eval [initializeState, initializeCount]
+
+/-- Static peak accounting is bounded by the vector, scalar and operation workspace. -/
+theorem staticPeak_initialize_le (W : Op → List ℕ → ℕ) (n b x x' r p : ℕ) :
+    staticPeak W (initializeState (Op := Op) (Tst := Tst)) [n, b, x, x', r, p] ≤
+      initializePeak W n := by
+  simp [initializeState, staticPeak, initializePeak]
+  omega
+
+/-- Initialize CG from the right-hand side and starting vector, then perform the requested
+number of active Hestenes–Stiefel rounds. Dimensions are `n,k`; inputs are `B,X`; outputs
+are `X,R,P`, with `X` retained in place. -/
+def solve : Stmt Op Tst :=
+  .seq (.frame [.var 0]
+    [⟨0, .var 2⟩, ⟨1, .var 3⟩, ⟨2, .var 4⟩, ⟨3, .var 5⟩, ⟨4, .var 6⟩]
+    initializeState)
+    (.frame [.var 0, .var 1]
+      [⟨2, .var 4⟩, ⟨3, .var 5⟩, ⟨4, .var 6⟩,
+        ⟨2, .var 4⟩, ⟨3, .var 5⟩, ⟨4, .var 6⟩] rounds)
+
+/-- The complete fixed-horizon algorithm as a block implementation. -/
+def solveImpl : Impl Op Tst := ⟨2, 2, 3, solve⟩
+
+/-- Counts of initialization followed by the prescribed number of rounds. -/
+noncomputable def solveCount (n k : ℕ) : Count Op Tst := initializeCount n + k • stepCount n
+
+/-- Initialization and the round loop reuse their scratch, so their workspace is a maximum. -/
+def solvePeak (W : Op → List ℕ → ℕ) (n : ℕ) : ℕ :=
+  max (initializePeak W n) (stepPeak W n)
+
+/-- The evaluator's static counts compose through the two framed blocks. -/
+theorem staticCost_solve (n k b x x' r p : ℕ) :
+    staticCost (solve (Op := Op) (Tst := Tst)) [n, k, b, x, x', r, p] = solveCount n k := by
+  simp [solve, staticCost, IExp.eval, IExp.evalList, staticCost_initialize,
+    staticCost_rounds, solveCount]
+
+/-- The complete program uses the larger of the two block workspaces. -/
+theorem staticPeak_solve_le (W : Op → List ℕ → ℕ) (n k b x x' r p : ℕ) :
+    staticPeak W (solve (Op := Op) (Tst := Tst)) [n, k, b, x, x', r, p] ≤ solvePeak W n := by
+  simp only [solve, staticPeak, solvePeak]
+  exact max_le_max
+    (by simpa [IExp.eval, IExp.evalList] using staticPeak_initialize_le W n b x x' r p)
+    (by simpa [IExp.eval, IExp.evalList] using staticPeak_rounds_le W n k x' r p x' r p)
 
 end NLAlib.Krylov.CG.HSCG

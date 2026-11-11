@@ -5,11 +5,11 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Krylov.CG.HSCG.Exact
+public import NLAlib.Krylov.CG.HSCG.Solve
 public import NLAlib.Ops.Profiles.BlasCert
 
 /-!
-# Exact Hestenes–Stiefel rounds with sequential BLAS
+# Exact Hestenes–Stiefel programs with sequential BLAS
 
 The BLAS profile implements every vector operation using scalar arithmetic and sequential
 summation. The matrix-vector operation remains the chosen operator. Correctness and cost
@@ -19,6 +19,7 @@ transfer use the generic profile theorem.
 
 * `NLAlib.Krylov.CG.HSCG.exists_exactContracts` realizes all exact contracts jointly.
 * `NLAlib.Krylov.CG.HSCG.runs_step_seq` gives the linked round with scalar counts.
+* `NLAlib.Krylov.CG.HSCG.runs_solve_seq` computes the fixed-horizon CG iterate.
 -/
 
 @[expose] public section
@@ -26,6 +27,7 @@ transfer use the generic profile theorem.
 namespace NLAlib.Krylov.CG.HSCG
 
 open Ops
+open scoped Matrix
 
 variable {K Op Tst : Type} [Inhabited K]
 variable [Has ScalarOp Op] [Has Blas1Op Op] [Has OperatorOp Op]
@@ -58,6 +60,38 @@ theorem stepPeak_seq_le (n : ℕ) :
     stepPeak (Blas.ws (Op := Op) 0) n ≤ 3 * n + 5 := by
   simp [stepPeak, Blas.ws]
   omega
+
+/-- Scalar counts of initialization under the sequential BLAS profile. -/
+noncomputable def seqInitializeCount (n : ℕ) : Count Op Tst :=
+  n • Count.one (Has.inj ScalarOp.mul) [] + n • Count.one (Has.inj ScalarOp.add) [] +
+    (2 * n) • Count.one (Has.inj ScalarOp.copy) [] +
+    Count.one (Has.inj (ScalarOp.lit (-1))) [] +
+    Count.one (Has.inj OperatorOp.matvec) [n, n]
+
+/-- The complete scalar budget is initialization plus the prescribed number of rounds. -/
+noncomputable def seqSolveCount (n k : ℕ) : Count Op Tst :=
+  seqInitializeCount n + k • seqStepCount n
+
+/-- The initialization count is pushed forward by the same implementation table. -/
+theorem push_initializeCount_seq (n : ℕ) :
+    Count.push (Blas.seq (Op := Op) (Tst := Tst)).cost (initializeCount n) =
+      seqInitializeCount n := by
+  count_eval [initializeCount, seqInitializeCount, seq_cost_matvec]
+
+/-- The scalar budget of the complete solver is computed by cost transfer. -/
+theorem push_solveCount_seq (n k : ℕ) :
+    Count.push (Blas.seq (Op := Op) (Tst := Tst)).cost (solveCount n k) = seqSolveCount n k := by
+  simp only [solveCount, map_add, map_nsmul, push_initializeCount_seq,
+    push_stepCount_seq, seqSolveCount]
+
+/-- Sequential BLAS initialization needs one vector and two cells. -/
+theorem initializePeak_seq_le (n : ℕ) :
+    initializePeak (Blas.ws (Op := Op) 0) n ≤ n + 2 := by
+  simp [initializePeak, Blas.ws]
+
+/-- The solver reuses the round workspace after initialization. -/
+theorem solvePeak_seq_le (n : ℕ) : solvePeak (Blas.ws (Op := Op) 0) n ≤ 3 * n + 5 := by
+  exact max_le ((initializePeak_seq_le n).trans (by omega)) (stepPeak_seq_le n)
 
 /-- Exact scalar arithmetic, sequential BLAS1 and the exact operator contract have a common
 real interpretation for every matrix and every dimension. -/
@@ -94,5 +128,30 @@ theorem runs_step_seq {M : Machine K} {dec : K → ℝ} {n : ℕ}
   have hrun := runs_step hS' hM hB hA' (Blas.ws 0) (τ := τ) hxr hxp hrp hl hx hr hp hdom hz
   exact (hcert.transfer I τ _ _ _ _ _ _ hrun).mono
     (le_of_eq (push_stepCount_seq n)) (stepPeak_seq_le n) fun _ h => h
+
+/-- Sequential BLAS supplies the complete exact fixed-horizon CG result by generic linking,
+with scalar operation counts and the same CG iterate. -/
+theorem runs_solve_seq {M : Machine K} {dec : K → ℝ} {n : ℕ}
+    {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K}
+    (hS : IsScalar M I) (hM : ExactModel dec M) (hA : IsExactMatvec dec A I) (hPos : A.PosDef)
+    {τ : Tape K} {μ : Mem K} {k : ℕ} {b x r p : ℕ × ℕ} {bs xs : List K}
+    (hbx : b.1 ≠ x.1) (hbr : b.1 ≠ r.1) (hbp : b.1 ≠ p.1)
+    (hxr : x.1 ≠ r.1) (hxp : x.1 ≠ p.1) (hrp : r.1 ≠ p.1)
+    (hl : μ.Live [b, x, r, p]) (hbs : μ.store.readBlock b.1 b.2 n = some bs)
+    (hxs : μ.store.readBlock x.1 x.2 n = some xs)
+    (hk : k ≤ krylovGrade A (decv dec n bs - A *ᵥ decv dec n xs))
+    (hz : μ.Room [x, r, p] [n, n, n]) :
+    Runs I (Blas.ws 0) τ (solve.link (Blas.seq (Op := Op) (Tst := Tst)).table)
+      (Env.frame [n, k] [b, x, x, r, p]) μ (seqSolveCount n k) (3 * n + 5)
+      (fun μ' => μ'.pos = μ.pos ∧ ∃ ys, μ'.store.readBlock x.1 x.2 n = some ys ∧
+        decv dec n ys = cgIterate A (decv dec n bs) (decv dec n xs) k) := by
+  have hcert := Blas.seq_certifies_exact (Op := Op) (Tst := Tst) hM (fun _ => True)
+  obtain ⟨hS', hB⟩ := hcert.meets I hS
+  have hA' : IsExactMatvec dec A (I.link (Blas.seq (Op := Op) (Tst := Tst)).table) :=
+    Interp.link_meets_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec)) hA
+  have hrun := runs_solve hS' hM hB hA' hPos (Blas.ws 0) (τ := τ)
+    hbx hbr hbp hxr hxp hrp hl hbs hxs hk hz
+  exact (hcert.transfer I τ _ _ _ _ _ _ hrun).mono
+    (le_of_eq (push_solveCount_seq n k)) (solvePeak_seq_le n) fun _ h => h
 
 end NLAlib.Krylov.CG.HSCG

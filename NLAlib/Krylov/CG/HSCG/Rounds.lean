@@ -51,6 +51,30 @@ noncomputable def roundsRel (dec : K → ℝ) {n : ℕ} (A : Matrix (Fin n) (Fin
         decodedState dec n xs' rs' ps' = (cgStep A)^[d.getD 1 0] (decodedState dec n xs rs ps)
     | _, _ => False
 
+/-- The round loop advances an already stored state by the requested nonbreaking prefix. -/
+theorem rounds_writes {M : Machine K} {dec : K → ℝ} {n : ℕ}
+    {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K}
+    (hS : IsScalar M I) (hM : ExactModel dec M)
+    (hB : IsExactBlas1 dec (fun _ => True) I) (hA : IsExactMatvec dec A I)
+    {τ : Tape K} {μ : Mem K} {k : ℕ} {x r p : ℕ × ℕ} {s : CGState ℝ (Fin n)}
+    (hxr : x.1 ≠ r.1) (hxp : x.1 ≠ p.1) (hrp : r.1 ≠ p.1)
+    (hl : μ.Live [x, r, p]) (hstate : StoresState dec n x r p s μ)
+    (hdom : ∀ j < k, Nonbreakdown A ((cgStep A)^[j] s))
+    (hz : μ.Room [x, r, p] [n, n, n]) :
+    Writes .total I τ rounds (Env.frame [n, k] [x, r, p, x, r, p])
+      (Fp.blocks [x, r, p] [n, n, n])
+      (fun μ' => μ'.pos = μ.pos ∧ StoresState dec n x r p ((cgStep A)^[k] s) μ') μ := by
+  refine writes_loop rfl (fun _ => Fp.blocks [x, r, p] [n, n, n])
+    (fun _ _ => le_rfl)
+    (fun j μ' => μ'.pos = μ.pos ∧ StoresState dec n x r p ((cgStep A)^[j] s) μ')
+    ⟨rfl, hstate⟩ fun j hj μ' hfr ⟨hpos, hstate'⟩ => ?_
+  have hl' : μ'.Live [x, r, p] := by simpa only [Mem.Live, hfr.length_eq] using hl
+  have hz' : μ'.Room [x, r, p] [n, n, n] := by simpa [Mem.Room, hfr.len_eq] using hz
+  refine (writes_frame rfl rfl ((μ'.live_append _ _).mpr ⟨hl', hl'⟩)
+    (step_writes hS hM hB hA hxr hxp hrp hl' hstate' (hdom j hj) hz')).mono le_rfl ?_
+  intro μ'' _ ⟨hpos', hstate''⟩
+  exact ⟨hpos'.trans hpos, by simpa only [Function.iterate_succ_apply'] using hstate''⟩
+
 /-- Certified rounds compose into a certified loop without unfolding the round program. -/
 theorem rounds_spec {M : Machine K} {dec : K → ℝ} {n : ℕ}
     {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K}
@@ -67,19 +91,10 @@ theorem rounds_spec {M : Machine K} {dec : K → ℝ} {n : ℕ}
     exact ⟨hl.1, hl.2.1, hl.2.2.1⟩
   have hz₀ : μ.Room [x, r, p] [n, n, n] := by
     simpa only [Mem.room_cons, Mem.room_nil, and_true] using hz
-  refine (writes_loop rfl (fun _ => Fp.blocks [x, r, p] [n, n, n])
-    (fun _ _ => le_rfl)
-    (fun j μ' => μ'.pos = μ.pos ∧ StoresState dec n x r p
-      ((cgStep A)^[j] (decodedState dec n xs rs ps)) μ')
-    ⟨rfl, xs, rs, ps, hr_0, rfl⟩ fun j hj μ' hfr ⟨hpos, hstate⟩ => ?_).mono le_rfl ?_
-  · have hl' : μ'.Live [x, r, p] := by simpa only [Mem.Live, hfr.length_eq] using hl₀
-    have hz' : μ'.Room [x, r, p] [n, n, n] := by simpa [Mem.Room, hfr.len_eq] using hz₀
-    refine (writes_frame rfl rfl ((μ'.live_append _ _).mpr ⟨hl', hl'⟩)
-      (step_writes hS hM hB hA hxr hxp hrp hl' hstate (hdom j hj) hz')).mono le_rfl ?_
-    intro μ'' _ ⟨hpos', hstate'⟩
-    exact ⟨hpos'.trans hpos, by simpa only [Function.iterate_succ_apply'] using hstate'⟩
-  · rintro μ' _ ⟨hpos, xs', rs', ps', hread, hstate⟩
-    exact ⟨by simpa using hpos, [xs', rs', ps'], hread, hstate⟩
+  refine (rounds_writes hS hM hB hA hxr hxp hrp hl₀
+    ⟨xs, rs, ps, hr_0, rfl⟩ hdom hz₀).mono le_rfl ?_
+  rintro μ' _ ⟨hpos, xs', rs', ps', hread, hstate⟩
+  exact ⟨by simpa using hpos, [xs', rs', ps'], hread, hstate⟩
 
 /-- A nonbreaking prefix terminates with the iterated exact state, at the per-round operation
 count and with scratch reused between rounds. -/

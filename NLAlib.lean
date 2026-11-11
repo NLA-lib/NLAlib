@@ -182,6 +182,14 @@ public import NLAlib.Krylov.Basic.BlockSpace
 public import NLAlib.Krylov.Basic.Compression
 public import NLAlib.Krylov.Basic.Grade
 public import NLAlib.Krylov.Basic.Space
+public import NLAlib.Krylov.CG.HSCG.Alg
+public import NLAlib.Krylov.CG.HSCG.Exact
+public import NLAlib.Krylov.CG.HSCG.Initialization
+public import NLAlib.Krylov.CG.HSCG.Linked
+public import NLAlib.Krylov.CG.HSCG.Rounds
+public import NLAlib.Krylov.CG.HSCG.Solve
+public import NLAlib.Krylov.CG.Math.Recurrence
+public import NLAlib.Krylov.CG.Spec
 public import NLAlib.Krylov.Eigenvalues.PowerIteration
 public import NLAlib.Krylov.Eigenvalues.Ritz
 public import NLAlib.Krylov.FinitePrecision.Backward
@@ -616,6 +624,7 @@ public import NLAlib.Matrix.Subspaces.PrincipalAngles
 public import NLAlib.Matrix.Subspaces.ProjectorPair
 public import NLAlib.Matrix.Subspaces.Tangent
 public import NLAlib.Ops.Attr
+public import NLAlib.Ops.Blas.Decoded
 public import NLAlib.Ops.Blas.Dot
 public import NLAlib.Ops.Blas.Level1
 public import NLAlib.Ops.Blas.Sum
@@ -631,6 +640,7 @@ public import NLAlib.Ops.Catalog.Tagged
 public import NLAlib.Ops.Cert
 public import NLAlib.Ops.Contract
 public import NLAlib.Ops.Counted
+public import NLAlib.Ops.Examples.Bilinear
 public import NLAlib.Ops.Examples.Bits
 public import NLAlib.Ops.Examples.Built
 public import NLAlib.Ops.Examples.Cgs

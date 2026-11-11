@@ -8,8 +8,16 @@
 set -u
 uid=$(id -u)
 runtime_dir=${XDG_RUNTIME_DIR:-/run/user/$uid}
-exec {lock_fd}>>"$runtime_dir/nlalib-workers.lock" || exit $?
-flock --exclusive "$lock_fd" || exit $?
+lock_path=$runtime_dir/nlalib-workers.lock
+owner_fd=${NLALIB_OPS_GATE_OWNER_FD:-}
+in_scope=false
+# A wrapper such as audit.py can invoke the gate again. Its outer gate still owns the lock.
+if [[ $owner_fd =~ ^/proc/[0-9]+/fd/[0-9]+$ && $owner_fd -ef $lock_path ]]; then
+  in_scope=true
+else
+  exec {lock_fd}>>"$lock_path" || exit $?
+  flock --exclusive "$lock_fd" || exit $?
+fi
 
 STAT=/sys/fs/cgroup/user.slice/user-$uid.slice/user@$uid.service/nlalib.slice/nlalib-workers.slice/memory.stat
 LIMIT=$((6 * 1024 * 1024 * 1024))
@@ -18,7 +26,12 @@ while :; do
   if ! pgrep -x lean >/dev/null && [ "${anon:-0}" -lt "$LIMIT" ]; then break; fi
   sleep 10
 done
+if "$in_scope"; then
+  exec env LEAN_NUM_THREADS=2 "$@"
+fi
+
 # The gate holds the lock while systemd-run waits for the command. Close the
 # descriptor in the child so its descendants cannot retain the lock.
-systemd-run --user --scope --slice=nlalib-workers.slice -q env LEAN_NUM_THREADS=2 "$@" {lock_fd}>&-
+systemd-run --user --scope --slice=nlalib-workers.slice -q env LEAN_NUM_THREADS=2 \
+  NLALIB_OPS_GATE_OWNER_FD="/proc/$$/fd/$lock_fd" "$@" {lock_fd}>&-
 exit $?

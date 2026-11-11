@@ -87,6 +87,30 @@ theorem cheat_noWitness {I : Interp ScalarOp Empty K} (hI : Oracle I) (W : Scala
     (τ : Tape K) (ρ : Env) (m : Mem K) : Runs I W τ oneAdd ρ m 0 0 fun _ => False :=
   hI.never.elim
 
+/-- An interpretation with a constant test. -/
+def fixedTest (b : Bool) : Interp Empty Unit Unit where
+  call := fun _ _ _ _ _ _ => none
+  test := fun _ _ _ _ => some b
+  index := fun _ _ _ => none
+
+/-- The test accepts on the empty memory. -/
+def Accepts (I : Interp Empty Unit Unit) : Prop := I.test () [] [] ⟨[], 0⟩ = some true
+
+/-- The test rejects on the empty memory. -/
+def Rejects (I : Interp Empty Unit Unit) : Prop := I.test () [] [] ⟨[], 0⟩ = some false
+
+theorem exists_separateWitnesses : (∃ I, Accepts I) ∧ (∃ J, Rejects J) :=
+  ⟨⟨fixedTest true, rfl⟩, ⟨fixedTest false, rfl⟩⟩
+
+theorem exists_nestedSeparateWitnesses : ∃ I, Accepts I ∧ (∃ J, Rejects J) := by
+  obtain ⟨⟨I, hI⟩, hJ⟩ := exists_separateWitnesses
+  exact ⟨I, hI, hJ⟩
+
+theorem cheat_separateWitnesses (I : Interp Empty Unit Unit) (_hA : Accepts I) (_hR : Rejects I)
+    (W : Empty → List ℕ → ℕ) (τ : Tape Unit) (ρ : Env) (m : Mem Unit) :
+    Runs I W τ .skip ρ m 0 0 (· = m) :=
+  runs_skip I W τ ρ m
+
 /-! ### (e) A liberal headline over a table of aborts -/
 
 /-- Every scalar operation implemented by `abort`. -/
@@ -189,6 +213,12 @@ contract set [NLAlib.Ops.Tools.LintFixtures.Oracle]
 -/
 #guard_msgs (whitespace := lax) in
 #ops_lint cheat_noWitness
+
+open Lean Elab Command in
+run_cmd liftTermElabM do
+  let violations ← Lint.lintDecl (← Lint.mkCtx) ``cheat_separateWitnesses
+  unless violations.map Prod.fst == #["c"] do
+    throwError "expected a joint witness violation for the separate witnesses"
 
 /--
 error: ops_lint (e) `NLAlib.Ops.Tools.LintFixtures.cheat_liberalAbort`: a liberal statement

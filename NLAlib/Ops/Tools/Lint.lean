@@ -27,8 +27,11 @@ A **headline** is a theorem whose conclusion contains `Runs`, `RunsW`, `RunsL`, 
 * **(c) joint witness.** The contract set of the statement is the set of `NLAlib` predicates of
   its hypotheses on the interpretation, closed under the parameters they share (the machine, the
   decoding, the law of the tape, …). Some witness theorem covers all of it at once. A witness is a
-  theorem named `exists_…` (or registered by `ops_register_witness`); it covers the `NLAlib`
-  predicates conjoined under its existential quantifiers, and their parent structures.
+  theorem named `exists_…` (or registered by `ops_register_witness`). Its conclusion starts with
+  one or more existential quantifiers, then states the `NLAlib` predicates together. The check
+  uses predicate heads, including parent structures and field predicates. It does not compare
+  arguments or verify parameter ranges, so distinct interpretations in the leading quantifiers
+  can still satisfy the head check independently.
 * **(d) closed-form counts.** The counts and the workspace of the statement reach no
   `Count.push`, `staticCost`, `staticPeak`, `Count.upper` or `Profile.cost`.
 * **(e) liberal headlines.** A liberal statement (`RunsL`, `Impl.Meets … .liberal`) has a
@@ -200,28 +203,34 @@ def fieldHeads (h : Name) : MetaM (Array Name) := do
   return out
 
 /-- The `NLAlib` predicates a witness covers, with their parent structures and the predicates of
-their fields. -/
+their fields. Only leading existential quantifiers introduce witnesses for these predicates. -/
 def witnessHeads (ty : Expr) : MetaM NameSet := do
-  let rec conj (e : Expr) (fuel : ℕ) : MetaM (Array Expr) := do
+  let rec conjuncts (e : Expr) (fuel : ℕ) : Array Expr :=
     match fuel with
-    | 0 => return #[e]
+    | 0 => #[]
     | f + 1 =>
-      let e ← instantiateMVars e
+      let e := e.consumeMData
+      if e.isAppOfArity ``And 2 then
+        conjuncts (e.getArg! 0) f ++ conjuncts (e.getArg! 1) f
+      else #[e]
+  let rec collect (e : Expr) (fuel : ℕ) (opened : Bool) : MetaM NameSet := do
+    match fuel with
+    | 0 => return {}
+    | f + 1 =>
+      let e := e.consumeMData
       if e.isAppOfArity ``Exists 2 then
-        lambdaTelescope e.appArg! fun _ b => conj b f
-      else if e.isAppOfArity ``And 2 then
-        return (← conj (e.getArg! 0) f) ++ (← conj (e.getArg! 1) f)
-      else return #[e]
-  forallTelescope ty fun _ b => do
-    let mut s : NameSet := {}
-    for p in ← conj b 64 do
-      if let some h ← headOf p then
-        if inLib h then
-          s := s.insert h
-          if isStructure (← getEnv) h then
-            for q in ← getAllParentStructures h do s := s.insert q
-            for q in ← fieldHeads h do s := s.insert q
-    return s
+        return ← lambdaTelescope e.appArg! fun _ b => collect b f true
+      unless opened do return {}
+      let mut s : NameSet := {}
+      for p in conjuncts e 64 do
+        if let some h ← headOf p then
+          if inLib h then
+            s := s.insert h
+            if isStructure (← getEnv) h then
+              for q in ← getAllParentStructures h do s := s.insert q
+              for q in ← fieldHeads h do s := s.insert q
+      return s
+  forallTelescope ty fun _ b => collect b 64 false
 
 /-- The witness theorems of the environment and what they cover. -/
 def witnesses : MetaM (Array (Name × NameSet)) := do

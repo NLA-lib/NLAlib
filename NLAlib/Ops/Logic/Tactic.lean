@@ -29,8 +29,8 @@ kernel. None of them silently leaves a side goal for the end of the proof.
   `m₁`, with its frame and reads.
 * `alloc as t₁ … tₖ`: goal `Writes … (.alloc …)` or `Writes … (Stmt.allocs …)`. Leaves the body
   at a fresh store, with the handles `tᵢ` and their lengths.
-* `loop_inv F P with …`: goal `Writes … (.loop …)` (also two loops, a fill, `whileFuel`). Leaves
-  the start and the round, from a fresh memory.
+* `loop_inv F P with …`: goal `Writes … (.loop …)`, alone or at the start of a sequence.
+  Leaves the initial invariant, round and continuation when they need proofs.
 * `keep`: after a step. Restates for the new memory every read fact of the context that is off
   the step's footprint.
 * `cert_intro [n, k] (Q, w) → (w', R) reads (qs, ws)`: goal `R.Meets I .total (B.spec adm)`.

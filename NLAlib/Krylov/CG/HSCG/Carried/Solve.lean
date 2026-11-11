@@ -20,6 +20,7 @@ initial Krylov grade. [HestenesStiefel1952, (3:1)].
 
 * `NLAlib.Krylov.CG.HSCG.Carried.solve_spec` certifies total successful execution.
 * `NLAlib.Krylov.CG.HSCG.Carried.runs_solve` gives the computed iterate and operation budget.
+* `NLAlib.Krylov.CG.HSCG.Carried.runs_solve_dim` solves the SPD system with cap equal to dimension.
 -/
 
 @[expose] public section
@@ -145,5 +146,32 @@ theorem runs_solve {M : Machine K} {dec : K → ℝ} {n : ℕ}
   obtain ⟨_, _, hy, _, hcons⟩ := Mem.readBlocks_cons_eq_some.mp hread
   have hys : μ''.store.readBlock x.1 x.2 n = some ys := (List.cons.inj hcons).1.symm ▸ hy
   exact ⟨hpos', ys, hys, (congrArg CGState.x he).trans (hPos.cgState_x_eq _ _ _)⟩
+
+/-- With the vector dimension as cap, SPD CG successfully returns a solution of `A*x=b`.
+Exact convergence may stop it earlier, including before the first round. -/
+theorem runs_solve_dim {M : Machine K} {dec : K → ℝ} {n : ℕ}
+    {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K}
+    (hS : IsScalar M I) (hM : ExactModel dec M)
+    (hB : IsExactBlas1 dec (fun _ => True) I) (hA : IsExactMatvec dec A I)
+    (hCmp : IsCmp dec I) (hPos : A.PosDef) (W : Op → List ℕ → ℕ)
+    {τ : Tape K} {μ : Mem K} {b x r p v : ℕ × ℕ} {bs xs : List K}
+    (hbx : b.1 ≠ x.1) (hbr : b.1 ≠ r.1) (hbp : b.1 ≠ p.1) (hbv : b.1 ≠ v.1)
+    (hxr : x.1 ≠ r.1) (hxp : x.1 ≠ p.1) (hxv : x.1 ≠ v.1)
+    (hrp : r.1 ≠ p.1) (hrv : r.1 ≠ v.1) (hpv : p.1 ≠ v.1)
+    (hl : μ.Live [b, x, r, p, v]) (hbs : μ.store.readBlock b.1 b.2 n = some bs)
+    (hxs : μ.store.readBlock x.1 x.2 n = some xs)
+    (hz : μ.Room [x, r, p, v] [n, n, n, 1]) :
+    Runs I W τ solve (Env.frame [n, n] [b, x, x, r, p, v]) μ
+      (solveCount n n) (solvePeak W n)
+      (fun μ' => μ'.pos = μ.pos ∧ ∃ ys, μ'.store.readBlock x.1 x.2 n = some ys ∧
+        A *ᵥ decv dec n ys = decv dec n bs) := by
+  refine (runs_solve hS hM hB hA hCmp hPos W (τ := τ) (cap := n)
+    hbx hbr hbp hbv hxr hxp hxv hrp hrv hpv hl hbs hxs hz).mono le_rfl le_rfl ?_
+  rintro μ' ⟨hpos, ys, hys, he⟩
+  have hg : krylovGrade A (decv dec n bs - A *ᵥ decv dec n xs) ≤ n := by
+    simpa using krylovGrade_le_card A (decv dec n bs - A *ᵥ decv dec n xs)
+  refine ⟨hpos, ys, hys, ?_⟩
+  rw [he]
+  exact hPos.mulVec_cgIterate_eq_of_krylovGrade_le _ _ (Nat.le_min.mpr ⟨hg, le_rfl⟩)
 
 end NLAlib.Krylov.CG.HSCG.Carried

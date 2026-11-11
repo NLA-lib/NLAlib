@@ -20,6 +20,9 @@ successful early-exit behavior and exposing the scalar and comparison budgets.
 
 * `NLAlib.Krylov.CG.HSCG.Carried.exists_exactContracts` jointly realizes all model contracts.
 * `NLAlib.Krylov.CG.HSCG.Carried.runs_solve_seq` gives the linked total solver and scalar budget.
+* `NLAlib.Krylov.CG.HSCG.Carried.runs_solve_dim_seq` returns a solution of the SPD system.
+* `NLAlib.Krylov.CG.HSCG.Carried.runs_rounded_step_seq` gives local standard-model error bounds.
+* `NLAlib.Krylov.CG.HSCG.Carried.exists_inflContracts` witnesses genuinely nonexact scalar calls.
 -/
 
 @[expose] public section
@@ -213,5 +216,31 @@ theorem runs_solve_seq {M : Machine K} {dec : K → ℝ} {n : ℕ}
     hbx hbr hbp hbv hxr hxp hxv hrp hrv hpv hl hbs hxs hz
   exact (hcert.transfer I τ _ _ _ _ _ _ hrun).mono
     (le_of_eq (push_solveCount_seq n cap)) (solvePeak_seq_le n) fun _ h => h
+
+/-- The sequential scalar implementation, capped by the dimension, successfully solves the
+SPD system with its stated scalar/test budget and workspace. -/
+theorem runs_solve_dim_seq {M : Machine K} {dec : K → ℝ} {n : ℕ}
+    {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K}
+    (hS : IsScalar M I) (hM : ExactModel dec M) (hA : IsExactMatvec dec A I)
+    (hCmp : IsCmp dec I) (hPos : A.PosDef)
+    {τ : Tape K} {μ : Mem K} {b x r p v : ℕ × ℕ} {bs xs : List K}
+    (hbx : b.1 ≠ x.1) (hbr : b.1 ≠ r.1) (hbp : b.1 ≠ p.1) (hbv : b.1 ≠ v.1)
+    (hxr : x.1 ≠ r.1) (hxp : x.1 ≠ p.1) (hxv : x.1 ≠ v.1)
+    (hrp : r.1 ≠ p.1) (hrv : r.1 ≠ v.1) (hpv : p.1 ≠ v.1)
+    (hl : μ.Live [b, x, r, p, v]) (hbs : μ.store.readBlock b.1 b.2 n = some bs)
+    (hxs : μ.store.readBlock x.1 x.2 n = some xs)
+    (hz : μ.Room [x, r, p, v] [n, n, n, 1]) :
+    Runs I (Blas.ws 0) τ (solve.link (Blas.seq (Op := Op) (Tst := Tst)).table)
+      (Env.frame [n, n] [b, x, x, r, p, v]) μ (seqSolveCount n n) (3 * n + 4)
+      (fun μ' => μ'.pos = μ.pos ∧ ∃ ys, μ'.store.readBlock x.1 x.2 n = some ys ∧
+        A *ᵥ decv dec n ys = decv dec n bs) := by
+  refine (runs_solve_seq hS hM hA hCmp hPos (τ := τ) (cap := n)
+    hbx hbr hbp hbv hxr hxp hxv hrp hrv hpv hl hbs hxs hz).mono le_rfl le_rfl ?_
+  rintro μ' ⟨hpos, ys, hys, he⟩
+  have hg : krylovGrade A (decv dec n bs - A *ᵥ decv dec n xs) ≤ n := by
+    simpa using krylovGrade_le_card A (decv dec n bs - A *ᵥ decv dec n xs)
+  refine ⟨hpos, ys, hys, ?_⟩
+  rw [he]
+  exact hPos.mulVec_cgIterate_eq_of_krylovGrade_le _ _ (Nat.le_min.mpr ⟨hg, le_rfl⟩)
 
 end NLAlib.Krylov.CG.HSCG.Carried

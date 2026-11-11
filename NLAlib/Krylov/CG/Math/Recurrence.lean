@@ -21,6 +21,7 @@ with itself. These facts connect the existing recurrence theory to the domain of
 * `Matrix.PosDef.cgState_p_ne_zero_of_r_ne_zero` excludes a zero direction at an active state.
 * `Matrix.PosDef.cgState_nonbreakdown_of_r_ne_zero` certifies an active real state.
 * `Matrix.PosDef.cgState_nonbreakdown` gives both nonzero denominators before the grade.
+* `Matrix.PosDef.mulVec_cgIterate_eq_of_krylovGrade_le` gives the exact system solution.
 -/
 
 @[expose] public section
@@ -95,5 +96,15 @@ theorem _root_.Matrix.PosDef.cgState_nonbreakdown {A : Matrix n n ℝ} (hA : A.P
   have hr : (cgState A b x₀ k).r ≠ 0 :=
     fun h => hk.not_ge ((hA.cgState_r_eq_zero_iff b x₀ k).mp h)
   exact hA.cgState_nonbreakdown_of_r_ne_zero b x₀ hr
+
+/-- At or beyond the initial residual's grade, exact positive-definite CG solves the system.
+The residual identity supplies this conclusion without an assumed solution vector.
+[HestenesStiefel1952, Theorem 5:1]. -/
+theorem _root_.Matrix.PosDef.mulVec_cgIterate_eq_of_krylovGrade_le {A : Matrix n n 𝕜}
+    (hA : A.PosDef) (b x₀ : n → 𝕜) {k : ℕ} (hk : krylovGrade A (b - A *ᵥ x₀) ≤ k) :
+    A *ᵥ cgIterate A b x₀ k = b := by
+  have hr := (hA.cgState_r_eq_zero_iff b x₀ k).mpr hk
+  rw [cgState_r_eq, hA.cgState_x_eq] at hr
+  exact (sub_eq_zero.mp hr).symm
 
 end NLAlib.Krylov.CG

@@ -61,4 +61,29 @@ theorem _root_.Matrix.PosDef.sweepVec_cgState_r {A : Matrix n n ℝ} (hA : A.Pos
   intro j hj
   simpa only [star_trivial] using hA.star_cgState_r_dotProduct_eq_zero (b := b) (x₀ := x₀) hj
 
+/-- One CG round, with the raw residual swept before its squared norm and direction update. -/
+noncomputable def reorthStep (A : Matrix n n ℝ) (Q : ℕ → n → ℝ) (k : ℕ)
+    (s : CGState ℝ n) : CGState ℝ n :=
+  let raw := cgStep A s
+  let r := sweepVec Q raw.r k
+  ⟨raw.x, r, r + ((r ⬝ᵥ r) / (s.r ⬝ᵥ s.r)) • s.p⟩
+
+/-- Whenever the sweep fixes the raw residual, the reorthogonalized round is ordinary CG. -/
+theorem reorthStep_eq_cgStep (A : Matrix n n ℝ) (Q : ℕ → n → ℝ) (k : ℕ)
+    (s : CGState ℝ n) (h : sweepVec Q (cgStep A s).r k = (cgStep A s).r) :
+    reorthStep A Q k s = cgStep A s := by
+  dsimp only [reorthStep]
+  rw [h]
+  simp only [cgStep_eq]
+  rfl
+
+/-- Full reorthogonalization against all residuals through the current index leaves the exact
+positive-definite CG recurrence unchanged. [HestenesStiefel1952, Theorem 5:1]. -/
+theorem _root_.Matrix.PosDef.reorthStep_cgState {A : Matrix n n ℝ} (hA : A.PosDef)
+    (b x₀ : n → ℝ) (j : ℕ) :
+    reorthStep A (fun i => (cgState A b x₀ i).r) (j + 1) (cgState A b x₀ j) =
+      cgState A b x₀ (j + 1) := by
+  apply reorthStep_eq_cgStep
+  exact hA.sweepVec_cgState_r b x₀ (j + 1)
+
 end NLAlib.Krylov.CG.Reorth

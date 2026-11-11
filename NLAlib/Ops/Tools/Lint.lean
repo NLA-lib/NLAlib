@@ -33,7 +33,8 @@ A **headline** is a theorem whose conclusion contains `Runs`, `RunsW`, `RunsL`, 
   `Count.push`, `staticCost`, `staticPeak`, `Count.upper` or `Profile.cost`.
 * **(e) liberal headlines.** A liberal statement (`RunsL`, `Impl.Meets … .liberal`) has a
   companion success statement (`Runs`, `RunsW`, `RunsLaw` or a total `Impl.Meets`) about the same
-  program in the same module, or a theorem named `<name>_success`.
+  program. The companion is in the same module or named `<name>_success`. Its conclusion must
+  establish the success judgment, either directly or in a conjunction.
 * **(f) ξ only in tables.** The algorithm's tree (the program with its tables set apart) reaches
   no ξ-taking primitive (`ops_register_xi`, or a constructor named `…Xi`). An `Impl.Meets` about an
   implementation that a table or profile uses is exempt.
@@ -82,8 +83,10 @@ def argByName (c : Name) (args : Array Expr) (nm : Name) : MetaM (Option Expr) :
       if (← xs[i].fvarId!.getUserName) == nm then return args[i]?
     return none
 
-/-- The occurrences of headline judgments in an expression. -/
-def findOccs (e : Expr) (ex : Array Expr) (fuel : ℕ := 64) : MetaM (Array Occ) := do
+/-- The occurrences of headline judgments in an expression. For success statements, only
+descend through quantifiers and conjunctions. -/
+def findOccs (e : Expr) (ex : Array Expr) (fuel : ℕ := 64) (successOnly := false) :
+    MetaM (Array Occ) := do
   match fuel with
   | 0 => return #[]
   | f + 1 =>
@@ -92,15 +95,16 @@ def findOccs (e : Expr) (ex : Array Expr) (fuel : ℕ := 64) : MetaM (Array Occ)
       if let some h := heads.find? (·.name == c) then
         return #[⟨h, e.getAppArgs, ex⟩]
       if c == ``Exists && e.getAppNumArgs == 2 then
-        return ← lambdaTelescope e.appArg! fun xs b => findOccs b (ex ++ xs) f
+        return ← lambdaTelescope e.appArg! fun xs b => findOccs b (ex ++ xs) f successOnly
     match e with
-    | .forallE .. => forallTelescope e fun _ b => findOccs b ex f
-    | .lam .. => lambdaTelescope e fun _ b => findOccs b ex f
+    | .forallE .. => forallTelescope e fun _ b => findOccs b ex f successOnly
+    | .lam .. => lambdaTelescope e fun _ b => findOccs b ex f successOnly
     | .app .. =>
-      if [``And, ``Or, ``Iff, ``Not].contains (e.getAppFn.constName?.getD .anonymous) then
-        e.getAppArgs.foldlM (fun acc a => return acc ++ (← findOccs a ex f)) #[]
+      let c := e.getAppFn.constName?.getD .anonymous
+      if c == ``And || (!successOnly && [``Or, ``Iff, ``Not].contains c) then
+        e.getAppArgs.foldlM (fun acc a => return acc ++ (← findOccs a ex f successOnly)) #[]
       else return #[]
-    | .mdata _ b => findOccs b ex f
+    | .mdata _ b => findOccs b ex f successOnly
     | _ => return #[]
 
 /-- A constant of the library. -/
@@ -285,21 +289,27 @@ def modOf (n : Name) : CoreM Name := do
     | some i => env.header.moduleNames[i.toNat]!
     | none => env.mainModule
 
+/-- The keys of the programs that a theorem establishes succeed. -/
+def successKeysOf (n : Name) : MetaM (Array Name) := do
+  let env ← getEnv
+  let some (.thmInfo ci) := env.find? n | return #[]
+  let occs ← forallTelescope ci.type fun _ b => findOccs b #[] (successOnly := true)
+  let mut keys := #[]
+  for o in occs do
+    if o.head.liberal then continue
+    if o.head.name == ``NLAlib.Ops.Impl.Meets then
+      let some md ← argByName o.head.name o.args `md | continue
+      unless md.isConstOf ``NLAlib.Ops.Mode.total do continue
+    if let some p ← argByName o.head.name o.args o.head.prog then
+      if let some k := progKey p then keys := keys.push k
+  return keys
+
 /-- The success statements of a module: the keys of their programs. -/
 def successKeys (mod : Name) : MetaM NameSet := do
-  let env ← getEnv
   let mut s : NameSet := {}
   for n in ← modConsts mod do
-    let some ci := env.find? n | continue
-    let some (.thmInfo _) := some ci | continue
-    let occs ← forallTelescope ci.type fun _ b => findOccs b #[]
-    for o in occs do
-      if o.head.liberal then continue
-      if o.head.name == ``NLAlib.Ops.Impl.Meets then
-        if let some md ← argByName o.head.name o.args `md then
-          if md.isConstOf ``NLAlib.Ops.Mode.liberal then continue
-      if let some p ← argByName o.head.name o.args o.head.prog then
-        if let some k := progKey p then s := s.insert k
+    for k in ← successKeysOf n do
+      s := s.insert k
   return s
 
 /-- The implementations used by tables and profiles. -/
@@ -387,12 +397,12 @@ def lintDecl (ctx : Ctx) (n : Name) : MetaM (Array (String × String)) := do
           | none => pure false
         else pure false
       if h.liberal || mdLib then
-        let named := env.contains (n.appendAfter "_success")
-        let mod := some (← modOf n)
-        let ok ← match progKey p, mod with
-          | some k, some m => do pure ((← successKeys m).contains k)
-          | _, _ => pure false
-        unless named || ok do
+        let ok ← match progKey p with
+          | some k => do
+            if (← successKeysOf (n.appendAfter "_success")).contains k then pure true
+            else pure ((← successKeys (← modOf n)).contains k)
+          | none => pure false
+        unless ok do
           out := out.push ("e", "a liberal statement without a success statement about the \
             same program")
       -- (f)

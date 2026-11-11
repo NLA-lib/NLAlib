@@ -76,6 +76,31 @@ theorem cheat_liberalAbort {M : Machine K} {u : ℝ} {dec : K → ℝ} (_hM : St
   obtain ⟨_, -, _, -, h⟩ := h
   split_ifs at h
 
+/-- A matching name alone is insufficient. -/
+theorem cheat_liberalAbort_success : True := trivial
+
+/-- A disjunction containing a total run can hold when the run fails. -/
+theorem cheat_disjunctiveCompanion (I : Interp ScalarOp Empty K) (W : ScalarOp → List ℕ → ℕ)
+    (τ : Tape K) (ρ : Env) (m : Mem K) :
+    True ∨ Runs I W τ (oneAdd.link abortT) ρ m 0 0 (fun _ => False) :=
+  Or.inl trivial
+
+/-- An implementation that always fails. -/
+def abortImpl : Impl ScalarOp Empty := ⟨0, 2, 1, .abort⟩
+
+theorem cheat_liberalCertificate {M : Machine K} {u : ℝ} {dec : K → ℝ} (_hM : StdModel u dec M)
+    {I : Interp ScalarOp Empty K} (_hI : IsScalar M I) (C : Contract K)
+    (hfit : ∀ d ins outs τ m, (C.on .liberal d ins outs τ m).pre m →
+      d.length = 0 ∧ ins.length = 2 ∧ outs.length = 1) : abortImpl.Meets I .liberal C :=
+  Impl.meets_liberal_abort 0 2 1 I C hfit
+
+/-- Wrapping the liberal mode in `id` supplies no evidence of success. -/
+theorem cheat_nonliteralModeCompanion {M : Machine K} {u : ℝ} {dec : K → ℝ}
+    (_hM : StdModel u dec M) {I : Interp ScalarOp Empty K} (_hI : IsScalar M I) (C : Contract K)
+    (hfit : ∀ d ins outs τ m, (C.on .liberal d ins outs τ m).pre m →
+      d.length = 0 ∧ ins.length = 2 ∧ outs.length = 1) : abortImpl.Meets I (id .liberal) C :=
+  cheat_liberalCertificate _hM _hI C hfit
+
 /-! ### (f) A ξ-taking primitive in an algorithm -/
 
 /-- A tree that contains `sraddXi` (in a branch never taken). -/
@@ -125,6 +150,13 @@ without a success statement about the same program
 -/
 #guard_msgs (whitespace := lax) in
 #ops_lint cheat_liberalAbort
+
+/--
+error: ops_lint (e) `NLAlib.Ops.Tools.LintFixtures.cheat_liberalCertificate`: a liberal statement
+without a success statement about the same program
+-/
+#guard_msgs (whitespace := lax) in
+#ops_lint cheat_liberalCertificate
 
 /--
 error: ops_lint (f) `NLAlib.Ops.Tools.LintFixtures.cheat_xi`: the algorithm's tree calls the

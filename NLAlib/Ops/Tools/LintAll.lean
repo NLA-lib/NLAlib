@@ -20,10 +20,12 @@ import NLAlib.Ops.Cert
 import NLAlib.Ops.Contract
 import NLAlib.Ops.Counted
 import NLAlib.Ops.Examples.Bits
+import NLAlib.Ops.Examples.Built
 import NLAlib.Ops.Examples.Cgs
 import NLAlib.Ops.Examples.CgsLinked
 import NLAlib.Ops.Examples.CgsMath
 import NLAlib.Ops.Examples.CgsQR
+import NLAlib.Ops.Examples.CgsWrites
 import NLAlib.Ops.Examples.Control
 import NLAlib.Ops.Examples.Dot
 import NLAlib.Ops.Examples.Gemm

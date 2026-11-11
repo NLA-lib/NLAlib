@@ -79,7 +79,7 @@ theorem solve_writes {M : Machine K} {dec : K → ℝ} {n : ℕ}
     exact ⟨hl.1, hl.2.1, hl.2.1, hl.2.2⟩
   refine Writes.seq_le (writes_frame rfl rfl hl'
     (initialize_writes hS hM hB hA hbx hbr hbp hbv hxr hxp hxv hrp hrv hpv hl hbs hxs hz))
-    le_rfl fun μ₁ hfr ⟨hpos, hstate⟩ => ?_
+    le_rfl fun μ₁ hfr ⟨hpos, hstate, _⟩ => ?_
   have hl₁ : μ₁.Live [x, r, p, v] := by
     simp only [Mem.Live, hfr.length_eq]
     exact fun z hz' => hl z (by

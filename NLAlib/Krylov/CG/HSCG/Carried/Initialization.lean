@@ -36,7 +36,7 @@ theorem initialize_writes {M : Machine K} {dec : K → ℝ} {n : ℕ}
     (hS : IsScalar M I) (hM : ExactModel dec M)
     (hB : IsExactBlas1 dec (fun _ => True) I) (hA : IsExactMatvec dec A I)
     {τ : Tape K} {μ : Mem K} {b x r p v : ℕ × ℕ} {bs xs : List K}
-    (hbx : b.1 ≠ x.1) (hbr : b.1 ≠ r.1) (hbp : b.1 ≠ p.1) (_hbv : b.1 ≠ v.1)
+    (hbx : b.1 ≠ x.1) (hbr : b.1 ≠ r.1) (hbp : b.1 ≠ p.1) (hbv : b.1 ≠ v.1)
     (hxr : x.1 ≠ r.1) (hxp : x.1 ≠ p.1) (hxv : x.1 ≠ v.1)
     (hrp : r.1 ≠ p.1) (hrv : r.1 ≠ v.1) (hpv : p.1 ≠ v.1)
     (hl : μ.Live [b, x, r, p, v]) (hbs : μ.store.readBlock b.1 b.2 n = some bs)
@@ -45,7 +45,8 @@ theorem initialize_writes {M : Machine K} {dec : K → ℝ} {n : ℕ}
     Writes .total I τ initializeState (Env.frame [n] [b, x, x, r, p, v])
       (Fp.blocks [x, r, p, v] [n, n, n, 1])
       (fun μ' => μ'.pos = μ.pos ∧ StoresState dec n x r p v
-        (cgState A (decv dec n bs) (decv dec n xs) 0) μ') μ := by
+        (cgState A (decv dec n bs) (decv dec n xs) 0) μ' ∧
+        μ'.store.readBlock b.1 b.2 n = some bs) μ := by
   have hl₀ : μ.Live [b, x, r, p] := by
     simp only [Mem.live_cons, Mem.live_nil, and_true] at hl ⊢
     exact ⟨hl.1, hl.2.1, hl.2.2.1, hl.2.2.2.1⟩
@@ -78,8 +79,8 @@ theorem initialize_writes {M : Machine K} {dec : K → ℝ} {n : ℕ}
     omega
   step hB.dot as μ₂ hfr₂ ⟨hpos₂, rr, hrr, herr⟩
   refine (Writes.skip ?_).mono bot_le (fun _ _ h => h)
-  refine ⟨hpos₂.trans hpos, ys, rs, ps, rr, ?_, he,
-    dotExactRel_decoded herr⟩
+  refine ⟨hpos₂.trans hpos, ?_, by kept⟩
+  refine ⟨ys, rs, ps, rr, ?_, he, dotExactRel_decoded herr⟩
   exact Mem.readBlocks_of_cons (by kept) (Mem.readBlocks_of_cons (by kept)
     (Mem.readBlocks_of_cons (by kept) (Mem.readBlocks_of_cons (by kept) rfl)))
 

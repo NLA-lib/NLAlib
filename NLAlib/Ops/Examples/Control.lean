@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.Ops.Catalog.Compare
 public import NLAlib.Ops.Logic
 
 /-!
@@ -144,5 +145,38 @@ example : run ctlInterp (fun _ => 0) incIf ⟨[], [0]⟩ (twoCells 0 0) = some (
 example (T : Table COp COp CTst) :
     incIf.link T = .ite .nz [] [⟨0, .const 0⟩]
       ((Stmt.call .inc [] [⟨0, .const 1⟩] [⟨0, .const 1⟩]).link T) .skip := rfl
+
+/-- Write the positivity flag of the first cell to the second cell and succeed if it is set. -/
+def branchOnPositive : Stmt CmpOp FlagTst :=
+  .seq (.call (.cmp .isPos) [] [⟨0, .const 0⟩] [⟨0, .const 1⟩])
+    (.ite .isSet [] [⟨0, .const 1⟩] .skip .abort)
+
+-- A substituted comparison supplies the flag for the primitive test.
+example {K Lo : Type} {I : Interp Lo FlagTst K} {T : Table CmpOp Lo FlagTst}
+    {R : Impl Lo FlagTst} (hT : T (.cmp .isPos) = .inl R)
+    {dec : K → ℝ} {readFlag : K → Bool}
+    (hcmp : R.Meets I .total ((cmpRel dec readFlag .isPos).spec AnyOperands))
+    (hflag : IsFlagTest readFlag I) {τ : Tape K} {m : Mem K} {a : K}
+    (hx : m.store.get 0 0 = some a) (hpos : 0 < dec a)
+    (hl : m.Live [(0, 0), (0, 1)]) (hz : 1 < m.store.len 0) :
+    Wp .total I τ (branchOnPositive.link T) ⟨[], [0]⟩
+      (fun m' => ∃ flag, m'.store.get 0 1 = some flag ∧ readFlag flag = true) m := by
+  have hrun : Wp .total (I.link T) τ branchOnPositive ⟨[], [0]⟩
+      (fun m' => ∃ flag, m'.store.get 0 1 = some flag ∧ readFlag flag = true) m := by
+    unfold branchOnPositive
+    refine wp_seq (wp_call_rel_cell (Interp.link_meets hT hcmp) rfl rfl rfl rfl rfl rfl trivial
+      hl (BlockFn.readBlocks_cells_one.mpr ⟨a, hx, rfl⟩) trivial hz ?_)
+    intro flag hf
+    have hread : ((m.upd (0, 1) flag).advance 0).store.get 0 1 = some flag :=
+      Store.get_upd_self hz flag
+    have hbit : readFlag flag = true := by
+      change readFlag flag = CmpTst.fn dec .isPos [[a]] at hf
+      simpa [CmpTst.fn, hpos] using hf
+    have htest : IsFlagTest readFlag (I.link T) := hflag
+    refine wp_ite (c := true) rfl rfl ?_ (wp_skip ⟨flag, hread, hbit⟩)
+    change (I.link T).test (Has.inj FlagTst.isSet) [] [(0, 1)]
+      ((m.upd (0, 1) flag).advance 0) = some true
+    rw [htest.test_isSet (x := (0, 1)) hread, hbit]
+  simpa only [Wp, run_link] using hrun
 
 end NLAlib.Ops.Examples

@@ -27,11 +27,13 @@ of the run next to `staticCost` of the tree, the peak of scratch cells next to `
   list of keys). The core is unchanged.
 * `Machines.lean`: carriers `ℚ` (exact; `sqrt` is `Rat.sqrt`, exact on squares) and `Float`;
   `blas1Fn`, `blasFn` (level 1 and scalar), `randFn A` (`ROp` with a matrix by rows),
-  `withQueries` (comparisons `CmpTst`, `IdxTst.toNat`), tapes `signTape seed`, `listTape`,
-  memories `memOf`, `vals`, `blank`, `frameOf`; `ShowKey` names for the report.
+  `withQueries` (comparisons `CmpTst`, `IdxTst.toNat`), `cmpOpFn` (flag-writing comparisons),
+  `withFlagTest` (`FlagTst.isSet`), tapes `signTape seed`, `listTape`, memories `memOf`, `vals`,
+  `blank`, `frameOf`; `ShowKey` names for the report.
 * `Tables.lean`: computable tables of the profiles, each proved equal to the profile's table:
   `seqTable` (`Blas.seq`), `pairwiseTable k`, `gaussTable`, `noisyTable σ`, `noisyDrawsTable σ`.
-* `Demo.lean`: gemm (algorithm, `Blas.seq`, `Blas.pairwise 3` in `Float`), pairwise summation
+* `Demo.lean`: branching on a comparison flag, gemm (algorithm, `Blas.seq`, `Blas.pairwise 3`
+  in `Float`), pairwise summation
   (depths 4 and 1 against sequential, in `Float`), MGS, CGS, Girard–Hutchinson with a tape of
   signs (algorithm and `Rand.gaussLoop`), the noisy power iteration (algorithm and
   `noisyDraws`). Run: `scripts/ops/lean_gated.sh lake env lean NLAlib/Ops/Tools/Demo.lean`.

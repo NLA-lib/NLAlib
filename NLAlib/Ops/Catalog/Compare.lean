@@ -15,6 +15,9 @@ Queries are the names a program uses in a test (`ite`, `whileFuel`) or as an ind
 They are primitives of the access model, which imposes their exactness; no table implements
 them.
 
+* `NLAlib.Ops.CmpOp` compares decoded inputs and writes a flag cell. A table can implement this
+  call. The access model's `NLAlib.Ops.FlagTst.isSet` query reads the flag cell using the same
+  Boolean decoding.
 * `NLAlib.Ops.CmpTst`: the comparisons `lt`, `le`, `eq` of two cells and `isZero`, `isPos` of one
   cell. Contract `NLAlib.Ops.IsCmp dec`: each is decided exactly on the decoded values
   (`NLAlib.Ops.Interp.IsTest`).
@@ -27,6 +30,8 @@ Witness: `NLAlib.Ops.exists_isCmp`, on the real numbers.
 
 ## Main results
 
+* `NLAlib.Ops.IsCmpOp` and `NLAlib.Ops.IsFlagTest` specify a comparison call and flag read.
+  `NLAlib.Ops.exists_isCmpOp_isFlagTest` witnesses both contracts on the real numbers.
 * `NLAlib.Ops.IsCmp`, `NLAlib.Ops.IsToNat`: the contracts.
 * `NLAlib.Ops.IsCmp.test_lt` and its analogues, `NLAlib.Ops.IsToNat.index_eq`,
   `NLAlib.Ops.IsToNat.index_neg`: what a query returns on readable cells.
@@ -76,6 +81,79 @@ noncomputable def CmpTst.fn (dec : K → ℝ) : CmpTst → List (List K) → Boo
   | .isZero, [[a]] => decide (dec a = 0)
   | .isPos, [[a]] => decide (0 < dec a)
   | _, _ => false
+
+/-- Comparison calls. `cmp c [] ins [flag]` writes the result of comparison `c` to one cell. -/
+inductive CmpOp where
+  /-- Compare the input cells according to `c`. -/
+  | cmp (c : CmpTst)
+  deriving DecidableEq
+
+/-- The query on a flag cell. -/
+inductive FlagTst where
+  /-- Read the Boolean represented by one cell. -/
+  | isSet
+  deriving DecidableEq
+
+/-- The comparison writes a word whose Boolean decoding gives the comparison result. -/
+@[simps (attr := storeNF)]
+noncomputable def cmpRel (dec : K → ℝ) (readFlag : K → Bool) (c : CmpTst) : BlockRel K where
+  nd := 0
+  inLens _ := c.lens
+  outLens _ := [1]
+  rel _ xs _ ys := match ys with
+    | [[flag]] => readFlag flag = c.fn dec xs
+    | _ => False
+
+/-- Every comparison call writes the exact comparison of its decoded inputs as a flag. -/
+def IsCmpOp [Has CmpOp Op] (dec : K → ℝ) (readFlag : K → Bool) (I : Interp Op Tst K) : Prop :=
+  ∀ c : CmpTst, I.Meets .total (Has.inj (CmpOp.cmp c)) ((cmpRel dec readFlag c).spec AnyOperands)
+
+/-- The Boolean read by the flag query, on the single cell it reads. -/
+def FlagTst.fn (readFlag : K → Bool) : List (List K) → Bool
+  | [[flag]] => readFlag flag
+  | _ => false
+
+/-- The flag query reads the access model's Boolean decoding of a word. -/
+def IsFlagTest [Has FlagTst Tst] (readFlag : K → Bool) (I : Interp Op Tst K) : Prop :=
+  I.IsTest (Has.inj FlagTst.isSet) (fun _ => [1]) fun _ => FlagTst.fn readFlag
+
+/-- The flag query on a readable cell returns its decoded Boolean. -/
+theorem IsFlagTest.test_isSet [Has FlagTst Tst] {readFlag : K → Bool} {I : Interp Op Tst K}
+    (h : IsFlagTest readFlag I) {d : List ℕ} {x : ℕ × ℕ} {m : Mem K} {flag : K}
+    (hx : m.store.get x.1 x.2 = some flag) :
+    I.test (Has.inj FlagTst.isSet) d [x] m = some (readFlag flag) :=
+  h d [x] m [[flag]] (BlockFn.readBlocks_cells_one.mpr ⟨flag, hx, rfl⟩)
+
+open Classical in
+/-- Exact real comparison and flag read can be realized together, with flags encoded as 0 and 1. -/
+theorem exists_isCmpOp_isFlagTest :
+    ∃ (readFlag : ℝ → Bool) (I : Interp CmpOp FlagTst ℝ),
+      IsCmpOp id readFlag I ∧ IsFlagTest readFlag I := by
+  let readFlag : ℝ → Bool := fun x => if x = 1 then true else false
+  let encode : Bool → ℝ := fun b => if b then 1 else 0
+  have hflag (b : Bool) : readFlag (encode b) = b := by
+    cases b <;> simp [readFlag, encode]
+  let F : CmpOp → BlockFn ℝ := fun
+    | .cmp c => {
+        nd := 0
+        inLens _ := c.lens
+        outLens _ := [1]
+        fn _ _ xs := some [[encode (c.fn id xs)]] }
+  let I : Interp CmpOp FlagTst ℝ :=
+    { Interp.ofFns F with
+      test := fun _ _ a m => (m.readBlocks a [1]).map (FlagTst.fn readFlag) }
+  refine ⟨readFlag, I, ?_, ?_⟩
+  · intro c
+    have h : I.IsFn .total (.cmp c) (F (.cmp c)) AnyOperands :=
+      Interp.ofFns_isFn (Tst := FlagTst) F .total (.cmp c) AnyOperands
+    refine h.meets_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl)
+      (fun _ => rfl) (fun _ => rfl) ?_
+    intro d w xs m ins outs hnd hw hadm hread hdom
+    exact ⟨[[encode (c.fn id xs)]], rfl, rfl, hflag _⟩
+  · intro d a m xs hread
+    change (m.readBlocks a [1]).map (FlagTst.fn readFlag) = _
+    rw [hread]
+    rfl
 
 /-- **The contract of the comparisons**: each is exact on the decoded values. -/
 def IsCmp [Has CmpTst Tst] (dec : K → ℝ) (I : Interp Op Tst K) : Prop :=

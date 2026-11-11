@@ -22,6 +22,8 @@ contracts on `ℚ` (except `sqrt`, see below) and to be a plain sequential refer
 * `NLAlib.Ops.Tools.randFn`: the operations of `NLAlib.Ops.ROp` for a given matrix (by rows).
 * `NLAlib.Ops.Tools.withQueries`: the comparisons `CmpTst` and the conversion `IdxTst` added to an
   interpretation given by block functions.
+* `NLAlib.Ops.Tools.cmpOpFn`, `NLAlib.Ops.Tools.withFlagTest`: comparisons that write a flag and
+  the query that reads it.
 * `NLAlib.Ops.Tools.signTape`, `NLAlib.Ops.Tools.constTape`: fixed concrete tapes.
 * `NLAlib.Ops.Tools.ShowKey`: names of operations for the reports.
 -/
@@ -138,6 +140,22 @@ def cmpTest : CmpTst → List (List K) → Option Bool
   | .isPos, [[a]] => some (Concrete.lt default a)
   | _, _ => none
 
+/-- Compare the input cells and write the result as a literal zero or one. -/
+def cmpOpFn : CmpOp → BlockFn K
+  | .cmp c => {
+      nd := 0
+      inLens _ := c.lens
+      outLens _ := [1]
+      fn _ _ xs := (cmpTest c xs).map fun b => [[(mach K).lit (if b then 1 else 0)]] }
+
+/-- Read a flag written by `cmpOpFn`, and delegate the remaining queries to `I`. -/
+def withFlagTest {Op Tst : Type} [Has FlagTst Tst] (I : Interp Op Tst K) : Interp Op Tst K :=
+  { I with test := fun q d a m =>
+      match Has.proj (G := FlagTst) q with
+      | some .isSet =>
+        (m.readBlocks a [1]).map (FlagTst.fn fun x => Concrete.eq x ((mach K).lit 1))
+      | none => I.test q d a m }
+
 /-- **An interpretation given by block functions, with the queries.** -/
 def withQueries {Op : Type} (F : Op → BlockFn K) : Interp Op Qry K where
   call o d ins outs τ m := (F o).apply d ins outs τ m
@@ -199,6 +217,10 @@ instance : ShowKey ROp := ⟨fun
 
 instance : ShowKey CmpTst := ⟨fun
   | .lt => "lt?" | .le => "le?" | .eq => "eq?" | .isZero => "isZero?" | .isPos => "isPos?"⟩
+
+instance : ShowKey CmpOp := ⟨fun | .cmp c => s!"cmp {ShowKey.showKey c}"⟩
+
+instance : ShowKey FlagTst := ⟨fun | .isSet => "isSet?"⟩
 
 instance : ShowKey IdxTst := ⟨fun | .toNat => "toNat"⟩
 

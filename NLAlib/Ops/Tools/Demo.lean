@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 import NLAlib.Ops.Tools.Run
 import NLAlib.Ops.Tools.Tables
 import NLAlib.Ops.Examples.CgsLinked
+import NLAlib.Ops.Examples.Control
 import NLAlib.Ops.Examples.Gemm
 import NLAlib.Ops.Examples.GramSchmidt
 import NLAlib.Ops.Examples.HutchLinked
@@ -32,6 +33,10 @@ abbrev BOp := Blas1Op ⊕ ScalarOp
 
 /-- The interpretation of the BLAS signature over a concrete carrier. -/
 def blasI (K : Type) [Concrete K] : Interp BOp Qry K := withQueries blasFn
+
+-- A comparison writes the flag and the branch reads it. The profiler counts both uses.
+#eval profileFrame (withFlagTest (Interp.ofFns (Tst := FlagTst) (cmpOpFn (K := ℚ))))
+  (fun _ _ => 0) (signTape 0) branchOnPositive [] [0] [[some 3, none]]
 
 /-! ### `gemm`: `C = A B`, `A` 2 × 3 by rows, `B` 3 × 2 by columns -/
 

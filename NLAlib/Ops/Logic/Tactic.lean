@@ -265,7 +265,8 @@ meta def certLenLemma (k : Nat) : MacroM (TSyntax `term) :=
   | 1 => `(List.length_eq_one_iff)
   | 2 => `(List.length_eq_two)
   | 3 => `(List.length_eq_three)
-  | _ => Macro.throwError "cert_intro: at most three dimensions, inputs or outputs"
+  | 4 => `(List.length_eq_four)
+  | _ => Macro.throwError "cert_intro: at most four dimensions, inputs or outputs"
 
 open Lean in
 /-- The pattern `⟨x₁, …, xₖ, rfl⟩` (or `rfl` for no element). -/
@@ -327,7 +328,7 @@ macro_rules
     tacs := tacs.push (← `(tactic|
       obtain $po := $(← certLenLemma outs.size).mp ((Mem.Room.length_eq $hz).trans rfl)))
     tacs := tacs.push (← `(tactic|
-      simp only [storeNF, List.headD_cons, List.getD_cons_zero, List.getD_cons_succ]
+      try simp only [storeNF, List.headD_cons, List.getD_cons_zero, List.getD_cons_succ]
         at $(mkIdent `hr_0):ident $hz:ident))
     tacs := tacs.push (← `(tactic|
       try simp only [admNF, AnyOperands, List.headD_cons, List.getD_cons_zero, List.getD_cons_succ,
@@ -335,9 +336,10 @@ macro_rules
         List.mem_nil_iff, or_false, forall_eq_or_imp, forall_eq, List.cons.injEq, and_true,
         and_assoc, exists_and_left, exists_eq_left', exists_eq_left, exists_eq_right,
         exists_eq_right_right, ne_eq] at $hadm:ident))
-    tacs := tacs.push (← `(tactic| simp only [Mem.room_cons, Mem.room_nil, and_true] at $hz:ident))
     tacs := tacs.push (← `(tactic|
-      simp only [List.cons_append, List.nil_append, Mem.live_cons, Mem.live_nil, and_true]
+      try simp only [Mem.room_cons, Mem.room_nil, and_true] at $hz:ident))
+    tacs := tacs.push (← `(tactic|
+      try simp only [List.cons_append, List.nil_append, Mem.live_cons, Mem.live_nil, and_true]
         at $hl:ident))
     let mut i := 0
     for x in xs do

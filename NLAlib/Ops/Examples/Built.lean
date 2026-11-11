@@ -224,4 +224,16 @@ example {x r p n : ℕ} (hxr : x ≠ r) (hxp : x ≠ p) (hrp : r ≠ p) :
 example (b n : ℕ) : Fp.Apart [(b, 0), (b, n), (b, 2 * n)] [n, n, n] := by
   disjoint
 
+-- Four state blocks can be named and read back, with independent dimension lengths.
+example {K : Type} {I : Interp Op Tst K} :
+    (opsImpl% [a, b, c, d] (w, x, y, z) → (w', x', y', z') { skip }).Meets I .total
+      (({ nd := 4, inLens := id, outLens := id,
+          rel := fun _ X _ Y => Y = X } : BlockRel K).spec
+        (fun _ ins outs => ins = outs)) := by
+  cert_intro [a, b, c, d] (w, x, y, z) → (w', x', y', z') reads (ws, xs, ys, zs)
+  obtain ⟨rfl, rfl, rfl, rfl⟩ := hadm
+  refine wp_skip ⟨Store.EqOff.refl _ _, ?_⟩
+  exact ⟨by simp, [ws, xs, ys, zs],
+    by simp [Mem.readBlocks, hws, hxs, hys, hzs], rfl⟩
+
 end NLAlib.Ops.Examples

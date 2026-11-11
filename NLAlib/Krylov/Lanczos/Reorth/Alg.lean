@@ -40,26 +40,31 @@ def preNorm : Stmt Op Tst :=
       (.call (Has.inj ScalarOp.sqrt) [] [⟨5, .const 0⟩]
         [⟨2, .var 4 + .const 2 * .var 1 + .const 2 + .var 5⟩]) .skip)
 
-/-- One round uses the current V prefix for both classical passes. The enclosing layout is
-B,V,C,Prev,Work,t and index n,cap,Boff,Voff,Coff,j, as in ordinary Lanczos. -/
-def advance : Stmt Op Tst :=
+/-- Raw update, saved norm, and the two classical passes against the current basis prefix. -/
+def updateAndSweep : Stmt Op Tst :=
   .seq (.frame [.var 0]
     [⟨3, .const 0⟩, ⟨1, .var 3 + .var 5 * .var 0⟩, ⟨2, .var 4 + .var 1 + .var 5⟩,
       ⟨4, .const 0⟩, ⟨2, .var 4 + .var 5⟩, ⟨5, .const 0⟩,
       ⟨4, .const 0⟩, ⟨2, .var 4 + .var 5⟩] Lanczos.update)
-    (.seq preNorm
-      (.seq (.frame [.var 0, .var 5 + .const 1]
-        [⟨1, .var 3⟩, ⟨4, .const 0⟩, ⟨4, .const 0⟩] cgs2)
-        (.seq (.call (Has.inj Blas1Op.dot) [.var 0]
-          [⟨4, .const 0⟩, ⟨4, .const 0⟩] [⟨5, .const 0⟩])
-          (.seq (.call (Has.inj Blas1Op.copy) [.var 0]
-            [⟨1, .var 3 + .var 5 * .var 0⟩] [⟨3, .const 0⟩])
-            (.frame [.var 0]
-              [⟨4, .const 0⟩, ⟨5, .const 0⟩,
-                ⟨1, .var 3 + (.var 5 + .const 1) * .var 0⟩,
-                ⟨2, .var 4 + .var 1 + .var 5 + .const 1⟩,
-                ⟨1, .var 3 + (.var 5 + .const 1) * .var 0⟩,
-                ⟨2, .var 4 + .var 1 + .var 5 + .const 1⟩] Lanczos.normalize)))))
+    (.seq preNorm (.frame [.var 0, .var 5 + .const 1]
+      [⟨1, .var 3⟩, ⟨4, .const 0⟩, ⟨4, .const 0⟩] cgs2))
+
+/-- Save the current vector before replacing it by the guarded normalized residual. -/
+def saveAndNormalize : Stmt Op Tst :=
+  .seq (.call (Has.inj Blas1Op.dot) [.var 0]
+    [⟨4, .const 0⟩, ⟨4, .const 0⟩] [⟨5, .const 0⟩])
+    (.seq (.call (Has.inj Blas1Op.copy) [.var 0]
+      [⟨1, .var 3 + .var 5 * .var 0⟩] [⟨3, .const 0⟩])
+      (.frame [.var 0]
+        [⟨4, .const 0⟩, ⟨5, .const 0⟩,
+          ⟨1, .var 3 + (.var 5 + .const 1) * .var 0⟩,
+          ⟨2, .var 4 + .var 1 + .var 5 + .const 1⟩,
+          ⟨1, .var 3 + (.var 5 + .const 1) * .var 0⟩,
+          ⟨2, .var 4 + .var 1 + .var 5 + .const 1⟩] Lanczos.normalize))
+
+/-- One complete round in the ordinary B,V,C,Prev,Work,t layout, with the round appended to
+index n,cap,Boff,Voff,Coff. The current basis prefix is used by both classical passes. -/
+def advance : Stmt Op Tst := .seq updateAndSweep saveAndNormalize
 
 /-- Stop before the next round when the latest self-dot is zero, or at the requested cap. -/
 def rounds : Stmt Op Tst :=
@@ -103,7 +108,8 @@ noncomputable def solveCount (n cap : ℕ) : Count Op Tst :=
 /-- Static accounting of a single round retains its actual growing basis prefix. -/
 theorem staticCost_advance (n cap b v c j : ℕ) :
     staticCost (advance (Op := Op) (Tst := Tst)) [n,cap,b,v,c,j] = advanceCount n j := by
-  simp [advance, preNorm, staticCost, useCost, testCost, Lanczos.staticCost_update,
+  simp [advance, updateAndSweep, saveAndNormalize, preNorm, staticCost, useCost, testCost,
+    Lanczos.staticCost_update,
     Lanczos.staticCost_normalize, staticCost_cgs2, advanceCount, Lanczos.advanceCount,
     preNormCount]
   module
@@ -137,7 +143,8 @@ theorem staticPeak_advance_le (W : Op → List ℕ → ℕ) (n cap b v c j : ℕ
   have hcgs := staticPeak_cgs2_le (Op := Op) (Tst := Tst) W n (j+1) v 0 0
   simp only [cgs2Peak, cgsPassPeak] at hcgs
   unfold primitivePeak
-  simp [advance, preNorm, Lanczos.update, Lanczos.normalize, staticPeak]
+  simp [advance, updateAndSweep, saveAndNormalize, preNorm, Lanczos.update,
+    Lanczos.normalize, staticPeak]
   omega
 
 /-- Two n-vectors and two scalar cells are held throughout; at most cap coefficients and one

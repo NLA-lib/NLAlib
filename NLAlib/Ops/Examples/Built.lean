@@ -140,7 +140,7 @@ example {K : Type} {M : Machine K} {J : Interp Op Tst K} (hS : IsScalar M J) :
   step (hS .copy) as m₂ hfr₂ ⟨hpos₂, a₂, ha₂, hcopy₂⟩
   intro s₂ hs₂ hB₂
   exact ⟨by simp [hpos₂, hpos₁], [[a₂]],
-    Mem.readBlocks_of_cons (Store.readBlock_one_of_get (by kept)) rfl,
+    Mem.readBlocks_of_cons (Store.readBlock_one_of_get (by keep)) rfl,
     by simp [BlockFn.rel, BlockFn.un, hcopy₁, hcopy₂]⟩
 
 -- A repeated copy keeps a decoded invariant at a fresh memory in every round.
@@ -160,6 +160,9 @@ example {K : Type} {M : Machine K} {J : Interp Op Tst K} (hS : IsScalar M J)
     (fun _ m' => m'.pos = μ.pos ∧ m'.store.get y.1 y.2 = some a)
     with j hj m₁ hfr hP
   case round =>
+    keep
+    have hcurrent : m₁.store.get x.1 x.2 = some a := by assumption
+    clear hx
     step (hS .copy) as m₂ hfr₂ ⟨hpos₂, b, hb, hcopy⟩
     exact ⟨hpos₂.trans hP.1, by simpa only [hcopy] using hb⟩
 
@@ -182,5 +185,20 @@ example {K : Type} {I : Interp Op Tst K} (τ : Tape K) (μ : Mem K) :
   loop_inv (fun _ => ⊥) (fun _ _ => True)
   intro i hi m hfr hP
   exact Writes.skip hP
+
+example {K : Type} {s s' : Store K} {b t o n : ℕ} {v : ℕ → K}
+    (h : s.EqOff (Store.inBuf t) s') (hne : b ≠ t) (hv : s.HoldsVec b o n v) :
+    s'.HoldsVec b o n v := by
+  keep
+
+example {K : Type} {s s' : Store K} {L : MatLayout} {t : ℕ} {A : ℕ → ℕ → K}
+    (h : s.EqOff (Store.inBuf t) s') (hne : L.buf ≠ t) (hA : s.HoldsMat L A) :
+    s'.HoldsMat L A := by
+  keep
+
+example {K : Type} {s s' : Store K} {b o n limit : ℕ} {v : ℕ → K}
+    (h : Store.Below limit s s') (hb : b < limit) (hv : s.HoldsVec b o n v) :
+    s'.HoldsVec b o n v := by
+  keep
 
 end NLAlib.Ops.Examples

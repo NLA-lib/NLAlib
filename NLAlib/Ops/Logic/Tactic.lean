@@ -48,7 +48,7 @@ restated, and `keep` restates the reads. A side goal it cannot discharge makes i
 the goal (`step!` leaves it instead, under its name: `hadm`, `hpre`, `hap`).
 
 The allocation, counted-loop, call and certificate tactics use the proved footprint rules.
-`checkpoint` and `keep` still have placeholder implementations; `decode` is provisional.
+`checkpoint` still has a placeholder implementation; `decode` is provisional.
 
 ## Main results
 
@@ -175,11 +175,72 @@ macro_rules
        try (case' exit => intro m' hfr hP; exact hP)
        case' round => $introduce:tactic))
 
+open Lean Meta Elab Tactic in
 /-- **`keep`**: after a step from `m` to `m₁` with the frame `hfr₁`, restate for `m₁` every
 hypothesis `s.readBlock b o n = some xs`, `s.get b i = some v`, `HoldsVec`, `HoldsMat` about `m`
 whose cells are off the footprint (`Store.EqOff.keep`, side condition by `disjoint`); the others
-are left as they are. Phase B. -/
-macro "keep" : tactic => `(tactic| fail "keep: phase B")
+are left as they are. New facts use the old name followed by `_kept`, with a suffix when
+needed. Also closes a goal expressing such a kept fact. -/
+elab "keep" : tactic => withMainContext do
+  let solve : TacticM Unit := withMainContext do
+    let goal ← instantiateMVars (← getMainTarget)
+    if goal.isAppOf ``Store.HoldsVec || goal.isAppOf ``Store.HoldsMat then
+      let args := goal.getAppArgs
+      let predicate ← withLocalDeclD `s (← inferType args[1]!) fun s =>
+        mkLambdaFVars #[s] (mkAppN goal.getAppFn (args.set! 1 s))
+      let predicate ← Term.exprToSyntax predicate
+      evalTactic (← `(tactic| first
+        | exact Store.EqOff.keep (P := $predicate) (by assumption)
+            (by first | exact Store.readsOnly_holdsVec _ _ _ _ | exact Store.readsOnly_holdsMat _ _)
+            (by disjoint) (by assumption)
+        | exact Store.Below.keep (P := $predicate) (by assumption)
+            (by first | exact Store.readsOnly_holdsVec _ _ _ _ | exact Store.readsOnly_holdsMat _ _)
+            (by intro b i h; simp only [fpNF] at h; obtain ⟨rfl, -⟩ := h; idx) (by assumption)))
+    else evalTactic (← `(tactic| kept))
+  let target ← instantiateMVars (← getMainTarget)
+  let isProgram := target.isAppOf ``Writes || target.isAppOf ``Wp
+  if !isProgram && (← observing? do
+      let goals ← Tactic.run (← getMainGoal) solve
+      unless goals.isEmpty do throwError "keep: the fact was not proved").isSome then
+    replaceMainGoal []
+    return
+  unless isProgram do return
+  let store ← mkAppM ``Mem.store #[target.getAppArgs.back!]
+  let storeType ← inferType store
+  let lctx ← getLCtx
+  let mut known ← (lctx.foldl (init := #[]) fun acc d => acc.push d.type).mapM instantiateMVars
+  for d in lctx do
+    if d.isImplementationDetail then continue
+    let result ← withMainContext do
+      let ty ← instantiateMVars d.type
+      let atom := match ty.eq? with | some (_, lhs, _) => lhs | none => ty
+      unless atom.isAppOf ``Store.get || atom.isAppOf ``Store.readBlock ||
+          atom.isAppOf ``Store.HoldsVec || atom.isAppOf ``Store.HoldsMat do return none
+      unless ← isDefEq (← inferType atom.getAppArgs[1]!) storeType do return none
+      let candidate ← match ty.eq? with
+        | some (_, lhs, rhs) =>
+          if lhs.isAppOf ``Store.get || lhs.isAppOf ``Store.readBlock then
+            pure (some (← mkEq (mkAppN lhs.getAppFn (lhs.getAppArgs.set! 1 store)) rhs))
+          else pure none
+        | none =>
+          if ty.isAppOf ``Store.HoldsVec || ty.isAppOf ``Store.HoldsMat then
+            pure (some (mkAppN ty.getAppFn (ty.getAppArgs.set! 1 store)))
+          else pure none
+      let some candidate := candidate | return none
+      if known.contains candidate then return none
+      let some proof ← observing? do
+          let hole ← mkFreshExprMVar candidate
+          let goals ← Tactic.run hole.mvarId! solve
+          unless goals.isEmpty do throwError "keep: the fact was not proved"
+          instantiateMVars hole
+        | return none
+      let name ← getUnusedUserName (d.userName.appendAfter "_kept")
+      return some (name, candidate, proof)
+    if let some (name, candidate, proof) := result then
+      let (_, goal) ← (← (← getMainGoal).assert name candidate proof).intro1
+      replaceMainGoal [goal]
+      known := known.push candidate
+  evalTactic (← `(tactic| frame_facts))
 
 open Lean in
 /-- The lemma that splits a list of the given length into named elements. -/

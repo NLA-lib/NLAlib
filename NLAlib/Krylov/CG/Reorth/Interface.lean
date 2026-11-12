@@ -45,17 +45,12 @@ theorem sweep_writes {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
     exact ⟨hl.1, hl.2, hl.2⟩
   have hread : μ.readBlocks [Q, r] [k * n, n] = some [qs, rs] :=
     Mem.readBlocks_of_cons hqs (Mem.readBlocks_of_cons hrs rfl)
-  have hpre : (((sweepRel dec).spec SweepOperands).on .total [n, k] [Q, r] [r] τ μ).pre μ :=
-    ⟨rfl, ⟨Q, r, rfl, rfl, hQr⟩, fun _ => ⟨hl', ⟨[qs, rs], hread, trivial⟩, hz⟩⟩
-  refine ((sweep_spec hS hM hB).writes hpre hl').mono le_rfl ?_
-  rintro μ' _ ⟨X, hX, _, Y, hlen, hrel, rfl⟩
-  obtain rfl : X = [qs, rs] := Option.some.inj (hX.symm.trans hread)
+  refine ((sweep_spec hS hM hB).writes_blocks (d := [n, k]) rfl ⟨Q, r, rfl, rfl, hQr⟩
+    hl' hread trivial hz (by disjoint)).mono le_rfl ?_
+  rintro μ' _ ⟨hpos, Y, hY, hrel⟩
   obtain ⟨rs', rfl⟩ := List.length_eq_one_iff.mp
-    (show Y.length = 1 by simpa using congrArg List.length hlen)
-  have hout := Mem.readBlocks_updBlocks (m := μ) (zs := [r]) (ys := [rs'])
-    (by rw [hlen]; simp [Fp.Apart]) (by rw [hlen]; exact hz)
-  rw [hlen] at hout
-  exact ⟨by simp [sweepRel], rs', by simpa [sweepRel] using hout, hrel⟩
+    (by simpa [sweepRel] using congrArg List.length (Mem.map_length_of_readBlocks hY))
+  exact ⟨by simpa [sweepRel] using hpos, rs', hY, hrel⟩
 
 /-- The exact sweep terminates for every stored basis, with no rank or nonbreakdown assumption. -/
 theorem runs_sweep {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}

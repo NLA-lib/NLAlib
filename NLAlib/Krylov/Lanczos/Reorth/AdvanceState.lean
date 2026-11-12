@@ -37,7 +37,7 @@ private theorem basis_prefix_decoded {dec : K → ℝ} {n cap j : ℕ}
       (lanczosReorthState A b j).vecs l := by
   intro l hl
   funext i
-  have he := (h.basis l (by omega)).entry_of_basis_readBlock hr hl i
+  have he := (h.basis l (by omega)).dec_vec_eq_of_readBlock hr hl i
   have hold : dec (vec basis (l * n + i)) = (lanczosState A b l).cur i := by
     simpa only [basisValue_of_le A b (show l ≤ j by omega)] using he
   have hvec := congrFun ((hAT.lanczosReorthState_toLanczosState b j).2 l) i
@@ -87,7 +87,7 @@ theorem advance_state_writes {M : Machine K} {dec : K → ℝ}
       if_neg (show ¬j + 1 ≤ j by omega)] using hβzero
   obtain ⟨ν₀, hν₀, hνzero⟩ := h.nu j hj
   have hνzero' : dec ν₀ = 0 := by simpa only [nuValue, Nat.lt_irrefl, ↓reduceIte] using hνzero
-  obtain ⟨basis, hbasis⟩ := exists_basis_readBlock (k := j + 1) (V := (V, vo))
+  obtain ⟨basis, hbasis⟩ := exists_readBlock_of_storesVec (k := j + 1) (V := (V, vo))
     (fun l hl => h.basis l (by omega))
   have hbasisdec := basis_prefix_decoded h.toPrefix (Nat.le_of_lt hj) hAT hbasis
   have hnroom : vo + (j + 1) * n + n ≤ μ.store.len V := by

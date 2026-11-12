@@ -86,22 +86,24 @@ variable [Has ScalarOp Op] [Has OperatorOp Op]
 
 /-- A certified active rounded step produces both new stored values and the actual local
 recurrence bounds, using explicit computed-denominator margins. -/
-theorem step_writes {M : Machine K} {dec : K → ℝ} {u : ℝ} {ε : Blas1Err}
+theorem step_writes {M : Machine K} {dec : K → ℝ} {em u : ℝ} {ε : Blas1Err}
     {ok : ℕ → Prop} {n : ℕ} {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K}
     (hS : IsScalar M I) (hM : StdModel u dec M) (hB : IsBlas1 dec ε ok I)
-    (hok : ok n) (hA : IsExactMatvec dec A I) {τ : Tape K} {μ : Mem K}
+    (hok : ok n) (hA : IsMatvec dec A (em * specNorm A) I) {τ : Tape K} {μ : Mem K}
     {x r p v : ℕ × ℕ} {s : CGState ℝ (Fin n)} {rho : ℝ}
     (hxr : x.1 ≠ r.1) (hxp : x.1 ≠ p.1) (hxv : x.1 ≠ v.1)
     (hrp : r.1 ≠ p.1) (hrv : r.1 ≠ v.1) (hpv : p.1 ≠ v.1)
     (hl : μ.Live [x, r, p, v]) (hs : StoresValues dec n x r p v s rho μ)
     (hed : ε.dot n < 1) (hrne : s.r ≠ 0)
     (hcache : |rho - s.r ⬝ᵥ s.r| ≤ ε.dot n * ∑ i, |s.r i * s.r i|)
-    (hmargin : ε.dot n * ∑ i, |s.p i * (A *ᵥ s.p) i| < s.p ⬝ᵥ (A *ᵥ s.p))
+    (hmargin : ∀ q : Fin n → ℝ,
+      ‖WithLp.toLp 2 (A *ᵥ s.p - q)‖ ≤ em * specNorm A * ‖WithLp.toLp 2 s.p‖ →
+      ε.dot n * ∑ i, |s.p i * q i| < s.p ⬝ᵥ q)
     (hz : μ.Room [x, r, p, v] [n, n, n, 1]) :
     Writes .total I τ step (Env.frame [n] [x, r, p, v, x, r, p, v])
       (Fp.blocks [x, r, p, v] [n, n, n, 1])
       (fun μ' => μ'.pos = μ.pos ∧ ∃ s' rho', StoresValues dec n x r p v s' rho' μ' ∧
-        RoundBounds u (ε.dot n) ε.axpy A s s' rho rho') μ := by
+        RoundBounds em u (ε.dot n) ε.axpy A s s' rho rho') μ := by
   obtain ⟨xs, rs, ps, rr, hread, hstate, hrho⟩ := hs
   have hrvec : decv dec n rs = s.r := congrArg CGState.r hstate
   have hpvec : decv dec n ps = s.p := congrArg CGState.p hstate
@@ -111,7 +113,7 @@ theorem step_writes {M : Machine K} {dec : K → ℝ} {u : ℝ} {ε : Blas1Err}
       (show |dec rr - decv dec n rs ⬝ᵥ decv dec n rs| ≤ ε.dot n *
         ∑ i : Fin n, |decv dec n rs i * decv dec n rs i| by rwa [hrvec, hrho])
   have hl' := (μ.live_append _ _).mpr ⟨hl, hl⟩
-  have hpre : (((stepRel u ε dec A).spec (StepOperands n)).on .total [n]
+  have hpre : (((stepRel em u ε dec A).spec (StepOperands n)).on .total [n]
       [x, r, p, v] [x, r, p, v] τ μ).pre μ :=
     ⟨rfl, ⟨rfl, x, r, p, v, rfl, rfl, hxr, hxp, hxv, hrp, hrv, hpv⟩,
       fun _ => ⟨hl', ⟨[xs, rs, ps, [rr]], hread, hed,

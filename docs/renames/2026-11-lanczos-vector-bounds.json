@@ -1,0 +1,31 @@
+{
+  "date": "2026-11-12",
+  "note": "General coordinate-vector norm, dot-product and normalization estimates move from the Lanczos layer to their Mathlib PiL2 namespace and existing ForMathlib file. Statements and mathematical proofs are preserved. The old RoundedLocal module is removed, without aliases or compatibility shim.",
+  "renames": [
+    {
+      "old": "NLAlib.Krylov.Lanczos.norm_sub_add_smul_le_of_componentwise",
+      "new": "EuclideanSpace.norm_sub_add_smul_le_of_componentwise",
+      "rule": "P9"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.abs_dotProduct_sub_le_of_componentwise",
+      "new": "EuclideanSpace.abs_dotProduct_sub_le_of_componentwise",
+      "rule": "P9"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.norm_sub_smul_le_of_div_error",
+      "new": "EuclideanSpace.norm_sub_smul_le_of_div_error",
+      "rule": "P9"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.abs_norm_sub_le_of_self_dot_sqrt",
+      "new": "EuclideanSpace.abs_norm_sub_le_of_self_dot_sqrt",
+      "rule": "P9"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.normalization_bounds_of_self_dot_sqrt_div",
+      "new": "EuclideanSpace.normalization_bounds_of_self_dot_sqrt_div",
+      "rule": "P9"
+    }
+  ]
+}

@@ -467,4 +467,33 @@ theorem Impl.Triple.writes {R : Impl Op Tst} {I : Interp Op Tst K} {md : Mode} {
   exact ⟨Mem.eqOff_updBlocks (Store.EqOff.refl _ _) (by rw [hlen]), xs, hr, hroom,
     ys, hlen, hrel, rfl⟩
 
+/-- Use a proved implementation exactly like a relational primitive call: its declared outputs
+are read back, with the relation on the supplied input blocks and the frame on other cells.
+No client needs to unfold the contract's update equation or reconstruct writes by hand. -/
+theorem Impl.Triple.writes_blocks {R : Impl Op Tst} {I : Interp Op Tst K}
+    {md : Mode} {B : BlockRel K}
+    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop}
+    (h : R.Triple I md (B.spec adm)) {d : List ℕ} {ins outs : List (ℕ × ℕ)}
+    {τ : Tape K} {m : Mem K} {xs : List (List K)}
+    (hnd : d.length = B.nd) (hadm : adm d ins outs) (hlive : m.Live (ins ++ outs))
+    (hr : m.readBlocks ins (B.inLens d) = some xs)
+    (hdom : B.dom d xs (τ.window B.stream m.pos (B.win d)))
+    (hroom : m.Room outs (B.outLens d)) (hap : Fp.Apart outs (B.outLens d)) :
+    Writes md I τ R.body (Env.frame d (ins ++ outs)) (Fp.blocks outs (B.outLens d))
+      (fun m' => m'.pos = m.pos + B.win d ∧ ∃ ys,
+        m'.readBlocks outs (B.outLens d) = some ys ∧
+          B.rel d xs (τ.window B.stream m.pos (B.win d)) ys) m := by
+  have hp : ((B.spec adm).on md d ins outs τ m).pre m :=
+    ⟨hnd, hadm, fun _ => ⟨hlive, ⟨xs, hr, hdom⟩, hroom⟩⟩
+  refine (h.writes hp hlive).mono le_rfl ?_
+  rintro m' _ ⟨xs', hxs, _, ys, hlen, hrel, rfl⟩
+  obtain rfl : xs' = xs := Option.some.inj (hxs.symm.trans hr)
+  have hy := Mem.readBlocks_updBlocks (m := m) (ys := ys)
+    (by rw [hlen]; exact hap) (by rw [hlen]; exact hroom)
+  rw [hlen] at hy
+  refine ⟨by simp, ys, ?_, hrel⟩
+  rw [Mem.readBlocks_congr (m' := (m.updBlocks outs ys).advance (B.win d))
+    (m := m.updBlocks outs ys) rfl]
+  exact hy
+
 end NLAlib.Ops

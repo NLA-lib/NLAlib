@@ -18,7 +18,7 @@ block without assuming that an execution succeeded.
 ## Main results
 
 * `NLAlib.Krylov.Lanczos.StoresVec` and `NLAlib.Krylov.Lanczos.StoresCell` record decoded reads.
-* `NLAlib.Krylov.Lanczos.exists_basis_readBlock` joins readable basis columns.
+* `NLAlib.Krylov.Lanczos.exists_readBlock_of_storesVec` joins readable basis columns.
 -/
 
 @[expose] public section
@@ -90,7 +90,7 @@ theorem StoresVec.zero_sub {dec : K → ℝ} {N n o : ℕ} {q : ℕ × ℕ} {s :
   exact congrFun he ⟨o + i, by omega⟩
 
 /-- Readable contiguous columns give an actual read of the complete basis block. -/
-theorem exists_basis_readBlock {dec : K → ℝ} {n k : ℕ} {V : ℕ × ℕ} {s : Store K}
+theorem exists_readBlock_of_storesVec {dec : K → ℝ} {n k : ℕ} {V : ℕ × ℕ} {s : Store K}
     {v : ℕ → Fin n → ℝ}
     (h : ∀ j < k, StoresVec dec (V.1, V.2 + j * n) (v j) s) :
     ∃ vs, s.readBlock V.1 V.2 (k * n) = some vs := by
@@ -102,7 +102,7 @@ theorem exists_basis_readBlock {dec : K → ℝ} {n k : ℕ} {V : ℕ × ℕ} {s
     exact ⟨xs ++ ys, by simpa only [Nat.succ_mul] using Store.readBlock_add hx hy⟩
 
 /-- A complete basis read and a decoded column read agree on every column entry. -/
-theorem StoresVec.entry_of_basis_readBlock {dec : K → ℝ} {n k j : ℕ} {V : ℕ × ℕ}
+theorem StoresVec.dec_vec_eq_of_readBlock {dec : K → ℝ} {n k j : ℕ} {V : ℕ × ℕ}
     {s : Store K} {vs : List K} {v : Fin n → ℝ}
     (h : StoresVec dec (V.1, V.2 + j * n) v s)
     (hr : s.readBlock V.1 V.2 (k * n) = some vs) (hj : j < k) (i : Fin n) :
@@ -127,7 +127,7 @@ theorem exists_coeff_readBlock {dec : K → ℝ} {k : ℕ} {C : ℕ × ℕ} {s :
     exact ⟨xs ++ [a], Store.readBlock_succ_of hx ha⟩
 
 /-- A complete coefficient read and a decoded cell fact agree on that coefficient. -/
-theorem StoresCell.value_of_readBlock {dec : K → ℝ} {k i : ℕ} {C : ℕ × ℕ}
+theorem StoresCell.dec_vec_eq_of_readBlock {dec : K → ℝ} {k i : ℕ} {C : ℕ × ℕ}
     {s : Store K} {cs : List K} {v : ℝ}
     (h : StoresCell dec (C.1, C.2 + i) v s)
     (hr : s.readBlock C.1 C.2 k = some cs) (hi : i < k) : dec (vec cs i) = v := by

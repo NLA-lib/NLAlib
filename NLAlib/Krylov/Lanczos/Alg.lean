@@ -48,12 +48,12 @@ noncomputable def zeroCount (n : ℕ) : Count Op Tst :=
   n • Count.one (Has.inj (ScalarOp.lit 0)) []
 
 /-- Static evaluation counts every initialized cell. -/
-theorem staticCost_zero (n q : ℕ) :
+theorem stmtCost_zero (n q : ℕ) :
     stmtCost (zero (Op := Op) (Tst := Tst)) [n, q] = zeroCount n := by
   simp [zero, zeroCount, stmtCost, useCost]
 
 /-- The fill borrows only a literal implementation's workspace. -/
-theorem staticPeak_zero_le (W : Op → List ℕ → ℕ) (n q : ℕ) :
+theorem stmtPeak_zero_le (W : Op → List ℕ → ℕ) (n q : ℕ) :
     stmtPeak W (zero (Op := Op) (Tst := Tst)) [n, q] ≤ W (Has.inj (ScalarOp.lit 0)) [] := by
   simp only [zero, stmtPeak]
   exact Finset.sup_le fun _ _ => le_rfl
@@ -81,7 +81,7 @@ noncomputable def updateCount (n : ℕ) : Count Op Tst :=
     2 • Count.one (Has.inj Blas1Op.axpy) [n] + Count.one (Has.inj Blas1Op.dot) [n]
 
 /-- Static accounting follows the actual raw recurrence tree. -/
-theorem staticCost_update (n p q b w a t w' a' : ℕ) :
+theorem stmtCost_update (n p q b w a t w' a' : ℕ) :
     stmtCost (update (Op := Op) (Tst := Tst)) [n, p, q, b, w, a, t, w', a'] =
       updateCount n := by
   simp [update, updateCount, stmtCost, useCost]
@@ -112,7 +112,7 @@ noncomputable def normalizeCount (n : ℕ) : Count Op Tst :=
     Count.one (Has.inj Blas1Op.copy) [n] + Count.one (Has.inj Blas1Op.scal) [n]
 
 /-- The zero branch costs no calls; the positive branch gives the static upper budget. -/
-theorem staticCost_normalize (n w s q b q' b' : ℕ) :
+theorem stmtCost_normalize (n w s q b q' b' : ℕ) :
     stmtCost (normalize (Op := Op) (Tst := Tst)) [n, w, s, q, b, q', b'] =
       normalizeCount n := by
   simp [normalize, normalizeCount, stmtCost, testCost, useCost]

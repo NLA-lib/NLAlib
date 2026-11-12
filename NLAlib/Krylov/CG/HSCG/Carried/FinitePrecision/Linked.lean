@@ -39,14 +39,14 @@ variable [Has ScalarOp Op] [Has Blas1Op Op] [Has OperatorOp Op] [Has CmpTst Tst]
 variable [Apart Blas1Op ScalarOp Op] [Apart Blas1Op OperatorOp Op]
 
 /-- The complete linked rounded solver succeeds under input-only spectral precision and
-returns its actual existing run and residual-gap bound. The matrix-vector oracle is exact;
+returns its actual existing run and residual-gap bound. The matrix-vector oracle is rounded;
 all BLAS calls are implemented through the same rounded scalar machine. -/
-theorem runs_solve_seq {M : Machine K} {dec : K → ℝ} {u e : ℝ}
+theorem runs_solve_seq {M : Machine K} {dec : K → ℝ} {em u e : ℝ}
     {n cap : ℕ} {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K}
-    (hS : IsScalar M I) (hM : StdModel u dec M) (hA : IsExactMatvec dec A I)
+    (hS : IsScalar M I) (hM : StdModel u dec M) (hA : IsMatvec dec A (em * specNorm A) I)
     (hCmp : IsCmp dec I) (hAT : Aᵀ = A) {a a' : ℝ}
     (ha : 0 < a) (hspec : spectrum ℝ A ⊆ Set.Icc a a') (hu : 0 ≤ u)
-    (hue : u ≤ e) (hde : (Blas.seq.err u).dot n ≤ e)
+    (hem : em ≤ e) (hue : u ≤ e) (hde : (Blas.seq.err u).dot n ≤ e)
     (hae : (Blas.seq.err u).axpy ≤ e) (he : e ≤ 1 / 100)
     (hprec : 3 * e * a' ≤ a)
     (hwindow : (cap : ℝ) ^ 2 * Real.sqrt cap * e * (a' / a) ^ 2 ≤
@@ -64,11 +64,11 @@ theorem runs_solve_seq {M : Machine K} {dec : K → ℝ} {u e : ℝ}
         Output dec A (decv dec n bs) e cap x r p v μ') := by
   have hcert := Blas.seq_certifies (Op := Op) (Tst := Tst) hM hu (fun _ => True)
   obtain ⟨hS', hB⟩ := hcert.meets I hS
-  have hA' : IsExactMatvec dec A (I.link (Blas.seq (Op := Op) (Tst := Tst)).table) :=
+  have hA' : IsMatvec dec A (em * specNorm A) (I.link (Blas.seq (Op := Op) (Tst := Tst)).table) :=
     Interp.link_meets_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec)) hA
   have hCmp' : IsCmp dec (I.link (Blas.seq (Op := Op) (Tst := Tst)).table) := hCmp
   obtain ⟨hd, haa⟩ := seq_errors_nonneg hu n
-  have hrun := runs_solve hS' hM hB trivial hA' hCmp' hAT ha hspec hu hd haa hue hde hae
+  have hrun := runs_solve hS' hM hB trivial hA' hCmp' hAT ha hspec hu hd haa hem hue hde hae
     he hprec hwindow (Blas.ws 0) (τ := τ) hbx hbr hbp hbv hxr hxp hxv hrp hrv hpv
     hl hbs hxs hx0 hz
   exact (hcert.transfer I τ _ _ _ _ _ _ hrun).mono

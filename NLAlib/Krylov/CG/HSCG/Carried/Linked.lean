@@ -74,9 +74,10 @@ theorem stepPeak_seq_le (n : ℕ) :
 
 /-- Sequential BLAS supplies the rounded active CG recurrence from explicit input margins,
 with scalar counts and no assumed successful execution. -/
-theorem runs_rounded_step_seq {M : Machine K} {dec : K → ℝ} {n : ℕ} {u : ℝ}
+theorem runs_rounded_step_seq {M : Machine K} {dec : K → ℝ} {n : ℕ} {em u : ℝ}
     {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K}
-    (hS : IsScalar M I) (hM : StdModel u dec M) (hu : 0 ≤ u) (hA : IsExactMatvec dec A I)
+    (hS : IsScalar M I) (hM : StdModel u dec M) (hu : 0 ≤ u)
+    (hA : IsMatvec dec A (em * specNorm A) I)
     {τ : Tape K} {μ : Mem K} {x r p v : ℕ × ℕ} {xs rs ps : List K} {rr : K}
     (hxr : x.1 ≠ r.1) (hxp : x.1 ≠ p.1) (hxv : x.1 ≠ v.1)
     (hrp : r.1 ≠ p.1) (hrv : r.1 ≠ v.1) (hpv : p.1 ≠ v.1)
@@ -87,17 +88,18 @@ theorem runs_rounded_step_seq {M : Machine K} {dec : K → ℝ} {n : ℕ} {u : �
     (hed : (Blas.seq.err u).dot n < 1) (hrne : decv dec n rs ≠ 0)
     (hrr : |dec rr - decv dec n rs ⬝ᵥ decv dec n rs| ≤
       (Blas.seq.err u).dot n * ∑ i : Fin n, |decv dec n rs i * decv dec n rs i|)
-    (hmargin : (Blas.seq.err u).dot n *
-      ∑ i : Fin n, |decv dec n ps i * (A *ᵥ decv dec n ps) i| <
-        decv dec n ps ⬝ᵥ (A *ᵥ decv dec n ps))
+    (hmargin : ∀ q : Fin n → ℝ,
+      ‖WithLp.toLp 2 (A *ᵥ decv dec n ps - q)‖ ≤
+        em * specNorm A * ‖WithLp.toLp 2 (decv dec n ps)‖ →
+      (Blas.seq.err u).dot n * ∑ i, |decv dec n ps i * q i| < decv dec n ps ⬝ᵥ q)
     (hz : μ.Room [x, r, p, v] [n, n, n, 1]) :
     ConditionalRuns I (Blas.ws 0) τ (step.link (Blas.seq (Op := Op) (Tst := Tst)).table)
       (Env.frame [n] [x, r, p, v, x, r, p, v]) μ (seqStepCount n) (2 * n + 4)
-      ((Rounded.stepRel u (Blas.seq.err u) dec A).Post
+      ((Rounded.stepRel em u (Blas.seq.err u) dec A).Post
         [n] [xs, rs, ps, [rr]] [x, r, p, v] [] μ) := by
   have hcert := Blas.seq_certifies (Op := Op) (Tst := Tst) hM hu (fun _ => True)
   obtain ⟨hS', hB⟩ := hcert.meets I hS
-  have hA' : IsExactMatvec dec A (I.link (Blas.seq (Op := Op) (Tst := Tst)).table) :=
+  have hA' : IsMatvec dec A (em * specNorm A) (I.link (Blas.seq (Op := Op) (Tst := Tst)).table) :=
     Interp.link_meets_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec)) hA
   have hrun := Rounded.runs_step hS' hM hB trivial hA' (Blas.ws 0) (τ := τ)
     hxr hxp hxv hrp hrv hpv hl hx hr hp hv hed hrne hrr hmargin hz

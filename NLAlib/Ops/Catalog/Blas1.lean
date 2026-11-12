@@ -67,6 +67,22 @@ def IsAxpyErr (dec : K → ℝ) (e : ℝ) (n : ℕ) (al : K) (x y z : ℕ → K)
   ∀ i < n, |dec (z i) - (dec (y i) + dec al * dec (x i))| ≤
     e * (|dec (y i)| + |dec al * dec (x i)|)
 
+/-- Componentwise axpy error with a separate absolute allowance for gradual underflow. -/
+def IsAxpyMixedErr (dec : K → ℝ) (e eta : ℝ) (n : ℕ) (a : K) (x y z : ℕ → K) : Prop :=
+  ∀ i < n, |dec (z i) - (dec (y i) + dec a * dec (x i))| ≤
+    e * (|dec (y i)| + |dec a * dec (x i)|) + eta
+
+/-- With no absolute allowance the mixed axpy predicate is the relative predicate. -/
+@[simp] theorem isAxpyMixedErr_zero {dec : K → ℝ} {e : ℝ} {n : ℕ}
+    {a : K} {x y z : ℕ → K} :
+    IsAxpyMixedErr dec e 0 n a x y z ↔ IsAxpyErr dec e n a x y z := by
+  simp only [IsAxpyMixedErr, IsAxpyErr, add_zero]
+
+/-- Componentwise division error with a separate absolute underflow allowance. -/
+def IsScalMixedErr (dec : K → ℝ) (e eta : ℝ) (n : ℕ) (a : K) (x z : ℕ → K) : Prop :=
+  dec a ≠ 0 → ∀ i < n,
+    |dec (z i) - dec (x i) / dec a| ≤ e * |dec (x i) / dec a| + eta
+
 /-- `ν` is the Euclidean norm of `x`: a square root, up to `es`, of a sum of squares `σ` computed
 up to `ed`. -/
 def IsNrm2Err (dec : K → ℝ) (ed es : ℝ) (n : ℕ) (x : ℕ → K) (ν : K) : Prop :=
@@ -76,6 +92,12 @@ def IsNrm2Err (dec : K → ℝ) (ed es : ℝ) (n : ℕ) (x : ℕ → K) (ν : K)
 said of a division by zero. -/
 def IsScalErr (dec : K → ℝ) (e : ℝ) (n : ℕ) (al : K) (x z : ℕ → K) : Prop :=
   dec al ≠ 0 → ∀ i < n, |dec (z i) - dec (x i) / dec al| ≤ e * |dec (x i) / dec al|
+
+/-- With no absolute allowance the mixed scaling predicate is the relative predicate. -/
+@[simp] theorem isScalMixedErr_zero {dec : K → ℝ} {e : ℝ} {n : ℕ}
+    {a : K} {x z : ℕ → K} :
+    IsScalMixedErr dec e 0 n a x z ↔ IsScalErr dec e n a x z := by
+  simp only [IsScalMixedErr, IsScalErr, add_zero]
 
 theorem IsDotErr.congr {dec : K → ℝ} {e : ℝ} {n : ℕ} {a b a' b' : ℕ → K} {v : K}
     (h : IsDotErr dec e n a b v) (ha : ∀ i < n, a i = a' i) (hb : ∀ i < n, b i = b' i) :

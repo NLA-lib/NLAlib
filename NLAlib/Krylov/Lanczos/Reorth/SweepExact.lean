@@ -18,7 +18,7 @@ total execution, including zero dimensions and dependent or zero basis columns.
 ## Main results
 
 * `NLAlib.Krylov.Lanczos.Reorth.cgs2_spec_exact`: exact total two-pass certificate.
-* `NLAlib.Krylov.Lanczos.Reorth.PassOut.update_eq`: exact decoded projection update.
+* `NLAlib.Krylov.Lanczos.Reorth.PassOut.dec_vec_eq_sub_sum`: exact decoded projection update.
 -/
 
 @[expose] public section
@@ -72,33 +72,33 @@ theorem cgs2_writes_exact {M : Machine K} {dec : K → ℝ} {ok : ℕ → Prop}
 
 omit [Has ScalarOp Op] [Has Blas1Op Op] in
 /-- Each exact coefficient uses the vector from the start of the classical pass. -/
-theorem PassOut.dot_eq {dec : K → ℝ} {n k : ℕ} {qs ws ws' hs : List K}
+theorem PassOut.dec_vec_eq_sum {dec : K → ℝ} {n k : ℕ} {qs ws ws' hs : List K}
     (h : PassOut dec 0 0 n k qs ws ws' hs) {j : ℕ} (hj : j < k) :
     dec (vec hs j) = ∑ i ∈ Finset.range n, dec (vec qs (j * n + i)) * dec (vec ws i) := by
   simpa [IsDotErr, sub_eq_zero] using h.dot j hj
 
 omit [Has ScalarOp Op] [Has Blas1Op Op] in
 /-- With zero axpy error the updated vector is exactly the input minus all projections. -/
-theorem PassOut.update_eq {dec : K → ℝ} {n k : ℕ} {qs ws ws' hs : List K}
+theorem PassOut.dec_vec_eq_sub_sum {dec : K → ℝ} {n k : ℕ} {qs ws ws' hs : List K}
     (h : PassOut dec 0 0 n k qs ws ws' hs) (i : Fin n) :
     dec (vec ws' i) = dec (vec ws i) -
       ∑ j ∈ Finset.range k, dec (vec hs j) * dec (vec qs (j * n + i)) := by
-  have hb := h.backward (by rfl) i
+  have hb := h.abs_sub_le (by rfl) i
   simpa [sub_eq_zero] using hb
 
 omit [Has ScalarOp Op] [Has Blas1Op Op] in
 /-- The decoded pass is the existing pure classical Gram–Schmidt projection. -/
-theorem PassOut.project_eq {dec : K → ℝ} {n k : ℕ} {qs ws ws' hs : List K}
+theorem PassOut.decv_eq_cgsProject {dec : K → ℝ} {n k : ℕ} {qs ws ws' hs : List K}
     (h : PassOut dec 0 0 n k qs ws ws' hs) :
     decv dec n ws' = cgsProject (fun j (i : Fin n) => dec (vec qs (j * n + i))) k
       (decv dec n ws) := by
   funext i
-  rw [show decv dec n ws' i = dec (vec ws' i) from rfl, h.update_eq i]
+  rw [show decv dec n ws' i = dec (vec ws' i) from rfl, h.dec_vec_eq_sub_sum i]
   simp only [cgsProject, Pi.sub_apply, Finset.sum_apply, Pi.smul_apply, smul_eq_mul]
   congr 1
   apply Finset.sum_congr rfl
   intro j hj
-  rw [h.dot_eq (Finset.mem_range.mp hj)]
+  rw [h.dec_vec_eq_sum (Finset.mem_range.mp hj)]
   congr 1
   symm
   simpa [dotProduct, decv] using
@@ -106,11 +106,11 @@ theorem PassOut.project_eq {dec : K → ℝ} {n k : ℕ} {qs ws ws' hs : List K}
 
 omit [Has ScalarOp Op] [Has Blas1Op Op] in
 /-- Two exact program passes coincide with the two projections of the old pure recurrence. -/
-theorem TwoPassOut.project_eq {dec : K → ℝ} {n k : ℕ} {qs ws ws' : List K}
+theorem TwoPassOut.decv_eq_cgsProject {dec : K → ℝ} {n k : ℕ} {qs ws ws' : List K}
     (h : TwoPassOut dec 0 0 n k qs ws ws') :
     decv dec n ws' = cgsProject (fun j (i : Fin n) => dec (vec qs (j * n + i))) k
       (cgsProject (fun j (i : Fin n) => dec (vec qs (j * n + i))) k (decv dec n ws)) := by
   obtain ⟨mid, hs₁, hs₂, h₁, h₂⟩ := h
-  rw [h₂.project_eq, h₁.project_eq]
+  rw [h₂.decv_eq_cgsProject, h₁.decv_eq_cgsProject]
 
 end NLAlib.Krylov.Lanczos.Reorth

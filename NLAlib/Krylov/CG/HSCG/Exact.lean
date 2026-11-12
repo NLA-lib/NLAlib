@@ -187,26 +187,15 @@ theorem step_writes {M : Machine K} {dec : K → ℝ} {n : ℕ}
       (Fp.blocks [x, r, p] [n, n, n])
       (fun μ' => μ'.pos = μ.pos ∧ StoresState dec n x r p (cgStep A s) μ') μ := by
   obtain ⟨xs, rs, ps, hread, hstate⟩ := hstate
-  have hl' : μ.Live ([x, r, p] ++ [x, r, p]) := (μ.live_append _ _).mpr ⟨hl, hl⟩
-  have hpre : (((stepRel dec A).spec (StepOperands n)).on .total [n]
-      [x, r, p] [x, r, p] τ μ).pre μ :=
-    ⟨rfl, ⟨rfl, x, r, p, rfl, rfl, hxr, hxp, hrp⟩,
-      fun _ => ⟨hl', ⟨[xs, rs, ps], hread,
-        by change Nonbreakdown A (decodedState dec n xs rs ps); rwa [hstate]⟩, hz⟩⟩
-  refine ((step_spec hS hM hB hA).writes hpre hl').mono le_rfl ?_
-  rintro μ' _ ⟨X, hX, _, ys, hlen, hrel, rfl⟩
-  obtain rfl : X = [xs, rs, ps] := Option.some.inj (hX.symm.trans hread)
+  refine ((step_spec hS hM hB hA).writes_blocks rfl
+    ⟨rfl, x, r, p, rfl, rfl, hxr, hxp, hrp⟩
+    ((μ.live_append _ _).mpr ⟨hl, hl⟩) hread
+    (by change Nonbreakdown A (decodedState dec n xs rs ps); rwa [hstate])
+    hz (by disjoint)).mono le_rfl ?_
+  rintro μ' _ ⟨hpos, ys, hys, hrel⟩
   obtain ⟨xs', rs', ps', rfl⟩ := List.length_eq_three.mp
-    (show ys.length = 3 by simpa using congrArg List.length hlen)
-  have hap : Fp.Apart [x, r, p] [n, n, n] := by
-    simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right,
-      Fp.disj_bot_right, and_true]
-    exact ⟨⟨Fp.disj_inBlock_of_ne hxr, Fp.disj_inBlock_of_ne hxp⟩,
-      Fp.disj_inBlock_of_ne hrp⟩
-  have hout := Mem.readBlocks_updBlocks (m := μ) (ys := [xs', rs', ps'])
-    (by rw [hlen]; exact hap) (by rw [hlen]; exact hz)
-  rw [hlen] at hout
-  exact ⟨by simp [stepRel], xs', rs', ps', by simpa [stepRel] using hout,
+    (by simpa [stepRel] using congrArg List.length (Mem.map_length_of_readBlocks hys))
+  exact ⟨by simpa [stepRel] using hpos, xs', rs', ps', hys,
     by simpa only [stepRel_rel, hstate] using hrel⟩
 
 end NLAlib.Krylov.CG.HSCG

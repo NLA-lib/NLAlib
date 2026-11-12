@@ -81,6 +81,67 @@ theorem writes_loop {n : IExp} {body : Stmt Op Tst} {N : ℕ} (hn : n.eval ρ.id
     (fun i hi m' hm => Wp.mono (hstep i hi m' hm.1 hm.2) fun _ hm' =>
       ⟨(hm.1.mono (hF i hi)).trans hm'.1, hm'.2⟩) fun _ h => h
 
+/-- Dimensions already evaluable in a context retain their values under fresh index binders. -/
+theorem IExp.evalList_append {idx : List ℕ} {es : List IExp} {vs : List ℕ}
+    (h : IExp.evalList idx es = some vs) (extra : List ℕ) :
+    IExp.evalList (idx ++ extra) es = some vs := by
+  induction es generalizing vs with
+  | nil => cases h; rfl
+  | cons e es ih =>
+    rw [IExp.evalList_cons] at h ⊢
+    obtain ⟨v, hv, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨vs, hvs, rfl⟩ := Option.map_eq_some_iff.mp h
+    rw [IExp.eval_append hv, ih hvs]
+    rfl
+
+/-- A fresh loop index cannot change an operand that already resolves in the parent context. -/
+theorem Operand.eval_pushIdx {ρ : Env} {a : Operand} {v : ℕ × ℕ}
+    (h : a.eval ρ = some v) (i : ℕ) : a.eval (ρ.pushIdx i) = some v := by
+  rw [Operand.eval_eq] at h ⊢
+  obtain ⟨b, hb, h⟩ := Option.bind_eq_some_iff.mp h
+  obtain ⟨off, hoff, rfl⟩ := Option.map_eq_some_iff.mp h
+  simp only [Env.buf_pushIdx, Env.idx_pushIdx, hb, Option.bind_some]
+  rw [IExp.eval_append hoff]
+  rfl
+
+/-- A fixed framed operand list is independent of the fresh loop index. -/
+theorem Operand.evalList_pushIdx {ρ : Env} {as : List Operand} {vs : List (ℕ × ℕ)}
+    (h : Operand.evalList ρ as = some vs) (i : ℕ) :
+    Operand.evalList (ρ.pushIdx i) as = some vs := by
+  induction as generalizing vs with
+  | nil => cases h; rfl
+  | cons a as ih =>
+    rw [Operand.evalList_cons] at h ⊢
+    obtain ⟨v, hv, h⟩ := Option.bind_eq_some_iff.mp h
+    obtain ⟨vs, hvs, rfl⟩ := Option.map_eq_some_iff.mp h
+    rw [Operand.eval_pushIdx hv, ih hvs]
+    rfl
+
+/-- A framed state transition composes into mathematical iteration. Clients supply the stored
+state predicate, its transition and the valid executed states; liveness, binder stability,
+position chaining and the loop invariant are shared here. The frame from the initial store is
+forwarded to each round for any additional capacity or input facts it needs. -/
+theorem writes_loop_frame_iterate {S : Type} {n : IExp} {N : ℕ}
+    {ds : List IExp} {args : List Operand} {body : Stmt Op Tst}
+    {d : List ℕ} {a : List (ℕ × ℕ)} {F : Fp} (State : S → Mem K → Prop)
+    (transition : S → S) (valid : S → Prop) {s : S}
+    (hn : n.eval ρ.idx = some N) (hd : IExp.evalList ρ.idx ds = some d)
+    (ha : Operand.evalList ρ args = some a) (hl : m.Live a) (hs : State s m)
+    (hvalid : ∀ i < N, valid (transition^[i] s))
+    (hstep : ∀ s' m', m.store.EqOff F m'.store → m'.Live a → State s' m' → valid s' →
+      Writes md I τ body (Env.frame d a) F
+        (fun m'' => m''.pos = m'.pos ∧ State (transition s') m'') m') :
+    Writes md I τ (.loop n (.frame ds args body)) ρ F
+      (fun m' => m'.pos = m.pos ∧ State (transition^[N] s) m') m := by
+  refine writes_loop hn (fun _ => F) (fun _ _ => le_rfl)
+    (fun i m' => m'.pos = m.pos ∧ State (transition^[i] s) m') ⟨rfl, hs⟩
+    fun i hi m' hfr ⟨hpos, hstate⟩ => ?_
+  refine (writes_frame (IExp.evalList_append hd [i]) (Operand.evalList_pushIdx ha i)
+    (hl.congr hfr.length_eq) (hstep _ m' hfr (hl.congr hfr.length_eq) hstate (hvalid i hi))).mono
+    le_rfl ?_
+  intro m'' _ ⟨hpos', hstate'⟩
+  exact ⟨hpos'.trans hpos, by simpa only [Function.iterate_succ_apply'] using hstate'⟩
+
 /-- **Two nested counted loops**, with an invariant indexed by the row `i` and the column `j`;
 the end of a row is the start of the next (`hnext`). -/
 theorem writes_loop₂ {n₁ n₂ : IExp} {body : Stmt Op Tst} {M N : ℕ}

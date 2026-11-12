@@ -91,25 +91,27 @@ theorem self_dot_relative {e v : ℝ} (he : 0 ≤ e) (x : ι → ℝ)
   rwa [hs] at h
 
 /-- Every local standard CG recurrence supplies the existing run theory's normwise scalar
-and vector defects at a common error bound. The matvec defect is zero. [Higham2002, §3.1]. -/
-theorem RoundBounds.exists_run_errors {n : ℕ} {u ed ea e : ℝ}
+and vector defects at a common error bound, including the actual matvec defect.
+[Higham2002, §3.1]. -/
+theorem RoundBounds.exists_run_errors {n : ℕ} {em u ed ea e : ℝ}
     {A : Matrix (Fin n) (Fin n) ℝ} {s s' : CGState ℝ (Fin n)} {rho rho' : ℝ}
-    (h : RoundBounds u ed ea A s s' rho rho') (hu : 0 ≤ u) (hd : 0 ≤ ed) (ha : 0 ≤ ea)
-    (hue : u ≤ e) (hde : ed ≤ e) (hae : ea ≤ e) :
-    ∃ curv alpha beta theta eg eb : ℝ,
+    (h : RoundBounds em u ed ea A s s' rho rho') (hu : 0 ≤ u) (hd : 0 ≤ ed) (ha : 0 ≤ ea)
+    (hem : em ≤ e) (hue : u ≤ e) (hde : ed ≤ e) (hae : ea ≤ e) :
+    ∃ q : Fin n → ℝ, ∃ curv alpha beta theta eg eb : ℝ,
+      ‖WithLp.toLp 2 (A *ᵥ s.p - q)‖ ≤ e * specNorm A * ‖WithLp.toLp 2 s.p‖ ∧
       0 < rho ∧ 0 < curv ∧
       rho' = ‖WithLp.toLp 2 s'.r‖ ^ 2 * (1 + theta) ∧ |theta| ≤ e ∧
-      |s.p ⬝ᵥ (A *ᵥ s.p) - curv| ≤
-        e * ‖WithLp.toLp 2 s.p‖ * ‖WithLp.toLp 2 (A *ᵥ s.p)‖ ∧
+      |s.p ⬝ᵥ q - curv| ≤
+        e * ‖WithLp.toLp 2 s.p‖ * ‖WithLp.toLp 2 q‖ ∧
       alpha = rho / curv * (1 + eg) ∧ |eg| ≤ e ∧
       beta = rho' / rho * (1 + eb) ∧ |eb| ≤ e ∧
       ‖WithLp.toLp 2 (s.x + alpha • s.p - s'.x)‖ ≤
         e * (‖WithLp.toLp 2 s.x‖ + |alpha| * ‖WithLp.toLp 2 s.p‖) ∧
-      ‖WithLp.toLp 2 (s.r - alpha • (A *ᵥ s.p) - s'.r)‖ ≤
-        e * (‖WithLp.toLp 2 s.r‖ + |alpha| * ‖WithLp.toLp 2 (A *ᵥ s.p)‖) ∧
+      ‖WithLp.toLp 2 (s.r - alpha • q - s'.r)‖ ≤
+        e * (‖WithLp.toLp 2 s.r‖ + |alpha| * ‖WithLp.toLp 2 q‖) ∧
       ‖WithLp.toLp 2 (s'.r + beta • s.p - s'.p)‖ ≤
         e * (‖WithLp.toLp 2 s'.r‖ + |beta| * ‖WithLp.toLp 2 s.p‖) := by
-  obtain ⟨curv, alpha, beta, hrho, hcurv, hc, halpha, hx, hr, hrho', hbeta, hp⟩ := h
+  obtain ⟨q, curv, alpha, beta, hmv, hrho, hcurv, hc, halpha, hx, hr, hrho', hbeta, hp⟩ := h
   obtain ⟨theta, htheta, hetheta⟩ := self_dot_relative hd s'.r hrho'
   obtain ⟨eg, heg, healpha⟩ := exists_relative_error hu halpha
   obtain ⟨eb, heb, hebeta⟩ := exists_relative_error hu hbeta
@@ -119,17 +121,20 @@ theorem RoundBounds.exists_run_errors {n : ℕ} {u ed ea e : ℝ}
         e * (‖WithLp.toLp 2 y‖ + |a| * ‖WithLp.toLp 2 x‖) := by
     rw [← neg_sub z, WithLp.toLp_neg, norm_neg]
     exact (norm_update_le ha hh).trans (mul_le_mul_of_nonneg_right hae (by positivity))
-  refine ⟨curv, alpha, beta, theta, eg, eb, hrho, hcurv, hetheta, htheta.trans hde,
+  refine ⟨q, curv, alpha, beta, theta, eg, eb,
+    hmv.trans (mul_le_mul_of_nonneg_right
+      (mul_le_mul_of_nonneg_right hem (specNorm_nonneg _)) (norm_nonneg _)),
+    hrho, hcurv, hetheta, htheta.trans hde,
     ?_, healpha, heg.trans hue, hebeta, heb.trans hue, hvec hx, ?_, hvec hp⟩
-  · have hnorm := sum_abs_mul_le s.p (A *ᵥ s.p)
+  · have hnorm := sum_abs_mul_le s.p q
     calc
-      _ ≤ ed * ∑ i, |s.p i * (A *ᵥ s.p) i| := by simpa only [abs_sub_comm] using hc
-      _ ≤ ed * (‖WithLp.toLp 2 s.p‖ * ‖WithLp.toLp 2 (A *ᵥ s.p)‖) :=
+      _ ≤ ed * ∑ i, |s.p i * q i| := by simpa only [abs_sub_comm] using hc
+      _ ≤ ed * (‖WithLp.toLp 2 s.p‖ * ‖WithLp.toLp 2 q‖) :=
         mul_le_mul_of_nonneg_left hnorm hd
-      _ ≤ e * (‖WithLp.toLp 2 s.p‖ * ‖WithLp.toLp 2 (A *ᵥ s.p)‖) :=
+      _ ≤ e * (‖WithLp.toLp 2 s.p‖ * ‖WithLp.toLp 2 q‖) :=
         mul_le_mul_of_nonneg_right hde (by positivity)
       _ = _ := (mul_assoc ..).symm
-  · have hh := hvec (a := -alpha) (x := A *ᵥ s.p) (y := s.r) (z := s'.r)
+  · have hh := hvec (a := -alpha) (x := q) (y := s.r) (z := s'.r)
       (by simpa only [neg_mul, ← sub_eq_add_neg, abs_neg] using hr)
     simpa only [sub_eq_add_neg, neg_smul, abs_neg] using hh
 

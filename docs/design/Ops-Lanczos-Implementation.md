@@ -36,7 +36,7 @@ transfers to old finite-precision analyses will be listed individually, not clai
 `Exact.solve_spec` proves total success from the scalar exact model, exact BLAS and matvec
 contracts, decoded comparisons, and ordinary readable/roomy blocks. It places no restriction
 on the matrix or cap. The result equals the pure recurrence at every requested column; for
-Hermitian matrices, `Output.basis_eq_arnoldiMatrix` identifies the canonical Krylov basis.
+Hermitian matrices, `Output.basisMatrix_succ_eq_arnoldiMatrix` identifies the canonical Krylov basis.
 `Exact.runs_solve` adds the evaluator-derived abstract operation and workspace bounds.
 
 `Profiles.seqSolveCount` evaluates the scalar budget of sequential BLAS. Each active round
@@ -61,7 +61,8 @@ actual output reads, norm and reciprocal-scaling contracts, and the zero-input r
 `Rounded.advance_writes` composes those facts into a complete successful round, using an
 exact primitive matvec. Dot and square-root error parameters below one guard normalization.
 
-The pure `Math.RoundedLocal` estimates convert componentwise bounds to Euclidean local
+The pure `EuclideanSpace` estimates in `ForMathlib/Analysis/InnerProductSpace/PiL2.lean`
+convert componentwise bounds to Euclidean local
 errors. If the self-dot and sqrt tolerances are ed and es, the relative norm tolerance is
 g=ed+es(1+ed). With reciprocal-scaling tolerance ec, g<1 gives normalization residual at most
 ec times the raw-vector norm and squared near-unit defect at most t(2+t), where

@@ -73,7 +73,7 @@ theorem normalize_rounded_spec {M : Machine K} {dec : K → ℝ} {n : ℕ}
     step (hS .sqrt) as μ₁ hfr₁ ⟨hpos₁, β, hβ, hβword⟩
     step hB.copy as μ₂ hfr₂ ⟨hpos₂, copied, hcopied, hcopy⟩
     subst copied
-    have hβpos : 0 < dec β := by rw [← hβword]; exact hM.sqrt_pos hu hp
+    have hβpos : 0 < dec β := by rw [← hβword]; exact hM.dec_sqrt_pos hu hp
     have hnorm : IsNrm2Err dec (ε.dot n) u n (vec ws) β :=
       ⟨σ, hdom.1, fun hσ => by rw [← hβword]; exact hM.sqrt σ hσ⟩
     step hB.scal as μ₃ hfr₃ ⟨hpos₃, ys, hys, hscaled⟩

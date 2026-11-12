@@ -53,29 +53,23 @@ theorem normalize_writes {M : Machine K} {dec : K → ℝ} {n : ℕ} {I : Interp
     Mem.readBlocks_of_cons hreadw (Mem.readBlocks_of_cons (Store.readBlock_one_of_get hσ)
       (Mem.readBlocks_of_cons hreadq (Mem.readBlocks_of_cons
         (Store.readBlock_one_of_get hβ₀) rfl)))
-  have hpre : (((normalizeRel dec n).spec (NormalizeOperands n)).on .total
-      [n] [w, s, q, b] [q, b] τ μ).pre μ :=
-    ⟨rfl, ⟨rfl, w, s, q, b, rfl, rfl, hws, hwq, hwb, hsq, hsb, hqb⟩,
-      fun _ => ⟨hl', ⟨[ws, [σ], qs, [β₀]], hread, hself, hqzero, hbzero⟩, hz⟩⟩
-  refine ((normalize_spec hS hM hB hok hCmp).writes hpre hl').mono le_rfl ?_
-  rintro μ' _ ⟨X, hX, _, Y, hlen, hrel, rfl⟩
-  obtain rfl : X = [ws, [σ], qs, [β₀]] := Option.some.inj (hX.symm.trans hread)
+  refine ((normalize_spec hS hM hB hok hCmp).writes_blocks rfl
+    ⟨rfl, w, s, q, b, rfl, rfl, hws, hwq, hwb, hsq, hsb, hqb⟩
+    hl' hread ⟨hself, hqzero, hbzero⟩ hz (by disjoint)).mono le_rfl ?_
+  rintro μ' _ ⟨hpos, Y, hout, hrel⟩
+  have hlen := Mem.map_length_of_readBlocks hout
   obtain ⟨ys, bs, rfl⟩ := List.length_eq_two.mp
-    (show Y.length = 2 by simpa using congrArg List.length hlen)
+    (by simpa [normalizeRel] using congrArg List.length hlen)
   have hbslen : bs.length = 1 := by
-    simpa using congrArg (fun ls => ls.getD 1 0) hlen
+    simpa [normalizeRel] using congrArg (fun ls => ls.getD 1 0) hlen
   obtain ⟨β, rfl⟩ := List.length_eq_one_iff.mp hbslen
-  have hap : Fp.Apart [q, b] [n, 1] := by disjoint
-  have hout := Mem.readBlocks_updBlocks (m := μ) (zs := [q, b]) (ys := [ys, [β]])
-    (by rw [hlen]; exact hap) (by rw [hlen]; exact hz)
-  rw [hlen] at hout
   obtain ⟨q₁, b₁, vs, cs, hops, hv, hc, hwords⟩ := Mem.readBlocks_two hout
   simp only [List.cons.injEq, and_true] at hops hwords
   rcases hops with ⟨hq, hb⟩
   subst q₁ b₁
   rcases hwords with ⟨hvs, hcs⟩
   subst vs cs
-  exact ⟨by simp [normalizeRel], ys, β, by simpa using hv,
+  exact ⟨by simpa [normalizeRel] using hpos, ys, β, by simpa using hv,
     by simpa using Store.get_of_readBlock hc (j := 0) (by omega) β, hrel⟩
 
 end NLAlib.Krylov.Lanczos

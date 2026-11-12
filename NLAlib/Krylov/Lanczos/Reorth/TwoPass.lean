@@ -46,14 +46,14 @@ noncomputable def cgs2Count (n k : ℕ) : Count Op Tst := 2 • cgsPassCount n k
 def cgs2Peak (W : Op → List ℕ → ℕ) (n k : ℕ) : ℕ := k + cgsPassPeak W n
 
 /-- Static accounting includes all coefficients and projection updates of both passes. -/
-theorem staticCost_cgs2 (n k q w w' : ℕ) :
+theorem stmtCost_cgs2 (n k q w w' : ℕ) :
     stmtCost (cgs2 (Op := Op) (Tst := Tst)) [n, k, q, w, w'] = cgs2Count n k := by
-  simp [cgs2, stmtCost, staticCost_cgsPass, cgs2Count, two_nsmul]
+  simp [cgs2, stmtCost, stmtCost_cgsPass, cgs2Count, two_nsmul]
 
 /-- The second pass reuses coefficient and scalar scratch from the first pass. -/
-theorem staticPeak_cgs2_le (W : Op → List ℕ → ℕ) (n k q w w' : ℕ) :
+theorem stmtPeak_cgs2_le (W : Op → List ℕ → ℕ) (n k q w w' : ℕ) :
     stmtPeak W (cgs2 (Op := Op) (Tst := Tst)) [n, k, q, w, w'] ≤ cgs2Peak W n k := by
-  have h := staticPeak_cgsPass_le (Op := Op) (Tst := Tst) W n k q w w 0
+  have h := stmtPeak_cgsPass_le (Op := Op) (Tst := Tst) W n k q w w 0
   simpa [cgs2, stmtPeak, cgs2Peak] using Nat.add_le_add_left h k
 
 variable [Inhabited K]
@@ -65,7 +65,7 @@ def TwoPassOut (dec : K → ℝ) (ed ea : ℝ) (n k : ℕ) (qs ws ws' : List K) 
 omit [Has ScalarOp Op] [Has Blas1Op Op] in
 /-- The discarded coefficients of both passes still give an actual representation witness.
 The bound adds the two independently certified axpy chains, without assuming orthogonality. -/
-theorem TwoPassOut.backward {dec : K → ℝ} {ed ea : ℝ} {n k : ℕ}
+theorem TwoPassOut.exists_abs_sub_le {dec : K → ℝ} {ed ea : ℝ} {n k : ℕ}
     {qs ws ws' : List K} (h : TwoPassOut dec ed ea n k qs ws ws') (ha : 0 ≤ ea) :
     ∃ mid h₁ h₂ : List K, PassOut dec ed ea n k qs ws mid h₁ ∧
       PassOut dec ed ea n k qs mid ws' h₂ ∧ ∀ i : Fin n,
@@ -86,7 +86,7 @@ theorem TwoPassOut.backward {dec : K → ℝ} {ed ea : ℝ} {n k : ℕ}
     simp only [add_mul, Finset.sum_add_distrib]
     ring
   rw [hid]
-  exact (abs_add_le _ _).trans (add_le_add (hp₁.backward ha i) (hp₂.backward ha i))
+  exact (abs_add_le _ _).trans (add_le_add (hp₁.abs_sub_le ha i) (hp₂.abs_sub_le ha i))
 
 /-- The vector is updated in place in a buffer distinct from the read-only basis. -/
 @[admNF] def TwoPassOperands (ok : ℕ → Prop) :

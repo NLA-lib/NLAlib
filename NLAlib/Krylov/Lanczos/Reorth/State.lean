@@ -63,7 +63,7 @@ theorem readback {dec : K → ℝ} {n cap : ℕ}
     ∃ vs cs, s.readBlock V.1 V.2 ((cap + 1) * n) = some vs ∧
       s.readBlock C.1 C.2 (3 * cap + 2) = some cs ∧ Output dec A b cap vs cs := by
   classical
-  obtain ⟨vs, hv⟩ := exists_basis_readBlock (k := cap + 1) (fun j hj => h.basis j (by omega))
+  obtain ⟨vs, hv⟩ := exists_readBlock_of_storesVec (k := cap + 1) (fun j hj => h.basis j (by omega))
   let cv : ℕ → ℝ := fun i => if i < 2 * cap + 2 then coeffValue A b cap cap i
     else (lanczosState A b (i - (2 * cap + 2) + 1)).beta
   have hcells : ∀ i < 3 * cap + 2, StoresCell dec (C.1, C.2 + i) (cv i) s := by
@@ -76,28 +76,28 @@ theorem readback {dec : K → ℝ} {n cap : ℕ}
   obtain ⟨cs, hc⟩ := exists_coeff_readBlock hcells
   refine ⟨vs, cs, hv, hc, ?_, ?_, ?_, ?_, ?_⟩
   · intro j hj i
-    have he := (h.basis j hj).entry_of_basis_readBlock hv (by omega) i
+    have he := (h.basis j hj).dec_vec_eq_of_readBlock hv (by omega) i
     have hold : dec (vec vs (j * n + i)) = (lanczosState A b j).cur i :=
       by simpa only [basisValue_of_le A b hj] using he
     exact hold.trans (congrFun (congrArg LanczosState.cur
       (hA.lanczosReorthState_toLanczosState b j).1) i).symm
   · intro j hj
-    have he := (hcells j (by omega)).value_of_readBlock hc (by omega)
+    have he := (hcells j (by omega)).dec_vec_eq_of_readBlock hc (by omega)
     simpa only [cv, if_pos (by omega : j < 2 * cap + 2), coeffValue_alpha A b hj, if_pos hj,
       (hA.lanczosReorthState_toLanczosState b j).1] using he
   · intro j hj
-    have he := (hcells (cap + j) (by omega)).value_of_readBlock hc (by omega)
+    have he := (hcells (cap + j) (by omega)).dec_vec_eq_of_readBlock hc (by omega)
     have hold : dec (vec cs (cap + j)) = (lanczosState A b j).beta := by
       simpa only [cv, if_pos (by omega : cap + j < 2 * cap + 2), coeffValue_beta A b hj,
         if_pos hj] using he
     exact hold.trans (congrArg LanczosState.beta
       (hA.lanczosReorthState_toLanczosState b j).1).symm
-  · have he := (hcells (2 * cap + 1) (by omega)).value_of_readBlock hc (by omega)
+  · have he := (hcells (2 * cap + 1) (by omega)).dec_vec_eq_of_readBlock hc (by omega)
     simpa only [cv, if_pos (by omega : 2 * cap + 1 < 2 * cap + 2), coeffValue_norm] using he
   · intro j hj
     have hνj : StoresCell dec (C.1, C.2 + (2 * cap + 2 + j)) (nuValue A b cap j) s := by
       simpa only [Nat.add_assoc] using hν j hj
-    have he := hνj.value_of_readBlock (i := 2 * cap + 2 + j) hc (by omega)
+    have he := hνj.dec_vec_eq_of_readBlock (i := 2 * cap + 2 + j) hc (by omega)
     have hold : dec (vec cs (2 * cap + 2 + j)) = (lanczosState A b (j + 1)).beta := by
       simpa only [nuValue, if_pos hj, Nat.add_assoc] using he
     exact hold.trans ((congrArg LanczosState.beta

@@ -10,7 +10,7 @@ public import NLAlib.Krylov.CG.HSCG.Carried.Exact
 /-!
 # A standard-model CG round with its computed residual product
 
-This slice uses an exact matrix-vector operator and rounded scalar and BLAS1 contracts. Its
+This slice uses rounded matrix-vector, scalar and BLAS1 contracts. Its
 input error and curvature margins guarantee positive computed divisors and successful total
 execution. The result records the standard local recurrence bounds, including the retained
 self-product for the next round. No success premise is assumed.
@@ -30,14 +30,16 @@ open scoped Matrix
 
 /-- The standard local CG recurrence with separately bounded dot products, divisions and
 componentwise vector updates. The matrix-vector product is exact in this slice. -/
-def RoundBounds {n : ℕ} (u ed ea : ℝ) (A : Matrix (Fin n) (Fin n) ℝ)
+def RoundBounds {n : ℕ} (em u ed ea : ℝ) (A : Matrix (Fin n) (Fin n) ℝ)
     (s s' : CGState ℝ (Fin n)) (rho rho' : ℝ) : Prop :=
-  ∃ curvature alpha beta : ℝ, 0 < rho ∧ 0 < curvature ∧
-    |curvature - s.p ⬝ᵥ (A *ᵥ s.p)| ≤ ed * ∑ i : Fin n, |s.p i * (A *ᵥ s.p) i| ∧
+  ∃ q : Fin n → ℝ, ∃ curvature alpha beta : ℝ,
+    ‖WithLp.toLp 2 (A *ᵥ s.p - q)‖ ≤ em * specNorm A * ‖WithLp.toLp 2 s.p‖ ∧
+    0 < rho ∧ 0 < curvature ∧
+    |curvature - s.p ⬝ᵥ q| ≤ ed * ∑ i : Fin n, |s.p i * q i| ∧
     |alpha - rho / curvature| ≤ u * |rho / curvature| ∧
     (∀ i, |s'.x i - (s.x i + alpha * s.p i)| ≤ ea * (|s.x i| + |alpha * s.p i|)) ∧
-    (∀ i, |s'.r i - (s.r i - alpha * (A *ᵥ s.p) i)| ≤
-      ea * (|s.r i| + |alpha * (A *ᵥ s.p) i|)) ∧
+    (∀ i, |s'.r i - (s.r i - alpha * q i)| ≤
+      ea * (|s.r i| + |alpha * q i|)) ∧
     |rho' - s'.r ⬝ᵥ s'.r| ≤ ed * ∑ i : Fin n, |s'.r i * s'.r i| ∧
     |beta - rho' / rho| ≤ u * |rho' / rho| ∧
     (∀ i, |s'.p i - (s'.r i + beta * s.p i)| ≤ ea * (|s'.r i| + |beta * s.p i|))
@@ -48,7 +50,7 @@ variable [Has ScalarOp Op] [Has Blas1Op Op] [Has OperatorOp Op]
 /-- The input residual-product error and curvature margin suffice for both computed division
 arguments to be positive. The output retains its newly computed residual product. -/
 @[simps (attr := storeNF)]
-noncomputable def stepRel (u : ℝ) (ε : Blas1Err) (dec : K → ℝ) {n : ℕ}
+noncomputable def stepRel (em u : ℝ) (ε : Blas1Err) (dec : K → ℝ) {n : ℕ}
     (A : Matrix (Fin n) (Fin n) ℝ) : BlockRel K where
   nd := 1
   inLens d := [d.headD 0, d.headD 0, d.headD 0, 1]
@@ -56,23 +58,25 @@ noncomputable def stepRel (u : ℝ) (ε : Blas1Err) (dec : K → ℝ) {n : ℕ}
   dom _ X _ := match X with
     | [_, rs, ps, [v]] => ε.dot n < 1 ∧ decv dec n rs ≠ 0 ∧
         IsDotErr dec (ε.dot n) n (vec rs) (vec rs) v ∧
-        ε.dot n * ∑ i : Fin n, |decv dec n ps i * (A *ᵥ decv dec n ps) i| <
-          decv dec n ps ⬝ᵥ (A *ᵥ decv dec n ps)
+        ∀ q : Fin n → ℝ,
+          ‖WithLp.toLp 2 (A *ᵥ decv dec n ps - q)‖ ≤
+            em * specNorm A * ‖WithLp.toLp 2 (decv dec n ps)‖ →
+          ε.dot n * ∑ i, |decv dec n ps i * q i| < decv dec n ps ⬝ᵥ q
     | _ => False
   rel _ X _ Y := match X, Y with
     | [xs, rs, ps, [v]], [xs', rs', ps', [v']] =>
-        RoundBounds u (ε.dot n) ε.axpy A (decodedState dec n xs rs ps)
+        RoundBounds em u (ε.dot n) ε.axpy A (decodedState dec n xs rs ps)
           (decodedState dec n xs' rs' ps') (dec v) (dec v')
     | _, _ => False
 
 /-- Input/model assumptions establish total successful execution and standard local CG error
-bounds. The curvature margin is stated on the decoded input direction and exact operator. -/
-theorem step_spec {M : Machine K} {dec : K → ℝ} {n : ℕ} {u : ℝ} {ε : Blas1Err}
+bounds. The curvature margin is uniform over every product admitted by the matvec contract. -/
+theorem step_spec {M : Machine K} {dec : K → ℝ} {n : ℕ} {em u : ℝ} {ε : Blas1Err}
     {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K} {ok : ℕ → Prop}
     (hS : IsScalar M I) (hM : StdModel u dec M)
-    (hB : IsBlas1 dec ε ok I) (hok : ok n) (hA : IsExactMatvec dec A I) :
+    (hB : IsBlas1 dec ε ok I) (hok : ok n) (hA : IsMatvec dec A (em * specNorm A) I) :
     (stepImpl (Op := Op) (Tst := Tst)).Triple I .total
-      ((stepRel u ε dec A).spec (StepOperands n)) := by
+      ((stepRel em u ε dec A).spec (StepOperands n)) := by
   cert_intro [m] (x, r, p, v) → (x', r', p', v') reads (xs, rs, ps, vs)
   obtain ⟨hd, hx, hr, hp, hv, hxr, hxp, hxv, hrp, hrv, hpv⟩ := hadm
   subst m x' r' p' v'
@@ -105,28 +109,27 @@ theorem step_spec {M : Machine K} {dec : K → ℝ} {n : ℕ} {u : ℝ} {ε : Bl
   step hB.copy as m₁₁ hfr₁₁ ⟨hpos₁₁, ps'', hps'', rfl⟩
   step (hS .copy) as m₁₂ hfr₁₂ ⟨hpos₁₂, rr'', hrr'', rfl⟩
   have hrrpos : 0 < dec rr := hdom.2.2.1.self_pos_of_ne_zero hdom.1 hdom.2.1
-  have hpqpos : 0 < dec pq := hepq.pos_of_margin (by simpa only [heq] using hdom.2.2.2)
+  have hpqpos : 0 < dec pq := hepq.pos_of_margin (hdom.2.2.2 _ heq)
   have halpha := hea ▸ hM.div rr pq hpqpos.ne'
   have hbeta := heb ▸ hM.div rr' rr hrrpos.ne'
   have hnad : dec na = -dec a := hena ▸ hM.neg a
   have hcurv := hepq.decoded
-  rw [heq] at hcurv
   have hrvec (i : Fin n) := her.decoded i
-  simp only [hnad, heq, neg_mul, ← sub_eq_add_neg, abs_neg] at hrvec
+  simp only [hnad, neg_mul, ← sub_eq_add_neg, abs_neg] at hrvec
   intro s₂ hs₂ hB₂
   refine ⟨by simp [stepRel, hpos₁₂, hpos₁₁, hpos₁₀, hpos₉, hpos₈, hpos₇, hpos₆,
     hpos₅, hpos₄, hpos₃, hpos₂, hpos₁], [xs', zs, ps'', [rr']], ?_, ?_⟩
   · exact Mem.readBlocks_of_cons (by kept) (Mem.readBlocks_of_cons (by kept)
       (Mem.readBlocks_of_cons (by kept) (Mem.readBlocks_of_cons (by kept) rfl)))
-  · exact ⟨dec pq, dec a, dec b, hrrpos, hpqpos, hcurv, halpha,
+  · exact ⟨decv dec n qs, dec pq, dec a, dec b, heq, hrrpos, hpqpos, hcurv, halpha,
       hex.decoded, hrvec, herr'.decoded, hbeta, hep.decoded⟩
 
 /-- Readable input state and explicit input error margins imply a successful rounded CG
 round, its local numerical bounds and the evaluator-derived operation/workspace budget. -/
-theorem runs_step {M : Machine K} {dec : K → ℝ} {n : ℕ} {u : ℝ} {ε : Blas1Err}
+theorem runs_step {M : Machine K} {dec : K → ℝ} {n : ℕ} {em u : ℝ} {ε : Blas1Err}
     {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K} {ok : ℕ → Prop}
     (hS : IsScalar M I) (hM : StdModel u dec M)
-    (hB : IsBlas1 dec ε ok I) (hok : ok n) (hA : IsExactMatvec dec A I)
+    (hB : IsBlas1 dec ε ok I) (hok : ok n) (hA : IsMatvec dec A (em * specNorm A) I)
     (W : Op → List ℕ → ℕ) {τ : Tape K} {μ : Mem K} {x r p v : ℕ × ℕ}
     {xs rs ps : List K} {rr : K}
     (hxr : x.1 ≠ r.1) (hxp : x.1 ≠ p.1) (hxv : x.1 ≠ v.1)
@@ -138,12 +141,14 @@ theorem runs_step {M : Machine K} {dec : K → ℝ} {n : ℕ} {u : ℝ} {ε : Bl
     (hed : ε.dot n < 1) (hrne : decv dec n rs ≠ 0)
     (hrr : |dec rr - decv dec n rs ⬝ᵥ decv dec n rs| ≤
       ε.dot n * ∑ i : Fin n, |decv dec n rs i * decv dec n rs i|)
-    (hmargin : ε.dot n * ∑ i : Fin n, |decv dec n ps i * (A *ᵥ decv dec n ps) i| <
-      decv dec n ps ⬝ᵥ (A *ᵥ decv dec n ps))
+    (hmargin : ∀ q : Fin n → ℝ,
+      ‖WithLp.toLp 2 (A *ᵥ decv dec n ps - q)‖ ≤
+        em * specNorm A * ‖WithLp.toLp 2 (decv dec n ps)‖ →
+      ε.dot n * ∑ i, |decv dec n ps i * q i| < decv dec n ps ⬝ᵥ q)
     (hz : μ.Room [x, r, p, v] [n, n, n, 1]) :
     ConditionalRuns I W τ step (Env.frame [n] [x, r, p, v, x, r, p, v]) μ
       (stepCount n) (stepPeak W n)
-      ((stepRel u ε dec A).Post [n] [xs, rs, ps, [rr]] [x, r, p, v] [] μ) := by
+      ((stepRel em u ε dec A).Post [n] [xs, rs, ps, [rr]] [x, r, p, v] [] μ) := by
   have hrr' : IsDotErr dec (ε.dot n) n (vec rs) (vec rs) rr := by
     simpa only [IsDotErr, dotProduct_decv, decv,
       Fin.sum_univ_eq_sum_range (fun i : ℕ => |dec (vec rs i) * dec (vec rs i)|)] using hrr

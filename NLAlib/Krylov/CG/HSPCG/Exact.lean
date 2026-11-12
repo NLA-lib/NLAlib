@@ -155,22 +155,15 @@ theorem step_writes {F : Machine K} {dec : K → ℝ} {n : ℕ}
       (Fp.blocks [x, r, z, p] [n, n, n, n])
       (fun μ' => μ'.pos = μ.pos ∧ StoresState dec n x r z p (pcgStep A M s) μ') μ := by
   obtain ⟨xs, rs, zs, ps, hread, hstate⟩ := hstate
-  have hl' : μ.Live ([x, r, z, p] ++ [x, r, z, p]) := (μ.live_append _ _).mpr ⟨hl, hl⟩
-  have hpre : (((stepRel dec A M).spec (StepOperands n)).on .total [n]
-      [x, r, z, p] [x, r, z, p] τ μ).pre μ :=
-    ⟨rfl, ⟨rfl, x, r, z, p, rfl, rfl, hxr, hxz, hxp, hrz, hrp, hzp⟩,
-      fun _ => ⟨hl', ⟨[xs, rs, zs, ps], hread,
-        by change Nonbreakdown A (decodedState dec n xs rs zs ps); rwa [hstate]⟩, hz⟩⟩
-  refine ((step_spec hS hF hB hA hM).writes hpre hl').mono le_rfl ?_
-  rintro μ' _ ⟨X, hX, _, ys, hlen, hrel, rfl⟩
-  obtain rfl : X = [xs, rs, zs, ps] := Option.some.inj (hX.symm.trans hread)
+  refine ((step_spec hS hF hB hA hM).writes_blocks rfl
+    ⟨rfl, x, r, z, p, rfl, rfl, hxr, hxz, hxp, hrz, hrp, hzp⟩
+    ((μ.live_append _ _).mpr ⟨hl, hl⟩) hread
+    (by change Nonbreakdown A (decodedState dec n xs rs zs ps); rwa [hstate])
+    hz (by disjoint)).mono le_rfl ?_
+  rintro μ' _ ⟨hpos, ys, hys, hrel⟩
   obtain ⟨xs', rs', zs', ps', rfl⟩ := List.length_eq_four.mp
-    (show ys.length = 4 by simpa using congrArg List.length hlen)
-  have hap : Fp.Apart [x, r, z, p] [n, n, n, n] := by disjoint
-  have hout := Mem.readBlocks_updBlocks (m := μ) (ys := [xs', rs', zs', ps'])
-    (by rw [hlen]; exact hap) (by rw [hlen]; exact hz)
-  rw [hlen] at hout
-  exact ⟨by simp [stepRel], xs', rs', zs', ps', by simpa [stepRel] using hout,
+    (by simpa [stepRel] using congrArg List.length (Mem.map_length_of_readBlocks hys))
+  exact ⟨by simpa [stepRel] using hpos, xs', rs', zs', ps', hys,
     by simpa only [stepRel_rel, hstate] using hrel⟩
 
 end NLAlib.Krylov.CG.HSPCG

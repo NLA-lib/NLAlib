@@ -112,7 +112,8 @@ theorem solve_spec {M : Machine K} {dec : K → ℝ} {n : ℕ}
     Mem.readBlocks_of_cons hv (Mem.readBlocks_of_cons hc rfl), hout⟩
 
 /-- Successful capped Lanczos returns the pure recurrence within the evaluated static budget.
-For Hermitian matrices, `Output.basis_eq_arnoldiMatrix` identifies its canonical Krylov basis. -/
+For Hermitian matrices, `Output.basisMatrix_succ_eq_arnoldiMatrix` identifies the
+canonical Krylov basis. -/
 theorem runs_solve {M : Machine K} {dec : K → ℝ} {n cap : ℕ}
     {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K} {ok : ℕ → Prop}
     (hS : IsScalar M I) (hM : ExactModel dec M) (hB : IsExactBlas1 dec ok I)
@@ -128,7 +129,7 @@ theorem runs_solve {M : Machine K} {dec : K → ℝ} {n cap : ℕ}
         Output dec A (decv dec n bs) cap vs cs) := by
   have hw := solve_writes hS hM hB hok hA hCmp (τ := τ) hBV hBC hVC hl hb hz
   obtain ⟨μ', hrun, hout⟩ := hw.wp fun _ _ h => h
-  exact (ConditionalRuns.of_run hrun hout W).mono (le_of_eq (staticCost_solve ..))
-    (staticPeak_solve_le ..) (fun _ h => h)
+  exact (ConditionalRuns.of_run hrun hout W).mono (le_of_eq (stmtCost_solve ..))
+    (stmtPeak_solve_le ..) (fun _ h => h)
 
 end NLAlib.Krylov.Lanczos

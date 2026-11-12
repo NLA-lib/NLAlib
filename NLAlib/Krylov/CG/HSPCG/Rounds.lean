@@ -68,16 +68,12 @@ theorem rounds_writes {M : Machine K} {dec : K → ℝ} {n : ℕ}
     Writes .total I τ rounds (Env.frame [n, k] [x, r, z, p, x, r, z, p])
       (Fp.blocks [x, r, z, p] [n, n, n, n])
       (fun μ' => μ'.pos = μ.pos ∧ StoresState dec n x r z p ((pcgStep A P)^[k] s) μ') μ := by
-  refine writes_loop rfl (fun _ => Fp.blocks [x, r, z, p] [n, n, n, n])
-    (fun _ _ => le_rfl)
-    (fun j μ' => μ'.pos = μ.pos ∧ StoresState dec n x r z p ((pcgStep A P)^[j] s) μ')
-    ⟨rfl, hstate⟩ fun j hj μ' hfr ⟨hpos, hstate'⟩ => ?_
-  have hl' : μ'.Live [x, r, z, p] := by simpa only [Mem.Live, hfr.length_eq] using hl
-  have hz' : μ'.Room [x, r, z, p] [n, n, n, n] := by simpa [Mem.Room, hfr.len_eq] using hz
-  refine (writes_frame rfl rfl ((μ'.live_append _ _).mpr ⟨hl', hl'⟩)
-    (step_writes hS hM hB hA hP hxr hxz hxp hrz hrp hzp hl' hstate' (hdom j hj) hz')).mono le_rfl ?_
-  intro μ'' _ ⟨hpos', hstate''⟩
-  exact ⟨hpos'.trans hpos, by simpa only [Function.iterate_succ_apply'] using hstate''⟩
+  refine writes_loop_frame_iterate (F := Fp.blocks [x, r, z, p] [n, n, n, n])
+    (StoresState dec n x r z p) (pcgStep A P) (Nonbreakdown A) rfl rfl rfl
+    ((μ.live_append _ _).mpr ⟨hl, hl⟩) hstate hdom ?_
+  intro s' μ' hfr _ hs hnb
+  exact step_writes hS hM hB hA hP hxr hxz hxp hrz hrp hzp
+    (hl.congr hfr.length_eq) hs hnb (hz.congr hfr.len_eq)
 
 /-- Certified rounds compose into a certified loop without unfolding the round program. -/
 theorem rounds_spec {M : Machine K} {dec : K → ℝ} {n : ℕ}

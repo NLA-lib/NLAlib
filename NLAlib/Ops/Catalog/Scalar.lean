@@ -12,14 +12,17 @@ public import NLAlib.Ops.Profile
 /-!
 # Catalog: scalar arithmetic
 
-The group `NLAlib.Ops.ScalarOp` of scalar operations and its two contracts.
+The group `NLAlib.Ops.ScalarOp` of scalar operations and its functional and numerical contracts.
 
 * Functional (`NLAlib.Ops.IsScalar`): every scalar operation is the function of a machine
   `NLAlib.Ops.Machine K` on words, on all operands (scalar operations may alias).
 * Mathematics (`NLAlib.Ops.StdModel`): the standard model of rounded arithmetic at the unit
   roundoff `u`, a property of the functions of the machine on decoded values. The unit roundoff
   is a parameter; nothing fixes one precision. The model is unconditional: it has no overflow or
-  underflow, so a bounded format meets it only on a safe range, which is another contract.
+  underflow; a finite-format model needs explicit range guards and an absolute allowance.
+* Mathematics (`NLAlib.Ops.MixedModel`): relative plus absolute rounding bounds on an explicit
+  range, including underflow. Arithmetic outside the range remains specified by the machine,
+  with no numerical accuracy promised there.
 
 Division is specified only for a divisor that decodes to a nonzero number, and the square root
 only for a nonnegative argument: outside, the model says nothing of the result, so no theorem
@@ -33,6 +36,7 @@ and so does the machine that inflates every result by the factor `1 + u`
 ## Main results
 
 * `NLAlib.Ops.exists_isScalar`: the contracts of scalar arithmetic can be met.
+* `NLAlib.Ops.MixedModel.abs_add_mul_sub_le`: guarded multiply-add with absolute error.
 * `NLAlib.Ops.StdModel.abs_le`, `NLAlib.Ops.StdModel.abs_add_mul_sub_le`: one and two rounded
   operations.
 -/
@@ -116,6 +120,74 @@ structure StdModel (u : ℝ) (dec : K → ℝ) (M : Machine K) : Prop where
   neg : ∀ a, dec (M.neg a) = -dec a
   /-- Rounded square root of a nonnegative number. -/
   sqrt : ∀ a, 0 ≤ dec a → |dec (M.sqrt a) - √(dec a)| ≤ u * √(dec a)
+
+/-- Mixed relative/absolute rounding on an explicit exact-result range. The machine remains
+specified on every word; accuracy is asserted only in `safe`. The absolute allowance covers
+underflow. This does not claim IEEE accuracy or promise accuracy after overflow. -/
+structure MixedModel (u eta : ℝ) (dec : K → ℝ) (M : Machine K)
+    (safe : ℝ → Prop) : Prop where
+  /-- Nonnegative relative allowance. -/
+  roundoff_nonneg : 0 ≤ u
+  /-- Nonnegative absolute allowance. -/
+  absolute_nonneg : 0 ≤ eta
+  /-- Rounded, in-range rational literal. -/
+  lit : ∀ q : ℚ, safe q → |dec (M.lit q) - q| ≤ u * |(q : ℝ)| + eta
+  /-- Rounded, in-range addition. -/
+  add : ∀ a b, safe (dec a + dec b) →
+    |dec (M.add a b) - (dec a + dec b)| ≤ u * |dec a + dec b| + eta
+  /-- Rounded, in-range subtraction. -/
+  sub : ∀ a b, safe (dec a - dec b) →
+    |dec (M.sub a b) - (dec a - dec b)| ≤ u * |dec a - dec b| + eta
+  /-- Rounded, in-range multiplication. -/
+  mul : ∀ a b, safe (dec a * dec b) →
+    |dec (M.mul a b) - dec a * dec b| ≤ u * |dec a * dec b| + eta
+  /-- Rounded, in-range division by a nonzero decoded word. -/
+  div : ∀ a b, dec b ≠ 0 → safe (dec a / dec b) →
+    |dec (M.div a b) - dec a / dec b| ≤ u * |dec a / dec b| + eta
+  /-- Exact negation. -/
+  neg : ∀ a, dec (M.neg a) = -dec a
+  /-- Rounded square root of a nonnegative word, when the root is in range. -/
+  sqrt : ∀ a, 0 ≤ dec a → safe (√(dec a)) →
+    |dec (M.sqrt a) - √(dec a)| ≤ u * √(dec a) + eta
+
+/-- The relative-only model supplies the mixed model with zero absolute allowance. -/
+theorem StdModel.mixedModel {u : ℝ} {dec : K → ℝ} {M : Machine K}
+    (h : StdModel u dec M) (hu : 0 ≤ u) (safe : ℝ → Prop) : MixedModel u 0 dec M safe where
+  roundoff_nonneg := hu
+  absolute_nonneg := le_rfl
+  lit q _ := by simpa using h.lit q
+  add a b _ := by simpa using h.add a b
+  sub a b _ := by simpa using h.sub a b
+  mul a b _ := by simpa using h.mul a b
+  div a b hb _ := by simpa using h.div a b hb
+  neg := h.neg
+  sqrt a ha _ := by simpa using h.sqrt a ha
+
+/-- Two rounded operations with gradual underflow. The second range guard uses the computed
+product. Merely bounding the final ideal sum does not imply this guard. [Higham2002, §2.2]. -/
+theorem MixedModel.abs_add_mul_sub_le {u eta : ℝ} {dec : K → ℝ} {M : Machine K}
+    {safe : ℝ → Prop} (hM : MixedModel u eta dec M safe) (a x y : K)
+    (hmul : safe (dec a * dec x)) (hadd : safe (dec y + dec (M.mul a x))) :
+    |dec (M.add y (M.mul a x)) - (dec y + dec a * dec x)| ≤
+      ((1 + u) ^ 2 - 1) * (|dec y| + |dec a * dec x|) + (2 + u) * eta := by
+  have hu := hM.roundoff_nonneg
+  have h1 := hM.mul a x hmul
+  have h2 := hM.add y (M.mul a x) hadd
+  generalize dec (M.add y (M.mul a x)) = z at h2 ⊢
+  generalize dec (M.mul a x) = p at h1 h2
+  generalize dec a * dec x = q at h1 ⊢
+  generalize dec y = Y at h2 ⊢
+  have hp : |p| ≤ |q| + (u * |q| + eta) := by
+    have ht := abs_add_le q (p - q)
+    rw [add_sub_cancel] at ht
+    linarith
+  have hb : |Y + p| ≤ |Y| + (|q| + (u * |q| + eta)) := by
+    linarith [abs_add_le Y p]
+  have hA := mul_le_mul_of_nonneg_left hb hu
+  have ht := abs_add_le (z - (Y + p)) (p - q)
+  rw [show z - (Y + p) + (p - q) = z - (Y + q) by ring] at ht
+  nlinarith [mul_nonneg hu (abs_nonneg Y),
+    mul_nonneg (mul_nonneg hu hu) (abs_nonneg Y)]
 
 /-- **Exact scalar arithmetic**: each operation computes its exact decoded value on its domain. -/
 structure ExactModel (dec : K → ℝ) (M : Machine K) : Prop where

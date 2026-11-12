@@ -101,12 +101,12 @@ variable [Apart Blas1Op ScalarOp Op] [Apart Blas1Op OperatorOp Op]
 /-- The full rounded scalar CG program succeeds and returns an actual computed run with
 backward-model, physical-energy convergence and delayed-estimation guarantees. The spectrum,
 unit roundoff and cap determine every continuation guard. -/
-theorem runs_solve_seq_stability {M : Machine K} {dec : K → ℝ} {u e : ℝ}
+theorem runs_solve_seq_stability {M : Machine K} {dec : K → ℝ} {em u e : ℝ}
     {n cap : ℕ} {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K}
-    (hS : IsScalar M I) (hM : StdModel u dec M) (hA : IsExactMatvec dec A I)
+    (hS : IsScalar M I) (hM : StdModel u dec M) (hA : IsMatvec dec A (em * specNorm A) I)
     (hCmp : IsCmp dec I) (hAT : Aᵀ = A) {a a' : ℝ}
     (ha : 0 < a) (hspec : spectrum ℝ A ⊆ Set.Icc a a') (hu : 0 ≤ u)
-    (hue : u ≤ e) (hde : (Blas.seq.err u).dot n ≤ e)
+    (hem : em ≤ e) (hue : u ≤ e) (hde : (Blas.seq.err u).dot n ≤ e)
     (hae : (Blas.seq.err u).axpy ≤ e) (he : e ≤ 1 / 100)
     (hprec : 3 * e * a' ≤ a)
     (hwindow : (cap : ℝ) ^ 2 * Real.sqrt cap * e * (a' / a) ^ 2 ≤
@@ -122,7 +122,8 @@ theorem runs_solve_seq_stability {M : Machine K} {dec : K → ℝ} {u e : ℝ}
       (Env.frame [n, cap] [b, x, x, r, p, v]) μ (seqSolveCount n cap) (2 * n + 4)
       (fun μ' => μ'.pos = μ.pos ∧
         StableOutput dec A (decv dec n bs) e a a' cap x r p v μ') := by
-  have hrun := runs_solve_seq hS hM hA hCmp hAT ha hspec hu hue hde hae he hprec hwindow (τ := τ)
+  have hrun := runs_solve_seq hS hM hA hCmp hAT ha hspec hu hem hue hde hae he hprec
+    hwindow (τ := τ)
     hbx hbr hbp hbv hxr hxp hxv hrp hrv hpv hl hbs hxs hx0 hz
   exact hrun.mono le_rfl le_rfl fun _ h => ⟨h.1, h.2.stable ha hspec hwindow⟩
 

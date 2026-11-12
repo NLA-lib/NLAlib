@@ -47,7 +47,7 @@ theorem TwoPassOut.next_eq {K : Type} [Inhabited K] {dec : K → ℝ} {n j : ℕ
       dec β = (lanczosReorthStep A j s).beta := by
   have hred : decv dec n reduced = cgsProject s.vecs (j + 1)
       (cgsProject s.vecs (j + 1) (decv dec n raw)) := by
-    rw [hp.project_eq, cgsProject_congr_basis hQ, cgsProject_congr_basis hQ]
+    rw [hp.decv_eq_cgsProject, cgsProject_congr_basis hQ, cgsProject_congr_basis hQ]
   change decv dec n out = _ ∧ dec β = _ at hn
   simpa [lanczosReorthStep, hred, hraw] using hn
 

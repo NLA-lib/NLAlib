@@ -35,11 +35,11 @@ def IsPrefix {n : ℕ} (A : Matrix (Fin n) (Fin n) ℝ) (b : Fin n → ℝ) (e :
     (⟨R.x j, R.r j, R.p j⟩ : CGState ℝ (Fin n)) = s ∧ R.ν j = rho
 
 /-- The new self-dot bound is part of the actual rounded recurrence. -/
-theorem RoundBounds.cache_bound {n : ℕ} {u ed ea : ℝ}
+theorem RoundBounds.cache_bound {n : ℕ} {em u ed ea : ℝ}
     {A : Matrix (Fin n) (Fin n) ℝ} {s s' : CGState ℝ (Fin n)} {rho rho' : ℝ}
-    (h : RoundBounds u ed ea A s s' rho rho') :
+    (h : RoundBounds em u ed ea A s s' rho rho') :
     |rho' - s'.r ⬝ᵥ s'.r| ≤ ed * ∑ i, |s'.r i * s'.r i| := by
-  obtain ⟨_, _, _, _, _, _, _, _, _, hcache, _, _⟩ := h
+  obtain ⟨_, _, _, _, _, _, _, _, _, _, _, hcache, _, _⟩ := h
   exact hcache
 
 /-- A self-dot approximation with error below one is positive for a nonzero vector.
@@ -56,16 +56,16 @@ theorem self_dot_pos {n : ℕ} {e rho : ℝ} {r : Fin n → ℝ} (he : 0 ≤ e) 
 /-- One actual rounded recurrence extends the mathematical prefix, including its first step.
 The input cache envelope comes from initialization or the previous rounded dot. -/
 theorem IsPrefix.advance {n j : ℕ} {A : Matrix (Fin n) (Fin n) ℝ} {b : Fin n → ℝ}
-    {u ed ea e rho rho' : ℝ} {s s' : CGState ℝ (Fin n)}
-    (h : IsPrefix A b e j s rho) (hstep : RoundBounds u ed ea A s s' rho rho')
+    {em u ed ea e rho rho' : ℝ} {s s' : CGState ℝ (Fin n)}
+    (h : IsPrefix A b e j s rho) (hstep : RoundBounds em u ed ea A s s' rho rho')
     (hA : Aᵀ = A) (hu : 0 ≤ u) (hd : 0 ≤ ed) (ha : 0 ≤ ea)
-    (hue : u ≤ e) (hde : ed ≤ e) (hae : ea ≤ e) (he : e ≤ 1 / 100)
+    (hem : em ≤ e) (hue : u ≤ e) (hde : ed ≤ e) (hae : ea ≤ e) (he : e ≤ 1 / 100)
     (hcache : |rho - s.r ⬝ᵥ s.r| ≤ ed * ∑ i, |s.r i * s.r i|) :
     IsPrefix A b e (j + 1) s' rho' := by
   rcases h with ⟨rfl, rfl⟩ | ⟨R, hRA, hRb, hRe, hs, hrho⟩
-  · exact Or.inr (hstep.exists_cgRun_one hA hu hd ha hue hde hae he hcache)
+  · exact Or.inr (hstep.exists_cgRun_one hA hu hd ha hem hue hde hae he hcache)
   · subst A b e s rho
-    exact Or.inr (hstep.exists_cgRun_succ R hu hd ha hue hde hae)
+    exact Or.inr (hstep.exists_cgRun_succ R hu hd ha hem hue hde hae)
 
 /-- Input spectral precision controls the current direction at every nonconverged prefix.
 No successful-execution or future-curvature premise is used. [StrakosTichy2002, §7]. -/

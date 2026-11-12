@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Computation.ExecCharge
+public import NLAlib.Krylov.FinitePrecision.LanczosReorthStep
 public import NLAlib.Krylov.Processes.LanczosReorthProgramRounding
 public import NLAlib.Krylov.Processes.LanczosProgramRounded
 
@@ -136,41 +137,6 @@ structure IsOrthCall (I : Interp P ι K (OpCount P ι)) (dec : P → K → ℝ) 
       s.store.writeBlock tag 8 0 (Array.ofFn W) = some mid ∧
       mid.writeBlock tag 10 0 (Array.ofFn Hw) = some out.store ∧
       G V w (fun i => dec tag (Hw i)) (fun i => dec tag (W i))
-
-/-- The local guarantees of one rounded step with accuracy $\varepsilon$: from the previous and
-current vectors $\mathbf{v}_p$, $\mathbf{v}_c$ and the previous coefficient $\beta_p$, the
-computed product $\mathbf{u}$, the updates $\mathbf{w}$ and $\mathbf{z}$, the coefficient
-$\alpha$, the stored norm $\nu$ of $\mathbf{z}$, the orthogonalization output $\mathbf{z}'$ with
-coefficients $\mathbf{h}$ against the basis $\mathbf{V}$ (guarantee `G`), its norm $\beta$ and
-the next vector $\mathbf{v}_n$ each meet their kernel error bound. -/
-structure RoundedStep {N m : ℕ} (A : Matrix (Fin N) (Fin N) ℝ) (ε : ℝ)
-    (G : Matrix (Fin N) (Fin m) ℝ → (Fin N → ℝ) → (Fin m → ℝ) → (Fin N → ℝ) → Prop)
-    (V : Matrix (Fin N) (Fin m) ℝ) (vp vc vn : Fin N → ℝ) (βp α ν β : ℝ)
-    (uv wv zv z' : Fin N → ℝ) (h : Fin m → ℝ) : Prop where
-  /-- The product. -/
-  norm_mulVec_sub_le : ‖WithLp.toLp 2 (A *ᵥ vc - uv)‖ ≤ ε * specNorm A * ‖WithLp.toLp 2 vc‖
-  /-- The previous update. -/
-  norm_sub_smul_sub_le : ‖WithLp.toLp 2 (uv - βp • vp - wv)‖ ≤
-    ε * (‖WithLp.toLp 2 uv‖ + |βp| * ‖WithLp.toLp 2 vp‖)
-  /-- The diagonal coefficient. -/
-  abs_dotProduct_sub_le : |vc ⬝ᵥ wv - α| ≤ ε * ‖WithLp.toLp 2 vc‖ * ‖WithLp.toLp 2 wv‖
-  /-- The projection update. -/
-  norm_projection_sub_le : ‖WithLp.toLp 2 (wv - α • vc - zv)‖ ≤
-    ε * (‖WithLp.toLp 2 wv‖ + |α| * ‖WithLp.toLp 2 vc‖)
-  /-- The stored norm before orthogonalization is nonnegative. -/
-  nu_nonneg : 0 ≤ ν
-  /-- The stored norm before orthogonalization. -/
-  abs_nu_sub_le : |ν - ‖WithLp.toLp 2 zv‖| ≤ ε * ‖WithLp.toLp 2 zv‖
-  /-- The orthogonalization guarantee. -/
-  orth : G V zv h z'
-  /-- The norm after orthogonalization. -/
-  abs_beta_sub_le : |β - ‖WithLp.toLp 2 z'‖| ≤ ε * ‖WithLp.toLp 2 z'‖
-  /-- The normalization. -/
-  norm_sub_smul_le : ‖WithLp.toLp 2 (z' - β • vn)‖ ≤ ε * ‖WithLp.toLp 2 z'‖
-  /-- The next vector is nearly a unit vector unless $\beta = 0$. -/
-  abs_norm_sq_sub_one_le : β ≠ 0 → |‖WithLp.toLp 2 vn‖ ^ 2 - 1| ≤ ε
-  /-- The next vector is zero if $\beta = 0$. -/
-  eq_zero_of_eq_zero : β = 0 → vn = 0
 
 /-! ### The work phase -/
 

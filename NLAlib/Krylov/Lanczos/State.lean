@@ -67,19 +67,19 @@ theorem Prefix.readback {dec : K → ℝ} {n cap : ℕ}
     (h : Prefix dec A b cap cap V C s) :
     ∃ vs cs, s.readBlock V.1 V.2 ((cap + 1) * n) = some vs ∧
       s.readBlock C.1 C.2 (2 * cap + 2) = some cs ∧ Output dec A b cap vs cs := by
-  obtain ⟨vs, hv⟩ := exists_basis_readBlock (k := cap + 1) (fun j hj => h.basis j (by omega))
+  obtain ⟨vs, hv⟩ := exists_readBlock_of_storesVec (k := cap + 1) (fun j hj => h.basis j (by omega))
   obtain ⟨cs, hc⟩ := exists_coeff_readBlock h.coeff
   refine ⟨vs, cs, hv, hc, ⟨?_, ?_, ?_, ?_⟩⟩
   · intro j hj i
-    have he := (h.basis j hj).entry_of_basis_readBlock hv (by omega) i
+    have he := (h.basis j hj).dec_vec_eq_of_readBlock hv (by omega) i
     simpa only [basisValue_of_le A b hj] using he
   · intro j hj
-    have he := (h.coeff j (by omega)).value_of_readBlock hc (by omega)
+    have he := (h.coeff j (by omega)).dec_vec_eq_of_readBlock hc (by omega)
     simpa only [coeffValue_alpha A b hj, if_pos hj] using he
   · intro j hj
-    have he := (h.coeff (cap + j) (by omega)).value_of_readBlock hc (by omega)
+    have he := (h.coeff (cap + j) (by omega)).dec_vec_eq_of_readBlock hc (by omega)
     simpa only [coeffValue_beta A b hj, if_pos hj] using he
-  · exact (h.coeff (2 * cap + 1) (by omega)).value_of_readBlock hc (by omega) |>.trans
+  · exact (h.coeff (2 * cap + 1) (by omega)).dec_vec_eq_of_readBlock hc (by omega) |>.trans
       (coeffValue_norm A b cap cap)
 
 /-- One active round writes the next basis column, current diagonal coefficient, next

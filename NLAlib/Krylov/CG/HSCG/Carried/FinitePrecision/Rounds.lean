@@ -33,14 +33,14 @@ variable [Has ScalarOp Op] [Has Blas1Op Op] [Has OperatorOp Op] [Has CmpTst Tst]
 
 /-- The loop returns an initialized zero-step state or an existing run, with early exit only
 at a zero decoded residual. The common error bound is an explicit envelope of local bounds. -/
-theorem rounds_writes {M : Machine K} {dec : K → ℝ} {u e : ℝ} {ε : Blas1Err}
+theorem rounds_writes {M : Machine K} {dec : K → ℝ} {em u e : ℝ} {ε : Blas1Err}
     {ok : ℕ → Prop} {n cap : ℕ} {A : Matrix (Fin n) (Fin n) ℝ} {b : Fin n → ℝ}
     {I : Interp Op Tst K} (hS : IsScalar M I) (hM : StdModel u dec M)
-    (hB : IsBlas1 dec ε ok I) (hok : ok n) (hA : IsExactMatvec dec A I)
+    (hB : IsBlas1 dec ε ok I) (hok : ok n) (hA : IsMatvec dec A (em * specNorm A) I)
     (hCmp : IsCmp dec I) (hAT : Aᵀ = A) {a a' : ℝ}
     (ha : 0 < a) (hspec : spectrum ℝ A ⊆ Set.Icc a a')
     (hu : 0 ≤ u) (hd : 0 ≤ ε.dot n) (haa : 0 ≤ ε.axpy)
-    (hue : u ≤ e) (hde : ε.dot n ≤ e) (hae : ε.axpy ≤ e) (he : e ≤ 1 / 100)
+    (hem : em ≤ e) (hue : u ≤ e) (hde : ε.dot n ≤ e) (hae : ε.axpy ≤ e) (he : e ≤ 1 / 100)
     (hprec : 3 * e * a' ≤ a)
     (hwindow : (cap : ℝ) ^ 2 * Real.sqrt cap * e * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
     {τ : Tape K} {μ : Mem K} {x r p v : ℕ × ℕ} {rho : ℝ}
@@ -75,7 +75,7 @@ theorem rounds_writes {M : Machine K} {dec : K → ℝ} {u e : ℝ} {ε : Blas1E
             Finset.sum_const_zero, mul_zero, sub_zero] at hcache'
           exact hactive.not_ge (le_trans (le_abs_self _) hcache')
         have hpne := hprefix.direction_ne_zero ha hspec (Nat.le_of_lt hj) hwindow hrne
-        have hmarg := curvature_margin hAT ha hspec (hu.trans hue) hprec hd hde hpne
+        have hmarg := curvature_margin hAT ha hspec (hu.trans hue) hprec hd hde hem hpne
         have hl' : μ'.Live [x, r, p, v] := by simpa only [Mem.Live, hfr.length_eq] using hl
         have hz' : μ'.Room [x, r, p, v] [n, n, n, 1] := by
           simpa [Mem.Room, hfr.len_eq] using hz
@@ -84,7 +84,7 @@ theorem rounds_writes {M : Machine K} {dec : K → ℝ} {u e : ℝ} {ε : Blas1E
             hed hrne hcache' hmarg hz')).mono le_rfl ?_
         rintro μ'' _ ⟨hpos', next, nu, hstored', hbounds⟩
         exact ⟨hpos'.trans hpos, next, nu, hstored',
-          hprefix.advance hbounds hAT hu hd haa hue hde hae he hcache', hbounds.cache_bound⟩
+          hprefix.advance hbounds hAT hu hd haa hem hue hde hae he hcache', hbounds.cache_bound⟩
     · refine ⟨false, ?_, ?_⟩
       · rw [Interp.testAt_eq rfl rfl, hCmp.test_isPos hrr, hrrd]
         simp only [hactive, decide_false]

@@ -21,7 +21,7 @@ and axpy errors, so it supports exact and rounded interpretations of the same pr
 ## Main results
 
 * `NLAlib.Krylov.Lanczos.Reorth.cgsPass_spec`: a total pass with local error witnesses.
-* `NLAlib.Krylov.Lanczos.Reorth.PassOut.backward`: the accumulated projection error.
+* `NLAlib.Krylov.Lanczos.Reorth.PassOut.abs_sub_le`: the accumulated projection error.
 -/
 
 @[expose] public section
@@ -58,13 +58,13 @@ def cgsPassPeak (W : Op → List ℕ → ℕ) (n : ℕ) : ℕ :=
     (max (W (Has.inj ScalarOp.neg) []) (W (Has.inj Blas1Op.axpy) [n]))
 
 /-- Static accounting counts the complete coefficient and update phases. -/
-theorem staticCost_cgsPass (n k q w w' h : ℕ) :
+theorem stmtCost_cgsPass (n k q w w' h : ℕ) :
     stmtCost (cgsPass (Op := Op) (Tst := Tst)) [n, k, q, w, w', h] = cgsPassCount n k := by
   simp [cgsPass, stmtCost, useCost, cgsPassCount]
   module
 
 /-- The two phases reuse a single scalar scratch cell. -/
-theorem staticPeak_cgsPass_le (W : Op → List ℕ → ℕ) (n k q w w' h : ℕ) :
+theorem stmtPeak_cgsPass_le (W : Op → List ℕ → ℕ) (n k q w w' h : ℕ) :
     stmtPeak W (cgsPass (Op := Op) (Tst := Tst)) [n, k, q, w, w', h] ≤ cgsPassPeak W n := by
   simp only [cgsPass, Stmt.alloc, stmtPeak, cgsPassPeak]
   refine Nat.add_le_add_left (max_le_max (Finset.sup_le fun j _ => ?_)
@@ -81,7 +81,7 @@ structure PassOut (dec : K → ℝ) (ed ea : ℝ) (n k : ℕ) (qs ws ws' hs : Li
 
 /-- The residual update reproduces the input minus the computed projections, with an explicit
 componentwise accumulated axpy error. -/
-theorem PassOut.backward {dec : K → ℝ} {ed ea : ℝ} {n k : ℕ} {qs ws ws' hs : List K}
+theorem PassOut.abs_sub_le {dec : K → ℝ} {ed ea : ℝ} {n k : ℕ} {qs ws ws' hs : List K}
     (h : PassOut dec ed ea n k qs ws ws' hs) (ha : 0 ≤ ea) (i : Fin n) :
     |dec (vec ws' i) - (dec (vec ws i) -
         ∑ j ∈ Finset.range k, dec (vec hs j) * dec (vec qs (j * n + i)))| ≤

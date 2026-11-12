@@ -237,10 +237,30 @@ structure Algorithm {Op Tst K : Type} {r b : ℕ} {P : Problem K r b}
   /-- Total correctness, including all structural accounting on this very execution. -/
   correct : program.Certifies M S
 
+/-- A mathematical consequence of a canonical output specification keeps the fixed program,
+model and every count/work/span/memory bound. The same actual counts and tape are forwarded. -/
+theorem Program.Certifies.map_post {r b : ℕ} {P : Problem K r b}
+    {p : Program Op Tst r b} {M : AccessModel Op Tst P} {S : Specification Op Tst P}
+    (h : p.Certifies M S)
+    (Q : (d : Fin r → ℕ) → P.Input d → Tape K → Count (Op ⊕ Bookkeeping) Tst → Mem K → Prop)
+    (hQ : ∀ d, P.valid d → ∀ x τ c m, S.good d x τ c m → Q d x τ c m) :
+    p.Certifies M { S with good := Q } := by
+  intro d hd x I hI τ
+  obtain ⟨st, hr, hp, hc, hw, hs, hm, hg⟩ := h d hd x I hI τ
+  exact ⟨st, hr, hp, hc, hw, hs, hm, hQ d hd x τ st.cost st.mem hg⟩
+
 namespace Algorithm
 
 variable {Op Lo Tst K : Type} {r b : ℕ} {P : Problem K r b}
   {M : AccessModel Op Tst P} {S : Specification Op Tst P}
+
+/-- Add a pure mathematical output consequence without redoing program or resource proofs. -/
+def mapPost (A : Algorithm M S)
+    (Q : (d : Fin r → ℕ) → P.Input d → Tape K → Count (Op ⊕ Bookkeeping) Tst → Mem K → Prop)
+    (hQ : ∀ d, P.valid d → ∀ x τ c m, S.good d x τ c m → Q d x τ c m) :
+    Algorithm M { S with good := Q } where
+  program := A.program
+  correct := A.correct.map_post Q hQ
 
 /-- Every certified program passes the core's storage discipline. -/
 theorem wellTyped (A : Algorithm M S) : A.program.wellTyped M.resources P.formats = true := by

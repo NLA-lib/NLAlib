@@ -7,7 +7,7 @@ module
 
 public import NLAlib.Krylov.Lanczos.Reorth.TwoPass
 public import NLAlib.Ops.Catalog.Operator
-public import NLAlib.Krylov.Lanczos.Math.RoundedLocal
+public import NLAlib.ForMathlib.Analysis.InnerProductSpace.PiL2
 
 /-!
 # Normwise bounds for the actual classical-pass update
@@ -18,9 +18,9 @@ No orthogonality or nonbreakdown assumption is needed for this local representat
 
 ## Main results
 
-* `NLAlib.Krylov.Lanczos.Reorth.PassOut.coefficient_error_le`: normwise coefficient errors.
-* `NLAlib.Krylov.Lanczos.Reorth.PassOut.project_error_norm_le`: the accumulated update error.
-* `NLAlib.Krylov.Lanczos.Reorth.TwoPassOut.project_error_norm_le`: the combined two-pass error.
+* `NLAlib.Krylov.Lanczos.Reorth.PassOut.abs_sub_dotProduct_le`: normwise coefficient errors.
+* `NLAlib.Krylov.Lanczos.Reorth.PassOut.norm_sub_sub_sum_le`: the accumulated update error.
+* `NLAlib.Krylov.Lanczos.Reorth.TwoPassOut.exists_norm_sub_sub_sum_le`: the combined two-pass error.
 -/
 
 @[expose] public section
@@ -53,7 +53,7 @@ private theorem norm_le_of_abs_le_sum {n k : ℕ} {e x : Fin n → ℝ}
 
 /-- The rounded coefficient error is bounded by the dot constant times the column norm and
 input norm. This uses Cauchy–Schwarz and does not require an orthogonal basis. -/
-theorem PassOut.coefficient_error_le {K : Type} [Inhabited K] {dec : K → ℝ}
+theorem PassOut.abs_sub_dotProduct_le {K : Type} [Inhabited K] {dec : K → ℝ}
     {ed ea : ℝ} {n k : ℕ} {qs ws ws' hs : List K}
     (h : PassOut dec ed ea n k qs ws ws' hs) (hd : 0 ≤ ed) {j : ℕ} (hj : j < k) :
     |dec (vec hs j) - (fun i : Fin n => dec (vec qs (j * n + i))) ⬝ᵥ decv dec n ws| ≤
@@ -67,14 +67,14 @@ theorem PassOut.coefficient_error_le {K : Type} [Inhabited K] {dec : K → ℝ}
     rw [Fin.sum_univ_eq_sum_range (fun i : ℕ => dec (vec qs (j * n + i))*dec (vec ws i)) n,
       Fin.sum_univ_eq_sum_range (fun i : ℕ => |dec (vec qs (j * n + i))*dec (vec ws i)|) n]
     exact h.dot j hj
-  have hc := Lanczos.abs_dotProduct_sub_le_of_componentwise
+  have hc := EuclideanSpace.abs_dotProduct_sub_le_of_componentwise
     (x := q) (y := w) (α := dec (vec hs j)) hd
     (by simpa only [abs_sub_comm] using he)
   simpa only [abs_sub_comm] using hc
 
 /-- The update error has an explicit Euclidean bound in terms of the actual computed
 coefficient magnitudes and basis-column norms. This remains valid for a dependent basis. -/
-theorem PassOut.project_error_norm_le {K : Type} [Inhabited K] {dec : K → ℝ}
+theorem PassOut.norm_sub_sub_sum_le {K : Type} [Inhabited K] {dec : K → ℝ}
     {ed ea : ℝ} {n k : ℕ} {qs ws ws' hs : List K}
     (h : PassOut dec ed ea n k qs ws ws' hs) (ha : 0 ≤ ea) :
     ‖WithLp.toLp 2 (decv dec n ws' - (decv dec n ws -
@@ -89,12 +89,12 @@ theorem PassOut.project_error_norm_le {K : Type} [Inhabited K] {dec : K → ℝ}
     (e := decv dec n ws' - (decv dec n ws - ∑ j ∈ Finset.range k,
       dec (vec hs j) • (fun i : Fin n => dec (vec qs (j * n + i)))))
     (fun i => by simpa only [Pi.sub_apply, Finset.sum_apply, Pi.smul_apply,
-      smul_eq_mul, decv] using h.backward ha i)
+      smul_eq_mul, decv] using h.abs_sub_le ha i)
   simpa only [WithLp.toLp_smul, norm_smul, Real.norm_eq_abs] using hb
 
 /-- Both rounded passes give a normwise representation witness with the exact sum of their
 computed coefficients. The coefficients are ghost data discarded by the program. -/
-theorem TwoPassOut.project_error_norm_le {K : Type} [Inhabited K] {dec : K → ℝ}
+theorem TwoPassOut.exists_norm_sub_sub_sum_le {K : Type} [Inhabited K] {dec : K → ℝ}
     {ed ea : ℝ} {n k : ℕ} {qs ws ws' : List K}
     (h : TwoPassOut dec ed ea n k qs ws ws') (ha : 0 ≤ ea) :
     ∃ mid h₁ h₂ : List K, PassOut dec ed ea n k qs ws mid h₁ ∧
@@ -120,6 +120,6 @@ theorem TwoPassOut.project_error_norm_le {K : Type} [Inhabited K] {dec : K → �
     abel
   rw [heq, WithLp.toLp_add]
   exact (norm_add_le _ _).trans (add_le_add
-    (hp₁.project_error_norm_le ha) (hp₂.project_error_norm_le ha))
+    (hp₁.norm_sub_sub_sum_le ha) (hp₂.norm_sub_sub_sum_le ha))
 
 end NLAlib.Krylov.Lanczos.Reorth

@@ -133,7 +133,7 @@ theorem runs_solve {M : Machine K} {dec : K → ℝ} {n cap : ℕ}
         Output dec A (decv dec n bs) cap vs cs) := by
   have hw := solve_writes hS hM hB hok hA hCmp hAT (τ := τ) hBV hBC hVC hl hb hz
   obtain ⟨μ', hrun, hout⟩ := hw.wp fun _ _ h => h
-  exact (ConditionalRuns.of_run hrun hout W).mono (le_of_eq (staticCost_solve ..))
-    (staticPeak_solve_le ..) (fun _ h => h)
+  exact (ConditionalRuns.of_run hrun hout W).mono (le_of_eq (stmtCost_solve ..))
+    (stmtPeak_solve_le ..) (fun _ h => h)
 
 end NLAlib.Krylov.Lanczos.Reorth

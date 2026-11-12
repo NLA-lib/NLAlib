@@ -82,7 +82,7 @@ theorem runs_cgs2 {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ} {ea : ℝ
   refine ((cgs2_spec hS hD hA hneg).runs_rel W (d := [n, k]) (ins := [Q, w]) (outs := [w])
     rfl ⟨hok, Q, w, rfl, rfl, hQw⟩ hl'
     (Mem.readBlocks_of_cons hqs (Mem.readBlocks_of_cons hws rfl)) trivial hz).mono
-      (le_of_eq (staticCost_cgs2 ..)) (staticPeak_cgs2_le ..) ?_
+      (le_of_eq (stmtCost_cgs2 ..)) (stmtPeak_cgs2_le ..) ?_
   intro μ' h
   exact h
 

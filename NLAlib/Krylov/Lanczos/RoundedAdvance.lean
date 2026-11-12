@@ -35,10 +35,10 @@ variable [Has ScalarOp Op] [Has Blas1Op Op] [Has OperatorOp Op] [Has CmpTst Tst]
 Its actual readback exposes the raw residual, normalized direction, and squared-norm guard. -/
 theorem advance_writes {M : Machine K} {dec : K → ℝ} {n cap j L B V C bo vo co : ℕ}
     {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K} {ok : ℕ → Prop}
-    {u : ℝ} {ε : Blas1Err}
+    {em u : ℝ} {ε : Blas1Err}
     (hS : IsScalar M I) (hM : StdModel u dec M) (hu : u < 1) (hd : ε.dot n < 1)
     (hB : IsBlas1 dec ε ok I)
-    (hok : ok n) (hA : IsExactMatvec dec A I) (hCmp : IsCmp dec I)
+    (hok : ok n) (hA : IsMatvec dec A (em * specNorm A) I) (hCmp : IsCmp dec I)
     {τ : Tape K} {μ : Mem K} {ps qs next : List K} {β β₀ : K}
     (hVL : V < L) (hCL : C < L) (hVC : V ≠ C)
     (hlen : μ.store.length = L + 3) (hp : μ.store.len L = n)
@@ -59,7 +59,7 @@ theorem advance_writes {M : Machine K} {dec : K → ℝ} {n cap j L B V C bo vo 
         μ'.store.get C (co + j) = some α ∧
         μ'.store.get C (co + cap + j + 1) = some β' ∧
         μ'.store.get (L + 2) 0 = some σ ∧
-        UpdateBounds (ε.dot n) ε.axpy A (decv dec n ps) (decv dec n qs)
+        UpdateBounds em (ε.dot n) ε.axpy A (decv dec n ps) (decv dec n qs)
           (decv dec n first) (decv dec n raw) (dec β) (dec α) ∧
         IsNrm2Err dec (ε.dot n) u n (vec raw) β' ∧
         IsScalErr dec ε.scal n β' (vec raw) (vec ys) ∧

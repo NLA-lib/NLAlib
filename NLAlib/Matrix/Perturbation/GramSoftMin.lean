@@ -372,14 +372,19 @@ theorem gramSoftMinLaplacian_unshifted_eq [Nonempty ι]
 /-- **Finite inverse-power Gram Laplacian bound.**
 For a real matrix $\mathbf{G}$ with a nonempty row type of size $r$, column type of size $k$,
 and positive definite Gram matrix, every positive inverse power has Laplacian at most
-$2(k-r+1)$ when $k-r+1$ is nonnegative.
+$2(k-r+1)$ since positive definiteness forces $r \le k$.
 No printed source. Original NLAlib atlas proof at
 `77514ce42a0e437d837797a063ac161f41022730`.
 Result: inverse-power-gram-laplacian -/
 theorem gramSoftMinLaplacian_unshifted_le [Nonempty ι] (n : ℕ) (hn : 0 < n)
-    (G : Matrix ι κ ℝ) (hpd : (G * Gᴴ).PosDef)
-    (hgap : 0 ≤ (Fintype.card κ : ℝ) - Fintype.card ι + 1) :
+    (G : Matrix ι κ ℝ) (hpd : (G * Gᴴ).PosDef) :
     gramSoftMinLaplacian n 0 G ≤ 2 * ((Fintype.card κ : ℝ) - Fintype.card ι + 1) := by
+  have hrows : Fintype.card ι ≤ Fintype.card κ := by
+    rw [← Matrix.rank_of_isUnit (G * Gᴴ) hpd.isUnit]
+    exact (Matrix.rank_mul_le_left G Gᴴ).trans G.rank_le_card_width
+  have hgap : 0 ≤ (Fintype.card κ : ℝ) - Fintype.card ι + 1 := by
+    have : (Fintype.card ι : ℝ) ≤ Fintype.card κ := by exact_mod_cast hrows
+    linarith
   let R := (G * Gᴴ)⁻¹
   let S := fun a : ℕ => Matrix.trace (R ^ a)
   let c := S n ^ (-(n : ℝ)⁻¹ - 1)

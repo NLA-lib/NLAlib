@@ -114,12 +114,6 @@ private theorem quadForm_bounds {m : Type*} [Fintype m] [DecidableEq m] {H : Mat
     exact ⟨(mul_le_mul_of_nonneg_right e1 hx).trans h1,
       h2.trans (mul_le_mul_of_nonneg_right e2 hx)⟩
 
-/-- A symmetric matrix with spectrum in $[l, l']$, $l > 0$, is positive definite. -/
-private theorem posDef_of_spectrum {m : Type*} [Fintype m] [DecidableEq m] {H : Matrix m m ℝ}
-    (hH : H.IsHermitian) {l l' : ℝ} (hl : 0 < l) (hs : spectrum ℝ H ⊆ Set.Icc l l') :
-    H.PosDef :=
-  hH.posDef_iff_eigenvalue_pos.mpr fun i hi => hl.trans_le (hH.spectrum_subset_iff.mp hs i hi).1
-
 /-- A nonempty spectrum in $[l, l']$ forces $l \le l'$. -/
 private theorem le_of_spectrum {m : Type*} [Fintype m] [DecidableEq m] [Nonempty m]
     {H : Matrix m m ℝ} (hH : H.IsHermitian) {l l' : ℝ} (hs : spectrum ℝ H ⊆ Set.Icc l l') :
@@ -134,7 +128,7 @@ $a \le a'$, $\kappa \ge 1$, $\|\mathbf{A}\|_2 \le a'$, and the smallness of $m^i
 $i \le 2$. -/
 private theorem small_facts {n m : ℕ} (D : CGRun n m) {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ D.A ⊆ Set.Icc a a')
-    (hsmall : (m : ℝ) ^ 2 * Real.sqrt m * D.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) :
+    (hsmall : CGPrecisionHorizon m D.ε (a' / a)) :
     a ≤ a' ∧ 1 ≤ a' / a ∧ specNorm D.A ≤ a' ∧ D.ε ≤ 1 / 10 ^ 5 ∧
       D.ε * (a' / a) ≤ 1 / 10 ^ 5 ∧ (m : ℝ) * D.ε * (a' / a) ≤ 1 / 10 ^ 5 ∧
       (m : ℝ) ^ 2 * D.ε * (a' / a) ≤ 1 / 10 ^ 5 ∧
@@ -218,7 +212,7 @@ $B = 1.6a'$ the a posteriori engine gives <!-- value cgBackwardFactor m -->
 $6000m^2\sqrt{m}\varepsilon\kappa a'$. -/
 private theorem frobNorm_le_of_apriori {n m : ℕ} (D : CGRun n m) {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ D.A ⊆ Set.Icc a a')
-    (hsmall : (m : ℝ) ^ 2 * Real.sqrt m * D.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon m D.ε (a' / a))
     (hP : ∀ i < m, ‖WithLp.toLp 2 (D.p i)‖ ^ 2 ≤ 33 / 10 * (a' / a) * D.ρ i ^ 2)
     (hK : ∀ i < m, specNorm D.A * D.γ i * ‖WithLp.toLp 2 (D.p i)‖ ^ 2 ≤
       21 / 20 * (a' / a) * D.ρ i ^ 2)
@@ -248,7 +242,7 @@ private theorem frobNorm_le_of_apriori {n m : ℕ} (D : CGRun n m) {a a' : ℝ} 
 $\mathbf{I} \otimes \mathbf{A}$, so its spectrum is in $[a/2, a' + a/2]$. -/
 private theorem spectrum_subset_of_frobNorm_le {n m : ℕ} (D : CGRun n m) {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ D.A ⊆ Set.Icc a a')
-    (hsmall : (m : ℝ) ^ 2 * Real.sqrt m * D.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon m D.ε (a' / a))
     (hc : frobNorm (D.backwardH - D.dilatedH) ≤ cgBackwardFactor m * D.ε * (a' / a) * a') :
     spectrum ℝ D.backwardH ⊆ Set.Icc (a / 2) (a' + a / 2) := by
   have hc' : cgBackwardFactor m * D.ε * (a' / a) * a' ≤ a / 2 := by
@@ -261,7 +255,9 @@ private theorem spectrum_subset_of_frobNorm_le {n m : ℕ} (D : CGRun n m) {a a'
         ≤ 6000 * (m : ℝ) ^ 2 * Real.sqrt m * D.ε * (a' / a) * a' := by
           gcongr; exact cgBackwardFactor_le m
       _ = _ := heq
-      _ ≤ a / 2 := by nlinarith
+      _ ≤ a / 2 := by
+        unfold CGPrecisionHorizon at hsmall
+        nlinarith
   have h := NormalizedLanczosData.spectrum_backwardH_subset_Icc (D := D.toNormalizedLanczosData)
     (a := a) (a' := a') hs (hc.trans hc')
   exact h.trans (Set.Icc_subset_Icc (by linarith) le_rfl)
@@ -362,7 +358,7 @@ private theorem normalizedBackwardBound_geom_le_cgBackwardFactor {m : ℕ} {ε �
 certificate theorem, rather than a second induction, supplies all run inequalities. -/
 private noncomputable def smallnessCertificate {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) :
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) :
     CGBackwardCertificate k C.ε a a' := by
   have hF := small_facts C ha hs hsmall
   have haa' := hF.1
@@ -447,7 +443,7 @@ private noncomputable def smallnessCertificate {a a' : ℝ} (ha : 0 < a)
 engine. The prefix induction is proved only in
 `NLAlib/Krylov/FinitePrecision/CGCertificates.lean`. -/
 private theorem aprioriCertificates {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {j : ℕ} (hj : j ≤ k) :
     ∀ i < j, ‖WithLp.toLp 2 (C.p i)‖ ^ 2 ≤ 33 / 10 * (a' / a) * C.ρ i ^ 2 ∧
       specNorm C.A * C.γ i * ‖WithLp.toLp 2 (C.p i)‖ ^ 2 ≤ 21 / 20 * (a' / a) * C.ρ i ^ 2 ∧
@@ -468,7 +464,7 @@ private theorem aprioriCertificates {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ
 3.3\kappa\|\mathbf{r}_j\|^2$ for $j < k$, $\kappa = a'/a$. [StrakosTichy2002, (9.13)] has
 $\|\mathbf{p}_j\|/\|\mathbf{r}_j\| \le 1 + j\kappa^{1/2}$ from an imported monotonicity. -/
 theorem norm_p_sq_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {j : ℕ} (hj : j < k) :
     ‖WithLp.toLp 2 (C.p j)‖ ^ 2 ≤ 33 / 10 * (a' / a) * C.ρ j ^ 2 := by
   exact (C.aprioriCertificates ha hs hsmall le_rfl j hj).1
@@ -477,7 +473,7 @@ theorem norm_p_sq_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Ic
 $\|\mathbf{A}\|_2\gamma_j\|\mathbf{p}_j\|^2 \le 1.05\kappa\rho_j^2$, $j < k$. -/
 theorem specNorm_mul_γ_mul_norm_p_sq_le {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {j : ℕ} (hj : j < k) :
     specNorm C.A * C.γ j * ‖WithLp.toLp 2 (C.p j)‖ ^ 2 ≤ 21 / 20 * (a' / a) * C.ρ j ^ 2 := by
   exact (C.aprioriCertificates ha hs hsmall le_rfl j hj).2.1
@@ -485,14 +481,14 @@ theorem specNorm_mul_γ_mul_norm_p_sq_le {a a' : ℝ} (ha : 0 < a)
 /-- **The off-diagonal coefficients, a priori**: under (H), $\beta_{j+1} =
 \rho_{j+1}/(\gamma_j\rho_j) \le 1.6a'$, $j < k$. -/
 theorem lanczosβ_succ_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {j : ℕ} (hj : j < k) :
     C.lanczosβ (j + 1) ≤ 8 / 5 * a' := by
   exact (C.aprioriCertificates ha hs hsmall le_rfl j hj).2.2.1
 
 /-- **The coefficient ratio, a priori**: under (H), $\delta_j \le 1.6a'\gamma_j$, $j < k$. -/
 theorem δ_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {j : ℕ} (hj : j < k) :
     C.δ j ≤ 8 / 5 * a' * C.γ j := by
   exact (C.aprioriCertificates ha hs hsmall le_rfl j hj).2.2.2
@@ -510,7 +506,7 @@ $k \le (10^{-5}/(\varepsilon\kappa^2))^{2/5}$; the model distance is at most $0.
 Result: cg-backward-model -/
 theorem frobNorm_backwardH_sub_dilatedH_le {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) :
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) :
     frobNorm (C.backwardH - C.dilatedH) ≤ cgBackwardFactor k * C.ε * (a' / a) * a' := by
   have h := C.aprioriCertificates ha hs hsmall le_rfl
   exact frobNorm_le_of_apriori C ha hs hsmall (fun i hi => (h i hi).1) (fun i hi => (h i hi).2.1)
@@ -520,7 +516,7 @@ theorem frobNorm_backwardH_sub_dilatedH_le {a a' : ℝ} (ha : 0 < a)
 its spectrum lies in $[a/2, a' + a/2]$. -/
 theorem spectrum_backwardH_subset_Icc {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) :
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) :
     spectrum ℝ C.backwardH ⊆ Set.Icc (a / 2) (a' + a / 2) := by
   exact spectrum_subset_of_frobNorm_le C ha hs hsmall
     (C.frobNorm_backwardH_sub_dilatedH_le ha hs hsmall)
@@ -529,19 +525,19 @@ theorem spectrum_backwardH_subset_Icc {a a' : ℝ} (ha : 0 < a)
 the step length of `NLAlib.cgState` on $(\tilde{\mathbf{H}}, (\mathbf{b}, \mathbf{0}, \dots))$
 from $\mathbf{0}$ is $\gamma_j$. -/
 theorem cgAlpha_backwardH {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {j : ℕ} (hj : j < k) :
     cgAlpha C.backwardH (cgState C.backwardH C.dilatedRhs 0 j) = C.γ j := by
-  exact C.cgAlpha_backwardH_of_posDef (posDef_of_spectrum C.isHermitian_backwardH
+  exact C.cgAlpha_backwardH_of_posDef (C.isHermitian_backwardH.posDef_of_spectrum_subset_Icc
     (by positivity : 0 < a / 2) (C.spectrum_backwardH_subset_Icc ha hs hsmall)) hj
 
 /-- **Exact CG on the model has the computed residual norms**: under (H), for $j \le k$,
 $\|\tilde{\mathbf{r}}_j\| = \|\mathbf{r}_j\|$. -/
 theorem norm_cgState_backwardH_r {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {j : ℕ} (hj : j ≤ k) :
     ‖WithLp.toLp 2 (cgState C.backwardH C.dilatedRhs 0 j).r‖ = C.ρ j := by
-  exact C.norm_cgState_backwardH_r_of_posDef (posDef_of_spectrum C.isHermitian_backwardH
+  exact C.norm_cgState_backwardH_r_of_posDef (C.isHermitian_backwardH.posDef_of_spectrum_subset_Icc
     (by positivity : 0 < a / 2) (C.spectrum_backwardH_subset_Icc ha hs hsmall)) hj
 
 /-- **Residual ratios of the run, a priori**: under (H), $\|\mathbf{r}_j\| \le
@@ -549,12 +545,13 @@ theorem norm_cgState_backwardH_r {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.
 exact CG on a matrix of condition number at most $2\kappa + 1$). This is [StrakosTichy2002,
 (7.20)] with the imported monotonicity replaced by the model. -/
 theorem ρ_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {i j : ℕ} (hij : i ≤ j)
     (hj : j ≤ k) :
     C.ρ j ≤ Real.sqrt (3 * (a' / a)) * C.ρ i := by
   have hspec := C.spectrum_backwardH_subset_Icc ha hs hsmall
-  have hPD := posDef_of_spectrum C.isHermitian_backwardH (by positivity : 0 < a / 2) hspec
+  have hPD := C.isHermitian_backwardH.posDef_of_spectrum_subset_Icc
+    (by positivity : 0 < a / 2) hspec
   have h := hPD.norm_cgState_r_le (by positivity : 0 < a / 2) hspec C.dilatedRhs hij
   rw [C.norm_cgState_backwardH_r ha hs hsmall hj,
     C.norm_cgState_backwardH_r ha hs hsmall (hij.trans hj)] at h
@@ -629,7 +626,7 @@ theorem ρ_le_chebyshev_of_spectrum_backwardH {l l' : ℝ} (hl : 0 < l)
       ((Real.sqrt (l' / l) - 1) / (Real.sqrt (l' / l) + 1)) ^ j *
         ‖WithLp.toLp 2 C.b‖ := by
   have hherm := C.isHermitian_backwardH
-  have hPD := posDef_of_spectrum hherm hl hH
+  have hPD := hherm.posDef_of_spectrum_subset_Icc hl hH
   have := C.nonempty_index
   have hll' := le_of_spectrum hherm hH
   have hκ : 1 ≤ l' / l := (le_div_iff₀ hl).mpr (by simpa only [one_mul] using hll')
@@ -710,7 +707,7 @@ No printed source in this form; compare [MeurantStrakos2006, §5.2].
 This bounds the residual envelope for $j\le k$; it does not assert stepwise monotonicity.
 Result: cg-computed-residual-bound -/
 theorem ρ_le_chebyshev {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {j : ℕ} (hj : j ≤ k) :
     C.ρ j ≤ 2 * Real.sqrt (2 * (a' / a) + 1) *
       ((Real.sqrt (2 * (a' / a) + 1) - 1) / (Real.sqrt (2 * (a' / a) + 1) + 1)) ^ j *
@@ -731,14 +728,15 @@ exactly, with the computed $\gamma_i$ and the norms of the computed residuals: t
 $\nu_{j,d}$ of [StrakosTichy2002, (4.9), (10.7)] is exact for the model. -/
 theorem quadForm_backwardH_sub_cgIterate_sub_quadForm_backwardH_sub_cgIterate {a a' : ℝ}
     (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {xs : Fin n × Fin (k + 1) → ℝ} (hxs : C.backwardH *ᵥ xs = C.dilatedRhs) {j d : ℕ}
     (hjd : j + d ≤ k) :
     quadForm C.backwardH (xs - cgIterate C.backwardH C.dilatedRhs 0 j) -
         quadForm C.backwardH (xs - cgIterate C.backwardH C.dilatedRhs 0 (j + d)) =
       ∑ i ∈ Finset.Ico j (j + d), C.γ i * C.ρ i ^ 2 := by
   have hspec := C.spectrum_backwardH_subset_Icc ha hs hsmall
-  have hPD := posDef_of_spectrum C.isHermitian_backwardH (by positivity : 0 < a / 2) hspec
+  have hPD := C.isHermitian_backwardH.posDef_of_spectrum_subset_Icc
+    (by positivity : 0 < a / 2) hspec
   have hstep : ∀ i < k, quadForm C.backwardH (xs - cgIterate C.backwardH C.dilatedRhs 0 i) -
       quadForm C.backwardH (xs - cgIterate C.backwardH C.dilatedRhs 0 (i + 1)) =
         C.γ i * C.ρ i ^ 2 := fun i hi => by
@@ -764,7 +762,7 @@ $\tilde{\mathbf{v}}^{\mathsf{T}}\tilde{\mathbf{H}}^{-1}\tilde{\mathbf{v}}$
 in place of $(\mathbf{T}_n^{-1})_{11}$. -/
 theorem quadForm_backwardH_sub_cgIterate_eq {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {xs : Fin n × Fin (k + 1) → ℝ} (hxs : C.backwardH *ᵥ xs = C.dilatedRhs) :
     quadForm C.backwardH (xs - cgIterate C.backwardH C.dilatedRhs 0 k) =
       quadForm C.backwardH xs - ∑ j ∈ Finset.range k, C.γ j * C.ρ j ^ 2 := by
@@ -783,7 +781,7 @@ The start of the model is exactly $\mathbf{b}/\|\mathbf{b}\|$ in the first block
 ($\mathbf{r}_0 = \mathbf{b}$ is not rounded), so the comparison is with the true problem. -/
 theorem abs_quadForm_backwardH_sub_quadForm_le {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {xs : Fin n × Fin (k + 1) → ℝ} (hxs : C.backwardH *ᵥ xs = C.dilatedRhs) {x : Fin n → ℝ}
     (hx : C.A *ᵥ x = C.b) :
     |quadForm C.backwardH xs - quadForm C.A x| ≤
@@ -861,7 +859,7 @@ The computed run's own error $\|\mathbf{x}_\star - \mathbf{x}_k\|_{\mathbf{A}}$ 
 here. -/
 theorem abs_quadForm_backwardH_sub_cgIterate_sub_le {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {xs : Fin n × Fin (k + 1) → ℝ} (hxs : C.backwardH *ᵥ xs = C.dilatedRhs) {x : Fin n → ℝ}
     (hx : C.A *ᵥ x = C.b) :
     |quadForm C.backwardH (xs - cgIterate C.backwardH C.dilatedRhs 0 k) -
@@ -876,11 +874,11 @@ theorem abs_quadForm_backwardH_sub_cgIterate_sub_le {a a' : ℝ} (ha : 0 < a)
 /-- **The computed estimator is bounded a priori**: under (H),
 $\sum_{j<k}\gamma_j\|\mathbf{r}_j\|^2 \le 2\|\mathbf{b}\|^2/a$. -/
 theorem sum_γ_mul_ρ_sq_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) :
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) :
     ∑ j ∈ Finset.range k, C.γ j * C.ρ j ^ 2 ≤ 2 * ‖WithLp.toLp 2 C.b‖ ^ 2 / a := by
   have hspec := C.spectrum_backwardH_subset_Icc ha hs hsmall
   have hherm := C.isHermitian_backwardH
-  have hPD := posDef_of_spectrum hherm (by positivity : 0 < a / 2) hspec
+  have hPD := hherm.posDef_of_spectrum_subset_Icc (by positivity : 0 < a / 2) hspec
   set xs := C.backwardH⁻¹ *ᵥ C.dilatedRhs
   have hxs : C.backwardH *ᵥ xs = C.dilatedRhs := by
     rw [Matrix.mulVec_mulVec, Matrix.mul_nonsing_inv _ ((Matrix.isUnit_iff_isUnit_det _).mp

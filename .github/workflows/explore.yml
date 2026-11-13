@@ -29,7 +29,7 @@ jobs:
     env:
       SOURCE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ env.SOURCE_SHA }}
       - name: Require passing CI for the current main commit
@@ -37,7 +37,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 scripts/explore_publish.py
       - name: Build NLAlib with the Mathlib cache
-        uses: leanprover/lean-action@v1
+        uses: leanprover/lean-action@ba3fdfe5c4476c925da13bf11a005ddb47e47aee # v1
         with:
           use-mathlib-cache: true
           build-args: "NLAlib"

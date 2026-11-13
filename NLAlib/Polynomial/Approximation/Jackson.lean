@@ -421,8 +421,9 @@ theorem exists_degree_le_isUniformApproxOn_Icc_of_lipschitzOnWith
 satisfies <!-- value jacksonApproximationConstant -->
 $$E_N(f; [a, b]) \le \frac{\pi L(b - a)}{2(N + 2)}$$
 (the constant is `jacksonApproximationConstant`). [ChenTrogdonUbaru2022, Appendix C,
-Theorem 38]; there on $[-1, 1]$ with the factor $\pi^2/2$; [Rivlin1981, Ch. 1] (locator to
-check), the classical $E_N$ form.
+Theorem 38] gives the Jackson-damped bound on $[-1,1]$ with factor $\pi^2/2$. The local
+first-moment estimate for the constructed polynomial yields the factor $\pi$ before rescaling the
+interval.
 Result: jackson-lipschitz -/
 theorem minimaxError_le_of_lipschitzOnWith {f : ℝ → ℝ} {L : ℝ≥0} {a b : ℝ} (hab : a < b)
     (hf : LipschitzOnWith L f (Set.Icc a b)) (N : ℕ) :

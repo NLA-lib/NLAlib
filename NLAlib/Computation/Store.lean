@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.ForMathlib.Data.List.Range
 public import Mathlib.Algebra.Order.Group.Nat
 public import Mathlib.Logic.Function.Basic
 public import Mathlib.Tactic.DefEqTransformations
@@ -632,14 +633,6 @@ private theorem mapM_eq_some {α β : Type} {f : α → Option β} :
     · simpa using hb
     · simpa using hk k (by simpa using hk₁) (by simpa using hk₂)
 
-private theorem mapM_eq_some_map {α β : Type} {f : α → Option β} {g : α → β} :
-    ∀ l : List α, (∀ x ∈ l, f x = some (g x)) → l.mapM f = some (l.map g)
-  | [], _ => rfl
-  | x :: l, h => by
-    rw [List.mapM_cons, h x List.mem_cons_self,
-      mapM_eq_some_map l fun y hy => h y (List.mem_cons_of_mem _ hy)]
-    rfl
-
 /-- A block read that succeeds reads as many cells as asked. -/
 theorem Store.size_of_readBlock_eq_some {s : Store P K} {p : P} {b off len : ℕ} {X : Array K}
     (h : s.readBlock p b off len = some X) : X.size = len := by
@@ -668,7 +661,7 @@ theorem Store.readBlock_eq_some_map_range {s : Store P K} {p : P} {b off len : �
     s.readBlock p b off len = some ((List.range len).toArray.map g) := by
   unfold Store.readBlock
   rw [Array.mapM_eq_mapM_toList, List.toList_toArray,
-    mapM_eq_some_map _ fun i hi => h i (List.mem_range.mp hi)]
+    List.mapM_eq_some_map _ fun i hi => h i (List.mem_range.mp hi)]
   change some _ = some _
   congr 1
   apply Array.ext (by simp)

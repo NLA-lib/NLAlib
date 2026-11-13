@@ -305,7 +305,6 @@ theorem integral_frobNorm_sub_truncatedSVD_generalizedNystrom_sq_le_of_gaussianM
     dsimp only [N, E, R, Lw, Lw', θ, id_eq]
     gcongr
     · exact localTruncationNoiseConstant_le.trans (by norm_num : (483 : ℝ) ≤ 500)
-    · exact singularValues_nonneg _ _
     · exact localTruncationWindowConstant_le.trans (by norm_num : (32 : ℝ) ≤ 40)
   have h1 : Integrable (fun ψ => frobNorm (A - truncatedSVD R k) ^ 2 +
       500 * k * specNorm (N ψ) ^ 2) (gaussianMatrix m p) :=

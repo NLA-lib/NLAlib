@@ -84,6 +84,16 @@ def eighBlockOff (n d lo : IExp VI) : IExp VI := 2 * (n * n) * d + 2 * n * lo
 /-- The cell of slot $lo$ at depth $d$ in an arena of $n$ cells per level: $nd + lo$. -/
 def eighSlotOff (n d lo : IExp VI) : IExp VI := n * d + lo
 
+/-- The evaluated matrix-arena offset is the level stride $2n^2$ plus the slot stride
+$2n$, using the values of the three index expressions. No printed source. -/
+theorem eval_eighBlockOff (n d lo : IExp ℕ) :
+    (eighBlockOff n d lo).eval = 2 * (n.eval * n.eval) * d.eval + 2 * n.eval * lo.eval := rfl
+
+/-- The evaluated scalar-arena offset is the level stride $n$ plus the slot, using the values
+of the three index expressions. No printed source. -/
+theorem eval_eighSlotOff (n d lo : IExp ℕ) :
+    (eighSlotOff n d lo).eval = n.eval * d.eval + lo.eval := rfl
+
 /-! ### The sign step with the shallow step limit -/
 
 /-- **The Newton–Schulz sign algorithm with the step limit of the shallow loop**: the set-up and

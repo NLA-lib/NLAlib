@@ -166,7 +166,7 @@ $f : \mathbb{R} \to \mathbb{R}$ and every $q$,
 $$\int f\,d\,\mathsf{lanczosQuadrature}(\mathbf{A}, \mathbf{b}, q + 1) =
 \|\mathbf{b}\|^2\operatorname{Re}\,\mathbf{e}_0^{\mathsf{H}}f(\mathbf{T})\mathbf{e}_0\,,$$
 with $\mathbf{T}$ the tridiagonal matrix of $q + 1$ steps of the Lanczos recurrence.
-[GolubMeurant2010, Ch. 6] (locator to check). -/
+[GolubMeurant2010, Theorem 6.6]. -/
 theorem _root_.Matrix.IsHermitian.integral_lanczosQuadrature_succ {A : Matrix n n 𝕜}
     (hA : A.IsHermitian) (f : ℝ → ℝ) (b : n → 𝕜) (q : ℕ) :
     ∫ x, f x ∂lanczosQuadrature A b (q + 1) =
@@ -182,7 +182,7 @@ tridiagonal matrix of $q + 1$ steps of the Lanczos recurrence,
 $$\mathsf{lanczosQuadrature}(\mathbf{A}, \mathbf{b}, q + 1) =
 \sum_i \|\mathbf{b}\|^2\lvert\mathbf{U}_{0,i}\rvert^2\,\delta_{\mathbf{d}_i}\,:$$
 the nodes are the eigenvalues of $\mathbf{T}$, the weights the squared first entries of its
-eigenvectors. [GolubMeurant2010, Ch. 6] (locator to check).
+eigenvectors. [GolubMeurant2010, Theorem 6.2].
 Result: lanczos-gauss-quadrature -/
 theorem _root_.Matrix.IsHermitian.lanczosQuadrature_succ_eq_sum {A : Matrix n n 𝕜}
     (hA : A.IsHermitian) (b : n → 𝕜) (q : ℕ) {U : Matrix (Fin (q + 1)) (Fin (q + 1)) 𝕜}
@@ -277,8 +277,8 @@ theorem _root_.Matrix.IsHermitian.star_dotProduct_lanczosFA_eval {A : Matrix n n
 Hermitian $\mathbf{A}$, every $\mathbf{b}$ and every $q$,
 $\int p\,d\mu_{\mathbf{A},\mathbf{b}} = \int p\,d\,\mathsf{lanczosQuadrature}(\mathbf{A},
 \mathbf{b}, q)$ for every real polynomial $p$ of degree less than $2q$.
-[GolubMeurant2010, Ch. 6]. Chen, Trogdon and Ubaru (2022) start their
-spectrum-approximation bounds from this form; locator to check.
+[GolubMeurant2010, Theorems 6.1–6.2]. [ChenTrogdonUbaru2022, §4.2] uses this polynomial exactness
+for spectrum approximation.
 Result: lanczos-gauss-quadrature -/
 theorem _root_.Matrix.IsHermitian.matchesMoments_lanczosQuadrature {A : Matrix n n 𝕜}
     (hA : A.IsHermitian) (b : n → 𝕜) (q : ℕ) :
@@ -342,7 +342,7 @@ $$\bigl\lvert\mathbf{b}^{\mathsf{H}}\bigl(f(\mathbf{A})\mathbf{b} -
 \mathsf{lanczosFA}(\mathbf{A}, f, \mathbf{b}, q + 1)\bigr)\bigr\rvert \le
 \frac{4M}{\rho^{2q + 1}(\rho - 1)}\|\mathbf{b}\|^2\,,$$
 twice the rate of Lanczos-FA in the exponent, from the Chebyshev truncation of degree
-$2q + 1$. [Trefethen2019, Theorem 8.2] (locator to check), the approximation rate;
+$2q + 1$. [Trefethen2019, Theorem 8.2, Eq. (8.2)], the approximation rate;
 constants composed here.
 Result: lanczos-gauss-quadrature -/
 theorem
@@ -640,8 +640,8 @@ theorem _root_.Matrix.IsHermitian.lanczosQuadrature_eq_gaussQuadrature {A : Matr
 /-- **The Ritz values are the Gauss nodes** (nodal form): for Hermitian $\mathbf{A}$,
 $\mathbf{Q}$ with orthonormal columns spanning $\mathcal{K}_q(\mathbf{A}, \mathbf{b})$, $q$ at
 most the grade and $s$ the set of Ritz values, the nodal polynomial of $s$ is the monic
-orthogonal polynomial of degree $q$ of $\mu_{\mathbf{A},\mathbf{b}}$. [GolubMeurant2010, Ch. 4]
-(locator to check). -/
+orthogonal polynomial of degree $q$ of $\mu_{\mathbf{A},\mathbf{b}}$. [GolubMeurant2010, Theorem
+6.2]. -/
 theorem HasOrthonormalCols.nodal_eq_orthogonalPolynomial {Q : Matrix n r 𝕜}
     (hQ : HasOrthonormalCols Q) {A : Matrix n n 𝕜} (hA : A.IsHermitian) {b : n → 𝕜} {q : ℕ}
     (hK : LinearMap.range Q.mulVecLin = krylovSpace A b q) (hq : q ≤ krylovGrade A b)
@@ -659,7 +659,7 @@ theorem HasOrthonormalCols.nodal_eq_orthogonalPolynomial {Q : Matrix n r 𝕜}
 orthonormal columns spanning $\mathcal{K}_q(\mathbf{A}, \mathbf{b})$, $q$ at most the grade and
 $s$ the set of Ritz values, the Gauss nodes of order $q$ of $\mu_{\mathbf{A},\mathbf{b}}$ are $s$.
 The grade hypothesis is needed: past the grade the Gauss nodes can contain a spurious $0$ of
-weight $0$. [GolubMeurant2010, Ch. 4] (locator to check). -/
+weight $0$. [GolubMeurant2010, Theorem 6.2]. -/
 theorem HasOrthonormalCols.gaussNodes_spectralMeasure_eq {Q : Matrix n r 𝕜}
     (hQ : HasOrthonormalCols Q) {A : Matrix n n 𝕜} (hA : A.IsHermitian) {b : n → 𝕜} {q : ℕ}
     (hK : LinearMap.range Q.mulVecLin = krylovSpace A b q) (hq : q ≤ krylovGrade A b)
@@ -673,8 +673,7 @@ $(k+1)$-point Gauss rule of $\mu$ is the spectral measure of its Jacobi matrix a
 $\sqrt{\mu(\mathbb{R})}\,\mathbf{e}_0$: its nodes are the eigenvalues of
 $\mathbf{J}_{k+1}(\mu)$ and its weights $\mu(\mathbb{R})$ times the squared first components of
 the eigenvectors. Past the support size of $\mu$ the matrix has zero rows, and the extra
-eigenvalues carry no weight. [Gautschi2004, Theorem 3.1]; [GolubWelsch1969, §2] (labels to
-check).
+eigenvalues carry no weight. [Gautschi2004, Theorem 3.1]; [GolubWelsch1969, §2, Eq. (2.6)].
 Result: golub-welsch -/
 theorem spectralMeasure_jacobiMatrix (μ : Measure ℝ) [IsFiniteMeasure μ] {a c : ℝ}
     (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a c) (k : ℕ) :
@@ -727,7 +726,7 @@ $\mathbf{J}_{k+1}(\mu) = \mathbf{U}\operatorname{diag}(\mathbf{d})\mathbf{U}^{\m
 Jacobi matrix,
 $$\mathsf{gaussQuadrature}(\mu, k + 1) = \sum_i\mu(\mathbb{R})\,\mathbf{U}_{0,i}^2\,
 \delta_{\mathbf{d}_i}\,.$$
-[Gautschi2004, Theorem 3.1]; [GolubWelsch1969, §2] (labels to check). -/
+[Gautschi2004, Theorem 3.1]; [GolubWelsch1969, §2, Eq. (2.6)]. -/
 theorem HasOrthonormalCols.gaussQuadrature_succ_eq_sum {k : ℕ}
     {U : Matrix (Fin (k + 1)) (Fin (k + 1)) ℝ} (hU : HasOrthonormalCols U) {μ : Measure ℝ}
     [IsFiniteMeasure μ] {a c : ℝ} (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a c) {d : Fin (k + 1) → ℝ}
@@ -747,7 +746,7 @@ theorem HasOrthonormalCols.gaussQuadrature_succ_eq_sum {k : ℕ}
 and every $k$, the $(k+1)$-point Gauss rule of $\mu$ is the spectral measure of the Jacobi matrix
 $\mathbf{J}_{k+1}(\mu)$, with its real entries read in $\Bbbk$, and
 $\sqrt{\mu(\mathbb{R})}\,\mathbf{e}_0$. The form for implementation statements over a complex
-Hermitian matrix. [Gautschi2004, Theorem 3.1]; [GolubWelsch1969, §2] (labels to check). -/
+Hermitian matrix. [Gautschi2004, Theorem 3.1]; [GolubWelsch1969, §2, Eq. (2.6)]. -/
 theorem spectralMeasure_map_jacobiMatrix (μ : Measure ℝ) [IsFiniteMeasure μ] {a c : ℝ}
     (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a c) (k : ℕ) :
     spectralMeasure ((jacobiMatrix μ (k + 1)).map (algebraMap ℝ 𝕜))
@@ -831,8 +830,8 @@ positive definite up to degree $k + 1$, and $c \in \{a, b\}$, the Radau rule of 
 prescribed node $c$ and $k$ free nodes is the spectral measure of the Radau Jacobi matrix
 $\tilde{\mathbf{J}}$ of order $k + 1$ and $\sqrt{\mu(\mathbb{R})}\,\mathbf{e}_0$: its nodes are
 the eigenvalues of $\tilde{\mathbf{J}}$ (one of them $c$) and its weights $\mu(\mathbb{R})$ times
-the squared first eigenvector components. [Golub1973, §7]; [GolubMeurant2010, Ch. 6] (locators
-to check).
+the squared first eigenvector components. [Golub1973, §7, Eqs. (7.4)–(7.6)]; [GolubMeurant2010,
+§6.2.2].
 Result: gauss-radau-jacobi-matrix -/
 theorem spectralMeasure_radauJacobiMatrix (μ : Measure ℝ) [IsFiniteMeasure μ] {a b c : ℝ}
     (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b) (hc : c = a ∨ c = b) {k : ℕ} (h : IsMomentPosDef μ (k + 1)) :
@@ -885,7 +884,7 @@ $$\int f\,d\,\mathsf{radauQuadrature}(\mu_{\mathbf{A},\mathbf{b}}, c, q) =
 \|\mathbf{b}\|^2 f(\tilde{\mathbf{J}})_{0,0}\,,$$
 $\tilde{\mathbf{J}}$ the Radau Jacobi matrix of order $q + 1$ of $\mu_{\mathbf{A},\mathbf{b}}$:
 the Lanczos tridiagonal of order $q + 1$ (`Matrix.IsHermitian.lanczosTridiagonal_eq_jacobiMatrix`)
-with its last diagonal entry replaced. [GolubMeurant2010, Ch. 6, Ch. 7] (locators to check). -/
+with its last diagonal entry replaced. [GolubMeurant2010, §6.2.2, Theorem 6.6]. -/
 theorem _root_.Matrix.IsHermitian.integral_radauQuadrature_spectralMeasure {A : Matrix n n 𝕜}
     (hA : A.IsHermitian) {a a' c : ℝ} (hs : spectrum ℝ A ⊆ Set.Icc a a') (hc : c = a ∨ c = a')
     (b : n → 𝕜) {q : ℕ} (hq : q + 1 ≤ krylovGrade A b) (f : ℝ → ℝ) :

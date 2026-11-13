@@ -93,7 +93,7 @@ theorem quadForm_sub_x_sub_quadForm_sub_x_succ_eq {xs : Fin n → ℝ} (hx : C.A
 /-- The existing per-index pairing bound implies its horizon-uniform relaxation. -/
 private theorem abs_p_dotProduct_r_sub_sq_le {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {j : ℕ} (hj : j < k) :
     |C.p j ⬝ᵥ C.r j - C.ρ j ^ 2| ≤ 26 * k * C.ε * (a' / a) * C.ρ j ^ 2 := by
   have h := C.abs_p_dotProduct_r_sub_le ha hs hsmall hj
@@ -106,7 +106,7 @@ private theorem abs_p_dotProduct_r_sub_sq_le {a a' : ℝ} (ha : 0 < a)
 /-- The curvature error: $\mu_j = \mathbf{p}_j^{\mathsf{T}}\mathbf{A}\mathbf{p}_j + t_j$ with
 $\lvert t_j\rvert \le 3\varepsilon\kappa\,\mathbf{p}_j^{\mathsf{T}}\mathbf{A}\mathbf{p}_j$. -/
 private theorem trk_curvature {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) {j : ℕ} (hj : j < k) :
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) {j : ℕ} (hj : j < k) :
     0 ≤ C.p j ⬝ᵥ (C.A *ᵥ C.p j) ∧
       C.μ j = C.p j ⬝ᵥ (C.A *ᵥ C.p j) + (C.p j ⬝ᵥ C.es j + C.eμ j) ∧
       |C.p j ⬝ᵥ C.es j + C.eμ j| ≤ 3 * (C.ε * (a' / a)) * (C.p j ⬝ᵥ (C.A *ᵥ C.p j)) := by
@@ -155,7 +155,7 @@ $\lvert\gamma_j^2\mathbf{p}_j^{\mathsf{T}}\mathbf{A}\mathbf{p}_j - \gamma_j\|\ma
 `NLAlib.CGRun.γ_sq_mul_dotProduct_mulVec_le` with the $\varepsilon$-dependence kept. -/
 private theorem abs_γ_sq_mul_dotProduct_mulVec_sub_le {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {j : ℕ} (hj : j < k) :
     |C.γ j ^ 2 * (C.p j ⬝ᵥ (C.A *ᵥ C.p j)) - C.γ j * C.ρ j ^ 2| ≤
       6 * C.ε * (a' / a) * (C.γ j * C.ρ j ^ 2) := by
@@ -221,7 +221,7 @@ private theorem abs_γ_sq_mul_dotProduct_mulVec_sub_le {a a' : ℝ} (ha : 0 < a)
 $2\gamma_j\lvert\mathbf{p}_j^{\mathsf{T}}\mathbf{g}_j\rvert \le 36j\varepsilon\kappa
 \|\mathbf{b}\|^2/a$. -/
 private theorem trk_gap_term {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) {j : ℕ} (hj : j < k) :
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) {j : ℕ} (hj : j < k) :
     |2 * C.γ j * (C.p j ⬝ᵥ (C.b - C.A *ᵥ C.x j - C.r j))| ≤
       36 * j * (C.ε * (a' / a) * (‖WithLp.toLp 2 C.b‖ ^ 2 / a)) := by
   obtain ⟨-, hκ, -, -, -, -, -⟩ := C.le_of_sq_mul_sqrt_mul_ε_mul_sq_le ha hs hsmall
@@ -246,7 +246,7 @@ private theorem trk_gap_term {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A �
 /-- The energy of $\mathbf{w}_j = \mathbf{x}_\star - \mathbf{x}_j - \gamma_j\mathbf{p}_j$:
 $\|\mathbf{w}_j\|_{\mathbf{A}}^2 \le 4\|\mathbf{b}\|^2/a$. -/
 private theorem trk_quadForm_w_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) {xs : Fin n → ℝ}
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) {xs : Fin n → ℝ}
     (hx : C.A *ᵥ xs = C.b) {j : ℕ} (hj : j < k) :
     quadForm C.A (xs - C.x j - C.γ j • C.p j) ≤ 4 * (‖WithLp.toLp 2 C.b‖ ^ 2 / a) := by
   obtain ⟨hjT, -, -⟩ := C.le_of_sq_mul_sqrt_mul_ε_mul_sq_le_of_le ha hs hsmall hj.le
@@ -283,7 +283,7 @@ private theorem trk_quadForm_w_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C
 
 /-- The iterate update error, a priori: $\|\mathbf{e}^x_j\| \le 3.6\varepsilon\|\mathbf{b}\|/a$. -/
 private theorem trk_norm_ex_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) {xs : Fin n → ℝ}
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) {xs : Fin n → ℝ}
     (hx : C.A *ᵥ xs = C.b) {j : ℕ} (hj : j < k) :
     ‖WithLp.toLp 2 (C.ex j)‖ ≤ 18 / 5 * C.ε * ‖WithLp.toLp 2 C.b‖ / a := by
   have hε0 := C.ε_nonneg
@@ -324,7 +324,7 @@ $2\lvert\mathbf{e}^{x\mathsf{T}}_j\mathbf{A}\mathbf{w}_j\rvert \le 15\varepsilon
 \|\mathbf{b}\|^2/a$ and $0 \le \|\mathbf{e}^x_j\|_{\mathbf{A}}^2 \le \varepsilon\kappa
 \|\mathbf{b}\|^2/a$. -/
 private theorem trk_update_terms {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) {xs : Fin n → ℝ}
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) {xs : Fin n → ℝ}
     (hx : C.A *ᵥ xs = C.b) {j : ℕ} (hj : j < k) :
     |2 * (C.ex j ⬝ᵥ (C.A *ᵥ (xs - C.x j - C.γ j • C.p j)))| ≤
         15 * (C.ε * (a' / a) * (‖WithLp.toLp 2 C.b‖ ^ 2 / a)) ∧
@@ -402,7 +402,7 @@ $$\lvert E_j-E_{j+1}-\gamma_j\rho_j^2\rvert\le
 No energy-monotonicity assumption or linearization of the roundoff terms is used. -/
 theorem abs_quadForm_sub_x_sub_quadForm_sub_x_succ_sub_le {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) {j : ℕ} (hj : j < k) :
     |quadForm C.A (xs - C.x j) - quadForm C.A (xs - C.x (j + 1)) - C.γ j * C.ρ j ^ 2| ≤
       cgEnergyTrackingRelativeFactor k * C.ε * (a' / a) * (C.γ j * C.ρ j ^ 2) +
@@ -464,7 +464,7 @@ on the measured decrement and can be useful when that decrement is small.
 Result: cg-relative-energy-decrement-reliability -/
 theorem abs_quadForm_sub_x_sub_quadForm_sub_x_add_sub_sum_le {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) {j d : ℕ} (hjd : j + d ≤ k) :
     |quadForm C.A (xs - C.x j) - quadForm C.A (xs - C.x (j + d)) -
         ∑ i ∈ Finset.Ico j (j + d), C.γ i * C.ρ i ^ 2| ≤
@@ -527,7 +527,7 @@ norm conversion is used.
 Result: cg-physical-energy-quadrature -/
 theorem abs_quadForm_sub_x_succ_sub_sub_inv_cgTridiagonal_le {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) {j : ℕ} (hj : j + 1 ≤ k) :
     |quadForm C.A (xs - C.x (j + 1)) -
         (quadForm C.A xs - ‖WithLp.toLp 2 C.b‖ ^ 2 * (cgTridiagonal C.γ C.ρ (j + 1))⁻¹ 0 0)| ≤
@@ -557,7 +557,7 @@ term enters this decrement comparison; the computed decrement is the exact model
 The scalar decrement sum is evaluated exactly. No printed source. -/
 theorem abs_quadForm_sub_x_sub_quadForm_sub_x_add_sub_backwardH_le {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) {xs' : Fin n × Fin (k + 1) → ℝ}
     (hxs' : C.backwardH *ᵥ xs' = C.dilatedRhs) {j d : ℕ} (hjd : j + d ≤ k) :
     |quadForm C.A (xs - C.x j) - quadForm C.A (xs - C.x (j + d)) -

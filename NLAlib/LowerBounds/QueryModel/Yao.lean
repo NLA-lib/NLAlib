@@ -14,7 +14,8 @@ public import NLAlib.LowerBounds.QueryModel.Basic
 # Yao's principle for query algorithms
 
 A randomized algorithm is a measurable family of deterministic ones indexed by a seed
-(`NLAlib.QueryAlgorithm.IsMeasurableFamily`). Two forms of Yao's minimax principle (the easy
+(`NLAlib.QueryAlgorithm.IsMeasurableFamily`). Two forms of Yao's minimax principle [Yao1977] (the
+easy
 direction, which is what lower bounds use), both Fubini on the product of the seed law and the
 input law:
 
@@ -50,7 +51,8 @@ $X$, and let $B$ be a measurable set of (input, output) pairs. If every measurab
 algorithm puts $(X, \text{output})$ in $B$ with probability at most $\delta$, then so does the
 randomized algorithm with seed $s$:
 $\mathbb{P}[(X, \mathcal{A}_s(X)) \in B] \le \delta$.
-[Yao1977, Section 3] (locator to check); there as the minimax principle for finite problems,
+[BenDavidBlais2020, §1, classical minimax identity]; there as the minimax principle for finite
+problems,
 here the averaging half on a probability space, any seed and input spaces, any oracle depending
 measurably on the input. -/
 theorem IsMeasurableFamily.measureReal_run_mem_le_of_indepFun [IsProbabilityMeasure μ]
@@ -82,7 +84,7 @@ then for the randomized algorithm some input $x$ has
 $\rho$-probability at least $\delta$ of $(x, \mathcal{A}_s(x)) \in B$. Read with $B$ the failure
 set: a lower bound against one input distribution is a lower bound for randomized algorithms in
 the worst case.
-[Yao1977, Section 3] (locator to check); [ZhangEtAl2026, Section 8]; there for finite or
+[BenDavidBlais2020, §1, classical minimax identity]; [ZhangEtAl2026, Section 8]; there for finite or
 implicit input spaces. -/
 theorem IsMeasurableFamily.exists_le_measureReal_run_mem {alg : S → QueryAlgorithm Q R q β}
     (halg : IsMeasurableFamily alg) {O : M → Q → R} (hO : Measurable (Function.uncurry O))
@@ -137,7 +139,7 @@ $\delta$ of $(x, \mathcal{A}_s(x)) \in B$, then some input $x$ has $\rho$-probab
 $\delta$ of $(x, \mathcal{A}_s(x)) \in B$. The bound is needed only for the members of the family,
 so a lower bound for a class of algorithms (pass-structured, one-sided) transfers to the
 randomized algorithms of that class.
-[Yao1977, Section 3] (locator to check); the averaging half, as
+[BenDavidBlais2020, §1, classical minimax identity]; the averaging half, as
 `NLAlib.QueryAlgorithm.IsMeasurableFamily.exists_le_measureReal_run_mem`, which follows from it. -/
 theorem IsMeasurableFamily.exists_le_measureReal_run_mem_of_forall
     {alg : S → QueryAlgorithm Q R q β} (halg : IsMeasurableFamily alg) {O : M → Q → R}

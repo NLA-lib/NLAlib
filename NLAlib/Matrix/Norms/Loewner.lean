@@ -450,6 +450,7 @@ theorem _root_.Matrix.PosSemidef.specNorm_le_iff [DecidableEq n] {A : Matrix n n
 
 /-- The spectral norm is monotone on the positive semidefinite cone: if
 $\mathbf{0} \preceq \mathbf{A} \preceq \mathbf{B}$ then $\|\mathbf{A}\|_2 \le \|\mathbf{B}\|_2$. -/
+@[gcongr]
 theorem _root_.Matrix.PosSemidef.specNorm_le_specNorm_of_le {A B : Matrix n n 𝕜}
     (hA : A.PosSemidef) (h : A ≤ B) : specNorm A ≤ specNorm B := by
   rw [hA.isHermitian.specNorm_le_iff_abs_re_quadForm_le (specNorm_nonneg B)]

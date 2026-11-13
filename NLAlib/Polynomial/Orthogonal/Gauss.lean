@@ -128,7 +128,7 @@ nodes $s$ is orthogonal in $L^2(\mu)$ to the polynomials of degree less than $m$
 measure $\mu$ supported in $[a, b]$, then
 $$\int p\,d\mu = \sum_{x\in s}\Bigl(\int\ell_x\,d\mu\Bigr)p(x)$$
 for every real polynomial $p$ of degree less than $\lvert s\rvert + m$, $\ell_x$ the Lagrange
-basis polynomial of $x$. [Gautschi2004, Theorem 1.45] (locator to check); there as an
+basis polynomial of $x$. [Gautschi2004, Theorem 1.45]; there as an
 equivalence for $m \le \lvert s\rvert$; here the direction used, for every $m$. -/
 theorem IsOrthogonalPolynomial.integral_eval_eq_sum_of_degree_lt_card_add {μ : Measure ℝ}
     {s : Finset ℝ} {m : ℕ} (hs : IsOrthogonalPolynomial μ m (Lagrange.nodal s id))
@@ -374,7 +374,7 @@ theorem gaussQuadrature_real_singleton (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b)
 
 /-- The Gauss weights are positive: if a finite measure $\mu$ supported in $[a, b]$ is positive
 definite up to degree $k$, then the $k$-point Gauss rule gives every Gauss node positive mass.
-[Gautschi2004, Theorem 1.46] (locator to check). -/
+[Gautschi2004, Theorem 1.46]. -/
 theorem IsMomentPosDef.gaussQuadrature_real_singleton_pos {k : ℕ} (h : IsMomentPosDef μ k)
     (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b) {x : ℝ} (hx : x ∈ gaussNodes μ k) :
     0 < (gaussQuadrature μ k).real {x} := by
@@ -387,7 +387,7 @@ theorem IsMomentPosDef.gaussQuadrature_real_singleton_pos {k : ℕ} (h : IsMomen
 
 /-- **Uniqueness of the Gauss rule**: if a finite measure $\nu$ carried by a set of at most $k$
 points matches the first $2k$ moments of a finite measure $\mu$ supported in $[a, b]$, then $\nu$
-is the $k$-point Gauss rule of $\mu$. [Gautschi2004, §1.4] (locator to check); there among
+is the $k$-point Gauss rule of $\mu$. [Gautschi2004, §1.4]; there among
 interpolatory rules with $k$ distinct nodes and positive weights; here any measure on at most $k$
 points.
 Result: gauss-quadrature-uniqueness -/
@@ -459,8 +459,8 @@ $[a, b]$ and $f$ continuous on $[a, b]$, the $(k + 1)$-point Gauss rule satisfie
 $$\Bigl\lvert\int f\,d\mu - \int f\,d\,\mathsf{gaussQuadrature}(\mu, k + 1)\Bigr\rvert \le
 2E_{2k + 1}(f; [a, b])\,\mu(\mathbb{R})\,,$$
 $E_{2k + 1}$ the error of the best uniform approximation of $f$ on $[a, b]$ by polynomials of
-degree at most $2k + 1$ (`minimaxError`). [GolubMeurant2010, Ch. 6]; [Trefethen2019, Ch. 19]
-(locator to check). -/
+degree at most $2k + 1$ (`minimaxError`). [GolubMeurant2010, §6.2.1]; [Trefethen2019, Theorem
+19.1]. -/
 theorem abs_integral_sub_integral_gaussQuadrature_le_of_continuousOn
     (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b) {f : ℝ → ℝ} (hf : ContinuousOn f (Set.Icc a b)) (k : ℕ) :
     |∫ x, f x ∂μ - ∫ x, f x ∂gaussQuadrature μ (k + 1)| ≤
@@ -541,8 +541,8 @@ $\xi \in (a, b)$ with
 $$\int f\,d\mu - \int f\,d\,\mathsf{gaussQuadrature}(\mu, k) =
 \frac{f^{(2k)}(\xi)}{(2k)!}\int\pi_k^2\,d\mu\,,$$
 $\pi_k$ the monic orthogonal polynomial of degree $k$. When $\mu$ has at most $k$ support
-points both sides are $0$. [Gautschi2004, Theorem 1.48]; [GolubMeurant2010, Ch. 6] (locators to
-check); there for $f \in C^{2k}[a, b]$.
+points both sides are $0$. [Gautschi2004, corollary to Theorem 1.48, (1.4.14)]; [GolubMeurant2010,
+§6.2.1]; there for $f \in C^{2k}[a, b]$.
 Result: gauss-quadrature-remainder -/
 theorem exists_integral_sub_integral_gaussQuadrature_eq (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b)
     (hab : a < b) {k : ℕ} (hk : 0 < k) {f : ℝ → ℝ} (hf : ContinuousOn f (Set.Icc a b))
@@ -589,7 +589,7 @@ theorem exists_integral_sub_integral_gaussQuadrature_eq (hμ : ∀ᵐ x ∂μ, x
 a finite measure $\mu$ supported in $[a, b]$, $a < b$, $k > 0$, and $f$ continuous on $[a, b]$,
 $C^{2k}$ on $(a, b)$ with $f^{(2k)} \ge 0$ there,
 $$\int f\,d\,\mathsf{gaussQuadrature}(\mu, k) \le \int f\,d\mu\,.$$
-[Gautschi2004, Theorem 1.48]; [GolubMeurant2010, Ch. 6] (locators to check). -/
+[Gautschi2004, corollary to Theorem 1.48, (1.4.14)]; [GolubMeurant2010, §6.2.1]. -/
 theorem integral_gaussQuadrature_le_integral_of_iteratedDeriv_nonneg
     (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b) (hab : a < b) {k : ℕ} (hk : 0 < k) {f : ℝ → ℝ}
     (hf : ContinuousOn f (Set.Icc a b)) (hf' : ContDiffOn ℝ (2 * k : ℕ) f (Set.Ioo a b))
@@ -607,7 +607,7 @@ theorem integral_gaussQuadrature_le_integral_of_iteratedDeriv_nonneg
 for a finite measure $\mu$ supported in $[a, b]$, $a < b$, $k > 0$, and $f$ continuous on
 $[a, b]$, $C^{2k}$ on $(a, b)$ with $f^{(2k)} \le 0$ there,
 $$\int f\,d\mu \le \int f\,d\,\mathsf{gaussQuadrature}(\mu, k)\,.$$
-[Gautschi2004, Theorem 1.48]; [GolubMeurant2010, Ch. 6] (locators to check). -/
+[Gautschi2004, corollary to Theorem 1.48, (1.4.14)]; [GolubMeurant2010, §6.2.1]. -/
 theorem integral_le_integral_gaussQuadrature_of_iteratedDeriv_nonpos
     (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b) (hab : a < b) {k : ℕ} (hk : 0 < k) {f : ℝ → ℝ}
     (hf : ContinuousOn f (Set.Icc a b)) (hf' : ContDiffOn ℝ (2 * k : ℕ) f (Set.Ioo a b))

@@ -190,7 +190,7 @@ variable {n k : ℕ} (C : CGRun n k)
 /-! ### Helpers -/
 
 private theorem acc_εκ {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) :
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) :
     C.ε * (a' / a) ≤ 1 / 10 ^ 5 := by
   obtain ⟨-, hκ, -, -, hkεκ, -, -⟩ := C.le_of_sq_mul_sqrt_mul_ε_mul_sq_le ha hs hsmall
   have h1k : (1 : ℝ) ≤ k := by exact_mod_cast C.k_pos
@@ -205,7 +205,7 @@ successful run with spectrum in $[a,a']$, $a>0$ and $k^2\sqrt{k}\varepsilon(a'/a
 $\lvert\mathbf{p}_j^{\mathsf{T}}\mathbf{r}_j-\|\mathbf{r}_j\|^2\rvert\le
 26j\varepsilon(a'/a)\|\mathbf{r}_j\|^2$ for $j<k$. -/
 theorem abs_p_dotProduct_r_sub_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) {j : ℕ} (hj : j < k) :
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) {j : ℕ} (hj : j < k) :
     |C.p j ⬝ᵥ C.r j - C.ρ j ^ 2| ≤ 26 * j * C.ε * (a' / a) * C.ρ j ^ 2 := by
   obtain ⟨-, hκ, -, hε5, hkεκ, -, -⟩ := C.le_of_sq_mul_sqrt_mul_ε_mul_sq_le ha hs hsmall
   have hε0 := C.ε_nonneg
@@ -285,7 +285,7 @@ theorem abs_p_dotProduct_r_sub_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C
 $k^2\sqrt{k}\varepsilon(a'/a)^2\le10^{-5}$, the pairing is at least
 $(1-26j\varepsilon a'/a)\|\mathbf{r}_j\|^2$ for $j<k$. -/
 theorem p_dotProduct_r_ge_mul {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) {j : ℕ} (hj : j < k) :
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) {j : ℕ} (hj : j < k) :
     (1 - 26 * j * C.ε * (a' / a)) * C.ρ j ^ 2 ≤ C.p j ⬝ᵥ C.r j := by
   have h := (abs_le.mp (C.abs_p_dotProduct_r_sub_le ha hs hsmall hj)).1
   nlinarith
@@ -295,7 +295,7 @@ theorem p_dotProduct_r_ge_mul {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A �
 $\mathbf{p}_{j-1}^{\mathsf{T}}\mathbf{r}_j$ enters through
 $\mathbf{p}_j = \mathbf{r}_j + \delta_{j-1}\mathbf{p}_{j-1} + \mathbf{e}^p_{j-1}$. -/
 theorem p_dotProduct_r_ge {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) {j : ℕ} (hj : j < k) :
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) {j : ℕ} (hj : j < k) :
     (1 - 1 / 1000) * C.ρ j ^ 2 ≤ C.p j ⬝ᵥ C.r j := by
   have h := C.p_dotProduct_r_ge_mul ha hs hsmall hj
   have ht := (C.le_of_sq_mul_sqrt_mul_ε_mul_sq_le ha hs hsmall).2.2.2.2.1
@@ -313,7 +313,7 @@ $\gamma_j^2\mathbf{p}_j^{\mathsf{T}}\mathbf{A}\mathbf{p}_j\le
 (1+6\varepsilon a'/a)\gamma_j\|\mathbf{r}_j\|^2$ for $j<k$. -/
 theorem γ_sq_mul_dotProduct_mulVec_le_mul {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {j : ℕ} (hj : j < k) :
     C.γ j ^ 2 * (C.p j ⬝ᵥ (C.A *ᵥ C.p j)) ≤ (1 + 6 * (C.ε * (a' / a))) * (C.γ j * C.ρ j ^ 2) := by
   obtain ⟨haa', hκ, hspec, hε5, -, -, -⟩ := C.le_of_sq_mul_sqrt_mul_ε_mul_sq_le ha hs hsmall
@@ -390,7 +390,7 @@ $\gamma_j^2\,\mathbf{p}_j^{\mathsf{T}}\mathbf{A}\mathbf{p}_j \le
 1.001\,\gamma_j\|\mathbf{r}_j\|^2$. -/
 theorem γ_sq_mul_dotProduct_mulVec_le {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {j : ℕ} (hj : j < k) :
     C.γ j ^ 2 * (C.p j ⬝ᵥ (C.A *ᵥ C.p j)) ≤ (1 + 1 / 1000) * (C.γ j * C.ρ j ^ 2) := by
   have h := C.γ_sq_mul_dotProduct_mulVec_le_mul ha hs hsmall hj
@@ -402,7 +402,7 @@ theorem γ_sq_mul_dotProduct_mulVec_le {a a' : ℝ} (ha : 0 < a)
 /-- **The step length, a priori (G2′)**: under (H), $\gamma_j\|\mathbf{p}_j\| \le
 1.5\|\mathbf{b}\|/a$ for $j < k$. -/
 theorem γ_mul_norm_p_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) {j : ℕ} (hj : j < k) :
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) {j : ℕ} (hj : j < k) :
     C.γ j * ‖WithLp.toLp 2 (C.p j)‖ ≤ 3 / 2 * ‖WithLp.toLp 2 C.b‖ / a := by
   have hsum := C.sum_γ_mul_ρ_sq_le ha hs hsmall
   have hγ := C.γ_pos hj
@@ -505,7 +505,7 @@ Compare [BakeCarsonMa2025, Lemma 4], a perturbed energy-descent estimate for an 
 iterate with the accumulated iterate-update rounding removed. Here the estimate concerns
 the actual computed iterate and explicitly includes its update error. -/
 theorem quadForm_sub_x_succ_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) {xs : Fin n → ℝ}
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) {xs : Fin n → ℝ}
     (hx : C.A *ᵥ xs = C.b) {j : ℕ} (hj : j < k) :
     quadForm C.A (xs - C.x (j + 1)) ≤
       (Real.sqrt (quadForm C.A (xs - C.x j) - 99 / 100 * (C.γ j * C.ρ j ^ 2) +
@@ -530,7 +530,7 @@ private theorem acc_norm_sq_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A 
 $\|\mathbf{x}_\star - \mathbf{x}_j\| \le 2\|\mathbf{b}\|/a$, $\|\mathbf{x}_j\| \le
 3\|\mathbf{b}\|/a$ and $\rho_j \le 3\kappa\|\mathbf{b}\|$. -/
 private theorem acc_step_facts {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) {xs : Fin n → ℝ}
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) {xs : Fin n → ℝ}
     (hx : C.A *ᵥ xs = C.b) {j : ℕ} (hj : j ≤ k)
     (hG : ‖WithLp.toLp 2 (C.b - C.A *ᵥ C.x j - C.r j)‖ ≤
       12 * j * C.ε * (a' / a) * ‖WithLp.toLp 2 C.b‖)
@@ -582,7 +582,7 @@ private theorem acc_step_facts {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A 
 
 /-- The gap step of the induction. -/
 private theorem acc_gap_step {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) {xs : Fin n → ℝ}
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) {xs : Fin n → ℝ}
     (hx : C.A *ᵥ xs = C.b) {j : ℕ} (hj : j < k)
     (hG : ‖WithLp.toLp 2 (C.b - C.A *ᵥ C.x j - C.r j)‖ ≤
       12 * j * C.ε * (a' / a) * ‖WithLp.toLp 2 C.b‖)
@@ -619,7 +619,7 @@ set_option maxHeartbeats 400000 in
 -- The variable descent coefficient adds polynomial atoms to the rounding-error arithmetic.
 /-- The error step of the induction for an arbitrary nonnegative descent coefficient. -/
 private theorem acc_err_step {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) {xs : Fin n → ℝ}
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) {xs : Fin n → ℝ}
     (hx : C.A *ᵥ xs = C.b) {j : ℕ} (hj : j < k) {c : ℝ} (hc : 0 ≤ c)
     (hd : C.γ j ^ 2 * (C.p j ⬝ᵥ (C.A *ᵥ C.p j)) -
       2 * C.γ j * (C.p j ⬝ᵥ C.r j) ≤ -c * (C.γ j * C.ρ j ^ 2))
@@ -711,7 +711,7 @@ private theorem acc_err_step {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A �
 
 /-- The joint induction on the gap and the computed run's error (G4). -/
 private theorem gapErrorInduction {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) {xs : Fin n → ℝ}
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) {xs : Fin n → ℝ}
     (hx : C.A *ᵥ xs = C.b) {j : ℕ} (hj : j ≤ k) :
     ‖WithLp.toLp 2 (C.b - C.A *ᵥ C.x j - C.r j)‖ ≤
         12 * j * C.ε * (a' / a) * ‖WithLp.toLp 2 C.b‖ ∧
@@ -772,13 +772,12 @@ No printed source.
 Result: cg-residual-gap -/
 theorem norm_sub_mulVec_x_sub_r_le_norm_b {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {j : ℕ} (hj : j ≤ k) :
     ‖WithLp.toLp 2 (C.b - C.A *ᵥ C.x j - C.r j)‖ ≤
       12 * j * C.ε * (a' / a) * ‖WithLp.toLp 2 C.b‖ := by
   have hherm := C.isHermitian
-  have hPD : C.A.PosDef := hherm.posDef_iff_eigenvalue_pos.mpr fun i hi =>
-    ha.trans_le (hherm.spectrum_subset_iff.mp hs i hi).1
+  have hPD : C.A.PosDef := hherm.posDef_of_spectrum_subset_Icc ha hs
   have hx : C.A *ᵥ (C.A⁻¹ *ᵥ C.b) = C.b := by
     rw [Matrix.mulVec_mulVec, Matrix.mul_nonsing_inv _ ((Matrix.isUnit_iff_isUnit_det _).mp
       hPD.isUnit), Matrix.one_mulVec]
@@ -792,7 +791,7 @@ $$\|\mathbf{x}_\star - \mathbf{x}_j\|_{\mathbf{A}}^2 \le \|\mathbf{x}_\star\|_{\
 The exact relation, for the model, is `NLAlib.CGRun.quadForm_backwardH_sub_cgIterate_eq`; this
 is the computed run's own error. -/
 theorem quadForm_sub_x_le_sub_sum {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) {xs : Fin n → ℝ}
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) {xs : Fin n → ℝ}
     (hx : C.A *ᵥ xs = C.b) {j : ℕ} (hj : j ≤ k) :
     quadForm C.A (xs - C.x j) ≤ quadForm C.A xs -
       99 / 100 * ∑ i ∈ Finset.range j, C.γ i * C.ρ i ^ 2 +
@@ -805,7 +804,7 @@ $\mathbf{A}\mathbf{x}_\star = \mathbf{b}$ and $j \le k$,
 $\|\mathbf{x}_\star - \mathbf{x}_j\|_{\mathbf{A}}^2 \le
 1.001\,\|\mathbf{x}_\star\|_{\mathbf{A}}^2$. -/
 theorem quadForm_sub_x_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) {xs : Fin n → ℝ}
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) {xs : Fin n → ℝ}
     (hx : C.A *ᵥ xs = C.b) {j : ℕ} (hj : j ≤ k) :
     quadForm C.A (xs - C.x j) ≤ (1 + 1 / 1000) * quadForm C.A xs := by
   have h := (C.gapErrorInduction ha hs hsmall hx hj).2
@@ -831,7 +830,7 @@ computed decrement, up to precision-dependent local errors. Here
 $\mathbf{A}\mathbf{x}_\star=\mathbf{b}$ and $j<k$. -/
 theorem quadForm_sub_x_succ_le_sub_add {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) {j : ℕ} (hj : j < k) :
     quadForm C.A (xs - C.x (j + 1)) ≤ quadForm C.A (xs - C.x j) -
       (C.γ j * C.ρ j ^ 2) + (52 * j + 6) * (C.ε * (a' / a)) *
@@ -859,7 +858,7 @@ the exact-arithmetic bound on $\max_j\|\mathbf{x}_j\|$ through the $\mathbf{A}$-
 [MeurantStrakos2006, §5.4] assert $\|\mathbf{x}_j\| \le 2\|\mathbf{x}_\star\|$ "to within a
 small error" for finite-precision CG without proof; this is $\sqrt{\kappa}$ weaker and proved. -/
 theorem norm_x_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) {xs : Fin n → ℝ}
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) {xs : Fin n → ℝ}
     (hx : C.A *ᵥ xs = C.b) {j : ℕ} (hj : j ≤ k) :
     ‖WithLp.toLp 2 (C.x j)‖ ≤
       (1 + 1 / 1000) * (‖WithLp.toLp 2 xs‖ + Real.sqrt (quadForm C.A xs) / Real.sqrt a) := by
@@ -886,7 +885,7 @@ theorem norm_x_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a
 /-- The error of the computed iterate, a priori:
 $\|\mathbf{x}_\star - \mathbf{x}_j\| \le 1.001\|\mathbf{x}_\star\|_{\mathbf{A}}/\sqrt{a}$. -/
 private theorem acc_norm_sub_x_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) {xs : Fin n → ℝ}
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) {xs : Fin n → ℝ}
     (hx : C.A *ᵥ xs = C.b) {j : ℕ} (hj : j ≤ k) :
     ‖WithLp.toLp 2 (xs - C.x j)‖ ≤
       (1 + 1 / 1000) * (Real.sqrt (quadForm C.A xs) / Real.sqrt a) := by
@@ -917,7 +916,7 @@ private theorem acc_mul_norm_le {a a' : ℝ} (hs : spectrum ℝ C.A ⊆ Set.Icc 
 
 /-- $\|\mathbf{b}\| \le a'\|\mathbf{x}_\star\|$. -/
 private theorem acc_norm_b_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) {xs : Fin n → ℝ}
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) {xs : Fin n → ℝ}
     (hx : C.A *ᵥ xs = C.b) : ‖WithLp.toLp 2 C.b‖ ≤ a' * ‖WithLp.toLp 2 xs‖ := by
   rw [← hx]
   exact (norm_toLp_mulVec_le _ _).trans
@@ -937,7 +936,7 @@ $\max_j\|\mathbf{x}_j\| \le 1.001M$ is proved (`NLAlib.CGRun.norm_x_le`).
 Result: cg-residual-gap -/
 theorem norm_sub_mulVec_x_sub_r_le_energy {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) :
     ‖WithLp.toLp 2 (C.b - C.A *ᵥ C.x k - C.r k)‖ ≤
       11 * k * C.ε * a' * (‖WithLp.toLp 2 xs‖ + Real.sqrt (quadForm C.A xs) / Real.sqrt a) := by
@@ -1029,7 +1028,7 @@ No printed source.
 Result: cg-residual-gap -/
 theorem norm_sub_mulVec_x_sub_r_le_norm_sol {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) :
     ‖WithLp.toLp 2 (C.b - C.A *ᵥ C.x k - C.r k)‖ ≤
       22 * k * C.ε * Real.sqrt (a' / a) * a' * ‖WithLp.toLp 2 xs‖ := by
@@ -1063,7 +1062,7 @@ $$\|\mathbf{b} - \mathbf{A}\mathbf{x}_k\| \le 2\sqrt{\kappa'}\,q^k\|\mathbf{b}\|
 No printed source.
 Result: cg-finite-precision-accuracy -/
 theorem norm_sub_mulVec_x_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) {xs : Fin n → ℝ}
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) {xs : Fin n → ℝ}
     (hx : C.A *ᵥ xs = C.b) :
     ‖WithLp.toLp 2 (C.b - C.A *ᵥ C.x k)‖ ≤
       2 * Real.sqrt (2 * (a' / a) + 1) *
@@ -1097,7 +1096,7 @@ horizon. This does not assert monotonicity, infinite-horizon convergence, or a n
 No printed source.
 Result: cg-computed-residual-bound -/
 theorem ρ_le_of_cgKStar_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) (hε : 0 < C.ε) {δ : ℝ}
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) (hε : 0 < C.ε) {δ : ℝ}
     (hδ : 0 < δ) {j : ℕ} (hkj : cgKStar (a' / a) C.ε δ ≤ j) (hj : j ≤ k) :
     C.ρ j ≤ 8 * δ * C.ε * ‖WithLp.toLp 2 C.b‖ := by
   obtain ⟨-, hκ, -, -, -, -, -⟩ := C.le_of_sq_mul_sqrt_mul_ε_mul_sq_le ha hs hsmall
@@ -1123,7 +1122,7 @@ No printed source.
 Result: cg-residual-gap -/
 theorem abs_norm_sub_mulVec_x_sub_norm_gap_le {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     (hε : 0 < C.ε) {δ : ℝ} (hδ : 0 < δ) {j : ℕ} (hkj : cgKStar (a' / a) C.ε δ ≤ j)
     (hj : j ≤ k) :
     |‖WithLp.toLp 2 (C.b - C.A *ᵥ C.x j)‖ - ‖WithLp.toLp 2 (C.b - C.A *ᵥ C.x j - C.r j)‖| ≤
@@ -1151,7 +1150,7 @@ existential index; here the step is prescribed and the finite-horizon condition 
 Result: cg-finite-precision-accuracy -/
 theorem norm_sub_mulVec_x_le_of_cgKStar_le {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     (hε : 0 < C.ε) {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) (hk : cgKStar (a' / a) C.ε 1 ≤ k) :
     ‖WithLp.toLp 2 (C.b - C.A *ᵥ C.x k)‖ ≤
       (11 * k + 8) * C.ε * a' *
@@ -1188,7 +1187,7 @@ No printed source.
 Result: cg-finite-precision-accuracy -/
 theorem norm_sub_mulVec_x_le_norm_sol_of_cgKStar_le {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     (hε : 0 < C.ε) {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) (hk : cgKStar (a' / a) C.ε 1 ≤ k) :
     ‖WithLp.toLp 2 (C.b - C.A *ᵥ C.x k)‖ ≤
       (22 * k + 8) * C.ε * Real.sqrt (a' / a) * a' * ‖WithLp.toLp 2 xs‖ := by
@@ -1221,7 +1220,7 @@ No printed source.
 Result: cg-finite-precision-accuracy -/
 theorem norm_sub_mulVec_x_le_norm_b_of_cgKStar_le {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     (hε : 0 < C.ε) (hk : cgKStar (a' / a) C.ε 1 ≤ k) :
     ‖WithLp.toLp 2 (C.b - C.A *ᵥ C.x k)‖ ≤ (12 * k + 8) * C.ε * (a' / a) * ‖WithLp.toLp 2 C.b‖ := by
   obtain ⟨-, hκ, -, -, -, -, -⟩ := C.le_of_sq_mul_sqrt_mul_ε_mul_sq_le ha hs hsmall
@@ -1248,7 +1247,7 @@ $\|\mathbf{x}_\star - \mathbf{x}_k\| \le (11k + 8)\,\varepsilon\,\kappa\,M$.
 No printed source.
 Result: cg-finite-precision-accuracy -/
 theorem norm_sub_x_le_of_cgKStar_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) (hε : 0 < C.ε)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) (hε : 0 < C.ε)
     {xs : Fin n → ℝ}
     (hx : C.A *ᵥ xs = C.b) (hk : cgKStar (a' / a) C.ε 1 ≤ k) :
     ‖WithLp.toLp 2 (xs - C.x k)‖ ≤
@@ -1285,8 +1284,7 @@ No printed source.
 Result: cg-finite-precision-accuracy -/
 theorem norm_sub_mulVec_x_cgKStar_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
     (hε : 0 < C.ε) (hk : cgKStar (a' / a) C.ε 1 ≤ k)
-    (hsmall : (cgKStar (a' / a) C.ε 1 : ℝ) ^ 2 *
-      Real.sqrt (cgKStar (a' / a) C.ε 1) * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon (cgKStar (a' / a) C.ε 1) C.ε (a' / a))
     {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) :
     ‖WithLp.toLp 2 (C.b - C.A *ᵥ C.x (cgKStar (a' / a) C.ε 1))‖ ≤
       (11 / 2 * (Real.sqrt (2 * (a' / a) + 1) + 1) *

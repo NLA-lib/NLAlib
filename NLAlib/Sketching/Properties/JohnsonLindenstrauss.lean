@@ -262,7 +262,7 @@ $$\delta = \frac{p(2v)^{p/2}\Gamma(p/2) + 2p(2b)^{p}\Gamma(p)}{\varepsilon^p}\,,
 the numerator being `NLAlib.subexponentialMomentBound v b p`, the layer-cake integral of the
 tail (`NLAlib.integral_rpow_le_of_measureReal_ge_le_two_mul_exp`). The converse direction of
 `NLAlib.HasJLMoment.hasJLProperty`. [Woodruff2014, Definition 12] for the property; that dense
-sketches have it at $p = \log(1/\delta)$ is Kane and Nelson's (2014; locator to check). -/
+sketches have it at $p = \log(1/\delta)$ follows from [KaneNelson2014, Remark 22]. -/
 theorem hasJLMoment_of_forall_hasJLProperty [IsFiniteMeasure μ] (hS : AEMeasurable S μ)
     {v b : ℝ} (hv : 0 < v) (hb : 0 < b)
     (h : ∀ t : ℝ, 0 < t →

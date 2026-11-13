@@ -53,8 +53,8 @@ For a finite measure carried by a bounded interval, this is equivalent to positi
 of the Hankel matrix $(\int x^{i+j}\,d\mu)_{i,j<k}$ and to having at least $k$ support points
 (`isMomentPosDef_iff_forall_finset`). The definition accepts any measure, but a nonintegrable
 Bochner integral is $0$, so the support interpretation needs the integrability hypotheses.
-Vacuous at $k = 0$. Chihara's positive-definite moment functional, restricted to degree $< k$.
-[Chihara1978, Ch. I, Definition 3.1]; [Gautschi2004, §1.1] (locators to check). -/
+Vacuous at $k = 0$. For the degree-restricted inner product and its Hankel criterion, see
+[Gautschi2004, Definition 1.1 and Theorem 1.2]. -/
 def IsMomentPosDef (μ : Measure ℝ) (k : ℕ) : Prop :=
   ∀ p : ℝ[X], p ≠ 0 → p.degree < k → 0 < ∫ x, p.eval x ^ 2 ∂μ
 
@@ -96,7 +96,7 @@ theorem IsMomentPosDef.mono {μ : Measure ℝ} {j k : ℕ} (h : IsMomentPosDef �
 /-- **Positive definiteness counts support points**: a finite measure $\mu$ supported in
 $[a, b]$ is positive definite on the polynomials of degree less than $k$ exactly when no finite
 set of fewer than $k$ points carries it: every finite $s$ with $x \in s$ for $\mu$-almost every
-$x$ has $k \le \lvert s\rvert$. [Gautschi2004, §1.1] (locator to check). -/
+$x$ has $k \le \lvert s\rvert$. [Gautschi2004, §1.1]. -/
 theorem isMomentPosDef_iff_forall_finset {μ : Measure ℝ} [IsFiniteMeasure μ] {a b : ℝ}
     (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b) (k : ℕ) :
     IsMomentPosDef μ k ↔ ∀ s : Finset ℝ, (∀ᵐ x ∂μ, x ∈ s) → k ≤ s.card := by

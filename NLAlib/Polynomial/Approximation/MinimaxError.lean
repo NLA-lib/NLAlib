@@ -108,7 +108,7 @@ theorem minimaxError_le_of_isUniformApproxOn {f : ℝ → ℝ} {s : Set ℝ} {n 
 /-- **A best approximation exists**: for $s$ compact and $f$ continuous on $s$ there is a real
 polynomial $p$ of degree at most $n$ with $\lvert f(x) - p(x) \rvert \le E_n(f; s)$ on $s$.
 This is how a bound stated for an arbitrary approximant is restated with $E_n$.
-[Trefethen2019, Theorem 10.1]; [Rivlin1981, Ch. 1] (locators to check); there on $[-1, 1]$ or an
+[Trefethen2019, Theorem 10.1]; there on $[-1, 1]$ or an
 interval, here on any compact set, the empty set included.
 Result: best-approximation-existence -/
 theorem exists_degree_le_isUniformApproxOn_minimaxError {f : ℝ → ℝ} {s : Set ℝ}
@@ -233,7 +233,7 @@ theorem minimaxError_le_minimaxError_of_subset {f : ℝ → ℝ} {s t : Set ℝ}
 
 /-- Adding a polynomial of degree at most $n$ does not change the minimax error:
 $E_n(f + q; s) = E_n(f; s)$ for $\deg q \le n$, for every $f$ and $s$.
-[Rivlin1981, Ch. 1] (locator to check). -/
+This follows from the best-approximation definition in [Trefethen2019, Chapter 10]. -/
 theorem minimaxError_add_eval (f : ℝ → ℝ) (s : Set ℝ) {n : ℕ} {q : ℝ[X]} (hq : q.degree ≤ n) :
     minimaxError (fun x => f x + q.eval x) s n = minimaxError f s n := by
   unfold minimaxError
@@ -249,7 +249,8 @@ theorem minimaxError_add_eval (f : ℝ → ℝ) (s : Set ℝ) {n : ℕ} {q : ℝ
       simpa only [eval_add, dist_add_right] using hε x hx⟩
 
 /-- The minimax error is absolutely homogeneous: $E_n(cf; s) = \lvert c \rvert E_n(f; s)$, for
-every $c$, $f$, $s$ and $n$ (junk values included). [Rivlin1981, Ch. 1] (locator to check). -/
+every $c$, $f$, $s$ and $n$ (junk values included). This follows from the best-approximation
+definition in [Trefethen2019, Chapter 10]. -/
 theorem minimaxError_const_mul (c : ℝ) (f : ℝ → ℝ) (s : Set ℝ) (n : ℕ) :
     minimaxError (fun x => c * f x) s n = |c| * minimaxError f s n := by
   rcases eq_or_ne c 0 with rfl | hc
@@ -286,7 +287,8 @@ theorem minimaxError_const_mul (c : ℝ) (f : ℝ → ℝ) (s : Set ℝ) (n : �
     rw [hS, Real.sInf_smul_of_nonneg (abs_nonneg c), smul_eq_mul]
 
 /-- The minimax error is subadditive: for $s$ compact and $f, g$ continuous on $s$,
-$E_n(f + g; s) \le E_n(f; s) + E_n(g; s)$. [Rivlin1981, Ch. 1] (locator to check). -/
+$E_n(f + g; s) \le E_n(f; s) + E_n(g; s)$. This follows from the best-approximation definition in
+[Trefethen2019, Chapter 10]. -/
 theorem minimaxError_add_le {f g : ℝ → ℝ} {s : Set ℝ} (hs : IsCompact s)
     (hf : ContinuousOn f s) (hg : ContinuousOn g s) (n : ℕ) :
     minimaxError (fun x => f x + g x) s n ≤ minimaxError f s n + minimaxError g s n := by

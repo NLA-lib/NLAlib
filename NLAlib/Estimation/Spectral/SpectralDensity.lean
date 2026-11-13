@@ -80,7 +80,7 @@ integral of $f$ is the Girard–Hutchinson estimate of
 $\operatorname{tr} f(\mathbf{A})/\lvert n\rvert$ (`integral_probeSpectralMeasure`). Mass
 $\|\mathbf{\Omega}\|_{\mathsf{F}}^2/(\lvert n\rvert m)$. Junk value: $0$ when $n$ or $m$ is empty
 ($0^{-1} = 0$ in $\mathbb{R}_{\ge 0}$) and when $\mathbf{A}$ is not Hermitian.
-[ChenTrogdonUbaru2021, §2] (locator to check). -/
+[ChenTrogdonUbaru2021, §1.1]. -/
 noncomputable def probeSpectralMeasure (A : Matrix n n 𝕜) (Ω : Matrix n m 𝕜) : Measure ℝ :=
   ((Fintype.card n * Fintype.card m : ℝ≥0)⁻¹) • ∑ j, spectralMeasure A (fun i => Ω i j)
 
@@ -94,7 +94,7 @@ For Hermitian $\mathbf{A}$ it is the average of the Lanczos rules, atoms at each
 values (`Matrix.IsHermitian.slqMeasure_eq_sum_lanczosQuadrature`). Its integral of $f$ is
 $\operatorname{Re}\,\mathsf{slq}(\mathbf{A}, f, \mathbf{\Omega}, q)/\lvert n\rvert$
 (`integral_slqMeasure`). Junk value: $0$ when $n$ or $m$ is empty or $q = 0$.
-[ChenTrogdonUbaru2021, §2] (locator to check); [UbaruChenSaad2017, §3] (locator to check). -/
+[ChenTrogdonUbaru2021, §1.1]; [UbaruChenSaad2017, §3, Algorithm 1]. -/
 noncomputable def slqMeasure (A : Matrix n n 𝕜) (Ω : Matrix n m 𝕜) (q : ℕ) : Measure ℝ :=
   ((Fintype.card n * Fintype.card m : ℝ≥0)⁻¹) •
     ∑ j, gaussQuadrature (spectralMeasure A (fun i => Ω i j)) q
@@ -346,7 +346,7 @@ $$\mathbb{E}\int f\,d\,\mathsf{probeSpectralMeasure}(\mathbf{A}, \mathbf{\Omega}
 $\nu_{\mathbf{A}}$ the empirical spectral measure. No independence of the probes is needed:
 Gaussian, sign, and $\sqrt{\lvert n\rvert}$ times uniform-sphere or Haar-frame probes are
 instances. With $f = \mathbf{1}_S$, the expected measure of every Borel set is
-$\nu_{\mathbf{A}}(S)$. [ChenTrogdonUbaru2021, §3] (locator to check).
+$\nu_{\mathbf{A}}(S)$. [ChenTrogdonUbaru2021, §1.1].
 Result: probe-spectral-measure-unbiased -/
 theorem integral_integral_probeSpectralMeasure [Nonempty m] {X : Ω → Matrix n m 𝕜}
     (hX : ∀ j, IsIsotropic (fun ω i => X ω i j) μ) {A : Matrix n n 𝕜} (hA : A.IsHermitian)
@@ -483,8 +483,10 @@ $$\Bigl\lvert\int f\,d\,\mathsf{probeSpectralMeasure}(\mathbf{A}, \mathbf{\Omega
 the constant is `jacksonApproximationConstant`. Per probe, the Gauss-rule error for Lipschitz
 functions (Jackson's polynomial of degree $2q + 1$) is at most
 $\pi L(b - a)\mu_j(\mathbb{R})/(2q + 3)$, $\mu_j$ the probe density; averaging gives the bound.
-[ChenTrogdonUbaru2025, the uniform quadrature bound] (locator to check);
-[ChenTrogdonUbaru2022, Appendix C, Theorem 38], the approximation step. -/
+[ChenTrogdonUbaru2025, Lemma 3.7 and Theorem 3.10], for the quadrature-to-polynomial
+comparison. The local Jackson approximation bound improves the constant after interval rescaling;
+[ChenTrogdonUbaru2022, Appendix C, Theorem 38] uses the damped-Chebyshev route
+with the larger printed constant $\pi^2/2$. -/
 theorem
 _root_.Matrix.IsHermitian.abs_integral_probeSpectralMeasure_sub_integral_slqMeasure_le_of_lipschitzOnWith
     {A : Matrix n n 𝕜} (hA : A.IsHermitian) {a b : ℝ} (hab : a < b)

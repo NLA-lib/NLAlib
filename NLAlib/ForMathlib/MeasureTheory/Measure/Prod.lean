@@ -10,7 +10,7 @@ public import Mathlib.MeasureTheory.Integral.Prod
 public import Mathlib.MeasureTheory.Measure.Real
 
 /-!
-# Outer measure under product projection
+# Product laws and outer measure under projection
 
 For probability measures, a set has real-valued outer measure at most that of its pullback
 along the first projection from the product. No measurability of the set is required.
@@ -19,6 +19,8 @@ Upstream candidate for `Mathlib/MeasureTheory/Measure/Prod.lean`.
 ## Main results
 
 * `MeasureTheory.measureReal_le_prod_fst`: pullback along the first product projection.
+* `MeasureTheory.Measure.map_prod_eq_prod_of_ae_map_eq`: constant section laws give a product
+  joint law.
 -/
 
 @[expose] public section
@@ -26,6 +28,26 @@ Upstream candidate for `Mathlib/MeasureTheory/Measure/Prod.lean`.
 namespace MeasureTheory
 
 variable {Ω : Type*} [MeasurableSpace Ω] {μ : Measure Ω}
+
+/-- A measurable family with almost everywhere constant section laws has product joint law:
+if pushing $\sigma$ forward by $F(t,\cdot)$ gives $\nu$ for $\rho$-almost every $t$, then
+$(t,y)\mapsto(t,F(t,y))$ sends $\rho\otimes\sigma$ to $\rho\otimes\nu$.
+Only the second-factor measures need be s-finite. Upstream candidate. -/
+theorem Measure.map_prod_eq_prod_of_ae_map_eq {α γ δ : Type*} [MeasurableSpace α]
+    [MeasurableSpace γ] [MeasurableSpace δ] (ρ : Measure α) (σ : Measure γ)
+    [SFinite σ] {ν : Measure δ} [SFinite ν]
+    {F : α → γ → δ} (hF : Measurable (Function.uncurry F))
+    (h : ∀ᵐ t ∂ρ, σ.map (F t) = ν) :
+    (ρ.prod σ).map (fun p => (p.1, F p.1 p.2)) = ρ.prod ν := by
+  have hpair : Measurable (fun p : α × γ => (p.1, F p.1 p.2)) :=
+    measurable_fst.prodMk hF
+  ext s hs
+  rw [Measure.map_apply hpair hs, Measure.prod_apply (hpair hs), Measure.prod_apply hs]
+  refine lintegral_congr_ae (h.mono fun t ht => ?_)
+  have hFt : Measurable (F t) := hF.comp measurable_prodMk_left
+  have heq := congrArg (fun τ : Measure δ => τ (Prod.mk t ⁻¹' s)) ht
+  rw [Measure.map_apply hFt (measurable_prodMk_left hs)] at heq
+  exact heq
 
 /-- Measure of a set pulled back along the first factor of a product with a probability law:
 $\mu(S) \le (\mu\otimes\nu)(\mathrm{fst}^{-1}S)$. Upstream candidate. -/

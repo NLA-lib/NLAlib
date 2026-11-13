@@ -117,7 +117,7 @@ theorem norm_one_sub_rangeProjector_mulVec_le [Fintype m] [Fintype n] [Decidable
 /-- **Pythagoras** for a vector and a column space:
 $\|\mathbf{x}\|^2 = \|\mathbf{P}_{\mathbf{B}}\mathbf{x}\|^2 +
 \|(\mathbf{I} - \mathbf{P}_{\mathbf{B}})\mathbf{x}\|^2$.
-[TrefethenBau1997, Lecture 6] (locator to check). -/
+[TrefethenBau1997, Lecture 6]. -/
 theorem norm_toLp_sq_eq_add_one_sub_rangeProjector [Fintype m] [Fintype n] [DecidableEq m]
     (B : Matrix m n 𝕜) (x : m → 𝕜) :
     ‖WithLp.toLp 2 x‖ ^ 2 =

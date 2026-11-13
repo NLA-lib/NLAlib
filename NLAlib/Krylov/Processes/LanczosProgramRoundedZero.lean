@@ -54,7 +54,7 @@ from the executed local defects and their exact zero right-hand sides, without c
 or padding a finite-precision run. -/
 theorem exec_rounded_step_of_zero (I : Interp P ι K (OpCount P ι))
     (h : IsRelErrSem u dec (fun _ _ => True) I.sem) (hz : AddsZeroExactly dec I.sem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hc : IsUnitCharge I) (tag : P)
     {N q j : ℕ} {A : Matrix (Fin N) (Fin N) ℝ} {b : Fin N → ℝ}
     {v : ℕ → Fin N → ℝ} {α β : ℕ → ℝ} {s : ℝ}
     (st : St P K (OpCount P ι)) (hs : StoreContext tag dec N q j A b v α β s st.store storedMatrix)

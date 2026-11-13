@@ -65,6 +65,25 @@ library's, not the prover's: it is a **target**.
 
 The other rules are hygiene: the guarantees do not rest on them.
 
+**Finite formats and successful executions.** Pure relative arithmetic with every exact
+result in range is an idealized assumption, not a binary64 certificate. Underflow needs an
+absolute error term, and overflow needs an input-range invariant. The scalar success predicate
+does not restrict the error clause: it constrains every successful arithmetic operation.
+The global matvec contract has a separate range problem: it requires success on every word
+vector. `Computation.IsMatvecErrOn` instead requires success and mixed normwise error only
+on a specified decoded input domain. `Computation.IsMatvecErrOn.exec_apply` discharges one
+actual stored oracle call once that input-domain condition has been proved.
+`Computation.exec_apply_of_finiteFloatDoubleOracle` instantiates this rule with checked
+binary64 addition and an input-only range bound. A complete solver additionally needs an
+invariant that proves the domain and scalar range conditions at every call.
+
+An error bound for successful runs is distinct from a bound on failure or inaccurate output.
+The former can hold when all executions fail. Read the event in a probabilistic headline:
+the bounded-format eigensolver program theorem bounds successful-but-inaccurate executions;
+its separate shallow binary128-layout witnesses do not prove finite-word program success.
+Numerical examples obtained by substituting a format's unit roundoff in a pure-relative
+theorem quantify its sufficient precision assumptions, and are not format instantiations.
+
 - Programs, kernels, implementations and compiled trees are computable: not `noncomputable`,
   `partial`, `opaque` or `unsafe`, and they run no code other than their definition (no
   implemented-by attribute) [E2]. It matters for the emitter and the `Float` runner.
@@ -275,7 +294,7 @@ one `simp` over all outputs of a 36-operation block exhausts the heartbeats.
 
 **Fast check loop.** Most of a job's time goes to waiting on Lean, so:
 1. Iterate on the edited file against the modules already built:
-   `flock <lock> lake env lean <file>`, or a scratch file that imports it (seconds per check).
+   `flock <lock> lake lean <file>`, or a scratch file that imports it (seconds per check).
 2. After an edit, rebuild only that module and its direct dependents: `lake build <Module>`
    through the lock.
 3. Once per job, at the end and before the final commit: one `lake build --wfail NLAlib`, one

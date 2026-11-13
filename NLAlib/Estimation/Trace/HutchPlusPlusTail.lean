@@ -30,6 +30,8 @@ Hanson–Wright constant is <!-- value hansonWrightConstant -->$1/196$.
 ## Main results
 
 * `NLAlib.measureReal_abs_trace_sub_hutchpp_ge_le`: the tail given a range-finder guarantee.
+* `NLAlib.measureReal_abs_trace_sub_hutchpp_ge_le_of_frobNorm_sub_truncatedSVD_eq_zero`:
+  a vanishing rank-$r$ tail leaves only range-finder failure at positive deviation thresholds.
 * `NLAlib.measureReal_abs_trace_sub_hutchpp_ge_le_of_isSubgaussianVector`,
   `NLAlib.measureReal_abs_trace_sub_hutchpp_ge_le_of_hasLaw_gaussianMatrix`: sub-Gaussian and
   Gaussian sketches.
@@ -51,6 +53,42 @@ namespace NLAlib
 variable {Ω : Type*} {mΩ : MeasurableSpace Ω} {μ : Measure Ω} {n s t : Type*} [Fintype n]
   [Fintype s] [Fintype t] [DecidableEq n]
 
+/-- If the best rank-$r$ Frobenius tail vanishes, the strict deviation of
+$\mathsf{hutchpp}(\mathbf{A},\mathbf{S},\mathbf{G})$ above any $\tau \ge 0$ is bounded by
+the range-finder failure probability. The residual probes may be arbitrary and dependent:
+on the good event the sketch recovers $\mathbf{A}$ exactly. -/
+theorem measureReal_abs_trace_sub_hutchpp_gt_le_of_frobNorm_sub_truncatedSVD_eq_zero
+    [IsFiniteMeasure μ] (A : Matrix n n ℝ) (S : Ω → Matrix n s ℝ)
+    (G : Ω → Matrix n t ℝ) {r : ℕ} (hzero : frobNorm (A - truncatedSVD A r) = 0)
+    (K : ℝ) {τ : ℝ} (hτ : 0 ≤ τ) :
+    μ.real {ω | τ < |A.trace - hutchpp A (S ω) (G ω)|} ≤
+      μ.real {ω | K * frobNorm (A - truncatedSVD A r) ^ 2 <
+        frobNorm (A - rsvd A (S ω)) ^ 2} := by
+  refine measureReal_mono fun ω hω => ?_
+  simp only [Set.mem_ofPred_eq] at hω ⊢
+  rw [hzero, zero_pow two_ne_zero, mul_zero]
+  by_contra hbad
+  have hres : A - rsvd A (S ω) = 0 :=
+    frobNorm_eq_zero_iff.1 (pow_eq_zero_iff two_ne_zero |>.1
+      (le_antisymm (not_lt.1 hbad) (sq_nonneg _)))
+  rw [hutchpp_eq_trace_of_rsvd_eq (sub_eq_zero.1 hres).symm, sub_self, abs_zero] at hω
+  exact (not_lt.2 hτ) hω
+
+/-- For a positive non-strict deviation threshold $\tau > 0$, a vanishing best rank-$r$
+Frobenius tail gives the range-finder failure probability alone as the Hutch++ tail budget.
+No law or independence of the residual probes is needed. Positivity matters: at $\tau = 0$
+the non-strict deviation event is the entire sample space even for an exact estimator. -/
+theorem measureReal_abs_trace_sub_hutchpp_ge_le_of_frobNorm_sub_truncatedSVD_eq_zero
+    [IsFiniteMeasure μ] (A : Matrix n n ℝ) (S : Ω → Matrix n s ℝ)
+    (G : Ω → Matrix n t ℝ) {r : ℕ} (hzero : frobNorm (A - truncatedSVD A r) = 0)
+    (K : ℝ) {τ : ℝ} (hτ : 0 < τ) :
+    μ.real {ω | τ ≤ |A.trace - hutchpp A (S ω) (G ω)|} ≤
+      μ.real {ω | K * frobNorm (A - truncatedSVD A r) ^ 2 <
+        frobNorm (A - rsvd A (S ω)) ^ 2} := by
+  refine (measureReal_mono fun ω hω => lt_of_lt_of_le (half_lt_self hτ) hω).trans ?_
+  exact measureReal_abs_trace_sub_hutchpp_gt_le_of_frobNorm_sub_truncatedSVD_eq_zero
+    A S G hzero K (half_pos hτ).le
+
 
 /-- **The deviation of Hutch++ given a range-finder guarantee.** Let the sketch test matrix
 $\mathbf{S}$ be almost everywhere measurable and the $n \times \ell$ residual test matrix
@@ -71,8 +109,10 @@ $\mathbf{S}$ the Girard–Hutchinson tail applies
 (`NLAlib.measureReal_abs_trace_sub_girardHutchinson_ge_le`), and
 `ProbabilityTheory.IndepFun.measureReal_mem_le_add` integrates it over the sketch. A zero
 denominator makes its fraction $0$, and the bound is then at least $2$; in particular, when
-$\|\mathbf{E}_r\|_{\mathsf{F}} = 0$ the bound says nothing, and that case is handled through
-exactness of Hutch++ on the range-finder event instead. Instances:
+$\|\mathbf{E}_r\|_{\mathsf{F}} = 0$ the bound says nothing. For $\tau > 0$, use
+`NLAlib.measureReal_abs_trace_sub_hutchpp_ge_le_of_frobNorm_sub_truncatedSVD_eq_zero`
+to retain only the range-finder failure budget; its strict-deviation counterpart also allows
+$\tau = 0$. These follow from exactness of Hutch++ on the range-finder event. Instances:
 `NLAlib.measureReal_abs_trace_sub_hutchpp_ge_le_of_isSubgaussianVector`,
 `NLAlib.measureReal_abs_trace_sub_hutchpp_ge_le_of_hasLaw_gaussianMatrix`.
 [MeyerMuscoMuscoWoodruff2021, Theorem 4 and Lemma 2]; there for positive semidefinite
@@ -333,15 +373,9 @@ theorem measureReal_abs_trace_sub_hutchpp_gt_mul_nuclearNorm_le_of_isSubgaussian
   · -- `‖E_r‖_F = 0`: on the range-finder event the sketch captures `A` and Hutch++ is exact
     have hRF := measureReal_frobNorm_sub_rsvd_sq_gt_le_mul_of_isSubgaussianVector A hSind hSsub
       hSiso (half_pos hδ) hs'
-    refine (measureReal_mono fun ω hω => ?_).trans (hRF.trans (half_le_self hδ.le))
-    simp only [Set.mem_ofPred_eq] at hω ⊢
-    rw [← hF0, sq, mul_zero, mul_zero]
-    by_contra hle
-    have h0 : A - rsvd A (S ω) = 0 :=
-      frobNorm_eq_zero_iff.1 (pow_eq_zero_iff two_ne_zero |>.1
-        (le_antisymm (not_lt.1 hle) (sq_nonneg _)))
-    rw [hutchpp_eq_trace_of_rsvd_eq (sub_eq_zero.1 h0).symm, sub_self, abs_zero] at hω
-    exact (not_lt.2 (mul_nonneg hε.le (nuclearNorm_nonneg A))) hω
+    exact (measureReal_abs_trace_sub_hutchpp_gt_le_of_frobNorm_sub_truncatedSVD_eq_zero
+      A S G hF0.symm K (mul_nonneg hε.le (nuclearNorm_nonneg A))).trans
+        (hRF.trans (half_le_self hδ.le))
   have hN0 : 0 < N := lt_of_lt_of_le (mul_pos (mul_pos two_pos hr0) hF0) hFN
   have hc' : 0 < (c' : ℝ) := by
     rcases c'.coe_nonneg.eq_or_lt with hc | hc

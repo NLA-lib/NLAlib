@@ -70,6 +70,19 @@ theorem eigenvalue_le_eigenvalue_of_le {A B : Matrix n n 𝕜} (h : A ≤ B) (hA
     exact hB.le_eigenvalue_of_forall_mem S hS.ge fun x hx =>
       (hAS x hx).trans (re_quadForm_le_re_quadForm_of_le h x)
 
+/-- The sorted eigenvalue is monotone on all matrices with the Loewner order. Comparable
+matrices have the same skew-Hermitian part, and the sorted eigenvalue is zero off the Hermitian
+locus. This extends the Hermitian monotonicity theorem to the total eigenvalue API. -/
+@[gcongr]
+theorem eigenvalue_le_eigenvalue {A B : Matrix n n 𝕜} (h : A ≤ B) (k : ℕ) :
+    eigenvalue A k ≤ eigenvalue B k := by
+  by_cases hA : A.IsHermitian
+  · exact eigenvalue_le_eigenvalue_of_le h hA k
+  · have hB : ¬ B.IsHermitian := by
+      intro hB
+      exact hA (by simpa using hB.sub (Matrix.le_iff.mp h).isHermitian)
+    simp [eigenvalue_of_not_isHermitian hA, eigenvalue_of_not_isHermitian hB]
+
 /-- Adding a positive semidefinite matrix does not decrease any eigenvalue: for Hermitian
 $\mathbf{A}$ and $\mathbf{0} \preceq \mathbf{B}$,
 $\lambda_k(\mathbf{A}) \le \lambda_k(\mathbf{A} + \mathbf{B})$. -/
@@ -249,8 +262,8 @@ theorem _root_.Matrix.IsHermitian.eigenvalue_le_eigenvalue_sub_vecMulVec_star {A
 /-- The **eigengap** below the $k$ largest eigenvalues:
 $\lambda_{k-1}(\mathbf{A}) - \lambda_k(\mathbf{A})$ with eigenvalues indexed from $0$, the gap that
 separates the leading $k$-dimensional eigenspace from the rest. The index is the dimension of that
-eigenspace. With truncated subtraction `eigengap A 0 = 0`, so a hypothesis `0 < eigengap A k`
-already excludes $k = 0$. -/
+eigenspace for $0<k<|n|$. Truncated subtraction gives `eigengap A 0 = 0`. At $k=|n|>0$,
+zero padding makes this the smallest eigenvalue, which can be negative. For $k>|n|$ it is zero. -/
 noncomputable def eigengap (A : Matrix n n 𝕜) (k : ℕ) : ℝ :=
   eigenvalue A (k - 1) - eigenvalue A k
 

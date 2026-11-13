@@ -118,7 +118,7 @@ private theorem mul_neg_of_pos_mul_neg_one_pow {σ : ℝ} (hσ : σ = 1 ∨ σ =
 /-- **De la Vallée Poussin's theorem, pointwise.** If $\deg p \le n$ and $f - p$ alternates on
 $s$ at $n + 2$ points with level $\varepsilon$, then every real polynomial $q$ of degree at most
 $n$ has $\varepsilon \le \lvert f(x) - q(x) \rvert$ at some $x \in s$. No continuity of $f$ and
-no structure of $s$ are needed. [Rivlin1981, Ch. 1]; [Trefethen2019, Ch. 10] (locators to check). -/
+no structure of $s$ are needed. [Trefethen2019, Exercise 10.3]. -/
 theorem AlternatesOn.exists_le_abs_sub_eval {f : ℝ → ℝ} {s : Set ℝ} {n : ℕ} {p : ℝ[X]} {ε : ℝ}
     (h : AlternatesOn (fun x => f x - p.eval x) s (n + 2) ε) (hp : p.degree ≤ n) {q : ℝ[X]}
     (hq : q.degree ≤ n) : ∃ x ∈ s, ε ≤ |f x - q.eval x| := by
@@ -148,7 +148,7 @@ theorem AlternatesOn.exists_le_abs_sub_eval {f : ℝ → ℝ} {s : Set ℝ} {n :
 $\eta$ of $f$ on $s$, and $f - p$ alternates on $s$ at $n + 2$ points with level
 $\varepsilon$, then $\varepsilon \le E_n(f; s)$. The set $s$ is arbitrary (a finite spectrum, a
 union of intervals); the finite $\eta$ only excludes the junk value of `minimaxError`.
-[Rivlin1981, Ch. 1]; [Trefethen2019, Ch. 10] (locators to check).
+[Trefethen2019, Exercise 10.3].
 Result: de-la-vallee-poussin -/
 theorem AlternatesOn.le_minimaxError {f : ℝ → ℝ} {s : Set ℝ} {n : ℕ} {p : ℝ[X]} {ε : ℝ}
     (h : AlternatesOn (fun x => f x - p.eval x) s (n + 2) ε) (hp : p.degree ≤ n) {η : ℝ}
@@ -165,7 +165,7 @@ theorem AlternatesOn.le_minimaxError {f : ℝ → ℝ} {s : Set ℝ} {n : ℕ} {
 $\lvert f - p \rvert \le \varepsilon$ on $s$ and $f - p$ alternates on $s$ at $n + 2$ points
 with level $\varepsilon$, then $E_n(f; s) = \varepsilon$, and $p$ is a best approximation. On
 any set, for any $f$: the certificate direction of the equioscillation theorem.
-[Trefethen2019, Theorem 10.1]; [Rivlin1981, Ch. 1] (locators to check).
+[Trefethen2019, Theorem 10.1].
 Result: equioscillation -/
 theorem AlternatesOn.minimaxError_eq {f : ℝ → ℝ} {s : Set ℝ} {n : ℕ} {p : ℝ[X]} {ε : ℝ}
     (h : AlternatesOn (fun x => f x - p.eval x) s (n + 2) ε) (hp : p.degree ≤ n)
@@ -232,7 +232,7 @@ $x \le a$; or $e$ alternates at $n + 2$ points of $\{x \in [a, b] : \lvert e(x) 
 with level $E$. The second clause of the first alternative is what makes the induction on $n$
 compose; the lemma is public so that the equioscillation theorem on compact sets and its
 weighted form reuse it.
-[Trefethen2019, Theorem 10.1] (the perturbation argument there, locator to check). -/
+[Trefethen2019, proof of Theorem 10.1] uses the sign-changing perturbation to prove necessity. -/
 theorem exists_degree_le_or_alternatesOn (n : ℕ) {e : ℝ → ℝ} {a b E : ℝ}
     (he : ContinuousOn e (Set.Icc a b)) (hE : 0 < E) (hab : a ≤ b) (hea : |e a| = E) :
     (∃ q : ℝ[X], q.degree ≤ n ∧ (∀ x ∈ Set.Icc a b, |e x| = E → 0 < e x * q.eval x) ∧
@@ -398,8 +398,7 @@ private theorem not_forall_mul_pos_of_isUniformApproxOn_minimaxError {f : ℝ �
 $[a, b]$, and $p$ a real polynomial of degree at most $n$ with
 $\lvert f - p \rvert \le E_n(f; [a, b])$ on $[a, b]$ (a best approximation). Then $f - p$
 alternates on $[a, b]$ at $n + 2$ points with level $E_n(f; [a, b])$: it equioscillates
-(`AlternatesOn.exists_eq_of_abs_le`). [Trefethen2019, Theorem 10.1]; [Rivlin1981, Ch. 1]
-(locators to check).
+(`AlternatesOn.exists_eq_of_abs_le`). [Trefethen2019, Theorem 10.1].
 Result: equioscillation -/
 theorem alternatesOn_of_isUniformApproxOn_minimaxError {f : ℝ → ℝ} {a b : ℝ} (hab : a < b)
     (hf : ContinuousOn f (Set.Icc a b)) {n : ℕ} {p : ℝ[X]} (hp : p.degree ≤ n)
@@ -429,7 +428,7 @@ real polynomial of degree at most $n$. Then $p$ is a best approximation,
 $\lvert f - p \rvert \le E_n(f; [a, b])$ on $[a, b]$, if and only if for some $\varepsilon$,
 $\lvert f - p \rvert \le \varepsilon$ on $[a, b]$ and $f - p$ alternates at $n + 2$ points of
 $[a, b]$ with level $\varepsilon$ (and then $\varepsilon = E_n(f; [a, b])$).
-[Trefethen2019, Theorem 10.1]; [Rivlin1981, Ch. 1] (locators to check).
+[Trefethen2019, Theorem 10.1].
 Result: equioscillation -/
 theorem isUniformApproxOn_minimaxError_iff_exists_alternatesOn {f : ℝ → ℝ} {a b : ℝ}
     (hab : a < b) (hf : ContinuousOn f (Set.Icc a b)) {n : ℕ} {p : ℝ[X]} (hp : p.degree ≤ n) :
@@ -446,7 +445,7 @@ theorem isUniformApproxOn_minimaxError_iff_exists_alternatesOn {f : ℝ → ℝ}
 
 /-- **The best approximation is unique**: for $a < b$ and $f$ continuous on $[a, b]$, two real
 polynomials $p, q$ of degree at most $n$ that are both within $E_n(f; [a, b])$ of $f$ on
-$[a, b]$ are equal. [Trefethen2019, Theorem 10.1]; [Rivlin1981, Ch. 1] (locators to check).
+$[a, b]$ are equal. [Trefethen2019, Theorem 10.1].
 Result: best-approximation-uniqueness -/
 theorem eq_of_isUniformApproxOn_minimaxError {f : ℝ → ℝ} {a b : ℝ} (hab : a < b)
     (hf : ContinuousOn f (Set.Icc a b)) {n : ℕ} {p q : ℝ[X]} (hp : p.degree ≤ n)
@@ -493,7 +492,8 @@ theorem eq_of_isUniformApproxOn_minimaxError {f : ℝ → ℝ} {a b : ℝ} (hab 
 /-- **The best approximation interpolates**: for $a < b$, $f$ continuous on $[a, b]$ and $p$ a
 best approximation of degree at most $n$, there are $n + 1$ distinct points of $(a, b)$ at which
 $p = f$; $p$ is the Lagrange interpolant of $f$ there (`Lagrange.eq_interpolate_of_eval_eq`).
-[Trefethen2019, Ch. 10] (locator to check); there on $[-1, 1]$.
+[Trefethen2019, Theorem 10.1]. The intermediate value theorem between consecutive extrema gives
+the interpolation points; there on $[-1, 1]$.
 Result: best-approximant-interpolates -/
 theorem exists_eval_eq_of_isUniformApproxOn_minimaxError {f : ℝ → ℝ} {a b : ℝ} (hab : a < b)
     (hf : ContinuousOn f (Set.Icc a b)) {n : ℕ} {p : ℝ[X]} (hp : p.degree ≤ n)

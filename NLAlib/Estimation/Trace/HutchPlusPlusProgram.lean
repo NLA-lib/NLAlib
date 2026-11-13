@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.Computation.SparseCompile
 public import NLAlib.Estimation.Trace.HutchPlusPlusTargets
 public import NLAlib.Matrix.Factorizations.GramSchmidtProgram
 
@@ -64,7 +65,7 @@ private def colOf {N m : ℕ} (M : Matrix (Fin N) (Fin m) 𝕜) (c : ℕ) : Fin 
 
 /-- The end of `hutchppProg`: `out ← out + t[1] / ℓ`. -/
 private theorem exec_hutchpp_finish (I : Interp P ι 𝕜 (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (p : P) (t ℓ : ℕ) (hℓ : 0 < ℓ)
+    (hc : IsUnitCharge I) (p : P) (t ℓ : ℕ) (hℓ : 0 < ℓ)
     (st : St P 𝕜 (OpCount P ι)) (x y : 𝕜) (h0t : 0 ≠ t) (ht1 : st.store.read p t 1 = some x)
     (hout : st.store.read p 0 0 = some y) (ht0 : ∃ s, st.store.write p t 0 0 = some s) :
     ∃ st', exec I (ins (.litIdx p ⟨t, 0⟩ (.const ℓ)) >>= fun _ =>
@@ -113,11 +114,11 @@ private theorem exec_hutchpp_finish (I : Interp P ι 𝕜 (OpCount P ι)) (hI : 
   · change s8.shape = _
     rw [Store.shape_of_write_eq_some hs8, Store.shape_of_write_eq_some hs7,
       Store.shape_of_write_eq_some hs6]
-  · simp only [hc, add_assoc]
+  · simp only [hc.charge_eq, add_assoc]
 
 /-- The two traces of `hutchppProg`, from the products `B = W` and `C = A W`. -/
 private theorem exec_hutchpp_traces (I : Interp P ι 𝕜 (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) {N k ℓ : ℕ} (hℓ : 0 < ℓ) (p : P) (B t C : ℕ)
+    (hc : IsUnitCharge I) {N k ℓ : ℕ} (hℓ : 0 < ℓ) (p : P) (B t C : ℕ)
     (A : Matrix (Fin N) (Fin N) 𝕜) (W : Matrix (Fin N) (Fin (k + ℓ)) 𝕜)
     (st : St P 𝕜 (OpCount P ι))
     (hB : ∀ (a : Fin N) (c : Fin (k + ℓ)), st.store.read p B (N * c + a) = some (W a c))
@@ -203,7 +204,7 @@ private theorem exec_hutchpp_traces (I : Interp P ι 𝕜 (OpCount P ι)) (hI : 
   refine ⟨st6, h6, hout6, hsh6.trans (hsh5.trans hsh4), hpos6.trans (hpos5.trans hpos3),
     hcur6.trans (hcur5.trans hcur3), ?_, ?_⟩
   · rw [hcnt6, hcnt5]
-    simp only [st4, hcnt3, hc, add_assoc]
+    simp only [st4, hcnt3, hc.charge_eq, add_assoc]
   · change st3.cur = st.cur at hcur3
     change st5.peak ≤ Function.update st3.peak p (max (st3.peak p) (st3.cur p + 1)) at hpeak5
     rw [hpeak6, hcur3] at *
@@ -253,7 +254,7 @@ private theorem exec_hutchpp_tail {N k ℓ : ℕ} (hℓ : 0 < ℓ) (A : Matrix (
       st'.peak ≤ Function.update st.peak p (max (st.peak p) (st.cur p + 1)) := by
   set I := exactInterp (P := P) (ι := ι) (fun _ => A) ξ with hIdef
   have hI : I.sem = exactSem := rfl
-  have hc : ∀ κ, I.charge κ = Finsupp.single κ 1 := fun _ => rfl
+  have hc : IsUnitCharge I := fun _ => rfl
   obtain ⟨s1, hs1⟩ := Store.exists_writeBlock_eq_some_of_write (s := st.store) (p := p) (b := C)
     (off := 0) (xs := flatten (A * W)) fun i hi => hC i (by rwa [size_flatten] at hi)
   have hC1 : ∀ (a : Fin N) (c : Fin (k + ℓ)), s1.read p C (N * c + a) = some ((A * W) a c) :=
@@ -300,7 +301,7 @@ private theorem exec_hutchpp_tail {N k ℓ : ℕ} (hℓ : 0 < ℓ) (A : Matrix (
   rw [hlit, Option.bind_some]
   refine ⟨st3, h3, hout3, hsh3.trans hsh2, hpos3, hcur3, ?_, hpeak3⟩
   rw [hcnt3]
-  simp only [st2, st1, hc, add_assoc]
+  simp only [st2, st1, hc.charge_eq, add_assoc]
 
 omit [DecidableEq P] in
 /-- A block of columns of `W` holding `M`: the sum of the column quadratic forms of `A` is
@@ -485,7 +486,7 @@ private theorem exec_hutchpp_mid {N k ℓ : ℕ} (hℓ : 0 < ℓ) (A : Matrix (F
       st'.peak ≤ Function.update st.peak p (max (st.peak p) (st.cur p + N * (k + ℓ) + 1)) := by
   set I := exactInterp (P := P) (ι := ι) (fun _ => A) ξ
   have hI : I.sem = exactSem := rfl
-  have hc : ∀ κ, I.charge κ = Finsupp.single κ 1 := fun _ => rfl
+  have hc : IsUnitCharge I := fun _ => rfl
   set W : Matrix (Fin N) (Fin (k + ℓ)) 𝕜 := Matrix.of fun a c =>
     if h : (c : ℕ) < k then Q a ⟨c, h⟩ else mgsSweep (colOf Q) (colOf G (c - k)) k a with hWdef
   obtain ⟨st1, h1, hsw1, hfr1, hsh1, hpos1, hcur1, -, hcnt1, hpeak1, -⟩ :=
@@ -652,7 +653,7 @@ private theorem exec_hutchpp_front {N k ℓ : ℕ} (A : Matrix (Fin N) (Fin N) �
       st3.peak ≤ Function.update st.peak p (max (st.peak p) (st.cur p + N * k + 3)) := by
   set I := exactInterp (P := P) (ι := ι) (fun _ => A) ξ
   have hI : I.sem = exactSem := rfl
-  have hc : ∀ κ, I.charge κ = Finsupp.single κ 1 := fun _ => rfl
+  have hc : IsUnitCharge I := fun _ => rfl
   have hle : N * k ≤ N * (k + ℓ) := Nat.mul_le_mul_left N (Nat.le_add_right k ℓ)
   obtain ⟨st1, h1, hAS, hfr1, hsh1, hpos1, hcur1, hcnt1, hpeak1⟩ :=
     exec_hutchpp_sketch (k := k) A ξ p o d B st hB fun i hi => hBw i (by omega)
@@ -698,7 +699,7 @@ private theorem exec_hutchpp_front {N k ℓ : ℕ} (A : Matrix (Fin N) (Fin N) �
   · rw [hst3, Store.shape_of_writeBlock_eq_some hs₁, hsh2, hsh1]
   · refine hcnt3.trans ?_
     rw [hcnt2, hcnt1]
-    simp only [hc, IExp.eval_mul, IExp.eval_const, add_assoc]
+    simp only [hc.charge_eq, IExp.eval_mul, IExp.eval_const, add_assoc]
     exact le_rfl
   · rw [hcur2, hcur1, hpeak2, hpeak1] at hpeak3
     refine hpeak3.trans fun q => ?_
@@ -962,274 +963,6 @@ theorem hutchppProg.toStmt_compiledDense (p : P) (o : ι) (d : Dist) (N : ℕ)
 entries of `cooImpl`, shows that the COO family compiles for every pattern and instantiates to
 the family. -/
 
-/-- One entry of the COO kernel (`NLAlib.Computation.cooImpl`): read value $e$, multiply it by
-source entry $j$, add it into destination entry $i$. -/
-private def cooEntry {VB VI : Type} (p : P) (t dst src : VB) (a b m : IExp VI) :
-    (ℕ × ℕ) × ℕ → Builder P ι VB VI Unit := fun ((i, j), e) => do
-  Builder.stmt (.rom p ⟨t, 0⟩ (.const e))
-  Builder.ins (.bin p .mul ⟨t, 0⟩ ⟨t, 0⟩ ⟨src, b + .const j + m⟩)
-  Builder.ins (.bin p .add ⟨dst, a + .const i + m⟩ ⟨dst, a + .const i + m⟩ ⟨t, 0⟩)
-
-/-- The compilation of `cooImpl`, one step: its named node and the final `skip`. -/
-private theorem compile_cooImpl_eq {nb ni : ℕ} (N : IExp ℕ) (pattern : List (ℕ × ℕ)) (o : ι) (p : P)
-    (dst : ℕ) (dOff : IExp ℕ) (src : ℕ) (sOff cols : IExp ℕ) :
-    (cooImpl N pattern o p dst dOff src sOff cols).compile nb ni =
-      (do
-        let x ← (do
-          let a ← [Arg.idx N, .buf dst, .idx dOff, .buf src, .idx sOff, .idx cols].mapM
-            (Arg.scope? nb ni)
-          let b ← Stmt.compile (.alloc p 1 fun t => .seq (.loop cols fun c =>
-            .seq (.loop N fun i => .seq (.instr (.lit p ⟨dst, dOff + .var i + N * .var c⟩ 0)) .skip)
-              (ContT.run (pattern.zipIdx.forM
-                (cooEntry (ι := ι) p t dst src dOff sOff (N * .var c))) fun _ => .skip))
-            .skip) nb ni
-          pure (FStmt.named "coo_apply" a b))
-        let y ← some FStmt.skip
-        pure (FStmt.seq x y)) := rfl
-
-private theorem scope?_succ : ∀ {ni : ℕ} {e : IExp ℕ} {e' : IExp (Fin ni)}, e.scope? ni = some e' →
-    e.scope? (ni + 1) = some (e'.subst fun v => .var v.castSucc) := by
-  intro ni e
-  induction e with
-  | var v =>
-    intro e' h
-    unfold IExp.scope? at h ⊢
-    by_cases hv : v < ni
-    · rw [dif_pos hv] at h; cases h; rw [dif_pos (by omega)]; rfl
-    · rw [dif_neg hv] at h; cases h
-  | const n => intro e' h; cases h; rfl
-  | add a b iha ihb | sub a b iha ihb | mul a b iha ihb | mod a b iha ihb =>
-    intro e' h
-    simp only [IExp.scope?, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,
-      Option.some.injEq] at h
-    obtain ⟨a', ha, b', hb, rfl⟩ := h
-    simp [IExp.scope?, iha ha, ihb hb, IExp.subst]
-
-private theorem subst_castSucc_snoc {ni : ℕ} (e : IExp (Fin ni)) (σ : Fin ni → IExp ℕ)
-    (x : IExp ℕ) :
-    (e.subst fun v => .var v.castSucc).subst (Fin.snoc (α := fun _ => IExp ℕ) σ x) = e.subst σ := by
-  induction e <;> simp [IExp.subst, *]
-
-private theorem finScope?_succ {nb d : ℕ} {d' : Fin nb} (h : finScope? nb d = some d') :
-    finScope? (nb + 1) d = some d'.castSucc := by
-  unfold finScope? at h ⊢
-  by_cases hd : d < nb
-  · rw [dif_pos hd] at h; cases h; rw [dif_pos (by omega)]; rfl
-  · rw [dif_neg hd] at h; cases h
-
-private theorem scope?_zero {ni : ℕ} : (0 : IExp ℕ).scope? ni = some 0 := rfl
-
-private theorem scope?_one {ni : ℕ} : (1 : IExp ℕ).scope? ni = some 1 := rfl
-
-private theorem scope?_const {ni : ℕ} (n : ℕ) : (IExp.const n).scope? ni = some (.const n) := rfl
-
-private theorem scope?_add {ni : ℕ} {a b : IExp ℕ} {a' b' : IExp (Fin ni)}
-    (ha : a.scope? ni = some a') (hb : b.scope? ni = some b') :
-    (a + b).scope? ni = some (a' + b') := by
-  change (do let x ← a.scope? ni; let y ← b.scope? ni; pure (IExp.add x y)) = _
-  rw [ha, hb]; rfl
-
-private theorem compile_cooEntries {nb ni : ℕ} (p : P) {t dst src : ℕ} {t' d' s' : Fin nb}
-    (ht : finScope? nb t = some t') (hd : finScope? nb dst = some d')
-    (hs : finScope? nb src = some s') {a b m : IExp ℕ} {a' b' m' : IExp (Fin ni)}
-    (ha : a.scope? ni = some a') (hb : b.scope? ni = some b') (hm : m.scope? ni = some m') :
-    ∀ l : List ((ℕ × ℕ) × ℕ), ∃ c : FStmt P ι nb ni,
-      Stmt.compile (ContT.run (l.forM (cooEntry (ι := ι) p t dst src a b m)) fun _ => .skip)
-        nb ni = some c ∧
-      ∀ ρB σ, c.toStmt ρB σ = ContT.run (l.forM (cooEntry p (ρB t') (ρB d') (ρB s') (a'.subst σ)
-        (b'.subst σ) (m'.subst σ))) fun _ => .skip
-  | [] => ⟨.skip, rfl, fun _ _ => rfl⟩
-  | ((i, j), e) :: l => by
-    obtain ⟨c, hc, hc'⟩ := compile_cooEntries p ht hd hs ha hb hm l
-    refine ⟨.seq (.rom p ⟨t', 0⟩ (.const e)) (.seq (.instr (.bin p .mul ⟨t', 0⟩ ⟨t', 0⟩
-      ⟨s', b' + .const j + m'⟩)) (.seq (.instr (.bin p .add ⟨d', a' + .const i + m'⟩
-        ⟨d', a' + .const i + m'⟩ ⟨t', 0⟩)) c)), ?_, fun ρB σ => ?_⟩
-    · change Stmt.compile (.seq (.rom p ⟨t, 0⟩ (.const e)) (.seq (.instr (.bin p .mul ⟨t, 0⟩
-        ⟨t, 0⟩ ⟨src, b + .const j + m⟩)) (.seq (.instr (.bin p .add ⟨dst, a + .const i + m⟩
-        ⟨dst, a + .const i + m⟩ ⟨t, 0⟩)) (ContT.run (l.forM (cooEntry (ι := ι) p t dst src a b m))
-          fun _ => .skip)))) nb ni = _
-      simp only [Stmt.compile, Instr.scope?, Cell.scope?, hc, ht, hd, hs, scope?_zero,
-        scope?_const, scope?_add (scope?_add ha (scope?_const _)) hm,
-        scope?_add (scope?_add hb (scope?_const _)) hm, Option.bind_eq_bind, Option.pure_def]
-      rfl
-    · simp only [FStmt.toStmt, hc']
-      rfl
-
-private theorem scope?_mul {ni : ℕ} {a b : IExp ℕ} {a' b' : IExp (Fin ni)}
-    (ha : a.scope? ni = some a') (hb : b.scope? ni = some b') :
-    (a * b).scope? ni = some (a' * b') := by
-  change (do let x ← a.scope? ni; let y ← b.scope? ni; pure (IExp.mul x y)) = _
-  rw [ha, hb]; rfl
-
-private theorem scope?_var {ni v : ℕ} (h : v < ni) :
-    (IExp.var v).scope? ni = some (.var ⟨v, h⟩) := by
-  simp [IExp.scope?, h]
-
-private theorem finScope?_eq {nb v : ℕ} (h : v < nb) : finScope? nb v = some ⟨v, h⟩ := by
-  simp [finScope?, h]
-
-private theorem scope?_var_last {n : ℕ} :
-    (IExp.var n).scope? (n + 1) = some (.var (Fin.last n)) := by
-  simp [IExp.scope?, Fin.last]
-
-private theorem finScope?_last {n : ℕ} : finScope? (n + 1) n = some (Fin.last n) := by
-  simp [finScope?, Fin.last]
-
-private theorem compile_cooImpl {nb ni : ℕ} (hni : 0 < ni) (pattern : List (ℕ × ℕ)) (o : ι) (p : P)
-    {d s : ℕ} {d' s' : Fin nb} (hd : finScope? nb d = some d') (hs : finScope? nb s = some s')
-    {dOff sOff cols : IExp ℕ} {dOff' sOff' cols' : IExp (Fin ni)}
-    (h₁ : dOff.scope? ni = some dOff') (h₂ : sOff.scope? ni = some sOff')
-    (h₃ : cols.scope? ni = some cols') :
-    ∃ c : FStmt P ι nb ni,
-      (cooImpl (.var 0) pattern o p d dOff s sOff cols).compile nb ni = some c ∧
-      ∀ ρB σ M, σ ⟨0, hni⟩ = .const M → c.toStmt ρB σ =
-        cooImpl (.const M) pattern o p (ρB d') (dOff'.subst σ) (ρB s') (sOff'.subst σ)
-          (cols'.subst σ) := by
-  have v0 : (IExp.var 0).scope? ni = some (.var ⟨0, hni⟩) := scope?_var hni
-  have v1 := scope?_succ v0
-  have v2 := scope?_succ v1
-  have vn := scope?_succ (scope?_var_last (n := ni))
-  obtain ⟨cE, hcE, hcE'⟩ := compile_cooEntries (ι := ι) p finScope?_last
-    (finScope?_succ hd) (finScope?_succ hs) (scope?_succ h₁) (scope?_succ h₂)
-    (scope?_mul v1 scope?_var_last) pattern.zipIdx
-  rw [compile_cooImpl_eq]
-  simp only [Stmt.compile, List.mapM_cons, List.mapM_nil, Arg.scope?, Instr.scope?, Cell.scope?,
-    hcE, hd, hs, h₁, h₂, h₃, finScope?_succ hd, scope?_one, v0, v1,
-    scope?_add (scope?_add (scope?_succ (scope?_succ h₁)) scope?_var_last) (scope?_mul v2 vn),
-    Option.bind_eq_bind, Option.pure_def, Option.bind_some, Option.some.injEq, exists_eq_left']
-  intro ρB σ M hM
-  simp only [FStmt.toStmt, hcE', List.map_cons, List.map_nil, Arg.subst, Instr.subst, Cell.subst,
-    IExp.subst, subst_castSucc_snoc, Fin.snoc_castSucc, Fin.snoc_last, hM]
-  rfl
-
-/-- The kernel-call case of the sparse compile lemma: a kernel call becomes `skip`. -/
-private theorem compile_substOracle_kcall (pattern : List (ℕ × ℕ)) {o : ι} {p : P}
-    {dims : List (IExp ℕ)} {ins outs : List (ℕ × IExp ℕ)} {nb ni : ℕ} (hni : 0 < ni)
-    {c : FStmt P ι nb ni} (h : (Stmt.kcall o p dims ins outs).compile nb ni = some c) :
-    ∃ c' : FStmt P ι nb ni,
-      ((Stmt.kcall o p dims ins outs).subst .instr (cooImpl (.var 0) pattern)
-        fun _ _ _ _ _ => .skip).compile nb ni = some c' ∧
-      ∀ ρB σ M, σ ⟨0, hni⟩ = .const M →
-        c'.toStmt ρB σ = (c.toStmt ρB σ).subst .instr (cooImpl (.const M) pattern)
-          fun _ _ _ _ _ => .skip := by
-  simp only [Stmt.compile, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,
-    Option.some.injEq] at h
-  obtain ⟨dims', -, ins', -, outs', -, rfl⟩ := h
-  exact ⟨.skip, rfl, fun _ _ _ _ => rfl⟩
-
-/-- The index-binder case of the sparse compile lemma: the binder is kept, its body substituted. -/
-private theorem compile_substOracle_bindIdx (pattern : List (ℕ × ℕ)) {p : P} {x : Cell ℕ ℕ}
-    {bound : IExp ℕ} {body : ℕ → Stmt P ι ℕ ℕ}
-    (ih : ∀ v {nb ni : ℕ} (hni : 0 < ni) (c : FStmt P ι nb ni), (body v).compile nb ni = some c →
-      ∃ c' : FStmt P ι nb ni,
-        ((body v).subst .instr (cooImpl (.var 0) pattern) fun _ _ _ _ _ => .skip).compile nb ni =
-          some c' ∧
-        ∀ ρB σ M, σ ⟨0, hni⟩ = .const M →
-          c'.toStmt ρB σ = (c.toStmt ρB σ).subst .instr (cooImpl (.const M) pattern)
-            fun _ _ _ _ _ => .skip)
-    {nb ni : ℕ} (hni : 0 < ni) {c : FStmt P ι nb ni}
-    (h : (Stmt.bindIdx p x bound body).compile nb ni = some c) :
-    ∃ c' : FStmt P ι nb ni,
-      ((Stmt.bindIdx p x bound body).subst .instr (cooImpl (.var 0) pattern)
-        fun _ _ _ _ _ => .skip).compile nb ni = some c' ∧
-      ∀ ρB σ M, σ ⟨0, hni⟩ = .const M →
-        c'.toStmt ρB σ = (c.toStmt ρB σ).subst .instr (cooImpl (.const M) pattern)
-          fun _ _ _ _ _ => .skip := by
-  simp only [Stmt.compile, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,
-    Option.some.injEq] at h
-  obtain ⟨x', hx, n', hn, b', hb, rfl⟩ := h
-  obtain ⟨cb, hcb, hcb'⟩ := ih ni (Nat.succ_pos ni) b' hb
-  refine ⟨.bindIdx p x' n' cb, ?_, fun ρB σ M hM => ?_⟩
-  · simp [Stmt.subst, Stmt.compile, hx, hn, hcb]
-  · simp [Stmt.subst, FStmt.toStmt, hcb' _ _ M ((Fin.snoc_castSucc (i := ⟨0, hni⟩) ..).trans hM)]
-
-private theorem compile_substOracle_cooImpl (pattern : List (ℕ × ℕ)) (s : Stmt P ι ℕ ℕ) :
-    ∀ {nb ni : ℕ} (hni : 0 < ni) (c : FStmt P ι nb ni), s.compile nb ni = some c →
-      ∃ c' : FStmt P ι nb ni,
-        (s.substOracle (cooImpl (.var 0) pattern)).compile nb ni = some c' ∧
-        ∀ ρB σ M, σ ⟨0, hni⟩ = .const M →
-          c'.toStmt ρB σ = (c.toStmt ρB σ).substOracle (cooImpl (.const M) pattern) := by
-  simp only [Stmt.substOracle]
-  induction s with
-  | skip => intro nb ni hni c h; cases h; exact ⟨.skip, rfl, fun _ _ _ _ => rfl⟩
-  | seq s t ihs iht =>
-    intro nb ni hni c h
-    simp only [Stmt.compile, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,
-      Option.some.injEq] at h
-    obtain ⟨s', hs, t', ht, rfl⟩ := h
-    obtain ⟨cs, hcs, hcs'⟩ := ihs hni s' hs
-    obtain ⟨ct, hct, hct'⟩ := iht hni t' ht
-    refine ⟨.seq cs ct, ?_, fun ρB σ M hM => ?_⟩
-    · simp [Stmt.subst, Stmt.compile, hcs, hct]
-    · simp [Stmt.subst, FStmt.toStmt, hcs' ρB σ M hM, hct' ρB σ M hM]
-  | instr i =>
-    intro nb ni hni c h
-    exact ⟨c, h, fun _ _ _ _ => by
-      simp only [Stmt.compile, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,
-        Option.some.injEq] at h
-      obtain ⟨i', -, rfl⟩ := h; rfl⟩
-  | apply o p d dOff s sOff cols =>
-    intro nb ni hni c h
-    simp only [Stmt.compile, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,
-      Option.some.injEq] at h
-    obtain ⟨d', hd, dOff', h₁, s', hs, sOff', h₂, cols', h₃, rfl⟩ := h
-    exact compile_cooImpl hni pattern o p hd hs h₁ h₂ h₃
-  | rom p d i =>
-    intro nb ni hni c h
-    exact ⟨c, h, fun _ _ _ _ => by
-      simp only [Stmt.compile, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,
-        Option.some.injEq] at h
-      obtain ⟨d', -, i', -, rfl⟩ := h
-      rfl⟩
-  | alloc p len body ih =>
-    intro nb ni hni c h
-    simp only [Stmt.compile, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,
-      Option.some.injEq] at h
-    obtain ⟨len', hlen, b', hb, rfl⟩ := h
-    obtain ⟨cb, hcb, hcb'⟩ := ih nb hni b' hb
-    refine ⟨.alloc p len' cb, ?_, fun ρB σ M hM => ?_⟩
-    · simp [Stmt.subst, Stmt.compile, hlen, hcb]
-    · simp [Stmt.subst, FStmt.toStmt, hcb' _ σ M hM]
-  | loop n body ih =>
-    intro nb ni hni c h
-    simp only [Stmt.compile, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,
-      Option.some.injEq] at h
-    obtain ⟨n', hn, b', hb, rfl⟩ := h
-    obtain ⟨cb, hcb, hcb'⟩ := ih ni (Nat.succ_pos ni) b' hb
-    refine ⟨.loop n' cb, ?_, fun ρB σ M hM => ?_⟩
-    · simp [Stmt.subst, Stmt.compile, hn, hcb]
-    · simp [Stmt.subst, FStmt.toStmt, hcb' _ _ M ((Fin.snoc_castSucc (i := ⟨0, hni⟩) ..).trans hM)]
-  | whileFuel fuel p cmp x y body ih =>
-    intro nb ni hni c h
-    simp only [Stmt.compile, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,
-      Option.some.injEq] at h
-    obtain ⟨f', hf, x', hx, y', hy, b', hb, rfl⟩ := h
-    obtain ⟨cb, hcb, hcb'⟩ := ih hni b' hb
-    refine ⟨.whileFuel f' p cmp x' y' cb, ?_, fun ρB σ M hM => ?_⟩
-    · simp [Stmt.subst, Stmt.compile, hf, hx, hy, hcb]
-    · simp [Stmt.subst, FStmt.toStmt, hcb' ρB σ M hM]
-  | ite p cmp x y t e iht ihe =>
-    intro nb ni hni c h
-    simp only [Stmt.compile, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,
-      Option.some.injEq] at h
-    obtain ⟨x', hx, y', hy, t', ht, e', he, rfl⟩ := h
-    obtain ⟨ct, hct, hct'⟩ := iht hni t' ht
-    obtain ⟨ce, hce, hce'⟩ := ihe hni e' he
-    refine ⟨.ite p cmp x' y' ct ce, ?_, fun ρB σ M hM => ?_⟩
-    · simp [Stmt.subst, Stmt.compile, hx, hy, hct, hce]
-    · simp [Stmt.subst, FStmt.toStmt, hct' ρB σ M hM, hce' ρB σ M hM]
-  | named name args body ih =>
-    intro nb ni hni c h
-    simp only [Stmt.compile, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,
-      Option.some.injEq] at h
-    obtain ⟨args', ha, b', hb, rfl⟩ := h
-    obtain ⟨cb, hcb, hcb'⟩ := ih hni b' hb
-    refine ⟨FStmt.named name args' cb, ?_, fun ρB σ M hM => ?_⟩
-    · simp [Stmt.subst, Stmt.compile, ha, hcb]
-    · simp [Stmt.subst, FStmt.toStmt, hcb' ρB σ M hM]
-  | kcall o p dims ins outs => exact fun hni c h => compile_substOracle_kcall pattern hni h
-  | bindIdx p x bound body ih => exact fun hni c h => compile_substOracle_bindIdx pattern ih hni h
-
 /-- The sparse family compiles, for every pattern: Hutch++ with its oracle calls served by
 `NLAlib.Computation.cooImpl`, compiled at symbolic sizes, is some first-order program, and that
 program instantiates at every size $N$, $n$ to the statement of the family there. By induction
@@ -1239,7 +972,7 @@ theorem hutchppProg.exists_compile_coo (p : P) (o : ι) (d : Dist) (pattern : Li
         ((hutchppProg p o d N (n 0) (n 1) ⟨h 0, 0⟩).run).substOracle (cooImpl N pattern)) =
       some c ∧ ∀ N n, c.toStmt N n = ProgFamily.inst (r := 2) (b := 1) (fun _ _ N n h =>
         ((hutchppProg p o d N (n 0) (n 1) ⟨h 0, 0⟩).run).substOracle (cooImpl N pattern)) N n := by
-  obtain ⟨c, hc, hc'⟩ := compile_substOracle_cooImpl pattern _ (by norm_num : 0 < 3)
+  obtain ⟨c, hc, hc'⟩ := exists_compile_substOracle_cooImpl pattern _ (by norm_num : 0 < 3)
     (hutchppProg.compiled p o d) (Option.some_get _).symm
   exact ⟨c, hc, fun N n => (hc' _ _ N rfl).trans (congrArg
     (Stmt.substOracle (cooImpl (.const N) pattern)) (hutchppProg.toStmt_compiled p o d N n))⟩

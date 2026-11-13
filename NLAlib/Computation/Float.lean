@@ -18,6 +18,9 @@ nonfinite operands and results, so a successful comparison never observes that j
 `FiniteFloat` restricts the carrier to valid finite words, and `finiteFloatSem` lifts the checked
 operations to that carrier without repeating their finiteness checks. The raw interpreter cannot
 satisfy unconditional arithmetic-success clauses on a carrier that still includes NaN.
+Both checked interpreters leave conversion to a natural index unsupported: `toNat` always
+fails, even at zero. Their arithmetic certificates therefore do not supply index exactness
+for a dynamic binder. A separate conversion implementation is required for that use.
 
 The certificates below establish bounded exponents, a 64-bit injective encoding, and
 correspondence to core's logical floating-point operations. They do not assert the
@@ -331,7 +334,8 @@ private theorem map_finiteFloatLift (o : Option Float)
 finiteness already established by `checkedFloatSem`; the lift performs no further finiteness
 check. `isArithErrSem_finiteFloatSem` in `Computation/IEEE.lean` certifies binary arithmetic
 accuracy and range success. Arbitrary rational-literal accuracy and correctness of native
-runtime replacements remain separate obligations. -/
+runtime replacements remain separate obligations. Conversion to a natural index remains
+unsupported and always returns `none`. -/
 def finiteFloatSem : ScalarSem Unit FiniteFloat where
   lit _ q := finiteFloatLift (checkedFloatSem.lit () q)
     (fun z h => isFinite_of_checkedFloatSem_lit_eq_some q z h)
@@ -366,6 +370,10 @@ theorem cmp_finiteFloatSem (c : CmpOp) (x y : FiniteFloat) :
 theorem map_finiteFloatSem_convert (x : FiniteFloat) :
     (finiteFloatSem.convert () () x).map Subtype.val = checkedFloatSem.convert () () x.val :=
   map_finiteFloatLift _ _
+
+/-- The checked finite-word interpreter has no index-conversion implementation. This is
+execution failure even for nonnegative decoded words, not a floor-conversion certificate. -/
+theorem toNat_finiteFloatSem (x : FiniteFloat) : finiteFloatSem.toNat () x = none := rfl
 
 /-- The valid-word carrier inherits the injective 64-bit encoding of raw `Float` words. -/
 theorem FiniteFloat.floatEncode_injective :

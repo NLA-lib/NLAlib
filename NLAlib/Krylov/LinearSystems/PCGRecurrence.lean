@@ -70,7 +70,7 @@ $\mathbf{x}_{k+1} = \mathbf{x}_k + \alpha_k\mathbf{p}_k$,
 $\mathbf{r}_{k+1} = \mathbf{r}_k - \alpha_k\mathbf{A}\mathbf{p}_k$,
 $\mathbf{z}_{k+1} = \mathbf{M}\mathbf{r}_{k+1}$,
 $\beta_k = \rho_{k+1}/\rho_k$, $\mathbf{p}_{k+1} = \mathbf{z}_{k+1} + \beta_k\mathbf{p}_k$.
-[Saad2003, Algorithm 9.1]; [Greenbaum1997, §8.1]; locators to verify.
+[Saad2003, Algorithm 9.1]; [Greenbaum1997, Chapter 8, Algorithm 2P].
 Algorithm: pcg -/
 noncomputable def pcgStep (A M : Matrix n n 𝕜) (s : PCGState 𝕜 n) : PCGState 𝕜 n :=
   let ρ : ℝ := RCLike.re (star s.r ⬝ᵥ s.z)
@@ -233,7 +233,7 @@ theorem pcgState_x_eq_mulVec_cgState_x {C : Matrix n n 𝕜} (hM : M = C * Cᴴ)
 /-- **The preconditioned Hestenes–Stiefel iterates are the PCG iterates**: for positive definite
 $\mathbf{A}$ and $\mathbf{M}$ and every $k$, with no breakdown hypothesis,
 $\mathbf{x}_k = \mathsf{pcgIterate}(\mathbf{A}, \mathbf{M}, \mathbf{b}, \mathbf{x}_0, k)$.
-[Saad2003, §9.2]; locator to verify.
+[Saad2003, §9.2.1].
 Result: pcg-recurrence -/
 theorem _root_.Matrix.PosDef.pcgState_x_eq (hA : A.PosDef) (hM : M.PosDef) (b x₀ : n → 𝕜)
     (k : ℕ) : (pcgState A M b x₀ k).x = pcgIterate A M b x₀ k := by

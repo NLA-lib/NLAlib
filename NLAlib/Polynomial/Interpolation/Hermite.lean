@@ -55,7 +55,8 @@ variable {F : Type*} [Field F] [CharZero F] [DecidableEq F]
 /-- **Uniqueness of Hermite interpolation**: over a field of characteristic $0$, two polynomials
 of degree less than $\lvert m\rvert$ whose derivatives of order below the multiplicity of $y$
 agree at every $y$ of the multiset $m$ are equal.
-[Davis1975, Theorem 2.7.1] (locator to check). -/
+[DeBoor2005, Proposition 7 and (32)–(33)] gives the real or complex interpolant. Here the
+coefficients may lie in any field of characteristic zero. -/
 theorem eq_of_degree_lt_of_forall_iterate_derivative_eval_eq {m : Multiset F} {p q : F[X]}
     (hp : p.degree < m.card) (hq : q.degree < m.card)
     (h : ∀ y ∈ m, ∀ k < m.count y, (derivative^[k] p).eval y = (derivative^[k] q).eval y) :
@@ -84,7 +85,8 @@ theorem eq_of_degree_lt_of_forall_iterate_derivative_eval_eq {m : Multiset F} {p
 /-- **Hermite interpolation**: over a field of characteristic $0$, for every multiset $m$ of
 nodes and all prescribed values $r(y, k)$, there is a polynomial $H$ of degree less than
 $\lvert m\rvert$ with $H^{(k)}(y) = r(y, k)$ for every $y \in m$ and every $k$ below the
-multiplicity of $y$. [Davis1975, Theorem 2.7.1] (locator to check). -/
+multiplicity of $y$. [DeBoor2005, Proposition 7 and (32)–(33)] gives the real or complex
+interpolant. Here the coefficients may lie in any field of characteristic zero. -/
 theorem exists_degree_lt_forall_iterate_derivative_eval_eq (m : Multiset F) (r : F → ℕ → F) :
     ∃ H : F[X], H.degree < m.card ∧
       ∀ y ∈ m, ∀ k < m.count y, (derivative^[k] H).eval y = r y k := by
@@ -135,8 +137,8 @@ and $C^{\lvert m\rvert}$ on $(a, b)$, and $H$ a real polynomial of degree less t
 $\lvert m\rvert$ with $H^{(k)}(y) = f^{(k)}(y)$ for every $y \in m$ and every $k$ below the
 multiplicity of $y$. Then for every $x \in [a, b]$ there is $\xi \in (a, b)$ with
 $$f(x) - H(x) = \frac{f^{(\lvert m\rvert)}(\xi)}{\lvert m\rvert!}\prod_{y\in m}(x - y)\,.$$
-[Davis1975, Theorem 3.5.1]; [Gautschi2004, §1.4.2] (locators to check); there for distinct
-nodes of multiplicity at most $2$ with $\xi$ in the hull of the nodes and $x$; here any
+[DeBoor2005, (16) and (44)] gives the general remainder. [Gautschi2004, (1.4.16)] uses double
+nodes with $\xi$ in the hull of the nodes and $x$; here any
 multiplicities, simple nodes allowed at the endpoints.
 Result: hermite-interpolation-remainder -/
 theorem exists_sub_eval_eq_iteratedDeriv_mul {a b : ℝ} (hab : a < b) {m : Multiset ℝ}
@@ -218,7 +220,7 @@ in $[a, b]$, $f$ continuous on $[a, b]$ and $C^{\lvert s\rvert}$ on $(a, b)$, an
 $x \in [a, b]$, there is $\xi \in (a, b)$ with
 $$f(x) - p_s(x) = \frac{f^{(\lvert s\rvert)}(\xi)}{\lvert s\rvert!}\prod_{y\in s}(x - y)\,,$$
 $p_s$ the Lagrange interpolant of $f$ at $s$ (Mathlib's `Lagrange.interpolate s id f`).
-[Davis1975, Theorem 3.1.1]; [Trefethen2019, Ch. 11] (locators to check); there with $\xi$ in
+[DeBoor2005, (16) and (44)]; there with $\xi$ in
 the hull of $s$ and $x$.
 Result: lagrange-interpolation-remainder -/
 theorem exists_sub_eval_interpolate_eq_iteratedDeriv_mul {a b : ℝ} (hab : a < b) {s : Finset ℝ}

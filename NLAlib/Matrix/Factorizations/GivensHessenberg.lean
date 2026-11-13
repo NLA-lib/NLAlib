@@ -241,7 +241,7 @@ pivots by `forall_givensHessenbergR_apply_self_ne_zero_iff`), the least-squares 
 $\mathbf{H}_k^{+}\mathbf{e}_0$ of the leading $(k + 1) \times k$ block is back substitution with
 the leading $k \times k$ block of the rotated matrix and the first $k$ entries of the rotated
 $\mathbf{e}_0$. Later steps do not change these blocks, so the problems of all sizes are solved
-along the way. [Saad2003, §6.5.3]; locator to verify. -/
+along the way. [Saad2003, §6.5.3]. -/
 theorem pinv_submatrix_mulVec_single_eq_backSubst {q : ℕ} {H : Matrix (Fin (q + 1)) (Fin q) 𝕜}
     (hH : IsUpperHessenberg H) {k : ℕ} (hk : k ≤ q) (hk₁ : k + 1 ≤ q + 1)
     (hHk : Function.Injective (H.submatrix (Fin.castLE hk₁) (Fin.castLE hk)).mulVec) :
@@ -263,8 +263,7 @@ theorem pinv_submatrix_mulVec_single_eq_backSubst {q : ℕ} {H : Matrix (Fin (q 
 /-- **The progressive residual**: under the full-rank hypothesis of
 `pinv_submatrix_mulVec_single_eq_backSubst`, the least-squares residual of the leading block is
 the modulus of entry $k$ of the rotated $\mathbf{e}_0$. This is the residual estimate of GMRES
-and MINRES, read off without forming the iterate. [Saad2003, Proposition 6.9]; locator to
-verify. -/
+and MINRES, read off without forming the iterate. [Saad2003, Proposition 6.9]. -/
 theorem norm_sub_mulVec_pinv_submatrix_mulVec_single_eq {q : ℕ}
     {H : Matrix (Fin (q + 1)) (Fin q) 𝕜} (hH : IsUpperHessenberg H) {k : ℕ} (hk : k ≤ q)
     (hk₁ : k + 1 ≤ q + 1)

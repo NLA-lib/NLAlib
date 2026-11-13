@@ -16,8 +16,8 @@ public import NLAlib.Matrix.Subspaces.ProjectorPair
 The pseudoinverse is not continuous: the rank can jump. Wedin's decomposition of
 $\mathbf{B}^{+} - \mathbf{A}^{+}$ into three terms gives bounds in terms of $\|\mathbf{A}^{+}\|_2$
 and $\|\mathbf{B}^{+}\|_2$, with the constant $(1 + \sqrt{5})/2$ in the spectral norm and $\sqrt{2}$
-in the Frobenius norm. When the ranks agree and the perturbation is small, $\|\mathbf{B}^{+}\|_2$ is
-controlled by $\|\mathbf{A}^{+}\|_2$, and the bound closes.
+in the equal-rank Frobenius bound. When the ranks agree and the perturbation is small,
+the bound controls $\|\mathbf{B}^{+}\|_2$ in terms of $\|\mathbf{A}^{+}\|_2$.
 
 ## Main results
 

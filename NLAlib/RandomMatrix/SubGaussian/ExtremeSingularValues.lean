@@ -21,11 +21,12 @@ public import NLAlib.Probability.SubGaussianVector.Basic
 For a random $m \times n$ matrix $\mathbf{X}$ ($\lvert m \rvert$ rows, $\lvert n \rvert$ columns)
 whose rows are independent, isotropic and sub-Gaussian with proxy $c$,
 and <!-- value subgaussianRowsConstant -->$w = 24c(\sqrt{\lvert n \rvert} + t)$ (the constant is
-`subgaussianRowsConstant`): outside probability $2 e^{-t^2}$,
+`subgaussianRowsConstant`), for $t \ge 0$ and $w \le \sqrt{\lvert m \rvert}$: outside
+probability $2 e^{-t^2}$,
 $$(\sqrt{\lvert m \rvert} - w)^2 \mathbf{I} \preceq \mathbf{X}^{\mathsf{H}}\mathbf{X}
 \preceq (\sqrt{\lvert m \rvert} + w)^2 \mathbf{I} \,,$$
-hence $\sqrt{\lvert m \rvert} - w < \sigma_{\min}(\mathbf{X})$ and
-$\|\mathbf{X}\|_2 < \sqrt{\lvert m \rvert} + w$. Also the fixed-vector bound: for a unit
+hence $\sqrt{\lvert m \rvert} - w \le \sigma_{\min}(\mathbf{X})$ and
+$\|\mathbf{X}\|_2 \le \sqrt{\lvert m \rvert} + w$. Also the fixed-vector bound: for a unit
 $\mathbf{x}$, $\|\mathbf{X}\mathbf{x}\|^2 - \lvert m \rvert$ is sub-exponential with parameters
 $32 c^2 \lvert m \rvert$, $4 c$.
 

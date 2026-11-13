@@ -48,6 +48,41 @@ open scoped Matrix MatrixOrder
 
 namespace NLAlib
 
+section ApproximateMultiplication
+
+variable {Ω : Type*} [MeasurableSpace Ω] {μ : Measure Ω} {𝕜 : Type*} [RCLike 𝕜]
+  {k n q r : Type*} [Fintype k] [Fintype n] [Fintype q] [Fintype r]
+
+/-- A random sketch approximately preserves the product $\mathbf{A}^{\mathsf{H}}\mathbf{B}$
+with distortion $\varepsilon$ and failure budget $\delta$ if its Frobenius error exceeds
+$\varepsilon\|\mathbf{A}\|_{\mathsf{F}}\|\mathbf{B}\|_{\mathsf{F}}$ with probability at most
+$\delta$. The strict failure event is empty if either factor is zero; no measurability of that
+event is required. This is the product-specific tail form of approximate matrix multiplication.
+[Woodruff2014, Theorem 13]; there for real matrices and with distortion $3\varepsilon$. -/
+def HasApproximateMatrixMultiplication (S : Ω → Matrix k n 𝕜) (A : Matrix n q 𝕜)
+    (B : Matrix n r 𝕜) (ε δ : ℝ) (μ : Measure Ω) : Prop :=
+  μ.real {ω | ε * frobNorm A * frobNorm B <
+    frobNorm (Aᴴ * (S ω)ᴴ * S ω * B - Aᴴ * B)} ≤ δ
+
+/-- A non-strict AMM tail for nonzero factors implies the strict-tail property for arbitrary
+factors, with a nonnegative failure budget. Zero factors need no separate law assumption. -/
+theorem hasApproximateMatrixMultiplication_of_measureReal_ge_le [IsFiniteMeasure μ]
+    {S : Ω → Matrix k n 𝕜} {A : Matrix n q 𝕜} {B : Matrix n r 𝕜} {ε δ : ℝ}
+    (hδ : 0 ≤ δ) (h : A ≠ 0 → B ≠ 0 →
+      μ.real {ω | ε * frobNorm A * frobNorm B ≤
+        frobNorm (Aᴴ * (S ω)ᴴ * S ω * B - Aᴴ * B)} ≤ δ) :
+    HasApproximateMatrixMultiplication S A B ε δ μ := by
+  unfold HasApproximateMatrixMultiplication
+  rcases eq_or_ne A 0 with rfl | hA
+  · simpa only [Matrix.conjTranspose_zero, Matrix.zero_mul, sub_self, frobNorm_zero,
+      mul_zero, zero_mul, lt_self_iff_false, Set.ofPred_false, measureReal_empty] using hδ
+  rcases eq_or_ne B 0 with rfl | hB
+  · simpa only [Matrix.mul_zero, sub_self, frobNorm_zero, mul_zero, lt_self_iff_false,
+      Set.ofPred_false, measureReal_empty] using hδ
+  exact (measureReal_mono (Set.ofPred_subset_ofPred.2 fun ω hω => hω.le)).trans (h hA hB)
+
+end ApproximateMultiplication
+
 variable {Ω : Type*} {mΩ : MeasurableSpace Ω} {μ : Measure Ω} {k n q r : Type*} [Fintype k]
   [Fintype n] [Fintype q] [Fintype r] {S : Ω → Matrix k n ℝ} {ε δ p : ℝ}
 

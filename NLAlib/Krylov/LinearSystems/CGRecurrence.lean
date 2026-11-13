@@ -133,7 +133,8 @@ theorem cgState_succ_eq_of_r_eq_zero (A : Matrix n n 𝕜) (b x₀ : n → 𝕜)
 variable {A : Matrix n n 𝕜} {b x₀ : n → 𝕜}
 
 omit [DecidableEq n] in
-private lemma cgState_succ (A : Matrix n n 𝕜) (b x₀ : n → 𝕜) (k : ℕ) :
+/-- The exact CG state advances by one application of its total step function. -/
+theorem cgState_succ (A : Matrix n n 𝕜) (b x₀ : n → 𝕜) (k : ℕ) :
     cgState A b x₀ (k + 1) = cgStep A (cgState A b x₀ k) :=
   rfl
 

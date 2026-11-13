@@ -191,7 +191,7 @@ Hermitian $\mathbf{A}$, every $q$ and $j < q$, column $j$ of the canonical Lancz
 $\mathsf{arnoldiMatrix}(\mathbf{A}, \mathbf{b}, q)$ is
 $\pi_j(\mathbf{A})\mathbf{b}/\|\pi_j(\mathbf{A})\mathbf{b}\|$, $\pi_j$ the monic orthogonal
 polynomial of degree $j$ of $\mu_{\mathbf{A},\mathbf{b}}$; from the grade on both sides are
-$\mathbf{0}$. [GolubMeurant2010, Ch. 4] (locator to check).
+$\mathbf{0}$. [GolubMeurant2010, Theorems 4.1–4.2].
 Result: lanczos-orthogonal-polynomials -/
 theorem _root_.Matrix.IsHermitian.arnoldiMatrix_col_eq_smul_aeval_orthogonalPolynomial_mulVec
     {A : Matrix n n 𝕜} (hA : A.IsHermitian) (b : n → 𝕜) {q : ℕ} (j : Fin q) :
@@ -299,7 +299,7 @@ theorem _root_.Matrix.IsHermitian.lanczosState_beta {A : Matrix n n 𝕜}
 /-- **The Lanczos tridiagonal is the Jacobi matrix of the spectral measure**: for Hermitian
 $\mathbf{A}$ and every $q$, the tridiagonal matrix of $q$ steps of the Lanczos recurrence from
 $\mathbf{b}$ is $\mathbf{J}_q(\mu_{\mathbf{A},\mathbf{b}})$; past the grade both are padded with
-the same zeros. [GolubMeurant2010, Ch. 4]; [Gautschi2004, §3.1] (locators to check).
+the same zeros. [GolubMeurant2010, Theorems 4.1–4.2]; [Gautschi2004, Theorem 1.31, §1.3.2].
 Result: lanczos-jacobi-matrix -/
 theorem _root_.Matrix.IsHermitian.lanczosTridiagonal_eq_jacobiMatrix {A : Matrix n n 𝕜}
     (hA : A.IsHermitian) (b : n → 𝕜) (q : ℕ) :

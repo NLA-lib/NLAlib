@@ -325,8 +325,9 @@ $\lambda_j(\mathbf{A}) > \lambda_{j+1}(\mathbf{A})$:
 $$\|(\mathbf{I} - \mathbf{U}\mathbf{U}^{\mathsf{H}})\mathbf{Q}\|_{\mathsf{F}}
   \le \frac{\sqrt{2} \, \|\mathbf{E}\|_{\mathsf{F}}}
   {\lambda_j(\mathbf{A}) - \lambda_{j+1}(\mathbf{A})}.$$
-[YuWangSamworth2015, Theorem 2], there for a leading eigenframe of a Hermitian
-$\mathbf{A} + \mathbf{E}$.
+[YuWangSamworth2015, Theorem 2] gives factor $2$ for a block of eigenvectors of real symmetric
+matrices. The variational proof here gives $\sqrt{2}$ for the leading frame and any
+$\mathbf{Q}$ satisfying the displayed Rayleigh trace comparison.
 Result: davis-kahan -/
 theorem
     _root_.Matrix.IsHermitian.frobNorm_one_sub_mul_le_sqrt_two_mul_frobNorm_div_eigengap_of_re_trace_le
@@ -351,7 +352,8 @@ columns attaining the largest Rayleigh trace of $\mathbf{A} + \mathbf{E}$,
 $$\|(\mathbf{I} - \mathbf{U}\mathbf{U}^{\mathsf{H}})\mathbf{Q}\|_{\mathsf{F}}
   \le \frac{\sqrt{2} \, \|\mathbf{E}\|_{\mathsf{F}}}
   {\lambda_j(\mathbf{A}) - \lambda_{j+1}(\mathbf{A})}.$$
-[YuWangSamworth2015, Theorem 2].
+[YuWangSamworth2015, Theorem 2] gives factor $2$ in the printed Frobenius bound. Here the
+leading-frame variational estimate gives $\sqrt{2}$ over real or complex scalars.
 Result: davis-kahan -/
 theorem _root_.Matrix.IsHermitian.frobNorm_one_sub_mul_le_sqrt_two_mul_frobNorm_div_eigengap
     [DecidableEq n]
@@ -376,8 +378,8 @@ $\lambda_j(\mathbf{A}) > \lambda_{j+1}(\mathbf{A})$:
 $$\|(\mathbf{I} - \mathbf{U}\mathbf{U}^{\mathsf{H}})\mathbf{Q}\|_{\mathsf{F}}
   \le \frac{2 \sqrt{j + 1} \, \|\mathbf{E}\|_2}
   {\lambda_j(\mathbf{A}) - \lambda_{j+1}(\mathbf{A})}.$$
-[YuWangSamworth2015, Theorem 2], there for a leading eigenframe of a Hermitian
-$\mathbf{A} + \mathbf{E}$. -/
+[YuWangSamworth2015, Theorem 2] treats eigenframes of real symmetric matrices.
+Here the Rayleigh trace comparison also covers complex frames and general perturbations. -/
 theorem
     _root_.Matrix.IsHermitian.frobNorm_one_sub_mul_le_two_mul_sqrt_mul_specNorm_div_eigengap_of_re_trace_le
     [DecidableEq n] {A E : Matrix n n 𝕜} (hA : A.IsHermitian) {j : ℕ}
@@ -403,7 +405,8 @@ largest Rayleigh trace of $\mathbf{A} + \mathbf{E}$,
 $$\|(\mathbf{I} - \mathbf{U}\mathbf{U}^{\mathsf{H}})\mathbf{Q}\|_{\mathsf{F}}
   \le \frac{2 \sqrt{j + 1} \, \|\mathbf{E}\|_2}
   {\lambda_j(\mathbf{A}) - \lambda_{j+1}(\mathbf{A})}.$$
-[YuWangSamworth2015, Theorem 2]. -/
+[YuWangSamworth2015, Theorem 2] gives the real symmetric eigenframe bound.
+Here the maximizing frame can also be complex. -/
 theorem _root_.Matrix.IsHermitian.frobNorm_one_sub_mul_le_two_mul_sqrt_mul_specNorm_div_eigengap
     [DecidableEq n]
     {A E : Matrix n n 𝕜} (hA : A.IsHermitian) (hE : E.IsHermitian) {j : ℕ}

@@ -23,8 +23,9 @@ subspace embedding and injection with failure probability
 $(d^2 + d)/(\lvert k \rvert \varepsilon^2)$, the JL moment at $p = 2$, the sizes, and the
 projection-cost-preserving sketch. Every bound is the same over $\mathbb{R}$ and $\mathbb{C}$.
 
-Degenerate cases are those of the law (`NLAlib/Sketching/Sparse/CountSketch.lean`): for empty `k`,
-`HasLaw` forces $\mu = 0$ and every tail holds, hence `[Nonempty k]` on the OSI only; dimension
+Degenerate cases are those of the law (`NLAlib/Sketching/Sparse/CountSketch.lean`): for empty `k`
+and nonempty `n`, `HasLaw` forces $\mu = 0$ and every tail holds; when both are empty the law
+is Dirac at the empty matrix. Hence `[Nonempty k]` on the OSI only; dimension
 $d = 0$ makes every bound $0$, and for $d > \lvert n \rvert$ the OSE at $d$ is the one at
 $\lvert n \rvert$. Split from `NLAlib/Sketching/Sparse/CountSketch.lean` (2026-10-16),
 the `Haar.lean` and `HaarEmbedding.lean` precedent.
@@ -391,46 +392,14 @@ private theorem hasProjectionCostPreserving_of_hasLaw_countSketch_of_frame [Fint
       (δ₁ + 3 * (2 / (Fintype.card k * εJ ^ 2))) μ := by
   have : IsFiniteMeasure μ := hS.isFiniteMeasure_iff.2 inferInstance
   have hδ' : 0 ≤ 2 / (Fintype.card k * εJ ^ 2) := by positivity
-  have hZF : frobNorm Z ≤ √(d : ℝ) := by
-    rw [← Real.sqrt_sq (frobNorm_nonneg Z), hZ.frobNorm_sq]
-    exact Real.sqrt_le_sqrt (by exact_mod_cast hrd)
   have hhead : HasSubspaceEmbedding S Z a b δ₁ μ :=
     h.hasSubspaceEmbedding (by rw [hZ.rank_eq]; exact hrd)
-  have key := hhead.hasProjectionCostPreserving_of_hasOrthonormalCols (εw := εJ)
-    (εχ := √(d : ℝ) * εJ) (εF := εJ) (δ₂ := 2 / (Fintype.card k * εJ ^ 2))
-    (δ₃ := 2 / (Fintype.card k * εJ ^ 2)) (δ₄ := 2 / (Fintype.card k * εJ ^ 2)) hZ ha hb hZA
-    hεJ.le (by positivity) hεJ.le ?_ ?_ ?_
-  · exact key.mono le_rfl (le_of_eq (by ring)) (le_of_eq (by ring)) (le_of_eq (by ring))
+  apply hhead.hasProjectionCostPreserving_of_hasApproximateMatrixMultiplication
+    (hasJLMoment_of_hasLaw_countSketch hS hεJ) hS.aemeasurable ha hb hεJ one_le_two hδ' hZ hZA hrd
   all_goals
-    generalize A - A * Z * Zᴴ = E
-    rcases eq_or_ne E 0 with rfl | hE
-    · simp only [Matrix.zero_mul, Matrix.conjTranspose_zero, Matrix.mul_zero, sub_self,
-        frobNorm_zero, mul_zero, ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow,
-        lt_self_iff_false, Set.ofPred_false, measureReal_empty]
-      exact hδ'
-  · have hEh : Eᴴ ≠ 0 := by rwa [Ne, Matrix.conjTranspose_eq_zero]
-    refine (measureReal_mono (Set.ofPred_subset_ofPred.2 fun ω hω => ?_)).trans
-      (measureReal_frobNorm_conjTranspose_mul_sub_ge_le_of_hasLaw_countSketch hS hεJ hEh hEh)
-    rw [Matrix.conjTranspose_conjTranspose, frobNorm_conjTranspose, mul_assoc, ← sq]
-    exact hω.le
-  · rcases eq_or_ne Z 0 with rfl | hZ0
-    · simp only [Matrix.mul_zero, sub_self, frobNorm_zero]
-      refine (measureReal_mono (Set.ofPred_subset_ofPred.2 fun ω hω => ?_)).trans
-        (measureReal_empty.trans_le hδ' : μ.real ∅ ≤ _)
-      exact absurd hω (not_lt.2 (by positivity))
-    have hEh : Eᴴ ≠ 0 := by rwa [Ne, Matrix.conjTranspose_eq_zero]
-    refine (measureReal_mono (Set.ofPred_subset_ofPred.2 fun ω hω => ?_)).trans
-      (measureReal_frobNorm_conjTranspose_mul_sub_ge_le_of_hasLaw_countSketch hS hεJ hEh hZ0)
-    rw [Matrix.conjTranspose_conjTranspose, frobNorm_conjTranspose]
-    refine le_trans ?_ hω.le
-    have := mul_le_mul_of_nonneg_left hZF (mul_nonneg hεJ.le (frobNorm_nonneg E))
-    linarith
-  · have hEh : Eᴴ ≠ 0 := by rwa [Ne, Matrix.conjTranspose_eq_zero]
-    refine (measureReal_mono (Set.ofPred_subset_ofPred.2 fun ω hω => ?_)).trans
-      ((hasJLMoment_of_hasLaw_countSketch hS hεJ).measureReal_abs_frobNorm_mul_sq_sub_ge_le hεJ
-        one_le_two hS.aemeasurable hEh)
-    rw [frobNorm_conjTranspose]
-    exact le_abs.2 (Or.inl (by linarith))
+    apply hasApproximateMatrixMultiplication_of_measureReal_ge_le hδ'
+    intro hA hB
+    exact measureReal_frobNorm_conjTranspose_mul_sub_ge_le_of_hasLaw_countSketch hS hεJ hA hB
 
 /-- **A CountSketch is a projection-cost-preserving sketch**, size form, over any field: for
 $\varepsilon, \delta > 0$, at

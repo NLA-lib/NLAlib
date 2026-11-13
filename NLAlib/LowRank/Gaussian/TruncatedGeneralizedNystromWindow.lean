@@ -243,7 +243,6 @@ private theorem integral_truncation_window_le (A : Matrix m n ℝ) (x : Matrix n
     dsimp only [C, N, W, W', id_eq]
     gcongr
     · exact reciprocalWindowNoiseConstant_le
-    · exact singularValues_nonneg _ _
     · exact reciprocalWindowCrossConstant_le
   have h1 : Integrable (fun ψ => frobNorm (A - truncatedSVD (rsvd A x) k) ^ 2 +
       69 * k * specNorm (N ψ) ^ 2) (gaussianMatrix m p) :=

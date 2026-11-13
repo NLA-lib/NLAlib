@@ -373,28 +373,6 @@ theorem HasOrthonormalCols.cfc_mul_mul_conjTranspose {r : Type*} [Fintype r] [De
 
 /-! ### The spectrum -/
 
-/-- The real spectrum of a Hermitian matrix lies in a set $s$ exactly when its eigenvalues
-$\lambda_i(\mathbf{A})$, $i < \lvert n \rvert$, do. -/
-theorem _root_.Matrix.IsHermitian.spectrum_subset_iff {A : Matrix n n 𝕜} (hA : A.IsHermitian)
-    {s : Set ℝ} : spectrum ℝ A ⊆ s ↔ ∀ i, i < Fintype.card n → eigenvalue A i ∈ s := by
-  classical
-  rw [hA.spectrum_eq_image_eigenvalue, Set.image_subset_iff]
-  exact Iff.rfl
-
-/-- A matrix with $a\mathbf{I} \preceq \mathbf{A} \preceq b\mathbf{I}$ has its real spectrum in
-$[a, b]$. -/
-theorem spectrum_subset_Icc_of_le {A : Matrix n n 𝕜} {a b : ℝ}
-    (h₁ : a • (1 : Matrix n n 𝕜) ≤ A) (h₂ : A ≤ b • (1 : Matrix n n 𝕜)) :
-    spectrum ℝ A ⊆ Set.Icc a b := by
-  have hA := isHermitian_of_le_smul_one h₂
-  rw [hA.spectrum_subset_iff]
-  intro i hi
-  have : Nonempty n := Fintype.card_pos_iff.mp (Nat.zero_lt_of_lt hi)
-  obtain ⟨k, hk⟩ : ∃ k, k + 1 = Fintype.card n := ⟨Fintype.card n - 1, by omega⟩
-  exact ⟨((hA.smul_one_le_iff hk).mp h₁).trans
-      (hA.eigenvalue_le_eigenvalue (by omega) (by omega)),
-    (hA.eigenvalue_le_eigenvalue (Nat.zero_le i) hi).trans (hA.le_smul_one_iff.mp h₂)⟩
-
 /-- A lower spectral bound is a Loewner bound: for Hermitian $\mathbf{A}$,
 $a\mathbf{I} \preceq \mathbf{A}$ iff the real spectrum lies in $[a, \infty)$. The converse half
 of `spectrum_subset_Icc_of_le`, by Mathlib's `algebraMap_le_iff_le_spectrum`. -/
@@ -410,6 +388,22 @@ theorem _root_.Matrix.IsHermitian.le_smul_one_iff_spectrum_subset_Iic {A : Matri
     (hA : A.IsHermitian) (b : ℝ) : A ≤ b • (1 : Matrix n n 𝕜) ↔ spectrum ℝ A ⊆ Set.Iic b := by
   rw [← Algebra.algebraMap_eq_smul_one]
   exact le_algebraMap_iff_spectrum_le (a := A) hA
+
+/-- For a Hermitian matrix, containment of the real spectrum in $[a,b]$ is equivalent to the
+two Loewner bounds with scalar endpoints. This also covers empty finite index types. -/
+theorem _root_.Matrix.IsHermitian.spectrum_subset_Icc_iff {A : Matrix n n 𝕜}
+    (hA : A.IsHermitian) {a b : ℝ} : spectrum ℝ A ⊆ Set.Icc a b ↔
+      a • (1 : Matrix n n 𝕜) ≤ A ∧ A ≤ b • (1 : Matrix n n 𝕜) := by
+  rw [hA.smul_one_le_iff_spectrum_subset_Ici, hA.le_smul_one_iff_spectrum_subset_Iic]
+  exact ⟨fun h => ⟨fun _ hx => (h hx).1, fun _ hx => (h hx).2⟩,
+    fun ⟨hl, hu⟩ _ hx => ⟨hl hx, hu hx⟩⟩
+
+/-- A matrix with $a\mathbf{I} \preceq \mathbf{A} \preceq b\mathbf{I}$ has its real spectrum in
+$[a, b]$. -/
+theorem spectrum_subset_Icc_of_le {A : Matrix n n 𝕜} {a b : ℝ}
+    (h₁ : a • (1 : Matrix n n 𝕜) ≤ A) (h₂ : A ≤ b • (1 : Matrix n n 𝕜)) :
+    spectrum ℝ A ⊆ Set.Icc a b :=
+  (isHermitian_of_le_smul_one h₂).spectrum_subset_Icc_iff.mpr ⟨h₁, h₂⟩
 
 /-- Ritz values lie in every interval containing the spectrum: for Hermitian $\mathbf{A}$
 with spectrum in $[a, a']$ and $\mathbf{Q}$ with orthonormal columns, the spectrum of
@@ -597,7 +591,7 @@ theorem _root_.Matrix.IsHermitian.norm_toLp_cfc_mulVec_sq {A : Matrix n n 𝕜}
 $\lvert\varphi\rvert \le \lvert\psi\rvert\,\lvert\chi\rvert$ on the spectrum of $\mathbf{A}$,
 then $\lvert\mathbf{x}^{\mathsf{H}}\varphi(\mathbf{A})\mathbf{y}\rvert \le
 \|\psi(\mathbf{A})\mathbf{x}\|\,\|\chi(\mathbf{A})\mathbf{y}\|$.
-[HornJohnson2013, Theorem 5.1.4]; there for vectors (locator to check). -/
+[HornJohnson2013, Theorem 5.1.4]; there for vectors. -/
 theorem _root_.Matrix.IsHermitian.norm_star_dotProduct_cfc_mulVec_le {A : Matrix n n 𝕜}
     (hA : A.IsHermitian) {φ ψ χ : ℝ → ℝ} (h : ∀ x ∈ spectrum ℝ A, |φ x| ≤ |ψ x| * |χ x|)
     (x y : n → 𝕜) :

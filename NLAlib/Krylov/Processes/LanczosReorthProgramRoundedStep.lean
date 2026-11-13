@@ -508,7 +508,7 @@ theorem exec_orth_nrm2 (I : Interp P ι K (OpCount P ι)) {u : P → ℝ} {dec :
 private theorem exec_commitPhase_of_charge (I : Interp P ι K (OpCount P ι)) {u : P → ℝ}
     {dec : P → K → ℝ}
     (h : IsRelErrSem u dec (fun _ _ => True) I.sem) (hz : AddsZeroExactly dec I.sem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P) {N q t slot : ℕ}
+    (hc : IsUnitCharge I) (tag : P) {N q t slot : ℕ}
     (predot normed : St P K (OpCount P ι))
     (hshape : normed.store.shape = workspaceShape tag N q slot)
     (hpshape : predot.store.shape = normed.store.shape) (ht : t < q) (vc : Fin N → ℝ)

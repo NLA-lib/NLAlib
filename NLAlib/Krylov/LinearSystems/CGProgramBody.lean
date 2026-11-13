@@ -224,7 +224,7 @@ theorem StoreContext.replace_registers
 /-- The actual first two kernels of an active exact CG step produce the stored matrix-vector
 product and curvature pairing. Every persistent CG cell and cached residual is preserved. -/
 theorem exec_exact_curvature {ι : Type} (I : Interp P ι ℝ (OpCount P ι))
-    (hI : I.sem = exactSem) (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hI : I.sem = exactSem) (hc : IsUnitCharge I) (tag : P)
     (st : St P ℝ (OpCount P ι)) (N : ℕ) (A : Matrix (Fin N) (Fin N) ℝ)
     (b : Fin N → ℝ) (v : CGState ℝ (Fin N)) (ν status : ℝ)
     (h : StoreContext tag (fun _ x => x) N A b v ν status 1 st.store) :
@@ -288,7 +288,7 @@ theorem exec_exact_curvature {ι : Type} (I : Interp P ι ℝ (OpCount P ι))
 /-- Given the actual nonzero stored curvature, the canonical division and iterate axpy
 execute and update the physical iterate by the exact line-search coefficient. -/
 theorem exec_exact_iterate_update {ι : Type} (I : Interp P ι ℝ (OpCount P ι))
-    (hI : I.sem = exactSem) (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hI : I.sem = exactSem) (hc : IsUnitCharge I) (tag : P)
     (st : St P ℝ (OpCount P ι)) (N : ℕ) (A : Matrix (Fin N) (Fin N) ℝ)
     (b : Fin N → ℝ) (v : CGState ℝ (Fin N)) (ν status μ : ℝ)
     (h : StoreContext tag (fun _ x => x) N A b v ν status 1 st.store storedMatrix)
@@ -340,12 +340,12 @@ theorem exec_exact_iterate_update {ι : Type} (I : Interp P ι ℝ (OpCount P ι
   · intro i
     exact (hf tag 6 i (Or.inl (by norm_num))).trans
       (hframe tag 6 i (Or.inr (Or.inl (by norm_num))))
-  · simpa only [mid, hc] using hcnt
+  · simpa only [mid, hc.charge_eq] using hcnt
 
 /-- The canonical negation and residual axpy execute on the actual stored product vector.
 The cached old residual pairing is retained until the subsequent direction quotient. -/
 theorem exec_exact_residual_update {ι : Type} (I : Interp P ι ℝ (OpCount P ι))
-    (hI : I.sem = exactSem) (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hI : I.sem = exactSem) (hc : IsUnitCharge I) (tag : P)
     (st : St P ℝ (OpCount P ι)) (N : ℕ) (A : Matrix (Fin N) (Fin N) ℝ)
     (b : Fin N → ℝ) (v : CGState ℝ (Fin N)) (ν status γ : ℝ) (sv : Fin N → ℝ)
     (h : StoreContext tag (fun _ x => x) N A b v ν status 1 st.store storedMatrix)
@@ -389,12 +389,12 @@ theorem exec_exact_residual_update {ι : Type} (I : Interp P ι ℝ (OpCount P �
     · intro i
       exact ⟨_, by simpa only [IExp.eval_zero, zero_add, neg_mul, sub_eq_add_neg] using hv i,
         rfl⟩
-  · simpa only [mid, hc] using hcnt
+  · simpa only [mid, hc.charge_eq] using hcnt
 
 /-- The actual four-instruction/kernel primal update changes the iterate and residual using
 one stored curvature. Both vector operations occur before the next residual pairing. -/
 theorem exec_exact_primal_update {ι : Type} (I : Interp P ι ℝ (OpCount P ι))
-    (hI : I.sem = exactSem) (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hI : I.sem = exactSem) (hc : IsUnitCharge I) (tag : P)
     (st : St P ℝ (OpCount P ι)) (N : ℕ) (A : Matrix (Fin N) (Fin N) ℝ)
     (b : Fin N → ℝ) (v : CGState ℝ (Fin N)) (ν status μ : ℝ)
     (h : StoreContext tag (fun _ x => x) N A b v ν status 1 st.store storedMatrix)
@@ -440,7 +440,7 @@ theorem exec_exact_primal_update {ι : Type} (I : Interp P ι ℝ (OpCount P ι)
 /-- The updated residual is paired before the direction quotient, using the cached old
 pairing as the denominator. No residual norm or square-root operation is inserted. -/
 theorem exec_exact_direction_quotient {ι : Type} (I : Interp P ι ℝ (OpCount P ι))
-    (hI : I.sem = exactSem) (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hI : I.sem = exactSem) (hc : IsUnitCharge I) (tag : P)
     (st : St P ℝ (OpCount P ι)) (N : ℕ) (A : Matrix (Fin N) (Fin N) ℝ)
     (b : Fin N → ℝ) (v : CGState ℝ (Fin N)) (ν status : ℝ)
     (h : StoreContext tag (fun _ x => x) N A b v ν status 1 st.store storedMatrix) (hne : ν ≠ 0) :
@@ -488,7 +488,7 @@ theorem exec_exact_direction_quotient {ι : Type} (I : Interp P ι ℝ (OpCount 
   · rw [exec_run_bind I (b := dot tag ⟨7, 1⟩ 2 0 2 0 (.const N))
       (fun _ => rfl), hrun, Option.bind_some]
     exact hout
-  · simp only [hc, hcnt]
+  · simp only [hc.charge_eq, hcnt]
 
 private def extendVector {N : ℕ} (v : Fin N → ℝ) (i : ℕ) : ℝ :=
   if hi : i < N then v ⟨i, hi⟩ else 0
@@ -496,7 +496,7 @@ private def extendVector {N : ℕ} (v : Fin N → ℝ) (i : ℕ) : ℝ :=
 /-- The published inline multiplication/addition loop updates the actual direction cells,
 while retaining the old cached residual pairing, the new residual and the right-hand side. -/
 theorem exec_exact_direction_update {ι : Type} (I : Interp P ι ℝ (OpCount P ι))
-    (hI : I.sem = exactSem) (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hI : I.sem = exactSem) (hc : IsUnitCharge I) (tag : P)
     (st : St P ℝ (OpCount P ι)) (N : ℕ) (A : Matrix (Fin N) (Fin N) ℝ)
     (b : Fin N → ℝ) (v : CGState ℝ (Fin N)) (ν status δ : ℝ)
     (h : StoreContext tag (fun _ x => x) N A b v ν status 1 st.store storedMatrix)
@@ -551,7 +551,7 @@ theorem exec_exact_direction_update {ι : Type} (I : Interp P ι ℝ (OpCount P 
         (hframe 7 0 (by norm_num) (Or.inr (by norm_num))) h.squaredResidual
     · exact read_decoded_of_frame (dec := fun _ x => x)
         (hframe 4 0 (by norm_num) (Or.inl (by norm_num))) h.statusValue
-  · simpa only [IExp.eval_const, hc] using hstate
+  · simpa only [IExp.eval_const, hc.charge_eq] using hstate
 
 /-- The residual cache is overwritten only after the direction has consumed its old value.
 This is the actual final scalar copy of an active step. -/
@@ -627,7 +627,7 @@ theorem exec_exact_zero_guard {ι : Type} (I : Interp P ι ℝ (OpCount P ι))
 /-- The direction update consumes its coefficient before overwriting the residual cache,
 then records zero termination. This is the full canonical tail, with exact branch counts. -/
 theorem exec_exact_direction_tail {ι : Type} (I : Interp P ι ℝ (OpCount P ι))
-    (hI : I.sem = exactSem) (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hI : I.sem = exactSem) (hc : IsUnitCharge I) (tag : P)
     (st : St P ℝ (OpCount P ι)) (N : ℕ) (A : Matrix (Fin N) (Fin N) ℝ)
     (b : Fin N → ℝ) (v : CGState ℝ (Fin N)) (ν νnext status δ : ℝ)
     (h : StoreContext tag (fun _ x => x) N A b v ν status 1 st.store storedMatrix)
@@ -663,12 +663,12 @@ theorem exec_exact_direction_tail {ι : Type} (I : Interp P ι ℝ (OpCount P ι
   · calc
       out = { cache with store := out.store, cnt := cache.cnt + I.charge (.cmp tag) +
         (if νnext = 0 then I.charge (.copy tag) else 0) } := houtstate
-      _ = _ := by rw [hcachestate, hdirstate]; simp only [hc]
+      _ = _ := by rw [hcachestate, hdirstate]; simp only [hc.charge_eq]
 
 /-- The full search-direction phase pairs the new residual, divides by the old cache,
 updates the direction, then stores the new cache and zero status, in the approved order. -/
 theorem exec_exact_search_update {ι : Type} (I : Interp P ι ℝ (OpCount P ι))
-    (hI : I.sem = exactSem) (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hI : I.sem = exactSem) (hc : IsUnitCharge I) (tag : P)
     (st : St P ℝ (OpCount P ι)) (N : ℕ) (A : Matrix (Fin N) (Fin N) ℝ)
     (b : Fin N → ℝ) (v : CGState ℝ (Fin N)) (ν status : ℝ)
     (h : StoreContext tag (fun _ x => x) N A b v ν status 1 st.store storedMatrix) (hne : ν ≠ 0) :
@@ -720,7 +720,7 @@ theorem exec_exact_search_update {ι : Type} (I : Interp P ι ℝ (OpCount P ι)
 /-- The entire inner body under positive curvature realizes one mathematical CG step.
 The physical vector cells, cached residual and terminal status are all tied to that step. -/
 theorem exec_exact_positive_body {ι : Type} (I : Interp P ι ℝ (OpCount P ι))
-    (hI : I.sem = exactSem) (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hI : I.sem = exactSem) (hc : IsUnitCharge I) (tag : P)
     (st : St P ℝ (OpCount P ι)) (N : ℕ) (A : Matrix (Fin N) (Fin N) ℝ)
     (b : Fin N → ℝ) (v : CGState ℝ (Fin N)) (status : ℝ)
     (h : StoreContext tag (fun _ x => x) N A b v (v.r ⬝ᵥ v.r) status 1 st.store storedMatrix)

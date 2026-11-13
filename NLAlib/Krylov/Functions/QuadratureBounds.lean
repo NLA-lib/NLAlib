@@ -72,7 +72,7 @@ $$\operatorname{Re}\mathbf{b}^{\mathsf{H}}f(\mathbf{A})\mathbf{b} -
 \frac{f^{(2q)}(\xi)}{(2q)!}\|\pi_q(\mathbf{A})\mathbf{b}\|^2\,,$$
 $\pi_q$ the monic orthogonal polynomial of degree $q$ of $\mu_{\mathbf{A},\mathbf{b}}$ (the
 characteristic polynomial of the Lanczos tridiagonal below the grade); past the grade both
-sides are $0$. [GolubMeurant2010, Ch. 6, Ch. 7] (locators to check). -/
+sides are $0$. [GolubMeurant2010, §6.2.1]. -/
 theorem _root_.Matrix.IsHermitian.exists_re_quadForm_cfc_sub_re_star_dotProduct_lanczosFA_eq
     {A : Matrix n n 𝕜} (hA : A.IsHermitian) {a a' : ℝ} (hs : spectrum ℝ A ⊆ Set.Icc a a')
     (haa' : a < a') {f : ℝ → ℝ} (hf : ContinuousOn f (Set.Icc a a')) {q : ℕ} (hq : 0 < q)
@@ -96,7 +96,7 @@ continuous on $[a, a']$, $C^{2q}$ on $(a, a')$ with $f^{(2q)} \ge 0$ there, and 
 $\mathbf{b}$,
 $$\operatorname{Re}\mathbf{b}^{\mathsf{H}}\mathsf{lanczosFA}(\mathbf{A}, f, \mathbf{b}, q) \le
 \operatorname{Re}\mathbf{b}^{\mathsf{H}}f(\mathbf{A})\mathbf{b}\,.$$
-[GolubMeurant2010, Ch. 6, Ch. 7] (locators to check). -/
+[GolubMeurant2010, §6.2.1]. -/
 theorem _root_.Matrix.IsHermitian.re_star_dotProduct_lanczosFA_le_of_iteratedDeriv_nonneg
     {A : Matrix n n 𝕜} (hA : A.IsHermitian) {a a' : ℝ} (hs : spectrum ℝ A ⊆ Set.Icc a a')
     (haa' : a < a') {f : ℝ → ℝ} (hf : ContinuousOn f (Set.Icc a a')) {q : ℕ} (hq : 0 < q)
@@ -114,7 +114,7 @@ for Hermitian $\mathbf{A}$ with spectrum in $[a, a']$, $a < a'$, $q > 0$, $f$ co
 $[a, a']$, $C^{2q}$ on $(a, a')$ with $f^{(2q)} \le 0$ there, and every $\mathbf{b}$,
 $$\operatorname{Re}\mathbf{b}^{\mathsf{H}}f(\mathbf{A})\mathbf{b} \le
 \operatorname{Re}\mathbf{b}^{\mathsf{H}}\mathsf{lanczosFA}(\mathbf{A}, f, \mathbf{b}, q)\,.$$
-[GolubMeurant2010, Ch. 6, Ch. 7] (locators to check). -/
+[GolubMeurant2010, §6.2.1]. -/
 theorem
 _root_.Matrix.IsHermitian.re_quadForm_cfc_le_re_star_dotProduct_lanczosFA_of_iteratedDeriv_nonpos
     {A : Matrix n n 𝕜} (hA : A.IsHermitian) {a a' : ℝ} (hs : spectrum ℝ A ⊆ Set.Icc a a')
@@ -140,7 +140,7 @@ continuous on $[a, a']$, $C^{2q+1}$ on $(a, a')$ with $f^{(2q+1)} \ge 0$ there, 
 $\mathbf{b}$,
 $$\int f\,d\,\mathsf{radauQuadrature}(\mu_{\mathbf{A},\mathbf{b}}, a, q) \le
 \operatorname{Re}\mathbf{b}^{\mathsf{H}}f(\mathbf{A})\mathbf{b}\,.$$
-[GolubMeurant2010, Ch. 6, Ch. 7] (locators to check). -/
+[GolubMeurant2010, §6.2.2, Eq. (6.10)]. -/
 theorem integral_radauQuadrature_le_re_quadForm_cfc_of_iteratedDeriv_nonneg {A : Matrix n n 𝕜}
     {a a' : ℝ} (hs : spectrum ℝ A ⊆ Set.Icc a a')
     (haa' : a < a') {f : ℝ → ℝ} (hf : ContinuousOn f (Set.Icc a a')) (q : ℕ)
@@ -158,7 +158,7 @@ continuous on $[a, a']$, $C^{2q+1}$ on $(a, a')$ with $f^{(2q+1)} \le 0$ there, 
 $\mathbf{b}$,
 $$\operatorname{Re}\mathbf{b}^{\mathsf{H}}f(\mathbf{A})\mathbf{b} \le
 \int f\,d\,\mathsf{radauQuadrature}(\mu_{\mathbf{A},\mathbf{b}}, a, q)\,.$$
-[GolubMeurant2010, Ch. 6, Ch. 7] (locators to check). -/
+[GolubMeurant2010, §6.2.2, Eq. (6.10)]. -/
 theorem re_quadForm_cfc_le_integral_radauQuadrature_of_iteratedDeriv_nonpos {A : Matrix n n 𝕜}
     {a a' : ℝ} (hs : spectrum ℝ A ⊆ Set.Icc a a')
     (haa' : a < a') {f : ℝ → ℝ} (hf : ContinuousOn f (Set.Icc a a')) (q : ℕ)
@@ -176,7 +176,7 @@ continuous on $[a, a']$, $C^{2q+1}$ on $(a, a')$ with $f^{(2q+1)} \ge 0$ there, 
 $\mathbf{b}$,
 $$\operatorname{Re}\mathbf{b}^{\mathsf{H}}f(\mathbf{A})\mathbf{b} \le
 \int f\,d\,\mathsf{radauQuadrature}(\mu_{\mathbf{A},\mathbf{b}}, a', q)\,.$$
-[GolubMeurant2010, Ch. 6, Ch. 7] (locators to check). -/
+[GolubMeurant2010, §6.2.2, Eq. (6.10)]. -/
 theorem re_quadForm_cfc_le_integral_radauQuadrature_of_iteratedDeriv_nonneg {A : Matrix n n 𝕜}
     {a a' : ℝ} (hs : spectrum ℝ A ⊆ Set.Icc a a')
     (haa' : a < a') {f : ℝ → ℝ} (hf : ContinuousOn f (Set.Icc a a')) (q : ℕ)
@@ -194,7 +194,7 @@ continuous on $[a, a']$, $C^{2q+1}$ on $(a, a')$ with $f^{(2q+1)} \le 0$ there, 
 $\mathbf{b}$,
 $$\int f\,d\,\mathsf{radauQuadrature}(\mu_{\mathbf{A},\mathbf{b}}, a', q) \le
 \operatorname{Re}\mathbf{b}^{\mathsf{H}}f(\mathbf{A})\mathbf{b}\,.$$
-[GolubMeurant2010, Ch. 6, Ch. 7] (locators to check). -/
+[GolubMeurant2010, §6.2.2, Eq. (6.10)]. -/
 theorem integral_radauQuadrature_le_re_quadForm_cfc_of_iteratedDeriv_nonpos {A : Matrix n n 𝕜}
     {a a' : ℝ} (hs : spectrum ℝ A ⊆ Set.Icc a a')
     (haa' : a < a') {f : ℝ → ℝ} (hf : ContinuousOn f (Set.Icc a a')) (q : ℕ)
@@ -215,7 +215,7 @@ continuous on $[a, a']$, $C^{2q+2}$ on $(a, a')$ with $f^{(2q+2)} \ge 0$ there, 
 $\mathbf{b}$,
 $$\operatorname{Re}\mathbf{b}^{\mathsf{H}}f(\mathbf{A})\mathbf{b} \le
 \int f\,d\,\mathsf{lobattoQuadrature}(\mu_{\mathbf{A},\mathbf{b}}, a, a', q)\,.$$
-[GolubMeurant2010, Ch. 6, Ch. 7] (locators to check). -/
+[GolubMeurant2010, §6.2.3]. -/
 theorem re_quadForm_cfc_le_integral_lobattoQuadrature_of_iteratedDeriv_nonneg {A : Matrix n n 𝕜}
     {a a' : ℝ} (hs : spectrum ℝ A ⊆ Set.Icc a a')
     (haa' : a < a') {f : ℝ → ℝ} (hf : ContinuousOn f (Set.Icc a a')) (q : ℕ)
@@ -234,7 +234,7 @@ continuous on $[a, a']$, $C^{2q+2}$ on $(a, a')$ with $f^{(2q+2)} \le 0$ there, 
 $\mathbf{b}$,
 $$\int f\,d\,\mathsf{lobattoQuadrature}(\mu_{\mathbf{A},\mathbf{b}}, a, a', q) \le
 \operatorname{Re}\mathbf{b}^{\mathsf{H}}f(\mathbf{A})\mathbf{b}\,.$$
-[GolubMeurant2010, Ch. 6, Ch. 7] (locators to check). -/
+[GolubMeurant2010, §6.2.3]. -/
 theorem integral_lobattoQuadrature_le_re_quadForm_cfc_of_iteratedDeriv_nonpos {A : Matrix n n 𝕜}
     {a a' : ℝ} (hs : spectrum ℝ A ⊆ Set.Icc a a')
     (haa' : a < a') {f : ℝ → ℝ} (hf : ContinuousOn f (Set.Icc a a')) (q : ℕ)

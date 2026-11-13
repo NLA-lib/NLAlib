@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.ForMathlib.Data.List.Range
 public import NLAlib.Computation.RoutineFrames
 public import NLAlib.Computation.IndexBinder
 public import NLAlib.Computation.Loops
@@ -580,18 +581,6 @@ theorem Triple.seq {pre pre₂ : St P K C → Prop} {mid post : St P K C → St 
   fun st hst => (wp_seq).mpr <| wp_mono (h₁ st hst) fun st₁ hmid₁ =>
     wp_mono (h₂ st₁ (hmid st st₁ hst hmid₁)) fun _ hp => ⟨st₁, hmid₁, hp⟩
 
-omit [DecidableEq P] [AddMonoid C] in
-/-- A fold over the indices below $i + 1$ is the fold below $i$, then step $i$. -/
-private theorem foldlM_range_succ_eq_bind {α : Type} (f : α → ℕ → Option α) (a : α) (i : ℕ) :
-    (List.range (i + 1)).foldlM f a = ((List.range i).foldlM f a).bind fun r => f r i := by
-  rw [List.range_succ, List.foldlM_append]
-  cases (List.range i).foldlM f a with
-  | none => rfl
-  | some r =>
-    change ([i].foldlM f r) = f r i
-    simp only [List.foldlM_cons, List.foldlM_nil]
-    cases f r i <;> rfl
-
 /-- **A loop with an invariant**: `Inv st₀ k` holds of the state after `k` iterations from
 `st₀`, and the body keeps it. -/
 theorem Triple.loop {n : IExp ℕ} {body : ℕ → Stmt P ι ℕ ℕ} {pre : St P K C → Prop}
@@ -608,7 +597,7 @@ theorem Triple.loop {n : IExp ℕ} {body : ℕ → Stmt P ι ℕ ℕ} {pre : St 
   | zero => exact fun _ => Mode.sat_some.mpr (h0 st₀ hst)
   | succ j ih =>
     intro hj
-    rw [foldlM_range_succ_eq_bind, Mode.sat_bind]
+    rw [List.foldlM_range_succ, Option.bind_eq_bind, Mode.sat_bind]
     exact (ih (by omega)).mono fun st₁ h₁ => hstep st₀ hst j (by omega) st₁ h₁
 
 /-- **A fueled loop with an invariant**: `Inv st₀ j` holds of the state before the $j$-th test;
@@ -639,7 +628,7 @@ theorem Triple.whileFuel {fuel : IExp ℕ} {p : P} {c : CmpOp} {x y : Cell ℕ �
       exact Mode.sat_some.mpr ⟨fun _ => ⟨h0', hf⟩, fun h => absurd h (by simp)⟩
     | succ i ih =>
       intro hi
-      rw [foldlM_range_succ_eq_bind, Mode.sat_bind]
+      rw [List.foldlM_range_succ, Option.bind_eq_bind, Mode.sat_bind]
       refine (ih (by omega)).mono fun ⟨s, b⟩ ⟨hT, hF⟩ => ?_
       cases b with
       | false => exact Mode.sat_some.mpr ⟨fun h => absurd h (by simp), hF⟩

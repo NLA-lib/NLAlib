@@ -167,9 +167,9 @@ $\tan^2\angle(\mathbf{b}, E_{\lambda_0})$ the ratio
 $\mu_{\mathbf{A},\mathbf{b}}(\mathbb{R}\setminus\{\lambda_0\})/
 \mu_{\mathbf{A},\mathbf{b}}(\{\lambda_0\})$ of the spectral measure.
 The proof gives the sharp factor $1/T_q\bigl(1 + 2(\lambda_0 - c)/(c - a)\bigr)^2$ in place of
-$4(\cdot)^{2q}$; they differ by $(1 + \rho^{2q})^2 \le 4$ (rule B6). [Saad2011, Theorem 6.4] (the
-case $i = 1$; locator to verify); there with
-$a = \lambda_{n}$, $c = \lambda_1$, an eigenvector of a simple eigenvalue and the Chebyshev form.
+$4(\cdot)^{2q}$; they differ by $(1 + \rho^{2q})^2 \le 4$ (rule B6).
+[Saad2011, Theorem 6.4, Eq. (6.42)] (case $i = 1$); there with
+$a = \lambda_{n}$, $c = \lambda_2$, an eigenvector of a simple eigenvalue and the Chebyshev form.
 Result: kaniel-paige-saad -/
 theorem _root_.Matrix.IsHermitian.eigenvalue_sub_eigenvalue_conjTranspose_mul_mul_le
     {A : Matrix n n 𝕜} (hA : A.IsHermitian) {a c : ℝ} (hac : a < c) (hc : c < eigenvalue A 0)
@@ -237,10 +237,10 @@ $\rho = (1 - \sqrt\varepsilon)/(1 + \sqrt\varepsilon)$, which is unbounded in $q
 $\varepsilon$ (its exponent is about $4q\varepsilon^{3/2}/3$ for small $\varepsilon$). Incomparable
 with `Matrix.PosSemidef.eigenvalue_sub_eigenvalue_conjTranspose_mul_mul_le_div_sq`: this bound is
 better for a fixed target accuracy with a good start, that one needs no $\varepsilon$ and degrades
-only logarithmically with a poor start. [MuscoMusco2015, Theorem 1] (single-vector case; locator
-to check; the library cites this paper as Theorem 10 (proof), Lemmas 2, 5, 9 and Algorithm 2, all
-for the block method); there with $(1 + \sqrt{2\varepsilon/(1-\varepsilon)})^{-2q}$, weaker for
-small $\varepsilon$ and stronger as $\varepsilon \to 1$; constants composed here.
+only logarithmically with a poor start. [MuscoMusco2015, Theorem 1, §2.3] treats randomized block
+iteration; the
+deterministic single-start estimate and its explicit constants are composed here from
+Chebyshev filtering.
 Result: ritz-value-gap-free -/
 theorem _root_.Matrix.PosSemidef.eigenvalue_sub_eigenvalue_conjTranspose_mul_mul_le_add
     {A : Matrix n n 𝕜} (hA : A.PosSemidef) {ε : ℝ} (hε₀ : 0 < ε) (hε₁ : ε < 1) {b : n → 𝕜}
@@ -324,8 +324,10 @@ $\mu_{\mathbf{A},\mathbf{b}}(\mathbb{R}\setminus\{\lambda_0\})/
 dependence on the start and no gap. Incomparable with
 `Matrix.PosSemidef.eigenvalue_sub_eigenvalue_conjTranspose_mul_mul_le_add`: this bound needs no
 $\varepsilon$ and degrades only logarithmically with a poor start, that one is better for a fixed
-target accuracy with a good start. [KuczynskiWozniakowski1992, Theorem 4.2] (locator
-to check); there as a relative error for a random start, here deterministic.
+target accuracy with a good start. [MartinssonTropp2020, Theorem 6.2] presents a randomized Krylov
+estimate following
+[KuczynskiWozniakowski1992, abstract]. Here the specified-start estimate is deterministic and its
+constants are composed from the even Chebyshev filter.
 Result: ritz-value-gap-free -/
 theorem _root_.Matrix.PosSemidef.eigenvalue_sub_eigenvalue_conjTranspose_mul_mul_le_div_sq
     {A : Matrix n n 𝕜} (hA : A.PosSemidef) {b : n → 𝕜}

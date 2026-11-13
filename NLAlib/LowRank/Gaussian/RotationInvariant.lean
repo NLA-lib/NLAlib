@@ -260,8 +260,8 @@ theorem _root_.Matrix.PosSemidef.hasLaw_nystrom_of_isLeftUnitarilyInvariant {H :
     ⟨_, hH.nystrom_eq⟩
   have hg : Measurable fun P : Matrix n n ℝ => S * P * S :=
     (measurable_const.matrix_mul measurable_id).matrix_mul measurable_const
-  have hm : Measurable fun G : Matrix n l ℝ => rangeProjector (S * G) :=
-    measurable_rangeProjector.comp (measurable_const.matrix_mul measurable_id)
+  have hm : Measurable fun G : Matrix n l ℝ => rangeProjector (S * G) := by
+    fun_prop
   have h := HasLaw.fun_comp (Y := fun P : Matrix n n ℝ => S * P * S) ⟨hg.aemeasurable, rfl⟩
     (hasLaw_rangeProjector_mul_of_isLeftUnitarilyInvariant S hX hXr)
   rw [Measure.map_map hg hm] at h

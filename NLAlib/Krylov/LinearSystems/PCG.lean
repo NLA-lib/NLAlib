@@ -76,7 +76,7 @@ $\mathsf{pcgIterate}(\mathbf{A}, \mathbf{M}, \mathbf{b}, \mathbf{x}_0, q) := \ma
 \mathbf{M}\mathbf{r}_0))\,\mathbf{r}_0$. Basis-free, total, no square root; the preconditioned
 Hestenes–Stiefel recurrence computes it (`Matrix.PosDef.pcgState_x_eq`). Junk value: that of
 `galerkinInverse` when the compression of $\mathbf{A}$ is singular.
-[Saad2003, §9.2]; [Greenbaum1997, §8.1]; locators to verify.
+[Saad2003, §9.2.1]; [Greenbaum1997, Chapter 8, Algorithm 2P].
 Algorithm: pcg (specification) -/
 noncomputable def pcgIterate (A M : Matrix n n 𝕜) (b x₀ : n → 𝕜) (q : ℕ) : n → 𝕜 :=
   x₀ + galerkinInverse A (krylovMatrix (M * A) (M *ᵥ (b - A *ᵥ x₀)) q) *ᵥ (b - A *ᵥ x₀)
@@ -229,8 +229,8 @@ $$\|\mathbf{x}_\star - \mathsf{pcgIterate}(\mathbf{A}, \mathbf{M}, \mathbf{b}, \
 q)\|_{\mathbf{A}}^2 \le 4\Bigl(\frac{\sqrt{a'/a} - 1}{\sqrt{a'/a} + 1}\Bigr)^{2q}
 \|\mathbf{x}_\star - \mathbf{x}_0\|_{\mathbf{A}}^2 \,.$$
 Spectral equivalence $a\mathbf{M}^{-1} \preceq \mathbf{A} \preceq a'\mathbf{M}^{-1}$ gives the
-hypothesis by `Matrix.PosDef.spectrum_mul_subset_Icc_of_le`. [Saad2003, §9.2];
-[Greenbaum1997, §8.1]; locators to verify.
+hypothesis by `Matrix.PosDef.spectrum_mul_subset_Icc_of_le`. [Saad2003, §9.2.1, Theorem 6.29];
+[Greenbaum1997, Chapter 8, Eq. (8.2), Theorem 3.1.1].
 Result: pcg-chebyshev-bound -/
 theorem _root_.Matrix.IsHermitian.re_quadForm_sub_pcgIterate_le_four_mul_pow
     {A M : Matrix n n 𝕜} (hA : A.IsHermitian) (hM : M.PosDef) {a a' : ℝ} (ha : 0 < a)
@@ -247,9 +247,7 @@ theorem _root_.Matrix.IsHermitian.re_quadForm_sub_pcgIterate_le_four_mul_pow
     refine (Matrix.IsUnit.posDef_star_left_conjugate_iff hS).mp ?_
     exact hH.posDef_iff_eigenvalue_pos.mpr fun k hk =>
       ha.trans_le (hH.spectrum_subset_iff.mp hs' k hk).1
-  obtain ⟨p, hp, hp₀, -, hpI⟩ := exists_degree_le_eval_eq_zero_abs_eval_le_two_mul_mul_pow
-    (a' := a') ha ∅ q (C := 1) fun x _ => by rw [Finset.prod_empty, abs_one]
-  rw [Finset.card_empty, zero_add] at hp
+  obtain ⟨p, hp, hp₀, hpI⟩ := exists_degree_le_eval_zero_eq_one_abs_eval_le (a' := a') ha q
   refine (hpd.re_quadForm_sub_pcgIterate_le hM hs hxs x₀ hp hp₀ hpI).trans_eq ?_
   ring
 

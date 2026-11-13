@@ -262,6 +262,15 @@ def mapOutput {β' : Type*} (g : β → β') (alg : QueryAlgorithm Q R q β) :
   query := alg.query
   output h := g (alg.output h)
 
+/-- Send each query through a map, keeping the response history and output unchanged.
+Against an oracle $O'$, this simulates the original algorithm against $O' \circ f$.
+Together with `QueryAlgorithm.comapResponse`, this transports a query model along a
+reindexing or an embedding without giving the algorithm access to the input matrix. -/
+def mapQuery {Q' : Type*} (f : Q → Q') (alg : QueryAlgorithm Q R q β) :
+    QueryAlgorithm Q' R q β where
+  query i h := f (alg.query i h)
+  output := alg.output
+
 /-- A query algorithm is **measurable** when each of its `q` query maps and the output map are
 measurable (for the product σ-algebras on histories); the unused maps `query i`, $i \ge q$, are
 unconstrained. Lower bounds quantify over these. -/
@@ -461,7 +470,7 @@ theorem IsMeasurable.measurable_leftQueryMatrix {𝕜 m n : Type*} [MeasurableSp
       (measurable_pi_iff.2 fun l => measurable_pi_apply _)))
 
 /-- The histories of a measurable seeded family, jointly measurable in the seed and the input. -/
-private theorem measurable_history_family {S : Type*} [MeasurableSpace S]
+theorem IsMeasurableFamily.measurable_history {S : Type*} [MeasurableSpace S]
     {alg : S → QueryAlgorithm Q R q β} (halg : IsMeasurableFamily alg) {O : M → Q → R}
     (hO : Measurable (Function.uncurry O)) :
     ∀ i ≤ q, Measurable fun p : S × M => (alg p.1).history (O p.2) i := by
@@ -487,7 +496,7 @@ theorem IsMeasurableFamily.measurable_run {S : Type*} [MeasurableSpace S]
     (hO : Measurable (Function.uncurry O)) :
     Measurable fun p : S × M => (alg p.1).run (O p.2) :=
   halg.measurable_output.comp
-    (measurable_fst.prodMk (measurable_history_family halg hO q le_rfl))
+    (measurable_fst.prodMk (halg.measurable_history hO q le_rfl))
 
 /-- Each member of a measurable family is measurable: fixing the seed of a measurable
 randomized algorithm gives a measurable deterministic one. -/
@@ -497,7 +506,7 @@ theorem IsMeasurableFamily.isMeasurable {S : Type*} [MeasurableSpace S]
   ⟨fun i hi => (halg.measurable_query i hi).comp measurable_prodMk_left,
     halg.measurable_output.comp measurable_prodMk_left⟩
 
-/-- Truncating a measurable algorithm keeps it measurable, for `i ≤ q`. -/
+/-- Truncating a measurable algorithm keeps it measurable, for $i \le q$. -/
 theorem IsMeasurable.truncate {alg : QueryAlgorithm Q R q β} (halg : alg.IsMeasurable) {i : ℕ}
     (hi : i ≤ q) : (alg.truncate i).IsMeasurable :=
   ⟨fun j hj => halg.measurable_query j (by omega), measurable_const⟩
@@ -741,6 +750,42 @@ namespace NLAlib
 namespace QueryAlgorithm
 
 variable {Q R R' β β' : Type*} {q : ℕ}
+
+/-- Mapping queries simulates precomposition of the oracle, at every history length. -/
+theorem history_mapQuery {Q' : Type*} (f : Q → Q') (alg : QueryAlgorithm Q R q β)
+    (O : Q' → R) (i : ℕ) :
+    (alg.mapQuery f).history O i = alg.history (O ∘ f) i := by
+  induction i with
+  | zero => rfl
+  | succ i ih => rw [history, history, ih]; rfl
+
+/-- Mapping queries does not change the number of rounds: the new run against $O$ is the
+original run against $O \circ f$. This is an exact simulation, without probabilistic hypotheses. -/
+theorem run_mapQuery {Q' : Type*} (f : Q → Q') (alg : QueryAlgorithm Q R q β) (O : Q' → R) :
+    (alg.mapQuery f).run O = alg.run (O ∘ f) := by
+  simp only [run, transcript, history_mapQuery]
+  rfl
+
+/-- Mapping queries preserves pass labels and their dependence on previous-pass responses. -/
+theorem IsPassStructured.mapQuery {Q' : Type*} {alg : QueryAlgorithm Q R q β}
+    {pass : ℕ → ℕ} (h : alg.IsPassStructured pass) (f : Q → Q') :
+    (alg.mapQuery f).IsPassStructured pass :=
+  ⟨h.monotone, fun i hi u v huv => congrArg f (h.query_eq i hi u v huv)⟩
+
+/-- A measurable query map transports a measurable algorithm to the new query space. -/
+theorem IsMeasurable.mapQuery {Q' : Type*} [MeasurableSpace Q] [MeasurableSpace Q']
+    [MeasurableSpace R] [MeasurableSpace β] {alg : QueryAlgorithm Q R q β}
+    (h : alg.IsMeasurable) {f : Q → Q'} (hf : Measurable f) :
+    (alg.mapQuery f).IsMeasurable :=
+  ⟨fun i hi => hf.comp (h.measurable_query i hi), h.measurable_output⟩
+
+/-- A measurable query map transports a jointly measurable seeded family, with unchanged
+seed law, query count and output type. -/
+theorem IsMeasurableFamily.mapQuery {Q' S : Type*} [MeasurableSpace Q] [MeasurableSpace Q']
+    [MeasurableSpace R] [MeasurableSpace β] [MeasurableSpace S]
+    {alg : S → QueryAlgorithm Q R q β} (h : IsMeasurableFamily alg) {f : Q → Q'}
+    (hf : Measurable f) : IsMeasurableFamily fun s => (alg s).mapQuery f :=
+  ⟨fun i hi => hf.comp (h.measurable_query i hi), h.measurable_output⟩
 
 /-- Reading the responses through $f$ reproduces the history: the history of
 `alg.comapResponse f` against an oracle $O'$, read through $f$, is the history of `alg` against

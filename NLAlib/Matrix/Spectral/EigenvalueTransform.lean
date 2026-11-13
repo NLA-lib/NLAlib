@@ -387,4 +387,21 @@ theorem _root_.Matrix.IsHermitian.posDef_iff_eigenvalue_pos {A : Matrix n n 𝕜
   classical
   rw [hA.posDef_iff_eigenvalues_pos, forall_eigenvalues_iff hA (0 < ·)]
 
+/-- The real spectrum of a Hermitian matrix lies in a set $s$ exactly when its eigenvalues
+$\lambda_i(\mathbf{A})$, $i < \lvert n \rvert$, do. -/
+theorem _root_.Matrix.IsHermitian.spectrum_subset_iff [DecidableEq n]
+    {A : Matrix n n 𝕜} (hA : A.IsHermitian)
+    {s : Set ℝ} : spectrum ℝ A ⊆ s ↔ ∀ i, i < Fintype.card n → eigenvalue A i ∈ s := by
+  classical
+  rw [hA.spectrum_eq_image_eigenvalue, Set.image_subset_iff]
+  exact Iff.rfl
+
+/-- A strictly positive lower bound on the real spectrum of a Hermitian matrix implies positive
+definiteness. This form takes the interval bound used by Krylov convergence estimates. -/
+theorem _root_.Matrix.IsHermitian.posDef_of_spectrum_subset_Icc [DecidableEq n]
+    {A : Matrix n n 𝕜}
+    (hA : A.IsHermitian) {a b : ℝ} (ha : 0 < a) (hs : spectrum ℝ A ⊆ Set.Icc a b) :
+    A.PosDef :=
+  hA.posDef_iff_eigenvalue_pos.mpr fun i hi => ha.trans_le (hA.spectrum_subset_iff.mp hs i hi).1
+
 end NLAlib

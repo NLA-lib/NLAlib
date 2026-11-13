@@ -51,7 +51,7 @@ local macro "prefixStep(" tag:term "," N:term "," j:term "," mv:term ")" : term 
 
 private theorem exec_prefix_one (I : Interp P ι K (OpCount P ι))
     (h : IsRelErrSem u dec (fun _ _ => True) I.sem) (hz : AddsZeroExactly dec I.sem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hc : IsUnitCharge I) (tag : P)
     {N q : ℕ} {A : Matrix (Fin N) (Fin N) ℝ} {b v1 : Fin N → ℝ} {s : ℝ}
     (st : St P K (OpCount P ι))
     (hs : StoreContext tag dec N q 0 A b (Function.update (0 : ℕ → Fin N → ℝ) 1 v1)
@@ -89,7 +89,7 @@ private theorem exec_prefix_one (I : Interp P ι K (OpCount P ι))
 
 private theorem exec_prefix_zero (I : Interp P ι K (OpCount P ι))
     (h : IsRelErrSem u dec (fun _ _ => True) I.sem) (hz : AddsZeroExactly dec I.sem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hc : IsUnitCharge I) (tag : P)
     {N q j : ℕ} {A : Matrix (Fin N) (Fin N) ℝ} {b v1 : Fin N → ℝ} {s : ℝ}
     (st : St P K (OpCount P ι))
     (hs : StoreContext tag dec N q j A b (Function.update (0 : ℕ → Fin N → ℝ) 1 v1)
@@ -111,7 +111,7 @@ private theorem exec_prefix_zero (I : Interp P ι K (OpCount P ι))
 
 private theorem exec_prefix_terminal (I : Interp P ι K (OpCount P ι))
     (h : IsRelErrSem u dec (fun _ _ => True) I.sem) (hz : AddsZeroExactly dec I.sem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hc : IsUnitCharge I) (tag : P)
     {N q j m : ℕ} {A : Matrix (Fin N) (Fin N) ℝ} {b v1 : Fin N → ℝ} {s : ℝ}
     (R : LanczosRun N m) (st : St P K (OpCount P ι))
     (hs : StoreContext tag dec N q j A b R.v R.α R.β s st.store storedMatrix)
@@ -153,7 +153,7 @@ private theorem exec_prefix_terminal (I : Interp P ι K (OpCount P ι))
 
 private theorem exec_prefix_extend (I : Interp P ι K (OpCount P ι))
     (h : IsRelErrSem u dec (fun _ _ => True) I.sem) (hz : AddsZeroExactly dec I.sem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hc : IsUnitCharge I) (tag : P)
     {N q j : ℕ} {A : Matrix (Fin N) (Fin N) ℝ} {b v1 : Fin N → ℝ} {s : ℝ}
     (R : LanczosRun N j) (st : St P K (OpCount P ι))
     (hs : StoreContext tag dec N q j A b R.v R.α R.β s st.store storedMatrix)
@@ -196,7 +196,7 @@ After that point it executes the zero continuation. Nearly unit initial data and
 case are supplied by actual initialization, rather than assumed by the whole-program result. -/
 theorem exec_rounded_prefix_step (I : Interp P ι K (OpCount P ι))
     (h : IsRelErrSem u dec (fun _ _ => True) I.sem) (hz : AddsZeroExactly dec I.sem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hc : IsUnitCharge I) (tag : P)
     {N q j : ℕ} {A : Matrix (Fin N) (Fin N) ℝ} {b v1 : Fin N → ℝ} {s : ℝ}
     (st : St P K (OpCount P ι))
     (hs : RoundedPrefix tag dec N q j A b v1
@@ -232,7 +232,7 @@ theorem exec_rounded_prefix_step (I : Interp P ι K (OpCount P ι))
 roundoff horizon is required for execution or for extraction of the active LanczosRun. -/
 theorem exec_rounded_loop (I : Interp P ι K (OpCount P ι))
     (h : IsRelErrSem u dec (fun _ _ => True) I.sem) (hz : AddsZeroExactly dec I.sem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hc : IsUnitCharge I) (tag : P)
     {N q : ℕ} {A : Matrix (Fin N) (Fin N) ℝ} {b v1 : Fin N → ℝ} {s : ℝ}
     (st : St P K (OpCount P ι))
     (hs : RoundedPrefix tag dec N q 0 A b v1

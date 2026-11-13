@@ -8,6 +8,9 @@ the library with its docstring and direct library imports, and every public decl
 in a library module (including `NLAlib.ForMathlib.*`, whose declarations live in Mathlib's
 namespaces) with its kind, source range, docstring, pretty-printed signature, source statement,
 library dependencies of its type and of its value, and whether it depends on `sorryAx`.
+The compact `signature` retains the sigma-algebras of the four measurable predicates through
+local delaborators. Other implicit arguments can still be suppressed by Lean pretty printing;
+consumers should also retain the `statement` source syntax and its module context.
 
 Run from the repository root after `lake build NLAlib`:
 `lake env lean -M 8000 scripts/Explore.lean`. The output path is `$EXPLORE_OUT`, default
@@ -28,6 +31,45 @@ set_option format.width 100
 set_option maxHeartbeats 0
 
 namespace NLAlib.Explore
+
+/-! Keep the sigma-algebra attached to measurable predicates. Lean's default delaborator
+omits instance arguments even when they are a non-ambient filtration. These local presentation
+rules use Mathlib's existing scoped notation; no theorem names or source strings are matched. -/
+open PrettyPrinter.Delaborator SubExpr in
+@[app_delab MeasureTheory.StronglyMeasurable]
+def delabStronglyMeasurable : Delab := whenNotPPOption getPPExplicit <| whenPPOption getPPNotation do
+  guard <| (← getExpr).getAppNumArgs == 5
+  let m ← withNaryArg 3 delab
+  let f ← withNaryArg 4 delab
+  `(StronglyMeasurable[$m] $f)
+
+open PrettyPrinter.Delaborator SubExpr in
+@[app_delab Measurable]
+def delabMeasurable : Delab := whenNotPPOption getPPExplicit <| whenPPOption getPPNotation do
+  guard <| (← getExpr).getAppNumArgs == 5
+  let m ← withNaryArg 2 delab
+  let n ← withNaryArg 3 delab
+  let f ← withNaryArg 4 delab
+  `(Measurable[$m, $n] $f)
+
+open PrettyPrinter.Delaborator SubExpr in
+@[app_delab AEMeasurable]
+def delabAEMeasurable : Delab := whenNotPPOption getPPExplicit <| whenPPOption getPPNotation do
+  guard <| (← getExpr).getAppNumArgs == 6
+  let m ← withNaryArg 3 delab
+  let f ← withNaryArg 4 delab
+  let μ ← withNaryArg 5 delab
+  `(AEMeasurable[$m] $f $μ)
+
+open PrettyPrinter.Delaborator SubExpr in
+@[app_delab MeasureTheory.AEStronglyMeasurable]
+def delabAEStronglyMeasurable : Delab := whenNotPPOption getPPExplicit <|
+    whenPPOption getPPNotation do
+  guard <| (← getExpr).getAppNumArgs == 7
+  let m ← withNaryArg 3 delab
+  let f ← withNaryArg 5 delab
+  let μ ← withNaryArg 6 delab
+  `(AEStronglyMeasurable[$m] $f $μ)
 
 /-- Name components Lean generates for inductives, structures and definitions. -/
 def generatedSuffixes : List String :=

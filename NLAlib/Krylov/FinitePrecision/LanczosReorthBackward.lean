@@ -18,8 +18,10 @@ $\mathbf{V}_{k+1}$, there is a symmetric $n \times n$ perturbation $\mathbf{E}$ 
 \|\mathbf{H}\|_2$ for which the computed tridiagonal is exactly the Lanczos tridiagonal of
 $(\mathbf{H} + \mathbf{E}, \mathbf{u}_1)$, and, after an orthogonal similarity close to the
 identity, of $(\mathbf{H}', \mathbf{b})$ for the exact start vector. No dilation is needed
-(compare `NLAlib/Krylov/FinitePrecision/Backward.lean` for plain Lanczos). [Paige1970] (primary,
-locator to verify); [Simon1984b]; [Stewart2002] for Krylov decompositions. Design:
+(compare `NLAlib/Krylov/FinitePrecision/Backward.lean` for plain Lanczos). Historical background on
+reorthogonalization and Krylov decompositions:
+[Paige1970]; [Simon1984b]; [Stewart2002]. The polar-factor construction, pure backward
+model and explicit constant above are the formulation proved here. Design:
 `docs/design/Krylov-LanczosReorth.md` §3.2–3.3.
 
 Common hypotheses: $\eta_0 \le 1/100$, the fixed-point condition

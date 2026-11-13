@@ -62,7 +62,7 @@ $r[s] := \sum_{i \in s} w_i\,r_i$ with the nodal weights
 $w_i = \prod_{j \ne i}(v_i - v_j)^{-1}$ (`Lagrange.nodalWeight`). For distinct nodes and
 $\lvert s \rvert = q + 1$ it is the coefficient of $X^q$ of the interpolant
 (`dividedDifference_eq_coeff_interpolate`). Junk value: for repeated nodes the weights
-contain $0^{-1} = 0$. [Higham2008, (1.10)]; locator to verify. -/
+contain $0^{-1} = 0$. [DeBoor2005, Example 9]. -/
 noncomputable def dividedDifference (s : Finset ι) (v : ι → F) (r : ι → F) : F :=
   ∑ i ∈ s, Lagrange.nodalWeight s v i * r i
 
@@ -79,7 +79,7 @@ theorem dividedDifference_eq_coeff_interpolate {s : Finset ι} {v : ι → F}
     div_eq_inv_mul]
 
 /-- **The divided difference of a polynomial of degree at most $q$** on $q + 1$ distinct nodes
-is its coefficient of $X^q$. [Higham2008, (1.10)]; locator to verify. -/
+is its coefficient of $X^q$. [DeBoor2005, Definition 37 and Example 9]. -/
 theorem dividedDifference_eval_eq_coeff {s : Finset ι} {v : ι → F} (hvs : Set.InjOn v s)
     {q : ℕ} (hs : #s = q + 1) {p : F[X]} (hp : p.degree ≤ q) :
     dividedDifference s v (fun i => p.eval (v i)) = p.coeff q := by

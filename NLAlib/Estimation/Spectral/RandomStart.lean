@@ -65,7 +65,7 @@ variable {Ω : Type*} {mΩ : MeasurableSpace Ω} {μ : Measure Ω} {n : Type*} [
 $(\log(2N) + 2)/(2q + 1)$, for dimension $N$ and $q$ multiplications: the mean logarithmic
 overlap of a Gaussian vector with a unit vector, $\log(2N) + 2$, over the $2q + 1$ of the
 deterministic step. Source:
-[KuczynskiWozniakowski1992, Theorem 4.1] (locator to check), whose printed constant is to be
+[MartinssonTropp2020, Theorem 6.1], whose printed constant is to be
 compared with this one; the value here is the one the proof gives and is not optimised (the exact
 mean overlap is $\log(2N) + \gamma + o(1)$). -/
 noncomputable irreducible_def randomStartPowerBound (N q : ℕ) : ℝ :=
@@ -75,7 +75,7 @@ noncomputable irreducible_def randomStartPowerBound (N q : ℕ) : ℝ :=
 $4((\log(2N) + 2 + \log 2)^2 + 4)/((\log 2)^2 q^2)$, for dimension $N$ and $q$
 multiplications: $4/q^2$ times the bound $((\log(2N) + 2 + \log 2)^2 + 4)/(\log 2)^2$ on
 $\mathbb{E}(1 + L/\log 2)^2$, $L$ the logarithmic overlap of a Gaussian vector with a unit
-vector. Source: [KuczynskiWozniakowski1992, Theorem 4.2] (locator to check), whose printed
+vector. Source: [MartinssonTropp2020, Theorem 6.2], whose printed
 constant is to be compared with this one; the value here is the one the proof gives and is not
 optimised. -/
 noncomputable irreducible_def randomStartLanczosBound (N q : ℕ) : ℝ :=
@@ -205,8 +205,7 @@ $\rho_{\mathbf{A}}$ the Rayleigh quotient, for every $q$ (including $0$), every 
 repeated top eigenvalues and $\mathbf{A} = \mathbf{0}$; no gap. The factor is
 `randomStartPowerBound`. Asymptotic form:
 `NLAlib.exists_forall_integral_eigenvalue_sub_rayleighQuotient_pow_mulVec_le_of_hasLaw_gaussianVector`.
-[MartinssonTropp2020, Theorems 6.1 and 6.2] (which of the two is the power method is
-to check); [KuczynskiWozniakowski1992, Theorem 4.1] (locator to check); there as
+[MartinssonTropp2020, Theorem 6.1]; there as
 a relative error with a different constant; constants composed here.
 Result: random-start-power -/
 theorem integral_eigenvalue_sub_rayleighQuotient_pow_mulVec_le_of_hasLaw_gaussianVector
@@ -249,7 +248,7 @@ $$\mathbb{E}\bigl[\lambda_0(\mathbf{A}) - \theta_0\bigr] \le
 for every dimension, repeated top eigenvalues and $\mathbf{A} = \mathbf{0}$; no gap. The factor
 is `randomStartLanczosBound`. Asymptotic form:
 `NLAlib.exists_forall_integral_eigenvalue_sub_eigenvalue_rangeProjector_mul_mul_le_of_hasLaw_gaussianVector`.
-[KuczynskiWozniakowski1992, Theorem 4.2] (locator to check); there as a relative error with a
+[MartinssonTropp2020, Theorem 6.2]; there as a relative error with a
 different constant; constants composed here.
 Result: random-start-lanczos -/
 theorem integral_eigenvalue_sub_eigenvalue_rangeProjector_mul_mul_le_of_hasLaw_gaussianVector
@@ -338,7 +337,7 @@ $$\mathbb{E}\bigl[\lambda_0(\mathbf{A}) - \rho_{\mathbf{A}}(\mathbf{A}^q\mathbf{
 \varepsilon\,\lambda_0(\mathbf{A})\,,$$
 $\rho_{\mathbf{A}}$ the Rayleigh quotient. The asymptotic form of
 `NLAlib.integral_eigenvalue_sub_rayleighQuotient_pow_mulVec_le_of_hasLaw_gaussianVector`.
-[KuczynskiWozniakowski1992, Theorem 4.1] (locator to check).
+[MartinssonTropp2020, Theorem 6.1].
 Asymptotic:
 NLAlib.integral_eigenvalue_sub_rayleighQuotient_pow_mulVec_le_of_hasLaw_gaussianVector
 Result: random-start-power -/
@@ -377,7 +376,7 @@ with $\mathbf{P}$ the orthogonal projector onto it, satisfies
 $$\mathbb{E}\bigl[\lambda_0(\mathbf{A}) - \theta_0\bigr] \le \varepsilon\,\lambda_0(\mathbf{A})\,.$$
 The asymptotic form of
 `NLAlib.integral_eigenvalue_sub_eigenvalue_rangeProjector_mul_mul_le_of_hasLaw_gaussianVector`.
-[KuczynskiWozniakowski1992, Theorem 4.2] (locator to check).
+[MartinssonTropp2020, Theorem 6.2].
 Asymptotic:
 NLAlib.integral_eigenvalue_sub_eigenvalue_rangeProjector_mul_mul_le_of_hasLaw_gaussianVector
 Result: random-start-lanczos -/

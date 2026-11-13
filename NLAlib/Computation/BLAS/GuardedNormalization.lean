@@ -31,7 +31,7 @@ open Builder
 variable {P ι : Type} [DecidableEq P]
 
 private theorem exec_copyv_rscl_frame (I : Interp P ι ℝ (OpCount P ι))
-    (hI : I.sem = exactSem) (hc : ∀ k, I.charge k = Finsupp.single k 1)
+    (hI : I.sem = exactSem) (hc : IsUnitCharge I)
     (tag : P) (st : St P ℝ (OpCount P ι)) (n : IExp ℕ) (src dst : ℕ)
     (soff doff : IExp ℕ) (a : Cell ℕ ℕ) (r : ℝ) (xs : ℕ → ℝ) (hr : r ≠ 0)
     (ha : st.store.read tag a.buf a.idx.eval = some r)
@@ -69,7 +69,7 @@ is the source divided by its Euclidean norm, with total real division giving zer
 The branch retains every cell outside its destination window, changes no usage fields, and
 counts at most one comparison and, per entry, one literal, copy and division. -/
 theorem exec_normalize_branch (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hc : IsUnitCharge I) (tag : P)
     (st : St P ℝ (OpCount P ι)) (buf : Fin 4 → ℕ) (hbuf : Function.Injective buf)
     (n soff doff ni zi : IExp ℕ) (xs : ℕ → ℝ)
     (hx : ∀ i < n.eval, st.store.read tag (buf 0) (soff.eval + i) = some (xs i))
@@ -98,7 +98,7 @@ theorem exec_normalize_branch (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem =
   have hcmp : cmpStep I tag .eq ⟨buf 2, ni⟩ ⟨buf 3, zi⟩ st =
       some (decide (r = 0), st₀) := by
     simp only [cmpStep, hnorm, hzero, Option.bind_some, hI, exactSem,
-      Option.map_some, hc, r, st₀]
+      Option.map_some, hc.charge_eq, r, st₀]
   by_cases hr : r = 0
   · obtain ⟨s', hrun, hsh, hread, hframe⟩ :=
       exec_forRange_zero I hI tag st₀ n (buf 1) doff hshape
@@ -108,7 +108,8 @@ theorem exec_normalize_branch (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem =
     refine ⟨out, ?_, hsh, ?_, ?_, rfl, rfl, rfl, ?_, rfl, rfl⟩
     · change exec I (.seq (.ite tag .eq _ _ _ _) .skip) st = _
       rw [exec_seq_skip, exec_ite, hcmp]
-      simpa only [hr, decide_true, Option.bind_some, Bool.true_eq, ite_true, out, hc] using hrun
+      simpa only [hr, decide_true, Option.bind_some, Bool.true_eq, ite_true, out, hc.charge_eq]
+        using hrun
     · intro i hi
       change s'.read tag (buf 1) (doff.eval + i) = some (xs i / r)
       simpa only [hr, div_zero] using hread i hi

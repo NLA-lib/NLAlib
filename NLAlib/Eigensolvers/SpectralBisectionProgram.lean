@@ -23,6 +23,13 @@ writes `NLAlib.eigh` on the tape machine with the tree of sample positions at th
 `NLAlib.eigh` on the ideal machine with the tree of ideal samples, independent with law
 `NLAlib.eighSampleLaw` on the ideal tape.
 
+The two program conclusions have different scopes. The registered target assumes global
+scalar success and bounds failure or inaccurate output. The bounded-format theorem bounds
+only the event that a successful execution returns an inaccurate output; it gives no
+execution-success probability. The binary128-layout shallow witnesses in
+`SpectralBisection/Instance.lean` store arbitrary reals and do not establish successful
+finite-word program execution.
+
 ## Main results
 
 * `NLAlib.matrixFreeRoundedProbEigh`: the target `NLAlib.MatrixFreeRoundedProbEigh`, from the

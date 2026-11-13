@@ -13,11 +13,11 @@ public import Mathlib.Data.Set.Countable
 /-!
 # Rounding to a binary floating-point grid
 
-The binary floating-point numbers with $t$ significant bits and unbounded exponent,
-`Real.floatGrid t` (the numbers $m 2^e$ with integers $\lvert m \rvert < 2^t$ and $e$), and
-rounding to nearest onto it, `Real.roundNearest t x`: scale $x$ by the power of two that puts
-$\lvert x \rvert$ in $[2^{t-1}, 2^t)$ (through `Int.log`), round to an integer with Mathlib's
-`round` (ties upward) and scale back. The relative error is at most $u = 2^{-t}$
+The grid `Real.floatGrid t` contains the numbers $m 2^e$ with integer exponent $e$ and integer
+mantissa $|m|<2^t$. For $t>0$, `Real.roundNearest t x` rounds onto this grid. For nonzero $x$ it
+rescales $|x|$ to $[2^{t-1},2^t)$, rounds the signed result to an integer with Mathlib's
+`round` (ties upward), and scales back. Zero rounds to zero. The relative error bound also
+holds at $t=0$, with unit roundoff $u=2^{-t}$. For positive precision this is the model of
 [Higham2002, Theorem 2.2]. Mathlib's `FP` (`Mathlib.Data.FP.Basic`) is an experimental
 implementation of floating-point numbers with no theorems about rounding; nothing here reuses it.
 Upstream candidate for `Mathlib.Algebra.Order.Round`.
@@ -49,7 +49,7 @@ namespace Real
 numbers $m 2^e$ with integers $m$, $e$ and $\lvert m \rvert < 2^t$ (so $0$ is on it). -/
 def floatGrid (t : ℕ) : Set ℝ := {x | ∃ m e : ℤ, |m| < 2 ^ t ∧ x = m * (2 : ℝ) ^ e}
 
-/-- **Rounding to nearest** onto `Real.floatGrid t`: with $k = \lfloor \log_2 \lvert x \rvert
+/-- **Rounding to nearest** onto `Real.floatGrid t` for $t>0$. With $k = \lfloor \log_2 |x|
 \rfloor$ (`Int.log`) and $e = k + 1 - t$, the integer nearest to $x 2^{-e}$ (Mathlib's `round`,
 ties upward) times $2^e$. At $x = 0$ it is $0$. -/
 noncomputable def roundNearest (t : ℕ) (x : ℝ) : ℝ :=

@@ -150,8 +150,8 @@ $\mathbb{E} \langle \boldsymbol{\xi}, \mathbf{x} \rangle^4
 = \operatorname{Var}(\langle \boldsymbol{\xi}, \mathbf{x} \rangle^2) + \|\mathbf{x}\|^4
 = 3 \|\mathbf{x}\|^4 - 2 \sum_j \mathbf{x}_j^4$
 (`NLAlib.variance_quadForm_of_hasLaw_rademacherVector` at `vecMulVec x x`).
-[Woodruff2014, §2.1, after Theorem 6]; constants of [Achlioptas2003, Theorem 1.1], locator to
-confirm. For $\varepsilon \gtrsim 1.43$,
+[Woodruff2014, §2.1, after Theorem 6]; constants of [Achlioptas2003, Lemma 5.1].
+For $\varepsilon \gtrsim 1.43$,
 `NLAlib.hasJLProperty_of_isSubgaussianVector` at $c = 1$ is better.
 Result: jl-rademacher -/
 theorem hasJLProperty_of_hasLaw_rademacherMatrix (hX : HasLaw X (rademacherMatrix k n) μ)

@@ -113,7 +113,7 @@ private theorem exec_compiled_eq_map (I : Interp P ι K (OpCount P ι)) (tag : P
 
 private theorem exec_compiled_outputs_of_prefix
     (I : Interp P ι K (OpCount P ι)) (tag : P) (N q : ℕ)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1)
+    (hc : IsUnitCharge I)
     (st workout : St P K (OpCount P ι)) (hsize : st.store.size = 6)
     (dec : P → K → ℝ) (A : Matrix (Fin N) (Fin N) ℝ) (b v1 : Fin N → ℝ) (ε s : ℝ)
     (hvzero : b = 0 → v1 = 0)
@@ -179,7 +179,7 @@ postprocessing guarantee. -/
 theorem exec_rounded_compiled {u : P → ℝ} {dec : P → K → ℝ}
     (I : Interp P ι K (OpCount P ι)) (tag : P)
     (hsem : IsRelErrSem u dec (fun _ _ => True) I.sem) (hz : AddsZeroExactly dec I.sem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1)
+    (hc : IsUnitCharge I)
     (st : St P K (OpCount P ι)) (N q : ℕ) (A : Matrix (Fin N) (Fin N) ℝ)
     (b : Fin N → ℝ) (values : ℕ → K)
     (hshape : st.store.shape =

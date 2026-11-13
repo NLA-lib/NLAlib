@@ -67,7 +67,6 @@ private theorem prod_sq_singularValues_mul_le (A : Matrix m p 𝕜) {k : ℕ}
     exact_mod_cast hdet
   rw [hdet']
   gcongr with i hi
-  · exact singularValues_nonneg _ _
   · exact (singularValues_mul_le_mul_specNorm A U i).trans
       (mul_le_of_le_one_right (singularValues_nonneg A i)
         h.hasOrthonormalCols_left.specNorm_le_one)
@@ -129,7 +128,6 @@ theorem prod_range_singularValues_mul_le (A : Matrix m p 𝕜) (B : Matrix p n �
       _ ≤ (∏ i ∈ Finset.range k, singularValues A i ^ 2) *
             ∏ i ∈ Finset.range k, singularValues B i ^ 2 := by
           gcongr with i hi
-          · exact singularValues_nonneg _ _
           · exact hBX i
       _ = ∏ i ∈ Finset.range k, (singularValues A i * singularValues B i) ^ 2 := by
           rw [← Finset.prod_mul_distrib]

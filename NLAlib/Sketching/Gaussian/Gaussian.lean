@@ -723,7 +723,7 @@ $2e^{-(\lvert k\rvert/8)\min(t^2, t)}$ at every $t > 0$
 `NLAlib.hasJLMoment_of_forall_hasJLProperty` integrates it. Incomparable with
 `NLAlib.hasJLMoment_of_hasLaw_gaussianMatrix` (the exact variance, better at $p = 2$).
 [Woodruff2014, Definition 12] for the property; that dense sketches have it at
-$p = \log(1/\delta)$ is Kane and Nelson's (2014; locator to check). -/
+$p = \log(1/\delta)$ follows from [KaneNelson2014, Remark 22]. -/
 theorem hasJLMoment_subexponentialMomentBound_of_hasLaw_gaussianMatrix [Nonempty k]
     (hG : HasLaw G (gaussianMatrix k n) μ) (hε : 0 < ε) {p : ℝ} (hp : 0 < p) :
     HasJLMoment (fun ω => (√(Fintype.card k : ℝ))⁻¹ • G ω) ε
@@ -900,8 +900,8 @@ $\varepsilon^p e^{-p} \le \varepsilon^p \delta$ there. Approximate matrix multip
 failure probability $\delta$ follows
 (`NLAlib.HasJLMoment.measureReal_frobNorm_conjTranspose_mul_sub_ge_le`, whose side condition
 $2 \le p$ is `le_max_left`). [Woodruff2014, Definition 12 and Theorem 13],
-the property and AMM from it; the size $O(\log(1/\delta)/\varepsilon^2)$ is Kane and Nelson's
-(2014; locator to check), the constants are this proof's. Asymptotic form:
+the property and AMM from it; the size $O(\log(1/\delta)/\varepsilon^2)$ follows from
+[KaneNelson2014, Remark 22], the constants are this proof's. Asymptotic form:
 `NLAlib.exists_forall_hasJLMoment_of_hasLaw_gaussianMatrix`.
 Result: jl-moment-gaussian -/
 theorem hasJLMoment_of_hasLaw_gaussianMatrix_of_jlMomentDim_le

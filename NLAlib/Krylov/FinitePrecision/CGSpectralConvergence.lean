@@ -23,7 +23,7 @@ uses only the supplied Frobenius certificate. Step zero and a zero terminal resi
 
 * `NLAlib.CGRun.spectrum_backwardH_subset_iUnion_Icc`: union-of-intervals localization.
 * `NLAlib.CGRun.quadForm_sub_x_le_sq_mul_add_of_polynomial`: physical polynomial convergence.
-* `NLAlib.CGRun.quadForm_sub_x_le_residualMinimax_sq_mul_add`: compact-set minimax convergence.
+* `NLAlib.CGRun.quadForm_sub_x_le_residualMinimax_sq_mul_add`: spectral-set minimax convergence.
 * `NLAlib.CGRun.ρ_sq_le_mul_sq_mul_of_polynomial`: computed residual convergence.
 -/
 
@@ -47,7 +47,7 @@ theorem spectrum_backwardH_subset_iUnion_Icc {δ : ℝ}
 
 private theorem posDef_backwardH {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) :
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) :
     C.backwardH.PosDef := by
   have hspec := C.spectrum_backwardH_subset_Icc ha hs hsmall
   exact C.isHermitian_backwardH.posDef_iff_eigenvalue_pos.mpr fun i hi =>
@@ -72,7 +72,7 @@ additive errors, rather than the qualitative tiny-interval minimax discussion.
 Result: cg-tiny-interval-polynomial-convergence -/
 theorem quadForm_sub_x_le_sq_mul_add_of_polynomial {a a' δ η : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     (hgap : frobNorm (C.backwardH - C.dilatedH) ≤ δ) {S : Set ℝ}
     (hS : (⋃ i ∈ Set.Iio n,
       Set.Icc (eigenvalue C.A i - δ) (eigenvalue C.A i + δ)) ⊆ S)
@@ -116,7 +116,7 @@ Exact $\mathsf{cgIterate}$ on the full model reproduces the computed residual no
 Result: cg-tiny-interval-computed-residual -/
 theorem ρ_sq_le_mul_sq_mul_of_polynomial {a a' δ η : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     (hgap : frobNorm (C.backwardH - C.dilatedH) ≤ δ) {S : Set ℝ}
     (hS : (⋃ i ∈ Set.Iio n,
       Set.Icc (eigenvalue C.A i - δ) (eigenvalue C.A i + δ)) ⊆ S)
@@ -157,7 +157,7 @@ theorem ρ_sq_le_mul_sq_mul_of_polynomial {a a' δ η : ℝ} (ha : 0 < a)
 
 /-- **Tiny-interval minimax convergence of computed CG.** For a successful $k$-step run,
 input spectrum in $[a,a']$, $a>0$, $\kappa=a'/a$ and
-$k^2\sqrt{k}\varepsilon\kappa^2\le10^{-5}$, let a compact set $S$ contain all closed
+$k^2\sqrt{k}\varepsilon\kappa^2\le10^{-5}$, let a set $S$ contain all closed
 radius-$\delta$ intervals about input eigenvalues, where the Frobenius backward distance
 is at most $\delta$. For $j\le k$ and $\mathbf{A}\mathbf{x}_\star=\mathbf{b}$,
 $$\|\mathbf{x}_\star-\mathbf{x}_j\|_{\mathbf{A}}^2\le
@@ -170,9 +170,8 @@ The error of exact $\mathsf{cgIterate}$ on the full model supplies the minimax f
 Result: cg-tiny-interval-minimax-convergence -/
 theorem quadForm_sub_x_le_residualMinimax_sq_mul_add {a a' δ : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     (hgap : frobNorm (C.backwardH - C.dilatedH) ≤ δ) {S : Set ℝ}
-    (hcompact : IsCompact S)
     (hS : (⋃ i ∈ Set.Iio n,
       Set.Icc (eigenvalue C.A i - δ) (eigenvalue C.A i + δ)) ⊆ S)
     {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) {j : ℕ} (hj : j ≤ k) :
@@ -188,7 +187,7 @@ theorem quadForm_sub_x_le_residualMinimax_sq_mul_add {a a' δ : ℝ} (ha : 0 < a
       ((Matrix.isUnit_iff_isUnit_det _).mp hPD.isUnit), Matrix.one_mulVec]
   have hpoly := hPD.re_quadForm_sub_cgIterate_le_residualMinimax_sq_mul hy 0 j
   simp only [RCLike.re_to_real, sub_zero] at hpoly
-  have hmono := residualMinimax_mono hcompact
+  have hmono := residualMinimax_mono
     ((C.spectrum_backwardH_subset_iUnion_Icc hgap).trans hS) j
   have hE : 0 ≤ quadForm C.backwardH ys := by
     simpa only [RCLike.re_to_real] using hPD.posSemidef.re_quadForm_nonneg ys

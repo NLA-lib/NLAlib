@@ -157,7 +157,7 @@ private lemma exists_iteratedDeriv_eq_zero_of_multiset_Ioo {a b : ℝ} (q : ℕ)
 $[a, b]$, every point of multiplicity at least $2$ in $(a, b)$, and let $f$ be continuous on
 $[a, b]$ and $C^{q+1}$ on $(a, b)$ with $f^{(j)}(y) = 0$ for every $y \in m$ and every $j$ below
 the multiplicity of $y$. Then $f^{(q+1)}(\xi) = 0$ for some $\xi \in (a, b)$.
-[Davis1975, Theorem 1.6.3] (locator to check); there for distinct zeros of $f$. -/
+[DeBoor2005, proof of Proposition 43], iterating the interlacing of the derivative zeros. -/
 theorem exists_iteratedDeriv_eq_zero_of_multiset {f : ℝ → ℝ} {a b : ℝ} {m : Multiset ℝ} {q : ℕ}
     (hm : m.card = q + 2) (hmem : ∀ y ∈ m, y ∈ Icc a b)
     (hrep : ∀ y ∈ m, 1 < m.count y → y ∈ Ioo a b) (hf : ContinuousOn f (Icc a b))

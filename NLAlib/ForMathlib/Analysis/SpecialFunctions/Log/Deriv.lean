@@ -134,8 +134,7 @@ theorem log_one_sub_le_quadratic {u : ℝ} (hu0 : 0 ≤ u) (hu1 : u < 1) :
 $$-\log(1 - u) \le u + \frac{u^2}{2 (1 - u)} \,,$$
 by comparing the series $\sum_{k \ge 1} u^k / k$ term by term with $u + (u/2) \sum_{k \ge 1}
 u^k$. It turns the Laplace transform $(1 - 2\theta)^{-1/2}$ of $\chi^2_1$ into a sub-gamma
-bound (Laurent and Massart 2000, proof of Lemma 1).
-[BoucheronLugosiMassart2013, §2.4] (locator to check). -/
+bound [LaurentMassart2000, proof of Lemma 1, p. 1326]. -/
 theorem neg_log_one_sub_le {u : ℝ} (hu0 : 0 ≤ u) (hu1 : u < 1) :
     -log (1 - u) ≤ u + u ^ 2 / (2 * (1 - u)) := by
   have h := hasSum_pow_div_log_of_abs_lt_one (x := u) (by rwa [abs_of_nonneg hu0])

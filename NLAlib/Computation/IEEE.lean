@@ -6,6 +6,10 @@ Authors: NumLean contributors, NLAlib contributors
 module
 
 public import NLAlib.Computation.BinaryFloat
+public import NLAlib.Computation.MatvecRoutine
+public import NLAlib.Computation.VectorErrors
+public import NLAlib.ForMathlib.Data.List.Range
+public import Mathlib.Analysis.InnerProductSpace.PiL2
 public import NLAlib.ForMathlib.Data.Float.Operations
 public import NLAlib.ForMathlib.Data.Float.Literals
 
@@ -26,6 +30,8 @@ implement Lean's model. Counts and physical kernel costs are separate certificat
 
 * `NLAlib.Computation.isArithErrSem_finiteFloatSem`: mixed-error accuracy and range success.
 * `NLAlib.Computation.addsZeroExactly_finiteFloatSem`: exact zero addition for kernel accumulation.
+* `NLAlib.Computation.isMatvecErrOn_finiteFloatVectorDoubleOracle`: input-range success and
+  mixed normwise error for actual vector doubling in every dimension.
 -/
 
 @[expose] public section
@@ -33,6 +39,40 @@ implement Lean's model. Counts and physical kernel costs are separate certificat
 namespace NLAlib.Computation
 
 open Float.Model Float.Model.UnpackedFloat
+open scoped Matrix
+
+/-- Positive binary64 zero on the finite-word carrier. -/
+def finiteFloatZero : FiniteFloat := ⟨Float.ofBits 0, rfl⟩
+
+/-- Binary64 one on the finite-word carrier. -/
+def finiteFloatOne : FiniteFloat := ⟨Float.ofBits 0x3ff0000000000000, rfl⟩
+
+/-- Positive binary64 zero decodes exactly to zero. -/
+theorem floatDecode_finiteFloatZero : floatDecode finiteFloatZero.val = 0 := rfl
+
+-- The closed pack/unpack computation traverses the binary64 bit representation.
+set_option maxRecDepth 4096 in
+/-- Binary64 one decodes exactly to one. -/
+theorem floatDecode_finiteFloatOne : floatDecode finiteFloatOne.val = 1 := by
+  have hx : (Float.ofBits 0x3ff0000000000000).toModel.unpack =
+      .finite .positive (2 ^ 52) (-52) (by decide) := rfl
+  norm_num [finiteFloatOne, floatDecode, hx]
+
+/-- A checked binary64 stored-entry interpreter with the supplied finite ROM, zero tape,
+no oracles or black-box kernels, 64-bit words, and one logical charge per operation.
+Scalar overflow and invalid operations fail; index conversion is unsupported. The scalar
+accuracy certificate is `isArithErrSem_finiteFloatSem`. Logical charges do not certify native
+runtime costs. This interpreter supports concrete finite-word program examples.
+No printed source. -/
+def finiteFloatStoredInterp (values : Array FiniteFloat) : Interp Unit Unit FiniteFloat ℕ where
+  sem := finiteFloatSem
+  charge _ := 1
+  tape _ _ := finiteFloatZero
+  oracle _ _ _ := none
+  height _ := 0
+  rom i := values[i]?
+  romSize _ := values.size
+  width _ := 64
 
 private local instance : Fact (2 ≤ Format.binary64.exponentBits) := ⟨by decide⟩
 
@@ -349,5 +389,200 @@ theorem isArithErrSem_finiteFloatSem :
   · intro p x
     cases p
     exact finiteFloatSem_conj x
+
+/-- The finite binary64 interpreter does not implement exact floor conversion to a natural
+index: its conversion fails even on the exact zero literal. Arithmetic range and accuracy
+certificates do not imply dynamic-index support. No printed source. -/
+theorem not_isExactToNat_finiteFloatSem :
+    ¬ IsExactToNat (fun _ (x : FiniteFloat) => floatDecode x.val) finiteFloatSem := by
+  intro h
+  obtain ⟨z, _, hd⟩ := isArithErrSem_finiteFloatSem.lit_zero ()
+  have ht := h () z
+  change none = (if 0 ≤ floatDecode z.val then some ⌊floatDecode z.val⌋₊ else none) at ht
+  rw [hd] at ht
+  norm_num at ht
+  cases ht
+
+/-- A one-column, one-coordinate oracle computing twice its input by checked finite binary64
+addition. Other shapes are rejected. Overflow is execution failure. This executable oracle
+is a concrete consumer of the input-domain matvec contract. No printed source. -/
+def finiteFloatDoubleOracle (cols : ℕ) (X : Array FiniteFloat) : Option (Array FiniteFloat) :=
+  if h : cols = 1 ∧ X.size = 1 then
+    (finiteFloatSem.bin () .add (X[0]'(by omega)) (X[0]'(by omega))).map fun z => #[z]
+  else none
+
+/-- Checked binary64 doubling satisfies the input-domain matvec contract for the matrix
+$[2]$ on $\lvert 2x\rvert\le M$, with $M$ the largest finite magnitude, coefficient $2u$
+and absolute allowance $\eta$, where $u=2^{-53}$ and $\eta=2^{-1075}$.
+The certificate proves success from
+the input bound; it assumes no observed intermediate finiteness. No printed source. -/
+theorem isMatvecErrOn_finiteFloatDoubleOracle {ι C : Type}
+    (I : Interp Unit ι FiniteFloat C) (o : ι) (hh : I.height o = 1)
+    (ho : I.oracle o = finiteFloatDoubleOracle) :
+    IsMatvecErrOn I o (fun _ x => floatDecode x.val) ()
+      (fun (_ _ : Fin 1) => (2 : ℝ))
+      (fun x => |2 * x 0| ≤ Format.binary64.maxFinite)
+      (2 * Format.binary64.unitRoundoff) Format.binary64.underflowBound := by
+  refine ⟨hh, fun X hX hx => ?_⟩
+  let x := X[0]'(by omega)
+  have hs : |BinOp.add.realOp (floatDecode x.val) (floatDecode x.val)| ≤
+      Format.binary64.maxFinite := by
+    simpa only [BinOp.realOp, ← two_mul, x, Fin.val_zero] using hx
+  obtain ⟨z, hz⟩ := isArithErrSem_finiteFloatSem.bin_ok () .add x x trivial
+    (fun h => nomatch h) hs
+  have he := isArithErrSem_finiteFloatSem.bin_err () .add x x z trivial hz
+  refine ⟨#[z], rfl, ?_, ?_⟩
+  · rw [ho]
+    simp only [finiteFloatDoubleOracle, hX, and_self, ↓reduceDIte, x, hz, Option.map_some]
+  · have hn (v : Fin 1 → ℝ) : ‖WithLp.toLp 2 v‖ = |v 0| := by
+      rw [EuclideanSpace.norm_eq]
+      simp only [Fin.sum_univ_one, Real.norm_eq_abs, sq_abs, Real.sqrt_sq_eq_abs]
+    rw [hn, hn]
+    simpa [AbsRelErr, Matrix.mulVec, dotProduct, x, BinOp.realOp, abs_mul, mul_assoc, mul_left_comm,
+      ← two_mul] using he
+
+/-- The checked finite binary64 doubling oracle executes a stored matvec from a readable
+source into a disjoint writable destination whenever $\lvert 2x\rvert\le M$.
+Its returned word is the actual block write and has error at most $2u\lvert x\rvert+\eta$.
+This is a finite-format execution
+endpoint for one oracle call, not a complete Krylov solver. No printed source. -/
+theorem exec_apply_of_finiteFloatDoubleOracle {ι C : Type} [AddMonoid C]
+    (I : Interp Unit ι FiniteFloat C) (o : ι) (hh : I.height o = 1)
+    (ho : I.oracle o = finiteFloatDoubleOracle) (st : St Unit FiniteFloat C)
+    (src dst : ℕ) (sOff dOff : IExp ℕ) (hne : dst ≠ src) (x : Fin 1 → ℝ)
+    (hx : |2 * x 0| ≤ Format.binary64.maxFinite)
+    (hr : ∀ i : Fin 1, ∃ w, st.store.read () src (sOff.eval + i) = some w ∧
+      floatDecode w.val = x i)
+    (hw : ∀ i < 1, ∃ len, st.store.shape[dst]? = some ((), len) ∧ dOff.eval + i < len) :
+    ∃ (out : St Unit FiniteFloat C) (W : Fin 1 → FiniteFloat),
+      exec I (.apply o () dst dOff src sOff 1) st = some out ∧
+      st.store.writeBlock () dst dOff.eval (Array.ofFn W) = some out.store ∧
+      ‖WithLp.toLp 2 ((fun (_ _ : Fin 1) => (2 : ℝ)) *ᵥ x -
+        fun i : Fin 1 => floatDecode (W i).val)‖ ≤
+          (2 * Format.binary64.unitRoundoff) * ‖WithLp.toLp 2 x‖ +
+            Format.binary64.underflowBound :=
+  (isMatvecErrOn_finiteFloatDoubleOracle I o hh ho).exec_apply
+    st src dst sOff dOff hne x hx hr hw
+
+private theorem exists_unpack_eq_zero_of_floatDecode_eq_zero (x : FiniteFloat)
+    (hx : floatDecode x.val = 0) :
+    ∃ s, x.val.toModel.unpack = .zero s := by
+  rw [floatDecode_eq_toReal] at hx
+  have hxf : x.val.toModel.unpack.IsFinite := x.property
+  cases hxm : x.val.toModel.unpack with
+  | notANumber => simp only [hxm, UnpackedFloat.IsFinite, UnpackedFloat.isFinite,
+      Bool.false_eq_true] at hxf
+  | infinity s => simp only [hxm, UnpackedFloat.IsFinite, UnpackedFloat.isFinite,
+      Bool.false_eq_true] at hxf
+  | zero s => exact ⟨s, rfl⟩
+  | finite s m e hm =>
+    exfalso
+    rw [hxm, toReal] at hx
+    have hn : (m : ℝ) ≠ 0 := by exact_mod_cast Nat.ne_of_gt hm
+    have hp : (2 : ℝ) ^ e ≠ 0 := ne_of_gt (zpow_pos two_pos e)
+    cases s <;> simp only [Sign.toReal] at hx <;>
+      exact (mul_ne_zero (mul_ne_zero (by norm_num) hn) hp) hx
+
+/-- The checked finite binary64 equality comparison returns true for any two decoded zeros,
+including either choice of signed-zero bit pattern. No printed source. -/
+theorem cmp_eq_eq_some_true_finiteFloatSem_of_zero (x y : FiniteFloat)
+    (hx : floatDecode x.val = 0) (hy : floatDecode y.val = 0) :
+    finiteFloatSem.cmp () .eq x y = some true := by
+  rw [cmp_finiteFloatSem]
+  apply (cmp_checkedFloatSem_eq_some_iff .eq x.val y.val true).2
+  refine ⟨x.property, y.property, ?_⟩
+  obtain ⟨sx, hxm⟩ := exists_unpack_eq_zero_of_floatDecode_eq_zero x hx
+  obtain ⟨sy, hym⟩ := exists_unpack_eq_zero_of_floatDecode_eq_zero y hy
+  change true = x.val.toModel.unpack.beq y.val.toModel.unpack
+  rw [hxm, hym]
+  rfl
+
+/-- The checked finite binary64 comparison with a decoded zero is true for every positive
+decoded finite right operand, including positive subnormals and either signed zero on the left.
+This certifies the positive-curvature comparison used by CG. No printed source. -/
+theorem cmp_lt_eq_some_true_finiteFloatSem_of_zero_of_pos (x y : FiniteFloat)
+    (hx : floatDecode x.val = 0) (hy : 0 < floatDecode y.val) :
+    finiteFloatSem.cmp () .lt x y = some true := by
+  rw [cmp_finiteFloatSem]
+  apply (cmp_checkedFloatSem_eq_some_iff .lt x.val y.val true).2
+  refine ⟨x.property, y.property, ?_⟩
+  change true = decide (Float.lt x.val y.val = true)
+  unfold Float.lt
+  change true = decide ((decide (x.val.toModel.unpack.lt y.val.toModel.unpack = true)) = true)
+  simp only [Bool.decide_eq_true]
+  obtain ⟨sx, hxm⟩ := exists_unpack_eq_zero_of_floatDecode_eq_zero x hx
+  rw [floatDecode_eq_toReal] at hy
+  rw [hxm]
+  cases hym : y.val.toModel.unpack with
+  | notANumber => simp only [hym, toReal] at hy; linarith
+  | infinity t => simp only [hym, toReal] at hy; linarith
+  | zero t => simp only [hym, toReal] at hy; linarith
+  | finite t m e hm =>
+    cases t with
+    | positive => rfl
+    | negative =>
+      rw [hym, toReal, Sign.toReal] at hy
+      have hm' : (0 : ℝ) < m := by exact_mod_cast hm
+      have hp := zpow_pos (show (0 : ℝ) < 2 by norm_num) e
+      nlinarith
+
+/-- A one-column oracle for twice the identity in any dimension. Every coordinate is
+computed by actual checked binary64 addition, and overflow causes failure. Dimension zero
+returns the empty array. No printed source. -/
+def finiteFloatVectorDoubleOracle (N cols : ℕ) (X : Array FiniteFloat) :
+    Option (Array FiniteFloat) :=
+  if cols = 1 ∧ X.size = N then X.mapM fun x => finiteFloatSem.bin () .add x x else none
+
+/-- The checked binary64 vector-doubling oracle implements twice the identity on the
+input domain $\lvert 2x_i\rvert\le M$ in every coordinate, where $M$ is the largest
+finite magnitude. Its mixed Euclidean error is at most
+$2u\|\mathbf{x}\|+\sqrt{N}\eta$, including dimension zero and subnormal inputs.
+Success follows from decoded input ranges rather than observed intermediate values.
+No printed source. -/
+theorem isMatvecErrOn_finiteFloatVectorDoubleOracle {ι C : Type}
+    (I : Interp Unit ι FiniteFloat C) (o : ι) (N : ℕ) (hh : I.height o = N)
+    (ho : I.oracle o = finiteFloatVectorDoubleOracle N) :
+    IsMatvecErrOn I o (fun _ x => floatDecode x.val) ()
+      ((2 : ℝ) • (1 : Matrix (Fin N) (Fin N) ℝ))
+      (fun x => ∀ i, |2 * x i| ≤ Format.binary64.maxFinite)
+      (2 * Format.binary64.unitRoundoff) (Real.sqrt N * Format.binary64.underflowBound) := by
+  classical
+  refine ⟨hh, fun X hX hx => ?_⟩
+  let f := fun x : FiniteFloat => finiteFloatSem.bin () .add x x
+  have hok (x : FiniteFloat) (hm : x ∈ X) : ∃ z, f x = some z := by
+    obtain ⟨i, hi, rfl⟩ := Array.mem_iff_getElem.mp hm
+    apply isArithErrSem_finiteFloatSem.bin_ok () .add _ _ trivial (fun h => nomatch h)
+    simpa only [BinOp.realOp, ← two_mul] using hx ⟨i, by omega⟩
+  let g := fun x : FiniteFloat => if hm : x ∈ X then (hok x hm).choose else finiteFloatZero
+  have hg (x : FiniteFloat) (hm : x ∈ X) : f x = some (g x) := by
+    simpa only [g, dif_pos hm] using (hok x hm).choose_spec
+  have hmap : X.mapM f = some (X.map g) := by
+    rw [Array.mapM_eq_mapM_toList,
+      List.mapM_eq_some_map _ (fun x hm => hg x (by simpa using hm))]
+    change some ((X.toList.map g).toArray) = some (X.map g)
+    rw [← Array.toList_map, Array.toArray_toList]
+  refine ⟨X.map g, by simp only [Array.size_map, hX], ?_, ?_⟩
+  · rw [ho]
+    simp only [finiteFloatVectorDoubleOracle, hX, and_self, ↓reduceIte]
+    exact hmap
+  · have he (i : Fin N) : AbsRelErr Format.binary64.unitRoundoff
+        Format.binary64.underflowBound
+        (2 * floatDecode (X[i.val]'(by omega)).val)
+        (floatDecode ((X.map g)[i.val]'(by simp only [Array.size_map]; omega)).val) := by
+      have hr := hg (X[i.val]'(by omega)) (Array.getElem_mem (by omega))
+      have he := isArithErrSem_finiteFloatSem.bin_err () .add _ _ _ trivial hr
+      simpa only [f, Array.getElem_map, BinOp.realOp, ← two_mul] using he
+    have he := AbsRelErr.norm_sub_le he (Format.unitRoundoff_nonneg .binary64)
+      (Format.underflowBound_nonneg .binary64)
+    let x : Fin N → ℝ := fun i => floatDecode (X[i.val]'(by omega)).val
+    let z : Fin N → ℝ := fun i =>
+      floatDecode ((X.map g)[i.val]'(by simp only [Array.size_map]; omega)).val
+    change ‖WithLp.toLp 2 ((2 : ℝ) • x - z)‖ ≤
+      Format.binary64.unitRoundoff * ‖WithLp.toLp 2 ((2 : ℝ) • x)‖ +
+        Real.sqrt (Fintype.card (Fin N)) * Format.binary64.underflowBound at he
+    rw [Matrix.smul_mulVec, Matrix.one_mulVec]
+    simpa only [WithLp.toLp_smul, norm_smul, Real.norm_eq_abs,
+      abs_of_pos (by norm_num : (0 : ℝ) < 2),
+      Fintype.card_fin, x, z, mul_assoc, mul_left_comm] using he
 
 end NLAlib.Computation

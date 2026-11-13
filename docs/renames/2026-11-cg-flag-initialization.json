@@ -1,0 +1,27 @@
+{
+  "date": "2026-11-12",
+  "note": "Three existing public names are retained with weaker local initialization assumptions. All repository callers are migrated; numerical dot and whole-initializer assumptions remain in place.",
+  "renames": [],
+  "statementChanged": [
+    "NLAlib.CGImplementation.exists_cg_flag_words",
+    "NLAlib.CGImplementation.exec_rounded_setup",
+    "NLAlib.CGOracleImplementation.exec_rounded_setup"
+  ],
+  "changes": [
+    {
+      "name": "NLAlib.CGImplementation.exists_cg_flag_words",
+      "old": "Global IsRelErrSem u dec (fun _ _ => True) I.sem and u tag < 1.",
+      "new": "Successful exactly decoded zero literal, successful one literal satisfying RelErr (u tag) 1, defined exact negation at the tag, and u tag < 1. The conclusion is unchanged, including positivity and distance from one."
+    },
+    {
+      "name": "NLAlib.CGImplementation.exec_rounded_setup",
+      "old": "Global IsRelErrSem and u tag < 1, together with unit charges, workspace/input reads and ROM availability.",
+      "new": "Actual zero/one/negative flag words with their literal, negation, sign and decoding equations replace global IsRelErrSem and u tag < 1. Unit charges, workspace/input reads, ROM availability and the conclusion are retained."
+    },
+    {
+      "name": "NLAlib.CGOracleImplementation.exec_rounded_setup",
+      "old": "Global IsRelErrSem and u tag < 1, together with unit charges and workspace/input reads.",
+      "new": "Actual zero/one/negative flag words with their literal, negation, sign and decoding equations replace global IsRelErrSem and u tag < 1. Unit charges, workspace/input reads and the conclusion are retained."
+    }
+  ]
+}

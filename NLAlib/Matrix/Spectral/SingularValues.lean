@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import Mathlib.Analysis.InnerProductSpace.SingularValues
+public import Mathlib.Tactic.Positivity.Core
 public import NLAlib.Matrix.Basic.Gram
 public import NLAlib.Matrix.Norms.Block
 public import NLAlib.Matrix.Spectral.CourantFischer
@@ -560,3 +561,20 @@ theorem singularValues_mul_conjTranspose_self (A : Matrix m n 𝕜) (k : ℕ) :
     singularValues_sq_eq_eigenvalue_mul_conjTranspose_self]
 
 end NLAlib
+
+namespace Mathlib.Meta.Positivity
+
+open Lean Meta Qq
+
+/-- Recognize the nonnegativity of every matrix singular value, including padded indices. -/
+@[positivity NLAlib.singularValues _ _]
+meta def evalSingularValues : PositivityExt where eval {_ _} _ pα? e :=
+  match pα? with
+  | none => pure .none
+  | some _ => do
+    match (← whnfR e).getAppFnArgs with
+    | (``NLAlib.singularValues, #[_, _, _, _, _, _, A, k]) =>
+      pure (.nonnegative (← mkAppM ``NLAlib.singularValues_nonneg #[A, k]))
+    | _ => failure
+
+end Mathlib.Meta.Positivity

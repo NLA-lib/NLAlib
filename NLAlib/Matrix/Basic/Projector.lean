@@ -119,7 +119,7 @@ theorem _root_.IsStarProjection.eq_of_range_eq [Fintype m] {P P' : Matrix m m �
 
 /-- **Pythagoras** for a star projection:
 $\|\mathbf{x}\|^2 = \|\mathbf{P}\mathbf{x}\|^2 + \|(\mathbf{I} - \mathbf{P})\mathbf{x}\|^2$.
-[TrefethenBau1997, Lecture 6] (locator to check). -/
+[TrefethenBau1997, Lecture 6]. -/
 theorem _root_.IsStarProjection.norm_toLp_sq_eq_add [Fintype m] [DecidableEq m]
     {P : Matrix m m 𝕜} (hP : IsStarProjection P) (x : m → 𝕜) :
     ‖WithLp.toLp 2 x‖ ^ 2 =

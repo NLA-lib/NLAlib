@@ -166,7 +166,7 @@ theorem SymmetricGauge.mul_matrixNorm_le_matrixNorm_mul_sub_mul_of_eigenvalue [D
 $\mathbf{L} \preceq (\alpha - \delta)\mathbf{I}$ and $\alpha\mathbf{I} \preceq \mathbf{M}$, then
 $\delta \|\mathbf{X}\|_{\Phi} \le \|\mathbf{L}\mathbf{X} - \mathbf{X}\mathbf{M}\|_{\Phi}$ in every
 unitarily invariant norm $\|\cdot\|_{\Phi}$.
-[Bhatia1997, §VII.2] (locator to check). -/
+[Bhatia1997, §VII.2, Theorem VII.2.3]. -/
 theorem SymmetricGauge.mul_matrixNorm_le_matrixNorm_mul_sub_mul_of_le [DecidableEq m]
     [DecidableEq n] (Φ : SymmetricGauge) {L : Matrix m m 𝕜} {M : Matrix n n 𝕜} {α δ : ℝ}
     (hL : L ≤ (α - δ) • (1 : Matrix m m 𝕜)) (hM : α • (1 : Matrix n n 𝕜) ≤ M)

@@ -112,7 +112,7 @@ theorem _root_.IsStarProjection.frobInner_mul_one_sub_mul [DecidableEq m] {P : M
 /-- **Pythagoras** for an orthogonal projector $\mathbf{P}$:
 $\|\mathbf{A}\|_{\mathsf{F}}^2 = \|\mathbf{P}\mathbf{A}\|_{\mathsf{F}}^2 +
 \|(\mathbf{I} - \mathbf{P})\mathbf{A}\|_{\mathsf{F}}^2$.
-[TrefethenBau1997, Lecture 6] (locator to check). -/
+[TrefethenBau1997, Lecture 6]. -/
 theorem _root_.IsStarProjection.frobNorm_sq_eq_add [DecidableEq m] {P : Matrix m m 𝕜}
     (hP : IsStarProjection P) (A : Matrix m n 𝕜) :
     frobNorm A ^ 2 = frobNorm (P * A) ^ 2 + frobNorm ((1 - P) * A) ^ 2 := by

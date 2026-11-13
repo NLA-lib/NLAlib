@@ -213,8 +213,8 @@ variable {I : Interp P ι K (OpCount P ι)} {I' : Interp P ι' K (OpCount P ι')
   {cost : OpKind P ι → OpCount P ι'} {scratch : P → ℕ} {scratchW : ℕ}
 
 /-- A comparison step keeps the simulation. -/
-theorem cmpStep_sim (hcmp : I'.sem.cmp = I.sem.cmp) (hc : ∀ k, I.charge k = Finsupp.single k 1)
-    (hc' : ∀ k, I'.charge k = Finsupp.single k 1)
+theorem cmpStep_sim (hcmp : I'.sem.cmp = I.sem.cmp) (hc : IsUnitCharge I)
+    (hc' : IsUnitCharge I')
     (hcostCmp : ∀ p, cost (.cmp p) = Finsupp.single (.cmp p) 1) {p : P} {c : CmpOp}
     {x y : Cell ℕ ℕ} {st : St P K (OpCount P ι)} {st' : St P K (OpCount P ι')}
     (h : Sim cost scratch scratchW st st') {b : Bool} {st₁ : St P K (OpCount P ι)}
@@ -227,12 +227,12 @@ theorem cmpStep_sim (hcmp : I'.sem.cmp = I.sem.cmp) (hc : ∀ k, I.charge k = Fi
   · refine { store := h.store, pos := h.pos, cur := h.cur, curW := h.curW, peak := h.peak,
              peakW := h.peakW, curPeak := h.curPeak, curPeakW := h.curPeakW, cnt := ?_ }
     change st'.cnt + I'.charge (.cmp p) ≤ substCountG cost (st.cnt + I.charge (.cmp p))
-    rw [hc, hc', map_add, substCountG_single, one_smul, hcostCmp]
+    rw [hc.charge_eq, hc'.charge_eq, map_add, substCountG_single, one_smul, hcostCmp]
     exact add_le_add h.cnt le_rfl
 
 /-- A conversion step keeps the simulation. -/
 theorem toNatStep_sim (htoNat : I'.sem.toNat = I.sem.toNat)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (hc' : ∀ k, I'.charge k = Finsupp.single k 1)
+    (hc : IsUnitCharge I) (hc' : IsUnitCharge I')
     (hcostToNat : ∀ p, cost (.toNat p) = Finsupp.single (.toNat p) 1) {p : P} {x : Cell ℕ ℕ}
     {st : St P K (OpCount P ι)} {st' : St P K (OpCount P ι')}
     (h : Sim cost scratch scratchW st st') {k : ℕ} {st₁ : St P K (OpCount P ι)}
@@ -245,7 +245,7 @@ theorem toNatStep_sim (htoNat : I'.sem.toNat = I.sem.toNat)
   · refine { store := h.store, pos := h.pos, cur := h.cur, curW := h.curW, peak := h.peak,
              peakW := h.peakW, curPeak := h.curPeak, curPeakW := h.curPeakW, cnt := ?_ }
     change st'.cnt + I'.charge (.toNat p) ≤ substCountG cost (st.cnt + I.charge (.toNat p))
-    rw [hc, hc', map_add, substCountG_single, one_smul, hcostToNat]
+    rw [hc.charge_eq, hc'.charge_eq, map_add, substCountG_single, one_smul, hcostToNat]
     exact add_le_add h.cnt le_rfl
 
 /-- The simulation property of a pair of statements: from related states, a successful abstract
@@ -257,7 +257,7 @@ private abbrev SimRun (I : Interp P ι K (OpCount P ι)) (I' : Interp P ι' K (O
     Sim cost scratch scratchW st st' → exec I s st = some st₁ →
       ∃ st₁', exec I' s' st' = some st₁' ∧ Sim cost scratch scratchW st₁ st₁'
 
-private theorem simRun_instr (hc : ∀ k, I.charge k = Finsupp.single k 1)
+private theorem simRun_instr (hc : IsUnitCharge I)
     (himplI : ImplementsInstr I I' implI cost scratch scratchW) (i : Instr P ℕ ℕ) :
     SimRun I I' cost scratch scratchW (.instr i) (implI i) := by
   intro st st₁ st' h hrun
@@ -269,7 +269,7 @@ private theorem simRun_instr (hc : ∀ k, I.charge k = Finsupp.single k 1)
     h.curPeak, h.curPeakW⟩⟩
   · refine hcnt.trans ?_
     change _ ≤ substCountG cost (st.cnt + I.charge i.kind)
-    rw [hc, map_add, substCountG_single, one_smul]
+    rw [hc.charge_eq, map_add, substCountG_single, one_smul]
     exact add_le_add h.cnt le_rfl
   · intro q
     refine (hpeak q).trans (max_le (h.peak q) ?_)
@@ -279,7 +279,7 @@ private theorem simRun_instr (hc : ∀ k, I.charge k = Finsupp.single k 1)
     rw [h.curW]
     exact Nat.add_le_add_right h.curPeakW _
 
-private theorem simRun_apply (hc : ∀ k, I.charge k = Finsupp.single k 1)
+private theorem simRun_apply (hc : IsUnitCharge I)
     (himplO : ImplementsOracle I I' implO cost scratch scratchW) (o : ι) (p : P) (dst : ℕ)
     (dOff : IExp ℕ) (src : ℕ) (sOff cols : IExp ℕ) :
     SimRun I I' cost scratch scratchW (.apply o p dst dOff src sOff cols)
@@ -297,8 +297,8 @@ private theorem simRun_apply (hc : ∀ k, I.charge k = Finsupp.single k 1)
   · refine hcnt.trans ?_
     change _ ≤ substCountG cost
       (st.cnt + (I.charge (.load p o) + cols.eval • I.charge (.matvec p o)))
-    rw [hc, hc, map_add, map_add, map_nsmul, substCountG_single, substCountG_single, one_smul,
-      one_smul]
+    rw [hc.charge_eq, map_add, map_add, map_nsmul, substCountG_single,
+      substCountG_single, one_smul, one_smul]
     exact add_le_add h.cnt le_rfl
   · intro q
     refine (hpeak q).trans (max_le (h.peak q) ?_)
@@ -308,7 +308,7 @@ private theorem simRun_apply (hc : ∀ k, I.charge k = Finsupp.single k 1)
     rw [h.curW]
     exact Nat.add_le_add_right h.curPeakW _
 
-private theorem simRun_kcall (hc : ∀ k, I.charge k = Finsupp.single k 1)
+private theorem simRun_kcall (hc : IsUnitCharge I)
     (himplK : ImplementsKernel I I' implK cost scratch scratchW) (o : ι) (p : P)
     (dims : List (IExp ℕ)) (ins outs : List (ℕ × IExp ℕ)) :
     SimRun I I' cost scratch scratchW (.kcall o p dims ins outs) (implK o p dims ins outs) := by
@@ -322,7 +322,7 @@ private theorem simRun_kcall (hc : ∀ k, I.charge k = Finsupp.single k 1)
     ?_, h.curPeak, h.curPeakW⟩⟩
   · refine hcnt.trans ?_
     change _ ≤ substCountG cost (st.cnt + I.charge (.kcall p o (dims.map IExp.eval)))
-    rw [hc, map_add, substCountG_single, one_smul]
+    rw [hc.charge_eq, map_add, substCountG_single, one_smul]
     exact add_le_add h.cnt le_rfl
   · intro q
     refine (hpeak q).trans (max_le (h.peak q) ?_)
@@ -332,8 +332,8 @@ private theorem simRun_kcall (hc : ∀ k, I.charge k = Finsupp.single k 1)
     rw [h.curW]
     exact Nat.add_le_add_right h.curPeakW _
 
-private theorem simRun_rom (hc : ∀ k, I.charge k = Finsupp.single k 1)
-    (hc' : ∀ k, I'.charge k = Finsupp.single k 1)
+private theorem simRun_rom (hc : IsUnitCharge I)
+    (hc' : IsUnitCharge I')
     (hrom : ∀ i v, I.rom i = some v → I'.rom i = some v)
     (hcostRom : ∀ p, cost (.rom p) = Finsupp.single (.rom p) 1) (p : P) (dst : Cell ℕ ℕ)
     (i : IExp ℕ) : SimRun I I' cost scratch scratchW (.rom p dst i) (.rom p dst i) := by
@@ -345,7 +345,7 @@ private theorem simRun_rom (hc : ∀ k, I.charge k = Finsupp.single k 1)
   · refine { store := rfl, pos := h.pos, cur := h.cur, curW := h.curW, peak := h.peak,
              peakW := h.peakW, curPeak := h.curPeak, curPeakW := h.curPeakW, cnt := ?_ }
     change st'.cnt + I'.charge (.rom p) ≤ substCountG cost (st.cnt + I.charge (.rom p))
-    rw [hc, hc', map_add, substCountG_single, one_smul, hcostRom]
+    rw [hc.charge_eq, hc'.charge_eq, map_add, substCountG_single, one_smul, hcostRom]
     exact add_le_add h.cnt le_rfl
 
 private theorem simRun_alloc (hwidth : I'.width = I.width) (p : P) (len : IExp ℕ)
@@ -433,7 +433,7 @@ private theorem simRun_loop (n : IExp ℕ) (body : ℕ → Stmt P ι ℕ ℕ)
 
 /-- One pass of the guarded loop of `whileFuel` keeps the simulation. -/
 private theorem simRun_whileFuel_fold (hcmp : I'.sem.cmp = I.sem.cmp)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (hc' : ∀ k, I'.charge k = Finsupp.single k 1)
+    (hc : IsUnitCharge I) (hc' : IsUnitCharge I')
     (hcostCmp : ∀ p, cost (.cmp p) = Finsupp.single (.cmp p) 1) (p : P) (c : CmpOp)
     (x y : Cell ℕ ℕ) (body : Stmt P ι ℕ ℕ) (body' : Stmt P ι' ℕ ℕ)
     (ih : SimRun I I' cost scratch scratchW body body') :
@@ -496,7 +496,7 @@ private theorem simRun_whileFuel_fold (hcmp : I'.sem.cmp = I.sem.cmp)
         exact h'
 
 private theorem simRun_whileFuel (hcmp : I'.sem.cmp = I.sem.cmp)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (hc' : ∀ k, I'.charge k = Finsupp.single k 1)
+    (hc : IsUnitCharge I) (hc' : IsUnitCharge I')
     (hcostCmp : ∀ p, cost (.cmp p) = Finsupp.single (.cmp p) 1) (fuel : IExp ℕ) (p : P)
     (c : CmpOp) (x y : Cell ℕ ℕ) (body : Stmt P ι ℕ ℕ) (body' : Stmt P ι' ℕ ℕ)
     (ih : SimRun I I' cost scratch scratchW body body') :
@@ -518,7 +518,7 @@ private theorem simRun_whileFuel (hcmp : I'.sem.cmp = I.sem.cmp)
     exact ⟨r', hr', by simp [← hb, hrb]⟩
 
 private theorem simRun_bindIdx (htoNat : I'.sem.toNat = I.sem.toNat)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (hc' : ∀ k, I'.charge k = Finsupp.single k 1)
+    (hc : IsUnitCharge I) (hc' : IsUnitCharge I')
     (hcostToNat : ∀ p, cost (.toNat p) = Finsupp.single (.toNat p) 1) (p : P) (x : Cell ℕ ℕ)
     (bound : IExp ℕ) (body : ℕ → Stmt P ι ℕ ℕ) (body' : ℕ → Stmt P ι' ℕ ℕ)
     (ih : ∀ v, SimRun I I' cost scratch scratchW (body v) (body' v)) :
@@ -535,7 +535,7 @@ private theorem simRun_bindIdx (htoNat : I'.sem.toNat = I.sem.toNat)
 abstract run of `s` is matched by a successful concrete run of `s.subst implI implO implK`, and
 the final states are related. -/
 theorem exec_subst_sim (hcmp : I'.sem.cmp = I.sem.cmp) (htoNat : I'.sem.toNat = I.sem.toNat)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (hc' : ∀ k, I'.charge k = Finsupp.single k 1)
+    (hc : IsUnitCharge I) (hc' : IsUnitCharge I')
     (hwidth : I'.width = I.width) (hrom : ∀ i v, I.rom i = some v → I'.rom i = some v)
     (hcostCmp : ∀ p, cost (.cmp p) = Finsupp.single (.cmp p) 1)
     (hcostRom : ∀ p, cost (.rom p) = Finsupp.single (.rom p) 1)
@@ -606,7 +606,7 @@ abstract final state satisfying the postcondition, whose bit peak it exceeds by 
 No printed source.
 Result: computation-substitution -/
 theorem RunsWithin.subst (hcmp : I'.sem.cmp = I.sem.cmp) (htoNat : I'.sem.toNat = I.sem.toNat)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (hc' : ∀ k, I'.charge k = Finsupp.single k 1)
+    (hc : IsUnitCharge I) (hc' : IsUnitCharge I')
     (hwidth : I'.width = I.width) (hrom : ∀ i v, I.rom i = some v → I'.rom i = some v)
     (hcostCmp : ∀ p, cost (.cmp p) = Finsupp.single (.cmp p) 1)
     (hcostRom : ∀ p, cost (.rom p) = Finsupp.single (.rom p) 1)
@@ -639,14 +639,14 @@ theorem RunsWithin.subst (hcmp : I'.sem.cmp = I.sem.cmp) (htoNat : I'.sem.toNat 
 
 /-- The identity implementation of instructions, when the semantics and tapes agree. -/
 theorem implementsInstr_self (hsem : I'.sem = I.sem) (htape : I'.tape = I.tape)
-    (hc' : ∀ k, I'.charge k = Finsupp.single k 1) (cost : OpKind P ι → OpCount P ι')
+    (hc' : IsUnitCharge I') (cost : OpKind P ι → OpCount P ι')
     (hcost : ∀ i : Instr P ℕ ℕ, cost i.kind = Finsupp.single i.kind 1) :
     ImplementsInstr I I' .instr cost (fun _ => 0) 0 := by
   intro i st r hr
   refine ⟨{ st with store := r.1, pos := r.2, cnt := st.cnt + I'.charge i.kind }, ?_, rfl, rfl,
     rfl, rfl, ?_, fun q => le_max_left _ _, le_max_left _ _⟩
   · simp only [exec, hsem, htape, hr, Option.map_some]
-  · simp only [hc', hcost, le_refl]
+  · simp only [hc'.charge_eq, hcost, le_refl]
 
 /-- **The oracle substitution theorem**: oracle calls replaced by a certified implementation,
 every instruction kept. Let a program run within the budget `c`, `m` under `I`, which has no
@@ -660,7 +660,7 @@ of `NLAlib.Computation.RunsWithin.subst` with the identity implementation of ins
 No printed source.
 Result: computation-oracle-substitution -/
 theorem RunsWithin.substOracle (hsem : I'.sem = I.sem) (htape : I'.tape = I.tape)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (hc' : ∀ k, I'.charge k = Finsupp.single k 1)
+    (hc : IsUnitCharge I) (hc' : IsUnitCharge I')
     (hwidth : I'.width = I.width) (hrom : ∀ i, I.rom i = none)
     (hker : ∀ o ds xs, I.kernel o ds xs = none)
     (himpl : ImplementsOracle I I' implO (substKind cost) scratch scratchW)
@@ -705,7 +705,7 @@ have the same kernels and shapes, the concrete one charges one per operation, an
 kernel call itself, then keeping every kernel call implements the kernels of `I` under `I'`, with no
 scratch. No printed source. -/
 theorem implementsKernel_self {I I' : Interp P ι K (OpCount P ι)} (hker : I'.kernel = I.kernel)
-    (hksh : I'.kshape = I.kshape) (hc' : ∀ k, I'.charge k = Finsupp.single k 1)
+    (hksh : I'.kshape = I.kshape) (hc' : IsUnitCharge I')
     (cost : OpKind P ι → OpCount P ι)
     (hcost : ∀ p o ds, cost (.kcall p o ds) = Finsupp.single (.kcall p o ds) 1) :
     ImplementsKernel I I' .kcall cost (fun _ => 0) 0 := by
@@ -715,7 +715,7 @@ theorem implementsKernel_self {I I' : Interp P ι K (OpCount P ι)} (hker : I'.k
   refine ⟨{ st with store := s₁, cnt := st.cnt + I'.charge (.kcall p o (dims.map IExp.eval)) },
     ?_, rfl, rfl, rfl, rfl, ?_, fun q => le_max_left _ _, le_max_left _ _⟩
   · simp only [exec, hk, hs₁, Option.map_some]
-  · simp only [hc', hcost, le_refl]
+  · simp only [hc'.charge_eq, hcost, le_refl]
 
 end KernelSelf
 

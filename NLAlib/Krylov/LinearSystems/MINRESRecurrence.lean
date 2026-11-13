@@ -91,8 +91,8 @@ $\mathbf{d}_k = \gamma_k^{-1}(\mathbf{z}_k - \varepsilon_k\mathbf{d}_{k-2} -
 \delta_k\mathbf{d}_{k-1})$
 and $\mathbf{x}_{k+1} = \mathbf{x}_k + \tau_k\mathbf{d}_k$. The signs follow `NLAlib.givens`
 ($\begin{bmatrix} c & s \\ -\bar{s} & \bar{c} \end{bmatrix}$), not the paper's reflections.
-[PaigeSaunders1975, §6]; [Greenbaum1997, §2.5]; [ElmanSilvesterWathen2014, Algorithm 4.1];
-the last two locators to verify. Paige and Saunders, over $\mathbb{R}$ and without a
+[PaigeSaunders1975, §6]; [Greenbaum1997, §2.5, Algorithm 4]. The preconditioned form is
+[Greenbaum1997, Chapter 8, Algorithm 4P]. Paige and Saunders, over $\mathbb{R}$ and without a
 preconditioner, form the iterate as $\mathbf{x}_k = \mathbf{V}_k\mathbf{L}_k^{-\mathsf{T}}
 \mathbf{t}_k$ ((6.8)–(6.9)): the columns of $\mathbf{V}_k\mathbf{L}_k^{-\mathsf{T}}$ are the
 directions $\mathbf{d}_k$ here and the entries of $\mathbf{t}_k$ the $\tau_k$. -/
@@ -128,57 +128,66 @@ omit [DecidableEq n]
 variable (A : Matrix n n 𝕜)
 
 /-- The diagonal coefficient $\alpha_k$ of the current Lanczos state, as a scalar. -/
-private noncomputable def minresAlpha (s : MINRESState 𝕜 n) : 𝕜 :=
+noncomputable def minresAlpha (s : MINRESState 𝕜 n) : 𝕜 :=
   (preconditionedLanczosAlpha A s.lanczos : 𝕜)
 
 /-- The coefficient $\beta_k$ of the current Lanczos state, as a scalar. -/
-private noncomputable def minresBeta (s : MINRESState 𝕜 n) : 𝕜 := (s.lanczos.beta : 𝕜)
+noncomputable def minresBeta (s : MINRESState 𝕜 n) : 𝕜 := (s.lanczos.beta : 𝕜)
 
 /-- $\varepsilon_k = s_{k-2}\beta_k$. -/
-private noncomputable def minresEps (s : MINRESState 𝕜 n) : 𝕜 := s.s₂ * minresBeta s
+noncomputable def minresEps (s : MINRESState 𝕜 n) : 𝕜 := s.s₂ * minresBeta s
 
 /-- $\delta'_k = \bar{c}_{k-2}\beta_k$. -/
-private noncomputable def minresDelta0 (s : MINRESState 𝕜 n) : 𝕜 := star s.c₂ * minresBeta s
+noncomputable def minresDelta0 (s : MINRESState 𝕜 n) : 𝕜 := star s.c₂ * minresBeta s
 
 /-- $\delta_k = c_{k-1}\delta'_k + s_{k-1}\alpha_k$. -/
-private noncomputable def minresDelta (s : MINRESState 𝕜 n) : 𝕜 :=
+noncomputable def minresDelta (s : MINRESState 𝕜 n) : 𝕜 :=
   s.c₁ * minresDelta0 s + s.s₁ * minresAlpha A s
 
 /-- $\bar\gamma_k = -\bar{s}_{k-1}\delta'_k + \bar{c}_{k-1}\alpha_k$. -/
-private noncomputable def minresGammaBar (s : MINRESState 𝕜 n) : 𝕜 :=
+noncomputable def minresGammaBar (s : MINRESState 𝕜 n) : 𝕜 :=
   -star s.s₁ * minresDelta0 s + star s.c₁ * minresAlpha A s
 
 /-- $\gamma_k = c_k\bar\gamma_k + s_k\beta_{k+1}$, from the state $s$ before step $k$ and the
 state $s'$ after it. -/
-private noncomputable def minresGamma (s s' : MINRESState 𝕜 n) : 𝕜 :=
+noncomputable def minresGamma (s s' : MINRESState 𝕜 n) : 𝕜 :=
   s'.c₁ * minresGammaBar A s + s'.s₁ * minresBeta s'
 
 variable (M : Matrix n n 𝕜) (s : MINRESState 𝕜 n)
 
-private theorem minresStep_lanczos :
+/-- The Lanczos component of a MINRES step is exactly one preconditioned Lanczos step. -/
+theorem minresStep_lanczos :
     (minresStep A M s).lanczos = preconditionedLanczosStep A M s.lanczos := rfl
 
-private theorem minresStep_c₁ :
+/-- The new cosine is the Givens coefficient of the rotated diagonal and next subdiagonal. -/
+theorem minresStep_c₁ :
     (minresStep A M s).c₁ = (givensCoeffs (minresGammaBar A s) (minresBeta (minresStep A M s))).1 :=
   rfl
 
-private theorem minresStep_s₁ :
+/-- The new sine is the Givens coefficient of the rotated diagonal and next subdiagonal. -/
+theorem minresStep_s₁ :
     (minresStep A M s).s₁ = (givensCoeffs (minresGammaBar A s) (minresBeta (minresStep A M s))).2 :=
   rfl
 
-private theorem minresStep_c₂ : (minresStep A M s).c₂ = s.c₁ := rfl
+/-- A MINRES step retains the previous cosine for the next rotation. -/
+theorem minresStep_c₂ : (minresStep A M s).c₂ = s.c₁ := rfl
 
-private theorem minresStep_s₂ : (minresStep A M s).s₂ = s.s₁ := rfl
+/-- A MINRES step retains the previous sine for the next rotation. -/
+theorem minresStep_s₂ : (minresStep A M s).s₂ = s.s₁ := rfl
 
-private theorem minresStep_phi : (minresStep A M s).phi = -star (minresStep A M s).s₁ * s.phi :=
+/-- The MINRES residual estimate follows the new Givens sine. -/
+theorem minresStep_phi : (minresStep A M s).phi = -star (minresStep A M s).s₁ * s.phi :=
   rfl
 
-private theorem minresStep_d₁ : (minresStep A M s).d₁ = (minresGamma A s (minresStep A M s))⁻¹ •
+/-- The new MINRES direction is the three-term direction recurrence, with total inverse. -/
+theorem minresStep_d₁ : (minresStep A M s).d₁ = (minresGamma A s (minresStep A M s))⁻¹ •
     (s.lanczos.z - minresEps s • s.d₂ - minresDelta A s • s.d₁) := rfl
 
-private theorem minresStep_d₂ : (minresStep A M s).d₂ = s.d₁ := rfl
+/-- A MINRES step shifts the previous direction into the second direction slot. -/
+theorem minresStep_d₂ : (minresStep A M s).d₂ = s.d₁ := rfl
 
-private theorem minresStep_x :
+/-- The MINRES iterate adds the new direction scaled by the rotated right-hand side. -/
+theorem minresStep_x :
     (minresStep A M s).x = s.x + ((minresStep A M s).c₁ * s.phi) • (minresStep A M s).d₁ := rfl
 
 end Coefficients

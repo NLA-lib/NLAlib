@@ -96,7 +96,7 @@ open scoped Classical in
 /-- The canonical initial status guard charges one comparison and copies positive status
 only when the cached exact squared residual vanishes. All other scalar cells are retained. -/
 theorem exec_cg_status_guard (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hc : IsUnitCharge I) (tag : P)
     (st : St P ℝ (OpCount P ι)) {N : ℕ} (b : Fin N → ℝ)
     (h4 : st.store.shape[4]? = some (tag, 1))
     (hnu : st.store.read tag 7 0 = some (b ⬝ᵥ b))
@@ -115,7 +115,7 @@ theorem exec_cg_status_guard (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem = 
     { st with cnt := st.cnt + Finsupp.single (OpKind.cmp tag) 1 }
   have hcmp : cmpStep I tag .eq ⟨7, 0⟩ ⟨7, 6⟩ st = some (decide (b = 0), st₀) := by
     simp only [cmpStep, hnu, hzero, IExp.eval_ofNat, hI, exactSem,
-      Option.bind_some, Option.map_some, dotProduct_self_eq_zero, hc, st₀]
+      Option.bind_some, Option.map_some, dotProduct_self_eq_zero, hc.charge_eq, st₀]
   by_cases hb : b = 0
   · obtain ⟨s, hw, he, hsh, hr, hf⟩ := exec_scalar_copy I tag st₀ ⟨4, 0⟩ ⟨7, 7⟩ 1
       hone ⟨1, h4, by norm_num⟩
@@ -128,7 +128,7 @@ theorem exec_cg_status_guard (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem = 
     · intro q buf i hi
       exact hf q buf i (Or.inr hi)
     · change (st.cnt + _) + I.charge (.copy tag) ≤ _
-      rw [hc]
+      rw [hc.charge_eq]
   · refine ⟨st₀, ?_, rfl, ?_, fun _ _ _ _ => rfl, rfl, rfl, rfl, ?_, rfl, rfl⟩
     · change exec I (.seq (.ite tag .eq _ _ _ _) .skip) st = _
       rw [exec_seq_skip, exec_ite, hcmp]
@@ -141,7 +141,7 @@ theorem exec_cg_status_guard (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem = 
 /-- The actual vector initialization writes zero iterate and copies the input into residual
 and direction. No scratch allocation occurs, and all other buffers retain their contents. -/
 theorem exec_cg_vectors (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hc : IsUnitCharge I) (tag : P)
     (st : St P ℝ (OpCount P ι)) (N : ℕ) (b : Fin N → ℝ)
     (h1 : st.store.shape[1]? = some (tag, N))
     (h2 : st.store.shape[2]? = some (tag, N))
@@ -203,13 +203,13 @@ theorem exec_cg_vectors (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem = exact
     rw [f2 q buf i (Or.inl h3), f1 q buf i (Or.inl h2)]
     exact f0 q buf i (Or.inr (Or.inl h1))
   · rw [cnt2, cnt1]
-    simp only [st0, hc, IExp.eval_const]
+    simp only [st0, hc.charge_eq, IExp.eval_const]
 
 open scoped Classical in
 /-- The canonical cached self-dot followed by its actual initial status test. The dot is an
 executed kernel, and the zero-input status is derived from its stored result. -/
 theorem exec_cg_cache_status (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hc : IsUnitCharge I) (tag : P)
     (st : St P ℝ (OpCount P ι)) (N : ℕ) (b : Fin N → ℝ)
     (h7 : st.store.shape[7]? = some (tag, 9))
     (h4 : st.store.shape[4]? = some (tag, 1))
@@ -355,7 +355,7 @@ the approved zero-step CG count, including the zero-input branch; the sole scrat
 one dot-kernel cell. No positive-dimension, nonzero-input or matrix definiteness assumption
 is needed. All conclusions are flat facts about the actual returned state. -/
 theorem exec_cg_initialization (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hc : IsUnitCharge I) (tag : P)
     (st : St P ℝ (OpCount P ι)) (N : ℕ) (b : Fin N → ℝ) (vals : ℕ → ℝ)
     (hshape : st.store.shape = #[(tag, N), (tag, N), (tag, N), (tag, N),
       (tag, 1), (tag, N * N), (tag, N), (tag, 9)])
@@ -454,7 +454,7 @@ theorem exec_cg_initialization (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem 
       fvec tag 7 8 (by norm_num) (by norm_num) (by norm_num)]
     exact rn
   · rw [cntvec, congrArg St.cnt statepre] at cntout
-    simp only [hc] at cntout
+    simp only [hc.charge_eq] at cntout
     rw [cg_count_zero_eq]
     exact cntout.trans_eq (by abel)
   · rw [peakout, peakvec, congrArg St.peak statepre, curvec, congrArg St.cur statepre]

@@ -328,7 +328,7 @@ theorem Prog.pos_eq_of_exec_eq_some_of_cnt_le (hc : ∀ k, I.charge k ≠ 0)
 
 /-- The oracle is a program's only access to the matrix: under the standard charge, a run that
 makes no oracle call (its load counts do not grow) is the same run under any other oracle. -/
-theorem Prog.exec_eq_of_exec_eq_some_of_cnt_load_le (hc : ∀ k, I.charge k = Finsupp.single k 1)
+theorem Prog.exec_eq_of_exec_eq_some_of_cnt_load_le (hc : IsUnitCharge I)
     (O : ι → ℕ → Array K → Option (Array K)) (h : prog.exec I N n st = some st')
     (hl : ∀ p o, st'.cnt (.load p o) ≤ st.cnt (.load p o)) :
     prog.exec { I with oracle := O } N n st = some st' := by

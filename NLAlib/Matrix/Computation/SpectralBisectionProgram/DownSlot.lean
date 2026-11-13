@@ -819,9 +819,9 @@ theorem spec_eighSlotLeaf (md : Mode) {dec : P → K → ℝ} (p : P) (diag : Bo
       fun st st' => EighSlotDone H I.sem st'.store p (eighTapeMachine I p mmR qrR) n F d R₀ β
         lo y ∧ PosKept st st' := by
   have e1 : (eighBlockOff (.const n) (.const d) (.var lo) : IExp ℕ).eval =
-      2 * (n * n) * d + 2 * n * lo := by simp [eighBlockOff]
+      2 * (n * n) * d + 2 * n * lo := by simp [eval_eighBlockOff]
   have e2 : (eighSlotOff (.const n) (.const d) (.var lo) : IExp ℕ).eval = n * d + lo := by
-    simp [eighSlotOff]
+    simp [eval_eighSlotOff]
   have dMaUa : H.Ma ≠ H.Ua := fun h => by simp [EighArenas.handles, h] at hnd
   have dMaEa : H.Ma ≠ H.Ea := fun h => by simp [EighArenas.handles, h] at hnd
   have dUaEa : H.Ua ≠ H.Ea := fun h => by simp [EighArenas.handles, h] at hnd

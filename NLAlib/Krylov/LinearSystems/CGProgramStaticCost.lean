@@ -97,15 +97,13 @@ standard charges obeys the approved count formula, the scoped workspace cell bou
 width-weighted bit bound. This theorem establishes resources only; success is a premise. -/
 theorem cgProg.bounds_of_exec_eq_some {P ι K : Type} [DecidableEq P]
     (I : Interp P ι K (OpCount P ι)) (tag : P) (N q : ℕ)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) {st st' : St P K (OpCount P ι)}
+    (hc : IsUnitCharge I) {st st' : St P K (OpCount P ι)}
     (h : (cgProg.compiled (ι := ι) tag).exec I N ![q] st = some st') :
     (StaticCost.mk (cgCount tag N q) (fun p => if p = tag then N ^ 2 + N + 10 else 0)
       ((N ^ 2 + N + 10) * I.width tag)).Bounds st st' := by
-  have hcharge : I.charge = fun k => Finsupp.single k 1 := funext hc
-  have hcount := cgProg.staticCost_count_le (ι := ι) tag I.width N q
-  rw [← hcharge] at hcount
-  exact ((cgProg.compiled tag).bounds_staticCost_of_exec_eq_some I N ![q] h).mono hcount
+  exact (cgProg.compiled tag).bounds_of_exec_eq_some_of_staticCost_le I N ![q] hc _ _ _
+    (cgProg.staticCost_count_le (ι := ι) tag I.width N q)
     (cgProg.staticCost_cells_le tag I.charge I.width N q)
-    (cgProg.staticCost_bits_le tag I.charge I.width N q)
+    (cgProg.staticCost_bits_le tag I.charge I.width N q) h
 
 end NLAlib

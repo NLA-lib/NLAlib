@@ -134,6 +134,7 @@ theorem matrixNorm_eq_zero_iff {A : Matrix m n 𝕜} : Φ.matrixNorm A = 0 ↔ A
 
 /-- Unitarily invariant norms are absolutely homogeneous:
 $\|c\mathbf{A}\|_{\Phi} = \lvert c \rvert \|\mathbf{A}\|_{\Phi}$. -/
+@[simp]
 theorem matrixNorm_smul (c : 𝕜) (A : Matrix m n 𝕜) :
     Φ.matrixNorm (c • A) = ‖c‖ * Φ.matrixNorm A := by
   have h : singularValuesFinsupp (c • A) = ‖c‖ • singularValuesFinsupp A := by
@@ -195,6 +196,7 @@ theorem matrixNorm_mul_conjTranspose_self (A : Matrix m n 𝕜) :
 /-! ### Monotonicity, Fan dominance and the triangle inequality -/
 
 /-- A matrix with smaller singular values has a smaller norm. The shapes may differ. -/
+@[gcongr only]
 theorem matrixNorm_le_of_singularValues_le {A : Matrix m n 𝕜} {B : Matrix l p 𝕜}
     (h : ∀ i, singularValues A i ≤ singularValues B i) : Φ.matrixNorm A ≤ Φ.matrixNorm B := by
   refine Φ.le_of_abs_le fun i => ?_

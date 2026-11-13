@@ -145,7 +145,7 @@ private theorem integral_sub_mul_sub_mul_eq_neg_integral_lobattoMeasure
 /-- **The Lobatto nodal polynomial is orthogonal**: if $\mu$, finite and supported in $[a, b]$,
 $a < b$, has a Lobatto modified measure positive definite up to degree $k$, then the nodal
 polynomial of the Lobatto nodes is orthogonal in $L^2(\mu)$ to the polynomials of degree less
-than $k$. [Gautschi2004, Theorem 3.6] (locator to check). -/
+than $k$. [Gautschi2004, §1.4.2, (1.4.22)]. -/
 theorem isOrthogonalPolynomial_nodal_lobattoNodes (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b) (hab : a < b)
     {k : ℕ} (h : IsMomentPosDef (lobattoMeasure μ a b) k) :
     IsOrthogonalPolynomial μ k (Lagrange.nodal (lobattoNodes μ a b k) id) := by
@@ -245,8 +245,8 @@ private theorem integral_eval_basis_lobattoNodes_nonneg_of_factor
 
 /-- **The Lobatto weights are nonnegative**: for a finite measure $\mu$ supported in $[a, b]$,
 $a < b$, and every $k$, the interpolatory weight $\int\ell_x\,d\mu$ of every Lobatto node $x$ is
-nonnegative, $\ell_x$ its Lagrange basis polynomial. [Gautschi2004, Theorem 3.6] (locator to
-check); there positive, for $\mu$ with more than $k$ interior support points. -/
+nonnegative, $\ell_x$ its Lagrange basis polynomial. [Gautschi2004, Theorem 3.6]; there positive,
+for $\mu$ with more than $k$ interior support points. -/
 theorem integral_eval_basis_lobattoNodes_nonneg (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b) (hab : a < b)
     (k : ℕ) {x : ℝ} (hx : x ∈ lobattoNodes μ a b k) :
     0 ≤ ∫ t, (Lagrange.basis (lobattoNodes μ a b k) id x).eval t ∂μ := by
@@ -305,7 +305,7 @@ theorem integral_lobattoQuadrature (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b) (ha
 /-- **Gauss–Lobatto quadrature**: for a finite measure $\mu$ supported in $[a, b]$, $a < b$, and
 every $k$, the Lobatto rule with $k$ free nodes matches the first $2k + 2$ moments of $\mu$: it
 integrates every real polynomial of degree at most $2k + 1$ exactly. [Gautschi2004,
-Theorem 3.6]; [GolubMeurant2010, Ch. 6] (locators to check); there for $\mu$ with more than
+§1.4.2, (1.4.22)]; [GolubMeurant2010, §6.2.3]; there for $\mu$ with more than
 $k$ interior support points; otherwise the rule is $\mu$ itself.
 Result: gauss-lobatto-quadrature -/
 theorem matchesMoments_lobattoQuadrature (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b) (hab : a < b) (k : ℕ) :
@@ -368,7 +368,7 @@ with
 $$\int f\,d\mu - \int f\,d\,\mathsf{lobattoQuadrature}(\mu, a, b, k) =
 \frac{f^{(2k+2)}(\xi)}{(2k+2)!}\int(x - a)(x - b)\,\hat\pi_k(x)^2\,d\mu(x)\,,$$
 $\hat\pi_k$ the monic orthogonal polynomial of degree $k$ of `lobattoMeasure μ a b`.
-[Gautschi2004, Theorem 3.7]; [GolubMeurant2010, Ch. 6] (locators to check).
+[Gautschi2004, Theorem 3.7]; [GolubMeurant2010, §6.2.3].
 Result: gauss-lobatto-remainder -/
 theorem exists_integral_sub_integral_lobattoQuadrature_eq (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b)
     (hab : a < b) (k : ℕ) {f : ℝ → ℝ} (hf : ContinuousOn f (Set.Icc a b))
@@ -432,7 +432,7 @@ theorem exists_integral_sub_integral_lobattoQuadrature_eq (hμ : ∀ᵐ x ∂μ,
 for a finite measure $\mu$ supported in $[a, b]$, $a < b$, every $k$, and $f$ continuous on
 $[a, b]$, $C^{2k+2}$ on $(a, b)$ with $f^{(2k+2)} \ge 0$ there,
 $$\int f\,d\mu \le \int f\,d\,\mathsf{lobattoQuadrature}(\mu, a, b, k)\,.$$
-[Gautschi2004, Theorem 3.7]; [GolubMeurant2010, Ch. 6] (locators to check). -/
+[Gautschi2004, Theorem 3.7]; [GolubMeurant2010, §6.2.3]. -/
 theorem integral_le_integral_lobattoQuadrature_of_iteratedDeriv_nonneg
     (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b) (hab : a < b) (k : ℕ) {f : ℝ → ℝ}
     (hf : ContinuousOn f (Set.Icc a b)) (hf' : ContDiffOn ℝ (2 * k + 2 : ℕ) f (Set.Ioo a b))
@@ -450,7 +450,7 @@ theorem integral_le_integral_lobattoQuadrature_of_iteratedDeriv_nonneg
 $2k + 2$: for a finite measure $\mu$ supported in $[a, b]$, $a < b$, every $k$, and $f$
 continuous on $[a, b]$, $C^{2k+2}$ on $(a, b)$ with $f^{(2k+2)} \le 0$ there,
 $$\int f\,d\,\mathsf{lobattoQuadrature}(\mu, a, b, k) \le \int f\,d\mu\,.$$
-[Gautschi2004, Theorem 3.7]; [GolubMeurant2010, Ch. 6] (locators to check). -/
+[Gautschi2004, Theorem 3.7]; [GolubMeurant2010, §6.2.3]. -/
 theorem integral_lobattoQuadrature_le_integral_of_iteratedDeriv_nonpos
     (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b) (hab : a < b) (k : ℕ) {f : ℝ → ℝ}
     (hf : ContinuousOn f (Set.Icc a b)) (hf' : ContDiffOn ℝ (2 * k + 2 : ℕ) f (Set.Ioo a b))

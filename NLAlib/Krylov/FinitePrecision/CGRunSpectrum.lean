@@ -42,11 +42,11 @@ namespace NLAlib
 precision $\varepsilon$ and positive horizon $q$, the input-only condition
 $q^2\sqrt q\varepsilon(a'/a)^2\le10^{-5}$ implies the curvature precision window
 $3\varepsilon a'\le a$. This applies before constructing a CG run. -/
-theorem _root_.Matrix.IsHermitian.three_mul_mul_le_of_sq_mul_sqrt_mul_mul_sq_le
+theorem _root_.Matrix.IsHermitian.three_mul_mul_le_of_cgPrecisionHorizon
     {N q : ℕ} {A : Matrix (Fin N) (Fin N) ℝ} (hA : A.IsHermitian)
     (hn : 0 < N) (hq : 0 < q) {ε a a' : ℝ} (hε : 0 ≤ ε) (ha : 0 < a)
     (hs : spectrum ℝ A ⊆ Set.Icc a a')
-    (hsmall : (q : ℝ) ^ 2 * Real.sqrt q * ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) :
+    (hsmall : CGPrecisionHorizon q ε (a' / a)) :
     3 * ε * a' ≤ a := by
   have he := hA.spectrum_subset_iff.mp hs 0 (by simpa using hn)
   have hκ : 1 ≤ a' / a := (one_le_div ha).mpr (he.1.trans he.2)
@@ -116,7 +116,7 @@ $a \le a'$, $1 \le \kappa$, $\|\mathbf{A}\|_2 \le a'$, $\varepsilon \le 10^{-5}$
 $k\varepsilon\kappa$, $k^2\varepsilon\kappa$, $k^2\varepsilon\kappa^2 \le 10^{-5}$. -/
 theorem le_of_sq_mul_sqrt_mul_ε_mul_sq_le {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) :
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) :
     a ≤ a' ∧ 1 ≤ a' / a ∧ specNorm C.A ≤ a' ∧ C.ε ≤ 1 / 10 ^ 5 ∧
       (k : ℝ) * C.ε * (a' / a) ≤ 1 / 10 ^ 5 ∧ (k : ℝ) ^ 2 * C.ε * (a' / a) ≤ 1 / 10 ^ 5 ∧
       (k : ℝ) ^ 2 * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5 := by
@@ -141,6 +141,7 @@ theorem le_of_sq_mul_sqrt_mul_ε_mul_sq_le {a a' : ℝ} (ha : 0 < a)
   have hY : 0 ≤ C.ε * (a' / a) ^ 2 := by positivity
   have h22 : (k : ℝ) ^ 2 * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5 := by
     have := mul_le_mul_of_nonneg_right hm3 hY
+    unfold CGPrecisionHorizon at hsmall
     nlinarith
   have h2 : (k : ℝ) ^ 2 * C.ε * (a' / a) ≤ 1 / 10 ^ 5 := by
     have := mul_le_mul_of_nonneg_left hκ2 (by positivity : 0 ≤ (k : ℝ) ^ 2 * C.ε)
@@ -283,7 +284,7 @@ theorem norm_b_sq_div_le_mul_quadForm_of_mulVec_eq {a a' : ℝ} (ha : 0 < a)
 $j^2\varepsilon\kappa^2 \le 10^{-5}$ (`NLAlib.CGRun.le_of_sq_mul_sqrt_mul_ε_mul_sq_le`). -/
 theorem le_of_sq_mul_sqrt_mul_ε_mul_sq_le_of_le {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) {j : ℕ} (hj : j ≤ k) :
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) {j : ℕ} (hj : j ≤ k) :
     (j : ℝ) * C.ε * (a' / a) ≤ 1 / 10 ^ 5 ∧ (j : ℝ) ^ 2 * C.ε * (a' / a) ≤ 1 / 10 ^ 5 ∧
       (j : ℝ) ^ 2 * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5 := by
   obtain ⟨-, hκ, -, -, hkεκ, hk2εκ, hk2εκ2⟩ := C.le_of_sq_mul_sqrt_mul_ε_mul_sq_le ha hs hsmall
@@ -306,7 +307,7 @@ that the terminal search direction is nonzero. This derives the direction certif
 the spectral and precision inputs; it does not assume a next-curvature test. -/
 theorem p_ne_zero_of_r_ne_zero {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     (hr : C.r k ≠ 0) : C.p k ≠ 0 := by
   obtain ⟨-, hκ, -, -, hkεκ, -, -⟩ := C.le_of_sq_mul_sqrt_mul_ε_mul_sq_le ha hs hsmall
   have hε0 := C.ε_nonneg

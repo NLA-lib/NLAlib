@@ -47,8 +47,8 @@ $\tilde\pi_{k+1} = (x - \tilde\alpha_k)\pi_k - \beta_k\pi_{k-1}$.
 For a finite measure carried by a bounded interval, positive definite on polynomials of degree
 less than $k + 1$, the nonzero denominator also makes $c$ an eigenvalue of
 `radauJacobiMatrix μ c k`. Junk: $c$ when $\pi_k(c) = 0$ ($x/0 = 0$), with no such eigenvalue
-claim in that case. [Golub1973, §7];
-[GolubMeurant2010, Ch. 6] (locators to check). -/
+claim in that case. [Golub1973, §7, (7.1)–(7.4)];
+[GolubMeurant2010, §6.2.2]. -/
 noncomputable def radauJacobiAlpha (μ : Measure ℝ) (c : ℝ) : ℕ → ℝ
   | 0 => c
   | k + 1 => c - jacobiBeta μ (k + 1) * (orthogonalPolynomial μ k).eval c /
@@ -62,7 +62,7 @@ $\sqrt{\mu(\mathbb{R})}\,\mathbf{e}_0$ is the Radau rule with $k$ free nodes
 (`NLAlib.spectralMeasure_radauJacobiMatrix`). The matrix is defined for all arguments; if
 $\pi_k(c) = 0$, its corner is $c$ by total division, and the spectral-rule identity is not
 asserted without the preceding hypotheses.
-[Golub1973, §7]; [GolubMeurant2010, Ch. 6] (locators to check). -/
+[Golub1973, §7, (7.1)–(7.4)]; [GolubMeurant2010, §6.2.2]. -/
 noncomputable def radauJacobiMatrix (μ : Measure ℝ) (c : ℝ) (k : ℕ) :
     Matrix (Fin (k + 1)) (Fin (k + 1)) ℝ :=
   Matrix.of fun i j =>
@@ -119,7 +119,7 @@ private theorem radauJacobiMatrix_mulVec_apply {k : ℕ} (μ : Measure ℝ) (c :
 $\mu$ supported in $[a, b]$ is positive definite up to degree $k + 1$ and $\pi_k(c) \ne 0$, then
 $\tilde{\mathbf{J}}\mathbf{v} = c\,\mathbf{v}$ for the Radau Jacobi matrix $\tilde{\mathbf{J}}$
 of order $k + 1$ and $\mathbf{v}_i = \pi_i(c)/\|\pi_i\|$ (the orthonormal polynomials at $c$;
-$\mathbf{v}_0 > 0$). [Golub1973, §7] (locator to check). -/
+$\mathbf{v}_0 > 0$). [Golub1973, §7, (7.1)–(7.4)]. -/
 theorem IsMomentPosDef.radauJacobiMatrix_mulVec_eq {k : ℕ} (h : IsMomentPosDef μ (k + 1))
     (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b) (hc0 : (orthogonalPolynomial μ k).eval c ≠ 0) :
     radauJacobiMatrix μ c k *ᵥ (fun i : Fin (k + 1) => (orthogonalPolynomial μ i).eval c /

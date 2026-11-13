@@ -1022,14 +1022,17 @@ probability that $\mathsf{eigh}(\mathbf{A}, \varepsilon, \theta)$, the decoded o
 singular values within $\varepsilon/3$ of $1$ is at most $\theta$. This is
 $\log_2(1/\varepsilon) + \tfrac32\log_2(1/\theta) + O(\log n + \log\log(1/\varepsilon))$ bits,
 with the polynomial factor $n^{2.5}\max(\mu_{\mathrm{MM}}, \sqrt n)$ for $n \le \ell$; at
-$\mu_{\mathrm{MM}} = \mu_{\mathrm{QR}} = 1$, $c_{\mathrm N} = \sqrt2$,
-$\ell = \lceil\log_2(1/\varepsilon)\rceil + 5$ it asks for 49.1, 58.6, 74.9 and 105.4 bits at
-$(n, \varepsilon, \theta) = (1, 2^{-15}, 1)$, $(10, 2^{-15}, 1)$, $(1000, 2^{-15}, 1)$,
-$(1000, 2^{-40}, 1/2)$. [Shah2024, Theorem 4.2], there
+$\mu_{\mathrm{MM}}(d) = \mu_{\mathrm{QR}}(d) = 2d$, $c_{\mathrm N} = \sqrt2$,
+$\ell = \lceil\log_2(1/\varepsilon)\rceil + 5$, and the nontrivial failure allowance
+$\theta=1/2$, the two displayed conditions ask for approximately 50.8, 54.2, 81.2 and 110.1
+bits at $(n, \varepsilon) = (1, 2^{-15})$, $(2, 2^{-15})$, $(1024, 2^{-15})$,
+$(1000, 2^{-40})$, choosing $\beta$ at the upper endpoint of its window. These are sufficient
+rounded-black-box precision budgets; they do not establish finite-word program success.
+[Shah2024, Theorem 4.2], there
 $\log_2(1/\varepsilon) + \log_2\max(n^{1.5}\mu_{\mathrm{QR}}, n^2c_{\mathrm N},
 n^{4.5}\mu_{\mathrm{MM}}) + 2\log_2\log_2(1/\varepsilon) + 1.5\log_2(1/\theta) +
-\log_2\log_2(n\log_2(1/\varepsilon)/\theta) + 23$ (48.3, 63.6, 94.5, 124.0 bits at the same
-points); the third power of $\ell$ comes from the corrected shift-avoidance probability.
+\log_2\log_2(n\log_2(1/\varepsilon)/\theta) + 23$; the third power of $\ell$ comes from the
+corrected shift-avoidance probability.
 Result: spectral-bisection-diagonalization-bits -/
 theorem
     FloatMachine.IsAccurate.measureReal_not_isApproxDiagonalization_eigh_le_of_logb_le_of_hasLaw_eighSampleLaw

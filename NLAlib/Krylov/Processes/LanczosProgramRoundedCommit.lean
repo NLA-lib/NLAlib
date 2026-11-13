@@ -33,7 +33,7 @@ variable {P ι K : Type} [DecidableEq P]
 the norm and work words. Source words are copied exactly, without a numerical assumption
 on their decodings or their norm. -/
 theorem exec_rounded_previous_copy (I : Interp P ι K (OpCount P ι))
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hc : IsUnitCharge I) (tag : P)
     {N q j : ℕ} {A : Matrix (Fin N) (Fin N) ℝ} {b : Fin N → ℝ}
     {v : ℕ → Fin N → ℝ} {α β : ℕ → ℝ} {s : ℝ}
     (st : St P K (OpCount P ι)) (hs : StoreContext tag dec N q j A b v α β s st.store
@@ -67,7 +67,7 @@ the intervening copy. The returned normalization defect and near-unit property f
 from the preceding actual nrm2 trace, including its zero case. -/
 theorem exec_rounded_commit (I : Interp P ι K (OpCount P ι))
     (h : IsRelErrSem u dec (fun _ _ => True) I.sem) (hz : AddsZeroExactly dec I.sem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hc : IsUnitCharge I) (tag : P)
     {N q j : ℕ} {A : Matrix (Fin N) (Fin N) ℝ} {b : Fin N → ℝ}
     {v : ℕ → Fin N → ℝ} {α β : ℕ → ℝ} {s : ℝ}
     (predot normed : St P K (OpCount P ι))

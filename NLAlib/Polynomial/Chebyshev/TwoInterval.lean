@@ -90,7 +90,8 @@ $$T_k\Bigl(\frac{a'^2 + a^2}{a'^2 - a^2}\Bigr)^{-1} \le \sum_{j=0}^{k} \frac{\om
 \Bigl(\lvert p(\sqrt{\xi_j}) \rvert^2 + \lvert p(-\sqrt{\xi_j}) \rvert^2\Bigr) \,,$$
 with $\xi_j$ the Chebyshev extrema of $[a^2, a'^2]$ and $\omega_j$ their dual weights
 (`chebyshevExtremum`, `chebyshevWeight`).
-[Greenbaum1997, §3.1]; locator to verify; the bound behind the two-interval MINRES worst case. -/
+This weighted certificate is the library’s two-interval form of the residual-polynomial argument
+of [Greenbaum1997, §3.1, pp. 49–54], the bound behind the two-interval MINRES worst case. -/
 theorem inv_eval_T_real_le_sum_chebyshevWeight_mul_norm_sq_add_norm_sq {𝕜 : Type*} [RCLike 𝕜]
     {a a' : ℝ} (ha : 0 < a) (haa : a < a') {q : ℕ} {p : 𝕜[X]} (hp : p.degree ≤ q)
     (hp₀ : p.eval 0 = 1) :
@@ -126,7 +127,8 @@ theorem inv_eval_T_real_le_sum_chebyshevWeight_mul_norm_sq_add_norm_sq {𝕜 : T
 $$\min_{\deg p \le q,\ p(0) = 1}\ \max_{x \in [-a', -a] \cup [a, a']} \lvert p(x) \rvert =
 T_{\lfloor q/2 \rfloor}\Bigl(\frac{a'^2 + a^2}{a'^2 - a^2}\Bigr)^{-1} \,,$$
 attained by the even Chebyshev residual $r_{\lfloor q/2 \rfloor}(x^2)$ of $[a^2, a'^2]$.
-[Greenbaum1997, §3.1]; locator to verify; [Shamir2026, Lemma 1] uses the lower half. -/
+[Greenbaum1997, §3.1, pp. 49–54] treats the symmetric two-interval residual bound. [Shamir2026,
+Lemma 1] uses the lower half. -/
 theorem residualMinimax_Icc_union_Icc {a a' : ℝ} (q : ℕ) (ha : 0 < a) (haa : a < a') :
     residualMinimax (Set.Icc (-a') (-a) ∪ Set.Icc a a') q =
       ((T ℝ ((q / 2 : ℕ) : ℤ)).eval ((a' ^ 2 + a ^ 2) / (a' ^ 2 - a ^ 2)))⁻¹ := by
@@ -143,22 +145,7 @@ theorem residualMinimax_Icc_union_Icc {a a' : ℝ} (q : ℕ) (ha : 0 < a) (haa :
       (fun x hx => abs_eval_chebyshevResidual_comp_X_sq_le (q / 2) ha haa x hx)
     exact (degree_chebyshevResidual_comp_X_sq_le _ _ _).trans (by
       exact_mod_cast (by omega : 2 * (q / 2) ≤ q))
-  · have : Nonempty {p : ℝ[X] // p.degree ≤ q ∧ p.eval 0 = 1} :=
-      ⟨⟨1, degree_one_le.trans (by exact_mod_cast Nat.zero_le q), eval_one⟩⟩
-    refine le_ciInf fun ⟨p, hp, hp₀⟩ => ?_
-    have hS : IsCompact (Set.Icc (-a') (-a) ∪ Set.Icc a a') :=
-      isCompact_Icc.union isCompact_Icc
-    obtain ⟨M, hM⟩ := (hS.image (Polynomial.continuous p).abs).bddAbove
-    have hbdd : BddAbove (Set.range fun y : ℝ =>
-        ⨆ (_ : y ∈ Set.Icc (-a') (-a) ∪ Set.Icc a a'), |p.eval y|) := by
-      refine ⟨max M 0, ?_⟩
-      rintro _ ⟨y, rfl⟩
-      exact Real.iSup_le (fun hy => (hM ⟨y, hy, rfl⟩).trans (le_max_left _ _)) (le_max_right _ _)
-    have hle : ∀ x ∈ Set.Icc (-a') (-a) ∪ Set.Icc a a',
-        |p.eval x| ≤ ⨆ y ∈ Set.Icc (-a') (-a) ∪ Set.Icc a a', |p.eval y| := fun x hx => by
-      simpa only [ciSup_pos hx] using le_ciSup hbdd x
-    generalize hη : (⨆ y ∈ Set.Icc (-a') (-a) ∪ Set.Icc a a', |p.eval y|) = η at hle ⊢
-    have hη0 : 0 ≤ η := hη ▸ Real.iSup_nonneg fun _ => Real.iSup_nonneg fun _ => abs_nonneg _
+  · refine le_residualMinimax fun p η hp hp₀ hη0 hle => ?_
     -- the points ±√ξ_j lie in S
     have hsq : ∀ j : Fin (q / 2 + 1),
         Real.sqrt (chebyshevExtremum (a ^ 2) (a' ^ 2) (q / 2) j) ∈ Set.Icc a a' := fun j => by

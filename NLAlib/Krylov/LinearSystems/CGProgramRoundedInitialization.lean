@@ -30,24 +30,26 @@ variable {P ι K C : Type} [DecidableEq P] [AddMonoid C]
   {u : P → ℝ} {dec : P → K → ℝ} {storedMatrix : Bool}
 
 omit [DecidableEq P] [AddMonoid C] in
-/-- The scalar contract supplies the actual zero, positive and negative flag words.
-The positive flag need not decode to one. Its sign follows from unit roundoff below one. -/
+/-- Local zero and one literal facts, together with defined exact negation, supply the
+actual CG flag words. The positive flag need not decode to one: its relative literal
+accuracy is retained, and its sign follows from unit roundoff below one. No arithmetic,
+comparison, square-root or global range contract is needed. -/
 theorem exists_cg_flag_words (I : Interp P ι K C) (tag : P)
-    (hsem : IsRelErrSem u dec (fun _ _ => True) I.sem) (hu : u tag < 1) :
+    (hzero : ∃ zero, I.sem.lit tag 0 = some zero ∧ dec tag zero = 0)
+    (hone : ∃ one, I.sem.lit tag 1 = some one ∧ RelErr (u tag) 1 (dec tag one))
+    (hneg : ∀ x, ∃ z, I.sem.un tag .neg x = some z ∧ dec tag z = -dec tag x)
+    (hu : u tag < 1) :
     ∃ zero one negative : K, I.sem.lit tag 0 = some zero ∧ dec tag zero = 0 ∧
       I.sem.lit tag 1 = some one ∧ 0 < dec tag one ∧ |dec tag one - 1| ≤ u tag ∧
       I.sem.un tag .neg one = some negative ∧ dec tag negative = -dec tag one := by
-  obtain ⟨zero, hz⟩ := hsem.lit_ok tag 0 trivial
-  obtain ⟨dz, _, hdz⟩ := hsem.lit_err tag 0 zero hz
-  have hzero : dec tag zero = 0 := by simpa only [Rat.cast_zero, zero_mul] using hdz
-  obtain ⟨one, ho⟩ := hsem.lit_ok tag 1 trivial
-  obtain ⟨d, hd, hdo⟩ := hsem.lit_err tag 1 one ho
-  have hone : dec tag one = 1 + d := by simpa only [Rat.cast_one, one_mul] using hdo
-  obtain ⟨negative, hn, hdn⟩ := hsem.neg tag one
-  refine ⟨zero, one, negative, hz, hzero, ho, ?_, ?_, hn, hdn⟩
-  · rw [hone]
+  obtain ⟨zero, hz, hd0⟩ := hzero
+  obtain ⟨one, ho, d, hd, hdo⟩ := hone
+  have hone' : dec tag one = 1 + d := by simpa only [one_mul] using hdo
+  obtain ⟨negative, hn, hdn⟩ := hneg one
+  refine ⟨zero, one, negative, hz, hd0, ho, ?_, ?_, hn, hdn⟩
+  · rw [hone']
     linarith [(abs_le.mp hd).1]
-  · simpa only [hone, add_sub_cancel_left] using hd
+  · simpa only [hone', add_sub_cancel_left] using hd
 
 /-- The actual constant setup in the canonical CG initializer, including its actual writes,
 full outside-cell frame and exact charged state. -/
@@ -112,7 +114,7 @@ theorem exec_cg_constant_words (I : Interp P ι K C) (tag : P)
 and direction. No scratch allocation occurs, and all other buffers retain their contents. -/
 theorem exec_cg_vector_words (I : Interp P ι K (OpCount P ι))
     (tag : P) (zero : K) (hzero : I.sem.lit tag 0 = some zero)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1)
+    (hc : IsUnitCharge I)
     (st : St P K (OpCount P ι)) (N : ℕ) (b : Fin N → K)
     (h1 : st.store.shape[1]? = some (tag, N))
     (h2 : st.store.shape[2]? = some (tag, N))
@@ -174,7 +176,7 @@ theorem exec_cg_vector_words (I : Interp P ι K (OpCount P ι))
     rw [f2 q buf i (Or.inl h3), f1 q buf i (Or.inl h2)]
     exact f0 q buf i (Or.inr (Or.inl h1))
   · rw [cnt2, cnt1]
-    simp only [st0, hc, IExp.eval_const]
+    simp only [st0, hc.charge_eq, IExp.eval_const]
 
 /-- ROM loading and scalar setup execute in canonical order before vector initialization. -/
 theorem exec_cg_preload_words (I : Interp P ι K (OpCount P ι)) (tag : P)
@@ -255,10 +257,15 @@ theorem executionComposable_rounded_vectors (I : Interp P ι K (OpCount P ι)) (
       (executionComposable_single I (b := copyv tag 0 0 3 0 (.const N)) (fun _ => rfl)))
 
 /-- ROM loading, actual literal setup and vector initialization compose in the canonical
-order. Input and matrix words are retained exactly; only their decoding is numerical. -/
+order from the actual flag words and their local literal/negation facts. No global scalar
+arithmetic contract is needed. Input and matrix words are retained exactly; the positive
+flag's supplied accuracy and sign are preserved. -/
 theorem exec_rounded_setup (I : Interp P ι K (OpCount P ι)) (tag : P)
-    (hsem : IsRelErrSem u dec (fun _ _ => True) I.sem) (hu : u tag < 1)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1)
+    (zero one negative : K) (hz : I.sem.lit tag 0 = some zero) (hd0 : dec tag zero = 0)
+    (ho : I.sem.lit tag 1 = some one) (hpos : 0 < dec tag one)
+    (herr : |dec tag one - 1| ≤ u tag) (hn : I.sem.un tag .neg one = some negative)
+    (hdn : dec tag negative = -dec tag one)
+    (hc : IsUnitCharge I)
     (st : St P K (OpCount P ι)) (N : ℕ) (b : Fin N → K) (vals : ℕ → K)
     (hshape : st.store.shape = workspaceShape tag N)
     (hb : ∀ i : Fin N, st.store.read tag 0 i = some (b i))
@@ -283,8 +290,6 @@ theorem exec_rounded_setup (I : Interp P ι K (OpCount P ι)) (tag : P)
       out.store.read tag 7 8 = some negative ∧ out.store.read tag 4 0 = some zero ∧
       dec tag zero = 0 ∧ 0 < dec tag one ∧ |dec tag one - 1| ≤ u tag ∧
       dec tag negative = -dec tag one := by
-  obtain ⟨zero, one, negative, hz, hd0, ho, hpos, herr, hn, hdn⟩ :=
-    exists_cg_flag_words I tag hsem hu
   obtain ⟨pre, epre, shpre, mat, rz, ro, rn, rs, fpre, _⟩ :=
     exec_cg_preload_words I tag zero one negative hz ho hn st N vals
       (by simp [hshape, workspaceShape]) (by simp [hshape, workspaceShape])
@@ -408,7 +413,7 @@ below one independently of the dimension-dependent budget. The decoded matrix an
 are obtained from the actual ROM/input words. No desired numerical-state premise is used. -/
 theorem exec_rounded_initialization (I : Interp P ι K (OpCount P ι)) (tag : P)
     (hsem : IsRelErrSem u dec (fun _ _ => True) I.sem) (hz : AddsZeroExactly dec I.sem)
-    (hu : u tag < 1) (hc : ∀ k, I.charge k = Finsupp.single k 1)
+    (hu : u tag < 1) (hc : IsUnitCharge I)
     (st : St P K (OpCount P ι)) (N : ℕ) (b : Fin N → K) (vals : ℕ → K)
     (hshape : st.store.shape = workspaceShape tag N)
     (hb : ∀ i : Fin N, st.store.read tag 0 i = some (b i))
@@ -439,9 +444,15 @@ theorem exec_rounded_initialization (I : Interp P ι K (OpCount P ι)) (tag : P)
       (ν = 0 ↔ (fun i : Fin N => dec tag (b i)) = 0) ∧
       0 < flag ∧ |flag - 1| ≤ u tag := by
   classical
+  obtain ⟨zeroWord, oneWord, negativeWord, hz0, hdz, ho, hpos0, herr, hn, hdn0⟩ :=
+    exists_cg_flag_words I tag ((hsem.isArithErrSem (fun _ => trivial)).lit_zero tag)
+      (by
+        obtain ⟨one, ho⟩ := hsem.lit_ok tag 1 trivial
+        exact ⟨one, ho, by simpa only [RelErr, Rat.cast_one] using hsem.lit_err tag 1 one ho⟩)
+      (hsem.neg tag) hu
   obtain ⟨predot, zero, one, negative, epre, sh, mat, rb, rx, rr, rp, rz, ro, rn,
-      rs, hd0, hpos, hflag, hdn⟩ := exec_rounded_setup I tag hsem hu hc st N b vals
-        hshape hb hrom
+      rs, hd0, hpos, hflag, hdn⟩ := exec_rounded_setup I tag zeroWord oneWord negativeWord
+        hz0 hdz ho hpos0 herr hn hdn0 hc st N b vals hshape hb hrom
   have hread (i : Fin N) :
       ∃ w, predot.store.read tag 2 i = some w ∧ dec tag w = dec tag (b i) := ⟨b i, rr i, rfl⟩
   obtain ⟨scratch, hw⟩ := Store.exists_write_eq_some_of_getElem?_shape zero

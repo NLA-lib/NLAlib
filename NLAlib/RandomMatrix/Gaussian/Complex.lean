@@ -65,6 +65,31 @@ noncomputable def complexGaussian : Measure ℂ :=
 instance isProbabilityMeasure_complexGaussian : IsProbabilityMeasure complexGaussian :=
   Measure.isProbabilityMeasure_map Complex.measurableEquivRealProd.symm.measurable.aemeasurable
 
+/-- Two independent standard real Gaussian draws divided by $\sqrt2$ give the standard
+complex Gaussian law. This is the finite-product form used by Gaussian tape samplers.
+No printed source. -/
+theorem map_pi_fin_two_eq_complexGaussian :
+    (Measure.pi fun _ : Fin 2 => gaussianReal 0 1).map
+      (fun v : Fin 2 → ℝ => (⟨v 0 / √2, v 1 / √2⟩ : ℂ)) = complexGaussian := by
+  have hA : Measurable (Complex.measurableEquivRealProd.symm ∘ Prod.map (· / √2) (· / √2)) :=
+    Complex.measurableEquivRealProd.symm.measurable.comp (by fun_prop)
+  have hfun : (fun v : Fin 2 → ℝ => (⟨v 0 / √2, v 1 / √2⟩ : ℂ)) =
+      (Complex.measurableEquivRealProd.symm ∘ Prod.map (· / √2) (· / √2)) ∘
+        MeasurableEquiv.finTwoArrow := rfl
+  have hd : (gaussianReal 0 1).map (· / √2) = gaussianReal 0 2⁻¹ := by
+    have hfn : (fun x : ℝ => x / √2) = fun x => (√2)⁻¹ * x :=
+      funext fun x => div_eq_inv_mul _ _
+    rw [hfn, gaussianReal_map_const_mul]
+    congr 1
+    · simp
+    · apply NNReal.eq
+      simp [mul_comm]
+  rw [hfun, ← Measure.map_map hA MeasurableEquiv.finTwoArrow.measurable,
+    (measurePreserving_finTwoArrow _).map_eq,
+    ← Measure.map_map Complex.measurableEquivRealProd.symm.measurable (by fun_prop),
+    ← Measure.map_prod_map _ _ (by fun_prop) (by fun_prop), hd]
+  rfl
+
 /-- The law of a vector with independent standard complex Gaussian entries. -/
 noncomputable abbrev complexGaussianVector (n : Type*) [Fintype n] : Measure (n → ℂ) :=
   Measure.pi fun _ : n => complexGaussian

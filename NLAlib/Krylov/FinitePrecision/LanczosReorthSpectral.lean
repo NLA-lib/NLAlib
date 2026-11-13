@@ -386,7 +386,7 @@ $$\|\mathbf{H}' - \mathbf{H}\|_{\mathsf F} \le e + 3\|\mathbf{H}\|_2\,
 \mathbf{b}^{\mathsf{T}}p(\mathbf{H}')\mathbf{b}$ for every polynomial $p$ of degree at most
 $2k - 1$ (the entry at `NLAlib.LanczosReorthRun.firstIndex`): the computed tridiagonal is the
 Gauss rule of the spectral measure of $(\mathbf{H}', \mathbf{b})$.
-[GolubMeurant2010, Theorem 6.6] (locator to verify).
+[GolubMeurant2010, Theorem 6.6].
 Result: lanczos-reorth-gauss-quadrature -/
 theorem exists_pure_backward_gauss (hη : L.η₀ ≤ 1 / 100)
     (hsmall : Real.sqrt (3 * ((k : ℝ) + 1)) * L.orthLevel ≤ L.η₀)

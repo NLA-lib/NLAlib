@@ -18,6 +18,7 @@ different error; no fixed perturbed matrix is assumed.
 
 ## Main results
 
+* `NLAlib.Computation.IsMatvecErrOn.exec_apply`: an input-domain oracle executes on stored words.
 * `NLAlib.Computation.IsMatvecErr.exec_apply`: an accurate oracle executes on stored words.
 * `NLAlib.Computation.IsMatvecErr.isMatvecRoutine`: the oracle supplies a routine certificate.
 * `NLAlib.Computation.IsMatvecRoutine.toBlockRoutine`: the footprint of the certificate.
@@ -78,13 +79,13 @@ theorem IsMatvecRoutine.toBlockRoutine {I : Interp P ι K C} {dec : P → K → 
     obtain ⟨out, W, hr, hwr, -⟩ := h.run st x hp hx (hw _ List.mem_cons_self)
     exact ⟨out, [Array.ofFn W], hr, Store.writeBlocks_singleton_eq_some_iff.mpr ⟨by simp, hwr⟩⟩
 
-/-- An oracle satisfying the normwise accuracy and success contract executes one actual
-column from any readable source block into a disjoint writable destination buffer. The
+/-- An oracle with an input-domain mixed-error certificate executes one actual column
+when its decoded input satisfies the domain, into a disjoint writable destination buffer. The
 result retains its raw block write, including when the dimension is zero. -/
-theorem IsMatvecErr.exec_apply {I : Interp P ι K C} {o : ι} {dec : P → K → ℝ}
-    {tag : P} {N : ℕ} {A : Matrix (Fin N) (Fin N) ℝ} {c : ℝ}
-    (h : IsMatvecErr I o dec tag A c) (st : St P K C)
-    (src dst : ℕ) (sOff dOff : IExp ℕ) (hne : dst ≠ src) (x : Fin N → ℝ)
+theorem IsMatvecErrOn.exec_apply {I : Interp P ι K C} {o : ι} {dec : P → K → ℝ}
+    {tag : P} {N : ℕ} {A : Matrix (Fin N) (Fin N) ℝ} {c η : ℝ} {domain : (Fin N → ℝ) → Prop}
+    (h : IsMatvecErrOn I o dec tag A domain c η) (st : St P K C)
+    (src dst : ℕ) (sOff dOff : IExp ℕ) (hne : dst ≠ src) (x : Fin N → ℝ) (hdomain : domain x)
     (hx : ∀ i : Fin N, ∃ w, st.store.read tag src (sOff.eval + i) = some w ∧
       dec tag w = x i)
     (hy : ∀ i < N, ∃ len, st.store.shape[dst]? = some (tag, len) ∧ dOff.eval + i < len) :
@@ -93,12 +94,15 @@ theorem IsMatvecErr.exec_apply {I : Interp P ι K C} {o : ι} {dec : P → K →
       st.store.writeBlock tag dst dOff.eval (Array.ofFn W) =
         some out.store ∧
       ‖WithLp.toLp 2 (A *ᵥ x - fun i : Fin N => dec tag (W i))‖ ≤
-        c * ‖WithLp.toLp 2 x‖ := by
+        c * ‖WithLp.toLp 2 x‖ + η := by
   classical
   let words : Fin N → K := fun i => (hx i).choose
   let X := Array.ofFn words
   have hXsize : X.size = N := by simp [X]
-  obtain ⟨Y, hYsize, horacle, herr⟩ := h.2 X hXsize
+  have hdecode : (fun i : Fin N => dec tag (X[i.val]'(by omega))) = x := by
+    funext i
+    simpa only [X, Array.getElem_ofFn, words] using (hx i).choose_spec.2
+  obtain ⟨Y, hYsize, horacle, herr⟩ := h.2 X hXsize (hdecode ▸ hdomain)
   let W : Fin N → K := fun i => Y[i.val]'(by omega)
   have hY : Array.ofFn W = Y := by
     apply Array.ext (by simp [hYsize])
@@ -125,10 +129,26 @@ theorem IsMatvecErr.exec_apply {I : Interp P ι K C} {o : ι} {dec : P → K →
   refine ⟨out, W, ?_, by simpa only [hY] using hwrite, ?_⟩
   · simp only [exec, if_pos (Or.inl hne), h.1, IExp.eval_ofNat, mul_one, hread,
       Option.bind_some, horacle, hwrite, Option.map_some, one_nsmul, out]
-  · have hdecode : (fun i : Fin N => dec tag (X[i.val]'(by omega))) = x := by
-      funext i
-      simpa only [X, Array.getElem_ofFn, words] using (hx i).choose_spec.2
-    simpa only [hdecode, W] using herr
+  · simpa only [hdecode, W] using herr
+
+/-- An oracle satisfying the normwise accuracy and success contract executes one actual
+column from any readable source block into a disjoint writable destination buffer. The
+result retains its raw block write, including when the dimension is zero. -/
+theorem IsMatvecErr.exec_apply {I : Interp P ι K C} {o : ι} {dec : P → K → ℝ}
+    {tag : P} {N : ℕ} {A : Matrix (Fin N) (Fin N) ℝ} {c : ℝ}
+    (h : IsMatvecErr I o dec tag A c) (st : St P K C)
+    (src dst : ℕ) (sOff dOff : IExp ℕ) (hne : dst ≠ src) (x : Fin N → ℝ)
+    (hx : ∀ i : Fin N, ∃ w, st.store.read tag src (sOff.eval + i) = some w ∧
+      dec tag w = x i)
+    (hy : ∀ i < N, ∃ len, st.store.shape[dst]? = some (tag, len) ∧ dOff.eval + i < len) :
+    ∃ (out : St P K C) (W : Fin N → K),
+      exec I (.apply o tag dst dOff src sOff 1) st = some out ∧
+      st.store.writeBlock tag dst dOff.eval (Array.ofFn W) =
+        some out.store ∧
+      ‖WithLp.toLp 2 (A *ᵥ x - fun i : Fin N => dec tag (W i))‖ ≤
+        c * ‖WithLp.toLp 2 x‖ := by
+  simpa only [add_zero] using
+    (h.toOn (fun _ => True)).exec_apply st src dst sOff dOff hne x trivial hx hy
 
 /-- An accurate oracle supplies the routine certificate without any stored-matrix
 precondition. Its success clause is used, not merely the error of successful calls. -/

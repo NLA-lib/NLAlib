@@ -189,7 +189,7 @@ private theorem exists_integral_sub_mul_eq_mul_integral_radauMeasure
 /-- **The Radau nodal polynomial is orthogonal**: if $\mu$, finite and supported in $[a, b]$,
 has a Radau modified measure at $c \in \{a, b\}$ positive definite up to degree $k$, then
 $\prod_{x\in R}(x - y)$ over the Radau nodes $R$ is orthogonal in $L^2(\mu)$ to the polynomials
-of degree less than $k$. [Gautschi2004, Theorem 3.2] (locator to check). -/
+of degree less than $k$. [Gautschi2004, §1.4.2, (1.4.21)]. -/
 theorem isOrthogonalPolynomial_nodal_radauNodes (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b)
     (hc : c = a ∨ c = b) {k : ℕ} (h : IsMomentPosDef (radauMeasure μ c) k) :
     IsOrthogonalPolynomial μ k (Lagrange.nodal (radauNodes μ c k) id) := by
@@ -257,8 +257,8 @@ theorem integral_eval_basis_nonneg_of_exact (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc
 
 /-- **The Radau weights are nonnegative**: for a finite measure $\mu$ supported in $[a, b]$,
 $c \in \{a, b\}$ and every $k$, the interpolatory weight $\int\ell_x\,d\mu$ of every Radau
-node $x$ is nonnegative, $\ell_x$ its Lagrange basis polynomial. [Gautschi2004, Theorem 3.2]
-(locator to check); there positive, for $\mu$ with more than $k$ support points. -/
+node $x$ is nonnegative, $\ell_x$ its Lagrange basis polynomial. [Gautschi2004, Theorem 3.2];
+there positive, for $\mu$ with more than $k$ support points. -/
 theorem integral_eval_basis_radauNodes_nonneg (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b)
     (hc : c = a ∨ c = b) (k : ℕ) {x : ℝ} (hx : x ∈ radauNodes μ c k) :
     0 ≤ ∫ t, (Lagrange.basis (radauNodes μ c k) id x).eval t ∂μ := by
@@ -299,7 +299,7 @@ theorem integral_radauQuadrature (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b) (hc :
 /-- **Gauss–Radau quadrature**: for a finite measure $\mu$ supported in $[a, b]$,
 $c \in \{a, b\}$ and every $k$, the Radau rule with prescribed node $c$ and $k$ free nodes
 matches the first $2k + 1$ moments of $\mu$: it integrates every real polynomial of degree at
-most $2k$ exactly. [Gautschi2004, Theorem 3.2]; [GolubMeurant2010, Ch. 6] (locators to check);
+most $2k$ exactly. [Gautschi2004, §1.4.2, (1.4.21)]; [GolubMeurant2010, §6.2.2];
 there for $\mu$ with more than $k$ support points; otherwise the rule is $\mu$ itself.
 Result: gauss-radau-quadrature -/
 theorem matchesMoments_radauQuadrature (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b) (hc : c = a ∨ c = b)
@@ -347,7 +347,7 @@ theorem radauQuadrature_real_univ (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b) (hc 
 /-- **Uniqueness of the Radau rule**: if a finite measure $\nu$ carried by $c$ and at most $k$
 further points matches the first $2k + 1$ moments of a finite measure $\mu$ supported in
 $[a, b]$, $c \in \{a, b\}$, then $\nu$ is the Radau rule of $\mu$ with prescribed node $c$ and
-$k$ free nodes. [Gautschi2004, §3.1.1] (locator to check); there among rules with positive
+$k$ free nodes. [Gautschi2004, §3.1.1]; there among rules with positive
 weights.
 Result: gauss-radau-quadrature-uniqueness -/
 theorem MatchesMoments.eq_radauQuadrature [IsFiniteMeasure ν] {k : ℕ}
@@ -376,7 +376,7 @@ is $\xi \in (a, b)$ with
 $$\int f\,d\mu - \int f\,d\,\mathsf{radauQuadrature}(\mu, c, k) =
 \frac{f^{(2k+1)}(\xi)}{(2k+1)!}\int(x - c)\,\tilde\pi_k(x)^2\,d\mu(x)\,,$$
 $\tilde\pi_k$ the monic orthogonal polynomial of degree $k$ of `radauMeasure μ c`.
-[Gautschi2004, Theorem 3.3]; [GolubMeurant2010, Ch. 6] (locators to check).
+[Gautschi2004, Theorem 3.3]; [GolubMeurant2010, §6.2.2].
 Result: gauss-radau-remainder -/
 theorem exists_integral_sub_integral_radauQuadrature_eq (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b)
     (hab : a < b) (hc : c = a ∨ c = b) (k : ℕ) {f : ℝ → ℝ} (hf : ContinuousOn f (Set.Icc a b))
@@ -444,7 +444,7 @@ theorem exists_integral_sub_integral_radauQuadrature_eq (hμ : ∀ᵐ x ∂μ, x
 $2k + 1$: for a finite measure $\mu$ supported in $[a, b]$, $a < b$, every $k$, and $f$
 continuous on $[a, b]$, $C^{2k+1}$ on $(a, b)$ with $f^{(2k+1)} \ge 0$ there,
 $$\int f\,d\,\mathsf{radauQuadrature}(\mu, a, k) \le \int f\,d\mu\,.$$
-[Gautschi2004, Theorem 3.3]; [GolubMeurant2010, Ch. 6] (locators to check). -/
+[Gautschi2004, Theorem 3.3]; [GolubMeurant2010, §6.2.2]. -/
 theorem integral_radauQuadrature_le_integral_of_iteratedDeriv_nonneg
     (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b) (hab : a < b) (k : ℕ) {f : ℝ → ℝ}
     (hf : ContinuousOn f (Set.Icc a b)) (hf' : ContDiffOn ℝ (2 * k + 1 : ℕ) f (Set.Ioo a b))
@@ -466,7 +466,7 @@ $2k + 1$ (such as $x \mapsto x^{-1}$ on $[a, b]$, $a > 0$): for a finite measure
 supported in $[a, b]$, $a < b$, every $k$, and $f$ continuous on $[a, b]$, $C^{2k+1}$ on
 $(a, b)$ with $f^{(2k+1)} \le 0$ there,
 $$\int f\,d\mu \le \int f\,d\,\mathsf{radauQuadrature}(\mu, a, k)\,.$$
-[Gautschi2004, Theorem 3.3]; [GolubMeurant2010, Ch. 6] (locators to check). -/
+[Gautschi2004, Theorem 3.3]; [GolubMeurant2010, §6.2.2]. -/
 theorem integral_le_integral_radauQuadrature_of_iteratedDeriv_nonpos
     (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b) (hab : a < b) (k : ℕ) {f : ℝ → ℝ}
     (hf : ContinuousOn f (Set.Icc a b)) (hf' : ContDiffOn ℝ (2 * k + 1 : ℕ) f (Set.Ioo a b))
@@ -485,7 +485,7 @@ theorem integral_le_integral_radauQuadrature_of_iteratedDeriv_nonpos
 $2k + 1$: for a finite measure $\mu$ supported in $[a, b]$, $a < b$, every $k$, and $f$
 continuous on $[a, b]$, $C^{2k+1}$ on $(a, b)$ with $f^{(2k+1)} \ge 0$ there,
 $$\int f\,d\mu \le \int f\,d\,\mathsf{radauQuadrature}(\mu, b, k)\,.$$
-[Gautschi2004, Theorem 3.3]; [GolubMeurant2010, Ch. 6] (locators to check). -/
+[Gautschi2004, Theorem 3.3]; [GolubMeurant2010, §6.2.2]. -/
 theorem integral_le_integral_radauQuadrature_of_iteratedDeriv_nonneg
     (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b) (hab : a < b) (k : ℕ) {f : ℝ → ℝ}
     (hf : ContinuousOn f (Set.Icc a b)) (hf' : ContDiffOn ℝ (2 * k + 1 : ℕ) f (Set.Ioo a b))
@@ -504,7 +504,7 @@ $2k + 1$ (such as $x \mapsto x^{-1}$ on $[a, b]$, $a > 0$): for a finite measure
 supported in $[a, b]$, $a < b$, every $k$, and $f$ continuous on $[a, b]$, $C^{2k+1}$ on
 $(a, b)$ with $f^{(2k+1)} \le 0$ there,
 $$\int f\,d\,\mathsf{radauQuadrature}(\mu, b, k) \le \int f\,d\mu\,.$$
-[Gautschi2004, Theorem 3.3]; [GolubMeurant2010, Ch. 6] (locators to check). -/
+[Gautschi2004, Theorem 3.3]; [GolubMeurant2010, §6.2.2]. -/
 theorem integral_radauQuadrature_le_integral_of_iteratedDeriv_nonpos
     (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b) (hab : a < b) (k : ℕ) {f : ℝ → ℝ}
     (hf : ContinuousOn f (Set.Icc a b)) (hf' : ContDiffOn ℝ (2 * k + 1 : ℕ) f (Set.Ioo a b))

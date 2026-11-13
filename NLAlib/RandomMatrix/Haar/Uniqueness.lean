@@ -466,7 +466,9 @@ $\mathbf{G} \in \mathbb{R}^{n \times k}$, the polar factor
 $\mathbf{G}(\mathbf{G}^{\mathsf{H}}\mathbf{G})^{-1/2}$, a Haar frame, is independent of
 $\mathbf{G}^{\mathsf{H}}\mathbf{G}$ when $\lvert k \rvert \le \lvert n \rvert$. (For a wide
 $\mathbf{G}$ it is not: the Gram matrix fixes the row space of the polar factor.)
-[Meckes2019, Ch. 1]; locator to verify. -/
+[Notarnicola2023, Section 4.2, Lemmas 4.1--4.2, p. 1007]: independence is stated after
+equation (4.5) at identity covariance, with the Gaussian matrix transposed relative to this
+column-frame convention. Empty-dimensional cases are also included here. -/
 theorem indepFun_polarFactor_conjTranspose_mul_self_of_hasLaw_gaussianMatrix
     [DecidableEq k] {G : Ω → Matrix n k ℝ} (hG : HasLaw G (gaussianMatrix n k) μ)
     (hk : Fintype.card k ≤ Fintype.card n) :

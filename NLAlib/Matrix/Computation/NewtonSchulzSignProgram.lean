@@ -718,13 +718,13 @@ $(F)$ adds at most `NLAlib.newtonSchulzSignCount p mm N F` to the counts and rai
 memory at tag `p` by at most the $4N^2 + 5$ scratch cells above the current memory (by nothing at
 any other tag). No printed source. -/
 theorem newtonSchulzSignProg.cnt_le_of_exec_compiled {mm : ι} {I : Interp P ι K (OpCount P ι)}
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (p : P) (N F : ℕ)
+    (hc : IsUnitCharge I) (p : P) (N F : ℕ)
     {st st' : St P K (OpCount P ι)}
     (h : (newtonSchulzSignProg.compiled p mm).exec I N ![F] st = some st') :
     st'.cnt ≤ st.cnt + newtonSchulzSignCount p mm N F ∧
       ∀ q, st'.peak q ≤ max (st.peak q) (st.cur q + if q = p then 4 * (N * N) + 5 else 0) := by
   have hb := (newtonSchulzSignProg.compiled p mm).bounds_staticCost_of_exec_eq_some I N ![F] h
-  have hcharge : I.charge = fun k => Finsupp.single k 1 := funext hc
+  have hcharge : I.charge = fun k => Finsupp.single k 1 := hc.charge_eq
   have hb' := hb.mono (b := ⟨newtonSchulzSignCount p mm N F,
     fun q => if q = p then 4 * (N * N) + 5 else 0, _⟩) ?_ ?_ le_rfl
   · exact ⟨hb'.count, hb'.peak⟩

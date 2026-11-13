@@ -83,7 +83,7 @@ $\mathbf{w} = \mathbf{A}\mathbf{z}_j - \beta_j\mathbf{v}_{j-1} - \alpha_j\mathbf
 $\mathbf{u} = \mathbf{M}\mathbf{w}$, $\beta_{j+1} = \sqrt{\operatorname{Re}\langle\mathbf{w},
 \mathbf{u}\rangle}$, $\mathbf{v}_{j+1} = \mathbf{w}/\beta_{j+1}$,
 $\mathbf{z}_{j+1} = \mathbf{u}/\beta_{j+1}$. At breakdown everything after is zero.
-[ElmanSilvesterWathen2014, Algorithm 4.1]; locator to verify. -/
+[Greenbaum1997, Chapter 8, p. 121, Preconditioned Lanczos Algorithm]. -/
 noncomputable def preconditionedLanczosStep (A M : Matrix n n 𝕜)
     (s : PreconditionedLanczosState 𝕜 n) : PreconditionedLanczosState 𝕜 n :=
   let w := A *ᵥ s.z - (s.beta : 𝕜) • s.prev - (preconditionedLanczosAlpha A s : 𝕜) • s.cur
@@ -238,7 +238,7 @@ with no breakdown hypothesis and no invertibility of $\mathbf{C}$: the matrix of
 $\mathbf{z}_j$ computed by $q$ steps from $\mathbf{b}$ is
 $\mathbf{C}\,\mathsf{arnoldiMatrix}(\mathbf{C}^{\mathsf{H}}\mathbf{A}\mathbf{C},
 \mathbf{C}^{\mathsf{H}}\mathbf{b}, q)$.
-[ElmanSilvesterWathen2014, Algorithm 4.1]; locator to verify.
+[Greenbaum1997, Chapter 8, p. 121, Preconditioned Lanczos Algorithm].
 Result: preconditioned-lanczos-recurrence -/
 theorem _root_.Matrix.IsHermitian.preconditionedLanczosMatrix_eq (hA : A.IsHermitian)
     {C : Matrix n n 𝕜} (hM : M = C * Cᴴ) (b : n → 𝕜) (q : ℕ) :

@@ -700,7 +700,7 @@ by at most $64(N + 1)^2(\ell_0 + 3)$ cells above the current memory (by nothing 
 the arenas of $D + 1 = \ell_0 + 2$ levels and the scratch of one node, $O(N^2 \ell_0)$. No printed
 source. -/
 theorem eighProg.cnt_le_of_exec_compiled {mm qr : ι} {I : Interp P ι K (OpCount P ι)}
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (p : P) (N ℓ₀ F : ℕ)
+    (hc : IsUnitCharge I) (p : P) (N ℓ₀ F : ℕ)
     {st st' : St P K (OpCount P ι)}
     (h : (eighProg.compiled p mm qr).exec I N ![ℓ₀, F] st = some st') :
     st'.cnt ≤ st.cnt + eighCount p mm qr N ℓ₀ F ∧
@@ -721,7 +721,7 @@ theorem eighProg.cnt_le_of_exec_compiled {mm qr : ι} {I : Interp P ι K (OpCoun
     rfl
   generalize eighProg.compiled p mm qr = T at hb hpr hC hCc htag
   have hcount := count_le_eighCount I.width p mm qr N ℓ₀ F T hpr hC htag
-  rw [← funext hc] at hcount
+  rw [← hc.charge_eq] at hcount
   exact ⟨hb.count.trans (add_le_add le_rfl fun κ => hcount κ), fun q => (hb.peak q).trans
     (max_le_max le_rfl
       (add_le_add le_rfl (cells_le_of_crudeCells_eq I.charge I.width p N ℓ₀ F T hCc htag q)))⟩

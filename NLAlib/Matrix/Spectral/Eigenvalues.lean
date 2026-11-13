@@ -216,7 +216,7 @@ $\mathbf{U} \operatorname{diag}(\mathbf{d}) \mathbf{U}^{\mathsf{H}}$ for a unita
 a real $\mathbf{d}$, in no particular order.
 `Matrix.IsHermitian.exists_eq_mul_diagonal_mul_conjTranspose` is the form with the sorted
 eigenvalues, indexed by `Fin (Fintype.card n)`.
-[HornJohnson2013, Theorem 4.1.5] (locator to check). -/
+[HornJohnson2013, Theorem 4.1.5]. -/
 theorem _root_.Matrix.IsHermitian.exists_hasOrthonormalCols_eq_mul_diagonal_mul_conjTranspose
     [DecidableEq n] {A : Matrix n n 𝕜} (hA : A.IsHermitian) :
     ∃ (U : Matrix n n 𝕜) (d : n → ℝ), HasOrthonormalCols U ∧

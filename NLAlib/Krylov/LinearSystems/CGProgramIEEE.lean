@@ -7,6 +7,9 @@ module
 
 public import NLAlib.Computation.IEEE
 public import NLAlib.Krylov.LinearSystems.CGProgramUnderflow
+public import NLAlib.Krylov.LinearSystems.CGProgramTree
+-- Expose core's logical literal conversions for the closed checked execution below.
+import all Init.Data.OfScientific
 
 /-!
 # The CG residual cache with actual Lean Float arithmetic
@@ -16,14 +19,18 @@ binary64 model. Its arithmetic accuracy, full-range success and exact zero addit
 proved, so the input-only CG residual-kernel certificate needs no abstract accuracy premise.
 The result retains actual execution, the returned word, and its destination write/read.
 
-This is a theorem about the actual dot kernel called by the registered CG trees. It does
-not certify a complete CG loop, native runtime replacements, or the true residual of a
-computed iterate without an additional residual-gap estimate.
+The general result concerns the actual dot kernel called by the registered CG trees.
+A separate concrete example executes the entire registered tree on the one-dimensional
+identity system, with nonzero input and one requested iteration, and reads back its exact
+solution and successful status. General finite-word CG convergence, native runtime replacement
+correctness and true-residual bounds for arbitrary computed iterates remain separate questions.
 
 ## Main results
 
 * `NLAlib.CGImplementation.exec_self_dot_of_sem_eq_finiteFloatSem`:
   actual binary64 residual-dot execution and its underflow-aware cache certificate.
+* `NLAlib.CGImplementation.exists_exec_cgProg_identity_finiteFloat`: a full positive-budget
+  finite-word run of the registered tree on the one-dimensional identity system.
 -/
 
 @[expose] public section
@@ -31,6 +38,36 @@ computed iterate without an additional residual-gap estimate.
 namespace NLAlib.CGImplementation
 
 open Computation
+
+private def identityInput : St Unit FiniteFloat ℕ :=
+  inputState () [#[some finiteFloatOne], #[none], #[none], #[none], #[none]]
+
+private def identityRun : Option (St Unit FiniteFloat ℕ) :=
+  (cgProg.compiled (ι := Unit) ()).exec
+    (finiteFloatStoredInterp #[finiteFloatOne]) 1 ![1] identityInput
+
+-- The closed checked Float execution traverses core's logical bit arithmetic at each step.
+set_option maxHeartbeats 400000 in
+-- Four readbacks normalize the complete registered execution, including checked Float literals.
+set_option maxRecDepth 4096 in
+/-- The actual registered CG tree solves the one-dimensional system $[1]x=[1]$ with checked
+finite binary64 words and one requested iteration. The input residual is nonzero, so this run
+executes a positive-curvature step. Its returned iterate decodes to $1$, residual to $0$,
+and positive status to $1$, all read from the actual returned store. ROM and arithmetic are
+concrete; there is no abstract error, range, successful-trajectory or probabilistic hypothesis.
+This is a full finite-word execution example, not a general finite-format convergence claim.
+No printed source. -/
+theorem exists_exec_cgProg_identity_finiteFloat :
+    ∃ out : St Unit FiniteFloat ℕ,
+      (cgProg.compiled (ι := Unit) ()).exec (finiteFloatStoredInterp #[finiteFloatOne])
+        1 ![1] (inputState () [#[some finiteFloatOne], #[none], #[none], #[none], #[none]]) =
+          some out ∧
+      (∃ w, out.store.read () 1 0 = some w ∧ floatDecode w.val = 1) ∧
+      (∃ w, out.store.read () 2 0 = some w ∧ floatDecode w.val = 0) ∧
+      (∃ w, out.store.read () 4 0 = some w ∧ floatDecode w.val = 1) := by
+  refine ⟨identityRun.getD identityInput, ?_, ⟨finiteFloatOne, ?_, floatDecode_finiteFloatOne⟩,
+    ⟨finiteFloatZero, ?_, floatDecode_finiteFloatZero⟩,
+    ⟨finiteFloatOne, ?_, floatDecode_finiteFloatOne⟩⟩ <;> rfl
 
 /-- The actual CG squared-residual kernel executes with finite Lean `Float` words when
 its input satisfies $P\|\mathbf{r}\|^2+D\le M$, where $u=2^{-53}$, $\eta=2^{-1075}$,

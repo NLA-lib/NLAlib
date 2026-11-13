@@ -678,7 +678,7 @@ $2e^{-C\lvert k\rvert\min(t^2/c^2, t/c)}$ (`NLAlib.hasJLProperty_of_isSubgaussia
 `NLAlib.hasJLMoment_of_forall_hasJLProperty` integrates. Incomparable with
 `NLAlib.hasJLMoment_of_isSubgaussianVector` (the fourth moment, better at $p = 2$). Sign sketches
 are the case $c = 1$. [Woodruff2014, Definition 12] for the property; that dense sketches have it
-at $p = \log(1/\delta)$ is Kane and Nelson's (2014; locator to check). -/
+at $p = \log(1/\delta)$ follows from [KaneNelson2014, Remark 22]. -/
 theorem hasJLMoment_subexponentialMomentBound_of_isSubgaussianVector [Nonempty k]
     (hind : iIndepFun (fun i ω => X ω i) μ) (hsub : ∀ i, IsSubgaussianVector (fun ω => X ω i) c μ)
     (hiso : ∀ i, IsIsotropic (fun ω => X ω i) μ) (hε : 0 < ε) {p : ℝ} (hp : 0 < p) :
@@ -720,7 +720,7 @@ $$\max(2, \log(1/\delta)) \,;$$
 approximate matrix multiplication with failure probability $\delta$ follows
 (`NLAlib.HasJLMoment.measureReal_frobNorm_conjTranspose_mul_sub_ge_le`). Sign sketches are the
 case $c = 1$. [Woodruff2014, Definition 12 and Theorem 13], the property and AMM from it; the
-size $O(\log(1/\delta)/\varepsilon^2)$ is Kane and Nelson's (2014; locator to check), the
+size $O(\log(1/\delta)/\varepsilon^2)$ follows from [KaneNelson2014, Remark 22], the
 constants are this proof's. Asymptotic form:
 `NLAlib.exists_forall_hasJLMoment_of_isSubgaussianVector`.
 Result: jl-moment-subgaussian -/

@@ -126,7 +126,7 @@ private theorem le_scratchPeak (peak cur : P → ℕ) (tag : P) :
 /-- The actual canonical guarded step preserves the loop invariant for every real matrix,
 with the approved step count and one-cell scratch-memory allowance. -/
 theorem exec_exact_step (I : Interp P ι ℝ (OpCount P ι))
-    (hI : I.sem = exactSem) (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hI : I.sem = exactSem) (hc : IsUnitCharge I) (tag : P)
     (st : St P ℝ (OpCount P ι)) (N j : ℕ) (A : Matrix (Fin N) (Fin N) ℝ)
     (b : Fin N → ℝ) (h : LoopInvariant tag N A b j st.store) :
     ∃ out, exec I (Builder.ifThenElse tag .eq ⟨4, 0⟩ ⟨7, 6⟩
@@ -180,7 +180,7 @@ private def PrefixInvariant (I : Interp P ι ℝ (OpCount P ι)) (tag : P) (N : 
     out.peakW ≤ max st.peakW (st.curW + I.width tag)
 
 private theorem exec_exact_prefix_succ (I : Interp P ι ℝ (OpCount P ι))
-    (hI : I.sem = exactSem) (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hI : I.sem = exactSem) (hc : IsUnitCharge I) (tag : P)
     (st out : St P ℝ (OpCount P ι)) (N j : ℕ) (A : Matrix (Fin N) (Fin N) ℝ)
     (b : Fin N → ℝ) (h : PrefixInvariant I tag N A b st j out) :
     ∃ next, exec I (Builder.ifThenElse tag .eq ⟨4, 0⟩ ⟨7, 6⟩
@@ -231,7 +231,7 @@ private theorem exec_exact_prefix_succ (I : Interp P ι ℝ (OpCount P ι))
         exact max_le hpeakW (le_max_right _ _)
 
 private theorem exec_exact_loop_prefix (I : Interp P ι ℝ (OpCount P ι))
-    (hI : I.sem = exactSem) (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hI : I.sem = exactSem) (hc : IsUnitCharge I) (tag : P)
     (st : St P ℝ (OpCount P ι)) (N q : ℕ) (A : Matrix (Fin N) (Fin N) ℝ)
     (b : Fin N → ℝ) (h : LoopInvariant tag N A b 0 st.store) :
     ∃ out, exec I (Builder.forRange (.const q) fun _ => (Builder.ifThenElse tag .eq ⟨4, 0⟩ ⟨7, 6⟩
@@ -271,7 +271,7 @@ private theorem exec_exact_loop_prefix (I : Interp P ι ℝ (OpCount P ι))
 For SPD matrices its actual vector cells equal the mathematical CG state after the requested
 budget, including zero termination. Counts and memory satisfy the approved loop allowance. -/
 theorem exec_exact_loop (I : Interp P ι ℝ (OpCount P ι))
-    (hI : I.sem = exactSem) (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hI : I.sem = exactSem) (hc : IsUnitCharge I) (tag : P)
     (st : St P ℝ (OpCount P ι)) (N q : ℕ) (A : Matrix (Fin N) (Fin N) ℝ)
     (b : Fin N → ℝ)
     (h : StoreContext tag (fun _ x => x) N A b ⟨0, b, b⟩ (b ⬝ᵥ b)

@@ -191,7 +191,7 @@ forRange (IExp.const q) fun _ => ifThenElse tag .eq ⟨4, 0⟩ ⟨7, 6⟩
 
 open scoped Classical in
 private theorem exec_cg_workspace_body (I : Interp P ι ℝ (OpCount P ι))
-    (hI : I.sem = exactSem) (hc : ∀ k, I.charge k = Finsupp.single k 1)
+    (hI : I.sem = exactSem) (hc : IsUnitCharge I)
     (tag : P) (N q : ℕ) (b : Fin N → ℝ) (vals : ℕ → ℝ)
     (hw : I.width tag = 0) (hrom : ∀ i < N * N, I.rom i = some (vals i)) :
     ∃ out v status, exec I (do
@@ -316,7 +316,7 @@ private theorem post_released (tag : P) (N q : ℕ) (A : Matrix (Fin N) (Fin N) 
       holds 3 (by omega) _ ctx.direction, hterm, hneg⟩
 
 private theorem exec_cg_program (I : Interp P ι ℝ (OpCount P ι))
-    (hI : I.sem = exactSem) (hc : ∀ k, I.charge k = Finsupp.single k 1)
+    (hI : I.sem = exactSem) (hc : IsUnitCharge I)
     (tag : P) (N q : ℕ) (b : Fin N → ℝ) (vals : ℕ → ℝ)
     (hw : I.width tag = 0) (hrom : ∀ i < N * N, I.rom i = some (vals i)) :
     ∃ final, exec I (cgProg tag (IExp.const N) (IExp.const q) 0 1 2 3 4).run

@@ -107,8 +107,9 @@ theorem roundingFactor_two_le_cgImplementationRoundoffBound {N : ℕ}
 one hundred-thousandth. No measured trajectory or successful-run premise is needed. -/
 theorem cgImplementationRoundoffBound_le_of_mul_le {N q : ℕ} (hq : 0 < q)
     {u κ : ℝ} (hu : 0 ≤ u) (hκ : 1 ≤ κ)
-    (hsmall : (q : ℝ) ^ 2 * Real.sqrt q * cgImplementationRoundoffBound N u * κ ^ 2 ≤
-      1 / 10 ^ 5) : cgImplementationRoundoffBound N u ≤ 1 / 10 ^ 5 := by
+    (hsmall : CGPrecisionHorizon q (cgImplementationRoundoffBound N u) κ) :
+    cgImplementationRoundoffBound N u ≤ 1 / 10 ^ 5 := by
+  unfold CGPrecisionHorizon at hsmall
   have hqr : (1 : ℝ) ≤ q := by exact_mod_cast hq
   have hq2 : 1 ≤ (q : ℝ) ^ 2 := by nlinarith
   have hsqrt : 1 ≤ Real.sqrt q := Real.one_le_sqrt.mpr hqr

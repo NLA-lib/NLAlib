@@ -184,7 +184,7 @@ theorem exists_degree_le_isUniformApproxOn_Icc_of_differentiableOn
 $t \mapsto f(((b - a)t + b + a)/2)$ of a real $f$ extends to a function holomorphic and bounded by
 $M$ on the open Bernstein ellipse $E_\rho$, $\rho > 1$, then
 $$E_N(f; [a, b]) \le \frac{2M}{\rho^N(\rho - 1)}\,.$$
-[Trefethen2019, Theorem 8.2] (locator to check), there on $[-1, 1]$ for the Chebyshev
+[Trefethen2019, Theorem 8.2], there on $[-1, 1]$ for the Chebyshev
 truncation.
 Result: bernstein-ellipse-approx -/
 theorem minimaxError_le_of_differentiableOn {f : ℝ → ℝ} {F : ℂ → ℂ} {a b ρ M : ℝ} (hab : a < b)

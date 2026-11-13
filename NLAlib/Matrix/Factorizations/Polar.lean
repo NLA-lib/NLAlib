@@ -21,8 +21,10 @@ $\mathbf{A} = \mathbf{U}\mathbf{\Sigma}\mathbf{V}^{\mathsf{H}}$ with positive si
 has orthonormal columns exactly when $\mathbf{A}$ has full column rank. The positive semidefinite
 factor is unique, and the isometric factor is unique exactly at full column rank.
 
-The polar factor is the nearest matrix with orthonormal columns in every unitarily invariant
-norm. The Procrustes problems it solves are in `NLAlib.Matrix.Factorizations.Procrustes`.
+When the row dimension is at least the column dimension, an isometric polar extension is a
+nearest matrix with orthonormal columns in every unitarily invariant norm. At full column rank
+this extension equals the canonical polar factor. The Procrustes problems it solves are in
+`NLAlib.Matrix.Factorizations.Procrustes`.
 
 ## Main definitions
 
@@ -138,7 +140,8 @@ theorem IsSVD.polarFactor_eq [DecidableEq r] {A : Matrix m n 𝕜} {U : Matrix m
 /-- **The polar decomposition**
 $\mathbf{A} = \mathbf{U}(\mathbf{A}^{\mathsf{H}}\mathbf{A})^{1/2}$, with $\mathbf{U}$ the polar
 factor.
-[HornJohnson2013, Theorem 7.3.1] (locator to check). -/
+[Higham1986, Theorem 1.1] treats tall matrices and an isometric factor. Here the canonical factor
+may be a partial isometry. -/
 theorem polarFactor_mul_sqrt (A : Matrix m n 𝕜) :
     polarFactor A * CFC.sqrt (Aᴴ * A) = A := by
   obtain ⟨k, U, σ, V, h⟩ := exists_isSVD_rank A

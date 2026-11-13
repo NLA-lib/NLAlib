@@ -42,7 +42,7 @@ variable {𝕜 : Type*} [RCLike 𝕜] {n : Type*} [Fintype n] [DecidableEq n]
 $\mathsf{gmresIterate}(\mathbf{A}, \mathbf{b}, \mathbf{x}_0, q) = \mathbf{x}_0 +
 \|\mathbf{r}_0\|\,\mathbf{Q}_q\underline{\mathbf{T}}_q^{+}\mathbf{e}_0$ with $\mathbf{Q}_q$ and
 $\underline{\mathbf{T}}_q$ computed by the Lanczos recurrence from $\mathbf{r}_0$, with no grade
-hypothesis. [PaigeSaunders1975, §6]; [Greenbaum1997, §2.5]; the second locator to verify. Paige
+hypothesis. [PaigeSaunders1975, §6]; [Greenbaum1997, §2.5, Algorithm 4]. Paige
 and Saunders put the Lanczos vectors into the minimum residual problem (2.7) through (6.1) and
 (6.2), for real symmetric $\mathbf{A}$ and up to termination.
 Result: minres-lanczos -/
@@ -61,8 +61,7 @@ Hermitian $\mathbf{A}$, positive definite $\mathbf{M}$ and every $q$,
 $\mathsf{pminresIterate}(\mathbf{A}, \mathbf{M}, \mathbf{b}, \mathbf{x}_0, q) = \mathbf{x}_0 +
 \|\mathbf{r}_0\|_{\mathbf{M}}\,\mathbf{Z}_q\underline{\mathbf{T}}_q^{+}\mathbf{e}_0$ with
 $\mathbf{Z}_q$ and $\underline{\mathbf{T}}_q$ computed by the preconditioned recurrence from
-$\mathbf{r}_0$, with no grade hypothesis. [ElmanSilvesterWathen2014, Algorithm 4.1]; locator to
-verify.
+$\mathbf{r}_0$, with no grade hypothesis. [Greenbaum1997, Chapter 8, pp. 121–122, Algorithm 4P].
 Result: pminres-lanczos -/
 theorem _root_.Matrix.IsHermitian.pminresIterate_eq_preconditionedLanczosMatrix
     {A M : Matrix n n 𝕜} (hA : A.IsHermitian) (hAu : IsUnit A) (hM : M.PosDef) (b x₀ : n → 𝕜)

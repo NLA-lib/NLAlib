@@ -118,7 +118,7 @@ theorem guardedStepCount_le (tag : P) (N : ℕ) (status μ ρ : ℝ) :
 /-- The actual curvature guard executes the complete mathematical CG step when positive,
 and otherwise writes breakdown status while preserving every vector and cached residual. -/
 theorem exec_exact_curvature_guard {storedMatrix : Bool} (I : Interp P ι ℝ (OpCount P ι))
-    (hI : I.sem = exactSem) (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hI : I.sem = exactSem) (hc : IsUnitCharge I) (tag : P)
     (st : St P ℝ (OpCount P ι)) (N : ℕ) (A : Matrix (Fin N) (Fin N) ℝ)
     (b : Fin N → ℝ) (v : CGState ℝ (Fin N))
     (h : StoreContext tag (fun _ x => x) N A b v (v.r ⬝ᵥ v.r) 0 1 st.store storedMatrix)
@@ -171,7 +171,7 @@ theorem exec_exact_curvature_guard {storedMatrix : Bool} (I : Interp P ι ℝ (O
       rw [exec_seq_skip, exec_ite, hcmp, Option.bind_some]
       simpa only [hpos, decide_true, Bool.true_eq, ↓reduceIte] using hrun
     · simpa only [if_pos hpos] using hctx
-    · simpa only [mid, hc, positiveBodyCount, if_pos hpos, add_assoc] using hcnt
+    · simpa only [mid, hc.charge_eq, positiveBodyCount, if_pos hpos, add_assoc] using hcnt
     · simpa only [mid, if_pos hpos] using hpeak
     · simpa only [mid, if_pos hpos] using hpeakW
   · obtain ⟨out, hrun, hctx, hstate⟩ := exec_exact_rejection I tag mid N A b v
@@ -183,14 +183,14 @@ theorem exec_exact_curvature_guard {storedMatrix : Bool} (I : Interp P ι ℝ (O
       rw [exec_seq_skip, exec_ite, hcmp, Option.bind_some]
       simpa only [hpos, decide_false, Bool.false_eq_true, ↓reduceIte] using hrun
     · simpa only [if_neg hpos] using hctx
-    · simpa only [mid, hc, if_neg hpos] using congrArg St.cnt hstate
+    · simpa only [mid, hc.charge_eq, if_neg hpos] using congrArg St.cnt hstate
     · simpa only [mid, if_neg hpos] using congrArg St.peak hstate
     · simpa only [mid, if_neg hpos] using congrArg St.peakW hstate
 
 /-- The complete active step computes its own curvature before branching. It either
 realizes the next exact CG state or records curvature rejection with unchanged vectors. -/
 theorem exec_exact_active_step (I : Interp P ι ℝ (OpCount P ι))
-    (hI : I.sem = exactSem) (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hI : I.sem = exactSem) (hc : IsUnitCharge I) (tag : P)
     (st : St P ℝ (OpCount P ι)) (N : ℕ) (A : Matrix (Fin N) (Fin N) ℝ)
     (b : Fin N → ℝ) (v : CGState ℝ (Fin N))
     (h : StoreContext tag (fun _ x => x) N A b v (v.r ⬝ᵥ v.r) 0 1 st.store)
@@ -253,7 +253,7 @@ theorem exec_exact_active_step (I : Interp P ι ℝ (OpCount P ι))
 /-- One complete requested iteration executes the actual status guard. Stopped runs skip
 the body, and active runs perform the stored curvature prefix and its guarded step. -/
 theorem exec_exact_guarded_step (I : Interp P ι ℝ (OpCount P ι))
-    (hI : I.sem = exactSem) (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hI : I.sem = exactSem) (hc : IsUnitCharge I) (tag : P)
     (st : St P ℝ (OpCount P ι)) (N : ℕ) (A : Matrix (Fin N) (Fin N) ℝ)
     (b : Fin N → ℝ) (v : CGState ℝ (Fin N)) (status : ℝ)
     (h : StoreContext tag (fun _ x => x) N A b v (v.r ⬝ᵥ v.r) status 1 st.store)
@@ -312,7 +312,7 @@ theorem exec_exact_guarded_step (I : Interp P ι ℝ (OpCount P ι))
       rw [exec_seq_skip, exec_ite, hcmp, Option.bind_some]
       simpa only [hactive, decide_true, Bool.true_eq, ↓reduceIte] using hrun
     · simpa only [if_pos hactive] using hctx'
-    · simpa only [mid, hc, guardedStepCount, if_pos hactive, add_assoc] using hcnt
+    · simpa only [mid, hc.charge_eq, guardedStepCount, if_pos hactive, add_assoc] using hcnt
     · simpa only [mid, if_pos hactive] using hpeak
     · simpa only [mid, if_pos hactive] using hpeakW
   · refine ⟨mid, ?_, ?_, rfl, rfl, rfl, ?_, ?_, ?_⟩
@@ -321,7 +321,7 @@ theorem exec_exact_guarded_step (I : Interp P ι ℝ (OpCount P ι))
       simpa only [hactive, decide_false, Bool.false_eq_true, ↓reduceIte, Builder.run_pure]
         using exec_skip I mid
     · simpa only [if_neg hactive] using h
-    · simp only [mid, guardedStepCount, if_neg hactive, add_zero, hc]
+    · simp only [mid, guardedStepCount, if_neg hactive, add_zero, hc.charge_eq]
     · simp only [mid, if_neg hactive]
     · simp only [mid, if_neg hactive]
 

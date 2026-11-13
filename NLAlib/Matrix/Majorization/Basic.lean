@@ -154,6 +154,7 @@ theorem sumLargest_add_le (x y : ι → ℝ) (k : ℕ) :
 
 /-- `sumLargest` is monotone in the vector: $\mathbf{x} \le \mathbf{y}$ entrywise gives
 $S_k(\mathbf{x}) \le S_k(\mathbf{y})$. -/
+@[gcongr]
 theorem sumLargest_mono {x y : ι → ℝ} (h : x ≤ y) (k : ℕ) : sumLargest x k ≤ sumLargest y k := by
   refine sumLargest_le fun _ hs => ?_
   exact (Finset.sum_le_sum fun i _ => h i).trans (sum_le_sumLargest_of_card_eq y hs)

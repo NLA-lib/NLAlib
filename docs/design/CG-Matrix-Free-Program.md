@@ -71,3 +71,36 @@ operation kinds, cell/bit bounds and cleanup.
 under arbitrary word carriers, charges and bit widths. The matrix-size expression remains an
 `IExp`, preserving the literal stored AST rather than replacing `N*N` by a different constant
 node. These are execution helpers, with no numerical postcondition or independent interpreter.
+
+## Guarded binary64 curvature and step length
+
+The matrix-free CG loop calls the matrix oracle on its stored direction, takes a dot
+product, and tests the sign of the returned curvature before dividing. The public
+`CGOracleImplementation.exec_product_of_isMatvecErrOn` links the stored oracle instruction to
+the existing domain-restricted matrix–vector contract. Its accuracy premise covers the current
+decoded direction. The proof also preserves the CG store context for the next instruction.
+
+For the concrete binary64 implementation of twice the identity, let $R$ be the Euclidean norm
+of that direction. If every exact doubled component is representable in the finite magnitude
+range, the checked additions return a vector with error at most
+$E=2uR+\sqrt{N}\eta$, where $u$ is the binary64 unit roundoff and $\eta$ is its
+absolute underflow allowance. The dot-product certificate uses its input norm, this estimate
+and the largest finite magnitude to bound the intermediate accumulations. The exact curvature
+is $2R^2$. A strict margin against the derived error proves that the stored comparison selects
+the positive branch, including when some input components are subnormal. The present interface
+certifies a prefix starting from a well-formed CG store. Future iterations must establish the
+range premises for their own directions and scalar operations.
+
+
+Writing $Q=p^*Ap$ and $B$ for the proved curvature error, suppose $Q>B$ and the
+stored residual-square numerator satisfies $|\nu|\le M(Q-B)$. Here $M$ is the largest
+finite magnitude. The checked positive branch then executes the stored division and
+returns its rounded step length. It has an absolute-plus-relative error bound. For a
+positive lower bound $\tau$ on the magnitude of the exact quotient of the two stored
+operands, its relative error is at most $u+\eta/\tau$.
+
+`CGOracleImplementation.toStmt_cgOracleProg_compiled_eq_guarded_loop` identifies this prefix,
+the curvature comparison and the division in the registered program. At decoded zero status,
+`CGOracleImplementation.cmpStep_eq_some_true_of_sem_eq_finiteFloatSem_of_status_eq_zero` gives
+the comparison charge. `CGOracleImplementation.exec_ite_eq_exec_of_sem_eq_finiteFloatSem_of_status_eq_zero`
+uses that result to select the active arm before the first matrix product.

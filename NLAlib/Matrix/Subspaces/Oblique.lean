@@ -12,9 +12,10 @@ public import NLAlib.Matrix.Subspaces.PrincipalAngles
 # Oblique projections
 
 An idempotent matrix $\mathbf{P}$ projects onto its range along its kernel. It is an orthogonal
-projector exactly when its spectral norm is at most one; otherwise its norm is the secant of the
-largest principal angle between its range and the orthogonal complement of its kernel, and
-$\mathbf{P}$ and $\mathbf{I} - \mathbf{P}$ have the same norm. The oblique projector onto the
+projector exactly when its spectral norm is at most one. For a nonzero projection the norm is the
+secant of the largest principal angle between its range and the orthogonal complement of its
+kernel. If $\mathbf{P}$ is neither zero nor the identity, then $\mathbf{P}$ and
+$\mathbf{I} - \mathbf{P}$ have the same norm. The oblique projector onto the
 column space of $\mathbf{X}$ along the orthogonal complement of the column space of $\mathbf{Y}$
 is $\mathbf{X}(\mathbf{Y}^{\mathsf{H}}\mathbf{X})^{-1}\mathbf{Y}^{\mathsf{H}}$.
 

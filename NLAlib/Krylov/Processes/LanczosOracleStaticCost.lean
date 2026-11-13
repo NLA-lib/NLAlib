@@ -97,16 +97,13 @@ standard charges obeys the approved count formula, the scoped workspace cell bou
 width-weighted bit bound. This theorem establishes resources only; success is a premise. -/
 theorem lanczosOracleProg.bounds_of_exec_eq_some {P ι K : Type} [DecidableEq P]
     (I : Interp P ι K (OpCount P ι)) (tag : P) (o : ι) (N q : ℕ)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) {st st' : St P K (OpCount P ι)}
+    (hc : IsUnitCharge I) {st st' : St P K (OpCount P ι)}
     (h : (lanczosOracleProg.compiled (ι := ι) tag o).exec I N ![q] st = some st') :
     (StaticCost.mk (lanczosOracleCount tag o N q) (fun p => if p = tag then N + 3 else 0)
       ((N + 3) * I.width tag)).Bounds st st' := by
-  have hcharge : I.charge = fun k => Finsupp.single k 1 := funext hc
-  have hcount := lanczosOracleProg.staticCost_count_le (ι := ι) tag o I.width N q
-  rw [← hcharge] at hcount
-  exact ((lanczosOracleProg.compiled tag o).bounds_staticCost_of_exec_eq_some I N ![q] h).mono
-    hcount
+  exact (lanczosOracleProg.compiled tag o).bounds_of_exec_eq_some_of_staticCost_le I N ![q] hc _ _ _
+    (lanczosOracleProg.staticCost_count_le (ι := ι) tag o I.width N q)
     (lanczosOracleProg.staticCost_cells_le tag o I.charge I.width N q)
-    (lanczosOracleProg.staticCost_bits_le tag o I.charge I.width N q)
+    (lanczosOracleProg.staticCost_bits_le tag o I.charge I.width N q) h
 
 end NLAlib

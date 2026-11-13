@@ -54,7 +54,7 @@ private theorem energy_κ_nonneg {a a' : ℝ} (ha : 0 < a)
 
 private theorem energy_weighted_sum_le {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) {j : ℕ} (hj : j ≤ k) :
     quadForm C.A (xs - C.x j) +
       ∑ i ∈ Finset.range j, (1 - (52 * i + 6) * (C.ε * (a' / a))) *
@@ -92,7 +92,7 @@ The coefficient of the computed decrement sum is exactly one. No printed source.
 Result: cg-physical-energy-decrements -/
 theorem quadForm_sub_x_le_sub_sum_add {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) {j : ℕ} (hj : j ≤ k) :
     quadForm C.A (xs - C.x j) ≤ quadForm C.A xs -
       ∑ i ∈ Finset.range j, C.γ i * C.ρ i ^ 2 +
@@ -146,7 +146,7 @@ $R_j=135j^2\varepsilon\kappa\|\mathbf{b}\|^2/a$.
 The backward model is that of the full $k$-step run. No printed source. -/
 theorem quadForm_sub_x_le_quadForm_backwardH_sub_cgIterate_add {a a' : ℝ}
     (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b)
     {ys : Fin n × Fin (k + 1) → ℝ} (hy : C.backwardH *ᵥ ys = C.dilatedRhs)
     {j : ℕ} (hj : j ≤ k) :
@@ -174,7 +174,7 @@ No printed source. The exact-model Chebyshev estimate is
 [Saad2003, Theorem 6.29]; this statement concerns the computed decrement sum. -/
 theorem sum_γ_mul_ρ_sq_ge {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) {j : ℕ} (hj : j ≤ k) :
     (1 - 4 * ((Real.sqrt (2 * (a' / a) + 1) - 1) /
       (Real.sqrt (2 * (a' / a) + 1) + 1)) ^ (2 * j)) * quadForm C.A xs -
@@ -242,7 +242,7 @@ terms vanish at zero precision. No printed source. The exact-model Chebyshev est
 Result: cg-physical-energy-convergence -/
 theorem quadForm_sub_x_le_four_mul_pow_add {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) {j : ℕ} (hj : j ≤ k) :
     quadForm C.A (xs - C.x j) ≤
       4 * ((Real.sqrt (2 * (a' / a) + 1) - 1) /

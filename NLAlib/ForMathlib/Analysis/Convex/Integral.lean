@@ -37,7 +37,7 @@ variable {α E : Type*} {m0 : MeasurableSpace α} [NormedAddCommGroup E] [Normed
 probability measure $\mu$ and $g$ concave and continuous on a convex set $s$ that need not be
 closed, provided $f$ takes values in $s$ almost everywhere, $f$ and $g \circ f$ are integrable,
 and the mean of $f$ lies in $s$. Mathlib's `ConcaveOn.le_map_integral` needs $s$ closed.
-[Vershynin2018, §1.2] (locator to check). -/
+[Vershynin2018, §1.2] gives the scalar convex form on the real line. -/
 theorem ConcaveOn.le_map_integral_of_integral_mem [IsProbabilityMeasure μ] (hg : ConcaveOn ℝ s g)
     (hgc : ContinuousOn g s) (hfs : ∀ᵐ x ∂μ, f x ∈ s) (hfi : Integrable f μ)
     (hgi : Integrable (g ∘ f) μ) (hm : ∫ x, f x ∂μ ∈ s) :

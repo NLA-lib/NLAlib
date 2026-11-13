@@ -55,8 +55,9 @@ private theorem newtonSchulzSign_toFloatMachine_samplers {P K : Type} [Inhabited
   | succ N ih => intro B'; simp only [newtonSchulzLoop, ih]; rfl
 
 /-- The deflation of a leading block on two machines of one semantics whose normal samplers agree
-along $g$ (private helper of `NLAlib.eigh_toFloatMachine_map_samples`). -/
-private theorem deflate_leadingBlock_toFloatMachine_map {P K : Type} [Inhabited K]
+along $g$. The equality holds for every leading block with size at most the sample size.
+No printed source. -/
+theorem deflate_leadingBlock_toFloatMachine_map {P K : Type} [Inhabited K]
     {Su Sg Su' Sg' : Type} [Inhabited Sg] [Inhabited Sg'] (sem : ScalarSem P K) (p : P)
     (toNat : K → ℕ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K)) (unif : K → Su → K)
     (normal : Sg → K × K) (unif' : K → Su' → K) (normal' : Sg' → K × K) (g : Sg → Sg')
@@ -137,7 +138,7 @@ theorem eigh_toFloatMachine_map_samples {P K : Type} [Inhabited K] {Su Sg Su' Sg
 
 /-- A step of `NLAlib.eighStep` reads its sample only through the seed and the leading blocks of
 the test matrices of its size. -/
-private lemma eighStep_congr_sample {F Su Sg : Type*} [Inhabited Sg] (M : FloatMachine F Su Sg)
+theorem eighStep_congr_sample {F Su Sg : Type*} [Inhabited Sg] (M : FloatMachine F Su Sg)
     (N signFuel : ℕ) (R₀ β : F) {k : ℕ} (A : Matrix (Fin k) (Fin k) (F × F)) (R ε : F) (ℓ : ℕ)
     {t t' : EighSample Su Sg N} (h1 : t.1 = t'.1)
     (h2 : ∀ b, leadingBlock k (t.2 b) = leadingBlock k (t'.2 b)) :
@@ -219,37 +220,6 @@ theorem eigh_congr_samples {F Su Sg : Type*} [Inhabited Sg] (M : FloatMachine F 
   exact eighAux_congr_samples M signFuel R₀ β (ℓ + 1) A R₀ ε ℓ
     (fun a y hl hy => h a y (Nat.lt_succ_iff.mp hl) hy)
 
-/-- The deflation of a leading block on two machines of one semantics whose normal samplers agree
-along $g$ (private helper of `NLAlib.eigh_eighTapeMachine_eq_eigh_eighIdealTree`). -/
-private theorem deflate_leadingBlock_toFloatMachine_tape {P K : Type} [Inhabited K]
-    {Su Sg Su' Sg' : Type} [Inhabited Sg] [Inhabited Sg'] (sem : ScalarSem P K) (p : P)
-    (toNat : K → ℕ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K)) (unif : K → Su → K)
-    (normal : Sg → K × K) (unif' : K → Su' → K) (normal' : Sg' → K × K) (g : Sg → Sg')
-    (hn : ∀ z, normal z = normal' (g z)) {n k : ℕ} (hk : k ≤ n) (r : ℕ)
-    (Pm : Matrix (Fin k) (Fin k) (K × K)) (G : Matrix (Fin n) (Fin n) Sg) :
-    deflate (sem.toFloatMachine p toNat mm qr unif normal) r Pm (leadingBlock k G) =
-      deflate (sem.toFloatMachine p toNat mm qr unif' normal') r Pm
-        (leadingBlock k (G.map g)) := by
-  have hG : (leadingBlock k G).map normal = (leadingBlock k (G.map g)).map normal' := by
-    refine Matrix.ext fun i j => ?_
-    have hi : (i : ℕ) < n ∧ (j : ℕ) < n := ⟨i.2.trans_le hk, j.2.trans_le hk⟩
-    simp only [leadingBlock, Matrix.map_apply, Matrix.of_apply, dif_pos hi, hn]
-  simp only [deflate]
-  exact congrArg _ (by rw [show (leadingBlock k G).map
-    (sem.toFloatMachine p toNat mm qr unif normal).normal = _ from hG]; rfl)
-
-/-- One step reads its sample only through the seed and the leading blocks of its size (private
-helper of `NLAlib.eigh_eighTapeMachine_eq_eigh_eighIdealTree`). -/
-private theorem eighStep_congr_leadingBlock {F Su Sg : Type*} [Inhabited Sg]
-    (M : FloatMachine F Su Sg) (N signFuel : ℕ) (R₀ β : F) {k : ℕ}
-    (A : Matrix (Fin k) (Fin k) (F × F)) (R ε : F) (ℓ : ℕ) {s s' : EighSample Su Sg N}
-    (h₁ : s.1 = s'.1) (h₂ : ∀ b, leadingBlock k (s.2 b) = leadingBlock k (s'.2 b)) :
-    eighStep M N signFuel R₀ β A R ε ℓ s = eighStep M N signFuel R₀ β A R ε ℓ s' := by
-  obtain ⟨v, G⟩ := s
-  obtain ⟨v', G'⟩ := s'
-  obtain rfl : v = v' := h₁
-  simp only [eighStep, h₂]
-
 /-- The ideal sample of a node below the depth budget has the seed and the leading blocks of the
 slot's positions read on the ideal tape (private helper of
 `NLAlib.eigh_eighTapeMachine_eq_eigh_eighIdealTree`). -/
@@ -298,10 +268,10 @@ private theorem eighSlotTree_map_agree_eighIdealTree {P K : Type} [Inhabited K]
       (eighIdealComplex ξ) hu hn n signFuel R₀ β hx x.A x.R x.ε x.ℓ (eighTapeSample n d lo)
     have h0 := eighIdealSample_eq_eighTapeSample ξ (d := d) (D := D) (N := n) (by simp at hd; omega)
       lo x.k pre
-    have hJ := eighStep_congr_leadingBlock (sem.toFloatMachine p toN mm qr unif' normal') n signFuel
-      R₀ β x.A x.R x.ε x.ℓ (s := (ξ .uniform (eighTapeSample n d lo).1,
+    have hJ := eighStep_congr_sample (sem.toFloatMachine p toN mm qr unif' normal') n signFuel
+      R₀ β x.A x.R x.ε x.ℓ (t := (ξ .uniform (eighTapeSample n d lo).1,
         fun b => ((eighTapeSample n d lo).2 b).map (eighIdealComplex ξ)))
-      (s' := eighIdealSample ξ n D d lo (some x.k) pre) h0.1 h0.2
+      (t' := eighIdealSample ξ n D d lo (some x.k) pre) h0.1 h0.2
     have hd' : d + 1 + a.length < D := by simp only [List.length_cons] at hd; omega
     simp only [eighNodeAt, eighChild, eighSlotTree.eq_1, eighSlotTree.eq_2] at h
     rw [eighSlotTree.eq_2, eighIdealTree.eq_3, ← hJ, ← hst]
@@ -397,28 +367,6 @@ lemma indep_tapeSigma {Q Q' : Set (Dist × ℕ)} (h : Disjoint Q Q') :
 noncomputable def eighReadSample (N u : ℕ) (z : Bool → Fin N → Fin N → ℕ)
     (ξ : Dist → ℕ → ℝ) : EighSample ℝ ℂ N :=
   (ξ .uniform u, fun b => Matrix.of fun i j => eighIdealComplex ξ (z b i j))
-
-private lemma map_pi_fin_two_eq_complexGaussian :
-    (Measure.pi fun _ : Fin 2 => gaussianReal 0 1).map
-      (fun v : Fin 2 → ℝ => (⟨v 0 / √2, v 1 / √2⟩ : ℂ)) = complexGaussian := by
-  have hA : Measurable (Complex.measurableEquivRealProd.symm ∘ Prod.map (· / √2) (· / √2)) :=
-    Complex.measurableEquivRealProd.symm.measurable.comp (by fun_prop)
-  have hfun : (fun v : Fin 2 → ℝ => (⟨v 0 / √2, v 1 / √2⟩ : ℂ)) =
-      (Complex.measurableEquivRealProd.symm ∘ Prod.map (· / √2) (· / √2)) ∘
-        MeasurableEquiv.finTwoArrow := rfl
-  have hd : (gaussianReal 0 1).map (· / √2) = gaussianReal 0 2⁻¹ := by
-    have hfn : (fun x : ℝ => x / √2) = fun x => (√2)⁻¹ * x :=
-      funext fun x => div_eq_inv_mul _ _
-    rw [hfn, gaussianReal_map_const_mul]
-    congr 1
-    · simp
-    · apply NNReal.eq
-      simp [mul_comm]
-  rw [hfun, ← Measure.map_map hA MeasurableEquiv.finTwoArrow.measurable,
-    (measurePreserving_finTwoArrow _).map_eq,
-    ← Measure.map_map Complex.measurableEquivRealProd.symm.measurable (by fun_prop),
-    ← Measure.map_prod_map _ _ (by fun_prop) (by fun_prop), hd]
-  rfl
 
 private lemma measurable_complexPair :
     Measurable fun v : Fin 2 → ℝ => (⟨v 0 / √2, v 1 / √2⟩ : ℂ) :=

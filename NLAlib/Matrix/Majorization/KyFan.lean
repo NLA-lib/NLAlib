@@ -255,6 +255,7 @@ theorem kyFanNorm_one (A : Matrix m n 𝕜) : kyFanNorm 1 A = specNorm A := by
 
 /-- Ky Fan norms increase with $k$: $\|\mathbf{A}\|_{(k)} \le \|\mathbf{A}\|_{(l)}$ for
 $k \le l$. -/
+@[gcongr]
 theorem kyFanNorm_mono_left (A : Matrix m n 𝕜) {k l : ℕ} (h : k ≤ l) :
     kyFanNorm k A ≤ kyFanNorm l A := by
   exact Finset.sum_le_sum_of_subset_of_nonneg (Finset.range_mono h) fun i _ _ =>

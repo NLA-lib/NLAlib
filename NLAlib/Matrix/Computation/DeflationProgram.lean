@@ -848,13 +848,13 @@ at most `NLAlib.deflateCount p mm qr N r` to the counts and raises the peak memo
 at most the $8N^2 + 2$ scratch cells above the current memory (by nothing at any other tag). No
 printed source. -/
 theorem deflateProg.cnt_le_of_exec_compiled {mm qr : ι} {I : Interp P ι K (OpCount P ι)}
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (p : P) (N r : ℕ)
+    (hc : IsUnitCharge I) (p : P) (N r : ℕ)
     {st st' : St P K (OpCount P ι)}
     (h : (deflateProg.compiled p mm qr).exec I N ![r] st = some st') :
     st'.cnt ≤ st.cnt + deflateCount p mm qr N r ∧
       ∀ q, st'.peak q ≤ max (st.peak q) (st.cur q + if q = p then 8 * (N * N) + 2 else 0) := by
   have hb := (deflateProg.compiled p mm qr).bounds_staticCost_of_exec_eq_some I N ![r] h
-  have hcharge : I.charge = fun k => Finsupp.single k 1 := funext hc
+  have hcharge : I.charge = fun k => Finsupp.single k 1 := hc.charge_eq
   have hb' := hb.mono (b := ⟨deflateCount p mm qr N r,
     fun q => if q = p then 8 * (N * N) + 2 else 0, _⟩) ?_ ?_ le_rfl
   · exact ⟨hb'.count, hb'.peak⟩

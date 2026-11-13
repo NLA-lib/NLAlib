@@ -68,7 +68,7 @@ private theorem col_lt {N c j a : ℕ} (hc : c < j) (ha : a < N) : N * c + a < N
 
 /-- One sweep step of `orthAgainst`, against column `i`. -/
 private theorem exec_orthAgainst_step (I : Interp P ι 𝕜 (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (p : P) (st : St P 𝕜 (OpCount P ι)) {N : ℕ}
+    (hc : IsUnitCharge I) (p : P) (st : St P 𝕜 (OpCount P ι)) {N : ℕ}
     (Q : ℕ) (k : IExp ℕ) (v : ℕ) (vo : IExp ℕ) (r : Cell ℕ ℕ) (V : ℕ → Fin N → 𝕜)
     (w : Fin N → 𝕜) (hQ : ∀ i < k.eval, ∀ a : Fin N, st.store.read p Q (N * i + a) = some (V i a))
     (hvQ : v = Q → N * k.eval ≤ vo.eval) (hrv : r.buf = v → N = 0) (hrQ : r.buf = Q → N = 0)
@@ -164,7 +164,7 @@ private theorem exec_orthAgainst_step (I : Interp P ι 𝕜 (OpCount P ι)) (hI 
   · rw [hcur3, ← hcur1]
   · rw [hcurW3, ← hcurW1]
   · rw [hcnt3]
-    simp only [hcnt1, hc, add_assoc, IExp.eval_const]
+    simp only [hcnt1, hc.charge_eq, add_assoc, IExp.eval_const]
   · rw [hpeak3]
     dsimp only
     rw [hpeak1, hcur1]
@@ -175,7 +175,7 @@ private theorem exec_orthAgainst_step (I : Interp P ι 𝕜 (OpCount P ι)) (hI 
     omega
 
 private theorem exec_orthAgainst_of_imp (I : Interp P ι 𝕜 (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (p : P) (st : St P 𝕜 (OpCount P ι)) {N : ℕ}
+    (hc : IsUnitCharge I) (p : P) (st : St P 𝕜 (OpCount P ι)) {N : ℕ}
     (Q : ℕ) (k : IExp ℕ) (v : ℕ) (vo : IExp ℕ) (r : Cell ℕ ℕ) (V : ℕ → Fin N → 𝕜)
     (w : Fin N → 𝕜) (hQ : ∀ i < k.eval, ∀ a : Fin N, st.store.read p Q (N * i + a) = some (V i a))
     (hv : ∀ a : Fin N, st.store.read p v (vo.eval + a) = some (w a))
@@ -227,7 +227,7 @@ counts, $k$ times over, $N$ conjugations, $2N$ multiplications, $2N$ additions, 
 one negation.
 [GolubVanLoan2013, §5.2.8]. -/
 theorem exec_orthAgainst (I : Interp P ι 𝕜 (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (p : P) (st : St P 𝕜 (OpCount P ι)) {N : ℕ}
+    (hc : IsUnitCharge I) (p : P) (st : St P 𝕜 (OpCount P ι)) {N : ℕ}
     (Q : ℕ) (k : IExp ℕ) (v : ℕ) (vo : IExp ℕ) (r : Cell ℕ ℕ) (V : ℕ → Fin N → 𝕜)
     (w : Fin N → 𝕜) (hQ : ∀ i < k.eval, ∀ a : Fin N, st.store.read p Q (N * i + a) = some (V i a))
     (hv : ∀ a : Fin N, st.store.read p v (vo.eval + a) = some (w a))
@@ -257,7 +257,7 @@ when they are orthonormal), changes no cell of the first $k$ columns or outside 
 scratch buffer, keeps the shape, the tape and the current memory, raises the peaks by at most
 one cell at tag $p$, and counts $\ell$ sweeps. -/
 theorem exec_forRange_orthAgainst (I : Interp P ι 𝕜 (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (p : P) {N k : ℕ} (B t : ℕ) (ℓE : IExp ℕ)
+    (hc : IsUnitCharge I) (p : P) {N k : ℕ} (B t : ℕ) (ℓE : IExp ℕ)
     (Q G : ℕ → Fin N → 𝕜) (st : St P 𝕜 (OpCount P ι))
     (hQ : ∀ i < k, ∀ a : Fin N, st.store.read p B (N * i + a) = some (Q i a))
     (hG : ∀ j < ℓE.eval, ∀ a : Fin N, st.store.read p B (N * (k + j) + a) = some (G j a))
@@ -375,7 +375,7 @@ private theorem col_ge {N c j a : ℕ} (hc : j + 1 ≤ c) : N * j + N ≤ N * c 
 /-- The normalisation of a swept column `ρ q`, with its squared norm in `t[1]` and `0` in
 `t[0]`. -/
 private theorem exec_gramSchmidt_normalize (I : Interp P ι 𝕜 (OpCount P ι))
-    (hI : I.sem = exactSem) (hc : ∀ k, I.charge k = Finsupp.single k 1) (p : P) {N : ℕ}
+    (hI : I.sem = exactSem) (hc : IsUnitCharge I) (p : P) {N : ℕ}
     (Y t : ℕ) (jE : IExp ℕ) (st3 : St P 𝕜 (OpCount P ι)) (q : Fin N → 𝕜) (ρ : 𝕜) (hρ : 0 ≤ ρ)
     (hq : ρ = 0 → q = 0) (hq1 : ρ ≠ 0 → star q ⬝ᵥ q = 1) (hYt : Y = t → N = 0)
     (hcol : ∀ a : Fin N, st3.store.read p Y (jE.eval + a) = some (ρ * q a))
@@ -413,7 +413,7 @@ private theorem exec_gramSchmidt_normalize (I : Interp P ι 𝕜 (OpCount P ι))
       rfl⟩
     · rw [hcol a, hρ0, hq hρ0]
       simp
-    · rw [hc]
+    · rw [hc.charge_eq]
       exact add_le_add (le_refl _) (le_add_right le_self_add)
   obtain ⟨r, hr0, hrρ⟩ := RCLike.nonneg_iff_exists_ofReal.mp hρ
   have hd' : d = ((r ^ 2 : ℝ) : 𝕜) := by
@@ -464,12 +464,12 @@ private theorem exec_gramSchmidt_normalize (I : Interp P ι 𝕜 (OpCount P ι))
   · rw [hst5, Store.shape_of_writeBlock_eq_some hs5, Store.shape_of_write_eq_some hs4]
   · rw [hcnt5]
     dsimp only
-    simp only [hc, IExp.eval_const, add_assoc, le_refl]
+    simp only [hc.charge_eq, IExp.eval_const, add_assoc, le_refl]
 
 /-- The sweep of column `j` against the earlier columns, its squared norm into `t[1]`, and `0`
 into `t[0]`. -/
 private theorem exec_gramSchmidt_reduce (I : Interp P ι 𝕜 (OpCount P ι))
-    (hI : I.sem = exactSem) (hc : ∀ k, I.charge k = Finsupp.single k 1) (p : P) (Y t : ℕ)
+    (hI : I.sem = exactSem) (hc : IsUnitCharge I) (p : P) (Y t : ℕ)
     {N k : ℕ} (M : Matrix (Fin N) (Fin k) 𝕜) (j : ℕ) (hj : j < k) (hYt : Y = t → N = 0)
     (st' : St P 𝕜 (OpCount P ι))
     (hQ : ∀ (a : Fin N) (c : Fin k), (c : ℕ) < j →
@@ -547,7 +547,7 @@ private theorem exec_gramSchmidt_reduce (I : Interp P ι 𝕜 (OpCount P ι))
   · change s3.shape = _
     rw [Store.shape_of_write_eq_some hs3, hst2, Store.shape_of_write_eq_some hs2, hsh1]
   · change st2.cnt + I.charge (.lit p) = _
-    simp only [hcnt2, hcnt1, hc, IExp.eval_const, IExp.eval_var, add_assoc]
+    simp only [hcnt2, hcnt1, hc.charge_eq, IExp.eval_const, IExp.eval_var, add_assoc]
   · change st2.peak ≤ _
     rw [hpeak2, hcur1]
     exact Function.update_max_le_update_max hpeak1
@@ -557,7 +557,7 @@ private theorem exec_gramSchmidt_reduce (I : Interp P ι 𝕜 (OpCount P ι))
 
 /-- One column of `gramSchmidtProg`: sweep, norm, normalisation. -/
 private theorem exec_gramSchmidt_col (I : Interp P ι 𝕜 (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (p : P) (Y t : ℕ) {N k : ℕ}
+    (hc : IsUnitCharge I) (p : P) (Y t : ℕ) {N k : ℕ}
     (M : Matrix (Fin N) (Fin k) 𝕜) (j : ℕ) (hj : j < k) (hYt : Y = t → N = 0)
     (st' : St P 𝕜 (OpCount P ι))
     (hQ : ∀ (a : Fin N) (c : Fin k), (c : ℕ) < j →
@@ -692,7 +692,7 @@ by at most three cells and $3$ cell widths, and counts at most `gramSchmidtCount
 No rank hypothesis: a column that depends on the earlier ones becomes zero.
 [GolubVanLoan2013, §5.2.8]. -/
 theorem exec_gramSchmidtProg (I : Interp P ι 𝕜 (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (p : P) (st : St P 𝕜 (OpCount P ι)) (Y : ℕ)
+    (hc : IsUnitCharge I) (p : P) (st : St P 𝕜 (OpCount P ι)) (Y : ℕ)
     {N k : ℕ} (M : Matrix (Fin N) (Fin k) 𝕜) (hM : Holds st.store p Y 0 M) (s₁ : Store P 𝕜)
     (h₁ : st.store.writeBlock p Y 0 (flatten (gramSchmidtQ M)) = some s₁) :
     ∃ st', exec I (gramSchmidtProg p (.const N) (.const k) Y).run st = some st' ∧

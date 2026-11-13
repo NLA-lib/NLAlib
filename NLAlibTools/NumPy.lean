@@ -17,12 +17,20 @@ variables of a program `Prog P ι r b` are the parameters of the emitted functio
 dimension `i0`, the sizes `i1`, …, `i{r}` and the declared buffers `b0`, …, `b{b-1}`. An `alloc`
 in scope of `nb` handles binds `b{nb}`, a `loop` in scope of `ni` indices binds `i{ni}`. Index
 expressions are printed as Python arithmetic. `named` kernels are printed as calls into a short
-NumPy prelude (`NLAlibTools.numpyPrelude`), or inlined. Fresh buffers are `np.full(len, np.nan)`,
-so a read before a write shows as `nan`. The emitted code is an unverified translation, for
+NumPy prelude (`NLAlibTools.numpyPrelude`), or inlined. Fresh buffers use `np.full(len, np.nan, dtype=...)`,
+so a read before a write shows as `nan`. The default dtype is inferred from `A` and the declared
+buffers, promoted to at least float64. `scalarDtype` overrides it per precision tag when complex
+or wider values enter through other hooks. The emitted code is an unverified translation, for
 differential testing (`docs/design/Computation.md` §8): below, the emitted Hutch++ runs under
 NumPy, when it is installed, and agrees with the Lean `Float` run of the same tree.
 An index binder raises `ValueError` on a failed conversion or a floor above its bound, matching
 the strict binder in the model.
+For a subsingleton identifier type, oracle `apply` defaults to the square NumPy matrix `A`.
+Other identifier types require an explicit `oracleName` binding to a matrix expression (for
+example, `A` or `operators[0]`). Missing bindings raise `NotImplementedError`. Distinct
+identifiers are dispatched separately, including an operator and its adjoint.
+Oracle writes reject incompatible scalar kinds, including complex results into real buffers;
+use a complex scratch dtype and an explicit real-part instruction when that conversion is intended.
 Emitted black-box kernel calls require an explicit `kernelName` binding from each kernel identifier
 to a Python callable expression. An unbound call raises `NotImplementedError`; different
 kernel identifiers are never silently replaced by one anonymous callback. A non-inlined `named`
@@ -97,37 +105,44 @@ def emitInstr {P : Type} {nb ni : ℕ} : Instr P (Fin nb) (Fin ni) → String
 `kernelName` binding to a trusted Python callable expression, or raises `NotImplementedError`
 when reached. The caller supplies bindings and implementations matching each kernel. -/
 private def emitFWith {P ι : Type} (inline : Bool) {nb ni : ℕ} (s : FStmt P ι nb ni) (d : ℕ)
-    (kernelName : ι → Option String := fun _ => none) : List String :=
+    (kernelName : ι → Option String := fun _ => none)
+    (oracleName : ι → Option String := fun _ => none)
+    (scalarDtype : P → String := fun _ => "np.float64") : List String :=
   match s with
   | .skip => []
-  | .seq s t => emitFWith inline s d kernelName ++ emitFWith inline t d kernelName
+  | .seq s t => emitFWith inline s d kernelName oracleName scalarDtype ++
+      emitFWith inline t d kernelName oracleName scalarDtype
   | .instr i => [pad d ++ emitInstr i]
-  | .apply _ _ dst dOff src sOff cols =>
-      let w := s!"A.shape[0] * {emitIExp cols}"
-      [pad d ++ s!"{bufName dst}[{emitIExp dOff}:{emitIExp dOff} + {w}] = (A @ " ++
-        s!"{bufName src}[{emitIExp sOff}:{emitIExp sOff} + {w}].reshape((A.shape[0], " ++
-        s!"{emitIExp cols}), order='F')).reshape(-1, order='F')"]
+  | .apply oracle _ dst dOff src sOff cols =>
+      match oracleName oracle with
+      | none => [pad d ++ "raise NotImplementedError('unbound oracle: supply oracleName')"]
+      | some matrix =>
+          let a := s!"({matrix})"
+          let w := s!"{a}.shape[0] * {emitIExp cols}"
+          [pad d ++ s!"np.copyto({bufName dst}[{emitIExp dOff}:{emitIExp dOff} + {w}], ({a} @ " ++
+            s!"{bufName src}[{emitIExp sOff}:{emitIExp sOff} + {w}].reshape(({a}.shape[0], " ++
+            s!"{emitIExp cols}), order='F')).reshape(-1, order='F'), casting='same_kind')"]
   | .rom _ dst i => [pad d ++ s!"{emitCell dst} = ROM[{emitIExp i}]"]
-  | .alloc _ len body =>
-      [pad d ++ s!"b{nb} = np.full({emitIExp len}, np.nan)"] ++
-        emitFWith inline body d kernelName ++ [pad d ++ s!"del b{nb}"]
+  | .alloc p len body =>
+      [pad d ++ s!"b{nb} = np.full({emitIExp len}, np.nan, dtype={scalarDtype p})"] ++
+        emitFWith inline body d kernelName oracleName scalarDtype ++ [pad d ++ s!"del b{nb}"]
   | .loop n body =>
-      let ls := emitFWith inline body (d + 1) kernelName
+      let ls := emitFWith inline body (d + 1) kernelName oracleName scalarDtype
       [pad d ++ s!"for i{ni} in range({emitIExp n}):"] ++
         (if ls.isEmpty then [pad (d + 1) ++ "pass"] else ls)
   | .whileFuel fuel _ cmp x y body =>
       [pad d ++ s!"for _ in range({emitIExp fuel}):",
         pad (d + 1) ++ s!"if not ({emitCell x} {emitCmp cmp} {emitCell y}): break"] ++
-        emitFWith inline body (d + 1) kernelName ++
+        emitFWith inline body (d + 1) kernelName oracleName scalarDtype ++
         [pad d ++ "else:", pad (d + 1) ++ "raise RuntimeError('out of fuel')"]
   | .ite _ cmp x y t e =>
-      let lt := emitFWith inline t (d + 1) kernelName
-      let le := emitFWith inline e (d + 1) kernelName
+      let lt := emitFWith inline t (d + 1) kernelName oracleName scalarDtype
+      let le := emitFWith inline e (d + 1) kernelName oracleName scalarDtype
       [pad d ++ s!"if {emitCell x} {emitCmp cmp} {emitCell y}:"] ++
         (if lt.isEmpty then [pad (d + 1) ++ "pass"] else lt) ++
         [pad d ++ "else:"] ++ (if le.isEmpty then [pad (d + 1) ++ "pass"] else le)
   | .named name args body =>
-      if inline then emitFWith inline body d kernelName
+      if inline then emitFWith inline body d kernelName oracleName scalarDtype
       else [pad d ++ s!"{name}({", ".intercalate (args.map emitArg)})"]
   | .kcall kernel _ dims ins outs =>
       match kernelName kernel with
@@ -141,26 +156,44 @@ private def emitFWith {P ι : Type} (inline : Bool) {nb ni : ℕ} (s : FStmt P �
       [pad d ++ s!"if not (0 <= {emitCell x}): raise ValueError('bindIdx: negative value')",
         pad d ++ s!"i{ni} = int(np.floor({emitCell x}))",
         pad d ++ s!"if i{ni} > {emitIExp bound}: raise ValueError('bindIdx: above the bound')"] ++
-        emitFWith inline body d kernelName
+        emitFWith inline body d kernelName oracleName scalarDtype
 
 /-- A first-order statement as Python lines at depth `d`, with a Python callable for each
 kernel identifier. -/
 def emitF {P ι : Type} (inline : Bool) (kname : ι → String) {nb ni : ℕ}
-    (s : FStmt P ι nb ni) (d : ℕ) : List String :=
-  emitFWith inline s d (fun o => some (kname o))
+    (s : FStmt P ι nb ni) (d : ℕ)
+    (oracleName : ι → Option String := by
+      first
+      | exact (fun (α : Type) (_ : Subsingleton α) (_ : α) => some "A") _ inferInstance
+      | exact fun _ => none)
+    (scalarDtype : P → String := fun _ => "np.float64") : List String :=
+  emitFWith inline s d (fun o => some (kname o)) oracleName scalarDtype
 
 /-- A program `Prog P ι r b` as a Python function `name(A, i0, …, i{r}, b0, …, b{b-1})`.
 A total `kname` supplies Python callable expressions. Its default, an empty name, leaves a
 kernel unbound. The optional `kernelName` supplies a partial mapping directly.
 An unbound call raises `NotImplementedError` when reached.
+An `apply` defaults to `A` when the caller can infer `Subsingleton ι`; otherwise `oracleName`
+must bind its identifier to a square NumPy matrix expression. Explicit partial bindings stay
+partial, including for subsingleton types.
+Scratch defaults to the common dtype of `A` and the declared buffers, at least float64.
+Use `scalarDtype` per tag when other hooks introduce complex or wider scalar values.
 Non-inlined `named` nodes instead delegate their whole bodies to external implementations. -/
 def emitProg {P ι : Type} {r b : ℕ} (inline : Bool) (name : String) (prog : Prog P ι r b)
     (kname : ι → String := fun _ => "")
     (kernelName : ι → Option String := fun o =>
       let f := kname o
-      if f.isEmpty then none else some f) : String :=
+      if f.isEmpty then none else some f)
+    (oracleName : ι → Option String := by
+      first
+      | exact (fun (α : Type) (_ : Subsingleton α) (_ : α) => some "A") _ inferInstance
+      | exact fun _ => none)
+    (scalarDtype : P → Option String := fun _ => none) : String :=
   let params := ["A"] ++ (List.range (r + 1)).map (s!"i{·}") ++ (List.range b).map (s!"b{·}")
-  let body := emitFWith inline prog 1 kernelName
+  let inputs := ["A"] ++ (List.range b).map (s!"b{·}") ++ ["np.float64"]
+  let dtype := s!"np.result_type({", ".intercalate inputs})"
+  let body := emitFWith inline prog 1 kernelName oracleName
+    (fun p => (scalarDtype p).getD dtype)
   "\n".intercalate ([s!"def {name}({", ".intercalate params}):"] ++
     if body.isEmpty then [pad 1 ++ "pass"] else body)
 
@@ -261,11 +294,86 @@ def numpyPrelude : String := "\n".intercalate [
   "def copy(x, xo, y, yo, n): y[yo:yo+n] = x[xo:xo+n]",
   "def nrm2(d, di, x, xo, n): d[di] = np.linalg.norm(x[xo:xo+n])"]
 
+/-- Execute emitted legacy single-oracle, two-oracle, complex scratch and unbound-oracle programs.
+The complex test promotes real declared buffers using the complex matrix; an explicit per-tag
+choice also handles complex values introduced by an oracle outside those inputs.
+Skipped when Python or NumPy is unavailable, like the differential tests below. -/
+def oracleAndScratchRegressionTest : IO Unit := do
+  let probe ← IO.Process.output { cmd := "python3", args := #["-c", "import numpy"] }
+    |>.toBaseIO
+  match probe with
+  | .ok out =>
+    if out.exitCode != 0 then IO.println "oracle/scratch tests skipped: no NumPy"; return
+  | .error _ => IO.println "oracle/scratch tests skipped: no python3"; return
+  let stack : Prog Unit Bool 0 2 := .loop 1
+    (.seq (.apply false () 1 0 0 0 1) (.apply true () 0 0 1 0 1))
+  let legacyUnit : Prog Unit Unit 0 2 := .apply () () 1 0 0 0 1
+  let legacyPUnit : Prog Unit PUnit 0 2 := .apply PUnit.unit () 1 0 0 0 1
+  let temp : Prog Unit Bool 0 2 := .alloc () 1
+    (.seq (.apply false () 2 0 0 0 1) (.instr (.copy () ⟨1, 0⟩ ⟨2, 0⟩)))
+  let external : Prog Unit Bool 0 2 := .alloc () 1
+    (.seq (.apply false () 2 0 0 0 1) (.instr (.un () .re ⟨1, 0⟩ ⟨2, 0⟩)))
+  let typed : Prog Bool Unit 0 1 := .alloc false 1 (.alloc true 1
+    (.seq (.instr (.draw true .uniform ⟨2, 0⟩))
+      (.seq (.instr (.bin true .mul ⟨2, 0⟩ ⟨2, 0⟩ ⟨2, 0⟩))
+        (.seq (.instr (.un false .re ⟨1, 0⟩ ⟨2, 0⟩))
+          (.instr (.copy false ⟨0, 0⟩ ⟨1, 0⟩))))))
+  let mut lines := [numpyPrelude, "import warnings", "warnings.simplefilter('error')",
+    "operators = [np.array([[2.0]]), np.array([[3.0]])]"]
+  for inline in [false, true] do
+    lines := lines ++ [emitProg inline "legacy_unit" legacyUnit,
+      emitProg inline "legacy_punit" legacyPUnit,
+      "src = np.array([1.0]); dst = np.zeros(1)",
+      "legacy_unit(operators[0], 1, src, dst)", "assert dst[0] == 2",
+      "dst[:] = 0", "legacy_punit(operators[0], 1, src, dst)", "assert dst[0] == 2",
+      emitProg inline "stack" stack
+      (oracleName := fun o => some (if o then "operators[1]" else "operators[0]")),
+      "src = np.array([1.0]); dst = np.zeros(1)", "stack(operators[0], 1, src, dst)",
+      "assert src[0] == 6 and dst[0] == 2"]
+    for (name, binding, expectedDst) in
+        [("unbound", fun (_ : Bool) => (none : Option String), "0"),
+         ("partial", fun (o : Bool) => if o then none else some "operators[0]", "2")] do
+      let emitted := if name == "unbound" then emitProg inline name stack
+        else emitProg inline name stack (oracleName := binding)
+      lines := lines ++ [emitted,
+        "src = np.array([1.0]); dst = np.zeros(1)", "try:",
+        s!"    {name}(operators[0], 1, src, dst)", "except NotImplementedError as error:",
+        "    assert 'unbound oracle' in str(error)", "else:",
+        "    raise AssertionError('unbound oracle was accepted')",
+        s!"assert src[0] == 1 and dst[0] == {expectedDst}"]
+    lines := lines ++ [emitProg inline "via_temp" temp (oracleName := fun _ => some "A"),
+      "A = np.array([[1+2j]])", "src = np.array([1.0]); dst = np.zeros(1, dtype=complex)",
+      "via_temp(A, 1, src, dst)", "assert dst[0] == 1+2j",
+      emitProg inline "adjoint" stack
+        (oracleName := fun o => some (if o then "A.conj().T" else "A")),
+      "src = np.array([1+0j]); dst = np.zeros(1, dtype=complex)",
+      "adjoint(A, 1, src, dst)", "assert src[0] == 5 and dst[0] == 1+2j",
+      emitProg inline "typed" typed
+        (scalarDtype := fun p => some (if p then "np.complex128" else "np.float64")),
+      "def draw_uniform(): return 1+2j", "dst = np.zeros(1)",
+      "typed(None, 1, dst)", "assert dst[0] == -3",
+      "complex_operator = np.array([[1+2j]])",
+      emitProg inline "external_reject" external (oracleName := fun _ => some "complex_operator"),
+      "src = np.array([1.0]); dst = np.zeros(1)", "try:",
+      "    external_reject(None, 1, src, dst)", "except TypeError:", "    pass", "else:",
+      "    raise AssertionError('complex oracle result was silently truncated')",
+      "assert dst[0] == 0",
+      emitProg inline "external_real" external (oracleName := fun _ => some "complex_operator")
+        (scalarDtype := fun _ => some "np.complex128"),
+      "external_real(None, 1, src, dst)", "assert dst[0] == 1"]
+  let out ← IO.Process.output { cmd := "python3", args := #["-c", "\n".intercalate lines] }
+  unless out.exitCode == 0 do
+    throw <| IO.userError s!"oracle/scratch regression failed: {out.stderr}"
+  IO.println "NumPy oracle/scratch regressions passed (20 execution/rejection cases)"
+
+#eval oracleAndScratchRegressionTest
+
 /-- The registered tree `NLAlib.hutchppProg.compiled` as a NumPy function
 `hutchpp(A, i0, i1, i2, b0)`: `i0` is $N$, `i1` is $k$, `i2` is $\ell$, and the estimate is
 written to `b0[0]`; with a `draw_rademacher` hook. -/
 def hutchppPython (inline : Bool) : String :=
   emitProg inline "hutchpp" (hutchppProg.compiled (P := Unit) (ι := Unit) () () .rademacher)
+    (oracleName := fun _ => some "A")
 
 #eval IO.println (numpyPrelude ++ "\n" ++ hutchppPython false)
 

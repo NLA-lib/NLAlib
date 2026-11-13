@@ -103,6 +103,7 @@ theorem nuclearNorm_eq_zero_iff {A : Matrix m n 𝕜} : nuclearNorm A = 0 ↔ A 
 
 /-- The nuclear norm is absolutely homogeneous:
 $\|c\mathbf{A}\|_* = \lvert c \rvert \|\mathbf{A}\|_*$. -/
+@[simp]
 theorem nuclearNorm_smul (c : 𝕜) (A : Matrix m n 𝕜) :
     nuclearNorm (c • A) = ‖c‖ * nuclearNorm A := by
   exact kyFanNorm_smul _ c A

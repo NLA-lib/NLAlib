@@ -43,7 +43,7 @@ private theorem composable_constants (I : Interp P ι ℝ (OpCount P ι)) (tag :
 /-- Initialization executes the scalar constants, zero iterate, two input copies, self-dot
 and zero-residual test in the fixed order, for every real input including zero dimension. -/
 theorem exec_initialize (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P) (N : ℕ)
+    (hc : IsUnitCharge I) (tag : P) (N : ℕ)
     (A : Matrix (Fin N) (Fin N) ℝ) (b : Fin N → ℝ) (st : St P ℝ (OpCount P ι))
     (hshape : st.store.shape = workspaceShape tag N false)
     (hb : ∀ i : Fin N, st.store.read tag 0 i = some (b i)) :

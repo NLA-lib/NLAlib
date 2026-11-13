@@ -443,8 +443,10 @@ def p_fm_path(c):
     for p in c.lib_files:
         if topic_of_path(p) == 'ForMathlib':
             rel = Path(*Path(p).parts[2:])
-            if not (c.mathlib / rel).exists() and not (c.mathlib / rel).parent.exists():
-                out.append(V('P7', p, 1, '(file)', 'no Mathlib/' + str(rel.parent)))
+            if not (c.mathlib / rel).is_file():
+                out.append(V('P7', p, 1, '(file)',
+                             'no pinned Mathlib/' + rel.as_posix() +
+                             '; review the upstream destination for this module'))
     return out
 
 

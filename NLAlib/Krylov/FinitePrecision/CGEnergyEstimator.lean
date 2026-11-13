@@ -55,7 +55,7 @@ variable {n k : ℕ} (C : CGRun n k)
 
 private theorem estimator_facts {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) :
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a)) :
     1 ≤ a' / a ∧ specNorm C.A ≤ a' ∧ C.ε * (a' / a) ≤ 1 / 10 ^ 5 := by
   have h := C.isHermitian.spectrum_subset_iff.mp hs 0 (by
     simp only [Fintype.card_fin]; exact C.n_pos)
@@ -80,11 +80,12 @@ private theorem estimator_facts {a a' : ℝ} (ha : 0 < a)
         (by nlinarith : 1 ≤ (k : ℝ) ^ 2) hsqrt (by norm_num) (by positivity)
     simpa only [one_mul] using mul_le_mul hM hκ (by norm_num) (by positivity)
   have h2 := mul_le_mul_of_nonneg_right h1 hz
+  unfold CGPrecisionHorizon at hsmall
   nlinarith
 
 private theorem estimator_norms {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) {j : ℕ} (hj : j ≤ k) :
     ‖WithLp.toLp 2 (xs - C.x j)‖ ≤ 2 * ‖WithLp.toLp 2 C.b‖ / a ∧
     ‖WithLp.toLp 2 (C.x j)‖ ≤ 3 * ‖WithLp.toLp 2 C.b‖ / a := by
@@ -124,7 +125,7 @@ private theorem estimator_norms {a a' : ℝ} (ha : 0 < a)
 
 private theorem estimator_μ {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {j : ℕ} (hj : j < k) :
     |C.μ j - C.p j ⬝ᵥ (C.A *ᵥ C.p j)| ≤
       3 * (C.ε * (a' / a)) * (C.p j ⬝ᵥ (C.A *ᵥ C.p j)) := by
@@ -169,7 +170,7 @@ private theorem estimator_μ {a a' : ℝ} (ha : 0 < a)
 
 private theorem estimator_curvature {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {j : ℕ} (hj : j < k) :
     |C.γ j ^ 2 * (C.p j ⬝ᵥ (C.A *ᵥ C.p j)) - C.γ j * C.ρ j ^ 2| ≤
       7 * (C.ε * (a' / a)) * (C.γ j * C.ρ j ^ 2) := by
@@ -237,7 +238,7 @@ private theorem estimator_bilinear {a' : ℝ} (hspec : specNorm C.A ≤ a')
 
 private theorem estimator_rounding {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) {j : ℕ} (hj : j < k) :
     |quadForm C.A (xs - C.x (j + 1)) -
       quadForm C.A (xs - C.x j - C.γ j • C.p j)| ≤
@@ -305,7 +306,7 @@ private theorem estimator_rounding {a a' : ℝ} (ha : 0 < a)
 
 private theorem estimator_step {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) {j : ℕ} (hj : j < k) :
     |(quadForm C.A (xs - C.x j) - quadForm C.A (xs - C.x (j + 1))) -
       C.γ j * C.ρ j ^ 2| ≤
@@ -387,7 +388,7 @@ hypothesis is used. Zero delay and zero precision have zero remainder.
 Result: cg-delayed-physical-energy-reliability -/
 theorem abs_quadForm_sub_x_sub_quadForm_sub_x_sub_sum_le {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) {j d : ℕ} (hjd : j + d ≤ k) :
     |(quadForm C.A (xs - C.x j) - quadForm C.A (xs - C.x (j + d))) -
       ∑ i ∈ Finset.Ico j (j + d), C.γ i * C.ρ i ^ 2| ≤
@@ -429,7 +430,7 @@ $R_{j,d}=150d(j+d)\varepsilon(a'/a)\|\mathbf{b}\|^2/a$.
 The terminal energy is nonnegative; it need not vanish. -/
 theorem sum_sub_le_quadForm_sub_x {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) {j d : ℕ} (hjd : j + d ≤ k) :
     (∑ i ∈ Finset.Ico j (j + d), C.γ i * C.ρ i ^ 2) -
       cgEnergyEstimatorFactor j d * C.ε * (a' / a) *
@@ -448,7 +449,7 @@ $R_{j,d}=150d(j+d)\varepsilon(a'/a)\|\mathbf{b}\|^2/a$.
 This exposes the accuracy needed of a delayed terminal-tail certificate. -/
 theorem abs_quadForm_sub_x_sub_sum_le {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) {j d : ℕ} (hjd : j + d ≤ k) :
     |quadForm C.A (xs - C.x j) -
       ∑ i ∈ Finset.Ico j (j + d), C.γ i * C.ρ i ^ 2| ≤
@@ -473,7 +474,7 @@ No printed source.
 Result: cg-delayed-energy-stopping -/
 theorem quadForm_sub_x_le_of_sum_add_le {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b) {j d : ℕ} (hjd : j + d ≤ k)
     {tail tolerance : ℝ} (hterminal : quadForm C.A (xs - C.x (j + d)) ≤ tail)
     (hstop : (∑ i ∈ Finset.Ico j (j + d), C.γ i * C.ρ i ^ 2) +
@@ -492,7 +493,7 @@ $R_{0,j}=150j(0+j)\varepsilon(a'/a)\|\mathbf{b}\|^2/a$.
 No closeness of the computed and exact-model iterates is assumed. -/
 theorem abs_quadForm_sub_x_sub_quadForm_backwardH_sub_cgIterate_le {a a' : ℝ}
     (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
-    (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (hsmall : CGPrecisionHorizon k C.ε (a' / a))
     {xs : Fin n → ℝ} (hx : C.A *ᵥ xs = C.b)
     {ys : Fin n × Fin (k + 1) → ℝ} (hy : C.backwardH *ᵥ ys = C.dilatedRhs)
     {j : ℕ} (hj : j ≤ k) :

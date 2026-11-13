@@ -329,8 +329,8 @@ theorem frobNorm_backwardH_sub_dilatedH_le (hsmall : (k : ℝ) * L.ε ≤ 1 / 10
       gcongr
     _ = _ := by ring
 
-/-- The dilated vectors as a sequence: $\hat{\mathbf{u}}_m$ is column  - 1$ of
-$\hat{\mathbf{V}}_{k+1}$ for  \le m \le k + 1$, and $\mathbf{0}$ otherwise. -/
+/-- The dilated vectors as a sequence: $\hat{\mathbf{u}}_m$ is column $m - 1$ of
+$\hat{\mathbf{V}}_{k+1}$ for $1 \le m \le k + 1$, and $\mathbf{0}$ otherwise. -/
 noncomputable def dilatedV (m : ℕ) : Fin n × Fin (k + 1) → ℝ :=
   fun p => if h : 1 ≤ m ∧ m ≤ k + 1 then L.dilatedBasisSucc p ⟨m - 1, by omega⟩ else 0
 

@@ -176,7 +176,7 @@ theorem integrable_sq_mul_log_sq_gaussianReal {g : ℝ → ℝ} (hg : ContDiff �
 /-- **Gross's logarithmic Sobolev inequality** on $\mathbb{R}$:
 $\operatorname{Ent}(g^2) \le 2\, \mathbb{E}[g'^2]$ for the standard Gaussian, for $g$ of class
 $C^1$ with $g^2$ and $g'^2$ integrable.
-[BoucheronLugosiMassart2013, Theorem 5.4] (locator to check). -/
+[BoucheronLugosiMassart2013, §5.3, Theorem 5.4], specialized to one coordinate. -/
 theorem entropy_sq_le_two_mul_integral_deriv_sq_gaussianReal {g : ℝ → ℝ} (hg : ContDiff ℝ 1 g)
     (hg2 : Integrable (fun x => g x ^ 2) (gaussianReal 0 1))
     (hdg : Integrable (fun x => deriv g x ^ 2) (gaussianReal 0 1)) :

@@ -94,6 +94,7 @@ theorem quadForm_smul_left (c : 𝕜) (A : Matrix n n 𝕜) (z : n → 𝕜) :
 
 /-- The quadratic form of the identity is the squared Euclidean norm,
 $\mathbf{z}^{\mathsf{H}}\mathbf{z} = \|\mathbf{z}\|^2$. -/
+@[simp]
 theorem quadForm_one [DecidableEq n] (z : n → 𝕜) :
     quadForm (1 : Matrix n n 𝕜) z = ((‖WithLp.toLp 2 z‖ ^ 2 : ℝ) : 𝕜) := by
   rw [quadForm, Matrix.one_mulVec, EuclideanSpace.star_dotProduct_self_eq_coe_norm_sq]
@@ -280,6 +281,7 @@ theorem posDef_iff_quadForm_pos {A : Matrix n n 𝕜} :
   exact Matrix.posDef_iff_dotProduct_mulVec
 
 /-- The quadratic form is monotone in the Loewner order. -/
+@[gcongr]
 theorem quadForm_le_quadForm_of_le {A B : Matrix n n 𝕜} (h : A ≤ B) (z : n → 𝕜) :
     quadForm A z ≤ quadForm B z := by
   rw [← sub_nonneg, ← quadForm_sub_left]

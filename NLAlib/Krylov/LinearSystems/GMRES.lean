@@ -242,7 +242,7 @@ $$\|\mathbf{b} - \mathbf{A}\,\mathsf{gmresIterate}(\mathbf{A}, \mathbf{b}, \math
 \kappa(\mathbf{V})\,\eta\,\|\mathbf{r}_0\| \,.$$
 The hypothesis is the body of `IsDiagonalizable` with its witness ($\mathbf{V}$ invertible, as
 `IsUnit V`; `Matrix.isUnit_iff_isUnit_det` converts from `IsDiagonalizable`'s determinant form).
-[SaadSchultz1986, Proposition 4]; [TrefethenBau1997, Theorem 35.2]; locators to verify.
+[SaadSchultz1986, Proposition 4, p. 866]; [TrefethenBau1997, Theorem 35.2, p. 271].
 Result: gmres-diagonalizable-bound -/
 theorem norm_sub_mulVec_gmresIterate_le_pseudoConditionNumber_mul {A V : Matrix n n 𝕜}
     {d : n → 𝕜} (hV : IsUnit V) (hAV : A * V = V * Matrix.diagonal d) (b x₀ : n → 𝕜)
@@ -260,7 +260,7 @@ $[a, \infty)$, $0 < a$, and $\|\mathbf{A}\|_2 \le a'$, then
 $$\|\mathbf{b} - \mathbf{A}\,\mathsf{gmresIterate}(\mathbf{A}, \mathbf{b}, \mathbf{x}_0, q)\| \le
 \Bigl(1 - \frac{a^2}{a'^2}\Bigr)^{q/2}\|\mathbf{r}_0\| \,.$$
 The residual polynomial is $(1 - \alpha x)^q$ with $\alpha = a/a'^2$.
-[EisenstatElmanSchultz1983, Theorem 3.3]; [Saad2003, Theorem 6.30]; locators to verify.
+[EisenstatElmanSchultz1983, Theorem 3.3, pp. 350–351]; [Saad2003, Theorems 5.10 and 6.30].
 Result: gmres-field-of-values-bound -/
 theorem norm_sub_mulVec_gmresIterate_le_sqrt_one_sub_sq_pow {A : Matrix n n 𝕜} {a a' : ℝ}
     (ha : 0 < a) (hs : spectrum ℝ (hermitianPart A) ⊆ Set.Ici a) (hA : specNorm A ≤ a')

@@ -216,6 +216,7 @@ theorem schattenNorm_congr {A : Matrix m n 𝕜} {B : Matrix l p 𝕜}
 
 /-- Schatten norms are absolutely homogeneous, for $q \ne 0$:
 $\|c\mathbf{A}\|_{S_q} = \lvert c \rvert \, \|\mathbf{A}\|_{S_q}$. -/
+@[simp]
 theorem schattenNorm_smul {q : ℝ≥0∞} (hq : q ≠ 0) (c : 𝕜) (A : Matrix m n 𝕜) :
     schattenNorm q (c • A) = ‖c‖ * schattenNorm q A := by
   refine le_antisymm (schattenNorm_le_mul_of_singularValues_le hq (norm_nonneg c) fun i =>
@@ -362,6 +363,7 @@ theorem abs_schattenNorm_sub_schattenNorm_le {q : ℝ≥0∞} (hq : 1 ≤ q) (A 
 
 /-- Schatten norms decrease in the exponent: for $0 < q \le r$,
 $\|\mathbf{A}\|_{S_r} \le \|\mathbf{A}\|_{S_q}$. -/
+@[gcongr]
 theorem schattenNorm_anti {q r : ℝ≥0∞} (hq : q ≠ 0) (h : q ≤ r) (A : Matrix m n 𝕜) :
     schattenNorm r A ≤ schattenNorm q A := by
   rcases eq_or_ne q ⊤ with rfl | hq'

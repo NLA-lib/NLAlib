@@ -90,14 +90,12 @@ private lemma mulVec_mem_of_pow_mulVec_mem {q : ℕ} (hq : A ^ q *ᵥ b ∈ kryl
 
 private lemma pow_mulVec_mem_of_pow_mulVec_mem {q : ℕ} (hq : A ^ q *ᵥ b ∈ krylovSpace A b q)
     (i : ℕ) : A ^ i *ᵥ b ∈ krylovSpace A b q := by
-  induction i with
-  | zero =>
+  have hb : b ∈ krylovSpace A b q := by
     rcases Nat.eq_zero_or_pos q with rfl | hpos
-    · exact hq
-    · exact pow_mulVec_mem_krylovSpace A b hpos
-  | succ i ih =>
-    rw [pow_succ', ← Matrix.mulVec_mulVec]
-    exact mulVec_mem_of_pow_mulVec_mem hq ih
+    · simpa using hq
+    · exact self_mem_krylovSpace A b hpos
+  exact krylovSpace_le_of_invariant hb (fun _ hx => mulVec_mem_of_pow_mulVec_mem hq hx)
+    (i + 1) (pow_mulVec_mem_krylovSpace A b (Nat.lt_succ_self i))
 
 private lemma krylovSpace_eq_of_pow_mulVec_mem {q q' : ℕ}
     (hq : A ^ q *ᵥ b ∈ krylovSpace A b q) (h : q ≤ q') :

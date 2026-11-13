@@ -517,7 +517,7 @@ reorthogonalization corrections. No printed source for this CGS2 program bound.
 Result: lanczos-reorth-cgs2-program-guarantees -/
 theorem exec_rounded_compiled_guarantees {u : P → ℝ} {dec : P → K → ℝ}
     (I : Interp P ι K (OpCount P ι)) (tag : P) (hsem : IsRelErrSem u dec (fun _ _ => True) I.sem)
-    (hz : AddsZeroExactly dec I.sem) (hc : ∀ k, I.charge k = Finsupp.single k 1)
+    (hz : AddsZeroExactly dec I.sem) (hc : IsUnitCharge I)
     (st : St P K (OpCount P ι)) (N q : ℕ) (A : Matrix (Fin N) (Fin N) ℝ) (b : Fin N → ℝ)
     (values : ℕ → K)
     (hshape : st.store.shape = #[(tag, N), (tag, N * (q + 1)), (tag, q), (tag, q + 1),
@@ -563,7 +563,7 @@ theorem exec_rounded_compiled_guarantees {u : P → ℝ} {dec : P → K → ℝ}
     hb hrom hdecode hA hε hbnz hη0 hη hu hc₁ hτ
   have hbnd := (lanczosReorthProg.compiled (ι := ι) tag).bounds_staticCost_of_exec_eq_some I N
     ![q] hexec
-  have hch : I.charge = fun k => Finsupp.single k 1 := funext hc
+  have hch : I.charge = fun k => Finsupp.single k 1 := hc.charge_eq
   have hcount : ((lanczosReorthProg.compiled (ι := ι) tag).staticCost I.charge I.width N
       ![q]).count ≤ lanczosReorthCount tag N q := by
     rw [hch]
@@ -605,7 +605,7 @@ Result: lanczos-reorth-cgs2-oracle-guarantees -/
 theorem exec_rounded_oracle_compiled_guarantees {u : P → ℝ} {dec : P → K → ℝ}
     (I : Interp P ι K (OpCount P ι)) (tag : P) (o : ι)
     (hsem : IsRelErrSem u dec (fun _ _ => True) I.sem) (hz : AddsZeroExactly dec I.sem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1)
+    (hc : IsUnitCharge I)
     (st : St P K (OpCount P ι)) (N q : ℕ) (A : Matrix (Fin N) (Fin N) ℝ) (b : Fin N → ℝ)
     (hshape : st.store.shape = #[(tag, N), (tag, N * (q + 1)), (tag, q), (tag, q + 1),
       (tag, 1), (tag, N), (tag, q)])
@@ -649,7 +649,7 @@ theorem exec_rounded_oracle_compiled_guarantees {u : P → ℝ} {dec : P → K �
     hshape hb hmv hηmv hA hε hbnz hη0 hη hu hc₁ hτ
   have hbnd := (lanczosReorthOracleProg.compiled tag o).bounds_staticCost_of_exec_eq_some I N
     ![q] hexec
-  have hch : I.charge = fun k => Finsupp.single k 1 := funext hc
+  have hch : I.charge = fun k => Finsupp.single k 1 := hc.charge_eq
   have hcount : ((lanczosReorthOracleProg.compiled tag o).staticCost I.charge I.width N
       ![q]).count ≤ lanczosReorthOracleCount tag o N q := by
     rw [hch]

@@ -183,7 +183,8 @@ theorem norm_sub_mulVec_eq [DecidableEq m] (h : IsLeastSquaresSolution A b x) :
 $\mathbf{y}$,
 $$\|\mathbf{b} - \mathbf{A}\mathbf{y}\|^2 = \|\mathbf{b} - \mathbf{A}\mathbf{x}\|^2 +
   \|\mathbf{A}(\mathbf{x} - \mathbf{y})\|^2\,.$$
-[GolubVanLoan2013, §5.3] (locator to check). -/
+[GolubVanLoan2013, §5.3] discusses full-rank least squares. Here orthogonality of the residual
+gives the identity at any rank. -/
 theorem norm_sub_mulVec_sq_eq_add (h : IsLeastSquaresSolution A b x) (y : n → 𝕜) :
     ‖WithLp.toLp 2 (b - A *ᵥ y)‖ ^ 2 =
       ‖WithLp.toLp 2 (b - A *ᵥ x)‖ ^ 2 + ‖WithLp.toLp 2 (A *ᵥ (x - y))‖ ^ 2 := by

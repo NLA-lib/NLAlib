@@ -56,7 +56,7 @@ Zero budget or decoded zero input is covered by `exec_rounded_compiled`, without
 an impossible zero-length run. -/
 theorem exec_rounded_compiled_backward (I : Interp P ι K (OpCount P ι)) (tag : P)
     (hsem : IsRelErrSem u dec (fun _ _ => True) I.sem) (hz : AddsZeroExactly dec I.sem)
-    (hu : u tag < 1) (hc : ∀ k, I.charge k = Finsupp.single k 1)
+    (hu : u tag < 1) (hc : IsUnitCharge I)
     (st : St P K (OpCount P ι)) (N q : ℕ) (A : Matrix (Fin N) (Fin N) ℝ)
     (b : Fin N → K) (vals : ℕ → K)
     (hshape : st.store.shape = #[(tag, N), (tag, N), (tag, N), (tag, N), (tag, 1)])
@@ -65,8 +65,7 @@ theorem exec_rounded_compiled_backward (I : Interp P ι K (OpCount P ι)) (tag :
     (hdecode : ∀ i j : Fin N, dec tag (vals (i + N * j)) = A i j)
     (hsmall : cgImplementationRoundoffBound N (u tag) ≤ 1 / 100)
     (hA : Aᵀ = A) {a a' : ℝ} (ha : 0 < a) (hspec : spectrum ℝ A ⊆ Set.Icc a a')
-    (horizon : (q : ℝ) ^ 2 * Real.sqrt q * cgImplementationRoundoffBound N (u tag) *
-      (a' / a) ^ 2 ≤ 1 / 10 ^ 5)
+    (horizon : CGPrecisionHorizon q (cgImplementationRoundoffBound N (u tag)) (a' / a))
     (hq : 0 < q) (hbnz : (fun i => dec tag (b i)) ≠ 0) :
     ∃ (out : St P K (OpCount P ι)) (flag : ℝ) (m : ℕ) (R : CGRun N m),
       (cgProg.compiled tag).exec I N ![q] st = some out ∧
@@ -103,15 +102,13 @@ theorem exec_rounded_compiled_backward (I : Interp P ι K (OpCount P ι)) (tag :
   rcases hpost with ⟨hzero, _⟩ | ⟨m, R, hm, hRA, hRb, hRε, hvec, hstatus, hstop⟩
   · exact (hzero.elim (fun hq0 => (hq.ne' hq0).elim) (fun hb0 => (hbnz hb0).elim))
   · have hprec : 0 ≤ cgImplementationRoundoffBound N (u tag) := hRε ▸ R.ε_nonneg
-    have hRsmall : (m : ℝ) ^ 2 * Real.sqrt m * R.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5 := by
+    have hRsmall : CGPrecisionHorizon m R.ε (a' / a) := by
       rw [hRε]
-      refine le_trans ?_ horizon
-      gcongr
+      exact horizon.mono hprec hm
     have hsR : spectrum ℝ R.A ⊆ Set.Icc a a' := by simpa only [hRA] using hspec
     have hspecB := R.spectrum_backwardH_subset_Icc ha hsR hRsmall
-    have hPD := R.isHermitian_backwardH.posDef_iff_eigenvalue_pos.mpr
-      (fun i hi => (by positivity : (0 : ℝ) < a / 2).trans_le
-        ((R.isHermitian_backwardH.spectrum_subset_iff.mp hspecB) i hi).1)
+    have hPD := R.isHermitian_backwardH.posDef_of_spectrum_subset_Icc
+      (by positivity : (0 : ℝ) < a / 2) hspecB
     refine ⟨out, flag, m, R, erun, shape, hflag, hflagerr, input, hcost,
       R.k_pos, hm, hRA, hRb, hRε, hvec, hstatus, hstop, hPD, hspecB, ?_, ?_, ?_, ?_, ?_⟩
     · simpa only [CGRun.dilatedH, hRA, hRε] using

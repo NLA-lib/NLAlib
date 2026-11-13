@@ -156,7 +156,7 @@ private theorem exec_init_zeros (I : Interp P ι K (OpCount P ι)) {u : P → �
 private theorem exec_initPhase_of_charge (I : Interp P ι K (OpCount P ι)) {u : P → ℝ}
     {dec : P → K → ℝ}
     (hsem : IsRelErrSem u dec (fun _ _ => True) I.sem) (hz : AddsZeroExactly dec I.sem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P) {N q slot : ℕ} (b : Fin N → ℝ)
+    (hc : IsUnitCharge I) (tag : P) {N q slot : ℕ} (b : Fin N → ℝ)
     (st : St P K (OpCount P ι)) (hshape : st.store.shape = workspaceShape tag N q slot)
     (hb : ∀ i : Fin N, ∃ w, st.store.read tag 0 i = some w ∧ dec tag w = b i)
     (hsmall : lanczosImplementationRoundoffBound N (u tag) ≤ 1 / 100) :

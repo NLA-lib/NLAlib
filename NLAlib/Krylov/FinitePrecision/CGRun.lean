@@ -43,6 +43,7 @@ Constants are unoptimised.
 
 ## Main definitions
 
+* `NLAlib.CGPrecisionHorizon`: the sufficient accumulated-error horizon.
 * `NLAlib.CGRun`: a run of $k$ steps with accuracy parameter $\varepsilon$.
 * `NLAlib.CGRun.toLanczosData`, `NLAlib.CGRun.toNormalizedLanczosData`: its Lanczos data.
 * `NLAlib.CGRun.backwardH`: the backward model of the run.
@@ -62,6 +63,21 @@ Lemma B, the a posteriori backward model, the next division and the residual gap
 open scoped Matrix MatrixOrder
 
 namespace NLAlib
+
+/-- The sufficient CG precision horizon $q^{5/2}\varepsilon\kappa^2\le10^{-5}$.
+It is a hypothesis on requested steps, an error allowance and a condition ratio, not a
+necessary condition for convergence or a finite-format range certificate.
+[CarsonMaShao2026, (H)]. -/
+def CGPrecisionHorizon (q : ℕ) (ε κ : ℝ) : Prop :=
+  (q : ℝ) ^ 2 * Real.sqrt q * ε * κ ^ 2 ≤ 1 / 10 ^ 5
+
+/-- Every shorter prefix satisfies a CG precision horizon when the error allowance is
+nonnegative. The condition ratio may have either sign because it is squared. -/
+theorem CGPrecisionHorizon.mono {m q : ℕ} {ε κ : ℝ} (h : CGPrecisionHorizon q ε κ)
+    (hε : 0 ≤ ε) (hm : m ≤ q) : CGPrecisionHorizon m ε κ := by
+  unfold CGPrecisionHorizon at h ⊢
+  refine le_trans ?_ h
+  gcongr
 
 /-- **A conjugate gradient run with bounded local errors**: $k \ge 1$ steps of the
 Hestenes–Stiefel recurrence from $\mathbf{x}_0 = \mathbf{0}$ for a real symmetric $\mathbf{A}$,

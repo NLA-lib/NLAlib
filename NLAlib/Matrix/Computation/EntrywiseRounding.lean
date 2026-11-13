@@ -121,23 +121,6 @@ theorem isRoundingOf_roundNearest (t : ℕ) (Ω a : ℝ) :
   rw [max_eq_left (abs_nonneg a)]
   exact Real.abs_sub_roundNearest_le t a
 
-/-- The local error of binary rounding: at most half the spacing $2^{e}$ of the target exponent
-(private helper; the proof of `NLAlib.Computation.local_error`). -/
-private theorem local_error_binaryFloatRound (fmt : Float.Model.Format) {r : ℝ → ℤ}
-    (hr : ∀ x, Computation.AbsRelErr 0 (1 / 2) x (r x : ℝ)) (x : ℝ) :
-    |x - Computation.binaryFloatRound fmt r x| ≤
-      (1 / 2 : ℝ) * 2 ^ fmt.targetExponent (Int.log 2 |x| + 1) := by
-  set e := fmt.targetExponent (Int.log 2 |x| + 1)
-  have he : (0 : ℝ) < 2 ^ e := zpow_pos two_pos _
-  have hq : |x / (2 : ℝ) ^ e - (r (x / (2 : ℝ) ^ e) : ℝ)| ≤ 1 / 2 := by
-    simpa only [Computation.AbsRelErr, zero_mul, zero_add] using hr (x / (2 : ℝ) ^ e)
-  have heq : x - Computation.binaryFloatRound fmt r x =
-      (x / (2 : ℝ) ^ e - (r (x / (2 : ℝ) ^ e) : ℝ)) * 2 ^ e := by
-    dsimp only [Computation.binaryFloatRound, e]
-    field_simp
-  rw [heq, abs_mul, abs_of_pos he]
-  exact mul_le_mul_of_nonneg_right hq he.le
-
 /-- **Bounded-format rounding is a rounding with floor**: rounding to the binary format `fmt`
 with gradual underflow (`NLAlib.Computation.binaryFloatRound`, any nearest tie rule) returns a
 rounding of every real $a$ in the sense of `NLAlib.IsRoundingOf` with unit roundoff $2^{-p}$,
@@ -175,7 +158,7 @@ theorem isRoundingOf_binaryFloatRound (fmt : Float.Model.Format) {r : ℝ → �
     have he : fmt.targetExponent (Int.log 2 |a| + 1) = fmt.minExponent := by
       apply max_eq_right
       omega
-    have herr := local_error_binaryFloatRound fmt hr a
+    have herr := Computation.abs_sub_binaryFloatRound_le_half_mul_zpow fmt hr a
     rw [he] at herr
     rw [← hut] at herr
     rw [mul_comm] at hut

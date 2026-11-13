@@ -44,7 +44,7 @@ variable {𝕜 : Type*} [RCLike 𝕜] {n : Type*} [Fintype n] [DecidableEq n]
 /-- **The matrix determinant lemma**: for invertible $\mathbf{M}$ over a field,
 $$\det(\mathbf{M} + \mathbf{u}\mathbf{v}^{\mathsf{T}})
   = \det \mathbf{M} \, (1 + \mathbf{v}^{\mathsf{T}}\mathbf{M}^{-1}\mathbf{u}).$$
-[HornJohnson2013, §0.8.5] (locator to check). -/
+[HornJohnson2013, (0.8.5.11)]. -/
 theorem det_add_vecMulVec {K : Type*} [Field K] {M : Matrix n n K} (hM : IsUnit M.det)
     (u v : n → K) : (M + Matrix.vecMulVec u v).det = M.det * (1 + v ⬝ᵥ M⁻¹ *ᵥ u) := by
   have hfactor : M + Matrix.vecMulVec u v = M * (1 + Matrix.vecMulVec (M⁻¹ *ᵥ u) v) := by

@@ -139,7 +139,7 @@ q)\|_{\mathbf{A}}^2
 The error is $p(\mathbf{A})\mathbf{x}_\star$ for a residual polynomial $p$, of squared
 $\mathbf{A}$-norm $\sum_k\omega_k\lvert p(\xi_k)\rvert^2 \ge 1/\sum_k\omega_k$ by Cauchy–Schwarz
 against $\sum_k(-1)^k\omega_k p(\xi_k) = 1$; `chebyshevResidual` attains it.
-[Greenbaum1997, §3.1]; locator to verify.
+[Greenbaum1997, §3.1, pp. 51–52].
 Result: cg-chebyshev-sharp -/
 theorem re_quadForm_sub_cgIterate_chebyshevExtremaMatrix {a a' : ℝ} (ha : 0 < a) (haa : a < a')
     (q : ℕ) :
@@ -207,7 +207,7 @@ $$\|\mathbf{w} - \mathbf{A}\,\mathsf{gmresIterate}(\mathbf{A}, \mathbf{w}, \math
 T_q\Bigl(\frac{a' + a}{a' - a}\Bigr)^{-1}\|\mathbf{w}\| = \frac{2\rho^q}{1 +
 \rho^{2q}}\|\mathbf{w}\| \,.$$
 As for CG, with residual weights $\lvert\mathbf{w}_k\rvert^2 = \omega_k$.
-[Greenbaum1997, §3.1]; locator to verify.
+[Greenbaum1997, §3.1, pp. 51–52].
 Result: minres-chebyshev-sharp -/
 theorem norm_sub_mulVec_gmresIterate_chebyshevExtremaMatrix {a a' : ℝ} (ha : 0 < a)
     (haa : a < a') (q : ℕ) :
@@ -289,7 +289,7 @@ polynomial is even. For a residual $p$ of degree at most $q$ and $u = p(\sqrt{\x
 $v = p(-\sqrt{\xi_j})$, $\lvert u \rvert^2 + \lvert v \rvert^2 \ge 2\lvert (u + v)/2 \rvert^2$, and
 $(u + v)/2 = P(\xi_j)$ for the even part $P(x^2)$ of $p$, of degree at most $\lfloor q/2 \rfloor$;
 so the residual is at least the interval value on $[a^2, a'^2]$, which the even Chebyshev residual
-attains. [Greenbaum1997, §3.1]; locator to verify.
+attains. [Greenbaum1997, §3.1, pp. 53–54].
 Result: minres-two-interval-sharp -/
 theorem norm_sub_mulVec_gmresIterate_chebyshevTwoIntervalMatrix {a a' : ℝ} (ha : 0 < a)
     (haa : a < a') (q : ℕ) :
@@ -408,7 +408,7 @@ $p$ with $\deg p \le q$, $p(0) = 1$. So
 spectrum. The interval case with an explicit instance is
 `re_quadForm_sub_cgIterate_chebyshevExtremaMatrix`. The initial error carries the dual weights
 $w_\lambda$ of `exists_residualMinimax_sq_le_sum_mul_norm_sq`, divided by $\lambda$, as its
-spectral weights. [Greenbaum1979]; [Greenbaum1997, §3.1]; locators to verify.
+spectral weights. [Greenbaum1979, Theorems 1–2, pp. 184–186]; [Greenbaum1997, §3.1, pp. 49–51].
 Result: cg-spectrum-minimax-sharp -/
 theorem _root_.Matrix.PosDef.exists_re_quadForm_sub_cgIterate_eq_residualMinimax_sq_mul
     {A : Matrix n n 𝕜} (hA : A.PosDef) [Nonempty n] (x₀ : n → 𝕜) (q : ℕ) :
@@ -452,7 +452,7 @@ q)\|_{\mathbf{A}}^2 / \|\mathbf{x}_\star - \mathbf{x}_0\|_{\mathbf{A}}^2$ over
 $\mathbf{x}_\star \ne \mathbf{x}_0$ is $\mathsf{residualMinimax}(\sigma(\mathbf{A}), q)^2$: the
 equation of `Matrix.PosDef.exists_re_quadForm_sub_cgIterate_eq_residualMinimax_sq_mul` with
 the bound `Matrix.PosDef.re_quadForm_sub_cgIterate_le_residualMinimax_sq_mul`.
-[Greenbaum1979]; locator to verify.
+[Greenbaum1979, Theorems 1–2, pp. 184–186].
 Result: cg-spectrum-minimax-sharp -/
 theorem _root_.Matrix.PosDef.isGreatest_re_quadForm_sub_cgIterate_div {A : Matrix n n 𝕜}
     (hA : A.PosDef) [Nonempty n] (x₀ : n → 𝕜) (q : ℕ) :
@@ -478,7 +478,7 @@ So `Matrix.IsHermitian.norm_sub_mulVec_gmresIterate_le_residualMinimax_mul` cann
 for any spectrum. For singular $\mathbf{A}$ the value is $1$ ($p(0) = 1$ on the eigenvalue $0$).
 The initial residual carries the dual weights of
 `exists_residualMinimax_sq_le_sum_mul_norm_sq` as its spectral weights.
-[GreenbaumGurvits1994]; [Greenbaum1997, §3.1]; locators to verify.
+[GreenbaumGurvits1994]; [Greenbaum1997, §3.1, pp. 49–51].
 Result: minres-spectrum-minimax-sharp -/
 theorem _root_.Matrix.IsHermitian.exists_norm_sub_mulVec_gmresIterate_eq_residualMinimax_mul
     {A : Matrix n n 𝕜} (hA : A.IsHermitian) [Nonempty n] (x₀ : n → 𝕜) (q : ℕ) :
@@ -521,7 +521,7 @@ $$\max_{\mathbf{b} \ne \mathbf{A}\mathbf{x}_0}
 the maximum being attained: it combines the equation
 `Matrix.IsHermitian.exists_norm_sub_mulVec_gmresIterate_eq_residualMinimax_mul` with the bound
 `Matrix.IsHermitian.norm_sub_mulVec_gmresIterate_le_residualMinimax_mul`.
-[GreenbaumGurvits1994]; locator to verify.
+[GreenbaumGurvits1994]; [Greenbaum1997, §3.1, pp. 49–51].
 Result: minres-spectrum-minimax-sharp -/
 theorem _root_.Matrix.IsHermitian.isGreatest_norm_sub_mulVec_gmresIterate_div
     {A : Matrix n n 𝕜} (hA : A.IsHermitian) [Nonempty n] (x₀ : n → 𝕜) (q : ℕ) :

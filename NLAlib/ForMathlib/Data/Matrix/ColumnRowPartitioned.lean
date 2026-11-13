@@ -26,6 +26,8 @@ Upstream candidate for `Mathlib.Data.Matrix.ColumnRowPartitioned` (or
   \operatorname{range} \begin{bmatrix} \mathbf{A} & \mathbf{B} \end{bmatrix}$.
 * `Matrix.mem_range_fromCols_replicateCol`: $\mathbf{y} \in
   \operatorname{range} \begin{bmatrix} \mathbf{A} & \mathbf{y} \end{bmatrix}$.
+* `Matrix.range_fromCols_eq_sup`: the concatenated column space is the supremum of the two
+  column spaces.
 -/
 
 @[expose] public section
@@ -41,6 +43,21 @@ theorem range_le_range_fromCols_left (A : Matrix n q R) (B : Matrix n r R) :
   rintro _ ⟨v, rfl⟩
   refine ⟨Sum.elim v 0, ?_⟩
   simp only [mulVecLin_apply, fromCols_mulVec_sumElim, mulVec_zero, add_zero]
+
+/-- The column space of a column concatenation is the supremum of the two column spaces.
+This holds over every commutative semiring. Upstream candidate. -/
+theorem range_fromCols_eq_sup (A : Matrix n q R) (B : Matrix n r R) :
+    LinearMap.range (fromCols A B).mulVecLin =
+      LinearMap.range A.mulVecLin ⊔ LinearMap.range B.mulVecLin := by
+  apply le_antisymm
+  · rintro _ ⟨x, rfl⟩
+    change (fromCols A B) *ᵥ x ∈ _
+    rw [fromCols_mulVec]
+    exact Submodule.add_mem_sup ⟨_, rfl⟩ ⟨_, rfl⟩
+  · apply sup_le (range_le_range_fromCols_left A B)
+    rintro _ ⟨x, rfl⟩
+    refine ⟨Sum.elim 0 x, ?_⟩
+    simp only [mulVecLin_apply, fromCols_mulVec_sumElim, mulVec_zero, zero_add]
 
 /-- The vector $\mathbf{y}$ lies in the column space of
 $\begin{bmatrix} \mathbf{A} & \mathbf{y} \end{bmatrix}$, the matrix $\mathbf{A}$ with

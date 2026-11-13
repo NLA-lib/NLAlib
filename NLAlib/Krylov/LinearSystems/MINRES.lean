@@ -68,7 +68,7 @@ variable {𝕜 : Type*} [RCLike 𝕜] {n : Type*} [Fintype n] [DecidableEq n]
 real $p$ with $\deg p \le q$, $p(0) = 1$, $\lvert p \rvert \le \eta$ on $s$,
 $\|\mathbf{b} - \mathbf{A}\,\mathsf{gmresIterate}(\mathbf{A}, \mathbf{b}, \mathbf{x}_0, q)\| \le
 \eta\,\|\mathbf{r}_0\|$. Indefinite $\mathbf{A}$ is allowed, $s$ a union of intervals.
-[Greenbaum1997, §3.1]; [Saad2003, §6.11.4]; locators to verify.
+[Greenbaum1997, §3.1, pp. 49–51]; [Saad2003, Lemma 6.31].
 Result: minres-polynomial-bound -/
 theorem _root_.Matrix.IsHermitian.norm_sub_mulVec_gmresIterate_le {A : Matrix n n 𝕜}
     (hA : A.IsHermitian) {s : Set ℝ} (hs : spectrum ℝ A ⊆ s) (b x₀ : n → 𝕜) {q : ℕ}
@@ -91,7 +91,7 @@ theorem _root_.Matrix.IsHermitian.norm_sub_mulVec_gmresIterate_le {A : Matrix n 
 spectrum in $[a, a']$, $0 < a$,
 $$\|\mathbf{b} - \mathbf{A}\,\mathsf{gmresIterate}(\mathbf{A}, \mathbf{b}, \mathbf{x}_0, q)\| \le
 2\Bigl(\frac{\sqrt{a'/a} - 1}{\sqrt{a'/a} + 1}\Bigr)^q\|\mathbf{r}_0\| \,.$$
-[Greenbaum1997, §3.1]; locator to verify.
+[Greenbaum1997, §3.1, pp. 51–53].
 Result: minres-chebyshev-bound -/
 theorem _root_.Matrix.IsHermitian.norm_sub_mulVec_gmresIterate_le_two_mul_pow {A : Matrix n n 𝕜}
     (hA : A.IsHermitian) {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ A ⊆ Set.Icc a a')
@@ -99,18 +99,15 @@ theorem _root_.Matrix.IsHermitian.norm_sub_mulVec_gmresIterate_le_two_mul_pow {A
     ‖WithLp.toLp 2 (b - A *ᵥ gmresIterate A b x₀ q)‖ ≤
       2 * ((Real.sqrt (a' / a) - 1) / (Real.sqrt (a' / a) + 1)) ^ q *
         ‖WithLp.toLp 2 (b - A *ᵥ x₀)‖ := by
-  obtain ⟨p, hp, hp₀, -, hpI⟩ := exists_degree_le_eval_eq_zero_abs_eval_le_two_mul_mul_pow
-    (a' := a') ha ∅ q (C := 1) fun x _ => by rw [Finset.prod_empty, abs_one]
-  rw [Finset.card_empty, zero_add] at hp
-  refine (hA.norm_sub_mulVec_gmresIterate_le hs b x₀ hp hp₀ hpI).trans_eq ?_
-  ring
+  obtain ⟨p, hp, hp₀, hpI⟩ := exists_degree_le_eval_zero_eq_one_abs_eval_le (a' := a') ha q
+  exact hA.norm_sub_mulVec_gmresIterate_le hs b x₀ hp hp₀ hpI
 
 /-- **MINRES on two symmetric intervals**: for Hermitian $\mathbf{A}$ with spectrum in
 $[-a', -a] \cup [a, a']$, $0 < a$, and $\kappa = a'/a$,
 $$\|\mathbf{b} - \mathbf{A}\,\mathsf{gmresIterate}(\mathbf{A}, \mathbf{b}, \mathbf{x}_0, q)\| \le
 2\Bigl(\frac{a'/a - 1}{a'/a + 1}\Bigr)^{\lfloor q/2 \rfloor}\|\mathbf{r}_0\| \,.$$
 The residual polynomial is a Chebyshev residual on $[a^2, a'^2]$ composed with $x^2$.
-[Greenbaum1997, §3.1]; [ElmanSilvesterWathen2014, Theorem 4.14]; locators to verify.
+[Greenbaum1997, §3.1, pp. 53–54].
 Result: minres-two-interval-bound -/
 theorem _root_.Matrix.IsHermitian.norm_sub_mulVec_gmresIterate_le_two_mul_pow_div_two
     {A : Matrix n n 𝕜} (hA : A.IsHermitian) {a a' : ℝ} (ha : 0 < a)
@@ -130,7 +127,7 @@ The outliers may be negative (an indefinite matrix with a few negative eigenvalu
 hypothesis $0 \notin T$ is needed, since every residual polynomial is $1$ at an eigenvalue $0$.
 The hypothesis $a \le a'$ is needed too: for an empty interval the rate is negative and the
 right side can be negative, while the CG and PCG forms are squares.
-[Greenbaum1997, §3.1]; locator to verify.
+[Greenbaum1997, §3.1, pp. 52–53].
 Result: minres-outlier-bound -/
 theorem _root_.Matrix.IsHermitian.norm_sub_mulVec_gmresIterate_le_two_mul_mul_pow
     {A : Matrix n n 𝕜} (hA : A.IsHermitian) {a a' : ℝ} (ha : 0 < a) (haa : a ≤ a')
@@ -212,7 +209,7 @@ $\mathbf{A}$ some $\mathbf{b}$ attains it (Greenbaum):
 `Matrix.IsHermitian.exists_norm_sub_mulVec_gmresIterate_eq_residualMinimax_mul` and
 `Matrix.IsHermitian.isGreatest_norm_sub_mulVec_gmresIterate_div` in
 `NLAlib.Krylov.LinearSystems.WorstCase`.
-[Greenbaum1997, §3.1]; locator to verify.
+[Greenbaum1997, §3.1, pp. 49–51].
 Result: minres-spectrum-minimax-bound -/
 theorem _root_.Matrix.IsHermitian.norm_sub_mulVec_gmresIterate_le_residualMinimax_mul
     {A : Matrix n n 𝕜} (hA : A.IsHermitian) (b x₀ : n → 𝕜) (q : ℕ) :
@@ -226,11 +223,10 @@ theorem _root_.Matrix.IsHermitian.norm_sub_mulVec_gmresIterate_le_residualMinima
   rcases (norm_nonneg (WithLp.toLp 2 (b - A *ᵥ x₀))).eq_or_lt with hE0 | hEpos
   · have h := key ⟨1, h1, eval_one⟩
     rwa [← hE0, mul_zero] at h ⊢
-  · have : Nonempty {p : ℝ[X] // p.degree ≤ q ∧ p.eval 0 = 1} := ⟨⟨1, h1, eval_one⟩⟩
-    have hdiv : ‖WithLp.toLp 2 (b - A *ᵥ gmresIterate A b x₀ q)‖ /
+  · have hdiv : ‖WithLp.toLp 2 (b - A *ᵥ gmresIterate A b x₀ q)‖ /
         ‖WithLp.toLp 2 (b - A *ᵥ x₀)‖ ≤ residualMinimax (spectrum ℝ A) q := by
-      unfold residualMinimax
-      exact le_ciInf fun p => (div_le_iff₀ hEpos).mpr (key p)
+      refine le_residualMinimax fun p η hp hp₀ _ hη => (div_le_iff₀ hEpos).mpr ?_
+      exact hA.norm_sub_mulVec_gmresIterate_le (fun _ hx => hx) b x₀ hp hp₀ hη
     rwa [div_le_iff₀ hEpos] at hdiv
 
 /-! ### Preconditioned MINRES -/
@@ -258,7 +254,7 @@ the Paige–Saunders recurrence (`Matrix.IsHermitian.minresState_x_eq`). For sin
 $\mathbf{A}$ the minimiser is not unique and the definition picks the correction of least
 Euclidean norm, while the split form picks least $\mathbf{M}^{-1}$-norm; the two agree for
 invertible $\mathbf{A}$, which is why `pminresIterate_eq_mulVec_gmresIterate` assumes it.
-[ElmanSilvesterWathen2014, §4.2]; [Greenbaum1997, §8.2]; locators to verify. -/
+[Greenbaum1997, Chapter 8, Eq. (8.2), Algorithm 4P]. -/
 noncomputable def pminresIterate (A M : Matrix n n 𝕜) (b x₀ : n → 𝕜) (q : ℕ) : n → 𝕜 :=
   x₀ + galerkinInverse (Aᴴ * M * A) (krylovMatrix (M * A) (M *ᵥ (b - A *ᵥ x₀)) q) *ᵥ
     (Aᴴ *ᵥ (M *ᵥ (b - A *ᵥ x₀)))
@@ -286,7 +282,7 @@ $\mathbf{x}_0 + \mathcal{K}_q(\mathbf{M}\mathbf{A}, \mathbf{M}\mathbf{r}_0)$, fo
 $\mathbf{M}$ and every $\mathbf{A}$, with $\mathbf{r}_0 = \mathbf{b} - \mathbf{A}\mathbf{x}_0$:
 $\|\mathbf{b} - \mathbf{A}\,\mathsf{pminresIterate}(\mathbf{A}, \mathbf{M}, \mathbf{b},
 \mathbf{x}_0, q)\|_{\mathbf{M}}^2 \le \|\mathbf{b} - \mathbf{A}\mathbf{y}\|_{\mathbf{M}}^2$ for
-every such $\mathbf{y}$. [ElmanSilvesterWathen2014, §4.2]; locator to verify.
+every such $\mathbf{y}$. [Greenbaum1997, Chapter 8, Eq. (8.2), Algorithm 4P].
 Result: pminres-optimality -/
 theorem _root_.Matrix.PosDef.isMinOn_pminresIterate {M : Matrix n n 𝕜} (hM : M.PosDef)
     (A : Matrix n n 𝕜) (b x₀ : n → 𝕜) (q : ℕ) :
@@ -414,7 +410,7 @@ $\mathbf{A}$, positive definite $\mathbf{M}$ and the spectrum of $\mathbf{M}\mat
 $[a, a']$, $0 < a$,
 $$\|\mathbf{b} - \mathbf{A}\,\mathsf{pminresIterate}(\mathbf{A}, \mathbf{M}, \mathbf{b},
 \mathbf{x}_0, q)\|_{\mathbf{M}}^2 \le 4\Bigl(\frac{\sqrt{a'/a} - 1}{\sqrt{a'/a} + 1}\Bigr)^{2q}
-\|\mathbf{r}_0\|_{\mathbf{M}}^2 \,.$$ [ElmanSilvesterWathen2014, §4.2]; locator to verify.
+\|\mathbf{r}_0\|_{\mathbf{M}}^2 \,.$$ [Greenbaum1997, Chapter 8, Eq. (8.2), Algorithm 4P].
 Result: pminres-chebyshev-bound -/
 theorem _root_.Matrix.IsHermitian.re_quadForm_sub_mulVec_pminresIterate_le_four_mul_pow
     {A M : Matrix n n 𝕜} (hA : A.IsHermitian) (hM : M.PosDef) {a a' : ℝ} (ha : 0 < a)
@@ -422,9 +418,7 @@ theorem _root_.Matrix.IsHermitian.re_quadForm_sub_mulVec_pminresIterate_le_four_
     RCLike.re (quadForm M (b - A *ᵥ pminresIterate A M b x₀ q)) ≤
       4 * ((Real.sqrt (a' / a) - 1) / (Real.sqrt (a' / a) + 1)) ^ (2 * q) *
         RCLike.re (quadForm M (b - A *ᵥ x₀)) := by
-  obtain ⟨p, hp, hp₀, -, hpI⟩ := exists_degree_le_eval_eq_zero_abs_eval_le_two_mul_mul_pow
-    (a' := a') ha ∅ q (C := 1) fun x _ => by rw [Finset.prod_empty, abs_one]
-  rw [Finset.card_empty, zero_add] at hp
+  obtain ⟨p, hp, hp₀, hpI⟩ := exists_degree_le_eval_zero_eq_one_abs_eval_le (a' := a') ha q
   refine (hA.re_quadForm_sub_mulVec_pminresIterate_le hM hs b x₀ hp hp₀ hpI).trans_eq ?_
   ring
 

@@ -48,7 +48,7 @@ $\mathbf{1}_S(\mathbf{A})$, with sub-Gaussian proxy $1/(2(\lvert n\rvert + 2))$;
 $\lvert n\rvert$ are deterministic. Compared with
 `NLAlib.measureReal_abs_empiricalSpectralMeasure_real_sub_probeSpectralMeasure_real_ge_le`
 (independent sub-Gaussian entries) the exponent has no unknown constant and no minimum.
-[ChenTrogdonUbaru2021, §3] (locator to check). -/
+[ChenTrogdonUbaru2021, Theorem 2 and §4.1]. -/
 theorem
 measureReal_abs_empiricalSpectralMeasure_real_sub_probeSpectralMeasure_real_ge_le_of_hasLaw_uniformSphereVector
     {U : Ω → Matrix n m ℝ} (hind : iIndepFun (fun j ω i => U ω i j) μ)
@@ -115,7 +115,7 @@ $$2\lvert n\rvert\exp(-m(\lvert n\rvert + 2)\tau^2)\,:$$
 a union bound over the at most $\lvert n\rvert$ eigenvalues; both distribution functions are
 constant between eigenvalues, and
 `Matrix.IsHermitian.abs_empiricalSpectralMeasure_real_Iic_sub_probeSpectralMeasure_real_Iic_le`
-extends the bound to every threshold. [ChenTrogdonUbaru2021, §3] (locator to check).
+extends the bound to every threshold. [ChenTrogdonUbaru2021, Theorem 2 and §4.1].
 Result: spectral-density-kolmogorov-tail -/
 theorem
 measureReal_exists_abs_empiricalSpectralMeasure_real_sub_probeSpectralMeasure_real_gt_le_of_hasLaw_uniformSphereVector
@@ -166,8 +166,9 @@ $1$, so there is no term in $\lvert f(b)\rvert$ and no factor $1 + \tau$: this i
 Wasserstein-1 bound.
 Asymptotic form:
 `NLAlib.exists_forall_measureReal_exists_abs_integral_empiricalSpectralMeasure_sub_integral_slqMeasure_gt_le_of_hasLaw_uniformSphereVector`.
-[ChenTrogdonUbaru2021, the Wasserstein bound for SLQ] (theorem number to check); the Jackson
-step is [ChenTrogdonUbaru2022, Appendix C, Theorem 38].
+[ChenTrogdonUbaru2021, Theorem 1]; the Jackson
+step uses the local Jackson approximation bound. [ChenTrogdonUbaru2022, Appendix C, Theorem 38]
+uses the damped-Chebyshev route with the larger printed constant $\pi^2/2$.
 Result: spectral-density-lipschitz-tail -/
 theorem
 measureReal_exists_abs_integral_empiricalSpectralMeasure_sub_integral_slqMeasure_gt_le_of_hasLaw_uniformSphereVector
@@ -260,7 +261,7 @@ size. The tail form is
 `NLAlib.measureReal_exists_abs_integral_empiricalSpectralMeasure_sub_integral_slqMeasure_gt_le_of_hasLaw_uniformSphereVector`,
 and its asymptotic form is
 `NLAlib.exists_forall_measureReal_exists_abs_integral_empiricalSpectralMeasure_sub_integral_slqMeasure_gt_le_of_hasLaw_uniformSphereVector`.
-[ChenTrogdonUbaru2021, the Wasserstein bound for SLQ] (theorem number to check). -/
+[ChenTrogdonUbaru2021, Theorem 1]. -/
 theorem
 measureReal_exists_abs_integral_empiricalSpectralMeasure_sub_integral_slqMeasure_gt_le_of_hasLaw_uniformSphereVector_of_log_div_le
     {U : Ω → Matrix n m ℝ} (hind : iIndepFun (fun j ω i => U ω i j) μ)
@@ -314,7 +315,7 @@ parameter; $C = 1$ works. Proved from
 `NLAlib.measureReal_exists_abs_integral_empiricalSpectralMeasure_sub_integral_slqMeasure_gt_le_of_hasLaw_uniformSphereVector`
 through its sample-size form
 `NLAlib.measureReal_exists_abs_integral_empiricalSpectralMeasure_sub_integral_slqMeasure_gt_le_of_hasLaw_uniformSphereVector_of_log_div_le`.
-[ChenTrogdonUbaru2021, the Wasserstein bound for SLQ] (theorem number to check).
+[ChenTrogdonUbaru2021, Theorem 1].
 Asymptotic:
 NLAlib.measureReal_exists_abs_integral_empiricalSpectralMeasure_sub_integral_slqMeasure_gt_le_of_hasLaw_uniformSphereVector
 Result: spectral-density-lipschitz-tail -/

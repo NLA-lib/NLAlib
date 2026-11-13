@@ -13,9 +13,10 @@ public import Mathlib.Analysis.SpecialFunctions.Pow.Real
 # The Newton–Schulz iteration for the sign function
 
 The cubic $g(x) = \tfrac12 x(3 - x^2)$ (`NLAlib.newtonSchulz`) fixes $-1$, $0$ and $1$, with
-$g'(\pm 1) = 0$; iterated from a point of $(-\sqrt 5, \sqrt 5)$ other than $0$ it converges
-quadratically to the sign of the point, and an iteration perturbed by an error of size $u$ at
-each step still reaches $\lvert 1 - x^2 \rvert \le \varepsilon$ after
+$g'(\pm 1) = 0$. For $0 < |x_0| < \sqrt{3}$ the exact iteration preserves the initial sign and
+converges quadratically to it. At $x_0=2$, the first step is $-1$ and every later step equals $-1$.
+Under the initial-value and roundoff bounds of the perturbed iteration theorem, it reaches
+$\lvert 1 - x^2 \rvert \le \varepsilon$ after
 `NLAlib.newtonSchulzSteps` $x_0$ $\varepsilon$ steps, about
 $2\log_2(1/\lvert x_0 \rvert) + \log_2\log_2(1/\varepsilon)$ ([Shah2024, Section 2]). Applied to a
 Hermitian matrix through the functional calculus it is the inverse-free iteration for the matrix

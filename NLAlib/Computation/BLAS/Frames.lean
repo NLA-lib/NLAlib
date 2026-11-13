@@ -117,7 +117,7 @@ theorem exec_forRange_zero (I : Interp P ι ℝ C) (hI : I.sem = exactSem) (tag 
 including earlier columns of the same basis buffer. Writable capacity suffices; destination
 entries need not have been initialized. Its operation count and memory footprint are exact. -/
 theorem exec_copyv_frame {K : Type} (I : Interp P ι K (OpCount P ι))
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hc : IsUnitCharge I) (tag : P)
     (st : St P K (OpCount P ι)) (n : IExp ℕ) (src dst : ℕ) (soff doff : IExp ℕ)
     (xs : ℕ → K) (hx : ∀ i < n.eval, st.store.read tag src (soff.eval + i) = some (xs i))
     (hdisjoint : src ≠ dst)
@@ -153,7 +153,7 @@ theorem exec_copyv_frame {K : Type} (I : Interp P ι K (OpCount P ι))
 frame, and its published operation and peak-memory bounds. This uses no oracle accuracy
 assumption and permits an uninitialized destination. -/
 theorem exec_gemv_frame (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hc : IsUnitCharge I) (tag : P)
     (st : St P ℝ (OpCount P ι)) (N : ℕ) (A x y : ℕ) (xo : IExp ℕ)
     (M : Matrix (Fin N) (Fin N) ℝ) (v : Fin N → ℝ)
     (hA : Holds st.store tag A 0 M)
@@ -193,7 +193,7 @@ theorem exec_gemv_frame (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem = exact
 /-- Exact componentwise division by a nonzero stored scalar, retaining the entire store
 outside the divided window and the exact operation count and memory footprint. -/
 theorem exec_rscl_frame (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hc : IsUnitCharge I) (tag : P)
     (st : St P ℝ (OpCount P ι)) (n : IExp ℕ) (a : Cell ℕ ℕ) (x : ℕ) (off : IExp ℕ)
     (av : ℝ) (xs : ℕ → ℝ) (hav : av ≠ 0)
     (ha : st.store.read tag a.buf a.idx.eval = some av)
@@ -227,7 +227,7 @@ theorem exec_rscl_frame (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem = exact
 /-- The actual exact norm kernel overwrites its scalar destination with the Euclidean norm,
 preserves every other cell, and has the existing dot-then-square-root count and scratch peak. -/
 theorem exec_nrm2_frame (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hc : IsUnitCharge I) (tag : P)
     (st : St P ℝ (OpCount P ι)) (dst : Cell ℕ ℕ) (src : ℕ) (off n : IExp ℕ)
     (xs : ℕ → ℝ) (hx : ∀ i < n.eval, st.store.read tag src (off.eval + i) = some (xs i))
     (hds : dst.buf ≠ src)
@@ -268,7 +268,7 @@ theorem exec_nrm2_frame (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem = exact
 write, exact standard operation counts, unchanged tape and current memory, and its one-cell
 scratch peak. The destination is writable and lies outside both input buffers. -/
 theorem exec_dot_frame (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hc : IsUnitCharge I) (tag : P)
     (st : St P ℝ (OpCount P ι)) (N : ℕ) (dst : Cell ℕ ℕ) (x y : ℕ)
     (xo yo : IExp ℕ) (xs ys : Fin N → ℝ)
     (hx : ∀ i : Fin N, st.store.read tag x (xo.eval + i) = some (xs i))
@@ -316,7 +316,7 @@ theorem exec_dot_frame (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem = exactS
 its output window, and has exact standard counts and one-cell scratch peak. The source and
 output buffers are disjoint, and the coefficient lies outside the output buffer. -/
 theorem exec_axpy_frame (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hc : IsUnitCharge I) (tag : P)
     (st : St P ℝ (OpCount P ι)) (N : ℕ) (a : Cell ℕ ℕ) (x y : ℕ)
     (xo yo : IExp ℕ) (av : ℝ) (xs ys : Fin N → ℝ)
     (ha : st.store.read tag a.buf a.idx.eval = some av)

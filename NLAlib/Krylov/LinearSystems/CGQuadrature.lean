@@ -57,7 +57,7 @@ $\mathbf{r}_0 = \mathbf{b} - \mathbf{A}\mathbf{x}_0$ and $\mathbf{x}_q =
 \mathsf{cgIterate}(\mathbf{A}, \mathbf{b}, \mathbf{x}_0, q)$,
 $$\|\mathbf{x}_\star - \mathbf{x}_q\|_{\mathbf{A}}^2 = \int x^{-1}\,d\mu_{\mathbf{A},\mathbf{r}_0} -
 \int x^{-1}\,d\,\mathsf{gaussQuadrature}(\mu_{\mathbf{A},\mathbf{r}_0}, q)\,.$$
-[GolubMeurant2010, Ch. 12]; [GolubStrakos1994, §3] (locators to check).
+[GolubMeurant2010, Theorem 12.1]. Historical quadrature/CG connection: [GolubStrakos1994, abstract].
 Result: cg-error-gauss-quadrature -/
 theorem _root_.Matrix.PosDef.re_quadForm_sub_cgIterate_eq_integral_sub {A : Matrix n n 𝕜}
     (hA : A.PosDef) {b xs : n → 𝕜} (hxs : A *ᵥ xs = b) (x₀ : n → 𝕜) (q : ℕ) :
@@ -110,8 +110,8 @@ $$\|\mathbf{x}_\star - \mathsf{cgIterate}(\mathbf{A}, \mathbf{b}, \mathbf{x}_0, 
 \le \int x^{-1}\,d\,\mathsf{radauQuadrature}(\mu, a, q) -
 \int x^{-1}\,d\,\mathsf{gaussQuadrature}(\mu, q)\,:$$
 the left Radau rule with $q$ free nodes overestimates $\int x^{-1}\,d\mu$ because
-$(x^{-1})^{(2q+1)} < 0$. [GolubMeurant2010, Ch. 12]; [GolubStrakos1994, §3] (locators to
-check).
+$(x^{-1})^{(2q+1)} < 0$. [GolubMeurant2010, Theorem 12.1, §6.2.2]. Historical quadrature/CG
+connection: [GolubStrakos1994, abstract].
 Result: cg-error-gauss-radau-bounds -/
 theorem _root_.Matrix.PosDef.re_quadForm_sub_cgIterate_le_integral_radauQuadrature_sub
     {A : Matrix n n 𝕜} (hA : A.PosDef) {a a' : ℝ} (ha : 0 < a) (haa' : a < a')
@@ -135,7 +135,9 @@ $$\int x^{-1}\,d\,\mathsf{radauQuadrature}(\mu, a', q) -
 \int x^{-1}\,d\,\mathsf{gaussQuadrature}(\mu, q) \le
 \|\mathbf{x}_\star - \mathsf{cgIterate}(\mathbf{A}, \mathbf{b}, \mathbf{x}_0, q)\|_{\mathbf{A}}^2
 \,.$$
-[GolubMeurant2010, Ch. 12]; [GolubStrakos1994, §3] (locators to check). -/
+[GolubMeurant2010, Theorem 12.1, §6.2.2]. Historical quadrature/CG connection: [GolubStrakos1994,
+abstract].
+-/
 theorem _root_.Matrix.PosDef.integral_radauQuadrature_sub_le_re_quadForm_sub_cgIterate
     {A : Matrix n n 𝕜} (hA : A.PosDef) {a a' : ℝ} (ha : 0 < a) (haa' : a < a')
     (hs : spectrum ℝ A ⊆ Set.Icc a a') {b xs : n → 𝕜} (hxs : A *ᵥ xs = b) (x₀ : n → 𝕜)

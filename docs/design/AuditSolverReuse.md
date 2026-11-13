@@ -69,3 +69,19 @@ is introduced. Downstream convergence proofs can consume the limit directly.
 All additions use existing Mathlib vocabulary and are upstream candidates in their
 existing ForMathlib homes. There is no new deviation or vocabulary row. Sources and
 mathematical statements otherwise remain as documented in their owning modules.
+
+
+## Interval bounds for residual polynomials
+
+CG, MINRES, PCG and preconditioned MINRES use the same normalized polynomial on a positive
+spectral interval. The Polynomial layer should expose the empty-outlier specialization with its
+degree, value at zero and uniform bound together. Each solver can then apply its own residual
+estimate directly. The specialization keeps the existing conventions for a singleton interval,
+a reversed interval and degree zero.
+
+
+The residual minimax value takes the infimum of feasible nonnegative uniform bounds. The
+constant polynomial one makes this set nonempty on any domain. Its order API gives upper bounds
+from one feasible polynomial and lower bounds from all feasible polynomials. CG and MINRES
+then use these two statements without unfolding real suprema. This agrees with the usual
+supremum norm on finite spectra and avoids the real supremum convention on unbounded sets.

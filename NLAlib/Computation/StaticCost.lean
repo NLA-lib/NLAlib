@@ -450,6 +450,22 @@ theorem Prog.bounds_staticCost_of_exec_eq_some {r b : ℕ} (prog : Prog P ι r b
     (prog.staticCost I.charge I.width N n).Bounds st st' :=
   FStmt.bounds_staticCost_of_exec_eq_some I prog _ _ h
 
+/-- A successful unit-charge run satisfies any count, cell and bit budget dominating its
+static summary. The count estimate is stated at the canonical unit charge, so callers reuse
+one syntax-derived estimate without repeating a function-extensionality rewrite. Cell and bit
+estimates retain the actual interpretation and word widths. This proves accounting only;
+successful execution is a premise. No printed source. -/
+theorem Prog.bounds_of_exec_eq_some_of_staticCost_le {r b : ℕ} (prog : Prog P ι r b)
+    (N : ℕ) (n : Fin r → ℕ) (hc : IsUnitCharge I)
+    (count : OpCount P ι) (cells : P → ℕ) (bits : ℕ)
+    (hcount : (prog.staticCost (fun k => Finsupp.single k 1) I.width N n).count ≤ count)
+    (hcells : (prog.staticCost I.charge I.width N n).cells ≤ cells)
+    (hbits : (prog.staticCost I.charge I.width N n).bits ≤ bits)
+    {st st' : St P K (OpCount P ι)} (h : prog.exec I N n st = some st') :
+    (StaticCost.mk count cells bits).Bounds st st' := by
+  rw [← hc.charge_eq] at hcount
+  exact (prog.bounds_staticCost_of_exec_eq_some I N n h).mono hcount hcells hbits
+
 /-- Successful execution supplies the existing program budget interface using the static
 count and workspace bounds. Constant read-only storage is added once to each cell peak;
 the postcondition retains the actual final state. The start state holds exactly the declared

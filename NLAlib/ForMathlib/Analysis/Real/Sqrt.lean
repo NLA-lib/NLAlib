@@ -13,8 +13,9 @@ public import Mathlib.Tactic.Positivity
 /-!
 # Optimising $a / u + b u$ over $u > 0$
 
-If $x \le a / u + b u$ for every $u > 0$, with $a, b \ge 0$, then $x \le \sqrt{4ab}$, the minimum
-of the right-hand side (at $u = \sqrt{a / b}$). This is the step that turns a family of bounds
+If $x \le a / u + b u$ for every $u > 0$, with $a, b \ge 0$, then $x \le \sqrt{4ab}$, the infimum
+of the right-hand side. For $a,b>0$ the minimum is attained at $u = \sqrt{a / b}$. This is the
+step that turns a family of bounds
 indexed by a free parameter (the $\theta$ of a Chernoff bound) into a mean bound. Upstream candidate
 for `Mathlib.Analysis.Real.Sqrt`.
 

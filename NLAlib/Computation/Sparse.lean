@@ -86,7 +86,7 @@ variable {I : Interp P ι 𝕜 (OpCount P ι)} {s₀ : Store P 𝕜} {p : P} {T 
 
 /-- One stored entry $(i, j)$ with value $a$: multiply it by source entry $j$, add into
 destination entry $i$, then run `t`. -/
-private theorem exec_cooStep (hsem : I.sem = exactSem) (hc : ∀ k, I.charge k = .single k 1)
+private theorem exec_cooStep (hsem : I.sem = exactSem) (hc : IsUnitCharge I)
     {σ : St P 𝕜 (OpCount P ι)} {g : ℕ → Option 𝕜} {i j c e : ℕ} {a x w : 𝕜}
     (t : Stmt P ι ℕ ℕ)
     (h : Store.BlockFrame s₀ p T dst dOff.eval L σ.store g) (hT : s₀.shape[T]? = some (p, 1))
@@ -118,7 +118,7 @@ private theorem exec_cooStep (hsem : I.sem = exactSem) (hc : ∀ k, I.charge k =
   have rw₂ : s₂.read p dst (dOff.eval + i + N * c) = some w := by
     rw [Nat.add_assoc, h₂'.2.2 _ hm, hw]
   rw [← Nat.add_assoc] at h₃
-  simp only [exec, Instr.run, Instr.kind, IExp.eval, hrom, hsem, hc, h₁, Option.bind_some,
+  simp only [exec, Instr.run, Instr.kind, IExp.eval, hrom, hsem, hc.charge_eq, h₁, Option.bind_some,
     Option.map_some, Store.read_of_write_eq_some h₁, rx, exactSem, h₂,
     Store.read_of_write_eq_some h₂, rw₂, h₃]
   simp only [add_assoc]
@@ -128,7 +128,7 @@ private structure CooCtx (I : Interp P ι 𝕜 (OpCount P ι)) (s₀ : Store P �
     (T dst src N cols : ℕ) (dOff sOff : IExp ℕ) (pattern : List (ℕ × ℕ)) (vals : ℕ → 𝕜)
     (x : ℕ → ℕ → 𝕜) : Prop where
   sem : I.sem = exactSem
-  charge : ∀ k, I.charge k = .single k 1
+  charge : IsUnitCharge I
   scratch : s₀.shape[T]? = some (p, 1)
   dst_ne : 0 < N * cols → dst ≠ T
   src_ne : 0 < N * cols → src ≠ T
@@ -170,7 +170,7 @@ private theorem exec_cooZero (hC : CooCtx I s₀ p T dst src N cols dOff sOff pa
   refine ⟨{ σ' with store := s'', cnt := σ'.cnt + .single (.lit p) 1 }, ?_, s'', _, ?_,
     hI.write_of_lt hm hw, fun i hi => ?_, fun m hm' => ?_⟩
   · rw [← Nat.add_assoc] at hw
-    simp only [exec, Instr.run, Instr.kind, IExp.eval, hC.sem, hC.charge, exactSem,
+    simp only [exec, Instr.run, Instr.kind, IExp.eval, hC.sem, hC.charge.charge_eq, exactSem,
       Rat.cast_zero, Option.bind_some, hw, Option.map_some]
   · subst hσ
     simp only [succ_nsmul, add_assoc]

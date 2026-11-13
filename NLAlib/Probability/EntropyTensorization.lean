@@ -20,6 +20,7 @@ adding $\delta$ and letting $\delta \to 0$.
 ## Main results
 
 * `NLAlib.entropy_pi_le_sum`.
+* `NLAlib.integral_mul_le_entropy_of_integral_exp_le_one`: the Gibbs variational inequality.
 -/
 
 @[expose] public section
@@ -42,9 +43,12 @@ private theorem young_scaled {Z U m : ℝ} (hZ : 0 < Z) (hm : 0 < m) :
   rw [h2, Real.log_div hZ.ne' hm.ne', le_div_iff₀ hZ] at h1
   nlinarith
 
-/-- The Gibbs variational inequality: $\mathbb{E}[Z U] \le \operatorname{Ent}(Z)$ for $Z > 0$ and
-$\mathbb{E} e^U \le 1$. -/
-private theorem integral_mul_le_entropy_of_integral_exp_le_one [IsProbabilityMeasure ν]
+/-- The Gibbs variational inequality under a probability measure:
+$\mathbb{E}[Z U] \le \operatorname{Ent}(Z)$ for pointwise $Z > 0$ and
+$\mathbb{E} e^U \le 1$, assuming integrability of $Z$, $Z\log Z$, $ZU$ and $e^U$.
+[BoucheronLugosiMassart2013, §4.9, Theorem 4.13] gives a supremum over tests normalized by
+$\mathbb{E}e^U=1$. This is the one-test inequality for $\mathbb{E}e^U \le 1$. -/
+theorem integral_mul_le_entropy_of_integral_exp_le_one [IsProbabilityMeasure ν]
     {Z U : Ω → ℝ} (hZ : ∀ t, 0 < Z t) (hZi : Integrable Z ν)
     (hZl : Integrable (fun t => Z t * Real.log (Z t)) ν)
     (hZU : Integrable (fun t => Z t * U t) ν) (hU : Integrable (fun t => rexp (U t)) ν)

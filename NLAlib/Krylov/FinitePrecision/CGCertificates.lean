@@ -462,8 +462,7 @@ private theorem certificate_coefficients {a a' : ℝ}
   have hspec := C.prefix_spectrum_subset hs S (Nat.succ_pos j) hj hP
     (fun i hi => hB i (by omega))
   have hPD : D.backwardH.PosDef :=
-    D.isHermitian_backwardH.posDef_iff_eigenvalue_pos.mpr fun i hi =>
-      (sub_pos.mpr S.d_lt).trans_le (D.isHermitian_backwardH.spectrum_subset_iff.mp hspec i hi).1
+    D.isHermitian_backwardH.posDef_of_spectrum_subset_Icc (sub_pos.mpr S.d_lt) hspec
   have hγ := D.cgAlpha_backwardH_of_posDef hPD (Nat.lt_succ_self j)
   have hr0 := D.norm_cgState_backwardH_r_of_posDef hPD (Nat.le_succ j)
   have hr1 := D.norm_cgState_backwardH_r_of_posDef hPD (le_refl (j + 1))

@@ -43,6 +43,7 @@ public import NLAlib.Computation.RunEquiv
 public import NLAlib.Computation.RunsWithin
 public import NLAlib.Computation.ScalarFrames
 public import NLAlib.Computation.Sparse
+public import NLAlib.Computation.SparseCompile
 public import NLAlib.Computation.StaticCost
 public import NLAlib.Computation.Store
 public import NLAlib.Computation.StraightLine
@@ -136,6 +137,7 @@ public import NLAlib.ForMathlib.Data.Float.Operations
 public import NLAlib.ForMathlib.Data.Float.Pack
 public import NLAlib.ForMathlib.Data.Float.Rounding
 public import NLAlib.ForMathlib.Data.Float.Sqrt
+public import NLAlib.ForMathlib.Data.List.Range
 public import NLAlib.ForMathlib.Data.Matrix.Block
 public import NLAlib.ForMathlib.Data.Matrix.ColumnRowPartitioned
 public import NLAlib.ForMathlib.Data.Matrix.Mul
@@ -242,9 +244,11 @@ public import NLAlib.Krylov.Functions.Optimality
 public import NLAlib.Krylov.Functions.Quadrature
 public import NLAlib.Krylov.Functions.QuadratureBounds
 public import NLAlib.Krylov.LinearSystems.CG
+public import NLAlib.Krylov.LinearSystems.CGInitializationIEEE
 public import NLAlib.Krylov.LinearSystems.CGLanczos
 public import NLAlib.Krylov.LinearSystems.CGOracleProgram
 public import NLAlib.Krylov.LinearSystems.CGOracleProgramExecution
+public import NLAlib.Krylov.LinearSystems.CGOracleProgramIEEE
 public import NLAlib.Krylov.LinearSystems.CGOracleProgramInitialization
 public import NLAlib.Krylov.LinearSystems.CGOracleProgramLoop
 public import NLAlib.Krylov.LinearSystems.CGOracleProgramRounded
@@ -306,6 +310,7 @@ public import NLAlib.Krylov.Processes.LanczosOracleTargets
 public import NLAlib.Krylov.Processes.LanczosPolynomials
 public import NLAlib.Krylov.Processes.LanczosProgram
 public import NLAlib.Krylov.Processes.LanczosProgramCounts
+public import NLAlib.Krylov.Processes.LanczosProgramIEEE
 public import NLAlib.Krylov.Processes.LanczosProgramInitialization
 public import NLAlib.Krylov.Processes.LanczosProgramRounded
 public import NLAlib.Krylov.Processes.LanczosProgramRoundedBackward
@@ -384,6 +389,7 @@ public import NLAlib.LowerBounds.LowRank.EarlyTruncationBlockGaussian
 public import NLAlib.LowerBounds.LowRank.FewPasses
 public import NLAlib.LowerBounds.LowRank.FiniteSpectrum
 public import NLAlib.LowerBounds.LowRank.Minimax
+public import NLAlib.LowerBounds.LowRank.MinimaxPadding
 public import NLAlib.LowerBounds.LowRank.NuclearMinimax
 public import NLAlib.LowerBounds.LowRank.RangeRecovery
 public import NLAlib.LowerBounds.LowRank.RotationInvariant
@@ -393,6 +399,10 @@ public import NLAlib.LowerBounds.QueryModel.DeferredDecision
 public import NLAlib.LowerBounds.QueryModel.GaussianCoupling
 public import NLAlib.LowerBounds.QueryModel.HiddenHaar
 public import NLAlib.LowerBounds.QueryModel.HiddenRotation
+public import NLAlib.LowerBounds.QueryModel.Krylov
+public import NLAlib.LowerBounds.QueryModel.Sketching
+public import NLAlib.LowerBounds.QueryModel.Testing
+public import NLAlib.LowerBounds.QueryModel.TraceEstimation
 public import NLAlib.LowerBounds.QueryModel.Yao
 public import NLAlib.LowerBounds.Regression.SketchAndSolve
 public import NLAlib.Matrix.Basic.ComplementaryProjector
@@ -633,6 +643,7 @@ public import NLAlib.Matrix.Spectral.Interlacing
 public import NLAlib.Matrix.Spectral.InterlacingConverse
 public import NLAlib.Matrix.Spectral.LeastSingularValue
 public import NLAlib.Matrix.Spectral.LowRank
+public import NLAlib.Matrix.Spectral.LowRankPadding
 public import NLAlib.Matrix.Spectral.LyapunovEquation
 public import NLAlib.Matrix.Spectral.Normal
 public import NLAlib.Matrix.Spectral.PositiveCone

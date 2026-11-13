@@ -485,6 +485,47 @@ private theorem frobNorm_le_sqrt_of_hasOrthonormalCols {Z : Matrix n r 𝕜}
   rw [← Real.sqrt_sq (frobNorm_nonneg Z), hZ.frobNorm_sq]
   exact Real.sqrt_le_sqrt (by exact_mod_cast hrk)
 
+/-- A head embedding, approximate multiplication of the residual against itself and the frame,
+and a JL moment for scalar Frobenius preservation give a projection-cost-preserving sketch.
+For a frame with at most $k$ columns the cross-error is amplified by at most $\sqrt{k}$.
+This shared bridge is valid over $\Bbbk$: the AMM hypotheses can come from any sketch family,
+including the real JL-moment route and the complex CountSketch route.
+[CohenElderMuscoMuscoPersu2015, proof of Theorem 12]. -/
+theorem HasSubspaceEmbedding.hasProjectionCostPreserving_of_hasApproximateMatrixMultiplication
+    [IsFiniteMeasure μ] {S : Ω → Matrix l n 𝕜} {k : ℕ} {a b δ ε δ' p : ℝ}
+    {A : Matrix m n 𝕜} {Z : Matrix n r 𝕜} (h : HasSubspaceEmbedding S Z a b δ μ)
+    (hJL : HasJLMoment S ε δ' p μ) (hS : AEMeasurable S μ)
+    (ha : a ≤ 1) (hb : 1 ≤ b) (hε : 0 < ε) (hp : 1 ≤ p) (hδ' : 0 ≤ δ')
+    (hZ : HasOrthonormalCols Z)
+    (hZA : frobNorm (A - A * Z * Zᴴ) ≤ frobNorm (A - truncatedSVD A k))
+    (hrk : Fintype.card r ≤ k)
+    (hAA : HasApproximateMatrixMultiplication S (A - A * Z * Zᴴ)ᴴ
+      (A - A * Z * Zᴴ)ᴴ ε δ' μ)
+    (hAZ : HasApproximateMatrixMultiplication S (A - A * Z * Zᴴ)ᴴ Z ε δ' μ) :
+    HasProjectionCostPreserving S A k (a - 3 * √(k : ℝ) * ε) (b + 3 * √(k : ℝ) * ε + ε)
+      (δ + 3 * δ') μ := by
+  have hZF := frobNorm_le_sqrt_of_hasOrthonormalCols hZ hrk
+  have key := h.hasProjectionCostPreserving_of_hasOrthonormalCols (εw := ε) (εχ := √(k : ℝ) * ε)
+    (εF := ε) (δ₂ := δ') (δ₃ := δ') (δ₄ := δ') hZ ha hb hZA hε.le (by positivity) hε.le ?_ ?_ ?_
+  · exact key.mono le_rfl (le_of_eq (by ring)) (le_of_eq (by ring)) (le_of_eq (by ring))
+  · refine (measureReal_mono (Set.ofPred_subset_ofPred.2 fun ω hω => ?_)).trans hAA
+    simp only [Matrix.conjTranspose_conjTranspose, frobNorm_conjTranspose]
+    simpa only [mul_assoc, ← sq] using hω
+  · refine (measureReal_mono (Set.ofPred_subset_ofPred.2 fun ω hω => ?_)).trans hAZ
+    simp only [Matrix.conjTranspose_conjTranspose, frobNorm_conjTranspose]
+    have hle := mul_le_mul_of_nonneg_left hZF
+      (mul_nonneg hε.le (frobNorm_nonneg (A - A * Z * Zᴴ)))
+    exact lt_of_le_of_lt (by nlinarith only [hle]) hω
+  · generalize A - A * Z * Zᴴ = E
+    rcases eq_or_ne E 0 with rfl | hE
+    · simpa only [Matrix.conjTranspose_zero, Matrix.mul_zero, frobNorm_zero, zero_pow two_ne_zero,
+        mul_zero, lt_self_iff_false, Set.ofPred_false, measureReal_empty] using hδ'
+    have hEh : Eᴴ ≠ 0 := by rwa [Ne, Matrix.conjTranspose_eq_zero]
+    refine (measureReal_mono (Set.ofPred_subset_ofPred.2 fun ω hω => ?_)).trans
+      (hJL.measureReal_abs_frobNorm_mul_sq_sub_ge_le hε hp hS hEh)
+    rw [frobNorm_conjTranspose]
+    exact le_abs.2 (Or.inl (by linarith))
+
 /-- The OSE-plus-JL-moment constructor at a given frame. -/
 private theorem hasProjectionCostPreserving_of_hasJLMoment_of_frame [IsFiniteMeasure μ]
     {S : Ω → Matrix l n ℝ} {k : ℕ} {a b δ ε δ' p : ℝ}
@@ -495,42 +536,14 @@ private theorem hasProjectionCostPreserving_of_hasJLMoment_of_frame [IsFiniteMea
     (hrk : Fintype.card r ≤ k) :
     HasProjectionCostPreserving S A k (a - 3 * √(k : ℝ) * ε) (b + 3 * √(k : ℝ) * ε + ε)
       (δ + 3 * δ') μ := by
-  have hsk := Real.sqrt_nonneg (k : ℝ)
-  have hZF := frobNorm_le_sqrt_of_hasOrthonormalCols hZ hrk
   have hhead : HasSubspaceEmbedding S Z a b δ μ :=
     h.hasSubspaceEmbedding (by rw [hZ.rank_eq]; exact hrk)
-  have key := hhead.hasProjectionCostPreserving_of_hasOrthonormalCols (εw := ε) (εχ := √(k : ℝ) * ε)
-    (εF := ε) (δ₂ := δ') (δ₃ := δ') (δ₄ := δ') hZ ha hb hZA hε.le (by positivity) hε.le ?_ ?_ ?_
-  · exact key.mono le_rfl (le_of_eq (by ring)) (le_of_eq (by ring)) (le_of_eq (by ring))
+  apply hhead.hasProjectionCostPreserving_of_hasApproximateMatrixMultiplication
+    hJL hS ha hb hε (by linarith) hδ' hZ hZA hrk
   all_goals
-    generalize A - A * Z * Zᴴ = E
-    rcases eq_or_ne E 0 with rfl | hE
-    · simp only [Matrix.zero_mul, Matrix.conjTranspose_zero, Matrix.mul_zero, sub_self,
-        frobNorm_zero, mul_zero, ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow,
-        lt_self_iff_false, Set.ofPred_false, measureReal_empty]
-      exact hδ'
-  · have hEh : Eᴴ ≠ 0 := by rwa [Ne, Matrix.conjTranspose_eq_zero]
-    refine (measureReal_mono (Set.ofPred_subset_ofPred.2 fun ω hω => ?_)).trans
-      (hJL.measureReal_frobNorm_conjTranspose_mul_sub_ge_le hε hp hS hEh hEh)
-    rw [Matrix.conjTranspose_conjTranspose, frobNorm_conjTranspose, mul_assoc, ← sq]
-    exact hω.le
-  · rcases eq_or_ne Z 0 with rfl | hZ0
-    · simp only [Matrix.mul_zero, sub_self, frobNorm_zero]
-      refine (measureReal_mono (Set.ofPred_subset_ofPred.2 fun ω hω => ?_)).trans
-        (measureReal_empty.trans_le hδ' : μ.real ∅ ≤ δ')
-      exact absurd hω (not_lt.2 (by positivity))
-    have hEh : Eᴴ ≠ 0 := by rwa [Ne, Matrix.conjTranspose_eq_zero]
-    refine (measureReal_mono (Set.ofPred_subset_ofPred.2 fun ω hω => ?_)).trans
-      (hJL.measureReal_frobNorm_conjTranspose_mul_sub_ge_le hε hp hS hEh hZ0)
-    rw [Matrix.conjTranspose_conjTranspose, frobNorm_conjTranspose]
-    refine le_trans ?_ hω.le
-    have := mul_le_mul_of_nonneg_left hZF (mul_nonneg hε.le (frobNorm_nonneg E))
-    linarith
-  · have hEh : Eᴴ ≠ 0 := by rwa [Ne, Matrix.conjTranspose_eq_zero]
-    refine (measureReal_mono (Set.ofPred_subset_ofPred.2 fun ω hω => ?_)).trans
-      (hJL.measureReal_abs_frobNorm_mul_sq_sub_ge_le hε (by linarith) hS hEh)
-    rw [frobNorm_conjTranspose]
-    exact le_abs.2 (Or.inl (by linarith))
+    apply hasApproximateMatrixMultiplication_of_measureReal_ge_le hδ'
+    intro hA hB
+    exact hJL.measureReal_frobNorm_conjTranspose_mul_sub_ge_le hε hp hS hA hB
 
 /-- **An OSE plus the JL moment property gives a projection-cost-preserving sketch**: a real sketch
 that is an OSE for dimension $k$ with constants $a \le 1 \le b$ and failure probability $\delta$,

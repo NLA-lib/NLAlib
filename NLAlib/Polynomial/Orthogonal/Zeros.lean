@@ -99,7 +99,7 @@ private theorem IsMomentPosDef.false_of_ae_nonneg_mul {k : ℕ} (h : IsMomentPos
 
 /-- **The zeros of the orthogonal polynomial are real**: if $\mu$, finite and supported in
 $[a, b]$, is positive definite up to degree $k$, then $\pi_k$ has $k$ real zeros counted with
-multiplicity. [Gautschi2004, Theorem 1.19]; [Szego1975, Theorem 3.3.1] (locators to check).
+multiplicity. [Gautschi2004, Theorem 1.19]; [Szego1975, Theorem 3.3.1].
 Result: orthogonal-polynomial-zeros -/
 theorem IsMomentPosDef.card_roots_orthogonalPolynomial {k : ℕ} (h : IsMomentPosDef μ k)
     (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b) : Multiset.card (orthogonalPolynomial μ k).roots = k := by
@@ -127,7 +127,7 @@ theorem IsMomentPosDef.card_roots_orthogonalPolynomial {k : ℕ} (h : IsMomentPo
 
 /-- The zeros of the orthogonal polynomial are simple: if $\mu$, finite and supported in
 $[a, b]$, is positive definite up to degree $k$, then the real zeros of $\pi_k$ are distinct.
-[Gautschi2004, Theorem 1.19]; [Szego1975, Theorem 3.3.1] (locators to check). -/
+[Gautschi2004, Theorem 1.19]; [Szego1975, Theorem 3.3.1]. -/
 theorem IsMomentPosDef.nodup_roots_orthogonalPolynomial {k : ℕ} (h : IsMomentPosDef μ k)
     (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b) : (orthogonalPolynomial μ k).roots.Nodup := by
   rw [Multiset.nodup_iff_count_le_one]
@@ -252,7 +252,7 @@ private theorem IsMomentPosDef.false_of_isRoot_endpoint {k : ℕ} (h : IsMomentP
 definite up to degree $k + 1$ (it has more than $k$ support points), then every zero of the
 orthogonal polynomial $\pi_k$ lies in $(a, b)$. Definiteness up to degree $k$ is not enough:
 $\mu = \delta_a + \delta_b$ has $\pi_2 = (x - a)(x - b)$. [Gautschi2004, Theorem 1.19];
-[Szego1975, Theorem 3.3.1] (locators to check); there in the interior of the support interval. -/
+[Szego1975, Theorem 3.3.1]; there in the interior of the support interval. -/
 theorem IsMomentPosDef.gaussNodes_subset_Ioo {k : ℕ} (h : IsMomentPosDef μ (k + 1))
     (hμ : ∀ᵐ x ∂μ, x ∈ Set.Icc a b) :
     (gaussNodes μ k : Set ℝ) ⊆ Set.Ioo a b := by

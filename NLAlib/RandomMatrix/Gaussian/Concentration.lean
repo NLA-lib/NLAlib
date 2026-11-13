@@ -57,7 +57,8 @@ theorem integrable_comp_of_hasLaw_gaussianMatrix (hX : HasLaw X (gaussianMatrix 
 Frobenius distance
 ($\lvert f(\mathbf{A}) - f(\mathbf{B}) \rvert \le L \|\mathbf{A} - \mathbf{B}\|_{\mathsf{F}}$):
 $f(\mathbf{G}) - \mathbb{E} f(\mathbf{G})$ is sub-Gaussian with proxy $L^2$.
-[Vershynin2018, Theorem 5.2.2] (locator to check). -/
+[Vershynin2018, Theorem 5.2.2] gives a sub-Gaussian norm bound up to an absolute constant. The
+log-Sobolev proof here gives the stated moment-generating function bound. -/
 theorem hasSubgaussianMGF_sub_integral_of_hasLaw_gaussianMatrix
     (hX : HasLaw X (gaussianMatrix m n) μ) (hf : ∀ A B, |f A - f B| ≤ L * frobNorm (A - B)) :
     HasSubgaussianMGF (fun ω => f (X ω) - ∫ ω', f (X ω') ∂μ) (L ^ 2) μ := by

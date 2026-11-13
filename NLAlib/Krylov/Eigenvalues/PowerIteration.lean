@@ -50,9 +50,9 @@ $$\bigl\lvert c - \rho_{\mathbf{A}}(\mathbf{A}^q\mathbf{b})\bigr\rvert \le
 (\lvert c\rvert + r)\Bigl(\frac{r}{\lvert c\rvert}\Bigr)^{2q}\tan^2\angle(\mathbf{b}, E_c)\,,$$
 $\rho_{\mathbf{A}}$ the Rayleigh quotient and $\tan^2\angle(\mathbf{b}, E_c)$ the ratio
 $\mu_{\mathbf{A},\mathbf{b}}(\mathbb{R}\setminus\{c\})/\mu_{\mathbf{A},\mathbf{b}}(\{c\})$ of the
-spectral measure. [TrefethenBau1997, Theorem 27.1]; [GolubVanLoan2013, Theorem 8.2.1] (locators to
-check); there for a simple dominant eigenvalue and an eigenvector, here any
-multiplicity.
+spectral measure. [TrefethenBau1997, Theorem 27.1, p. 205]; Trefethen–Bau give an asymptotic rate
+for a simple dominant eigenvalue
+and an eigenvector, here an explicit bound with any multiplicity.
 Result: power-iteration -/
 theorem _root_.Matrix.IsHermitian.abs_sub_rayleighQuotient_pow_mulVec_le {A : Matrix n n 𝕜}
     (hA : A.IsHermitian) {c r : ℝ} (hrc : r < |c|) (hs : spectrum ℝ A ⊆ Set.Icc (-r) r ∪ {c})
@@ -146,7 +146,7 @@ private theorem integral_pow_le_mul_pow {A : Matrix n n 𝕜} (hA : A.PosSemidef
         mul_le_mul_of_nonneg_left (ih (by omega)) hρ
       _ = a 0 * (a (k + 1) / a k) ^ (j + 1) := by ring
 
-/-- **Kuczyński–Woźniakowski, deterministic power step**: for positive semidefinite
+/-- **Gap-free deterministic power step**: for positive semidefinite
 $\mathbf{A}$ and $\mathbf{b}$ with a component in the top eigenspace $E_{\lambda_0}$ of
 $\lambda_0 = \lambda_0(\mathbf{A})$, after $q$ multiplications
 $$\lambda_0 - \rho_{\mathbf{A}}(\mathbf{A}^q\mathbf{b}) \le
@@ -154,8 +154,9 @@ $$\lambda_0 - \rho_{\mathbf{A}}(\mathbf{A}^q\mathbf{b}) \le
 $\rho_{\mathbf{A}}$ the Rayleigh quotient and $\tan^2\angle(\mathbf{b}, E_{\lambda_0})$ the ratio
 $\mu_{\mathbf{A},\mathbf{b}}(\mathbb{R}\setminus\{\lambda_0\})/
 \mu_{\mathbf{A},\mathbf{b}}(\{\lambda_0\})$ of the spectral measure; no gap, every $q$ including
-$0$. [KuczynskiWozniakowski1992, Theorem 4.1] (locator to check); there as a
-relative error for a random start, here deterministic. -/
+$0$. [MartinssonTropp2020, Theorem 6.1] presents a randomized power estimate following
+[KuczynskiWozniakowski1992, abstract]. Here the bound is deterministic for the specified start;
+the logarithmic overlap and the explicit constant are derived from its spectral measure. -/
 theorem _root_.Matrix.PosSemidef.eigenvalue_sub_rayleighQuotient_pow_mulVec_le {A : Matrix n n 𝕜}
     (hA : A.PosSemidef) (b : n → 𝕜) (hb : 0 < (spectralMeasure A b).real {eigenvalue A 0})
     (q : ℕ) :
@@ -216,8 +217,9 @@ $$\bigl\lvert c - \rho_{\mathbf{A}}((\mathbf{A} - \sigma\mathbf{I})^{-q}\mathbf{
 \le D\Bigl(\frac{\lvert c - \sigma\rvert}{d}\Bigr)^{2q}\tan^2\angle(\mathbf{b}, E_c)\,,$$
 $\rho_{\mathbf{A}}$ the Rayleigh quotient and $\tan^2\angle(\mathbf{b}, E_c)$ the ratio
 $\mu_{\mathbf{A},\mathbf{b}}(\mathbb{R}\setminus\{c\})/\mu_{\mathbf{A},\mathbf{b}}(\{c\})$ of the
-spectral measure. [TrefethenBau1997, Theorem 27.2] (locator to check); there for a simple
-eigenvalue and an eigenvector, here any multiplicity. -/
+spectral measure. [TrefethenBau1997, Theorem 27.2, pp. 206–207]; there an asymptotic rate for a
+simple
+eigenvalue and an eigenvector, here an explicit bound with any multiplicity. -/
 theorem _root_.Matrix.IsHermitian.abs_sub_rayleighQuotient_inv_pow_mulVec_le {A : Matrix n n 𝕜}
     (hA : A.IsHermitian) {s : Set ℝ} {c σ d D : ℝ} (hs : spectrum ℝ A ⊆ s ∪ {c})
     (hσc : σ ≠ c) (hd : 0 < d) (hds : ∀ x ∈ s, d ≤ |x - σ|)

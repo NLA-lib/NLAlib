@@ -120,7 +120,7 @@ theorem sum_det_updateRow {S : Type*} [CommRing S] (A H : Matrix n n S) :
 
 /-- **Jacobi's formula**:
 $(\det \mathbf{A})' = \operatorname{tr}(\operatorname{adj}(\mathbf{A}) \mathbf{A}')$.
-[HornJohnson2013, §0.8.10] (locator to check). -/
+[HornJohnson2013, §0.8.10]. -/
 theorem hasDerivAt_det {A : 𝔽 → Matrix n n R} {A' : Matrix n n R} {t : 𝔽}
     (hA : ∀ i j, HasDerivAt (fun s => A s i j) (A' i j) t) :
     HasDerivAt (fun s => (A s).det) ((A t).adjugate * A').trace t := by

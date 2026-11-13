@@ -32,6 +32,14 @@ rules only (`--files <files>`). `scripts/check_names.py` is the naming part ([na
   (or the file), and a reason. It is never the fix for a real violation, and a stale entry fails.
   An entry is proposed in the PR and approved by a maintainer.
 
+The extractor's `signature` is a compact elaborated presentation, not a lossless serialization of
+Lean expressions. Local delaborators preserve explicit sigma-algebras in `Measurable`,
+`StronglyMeasurable`, `AEMeasurable` and `AEStronglyMeasurable`, including non-ambient filtrations.
+Raw JSON consumers should also use `statement` (source syntax in its module context); other
+implicit arguments can still be hidden by pretty printing. `test_explore_signatures.py` checks
+all four predicates against the default printer. With `EXPLORE_SIGNATURE_DATA` pointing to a
+fresh extraction, it also checks the seven declarations identified in the 2026-11 audit.
+
 ## 2. Adding or changing a rule
 
 A rule that arrives as text alone drifts; every rule that shipped with a check and a sweep has

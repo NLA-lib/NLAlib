@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.ForMathlib.Data.List.Range
 public import NLAlib.Computation.Exact
 public import NLAlib.ForMathlib.Data.Option.Basic
 public import NLAlib.ForMathlib.Order.Basic
@@ -416,14 +417,6 @@ theorem run_trsvLower (p : P) (n : IExp ℕ) (T : ℕ) (tOff : IExp ℕ) (x : �
         (.seq (.instr (.bin p .div ⟨x, xo + .var i⟩ ⟨x, xo + .var i⟩
           ⟨T, tOff + .var i + n * .var i⟩)) .skip)) .skip)) .skip := rfl
 
-private theorem foldlM_range_succ {α : Type} (g : α → ℕ → Option α) (a : α) (i : ℕ) :
-    (List.range (i + 1)).foldlM g a = ((List.range i).foldlM g a).bind fun b => g b i := by
-  rw [List.range_succ, List.foldlM_append]
-  rcases (List.range i).foldlM g a with _ | b
-  · rfl
-  · change (g b i).bind (fun b => some b) = g b i
-    rcases g b i <;> rfl
-
 private theorem exists_foldlM_range_eq_some_of_le {α : Type} {g : α → ℕ → Option α} {a b : α}
     {n i : ℕ} (h : (List.range n).foldlM g a = some b) (hi : i ≤ n) :
     ∃ c, (List.range i).foldlM g a = some c := by
@@ -530,7 +523,7 @@ section Specs
 
 variable {𝕜 : Type} [RCLike 𝕜] {P ι : Type} [DecidableEq P]
   (I : Interp P ι 𝕜 (OpCount P ι)) (hI : I.sem = exactSem)
-  (hc : ∀ k, I.charge k = Finsupp.single k 1) (p : P) (st : St P 𝕜 (OpCount P ι))
+  (hc : IsUnitCharge I) (p : P) (st : St P 𝕜 (OpCount P ι))
 
 include hI hc
 
@@ -584,7 +577,7 @@ theorem exec_dot (dst : Cell ℕ ℕ) (x : ℕ) (xo : IExp ℕ) (y : ℕ) (yo n 
     have hsi₁ : si = s₁ := Option.some.inj (hsi.symm.trans h₁)
     refine ⟨by simp [hst, hsi₁], hpos, by simp [hcur], by simp [hcurW], ?_, hpeak,
       by simp [hpeakW]⟩
-    simp only [hcnt, hc]
+    simp only [hcnt, hc.charge_eq]
     abel
 
 /-- **`axpy` computes $\mathbf{y} \leftarrow a\mathbf{x} + \mathbf{y}$ in place**: if $a$, the
@@ -625,7 +618,7 @@ theorem exec_axpy (a : Cell ℕ ℕ) (x : ℕ) (xo : IExp ℕ) (y : ℕ) (yo n :
   · intro i hi st' ⟨si, arr, hsi, harr, hst, hcnt, hpos, hcur, hpeak, hcurW, hpeakW⟩
     obtain ⟨si', hsi'⟩ := exists_foldlM_range_eq_some_of_le h₁ hi
     have hstep := hsi'
-    rw [foldlM_range_succ, hsi, Option.bind_some] at hstep
+    rw [List.foldlM_range_succ, Option.bind_eq_bind, hsi, Option.bind_some] at hstep
     have hrd : ∀ {b j : ℕ}, (∀ k < i, b ≠ y ∨ j ≠ yo.eval + k) →
         si.read p b j = st.store.read p b j := fun h =>
       Store.read_of_foldlM_write_eq_some_of_forall_ne _ _ _ hsi fun k hk =>
@@ -650,7 +643,7 @@ theorem exec_axpy (a : Cell ℕ ℕ) (x : ℕ) (xo : IExp ℕ) (y : ℕ) (yo n :
     have hsi₁ : si = s₁ := Option.some.inj (hsi.symm.trans h₁)
     refine ⟨by simp [hst, hsi₁], hpos, by simp [hcur], by simp [hcurW], ?_, hpeak,
       by simp [hpeakW]⟩
-    simp only [hcnt, hc]
+    simp only [hcnt, hc.charge_eq]
 
 /-- **`scal` computes $\mathbf{x} \leftarrow a\mathbf{x}$ in place**: if $a$ and the $x_i$
 ($i < n$) are stored and $a$ is not in $\mathbf{x}$, the run writes $a x_i$ into the cells of
@@ -675,11 +668,11 @@ theorem exec_scal (a : Cell ℕ ℕ) (x : ℕ) (xo n : IExp ℕ) (av : 𝕜) (xs
     ⟨st.store, rfl, by simp⟩ ?_)
   · obtain ⟨-, si, hsi, rfl⟩ := h
     have hsi₁ : si = s₁ := Option.some.inj (hsi.symm.trans h₁)
-    refine ⟨hsi₁, rfl, rfl, rfl, by simp [hc], rfl, rfl⟩
+    refine ⟨hsi₁, rfl, rfl, rfl, by simp [hc.charge_eq], rfl, rfl⟩
   · rintro i hi _ ⟨si, hsi, rfl⟩
     obtain ⟨si', hsi'⟩ := exists_foldlM_range_eq_some_of_le h₁ hi
     have hstep := hsi'
-    rw [foldlM_range_succ, hsi, Option.bind_some] at hstep
+    rw [List.foldlM_range_succ, Option.bind_eq_bind, hsi, Option.bind_some] at hstep
     have hrd : ∀ {b j : ℕ}, (∀ k < i, b ≠ x ∨ j ≠ xo.eval + k) →
         si.read p b j = st.store.read p b j := fun h =>
       Store.read_of_foldlM_write_eq_some_of_forall_ne _ _ _ hsi fun k hk =>
@@ -718,11 +711,11 @@ theorem exec_rscl (a : Cell ℕ ℕ) (x : ℕ) (xo n : IExp ℕ) (av : 𝕜) (xs
     ⟨st.store, rfl, by simp⟩ ?_)
   · obtain ⟨-, si, hsi, rfl⟩ := h
     have hsi₁ : si = s₁ := Option.some.inj (hsi.symm.trans h₁)
-    refine ⟨hsi₁, rfl, rfl, rfl, by simp [hc], rfl, rfl⟩
+    refine ⟨hsi₁, rfl, rfl, rfl, by simp [hc.charge_eq], rfl, rfl⟩
   · rintro i hi _ ⟨si, hsi, rfl⟩
     obtain ⟨si', hsi'⟩ := exists_foldlM_range_eq_some_of_le h₁ hi
     have hstep := hsi'
-    rw [foldlM_range_succ, hsi, Option.bind_some] at hstep
+    rw [List.foldlM_range_succ, Option.bind_eq_bind, hsi, Option.bind_some] at hstep
     have hrd : ∀ {b j : ℕ}, (∀ k < i, b ≠ x ∨ j ≠ xo.eval + k) →
         si.read p b j = st.store.read p b j := fun h =>
       Store.read_of_foldlM_write_eq_some_of_forall_ne _ _ _ hsi fun k hk =>
@@ -761,11 +754,11 @@ theorem exec_copyv (x : ℕ) (xo : IExp ℕ) (y : ℕ) (yo n : IExp ℕ) (xs : �
     ⟨st.store, rfl, by simp⟩ ?_)
   · obtain ⟨-, si, hsi, rfl⟩ := h
     have hsi₁ : si = s₁ := Option.some.inj (hsi.symm.trans h₁)
-    refine ⟨hsi₁, rfl, rfl, rfl, by simp [hc], rfl, rfl⟩
+    refine ⟨hsi₁, rfl, rfl, rfl, by simp [hc.charge_eq], rfl, rfl⟩
   · rintro i hi _ ⟨si, hsi, rfl⟩
     obtain ⟨si', hsi'⟩ := exists_foldlM_range_eq_some_of_le h₁ hi
     have hstep := hsi'
-    rw [foldlM_range_succ, hsi, Option.bind_some] at hstep
+    rw [List.foldlM_range_succ, Option.bind_eq_bind, hsi, Option.bind_some] at hstep
     have hx' : si.read p x (xo.eval + i) = some (xs i) := by
       rw [Store.read_of_foldlM_write_eq_some_of_forall_ne _ _ _ hsi fun k hk => ?_, hx i hi]
       by_cases h : x = y
@@ -807,7 +800,7 @@ theorem exec_nrm2 (dst : Cell ℕ ℕ) (x : ℕ) (xo n : IExp ℕ) (xs : ℕ →
   refine ⟨_, (exec_seq_instr_un I (by rw [hs1]; exact Store.read_of_write_eq_some hs₀) hv
     (by rw [hs1, Store.write_of_write_eq_some hs₀]; exact h₁)).trans (exec_skip I _), rfl, hpos,
     hcur, hcurW, ?_, hpeak, hpeakW⟩
-  simp only [hcnt, hc, add_assoc]
+  simp only [hcnt, hc.charge_eq, add_assoc]
 
 end Specs
 
@@ -827,7 +820,7 @@ most one cell at tag $p$, and counts $n$ dot products of length $N$ and $n$ addi
 $\mathbf{v}_j = \mathbf{A}\mathbf{u}_j$ it accumulates a trace
 $\operatorname{tr}(\mathbf{U}^{\mathsf{H}}\mathbf{A}\mathbf{U})$. -/
 theorem exec_forRange_dot_add (I : Interp P ι 𝕜 (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (p : P) {N : ℕ} (B C t : ℕ) (acc : Cell ℕ ℕ)
+    (hc : IsUnitCharge I) (p : P) {N : ℕ} (B C t : ℕ) (acc : Cell ℕ ℕ)
     (n : IExp ℕ) (colE : ℕ → IExp ℕ) (c0 : ℕ) (hcol : ∀ j, (colE j).eval = N * (c0 + j))
     (u v : ℕ → Fin N → 𝕜) (st : St P 𝕜 (OpCount P ι)) (a0 : 𝕜)
     (hB : ∀ j < n.eval, ∀ a : Fin N, st.store.read p B (N * (c0 + j) + a) = some (u j a))
@@ -914,7 +907,7 @@ theorem exec_forRange_dot_add (I : Interp P ι 𝕜 (OpCount P ι)) (hI : I.sem 
   · change s2.shape = _
     rw [Store.shape_of_write_eq_some hs2, Store.shape_of_write_eq_some hs1, hsh]
   · change st1.cnt + I.charge (.bin p .add) = _
-    simp only [hcnt1, hcnt, hc, IExp.eval_const, succ_nsmul, add_assoc]
+    simp only [hcnt1, hcnt, hc.charge_eq, IExp.eval_const, succ_nsmul, add_assoc]
   · change st1.peak ≤ _
     rw [hpeak1, hcur]
     exact Function.update_max_le_update_max hpeak

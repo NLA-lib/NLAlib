@@ -385,7 +385,7 @@ theorem re_le_eigenvalue_zero_hermitianPart {A : Matrix n n 𝕜} {μ : 𝕜}
 least the smallest eigenvalue of the Hermitian part:
 $\lambda_j\bigl(\tfrac{1}{2}(\mathbf{A} + \mathbf{A}^{\mathsf{H}})\bigr) \le \operatorname{Re} \mu$
 for $j + 1 = \lvert n \rvert$.
-[HornJohnson1991, §1.5] (locator to check). -/
+[HornJohnson1991, §1.5, Problem 12]. -/
 theorem eigenvalue_hermitianPart_le_re {A : Matrix n n 𝕜} {μ : 𝕜} (hμ : μ ∈ spectrum 𝕜 A)
     {j : ℕ} (hj : j + 1 = Fintype.card n) : eigenvalue (hermitianPart A) j ≤ RCLike.re μ := by
   obtain ⟨v, hv, hq⟩ := exists_re_quadForm_eq_of_mem_spectrum hμ

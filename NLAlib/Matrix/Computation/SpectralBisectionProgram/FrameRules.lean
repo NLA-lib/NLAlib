@@ -49,7 +49,7 @@ def cells (s : Store P K) (p : P) (b : ℕ) : ℕ → Option K := fun i => s.rea
 the weighted count and ends with buffer `b` satisfying `Q`. -/
 def Triple (I : Interp P ι K (OpCount P ι)) (T : ℕ → ℕ) (p : P) (b m : ℕ)
     (V₀ : ℕ → Option K) (s : Stmt P ι ℕ ℕ) (c : ℕ) (Q : (ℕ → Option K) → Prop) : Prop :=
-  Monotone T → (∀ κ, I.charge κ = Finsupp.single κ 1) → ∀ st st' : St P K (OpCount P ι),
+  Monotone T → (IsUnitCharge I) → ∀ st st' : St P K (OpCount P ι),
     b < st.store.size → cells st.store p b = V₀ → exec I s st = some st' →
     Finsupp.weight (OpKind.kernelWeight T) st'.cnt ≤
         Finsupp.weight (OpKind.kernelWeight T) st.cnt + c * T m ∧ Q (cells st'.store p b)
@@ -161,7 +161,7 @@ private theorem triple_ite {V₀ : ℕ → Option K} {q : P} {cmp : CmpOp} {x y 
   obtain ⟨r', -, rfl⟩ := Option.map_eq_some_iff.mp hr
   have hw : Finsupp.weight (OpKind.kernelWeight T) (st.cnt + I.charge (.cmp q)) =
       Finsupp.weight (OpKind.kernelWeight T) st.cnt := by
-    rw [hch, weight_add_single]; rfl
+    rw [hch.charge_eq, weight_add_single]; rfl
   split_ifs at hex
   · obtain ⟨a1, a2⟩ := ht hT hch { st with cnt := st.cnt + I.charge (.cmp q) } st' hb hV hex
     refine ⟨?_, a2⟩
@@ -185,7 +185,7 @@ private theorem triple_bindIdx {V₀ : ℕ → Option K} {q : P} {x : Cell ℕ �
   split_ifs at hex with hle
   obtain ⟨a1, a2⟩ := h _ hle hT hch { st with cnt := st.cnt + I.charge (.toNat q) } st' hb hV hex
   refine ⟨?_, a2⟩
-  rw [hch, weight_add_single] at a1
+  rw [hch.charge_eq, weight_add_single] at a1
   exact a1
 
 /-- the value a binder reads from cell `i` of the tracked buffer -/
@@ -210,7 +210,7 @@ private theorem triple_bindIdx_read {V₀ : ℕ → Option K} {e : IExp ℕ} {bo
   rw [← min_eq_left hle, ← hf] at hex
   obtain ⟨a1, a2⟩ := h hT hch { st with cnt := st.cnt + I.charge (.toNat p) } st' hb hV hex
   refine ⟨?_, a2⟩
-  rw [hch, weight_add_single] at a1
+  rw [hch.charge_eq, weight_add_single] at a1
   exact a1
 
 /-- A loop of zero trips costs nothing. -/
@@ -246,7 +246,7 @@ theorem triple_litIdx {V₀ : ℕ → Option K} {e m' : IExp ℕ} :
   obtain ⟨v, hv, hr⟩ := Option.bind_eq_some_iff.mp hr
   obtain ⟨s', hw, rfl⟩ := Option.map_eq_some_iff.mp hr
   refine ⟨?_, ?_⟩
-  · rw [hch, weight_add_single]; simp [OpKind.kernelWeight, Instr.kind]
+  · rw [hch.charge_eq, weight_add_single]; simp [OpKind.kernelWeight, Instr.kind]
   · rw [← hV, hv]
     funext i
     simp only [cells]
@@ -306,7 +306,7 @@ private theorem frame_instr {i : Instr P ℕ ℕ} (hi : instrDst i ≠ b) :
   obtain ⟨r, hr, rfl⟩ := Option.map_eq_some_iff.mp hex
   obtain ⟨q, j, v, hw⟩ := exists_write_instrDst i hr
   refine ⟨?_, ?_⟩
-  · rw [hch, weight_add_single, kernelWeight_kind]; omega
+  · rw [hch.charge_eq, weight_add_single, kernelWeight_kind]; omega
   · rw [← hV]; funext i'
     exact Store.read_of_write_eq_some_of_ne hw (Or.inl (Ne.symm hi))
 
@@ -346,7 +346,7 @@ private theorem frame_kcall {o : ι} {q : P} {dims : List (IExp ℕ)} {ins outs 
   obtain ⟨xs, -, hs⟩ := Option.bind_eq_some_iff.mp hs
   obtain ⟨ys, -, hs⟩ := Option.bind_eq_some_iff.mp hs
   refine ⟨?_, ?_⟩
-  · rw [hch, weight_add_single]
+  · rw [hch.charge_eq, weight_add_single]
     simp only [OpKind.kernelWeight, one_mul]
     refine Nat.add_le_add_left (hT (foldr_max_le ?_)) _
     intro x hx

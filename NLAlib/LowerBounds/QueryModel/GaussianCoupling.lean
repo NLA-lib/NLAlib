@@ -9,6 +9,7 @@ public import NLAlib.LowerBounds.QueryModel.HiddenHaar
 public import NLAlib.RandomMatrix.Haar.Uniqueness
 public import NLAlib.Probability.Measurability.Matrix
 public import NLAlib.ForMathlib.Data.Matrix.ColumnRowPartitioned
+public import NLAlib.ForMathlib.MeasureTheory.Measure.Prod
 public import NLAlib.RandomMatrix.Gaussian.Rank
 public import NLAlib.Matrix.Basic.Projector
 public import NLAlib.Matrix.Factorizations.Polar
@@ -131,23 +132,6 @@ private theorem map_stabRand_gaussianize (V : Matrix n c ℝ) (F : Matrix n b �
     (isStarProjection_one_sub_rangeProjector V) hb hFW hY hInd
   simpa only [sub_sub_cancel, Matrix.mul_assoc] using h.map_eq
 
-/-- A measurable family with constant section laws has product joint law. -/
-private theorem map_prod_eq_prod_of_ae_map_eq {α γ δ : Type*} [MeasurableSpace α]
-    [MeasurableSpace γ] [MeasurableSpace δ] (ρ : Measure α) (σ : Measure γ)
-    [SFinite σ] {ν : Measure δ} [SFinite ν]
-    {F : α → γ → δ} (hF : Measurable (Function.uncurry F))
-    (h : ∀ᵐ t ∂ρ, σ.map (F t) = ν) :
-    (ρ.prod σ).map (fun p => (p.1, F p.1 p.2)) = ρ.prod ν := by
-  have hpair : Measurable (fun p : α × γ => (p.1, F p.1 p.2)) :=
-    measurable_fst.prodMk hF
-  ext s hs
-  rw [Measure.map_apply hpair hs, Measure.prod_apply (hpair hs), Measure.prod_apply hs]
-  refine lintegral_congr_ae (h.mono fun t ht => ?_)
-  have hFt : Measurable (F t) := hF.comp measurable_prodMk_left
-  have heq := congrArg (fun τ : Measure δ => τ (Prod.mk t ⁻¹' s)) ht
-  rw [Measure.map_apply hFt (measurable_prodMk_left hs)] at heq
-  exact heq
-
 /-- An invariant randomization and constant randomized section laws give a product law. -/
 private theorem map_prod_of_invariant_randomization {α ω ζ δ : Type*} [MeasurableSpace α]
     [MeasurableSpace ω] [MeasurableSpace ζ] [MeasurableSpace δ]
@@ -165,7 +149,7 @@ private theorem map_prod_of_invariant_randomization {α ω ζ δ : Type*} [Measu
     (hK.comp ((hR.comp (measurable_fst.prodMk
       (measurable_fst.comp measurable_snd))).prodMk (measurable_snd.comp measurable_snd)))
   have hAmap : (ρ.prod (σ.prod γ)).map A = ρ.prod γ :=
-    map_prod_eq_prod_of_ae_map_eq ρ (σ.prod γ)
+    Measure.map_prod_eq_prod_of_ae_map_eq ρ (σ.prod γ)
       (F := fun x p => K (R (x, p.1), p.2)) hA.snd hsec
   have hTout : Measurable (Prod.map T (id : ζ → ζ)) := hT.prodMap measurable_id
   have hRout : Measurable (Prod.map R (id : ζ → ζ)) := hR.prodMap measurable_id
@@ -668,23 +652,6 @@ private theorem ae_mem_sup_range_innovationGaussianize
     simpa only [innovationGaussianize, if_neg hv, normalizedInnovationColumn] using
       mem_sup_range_of_innovation_matrix V v Z _ hS hv
 
-omit [Fintype n] [DecidableEq n] in
-/-- The range of a column concatenation is the supremum of the two ranges. -/
-private theorem range_fromCols_eq_sup {b : Type*} [Fintype b]
-    (A : Matrix n c ℝ) (B : Matrix n b ℝ) :
-    LinearMap.range (Matrix.fromCols A B).mulVecLin =
-      LinearMap.range A.mulVecLin ⊔ LinearMap.range B.mulVecLin := by
-  apply le_antisymm
-  · rintro _ ⟨x, rfl⟩
-    change (Matrix.fromCols A B) *ᵥ x ∈ _
-    rw [Matrix.fromCols_mulVec]
-    exact Submodule.add_mem_sup ⟨_, rfl⟩ ⟨_, rfl⟩
-  · apply sup_le (Matrix.range_le_range_fromCols_left A B)
-    rintro _ ⟨x, rfl⟩
-    refine ⟨Sum.elim 0 x, ?_⟩
-    simp only [Matrix.mulVecLin_apply, Matrix.fromCols_mulVec_sumElim,
-      Matrix.mulVec_zero, zero_add]
-
 /-- Freeze a measurable family of previously revealed spaces to get capture on the product. -/
 private theorem ae_prod_mem_sup_range_innovationGaussianize {α : Type*} [MeasurableSpace α]
     (ρ : Measure α) (V : α → Matrix n c ℝ) (v : α → n → ℝ)
@@ -705,7 +672,7 @@ private theorem ae_prod_mem_sup_range_innovationGaussianize {α : Type*} [Measur
   have hset : MeasurableSet {p : α × Matrix n Unit ℝ |
       v p.1 ∈ LinearMap.range (V p.1).mulVecLin ⊔
         LinearMap.range (innovationGaussianize (V p.1) (v p.1) p.2).mulVecLin} := by
-    simp only [← range_fromCols_eq_sup, ← rangeProjector_mulVec_eq_self_iff]
+    simp only [← Matrix.range_fromCols_eq_sup, ← rangeProjector_mulVec_eq_self_iff]
     exact measurableSet_eq_fun
       ((measurable_rangeProjector.comp hM).matrix_mulVec (hv.comp measurable_fst))
       (hv.comp measurable_fst)

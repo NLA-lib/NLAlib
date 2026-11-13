@@ -97,15 +97,13 @@ standard charges obeys the approved count formula, the scoped workspace cell bou
 width-weighted bit bound. This theorem establishes resources only; success is a premise. -/
 theorem lanczosProg.bounds_of_exec_eq_some {P ι K : Type} [DecidableEq P]
     (I : Interp P ι K (OpCount P ι)) (tag : P) (N q : ℕ)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) {st st' : St P K (OpCount P ι)}
+    (hc : IsUnitCharge I) {st st' : St P K (OpCount P ι)}
     (h : (lanczosProg.compiled (ι := ι) tag).exec I N ![q] st = some st') :
     (StaticCost.mk (lanczosCount tag N q) (fun p => if p = tag then N ^ 2 + N + 3 else 0)
       ((N ^ 2 + N + 3) * I.width tag)).Bounds st st' := by
-  have hcharge : I.charge = fun k => Finsupp.single k 1 := funext hc
-  have hcount := lanczosProg.staticCost_count_le (ι := ι) tag I.width N q
-  rw [← hcharge] at hcount
-  exact ((lanczosProg.compiled tag).bounds_staticCost_of_exec_eq_some I N ![q] h).mono hcount
+  exact (lanczosProg.compiled tag).bounds_of_exec_eq_some_of_staticCost_le I N ![q] hc _ _ _
+    (lanczosProg.staticCost_count_le (ι := ι) tag I.width N q)
     (lanczosProg.staticCost_cells_le tag I.charge I.width N q)
-    (lanczosProg.staticCost_bits_le tag I.charge I.width N q)
+    (lanczosProg.staticCost_bits_le tag I.charge I.width N q) h
 
 end NLAlib

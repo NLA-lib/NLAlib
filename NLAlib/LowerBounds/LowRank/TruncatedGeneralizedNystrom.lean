@@ -12,9 +12,11 @@ public import NLAlib.LowRank.Gaussian.TruncatedGeneralizedNystromOracle
 
 Late-truncated generalized Nyström $\llbracket\mathsf{gn}(\mathbf{A}, \mathbf{\Omega},
 \mathbf{\Psi})\rrbracket_k$ with independent standard Gaussian test matrices reaches relative
-error $1 + \varepsilon$ in expectation at $\ell = O(k/\varepsilon)$, $p = O(k/\varepsilon^2)$
-([relative-error
-bound](https://nla-lib.org/explore/#d/NLAlib.integral_frobNorm_sub_truncatedSVD_generalizedNystrom_sq_le_one_add_mul_of_hasLaw_gaussianMatrix)).
+error $1 + \varepsilon$ in expected squared Frobenius norm at
+$\ell = O(k/\varepsilon)$, $p = O(k/\varepsilon)$ for every rectangular real matrix.
+The actual-estimator upper bound is proved in
+`NLAlib/LowRank/Gaussian/TruncatedGeneralizedNystromRelativeError.lean`, with
+$\ell \ge 200 k/\varepsilon$ and $p \ge 14\ell$, for $0 < \varepsilon \le 1$.
 On Epperly and Webber's two-eigenvalue instance
 $\mathbf{A}_a = \operatorname{diag}(a\mathbf{I}_k, \mathbf{I}_{n-k})$, as $a \to \infty$ the
 expected error is at least
@@ -25,7 +27,8 @@ the same instance untruncated generalized Nyström pays $\ell/(p - \ell - 1)$ in
 $k/(p - \ell - 1)$ (Epperly and Webber's identity,
 `NLAlib.integral_frobNorm_sub_generalizedNystrom_sq_eq_mul_integral_of_hasLaw_gaussianMatrix`):
 late truncation gains the factor $\ell/k$ where Epperly and Webber's lower bound for generalized
-Nyström lives. Whether $p = O(k/\varepsilon)$ suffices for every $\mathbf{A}$ is open.
+Nyström lives. For $n > \ell$ this gives a necessary co-range scale proportional to
+$k/\varepsilon$, consistent with that upper bound.
 New. Real.
 
 ## Main results

@@ -443,7 +443,7 @@ Bernstein: for finitely many independent, centred, square-integrable $X_k \le L$
 $L > 0$ and $t \ge 0$,
 $$\mathbb{P}\Bigl[\sum_k X_k \ge t\Bigr]
 \le \exp\Bigl(\frac{-t^2/2}{\sum_k \mathbb{E}[X_k^2] + L t / 3}\Bigr)\,.$$
-[BoucheronLugosiMassart2013, Theorem 2.10] (locator to check). -/
+[Tropp2015, Theorem 6.6.1], specialized to a scalar self-adjoint summand. -/
 theorem measureReal_sum_ge_le_bernstein {X : ι → Ω → ℝ} (hind : iIndepFun X μ) (hL : 0 < L)
     (hX2 : ∀ k, MemLp (X k) 2 μ) (hmean : ∀ k, ∫ ω, X k ω ∂μ = 0)
     (hle : ∀ k, ∀ᵐ ω ∂μ, X k ω ≤ L) {t : ℝ} (ht : 0 ≤ t) :

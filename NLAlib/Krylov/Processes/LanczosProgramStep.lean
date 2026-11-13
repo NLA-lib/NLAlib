@@ -114,7 +114,7 @@ theorem State.of_frame {storedMatrix : optParam Bool true}
 operation increment and unchanged current memory. The temporary negation is executed. -/
 theorem exec_neg_axpy_count
     (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hc : IsUnitCharge I) (tag : P)
     (st : St P ℝ (OpCount P ι)) (N : ℕ) (buf : Fin 4 → ℕ)
     (hbuf : Function.Injective buf) (xo yo ai ti : IExp ℕ) (av : ℝ)
     (xs ys : Fin N → ℝ) (ha : st.store.read tag (buf 2) ai.eval = some av)
@@ -162,13 +162,13 @@ theorem exec_neg_axpy_count
     by_cases hb : b = buf 3
     · exact Or.inr (hti hb)
     · exact Or.inl hb
-  · simpa only [st₁, hc, add_assoc] using hcnt
+  · simpa only [st₁, hc.charge_eq, add_assoc] using hcnt
 
 /-- Exact executed projection of the work vector against the current Lanczos column,
 including the dot product, stored coefficient, negation, vector update, frame and usage. -/
 theorem exec_dot_neg_axpy_count
     (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hc : IsUnitCharge I) (tag : P)
     (st : St P ℝ (OpCount P ι)) (N : ℕ) (buf : Fin 4 → ℕ)
     (hbuf : Function.Injective buf) (xo yo ai ti : IExp ℕ) (xs ys : Fin N → ℝ)
     (hx : ∀ i : Fin N, st.store.read tag (buf 0) (xo.eval + i) = some (xs i))
@@ -238,7 +238,7 @@ $\mathbf{A}\mathbf{v}_j-\beta_j\mathbf{v}_{j-1}$. The completed-state invariant 
 and the exact operation increment and one-cell scratch peak are exposed for loop accounting. -/
 theorem exec_mv_prev
     (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hc : IsUnitCharge I) (tag : P)
     {N q j : ℕ} {A : Matrix (Fin N) (Fin N) ℝ} {b : Fin N → ℝ}
     (st : St P ℝ (OpCount P ι)) (h : State tag N q j A b st) :
     ∃ out, exec I (do
@@ -301,7 +301,7 @@ theorem exec_mv_prev
 unnormalized next vector. The completed prefix, counts, frame and scratch peak are retained. -/
 theorem exec_project {storedMatrix : optParam Bool true}
     (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hc : IsUnitCharge I) (tag : P)
     {N q j : ℕ} {A : Matrix (Fin N) (Fin N) ℝ} {b : Fin N → ℝ}
     (st : St P ℝ (OpCount P ι)) (h : State tag N q j A b st storedMatrix) (hj : j < q)
     (hw : ∀ i : Fin N, st.store.read tag 7 i =
@@ -418,7 +418,7 @@ theorem State.next_capacity {storedMatrix : optParam Bool true}
 It preserves the candidate's operation order, including the total zero continuation. -/
 theorem exec_commit {storedMatrix : optParam Bool true}
     (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hc : IsUnitCharge I) (tag : P)
     {N q j : ℕ} {A : Matrix (Fin N) (Fin N) ℝ} {b : Fin N → ℝ}
     (st : St P ℝ (OpCount P ι)) (h : State tag N q j A b st storedMatrix) (hj : j < q)
     (ha : st.store.read tag 2 j = some (lanczosAlpha A (lanczosState A b j)))
@@ -502,7 +502,7 @@ noncomputable def normCount {P ι : Type} (tag : P) (N : ℕ) : OpCount P ι :=
 retaining its input work vector and the newly computed alpha. -/
 theorem exec_next_norm {storedMatrix : optParam Bool true}
     (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hc : IsUnitCharge I) (tag : P)
     {N q j : ℕ} {A : Matrix (Fin N) (Fin N) ℝ} {b : Fin N → ℝ}
     (st : St P ℝ (OpCount P ι)) (h : State tag N q j A b st storedMatrix) (hj : j < q)
     (ha : st.store.read tag 2 j = some (lanczosAlpha A (lanczosState A b j)))
@@ -569,7 +569,7 @@ theorem add_eq_stepCount (tag : P) (N : ℕ) :
 /-- One actual inline Paige step executes the exact Lanczos recurrence, including breakdown
 and zero dimension, and satisfies the approved componentwise count and footprint budgets. -/
 theorem exec_step (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hc : IsUnitCharge I) (tag : P)
     {N q j : ℕ} {A : Matrix (Fin N) (Fin N) ℝ} {b : Fin N → ℝ}
     (st : St P ℝ (OpCount P ι)) (h : State tag N q j A b st) (hj : j < q) :
     ∃ out, exec I (do
@@ -629,7 +629,7 @@ theorem exec_step (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem = exactSem)
 /-- All actual inline iterations preserve the stored input and compute the full recurrence
 prefix, with the approved summed operation budget and one-cell scratch peak bound. -/
 theorem exec_steps (I : Interp P ι ℝ (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (tag : P)
+    (hc : IsUnitCharge I) (tag : P)
     {N q : ℕ} {A : Matrix (Fin N) (Fin N) ℝ} {b : Fin N → ℝ}
     (st : St P ℝ (OpCount P ι)) (h : State tag N q 0 A b st) :
     ∃ out, exec I (forRange (IExp.const q) fun j => do

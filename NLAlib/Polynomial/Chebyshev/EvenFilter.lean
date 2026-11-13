@@ -84,7 +84,8 @@ private theorem expand_contract_U_two_mul (k : ℕ) :
     exact ⟨k + m, by omega⟩
 
 /-- **Second-kind Chebyshev polynomials are bounded on $[-1, 1]$**: for $\lvert y \rvert \le 1$,
-$\lvert U_n(y)\rvert \le n + 1$. [Trefethen2019, Ch. 3] (locator to check). -/
+$\lvert U_n(y)\rvert \le n + 1$. The sine representation [Gautschi2004, (1.5.5)] yields this bound
+by the multiple-angle identity. -/
 theorem abs_eval_U_le (n : ℕ) {y : ℝ} (hy : |y| ≤ 1) :
     |(Chebyshev.U ℝ (n : ℤ)).eval y| ≤ n + 1 := by
   induction n with
@@ -268,8 +269,8 @@ $p$ of degree at most $q$ with $p(1) = 1$ and
 $$1 - \frac{\int x\,p(x)^2\,d\nu}{\int p(x)^2\,d\nu} \le
 \frac{4}{q^2}\Bigl(1 + \frac{\log(\nu(\mathbb{R})/\nu(\{1\}))}{\log 2}\Bigr)^2\,;$$
 $p$ is a power of the even Chebyshev filter, the number of factors chosen from the logarithmic
-ratio. [KuczynskiWozniakowski1992, Theorem 4.2] (locator to check); there for
-the Lanczos method with a random start, here for any such measure. -/
+ratio. [MartinssonTropp2020, Theorem 6.2] gives a randomized Krylov estimate following Kuczyński
+and Woźniakowski. Here the filter bound is deterministic for the specified measure. -/
 theorem exists_natDegree_le_one_sub_integral_mul_div_le {ν : Measure ℝ} [IsFiniteMeasure ν]
     (hν : ∀ᵐ x ∂ν, x ∈ Set.Icc (0 : ℝ) 1) (h1 : 0 < ν.real {1}) {q : ℕ} (hq : 1 ≤ q) :
     ∃ p : ℝ[X], p.natDegree ≤ q ∧ p.eval 1 = 1 ∧

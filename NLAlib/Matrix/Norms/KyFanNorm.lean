@@ -62,6 +62,7 @@ theorem kyFanNorm_eq_zero_iff {k : ℕ} (hk : k ≠ 0) {A : Matrix m n 𝕜} :
 
 /-- Ky Fan norms are absolutely homogeneous:
 $\|c\mathbf{A}\|_{(k)} = \lvert c \rvert \|\mathbf{A}\|_{(k)}$. -/
+@[simp]
 theorem kyFanNorm_smul (k : ℕ) (c : 𝕜) (A : Matrix m n 𝕜) :
     kyFanNorm k (c • A) = ‖c‖ * kyFanNorm k A := by
   rw [kyFanNorm, kyFanNorm, Finset.mul_sum]

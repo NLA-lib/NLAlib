@@ -715,8 +715,19 @@ A program is data with Lean binders, so an emitter is one more structural functi
 arithmetic. Emission is size-generic because loops, conditions and sizes are nodes of the
 signature. The design's emitter (about 60 lines) prints NumPy in two modes: `named` kernels as
 calls into a short NumPy prelude (`dot` as `np.vdot`, `axpy` as `y[...] += a * x[...]`, the
-oracle as `A @ X.reshape(..., order='F')`), or inlined scalar loops. Fresh buffers are
-`np.full(len, np.nan)`, so a read before write shows as NaN. The emitted Lanczos and Hutch++
+oracle as `A @ X.reshape(..., order='F')`), or inlined scalar loops. For a subsingleton identifier
+type (`Unit`, `PUnit`, or a caller-provided `Subsingleton` instance), oracle calls default to `A`.
+Other identifier types require an explicit `oracleName` mapping to square NumPy matrix expressions.
+An unbound call raises `NotImplementedError`; explicitly partial bindings remain partial. Distinct
+oracle identifiers, including an operator and its adjoint, can bind different expressions.
+Oracle block writes use `np.copyto` with `casting='same_kind'`, rejecting complex results into real
+buffers before truncation. Use complex scratch followed by an explicit real-part instruction for
+an intended real output. Fresh buffers are
+`np.full(len, np.nan, dtype=...)`, so a read before write shows as NaN. The default dtype is the
+common type of `A` and all declared buffers, promoted to at least float64; it preserves complex
+inputs. `scalarDtype` overrides this per precision tag when external hooks introduce a different
+scalar domain. Supplied output buffers and external kernels must also support that domain.
+The emitted Lanczos and Hutch++
 (`def lanczos(A, N, q, b, alpha, beta)`, `def hutchpp(A, N, k, l, out)` with a `draw_rademacher`
 hook) agreed with the Lean `Float` interpreter to six digits, and the reviewer ran them
 size-generically at `N = 7`, `q = 5`, `k = 4`, `ℓ = 3`. The emitted code is an unverified
@@ -2282,3 +2293,95 @@ FxF (an axiom); FxF, not strict, passes with 0 violations. On the package: 11871
 modules under `NLAlib`, `NLAlibScaffold` and `NLAlibTools` (strict: `NLAlib`) onto 280 base
 imports (5118 modules, all from the dependencies or the toolchain), 15 auxiliaries `_unsafe_rec`,
 0 violations.
+## Guarded finite-range oracle extension (2026-11-12)
+
+The existing `IsMatvecErr` requires success on every word vector; a bounded carrier cannot
+meet that requirement for every matrix. Keep its definition and all registered targets intact.
+Add `IsMatvecErrOn I o dec p H domain c η` in `Computation/Contract.lean`: height is unchanged,
+but success and the normwise bound `‖H*x-y‖ ≤ c*‖x‖+η` are required only when `domain x` holds.
+The input predicate concerns decoded inputs, so proofs discharge it before the oracle call;
+it is not an observed-success assumption. `IsMatvecErr.toOn` embeds the old contract with
+zero absolute allowance. A domain-restriction lemma and an `exec_apply` theorem in
+`Computation/MatvecRoutine.lean` make the interface usable by stored program proofs.
+The old execution theorem becomes a corollary, sharing the block-read/write argument.
+
+The concrete consumer is a one-coordinate doubling oracle in `Computation/IEEE.lean`,
+implemented with finite binary64 addition. Its input domain is `|2*x| ≤ maxFinite`;
+its certificate has `c = 2*unitRoundoff`, `η = underflowBound`, and its actual stored
+application follows from the guarded execution theorem. No complete CG/Lanczos success
+claim follows without an invariant establishing all subsequent scalar and oracle ranges.
+A bounded-word obstruction theorem in `Contract.lean` explains why the old global oracle
+cannot replace this domain: at a positive largest word B, matrix `[2]` cannot have coefficient
+less than one. This is a generic obstruction, not a native binary64 performance claim.
+
+Mathlib search: no scalar-semantics or oracle-error contract found; reuse its matrices,
+Euclidean vector norm and option/array API. NLAlib search: reuse `IsMatvecErr`,
+`IsArithErrSem`, `AbsRelErr`, `Store.exists_writeBlock_eq_some_of_getElem?_shape`
+and the existing `exec_apply` block proof. There is no alternative vector or matrix object.
+Vocabulary is recorded here: `IsMatvecErrOn` is the input-domain, mixed-error extension of
+`IsMatvecErr`; its compatibility bridge is `IsMatvecErr.toOn`. The finite doubling
+interpretation is an executable example of that interface. No new program tree or target
+is introduced. The floor-to-mixed arithmetic bridge belongs in `Computation/Underflow.lean`.
+
+MINRES coefficient definitions and step equations in `Krylov/LinearSystems/MINRESRecurrence.lean`
+become public supporting API, with existing proofs reused. No mathematical hypothesis or
+registered statement changes. Headline documentation states the sufficient CG horizon,
+successful-but-inaccurate eigensolver event, and remaining finite-format limitations.
+The repeated local binary-rounding spacing estimate becomes the public theorem
+`Computation.abs_sub_binaryFloatRound_le_half_mul_zpow` in `Computation/BinaryFloat.lean`;
+`Matrix/Computation/EntrywiseRounding.lean` consumes it instead of copying the argument.
+
+The duplicate optional-fold recursion rule in `BLAS.lean` and `ProgramLogic.lean` moves to
+`ForMathlib/Data/List/Range.lean` as `List.foldlM_range_succ`, generalized to any lawful monad;
+both kernel execution and weakest-precondition loops consume it. Searched Mathlib and core:
+reuse `List.range_succ`, `List.foldlM_append`, and the monad laws; no range-successor wrapper
+found. The two equivalent eigensolver step-sample congruence proofs become the single public
+`eighStep_congr_sample` in `Eigensolvers/SpectralBisectionSamples.lean`; the unused duplicate
+deflation-map helper is removed and the existing deflation-map proof becomes public API.
+
+The generic COO compiler argument currently inside `Estimation/Trace/HutchPlusPlusProgram.lean`
+belongs with sparse oracle compilation. Move its private scoping/entry helpers and its public
+`Computation.exists_compile_substOracle_cooImpl` to `Computation/SparseCompile.lean`, importing
+`Computation/Sparse.lean`. The Hutch++ sparse-family theorem is the direct consumer. Statement,
+tree and target definitions are unchanged: only a compilation proof is shared. The public
+statement retains the positive index-scope hypothesis and the distinguished size variable.
+
+`CGPrecisionHorizon q ε κ` in `Krylov/FinitePrecision/CGRun.lean` names the sufficient inequality
+used by the run, energy, spectrum, backward-error and stored program results. The definition is
+available at the run layer so all these callers can use it. Its prefix monotonicity transports a
+certificate to an earlier iteration. Existing proofs of the numerical inequality apply by
+definitional equality.
+
+The exact duplicate Gaussian-pair map law moves to its mathematical topic as
+`map_pi_fin_two_eq_complexGaussian` in `RandomMatrix/Gaussian/Complex.lean`; Gaussian tape
+matrices and eigensolver node samples consume that one theorem. The product law is exactly
+the existing pair of independent standard real Gaussians, with no distribution change.
+
+`finiteFloatStoredInterp` in `Computation/IEEE.lean` supplies an executable checked finite-word
+stored endpoint with supplied ROM, unsupported oracle/kernel/index calls, 64-bit words, and
+unit logical operation charges. `finiteFloatZero` and `finiteFloatOne` name its exact binary64
+constants, with decoding lemmas. Its direct consumer
+`CGImplementation.exists_exec_cgProg_identity_finiteFloat` in `Krylov/LinearSystems/CGProgramIEEE.lean`
+proves a full run of the existing registered CG tree on `[1]x=[1]`, with one requested step,
+decoded solution one, residual zero and positive status one. The closed computation is
+kernel reduction of the checked logical Float operations. No registered program or target
+changes, and no all-range scalar model, sampled-success premise or zero-input shortcut is used.
+
+The accounting-only interface `IsUnitCharge I` in `Computation/Exec.lean` names the existing
+pointwise equation `I.charge k = Finsupp.single k 1`; it does not change an interpretation or
+bundle scalar accuracy with costs. `IsUnitCharge.charge_eq` exposes the function equality used
+by static accounting. A public `Prog.bounds_of_exec_eq_some_of_staticCost_le` in
+`Computation/StaticCost.lean` composes actual execution, a count estimate under unit charges,
+and cell/bit estimates under the interpretation's charges. The stored and oracle CG/Lanczos
+static-cost modules are its four consumers, replacing identical function-extensionality,
+rewriting and bound-coarsening arguments. Their hypothesis change is definitionally equal to
+the old raw equation. No target, tree or count definition changes. Searched Mathlib and NLAlib:
+reuse the existing `Prog.bounds_staticCost_of_exec_eq_some` and `StaticCost.Bounds.mono`;
+neither names the unit-charge interface or packages this repeated combination.
+
+For the eigensolver layout, retain `EighArenas.handles.Nodup`, the existing separated-arena
+lemmas in `SpectralBisectionProgram/Transfer.lean`, and the registered offset definitions.
+Add only `eval_eighBlockOff` and `eval_eighSlotOff` beside those definitions in
+`SpectralBisectionProgramTree.lean`; the leaf-slot specifications and weighted level proofs
+consume their normalization instead of unfolding offset implementations repeatedly. They are
+equations about the existing layout, not a new arena interface or a target/tree change.

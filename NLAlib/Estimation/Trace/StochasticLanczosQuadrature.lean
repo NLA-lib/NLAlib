@@ -74,7 +74,7 @@ compute, $\tfrac{1}{m}\sum_j\boldsymbol{\omega}_j^{\mathsf{H}}\mathsf{lanczosFA}
 f(\mathbf{T}_j)\mathbf{e}_1$ (`Matrix.IsHermitian.slq_eq_sum_lanczosFA`), with $mq$ products with
 $\mathbf{A}$. A real number in `𝕜`. Junk value: $0$ when $\mathbf{\Omega}$ has no columns, when
 $q = 0$ and when $\mathbf{A}$ is not Hermitian.
-[UbaruChenSaad2017, §3] (locator to check); [MartinssonTropp2020, §6.6, Algorithm 6].
+[UbaruChenSaad2017, §3, Algorithm 1]; [MartinssonTropp2020, §6.6, Algorithm 6].
 Algorithm: stochastic-lanczos-quadrature -/
 noncomputable def slq (A : Matrix n n 𝕜) (f : ℝ → ℝ) (Ω : Matrix n m 𝕜) (q : ℕ) : 𝕜 :=
   ((∑ j, ∫ x, f x ∂gaussQuadrature (spectralMeasure A (fun i => Ω i j)) q : ℝ) : 𝕜) /
@@ -150,7 +150,7 @@ Probe by probe, $\boldsymbol{\omega}_j^{\mathsf{H}}f(\mathbf{A})\boldsymbol{\ome
 replaced by its Gauss rule, whose error is at most
 $2\varepsilon\mu_j(\mathbb{R}) = 2\varepsilon\|\boldsymbol{\omega}_j\|^2$; the errors are
 averaged. With no columns both sides reduce to $\lvert\operatorname{tr} f(\mathbf{A})\rvert$.
-[UbaruChenSaad2017, §4] (locator to check); [MartinssonTropp2020, §6.6]; there with the
+[UbaruChenSaad2017, §4.2, Lemma 4.4]; [MartinssonTropp2020, §6.6]; there with the
 quadrature error bounded through analytic $f$ and Chebyshev approximation.
 Result: stochastic-lanczos-quadrature-error -/
 theorem _root_.Matrix.IsHermitian.norm_trace_cfc_sub_slq_le_of_isUniformApproxOn
@@ -176,8 +176,9 @@ $$\bigl\lvert\operatorname{tr} f(\mathbf{A}) -
 \frac{\|\mathbf{\Omega}\|_{\mathsf{F}}^2}{m}\,;$$
 the constant is `jacksonApproximationConstant`. Per probe, the Gauss-rule error for Lipschitz
 functions (Jackson's theorem in degree $2q + 1$), averaged.
-[UbaruChenSaad2017, §4] (locator to check); the rate from [ChenTrogdonUbaru2022, Appendix C,
-Theorem 38], the approximation step.
+[UbaruChenSaad2017, §4.2, Lemma 4.4]; the rate uses the local Jackson approximation bound.
+[ChenTrogdonUbaru2022, Appendix C, Theorem 38] uses the damped-Chebyshev route
+with the larger printed constant $\pi^2/2$.
 Result: stochastic-lanczos-quadrature-error -/
 theorem _root_.Matrix.IsHermitian.norm_trace_cfc_sub_slq_le_of_lipschitzOnWith
     {A : Matrix n n 𝕜} (hA : A.IsHermitian) {a a' : ℝ} (haa : a < a')
@@ -201,7 +202,7 @@ $$\bigl\lvert\operatorname{tr} f(\mathbf{A}) -
 \mathbf{\Omega})\bigr\rvert + \frac{4M}{\rho^{2q + 1}(\rho - 1)}\cdot
 \frac{\|\mathbf{\Omega}\|_{\mathsf{F}}^2}{m}\,,$$
 from the Chebyshev truncation of degree $2q + 1$.
-[UbaruChenSaad2017, Theorem 4.1] (locator to check); the setting of their analysis, there with
+[UbaruChenSaad2017, Theorem 4.1]; the setting of their analysis, there with
 relative error for positive definite $\mathbf{A}$.
 Result: stochastic-lanczos-quadrature-error -/
 theorem _root_.Matrix.IsHermitian.norm_trace_cfc_sub_slq_le_of_differentiableOn
@@ -255,9 +256,10 @@ $$\mathbb{P}\Bigl[\tau + \frac{2\varepsilon\|\mathbf{\Omega}\|_{\mathsf{F}}^2}{m
 the constant is `hansonWrightConstant`; the quadrature term is random, inside the event. No
 definiteness of $f(\mathbf{A})$ is needed. Gaussian and sign test matrices are the case $c = 1$.
 No measurability of the estimate is needed: the event lies in the Girard–Hutchinson event.
-[UbaruChenSaad2017, Theorem 4.1] (locator to check), there for positive definite $\mathbf{A}$
-with Rademacher probes and relative error; [CortinovisKressner2022, §4] (locator to check), the
-indefinite case.
+[UbaruChenSaad2017, Theorem 4.1], there for positive definite $\mathbf{A}$
+with Rademacher probes and relative error; [CortinovisKressner2022, §4, Theorems 19 and 20], for
+the analogous
+combination in log-determinant estimation, where the logarithm can be indefinite.
 Result: stochastic-lanczos-quadrature-tail -/
 theorem measureReal_abs_trace_cfc_sub_slq_ge_le_of_isUniformApproxOn
     {X : Ω → Matrix n m ℝ} {c : ℝ≥0}
@@ -291,8 +293,8 @@ q + 1)\bigr\rvert\Bigr] \le 2\exp\Bigl(-\frac{1}{196}\min\Bigl(
 \frac{m\tau}{c\|f(\mathbf{A})\|_2}\Bigr)\Bigr)\,;$$
 the constants are `hansonWrightConstant` and `jacksonApproximationConstant`; the quadrature term
 is random, inside the event. Gaussian and sign test matrices are the case $c = 1$.
-[UbaruChenSaad2017, Theorem 4.1] (locator to check), there for analytic $f$;
-[CortinovisKressner2022, §4] (locator to check).
+[UbaruChenSaad2017, Theorem 4.1], there for analytic $f$;
+[CortinovisKressner2022, §4, Theorems 19 and 20], for the log-determinant specialization.
 Result: stochastic-lanczos-quadrature-tail -/
 theorem measureReal_abs_trace_cfc_sub_slq_ge_le_of_lipschitzOnWith
     {X : Ω → Matrix n m ℝ} {c : ℝ≥0}
@@ -324,8 +326,9 @@ $$\mathbb{P}\Bigl[\tau + \frac{4M}{\rho^{2q + 1}(\rho - 1)}\cdot
 2\exp\Bigl(-\frac{1}{196}\min\Bigl(\frac{m\tau^2}{c^2\|f(\mathbf{A})\|_{\mathsf{F}}^2},
 \frac{m\tau}{c\|f(\mathbf{A})\|_2}\Bigr)\Bigr)\,;$$
 the constant is `hansonWrightConstant`; the quadrature term is random, inside the event.
-[UbaruChenSaad2017, Theorem 4.1] (locator to check), there for positive definite $\mathbf{A}$
-with Rademacher probes and relative error; [CortinovisKressner2022, §4] (locator to check).
+[UbaruChenSaad2017, Theorem 4.1], there for positive definite $\mathbf{A}$
+with Rademacher probes and relative error; [CortinovisKressner2022, §4, Theorems 19 and 20], for
+the log-determinant specialization.
 Result: stochastic-lanczos-quadrature-tail -/
 theorem measureReal_abs_trace_cfc_sub_slq_ge_le_of_differentiableOn
     {X : Ω → Matrix n m ℝ} {c : ℝ≥0}
@@ -354,7 +357,7 @@ $$\bigl\lvert\operatorname{tr} f(\mathbf{A}) -
 \mathbf{\Omega})\bigr\rvert + \frac{2E_{2q + 1}(f; [a, a'])\|\mathbf{\Omega}\|_{\mathsf{F}}^2}{m}
 \,,$$
 $E_{2q + 1}$ the error of the best uniform approximation of $f$ on $[a, a']$ by polynomials of
-degree at most $2q + 1$ (`minimaxError`). [UbaruChenSaad2017, §4] (locator to check); there
+degree at most $2q + 1$ (`minimaxError`). [UbaruChenSaad2017, §4.2, Lemma 4.4]; there
 with the quadrature error bounded through analytic $f$ and Chebyshev approximation.
 Result: stochastic-lanczos-quadrature-error -/
 theorem _root_.Matrix.IsHermitian.norm_trace_cfc_sub_slq_le_of_continuousOn
@@ -383,9 +386,9 @@ $$\mathbb{P}\Bigl[\tau + \frac{2E_{2q + 1}(f; [a, a'])\|\mathbf{\Omega}\|_{\math
 the constant is `hansonWrightConstant`; $E_{2q + 1}$ is the error of the best uniform
 approximation of $f$ on $[a, a']$ by polynomials of degree at most $2q + 1$ (`minimaxError`), and
 the quadrature term is random, inside the event. Gaussian and sign test matrices are the case
-$c = 1$. [UbaruChenSaad2017, Theorem 4.1] (locator to check), there for positive definite
-$\mathbf{A}$ with Rademacher probes and relative error; [CortinovisKressner2022, §4] (locator to
-check).
+$c = 1$. [UbaruChenSaad2017, Theorem 4.1], there for positive definite
+$\mathbf{A}$ with Rademacher probes and relative error; [CortinovisKressner2022, §4, Theorems 19
+and 20] treats the log-determinant specialization.
 Result: stochastic-lanczos-quadrature-tail -/
 theorem measureReal_abs_trace_cfc_sub_slq_ge_le_of_continuousOn
     {X : Ω → Matrix n m ℝ} {c : ℝ≥0}
@@ -428,7 +431,9 @@ $q > 0$, $f$ continuous on $[a, a']$,
 $C^{2q}$ on $(a, a')$ with $f^{(2q)} \ge 0$ there, and every test matrix $\mathbf{\Omega}$,
 $$\operatorname{Re}\mathsf{slq}(\mathbf{A}, f, \mathbf{\Omega}, q) \le
 \operatorname{Re}\mathsf{girardHutchinson}(f(\mathbf{A}), \mathbf{\Omega})\,.$$
-[UbaruChenSaad2017, §3]; [GolubMeurant2010, Ch. 7] (locators to check); the per-probe Gauss
+[UbaruChenSaad2017, §4.1, equation (4.2)]; [GolubMeurant2010, (6.4) with no prescribed nodes]
+gives the sign of the Gauss remainder;
+the per-probe Gauss
 bound summed. -/
 theorem re_slq_le_re_girardHutchinson_cfc_of_iteratedDeriv_nonneg {A : Matrix n n 𝕜}
     {a a' : ℝ} (hs : spectrum ℝ A ⊆ Set.Icc a a') (haa' : a < a') {f : ℝ → ℝ}
@@ -448,7 +453,8 @@ $C^{2q}$ on $(a, a')$ with $f^{(2q)} \le 0$ there (such as $\log$ on $[a, a']$, 
 every test matrix $\mathbf{\Omega}$,
 $$\operatorname{Re}\mathsf{girardHutchinson}(f(\mathbf{A}), \mathbf{\Omega}) \le
 \operatorname{Re}\mathsf{slq}(\mathbf{A}, f, \mathbf{\Omega}, q)\,.$$
-[UbaruChenSaad2017, §3]; [GolubMeurant2010, Ch. 7] (locators to check). -/
+[UbaruChenSaad2017, §4.1, equation (4.2)]; [GolubMeurant2010, (6.4) with no prescribed nodes]
+gives the sign of the Gauss remainder. -/
 theorem re_girardHutchinson_cfc_le_re_slq_of_iteratedDeriv_nonpos {A : Matrix n n 𝕜}
     {a a' : ℝ} (hs : spectrum ℝ A ⊆ Set.Icc a a') (haa' : a < a') {f : ℝ → ℝ}
     (hf : ContinuousOn f (Set.Icc a a')) {q : ℕ} (hq : 0 < q)

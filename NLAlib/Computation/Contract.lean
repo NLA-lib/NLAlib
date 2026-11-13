@@ -476,6 +476,63 @@ def IsMatvecErr (I : Interp P ι K C) (o : ι) (dec : P → K → ℝ) (p : P) {
           fun i : Fin N => dec p (Y[i.1]'(hY ▸ i.2)))‖ ≤
         c * ‖WithLp.toLp 2 (fun i : Fin N => dec p (X[i.1]'(hX ▸ i.2)))‖
 
+/-- A matvec oracle succeeds with normwise error at most $c\|\mathbf{x}\|+\eta$ on
+decoded inputs satisfying `domain`. The domain is an input obligation, independent of whether
+the call succeeds. The absolute allowance retains underflow. Unlike `IsMatvecErr`, this
+contract does not require success on inputs whose exact products overflow the word format.
+No printed source. -/
+def IsMatvecErrOn (I : Interp P ι K C) (o : ι) (dec : P → K → ℝ) (p : P) {N : ℕ}
+    (H : Matrix (Fin N) (Fin N) ℝ) (domain : (Fin N → ℝ) → Prop) (c η : ℝ) : Prop :=
+  I.height o = N ∧ ∀ X : Array K, (hX : X.size = N) →
+    domain (fun i : Fin N => dec p (X[i.1]'(hX ▸ i.2))) →
+      ∃ Y : Array K, ∃ hY : Y.size = N, I.oracle o 1 X = some Y ∧
+        ‖WithLp.toLp 2 ((H *ᵥ fun i : Fin N => dec p (X[i.1]'(hX ▸ i.2))) -
+            fun i : Fin N => dec p (Y[i.1]'(hY ▸ i.2)))‖ ≤
+          c * ‖WithLp.toLp 2 (fun i : Fin N => dec p (X[i.1]'(hX ▸ i.2)))‖ + η
+
+/-- The global relative oracle contract restricts to any decoded input domain, with zero
+absolute allowance. Its success clause supplies the required calls. No printed source. -/
+theorem IsMatvecErr.toOn {I : Interp P ι K C} {o : ι} {dec : P → K → ℝ} {p : P}
+    {N : ℕ} {H : Matrix (Fin N) (Fin N) ℝ} {c : ℝ}
+    (h : IsMatvecErr I o dec p H c) (domain : (Fin N → ℝ) → Prop) :
+    IsMatvecErrOn I o dec p H domain c 0 := by
+  refine ⟨h.1, fun X hX _ => ?_⟩
+  simpa only [add_zero] using h.2 X hX
+
+/-- Restricting the admitted input domain preserves success and the mixed normwise error.
+No printed source. -/
+theorem IsMatvecErrOn.mono_domain {I : Interp P ι K C} {o : ι} {dec : P → K → ℝ} {p : P}
+    {N : ℕ} {H : Matrix (Fin N) (Fin N) ℝ} {c η : ℝ}
+    {domain domain' : (Fin N → ℝ) → Prop} (h : IsMatvecErrOn I o dec p H domain c η)
+    (hd : ∀ x, domain' x → domain x) : IsMatvecErrOn I o dec p H domain' c η :=
+  ⟨h.1, fun X hX hx => h.2 X hX (hd _ hx)⟩
+
+/-- A bounded-word carrier attaining a positive maximum $B$ cannot support a globally
+successful oracle for $[2]$ with coefficient $c<1$: on input $B$, every output is at least
+$B$ away from $2B$. This obstruction is independent of the scalar arithmetic contract and
+motivates an input domain for finite-range oracle certificates. No printed source. -/
+theorem not_isMatvecErr_of_bounded_decode (I : Interp P ι K C) (o : ι)
+    (dec : P → K → ℝ) (p : P) (B c : ℝ) (hB : 0 < B) (hc : c < 1)
+    (hbound : ∀ w : K, dec p w ≤ B) (x : K) (hx : dec p x = B) :
+    ¬ IsMatvecErr I o dec p (fun (_ _ : Fin 1) => (2 : ℝ)) c := by
+  intro h
+  obtain ⟨Y, hY, _, herr⟩ := h.2 #[x] rfl
+  have hn (v : Fin 1 → ℝ) : ‖WithLp.toLp 2 v‖ = |v 0| := by
+    have hv : v = Function.const (Fin 1) (v 0) := by
+      ext i
+      exact congrArg v (Subsingleton.elim i 0)
+    rw [hv, PiLp.norm_toLp_const (by norm_num : (2 : ENNReal) ≠ ⊤)]
+    simp
+  rw [hn, hn] at herr
+  have he : |2 * B - dec p (Y[0]'(by omega))| ≤ c * B := by
+    simpa [Matrix.mulVec, dotProduct, hx, abs_of_pos hB] using herr
+  norm_num at he
+  have hb := hbound (Y[0]'(by omega))
+  have hmul : c * B < B := by nlinarith
+  have hl := le_abs_self (2 * B - dec p (Y[0]'(by omega)))
+  norm_num at hl
+  nlinarith
+
 /-- Increasing the operator-error allowance preserves oracle accuracy and success. -/
 theorem IsMatvecErr.mono {I : Interp P ι K C} {o : ι} {dec : P → K → ℝ} {p : P}
     {N : ℕ} {H : Matrix (Fin N) (Fin N) ℝ} {c d : ℝ}

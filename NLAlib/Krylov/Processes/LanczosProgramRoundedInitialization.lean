@@ -8,13 +8,14 @@ module
 public import NLAlib.Computation.BLAS.GuardedNormalization
 public import NLAlib.Computation.BLAS.NormalizationFrames
 public import NLAlib.Computation.ScalarFrames
+public import NLAlib.Krylov.Processes.LanczosProgramInitialization
 public import NLAlib.Krylov.Processes.LanczosProgramRounding
 public import NLAlib.Krylov.Processes.LanczosProgramRoundedState
 
 /-!
 # Actual rounded initialization of the stored Lanczos tree
 
-The canonical ROM and zero-literal prefix executes under the scalar contract for arbitrary
+The canonical zero-literal prefix needs only a successful zero literal for arbitrary
 stored words. It preserves the actual input and matrix entries. Rounded normalization uses
 the actual norm, comparison, copy and division order, with decoded norm-word provenance.
 
@@ -35,8 +36,10 @@ variable {P ι K C : Type} [DecidableEq P] [AddMonoid C]
   {u : P → ℝ} {dec : P → K → ℝ} {storedMatrix : Bool}
 
 /-- The two scalar-zero literals and previous-vector zero fill execute in the exact
-canonical order. All other cells and all non-store usage fields except the literal count
-are preserved. The vector length and requested budget may be zero. -/
+canonical order under the standard relative-error contract. The stored zero decodes to zero;
+all other cells and non-store usage fields except literal count are preserved. This retains
+the existing relative-model interface, while its execution is obtained from the weaker
+literal-only setup. The vector length and requested budget may be zero. -/
 theorem exec_rounded_initialize_zeros (I : Interp P ι K C) (tag : P)
     (hsem : IsRelErrSem u dec (fun _ _ => True) I.sem) (N q : ℕ) (st : St P K C)
     (h3 : st.store.shape[3]? = some (tag, q + 1))
@@ -56,27 +59,48 @@ theorem exec_rounded_initialize_zeros (I : Interp P ι K C) (tag : P)
         cnt := st.cnt + I.charge (.lit tag) + I.charge (.lit tag) +
           N • I.charge (.lit tag) } := by
   obtain ⟨zero, hz, hd⟩ := (hsem.isArithErrSem (fun _ => trivial)).lit_zero tag
-  obtain ⟨s0, _, e0, sh0, r0, f0⟩ := exec_scalar_lit I tag st ⟨8, 0⟩ 0 zero hz
-    ⟨2, h8, by norm_num⟩
-  let st1 := { st with store := s0, cnt := st.cnt + I.charge (.lit tag) }
-  obtain ⟨s1, _, e1, sh1, r1, f1⟩ := exec_scalar_lit I tag st1 ⟨3, 0⟩ 0 zero hz
-    ⟨q + 1, sh0 ▸ h3, by simp only [IExp.eval_ofNat]; omega⟩
-  let st2 := { st1 with store := s1, cnt := st1.cnt + I.charge (.lit tag) }
-  obtain ⟨s2, e2, sh2, r2, f2⟩ := exec_forRange_literal_zero_var I tag zero hz st2
-    (.const N) 5 (fun i hi => ⟨N, (sh1.trans sh0) ▸ h5, hi⟩)
-  let out := { st2 with store := s2, cnt := st2.cnt + N • I.charge (.lit tag) }
-  refine ⟨out, zero, ?_, sh2.trans (sh1.trans sh0), hd, ?_, ?_, ?_, ?_, rfl⟩
-  · rw [exec_run_bind I (b := ins (.lit tag ⟨8, 0⟩ 0)) (fun _ => rfl), e0, Option.bind_some,
-      exec_run_bind I (b := ins (.lit tag ⟨3, 0⟩ 0)) (fun _ => rfl), e1, Option.bind_some]
-    exact e2
-  · exact (f2 tag 8 0 (Or.inr (Or.inl (by norm_num)))).trans
-      ((f1 tag 8 0 (Or.inr (Or.inl (by norm_num)))).trans r0)
-  · exact (f2 tag 3 0 (Or.inr (Or.inl (by norm_num)))).trans r1
-  · intro i
-    exact r2 i i.isLt
-  · intro p buf idx h5 h3 h8
-    rw [f2 p buf idx (Or.inr (Or.inl h5)), f1 p buf idx (Or.inr h3)]
-    exact f0 p buf idx (Or.inr h8)
+  obtain ⟨out, he, sh, r8, r3, r5, hf, hu⟩ :=
+    exec_initialize_zeros_of_lit_eq_some I tag zero hz N q st h3 h5 h8
+  exact ⟨out, zero, he, sh, hd, r8, r3, r5, hf, hu⟩
+
+/-- The actual zero-norm initialization branch fills the first basis column with the
+successful zero-literal word when its stored comparison returns true. No arithmetic error
+contract, input norm certificate or successful future execution is assumed. Every cell
+outside that column window is preserved, with exactly one comparison and N literals charged.
+The dimension and requested budget may be zero. -/
+theorem exec_initial_normalization_of_cmp_eq_some_true
+    (I : Interp P ι K C) (tag : P) (literal zero normword : K)
+    (hz : I.sem.lit tag 0 = some literal) (N q : ℕ) (st : St P K C)
+    (hn : st.store.read tag 4 0 = some normword)
+    (hzero : st.store.read tag 8 0 = some zero)
+    (hcmp : I.sem.cmp tag .eq normword zero = some true)
+    (h1 : st.store.shape[1]? = some (tag, N * (q + 1))) :
+    ∃ out, exec I (ifThenElse tag .eq ⟨4, 0⟩ ⟨8, 0⟩
+        (forRange (.const N) fun i => ins (.lit tag ⟨1, .var i⟩ 0))
+        (do copyv tag 0 0 1 0 (.const N); rscl tag ⟨4, 0⟩ 1 0 (.const N))).run st = some out ∧
+      out.store.shape = st.store.shape ∧
+      (∀ i : Fin N, out.store.read tag 1 i = some literal) ∧
+      (∀ p buf idx, (buf ≠ 1 ∨ N ≤ idx) →
+        out.store.read p buf idx = st.store.read p buf idx) ∧
+      out = { st with
+        store := out.store
+        cnt := st.cnt + I.charge (.cmp tag) + N • I.charge (.lit tag) } := by
+  let compared : St P K C := { st with cnt := st.cnt + I.charge (.cmp tag) }
+  have ec : cmpStep I tag .eq ⟨4, 0⟩ ⟨8, 0⟩ st = some (true, compared) := by
+    simp only [cmpStep, IExp.eval_ofNat, hn, hzero, Option.bind_some, hcmp, Option.map_some]
+    rfl
+  have hNN : N ≤ N * (q + 1) := by
+    simpa only [Nat.mul_one] using Nat.mul_le_mul_left N (Nat.succ_le_succ (Nat.zero_le q))
+  obtain ⟨s, he, sh, hr, hf⟩ := exec_forRange_literal_zero_var I tag literal hz
+    compared (.const N) 1 (fun i hi => ⟨N * (q + 1), h1, hi.trans_le hNN⟩)
+  let out : St P K C :=
+    { compared with store := s, cnt := compared.cnt + N • I.charge (.lit tag) }
+  refine ⟨out, ?_, sh, fun i => hr i i.isLt, ?_, rfl⟩
+  · change exec I (.seq (.ite tag .eq _ _ _ _) .skip) st = _
+    rw [exec_seq_skip, exec_ite, ec]
+    exact he
+  · intro p buf idx h
+    exact hf p buf idx (Or.inr h)
 
 /-- The actual initial norm kernel supplies its nonnegative scale, relative norm bound
 and strict zero test from the scalar contract. Empty input and empty dimension are included. -/
@@ -122,7 +146,7 @@ input into it. The norm word comes from the executed kernel; the initial-directi
 uses that computed scale and the mathematically normalized actual first column. -/
 theorem exec_rounded_initial_normalization (I : Interp P ι K (OpCount P ι)) (tag : P)
     (hsem : IsRelErrSem u dec (fun _ _ => True) I.sem) (hz : AddsZeroExactly dec I.sem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1)
+    (hc : IsUnitCharge I)
     (predot normed : St P K (OpCount P ι)) (N q : ℕ) (b : Fin N → ℝ)
     (h4 : predot.store.shape[4]? = some (tag, 1))
     (h1 : predot.store.shape[1]? = some (tag, N * (q + 1)))
@@ -231,7 +255,7 @@ proves every zero-step stored field and the normalization guarantees, including 
 zero requested budget and empty dimension. The stored scale is the computed input norm. -/
 theorem exec_rounded_initialize (I : Interp P ι K (OpCount P ι)) (tag : P)
     (hsem : IsRelErrSem u dec (fun _ _ => True) I.sem) (hz : AddsZeroExactly dec I.sem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1)
+    (hc : IsUnitCharge I)
     (st : St P K (OpCount P ι)) (N q : ℕ) (A : Matrix (Fin N) (Fin N) ℝ) (b : Fin N → ℝ)
     (hshape : st.store.shape = workspaceShape tag N q storedMatrix)
     (hb : ∀ i : Fin N, ∃ w, st.store.read tag 0 i = some w ∧ dec tag w = b i)

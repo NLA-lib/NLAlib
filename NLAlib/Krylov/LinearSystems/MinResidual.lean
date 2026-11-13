@@ -204,7 +204,9 @@ $\|\mathbf{b} - \mathbf{A}\mathbf{y}\|_{\mathbf{M}}^2 = \operatorname{Re}\bigl((
 \mathbf{A}\mathbf{y})^{\mathsf{H}}\mathbf{M}(\mathbf{b} - \mathbf{A}\mathbf{y})\bigr)$ over the
 column space of $\mathbf{X}$: with $\mathbf{M} = \mathbf{D}^{\mathsf{H}}\mathbf{D}$ and
 $\mathbf{B} = \mathbf{D}\mathbf{A}\mathbf{P}_{\mathbf{X}}$ the vector is the least-squares
-solution $\mathbf{B}^{+}\mathbf{D}\mathbf{b}$. [Greenbaum1997, §8.2]; locator to verify. -/
+solution $\mathbf{B}^{+}\mathbf{D}\mathbf{b}$. [Greenbaum1997, Chapter 8, Eq. (8.2), Algorithm 4P];
+the source treats the split preconditioned
+MINRES instance; the arbitrary weighted least-squares statement here is the generalisation. -/
 theorem _root_.Matrix.PosDef.isMinOn_galerkinInverse_conjTranspose_mul_mul_mulVec
     {M : Matrix m m 𝕜} (hM : M.PosDef) (A : Matrix m n 𝕜) (X : Matrix n p 𝕜)
     (b : m → 𝕜) :

@@ -26,28 +26,6 @@ open MeasureTheory ProbabilityTheory
 
 namespace NLAlib.Computation
 
-private lemma map_pair_eq_complexGaussian :
-    (Measure.pi fun _ : Fin 2 => gaussianReal 0 1).map
-      (fun v : Fin 2 → ℝ => (⟨v 0 / √2, v 1 / √2⟩ : ℂ)) = complexGaussian := by
-  have hA : Measurable (Complex.measurableEquivRealProd.symm ∘ Prod.map (· / √2) (· / √2)) :=
-    Complex.measurableEquivRealProd.symm.measurable.comp (by fun_prop)
-  have hfun : (fun v : Fin 2 → ℝ => (⟨v 0 / √2, v 1 / √2⟩ : ℂ)) =
-      (Complex.measurableEquivRealProd.symm ∘ Prod.map (· / √2) (· / √2)) ∘
-        MeasurableEquiv.finTwoArrow := rfl
-  have hd : (gaussianReal 0 1).map (· / √2) = gaussianReal 0 2⁻¹ := by
-    have hfn : (fun x : ℝ => x / √2) = fun x => (√2)⁻¹ * x :=
-      funext fun x => div_eq_inv_mul _ _
-    rw [hfn, gaussianReal_map_const_mul]
-    congr 1
-    · simp
-    · apply NNReal.eq
-      simp [mul_comm]
-  rw [hfun, ← Measure.map_map hA MeasurableEquiv.finTwoArrow.measurable,
-    (measurePreserving_finTwoArrow _).map_eq,
-    ← Measure.map_map Complex.measurableEquivRealProd.symm.measurable (by fun_prop),
-    ← Measure.map_prod_map _ _ (by fun_prop) (by fun_prop), hd]
-  rfl
-
 /-- A Gaussian tape draws a complex Gaussian matrix: if $\xi$ has the law of the tape
 `NLAlib.Computation.tapeLaw` under $\mu$, the $n \times n$ matrix with entry $(i, j)$ equal to
 $(\xi_{2(i + nj)} + i\,\xi_{2(i + nj) + 1})/\sqrt2$, from the Gaussian draws, has the law of a
@@ -91,7 +69,7 @@ theorem hasLaw_tapeComplexMatrix_of_hasLaw_tapeLaw {Ω : Type} {mΩ : Measurable
     refine congrArg Measure.pi (funext fun i => ?_)
     refine (Measure.pi_map_pi (f := fun _ (v : Fin 2 → ℝ) => (⟨v 0 / √2, v 1 / √2⟩ : ℂ))
       (fun _ => hpair.aemeasurable)).trans ?_
-    exact congrArg Measure.pi (funext fun _ => map_pair_eq_complexGaussian)
+    exact congrArg Measure.pi (funext fun _ => map_pi_fin_two_eq_complexGaussian)
   have hPm : Measurable fun x : Fin n → Fin n → Fin 2 → ℝ =>
       (Matrix.of fun i j => (⟨x i j 0 / √2, x i j 1 / √2⟩ : ℂ) : Matrix (Fin n) (Fin n) ℂ) :=
     measurable_pi_lambda _ fun i => measurable_pi_lambda _ fun j =>

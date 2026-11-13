@@ -58,7 +58,7 @@ section GemvSteps
 variable {I : Interp P ι 𝕜 (OpCount P ι)} {s₀ : Store P 𝕜} {p : P} {T A x y L : ℕ}
   {m n ao xo yo : IExp ℕ}
 
-private theorem exec_gemvStep (hsem : I.sem = exactSem) (hc : ∀ k, I.charge k = .single k 1)
+private theorem exec_gemvStep (hsem : I.sem = exactSem) (hc : IsUnitCharge I)
     {σ : St P 𝕜 (OpCount P ι)} {g : ℕ → Option 𝕜} {i j : ℕ} {a xj w : 𝕜}
     (h : Store.BlockFrame s₀ p T y yo.eval L σ.store g) (hT : s₀.shape[T]? = some (p, 1))
     (hyT : y ≠ T)
@@ -77,14 +77,14 @@ private theorem exec_gemvStep (hsem : I.sem = exactSem) (hc : ∀ k, I.charge k 
   refine ⟨s₂, ?_, h₁'.write_of_lt hi h₂⟩
   have rw₁ : s₁.read p y (yo.eval + i) = some w := by rw [h₁'.2.2 _ hi, hw]
   simp only [exec, Instr.run, Instr.kind, IExp.eval_add, IExp.eval_mul, IExp.eval_var,
-    IExp.eval_zero, hA, hx, hsem, hc, h₁, Option.bind_some, Option.map_some,
+    IExp.eval_zero, hA, hx, hsem, hc.charge_eq, h₁, Option.bind_some, Option.map_some,
     Store.read_of_write_eq_some h₁, rw₁, exactSem, h₂]
   simp only [add_assoc]
 
 private structure GemvCtx (I : Interp P ι 𝕜 (OpCount P ι)) (s₀ : Store P 𝕜) (p : P)
     (T A x y : ℕ) (m n ao xo yo : ℕ) (a : ℕ → ℕ → 𝕜) (xv : ℕ → 𝕜) : Prop where
   sem : I.sem = exactSem
-  charge : ∀ k, I.charge k = .single k 1
+  charge : IsUnitCharge I
   scratch : s₀.shape[T]? = some (p, 1)
   y_ne : 0 < m → y ≠ T
   y_shape : ∀ i < m, ∃ k, s₀.shape[y]? = some (p, k) ∧ yo + i < k
@@ -158,7 +158,7 @@ private theorem exec_gemvCols
   subst hσ
   simp only [succ_nsmul, add_assoc]
 
-private theorem exec_gemvZero (hsem : I.sem = exactSem) (hc : ∀ k, I.charge k = .single k 1)
+private theorem exec_gemvZero (hsem : I.sem = exactSem) (hc : IsUnitCharge I)
     {σ : St P 𝕜 (OpCount P ι)} {g : ℕ → Option 𝕜}
     (hy : ∀ i < m.eval, ∃ k, s₀.shape[y]? = some (p, k) ∧ yo.eval + i < k)
     (h : Store.BlockFrame s₀ p T y yo.eval m.eval σ.store g) :
@@ -177,7 +177,8 @@ private theorem exec_gemvZero (hsem : I.sem = exactSem) (hc : ∀ k, I.charge k 
   obtain ⟨s'', hw⟩ := hI.exists_write_eq_some 0 hysh hylt
   refine ⟨{ σ' with store := s'', cnt := σ'.cnt + .single (.lit p) 1 }, ?_, s'', _, ?_,
     hI.write_of_lt hi' hw, fun i hi => ?_⟩
-  · simp only [exec, Instr.run, Instr.kind, IExp.eval_add, IExp.eval_var, hsem, hc, exactSem,
+  · simp only [exec, Instr.run, Instr.kind, IExp.eval_add, IExp.eval_var, hsem, hc.charge_eq,
+      exactSem,
       Rat.cast_zero, Option.bind_some, hw, Option.map_some]
   · subst hσ
     simp only [succ_nsmul, add_assoc]
@@ -197,7 +198,7 @@ variable {I : Interp P ι 𝕜 (OpCount P ι)} {s₀ : Store P 𝕜} {p : P} {T 
 private structure GerCtx (I : Interp P ι 𝕜 (OpCount P ι)) (s₀ : Store P 𝕜) (p : P)
     (T A x y : ℕ) (a : Cell ℕ ℕ) (m n ao xo yo : ℕ) (av : 𝕜) (xv yv : ℕ → 𝕜) : Prop where
   sem : I.sem = exactSem
-  charge : ∀ k, I.charge k = .single k 1
+  charge : IsUnitCharge I
   scratch : s₀.shape[T]? = some (p, 2)
   A_ne : 0 < m * n → A ≠ T
   A_shape : ∀ k < m * n, ∃ l, s₀.shape[A]? = some (p, l) ∧ ao + k < l
@@ -235,7 +236,7 @@ private theorem exec_gerStep
       rw [Nat.add_assoc, h₁'.2.2 _ hk, hw]
     rw [← Nat.add_assoc] at h₂
     simp only [exec, Instr.run, Instr.kind, IExp.eval_add, IExp.eval_mul, IExp.eval_var,
-      IExp.eval_zero, IExp.eval_one, rx, ht, hC.sem, hC.charge, h₁, Option.bind_some,
+      IExp.eval_zero, IExp.eval_one, rx, ht, hC.sem, hC.charge.charge_eq, h₁, Option.bind_some,
       Option.map_some, Store.read_of_write_eq_some h₁, rA, exactSem, h₂]
     simp only [add_assoc]
   · rw [Store.read_of_write_eq_some_of_ne h₂ (Or.inl (Ne.symm hAT)),
@@ -318,7 +319,7 @@ private theorem exec_gerCol
   · rw [exec_seq_instr_un I (s := s₁) ry (by rw [hC.sem]; rfl) h₁,
       exec_seq_instr_bin I (s := s₂) ra (Store.read_of_write_eq_some h₁) (by rw [hC.sem]; rfl)
         h₂, exec_seq_skip]
-    simp only [hC.charge]
+    simp only [hC.charge.charge_eq]
     exact hrun
   · rw [hσ'']
     simp only [add_assoc]
@@ -366,7 +367,7 @@ section Specs
 
 variable {𝕜 : Type} [RCLike 𝕜] {P ι : Type} [DecidableEq P]
   (I : Interp P ι 𝕜 (OpCount P ι)) (hI : I.sem = exactSem)
-  (hc : ∀ k, I.charge k = Finsupp.single k 1) (p : P) (st : St P 𝕜 (OpCount P ι))
+  (hc : IsUnitCharge I) (p : P) (st : St P 𝕜 (OpCount P ι))
 
 include hI hc
 

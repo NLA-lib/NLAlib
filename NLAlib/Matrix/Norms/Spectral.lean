@@ -118,6 +118,7 @@ theorem abs_specNorm_sub_specNorm_le (A B : Matrix m n 𝕜) :
 open scoped Matrix.Norms.L2Operator in
 /-- The spectral norm is absolutely homogeneous:
 $\|c\mathbf{A}\|_2 = \lvert c \rvert \|\mathbf{A}\|_2$. -/
+@[simp]
 theorem specNorm_smul (c : 𝕜) (A : Matrix m n 𝕜) : specNorm (c • A) = ‖c‖ * specNorm A := by
   classical
   rw [specNorm_eq_norm, specNorm_eq_norm, norm_smul]

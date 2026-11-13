@@ -25,6 +25,9 @@ for sums of independent sub-exponential variables.
   `NLAlib.HasSubexponentialMGF.measureReal_abs_ge_le`.
 * `NLAlib.HasSubexponentialMGF.integral_abs_rpow_le`: the absolute moments, for every $p > 0$.
 * `NLAlib.HasSubexponentialMGF.measureReal_sum_ge_le_of_iIndepFun`: Bernstein's inequality.
+* `NLAlib.HasSubexponentialMGF.measureReal_ge_le_of_scale_eq_zero`,
+  `NLAlib.HasSubexponentialMGF.measureReal_sum_ge_le_of_iIndepFun_of_scale_eq_zero`: the
+  Gaussian exponent when the scale vanishes, including independent finite sums.
 
 ## References
 
@@ -96,6 +99,14 @@ theorem measureReal_ge_le_of_mul_le (h : HasSubexponentialMGF X v b μ) {t : ℝ
     congr 1
     field_simp
     ring
+
+/-- A scale-zero sub-exponential variable has the Gaussian upper tail for $t \ge 0$:
+$\mathbb{P}[X \ge t] \le \exp(-t^2/(2v))$. This uses the full MGF window available at
+$b = 0$, rather than the vacuous division-by-zero branch of `measureReal_ge_le`.
+When $v = 0$ the displayed bound retains the total-division value $1$. -/
+theorem measureReal_ge_le_of_scale_eq_zero (h : HasSubexponentialMGF X v 0 μ) {t : ℝ}
+    (ht : 0 ≤ t) : μ.real {ω | t ≤ X ω} ≤ rexp (-t ^ 2 / (2 * v)) :=
+  h.measureReal_ge_le_of_mul_le ht (by simp)
 
 /-- The exponential regime of the sub-exponential tail: for $v \le b t$,
 $\mu(X \ge t) \le e^{-t / (2b)}$. No sign condition on $t$ is needed: $v \le b t$ forces
@@ -182,6 +193,19 @@ theorem measureReal_sum_ge_le_of_iIndepFun {ι : Type*} {X : ι → Ω → ℝ} 
     μ.real {ω | t ≤ ∑ i ∈ s, X i ω} ≤
       rexp (-min (t ^ 2 / (2 * ∑ i ∈ s, v i)) (t / (2 * s.sup b))) := by
   simpa only [NNReal.coe_sum] using (sum_of_iIndepFun h_indep h).measureReal_ge_le ht
+
+/-- Independent scale-zero sub-exponential summands retain the Gaussian Bernstein regime:
+for $t \ge 0$, the upper tail of their finite sum is at most
+$\exp(-t^2/(2\sum_{i\in s}v_i))$. Unlike the generic minimum formula, the bound stays
+informative when every scale parameter is zero and the variance sum is positive. -/
+theorem measureReal_sum_ge_le_of_iIndepFun_of_scale_eq_zero {ι : Type*} {X : ι → Ω → ℝ}
+    (h_indep : iIndepFun X μ) {v : ι → ℝ≥0} {s : Finset ι}
+    (h : ∀ i ∈ s, HasSubexponentialMGF (X i) (v i) 0 μ) {t : ℝ} (ht : 0 ≤ t) :
+    μ.real {ω | t ≤ ∑ i ∈ s, X i ω} ≤ rexp (-t ^ 2 / (2 * ∑ i ∈ s, v i)) := by
+  have hsum : HasSubexponentialMGF (fun ω => ∑ i ∈ s, X i ω) (∑ i ∈ s, v i) 0 μ := by
+    have hb : s.sup (fun _ : ι => (0 : ℝ≥0)) = 0 := Finset.sup_bot s
+    simpa only [hb] using sum_of_iIndepFun h_indep h
+  simpa only [NNReal.coe_sum] using hsum.measureReal_ge_le_of_scale_eq_zero ht
 
 end HasSubexponentialMGF
 

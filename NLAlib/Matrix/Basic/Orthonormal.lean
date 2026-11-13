@@ -91,6 +91,7 @@ theorem hasOrthonormalCols_iff_mem_unitaryGroup [Fintype n] {Q : Matrix n n 𝕜
 /-! ### Constructions -/
 
 /-- The identity matrix has orthonormal columns. -/
+@[simp]
 theorem hasOrthonormalCols_one [Fintype n] : HasOrthonormalCols (1 : Matrix n n 𝕜) := by
   rw [HasOrthonormalCols, Matrix.conjTranspose_one, Matrix.one_mul]
 

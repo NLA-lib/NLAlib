@@ -249,8 +249,9 @@ $$\mathbb{E} \|\mathbf{A}^{\mathsf{H}} \mathbf{S}^{\mathsf{H}} \mathbf{S} \mathb
 \|\mathbf{A}^{\mathsf{H}} \mathbf{B}\|_{\mathsf{F}}^2 \Bigr)$$
 for $k$ nonempty, when every zero weight sits on a row where $\mathbf{A}$ or $\mathbf{B}$ vanishes
 (there the term is
-$0/0 = 0$). [MartinssonTropp2020, §7.1]
-(the estimator); Drineas, Kannan and Mahoney 2006, Lemma 4 (the identity, citation to confirm).
+$0/0 = 0$). [MartinssonTropp2020, §7.1] (the estimator);
+[DrineasKannanMahoney2006, Lemma 4, equation (4)] (the identity), there for real matrices and
+at most as many samples as rows; here over $\Bbbk$ and every positive sample count.
 Result: amm-sampling -/
 theorem integral_frobNorm_conjTranspose_mul_sub_sq_of_hasLaw_samplingSketch [Nonempty k]
     (hS : HasLaw S (samplingSketch k p) μ) (hp : ∑ i, p i = 1)
@@ -305,7 +306,7 @@ Zero weights are allowed. At the optimal weights $p_i \propto \|\mathbf{A}_i\| \
 where $L = \sum_i \|\mathbf{A}_i\| \, \|\mathbf{B}_i\|$, this is
 $\|\mathbf{A}\|_{\mathsf{F}}^2 \|\mathbf{B}\|_{\mathsf{F}}^2 / \lvert k \rvert$ by
 Cauchy–Schwarz, and $\beta$-approximations of them have $L = W/\beta$, with $W$ that sum.
-[MartinssonTropp2020, §7.1]; Drineas, Kannan and Mahoney 2006, Lemma 4 (citation to confirm).
+[MartinssonTropp2020, §7.1]; [DrineasKannanMahoney2006, Theorem 1, equation (8)].
 There the bound is
 $\|\mathbf{A}\|_{\mathsf{F}}^2 \|\mathbf{B}\|_{\mathsf{F}}^2 / (\beta \lvert k \rvert)$.
 Result: amm-sampling -/
@@ -654,8 +655,7 @@ $$\mathbb{P}\bigl[t \le \|\mathbf{A}^{\mathsf{H}}\mathbf{S}^{\mathsf{H}}\mathbf{
 2\sqrt{ab}\,t/3}\Bigr)\,.$$
 Rectangular matrix Bernstein (`NLAlib.measureReal_specNorm_sum_ge_le_bernstein`) for the
 centred atoms. At $p_i \propto \|\mathbf{A}_i\|^2 + \|\mathbf{B}_i\|^2$ this is the stable-rank
-form. [MartinssonTropp2020, §7.3, Theorem 7.2]; [Tropp2015, §6.4] (locator of the corollary to
-check).
+form. [MartinssonTropp2020, §7.3, Theorem 7.2]; [Tropp2015, Corollary 6.2.1].
 Result: amm-sampling-spectral -/
 theorem measureReal_specNorm_conjTranspose_mul_sub_ge_le_of_hasLaw_samplingSketch [Nonempty k]
     [Nonempty r] (hS : HasLaw S (samplingSketch k p) μ) (hp : ∑ i, p i = 1)

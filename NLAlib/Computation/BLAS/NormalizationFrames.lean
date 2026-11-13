@@ -55,7 +55,7 @@ the provenance theorem below derives it from an actual preceding nrm2 execution.
 returned words, complete destination-window frame and normalization errors are conclusions. -/
 theorem IsRelErrSem.exec_copyv_rscl (I : Interp P ι K (OpCount P ι)) (p : P)
     (h : IsRelErrSem u dec (fun _ _ => True) I.sem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (st : St P K (OpCount P ι))
+    (hc : IsUnitCharge I) (st : St P K (OpCount P ι))
     (a : Cell ℕ ℕ) (x y : ℕ) (xo yo n : IExp ℕ) (av : ℝ) (xs : ℕ → ℝ)
     (hn : (n.eval + 1 : ℕ) * u p < 1) (hg : roundingFactor (n.eval + 1) (u p) < 1)
     (hav : 0 < av)
@@ -124,7 +124,7 @@ no desired norm error, near-unit bound or normalization residual is assumed. -/
 theorem IsRelErrSem.exec_copyv_rscl_of_nrm2_execution
     (I : Interp P ι K (OpCount P ι)) (p : P)
     (h : IsRelErrSem u dec (fun _ _ => True) I.sem) (hz : AddsZeroExactly dec I.sem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1)
+    (hc : IsUnitCharge I)
     (predot normed ready : St P K (OpCount P ι))
     (a : Cell ℕ ℕ) (x y : ℕ) (xo yo n : IExp ℕ) (xs : ℕ → ℝ)
     (hn : (n.eval + 1 : ℕ) * u p < 1) (hg : roundingFactor (n.eval + 1) (u p) < 1)
@@ -213,7 +213,7 @@ the zero branch. No normalization error or nonbreakdown fact is assumed. -/
 theorem IsRelErrSem.exec_guarded_copyv_rscl_of_nrm2_execution
     (I : Interp P ι K (OpCount P ι)) (p : P)
     (h : IsRelErrSem u dec (fun _ _ => True) I.sem) (hz : AddsZeroExactly dec I.sem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1)
+    (hc : IsUnitCharge I)
     (predot normed ready : St P K (OpCount P ι))
     (a zeroCell : Cell ℕ ℕ) (x y : ℕ) (xo yo n : IExp ℕ) (xs : ℕ → ℝ)
     (hn : (n.eval + 1 : ℕ) * u p < 1) (hg : roundingFactor (n.eval + 1) (u p) < 1)

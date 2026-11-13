@@ -31,7 +31,7 @@ variable {Ω : Type*} {mΩ : MeasurableSpace Ω} {μ : Measure Ω}
 
 /-- **Jensen's inequality for the square**: under a probability measure, a real function with a
 finite second moment satisfies $\mathbb{E} f \le \sqrt{\mathbb{E} f^2}$. From the nonnegativity of
-the variance, `ProbabilityTheory.variance_eq_sub`. [Vershynin2018, §1.2] (locator to check). -/
+the variance, `ProbabilityTheory.variance_eq_sub`. [Vershynin2018, §1.2]. -/
 theorem integral_le_sqrt_integral_sq [IsProbabilityMeasure μ] {f : Ω → ℝ} (hf : MemLp f 2 μ) :
     ∫ ω, f ω ∂μ ≤ √(∫ ω, f ω ^ 2 ∂μ) := by
   have hvar := variance_nonneg f μ

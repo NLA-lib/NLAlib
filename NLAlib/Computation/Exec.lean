@@ -226,6 +226,19 @@ structure Interp (P ι K C : Type) where
   output blocks. -/
   kshape : ι → List ℕ → List ℕ × List ℕ := fun _ _ => ([], [])
 
+/-- An interpretation charges one occurrence of each operation kind to that kind's own
+counter. Scalar semantics, word representation and oracle behavior are independent of this
+accounting interface. It is exactly the pointwise equation used by the standard charge.
+No printed source. -/
+def IsUnitCharge {P ι K : Type} (I : Interp P ι K (OpCount P ι)) : Prop :=
+  ∀ k, I.charge k = Finsupp.single k 1
+
+/-- The unit-charge interface gives the function equality used to instantiate a static count
+summary. No assumption about scalar exactness or execution success is needed. -/
+theorem IsUnitCharge.charge_eq {P ι K : Type} {I : Interp P ι K (OpCount P ι)}
+    (h : IsUnitCharge I) : I.charge = fun k => Finsupp.single k 1 :=
+  funext h
+
 section Exec
 
 variable {P ι K C : Type} [DecidableEq P]
@@ -891,7 +904,7 @@ private theorem exec_bindIdx_eq_of_cnt_load_le (O : ι → ℕ → Array K → O
 
 /-- The oracle is used only by oracle calls: under the standard charge, a run that makes no
 oracle call (its load counts do not grow) is the same run under any other oracle. -/
-theorem exec_eq_of_exec_eq_some_of_cnt_load_le (hc : ∀ k, I.charge k = Finsupp.single k 1)
+theorem exec_eq_of_exec_eq_some_of_cnt_load_le (hc : IsUnitCharge I)
     (O : ι → ℕ → Array K → Option (Array K)) :
     ∀ (s : Stmt P ι ℕ ℕ) {st st' : St P K (OpCount P ι)}, exec I s st = some st' →
       (∀ p o, st'.cnt (.load p o) ≤ st.cnt (.load p o)) →
@@ -912,7 +925,7 @@ theorem exec_eq_of_exec_eq_some_of_cnt_load_le (hc : ∀ k, I.charge k = Finsupp
     simp only [Option.bind_eq_some_iff, Option.map_eq_some_iff] at h
     obtain ⟨_, -, _, -, s, -, rfl⟩ := h
     have := hl p o
-    simp [hc] at this
+    simp [hc.charge_eq] at this
   | .rom p dst i, st, st', h, _ => h
   | .alloc p len body, st, st', h, hl => by
     rw [exec_alloc] at h ⊢

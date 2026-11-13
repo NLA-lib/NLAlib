@@ -3,6 +3,8 @@ on:
   # every branch, so that an unapproved registry change fails where it is made (F12, Q3)
   push:
   pull_request:
+permissions:
+  contents: read
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -11,9 +13,9 @@ jobs:
     name: Build, lint, audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Build NLAlib with the Mathlib cache; warnings are fatal
-        uses: leanprover/lean-action@v1
+        uses: leanprover/lean-action@ba3fdfe5c4476c925da13bf11a005ddb47e47aee # v1
         with:
           use-mathlib-cache: true
           build-args: "--wfail NLAlib"
@@ -41,6 +43,8 @@ jobs:
         run: |
           lake build NLAlibTools
           lake exe mk_all --lib NLAlibTools --check
+      - name: Compile standalone polar proposals
+        run: lake env python3 proposals/polar/check.py
       - name: Build outputs are current (every hash recomputed)
         run: lake build --no-build --rehash NLAlib NLAlibTools
       - name: Kernel replay (every constant of every lean_lib re-checked by the kernel)
@@ -51,15 +55,17 @@ jobs:
         run: python3 scripts/check_refs.py
       - name: Generated rule files are current (docs/rules/rules.toml)
         run: python3 scripts/gen_rules_md.py --check
-      - name: Documentation metadata regressions
-        run: python3 -m unittest discover -s scripts -p 'test_*.py'
       - name: Named bounds show their current values
         run: python3 scripts/check_constants.py
       - name: Extract the declaration data (about a minute on the built library)
         run: bash scripts/explore_data.sh "$RUNNER_TEMP/explore-data.json"
+      - name: Documentation metadata and scoped theorem signatures
+        run: |
+          EXPLORE_SIGNATURE_DATA="$RUNNER_TEMP/explore-data.json" \
+            python3 -m unittest discover -s scripts -p 'test_*.py'
       - name: Contribution rules by id, names (N1-N18) included, ratcheted (scripts/check_rules.py)
         run: python3 scripts/check_rules.py "$RUNNER_TEMP/explore-data.json"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
       - name: Docstring LaTeX renders
@@ -72,11 +78,11 @@ jobs:
     env:
       PYTHONUTF8: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.11"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
       - name: Documentation metadata regressions

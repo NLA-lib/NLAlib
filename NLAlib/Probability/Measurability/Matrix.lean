@@ -24,7 +24,9 @@ public import NLAlib.Matrix.Factorizations.SketchedLowRank
 
 For random matrices, the quantities of the Matrix layer must be measurable functions of the
 matrix. This file belongs to the Probability layer: the Matrix layer itself has no measure theory.
-Norms, singular values and eigenvalues are continuous, hence measurable. The rank, the
+Norms and singular values are continuous, hence measurable. Sorted eigenvalues are continuous
+on the Hermitian locus and extended by zero elsewhere, so are Borel measurable on all matrices.
+The rank, the
 pseudoinverse, the range projector, the pseudo-condition number, the inverse Gram matrix, the
 randomized SVD, (generalized) Nyström, the chosen SVD, the truncated SVD, the early-truncated
 outputs, the polar factor and the Gram–Schmidt factors are not continuous but are Borel
@@ -90,25 +92,30 @@ private theorem measurable_of_continuousOn_fiber {X Y : Type*} [TopologicalSpace
   exact hu.measurableSet.inter (hr (measurableSet_singleton k))
 
 /-- The spectral norm $\mathbf{A} \mapsto \|\mathbf{A}\|_2$ is measurable. -/
+@[fun_prop]
 theorem measurable_specNorm : Measurable (specNorm : Matrix m n 𝕜 → ℝ) := by
   exact continuous_specNorm.measurable
 
 /-- The Frobenius norm $\mathbf{A} \mapsto \|\mathbf{A}\|_{\mathsf{F}}$ is measurable. -/
+@[fun_prop]
 theorem measurable_frobNorm : Measurable (frobNorm : Matrix m n 𝕜 → ℝ) := by
   exact continuous_frobNorm.measurable
 
 /-- Every unitarily invariant norm $\mathbf{A} \mapsto \|\mathbf{A}\|_{\Phi}$ is measurable. -/
+@[fun_prop]
 theorem SymmetricGauge.measurable_matrixNorm (Φ : SymmetricGauge) :
     Measurable (Φ.matrixNorm : Matrix m n 𝕜 → ℝ) := by
   exact Φ.continuous_matrixNorm.measurable
 
 /-- Each singular value $\mathbf{A} \mapsto \sigma_k(\mathbf{A})$ is measurable. -/
+@[fun_prop]
 theorem measurable_singularValues (k : ℕ) :
     Measurable fun A : Matrix m n 𝕜 => singularValues A k := by
   exact (continuous_singularValues k).measurable
 
 /-- Each sorted eigenvalue $\mathbf{A} \mapsto \lambda_k(\mathbf{A})$ is measurable (it is
 continuous on the closed set of Hermitian matrices and zero elsewhere). -/
+@[fun_prop]
 theorem measurable_eigenvalue (k : ℕ) :
     Measurable fun A : Matrix n n 𝕜 => eigenvalue A k := by
   have hs : MeasurableSet {A : Matrix n n 𝕜 | A.IsHermitian} :=
@@ -125,6 +132,7 @@ theorem measurable_eigenvalue (k : ℕ) :
 omit [Fintype m] in
 /-- The quadratic form $\mathbf{x} \mapsto \mathbf{x}^{\mathsf{H}}\mathbf{A}\mathbf{x}$ of a
 fixed square matrix is a measurable function of the vector (it is continuous). -/
+@[fun_prop]
 theorem measurable_quadForm (A : Matrix n n 𝕜) : Measurable fun x : n → 𝕜 => quadForm A x := by
   have h : Continuous fun x : n → 𝕜 => quadForm A x := by
     unfold quadForm
@@ -135,6 +143,7 @@ omit [Fintype m] in
 /-- The Rayleigh quotient
 $\mathbf{x} \mapsto \operatorname{Re}(\mathbf{x}^{\mathsf{H}}\mathbf{A}\mathbf{x}) /
 \|\mathbf{x}\|^2$ of a fixed square matrix is a measurable function of the vector. -/
+@[fun_prop]
 theorem measurable_rayleighQuotient (A : Matrix n n 𝕜) :
     Measurable fun x : n → 𝕜 => rayleighQuotient A x := by
   have hn : Continuous fun x : n → 𝕜 => ‖WithLp.toLp 2 x‖ ^ 2 :=
@@ -164,6 +173,7 @@ theorem measurableSet_setOf_posDef [Finite n] :
 
 omit [Fintype m] in
 /-- The rank $\mathbf{A} \mapsto \operatorname{rank} \mathbf{A}$ is measurable. -/
+@[fun_prop]
 theorem measurable_rank [Finite m] : Measurable fun A : Matrix m n 𝕜 => A.rank := by
   refine measurable_to_countable' fun r => ?_
   have h : (fun A : Matrix m n 𝕜 => A.rank) ⁻¹' {r} =
@@ -175,12 +185,13 @@ theorem measurable_rank [Finite m] : Measurable fun A : Matrix m n 𝕜 => A.ran
   exact (isClosed_setOf_rank_le r).measurableSet.inter (isOpen_setOf_le_rank r).measurableSet
 
 /-- The pseudoinverse is measurable: $\mathbf{A} \mapsto \mathbf{A}^{+}$. -/
-theorem measurable_pinv :
+@[fun_prop] theorem measurable_pinv :
     Measurable (pinv : Matrix m n 𝕜 → Matrix n m 𝕜) := by
   exact measurable_of_continuousOn_fiber measurable_rank continuousOn_pinv_setOf_rank_eq
 
 /-- The orthogonal projector onto the range, $\mathbf{A} \mapsto \mathbf{P}_{\mathbf{A}}$, is
 measurable. -/
+@[fun_prop]
 theorem measurable_rangeProjector :
     Measurable (rangeProjector : Matrix m n 𝕜 → Matrix m m 𝕜) := by
   have h : (rangeProjector : Matrix m n 𝕜 → Matrix m m 𝕜) = fun A => A * pinv A :=
@@ -202,9 +213,8 @@ theorem integrable_frobNorm_one_sub_rangeProjector_mul_sq [IsFiniteMeasure μ] [
     {k p : Type*} [Fintype k] [Fintype p] (B : Matrix m n 𝕜) (M : Matrix m p 𝕜)
     {Y : Ω → Matrix n k 𝕜} (hY : AEMeasurable Y μ) :
     Integrable (fun ω => frobNorm ((1 - rangeProjector (B * Y ω)) * M) ^ 2) μ := by
-  have hm : Measurable fun Z : Matrix n k 𝕜 => frobNorm ((1 - rangeProjector (B * Z)) * M) ^ 2 :=
-    (measurable_frobNorm.comp ((measurable_const.sub (measurable_rangeProjector.comp
-      (measurable_const.matrix_mul measurable_id))).matrix_mul measurable_const)).pow_const 2
+  have hm : Measurable fun Z : Matrix n k 𝕜 => frobNorm ((1 - rangeProjector (B * Z)) * M) ^ 2 := by
+    fun_prop
   exact Integrable.of_bound (hm.comp_aemeasurable hY).aestronglyMeasurable (frobNorm M ^ 2)
     (Filter.Eventually.of_forall fun ω => by
       rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _)]
@@ -218,9 +228,8 @@ theorem integrable_specNorm_one_sub_rangeProjector_mul_sq [IsFiniteMeasure μ] [
     {k p : Type*} [Fintype k] [Fintype p] (B : Matrix m n 𝕜) (M : Matrix m p 𝕜)
     {Y : Ω → Matrix n k 𝕜} (hY : AEMeasurable Y μ) :
     Integrable (fun ω => specNorm ((1 - rangeProjector (B * Y ω)) * M) ^ 2) μ := by
-  have hm : Measurable fun Z : Matrix n k 𝕜 => specNorm ((1 - rangeProjector (B * Z)) * M) ^ 2 :=
-    (measurable_specNorm.comp ((measurable_const.sub (measurable_rangeProjector.comp
-      (measurable_const.matrix_mul measurable_id))).matrix_mul measurable_const)).pow_const 2
+  have hm : Measurable fun Z : Matrix n k 𝕜 => specNorm ((1 - rangeProjector (B * Z)) * M) ^ 2 := by
+    fun_prop
   exact Integrable.of_bound (hm.comp_aemeasurable hY).aestronglyMeasurable (specNorm M ^ 2)
     (Filter.Eventually.of_forall fun ω => by
       rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _)]
@@ -230,18 +239,21 @@ end Integrable
 
 /-- The pseudo-condition number $\mathbf{A} \mapsto \|\mathbf{A}\|_2 \|\mathbf{A}^{+}\|_2$ is
 measurable. -/
+@[fun_prop]
 theorem measurable_pseudoConditionNumber :
     Measurable (pseudoConditionNumber : Matrix m n 𝕜 → ℝ) := by
   exact measurable_specNorm.mul (measurable_specNorm.comp measurable_pinv)
 
 /-- The inverse Gram matrix $\mathbf{A} \mapsto (\mathbf{A}\mathbf{A}^{\mathsf{H}})^{-1}$ is
 measurable (Lean's inverse, $\mathbf{0}$ where $\mathbf{A}\mathbf{A}^{\mathsf{H}}$ is singular). -/
+@[fun_prop]
 theorem measurable_mul_conjTranspose_inv [DecidableEq m] :
     Measurable fun A : Matrix m n 𝕜 => (A * Aᴴ)⁻¹ :=
   (measurable_id.matrix_mul (continuous_id.matrix_conjTranspose).measurable).matrix_inv
 
 /-- The randomized SVD $\mathbf{\Omega} \mapsto \mathsf{rsvd}(\mathbf{A}, \mathbf{\Omega})$
 is a measurable function of the test matrix. -/
+@[fun_prop]
 theorem measurable_rsvd {l : Type*} [Fintype l] (A : Matrix m n 𝕜) :
     Measurable fun Ω : Matrix n l 𝕜 => rsvd A Ω :=
   (measurable_rangeProjector.comp (measurable_const.matrix_mul measurable_id)).matrix_mul
@@ -249,6 +261,7 @@ theorem measurable_rsvd {l : Type*} [Fintype l] (A : Matrix m n 𝕜) :
 
 /-- Generalized Nyström $(\mathbf{\Omega}, \mathbf{\Psi}) \mapsto \mathsf{gn}(\mathbf{A},
 \mathbf{\Omega}, \mathbf{\Psi})$ is a measurable function of the two test matrices. -/
+@[fun_prop]
 theorem measurable_generalizedNystrom {l p : Type*} [Fintype l] [Fintype p] (A : Matrix m n 𝕜) :
     Measurable fun ΩΨ : Matrix n l 𝕜 × Matrix m p 𝕜 => generalizedNystrom A ΩΨ.1 ΩΨ.2 := by
   have hΨ : Measurable fun ΩΨ : Matrix n l 𝕜 × Matrix m p 𝕜 => ΩΨ.2ᴴ :=
@@ -260,6 +273,7 @@ theorem measurable_generalizedNystrom {l p : Type*} [Fintype l] [Fintype p] (A :
 
 /-- Nyström $\mathbf{\Omega} \mapsto \mathsf{nystrom}(\mathbf{H}, \mathbf{\Omega})$ is a measurable
 function of the test matrix. -/
+@[fun_prop]
 theorem measurable_nystrom {l : Type*} [Fintype l] (H : Matrix n n 𝕜) :
     Measurable fun Ω : Matrix n l 𝕜 => nystrom H Ω := by
   have h := (measurable_generalizedNystrom (l := l) (p := l) H).comp
@@ -282,11 +296,13 @@ private theorem measurable_svdU_svdV :
 
 /-- The left factor of the chosen SVD, $\mathbf{A} \mapsto \mathsf{svdU}(\mathbf{A})$, is Borel
 measurable (it is not continuous: it jumps where singular values meet). -/
+@[fun_prop]
 theorem measurable_svdU : Measurable (svdU : Matrix m n 𝕜 → _) :=
   measurable_fst.comp measurable_svdU_svdV
 
 /-- The right factor of the chosen SVD, $\mathbf{A} \mapsto \mathsf{svdV}(\mathbf{A})$, is Borel
 measurable. -/
+@[fun_prop]
 theorem measurable_svdV : Measurable (svdV : Matrix m n 𝕜 → _) :=
   measurable_snd.comp measurable_svdU_svdV
 
@@ -295,6 +311,7 @@ theorem measurable_svdV : Measurable (svdV : Matrix m n 𝕜 → _) :=
 $\sigma_{k-1}(\mathbf{A}) = \sigma_k(\mathbf{A})$). So the expectation of any error of a truncated
 random output is defined, and every theorem stated for a measurable choice of best
 approximations applies at `NLAlib.truncatedSVD`. -/
+@[fun_prop]
 theorem measurable_truncatedSVD (k : ℕ) :
     Measurable fun A : Matrix m n 𝕜 => truncatedSVD A k := by
   have hD : Continuous fun A : Matrix m n 𝕜 =>
@@ -315,6 +332,7 @@ variable {l p : Type*} [Fintype l] [Fintype p]
 /-- The early-truncated randomized SVD
 $\mathbf{\Omega} \mapsto \mathsf{earlyTruncatedRSVD}(\mathbf{A}, \mathbf{\Omega}, k)$ is a
 measurable function of the test matrix. -/
+@[fun_prop]
 theorem measurable_earlyTruncatedRSVD (A : Matrix m n 𝕜) (k : ℕ) :
     Measurable fun Ω : Matrix n l 𝕜 => earlyTruncatedRSVD A Ω k :=
   (measurable_rangeProjector.comp
@@ -324,6 +342,7 @@ theorem measurable_earlyTruncatedRSVD (A : Matrix m n 𝕜) (k : ℕ) :
 /-- Early-truncated generalized Nyström
 $(\mathbf{\Omega}, \mathbf{\Psi}) \mapsto \mathsf{earlyTruncatedGN}(\mathbf{A}, \mathbf{\Omega},
 \mathbf{\Psi}, k)$ is a measurable function of the two test matrices. -/
+@[fun_prop]
 theorem measurable_earlyTruncatedGeneralizedNystrom (A : Matrix m n 𝕜) (k : ℕ) :
     Measurable fun ΩΨ : Matrix n l 𝕜 × Matrix m p 𝕜 =>
       earlyTruncatedGeneralizedNystrom A ΩΨ.1 ΩΨ.2 k := by
@@ -370,12 +389,14 @@ private theorem measurable_gramSchmidt [Finite n] [LinearOrder n] [LocallyFinite
       (RCLike.continuous_ofReal.measurable.comp (hi'.norm.pow_const 2))).smul hi'
 
 /-- The polar factor is measurable. -/
+@[fun_prop]
 theorem measurable_polarFactor [DecidableEq n] :
     Measurable (polarFactor : Matrix m n 𝕜 → Matrix m n 𝕜) := by
   have h := (continuous_sqrt_gram (𝕜 := 𝕜) (m := m) (n := n)).measurable
   exact measurable_id.matrix_mul (measurable_pinv.comp h)
 
 /-- The Gram–Schmidt orthonormalisation is measurable. -/
+@[fun_prop]
 theorem measurable_gramSchmidtQ [LinearOrder n] [LocallyFiniteOrderBot n] :
     Measurable (gramSchmidtQ : Matrix m n 𝕜 → Matrix m n 𝕜) := by
   refine Matrix.measurable_iff.2 fun i j => ?_

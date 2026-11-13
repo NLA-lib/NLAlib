@@ -86,7 +86,9 @@ theorem binaryFloatRound_zero (fmt : Float.Model.Format) {r : ℝ → ℤ}
     congrArg (fun m : ℤ => (m : ℝ) * (2 : ℝ) ^
       (fmt.targetExponent (Int.log 2 |(0 : ℝ)| + 1))) hz
 
-private theorem local_error (fmt : Float.Model.Format) {r : ℝ → ℤ}
+/-- Binary rounding differs from its input by at most half the spacing at the selected
+exponent, including the subnormal range and any nearest tie policy. [Higham2002, §2.2]. -/
+theorem abs_sub_binaryFloatRound_le_half_mul_zpow (fmt : Float.Model.Format) {r : ℝ → ℤ}
     (hr : ∀ x, AbsRelErr 0 (1 / 2) x (r x : ℝ)) (x : ℝ) :
     |x - binaryFloatRound fmt r x| ≤
       (1 / 2 : ℝ) * 2 ^ fmt.targetExponent (Int.log 2 |x| + 1) := by
@@ -114,7 +116,8 @@ theorem absRelErr_binaryFloatRound (fmt : Float.Model.Format) {r : ℝ → ℤ}
     positivity
   set k := Int.log 2 |x|
   set e := fmt.targetExponent (k + 1)
-  have herr : |x - binaryFloatRound fmt r x| ≤ (1 / 2 : ℝ) * 2 ^ e := local_error fmt hr x
+  have herr : |x - binaryFloatRound fmt r x| ≤ (1 / 2 : ℝ) * 2 ^ e :=
+    abs_sub_binaryFloatRound_le_half_mul_zpow fmt hr x
   have hk : (2 : ℝ) ^ k ≤ |x| := by
     exact_mod_cast Int.zpow_log_le_self (b := 2) one_lt_two (abs_pos.mpr hx)
   by_cases hnormal : fmt.minExponent ≤ k + 1 - fmt.mantissaBits
@@ -147,7 +150,7 @@ theorem relErr_binaryFloatRound_of_minExponent_le (fmt : Float.Model.Format) {r 
   rw [add_zero]
   have hk : (2 : ℝ) ^ Int.log 2 |x| ≤ |x| := by
     exact_mod_cast Int.zpow_log_le_self (b := 2) one_lt_two (abs_pos.mpr hx)
-  have herr := local_error fmt hr x
+  have herr := abs_sub_binaryFloatRound_le_half_mul_zpow fmt hr x
   have heq : fmt.targetExponent (Int.log 2 |x| + 1) =
       Int.log 2 |x| + 1 - fmt.mantissaBits := max_eq_left hnormal
   have hhalf : (1 / 2 : ℝ) * 2 ^ fmt.targetExponent (Int.log 2 |x| + 1) =
@@ -338,7 +341,8 @@ theorem abs_sub_binaryFloatRound_le (fmt : Float.Model.Format) {r : ℝ → ℤ}
     positivity
   set k := Int.log 2 |x|
   set e := fmt.targetExponent (k + 1)
-  have herr : |x - binaryFloatRound fmt r x| ≤ (1 / 2 : ℝ) * 2 ^ e := local_error fmt hr x
+  have herr : |x - binaryFloatRound fmt r x| ≤ (1 / 2 : ℝ) * 2 ^ e :=
+    abs_sub_binaryFloatRound_le_half_mul_zpow fmt hr x
   have hu : (0 : ℝ) ≤ (2 : ℝ)⁻¹ ^ fmt.mantissaBits := by positivity
   by_cases hnormal : fmt.minExponent ≤ k + 1 - fmt.mantissaBits
   · have hk : (2 : ℝ) ^ k ≤ |x| := by

@@ -505,7 +505,7 @@ theorem _root_.Matrix.IsHermitian.eigenvalue_le_eigenvalue_add_of_inertiaNeg
 /-- **A strict Courant–Fischer bound from below**: if $\mathbf{V}$ has $k + 1$ orthonormal columns
 and $\mathbf{V}^{\mathsf{H}}\mathbf{A}\mathbf{V} - c\mathbf{I}$ is positive definite (the form of
 $\mathbf{A}$ exceeds $c$ on the range of $\mathbf{V}$), then $c < \lambda_k(\mathbf{A})$.
-[HornJohnson2013, Theorem 4.2.6] (locator to check). -/
+[HornJohnson2013, (4.2.6)]. -/
 theorem _root_.Matrix.IsHermitian.lt_eigenvalue_of_posDef_conjTranspose_mul_mul_sub
     {A : Matrix n n 𝕜}
     (hA : A.IsHermitian) {k : ℕ} {V : Matrix n (Fin (k + 1)) 𝕜} (hV : HasOrthonormalCols V)

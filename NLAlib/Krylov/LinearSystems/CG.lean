@@ -283,9 +283,7 @@ theorem _root_.Matrix.IsHermitian.re_quadForm_sub_cgIterate_le_four_mul_pow {A :
         RCLike.re (quadForm A (xs - x₀)) := by
   have hpd : A.PosDef := hA.posDef_iff_eigenvalue_pos.mpr fun k hk =>
     ha.trans_le (hA.spectrum_subset_iff.mp hs k hk).1
-  obtain ⟨p, hp, hp₀, -, hpI⟩ := exists_degree_le_eval_eq_zero_abs_eval_le_two_mul_mul_pow
-    (a' := a') ha ∅ q (C := 1) fun x _ => by rw [Finset.prod_empty, abs_one]
-  rw [Finset.card_empty, zero_add] at hp
+  obtain ⟨p, hp, hp₀, hpI⟩ := exists_degree_le_eval_zero_eq_one_abs_eval_le (a' := a') ha q
   refine (hpd.re_quadForm_sub_cgIterate_le hs hxs x₀ hp hp₀ hpI).trans_eq ?_
   ring
 
@@ -329,8 +327,7 @@ d)\|_{\mathbf{A}}^2
 \|\mathbf{x}_\star - \mathbf{x}_0\|_{\mathbf{A}}^2 \,:$$
 $m$ steps are spent on the outliers, and the rate on $[a, a']$ applies to the rest.
 No hypothesis on $T$: an element $0$ of $T$ contributes the factor $1$ (Lean's $0^{-1} = 0$) and
-is not in the spectrum. [Greenbaum1997, §3.1]; [TrefethenBau1997, Lecture 38]; locators to
-verify.
+is not in the spectrum. [Greenbaum1997, §3.1, pp. 52–53].
 Result: cg-outlier-bound -/
 theorem _root_.Matrix.PosDef.re_quadForm_sub_cgIterate_le_four_mul_sq_mul_pow
     {A : Matrix n n 𝕜} (hA : A.PosDef) {a a' : ℝ} (ha : 0 < a) {T : Finset ℝ}
@@ -359,7 +356,7 @@ $$\|\mathbf{x}_\star - \mathsf{cgIterate}(\mathbf{A}, \mathbf{b}, \mathbf{x}_0, 
 d)\|_{\mathbf{A}}^2
 \le 4\Bigl(\frac{\sqrt{a'/a} - 1}{\sqrt{a'/a} + 1}\Bigr)^{2d}
 \|\mathbf{x}_\star - \mathbf{x}_0\|_{\mathbf{A}}^2 \,.$$
-[Greenbaum1997, §3.1]; locator to verify.
+[Greenbaum1997, §3.1, pp. 52–53].
 Result: cg-outlier-bound -/
 theorem _root_.Matrix.PosDef.re_quadForm_sub_cgIterate_le_four_mul_pow_of_forall_le
     {A : Matrix n n 𝕜} (hA : A.PosDef) {a a' : ℝ} (ha : 0 < a) {T : Finset ℝ}
@@ -387,7 +384,7 @@ d)\|_{\mathbf{A}}^2
 \le 4\Bigl(\prod_{t \in T}\Bigl(\frac{a'}{t} - 1\Bigr)\Bigr)^2
 \Bigl(\frac{\sqrt{a'/a} - 1}{\sqrt{a'/a} + 1}\Bigr)^{2d}
 \|\mathbf{x}_\star - \mathbf{x}_0\|_{\mathbf{A}}^2 \,.$$
-[Greenbaum1997, §3.1]; locator to verify.
+[Greenbaum1997, §3.1, pp. 52–53].
 Result: cg-outlier-bound -/
 theorem _root_.Matrix.PosDef.re_quadForm_sub_cgIterate_le_four_mul_sq_mul_pow_of_forall_lt
     {A : Matrix n n 𝕜} (hA : A.PosDef) {a a' : ℝ} (ha : 0 < a) {T : Finset ℝ}
@@ -412,7 +409,7 @@ real $p$ with $\deg p \le q$, $p(0) = 1$,
 $$\|\mathbf{x}_\star - \mathsf{cgIterate}(\mathbf{A}, \mathbf{b}, \mathbf{x}_0, q)\|_{\mathbf{A}}^2
 \le \Bigl(\max_{\lambda \in \sigma(\mathbf{A})}\lvert p(\lambda) \rvert\Bigr)^2
 \|\mathbf{x}_\star - \mathbf{x}_0\|_{\mathbf{A}}^2 \,.$$
-The maximum is the supremum over the finite spectrum. [Greenbaum1997, §3.1]; locator to verify.
+The maximum is the supremum over the finite spectrum. [Greenbaum1997, §3.1, pp. 49–51].
 Result: cg-polynomial-bound -/
 theorem _root_.Matrix.PosDef.re_quadForm_sub_cgIterate_le_iSup_sq_mul {A : Matrix n n 𝕜}
     (hA : A.PosDef) {b xs : n → 𝕜} (hxs : A *ᵥ xs = b) (x₀ : n → 𝕜) {q : ℕ} {p : ℝ[X]}
@@ -439,7 +436,7 @@ of this file follows from it by bounding the minimax value. For each $\mathbf{A}
 $\mathbf{b}$ attains it (Greenbaum):
 `Matrix.PosDef.exists_re_quadForm_sub_cgIterate_eq_residualMinimax_sq_mul` and
 `Matrix.PosDef.isGreatest_re_quadForm_sub_cgIterate_div` in
-`NLAlib.Krylov.LinearSystems.WorstCase`. [Greenbaum1997, §3.1]; locator to verify.
+`NLAlib.Krylov.LinearSystems.WorstCase`. [Greenbaum1997, §3.1, pp. 49–51].
 [Saad2003, Theorem 6.29]; its proof gives this bound, with the maximum over the eigenvalues,
 before passing to an interval, for real symmetric $\mathbf{A}$.
 Result: cg-spectrum-minimax-bound -/
@@ -459,14 +456,11 @@ theorem _root_.Matrix.PosDef.re_quadForm_sub_cgIterate_le_residualMinimax_sq_mul
   rcases hE.eq_or_lt with hE0 | hEpos
   · have h := key ⟨1, h1, eval_one⟩
     rwa [← hE0, mul_zero] at h ⊢
-  · have : Nonempty {p : ℝ[X] // p.degree ≤ q ∧ p.eval 0 = 1} := ⟨⟨1, h1, eval_one⟩⟩
-    have hsq : Real.sqrt (RCLike.re (quadForm A (xs - cgIterate A b x₀ q)) /
+  · have hsq : Real.sqrt (RCLike.re (quadForm A (xs - cgIterate A b x₀ q)) /
         RCLike.re (quadForm A (xs - x₀))) ≤ residualMinimax (spectrum ℝ A) q := by
-      unfold residualMinimax
-      refine le_ciInf fun p => Real.sqrt_le_iff.mpr ⟨?_, ?_⟩
-      · exact Real.iSup_nonneg fun _ => Real.iSup_nonneg fun _ => abs_nonneg _
-      · rw [div_le_iff₀ hEpos]
-        exact key p
+      refine le_residualMinimax fun p η hp hp₀ hη0 hη =>
+        Real.sqrt_le_iff.mpr ⟨hη0, (div_le_iff₀ hEpos).mpr ?_⟩
+      exact hA.re_quadForm_sub_cgIterate_le (fun _ hx => hx) hxs x₀ hp hp₀ hη
     have h := mul_le_mul_of_nonneg_right (pow_le_pow_left₀ (Real.sqrt_nonneg _) hsq 2) hE
     rwa [Real.sq_sqrt (div_nonneg hL hE), div_mul_cancel₀ _ hEpos.ne'] at h
 
@@ -480,7 +474,7 @@ with $\kappa = \kappa(\mathbf{A})$,
 $$\|\mathbf{A}(\mathbf{x}_\star - \mathbf{x}_q)\|^2 \le
 4\Bigl(\frac{\kappa - 1}{\kappa + 1}\Bigr)^{2q}\|\mathbf{A}(\mathbf{x}_\star - \mathbf{x}_0)\|^2
 \,,$$
-written in the $\mathbf{A}^{\mathsf{H}}\mathbf{A}$-norm. [Saad2003, §8.3]; locator to verify.
+written in the $\mathbf{A}^{\mathsf{H}}\mathbf{A}$-norm. [Saad2003, §8.3.1, Algorithm 8.4].
 Result: cgls -/
 theorem re_quadForm_sub_cgIterate_conjTranspose_mul_le_four_mul_pow {m : Type*} [Fintype m]
     {A : Matrix m n 𝕜} (hA : Function.Injective A.mulVec) {b : m → 𝕜} {xs : n → 𝕜}

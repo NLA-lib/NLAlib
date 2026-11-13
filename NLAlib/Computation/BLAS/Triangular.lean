@@ -279,7 +279,7 @@ $n(n-1)/2$ multiplications and subtractions and $n$ divisions. The operation is 
 [GolubVanLoan2013, §3.1]. -/
 theorem exec_trsvLower {𝕜 : Type} [RCLike 𝕜] {P ι : Type} [DecidableEq P]
     (I : Interp P ι 𝕜 (OpCount P ι)) (hI : I.sem = exactSem)
-    (hc : ∀ k, I.charge k = Finsupp.single k 1) (p : P) (st : St P 𝕜 (OpCount P ι))
+    (hc : IsUnitCharge I) (p : P) (st : St P 𝕜 (OpCount P ι))
     (n : IExp ℕ) (T : ℕ) (tOff : IExp ℕ) (x : ℕ) (xo : IExp ℕ)
     (M : Matrix (Fin n.eval) (Fin n.eval) 𝕜) (hM : M.BlockTriangular OrderDual.toDual)
     (hdiag : ∀ i, M i i ≠ 0) (b : Fin n.eval → 𝕜)
@@ -351,7 +351,7 @@ theorem exec_trsvLower {𝕜 : Type} [RCLike 𝕜] {P ι : Type} [DecidableEq P]
         simp [hG k hk, hW, hk]
     rw [hA, h₁] at hwb
     exact (Option.some.inj hwb).symm
-  · rw [hcnt, TrsvLower.trsvCnt_eq, hc, hc, hc]
+  · rw [hcnt, TrsvLower.trsvCnt_eq, hc.charge_eq]
 
 variable {P ι K C : Type} [DecidableEq P] [AddMonoid C] (I : Interp P ι K C) (p : P)
   (st : St P K C) {dec : P → K → ℝ}

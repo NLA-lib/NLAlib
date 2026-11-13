@@ -184,4 +184,23 @@ theorem IsRelErrSem.isArithErrSem_absRelErr {P K : Type} {u : P → ℝ}
   exact { harith with bin_err := fun p op x y z hop hrun =>
     (harith.bin_err p op x y z hop hrun).absRelErr (hη p op) }
 
+/-- A floor-relative semantics supplies mixed arithmetic error with absolute allowance
+$u\tau$, for nonnegative unit roundoff and floor and an exact zero literal. The floor contract
+alone permits a nonzero rounded zero, so exactness is required separately. All range conditions
+are retained; in particular this does not replace range obligations by global success.
+[Higham2002, §2.2]. -/
+theorem IsFloorRelErrSem.isArithErrSem_absRelErr {P K : Type} {u τ : P → ℝ}
+    {dec : P → K → ℝ} {safe : P → ℝ → Prop} {sem : ScalarSem P K}
+    (h : IsFloorRelErrSem u τ dec safe sem) (hu : ∀ p, 0 ≤ u p)
+    (hτ : ∀ p, 0 ≤ τ p) (hlit : IsExactIntLit dec sem 0) :
+    IsArithErrSem (fun p _ => AbsRelErr (u p) (u p * τ p)) dec safe sem := by
+  refine ⟨?_, h.bin_ok, ?_, h.neg, h.conj⟩
+  · intro p op x y z hop hrun
+    exact (h.bin_err p op x y z hop hrun).trans (by
+      rw [← mul_add]
+      exact mul_le_mul_of_nonneg_left (max_le (by linarith [hτ p])
+        (by linarith [abs_nonneg (op.realOp (dec p x) (dec p y))])) (hu p))
+  · intro p
+    simpa only [Nat.cast_zero] using hlit p 0 le_rfl
+
 end NLAlib.Computation

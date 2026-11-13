@@ -103,7 +103,7 @@ theorem norm_toLp_sq_eq_dotProduct_self (x : n → ℝ) : ‖WithLp.toLp 2 x‖ 
 /-- **Cauchy–Schwarz for the dot product**: over $\mathbb{R}$,
 $\lvert \mathbf{x}^{\mathsf{T}}\mathbf{y} \rvert \le \|\mathbf{x}\| \|\mathbf{y}\|$ with Euclidean
 norms. The coordinate form of `abs_real_inner_le_norm`.
-[HornJohnson2013, Theorem 5.1.4] (locator to check). -/
+[HornJohnson2013, Theorem 5.1.4]. -/
 theorem abs_dotProduct_le_norm (x y : n → ℝ) :
     |x ⬝ᵥ y| ≤ ‖WithLp.toLp 2 x‖ * ‖WithLp.toLp 2 y‖ := by
   have h := abs_real_inner_le_norm (WithLp.toLp 2 x) (WithLp.toLp 2 y)
@@ -147,7 +147,7 @@ theorem norm_toLp_extend_zero {p : Type*} [Fintype p] {e : p → n} (he : Functi
 concatenation of $\mathbf{x}$ and $\mathbf{y}$ (`Sum.elim x y`) is the sum of their squared
 Euclidean norms,
 $\left\|\begin{bmatrix} \mathbf{x} \\ \mathbf{y} \end{bmatrix}\right\|^2
-= \|\mathbf{x}\|^2 + \|\mathbf{y}\|^2$. [HornJohnson2013, §5.1] (locator to check). -/
+= \|\mathbf{x}\|^2 + \|\mathbf{y}\|^2$. [HornJohnson2013, §5.1]. -/
 theorem norm_toLp_sumElim_sq {m : Type*} [Fintype m] (x : m → 𝕜) (y : n → 𝕜) :
     ‖WithLp.toLp 2 (Sum.elim x y)‖ ^ 2 = ‖WithLp.toLp 2 x‖ ^ 2 + ‖WithLp.toLp 2 y‖ ^ 2 := by
   simp only [EuclideanSpace.norm_sq_eq, Fintype.sum_sum_type, Sum.elim_inl, Sum.elim_inr]
@@ -188,14 +188,38 @@ theorem norm_toLp_norm (x : n → 𝕜) :
     ‖WithLp.toLp 2 (fun i => ‖x i‖)‖ = ‖WithLp.toLp 2 x‖ := by
   simp [EuclideanSpace.norm_eq]
 
+/-- The sum of absolute coordinate products is bounded by the product of Euclidean norms.
+This is Cauchy–Schwarz applied to the coordinate magnitudes. -/
+theorem sum_abs_mul_le_norm (x y : n → ℝ) :
+    (∑ i, |x i * y i|) ≤ ‖WithLp.toLp 2 x‖ * ‖WithLp.toLp 2 y‖ := by
+  have h := abs_dotProduct_le_norm (fun i => |x i|) (fun i => |y i|)
+  have hn (z : n → ℝ) : ‖WithLp.toLp 2 (fun i => |z i|)‖ = ‖WithLp.toLp 2 z‖ := by
+    simpa only [Real.norm_eq_abs] using norm_toLp_norm z
+  rw [hn x, hn y, dotProduct,
+    abs_of_nonneg (Finset.sum_nonneg (fun i _ =>
+      mul_nonneg (abs_nonneg _) (abs_nonneg _)))] at h
+  simpa only [abs_mul] using h
+
+/-- Approximating the second vector of a real dot product changes the pairing by at most
+the first vector's Euclidean norm times the vector error. A further scalar error adds to it. -/
+theorem abs_dotProduct_sub_le_of_norm_sub_le {x y z : n → ℝ} {a B E : ℝ}
+    (hyz : ‖WithLp.toLp 2 (y - z)‖ ≤ E) (hz : |x ⬝ᵥ z - a| ≤ B) :
+    |x ⬝ᵥ y - a| ≤ B + ‖WithLp.toLp 2 x‖ * E := by
+  have hg := abs_dotProduct_le_norm x (y - z)
+  rw [dotProduct_sub] at hg
+  have hgap := hg.trans (mul_le_mul_of_nonneg_left hyz (norm_nonneg _))
+  calc
+    _ ≤ |x ⬝ᵥ y - x ⬝ᵥ z| + |x ⬝ᵥ z - a| := abs_sub_le _ _ _
+    _ ≤ ‖WithLp.toLp 2 x‖ * E + B := add_le_add hgap hz
+    _ = _ := add_comm _ _
+
 /-- A constant coordinate vector has norm equal to the coordinate norm times the square root
 of the dimension, including dimension zero. This is the Euclidean specialization of
 `PiLp.norm_toLp_const`. -/
 theorem norm_toLp_const (c : 𝕜) :
     ‖WithLp.toLp 2 (fun _ : n => c)‖ = Real.sqrt (Fintype.card n) * ‖c‖ := by
-  rw [EuclideanSpace.norm_eq]
-  simp only [Finset.sum_const, Finset.card_univ, nsmul_eq_mul]
-  rw [Real.sqrt_mul (Nat.cast_nonneg _), Real.sqrt_sq (norm_nonneg _)]
+  convert (PiLp.norm_toLp_const (p := 2) (ι := n) (by norm_num) c) using 1 <;>
+    simp [Real.sqrt_eq_rpow, Function.const_def]
 
 /-- A coordinatewise relative and absolute envelope gives a Euclidean envelope. The absolute
 term grows with the square root of the dimension; both coefficients are nonnegative. -/

@@ -313,6 +313,7 @@ theorem frobNorm_sub_comm (A B : Matrix m n 𝕜) : frobNorm (A - B) = frobNorm 
 open scoped Matrix.Norms.Frobenius in
 /-- The Frobenius norm is absolutely homogeneous:
 $\|c\mathbf{A}\|_{\mathsf{F}} = \lvert c \rvert \|\mathbf{A}\|_{\mathsf{F}}$. -/
+@[simp]
 theorem frobNorm_smul (c : 𝕜) (A : Matrix m n 𝕜) : frobNorm (c • A) = ‖c‖ * frobNorm A := by
   rw [frobNorm_eq_norm, frobNorm_eq_norm, norm_smul]
 
@@ -324,7 +325,7 @@ theorem frobNorm_real_smul (a : ℝ) (A : Matrix m n 𝕜) : frobNorm (a • A) 
 /-- **Cauchy–Schwarz** for the Frobenius inner product:
 $\lvert \langle \mathbf{A}, \mathbf{B} \rangle_{\mathsf{F}} \rvert
 \le \|\mathbf{A}\|_{\mathsf{F}} \|\mathbf{B}\|_{\mathsf{F}}$.
-[HornJohnson2013, Theorem 5.1.4] (locator to check). -/
+[HornJohnson2013, Theorem 5.1.4]. -/
 theorem abs_frobInner_le (A B : Matrix m n 𝕜) : |frobInner A B| ≤ frobNorm A * frobNorm B := by
   have hA : frobNorm A = √(∑ x : m × n, ‖A x.1 x.2‖ ^ 2) :=
     congrArg Real.sqrt (Fintype.sum_prod_type' fun i j => ‖A i j‖ ^ 2).symm
@@ -396,7 +397,7 @@ theorem frobNorm_sub_sq (A B : Matrix m n 𝕜) :
 $\langle \mathbf{A}, \mathbf{B} \rangle_{\mathsf{F}} = 0$ then
 $\|\mathbf{A} + \mathbf{B}\|_{\mathsf{F}}^2 = \|\mathbf{A}\|_{\mathsf{F}}^2 +
 \|\mathbf{B}\|_{\mathsf{F}}^2$.
-[HornJohnson2013, §5.1] (locator to check). -/
+[HornJohnson2013, §5.1]. -/
 theorem frobNorm_add_sq_of_frobInner_eq_zero {A B : Matrix m n 𝕜} (h : frobInner A B = 0) :
     frobNorm (A + B) ^ 2 = frobNorm A ^ 2 + frobNorm B ^ 2 := by
   rw [frobNorm_add_sq, h, mul_zero, add_zero]

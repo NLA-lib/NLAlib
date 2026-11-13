@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Krylov.CG.HSPCG.FinitePrecision.Preconditioner
+public import NLAlib.Krylov.CG.HSPCG.FinitePrecision.Pairing
 public import NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Bounds
 
 /-!
@@ -119,7 +119,9 @@ state with both actual pairings, rather than assuming that the step succeeds. -/
 @[simps (attr := storeNF)]
 noncomputable def stepRel {n : ℕ} (em u : ℝ) (ε : Blas1Err)
     (A : Matrix (Fin n) (Fin n) ℝ) {P : Matrix (Fin n) (Fin n) ℝ}
-    (O : MatvecOracle P) : BlockRel ℝ where
+    (O : MatvecOracle P)
+    (Q : (n : ℕ) → (Fin n → ℝ) → (Fin n → ℝ) → ℝ → Prop := fun _ _ _ _ => True) :
+    BlockRel ℝ where
   nd := 1
   inLens d := [d.headD 0, d.headD 0, d.headD 0, d.headD 0]
   outLens d := [d.headD 0, d.headD 0, d.headD 0, d.headD 0]
@@ -129,7 +131,9 @@ noncomputable def stepRel {n : ℕ} (em u : ℝ) (ε : Blas1Err)
   rel _ X _ Y := match X, Y with
     | [xs, rs, zs, ps], [xs', rs', zs', ps'] => ∃ rho rho',
         RoundBounds em u (ε.dot n) ε.axpy A O (decodedState id n xs rs zs ps)
-          (decodedState id n xs' rs' zs' ps') rho rho'
+          (decodedState id n xs' rs' zs' ps') rho rho' ∧
+        Q n (decv id n rs) (decv id n zs) rho ∧
+        Q n (decv id n rs') (decv id n zs') rho'
     | _, _ => False
 
 -- The framed four-state PCG proof needs more than the default elaboration budget.
@@ -137,14 +141,18 @@ set_option maxHeartbeats 600000 in
 -- Thirteen framed calls and three scoped allocations require extra elaboration work.
 /-- Input numerical margins guarantee both positive computed divisors, and local rounded
 contracts establish the actual four-vector PCG update. -/
-theorem step_spec {F : Machine ℝ} {n : ℕ} {em u : ℝ} {ε : Blas1Err}
+theorem step_spec_with_pairings {F : Machine ℝ} {n : ℕ} {em u : ℝ} {ε : Blas1Err}
     {A P : Matrix (Fin n) (Fin n) ℝ} {O : MatvecOracle P} {I : Interp Op Tst ℝ}
-    {ok : ℕ → Prop} (hS : IsScalar F I) (hF : StdModel u id F)
+    {ok : ℕ → Prop}
+    {Q : (n : ℕ) → (Fin n → ℝ) → (Fin n → ℝ) → ℝ → Prop}
+    (hS : IsScalar F I) (hF : StdModel u id F)
     (hB : IsBlas1 id ε ok I) (hok : ok n) (hA : IsMatvec id A (em * specNorm A) I)
     (hP : I.IsFn .total (Tagged.inj Preconditioner OperatorOp.matvec)
-      (matvecFn O.mulVec) AnyOperands) :
+      (matvecFn O.mulVec) (MatvecOperands n n))
+    (hD : I.Meets .total (Has.inj Blas1Op.dot)
+      ((dotEvidenceRel ε Q).spec (OutApart ok))) :
     (stepImpl (Op := Op) (Tst := Tst)).Triple I .total
-      ((stepRel em u ε A O).spec (StepOperands n)) := by
+      ((stepRel em u ε A O Q).spec (StepOperands n)) := by
   have hO := meets_preconditioner_oracle hP
   cert_intro [m] (x, r, z, p) → (x', r', z', p') reads (xs, rs, zs, ps)
   obtain ⟨hd, hx, hr, hz, hp, hxr, hxz, hxp, hrz, hrp, hzp⟩ := hadm
@@ -157,7 +165,7 @@ theorem step_spec {F : Machine ℝ} {n : ℕ} {em u : ℝ} {ε : Blas1Err}
   have ht : s₁.len (μ.store.length + 2) = 4 := by simpa using hlen 2 (by simp)
   dsimp only [Env.frame, List.append, List.range_succ, List.range_zero, List.map,
     List.length_cons, List.length_nil, Nat.add_zero] at *
-  step hB.dot as m₁ hfr₁ ⟨hpos₁, ρ, hρ, heρ⟩
+  step hD as m₁ hfr₁ ⟨hpos₁, ρ, hρ, heρ, hPair⟩
   step hA as m₂ hfr₂ ⟨hpos₂, qs, hqs, heq⟩
   step hB.dot as m₃ hfr₃ ⟨hpos₃, pq, hpq, hepq⟩
   step (hS .div) as m₄ hfr₄ ⟨hpos₄, a, ha, hea⟩
@@ -165,7 +173,7 @@ theorem step_spec {F : Machine ℝ} {n : ℕ} {em u : ℝ} {ε : Blas1Err}
   step (hS .neg) as m₆ hfr₆ ⟨hpos₆, na, hna, hena⟩
   step hB.axpy as m₇ hfr₇ ⟨hpos₇, rs', hrs', her⟩
   step hO as m₈ hfr₈ ⟨hpos₈, zs', hzs', hez⟩
-  step hB.dot as m₉ hfr₉ ⟨hpos₉, ρ', hρ', heρ'⟩
+  step hD as m₉ hfr₉ ⟨hpos₉, ρ', hρ', heρ', hPair'⟩
   have hx₉ : m₉.store.readBlock x.1 x.2 n = some xs' := by kept
   have hr₉ : m₉.store.readBlock r.1 r.2 n = some rs' := by kept
   have hz₉ : m₉.store.readBlock z.1 z.2 n = some zs' := by kept
@@ -189,9 +197,83 @@ theorem step_spec {F : Machine ℝ} {n : ℕ} {em u : ℝ} {ε : Blas1Err}
     hpos₆, hpos₅, hpos₄, hpos₃, hpos₂, hpos₁], [xs', rs', zs', ps'], ?_, ?_⟩
   · exact Mem.readBlocks_of_cons (by kept) (Mem.readBlocks_of_cons (by kept)
       (Mem.readBlocks_of_cons (by kept) (Mem.readBlocks_of_cons (by kept) rfl)))
-  · exact ⟨id ρ, id ρ', decv id n qs, id pq, id a, id b, heq, hρpos, hpqpos,
+  · exact ⟨id ρ, id ρ', ⟨decv id n qs, id pq, id a, id b, heq, hρpos, hpqpos,
       heρ.decoded, hepq.decoded, halpha, hex.decoded, hrvec, hez, heρ'.decoded,
-      hbeta, hep.decoded⟩
+      hbeta, hep.decoded⟩, hPair, hPair'⟩
+
+/-- Input numerical margins guarantee a total rounded step. This specializes the shared
+pairing-evidence proof to ordinary numerical BLAS contracts. -/
+theorem step_spec {F : Machine ℝ} {n : ℕ} {em u : ℝ} {ε : Blas1Err}
+    {A P : Matrix (Fin n) (Fin n) ℝ} {O : MatvecOracle P} {I : Interp Op Tst ℝ}
+    {ok : ℕ → Prop} (hS : IsScalar F I) (hF : StdModel u id F)
+    (hB : IsBlas1 id ε ok I) (hok : ok n) (hA : IsMatvec id A (em * specNorm A) I)
+    (hP : I.IsFn .total (Tagged.inj Preconditioner OperatorOp.matvec)
+      (matvecFn O.mulVec) (MatvecOperands n n)) :
+    (stepImpl (Op := Op) (Tst := Tst)).Triple I .total
+      ((stepRel em u ε A O).spec (StepOperands n)) :=
+  step_spec_with_pairings hS hF hB hok hA hP (dot_trivial_meets hB.dot)
+
+/-- Additional dot pairing evidence is retained by the total active step, together with its
+actual stored four-vector state and local perturbed recurrence. Both scalar divisors follow
+from the input mathematical margins. -/
+theorem step_writes_with_pairings {F : Machine ℝ} {n : ℕ} {em u : ℝ} {ε : Blas1Err}
+    {A P : Matrix (Fin n) (Fin n) ℝ} {O : MatvecOracle P} {I : Interp Op Tst ℝ}
+    {ok : ℕ → Prop}
+    {Q : (n : ℕ) → (Fin n → ℝ) → (Fin n → ℝ) → ℝ → Prop}
+    (hS : IsScalar F I) (hF : StdModel u id F)
+    (hB : IsBlas1 id ε ok I) (hok : ok n) (hA : IsMatvec id A (em * specNorm A) I)
+    (hP : I.IsFn .total (Tagged.inj Preconditioner OperatorOp.matvec)
+      (matvecFn O.mulVec) (MatvecOperands n n))
+    (hD : I.Meets .total (Has.inj Blas1Op.dot)
+      ((dotEvidenceRel ε Q).spec (OutApart ok))) {τ : Tape ℝ} {μ : Mem ℝ}
+    {x r z p : ℕ × ℕ} {s : PCGState ℝ (Fin n)}
+    (hxr : x.1 ≠ r.1) (hxz : x.1 ≠ z.1) (hxp : x.1 ≠ p.1)
+    (hrz : r.1 ≠ z.1) (hrp : r.1 ≠ p.1) (hzp : z.1 ≠ p.1)
+    (hl : μ.Live [x, r, z, p]) (hstate : StoresState id n x r z p s μ)
+    (hdom : Margins em (ε.dot n) A s) (hz : μ.Room [x, r, z, p] [n, n, n, n]) :
+    Writes .total I τ step (Env.frame [n] [x, r, z, p, x, r, z, p])
+      (Fp.blocks [x, r, z, p] [n, n, n, n])
+      (fun μ' => μ'.pos = μ.pos ∧ ∃ s' rho rho', StoresState id n x r z p s' μ' ∧
+        RoundBounds em u (ε.dot n) ε.axpy A O s s' rho rho' ∧
+        Q n s.r s.z rho ∧ Q n s'.r s'.z rho') μ := by
+  obtain ⟨xs, rs, zs, ps, hread, hstate⟩ := hstate
+  refine ((step_spec_with_pairings hS hF hB hok hA hP hD).writes_blocks rfl
+    ⟨rfl, x, r, z, p, rfl, rfl, hxr, hxz, hxp, hrz, hrp, hzp⟩
+    ((μ.live_append _ _).mpr ⟨hl, hl⟩) hread
+    (by change Margins em (ε.dot n) A (decodedState id n xs rs zs ps); rwa [hstate])
+    hz (by disjoint)).mono le_rfl ?_
+  rintro μ' _ ⟨hpos, ys, hys, hrel⟩
+  obtain ⟨xs', rs', zs', ps', rfl⟩ := List.length_eq_four.mp
+    (by simpa [stepRel] using congrArg List.length (Mem.map_length_of_readBlocks hys))
+  obtain ⟨rho, rho', hb, hPair, hPair'⟩ := hrel
+  exact ⟨by simpa [stepRel] using hpos, decodedState id n xs' rs' zs' ps', rho, rho',
+    ⟨xs', rs', zs', ps', hys, rfl⟩, by simpa only [hstate] using hb,
+    by simpa only [← hstate, decodedState] using hPair, hPair'⟩
+
+/-- A total active rounded step retains both actual pairings as the fixed scalar dot kernel
+on the initial and final finite vectors. Identical vector operands therefore give identical
+recomputed incoming and preceding outgoing pairings. -/
+theorem step_writes_function {F : Machine ℝ} {n : ℕ} {em u : ℝ} {ε : Blas1Err}
+    {A P : Matrix (Fin n) (Fin n) ℝ} {O : MatvecOracle P} {I : Interp Op Tst ℝ}
+    {ok : ℕ → Prop}
+    (hS : IsScalar F I) (hF : StdModel u id F)
+    (hB : IsBlas1 id ε ok I) (hok : ok n) (hA : IsMatvec id A (em * specNorm A) I)
+    (hP : I.IsFn .total (Tagged.inj Preconditioner OperatorOp.matvec)
+      (matvecFn O.mulVec) (MatvecOperands n n))
+    (hD : I.IsFn .total (Has.inj Blas1Op.dot) (dotSeqFn F) (OutApart (fun _ => True)))
+    {τ : Tape ℝ} {μ : Mem ℝ}
+    {x r z p : ℕ × ℕ} {s : PCGState ℝ (Fin n)}
+    (hxr : x.1 ≠ r.1) (hxz : x.1 ≠ z.1) (hxp : x.1 ≠ p.1)
+    (hrz : r.1 ≠ z.1) (hrp : r.1 ≠ p.1) (hzp : z.1 ≠ p.1)
+    (hl : μ.Live [x, r, z, p]) (hstate : StoresState id n x r z p s μ)
+    (hdom : Margins em (ε.dot n) A s) (hz : μ.Room [x, r, z, p] [n, n, n, n]) :
+    Writes .total I τ step (Env.frame [n] [x, r, z, p, x, r, z, p])
+      (Fp.blocks [x, r, z, p] [n, n, n, n])
+      (fun μ' => μ'.pos = μ.pos ∧ ∃ s' rho rho', StoresState id n x r z p s' μ' ∧
+        RoundBounds em u (ε.dot n) ε.axpy A O s s' rho rho' ∧
+        rho = pairingValue F s.r s.z ∧ rho' = pairingValue F s'.r s'.z) μ := by
+  exact step_writes_with_pairings hS hF hB hok hA hP (dot_function_meets hB.dot hD)
+    hxr hxz hxp hrz hrp hzp hl hstate hdom hz
 
 /-- A total active step updates the actual stored four-vector state and exposes its local
 perturbed recurrence, with both scalar divisors justified by mathematical margins. -/
@@ -200,7 +282,7 @@ theorem step_writes {F : Machine ℝ} {n : ℕ} {em u : ℝ} {ε : Blas1Err}
     {ok : ℕ → Prop} (hS : IsScalar F I) (hF : StdModel u id F)
     (hB : IsBlas1 id ε ok I) (hok : ok n) (hA : IsMatvec id A (em * specNorm A) I)
     (hP : I.IsFn .total (Tagged.inj Preconditioner OperatorOp.matvec)
-      (matvecFn O.mulVec) AnyOperands) {τ : Tape ℝ} {μ : Mem ℝ}
+      (matvecFn O.mulVec) (MatvecOperands n n)) {τ : Tape ℝ} {μ : Mem ℝ}
     {x r z p : ℕ × ℕ} {s : PCGState ℝ (Fin n)}
     (hxr : x.1 ≠ r.1) (hxz : x.1 ≠ z.1) (hxp : x.1 ≠ p.1)
     (hrz : r.1 ≠ z.1) (hrp : r.1 ≠ p.1) (hzp : z.1 ≠ p.1)
@@ -210,18 +292,10 @@ theorem step_writes {F : Machine ℝ} {n : ℕ} {em u : ℝ} {ε : Blas1Err}
       (Fp.blocks [x, r, z, p] [n, n, n, n])
       (fun μ' => μ'.pos = μ.pos ∧ ∃ s' rho rho', StoresState id n x r z p s' μ' ∧
         RoundBounds em u (ε.dot n) ε.axpy A O s s' rho rho') μ := by
-  obtain ⟨xs, rs, zs, ps, hread, hstate⟩ := hstate
-  refine ((step_spec hS hF hB hok hA hP).writes_blocks rfl
-    ⟨rfl, x, r, z, p, rfl, rfl, hxr, hxz, hxp, hrz, hrp, hzp⟩
-    ((μ.live_append _ _).mpr ⟨hl, hl⟩) hread
-    (by change Margins em (ε.dot n) A (decodedState id n xs rs zs ps); rwa [hstate])
-    hz (by disjoint)).mono le_rfl ?_
-  rintro μ' _ ⟨hpos, ys, hys, hrel⟩
-  obtain ⟨xs', rs', zs', ps', rfl⟩ := List.length_eq_four.mp
-    (by simpa [stepRel] using congrArg List.length (Mem.map_length_of_readBlocks hys))
-  obtain ⟨rho, rho', hb⟩ := hrel
-  exact ⟨by simpa [stepRel] using hpos, decodedState id n xs' rs' zs' ps', rho, rho',
-    ⟨xs', rs', zs', ps', hys, rfl⟩, by simpa only [hstate] using hb⟩
+  refine (step_writes_with_pairings hS hF hB hok hA hP (dot_trivial_meets hB.dot)
+    hxr hxz hxp hrz hrp hzp hl hstate hdom hz).mono le_rfl ?_
+  rintro μ' _ ⟨hpos, s', rho, rho', hstored, hbounds, _, _⟩
+  exact ⟨hpos, s', rho, rho', hstored, hbounds⟩
 
 /-- The same active step has the existing tree's exact primitive counts and scratch bound,
 with its actual output satisfying the perturbed recurrence. -/
@@ -230,7 +304,7 @@ theorem runs_step {F : Machine ℝ} {n : ℕ} {em u : ℝ} {ε : Blas1Err}
     {ok : ℕ → Prop} (hS : IsScalar F I) (hF : StdModel u id F)
     (hB : IsBlas1 id ε ok I) (hok : ok n) (hA : IsMatvec id A (em * specNorm A) I)
     (hP : I.IsFn .total (Tagged.inj Preconditioner OperatorOp.matvec)
-      (matvecFn O.mulVec) AnyOperands) (W : Op → List ℕ → ℕ)
+      (matvecFn O.mulVec) (MatvecOperands n n)) (W : Op → List ℕ → ℕ)
     {τ : Tape ℝ} {μ : Mem ℝ} {x r z p : ℕ × ℕ} {xs rs zs ps : List ℝ}
     (hxr : x.1 ≠ r.1) (hxz : x.1 ≠ z.1) (hxp : x.1 ≠ p.1)
     (hrz : r.1 ≠ z.1) (hrp : r.1 ≠ p.1) (hzp : z.1 ≠ p.1)

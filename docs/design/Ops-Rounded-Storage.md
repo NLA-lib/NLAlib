@@ -78,3 +78,50 @@ performs two classical passes against its normalized basis. Their numerical cons
 run models are distinct. The CG bridge needs the sequential projection coefficient/error
 invariant and control of its total correction in the residual-gap recurrence; the exact
 archive-orthogonality proof does not provide those rounded estimates.
+
+## Two rounded PCG operator capabilities
+
+`Krylov/CG/HSPCG/FinitePrecision/StoredContext.lean` uses the existing two-slot
+`HSPCG.StoredContext.table`: the system and inverse-preconditioner are separate actual raw
+inputs, and both compile to `ContextDense.impl`. Ordinary scalar and BLAS calls are retained
+for the subsequent `RoundedScalarBlas.table` lowering.
+
+The system `IsMatvec` allowance is
+`ScalarProducts.roundoff u n * Real.sqrt n * specNorm decodedA`, proved directly by
+`StdModel.norm_mulVec_sub_rowWord_le`. The preconditioner's `MatvecOracle` has reference
+`StoredOperator.denseMatrix n n rawP`, action `ContextDenseRounded.wordKernel M n rawP`,
+and relative error `ScalarProducts.roundoff u n * Real.sqrt n`. The action is the actual
+row-word recurrence and need not be linear; the reference matrix is where SPD is required.
+No oracle-correctness or solver-correctness callback is a public constructor premise.
+
+Shared additions in `Ops/Profiles/ContextDenseRounded.lean` belong with context refinement:
+`wordKernel` exposes the actual row action; `output_eq_ofFn_wordKernel`
+identifies its actual list output; `wp_source_fn` and `callS_source_fn` supply the total
+functional local contract using the existing dense execution and frame rules. Searched
+`ContextDense` and `StoredDense`: the execution rule was present but its functional vector
+contract was absent. `List.ext_getElem` and the existing `decv_ofFn` handle list/vector
+round trips without introducing another representation. `Ops.ofFn_decv` belongs in
+`Ops/Catalog/Operator.lean` beside the existing vector codec round trip `decv_ofFn`; both
+the stored backend and deterministic dot proofs consume this generic real-word lemma.
+
+Functional preconditioner contracts admit `MatvecOperands n n`, including separate input
+and output capabilities. A contract with unrestricted `AnyOperands` would also promise
+aliasing unsupported by the actual stored kernel. The proof-side fallback uses the same
+word action; it is absent from the executed tree. Recomputed dot functionality uses the
+actual `dotSeqFn` contract under `OutApart`, obtained after scalar BLAS lowering.
+
+`HSPCG/FinitePrecision/StoredCertificate.lean` supplies the corresponding raw problem and
+final scalar tree. The raw admission is symmetry plus independent spectral windows for the
+two actual decoded matrices. Precision and positive lower endpoints are theorem parameters,
+not hidden input preprocessing. `Problem.withContext` reuses the existing five-vector raw
+buffer problem and adds both matrix blocks; initial payload is exactly `2*n*n + 5*n`.
+The actual `Rounded.zeroStart` initializes the iterate and owns a scoped stopping cache.
+The final program is linked through `RoundedScalarBlas.table`; its budget, scratch, work,
+span and memory are recomputed on that scalar syntax.
+
+The output specification retains physical buffers X,R,Z,P and an initialized `RunPrefix`
+with its actual raw matrices, actual preconditioner action, original RHS and common error.
+Its length is at most the requested cap; a strict early stop has zero residual. A length-zero
+prefix is explicit and does not assert that an existing positive-length `PCGRun` exists.
+The scalar-only certificate is direct: the coarser rounded BLAS model supplies numerical
+relations but does not promise the deterministic dot functionality required by PCG.

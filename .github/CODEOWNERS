@@ -1,26 +1,7 @@
-# Target statements and their registry change only with the maintainer's approval
-# (docs/design/Computation.md, F12, Q3). With branch protection on `main` requiring a code-owner
-# review (a repository setting the maintainer turns on), no change to these paths merges without
-# him. scripts/Targets.lean also fails on any branch where docs/targets.toml differs from the
-# SHA-256 in docs/targets.approved.
-#
-# The handle @tchen01 is the maintainer's account (checked 2026-11-07: GitHub reports no
-# CODEOWNERS errors). CODEOWNERS binds only if the "main" ruleset requires a code-owner review,
-# the maintainer's token is off the agent host, and agents push and open pull requests from a
-# machine account (docs/design/Computation-Hardening.md §2.5).
-/docs/targets.toml @tchen01
-/docs/targets.approved @tchen01
-/NLAlib/**/*Targets.lean @tchen01
 /.github/CODEOWNERS @tchen01
-# The checks the guarantees rest on (final audits, 2026-10-24): the target lint, the axiom audit,
-# the program checks, the kernel replay and its fixtures, the stage check and CI, and the build's
-# pins (toolchain, Lake configuration and manifest), whose SHA-256 the registry records.
-/scripts/Targets.lean @tchen01
+# The checks the guarantees rest on: fixed Ops programs, axiom audit, kernel replay and
+# fixtures, the stage check, CI, and the build pins.
 /scripts/Audit.lean @tchen01
-/scripts/Programs.lean @tchen01
-/scripts/AccessModelFixtures.lean @tchen01
-/scripts/AccessModelFixturesDynamic.lean @tchen01
-/scripts/Witnesses.lean @tchen01
 /scripts/Lint.lean @tchen01
 /scripts/Replay.lean @tchen01
 /scripts/replay_fixtures.sh @tchen01
@@ -49,21 +30,16 @@
 /scripts/explore_metadata.py @tchen01
 /scripts/explore_publish.py @tchen01
 /scripts/proved_modules.py @tchen01
-# The model definitions the guarantees rest on (Computation-Hardening.md §1.3–1.4): the run, the
-# budgets, the access models and the contracts. An edit flips every closure hash anyway; the
-# review comes before it.
-/NLAlib/Computation/Syntax.lean @tchen01
-/NLAlib/Computation/Store.lean @tchen01
-/NLAlib/Computation/Exact.lean @tchen01
-/NLAlib/Computation/Exec.lean @tchen01
-/NLAlib/Computation/FirstOrder.lean @tchen01
-/NLAlib/Computation/RunsWithin.lean @tchen01
-/NLAlib/Computation/Model.lean @tchen01
-/NLAlib/Computation/Contract.lean @tchen01
-/NLAlib/Computation/StaticCost.lean @tchen01
-/NLAlib/Computation/Subst.lean @tchen01
-/NLAlib/Computation/KernelCall.lean @tchen01
-/NLAlib/Computation/NonInterference.lean @tchen01
-/NLAlib/Computation/Grid.lean @tchen01
-/NLAlib/Computation/BinaryFloatSem.lean @tchen01
-/NLAlib/RandomMatrix/Tape.lean @tchen01
+# Structural program certificates, the operation model and canonical accounting semantics.
+/scripts/OpsPrograms.lean @tchen01
+/NLAlib/Ops/Syntax.lean @tchen01
+/NLAlib/Ops/Certification.lean @tchen01
+/NLAlib/Ops/Contract.lean @tchen01
+/NLAlib/Ops/Exec.lean @tchen01
+/NLAlib/Ops/Counted.lean @tchen01
+/NLAlib/Ops/Tools/*Fixtures.lean @tchen01
+/NLAlib/Ops/Cert.lean @tchen01
+/NLAlib/Ops/Static.lean @tchen01
+/NLAlib/Ops/Examples/Certification.lean @tchen01
+# Contract, store, linking and execution changes share one reviewed core boundary.
+/NLAlib/Ops/ @tchen01

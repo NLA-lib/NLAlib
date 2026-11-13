@@ -1,6 +1,11 @@
 # Design note: computation, stage 1 (exact arithmetic, counts, memory, oracles, draws)
 
-Current implementation status (2026-11-04): this note includes historical proposals and
+> Archived execution-system design. The former evaluator, programs, target registry and
+> emission tooling are retired. The current interfaces are documented in
+> [the Ops migration](Ops-Migration.md) and [the program guide](../contributing/programs.md).
+> Mathematical analysis is retained; program and registry names below describe the historical system.
+
+Status recorded on 2026-11-04: this note includes historical proposals and
 skeletons. Complete registered exact program proofs now cover Gram–Schmidt, Hutch++, CG
 and Lanczos. The current Krylov implementations and their unchanged approved targets are
 in `Krylov/LinearSystems/CGProgram.lean` and `Krylov/Processes/LanczosProgram.lean`.

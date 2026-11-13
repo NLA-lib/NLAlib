@@ -41,19 +41,43 @@ def enrich(data, root):
     return data
 
 
+def add_provenance(data, root, artifact=None):
+    """Attribute clean snapshots to a commit and dirty previews only to their base."""
+    def git(*argv):
+        return subprocess.check_output(["git", "-C", str(root), *argv], text=True).strip()
+    head = git("rev-parse", "HEAD")
+    status_args = ["status", "--porcelain", "--untracked-files=normal"]
+    if artifact is not None:
+        artifact = Path(artifact).resolve()
+        if artifact.is_relative_to(Path(root).resolve()):
+            # Extraction creates this output before metadata is stamped. Its own untracked
+            # file cannot make an otherwise clean publication snapshot into a dirty preview.
+            relative = artifact.relative_to(Path(root).resolve()).as_posix()
+            status_args += ["--", ".", f":(exclude,literal){relative}"]
+    dirty = bool(git(*status_args))
+    data["dirty"] = dirty
+    if dirty:
+        data["base_commit"] = head
+        data["commit"] = None
+        data["date"] = None
+    else:
+        data.pop("base_commit", None)
+        data["commit"] = head
+        data["date"] = git("show", "-s", "--format=%cI", "HEAD")
+    return data
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("data", type=Path)
     args = parser.parse_args()
     root = Path(__file__).resolve().parent.parent
-    data = enrich(json.loads(args.data.read_text()), root)
-    def git(*argv):
-        return subprocess.check_output(["git", "-C", str(root), *argv], text=True).strip()
-    data["commit"] = git("rev-parse", "HEAD")
-    data["date"] = git("show", "-s", "--format=%cI", "HEAD")
+    data = add_provenance(enrich(json.loads(args.data.read_text()), root), root, args.data)
     args.data.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")) + "\n")
+    snapshot = (f"working-tree preview (base {data['base_commit'][:10]})" if data["dirty"]
+                else data["commit"][:10])
     print(f"{args.data}: {len(data['modules'])} modules, {len(data['decls'])} declarations, "
-          f"{data['commit'][:10]}")
+          f"{snapshot}")
 
 
 if __name__ == "__main__":

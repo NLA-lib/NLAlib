@@ -41,4 +41,3 @@ private def run (m n d k : ℕ) (rom coeff : Array Float) : Option (Array Float 
 #guard run 2 0 0 1 #[] #[1,1] == some (#[], 2)
 
 end Proposal.Polar.Smoke
-

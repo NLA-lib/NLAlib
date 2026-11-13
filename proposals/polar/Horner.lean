@@ -164,4 +164,3 @@ def StoredEntriesHornerWithExactMM : Prop :=
 
 
 end Proposal.Polar
-

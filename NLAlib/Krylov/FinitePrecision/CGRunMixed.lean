@@ -6,7 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Krylov.FinitePrecision.CGRun
-public import NLAlib.Computation.Underflow
+public import NLAlib.Ops.ArithmeticError
 
 /-!
 # Transferring mixed local CG errors to the relative run theory

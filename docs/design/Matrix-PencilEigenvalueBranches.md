@@ -36,4 +36,3 @@ parameter, allowing collisions within the selected cluster. In
 threshold select the exterior inverse branches; the sum extends to the union of the exterior
 and both open half-planes. The theorem retains nonnegative imaginary part in the upper
 half-plane, conjugation symmetry, and the explicit global linear growth bound used by Stahl.
-

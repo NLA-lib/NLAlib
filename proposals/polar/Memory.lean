@@ -62,4 +62,3 @@ theorem storedEntriesHornerWithExactMM_of_value
     simpa only [show st.cnt = 0 from rfl, map_zero, Nat.zero_add] using h
 
 end Proposal.Polar
-

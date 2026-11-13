@@ -7,7 +7,7 @@ module
 
 public import NLAlib.Eigensolvers.SpectralBisection.Accuracy
 public import NLAlib.Eigensolvers.SpectralBisection.BoundedFormat
-public import NLAlib.Matrix.Computation.BinaryFloatMachine
+public import NLAlib.Matrix.FinitePrecision.BinaryFloatMachine
 public import Mathlib.Probability.HasLawExists
 public import Mathlib.Analysis.Complex.ExponentialBounds
 

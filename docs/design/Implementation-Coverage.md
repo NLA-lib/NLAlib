@@ -1,5 +1,10 @@
 # Implementation coverage audit
 
+> Archived execution-system design. The former evaluator, programs, target registry and
+> emission tooling are retired. The current interfaces are documented in
+> [the Ops migration](Ops-Migration.md) and [the program guide](../contributing/programs.md).
+> Mathematical analysis is retained; program and registry names below describe the historical system.
+
 Audit baseline: `d2e02916`, branch `feat/implementation-bridges`, 2026-11-04.
 This is a source/interface audit, not a new kernel replay or a machine-execution certificate.
 The baseline audit did not approve or register targets. The current integration below records

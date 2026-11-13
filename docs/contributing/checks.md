@@ -65,3 +65,29 @@ duplicates a public one is deleted in favour of the public one.
 public theorem of a `module M` line), the NLAlib and Mathlib constants its proof uses directly,
 grouped by module. Run it on a PR's headline theorems to check that they are proved from the
 library's API for their topic rather than re-derived.
+
+`scripts/OpsPrograms.lean` checks computability of fixed Ops programs and inventories canonical
+algorithm certificates. It rejects imports of the retired execution core. Structural rejection
+and accounting regressions are kernel-checked modules in `NLAlib/Ops/Examples/Certification.lean`
+and `NLAlib/Ops/Tools/ProgramFixtures.lean`; the whole-library audit and replay cover them.
+The former E3–E6 and E8–E9 registry/syntax rules are retired, and their identifiers are not reused.
+
+## Environment-linter compatibility
+
+`scripts/Lint.lean` runs the complete standard environment-linter set on imported NLAlib
+modules. Its `simpNF` adapter recognizes a narrow compiler artifact: a constructor's generated
+`injEq` theorem whose two equality propositions have definitionally equal operands. This occurs
+when an operation constructor wraps a singleton tag. Recognition uses constructor metadata and
+reduction, without a declaration allowlist or changes to the library's simp attributes.
+Ordinary constructor injectivity facts and every user-authored theorem retain the upstream
+`simpNF` check. The script runs regressions on each invocation: generated singleton facts pass,
+ordinary generated injectivity facts remain checked, an authored theorem with the same redundant
+statement is rejected, and a duplicate user simp theorem is rejected. The checker support and
+fixtures are separate from the imported library declarations being audited.
+
+The source and extraction scans distinguish structural errors from review clues. Missing
+subject vocabulary [P9], printer-hidden proof terms [T9], and underscore hypothesis names [T13]
+remain visible as warnings: none alone establishes misplaced mathematics, hidden assumptions,
+or an unused hypothesis. Review the declaration and its API before changing it. Reliable checks
+such as import-layer restrictions and executable-program certification remain errors; review
+warnings are not exemptions from those checks.

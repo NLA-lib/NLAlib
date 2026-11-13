@@ -117,4 +117,3 @@ theorem storedEntriesHorner : StoredEntriesHorner :=
   storedEntriesHorner_iff.mpr storedEntriesHornerWithExactMM
 
 end Proposal.Polar
-

@@ -20,8 +20,7 @@ rev = "v4.33.1"
 [[lean_lib]]
 name = "NLAlib"
 
-# Tools, not part of the library (docs/design/Computation.md §8): the `Float` interpreter, the
-# NumPy emitter and the fixed-point example. They import NLAlib and are never imported by it, are
-# plain (non-`module`) files so that `#eval` runs the library's programs, and may contain `sorry`.
+# Runnable diagnostics, separate from the checked mathematical library. They import NLAlib
+# and are never imported by it; plain (non-`module`) files execute canonical Ops smoke examples.
 [[lean_lib]]
 name = "NLAlibTools"

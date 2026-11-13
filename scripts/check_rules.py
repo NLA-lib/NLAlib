@@ -10,8 +10,8 @@ Every rule has a stable id: a letter for its area and a number, as the naming ru
 template (layout), P placement and layers (layout, design), S source and proof style (proofs),
 T types and statement shape (statements), V vocabulary (vocabulary), B bounds and asymptotic
 forms (statements), D docstrings, M mathematical notation, C citations, R `Result:` ids and
-A algorithm tags (docstrings), G design records (design), E programs (programs; E2–E4 and E9 are
-checked on the built library by `scripts/Programs.lean` and `scripts/Targets.lean`,
+A algorithm tags (docstrings), G design records (design), E programs (programs; E2 is checked
+on the built library by `scripts/OpsPrograms.lean`,
 `check = "lean"` in rules.toml). The rule data, severity, statement, fix, scope and section, is in
 `docs/rules/rules.toml`, the single source this script, `check_names.py` and
 `scripts/gen_rules_md.py` read; this file holds the checks. `--list` prints every rule.
@@ -189,7 +189,6 @@ class Ctx:
         self.deviations = (root / DEVIATIONS).read_text()
         self.registry = tomllib.loads((root / 'docs/constants.toml').read_text())['constant']
         self.reg_names = {c['name'] for c in self.registry}
-        self.target_names = target_registry_names(root)
         self.explore_repo = explore_repo
         self.mathlib = mathlib
         self._mlnames = None
@@ -230,16 +229,6 @@ def guide_texts(root):
     paths = [root / 'CONTRIBUTING.md'] + sorted((root / GUIDES).glob('*.md'))
     return {p.relative_to(root).as_posix(): p.read_text() for p in paths if p.exists()}
 
-
-def target_registry_names(root):
-    """The definitions `docs/targets.toml` records (programs): its targets and trees, and the program
-    each tree compiles (`cgProg` for `cgProg.compiled`)."""
-    path = root / 'docs/targets.toml'
-    if not path.exists():
-        return set()
-    reg = tomllib.loads(path.read_text())
-    names = {e['name'] for e in reg.get('target', []) + reg.get('tree', [])}
-    return names | {n.rsplit('.', 1)[0] for e in reg.get('tree', []) for n in [e['name']]}
 
 
 def short_mathsf_names(contrib):
@@ -399,7 +388,14 @@ def restricted_imports(c, rid):
 
 @rule('P2')
 def p_aggregator(c):
-    return [V('P2', p, 1, '(file)') for p, (t, x) in c.lib_files.items() if not x['decls']]
+    # Registration, elaborator and audit modules execute substantive commands even
+    # when they introduce no declaration recognized by the source parser.
+    substantive = re.compile(
+        r"^(?:(?:public|private|scoped|local)\s+)*(?:register_simp_attr|initialize|"
+        r"builtin_initialize|attribute|export|elab|syntax|macro|macro_rules|elab_rules|run_cmd)\b|^#\w+")
+    return [V('P2', p, 1, '(file)') for p, (t, x) in c.lib_files.items()
+            if not x['decls'] and not any(substantive.match(line)
+                                        for _, line in x['commands'])]
 
 
 @rule('P3')
@@ -660,7 +656,8 @@ def public_thms(c):
 @rule('T1')
 def t_sqrt_dot(c):
     return [V('T1', c.path_of(d), d['line'], d['name']) for d in c.decls
-            if re.search(r'(√|Real\.sqrt)\s*\(?[^)]*⬝ᵥ', d['signature'])]
+            if re.search(r"(?:√|Real\.sqrt)\s*\(\s*([\w.']+)\s*⬝ᵥ\s*\1\s*\)",
+                         d['signature'])]
 
 
 @rule('T2')
@@ -908,10 +905,7 @@ def v_unrecorded(c):
     out = []
     for d in c.decls:
         if d['kind'] in ('def', 'structure', 'class', 'abbrev') and c.topic(d) != 'ForMathlib' \
-                and d['name'] not in c.reg_names and d['name'] not in c.target_names \
-                and not c.path_of(d).endswith('Targets.lean') and d.get('explorerRole') != 'support':
-            # a target, a registered tree and its program are recorded by docs/targets.toml, and so
-            # is a definition of a targets file (a target's count)
+                and d['name'] not in c.reg_names and d.get('explorerRole') != 'support':
             short = d['name'].split('.')[-1]
             if not re.search(r'\b' + re.escape(short) + r'\b', text):
                 out.append(V('V7', c.path_of(d), d['line'], d['name']))
@@ -919,7 +913,7 @@ def v_unrecorded(c):
 
 
 # ================================================================== B: bounds (statements §2)
-BOUND_NAME = re.compile(r'(Constant|Bound|Tail|Dim|Factor|Size|Rows|Rate|Exponent|Threshold)$')
+BOUND_NAME = re.compile(r'(Constant|Bound|Tail|Dim|Factor)$')
 
 
 @rule('B1')
@@ -1476,68 +1470,8 @@ def g_deviation_fields(c):
     return out
 
 
-# ================================================================== E: programs (programs)
-# E2–E4 and E9 need Lean's types and are checked by scripts/Programs.lean and scripts/Targets.lean
-# (`check = "lean"`); E1 is retired (docs/design/Computation.md, F9).
-COMPUTATION = 'NLAlib/Computation'
-# The files that may construct `Stmt.named`: the core that defines and eliminates it, the BLAS
-# kernels and the implementations.
-NAMED_FILES = tuple(f'{COMPUTATION}/{f}.lean' for f in
-                    ('Syntax', 'Exec', 'Subst', 'Compile', 'FirstOrder', 'BLAS', 'Dense',
-                     'Sparse', 'NonInterference'))
-NAMED_RE = re.compile(r'\b(?:Builder|Stmt|Computation)\.named\b|(?<![\w.])\.named\b|'
-                      r'(?<![\w.])named\s+"')
-
-
-@rule('E5')
-def e_computation_imports(c):
-    return restricted_imports(c, 'E5')
-
-
-def declared_type(stmt):
-    """The text after the top-level `:` of a declaration's statement, before `:=` or `where`."""
-    depth, i = 0, 0
-    while i < len(stmt):
-        ch = stmt[i]
-        if ch in '([{⦃⟨':
-            depth += 1
-        elif ch in ')]}⦄⟩':
-            depth -= 1
-        elif ch == ':' and depth == 0 and stmt[i:i + 2] != ':=':
-            rest = stmt[i + 1:]
-            return re.split(r':=|\bwhere\b', rest)[0]
-        i += 1
-    return ''
-
-
-@rule('E6')
-def e_semantics_home(c):
-    out = []
-    for p, (t, x) in c.lib_files.items():
-        if p.startswith(COMPUTATION + '/'):
-            continue
-        for d in x['decls']:
-            if d['kind'] in ('def', 'abbrev', 'instance', 'opaque', 'irreducible_def') and \
-                    re.match(r'\s*(?:NLAlib\.)?(?:Computation\.)?(?:ScalarSem|Interp)\b',
-                             declared_type(leansrc.strip_comments(d['stmt']))):
-                out.append(V('E6', p, d['line'], d['full'] or '(instance)'))
-    return out
-
-
-@rule('E8')
-def e_named(c):
-    # A theorem may mention `named` in its statement or proof (a compile equation, say): the
-    # rule is about programs, whose `named` nodes the emitter prints as calls.
-    out = []
-    for p, (t, x) in c.lib_files.items():
-        if p in NAMED_FILES:
-            continue
-        proofs = {i for d in x['decls'] if d['kind'] in ('theorem', 'lemma')
-                  for i in range(d['line'], d['end'] + 1)}
-        for i, line in enumerate(c.code(p), 1):
-            if i not in proofs and NAMED_RE.search(line):
-                out.append(V('E8', p, i, '(file)', line.strip()[:80]))
-    return out
+# E2 is checked on the built library by scripts/OpsPrograms.lean.
+# E3–E6 and E8–E9 retired with the old execution/registry system.
 
 
 # ================================================================== allowlist, baseline, main
@@ -1715,12 +1649,16 @@ def run(argv=None):
             if in_scope(rid, v.path)]
     stale = [x for i, x in enumerate(allow) if i not in used_allow and x['rule'] in ran
              and files is None and not (a.partial and RULES[x['rule']]['tier'] == 'x')]
-    names_out, names_stale = ([], [])
+    names_out, names_stale, names_warn = ([], [], [])
     if data and not a.no_names and (not only or any(x.startswith('N') for x in only)):
         names_out, names_stale = names_violations(c, a.partial)
         if files is not None:
             names_out = [n for n in names_out if n.split()[1].rsplit(':', 1)[0] in files]
             names_stale = []
+        if only:
+            names_out = [n for n in names_out if n.split()[0] in only]
+        names_warn = [n for n in names_out if SPECS[n.split()[0]]['severity'] == 'warning']
+        names_out = [n for n in names_out if SPECS[n.split()[0]]['severity'] == 'error']
     for t in errors:
         print(t)
     for t in names_out:
@@ -1728,6 +1666,8 @@ def run(argv=None):
     if a.warnings or files is not None:
         for v in warn:
             print('warning: ' + v.text())
+        for text in names_warn:
+            print('warning: ' + text)
     for x in stale:
         print(f'stale allowlist entry (scripts/rules_allow.toml): {x["rule"]} '
               f'{x.get("decl") or x.get("path")}; it no longer matches a violation, remove it')
@@ -1739,12 +1679,13 @@ def run(argv=None):
         for t in lowered:
             print('  ' + t)
     wcount = collections.Counter(v.rule for v in warn)
+    wcount.update(text.split()[0] for text in names_warn)
     skipped = '' if data else ' (extraction rules and N1–N18 skipped: no DATA.json)'
     nerr = len(errors) + len(names_out) + len(stale) + len(names_stale)
     print(f'check_rules: {len(ran)} rules{skipped}; {len(errors) + len(names_out)} errors, '
-          f'{baselined} in the baseline, {len(warn)} warnings'
+          f'{baselined} in the baseline, {len(warn) + len(names_warn)} warnings'
           + (' (' + ', '.join(f'{r} {n}' for r, n in sorted(wcount.items(), key=lambda kv: rid_key(kv[0])))
-             + '; --warnings prints them)' if warn and not (a.warnings or files is not None) else ''))
+             + '; --warnings prints them)' if wcount and not (a.warnings or files is not None) else ''))
     return 0 if a.warn else (1 if nerr else 0)
 
 

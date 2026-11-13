@@ -54,4 +54,3 @@ theorem exists_exec_polarLoad {𝕜 : Type} [RCLike 𝕜] (m n d k : ℕ) (c : �
 
 
 end Proposal.Polar
-

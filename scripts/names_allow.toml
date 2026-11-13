@@ -105,11 +105,6 @@ rule = "N10"
 reason = "the gap between the model's error `quadForm (x⋆ − cgIterate)` (exact − computed) and the computed estimate; `cgIterate_sub` joins the error to the estimate"
 
 [[allow]]
-name = "NLAlib.EighSample"
-rule = "N1"
-reason = "a type abbreviation (`abbrev … : Type _`), not a theorem: N1's statement grammar does not apply"
-
-[[allow]]
 name = "NLAlib.measureReal_exists_mem_le_of_forall_measure_le_lintegral"
 rule = "N9"
 reason = "N9 reads the index `i` in `HasLaw (ζ i) ν μ` as the law; the law is ν and the name already has the grammar's form"

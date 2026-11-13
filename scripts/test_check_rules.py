@@ -310,19 +310,7 @@ FIX = {
            CITED + '\n\n' + CITED.replace('foo', 'baz').replace('baz-result', 'bar-result')),
     'R3': (None, None),  # needs the explorer's data files; covered by test_orphans
     'G1': ({'docs/design/Mathlib-deviations.md': DEVIATIONS + '\n## 2. Bad\n\n- **Mathlib.** a\n'}, {}),
-    'E5': ({'NLAlib/Computation/A.lean': lean(header=HDR + 'public import NLAlib.Matrix.A\n\n')},
-           {'NLAlib/Computation/A.lean': lean(header=HDR + 'public import NLAlib.ForMathlib.Data.Nat.Init\n'
-                                              'public import NLAlib.Computation.Exec\n\n')}),
-    'E6': ('/-- Doc. -/\nnoncomputable def mySem : ScalarSem P ℝ := exactSem',
-           {'NLAlib/Computation/A.lean': lean('/-- Doc. -/\nnoncomputable def mySem : ScalarSem P ℝ := '
-                                              'exactSem\n\n/-- Doc. -/\ntheorem t (I : Interp P ι K C) : True := trivial'),
-            'NLAlib/Matrix/A.lean': lean('/-- Doc. -/\ntheorem t (I : Interp P ι K C) : I = I := rfl')}),
-    'E8': ('/-- Doc. -/\ndef k : Builder P ι VB VI Unit :=\n  named "k" [] (pure ())',
-           {'NLAlib/Computation/BLAS.lean': lean('/-- Doc. -/\ndef k : Builder P ι VB VI Unit :=\n'
-                                                 '  named "k" [] (pure ())'),
-            'NLAlib/Matrix/A.lean': lean('/-- The `named` kernels. -/\ndef k : ℕ := 0\n\n'
-                                         '/-- A compile equation. -/\ntheorem t : Stmt.named "k" [] .skip = '
-                                         'Stmt.named "k" [] .skip :=\n  rfl')}),
+
 }
 
 
@@ -351,19 +339,13 @@ class RuleTests(unittest.TestCase):
                 self.assertTrue(violations(rid, bad), f'{rid}: the bad fixture passes')
                 self.assertEqual([v.text() for v in violations(rid, good)], [], f'{rid}: the good fixture fails')
 
-    def test_v7_target_registry_records(self):
-        # a registered target, a registered tree and its program, and a targets file's count
-        # need no vocabulary row (programs)
-        reg = ('[[tree]]\nname = "NLAlib.fooProg.compiled"\n\n'
-               '[[target]]\nname = "NLAlib.MatrixFreeFoo"\n')
-        ds = [decl('NLAlib.fooProg', ': ℕ', kind='def'), decl('NLAlib.MatrixFreeFoo', ': Prop', kind='def'),
-              decl('NLAlib.fooCount', ': ℕ', kind='def', module='NLAlib.Matrix.FooTargets')]
-        def v7(registry):
-            with tempfile.TemporaryDirectory() as tmp:
-                root, ml = make_root(tmp, docs={'docs/targets.toml': registry})
-                return [v.text() for v in RULES['V7']['fn'](Ctx(root, data(*ds), None, ml))]
-        self.assertEqual(v7(reg), [])
-        self.assertEqual(len(v7(None)), 2)  # the count is recorded by its file, not the registry
+    def test_v7_support_role(self):
+        ds = [decl('NLAlib.foo', ': ℕ', kind='def'),
+              dict(decl('NLAlib.bar', ': ℕ', kind='def'), explorerRole='support')]
+        with tempfile.TemporaryDirectory() as tmp:
+            root, ml = make_root(tmp)
+            found = RULES['V7']['fn'](Ctx(root, data(*ds), None, ml))
+        self.assertEqual([v.decl for v in found], ['NLAlib.foo'])
 
     def test_layer_table_matches_contributing(self):
         # the layout guide's folder block and docs/rules/layers.toml give each top-level folder one
@@ -430,19 +412,20 @@ class RuleTests(unittest.TestCase):
                     self.assertTrue(all(s.startswith('NLAlib/') for s in sp['scope']))
 
     def test_lean_rules_are_checked_by_programs(self):
-        # rules with `check = "lean"` are checked by scripts/Programs.lean or scripts/Targets.lean,
+        # rules with `check = "lean"` are checked by scripts/OpsPrograms.lean,
         # whose messages cite them: an error rule by `logError`, a warning by `logWarning`
         here = Path(__file__).resolve().parent
-        text = (here / 'Programs.lean').read_text() + (here / 'Targets.lean').read_text()
+        text = (here / 'OpsPrograms.lean').read_text()
         for rid, sp in check_rules.SPECS.items():
             if sp['check'] == 'lean':
                 with self.subTest(rule=rid):
                     self.assertIn(sp['severity'], ('error', 'warning'))
                     if sp['severity'] == 'warning':
                         self.assertIn(f'logWarning m!"{rid} ', text)
-                    else:  # Targets.lean collects its messages as `s!"E3 …"`, then logs them
+                    else:
                         self.assertTrue(f'logError m!"{rid} ' in text or f's!"{rid} ' in text)
-        self.assertNotIn('E1', check_rules.SPECS)  # retired, never reused
+        for rid in ('E1', 'E3', 'E4', 'E5', 'E6', 'E7', 'E8', 'E9'):
+            self.assertNotIn(rid, check_rules.SPECS)  # retired, never reused
 
     def test_scope(self):
         # a rule scoped to the Matrix layer (T7) ignores the same declaration in LowRank
@@ -504,6 +487,47 @@ class RuleTests(unittest.TestCase):
         self.assertEqual(violations('S8', body), [])
         self.assertEqual(violations('S7', body), [])
 
+    def test_command_modules_are_not_aggregators(self):
+        for command in ('register_simp_attr storeNF', '#ops_audit_core',
+                        'initialize cache : Nat ← pure 0', 'syntax "audit" : command',
+                        'attribute [simp] Nat.zero_add', 'export Nat (add_comm)'):
+            with self.subTest(command=command):
+                self.assertEqual(violations('P2', command), [])
+        for command in ('set_option pp.universes true', 'open Nat',
+                        '-- register_simp_attr fake', '/- #ops_audit_core -/'):
+            with self.subTest(command=command):
+                self.assertTrue(violations('P2', command))
+
+    def test_type_level_lets_are_not_proof_lines(self):
+        import leansrc
+        header = ('theorem foo :\n  let F := Nat\n'
+                  '  let W := (let x := 0; x)\n'
+                  '  /- let bogus := ( -/\n  True := by\n')
+        parsed = leansrc.parse(header + '  trivial')['decls'][0]
+        self.assertEqual(parsed['stmt_end'], 5)
+        self.assertEqual(violations('S4', header + '  skip\n' * 78 + '  trivial'), [])
+        self.assertTrue(violations('S4', header + '  skip\n' * 81 + '  trivial'))
+        for body in ('def foo := let x := 0; x',
+                     'def foo : String := "let := ("'):
+            self.assertEqual(leansrc.parse(body)['decls'][0]['stmt_end'], 1)
+
+    def test_direct_self_dot_only(self):
+        for expr in ('√(x ⬝ᵥ x)', 'Real.sqrt (x ⬝ᵥ x)', "√(x' ⬝ᵥ x')"):
+            self.assertTrue(violations('T1', [decl('NLAlib.t', ': ' + expr + ' = 0')]))
+        for expr in ('√(x ⬝ᵥ y)', '√(RCLike.re (star w ⬝ᵥ w))'):
+            self.assertEqual(violations('T1', [decl('NLAlib.t', ': ' + expr + ' = 0')]), [])
+
+    def test_structural_projection_names_are_not_bounds(self):
+        for name in ('childSize', 'numRows', 'decayRate', 'powerExponent', 'splitThreshold'):
+            self.assertEqual(violations('B1', f'def {name} : Nat := 0'), [])
+        for name in ('errorBound', 'sampleDim', 'errorFactor', 'errorTail', 'errorConstant'):
+            self.assertTrue(violations('B1', f'def {name} : Nat := 0'))
+
+    def test_semantic_heuristics_remain_review_findings(self):
+        for rid in ('P9', 'T9', 'T13'):
+            self.assertEqual(RULES[rid]['level'], 'warning')
+            self.assertTrue(violations(rid, FIX[rid][0]))
+
     def test_deferral_phrasings(self):
         # D2 misses found in stage 2: each phrasing defers the setting to another statement
         for phrase in ('for summands $\\mathbf{X}_k$ as in the\ntail', 'as in the general form',
@@ -554,6 +578,29 @@ class RuleTests(unittest.TestCase):
                                                 'definitions = ["NLAlib.foo", "NLAlib.gone"]\n')
             self.assertEqual(sorted(v.decl for v in RULES['R3']['fn'](c)),
                              ['NLAlib.gone', 'gone-cg', 'gone-result'])
+
+
+class NamingIntegrationTests(unittest.TestCase):
+    def test_naming_severity_and_only_match_the_central_rule_table(self):
+        import contextlib
+        import io
+        from unittest.mock import patch
+        findings = ['N2 NLAlib/Matrix/A.lean:1 NLAlib.head: review semantic head',
+                    'N5 NLAlib/Matrix/A.lean:1 NLAlib.synonym: forbidden synonym']
+        with tempfile.TemporaryDirectory() as tmp:
+            root, _ = make_root(tmp)
+            extracted = root / 'data.json'
+            extracted.write_text(json.dumps(data()))
+            for rid, status in [('N2', 0), ('N5', 1)]:
+                out = io.StringIO()
+                with self.subTest(rule=rid), contextlib.redirect_stdout(out), patch.object(
+                        check_rules, 'names_violations', return_value=(findings, [])):
+                    code = run([str(extracted), '--root', str(root), '--only', rid,
+                                '--allow', str(root / 'allow.toml'), '--warnings'])
+                    self.assertEqual(code, status)
+                text = out.getvalue()
+                self.assertIn('warning: N2' if rid == 'N2' else findings[1], text)
+                self.assertNotIn('N5 NLAlib' if rid == 'N2' else 'N2 NLAlib', text)
 
 
 class RatchetTests(unittest.TestCase):

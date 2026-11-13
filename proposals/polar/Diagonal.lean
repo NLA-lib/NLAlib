@@ -103,4 +103,3 @@ theorem spec_addDiagonal {K C : Type} [RCLike K] [AddMonoid C] (md : Mode)
           exact blockDisjoint_of_fst_ne (Ne.symm hpc))).trans hst.2.1
 
 end Proposal.Polar
-

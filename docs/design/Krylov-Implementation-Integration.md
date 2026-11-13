@@ -1,5 +1,10 @@
 # Concrete Krylov implementations and their guarantees
 
+> Archived execution-system design. The former evaluator, programs, target registry and
+> emission tooling are retired. The current interfaces are documented in
+> [the Ops migration](Ops-Migration.md) and [the program guide](../contributing/programs.md).
+> Mathematical analysis is retained; program and registry names below describe the historical system.
+
 2026-11-05. Both stored-entry and matrix-free CG and Lanczos have approved exact targets and
 complete program proofs. All four programs construct their finite-precision runs from primitive execution. Stored CG
 and Lanczos also expose packaged backward-model corollaries; the same mathematical run

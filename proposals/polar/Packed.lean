@@ -82,4 +82,3 @@ theorem spec_scaleMatrix {K C : Type} [RCLike K] [AddMonoid C] (md : Mode)
     simpa [hs, exactSem, packedValue_index, mul_comm] using hv
 
 end Proposal.Polar
-

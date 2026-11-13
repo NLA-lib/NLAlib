@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Matrix.Computation.Deflation
+public import NLAlib.Matrix.FinitePrecision.Deflation
 public import NLAlib.RandomMatrix.Gaussian.Complex.LeastSingularValue
 
 /-!

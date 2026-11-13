@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.RandomMatrix.Computation.ComplexTape
+public import NLAlib.RandomMatrix.Gaussian.Tape
 public import NLAlib.Eigensolvers.SpectralBisectionSamples
 
 /-!

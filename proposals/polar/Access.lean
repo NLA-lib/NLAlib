@@ -83,4 +83,3 @@ theorem storedEntriesHorner_nonVacuous (N₀ : ℕ) :
   ⟨ℝ, inferInstance, N₀, ![N₀, 0, 1], le_rfl, trivial, ⟨fun _ _ => 0⟩⟩
 
 end Proposal.Polar
-

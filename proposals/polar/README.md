@@ -1,5 +1,11 @@
 # Polar Horner program and cost proposal
 
+> **Archived execution proposal.** This source targets the retired `Computation` executor
+> and target registry. It is preserved as research material outside the built libraries;
+> the reproduction commands below describe that historical environment and do not apply
+> to the current Ops library. The numerical results in `Matrix/Functions/PolarMinimax.lean`
+> remain part of the current library.
+
 The atlas card [polar-minimax-polynomial-iteration](https://research.chen.pw/NLAlib/#polar-minimax-polynomial-iteration)
 bounds the number of matrix products once the scalar coefficients are supplied.
 This proposal evaluates the library's `oddMatrixIterate` on a rectangular matrix
@@ -79,4 +85,3 @@ the registry generator to recognize the approved model and the maintainer to
 approve the regenerated closure and tree hashes under the
 [program rules](../../docs/contributing/programs.md). The standalone proposal has
 no registered result ID.
-

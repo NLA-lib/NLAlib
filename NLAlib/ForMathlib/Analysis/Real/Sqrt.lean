@@ -84,4 +84,14 @@ theorem le_add_sqrt_of_forall_le_div_one_sub {x a b : ℝ} (ha : 0 ≤ a) (hb : 
     linarith
   linarith
 
+/-- $\sqrt{3y} \le (5/4)\,y$ for $y \ge 2$, and $\sqrt{3y} \le 2y$ for $y \ge 1$. -/
+theorem sqrt_three_mul_le {y : ℝ} (hy : 1 ≤ y) :
+    Real.sqrt (3 * y) ≤ 2 * y ∧ (2 ≤ y → Real.sqrt (3 * y) ≤ 5 / 4 * y) := by
+  refine ⟨?_, fun hy2 => ?_⟩
+  · calc Real.sqrt (3 * y) ≤ Real.sqrt ((2 * y) ^ 2) := Real.sqrt_le_sqrt (by nlinarith)
+      _ = 2 * y := Real.sqrt_sq (by linarith)
+  · calc Real.sqrt (3 * y) ≤ Real.sqrt ((5 / 4 * y) ^ 2) := Real.sqrt_le_sqrt (by nlinarith)
+      _ = 5 / 4 * y := Real.sqrt_sq (by linarith)
+
+
 end Real

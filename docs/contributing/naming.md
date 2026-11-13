@@ -13,7 +13,8 @@ who reads the name knows the statement.
 |---|---|---|
 | theorem, lemma | `snake_case` | `frobNorm_nonneg`, `specNorm_mul_le`, `singularValues_add_le` |
 | definition returning data | `lowerCamelCase` | `specNorm`, `singularValues`, `rangeProjector` |
-| structure, class, Prop-valued predicate | `UpperCamelCase` | `IsSVD`, `HasOrthonormalCols`, `IsSubspaceEmbedding` |
+| structure, class, type abbreviation, standalone predicate | `UpperCamelCase` | `IsSVD`, `HasOrthonormalCols`, `IsSubspaceEmbedding` |
+| predicate component or verb API | `lowerCamelCase` | `admissible`, `contracts`, `inBlock` |
 | namespace, file, directory | `UpperCamelCase` | `NLAlib.Matrix.Spectral.Weyl` |
 
 ## 1. Grammar
@@ -64,12 +65,12 @@ spellings of §3. Hypothesis variables are `h`-prefixed (`hA`, `hQ`, `hk`). Exam
 
 | id | rule | checked |
 |---|---|---|
-| N1 | Case by kind, as in the table above; acronyms follow Mathlib's grouping (`rsvd`, `earlyTruncatedRSVD`). | yes |
-| N2 | The first token is the head of the conclusion's left side, or an operator on its leftmost spine (`mul_` for `c * f x ≤ …`), `nonneg`/`pos` for `0 ≤ x`/`0 < x` (`frobNorm_nonneg`), or the layer `exists_`, `forall_`, `ae_`. Mathlib's dot-notation readings stand: `(M).submatrix e f` is `submatrix_…`, a measure `ν.map f` is `ν_map_…` (`gaussianReal_map_add_const`). | yes |
-| N3 | The conclusion part ends at the first `_of_` and names the main relation: `le`, `lt`, `ne`, `iff`, `mem`, `subset`, `nonneg`, `pos`; `eq` may be omitted, as in Mathlib; `ge`/`gt` only when the second argument is the one that varies; Mathlib's `mono`, `anti`, `monotone`, `antitone` count. Nothing of the conclusion comes after `_of_` (`variance_quadForm_le_of_hasLaw_rademacherVector`, not `…_of_hasLaw_rademacherVector_le`). | yes |
-| N4 | Every token that is a library function occurs in the statement, conclusion tokens in the conclusion and hypothesis tokens in the hypotheses. Matrix notation counts (`conjTranspose` for `ᴴ`, `mulVec` for `*ᵥ`, `integral` for `∫`). | yes |
+| N1 | Case by kind, as in the table above; acronyms follow Mathlib's grouping (`rsvd`, `earlyTruncatedRSVD`). Compiler-generated parser declarations are syntax support, rather than authored data API names. | lexical checks |
+| N2 | The first token is the head of the conclusion's left side, or an operator on its leftmost spine (`mul_` for `c * f x ≤ …`), `nonneg`/`pos` for `0 ≤ x`/`0 < x` (`frobNorm_nonneg`), or the layer `exists_`, `forall_`, `ae_`. Mathlib's dot-notation readings stand: `(M).submatrix e f` is `submatrix_…`, a measure `ν.map f` is `ν_map_…` (`gaussianReal_map_add_const`). | review warning |
+| N3 | The conclusion part ends at the first `_of_` and names the main relation: `le`, `lt`, `ne`, `iff`, `mem`, `subset`, `nonneg`, `pos`; `eq` may be omitted, as in Mathlib; `ge`/`gt` only when the second argument is the one that varies; Mathlib's `mono`, `anti`, `monotone`, `antitone` count. Nothing of the conclusion comes after `_of_` (`variance_quadForm_le_of_hasLaw_rademacherVector`, not `…_of_hasLaw_rademacherVector_le`). | review warning |
+| N4 | Every token that is a library function occurs in the statement, conclusion tokens in the conclusion and hypothesis tokens in the hypotheses. Matrix notation counts (`conjTranspose` for `ᴴ`, `mulVec` for `*ᵥ`, `integral` for `∫`). | review warning |
 | N5 | One token per concept: the spellings of §3, never a synonym. | the listed synonyms |
-| N6 | A power comes after its argument, for every head: `frobNorm_sub_rsvd_sq`, `singularValues_sq`, `sum_singularValues_sub_sq_le` (Mathlib's `norm_sub_sq`). `^ 2` is `sq`, `^ n` is `pow`, `^ r` (real) is `rpow`. Mathlib's own `sq_abs`, `sq_sqrt` are Mathlib's names, not a pattern. | `sq_f` anywhere, `pow_f` on the left |
+| N6 | A power comes after its argument, for every head: `frobNorm_sub_rsvd_sq`, `singularValues_sq`, `sum_singularValues_sub_sq_le` (Mathlib's `norm_sub_sq`). `^ 2` is `sq`, `^ n` is `pow`, `^ r` (real) is `rpow`. Mathlib's own `sq_abs`, `sq_sqrt` are Mathlib's names, not a pattern. | review warning |
 | N7 | No source, chapter, author, lemma number or project in a name, and no word for how good a bound is (`_sharp`, `_improved`, `_tight`, `_v2`, `_strong`) or for its role (`aux`, `main`, `key`); the source goes in the docstring ([statements](statements.md) §2 "Numerical bounds"). Classical names stay where the subject uses them (`bernstein`, `hansonWright`, `freedman`). | yes |
 | N8 | Right-side tokens only to tell coexisting theorems apart ([statements](statements.md) §2 rule 4): `measureReal_norm_sq_ge_mul_card_le` next to `measureReal_norm_sq_le_mul_card_le`. A bound that improves keeps its name. | no |
 | N9 | Hypotheses. A law is the suffix `_of_hasLaw_<law>`, for any law (`_of_hasLaw_gaussianMatrix`, `_of_hasLaw_haarFrame`). A distribution class is `_of_<class>`, also when it is an instance argument (`_of_isSubgaussianVector`, `_of_isLeftUnitarilyInvariant`, `_of_isIsotropic`). A sketch-property interface that is the main hypothesis (`HasSubspaceInjection`, `IsObliviousSubspaceInjection`, `HasSubspaceEmbedding`, `IsObliviousSubspaceEmbedding`, `HasJLMoment`, `HasJLProperty`, `HasProjectionCostPreserving`, `HasGramTraceMoment`, `HasMatrixMGFBound`) is the namespace: `HasSubspaceInjection.measureReal_frobNorm_sub_rsvd_sq_gt_le`. The API of a predicate or structure lives in its namespace, and so does a theorem whose first explicit argument is one of the hypotheses of N18. `HasLaw.` is never a namespace for a consumer; a law hypothesis first is named by its suffix. Other hypotheses are named only when they distinguish the theorem from a sibling. | the law suffix |
@@ -125,8 +126,12 @@ The tokens of the [vocabulary](vocabulary.md) vocabulary, and the ones a stateme
 
 ## 5. Exceptions and the allowlist
 
-There are no standing exceptions. A name the checker misreads, because the grammar has no
-readable form for its statement or the splitter misparses it, goes in `scripts/names_allow.toml`
+Choose predicate case by its API role: standalone propositions use UpperCamelCase, while
+components and verb APIs may use lowerCamelCase. The checker cannot infer that role from a
+Prop-valued result. Compiler-generated parser names follow Lean's syntax machinery.
+
+A name the checker misreads, because the grammar has no readable form for its statement or
+the splitter misparses it, may go in `scripts/names_allow.toml`
 with the rule it is excused from and a one-line reason that says why:
 
 ```
@@ -141,9 +146,17 @@ stale entry (the declaration is gone or no longer breaks the rule), so the list 
 
 ## 6. Checking
 
-`scripts/check_names.py` checks the rules marked "yes" on the extraction ([pull requests and checks](../../CONTRIBUTING.md#pull-requests-and-checks)), and prints
-`N<k> <name>: <what is wrong>`; in CI it runs inside `scripts/check_rules.py` ([checks](checks.md) §1). It reads
-Lean's pretty-printed statements, so it cannot judge what needs judgement: whether a right side
+`scripts/check_names.py` checks the indicated rules on the extraction ([pull requests and checks](../../CONTRIBUTING.md#pull-requests-and-checks)), and prints
+`N<k> <name>: <finding>`; in CI it runs inside `scripts/check_rules.py` ([checks](checks.md) §1).
+Rule scopes and severities come from `docs/rules/rules.toml`. Reliable case and vocabulary
+violations remain errors. N2, N3, N4 and N6 remain visible as review warnings: their checks
+guess semantic heads, relations, function occurrences and power arguments from pretty-printed
+text. Aliases, notation, local lets and collisions between short function names make those
+guesses unreliable, especially for operation-model contracts. A warning asks the reviewer to
+check the naming guidance against the actual statement; it does not require a mechanical rename
+or a new allowlist entry. The CLI fails on unallowlisted errors and stale allowlist entries.
+
+The checker also cannot judge whether a right side
 should be named (N8), whether a hypothesis deserves mention or a side condition the namespace
 (N9), argument order inside a long deterministic name, classical names, or whether a `_sub_` is
 an error or a comparison. Reviewers check those.

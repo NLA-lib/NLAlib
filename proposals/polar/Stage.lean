@@ -110,4 +110,3 @@ theorem spec_stage {K C : Type} [RCLike K] [Inhabited K] [AddMonoid C]
     (by simp [matBlock, Nat.mul_comm])
 
 end Proposal.Polar
-

@@ -6,11 +6,12 @@
 # brackets where the guide states it (docs/contributing/checks.md §2).
 #
 # id        area letter and number, never reused (retired: E1 on 2026-10-23, the witness of a
-#           result being a first-order tree, docs/design/Computation.md F9; E7, merged into E1)
+#           result being a first-order tree; E7, merged into E1; E3–E6, E8–E9 retired with
+#           the old execution/registry system on 2026-11-13)
 # area      the area of the letter
 # severity  error (fails CI, ratcheted), warning (a heuristic, a review list) or review (no check)
 # check     source (the sources and documents), extraction (needs scripts/explore_data.sh), lean
-#           (the built library, by scripts/Programs.lean), none
+#           (the built library, by scripts/OpsPrograms.lean), none
 # scope     "library", or the topic directories the rule applies to; exclude removes directories
 # exempt    directories exempt while the rule `exempt_while` has no violation (optional), for
 #           `exempt_reason`; NLAlib/<Topic>/RULES.md shows them
@@ -341,76 +342,10 @@ area = "programs"
 severity = "error"
 check = "lean"
 scope = "library"
-home = ["NLAlib/Computation"]
+home = ["NLAlib/Ops"]
 section = "programs"
-statement = '''Programs, kernels and implementations are computable'''
+statement = '''Fixed Ops programs have computable definitions'''
 fix = '''Remove the noncomputable part; a program is data that runs'''
-
-[[rule]]
-id = "E3"
-area = "programs"
-severity = "error"
-check = "lean"
-scope = "library"
-home = ["NLAlib/Computation"]
-section = "programs"
-statement = '''A published cost result is the one proof of a target registered in `docs/targets.toml` (`theorem t : T`), and each target's closure hash, printed statement and pins match the approved registry; a rounded program theorem (a leading hypothesis `IsRelErrSem … I.sem` on the interpretation `I` its conclusion runs under, or a rounded access model) may carry a `Result:` id'''
-fix = '''Prove the registered target itself; a `Result:` theorem about exact runs that proves no registered target loses its id (a rounded program theorem keeps it), and a new or changed target needs the maintainer's approval (agents never edit `*Targets.lean` or the registry)'''
-
-[[rule]]
-id = "E4"
-area = "programs"
-severity = "error"
-check = "lean"
-scope = "library"
-home = ["NLAlib/Computation"]
-section = "programs"
-statement = '''Every `<spec>Prog` has a registered tree, named by a registered target, whose definition calls it'''
-fix = '''Compile the program (`<spec>Prog.compiled`) and ask the maintainer for its target'''
-
-[[rule]]
-id = "E5"
-area = "programs"
-severity = "error"
-check = "source"
-scope = ["NLAlib/Computation"]
-section = "layout §1"
-statement = '''A Computation file imports only Mathlib, `NLAlib.ForMathlib` and `NLAlib.Computation`'''
-fix = '''Keep the Computation layer at layer 0: a program that needs library vocabulary lives in its topic file'''
-
-[[rule]]
-id = "E6"
-area = "programs"
-severity = "error"
-check = "source"
-scope = "library"
-exclude = ["NLAlib/Computation"]
-home = ["NLAlib/Computation"]
-section = "programs"
-statement = '''In the library (NLAlib), only `NLAlib/Computation` defines a `ScalarSem` or an `Interp`'''
-fix = '''Define the semantics or interpretation in `NLAlib/Computation`, with its certificate'''
-
-[[rule]]
-id = "E8"
-area = "programs"
-severity = "error"
-check = "source"
-scope = "library"
-home = ["NLAlib/Computation"]
-section = "programs"
-statement = '''`Stmt.named` is constructed only in the BLAS and implementation files (a theorem may mention it)'''
-fix = '''Write the program without `named`, or make it a kernel in `NLAlib/Computation/BLAS.lean`'''
-
-[[rule]]
-id = "E9"
-area = "programs"
-severity = "warning"
-check = "lean"
-scope = "library"
-home = ["NLAlib/Computation"]
-section = "programs"
-statement = '''A program that another program calls frees its allocations (`scope`); a warning, as memory is the target's `mem`'''
-fix = '''Wrap the callee's body in `scope`: an `alloc` is live for the rest of the enclosing block, so an open one stays allocated in the caller'''
 
 [[rule]]
 id = "F1"
@@ -723,38 +658,38 @@ severity = "error"
 check = "extraction"
 scope = "library"
 section = "naming §2"
-statement = '''Case by kind: theorems snake_case, data lowerCamelCase, Props and structures UpperCamelCase'''
+statement = '''Case by kind: theorems snake_case, data lowerCamelCase, standalone predicates and structures UpperCamelCase; predicate components may be lowerCamelCase'''
 fix = '''Rename to the case of the naming guide (acronyms grouped as in Mathlib: `rsvd`)'''
 
 [[rule]]
 id = "N2"
 area = "names"
-severity = "error"
+severity = "warning"
 check = "extraction"
 scope = "library"
 section = "naming §2"
-statement = '''The first token is the head of the conclusion (or `exists_`, `forall_`, `ae_`, `nonneg`, `pos`)'''
-fix = '''Start the name with the conclusion's left side, read left to right'''
+statement = '''Review the first token against the semantic conclusion head; pretty-printed head guesses are advisory'''
+fix = '''Check the named API or operation in the actual Lean statement, including aliases and local lets'''
 
 [[rule]]
 id = "N3"
 area = "names"
-severity = "error"
+severity = "warning"
 check = "extraction"
 scope = "library"
 section = "naming §2"
-statement = '''The conclusion part ends at the first `_of_` and names the main relation'''
-fix = '''Put `le`, `lt`, `ne`, `iff`, `mem`, … before the first `_of_`'''
+statement = '''Review the conclusion relation before `_of_`; semantic relation-name guesses are advisory'''
+fix = '''Check the main relation and predicate API before moving or adding a relation token'''
 
 [[rule]]
 id = "N4"
 area = "names"
-severity = "error"
+severity = "warning"
 check = "extraction"
 scope = "library"
 section = "naming §2"
-statement = '''Every library-function token in a name occurs in the statement'''
-fix = '''Drop the token, or state what it names'''
+statement = '''Review function tokens against the statement; notation, aliases and short-name collisions need judgment'''
+fix = '''Keep meaningful semantic tokens; remove a token only after checking its actual referent'''
 
 [[rule]]
 id = "N5"
@@ -769,12 +704,12 @@ fix = '''Use the naming guide's token'''
 [[rule]]
 id = "N6"
 area = "names"
-severity = "error"
+severity = "warning"
 check = "extraction"
 scope = "library"
 section = "naming §2"
-statement = '''A power comes after its argument: `f_sq`, `f_pow`, `f_rpow`'''
-fix = '''Move `sq`/`pow` after the argument'''
+statement = '''Review power notation against its argument; textual power-orientation guesses are advisory'''
+fix = '''Follow the mathematical operand and Mathlib conventions, including compound bases'''
 
 [[rule]]
 id = "N7"
@@ -917,8 +852,8 @@ severity = "error"
 check = "source"
 scope = "library"
 section = "layout §1"
-statement = '''No file with imports only (no per-directory aggregator)'''
-fix = '''Delete it; a user imports the file they need'''
+statement = '''No file with imports only (no per-directory aggregator); registration and executable audit commands count as content'''
+fix = '''Delete import-only aggregators; a user imports the file they need'''
 
 [[rule]]
 id = "P3"
@@ -984,7 +919,7 @@ fix = '''Put it in `namespace NLAlib`, or move a general fact to ForMathlib'''
 [[rule]]
 id = "P9"
 area = "placement and layers"
-severity = "error"
+severity = "warning"
 check = "extraction"
 scope = "library"
 exclude = ["NLAlib/ForMathlib"]
@@ -992,8 +927,8 @@ exempt = ["NLAlib/Polynomial"]
 exempt_while = "P11"
 exempt_reason = '''its headline scalar results (Chebyshev residuals and minimax, approximation of $1/x$, interpolation of Stieltjes functions) stay in the layer, which can go upstream as a whole while it imports only Mathlib and ForMathlib'''
 section = "layout §1"
-statement = '''A general fact (no NLAlib, matrix or measure vocabulary) lives in ForMathlib'''
-fix = '''Move it to the ForMathlib file of its Mathlib subject; a false positive goes on the allowlist with a reason'''
+statement = '''Review a theorem with no NLAlib, matrix or measure vocabulary as a possible ForMathlib candidate'''
+fix = '''Move general mathematical facts to ForMathlib; review local structural helpers in the context of their layer'''
 
 [[rule]]
 id = "P10"
@@ -1229,12 +1164,12 @@ fix = '''Take an eigenvector `u` with `A *ᵥ u = c • u`, or an invariance equ
 [[rule]]
 id = "T9"
 area = "types and statement shape"
-severity = "error"
+severity = "warning"
 check = "extraction"
 scope = "library"
 section = "statements §2"
-statement = '''No proof term inside a statement (`⋯` in the signature)'''
-fix = '''Introduce the hypothesis it proves, or state through a definition'''
+statement = '''Review opaque proof terms (`⋯` in the signature) for hidden assumptions or unreadable statements'''
+fix = '''Expose mathematical assumptions as hypotheses; structural index and configuration evidence may remain inline'''
 
 [[rule]]
 id = "T10"
@@ -1270,12 +1205,12 @@ fix = '''Bound the index (`k < Fintype.card n`)'''
 [[rule]]
 id = "T13"
 area = "types and statement shape"
-severity = "error"
+severity = "warning"
 check = "extraction"
 scope = "library"
 section = "statements §2"
-statement = '''No hypothesis named `_h…`: an unused hypothesis is dropped'''
-fix = '''Drop it; if it is kept for an interface, allowlist it with the reason'''
+statement = '''Review hypotheses named `_h…` for unnecessary assumptions'''
+fix = '''Drop genuinely unused hypotheses; an underscore name alone does not establish that its proof is unused'''
 
 [[rule]]
 id = "T14"
@@ -1366,5 +1301,5 @@ severity = "warning"
 check = "extraction"
 scope = "library"
 section = "vocabulary"
-statement = '''A public definition has a vocabulary row, a Mathlib-deviations entry or a `docs/targets.toml` entry'''
+statement = '''A public definition has a vocabulary row, a Mathlib-deviations entry or an explorer support role'''
 fix = '''A new concept gets a vocabulary row through its design note'''

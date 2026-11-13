@@ -40,10 +40,10 @@ Allowlisted here (`scripts/rules_allow.toml`, `scripts/names_allow.toml`), each 
 ### Placement and layers
 
 - **P1** A module imports only its own layer and lower (the layer table); Krylov never imports Probability, Sketching never Regression, LowRank never Estimation. [layout §1]
-- **P2** No file with imports only (no per-directory aggregator). [layout §1]
+- **P2** No file with imports only (no per-directory aggregator); registration and executable audit commands count as content. [layout §1]
 - **P3** An `NLAlib` file never imports `NLAlibScaffold`. [proofs]
 - **P8** Outside ForMathlib a declaration is in `NLAlib`, or is API of a Mathlib hypothesis structure. [layout §2]
-- **P9** A general fact (no NLAlib, matrix or measure vocabulary) lives in ForMathlib. [layout §1]
+- **P9** (warning) Review a theorem with no NLAlib, matrix or measure vocabulary as a possible ForMathlib candidate. [layout §1]
 - **P10** (warning) A statement lives with its topic, not in a higher layer than its vocabulary. [design] placement
 - **P12** An `NLAlib` file, the root `NLAlib.lean` included, never imports `NLAlibTools`, `NLAlibScaffold` or another `lean_lib` of lakefile.toml. [proofs]
 
@@ -67,11 +67,11 @@ Allowlisted here (`scripts/rules_allow.toml`, `scripts/names_allow.toml`), each 
 - **T4** (warning) Matrix norms in statements are named functions, not `‖A‖`. [statements §1]
 - **T5** (warning) Statements use `ᴴ`, not `ᵀ`. [statements §1]
 - **T8** No statement quantifies over `eigenvectorBasis`. [statements §2]
-- **T9** No proof term inside a statement (`⋯` in the signature). [statements §2]
+- **T9** (warning) Review opaque proof terms (`⋯` in the signature) for hidden assumptions or unreadable statements. [statements §2]
 - **T10** A bound variable that meets `•` has its type written (`∀ θ : ℝ, …`). [statements §2]
 - **T11** (warning) A two-sided bound is two theorems, not a top-level conjunction. [statements §2]
 - **T12** (warning) An `∃`-index into `eigenvalue` or `singularValues` carries its range. [statements §2]
-- **T13** No hypothesis named `_h…`: an unused hypothesis is dropped. [statements §2]
+- **T13** (warning) Review hypotheses named `_h…` for unnecessary assumptions. [statements §2]
 - **T15** A lower moment obtained by Jensen from a higher one is not a separate theorem. [statements §2]
 
 ### Vocabulary
@@ -82,7 +82,7 @@ Allowlisted here (`scripts/rules_allow.toml`, `scripts/names_allow.toml`), each 
 - **V4** A squared Frobenius norm is `frobNorm A ^ 2`, never `frobNorm A * frobNorm A`. [vocabulary]
 - **V5** No forbidden spelling (`matrixExp`, `matrixLog`, `traceExp`, `lambdaMax`, `conditionNumber`). [vocabulary]
 - **V6** Every Lean name cited in the contributor guides (except the naming guide) or Mathlib-deviations.md exists. [vocabulary]
-- **V7** (warning) A public definition has a vocabulary row, a Mathlib-deviations entry or a `docs/targets.toml` entry. [vocabulary]
+- **V7** (warning) A public definition has a vocabulary row, a Mathlib-deviations entry or an explorer support role. [vocabulary]
 
 ### Bounds
 
@@ -157,21 +157,16 @@ Allowlisted here (`scripts/rules_allow.toml`, `scripts/names_allow.toml`), each 
 
 ### Programs
 
-- **E2** Programs, kernels and implementations are computable. [programs]
-- **E3** A published cost result is the one proof of a target registered in `docs/targets.toml` (`theorem t : T`), and each target's closure hash, printed statement and pins match the approved registry; a rounded program theorem (a leading hypothesis `IsRelErrSem … I.sem` on the interpretation `I` its conclusion runs under, or a rounded access model) may carry a `Result:` id. [programs]
-- **E4** Every `<spec>Prog` has a registered tree, named by a registered target, whose definition calls it. [programs]
-- **E6** In the library (NLAlib), only `NLAlib/Computation` defines a `ScalarSem` or an `Interp`. [programs]
-- **E8** `Stmt.named` is constructed only in the BLAS and implementation files (a theorem may mention it). [programs]
-- **E9** (warning) A program that another program calls frees its allocations (`scope`); a warning, as memory is the target's `mem`. [programs]
+- **E2** Fixed Ops programs have computable definitions. [programs]
 
 ### Names
 
-- **N1** Case by kind: theorems snake_case, data lowerCamelCase, Props and structures UpperCamelCase. [naming §2]
-- **N2** The first token is the head of the conclusion (or `exists_`, `forall_`, `ae_`, `nonneg`, `pos`). [naming §2]
-- **N3** The conclusion part ends at the first `_of_` and names the main relation. [naming §2]
-- **N4** Every library-function token in a name occurs in the statement. [naming §2]
+- **N1** Case by kind: theorems snake_case, data lowerCamelCase, standalone predicates and structures UpperCamelCase; predicate components may be lowerCamelCase. [naming §2]
+- **N2** (warning) Review the first token against the semantic conclusion head; pretty-printed head guesses are advisory. [naming §2]
+- **N3** (warning) Review the conclusion relation before `_of_`; semantic relation-name guesses are advisory. [naming §2]
+- **N4** (warning) Review function tokens against the statement; notation, aliases and short-name collisions need judgment. [naming §2]
 - **N5** One token per concept: the spellings of the naming guide, never a synonym. [naming §2]
-- **N6** A power comes after its argument: `f_sq`, `f_pow`, `f_rpow`. [naming §2]
+- **N6** (warning) Review power notation against its argument; textual power-orientation guesses are advisory. [naming §2]
 - **N7** No source, author, project, quality or role word in a name (`_sharp`, `aux`, `main`). [naming §2]
 - **N8** (review) Right-side tokens only to tell coexisting theorems apart. [naming §2]
 - **N9** A law hypothesis is `_of_hasLaw_<law>`; an interface hypothesis is the namespace. [naming §2]

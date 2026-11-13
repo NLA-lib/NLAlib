@@ -1,0 +1,256 @@
+{
+  "date": "2026-11-12",
+  "note": "Unpublished operations-based Lanczos API cleanup. Raw conditional statement cost/peak lemmas use stmtCost/stmtPeak names; canonical Program staticCost/staticPeak interfaces stay distinct. Numerical/readback helpers follow their conclusion heads. All references are updated with no compatibility aliases. Mathematical statements are preserved, with the packed basis specialization restated through the definitionally equal shared decoder.",
+  "renames": [
+    {
+      "old": "NLAlib.Krylov.Lanczos.staticCost_zero",
+      "new": "NLAlib.Krylov.Lanczos.stmtCost_zero",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.staticPeak_zero_le",
+      "new": "NLAlib.Krylov.Lanczos.stmtPeak_zero_le",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.staticCost_update",
+      "new": "NLAlib.Krylov.Lanczos.stmtCost_update",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.staticCost_normalize",
+      "new": "NLAlib.Krylov.Lanczos.stmtCost_normalize",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.staticPeak_update_le",
+      "new": "NLAlib.Krylov.Lanczos.stmtPeak_update_le",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.staticPeak_normalize_le",
+      "new": "NLAlib.Krylov.Lanczos.stmtPeak_normalize_le",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.staticCost_advance",
+      "new": "NLAlib.Krylov.Lanczos.stmtCost_advance",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.staticPeak_advance_le",
+      "new": "NLAlib.Krylov.Lanczos.stmtPeak_advance_le",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.staticCost_initialize",
+      "new": "NLAlib.Krylov.Lanczos.stmtCost_initialize",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.staticPeak_initialize_le",
+      "new": "NLAlib.Krylov.Lanczos.stmtPeak_initialize_le",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.staticCost_solve",
+      "new": "NLAlib.Krylov.Lanczos.stmtCost_solve",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.staticPeak_solve_le",
+      "new": "NLAlib.Krylov.Lanczos.stmtPeak_solve_le",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Ops.StdModel.sqrt_pos",
+      "new": "NLAlib.Ops.StdModel.dec_sqrt_pos",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Ops.IsNrm2Err.pos_of_ne_zero",
+      "new": "NLAlib.Ops.IsNrm2Err.dec_pos_of_ne_zero",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Ops.IsNrm2Err.pos_iff",
+      "new": "NLAlib.Ops.IsNrm2Err.dec_pos_iff",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.Reorth.staticCost_advance",
+      "new": "NLAlib.Krylov.Lanczos.Reorth.stmtCost_advance",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.Reorth.staticCost_solve",
+      "new": "NLAlib.Krylov.Lanczos.Reorth.stmtCost_solve",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.Reorth.staticPeak_advance_le",
+      "new": "NLAlib.Krylov.Lanczos.Reorth.stmtPeak_advance_le",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.Reorth.staticPeak_solve_le",
+      "new": "NLAlib.Krylov.Lanczos.Reorth.stmtPeak_solve_le",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.Reorth.staticCost_cgsPass",
+      "new": "NLAlib.Krylov.Lanczos.Reorth.stmtCost_cgsPass",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.Reorth.staticPeak_cgsPass_le",
+      "new": "NLAlib.Krylov.Lanczos.Reorth.stmtPeak_cgsPass_le",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.Reorth.PassOut.backward",
+      "new": "NLAlib.Krylov.Lanczos.Reorth.PassOut.abs_sub_le",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.Reorth.PassOut.coefficient_error_le",
+      "new": "NLAlib.Krylov.Lanczos.Reorth.PassOut.abs_sub_dotProduct_le",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.Reorth.PassOut.project_error_norm_le",
+      "new": "NLAlib.Krylov.Lanczos.Reorth.PassOut.norm_sub_sub_sum_le",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.Reorth.TwoPassOut.project_error_norm_le",
+      "new": "NLAlib.Krylov.Lanczos.Reorth.TwoPassOut.exists_norm_sub_sub_sum_le",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.Reorth.PassOut.dot_eq",
+      "new": "NLAlib.Krylov.Lanczos.Reorth.PassOut.dec_vec_eq_sum",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.Reorth.PassOut.update_eq",
+      "new": "NLAlib.Krylov.Lanczos.Reorth.PassOut.dec_vec_eq_sub_sum",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.Reorth.PassOut.project_eq",
+      "new": "NLAlib.Krylov.Lanczos.Reorth.PassOut.decv_eq_cgsProject",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.Reorth.TwoPassOut.project_eq",
+      "new": "NLAlib.Krylov.Lanczos.Reorth.TwoPassOut.decv_eq_cgsProject",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.Reorth.staticCost_cgs2",
+      "new": "NLAlib.Krylov.Lanczos.Reorth.stmtCost_cgs2",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.Reorth.staticPeak_cgs2_le",
+      "new": "NLAlib.Krylov.Lanczos.Reorth.stmtPeak_cgs2_le",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.Reorth.TwoPassOut.backward",
+      "new": "NLAlib.Krylov.Lanczos.Reorth.TwoPassOut.exists_abs_sub_le",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.Rounded.State.nearly_unit",
+      "new": "NLAlib.Krylov.Lanczos.Rounded.State.abs_norm_sq_sub_one_le",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.Output.basis_eq_arnoldiMatrix",
+      "new": "NLAlib.Krylov.Lanczos.Output.basisMatrix_succ_eq_arnoldiMatrix",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.StoresVec.entry_of_basis_readBlock",
+      "new": "NLAlib.Krylov.Lanczos.StoresVec.dec_vec_eq_of_readBlock",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.StoresCell.value_of_readBlock",
+      "new": "NLAlib.Krylov.Lanczos.StoresCell.dec_vec_eq_of_readBlock",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Ops.Problem.initial_length",
+      "new": "NLAlib.Ops.Problem.length_initial",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Ops.original_useCost_bookkeeping",
+      "new": "NLAlib.Ops.original_useCost_inr",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.PackedProblem.input_length",
+      "new": "NLAlib.Krylov.Lanczos.PackedProblem.length_input",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.Certification.input_length",
+      "new": "NLAlib.Krylov.Lanczos.Certification.length_input",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.Certification.program_wellTyped",
+      "new": "NLAlib.Krylov.Lanczos.Certification.wellTyped_program",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.SequentialCertification.program_wellTyped",
+      "new": "NLAlib.Krylov.Lanczos.SequentialCertification.wellTyped_program",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.SequentialCertification.program_eq_link",
+      "new": "NLAlib.Krylov.Lanczos.SequentialCertification.body_program_eq_link",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.Reorth.Certification.program_wellTyped",
+      "new": "NLAlib.Krylov.Lanczos.Reorth.Certification.wellTyped_program",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.Reorth.Rounded.solve_wellTyped",
+      "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.wellTyped_program",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.Reorth.PassOut.coefficient_magnitude_le",
+      "new": "NLAlib.Krylov.Lanczos.Reorth.PassOut.abs_coefficient_le",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.Reorth.PassOut.coefficient_error_norm_le",
+      "new": "NLAlib.Krylov.Lanczos.Reorth.PassOut.norm_coefficient_error_le",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.Reorth.PassOut.projection_norm_sum_le",
+      "new": "NLAlib.Krylov.Lanczos.Reorth.PassOut.sum_norm_projection_le",
+      "rule": "N2/N3/N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.exists_basis_readBlock",
+      "new": "NLAlib.Krylov.Lanczos.exists_readBlock_of_storesVec",
+      "rule": "N4"
+    },
+    {
+      "old": "NLAlib.Krylov.Lanczos.Rounded.solve_wellTyped",
+      "new": "NLAlib.Krylov.Lanczos.Rounded.wellTyped_program",
+      "rule": "N2/N4"
+    }
+  ]
+}

@@ -285,7 +285,7 @@ theorem sub_rationalBlockDifference_right (P Q : 𝕜[X]) (A B C H : Matrix n n 
     Matrix.mul_neg, Matrix.neg_mul] at hf
   ext i j
   have he := congrArg (fun D => D (Sum.inl (Sum.inl i)) (Sum.inr j)) hf
-  simp only [Matrix.fromRows_neg, Matrix.fromRows_apply_inl, Matrix.add_apply, 
+  simp only [Matrix.fromRows_neg, Matrix.fromRows_apply_inl, Matrix.add_apply,
     Matrix.fromBlocks_apply₁₂, Matrix.fromCols_apply_inr, Matrix.neg_apply] at he
   simp only [Matrix.sub_apply]
   have he' : rationalBlockDifference P Q A B H i j -

@@ -38,6 +38,8 @@ The process is Mathlib's `InnerProductSpace.gramSchmidtNormed` on the columns.
   initial segment of the columns.
 * `NLAlib.gramSchmidtQ_col_eq_zero_iff`, `NLAlib.gramSchmidtQ_col_bot`: zero columns and the first
   column.
+* `NLAlib.dotProduct_mgsSweep_gramSchmidtQ_col`, `NLAlib.mgsSweep_gramSchmidtQ_col`: the triangular
+  entries and swept columns in the modified process.
 * `NLAlib.mgsSweep_eq_sub_sum`: the modified Gram–Schmidt sweep `NLAlib.mgsSweep` equals the
   classical one against pairwise orthogonal vectors.
 -/
@@ -447,6 +449,20 @@ def mgsSweep (V : ℕ → m → 𝕜) (w : m → 𝕜) : ℕ → m → 𝕜
   | 0 => w
   | i + 1 => mgsSweep V w i - (star (V i) ⬝ᵥ mgsSweep V w i) • V i
 
+/-- **Projection coefficients in modified Gram–Schmidt.** A vector orthogonal to the first
+$k$ sweep vectors has the same inner product with the partially reduced column
+$\mathsf{mgsSweep}(\mathbf{v},\mathbf{w},k)$ as with the original column. In particular, taking
+the next orthogonal vector gives the same entry of the triangular factor as classical
+Gram–Schmidt, including when an earlier column has vanished. [GolubVanLoan2013, §5.2.8]. -/
+theorem dotProduct_mgsSweep_eq {V : ℕ → m → 𝕜} {x : m → 𝕜} {k : ℕ}
+    (h : ∀ i < k, star x ⬝ᵥ V i = 0) (w : m → 𝕜) :
+    star x ⬝ᵥ mgsSweep V w k = star x ⬝ᵥ w := by
+  induction k with
+  | zero => rfl
+  | succ k ih =>
+    rw [mgsSweep, dotProduct_sub, dotProduct_smul, h k (Nat.lt_succ_self k), smul_zero, sub_zero]
+    exact ih fun i hi => h i (Nat.lt_succ_of_lt hi)
+
 /-- **Modified and classical Gram–Schmidt agree in exact arithmetic**: if
 $\mathbf{v}_i^{\mathsf{H}}\mathbf{v}_j = 0$ for $j < i < k$, then
 $$\mathsf{mgsSweep}(\mathbf{v}, \mathbf{w}, k) = \mathbf{w} - \sum_{i < k}
@@ -459,12 +475,69 @@ theorem mgsSweep_eq_sub_sum {V : ℕ → m → 𝕜} {k : ℕ}
   | zero => simp [mgsSweep]
   | succ k ih =>
     have ih' := ih fun i hi j hj => h i (Nat.lt_succ_of_lt hi) j hj
-    have hc : star (V k) ⬝ᵥ mgsSweep V w k = star (V k) ⬝ᵥ w := by
-      rw [ih', dotProduct_sub, dotProduct_sum, sub_eq_self]
-      refine Finset.sum_eq_zero fun i hi => ?_
-      rw [dotProduct_smul, h k (Nat.lt_succ_self k) i (Finset.mem_range.mp hi), smul_zero]
+    have hc := dotProduct_mgsSweep_eq (h k (Nat.lt_succ_self k)) w
     change mgsSweep V w k - (star (V k) ⬝ᵥ mgsSweep V w k) • V k = _
     rw [hc, ih', Finset.sum_range_succ, sub_sub]
+
+/-- The columns of the Gram–Schmidt factor are mutually orthogonal, with squared norm one for a
+successful pivot and zero for a breakdown. -/
+theorem dotProduct_gramSchmidtQ_col {k : ℕ} (M : Matrix m (Fin k) 𝕜)
+    (c c' : Fin k) : star ((gramSchmidtQ M).col c) ⬝ᵥ (gramSchmidtQ M).col c' =
+      if c = c' then (if gramSchmidtR M c c = 0 then 0 else 1) else 0 := by
+  have h := congrFun (congrFun (conjTranspose_gramSchmidtQ_mul_self M) c) c'
+  rw [Matrix.mul_apply, Matrix.diagonal_apply] at h
+  rw [← h, dotProduct]
+  rfl
+
+private theorem star_col_dotProduct_eq_gramSchmidtR {k : ℕ} (M : Matrix m (Fin k) 𝕜)
+    (c j : Fin k) : star ((gramSchmidtQ M).col c) ⬝ᵥ M.col j = gramSchmidtR M c j := by
+  rw [gramSchmidtR, Matrix.mul_apply, dotProduct]
+  rfl
+
+/-- Sweeping column $j$ against the preceding Gram–Schmidt columns gives
+$r_{jj}\mathbf{q}_j$, including a zero residual at breakdown. -/
+theorem mgsSweep_gramSchmidtQ_col {k : ℕ} (M : Matrix m (Fin k) 𝕜) (u : Fin k) :
+    mgsSweep (fun c a => if h : c < k then gramSchmidtQ M a ⟨c, h⟩ else 0) (M.col u) u =
+      gramSchmidtR M u u • (gramSchmidtQ M).col u := by
+  obtain ⟨j, hj⟩ := u
+  set Vc : ℕ → m → 𝕜 := fun c a => if h : c < k then gramSchmidtQ M a ⟨c, h⟩ else 0
+  have hV : ∀ c (h : c < k), Vc c = (gramSchmidtQ M).col ⟨c, h⟩ := fun c h => by
+    ext a; simp [Vc, h, Matrix.col]
+  rw [mgsSweep_eq_sub_sum, gramSchmidtR_apply_self_smul_col]
+  · congr 1
+    set g : ℕ → m → 𝕜 := fun i => if h : i < k then
+      gramSchmidtR M ⟨i, h⟩ ⟨j, hj⟩ • (gramSchmidtQ M).col ⟨i, h⟩ else 0
+    have hg : ∀ c : Fin k, gramSchmidtR M c ⟨j, hj⟩ • (gramSchmidtQ M).col c = g c := fun c => by
+      simp [g, c.2]
+    rw [Finset.sum_congr rfl fun c _ => hg c]
+    change _ = ∑ c ∈ Finset.Iio (⟨j, hj⟩ : Fin k), g (Fin.valEmbedding c)
+    rw [← Finset.sum_map (Finset.Iio ⟨j, hj⟩) Fin.valEmbedding g, Fin.map_valEmbedding_Iio,
+      Nat.Iio_eq_range]
+    refine Finset.sum_congr rfl fun i hi => ?_
+    have hik : i < k := (Finset.mem_range.mp hi).trans hj
+    simp only [g, hik, dif_pos, hV i hik]
+    rw [← star_col_dotProduct_eq_gramSchmidtR]
+  · intro i hi i' hi'
+    rw [hV i (hi.trans hj), hV i' ((hi'.trans hi).trans hj), dotProduct_gramSchmidtQ_col,
+      if_neg (fun h => by simp [Fin.ext_iff] at h; omega)]
+
+/-- **Triangular coefficients of modified Gram–Schmidt.** The product of $\mathbf{q}_i$ with
+the residual of column $j$ after the first $i$ projections gives $r_{ij}$ of classical
+Gram–Schmidt. This holds at every step of $\mathsf{mgsSweep}$, also for dependent columns.
+[GolubVanLoan2013, §5.2.8].
+Result: gram-schmidt -/
+theorem dotProduct_mgsSweep_gramSchmidtQ_col {k : ℕ} (A : Matrix m (Fin k) 𝕜) (i j : Fin k) :
+    star ((gramSchmidtQ A).col i) ⬝ᵥ
+      mgsSweep (fun l a => if h : l < k then gramSchmidtQ A a ⟨l, h⟩ else 0) (A.col j) i =
+        gramSchmidtR A i j := by
+  rw [dotProduct_mgsSweep_eq]
+  · exact star_col_dotProduct_eq_gramSchmidtR A i j
+  · intro l hl
+    have hlk := hl.trans i.isLt
+    simp only [dif_pos hlk]
+    exact (dotProduct_gramSchmidtQ_col A i ⟨l, hlk⟩).trans
+      (if_neg (fun h => hl.ne (congrArg Fin.val h).symm))
+
 
 end Modified
 

@@ -7,6 +7,7 @@ module
 
 public import Mathlib.Analysis.Seminorm
 public import Mathlib.Data.Finsupp.Basic
+public import Mathlib.Logic.Equiv.Fintype
 public import NLAlib.ForMathlib.Data.Finsupp.Basic
 public import NLAlib.ForMathlib.Data.Finsupp.Order
 public import NLAlib.Matrix.Majorization.DoublyStochastic
@@ -31,6 +32,7 @@ extends Mathlib's `Seminorm`. The $\ell^q$ and Ky Fan gauges are in
 
 ## Main results
 
+* `NLAlib.SymmetricGauge.exists_eq_restrict`: extension of a gauge from a fixed finite dimension.
 * `NLAlib.SymmetricGauge.le_of_abs_le`: gauges are monotone in the absolute values.
 * `NLAlib.SymmetricGauge.le_of_forall_sum_le`: gauges respect weak majorization (Fan dominance
   for sequences).
@@ -300,6 +302,107 @@ theorem le_apply_single_mul_sum (x : ℕ →₀ ℝ) :
     _ = Φ (Finsupp.single 0 1) * ∑ i ∈ x.support, |x i| := by
       rw [Finset.mul_sum]
       exact Finset.sum_congr rfl fun i _ => by rw [Φ.apply_single, mul_comm]
+
+/-! ### Extension from a finite dimension -/
+
+/-- Deleting coordinates is the average of the identity and a change of signs. -/
+private theorem seminorm_indicator_le {d : ℕ} (p : Seminorm ℝ (Fin d → ℝ))
+    (habs : ∀ z : Fin d → ℝ, p (fun i => |z i|) = p z) (z : Fin d → ℝ)
+    (s : Set (Fin d)) : p (s.indicator z) ≤ p z := by
+  classical
+  let w : Fin d → ℝ := fun i => if i ∈ s then z i else -z i
+  have hw : p w = p z := by
+    rw [← habs w, ← habs z]
+    congr 1
+    funext i
+    by_cases hi : i ∈ s <;> simp [w, hi]
+  have he : (2 : ℝ) • s.indicator z = z + w := by
+    funext i
+    by_cases hi : i ∈ s <;> simp [w, Set.indicator, hi, two_mul]
+  have hp := map_add_le_add p z w
+  rw [← he, map_smul_eq_mul, Real.norm_of_nonneg (by norm_num : (0 : ℝ) ≤ 2), hw] at hp
+  linarith
+
+/-- Selecting entries of a zero-padded vector permutes some coordinates and deletes others. -/
+private theorem restrict_perm_le {d : ℕ} (p : Seminorm ℝ (Fin d → ℝ))
+    (hperm : ∀ (ρ : Equiv.Perm (Fin d)) (z : Fin d → ℝ), p (z ∘ ρ) = p z)
+    (habs : ∀ z : Fin d → ℝ, p (fun i => |z i|) = p z) (x : ℕ →₀ ℝ)
+    (hx : ∀ i, d ≤ i → x i = 0) (σ : Equiv.Perm ℕ) :
+    p (fun i : Fin d => x (σ i)) ≤ p (fun i : Fin d => x i) := by
+  classical
+  let s := {i : Fin d | σ i < d}
+  let f : s → Fin d := fun i => ⟨σ i.val, i.property⟩
+  have hf : Function.Injective f := fun i j h =>
+    Subtype.ext (Fin.ext (σ.injective (congrArg Fin.val h)))
+  let e := Equiv.ofInjective f hf
+  let ρ := e.extendSubtype
+  let z : Fin d → ℝ := fun i => x i
+  have h : (fun i : Fin d => x (σ i)) = s.indicator (z ∘ ρ) := by
+    funext i
+    by_cases hi : i ∈ s
+    · rw [Set.indicator_of_mem hi, Function.comp_apply]
+      change x (σ i) = x (e.extendSubtype i)
+      rw [Equiv.extendSubtype_apply_of_mem e i hi]
+      rfl
+    · rw [Set.indicator_of_notMem hi, hx]
+      exact le_of_not_gt hi
+  rw [h]
+  exact (seminorm_indicator_le p habs _ s).trans_eq (hperm ρ z)
+
+/-- A definite, sign- and permutation-invariant seminorm on a positive number of coordinates
+extends to a symmetric gauge on finitely supported sequences. The extension takes the supremum
+of the seminorm over all selections of the given number of coordinates. It restricts to the
+original norm on vectors supported in these coordinates. -/
+theorem exists_eq_restrict {d : ℕ} (hd : 0 < d) (p : Seminorm ℝ (Fin d → ℝ))
+    (hdef : ∀ z, p z = 0 → z = 0)
+    (hperm : ∀ (σ : Equiv.Perm (Fin d)) (z : Fin d → ℝ), p (z ∘ σ) = p z)
+    (habs : ∀ z : Fin d → ℝ, p (fun i => |z i|) = p z) :
+    ∃ Φ : SymmetricGauge, ∀ x : ℕ →₀ ℝ, (∀ i, d ≤ i → x i = 0) →
+      Φ x = p (fun i : Fin d => x i) := by
+  classical
+  -- Each selected tuple takes its values in the finite range of the input.
+  let q (σ : Equiv.Perm ℕ) : Seminorm ℝ (ℕ →₀ ℝ) :=
+    p.comp (LinearMap.pi fun i : Fin d => Finsupp.lapply (σ i))
+  have hB (x : ℕ →₀ ℝ) : BddAbove (Set.range fun σ => q σ x) := by
+    let : Finite (Set.range x) := x.finite_range.to_subtype
+    have hf := Set.finite_range (fun z : Fin d → Set.range x => p (fun i => (z i).val))
+    refine (hf.subset ?_).bddAbove
+    rintro _ ⟨σ, rfl⟩
+    exact ⟨fun i => ⟨x (σ i), ⟨σ i, rfl⟩⟩, rfl⟩
+  let P := ⨆ σ, q σ
+  have hP (x : ℕ →₀ ℝ) : P x = ⨆ σ : Equiv.Perm ℕ, p (fun i : Fin d => x (σ i)) :=
+    Seminorm.iSup_apply (Seminorm.bddAbove_range_iff.mpr hB)
+  let Φ : SymmetricGauge := {
+    toSeminorm := P
+    eq_zero_of_map_eq_zero' := by
+      intro x hx
+      ext i
+      let σ := Equiv.swap 0 i
+      have hs : p (fun j : Fin d => x (σ j)) ≤ P x := by
+        rw [hP]
+        exact le_ciSup (hB x) σ
+      have hz := hdef _ (le_antisymm (hs.trans_eq hx) (apply_nonneg p _))
+      simpa [σ] using congrFun hz (⟨0, hd⟩ : Fin d)
+    map_equivMapDomain' := by
+      intro τ x
+      change P (x.equivMapDomain τ) = P x
+      simp only [hP, Finsupp.equivMapDomain_apply]
+      apply le_antisymm
+      · refine ciSup_le fun σ => ?_
+        exact le_ciSup (hB x) (σ.trans τ.symm)
+      · refine ciSup_le fun σ => ?_
+        have h := le_ciSup (hB (x.equivMapDomain τ)) (σ.trans τ)
+        change p (fun i : Fin d => (x.equivMapDomain τ) (τ (σ i))) ≤
+          ⨆ ρ : Equiv.Perm ℕ, p (fun i : Fin d => (x.equivMapDomain τ) (ρ i)) at h
+        simpa only [Finsupp.equivMapDomain_apply, Equiv.symm_apply_apply] using h
+    map_abs' := by
+      intro x
+      change P (x.mapRange abs abs_zero) = P x
+      simp only [hP, Finsupp.mapRange_apply, habs] }
+  refine ⟨Φ, fun x hx => ?_⟩
+  change P x = _
+  rw [hP]
+  exact le_antisymm (ciSup_le (restrict_perm_le p hperm habs x hx)) (le_ciSup (hB x) 1)
 
 end SymmetricGauge
 

@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.Matrix.Functions.AbsoluteValue
 public import NLAlib.Matrix.Functions.OperatorConvex
 public import NLAlib.Matrix.Inequalities.Order
 
@@ -22,6 +23,8 @@ the joint convexity of the matrix relative entropy.
 * `NLAlib.matrixPerspective`: the matrix perspective of a function.
 
 ## Main results
+
+* `Matrix.PosDef.isGreatest_setOf_posSemidef_fromBlocks`: greatest Hermitian block completion.
 
 * `NLAlib.HasOrthonormalCols.matrixPerspective_mul_diagonal_mul_conjTranspose`: for two matrices
   diagonalised by the same frame it is the scalar perspective $a f(h/a)$ of the eigenvalues.
@@ -266,5 +269,101 @@ theorem OperatorConvexOn.matrixPerspective_smul_add_smul_le {f : ℝ → ℝ}
   obtain ⟨hS₂, hR₂, hSS₂, hSR₂, hRS₂⟩ := sqrt_and_inv hA₂
   exact hf.mul_cfc_mul_le hS hR hSR hRS hS₁ hR₁ hSR₁ hRS₁ hS₂ hR₂ hSR₂ hRS₂ hH₁ hH₂ ha hb
     (by rw [hSS₁, hSS₂, hSS])
+
+/-! ### Greatest positive block completion -/
+
+private theorem matrixPerspective_sqrt_eq {A B : Matrix n n 𝕜} (hA : A.PosDef)
+    (hB : B.PosSemidef) :
+    matrixPerspective Real.sqrt A B =
+      CFC.sqrt A * CFC.sqrt ((CFC.sqrt A)⁻¹ * B * (CFC.sqrt A)⁻¹) * CFC.sqrt A := by
+  obtain ⟨_, hR, _, _, _⟩ := sqrt_and_inv hA
+  have hC := hB.mul_mul_conjTranspose_same (CFC.sqrt A)⁻¹
+  rw [hR] at hC
+  rw [CFC.sqrt_eq_real_sqrt _ hC.nonneg, cfcₙ_eq_cfc (hf0 := Real.sqrt_zero)]
+  rfl
+
+/-- The inverse of a positive definite matrix is the square of its inverse square root.
+[Tropp2022, Definition 16.15]. -/
+theorem _root_.Matrix.PosDef.inv_eq_inv_sqrt_mul_inv_sqrt {A : Matrix n n 𝕜} (hA : A.PosDef) :
+    A⁻¹ = (CFC.sqrt A)⁻¹ * (CFC.sqrt A)⁻¹ := by
+  obtain ⟨_, _, hSS, hSR, _⟩ := sqrt_and_inv hA
+  apply Matrix.inv_eq_right_inv
+  calc
+    _ = (CFC.sqrt A * CFC.sqrt A) * ((CFC.sqrt A)⁻¹ * (CFC.sqrt A)⁻¹) := by rw [hSS]
+    _ = 1 := by rw [Matrix.mul_assoc, ← Matrix.mul_assoc (CFC.sqrt A) (CFC.sqrt A)⁻¹,
+        hSR, Matrix.one_mul, hSR]
+
+/-- The geometric mean solves the Riccati equation even when the second input is singular.
+[Tropp2022, Definition 16.15 and Theorem 12.16]. -/
+theorem _root_.Matrix.PosDef.matrixPerspective_sqrt_mul_inv_mul {A B : Matrix n n 𝕜} (hA : A.PosDef)
+    (hB : B.PosSemidef) :
+    matrixPerspective Real.sqrt A B * A⁻¹ * matrixPerspective Real.sqrt A B = B := by
+  let S := CFC.sqrt A
+  let R := S⁻¹
+  let C := R * B * R
+  let T := CFC.sqrt C
+  obtain ⟨_, hR, _, hSR, hRS⟩ := sqrt_and_inv hA
+  have hC : C.PosSemidef := by
+    simpa only [C, R, S, hR] using hB.mul_mul_conjTranspose_same (CFC.sqrt A)⁻¹
+  have hTT : T * T = C := CFC.sqrt_mul_sqrt_self _ hC.nonneg
+  rw [matrixPerspective_sqrt_eq hA hB, hA.inv_eq_inv_sqrt_mul_inv_sqrt]
+  change (S * T * S) * (R * R) * (S * T * S) = B
+  calc
+    _ = S * T * (S * R) * (R * S) * T * S := by noncomm_ring
+    _ = S * (T * T) * S := by rw [show S * R = 1 from hSR, show R * S = 1 from hRS]; noncomm_ring
+    _ = (S * R) * B * (R * S) := by rw [hTT]; dsimp [C]; noncomm_ring
+    _ = B := by rw [show S * R = 1 from hSR, show R * S = 1 from hRS, Matrix.one_mul,
+        Matrix.mul_one]
+
+private theorem le_matrixPerspective_sqrt {A B X : Matrix n n 𝕜} (hA : A.PosDef)
+    (hB : B.PosSemidef) (hX : X.IsHermitian) (hblock : (Matrix.fromBlocks A X X B).PosSemidef) :
+    X ≤ matrixPerspective Real.sqrt A B := by
+  let S := CFC.sqrt A
+  let R := S⁻¹
+  let Y := R * X * R
+  let C := R * B * R
+  obtain ⟨hS, hR, _, hSR, hRS⟩ := sqrt_and_inv hA
+  have hY : Y.IsHermitian := by
+    simpa only [Y, R, S, hR] using Matrix.isHermitian_mul_mul_conjTranspose (CFC.sqrt A)⁻¹ hX
+  let := hA.isUnit.invertible
+  have hs := (Matrix.PosDef.fromBlocks₁₁ X B hA).mp (by simpa only [hX.eq] using hblock)
+  have hc := hs.mul_mul_conjTranspose_same R
+  have he : R * (B - Xᴴ * A⁻¹ * X) * Rᴴ = C - Yᴴ * Y := by
+    rw [hX.eq, show Rᴴ = R from hR, hY.eq, hA.inv_eq_inv_sqrt_mul_inv_sqrt]
+    change R * (B - X * (R * R) * X) * R = R * B * R - (R * X * R) * (R * X * R)
+    noncomm_ring
+  rw [he] at hc
+  have hle : Y ≤ CFC.sqrt C :=
+    hY.le_abs.trans ((Matrix.posSemidef_conjTranspose_mul_self Y).sqrt_le_sqrt
+      (Matrix.le_iff.mpr hc))
+  have hsand := (Matrix.le_iff.mp hle).mul_mul_conjTranspose_same S
+  rw [show Sᴴ = S from hS] at hsand
+  apply Matrix.le_iff.mpr
+  rw [matrixPerspective_sqrt_eq hA hB]
+  change (S * CFC.sqrt C * S - X).PosSemidef
+  convert hsand using 1
+  calc
+    _ = S * CFC.sqrt C * S - (S * R) * X * (R * S) := by
+      rw [show S * R = 1 from hSR, show R * S = 1 from hRS, Matrix.one_mul, Matrix.mul_one]
+    _ = _ := by dsimp [Y]; noncomm_ring
+
+/-- **Greatest positive block completion.** For positive definite $\mathbf{A}$ and positive
+semidefinite $\mathbf{B}$, their geometric mean is the greatest Hermitian $\mathbf{X}$ for which
+the block matrix with diagonal $\mathbf{A},\mathbf{B}$ and off-diagonal $\mathbf{X}$ is positive
+semidefinite. [Tropp2022, Definition 16.15 and Theorem 12.16].
+Result: matrix-geometric-mean-block-maximum -/
+theorem _root_.Matrix.PosDef.isGreatest_setOf_posSemidef_fromBlocks {A B : Matrix n n 𝕜}
+    (hA : A.PosDef)
+    (hB : B.PosSemidef) : IsGreatest
+      {X : Matrix n n 𝕜 | X.IsHermitian ∧ (Matrix.fromBlocks A X X B).PosSemidef}
+      (matrixPerspective Real.sqrt A B) := by
+  have hG := isHermitian_matrixPerspective Real.sqrt A B
+  let := hA.isUnit.invertible
+  refine ⟨⟨hG, ?_⟩, fun X hX => le_matrixPerspective_sqrt hA hB hX.1 hX.2⟩
+  have h := Matrix.PosDef.fromBlocks₁₁ (matrixPerspective Real.sqrt A B) B hA
+  rw [hG.eq] at h
+  apply h.mpr
+  rw [hA.matrixPerspective_sqrt_mul_inv_mul hB, sub_self]
+  exact Matrix.PosSemidef.zero
 
 end NLAlib

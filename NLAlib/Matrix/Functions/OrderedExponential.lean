@@ -68,7 +68,6 @@ theorem analyticAt_orderedMatrixExp (H : List (Matrix n n ℂ)) (z : ℂ) :
       exact hx.comp (f := fun w : ℂ => w • A) hs
     exact he.mul ih
 
-set_option backward.isDefEq.respectTransparency false in
 /-- The first derivative of the ordered product at zero is the actual sum
 of its generators, without any commutation assumption. -/
 theorem hasDerivAt_orderedMatrixExp_zero (H : List (Matrix n n ℂ)) :

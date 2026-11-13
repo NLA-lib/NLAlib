@@ -13,6 +13,43 @@ The vocabulary guide records the ordered products, strip weights and extended in
 
 ## Shared proof machinery
 
+The scalar harmonic-measure step uses the following substitution directly in
+the proof of the strip boundary integrals. It also gives the distribution of
+the affine Cayley image of a uniformly distributed point on the unit circle.
+The pin supplies the Jacobian substitution and the Cauchy density.
+
+```lean
+theorem Complex.circleAverage_eq_integral_cauchyPDFReal (a : ℝ) {b : ℝ≥0} (hb : 0 < b)
+    (F : ℂ → ℝ) :
+    Real.circleAverage (fun z => F ((a : ℂ) + ((b : ℝ) : ℂ) * Complex.I *
+      ((1 + z) / (1 - z)))) 0 1 =
+      ∫ w : ℝ, ProbabilityTheory.cauchyPDFReal a b w * F (w : ℂ)
+```
+
+For `A : Matrix n n ℂ` the single-factor power identities use Mathlib's
+`cfc` and its positive real power. They supply the two list-product formulas
+used by the finite-parameter interpolation estimate and the passage to
+semidefinite matrices in the multivariate Araki–Lieb–Thirring theorem.
+The nil and cons equations expose the product in either of those proofs.
+
+```lean
+theorem Matrix.PosDef.cfc_cpow_eq_exp_smul_log {A : Matrix n n ℂ}
+    (hA : A.PosDef) (z : ℂ) :
+    cfc (fun w : ℂ => w ^ z) A = NormedSpace.exp (z • cfc Real.log A)
+
+theorem Matrix.PosSemidef.cfc_cpow_ofReal {A : Matrix n n ℂ}
+    (hA : A.PosSemidef) (r : ℝ) :
+    cfc (fun w : ℂ => w ^ (r : ℂ)) A = A ^ r
+
+theorem orderedMatrixCpow_eq_orderedMatrixExp_log
+    (L : List (Matrix n n ℂ)) (hL : ∀ A ∈ L, A.PosDef) (z : ℂ) :
+    orderedMatrixCpow L z = orderedMatrixExp (L.map (cfc Real.log)) z
+
+theorem orderedMatrixCpow_ofReal_eq_prod_rpow
+    (L : List (Matrix n n ℂ)) (hL : ∀ A ∈ L, A.PosSemidef) (r : ℝ) :
+    orderedMatrixCpow L (r : ℂ) = (L.map (fun A => A ^ r)).prod
+```
+
 Both multivariate inequalities use `schattenNorm_rpow_abs_orderedMatrixExp_le_exp_integral`.
 It gives the estimate at a finite strip parameter. Golden–Thompson takes that parameter to
 zero, while Araki–Lieb–Thirring applies the estimate to logarithms of positive definite
@@ -175,3 +212,56 @@ The source atlas supplied finite-dimensional proofs and the explicit zero conven
 The implementation reuses native Schatten norms, CFC, Gram matrices, eigenvalues and matrix
 order. The atlas's convenience bundles and duplicate real-only forms are recovered by
 specializing the statements above.
+
+## Boundary measures and the extended logarithm
+
+Use the normalized probability `Real.stripHarmonicMeasure r` for each boundary
+expectation. The two coefficients are the harmonic masses of the two lines.
+The scalar and matrix inequalities have the same boundary expression.
+
+```lean
+(1 - r) * (∫ t, h₀ t ∂Real.stripHarmonicMeasure (1 - r)) +
+  r * (∫ t, h₁ t ∂Real.stripHarmonicMeasure r)
+```
+
+`Real.integral_stripHarmonicMeasure` converts each expectation to its density
+formula. The endpoint limit uses the existing limiting density. The Cayley
+coordinates and the logarithm branch estimates serve a single proof. The
+public Cayley transport identity and the two boundary inequalities supply
+the reusable facts for Schatten interpolation.
+
+The positive and negative Lebesgue parts give three interfaces.
+
+```lean
+(∀ᵐ x ∂μ, 0 < g x) → Integrable (fun x => Real.log (g x)) μ →
+  extendedLogIntegral μ g = ((∫ x, Real.log (g x) ∂μ : ℝ) : EReal)
+(g ≤ᵐ[μ] h) → extendedLogIntegral μ g ≤ extendedLogIntegral μ h
+Measurable g → μ {x | g x ≤ 0} ≠ 0 → extendedLogIntegral μ g = ⊥
+```
+
+The first equality uses Mathlib's
+`integral_eq_lintegral_pos_part_sub_lintegral_neg_part`. The last uses
+`lintegral_eq_top_of_measure_eq_top_ne_zero` for the negative part.
+The upper-deficit formula is exposed with an explicit right hand side.
+For positive definite factors in positive dimension, the inverse-product
+estimate bounds the logarithm below. In dimension zero every matrix has zero
+Schatten norm. Mathlib defines the real logarithm of zero as zero, so the
+integrand vanishes and the real inequality reads $0\le 1$. Both cases are
+included in the finite form.
+
+```lean
+theorem schattenNorm_rpow_abs_prod_rpow_le_exp_integral_log
+    {n : Type*} [Fintype n] [DecidableEq n]
+    (L : List (Matrix n n ℂ)) (hL : ∀ A ∈ L, A.PosDef) {p r : ℝ}
+    (hp : 1 ≤ p) (hr : r ∈ Ioo (0 : ℝ) 1) :
+    schattenNorm (ENNReal.ofReal p) ((CFC.abs (L.map (fun A => A ^ r)).prod) ^ (1 / r)) ≤
+      Real.exp (∫ t, Real.log (schattenNorm (ENNReal.ofReal p)
+        (orderedMatrixCpow L (1 + (t : ℂ) * Complex.I))) ∂Real.stripHarmonicMeasure r)
+```
+
+`integrable_log_schattenNorm_orderedMatrixCpow` gives the finite-integral
+hypothesis for any finite boundary measure. Positive semidefinite inputs have
+a continuous right-boundary product and its uniform operator-norm bound by the
+product of the factor norms. These two facts are used in the regularization
+proof for positive semidefinite factors. The list regularization and bounds
+for the auxiliary displacement parameter stay private.

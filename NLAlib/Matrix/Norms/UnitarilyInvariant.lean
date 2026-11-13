@@ -427,6 +427,40 @@ theorem SymmetricGauge.matrixNorm_one_sub_rangeProjector_mul_le_of_range_le (Φ 
     Φ.matrixNorm ((1 - rangeProjector B) * A) ≤ Φ.matrixNorm ((1 - rangeProjector Y) * A) := by
   exact Φ.matrixNorm_le_of_singularValues_le
     (singularValues_one_sub_rangeProjector_mul_le_of_range_le h A)
+/-- A function on matrices of one shape is **unitarily invariant** if multiplication by
+arbitrary square unitary factors on the left and right preserves its value.
+[Bhatia1997, §IV.2]. -/
+def IsUnitarilyInvariant [DecidableEq m] [DecidableEq n] (f : Matrix m n 𝕜 → ℝ) : Prop :=
+  ∀ (P : Matrix m m 𝕜), HasOrthonormalCols P → ∀ (Q : Matrix n n 𝕜), HasOrthonormalCols Q →
+    ∀ A, f (P * A * Qᴴ) = f A
+
+/-- The matrix norm induced by a symmetric gauge is unitarily invariant on each shape. -/
+theorem SymmetricGauge.isUnitarilyInvariant_matrixNorm [DecidableEq m] [DecidableEq n]
+    (Φ : SymmetricGauge) :
+    IsUnitarilyInvariant (Φ.matrixNorm : Matrix m n 𝕜 → ℝ) := by
+  intro P hP Q hQ A
+  rw [Φ.matrixNorm_mul_conjTranspose_right_of_hasOrthonormalCols hQ,
+    Φ.matrixNorm_mul_left_of_hasOrthonormalCols hP]
+
+/-- Every Schatten functional is invariant under unitary changes of coordinates, including
+the rank functional at zero and the spectral norm at infinity. [Bhatia1997, §IV.2]. -/
+theorem isUnitarilyInvariant_schattenNorm [DecidableEq m] [DecidableEq n] (q : ℝ≥0∞) :
+    IsUnitarilyInvariant (schattenNorm q : Matrix m n 𝕜 → ℝ) := by
+  intro P hP Q hQ A
+  rw [hQ.schattenNorm_mul_conjTranspose_right, hP.schattenNorm_mul_left]
+
+/-- The spectral norm is unitarily invariant. [Bhatia1997, §IV.2]. -/
+theorem isUnitarilyInvariant_specNorm [DecidableEq m] [DecidableEq n] :
+    IsUnitarilyInvariant (specNorm : Matrix m n 𝕜 → ℝ) := by
+  simpa only [show (schattenNorm ⊤ : Matrix m n 𝕜 → ℝ) = specNorm from
+    funext schattenNorm_top] using (isUnitarilyInvariant_schattenNorm (𝕜 := 𝕜) (m := m) (n := n) ⊤)
+
+/-- The Frobenius norm is unitarily invariant. [Bhatia1997, §IV.2]. -/
+theorem isUnitarilyInvariant_frobNorm [DecidableEq m] [DecidableEq n] :
+    IsUnitarilyInvariant (frobNorm : Matrix m n 𝕜 → ℝ) := by
+  simpa only [show (schattenNorm 2 : Matrix m n 𝕜 → ℝ) = frobNorm from
+    funext schattenNorm_two] using (isUnitarilyInvariant_schattenNorm (𝕜 := 𝕜) (m := m) (n := n) 2)
+
 
 end NLAlib
 

@@ -84,7 +84,7 @@ theorem schattenNorm_exp_sum_le_exp_integral
     have h := schattenNorm_rpow_abs_orderedMatrixExp_le_exp_integral H hH hp hr
     have hco : (((k : ℝ)⁻¹ : ℝ) : ℂ) = (k : ℂ)⁻¹ := by
       simp only [Complex.ofReal_inv, Complex.ofReal_natCast]
-    rw [hco] at h
+    rw [Real.integral_stripHarmonicMeasure hr, hco] at h
     simp only [one_div, inv_inv] at h
     rw [CFC.rpow_natCast (CFC.abs (orderedMatrixExp H (k : ℂ)⁻¹)) k (CFC.abs_nonneg _)] at h
     exact h

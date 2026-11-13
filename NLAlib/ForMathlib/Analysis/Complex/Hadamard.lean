@@ -28,7 +28,8 @@ The proof adapts the original formalization in `tchen-research/NLAlib@77514ce`.
 
 ## Main results
 
-* `Complex.norm_le_exp_integral_stripPoissonDensity`: the strip inequality with boundary majorants.
+* `Complex.circleAverage_eq_integral_cauchyPDFReal`: Cayley transport of the unit circle.
+* `Complex.norm_le_exp_integral_stripHarmonicMeasure`: the strip inequality with boundary majorants.
 -/
 
 @[expose] public section
@@ -160,6 +161,7 @@ end
 section
 
 open Real Set Metric MeasureTheory
+open scoped NNReal
 
 namespace Complex
 
@@ -276,12 +278,15 @@ private theorem circleAverage_hirschmanDiskToHalfPlane (a b : ℝ) (F : ℂ → 
   rw [circleAverage_eq_integral_hirschmanBoundaryAngle]
   simp_rw [hirschmanDiskToHalfPlane_circleMap_boundary]
 
-/-- The circle boundary pushforward is the location-scale Cauchy
-density on the real line, not an unspecified boundary distribution. -/
-private theorem circleAverage_hirschmanDiskToHalfPlane_eq_cauchy (a : ℝ) {b : ℝ} (hb : 0 < b)
+/-- The affine Cayley map sends normalized angular measure on the unit circle to the real
+Cauchy law with location $a$ and positive scale $b$. Its pole at $1$ has measure zero. -/
+theorem circleAverage_eq_integral_cauchyPDFReal (a : ℝ) {b : ℝ≥0} (hb : 0 < b)
     (F : ℂ → ℝ) :
-    Real.circleAverage (fun z => F (hirschmanDiskToHalfPlane a b z)) 0 1 =
-      ∫ w : ℝ, ProbabilityTheory.cauchyPDFReal a (⟨b, hb.le⟩ : NNReal) w * F (w : ℂ) := by
+    Real.circleAverage (fun z => F ((a : ℂ) + ((b : ℝ) : ℂ) * I * ((1 + z) / (1 - z)))) 0 1 =
+      ∫ w : ℝ, ProbabilityTheory.cauchyPDFReal a b w * F (w : ℂ) := by
+  obtain ⟨b, hb₀⟩ := b
+  change 0 < b at hb
+  change Real.circleAverage (fun z => F (hirschmanDiskToHalfPlane a b z)) 0 1 = _
   have hRange : (fun q : ℝ => a + b * q) '' Set.univ = Set.univ := by
     ext w
     constructor
@@ -481,12 +486,9 @@ private theorem circleAverage_hirschmanDiskToStrip_eq_boundary_integrals {r : �
       ∫ t : ℝ, (r * stripPoissonDensity r t) * G (1 + (t : ℂ) * I) := by
   have hs : 0 < Real.sin (π * r) := Real.sin_pos_of_pos_of_lt_pi (mul_pos pi_pos hr.1)
     (by nlinarith [pi_pos, hr.2])
-  have hscale : (⟨Real.sin (π * r), hs.le⟩ : NNReal) = Real.toNNReal (Real.sin (π * r)) := by
-    ext
-    exact (Real.coe_toNNReal _ hs.le).symm
-  have h := circleAverage_hirschmanDiskToHalfPlane_eq_cauchy (Real.cos (π * r)) hs
+  have h := circleAverage_eq_integral_cauchyPDFReal (Real.cos (π * r)) (Real.toNNReal_pos.mpr hs)
     (fun w => G (log w * (-I) / (π : ℂ)))
-  rw [hscale] at h
+  simp only [Real.coe_toNNReal _ hs.le] at h
   exact h.trans (integral_cauchy_hirschmanLog_eq_boundary_integrals hr G hG)
 
 end Complex
@@ -885,7 +887,7 @@ namespace Complex
 /-- The scalar Stein–Hirschman inequality bounds the interior modulus by the weighted
 geometric mean of two measurable boundary majorants, including functions with zeros
 [SutterBertaTomamichel2017, Theorem 3.1]. -/
-theorem norm_le_exp_integral_stripPoissonDensity {r B H : ℝ}
+theorem norm_le_exp_integral_stripHarmonicMeasure {r B H : ℝ}
     (hr : r ∈ Ioo (0 : ℝ) 1) {g : ℂ → ℂ}
     (hg : DiffContOnCl ℂ g (HadamardThreeLines.verticalStrip 0 1))
     (hbound : ∀ z ∈ HadamardThreeLines.verticalClosedStrip 0 1, ‖g z‖ ≤ B)
@@ -894,8 +896,8 @@ theorem norm_le_exp_integral_stripPoissonDensity {r B H : ℝ}
     (hleft : ∀ t : ℝ, ‖g ((t : ℂ) * I)‖ ≤ Real.exp (h₀ t))
     (hright : ∀ t : ℝ, ‖g (1 + (t : ℂ) * I)‖ ≤ Real.exp (h₁ t)) :
     ‖g (r : ℂ)‖ ≤ Real.exp (
-      (∫ t : ℝ, ((1 - r) * stripPoissonDensity (1 - r) t) * h₀ t) +
-      ∫ t : ℝ, (r * stripPoissonDensity r t) * h₁ t) := by
+      (1 - r) * (∫ t, h₀ t ∂stripHarmonicMeasure (1 - r)) +
+      r * (∫ t, h₁ t ∂stripHarmonicMeasure r)) := by
   have hcl : closure (HadamardThreeLines.verticalStrip 0 1) =
       HadamardThreeLines.verticalClosedStrip 0 1 := by
     simp only [HadamardThreeLines.verticalStrip, HadamardThreeLines.verticalClosedStrip,
@@ -960,7 +962,8 @@ theorem norm_le_exp_integral_stripPoissonDensity {r B H : ℝ}
   simp only [zero_pow (by norm_num : (2 : ℕ) ≠ 0), add_zero, sqrt_sq (norm_nonneg _)] at hleftlim
   have h := le_of_tendsto_of_tendsto' hleftlim
     (Real.continuous_exp.continuousAt.tendsto.comp hrightlim) hfinal
-  simpa only [Function.comp_def, mul_assoc, integral_const_mul] using h
+  simpa only [Function.comp_def, integral_stripHarmonicMeasure hrr,
+    integral_stripHarmonicMeasure hr, smul_eq_mul] using h
 
 end Complex
 

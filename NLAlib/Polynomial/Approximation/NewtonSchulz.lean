@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import Mathlib.Analysis.SpecificLimits.Normed
 public import Mathlib.Analysis.SpecialFunctions.Log.Base
 public import Mathlib.Analysis.SpecialFunctions.Pow.Real
 
@@ -78,6 +79,92 @@ theorem abs_newtonSchulz_le_one {x : ℝ} (hx : |x| ≤ 2) : |newtonSchulz x| �
   have h2 : 0 ≤ (1 - x ^ 2) ^ 2 * (4 - x ^ 2) / 4 :=
     div_nonneg (mul_nonneg (sq_nonneg _) (by linarith)) (by norm_num)
   nlinarith [sq_abs (newtonSchulz x), abs_nonneg (newtonSchulz x)]
+
+/-- Every exact iterate after the first is bounded by one in magnitude when $\lvert x\rvert \le 2$.
+[Higham2008, §8.3]. -/
+theorem abs_iterate_newtonSchulz_le_one {x : ℝ} (hx : |x| ≤ 2) (k : ℕ) :
+    |(newtonSchulz^[k + 1]) x| ≤ 1 := by
+  induction k with
+  | zero => exact abs_newtonSchulz_le_one hx
+  | succ k ih =>
+    rw [Function.iterate_succ_apply']
+    exact abs_newtonSchulz_le_one (ih.trans (by norm_num))
+
+private theorem newtonSchulz_mem_Icc {x : ℝ} (hx : 0 ≤ x) (hx3 : x ^ 2 ≤ 3) :
+    newtonSchulz x ∈ Set.Icc (0 : ℝ) 1 := by
+  refine ⟨div_nonneg (mul_nonneg hx (sub_nonneg.mpr hx3)) (by norm_num), ?_⟩
+  apply (le_abs_self _).trans (abs_newtonSchulz_le_one _)
+  rw [abs_of_nonneg hx]
+  nlinarith
+
+private theorem iterate_newtonSchulz_mem_Icc {x : ℝ} (hx : 0 ≤ x) (hx3 : x ^ 2 ≤ 3) (k : ℕ) :
+    (newtonSchulz^[k + 1]) x ∈ Set.Icc (0 : ℝ) 1 := by
+  induction k with
+  | zero => exact newtonSchulz_mem_Icc hx hx3
+  | succ k ih =>
+    rw [Function.iterate_succ_apply']
+    apply newtonSchulz_mem_Icc ih.1
+    exact ((sq_le_sq₀ ih.1 zero_le_one).mpr ih.2).trans (by norm_num)
+
+/-- From $x>0$ with $x^2<3$, all singular coefficients after the first cubic update belong
+to $(0,1]$. [Higham2008, §8.3]. -/
+theorem newtonSchulz_iterate_mem_Ioc {x : ℝ} (hx : 0 < x) (hx3 : x ^ 2 < 3) (k : ℕ) :
+    (newtonSchulz^[k + 1]) x ∈ Set.Ioc (0 : ℝ) 1 := by
+  refine ⟨?_, (iterate_newtonSchulz_mem_Icc hx.le hx3.le k).2⟩
+  induction k with
+  | zero => exact div_pos (mul_pos hx (sub_pos.mpr hx3)) (by norm_num)
+  | succ k ih =>
+    rw [Function.iterate_succ_apply', newtonSchulz]
+    have h := (iterate_newtonSchulz_mem_Icc hx.le hx3.le k).2
+    exact div_pos (mul_pos ih (by nlinarith [sq_nonneg ((newtonSchulz^[k + 1]) x - 1)]))
+      (by norm_num)
+
+/-- The scalar Gram defect after $k+1$ Newton–Schulz updates is bounded by the first defect
+raised to $2^k$, for every $\lvert x\rvert\le 2$. [Higham2008, §8.3]. -/
+theorem one_sub_iterate_newtonSchulz_sq_le_pow {x : ℝ} (hx : |x| ≤ 2) (k : ℕ) :
+    1 - (newtonSchulz^[k + 1]) x ^ 2 ≤ (1 - newtonSchulz x ^ 2) ^ (2 ^ k) := by
+  induction k with
+  | zero => simp
+  | succ k ih =>
+    have h := abs_iterate_newtonSchulz_le_one hx k
+    have he : 0 ≤ 1 - (newtonSchulz^[k + 1]) x ^ 2 := by
+      nlinarith [sq_abs ((newtonSchulz^[k + 1]) x), abs_nonneg ((newtonSchulz^[k + 1]) x)]
+    rw [Function.iterate_succ_apply', one_sub_newtonSchulz_sq]
+    calc
+      _ ≤ (1 - (newtonSchulz^[k + 1]) x ^ 2) ^ 2 := by
+        nlinarith [mul_nonneg (sq_nonneg (1 - (newtonSchulz^[k + 1]) x ^ 2))
+          (sq_nonneg ((newtonSchulz^[k + 1]) x))]
+      _ ≤ _ := by
+        simpa only [← pow_mul, Nat.pow_succ] using pow_le_pow_left₀ he ih 2
+
+/-- For $0\le x$ and $x^2\le 3$, the distance of every subsequent Newton–Schulz coefficient
+to one is at most its Gram defect. [Higham2008, §8.3]. -/
+theorem abs_iterate_newtonSchulz_sub_one_le {x : ℝ} (hx : 0 ≤ x) (hx3 : x ^ 2 ≤ 3) (k : ℕ) :
+    |(newtonSchulz^[k + 1]) x - 1| ≤ 1 - (newtonSchulz^[k + 1]) x ^ 2 := by
+  obtain ⟨hp, hle⟩ := iterate_newtonSchulz_mem_Icc hx hx3 k
+  rw [abs_of_nonpos (sub_nonpos.mpr hle)]
+  nlinarith [mul_nonneg hp (sub_nonneg.mpr hle)]
+
+open Filter in
+open scoped Topology in
+/-- Newton–Schulz iterates from $x>0$ with $x^2<3$ converge to one.
+[Higham2008, §8.3]. -/
+theorem tendsto_iterate_newtonSchulz {x : ℝ} (hx : 0 < x) (hx3 : x ^ 2 < 3) :
+    Tendsto (fun k => (newtonSchulz^[k]) x) atTop (𝓝 1) := by
+  have ⟨h0, h1⟩ := newtonSchulz_iterate_mem_Ioc hx hx3 0
+  change 0 < newtonSchulz x at h0
+  change newtonSchulz x ≤ 1 at h1
+  have hp := (tendsto_pow_atTop_nhds_zero_of_lt_one
+    (by nlinarith [sq_nonneg (newtonSchulz x - 1)] : 0 ≤ 1 - newtonSchulz x ^ 2)
+    (by nlinarith [sq_pos_of_pos h0] : 1 - newtonSchulz x ^ 2 < 1)).comp
+    (tendsto_pow_atTop_atTop_of_one_lt (by norm_num : (1 : ℕ) < 2))
+  have hx2 : |x| ≤ 2 := by rw [abs_of_pos hx]; nlinarith
+  have ht : Tendsto (fun k => (newtonSchulz^[k + 1]) x - 1) atTop (𝓝 0) :=
+    squeeze_zero_norm (fun k => (abs_iterate_newtonSchulz_sub_one_le hx.le hx3.le k).trans
+      (one_sub_iterate_newtonSchulz_sq_le_pow hx2 k)) hp
+  have hh : Tendsto (fun k => (newtonSchulz^[k + 1]) x) atTop (𝓝 1) := by
+    simpa only [sub_add_cancel, zero_add] using ht.add_const 1
+  exact (tendsto_add_atTop_iff_nat 1).mp hh
 
 /-- The Newton–Schulz map grows the modulus near zero: for $\lvert x \rvert \le 1/2$,
 $\tfrac{11}{8}\lvert x \rvert \le \lvert g(x) \rvert$, since $g(x)/x = (3 - x^2)/2 \ge 11/8$.

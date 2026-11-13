@@ -1,0 +1,38 @@
+{
+  "date": "2026-11-12",
+  "note": "The existence theorem returns a generalized Schur factorization. Each determinant criterion takes this factorization as its first argument.",
+  "renames": [
+    {
+      "old": "NLAlib.exists_hasOrthonormalCols_isUpperTriangular_isUpperTriangular",
+      "new": "NLAlib.exists_isQZ",
+      "rule": "N2"
+    },
+    {
+      "old": "NLAlib.HasOrthonormalCols.det_smul_sub_smul",
+      "new": "NLAlib.IsQZ.det_smul_sub_smul",
+      "rule": "N18"
+    },
+    {
+      "old": "NLAlib.HasOrthonormalCols.det_smul_sub_smul_eq_zero_iff",
+      "new": "NLAlib.IsQZ.det_smul_sub_smul_eq_zero_iff",
+      "rule": "N18"
+    },
+    {
+      "old": "NLAlib.HasOrthonormalCols.det_sub_X_smul",
+      "new": "NLAlib.IsQZ.det_sub_X_smul",
+      "rule": "N18"
+    },
+    {
+      "old": "NLAlib.HasOrthonormalCols.det_sub_X_smul_ne_zero_iff",
+      "new": "NLAlib.IsQZ.det_sub_X_smul_ne_zero_iff",
+      "rule": "N18"
+    }
+  ],
+  "statementChanged": [
+    "NLAlib.exists_isQZ",
+    "NLAlib.IsQZ.det_smul_sub_smul",
+    "NLAlib.IsQZ.det_smul_sub_smul_eq_zero_iff",
+    "NLAlib.IsQZ.det_sub_X_smul",
+    "NLAlib.IsQZ.det_sub_X_smul_ne_zero_iff"
+  ]
+}

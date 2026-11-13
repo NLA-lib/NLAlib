@@ -43,10 +43,64 @@ noncomputable def extendedLogIntegral {α : Type*} [MeasurableSpace α]
   ((∫⁻ x, (ENNReal.log (ENNReal.ofReal (g x))).toENNReal ∂μ) : EReal) -
     ((∫⁻ x, (-ENNReal.log (ENNReal.ofReal (g x))).toENNReal ∂μ) : EReal)
 
+/-- If $g>0$ almost everywhere and $\log g$ is integrable, its extended logarithmic
+integral equals the ordinary real integral. -/
+theorem extendedLogIntegral_eq_integral_log {α : Type*} [MeasurableSpace α]
+    {μ : Measure α} {g : α → ℝ} (hpos : ∀ᵐ x ∂μ, 0 < g x)
+    (hlog : Integrable (fun x => Real.log (g x)) μ) :
+    extendedLogIntegral μ g = ((∫ x, Real.log (g x) ∂μ : ℝ) : EReal) := by
+  have hparts : (fun x => ENNReal.log (ENNReal.ofReal (g x))) =ᵐ[μ]
+      fun x => (Real.log (g x) : EReal) :=
+    hpos.mono fun _ hx => ENNReal.log_ofReal_of_pos hx
+  have hp : (∫⁻ x, (ENNReal.log (ENNReal.ofReal (g x))).toENNReal ∂μ) =
+      ∫⁻ x, ENNReal.ofReal (Real.log (g x)) ∂μ := by
+    apply lintegral_congr_ae
+    filter_upwards [hparts] with x hx
+    rw [hx, EReal.real_coe_toENNReal]
+  have hn : (∫⁻ x, (-ENNReal.log (ENNReal.ofReal (g x))).toENNReal ∂μ) =
+      ∫⁻ x, ENNReal.ofReal (-Real.log (g x)) ∂μ := by
+    apply lintegral_congr_ae
+    filter_upwards [hparts] with x hx
+    rw [hx, ← EReal.coe_neg, EReal.real_coe_toENNReal]
+  have hfin {f : α → ℝ} (hf : Integrable f μ) : (∫⁻ x, ENNReal.ofReal (f x) ∂μ) ≠ ∞ :=
+    ne_of_lt ((lintegral_mono fun x => Real.ofReal_le_enorm (f x)).trans_lt hf.hasFiniteIntegral)
+  have hm : Integrable (fun x => -Real.log (g x)) μ := hlog.neg
+  rw [extendedLogIntegral, hp, hn, ← EReal.coe_ennreal_toReal (hfin hlog),
+    ← EReal.coe_ennreal_toReal (hfin hm), ← EReal.coe_sub,
+    integral_eq_lintegral_pos_part_sub_lintegral_neg_part hlog]
+
+/-- Increasing $g$ almost everywhere increases its extended logarithmic integral. -/
+theorem extendedLogIntegral_mono_ae {α : Type*} [MeasurableSpace α]
+    {μ : Measure α} {g h : α → ℝ} (hgh : g ≤ᵐ[μ] h) :
+    extendedLogIntegral μ g ≤ extendedLogIntegral μ h := by
+  apply EReal.sub_le_sub <;> apply EReal.coe_ennreal_le_coe_ennreal_iff.mpr <;>
+    apply lintegral_mono_ae <;> filter_upwards [hgh] with x hx
+  · exact EReal.toENNReal_le_toENNReal (ENNReal.log_monotone (ENNReal.ofReal_le_ofReal hx))
+  · exact EReal.toENNReal_le_toENNReal (EReal.neg_le_neg_iff.mpr
+      (ENNReal.log_monotone (ENNReal.ofReal_le_ofReal hx)))
+
+/-- A measurable function nonpositive on a set of positive measure has extended logarithmic
+integral $-\infty$. Its negative logarithmic part has infinite integral. -/
+theorem extendedLogIntegral_eq_bot_of_measure_nonpos_ne_zero {α : Type*} [MeasurableSpace α]
+    {μ : Measure α} {g : α → ℝ} (hg : Measurable g) (hz : μ {x | g x ≤ 0} ≠ 0) :
+    extendedLogIntegral μ g = ⊥ := by
+  have hneg : (∫⁻ x, (-ENNReal.log (ENNReal.ofReal (g x))).toENNReal ∂μ) = ∞ := by
+    apply lintegral_eq_top_of_measure_eq_top_ne_zero
+    · exact (EReal.continuous_toENNReal.measurable.comp
+        (ENNReal.continuous_log.measurable.comp hg.ennreal_ofReal).neg).aemeasurable
+    · apply ne_of_gt
+      apply (bot_lt_iff_ne_bot.mpr hz).trans_le
+      apply measure_mono
+      intro x hx
+      change (-ENNReal.log (ENNReal.ofReal (g x))).toENNReal = ∞
+      rw [ENNReal.ofReal_of_nonpos hx]
+      simp
+  rw [extendedLogIntegral, hneg, EReal.coe_ennreal_top, EReal.sub_top]
+
 private noncomputable def logDeficit (c x : ℝ) : ℝ≥0∞ :=
   ((c : EReal) - ENNReal.log (ENNReal.ofReal x)).toENNReal
 
-private noncomputable def upperLogIntegral {α : Type*} [MeasurableSpace α]
+private noncomputable abbrev upperLogIntegral {α : Type*} [MeasurableSpace α]
     (μ : Measure α) (g : α → ℝ) (c : ℝ) : EReal :=
   (c : EReal) - ((∫⁻ x, logDeficit c (g x) ∂μ) : EReal)
 
@@ -128,11 +182,14 @@ private theorem lintegral_log_posPart_lt_top {α : Type*} [MeasurableSpace α]
       rw [lintegral_const]
       exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top (measure_lt_top μ univ)
 
-private theorem upperLogIntegral_eq_extendedLogIntegral {α : Type*} [MeasurableSpace α]
-    {μ : Measure α} [IsProbabilityMeasure μ] {g : α → ℝ}
-    (hg : Measurable g) {c : ℝ} (hc : 0 ≤ c)
-    (hle : ∀ᵐ x ∂μ, ENNReal.log (ENNReal.ofReal (g x)) ≤ c) :
-    upperLogIntegral μ g c = extendedLogIntegral μ g := by
+/-- Under an essential upper bound $\log g\le c$ on a probability space, the logarithmic
+deficit gives $\int\log g=c-\int(c-\log g)$. This includes infinite negative parts. -/
+theorem extendedLogIntegral_eq_sub_lintegral {α : Type*} [MeasurableSpace α]
+    {μ : Measure α} [IsProbabilityMeasure μ] {g : α → ℝ} (hg : Measurable g)
+    {c : ℝ} (hc : 0 ≤ c) (hle : ∀ᵐ x ∂μ, ENNReal.log (ENNReal.ofReal (g x)) ≤ c) :
+    extendedLogIntegral μ g = (c : EReal) -
+      ((∫⁻ x, ((c : EReal) - ENNReal.log (ENNReal.ofReal (g x))).toENNReal ∂μ) : EReal) := by
+  symm
   let p := ∫⁻ x, (ENNReal.log (ENNReal.ofReal (g x))).toENNReal ∂μ
   let q := ∫⁻ x, (-ENNReal.log (ENNReal.ofReal (g x))).toENNReal ∂μ
   let d := ∫⁻ x, logDeficit c (g x) ∂μ
@@ -248,7 +305,8 @@ theorem log_le_extendedLogIntegral_of_le_exp_integral_log_add {α : Type*} [Meas
   have he : ENNReal.ofReal L ≤ EReal.exp (upperLogIntegral μ g (Real.log (C' + 1))) :=
     ge_of_tendsto' ht fun _ => ENNReal.ofReal_le_ofReal (hL _ (by positivity))
   have hh : upperLogIntegral μ g (Real.log (C' + 1)) = extendedLogIntegral μ g := by
-    apply upperLogIntegral_eq_extendedLogIntegral hg (Real.log_nonneg (by linarith))
+    symm
+    apply extendedLogIntegral_eq_sub_lintegral hg (Real.log_nonneg (by linarith))
     filter_upwards [] with x
     by_cases hx : 0 < g x
     · rw [ENNReal.log_ofReal_of_pos hx, EReal.coe_le_coe_iff]

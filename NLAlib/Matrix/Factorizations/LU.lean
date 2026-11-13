@@ -329,22 +329,30 @@ private theorem isLU_luLower_luUpper_of_le_rank {A : Matrix (Fin n) (Fin n) K}
   rw [gaussState_eq_zero_of_le h0 hj']
   rfl
 
+/-- Greedy row exchanges make every pivot attain the largest weight in its active column.
+At stage $j$ a row maximizes $w$ on column $j$ of the current elimination state. -/
+theorem forall_weight_gaussState_submatrix_greedyPerm_le (w : K → ℝ)
+    (A : Matrix (Fin n) (Fin n) K) :
+    ∀ j i : Fin n, j ≤ i →
+      let σ := Fin.greedyPerm (fun σ j i => w (gaussState (A.submatrix σ id) j i j)) n
+      w (gaussState (A.submatrix σ id) j i j) ≤ w (gaussState (A.submatrix σ id) j j j) := by
+  intro j i hji σ
+  apply Fin.le_greedyPerm_apply_self (fun σ j i => w (gaussState (A.submatrix σ id) j i j))
+    _ n j i j.isLt hji
+  intro σ τ t hτ a
+  change w (gaussState ((A.submatrix σ id).submatrix τ id) t a t) =
+    w (gaussState (A.submatrix σ id) t (τ a) t)
+  rw [gaussState_submatrix_left _ τ t fun l hl => hτ l (Fin.lt_def.mpr hl)]
+  rfl
+
 /-- A row permutation after which every pivot of elimination maximises a given weight $w$ over
 the entries below it: for $\mathbf{B}$ the row-permuted matrix and $\mathbf{B}^{(j)}$ its state
 after $j$ steps, $w(\mathbf{B}^{(j)}_{i,j}) \le w(\mathbf{B}^{(j)}_{j,j})$ for $j \le i$. -/
 theorem exists_perm_forall_weight_gaussState_le (w : K → ℝ) (A : Matrix (Fin n) (Fin n) K) :
     ∃ σ : Equiv.Perm (Fin n), ∀ j i : Fin n, j ≤ i →
-      w (gaussState (A.submatrix σ id) j i j) ≤ w (gaussState (A.submatrix σ id) j j j) := by
-  have hs : ∀ (σ τ : Equiv.Perm (Fin n)) (j : Fin n), (∀ l : Fin n, l < j → τ l = l) →
-      ∀ i, w (gaussState (A.submatrix (τ.trans σ) id) j i j) =
-        w (gaussState (A.submatrix σ id) j (τ i) j) := by
-    intro σ τ j hτ i
-    have hsub : A.submatrix (τ.trans σ) id = (A.submatrix σ id).submatrix τ id := rfl
-    rw [hsub, gaussState_submatrix_left _ τ j fun l hl => hτ l (Fin.lt_def.mpr hl)]
-    rfl
-  obtain ⟨σ, hσ⟩ := Fin.exists_perm_forall_le_apply_self
-    (fun σ j i => w (gaussState (A.submatrix σ id) j i j)) hs n
-  exact ⟨σ, fun j i hji => hσ j i j.2 hji⟩
+      w (gaussState (A.submatrix σ id) j i j) ≤ w (gaussState (A.submatrix σ id) j j j) :=
+  ⟨Fin.greedyPerm (fun σ j i => w (gaussState (A.submatrix σ id) j i j)) n,
+    forall_weight_gaussState_submatrix_greedyPerm_le w A⟩
 
 /-- Every square matrix indexed by `Fin n` is factored by elimination after a row
 permutation. -/

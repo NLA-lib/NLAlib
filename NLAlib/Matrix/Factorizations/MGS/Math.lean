@@ -29,11 +29,8 @@ variable {𝕜 : Type} [RCLike 𝕜]
 /-- The nonzero Gram–Schmidt columns are orthonormal; zero columns remain zero. -/
 theorem dotProduct_gramSchmidtQ_col {N k : ℕ} (M : Matrix (Fin N) (Fin k) 𝕜)
     (c c' : Fin k) : star ((gramSchmidtQ M).col c) ⬝ᵥ (gramSchmidtQ M).col c' =
-      if c = c' then (if gramSchmidtR M c c = 0 then 0 else 1) else 0 := by
-  have h := congrFun (congrFun (conjTranspose_gramSchmidtQ_mul_self M) c) c'
-  rw [Matrix.mul_apply, Matrix.diagonal_apply] at h
-  rw [← h, dotProduct]
-  rfl
+      if c = c' then (if gramSchmidtR M c c = 0 then 0 else 1) else 0 :=
+  NLAlib.dotProduct_gramSchmidtQ_col M c c'
 
 /-- Inner products with original columns give the Gram–Schmidt triangular factor. -/
 theorem star_col_dotProduct_eq_gramSchmidtR {N k : ℕ} (M : Matrix (Fin N) (Fin k) 𝕜)
@@ -45,27 +42,8 @@ theorem star_col_dotProduct_eq_gramSchmidtR {N k : ℕ} (M : Matrix (Fin N) (Fin
 theorem mgsSweep_gramSchmidtQ {N k : ℕ} (M : Matrix (Fin N) (Fin k) 𝕜) (j : ℕ)
     (hj : j < k) :
     mgsSweep (fun c a => if h : c < k then gramSchmidtQ M a ⟨c, h⟩ else 0) (M.col ⟨j, hj⟩) j =
-      gramSchmidtR M ⟨j, hj⟩ ⟨j, hj⟩ • (gramSchmidtQ M).col ⟨j, hj⟩ := by
-  set Vc : ℕ → Fin N → 𝕜 := fun c a => if h : c < k then gramSchmidtQ M a ⟨c, h⟩ else 0
-  have hV : ∀ c (h : c < k), Vc c = (gramSchmidtQ M).col ⟨c, h⟩ := fun c h => by
-    ext a; simp [Vc, h, Matrix.col]
-  rw [mgsSweep_eq_sub_sum, gramSchmidtR_apply_self_smul_col]
-  · congr 1
-    set g : ℕ → Fin N → 𝕜 := fun i => if h : i < k then
-      gramSchmidtR M ⟨i, h⟩ ⟨j, hj⟩ • (gramSchmidtQ M).col ⟨i, h⟩ else 0
-    have hg : ∀ c : Fin k, gramSchmidtR M c ⟨j, hj⟩ • (gramSchmidtQ M).col c = g c := fun c => by
-      simp [g, c.2]
-    rw [Finset.sum_congr rfl fun c _ => hg c]
-    change _ = ∑ c ∈ Finset.Iio (⟨j, hj⟩ : Fin k), g (Fin.valEmbedding c)
-    rw [← Finset.sum_map (Finset.Iio ⟨j, hj⟩) Fin.valEmbedding g, Fin.map_valEmbedding_Iio,
-      Nat.Iio_eq_range]
-    refine Finset.sum_congr rfl fun i hi => ?_
-    have hik : i < k := (Finset.mem_range.mp hi).trans hj
-    simp only [g, hik, dif_pos, hV i hik]
-    rw [← star_col_dotProduct_eq_gramSchmidtR]
-  · intro i hi i' hi'
-    rw [hV i (hi.trans hj), hV i' ((hi'.trans hi).trans hj), dotProduct_gramSchmidtQ_col,
-      if_neg (fun h => by simp [Fin.ext_iff] at h; omega)]
+      gramSchmidtR M ⟨j, hj⟩ ⟨j, hj⟩ • (gramSchmidtQ M).col ⟨j, hj⟩ :=
+  NLAlib.mgsSweep_gramSchmidtQ_col M ⟨j, hj⟩
 
 /-- The squared norm of a nonzero Gram–Schmidt residual has positive real part;
 its scalar square root is exactly the nonnegative diagonal coefficient. -/

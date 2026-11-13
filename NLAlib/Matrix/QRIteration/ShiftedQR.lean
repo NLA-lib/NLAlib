@@ -89,6 +89,13 @@ this holds. -/
 def IsDecoupled (δ : ℝ) (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) : Prop :=
   ∃ i : Fin n, ‖H i.succ i.castSucc‖ ≤ δ * specNorm H
 
+/-- An upper Hessenberg matrix is unreduced exactly when it has no zero-threshold
+decoupling. [BanksGarzaVargasSrivastava2021, §1]. -/
+theorem IsUpperHessenberg.isUnreducedHessenberg_iff_not_isDecoupled
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hH : IsUpperHessenberg H) :
+    IsUnreducedHessenberg H ↔ ¬ IsDecoupled 0 H := by
+  simp [isUnreducedHessenberg_iff, hH, IsDecoupled]
+
 /-- The **potential** $\psi_k(\mathbf{H})$: the geometric mean of the moduli of the last $k$
 subdiagonal entries, $\psi_k(\mathbf{H}) = \bigl(\prod_{n - k \le i < n}
 \lvert\mathbf{H}_{i+1,i}\rvert\bigr)^{1/k}$ (indices from $0$; for $k > n$ all $n$ entries
@@ -748,10 +755,9 @@ theorem IsUpperHessenberg.isDecoupled_zero_shiftedQRStep_of_det_eq_zero
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hH : IsUpperHessenberg H) (hn : 0 < n) {s : ℂ}
     (hs : (H - s • (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)).det = 0) :
     IsDecoupled 0 (shiftedQRStep H s) := by
-  by_cases hred : ∃ i : Fin n, H i.succ i.castSucc = 0
-  · obtain ⟨i, hi⟩ := hred
-    exact ⟨i, by rw [hH.shiftedQRStep_apply_succ_castSucc_eq_zero hi s]; simp⟩
-  push Not at hred
+  by_cases hred : IsDecoupled 0 H
+  · simpa [multiShiftedQRStep] using hH.isDecoupled_zero_multiShiftedQRStep hred [s]
+  have hu := hH.isUnreducedHessenberg_iff_not_isDecoupled.mpr hred
   set A := H - s • (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) with hA
   set Q := givensHessenbergQ A
   set R := givensHessenbergR A
@@ -762,7 +768,7 @@ theorem IsUpperHessenberg.isDecoupled_zero_shiftedQRStep_of_det_eq_zero
     have hv : A ⟨j + 1, by omega⟩ j ≠ 0 := by
       rw [hA, Matrix.sub_apply, Matrix.smul_apply,
         Matrix.one_apply_ne (fun h => by simpa using congrArg Fin.val h), smul_zero, sub_zero]
-      exact hred ⟨j, hj⟩
+      exact hu.subdiagonal_ne_zero _ _ rfl
     rw [show R j j = (givensHessenbergState A (j + 1)).2 j j from
       (givensHessenbergState_apply_of_lt A 0 (k := j + 1) (j := n + 1) (by omega) (a := j)
         (by omega)).1 j, givensHessenbergState_succ_snd,

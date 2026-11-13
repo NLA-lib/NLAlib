@@ -507,6 +507,25 @@ None of these was approved by the maintainer when it was made. Status is given p
 - **Status.** Implemented locally, 2026-11-05. Adapted proof provenance and redistribution
   status are recorded in [Finite-Precision-Arithmetic.md](Finite-Precision-Arithmetic.md).
 
+## 21. Frobenius Hilbert space of Hermitian matrices
+
+- **Mathlib.** The real submodule `selfAdjoint.submodule ℝ (Matrix n n 𝕜)` carries its ambient
+  matrix norm. Mathlib also supplies scoped matrix norms. The spectral norm is needed for
+  differentiation of the matrix algebra, while the K-transform contraction is measured on
+  Hermitian directions in the Frobenius norm.
+- **NLAlib.** `hermitianFrobenius 𝕜 n` equips the same real vector space with `frobInner`
+  and `frobNorm`. The core `hermitianFrobeniusCore` determines the norm and inner product.
+- **Bridge.** `hermitianFrobeniusEquiv` identifies the underlying real vector spaces.
+  `hermitianFrobeniusMatrix` realizes a vector as a matrix, `hermitianFrobeniusMatrixLinear`
+  bundles that map, and `toHermitianFrobenius` takes a Hermitian matrix back.
+  `inner_eq_frobInner` and `norm_eq_frobNorm` identify the Hilbert operations
+  with the matrix Frobenius pairing and norm.
+- **Why.** Both norms occur in the same K-transform theorem. Choosing the carrier fixes the
+  induced operator norm appearing in the contraction criterion.
+- **Cost.** Statements moving between the ambient derivative and the Hermitian stability
+  operator use the realization map. The positive-cone results work over both scalar fields.
+- **Status.** Proposed in the matrix K-transform port.
+
 ## Small spelling choices
 
 - `principalMinor A s` for `(A.submatrix (↑) (↑)).det` with `s : Finset n`

@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-12",
+  "note": "Primitive increments work in complex normed spaces, and the bundled homotopy theorem integrates Banach-valued holomorphic functions.",
+  "renames": [],
+  "statementChanged": [
+    "Complex.sub_eq_sub_of_hasDerivAt_of_path",
+    "Complex.sub_eq_sub_of_hasDerivAt_of_continuous",
+    "ContinuousMap.Homotopy.integral_eq_of_differentiableOn"
+  ]
+}

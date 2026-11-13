@@ -30,7 +30,7 @@ namespace Matrix
 variable {𝕜 m n : Type*} [RCLike 𝕜] [Fintype m] [Fintype n] [DecidableEq n]
 
 open scoped Matrix.Norms.L2Operator in
-/-- Matrices with the operator norm form a real normed space. Not a global instance: it is
+/-- Matrices with the operator norm form a real normed space. Scoped with the operator norm; it is
 scoped with the norm, `open scoped Matrix.Norms.L2Operator`. -/
 @[instance_reducible]
 noncomputable def instL2OpNormedSpaceReal : NormedSpace ℝ (Matrix m n 𝕜) where
@@ -38,5 +38,13 @@ noncomputable def instL2OpNormedSpaceReal : NormedSpace ℝ (Matrix m n 𝕜) wh
     rw [← algebraMap_smul 𝕜 r A, norm_smul, norm_algebraMap']
 
 scoped[Matrix.Norms.L2Operator] attribute [instance] Matrix.instL2OpNormedSpaceReal
+
+open scoped Matrix.Norms.L2Operator in
+/-- The real normed algebra of square matrices with the operator norm. Scalar multiplication
+uses the existing real module and its norm inequality. This structure can be installed locally
+when using real derivatives or the algebra exponential. -/
+@[instance_reducible]
+noncomputable def l2OpNormedAlgebraReal : NormedAlgebra ℝ (Matrix n n 𝕜) :=
+  ⟨norm_smul_le⟩
 
 end Matrix

@@ -186,4 +186,49 @@ theorem eq_smul_one_of_forall_mul_mul_conjTranspose_eq [DecidableEq n] {M : Matr
     simp [hdiag i i₀]
   · simp [hij, hoff i j hij]
 
+private theorem circlePoint_mul_star (s : ℝ) (hs : |s| ≤ 1) :
+    ((s : ℂ) + Complex.I * Real.sqrt (1 - s ^ 2)) *
+      star ((s : ℂ) + Complex.I * Real.sqrt (1 - s ^ 2)) = 1 := by
+  have ht : (Real.sqrt (1 - s ^ 2)) ^ 2 = 1 - s ^ 2 :=
+    Real.sq_sqrt (by
+      have hs' := abs_le.mp hs
+      nlinarith [mul_nonneg (sub_nonneg.mpr hs'.2) (by linarith : 0 ≤ 1 + s)])
+  apply Complex.ext <;> simp [Complex.mul_re, Complex.mul_im] <;> nlinarith
+
+/-- Every square complex contraction is the arithmetic mean of two unitary matrices.
+For each singular value $s$, the diagonal factors use the conjugate unit phases
+$s\pm i\sqrt{1-s^2}$. [Tropp2022, §12]. -/
+theorem exists_eq_smul_add_of_specNorm_le_one [DecidableEq n] (A : Matrix n n ℂ)
+    (hA : specNorm A ≤ 1) :
+    ∃ U V : Matrix n n ℂ, HasOrthonormalCols U ∧ HasOrthonormalCols V ∧
+      A = (2 : ℂ)⁻¹ • (U + V) := by
+  obtain ⟨L, R, h⟩ := exists_isSVD A A.rank_le_card_width le_rfl le_rfl
+  let s (i : Fin (Fintype.card n)) := singularValues A i
+  let z (i : Fin (Fintype.card n)) : ℂ := (s i : ℂ) + Complex.I * √(1 - s i ^ 2)
+  have hz (i) : z i * star (z i) = 1 := circlePoint_mul_star (s i) (by
+    rw [abs_of_nonneg (singularValues_nonneg A i)]
+    exact (singularValues_le_specNorm A i).trans hA)
+  have hd : HasOrthonormalCols (Matrix.diagonal z) := by
+    rw [HasOrthonormalCols, Matrix.diagonal_conjTranspose, Matrix.diagonal_mul_diagonal,
+      ← Matrix.diagonal_one]
+    congr 1
+    funext i
+    exact (mul_comm _ _).trans (hz i)
+  have hr : HasOrthonormalCols Rᴴ := by
+    rw [HasOrthonormalCols, Matrix.conjTranspose_conjTranspose]
+    exact h.hasOrthonormalCols_right.mul_conjTranspose_self_of_card_eq (by simp)
+  refine ⟨L * Matrix.diagonal z * Rᴴ, L * (Matrix.diagonal z)ᴴ * Rᴴ,
+    (h.hasOrthonormalCols_left.mul hd).mul hr,
+    (h.hasOrthonormalCols_left.mul hd.conjTranspose).mul hr,
+    ?_⟩
+  rw [← Matrix.add_mul, ← Matrix.mul_add, ← Matrix.smul_mul, ← Matrix.mul_smul]
+  rw [h.eq]
+  congr 2
+  ext i j
+  by_cases hij : i = j
+  · subst j
+    simp [z, s]
+    ring
+  · simp [Matrix.diagonal, hij, Ne.symm hij]
+
 end NLAlib

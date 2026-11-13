@@ -307,6 +307,19 @@ theorem _root_.Matrix.PosSemidef.nuclearNorm_eq_re_trace {A : Matrix n n 𝕜} (
   rw [nuclearNorm, min_self, hA.singularValues_eq_eigenvalue,
     hA.isHermitian.re_trace_eq_sum_range_eigenvalue]
 
+open scoped MatrixOrder in
+/-- **Nuclear norm of a positive semidefinite difference.** For
+$\mathbf{A} \succeq \mathbf{B} \succeq \mathbf{0}$, the nuclear norm of the residual is exactly
+$\|\mathbf{A}\|_* - \|\mathbf{B}\|_*$.
+[PerssonMeyerMusco2025, Lemma 2.3].
+Result: ordered-schatten-trace-deficit -/
+theorem _root_.Matrix.PosSemidef.nuclearNorm_sub_of_le {A B : Matrix n n 𝕜}
+    (hB : B.PosSemidef) (h : B ≤ A) : nuclearNorm (A - B) = nuclearNorm A - nuclearNorm B := by
+  have hD := Matrix.le_iff.mp h
+  have hA : A.PosSemidef := by simpa using hD.add hB
+  rw [hD.nuclearNorm_eq_re_trace, hA.nuclearNorm_eq_re_trace, hB.nuclearNorm_eq_re_trace,
+    Matrix.trace_sub, map_sub]
+
 /-- The nuclear norm of a Gram matrix is the squared Frobenius norm:
 $\|\mathbf{B}^{\mathsf{H}}\mathbf{B}\|_* = \|\mathbf{B}\|_{\mathsf{F}}^2$. -/
 theorem nuclearNorm_conjTranspose_mul_self (B : Matrix m n 𝕜) :

@@ -71,6 +71,17 @@ theorem conjTranspose_mul_eq_sum_vecMulVec (A : Matrix n q α) (B : Matrix n r �
 
 end Gram
 
+/-- Conjugating a diagonal matrix by a rectangular matrix expands into the rank-one
+outer products of its columns, weighted by the diagonal entries. [HornJohnson2013, §2.5]. -/
+theorem mul_diagonal_mul_conjTranspose_eq_sum_vecMulVec {R m n : Type*} [CommSemiring R]
+    [Star R] [Fintype m] [DecidableEq m] (U : Matrix n m R) (d : m → R) :
+    U * Matrix.diagonal d * Uᴴ = ∑ i, d i • Matrix.vecMulVec (U.col i) (star (U.col i)) := by
+  ext j k
+  rw [Matrix.mul_apply]
+  simp only [Matrix.mul_diagonal, Matrix.conjTranspose_apply, Matrix.sum_apply,
+    Matrix.smul_apply, Matrix.vecMulVec_apply, Pi.star_apply, Matrix.col_apply, smul_eq_mul]
+  exact Finset.sum_congr rfl fun _ _ => by ac_rfl
+
 
 section Congruence
 

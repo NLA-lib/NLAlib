@@ -1,0 +1,27 @@
+{
+  "date": "2026-11-12",
+  "note": "Finite-parameter strip expectations use normalized harmonic measure. The two boundary masses are scalar coefficients.",
+  "renames": [
+    {
+      "old": "Complex.norm_le_exp_integral_stripPoissonDensity",
+      "new": "Complex.norm_le_exp_integral_stripHarmonicMeasure",
+      "rule": "N8"
+    },
+    {
+      "old": "NLAlib.schattenNorm_le_exp_integral_stripPoissonDensity",
+      "new": "NLAlib.schattenNorm_le_exp_integral_stripHarmonicMeasure",
+      "rule": "N8"
+    },
+    {
+      "old": "NLAlib.schattenNorm_le_exp_integral_stripPoissonDensity_of_specNorm_le_one",
+      "new": "NLAlib.schattenNorm_le_exp_integral_stripHarmonicMeasure_of_specNorm_le_one",
+      "rule": "N8"
+    }
+  ],
+  "statementChanged": [
+    "Complex.norm_le_exp_integral_stripHarmonicMeasure",
+    "NLAlib.schattenNorm_le_exp_integral_stripHarmonicMeasure",
+    "NLAlib.schattenNorm_le_exp_integral_stripHarmonicMeasure_of_specNorm_le_one",
+    "NLAlib.schattenNorm_rpow_abs_orderedMatrixExp_le_exp_integral"
+  ]
+}

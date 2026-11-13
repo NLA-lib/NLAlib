@@ -9,7 +9,7 @@ public import Mathlib.Analysis.CStarAlgebra.Matrix
 public import Mathlib.Analysis.SpecialFunctions.ContinuousFunctionalCalculus.ExpLog.Order
 public import Mathlib.Analysis.SpecialFunctions.ContinuousFunctionalCalculus.Rpow.Order
 public import Mathlib.Analysis.SpecialFunctions.Pow.Real
-public import NLAlib.Matrix.Functions.Complexification
+public import NLAlib.Matrix.Functions.MatrixMonotone
 public import NLAlib.Matrix.Inequalities.Order
 
 /-!
@@ -57,14 +57,10 @@ Result: loewner-heinz -/
 theorem _root_.Matrix.PosSemidef.rpow_le_rpow [DecidableEq n] {A B : Matrix n n 𝕜}
     (hA : A.PosSemidef) (h : A ≤ B) {r : ℝ} (hr : r ∈ Set.Icc (0 : ℝ) 1) : A ^ r ≤ B ^ r := by
   have hB : B.PosSemidef := Matrix.nonneg_iff_posSemidef.mp (hA.nonneg.trans h)
-  have hAc : (0 : Matrix n n ℂ) ≤ complexify A := (posSemidef_complexify_iff.mpr hA).nonneg
-  have hBc : (0 : Matrix n n ℂ) ≤ complexify B := (posSemidef_complexify_iff.mpr hB).nonneg
-  rw [CFC.rpow_eq_cfc_real hA.nonneg, CFC.rpow_eq_cfc_real hB.nonneg,
-    ← complexify_le_complexify_iff, Matrix.IsHermitian.complexify_cfc hA.isHermitian,
-      Matrix.IsHermitian.complexify_cfc hB.isHermitian,
-    ← CFC.rpow_eq_cfc_real hAc, ← CFC.rpow_eq_cfc_real hBc]
-  open scoped Matrix.Norms.L2Operator in
-  exact CFC.rpow_le_rpow hr (complexify_le_complexify_iff.mpr h)
+  rw [CFC.rpow_eq_cfc_real hA.nonneg, CFC.rpow_eq_cfc_real hB.nonneg]
+  exact (operatorMonotoneOn_rpow hr).cfc_le_cfc hA.isHermitian hB.isHermitian
+    (fun _ hx => spectrum_nonneg_of_nonneg hA.nonneg hx)
+    (fun _ hx => spectrum_nonneg_of_nonneg hB.nonneg hx) h
 
 open scoped Classical in
 /-- **The square root is operator monotone**: if $\mathbf{A}$ is positive semidefinite and

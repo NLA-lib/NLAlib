@@ -83,8 +83,8 @@ theorem schattenNorm_rpow_abs_orderedMatrixExp_le_exp_integral
     (H : List (Matrix n n ℂ)) (hH : ∀ A ∈ H, A.IsHermitian) {p r : ℝ}
     (hp : 1 ≤ p) (hr : r ∈ Ioo (0 : ℝ) 1) :
     schattenNorm (ENNReal.ofReal p) ((CFC.abs (orderedMatrixExp H (r : ℂ))) ^ (1 / r)) ≤
-      Real.exp (∫ t : ℝ, Real.stripPoissonDensity r t *
-        Real.log (schattenNorm (ENNReal.ofReal p) (orderedMatrixExp H (1 + (t : ℂ) * I)))) := by
+      Real.exp (∫ t : ℝ, Real.log (schattenNorm (ENNReal.ofReal p)
+        (orderedMatrixExp H (1 + (t : ℂ) * I))) ∂Real.stripHarmonicMeasure r) := by
   have hp0 := zero_lt_one.trans_le hp
   rw [schattenNorm_rpow_abs _ hp0 (one_div_pos.mpr hr.1), one_div_mul_eq_div]
   by_cases hn : Nonempty n
@@ -97,13 +97,12 @@ theorem schattenNorm_rpow_abs_orderedMatrixExp_le_exp_integral
         hc.continuousOn⟩
     have hb (z : ℂ) (hz : z ∈ Complex.HadamardThreeLines.verticalClosedStrip 0 1) :=
       specNorm_orderedMatrixExp_le_exp_sum H hH (z := z) (abs_le.mpr ⟨by linarith [hz.1], hz.2⟩)
-    have h := schattenNorm_le_exp_integral_stripPoissonDensity_of_specNorm_le_one hr hp hdiff hb
+    have h := schattenNorm_le_exp_integral_stripHarmonicMeasure_of_specNorm_le_one hr hp hdiff hb
       _ (continuous_log_schattenNorm_orderedMatrixExp H hH hp0).measurable
       (abs_log_schattenNorm_orderedMatrixExp_le H hH hp0)
       (specNorm_orderedMatrixExp_imaginary_le_one H hH)
       (fun t => (Real.exp_log ((Real.exp_pos _).trans_le
         (exp_neg_sum_le_schattenNorm_orderedMatrixExp H hH hp0 t))).symm.le)
-    simp only [mul_assoc, integral_const_mul] at h
     apply (Real.rpow_le_rpow (schattenNorm_nonneg _ _) h (one_div_nonneg.mpr hr.1.le)).trans_eq
     rw [← Real.exp_mul]
     congr 1

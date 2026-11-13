@@ -1,0 +1,19 @@
+{
+  "date": "2026-11-12",
+  "note": "Rank preservation describes the Gram positivity result for every rank. Three defect bounds now accept any rectangular input of norm at most two. The polar-error comparison accepts norm at most the square root of three.",
+  "renames": [
+    {
+      "old": "NLAlib.posDef_one_sub_columnGramDefect_polarSchulzIterate",
+      "new": "NLAlib.rank_polarSchulzIterate",
+      "rule": "N2",
+      "removed": true
+    }
+  ],
+  "statementChanged": [
+    "NLAlib.rank_polarSchulzIterate",
+    "NLAlib.posSemidef_columnGramDefect_polarSchulzIterate",
+    "NLAlib.specNorm_columnGramDefect_polarSchulzIterate_succ_le",
+    "NLAlib.specNorm_columnGramDefect_polarSchulzIterate_le_pow",
+    "NLAlib.specNorm_polarFactor_sub_polarSchulzIterate_le"
+  ]
+}

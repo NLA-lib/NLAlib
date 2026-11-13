@@ -548,4 +548,21 @@ theorem _root_.Matrix.IsHermitian.neg_le_and_le_iff_forall_abs_re_quadForm_le {A
   rw [hA.neg.le_iff_re_quadForm_le hB, hB.le_iff_re_quadForm_le hA, ← forall_and]
   simp only [quadForm_neg_left, map_neg, abs_le]
 
+/-- If $\begin{bmatrix}\mathbf{S} & \mathbf{B} \\ \mathbf{B}^{\mathsf H} & \mathbf{S}\end{bmatrix}$
+is positive semidefinite, then $\|\mathbf{B}\|_2 \le \|\mathbf{S}\|_2$.
+[Bhatia1997, §IX.1]. -/
+theorem _root_.Matrix.PosSemidef.specNorm_le_specNorm_of_fromBlocks {S B : Matrix m m 𝕜}
+    (h : (Matrix.fromBlocks S B Bᴴ S).PosSemidef) : specNorm B ≤ specNorm S := by
+  classical
+  have hS : S.PosSemidef := h.submatrix (Sum.inl : m → m ⊕ m)
+  obtain ⟨K, hK, rfl⟩ := (hS.posSemidef_fromBlocks_iff_exists_sqrt_mul_mul_sqrt hS).mp h
+  have hnorm := specNorm_conjTranspose_mul_self (CFC.sqrt S)
+  have hs : (CFC.sqrt S).IsHermitian := (CFC.sqrt_nonneg _).isSelfAdjoint
+  rw [hs.eq, CFC.sqrt_mul_sqrt_self _ hS.nonneg] at hnorm
+  calc
+    _ ≤ (specNorm (CFC.sqrt S) * specNorm K) * specNorm (CFC.sqrt S) :=
+      (specNorm_mul_le _ _).trans (by gcongr; exact specNorm_mul_le _ _)
+    _ ≤ (specNorm (CFC.sqrt S) * 1) * specNorm (CFC.sqrt S) := by gcongr
+    _ = _ := by rw [mul_one, ← sq, ← hnorm]
+
 end NLAlib

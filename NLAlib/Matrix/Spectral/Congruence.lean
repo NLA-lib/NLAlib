@@ -26,7 +26,9 @@ three blocks with sizes determined by the two ranks and the common nullity. For 
 invertible $\mathbf{A}$, simultaneous diagonalisation by congruence
 is possible exactly when $\mathbf{A}^{-1}\mathbf{B}$ is diagonalisable with real eigenvalues. Over
 $\mathbb{C}$ every pair of square matrices is simultaneously unitarily triangularised (the
-generalized Schur, or QZ, decomposition).
+generalized Schur, or QZ, decomposition). The two triangular diagonals factor the determinant
+of the pencil, including its homogeneous roots at infinity. These determinant statements are
+adapted from `tchen-research/NLAlib` at `77514ce42a0e437d837797a063ac161f41022730`.
 
 ## Main results
 
@@ -37,7 +39,8 @@ generalized Schur, or QZ, decomposition).
 * `Matrix.PosSemidef.exists_conjTranspose_mul_mul_eq_diagonal`: the sum-normalized pair.
 * `Matrix.PosSemidef.exists_eq_mul_diagonal_mul_conjTranspose`: the three-block form of a
   semidefinite pair.
-* `NLAlib.exists_hasOrthonormalCols_isUpperTriangular_isUpperTriangular`: the QZ decomposition.
+* `NLAlib.exists_isQZ`: the QZ decomposition.
+* `NLAlib.IsQZ.det_smul_sub_smul`: the homogeneous determinant from the QZ diagonals.
 -/
 
 @[expose] public section
@@ -494,13 +497,25 @@ theorem _root_.Matrix.IsHermitian.exists_conjTranspose_mul_mul_eq_diagonal_iff
 
 /-! ### The generalized Schur decomposition -/
 
+/-- A **generalized Schur factorization** of $(\mathbf{A},\mathbf{B})$ consists of two unitary
+matrices $\mathbf{Q},\mathbf{Z}$ for which both transformed factors are upper triangular.
+[GolubVanLoan2013, Theorem 7.7.1]. -/
+structure IsQZ [LinearOrder n] (A B Q Z : Matrix n n 𝕜) : Prop where
+  /-- The left factor has orthonormal columns. -/
+  hasOrthonormalCols_left : HasOrthonormalCols Q
+  /-- The right factor has orthonormal columns. -/
+  hasOrthonormalCols_right : HasOrthonormalCols Z
+  /-- The first transformed matrix is upper triangular. -/
+  isUpperTriangular_left : (Qᴴ * A * Z).IsUpperTriangular
+  /-- The second transformed matrix is upper triangular. -/
+  isUpperTriangular_right : (Qᴴ * B * Z).IsUpperTriangular
+
 /-- The QZ decomposition of a pencil with invertible $\mathbf{B}$: a Schur form
 $\mathbf{Z}^{\mathsf{H}}(\mathbf{B}^{-1}\mathbf{A})\mathbf{Z}$ followed by a QR factorization of
 $\mathbf{B}\mathbf{Z}$. -/
 private theorem exists_isUpperTriangular_of_isUnit_det [LinearOrder n] (A : Matrix n n ℂ)
     {B : Matrix n n ℂ} (hB : IsUnit B.det) :
-    ∃ Q Z : Matrix n n ℂ, HasOrthonormalCols Q ∧ HasOrthonormalCols Z ∧
-      (Qᴴ * A * Z).IsUpperTriangular ∧ (Qᴴ * B * Z).IsUpperTriangular := by
+    ∃ Q Z : Matrix n n ℂ, IsQZ A B Q Z := by
   obtain ⟨Z, hZ, hT⟩ := exists_hasOrthonormalCols_isUpperTriangular (B⁻¹ * A)
   obtain ⟨Q, R, hQR, -⟩ := exists_isQR (B * Z) le_rfl
   have hR : Qᴴ * B * Z = R := by
@@ -536,10 +551,9 @@ $\mathbf{Q}^{\mathsf{H}}\mathbf{A}\mathbf{Z}$ and $\mathbf{Q}^{\mathsf{H}}\mathb
 upper triangular.
 [GolubVanLoan2013, Theorem 7.7.1]; [HornJohnson2013, Theorem 2.6.1].
 Result: qz -/
-theorem exists_hasOrthonormalCols_isUpperTriangular_isUpperTriangular
+theorem exists_isQZ
     [LinearOrder n] (A B : Matrix n n ℂ) :
-    ∃ Q Z : Matrix n n ℂ, HasOrthonormalCols Q ∧ HasOrthonormalCols Z ∧
-      (Qᴴ * A * Z).IsUpperTriangular ∧ (Qᴴ * B * Z).IsUpperTriangular := by
+    ∃ Q Z : Matrix n n ℂ, IsQZ A B Q Z := by
   have hK : IsCompact ({Q : Matrix n n ℂ | HasOrthonormalCols Q} ×ˢ
       {Z : Matrix n n ℂ | HasOrthonormalCols Z}) :=
     isCompact_setOf_hasOrthonormalCols.prod isCompact_setOf_hasOrthonormalCols
@@ -574,5 +588,97 @@ theorem exists_hasOrthonormalCols_isUpperTriangular_isUpperTriangular
   simp only at ht hA' hB'
   rw [ht, zero_smul, add_zero] at hB'
   exact ⟨Q, Z, hQ, hZ, hA', hB'⟩
+
+namespace IsQZ
+
+variable [LinearOrder n] {Q Z A B : Matrix n n 𝕜}
+
+/-- **Homogeneous determinant in QZ form.** Suppose unitary $\mathbf{Q},\mathbf{Z}$ reduce
+$\mathbf{A},\mathbf{B}$ to upper triangular $\mathbf{S},\mathbf{T}$. For all $\alpha,\beta$,
+$\det(\beta\mathbf{A}-\alpha\mathbf{B})$ equals
+$\det(\mathbf{Q})\det(\mathbf{Z}^{\mathsf{H}})\prod_i(\beta s_{ii}-\alpha t_{ii})$.
+Derived from the triangularization in [MolerStewart1973, §1], including singular pencils.
+Result: generalized-schur-pencil-determinant -/
+theorem det_smul_sub_smul (h : IsQZ A B Q Z) (α β : 𝕜) :
+    (β • A - α • B).det = Q.det * Zᴴ.det *
+      ∏ i, (β * (Qᴴ * A * Z) i i - α * (Qᴴ * B * Z) i i) := by
+  obtain ⟨hQ, hZ, hA, hB⟩ := h
+  have cancel (M : Matrix n n 𝕜) : Q * (Qᴴ * M * Z) * Zᴴ = M := by
+    simp only [Matrix.mul_assoc, hZ.mul_conjTranspose_self, Matrix.mul_one]
+    rw [← Matrix.mul_assoc, hQ.mul_conjTranspose_self, Matrix.one_mul]
+  have htri : (β • (Qᴴ * A * Z) - α • (Qᴴ * B * Z)).IsUpperTriangular := by
+    intro i j hij
+    simp [Matrix.sub_apply, Matrix.smul_apply, hA hij, hB hij]
+  calc
+    _ = (Q * (β • (Qᴴ * A * Z) - α • (Qᴴ * B * Z)) * Zᴴ).det := by
+      rw [Matrix.mul_sub, Matrix.sub_mul, Matrix.mul_smul, Matrix.mul_smul,
+        Matrix.smul_mul, Matrix.smul_mul, cancel, cancel]
+    _ = _ := by
+      rw [Matrix.det_mul, Matrix.det_mul, Matrix.det_of_isUpperTriangular htri]
+      simp only [Matrix.sub_apply, Matrix.smul_apply, smul_eq_mul]
+      ac_rfl
+
+/-- **Homogeneous roots in QZ form.** If unitary $\mathbf{Q},\mathbf{Z}$ reduce
+$\mathbf{A},\mathbf{B}$ to upper triangular $\mathbf{S},\mathbf{T}$, then
+$\det(\beta\mathbf{A}-\alpha\mathbf{B})=0$ precisely when $\beta s_{ii}=\alpha t_{ii}$ for some
+$i$. Taking $(\alpha,\beta)=(1,0)$ tests for the eigenvalue at infinity of a regular pencil.
+Derived from the diagonal-pair description in [MolerStewart1973, §1].
+Result: generalized-schur-pencil-determinant -/
+theorem det_smul_sub_smul_eq_zero_iff (h : IsQZ A B Q Z) (α β : 𝕜) :
+    (β • A - α • B).det = 0 ↔ ∃ i, β * (Qᴴ * A * Z) i i = α * (Qᴴ * B * Z) i i := by
+  have hQ := h.hasOrthonormalCols_left
+  have hZ := h.hasOrthonormalCols_right
+  rw [h.det_smul_sub_smul, mul_eq_zero, or_iff_right
+    (mul_ne_zero (Matrix.isUnit_det_of_right_inverse hQ.mul_conjTranspose_self).ne_zero
+      (Matrix.isUnit_det_of_right_inverse hZ.conjTranspose_mul_self).ne_zero),
+    Finset.prod_eq_zero_iff]
+  simp only [Finset.mem_univ, true_and, sub_eq_zero]
+
+/-- **Affine determinant in QZ form.** Suppose unitary $\mathbf{Q},\mathbf{Z}$ reduce
+$\mathbf{A},\mathbf{B}$ to upper triangular $\mathbf{S},\mathbf{T}$. As a polynomial in $x$,
+$\det(\mathbf{A}-x\mathbf{B})$ equals
+$\det(\mathbf{Q})\det(\mathbf{Z}^{\mathsf{H}})\prod_i(s_{ii}-x t_{ii})$.
+Polynomial form of the triangularization in [MolerStewart1973, §1].
+Result: generalized-schur-pencil-determinant -/
+theorem det_sub_X_smul (h : IsQZ A B Q Z) :
+    (A.map C - (X : 𝕜[X]) • B.map C).det = C (Q.det * Zᴴ.det) *
+      ∏ i, (C ((Qᴴ * A * Z) i i) - X * C ((Qᴴ * B * Z) i i)) := by
+  apply Polynomial.funext
+  intro x
+  have heval : (A.map C - (X : 𝕜[X]) • B.map C).map (eval x) = A - x • B := by
+    ext i j
+    simp [Matrix.sub_apply, Matrix.smul_apply, smul_eq_mul, mul_comm x]
+  rw [← coe_evalRingHom, RingHom.map_det]
+  change (Matrix.map _ (eval x)).det = _
+  rw [heval]
+  simpa [eval_prod, mul_comm x] using h.det_smul_sub_smul x 1
+
+/-- **Regularity in QZ form.** If unitary $\mathbf{Q},\mathbf{Z}$ reduce $\mathbf{A},\mathbf{B}$
+to upper triangular $\mathbf{S},\mathbf{T}$, then $\det(\mathbf{A}-x\mathbf{B})$ is a nonzero
+polynomial precisely when each diagonal pair $(s_{ii},t_{ii})$ has a nonzero coordinate.
+Polynomial form of the diagonal-pair criterion in [MolerStewart1973, §1].
+Result: generalized-schur-pencil-determinant -/
+theorem det_sub_X_smul_ne_zero_iff (h : IsQZ A B Q Z) :
+    (A.map C - (X : 𝕜[X]) • B.map C).det ≠ 0 ↔
+      ∀ i, (Qᴴ * A * Z) i i ≠ 0 ∨ (Qᴴ * B * Z) i i ≠ 0 := by
+  have hQ := h.hasOrthonormalCols_left
+  have hZ := h.hasOrthonormalCols_right
+  rw [h.det_sub_X_smul, mul_ne_zero_iff, and_iff_right (C_ne_zero.mpr
+    (mul_ne_zero (Matrix.isUnit_det_of_right_inverse hQ.mul_conjTranspose_self).ne_zero
+      (Matrix.isUnit_det_of_right_inverse hZ.conjTranspose_mul_self).ne_zero)),
+    Finset.prod_ne_zero_iff]
+  simp only [Finset.mem_univ, forall_const]
+  apply forall_congr'
+  intro i
+  have h (s t : 𝕜) : C s - X * C t = 0 ↔ s = 0 ∧ t = 0 := by
+    constructor
+    · intro he
+      simpa using And.intro (congrArg (fun p : 𝕜[X] => p.coeff 0) he)
+        (congrArg (fun p : 𝕜[X] => p.coeff 1) he)
+    · rintro ⟨rfl, rfl⟩
+      simp
+  simpa only [not_and_or] using not_congr (h ((Qᴴ * A * Z) i i) ((Qᴴ * B * Z) i i))
+
+end IsQZ
 
 end NLAlib

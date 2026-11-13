@@ -5,8 +5,10 @@ Authors: NLAlib contributors
 -/
 module
 
+public import Mathlib.Analysis.Convex.SpecificFunctions.Basic
 public import Mathlib.Analysis.MeanInequalities
 public import Mathlib.Analysis.SpecialFunctions.ContinuousFunctionalCalculus.Rpow.Basic
+public import NLAlib.Matrix.Basic.Selection
 public import NLAlib.Matrix.Functions.TraceFunctions
 
 /-!
@@ -27,6 +29,7 @@ method of exchangeable pairs for random matrices use.
   `Matrix.IsHermitian.re_trace_pow_le_card_mul_specNorm_pow`: traces of powers through the
   eigenvalues (`Matrix.IsHermitian.re_trace_pow_eq_sum_range_eigenvalue_pow`); the moment bound for
   the spectral norm is `NLAlib.specNorm_pow_le_re_trace_pow`.
+* `Matrix.PosSemidef.re_trace_rpow_add_le`: superadditivity of positive trace powers.
 * `Matrix.PosDef.trace_pow_pos`, `Matrix.PosSemidef.re_trace_pow_add_le_mul`:
   positivity and submultiplicativity of power traces.
 * `Matrix.IsHermitian.re_trace_mul_diagonal_mul_mul_diagonal`:
@@ -552,5 +555,61 @@ theorem _root_.Matrix.PosSemidef.re_trace_mul_le_re_trace_rpow_add {A B : Matrix
       ≤ w i j * (eigenvalue A i ^ p / p + eigenvalue B j ^ q / q) :=
         mul_le_mul_of_nonneg_left hs (hw0 i j)
     _ = w i j * (eigenvalue A i ^ p * 1) / p + w i j * (1 * eigenvalue B j ^ q) / q := by ring
+
+/-! ### Positive trace powers -/
+
+/-- **McCarthy's trace superadditivity.** For positive semidefinite $\mathbf{X},\mathbf{Y}$
+and real $p \ge 1$,
+$$\operatorname{Re}\operatorname{tr}(\mathbf{X}^p) +
+  \operatorname{Re}\operatorname{tr}(\mathbf{Y}^p)
+  \le \operatorname{Re}\operatorname{tr}((\mathbf{X}+\mathbf{Y})^p).$$
+[PerssonMeyerMusco2025, proof of Lemma 2.3].
+Result: trace-power-superadditivity -/
+theorem _root_.Matrix.PosSemidef.re_trace_rpow_add_le {X Y : Matrix n n 𝕜}
+    (hX : X.PosSemidef) (hY : Y.PosSemidef) {p : ℝ} (hp : 1 ≤ p) :
+    RCLike.re (X ^ p).trace + RCLike.re (Y ^ p).trace ≤ RCLike.re ((X + Y) ^ p).trace := by
+  -- The two diagonal blocks of the left Gram matrix are X and Y; the right Gram matrix is X + Y.
+  let G := Matrix.fromRows (CFC.sqrt X) (CFC.sqrt Y)
+  have hs (M : Matrix n n 𝕜) : (CFC.sqrt M)ᴴ = CFC.sqrt M :=
+    (CFC.sqrt_nonneg M).isSelfAdjoint.star_eq
+  have hG : Gᴴ * G = X + Y := by
+    simp only [G, Matrix.conjTranspose_fromRows_eq_fromCols_conjTranspose,
+      Matrix.fromCols_mul_fromRows, hs, CFC.sqrt_mul_sqrt_self _ hX.nonneg,
+      CFC.sqrt_mul_sqrt_self _ hY.nonneg]
+  have hblocks : G * Gᴴ =
+      Matrix.fromBlocks X (CFC.sqrt X * CFC.sqrt Y) (CFC.sqrt Y * CFC.sqrt X) Y := by
+    simp only [G, Matrix.conjTranspose_fromRows_eq_fromCols_conjTranspose,
+      Matrix.fromRows_mul_fromCols, hs, CFC.sqrt_mul_sqrt_self _ hX.nonneg,
+      CFC.sqrt_mul_sqrt_self _ hY.nonneg]
+  have hd₁ : (G * Gᴴ).submatrix Sum.inl Sum.inl = X := hblocks ▸ rfl
+  have hd₂ : (G * Gᴴ).submatrix Sum.inr Sum.inr = Y := hblocks ▸ rfl
+  let f := fun t : ℝ => t ^ p
+  have hGG := Matrix.posSemidef_self_mul_conjTranspose G
+  have hj (e : n → n ⊕ n) (he : Function.Injective e) :
+      RCLike.re (cfc f ((G * Gᴴ).submatrix e e)).trace ≤
+        RCLike.re ((cfc f (G * Gᴴ)).submatrix e e).trace := by
+    simpa only [conjTranspose_selectionMatrix_mul_mul_selectionMatrix] using
+      re_trace_cfc_conjTranspose_mul_mul_le (convexOn_rpow hp) hGG.isHermitian
+        hGG.spectrum_subset_Ici (hasOrthonormalCols_selectionMatrix (𝕜 := 𝕜) he)
+  have hh := add_le_add (hj Sum.inl Sum.inl_injective) (hj Sum.inr Sum.inr_injective)
+  rw [hd₁, hd₂] at hh
+  have ht (M : Matrix (n ⊕ n) (n ⊕ n) 𝕜) :
+      (M.submatrix Sum.inl Sum.inl).trace + (M.submatrix Sum.inr Sum.inr).trace = M.trace := by
+    simp [Matrix.trace, Fintype.sum_sum_type, Matrix.diag, Matrix.submatrix]
+  have hsum := congrArg RCLike.re (ht (cfc f (G * Gᴴ)))
+  rw [map_add] at hsum
+  rw [hsum] at hh
+  rw [CFC.rpow_eq_cfc_real hX.nonneg, CFC.rpow_eq_cfc_real hY.nonneg,
+    CFC.rpow_eq_cfc_real (hX.add hY).nonneg]
+  -- The two Gram matrices have the same eigenvalues after zero padding.
+  apply hh.trans_eq
+  rw [← hG, hGG.isHermitian.re_trace_cfc,
+    (Matrix.isHermitian_conjTranspose_mul_self G).re_trace_cfc]
+  simp_rw [← singularValues_sq_eq_eigenvalue_mul_conjTranspose_self, singularValues_sq]
+  apply Eq.symm
+  refine Finset.sum_subset (Finset.range_mono (by simp)) ?_
+  intro i _ hi
+  rw [eigenvalue_of_card_le _ (by simpa using hi)]
+  exact Real.zero_rpow (by linarith)
 
 end NLAlib

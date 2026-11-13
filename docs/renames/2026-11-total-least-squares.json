@@ -1,0 +1,16 @@
+{
+  "date": "2026-11-12",
+  "note": "The solution predicate accepts the coefficient matrix and right-hand side. The gap theorem takes the two smallest singular values directly.",
+  "renames": [
+    {
+      "old": "NLAlib.isTotalLeastSquaresSolution_iff_eq_of_lt_eigenvalue",
+      "new": "NLAlib.isTotalLeastSquaresSolution_iff_eq_of_lt_singularValues",
+      "rule": "N9"
+    }
+  ],
+  "statementChanged": [
+    "NLAlib.isTotalLeastSquaresSolution_iff_eq_of_lt_singularValues",
+    "NLAlib.IsTotalLeastSquaresSolution",
+    "NLAlib.isTotalLeastSquaresSolution_iff_exists"
+  ]
+}

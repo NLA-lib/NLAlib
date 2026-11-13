@@ -1,0 +1,15 @@
+{
+  "date": "2026-11-12",
+  "note": "The Krylov basis theorem and the implicit Q theorem take the unreduced Hessenberg predicate.",
+  "renames": [
+    {
+      "old": "NLAlib.HasOrthonormalCols.isGradedKrylovBasis_of_isUpperHessenberg",
+      "new": "NLAlib.HasOrthonormalCols.isGradedKrylovBasis_of_isUnreducedHessenberg",
+      "rule": "N9"
+    }
+  ],
+  "statementChanged": [
+    "NLAlib.HasOrthonormalCols.isGradedKrylovBasis_of_isUnreducedHessenberg",
+    "NLAlib.HasOrthonormalCols.exists_eq_mul_diagonal_of_isUpperHessenberg"
+  ]
+}

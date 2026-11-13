@@ -279,7 +279,8 @@ theorem pow_mul_eq_mul_pow_of_mul_eq_mul {R : Type*} [Semiring R] {B : Matrix m 
 $p(\mathbf{B})\mathbf{A} = \mathbf{A}\,p(\mathbf{C})$ for every polynomial $p$ with
 coefficients in any scalar ring $S$ acting on $\Bbbk$ (real polynomials, or polynomials over
 $\Bbbk$ itself). -/
-theorem aeval_mul_eq_mul_aeval_of_mul_eq_mul {S : Type*} [CommSemiring S] [Algebra S 𝕜]
+theorem aeval_mul_eq_mul_aeval_of_mul_eq_mul {𝕜 S : Type*}
+    [CommSemiring 𝕜] [CommSemiring S] [Algebra S 𝕜]
     {B : Matrix m m 𝕜} {A : Matrix m n 𝕜} {C : Matrix n n 𝕜} (h : B * A = A * C) (p : S[X]) :
     aeval B p * A = A * aeval C p := by
   induction p using Polynomial.induction_on' with

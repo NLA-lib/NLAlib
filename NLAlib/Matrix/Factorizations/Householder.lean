@@ -228,12 +228,19 @@ section QR
 
 variable {m n : ℕ}
 
+/-- The Householder reflector that clears the tail of a vector after coordinate $p$ and
+fixes all earlier coordinates. It is the identity when $p \ge n$. -/
+noncomputable def householderTailReflector (x : Fin n → 𝕜) (p : ℕ) : Matrix (Fin n) (Fin n) 𝕜 :=
+  if h : p < n then
+    householder (householderVector (fun l => if p ≤ l.val then x l else 0) ⟨p, h⟩)
+  else 1
+
 /-- The reflector of step $k$ of Householder QR: it clears column $k$ of $\mathbf{W}$ below the
 diagonal and fixes the first $k$ coordinates. Beyond the size of the matrix it is the identity. -/
 noncomputable def householderStep (W : Matrix (Fin m) (Fin n) 𝕜) (k : ℕ) :
     Matrix (Fin m) (Fin m) 𝕜 :=
   if h : k < m ∧ k < n then
-    householder (householderVector (fun i => if k ≤ (i : ℕ) then W i ⟨k, h.2⟩ else 0) ⟨k, h.1⟩)
+    householderTailReflector (W.col ⟨k, h.2⟩) k
   else 1
 
 /-- The state of Householder QR after $k$ steps: the accumulated unitary factor and the partially
@@ -263,15 +270,17 @@ noncomputable def householderR (A : Matrix (Fin m) (Fin n) 𝕜) : Matrix (Fin m
 private theorem householderStep_mul_self (W : Matrix (Fin m) (Fin n) 𝕜) (k : ℕ) :
     householderStep W k * householderStep W k = 1 := by
   unfold householderStep
-  split_ifs
-  · exact householder_mul_self _
+  split_ifs with h
+  · rw [householderTailReflector, dif_pos h.1]
+    exact householder_mul_self _
   · exact Matrix.one_mul 1
 
 private theorem hasOrthonormalCols_householderStep (W : Matrix (Fin m) (Fin n) 𝕜) (k : ℕ) :
     HasOrthonormalCols (householderStep W k) := by
   unfold householderStep
-  split_ifs
-  · exact hasOrthonormalCols_householder _
+  split_ifs with h
+  · rw [householderTailReflector, dif_pos h.1]
+    exact hasOrthonormalCols_householder _
   · exact hasOrthonormalCols_one
 
 private theorem hasOrthonormalCols_householderState_fst (A : Matrix (Fin m) (Fin n) 𝕜) (k : ℕ) :
@@ -300,7 +309,7 @@ private theorem householderStep_mul_apply_eq_zero {W : Matrix (Fin m) (Fin n) �
     refine hW i j ?_ hji
     by_contra hjk'
     exact h ⟨by omega, by omega⟩
-  rw [householderStep, dif_pos h]
+  rw [householderStep, dif_pos h, householderTailReflector, dif_pos h.1]
   set x : Fin m → 𝕜 := fun l => if k ≤ (l : ℕ) then W l ⟨k, h.2⟩ else 0 with hx
   set v := householderVector x ⟨k, h.1⟩ with hv
   have hv0 : ∀ l : Fin m, (l : ℕ) < k → v l = 0 := by

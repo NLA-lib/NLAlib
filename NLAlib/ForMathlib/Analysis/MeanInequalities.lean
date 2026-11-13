@@ -8,7 +8,7 @@ module
 public import Mathlib.Analysis.MeanInequalities
 
 /-!
-# The Paley–Zygmund inequality for finite weighted sums
+# Finite moment inequalities
 
 For weights $w_i \ge 0$ summing to $1$ and values $x_i \ge 0$, the weight of the event
 $x_i > t\sum_j w_jx_j$ is at least $(1 - t)^2(\sum_i w_ix_i)^2/\sum_i w_ix_i^2$. The measure form
@@ -17,10 +17,14 @@ is `ProbabilityTheory.sq_mul_sq_integral_le_integral_sq_mul_measureReal_gt` in
 with finite weighted sums and no measure theory. Upstream candidate for
 `Mathlib/Analysis/MeanInequalities.lean`, next to the weighted power-mean inequalities.
 
+The even moments of a random sign admit the sharp quadratic bound with coefficient
+$2r-1$, used for the corresponding Schatten moment inequality.
+
 ## Main results
 
 * `Finset.sq_mul_sq_sum_le_sum_mul_sq_mul_sum_filter`: the finite weighted Paley–Zygmund
   inequality.
+* `Real.add_pow_add_sub_pow_le`: the even two-point moment bound.
 -/
 
 @[expose] public section
@@ -77,3 +81,68 @@ theorem sq_mul_sq_sum_le_sum_mul_sq_mul_sum_filter {ι : Type*} (s : Finset ι) 
   linarith
 
 end Finset
+
+open Finset
+
+private theorem choose_two_mul_le (r k : ℕ) :
+    (2 * r).choose (2 * k) ≤ r.choose k * (2 * r - 1) ^ k := by
+  induction k with
+  | zero => simp
+  | succ k ih =>
+    by_cases hkr : k < r
+    · refine Nat.le_of_mul_le_mul_right (c := (2 * k + 2) * (2 * k + 1)) ?_ (by positivity)
+      have h0 := Nat.choose_succ_right_eq (2 * r) (2 * k)
+      have h1 := Nat.choose_succ_right_eq (2 * r) (2 * k + 1)
+      have h := Nat.choose_succ_right_eq r k
+      calc
+        (2 * r).choose (2 * (k + 1)) * ((2 * k + 2) * (2 * k + 1)) =
+          (2 * r).choose (2 * k) * (2 * r - 2 * k) * (2 * r - (2 * k + 1)) := by
+            rw [show 2 * (k + 1) = 2 * k + 1 + 1 by omega, ← mul_assoc, h1,
+              mul_right_comm _ _ (2 * k + 1), h0]
+        _ ≤ r.choose k * (2 * r - 1) ^ k * (2 * (r - k)) * (2 * r - 1) :=
+          Nat.mul_le_mul (Nat.mul_le_mul ih (Nat.mul_sub_left_distrib 2 r k).ge) (by omega)
+        _ = r.choose (k + 1) * (2 * r - 1) ^ (k + 1) * (2 * k + 2) := by
+          rw [show 2 * k + 2 = 2 * (k + 1) by omega, pow_succ]
+          calc
+            _ = r.choose k * (r - k) * (2 * r - 1) ^ k * (2 * r - 1) * 2 := by ring
+            _ = _ := by rw [← h]; ring
+        _ ≤ _ := by
+          rw [← mul_assoc]
+          exact Nat.le_mul_of_pos_right _ (by positivity)
+    · rw [Nat.choose_eq_zero_of_lt (by omega : 2 * r < 2 * (k + 1))]
+      exact Nat.zero_le _
+
+private theorem sum_range_even (f : ℕ → ℝ) (hodd : ∀ j, f (2 * j + 1) = 0) (r : ℕ) :
+    ∑ i ∈ range (2 * r + 1), f i = ∑ j ∈ range (r + 1), f (2 * j) := by
+  induction r with
+  | zero => simp
+  | succ r ih =>
+    rw [sum_range_succ (fun j => f (2 * j)) (r + 1), sum_range_succ f (2 * (r + 1)),
+      show 2 * (r + 1) = (2 * r + 1) + 1 by omega, sum_range_succ f (2 * r + 1), ih, hodd, add_zero]
+
+/-- The even moment of a scalar translated by a random sign satisfies the two-point bound
+$$\frac{(a+b)^{2r}+(a-b)^{2r}}{2} \le (a^2 + (2r-1)b^2)^r.$$
+The coefficient is sharp for positive $r$. Scalar case of [Tropp2022, Theorem 8.2]. -/
+theorem Real.add_pow_add_sub_pow_le (a b : ℝ) (r : ℕ) :
+    ((a + b) ^ (2 * r) + (a - b) ^ (2 * r)) / 2 ≤
+      (a ^ 2 + (2 * (r : ℝ) - 1) * b ^ 2) ^ r := by
+  rcases r.eq_zero_or_pos with rfl | hr
+  · simp
+  let f (k : ℕ) := (b ^ k + (-b) ^ k) / 2 * a ^ (2 * r - k) * (2 * r).choose k
+  have hsum : ((a + b) ^ (2 * r) + (a - b) ^ (2 * r)) / 2 = ∑ k ∈ range (2 * r + 1), f k := by
+    rw [add_comm a b, sub_eq_add_neg, add_comm a (-b), add_pow, add_pow, ← sum_add_distrib, sum_div]
+    exact sum_congr rfl fun k _ => by dsimp [f]; ring
+  have hodd (k : ℕ) : f (2 * k + 1) = 0 := by
+    simp [f, (show Odd (2 * k + 1) from ⟨k, rfl⟩).neg_pow]
+  rw [hsum, sum_range_even f hodd, add_comm (a ^ 2), add_pow]
+  refine sum_le_sum fun k _ => ?_
+  have hcoef : ((2 * r).choose (2 * k) : ℝ) ≤ r.choose k * (2 * (r : ℝ) - 1) ^ k := by
+    have h : ((2 * r).choose (2 * k) : ℝ) ≤ r.choose k * ((2 * r - 1 : ℕ) : ℝ) ^ k := by
+      exact_mod_cast choose_two_mul_le r k
+    simpa only [Nat.cast_sub (show 1 ≤ 2 * r by omega), Nat.cast_one, Nat.cast_mul,
+      Nat.cast_ofNat] using h
+  have h := mul_le_mul_of_nonneg_left hcoef
+    (mul_nonneg (pow_nonneg (sq_nonneg b) k) (pow_nonneg (sq_nonneg a) (r - k)))
+  dsimp [f]
+  rw [(even_two_mul k).neg_pow, ← Nat.mul_sub_left_distrib, pow_mul, pow_mul, mul_pow]
+  linarith

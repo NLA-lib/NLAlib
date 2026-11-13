@@ -1,0 +1,8 @@
+{
+  "date": "2026-11-12",
+  "note": "The matrix-input error theorem gives the norm bound directly. The former first conjunct is polarNewtonCayleyNorm_lt_one.",
+  "renames": [],
+  "statementChanged": [
+    "NLAlib.specNorm_polarFactor_sub_polarNewtonIterate_le"
+  ]
+}

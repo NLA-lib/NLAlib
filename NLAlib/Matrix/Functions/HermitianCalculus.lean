@@ -171,6 +171,16 @@ private theorem exists_cfc_eq {A : Matrix n n 𝕜} (hA : A.IsHermitian) :
   exact ⟨U, hU, hU.mul_conjTranspose_self_of_card_eq hr.symm, hAU,
     HasOrthonormalCols.cfc_eq_mul_diagonal_mul_conjTranspose hU hr hAU⟩
 
+/-- The functional calculus of an orthonormal diagonalization is the spectral sum
+$\sum_i f(d_i)\mathbf u_i\mathbf u_i^{\mathsf H}$, including repeated eigenvalues.
+[HornJohnson2013, §2.5]. -/
+theorem HasOrthonormalCols.cfc_eq_sum_smul_vecMulVec {U : Matrix n m 𝕜} {A : Matrix n n 𝕜}
+    {d : m → ℝ} (hU : HasOrthonormalCols U) (hr : Fintype.card m = Fintype.card n)
+    (hA : A = U * Matrix.diagonal (fun i => (d i : 𝕜)) * Uᴴ) (f : ℝ → ℝ) :
+    cfc f A = ∑ i, ((f (d i) : ℝ) : 𝕜) • Matrix.vecMulVec (U.col i) (star (U.col i)) := by
+  rw [hU.cfc_eq_mul_diagonal_mul_conjTranspose hr hA f,
+    Matrix.mul_diagonal_mul_conjTranspose_eq_sum_vecMulVec]
+
 /-- $f$ of a real diagonal matrix is the diagonal matrix of the values of $f$:
 $f(\operatorname{diag}(\mathbf{d})) = \operatorname{diag}(f(\mathbf{d}_i))$. -/
 theorem cfc_diagonal (f : ℝ → ℝ) (d : n → ℝ) :

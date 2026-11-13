@@ -5,10 +5,11 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.Matrix.Functions.TracePowers
 public import NLAlib.Matrix.Norms.Schatten
 
 /-!
-# Schatten norms with natural exponents
+# Powers of Schatten norms
 
 For a natural exponent $p \ne 0$, the $p$-th power of the Schatten $p$-norm is the sum of the
 $p$-th powers of the singular values, with natural-number powers, and for even exponents it is the
@@ -19,6 +20,8 @@ moment method, which then never meets `ENNReal.toReal` or `Real.rpow`.
 
 ## Main results
 
+* `Matrix.PosSemidef.schattenNorm_rpow_eq_re_trace_rpow`: positive real powers as traces.
+* `Matrix.PosSemidef.schattenNorm_sub_rpow_le`: the ordered Schatten trace-deficit bound.
 * `NLAlib.schattenNorm_natCast_pow`: the power-sum formula with natural-number powers.
 * `NLAlib.schattenNorm_two_mul_natCast_pow`,
   `Matrix.IsHermitian.schattenNorm_two_mul_natCast_pow`: even Schatten norms as traces of powers.
@@ -75,5 +78,39 @@ theorem specNorm_pow_le_re_trace_pow [DecidableEq n] (A : Matrix m n 𝕜) {p : 
   rw [Nat.cast_mul, Nat.cast_ofNat] at h
   rw [← schattenNorm_two_mul_natCast_pow hp]
   exact pow_le_pow_left₀ (specNorm_nonneg A) h _
+
+section Positive
+
+open scoped MatrixOrder ComplexOrder
+
+/-- The $p$-th power of the Schatten $p$-norm of a positive semidefinite matrix equals
+$\operatorname{Re} \operatorname{tr}(\mathbf{A}^p)$ for every real $p>0$. -/
+theorem _root_.Matrix.PosSemidef.schattenNorm_rpow_eq_re_trace_rpow [DecidableEq n]
+    {A : Matrix n n 𝕜} (hA : A.PosSemidef) {p : ℝ} (hp : 0 < p) :
+    schattenNorm (ENNReal.ofReal p) A ^ p = RCLike.re (A ^ p).trace := by
+  rw [CFC.rpow_eq_cfc_real hA.nonneg, hA.isHermitian.re_trace_cfc]
+  have h := schattenNorm_rpow (ENNReal.ofReal_pos.mpr hp).ne' ENNReal.ofReal_ne_top A
+    A.rank_le_card_width
+  simpa only [ENNReal.toReal_ofReal hp.le, hA.singularValues_eq_eigenvalue] using h
+
+/-- **Ordered Schatten trace-deficit bound.** For $\mathbf{A} \succeq \mathbf{B} \succeq \mathbf{0}$
+and finite real $p \ge 1$,
+$$\|\mathbf{A} - \mathbf{B}\|_{S_p}^p \le
+  \|\mathbf{A}\|_{S_p}^p - \|\mathbf{B}\|_{S_p}^p.$$
+[PerssonMeyerMusco2025, Lemma 2.3]. At $p=1$, see `Matrix.PosSemidef.nuclearNorm_sub_of_le`.
+Result: ordered-schatten-trace-deficit -/
+theorem _root_.Matrix.PosSemidef.schattenNorm_sub_rpow_le {A B : Matrix n n 𝕜}
+    (hB : B.PosSemidef) (h : B ≤ A) {p : ℝ} (hp : 1 ≤ p) :
+    schattenNorm (ENNReal.ofReal p) (A - B) ^ p ≤
+      schattenNorm (ENNReal.ofReal p) A ^ p - schattenNorm (ENNReal.ofReal p) B ^ p := by
+  classical
+  have hD := Matrix.le_iff.mp h
+  have hA : A.PosSemidef := by simpa using hD.add hB
+  have hp₀ : 0 < p := zero_lt_one.trans_le hp
+  rw [hD.schattenNorm_rpow_eq_re_trace_rpow hp₀, hA.schattenNorm_rpow_eq_re_trace_rpow hp₀,
+    hB.schattenNorm_rpow_eq_re_trace_rpow hp₀, le_sub_iff_add_le]
+  simpa only [sub_add_cancel] using hD.re_trace_rpow_add_le hB hp
+
+end Positive
 
 end NLAlib

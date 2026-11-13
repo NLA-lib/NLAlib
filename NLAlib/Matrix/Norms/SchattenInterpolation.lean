@@ -19,7 +19,7 @@ The proof adapts the original formalization in `tchen-research/NLAlib@77514ce`.
 
 ## Main results
 
-* `NLAlib.schattenNorm_le_exp_integral_stripPoissonDensity`: interpolation with bounded
+* `NLAlib.schattenNorm_le_exp_integral_stripHarmonicMeasure`: interpolation with bounded
   measurable logarithmic boundary majorants.
 
 -/
@@ -328,7 +328,7 @@ variable [DecidableEq n]
 /-- Finite-dimensional matrix Stein–Hirschman interpolation from the spectral to a finite
 Schatten norm, with bounded measurable logarithmic majorants on both boundary lines
 [SutterBertaTomamichel2017, Theorem 3.1]. -/
-theorem schattenNorm_le_exp_integral_stripPoissonDensity
+theorem schattenNorm_le_exp_integral_stripHarmonicMeasure
     {r p B H : ℝ} (hr : r ∈ Ioo (0 : ℝ) 1) (hp : 1 ≤ p)
     {G : ℂ → Matrix n n ℂ}
     (hG : DiffContOnCl ℂ G (Complex.HadamardThreeLines.verticalStrip 0 1))
@@ -339,8 +339,8 @@ theorem schattenNorm_le_exp_integral_stripPoissonDensity
     (hright : ∀ t : ℝ,
       schattenNorm (ENNReal.ofReal p) (G (1 + (t : ℂ) * Complex.I)) ≤ Real.exp (h₁ t)) :
     schattenNorm (ENNReal.ofReal (p / r)) (G (r : ℂ)) ≤ Real.exp (
-      (∫ t : ℝ, ((1 - r) * Real.stripPoissonDensity (1 - r) t) * h₀ t) +
-      ∫ t : ℝ, (r * Real.stripPoissonDensity r t) * h₁ t) := by
+      (1 - r) * (∫ t, h₀ t ∂Real.stripHarmonicMeasure (1 - r)) +
+      r * (∫ t, h₁ t ∂Real.stripHarmonicMeasure r)) := by
   have hp0 : 0 < p := lt_of_lt_of_le zero_lt_one hp
   have hα : 0 < p / r := div_pos hp0 hr.1
   by_cases hA : G (r : ℂ) = 0
@@ -411,12 +411,12 @@ theorem schattenNorm_le_exp_integral_stripPoissonDensity
     change g (r : ℂ) = (schattenNorm (ENNReal.ofReal (p / r)) (G (r : ℂ)) : ℂ) at htr
     rw [htr, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (schattenNorm_nonneg _ _)]
   rw [← hcenter]
-  exact Complex.norm_le_exp_integral_stripPoissonDensity hr hg hg_bound
+  exact Complex.norm_le_exp_integral_stripHarmonicMeasure hr hg hg_bound
     h₀ h₁ hm₀ hm₁ hb₀ hb₁ hg_left hg_right
 
 /-- The matrix interpolation bound when the left boundary consists of
 spectral contractions, as for ordered imaginary-time Hermitian exponentials. -/
-theorem schattenNorm_le_exp_integral_stripPoissonDensity_of_specNorm_le_one
+theorem schattenNorm_le_exp_integral_stripHarmonicMeasure_of_specNorm_le_one
     {r p B H : ℝ} (hr : r ∈ Ioo (0 : ℝ) 1) (hp : 1 ≤ p)
     {G : ℂ → Matrix n n ℂ}
     (hG : DiffContOnCl ℂ G (Complex.HadamardThreeLines.verticalStrip 0 1))
@@ -426,10 +426,10 @@ theorem schattenNorm_le_exp_integral_stripPoissonDensity_of_specNorm_le_one
     (hright : ∀ t : ℝ,
       schattenNorm (ENNReal.ofReal p) (G (1 + (t : ℂ) * Complex.I)) ≤ Real.exp (h₁ t)) :
     schattenNorm (ENNReal.ofReal (p / r)) (G (r : ℂ)) ≤
-      Real.exp (∫ t : ℝ, (r * Real.stripPoissonDensity r t) * h₁ t) := by
+      Real.exp (r * (∫ t, h₁ t ∂Real.stripHarmonicMeasure r)) := by
   have hH : 0 ≤ H := (abs_nonneg (h₁ 0)).trans (hb₁ 0)
   simpa only [mul_zero, integral_zero, zero_add] using
-    schattenNorm_le_exp_integral_stripPoissonDensity hr hp hG hbound
+    schattenNorm_le_exp_integral_stripHarmonicMeasure hr hp hG hbound
       (fun _ => 0) h₁ measurable_const hm₁ (fun _ => by simpa using hH) hb₁
       (fun t => by simpa only [Real.exp_zero] using hleft t) hright
 

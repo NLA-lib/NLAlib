@@ -21,6 +21,7 @@ columns are the first $\operatorname{rank} \mathbf{A}$.
 
 * `NLAlib.IsCholesky`: the factorization predicate.
 * `NLAlib.choleskyLower`: the factor computed by elimination, for a matrix indexed by `Fin n`.
+* `NLAlib.choleskyPivotPerm`: the greedy symmetric permutation for diagonal pivoting.
 
 ## Main results
 
@@ -300,13 +301,19 @@ theorem _root_.Matrix.IsHermitian.forall_choleskyLower_apply_self_pos_iff
     eq_choleskyLower_mul_conjTranspose_of hA (fun j => (hp j).le)
       fun j i hj => absurd hj (hp j).ne'⟩
 
-/-- Diagonal pivoting on a positive semidefinite matrix: a simultaneous permutation of rows and
-columns after which the computed factor has exactly $\operatorname{rank} \mathbf{A}$ positive
-diagonal entries, the first ones, and zero columns after them. -/
-private theorem exists_perm_choleskyLower {A : Matrix (Fin n) (Fin n) 𝕜} (hA : A.PosSemidef) :
-    ∃ σ : Equiv.Perm (Fin n),
-      (∀ i : Fin n, 0 < choleskyLower (A.submatrix σ σ) i i ↔ (i : ℕ) < A.rank) ∧
-      ∀ i j : Fin n, A.rank ≤ (j : ℕ) → choleskyLower (A.submatrix σ σ) i j = 0 := by
+/-- The ordering computed by diagonally pivoted Cholesky. At each step the first remaining
+index with maximal real residual diagonal entry is swapped into the pivot position.
+[Higham2002, §10.3].
+Algorithm: pivoted-cholesky -/
+noncomputable def choleskyPivotPerm (A : Matrix (Fin n) (Fin n) 𝕜) : Equiv.Perm (Fin n) :=
+  Fin.greedyPerm (fun σ j i => RCLike.re (gaussState (A.submatrix σ σ) j i i)) n
+
+/-- In the computed Cholesky ordering, the pivot is maximal on the remaining residual diagonal.
+[Higham2002, §10.3]. -/
+theorem re_gaussState_choleskyPivotPerm_le (A : Matrix (Fin n) (Fin n) 𝕜) (j i : Fin n)
+    (hji : j ≤ i) :
+    let B := A.submatrix (choleskyPivotPerm A) (choleskyPivotPerm A)
+    RCLike.re (gaussState B j i i) ≤ RCLike.re (gaussState B j j j) := by
   have hs : ∀ (σ τ : Equiv.Perm (Fin n)) (j : Fin n), (∀ l : Fin n, l < j → τ l = l) →
       ∀ i, RCLike.re (gaussState (A.submatrix (τ.trans σ) (τ.trans σ)) j i i) =
         RCLike.re (gaussState (A.submatrix σ σ) j (τ i) (τ i)) := by
@@ -314,12 +321,23 @@ private theorem exists_perm_choleskyLower {A : Matrix (Fin n) (Fin n) 𝕜} (hA 
     have hsub : A.submatrix (τ.trans σ) (τ.trans σ) = (A.submatrix σ σ).submatrix τ τ := rfl
     rw [hsub, gaussState_submatrix _ τ j fun l hl => hτ l (Fin.lt_def.mpr hl)]
     rfl
-  obtain ⟨σ, hσ⟩ := Fin.exists_perm_forall_le_apply_self
-    (fun σ j i => RCLike.re (gaussState (A.submatrix σ σ) j i i)) hs n
-  refine ⟨σ, ?_⟩
+  exact Fin.le_greedyPerm_apply_self
+    (fun σ j i => RCLike.re (gaussState (A.submatrix σ σ) j i i)) hs n j i j.isLt hji
+
+/-- The positive pivots and zero columns in the computed diagonal pivot order. -/
+private theorem choleskyLower_pivot_rank {A : Matrix (Fin n) (Fin n) 𝕜} (hA : A.PosSemidef) :
+    let σ := choleskyPivotPerm A
+    (∀ i : Fin n, 0 < choleskyLower (A.submatrix σ σ) i i ↔ (i : ℕ) < A.rank) ∧
+      ∀ i j : Fin n, A.rank ≤ (j : ℕ) → choleskyLower (A.submatrix σ σ) i j = 0 := by
+  let σ := choleskyPivotPerm A
+  let B := A.submatrix σ σ
+  have hσ : ∀ j i : Fin n, j ≤ i → RCLike.re (gaussState B j i i) ≤
+      RCLike.re (gaussState B j j j) := re_gaussState_choleskyPivotPerm_le A
   have hrank : (A.submatrix σ σ).rank = A.rank := Matrix.rank_submatrix A σ σ
-  have hB : (A.submatrix σ σ).PosSemidef := hA.submatrix σ
-  generalize A.submatrix σ σ = B at hσ hrank hB
+  have hB : B.PosSemidef := hA.submatrix σ
+  change (∀ i : Fin n, 0 < choleskyLower B i i ↔ (i : ℕ) < A.rank) ∧
+    ∀ i j : Fin n, A.rank ≤ (j : ℕ) → choleskyLower B i j = 0
+  change B.rank = A.rank at hrank
   rw [← hrank]
   have hG := posSemidef_gaussState hB
   -- a zero pivot means that elimination has reached the zero matrix
@@ -329,7 +347,7 @@ private theorem exists_perm_choleskyLower {A : Matrix (Fin n) (Fin n) 𝕜} (hA 
       intro i
       rcases lt_or_ge i j with hij | hij
       · exact gaussState_apply_eq_zero_of_posSemidef hB (Fin.lt_def.mp hij) i
-      · have h1 := hσ j i j.2 hij
+      · have h1 := hσ j i hij
         rw [hj, map_zero] at h1
         have h2 := (hG j).diag_nonneg (i := i)
         rw [← (hG j).isHermitian.coe_re_apply_self i] at h2 ⊢
@@ -360,6 +378,23 @@ private theorem exists_perm_choleskyLower {A : Matrix (Fin n) (Fin n) 𝕜} (hA 
     · exact fun hi => lt_of_le_of_ne (hG i).diag_nonneg (hne i i rfl hi).symm
   · simp only [choleskyLower, Matrix.of_apply, gaussState_eq_zero_of_le h0 hj, Matrix.zero_apply,
       zero_div, ite_self]
+
+/-- **Rank detection by pivoted Cholesky.** Exactly the first $\operatorname{rank} \mathbf{A}$
+pivots of the computed factor are positive, including for singular positive semidefinite inputs.
+[Higham2002, Theorem 10.9].
+Result: pivoted-cholesky-rank -/
+theorem _root_.Matrix.PosSemidef.choleskyLower_choleskyPivotPerm_apply_self_pos_iff
+    {A : Matrix (Fin n) (Fin n) 𝕜} (hA : A.PosSemidef) (i : Fin n) :
+    0 < choleskyLower (A.submatrix (choleskyPivotPerm A) (choleskyPivotPerm A)) i i ↔
+      (i : ℕ) < A.rank :=
+  (choleskyLower_pivot_rank hA).1 i
+
+/-- Every column at or beyond the rank is zero in the computed pivoted Cholesky factor.
+[Higham2002, Theorem 10.9]. -/
+theorem _root_.Matrix.PosSemidef.choleskyLower_choleskyPivotPerm_apply_eq_zero_of_rank_le
+    {A : Matrix (Fin n) (Fin n) 𝕜} (hA : A.PosSemidef) (i j : Fin n) (hj : A.rank ≤ (j : ℕ)) :
+    choleskyLower (A.submatrix (choleskyPivotPerm A) (choleskyPivotPerm A)) i j = 0 :=
+  (choleskyLower_pivot_rank hA).2 i j hj
 
 end Recursion
 
@@ -424,7 +459,8 @@ theorem _root_.Matrix.PosSemidef.exists_perm_eq_mul_conjTranspose [LocallyFinite
       ∀ i j, A.rank ≤ (Finset.Iio j).card → L i j = 0 := by
   set e := Fintype.orderIsoFinOfCardEq n rfl with he
   have hA' : (A.submatrix e e).PosSemidef := hA.submatrix e
-  obtain ⟨σ, hpos, hzero⟩ := exists_perm_choleskyLower hA'
+  let σ := choleskyPivotPerm (A.submatrix e e)
+  obtain ⟨hpos, hzero⟩ := choleskyLower_pivot_rank hA'
   have hB : ((A.submatrix e e).submatrix σ σ).PosSemidef := hA'.submatrix σ
   have hrank : (A.submatrix e e).rank = A.rank := Matrix.rank_submatrix A e.toEquiv e.toEquiv
   have hcard : ∀ i : n, (Finset.Iio i).card = (e.symm i : ℕ) := by

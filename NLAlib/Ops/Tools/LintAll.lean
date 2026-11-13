@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public meta import NLAlib.Ops.Tools.Lint
+public import NLAlib.Ops.Blas.BlockCopy
 public import NLAlib.Ops.Blas.Broadcast
 public import NLAlib.Ops.Blas.Clamp
 public import NLAlib.Ops.Blas.Hermitian
@@ -21,6 +22,8 @@ public import NLAlib.Ops.Blas.MapCorrect
 public import NLAlib.Ops.Blas.Matrix
 public import NLAlib.Ops.Blas.MatrixCorrect
 public import NLAlib.Ops.Blas.Mixed
+public import NLAlib.Ops.Blas.NormSq
+public import NLAlib.Ops.Blas.Power
 public import NLAlib.Ops.Blas.Pair
 public import NLAlib.Ops.Blas.Sampling
 public import NLAlib.Ops.Catalog.Dense

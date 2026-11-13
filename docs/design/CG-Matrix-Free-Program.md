@@ -1,5 +1,10 @@
 # Matrix-free CG program and shared execution proofs
 
+> Archived execution-system design. The former evaluator, programs, target registry and
+> emission tooling are retired. The current interfaces are documented in
+> [the Ops migration](Ops-Migration.md) and [the program guide](../contributing/programs.md).
+> Mathematical analysis is retained; program and registry names below describe the historical system.
+
 Target and tree approved by the maintainer on 2026-11-04. The stored-entry CG program, its compiled tree, target and approved counts
 remain unchanged. This development adds the separately reviewed oracle variant in
 `CGOracleProgramTree.lean`, `CGOracleTargets.lean` and `CGOracleProgram.lean`.

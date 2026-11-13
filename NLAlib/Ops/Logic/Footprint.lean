@@ -8,6 +8,9 @@ module
 public import NLAlib.Ops.Tactic
 public import NLAlib.Ops.Logic.Attr
 public import NLAlib.Ops.Logic.Index
+public import Mathlib.Data.List.OfFn
+public import Mathlib.Tactic.ClearExcept
+public import Mathlib.Tactic.Common
 
 /-!
 # Footprints, disjointness and kept facts
@@ -90,6 +93,112 @@ theorem Disj.symm {F G : Fp} (h : Disj F G) : Disj G F := fun b i hg hf => h b i
 theorem Disj.mono {F G F' G' : Fp} (h : Disj F G) (hF : F' ≤ F) (hG : G' ≤ G) : Disj F' G' :=
   fun b i hf hg => h b i (hF b i hf) (hG b i hg)
 
+/-- Any valid indexed block belongs to the footprint of its complete operand list. The
+bounded index lies in both the operand and length lists; defaults are never selected. -/
+theorem inBlock_getD_le_blocks (zs : List (ℕ × ℕ)) (ls : List ℕ) {i : ℕ}
+    (hi : i < min zs.length ls.length) :
+    Store.inBlock (zs.getD i (0, 0)).1 (zs.getD i (0, 0)).2 (ls.getD i 0) ≤ blocks zs ls := by
+  induction zs generalizing ls i with
+  | nil => simp at hi
+  | cons z zs ih =>
+    cases ls with
+    | nil => simp at hi
+    | cons l ls =>
+      cases i with
+      | zero => simpa only [List.getD_cons_zero, blocks] using
+          (le_sup_left : Store.inBlock z.1 z.2 l ≤ Store.inBlock z.1 z.2 l ⊔ blocks zs ls)
+      | succ i =>
+        have hi' : i < min zs.length ls.length := by simpa using hi
+        simpa only [List.getD_cons_succ, blocks] using
+          (ih ls hi').trans (le_sup_right : blocks zs ls ≤ Store.inBlock z.1 z.2 l ⊔ blocks zs ls)
+
+/-- Earlier and later indexed operands in an apart list have disjoint footprints. This lets
+block proofs project their local spatial facts from one declared collection of live blocks. -/
+theorem Apart.disj_getD_of_lt {zs : List (ℕ × ℕ)} {ls : List ℕ} (h : Apart zs ls)
+    {i j : ℕ} (hij : i < j) (hj : j < min zs.length ls.length) :
+    Disj (Store.inBlock (zs.getD i (0, 0)).1 (zs.getD i (0, 0)).2 (ls.getD i 0))
+      (Store.inBlock (zs.getD j (0, 0)).1 (zs.getD j (0, 0)).2 (ls.getD j 0)) := by
+  induction zs generalizing ls i j with
+  | nil => simp at hj
+  | cons z zs ih =>
+    cases ls with
+    | nil => simp at hj
+    | cons l ls =>
+      cases j with
+      | zero => omega
+      | succ j =>
+        have hj' : j < min zs.length ls.length := by simpa using hj
+        cases i with
+        | zero =>
+          simpa only [List.getD_cons_zero, List.getD_cons_succ] using
+            h.1.mono le_rfl (inBlock_getD_le_blocks zs ls hj')
+        | succ i =>
+          simpa only [List.getD_cons_succ] using ih h.2 (Nat.lt_of_succ_lt_succ hij) hj'
+
+/-- Any two distinct valid operands in an apart list have disjoint spatial footprints.
+Shared buffer handles are allowed when their word intervals are disjoint. -/
+theorem Apart.disj_getD {zs : List (ℕ × ℕ)} {ls : List ℕ} (h : Apart zs ls)
+    {i j : ℕ} (hi : i < min zs.length ls.length) (hj : j < min zs.length ls.length)
+    (hne : i ≠ j) :
+    Disj (Store.inBlock (zs.getD i (0, 0)).1 (zs.getD i (0, 0)).2 (ls.getD i 0))
+      (Store.inBlock (zs.getD j (0, 0)).1 (zs.getD j (0, 0)).2 (ls.getD j 0)) := by
+  rcases Nat.lt_or_gt_of_ne hne with hlt | hgt
+  · exact h.disj_getD_of_lt hlt hj
+  · exact (h.disj_getD_of_lt hgt hi).symm
+
+/-- Disjointness from every indexed member gives disjointness from the whole block
+collection. Operand and length lists may have different lengths; only actual pairs matter. -/
+theorem disj_blocks_of_forall_getD (F : Fp) (zs : List (ℕ × ℕ)) (ls : List ℕ)
+    (h : ∀ i < min zs.length ls.length,
+      Disj F (Store.inBlock (zs.getD i (0, 0)).1 (zs.getD i (0, 0)).2 (ls.getD i 0))) :
+    Disj F (blocks zs ls) := by
+  induction zs generalizing ls with
+  | nil => simp only [blocks]; exact fun _ _ _ => False.elim
+  | cons z zs ih =>
+    cases ls with
+    | nil => simp only [blocks]; exact fun _ _ _ => False.elim
+    | cons l ls =>
+      have hh : Disj F (Store.inBlock z.1 z.2 l) := by
+        simpa only [List.getD_cons_zero] using h 0 (by simp)
+      have ht : Disj F (blocks zs ls) := ih ls fun i hi => by
+        simpa only [List.getD_cons_succ] using h (i + 1) (by simpa using hi)
+      exact fun b q hf hb => hb.elim (hh b q hf) (ht b q hf)
+
+/-- A standard apart-block collection can be constructed from its indexed pairwise spatial
+facts. Combined with indexed projection, this supports reshaping buffer collections and
+refining arena blocks into scalar or matrix subviews without bespoke list inductions. -/
+theorem Apart.of_disj_getD {zs : List (ℕ × ℕ)} {ls : List ℕ}
+    (h : ∀ i < min zs.length ls.length, ∀ j < min zs.length ls.length, i ≠ j →
+      Disj (Store.inBlock (zs.getD i (0, 0)).1 (zs.getD i (0, 0)).2 (ls.getD i 0))
+        (Store.inBlock (zs.getD j (0, 0)).1 (zs.getD j (0, 0)).2 (ls.getD j 0))) :
+    Apart zs ls := by
+  induction zs generalizing ls with
+  | nil => trivial
+  | cons z zs ih =>
+    cases ls with
+    | nil => trivial
+    | cons l ls =>
+      constructor
+      · apply disj_blocks_of_forall_getD
+        intro i hi
+        simpa only [List.getD_cons_zero, List.getD_cons_succ] using
+          h 0 (by simp) (i + 1) (by simpa using hi) (by omega)
+      · exact ih fun i hi j hj hne => by
+          simpa only [List.getD_cons_succ] using
+            h (i + 1) (by simpa using hi) (j + 1) (by simpa using hj) (by omega)
+
+/-- Cells in disjoint footprints differ in buffer or offset. This is the preservation
+condition for a scalar read across a write, including disjoint regions of one buffer. -/
+theorem Disj.ne_cells {F G : Fp} (h : Disj F G) {b i b' j : ℕ}
+    (hf : F b i) (hg : G b' j) : b ≠ b' ∨ i ≠ j := by
+  by_cases hb : b = b'
+  · right
+    intro hij
+    subst b'
+    subst j
+    exact h b i hf hg
+  · exact Or.inl hb
+
 @[simp] theorem disj_sup_left {F G H : Fp} : Disj (F ⊔ G) H ↔ Disj F H ∧ Disj G H :=
   ⟨fun h => ⟨fun b i hf hh => h b i (Or.inl hf) hh, fun b i hg hh => h b i (Or.inr hg) hh⟩,
     fun h b i hfg hh => hfg.elim (fun hf => h.1 b i hf hh) fun hg => h.2 b i hg hh⟩
@@ -119,8 +228,133 @@ theorem inBlock_le_inBlock {b o o' n n' : ℕ} (h₁ : o' ≤ o) (h₂ : o + n �
     Store.inBlock b o n ≤ Store.inBlock b o' n' :=
   fun _ _ h => ⟨h.1, by have := h.2.1; omega, by have := h.2.2; omega⟩
 
+/-- Writes inside the tail of separated scratch blocks preserve a prefix of the head block
+and any input region protected from the complete scratch collection. -/
+theorem Apart.disj_tail_head {z : ℕ × ℕ} {zs : List (ℕ × ℕ)} {n m : ℕ}
+    {ls : List ℕ} {H : Fp} (h : Apart (z :: zs) (n :: ls))
+    (hp : Disj (blocks (z :: zs) (n :: ls)) H) (hm : m ≤ n)
+    {G : Fp} (hG : G ≤ blocks zs ls) : Disj G (Store.inBlock z.1 z.2 m ⊔ H) :=
+  disj_sup_right.mpr ⟨h.1.symm.mono hG (inBlock_le_inBlock le_rfl (by omega)),
+    hp.mono (hG.trans le_sup_right) le_rfl⟩
+
 /-- A block inside its buffer. -/
 theorem inBlock_le_inBuf (b o n : ℕ) : Store.inBlock b o n ≤ Store.inBuf b := fun _ _ h => h.1
+
+/-- Joining equally sized operand and length lists joins their block footprints. -/
+theorem blocks_append {zs ws : List (ℕ × ℕ)} {ls ks : List ℕ}
+    (hlen : zs.length = ls.length) :
+    blocks (zs ++ ws) (ls ++ ks) = blocks zs ls ⊔ blocks ws ks := by
+  induction zs generalizing ls with
+  | nil =>
+    cases ls with
+    | nil => simp only [List.nil_append, blocks, bot_sup_eq]
+    | cons l ls => simp at hlen
+  | cons z zs ih =>
+    cases ls with
+    | nil => simp at hlen
+    | cons l ls =>
+      simp only [List.length_cons, Nat.add_right_cancel_iff] at hlen
+      simp only [List.cons_append, blocks, ih hlen, sup_assoc]
+
+/-- Operand collections can be composed without rebuilding their pairwise separation proof.
+In particular, a caller's apart inputs and outputs can be joined with fresh scratch blocks. -/
+theorem Apart.append {zs ws : List (ℕ × ℕ)} {ls ks : List ℕ}
+    (h : Apart zs ls) (h' : Apart ws ks) (hlen : zs.length = ls.length)
+    (hcross : Disj (blocks zs ls) (blocks ws ks)) :
+    Apart (zs ++ ws) (ls ++ ks) := by
+  induction zs generalizing ls with
+  | nil =>
+    cases ls with
+    | nil => exact h'
+    | cons l ls => simp at hlen
+  | cons z zs ih =>
+    cases ls with
+    | nil => simp at hlen
+    | cons l ls =>
+      have ht : zs.length = ls.length := by simpa using hlen
+      have hc := disj_sup_left.mp hcross
+      change Disj (Store.inBlock z.1 z.2 l)
+          (blocks (zs ++ ws) (ls ++ ks)) ∧ Apart (zs ++ ws) (ls ++ ks)
+      rw [blocks_append ht]
+      exact ⟨disj_sup_right.mpr ⟨h.1, hc.1⟩, ih h.2 ht hc.2⟩
+
+/-- An apart concatenation separates each operand collection internally and from the other
+collection. The first operand and length lists have matching lengths. -/
+theorem Apart.append_iff {zs ws : List (ℕ × ℕ)} {ls ks : List ℕ}
+    (hlen : zs.length = ls.length) :
+    Apart (zs ++ ws) (ls ++ ks) ↔
+      Apart zs ls ∧ Apart ws ks ∧ Disj (blocks zs ls) (blocks ws ks) := by
+  constructor
+  · intro h
+    induction zs generalizing ls with
+    | nil =>
+      cases ls with
+      | nil => exact ⟨trivial, h, disj_bot_left _⟩
+      | cons l ls => simp at hlen
+    | cons z zs ih =>
+      cases ls with
+      | nil => simp at hlen
+      | cons l ls =>
+        have ht : zs.length = ls.length := by simpa using hlen
+        have hc := h.1
+        change Disj (Store.inBlock z.1 z.2 l) (blocks (zs ++ ws) (ls ++ ks)) at hc
+        rw [blocks_append ht] at hc
+        obtain ⟨ha, hb, hd⟩ := ih ht h.2
+        exact ⟨⟨(disj_sup_right.mp hc).1, ha⟩, hb,
+          disj_sup_left.mpr ⟨(disj_sup_right.mp hc).2, hd⟩⟩
+  · rintro ⟨h, h', hd⟩
+    exact h.append h' hlen hd
+
+/-- Split a separated operand tuple into its prefix and suffix. The cross-separation fact
+is provided together with both internal apartness facts for immediate composition. -/
+theorem Apart.take_drop {zs : List (ℕ × ℕ)} {ls : List ℕ} (h : Apart zs ls)
+    (hlen : zs.length = ls.length) (n : ℕ) :
+    Apart (zs.take n) (ls.take n) ∧ Apart (zs.drop n) (ls.drop n) ∧
+      Disj (blocks (zs.take n) (ls.take n)) (blocks (zs.drop n) (ls.drop n)) := by
+  apply (Apart.append_iff (by simp only [List.length_take, hlen])).mp
+  simpa only [List.take_append_drop] using h
+
+/-- Refine an apart collection into subviews. Each view stays inside its parent block, and
+views of the same parent have disjoint relative intervals. Views of different parents inherit
+disjointness automatically. The resulting operand collection permits arbitrary reordering
+and several scalar or matrix views of one arena. -/
+theorem Apart.subviews {zs : List (ℕ × ℕ)} {ls : List ℕ} (h : Apart zs ls) {k : ℕ}
+    (parent : Fin k → Fin (min zs.length ls.length)) (offset len : Fin k → ℕ)
+    (hsub : ∀ a, offset a + len a ≤ ls.getD (parent a) 0)
+    (hsep : ∀ a b, a ≠ b → parent a = parent b →
+      offset a + len a ≤ offset b ∨ offset b + len b ≤ offset a) :
+    Apart (List.ofFn fun a =>
+      ((zs.getD (parent a) (0, 0)).1, (zs.getD (parent a) (0, 0)).2 + offset a))
+      (List.ofFn len) := by
+  apply Apart.of_disj_getD
+  intro i hi j hj hne
+  have hi' : i < k := by simpa using hi
+  have hj' : j < k := by simpa using hj
+  let a : Fin k := ⟨i, hi'⟩
+  let b : Fin k := ⟨j, hj'⟩
+  have hab : a ≠ b := fun he => hne (congrArg Fin.val he)
+  have hview (c : Fin k) :
+      Store.inBlock (zs.getD (parent c) (0, 0)).1
+        ((zs.getD (parent c) (0, 0)).2 + offset c) (len c) ≤
+      Store.inBlock (zs.getD (parent c) (0, 0)).1
+        (zs.getD (parent c) (0, 0)).2 (ls.getD (parent c) 0) := by
+    apply inBlock_le_inBlock
+    · omega
+    · have := hsub c; omega
+  have hd : Disj
+      (Store.inBlock (zs.getD (parent a) (0, 0)).1
+        ((zs.getD (parent a) (0, 0)).2 + offset a) (len a))
+      (Store.inBlock (zs.getD (parent b) (0, 0)).1
+        ((zs.getD (parent b) (0, 0)).2 + offset b) (len b)) := by
+    by_cases hp : parent a = parent b
+    · rcases hsep a b hab hp with hl | hr
+      · rw [hp]
+        exact disj_inBlock_of_le (by omega)
+      · rw [hp]
+        exact (disj_inBlock_of_le (by omega)).symm
+    · exact (h.disj_getD (parent a).isLt (parent b).isLt
+        (fun he => hp (Fin.ext he))).mono (hview a) (hview b)
+  simpa [List.getD_eq_getElem?_getD, hi', hj', a, b] using hd
 
 /-- Two adjacent blocks are one block: the footprint of a loop after one more round. -/
 @[fpNF] theorem inBlock_add (b o n n' : ℕ) :
@@ -172,6 +406,12 @@ theorem Below.symm {L : ℕ} {s s' : Store K} (h : Below L s s') : Below L s' s 
 theorem Below.trans {L : ℕ} {s s' s'' : Store K} (h : Below L s s') (h' : Below L s' s'') :
     Below L s s'' :=
   fun b hb => ⟨(h' b hb).1.trans (h b hb).1, fun i => ((h' b hb).2 i).trans ((h b hb).2 i)⟩
+
+/-- Writes confined to fresh handles preserve every length and cell below the boundary. -/
+theorem EqOff.below_of_above {L : ℕ} {F : Fp} {s s' : Store K}
+    (h : EqOff F s s') (hAbove : ∀ b i, F b i → L ≤ b) : Below L s s' :=
+  fun b hb => ⟨h.len_eq b, fun i => h.get_eq (fun hf =>
+    (Nat.not_le_of_lt hb) (hAbove b i hf))⟩
 
 theorem Below.readBlock {L : ℕ} {s s' : Store K} (h : Below L s s') {b : ℕ} (hb : b < L)
     (o n : ℕ) : s'.readBlock b o n = s.readBlock b o n :=
@@ -318,7 +558,14 @@ theorem eq_updBlocks_of_eqOff {m m' : Mem K} {zs : List (ℕ × ℕ)} {ls : List
       simp only [readBlocks, Option.some.injEq] at hr
       subst hr
       have e := Store.EqOff.eq_of_empty (s := m.store) (s' := m'.store) h
-      cases m; cases m'; simp_all
+      cases m with
+      | mk s p =>
+        cases m' with
+        | mk s' p' =>
+          dsimp only at e hpos
+          subst s'
+          subst p'
+          rfl
     | cons l ls => simp [readBlocks] at hr
   | cons z zs ih =>
     cases ls with
@@ -360,7 +607,7 @@ end Mem
 
 attribute [fpNF] true_and and_true or_true true_or eq_self_iff_true not_or not_and ne_eq
   and_self or_self false_or or_false false_and and_false not_false_eq_true not_true_eq_false
-  imp_false
+  imp_false List.mem_cons List.not_mem_nil Prod.mk.injEq
 
 /-- **`fp_mem`**: a membership goal `F b i` or `¬ F b i`, where the footprints are built from
 `inBlock`, `inBuf`, `⊔`, `⊥`, `Fp.blocks`, `Fp.above`, `Fp.cells` and layouts. Unfolds them
@@ -375,14 +622,39 @@ macro_rules
       | (simp only [fpNF, storeNF, $ts,*] <;> (try intros) <;> idx)
       | fail "fp_mem: the cell is not shown to be in (or out of) the footprint")
 
-/-- **`fp_sub`**: an inclusion of footprints `F ≤ G`. See `fp_mem`. -/
+/-- **`fp_block`**: include one block in a union by finding an enclosing block with the same
+buffer handle. Offset containment is discharged by `idx`; the target union is never expanded
+into an arithmetic disjunction. Fails if no enclosing block is found. -/
+syntax (name := tacticFpBlock) "fp_block" : tactic
+
+macro_rules
+  | `(tactic| fp_block) => `(tactic| first
+      | exact le_rfl
+      | exact bot_le
+      | (apply Fp.inBlock_le_inBlock <;> idx)
+      | (apply le_sup_of_le_left; fp_block)
+      | (apply le_sup_of_le_right; fp_block))
+
+/-- **`fp_sub`**: prove an inclusion of footprints `F ≤ G` from normalized cell membership.
+It splits source unions before reasoning about individual cells, then uses only the membership
+fact, keeping unrelated program proofs out of propositional and arithmetic preprocessing.
+The fallback uses the full context's index inequalities. -/
 syntax "fp_sub" (" [" Lean.Parser.Tactic.simpLemma,* "]")? : tactic
 
 macro_rules
   | `(tactic| fp_sub) => `(tactic| fp_sub [])
   | `(tactic| fp_sub [$ts,*]) => `(tactic| first
       | exact le_rfl
-      | (intro b i h; simp only [fpNF, storeNF, $ts,*] at h ⊢; idx)
+      | ((repeat' apply sup_le) <;> first
+         | exact bot_le
+         | fp_block
+         | (intro b i h
+            simp only [fpNF, storeNF, $ts,*] at h ⊢
+            first
+            | done
+            | (clear * - h; aesop (config := { maxRuleApplications := 64, terminal := true }))
+            | (clear * - h; idx)
+            | idx))
       | fail "fp_sub: the footprint is not shown to be included")
 
 /-- **`disjoint`**: a goal `Fp.Disj F G`, `Fp.Apart zs ls`, `b ≠ b'` of handles, or the side

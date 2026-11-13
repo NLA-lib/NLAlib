@@ -4,8 +4,9 @@ import hashlib
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
-from explore_metadata import enrich
+from explore_metadata import add_provenance, enrich
 
 
 class MetadataTests(unittest.TestCase):
@@ -51,6 +52,35 @@ class MetadataTests(unittest.TestCase):
                 self.data["modules"][0]["path"] = path
                 with self.assertRaisesRegex(ValueError, "unsafe module path"):
                     enrich(self.data, self.root)
+
+    def test_dirty_preview_cannot_claim_the_base_commit_or_date(self):
+        data = {"commit": "stale", "date": "stale", "sourceHashes": {"source": "hash"}}
+        for status in (" M NLAlib/Example.lean", "?? NLAlib/New.lean", " D NLAlib/Old.lean"):
+            with self.subTest(status=status), patch("explore_metadata.subprocess.check_output",
+                                                   side_effect=["a" * 40, status]):
+                result = add_provenance(copy.deepcopy(data), self.root)
+                self.assertTrue(result["dirty"])
+                self.assertEqual(result["base_commit"], "a" * 40)
+                self.assertIsNone(result["commit"])
+                self.assertIsNone(result["date"])
+                self.assertEqual(result["sourceHashes"], {"source": "hash"})
+
+    def test_clean_snapshot_uses_the_actual_commit_and_clears_preview_base(self):
+        with patch("explore_metadata.subprocess.check_output",
+                   side_effect=["b" * 40, "", "2026-11-13T00:00:00Z"]):
+            result = add_provenance({"base_commit": "stale"}, self.root)
+        self.assertFalse(result["dirty"])
+        self.assertEqual(result["commit"], "b" * 40)
+        self.assertEqual(result["date"], "2026-11-13T00:00:00Z")
+        self.assertNotIn("base_commit", result)
+
+    def test_generated_artifact_is_excluded_without_excluding_other_changes(self):
+        with patch("explore_metadata.subprocess.check_output",
+                   side_effect=["c" * 40, "?? NLAlib/New.lean"]) as git:
+            result = add_provenance({}, self.root, self.root / "explore-data.json")
+        self.assertTrue(result["dirty"])
+        self.assertEqual(git.call_args_list[1].args[0][-3:],
+                         ["--", ".", ":(exclude,literal)explore-data.json"])
 
 
 if __name__ == "__main__":

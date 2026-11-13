@@ -514,7 +514,7 @@ body_hash = "70ecb6788121f0cb"
 [[constant]]
 name = "NLAlib.Computation.roundingFactor"
 kind = "factor"
-file = "NLAlib/Computation/Rounding.lean"
+file = "NLAlib/Matrix/FinitePrecision/Rounding.lean"
 args = ["n", "u"]
 latex = '(1 - #2)^{-#1} - 1'
 lean_body = 'roundingFactor (n : ℕ) (u : ℝ) : ℝ := ((1 - u) ^ n)⁻¹ - 1'
@@ -523,7 +523,7 @@ body_hash = "7315fa4a8ce0fd30"
 [[constant]]
 name = "NLAlib.Computation.normalizationRoundingFactor"
 kind = "factor"
-file = "NLAlib/Computation/BLAS/Normalization.lean"
+file = "NLAlib/Matrix/FinitePrecision/Normalization.lean"
 args = ["n", "u"]
 latex = '((#2+(1-#2)^{-(#1+1)}-1)/(2-(1-#2)^{-(#1+1)}))(2+(#2+(1-#2)^{-(#1+1)}-1)/(2-(1-#2)^{-(#1+1)}))'
 display = '\frac{#2+(1-#2)^{-(#1+1)}-1}{2-(1-#2)^{-(#1+1)}}\left(2+\frac{#2+(1-#2)^{-(#1+1)}-1}{2-(1-#2)^{-(#1+1)}}\right)'
@@ -687,7 +687,7 @@ body_hash = "417fabccafe041b9"
 [[constant]]
 name = "NLAlib.cgImplementationRoundoffBound"
 kind = "bound"
-file = "NLAlib/Krylov/LinearSystems/CGProgramRounding.lean"
+file = "NLAlib/Krylov/FinitePrecision/CGPrecision.lean"
 args = ["N", "u"]
 latex = '4#1^2#2'
 lean_body = 'cgImplementationRoundoffBound (N : ℕ) (u : ℝ) : ℝ := 4 * (N : ℝ) ^ 2 * u'
@@ -696,7 +696,7 @@ body_hash = "3e78130c35b39866"
 [[constant]]
 name = "NLAlib.lanczosImplementationRoundoffBound"
 kind = "bound"
-file = "NLAlib/Krylov/Processes/LanczosProgramRounding.lean"
+file = "NLAlib/Krylov/FinitePrecision/LanczosPrecision.lean"
 args = ["N", "u"]
 latex = '16(#1+1)^2#2'
 lean_body = 'lanczosImplementationRoundoffBound (N : ℕ) (u : ℝ) : ℝ := 16 * ((N : ℝ) + 1) ^ 2 * u'
@@ -723,7 +723,7 @@ body_hash = "1d8f95afc9c5f876"
 [[constant]]
 name = "NLAlib.cgsPassBound"
 kind = "bound"
-file = "NLAlib/Matrix/Computation/ClassicalGramSchmidt.lean"
+file = "NLAlib/Matrix/FinitePrecision/ClassicalGramSchmidt.lean"
 args = ["N", "j", "u", "η₀"]
 latex = '2(1+#4)\sqrt{#2+1}\,(#1+#2+2)\,#3'
 lean_body = 'cgsPassBound (N j : ℕ) (u η₀ : ℝ) : ℝ := 2 * (1 + η₀) * Real.sqrt ((j : ℝ) + 1) * ((N + j + 2 : ℕ) : ℝ) * u'
@@ -732,7 +732,7 @@ body_hash = "1e5747665140a317"
 [[constant]]
 name = "NLAlib.lanczosReorthRoundoffBound"
 kind = "bound"
-file = "NLAlib/Krylov/Processes/LanczosReorthProgramGuarantees.lean"
+file = "NLAlib/Krylov/FinitePrecision/LanczosReorthPrecision.lean"
 args = ["N", "q", "u"]
 latex = '(101/25)\sqrt{#2+1}\,(#1+#2+2)\,#3 + 16(#1+1)^2#3'
 lean_body = 'lanczosReorthRoundoffBound (N q : ℕ) (u : ℝ) : ℝ := 101 / 25 * Real.sqrt ((q : ℝ) + 1) * ((N + q + 2 : ℕ) : ℝ) * u + 16 * ((N : ℝ) + 1) ^ 2 * u'
@@ -774,3 +774,12 @@ latex = '320/21'
 display = '\frac{320}{21}'
 lean_body = 'reciprocalWindowCrossConstant : ℝ := 320 / 21'
 body_hash = "d71ea1ee250d1bb1"
+
+[[constant]]
+name = "NLAlib.SpectralBisection.levelSampleSize"
+kind = "sample size"
+file = "NLAlib/Eigensolvers/SpectralBisection/Samples.lean"
+args = ["n"]
+latex = '#1 + 4 #1^2'
+lean_body = 'levelSampleSize (n : ℕ) : ℕ := n + 4 * (n * n)'
+body_hash = "fbb0ee6b083e7502"

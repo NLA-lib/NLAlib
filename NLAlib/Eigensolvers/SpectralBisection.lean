@@ -6,7 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Eigensolvers.RandomizedDeflation
-public import NLAlib.Matrix.Computation.SpectralBisection.Global
+public import NLAlib.Matrix.FinitePrecision.SpectralBisection.Global
 public import NLAlib.Matrix.Perturbation.Continuity
 public import Mathlib.Probability.ConditionalProbability
 public import Mathlib.MeasureTheory.Measure.Lebesgue.Basic

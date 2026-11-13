@@ -16,13 +16,6 @@ rule = "P1"
 reason = "general facts headed upstream to Mathlib depend on nothing else in NLAlib"
 
 [[layer]]
-folder = "Computation"
-layer = 0
-imports = ["ForMathlib"]
-rule = "E5"
-reason = "a program over the library's objects lives in its topic file, not in Computation"
-
-[[layer]]
 folder = "Ops"
 layer = 0
 imports = []

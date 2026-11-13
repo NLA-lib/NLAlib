@@ -219,10 +219,11 @@ def Interp.MeetsQuery (I : Interp Op Tst K) (q : Tst) (C : QueryContract K) : Pr
   (∀ d a m, C.test d a m (I.test q d a m)) ∧
     (∀ a m, C.index a m (I.index q a m))
 
-/-- A closed operation model. Its only interpretation assumptions are satisfaction of the
-specified operation and query contracts. In particular it cannot assume whole-program success,
-a desired output, or an unrelated predicate of the interpreter. All contracts are realized
-jointly at the exact same parameters for every admitted input. -/
+/-- A closed operation model. Its interpretation assumptions are exactly the specified
+operation and query contracts, with no additional unrestricted interpreter predicate.
+All contracts are realized jointly at the same parameters for every admitted input.
+Primitive meanings and locality are properties of the chosen contracts: canonical catalogs
+generate their local contracts, while custom models specify their own meanings explicitly. -/
 structure AccessModel (Op Tst : Type) {K : Type} {r b : ℕ} (P : Problem K r b) where
   /-- An actual word, so the universally quantified tape type is inhabited. -/
   word : K

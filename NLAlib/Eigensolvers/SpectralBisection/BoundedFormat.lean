@@ -6,7 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Eigensolvers.SpectralBisection.Global
-public import NLAlib.Computation.BinaryFloat
+public import NLAlib.Matrix.FinitePrecision.BinaryFloat
 
 /-!
 # Hermitian diagonalization in a bounded binary format

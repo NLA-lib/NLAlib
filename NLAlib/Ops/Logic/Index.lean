@@ -83,7 +83,7 @@ open Lean Meta Elab Tactic in
 /-- **Product generation** for `idx`: for every hypothesis `i < k` or `i ≤ k` on natural numbers
 and every product `i * n` or `n * i` in the goal, add `i * n + n ≤ k * n` (resp. `i * n ≤ k * n`)
 to the context, so that `omega`, which treats products as atoms, can use the bound. -/
-elab "idx_prod" : tactic => withMainContext do
+elab (name := tacticIdxProd) "idx_prod" : tactic => withMainContext do
   let goal ← getMainTarget
   let prods := Idx.products (← instantiateMVars goal)
   let lctx ← getLCtx

@@ -248,3 +248,91 @@ theorem get_updCells {m : Mem K} {ws₁ ws₂ : List ((ℕ × ℕ) × K)} {z : �
   exact Store.get_upd_self (by rw [len_updCells]; exact hl) v
 
 end NLAlib.Ops
+
+namespace NLAlib.Ops
+
+/-- Rename the operation in a scalar instruction by the inclusion of its operation group.
+Operands and the output cell are unchanged. -/
+def ScalarIns.lift {G Op : Type} [Has G Op] (x : ScalarIns G) : ScalarIns Op :=
+  ⟨Has.inj x.op, x.ins, x.out⟩
+
+/-- Evaluating a lifted scalar block uses the original group's word functions; operation
+inclusion does not introduce any additional evaluation or memory operation. -/
+theorem ScalarIns.evalBlock_lift {K G Op : Type} [Has G Op]
+    (sem : G → List K → Option K) (ρ : Env) (xs : List (ScalarIns G))
+    (f : ℕ × ℕ → Option K) :
+    ScalarIns.evalBlock (fun (o : Op) vs => (Has.proj o).bind (fun a => sem a vs))
+      ρ (xs.map ScalarIns.lift) f =
+      ScalarIns.evalBlock sem ρ xs f := by
+  induction xs generalizing f with
+  | nil => rfl
+  | cons x xs ih =>
+    simp only [List.map_cons, ScalarIns.evalBlock, ScalarIns.lift, Has.proj_inj,
+      Option.bind_some]
+    simp only [ih]
+
+/-- A straight-line block over one operation group can be proved against its word functions
+before lifting it into a larger signature. The total functional contracts of that group, the
+pure block evaluation, and room for written cells suffice for the actual memory theorem. -/
+theorem writes_scalarBlock_lift {K G Op Tst : Type} [Has G Op]
+    {I : Interp Op Tst K} {τ : Tape K} {ρ : Env} {m : Mem K}
+    {sem : G → List K → Option K} {xs : List (ScalarIns G)}
+    (hS : ∀ o : G, ScalarCall I (Has.inj o) (sem o)) {ws : List ((ℕ × ℕ) × K)}
+    (hev : ScalarIns.evalBlock sem ρ xs m.store.cellFn = some ws)
+    (hroom : ∀ w ∈ ws, w.1.2 < m.store.len w.1.1) :
+    Writes .total I τ (Stmt.scalarBlock (xs.map ScalarIns.lift)) ρ
+      (Fp.cells (ws.map Prod.fst)) (fun m' => m' = m.updCells ws) m := by
+  refine writes_scalarBlock
+    (sem := fun (o : Op) vs => (Has.proj o).bind (fun a => sem a vs)) ?_ ?_ hroom
+  · intro x hx
+    obtain ⟨a, _, rfl⟩ := List.mem_map.mp hx
+    simpa only [ScalarIns.lift, Has.proj_inj, Option.bind_some] using hS a.op
+  · simpa only [ScalarIns.evalBlock_lift] using hev
+
+/-- A scalar machine block is proved by evaluating its written cells as pure mathematics.
+The scalar operation names may belong to any containing signature. All intermediate writes,
+including aliases and repeated updates of one cell, remain in the actual execution. -/
+theorem writes_machineScalarBlock {K Op Tst : Type} [Has ScalarOp Op]
+    {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
+    {τ : Tape K} {ρ : Env} {m : Mem K} {xs : List (ScalarIns ScalarOp)}
+    {ws : List ((ℕ × ℕ) × K)}
+    (hev : ScalarIns.evalBlock M.eval ρ xs m.store.cellFn = some ws)
+    (hroom : ∀ w ∈ ws, w.1.2 < m.store.len w.1.1) :
+    Writes .total I τ (Stmt.scalarBlock (xs.map ScalarIns.lift)) ρ
+      (Fp.cells (ws.map Prod.fst)) (fun m' => m' = m.updCells ws) m :=
+  writes_scalarBlock_lift (fun o => hI.scalarCall o) hev hroom
+
+end NLAlib.Ops
+
+namespace NLAlib.Ops
+
+/-- Apply the actual ordered scalar writes to a pure cell function. -/
+def ScalarIns.applyWrites {K : Type} (f : ℕ × ℕ → Option K)
+    (ws : List ((ℕ × ℕ) × K)) : ℕ × ℕ → Option K :=
+  ws.foldl (fun g w => Function.update g w.1 (some w.2)) f
+
+/-- Evaluate a scalar prefix once, then evaluate a suffix on its actual updated cell function.
+This supports small independent arithmetic proofs without expanding earlier updates repeatedly. -/
+theorem ScalarIns.evalBlock_append_some {K Op : Type}
+    {sem : Op → List K → Option K} {ρ : Env} {xs ys : List (ScalarIns Op)}
+    {f : ℕ × ℕ → Option K} {ws : List ((ℕ × ℕ) × K)}
+    (hxs : evalBlock sem ρ xs f = some ws) :
+    evalBlock sem ρ (xs ++ ys) f =
+      (evalBlock sem ρ ys (applyWrites f ws)).map (ws ++ ·) := by
+  induction xs generalizing f ws with
+  | nil =>
+    simp only [evalBlock, Option.some.injEq] at hxs
+    subst ws
+    simp [applyWrites]
+  | cons x xs ih =>
+    simp only [evalBlock] at hxs
+    obtain ⟨a, ha, hxs⟩ := Option.bind_eq_some_iff.mp hxs
+    obtain ⟨vs, hvs, hxs⟩ := Option.bind_eq_some_iff.mp hxs
+    obtain ⟨z, hz, hxs⟩ := Option.bind_eq_some_iff.mp hxs
+    obtain ⟨v, hv, hxs⟩ := Option.bind_eq_some_iff.mp hxs
+    obtain ⟨ws', htail, rfl⟩ := Option.map_eq_some_iff.mp hxs
+    simp only [List.cons_append, evalBlock, ha, hvs, hz, hv, Option.bind_some]
+    rw [ih htail]
+    simp only [applyWrites, List.foldl_cons, Option.map_map, Function.comp_def]
+
+end NLAlib.Ops

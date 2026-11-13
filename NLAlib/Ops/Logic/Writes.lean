@@ -405,6 +405,26 @@ theorem writes_frame {ds : List IExp} {args : List Operand} {body : Stmt Op Tst}
     (h : Writes md I τ body (Env.frame d a) F P m) :
     Writes md I τ (.frame ds args body) ρ F P m := wp_frame hd ha hl h
 
+/-- Frame a known mathematical contract before elaborating the caller's dimension and operand
+equalities. Receiver-first order keeps those shapes determined during proof composition. -/
+theorem Writes.in_frame {ds : List IExp} {args : List Operand} {body : Stmt Op Tst}
+    {d : List ℕ} {a : List (ℕ × ℕ)} {F : Fp} {P : Mem K → Prop}
+    (h : Writes md I τ body (Env.frame d a) F P m)
+    (hd : IExp.evalList ρ.idx ds = some d) (ha : Operand.evalList ρ args = some a)
+    (hl : m.Live a) : Writes md I τ (.frame ds args body) ρ F P m :=
+  writes_frame hd ha hl h
+
+/-- Execute a framed mathematical block and continue in the caller's environment. Its known
+contract is elaborated first, so clients need not restate the statement's frame syntax. -/
+theorem Writes.frame_seq_le {ds : List IExp} {args : List Operand} {body next : Stmt Op Tst}
+    {d : List ℕ} {a : List (ℕ × ℕ)} {F G : Fp} {P Q : Mem K → Prop}
+    (h : Writes md I τ body (Env.frame d a) F P m)
+    (hd : IExp.evalList ρ.idx ds = some d) (ha : Operand.evalList ρ args = some a)
+    (hl : m.Live a) (hF : F ≤ G)
+    (hnext : ∀ m', m.store.EqOff F m'.store → P m' → Writes md I τ next ρ G Q m') :
+    Writes md I τ (.seq (.frame ds args body) next) ρ G Q m :=
+  (h.in_frame hd ha hl).seq_le hF hnext
+
 /-- **Index binder from the access model**: the number is the conversion `f` of the cells read
 (`Interp.IsIndex`); the body is proved at that number. -/
 theorem writes_bindIdx_of_isIndex {q : Tst} {f : List K → Option ℕ} (hI : I.IsIndex q f)
@@ -495,5 +515,17 @@ theorem Impl.Triple.writes_blocks {R : Impl Op Tst} {I : Interp Op Tst K}
   rw [Mem.readBlocks_congr (m' := (m.updBlocks outs ys).advance (B.win d))
     (m := m.updBlocks outs ys) rfl]
   exact hy
+
+/-- An exact block-update WP supplies its own frame: all other cells and buffer shapes are
+preserved by the core store update. This turns functional entry specifications into the
+framed steps used by vector, matrix, and ragged-region fill rules. -/
+theorem Writes.of_wp_eq_updBlock {K Op Tst : Type} {md : Mode} {I : Interp Op Tst K}
+    {τ : Tape K} {c : Stmt Op Tst} {ρ : Env} {m : Mem K} {z : ℕ × ℕ} {xs : List K}
+    (h : Wp md I τ c ρ (fun m' => m' = m.updBlock z xs) m) :
+    Writes md I τ c ρ (Store.inBlock z.1 z.2 xs.length)
+      (fun m' => m' = m.updBlock z xs) m := by
+  refine h.mono fun m' he => ?_
+  subst m'
+  exact ⟨(Store.EqOff.refl _ _).updBlock_of_le le_rfl, rfl⟩
 
 end NLAlib.Ops

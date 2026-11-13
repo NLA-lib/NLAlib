@@ -32,6 +32,7 @@ occurrence.
 
 ```
 call op [dims] (ins) → (outs)          -- Stmt.call
+run body [dims] (args)                -- Stmt.frame, a subprogram in an explicit context
 let t ← allocAs fmt len                -- explicit StorageFormat, scoped over the rest
 let t ← alloc len                      -- one-byte StorageFormat.cell, scoped over the rest
 let v ← index q (ins) ≤ bound          -- Stmt.bindIdx, scoped over the rest of the block
@@ -113,6 +114,8 @@ syntax "skip" : opsStmt
 syntax &"abort" : opsStmt
 /-- `call op [dims] (ins) → (outs)`: a call. -/
 syntax &"call " term:max " [" opsIdx,* "]" " (" opsArg,* ")" " → " "(" opsArg,* ")" : opsStmt
+/-- `run body [dims] (args)`: run an explicit subprogram in the supplied frame. -/
+syntax &"run " term:max " [" opsIdx,* "]" " (" opsArg,* ")" : opsStmt
 /-- `let t ← alloc len`: one-byte-cell scratch for the rest of the block.
 Use `allocAs` when the resource model requires an explicit storage format. -/
 syntax "let " ident " ← " &"alloc " opsIdx : opsStmt
@@ -290,6 +293,8 @@ meta def stmtE (sc : Scope) : Nat → TSyntax `opsStmt → MacroM (TSyntax `term
     | `(opsStmt| abort) => `(Stmt.abort)
     | `(opsStmt| call $o [$ds,*] ($as,*) → ($zs,*)) =>
       `(Stmt.call $o $(← idxL sc ds.getElems) $(← argL sc as.getElems) $(← argL sc zs.getElems))
+    | `(opsStmt| run $body [$ds,*] ($as,*)) =>
+      `(Stmt.frame $(← idxL sc ds.getElems) $(← argL sc as.getElems) $body)
     | `(opsStmt| for $i:ident < $n $b:opsBlock) =>
       sc.fresh i
       `(Stmt.loop $(← idxE sc depth n) $(← blockE (sc.pushIdx i.getId) f b))

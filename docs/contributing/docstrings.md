@@ -47,7 +47,8 @@ theorem Matrix.IsHermitian.eigenvalue_add_le ...
    or a listed pair such as `ose`/`osi`; distinguish variants by words, `-frobenius`/`-spectral`,
    not by a digit), and an id or declaration the explorer names must exist [R3].
 4b. **`Algorithm: <id>`** on its own last line, for a definition, recurrence, run model or program
-   that is part of a named algorithm; the explorer builds its algorithm pages from these tags:
+   that is part of a named algorithm. These tags supply searchable declaration metadata;
+   human-readable algorithm pages are curated separately:
 
    ```lean
    /-- The **Hestenes–Stiefel recurrence** (the conjugate gradient algorithm) from the start …
@@ -57,15 +58,15 @@ theorem Matrix.IsHermitian.eigenvalue_add_le ...
    ```
 
    The id is a slug like a result id, and follows the result-id prefixes in use (`cg`, `pcg`,
-   `lanczos`, `hutchpp`, `randomized-svd`, `sketch-and-solve`, `gram-schmidt`), so that the
-   explorer attaches the results `cg-…` to the page `cg` without configuration. An optional role in
+   `lanczos`, `hutchpp`, `randomized-svd`, `sketch-and-solve`, `gram-schmidt`). Curated pages
+   select the relevant declarations and implementations explicitly. An optional role in
    parentheses: `Algorithm: cg (specification)` on the definition of *what* is computed when a
    separate recurrence computes it (`cgIterate`, `pcgIterate`), `Algorithm: lanczos (run model)`
    on a model of a run in finite precision (`LanczosRun`); without a role the declaration is a
    definition, and the explorer reads from its type whether it is a program. The tag goes on `def`,
    `abbrev`, `structure` and `inductive` declarations only [A2], never on theorems: results reach an
-   algorithm through their ids and statements, and a cost target through the program its tree
-   comes from. The line is standalone and last, the id a slug, the role `specification` or
+   algorithm through their ids and statements. An execution result points to the fixed program
+   and operation model that its certificate uses. The line is standalone and last, the id a slug, the role `specification` or
    `run model` [A1]. A declaration belongs to at most one algorithm [A3]: a shared building block
    (`galerkinInverse`, `gramSchmidtQ` inside Hutch++) carries the tag of the algorithm it
    defines, or none, and is found through dependencies. Several declarations of one algorithm are
@@ -133,11 +134,10 @@ theorem Matrix.IsHermitian.eigenvalue_add_le ...
 Module docstrings follow Mathlib [D9]: `# Title`, a paragraph, `## Main results` [D10] listing the
 names, which exist [D11].
 
-The explorer separates mathematical headlines from supporting API. Named bounds registered in
-`docs/constants.toml` are supporting API by default: searchable and linkable, but not headline
-entries. An entry sets `explorer_role = "concept"` when the definition itself is a headline; this
-is presentation only and changes no Lean API. A module docstring may list supporting numerical
-API in a section of its own.
+Curated documentation explains algorithms, variants, operation models and implementations.
+The generated declaration reference remains searchable and linkable, including supporting
+bounds in `docs/constants.toml`. Presentation metadata changes no Lean API. A module docstring
+may list supporting numerical API in a section of its own.
 
 `scripts/check_refs.py` fails CI on an unknown bibliography key or a malformed result id.
 `docs/references.bib` grows by adding the entry before citing it; keys are `AuthorSurnames + year`

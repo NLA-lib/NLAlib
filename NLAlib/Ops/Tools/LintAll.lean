@@ -6,6 +6,36 @@ Authors: NLAlib contributors
 module
 
 public meta import NLAlib.Ops.Tools.Lint
+public import NLAlib.Ops.Blas.Broadcast
+public import NLAlib.Ops.Blas.Clamp
+public import NLAlib.Ops.Blas.Hermitian
+public import NLAlib.Ops.Blas.HermitianCorrect
+public import NLAlib.Ops.Blas.HermitianEntry
+public import NLAlib.Ops.Blas.HermitianMirror
+public import NLAlib.Ops.Blas.HermitianTest
+public import NLAlib.Ops.Blas.HermitianUpper
+public import NLAlib.Ops.Blas.Interval
+public import NLAlib.Ops.Blas.IntervalMatrix
+public import NLAlib.Ops.Blas.Map
+public import NLAlib.Ops.Blas.MapCorrect
+public import NLAlib.Ops.Blas.Matrix
+public import NLAlib.Ops.Blas.MatrixCorrect
+public import NLAlib.Ops.Blas.Mixed
+public import NLAlib.Ops.Blas.Pair
+public import NLAlib.Ops.Blas.Sampling
+public import NLAlib.Ops.Catalog.Dense
+public import NLAlib.Ops.Catalog.Index
+public import NLAlib.Ops.Catalog.Matrix
+public import NLAlib.Ops.Catalog.MatrixWorkspace
+public import NLAlib.Ops.Catalog.RCLikeBlas
+public import NLAlib.Ops.Catalog.Sampling
+public import NLAlib.Ops.Catalog.StoredOperator
+public import NLAlib.Ops.Examples.Consequences
+public import NLAlib.Ops.Examples.FixedPoint
+public import NLAlib.Ops.Profiles.Dense
+public import NLAlib.Ops.Profiles.DenseWeight
+public import NLAlib.Ops.Profiles.DenseWork
+public import NLAlib.Ops.Profiles.Standard
 public import NLAlib.Ops.Attr
 public import NLAlib.Ops.Blas.Decoded
 public import NLAlib.Ops.Blas.Dot
@@ -69,6 +99,24 @@ public import NLAlib.Ops.Tape
 public import NLAlib.Ops.TapeLaw
 public import NLAlib.Ops.Transfer
 public import NLAlib.Ops.Window
+public import NLAlib.Ops.Blas.ColumnProducts
+public import NLAlib.Ops.Blas.DotExecution
+public import NLAlib.Ops.Blas.DotMixed
+public import NLAlib.Ops.Blas.ScalarProducts
+public import NLAlib.Ops.Catalog.Functional
+public import NLAlib.Ops.Catalog.RCLikeStar
+public import NLAlib.Ops.Profiles.ContextDense
+public import NLAlib.Ops.Profiles.ExactLinear
+public import NLAlib.Ops.Profiles.ExactLinearScalar
+public import NLAlib.Ops.Profiles.ExactScalarLinear
+public import NLAlib.Ops.Profiles.RCLikeScalar
+public import NLAlib.Ops.Profiles.StoredCOO
+public import NLAlib.Ops.Profiles.StoredDense
+public import NLAlib.Ops.Profiles.ContextLinear
+public import NLAlib.Ops.Profiles.ExactBlas
+public import NLAlib.Ops.Profiles.RealStar
+public import NLAlib.Ops.Profiles.ScalarOnly
+public import NLAlib.Ops.Profiles.StoredScalar
 
 /-!
 # Conditional headline guidance over imported Ops modules

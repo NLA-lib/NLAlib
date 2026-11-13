@@ -14,7 +14,8 @@ itself does not run an eigensolver.
 | Full reorthogonalization | The same update, two classical Gram–Schmidt passes, then normalization | The norm of each residual before the passes |
 
 Both variants initialize output tails to zero, accept an iteration cap, and stop when the
-computed self-dot used for normalization is zero. Successful execution follows from the
+computed self-dot used for normalization is no longer positive. In exact arithmetic this
+means a zero residual. Successful execution follows from the
 operation and input hypotheses of their total-correctness theorems. The theorem statements
 do not assume that an execution has already succeeded.
 
@@ -78,11 +79,32 @@ the vector produced by the first pass. Coefficient scratch is reused between the
 released on return. Local rounded pass results retain the actual coefficient witnesses even
 though the program discards their words.
 
-## Operation models
+## Operation models and stored implementations
+
+The [ordinary](../../NLAlib/Krylov/Lanczos/StoredCertificate.lean) and
+[reorthogonalized](../../NLAlib/Krylov/Lanczos/Reorth/StoredCertificate.lean) exact stored
+certificates declare four raw buffers: the dense matrix, right-hand side, basis capacity and
+coefficient capacity. A fixed context transformation forwards the matrix capability through
+every procedure. Each matrix application executes scalar multiply/add loops; the target
+operation model retains exact scalar and BLAS1 names and has no matrix-vector primitive.
+The supplied matrix words are decoded directly, without preprocessing or an implicit oracle.
+
+Ordinary stored Lanczos returns the exact pure recurrence for every raw square matrix and
+right-hand side. Identifying that recurrence with symmetric Lanczos and its spectral results
+uses the additional symmetry hypotheses of those results. The reorthogonalized stored
+certificate explicitly admits Hermitian raw matrices. Both allow any cap, empty dimension,
+zero input and early breakdown, retain the packed zero tails, and return with only the four
+supplied buffers. They do not assume a successful run.
+
+Choosing the three-term or two-pass algorithm is separate from choosing a matrix-free
+operator, a stored dense implementation, or a scalar implementation of BLAS. Exact agreement
+of outputs does not identify the rounded computations of these different programs.
+
 
 | Choice | Meaning |
 |---|---|
-| Exact operations | Exact scalar arithmetic, BLAS1 and matvec contracts |
+| Exact matrix-free operations | Exact scalar arithmetic, BLAS1 and matvec contracts |
+| Exact stored dense implementation | Declared raw matrix data, scalar dense matvec loops and exact BLAS1 |
 | Abstract rounded BLAS and matvec | Scalar relative-error model, explicit BLAS error allowances, and an independent normwise matvec allowance |
 | Sequential standard scheme | The BLAS allowances are proved from sequential reductions in the scalar standard model |
 | Pairwise standard scheme | The allowances are proved from pairwise reductions, with the declared recursion-depth applicability condition |
@@ -115,6 +137,9 @@ ordinary Lanczos and `3k+2` words with reorthogonalization. The input contains `
 Ordinary scoped scratch contains `2n+2` words plus the maximum declared primitive workspace.
 The reorthogonalized workspace bound is `2n+k+3` words plus its declared primitive workspace
 envelope. These quantities distinguish resident inputs and outputs from additional scratch.
+The displayed workspace formulas concern the matrix-free source trees and their declared
+primitive workspace. Stored dense programs additionally supply `n²` matrix cells and use
+their own transformed tree's full peak, including the scalar matvec temporary.
 
 The closed call budgets are `solveCount` in each variant's `Alg.lean`; `stmtCost_solve`
 proves that each is the corresponding static call budget. Primitive costs depend on the
@@ -168,6 +193,18 @@ implementation's constants. Stronger numerical conclusions use their proved hypo
 
 ## Canonical certificates
 
+The exact stored endpoints are `Lanczos.Stored.algorithm` and
+`Lanczos.Stored.Reorth.algorithm`. Their specifications identify the actual packed outputs
+with the existing exact `Output` relations, preserve tape position, and assert cleanup back
+to four buffers. Their complete count, work, sequential-span and scratch budgets are computed
+from the actual transformed syntax. Resident bounds include matrix data, RHS, every basis
+slot and every coefficient slot. These full manifests are conservative size-only accounting;
+they are not a sharp adaptive-work bound.
+
+The rounded certificates below are separate matrix-free endpoints. The exact stored
+certificates do not assert a rounded scalar-dense matvec bound or physical IEEE behavior.
+
+
 Both ordinary and fully reorthogonalized Lanczos have `Certification.algorithm` constructors.
 They use a fixed program and a jointly realized standard operation model. Their specifications
 combine the actual rounded output with an independently computed, size-only instrumented
@@ -179,6 +216,8 @@ The ordinary `Certification.ritzAlgorithm` strengthens the numerical postconditi
 physical Ritz residual result using `Algorithm.mapPost`. It retains the same program and every
 resource bound. Zero cap and zero input have their explicit original outcomes.
 
+- [Exact stored ordinary certificate](../../NLAlib/Krylov/Lanczos/StoredCertificate.lean)
+- [Exact stored reorthogonalized certificate](../../NLAlib/Krylov/Lanczos/Reorth/StoredCertificate.lean)
 - [Ordinary canonical certificate](../../NLAlib/Krylov/Lanczos/Certificate.lean)
 - [Reorthogonalized canonical certificate](../../NLAlib/Krylov/Lanczos/Reorth/Certificate.lean)
 - [Canonical Ritz consequence](../../NLAlib/Krylov/Lanczos/RitzCertificate.lean)
@@ -197,7 +236,7 @@ pairwise scalar tree.
 
 For rounded full reorthogonalization, the strongest run interface applies to the longest
 leading prefix satisfying the selected strict test `tau * saved_raw_norm < beta`. This is an
-analysis of the returned data; the program still uses its original zero-norm stopping rule.
+analysis of the returned data; the program still uses its original self-dot stopping rule.
 The prefix may be empty or shorter than the executed history. The next excluded step has
 `beta <= tau * saved_raw_norm`. Every retained numerical-run parameter and vector/coefficient
 sequence refers to the same archived data. Size-only fixed-point and recurrence precision

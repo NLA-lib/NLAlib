@@ -494,11 +494,12 @@ None of these was approved by the maintainer when it was made. Status is given p
 - **Bridge.** `Float.Model.BinaryRounding.IsBinaryFloat.mem_floatGrid` embeds the lower-clamped
   grid in Mathlib's grid. `Float.Model.UnpackedFloat.isBinaryFloat_toReal` connects canonical
   words to that grid. `Computation.isBinaryRep_floatDecode` records the full bounded
-  representation, and `Computation.isArithErrSem_finiteFloatSem` supplies the existing
-  arithmetic contract for the actual checked binary64 operations.
+  representation. `Ops.Float64.mixedModel_machine` supplies guarded mixed-error accuracy
+  for native finite-word arithmetic; its rational literal policy uses the separately specified
+  logical quantizer, and overflow has an explicit finite fallback.
 - **Why.** A pure relative-error model cannot account for a nonzero subnormal result
-  rounding to zero. Finite exponent limits are also needed to prove successful checked
-  execution rather than only conditional accuracy after success.
+  rounding to zero. Finite exponent limits specify where the total word operations meet their accuracy contract.
+  Total program certificates additionally prove every required operation admission.
 - **Cost.** Additional upstream-candidate real decoding and lower-grid facts; they use the
   existing core layout and operations. The mathematical bounded selector model is separate
   from native Float's ties-to-even semantics. No second bit layout, private dependency or

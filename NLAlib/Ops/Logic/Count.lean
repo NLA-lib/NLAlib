@@ -36,6 +36,17 @@ namespace NLAlib.Ops
 
 variable {Op Tst K : Type} {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ : Tape K} {ρ : Env}
 
+/-- A counted frame executes its actual body at the evaluated dimensions and operands,
+without changing the incoming counts or scratch history. -/
+theorem evalCounted_frame_body {ds : List IExp} {args : List Operand}
+    {body : Stmt Op Tst} {d : List ℕ} {as : List (ℕ × ℕ)} {a b : St Op Tst K}
+    (hd : IExp.evalList ρ.idx ds = some d) (ha : Operand.evalList ρ args = some as)
+    (hr : evalCounted I W τ (.frame ds args body) ρ a = some b) :
+    evalCounted I W τ body (Env.frame d as) a = some b := by
+  simp only [evalCounted, hd, ha, Option.bind_some] at hr
+  split_ifs at hr with hl
+  exact hr
+
 /-- A block specification, counted at its static cost: the bridge from `Writes` to the counted
 judgment for the parts whose counts do not depend on the data. -/
 theorem RunsFromW.of_writes {s : Stmt Op Tst} {st : St Op Tst K} {F : Fp} {P : Mem K → Prop}

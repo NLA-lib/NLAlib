@@ -97,7 +97,7 @@ macro_rules
 
 /-- A side goal of the call rule of the form `shape = ?x`: the length of the window or of the
 output blocks of a contract at the dimensions of the call, computed. -/
-macro "wp_shape" : tactic => `(tactic| first
+macro (name := tacticWpShape) "wp_shape" : tactic => `(tactic| first
   | (simp only [storeNF, List.headD_cons]; exact rfl)
   | exact rfl)
 

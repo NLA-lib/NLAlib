@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Ops.Logic.Writes
+public import NLAlib.Ops.Logic.ReadTuple
 public meta import Lean.Elab.Tactic.Basic
 
 /-!
@@ -112,7 +113,7 @@ open Lean Meta Elab Tactic in
 `h : Store.Below L s s'` in the context, add the lengths of the buffers of `s'` (and the length of
 `s'`) in terms of `s`, unless they are already there, so that the side goals about room and live
 handles (`wp_side`, whose `simp` uses the context) see through the named states. -/
-elab "frame_facts" : tactic => withMainContext do
+elab (name := tacticFrameFacts) "frame_facts" : tactic => withMainContext do
   let mut g ← getMainGoal
   let lctx ← getLCtx
   let mut tys ← (lctx.foldl (init := #[]) fun acc d => acc.push d.type).mapM instantiateMVars
@@ -132,17 +133,106 @@ elab "frame_facts" : tactic => withMainContext do
       tys := tys.push t
   replaceMainGoal [g]
 
+open Lean Meta Elab Tactic in
+/-- The elements of a list literal, up to whnf; at most `fuel` of them. -/
+meta def listElems (fuel : Nat) (e : Expr) : MetaM (Array Expr) := do
+  match fuel with
+  | 0 => throwError "reads: list too long"
+  | f + 1 =>
+    let e ← whnfD e
+    match e.getAppFnArgs with
+    | (``List.nil, _) => return #[]
+    | (``List.cons, #[_, h, t]) => return #[h] ++ (← listElems f t)
+    | _ => throwError "reads: not a list literal: {e}"
+
+open Lean Meta Elab Tactic in
+/-- Try a projected read with only natural address and word-length normalization. -/
+private meta def closeTupleRead (g : MVarId) (pf : Expr) : TacticM Bool := do
+  let saved ← saveState
+  try
+    let term ← Term.exprToSyntax pf
+    let goals ← Tactic.run g (evalTactic (← `(tactic|
+      simpa only [List.getD_cons_zero, List.getD_cons_succ, Nat.add_zero, Nat.zero_add,
+        Nat.add_assoc, Nat.add_comm, Nat.add_left_comm, Nat.mul_assoc, Nat.mul_comm,
+        Nat.mul_left_comm] using $term)))
+    if goals.isEmpty then return true
+  catch _ => pure ()
+  saved.restore
+  return false
+
+open Lean Meta Elab Tactic in
+/-- Lazily project a block or interior cell from a successful known-length input tuple. -/
+elab (name := tacticTupleRead) "tuple_read" : tactic => withMainContext do
+  let g ← getMainGoal
+  let target ← instantiateMVars (← g.getType)
+  let some (_, lhs, _) := target.eq? | throwError "tuple_read: expected a read equality"
+  let (head, args) := lhs.getAppFnArgs
+  let cell := head == ``Store.get
+  unless cell || head == ``Store.readBlock do
+    throwError "tuple_read: expected a block or cell read"
+  let wantedStore := args[1]!
+  let wantedBuffer := args[2]!
+  for d in ← getLCtx do
+    if d.isImplementationDetail then continue
+    let ty ← instantiateMVars d.type
+    let some (_, input, output) := ty.eq? | continue
+    let (``Mem.readBlocks, #[_, m, zs, ls]) := input.getAppFnArgs | continue
+    let (``Option.some, #[_, xs]) := output.getAppFnArgs | continue
+    unless ← withoutModifyingState (isDefEq wantedStore (← mkAppM ``Mem.store #[m])) do
+      continue
+    let some operands ← observing? (listElems 64 zs) | continue
+    let some lengths ← observing? (listElems 64 ls) | continue
+    let some values ← observing? (listElems 64 xs) | continue
+    let zs ← mkListLit (← inferType zs).appArg! operands.toList
+    let ls ← mkListLit (← inferType ls).appArg! lengths.toList
+    let xs ← mkListLit (← inferType xs).appArg! values.toList
+    for i in [:min (min operands.size lengths.size) values.size] do
+      let saved ← saveState
+      try
+        let buffer ← mkAppM ``Prod.fst #[operands[i]!]
+        unless ← isDefEq wantedBuffer buffer do
+          saved.restore
+          continue
+        let bound ← mkAppM ``Nat.min #[← mkAppM ``List.length #[zs],
+          ← mkAppM ``List.length #[ls]]
+        let hi ← mkDecideProof (← mkLt (mkNatLit i) (← whnfD bound))
+        let pf ← mkAppOptM ``Mem.readBlocks_getD
+          #[none, some m, some zs, some ls, some xs, some d.toExpr,
+            some (mkNatLit i), some hi]
+        if cell then
+          let some words ← observing? (listElems 64 values[i]!) |
+            saved.restore
+            continue
+          for j in [:words.size] do
+            let hj ← mkDecideProof (← mkLt (mkNatLit j) (← whnfD lengths[i]!))
+            let hp ← mkAppOptM ``Store.get_of_readBlock
+              #[none, none, none, none, none, none, some pf, some (mkNatLit j),
+                some hj, some words[j]!]
+            if ← closeTupleRead g hp then
+              replaceMainGoal []
+              return
+        else if ← closeTupleRead g pf then
+          replaceMainGoal []
+          return
+      catch _ => pure ()
+      saved.restore
+  throwError "tuple_read: no matching block in a known input tuple"
+
+
 /-- **`kept [facts]`**: a goal `s.readBlock b o n = some ?xs` or `s.get b i = some ?v`. Closes it
 from a hypothesis about `s`, or about an earlier store across a frame `s₀.EqOff F s` (the block is
 off `F`, by `disjoint`) or an agreement `Store.Below L s₀ s` (the buffer is below `L`, by `idx`),
 or as a sub-block of a block read (`Store.readBlock_sub`, the bound by `idx`), or a cell as a
-block of one (`Store.readBlock_one_of_get`). Fails if none applies. -/
+block of one (`Store.readBlock_one_of_get`). Known input tuples supply their block and interior
+cell projections lazily, with natural address and length arithmetic normalized. Fails if none
+applies. -/
 syntax "kept" (" [" Lean.Parser.Tactic.simpLemma,* "]")? : tactic
 
 macro_rules
   | `(tactic| kept) => `(tactic| kept [])
   | `(tactic| kept [$ts,*]) => `(tactic| first
       | assumption
+      | tuple_read
       | (apply Store.EqOff.readBlock_of
          · assumption
          · kept [$ts,*]
@@ -166,17 +256,6 @@ macro_rules
          · idx [$ts,*])
       | fail "kept: the block is not found in the context, at this or an earlier memory")
 
-open Lean Meta Elab Tactic in
-/-- The elements of a list literal, up to whnf; at most `fuel` of them. -/
-meta def listElems (fuel : Nat) (e : Expr) : MetaM (Array Expr) := do
-  match fuel with
-  | 0 => throwError "reads: list too long"
-  | f + 1 =>
-    let e ← whnfD e
-    match e.getAppFnArgs with
-    | (``List.nil, _) => return #[]
-    | (``List.cons, #[_, h, t]) => return #[h] ++ (← listElems f t)
-    | _ => throwError "reads: not a list literal: {e}"
 
 open Lean Meta Elab Tactic in
 /-- **`reads`**: a goal `m.readBlocks as ns = some ?xs` (the blocks a call reads), with `as` and
@@ -219,10 +298,16 @@ syntax "room" (" [" Lean.Parser.Tactic.simpLemma,* "]")? : tactic
 macro_rules
   | `(tactic| room) => `(tactic| room [])
   | `(tactic| room [$ts,*]) => `(tactic|
-      (simp (disch := idx) only [*, Mem.live_cons, Mem.live_nil, List.cons_append,
-          List.nil_append, and_true, true_and, $ts,*]
-       try idx [$ts,*]
-       done))
+      (frame_facts
+       try dsimp only
+       first
+       | (simp (disch := idx) only [*, $ts,*]
+          first | done | idx [$ts,*])
+       | (try simp (disch := idx) only [*, Mem.live_cons, Mem.live_nil, List.cons_append,
+            List.nil_append, List.length_cons, List.length_nil, Nat.add_zero,
+            and_true, true_and, $ts,*]
+          try idx [$ts,*]
+          done)))
 
 /-- **`step h [facts] as m₁ hfr₁ ⟨pat⟩`**: the call step in named form. The goal is a `Wp` or a
 `Writes` of a call, or of a call followed by more (`.seq (.call …) c`). `h` says that the

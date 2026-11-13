@@ -7,14 +7,16 @@
 DATA.json is the extraction that `scripts/explore_data.sh` writes after `lake build NLAlib`
 (name, kind, module, pretty-printed signature, docstring of every public declaration). Each
 violation prints as `N<k> <full name>: <message>`; the rule ids are those of docs/contributing/naming.md.
-Exit status 1 when a violation is not on the allowlist, or when an allowlist entry is stale (its
-declaration is gone or no longer breaks its rule); `--warn` reports and exits 0.
+Exit status 1 when an error-severity finding is not on the allowlist, or when an allowlist entry
+is stale (its declaration is gone or no longer breaks its rule). Warning-severity findings
+remain visible for review; `--warn` also makes error findings non-fatal.
 
 The checks read Lean's pretty-printed statements with `scripts/leanexpr.py`, a bracket-depth
-splitter, not a Lean parser. They are those of the 2026-10 naming audit
-(`docs/design/Naming.md`), made strict. What they verify and what they cannot is listed there
-and in docs/contributing/naming.md §6. A false positive goes on the allowlist with a one-line reason;
-an allowlist entry is never the fix for a real violation.
+splitter, not a Lean parser. Reliable lexical conventions are errors; semantic head, relation,
+token-occurrence and power-orientation guesses are review warnings. Operation-model aliases,
+notation and local lets cannot be judged reliably from pretty printing alone. The current
+boundary is documented in docs/contributing/naming.md §6; the 2026-10 naming audit is historical.
+An allowlist entry is never the fix for a real violation.
 """
 import argparse
 import json
@@ -31,9 +33,12 @@ ROOT = Path(__file__).resolve().parent.parent
 
 # The rule statements are in docs/rules/rules.toml, the single source of the rule data
 # (docs/contributing/checks.md §1); here the checked naming rules N1–N18.
-RULES = {r['id']: r['statement'] for r in
-         tomllib.loads((ROOT / 'docs' / 'rules' / 'rules.toml').read_text())['rule']
-         if r['id'].startswith('N') and r['check'] != 'none'}
+_RULE_DATA = [r for r in
+              tomllib.loads((ROOT / 'docs' / 'rules' / 'rules.toml').read_text())['rule']
+              if r['id'].startswith('N') and r['check'] != 'none']
+RULES = {r['id']: r['statement'] for r in _RULE_DATA}
+SEVERITY = {r['id']: r['severity'] for r in _RULE_DATA}
+SCOPES = {r['id']: r.get('scope', 'library') for r in _RULE_DATA}
 
 REL_TOKENS = {'le', 'lt', 'eq', 'ne', 'iff', 'ge', 'gt', 'nonneg', 'pos', 'mem', 'subset', 'nonpos'}
 REL_NAME = {'le': {'le', 'nonneg', 'ge', 'antitone', 'monotone', 'mono', 'anti', 'subset', 'max', 'min'},
@@ -235,6 +240,11 @@ def check(decls, registered=()):
     out = []
 
     def bad(rule, e, msg):
+        scope = SCOPES[rule]
+        module = e['module'].replace('.', '/')
+        if isinstance(scope, list) and not any(
+                module == prefix or module.startswith(prefix + '/') for prefix in scope):
+            return
         out.append((rule, e['name'], msg))
 
     # N1 case
@@ -247,14 +257,22 @@ def check(decls, registered=()):
                     + ', '.join(f'`{x}`' for x in up))
         elif k in ('def', 'abbrev'):
             ty = re.sub(r'\s+', ' ', e['concl']).strip()
-            returns_prop = ty.endswith('Prop')
-            returns_type = re.search(r'(^|→ |\) )(Type|Sort)( u?\w*)?$', ty) is not None
+            # Lean generates parser/attribute declaration names from syntax, including
+            # punctuation and underscores. Their result type distinguishes these from
+            # ordinary public data definitions; no namespace is exempted.
+            parser_decl = bool(re.fullmatch(r'(?:Lean\.)?(?:Trailing)?ParserDescr', ty))
+            returns_prop = bool(re.search(r'(?<![\w])Prop$', ty))
+            # Universe expressions need not be a single identifier: Type (max u v).
+            returns_type = bool(re.search(r'(?:^|→ |\) )(?:Type|Sort)(?:\s.*)?$', ty))
+            if parser_decl:
+                continue
             if '_' in s.strip('_'):
                 bad('N1', e, 'a definition name has no `_`')
-            elif returns_prop and s[:1].islower():
-                bad('N1', e, 'a Prop-valued definition is UpperCamelCase')
             elif not returns_prop and not returns_type and s[:1].isupper():
                 bad('N1', e, 'a data-valued definition is lowerCamelCase')
+            # Predicate components and verb APIs use lowerCamelCase (admissible,
+            # contracts, inBlock), while standalone predicates use UpperCamelCase.
+            # The proposition-valued result alone cannot distinguish those roles.
         elif k in ('structure', 'class') and s[:1].islower():
             bad('N1', e, 'a structure or class is UpperCamelCase')
 
@@ -485,18 +503,23 @@ def main(argv=None):
         allow = [x for x in allow if x['rule'] in only]
     allowed = {(x['rule'], x['name']) for x in allow}
     names = {d['name'] for d in decls}
-    errors = [f for f in found if (f[0], f[1]) not in allowed]
+    unallowed = [f for f in found if (f[0], f[1]) not in allowed]
+    errors = [f for f in unallowed if SEVERITY[f[0]] == 'error']
+    warnings = [f for f in unallowed if SEVERITY[f[0]] == 'warning']
     flagged = {(f[0], f[1]) for f in found}
     stale = [x for x in allow if (x['rule'], x['name']) not in flagged
              and not (a.partial and x['name'] not in names)]
     for rule, name, msg in errors:
         print(f'{rule} {name}: {msg}')
+    for rule, name, msg in warnings:
+        print(f'warning: {rule} {name}: {msg}')
     for x in stale:
         why = 'is not declared' if x['name'] not in names else f'no longer breaks {x["rule"]}'
         print(f'stale allowlist entry: {x["name"]} ({x["rule"]}) {why}; remove it')
     total = len(errors) + len(stale)
     print(f'check_names: {len(decls)} declarations, {len(errors)} violations, '
-          f'{len(found) - len(errors)} allowlisted, {len(stale)} stale allowlist entries'
+          f'{len(found) - len(unallowed)} allowlisted, {len(warnings)} review warnings, '
+          f'{len(stale)} stale allowlist entries'
           + (' (warning mode)' if a.warn and total else ''))
     return 0 if a.warn or not total else 1
 

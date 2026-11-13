@@ -1,0 +1,484 @@
+{
+  "date": "2026-11-13",
+  "from_commit": "c2996a88ae0f8cb17fb2d8d022574529b6d1fea5",
+  "note": "Module moves are mathematical preservation, sometimes a pure subset of a retired mixed module. They are not old-program API aliases. Retained mathematical declaration names are generally unchanged.",
+  "renames": [],
+  "statementChanged": [],
+  "mathematical_module_moves": {
+    "NLAlib.Matrix.Computation.Primitives": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.Machine"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Matrix.Computation.EntrywiseRounding": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.EntrywiseRounding"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Matrix.Computation.BinaryFloatMachine": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.BinaryFloatMachine"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Matrix.Computation.GridMachine": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.GridMachine"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Matrix.Computation.OpsMachine": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.OpsMachine"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Matrix.Computation.OpsMatrix": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.OpsMatrix"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Matrix.Computation.OpsSampling": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.OpsSampling"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Matrix.Computation.OpsSamplingMeasurable": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.OpsSamplingMeasurable"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Matrix.Computation.OpsSampleCongr": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.OpsSampleCongr"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Matrix.Computation.OpsSampleMap": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.OpsSampleMap"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Matrix.Computation.OpsHermitian": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.OpsHermitian"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Matrix.Computation.OpsHermitianShiftNegate": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.OpsHermitianShiftNegate"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Matrix.Computation.Deflation": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.Deflation"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Matrix.Computation.NewtonSchulzSign": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.NewtonSchulzSign"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Matrix.Computation.NewtonSchulzSign.Accuracy": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.NewtonSchulzSign.Accuracy"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Matrix.Computation.NewtonSchulzSign.Iteration": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.NewtonSchulzSign.Iteration"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Matrix.Computation.SpectralBisection": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.SpectralBisection"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Matrix.Computation.SpectralBisection.Assembly": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.SpectralBisection.Assembly"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Matrix.Computation.SpectralBisection.Child": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.SpectralBisection.Child"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Matrix.Computation.SpectralBisection.Global": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.SpectralBisection.Global"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Matrix.Computation.SpectralBisection.Levels": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.SpectralBisection.Levels"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Matrix.Computation.SpectralBisection.Node": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.SpectralBisection.Node"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Matrix.Computation.SpectralBisection.Projectors": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.SpectralBisection.Projectors"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Matrix.Computation.SpectralBisection.Slots": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.SpectralBisection.Slots"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Matrix.Computation.SpectralBisection.Split": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.SpectralBisection.Split"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Matrix.Computation.SpectralBisection.Tree": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.SpectralBisection.Tree"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Computation.Rounding": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.Rounding",
+        "NLAlib.Ops.ArithmeticError"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Computation.BinaryFloat": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.BinaryFloat"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Computation.VectorErrors": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.VectorErrors"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Matrix.Computation.ResidualGap": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.ResidualGap"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.RandomMatrix.Computation.ComplexTape": {
+      "modules": [
+        "NLAlib.RandomMatrix.Gaussian.Tape"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Matrix.Computation.ClassicalGramSchmidt": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.ClassicalGramSchmidt"
+      ],
+      "note": "pure analysis only; old builders remain temporarily"
+    },
+    "NLAlib.Computation.Underflow": {
+      "modules": [
+        "NLAlib.Ops.ArithmeticError"
+      ],
+      "note": "pure error algebra"
+    },
+    "NLAlib.Computation.Float": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.Float",
+        "NLAlib.Matrix.FinitePrecision.NativeFloat",
+        "NLAlib.Matrix.FinitePrecision.OpsFloat"
+      ],
+      "note": "representation/decoding only"
+    },
+    "NLAlib.RandomMatrix.Tape": {
+      "modules": [
+        "NLAlib.RandomMatrix.TapeLaw"
+      ],
+      "note": "probability mathematics only"
+    },
+    "NLAlib.Matrix.Computation.SpectralBisectionTape": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.SpectralBisection.IdealSamples"
+      ],
+      "note": "ideal definitions only"
+    },
+    "NLAlib.Computation.BLAS.Traces": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.Traces"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Computation.BLAS.Normalization": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.Normalization"
+      ],
+      "note": "pure prefix"
+    },
+    "NLAlib.Computation.BinaryFloatSem": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.BinaryFloatCarrier"
+      ],
+      "note": "pure representation and quantizer"
+    },
+    "NLAlib.Matrix.Computation.ClassicalGramSchmidtRoundingError": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.ClassicalGramSchmidtRoundingError"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Computation.NormalizationErrors": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.NormalizationErrors"
+      ],
+      "note": "mathematical declarations preserved"
+    },
+    "NLAlib.Computation.FixedPoint": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.FixedPoint"
+      ],
+      "note": "pure representation and quantizer"
+    },
+    "NLAlib.Computation.Syntax": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.ArithmeticOperation"
+      ],
+      "note": "pure mathematics only; execution adapters retired"
+    },
+    "NLAlib.Computation.Grid": {
+      "modules": [
+        "NLAlib.Matrix.FinitePrecision.GridMachine"
+      ],
+      "note": "pure mathematics only; execution adapters retired"
+    },
+    "NLAlib.Krylov.LinearSystems.CGProgramRounding": {
+      "modules": [
+        "NLAlib.Krylov.FinitePrecision.CGPrecision"
+      ],
+      "note": "pure mathematics only; execution adapters retired"
+    },
+    "NLAlib.Krylov.Processes.LanczosProgramRounding": {
+      "modules": [
+        "NLAlib.Krylov.FinitePrecision.LanczosPrecision"
+      ],
+      "note": "pure mathematics only; execution adapters retired"
+    },
+    "NLAlib.Krylov.Processes.LanczosReorthProgramGuarantees": {
+      "modules": [
+        "NLAlib.Krylov.FinitePrecision.LanczosReorthPrecision"
+      ],
+      "note": "pure mathematics only; execution adapters retired"
+    },
+    "NLAlib.Krylov.LinearSystems.CGProgramGuards": {
+      "modules": [
+        "NLAlib.Krylov.LinearSystems.CGGuards"
+      ],
+      "note": "pure mathematics only; execution adapters retired"
+    }
+  },
+  "retired_modules": [
+    "NLAlib.Computation.Allocation",
+    "NLAlib.Computation.BLAS",
+    "NLAlib.Computation.BLAS.Frames",
+    "NLAlib.Computation.BLAS.GuardedNormalization",
+    "NLAlib.Computation.BLAS.MatrixKernels",
+    "NLAlib.Computation.BLAS.Normalization",
+    "NLAlib.Computation.BLAS.NormalizationFrames",
+    "NLAlib.Computation.BLAS.RoundingErrors",
+    "NLAlib.Computation.BLAS.Triangular",
+    "NLAlib.Computation.BLAS.Underflow",
+    "NLAlib.Computation.BLASCongr",
+    "NLAlib.Computation.BinaryFloatSem",
+    "NLAlib.Computation.Compile",
+    "NLAlib.Computation.Contract",
+    "NLAlib.Computation.Dense",
+    "NLAlib.Computation.Exact",
+    "NLAlib.Computation.Exec",
+    "NLAlib.Computation.ExecCharge",
+    "NLAlib.Computation.FirstOrder",
+    "NLAlib.Computation.FixedPoint",
+    "NLAlib.Computation.Float",
+    "NLAlib.Computation.Grid",
+    "NLAlib.Computation.IEEE",
+    "NLAlib.Computation.IEEESqrt",
+    "NLAlib.Computation.IndexBinder",
+    "NLAlib.Computation.KernelCall",
+    "NLAlib.Computation.Loops",
+    "NLAlib.Computation.MatvecRoutine",
+    "NLAlib.Computation.Model",
+    "NLAlib.Computation.NonInterference",
+    "NLAlib.Computation.ProgramLogic",
+    "NLAlib.Computation.RoutineAlloc",
+    "NLAlib.Computation.RoutineFrames",
+    "NLAlib.Computation.RoutineSpec",
+    "NLAlib.Computation.RoutineWhile",
+    "NLAlib.Computation.RunEquiv",
+    "NLAlib.Computation.RunsWithin",
+    "NLAlib.Computation.ScalarFrames",
+    "NLAlib.Computation.Sparse",
+    "NLAlib.Computation.StaticCost",
+    "NLAlib.Computation.Store",
+    "NLAlib.Computation.StraightLine",
+    "NLAlib.Computation.Subst",
+    "NLAlib.Computation.Syntax",
+    "NLAlib.Computation.Underflow",
+    "NLAlib.Eigensolvers.SignDeflatePrograms",
+    "NLAlib.Eigensolvers.SpectralBisectionProgram",
+    "NLAlib.Eigensolvers.SpectralBisectionSamples.IdealMachine",
+    "NLAlib.Eigensolvers.SpectralBisectionSamples.LegacySemantics",
+    "NLAlib.Estimation.Trace.HutchPlusPlusProgram",
+    "NLAlib.Estimation.Trace.HutchPlusPlusProgramTree",
+    "NLAlib.Estimation.Trace.HutchPlusPlusTargets",
+    "NLAlib.Krylov.LinearSystems.CGOracleProgram",
+    "NLAlib.Krylov.LinearSystems.CGOracleProgramExecution",
+    "NLAlib.Krylov.LinearSystems.CGOracleProgramInitialization",
+    "NLAlib.Krylov.LinearSystems.CGOracleProgramLoop",
+    "NLAlib.Krylov.LinearSystems.CGOracleProgramRounded",
+    "NLAlib.Krylov.LinearSystems.CGOracleProgramRoundedInitialization",
+    "NLAlib.Krylov.LinearSystems.CGOracleProgramStaticCost",
+    "NLAlib.Krylov.LinearSystems.CGOracleProgramTree",
+    "NLAlib.Krylov.LinearSystems.CGOracleTargets",
+    "NLAlib.Krylov.LinearSystems.CGProgram",
+    "NLAlib.Krylov.LinearSystems.CGProgramBinaryFloat",
+    "NLAlib.Krylov.LinearSystems.CGProgramBody",
+    "NLAlib.Krylov.LinearSystems.CGProgramCounts",
+    "NLAlib.Krylov.LinearSystems.CGProgramDirection",
+    "NLAlib.Krylov.LinearSystems.CGProgramFixedPoint",
+    "NLAlib.Krylov.LinearSystems.CGProgramGuards",
+    "NLAlib.Krylov.LinearSystems.CGProgramIEEE",
+    "NLAlib.Krylov.LinearSystems.CGProgramInitialization",
+    "NLAlib.Krylov.LinearSystems.CGProgramLoop",
+    "NLAlib.Krylov.LinearSystems.CGProgramRounded",
+    "NLAlib.Krylov.LinearSystems.CGProgramRoundedBackward",
+    "NLAlib.Krylov.LinearSystems.CGProgramRoundedBody",
+    "NLAlib.Krylov.LinearSystems.CGProgramRoundedHorizon",
+    "NLAlib.Krylov.LinearSystems.CGProgramRoundedInitialization",
+    "NLAlib.Krylov.LinearSystems.CGProgramRoundedKernels",
+    "NLAlib.Krylov.LinearSystems.CGProgramRoundedPrefix",
+    "NLAlib.Krylov.LinearSystems.CGProgramRoundedRun",
+    "NLAlib.Krylov.LinearSystems.CGProgramRoundedStep",
+    "NLAlib.Krylov.LinearSystems.CGProgramRoundedStop",
+    "NLAlib.Krylov.LinearSystems.CGProgramRoundedWorkspace",
+    "NLAlib.Krylov.LinearSystems.CGProgramScope",
+    "NLAlib.Krylov.LinearSystems.CGProgramStaticCost",
+    "NLAlib.Krylov.LinearSystems.CGProgramTree",
+    "NLAlib.Krylov.LinearSystems.CGProgramUnderflow",
+    "NLAlib.Krylov.LinearSystems.CGProgramUnderflowKernels",
+    "NLAlib.Krylov.LinearSystems.CGTargets",
+    "NLAlib.Krylov.Processes.LanczosOracleExecution",
+    "NLAlib.Krylov.Processes.LanczosOracleProgram",
+    "NLAlib.Krylov.Processes.LanczosOracleProgramRounded",
+    "NLAlib.Krylov.Processes.LanczosOracleProgramTree",
+    "NLAlib.Krylov.Processes.LanczosOracleStaticCost",
+    "NLAlib.Krylov.Processes.LanczosOracleTargets",
+    "NLAlib.Krylov.Processes.LanczosProgram",
+    "NLAlib.Krylov.Processes.LanczosProgramCounts",
+    "NLAlib.Krylov.Processes.LanczosProgramInitialization",
+    "NLAlib.Krylov.Processes.LanczosProgramRounded",
+    "NLAlib.Krylov.Processes.LanczosProgramRoundedBackward",
+    "NLAlib.Krylov.Processes.LanczosProgramRoundedCommit",
+    "NLAlib.Krylov.Processes.LanczosProgramRoundedExecution",
+    "NLAlib.Krylov.Processes.LanczosProgramRoundedInitialization",
+    "NLAlib.Krylov.Processes.LanczosProgramRoundedPreallocated",
+    "NLAlib.Krylov.Processes.LanczosProgramRoundedPrefix",
+    "NLAlib.Krylov.Processes.LanczosProgramRoundedPrefixState",
+    "NLAlib.Krylov.Processes.LanczosProgramRoundedState",
+    "NLAlib.Krylov.Processes.LanczosProgramRoundedStep",
+    "NLAlib.Krylov.Processes.LanczosProgramRoundedZero",
+    "NLAlib.Krylov.Processes.LanczosProgramScope",
+    "NLAlib.Krylov.Processes.LanczosProgramState",
+    "NLAlib.Krylov.Processes.LanczosProgramStaticCost",
+    "NLAlib.Krylov.Processes.LanczosProgramStep",
+    "NLAlib.Krylov.Processes.LanczosProgramTree",
+    "NLAlib.Krylov.Processes.LanczosReorthOracleTargets",
+    "NLAlib.Krylov.Processes.LanczosReorthProgram",
+    "NLAlib.Krylov.Processes.LanczosReorthProgramGuarantees",
+    "NLAlib.Krylov.Processes.LanczosReorthProgramRounded",
+    "NLAlib.Krylov.Processes.LanczosReorthProgramRoundedLoop",
+    "NLAlib.Krylov.Processes.LanczosReorthProgramRoundedStep",
+    "NLAlib.Krylov.Processes.LanczosReorthProgramRounding",
+    "NLAlib.Krylov.Processes.LanczosReorthProgramTree",
+    "NLAlib.Krylov.Processes.LanczosReorthTargets",
+    "NLAlib.Krylov.Processes.LanczosTargets",
+    "NLAlib.Matrix.Computation.BLAS",
+    "NLAlib.Matrix.Computation.BLASNegAxpy",
+    "NLAlib.Matrix.Computation.ClassicalGramSchmidt",
+    "NLAlib.Matrix.Computation.ClassicalGramSchmidtProgram",
+    "NLAlib.Matrix.Computation.DeflationProgram",
+    "NLAlib.Matrix.Computation.DeflationProgramTree",
+    "NLAlib.Matrix.Computation.InterpMachine",
+    "NLAlib.Matrix.Computation.KernelContracts",
+    "NLAlib.Matrix.Computation.MatvecRoutine",
+    "NLAlib.Matrix.Computation.NewtonSchulzSignProgram",
+    "NLAlib.Matrix.Computation.NewtonSchulzSignProgram.Blocks",
+    "NLAlib.Matrix.Computation.NewtonSchulzSignProgramTree",
+    "NLAlib.Matrix.Computation.OrthRoutine",
+    "NLAlib.Matrix.Computation.PairKernels",
+    "NLAlib.Matrix.Computation.PairKernels.Arithmetic",
+    "NLAlib.Matrix.Computation.PairKernels.BoxTest",
+    "NLAlib.Matrix.Computation.PairKernels.HermAvg",
+    "NLAlib.Matrix.Computation.PairKernels.Hermitian",
+    "NLAlib.Matrix.Computation.SpectralBisectionClamp",
+    "NLAlib.Matrix.Computation.SpectralBisectionNode",
+    "NLAlib.Matrix.Computation.SpectralBisectionNode.Compress",
+    "NLAlib.Matrix.Computation.SpectralBisectionNode.Deflate",
+    "NLAlib.Matrix.Computation.SpectralBisectionNode.NodeSuccess",
+    "NLAlib.Matrix.Computation.SpectralBisectionNode.Setup",
+    "NLAlib.Matrix.Computation.SpectralBisectionNode.SignStep",
+    "NLAlib.Matrix.Computation.SpectralBisectionNode.Split",
+    "NLAlib.Matrix.Computation.SpectralBisectionProgram",
+    "NLAlib.Matrix.Computation.SpectralBisectionProgram.BottomLevel",
+    "NLAlib.Matrix.Computation.SpectralBisectionProgram.Count",
+    "NLAlib.Matrix.Computation.SpectralBisectionProgram.CountTree",
+    "NLAlib.Matrix.Computation.SpectralBisectionProgram.DownLevel",
+    "NLAlib.Matrix.Computation.SpectralBisectionProgram.DownLevelSuccess",
+    "NLAlib.Matrix.Computation.SpectralBisectionProgram.DownSlot",
+    "NLAlib.Matrix.Computation.SpectralBisectionProgram.FrameRules",
+    "NLAlib.Matrix.Computation.SpectralBisectionProgram.Refinement",
+    "NLAlib.Matrix.Computation.SpectralBisectionProgram.Transfer",
+    "NLAlib.Matrix.Computation.SpectralBisectionProgram.UpLevel",
+    "NLAlib.Matrix.Computation.SpectralBisectionProgram.UpLevelSuccess",
+    "NLAlib.Matrix.Computation.SpectralBisectionProgram.UpSlot",
+    "NLAlib.Matrix.Computation.SpectralBisectionProgram.Weight",
+    "NLAlib.Matrix.Computation.SpectralBisectionProgramTree",
+    "NLAlib.Matrix.Computation.SpectralBisectionTape",
+    "NLAlib.Matrix.Computation.Underflow",
+    "NLAlib.Matrix.Factorizations.GramSchmidtProgram",
+    "NLAlib.Matrix.Factorizations.GramSchmidtProgramTree",
+    "NLAlib.Matrix.Factorizations.GramSchmidtTargets",
+    "NLAlib.RandomMatrix.Computation.DeflationTargets",
+    "NLAlib.RandomMatrix.Computation.NewtonSchulzSignTargets",
+    "NLAlib.RandomMatrix.Computation.RoundedTargetWitnesses",
+    "NLAlib.RandomMatrix.Computation.SpectralBisectionTargets",
+    "NLAlib.RandomMatrix.Tape"
+  ],
+  "curated_pages": [
+    "docs/algorithms/Conjugate-Gradient.md",
+    "docs/algorithms/Lanczos.md",
+    "docs/algorithms/HutchPlusPlus.md",
+    "docs/algorithms/Spectral-Bisection.md",
+    "docs/algorithms/Gram-Schmidt.md",
+    "docs/algorithms/Sign-Deflation.md"
+  ]
+}

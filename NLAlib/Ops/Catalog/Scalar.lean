@@ -121,6 +121,20 @@ structure StdModel (u : ℝ) (dec : K → ℝ) (M : Machine K) : Prop where
   /-- Rounded square root of a nonnegative number. -/
   sqrt : ∀ a, 0 ≤ dec a → |dec (M.sqrt a) - √(dec a)| ≤ u * √(dec a)
 
+/-- A larger relative allowance preserves the standard model of the same word functions.
+This lets scalar and sampler errors use a common numerical allowance without changing any
+implemented operation. -/
+theorem StdModel.mono {u v : ℝ} {dec : K → ℝ} {M : Machine K}
+    (h : StdModel u dec M) (huv : u ≤ v) : StdModel v dec M where
+  lit q := (h.lit q).trans (mul_le_mul_of_nonneg_right huv (abs_nonneg _))
+  add a b := (h.add a b).trans (mul_le_mul_of_nonneg_right huv (abs_nonneg _))
+  sub a b := (h.sub a b).trans (mul_le_mul_of_nonneg_right huv (abs_nonneg _))
+  mul a b := (h.mul a b).trans (mul_le_mul_of_nonneg_right huv (abs_nonneg _))
+  div a b hb := (h.div a b hb).trans (mul_le_mul_of_nonneg_right huv (abs_nonneg _))
+  neg := h.neg
+  sqrt a ha := (h.sqrt a ha).trans
+    (mul_le_mul_of_nonneg_right huv (Real.sqrt_nonneg _))
+
 /-- Mixed relative/absolute rounding on an explicit exact-result range. The machine remains
 specified on every word; accuracy is asserted only in `safe`. The absolute allowance covers
 underflow. This does not claim IEEE accuracy or promise accuracy after overflow. -/

@@ -1,7 +1,1 @@
-import NLAlibTools.FinitePrecisionSmoke
-import NLAlibTools.FixedPoint
-import NLAlibTools.Float
-import NLAlibTools.KrylovOracleSmoke
-import NLAlibTools.KrylovSmoke
-import NLAlibTools.NumPy
-import NLAlibTools.SpecCatalog
+import NLAlibTools.OpsSmoke

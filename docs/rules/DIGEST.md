@@ -16,13 +16,12 @@ rules are in the topic files; the reasons are in the contributor guide.
 - F8 No file-level `noncomputable section`.
 - F9 No file-level `attribute [instance]`.
 - P1 A module imports only its own layer and lower (the layer table); Krylov never imports Probability, Sketching never Regression, LowRank never Estimation.
-- P2 No file with imports only (no per-directory aggregator).
+- P2 No file with imports only (no per-directory aggregator); registration and executable audit commands count as content.
 - P3 An `NLAlib` file never imports `NLAlibScaffold`.
 - P4 A ForMathlib statement uses no NLAlib vocabulary [ForMathlib only].
 - P5 A ForMathlib declaration is in the Mathlib namespace it would have upstream, never `NLAlib` [ForMathlib only].
 - P6 A ForMathlib module docstring marks the file as an upstream candidate [ForMathlib only].
 - P8 Outside ForMathlib a declaration is in `NLAlib`, or is API of a Mathlib hypothesis structure.
-- P9 A general fact (no NLAlib, matrix or measure vocabulary) lives in ForMathlib.
 - P11 A Polynomial file imports only Mathlib, `NLAlib.ForMathlib` and `NLAlib.Polynomial` [Polynomial only].
 - P12 An `NLAlib` file, the root `NLAlib.lean` included, never imports `NLAlibTools`, `NLAlibScaffold` or another `lean_lib` of lakefile.toml.
 - S1 No `simp_all`.
@@ -36,9 +35,7 @@ rules are in the topic files; the reasons are in the contributor guide.
 - T2 An `ℝ≥0` quantity in a statement is written with `‖·‖₊`, never `Real.toNNReal`.
 - T3 Only `Matrix.Norms.L2Operator` is opened, never `…Frobenius` or `…Elementwise`.
 - T8 No statement quantifies over `eigenvectorBasis`.
-- T9 No proof term inside a statement (`⋯` in the signature).
 - T10 A bound variable that meets `•` has its type written (`∀ θ : ℝ, …`).
-- T13 No hypothesis named `_h…`: an unused hypothesis is dropped.
 - T15 A lower moment obtained by Jensen from a higher one is not a separate theorem.
 - V1 Orthonormal columns are `HasOrthonormalCols Q`, never a raw `Qᴴ * Q = 1`.
 - V2 No truncated subtraction `Fintype.card n - k` in a statement.
@@ -87,18 +84,9 @@ rules are in the topic files; the reasons are in the contributor guide.
 - A2 `Algorithm:` tags go on definitions, structures and programs, never on theorems or instances.
 - A3 A declaration carries at most one `Algorithm:` tag.
 - G1 A Mathlib-deviations entry has Mathlib, NLAlib, Bridge, Why, Cost, Status.
-- E2 Programs, kernels and implementations are computable.
-- E3 A published cost result is the one proof of a target registered in `docs/targets.toml` (`theorem t : T`), and each target's closure hash, printed statement and pins match the approved registry; a rounded program theorem (a leading hypothesis `IsRelErrSem … I.sem` on the interpretation `I` its conclusion runs under, or a rounded access model) may carry a `Result:` id.
-- E4 Every `<spec>Prog` has a registered tree, named by a registered target, whose definition calls it.
-- E5 A Computation file imports only Mathlib, `NLAlib.ForMathlib` and `NLAlib.Computation` [Computation only].
-- E6 In the library (NLAlib), only `NLAlib/Computation` defines a `ScalarSem` or an `Interp`.
-- E8 `Stmt.named` is constructed only in the BLAS and implementation files (a theorem may mention it).
-- N1 Case by kind: theorems snake_case, data lowerCamelCase, Props and structures UpperCamelCase.
-- N2 The first token is the head of the conclusion (or `exists_`, `forall_`, `ae_`, `nonneg`, `pos`).
-- N3 The conclusion part ends at the first `_of_` and names the main relation.
-- N4 Every library-function token in a name occurs in the statement.
+- E2 Fixed Ops programs have computable definitions.
+- N1 Case by kind: theorems snake_case, data lowerCamelCase, standalone predicates and structures UpperCamelCase; predicate components may be lowerCamelCase.
 - N5 One token per concept: the spellings of the naming guide, never a synonym.
-- N6 A power comes after its argument: `f_sq`, `f_pow`, `f_rpow`.
 - N7 No source, author, project, quality or role word in a name (`_sharp`, `aux`, `main`).
 - N9 A law hypothesis is `_of_hasLaw_<law>`; an interface hypothesis is the namespace.
 - N10 Errors are `exact − computed`: `norm_sub_<alg>`, never `<alg>_sub_`.

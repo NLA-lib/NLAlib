@@ -51,6 +51,10 @@ variable {K Ω : Type} [MeasurableSpace K]
 
 namespace Tape
 
+/-- Apply one fixed value transformation per stream. Positions and stream labels
+are preserved; this describes word rounding in a random tape's mathematical law. -/
+def mapStreams {L : Type} (τ : Tape K) (f : ℕ → K → L) : Tape L := fun p s => f s (τ p s)
+
 /-- The window of `k` entries of the stream `s` from the position `p`, as a vector. -/
 def windowFn (τ : Tape K) (s p k : ℕ) : Fin k → K := fun j => τ (p + j) s
 
@@ -163,6 +167,17 @@ namespace IsTapeLaw
 
 variable {mΩ : MeasurableSpace Ω} {law : ℕ → Measure K} {P : Measure Ω} {ξ : Ω → Tape K}
 
+/-- Streamwise measurable transformations preserve joint independence and push each stream's
+law forward through its declared transformation. -/
+theorem map_streams {L : Type} [MeasurableSpace L] (h : IsTapeLaw law P ξ)
+    (f : ℕ → K → L) (hf : ∀ s, Measurable (f s)) :
+    IsTapeLaw (fun s => (law s).map (f s)) P (fun ω => (ξ ω).mapStreams f) where
+  measurable p s := (hf s).comp (h.measurable p s)
+  indep := h.indep.comp (fun c => f c.2) (fun c => hf c.2)
+  map p s := by
+    rw [← h.map p s, Measure.map_map (hf s) (h.measurable p s)]
+    rfl
+
 theorem isProbabilityMeasure (h : IsTapeLaw law P ξ) : IsProbabilityMeasure P :=
   h.indep.isProbabilityMeasure
 
@@ -202,11 +217,34 @@ theorem map_windowFn (h : IsTapeLaw law P ξ) (s p k : ℕ) :
   simp only [h.map] at this
   exact this
 
+/-- Any injective selection of tape coordinates has the product law of its selected streams.
+The coordinate map is fixed before sampling and may skip positions or interleave streams. -/
+theorem hasLaw_reindex (h : IsTapeLaw law P ξ) {ι : Type} (f : ι → ℕ × ℕ)
+    (hf : Function.Injective f) :
+    HasLaw (fun ω i => ξ ω (f i).1 (f i).2)
+      (Measure.infinitePi fun i => law (f i).2) P := by
+  have hind := h.indep.precomp hf
+  exact hind.hasLaw_infinitePi
+    (fun i => ⟨(h.measurable _ _).aemeasurable, h.map _ _⟩)
+    (measurable_pi_lambda _ fun _ => h.measurable _ _).aemeasurable
+
 /-- The filtration of the positions. -/
 def filtration (h : IsTapeLaw law P ξ) : Filtration ℕ mΩ where
   seq p := Tape.past ξ p
   mono' _ _ hpq := Tape.past_mono hpq
   le' _ := h.sigma_le _
+
+/-- Starting at a fixed tape position preserves every stream law and joint independence.
+The same fixed natural offset is used for every stream. -/
+theorem shift (h : IsTapeLaw law P ξ) (base : ℕ) :
+    IsTapeLaw law P (fun ω => (ξ ω).shift base) where
+  measurable p s := h.measurable (base + p) s
+  indep := h.indep.precomp (g := fun c : ℕ × ℕ => (base + c.1, c.2)) (by
+    intro a b hab
+    have hf := congrArg (fun c : ℕ × ℕ => c.1) hab
+    have hs := congrArg (fun c : ℕ × ℕ => c.2) hab
+    exact Prod.ext (Nat.add_left_cancel hf) hs)
+  map p s := h.map (base + p) s
 
 variable {α β : Type} [MeasurableSpace α] [MeasurableSpace β] {X : Ω → α} {W : Ω → β} {p : ℕ}
   {φ : α → β → ℝ}

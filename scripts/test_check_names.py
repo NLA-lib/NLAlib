@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from check_names import check, derived_asymptotic, main, record
+from check_names import SEVERITY, check, derived_asymptotic, main, record
 
 
 def thm(name, sig, doc='', module='NLAlib.Probability.Tail'):
@@ -155,6 +155,57 @@ class IndexHeadTests(unittest.TestCase):
         self.assertNotIn('getElem', head_candidates('x.shape'))
 
 
+class NamingBoundaryTests(unittest.TestCase):
+    def test_generated_parser_names_are_not_data_api_names(self):
+        for name in ['Parser.Attr.storeNF_proc', 'NLAlib.Ops.«opsIdx_+_»',
+                     'NLAlib.Ops.tacticLoop_inv___With___']:
+            for ty in ['ParserDescr', 'TrailingParserDescr', 'Lean.ParserDescr']:
+                d = defn(name, ': ' + ty)
+                self.assertNotIn(('N1', name), rules(d))
+        ordinary = defn('NLAlib.bad_data_name', ': List ℕ')
+        self.assertIn(('N1', ordinary['name']), rules(ordinary))
+
+    def test_type_universe_expressions_and_predicate_components(self):
+        for sig in [': Type (max u v)', ': Sort (u + 1)', ': ℕ → Type u']:
+            d = defn('NLAlib.Family', sig)
+            self.assertNotIn(('N1', d['name']), rules(d))
+        for name in ['NLAlib.Model.admissible', 'NLAlib.Model.contracts', 'NLAlib.Model.Safe']:
+            d = defn(name, '(x : ℕ) : Prop')
+            self.assertNotIn(('N1', d['name']), rules(d))
+        d = defn('NLAlib.WrongData', ': ℕ')
+        self.assertIn(('N1', d['name']), rules(d))
+        d = thm('NLAlib.WrongTheorem', ': x = x')
+        self.assertIn(('N1', d['name']), rules(d))
+
+    def test_subject_rules_respect_declared_module_scope(self):
+        name = 'NLAlib.levelSampleSize'
+        inside = defn(name, ': ℕ', module='NLAlib.Sketching.Gaussian')
+        outside = defn(name, ': ℕ', module='NLAlib.Eigensolvers.SpectralBisection.Samples')
+        sibling = defn(name, ': ℕ', module='NLAlib.SketchingExtra.Example')
+        self.assertIn(('N16', name), rules(inside, registered={name}))
+        self.assertNotIn(('N16', name), rules(outside, sibling, registered={name}))
+
+    def test_semantic_findings_are_visible_review_warnings(self):
+        cases = [
+            ('N2', thm('NLAlib.charpoly_mul_eq',
+                        ': (Polynomial.X - Polynomial.C μ) * A.charpoly = B.charpoly')),
+            ('N3', thm('NLAlib.bound_of_condition_le', '(h : P) : f x ≤ c')),
+            ('N4', thm('NLAlib.frobNorm_eq', ': f x = y')),
+            ('N6', thm('NLAlib.sq_singularValues', ': singularValues A k ^ 2 = v')),
+        ]
+        for rid, decl in cases:
+            with self.subTest(rule=rid):
+                self.assertIn((rid, decl['name']), rules(decl))
+                self.assertEqual(SEVERITY[rid], 'warning')
+                with tempfile.TemporaryDirectory() as tmp:
+                    data, allow = Path(tmp) / 'data.json', Path(tmp) / 'allow.toml'
+                    data.write_text(json.dumps({'decls': LIB + [decl]}))
+                    allow.write_text('')
+                    self.assertEqual(main([str(data), '--allow', str(allow), '--only', rid]), 0)
+        self.assertEqual(SEVERITY['N1'], 'error')
+        self.assertEqual(SEVERITY['N5'], 'error')
+
+
 class AllowlistTests(unittest.TestCase):
     def run_main(self, decls, allow):
         with tempfile.TemporaryDirectory() as d:
@@ -164,8 +215,9 @@ class AllowlistTests(unittest.TestCase):
             return main([str(data), '--allow', str(al)])
 
     def test_allowed_and_stale(self):
-        bad = thm('NLAlib.exists_bernstein_exponent', ': ∃ θ ∈ Set.Ioo 0 1, -θ * t ≤ c')
-        entry = '[[allow]]\nname = "NLAlib.exists_bernstein_exponent"\nrule = "N3"\nreason = "concept name"\n'
+        bad = thm('NLAlib.foo_intrinsicDim_le', ': f (intrinsicDimension A) ≤ 1')
+        entry = ('[[allow]]\nname = "NLAlib.foo_intrinsicDim_le"\nrule = "N5"\n'
+                 'reason = "synthetic allowlist fixture"\n')
         self.assertEqual(self.run_main([bad], ''), 1)
         self.assertEqual(self.run_main([bad], entry), 0)
         self.assertEqual(self.run_main([], entry), 1)  # stale: the declaration is gone

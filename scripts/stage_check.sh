@@ -11,10 +11,7 @@
 # and strictness of CI, after `lake build NLAlib NLAlibTools` and the freshness
 # check `lake build --no-build --rehash` of the same targets) and its fixtures
 # (scripts/replay_fixtures.sh), the program checks
-# (scripts/Programs.lean, rules E2, E4 and E9, on the whole library as in CI, after a
-# `lake build NLAlib` in which `sorry` warnings are allowed), the target lint
-# (scripts/Targets.lean, rule E3: the registry docs/targets.toml, its closure hashes and its
-# approval), the access-model fixtures (scripts/AccessModelFixtures.lean), the reference check, the named-bound
+# (scripts/OpsPrograms.lean, E2 and fixed Ops certificate coverage), the reference check, the named-bound
 # value check (scripts/check_constants.py, on the whole library), the freshness of the generated
 # rule files (scripts/gen_rules_md.py --check), the rules check
 # (scripts/check_rules.py, by rule id, the naming rules N1–N18 included, on an extraction of those
@@ -32,7 +29,11 @@ LEAN_NUM_THREADS="${LEAN_NUM_THREADS:-2}" lake build --wfail $(tr '\n' ' ' < "$t
 echo "build: $(tail -1 "$tmp/build.log"); warnings: $(grep -c 'warning' "$tmp/build.log" || true)"
 for check in Audit Lint; do
   { cat "$tmp/imports.txt"; sed '1d' "scripts/$check.lean"; } > "$tmp/$check.lean"
-  LEAN_NUM_THREADS=1 lake env lean -M 8000 "$tmp/$check.lean" 2>&1 | tail -4
+  if ! LEAN_NUM_THREADS=1 lake env lean -M 8000 "$tmp/$check.lean" > "$tmp/$check.log" 2>&1; then
+    cat "$tmp/$check.log"
+    exit 1
+  fi
+  tail -4 "$tmp/$check.log"
 done
 libs="NLAlib NLAlibTools"
 LEAN_NUM_THREADS="${LEAN_NUM_THREADS:-2}" lake build $libs > "$tmp/build-all.log" 2>&1 || \
@@ -51,15 +52,9 @@ echo "$(sed -n '/^replay:/,$p' "$tmp/replay.log" | tr -s ' \n' ' ')"
 bash scripts/replay_fixtures.sh > "$tmp/replay-fixtures.log" 2>&1 || \
   { cat "$tmp/replay-fixtures.log"; exit 1; }
 echo "replay fixtures: $(grep -c ': ok' "$tmp/replay-fixtures.log") verdicts as expected"
-LEAN_NUM_THREADS=1 lake env lean -M 8000 scripts/Programs.lean > "$tmp/programs.log" 2>&1 || \
-  { grep -v 'declaration uses .sorry.' "$tmp/programs.log"; exit 1; }
-grep '^programs:' "$tmp/programs.log"
-LEAN_NUM_THREADS=1 lake env lean -M 8000 scripts/Targets.lean > "$tmp/targets.log" 2>&1 || \
-  { grep -v 'declaration uses .sorry.' "$tmp/targets.log"; exit 1; }
-grep '^targets:' "$tmp/targets.log"
-LEAN_NUM_THREADS=1 lake env lean -M 8000 scripts/AccessModelFixtures.lean > "$tmp/fixtures.log" 2>&1 || \
-  { cat "$tmp/fixtures.log"; exit 1; }
-echo "access-model fixtures: $(grep -c '^theorem' scripts/AccessModelFixtures.lean) theorems, ok"
+LEAN_NUM_THREADS=1 lake env lean -M 8000 scripts/OpsPrograms.lean > "$tmp/programs.log" 2>&1 || \
+  { cat "$tmp/programs.log"; exit 1; }
+grep '^ops programs:' "$tmp/programs.log"
 python3 scripts/check_refs.py | tail -1
 python3 scripts/gen_rules_md.py --check
 python3 scripts/check_constants.py > "$tmp/constants.log" || { cat "$tmp/constants.log"; exit 1; }

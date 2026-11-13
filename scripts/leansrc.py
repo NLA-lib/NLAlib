@@ -49,24 +49,41 @@ def strip_comments(code):
 
 
 def _stmt_end(lines, start):
-    """Index of the line holding the first top-level `:=` (or `where`, or `|` match arm)."""
+    """Locate the declaration body, skipping assignments in type-level `let`s.
+
+    This remains a textual scan: bracket nesting and top-level let assignments are
+    enough for the supported declaration layout. Comments and quoted text cannot
+    supply assignment tokens.
+    """
     depth = 0
+    pending_lets = 0
+    token = re.compile(r"\blet\b|:=|[()\[\]{}⦃⦄⟨⟩]|\bwhere\b|\|")
     for k in range(start, min(len(lines), start + 200)):
-        s = re.sub(r"--.*", "", lines[k])
-        for j, ch in enumerate(s):
-            if ch in "([{⦃⟨":
+        text = re.sub(r'"(?:\\.|[^"\\])*"|«[^»]*»', ' ', lines[k])
+        for m in token.finditer(text):
+            value = m.group()
+            if value in "([{⦃⟨":
                 depth += 1
-            elif ch in ")]}⦄⟩":
+            elif value in ")]}⦄⟩":
                 depth -= 1
-            elif ch == ":" and depth <= 0 and s[j:j + 2] == ":=":
-                return k
-        if depth <= 0 and (re.search(r"\bwhere\s*$", s) or (k > start and re.match(r"\s*\|", s))):
-            return k
+            elif depth <= 0:
+                if value == "let":
+                    pending_lets += 1
+                elif value == ":=":
+                    if pending_lets:
+                        pending_lets -= 1
+                    else:
+                        return k
+                elif value == "where" and not text[m.end():].strip():
+                    return k
+                elif value == "|" and k > start and not text[:m.start()].strip():
+                    return k
     return start
 
 
 def parse(text):
     lines = text.split("\n")
+    scan_lines = strip_comments(text).split("\n")
     res = {"header": None, "has_module": False, "imports": [], "moddocs": [], "commands": [],
            "decls": [], "lines": lines}
     i = 0
@@ -122,7 +139,7 @@ def parse(text):
                 name_line = bool(name)
             full = name[7:] if name.startswith("_root_.") else ".".join(namespaces + [name]) \
                 if name else None
-            se = _stmt_end(lines, i)
+            se = _stmt_end(scan_lines, i)
             res["decls"].append({
                 "kind": kind, "name": name, "full": full, "private": "private" in m.group(2),
                 "attrs": attrs, "line": i + 1, "doc": pending_doc[1] if pending_doc else None,

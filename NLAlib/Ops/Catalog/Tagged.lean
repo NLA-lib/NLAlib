@@ -46,7 +46,9 @@ namespace NLAlib.Ops
 structure Tagged (π : Type) (G : Type) where
   /-- The operation of the group. -/
   op : G
-  deriving DecidableEq
+
+instance {π G : Type} [DecidableEq G] : DecidableEq (Tagged π G) := fun a b =>
+  decidable_of_iff (a.op = b.op) (by cases a; cases b; simp only [Tagged.mk.injEq])
 
 variable {K Op Tst G : Type}
 
@@ -92,7 +94,9 @@ theorem IsScalarAt.isScalar {π : Type} [Has (Tagged π ScalarOp) Op] {M : Machi
 inductive CastOp (π ρ : Type) where
   /-- `cast [] [x] [z]`: the word `x` of the precision `π`, as a word of the precision `ρ`. -/
   | cast
-  deriving DecidableEq
+
+instance {π ρ : Type} : DecidableEq (CastOp π ρ) := fun a b =>
+  isTrue (by cases a; cases b; rfl)
 
 /-- **The functional contract of a cast**: it is the function `c` on words. -/
 def IsCast (π ρ : Type) [Has (CastOp π ρ) Op] (c : K → K) (I : Interp Op Tst K) : Prop :=

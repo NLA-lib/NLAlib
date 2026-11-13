@@ -86,6 +86,28 @@ theorem Has.inj_injective (G Op : Type) [Has G Op] : Function.Injective (Has.inj
     rw [h, Has.proj_inj] at this
     exact (Option.some.inj this).symm
 
+/-- Embed an existing operation group through the left branch of a larger sum signature.
+The projection/injection laws are preserved by construction. -/
+@[reducible] def Has.sumLeft (G A B : Type) (h : Has G A) : Has G (A ⊕ B) where
+  inj g := .inl (h.inj g)
+  proj o := match o with | .inl a => h.proj a | .inr _ => none
+  proj_inj g := h.proj_inj g
+  inj_of_proj o g ho := by
+    cases o with
+    | inl a => exact congrArg Sum.inl (h.inj_of_proj a g ho)
+    | inr _ => cases ho
+
+/-- Embed an existing operation group through the right branch of a larger sum signature.
+This is explicit rather than a recursive instance search over arbitrary group embeddings. -/
+@[reducible] def Has.sumRight (G A B : Type) (h : Has G B) : Has G (A ⊕ B) where
+  inj g := .inr (h.inj g)
+  proj o := match o with | .inl _ => none | .inr b => h.proj b
+  proj_inj g := h.proj_inj g
+  inj_of_proj o g ho := by
+    cases o with
+    | inl _ => cases ho
+    | inr b => exact congrArg Sum.inr (h.inj_of_proj b g ho)
+
 variable {Op Mid Lo Tst K : Type}
 
 /-- **A profile**: a table from the operations `Op` to the lower operations `Lo`, with the cost

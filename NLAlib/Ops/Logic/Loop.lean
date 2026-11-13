@@ -180,6 +180,35 @@ theorem writes_fill {n : IExp} {body : Stmt Op Tst} {N b o : ℕ} (hn : n.eval �
           (fun _ _ h₁ h₂ => by obtain ⟨-, h₁, -⟩ := h₁; obtain ⟨-, -, h₂⟩ := h₂; omega) hm.1)
           hm'.1, hm'.2⟩
 
+/-- Fill a vector while reusing a fixed workspace footprint disjoint from the vector.
+Previously written entries survive every round's workspace updates. -/
+theorem writes_fill_scratch {n : IExp} {body : Stmt Op Tst} {N b o : ℕ}
+    (hn : n.eval ρ.idx = some N) (scratch : Fp)
+    (hdis : Fp.Disj scratch (Store.inBlock b o N))
+    (v : ℕ → K) (pos : ℕ → ℕ) (hpos : m.pos = pos 0)
+    (hstep : ∀ i < N, ∀ m',
+      m.store.EqOff (Store.inBlock b o i ⊔ scratch) m'.store →
+      m'.store.HoldsVec b o i v → m'.pos = pos i →
+      Writes md I τ body (ρ.pushIdx i) (Store.inBlock b (o + i) 1 ⊔ scratch)
+        (fun m'' => m''.store.get b (o + i) = some (v i) ∧ m''.pos = pos (i + 1)) m') :
+    Writes md I τ (.loop n body) ρ (Store.inBlock b o N ⊔ scratch)
+      (fun m' => m'.store.HoldsVec b o N v ∧ m'.pos = pos N) m := by
+  refine writes_loop hn (fun i => Store.inBlock b o i ⊔ scratch)
+    (fun i _ => sup_le_sup (Fp.inBlock_le_inBlock le_rfl (by omega)) le_rfl)
+    (fun i m' => m'.store.HoldsVec b o i v ∧ m'.pos = pos i)
+    ⟨fun _ h => absurd h (Nat.not_lt_zero _), hpos⟩ ?_
+  intro i hi m' hfr hm
+  refine (hstep i hi m' hfr hm.1 hm.2).mono
+    (sup_le_sup (Fp.inBlock_le_inBlock (by omega) (by omega)) le_rfl) ?_
+  intro m'' hf h
+  refine ⟨Store.HoldsVec.snoc (hf.keep (Store.readsOnly_holdsVec b o i v) ?_ hm.1) h.1, h.2⟩
+  refine Fp.disj_sup_left.mpr ⟨?_, ?_⟩
+  · intro q j hrow hprefix
+    obtain ⟨-, hrow, -⟩ := hrow
+    obtain ⟨-, -, hprefix⟩ := hprefix
+    omega
+  · exact hdis.mono le_rfl (Fp.inBlock_le_inBlock le_rfl (by omega))
+
 /-- **The two loops that fill a matrix by columns** in the layout `L`: round `(j, i)` writes the
 entry `A i j` in its cell and moves the position from `pos (j * rows + i)` to the next. The
 2-D form of `writes_fill` (the fill of a Gaussian test matrix from the tape). -/

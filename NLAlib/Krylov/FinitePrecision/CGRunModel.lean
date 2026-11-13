@@ -6,7 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Krylov.FinitePrecision.CGRun
-public import NLAlib.Matrix.Computation.ResidualGap
+public import NLAlib.Matrix.FinitePrecision.ResidualGap
 
 /-!
 # Local orthogonality and the a posteriori backward model of a conjugate gradient run

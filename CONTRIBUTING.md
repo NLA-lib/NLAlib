@@ -87,7 +87,7 @@ The rules are in topic guides under `docs/contributing/`, each short enough to r
 | [naming](docs/contributing/naming.md) | the name grammar, rules N1–N18, spellings, the names allowlist |
 | [statements](docs/contributing/statements.md) | types, statement shape, numerical bounds, hypothesis interfaces |
 | [vocabulary](docs/contributing/vocabulary.md) | one spelling per concept, with its Mathlib bridge |
-| [programs](docs/contributing/programs.md) | programs, oracles and kernels, targets and the target registry |
+| [programs](docs/contributing/programs.md) | fixed programs, operation models, total certificates and counted resources |
 | [docstrings](docs/contributing/docstrings.md) | docstrings, citations, result ids, algorithm tags, LaTeX notation |
 | [proofs](docs/contributing/proofs.md) | proof style and what each library may contain |
 | [design](docs/contributing/design.md) | design notes for new material, Mathlib deviations |
@@ -126,9 +126,8 @@ It runs, in order:
    root `NLAlib.lean` is current), and the freshness check `lake build --no-build --rehash`;
 3. the kernel replay `scripts/Replay.lean` (every constant re-checked by Lean's kernel,
    [proofs](docs/contributing/proofs.md)) and its fixtures `scripts/replay_fixtures.sh`;
-4. the program checks `scripts/Programs.lean` (E2, E4, E9), the target lint `scripts/Targets.lean`
-   (E3: the registry, its closure hashes and its approval) and `scripts/AccessModelFixtures.lean`
-   ([programs](docs/contributing/programs.md));
+4. fixed-program checks `scripts/OpsPrograms.lean` (E2), canonical Ops certificates and
+   kernel-checked structural/accounting fixtures ([programs](docs/contributing/programs.md));
 5. `scripts/check_refs.py` (citations, result ids, `Asymptotic:` and `Algorithm:` tags),
    `scripts/gen_rules_md.py --check` (the generated rule files are current),
    `scripts/check_constants.py` (named-bound values, [statements](docs/contributing/statements.md)
@@ -148,7 +147,7 @@ every push and PR, and in addition the unit tests of the checks
 
 While working, the fast checks are `lake lean <file>` and
 `python3 scripts/check_rules.py --files <the files you changed>`, which checks the source-text
-rules (P1, P3, P11, P12, E5, the docstring, citation and notation rules) in seconds without a
+rules (P1, P3, P11, P12, the docstring, citation and notation rules) in seconds without a
 build. Check a file with `lake lean`, not `lake env lean`, which ignores the options in
 `lakefile.toml`: `autoImplicit` is then on (a typo becomes a variable) and the Mathlib linters
 are off.
@@ -156,9 +155,9 @@ are off.
 **When a step fails.** A build or linter failure is fixed in the source; `--wfail` makes every
 warning fatal. An Audit or Replay failure means an axiom, `sorry`, `unsafe` or `partial` constant
 reached the library ([proofs](docs/contributing/proofs.md)). A `mk_all` failure: run
-`lake exe mk_all --module --lib NLAlib`. A freshness failure: rebuild. A Targets failure on the
-approval hash means `docs/targets.toml` changed: only a maintainer approves it
-([programs](docs/contributing/programs.md)); never edit `docs/targets.approved`. A message of the
+`lake exe mk_all --module --lib NLAlib`. A freshness failure: rebuild. A fixed-program check failure concerns computability, canonical
+Ops coverage or an import of the retired execution core ([programs](docs/contributing/programs.md)).
+A message of the
 rules checker reads `<ID> <file>:<line> <declaration>: <what is wrong and the fix>`;
 `python3 scripts/check_rules.py --list` prints every id.
 
@@ -169,7 +168,7 @@ reviewer checks the read-back against the design note and the source, the names 
 [statements](docs/contributing/statements.md) §3, the vocabulary against
 [vocabulary](docs/contributing/vocabulary.md). A green CI plus one approving review merges; a
 change to a vocabulary row or a hypothesis interface needs two. Changes to the checks, the rule
-data, the allowlists, the ratchet baseline, CI and the target registry need a maintainer's
+data, the allowlists, the ratchet baseline, CI and structural certification checks need a maintainer's
 review (`.github/CODEOWNERS`).
 
 Branches are named by kind: `feat/`, `fix/`, `design/`, `cleanup/`, `docs/`. A commit message

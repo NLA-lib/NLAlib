@@ -31,7 +31,7 @@ The counters have abstract operation meaning. `Count.totalWeight` requires expli
 operations, queries and structural instructions. `Count.original` explicitly projects only the
 original-operation/query coordinates; it does not replace a full canonical budget.
 Storage is format-aware. `allocAs format n` charges `format.bytes*n` modeled payload bytes;
-legacy `alloc n` means abstract `.cell` width1. `Problem.formats` declares the initial layout.
+`alloc n` means abstract `.cell` width1. `Problem.formats` declares the initial layout.
 `ResourceModel` fixes permitted formats and primitive/query operand signatures, and canonical
 execution checks the entire lexical format discipline, including aliases and frames. Explicit
 conversion uses a declared operation with distinct input/output formats. No implicit retyping
@@ -101,6 +101,31 @@ proof layer; a canonical certificate additionally fixes the problem, realized mo
 resource specification.
 The existing BLAS profiles allocate abstract `.cell` scratch. A format-specific specialization
 uses explicitly formatted allocation and workspace measured in the same modeled byte units.
+
+## Standard collections and stored implementations
+
+`Profiles/Standard.lean` supplies exact, sequential-rounded and pairwise-rounded numerical
+models for Krylov analysis. `Profiles/ExactBlas.lean` generates the exact scalar/vector
+collection for real or complex words. `ExactLinear` adds explicitly stored operators,
+sampling and dimension literals; `ExactScalarLinear` replaces BLAS by scalar conjugation;
+`ScalarOnly` contains no vector or matrix-operation names. `Catalog/Functional.lean`
+generates exhaustive local contracts and a joint realization from the declared functions
+and spatial admissions. Primitive meanings, admissions, weights and word encodings remain
+explicit model choices.
+
+`Profiles/RCLikeScalar.lean` implements the six BLAS operations using scalar arithmetic and
+conjugation. `StoredDense` and `StoredCOO` implement matrix application from declared matrix
+words; `StoredScalar` composes their tables into the scalar-only signature. Linking retains
+the complete lower instruction tree and its temporaries.
+
+`Context.lean` forwards fixed extra input capabilities through procedure frames.
+`Logic/ContextLink.lean` transfers an existing total word proof using local primitive laws
+and a protected raw-data snapshot. `ContextProblem.lean` prefixes supplied raw buffers and
+proves their reads, capacities and resident payload. Stored CG/PCG and Lanczos use these
+rules to expose actual matrix and preconditioner data to scalar loops. The proof-side
+source guard never becomes an omitted runtime operation. See the
+[current program guide](../../docs/contributing/programs.md) and
+[context design](../../docs/design/Ops-Context-Linking.md).
 
 ## Files
 

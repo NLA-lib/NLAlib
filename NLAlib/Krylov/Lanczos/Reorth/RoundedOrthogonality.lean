@@ -7,7 +7,7 @@ module
 
 public import NLAlib.Krylov.Lanczos.Spec
 public import NLAlib.Krylov.Lanczos.Reorth.SweepBounds
-public import NLAlib.Matrix.Computation.ClassicalGramSchmidt
+public import NLAlib.Matrix.FinitePrecision.ClassicalGramSchmidt
 
 /-!
 # Orthogonality of the actual sequential-update classical passes

@@ -1,5 +1,10 @@
 # Matrix-free Lanczos program
 
+> Archived execution-system design. The former evaluator, programs, target registry and
+> emission tooling are retired. The current interfaces are documented in
+> [the Ops migration](Ops-Migration.md) and [the program guide](../contributing/programs.md).
+> Mathematical analysis is retained; program and registry names below describe the historical system.
+
 Approved and integrated 2026-11-04; rounded oracle execution completed 2026-11-05. The
 stored Lanczos program, compiled tree, targets and closed count formulas remain unchanged.
 

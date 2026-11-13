@@ -11,10 +11,11 @@ code, and read `docs/rules/DIGEST.md` and the `NLAlib/<Topic>/RULES.md` of each 
    CODEOWNERS, the PR template) or the build pins (`lakefile.toml`, `lake-manifest.json`,
    `lean-toolchain`), unless that edit is the task you were given. If a check seems wrong, or a
    false positive needs an allowlist entry, say so in your report; do not work around it.
-2. **Do not register targets.** Never edit a `*Targets.lean` file, `docs/targets.toml` or
-   `docs/targets.approved`; target statements change only with a maintainer's approval
-   (docs/contributing/programs.md). Prove a registered target as stated; if you cannot, report it.
-3. **Do not push**, and do not commit unless you are asked to.
+2. **Preserve certificate scope.** Do not weaken a declared problem, operation contract or
+   specification to prove a program certificate. Explain any required interface change and
+   obtain maintainer review (docs/contributing/programs.md). The retired target registry is
+   not used by Ops certificates.
+3. **Do not commit or push unless asked to.** Keep pushes on the authorized branch.
 4. **Run the checks before you report.** `python3 scripts/check_rules.py --files <files>` while
    working; `bash scripts/stage_check.sh` (exit 0) before you call the work finished
    (CONTRIBUTING, "Pull requests and checks").

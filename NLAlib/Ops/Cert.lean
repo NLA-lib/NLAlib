@@ -220,6 +220,31 @@ theorem Interp.IsFn.meets_rel {I : Interp Op Tst K} {o : Op} {f : BlockFn K}
   rw [hwin] at ha
   exact ⟨_, h.callS_eq (hadm _ _ _ hadm') ha, xs, hxs, hz, ys, hlen, hrel, rfl⟩
 
+/-- A functional operation meets a relation when admission follows from its actual readable
+inputs and output capacity. This permits relational admissions that do not themselves constrain
+operand arity: successful reads and room facts supply that shape information. -/
+theorem Interp.IsFn.meets_rel_of_pre {I : Interp Op Tst K} {o : Op} {f : BlockFn K}
+    {adm' : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (h : I.IsFn .total o f adm')
+    {R : BlockRel K} {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop}
+    (hadm : ∀ d ins outs (m : Mem K) xs, adm d ins outs →
+      m.readBlocks ins (R.inLens d) = some xs → m.Room outs (R.outLens d) → adm' d ins outs)
+    (hnd : f.nd = R.nd) (hst : f.stream = R.stream) (hwin : ∀ d, f.win d = R.win d)
+    (hin : ∀ d, f.inLens d = R.inLens d) (hout : ∀ d, f.outLens d = R.outLens d)
+    (hf : ∀ d w xs (m : Mem K) ins outs, d.length = R.nd → w.length = R.win d →
+      adm d ins outs → m.readBlocks ins (R.inLens d) = some xs → R.dom d xs w →
+      ∃ ys, f.fn d w xs = some ys ∧ ys.map List.length = R.outLens d ∧ R.rel d xs w ys) :
+    I.Meets .total o (R.spec adm) := by
+  rintro d ins outs τ m ⟨hnd', ha, hn⟩
+  obtain ⟨hl, ⟨xs, hxs, hdom⟩, hz⟩ := hn rfl
+  obtain ⟨ys, hys, hlen, hrel⟩ := hf d _ xs m ins outs hnd'
+    (Tape.length_window ..) ha hxs hdom
+  have hcall := BlockFn.apply_of_read (f := f) (τ := τ) (hnd'.trans hnd.symm) hl
+    (by rw [hin]; exact hxs) (by rw [hst, hwin]; exact hys) (by rw [hout]; exact hlen)
+    (by rw [hout]; exact hz)
+  rw [hwin] at hcall
+  exact ⟨_, h.callS_eq (hadm _ _ _ _ _ ha hxs hz) hcall, xs, hxs, hz,
+    ys, hlen, hrel, rfl⟩
+
 /-- Canonical implementation certification. Both operand lists and the implementation are
 fixed before runtime sizes and inputs; the claim requires successful fully counted execution
 under a jointly realized model. Conditional implementation proofs use `Impl.Triple`. -/

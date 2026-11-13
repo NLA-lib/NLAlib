@@ -19,7 +19,9 @@ Part of the [contributor guide](../../CONTRIBUTING.md).
 - Transpose: lemmas are stated with `ᴴ` [T5]. Over ℝ, `Aᴴ = Aᵀ` is `Matrix.conjTranspose_eq_transpose_of_trivial`
   (`@[simp]`). Transpose twins are not written.
 - Vectors: `n → 𝕜` with `⬝ᵥ` as the pairing; the Euclidean norm is `‖WithLp.toLp 2 x‖`
-  (Mathlib's `EuclideanSpace`), never `Real.sqrt (x ⬝ᵥ x)` in a statement [T1].
+  (Mathlib's `EuclideanSpace`), rather than `Real.sqrt (x ⬝ᵥ x)` [T1].
+  Program contracts may expose the arithmetic a primitive actually computes, including a square
+  root of a Hermitian self-dot’s real part; mathematical norm bounds use the norm API.
 - A real quantity used where Mathlib wants `ℝ≥0` (a sub-Gaussian proxy `c * ‖specNorm A‖₊ ^ 2`, a
   coefficient `‖a i‖₊ ^ 2 * c`) is written with `‖·‖₊`, never `⟨x, hx⟩` or `Real.toNNReal x` [T2].
 - Matrix norms are named functions ([vocabulary](vocabulary.md)), never `‖A‖` [T4]: Mathlib's four matrix norms are scoped
@@ -36,7 +38,8 @@ Part of the [contributor guide](../../CONTRIBUTING.md).
 - Every hypothesis explicit, minimal, and an instance of a named interface (§3). Nothing that
   follows from another hypothesis (`(A + B).IsHermitian` next to `hA hB`; `Integrable X μ` next to
   `HasSubgaussianMGF X c μ`; not `Measurable X` next to `HasLaw X ν μ`, which gives only
-  `AEMeasurable`). A hypothesis the proof does not use is dropped, not renamed `_h` [T13].
+  `AEMeasurable`). Drop unnecessary hypotheses. An `_h` name prompts review [T13],
+  but does not establish non-use: tactics, dependent types and shared interfaces require context.
 - Definitions are total, Mathlib-style (`⁻¹` of a singular matrix is `0`, `eigenvalue A k` is `0`
   for `k` out of range, `pseudoConditionNumber` of a singular matrix is the ratio to its smallest
   nonzero singular value); the theorem carries the hypothesis that excludes the junk value and the
@@ -116,9 +119,10 @@ Part of the [contributor guide](../../CONTRIBUTING.md).
      `<!-- mention NAME -->` is for a name mentioned only in passing, and is rare); the
      definition's own docstring shows its value. The script's docstring has the exact syntax.
      A new named bound gets its registry entry in the commit that defines it [B1]; the check
-     treats a public definition whose name ends in `Constant`, `Bound`, `Tail`, `Dim`, `Factor`,
-     `Size`, `Rows`, `Rate`, `Exponent` or `Threshold` as a named bound (a `…Ratio` is not
-     detected; register it by hand). To change a
+     treats a public definition whose name ends in `Constant`, `Bound`, `Tail`, `Dim` or `Factor`
+     as a named bound. Ambiguous structural suffixes such as `Size`, `Rows`, `Rate`,
+     `Exponent` and `Threshold` do not classify a definition as a numerical bound;
+     register actual numerical bounds with these or other names by hand. To change a
      bound: edit its body; in the registry move `latex` (and `display`) to `previous_latex` (and
      `previous_display`) and write the new value; run
      `python3 scripts/check_constants.py --update NAME`, which replaces the previous value by the
@@ -167,8 +171,9 @@ Part of the [contributor guide](../../CONTRIBUTING.md).
 - Spectral statements never quantify over `hA.eigenvectorBasis i` [T8]; they take an eigenvector `u`
   with `A *ᵥ u = c • u` and `‖WithLp.toLp 2 u‖ = 1`, an invariance equation `A * U = U * M` with
   `HasOrthonormalCols U`, or speak of `eigenvalue A k`.
-- No proof term inside a statement [T9]. Introduce the needed hypothesis or state through a
-  definition.
+- Review opaque proof terms in statements [T9]. Expose mathematical assumptions as hypotheses
+  or state through a definition. Structural evidence for finite indices, coercions and concrete
+  resource configurations may remain inline; a printer’s `⋯` can hide generated evidence too.
 - A bound variable that only meets `•` gets its type written: `∀ θ : ℝ, … θ • Y ω …`. Without it
   Lean elaborates `θ : ℕ` (`ℕ` acts on every additive monoid), and the hypothesis silently quantifies
   over natural numbers [T10].

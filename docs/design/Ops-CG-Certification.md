@@ -61,3 +61,23 @@ includes every supplied matrix word and output slot. Canonical instrumentation i
 the translated tree, so context offsets and frames, dense scalar arithmetic and all remaining
 vector operations are charged. Proof-side contract guards and mathematical reference functions
 are absent from the executed tree. See [context linking](Ops-Context-Linking.md).
+
+## Rounded stored scalar execution
+
+`HSCG.Carried.Rounded.Stored.scalarAlgorithm` receives raw matrix and RHS words and executes
+zero initialization, dense scalar matvec and sequential scalar BLAS. Its target signature is
+`ScalarOp`. The matrix is decoded from the protected raw buffer; symmetry and a positive
+spectral interval are input admission. `StdModel` proves every dense row's error, and the
+matrix comparison theorem derives its normwise allowance. The theorem states the remaining
+common-error and cap precision window. No matvec-accuracy or successful-run callback occurs
+in the public algorithm constructor. Its complete canonical resources are computed after
+both lowerings. See [rounded storage](Ops-Rounded-Storage.md).
+
+The PCG rounded initializer and active-step contracts preserve actual scalar products and
+preconditioner outputs, including explicit positivity margins for executed divisions. A
+checked one-step bridge derives those guards from spectral/precision inputs and extracts the
+existing `PCGRun` for the actual returned vectors. These results do not constitute an
+arbitrary-cap rounded solver. The fixed-horizon exact PCG tree's grade
+restriction cannot be replaced by SPD alone in rounded arithmetic, and the existing numerical
+run model needs a consistent functional dot and preconditioner action. Rounded reorthogonalized
+CG also remains separate from its exact stored certificate.

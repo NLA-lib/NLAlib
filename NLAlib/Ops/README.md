@@ -118,6 +118,15 @@ conjugation. `StoredDense` and `StoredCOO` implement matrix application from dec
 words; `StoredScalar` composes their tables into the scalar-only signature. Linking retains
 the complete lower instruction tree and its temporaries.
 
+`RoundedBlas` supplies the sequential standard-error scalar/vector collection.
+`RoundedScalarBlas` lowers that collection to `ScalarOp` alone and derives its contracts
+from the supplied scalar machine. `StoredDense.rowWord` identifies the exact word recurrence
+of streamed matrix products for that same machine; rowwise error follows from `StdModel`.
+The Matrix layer converts the row bounds to a normwise allowance for the actual raw matrix.
+Carried CG and both Lanczos variants combine these bridges into rounded stored scalar-only
+certificates, with resources recomputed after lowering. Finite-format mixed-error models
+remain separate from the unbounded-exponent standard relative model.
+
 `Context.lean` forwards fixed extra input capabilities through procedure frames.
 `Logic/ContextLink.lean` transfers an existing total word proof using local primitive laws
 and a protected raw-data snapshot. `ContextProblem.lean` prefixes supplied raw buffers and

@@ -88,6 +88,13 @@ theorem apart_outputArenas
   have hp := (ht.take_drop (by simp [arenaOperands, arenaLengths]) 7).1
   simpa [arenaOperands, arenaLengths, List.ofFn_succ] using hp
 
+/-- A downward origin is its parent arena capability shifted by the indexed level offset. -/
+theorem downArenaOrigins_eq_parent_add (i : Fin 7) :
+    downArenaOrigins n d ma ua qa ea sz kd kp i =
+      ((![ma, ua, qa, ea, sz, kd, kp] i).1,
+        (![ma, ua, qa, ea, sz, kd, kp] i).2 + downArenaOffsets n d i) := by
+  fin_cases i <;> rfl
+
 /-- An indexed output-level region is a view of its complete parent arena. -/
 theorem downArena_le_parent (hd : d ≤ L) (i : Fin 7) :
     Store.inBlock (downArenaOrigins n d ma ua qa ea sz kd kp i).1
@@ -95,9 +102,11 @@ theorem downArena_le_parent (hd : d ≤ L) (i : Fin 7) :
       Store.inBlock (![ma, ua, qa, ea, sz, kd, kp] i).1
         (![ma, ua, qa, ea, sz, kd, kp] i).2
         ((arenaLengths n L).getD (i.val + 1) 0) := by
-  have hb := downArenaOffsets_add_le (n := n) hd i
-  fin_cases i <;> apply Fp.inBlock_le_inBlock <;>
-    simp [downArenaOrigins, downArenaOffsets, downArenaStride, arenaLengths] at hb ⊢ <;> omega
+  rw [downArenaOrigins_eq_parent_add]
+  apply Fp.inBlock_le_inBlock (Nat.le_add_right _ _)
+  simpa only [Nat.add_assoc] using
+    Nat.add_le_add_left (downArenaOffsets_add_le (n := n) hd i)
+      (![ma, ua, qa, ea, sz, kd, kp] i).2
 
 /-- Corresponding output roles at different levels have disjoint word intervals. -/
 theorem disj_downArena_of_lt {e : ℕ} (he : e < d) (i : Fin 7) :

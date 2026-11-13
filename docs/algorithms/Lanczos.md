@@ -105,11 +105,12 @@ of outputs does not identify the rounded computations of these different program
 |---|---|
 | Exact matrix-free operations | Exact scalar arithmetic, BLAS1 and matvec contracts |
 | Exact stored dense implementation | Declared raw matrix data, scalar dense matvec loops and exact BLAS1 |
+| Rounded stored scalar implementation | Raw matrix data and sequential vector operations execute scalar loops; matvec and BLAS errors follow from the scalar model |
 | Abstract rounded BLAS and matvec | Scalar relative-error model, explicit BLAS error allowances, and an independent normwise matvec allowance |
 | Sequential standard scheme | The BLAS allowances are proved from sequential reductions in the scalar standard model |
 | Pairwise standard scheme | The allowances are proved from pairwise reductions, with the declared recursion-depth applicability condition |
 
-The scalar standard model has unbounded exponents. Matvec accuracy is a separate assumption:
+The scalar standard model has unbounded exponents. In a matrix-free model, matvec accuracy is a separate assumption:
 `norm(A*v - computed) ≤ em * specNorm(A) * norm(v)`. The dot-product contract scales its error
 by `sum(abs(x[i]*y[i]))`; it is not a relative-error promise with respect to a possibly
 cancelling dot-product result. Copy is exact. Storage format, arithmetic behavior and matvec
@@ -201,8 +202,14 @@ from the actual transformed syntax. Resident bounds include matrix data, RHS, ev
 slot and every coefficient slot. These full manifests are conservative size-only accounting;
 they are not a sharp adaptive-work bound.
 
-The rounded certificates below are separate matrix-free endpoints. The exact stored
-certificates do not assert a rounded scalar-dense matvec bound or physical IEEE behavior.
+The rounded stored endpoints are `Lanczos.Stored.Rounded.scalarAlgorithm` and
+`Lanczos.Stored.Reorth.Rounded.scalarAlgorithm`. Both target a signature containing only scalar
+operations. Matrix words remain explicit inputs; every matvec and sequential BLAS operation
+executes its scalar implementation. The matvec allowance follows from the actual streamed
+multiply/add recurrence and the scalar roundoff, rather than a separate accuracy callback.
+Their precision conditions apply to admitted dimensions, while raw matrix admission carries
+symmetry. They retain the actual packed rounded output, early breakdown and complete resource
+bounds on the final lowered tree. These standard-model certificates do not claim native IEEE behavior.
 
 
 Both ordinary and fully reorthogonalized Lanczos have `Certification.algorithm` constructors.
@@ -244,3 +251,6 @@ windows support spectral bounds for the nonempty selected tridiagonal.
 
 - [Actual admissible-prefix run](../../NLAlib/Krylov/Lanczos/Reorth/RoundedStability.lean)
 - [Actual rounded prefix spectral bound](../../NLAlib/Krylov/Lanczos/Reorth/RoundedSpectral.lean)
+
+- [Rounded stored scalar ordinary certificate](../../NLAlib/Krylov/Lanczos/RoundedStoredCertificate.lean)
+- [Rounded stored scalar reorthogonalized certificate](../../NLAlib/Krylov/Lanczos/Reorth/RoundedStoredCertificate.lean)

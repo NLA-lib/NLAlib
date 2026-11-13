@@ -19,7 +19,8 @@ retain their interface. Matrix words are read by the actual scalar program.
 ## Main results
 
 * `NLAlib.Ops.ContextDense.impl` selects a matrix from a fixed context interface.
-* `NLAlib.Ops.ContextDense.writes_impl` transfers the dense word execution.
+* `NLAlib.Ops.ContextDense.writes_impl_word` transfers the actual machine-word execution.
+* `NLAlib.Ops.ContextDense.writes_impl` is its exact-arithmetic specialization.
 -/
 
 @[expose] public section
@@ -49,8 +50,8 @@ theorem eval_frameOperand (d : List ℕ) (args : List (ℕ × ℕ)) (i : Fin arg
 
 /-- Context forwarding preserves the actual dense execution and its output footprint.
 No abstract matrix-vector call is executed by this leaf. -/
-theorem writes_impl {I : Interp Op Tst ℝ} {tape : Tape ℝ} {mem : Mem ℝ}
-    (hS : IsScalar RCLikeBlas.machine I) (context : List (ℕ × ℕ))
+theorem writes_impl_word {I : Interp Op Tst ℝ} {tape : Tape ℝ} {mem : Mem ℝ}
+    {M : Machine ℝ} (hS : IsScalar M I) (context : List (ℕ × ℕ))
     (index : Fin context.length) {m n : ℕ} {x y : ℕ × ℕ} (ds xs : List ℝ)
     (hl : mem.Live (context ++ [x, y]))
     (hD : mem.store.readBlock context[index].1 context[index].2 (m * n) = some ds)
@@ -62,7 +63,7 @@ theorem writes_impl {I : Interp Op Tst ℝ} {tape : Tape ℝ} {mem : Mem ℝ}
     Writes .total I tape (impl context.length index).body
       (Env.frame [m, n] (context ++ [x, y])) (Store.inBlock y.1 y.2 m)
       (fun mem' => mem'.pos = mem.pos ∧ mem'.store.readBlock y.1 y.2 m =
-        some ((List.range m).map (StoredDense.row m n ds xs))) mem := by
+        some ((List.range m).map (StoredDense.rowWord M m n ds xs))) mem := by
   have hd : IExp.evalList (Env.frame [m, n] (context ++ [x, y])).idx [.var 0, .var 1] =
       some [m, n] := rfl
   have hc := eval_frameOperand [m, n] (context ++ [x, y])
@@ -81,8 +82,30 @@ theorem writes_impl {I : Interp Op Tst ℝ} {tape : Tape ℝ} {mem : Mem ℝ}
       Option.bind_some, Option.map_some]
     rfl
   exact writes_frame hd ha (fun a ha => hl a (by simp at ha ⊢; aesop))
-    (StoredDense.writes_impl hS ds xs
+    (StoredDense.writes_impl_word hS ds xs
       (fun a ha => hl a (by simp at ha ⊢; aesop)) hD hX hYD hYX hy)
+
+/-- Context forwarding preserves the actual dense execution and its output footprint.
+No abstract matrix-vector call is executed by this leaf. -/
+theorem writes_impl {I : Interp Op Tst ℝ} {tape : Tape ℝ} {mem : Mem ℝ}
+    (hS : IsScalar RCLikeBlas.machine I) (context : List (ℕ × ℕ))
+    (index : Fin context.length) {m n : ℕ} {x y : ℕ × ℕ} (ds xs : List ℝ)
+    (hl : mem.Live (context ++ [x, y]))
+    (hD : mem.store.readBlock context[index].1 context[index].2 (m * n) = some ds)
+    (hX : mem.store.readBlock x.1 x.2 n = some xs)
+    (hYD : Fp.Disj (Store.inBlock y.1 y.2 m)
+      (Store.inBlock context[index].1 context[index].2 (m * n)))
+    (hYX : Fp.Disj (Store.inBlock y.1 y.2 m) (Store.inBlock x.1 x.2 n))
+    (hy : y.2 + m ≤ mem.store.len y.1) :
+    Writes .total I tape (impl context.length index).body
+      (Env.frame [m, n] (context ++ [x, y])) (Store.inBlock y.1 y.2 m)
+      (fun mem' => mem'.pos = mem.pos ∧ mem'.store.readBlock y.1 y.2 m =
+        some ((List.range m).map (StoredDense.row m n ds xs))) mem  := by
+  have hr : StoredDense.rowWord RCLikeBlas.machine m n ds xs =
+      StoredDense.row m n ds xs := funext (StoredDense.rowWord_exact m n ds xs)
+  simpa only [hr] using
+    (writes_impl_word (tape := tape) (M := RCLikeBlas.machine) hS context index ds xs
+      hl hD hX hYD hYX hy)
 
 /-- A protected data capability implements the original exact operator contract. Its
 matrix is decoded from the words actually read, while the ordinary output stays outside

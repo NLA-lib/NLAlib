@@ -22,9 +22,12 @@ Stored-matrix CG, PCG and Lanczos use a shared context-forwarding transformation
 declared raw data operands to the relevant calls and forwards them through frames and
 allocation scopes. The transformed program is instrumented after transformation, so the
 additional operand and frame work is counted. The matrix-free certificates alone do not
-establish these stored-input guarantees. The new stored-matrix endpoints use exact arithmetic.
-Rounded Krylov theorems use their numerical primitive models; finite-format cache and
-scalar-word error theorems are recorded separately.
+establish these stored-input guarantees. Fixed-horizon CG, PCG and reorthogonalized CG have exact stored endpoints. Carried CG,
+ordinary Lanczos and reorthogonalized Lanczos additionally have rounded stored scalar-only
+certificates: both dense matvec and sequential BLAS execute actual scalar loops, with accuracy
+derived from `StdModel` and resources recomputed on the final tree. Their input spectral and
+precision conditions remain explicit. Finite-format cache and scalar-word mixed-error theorems
+are separate; the standard relative model makes no all-range IEEE claim.
 
 NumPy emission is retired. The new Explorer does not require it. Existing pure mathematics
 is retained even when a historical filename contains `Program` or `Computation`.
@@ -107,21 +110,21 @@ checks, registry files and associated CI are replaced with checks for the Ops in
 ## Validation after retirement
 
 The old reverse import closure contains 174 removed modules. The regenerated library contains
-1,138 source modules and no retained import of the old execution directories. Mathematical
+1,158 source modules and no retained import of the old execution directories. Mathematical
 [module moves](../renames/2026-11-ops-modules.json) preserve the pure statements, including bounds
 previously embedded in program files.
 
 The required `scripts/stage_check.sh` completes with exit 0.
-The full strict build passes 4,820 jobs with zero warnings. The whole-library axiom audit
-checks 33,144 declarations with zero violations. Kernel replay checks 33,149 constants in
-1,141 modules with zero violations. Freshness, both generated roots, replay rejection fixtures,
-33 fixed-program declarations, 37 certificate declarations, 99 Python tests, 14 Node tests,
+The full strict build passes 4,840 jobs with zero warnings. The whole-library axiom audit
+checks 33,688 declarations with zero violations. Kernel replay checks 33,693 constants in
+1,161 modules with zero violations. Freshness, both generated roots, replay rejection fixtures,
+37 fixed-program declarations, 44 certificate declarations, 99 Python tests, 14 Node tests,
 reference and constants checks, generated rule documents and LaTeX rendering pass.
-The fresh Explorer preview contains 1,139 modules including the root and 10,989 declarations;
-all source hashes match the working tree. It records the published commit as its base and
-labels the uncommitted content as a working-tree preview. Explorer validation passes both
-browser suites and 57 tests (eight optional skips), with zero missing targets among 223,998
-local links across 26,019 pages. Six separate curated guide references accompany the declaration API.
+The generic Explorer extraction contains 1,159 modules including the root and 11,126
+declarations. Source hashes verify the supplied snapshot, clean commits carry their own
+revision, and dirty previews identify only their base commit. Curated algorithm guides stay
+separate from generated declaration records. The generic build and local links are checked
+against the matching core sources; renderer regression tests and browser suites are retained.
 
 The environment linter runs all 14 standard linters. Its simp-normal-form adapter recognizes
 only compiler-generated constructor injectivity facts whose equality operands coincide by
@@ -132,7 +135,7 @@ Source scanners recognize registered simp attributes, structural size projection
 commands and type-level let expressions. Naming, placement and semantic-use heuristics that
 cannot reliably establish a violation are review warnings; they remain available with
 `--warnings`. The full extracted-source scan has zero new hard errors, 73 existing baseline
-findings and 3,062 review warnings. No allowance or baseline limit is increased. The standalone
+findings and 3,110 review warnings. No allowance or baseline limit is increased. The standalone
 naming checker and combined rule driver apply the same severities and scopes.
 
 Reusable machinery includes context forwarding and protected-input total-proof transfer,
@@ -142,3 +145,9 @@ Measured strict elaboration examples are 1.3 seconds for context payload account
 2.5 seconds for the complete linear context bridge, 2.9 seconds for stored fixed-horizon CG,
 and 2.4 seconds for each stored Lanczos certificate. These are build measurements, independent
 of the algorithms' modeled resource statements.
+
+The rounded integration also checks a nonempty one-dimensional, one-step carried-CG instance
+with strictly positive roundoff and a provably nonexact scalar machine. Whole-library replay
+retains its existing memory limit: one pre-existing spectral-bisection arena-containment proof
+uses a shared indexed-origin identity instead of seven expanded containment arguments. Its
+statement, algorithm and resource semantics are unchanged.

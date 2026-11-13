@@ -54,6 +54,11 @@ the beginning of each round and uses a fixed loop. The
 The actual direction update uses a temporary vector and counted copies. Initialization
 still executes its declared matrix application even when the canonical initial iterate is zero.
 
+The rounded zero-start carried implementation has a separate initializer: after writing
+`x = 0`, it copies the raw RHS into `r` and `p`, then computes `rho = dot(r,r)`. Its initial
+residual is therefore the supplied RHS, with no rounded subtraction of a zero matvec. The
+rounded stored certificate uses this copy initializer and its actual instruction count.
+
 The [reorthogonalized program](../../NLAlib/Krylov/CG/Reorth/Solver.lean) saves the incoming
 residual before a round. After the ordinary iterate and residual updates, it inserts:
 
@@ -103,6 +108,7 @@ charges in the matrix-free model. The stored implementation declares both raw ma
 | Exact matrix-free | Exact scalar arithmetic, exact BLAS1 and an exact mathematical operator action; PCG declares two actions |
 | Exact stored dense | Raw column-major matrix words are supplied as buffers; every matrix application executes scalar multiply/add loops, while BLAS1 remains an explicit exact collection |
 | Rounded matrix-free | Scalar relative-error contracts, selected BLAS error allowances and an independent normwise matrix-vector error allowance |
+| Rounded stored scalar carried CG | Raw matrix and RHS words; dense matvec and sequential BLAS both execute scalar loops, and their errors follow from the supplied scalar model |
 | Sequential or pairwise scalar BLAS profile | A fixed lowering proves the selected vector contracts from scalar operations; an actual linked-tree certificate accounts for that tree's instructions and workspace |
 
 The exact stored target model has scalar and vector names, with no matrix-vector primitive.
@@ -154,9 +160,20 @@ physical-energy and backward-model guarantees. Rounded stopping and the exact Kr
 are not interchangeable. A zero computed self-product stops the program; its numerical
 meaning is supplied by the rounded theorem's hypotheses.
 
-These rounded guarantees use a declared matrix-free operator error model. The exact stored
-dense certificates do not certify a rounded dense implementation or transfer those bounds
-to a different arithmetic model automatically.
+The [rounded stored certificate](../../NLAlib/Krylov/CG/HSCG/Carried/FinitePrecision/StoredCertificate.lean)
+also provides `Rounded.Stored.scalarAlgorithm`. Its operation signature contains only scalar
+operations: all dense matrix applications and sequential BLAS reductions are actual scalar
+loops. The raw matrix is symmetric with spectrum in the admitted positive interval. The
+matvec allowance is derived from the scalar roundoff and dimension, and the theorem states
+the resulting common-error and accumulated-precision inequalities explicitly. Full instruction,
+work, span, scratch and resident-memory bounds are recomputed after both lowerings.
+
+The scalar standard model remains distinct from a finite-format model with overflow and
+underflow. This certificate establishes standard-model stored execution, rather than native
+IEEE execution. PCG has rounded zero-start initialization, active-step contracts, and
+one-step `PCGRun` extraction with actual stored outputs. Spectral windows, precision and a
+nonzero RHS supply that first step's guards. These results do not assert a total arbitrary-cap
+rounded PCG solver. The reorthogonalized CG canonical certificates currently cover exact arithmetic.
 
 ## Checked sources
 
@@ -170,3 +187,8 @@ to a different arithmetic model automatically.
   [PCG](../../NLAlib/Krylov/CG/HSPCG/StoredCertificate.lean).
 - [Exact scalar/vector operation model](../../NLAlib/Ops/Profiles/ExactBlas.lean) and
   [scalar dense matrix application](../../NLAlib/Ops/Profiles/StoredDense.lean).
+
+- Rounded stored scalar carried CG: [canonical certificate](../../NLAlib/Krylov/CG/HSCG/Carried/FinitePrecision/StoredCertificate.lean),
+  [actual stored word theorem](../../NLAlib/Krylov/CG/HSCG/Carried/FinitePrecision/StoredWords.lean).
+- Rounded PCG local execution: [initialization](../../NLAlib/Krylov/CG/HSPCG/FinitePrecision/Initialization.lean),
+  [active step](../../NLAlib/Krylov/CG/HSPCG/FinitePrecision/Step.lean).

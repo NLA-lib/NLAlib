@@ -317,6 +317,9 @@ public import NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Solve
 public import NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Stability
 public import NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Standard
 public import NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.State
+public import NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.StoredCertificate
+public import NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.StoredExamples
+public import NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.StoredWords
 public import NLAlib.Krylov.CG.HSCG.Carried.Initialization
 public import NLAlib.Krylov.CG.HSCG.Carried.Linked
 public import NLAlib.Krylov.CG.HSCG.Carried.Rounded
@@ -337,6 +340,11 @@ public import NLAlib.Krylov.CG.HSPCG.Alg
 public import NLAlib.Krylov.CG.HSPCG.Bounds
 public import NLAlib.Krylov.CG.HSPCG.Certificate
 public import NLAlib.Krylov.CG.HSPCG.Exact
+public import NLAlib.Krylov.CG.HSPCG.FinitePrecision.Guards
+public import NLAlib.Krylov.CG.HSPCG.FinitePrecision.Initialization
+public import NLAlib.Krylov.CG.HSPCG.FinitePrecision.Preconditioner
+public import NLAlib.Krylov.CG.HSPCG.FinitePrecision.Recurrence
+public import NLAlib.Krylov.CG.HSPCG.FinitePrecision.Step
 public import NLAlib.Krylov.CG.HSPCG.Initialization
 public import NLAlib.Krylov.CG.HSPCG.Linked
 public import NLAlib.Krylov.CG.HSPCG.Model
@@ -413,6 +421,7 @@ public import NLAlib.Krylov.FinitePrecision.Normalized
 public import NLAlib.Krylov.FinitePrecision.NormalizedBackward
 public import NLAlib.Krylov.FinitePrecision.OverRelaxedCG
 public import NLAlib.Krylov.FinitePrecision.PCGRun
+public import NLAlib.Krylov.FinitePrecision.PCGRunConstruction
 public import NLAlib.Krylov.FinitePrecision.Paige
 public import NLAlib.Krylov.FinitePrecision.Recurrence
 public import NLAlib.Krylov.Functions.LanczosFA
@@ -459,6 +468,7 @@ public import NLAlib.Krylov.Lanczos.Reorth.RoundedSolve
 public import NLAlib.Krylov.Lanczos.Reorth.RoundedSpectral
 public import NLAlib.Krylov.Lanczos.Reorth.RoundedStability
 public import NLAlib.Krylov.Lanczos.Reorth.RoundedState
+public import NLAlib.Krylov.Lanczos.Reorth.RoundedStoredCertificate
 public import NLAlib.Krylov.Lanczos.Reorth.Rounds
 public import NLAlib.Krylov.Lanczos.Reorth.Spec
 public import NLAlib.Krylov.Lanczos.Reorth.State
@@ -489,6 +499,8 @@ public import NLAlib.Krylov.Lanczos.RoundedRun
 public import NLAlib.Krylov.Lanczos.RoundedSolve
 public import NLAlib.Krylov.Lanczos.RoundedStability
 public import NLAlib.Krylov.Lanczos.RoundedState
+public import NLAlib.Krylov.Lanczos.RoundedStoredCertificate
+public import NLAlib.Krylov.Lanczos.RoundedStoredWords
 public import NLAlib.Krylov.Lanczos.Rounds
 public import NLAlib.Krylov.Lanczos.Spec
 public import NLAlib.Krylov.Lanczos.State
@@ -667,6 +679,7 @@ public import NLAlib.Matrix.FinitePrecision.SpectralBisection.Projectors
 public import NLAlib.Matrix.FinitePrecision.SpectralBisection.Slots
 public import NLAlib.Matrix.FinitePrecision.SpectralBisection.Split
 public import NLAlib.Matrix.FinitePrecision.SpectralBisection.Tree
+public import NLAlib.Matrix.FinitePrecision.StoredDense
 public import NLAlib.Matrix.FinitePrecision.TapeRounding
 public import NLAlib.Matrix.FinitePrecision.Traces
 public import NLAlib.Matrix.FinitePrecision.VectorErrors
@@ -821,6 +834,7 @@ public import NLAlib.Ops.Blas.ColumnProducts
 public import NLAlib.Ops.Blas.Decoded
 public import NLAlib.Ops.Blas.Dot
 public import NLAlib.Ops.Blas.DotExecution
+public import NLAlib.Ops.Blas.DotFunction
 public import NLAlib.Ops.Blas.DotMixed
 public import NLAlib.Ops.Blas.Hermitian
 public import NLAlib.Ops.Blas.HermitianCorrect
@@ -839,6 +853,7 @@ public import NLAlib.Ops.Blas.Mixed
 public import NLAlib.Ops.Blas.Pair
 public import NLAlib.Ops.Blas.Sampling
 public import NLAlib.Ops.Blas.ScalarProducts
+public import NLAlib.Ops.Blas.ScalarProductsRounded
 public import NLAlib.Ops.Blas.Sum
 public import NLAlib.Ops.BlockRel
 public import NLAlib.Ops.Blocks
@@ -949,7 +964,9 @@ public import NLAlib.Ops.Profile
 public import NLAlib.Ops.Profiles.Blas
 public import NLAlib.Ops.Profiles.BlasCert
 public import NLAlib.Ops.Profiles.ContextDense
+public import NLAlib.Ops.Profiles.ContextDenseRounded
 public import NLAlib.Ops.Profiles.ContextLinear
+public import NLAlib.Ops.Profiles.ContextLinearRounded
 public import NLAlib.Ops.Profiles.Dense
 public import NLAlib.Ops.Profiles.DenseWeight
 public import NLAlib.Ops.Profiles.DenseWork
@@ -960,10 +977,13 @@ public import NLAlib.Ops.Profiles.ExactScalarLinear
 public import NLAlib.Ops.Profiles.RCLikeScalar
 public import NLAlib.Ops.Profiles.Random
 public import NLAlib.Ops.Profiles.RealStar
+public import NLAlib.Ops.Profiles.RoundedBlas
+public import NLAlib.Ops.Profiles.RoundedScalarBlas
 public import NLAlib.Ops.Profiles.ScalarOnly
 public import NLAlib.Ops.Profiles.Standard
 public import NLAlib.Ops.Profiles.StoredCOO
 public import NLAlib.Ops.Profiles.StoredDense
+public import NLAlib.Ops.Profiles.StoredDenseRounded
 public import NLAlib.Ops.Profiles.StoredScalar
 public import NLAlib.Ops.Rules
 public import NLAlib.Ops.Static

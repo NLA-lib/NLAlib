@@ -183,6 +183,61 @@ theorem measureReal_exists_norm_add_sub_lt_le {k : ℕ} (r : Fin k → ℂ) (Λ 
     _ ≤ ∑ _i : Fin k, (η / R) ^ 2 := Finset.sum_le_sum fun i _ => hmarg i
     _ = k * (η / R) ^ 2 := by simp
 
+/-- Union bound for the real measure of a finite union. -/
+private theorem measureReal_biUnion_finset_le_sum {ι : Type*} (μ : Measure ℂ) [IsFiniteMeasure μ]
+    (I : Finset ι) (f : ι → Set ℂ) :
+    μ.real (⋃ i ∈ I, f i) ≤ ∑ i ∈ I, μ.real (f i) := by
+  simp only [measureReal_def]
+  rw [← ENNReal.toReal_sum fun i _ => measure_ne_top μ (f i)]
+  exact ENNReal.toReal_mono (ENNReal.sum_ne_top.2 fun i _ => measure_ne_top μ (f i))
+    (measure_biUnion_finset_le I f)
+
+/-- A $0.99R$-separated set has at most $11$ points within $R + \eta$ of a centre (packing). -/
+private theorem card_filter_le_eleven {S : Finset ℂ} {a : ℂ} {R η : ℝ} (hR : 0 < R)
+    (hηR : η ≤ 0.14 * R)
+    (hS : ∀ s ∈ S, ∀ t ∈ S, s ≠ t → 0.99 * R ≤ ‖s - t‖) :
+    (S.filter fun s => ‖s - a‖ < R + η).card ≤ 11 := by
+  classical
+  set T := S.filter fun s => ‖s - a‖ < R + η with hT
+  have hρ : (0 : ℝ) < 0.495 * R := by positivity
+  have hdisj : (T : Set ℂ).PairwiseDisjoint fun s => Metric.ball s (0.495 * R) := by
+    intro s hs t ht hst
+    have hs' := (Finset.mem_filter.1 (Finset.mem_coe.1 hs)).1
+    have ht' := (Finset.mem_filter.1 (Finset.mem_coe.1 ht)).1
+    apply Metric.ball_disjoint_ball
+    rw [dist_eq_norm]
+    linarith [hS s hs' t ht' hst]
+  have hsub : ∀ s ∈ T, Metric.ball s (0.495 * R) ⊆ Metric.ball a (1.635 * R) := by
+    intro s hs
+    apply Metric.ball_subset_ball'
+    rw [dist_eq_norm]
+    have := (Finset.mem_filter.1 hs).2
+    linarith
+  have hvol := measure_biUnion_finset (μ := volume) hdisj (fun s _ => measurableSet_ball)
+  have hle : volume (⋃ s ∈ T, Metric.ball s (0.495 * R)) ≤
+      volume (Metric.ball a (1.635 * R)) :=
+    measure_mono (Set.iUnion₂_subset fun s hs => hsub s hs)
+  rw [hvol] at hle
+  have h2 : Module.finrank ℝ ℂ = 2 := by
+    rw [Module.finrank_eq_card_basis Complex.basisOneI]; simp
+  simp only [Measure.addHaar_ball volume _ hρ.le,
+    Measure.addHaar_ball volume _ (by positivity : (0:ℝ) ≤ 1.635 * R), h2,
+    Finset.sum_const, nsmul_eq_mul] at hle
+  have hP0 : volume (Metric.ball (0 : ℂ) 1) ≠ 0 :=
+    (Metric.measure_ball_pos volume 0 one_pos).ne'
+  have hPt : volume (Metric.ball (0 : ℂ) 1) ≠ ⊤ := measure_ball_lt_top.ne
+  rw [← mul_assoc] at hle
+  have h3 := (ENNReal.mul_le_mul_iff_left hP0 hPt).1 hle
+  have h4 : (T.card : ℝ) * (0.495 * R) ^ 2 ≤ (1.635 * R) ^ 2 := by
+    have h5 : ENNReal.ofReal ((T.card : ℝ) * (0.495 * R) ^ 2) ≤
+        ENNReal.ofReal ((1.635 * R) ^ 2) := by
+      rw [ENNReal.ofReal_mul (Nat.cast_nonneg _), ENNReal.ofReal_natCast]
+      exact h3
+    exact (ENNReal.ofReal_le_ofReal_iff (by positivity)).1 h5
+  have hn : (T.card : ℝ) ≤ 11 := by
+    nlinarith [mul_pos hR hR]
+  exact_mod_cast hn
+
 /-- **A randomly translated separated net avoids a finite set** (the random translate of the
 exceptional shifts, [BanksGarzaVargasSrivastava2022, Lemma 5.3]): for a finite set $S$ whose
 distinct points are at distance at least $0.99R$, one translate $w \sim
@@ -195,6 +250,58 @@ theorem measureReal_exists_norm_add_sub_lt_le_of_separated (S Λ : Finset ℂ) {
     (hS : ∀ a ∈ S, ∀ b ∈ S, a ≠ b → 0.99 * R ≤ ‖a - b‖) :
     (diskUniform 0 R).real {w | ∃ s ∈ S, ∃ a ∈ Λ, ‖s + w - a‖ < η} ≤
       11 * Λ.card * (η / R) ^ 2 := by
-  sorry
+  classical
+  have : IsProbabilityMeasure (diskUniform 0 R) := isProbabilityMeasure_diskUniform 0 hR
+  have hV0 : volume (Metric.closedBall (0 : ℂ) R) ≠ 0 :=
+    (Metric.measure_closedBall_pos volume 0 hR).ne'
+  have hVt : volume (Metric.closedBall (0 : ℂ) R) ≠ ⊤ :=
+    (isCompact_closedBall (0 : ℂ) R).measure_lt_top.ne
+  -- monotonicity of the uniform law on the disk
+  have hmono : ∀ {E U : Set ℂ}, Metric.closedBall (0 : ℂ) R ∩ E ⊆
+      Metric.closedBall (0 : ℂ) R ∩ U → (diskUniform 0 R).real E ≤ (diskUniform 0 R).real U := by
+    intro E U h
+    have hIt : volume (Metric.closedBall (0 : ℂ) R ∩ U) ≠ ⊤ :=
+      ne_top_of_le_ne_top hVt (measure_mono Set.inter_subset_left)
+    unfold diskUniform
+    simp only [measureReal_def, ProbabilityTheory.cond_apply measurableSet_closedBall]
+    exact ENNReal.toReal_mono (ENNReal.mul_ne_top (ENNReal.inv_ne_top.2 hV0) hIt)
+      (mul_le_mul_of_nonneg_left (measure_mono h) (zero_le))
+  -- one ball bound
+  have hball : ∀ s a : ℂ, (diskUniform 0 R).real {w | ‖s + w - a‖ < η} ≤ (η / R) ^ 2 := by
+    intro s a
+    refine le_trans (hmono (E := {w | ‖s + w - a‖ < η}) (U := Metric.closedBall (a - s) η)
+      (Set.inter_subset_inter_right _ fun w hw => ?_))
+      (measureReal_diskUniform_closedBall_le 0 (a - s) hR hη)
+    rw [Metric.mem_closedBall, dist_eq_norm, show w - (a - s) = s + w - a by ring]
+    exact hw.le
+  set U : Set ℂ := ⋃ a ∈ Λ, ⋃ s ∈ S.filter (fun s => ‖s - a‖ < R + η), {w | ‖s + w - a‖ < η}
+    with hU
+  have hsub : Metric.closedBall (0 : ℂ) R ∩ {w | ∃ s ∈ S, ∃ a ∈ Λ, ‖s + w - a‖ < η} ⊆
+      Metric.closedBall (0 : ℂ) R ∩ U := by
+    rintro w ⟨hwD, s, hs, a, ha, hsa⟩
+    refine ⟨hwD, ?_⟩
+    have hw : ‖w‖ ≤ R := by simpa using hwD
+    have htri : ‖s - a‖ ≤ ‖s + w - a‖ + ‖w‖ := by
+      calc ‖s - a‖ = ‖(s + w - a) - w‖ := by ring_nf
+        _ ≤ ‖s + w - a‖ + ‖w‖ := norm_sub_le _ _
+    simp only [hU, Set.mem_iUnion, Set.mem_setOf_eq, Finset.mem_filter]
+    exact ⟨a, ha, s, ⟨hs, by linarith⟩, hsa⟩
+  calc (diskUniform 0 R).real {w | ∃ s ∈ S, ∃ a ∈ Λ, ‖s + w - a‖ < η}
+      ≤ (diskUniform 0 R).real U := hmono hsub
+    _ ≤ ∑ a ∈ Λ, (diskUniform 0 R).real
+          (⋃ s ∈ S.filter (fun s => ‖s - a‖ < R + η), {w | ‖s + w - a‖ < η}) :=
+        measureReal_biUnion_finset_le_sum _ _ _
+    _ ≤ ∑ a ∈ Λ, ∑ s ∈ S.filter (fun s => ‖s - a‖ < R + η),
+          (diskUniform 0 R).real {w | ‖s + w - a‖ < η} :=
+        Finset.sum_le_sum fun a _ => measureReal_biUnion_finset_le_sum _ _ _
+    _ ≤ ∑ a ∈ Λ, ∑ _s ∈ S.filter (fun s => ‖s - a‖ < R + η), (η / R) ^ 2 :=
+        Finset.sum_le_sum fun a _ => Finset.sum_le_sum fun s _ => hball s a
+    _ ≤ ∑ _a ∈ Λ, 11 * (η / R) ^ 2 := by
+        refine Finset.sum_le_sum fun a _ => ?_
+        rw [Finset.sum_const, nsmul_eq_mul]
+        exact mul_le_mul_of_nonneg_right
+          (by exact_mod_cast card_filter_le_eleven hR hηR hS) (by positivity)
+    _ = 11 * Λ.card * (η / R) ^ 2 := by
+        rw [Finset.sum_const, nsmul_eq_mul]; ring
 
 end NLAlib

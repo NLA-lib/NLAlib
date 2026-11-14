@@ -52,6 +52,49 @@ theorem IsQR.frobNorm_sub_le_of_add (hM : IsUnit M) (h : IsQR M Q R) (h' : IsQR 
     frobNorm (Q' - Q) ≤ 8 * specNorm M⁻¹ * frobNorm E := by
   sorry
 
+/-- For a positive real `d`, `‖d - 1‖ ≤ ‖d - (d⁻¹)⋆‖`. -/
+private theorem norm_sub_one_le_norm_sub_star_inv {d : ℂ} (hd : 0 < d) :
+    ‖d - 1‖ ≤ ‖d - star d⁻¹‖ := by
+  obtain ⟨r, hr, rfl⟩ := RCLike.pos_iff_exists_ofReal.mp hd
+  rw [← RCLike.ofReal_inv, RCLike.star_def, RCLike.conj_ofReal, ← RCLike.ofReal_sub,
+    ← RCLike.ofReal_one, ← RCLike.ofReal_sub, RCLike.norm_ofReal, RCLike.norm_ofReal]
+  rw [show r - r⁻¹ = (r - 1) * (1 + r⁻¹) by field_simp; ring, abs_mul,
+    abs_of_pos (by positivity : 0 < 1 + r⁻¹)]
+  exact le_mul_of_one_le_right (abs_nonneg _) (le_add_of_nonneg_right (by positivity))
+
+/-- Entrywise domination of moduli gives domination of Frobenius norms. -/
+private theorem frobNorm_le_of_forall_norm_apply_le {ι : Type*} [Fintype ι]
+    {A B : Matrix ι ι ℂ} (h : ∀ i j, ‖A i j‖ ≤ ‖B i j‖) : frobNorm A ≤ frobNorm B := by
+  refine (sq_le_sq₀ (frobNorm_nonneg _) (frobNorm_nonneg _)).1 ?_
+  rw [frobNorm_sq_eq_sum, frobNorm_sq_eq_sum]
+  exact Finset.sum_le_sum fun i _ => Finset.sum_le_sum fun j _ =>
+    pow_le_pow_left₀ (norm_nonneg _) (h i j) 2
+
+/-- An upper triangular `T` with positive diagonal satisfies
+`‖T - 1‖_F ≤ ‖T - (T⁻¹)ᴴ‖_F`. -/
+private theorem frobNorm_sub_one_le_of_isUpperTriangular {T : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    (hT : T.IsUpperTriangular) (hd : ∀ i, 0 < T i i) :
+    frobNorm (T - 1) ≤ frobNorm (T - T⁻¹ᴴ) := by
+  refine frobNorm_le_of_forall_norm_apply_le fun i j => ?_
+  simp only [Matrix.sub_apply, Matrix.conjTranspose_apply, Matrix.one_apply]
+  rcases lt_trichotomy i j with hij | rfl | hij
+  · rw [if_neg hij.ne, hT.inv hij, star_zero]
+  · rw [if_pos rfl, hT.inv_apply_self (fun k => (hd k).ne') i]
+    exact norm_sub_one_le_norm_sub_star_inv (hd i)
+  · rw [if_neg hij.ne', hT hij, sub_self, norm_zero]
+    exact norm_nonneg _
+
+/-- A lower bound `c ‖y‖ ≤ ‖T y‖` bounds the inverse: `‖T⁻¹‖₂ ≤ c⁻¹`. -/
+private theorem specNorm_inv_le_of_mul_norm_le {T : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    (hT : IsUnit T) {c : ℝ} (hc : 0 < c)
+    (h : ∀ y, c * ‖WithLp.toLp 2 y‖ ≤ ‖WithLp.toLp 2 (T *ᵥ y)‖) : specNorm T⁻¹ ≤ c⁻¹ := by
+  refine (specNorm_le_iff (inv_nonneg.2 hc.le)).2 fun x => ?_
+  have hx := h (T⁻¹ *ᵥ x)
+  rw [Matrix.mulVec_mulVec, Matrix.mul_nonsing_inv _ ((Matrix.isUnit_iff_isUnit_det T).mp hT),
+    Matrix.one_mulVec] at hx
+  rw [inv_mul_eq_div, le_div_iff₀ hc]
+  linarith
+
 /-- **Perturbation of the triangular QR factor**, in the Frobenius norm of the perturbation:
 $\|\widehat{\mathbf{R}} - \mathbf{R}\|_{\mathsf F} \le 8\|\mathbf{M}^{-1}\|_2\|\mathbf{R}\|_2
 \|\mathbf{E}\|_{\mathsf F}$. [Sun1991, Theorem 1.6]; [BanksGarzaVargasSrivastava2022, Lemma 3.7]
@@ -60,7 +103,83 @@ theorem IsQR.frobNorm_sub_triangular_le_of_add (hM : IsUnit M) (h : IsQR M Q R)
     (h' : IsQR (M + E) Q' R') (hR : ∀ i, 0 < R i i) (hR' : ∀ i, 0 < R' i i)
     (hη : specNorm M⁻¹ * specNorm E ≤ 1 / 4) :
     frobNorm (R' - R) ≤ 8 * specNorm M⁻¹ * specNorm R * frobNorm E := by
-  sorry
+  have hQ := h.hasOrthonormalCols
+  have hQ' := h'.hasOrthonormalCols
+  have hRu : IsUnit R := h.isUnit fun i => (hR i).ne'
+  have hRd := (Matrix.isUnit_iff_isUnit_det R).mp hRu
+  obtain ⟨K, hK⟩ : ∃ K, K = E * M⁻¹ := ⟨_, rfl⟩
+  obtain ⟨T, hTdef⟩ : ∃ T, T = R' * R⁻¹ := ⟨_, rfl⟩
+  have hTU : T.IsUpperTriangular := hTdef ▸ h'.isUpperTriangular.mul h.isUpperTriangular.inv
+  have hTR : T * R = R' := by
+    rw [hTdef, Matrix.mul_assoc, Matrix.nonsing_inv_mul _ hRd, Matrix.mul_one]
+  have hTd : ∀ i, 0 < T i i := fun i => by
+    have e := hTU.mul_apply_self h.isUpperTriangular i
+    rw [hTR] at e
+    rw [eq_div_of_mul_eq (hR i).ne' e.symm]
+    exact div_pos (hR' i) (hR i)
+  have hTu : IsUnit T :=
+    hTdef ▸ (h'.isUnit fun i => (hR' i).ne').mul (Matrix.isUnit_nonsing_inv_iff.mpr hRu)
+  have hQT : Q' * T = (1 + K) * Q := by
+    have hMinv : M⁻¹ * Q = R⁻¹ := by
+      rw [h.eq_mul, Matrix.mul_inv_rev, hQ.inv_eq, Matrix.mul_assoc, hQ.conjTranspose_mul_self,
+        Matrix.mul_one]
+    rw [hTdef, ← Matrix.mul_assoc, ← h'.eq_mul, Matrix.add_mul, Matrix.add_mul, Matrix.one_mul,
+      h.mul_inv_eq hRu, hK, Matrix.mul_assoc, hMinv]
+  have hKs : specNorm K ≤ specNorm M⁻¹ * specNorm E :=
+    hK ▸ (specNorm_mul_le E M⁻¹).trans_eq (mul_comm _ _)
+  have hlow : ∀ y, (1 - specNorm M⁻¹ * specNorm E) * ‖WithLp.toLp 2 y‖ ≤
+      ‖WithLp.toLp 2 (T *ᵥ y)‖ := fun y => by
+    rw [← hQ'.norm_toLp_mulVec (T *ᵥ y), Matrix.mulVec_mulVec, hQT, ← Matrix.mulVec_mulVec,
+      Matrix.add_mulVec, Matrix.one_mulVec, WithLp.toLp_add]
+    have h1 := norm_toLp_mulVec_le K (Q *ᵥ y)
+    have h2 := norm_sub_le (WithLp.toLp 2 (Q *ᵥ y) + WithLp.toLp 2 (K *ᵥ (Q *ᵥ y)))
+      (WithLp.toLp 2 (K *ᵥ (Q *ᵥ y)))
+    rw [add_sub_cancel_right, hQ.norm_toLp_mulVec] at h2
+    rw [hQ.norm_toLp_mulVec] at h1
+    nlinarith [mul_le_mul_of_nonneg_right hKs (norm_nonneg (WithLp.toLp 2 y))]
+  have hTinv := specNorm_inv_le_of_mul_norm_le hTu (by linarith) hlow
+  have hTT : Tᴴ * T - 1 = Qᴴ * (Kᴴ + K + Kᴴ * K) * Q := by
+    have e1 : Tᴴ * T = (Q' * T)ᴴ * (Q' * T) := by
+      rw [Matrix.conjTranspose_mul, Matrix.mul_assoc, ← Matrix.mul_assoc Q'ᴴ,
+        hQ'.conjTranspose_mul_self, Matrix.one_mul]
+    have e2 : Qᴴ * (Kᴴ + K + Kᴴ * K) * Q = Qᴴ * ((1 + Kᴴ) * (1 + K)) * Q - Qᴴ * Q := by
+      noncomm_ring
+    rw [e1, hQT, e2, hQ.conjTranspose_mul_self, Matrix.conjTranspose_mul, Matrix.conjTranspose_add,
+      Matrix.conjTranspose_one]
+    simp only [Matrix.mul_assoc]
+  have hW : T - T⁻¹ᴴ = T⁻¹ᴴ * (Tᴴ * T - 1) := by
+    rw [Matrix.mul_sub, ← Matrix.mul_assoc, ← Matrix.conjTranspose_mul,
+      Matrix.mul_nonsing_inv _ ((Matrix.isUnit_iff_isUnit_det T).mp hTu),
+      Matrix.conjTranspose_one, Matrix.one_mul, Matrix.mul_one]
+  have hS : frobNorm (Tᴴ * T - 1) ≤ (2 + specNorm M⁻¹ * specNorm E) *
+      (specNorm M⁻¹ * frobNorm E) := by
+    have hKf : frobNorm K ≤ specNorm M⁻¹ * frobNorm E :=
+      hK ▸ (frobNorm_mul_le_frobNorm_mul_specNorm E M⁻¹).trans_eq (mul_comm _ _)
+    rw [hTT, hQ.frobNorm_mul_right, hQ.conjTranspose.frobNorm_mul_left]
+    calc frobNorm (Kᴴ + K + Kᴴ * K) ≤ frobNorm K + frobNorm K + specNorm K * frobNorm K := by
+          refine (frobNorm_add_le _ _).trans (add_le_add ((frobNorm_add_le _ _).trans_eq ?_) ?_)
+          · rw [frobNorm_conjTranspose]
+          · simpa [specNorm_conjTranspose] using frobNorm_mul_le_specNorm_mul_frobNorm Kᴴ K
+      _ ≤ _ := by nlinarith [frobNorm_nonneg K, specNorm_nonneg K]
+  have hT1 : frobNorm (T - 1) ≤ 3 * (specNorm M⁻¹ * frobNorm E) := by
+    refine (frobNorm_sub_one_le_of_isUpperTriangular hTU hTd).trans ?_
+    rw [hW]
+    refine (frobNorm_mul_le_specNorm_mul_frobNorm _ _).trans ?_
+    rw [specNorm_conjTranspose]
+    have hφ := mul_nonneg (specNorm_nonneg M⁻¹) (frobNorm_nonneg E)
+    calc specNorm T⁻¹ * frobNorm (Tᴴ * T - 1)
+        ≤ (1 - specNorm M⁻¹ * specNorm E)⁻¹ *
+          ((2 + specNorm M⁻¹ * specNorm E) * (specNorm M⁻¹ * frobNorm E)) := by
+          gcongr
+          exact inv_nonneg.2 (by linarith)
+      _ ≤ _ := by
+          rw [inv_mul_le_iff₀ (by linarith)]
+          nlinarith
+  calc frobNorm (R' - R) = frobNorm ((T - 1) * R) := by rw [Matrix.sub_mul, hTR, Matrix.one_mul]
+    _ ≤ frobNorm (T - 1) * specNorm R := frobNorm_mul_le_frobNorm_mul_specNorm _ _
+    _ ≤ 3 * (specNorm M⁻¹ * frobNorm E) * specNorm R := by gcongr
+    _ ≤ _ := by nlinarith [specNorm_nonneg M⁻¹, frobNorm_nonneg E, specNorm_nonneg R,
+          mul_nonneg (mul_nonneg (specNorm_nonneg M⁻¹) (frobNorm_nonneg E)) (specNorm_nonneg R)]
 
 /-- **The last diagonal entry under perturbation**, upper bound: with
 $\eta = \|\mathbf{M}^{-1}\|_2\|\mathbf{E}\|_2 < 1$, $|\widehat{\mathbf{R}}_{nn}| \le

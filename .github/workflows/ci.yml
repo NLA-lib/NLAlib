@@ -9,18 +9,42 @@ jobs:
   build:
     name: Build, lint, audit
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@v4
+      - name: Find a compatible build from successful main CI
+        id: build-cache
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/ci_build_cache.py select
+      - name: Download the verified main build
+        id: download-build
+        if: steps.build-cache.outputs.run_id != ''
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ steps.build-cache.outputs.name }}
+          run-id: ${{ steps.build-cache.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}/lean-build-cache
+      - name: Verify and restore the build artifact
+        if: steps.download-build.outcome == 'success'
+        env:
+          CACHE_SHA: ${{ steps.build-cache.outputs.sha }}
+          CACHE_RUN_ID: ${{ steps.build-cache.outputs.run_id }}
+          CACHE_RUN_ATTEMPT: ${{ steps.build-cache.outputs.run_attempt }}
+        run: python3 scripts/ci_build_cache.py restore --directory "$RUNNER_TEMP/lean-build-cache"
       - name: Build NLAlib with the Mathlib cache; warnings are fatal
         uses: leanprover/lean-action@v1
         with:
           use-mathlib-cache: true
-          build-args: "--wfail NLAlib"
+          build-args: "--wfail --rehash NLAlib"
           lint: false
           test: false
-          # no build outputs from the GitHub cache: the library is built from its sources at every
-          # run, so the kernel replay checks the current sources' .olean files (final audits,
-          # 2026-10-24); Mathlib's .olean files still come from `lake exe cache get`
+          # Generic branch-scoped caches stay off. Only the verified main artifact above
+          # supplies build outputs; --rehash rebuilds changed sources and their dependents.
           use-github-cache: false
       - name: Root module is current
         run: lake exe mk_all --lib NLAlib --check
@@ -32,7 +56,7 @@ jobs:
         run: lake env lean scripts/OpsPrograms.lean
       - name: Tools library builds (NLAlibTools; not part of the library, may contain sorry)
         run: |
-          lake build NLAlibTools
+          lake build --rehash NLAlibTools
           lake exe mk_all --lib NLAlibTools --check
       - name: Build outputs are current (every hash recomputed)
         run: lake build --no-build --rehash NLAlib NLAlibTools
@@ -59,6 +83,18 @@ jobs:
         run: npm install --no-save --no-package-lock katex@0.16.22 && node scripts/check_latex.mjs
       - name: LaTeX checker regressions
         run: node --test scripts/test_check_latex.mjs
+      - name: Package the checked build for future runs
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: python3 scripts/ci_build_cache.py pack --directory "$RUNNER_TEMP/lean-build-save"
+      - name: Save the checked main build
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build-cache.outputs.save_name }}
+          path: ${{ runner.temp }}/lean-build-save
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
   documentation-windows:
     name: Documentation regressions (Windows)
     runs-on: windows-latest

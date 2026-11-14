@@ -23,6 +23,11 @@ divides conjugated components by the positive radius. No rotation operation is a
 
 * `NLAlib.ShiftedQR.coefficientsWithScratch` is the scalar coefficient program.
 * `NLAlib.ShiftedQR.coefficients` scopes its seven scratch cells.
+* `NLAlib.ShiftedQR.coefficientWords`: the coefficients the program computes on any machine;
+  in exact arithmetic `givensCoeffs` (`NLAlib.ShiftedQR.coefficientWords_eq`).
+* `NLAlib.ShiftedQR.coefficientsWithScratch_writes_word`,
+  `NLAlib.ShiftedQR.coefficients_writes_word`: the routines on any machine; the exact theorems
+  are their corollaries.
 * `NLAlib.ShiftedQR.coefficientsWithScratch_writes` proves the caller-scratch routine total.
 * `NLAlib.ShiftedQR.coefficients_writes` proves the scoped routine computes `givensCoeffs`.
 -/
@@ -86,34 +91,70 @@ theorem coefficient_radius_eq (u v : ℂ) :
   rw [Complex.sq_norm, Complex.sq_norm, Complex.normSq_apply, Complex.normSq_apply]
 
 
-/-- The actual ordered writes of the coefficient prefix under exact arithmetic. -/
-private noncomputable def coefficientPrefixWrites (t : ℕ × ℕ) (u v : ℂ) :
+/-- The computed squared radius $(u_1^2 + u_2^2) + (v_1^2 + v_2^2)$ of the pair $(u, v)$ and its
+computed square root on the machine `M`, in the instruction order of the coefficient program. -/
+def coefficientRadius (M : Machine ℝ) (u v : ℂ) : ℝ :=
+  M.sqrt (M.add (M.add (M.mul u.re u.re) (M.mul u.im u.im))
+    (M.add (M.mul v.re v.re) (M.mul v.im v.im)))
+
+/-- The Givens coefficients the coefficient program stores on the machine `M` from the pair
+$(u, v)$: unless the computed radius (`NLAlib.ShiftedQR.coefficientRadius`) is zero, the computed
+quotients of the conjugated components by it (conjugation by negation of a word); at a zero
+radius the literals $(1, 0)$. In exact arithmetic these are `NLAlib.givensCoeffs`
+(`NLAlib.ShiftedQR.coefficientWords_eq`). -/
+noncomputable def coefficientWords (M : Machine ℝ) (u v : ℂ) : ℂ × ℂ :=
+  if coefficientRadius M u v = 0 then (⟨M.lit 1, M.lit 0⟩, ⟨M.lit 0, M.lit 0⟩)
+  else (⟨M.div u.re (coefficientRadius M u v), M.div (M.neg u.im) (coefficientRadius M u v)⟩,
+    ⟨M.div v.re (coefficientRadius M u v), M.div (M.neg v.im) (coefficientRadius M u v)⟩)
+
+/-- In exact arithmetic the computed radius is $\sqrt{\lvert u\rvert^2 + \lvert v\rvert^2}$. -/
+theorem coefficientRadius_eq {M : Machine ℝ} (hE : ExactModel id M) (u v : ℂ) :
+    coefficientRadius M u v = Real.sqrt (‖u‖ ^ 2 + ‖v‖ ^ 2) := by
+  have hadd : ∀ x y, M.add x y = x + y := hE.add
+  have hmul : ∀ x y, M.mul x y = x * y := hE.mul
+  have hn : 0 ≤ (u.re * u.re + u.im * u.im) + (v.re * v.re + v.im * v.im) :=
+    add_nonneg (add_nonneg (mul_self_nonneg _) (mul_self_nonneg _))
+      (add_nonneg (mul_self_nonneg _) (mul_self_nonneg _))
+  rw [coefficientRadius, hmul, hmul, hmul, hmul, hadd, hadd, hadd]
+  exact (show M.sqrt _ = Real.sqrt _ from hE.sqrt _ hn).trans (coefficient_radius_eq u v)
+
+/-- In exact arithmetic the computed coefficients are the Givens coefficients. -/
+theorem coefficientWords_eq {M : Machine ℝ} (hE : ExactModel id M) (u v : ℂ) :
+    coefficientWords M u v = givensCoeffs u v := by
+  have h1 : M.lit 1 = 1 := by simpa using hE.lit 1
+  have h0 : M.lit 0 = 0 := by simpa using hE.lit 0
+  have hneg : ∀ x, M.neg x = -x := hE.neg
+  rw [coefficientWords, coefficientRadius_eq hE]
+  by_cases hz : Real.sqrt (‖u‖ ^ 2 + ‖v‖ ^ 2) = 0
+  · simp only [givensCoeffs, hz, if_true, h1, h0]
+    exact Prod.ext (Complex.ext rfl rfl) (Complex.ext rfl rfl)
+  · have hdiv : ∀ x, M.div x (Real.sqrt (‖u‖ ^ 2 + ‖v‖ ^ 2)) =
+        x / Real.sqrt (‖u‖ ^ 2 + ‖v‖ ^ 2) := fun x => hE.div x _ hz
+    simp only [givensCoeffs, hz, if_false, hdiv, hneg]
+    refine Prod.ext (Complex.ext ?_ ?_) (Complex.ext ?_ ?_) <;>
+      simp [RCLike.star_def, Complex.div_ofReal_re, Complex.div_ofReal_im, neg_div]
+
+/-- The actual ordered writes of the coefficient prefix on the machine `M`. -/
+private def coefficientPrefixWrites (M : Machine ℝ) (t : ℕ × ℕ) (u v : ℂ) :
     List ((ℕ × ℕ) × ℝ) :=
   [((t.1, t.2), u.re), ((t.1, t.2 + 1), u.im),
    ((t.1, t.2 + 2), v.re), ((t.1, t.2 + 3), v.im),
-   ((t.1, t.2 + 4), u.re * u.re), ((t.1, t.2 + 5), u.im * u.im),
-   ((t.1, t.2 + 4), u.re * u.re + u.im * u.im),
-   ((t.1, t.2 + 5), v.re * v.re), ((t.1, t.2 + 6), v.im * v.im),
-   ((t.1, t.2 + 5), v.re * v.re + v.im * v.im),
-   ((t.1, t.2 + 4), (u.re * u.re + u.im * u.im) + (v.re * v.re + v.im * v.im)),
-   ((t.1, t.2 + 4), Real.sqrt (‖u‖ ^ 2 + ‖v‖ ^ 2))]
+   ((t.1, t.2 + 4), M.mul u.re u.re), ((t.1, t.2 + 5), M.mul u.im u.im),
+   ((t.1, t.2 + 4), M.add (M.mul u.re u.re) (M.mul u.im u.im)),
+   ((t.1, t.2 + 5), M.mul v.re v.re), ((t.1, t.2 + 6), M.mul v.im v.im),
+   ((t.1, t.2 + 5), M.add (M.mul v.re v.re) (M.mul v.im v.im)),
+   ((t.1, t.2 + 4), M.add (M.add (M.mul u.re u.re) (M.mul u.im u.im))
+      (M.add (M.mul v.re v.re) (M.mul v.im v.im))),
+   ((t.1, t.2 + 4), coefficientRadius M u v)]
 
-/-- Pure scalar evaluation captures the inputs and computes the exact radius. -/
-private theorem eval_coefficientPrefix {M : Machine ℝ} (hE : ExactModel id M)
+/-- Pure scalar evaluation captures the inputs and computes the radius. -/
+private theorem eval_coefficientPrefix {M : Machine ℝ}
     {a b t c s : ℕ × ℕ} {u v : ℂ} {f : ℕ × ℕ → Option ℝ}
     (hta : t.1 ≠ a.1) (htb : t.1 ≠ b.1)
     (hu0 : f a = some u.re) (hu1 : f (a.1, a.2 + 1) = some u.im)
     (hv0 : f b = some v.re) (hv1 : f (b.1, b.2 + 1) = some v.im) :
     ScalarIns.evalBlock M.eval (Env.frame [] [a, b, t, c, s]) coefficientPrefix f =
-      some (coefficientPrefixWrites t u v) := by
-  have hadd : ∀ x y, M.add x y = x + y := hE.add
-  have hmul : ∀ x y, M.mul x y = x * y := hE.mul
-  have hsqrt : M.sqrt ((u.re * u.re + u.im * u.im) +
-      (v.re * v.re + v.im * v.im)) = Real.sqrt (‖u‖ ^ 2 + ‖v‖ ^ 2) := by
-    have hn : 0 ≤ (u.re * u.re + u.im * u.im) + (v.re * v.re + v.im * v.im) :=
-      add_nonneg (add_nonneg (mul_self_nonneg _) (mul_self_nonneg _))
-        (add_nonneg (mul_self_nonneg _) (mul_self_nonneg _))
-    exact (show M.sqrt _ = Real.sqrt _ from hE.sqrt _ hn).trans (coefficient_radius_eq u v)
+      some (coefficientPrefixWrites M t u v) := by
   rcases a with ⟨ab, ao⟩
   rcases b with ⟨bb, bo⟩
   rcases t with ⟨tb, toff⟩
@@ -126,7 +167,7 @@ private theorem eval_coefficientPrefix {M : Machine ℝ} (hE : ExactModel id M)
       Function.update g x w y = if y = x then w else g y := Function.update_apply g x w y
   have hpair (x₁ x₂ y₁ y₂ : ℕ) :
       ((x₁, x₂) = (y₁, y₂)) = (x₁ = y₁ ∧ x₂ = y₂) := Prod.mk.injEq x₁ x₂ y₁ y₂
-  simp only [coefficientPrefix, coefficientPrefixWrites]
+  simp only [coefficientPrefix, coefficientPrefixWrites, coefficientRadius]
   dsimp only [Env.frame]
   repeat' first
     | rw [ScalarIns.evalBlock.eq_def]
@@ -141,14 +182,14 @@ private theorem eval_coefficientPrefix {M : Machine ℝ} (hE : ExactModel id M)
 
 
 /-- The captured words and radius after the actual scalar prefix. -/
-private theorem coefficientPrefix_reads {m : Mem ℝ} {t : ℕ × ℕ} (u v : ℂ)
+private theorem coefficientPrefix_reads {M : Machine ℝ} {m : Mem ℝ} {t : ℕ × ℕ} (u v : ℂ)
     (ht : t.2 + 7 ≤ m.store.len t.1) :
-    let m' := m.updCells (coefficientPrefixWrites t u v)
+    let m' := m.updCells (coefficientPrefixWrites M t u v)
     m'.store.get t.1 t.2 = some u.re ∧
     m'.store.get t.1 (t.2 + 1) = some u.im ∧
     m'.store.get t.1 (t.2 + 2) = some v.re ∧
     m'.store.get t.1 (t.2 + 3) = some v.im ∧
-    m'.store.get t.1 (t.2 + 4) = some (Real.sqrt (‖u‖ ^ 2 + ‖v‖ ^ 2)) := by
+    m'.store.get t.1 (t.2 + 4) = some (coefficientRadius M u v) := by
   dsimp only [coefficientPrefixWrites, Mem.updCells]
   constructor
   · store_simp
@@ -161,7 +202,7 @@ private theorem coefficientPrefix_reads {m : Mem ℝ} {t : ℕ × ℕ} (u v : �
 omit [Has CmpTst Tst] in
 /-- The prefix writes only the seven scratch cells and returns its captured values. -/
 private theorem coefficientPrefix_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
-    (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
+    (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {a b t c s : ℕ × ℕ} {u v : ℂ}
     (hta : t.1 ≠ a.1) (htb : t.1 ≠ b.1)
     (hu0 : m.store.get a.1 a.2 = some u.re)
@@ -175,8 +216,8 @@ private theorem coefficientPrefix_writes {M : Machine ℝ} {I : Interp Op Tst �
         m'.store.get t.1 (t.2 + 1) = some u.im ∧
         m'.store.get t.1 (t.2 + 2) = some v.re ∧
         m'.store.get t.1 (t.2 + 3) = some v.im ∧
-        m'.store.get t.1 (t.2 + 4) = some (Real.sqrt (‖u‖ ^ 2 + ‖v‖ ^ 2))) m := by
-  have hreg : ∀ w ∈ coefficientPrefixWrites t u v,
+        m'.store.get t.1 (t.2 + 4) = some (coefficientRadius M u v)) m := by
+  have hreg : ∀ w ∈ coefficientPrefixWrites M t u v,
       Store.inBlock t.1 t.2 7 w.1.1 w.1.2 := by
     intro w hw
     simp only [coefficientPrefixWrites, List.mem_cons, List.not_mem_nil, or_false] at hw
@@ -184,14 +225,14 @@ private theorem coefficientPrefix_writes {M : Machine ℝ} {I : Interp Op Tst �
     all_goals
       dsimp only [Store.inBlock]
       exact ⟨rfl, by omega, by omega⟩
-  have hroom : ∀ w ∈ coefficientPrefixWrites t u v,
+  have hroom : ∀ w ∈ coefficientPrefixWrites M t u v,
       w.1.2 < m.store.len w.1.1 := by
     intro w hw
     obtain ⟨hbuf, hlo, hhi⟩ := hreg w hw
     rw [hbuf]
     omega
   refine (writes_machineScalarBlock hS
-    (eval_coefficientPrefix hE hta htb hu0 hu1 hv0 hv1) hroom).mono ?_ ?_
+    (eval_coefficientPrefix hta htb hu0 hu1 hv0 hv1) hroom).mono ?_ ?_
   · intro q i h
     obtain ⟨w, hw, he⟩ := List.mem_map.mp h
     simpa only [he] using hreg w hw
@@ -200,43 +241,42 @@ private theorem coefficientPrefix_writes {M : Machine ℝ} {I : Interp Op Tst �
     exact ⟨rfl, coefficientPrefix_reads u v ht⟩
 
 /-- The actual four writes of the identity-rotation branch. -/
-private def coefficientZeroWrites (c s : ℕ × ℕ) : List ((ℕ × ℕ) × ℝ) :=
-  [((c.1, c.2), 1), ((c.1, c.2 + 1), 0), ((s.1, s.2), 0), ((s.1, s.2 + 1), 0)]
+private def coefficientZeroWrites (M : Machine ℝ) (c s : ℕ × ℕ) : List ((ℕ × ℕ) × ℝ) :=
+  [((c.1, c.2), M.lit 1), ((c.1, c.2 + 1), M.lit 0), ((s.1, s.2), M.lit 0),
+    ((s.1, s.2 + 1), M.lit 0)]
 
 /-- The literal branch is independent of all input and scratch contents. -/
-private theorem eval_coefficientZero {M : Machine ℝ} (hE : ExactModel id M)
+private theorem eval_coefficientZero (M : Machine ℝ)
     (a b t c s : ℕ × ℕ) (f : ℕ × ℕ → Option ℝ) :
     ScalarIns.evalBlock M.eval (Env.frame [] [a, b, t, c, s]) coefficientZero f =
-      some (coefficientZeroWrites c s) := by
-  have h1 : M.lit 1 = 1 := by simpa using hE.lit 1
-  have h0 : M.lit 0 = 0 := by simpa using hE.lit 0
+      some (coefficientZeroWrites M c s) := by
   simp [coefficientZero, ScalarIns.evalBlock, Machine.eval, Env.frame, Operand.evalList,
-    Operand.eval, IExp.eval, coefficientZeroWrites, h1, h0]
+    Operand.eval, IExp.eval, coefficientZeroWrites]
 
 omit [Has CmpTst Tst] in
 /-- The zero branch writes its two packed output blocks, including spatially separate
 views in a single caller buffer. -/
 private theorem coefficientZero_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
-    (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
+    (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {a b t c s : ℕ × ℕ}
     (hcs : Fp.Disj (Store.inBlock c.1 c.2 2) (Store.inBlock s.1 s.2 2))
     (hc : c.2 + 2 ≤ m.store.len c.1) (hs : s.2 + 2 ≤ m.store.len s.1) :
     Writes .total I τ (.scalarBlock (coefficientZero.map ScalarIns.lift))
       (Env.frame [] [a, b, t, c, s]) (Fp.blocks [c, s] [2, 2])
       (fun m' => m'.pos = m.pos ∧ m'.readBlocks [c, s] [2, 2] =
-        some [[1, 0], [0, 0]]) m := by
-  have hroom : ∀ w ∈ coefficientZeroWrites c s, w.1.2 < m.store.len w.1.1 := by
+        some [[M.lit 1, M.lit 0], [M.lit 0, M.lit 0]]) m := by
+  have hroom : ∀ w ∈ coefficientZeroWrites M c s, w.1.2 < m.store.len w.1.1 := by
     intro w hw
     simp only [coefficientZeroWrites, List.mem_cons, List.not_mem_nil, or_false] at hw
     rcases hw with rfl | rfl | rfl | rfl
     all_goals dsimp only; omega
-  refine (writes_machineScalarBlock hS (eval_coefficientZero hE a b t c s m.store.cellFn)
+  refine (writes_machineScalarBlock hS (eval_coefficientZero M a b t c s m.store.cellFn)
     hroom).mono ?_ ?_
   · fp_sub [coefficientZeroWrites, List.map_cons, List.map_nil]
   · intro m' _ he
     subst m'
-    have heq : m.updCells (coefficientZeroWrites c s) =
-        m.updBlocks [c, s] [[1, 0], [0, 0]] := rfl
+    have heq : m.updCells (coefficientZeroWrites M c s) =
+        m.updBlocks [c, s] [[M.lit 1, M.lit 0], [M.lit 0, M.lit 0]] := rfl
     rw [heq]
     refine ⟨rfl, Mem.readBlocks_updBlocks ?_ ⟨hc, hs, trivial⟩⟩
     refine ⟨?_, ⟨?_, trivial⟩⟩
@@ -245,23 +285,21 @@ private theorem coefficientZero_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     · simp [Fp.blocks, Fp.Disj]
 
 /-- The ordered writes of the nonzero-radius branch. -/
-private noncomputable def coefficientDivideWrites (t c s : ℕ × ℕ) (u v : ℂ) (r : ℝ) :
+private def coefficientDivideWrites (M : Machine ℝ) (t c s : ℕ × ℕ) (u v : ℂ) (r : ℝ) :
     List ((ℕ × ℕ) × ℝ) :=
-  [((t.1, t.2 + 5), -u.im), ((t.1, t.2 + 6), -v.im),
-   ((c.1, c.2), u.re / r), ((c.1, c.2 + 1), -u.im / r),
-   ((s.1, s.2), v.re / r), ((s.1, s.2 + 1), -v.im / r)]
+  [((t.1, t.2 + 5), M.neg u.im), ((t.1, t.2 + 6), M.neg v.im),
+   ((c.1, c.2), M.div u.re r), ((c.1, c.2 + 1), M.div (M.neg u.im) r),
+   ((s.1, s.2), M.div v.re r), ((s.1, s.2 + 1), M.div (M.neg v.im) r)]
 
-/-- Pure evaluation divides only by the supplied nonzero captured radius. -/
-private theorem eval_coefficientDivide {M : Machine ℝ} (hE : ExactModel id M)
+/-- Pure evaluation divides by the captured radius. -/
+private theorem eval_coefficientDivide {M : Machine ℝ}
     {a b t c s : ℕ × ℕ} {u v : ℂ} {r : ℝ} {f : ℕ × ℕ → Option ℝ}
-    (htc : t.1 ≠ c.1) (hts : t.1 ≠ s.1) (hr : r ≠ 0)
+    (htc : t.1 ≠ c.1) (hts : t.1 ≠ s.1)
     (h0 : f (t.1, t.2) = some u.re) (h1 : f (t.1, t.2 + 1) = some u.im)
     (h2 : f (t.1, t.2 + 2) = some v.re) (h3 : f (t.1, t.2 + 3) = some v.im)
     (h4 : f (t.1, t.2 + 4) = some r) :
     ScalarIns.evalBlock M.eval (Env.frame [] [a, b, t, c, s]) coefficientDivide f =
-      some (coefficientDivideWrites t c s u v r) := by
-  have hneg : ∀ x, M.neg x = -x := hE.neg
-  have hdiv : ∀ x, M.div x r = x / r := fun x => hE.div x r hr
+      some (coefficientDivideWrites M t c s u v r) := by
   rcases a with ⟨ab, ao⟩
   rcases b with ⟨bb, bo⟩
   rcases t with ⟨tb, toff⟩
@@ -288,12 +326,12 @@ private theorem eval_coefficientDivide {M : Machine ℝ} (hE : ExactModel id M)
   rfl
 
 omit [Has CmpTst Tst] in
-/-- A nonzero radius branch writes the conjugated component quotients. -/
+/-- The nonzero-radius branch writes the conjugated component quotients. -/
 private theorem coefficientDivide_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
-    (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
+    (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {a b t c s : ℕ × ℕ} {u v : ℂ} {r : ℝ}
     (htc : t.1 ≠ c.1) (hts : t.1 ≠ s.1)
-    (hcs : Fp.Disj (Store.inBlock c.1 c.2 2) (Store.inBlock s.1 s.2 2)) (hr : r ≠ 0)
+    (hcs : Fp.Disj (Store.inBlock c.1 c.2 2) (Store.inBlock s.1 s.2 2))
     (h0 : m.store.get t.1 t.2 = some u.re)
     (h1 : m.store.get t.1 (t.2 + 1) = some u.im)
     (h2 : m.store.get t.1 (t.2 + 2) = some v.re)
@@ -304,32 +342,76 @@ private theorem coefficientDivide_writes {M : Machine ℝ} {I : Interp Op Tst �
     Writes .total I τ (.scalarBlock (coefficientDivide.map ScalarIns.lift))
       (Env.frame [] [a, b, t, c, s]) (Fp.blocks [t, c, s] [7, 2, 2])
       (fun m' => m'.pos = m.pos ∧ m'.readBlocks [c, s] [2, 2] =
-        some [[u.re / r, -u.im / r], [v.re / r, -v.im / r]]) m := by
-  have hroom : ∀ w ∈ coefficientDivideWrites t c s u v r,
+        some [[M.div u.re r, M.div (M.neg u.im) r],
+          [M.div v.re r, M.div (M.neg v.im) r]]) m := by
+  have hroom : ∀ w ∈ coefficientDivideWrites M t c s u v r,
       w.1.2 < m.store.len w.1.1 := by
     intro w hw
     simp only [coefficientDivideWrites, List.mem_cons, List.not_mem_nil, or_false] at hw
     rcases hw with rfl | rfl | rfl | rfl | rfl | rfl
     all_goals dsimp only; omega
   refine (writes_machineScalarBlock hS
-    (eval_coefficientDivide hE htc hts hr h0 h1 h2 h3 h4) hroom).mono ?_ ?_
+    (eval_coefficientDivide htc hts h0 h1 h2 h3 h4) hroom).mono ?_ ?_
   · fp_sub [coefficientDivideWrites, List.map_cons, List.map_nil]
   · intro m' _ he
     subst m'
-    have heq : m.updCells (coefficientDivideWrites t c s u v r) =
-        ((m.upd (t.1, t.2 + 5) (-u.im)).upd (t.1, t.2 + 6) (-v.im)).updBlocks
-          [c, s] [[u.re / r, -u.im / r], [v.re / r, -v.im / r]] := rfl
+    have heq : m.updCells (coefficientDivideWrites M t c s u v r) =
+        ((m.upd (t.1, t.2 + 5) (M.neg u.im)).upd (t.1, t.2 + 6) (M.neg v.im)).updBlocks
+          [c, s] [[M.div u.re r, M.div (M.neg u.im) r],
+            [M.div v.re r, M.div (M.neg v.im) r]] := rfl
     rw [heq]
     refine ⟨rfl, Mem.readBlocks_updBlocks ?_ ?_⟩
     · refine ⟨?_, ⟨?_, trivial⟩⟩
       · simpa only [List.map_cons, List.map_nil, List.length_cons, List.length_nil,
           Fp.blocks, sup_bot_eq] using hcs
       · simp [Fp.blocks, Fp.Disj]
-    · change c.2 + 2 ≤ ((m.upd (t.1, t.2 + 5) (-u.im)).upd
-        (t.1, t.2 + 6) (-v.im)).store.len c.1 ∧
-        s.2 + 2 ≤ ((m.upd (t.1, t.2 + 5) (-u.im)).upd
-        (t.1, t.2 + 6) (-v.im)).store.len s.1 ∧ True
+    · change c.2 + 2 ≤ ((m.upd (t.1, t.2 + 5) (M.neg u.im)).upd
+        (t.1, t.2 + 6) (M.neg v.im)).store.len c.1 ∧
+        s.2 + 2 ≤ ((m.upd (t.1, t.2 + 5) (M.neg u.im)).upd
+        (t.1, t.2 + 6) (M.neg v.im)).store.len s.1 ∧ True
       simpa only [Mem.store_upd, Store.len_upd] using And.intro hc (And.intro hs trivial)
+
+/-- The coefficient program on any machine, with the actual zero test of the computed radius,
+stores `NLAlib.ShiftedQR.coefficientWords` for every pair, including the zero pair. The scratch
+buffer is separate from all inputs and outputs; the two output views are spatially disjoint and
+may share a buffer. Outputs may coincide with the original inputs because their components are
+captured first. [GolubVanLoan2013, Algorithm 5.1.3]. -/
+theorem coefficientsWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
+    (hS : IsScalar M I) (hCmp : IsCmp id I)
+    {τ : Tape ℝ} {m : Mem ℝ} {a b t c s : ℕ × ℕ} {u v : ℂ}
+    (hta : t.1 ≠ a.1) (htb : t.1 ≠ b.1) (htc : t.1 ≠ c.1) (hts : t.1 ≠ s.1)
+    (hcs : Fp.Disj (Store.inBlock c.1 c.2 2) (Store.inBlock s.1 s.2 2))
+    (hu0 : m.store.get a.1 a.2 = some u.re)
+    (hu1 : m.store.get a.1 (a.2 + 1) = some u.im)
+    (hv0 : m.store.get b.1 b.2 = some v.re)
+    (hv1 : m.store.get b.1 (b.2 + 1) = some v.im)
+    (ht : t.2 + 7 ≤ m.store.len t.1)
+    (hc : c.2 + 2 ≤ m.store.len c.1) (hs : s.2 + 2 ≤ m.store.len s.1) :
+    Writes .total I τ coefficientsWithScratch.body (Env.frame [] [a, b, t, c, s])
+      (Fp.blocks [t, c, s] [7, 2, 2])
+      (fun m' => m'.pos = m.pos ∧ m'.readBlocks [c, s] [2, 2] =
+        some [[(coefficientWords M u v).1.re, (coefficientWords M u v).1.im],
+          [(coefficientWords M u v).2.re, (coefficientWords M u v).2.im]]) m := by
+  classical
+  change Writes .total I τ (.seq _ _) _ _ _ m
+  refine Writes.seq_le (coefficientPrefix_writes hS hta htb hu0 hu1 hv0 hv1 ht)
+    le_sup_left fun m' hfr ⟨hpos, h0, h1, h2, h3, h4⟩ => ?_
+  have ht' : t.2 + 7 ≤ m'.store.len t.1 := by rw [hfr.len_eq]; exact ht
+  have hc' : c.2 + 2 ≤ m'.store.len c.1 := by rw [hfr.len_eq]; exact hc
+  have hs' : s.2 + 2 ≤ m'.store.len s.1 := by rw [hfr.len_eq]; exact hs
+  have htest := hCmp.test_isZero (d := []) (m := m') (x := (t.1, t.2 + 4)) h4
+  by_cases hz : coefficientRadius M u v = 0
+  · simp only [id_eq, hz, decide_true] at htest
+    refine writes_ite rfl rfl htest ?_
+    refine (coefficientZero_writes hS hcs hc' hs').mono le_sup_right ?_
+    rintro m'' _ ⟨hpos', hread⟩
+    exact ⟨hpos'.trans hpos, by simpa only [coefficientWords, hz, if_pos] using hread⟩
+  · simp only [id_eq, hz, decide_false] at htest
+    refine writes_ite rfl rfl htest ?_
+    refine (coefficientDivide_writes hS htc hts hcs h0 h1 h2 h3 h4 ht' hc' hs').mono
+      le_rfl ?_
+    rintro m'' _ ⟨hpos', hread⟩
+    exact ⟨hpos'.trans hpos, by simpa only [coefficientWords, hz, if_false] using hread⟩
 
 /-- Exact scalar arithmetic and the actual zero test compute the mathematical Givens
 coefficients for every pair, including the zero pair. The scratch buffer is separate from
@@ -352,38 +434,15 @@ theorem coefficientsWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
       (fun m' => m'.pos = m.pos ∧ m'.readBlocks [c, s] [2, 2] =
         some [[(givensCoeffs u v).1.re, (givensCoeffs u v).1.im],
           [(givensCoeffs u v).2.re, (givensCoeffs u v).2.im]]) m := by
-  classical
-  change Writes .total I τ (.seq _ _) _ _ _ m
-  refine Writes.seq_le (coefficientPrefix_writes hS hE hta htb hu0 hu1 hv0 hv1 ht)
-    le_sup_left fun m' hfr ⟨hpos, h0, h1, h2, h3, h4⟩ => ?_
-  have ht' : t.2 + 7 ≤ m'.store.len t.1 := by rw [hfr.len_eq]; exact ht
-  have hc' : c.2 + 2 ≤ m'.store.len c.1 := by rw [hfr.len_eq]; exact hc
-  have hs' : s.2 + 2 ≤ m'.store.len s.1 := by rw [hfr.len_eq]; exact hs
-  by_cases hz : Real.sqrt (‖u‖ ^ 2 + ‖v‖ ^ 2) = 0
-  · have htest := hCmp.test_isZero (d := []) (m := m') (x := (t.1, t.2 + 4)) h4
-    simp only [id_eq, hz, decide_true] at htest
-    refine writes_ite rfl rfl htest ?_
-    refine (coefficientZero_writes hS hE hcs hc' hs').mono le_sup_right ?_
-    rintro m'' _ ⟨hpos', hread⟩
-    refine ⟨hpos'.trans hpos, ?_⟩
-    simpa only [givensCoeffs, hz, if_pos, Prod.fst, Prod.snd, Complex.one_re,
-      Complex.one_im, Complex.zero_re, Complex.zero_im] using hread
-  · have htest := hCmp.test_isZero (d := []) (m := m') (x := (t.1, t.2 + 4)) h4
-    simp only [id_eq, hz, decide_false] at htest
-    refine writes_ite rfl rfl htest ?_
-    refine (coefficientDivide_writes hS hE htc hts hcs hz h0 h1 h2 h3 h4 ht' hc' hs').mono
-      le_rfl ?_
-    rintro m'' _ ⟨hpos', hread⟩
-    refine ⟨hpos'.trans hpos, ?_⟩
-    simpa [givensCoeffs, hz, RCLike.star_def, Complex.div_ofReal_re,
-      Complex.div_ofReal_im] using hread
+  simpa only [coefficientWords_eq hE] using coefficientsWithScratch_writes_word (τ := τ) hS hCmp
+    hta htb htc hts hcs hu0 hu1 hv0 hv1 ht hc hs
 
-/-- Scoped coefficient computation returns the exact complex Givens coefficients and
-releases all scratch. Input and output views may overlap; the two output views are apart.
+/-- Scoped coefficient computation on any machine stores `NLAlib.ShiftedQR.coefficientWords`
+and releases all scratch. Input and output views may overlap; the two output views are apart.
 The actual radius test covers the zero pair without a division by zero.
 [GolubVanLoan2013, Algorithm 5.1.3]. -/
-theorem coefficients_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
-    (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
+theorem coefficients_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
+    (hS : IsScalar M I) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {a b c s : ℕ × ℕ} {u v : ℂ}
     (hcs : Fp.Disj (Store.inBlock c.1 c.2 2) (Store.inBlock s.1 s.2 2))
     (hu0 : m.store.get a.1 a.2 = some u.re)
@@ -394,8 +453,8 @@ theorem coefficients_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     Writes .total I τ coefficients.body (Env.frame [] [a, b, c, s])
       (Fp.blocks [c, s] [2, 2])
       (fun m' => m'.pos = m.pos ∧ m'.readBlocks [c, s] [2, 2] =
-        some [[(givensCoeffs u v).1.re, (givensCoeffs u v).1.im],
-          [(givensCoeffs u v).2.re, (givensCoeffs u v).2.im]]) m := by
+        some [[(coefficientWords M u v).1.re, (coefficientWords M u v).1.im],
+          [(coefficientWords M u v).2.re, (coefficientWords M u v).2.im]]) m := by
   have hal : a.1 < m.store.length := Store.lt_length_of_get hu0
   have hbl : b.1 < m.store.length := Store.lt_length_of_get hv0
   have hcl : c.1 < m.store.length := Store.lt_length_of_lt_len (by omega : c.2 < _)
@@ -427,7 +486,7 @@ theorem coefficients_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     · change s.1 < store.length
       omega
   refine (writes_frame rfl rfl hl'
-    (coefficientsWithScratch_writes hS hE hCmp (m := m₁) (by dsimp [t]; omega)
+    (coefficientsWithScratch_writes_word hS hCmp (m := m₁) (by dsimp [t]; omega)
       (by dsimp [t]; omega) (by dsimp [t]; omega) (by dsimp [t]; omega) hcs
       (by exact ((hBelow a.1 hal).2 _).trans hu0)
       (by exact ((hBelow a.1 hal).2 _).trans hu1)
@@ -438,5 +497,26 @@ theorem coefficients_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
         ?_ (fun _ _ h => h)
   change Store.inBlock m.store.length 0 7 ⊔ Fp.blocks [c, s] [2, 2] ≤ _
   exact sup_le (Fp.inBlock_le_sup_above le_rfl) le_sup_left
+
+/-- Scoped coefficient computation returns the exact complex Givens coefficients and
+releases all scratch. Input and output views may overlap; the two output views are apart.
+The actual radius test covers the zero pair without a division by zero.
+[GolubVanLoan2013, Algorithm 5.1.3]. -/
+theorem coefficients_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
+    (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
+    {τ : Tape ℝ} {m : Mem ℝ} {a b c s : ℕ × ℕ} {u v : ℂ}
+    (hcs : Fp.Disj (Store.inBlock c.1 c.2 2) (Store.inBlock s.1 s.2 2))
+    (hu0 : m.store.get a.1 a.2 = some u.re)
+    (hu1 : m.store.get a.1 (a.2 + 1) = some u.im)
+    (hv0 : m.store.get b.1 b.2 = some v.re)
+    (hv1 : m.store.get b.1 (b.2 + 1) = some v.im)
+    (hc : c.2 + 2 ≤ m.store.len c.1) (hs : s.2 + 2 ≤ m.store.len s.1) :
+    Writes .total I τ coefficients.body (Env.frame [] [a, b, c, s])
+      (Fp.blocks [c, s] [2, 2])
+      (fun m' => m'.pos = m.pos ∧ m'.readBlocks [c, s] [2, 2] =
+        some [[(givensCoeffs u v).1.re, (givensCoeffs u v).1.im],
+          [(givensCoeffs u v).2.re, (givensCoeffs u v).2.im]]) m := by
+  simpa only [coefficientWords_eq hE] using coefficients_writes_word (τ := τ) hS hCmp
+    hcs hu0 hu1 hv0 hv1 hc hs
 
 end NLAlib.ShiftedQR

@@ -2273,6 +2273,14 @@ Non-blocking, all done:
   under `.lake/packages`, in the trusted base). Chosen over rebuilding unconditionally after the
   restore: the same build without downloading the cache first, and sound, since a restored
   `.lake` could hold outputs whose traces match the sources while their contents do not.
+  **Build reuse update (2026-11-14).** The cold-build-only CI policy above is replaced by
+  provenance-checked build reuse, described in [CI build reuse](../contributing/checks.md#ci-build-reuse).
+  Generic GitHub `.lake` caches remain disabled. Only immutable artifacts from completed,
+  successful main-push CI runs can supply outputs; their recorded revision, compatibility and
+  archive digest are verified before restore. Lake rehashes inputs and rebuilds changes and
+  dependents, then every audit and the full replay still run. The trusted producer and immutable
+  artifact bind restored output bytes to the recorded source, addressing the trace-only gap
+  above without skipping the replay or trusting PR-produced build outputs.
 * (c) `scripts/stage_check.sh` runs `lake exe mk_all --lib NLAlib --check`, so no `NLAlib` module
   is unreachable from `NLAlib.lean`, hence unreplayed and unaudited (CI already did).
 * (d) The docstrings say that a hand-named `partial` `f._unsafe_rec` beside a safe `f` is counted

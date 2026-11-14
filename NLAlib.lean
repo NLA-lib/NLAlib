@@ -684,6 +684,7 @@ public import NLAlib.Matrix.FinitePrecision.OpsSampleCongr
 public import NLAlib.Matrix.FinitePrecision.OpsSampleMap
 public import NLAlib.Matrix.FinitePrecision.OpsSampling
 public import NLAlib.Matrix.FinitePrecision.OpsSamplingMeasurable
+public import NLAlib.Matrix.FinitePrecision.OpsUnitarySimilarity
 public import NLAlib.Matrix.FinitePrecision.ResidualGap
 public import NLAlib.Matrix.FinitePrecision.Rounding
 public import NLAlib.Matrix.FinitePrecision.Samples
@@ -808,6 +809,7 @@ public import NLAlib.Matrix.Perturbation.SymmetricBackward
 public import NLAlib.Matrix.Perturbation.TruncationWindow
 public import NLAlib.Matrix.Perturbation.TruncationWindowFrobenius
 public import NLAlib.Matrix.Perturbation.TruncationWindowNuclear
+public import NLAlib.Matrix.Perturbation.UnitarySimilarity
 public import NLAlib.Matrix.Perturbation.Wedin
 public import NLAlib.Matrix.Pseudoinverse.ConditionNumber
 public import NLAlib.Matrix.Pseudoinverse.GeneralTikhonov
@@ -944,6 +946,7 @@ public import NLAlib.Ops.ContextSemantics
 public import NLAlib.Ops.Contract
 public import NLAlib.Ops.Counted
 public import NLAlib.Ops.CountedLoop
+public import NLAlib.Ops.Examples.Backward
 public import NLAlib.Ops.Examples.Bilinear
 public import NLAlib.Ops.Examples.Bits
 public import NLAlib.Ops.Examples.Built
@@ -980,6 +983,7 @@ public import NLAlib.Ops.LinkWorkspace
 public import NLAlib.Ops.Logic
 public import NLAlib.Ops.Logic.Allocation
 public import NLAlib.Ops.Logic.Attr
+public import NLAlib.Ops.Logic.Backward
 public import NLAlib.Ops.Logic.BlockPartition
 public import NLAlib.Ops.Logic.BlockSequence
 public import NLAlib.Ops.Logic.Builder

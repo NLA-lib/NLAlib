@@ -821,6 +821,9 @@ public import NLAlib.Matrix.Pseudoinverse.RegularizedLeastSquares
 public import NLAlib.Matrix.Pseudoinverse.Tikhonov
 public import NLAlib.Matrix.Pseudoinverse.TotalLeastSquares
 public import NLAlib.Matrix.Pseudoinverse.TruncatedSVD
+public import NLAlib.Matrix.QRIteration.DeflationConditioning
+public import NLAlib.Matrix.QRIteration.DeflationHypotheses
+public import NLAlib.Matrix.QRIteration.DeflationRanges
 public import NLAlib.Matrix.QRIteration.Dichotomy
 public import NLAlib.Matrix.QRIteration.EigenvectorWeights
 public import NLAlib.Matrix.QRIteration.FindRitzSolve

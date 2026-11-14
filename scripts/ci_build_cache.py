@@ -5,6 +5,7 @@ The GitHub run is the provenance boundary; the archive digest detects corruption
 Lake must subsequently build with --rehash, and all audits still run.
 """
 import argparse
+from contextlib import contextmanager
 import hashlib
 import json
 import os
@@ -27,6 +28,22 @@ def cache_key(root, runner_os, arch):
     pins = {name: digest(root / name) for name in PINS}
     key = hashlib.sha256(json.dumps(pins, sort_keys=True).encode()).hexdigest()
     return f"nlalib-build-v1-{runner_os}-{arch}-{key}"
+
+
+@contextmanager
+def read_archive(archive):
+    """Read a zstd tar stream without depending on a platform's tar executable."""
+    process = subprocess.Popen(["zstd", "-dc", str(archive)], stdout=subprocess.PIPE)
+    try:
+        with tarfile.open(fileobj=process.stdout, mode="r|") as stream:
+            yield stream
+        if process.wait() != 0:
+            raise ValueError("cache archive decompression failed")
+    finally:
+        process.stdout.close()
+        if process.poll() is None:
+            process.terminate()
+        process.wait()
 
 
 def select_cache(repository, key, read_api, sha=None):
@@ -65,8 +82,20 @@ def pack(root, out, key, sha, run_id, attempt):
             raise ValueError(f"build cache cannot contain symlinks: {path}")
     out.mkdir(parents=True, exist_ok=True)
     archive = out / "build.tar.zst"
-    subprocess.run(["tar", "--hard-dereference", "-I", "zstd -T2 -3", "-cf", str(archive),
-                    "-C", str(root), ".lake/build"], check=True)
+    process = subprocess.Popen(["zstd", "-q", "-f", "-T2", "-3", "-o", str(archive)],
+                               stdin=subprocess.PIPE)
+    try:
+        with tarfile.open(fileobj=process.stdin, mode="w|", dereference=True) as stream:
+            stream.add(build, arcname=".lake/build")
+        process.stdin.close()
+        if process.wait() != 0:
+            raise ValueError("cache archive compression failed")
+    finally:
+        if not process.stdin.closed:
+            process.stdin.close()
+        if process.poll() is None:
+            process.terminate()
+        process.wait()
     (out / "manifest.json").write_text(json.dumps({
         "key": key, "sha": sha, "run_id": run_id, "run_attempt": attempt,
         "archive_sha256": digest(archive),
@@ -85,23 +114,15 @@ def restore(root, source, key, sha, run_id, attempt):
             or (root / ".lake/build").is_symlink()):
         raise ValueError("restore requires an empty build destination")
     # Validate every member before extracting anything into the workspace.
-    process = subprocess.Popen(["zstd", "-dc", str(archive)], stdout=subprocess.PIPE)
-    try:
-        with tarfile.open(fileobj=process.stdout, mode="r|") as stream:
-            for member in stream:
-                path = PurePosixPath(member.name)
-                if (path.is_absolute() or ".." in path.parts or path.parts[:2] != (".lake", "build")
-                        or not (member.isfile() or member.isdir())):
-                    raise ValueError(f"unsafe cache member: {member.name}")
-        if process.wait() != 0:
-            raise ValueError("cache archive decompression failed")
-    finally:
-        process.stdout.close()
-        if process.poll() is None:
-            process.terminate()
-        process.wait()
-    subprocess.run(["tar", "--zstd", "--no-same-owner", "-xf", str(archive),
-                    "-C", str(root)], check=True)
+    with read_archive(archive) as stream:
+        for member in stream:
+            path = PurePosixPath(member.name)
+            if (path.is_absolute() or ".." in path.parts or path.parts[:2] != (".lake", "build")
+                    or not (member.isfile() or member.isdir()) or "\\" in member.name
+                    or any(":" in part for part in path.parts)):
+                raise ValueError(f"unsafe cache member: {member.name}")
+    with read_archive(archive) as stream:
+        stream.extractall(root, filter="data")
 
 
 def output(values):

@@ -7,6 +7,7 @@ import subprocess
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from ci_build_cache import PINS, cache_key, digest, pack, restore, select_cache
 
@@ -93,7 +94,7 @@ class CompatibilityTests(unittest.TestCase):
             self.assertEqual(original, cache_key(root, "Linux", "X64"))
 
 
-@unittest.skipUnless(shutil.which("zstd") and shutil.which("tar"), "requires tar and zstd")
+@unittest.skipUnless(shutil.which("zstd"), "requires zstd")
 class ArchiveTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -117,6 +118,17 @@ class ArchiveTests(unittest.TestCase):
     def test_round_trip_preserves_build_outputs(self):
         self.restore()
         self.assertEqual((self.dest / ".lake/build/lib/lean/Module.olean").read_bytes(), b"checked build")
+
+    def test_archive_round_trip_does_not_invoke_system_tar(self):
+        original = subprocess.Popen
+
+        def portable_command(args, **kwargs):
+            self.assertEqual(args[0], "zstd")
+            return original(args, **kwargs)
+
+        with patch("ci_build_cache.subprocess.Popen", side_effect=portable_command):
+            pack(self.source, self.cache, "compatible", "a" * 40, 42, 1)
+            self.restore()
 
     def test_changed_bytes_are_rejected_before_any_workspace_write(self):
         with (self.cache / "build.tar.zst").open("ab") as stream:
@@ -143,6 +155,8 @@ class ArchiveTests(unittest.TestCase):
     def test_unsafe_archive_members_cannot_escape_or_replace_sources(self):
         for name, kind in (("../escape", tarfile.REGTYPE), ("NLAlib.lean", tarfile.REGTYPE),
                            (".lake/build/../../escape", tarfile.REGTYPE),
+                           (".lake/build/..\\..\\escape", tarfile.REGTYPE),
+                           (".lake/build/C:escape", tarfile.REGTYPE),
                            (".lake/build/link", tarfile.SYMTYPE),
                            (".lake/build/link", tarfile.LNKTYPE)):
             tar_path = self.root / "bad.tar"

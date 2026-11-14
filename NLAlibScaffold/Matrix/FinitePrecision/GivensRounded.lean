@@ -538,6 +538,46 @@ theorem Ops.StdModel.norm_rotatePair_sub_le {M : Machine ℝ} {u : ℝ} (hM : St
           (x.re, x.im) (y.re, y.im)).2⟩ : ℂ) -
         ((givensCoeffs p q).1 * x + (givensCoeffs p q).2 * y)‖ ≤
       12 * u * Real.sqrt (‖x‖ ^ 2 + ‖y‖ ^ 2) := by
-  sorry
+  obtain ⟨hc1, hc2⟩ := norm_roundedGivensCoeffs_sub_le hM hu hu' p q
+  have hL := norm_linearWords_sub_le hM hu hu' (roundedGivensCoeffs M p q).1
+    (roundedGivensCoeffs M p q).2 x y
+  have hU := norm_givensCoeffs_fst_sq_add p q
+  set a := (roundedGivensCoeffs M p q).1
+  set b := (roundedGivensCoeffs M p q).2
+  set c := (givensCoeffs p q).1
+  set s := (givensCoeffs p q).2
+  have ha : ‖a‖ ≤ (1 + 4 * u) * ‖c‖ := by linarith [norm_sub_norm_le a c]
+  have hb : ‖b‖ ≤ (1 + 4 * u) * ‖s‖ := by linarith [norm_sub_norm_le b s]
+  have h2 : ‖(a * x + b * y) - (c * x + s * y)‖ ≤ 4 * u * ‖c‖ * ‖x‖ + 4 * u * ‖s‖ * ‖y‖ := by
+    have e : (a * x + b * y) - (c * x + s * y) = (a - c) * x + (b - s) * y := by ring
+    rw [e]
+    refine (norm_add_le _ _).trans ?_
+    rw [norm_mul, norm_mul]
+    exact add_le_add (mul_le_mul_of_nonneg_right hc1 (norm_nonneg _))
+      (mul_le_mul_of_nonneg_right hc2 (norm_nonneg _))
+  have hK2 : (‖c‖ * ‖x‖ + ‖s‖ * ‖y‖) ^ 2 ≤ ‖x‖ ^ 2 + ‖y‖ ^ 2 := by
+    have e : (‖c‖ ^ 2 + ‖s‖ ^ 2) * (‖x‖ ^ 2 + ‖y‖ ^ 2) = ‖x‖ ^ 2 + ‖y‖ ^ 2 := by
+      rw [hU, one_mul]
+    nlinarith [sq_nonneg (‖c‖ * ‖y‖ - ‖s‖ * ‖x‖)]
+  have hK0 : 0 ≤ ‖c‖ * ‖x‖ + ‖s‖ * ‖y‖ := by positivity
+  have hK : ‖c‖ * ‖x‖ + ‖s‖ * ‖y‖ ≤ Real.sqrt (‖x‖ ^ 2 + ‖y‖ ^ 2) :=
+    calc ‖c‖ * ‖x‖ + ‖s‖ * ‖y‖ = Real.sqrt ((‖c‖ * ‖x‖ + ‖s‖ * ‖y‖) ^ 2) :=
+          (Real.sqrt_sq hK0).symm
+      _ ≤ Real.sqrt (‖x‖ ^ 2 + ‖y‖ ^ 2) := Real.sqrt_le_sqrt hK2
+  have h1 : ‖(⟨(Pair.linearWords M (a.re, a.im) (b.re, b.im) (x.re, x.im) (y.re, y.im)).1,
+        (Pair.linearWords M (a.re, a.im) (b.re, b.im) (x.re, x.im) (y.re, y.im)).2⟩ : ℂ) -
+        (a * x + b * y)‖ ≤ 5 * u * ((1 + 4 * u) * ‖c‖ * ‖x‖ + (1 + 4 * u) * ‖s‖ * ‖y‖) :=
+    hL.trans (mul_le_mul_of_nonneg_left (add_le_add
+      (mul_le_mul_of_nonneg_right ha (norm_nonneg _))
+      (mul_le_mul_of_nonneg_right hb (norm_nonneg _))) (by linarith))
+  have h3 : 5 * u * ((1 + 4 * u) * ‖c‖ * ‖x‖ + (1 + 4 * u) * ‖s‖ * ‖y‖) +
+      (4 * u * ‖c‖ * ‖x‖ + 4 * u * ‖s‖ * ‖y‖) =
+      (9 * u + 20 * u ^ 2) * (‖c‖ * ‖x‖ + ‖s‖ * ‖y‖) := by ring
+  have h4 : (9 * u + 20 * u ^ 2) * (‖c‖ * ‖x‖ + ‖s‖ * ‖y‖) ≤
+      12 * u * Real.sqrt (‖x‖ ^ 2 + ‖y‖ ^ 2) := by
+    nlinarith [mul_le_mul_of_nonneg_left hK hu,
+      mul_nonneg (sub_nonneg.2 hu') (mul_nonneg hu hK0)]
+  refine (norm_sub_le_norm_sub_add_norm_sub _ (a * x + b * y) _).trans ?_
+  linarith [h1, h2, h3, h4]
 
 end NLAlib

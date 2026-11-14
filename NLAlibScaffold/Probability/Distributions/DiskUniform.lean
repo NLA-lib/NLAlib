@@ -50,7 +50,9 @@ noncomputable abbrev diskUniform (c : ℂ) (R : ℝ) : Measure ℂ :=
 /-- The uniform law on a disk of positive radius is a probability measure. -/
 theorem isProbabilityMeasure_diskUniform (c : ℂ) {R : ℝ} (hR : 0 < R) :
     IsProbabilityMeasure (diskUniform c R) := by
-  sorry
+  unfold diskUniform
+  exact ProbabilityTheory.cond_isProbabilityMeasure_of_finite
+    (Metric.measure_closedBall_pos volume c hR).ne' measure_closedBall_lt_top.ne
 
 /-- **A disk sample lands in a small disk with probability at most the area ratio**:
 $\mathbb{P}[w \in \mathbb{D}(z, \eta)] \le (\eta / R)^2$ for $w \sim \mathrm{Unif}(\mathbb{D}(c,

@@ -88,6 +88,15 @@ Statement changes made on the skeleton:
   for every shift and costs only a constant factor in $\boldsymbol{u}$ (all uses have $C \le 4.5$).
 * **S5** `hRhi`: $1.001\cdot2^{1/k} \to 2.002^{1/k}$, i.e. $\tilde\psi$ within $0.001/k$ as the paper's
   (eq:boundonpottilde); with a flat $1.001$ the constant $13$ fails for $k \ge 60$. P6 accordingly.
+* **S5** gains `hd`, no shift of `ss` an eigenvalue (as the exact Exc lemma has it). Without it
+  false: an eigenvalue $r$ makes the stagnation hypothesis vacuous (Lean's inverse is $0$).
+  $n = k = 2$, $\mathbf{H} = \mathbf{I} - uu^{\mathsf T}$, $u = (0.006, 0.006, \sqrt{1 - 7.2\cdot10^{-5}})$
+  (eigenvalues $0, 1, 1$, $\kappa = 1$, $\psi \approx 4.65\cdot10^{-4}$), `ss` $= [0, 0]$, $r = 0$,
+  $B = \alpha = 1$, $\gamma = 1/2$, $\theta = 1/(4.2\psi)$, $\varepsilon = 1/2$, $S$ an offset square
+  grid of spacing $0.7\tilde R$: every $s \in S$ is $\ge 0.166$ from the spectrum, so
+  $\|\mathbf{e}_n^{\mathsf T}(\mathbf{H} - s)^{-2}\| \le 36 < ((1-\gamma)\psi)^{-2}$. P9 supplies `hd`
+  as it supplies S4's `hne` (same `ss`): the Ritz shifts are tried first, and an eigenvalue shift
+  is accepted (exactly: `det_sub_smul_one_ne_zero_of_find_none`). `hkn`, `hγ`, `hε2` are unused.
 * **Q3** `hm`: $m^2 x \le 1/4 \to m x \le 1/4$ (sufficient and minimal; G16 row).
 * Labels: R1/R2 H → L (elementary proof); E2 L → H (needs Codex's matching).
 * **R4** lower bound $(1 + \eta)^{-1}\mathbf{R}_{nn} \le |\widehat{\mathbf{R}}_{nn}| \to

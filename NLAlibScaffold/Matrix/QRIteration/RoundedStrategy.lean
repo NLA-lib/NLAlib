@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Matrix.QRIteration.Ritz
+public import NLAlib.Matrix.QRIteration.Strategy
 public import NLAlib.Matrix.QRIteration.Dichotomy
 public import NLAlib.Matrix.Perturbation.UnitarySimilarity
 
@@ -429,10 +430,80 @@ theorem isPromisingRitzValue_findRitzWith {B : ℝ} {m : ℕ} {t : ℕ → List 
   gcongr
   norm_num
 
+/-- The arithmetic of the averaging step over a covering of at most $9/\varepsilon^2$ shifts:
+the weight bound with $t = 1/1.998$, the averaging and the moment bound at the chosen point give
+$1 \le ((1 - \gamma)\psi)^k x$. -/
+private theorem one_le_pow_mul_of_le_card_mul_sum_of_covers {k : ℕ}
+    {B θ α ξ γ ψ ε R x P N f : ℝ} (hB : 0 < B) (hθ : 0 < θ) (hα : 0 < α) (hξ : 0 < ξ)
+    (hγ1 : γ < 1) (hψ : 0 < ψ) (hx : 0 ≤ x) (hε0 : 0 < ε) (hR0 : 0 < R)
+    (hε : ε ^ (2 * k) = ε ^ 2 * ((ξ * (1 - γ)) ^ k / (13 * B ^ 4 * (α * θ) ^ (2 * k))) ^ 2)
+    (hRk : R ^ k ≤ 2.002 * B * (θ * α * ψ) ^ k)
+    (hP : (1 - 1 / 1.998) ^ 2 * ξ ^ (2 * k) ≤ B ^ 4 * (α * θ) ^ (2 * k) * P)
+    (hsle : P / (ε * R) ^ (2 * k) ≤ N * f) (hN : N ≤ 9 / ε ^ 2) (hf0 : 0 ≤ f)
+    (hf : f ≤ B ^ 2 * x ^ 2) :
+    1 ≤ ((1 - γ) * ψ) ^ k * x := by
+  have h1 : P ≤ (9 / ε ^ 2) * (B ^ 2 * x ^ 2) * (ε * R) ^ (2 * k) := by
+    calc P ≤ _ := (div_le_iff₀ (by positivity)).mp hsle
+      _ ≤ _ := by gcongr
+  have hR2 : (ε * R) ^ (2 * k) ≤ ε ^ 2 * ((ξ * (1 - γ)) ^ k / (13 * B ^ 4 * (α * θ) ^ (2 * k))) ^ 2
+      * (2.002 * B * (θ * α * ψ) ^ k) ^ 2 := by
+    rw [mul_pow ε R, hε, mul_comm 2 k, pow_mul R]
+    gcongr
+  have h2 : (1 - 1 / 1.998) ^ 2 * ξ ^ (2 * k) ≤
+      9 * 2.002 ^ 2 / 169 * ξ ^ (2 * k) * (((1 - γ) * ψ) ^ k * x) ^ 2 := by
+    calc (1 - 1 / 1.998) ^ 2 * ξ ^ (2 * k) ≤ B ^ 4 * (α * θ) ^ (2 * k) * P := hP
+      _ ≤ B ^ 4 * (α * θ) ^ (2 * k) * ((9 / ε ^ 2) * (B ^ 2 * x ^ 2) *
+          (ε ^ 2 * ((ξ * (1 - γ)) ^ k / (13 * B ^ 4 * (α * θ) ^ (2 * k))) ^ 2
+            * (2.002 * B * (θ * α * ψ) ^ k) ^ 2)) := by gcongr; exact h1.trans (by gcongr)
+      _ = _ := by
+          simp only [mul_pow, ← pow_mul]
+          field_simp
+          ring
+  have hy : 0 ≤ ((1 - γ) * ψ) ^ k * x := mul_nonneg (pow_nonneg (by nlinarith) _) hx
+  have h3 : (1 - 1 / 1.998 : ℝ) ^ 2 ≤ 9 * 2.002 ^ 2 / 169 * (((1 - γ) * ψ) ^ k * x) ^ 2 :=
+    le_of_mul_le_mul_right (by linarith [h2]) (by positivity : 0 < ξ ^ (2 * k))
+  by_contra h
+  have := pow_lt_one₀ hy (not_le.mp h) two_ne_zero
+  nlinarith
+
+/-- The spacing and radius of `NLAlib.exists_mem_le_norm_inv_pow_of_covers`: for $k \ge 2$,
+$\varepsilon = b^{k/(k-1)}$ with $b = \xi(1-\gamma)/((13B^4)^{1/k}\alpha^2\theta^2) > 0$ is
+positive with $\varepsilon^{2k} = \varepsilon^2(b^k)^2$, and
+$\tilde R \le 2.002^{1/k}\theta\alpha B^{1/k}\psi$ gives
+$\tilde R^k \le 2.002B(\theta\alpha\psi)^k$. -/
+private theorem spacing_pow_and_radius_pow_le_of_covers {B θ α ξ γ ψ R ε : ℝ} {k : ℕ}
+    (hk : 2 ≤ k) (hB : 0 < B) (hθ : 0 < θ) (hα : 0 < α) (hξ : 0 < ξ) (hγ1 : γ < 1)
+    (hR0 : 0 ≤ R)
+    (hRhi : R ≤ (2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) * ψ)
+    (hε : ε = (ξ * (1 - γ) / ((13 * B ^ 4) ^ ((k : ℝ)⁻¹) * α ^ 2 * θ ^ 2)) ^
+      ((k : ℝ) / (k - 1))) :
+    0 < ε ∧ ε ^ (2 * k) = ε ^ 2 * ((ξ * (1 - γ)) ^ k / (13 * B ^ 4 * (α * θ) ^ (2 * k))) ^ 2 ∧
+      R ^ k ≤ 2.002 * B * (θ * α * ψ) ^ k := by
+  have hk1 : (1 : ℝ) < k := by exact_mod_cast hk
+  have hk0 : (0 : ℝ) < k := by linarith
+  have hγ' : 0 < 1 - γ := by linarith
+  have hrpow : ∀ c : ℝ, 0 ≤ c → (c ^ ((k : ℝ)⁻¹)) ^ k = c := fun c hc => by
+    rw [← Real.rpow_natCast, ← Real.rpow_mul hc, inv_mul_cancel₀ hk0.ne', Real.rpow_one]
+  set b := ξ * (1 - γ) / ((13 * B ^ 4) ^ ((k : ℝ)⁻¹) * α ^ 2 * θ ^ 2) with hb_def
+  have hb0 : 0 < b := by positivity
+  have hεk : ε ^ (k - 1) = b ^ k := by
+    rw [hε, ← Real.rpow_natCast, ← Real.rpow_mul hb0.le, Nat.cast_sub (by omega), Nat.cast_one,
+      div_mul_cancel₀ _ (by linarith), Real.rpow_natCast]
+  refine ⟨hε ▸ Real.rpow_pos_of_pos hb0 _, ?_, ?_⟩
+  · have hbk : b ^ k = (ξ * (1 - γ)) ^ k / (13 * B ^ 4 * (α * θ) ^ (2 * k)) := by
+      simp only [hb_def, div_pow, mul_pow, hrpow _ (by positivity : (0 : ℝ) ≤ 13 * B ^ 4)]
+      ring
+    rw [← hbk, ← hεk, ← pow_mul, ← pow_add]
+    congr 1
+    omega
+  · refine (pow_le_pow_left₀ hR0 hRhi k).trans (le_of_eq ?_)
+    simp only [mul_pow, hrpow _ (by norm_num : (0 : ℝ) ≤ 2.002), hrpow _ hB.le]
+    ring
+
 /-- **The exceptional shifts contain a contracting shift** (the deterministic core of `Exc`,
 [BanksGarzaVargasSrivastava2022, Lemma 5.3], with the corrections of G13): let
 $\mathbf{H}\mathbf{V} = \mathbf{V}\mathbf{D}$ with $\kappa(\mathbf{V}) \le B$, the $k \ge 2$ shifts
-`ss` be $\theta$-optimal, $r$ an $\alpha$-promising one with
+`ss` be $\theta$-optimal, none an eigenvalue, $r$ an $\alpha$-promising one with
 $\tau_{(z - r)^k}(\mathbf{H}) \ge \xi\psi_k(\mathbf{H})$, $\psi_k(\mathbf{H}) > 0$, the radius
 $\tilde R$ within $[1.998^{1/k}, 2.002^{1/k}]\,\theta\alpha B^{1/k}\psi_k(\mathbf{H})$
 (the computed radius from $\tilde\psi$ within $0.001/k$, as the paper's
@@ -445,14 +516,15 @@ $\tau_{(z - s)^k}(\mathbf{H}) \le (1 - \gamma)\psi_k(\mathbf{H})$. The covering 
 itself: the paper's intersection of the net with $\mathbb{D}(r, \tilde R)$ can drop the points
 that cover its boundary, and its rounding budget $0.1\varepsilon\tilde R$ exceeds the covering
 slack; the program covers $\mathbb{D}(r, (1 + \varepsilon)\tilde R)$ and rounds within
-$0.005\varepsilon\tilde R$. -/
+$0.005\varepsilon\tilde R$. Without "none an eigenvalue" the statement is false: for $r$ an
+eigenvalue the stagnation hypothesis is vacuous (the inverse is Lean's $0$). -/
 theorem exists_mem_le_norm_inv_pow_of_covers {B θ α ξ γ R ε : ℝ} {k : ℕ}
     {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {e : Fin (n + 1) → ℂ} {ss : List ℂ} {r : ℂ}
     {S : Finset ℂ} (hk : 2 ≤ k) (hkn : k ≤ n) (hlen : ss.length = k)
     (hV : IsUnit V) (hHV : H * V = V * Matrix.diagonal e) (hκ : pseudoConditionNumber V ≤ B)
     (hopt : IsOptimalRitzValues θ H ss) (hr : IsPromisingRitzValue α V e ss r)
-    (hψ : 0 < hessenbergPotential k H) (hγ : 0 < γ) (hγ1 : γ < 1) (hξ : 0 < ξ)
-    (hθ : 1 ≤ θ) (hα : 1 ≤ α)
+    (hd : ∀ i, ∀ s ∈ ss, e i ≠ s) (hψ : 0 < hessenbergPotential k H) (hγ : 0 < γ)
+    (hγ1 : γ < 1) (hξ : 0 < ξ) (hθ : 1 ≤ θ) (hα : 1 ≤ α)
     (hτ : ‖WithLp.toLp 2 ((Polynomial.aeval H (shiftPoly (List.replicate k r)))⁻¹
       (Fin.last n))‖ ≤ (ξ * hessenbergPotential k H)⁻¹ ^ k)
     (hRlo : (1.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) * hessenbergPotential k H ≤ R)
@@ -463,7 +535,59 @@ theorem exists_mem_le_norm_inv_pow_of_covers {B θ α ξ γ R ε : ℝ} {k : ℕ
     (hcard : (S.card : ℝ) ≤ 9 / ε ^ 2) (hne : ∀ s ∈ S, ∀ i, e i ≠ s) :
     ∃ s ∈ S, ((1 - γ) * hessenbergPotential k H)⁻¹ ^ k ≤
       ‖WithLp.toLp 2 ((Polynomial.aeval H (shiftPoly (List.replicate k s)))⁻¹ (Fin.last n))‖ := by
-  sorry
+  subst hlen
+  set k := ss.length with hk_def
+  set ψ := hessenbergPotential k H with hψ_def
+  have hB1 : 1 ≤ B := (one_le_pseudoConditionNumber hV.ne_zero).trans hκ
+  have hR0 : 0 < R := lt_of_lt_of_le (by positivity) hRlo
+  obtain ⟨hε0, hε2k, hRk⟩ := spacing_pow_and_radius_pow_le_of_covers hk (by linarith)
+    (by linarith) (by linarith) hξ hγ1 hR0.le hRhi hε
+  -- stagnation of `r`
+  have hstag : ‖WithLp.toLp 2 (((H - r • (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ))⁻¹ ^
+      k) (Fin.last n))‖ * (ξ * ψ) ^ k ≤ 1 := by
+    rw [aeval_shiftPoly_replicate, ← Matrix.inv_pow', inv_pow] at hτ
+    rwa [← le_div_iff₀ (by positivity), one_div]
+  -- the weight on the disk, by Paley–Zygmund with `t = 1/1.998`
+  set W := Finset.univ.filter (fun i => ‖e i - r‖ ≤ R) with hW_def
+  have hP : (1 - 1 / 1.998) ^ 2 * ξ ^ (2 * k) ≤
+      B ^ 4 * (α * θ) ^ (2 * k) * ∑ i ∈ W, lastRowWeights V i := by
+    have h := hopt.sq_mul_pow_le_mul_sum_lastRowWeights_filter hV hHV hd hr (by linarith)
+      (by linarith) hξ (by norm_num : (0 : ℝ) < 1 / 1.998) (by norm_num) hψ hstag
+    refine h.trans ?_
+    gcongr ?_ * _ * ?_
+    · exact Finset.sum_nonneg fun i _ => lastRowWeights_nonneg V i
+    · exact pow_le_pow_left₀ (pseudoConditionNumber_nonneg V) hκ 4
+    · refine Finset.sum_le_sum_of_subset_of_nonneg (fun i => ?_)
+        fun i _ _ => lastRowWeights_nonneg V i
+      simp only [Finset.mem_filter, Finset.mem_univ, true_and, hW_def]
+      intro hi
+      refine hi.trans (le_trans ?_ hRlo)
+      rw [div_div_eq_mul_div, div_one,
+        Real.mul_rpow (pseudoConditionNumber_nonneg V) (by norm_num)]
+      calc α * θ * (pseudoConditionNumber V ^ (k : ℝ)⁻¹ * 1.998 ^ (k : ℝ)⁻¹) * ψ
+          ≤ α * θ * (B ^ (k : ℝ)⁻¹ * 1.998 ^ (k : ℝ)⁻¹) * ψ := by gcongr
+        _ = _ := by ring
+  -- average over the covering
+  have hcov : ∀ i ∈ W, ∃ s ∈ S, ‖e i - s‖ ≤ ε * R := fun i hi =>
+    hcover _ (by simpa only [Finset.mem_filter, Finset.mem_univ, true_and, hW_def] using hi)
+  obtain ⟨i₀, hi₀⟩ : W.Nonempty := by
+    by_contra h
+    rw [Finset.not_nonempty_iff_eq_empty.mp h, Finset.sum_empty, mul_zero] at hP
+    have : 0 < (1 - 1 / 1.998 : ℝ) ^ 2 * ξ ^ (2 * k) := by positivity
+    linarith
+  obtain ⟨s, hs, hsle⟩ := exists_mem_sum_div_pow_le_card_mul_sum (k := 2 * k)
+    (lastRowWeights_nonneg V) ⟨_, (hcov i₀ hi₀).choose_spec.1⟩
+    (fun i s hs => hne s hs i) hcov
+  refine ⟨s, hs, ?_⟩
+  set x := ‖WithLp.toLp 2 (((H - s • (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ))⁻¹ ^ k)
+    (Fin.last n))‖ with hx_def
+  have hf : ∑ i, lastRowWeights V i / ‖e i - s‖ ^ (2 * k) ≤ B ^ 2 * x ^ 2 :=
+    (sum_lastRowWeights_div_pow_two_mul_le hV hHV (hne s hs) k).trans (by gcongr)
+  have h1 := one_le_pow_mul_of_le_card_mul_sum_of_covers (by positivity) (by positivity)
+    (by positivity) hξ hγ1 hψ (norm_nonneg _) hε0 hR0 hε2k hRk hP hsle hcard
+    (Finset.sum_nonneg fun i _ => div_nonneg (lastRowWeights_nonneg V i) (by positivity)) hf
+  rw [aeval_shiftPoly_replicate, ← Matrix.inv_pow', inv_pow, inv_le_iff_one_le_mul₀ (by positivity)]
+  rwa [mul_comm] at h1
 
 /-- **The while loop as a contraction with additive backward errors**
 ([BanksGarzaVargasSrivastava2022, Lemma 6.4], abstracted): let $\mathbf{H}_0, \dots,

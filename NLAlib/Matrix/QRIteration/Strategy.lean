@@ -403,7 +403,7 @@ theorem norm_sub_le_of_mem_squareGrid {c s : ℂ} {R ε : ℝ} (hR : 0 ≤ R) (h
 /-- Averaging over a finite set $G$ of shifts covering the eigenvalues indexed by $S$ within
 $\rho$: some $s \in G$ has
 $\sum_{i \in S} w_i/\rho^k \le \lvert G\rvert\sum_i w_i/\lvert\mathbf{d}_i - s\rvert^k$. -/
-private theorem exists_mem_sum_div_pow_le_card_mul_sum {G : Finset ℂ}
+theorem exists_mem_sum_div_pow_le_card_mul_sum {G : Finset ℂ}
     {S : Finset (Fin (n + 1))} {w : Fin (n + 1) → ℝ} {d : Fin (n + 1) → ℂ} {ρ : ℝ} {k : ℕ}
     (hw : ∀ i, 0 ≤ w i) (hG : G.Nonempty) (hd : ∀ i, ∀ s ∈ G, d i ≠ s)
     (hcov : ∀ i ∈ S, ∃ s ∈ G, ‖d i - s‖ ≤ ρ) :

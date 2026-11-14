@@ -336,3 +336,35 @@ theorem ScalarIns.evalBlock_append_some {K Op : Type}
     simp only [applyWrites, List.foldl_cons, Option.map_map, Function.comp_def]
 
 end NLAlib.Ops
+
+namespace NLAlib.Ops.ScalarIns
+
+/-- Splitting an ordered write trace preserves its exact update order. -/
+theorem applyWrites_append {K : Type} (f : ℕ × ℕ → Option K)
+    (xs ys : List ((ℕ × ℕ) × K)) :
+    applyWrites f (xs ++ ys) = applyWrites (applyWrites f xs) ys := by
+  simp only [applyWrites, List.foldl_append]
+
+/-- A scalar prefix leaves every cell outside its actual write trace unchanged. -/
+theorem applyWrites_of_notMem {K : Type} {f : ℕ × ℕ → Option K}
+    {ws : List ((ℕ × ℕ) × K)} {z : ℕ × ℕ} (hz : z ∉ ws.map Prod.fst) :
+    applyWrites f ws z = f z := by
+  induction ws generalizing f with
+  | nil => rfl
+  | cons w ws ih =>
+    simp only [List.map_cons, List.mem_cons, not_or] at hz
+    simp only [applyWrites, List.foldl_cons]
+    change applyWrites (Function.update f w.1 (some w.2)) ws z = _
+    rw [ih hz.2, Function.update_of_ne hz.1]
+
+/-- Reading a scalar trace at its last write gives that word. Earlier writes and the
+surrounding cell function are irrelevant once the suffix preserves the cell. -/
+theorem applyWrites_get {K : Type} {f : ℕ × ℕ → Option K}
+    {xs ys : List ((ℕ × ℕ) × K)} {z : ℕ × ℕ} {v : K}
+    (hz : z ∉ ys.map Prod.fst) :
+    applyWrites f (xs ++ (z, v) :: ys) z = some v := by
+  rw [applyWrites_append]
+  change applyWrites (Function.update (applyWrites f xs) z (some v)) ys z = _
+  rw [applyWrites_of_notMem hz, Function.update_self]
+
+end NLAlib.Ops.ScalarIns

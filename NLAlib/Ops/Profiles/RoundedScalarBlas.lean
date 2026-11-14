@@ -7,6 +7,7 @@ module
 
 public import NLAlib.Ops.Profiles.RoundedBlas
 public import NLAlib.Ops.Blas.DotFunction
+public import NLAlib.Ops.Logic.Writes
 
 /-!
 # Sequential rounded BLAS over scalar-only primitives
@@ -79,6 +80,55 @@ theorem isFn_dot {K : Type} [Inhabited K] {M : Machine K} {I : Interp ScalarOp T
   have h := isFn_dot_seq hS
   simpa only [Interp.link_comp, table, tableWith, Blas.seq, Profile.over,
     Blas.level1, Blas.sumSeq] using h
+
+/-- Exact scalar arithmetic gives the exact level-one contracts of the actual lowered trees. -/
+theorem exact_laws {K : Type} [Inhabited K] {M : Machine K} {dec : K → ℝ}
+    (hM : ExactModel dec M) {I : Interp ScalarOp Tst K} (hI : IsScalar M I) :
+    IsExactBlas1 dec (fun _ => True) (I.link table) := by
+  have hsum : Blas.seqSumErr 0 = fun _ => 0 := by
+    funext n
+    simp [Blas.seqSumErr]
+  apply IsBlas1.toExact
+  simpa [Blas.seq.err, Blas.level1Err, hsum] using
+    (laws hM.toStdModel_zero le_rfl hI).2
+
+/-- The existing sequential norm lowering, renamed into any scalar-operation signature.
+Its entire syntax consists of scalar calls, loops and scoped scratch allocation. -/
+def nrm2 {Op : Type} [Has ScalarOp Op] : Impl Op Tst :=
+  ⟨1, 1, 1, ((.call (Has.inj Blas1Op.nrm2) [.var 0] [⟨0, .var 1⟩] [⟨1, .var 2⟩] :
+    Stmt RCLikeBlas.Operation Tst).link table).link (fun o => .inr (Has.inj o))⟩
+
+/-- The actual scalar-lowered sequential norm computes the exact nonnegative Euclidean norm
+of its supplied real words. Only scalar contracts, exact arithmetic, input reads and output
+capacity are assumed; no vector operation remains primitive. -/
+theorem writes_nrm2_exact {Op : Type} [Has ScalarOp Op] {M : Machine ℝ}
+    {I : Interp Op Tst ℝ} (hS : IsScalar M I) (hE : ExactModel id M)
+    {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {x z : ℕ × ℕ} {xs : List ℝ}
+    (hl : m.Live [x, z]) (hx : m.store.readBlock x.1 x.2 n = some xs)
+    (hz : z.2 < m.store.len z.1) (hxz : x.1 ≠ z.1) :
+    Writes .total I τ nrm2.body (Env.frame [n] [x, z]) (Store.inBlock z.1 z.2 1)
+      (fun μ => μ.pos = m.pos ∧ μ.store.get z.1 z.2 =
+        some (Real.sqrt (∑ i ∈ Finset.range n, (vec xs i) ^ 2))) m := by
+  let rename : Table ScalarOp Op Tst := fun o => .inr (Has.inj o)
+  let J := I.link rename
+  have hJ : IsScalar M J := fun o => Interp.link_meets_kept rfl (hS o)
+  have hB := exact_laws hE hJ
+  have hw := writes_call_cell (τ := τ) (m := m) (I := J.link table) hB.nrm2
+    (ρ := Env.frame [n] [x, z]) (d := [n]) (a := [x]) (z := z) (k := 0)
+    (ds := [.var 0]) (ins := [⟨0, .var 1⟩]) (outs := [⟨1, .var 2⟩])
+    rfl rfl rfl rfl rfl rfl (by simpa [OutApart] using hxz)
+    (fun _ => ⟨hl, ⟨[xs], by simp [Mem.readBlocks, nrm2ExactRel, nrm2Rel, hx], trivial⟩, hz⟩)
+  have hread : m.readBlocks [x] [n] = some [xs] := by simp [Mem.readBlocks, hx]
+  have hw' := hw.mono (P' := fun μ => μ.pos = m.pos ∧ μ.store.get z.1 z.2 =
+    some (Real.sqrt (∑ i ∈ Finset.range n, (vec xs i) ^ 2))) le_rfl (fun μ _ hp => ?_)
+  · change Writes .total I τ _ _ _ _ m
+    simpa only [Writes, Wp, nrm2, run_link, J, rename] using hw'
+  · obtain ⟨hpos, vals, value, hvals, hvalue, hrel⟩ := hp
+    have he : vals = [xs] := Option.some.inj (hvals.symm.trans hread)
+    subst vals
+    have hv : value = Real.sqrt (∑ i ∈ Finset.range n, (vec xs i) ^ 2) := by
+      simpa [nrm2ExactRel] using hrel
+    exact ⟨by simpa using hpos, hv ▸ hvalue⟩
 
 /-- Unit-work scalar cells with no hidden primitive workspace. Canonical control, addressing,
 allocation and comparison costs remain the shared nonzero charges. -/

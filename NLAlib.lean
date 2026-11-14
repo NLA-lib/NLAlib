@@ -887,6 +887,7 @@ public import NLAlib.Matrix.Subspaces.Tangent
 public import NLAlib.Ops.AllocationFree
 public import NLAlib.Ops.ArithmeticError
 public import NLAlib.Ops.Attr
+public import NLAlib.Ops.Blas.BlockCopy
 public import NLAlib.Ops.Blas.Broadcast
 public import NLAlib.Ops.Blas.Clamp
 public import NLAlib.Ops.Blas.ColumnProducts
@@ -909,7 +910,9 @@ public import NLAlib.Ops.Blas.MapCorrect
 public import NLAlib.Ops.Blas.Matrix
 public import NLAlib.Ops.Blas.MatrixCorrect
 public import NLAlib.Ops.Blas.Mixed
+public import NLAlib.Ops.Blas.NormSq
 public import NLAlib.Ops.Blas.Pair
+public import NLAlib.Ops.Blas.Power
 public import NLAlib.Ops.Blas.Sampling
 public import NLAlib.Ops.Blas.ScalarProducts
 public import NLAlib.Ops.Blas.ScalarProductsRounded

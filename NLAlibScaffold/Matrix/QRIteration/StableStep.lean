@@ -78,7 +78,8 @@ inductive IsStableQRChain (x : ℝ) :
 theorem IsStableQRStep.isPerturbedUnitarySimilar {ε : ℝ} {H H' R : Matrix (Fin (n + 1))
     (Fin (n + 1)) ℂ} {s : ℂ} (h : IsStableQRStep ε H s H' R) :
     IsPerturbedUnitarySimilar H H' ε := by
-  sorry
+  obtain ⟨-, -, Q, hQ, hH', -⟩ := h
+  exact IsPerturbedUnitarySimilar.of_specNorm_sub_le hQ hH'
 
 /-- **Backward error of a degree $m$ step, similarity part** (corrected
 [BanksGarzaVargasSrivastava2022, Lemma 3.6]): for shifts in $\mathbb{D}(0, C\|\mathbf{H}\|_2)$, the

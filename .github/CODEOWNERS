@@ -32,6 +32,7 @@
 /scripts/proved_modules.py @tchen01
 # Structural program certificates, the operation model and canonical accounting semantics.
 /scripts/OpsPrograms.lean @tchen01
+/scripts/ops_certificates.txt @tchen01
 /NLAlib/Ops/Syntax.lean @tchen01
 /NLAlib/Ops/Certification.lean @tchen01
 /NLAlib/Ops/Contract.lean @tchen01

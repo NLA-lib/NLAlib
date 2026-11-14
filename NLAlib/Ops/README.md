@@ -14,7 +14,8 @@ names one of those operations. Index expressions have only the arithmetic constr
 
 `AccessModel` declares a `Contract` for every operation and a `QueryContract` for every query.
 `AccessModel.contracts` is defined to be exactly satisfaction of those contracts. There is no
-field for arbitrary additional interpreter assumptions, whole-program success or desired outputs.
+field for arbitrary additional interpreter assumptions or whole-program success. The contracts
+themselves are unconstrained by this type: see "What the model must also satisfy" below.
 The model must provide a joint realization of those exact contracts at every admitted input.
 `Problem` requires an admitted size and an input at every admitted size. The model supplies an
 actual word, so universal tape quantification cannot be vacuous.
@@ -59,9 +60,32 @@ See [resource design](../../docs/design/Ops-Resources.md) and `Examples/Resource
 `Runs p model specification`, also written `p.Certifies model specification`, requires successful
 canonical execution at every admitted size and input, under every interpretation satisfying
 exactly the declared contracts and every tape. The budget, peak workspace and postcondition refer
-to that same execution. `Specification` fixes all resource budgets and the postcondition
-independently of the program. `Algorithm model specification` packages one fixed program and
-this total proof.
+to that same execution. `Specification` has no program argument, but nothing prevents its
+budgets from being defined as the static count of the certified program (a manifest); such a
+bound says only that the program runs. `Algorithm model specification` packages one fixed
+program and this total proof.
+
+## What the model must also satisfy
+
+The types accept a contract that depends on the whole input, reads cells that are not operands,
+or has zero work; a unit-cost primitive can then write the answer (`Examples/Oracles.lean`).
+`Confined.lean` names the properties that exclude this, as classes on the model:
+
+* `AccessModel.Confined`: every primitive contract is in operand form (`BlockRel.spec`) and
+  every query reads its operand blocks only. `Contract.Confined.frame`: a confined call changes
+  no buffer that is not an output operand.
+* `AccessModel.Uniform`: the contracts do not depend on the sizes or the input. A model with a
+  declared oracle (the matrix-free operator) is confined and not uniform.
+* `AccessModel.Charged`: every primitive, query and structural instruction has positive work.
+  `AccessModel.Charged.size_le_work`: work is then at least the number of instructions.
+
+`Profiles/Confined.lean` proves these for the standard collections. `scripts/OpsPrograms.lean`
+reports them for every certificate, with its number of hypotheses and whether its budget and
+scratch are closed forms or manifests, and compares the report with
+`scripts/ops_certificates.txt`: a recorded certificate may not get weaker, and a new one must be
+confined with a closed-form budget or be added to that file. A family of certificates indexed
+by a parameter that fixes the admitted size is not one certificate; the check lists
+parametrised programs.
 
 `Algorithm.ofWp` uses the total statement logic and full structural bounds to construct the
 certificate. `Algorithm.link` takes a fixed implementation table and verifies the entire lower
@@ -152,6 +176,8 @@ source guard never becomes an omitted runtime operation. See the
 | `Catalog/`, `Blas/`, `Profiles/` | Operation contracts and conditional implementations |
 | `Examples/Certification.lean` | Repeated-addition certificate and adversarial regressions |
 | `Examples/Resources.lean` | Mixed-format storage, workspace, and work/span certificates |
+| `Confined.lean`, `Profiles/Confined.lean` | Confined, uniform and charged models |
+| `Examples/Oracles.lean` | Misleading certificates the types accept and these properties reject |
 
 The regressions address the canonical interfaces directly: impossible joint models, vacuous
 inputs/tapes, runtime tree factories, failed execution, undeclared calls, omitted structural work,

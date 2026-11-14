@@ -666,8 +666,12 @@ public import NLAlib.Krylov.LinearSystems.PCGRecurrence
 public import NLAlib.Krylov.LinearSystems.Richardson
 public import NLAlib.Krylov.LinearSystems.WorstCase
 public import NLAlib.Krylov.Orthogonalization.CGS2.Extend
+public import NLAlib.Krylov.Orthogonalization.CGS2.ExtendColumn
+public import NLAlib.Krylov.Orthogonalization.CGS2.ExtendDecode
 public import NLAlib.Krylov.Orthogonalization.CGS2.ExtendExact
+public import NLAlib.Krylov.Orthogonalization.CGS2.ExtendLoop
 public import NLAlib.Krylov.Orthogonalization.CGS2.ExtendRounded
+public import NLAlib.Krylov.Orthogonalization.CGS2.PassSupport
 public import NLAlib.Krylov.Processes.ArnoldiRecurrence
 public import NLAlib.Krylov.Processes.BandGolubKahan
 public import NLAlib.Krylov.Processes.Lanczos

@@ -125,22 +125,34 @@ coefficient addition and the larger branch of every deflation test are charged. 
 theorem stmtCost_cgs2Extend (τ : ℚ) (n k b q w q' w' c : ℕ) :
     stmtCost (cgs2Extend (Op := Op) (Tst := Tst) τ) [n, k, b, q, w, q', w', c] =
       cgs2ExtendCount τ n k b := by
-  -- Unfold `cgs2Extend` with `stmtCost`, `useCost`, `testCost` (the allocations cost nothing,
-  -- `stmtCost_alloc`), evaluate the index expressions of round `c`, rewrite the two frames with
-  -- `stmtCost_cgsPass` and the three inner loops with `Finset.sum_const`, `Finset.card_range`;
-  -- then `Finset.sum_congr` over the columns, the summands agreeing up to associativity
-  -- (`add_assoc`; the supremum of the two branches is kept as one term).
-  sorry
+  simp only [cgs2Extend, stmtCost, stmtCost_alloc, cgs2ExtendCount]
+  refine Finset.sum_congr (by simp) fun c _ => ?_
+  simp [useCost, testCost, stmtCost_cgsPass, cgs2ExtendColumnCount]
+  simp only [add_assoc]
 
 /-- The static workspace of the block extension: the coefficient scratch and the three scalar
 cells are held throughout, and the calls borrow at most the largest primitive workspace. -/
 theorem stmtPeak_cgs2Extend_le (W : Op → List ℕ → ℕ) (τ : ℚ) (n k b q w q' w' c : ℕ) :
     stmtPeak W (cgs2Extend (Op := Op) (Tst := Tst) τ) [n, k, b, q, w, q', w', c] ≤
       cgs2ExtendPeak W τ n k b := by
-  -- Unfold the two allocations (`stmtPeak_alloc`): the left side is `(k + b) + (3 + s)` with
-  -- `s` the supremum over the columns `c < b` of the maximum of the workspaces of the calls of
-  -- one column. Bound each call by its term of `cgs2ExtendPeak`: the two frames by
-  -- `stmtPeak_cgsPass_le`, the three inner loops by `Finset.sup_le`.
-  sorry
+  simp only [cgs2Extend, Stmt.alloc, stmtPeak, cgs2ExtendPeak]
+  rw [← add_assoc]
+  refine Nat.add_le_add (by simp) (Finset.sup_le fun c _ => ?_)
+  generalize hM : max (W (Has.inj Blas1Op.nrm2) [n]) _ = M
+  have h1 : W (Has.inj Blas1Op.nrm2) [n] ≤ M := by rw [← hM]; simp
+  have h2 (c o1 o2 o3 o4 : ℕ) : stmtPeak W (cgsPass (Op := Op) (Tst := Tst))
+      [n, k + c, o1, o2, o3, o4] ≤ M := by
+    refine (stmtPeak_cgsPass_le W n (k + c) o1 o2 o3 o4).trans ?_
+    rw [← hM]; simp
+  have h3 : W (Has.inj (ScalarOp.lit 0)) [] ≤ M := by rw [← hM]; simp
+  have h4 : W (Has.inj ScalarOp.add) [] ≤ M := by rw [← hM]; simp
+  have h5 : W (Has.inj (ScalarOp.lit τ)) [] ≤ M := by rw [← hM]; simp
+  have h6 : W (Has.inj ScalarOp.mul) [] ≤ M := by rw [← hM]; simp
+  have h7 : W (Has.inj Blas1Op.copy) [n] ≤ M := by rw [← hM]; simp
+  have h8 : W (Has.inj Blas1Op.scal) [n] ≤ M := by rw [← hM]; simp
+  have h9 : W (Has.inj ScalarOp.copy) [] ≤ M := by rw [← hM]; simp
+  clear hM
+  simp only [IExp.evalList, IExp.eval, List.map]
+  simp [h1, h2, h3, h4, h5, h6, h7, h8, h9]
 
 end NLAlib.CGS2

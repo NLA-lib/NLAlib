@@ -824,6 +824,7 @@ public import NLAlib.Matrix.Pseudoinverse.TruncatedSVD
 public import NLAlib.Matrix.QRIteration.Dichotomy
 public import NLAlib.Matrix.QRIteration.EigenvectorWeights
 public import NLAlib.Matrix.QRIteration.FindRitzSolve
+public import NLAlib.Matrix.QRIteration.HessenbergDeflation
 public import NLAlib.Matrix.QRIteration.Ritz
 public import NLAlib.Matrix.QRIteration.ShiftSearch
 public import NLAlib.Matrix.QRIteration.ShiftedQR

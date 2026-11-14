@@ -7,6 +7,8 @@ module
 
 public import NLAlib.Matrix.Spectral.Schur
 public import NLAlib.Matrix.Pseudoinverse.ConditionNumber
+public import NLAlib.Matrix.Perturbation.Residual
+public import NLAlib.Matrix.QRIteration.DeflationConditioning
 
 /-!
 # Forward and backward eigenvalue errors
@@ -33,6 +35,8 @@ $B > 32$ (G18).
 * `NLAlib.IsEigenvalueListing.exists_specNorm_sub_le`: forward implies backward.
 * `NLAlib.exists_pseudoConditionNumber_le_and_le_norm_sub`: conditioning and separation after a
   perturbation.
+* `NLAlib.norm_sub_le_of_matching`: Bauer–Fike refines a matching within $g/16$ to one within
+  $B\|\mathbf{E}\|_2$.
 -/
 
 @[expose] public section
@@ -76,6 +80,42 @@ theorem IsEigenvalueListing.exists_specNorm_sub_le {m : ℕ} {L : Matrix (Fin m)
       simp [D, hdiag i]
     rwa [hfun] at h
 
+/-- **Bauer–Fike with a matching**: under the hypotheses of
+`NLAlib.exists_pseudoConditionNumber_le_and_le_norm_sub`, a diagonalization $\mathbf{V}'$,
+$\mathbf{d}'$ of $\mathbf{A} + \mathbf{E}$ with $\lvert d'_i - d_i\rvert \le g/16$ has
+$\lvert d'_i - d_i\rvert \le B\|\mathbf{E}\|_2$: Bauer–Fike puts $d'_i$ within
+$B\|\mathbf{E}\|_2 \le g/16$ of some $d_k$, and $k = i$ since $\lvert d_k - d_i\rvert < g$. -/
+theorem norm_sub_le_of_matching {n : ℕ}
+    {A V E V' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d d' : Fin (n + 1) → ℂ} {B g : ℝ}
+    (hV : IsUnit V) (hAV : A * V = V * Matrix.diagonal d) (hB : pseudoConditionNumber V ≤ B)
+    (hg : 0 < g) (hgap : ∀ i j, i ≠ j → g ≤ ‖d i - d j‖)
+    (hE : specNorm E ≤ g / (16 * (n + 1) * B)) (hV' : IsUnit V')
+    (hAV' : (A + E) * V' = V' * Matrix.diagonal d') (hm : ∀ i, ‖d' i - d i‖ ≤ g / 16)
+    (i : Fin (n + 1)) :
+    ‖d' i - d i‖ ≤ B * specNorm E := by
+  have hB1 : 1 ≤ B := (one_le_pseudoConditionNumber hV.ne_zero).trans hB
+  have hN : (1 : ℝ) ≤ n + 1 := by linarith [(n.cast_nonneg : (0 : ℝ) ≤ n)]
+  have hBE : B * specNorm E ≤ g / 16 := by
+    calc B * specNorm E ≤ B * (g / (16 * (n + 1) * B)) := by gcongr
+      _ = g / (16 * (n + 1)) := by field_simp
+      _ ≤ g / 16 := by gcongr; linarith
+  have hcol : V'.col i ≠ 0 := (Matrix.linearIndependent_cols_iff_isUnit.mpr hV').ne_zero i
+  have hAi : (A + E) *ᵥ V'.col i = d' i • V'.col i := by
+    funext j
+    have h := congrFun (congrFun hAV' j) i
+    rw [Matrix.mul_diagonal] at h
+    rw [Pi.smul_apply, smul_eq_mul, mul_comm]
+    exact h
+  obtain ⟨k, hk⟩ := exists_norm_sub_le_pseudoConditionNumber_mul_specNorm hV hAV hcol hAi
+  have hk' : ‖d k - d' i‖ ≤ B * specNorm E :=
+    hk.trans (mul_le_mul_of_nonneg_right hB (specNorm_nonneg _))
+  by_cases hki : k = i
+  · rw [hki, norm_sub_rev] at hk'
+    exact hk'
+  · have h3 : ‖d k - d i‖ ≤ ‖d k - d' i‖ + ‖d' i - d i‖ :=
+      norm_sub_le_norm_sub_add_norm_sub _ _ _
+    linarith [hgap k i hki, hm i]
+
 /-- **Eigenvalue separation after a perturbation** (Bauer–Fike with disjoint disks): for
 $\mathbf{A}\mathbf{V} = \mathbf{V}\mathbf{D}$, $\kappa(\mathbf{V}) \le B$, eigenvalues at mutual
 distance at least $g > 0$ and $\|\mathbf{E}\|_2 \le g / (16(n + 1)B)$, the perturbed matrix has a
@@ -90,6 +130,14 @@ theorem exists_pseudoConditionNumber_le_and_le_norm_sub {n : ℕ}
     ∃ (V' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (d' : Fin (n + 1) → ℂ), IsUnit V' ∧
       (A + E) * V' = V' * Matrix.diagonal d' ∧ pseudoConditionNumber V' ≤ 2 * B ∧
       ∀ i j, i ≠ j → g - 2 * B * specNorm E ≤ ‖d' i - d' j‖ := by
-  sorry
+  obtain ⟨V', d', hV', hAV', -, hκ, hm⟩ :=
+    exists_pseudoConditionNumber_add_le_and_norm_sub_le hV hAV hB hg hgap hE
+  refine ⟨V', d', hV', hAV', hκ, fun i j hij => ?_⟩
+  have hi := norm_sub_le_of_matching hV hAV hB hg hgap hE hV' hAV' hm i
+  have hj := norm_sub_le_of_matching hV hAV hB hg hgap hE hV' hAV' hm j
+  have h3 : ‖d i - d j‖ ≤ ‖d' i - d' j‖ + ‖d' i - d i‖ + ‖d' j - d j‖ := by
+    calc ‖d i - d j‖ = ‖(d' i - d' j) - (d' i - d i) + (d' j - d j)‖ := by ring_nf
+      _ ≤ _ := (norm_add_le _ _).trans (by gcongr; exact norm_sub_le _ _)
+  linarith [hgap i j hij]
 
 end NLAlib

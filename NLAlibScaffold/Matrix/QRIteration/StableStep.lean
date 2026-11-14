@@ -116,6 +116,195 @@ theorem IsStableQRChain.isPerturbedUnitarySimilar {x C : ℝ} {H H' : Matrix (Fi
       nlinarith [hxc]
   exact key ((1 + C) * specNorm H) H H' ss Rs (le_of_eq (by ring)) hs h
 
+/-- The shift polynomial intertwines: $\mathbf{A}\mathbf{X} = \mathbf{X}\mathbf{B}$ gives
+$p(\mathbf{A})\mathbf{X} = \mathbf{X}p(\mathbf{B})$. -/
+private theorem aeval_shiftPoly_mul_eq_mul_aeval {A B X : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    (hX : A * X = X * B) (ss : List ℂ) :
+    Polynomial.aeval A (shiftPoly ss) * X = X * Polynomial.aeval B (shiftPoly ss) := by
+  induction ss with
+  | nil => simp [shiftPoly]
+  | cons s ss ih =>
+    have hs : (A - s • (1 : Matrix _ _ ℂ)) * X = X * (B - s • (1 : Matrix _ _ ℂ)) := by
+      rw [Matrix.sub_mul, Matrix.mul_sub, hX, Matrix.smul_mul, Matrix.mul_smul, Matrix.one_mul,
+        Matrix.mul_one]
+    have e : ∀ M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, Polynomial.aeval M (shiftPoly (s :: ss)) =
+        (M - s • (1 : Matrix _ _ ℂ)) * Polynomial.aeval M (shiftPoly ss) := fun M => by
+      rw [shiftPoly, List.map_cons, List.prod_cons, map_mul, ← shiftPoly]
+      simp [Algebra.algebraMap_eq_smul_one]
+    rw [e, e, Matrix.mul_assoc, ih, ← Matrix.mul_assoc, hs, Matrix.mul_assoc]
+
+/-- A shift polynomial is bounded by the product of its factors: $\|p(\mathbf{B})\|_2 \le D^m$
+when $\|\mathbf{B} - s\mathbf{I}\|_2 \le D$ for every shift. -/
+private theorem specNorm_aeval_shiftPoly_le {B : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {D : ℝ}
+    {ss : List ℂ} (hB : ∀ s ∈ ss, specNorm (B - s • (1 : Matrix _ _ ℂ)) ≤ D) :
+    specNorm (Polynomial.aeval B (shiftPoly ss)) ≤ D ^ ss.length := by
+  induction ss with
+  | nil => simp [shiftPoly]
+  | cons s ss ih =>
+    have hD : 0 ≤ D := (specNorm_nonneg _).trans (hB s (by simp))
+    rw [shiftPoly, List.map_cons, List.prod_cons, map_mul, ← shiftPoly, List.length_cons,
+      pow_succ']
+    refine (specNorm_mul_le _ _).trans (mul_le_mul ?_ (ih fun r hr => hB r (by simp [hr]))
+      (specNorm_nonneg _) hD)
+    simpa [Algebra.algebraMap_eq_smul_one] using hB s (by simp)
+
+/-- Telescoping the factors of a shift polynomial:
+$D\|p(\mathbf{A}) - p(\mathbf{B})\|_2 \le mD^m\|\mathbf{A} - \mathbf{B}\|_2$. -/
+private theorem mul_specNorm_aeval_shiftPoly_sub_le {A B : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {D : ℝ} (hD : 0 ≤ D) {ss : List ℂ}
+    (hA : ∀ s ∈ ss, specNorm (A - s • (1 : Matrix _ _ ℂ)) ≤ D)
+    (hB : ∀ s ∈ ss, specNorm (B - s • (1 : Matrix _ _ ℂ)) ≤ D) :
+    D * specNorm (Polynomial.aeval A (shiftPoly ss) - Polynomial.aeval B (shiftPoly ss)) ≤
+      ss.length * D ^ ss.length * specNorm (A - B) := by
+  induction ss with
+  | nil => simp [shiftPoly]
+  | cons s ss ih =>
+    have e : ∀ M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, Polynomial.aeval M (shiftPoly (s :: ss)) =
+        (M - s • (1 : Matrix _ _ ℂ)) * Polynomial.aeval M (shiftPoly ss) := fun M => by
+      rw [shiftPoly, List.map_cons, List.prod_cons, map_mul, ← shiftPoly]
+      simp [Algebra.algebraMap_eq_smul_one]
+    set pA := Polynomial.aeval A (shiftPoly ss)
+    set pB := Polynomial.aeval B (shiftPoly ss)
+    have hpB : specNorm pB ≤ D ^ ss.length :=
+      specNorm_aeval_shiftPoly_le fun r hr => hB r (by simp [hr])
+    have hih := ih (fun r hr => hA r (by simp [hr])) (fun r hr => hB r (by simp [hr]))
+    have hsplit : (A - s • (1 : Matrix _ _ ℂ)) * pA - (B - s • (1 : Matrix _ _ ℂ)) * pB =
+        (A - s • (1 : Matrix _ _ ℂ)) * (pA - pB) + (A - B) * pB := by noncomm_ring
+    rw [e, e, hsplit, List.length_cons]
+    push_cast
+    calc D * specNorm ((A - s • (1 : Matrix _ _ ℂ)) * (pA - pB) + (A - B) * pB)
+        ≤ D * (specNorm (A - s • (1 : Matrix _ _ ℂ)) * specNorm (pA - pB) +
+            specNorm (A - B) * specNorm pB) := by
+          gcongr
+          exact (specNorm_add_le _ _).trans (add_le_add (specNorm_mul_le _ _) (specNorm_mul_le _ _))
+      _ ≤ D * (D * specNorm (pA - pB) + specNorm (A - B) * D ^ ss.length) := by
+          gcongr
+          exact hA s (by simp)
+      _ = D * (D * specNorm (pA - pB)) + D ^ (ss.length + 1) * specNorm (A - B) := by ring
+      _ ≤ D * (ss.length * D ^ ss.length * specNorm (A - B)) +
+            D ^ (ss.length + 1) * specNorm (A - B) := by gcongr
+      _ = _ := by ring
+
+/-- $(1 + x)^k(1 - kx) \le 1$ for $x \ge 0$. -/
+private theorem one_add_pow_mul_one_sub_le {x : ℝ} (hx : 0 ≤ x) (k : ℕ) :
+    (1 + x) ^ k * (1 - k * x) ≤ 1 := by
+  induction k with
+  | zero => simp
+  | succ k ih =>
+    have hp : 0 ≤ (1 + x) ^ k := pow_nonneg (by linarith) k
+    have e : (1 + x) ^ (k + 1) * (1 - ((k + 1 : ℕ) : ℝ) * x) =
+        (1 + x) ^ k * (1 - k * x) - (1 + x) ^ k * ((k + 1) * x ^ 2) := by push_cast; ring
+    rw [e]
+    nlinarith [mul_nonneg hp (by positivity : (0 : ℝ) ≤ (k + 1) * x ^ 2)]
+
+/-- The scalar recursion of the factorization bound: under $(m + 1)x \le 1/4$, the three error
+terms of one step stay below $4 \cdot 2^{m+1}c^{m+1}x$. -/
+private theorem chain_step_bound_le {x c : ℝ} {m : ℕ} (hx : 0 ≤ x) (hc0 : 0 ≤ c)
+    (hm : ((m : ℝ) + 1) * x ≤ 1 / 4) :
+    c ^ m * (x * c) + m * ((1 + x) ^ m * c ^ m) * (x * c) +
+        4 * 2 ^ m * ((1 + x) ^ m * c ^ m) * x * ((1 + x) * c) ≤
+      4 * 2 ^ (m + 1) * c ^ (m + 1) * x := by
+  have hpow : (1 + x) ^ (m + 1) ≤ 4 / 3 := by
+    have := one_add_pow_mul_one_sub_le hx (m + 1)
+    push_cast at this
+    nlinarith [pow_nonneg (by linarith : (0 : ℝ) ≤ 1 + x) (m + 1)]
+  have hpow' : (1 + x) ^ m ≤ 4 / 3 :=
+    (pow_le_pow_right₀ (by linarith) (Nat.le_succ m)).trans hpow
+  have hm2 : (m : ℝ) + 1 ≤ 2 ^ m := by exact_mod_cast Nat.lt_two_pow_self
+  have hP : 0 ≤ c ^ m * (x * c) := by positivity
+  calc _ = c ^ m * (x * c) * (1 + m * (1 + x) ^ m + 4 * 2 ^ m * (1 + x) ^ (m + 1)) := by ring
+    _ ≤ c ^ m * (x * c) * (1 + m * (4 / 3) + 4 * 2 ^ m * (4 / 3)) := by gcongr
+    _ ≤ c ^ m * (x * c) * (8 * 2 ^ m) := by gcongr; nlinarith
+    _ = _ := by ring
+
+/-- The factorization part of a degree $m$ step at a free scale $c \ge \|\mathbf{G}\|_2 + K$,
+for shifts bounded by $K$: the induction behind
+`NLAlib.IsStableQRChain.exists_specNorm_aeval_sub_le`. -/
+private theorem IsStableQRChain.exists_specNorm_aeval_sub_le_scale {x K : ℝ}
+    {G G' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ss : List ℂ}
+    {Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)}
+    (h : IsStableQRChain x G ss G' Rs) (hx : 0 ≤ x) (hK : 0 ≤ K)
+    (hs : ∀ s ∈ ss, ‖s‖ ≤ K) (hm : (ss.length : ℝ) * x ≤ 1 / 4) (c : ℝ)
+    (hc : specNorm G + K ≤ c) :
+    ∃ Q : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HasOrthonormalCols Q ∧
+      specNorm (Polynomial.aeval G (shiftPoly ss) - Q * Rs.reverse.prod) ≤
+        4 * 2 ^ ss.length * c ^ ss.length * x := by
+  induction h generalizing c with
+  | nil G =>
+    refine ⟨1, hasOrthonormalCols_one, ?_⟩
+    simp only [shiftPoly, List.map_nil, List.prod_nil, map_one, List.reverse_nil, mul_one,
+      sub_self, specNorm_zero, List.length_nil, pow_zero]
+    positivity
+  | @cons G H₁ G' R s ss Rs hstep t ih =>
+    obtain ⟨-, -, Q₀, hQ₀, hH₁, hGR⟩ := hstep
+    simp only [List.length_cons, Nat.cast_add, Nat.cast_one] at hm ⊢
+    set m := ss.length
+    set ε := x * (specNorm G + ‖s‖)
+    have hsK : ‖s‖ ≤ K := hs s (by simp)
+    have hε : ε ≤ x * c := mul_le_mul_of_nonneg_left (by linarith) hx
+    have hc0 : 0 ≤ c := by linarith [specNorm_nonneg G]
+    have hxc : 0 ≤ x * c := mul_nonneg hx hc0
+    have hsub : ∀ (M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (r : ℂ), ‖r‖ ≤ K →
+        specNorm (M - r • (1 : Matrix _ _ ℂ)) ≤ specNorm M + K := fun M r hr =>
+      (specNorm_sub_le _ _).trans (by rw [specNorm_smul, specNorm_one, mul_one]; linarith)
+    set A := Q₀ᴴ * G * Q₀
+    have hA : specNorm A = specNorm G := hQ₀.specNorm_conjTranspose_mul_mul G
+    have hH₁n : specNorm H₁ ≤ specNorm G + ε := by
+      have := specNorm_add_le (H₁ - A) A
+      rw [sub_add_cancel] at this
+      linarith
+    obtain ⟨Q', hQ', hIH⟩ := ih (fun r hr => hs r (by simp [hr])) (by nlinarith) ((1 + x) * c)
+      (by nlinarith)
+    refine ⟨Q₀ * Q', hQ₀.mul hQ', ?_⟩
+    have hGQ : G * Q₀ = Q₀ * A := by
+      simp only [A, ← Matrix.mul_assoc, hQ₀.mul_conjTranspose_self, Matrix.one_mul]
+    set F := G - s • (1 : Matrix _ _ ℂ) - Q₀ * R
+    have hdecomp : Polynomial.aeval G (shiftPoly (s :: ss)) - Q₀ * Q' * (R :: Rs).reverse.prod =
+        Polynomial.aeval G (shiftPoly ss) * F +
+          Q₀ * ((Polynomial.aeval A (shiftPoly ss) - Polynomial.aeval H₁ (shiftPoly ss)) * R) +
+          Q₀ * ((Polynomial.aeval H₁ (shiftPoly ss) - Q' * Rs.reverse.prod) * R) := by
+      have hp : Polynomial.aeval G (shiftPoly (s :: ss)) =
+          Polynomial.aeval G (shiftPoly ss) * (F + Q₀ * R) := by
+        rw [show F + Q₀ * R = G - s • (1 : Matrix _ _ ℂ) by simp [F], shiftPoly,
+          List.map_cons, List.prod_cons, mul_comm, map_mul, ← shiftPoly]
+        simp [Algebra.algebraMap_eq_smul_one]
+      rw [hp, List.reverse_cons, List.prod_append, List.prod_singleton, Matrix.mul_add,
+        ← Matrix.mul_assoc _ Q₀ R, aeval_shiftPoly_mul_eq_mul_aeval hGQ ss]
+      noncomm_ring
+    set pA := Polynomial.aeval A (shiftPoly ss)
+    set pB := Polynomial.aeval H₁ (shiftPoly ss)
+    set D := (1 + x) * c
+    have hcD : c ≤ D := by nlinarith
+    have hR : specNorm R ≤ D := by
+      rw [← hQ₀.specNorm_mul_left R, show Q₀ * R = G - s • (1 : Matrix _ _ ℂ) - F by simp [F]]
+      linarith [specNorm_sub_le (G - s • (1 : Matrix _ _ ℂ)) F, hsub G s hsK]
+    have hpG : specNorm (Polynomial.aeval G (shiftPoly ss)) ≤ c ^ m :=
+      specNorm_aeval_shiftPoly_le fun r hr => (hsub G r (hs r (by simp [hr]))).trans hc
+    have hdiff := mul_specNorm_aeval_shiftPoly_sub_le (D := D) (by positivity) (A := A) (B := H₁)
+      (ss := ss) (fun r hr => (hsub A r (hs r (by simp [hr]))).trans (by linarith))
+      (fun r hr => (hsub H₁ r (hs r (by simp [hr]))).trans (by linarith))
+    rw [specNorm_sub_comm A H₁] at hdiff
+    have hQM : ∀ M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+        specNorm (Q₀ * (M * R)) ≤ specNorm M * D := fun M => by
+      rw [hQ₀.specNorm_mul_left]
+      exact (specNorm_mul_le _ _).trans (by gcongr)
+    have hDm : D ^ m = (1 + x) ^ m * c ^ m := mul_pow _ _ _
+    rw [hdecomp]
+    calc _ ≤ specNorm (Polynomial.aeval G (shiftPoly ss) * F) + specNorm (pA - pB) * D +
+          specNorm (pB - Q' * Rs.reverse.prod) * D := by
+          refine (specNorm_add_le _ _).trans (add_le_add ((specNorm_add_le _ _).trans
+            (add_le_add le_rfl (hQM _))) (hQM _))
+      _ ≤ c ^ m * (x * c) + m * ((1 + x) ^ m * c ^ m) * (x * c) +
+          4 * 2 ^ m * ((1 + x) ^ m * c ^ m) * x * ((1 + x) * c) := by
+          gcongr ?_ + ?_ + ?_
+          · exact (specNorm_mul_le _ _).trans (mul_le_mul hpG (hGR.trans hε) (specNorm_nonneg _)
+              (by positivity))
+          · rw [mul_comm, ← hDm]
+            exact hdiff.trans (by gcongr; exact hH₁.trans hε)
+          · rw [← hDm]
+            exact mul_le_mul_of_nonneg_right hIH (by positivity)
+      _ ≤ _ := chain_step_bound_le hx hc0 hm
+
 /-- **Backward error of a degree $m$ step, factorization part** (corrected
 [BanksGarzaVargasSrivastava2022, Lemma 3.6]): for shifts in $\mathbb{D}(0, C\|\mathbf{H}\|_2)$ and
 $m x \le 1/4$, one unitary $\widehat{\mathbf{Q}}$ has $\|p(\mathbf{H}) - \widehat{\mathbf{Q}}
@@ -129,7 +318,11 @@ theorem IsStableQRChain.exists_specNorm_aeval_sub_le {x C : ℝ} {H H' : Matrix 
     ∃ Q : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HasOrthonormalCols Q ∧
       specNorm (Polynomial.aeval H (shiftPoly ss) - Q * Rs.reverse.prod) ≤
         4 * (2 * (1 + C) * specNorm H) ^ ss.length * x := by
-  sorry
+  obtain ⟨Q, hQ, hle⟩ := h.exists_specNorm_aeval_sub_le_scale hx
+    (mul_nonneg hC (specNorm_nonneg H)) hs hm ((1 + C) * specNorm H) (by linarith)
+  exact ⟨Q, hQ, hle.trans_eq (by
+    rw [show 2 * (1 + C) * specNorm H = 2 * ((1 + C) * specNorm H) by ring,
+      mul_pow (2 : ℝ)]; ring)⟩
 
 /-- **Forward error of a degree $m$ step** (corrected [BanksGarzaVargasSrivastava2022,
 Lemma 3.8]): let $\mathbf{H}\mathbf{V} = \mathbf{V}\mathbf{D}$ with $\kappa(\mathbf{V}) \le \kappa$,

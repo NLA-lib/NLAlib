@@ -39,6 +39,7 @@ public import NLAlib.Eigensolvers.ShiftedQR.ForwardError
 public import NLAlib.Eigensolvers.ShiftedQR.Grid
 public import NLAlib.Eigensolvers.ShiftedQR.GridSearch
 public import NLAlib.Eigensolvers.ShiftedQR.HalfNorm
+public import NLAlib.Eigensolvers.ShiftedQR.Hessenberg
 public import NLAlib.Eigensolvers.ShiftedQR.Iteration
 public import NLAlib.Eigensolvers.ShiftedQR.IterationAlg
 public import NLAlib.Eigensolvers.ShiftedQR.IterationCorrect
@@ -90,6 +91,7 @@ public import NLAlib.Eigensolvers.ShiftedQR.StepProgram
 public import NLAlib.Eigensolvers.ShiftedQR.Storage
 public import NLAlib.Eigensolvers.ShiftedQR.StorageNorm
 public import NLAlib.Eigensolvers.ShiftedQR.Sweep
+public import NLAlib.Eigensolvers.ShiftedQR.SweepOutput
 public import NLAlib.Eigensolvers.ShiftedQR.Trial
 public import NLAlib.Eigensolvers.ShiftedQR.Worklist
 public import NLAlib.Eigensolvers.ShiftedQR.WorklistAllocation

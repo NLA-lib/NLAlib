@@ -36,7 +36,9 @@ Two facts give it under an eigenvalue gap ([BanksGarzaVargasSrivastava2022, Lemm
 * `IsStarNormal.apply_eq_zero_of_blockTriangular`: a normal block triangular matrix is block
   diagonal.
 * `Matrix.BlockTriangular.exists_pseudoConditionNumber_subBlock_le`: the diagonal blocks.
-* `NLAlib.exists_pseudoConditionNumber_add_le`: the perturbation.
+* `NLAlib.exists_pseudoConditionNumber_add_le_and_norm_sub_le`: the perturbation with an
+  indexed eigenvalue matching.
+* `NLAlib.exists_pseudoConditionNumber_add_le`: the condition-only corollary.
 * `NLAlib.DeflationInv.exists_pseudoConditionNumber_subBlock_le`: every active block of
   deflation.
 -/
@@ -383,16 +385,19 @@ $\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le B$, and eigenvalues separated by $g >
 $\lvert\mathbf{d}_i - \mathbf{d}_j\rvert \ge g$ for $i \ne j$. If $\|\mathbf{E}\|_2 \le
 g/(16(n + 1)B)$, then $\mathbf{A} + \mathbf{E}$ has distinct eigenvalues and an invertible
 eigenvector matrix $\mathbf{V}'$ with $\|\mathbf{V}'\|_2\|\mathbf{V}'^{-1}\|_2 \le 2B$.
+The eigenvalues are indexed to satisfy $\lvert d'_i-d_i\rvert \le g/16$, hence strictly
+less than $g/8$. The indexing and condition bound concern the same diagonalization.
 [BanksGarzaVargasSrivastava2022, Lemma 6.1]; the eigenvectors of
 $\operatorname{diag}(\mathbf{d}) + \mathbf{V}^{-1}\mathbf{E}\mathbf{V}$ by Gershgorin's theorem
 with counting. -/
-theorem exists_pseudoConditionNumber_add_le {A V E : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+theorem exists_pseudoConditionNumber_add_le_and_norm_sub_le
+    {A V E : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {d : Fin (n + 1) → ℂ} (hV : IsUnit V) (hAV : A * V = V * Matrix.diagonal d) {B g : ℝ}
     (hB : pseudoConditionNumber V ≤ B) (hg : 0 < g)
     (hgap : ∀ i j, i ≠ j → g ≤ ‖d i - d j‖) (hE : specNorm E ≤ g / (16 * (n + 1) * B)) :
     ∃ (V' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (d' : Fin (n + 1) → ℂ), IsUnit V' ∧
       (A + E) * V' = V' * Matrix.diagonal d' ∧ Function.Injective d' ∧
-      pseudoConditionNumber V' ≤ 2 * B := by
+      pseudoConditionNumber V' ≤ 2 * B ∧ ∀ i, ‖d' i - d i‖ ≤ g / 16 := by
   have hN : (1 : ℝ) ≤ n + 1 := by linarith [(n.cast_nonneg : (0 : ℝ) ≤ n)]
   have hB1 : 1 ≤ B := (one_le_pseudoConditionNumber hV.ne_zero).trans hB
   set F := V⁻¹ * E * V with hFdef
@@ -419,7 +424,7 @@ theorem exists_pseudoConditionNumber_add_le {A V E : Matrix (Fin (n + 1)) (Fin (
   have hAE : (A + E) * V = V * (Matrix.diagonal d + F) := by
     rw [Matrix.add_mul, hAV, Matrix.mul_add, hFdef, ← Matrix.mul_assoc, ← Matrix.mul_assoc,
       Matrix.mul_nonsing_inv _ ((Matrix.isUnit_iff_isUnit_det V).mp hV), Matrix.one_mul]
-  refine ⟨V * (1 + Z), μ, hV.mul hU, ?_, fun i j hij => ?_, ?_⟩
+  refine ⟨V * (1 + Z), μ, hV.mul hU, ?_, fun i j hij => ?_, ?_, fun i => (hμ i).trans hr⟩
   · rw [← Matrix.mul_assoc, hAE, Matrix.mul_assoc, hW, Matrix.mul_assoc]
   · by_contra hne
     have h3 : ‖d i - d j‖ ≤ ‖μ j - d j‖ + ‖μ i - d i‖ := by
@@ -431,6 +436,26 @@ theorem exists_pseudoConditionNumber_add_le {A V E : Matrix (Fin (n + 1)) (Fin (
           pseudoConditionNumber_mul_le hV hU
       _ ≤ B * 2 := mul_le_mul hB hκ (pseudoConditionNumber_nonneg _) (by linarith)
       _ = 2 * B := mul_comm _ _
+
+/-- **The condition under a small perturbation**: let $\mathbf{A}\mathbf{V} =
+\mathbf{V}\operatorname{diag}(\mathbf{d})$ with $\mathbf{V}$ invertible,
+$\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le B$, and eigenvalues separated by $g > 0$:
+$\lvert\mathbf{d}_i - \mathbf{d}_j\rvert \ge g$ for $i \ne j$. If $\|\mathbf{E}\|_2 \le
+g/(16(n + 1)B)$, then $\mathbf{A} + \mathbf{E}$ has distinct eigenvalues and an invertible
+eigenvector matrix $\mathbf{V}'$ with $\|\mathbf{V}'\|_2\|\mathbf{V}'^{-1}\|_2 \le 2B$.
+[BanksGarzaVargasSrivastava2022, Lemma 6.1]; the eigenvectors of
+$\operatorname{diag}(\mathbf{d}) + \mathbf{V}^{-1}\mathbf{E}\mathbf{V}$ by Gershgorin's theorem
+with counting. -/
+theorem exists_pseudoConditionNumber_add_le {A V E : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {d : Fin (n + 1) → ℂ} (hV : IsUnit V) (hAV : A * V = V * Matrix.diagonal d) {B g : ℝ}
+    (hB : pseudoConditionNumber V ≤ B) (hg : 0 < g)
+    (hgap : ∀ i j, i ≠ j → g ≤ ‖d i - d j‖) (hE : specNorm E ≤ g / (16 * (n + 1) * B)) :
+    ∃ (V' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (d' : Fin (n + 1) → ℂ), IsUnit V' ∧
+      (A + E) * V' = V' * Matrix.diagonal d' ∧ Function.Injective d' ∧
+      pseudoConditionNumber V' ≤ 2 * B := by
+  obtain ⟨V', d', hV', hAV', hd', hκ, _⟩ :=
+    exists_pseudoConditionNumber_add_le_and_norm_sub_le hV hAV hB hg hgap hE
+  exact ⟨V', d', hV', hAV', hd', hκ⟩
 
 /-- **The condition of every active block of deflation**: under the invariant
 `NLAlib.DeflationInv` with perturbation bound $\varepsilon$, if

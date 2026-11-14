@@ -222,9 +222,54 @@ The shared machinery is in [Ops-PolynomialWork.md](Ops-PolynomialWork.md).
 - Hessenberg reduction from a general dense input.
 - Rounded arithmetic, finite-exponent range safety, overflow/underflow or physical IEEE execution.
 - An implementation or physical elapsed-time bound for the two local spectral primitives.
-- Eigenvectors, sorted output, or a bijective perturbation matching of individual eigenvalues.
+- Eigenvectors, sorted solver output, or a bijective matching of the solver's stored outputs.
 - A gap-free full-solver theorem or convergence for inputs outside the admitted hypotheses.
 - A tight end-to-end asymptotic complexity or a simplified full-worklist storage polynomial.
+
+## Reuse by rounded arithmetic
+
+The word-level coefficient, pair rotation, matrix rotation, diagonal initialization and
+round theorems describe the actual operations of `Machine ℝ`, without an exact numerical
+model. Their original exact statements remain corollaries with unchanged types and program
+bodies. The generic `shiftedStep_writes_of_sweep` composes initialization with a supplied
+sweep postcondition; rounded sweeps can use their own numerical invariant without repeating
+the memory proof. These changes reuse the six source-file developments from commit
+`3877956c39479624dff05c9aed73b389cf3cae8d` of the finite-arithmetic work.
+
+Two additive components support the rounded layer without changing the exact solver:
+
+- `Eigensolvers/ShiftedQR/SweepOutput.lean` exposes the last diagonal pair of the actual
+  working matrix through a scalar copy, and composes that copy with a sweep postcondition.
+  The pair must be copied before the working arena is released. Calling it a triangular
+  factor entry requires the consumer's numerical and structural sweep invariant.
+- `Eigensolvers/ShiftedQR/Hessenberg.lean` clears entries below the first subdiagonal.
+  Its word proof uses the declared zero literal, and its mathematical projection and shape
+  lemmas live in `Matrix/Factorizations/Hessenberg.lean`. Frobenius contraction relative to
+  a Hessenberg target does not silently preserve a spectral backward-error constant.
+
+The existing conditioning proof exports its eigenvalue matching in
+`Matrix/QRIteration/DeflationConditioning.lean`:
+
+```lean
+theorem exists_pseudoConditionNumber_add_le_and_norm_sub_le
+    {A V E : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {d : Fin (n + 1) → ℂ} (hV : IsUnit V) (hAV : A * V = V * Matrix.diagonal d)
+    {B g : ℝ} (hB : pseudoConditionNumber V ≤ B) (hg : 0 < g)
+    (hgap : ∀ i j, i ≠ j → g ≤ ‖d i - d j‖)
+    (hE : specNorm E ≤ g / (16 * (n + 1) * B)) :
+    ∃ (V' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (d' : Fin (n + 1) → ℂ),
+      IsUnit V' ∧ (A + E) * V' = V' * Matrix.diagonal d' ∧ Function.Injective d' ∧
+      pseudoConditionNumber V' ≤ 2 * B ∧ ∀ i, ‖d' i - d i‖ ≤ g / 16
+```
+
+This is the bound already proved by the isolated Gershgorin discs, and implies the strict
+`g/8` matching needed by rounded deflation. The old condition-only theorem is a corollary.
+The matching and condition estimate use the same diagonalization, so consumers do not have
+to reconcile separate existential witnesses. No new hypothesis interface is introduced.
+
+The rounded worklist owns its bottom-k `≤ ω` scan, iteration cap and explicit failure word.
+It reuses `writeAndSplit` in a separate rounded implementation. The exact worklist and its
+total-success contract remain unchanged.
 
 ## Validation and review
 

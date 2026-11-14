@@ -73,8 +73,10 @@ private theorem gaussianPDFReal_le_half (x : ℝ) : gaussianPDFReal 0 1 x ≤ 1 
   exact (mul_le_mul_of_nonneg_left hexp (inv_nonneg.mpr (Real.sqrt_nonneg _))).trans
     (by simpa only [mul_one] using hinv)
 
-/-- The small ball $\mathbb{P}[\lvert g\rvert \le a] \le a$ of a standard Gaussian. -/
-private theorem gaussianReal_abs_le_le (a : ℝ) :
+/-- The small-ball bound of a standard real Gaussian $g$: for every real $a$,
+$\mathbb{P}[\lvert g\rvert \le a] \le a$ (the right side is read as $0$ for $a < 0$), since the
+standard Gaussian density is at most $1/2$. -/
+theorem gaussianReal_abs_le_le (a : ℝ) :
     gaussianReal 0 1 {x : ℝ | |x| ≤ a} ≤ ENNReal.ofReal a := by
   have hSet : {x : ℝ | |x| ≤ a} = Icc (-a) a := by
     ext x

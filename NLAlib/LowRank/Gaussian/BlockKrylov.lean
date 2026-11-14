@@ -240,10 +240,67 @@ private theorem exp_div_two_le_abs_eval_T_comp (A : Matrix m n ℝ) {h t q i : �
   exact (hgrowth.trans hmono).trans (le_abs_self _)
 
 omit [DecidableEq n] in
+/-- A Chebyshev filter of every degree: for a real matrix $\mathbf{A}$, a head of $r = h + 1$
+singular values, a tail index $t \ge r$ and a degree $d$, there are a real polynomial $f$ of degree
+at most $d$ and constants $c > 0$ and $a$ with $\lvert f(\sigma_i^2) \rvert \ge c$ for $i < r$,
+$\lvert f \rvert \le a$ on $[0, \sigma_t^2]$, and
+$(a/c)^2 \le 4e^{-8d\sqrt{\gamma}}$, where
+$\gamma = (\sigma_h - \sigma_t)/(\sigma_h + \sigma_t)$ (zero when $\sigma_h = 0$). For
+$\sigma_t > 0$ the filter is $f(x) = T_d(2x/\sigma_t^2 - 1)$ with $a = 1$ and
+$c = \tfrac12 e^{4d\sqrt{\gamma}}$; for $\sigma_t = 0 < \sigma_h$ it is $x^d$, and for
+$\sigma_h = 0$ it is $1$. -/
+theorem exists_degree_lt_div_sq_le_exp_singularGapRatio (A : Matrix m n ℝ) {h r t : ℕ}
+    (hr : h + 1 = r) (hrt : r ≤ t) (d : ℕ) :
+    ∃ f : ℝ[X], f.degree < (d + 1 : ℕ) ∧ ∃ c a : ℝ, 0 < c ∧
+      (∀ i < r, c ≤ |f.eval (singularValues A i ^ 2)|) ∧
+      (∀ x ∈ Set.Icc 0 (singularValues A t ^ 2), |f.eval x| ≤ a) ∧
+      (a / c) ^ 2 ≤ 4 * Real.exp (-8 * (d : ℝ) * Real.sqrt (singularGapRatio A h t)) := by
+  have hht : h ≤ t := by omega
+  rcases (singularValues_nonneg A t).eq_or_lt with hσ | hσ
+  · rcases (singularValues_nonneg A h).eq_or_lt with hσh | hσh
+    · -- $\sigma_h = \sigma_t = 0$: the gap ratio is zero and the constant filter does.
+      refine ⟨1, by rw [degree_one]; exact_mod_cast Nat.succ_pos d, 1, 1, one_pos,
+        fun i _ => by simp, fun x _ => by simp, ?_⟩
+      simp [singularGapRatio, ← hσ, ← hσh]
+    · -- $\sigma_t = 0 < \sigma_h$: the power $x^d$ vanishes on the tail for $d \ge 1$.
+      refine ⟨Polynomial.X ^ d, by rw [degree_X_pow]; exact_mod_cast Nat.lt_succ_self d,
+        (singularValues A h ^ 2) ^ d, (0 : ℝ) ^ d, by positivity, fun i hi => ?_, fun x hx => ?_,
+        ?_⟩
+      · have hi' : singularValues A h ≤ singularValues A i :=
+          singularValues_antitone A (by omega)
+        rw [eval_pow, eval_X, abs_of_nonneg (by positivity)]
+        exact pow_le_pow_left₀ (by positivity) (pow_le_pow_left₀ hσh.le hi' 2) d
+      · rw [← hσ] at hx
+        have hx0 : x = 0 := le_antisymm (by simpa using hx.2) hx.1
+        simp [hx0]
+      · rcases Nat.eq_zero_or_pos d with rfl | hd
+        · norm_num
+        · rw [zero_pow hd.ne', zero_div, zero_pow two_ne_zero]
+          positivity
+  set σt := singularValues A t
+  set γ := singularGapRatio A h t
+  refine ⟨(Polynomial.Chebyshev.T ℝ (d : ℤ)).comp (C (2 / σt ^ 2) * Polynomial.X - 1), ?_,
+    Real.exp (4 * (d : ℝ) * Real.sqrt γ) / 2, 1, by positivity, ?_, ?_, ?_⟩
+  · refine degree_le_natDegree.trans_lt ?_
+    have h := Polynomial.Chebyshev.natDegree_T_comp_le (d : ℤ)
+      (p := C (2 / σt ^ 2) * Polynomial.X - 1) (by compute_degree)
+    rw [Int.natAbs_natCast] at h
+    exact_mod_cast h.trans_lt (by omega)
+  · intro i hi
+    have h := exp_div_two_le_abs_eval_T_comp A (Nat.succ_pos d) hσ hht (i := i) (by omega)
+    simpa using h
+  · exact fun x hx => Polynomial.Chebyshev.abs_eval_T_comp_C_mul_X_sub_one_le _ (by positivity) hx
+  · refine le_of_eq ?_
+    rw [div_div_eq_mul_div, one_mul, div_pow, show -8 * (d : ℝ) * Real.sqrt γ =
+      -(4 * (d : ℝ) * Real.sqrt γ) + -(4 * (d : ℝ) * Real.sqrt γ) by ring,
+      Real.exp_add, Real.exp_neg]
+    field_simp
+    ring
+
+omit [DecidableEq n] in
 /-- **The Chebyshev filter of RBKI**: for $q \ge 1$, a head of $r = h + 1$ singular values and a
-tail index $t \ge r$, the filter $f(x) = T_{q-1}(2x/\sigma_t^2 - 1)$ (or $f = 1$ when
-$\sigma_t = 0$) has degree below $q$, $\lvert f \rvert \ge \tfrac12 e^{4(q-1)\sqrt\gamma}$ on the
-head, $\lvert f \rvert \le 1$ on $[0, \sigma_t^2]$, and so $(a/c)^2 \le 4e^{-8(q-1)\sqrt\gamma}$
+tail index $t \ge r$, there is a filter of degree below $q$ (the Chebyshev filter
+$T_{q-1}(2x/\sigma_t^2 - 1)$ when $\sigma_t > 0$) with $(a/c)^2 \le 4e^{-8(q-1)\sqrt\gamma}$
 in front of the tail. -/
 private theorem exists_rbki_filter (A : Matrix m n ℝ) {h r t q : ℕ} (hr : h + 1 = r)
     (hrt : r ≤ t) (hq : 1 ≤ q) :
@@ -253,31 +310,11 @@ private theorem exists_rbki_filter (A : Matrix m n ℝ) {h r t q : ℕ} (hr : h 
       (a / c) ^ 2 * frobNorm (A - truncatedSVD A t) ^ 2 ≤
         4 * Real.exp (-8 * ((q : ℝ) - 1) * Real.sqrt (singularGapRatio A h t)) *
           frobNorm (A - truncatedSVD A t) ^ 2 := by
-  rcases (singularValues_nonneg A t).eq_or_lt with hσ | hσ
-  · -- $\sigma_t = 0$: the tail vanishes and the constant filter does.
-    refine ⟨1, by rw [degree_one]; exact_mod_cast hq, 1, 1, one_pos, fun i _ => by simp,
-      fun x _ => by simp, ?_⟩
-    rw [truncatedSVD_of_singularValues_eq_zero A hσ.symm, sub_self, frobNorm_zero]
-    simp
-  set σt := singularValues A t
-  set γ := singularGapRatio A h t
-  have hht : h ≤ t := by omega
-  refine ⟨(Polynomial.Chebyshev.T ℝ ((q - 1 : ℕ) : ℤ)).comp (C (2 / σt ^ 2) * Polynomial.X - 1), ?_,
-    Real.exp (4 * ((q : ℝ) - 1) * Real.sqrt γ) / 2, 1, by positivity, ?_, ?_, ?_⟩
-  · refine degree_le_natDegree.trans_lt ?_
-    have h := Polynomial.Chebyshev.natDegree_T_comp_le ((q - 1 : ℕ) : ℤ)
-      (p := C (2 / σt ^ 2) * Polynomial.X - 1) (by compute_degree)
-    rw [Int.natAbs_natCast] at h
-    exact_mod_cast h.trans_lt (by omega)
-  · intro i hi
-    exact exp_div_two_le_abs_eval_T_comp A hq hσ hht (by omega)
-  · exact fun x hx => Polynomial.Chebyshev.abs_eval_T_comp_C_mul_X_sub_one_le _ (by positivity) hx
-  · refine le_of_eq (congrArg (· * _) ?_)
-    rw [div_div_eq_mul_div, one_mul, div_pow, show -8 * ((q : ℝ) - 1) * Real.sqrt γ =
-      -(4 * ((q : ℝ) - 1) * Real.sqrt γ) + -(4 * ((q : ℝ) - 1) * Real.sqrt γ) by ring,
-      Real.exp_add, Real.exp_neg]
-    field_simp
-    ring
+  obtain ⟨f, hf, c, a, hc, hhead, htail, hK⟩ :=
+    exists_degree_lt_div_sq_le_exp_singularGapRatio A hr hrt (q - 1)
+  rw [Nat.sub_add_cancel hq] at hf
+  rw [Nat.cast_sub hq, Nat.cast_one] at hK
+  exact ⟨f, hf, c, a, hc, hhead, htail, mul_le_mul_of_nonneg_right hK (sq_nonneg _)⟩
 
 omit [DecidableEq n] in
 /-- **The power filter of RSI**: for a head of $r = h + 1$ singular values and a tail index

@@ -92,7 +92,29 @@ theorem IsStableQRChain.isPerturbedUnitarySimilar {x C : ℝ} {H H' : Matrix (Fi
     (h : IsStableQRChain x H ss H' Rs) (hx : 0 ≤ x) (hC : 0 ≤ C)
     (hs : ∀ s ∈ ss, ‖s‖ ≤ C * specNorm H) :
     IsPerturbedUnitarySimilar H H' ((1 + C) * specNorm H * ((1 + x) ^ ss.length - 1)) := by
-  sorry
+  -- The invariant: a chain from `K` with shifts bounded by `C * specNorm H` and budget
+  -- `c ≥ specNorm K + C * specNorm H` has backward error `c * ((1 + x) ^ length - 1)`.
+  have key : ∀ (c : ℝ) (K K' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (ts : List ℂ)
+      (Ss : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)),
+      specNorm K + C * specNorm H ≤ c → (∀ s ∈ ts, ‖s‖ ≤ C * specNorm H) →
+      IsStableQRChain x K ts K' Ss →
+        IsPerturbedUnitarySimilar K K' (c * ((1 + x) ^ ts.length - 1)) := by
+    intro c K K' ts Ss hK hs g
+    induction g generalizing c with
+    | nil K => simpa using IsPerturbedUnitarySimilar.refl K
+    | @cons K₀ K₁ K₂ R s ss Rs h t ih =>
+      have hsK : ‖s‖ ≤ C * specNorm H := hs s (List.mem_cons_self ..)
+      have hs' : ∀ s' ∈ ss, ‖s'‖ ≤ C * specNorm H :=
+        fun s' hm => hs s' (List.mem_cons_of_mem _ hm)
+      have hxc : x * (specNorm K₀ + ‖s‖) ≤ x * c :=
+        mul_le_mul_of_nonneg_left (by linarith) hx
+      have h1 := h.isPerturbedUnitarySimilar
+      have hH₁ := h1.specNorm_le
+      have h2 := ih ((1 + x) * c) (by nlinarith) hs'
+      refine (h1.trans h2).mono ?_
+      rw [List.length_cons, pow_succ]
+      nlinarith [hxc]
+  exact key ((1 + C) * specNorm H) H H' ss Rs (le_of_eq (by ring)) hs h
 
 /-- **Backward error of a degree $m$ step, factorization part** (corrected
 [BanksGarzaVargasSrivastava2022, Lemma 3.6]): for shifts in $\mathbb{D}(0, C\|\mathbf{H}\|_2)$ and

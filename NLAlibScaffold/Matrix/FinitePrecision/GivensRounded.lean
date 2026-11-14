@@ -505,7 +505,21 @@ $2\eta\|\mathbf{A}\|_2$.** [Higham2002, Lemma 19.8]. -/
 theorem IsRoundedColRotation.specNorm_sub_le {η : ℝ} {i j : Fin n} {c s : ℂ}
     {A A' : Matrix (Fin n) (Fin n) ℂ} (h : IsRoundedColRotation η i j c s A A') (hη : 0 ≤ η) :
     specNorm (A' - A * (givens i j c s)ᴴ) ≤ 2 * η * specNorm A := by
-  sorry
+  have hG : ∀ r k, (givens i j c s * Aᴴ) r k = star ((A * (givens i j c s)ᴴ) k r) := by
+    intro r k
+    rw [← Matrix.conjTranspose_apply, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
+  have h' : IsRoundedRowRotation η i j c s Aᴴ A'ᴴ := by
+    refine ⟨fun r k hr hk => ?_, fun k => ?_⟩
+    · simp only [Matrix.conjTranspose_apply, h.1 k r hr hk]
+    · have e := h.2 k
+      simp only [Matrix.conjTranspose_apply, hG, ← star_sub, norm_star]
+      exact e
+  have hT : A' - A * (givens i j c s)ᴴ = ((A'ᴴ - givens i j c s * Aᴴ))ᴴ := by
+    simp [Matrix.conjTranspose_sub, Matrix.conjTranspose_mul]
+  rw [hT, specNorm_conjTranspose]
+  have := h'.specNorm_sub_le hη
+  rw [specNorm_conjTranspose] at this
+  exact this
 
 /-- **Rounded coefficients and rounded application**: rotating a pair by the computed
 coefficients $(\tilde c, \tilde s)$ of $(u, v)$ with the rounded linear combination is within

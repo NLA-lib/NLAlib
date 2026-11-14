@@ -86,6 +86,14 @@ Statement changes made on the skeleton:
 * **Q4** constant $66 \to 66 + 2C$: false for $C > 130$ ($\mathbf{H} = -\mathbf{I}_2$, $s = 200$,
   $m = 1$). Chosen over the hypothesis $d \le \|\mathbf{H}\|$ because it keeps the statement valid
   for every shift and costs only a constant factor in $\boldsymbol{u}$ (all uses have $C \le 4.5$).
+* **Q4** gains `IsUpperHessenberg H` (found at proof time): `multiShiftedQRStep` is Givens QR,
+  which is a QR factorization of $p(\mathbf{H})$ only for Hessenberg $\mathbf{H}$. Without it false:
+  $3\times3$, $m = 1$, $s = C = 0$, the chain the exact QR step truncated to Hessenberg form,
+  $\mathbf{H}$ close to rank one with $\mathbf{H}_{31} \approx 6\cdot10^{-8}$ (data and an 80-digit
+  check in `~/nlalib-harness/pilot/q4-counterexample/`): hypotheses hold ($x = 1.4\cdot10^{-14}$,
+  bound $1.3\cdot10^{-9}$, $\kappa \le 3.44$, $d = 2.9\cdot10^{-7}$), but every phase $\mathbf{D}$
+  leaves error $\ge 0.251$ against the bound $1.5\cdot10^{-4}$. Every use applies Q4 to a
+  Hessenberg iterate.
 * **S5** `hRhi`: $1.001\cdot2^{1/k} \to 2.002^{1/k}$, i.e. $\tilde\psi$ within $0.001/k$ as the paper's
   (eq:boundonpottilde); with a flat $1.001$ the constant $13$ fails for $k \ge 60$. P6 accordingly.
 * **Q3** `hm`: $m^2 x \le 1/4 \to m x \le 1/4$ (sufficient and minimal; G16 row).
@@ -159,7 +167,7 @@ $\beta$). The worklist's scalar arithmetic is exact in C4 and rounded in P3.
 |---|---|---|---|---|
 | R1–R4 | QR perturbation: `IsQR.frobNorm_sub_le_of_add`, `IsQR.frobNorm_sub_triangular_le_of_add` ($\|\mathbf{E}\|_{\mathsf F}$; elementary det/AM–GM proof, constants $7.02$, $3.64 \le 8$), `IsQR.last_le_of_add`, `IsQR.le_last_of_add` ($\mathbf{R}_{nn}$ ratio) | Matrix/Perturbation/QRFactorization | L, L, M, M | skel |
 | Q3 | `IsStableQRChain.exists_specNorm_aeval_sub_le` (L3.6 second part, $mx \le 1/4$) | StableStep | L | skel |
-| Q4 | `IsStableQRChain.exists_frobNorm_conj_sub_le` (L3.8 corrected, phase $\mathbf{D}$, constant $66 + 2C$) | same | L | skel |
+| Q4 | `IsStableQRChain.exists_frobNorm_conj_sub_le` (L3.8 corrected, Hessenberg $\mathbf{H}$, phase $\mathbf{D}$, constant $66 + 2C$) | same | L | skel |
 | Q5 | `IsStableQRChain.abs_prod_last_sub_le` (L3.9 corrected, 8004, $0.0006$) | same | M | skel |
 | Q6 | `potential_le_or_exists_lt_of_sub_le` (L5.2, bottom $k$) | same | S | skel |
 | S1, S2 | `isOptimalRitzValues_of_lt`, `not_isOptimalRitzValues_of_le` (Optimal) | Matrix/QRIteration/RoundedStrategy | S, S | skel |

@@ -40,6 +40,8 @@ NLAlib.Ops.Examples.Oracles.sumAlgorithm hyps=0 uniform=yes confined=no charged=
 NLAlib.Ops.Examples.Resources.mixedAlgorithm hyps=0 uniform=yes confined=yes charged=no budget=closed scratch=closed
 NLAlib.ShiftedQR.deflationAlgorithm hyps=2 uniform=yes confined=yes charged=no budget=manifest scratch=manifest
 NLAlib.ShiftedQR.exactAlgorithm hyps=0 uniform=yes confined=yes charged=no budget=manifest scratch=manifest
+NLAlib.ShiftedQR.exactAlgorithmWithPolynomialWork hyps=0 uniform=yes confined=yes charged=no budget=manifest scratch=manifest
+NLAlib.ShiftedQR.exactForwardAlgorithm hyps=0 uniform=yes confined=yes charged=no budget=manifest scratch=manifest
 NLAlib.ShiftedQR.exactStepAlgorithm hyps=0 uniform=yes confined=yes charged=yes budget=manifest scratch=manifest
 NLAlib.ShiftedQR.stepAlgorithm hyps=1 uniform=yes confined=yes charged=yes budget=manifest scratch=manifest
 NLAlib.Sign.certifiedAlgorithm hyps=2 uniform=yes confined=yes charged=no budget=manifest scratch=manifest

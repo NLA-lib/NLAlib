@@ -2,8 +2,8 @@
 
 2026-11-14. Design note; **status: approved by the maintainer with two changes (§9, §10):
 sharp statements with clean corollaries, and orthogonalization as an abstract contract with a
-concrete scheme substituted. One independent review applied to the first draft; the contract
-(§3.1a) is new text and not yet reviewed. Nothing proved, no library file changed.** Branch
+concrete scheme substituted. Two independent reviews applied (first draft; then the contract
+of §3.1a). Nothing proved; the Lean skeleton is in progress on this branch.** Branch
 `design/block-lanczos` from `origin/main` @ `cbf64ea9` (PR #137). Decision sheet: harness
 `state/decisions/BLOCK-LANCZOS.json` (ids BL1–BL12 below, all decided).
 
@@ -380,77 +380,150 @@ $10^{-14}$; again a check of the identity only.
 Two pure predicates on matrices, in `Matrix/Perturbation` next to `IsOrthErr`, and one
 operation whose contract is the decoded predicate. The exact one fixes what the scheme
 computes up to the freedom every scheme has; the rounded one is the guarantee every stability
-theorem of §4 consumes, through its three parameters only.
+theorem of §4 consumes, through its three parameters only. The definitions below are the
+second version, after an independent review of the first (§10); they are still unchecked by
+Lean until the skeleton compiles.
+
+**Zero columns.** A basis with deflated columns is not near orthonormal as a matrix, so
+"orthonormal on the nonzero columns" is expressed without subtypes or reindexing by the
+*Gram defect on the support*:
 
 ```lean
-/-- Exact extension of a basis `Q` by a block `W`: representation, orthonormality of the
-nonzero columns, and no loss of range. Zero columns are allowed (rank deficiency). -/
-structure IsBasisExtension {n k b : ℕ} (Q : Matrix (Fin n) (Fin k) 𝕜) (W : Matrix (Fin n) (Fin b) 𝕜)
-    (Q' : Matrix (Fin n) (Fin b) 𝕜) (H : Matrix (Fin k) (Fin b) 𝕜) (R : Matrix (Fin b) (Fin b) 𝕜) :
-    Prop where
-  repr : W = Q * H + Q' * R
-  upper : R.BlockTriangular id
-  orth : ∀ c, Q'.col c = 0 ∨ (‖WithLp.toLp 2 (Q'.col c)‖ = 1 ∧ Qᴴ *ᵥ Q'.col c = 0 ∧
-    ∀ c' < c, star (Q'.col c') ⬝ᵥ Q'.col c = 0)
-  range : LinearMap.range (Matrix.fromCols Q Q').mulVecLin =
-    LinearMap.range (Matrix.fromCols Q W).mulVecLin
+/-- 0/1 indicator of the nonzero columns. -/
+noncomputable def colSupport (Q : Matrix m ι 𝕜) (j : ι) : 𝕜 := if Q.col j = 0 then 0 else 1
 
-/-- Rounded extension, with parameters `(η₀, μ, ε)`: if the old basis is within `η₀` of
-orthonormal, the representation holds up to `ε`, and every nonzero new column is `μ`-orthogonal
-to all earlier columns and `μ`-normalized. -/
-structure IsBasisExtensionErr {n k b : ℕ} (η₀ μ ε : ℝ) (Q : Matrix (Fin n) (Fin k) ℝ)
-    (W Q' : Matrix (Fin n) (Fin b) ℝ) (H : Matrix (Fin k) (Fin b) ℝ) (R : Matrix (Fin b) (Fin b) ℝ) :
-    Prop where
-  upper : R.BlockTriangular id
-  residual : frobNorm (W - Q * H - Q' * R) ≤ ε * frobNorm W
-  column : IsNearOrthonormalOnSupport η₀ Q → ∀ c, Q'.col c = 0 ∨
-    (|‖WithLp.toLp 2 (Q'.col c)‖ ^ 2 - 1| ≤ μ ∧
-      ‖WithLp.toLp 2 ((Matrix.fromCols Q (Q'.submatrix id (Fin.castLE c.is_le')))ᵀ *ᵥ Q'.col c)‖ ≤ μ)
+/-- `Qᴴ Q - diag(colSupport Q)`: zero iff the nonzero columns are orthonormal. -/
+noncomputable def gramDefect (Q : Matrix m ι 𝕜) : Matrix ι ι 𝕜 :=
+  Qᴴ * Q - Matrix.diagonal (colSupport Q)
 ```
 
-(`IsNearOrthonormalOnSupport η₀ Q`: the nonzero columns of $\mathbf Q$ have Gram matrix within
-$\eta_0$ of the identity; the last line says "against the old columns and the earlier new
-ones" and will be written with whatever sub-block notation the skeleton settles on.) Why this
-shape:
+Its Frobenius and spectral norms are those of $\mathbf G-\mathbf I$ on the kept columns. One
+bridge lemma (compress to the kept columns) connects it to `IsOrthErr`, to the polar factor of
+§4.4 and to "the number of kept columns is at most $n$".
 
-* **The residual clause has no antecedent**, as in `IsOrthErr`: the relation
-  $\mathbf W=\mathbf Q\mathbf H+\mathbf Q'\mathbf R+\mathbf F$ comes from the scheme's own
-  arithmetic and holds whatever the basis is. Rank decisions are inside it: a scheme that
-  drops a column of size at most $\tau$ relative reports $\varepsilon\ge\tau$.
-* **The column clause is absolute** ($\mu$, not $\varepsilon_1+\varepsilon_3\|\mathbf w\|/\|\mathbf w'\|$).
-  The single-vector `IsOrthErr` leaves admissibility to the caller, which then has to select a
-  prefix. Here the scheme owns the rank decision, so it can promise $\mu$ for every column it
-  keeps. This is what lets the guarantees cover all returned columns for $b>1$.
-* **Per-column form** so that the composition over the whole run is
-  `frobNorm_transpose_mul_self_sub_one_le_of_columns` verbatim:
-  $\|\mathbf G-\mathbf I\|_{\mathsf F}\le\sqrt{3N}\,\mu$ on the nonzero columns, closed under the
-  window $\sqrt{3N}\,\mu\le\eta_0$. One lemma (E2), no induction in the driver proofs.
-* A scheme that cannot give a per-column bound (a block Householder step gives it for the
-  whole block at once) still fits: a block bound implies the column bound.
+```lean
+/-- Exact extension of a basis `Q` by a block `W`. -/
+structure IsBasisExtension (Q : Matrix (Fin n) (Fin k) 𝕜) (W Q' : Matrix (Fin n) (Fin b) 𝕜)
+    (H : Matrix (Fin k) (Fin b) 𝕜) (R : Matrix (Fin b) (Fin b) 𝕜) : Prop where
+  repr : W = Q * H + Q' * R
+  upper : R.BlockTriangular id
+  span : ∃ (M : Matrix (Fin k) (Fin b) 𝕜) (T : Matrix (Fin b) (Fin b) 𝕜), Q' = Q * M + W * T
+  zero_col : ∀ c, W.col c = 0 → Q'.col c = 0
+  coef_zero_left : ∀ j, Q.col j = 0 → H j = 0
+  coef_zero_right : ∀ c, Q'.col c = 0 → R c = 0
+  orth : gramDefect Q = 0 → gramDefect (Matrix.fromCols Q Q') = 0
+
+/-- Antecedent of the rounded contract: the basis, extended by `b` more columns each
+contributing at most `3 μ²`, stays within `η₀`. -/
+def ExtensionWindow (η₀ μ : ℝ) (b : ℕ) (Q : Matrix (Fin n) (Fin k) ℝ) : Prop :=
+  Real.sqrt (frobNorm (gramDefect Q) ^ 2 + 3 * b * μ ^ 2) ≤ η₀
+
+/-- Rounded extension with parameters `(η₀, μ, ε)`. -/
+structure IsBasisExtensionErr (η₀ μ ε : ℝ) (Q : Matrix (Fin n) (Fin k) ℝ)
+    (W Q' : Matrix (Fin n) (Fin b) ℝ) (H : Matrix (Fin k) (Fin b) ℝ)
+    (R : Matrix (Fin b) (Fin b) ℝ) : Prop where
+  upper : R.BlockTriangular id
+  zero_col : ∀ c, W.col c = 0 → Q'.col c = 0
+  residual : ExtensionWindow η₀ μ b Q → frobNorm (W - Q * H - Q' * R) ≤ ε * frobNorm W
+  column : ExtensionWindow η₀ μ b Q → ∀ c, Q'.col c = 0 ∨
+    (|‖WithLp.toLp 2 (Q'.col c)‖ ^ 2 - 1| ≤ μ ∧
+      ‖WithLp.toLp 2 (Qᵀ *ᵥ Q'.col c)‖ ^ 2 +
+        ∑ c' ∈ Finset.Iio c, (Q'.col c' ⬝ᵥ Q'.col c) ^ 2 ≤ μ ^ 2)
+```
+
+Why each clause is there (the first version lacked several; each omission made a claim of
+this note false):
+
+* **`span`** (the range is not enlarged): without it $\mathbf W=\mathbf 0$ with an arbitrary
+  orthonormal $\mathbf Q'$ would pass. The other inclusion follows from `repr`. Together they
+  give the Krylov ranges of P1 for any scheme.
+* **`orth` is conditional** on the old basis being orthonormal on its support: two classical
+  passes give $\mathbf Q'\perp\mathbf Q$ only then, so an unconditional clause could not be
+  proved by the instance. The driver supplies the antecedent by induction.
+* **`zero_col`**: a zero input column gives a zero output column. The contract does not imply
+  it otherwise ($\mathbf W=[\mathbf 0,\mathbf w]$, $\mathbf Q'=[\mathbf w/\|\mathbf w\|,\mathbf 0]$
+  meets every other clause), and §4.4 needs it: a zero basis column has only zero descendants,
+  so deleting zero columns keeps the triangular shape.
+* **`coef_zero_left`, `coef_zero_right`**: coefficient rows at zero columns are zero. `repr`
+  leaves them free, and then $\mathbf S=\mathbf V_+^{\mathsf H}\mathbf A^{\mathsf H}\mathbf U$,
+  the band structure and $\mathbf R=\mathbf S^{\mathsf H}_{[0,N)}$ can fail. (The identity
+  $\mathbf U\mathbf S^{\mathsf H}\mathbf V_+^{\mathsf H}=\mathsf{rsvd}$ does not need them.)
+* **Both rounded clauses carry the antecedent**, as both clauses of `IsOrthErr` on main do:
+  the representation bound of two passes and the normalization term use the near-orthonormal
+  basis. Execution (G2) is unaffected, since the antecedent is inside the predicate.
+* **The window covers the columns added inside the block.** Column $c$ is reduced against
+  $[\mathbf Q,\mathbf Q'_{<c}]$, so a hypothesis on $\mathbf Q$ alone would make $\mu$ depend
+  on itself. With `ExtensionWindow` every intermediate basis has spectral defect at most
+  $\eta_0$, the single-vector `IsOrthErr` applies at $\eta_0$, $\mu$ is a function of a free
+  $\eta_0$, and the window of the whole run is $\sqrt{3(N+b)}\,\mu\le\eta_0$. There is no
+  circularity; it is a joint smallness condition (roughly $\tau\gtrsim N(c+E)$ for CGS2).
+* **The column clause is absolute** ($\mu$, not
+  $\varepsilon_1+\varepsilon_3\|\mathbf w\|/\|\mathbf w'\|$): the scheme owns the rank decision,
+  so it can promise $\mu$ for every column it keeps. This is what lets the guarantees cover
+  all returned columns for $b>1$.
+* **Composition** (E2) is an exact block identity,
+  $\|\mathrm{gd}[\mathbf Q,\mathbf Q']\|_{\mathsf F}^2=\|\mathrm{gd}\,\mathbf Q\|_{\mathsf F}^2+
+  2\|\mathbf Q^{\mathsf T}\mathbf Q'\|_{\mathsf F}^2+\|\mathrm{gd}\,\mathbf Q'\|_{\mathsf F}^2$,
+  plus the column clause: each step adds at most $3b\mu^2$, so
+  $\|\mathrm{gd}\,\mathbf V\|_{\mathsf F}\le\sqrt{3N}\,\mu$. It replaces
+  `frobNorm_transpose_mul_self_sub_one_le_of_columns`, which needs every column nonzero and
+  does not apply here.
+* The exact contract implies the rounded one at $(0,0,0)$ only.
+
+Statements planned for `Matrix/Perturbation/BasisExtension.lean` (E1, E2):
+`IsBasisExtension.range_eq`, `IsBasisExtension.coef_eq` ($\mathbf H=\mathbf Q^{\mathsf H}\mathbf W$,
+$\mathbf R=\mathbf Q'^{\mathsf H}\mathbf W$ under `gramDefect Q = 0`),
+`mul_conjTranspose_eq_rangeProjector_of_gramDefect_eq_zero`, `IsBasisExtensionErr.mono`,
+`IsBasisExtension.isBasisExtensionErr`, `frobNorm_gramDefect_fromCols_sq`,
+`IsBasisExtensionErr.frobNorm_gramDefect_fromCols_sq_le`, `frobNorm_gramDefect_le_of_blocks`,
+`specNorm_gramDefect_le_frobNorm`, the compression bridge
+`specNorm_submatrix_transpose_mul_self_sub_one_le_gramDefect`, and
+`card_filter_col_ne_zero_le`.
 
 The operation and how a scheme is substituted, in the core's existing mechanism (compare
-`twoPassRel`, `cgs2_spec`, `cgs2Impl` in `Krylov/Lanczos/Reorth/TwoPass.lean`):
+`passRel`, `twoPassRel`, `cgs2_spec` in `Krylov/Lanczos/Reorth/`):
 
 ```lean
 inductive OrthOp where
-  | extend            -- dims [n, k, b]; ins [Q, W]; outs [W (overwritten by Q'), H, R]
+  | extend
+  -- dims [n, k, b]
+  -- ins  [Q (k·n words), W (b·n)]
+  -- outs [Q' at (Q.buffer, Q.offset + k·n), W (clobbered), C = [H; R] column-major ((k+b)·b)]
 
 /-- The contract: the decoded blocks satisfy the rounded extension guarantee. -/
-def extendRel (dec : K → ℝ) (η₀ μ ε : ℕ → ℕ → ℕ → ℝ) : BlockRel K
+def extendRel (dec : K → ℝ) (η₀ μ ε : ℝ) (ok : ℕ → ℕ → ℕ → Prop) : BlockRel K
 
 /-- The exact contract, same operands. -/
 def exactExtendRel (dec : K → 𝕜) : BlockRel K
 
 -- every driver theorem takes the contract as a hypothesis on the interpretation:
---   (hO : I.Meets .total (Has.inj OrthOp.extend) ((extendRel dec η₀ μ ε).spec ExtendOperands))
+--   (hO : I.Meets .total (Has.inj OrthOp.extend) ((extendRel dec η₀ μ ε ok).spec ExtendOperands))
 -- a scheme is an implementation proved against it:
-theorem cgs2Extend_spec … :
-    (cgs2ExtendImpl τ).Triple I .total ((extendRel dec η₀ (cgs2Mu …) (cgs2Eps … τ)).spec ExtendOperands)
--- and the concrete certified algorithm is `Algorithm.link` of the abstract one with the table
--- sending `OrthOp.extend` to `cgs2ExtendImpl τ`; costs and storage are recomputed by the link.
+--   (cgs2ExtendImpl τ).Triple I .total ((extendRel dec η₀ (cgs2Mu …) (cgs2Eps … τ) ok).spec ExtendOperands)
+-- and the concrete certified algorithm is `Algorithm.link` with the table sending
+-- `OrthOp.extend` to `.inl (cgs2ExtendImpl τ)` and every other operation to `.inr`.
 ```
 
-The parameters are functions of the dimensions $(n,k,b)$, as the rounding envelopes on main.
+Points fixed by the review of the mechanics:
+
+* The new block is written **directly after the stored basis in the same buffer**, so that
+  the columns a later column is reduced against form one contiguous block, as `passRel`
+  requires; no copy. $\mathbf S$ and $\mathbf R$ are stored packed by block column so that
+  $\mathbf C$ is written in place. Whether the admission can express
+  "$\mathbf Q'$ starts at $\mathbf Q$'s end in the same buffer" under the frame rules, and
+  zero-length blocks at $k=0$, are to be checked first in the skeleton (open item O4).
+* $(\eta_0,\mu,\varepsilon)$ are real constants; `ok n k b` bounds the dimensions for which the
+  scheme promises them. One $\eta_0$ serves all $k$.
+* A relational exact contract suffices for the certificate and for the probability transfer:
+  `Specification.good` is a predicate on the final memory, and
+  $\mathbf U\mathbf S^{\mathsf H}\mathbf V_+^{\mathsf H}$ does not depend on the scheme. An
+  expectation transfer is available for that product only; the individual factors are not
+  measurable functions of the tape under a relational contract.
+* The abstract `AccessModel` needs a joint realization, that is at least one scheme: it comes
+  from the realized exact BLAS model through `Interp.link_meets` and the exact CGS2 triple (E4),
+  which therefore must prove the unconditional clauses for an arbitrary $\mathbf Q$.
+* The test signature is fixed across a link, so the abstract driver's signature already
+  contains the comparison test the instance uses.
 
 Why the remaining choices, against the alternatives:
 
@@ -558,11 +631,20 @@ functional and an error contract or by linking a certified solver.
 ```
 cgs2Extend τ (Q, W):                   -- for each column c of W, in order
     ν₀ := ‖w_c‖                        -- saved raw norm
-    (h, w') := cgs2([Q, Q'_{<c}], w_c) -- two classical passes against all earlier columns
+    (h₁, w₁) := cgsPass([Q, Q'_{<c}], w_c)     -- one contiguous stored block of k + c columns
+    (h₂, w') := cgsPass([Q, Q'_{<c}], w₁)
+    h := h₁ + h₂                       -- k + c scalar additions; first k entries to H, last c to R
     β := ‖w'‖
-    if β ≤ τ·ν₀ then q'_c := 0, β := 0 else q'_c := w'/β
-    column c of [H; R] := (h, β)
+    if β ≤ τ·ν₀ then q'_c := 0, R[c, c] := 0 else q'_c := w'/β, R[c, c] := β
 ```
+
+It is built from two `cgsPass` calls, not from `cgs2Impl`: `cgs2Impl` on main overwrites and
+releases its coefficient buffer (`TwoPassOut` keeps $h_1,h_2$ only as witnesses), while the
+contract returns the coefficients. `passRel` already outputs them, and
+`isOrthErr_of_two_passes` has the hypothesis for the rounded sum. The two blocks $\mathbf Q$
+and $\mathbf Q'_{<c}$ must be swept as one basis; sweeping them one after the other is not
+CGS2 and puts a first-order $\eta_0$ term into the orthogonality. $\tau$ is a rational literal
+of the implementation (`ScalarOp.lit`), not a run-time word.
 
 In rounded arithmetic an exact zero test almost never fires, and a nearly dependent column is
 the normal case: a start block with close columns, or $N$ beyond the numerical rank, which is
@@ -574,18 +656,24 @@ the threshold test, inside the scheme, with $\tau\ge0$ a parameter of the instan
 
 What the instance proves (E3, E4 of §5):
 
-* **Rounded contract** with $\mu=2(2c+2(\eta_0+c)^2/\tau+E)$ and $\varepsilon=3c+E+\tau$, $c$ the
-  one-pass coefficient and $E$ the normalization envelope of `RoundedSpectral`, for $\tau$ in
-  its window (bounded below by a multiple of the rounding level). Every kept column passes the
-  admissibility test by construction, which is what turns `IsOrthErr`'s relative clause into
-  the absolute $\mu$. A dropped column has $\|\mathbf w'\|\le\tau\nu_0$, which goes into
-  $\varepsilon$. The pure part is `IsOrthErr` at the CGS2 constants, already on main
-  (`Matrix/FinitePrecision/ClassicalGramSchmidt.lean`).
+* **Rounded contract** with $\mu=2(2c+4(\eta_0+c)^2/\tau+E)$ and
+  $\varepsilon=3c+2E+2\tau$ (sketch values, to be fixed by the proof), $c$ the one-pass
+  coefficient and $E$ the normalization envelope of `RoundedSpectral`, under
+  $\eta_0,c\le1/100$, $0<\tau\le1$, $4u\le c$. Every kept column passes the admissibility test
+  by construction, which turns `IsOrthErr`'s relative clause into the absolute $\mu$; this
+  step is proved on main as `LanczosReorthRun.norm_transpose_mulVec_v_le`, inside the run
+  structure, and is extracted as a standalone lemma on `IsOrthErr`. The executed test compares
+  the rounded product of the literal $\tau$ with the computed norm, which costs the factors 2
+  against the first draft's constants. A kept column has residual
+  $\|\mathbf f\|+\|\boldsymbol\delta\|\le3c\|\mathbf w\|+E\|\mathbf w'\|$; a dropped one has
+  residual $\mathbf f+\mathbf w'$ with $\|\mathbf w'\|\lesssim\tau\|\mathbf w\|$. Per-column
+  bounds give the Frobenius form. The pure part is `IsOrthErr` at the CGS2 constants, already
+  on main (`Matrix/FinitePrecision/ClassicalGramSchmidt.lean`).
 * **Exact contract** at $\tau=0$ in the exact model: the test is $\beta=0$, the zero guard of
   the rank-revealing MGS on main, and the output is `IsBasisExtension`.
 
-A zero column of $\mathbf V$ gives a zero product, which every scheme maps to a zero column, so
-the effective block width shrinks without any change of the tree (no `bindIdx` on a shrinking
+A zero column of $\mathbf V$ gives a zero product, which the `zero_col` clause of the contract
+maps to a zero column, so the effective block width shrinks without any change of the tree (no `bindIdx` on a shrinking
 width). At $\tau>0$ in exact arithmetic the output is `rsvd` at a subspace of the Krylov
 space; no exact theorem is proposed for that case, the rounded analysis covers it through
 $\varepsilon$.
@@ -627,9 +715,9 @@ scheme, under the window $\sqrt{3(N+b)}\,\mu\le\eta_0$; the CGS2 corollaries sub
 values of §3.5. On each side:
 
 * $\|\bar{\mathbf U}^{\mathsf T}\bar{\mathbf U}-\mathbf I\|_{\mathsf F}\le\sqrt{3N}\,\mu$ on the
-  nonzero columns, and the same for $\bar{\mathbf V}_+$: the column clause of the contract and
-  `frobNorm_transpose_mul_self_sub_one_le_of_columns`. In particular the number of nonzero
-  columns is at most $m$, respectively $n$.
+  nonzero columns (that is, $\|\mathrm{gd}\,\bar{\mathbf U}\|_{\mathsf F}\le\sqrt{3N}\,\mu$), and
+  the same for $\bar{\mathbf V}_+$: the column clause of the contract and the composition
+  lemma E2. In particular the number of nonzero columns is at most $m$, respectively $n$.
 * Residual relations $\|\mathbf A\bar{\mathbf V}-\bar{\mathbf U}\bar{\mathbf R}\|_{\mathsf F}$,
   $\|\mathbf A^{\mathsf T}\bar{\mathbf U}-\bar{\mathbf V}_+\bar{\mathbf S}\|_{\mathsf F}\le
   c'\sqrt N\,(\varepsilon_{\rm mv}+\varepsilon)\|\mathbf A\|_2$: the residual clause, block by
@@ -922,7 +1010,23 @@ around an abstract orthogonalization operation (§3.1a), the driver theorems of 
 the contract's parameters, and column-wise CGS2 with threshold deflation is the first instance
 (§3.5, E3–E5). The first stage grew from 28 to 32 statements.
 
-Not re-reviewed: the contract of §3.1a (its two predicates are sketches, the column clause in
-particular), the instance constants of §3.5, and the restated bounds of §4.3–4.4 are new text
-and have had no independent check. The reviewer could not run numerics and could not confirm the
+Second independent review, 2026-11-14, of §3.1, §3.1a, §3.5 and §4.2–4.4 after that revision
+(read against `OrthErr.lean`, `ClassicalGramSchmidt.lean`, `Lanczos/Reorth/`, and the Ops
+contract, link and certificate files; nothing compiled). Findings applied in a third revision:
+
+* the exact `orth` clause and the rounded `residual` clause had to be conditional on the old
+  basis;
+* zero columns: the column lemma on main does not apply to a basis with zero columns; the
+  contract is restated with the Gram defect on the support, and E2 is an exact block identity;
+* two claims did not follow from the first contract and needed new clauses: the band structure
+  and $\mathbf R=\mathbf S^{\mathsf H}$ restricted (`coef_zero_left/right`), and "a zero column
+  has zero descendants" (`zero_col`); plus `span` to stop the range growing;
+* the window for $b>1$ must cover the columns added inside the block (`ExtensionWindow`);
+* `cgs2Impl` discards the coefficients, so the instance is built from two `cgsPass` calls; the
+  operand layout puts the new block directly after the stored basis;
+* constants of §3.5 corrected for the rounded test.
+
+Still unchecked: none of the Lean in this note has been compiled; the operand admission for
+"new block at the end of the basis buffer" and zero-length blocks (O4) are the first things
+the skeleton tests. The reviewer could not run numerics and could not confirm the
 Tropp–Webber quotation; line-number locators in §0 were not checked.

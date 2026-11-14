@@ -22,12 +22,9 @@ input. This file states the weakened contracts, the bridges from the exact contr
 error $0$, [BanksGarzaVargasSrivastava2022, Definition 3.4] at $\boldsymbol{u} = 0$), the rounded
 single shifted QR step of the existing program as a perturbed similarity
 ([BanksGarzaVargasSrivastava2022, Lemma 3.5], with the error $O(n\boldsymbol{u})$ of a sweep
-analysed round by round), and the deflation worklist driven by a backward decoupling
-implementation (the backward half of [BanksGarzaVargasSrivastava2022, Theorem 6.3]).
-
-The worklist and its program are the exact development's, unchanged: only the contract of the
-decoupling implementation it is given is weaker. The final perturbation is the sum of the
-discarded couplings and of the backward errors of the decoupling calls.
+analysed round by round). The deflation worklist with a rounded decoupling implementation, which
+may fail, is the rounded worklist of `NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedSolve`; the
+exact development's worklist cannot take a failing decoupler.
 
 ## Main definitions
 
@@ -43,7 +40,6 @@ discarded couplings and of the backward errors of the decoupling calls.
 * `NLAlib.ShiftedQR.isPerturbedUnitarySimilar_machineColRotation`: one rounded round is a
   perturbed unitary similarity with error $49\boldsymbol{u}\|\mathbf{Z}\|_2$.
 * `NLAlib.ShiftedQR.shiftedStep_isPerturbedUnitarySimilar`: the rounded single step.
-* `NLAlib.ShiftedQR.solve_backward`: the worklist with a backward decoupling implementation.
 -/
 
 @[expose] public section
@@ -358,44 +354,5 @@ theorem shiftedStep_isPerturbedUnitarySimilar {M : Machine ℝ} {I : Interp O Q 
     fun m₁ w cf hW hZ hc hwz hwc hzc hl₁ => ?_
   exact (sweep_writes_isPerturbedUnitarySimilar hS hM hu hu' hCmp hW hZ hc hwz hwc hzc
     hl₁).mono le_rfl fun _ _ ⟨hp, H', hR, hZ'⟩ => ⟨hp, H', hR.mono hgrow, hZ'⟩
-
-variable [Has IndexOp O] [Has EigenvalueKernelOp O] [Has IdxTst Q]
-
-/-- **Backward error of the deflation worklist with a backward decoupling implementation** (the
-backward half of [BanksGarzaVargasSrivastava2022, Theorem 6.3]): the exact development's program
-`solve D`, with `D` meeting the backward decoupling contract with a monotone error `ε`, returns
-all roots of $\mathbf{H} + \mathbf{E}$ with
-$\|\mathbf{E}\|_2 \le n(\delta\|\mathbf{H}\|_{\mathsf F} + \varepsilon(2\|\mathbf{H}\|_2))$,
-provided that this total stays within the exact development's perturbation budget (the
-conditioning and norm hypotheses of `NLAlib.ShiftedQRHyps`, with the backward errors added). The
-scalar arithmetic of the worklist itself (the threshold, the scans) is exact here; its rounding is
-the subject of the finite-precision program. -/
-theorem solve_backward {Mch : Machine ℝ} {I : Interp O Q ℝ}
-    (hS : IsScalar Mch I) (hE : ExactModel id Mch) (hL : IsIndexLit Mch I)
-    (hQ : IsToNat id I) (hC : IsCmp id I)
-    {θ : ℝ} {K : KernelRoutines θ} (hK : IsEigenvalueKernels K I)
-    (D : Impl O Q) {ε : ℝ → ℝ} (hεm : Monotone ε) (hε0 : ∀ N, 0 ≤ ε N)
-    (hD : BackwardDecouplingContract θ ε D I)
-    {tape : Tape ℝ} {μ : Mem ℝ} {n m F M : ℕ} {a raw out : ℕ × ℕ}
-    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {B α γ δ g : ℝ}
-    (hl : μ.Live [a, raw, out])
-    (hr : μ.Room [a, raw, out] [2 * ((n + 1) * (n + 1)), 5, 2 * (n + 1)])
-    (ha : Fp.Apart [a, raw, out] [2 * ((n + 1) * (n + 1)), 5, 2 * (n + 1)])
-    (hHess : IsUpperHessenberg H) (hA : HoldsMatrix a H μ.store)
-    (hGlobal : ShiftedQRHyps H B θ α γ δ g m F)
-    (hεg : (n : ℝ) * (δ * frobNorm H + ε (2 * specNorm H)) ≤ g / (8 * (n + 1) * B))
-    (hεn : (n : ℝ) * (δ * frobNorm H + ε (2 * specNorm H)) ≤ specNorm H)
-    (hM : M = ⌈Real.sqrt 2 / exceptionalSpacing (2 ^ m) B θ α ((1 - γ) ^ 2)⌉₊)
-    (hRaw : μ.store.readBlock raw.1 raw.2 5 = some [B, θ, α, γ, δ]) :
-    Writes .total I tape (solve D).body
-      (Env.frame [n + 1, m, 2 ^ m, F, M] [a, raw, out])
-      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
-        Store.inBlock out.1 out.2 (2 * (n + 1)))
-      (fun μ' => μ'.pos = μ.pos ∧
-        ∃ (roots : Fin (n + 1) → ℂ) (E : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
-          HoldsMatrix out (Matrix.of fun i (_ : Fin 1) => roots i) μ'.store ∧
-          specNorm E ≤ (n : ℝ) * (δ * frobNorm H + ε (2 * specNorm H)) ∧
-          (H + E).charpoly.roots = (List.ofFn roots : Multiset ℂ)) μ := by
-  sorry
 
 end NLAlib.ShiftedQR

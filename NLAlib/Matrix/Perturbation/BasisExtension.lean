@@ -32,6 +32,8 @@ Design: `docs/design/LowRank-BlockLanczos.md` §3.1a.
   stored as consecutive blocks of $b$ columns.
 * `NLAlib.blockRowPrefix`, `NLAlib.blockRows`: the first $j$ blocks of rows and block $j$ of the
   rows of a matrix stored as consecutive blocks of $b$ rows.
+* `NLAlib.blockSuccEquiv`: the identification of the indices of $j$ blocks followed by one block
+  with the indices of $j + 1$ blocks.
 
 ## Main results
 
@@ -52,6 +54,11 @@ Design: `docs/design/LowRank-BlockLanczos.md` §3.1a.
   and the exact contract as the rounded one at $(0, 0, 0)$.
 * `NLAlib.IsBasisExtensionErr.frobNorm_gramDefect_fromCols_sq_le`,
   `NLAlib.frobNorm_gramDefect_le_of_blocks`: the loss of orthogonality block by block.
+* `NLAlib.blockPrefix_succ_submatrix`, `NLAlib.blockRowPrefix_succ_submatrix`,
+  `NLAlib.blockPrefix_succ_mul_blockRowPrefix_succ`, `NLAlib.range_mulVecLin_blockPrefix_succ`,
+  `NLAlib.gramDefect_blockPrefix_succ_eq_zero_iff`: the prefix of $j + 1$ blocks is the prefix
+  of $j$ blocks followed by block $j$, up to the identification `NLAlib.blockSuccEquiv` of the
+  indices.
 -/
 
 @[expose] public section
@@ -258,6 +265,29 @@ theorem specNorm_submatrix_transpose_mul_self_sub_one_le_gramDefect [Fintype m] 
   rw [← Matrix.conjTranspose_eq_transpose_of_trivial]
   exact specNorm_submatrix_conjTranspose_mul_self_sub_one_le_gramDefect Q he h
 
+/-- A nearly orthonormal matrix has independent columns: if
+$\|\mathbf{V}^{\mathsf{H}}\mathbf{V} - \mathbf{I}\|_2 < 1$ then $\mathbf{x} \mapsto
+\mathbf{V}\mathbf{x}$ is injective. -/
+theorem injective_mulVec_of_specNorm_conjTranspose_mul_self_sub_one_lt_one [Fintype m]
+    [Fintype ι] [DecidableEq ι] {V : Matrix m ι 𝕜} (hV : specNorm (Vᴴ * V - 1) < 1) :
+    Function.Injective V.mulVec := by
+  have key : ∀ z, V *ᵥ z = 0 → z = 0 := by
+    intro z hz
+    have hG : (Vᴴ * V - 1) *ᵥ z = -z := by
+      rw [Matrix.sub_mulVec, Matrix.one_mulVec, ← Matrix.mulVec_mulVec, hz, Matrix.mulVec_zero,
+        zero_sub]
+    have hle : ‖WithLp.toLp 2 z‖ ≤ specNorm (Vᴴ * V - 1) * ‖WithLp.toLp 2 z‖ := by
+      have := norm_toLp_mulVec_le (Vᴴ * V - 1) z
+      rwa [hG, WithLp.toLp_neg, norm_neg] at this
+    have hz0 : ‖WithLp.toLp 2 z‖ = 0 :=
+      le_antisymm (by nlinarith [norm_nonneg (WithLp.toLp 2 z), specNorm_nonneg (Vᴴ * V - 1)])
+        (norm_nonneg _)
+    have : WithLp.toLp 2 z = 0 := norm_eq_zero.1 hz0
+    simpa using congrArg WithLp.ofLp this
+  intro x y hxy
+  have h0 : x - y = 0 := key _ (by rw [Matrix.mulVec_sub, hxy, sub_self])
+  exact sub_eq_zero.1 h0
+
 /-- A nearly orthonormal basis with zero columns has at most as many nonzero columns as rows:
 if the Gram defect on the support $\mathbf{D} = \mathbf{Q}^{\mathsf{H}}\mathbf{Q} -
 \operatorname{diag}(\mathbf{s})$ of a matrix $\mathbf{Q}$ with $n$ rows satisfies
@@ -265,12 +295,91 @@ $\|\mathbf{D}\|_2 < 1$, then $\mathbf{Q}$ has at most $n$ nonzero columns. -/
 theorem card_filter_col_ne_zero_le [Fintype m] [Fintype ι] [DecidableEq ι] {Q : Matrix m ι 𝕜}
     [DecidablePred fun j => Q.col j ≠ 0] (hQ : specNorm (gramDefect Q) < 1) :
     (Finset.univ.filter fun j => Q.col j ≠ 0).card ≤ Fintype.card m := by
-  -- Let `e` be the inclusion of the subtype `{j // Q.col j ≠ 0}` and `Qe := Q.submatrix id e`.
-  -- `specNorm_submatrix_conjTranspose_mul_self_sub_one_le_gramDefect` gives
-  -- `specNorm (Qeᴴ * Qe - 1) < 1`, so `Qe.mulVec` is injective (the argument of
-  -- `injective_mulVec_of_specNorm_transpose_mul_self_sub_one_lt_one` in `OrthErr.lean`, with `ᴴ`),
-  -- and `LinearMap.finrank_le_finrank_of_injective` with `Fintype.card_subtype` concludes.
-  sorry
+  have hle := specNorm_submatrix_conjTranspose_mul_self_sub_one_le_gramDefect Q
+    (e := fun j : {j // Q.col j ≠ 0} => (j : ι)) Subtype.val_injective fun j => j.2
+  have hinj : Function.Injective
+      (Matrix.mulVecLin (Q.submatrix id fun j : {j // Q.col j ≠ 0} => (j : ι))) :=
+    injective_mulVec_of_specNorm_conjTranspose_mul_self_sub_one_lt_one (lt_of_le_of_lt hle hQ)
+  have h := LinearMap.finrank_le_finrank_of_injective hinj
+  rw [Module.finrank_fintype_fun_eq_card, Module.finrank_fintype_fun_eq_card,
+    Fintype.card_subtype] at h
+  exact h
+
+/-! ### Entries of the Gram defect -/
+
+/-- The column of the Gram defect on the support $\mathbf{D} = \mathbf{Q}^{\mathsf{H}}\mathbf{Q} -
+\operatorname{diag}(\mathbf{s})$ at a zero column of $\mathbf{Q}$ is zero: if column $j$ of
+$\mathbf{Q}$ is zero then $\mathbf{D}_{i,j} = 0$ for every $i$. -/
+theorem gramDefect_apply_of_col_eq_zero_right [Fintype m] [DecidableEq ι] {Q : Matrix m ι 𝕜}
+    {j : ι} (h : Q.col j = 0) (i : ι) : gramDefect Q i j = 0 := by
+  have h0 : ∀ k, Q k j = 0 := fun k => congrFun h k
+  rw [gramDefect, Matrix.sub_apply, Matrix.mul_apply, Matrix.diagonal_apply,
+    Finset.sum_eq_zero fun k _ => by rw [h0 k, mul_zero]]
+  split_ifs with hij
+  · subst hij
+    rw [colSupport_of_col_eq_zero h, sub_zero]
+  · rw [sub_zero]
+
+/-- The entries off the diagonal of the Gram defect on the support $\mathbf{D}$ of a real matrix
+$\mathbf{Q}$ are the inner products of its columns: $\mathbf{D}_{i,j} = \mathbf{q}_i \cdot
+\mathbf{q}_j$ for $i \ne j$. -/
+theorem gramDefect_apply_of_ne [Fintype m] [DecidableEq ι] {Q : Matrix m ι ℝ} {i j : ι}
+    (h : i ≠ j) : gramDefect Q i j = Q.col i ⬝ᵥ Q.col j := by
+  rw [gramDefect, Matrix.sub_apply, Matrix.diagonal_apply_ne _ h, sub_zero,
+    Matrix.conjTranspose_eq_transpose_of_trivial]
+  rfl
+
+/-- The diagonal entry of the Gram defect on the support $\mathbf{D}$ of a real matrix
+$\mathbf{Q}$ at a nonzero column $\mathbf{q}_j$: $\mathbf{D}_{j,j} = \|\mathbf{q}_j\|^2 - 1$. -/
+theorem gramDefect_apply_self_of_col_ne_zero [Fintype m] [DecidableEq ι] {Q : Matrix m ι ℝ}
+    {j : ι} (h : Q.col j ≠ 0) : gramDefect Q j j = ‖WithLp.toLp 2 (Q.col j)‖ ^ 2 - 1 := by
+  rw [gramDefect, Matrix.sub_apply, Matrix.diagonal_apply_eq, colSupport_of_col_ne_zero h,
+    Matrix.conjTranspose_eq_transpose_of_trivial, EuclideanSpace.norm_sq_eq, sub_left_inj]
+  simp only [Matrix.mul_apply, Matrix.transpose_apply, Matrix.col_apply, Real.norm_eq_abs,
+    sq_abs]
+  exact Finset.sum_congr rfl fun k _ => (sq _).symm
+
+/-- Column $c$ of $\mathbf{Q}^{\mathsf{H}}\mathbf{Q}'$, for real matrices, is
+$\mathbf{Q}^{\mathsf{T}}\mathbf{q}'_c$ with $\mathbf{q}'_c$ column $c$ of $\mathbf{Q}'$. -/
+theorem col_conjTranspose_mul_eq_transpose_mulVec [Fintype m] (Q : Matrix m ι ℝ)
+    (Q' : Matrix m κ ℝ) (c : κ) : (Qᴴ * Q').col c = Qᵀ *ᵥ Q'.col c := by
+  rw [Matrix.conjTranspose_eq_transpose_of_trivial]
+  rfl
+
+/-- A double sum of a symmetric function $f$ on $\{0, \dots, b - 1\}^2$ by columns:
+$\sum_{i,j} f(i, j) = \sum_c \bigl(f(c, c) + 2\sum_{c' < c} f(c', c)\bigr)$. -/
+private theorem sum_sum_eq_sum_diag_add_two_mul_sum_Iio {b : ℕ} (f : Fin b → Fin b → ℝ)
+    (hf : ∀ i j, f i j = f j i) :
+    ∑ i, ∑ j, f i j = ∑ c, (f c c + 2 * ∑ c' ∈ Finset.Iio c, f c' c) := by
+  have hI : ∀ (c : Fin b) (g : Fin b → ℝ),
+      ∑ c' ∈ Finset.Iio c, g c' = ∑ c', if c' < c then g c' else 0 := by
+    intro c g
+    rw [← Finset.sum_filter]
+    refine Finset.sum_congr ?_ fun _ _ => rfl
+    ext x
+    simp
+  have hswap : ∑ c, ∑ c', (if c < c' then f c' c else 0) =
+      ∑ c, ∑ c', if c' < c then f c' c else 0 := by
+    rw [Finset.sum_comm]
+    refine Finset.sum_congr rfl fun c _ => Finset.sum_congr rfl fun c' _ => ?_
+    rw [hf c c']
+  have hsplit : ∀ c c', f c' c = (if c' = c then f c c else 0) +
+      (if c' < c then f c' c else 0) + (if c < c' then f c' c else 0) := by
+    intro c c'
+    rcases lt_trichotomy c' c with h | rfl | h
+    · simp [h, h.ne, lt_asymm h]
+    · simp
+    · simp [h, h.ne', lt_asymm h]
+  calc ∑ i, ∑ j, f i j = ∑ c, ∑ c', f c' c := Finset.sum_comm
+    _ = ∑ c, (f c c + ∑ c', (if c' < c then f c' c else 0) +
+          ∑ c', (if c < c' then f c' c else 0)) := by
+        refine Finset.sum_congr rfl fun c _ => ?_
+        rw [Finset.sum_congr rfl fun c' _ => hsplit c c', Finset.sum_add_distrib,
+          Finset.sum_add_distrib, Finset.sum_ite_eq' Finset.univ c fun _ => f c c,
+          if_pos (Finset.mem_univ c)]
+    _ = ∑ c, (f c c + 2 * ∑ c' ∈ Finset.Iio c, f c' c) := by
+        simp only [hI, Finset.sum_add_distrib, ← Finset.mul_sum, hswap]
+        ring
 
 /-! ### The exact contract -/
 
@@ -422,13 +531,64 @@ extension $(\mathbf{Q}', \mathbf{H}, \mathbf{R})$ of a real basis $\mathbf{Q}$ b
 a rounded extension with all three parameters zero. -/
 theorem IsBasisExtension.isBasisExtensionErr (h : IsBasisExtension Q W Q' H R) :
     IsBasisExtensionErr 0 0 0 Q W Q' H R := by
-  -- `upper` and `zero_col` are fields of `h`. The window at `(0, 0)` gives
-  -- `frobNorm (gramDefect Q) = 0` (`Real.sqrt_eq_zero'`, `frobNorm_eq_zero_iff`), so `h.orth`
-  -- and `gramDefect_fromCols` with `Matrix.fromBlocks_inj` give `Qᴴ * Q' = 0` and
-  -- `gramDefect Q' = 0`. `residual`: `h.repr` makes the residual zero. `column`: for a nonzero
-  -- column `c`, the entries `(c, c)` and `(c', c)` of `gramDefect Q' = 0` give the norm and the
-  -- inner products, and column `c` of `Qᴴ * Q' = 0` gives `Qᵀ *ᵥ Q'.col c = 0`.
-  sorry
+  have hD : ExtensionWindow 0 0 b Q → Qᴴ * Q' = 0 ∧ gramDefect Q' = 0 := fun hw => by
+    unfold ExtensionWindow at hw
+    have h1 := Real.sqrt_eq_zero'.1 (le_antisymm hw (Real.sqrt_nonneg _))
+    have h3 : (3 : ℝ) * b * 0 ^ 2 = 0 := by ring
+    rw [h3, add_zero] at h1
+    have h2 : gramDefect Q = 0 :=
+      frobNorm_eq_zero_iff.1 ((pow_eq_zero_iff two_ne_zero).1 (le_antisymm h1 (sq_nonneg _)))
+    have h0 := h.orth h2
+    rw [gramDefect_fromCols, ← Matrix.fromBlocks_zero, Matrix.fromBlocks_inj] at h0
+    exact ⟨h0.2.1, h0.2.2.2⟩
+  refine ⟨h.upper, h.zero_col, fun _ => ?_, fun hw c => ?_⟩
+  · have hres : W - Q * H - Q' * R = 0 := by rw [h.repr, add_sub_cancel_left, sub_self]
+    rw [hres, frobNorm_zero, zero_mul]
+  · obtain ⟨h12, h22⟩ := hD hw
+    by_cases hc : Q'.col c = 0
+    · exact Or.inl hc
+    · refine Or.inr ⟨?_, ?_⟩
+      · rw [← gramDefect_apply_self_of_col_ne_zero hc, h22, Matrix.zero_apply, abs_zero]
+      · have hs : ∑ c' ∈ Finset.Iio c, (Q'.col c' ⬝ᵥ Q'.col c) ^ 2 = 0 :=
+          Finset.sum_eq_zero fun c' hc' => by
+            rw [← gramDefect_apply_of_ne (Finset.mem_Iio.1 hc').ne, h22, Matrix.zero_apply]
+            exact zero_pow two_ne_zero
+        have hv : Qᵀ *ᵥ Q'.col c = 0 := by
+          rw [← col_conjTranspose_mul_eq_transpose_mulVec, h12]
+          rfl
+        rw [hs, hv, WithLp.toLp_zero, norm_zero]
+        simp
+
+/-- The contribution of one new column to the loss of orthogonality: if $(\mathbf{Q}',
+\mathbf{H}, \mathbf{R})$ is a rounded extension of $\mathbf{Q}$ with parameters
+$(\eta_0, \mu, \varepsilon)$ and $\mathbf{Q}$ is in the window, then, with $\mathbf{D}'$ the Gram
+defect on the support of $\mathbf{Q}'$, every column $c$ satisfies
+$2\|(\mathbf{Q}^{\mathsf{H}}\mathbf{Q}')_{:,c}\|^2 + \mathbf{D}'^2_{c,c} +
+2\sum_{c' < c} \mathbf{D}'^2_{c',c} \le 3\mu^2$. -/
+theorem IsBasisExtensionErr.column_sq_le (hE : IsBasisExtensionErr η₀ μ ε Q W Q' H R)
+    (hw : ExtensionWindow η₀ μ b Q) (c : Fin b) :
+    2 * ‖WithLp.toLp 2 ((Qᴴ * Q').col c)‖ ^ 2 + (gramDefect Q' c c ^ 2 +
+      2 * ∑ c' ∈ Finset.Iio c, gramDefect Q' c' c ^ 2) ≤ 3 * μ ^ 2 := by
+  rw [col_conjTranspose_mul_eq_transpose_mulVec]
+  by_cases h0 : Q'.col c = 0
+  · have hz : ∑ c' ∈ Finset.Iio c, gramDefect Q' c' c ^ 2 = 0 :=
+      Finset.sum_eq_zero fun c' _ => by
+        rw [gramDefect_apply_of_col_eq_zero_right h0]
+        exact zero_pow two_ne_zero
+    rw [hz, gramDefect_apply_of_col_eq_zero_right h0, h0, Matrix.mulVec_zero, WithLp.toLp_zero,
+      norm_zero]
+    nlinarith [sq_nonneg μ]
+  · rcases hE.column hw c with h | ⟨h1, h2⟩
+    · exact absurd h h0
+    · have hd : gramDefect Q' c c ^ 2 ≤ μ ^ 2 := by
+        rw [gramDefect_apply_self_of_col_ne_zero h0, ← sq_abs]
+        exact pow_le_pow_left₀ (abs_nonneg _) h1 2
+      have hs : ∑ c' ∈ Finset.Iio c, gramDefect Q' c' c ^ 2 =
+          ∑ c' ∈ Finset.Iio c, (Q'.col c' ⬝ᵥ Q'.col c) ^ 2 :=
+        Finset.sum_congr rfl fun c' hc' => by
+          rw [gramDefect_apply_of_ne (Finset.mem_Iio.1 hc').ne]
+      rw [hs]
+      linarith
 
 /-- One block step of the loss of orthogonality: if $(\mathbf{Q}', \mathbf{H}, \mathbf{R})$ is a
 rounded extension of $\mathbf{Q}$ with parameters $(\eta_0, \mu, \varepsilon)$, $\mathbf{Q}'$ has
@@ -440,14 +600,16 @@ theorem IsBasisExtensionErr.frobNorm_gramDefect_fromCols_sq_le
     (hE : IsBasisExtensionErr η₀ μ ε Q W Q' H R) (hw : ExtensionWindow η₀ μ b Q) :
     frobNorm (gramDefect (Matrix.fromCols Q Q')) ^ 2 ≤
       frobNorm (gramDefect Q) ^ 2 + 3 * b * μ ^ 2 := by
-  -- By `frobNorm_gramDefect_fromCols_sq` it suffices that
-  -- `2 * frobNorm (Qᴴ * Q') ^ 2 + frobNorm (gramDefect Q') ^ 2 ≤ ∑ c : Fin b, 3 * μ ^ 2`.
-  -- Write both squared norms as sums over columns `c` (`frobNorm_sq_eq_sum_col`); the entries of
-  -- `gramDefect Q'` off the diagonal are symmetric, so their squares are twice the sum over
-  -- `c' < c`, and they vanish when column `c` or `c'` is zero. A zero column `c` contributes `0`;
-  -- a nonzero one contributes `(‖q‖ ^ 2 - 1) ^ 2 + 2 * (‖Qᵀ q‖ ^ 2 + ∑ c' < c, (q' ⬝ᵥ q) ^ 2)`,
-  -- at most `μ ^ 2 + 2 * μ ^ 2` by `hE.column hw c` (`sq_le_sq'` for the first term).
-  sorry
+  have hsym : ∀ i j : Fin b, gramDefect Q' i j ^ 2 = gramDefect Q' j i ^ 2 := fun i j => by
+    rw [← (isHermitian_gramDefect Q').apply i j, star_trivial]
+  have hsum := (Finset.sum_le_sum fun c (_ : c ∈ Finset.univ) => hE.column_sq_le hw c).trans_eq
+    (show ∑ _c : Fin b, 3 * μ ^ 2 = b * (3 * μ ^ 2) by
+      rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul])
+  rw [Finset.sum_add_distrib, ← Finset.mul_sum] at hsum
+  rw [frobNorm_gramDefect_fromCols_sq, frobNorm_sq_eq_sum_col (Qᴴ * Q'),
+    frobNorm_sq_eq_sum_sq (gramDefect Q'),
+    sum_sum_eq_sum_diag_add_two_mul_sum_Iio (fun i j => gramDefect Q' i j ^ 2) hsym]
+  linarith
 
 end Rounded
 
@@ -491,6 +653,106 @@ theorem blockRowPrefix_self {b q : ℕ} (C : Matrix (Fin (q * b)) κ 𝕜) :
   ext d c
   simp [blockRowPrefix]
 
+/-- The identification of the column indices of $j$ blocks of width $b$ followed by one more
+block with the column indices of $j + 1$ blocks: the index $d$ of the first $jb$ columns goes to
+$d$ and the index $c$ of the last block goes to $jb + c$. -/
+def blockSuccEquiv (b j : ℕ) : Fin (j * b) ⊕ Fin b ≃ Fin ((j + 1) * b) :=
+  finSumFinEquiv.trans (finCongr (Nat.add_one_mul j b).symm)
+
+/-- The identification `NLAlib.blockSuccEquiv` sends the index $d$ of the first $j$ blocks to
+$d$. -/
+@[simp]
+theorem blockSuccEquiv_inl (b j : ℕ) (d : Fin (j * b)) :
+    ((blockSuccEquiv b j (Sum.inl d) : Fin ((j + 1) * b)) : ℕ) = d := by
+  simp [blockSuccEquiv]
+
+/-- The identification `NLAlib.blockSuccEquiv` sends the index $c$ of block $j$ to $jb + c$. -/
+@[simp]
+theorem blockSuccEquiv_inr (b j : ℕ) (c : Fin b) :
+    ((blockSuccEquiv b j (Sum.inr c) : Fin ((j + 1) * b)) : ℕ) = j * b + c := by
+  simp [blockSuccEquiv]
+
+/-- The prefix of $j + 1$ blocks is the prefix of $j$ blocks followed by block $j$:
+$\mathbf{V}_{j+1} = [\mathbf{V}_j, \mathbf{V}^{(j)}]$ after the identification
+`NLAlib.blockSuccEquiv` of the column indices. -/
+theorem blockPrefix_succ_submatrix (b : ℕ) (V : Matrix m (Fin N) 𝕜) (j : ℕ) :
+    (blockPrefix b V (j + 1)).submatrix id (blockSuccEquiv b j) =
+      Matrix.fromCols (blockPrefix b V j) (blockCols b V j) := by
+  ext i (d | c)
+  · simp only [Matrix.submatrix_apply, Matrix.fromCols_apply_inl, blockPrefix, Matrix.of_apply,
+      blockSuccEquiv_inl, id_eq]
+  · simp only [Matrix.submatrix_apply, Matrix.fromCols_apply_inr, blockPrefix, blockCols,
+      Matrix.of_apply, blockSuccEquiv_inr, id_eq]
+
+/-- The prefix of $j + 1$ blocks, written from the prefix of $j$ blocks and block $j$:
+$\mathbf{V}_{j+1}$ is $[\mathbf{V}_j, \mathbf{V}^{(j)}]$ with its columns reindexed by the inverse
+of `NLAlib.blockSuccEquiv`. -/
+theorem blockPrefix_succ (b : ℕ) (V : Matrix m (Fin N) 𝕜) (j : ℕ) :
+    blockPrefix b V (j + 1) =
+      (Matrix.fromCols (blockPrefix b V j) (blockCols b V j)).submatrix id
+        (blockSuccEquiv b j).symm := by
+  rw [← blockPrefix_succ_submatrix, Matrix.submatrix_submatrix, Function.comp_id,
+    Equiv.self_comp_symm, Matrix.submatrix_id_id]
+
+/-- The first $j + 1$ blocks of rows are the first $j$ blocks of rows above block $j$:
+$\mathbf{C}_{j+1} = \begin{bmatrix} \mathbf{C}_j \\ \mathbf{C}^{(j)} \end{bmatrix}$ after the
+identification `NLAlib.blockSuccEquiv` of the row indices. -/
+theorem blockRowPrefix_succ_submatrix (b : ℕ) (C : Matrix (Fin N) κ 𝕜) (j : ℕ) :
+    (blockRowPrefix b C (j + 1)).submatrix (blockSuccEquiv b j) id =
+      Matrix.fromRows (blockRowPrefix b C j) (blockRows b C j) := by
+  ext (d | r) c
+  · simp only [Matrix.submatrix_apply, Matrix.fromRows_apply_inl, blockRowPrefix,
+      Matrix.of_apply, blockSuccEquiv_inl, id_eq]
+  · simp only [Matrix.submatrix_apply, Matrix.fromRows_apply_inr, blockRowPrefix, blockRows,
+      Matrix.of_apply, blockSuccEquiv_inr, id_eq]
+
+/-- The first $j + 1$ blocks of rows, written from the first $j$ blocks of rows and block $j$:
+$\mathbf{C}_{j+1}$ is $\begin{bmatrix} \mathbf{C}_j \\ \mathbf{C}^{(j)} \end{bmatrix}$ with its
+rows reindexed by the inverse of `NLAlib.blockSuccEquiv`. -/
+theorem blockRowPrefix_succ (b : ℕ) (C : Matrix (Fin N) κ 𝕜) (j : ℕ) :
+    blockRowPrefix b C (j + 1) =
+      (Matrix.fromRows (blockRowPrefix b C j) (blockRows b C j)).submatrix
+        (blockSuccEquiv b j).symm id := by
+  rw [← blockRowPrefix_succ_submatrix, Matrix.submatrix_submatrix, Function.comp_id,
+    Equiv.self_comp_symm, Matrix.submatrix_id_id]
+
+/-- The product of a prefix of blocks of columns with a prefix of blocks of rows, one block at a
+time: $\mathbf{V}_{j+1}\mathbf{C}_{j+1} = \mathbf{V}_j\mathbf{C}_j +
+\mathbf{V}^{(j)}\mathbf{C}^{(j)}$. -/
+theorem blockPrefix_succ_mul_blockRowPrefix_succ {M : ℕ} (b : ℕ) (V : Matrix m (Fin N) 𝕜)
+    (C : Matrix (Fin M) κ 𝕜) (j : ℕ) :
+    blockPrefix b V (j + 1) * blockRowPrefix b C (j + 1) =
+      blockPrefix b V j * blockRowPrefix b C j + blockCols b V j * blockRows b C j := by
+  have h := Matrix.submatrix_mul_equiv (blockPrefix b V (j + 1)) (blockRowPrefix b C (j + 1))
+    (id : m → m) (blockSuccEquiv b j) (id : κ → κ)
+  rw [blockPrefix_succ_submatrix, blockRowPrefix_succ_submatrix, Matrix.fromCols_mul_fromRows,
+    Matrix.submatrix_id_id] at h
+  exact h.symm
+
+/-- Relabelling the columns of $\mathbf{A}$ by a bijection does not change its column space. -/
+theorem range_mulVecLin_submatrix_equiv [Fintype ι] [Fintype κ] (A : Matrix m ι 𝕜)
+    (e : κ ≃ ι) :
+    LinearMap.range (A.submatrix id e).mulVecLin = LinearMap.range A.mulVecLin := by
+  rw [Matrix.range_mulVecLin, Matrix.range_mulVecLin]
+  exact congrArg (Submodule.span 𝕜) (e.surjective.range_comp A.col)
+
+/-- The prefix of $j + 1$ blocks and the prefix of $j$ blocks followed by block $j$ have the same
+column space: $\operatorname{range}(\mathbf{V}_{j+1}) =
+\operatorname{range}([\mathbf{V}_j, \mathbf{V}^{(j)}])$. -/
+theorem range_mulVecLin_blockPrefix_succ (b : ℕ) (V : Matrix m (Fin N) 𝕜) (j : ℕ) :
+    LinearMap.range (blockPrefix b V (j + 1)).mulVecLin =
+      LinearMap.range (Matrix.fromCols (blockPrefix b V j) (blockCols b V j)).mulVecLin := by
+  rw [← blockPrefix_succ_submatrix, range_mulVecLin_submatrix_equiv]
+
+/-- The Gram defect on the support of the prefix of $j$ blocks followed by block $j$ is that of
+the prefix of $j + 1$ blocks, with rows and columns identified by `NLAlib.blockSuccEquiv`. -/
+theorem gramDefect_fromCols_blockPrefix_blockCols [Fintype m] (b : ℕ) (V : Matrix m (Fin N) 𝕜)
+    (j : ℕ) :
+    gramDefect (Matrix.fromCols (blockPrefix b V j) (blockCols b V j)) =
+      (gramDefect (blockPrefix b V (j + 1))).submatrix (blockSuccEquiv b j)
+        (blockSuccEquiv b j) := by
+  rw [← blockPrefix_succ_submatrix, gramDefect_submatrix _ (blockSuccEquiv b j).injective]
+
 /-- The prefix of $j + 1$ blocks is the prefix of $j$ blocks followed by block $j$, up to the
 identification of the column indices; in particular the two have the same Gram defect on the
 support in the Frobenius norm. -/
@@ -498,11 +760,25 @@ theorem frobNorm_gramDefect_blockPrefix_succ [Fintype m] (b : ℕ) (V : Matrix m
     (j : ℕ) :
     frobNorm (gramDefect (blockPrefix b V (j + 1))) =
       frobNorm (gramDefect (Matrix.fromCols (blockPrefix b V j) (blockCols b V j))) := by
-  -- Let `e : Fin (j * b) ⊕ Fin b ≃ Fin ((j + 1) * b)` be `finSumFinEquiv` followed by
-  -- `finCongr (Nat.succ_mul j b).symm`. Entrywise (`Fin.addCases`-style case split)
-  -- `fromCols (blockPrefix b V j) (blockCols b V j) = (blockPrefix b V (j + 1)).submatrix id e`,
-  -- so `gramDefect_submatrix` (with `e.injective`) and `frobNorm_submatrix_equiv` conclude.
-  sorry
+  rw [gramDefect_fromCols_blockPrefix_blockCols, frobNorm_submatrix_equiv]
+
+/-- The prefix of $j + 1$ blocks and the prefix of $j$ blocks followed by block $j$ have the same
+Gram defect on the support in the spectral norm. -/
+theorem specNorm_gramDefect_blockPrefix_succ [Fintype m] (b : ℕ) (V : Matrix m (Fin N) 𝕜)
+    (j : ℕ) :
+    specNorm (gramDefect (blockPrefix b V (j + 1))) =
+      specNorm (gramDefect (Matrix.fromCols (blockPrefix b V j) (blockCols b V j))) := by
+  rw [gramDefect_fromCols_blockPrefix_blockCols, specNorm_submatrix_equiv]
+
+/-- The nonzero columns of the prefix of $j + 1$ blocks are orthonormal exactly when those of
+the prefix of $j$ blocks followed by block $j$ are: with $\mathbf{D}(\cdot)$ the Gram defect on
+the support, $\mathbf{D}(\mathbf{V}_{j+1}) = 0$ if and only if
+$\mathbf{D}([\mathbf{V}_j, \mathbf{V}^{(j)}]) = 0$. -/
+theorem gramDefect_blockPrefix_succ_eq_zero_iff [Fintype m] (b : ℕ) (V : Matrix m (Fin N) 𝕜)
+    (j : ℕ) :
+    gramDefect (blockPrefix b V (j + 1)) = 0 ↔
+      gramDefect (Matrix.fromCols (blockPrefix b V j) (blockCols b V j)) = 0 := by
+  rw [← frobNorm_eq_zero_iff, frobNorm_gramDefect_blockPrefix_succ, frobNorm_eq_zero_iff]
 
 /-- The loss of orthogonality of a run of block extensions: let the columns of $\mathbf{V}$ be
 stored as consecutive blocks of width $b$, with $\mathbf{V}_j$ the first $j$ blocks, and assume

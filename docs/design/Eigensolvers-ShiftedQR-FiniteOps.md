@@ -358,5 +358,12 @@ cited in Lean, the bound 11 is elementary).
 
 ## 12. Checks run on the skeleton
 
-`lake build` (full): 5071 jobs, success. `check_rules --files` on the 10 touched Lean files and
+`lake build` (full): 5071 jobs, success. `check_rules --files` on the 10 new Lean files and
 `NLAlib.lean`: 0 errors, 0 warnings. 39 `sorry`s, all in theorem statements.
+
+`scripts/stage_check.sh`: exit 1, at the strict kernel replay only. Before it: 1343 proved
+modules build with `--wfail` (0 warnings), axiom audit 0 violations, 14 linters 0 errors,
+`mk_all --check` current, freshness current. The replay reports 39 violations, exactly the 39
+skeleton sorries (strict on `NLAlib`). The house practice is a scaffold library, which needs a
+`lakefile.toml` edit this design may not make (decision D8). The steps after the replay (fixtures,
+program checks, references, constants, rules extraction) did not run.

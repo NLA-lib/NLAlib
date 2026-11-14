@@ -55,13 +55,14 @@ open scoped Matrix
 
 variable {O Q : Type}
 
-/-- The backward contract of one shift-strategy iteration with the relative backward error `ν`:
-from a Hessenberg matrix of norm at most `N`, the stored result is upper Hessenberg and a
+/-- The backward contract of one shift-strategy iteration at the Ritz parameter `θ` with the
+relative backward error `ν`: from a Hessenberg matrix of norm at most `N`, with the parameter
+words $(\tau, B, \theta, \alpha, \gamma)$, the stored result is upper Hessenberg and a
 perturbed unitary similarity of the input with backward error $\nu N$. Optimality of the Ritz
 values and the acceptance test are not part of the backward contract (they are the convergence
 half). -/
-def BackwardIterationContract (ν : ℝ) (Iter : Impl O Q) (I : Interp O Q ℝ) : Prop :=
-  ∀ {n m M : ℕ} {τ B θ α γ N : ℝ} {w p c : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ}
+def BackwardIterationContract (θ ν : ℝ) (Iter : Impl O Q) (I : Interp O Q ℝ) : Prop :=
+  ∀ {n m M : ℕ} {τ B α γ N : ℝ} {w p c : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ}
     (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
     IsUpperHessenberg H → specNorm H ≤ N → 2 ^ m ≤ n → 0 ≤ τ → 0 ≤ B →
     M = ⌈Real.sqrt 2 / exceptionalSpacing (2 ^ m) B θ α ((1 - γ) ^ 2)⌉₊ → 0 < M →
@@ -101,8 +102,15 @@ def BackwardDecouplingContract (θ : ℝ) (ε : ℝ → ℝ) (D : Impl O Q) (I :
 /-- An exact iteration contract is a backward iteration contract with backward error $0$
 (`NLAlib.ShiftedQR.shqrAcceptStep` is a unitary similarity of its input). -/
 theorem IterationContract.backward {θ : ℝ} {Iter : Impl O Q} {I : Interp O Q ℝ}
-    (h : IterationContract θ Iter I) : BackwardIterationContract 0 Iter I := by
-  sorry
+    (h : IterationContract θ Iter I) : BackwardIterationContract θ 0 Iter I := by
+  intro n m M τ B α γ N w p c tape μ H hH _ hk hτ hB hM hM0 hW hP hC hl hw hd
+  refine (h H hH hk hτ hB hM hM0 hW hP hC hl hw hd).mono le_rfl ?_
+  rintro μ' _ ⟨hpos, ss, _, _, hW'⟩
+  obtain ⟨U, hU, hstep⟩ := shqrAcceptStep_exists_unitary (H₀ := H) (H := H) τ B θ α γ m ss
+    hasOrthonormalCols_one (by simp)
+  refine ⟨hpos, _, ?_, hH.isUpperHessenberg_shqrAcceptStep τ B θ α γ m ss, hW'⟩
+  rw [hstep, zero_mul]
+  exact hU.isPerturbedUnitarySimilar H
 
 /-- An exact decoupling contract is a backward decoupling contract with backward error $0$. -/
 theorem DecouplingContract.backward {θ : ℝ} {D : Impl O Q} {I : Interp O Q ℝ}

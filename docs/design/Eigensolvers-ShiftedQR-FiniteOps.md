@@ -88,6 +88,13 @@ Statement changes made on the skeleton:
   for every shift and costs only a constant factor in $\boldsymbol{u}$ (all uses have $C \le 4.5$).
 * **S5** `hRhi`: $1.001\cdot2^{1/k} \to 2.002^{1/k}$, i.e. $\tilde\psi$ within $0.001/k$ as the paper's
   (eq:boundonpottilde); with a flat $1.001$ the constant $13$ fails for $k \ge 60$. P6 accordingly.
+* **C1** `BackwardIterationContract ν` → `BackwardIterationContract θ ν` (θ a parameter, as in
+  `BackwardDecouplingContract θ ε`). With θ quantified inside, C1 is false: let `Iter'` test the
+  stored θ word against θ₀ and run `iteration` (meets `IterationContract θ₀`) or `abort`; at the
+  word θ₀ + 1 with $m = 0$, $n = 1$, $\mathbf{H} = 0$ every hypothesis holds ($k = 1$ gives
+  `exceptionalSpacing = 1`, $M = 2$) and `abort` fails `Writes .total`. No consumer changes: C4/P3
+  use only `BackwardDecouplingContract θ`, and a rounded decoupling loop calls the iteration at its
+  own fixed θ.
 * **S5** gains `hd`, no shift of `ss` an eigenvalue (as the exact Exc lemma has it). Without it
   false: an eigenvalue $r$ makes the stagnation hypothesis vacuous (Lean's inverse is $0$).
   $n = k = 2$, $\mathbf{H} = \mathbf{I} - uu^{\mathsf T}$, $u = (0.006, 0.006, \sqrt{1 - 7.2\cdot10^{-5}})$
@@ -342,7 +349,26 @@ Find by comptau on $\widehat{\mathbf{R}}_{nn}$ instead of `RowSolve`; Exc as a d
 random translate instead of the square grid). Codex's `RowSolve`/`HalfNorm` path has no
 floating-point analysis in the paper and is not used.
 
-### 7.4 Changes needed in Codex's files (not made here)
+### 7.4 Changes needed in Codex's files
+
+**Item 1 is DONE on our side** (prove/sqrfp-compose), in Codex's merged files, exact theorems kept
+as one-line corollaries with unchanged statements; Codex should take these changes, not redo them:
+`Rotation` (`linearComplex`, `writes_rotate{Left,Right}WithScratch_word`), `RotationLoops`
+(`machineRowRotation`, `machineColRotation`, their `_apply_*`/`_eq` lemmas,
+`rotate{Rows,Columns}[WithScratch]_writes_word`), `Coefficients` (`coefficientRadius`,
+`coefficientWords` + `_eq`, `coefficients[WithScratch]_writes_word`), `Round`
+(`round_writes_word`), `Shift` (`machineShiftedPrefix` + lemmas, `shiftDiagonal_writes_word`,
+`initializeState_writes_word`), `Step` (`shiftedStep_writes_of_sweep`). C3 is proved on them by
+`BackwardStep.loop_rel`.
+
+Rule candidates found by C3 (not added): `BackwardStep.in_frame` (a framed body had to be unfolded
+by hand); a `BackwardStep` rule through allocation (so no per-program "step from sweep" frame
+lemma); a standard frame-state predicate for `loop_rel` (position, live views, scratch room; C3
+defines a private `SweepState`). Spelling to merge when GivensRounded moves into NLAlib:
+`ShiftedQR.coefficientWords` = scaffold `roundedGivensCoeffs` (bridged by `rfl`).
+
+Original list:
+
 
 1. Split `coefficientsWithScratch_writes`, `writes_rotateLeft/RightWithScratch`,
    `rotateRows/Columns_writes`, `round_writes`, `sweep_writes` into a machine-generic `_word`

@@ -59,8 +59,8 @@ namespace IsPerturbedUnitaryPair
 variable {a b : ℝ}
 
 /-- Every pair is reached from itself with backward error $0$. -/
-theorem refl (P : Matrix n n 𝕜 × Matrix n n 𝕜) : IsPerturbedUnitaryPair a b 0 P P := by
-  sorry
+theorem refl (P : Matrix n n 𝕜 × Matrix n n 𝕜) : IsPerturbedUnitaryPair a b 0 P P :=
+  ⟨1, 0, 0, hasOrthonormalCols_one, by simp, by simp, by simp, by simp⟩
 
 /-- Backward errors add along a chain: the second perturbation is carried back through the
 first unitary factor, which keeps its spectral norm. -/

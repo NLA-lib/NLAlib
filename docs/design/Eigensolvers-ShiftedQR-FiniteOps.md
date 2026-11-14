@@ -178,10 +178,11 @@ skeletonized with its program.
 | E1 | `IsEigenvalueListing.exists_specNorm_sub_le` (forward ⇒ backward, Schur; $\beta \ge 0$) | Matrix/Perturbation/EigenvalueBackward | M | skel |
 | C1, C2 | `IterationContract.backward`, `DecouplingContract.backward` (ν = 0 bridges) | Eigensolvers/ShiftedQR/Backward | S, S | skel |
 | C3 | `shiftedStep_isPerturbedUnitarySimilar` (rounded step, $50(n+1)\boldsymbol{u}\|\mathbf{H}\|$) | same | L | skel |
-| C4 | `solve_backward` (worklist with a backward decoupling implementation) | same | H | skel |
-| P1 | `stepWithDiag` program + `IsStableQRStep` theorem (both inequalities, outputs $\widehat{\mathbf{R}}_{nn}$; base $\|\mathbf{H}\|+\lvert s\rvert$; zeroes structural fill so the output is Hessenberg) | Eigensolvers/ShiftedQR/StableStep (new) | L | plan |
-| P2 | `multiStepStable`: the repeated step as an `IsStableQRChain` (via `BackwardStep.loop`) | same | M | plan |
-| P3 | `solveRounded`: worklist with rounded threshold and scan, fail flag, bottom-$k$ deflation; `solveRounded_backward` | Eigensolvers/ShiftedQR/RoundedSolve (new) | H | plan |
+| C4 | `solveRounded_backward` (the rounded worklist, fail disjunct; replaces the exact-worklist `solve_backward`, §13) | Eigensolvers/ShiftedQR/RoundedSolve | M (given C4a) | skel (batch 2) |
+| C4a | `roundedWorklistRound_backwardStep` (one round as a `BackwardStep`) | same | H | skel (batch 2) |
+| P1 | `stepWithDiag` program + `stepWithDiag_isStableQRStep` (both inequalities, outputs $\widehat{\mathbf{R}}_{nn}$; base $\|\mathbf{H}\|+\lvert s\rvert$; Hessenberg output; $300(n+1)^2\boldsymbol{u}$) | Eigensolvers/ShiftedQR/StableStep (new) | L | skel (batch 2) |
+| P2 | `multiStepStable` + `multiStepStable_isStableQRChain` | same | M | skel (batch 2) |
+| P3 | `bottomScan` + `bottomScan_writes` (the rounded bottom-$k$ decision of `Deflate`) | Eigensolvers/ShiftedQR/RoundedSolve (new) | M | skel (batch 2) |
 
 The backward half of Theorem 6.3 is **composition**: per round `IsPerturbedUnitaryPair` from G3–G5
 by `of_near_unitary`-free exact rotations (the computed coefficients are compared with the exact
@@ -462,3 +463,116 @@ ten skeleton files to `NLAlibScaffold/` (module names `NLAlibScaffold.*`), drops
 `lakefile.toml` (the SHIFTED-QR pattern, 55eebad2; removed again as in a7085789/bde2a77a). Apply
 with `git apply` after the maintainer approves the lakefile edit; then `stage_check` replays
 only sorry-free `NLAlib`. A file moves back into `NLAlib` when its statements are proved.
+
+## 13. Batch 2: the rounded worklist, C4, P1–P3 (skeleton)
+
+Branch `prove/sqrfp-batch2` (from `integrate/sqrfp` @60ab60ad). Codex's exact worklist, scan
+and `DecouplingContract` are untouched (§7.4 item 4 is ours: a new worklist in our files).
+Statements and programs are in `NLAlibScaffold`; three declarations are proved (trivial glue:
+RF1, DP1, LB1), seven are `sorry` (DP2, DP3, P3, C4a, C4, P1, P2).
+
+### 13.1 The rounded worklist (`RoundedSolve.lean`)
+
+`solveRounded D L : [N, k, np] (A, Thr, P) → (Out, Fl)` allocates the stack, a work matrix and
+five scan registers and runs `roundedWorklist`: `Fl := 0`, `stackInit`, then
+`while j < 2N, isPos St { roundedWorklistRound } then { if isPos St { roundedAbort } }`.
+A round pops $(lo, d)$ (`rangePop`, bounded reads), copies the block (`copyToWork`), and
+
+* $d \le k$: runs the leaf routine `L` into `Out[2 lo]`;
+* $d > k$: runs `D [d, k, np] (W, P) → (W, Fl)`; if `Fl > 0` → `roundedAbort` (writes `Fl := 1`,
+  stack count $0$); else `bottomScan [d, k] (W, Thr) → (R)`; if the flag `R[3]` is set,
+  `writeAndSplit` at the index `R[4]` (reused as is: copy back, push both children), else abort.
+
+Reused unchanged: `rangePop`, `stackInit`, `copyToWork`, `writeAndSplit` (`copyToGlobal`,
+`splitPush`), `scanRound` (the visit of Codex's scan), `whileFuel`. New: `bottomScan` (the visits
+$N-1-k+j$, $j<k$, i.e. exactly the bottom $k$ subdiagonals), `roundedAbort`, the three wrappers.
+Footprints: a round writes `A, St, Out, W, R, Fl` (`roundedWorklistFp`); `Thr` and `P` are
+read-only. The run is total: the fuel $2N$ is the cap (the exact progress measure
+$2|\mathrm{done}| + |\mathrm{active}|$ shows it is never reached by a successful run); a decoupler
+failure, an empty scan and work left at the cap each write the failure word.
+
+**Contracts.** `RoundedDecouplingContract fails k ps ω ε D I` (the review's "fail disjunct"): from
+a Hessenberg block of order $n + 1 \ge k + 1$, norm $\le N$, with the parameter words `ps`, `D` is
+total, writes only the block and `Fl`, and either `Fl = 1` (only if `fails`), or `Fl = 0` and the
+block is an upper Hessenberg perturbed unitary similarity with error $\varepsilon(N)$ having a
+bottom-$k$ subdiagonal entry of modulus $\le \omega$. No precondition on $\kappa_V$, gap or
+convergence: backward error does not need them, and a capped Lemma 6.4 loop that fails when its
+cap is exhausted meets the contract with `fails` true for every tape. `BackwardLeafContract β L
+I`: a leaf returns an eigenvalue listing of $\mathbf{B} + \mathbf{F}$, $\|\mathbf{F}\|_2 \le \beta$
+(exact kernel: LB1, $\beta = 0$; SmallEig with forward error via E1). The old
+`BackwardDecouplingContract θ ε` (Codex's parameter layout, no failure) stays only for C2; the
+old `solve_backward` (Codex's exact worklist with a backward decoupler) is removed: that worklist
+cannot take a failing decoupler, and Part II's decoupler has other parameters (review §6).
+
+### 13.2 Statements and rationale
+
+| id | statement | rationale |
+|---|---|---|
+| RF1 | `BackwardStep.in_frame` (proved) | rule candidate from C3; C4 composes framed rounds with it |
+| DP1 | `DeflationInv.exists_isPerturbedUnitarySimilar_rebase` (proved) | turns an accumulated invariant into one `IsPerturbedUnitarySimilar` step + invariant at error $0$: what makes a round a `BackwardStep` |
+| DP2 | `DeflationInv.setSubBlock_of_isPerturbedUnitarySimilar` | perturbed similarity of an active block (via `exists_submatrix`) |
+| DP3 | `DeflationInv.finish_of_specNorm_le` | a leaf with backward error $\beta$ |
+| LB1 | `IsEigenvalueKernels.backwardLeafContract` (proved) | exact kernel is a leaf with $\beta = 0$ |
+| P3 | `bottomScan_writes` | flag $1$ ⇒ an index $i$, $n \le i + k$, $(1-\boldsymbol{u})^2\lvert h_{i+1,i}\rvert^2 \le t$; flag $0$ ⇒ every bottom-$k$ entry has $t < (1+\boldsymbol{u})^2\lvert h\rvert^2$ |
+| C4a | `roundedWorklistRound_backwardStep` | one round, relation `IsPerturbedUnitarySimilar`, error $e \ge c + \varepsilon(N_0) + \beta$, state `RoundedWorklistState` (geometry + read-only words + failed-or-invariant at error $0$ for the current $\mathbf{M}$, $\|\mathbf{M}\|_2 \le \|\mathbf{H}_0\|_2 + je$) |
+| C4 | `solveRounded_backward` | `(fails ∧ Fl = 1) ∨ (Fl = 0 ∧ Out = spectrum of H + E, ‖E‖₂ ≤ 2(n+1)(c + ε(N₀) + β))` |
+| P1 | `stepWithDiag_isStableQRStep` | Definition 3.4 (corrected base) with $300(n+1)^2\boldsymbol{u}(\|\mathbf{H}\|_2 + \lvert s\rvert)$ and the stored $\widehat{\mathbf{R}}_{nn}$ |
+| P2 | `multiStepStable_isStableQRChain` | the degree-$k$ step is `IsStableQRChain (300(n+1)^2 u)`, Hessenberg output, the $k$ stored $\widehat{\mathbf{R}}_{nn}$ |
+
+Hypotheses pinned (C4/C4a): `StdModel u id`, $0 \le \boldsymbol{u} < 1$; `IsExactNatLit id Mch (n+1)`
+(**found while writing**: index literals are `M.lit n`, exact under `StdModel` only for $0$; the
+stack, flags and indices are such literals, so without it the count words are rounded and the
+statement is false); $\mathbf{H}$ upper Hessenberg; threshold word $t$ with
+$(1+\boldsymbol{u})^2\omega^2 \le t$ (an entry $\le \omega$ always passes the rounded test, so a
+successful decoupler never leads to an abort) and $t \le (1-\boldsymbol{u})^2c^2$, $c \ge 0$ (each
+cut $\le c$; Part II: $t = 2\omega^2$, $c = 2\omega$ for $\boldsymbol{u} \le 0.29$); $\beta \ge 0$;
+$\varepsilon(N_0) \ge 0$; $\|\mathbf{H}\|_2 + 2(n+1)(c + \varepsilon(N_0) + \beta) \le N_0$ (every
+block the decoupler sees has norm $\le N_0$; replaces the old $2\|\mathbf{H}\|$ device, which was
+vacuous at $\mathbf{H} = 0$). Fuel/cap: $2(n+1)$ rounds. Not needed and not assumed: $k = 2^m$
+(any $k$; the algorithm instantiates $2^m$), $n \ge 1$, $\omega > 0$, monotone $\varepsilon$,
+$B \ge 1$ and the Lemma 6.1 threshold $B > 4n$ (both are convergence/preservation, P11/P12,
+not backward error). P1/P2: Hessenberg input (Givens QR is a QR factorization only then, as Q4),
+$(n+1)\boldsymbol{u} \le 1/2500$ (C3's), $\boldsymbol{u} \ge 0$; any shift.
+
+The error bound $2(n+1)e$ is uniform per round because `BackwardStep.whileFuel` charges a fixed
+$\varepsilon_i$ per round; the outcome-sharp $n(c+\varepsilon) + (n+1)\beta$ would need an
+outcome-dependent rule. A factor $\le 2$; irrelevant for the precision theorem.
+
+### 13.3 Edge cases checked
+
+* **C4/C4a.** $n = 0$ ($1\times1$; with $k \ge 1$ one leaf, error $\beta$; with $k = 0$ the block
+  goes to `D`, whose success branch needs an index in `Fin 0`, so `D` must fail: the conclusion
+  is the fail disjunct, and with `fails` false the contract is unsatisfiable — consistent);
+  $\mathbf{H} = 0$ (no vacuity, unlike the old $\le\|\mathbf{H}\|$ hypothesis); $\varepsilon(N_0)<0$
+  (excluded: else $e < \beta$ and a single leaf violates the bound); $\omega < 0$ (success
+  impossible, harmless); `ps = []`; a failure at the first call; work left at the cap (impossible
+  for a successful run: the state at $j = 2(n+1)$ forces $2|\mathrm{done}| \ge 2n+3$); scan finds
+  an index other than the decoupler's (fine: every passing index has $\lvert h\rvert \le c$);
+  scan finds none after a successful decoupler (impossible by $(1+\boldsymbol{u})^2\omega^2 \le t$);
+  children nonempty ($i < d - 1$); stack capacity after a push (from `length_le` after the split);
+  $\boldsymbol{u} = 1$ (excluded: the cut bound needs $(1-\boldsymbol{u})^2 > 0$).
+* **P3.** $k = 0$ (no visit, flag $0$, vacuous ∀); $k = n$ (all subdiagonals); $n = 0$;
+  $\boldsymbol{u} \le 1$ needed for $\mathrm{fl}(x^2) \ge 0$; index literal exactness.
+* **P1.** $n = 0$ (no rotation: $\widehat{\mathbf{R}} = \mathrm{fl}(h - s)$, error $\le \boldsymbol{u}\lvert h-s\rvert$);
+  $\mathbf{H} = 0, s = 0$ (all zeros exact); non-Hessenberg $\mathbf{H}$ (excluded, false as for Q4);
+  zeroing pass needs `M.lit 0 = 0` (true under `StdModel`); constant: $171(n+1)^{3/2} \le 300(n+1)^2$
+  (similarity, the zeroed part costs $\sqrt{n+1}$), $72(n+1)$ (factorization).
+* **P2.** $k = 0$ (nil chain, `readBlock` of $0$ words); output Hessenberg stated separately (the
+  chain gives it only for $k \ge 1$); shift and diagonal views disjoint from the matrix (the
+  in-place copy would overwrite them).
+* **DP2/DP3.** $e < 0$ or $\beta < 0$ (hypotheses unsatisfiable, vacuous); ranges clamped by
+  `blockIndex` (in range by the partition).
+
+### 13.4 Notes for the reviewer
+
+* The caller's gloss "P1 = rounded decoupling round, P2 = Lemma 6.4 loop, P3 = deflate" differs
+  from §4 (P1 step, P2 degree-$k$ step, P3 worklist). This batch follows §4, with P3 narrowed to
+  the deflation decision (`bottomScan`) and the worklist itself as C4/C4a. The Lemma 6.4 loop is
+  P11 (L2): it is the `D` that meets `RoundedDecouplingContract`.
+* Rule candidates: `BackwardStep.in_frame` added (RF1). Not added: a `BackwardStep` rule through
+  allocation (C4 allocates only at the top, where `writes_allocs_preserving_post` suffices); a
+  `whileFuel` with outcome-dependent errors (see 13.2); a standard frame-state predicate (C4a's
+  `RoundedWorklistState` carries `RoundedGeometry`, the worklist's own).
+* Risk: C4a is the bulk (a replay of Codex's `processRange`/`worklistRound` memory proofs with
+  the new branches); P1 needs a pair version of C3's sweep lemma and the residual bookkeeping of
+  the triangular factor.

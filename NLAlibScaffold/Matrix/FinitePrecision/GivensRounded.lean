@@ -22,6 +22,8 @@ On a machine with the standard model of rounded arithmetic at the unit roundoff 
 * the computed complex linear combination $c x + s y$ of word pairs, as the operation core
   computes it (`NLAlib.Ops.Pair.linearWords`): within $5\boldsymbol{u}(\lvert c\rvert\lvert x\rvert
   + \lvert s\rvert\lvert y\rvert)$ (`NLAlib.Ops.StdModel.norm_linearWords_sub_le`);
+* both computed outputs of the rotation of a pair, jointly: within $12\boldsymbol{u}$ of the exact
+  rotation (`NLAlib.Ops.StdModel.norm_linearWords_rotation_sub_le`);
 * a rotation of two rows (columns) of a matrix whose every column (row) pair is computed within
   $\eta$ of the exact rotation of the pair, relatively: within $2\eta\|\mathbf{A}\|_2$ in the
   spectral norm (`NLAlib.IsRoundedRowRotation.specNorm_sub_le`).
@@ -579,5 +581,133 @@ theorem Ops.StdModel.norm_rotatePair_sub_le {M : Machine ℝ} {u : ℝ} (hM : St
       mul_nonneg (sub_nonneg.2 hu') (mul_nonneg hu hK0)]
   refine (norm_sub_le_norm_sub_add_norm_sub _ (a * x + b * y) _).trans ?_
   linarith [h1, h2, h3, h4]
+
+/-- The rotation $(x, y) \mapsto (p x + q y, -\bar q x + \bar p y)$ scales the Euclidean norm
+by $\sqrt{\lvert p\rvert^2 + \lvert q\rvert^2}$. -/
+private lemma rotation_norm_sq (p q x y : ℂ) :
+    ‖p * x + q * y‖ ^ 2 + ‖-star q * x + star p * y‖ ^ 2 =
+      (‖p‖ ^ 2 + ‖q‖ ^ 2) * (‖x‖ ^ 2 + ‖y‖ ^ 2) := by
+  simp only [Complex.sq_norm, Complex.normSq_apply, Complex.add_re, Complex.add_im,
+    Complex.mul_re, Complex.mul_im, Complex.neg_re, Complex.neg_im, Complex.star_def,
+    Complex.conj_re, Complex.conj_im]
+  ring
+
+/-- Two errors, each at most the sum of two parts, have a joint size at most the sum of the joint
+sizes of the parts (Minkowski's inequality in the plane). -/
+private lemma sq_add_sq_le_of_parts {E₁ E₂ e₁ e₂ d₁ d₂ p q : ℝ} (hp : 0 ≤ p) (hq : 0 ≤ q)
+    (h₁ : E₁ ≤ e₁ + d₁) (h₂ : E₂ ≤ e₂ + d₂) (hE₁ : 0 ≤ E₁) (hE₂ : 0 ≤ E₂)
+    (he : e₁ ^ 2 + e₂ ^ 2 ≤ p ^ 2) (hd : d₁ ^ 2 + d₂ ^ 2 ≤ q ^ 2) :
+    E₁ ^ 2 + E₂ ^ 2 ≤ (p + q) ^ 2 := by
+  have hcs : e₁ * d₁ + e₂ * d₂ ≤ p * q := by
+    have h1 : (e₁ * d₁ + e₂ * d₂) ^ 2 ≤ (p * q) ^ 2 := by
+      nlinarith [sq_nonneg (e₁ * d₂ - e₂ * d₁), mul_le_mul he hd (by positivity) (sq_nonneg p)]
+    exact (abs_le_of_sq_le_sq' h1 (by positivity)).2
+  have s1 : E₁ ^ 2 ≤ (e₁ + d₁) ^ 2 := pow_le_pow_left₀ hE₁ h₁ 2
+  have s2 : E₂ ^ 2 ≤ (e₂ + d₂) ^ 2 := pow_le_pow_left₀ hE₂ h₂ 2
+  have r1 : (e₁ + d₁) ^ 2 + (e₂ + d₂) ^ 2 =
+      (e₁ ^ 2 + e₂ ^ 2) + (d₁ ^ 2 + d₂ ^ 2) + 2 * (e₁ * d₁ + e₂ * d₂) := by ring
+  have r2 : (p + q) ^ 2 = p ^ 2 + q ^ 2 + 2 * (p * q) := by ring
+  linarith
+
+/-- The application part of a computed rotation of a pair: two linear combinations with
+coefficients within $4\boldsymbol{u}$ of a unit pair $(A, B)$, each computed within
+$5\boldsymbol{u}$, have a joint error at most $7.5\boldsymbol{u}\,\|(X, Y)\|$. -/
+private lemma rotation_app_sq_le {u A B X Y a b e₁ e₂ : ℝ} (hu : 0 ≤ u) (hu' : u ≤ 1 / 100)
+    (hX : 0 ≤ X) (hY : 0 ≤ Y) (hAB : A ^ 2 + B ^ 2 = 1)
+    (ha : a ≤ (1 + 4 * u) * A) (hb : b ≤ (1 + 4 * u) * B) (he₁0 : 0 ≤ e₁) (he₂0 : 0 ≤ e₂)
+    (he₁ : e₁ ≤ 5 * u * (a * X + b * Y)) (he₂ : e₂ ≤ 5 * u * (b * X + a * Y)) :
+    e₁ ^ 2 + e₂ ^ 2 ≤ (15 / 2 * u) ^ 2 * (X ^ 2 + Y ^ 2) := by
+  have hk : 0 ≤ 5 * u * (1 + 4 * u) := by positivity
+  have hf₁ : e₁ ≤ 5 * u * (1 + 4 * u) * (A * X + B * Y) := by
+    refine he₁.trans ?_
+    nlinarith [mul_le_mul_of_nonneg_right ha hX, mul_le_mul_of_nonneg_right hb hY]
+  have hf₂ : e₂ ≤ 5 * u * (1 + 4 * u) * (B * X + A * Y) := by
+    refine he₂.trans ?_
+    nlinarith [mul_le_mul_of_nonneg_right ha hY, mul_le_mul_of_nonneg_right hb hX]
+  have hsum : (A * X + B * Y) ^ 2 + (B * X + A * Y) ^ 2 ≤ 2 * (X ^ 2 + Y ^ 2) := by
+    have h2ab : 2 * (A * B) ≤ 1 := by nlinarith [sq_nonneg (A - B)]
+    have h2xy : 2 * (X * Y) ≤ X ^ 2 + Y ^ 2 := by nlinarith [sq_nonneg (X - Y)]
+    have hm := mul_le_mul h2ab h2xy (by positivity) zero_le_one
+    nlinarith [hm]
+  have h1 := pow_le_pow_left₀ he₁0 hf₁ 2
+  have h2 := pow_le_pow_left₀ he₂0 hf₂ 2
+  have hk2 : (5 * u * (1 + 4 * u)) ^ 2 * 2 ≤ (15 / 2 * u) ^ 2 := by
+    have h4 : (1 + 4 * u) ^ 2 ≤ 9 / 8 := by nlinarith
+    have e1 : (5 * u * (1 + 4 * u)) ^ 2 * 2 = 50 * u ^ 2 * (1 + 4 * u) ^ 2 := by ring
+    have e2 : (15 / 2 * u) ^ 2 = 50 * u ^ 2 * (9 / 8) := by ring
+    rw [e1, e2]
+    exact mul_le_mul_of_nonneg_left h4 (by positivity)
+  have r : (5 * u * (1 + 4 * u) * (A * X + B * Y)) ^ 2 +
+      (5 * u * (1 + 4 * u) * (B * X + A * Y)) ^ 2 =
+      (5 * u * (1 + 4 * u)) ^ 2 * ((A * X + B * Y) ^ 2 + (B * X + A * Y) ^ 2) := by ring
+  have h3 := mul_le_mul_of_nonneg_left hsum (sq_nonneg (5 * u * (1 + 4 * u)))
+  have h5 := mul_le_mul_of_nonneg_right hk2 (add_nonneg (sq_nonneg X) (sq_nonneg Y))
+  nlinarith
+
+/-- **A computed rotation of a pair is within $12\boldsymbol{u}$, jointly**: on a machine with the
+standard model at $0 \le \boldsymbol{u} \le 1/100$, coefficient words $a, b$ within
+$4\boldsymbol{u}$ of a unit pair $(\alpha, \beta)$, relatively, rotate $(x, y)$ by
+`NLAlib.Ops.Pair.linearWords` to the computed $(a x + b y, -\bar b x + \bar a y)$, which is within
+$12\boldsymbol{u}\,\|(x, y)\|$ of $(\alpha x + \beta y, -\bar\beta x + \bar\alpha y)$ in the
+Euclidean norm of the pair. The coefficient errors contribute $4\boldsymbol{u}$ jointly (the
+error matrix is a multiple of a unitary one), the application $5\sqrt 2\,\boldsymbol{u}$ to first
+order. This is the per-pair hypothesis of `NLAlib.IsRoundedRowRotation` and
+`NLAlib.IsRoundedColRotation` with $\eta = 12\boldsymbol{u}$, for the row rotation by
+$(\tilde c, \tilde s)$ and for the column rotation by $(\bar{\tilde c}, \bar{\tilde s})$.
+[Higham2002, Lemma 19.8]. -/
+theorem Ops.StdModel.norm_linearWords_rotation_sub_le {M : Machine ℝ} {u : ℝ}
+    (hM : StdModel u id M) (hu : 0 ≤ u) (hu' : u ≤ 1 / 100) {a b α β : ℂ}
+    (hαβ : ‖α‖ ^ 2 + ‖β‖ ^ 2 = 1)
+    (ha : ‖a - α‖ ≤ 4 * u * ‖α‖) (hb : ‖b - β‖ ≤ 4 * u * ‖β‖) (x y : ℂ) :
+    Real.sqrt (‖(⟨(Pair.linearWords M (a.re, a.im) (b.re, b.im) (x.re, x.im) (y.re, y.im)).1,
+          (Pair.linearWords M (a.re, a.im) (b.re, b.im) (x.re, x.im) (y.re, y.im)).2⟩ : ℂ) -
+          (α * x + β * y)‖ ^ 2 +
+        ‖(⟨(Pair.linearWords M ((-star b).re, (-star b).im) ((star a).re, (star a).im)
+            (x.re, x.im) (y.re, y.im)).1,
+          (Pair.linearWords M ((-star b).re, (-star b).im) ((star a).re, (star a).im)
+            (x.re, x.im) (y.re, y.im)).2⟩ : ℂ) - (-star β * x + star α * y)‖ ^ 2) ≤
+      12 * u * Real.sqrt (‖x‖ ^ 2 + ‖y‖ ^ 2) := by
+  have he₁ := hM.norm_linearWords_sub_le hu hu' a b x y
+  have he₂ := hM.norm_linearWords_sub_le hu hu' (-star b) (star a) x y
+  rw [norm_neg, norm_star, norm_star] at he₂
+  generalize (⟨(Pair.linearWords M (a.re, a.im) (b.re, b.im) (x.re, x.im) (y.re, y.im)).1,
+    (Pair.linearWords M (a.re, a.im) (b.re, b.im) (x.re, x.im) (y.re, y.im)).2⟩ : ℂ) = L₁ at he₁ ⊢
+  generalize (⟨(Pair.linearWords M ((-star b).re, (-star b).im) ((star a).re, (star a).im)
+      (x.re, x.im) (y.re, y.im)).1,
+    (Pair.linearWords M ((-star b).re, (-star b).im) ((star a).re, (star a).im)
+      (x.re, x.im) (y.re, y.im)).2⟩ : ℂ) = L₂ at he₂ ⊢
+  have happ := rotation_app_sq_le hu hu' (norm_nonneg x) (norm_nonneg y)
+    hαβ (by linarith [norm_sub_norm_le a α]) (by linarith [norm_sub_norm_le b β])
+    (norm_nonneg _) (norm_nonneg _) he₁ he₂
+  have hcoef : ‖(a - α) * x + (b - β) * y‖ ^ 2 +
+      ‖-star (b - β) * x + star (a - α) * y‖ ^ 2 ≤ (4 * u) ^ 2 * (‖x‖ ^ 2 + ‖y‖ ^ 2) := by
+    rw [rotation_norm_sq]
+    refine mul_le_mul_of_nonneg_right ?_ (by positivity)
+    have h1 := pow_le_pow_left₀ (norm_nonneg _) ha 2
+    have h2 := pow_le_pow_left₀ (norm_nonneg _) hb 2
+    calc _ ≤ (4 * u * ‖α‖) ^ 2 + (4 * u * ‖β‖) ^ 2 := add_le_add h1 h2
+      _ = (4 * u) ^ 2 * (‖α‖ ^ 2 + ‖β‖ ^ 2) := by ring
+      _ = (4 * u) ^ 2 := by rw [hαβ, mul_one]
+  have hd₁ : ‖L₁ - (α * x + β * y)‖ ≤ ‖L₁ - (a * x + b * y)‖ + ‖(a - α) * x + (b - β) * y‖ := by
+    refine (norm_add_le _ _).trans_eq' ?_
+    congr 1; ring
+  have hd₂ : ‖L₂ - (-star β * x + star α * y)‖ ≤ ‖L₂ - (-star b * x + star a * y)‖ +
+      ‖-star (b - β) * x + star (a - α) * y‖ := by
+    refine (norm_add_le _ _).trans_eq' ?_
+    congr 1; simp only [star_sub]; ring
+  have hR : 0 ≤ Real.sqrt (‖x‖ ^ 2 + ‖y‖ ^ 2) := Real.sqrt_nonneg _
+  have hR2 : Real.sqrt (‖x‖ ^ 2 + ‖y‖ ^ 2) ^ 2 = ‖x‖ ^ 2 + ‖y‖ ^ 2 :=
+    Real.sq_sqrt (add_nonneg (sq_nonneg _) (sq_nonneg _))
+  have key := sq_add_sq_le_of_parts (p := 15 / 2 * u * Real.sqrt (‖x‖ ^ 2 + ‖y‖ ^ 2))
+    (q := 4 * u * Real.sqrt (‖x‖ ^ 2 + ‖y‖ ^ 2)) (by positivity) (by positivity) hd₁ hd₂
+    (norm_nonneg _) (norm_nonneg _) (by rw [mul_pow, hR2]; exact happ)
+    (by rw [mul_pow, hR2]; exact hcoef)
+  have h12 : (15 / 2 * u * Real.sqrt (‖x‖ ^ 2 + ‖y‖ ^ 2) +
+      4 * u * Real.sqrt (‖x‖ ^ 2 + ‖y‖ ^ 2)) ^ 2 ≤
+      (12 * u * Real.sqrt (‖x‖ ^ 2 + ‖y‖ ^ 2)) ^ 2 :=
+    pow_le_pow_left₀ (by positivity) (by nlinarith [mul_nonneg hu hR]) 2
+  calc _ ≤ Real.sqrt ((12 * u * Real.sqrt (‖x‖ ^ 2 + ‖y‖ ^ 2)) ^ 2) :=
+        Real.sqrt_le_sqrt (key.trans h12)
+    _ = _ := Real.sqrt_sq (by positivity)
 
 end NLAlib

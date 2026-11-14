@@ -43,7 +43,9 @@ $32n^{3/2}$.
 
 * `NLAlib.ShiftedQR.stepWithDiag_writes_of_sweep`: the memory of the step, from any proved
   sweep.
-* `NLAlib.ShiftedQR.stepWithDiag_isStableQRStep`: one rounded step is a backward-stable step.
+* `NLAlib.ShiftedQR.stepWithDiag_isStableQRStep`,
+  `NLAlib.ShiftedQR.stepWithDiagInPlace_isStableQRStep`: one rounded step is a backward-stable
+  step.
 * `NLAlib.ShiftedQR.multiStepStable_isStableQRChain`: the degree $k$ step is a stable chain.
 -/
 
@@ -631,6 +633,59 @@ theorem stepWithDiag_isStableQRStep {M : Machine ℝ} {I : Interp Op Tst ℝ} {u
     (specNorm_machineShiftedPrefix_sub_le hM hu H shift)
   exact ⟨hp, upperHessenbergPart Z, R, hR, hZ', by rw [hRl]; exact hD⟩
 
+/-- **The step in place**: on a machine with the standard model at $\boldsymbol{u} \ge 0$ with
+$(n+1)\boldsymbol{u} \le 1/2500$, `stepWithDiagInPlace` replaces an upper Hessenberg $\mathbf{H}$
+by a backward-stable step with error $300(n+1)^2\boldsymbol{u}(\|\mathbf{H}\|_2 + \lvert s\rvert)$
+and stores the last diagonal entry of its triangular factor. The scratch matrix is disjoint from
+the matrix, the shift and the diagonal pair; the matrix is disjoint from the diagonal pair. -/
+theorem stepWithDiagInPlace_isStableQRStep {M : Machine ℝ} {I : Interp Op Tst ℝ} {u : ℝ}
+    (hS : IsScalar M I) (hM : StdModel u id M) (hu : 0 ≤ u) (hCmp : IsCmp id I)
+    {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {a s t dg : ℕ × ℕ}
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {shift : ℂ} (hH : IsUpperHessenberg H)
+    (hnu : (n + 1 : ℝ) * u ≤ 1 / 2500)
+    (hl : m.Live [a, s, t, dg]) (hA : HoldsMatrix a H m.store)
+    (hs : m.store.readBlock s.1 s.2 2 = some [shift.re, shift.im])
+    (ht : t.2 + 2 * ((n + 1) * (n + 1)) ≤ m.store.len t.1)
+    (hd : dg.2 + 2 ≤ m.store.len dg.1)
+    (hat : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1)))))
+    (hst : Fp.Disj (Store.inBlock s.1 s.2 2)
+      (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1)))))
+    (htd : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock dg.1 dg.2 2))
+    (had : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock dg.1 dg.2 2)) :
+    Writes .total I τ stepWithDiagInPlace.body (Env.frame [n + 1] [a, s, t, a, dg])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock dg.1 dg.2 2)
+      (fun m' => m'.pos = m.pos ∧ ∃ H' R : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+        IsStableQRStep (300 * (n + 1) ^ 2 * u * (specNorm H + ‖shift‖)) H shift H' R ∧
+          HoldsMatrix a H' m'.store ∧
+          m'.store.readBlock dg.1 dg.2 2 =
+            some [(R (Fin.last n) (Fin.last n)).re, (R (Fin.last n) (Fin.last n)).im]) m := by
+  have hlen := Store.le_len_of_readBlock hA (by positivity)
+  have hstep := stepWithDiag_isStableQRStep (τ := τ) hS hM hu hCmp hH hnu hl hA hs ht hd hat hst
+    htd
+  refine hstep.frame_seq_le rfl rfl hl (sup_le (le_sup_right.trans le_sup_left) le_sup_right) ?_
+  intro m₁ hfr ⟨hp, H', R, hR, hT, hD⟩
+  have hcopy := copyMatrix_writes (τ := τ) hS hT (by rw [hfr.len_eq]; exact hlen) hat.symm
+  refine (hcopy.in_frame rfl rfl ((hl.congr hfr.length_eq).mono (by simp))).mono
+    (le_sup_left.trans le_sup_left) ?_
+  intro m₂ hfr₂ ⟨hp₂, hA₂⟩
+  exact ⟨hp₂.trans hp, H', R, hR, hA₂, hfr₂.keep (Store.readsOnly_readBlock _ _ _ _) had hD⟩
+
+/-- The words of entry `j` of a list of complex numbers stored as interleaved pairs. -/
+private theorem take_drop_flatMap_pair (ss : List ℂ) {j : ℕ} (hj : j < ss.length) :
+    ((ss.flatMap fun z => [z.re, z.im]).drop (2 * j)).take 2 = [ss[j].re, ss[j].im] := by
+  induction ss generalizing j with
+  | nil => simp at hj
+  | cons z zs ih =>
+    cases j with
+    | zero => simp
+    | succ j =>
+      rw [List.flatMap_cons, show 2 * (j + 1) = 2 + 2 * j by ring, ← List.drop_drop]
+      simpa using ih (by simpa using hj)
+
 /-- **The degree $k$ rounded step is a stable chain** (the setting of
 [BanksGarzaVargasSrivastava2022, Lemma 3.6]): on a machine with the standard model at
 $\boldsymbol{u} \ge 0$ with $(n+1)\boldsymbol{u} \le 1/2500$, from an upper Hessenberg
@@ -665,6 +720,77 @@ theorem multiStepStable_isStableQRChain {M : Machine ℝ} {I : Interp Op Tst ℝ
           m'.store.readBlock ds.1 ds.2 (2 * ss.length) =
             some (Rs.flatMap fun R =>
               [(R (Fin.last n) (Fin.last n)).re, (R (Fin.last n) (Fin.last n)).im])) m := by
-  sorry
+  have hlive : a.1 < m.store.length ∧ s.1 < m.store.length ∧ ds.1 < m.store.length := by
+    simpa [Mem.Live] using hl
+  -- the post of the loop is kept by the release of the scratch matrix
+  change Writes .total I τ (Stmt.allocs [.const 2 * (.var 0 * .var 0)] _) _ _ _ m
+  refine writes_allocs_preserving_post rfl
+    (fun hBelow ⟨hp, H', Rs, hc, hH', hA', hD'⟩ => ⟨hp, H', Rs, hc, hH',
+      hA'.of_below hBelow hlive.1, hBelow.readBlock_of hlive.2.2 hD'⟩) ?_
+  intro store hlen hlens hBelow
+  let t : ℕ × ℕ := (m.store.length, 0)
+  have ht : store.len t.1 = 2 * ((n + 1) * (n + 1)) := by
+    simpa [t] using hlens 0 (by simp)
+  have hta : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) :=
+    Fp.disj_inBlock_of_ne (by dsimp [t]; omega)
+  have hts : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock s.1 s.2 (2 * ss.length)) :=
+    Fp.disj_inBlock_of_ne (by dsimp [t]; omega)
+  have htd : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock ds.1 ds.2 (2 * ss.length)) :=
+    Fp.disj_inBlock_of_ne (by dsimp [t]; omega)
+  set F := Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+    Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock ds.1 ds.2 (2 * ss.length)
+  have hFs : Fp.Disj F (Store.inBlock s.1 s.2 (2 * ss.length)) :=
+    Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨has, hts⟩, hsd.symm⟩
+  have hl₀ : (⟨store, m.pos⟩ : Mem ℝ).Live [a, s, a, ds, t] := by
+    simp [Mem.Live, t, hlen]; omega
+  refine (writes_loop (m := ⟨store, m.pos⟩) (n := .var 1) (N := ss.length) rfl (fun _ => F)
+    (fun _ _ => le_rfl)
+    (fun j μ => μ.pos = m.pos ∧ ∃ (H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+      (Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)),
+      IsStableQRChain (300 * (n + 1) ^ 2 * u) H (ss.take j) H' Rs ∧ IsUpperHessenberg H' ∧
+        HoldsMatrix a H' μ.store ∧
+        μ.store.readBlock ds.1 ds.2 (2 * j) = some (Rs.flatMap fun R =>
+          [(R (Fin.last n) (Fin.last n)).re, (R (Fin.last n) (Fin.last n)).im]))
+    ⟨rfl, H, [], by simpa using IsStableQRChain.nil (x := 300 * (n + 1) ^ 2 * u) H, hH,
+      hA.of_below hBelow hlive.1, by simp⟩ ?_).mono
+    (sup_le (sup_le (le_sup_left.trans le_sup_left) (Fp.inBlock_le_sup_above le_rfl))
+      (le_sup_right.trans le_sup_left)) ?_
+  · intro j hj μ hfr ⟨hp, Hj, Rs, hc, hHj, hAj, hDj⟩
+    have hsμ := hfr.keep (Store.readsOnly_readBlock _ _ _ _) hFs
+      ((hBelow.readBlock hlive.2.1 _ _).trans hs)
+    have hsj : μ.store.readBlock s.1 (s.2 + 2 * j) 2 = some [ss[j].re, ss[j].im] := by
+      rw [Store.readBlock_sub hsμ (by omega), take_drop_flatMap_pair ss hj]
+    have hdlen : ds.2 + 2 * ss.length ≤ μ.store.len ds.1 := by
+      rw [hfr.len_eq, (hBelow ds.1 hlive.2.2).1]; exact hd
+    have hdg : Store.inBlock ds.1 (ds.2 + 2 * j) 2 ≤ Store.inBlock ds.1 ds.2 (2 * ss.length) :=
+      fun b i hi => ⟨hi.1, by have := hi.2.1; omega, by have := hi.2.2; omega⟩
+    have hpre : Store.inBlock ds.1 ds.2 (2 * j) ≤ Store.inBlock ds.1 ds.2 (2 * ss.length) :=
+      fun b i hi => ⟨hi.1, hi.2.1, by have := hi.2.2; omega⟩
+    have hlμ : μ.Live [a, (s.1, s.2 + 2 * j), t, a, (ds.1, ds.2 + 2 * j)] := by
+      simp [Mem.Live, hfr.length_eq, t, hlen]; omega
+    have hstep := stepWithDiagInPlace_isStableQRStep (τ := τ) (m := μ) (t := t)
+      (s := (s.1, s.2 + 2 * j)) (dg := (ds.1, ds.2 + 2 * j)) hS hM hu hCmp hHj hnu
+      (hlμ.mono (by simp)) hAj hsj
+      (by rw [hfr.len_eq]; dsimp [t]; simpa only [Nat.zero_add] using ht.ge)
+      (by dsimp only; omega)
+      hta.symm (Fp.disj_inBlock_of_ne (by dsimp [t]; omega))
+      (htd.mono le_rfl hdg) (had.mono le_rfl hdg)
+    refine (hstep.in_frame rfl rfl hlμ).mono
+      (sup_le (sup_le (le_sup_left.trans le_sup_left) (le_sup_right.trans le_sup_left))
+        (hdg.trans le_sup_right)) ?_
+    intro μ' hfr' ⟨hp', H', R, hR, hA', hD'⟩
+    have hDj' := hfr'.keep (Store.readsOnly_readBlock _ _ _ _)
+      (Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨had.mono le_rfl hpre,
+        htd.mono le_rfl hpre⟩, (Fp.disj_inBlock_of_le le_rfl).symm⟩) hDj
+    refine ⟨hp'.trans hp, H', Rs ++ [R], ?_, hR.1, hA', ?_⟩
+    · rw [List.take_add_one, List.getElem?_eq_getElem hj, Option.toList_some]
+      exact hc.snoc hR
+    · rw [show 2 * (j + 1) = 2 * j + 2 by ring, List.flatMap_append]
+      exact Store.readBlock_add hDj' hD'
+  · intro μ _ ⟨hp, H', Rs, hc, hH', hA', hD'⟩
+    exact ⟨hp, H', Rs, by simpa using hc, hH', hA', hD'⟩
 
 end NLAlib.ShiftedQR

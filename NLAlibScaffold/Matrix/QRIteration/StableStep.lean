@@ -45,6 +45,7 @@ $k$ subdiagonals).
 
 * `NLAlib.isStableQRStep_upperHessenbergPart`: a stable step from a Hessenberg factorization and
   a nearby similarity.
+* `NLAlib.IsStableQRChain.snoc`: a chain extended by a step.
 -/
 
 @[expose] public section
@@ -137,6 +138,15 @@ theorem isStableQRStep_upperHessenbergPart {H Z Q R : Matrix (Fin (n + 1)) (Fin 
   refine (specNorm_sub_le _ _).trans ?_
   rw [specNorm_neg, hnorm]
   linarith
+
+/-- A chain extended by one more stable step at its end is a chain. -/
+theorem IsStableQRChain.snoc {x : ℝ} {H H' H'' R : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {ss : List ℂ} {Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)} {s : ℂ}
+    (h : IsStableQRChain x H ss H' Rs) (hs : IsStableQRStep (x * (specNorm H' + ‖s‖)) H' s H'' R) :
+    IsStableQRChain x H (ss ++ [s]) H'' (Rs ++ [R]) := by
+  induction h with
+  | nil K => exact .cons hs (.nil _)
+  | cons h₁ _ ih => exact .cons h₁ (ih hs)
 
 /-- A backward-stable single step is a perturbed unitary similarity with the same error. -/
 theorem IsStableQRStep.isPerturbedUnitarySimilar {ε : ℝ} {H H' R : Matrix (Fin (n + 1))

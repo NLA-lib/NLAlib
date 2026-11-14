@@ -12,6 +12,7 @@ public import NLAlib.Eigensolvers.ShiftedQR.Certification
 public import NLAlib.Eigensolvers.ShiftedQR.Coefficients
 public import NLAlib.Eigensolvers.ShiftedQR.CompleteSearch
 public import NLAlib.Eigensolvers.ShiftedQR.Constants
+public import NLAlib.Eigensolvers.ShiftedQR.Cost
 public import NLAlib.Eigensolvers.ShiftedQR.Decouple
 public import NLAlib.Eigensolvers.ShiftedQR.DecoupleConstants
 public import NLAlib.Eigensolvers.ShiftedQR.DecoupleLoop
@@ -34,6 +35,7 @@ public import NLAlib.Eigensolvers.ShiftedQR.FindRitzMath
 public import NLAlib.Eigensolvers.ShiftedQR.FindRitzNorms
 public import NLAlib.Eigensolvers.ShiftedQR.FindRitzRegisters
 public import NLAlib.Eigensolvers.ShiftedQR.FinishSearch
+public import NLAlib.Eigensolvers.ShiftedQR.ForwardError
 public import NLAlib.Eigensolvers.ShiftedQR.Grid
 public import NLAlib.Eigensolvers.ShiftedQR.GridSearch
 public import NLAlib.Eigensolvers.ShiftedQR.HalfNorm
@@ -1056,6 +1058,7 @@ public import NLAlib.Ops.ContextIteration
 public import NLAlib.Ops.ContextProblem
 public import NLAlib.Ops.ContextRun
 public import NLAlib.Ops.ContextSemantics
+public import NLAlib.Ops.ContextWork
 public import NLAlib.Ops.Contract
 public import NLAlib.Ops.Counted
 public import NLAlib.Ops.CountedLoop
@@ -1089,6 +1092,7 @@ public import NLAlib.Ops.Examples.Split
 public import NLAlib.Ops.Examples.StochRound
 public import NLAlib.Ops.Exec
 public import NLAlib.Ops.Frame
+public import NLAlib.Ops.IndexDegrees
 public import NLAlib.Ops.Law
 public import NLAlib.Ops.Link
 public import NLAlib.Ops.LinkWorkspace
@@ -1133,6 +1137,7 @@ public import NLAlib.Ops.Logic.VectorUpdate
 public import NLAlib.Ops.Logic.WeightedLoop
 public import NLAlib.Ops.Logic.While
 public import NLAlib.Ops.Logic.Writes
+public import NLAlib.Ops.PolynomialWork
 public import NLAlib.Ops.Probability
 public import NLAlib.Ops.Profile
 public import NLAlib.Ops.Profiles.Blas
@@ -1180,6 +1185,7 @@ public import NLAlib.Ops.Tools.ProgramFixtures
 public import NLAlib.Ops.Tools.Run
 public import NLAlib.Ops.Tools.Tables
 public import NLAlib.Ops.Transfer
+public import NLAlib.Ops.WeightEnvelope
 public import NLAlib.Ops.WeightedCost
 public import NLAlib.Ops.Window
 public import NLAlib.Ops.Workspace

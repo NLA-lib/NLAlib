@@ -232,14 +232,7 @@ private theorem coefficientZero_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     all_goals dsimp only; omega
   refine (writes_machineScalarBlock hS (eval_coefficientZero hE a b t c s m.store.cellFn)
     hroom).mono ?_ ?_
-  · intro q i h
-    simp only [Fp.cells, coefficientZeroWrites, List.map_cons, List.map_nil,
-      List.mem_cons, List.not_mem_nil, or_false, Prod.mk.injEq] at h
-    rcases h with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
-    · exact Or.inl ⟨rfl, le_rfl, by omega⟩
-    · exact Or.inl ⟨rfl, by omega, by omega⟩
-    · exact Or.inr (Or.inl ⟨rfl, le_rfl, by omega⟩)
-    · exact Or.inr (Or.inl ⟨rfl, by omega, by omega⟩)
+  · fp_sub [coefficientZeroWrites, List.map_cons, List.map_nil]
   · intro m' _ he
     subst m'
     have heq : m.updCells (coefficientZeroWrites c s) =
@@ -320,17 +313,7 @@ private theorem coefficientDivide_writes {M : Machine ℝ} {I : Interp Op Tst �
     all_goals dsimp only; omega
   refine (writes_machineScalarBlock hS
     (eval_coefficientDivide hE htc hts hr h0 h1 h2 h3 h4) hroom).mono ?_ ?_
-  · intro q i h
-    simp only [Fp.cells, coefficientDivideWrites, List.map_cons, List.map_nil,
-      List.mem_cons, List.not_mem_nil, or_false, Prod.mk.injEq] at h
-    rcases h with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ |
-      ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
-    · exact Or.inl ⟨rfl, by omega, by omega⟩
-    · exact Or.inl ⟨rfl, by omega, by omega⟩
-    · exact Or.inr (Or.inl ⟨rfl, le_rfl, by omega⟩)
-    · exact Or.inr (Or.inl ⟨rfl, by omega, by omega⟩)
-    · exact Or.inr (Or.inr (Or.inl ⟨rfl, le_rfl, by omega⟩))
-    · exact Or.inr (Or.inr (Or.inl ⟨rfl, by omega, by omega⟩))
+  · fp_sub [coefficientDivideWrites, List.map_cons, List.map_nil]
   · intro m' _ he
     subst m'
     have heq : m.updCells (coefficientDivideWrites t c s u v r) =

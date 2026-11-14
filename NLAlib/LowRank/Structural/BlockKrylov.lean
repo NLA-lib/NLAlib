@@ -45,6 +45,13 @@ value (`NLAlib.singularValues_sub_rbki_le_of_degree_lt`).
 * `NLAlib.singularValues_sub_rbki_le_of_degree_lt`,
   `NLAlib.singularValues_sub_rbki_le_sub_rsvd_pow`, `NLAlib.singularValues_sub_rbki_le_of_le`: RBKI
   beats every polynomial filter, RSI with one block fewer, and itself with fewer blocks.
+* `NLAlib.rbki_blockKrylovMatrix`, `Matrix.PosSemidef.nystromBKI_blockKrylovMatrix`: the simulated
+  block, RBKI and NysBKI with block $\mathbf{\Omega}$ and $s + q + 1$ blocks are those with the
+  block $\mathbf{K}_{s+1}$ and $q + 1$ blocks.
+* `NLAlib.singularValues_sub_rbki_le_of_range_le`: a block with a larger range does at least as
+  well, at the same depth.
+* `NLAlib.singularValues_sub_rbki_le_of_degree_lt_of_add_le`: RBKI beats every polynomial filter
+  of degree less than $d$ applied to the simulated block $\mathbf{K}_s$, for $s + d \le q + 1$.
 * `NLAlib.nystromBKI_conjTranspose_mul_self`, `NLAlib.conjTranspose_mul_self_sub_nystromBKI`,
   `Matrix.PosSemidef.sub_nystromBKI_eq`: the Gram correspondence, NysBKI of $\mathbf{H}$ is RBKI of
   $\mathbf{H}^{1/2}$.
@@ -171,6 +178,94 @@ theorem singularValues_sub_rbki_le_of_le (A : Matrix m n 𝕜) (Ω : Matrix n l 
   refine singularValues_one_sub_rangeProjector_mul_le_of_range_le ?_ A i
   rw [range_mul_blockKrylovMatrix, range_mul_blockKrylovMatrix]
   exact Submodule.map_mono (blockKrylovSpace_mono _ _ h)
+
+/-! ### The simulated block -/
+
+/-- **The simulated block of RBKI**: with $\mathbf{H} = \mathbf{A}^{\mathsf{H}}\mathbf{A}$ and
+every $s, q \ge 0$,
+$$\mathsf{rbki}(\mathbf{A}, \mathbf{K}_{s+1}(\mathbf{H}, \mathbf{\Omega}), q + 1) =
+\mathsf{rbki}(\mathbf{A}, \mathbf{\Omega}, s + q + 1)\,:$$
+RBKI with block $\mathbf{\Omega}$ and $s + q + 1$ blocks is RBKI with the simulated block
+$[\mathbf{\Omega}, \mathbf{H}\mathbf{\Omega}, \dots, \mathbf{H}^{s}\mathbf{\Omega}]$ and
+$q + 1$ blocks, so a bound for wide blocks applies to narrow ones at larger depth.
+[MeyerMuscoMusco2023, §3.1], there for one start vector and a positive semidefinite matrix, as an
+equality of Krylov subspaces; [ChenEpperlyMeyerMuscoRao2025, Observation 3.3], there as an
+equality of block Krylov subspaces; here as an equality of the approximations.
+Result: rbki-simulated-block -/
+theorem rbki_blockKrylovMatrix (A : Matrix m n 𝕜) (Ω : Matrix n l 𝕜) (s q : ℕ) :
+    rbki A (blockKrylovMatrix (Aᴴ * A) Ω (s + 1)) (q + 1) = rbki A Ω (s + q + 1) := by
+  rw [rbki, rbki, rsvd, rsvd]
+  congr 1
+  refine rangeProjector_inj.mpr ?_
+  rw [range_mul_blockKrylovMatrix, range_mul_blockKrylovMatrix,
+    blockKrylovSpace_blockKrylovMatrix]
+
+/-- **The simulated block of block Krylov Nyström**: for positive semidefinite $\mathbf{H}$ and
+every $s, q \ge 0$,
+$$\mathsf{nystromBKI}(\mathbf{H}, \mathbf{K}_{s+1}(\mathbf{H}, \mathbf{\Omega}), q + 1) =
+\mathsf{nystromBKI}(\mathbf{H}, \mathbf{\Omega}, s + q + 1)\,,$$
+since the Nyström approximation of a positive semidefinite matrix depends on the test matrix only
+through its range.
+[ChenEpperlyMeyerMuscoRao2025, Observation 3.3], there the equality of the two block Krylov
+subspaces; the statement for the Nyström approximation is not printed there.
+Result: nystrom-bki-simulated-block -/
+theorem _root_.Matrix.PosSemidef.nystromBKI_blockKrylovMatrix {H : Matrix n n 𝕜}
+    (hH : H.PosSemidef) (Ω : Matrix n l 𝕜) (s q : ℕ) :
+    nystromBKI H (blockKrylovMatrix H Ω (s + 1)) (q + 1) = nystromBKI H Ω (s + q + 1) :=
+  hH.nystrom_eq_of_range_eq (blockKrylovSpace_blockKrylovMatrix H Ω s q)
+
+/-- **A block with a larger range does at least as well**: if the range of $\mathbf{\Omega}'$
+lies in the range of $\mathbf{\Omega}$ (a sub-block, or any column combinations), then for every
+number of blocks $q$ and every $i$,
+$$\sigma_i(\mathbf{A} - \mathsf{rbki}(\mathbf{A}, \mathbf{\Omega}, q)) \le
+\sigma_i(\mathbf{A} - \mathsf{rbki}(\mathbf{A}, \mathbf{\Omega}', q))\,,$$
+so in every unitarily invariant norm.
+No printed source.
+Result: rbki-block-monotonicity -/
+theorem singularValues_sub_rbki_le_of_range_le {l' : Type*} [Fintype l'] (A : Matrix m n 𝕜)
+    {Ω : Matrix n l 𝕜} {Ω' : Matrix n l' 𝕜}
+    (h : LinearMap.range Ω'.mulVecLin ≤ LinearMap.range Ω.mulVecLin) (q i : ℕ) :
+    singularValues (A - rbki A Ω q) i ≤ singularValues (A - rbki A Ω' q) i := by
+  classical
+  rw [rbki, rbki, sub_rsvd, sub_rsvd]
+  refine singularValues_one_sub_rangeProjector_mul_le_of_range_le ?_ A i
+  rw [range_mul_blockKrylovMatrix, range_mul_blockKrylovMatrix]
+  exact Submodule.map_mono (blockKrylovSpace_le_of_range_le h q)
+
+/-- **RBKI beats every polynomial filter of the simulated block**: with
+$\mathbf{H} = \mathbf{A}^{\mathsf{H}}\mathbf{A}$, for a polynomial $f$ of degree less than $d$,
+with coefficients in any subfield (in particular real), a simulated block of $s$ blocks with
+$s + d \le q + 1$, and every $i$,
+$$\sigma_i(\mathbf{A} - \mathsf{rbki}(\mathbf{A}, \mathbf{\Omega}, q)) \le
+\sigma_i(\mathbf{A} - \mathsf{rsvd}(\mathbf{A},
+f(\mathbf{H})\,\mathbf{K}_s(\mathbf{H}, \mathbf{\Omega})))\,,$$
+so in every unitarily invariant norm: the columns of
+$f(\mathbf{H})\mathbf{K}_s(\mathbf{H}, \mathbf{\Omega})$ are polynomials of degree at most
+$s + d - 2 < q$ in $\mathbf{H}$ applied to the columns of $\mathbf{\Omega}$. At $s = 1$,
+$d = q$ it is the bound for filters of $\mathbf{\Omega}$ itself; $s = 0$ and $d = 0$ are allowed
+and give $\sigma_i(\mathbf{A})$ on the right.
+[MeyerMuscoMusco2023, §3.1], the argument, not the statement: there the analysis of block Krylov
+iteration is applied to the simulated block of one start vector. -/
+theorem singularValues_sub_rbki_le_of_degree_lt_of_add_le {R : Type*} [CommSemiring R]
+    [Algebra R 𝕜] (A : Matrix m n 𝕜) (Ω : Matrix n l 𝕜) {q s d : ℕ} {f : R[X]}
+    (hf : f.degree < d) (hsd : s + d ≤ q + 1) (i : ℕ) :
+    singularValues (A - rbki A Ω q) i ≤
+      singularValues (A - rsvd A (aeval (Aᴴ * A) f * blockKrylovMatrix (Aᴴ * A) Ω s)) i := by
+  classical
+  rw [rbki, sub_rsvd, sub_rsvd]
+  refine singularValues_one_sub_rangeProjector_mul_le_of_range_le ?_ A i
+  rw [range_mul_blockKrylovMatrix, Matrix.mulVecLin_mul, LinearMap.range_comp]
+  refine Submodule.map_mono ?_
+  rcases s with _ | s
+  · rw [Matrix.range_mulVecLin, Set.range_eq_empty, Submodule.span_empty]
+    exact bot_le
+  rcases d with _ | d
+  · rw [Nat.cast_zero, Nat.WithBot.lt_zero_iff, degree_eq_bot] at hf
+    rw [hf, map_zero, Matrix.zero_mul, Matrix.mulVecLin_zero, LinearMap.range_zero]
+    exact bot_le
+  refine (range_aeval_mul_le_blockKrylovSpace (Aᴴ * A) _ hf).trans ?_
+  rw [blockKrylovSpace_blockKrylovMatrix]
+  exact blockKrylovSpace_mono _ _ (by omega)
 
 /-! ### Block Krylov Nyström through the Gram correspondence -/
 

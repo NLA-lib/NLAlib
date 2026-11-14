@@ -369,6 +369,7 @@ public import NLAlib.ForMathlib.LinearAlgebra.Matrix.Rank
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.SchurComplement
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.Trace
 public import NLAlib.ForMathlib.LinearAlgebra.UnitaryGroup
+public import NLAlib.ForMathlib.LinearAlgebra.Vandermonde
 public import NLAlib.ForMathlib.MeasureTheory.Constructions.BorelSpace.MeasurableSelection
 public import NLAlib.ForMathlib.MeasureTheory.Constructions.PiUpdate
 public import NLAlib.ForMathlib.MeasureTheory.Function.ConditionalExpectation.CondJensen
@@ -410,6 +411,7 @@ public import NLAlib.ForMathlib.Topology.UniformSpace.UniformApproximation
 public import NLAlib.Krylov.Basic.BlockSpace
 public import NLAlib.Krylov.Basic.Compression
 public import NLAlib.Krylov.Basic.Grade
+public import NLAlib.Krylov.Basic.KrylovVandermonde
 public import NLAlib.Krylov.Basic.Space
 public import NLAlib.Krylov.CG.BufferProblem
 public import NLAlib.Krylov.CG.HSCG.Alg
@@ -513,6 +515,7 @@ public import NLAlib.Krylov.Eigenvalues.Ritz
 public import NLAlib.Krylov.FinitePrecision.Backward
 public import NLAlib.Krylov.FinitePrecision.BackwardBounds
 public import NLAlib.Krylov.FinitePrecision.BackwardSpectral
+public import NLAlib.Krylov.FinitePrecision.BandGolubKahanRun
 public import NLAlib.Krylov.FinitePrecision.CGAccuracy
 public import NLAlib.Krylov.FinitePrecision.CGBackward
 public import NLAlib.Krylov.FinitePrecision.CGCertificates
@@ -559,6 +562,11 @@ public import NLAlib.Krylov.Functions.NearOptimality
 public import NLAlib.Krylov.Functions.Optimality
 public import NLAlib.Krylov.Functions.Quadrature
 public import NLAlib.Krylov.Functions.QuadratureBounds
+public import NLAlib.Krylov.GolubKahan.Band.Alg
+public import NLAlib.Krylov.GolubKahan.Band.Certification
+public import NLAlib.Krylov.GolubKahan.Band.Linked
+public import NLAlib.Krylov.GolubKahan.Band.Run
+public import NLAlib.Krylov.GolubKahan.Band.StoredExtension
 public import NLAlib.Krylov.Lanczos.Advance
 public import NLAlib.Krylov.Lanczos.Alg
 public import NLAlib.Krylov.Lanczos.Basis
@@ -659,13 +667,24 @@ public import NLAlib.Krylov.LinearSystems.PCG
 public import NLAlib.Krylov.LinearSystems.PCGRecurrence
 public import NLAlib.Krylov.LinearSystems.Richardson
 public import NLAlib.Krylov.LinearSystems.WorstCase
+public import NLAlib.Krylov.Orthogonalization.CGS2.Extend
+public import NLAlib.Krylov.Orthogonalization.CGS2.ExtendColumn
+public import NLAlib.Krylov.Orthogonalization.CGS2.ExtendDecode
+public import NLAlib.Krylov.Orthogonalization.CGS2.ExtendExact
+public import NLAlib.Krylov.Orthogonalization.CGS2.ExtendLoop
+public import NLAlib.Krylov.Orthogonalization.CGS2.ExtendRounded
+public import NLAlib.Krylov.Orthogonalization.CGS2.PassSupport
 public import NLAlib.Krylov.Processes.ArnoldiRecurrence
+public import NLAlib.Krylov.Processes.BandGolubKahan
 public import NLAlib.Krylov.Processes.Lanczos
 public import NLAlib.Krylov.Processes.LanczosPolynomials
 public import NLAlib.Krylov.Processes.LanczosProgramRoundedRun
 public import NLAlib.Krylov.Processes.LanczosRecurrence
 public import NLAlib.Krylov.Processes.LanczosReorthRecurrence
 public import NLAlib.Krylov.Processes.PreconditionedLanczos
+public import NLAlib.LowRank.BlockKrylov.Factored
+public import NLAlib.LowRank.BlockKrylov.Probability
+public import NLAlib.LowRank.BlockKrylov.Samples
 public import NLAlib.LowRank.Gaussian.BlockKrylov
 public import NLAlib.LowRank.Gaussian.BlockKrylovGapless
 public import NLAlib.LowRank.Gaussian.EarlyTruncation
@@ -682,6 +701,7 @@ public import NLAlib.LowRank.Gaussian.RangeFinderTail
 public import NLAlib.LowRank.Gaussian.RangeFinderTailHaar
 public import NLAlib.LowRank.Gaussian.RotationInvariant
 public import NLAlib.LowRank.Gaussian.RotationInvariantFactor
+public import NLAlib.LowRank.Gaussian.SmallBlock
 public import NLAlib.LowRank.Gaussian.TruncatedGeneralizedNystrom
 public import NLAlib.LowRank.Gaussian.TruncatedGeneralizedNystromOracle
 public import NLAlib.LowRank.Gaussian.TruncatedGeneralizedNystromRate
@@ -703,9 +723,11 @@ public import NLAlib.LowRank.Structural.BlockKrylov
 public import NLAlib.LowRank.Structural.EarlyTruncation
 public import NLAlib.LowRank.Structural.Filter
 public import NLAlib.LowRank.Structural.RangeFinder
+public import NLAlib.LowRank.Structural.SmallBlock
 public import NLAlib.LowRank.Structural.Truncation
 public import NLAlib.LowerBounds.Eigensolvers.Precision
 public import NLAlib.LowerBounds.Krylov.LinearSystems
+public import NLAlib.LowerBounds.LowRank.BlockSize
 public import NLAlib.LowerBounds.LowRank.EarlyTruncation
 public import NLAlib.LowerBounds.LowRank.EarlyTruncationBlock
 public import NLAlib.LowerBounds.LowRank.EarlyTruncationBlockGaussian
@@ -735,6 +757,9 @@ public import NLAlib.Matrix.Basic.Projector
 public import NLAlib.Matrix.Basic.QuadForm
 public import NLAlib.Matrix.Basic.SchurComplement
 public import NLAlib.Matrix.Basic.Selection
+public import NLAlib.Matrix.Factorizations.BasisExtensionContract
+public import NLAlib.Matrix.Factorizations.CGS2.BasisExtension
+public import NLAlib.Matrix.Factorizations.CGS2.BasisExtensionErr
 public import NLAlib.Matrix.Factorizations.Cholesky
 public import NLAlib.Matrix.Factorizations.ColumnVolume
 public import NLAlib.Matrix.Factorizations.Elimination
@@ -896,6 +921,7 @@ public import NLAlib.Matrix.Norms.SchattenSmoothness
 public import NLAlib.Matrix.Norms.Spectral
 public import NLAlib.Matrix.Norms.SymmetricGauge
 public import NLAlib.Matrix.Norms.UnitarilyInvariant
+public import NLAlib.Matrix.Perturbation.BasisExtension
 public import NLAlib.Matrix.Perturbation.BestRankApprox
 public import NLAlib.Matrix.Perturbation.Continuity
 public import NLAlib.Matrix.Perturbation.DavisKahan
@@ -954,6 +980,7 @@ public import NLAlib.Matrix.Spectral.EigenvalueListing
 public import NLAlib.Matrix.Spectral.EigenvalueTransform
 public import NLAlib.Matrix.Spectral.Eigenvalues
 public import NLAlib.Matrix.Spectral.EigenvectorPairing
+public import NLAlib.Matrix.Spectral.FrameDeflation
 public import NLAlib.Matrix.Spectral.Gershgorin
 public import NLAlib.Matrix.Spectral.HermitianPart
 public import NLAlib.Matrix.Spectral.Inertia
@@ -1048,6 +1075,8 @@ public import NLAlib.Ops.Catalog.Isotropic
 public import NLAlib.Ops.Catalog.Matrix
 public import NLAlib.Ops.Catalog.MatrixWorkspace
 public import NLAlib.Ops.Catalog.Operator
+public import NLAlib.Ops.Catalog.OperatorPair
+public import NLAlib.Ops.Catalog.Orth
 public import NLAlib.Ops.Catalog.RCLikeBlas
 public import NLAlib.Ops.Catalog.RCLikeStar
 public import NLAlib.Ops.Catalog.Random
@@ -1220,6 +1249,7 @@ public import NLAlib.Polynomial.Chebyshev.ResidualMinimax
 public import NLAlib.Polynomial.Chebyshev.TwoInterval
 public import NLAlib.Polynomial.Interpolation.DividedDifference
 public import NLAlib.Polynomial.Interpolation.Hermite
+public import NLAlib.Polynomial.Interpolation.LagrangeBound
 public import NLAlib.Polynomial.Interpolation.Stieltjes
 public import NLAlib.Polynomial.Orthogonal.Basic
 public import NLAlib.Polynomial.Orthogonal.Gauss

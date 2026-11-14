@@ -56,6 +56,9 @@ $\mathbf{B}$.
 * `NLAlib.blockKrylovSpace_le_of_range_le`,
   `NLAlib.sup_sup_map_mulVecLin_le_blockKrylovSpace_add_two`: the depth count of the Krylov
   coupling.
+* `NLAlib.blockKrylovSpace_blockKrylovMatrix`: the block Krylov space of a block Krylov matrix,
+  $\mathcal{K}_{q+1}(\mathbf{A}, \mathbf{K}_{s+1}(\mathbf{A}, \mathbf{B})) =
+  \mathcal{K}_{s+q+1}(\mathbf{A}, \mathbf{B})$.
 -/
 
 @[expose] public section
@@ -437,5 +440,44 @@ theorem sup_sup_map_mulVecLin_le_blockKrylovSpace_add_two {𝕜 : Type*} [RCLike
   rw [Submodule.map_le_iff_le_comap]
   intro x hx
   exact mulVec_mem_blockKrylovSpace_succ (hV' hx)
+
+/-- **The block Krylov space of a block Krylov matrix**: starting from the block
+$\mathbf{K}_{s+1}(\mathbf{A}, \mathbf{B}) = [\mathbf{B}, \mathbf{A}\mathbf{B}, \dots,
+\mathbf{A}^{s}\mathbf{B}]$ and taking $q + 1$ blocks gives the block Krylov space of
+$\mathbf{B}$ with $s + q + 1$ blocks,
+$$\mathcal{K}_{q+1}(\mathbf{A}, \mathbf{K}_{s+1}(\mathbf{A}, \mathbf{B})) =
+\mathcal{K}_{s+q+1}(\mathbf{A}, \mathbf{B})\,,$$
+for every $s, q \ge 0$: a block method with block $\mathbf{B}$ and depth $s + q + 1$ is the
+same method with the simulated block $\mathbf{K}_{s+1}(\mathbf{A}, \mathbf{B})$ and depth
+$q + 1$. With no block on either side the identity fails ($\mathcal{K}_{q}(\mathbf{A},
+\mathbf{K}_0) = \{\mathbf{0}\}$).
+[ChenEpperlyMeyerMuscoRao2025, Observation 3.3]; [MeyerMuscoMusco2023, §3.1], there for one
+start vector and a positive semidefinite matrix. -/
+theorem blockKrylovSpace_blockKrylovMatrix {𝕜 : Type*} [RCLike 𝕜] {n p : Type*} [Fintype n]
+    [DecidableEq n] [Fintype p] (A : Matrix n n 𝕜) (B : Matrix n p 𝕜) (s q : ℕ) :
+    blockKrylovSpace A (blockKrylovMatrix A B (s + 1)) (q + 1) =
+      blockKrylovSpace A B (s + q + 1) := by
+  refine le_antisymm ?_ ?_
+  · rw [blockKrylovSpace_eq_span A (blockKrylovMatrix A B (s + 1))]
+    refine Submodule.span_le.2 ?_
+    rintro _ ⟨⟨i, j, c⟩, rfl⟩
+    have h : A ^ (i : ℕ) *ᵥ (blockKrylovMatrix A B (s + 1)).col (j, c) =
+        A ^ ((i : ℕ) + (j : ℕ)) *ᵥ B.col c := by
+      rw [pow_add, ← Matrix.mulVec_mulVec]
+      rfl
+    change A ^ (i : ℕ) *ᵥ (blockKrylovMatrix A B (s + 1)).col (j, c) ∈
+      blockKrylovSpace A B (s + q + 1)
+    rw [h]
+    exact pow_mulVec_col_mem_blockKrylovSpace A B (by omega) c
+  · rw [blockKrylovSpace_eq_span A B]
+    refine Submodule.span_le.2 ?_
+    rintro _ ⟨⟨k, c⟩, rfl⟩
+    obtain ⟨i, j, hi, hj, hij⟩ : ∃ i j, i < q + 1 ∧ j < s + 1 ∧ i + j = (k : ℕ) := by
+      rcases le_total (k : ℕ) q with h | h
+      · exact ⟨k, 0, by omega, by omega, by omega⟩
+      · exact ⟨q, k - q, by omega, by omega, by omega⟩
+    change A ^ (k : ℕ) *ᵥ B.col c ∈ blockKrylovSpace A (blockKrylovMatrix A B (s + 1)) (q + 1)
+    rw [← hij, pow_add, ← Matrix.mulVec_mulVec]
+    exact pow_mulVec_col_mem_blockKrylovSpace A (blockKrylovMatrix A B (s + 1)) hi (⟨j, hj⟩, c)
 
 end NLAlib

@@ -73,7 +73,17 @@ theorem not_isOptimalRitzValues_of_le {θ t : ℝ} {H : Matrix (Fin (n + 1)) (Fi
       0.0009 * (θ * hessenbergPotential ss.length H) ^ ss.length)
     (hle : 0.999 * (θ * hessenbergPotential ss.length H) ^ ss.length ≤ t) :
     ¬IsOptimalRitzValues ((0.998 : ℝ) ^ ((ss.length : ℝ)⁻¹) * θ) H ss := by
-  sorry
+  intro hopt
+  unfold IsOptimalRitzValues at hopt
+  have hk : ss.length ≠ 0 := by simpa using hss
+  have hX : 0 < (θ * hessenbergPotential ss.length H) ^ ss.length :=
+    pow_pos (mul_pos hθ hψ) _
+  have hpow : ((0.998 : ℝ) ^ ((ss.length : ℝ)⁻¹) * θ * hessenbergPotential ss.length H) ^ ss.length
+      = 0.998 * (θ * hessenbergPotential ss.length H) ^ ss.length := by
+    rw [mul_assoc, mul_pow, Real.rpow_inv_natCast_pow (by norm_num) hk]
+  rw [hpow] at hopt
+  have h1 := (abs_le.mp ht).2
+  linarith
 
 /-- **Forward-approximate Ritz values that are not optimal contain a decoupling shift**
 (the dichotomy as `Regularize` uses it, [BanksGarzaVargasSrivastava2022, Theorem 4.1 and

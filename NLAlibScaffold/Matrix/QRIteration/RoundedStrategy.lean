@@ -115,7 +115,68 @@ theorem exists_mem_le_norm_inv_pow_of_not_isOptimalRitzValues {B S ω : ℝ} {k 
       (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹))) H ss) :
     ∃ r ∈ ss, (2 / ω) ^ k ≤
       ‖WithLp.toLp 2 ((Polynomial.aeval H (shiftPoly (List.replicate k r)))⁻¹ (Fin.last n))‖ := by
-  sorry
+  set κ := pseudoConditionNumber V
+  set Y := (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)
+  set x := (2 * κ ^ 4) ^ ((2 * k : ℝ)⁻¹)
+  set θ := (0.998 : ℝ) ^ ((k : ℝ)⁻¹) * (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * Y)
+  have hκ1 : 1 ≤ κ := one_le_pseudoConditionNumber hV.ne_zero
+  have hθ : θ = 1.01 * Y := by
+    simp only [θ]
+    rw [Real.rpow_neg (by norm_num)]
+    have : (0.998 : ℝ) ^ ((k : ℝ)⁻¹) ≠ 0 := by positivity
+    field_simp
+  have hx0 : 0 < x := by positivity
+  have hxY : x ≤ Y := Real.rpow_le_rpow (by positivity) (by gcongr) (by positivity)
+  have hxθ : x / θ ≤ 100 / 101 := by
+    rw [hθ, div_le_iff₀ (by positivity)]
+    linarith
+  have hψH := hessenbergPotential_le_specNorm hk hkn H
+  have hS0 : 0 < S := by linarith
+  have hc : 1 / 200 ≤ (θ / x - 1) / 2 := by
+    rw [le_div_iff₀ (by norm_num), le_sub_iff_add_le, le_div_iff₀ hx0, hθ]
+    linarith
+  have hβ : 0 < ω ^ 2 / (20 * 101 * S) := by positivity
+  have hβΓ : ω ^ 2 / (20 * 101 * S) < (θ / x - 1) / 2 * (2 * ω ^ 2 / S) := by
+    calc ω ^ 2 / (20 * 101 * S) < 1 / 200 * (2 * ω ^ 2 / S) := by
+          rw [div_lt_iff₀ (by positivity)]
+          field_simp
+          nlinarith [pow_pos hω 2]
+      _ ≤ _ := by gcongr
+  rcases hH.isOptimalRitzValues_or_exists_mem_det_eq_zero_or_le hV hHV hk hkn hgap
+      (hxY.trans_lt (by rw [hθ]; linarith [show 0 < Y by positivity]) : x < θ) hβ hβΓ
+      (List.Forall₂.flip (hss.imp fun _ _ h => by rwa [norm_sub_rev] at h))
+      with hopt' | ⟨r, hr, hdet | hle⟩
+  · exact absurd hopt' hopt
+  · exact absurd hdet (det_sub_smul_one_ne_zero_of_forall_ne hV hHV (hne r hr))
+  refine ⟨r, hr, ?_⟩
+  rw [aeval_shiftPoly_replicate, ← Matrix.inv_pow']
+  set N := ‖WithLp.toLp 2 (((H - r • (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ))⁻¹ ^ k)
+    (Fin.last n))‖
+  set β := ω ^ 2 / (20 * 101 * S)
+  have hN0 : 0 ≤ N ^ ((k : ℝ)⁻¹) := by positivity
+  have hκk : κ ^ ((2 : ℝ) / k) ≤ 2 :=
+    (Real.rpow_le_rpow (by positivity) hκ (by positivity)).trans hBk
+  have hβS : specNorm H + β ≤ 2 * S := by
+    have : β ≤ S := by
+      rw [div_le_iff₀ (by positivity)]
+      nlinarith
+    linarith
+  have hlow : 2 * ω / 505 ≤ ω ^ 2 / 505 * N ^ ((k : ℝ)⁻¹) := by
+    calc 2 * ω / 505 ≤ 2 / 5 * hessenbergPotential k H * (1 - x / θ) := by
+          nlinarith
+      _ ≤ _ := hle
+      _ ≤ 2 * (2 * S) * β * N ^ ((k : ℝ)⁻¹) := by gcongr
+      _ = _ := by
+          simp only [β]
+          field_simp
+          ring
+  have h2 : 2 / ω ≤ N ^ ((k : ℝ)⁻¹) := by
+    rw [div_le_iff₀ hω]
+    nlinarith
+  calc (2 / ω) ^ k ≤ (N ^ ((k : ℝ)⁻¹)) ^ k := by gcongr
+    _ = N := by
+      rw [← Real.rpow_natCast, ← Real.rpow_mul (norm_nonneg _), inv_mul_cancel₀ (by positivity),
+        Real.rpow_one]
 
 /-- `Find` with supplied comparison values: `findRitzWith t m e ss` splits `ss` into its first
 and second halves, keeps the half $h$ with the smaller value `t e h` (the first on a tie; `t e h`

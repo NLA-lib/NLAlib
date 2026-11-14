@@ -564,6 +564,7 @@ public import NLAlib.Krylov.GolubKahan.Band.Alg
 public import NLAlib.Krylov.GolubKahan.Band.Certification
 public import NLAlib.Krylov.GolubKahan.Band.Linked
 public import NLAlib.Krylov.GolubKahan.Band.Run
+public import NLAlib.Krylov.GolubKahan.Band.StoredExtension
 public import NLAlib.Krylov.Lanczos.Advance
 public import NLAlib.Krylov.Lanczos.Alg
 public import NLAlib.Krylov.Lanczos.Basis

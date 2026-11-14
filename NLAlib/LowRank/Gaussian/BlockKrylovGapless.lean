@@ -78,7 +78,7 @@ with $\sigma_{h+1} \le (1 + \varepsilon)\sigma_r \le \sigma_h$, so that the rela
 $(\sigma_h - \sigma_r)/(\sigma_h + \sigma_r)$ is at least $\varepsilon/(2 + \varepsilon)$ unless
 $\sigma_r = 0$. Here $h + 1$ is the number of singular values at least
 $(1 + \varepsilon)\sigma_r$. -/
-private theorem singularValues_zero_le_or_exists_singularGapRatio (A : Matrix m n ℝ) (r : ℕ)
+theorem singularValues_zero_le_or_exists_singularGapRatio (A : Matrix m n ℝ) (r : ℕ)
     {ε : ℝ} (hε : 0 < ε) :
     singularValues A 0 ≤ (1 + ε) * singularValues A r ∨
       ∃ h, h + 1 ≤ r ∧ singularValues A (h + 1) ≤ (1 + ε) * singularValues A r ∧
@@ -119,7 +119,7 @@ omit [DecidableEq n] in
 /-- The tail term of the gapped bounds at the gap of the case split is at most the tail term at
 $\varepsilon/(2 + \varepsilon)$, for any non-increasing function $e$ of the gap: when
 $\sigma_r = 0$ both are zero. -/
-private theorem mul_frobNorm_sub_truncatedSVD_sq_le (A : Matrix m n ℝ) {e : ℝ → ℝ}
+theorem mul_frobNorm_sub_truncatedSVD_sq_le (A : Matrix m n ℝ) {e : ℝ → ℝ}
     (he : Antitone e) {h r : ℕ} {ε κ : ℝ} (hκ : 0 ≤ κ)
     (hgap : singularValues A r = 0 ∨ ε / (2 + ε) ≤ singularGapRatio A h r) :
     e (singularGapRatio A h r) * κ * frobNorm (A - truncatedSVD A r) ^ 2 ≤

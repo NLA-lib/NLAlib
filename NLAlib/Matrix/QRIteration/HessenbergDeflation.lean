@@ -41,6 +41,8 @@ indices (a junk value no statement uses), as `NLAlib.trailingBlock`.
 
 * `NLAlib.IsUpperHessenberg.subBlock`: a diagonal block of a Hessenberg matrix is Hessenberg.
 * `NLAlib.IsUpperHessenberg.deflationInv_init`: the start, one active block.
+* `NLAlib.IsRangePartition.subBlock_setSubBlock`: writing the block of a range changes no other
+  block.
 * `NLAlib.DeflationInv.conj`: a unitary similarity of an active block.
 * `NLAlib.DeflationInv.split`: a split at a small subdiagonal entry.
 * `NLAlib.DeflationInv.finish`: a block's eigenvalues written.
@@ -161,7 +163,7 @@ theorem IsUpperHessenberg.deflationInv_init {H : Matrix (Fin (n + 1)) (Fin (n + 
     simp at hr
 
 /-- The label of an index in a range of a partition is the start of that range. -/
-private theorem rangeLabel_eq_of_mem_conj {N : ℕ} {rs : List (ℕ × ℕ)}
+theorem IsRangePartition.rangeLabel_eq {N : ℕ} {rs : List (ℕ × ℕ)}
     (hrs : IsRangePartition N rs) {r : ℕ × ℕ} (hr : r ∈ rs) {k : Fin N} (hk₁ : r.1 ≤ (k : ℕ))
     (hk₂ : (k : ℕ) < r.1 + r.2) : rangeLabel rs k = r.1 := by
   unfold rangeLabel
@@ -181,17 +183,41 @@ private theorem subBlock_eq_embed_conj (r : ℕ × ℕ) (X : Matrix (Fin (n + 1)
   ext a b
   simp [subBlock, Matrix.mul_apply, Matrix.one_apply]
 
+/-- The index of a block of a range of a partition is not clamped: entry $a$ of the range $r$
+is the index $r_1 + a$. -/
+theorem IsRangePartition.val_blockIndex {rs : List (ℕ × ℕ)} (hrs : IsRangePartition (n + 1) rs)
+    {r : ℕ × ℕ} (hr : r ∈ rs) (a : Fin r.2) : (blockIndex n r a : ℕ) = r.1 + a := by
+  have := (hrs.2.1 r hr).2
+  simp only [blockIndex]; omega
+
+/-- The block indices of a range of a partition are distinct. -/
+theorem IsRangePartition.blockIndex_injective {rs : List (ℕ × ℕ)}
+    (hrs : IsRangePartition (n + 1) rs) {r : ℕ × ℕ} (hr : r ∈ rs) :
+    Function.Injective (blockIndex n r) := fun a b hab => by
+  have := congrArg Fin.val hab
+  rw [hrs.val_blockIndex hr, hrs.val_blockIndex hr] at this
+  exact Fin.ext (by omega)
+
+/-- An index of a range of a partition lies in no other range of the partition. -/
+theorem IsRangePartition.blockIndex_ne {rs : List (ℕ × ℕ)} (hrs : IsRangePartition (n + 1) rs)
+    {r r' : ℕ × ℕ} (hr : r ∈ rs) (hr' : r' ∈ rs) (hne : r' ≠ r) (a : Fin r'.2) (b : Fin r.2) :
+    blockIndex n r' a ≠ blockIndex n r b := by
+  intro hab
+  have h₁ := hrs.val_blockIndex hr' a
+  have h₂ := hrs.val_blockIndex hr b
+  rw [hab] at h₁
+  exact hne ((hrs.2.2 _ (blockIndex n r b).2).unique ⟨hr', by omega, by omega⟩
+    ⟨hr, by omega, by omega⟩)
+
 /-- Writing the block of a range of a partition and reading it back, on the same range or on
 another range of the partition. -/
-private theorem subBlock_setSubBlock_conj {rs : List (ℕ × ℕ)} (hrs : IsRangePartition (n + 1) rs)
-    {r : ℕ × ℕ} (hr : r ∈ rs) (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
-    (B : Matrix (Fin r.2) (Fin r.2) ℂ) :
+theorem IsRangePartition.subBlock_setSubBlock {rs : List (ℕ × ℕ)}
+    (hrs : IsRangePartition (n + 1) rs) {r : ℕ × ℕ} (hr : r ∈ rs)
+    (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (B : Matrix (Fin r.2) (Fin r.2) ℂ) :
     subBlock (setSubBlock A r B) r = B ∧
       ∀ r' ∈ rs, r' ≠ r → subBlock (setSubBlock A r B) r' = subBlock A r' := by
   have hidx : ∀ r' ∈ rs, ∀ a : Fin r'.2, (blockIndex n r' a : ℕ) = r'.1 + a :=
-    fun r' hr' a => by
-      have := (hrs.2.1 r' hr').2
-      simp only [blockIndex]; omega
+    fun r' hr' a => hrs.val_blockIndex hr' a
   refine ⟨?_, fun r' hr' hne => ?_⟩
   · ext a b
     simp only [subBlock, setSubBlock, Matrix.submatrix_apply, Matrix.of_apply, hidx r hr]
@@ -247,7 +273,7 @@ private theorem exists_embed_conj {rs : List (ℕ × ℕ)} (hrs : IsRangePartiti
       (1 + Q r * Y * (Q r)ᴴ).BlockTriangular L := by
     have hrow : ∀ i : Fin (n + 1), (∃ a, i = blockIndex n r a) → L i = r.1 := by
       rintro i ⟨a, rfl⟩
-      exact rangeLabel_eq_of_mem_conj hrs hrm (by rw [hidx r hrm]; omega)
+      exact IsRangePartition.rangeLabel_eq hrs hrm (by rw [hidx r hrm]; omega)
         (by rw [hidx r hrm]; omega)
     intro Y i j hij
     rw [Matrix.add_apply, Matrix.one_apply_ne (fun h => (h ▸ hij).false), zero_add]
@@ -301,7 +327,7 @@ theorem DeflationInv.conj {H A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ε : �
   obtain ⟨M, U, E, hUU, hE, rfl, hpart, hbt, hact, hdone⟩ := h
   have hrm : r ∈ active ++ done := List.mem_append_left _ hr
   obtain ⟨W, hWW, hW, hWH, hself, hother⟩ := exists_embed_conj hpart hrm hU
-  have hset := subBlock_setSubBlock_conj hpart hrm A (Ubᴴ * subBlock A r * Ub)
+  have hset := hpart.subBlock_setSubBlock hrm A (Ubᴴ * subBlock A r * Ub)
   refine ⟨Wᴴ * (Uᴴ * (H + E) * U) * W, U * W, E, ?_, hE, ?_, hpart, (hWH.mul hbt).mul hW,
     fun r' hr' => ?_, fun r' hr' => ?_⟩
   · exact hUU.mul hWW
@@ -315,19 +341,6 @@ theorem DeflationInv.conj {H A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ε : �
   · have hne : r' ≠ r := fun h => (List.nodup_append.mp hpart.1).2.2 r hr r' hr' h.symm
     rw [hother r' (List.mem_append_right _ hr') hne]
     exact hdone r' hr'
-
-/-- The label of an index in a range of a partition is the start of that range. -/
-private theorem rangeLabel_eq_of_mem_split {N : ℕ} {rs : List (ℕ × ℕ)}
-    (hrs : IsRangePartition N rs) {r : ℕ × ℕ} (hr : r ∈ rs) {k : Fin N} (hk₁ : r.1 ≤ (k : ℕ))
-    (hk₂ : (k : ℕ) < r.1 + r.2) : rangeLabel rs k = r.1 := by
-  unfold rangeLabel
-  cases hf : rs.find? (fun r => (r.1 ≤ (k : ℕ) ∧ (k : ℕ) < r.1 + r.2 : Bool)) with
-  | none => exact absurd (List.find?_eq_none.mp hf r hr) (by simp [hk₁, hk₂])
-  | some r₀ =>
-    have h₀ := List.find?_some hf
-    simp only [decide_eq_true_eq] at h₀
-    have := (hrs.2.2 k k.2).unique ⟨List.mem_of_find?_eq_some hf, h₀⟩ ⟨hr, hk₁, hk₂⟩
-    simp [this]
 
 /-- Splitting a range of a partition into two consecutive ranges gives a partition. -/
 private theorem isRangePartition_split {N lo d i : ℕ} {rest : List (ℕ × ℕ)}
@@ -427,11 +440,11 @@ private theorem blockTriangular_sub_single_split {lo d i : ℕ} {rest : List (�
     intro k
     by_cases hk : lo ≤ k ∧ (k : ℕ) < lo + d
     · have hL : L k = lo :=
-        rangeLabel_eq_of_mem_split hpart List.mem_cons_self hk.1 hk.2
+        IsRangePartition.rangeLabel_eq hpart List.mem_cons_self hk.1 hk.2
       by_cases hk' : (k : ℕ) < lo + i + 1
       · exact Or.inl ⟨hk.1, hk', hL,
-          rangeLabel_eq_of_mem_split hpart' List.mem_cons_self hk.1 (by simp; omega)⟩
-      · exact Or.inr (Or.inl ⟨by omega, hk.2, hL, rangeLabel_eq_of_mem_split hpart'
+          IsRangePartition.rangeLabel_eq hpart' List.mem_cons_self hk.1 (by simp; omega)⟩
+      · exact Or.inr (Or.inl ⟨by omega, hk.2, hL, IsRangePartition.rangeLabel_eq hpart'
           (r := (lo + i + 1, d - i - 1)) (by simp) (by simp; omega) (by simp; omega)⟩)
     · obtain ⟨r, ⟨hr, h₁, h₂⟩, -⟩ := hpart.2.2 k k.2
       have hr' : r ∈ rest := by
@@ -439,8 +452,8 @@ private theorem blockTriangular_sub_single_split {lo d i : ℕ} {rest : List (�
         · exact absurd ⟨h₁, h₂⟩ hk
         · exact h
       have hrv := hpart.2.1 r hr
-      have e₁ : L k = r.1 := rangeLabel_eq_of_mem_split hpart hr h₁ h₂
-      have e₂ : L' k = r.1 := rangeLabel_eq_of_mem_split hpart' (by simp [hr']) h₁ h₂
+      have e₁ : L k = r.1 := IsRangePartition.rangeLabel_eq hpart hr h₁ h₂
+      have e₂ : L' k = r.1 := IsRangePartition.rangeLabel_eq hpart' (by simp [hr']) h₁ h₂
       have := hpar r hr' ⟨r.1, by omega⟩ le_rfl (by simp; omega)
       exact Or.inr (Or.inr ⟨hk, e₁.trans e₂.symm, by rw [e₁]; simp at this; omega⟩)
   intro a b hab
@@ -707,19 +720,6 @@ theorem DeflationInv.two_mul_length_add_length_lt {H A : Matrix (Fin (n + 1)) (F
   simp only [List.length_append] at h1
   omega
 
-/-- The label of an index in a range of a partition is the start of that range. -/
-private theorem rangeLabel_eq_of_mem_roots {N : ℕ} {rs : List (ℕ × ℕ)}
-    (hrs : IsRangePartition N rs) {r : ℕ × ℕ} (hr : r ∈ rs) {k : Fin N} (hk₁ : r.1 ≤ (k : ℕ))
-    (hk₂ : (k : ℕ) < r.1 + r.2) : rangeLabel rs k = r.1 := by
-  unfold rangeLabel
-  cases hf : rs.find? (fun r => (r.1 ≤ (k : ℕ) ∧ (k : ℕ) < r.1 + r.2 : Bool)) with
-  | none => exact absurd (List.find?_eq_none.mp hf r hr) (by simp [hk₁, hk₂])
-  | some r₀ =>
-    have h₀ := List.find?_some hf
-    simp only [decide_eq_true_eq] at h₀
-    have := (hrs.2.2 k k.2).unique ⟨List.mem_of_find?_eq_some hf, h₀⟩ ⟨hr, hk₁, hk₂⟩
-    simp [this]
-
 /-- For a partition into ranges, the diagonal block of the label of a range is its `subBlock`
 up to reindexing, so the roots of its characteristic polynomial are those of `subBlock`. -/
 private theorem roots_charpoly_toSquareBlock_eq {rs : List (ℕ × ℕ)}
@@ -732,7 +732,7 @@ private theorem roots_charpoly_toSquareBlock_eq {rs : List (ℕ × ℕ)}
   have hidx : ∀ a : Fin r.2, (blockIndex n r a : ℕ) = r.1 + a := fun a => by
     simp only [blockIndex]; omega
   let φ : Fin r.2 → {i // rangeLabel rs i = r.1} := fun a =>
-    ⟨blockIndex n r a, rangeLabel_eq_of_mem_roots hrs hr (by rw [hidx]; omega)
+    ⟨blockIndex n r a, IsRangePartition.rangeLabel_eq hrs hr (by rw [hidx]; omega)
       (by rw [hidx]; omega)⟩
   have hφ : Function.Bijective φ := by
     refine ⟨fun a b hab => ?_, fun ⟨i, hi⟩ => ?_⟩
@@ -741,7 +741,7 @@ private theorem roots_charpoly_toSquareBlock_eq {rs : List (ℕ × ℕ)}
       exact Fin.ext (by omega)
     · obtain ⟨r', ⟨hr', h₁, h₂⟩, -⟩ := hrs.2.2 i i.2
       have hr'v := hrs.2.1 r' hr'
-      have hlab := rangeLabel_eq_of_mem_roots hrs hr' h₁ h₂
+      have hlab := IsRangePartition.rangeLabel_eq hrs hr' h₁ h₂
       have : r' = r := (hrs.2.2 r.1 (by omega)).unique ⟨hr', by omega, by omega⟩
         ⟨hr, le_rfl, by omega⟩
       subst this
@@ -780,7 +780,7 @@ theorem DeflationInv.exists_roots_eq {H A : Matrix (Fin (n + 1)) (Fin (n + 1)) �
     intro a ha
     obtain ⟨k, -, rfl⟩ := Finset.mem_image.mp ha
     obtain ⟨r, ⟨hr, h₁, h₂⟩, -⟩ := hpart.2.2 k k.2
-    rw [rangeLabel_eq_of_mem_roots hpart hr h₁ h₂,
+    rw [IsRangePartition.rangeLabel_eq hpart hr h₁ h₂,
       roots_charpoly_toSquareBlock_eq hpart _ hr out (hdone r hr), hsing]
   have hne : ∏ a ∈ Finset.univ.image (rangeLabel (N := n + 1) done),
       ((Uᴴ * (H + E) * U).toSquareBlock (rangeLabel done) a).charpoly ≠ 0 :=

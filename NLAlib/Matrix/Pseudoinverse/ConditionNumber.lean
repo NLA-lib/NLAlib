@@ -43,6 +43,8 @@ The names `conditionNumber` and `conditionNumber_*` are deprecated aliases (2026
 
 ## Main results
 
+* `NLAlib.pseudoConditionNumber_mul_le`: submultiplicativity on invertible matrices.
+
 * `NLAlib.spectralConditionNumber_eq_top_iff`: singularity is equivalent to infinite
   spectral condition number.
 
@@ -160,6 +162,20 @@ theorem spectralConditionNumber_eq_top_iff [DecidableEq n] (A : Matrix n n 𝕜)
     spectralConditionNumber A = ⊤ ↔ ¬ IsUnit A := by
   classical
   by_cases hA : IsUnit A <;> simp [spectralConditionNumber, hA]
+
+/-- The condition number is submultiplicative on invertible matrices:
+$\kappa(\mathbf{A}\mathbf{B}) \le \kappa(\mathbf{A})\kappa(\mathbf{B})$ for invertible
+$\mathbf{A}$ and $\mathbf{B}$. [GolubVanLoan2013, §2.6.2]. -/
+theorem pseudoConditionNumber_mul_le [DecidableEq n] {A B : Matrix n n 𝕜} (hA : IsUnit A)
+    (hB : IsUnit B) :
+    pseudoConditionNumber (A * B) ≤ pseudoConditionNumber A * pseudoConditionNumber B := by
+  rw [pseudoConditionNumber_of_isUnit (hA.mul hB), pseudoConditionNumber_of_isUnit hA,
+    pseudoConditionNumber_of_isUnit hB, Matrix.mul_inv_rev]
+  calc specNorm (A * B) * specNorm (B⁻¹ * A⁻¹)
+      ≤ specNorm A * specNorm B * (specNorm B⁻¹ * specNorm A⁻¹) :=
+        mul_le_mul (specNorm_mul_le _ _) (specNorm_mul_le _ _) (specNorm_nonneg _)
+          (mul_nonneg (specNorm_nonneg _) (specNorm_nonneg _))
+    _ = specNorm A * specNorm A⁻¹ * (specNorm B * specNorm B⁻¹) := by ring
 
 /-- For a positive definite matrix the pseudo-condition number is the ratio of the extreme
 eigenvalues: $\|\mathbf{A}\|_2 \|\mathbf{A}^{+}\|_2 = \lambda_0(\mathbf{A}) / \lambda_k(\mathbf{A})$

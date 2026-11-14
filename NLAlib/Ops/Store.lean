@@ -556,6 +556,10 @@ theorem live_append (m : Mem K) (l l' : List (ℕ × ℕ)) :
   exact ⟨fun h => ⟨fun x hx => h x (Or.inl hx), fun x hx => h x (Or.inr hx)⟩,
     fun h x hx => hx.elim (h.1 x) (h.2 x)⟩
 
+/-- A subcollection of live operands is live, including repeated or reordered views. -/
+theorem Live.mono {m : Mem K} {xs ys : List (ℕ × ℕ)} (h : m.Live xs)
+    (hsub : ys ⊆ xs) : m.Live ys := fun x hx => h x (hsub hx)
+
 theorem Live.congr {m m' : Mem K} {l : List (ℕ × ℕ)} (h : m.Live l)
     (hs : m'.store.length = m.store.length) : m'.Live l := fun x hx => hs ▸ h x hx
 

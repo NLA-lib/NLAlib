@@ -1058,6 +1058,59 @@ private in `BlockKrylovGapless.lean` (needed by A11); a reindexing lemma for
 the driver's loop invariant (`solve_writes`), the two CGS2 `Triple`s, the residual lemma of
 A7, and `exists_isBasisExtension`.
 
+## 9b. Proof record (2026-11-14)
+
+The branch was rebased onto `origin/main` @ `c74ff06d` (PR #138) with no conflicts, and every
+statement of the skeleton is now proved. One combined build of all modules of the branch
+(3789 jobs) has no error and no `sorry`; a source scan of the 36 Lean files the branch touches
+finds no `sorry`, `admit`, `native_decide` or `maxHeartbeats`; `check_rules` reports 0 errors.
+The proving lanes report `#print axioms` giving only `propext`, `Classical.choice`,
+`Quot.sound` on their headline theorems. The proved/sorry column of the table in §9a is
+superseded: every row is proved. Nothing is pushed. Not run: a whole-library build and
+`scripts/stage_check.sh`.
+
+No statement, definition or constant of the skeleton had to change to be proved, with two
+exceptions of form only: two internal driver lemmas lost three unused instance arguments, and
+one `variable` line was split. No defect was found in the driver or in the CGS2
+implementation.
+
+What is certified:
+
+* **Small-block theory** (§2): all of A1–A13, including the Gaussian tail, truncated
+  expectation and gapless bounds for a vector and for a block of any size.
+* **Abstract driver** (§3, §4.1–4.3): for every input, every tape and every interpretation
+  meeting the exact extension contract and the exact operator pair, the program runs within
+  its counts ($nb$ samples, $qb$ products with $\mathbf A$, $qb$ with $\mathbf A^{\mathsf H}$,
+  $2q+1$ extensions) and scratch bound, and the stored factors satisfy
+  $\mathbf U\mathbf S^{\mathsf H}\mathbf V_+^{\mathsf H}=\mathsf{rbki}(\mathbf A,\mathbf\Omega,q)$;
+  under the rounded contracts the stored run satisfies the orthogonality, residual and forward
+  bounds of §4.3. Any statement about `rbki` under a Gaussian law transfers to the stored
+  output, failure probabilities and expectations alike.
+* **CGS2 instance** (§3.5): `cgs2ExtendImpl 0` meets the exact contract for an arbitrary
+  basis, and `cgs2ExtendImpl τ` meets the rounded contract at
+  $\mu=4c+8(\eta_0+c)^2/\tau+5E$, $\varepsilon=3c+2E+2\tau$.
+* **Linking** is proved generically in the scheme (`linked_certifies`, `linkedAlgorithm`).
+
+Not yet stated, so not proved:
+
+* the **concrete** linked certificates, that is `linkedAlgorithm` instantiated at
+  `cgs2ExtendImpl` over the exact BLAS model and over the rounded model (the generic theorem
+  and both instance `Triple`s exist; the instantiation, with its `wellTyped` side condition
+  and the recomputed costs, is not written);
+* the rounded canonical `Algorithm` (R5), the clean corollaries (A12), G4, G5;
+* the driver's certificate over `RCLike` (it is over $\mathbb R$).
+
+Cleanup owed (no mathematical content): about forty block-algebra helpers are private in
+`Krylov/Processes/BandGolubKahan.lean` and `Krylov/FinitePrecision/BandGolubKahanRun.lean`,
+two of them duplicated (the S5 warnings), and belong as public lemmas in
+`Matrix/Perturbation/BasisExtension.lean`, with the generic Gram-defect lemmas of the run
+file; `LowRank/Gaussian/SmallBlock.lean` is 1104 lines and its deterministic helpers belong in
+`LowRank/Structural/SmallBlock.lean`; `Krylov/Orthogonalization/CGS2/PassSupport.lean` restates
+three bounds of `Lanczos/Reorth/RoundedOrthogonality.lean` under a weaker hypothesis and
+should replace them there; the sweep files should move to the Matrix layer (§9a); seven
+linter warnings (three long docstring lines, three unused hypotheses, one unused instance
+argument).
+
 ## 10. Review record
 
 One independent review of the first draft, 2026-11-14 (a fresh agent given the note and the

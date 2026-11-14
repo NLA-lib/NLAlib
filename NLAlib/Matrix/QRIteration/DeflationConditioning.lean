@@ -26,8 +26,8 @@ Two facts give it under an eigenvalue gap ([BanksGarzaVargasSrivastava2022, Lemm
 * each diagonal block of a diagonalizable block upper triangular matrix has an eigenvector
   matrix with $\kappa_V$ at most that of the whole (Lemma 6.2 there). Its proof claims that every
   eigenvector matrix is block triangular, which is false when two blocks share an eigenvalue (gap
-  G15 of `docs/design/Eigensolvers-ShiftedQR.md`); the statement is true in general, by the
-  Cholesky argument of `~/nlalib-harness/reports/Paper-Gap-G15-ShiftedQR-II.md`, §2: with
+  G15 of `docs/design/Eigensolvers-ShiftedQR-Ops.md`); the statement is true in general, by the
+  Cholesky argument recorded in `docs/design/Eigensolvers-ShiftedQR-Ops.md`, §G15: with
   $\mathbf{V}^{-\mathsf H}\mathbf{V}^{-1} = \mathbf{R}^{\mathsf H}\mathbf{R}$, the matrix
   $\mathbf{R}\mathbf{M}\mathbf{R}^{-1}$ is normal and block triangular, hence block diagonal.
 

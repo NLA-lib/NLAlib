@@ -125,19 +125,6 @@ theorem solveAllocated_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
     have hw := worklistSolve_writes (tape := tape) hS hE hL hQ hC hK D hD hG
       hHess hA' hGlobal hτ hM hP'
     refine (hw.in_frame rfl rfl hG.live).mono ?_ (fun _ _ hp => hp)
-    intro b x hx
-    simp only [worklistFp, Fp.blocks_cons, Fp.blocks_nil, sup_bot_eq, Pi.sup_apply] at hx
-    rcases hx with hx | hx | hx | hx | hx
-    · exact Or.inl (Or.inl hx)
-    · exact Or.inr (show μ.store.length ≤ b from by
-        have he : b = μ.store.length := hx.1
-        omega)
-    · exact Or.inl (Or.inr hx)
-    · exact Or.inr (show μ.store.length ≤ b from by
-        have he : b = μ.store.length + 1 := hx.1
-        omega)
-    · exact Or.inr (show μ.store.length ≤ b from by
-        have he : b = μ.store.length + 2 := hx.1
-        omega)
+    fp_sub [worklistFp]
 
 end NLAlib.ShiftedQR

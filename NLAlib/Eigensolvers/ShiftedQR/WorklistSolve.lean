@@ -102,28 +102,17 @@ theorem WorklistGeometry.disj_pop {N : ℕ} {a p stack out w r : ℕ × ℕ} {μ
     (h : WorklistGeometry N a p stack out w r μ) :
     Fp.Disj (Store.inBlock stack.1 stack.2 (1 + 2 * N) ⊔ Store.inBlock r.1 r.2 5)
       (Fp.blocks [a, p, out] [2 * (N * N), 5, 2 * N]) := by
-  intro c x hs hp
-  simp only [Fp.blocks_cons, Fp.blocks_nil, sup_bot_eq, Pi.sup_apply] at hp
-  rcases hs with hs | hs <;> rcases hp with hp | hp | hp
-  · exact h.apart.1 c x hp (Or.inr (Or.inl hs))
-  · exact h.apart.2.1 c x hp (Or.inl hs)
-  · exact h.apart.2.2.1 c x hs (Or.inl hp)
-  · exact h.apart.1 c x hp (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl hs)))))
-  · exact h.apart.2.1 c x hp (Or.inr (Or.inr (Or.inr (Or.inl hs))))
-  · exact h.apart.2.2.2.1 c x hp (Or.inr (Or.inl hs))
+  simpa only [List.map_cons, List.map_nil, List.getD_cons_zero, List.getD_cons_succ,
+    Fp.blocks_cons, Fp.blocks_nil, sup_bot_eq] using
+    h.apart.disj_select [2, 5] [0, 1, 3] (by simp) (by simp) (by simp)
 
 /-- Worklist processing leaves the actual five parameter words outside its write footprint. -/
 theorem WorklistGeometry.disj_params {N : ℕ} {a p stack out w r : ℕ × ℕ} {μ : Mem ℝ}
     (h : WorklistGeometry N a p stack out w r μ) :
     Fp.Disj (worklistFp N a stack out w r) (Store.inBlock p.1 p.2 5) := by
-  intro c x hx hp
-  simp only [worklistFp, Fp.blocks_cons, Fp.blocks_nil, sup_bot_eq, Pi.sup_apply] at hx
-  rcases hx with hx | hx | hx | hx | hx
-  · exact h.apart.1 c x hx (Or.inl hp)
-  · exact h.apart.2.1 c x hp (Or.inl hx)
-  · exact h.apart.2.1 c x hp (Or.inr (Or.inl hx))
-  · exact h.apart.2.1 c x hp (Or.inr (Or.inr (Or.inl hx)))
-  · exact h.apart.2.1 c x hp (Or.inr (Or.inr (Or.inr (Or.inl hx))))
+  simpa only [worklistFp, List.map_cons, List.map_nil, List.getD_cons_zero,
+    List.getD_cons_succ, Fp.blocks_cons, Fp.blocks_nil, sup_bot_eq] using
+    h.apart.disj_select [0, 2, 3, 4, 5] [1] (by simp) (by simp) (by simp)
 
 section Program
 

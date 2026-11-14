@@ -257,6 +257,47 @@ section Theorems
 
 variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q]
 
+/-- The registers of `bottomScan` after its first `j` visits: either the flag is $1$ and the
+index is a bottom-$k$ position whose entry passed the rounded test, or the flag is $0$, the index
+word is stored, and every visited entry failed it. -/
+def BottomScanHolds {n : ℕ} (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (u thr : ℝ) (k j : ℕ)
+    (r : ℕ × ℕ) (st : Store ℝ) : Prop :=
+  (st.get r.1 (r.2 + 3) = some 1 ∧ ∃ i : Fin n, n ≤ (i : ℕ) + k ∧
+      st.get r.1 (r.2 + 4) = some (i : ℝ) ∧ (1 - u) ^ 2 * ‖H i.succ i.castSucc‖ ^ 2 ≤ thr) ∨
+    (st.get r.1 (r.2 + 3) = some 0 ∧ (∃ x, st.get r.1 (r.2 + 4) = some x) ∧
+      ∀ i : Fin n, n ≤ (i : ℕ) + k → (i : ℕ) < n - k + j →
+        thr < (1 + u) ^ 2 * ‖H i.succ i.castSucc‖ ^ 2)
+
+/-- One visit of `bottomScan` advances `NLAlib.ShiftedQR.BottomScanHolds`. -/
+private theorem bottomScanHolds_step {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M) (hu : 0 ≤ u)
+    (hu1 : u ≤ 1) {n k j : ℕ} (hk : k ≤ n) (hj : j < k)
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr flag index : ℝ} {r : ℕ × ℕ}
+    {st st' : Store ℝ} (h : BottomScanHolds H u thr k j r st)
+    (hflag : st.get r.1 (r.2 + 3) = some flag) (hindex : st.get r.1 (r.2 + 4) = some index)
+    (hF : st'.get r.1 (r.2 + 3) =
+      some (if subdiagonalSqWord M H (n - k + j) ≤ thr then 1 else flag))
+    (hI : st'.get r.1 (r.2 + 4) =
+      some (if subdiagonalSqWord M H (n - k + j) ≤ thr then ((n - k + j : ℕ) : ℝ) else index)) :
+    BottomScanHolds H u thr k (j + 1) r st' := by
+  let i₀ : Fin n := ⟨n - k + j, by omega⟩
+  have hb := subdiagonalSqWord_bounds hM hu hu1 H i₀
+  by_cases hs : subdiagonalSqWord M H (n - k + j) ≤ thr
+  · rw [if_pos hs] at hF hI
+    exact Or.inl ⟨hF, i₀, by simp only [i₀]; omega, hI, hb.1.trans hs⟩
+  · rw [if_neg hs] at hF hI
+    rcases h with ⟨h1, i, hik, hi, hthr⟩ | ⟨h0, -, hall⟩
+    · rw [h1, Option.some.injEq] at hflag
+      rw [hi, Option.some.injEq] at hindex
+      exact Or.inl ⟨hflag ▸ hF, i, hik, hindex ▸ hI, hthr⟩
+    · rw [h0, Option.some.injEq] at hflag
+      refine Or.inr ⟨hflag ▸ hF, ⟨_, hI⟩, fun i hik hlt => ?_⟩
+      by_cases he : (i : ℕ) = n - k + j
+      · have hii : i = i₀ := Fin.ext he
+        subst hii
+        exact (lt_of_not_ge hs).trans_le hb.2
+      · exact hall i hik (by omega)
+
+omit [Has IdxTst Q] in
 /-- **The rounded bottom-$k$ scan** (the decision of `Deflate`, corrected): on a machine with the
 standard model at $0 \le \boldsymbol{u} \le 1$ whose natural literals up to $n + 1$ are exact (the
 flag and the index are such literals), for an $(n+1) \times (n+1)$ matrix $\mathbf{H}$,
@@ -281,7 +322,44 @@ theorem bottomScan_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : 
             (1 - u) ^ 2 * ‖H i.succ i.castSucc‖ ^ 2 ≤ thr) ∨
           (m'.store.get r.1 (r.2 + 3) = some 0 ∧ ∀ i : Fin n, n ≤ (i : ℕ) + k →
             thr < (1 + u) ^ 2 * ‖H i.succ i.castSucc‖ ^ 2))) m := by
-  sorry
+  have hzero : M.lit ((0 : ℕ) : ℚ) = (0 : ℝ) := by simpa using hNat 0 (Nat.zero_le _)
+  unfold bottomScan
+  refine (writes_indexLit hL rfl rfl (by dsimp only; omega)).seq_le (by fp_sub) ?_
+  intro m₁ hfr₁ ⟨hp₁, hFlag⟩
+  refine (writes_indexLit hL rfl rfl (by dsimp only; rw [hfr₁.len_eq]; omega)).seq_le
+    (by fp_sub) ?_
+  intro m₂ hfr₂ ⟨hp₂, hIndex⟩
+  have hFlag₂ := hfr₂.keep (Store.readsOnly_get _ _ _) (by disjoint) hFlag
+  simp only [hzero] at hFlag₂ hIndex
+  have hfr := (hfr₁.trans' hfr₂).mono (by fp_sub : _ ≤ Store.inBlock r.1 r.2 5)
+  have hH₂ := hH.of_eqOff hfr hA
+  have ht₂ := hfr.keep (Store.readsOnly_get _ _ _) hT ht
+  have hl₂ := hl.congr hfr.length_eq
+  have hroom₂ : r.2 + 5 ≤ m₂.store.len r.1 := by rw [hfr.len_eq]; exact hroom
+  refine (writes_loop rfl (fun _ => Store.inBlock r.1 r.2 5) (fun _ _ => le_rfl)
+    (fun j m' => m'.pos = m₂.pos ∧ BottomScanHolds H u thr k j r m'.store)
+    ⟨rfl, Or.inr ⟨hFlag₂, ⟨0, hIndex⟩, fun i hik hlt => by omega⟩⟩ ?_).mono le_rfl ?_
+  · intro j hj m' hfr' ⟨hp', hs⟩
+    obtain ⟨flag, hflag⟩ : ∃ x, m'.store.get r.1 (r.2 + 3) = some x := by
+      rcases hs with ⟨h1, -⟩ | ⟨h0, -⟩
+      exacts [⟨_, h1⟩, ⟨_, h0⟩]
+    obtain ⟨index, hindex⟩ : ∃ x, m'.store.get r.1 (r.2 + 4) = some x := by
+      rcases hs with ⟨-, i, -, hi, -⟩ | ⟨-, hx, -⟩
+      exacts [⟨_, hi⟩, hx]
+    have hw := scanRound_writes_word (τ := τ) (k := n + 1 - 1 - k + j) hS hL hC
+      (hNat.mono n.le_succ)
+      (by omega) (hH₂.of_eqOff hfr' hA) (hfr'.keep (Store.readsOnly_get _ _ _) hT ht₂) hflag
+      hindex (hl₂.congr hfr'.length_eq) (by rw [hfr'.len_eq]; exact hroom₂) hA hT
+    refine (hw.in_frame rfl rfl (hl₂.congr hfr'.length_eq)).mono le_rfl ?_
+    intro m'' _ ⟨hp'', hF, hI⟩
+    have he : n + 1 - 1 - k + j = n - k + j := by omega
+    rw [he] at hF hI
+    exact ⟨hp''.trans hp', bottomScanHolds_step hM hu hu1 hk hj hs hflag hindex hF hI⟩
+  · intro m' _ ⟨hp', hs⟩
+    refine ⟨hp'.trans (hp₂.trans hp₁), ?_⟩
+    rcases hs with h1 | ⟨h0, -, hall⟩
+    · exact Or.inl h1
+    · exact Or.inr ⟨h0, fun i hik => hall i hik (by omega)⟩
 
 /-- **One round of the rounded worklist is a backward step** (the per-round half of
 [BanksGarzaVargasSrivastava2022, Theorem 6.3], backward error): on a machine with the standard model

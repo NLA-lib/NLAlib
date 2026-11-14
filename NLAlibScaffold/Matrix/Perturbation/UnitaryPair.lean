@@ -111,7 +111,18 @@ theorem exists_specNorm_sub_mul_le {ε : ℝ} {P P' : Matrix n n 𝕜 × Matrix 
     (h : IsPerturbedUnitaryPair a b ε P P') :
     ∃ U : Matrix n n 𝕜, HasOrthonormalCols U ∧ specNorm (P.1 - U * P'.1) ≤ ε * a ∧
       specNorm (P'.2 - Uᴴ * P.2 * U) ≤ ε * b := by
-  sorry
+  obtain ⟨U, E, F, hU, hE, hF, h1, h2⟩ := h
+  have hJ : U * Uᴴ = 1 := hU.mul_conjTranspose_self
+  refine ⟨U, hU, ?_, ?_⟩
+  · have : P.1 - U * P'.1 = -E := by
+      rw [h1, ← Matrix.mul_assoc, hJ, Matrix.one_mul]
+      abel
+    rwa [this, specNorm_neg]
+  · have : P'.2 - Uᴴ * P.2 * U = Uᴴ * F * U := by
+      rw [h2, Matrix.mul_add, Matrix.add_mul]
+      abel
+    rw [this, hU.specNorm_conjTranspose_mul_mul]
+    exact hF
 
 end IsPerturbedUnitaryPair
 

@@ -9,6 +9,8 @@ public import NLAlib.ForMathlib.LinearAlgebra.Vandermonde
 public import NLAlib.Krylov.Basic.KrylovVandermonde
 public import NLAlib.LowRank.Structural.BlockKrylov
 public import NLAlib.LowRank.Structural.Filter
+public import NLAlib.Matrix.Functions.Polynomial
+public import NLAlib.Matrix.Spectral.FrameDeflation
 public import NLAlib.Matrix.Spectral.LowRank
 public import NLAlib.Polynomial.Interpolation.LagrangeBound
 
@@ -50,12 +52,160 @@ The statements carry the sharp factors; nothing is random here.
 
 @[expose] public section
 
-open scoped Matrix ComplexOrder
+open scoped Matrix ComplexOrder MatrixOrder
 open Polynomial
 
 namespace NLAlib
 
 variable {𝕜 : Type*} [RCLike 𝕜] {m n : Type*} [Fintype m] [Fintype n] [DecidableEq n]
+
+/-- The Lagrange basis polynomials of real nodes, mapped to $\Bbbk$, are those of the nodes in
+$\Bbbk$. -/
+private theorem basis_ofReal_eq_map {t : ℕ} (d : Fin t → ℝ) (i : Fin t) :
+    Lagrange.basis Finset.univ (fun j => (d j : 𝕜)) i =
+      (Lagrange.basis Finset.univ d i).map (algebraMap ℝ 𝕜) := by
+  simp only [Lagrange.basis, Lagrange.basisDivisor, Polynomial.map_prod, Polynomial.map_mul,
+    Polynomial.map_sub, Polynomial.map_C, Polynomial.map_X, map_inv₀, map_sub,
+    RCLike.algebraMap_eq_ofReal]
+
+/-- Column $i$ of $\mathbf{K}_t(\mathbf{H}, \mathbf{x})\mathbf{V}^{-1}$, $\mathbf{V}$ the
+Vandermonde matrix of distinct nodes, is $\ell_i(\mathbf{H})\mathbf{x}$. -/
+private theorem krylovMatrix_mul_inv_vandermonde_apply (H : Matrix n n 𝕜) (x : n → 𝕜) {t : ℕ}
+    {v : Fin t → 𝕜} (hv : Function.Injective v) (a : n) (i : Fin t) :
+    (krylovMatrix H x t * (Matrix.vandermonde v)⁻¹) a i =
+      (aeval H (Lagrange.basis Finset.univ v i) *ᵥ x) a := by
+  have hdeg : (Lagrange.basis Finset.univ v i).natDegree < t := by
+    rw [Lagrange.natDegree_basis hv.injOn (Finset.mem_univ i), Finset.card_univ, Fintype.card_fin]
+    have := i.isLt
+    omega
+  rw [Matrix.inv_vandermonde hv, Matrix.mul_apply, aeval_eq_sum_range' hdeg, Matrix.sum_mulVec,
+    Finset.sum_apply, ← Fin.sum_univ_eq_sum_range
+      (fun j => (((Lagrange.basis Finset.univ v i).coeff j • H ^ j) *ᵥ x) a)]
+  refine Finset.sum_congr rfl fun j _ => ?_
+  rw [krylovMatrix_apply, Matrix.of_apply, Matrix.smul_mulVec, Pi.smul_apply, smul_eq_mul,
+    mul_comm]
+
+/-- Column $i$ of $\mathbf{K}(\mathbf{Z}^{\mathsf{H}}\mathbf{K})^{+}$ for the single-vector
+simulated block $\mathbf{K}$ and an eigenframe $\mathbf{Z}$ with distinct eigenvalues is
+$(\mathbf{Z}^{\mathsf{H}}\mathbf{x})_i^{-1}\,\ell_i(\mathbf{H})\mathbf{x}$. -/
+private theorem blockKrylovMatrix_mul_pinv_apply {t : ℕ} {H : Matrix n n 𝕜}
+    (hH : H.IsHermitian) {Z : Matrix n (Fin t) 𝕜} {d : Fin t → ℝ}
+    (hHZ : H * Z = Z * Matrix.diagonal fun i => (d i : 𝕜)) (hd : Function.Injective d)
+    {x : n → 𝕜} (hx : ∀ i, (Zᴴ *ᵥ x) i ≠ 0) (a : n) (i : Fin t) :
+    (blockKrylovMatrix H (Matrix.replicateCol Unit x) t *
+        pinv (Zᴴ * blockKrylovMatrix H (Matrix.replicateCol Unit x) t)) a i =
+      (aeval H (Lagrange.basis Finset.univ d i) *ᵥ x) a * ((Zᴴ *ᵥ x) i)⁻¹ := by
+  have hv : Function.Injective fun i => (d i : 𝕜) := RCLike.ofReal_injective.comp hd
+  have hV := (Matrix.det_vandermonde_ne_zero_iff.mpr hv).isUnit
+  have hinv : (Matrix.diagonal (Zᴴ *ᵥ x) * Matrix.vandermonde fun i => (d i : 𝕜))⁻¹ =
+      (Matrix.vandermonde fun i => (d i : 𝕜))⁻¹ * Matrix.diagonal fun i => ((Zᴴ *ᵥ x) i)⁻¹ := by
+    refine Matrix.inv_eq_right_inv ?_
+    rw [Matrix.mul_assoc, ← Matrix.mul_assoc (Matrix.vandermonde _), Matrix.mul_nonsing_inv _ hV,
+      Matrix.one_mul, Matrix.diagonal_mul_diagonal, ← Matrix.diagonal_one]
+    exact congrArg Matrix.diagonal (funext fun i => mul_inv_cancel₀ (hx i))
+  have hunit : IsUnit (Matrix.diagonal (Zᴴ *ᵥ x) * Matrix.vandermonde fun i => (d i : 𝕜)) := by
+    rw [Matrix.isUnit_iff_isUnit_det, Matrix.det_mul, Matrix.det_diagonal, isUnit_iff_ne_zero]
+    exact mul_ne_zero (Finset.prod_ne_zero_iff.mpr fun i _ => hx i) hV.ne_zero
+  rw [hH.conjTranspose_mul_blockKrylovMatrix_replicateCol hHZ x, blockKrylovMatrix_replicateCol,
+    show Matrix.submatrix (Matrix.diagonal (Zᴴ *ᵥ x) * Matrix.vandermonde fun i => (d i : 𝕜)) id
+        Prod.fst = Matrix.submatrix _ (Equiv.refl (Fin t)) (Equiv.prodPUnit (Fin t)) from rfl,
+    pinv_submatrix_equiv, pinv_of_isUnit hunit, hinv]
+  have hmul := Matrix.submatrix_mul_equiv (krylovMatrix H x t)
+    ((Matrix.vandermonde fun i => (d i : 𝕜))⁻¹ * Matrix.diagonal fun i => ((Zᴴ *ᵥ x) i)⁻¹)
+    id (Equiv.prodPUnit (Fin t)) id
+  rw [Matrix.submatrix_id_id] at hmul
+  rw [show (krylovMatrix H x t).submatrix id Prod.fst =
+      (krylovMatrix H x t).submatrix id (Equiv.prodPUnit (Fin t)) from rfl,
+    show ⇑(Equiv.refl (Fin t)) = id from rfl, hmul, ← Matrix.mul_assoc, Matrix.mul_diagonal,
+    krylovMatrix_mul_inv_vandermonde_apply H x hv, basis_ofReal_eq_map, aeval_map_algebraMap]
+
+/-- A polynomial filter on the complement of an eigenframe: for an orthonormal frame
+$\mathbf{Z}$ invariant under $\mathbf{H} = \mathbf{A}^{\mathsf{H}}\mathbf{A}$, the deflated matrix
+$\mathbf{C} = \mathbf{A} - \mathbf{A}\mathbf{Z}\mathbf{Z}^{\mathsf{H}}$ and real polynomials
+$f$, $\ell$,
+$(\mathbf{A}f(\mathbf{H}) - \mathbf{A}f(\mathbf{H})\mathbf{Z}\mathbf{Z}^{\mathsf{H}})
+\ell(\mathbf{H}) = (f\ell)(\mathbf{C}\mathbf{C}^{\mathsf{H}})\,\mathbf{C}$. -/
+private theorem sub_mul_mul_conjTranspose_mul_aeval [DecidableEq m] {s : Type*} [Fintype s]
+    [DecidableEq s] (A : Matrix m n 𝕜) {Z : Matrix n s 𝕜} (hZ : HasOrthonormalCols Z)
+    {d : s → ℝ} (hAZ : Aᴴ * A * Z = Z * Matrix.diagonal fun i => (d i : 𝕜)) (f ℓ : ℝ[X]) :
+    (A * aeval (Aᴴ * A) f - A * aeval (Aᴴ * A) f * Z * Zᴴ) * aeval (Aᴴ * A) ℓ =
+      aeval ((A - A * Z * Zᴴ) * (A - A * Z * Zᴴ)ᴴ) (f * ℓ) * (A - A * Z * Zᴴ) := by
+  have hHh := Matrix.isHermitian_conjTranspose_mul_self A
+  set H := Aᴴ * A with hH
+  set P := 1 - Z * Zᴴ with hP
+  have hproj : IsStarProjection P := hZ.isStarProjection_mul_conjTranspose.one_sub
+  have hPP : P * P = P := hproj.isIdempotentElem.eq
+  have hZH : Zᴴ * H = (Matrix.diagonal fun i => (d i : 𝕜)) * Zᴴ := by
+    have h := congrArg Matrix.conjTranspose hAZ
+    rwa [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul Z,
+      Matrix.conjTranspose_diagonal_ofReal, hHh.eq] at h
+  have hPH : H * P = P * H := by
+    rw [hP, Matrix.mul_sub, Matrix.sub_mul, Matrix.mul_one, Matrix.one_mul, ← Matrix.mul_assoc,
+      hAZ, Matrix.mul_assoc Z Zᴴ H, hZH, Matrix.mul_assoc]
+  have hC (B : Matrix m n 𝕜) : B - B * Z * Zᴴ = B * P := by
+    rw [hP, Matrix.mul_sub, Matrix.mul_one, Matrix.mul_assoc]
+  have hCH : (A * P) * (A * P)ᴴ * (A * P) = (A * P) * H := by
+    rw [Matrix.conjTranspose_mul, hproj.conjTranspose_eq]
+    calc A * P * (P * Aᴴ) * (A * P) = A * (P * P * (H * P)) := by
+          simp only [Matrix.mul_assoc, hH]
+      _ = A * P * H := by rw [hPP, hPH, ← Matrix.mul_assoc P, hPP, Matrix.mul_assoc]
+  have hq (q : ℝ[X]) : aeval H q * P = P * aeval H q := aeval_mul_eq_mul_aeval_of_mul_eq_mul hPH q
+  rw [hC, hC, aeval_mul_eq_mul_aeval_of_mul_eq_mul hCH (f * ℓ), Matrix.mul_assoc A,
+    Matrix.mul_assoc A, Matrix.mul_assoc A, Matrix.mul_assoc _ P, ← hq ℓ, ← Matrix.mul_assoc _ _ P,
+    ← map_mul, hq]
+
+omit [DecidableEq n] in
+/-- A polynomial in $\mathbf{C}\mathbf{C}^{\mathsf{H}}$ applied to a vector is bounded by the
+polynomial on $[0, \|\mathbf{C}\|_2^2]$. -/
+private theorem norm_toLp_aeval_mul_conjTranspose_self_mulVec_le [DecidableEq m]
+    (C : Matrix m n 𝕜) (q : ℝ[X]) {c : ℝ} (hc : 0 ≤ c)
+    (h : ∀ y ∈ Set.Icc 0 (specNorm C ^ 2), |q.eval y| ≤ c) (u : m → 𝕜) :
+    ‖WithLp.toLp 2 (aeval (C * Cᴴ) q *ᵥ u)‖ ≤ c * ‖WithLp.toLp 2 u‖ := by
+  have h₁ : (0 : ℝ) • (1 : Matrix m m 𝕜) ≤ C * Cᴴ := by
+    rw [zero_smul]
+    exact Matrix.nonneg_iff_posSemidef.mpr (Matrix.posSemidef_self_mul_conjTranspose C)
+  have h₂ : C * Cᴴ ≤ (specNorm C ^ 2) • (1 : Matrix m m 𝕜) := by
+    have h := conjTranspose_mul_self_le_specNorm_sq_smul_one Cᴴ
+    rwa [Matrix.conjTranspose_conjTranspose, specNorm_conjTranspose] at h
+  exact (norm_toLp_mulVec_le _ u).trans (mul_le_mul_of_nonneg_right
+    (specNorm_aeval_le_of_forall_mem_Icc h₁ h₂ q hc h) (norm_nonneg _))
+
+omit [DecidableEq n] in
+/-- Positive singular values with relative gaps of the squares have distinct squares. -/
+private theorem sq_singularValues_injective {t : ℕ} (A : Matrix m n 𝕜) {Δ : ℝ} (hΔ : 0 < Δ)
+    (hpos : ∀ i < t, 0 < singularValues A i)
+    (hgap : ∀ i, i + 1 < t → singularValues A (i + 1) ^ 2 ≤ (1 - Δ) * singularValues A i ^ 2) :
+    Function.Injective fun i : Fin t => singularValues A i ^ 2 := by
+  have hanti : StrictAnti fun i : Fin t => singularValues A i ^ 2 := by
+    intro i j hij
+    have hij' : (i : ℕ) + 1 ≤ j := hij
+    have h1 := hgap i (by omega)
+    have h2 : singularValues A j ^ 2 ≤ singularValues A (i + 1) ^ 2 :=
+      pow_le_pow_left₀ (singularValues_nonneg _ _) (singularValues_antitone A hij') 2
+    have h3 : 0 < Δ * singularValues A i ^ 2 := mul_pos hΔ (pow_pos (hpos i i.isLt) 2)
+    change singularValues A j ^ 2 < singularValues A i ^ 2
+    linarith
+  exact hanti.injective
+
+omit [DecidableEq n] in
+/-- The first $r$ columns of an orthonormal frame of right singular vectors: an orthonormal
+frame of right singular vectors with range in that of the frame. -/
+private theorem submatrix_castLE_frame {t r : ℕ} (A : Matrix m n 𝕜) {Z : Matrix n (Fin t) 𝕜}
+    (hZ : HasOrthonormalCols Z)
+    (hAZ : Aᴴ * A * Z =
+      Z * Matrix.diagonal fun i : Fin t => ((singularValues A i ^ 2 : ℝ) : 𝕜)) (hr : r ≤ t) :
+    HasOrthonormalCols (Z.submatrix id (Fin.castLE hr)) ∧
+      LinearMap.range (Z.submatrix id (Fin.castLE hr)).mulVecLin ≤
+        LinearMap.range Z.mulVecLin ∧
+      Aᴴ * A * Z.submatrix id (Fin.castLE hr) = Z.submatrix id (Fin.castLE hr) *
+        Matrix.diagonal fun i : Fin r => ((singularValues A i ^ 2 : ℝ) : 𝕜) := by
+  refine ⟨hZ.submatrix (Equiv.refl _) (Fin.castLE_injective hr), range_le_iff_exists_mul.mpr
+    ⟨(1 : Matrix (Fin t) (Fin t) 𝕜).submatrix (Equiv.refl _) (Fin.castLE hr), by
+      rw [Matrix.mul_submatrix_one]; rfl⟩, ?_⟩
+  ext a j
+  have h := congrFun (congrFun hAZ a) (Fin.castLE hr j)
+  simp only [Matrix.mul_diagonal] at h ⊢
+  exact h
 
 /-- **The sketch residual of the single-vector simulated block**: let
 $\mathbf{H} = \mathbf{A}^{\mathsf{H}}\mathbf{A}$, let $\mathbf{Z} \in \Bbbk^{n \times t}$ be an
@@ -85,19 +235,45 @@ theorem frobNorm_sub_mul_mul_blockKrylovMatrix_mul_pinv_sq_le {t : ℕ}
         pinv (Zᴴ * blockKrylovMatrix (Aᴴ * A) (Matrix.replicateCol Unit x) t)) ^ 2 ≤
       a ^ 2 * Δ⁻¹ ^ (2 * (t - 1)) * (∑ i, ‖(Zᴴ *ᵥ x) i‖⁻¹ ^ 2) *
         ‖WithLp.toLp 2 ((A - A * Z * Zᴴ) *ᵥ x)‖ ^ 2 := by
-  -- With `H = Aᴴ * A`, `g = Zᴴ *ᵥ x`, `V = vandermonde (σ i ^ 2)`: by
-  -- `Matrix.IsHermitian.conjTranspose_mul_blockKrylovMatrix_replicateCol`,
-  -- `Zᴴ * K = (diagonal g * V).submatrix id Prod.fst` is invertible up to `Equiv.prodPUnit`, so
-  -- its `pinv` is the reindexed `V⁻¹ * diagonal g⁻¹`, and by `Matrix.inv_vandermonde` column `i`
-  -- of `K * pinv (Zᴴ * K)` is `(g i)⁻¹ • aeval H ℓ_i *ᵥ x`.
-  -- `Z * Zᴴ` commutes with `H` (`hAZ` and its adjoint), so column `i` of the residual is
-  -- `(g i)⁻¹ • (A * aeval H (f * ℓ_i)) *ᵥ w`, `w = (1 - Z * Zᴴ) *ᵥ x`, and the squared Frobenius
-  -- norm is the sum of the squared column norms. Finally `‖A * p(H) *ᵥ w‖ ≤ sup |p| * ‖A *ᵥ w‖`
-  -- with the supremum over the eigenvalues of `H` on the complement of `Z`, which are the
-  -- `σ j ^ 2`, `j ≥ t`, all in `[0, σ t ^ 2]` (spectral decomposition of `H` extending `Z`,
-  -- `singularValues_antitone`); there `|f| ≤ a` and `|ℓ_i| ≤ Δ⁻¹ ^ (t - 1)`
-  -- (`abs_eval_basis_le_inv_pow`).
-  sorry
+  classical
+  have hH := Matrix.isHermitian_conjTranspose_mul_self A
+  have hd := sq_singularValues_injective A hΔ hpos hgap
+  have ha : 0 ≤ a := (abs_nonneg _).trans (htail 0 ⟨le_rfl, sq_nonneg _⟩)
+  have hΔ' : 0 ≤ Δ⁻¹ ^ (t - 1) := pow_nonneg (inv_pos.mpr hΔ).le _
+  set C := A - A * Z * Zᴴ with hC
+  have hCt : specNorm C = singularValues A t := hZ.specNorm_sub_mul_mul_conjTranspose hAZ
+  have hcol (i : Fin t) : ‖WithLp.toLp 2 (((A * aeval (Aᴴ * A) f - A * aeval (Aᴴ * A) f * Z * Zᴴ) *
+      blockKrylovMatrix (Aᴴ * A) (Matrix.replicateCol Unit x) t *
+      pinv (Zᴴ * blockKrylovMatrix (Aᴴ * A) (Matrix.replicateCol Unit x) t)).col i)‖ ≤
+      ‖(Zᴴ *ᵥ x) i‖⁻¹ * (a * Δ⁻¹ ^ (t - 1)) * ‖WithLp.toLp 2 (C *ᵥ x)‖ := by
+    set ℓ := Lagrange.basis Finset.univ (fun i : Fin t => singularValues A i ^ 2) i with hℓ
+    have hcol' : ((A * aeval (Aᴴ * A) f - A * aeval (Aᴴ * A) f * Z * Zᴴ) *
+        blockKrylovMatrix (Aᴴ * A) (Matrix.replicateCol Unit x) t *
+        pinv (Zᴴ * blockKrylovMatrix (Aᴴ * A) (Matrix.replicateCol Unit x) t)).col i =
+        ((Zᴴ *ᵥ x) i)⁻¹ • (aeval (C * Cᴴ) (f * ℓ) *ᵥ (C *ᵥ x)) := by
+      have hN : (blockKrylovMatrix (Aᴴ * A) (Matrix.replicateCol Unit x) t *
+          pinv (Zᴴ * blockKrylovMatrix (Aᴴ * A) (Matrix.replicateCol Unit x) t)).col i =
+          ((Zᴴ *ᵥ x) i)⁻¹ • (aeval (Aᴴ * A) ℓ *ᵥ x) := funext fun b =>
+        (blockKrylovMatrix_mul_pinv_apply hH hAZ hd hx b i).trans (mul_comm _ _)
+      rw [Matrix.mulVec_mulVec, ← sub_mul_mul_conjTranspose_mul_aeval A hZ hAZ f ℓ,
+        ← Matrix.mulVec_mulVec, ← Matrix.mulVec_smul, ← hN,
+        Matrix.mul_assoc _ (blockKrylovMatrix _ _ _) _]
+      rfl
+    have hq : ∀ y ∈ Set.Icc 0 (specNorm C ^ 2), |(f * ℓ).eval y| ≤ a * Δ⁻¹ ^ (t - 1) := by
+      intro y hy
+      rw [hCt] at hy
+      rw [eval_mul, abs_mul]
+      refine mul_le_mul (htail y hy) (abs_eval_basis_le_inv_pow hΔ (fun i j hij => ?_) hy.1
+        (fun k => hy.2.trans (pow_le_pow_left₀ (singularValues_nonneg _ _)
+          (singularValues_antitone A k.isLt.le) 2)) i) (abs_nonneg _) ha
+      rw [← hij]
+      exact hgap i (by have := j.isLt; omega)
+    rw [hcol', WithLp.toLp_smul, norm_smul, norm_inv, mul_assoc]
+    exact mul_le_mul_of_nonneg_left (norm_toLp_aeval_mul_conjTranspose_self_mulVec_le C (f * ℓ)
+      (mul_nonneg ha hΔ') hq _) (inv_nonneg.mpr (norm_nonneg _))
+  rw [frobNorm_sq_eq_sum_col, Finset.mul_sum, Finset.sum_mul]
+  exact Finset.sum_le_sum fun i _ =>
+    (pow_le_pow_left₀ (norm_nonneg _) (hcol i) 2).trans_eq (by ring)
 
 /-- **Randomized block Krylov iteration with a single start vector, spectral norm**: let
 $\mathbf{H} = \mathbf{A}^{\mathsf{H}}\mathbf{A}$, let $\mathbf{Z} \in \Bbbk^{n \times t}$ be an
@@ -134,16 +310,30 @@ theorem specNorm_sub_rbki_replicateCol_sq_le {t : ℕ} (A : Matrix m n 𝕜)
       singularValues A r ^ 2 +
         (a / c) ^ 2 * Δ⁻¹ ^ (2 * (t - 1)) * (∑ i, ‖(Zᴴ *ᵥ x) i‖⁻¹ ^ 2) *
           ‖WithLp.toLp 2 ((A - A * Z * Zᴴ) *ᵥ x)‖ ^ 2 := by
-  -- `singularValues_sub_rbki_le_of_degree_lt_of_add_le` (at `s = t`, index `0`, with
-  -- `singularValues_zero_eq_specNorm`) reduces to `rsvd A (aeval H f * K)`, `K` the simulated
-  -- block, and `Matrix.IsHermitian.cfc_eq_aeval_of_forall_eval_eq` turns `aeval H f` into
-  -- `cfc (fun y => f.eval y) H`. Apply `HasOrthonormalCols.specNorm_sub_rsvd_cfc_sq_le` with
-  -- `W = Z.submatrix id (Fin.castLE hr)`, `hΩ` from
-  -- `Matrix.IsHermitian.rank_conjTranspose_mul_blockKrylovMatrix_replicateCol` and `hZ.rank`.
-  -- Then `specNorm (A - A * W * Wᴴ) = singularValues A r` (the Gram matrix is `H` with the
-  -- eigenvalues `σ i ^ 2`, `i < r`, removed), `specNorm M ≤ frobNorm M`, and
-  -- `frobNorm_sub_mul_mul_blockKrylovMatrix_mul_pinv_sq_le`.
-  sorry
+  classical
+  have hH := Matrix.isHermitian_conjTranspose_mul_self A
+  have hG : cfc (fun y => f.eval y) (Aᴴ * A) = aeval (Aᴴ * A) f := cfc_polynomial f (Aᴴ * A) hH
+  obtain ⟨hW, hWZ, hAW⟩ := submatrix_castLE_frame A hZ hAZ hr
+  have hΩ : ((blockKrylovMatrix (Aᴴ * A) (Matrix.replicateCol Unit x) t)ᴴ * Z).rank = Z.rank := by
+    rw [hH.rank_conjTranspose_mul_blockKrylovMatrix_replicateCol hAZ
+      (sq_singularValues_injective A hΔ hpos hgap) hx, hZ.rank_eq, Fintype.card_fin]
+  have h1 := singularValues_sub_rbki_le_of_degree_lt_of_add_le A (Matrix.replicateCol Unit x) hf
+    hd 0
+  rw [singularValues_zero_eq_specNorm, singularValues_zero_eq_specNorm] at h1
+  have h2 := hW.specNorm_sub_rsvd_cfc_sq_le (fun y => f.eval y) hAW hZ hΩ hWZ hc
+    fun i => hhead i i.isLt
+  rw [hG, hW.specNorm_sub_mul_mul_conjTranspose hAW] at h2
+  have h3 := frobNorm_sub_mul_mul_blockKrylovMatrix_mul_pinv_sq_le A x hZ hAZ hΔ hpos hgap hx f
+    htail
+  have hc2 : 0 ≤ c⁻¹ ^ 2 := sq_nonneg _
+  calc specNorm (A - rbki A (Matrix.replicateCol Unit x) q) ^ 2
+      ≤ specNorm (A - rsvd A (aeval (Aᴴ * A) f *
+          blockKrylovMatrix (Aᴴ * A) (Matrix.replicateCol Unit x) t)) ^ 2 :=
+        pow_le_pow_left₀ (specNorm_nonneg _) h1 2
+    _ ≤ _ := h2
+    _ ≤ _ := add_le_add le_rfl (mul_le_mul_of_nonneg_left
+        ((pow_le_pow_left₀ (specNorm_nonneg _) (specNorm_le_frobNorm _) 2).trans h3) hc2)
+    _ = _ := by ring
 
 /-- **Randomized block Krylov iteration with a single start vector, Frobenius norm**: let
 $\mathbf{H} = \mathbf{A}^{\mathsf{H}}\mathbf{A}$, let $\mathbf{Z} \in \Bbbk^{n \times t}$ be an
@@ -178,13 +368,30 @@ theorem frobNorm_sub_rbki_replicateCol_sq_le {t : ℕ} (A : Matrix m n 𝕜)
       frobNorm (A - truncatedSVD A r) ^ 2 +
         (a / c) ^ 2 * Δ⁻¹ ^ (2 * (t - 1)) * (∑ i, ‖(Zᴴ *ᵥ x) i‖⁻¹ ^ 2) *
           ‖WithLp.toLp 2 ((A - A * Z * Zᴴ) *ᵥ x)‖ ^ 2 := by
-  -- As the spectral form, summing `singularValues_sub_rbki_le_of_degree_lt_of_add_le` over the
-  -- index (the Frobenius norm is monotone in the singular values) and applying
-  -- `HasOrthonormalCols.frobNorm_sub_rsvd_cfc_sq_le`. The head term is
-  -- `frobNorm (A - A * W * Wᴴ) ^ 2 = ∑ j ≥ r, σ j ^ 2 = frobNorm (A - truncatedSVD A r) ^ 2`
-  -- (`frobNorm_sub_truncatedSVD_sq`): the Gram matrix of `A - A * W * Wᴴ` is `H` with the
-  -- eigenvalues `σ i ^ 2`, `i < r`, removed, whichever eigenvectors `W` picks.
-  sorry
+  classical
+  have hH := Matrix.isHermitian_conjTranspose_mul_self A
+  have hG : cfc (fun y => f.eval y) (Aᴴ * A) = aeval (Aᴴ * A) f := cfc_polynomial f (Aᴴ * A) hH
+  obtain ⟨hW, hWZ, hAW⟩ := submatrix_castLE_frame A hZ hAZ hr
+  have hΩ : ((blockKrylovMatrix (Aᴴ * A) (Matrix.replicateCol Unit x) t)ᴴ * Z).rank = Z.rank := by
+    rw [hH.rank_conjTranspose_mul_blockKrylovMatrix_replicateCol hAZ
+      (sq_singularValues_injective A hΔ hpos hgap) hx, hZ.rank_eq, Fintype.card_fin]
+  have h1 : frobNorm (A - rbki A (Matrix.replicateCol Unit x) q) ^ 2 ≤
+      frobNorm (A - rsvd A (aeval (Aᴴ * A) f *
+        blockKrylovMatrix (Aᴴ * A) (Matrix.replicateCol Unit x) t)) ^ 2 := by
+    rw [frobNorm_sq_eq_sum_singularValues_sq, frobNorm_sq_eq_sum_singularValues_sq]
+    exact Finset.sum_le_sum fun k _ => pow_le_pow_left₀ (singularValues_nonneg _ _)
+      (singularValues_sub_rbki_le_of_degree_lt_of_add_le A (Matrix.replicateCol Unit x) hf hd k) 2
+  have h2 := hW.frobNorm_sub_rsvd_cfc_sq_le (fun y => f.eval y) hAW hZ hΩ hWZ hc
+    fun i => hhead i i.isLt
+  rw [hG, hW.frobNorm_sub_mul_mul_conjTranspose_sq_eq_truncatedSVD hAW] at h2
+  have h3 := frobNorm_sub_mul_mul_blockKrylovMatrix_mul_pinv_sq_le A x hZ hAZ hΔ hpos hgap hx f
+    htail
+  have hc2 : 0 ≤ c⁻¹ ^ 2 := sq_nonneg _
+  calc frobNorm (A - rbki A (Matrix.replicateCol Unit x) q) ^ 2
+      ≤ _ := h1
+    _ ≤ _ := h2
+    _ ≤ _ := add_le_add le_rfl (mul_le_mul_of_nonneg_left h3 hc2)
+    _ = _ := by ring
 
 /-- **Randomized block Krylov iteration with a single start vector is exact at the rank**: let
 $\mathbf{A}$ have rank at most $t$, let $\mathbf{Z} \in \Bbbk^{n \times t}$ be an orthonormal
@@ -207,13 +414,44 @@ theorem rbki_replicateCol_eq_self {t : ℕ} (A : Matrix m n 𝕜)
     (hlt : ∀ i j, i < j → j < t → singularValues A j < singularValues A i)
     (hx : ∀ i, (Zᴴ *ᵥ x) i ≠ 0) {q : ℕ} (hq : t ≤ q) :
     rbki A (Matrix.replicateCol Unit x) q = A := by
-  -- By `singularValues_sub_rbki_le_of_le` it suffices to take `q = t` (all singular values of the
-  -- error vanish). `A * (1 - Z * Zᴴ) = 0`: its Gram matrix is `H` with the eigenvalues
-  -- `σ i ^ 2`, `i < t`, removed, and `σ j = 0` for `j ≥ t` (`singularValues_eq_zero_iff`). So
-  -- `A * K = A * Z * (Zᴴ * K)` with `Zᴴ * K` invertible up to reindexing
-  -- (`Matrix.IsHermitian.conjTranspose_mul_blockKrylovMatrix_replicateCol`,
-  -- `isUnit_det_mul_krylovMatrix`), the range of `A * K` is that of `A * Z`, which is the range
-  -- of `A = A * Z * Zᴴ`, and `rangeProjector_mul_eq_self_iff` finishes.
-  sorry
+  classical
+  have hH := Matrix.isHermitian_conjTranspose_mul_self A
+  have hd : Function.Injective fun i : Fin t => singularValues A i ^ 2 := by
+    intro i j hij
+    have h := (sq_eq_sq₀ (singularValues_nonneg _ _) (singularValues_nonneg _ _)).mp hij
+    rcases lt_trichotomy i j with hlt' | heq | hgt
+    · exact absurd h (hlt i j hlt' j.isLt).ne'
+    · exact heq
+    · exact absurd h (hlt j i hgt i.isLt).ne
+  have hA : A = A * Z * Zᴴ := by
+    refine sub_eq_zero.mp (singularValues_eq_zero.mp (funext fun i => ?_))
+    rw [hZ.singularValues_sub_mul_mul_conjTranspose hAZ]
+    exact (singularValues_eq_zero_iff A).mpr (hrank.trans (Nat.le_add_right t i))
+  have hdet : IsUnit (Matrix.diagonal (Zᴴ *ᵥ x) *
+      Matrix.vandermonde fun i : Fin t => ((singularValues A i ^ 2 : ℝ) : 𝕜)).det := by
+    rw [Matrix.det_mul, Matrix.det_diagonal, isUnit_iff_ne_zero]
+    exact mul_ne_zero (Finset.prod_ne_zero_iff.mpr fun i _ => hx i)
+      (Matrix.det_vandermonde_ne_zero_iff.mpr (RCLike.ofReal_injective.comp hd))
+  obtain ⟨R, hR⟩ : ∃ R : Matrix (Fin t × Unit) (Fin t) 𝕜,
+      Zᴴ * blockKrylovMatrix (Aᴴ * A) (Matrix.replicateCol Unit x) t * R = 1 := by
+    refine ⟨((Matrix.diagonal (Zᴴ *ᵥ x) * Matrix.vandermonde fun i : Fin t =>
+      ((singularValues A i ^ 2 : ℝ) : 𝕜))⁻¹).submatrix Prod.fst id, ?_⟩
+    rw [hH.conjTranspose_mul_blockKrylovMatrix_replicateCol hAZ x]
+    refine (Matrix.submatrix_mul_equiv _ _ id (Equiv.prodPUnit (Fin t)) id).trans ?_
+    rw [Matrix.mul_nonsing_inv _ hdet, Matrix.submatrix_id_id]
+  have ht : rbki A (Matrix.replicateCol Unit x) t = A := by
+    rw [rbki_def, rsvd]
+    refine rangeProjector_mul_eq_self_iff.mpr (range_le_iff_exists_mul.mpr ⟨R * Zᴴ, ?_⟩)
+    calc A = A * Z * (Zᴴ * blockKrylovMatrix (Aᴴ * A) (Matrix.replicateCol Unit x) t * R) *
+          Zᴴ := by rw [hR, Matrix.mul_one, ← hA]
+      _ = A * Z * Zᴴ * blockKrylovMatrix (Aᴴ * A) (Matrix.replicateCol Unit x) t * (R * Zᴴ) := by
+          simp only [Matrix.mul_assoc]
+      _ = A * blockKrylovMatrix (Aᴴ * A) (Matrix.replicateCol Unit x) t * (R * Zᴴ) := by
+          rw [← hA]
+  have h0 : A - rbki A (Matrix.replicateCol Unit x) q = 0 :=
+    singularValues_eq_zero.mp (funext fun i => le_antisymm (by
+      have h := singularValues_sub_rbki_le_of_le A (Matrix.replicateCol Unit x) hq i
+      rwa [ht, sub_self, singularValues_zero] at h) (singularValues_nonneg _ _))
+  exact (sub_eq_zero.mp h0).symm
 
 end NLAlib

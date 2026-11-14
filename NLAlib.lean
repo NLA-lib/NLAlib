@@ -973,6 +973,7 @@ public import NLAlib.Matrix.Spectral.EigenvalueListing
 public import NLAlib.Matrix.Spectral.EigenvalueTransform
 public import NLAlib.Matrix.Spectral.Eigenvalues
 public import NLAlib.Matrix.Spectral.EigenvectorPairing
+public import NLAlib.Matrix.Spectral.FrameDeflation
 public import NLAlib.Matrix.Spectral.Gershgorin
 public import NLAlib.Matrix.Spectral.HermitianPart
 public import NLAlib.Matrix.Spectral.Inertia

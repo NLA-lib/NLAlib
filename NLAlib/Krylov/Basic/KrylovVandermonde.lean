@@ -114,6 +114,7 @@ theorem _root_.Matrix.IsHermitian.conjTranspose_mul_blockKrylovMatrix_replicateC
   rw [← mul_krylovMatrix_eq_diagonal_mul_vandermonde hY x, blockKrylovMatrix_replicateCol]
   rfl
 
+open scoped ComplexOrder in
 /-- **The head block of a single-vector simulated block has full rank**: for Hermitian
 $\mathbf{H}$ and a frame $\mathbf{Z} \in \Bbbk^{n \times t}$ of eigenvectors,
 $\mathbf{H}\mathbf{Z} = \mathbf{Z}\operatorname{diag}(\mathbf{d})$ with distinct real
@@ -128,11 +129,14 @@ theorem _root_.Matrix.IsHermitian.rank_conjTranspose_mul_blockKrylovMatrix_repli
     (hHZ : H * Z = Z * Matrix.diagonal fun i => (d i : 𝕜)) (hd : Function.Injective d)
     {x : n → 𝕜} (hx : ∀ i, (Zᴴ *ᵥ x) i ≠ 0) :
     ((blockKrylovMatrix H (Matrix.replicateCol Unit x) t)ᴴ * Z).rank = t := by
-  -- `Matrix.rank_conjTranspose` moves to `Zᴴ * K`; by
-  -- `Matrix.IsHermitian.conjTranspose_mul_blockKrylovMatrix_replicateCol` this is the invertible
-  -- matrix of `isUnit_det_mul_krylovMatrix` (with `RCLike.ofReal_injective.comp hd`) with its
-  -- columns reindexed along the equivalence `Fin t × Unit ≃ Fin t` (`Equiv.prodPUnit`), so
-  -- `Matrix.rank_submatrix` and `Matrix.rank_of_isUnit` give `Fintype.card (Fin t) = t`.
-  sorry
+  have hdet : IsUnit (Matrix.diagonal (Zᴴ *ᵥ x) * Matrix.vandermonde fun i => (d i : 𝕜)).det := by
+    rw [Matrix.det_mul, Matrix.det_diagonal, isUnit_iff_ne_zero]
+    exact mul_ne_zero (Finset.prod_ne_zero_iff.mpr fun i _ => hx i)
+      (Matrix.det_vandermonde_ne_zero_iff.mpr (RCLike.ofReal_injective.comp hd))
+  rw [← Matrix.rank_conjTranspose, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose,
+    hH.conjTranspose_mul_blockKrylovMatrix_replicateCol hHZ x]
+  exact (Matrix.rank_submatrix _ (Equiv.refl (Fin t)) (Equiv.prodPUnit (Fin t))).trans
+    ((Matrix.rank_of_isUnit _ ((Matrix.isUnit_iff_isUnit_det _).mpr hdet)).trans
+      (Fintype.card_fin t))
 
 end NLAlib

@@ -93,7 +93,9 @@ theorem trans {ε₁ ε₂ : ℝ} {P P' P'' : Matrix n n 𝕜 × Matrix n n 𝕜
 /-- A larger bound is weaker, for nonnegative scales. -/
 theorem mono (ha : 0 ≤ a) (hb : 0 ≤ b) {ε ε' : ℝ} {P P' : Matrix n n 𝕜 × Matrix n n 𝕜}
     (hε : ε ≤ ε') (h : IsPerturbedUnitaryPair a b ε P P') : IsPerturbedUnitaryPair a b ε' P P' := by
-  sorry
+  obtain ⟨U, E, F, hU, hE, hF, h1, h2⟩ := h
+  exact ⟨U, E, F, hU, hE.trans (mul_le_mul_of_nonneg_right hε ha),
+    hF.trans (mul_le_mul_of_nonneg_right hε hb), h1, h2⟩
 
 /-- The similarity component is a perturbed unitary similarity with backward error
 $\varepsilon b$. -/

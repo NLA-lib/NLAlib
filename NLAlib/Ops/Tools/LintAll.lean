@@ -35,6 +35,10 @@ public import NLAlib.Ops.Catalog.Sampling
 public import NLAlib.Ops.Catalog.StoredOperator
 public import NLAlib.Ops.Examples.Consequences
 public import NLAlib.Ops.Examples.FixedPoint
+public import NLAlib.Ops.IndexDegrees
+public import NLAlib.Ops.ContextWork
+public import NLAlib.Ops.PolynomialWork
+public import NLAlib.Ops.WeightEnvelope
 public import NLAlib.Ops.Profiles.Dense
 public import NLAlib.Ops.Profiles.DenseWeight
 public import NLAlib.Ops.Profiles.DenseWork

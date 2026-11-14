@@ -16,7 +16,9 @@ perturbation charge and stored range transition refer to the same committed work
 
 ## Main results
 
-* `NLAlib.ShiftedQR.writeAndSplit_writes`: commit and split advance the full invariant.
+* `NLAlib.ShiftedQR.writeAndSplit_writes_of_isExactNatLit`: commit and split advance the full
+  invariant, on any machine with exact natural literals (`NLAlib.ShiftedQR.writeAndSplit_writes`:
+  exact arithmetic).
 -/
 
 @[expose] public section
@@ -29,10 +31,12 @@ open scoped Matrix
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has IdxTst Q]
 
 /-- Copying back the actual unitary-conjugate block and pushing its children advances the
-worklist invariant. The partition itself proves capacity for both new stack entries. -/
-theorem writeAndSplit_writes {M : Machine ℝ} {I : Interp O Q ℝ}
-    (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I) (hQ : IsToNat id I)
-    {tape : Tape ℝ} {μ : Mem ℝ} {n d lo j : ℕ} {i : Fin d}
+worklist invariant. The partition itself proves capacity for both new stack entries. Only the
+natural literals up to the order need to be exact. -/
+theorem writeAndSplit_writes_of_isExactNatLit {M : Machine ℝ} {I : Interp O Q ℝ}
+    (hS : IsScalar M I) (hL : IsIndexLit M I) (hQ : IsToNat id I) {n : ℕ}
+    (hN : IsExactNatLit id M (n + 1))
+    {tape : Tape ℝ} {μ : Mem ℝ} {d lo j : ℕ} {i : Fin d}
     {a p stack out w r : ℕ × ℕ} {H A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {U B : Matrix (Fin (d + 1)) (Fin (d + 1)) ℂ} {roots : Fin (n + 1) → ℂ}
     {τ ε : ℝ} {rest done : List (ℕ × ℕ)}
@@ -87,8 +91,9 @@ theorem writeAndSplit_writes {M : Machine ℝ} {I : Interp O Q ℝ}
   have hSt₁ := hSt.of_eqOff hfr₁
     (hAS.mono (blockFp_le a hr) (by simp only [List.length_reverse]; fp_sub))
   have hOut₁ := hOut.of_eqOff hfr₁ (hAO.mono (blockFp_le a hr) hdone)
-  have hw := splitPush_writes (τ := tape) (lo := lo) (d := d + 1) (i := (i : ℕ))
-    hL hQ hE
+  have hw := splitPush_writes_of_isExactNatLit (τ := tape) (lo := lo) (d := d + 1) (i := (i : ℕ))
+    hL hQ hN (by have : lo + (d + 1) ≤ n + 1 := hr; omega)
+    (by have : lo + (d + 1) ≤ n + 1 := hr; omega) le_rfl
     (by simpa [Mem.Live] using hG₁.live stack (by simp)) hSt₁ hcap
       (by simpa only [Nat.add_assoc] using hG₁.room.2.2.1)
   refine (hw.in_frame rfl rfl (by simpa [Mem.Live] using hG₁.live stack (by simp))).mono
@@ -110,5 +115,29 @@ theorem writeAndSplit_writes {M : Machine ℝ} {I : Interp O Q ℝ}
     ring
   · simp only [List.length_cons] at hj ⊢
     omega
+
+/-- Copying back the actual unitary-conjugate block and pushing its children advances the
+worklist invariant. The partition itself proves capacity for both new stack entries. -/
+theorem writeAndSplit_writes {M : Machine ℝ} {I : Interp O Q ℝ}
+    (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I) (hQ : IsToNat id I)
+    {tape : Tape ℝ} {μ : Mem ℝ} {n d lo j : ℕ} {i : Fin d}
+    {a p stack out w r : ℕ × ℕ} {H A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {U B : Matrix (Fin (d + 1)) (Fin (d + 1)) ℂ} {roots : Fin (n + 1) → ℂ}
+    {τ ε : ℝ} {rest done : List (ℕ × ℕ)}
+    (hG : WorklistGeometry (n + 1) a p stack out w r μ)
+    (hInv : DeflationInv H ε ((lo, d + 1) :: rest) done A roots)
+    (hA : HoldsMatrix a A μ.store) (hW : HoldsMatrix w B μ.store)
+    (hOut : FinishedHolds out done roots μ.store) (hSt : StackHolds stack rest.reverse μ.store)
+    (hU : HasOrthonormalCols U) (hB : B = Uᴴ * subBlock A (lo, d + 1) * U)
+    (hHess : IsUpperHessenberg B) (hsmall : ‖B i.succ i.castSucc‖ ≤ τ)
+    (hε : ε = (((((lo, d + 1) :: rest) ++ done).length - 1 : ℕ) : ℝ) * τ)
+    (hj : 2 * done.length + ((lo, d + 1) :: rest).length = j + 1) :
+    Writes .total I tape (writeAndSplit (O := O) (Q := Q)).body
+      (Env.frame [n + 1, lo, d + 1, i] [a, stack, w])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock stack.1 stack.2 (1 + 2 * (n + 1)))
+      (fun μ' => μ'.pos = μ.pos ∧ WorklistInv H τ a stack out (j + 1) μ') μ :=
+  writeAndSplit_writes_of_isExactNatLit hS hL hQ (hE.isExactNatLit (n + 1)) hG hInv hA hW hOut hSt
+    hU hB hHess hsmall hε hj
 
 end NLAlib.ShiftedQR

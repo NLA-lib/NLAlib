@@ -336,7 +336,7 @@ private theorem range_blockPrefix_succ_eq_sup (V : Matrix ι (Fin N) 𝕜) (j : 
     LinearMap.range (blockPrefix b V (j + 1)).mulVecLin =
       LinearMap.range (blockPrefix b V j).mulVecLin ⊔
         LinearMap.range (blockCols b V j).mulVecLin := by
-  rw [range_mulVecLin_blockPrefix_succ, range_mulVecLin_fromCols]
+  rw [range_blockPrefix_succ, range_mulVecLin_fromCols]
 
 /-- The prefix of zero blocks has no columns: its column space is zero. -/
 private theorem range_blockPrefix_zero (V : Matrix ι (Fin N) 𝕜) :
@@ -359,7 +359,7 @@ private theorem range_blockPrefix_succ_of_isBasisExtension {n' : ℕ}
     (hE : IsBasisExtension (blockPrefix b X j) W (blockCols b X j) H R) :
     LinearMap.range (blockPrefix b X (j + 1)).mulVecLin =
       LinearMap.range (blockPrefix b X j).mulVecLin ⊔ LinearMap.range W.mulVecLin := by
-  rw [range_mulVecLin_blockPrefix_succ, hE.range_eq, range_mulVecLin_fromCols]
+  rw [range_blockPrefix_succ, hE.range_eq, range_mulVecLin_fromCols]
 
 /-- One more block of a block Krylov space: $\mathcal{K}_{q+2}(\mathbf{M}, \mathbf{B}) =
 \mathcal{K}_{q+1}(\mathbf{M}, \mathbf{B}) + \mathbf{M}\mathcal{K}_{q+1}(\mathbf{M}, \mathbf{B})$. -/

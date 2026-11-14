@@ -248,9 +248,13 @@ theorem extendPred_of_eq_zero (Ext : ExtendPred ℝ) {n k b : ℕ} (hk : k = 0)
 /-- The stored blocks of an exact run: every extension is exact (`NLAlib.IsBasisExtension`) and
 the extended blocks are the products $\mathbf{A}\mathbf{V}_j$ and
 $\mathbf{A}^{\mathsf{H}}\mathbf{U}_j$ of the stored blocks. -/
-def IsExactStoredRun {m n : ℕ} (A : Matrix (Fin m) (Fin n) ℝ) (b q : ℕ) : RunPred m n b q :=
+def IsExactStoredRun {m n : ℕ} (A : Matrix (Fin m) (Fin n) ℝ) (b q : ℕ)
+    (Ω : Matrix (Fin n) (Fin b) ℝ) (U : Matrix (Fin m) (Fin (q * b)) ℝ)
+    (V : Matrix (Fin n) (Fin ((q + 1) * b)) ℝ) (G : Matrix (Fin b) (Fin b) ℝ)
+    (R : (j : ℕ) → Matrix (Fin (j * b + b)) (Fin b) ℝ)
+    (S : (j : ℕ) → Matrix (Fin ((j + 1) * b + b)) (Fin b) ℝ) : Prop :=
   IsStoredRun (fun _ _ _ Q W Q' H R => IsBasisExtension Q W Q' H R)
-    (fun X W => W = A * X) (fun X W => W = Aᴴ * X)
+    (fun X W => W = A * X) (fun X W => W = Aᴴ * X) Ω U V G R S
 
 /-- The stored blocks of a rounded run, the executed history: every extension is a rounded
 extension with parameters $(\eta_0, \mu, \varepsilon)$ (`NLAlib.IsBasisExtensionErr`) of a
@@ -259,11 +263,15 @@ $\|\mathbf{A}\mathbf{x}_c - \mathbf{w}_c\| \le \delta\|\mathbf{x}_c\|$ for the p
 $\mathbf{A}$ and $\|\mathbf{A}^{\mathsf{H}}\mathbf{x}_c - \mathbf{w}_c\| \le
 \delta'\|\mathbf{x}_c\|$ for the products with $\mathbf{A}^{\mathsf{H}}$, $\mathbf{x}_c$ the
 column of the stored block and the norm the Euclidean norm. -/
-def IsRoundedStoredRun {m n : ℕ} (A : Matrix (Fin m) (Fin n) ℝ) (δ δ' η₀ μ ε : ℝ) (b q : ℕ) :
-    RunPred m n b q :=
+def IsRoundedStoredRun {m n : ℕ} (A : Matrix (Fin m) (Fin n) ℝ) (δ δ' η₀ μ ε : ℝ) (b q : ℕ)
+    (Ω : Matrix (Fin n) (Fin b) ℝ) (U : Matrix (Fin m) (Fin (q * b)) ℝ)
+    (V : Matrix (Fin n) (Fin ((q + 1) * b)) ℝ) (G : Matrix (Fin b) (Fin b) ℝ)
+    (R : (j : ℕ) → Matrix (Fin (j * b + b)) (Fin b) ℝ)
+    (S : (j : ℕ) → Matrix (Fin ((j + 1) * b + b)) (Fin b) ℝ) : Prop :=
   IsStoredRun (fun _ _ _ Q W Q' H R => IsBasisExtensionErr η₀ μ ε Q W Q' H R)
     (fun X W => ∀ c, ‖WithLp.toLp 2 (A *ᵥ X.col c - W.col c)‖ ≤ δ * ‖WithLp.toLp 2 (X.col c)‖)
     (fun X W => ∀ c, ‖WithLp.toLp 2 (Aᴴ *ᵥ X.col c - W.col c)‖ ≤ δ' * ‖WithLp.toLp 2 (X.col c)‖)
+    Ω U V G R S
 
 variable [Inhabited K]
 

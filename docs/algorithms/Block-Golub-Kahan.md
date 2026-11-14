@@ -75,7 +75,10 @@ rounded contract is `IsBasisExtensionErr eta0 mu eps Q W Q' H R`, conditional on
 the loss of orthogonality of Q. Orthogonality is measured by `gramDefect Q`, the Gram matrix
 minus the indicator of the nonzero columns, so that deflated columns are allowed.
 
-The matrix is reached only through the two products. A concrete orthogonalization scheme is
+The matrix is reached only through the two products. The operator pair is the declared
+oracle of the certificate: the contracts of `matvec` and `rmatvec` name the matrix of the
+input, which is semantic data and occupies no supplied buffer, and their work and workspace
+are parameters of the model. A concrete orthogonalization scheme is
 an implementation of `extend` certified against one of the two contracts and substituted by
 [linking](../../NLAlib/Krylov/GolubKahan/Band/Linked.lean).
 
@@ -115,17 +118,34 @@ basis extensions        2*q + 1      (one at [n, 0, b]; for each j < q one at [m
                                       and one at [n, (j+1)*b, b])
 ```
 
-The full budget also counts the structural instructions. If every primitive workspace is at
-most w, the scratch is bounded by
+The full budget also counts the structural instructions (index arithmetic, addressing,
+allocation and control); it is the instruction manifest `staticCost` of the program, not a
+closed form. The scratch is stated in closed form
+(`Krylov.GolubKahan.Band.solvePeak`, proved by
+`Krylov.GolubKahan.Band.stmtPeak_solve_le_solvePeak`):
 
 ```text
-scratch  ≤ (m + (n - m))*b + w + query reserve
-resident ≤ output lengths + scratch bound
+scratch  = (m + (n - m))*b + w + query reserve
+resident = output lengths + scratch
 ```
 
 with truncated subtraction, so the scratch block has `max(m, n)*b` words; it holds the drawn
-block and then the products, and is released at the end. The run consumes exactly `n*b` words
-of the tape.
+block and then the products, and is released at the end. Here w is the largest declared
+workspace among the primitive calls of the run (`Krylov.GolubKahan.Band.primitivePeak`): a
+draw, a product at `[m, n]`, a product at `[n, m]` and the `2*q + 1` extensions at their
+dimensions. No common bound on the primitive workspaces is assumed. The run consumes exactly
+`n*b` words of the tape.
+
+The operation model `Krylov.GolubKahan.Band.Certification.model work workspace` has these
+properties, as reported by `scripts/OpsPrograms.lean`.
+
+| Property | Value | Reason |
+|---|---|---|
+| confined | yes | every contract is in operand form: a call reads its operand blocks and the tape window and writes its output blocks only (`Certification.confined_model`) |
+| uniform | no | the operator pair is a declared oracle: the contracts of the two products depend on the matrix of the input |
+| charged | no | `work` is a parameter of the model and may be zero |
+| budget | manifest | the full static count of the program; its primitive part is the closed count above (`Certification.original_staticBudget`) |
+| scratch | closed | `solvePeak` plus the query reserve |
 
 The five output blocks decode to an exact run for A from the drawn start block Ω. For such a
 run the [factored identity](../../NLAlib/LowRank/BlockKrylov/Factored.lean) gives

@@ -10,6 +10,7 @@ public import NLAlib.Krylov.GolubKahan.Band.Run
 public import NLAlib.Ops.AllocationFree
 public import NLAlib.Ops.Catalog.Functional
 public import NLAlib.Ops.Certification
+public import NLAlib.Ops.Profiles.Confined
 public import NLAlib.Ops.Workspace
 
 /-!
@@ -30,15 +31,23 @@ hand. Here it is the block function `NLAlib.Krylov.GolubKahan.Band.Certification
 which returns an extension chosen by `NLAlib.exists_isBasisExtension`; it is a witness of
 consistency and appears in no contract. Every dimension $(m, n, b, q)$ is admitted.
 
-**Resources.** The budget is the static count of the fixed tree. Its primitive part is
+**Declared oracle.** The pair of products `NLAlib.Ops.OperatorPairOp` is the declared oracle of
+the certificate: its contracts name the matrix of the input. The model is therefore confined
+(`NLAlib.Krylov.GolubKahan.Band.Certification.confined_model`: every contract is in operand form)
+and not uniform. It is not charged: the work of the primitives is a parameter.
+
+**Resources.** The budget is the static count of the fixed tree, a manifest. Its primitive part is
 `NLAlib.Krylov.GolubKahan.Band.solveCount`: $nb$ draws, $qb$ products with $\mathbf{A}$, $qb$
-products with $\mathbf{A}^{\mathsf{H}}$ and $2q + 1$ basis extensions. The scratch is the block of
-$\max(m, n)\,b$ words of the products plus the workspace of one primitive.
+products with $\mathbf{A}^{\mathsf{H}}$ and $2q + 1$ basis extensions. The scratch is closed:
+`NLAlib.Krylov.GolubKahan.Band.solvePeak`, the block of $\max(m, n)\,b$ words of the products
+plus the largest workspace of a primitive call of the run, plus the reservation of the queries.
 Design: `docs/design/LowRank-BlockLanczos.md` §4.1.
 
 ## Main definitions
 
 * `NLAlib.Krylov.GolubKahan.Band.solveCount`: the primitive counts of a run.
+* `NLAlib.Krylov.GolubKahan.Band.primitivePeak`, `NLAlib.Krylov.GolubKahan.Band.solvePeak`: the
+  scratch of a run in closed form.
 * `NLAlib.Krylov.GolubKahan.Band.Certification.Operation`,
   `NLAlib.Krylov.GolubKahan.Band.Certification.contract`,
   `NLAlib.Krylov.GolubKahan.Band.Certification.resources`,
@@ -62,13 +71,17 @@ Design: `docs/design/LowRank-BlockLanczos.md` §4.1.
 * `NLAlib.Krylov.GolubKahan.Band.stmtCost_applyColumns`,
   `NLAlib.Krylov.GolubKahan.Band.stmtCost_step`,
   `NLAlib.Krylov.GolubKahan.Band.stmtCost_solve`,
-  `NLAlib.Krylov.GolubKahan.Band.stmtPeak_solve_le`: the static count and scratch of the program.
+  `NLAlib.Krylov.GolubKahan.Band.stmtPeak_solve_le`,
+  `NLAlib.Krylov.GolubKahan.Band.stmtPeak_solve_le_solvePeak`: the static count and scratch of the
+  program.
 * `NLAlib.Krylov.GolubKahan.Band.Certification.coefTop_stackCoef`,
   `NLAlib.Krylov.GolubKahan.Band.Certification.coefBot_stackCoef`,
   `NLAlib.Krylov.GolubKahan.Band.Certification.decodeMatrix_packFinMatrix`: the packed round trip.
 * `NLAlib.Krylov.GolubKahan.Band.Certification.isBasisExtension_exactExtension`,
   `NLAlib.Krylov.GolubKahan.Band.Certification.meets_exactExtendFn`: the chosen extension realizes
   the exact contract.
+* `NLAlib.Krylov.GolubKahan.Band.Certification.confined_contract`,
+  `NLAlib.Krylov.GolubKahan.Band.Certification.confined_model`: the model is confined.
 * `NLAlib.Krylov.GolubKahan.Band.Certification.laws`: the contracts of an interpretation of the
   model.
 * `NLAlib.Krylov.GolubKahan.Band.Certification.initial_len`,
@@ -76,7 +89,9 @@ Design: `docs/design/LowRank-BlockLanczos.md` §4.1.
   `NLAlib.Krylov.GolubKahan.Band.Certification.initialBytes_problem`: the initial memory.
 * `NLAlib.Krylov.GolubKahan.Band.Certification.wellTyped_program`,
   `NLAlib.Krylov.GolubKahan.Band.Certification.original_staticBudget`,
-  `NLAlib.Krylov.GolubKahan.Band.Certification.staticPeak_program_le`: formats, counts, scratch.
+  `NLAlib.Krylov.GolubKahan.Band.Certification.staticPeak_program_le`,
+  `NLAlib.Krylov.GolubKahan.Band.Certification.staticPeak_program_le_solvePeak`: formats, counts,
+  scratch.
 * `NLAlib.Krylov.GolubKahan.Band.Certification.Good.storedProduct_eq_rsvd`: the stored factors.
 * `NLAlib.Krylov.GolubKahan.Band.Certification.wp_program`,
   `NLAlib.Krylov.GolubKahan.Band.Certification.certifies`: total execution and certification.
@@ -155,6 +170,56 @@ theorem stmtPeak_solve_le (W : Op → List ℕ → ℕ) (w : ℕ) (hW : ∀ o ds
     (s := (step (Op := Op) (Tst := Tst)).body) (idx := idx) (by rfl)
   have hz (t : Finset ℕ) : (t.sup fun _ => (0 : ℕ)) = 0 := Finset.sup_bot t
   simp [solve, stmtPeak, Stmt.alloc, hSample, hStep, hz]
+
+/-- The largest workspace of a primitive call of a run at the dimensions $(m, n, b, q)$, for the
+workspace `W` of every call: the maximum over a draw, a product with $\mathbf{A}$ at `[m, n]`, a
+product with $\mathbf{A}^{\mathsf{H}}$ at `[n, m]` and the $2q + 1$ basis extensions of
+`NLAlib.Krylov.GolubKahan.Band.solveCount`. -/
+def primitivePeak (W : Op → List ℕ → ℕ) (stream m n b q : ℕ) : ℕ :=
+  max (max (W (Has.inj (SampleOp.draw stream)) []) (W (Has.inj OperatorPairOp.matvec) [m, n]))
+    (max (max (W (Has.inj OperatorPairOp.rmatvec) [n, m]) (W (Has.inj OrthOp.extend) [n, 0, b]))
+      ((Finset.range q).sup fun j => max (W (Has.inj OrthOp.extend) [m, j * b, b])
+        (W (Has.inj OrthOp.extend) [n, (j + 1) * b, b])))
+
+/-- The scratch of a run at the dimensions $(m, n, b, q)$ in closed form: the block of
+$(m + (n - m))\,b = \max(m, n)\,b$ cells that holds the drawn block and the products, plus the
+largest workspace `NLAlib.Krylov.GolubKahan.Band.primitivePeak` of a primitive call. -/
+def solvePeak (W : Op → List ℕ → ℕ) (stream m n b q : ℕ) : ℕ :=
+  (m + (n - m)) * b + primitivePeak W stream m n b q
+
+/-- The static workspace of the program at the dimensions $(m, n, b, q)$ is at most
+`NLAlib.Krylov.GolubKahan.Band.solvePeak`, for every workspace `W` of the primitives and all
+offsets `u`, `v`, `g`, `r`, `s` of the five output operands. No common bound of `W` is assumed:
+only the calls of the run contribute. -/
+theorem stmtPeak_solve_le_solvePeak (W : Op → List ℕ → ℕ) (stream m n b q u v g r s : ℕ) :
+    stmtPeak W (solve (Op := Op) (Tst := Tst) stream).body [m, n, b, q, u, v, g, r, s] ≤
+      solvePeak W stream m n b q := by
+  have hsmul (k : ℕ) (o : Op) (ds : List ℕ) (h : W o ds ≤ primitivePeak W stream m n b q) :
+      (k • (Count.one o ds : Count Op Tst)).BoundsWorkspace W
+        (primitivePeak W stream m n b q) := by
+    have hk : k • (Count.one o ds : Count Op Tst) = ∑ _i ∈ Finset.range k, Count.one o ds := by
+      simp
+    have hsum : (∑ _i ∈ Finset.range k, (Count.one o ds : Count Op Tst)).CallsSatisfy
+        fun o ds => W o ds ≤ primitivePeak W stream m n b q :=
+      (Count.callsSatisfy_sum _ _ _).mpr fun _ _ => (Count.callsSatisfy_one _ _ _).mpr h
+    exact hsum.mono hk.le
+  have hext (j : ℕ) (hj : j ∈ Finset.range q) :
+      max (W (Has.inj OrthOp.extend) [m, j * b, b]) (W (Has.inj OrthOp.extend) [n, (j + 1) * b, b])
+        ≤ primitivePeak W stream m n b q :=
+    (Finset.le_sup (f := fun j => max (W (Has.inj OrthOp.extend) [m, j * b, b])
+      (W (Has.inj OrthOp.extend) [n, (j + 1) * b, b])) hj).trans
+      ((le_max_right _ _).trans (le_max_right _ _))
+  refine (stmtPeak_le_zero_add_on_support W (primitivePeak W stream m n b q) _ _ ?_).trans
+    (Nat.add_le_add_right ?_ _)
+  · rw [stmtCost_solve, solveCount]
+    simp only [Count.BoundsWorkspace, Count.callsSatisfy_add, Count.callsSatisfy_sum,
+      Count.callsSatisfy_one]
+    exact ⟨⟨⟨⟨hsmul _ _ _ ((le_max_left _ _).trans (le_max_left _ _)),
+      hsmul _ _ _ ((le_max_right _ _).trans (le_max_left _ _))⟩,
+      hsmul _ _ _ ((le_max_left _ _).trans ((le_max_left _ _).trans (le_max_right _ _)))⟩,
+      (le_max_right _ _).trans ((le_max_left _ _).trans (le_max_right _ _))⟩,
+      fun j hj => ⟨(le_max_left _ _).trans (hext j hj), (le_max_right _ _).trans (hext j hj)⟩⟩
+  · exact stmtPeak_solve_le (fun _ _ => 0) 0 (fun _ _ => le_rfl) stream m n b q u v g r s
 
 end Count
 
@@ -339,7 +404,10 @@ theorem initialBytes_problem (d : Fin 4 → ℕ) (x : problem.Input d) :
 `NLAlib.Krylov.GolubKahan.Band.Certification.contract` at the datum of the input, exact
 comparisons, and explicit primitive work and workspace. The joint realization interprets the
 basis extension as the chosen exact extension; the contract of that operation stays the relation,
-so the interpretations of the model are all exact schemes. -/
+so the interpretations of the model are all exact schemes. The pair of products
+`NLAlib.Ops.OperatorPairOp` is the declared oracle of the model: its contracts name the matrix of
+the input, so the model is confined
+(`NLAlib.Krylov.GolubKahan.Band.Certification.confined_model`) and not uniform. -/
 noncomputable def model (work workspace : Operation → List ℕ → ℕ) :
     AccessModel Operation CmpTst problem where
   word := 0
@@ -360,6 +428,21 @@ noncomputable def model (work workspace : Operation → List ℕ → ℕ) :
       · exact (hF (.inr (.inl .rmatvec))).meets_matvec
     · cases o with
       | draw stream => exact hF (.inr (.inr (.draw stream)))
+
+/-- Every contract of the driver is confined: each is in operand form
+(`NLAlib.Ops.BlockRel.spec`), for every matrix $\mathbf{A}$. The basis extension, the two
+products and the draws read their operand blocks and the tape window and write their output
+blocks only. -/
+theorem confined_contract {m n : ℕ} (A : Matrix (Fin m) (Fin n) ℝ) (o : Operation) :
+    (contract A o).Confined := by
+  rcases o with ⟨⟩ | ⟨⟨⟩ | ⟨⟩⟩ | ⟨stream⟩ <;> exact BlockRel.confined_spec _ _
+
+/-- **The model of the abstract driver is confined**: every primitive and every comparison reads
+and writes its operand blocks only. The model is not uniform: the contracts of the two products
+name the matrix of the input, the declared oracle of the certificate. -/
+instance confined_model (work workspace : Operation → List ℕ → ℕ) :
+    (model work workspace).Confined :=
+  ⟨fun _ x o => confined_contract x.val.1 o, fun _ _ c => Functional.confined_query id c⟩
 
 /-- Every interpretation of the model has the exact pair of products with the supplied matrix,
 an exact basis extension, and draws that return the words of the tape. -/
@@ -458,18 +541,35 @@ theorem staticPeak_program_le (R : ResourceModel Operation CmpTst) (w : ℕ)
   exact Nat.add_le_add_right
     (stmtPeak_solve_le R.workspace w hW stream (d 0) (d 1) (d 2) (d 3) 0 0 0 0 0) _
 
-/-- The specification of the exact certificate: the full static count as budget, the static peak
-as scratch, work and span of the budget, resident memory of the five output blocks plus the
-scratch, and the postcondition
-`NLAlib.Krylov.GolubKahan.Band.Certification.Good` at the supplied matrix. -/
+/-- The scratch of the fixed program at the sizes $(m, n, b, q)$ is at most the closed form
+`NLAlib.Krylov.GolubKahan.Band.solvePeak` at the workspace of the resource model `R`, plus the
+reservation of the queries; no common bound of the workspace of the primitives is assumed. -/
+theorem staticPeak_program_le_solvePeak (R : ResourceModel Operation CmpTst) (stream : ℕ)
+    (d : Fin 4 → ℕ) :
+    staticPeak R (program stream) d ≤
+      solvePeak R.workspace stream (d 0) (d 1) (d 2) (d 3) +
+        R.queryReserve (staticBudget stream d) := by
+  rw [staticPeak_eq]
+  change stmtPeak R.workspace (solve stream).body [d 0, d 1, d 2, d 3, 0, 0, 0, 0, 0] + _ ≤ _
+  exact Nat.add_le_add_right
+    (stmtPeak_solve_le_solvePeak R.workspace stream (d 0) (d 1) (d 2) (d 3) 0 0 0 0 0) _
+
+/-- The specification of the exact certificate: the full static count as budget; as scratch the
+closed form `NLAlib.Krylov.GolubKahan.Band.solvePeak` (the block of $\max(m, n)\,b$ words of the
+products plus the largest workspace of a primitive call of the run) plus the reservation of the
+queries; work and span of the budget; resident memory of the five output blocks plus the scratch;
+and the postcondition `NLAlib.Krylov.GolubKahan.Band.Certification.Good` at the supplied
+matrix. -/
 noncomputable def specification (work workspace : Operation → List ℕ → ℕ) (stream : ℕ) :
     Specification Operation CmpTst problem where
   budget := staticBudget stream
-  scratch d := staticPeak (resources work workspace) (program stream) d
+  scratch d := solvePeak (resources work workspace).workspace stream (d 0) (d 1) (d 2) (d 3) +
+    (resources work workspace).queryReserve (staticBudget stream d)
   work d := (resources work workspace).work (staticBudget stream d)
   span d := (resources work workspace).span (staticBudget stream d)
   memory d := (outLens (d 0) (d 1) (d 2) (d 3)).sum +
-    staticPeak (resources work workspace) (program stream) d
+    (solvePeak (resources work workspace).workspace stream (d 0) (d 1) (d 2) (d 3) +
+      (resources work workspace).queryReserve (staticBudget stream d))
   good d x τ _ μ := Good stream d x.val.1 τ μ
 
 /-! ### The certificate -/
@@ -503,7 +603,8 @@ theorem wp_program {Op Tst : Type} [Has OrthOp Op] [Has OperatorPairOp Op] [Has 
 /-- The fixed program is certified in total mode. For all sizes $(m, n, b, q)$, every real
 $m \times n$ matrix $\mathbf{A}$, every interpretation whose products are the exact products with
 $\mathbf{A}$ and $\mathbf{A}^{\mathsf{H}}$ and whose basis extension is exact, and every tape, the
-counted run succeeds within the static budget, scratch, work, span and memory; it consumes $nb$
+counted run succeeds within the static budget, the closed scratch, work, span and memory; it
+consumes $nb$
 words of the tape, releases its scratch and leaves five output blocks that decode to an exact
 run for $\mathbf{A}$ from the start block decoded from the tape. There is no rank, nonbreakdown
 or success hypothesis. -/
@@ -511,7 +612,8 @@ theorem certifies (work workspace : Operation → List ℕ → ℕ) (stream : �
     (program stream).Certifies (model work workspace) (specification work workspace stream) := by
   refine (Algorithm.ofWp (M := model work workspace)
     (S := specification work workspace stream) (program stream)
-    (wellTyped_program work workspace stream) ?_ (fun _ _ => le_rfl) (fun _ _ => le_rfl)
+    (wellTyped_program work workspace stream) ?_ (fun _ _ => le_rfl)
+    (fun d _ => staticPeak_program_le_solvePeak _ stream d)
     (fun _ _ => le_rfl) (fun _ _ => le_rfl) ?_).correct
   · intro d _ x I hI τ
     obtain ⟨hA, hO, hSample⟩ := laws hI
@@ -521,7 +623,10 @@ theorem certifies (work workspace : Operation → List ℕ → ℕ) (stream : �
     exact le_rfl
 
 /-- The canonical exact certificate of the abstract driver: the fixed program with its total
-certification against the model and the specification. -/
+certification against the model and the specification. The model is confined and, because the
+pair of products with the supplied matrix is a declared oracle, not uniform; the budget is the
+static count of the program (a manifest) and the scratch is the closed form
+`NLAlib.Krylov.GolubKahan.Band.solvePeak` plus the reservation of the queries. -/
 noncomputable def algorithm (work workspace : Operation → List ℕ → ℕ) (stream : ℕ) :
     Algorithm (model work workspace) (specification work workspace stream) where
   program := program stream

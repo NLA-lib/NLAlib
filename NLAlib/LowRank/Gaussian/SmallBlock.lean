@@ -53,7 +53,7 @@ space of $\mathbf{A}$, and the error vanishes almost surely.
   `NLAlib.measureReal_frobNorm_sub_rbki_sq_gt_le_of_hasLaw_gaussianVector`,
   `NLAlib.measureReal_specNorm_sub_truncatedSVD_rbki_sq_gt_le_of_hasLaw_gaussianVector`: the
   gapped tail bounds for one start vector.
-* `NLAlib.setIntegral_specNorm_sub_rbki_sq_le_of_hasLaw_gaussianVector`: the expectation on the
+* `NLAlib.integral_setOf_specNorm_sub_rbki_sq_le_of_hasLaw_gaussianVector`: the expectation on the
   head event.
 *
 `NLAlib.measureReal_specNorm_sub_truncatedSVD_rbki_sq_gt_one_add_sq_mul_le_of_hasLaw_gaussianVector`:
@@ -834,7 +834,7 @@ the head and tail coordinates is not used.
 form with unspecified constants; here the expectation restricted to the event $E$, with explicit
 constants.
 Result: rbki-single-vector-gapped-error -/
-theorem setIntegral_specNorm_sub_rbki_sq_le_of_hasLaw_gaussianVector (A : Matrix m n ℝ)
+theorem integral_setOf_specNorm_sub_rbki_sq_le_of_hasLaw_gaussianVector (A : Matrix m n ℝ)
     (hx : HasLaw x (gaussianVector n) μ) {h r t q : ℕ} {Z : Matrix n (Fin t) ℝ}
     (hZ : HasOrthonormalCols Z)
     (hAZ : Aᴴ * A * Z = Z * Matrix.diagonal fun i : Fin t => singularValues A i ^ 2)

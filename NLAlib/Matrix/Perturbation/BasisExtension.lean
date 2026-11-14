@@ -55,7 +55,7 @@ Design: `docs/design/LowRank-BlockLanczos.md` §3.1a.
 * `NLAlib.IsBasisExtensionErr.frobNorm_gramDefect_fromCols_sq_le`,
   `NLAlib.frobNorm_gramDefect_le_of_blocks`: the loss of orthogonality block by block.
 * `NLAlib.blockPrefix_succ_submatrix`, `NLAlib.blockRowPrefix_succ_submatrix`,
-  `NLAlib.blockPrefix_succ_mul_blockRowPrefix_succ`, `NLAlib.range_mulVecLin_blockPrefix_succ`,
+  `NLAlib.blockPrefix_succ_mul_blockRowPrefix_succ`, `NLAlib.range_blockPrefix_succ`,
   `NLAlib.gramDefect_blockPrefix_succ_eq_zero_iff`: the prefix of $j + 1$ blocks is the prefix
   of $j$ blocks followed by block $j$, up to the identification `NLAlib.blockSuccEquiv` of the
   indices.
@@ -735,7 +735,7 @@ theorem blockPrefix_succ_mul_blockRowPrefix_succ {M : ℕ} (b : ℕ) (V : Matrix
   exact h.symm
 
 /-- Relabelling the columns of $\mathbf{A}$ by a bijection does not change its column space. -/
-theorem range_mulVecLin_submatrix_equiv [Fintype ι] [Fintype κ] (A : Matrix m ι 𝕜)
+theorem range_submatrix_equiv [Fintype ι] [Fintype κ] (A : Matrix m ι 𝕜)
     (e : κ ≃ ι) :
     LinearMap.range (A.submatrix id e).mulVecLin = LinearMap.range A.mulVecLin := by
   rw [Matrix.range_mulVecLin, Matrix.range_mulVecLin]
@@ -744,10 +744,10 @@ theorem range_mulVecLin_submatrix_equiv [Fintype ι] [Fintype κ] (A : Matrix m 
 /-- The prefix of $j + 1$ blocks and the prefix of $j$ blocks followed by block $j$ have the same
 column space: $\operatorname{range}(\mathbf{V}_{j+1}) =
 \operatorname{range}([\mathbf{V}_j, \mathbf{V}^{(j)}])$. -/
-theorem range_mulVecLin_blockPrefix_succ (b : ℕ) (V : Matrix m (Fin N) 𝕜) (j : ℕ) :
+theorem range_blockPrefix_succ (b : ℕ) (V : Matrix m (Fin N) 𝕜) (j : ℕ) :
     LinearMap.range (blockPrefix b V (j + 1)).mulVecLin =
       LinearMap.range (Matrix.fromCols (blockPrefix b V j) (blockCols b V j)).mulVecLin := by
-  rw [← blockPrefix_succ_submatrix, range_mulVecLin_submatrix_equiv]
+  rw [← blockPrefix_succ_submatrix, range_submatrix_equiv]
 
 /-- The Gram defect on the support of the prefix of $j$ blocks followed by block $j$ is that of
 the prefix of $j + 1$ blocks, with rows and columns identified by `NLAlib.blockSuccEquiv`. -/

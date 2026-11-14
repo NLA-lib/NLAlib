@@ -27,8 +27,8 @@ the probabilistic part of the random shift regularization of shifted QR
   $\Lambda$, except with probability $11\lvert\Lambda\rvert(\eta / R)^2$
   (`NLAlib.measureReal_exists_norm_add_sub_lt_le_of_separated`). For a point
   $\lambda$, only net points in $\mathbb{D}(\lambda, R + \eta)$ can come within $\eta$, and a
-  packing count bounds them by $11$; the paper's "at most three" holds for its triangular lattice
-  only, and $7$ (attained) needs Pirl's packing theorem.
+  packing count bounds them by $11$; the sharp count for a separated set is $7$ (attained, Pirl's
+  packing theorem), not the paper's "at most three".
 
 ## Main definitions
 

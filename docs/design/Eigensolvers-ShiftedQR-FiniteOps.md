@@ -14,7 +14,7 @@ and no target, check, allowlist, CI file or build pin changes.
 
 * **Gap re-check (§2).** All of G8–G17 were re-derived independently from the LaTeX. G8, G9, G10,
   G12, G13 and G16 are confirmed and change statements; G16 is worse than recorded (Lemma 3.6 is
-  false without $m^2\nu\boldsymbol{u} \le 1/4$). New: Definition 3.4's bound relative to
+  false under the paper's $\nu\boldsymbol{u} \le 1/4$; $m\nu\boldsymbol{u} \le 1/4$ suffices). New: Definition 3.4's bound relative to
   $\|\mathbf{H} - s\|$ cannot hold in floating point; Lemma 3.7's bound on $\mathbf{R}$ needs
   $\|\mathbf{E}\|_{\mathsf F}$; the computed $\mathbf{R}_{nn}$ is complex (a phase is needed before
   Sun's theorem applies); Lemma 6.1 is used outside its hypothesis (G18); `Exc`'s radius bound
@@ -56,14 +56,14 @@ only to check closed forms. "Statement" = a hypothesis or conclusion we formaliz
 | G13 | L5.3 Exc | (i),(ii),(iv) confirmed; (iii) partial | rounding $\le 0.005\varepsilon\tilde R$; cover $\mathbb{D}(r,(1+\varepsilon)\tilde R)$, so $\lvert r\rvert + (1+\varepsilon)\tilde R \le C\|\mathbf{H}\|$; points of a $0.99\varepsilon\tilde R$-separated net near an eigenvalue: $\le 7$ (attained; Pirl 1969, known), $3$ only for the triangular lattice; we use the packing bound $11$ (elementary); lower bound $1.998^{1/k}\theta\alpha B^{1/k}\psi$ | statement |
 | G13v (new) | L5.3 | proven | $\tilde R \le 1.001\cdot 2^{1/k}\theta\alpha B^{1/k}\psi$ ($2^{1/k}$ omitted); constant $13$ survives; $\lvert S\rvert \le 9/\varepsilon^2$ needs $\varepsilon \le 1/2$ (true: $B \ge 2 \Rightarrow k \ge 32 \Rightarrow \varepsilon \le 0.47$) | statement |
 | G13vi (new) | L5.3 | proven | rounding of the translate must be $\le \eta/2$ for the probability argument; forward stability at $\eta/2$ | precision only |
-| G14 | Sh | confirmed, harmless | line 4 outputs iqr; $\xi = 0.999(1-\gamma)$ valid; decrease factors $1.0016$, $1.0011 \le 1.002$; Requires lacks $\|\mathbf{H}\| \le \Sigma$; no accepted $s$: return a fail flag | statement (Requires) |
+| G14 | Sh | confirmed, harmless | line 4 outputs iqr; $\xi = 0.999(1-\gamma)$ valid; decrease factors $1.0016$, $1.0011 \le 1.002$ for $k \ge 2$ ($k = 1$ gives $1.0021$); Requires lacks $\|\mathbf{H}\| \le \Sigma$; no accepted $s$: return a fail flag | statement (Requires) |
 | G15 | L6.2 | proof gap only | the Cholesky/normal-block argument (already machine-checked in the exact development) | none |
-| G16 | L3.6 appendix | confirmed, **worse** (proven) | the norms grow and $\Delta_\ell$ accumulates: the first assertion is false for large $m$ ($m = 10$, $x = 1/4$: $8.3 > 3.5$); correct form $(1+C)\|\mathbf{H}\|((1+x)^m - 1)$; both stated bounds hold under $m^2\nu\boldsymbol{u} \le 1/4$ (worst ratio 0.89) | statement |
+| G16 | L3.6 appendix | confirmed, **worse** (proven) | the norms grow and $\Delta_\ell$ accumulates: false under the paper's $x = \nu\boldsymbol{u} \le 1/4$ (scalar example $\mathbf{H} = 1$, $s_\ell = -C$: $m = 10$, $C = 1$: $16.6 > 7.0$ and $2.2\cdot10^8 > 1.05\cdot10^6$); correct first part $(1+C)\|\mathbf{H}\|((1+x)^m - 1)$; both stated bounds hold under $m x \le 1/4$ (review: $\le 0.231\cdot4(2\Lambda)^m x$, checked to $m = 200$). The first draft's $m^2 x \le 1/4$ was sufficient, not minimal | statement |
 | G17 | L2.5 | confirmed | Part I's $\theta \ge 1$ form; `eqn:jstag-alt` inequality reversed ($\tau \ge (1-\gamma)\psi$) | statement (typo) |
-| G18 (new) | L6.1 | proven | the working accuracy $\omega \approx \Gamma/(32n^3B^2)$ violates $\|\mathbf{E}\| \le \mathrm{gap}/(8n^2\kappa^3)$ for $B > 32$; the proof needs only $\|\mathbf{E}\| \le \mathrm{gap}/(8n^2\kappa^2)$. We instead reuse the exact development's $\|\mathbf{E}\| \le g/(16NB) \Rightarrow \kappa \le 2B$ plus Bauer–Fike for the gap | statement (lemma), none (Thm 6.3) |
+| G18 (new) | L6.1 | proven | the working accuracy $\omega \approx \Gamma/(32n^3B^2)$ violates $\|\mathbf{E}\| \le \mathrm{gap}/(8n^2\kappa^3)$ for $B > 4n$; the proof needs only $\|\mathbf{E}\| \le \mathrm{gap}/(8n^2\kappa^2)$. We instead reuse the exact development's $\|\mathbf{E}\| \le g/(16NB) \Rightarrow \kappa \le 2B$ plus Bauer–Fike for the gap | statement (lemma), none (Thm 6.3) |
 | D3.4 (new) | Def 3.4 / L3.5 | proven | adding back the shift rounds the diagonal by $\boldsymbol{u}\lvert s\rvert$, so $\|\widehat{\mathbf{H}}' - \widehat{\mathbf{Q}}^{\mathsf H}\mathbf{H}\widehat{\mathbf{Q}}\| \le \nu\boldsymbol{u}\|\mathbf{H}-s\|$ is false ($\mathbf{H} = s + \delta\mathbf{N}$, $\delta \to 0$). Base $\|\mathbf{H}\| + \lvert s\rvert$ (all uses bound by $(1+C)\|\mathbf{H}\|$); L3.5's $\boldsymbol{u} \le \log 2/(8n^{5/2})$ is not implied by $\nu\boldsymbol{u} \le 1/4$; entry count $8\sqrt{2n}$ (proof). Our round-by-round analysis gives $O(n)$, not $32n^{3/2}$ | statement |
-| L3.7 (new) | Sun 1991 | known with caveats | $\|\Delta\mathbf{R}\| \le 3\|\mathbf{M}^{-1}\|\|\mathbf{R}\|\|\mathbf{E}\|_2$ is false for large $n$ (triangular truncation, $\log n$); use $\|\mathbf{E}\|_{\mathsf F}$. Sun 1991 is real; complex in Sun 1995. Constants to be verified against the source at proof time: we state $8$ at $\eta \le 1/4$ (conjectured safe, Chang–Paige–Stewart 1997 gives $\approx 1+\sqrt2$ first order) | statement |
-| L2.1 | $k$-th roots | conjectured / under-specified | "any $a$" needs range reduction not in the model. Not needed: $k = 2^m$, $m$ rounded square roots have relative error $\le 3\boldsymbol{u}$ (`Ops.StdModel.abs_sqrtIter_sub_le`); $\psi_k^k$ need not be exact either | removes an assumption |
+| L3.7 (new) | Sun 1991 | confirmed; constants verified | $\|\Delta\mathbf{R}\|_2 \le 3\|\mathbf{M}^{-1}\|\|\mathbf{R}\|\|\mathbf{E}\|_2$ is false for large $n$ (triangular truncation, norm $\sim(\log n)/\pi$); use $\|\mathbf{E}\|_{\mathsf F}$. At $\eta \le 1/4$ the constants are $7.02$ ($\mathbf{Q}$) and $3.64$ ($\mathbf{R}$) by an elementary proof (review §4): $\mathbf{T} = \mathbf{R}'\mathbf{R}^{-1}$, $\mathbf{T}^{\mathsf H}\mathbf{T} = \mathbf{I} + \widehat{\mathbf{H}}$, $\|\mathbf{T} - \mathbf{I}\|_{\mathsf F}^2 = 2n + \mathrm{tr}\,\widehat{\mathbf{H}} - 2\,\mathrm{tr}\,\mathbf{T}$, AM–GM on the diagonal and $\log\det$ by Taylor: $\|\mathbf{T} - \mathbf{I}\|_{\mathsf F} \le \|\widehat{\mathbf{H}}\|_{\mathsf F}/(\sqrt2(1-\epsilon))$; the stated $8$ holds (D7 resolved) | statement |
+| L2.1 | $k$-th roots | conjectured / under-specified | "any $a$" needs range reduction not in the model. Not needed: $k = 2^m$, $m$ rounded square roots have relative error $\le 3\boldsymbol{u}$ (`Ops.StdModel.abs_sqrtIter_sub_le`); $\psi_k^k$ need not be exact either. Caveat: $\varepsilon = (\cdot)^{k/(k-1)}$ of Exc needs a $(k-1)$-th root; it (like the exact development's grid size $M$) is global data supplied as an input word | removes an assumption |
 | L6.4 | while loop | partial | $\lfloor N_{\mathrm{dec}}\rfloor + 1$ iterations; backward constant $1.4(1+C) = 7.7$ for $C = 4.5$ (survives); shift moduli $4.07\|\mathbf{H}''\|$, $C$: $3 \to 4.1$; **Deflate must cut the bottom $k$ subdiagonals with "$\le \omega$"** (else a block can recurse forever) | statement |
 | T6.3 | backward | correct | per tree level errors on disjoint blocks combine by max; $2(n-1)\omega \le \delta/2$; forward ⇒ backward for SmallEig by Schur (known) | none |
 | T6.3 prob | union bound | valid by first failure | before the first failure at most $n(N_{\mathrm{dec}}+1)$ calls; fresh randomness per call suffices; no cross-call independence needed. Running time holds only w.p. $1-\varphi$ unless capped: we cap | statement (cap) |
@@ -73,6 +73,28 @@ only to check closed forms. "Statement" = a hypothesis or conclusion we formaliz
 
 Net effect on precision: $\log(1/\boldsymbol{u})$ changes by $O(k\log(2+2C) + \log\kappa)$; the
 asymptotics $O(k\log(n\Sigma B/(\delta\Gamma\varphi)))$ stand, constants grow.
+
+### 2.1 Corrections after review (Fable, Review-Fable-SQR-FP-Design.md)
+
+Statement changes made on the skeleton:
+
+* **S3** gains `IsUpperHessenberg H` (without it false: $3\times3$ counterexample, review §2 B1)
+  and concludes $(2/\omega)^k$, which the exact dichotomy's constant $\tfrac25$ delivers with
+  $\beta = \omega^2/(20\cdot101\Sigma)$; enough, because $\tau \le \omega/2$ plus the forward error
+  $\omega/2$ reaches the threshold $\le\omega$. $2.08/\omega$ would need the sharp dichotomy constant
+  (an extra M target, not planned).
+* **Q4** constant $66 \to 66 + 2C$: false for $C > 130$ ($\mathbf{H} = -\mathbf{I}_2$, $s = 200$,
+  $m = 1$). Chosen over the hypothesis $d \le \|\mathbf{H}\|$ because it keeps the statement valid
+  for every shift and costs only a constant factor in $\boldsymbol{u}$ (all uses have $C \le 4.5$).
+* **S5** `hRhi`: $1.001\cdot2^{1/k} \to 2.002^{1/k}$, i.e. $\tilde\psi$ within $0.001/k$ as the paper's
+  (eq:boundonpottilde); with a flat $1.001$ the constant $13$ fails for $k \ge 60$. P6 accordingly.
+* **Q3** `hm`: $m^2 x \le 1/4 \to m x \le 1/4$ (sufficient and minimal; G16 row).
+* Labels: R1/R2 H → L (elementary proof); E2 L → H (needs Codex's matching).
+
+Confirmed paper errors (both passes and the review agree): G8 (+ phase G8'), G9, G10, G10b,
+G11, G12, G13 (i)–(iv), G13v, G13vi, G14 ($k \ge 2$), G16 (fix $m x \le 1/4$), G17, G18
+(threshold $B > 4n$), D3.4, L3.7 (Frobenius), L6.4 (bottom $k$, cap $\lfloor N_{\mathrm{dec}}\rfloor + 1$),
+Theorem 1.4 scale. G15 is a proof gap only; L3.10 and L5.1 are correct.
 
 ## 3. Arithmetic and randomness model (decision D1)
 
@@ -135,21 +157,21 @@ $\beta$). The worklist's scalar arithmetic is exact in C4 and rounded in P3.
 
 | id | statement | where | diff | status |
 |---|---|---|---|---|
-| R1–R4 | QR perturbation: `IsQR.frobNorm_sub_le_of_add`, `IsQR.frobNorm_sub_triangular_le_of_add` (Sun, $\|\mathbf{E}\|_{\mathsf F}$), `IsQR.last_le_of_add`, `IsQR.le_last_of_add` ($\mathbf{R}_{nn}$ ratio) | Matrix/Perturbation/QRFactorization | H, H, M, M | skel |
-| Q3 | `IsStableQRChain.exists_specNorm_aeval_sub_le` (L3.6 second part, $m^2x \le 1/4$) | StableStep | L | skel |
-| Q4 | `IsStableQRChain.exists_frobNorm_conj_sub_le` (L3.8 corrected, phase $\mathbf{D}$, 66) | same | L | skel |
+| R1–R4 | QR perturbation: `IsQR.frobNorm_sub_le_of_add`, `IsQR.frobNorm_sub_triangular_le_of_add` ($\|\mathbf{E}\|_{\mathsf F}$; elementary det/AM–GM proof, constants $7.02$, $3.64 \le 8$), `IsQR.last_le_of_add`, `IsQR.le_last_of_add` ($\mathbf{R}_{nn}$ ratio) | Matrix/Perturbation/QRFactorization | L, L, M, M | skel |
+| Q3 | `IsStableQRChain.exists_specNorm_aeval_sub_le` (L3.6 second part, $mx \le 1/4$) | StableStep | L | skel |
+| Q4 | `IsStableQRChain.exists_frobNorm_conj_sub_le` (L3.8 corrected, phase $\mathbf{D}$, constant $66 + 2C$) | same | L | skel |
 | Q5 | `IsStableQRChain.abs_prod_last_sub_le` (L3.9 corrected, 8004, $0.0006$) | same | M | skel |
 | Q6 | `potential_le_or_exists_lt_of_sub_le` (L5.2, bottom $k$) | same | S | skel |
 | S1, S2 | `isOptimalRitzValues_of_lt`, `not_isOptimalRitzValues_of_le` (Optimal) | Matrix/QRIteration/RoundedStrategy | S, S | skel |
-| S3 | `exists_mem_le_norm_inv_pow_of_not_isOptimalRitzValues` (Regularize core, G10 fixed) | same | L | skel |
+| S3 | `exists_mem_le_norm_inv_pow_of_not_isOptimalRitzValues` (Regularize core, G10 fixed; upper Hessenberg; $(2/\omega)^k$ from the exact dichotomy's $\tfrac25$) | same | L | skel |
 | S4 | `isPromisingRitzValue_findRitzWith` (Find, L5.1) | same | M | skel |
-| S5 | `exists_mem_le_norm_inv_pow_of_covers` (Exc core, G13 fixed) | same | L | skel |
+| S5 | `exists_mem_le_norm_inv_pow_of_covers` (Exc core, G13 fixed; $\tilde R \le 2.002^{1/k}\theta\alpha B^{1/k}\psi$) | same | L | skel |
 | S6 | `exists_decoupled_of_contract` (L6.4 abstract while loop) | same | M | skel |
-| E2 | `exists_pseudoConditionNumber_le_and_le_norm_sub` (κ and gap after perturbation, G18) | EigenvalueBackward | L | skel |
+| E2 | `exists_pseudoConditionNumber_le_and_le_norm_sub` (κ and gap after perturbation, G18); H as outlined: Bauer–Fike alone does not give the gap, it needs the eigenvalue matching that Codex's `exists_pseudoConditionNumber_add_le` proves but does not export (S/M once exported, §7.4 item 5) | EigenvalueBackward | H | skel |
 | K1 | `Ops.StdModel.abs_sqrtIter_sub_le` ($k$-th root, $3\boldsymbol{u}$) | Matrix/FinitePrecision/RootsRounded | S | skel |
 | P4 | Optimal program: rounded $\mathbf{e}_n^{\mathsf T}p(\mathbf{H})$ recurrence within $0.0009(\theta\psi)^k$ under $\boldsymbol{u}_{\mathrm{Optimal}}$ | Eigensolvers/ShiftedQR/RoundedRitz (new) | M | plan |
 | P5 | comptau program: $\mathrm{fl}(\prod\lvert\widehat{\mathbf{R}}_{nn}\rvert)$ within $0.001$ | RoundedRitz | M | plan |
-| P6 | rounded potential: $\tilde\psi_k$ within $0.001\psi_k$ (moduli, product, `sqrtIter`) | RoundedRitz | S | plan |
+| P6 | rounded potential: $\tilde\psi_k$ within $0.001\psi_k/k$, the paper's (eq:boundonpottilde) (moduli, product, `sqrtIter`) | RoundedRitz | S | plan |
 | P7 | Find program meets S4's hypothesis | RoundedFind (new) | M | plan |
 | P8 | Exc program: net of $\mathbb{D}(r,(1+\varepsilon)\tilde R)$, translate, rounding $\le \min(0.005\varepsilon\tilde R, \eta/2)$ | RoundedExc (new) | L | plan |
 | P9 | Sh iteration (one call of Find, comptau, Exc, trials): decoupled at the bottom or $\psi_k$ contracted by $1.002(1-\gamma)$ on the good event | RoundedIteration (new) | L | plan |
@@ -185,12 +207,12 @@ $\beta$). The worklist's scalar arithmetic is exact in C4 and rounded in P3.
 | layer | skel | plan | S | M | L | H |
 |---|---|---|---|---|---|---|
 | L1 | 18 | 3 | 9 | 8 | 2 | 2 |
-| L2 | 16 | 9 | 5 | 9 | 9 | 2 |
+| L2 | 16 | 9 | 5 | 9 | 10 | 1 |
 | L3 | 5 | 4 | 2 | 6 | 1 | 0 |
 | L4 | 0 | 5 | 0 | 2 | 2 | 1 |
-| **all** | **39** | **21** | 16 | 25 | 14 | 5 |
+| **all** | **39** | **21** | 16 | 25 | 15 | 4 |
 
-Skeleton alone: S 14, M 16, L 6, H 3 (`~/nlalib-harness/pilot/sqr-fp-targets.json`). Sixty
+Skeleton alone: S 14, M 16, L 7, H 2 (`~/nlalib-harness/pilot/sqr-fp-targets.json`). Sixty
 statements in all, matching the stage-1 estimate (S 12, M 25, L 16, H 6).
 
 Waves: 0 = B1–B6, G1–G5, K1, D1–D2, Q1 (library, no dependencies); 1 = Q2, E1, R3–R4, C1–C2,
@@ -303,6 +325,8 @@ floating-point analysis in the paper and is not used.
 2. Expose the triangular factor's last diagonal word from the sweep (or accept a wrapper P1).
 3. Rotation loops restricted to the Hessenberg profile, or a zeroing pass (output Hessenberg in
    floating point).
+5. (review) Export the eigenvalue matching $\lvert d'_i - d_i\rvert < g/8$ proved inside
+   `exists_pseudoConditionNumber_add_le` (E2 becomes S/M), and the bottom-$k$ "$\le \omega$" scan.
 4. Bottom-$k$ deflation threshold "$\le \omega$" and a fail word in the worklist (P3), or a new
    worklist round in our files reusing `writeAndSplit`.
 
@@ -312,7 +336,7 @@ floating-point analysis in the paper and is not used.
 |---|---|
 | `SmallEig` (Def 1.2) | randomized kernel: forward accuracy $\beta$ on a tape set of probability $\ge 1-\varphi$; at the leaves enters by E1. Part III not formalized |
 | disk sampler | exact uniform sample from a tape window (paper's assumption); rounding coupling as an option |
-| $k$-th roots (L2.1) | **not assumed**: `sqrtIter` |
+| $k$-th roots (L2.1) | **not assumed**: `sqrtIter`; the $(k-1)$-th root in Exc's $\varepsilon$ is an input word (global data, as $M$) |
 | $\psi_k^k$ exact (paper §5) | **not assumed**: computed, $O(k\boldsymbol{u})$ then $1/k$ by the root |
 | iqr step | **computed** (Givens program, C3/P1), not a kernel; a kernel meeting `IsStableQRStep` is a drop-in |
 | Ritz values | computed as SmallEig of the trailing block + Optimal (Part II), not the θ-optimal oracle |
@@ -325,16 +349,21 @@ floating-point analysis in the paper and is not used.
 2. **D2 kernel vs computed**: **iqr computed (C3/P1); $k$-th roots computed (`sqrtIter`);
    SmallEig a randomized kernel; Ritz = SmallEig + Optimal**; alternative: iqr as a kernel contract
    (`IsStableQRStep`) first.
-3. **D3 landing**: **L1 first as its own landing** (waves 0–3 + P1–P3), with its own review; then
+3. **D3 landing** (after review): **batch 1 = waves 0–2 now** (B1–B6, G1–G5, K1, Q1–Q3, Q5,
+   Q6, R1–R4, E1, D1–D4, U1, S1, S2, S4, S6, C1–C3; E2 waits for Codex's export); **batch 2 =
+   C4, P1–P3** after `BackwardDecouplingContract` gains the failure disjunct
+   (`IsDecoupledAbs τ H' ∨ failWord`, D5) and Codex's word-level split (§7.4 item 1) is in; Q4, S3,
+   S5 (wave 3) with batch 1 once their edits are approved. Earlier recommendation: L1 first as its own landing (waves 0–3 + P1–P3); then
    L2–L4.
 4. **D4 gap fixes that change statements**: **adopt all of §2** (G8/G8', G9 direct route, G10 via
-   $\beta \to \beta/1.25$, G12 bottom-$k$, G13 cover + 11, G13v, G16 $m^2\nu\boldsymbol{u} \le 1/4$,
+   $\beta \to \beta/1.25$, G12 bottom-$k$, G13 cover + 11, G13v, G16 $m\nu\boldsymbol{u} \le 1/4$,
    D3.4 base, L3.7 Frobenius, G18 via Codex's κ lemma, deflate bottom $k$, Thm 1.4 with $\Sigma$).
 5. **D5 failure semantics**: **fail word + cap** (total program, `Specification.Accepts` fails on
    the bad event) vs forced deflation.
 6. **D6 Codex coordination**: **ask Codex for §7.4 item 1 (word-level split)** before P1, else
    duplicate frame proofs.
-7. **D7 QR perturbation constants**: **state 8 at $\eta \le 1/4$ and verify against Sun 1991 /
+7. **D7 QR perturbation constants** (resolved by review: $7.02$, $3.64 \le 8$ by the elementary
+   proof): **state 8 at $\eta \le 1/4$**; originally: verify against Sun 1991 /
    Chang–Paige–Stewart at proof time**; only Q4 depends on it (Q5 avoids it).
 
 ## 10. Risks
@@ -367,3 +396,10 @@ modules build with `--wfail` (0 warnings), axiom audit 0 violations, 14 linters 
 skeleton sorries (strict on `NLAlib`). The house practice is a scaffold library, which needs a
 `lakefile.toml` edit this design may not make (decision D8). The steps after the replay (fixtures,
 program checks, references, constants, rules extraction) did not run.
+
+**Scaffold patch (D8, not applied).** `~/nlalib-harness/reports/sqr-fp-scaffold.patch` moves the
+ten skeleton files to `NLAlibScaffold/` (module names `NLAlibScaffold.*`), drops them from
+`NLAlib.lean`, adds the root `NLAlibScaffold.lean` and the `NLAlibScaffold` `lean_lib` to
+`lakefile.toml` (the SHIFTED-QR pattern, 55eebad2; removed again as in a7085789/bde2a77a). Apply
+with `git apply` after the maintainer approves the lakefile edit; then `stage_check` replays
+only sorry-free `NLAlib`. A file moves back into `NLAlib` when its statements are proved.

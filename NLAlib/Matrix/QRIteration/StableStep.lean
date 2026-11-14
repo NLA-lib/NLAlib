@@ -27,7 +27,7 @@ the base $\|\mathbf{H}\|_2 + \lvert s\rvert$ loses nothing.
 A degree $m$ step is a chain of $m$ single steps (`NLAlib.IsStableQRChain`). This file states
 what the chain gives: the backward error of the composed similarity (Lemma 3.6, first part, in
 the corrected form: the norms of the intermediate matrices grow), the backward error of the
-factorization of the shift polynomial (Lemma 3.6, second part, under $m^2\nu\boldsymbol{u} \le
+factorization of the shift polynomial (Lemma 3.6, second part, under $m\nu\boldsymbol{u} \le
 1/4$, which the paper omits), the forward error against the exact multishift step (Lemma 3.8, with
 the precision hypothesis corrected and the phase of the last diagonal entry), the last diagonal
 entry of the product of the triangular factors (Lemma 3.9, by a direct argument that needs only
@@ -95,14 +95,14 @@ theorem IsStableQRChain.isPerturbedUnitarySimilar {x C : ℝ} {H H' : Matrix (Fi
 
 /-- **Backward error of a degree $m$ step, factorization part** (corrected
 [BanksGarzaVargasSrivastava2022, Lemma 3.6]): for shifts in $\mathbb{D}(0, C\|\mathbf{H}\|_2)$ and
-$m^2 x \le 1/4$, one unitary $\widehat{\mathbf{Q}}$ has $\|p(\mathbf{H}) - \widehat{\mathbf{Q}}
+$m x \le 1/4$, one unitary $\widehat{\mathbf{Q}}$ has $\|p(\mathbf{H}) - \widehat{\mathbf{Q}}
 \widehat{\mathbf{R}}_m \cdots \widehat{\mathbf{R}}_1\|_2 \le 4(2(1 + C)\|\mathbf{H}\|_2)^m x$, with
-$p(z) = \prod_\ell (z - s_\ell)$. The hypothesis $m^2 x \le 1/4$ is missing in the paper, and the
-statement is false without it. -/
+$p(z) = \prod_\ell (z - s_\ell)$. The paper assumes only $x \le 1/4$, under which the statement is
+false (its induction confuses per-step and cumulative errors); $m x \le 1/4$ suffices. -/
 theorem IsStableQRChain.exists_specNorm_aeval_sub_le {x C : ℝ} {H H' : Matrix (Fin (n + 1))
     (Fin (n + 1)) ℂ} {ss : List ℂ} {Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)}
     (h : IsStableQRChain x H ss H' Rs) (hx : 0 ≤ x) (hC : 0 ≤ C)
-    (hs : ∀ s ∈ ss, ‖s‖ ≤ C * specNorm H) (hm : (ss.length : ℝ) ^ 2 * x ≤ 1 / 4) :
+    (hs : ∀ s ∈ ss, ‖s‖ ≤ C * specNorm H) (hm : (ss.length : ℝ) * x ≤ 1 / 4) :
     ∃ Q : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HasOrthonormalCols Q ∧
       specNorm (Polynomial.aeval H (shiftPoly ss) - Q * Rs.reverse.prod) ≤
         4 * (2 * (1 + C) * specNorm H) ^ ss.length * x := by
@@ -116,9 +116,11 @@ $x \le (16\kappa)^{-1}(d / ((2 + 2C)\|\mathbf{H}\|_2))^m$ (the paper's hypothesi
 $(2 + 2C)^{-m}$). Then for a diagonal unitary $\mathbf{D}$ (the phase of the last diagonal entry
 of the computed triangular factor; the paper compares with the positive-diagonal QR factor
 directly), $\|\mathbf{D}^{\mathsf H}\widehat{\mathbf{H}}'\mathbf{D} - \mathbf{H}'\|_{\mathsf F} \le
-66\kappa\|\mathbf{H}\|_2((2 + 2C)\|\mathbf{H}\|_2 / d)^m\sqrt{n + 1}\,x$, where $\mathbf{H}'$ is the
-exact multishift step. The constant is twice the paper's $33$ because the QR perturbation bound
-is used with the loose constant $8$ (`NLAlib.IsQR.frobNorm_sub_le_of_add`). -/
+(66 + 2C)\kappa\|\mathbf{H}\|_2((2 + 2C)\|\mathbf{H}\|_2 / d)^m\sqrt{n + 1}\,x$, where
+$\mathbf{H}'$ is the exact multishift step. $64$ is the QR perturbation term with the loose
+constant $8$ (`NLAlib.IsQR.frobNorm_sub_le_of_add`); $2 + 2C$ absorbs the accumulated similarity
+error, which the paper's $33$ covers only when $d \le \|\mathbf{H}\|_2$ (false for large $C$:
+$\mathbf{H} = -\mathbf{I}_2$, $s = 200$). -/
 theorem IsStableQRChain.exists_frobNorm_conj_sub_le {x C κ d : ℝ} {H H' V : Matrix (Fin (n + 1))
     (Fin (n + 1)) ℂ} {e : Fin (n + 1) → ℂ} {ss : List ℂ}
     {Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)}
@@ -128,7 +130,7 @@ theorem IsStableQRChain.exists_frobNorm_conj_sub_le {x C κ d : ℝ} {H H' V : M
     (hu : x ≤ (16 * κ)⁻¹ * (d / ((2 + 2 * C) * specNorm H)) ^ ss.length) :
     ∃ D : Fin (n + 1) → ℂ, (∀ i, ‖D i‖ = 1) ∧
       frobNorm ((Matrix.diagonal D)ᴴ * H' * Matrix.diagonal D - multiShiftedQRStep H ss) ≤
-        66 * κ * specNorm H * ((2 + 2 * C) * specNorm H / d) ^ ss.length *
+        (66 + 2 * C) * κ * specNorm H * ((2 + 2 * C) * specNorm H / d) ^ ss.length *
           Real.sqrt (n + 1) * x := by
   sorry
 

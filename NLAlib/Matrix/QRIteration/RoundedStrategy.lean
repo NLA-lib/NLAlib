@@ -71,28 +71,33 @@ theorem not_isOptimalRitzValues_of_le {θ t : ℝ} {H : Matrix (Fin (n + 1)) (Fi
 
 /-- **Forward-approximate Ritz values that are not optimal contain a decoupling shift**
 (the dichotomy as `Regularize` uses it, [BanksGarzaVargasSrivastava2022, Theorem 4.1 and
-Lemma 4.6], with the constant $\tfrac12 k^{-1/(2k)}$ of G10 and the forward accuracy
+Lemma 4.6], with the forward accuracy
 $\beta = \omega^2/(20 \cdot 101\,\Sigma)$ in place of $\omega^2/(16 \cdot 101\,\Sigma)$): let
-$\mathbf{H}\mathbf{V} = \mathbf{V}\mathbf{D}$ with $\kappa(\mathbf{V}) \le B$, $B \ge 1$,
-eigenvalues at mutual distance at least $2\omega^2/\Sigma$, $\|\mathbf{H}\|_2 \le \Sigma$,
-$\omega \le
-\psi_k(\mathbf{H})$ ($\mathbf{H}$ is $\omega$-unreduced at the bottom), the $k \ge 1$ shifts
+$\mathbf{H}$ be upper Hessenberg, $\mathbf{H}\mathbf{V} = \mathbf{V}\mathbf{D}$ with
+$\kappa(\mathbf{V}) \le B$, $B \ge 1$, eigenvalues at mutual distance at least
+$2\omega^2/\Sigma$, $\|\mathbf{H}\|_2 \le \Sigma$, $\omega \le \psi_k(\mathbf{H})$ ($\mathbf{H}$
+is $\omega$-unreduced at the bottom), the $k \ge 1$ shifts
 within $\beta$ of the Ritz values in some order and no shift an eigenvalue, and
 $\theta = 1.01 \cdot 0.998^{-1/k}(2B^4)^{1/(2k)}$, and $B^{2/k} \le 2$ (the choice of $k$).
 If the shifts are not
-$0.998^{1/k}\theta$-optimal, some shift $r$ has $\tau_{(z - r)^k}(\mathbf{H}) \le \omega / 2.08$,
-i.e. $\|\mathbf{e}_n^{\mathsf T}(\mathbf{H} - r)^{-k}\| \ge (2.08/\omega)^k$. -/
+$0.998^{1/k}\theta$-optimal, some shift $r$ has $\tau_{(z - r)^k}(\mathbf{H}) \le \omega / 2$,
+i.e. $\|\mathbf{e}_n^{\mathsf T}(\mathbf{H} - r)^{-k}\| \ge (2/\omega)^k$. This is what the exact
+dichotomy (`IsUpperHessenberg.isOptimalRitzValues_or_exists_mem_det_eq_zero_or_le`, constant
+$\tfrac25$) gives; it suffices, since the forward error $\omega/2$ then reaches the threshold
+$\le \omega$ that the loop and Deflate test. The sharp constant $\tfrac12 k^{-1/(2k)}$ would give
+$2.08/\omega$. -/
 theorem exists_mem_le_norm_inv_pow_of_not_isOptimalRitzValues {B S ω : ℝ} {k : ℕ}
     {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {e : Fin (n + 1) → ℂ} {ss : List ℂ}
-    (hk : 0 < k) (hkn : k ≤ n) (hB : 1 ≤ B) (hBk : B ^ ((2 : ℝ) / k) ≤ 2) (hω : 0 < ω)
-    (hV : IsUnit V) (hHV : H * V = V * Matrix.diagonal e) (hκ : pseudoConditionNumber V ≤ B)
+    (hH : IsUpperHessenberg H) (hk : 0 < k) (hkn : k ≤ n) (hB : 1 ≤ B)
+    (hBk : B ^ ((2 : ℝ) / k) ≤ 2) (hω : 0 < ω) (hV : IsUnit V)
+    (hHV : H * V = V * Matrix.diagonal e) (hκ : pseudoConditionNumber V ≤ B)
     (hgap : ∀ i j, i ≠ j → 2 * ω ^ 2 / S ≤ ‖e i - e j‖) (hS : specNorm H ≤ S)
     (hψ : ω ≤ hessenbergPotential k H)
     (hss : List.Forall₂ (fun r ρ => ‖r - ρ‖ ≤ ω ^ 2 / (20 * 101 * S)) ss (ritzValues k H))
     (hne : ∀ r ∈ ss, ∀ i, e i ≠ r)
     (hopt : ¬IsOptimalRitzValues ((0.998 : ℝ) ^ ((k : ℝ)⁻¹) *
       (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹))) H ss) :
-    ∃ r ∈ ss, (2.08 / ω) ^ k ≤
+    ∃ r ∈ ss, (2 / ω) ^ k ≤
       ‖WithLp.toLp 2 ((Polynomial.aeval H (shiftPoly (List.replicate k r)))⁻¹ (Fin.last n))‖ := by
   sorry
 
@@ -129,8 +134,10 @@ theorem isPromisingRitzValue_findRitzWith {B : ℝ} {m : ℕ} {t : ℕ → List 
 $\mathbf{H}\mathbf{V} = \mathbf{V}\mathbf{D}$ with $\kappa(\mathbf{V}) \le B$, the $k \ge 2$ shifts
 `ss` be $\theta$-optimal, $r$ an $\alpha$-promising one with
 $\tau_{(z - r)^k}(\mathbf{H}) \ge \xi\psi_k(\mathbf{H})$, $\psi_k(\mathbf{H}) > 0$, the radius
-$\tilde R$ within $[1.998^{1/k}, 1.001 \cdot 2^{1/k}]\,\theta\alpha B^{1/k}\psi_k(\mathbf{H})$
-(the computed radius; the paper's upper bound omits $2^{1/k}$),
+$\tilde R$ within $[1.998^{1/k}, 2.002^{1/k}]\,\theta\alpha B^{1/k}\psi_k(\mathbf{H})$
+(the computed radius from $\tilde\psi$ within $0.001/k$, as the paper's
+(eq:boundonpottilde); the paper's upper bound omits $2^{1/k}$, and a flat $1.001$ breaks the
+constant $13$ for $k \ge 60$),
 $\varepsilon = (\xi(1 - \gamma)/((13B^4)^{1/k}\alpha^2\theta^2))^{k/(k-1)} \le 1/2$, and $S$ a
 set of at most $9/\varepsilon^2$ shifts covering $\mathbb{D}(r, \tilde R)$ at radius
 $\varepsilon\tilde R$, none an eigenvalue. Then some $s \in S$ has
@@ -149,8 +156,7 @@ theorem exists_mem_le_norm_inv_pow_of_covers {B θ α ξ γ R ε : ℝ} {k : ℕ
     (hτ : ‖WithLp.toLp 2 ((Polynomial.aeval H (shiftPoly (List.replicate k r)))⁻¹
       (Fin.last n))‖ ≤ (ξ * hessenbergPotential k H)⁻¹ ^ k)
     (hRlo : (1.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) * hessenbergPotential k H ≤ R)
-    (hRhi : R ≤ 1.001 * (2 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) *
-      hessenbergPotential k H)
+    (hRhi : R ≤ (2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) * hessenbergPotential k H)
     (hε : ε = (ξ * (1 - γ) / ((13 * B ^ 4) ^ ((k : ℝ)⁻¹) * α ^ 2 * θ ^ 2)) ^
       ((k : ℝ) / (k - 1))) (hε2 : ε ≤ 1 / 2)
     (hcover : ∀ z : ℂ, ‖z - r‖ ≤ R → ∃ s ∈ S, ‖z - s‖ ≤ ε * R)

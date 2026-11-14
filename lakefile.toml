@@ -24,3 +24,8 @@ name = "NLAlib"
 # and are never imported by it; plain (non-`module`) files execute canonical Ops smoke examples.
 [[lean_lib]]
 name = "NLAlibTools"
+
+# Statements whose proofs are deferred. May contain `sorry`. Never imported by NLAlib.
+# A declaration moves from here into NLAlib when it is proved; see CONTRIBUTING.md §7.
+[[lean_lib]]
+name = "NLAlibScaffold"

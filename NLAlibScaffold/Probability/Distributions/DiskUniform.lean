@@ -59,7 +59,27 @@ $\mathbb{P}[w \in \mathbb{D}(z, \eta)] \le (\eta / R)^2$ for $w \sim \mathrm{Uni
 R))$, $\eta \ge 0$, $R > 0$. [BanksGarzaVargasSrivastava2022, proof of Lemma 3.10]. -/
 theorem measureReal_diskUniform_closedBall_le (c z : ℂ) {R η : ℝ} (hR : 0 < R) (hη : 0 ≤ η) :
     (diskUniform c R).real (Metric.closedBall z η) ≤ (η / R) ^ 2 := by
-  sorry
+  unfold diskUniform
+  have h2 : Module.finrank ℝ ℂ = 2 := by
+    rw [Module.finrank_eq_card_basis Complex.basisOneI]; simp
+  have hI : volume (Metric.closedBall c R ∩ Metric.closedBall z η) ≤
+      volume (Metric.closedBall z η) := measure_mono Set.inter_subset_right
+  rw [Measure.addHaar_closedBall' volume z hη, h2] at hI
+  rw [measureReal_def, ProbabilityTheory.cond_apply measurableSet_closedBall,
+    Measure.addHaar_closedBall' volume c hR.le, h2]
+  have hP0 : volume (Metric.closedBall (0 : ℂ) 1) ≠ 0 :=
+    (Metric.measure_closedBall_pos volume 0 one_pos).ne'
+  have hPt : volume (Metric.closedBall (0 : ℂ) 1) ≠ ⊤ :=
+    (isCompact_closedBall (0 : ℂ) 1).measure_lt_top.ne
+  apply ENNReal.toReal_le_of_le_ofReal (by positivity)
+  calc (ENNReal.ofReal (R ^ 2) * volume (Metric.closedBall (0 : ℂ) 1))⁻¹ *
+        volume (Metric.closedBall c R ∩ Metric.closedBall z η)
+      ≤ (ENNReal.ofReal (R ^ 2) * volume (Metric.closedBall (0 : ℂ) 1))⁻¹ *
+          (ENNReal.ofReal (η ^ 2) * volume (Metric.closedBall (0 : ℂ) 1)) := by
+        gcongr
+    _ = ENNReal.ofReal ((η / R) ^ 2) := by
+        rw [← ENNReal.div_eq_inv_mul, ENNReal.mul_div_mul_right _ _ hP0 hPt,
+          div_pow, ENNReal.ofReal_div_of_pos (pow_pos hR 2)]
 
 /-- **Independent disk perturbations avoid a separated finite set** (shift regularization,
 [BanksGarzaVargasSrivastava2022, Lemma 3.10]): for independent $w_i \sim

@@ -7,8 +7,10 @@ module
 
 public import Mathlib.Data.Fin.VecNotation
 public import NLAlib.Krylov.GolubKahan.Band.Run
+public import NLAlib.Ops.AllocationFree
 public import NLAlib.Ops.Catalog.Functional
 public import NLAlib.Ops.Certification
+public import NLAlib.Ops.Workspace
 
 /-!
 # Canonical exact certificate of the block Golub–Kahan program
@@ -57,8 +59,13 @@ Design: `docs/design/LowRank-BlockLanczos.md` §4.1.
 
 ## Main results
 
-* `NLAlib.Krylov.GolubKahan.Band.stmtCost_solve`,
+* `NLAlib.Krylov.GolubKahan.Band.stmtCost_applyColumns`,
+  `NLAlib.Krylov.GolubKahan.Band.stmtCost_step`,
+  `NLAlib.Krylov.GolubKahan.Band.stmtCost_solve`,
   `NLAlib.Krylov.GolubKahan.Band.stmtPeak_solve_le`: the static count and scratch of the program.
+* `NLAlib.Krylov.GolubKahan.Band.Certification.coefTop_stackCoef`,
+  `NLAlib.Krylov.GolubKahan.Band.Certification.coefBot_stackCoef`,
+  `NLAlib.Krylov.GolubKahan.Band.Certification.decodeMatrix_packFinMatrix`: the packed round trip.
 * `NLAlib.Krylov.GolubKahan.Band.Certification.isBasisExtension_exactExtension`,
   `NLAlib.Krylov.GolubKahan.Band.Certification.meets_exactExtendFn`: the chosen extension realizes
   the exact contract.
@@ -102,18 +109,36 @@ noncomputable def solveCount (stream m n b q : ℕ) : Count Op Tst :=
     ∑ j ∈ Finset.range q, (Count.one (Has.inj OrthOp.extend) [m, j * b, b] +
       Count.one (Has.inj OrthOp.extend) [n, (j + 1) * b, b])
 
+omit [Has OrthOp Op] [Has OperatorPairOp Op] [Has SampleOp Op] in
+/-- The static count of a block of products: `b` calls of the operation `o` at the dimensions
+`[m, n]`, for all offsets `x`, `y` of the two operands. -/
+theorem stmtCost_applyColumns (o : Op) (m n b x y : ℕ) :
+    stmtCost (applyColumns (Tst := Tst) o).body [m, n, b, x, y] = b • Count.one o [m, n] := by
+  simp [applyColumns, stmtCost, useCost]
+
+omit [Has SampleOp Op] in
+/-- The static count of block step `j` at the dimensions $(m, n, b)$: `b` products with
+$\mathbf{A}$, one basis extension at `[m, j * b, b]`, `b` products with
+$\mathbf{A}^{\mathsf{H}}$ and one basis extension at `[n, (j + 1) * b, b]`, for all offsets
+of the five operands. -/
+theorem stmtCost_step (m n b j u v r s w : ℕ) :
+    stmtCost (step (Op := Op) (Tst := Tst)).body [m, n, b, j, u, v, r, s, w] =
+      b • Count.one (Has.inj OperatorPairOp.matvec) [m, n] +
+        Count.one (Has.inj OrthOp.extend) [m, j * b, b] +
+        b • Count.one (Has.inj OperatorPairOp.rmatvec) [n, m] +
+        Count.one (Has.inj OrthOp.extend) [n, (j + 1) * b, b] := by
+  simp [step, stmtCost, useCost, stmtCost_applyColumns]
+  module
+
 /-- The static count of the program is `NLAlib.Krylov.GolubKahan.Band.solveCount`, for all
 dimensions $(m, n, b, q)$ and all offsets `u`, `v`, `g`, `r`, `s` of the five output operands:
 the counts depend on the dimensions only. -/
 theorem stmtCost_solve (stream m n b q u v g r s : ℕ) :
     stmtCost (solve (Op := Op) (Tst := Tst) stream).body [m, n, b, q, u, v, g, r, s] =
       solveCount stream m n b q := by
-  -- Outline: `simp [solve, step, applyColumns, stmtCost, useCost, stmtCost_sampleVector]` as in
-  -- `NLAlib.Krylov.Lanczos.Reorth.stmtCost_solve`; the allocation binds one buffer variable and
-  -- no index variable, the two `applyColumns` frames give `b • Count.one _ [m, n]` and
-  -- `b • Count.one _ [n, m]` for every `j`, summed by `Finset.sum_nsmul` and `mul_nsmul`
-  -- to `(q * b) • _`; `Finset.sum_add_distrib` and `module` close the goal.
-  sorry
+  simp [solve, stmtCost, useCost, stmtCost_sampleVector, stmtCost_step, solveCount,
+    Finset.sum_add_distrib, ← mul_nsmul']
+  module
 
 /-- The scratch of the program at the dimensions $(m, n, b, q)$ is at most the block of
 $(m + (n - m))\,b = \max(m, n)\,b$ cells that holds the drawn block and the products, plus a
@@ -123,11 +148,13 @@ theorem stmtPeak_solve_le (W : Op → List ℕ → ℕ) (w : ℕ) (hW : ∀ o ds
     (stream m n b q u v g r s : ℕ) :
     stmtPeak W (solve (Op := Op) (Tst := Tst) stream).body [m, n, b, q, u, v, g, r, s] ≤
       (m + (n - m)) * b + w := by
-  -- Outline: `stmtPeak_le_zero_add W w hW` reduces to the peak with zero primitive workspace.
-  -- `sampleVector`, `applyColumns` and `step` are allocation free
-  -- (`stmtPeak_zero_of_allocationFree`), so the only term is the allocation of
-  -- `(m + (n - m)) * b` cells of one byte (`StorageFormat.bytes_cell`).
-  sorry
+  refine (stmtPeak_le_zero_add W w hW _ _).trans (Nat.add_le_add_right ?_ w)
+  have hSample (idx : List ℕ) := stmtPeak_zero_of_allocationFree
+    (s := (sampleVector (Op := Op) (Tst := Tst) stream).body) (idx := idx) (by rfl)
+  have hStep (idx : List ℕ) := stmtPeak_zero_of_allocationFree
+    (s := (step (Op := Op) (Tst := Tst)).body) (idx := idx) (by rfl)
+  have hz (t : Finset ℕ) : (t.sup fun _ => (0 : ℕ)) = 0 := Finset.sup_bot t
+  simp [solve, stmtPeak, Stmt.alloc, hSample, hStep, hz]
 
 end Count
 
@@ -189,6 +216,23 @@ def stackCoef {k b : ℕ} (H : Matrix (Fin k) (Fin b) ℝ) (R : Matrix (Fin b) (
     Matrix (Fin (k + b)) (Fin b) ℝ :=
   Matrix.of fun i c => Fin.append (fun i => H i c) (fun i => R i c) i
 
+/-- The first $k$ rows of the stacked coefficient block are $\mathbf{H}$. -/
+theorem coefTop_stackCoef {k b : ℕ} (H : Matrix (Fin k) (Fin b) ℝ)
+    (R : Matrix (Fin b) (Fin b) ℝ) : coefTop (stackCoef H R) = H := by
+  ext i c
+  simp [coefTop, stackCoef]
+
+/-- The last $b$ rows of the stacked coefficient block are $\mathbf{R}$. -/
+theorem coefBot_stackCoef {k b : ℕ} (H : Matrix (Fin k) (Fin b) ℝ)
+    (R : Matrix (Fin b) (Fin b) ℝ) : coefBot (stackCoef H R) = R := by
+  ext i c
+  simp [coefBot, stackCoef]
+
+/-- The packed words of a real matrix, one word per entry, decode to the matrix. -/
+theorem decodeMatrix_packFinMatrix {n k : ℕ} (A : Matrix (Fin n) (Fin k) ℝ) :
+    decodeMatrix id n k ((EntryCodec.scalar ℝ).packFinMatrix A) = A := by
+  simp [decodeMatrix]
+
 /-- A block function of the basis extension over real words: at the dimensions `[n, k, b]` it
 decodes the basis and the block, and returns the packed new block of the chosen exact extension,
 the input block unchanged, and the packed coefficients. It realizes the exact contract; no
@@ -211,15 +255,25 @@ contract of a basis extension over real words, at all dimensions and on all admi
 theorem meets_exactExtendFn {Op Tst : Type} {I : Interp Op Tst ℝ} {o : Op}
     (h : I.IsFn .total o exactExtendFn AnyOperands) :
     I.Meets .total o ((exactExtendRel (𝕜 := ℝ) id).spec ExtendOperands) := by
-  -- Outline: `h.meets_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl) (fun _ => rfl)
-  -- (fun _ => rfl)`; in the remaining goal the admission gives `ins = [Q, W]`, so the read
-  -- blocks are `[qs, ws]` with `ws.length = b * n` (`Mem.readBlocks_cons`,
-  -- `Store.length_of_readBlock`). The output lengths are `EntryCodec.length_packFinMatrix` with
-  -- width one. The relation is `isBasisExtension_exactExtension` after
-  -- `EntryCodec.matrix_packFinMatrix` (the decoded packed block is the matrix) and
-  -- `coefTop (stackCoef H R) = H`, `coefBot (stackCoef H R) = R` (`Fin.append_left`,
-  -- `Fin.append_right`).
-  sorry
+  refine h.meets_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl) (fun _ => rfl)
+    (fun _ => rfl) ?_
+  intro d w X μ ins outs hnd hw hadm hr hdom
+  obtain ⟨x, y, qs, ws, -, hq, hws, rfl⟩ := Mem.readBlocks_two hr
+  have hlen : ws.length = d.getD 2 0 * d.headD 0 := Store.length_of_readBlock hws
+  refine ⟨[(EntryCodec.scalar ℝ).packFinMatrix (exactExtension
+      (decodeMatrix id (d.headD 0) (d.getD 1 0) qs)
+      (decodeMatrix id (d.headD 0) (d.getD 2 0) ws)).1, ws,
+    (EntryCodec.scalar ℝ).packFinMatrix (stackCoef (exactExtension
+      (decodeMatrix id (d.headD 0) (d.getD 1 0) qs)
+      (decodeMatrix id (d.headD 0) (d.getD 2 0) ws)).2.1 (exactExtension
+      (decodeMatrix id (d.headD 0) (d.getD 1 0) qs)
+      (decodeMatrix id (d.headD 0) (d.getD 2 0) ws)).2.2)], rfl, ?_, ?_⟩
+  · simp [exactExtendRel, hlen, mul_comm]
+  · change IsBasisExtension _ _ (decodeMatrix id _ _ _) (coefTop (decodeMatrix id _ _ _))
+      (coefBot (decodeMatrix id _ _ _))
+    rw [decodeMatrix_packFinMatrix, decodeMatrix_packFinMatrix, coefTop_stackCoef,
+      coefBot_stackCoef]
+    exact isBasisExtension_exactExtension _ _
 
 /-- The block functions of the realization for the matrix $\mathbf{A}$: the chosen exact
 extension, the exact real products with $\mathbf{A}$ and $\mathbf{A}^{\mathsf{H}}$, and the
@@ -352,13 +406,23 @@ theorem Good.storedProduct_eq_rsvd {stream : ℕ} {d : Fin 4 → ℕ}
     storedProduct (d 0) (d 1) (d 2) (d 3) μ =
       rsvd A (blockKrylovMatrix (Aᴴ * A)
         (decodeMatrix id (d 1) (d 2) (τ.window stream 0 (d 1 * d 2))) (d 3)) := by
-  -- Outline: from `h.2.2` take `us`, `vs`, `gs`, `rs`, `ss`; unfolding `Mem.readBlocks_cons`
-  -- five times (`Option.bind_eq_some_iff`, `Option.map_eq_some_iff`) gives
-  -- `μ.store.readBlock 0 0 (q * b * m) = some us`, the same for `vs` at the buffer `1` and for
-  -- `ss` at the buffer `4` (the lengths are those of `outLens`). Rewrite them in
-  -- `storedProduct` (`Option.getD_some`) and conclude by
-  -- `StoredOut.mul_conjTranspose_mul_conjTranspose_eq_rsvd`.
-  sorry
+  obtain ⟨-, -, us, vs, gs, rs, ss, hr, hS⟩ := h
+  simp only [outputs, outLens] at hr
+  obtain ⟨x, xs, hu, hr, he⟩ := Mem.readBlocks_cons_eq_some.mp hr
+  cases he
+  obtain ⟨x, xs, hv, hr, he⟩ := Mem.readBlocks_cons_eq_some.mp hr
+  cases he
+  obtain ⟨x, xs, -, hr, he⟩ := Mem.readBlocks_cons_eq_some.mp hr
+  cases he
+  obtain ⟨x, xs, -, hr, he⟩ := Mem.readBlocks_cons_eq_some.mp hr
+  cases he
+  obtain ⟨x, xs, hs, -, he⟩ := Mem.readBlocks_cons_eq_some.mp hr
+  cases he
+  have hu' : μ.store.readBlock 0 0 (d 3 * d 2 * d 0) = some us := hu
+  have hv' : μ.store.readBlock 1 0 ((d 3 + 1) * d 2 * d 1) = some vs := hv
+  have hs' : μ.store.readBlock 4 0 (coefOffsetS (d 2) (d 3)) = some ss := hs
+  rw [storedProduct, hu', hv', hs']
+  exact hS.mul_conjTranspose_mul_conjTranspose_eq_rsvd
 
 /-- The full static count of the fixed program, with index expressions, addressing, allocation
 and control. -/
@@ -378,12 +442,9 @@ the structural instructions. -/
 theorem original_staticBudget (stream : ℕ) (d : Fin 4 → ℕ) :
     Count.original (staticBudget stream d) =
       solveCount (Op := Operation) (Tst := CmpTst) stream (d 0) (d 1) (d 2) (d 3) := by
-  -- Outline: `rw [staticBudget, staticCost, original_stmtCost_instrument]`; the body of the
-  -- program is the frame of `(solve stream).body` at the five zero offsets, so the goal is
-  -- `stmtCost (solve stream).body [d 0, d 1, d 2, d 3, 0, 0, 0, 0, 0] = _` after `stmtCost` of a
-  -- frame (as in `NLAlib.Krylov.Lanczos.Reorth.Certification.original_staticBudget`), which is
-  -- `stmtCost_solve`.
-  sorry
+  rw [staticBudget, staticCost, original_stmtCost_instrument]
+  change stmtCost (solve stream).body [d 0, d 1, d 2, d 3, 0, 0, 0, 0, 0] = _
+  exact stmtCost_solve ..
 
 /-- The scratch of the fixed program at the sizes $(m, n, b, q)$ is at most the block of
 $\max(m, n)\,b$ words that holds the drawn block and the products, plus a common bound `w` of the
@@ -392,10 +453,10 @@ theorem staticPeak_program_le (R : ResourceModel Operation CmpTst) (w : ℕ)
     (hW : ∀ o ds, R.workspace o ds ≤ w) (stream : ℕ) (d : Fin 4 → ℕ) :
     staticPeak R (program stream) d ≤
       (d 0 + (d 1 - d 0)) * d 2 + w + R.queryReserve (staticBudget stream d) := by
-  -- Outline: `staticPeak_eq`; the body of the program is the frame of `(solve stream).body` at
-  -- the five zero offsets, so its peak is that of the body at `[d 0, d 1, d 2, d 3, 0, 0, 0, 0,
-  -- 0]`, bounded by `stmtPeak_solve_le`.
-  sorry
+  rw [staticPeak_eq]
+  change stmtPeak R.workspace (solve stream).body [d 0, d 1, d 2, d 3, 0, 0, 0, 0, 0] + _ ≤ _
+  exact Nat.add_le_add_right
+    (stmtPeak_solve_le R.workspace w hW stream (d 0) (d 1) (d 2) (d 3) 0 0 0 0 0) _
 
 /-- The specification of the exact certificate: the full static count as budget, the static peak
 as scratch, work and span of the budget, resident memory of the five output blocks plus the

@@ -31,6 +31,10 @@ $\widehat{\mathbf{R}}_{nn} / \mathbf{R}_{nn} \in [(1 + \eta)^{-1}, (1 - \eta)^{-
 
 * `NLAlib.IsQR.frobNorm_sub_le_of_add`: the bound on the unitary factors.
 * `NLAlib.IsQR.frobNorm_sub_triangular_le_of_add`: the bound on the triangular factors.
+* `NLAlib.IsQR.frobNorm_mul_inv_sub_one_le_of_add`: the relative triangular factor
+  $\widehat{\mathbf{R}}\mathbf{R}^{-1}$ is within
+  $3\|\mathbf{M}^{-1}\|_2\|\mathbf{E}\|_{\mathsf F}$ of $\mathbf{I}$; both factor bounds follow
+  from it.
 * `NLAlib.IsQR.last_le_of_add`, `NLAlib.IsQR.le_last_of_add`: the last diagonal entry.
 -/
 
@@ -41,16 +45,6 @@ open scoped Matrix ComplexOrder
 namespace NLAlib
 
 variable {n : ℕ} {M E Q R Q' R' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
-
-/-- **Perturbation of the unitary QR factor**: for QR factorizations with positive diagonals of
-$\mathbf{M}$ and $\mathbf{M} + \mathbf{E}$, $\|\mathbf{M}^{-1}\|_2\|\mathbf{E}\|_2 \le 1/4$ gives
-$\|\widehat{\mathbf{Q}} - \mathbf{Q}\|_{\mathsf F} \le
-8\|\mathbf{M}^{-1}\|_2\|\mathbf{E}\|_{\mathsf F}$.
-[Sun1991, Theorem 1.6]; [BanksGarzaVargasSrivastava2022, Lemma 3.7]. -/
-theorem IsQR.frobNorm_sub_le_of_add (hM : IsUnit M) (h : IsQR M Q R) (h' : IsQR (M + E) Q' R')
-    (hR : ∀ i, 0 < R i i) (hR' : ∀ i, 0 < R' i i) (hη : specNorm M⁻¹ * specNorm E ≤ 1 / 4) :
-    frobNorm (Q' - Q) ≤ 8 * specNorm M⁻¹ * frobNorm E := by
-  sorry
 
 /-- For a positive real `d`, `‖d - 1‖ ≤ ‖d - (d⁻¹)⋆‖`. -/
 private theorem norm_sub_one_le_norm_sub_star_inv {d : ℂ} (hd : 0 < d) :
@@ -95,21 +89,22 @@ private theorem specNorm_inv_le_of_mul_norm_le {T : Matrix (Fin (n + 1)) (Fin (n
   rw [inv_mul_eq_div, le_div_iff₀ hc]
   linarith
 
-/-- **Perturbation of the triangular QR factor**, in the Frobenius norm of the perturbation:
-$\|\widehat{\mathbf{R}} - \mathbf{R}\|_{\mathsf F} \le 8\|\mathbf{M}^{-1}\|_2\|\mathbf{R}\|_2
-\|\mathbf{E}\|_{\mathsf F}$. [Sun1991, Theorem 1.6]; [BanksGarzaVargasSrivastava2022, Lemma 3.7]
-(stated there with $\|\mathbf{E}\|_2$, which fails for large $n$). -/
-theorem IsQR.frobNorm_sub_triangular_le_of_add (hM : IsUnit M) (h : IsQR M Q R)
-    (h' : IsQR (M + E) Q' R') (hR : ∀ i, 0 < R i i) (hR' : ∀ i, 0 < R' i i)
-    (hη : specNorm M⁻¹ * specNorm E ≤ 1 / 4) :
-    frobNorm (R' - R) ≤ 8 * specNorm M⁻¹ * specNorm R * frobNorm E := by
+/-- The factor $\mathbf{T} = \widehat{\mathbf{R}}\mathbf{R}^{-1}$ relating the QR factorizations
+of $\mathbf{M}$ and $\mathbf{M} + \mathbf{E}$: it is upper triangular with positive diagonal,
+$\widehat{\mathbf{Q}}\mathbf{T} = (\mathbf{I} + \mathbf{E}\mathbf{M}^{-1})\mathbf{Q}$, and
+$\|\mathbf{T}^{-1}\|_2 \le (1 - \eta)^{-1}$. -/
+private theorem IsQR.mul_inv_of_add (h : IsQR M Q R) (h' : IsQR (M + E) Q' R')
+    (hR : ∀ i, 0 < R i i) (hR' : ∀ i, 0 < R' i i) (hη : specNorm M⁻¹ * specNorm E < 1) :
+    (R' * R⁻¹).IsUpperTriangular ∧ (∀ i, 0 < (R' * R⁻¹) i i) ∧ R' * R⁻¹ * R = R' ∧
+      IsUnit (R' * R⁻¹) ∧ Q' * (R' * R⁻¹) = (1 + E * M⁻¹) * Q ∧
+      specNorm (R' * R⁻¹)⁻¹ ≤ (1 - specNorm M⁻¹ * specNorm E)⁻¹ := by
   have hQ := h.hasOrthonormalCols
   have hQ' := h'.hasOrthonormalCols
   have hRu : IsUnit R := h.isUnit fun i => (hR i).ne'
   have hRd := (Matrix.isUnit_iff_isUnit_det R).mp hRu
-  obtain ⟨K, hK⟩ : ∃ K, K = E * M⁻¹ := ⟨_, rfl⟩
-  obtain ⟨T, hTdef⟩ : ∃ T, T = R' * R⁻¹ := ⟨_, rfl⟩
-  have hTU : T.IsUpperTriangular := hTdef ▸ h'.isUpperTriangular.mul h.isUpperTriangular.inv
+  set K := E * M⁻¹ with hK
+  set T := R' * R⁻¹ with hTdef
+  have hTU : T.IsUpperTriangular := h'.isUpperTriangular.mul h.isUpperTriangular.inv
   have hTR : T * R = R' := by
     rw [hTdef, Matrix.mul_assoc, Matrix.nonsing_inv_mul _ hRd, Matrix.mul_one]
   have hTd : ∀ i, 0 < T i i := fun i => by
@@ -118,7 +113,7 @@ theorem IsQR.frobNorm_sub_triangular_le_of_add (hM : IsUnit M) (h : IsQR M Q R)
     rw [eq_div_of_mul_eq (hR i).ne' e.symm]
     exact div_pos (hR' i) (hR i)
   have hTu : IsUnit T :=
-    hTdef ▸ (h'.isUnit fun i => (hR' i).ne').mul (Matrix.isUnit_nonsing_inv_iff.mpr hRu)
+    (h'.isUnit fun i => (hR' i).ne').mul (Matrix.isUnit_nonsing_inv_iff.mpr hRu)
   have hQT : Q' * T = (1 + K) * Q := by
     have hMinv : M⁻¹ * Q = R⁻¹ := by
       rw [h.eq_mul, Matrix.mul_inv_rev, hQ.inv_eq, Matrix.mul_assoc, hQ.conjTranspose_mul_self,
@@ -126,7 +121,7 @@ theorem IsQR.frobNorm_sub_triangular_le_of_add (hM : IsUnit M) (h : IsQR M Q R)
     rw [hTdef, ← Matrix.mul_assoc, ← h'.eq_mul, Matrix.add_mul, Matrix.add_mul, Matrix.one_mul,
       h.mul_inv_eq hRu, hK, Matrix.mul_assoc, hMinv]
   have hKs : specNorm K ≤ specNorm M⁻¹ * specNorm E :=
-    hK ▸ (specNorm_mul_le E M⁻¹).trans_eq (mul_comm _ _)
+    (specNorm_mul_le E M⁻¹).trans_eq (mul_comm _ _)
   have hlow : ∀ y, (1 - specNorm M⁻¹ * specNorm E) * ‖WithLp.toLp 2 y‖ ≤
       ‖WithLp.toLp 2 (T *ᵥ y)‖ := fun y => by
     rw [← hQ'.norm_toLp_mulVec (T *ᵥ y), Matrix.mulVec_mulVec, hQT, ← Matrix.mulVec_mulVec,
@@ -137,7 +132,25 @@ theorem IsQR.frobNorm_sub_triangular_le_of_add (hM : IsUnit M) (h : IsQR M Q R)
     rw [add_sub_cancel_right, hQ.norm_toLp_mulVec] at h2
     rw [hQ.norm_toLp_mulVec] at h1
     nlinarith [mul_le_mul_of_nonneg_right hKs (norm_nonneg (WithLp.toLp 2 y))]
-  have hTinv := specNorm_inv_le_of_mul_norm_le hTu (by linarith) hlow
+  exact ⟨hTU, hTd, hTR, hTu, hQT, specNorm_inv_le_of_mul_norm_le hTu (by linarith) hlow⟩
+
+/-- **The relative triangular factor under perturbation**: for QR factorizations with positive
+diagonals of $\mathbf{M}$ and $\mathbf{M} + \mathbf{E}$ and
+$\|\mathbf{M}^{-1}\|_2\|\mathbf{E}\|_2 \le 1/4$,
+$\|\widehat{\mathbf{R}}\mathbf{R}^{-1} - \mathbf{I}\|_{\mathsf F} \le
+3\|\mathbf{M}^{-1}\|_2\|\mathbf{E}\|_{\mathsf F}$. -/
+theorem IsQR.frobNorm_mul_inv_sub_one_le_of_add (h : IsQR M Q R) (h' : IsQR (M + E) Q' R')
+    (hR : ∀ i, 0 < R i i) (hR' : ∀ i, 0 < R' i i) (hη : specNorm M⁻¹ * specNorm E ≤ 1 / 4) :
+    frobNorm (R' * R⁻¹ - 1) ≤ 3 * (specNorm M⁻¹ * frobNorm E) := by
+  obtain ⟨hTU, hTd, -, hTu, hQT, hTinv⟩ := h.mul_inv_of_add h' hR hR' (by linarith)
+  have hQ := h.hasOrthonormalCols
+  have hQ' := h'.hasOrthonormalCols
+  have hKs : specNorm (E * M⁻¹) ≤ specNorm M⁻¹ * specNorm E :=
+    (specNorm_mul_le E M⁻¹).trans_eq (mul_comm _ _)
+  have hKf : frobNorm (E * M⁻¹) ≤ specNorm M⁻¹ * frobNorm E :=
+    (frobNorm_mul_le_frobNorm_mul_specNorm E M⁻¹).trans_eq (mul_comm _ _)
+  generalize E * M⁻¹ = K at hKs hKf hQT
+  generalize R' * R⁻¹ = T at *
   have hTT : Tᴴ * T - 1 = Qᴴ * (Kᴴ + K + Kᴴ * K) * Q := by
     have e1 : Tᴴ * T = (Q' * T)ᴴ * (Q' * T) := by
       rw [Matrix.conjTranspose_mul, Matrix.mul_assoc, ← Matrix.mul_assoc Q'ᴴ,
@@ -153,33 +166,77 @@ theorem IsQR.frobNorm_sub_triangular_le_of_add (hM : IsUnit M) (h : IsQR M Q R)
       Matrix.conjTranspose_one, Matrix.one_mul, Matrix.mul_one]
   have hS : frobNorm (Tᴴ * T - 1) ≤ (2 + specNorm M⁻¹ * specNorm E) *
       (specNorm M⁻¹ * frobNorm E) := by
-    have hKf : frobNorm K ≤ specNorm M⁻¹ * frobNorm E :=
-      hK ▸ (frobNorm_mul_le_frobNorm_mul_specNorm E M⁻¹).trans_eq (mul_comm _ _)
     rw [hTT, hQ.frobNorm_mul_right, hQ.conjTranspose.frobNorm_mul_left]
     calc frobNorm (Kᴴ + K + Kᴴ * K) ≤ frobNorm K + frobNorm K + specNorm K * frobNorm K := by
           refine (frobNorm_add_le _ _).trans (add_le_add ((frobNorm_add_le _ _).trans_eq ?_) ?_)
           · rw [frobNorm_conjTranspose]
           · simpa [specNorm_conjTranspose] using frobNorm_mul_le_specNorm_mul_frobNorm Kᴴ K
       _ ≤ _ := by nlinarith [frobNorm_nonneg K, specNorm_nonneg K]
-  have hT1 : frobNorm (T - 1) ≤ 3 * (specNorm M⁻¹ * frobNorm E) := by
-    refine (frobNorm_sub_one_le_of_isUpperTriangular hTU hTd).trans ?_
-    rw [hW]
-    refine (frobNorm_mul_le_specNorm_mul_frobNorm _ _).trans ?_
-    rw [specNorm_conjTranspose]
-    have hφ := mul_nonneg (specNorm_nonneg M⁻¹) (frobNorm_nonneg E)
-    calc specNorm T⁻¹ * frobNorm (Tᴴ * T - 1)
-        ≤ (1 - specNorm M⁻¹ * specNorm E)⁻¹ *
-          ((2 + specNorm M⁻¹ * specNorm E) * (specNorm M⁻¹ * frobNorm E)) := by
-          gcongr
-          exact inv_nonneg.2 (by linarith)
-      _ ≤ _ := by
-          rw [inv_mul_le_iff₀ (by linarith)]
-          nlinarith
-  calc frobNorm (R' - R) = frobNorm ((T - 1) * R) := by rw [Matrix.sub_mul, hTR, Matrix.one_mul]
-    _ ≤ frobNorm (T - 1) * specNorm R := frobNorm_mul_le_frobNorm_mul_specNorm _ _
+  refine (frobNorm_sub_one_le_of_isUpperTriangular hTU hTd).trans ?_
+  rw [hW]
+  refine (frobNorm_mul_le_specNorm_mul_frobNorm _ _).trans ?_
+  rw [specNorm_conjTranspose]
+  have hφ := mul_nonneg (specNorm_nonneg M⁻¹) (frobNorm_nonneg E)
+  calc specNorm T⁻¹ * frobNorm (Tᴴ * T - 1)
+      ≤ (1 - specNorm M⁻¹ * specNorm E)⁻¹ *
+        ((2 + specNorm M⁻¹ * specNorm E) * (specNorm M⁻¹ * frobNorm E)) := by
+        gcongr
+        exact inv_nonneg.2 (by linarith)
+    _ ≤ _ := by
+        rw [inv_mul_le_iff₀ (by linarith)]
+        nlinarith
+
+/-- **Perturbation of the triangular QR factor**, in the Frobenius norm of the perturbation:
+$\|\widehat{\mathbf{R}} - \mathbf{R}\|_{\mathsf F} \le 8\|\mathbf{M}^{-1}\|_2\|\mathbf{R}\|_2
+\|\mathbf{E}\|_{\mathsf F}$. [Sun1991, Theorem 1.6]; [BanksGarzaVargasSrivastava2022, Lemma 3.7]
+(stated there with $\|\mathbf{E}\|_2$, which fails for large $n$). -/
+theorem IsQR.frobNorm_sub_triangular_le_of_add (hM : IsUnit M) (h : IsQR M Q R)
+    (h' : IsQR (M + E) Q' R') (hR : ∀ i, 0 < R i i) (hR' : ∀ i, 0 < R' i i)
+    (hη : specNorm M⁻¹ * specNorm E ≤ 1 / 4) :
+    frobNorm (R' - R) ≤ 8 * specNorm M⁻¹ * specNorm R * frobNorm E := by
+  obtain ⟨-, -, hTR, -⟩ := h.mul_inv_of_add h' hR hR' (by linarith)
+  have hT1 := h.frobNorm_mul_inv_sub_one_le_of_add h' hR hR' hη
+  calc frobNorm (R' - R) = frobNorm ((R' * R⁻¹ - 1) * R) := by
+        rw [Matrix.sub_mul, hTR, Matrix.one_mul]
+    _ ≤ frobNorm (R' * R⁻¹ - 1) * specNorm R := frobNorm_mul_le_frobNorm_mul_specNorm _ _
     _ ≤ 3 * (specNorm M⁻¹ * frobNorm E) * specNorm R := by gcongr
     _ ≤ _ := by nlinarith [specNorm_nonneg M⁻¹, frobNorm_nonneg E, specNorm_nonneg R,
           mul_nonneg (mul_nonneg (specNorm_nonneg M⁻¹) (frobNorm_nonneg E)) (specNorm_nonneg R)]
+
+/-- **Perturbation of the unitary QR factor**: for QR factorizations with positive diagonals of
+$\mathbf{M}$ and $\mathbf{M} + \mathbf{E}$, $\|\mathbf{M}^{-1}\|_2\|\mathbf{E}\|_2 \le 1/4$ gives
+$\|\widehat{\mathbf{Q}} - \mathbf{Q}\|_{\mathsf F} \le
+8\|\mathbf{M}^{-1}\|_2\|\mathbf{E}\|_{\mathsf F}$.
+[Sun1991, Theorem 1.6]; [BanksGarzaVargasSrivastava2022, Lemma 3.7]. -/
+theorem IsQR.frobNorm_sub_le_of_add (hM : IsUnit M) (h : IsQR M Q R) (h' : IsQR (M + E) Q' R')
+    (hR : ∀ i, 0 < R i i) (hR' : ∀ i, 0 < R' i i) (hη : specNorm M⁻¹ * specNorm E ≤ 1 / 4) :
+    frobNorm (Q' - Q) ≤ 8 * specNorm M⁻¹ * frobNorm E := by
+  obtain ⟨-, -, -, hTu, hQT, hTinv⟩ := h.mul_inv_of_add h' hR hR' (by linarith)
+  have hT1 := h.frobNorm_mul_inv_sub_one_le_of_add h' hR hR' hη
+  generalize R' * R⁻¹ = T at *
+  have hTd := (Matrix.isUnit_iff_isUnit_det T).mp hTu
+  -- `(Q' - Q) T = E M⁻¹ Q - Q (T - 1)`.
+  have hD : Q' - Q = (E * M⁻¹ * Q - Q * (T - 1)) * T⁻¹ := by
+    have e : (Q' - Q) * T = E * M⁻¹ * Q - Q * (T - 1) := by
+      rw [Matrix.sub_mul, hQT]; noncomm_ring
+    rw [← e, Matrix.mul_assoc, Matrix.mul_nonsing_inv _ hTd, Matrix.mul_one]
+  have hφ := mul_nonneg (specNorm_nonneg M⁻¹) (frobNorm_nonneg E)
+  have hK : frobNorm (E * M⁻¹ * Q) ≤ specNorm M⁻¹ * frobNorm E := by
+    rw [h.hasOrthonormalCols.frobNorm_mul_right]
+    exact (frobNorm_mul_le_frobNorm_mul_specNorm E M⁻¹).trans_eq (mul_comm _ _)
+  have hinv : specNorm T⁻¹ ≤ 4 / 3 :=
+    hTinv.trans ((inv_le_comm₀ (by linarith) (by norm_num)).2 (by linarith))
+  rw [hD]
+  calc frobNorm ((E * M⁻¹ * Q - Q * (T - 1)) * T⁻¹)
+      ≤ frobNorm (E * M⁻¹ * Q - Q * (T - 1)) * specNorm T⁻¹ :=
+        frobNorm_mul_le_frobNorm_mul_specNorm _ _
+    _ ≤ (specNorm M⁻¹ * frobNorm E + 3 * (specNorm M⁻¹ * frobNorm E)) * (4 / 3) := by
+        gcongr
+        refine (frobNorm_sub_le _ _).trans (add_le_add hK ?_)
+        rw [h.hasOrthonormalCols.frobNorm_mul_left]
+        exact hT1
+    _ ≤ _ := by nlinarith
+
 
 /-- **The last diagonal entry under perturbation**, upper bound: with
 $\eta = \|\mathbf{M}^{-1}\|_2\|\mathbf{E}\|_2 < 1$, $|\widehat{\mathbf{R}}_{nn}| \le

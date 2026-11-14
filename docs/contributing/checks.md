@@ -72,6 +72,30 @@ and accounting regressions are kernel-checked modules in `NLAlib/Ops/Examples/Ce
 and `NLAlib/Ops/Tools/ProgramFixtures.lean`; the whole-library audit and replay cover them.
 The former E3–E6 and E8–E9 registry/syntax rules are retired, and their identifiers are not reused.
 
+## CI build reuse
+
+CI reuses compiled modules through immutable Actions artifacts, selected by
+`scripts/ci_build_cache.py`. Only a completed, successful push CI run on this repository's
+`main` can supply an artifact; PR and feature-branch runs cannot publish reusable builds.
+The cache identity includes the runner OS and architecture, Lean toolchain, dependency
+manifest and Lake configuration. Restore verifies the producing run, attempt and source
+revision, the compressed archive's SHA-256, and its extraction paths before installing it.
+The producing checkout must be clean and match its CI revision.
+
+Lake then runs with `--rehash`: unchanged modules are reused, while edited modules and their
+dependents rebuild. All axiom audits, environment linters, certificate checks, freshness
+checks and full kernel replay still run. General branch-scoped `.lake` caching remains off:
+Lake traces alone cannot bind arbitrary restored output bytes to the current source.
+Here that binding comes from the authenticated successful-main producer and the verified
+immutable artifact, including when a later run reuses a build that producer had itself reused.
+
+Builds are saved after every Linux CI check passes, retained for one day, and consumed only
+after the entire producing CI run succeeds. Missing, expired or unavailable artifacts fall
+back to a normal build; malformed artifacts fail verification. The first successful main run
+seeds the cache. Explorer publication reuses the artifact for its exact approved source
+revision, then rebuilds with rehashing and checks freshness before extraction. Its existing
+current-main and successful-CI publication gates remain mandatory.
+
 ## Environment-linter compatibility
 
 `scripts/Lint.lean` runs the complete standard environment-linter set on imported NLAlib

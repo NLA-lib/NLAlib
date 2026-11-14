@@ -22,6 +22,13 @@ storage formats and costs, and jointly realizes those contracts at each admitted
 these declarations alongside the output specification: the types enforce the promised statement,
 while choosing a meaningful statement and faithful primitive meanings remains a review duty.
 
+A model of a published certificate is confined (`Ops.AccessModel.Confined`), and is uniform
+(`Ops.AccessModel.Uniform`) unless it declares an oracle, which the certificate's documentation
+names. State a closed-form budget where one is proved; a budget defined as `staticCost` of the
+program is a manifest and is reported as such. `scripts/OpsPrograms.lean` reports these
+properties for every certificate against `scripts/ops_certificates.txt`
+([Ops README](../../NLAlib/Ops/README.md), "What the model must also satisfy").
+
 Programs have computable definitions [E2]. `scripts/OpsPrograms.lean` inventories fixed programs
 and algorithm certificates, checks computability, and rejects imports of the retired execution
 core. Whole-library axiom audits and kernel replay check proofs independently. The old target

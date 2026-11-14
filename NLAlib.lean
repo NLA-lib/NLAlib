@@ -39,12 +39,14 @@ public import NLAlib.Eigensolvers.ShiftedQR.ForwardError
 public import NLAlib.Eigensolvers.ShiftedQR.Grid
 public import NLAlib.Eigensolvers.ShiftedQR.GridSearch
 public import NLAlib.Eigensolvers.ShiftedQR.HalfNorm
+public import NLAlib.Eigensolvers.ShiftedQR.Hessenberg
 public import NLAlib.Eigensolvers.ShiftedQR.Iteration
 public import NLAlib.Eigensolvers.ShiftedQR.IterationAlg
 public import NLAlib.Eigensolvers.ShiftedQR.IterationCorrect
 public import NLAlib.Eigensolvers.ShiftedQR.IterationSearch
 public import NLAlib.Eigensolvers.ShiftedQR.IterationWords
 public import NLAlib.Eigensolvers.ShiftedQR.Kernels
+public import NLAlib.Eigensolvers.ShiftedQR.ModelConfined
 public import NLAlib.Eigensolvers.ShiftedQR.MultiStep
 public import NLAlib.Eigensolvers.ShiftedQR.Output
 public import NLAlib.Eigensolvers.ShiftedQR.Pivot
@@ -89,6 +91,7 @@ public import NLAlib.Eigensolvers.ShiftedQR.StepProgram
 public import NLAlib.Eigensolvers.ShiftedQR.Storage
 public import NLAlib.Eigensolvers.ShiftedQR.StorageNorm
 public import NLAlib.Eigensolvers.ShiftedQR.Sweep
+public import NLAlib.Eigensolvers.ShiftedQR.SweepOutput
 public import NLAlib.Eigensolvers.ShiftedQR.Trial
 public import NLAlib.Eigensolvers.ShiftedQR.Worklist
 public import NLAlib.Eigensolvers.ShiftedQR.WorklistAllocation
@@ -470,6 +473,7 @@ public import NLAlib.Krylov.CG.HSPCG.FinitePrecision.ZeroStart
 public import NLAlib.Krylov.CG.HSPCG.Initialization
 public import NLAlib.Krylov.CG.HSPCG.Linked
 public import NLAlib.Krylov.CG.HSPCG.Model
+public import NLAlib.Krylov.CG.HSPCG.ModelConfined
 public import NLAlib.Krylov.CG.HSPCG.Rounds
 public import NLAlib.Krylov.CG.HSPCG.Solve
 public import NLAlib.Krylov.CG.HSPCG.Spec
@@ -747,6 +751,7 @@ public import NLAlib.Matrix.Factorizations.MGS.Alg
 public import NLAlib.Matrix.Factorizations.MGS.Certification
 public import NLAlib.Matrix.Factorizations.MGS.Factor
 public import NLAlib.Matrix.Factorizations.MGS.Math
+public import NLAlib.Matrix.Factorizations.MGS.ModelConfined
 public import NLAlib.Matrix.Factorizations.MGS.Normalize
 public import NLAlib.Matrix.Factorizations.MGS.Reduce
 public import NLAlib.Matrix.Factorizations.MGS.Resources
@@ -1054,6 +1059,7 @@ public import NLAlib.Ops.Catalog.StoredOperator
 public import NLAlib.Ops.Catalog.Tagged
 public import NLAlib.Ops.Cert
 public import NLAlib.Ops.Certification
+public import NLAlib.Ops.Confined
 public import NLAlib.Ops.Context
 public import NLAlib.Ops.ContextGuard
 public import NLAlib.Ops.ContextIteration
@@ -1089,6 +1095,7 @@ public import NLAlib.Ops.Examples.Mixed
 public import NLAlib.Ops.Examples.Noisy
 public import NLAlib.Ops.Examples.NoisyLinked
 public import NLAlib.Ops.Examples.NoisyMath
+public import NLAlib.Ops.Examples.Oracles
 public import NLAlib.Ops.Examples.RandomWitness
 public import NLAlib.Ops.Examples.Resources
 public import NLAlib.Ops.Examples.Split
@@ -1146,6 +1153,7 @@ public import NLAlib.Ops.Probability
 public import NLAlib.Ops.Profile
 public import NLAlib.Ops.Profiles.Blas
 public import NLAlib.Ops.Profiles.BlasCert
+public import NLAlib.Ops.Profiles.Confined
 public import NLAlib.Ops.Profiles.ContextDense
 public import NLAlib.Ops.Profiles.ContextDenseRounded
 public import NLAlib.Ops.Profiles.ContextLinear

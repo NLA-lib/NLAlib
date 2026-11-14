@@ -204,8 +204,8 @@ private theorem eval_right {M : Machine ℝ} {m : Mem ℝ} {c s x y t : ℕ × �
 
 
 /-- The actual left scalar rotation on any machine always terminates and stores the two
-computed outputs $c x + s y$ and $-\bar s x + \bar c y$, the conjugations by exact negation of
-the words. Input/output views are exactly aliased. [GolubVanLoan2013, §5.1.8]. -/
+computed versions of $c x + s y$ and $-\bar s x + \bar c y$. Conjugations use the machine's
+negation operation. Input/output views are exactly aliased. [GolubVanLoan2013, §5.1.8]. -/
 theorem writes_rotateLeftWithScratch_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hI : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {c s x y t : ℕ × ℕ} {cv sv xv yv : ℂ}

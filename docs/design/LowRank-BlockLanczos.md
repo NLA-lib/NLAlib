@@ -1,9 +1,11 @@
 # Block Lanczos for low-rank approximation: small blocks and certified programs
 
-2026-11-14. Design note; **status: draft for the maintainer, one independent review applied
-(§10), nothing proved, no library file changed**. Branch `design/block-lanczos` from
-`origin/main` @ `cbf64ea9` (PR #137). Decision sheet: harness
-`state/decisions/BLOCK-LANCZOS.json` (ids BL1–BL11 below).
+2026-11-14. Design note; **status: approved by the maintainer with two changes (§9, §10):
+sharp statements with clean corollaries, and orthogonalization as an abstract contract with a
+concrete scheme substituted. One independent review applied to the first draft; the contract
+(§3.1a) is new text and not yet reviewed. Nothing proved, no library file changed.** Branch
+`design/block-lanczos` from `origin/main` @ `cbf64ea9` (PR #137). Decision sheet: harness
+`state/decisions/BLOCK-LANCZOS.json` (ids BL1–BL12 below).
 
 The maintainer asked to "begin thinking about block Lanczos methods for low-rank approximation":
 the library has the Tropp–Webber and Musco–Musco analyses of ordinary RBKI; the request is to
@@ -50,16 +52,17 @@ $\mathbf H=\mathbf A^{\mathsf H}\mathbf A$, $\lambda_i=\sigma_i^2$, $b$ is the b
   Meyer, Musco and Rao's $\tilde O(k/\sqrt\varepsilon)$ for every $b$) are **known** and are a
   second stage: the deterministic interface is planned here, the probabilistic input (their
   Theorem 4.1) is an H-size formalization on its own (§2.5).
-* **Program** (§3): one fixed `Ops.Program`, a *column-queue Golub–Kahan process with full
-  reorthogonalization*. Every new vector is orthogonalized against **all** stored vectors of its
-  side by the certified `cgs2Impl`, one column at a time; the block size only decides which
-  stored vector is multiplied next. With full reorthogonalization this is block Lanczos
-  bidiagonalization, it reuses the single-vector orthogonalization and its column-wise
-  loss-of-orthogonality lemma unchanged, and in exact arithmetic its output factors satisfy
+* **Program** (§3): one fixed `Ops.Program`, *block Golub–Kahan bidiagonalization with full
+  reorthogonalization*, written against an **abstract orthogonalization operation**: extend
+  the stored basis of one side by a block, with a contract in three parameters
+  $(\eta_0,\mu,\varepsilon)$ (§3.1a). Every driver theorem depends on the scheme only through
+  the contract. In exact arithmetic, for every scheme meeting the exact contract, the output
+  factors satisfy
   $\mathbf U\mathbf S^{\mathsf H}\mathbf V_+^{\mathsf H}=\mathsf{rbki}(\mathbf A,\mathbf\Omega,q)$
-  for every input, including rank-deficient blocks and breakdown. Nearly dependent columns are
-  deflated by a threshold test inside the fixed program (§3.5, BL11), so that for $b>1$ the
-  rounded guarantees cover all returned columns and not only a prefix.
+  for every input, including rank-deficient blocks and breakdown. The first concrete scheme,
+  substituted by linking, is column-wise CGS2 (the certified `cgs2Impl`) with a threshold
+  deflation test (§3.5); the rank decision belongs to the scheme, so the rounded guarantees
+  cover all returned columns and not only a prefix.
 * **Guarantee ladder** (§4). G1 exact certificate plus Gaussian tape: every exact theorem,
   old and new, holds for the stored output of the same counted run (the Hutch++ pattern). G2
   rounded total execution with the executed local-error history (the `Lanczos.Reorth` pattern).
@@ -70,7 +73,8 @@ $\mathbf H=\mathbf A^{\mathsf H}\mathbf A$, $\lambda_i=\sigma_i^2$, $b$ is the b
   real obstacle**: $\mathbf E$ depends on the random start, so the exact probabilistic theorems
   cannot be applied to $\mathbf A+\mathbf E$; they have to be made uniform in $\mathbf E$ (§4.5).
   This is the research content of "complete guarantees" and is put to the maintainer as BL8.
-* **First stage** proposed: 28 statements (S 10, M 15, L 3), §5; G4–G5 and the block-size-aware
+* **First stage**: 32 statements (S 12, M 17, L 3), §5, the contract and its generic
+  consequences first; G4–G5 and the block-size-aware
   probability are later stages.
 
 ## 0. What main already has (reused, not re-derived)
@@ -197,7 +201,7 @@ theorems, since statements do not quantify over `eigenvectorBasis`):
 theorem specNorm_sub_rbki_replicateCol_sq_le {t : ℕ} (A : Matrix m n 𝕜) (x : n → 𝕜)
     {Z : Matrix n (Fin t) 𝕜} (hZ : HasOrthonormalCols Z)
     (hAZ : Aᴴ * A * Z = Z * Matrix.diagonal fun i => ((singularValues A i ^ 2 : ℝ) : 𝕜))
-    {Δ : ℝ} (hΔ : 0 < Δ) (hΔ1 : Δ ≤ 1) (hpos : ∀ i < t, 0 < singularValues A i)
+    {Δ : ℝ} (hΔ : 0 < Δ) (hpos : ∀ i < t, 0 < singularValues A i)
     (hgap : ∀ i, i + 1 < t → singularValues A (i + 1) ^ 2 ≤ (1 - Δ) * singularValues A i ^ 2)
     (hx : ∀ i, (Zᴴ *ᵥ x) i ≠ 0) {q d r : ℕ} {f : ℝ[X]} (hf : f.degree < d)
     (hd : t + d ≤ q + 1) (hr : r ≤ t) {c a : ℝ} (hc : 0 < c)
@@ -205,17 +209,21 @@ theorem specNorm_sub_rbki_replicateCol_sq_le {t : ℕ} (A : Matrix m n 𝕜) (x 
     (htail : ∀ y ∈ Set.Icc 0 (singularValues A t ^ 2), |f.eval y| ≤ a) :
     specNorm (A - rbki A (Matrix.replicateCol Unit x) q) ^ 2 ≤
       singularValues A r ^ 2 +
-        (a / c) ^ 2 * Δ⁻¹ ^ (2 * t) * (∑ i, ‖(Zᴴ *ᵥ x) i‖⁻¹ ^ 2) *
+        (a / c) ^ 2 * Δ⁻¹ ^ (2 * (t - 1)) * (∑ i, ‖(Zᴴ *ᵥ x) i‖⁻¹ ^ 2) *
           ‖WithLp.toLp 2 ((A - A * Z * Zᴴ) *ᵥ x)‖ ^ 2
 ```
 
+**Decided (maintainer, 2026-11-14): the mathematical statements may be messy; clean
+corollaries are stated on top.** So this theorem and those of §2.3 carry the sharp factors,
+and the readable forms (the rate of §2.3, the asymptotic forms, a version with
+$\Delta^{-2t}$ and rounded constants) are separate corollaries (A12).
+
 Four points about this statement, all found in review:
 
-* `hΔ1 : Δ ≤ 1` is needed. The exponent is written $2t$ instead of $2(t-1)$ to avoid a
-  truncated subtraction [V2], and at $t=1$ `hgap` is vacuous, so without `hΔ1` the factor
-  $\Delta^{-2}$ could be made small and the statement would be false (take
-  $\mathbf A=\operatorname{diag}(2,1)$, $t=r=q=1$, $f=1$). BL2 asks whether the sharp exponent
-  $2(t-1)$ is wanted instead.
+* The exponent is the sharp $2(t-1)$ (BL2 b). A draft with $2t$ and no further hypothesis was
+  false at $t=1$, where `hgap` is vacuous (take $\mathbf A=\operatorname{diag}(2,1)$,
+  $t=r=q=1$, $f=1$); any corollary with the exponent $2t$ needs $\Delta\le1$. The subtraction
+  is harmless: $t=0$ forces $r=0$ and an empty sum.
 * `hpos` is needed: `hgap` also holds when $\sigma_i=\sigma_{i+1}=0$, and then the Vandermonde
   matrix is singular. The case $\operatorname{rank}\mathbf A<t$ is separate and easy (the
   Krylov space is invariant once $q$ reaches the rank, so the error is zero); planned, S.
@@ -244,11 +252,11 @@ off an event of probability $\delta/2$. With the Chebyshev filter of degree $q-t
 ```lean
 theorem measureReal_lt_specNorm_sub_rbki_sq_le_of_hasLaw_gaussianVector (A : Matrix m n ℝ)
     (hx : HasLaw x (gaussianVector n) μ) {h r t q : ℕ} (hr : h + 1 = r) (hrt : r ≤ t)
-    (hq : t ≤ q) {Δ δ : ℝ} (hΔ : 0 < Δ) (hΔ1 : Δ ≤ 1) (hδ : 0 < δ)
+    (hq : t ≤ q) {Δ δ : ℝ} (hΔ : 0 < Δ) (hδ : 0 < δ)
     (hgap : ∀ i, i + 1 < t → singularValues A (i + 1) ^ 2 ≤ (1 - Δ) * singularValues A i ^ 2) :
     μ.real {ω | singularValues A r ^ 2 +
         32 * Real.exp (-8 * ((q : ℝ) - t) * Real.sqrt (singularGapRatio A h t)) *
-          Δ⁻¹ ^ (2 * t) * ((t : ℝ) ^ 3 / δ ^ 3) * frobNorm (A - truncatedSVD A t) ^ 2 <
+          Δ⁻¹ ^ (2 * (t - 1)) * ((t : ℝ) ^ 3 / δ ^ 3) * frobNorm (A - truncatedSVD A t) ^ 2 <
         specNorm (A - rbki A (Matrix.replicateCol Unit (x ω)) q) ^ 2} ≤ δ
 ```
 
@@ -261,7 +269,7 @@ $\{\min_i\lvert g_i\rvert>\delta/t\}$, which uses the independence of head and t
 and loses only $t^3/\delta^2$) as an addition; integrating the tail against the cap
 $\|\mathbf A\|_2^2$ would give a full expectation bound at a worse rate, not proposed.
 
-**Rate.** $q\ge t+\dfrac{1}{8\sqrt\gamma}\Bigl(2t\log\dfrac1\Delta+
+**Rate.** $q\ge t+\dfrac{1}{8\sqrt\gamma}\Bigl(2(t-1)\log\dfrac1\Delta+
 \log\dfrac{32\,t^3\,\|\mathbf A-\llbracket\mathbf A\rrbracket_t\|_{\mathsf F}^2}
 {\delta^3\,\varepsilon\,\sigma_r^2}\Bigr)$ gives $\sigma_r^2(1+\varepsilon)$: Meyer–Musco–Musco's
 Theorem 6 shape, $O((t/\sqrt\gamma)\log(1/\Delta)+(1/\sqrt\gamma)\log(n/\delta\varepsilon))$. The
@@ -325,31 +333,30 @@ and it goes in `LowerBounds/LowRank`.
 
 ### 3.1 Which process (BL4, BL5, BL7)
 
-With full reorthogonalization the block structure does not enter the orthogonalization: each
-new vector is reduced against every stored vector of its side. The block size only fixes the
-order in which stored vectors are multiplied. Written as a queue over columns (band Lanczos in
-the sense of Ruhe 1979, applied to Golub–Kahan bidiagonalization), with $N=qb$:
+**Decided (maintainer, 2026-11-14): the orthogonalization is an abstraction.** The driver is
+written against one operation, *extend a stored basis by a block*, with a contract (§3.1a). It
+knows nothing about how the extension is computed. A concrete scheme is proved against the
+contract and substituted by linking; column-wise CGS2 with threshold deflation is the first
+instance (§3.5), and a block routine (BCGS2, Householder) is a later instance of the same
+contract. With $N=qb$:
 
 ```
-append(Q, k, w):                       -- one procedure, used three times (§6)
-    ν₀ := ‖w‖                          -- saved raw norm
-    (h, w') := cgs2(Q[0..k), w)        -- two classical passes against all k stored columns
-    β := ‖w'‖
-    if β ≤ τ·ν₀ then q_k := 0, β := 0 else q_k := w'/β      -- deflation test (§3.5)
-    return (h, β, ν₀)
-
-for c in 0 .. b-1:   R₀[0..c, c], R₀[c, c] := append(V, c, Ω e_c)
-for i in 0 .. N-1:
-    R[0..i, i],   R[i, i]   := append(U, i,   A v_i)        -- matvec
-    S[0..i+b, i], S[i+b, i] := append(V, i+b, Aᴴ u_i)       -- adjoint matvec
-output U (m × N), S ((N+b) × N), V₊ (n × (N+b)), R₀ (b × b), the saved raw norms
+V₀, R₀ := extend(∅, Ω)                       -- start block
+for j in 0 .. q-1:
+    U_j, R[·, j]     := extend(U_{<j},   A V_j)       -- b products with A
+    V_{j+1}, S[·, j] := extend(V_{≤j},   Aᴴ U_j)      -- b products with Aᴴ
+output U (m × N), S ((N+b) × N), V₊ (n × (N+b)), R₀ (b × b)
 ```
 
-$\tau\ge0$ is an input word. At $\tau=0$ the test is $\beta=0$, the exact zero guard of the
-rank-revealing MGS and of `Lanczos.Reorth` on main.
+`extend(Q, W)` returns the new block $\mathbf Q'$ and the coefficients of $\mathbf W$ against
+the old and the new columns (stacked into one block column of $\mathbf R$ or $\mathbf S$).
+Full reorthogonalization is the fact that $\mathbf Q$ is *all* stored columns of that side.
+This is block Lanczos bidiagonalization; when the scheme works column by column it is the band
+form of Ruhe 1979 applied to Golub–Kahan.
 
 It uses $N$ products with $\mathbf A$ and $N$ with $\mathbf A^{\mathsf H}$, Tropp–Webber's
-$m=2q$ block products. In exact arithmetic at $\tau=0$ (planned, M, P1–P3 of §5):
+$m=2q$ block products. For every scheme meeting the **exact** contract (planned, M, P1–P3 of
+§5):
 
 * $\operatorname{range}\mathbf V_{[0,jb)}=\mathcal K_j(\mathbf H,\mathbf\Omega)$ and
   $\operatorname{range}\mathbf U_{[0,jb)}=\mathbf A\,\mathcal K_j(\mathbf H,\mathbf\Omega)$, the
@@ -364,10 +371,88 @@ $m=2q$ block products. In exact arithmetic at $\tau=0$ (planned, M, P1–P3 of �
   $\mathbf R=\mathbf S_{[0,N)}^{\mathsf H}$; for $b=1$ this is Golub–Kahan–Lanczos
   bidiagonalization.
 
-A direct numerical run of this recurrence for $b=1,2,3,4$, a dependent start block and a
-rank-deficient matrix reproduced `rbki` to $10^{-14}$; again a check of the identity only.
+A direct numerical run of this recurrence with column-wise two-pass Gram–Schmidt as the scheme,
+for $b=1,2,3,4$, a dependent start block and a rank-deficient matrix, reproduced `rbki` to
+$10^{-14}$; again a check of the identity only.
 
-Why this form, against the alternatives:
+### 3.1a The orthogonalization contract
+
+Two pure predicates on matrices, in `Matrix/Perturbation` next to `IsOrthErr`, and one
+operation whose contract is the decoded predicate. The exact one fixes what the scheme
+computes up to the freedom every scheme has; the rounded one is the guarantee every stability
+theorem of §4 consumes, through its three parameters only.
+
+```lean
+/-- Exact extension of a basis `Q` by a block `W`: representation, orthonormality of the
+nonzero columns, and no loss of range. Zero columns are allowed (rank deficiency). -/
+structure IsBasisExtension {n k b : ℕ} (Q : Matrix (Fin n) (Fin k) 𝕜) (W : Matrix (Fin n) (Fin b) 𝕜)
+    (Q' : Matrix (Fin n) (Fin b) 𝕜) (H : Matrix (Fin k) (Fin b) 𝕜) (R : Matrix (Fin b) (Fin b) 𝕜) :
+    Prop where
+  repr : W = Q * H + Q' * R
+  upper : R.BlockTriangular id
+  orth : ∀ c, Q'.col c = 0 ∨ (‖WithLp.toLp 2 (Q'.col c)‖ = 1 ∧ Qᴴ *ᵥ Q'.col c = 0 ∧
+    ∀ c' < c, star (Q'.col c') ⬝ᵥ Q'.col c = 0)
+  range : LinearMap.range (Matrix.fromCols Q Q').mulVecLin =
+    LinearMap.range (Matrix.fromCols Q W).mulVecLin
+
+/-- Rounded extension, with parameters `(η₀, μ, ε)`: if the old basis is within `η₀` of
+orthonormal, the representation holds up to `ε`, and every nonzero new column is `μ`-orthogonal
+to all earlier columns and `μ`-normalized. -/
+structure IsBasisExtensionErr {n k b : ℕ} (η₀ μ ε : ℝ) (Q : Matrix (Fin n) (Fin k) ℝ)
+    (W Q' : Matrix (Fin n) (Fin b) ℝ) (H : Matrix (Fin k) (Fin b) ℝ) (R : Matrix (Fin b) (Fin b) ℝ) :
+    Prop where
+  upper : R.BlockTriangular id
+  residual : frobNorm (W - Q * H - Q' * R) ≤ ε * frobNorm W
+  column : IsNearOrthonormalOnSupport η₀ Q → ∀ c, Q'.col c = 0 ∨
+    (|‖WithLp.toLp 2 (Q'.col c)‖ ^ 2 - 1| ≤ μ ∧
+      ‖WithLp.toLp 2 ((Matrix.fromCols Q (Q'.submatrix id (Fin.castLE c.is_le')))ᵀ *ᵥ Q'.col c)‖ ≤ μ)
+```
+
+(`IsNearOrthonormalOnSupport η₀ Q`: the nonzero columns of $\mathbf Q$ have Gram matrix within
+$\eta_0$ of the identity; the last line says "against the old columns and the earlier new
+ones" and will be written with whatever sub-block notation the skeleton settles on.) Why this
+shape:
+
+* **The residual clause has no antecedent**, as in `IsOrthErr`: the relation
+  $\mathbf W=\mathbf Q\mathbf H+\mathbf Q'\mathbf R+\mathbf F$ comes from the scheme's own
+  arithmetic and holds whatever the basis is. Rank decisions are inside it: a scheme that
+  drops a column of size at most $\tau$ relative reports $\varepsilon\ge\tau$.
+* **The column clause is absolute** ($\mu$, not $\varepsilon_1+\varepsilon_3\|\mathbf w\|/\|\mathbf w'\|$).
+  The single-vector `IsOrthErr` leaves admissibility to the caller, which then has to select a
+  prefix. Here the scheme owns the rank decision, so it can promise $\mu$ for every column it
+  keeps. This is what lets the guarantees cover all returned columns for $b>1$.
+* **Per-column form** so that the composition over the whole run is
+  `frobNorm_transpose_mul_self_sub_one_le_of_columns` verbatim:
+  $\|\mathbf G-\mathbf I\|_{\mathsf F}\le\sqrt{3N}\,\mu$ on the nonzero columns, closed under the
+  window $\sqrt{3N}\,\mu\le\eta_0$. One lemma (E2), no induction in the driver proofs.
+* A scheme that cannot give a per-column bound (a block Householder step gives it for the
+  whole block at once) still fits: a block bound implies the column bound.
+
+The operation and how a scheme is substituted, in the core's existing mechanism (compare
+`twoPassRel`, `cgs2_spec`, `cgs2Impl` in `Krylov/Lanczos/Reorth/TwoPass.lean`):
+
+```lean
+inductive OrthOp where
+  | extend            -- dims [n, k, b]; ins [Q, W]; outs [W (overwritten by Q'), H, R]
+
+/-- The contract: the decoded blocks satisfy the rounded extension guarantee. -/
+def extendRel (dec : K → ℝ) (η₀ μ ε : ℕ → ℕ → ℕ → ℝ) : BlockRel K
+
+/-- The exact contract, same operands. -/
+def exactExtendRel (dec : K → 𝕜) : BlockRel K
+
+-- every driver theorem takes the contract as a hypothesis on the interpretation:
+--   (hO : I.Meets .total (Has.inj OrthOp.extend) ((extendRel dec η₀ μ ε).spec ExtendOperands))
+-- a scheme is an implementation proved against it:
+theorem cgs2Extend_spec … :
+    (cgs2ExtendImpl τ).Triple I .total ((extendRel dec η₀ (cgs2Mu …) (cgs2Eps … τ)).spec ExtendOperands)
+-- and the concrete certified algorithm is `Algorithm.link` of the abstract one with the table
+-- sending `OrthOp.extend` to `cgs2ExtendImpl τ`; costs and storage are recomputed by the link.
+```
+
+The parameters are functions of the dimensions $(n,k,b)$, as the rounding envelopes on main.
+
+Why the remaining choices, against the alternatives:
 
 * **Against block Lanczos on $\mathbf A^{\mathsf H}\mathbf A$** (Chen et al.'s Algorithm 1 is
   stated with the Krylov space of $\mathbf A\mathbf A^{\mathsf T}$, the transposed convention):
@@ -376,24 +461,25 @@ Why this form, against the alternatives:
   $\mathbf A\,\mathcal K_q$ and $\mathbf U^{\mathsf H}\mathbf A$, so a second orthogonalization
   and more products, or a squared condition number. The two-sided recurrence produces both bases
   and the small factor with the same $2N$ products.
-* **Against a block routine (BCGS2/BCGSI+)**: the known result needs
-  $O(u)\kappa(\mathbf X)<1$ for the block being orthogonalized, and Krylov blocks lose rank
-  routinely; an intra-block rank decision is then part of the contract. Column by column, the
-  rank decision is one scalar test per column (§3.5), and `cgs2Impl`, `TwoPassOut` and
-  `frobNorm_transpose_mul_self_sub_one_le_of_columns` apply without change. Cost: no level-3
-  kernels; the model of computation does not reward them today.
+* **First instance column-wise CGS2, not a block routine (BCGS2/BCGSI+)**: the known block
+  result needs $O(u)\kappa(\mathbf X)<1$ for the block being orthogonalized, and Krylov blocks
+  lose rank routinely, so a block instance needs its own rank-revealing step before it can meet
+  the contract. Column by column, the rank decision is one scalar test per column (§3.5), and
+  `cgs2Impl`, `TwoPassOut` and the `IsOrthErr` facts of
+  `Matrix/FinitePrecision/ClassicalGramSchmidt.lean` are reused. With the contract in place a
+  block instance is an addition, not a redesign.
 * **Full coefficient columns are stored** (BL5), not only the band. In exact arithmetic the
   entries outside the band vanish; in rounded arithmetic they are the reorthogonalization
   corrections. Keeping them makes the residual relations
   $\mathbf A\bar{\mathbf V}=\bar{\mathbf U}\bar{\mathbf R}+\mathbf F_1$,
   $\mathbf A^{\mathsf H}\bar{\mathbf U}=\bar{\mathbf V}_+\bar{\mathbf S}+\mathbf F_2$ hold column by
-  column from the representation clause of the two-pass contract alone, with no induction and
-  no use of symmetry. `Lanczos.Reorth` discards them and bounds them by an induction that uses
+  column from the residual clause of the contract alone, with no induction and no use of
+  symmetry. `Lanczos.Reorth` discards them and bounds them by an induction that uses
   symmetry; that argument has no direct two-sided analogue. Storage $N(N+b)$ words, negligible
   against the $(m+n)N$ of the bases.
 
 The Hermitian twin (the same queue on one basis, $\mathbf H\mathbf V=\mathbf V_+\mathbf T$,
-$N$ products, block Lanczos proper, output a factored `nystromBKI`) shares the append step and
+$N$ products, block Lanczos proper, output a factored `nystromBKI`) uses the same orthogonalization contract and
 is a later stage; it needs a small solve with $\mathbf T$ for the Nyström form.
 
 ### 3.2 Objects
@@ -403,8 +489,10 @@ is a later stage; it needs a small solve with $\mathbf T$ for the Nyström form.
 | `bandGolubKahanState A Ω i` (a `structure` with `U`, `V`, `R`, `S`): the exact queue recurrence with the zero-column convention | pure definition, RCLike | `Krylov/Processes/BandGolubKahan.lean` | searched: no bidiagonalization, no block Krylov process; none |
 | `OperatorPairOp` with `matvec`, `rmatvec`; `IsExactMatvecPair dec A I`, `IsMatvecPair dec A δ δ' I` (normwise, for $\mathbf A$ and $\mathbf A^{\mathsf H}$) | operation signature and contracts | `Ops/Catalog/OperatorPair.lean` | none |
 | stored adjoint: `StoredOperatorOp` lowering of `rmatvec` for dense (transposed traversal of the same words) and COO | profile | `Ops/Profiles/StoredDense.lean`, `StoredCOO.lean` | none |
-| `appendOrth`: the `append` procedure of §3.1 | `Impl`, shared | `Krylov/Processes/AppendOrth.lean` (§6) | none |
-| `BandGolubKahan.solve`: the fixed program | `Ops.Program` | `Krylov/GolubKahan/Band/Alg.lean` | none |
+| `IsBasisExtension`, `IsBasisExtensionErr` (§3.1a) | pure predicates | `Matrix/Perturbation/BasisExtension.lean` | none; `IsOrthErr` is the single-vector, caller-admissibility relative |
+| `OrthOp.extend`, `extendRel`, `exactExtendRel` | operation and contracts | `Ops/Catalog/Orth.lean` | none |
+| `cgs2ExtendImpl τ`: column-wise `cgs2Impl`, saved raw norm, threshold test, normalization (§3.5) | `Impl`, the first instance | `Matrix/Factorizations/CGS2/Extend.lean` | none |
+| `BandGolubKahan.solve`: the fixed program over `OrthOp`, `OperatorPairOp`, sampling | `Ops.Program` | `Krylov/GolubKahan/Band/Alg.lean` | none |
 
 Shapes, to be fixed against the Ops API in the skeleton (the contracts follow
 `IsExactMatvec`/`IsMatvec` in `Ops/Catalog/Operator.lean` field by field):
@@ -445,11 +533,12 @@ needed for the theory part: the gap is a hypothesis with a free $\Delta$ (BL2).
 
 ### 3.3 Operation model
 
-BLAS level, as `Lanczos.Reorth`: `Blas1Op` (dot, axpy, nrm2, scal, copy), scalar comparison for
-the guard, `OperatorPairOp`, sampling for the start block. Exact model over `RCLike 𝕜`
-(`RCLikeBlas`); rounded model over $\mathbb R$ with `StdModel u id M` and the sequential
-dot/axpy envelope, as every rounded certificate on main. Linking to scalar arithmetic and to
-stored dense/COO data reuses the existing tables plus the adjoint lowering. The start block is
+The driver's signature is `OrthOp`, `OperatorPairOp`, block copy and sampling: no arithmetic of
+its own. The CGS2 instance lowers `OrthOp.extend` to the BLAS level of `Lanczos.Reorth`
+(`Blas1Op`: dot, axpy, nrm2, scal, copy; scalar comparison for the test). Exact model over
+`RCLike 𝕜` (`RCLikeBlas`); rounded model over $\mathbb R$ with `StdModel u id M` and the
+sequential dot/axpy envelope, as every rounded certificate on main. Further linking to scalar
+arithmetic and to stored dense/COO data reuses the existing tables plus the adjoint lowering. The start block is
 read from the Gaussian stream in one window of $nb$ words (the Hutch++ sample layout).
 
 ### 3.4 Output and truncation (BL6)
@@ -464,42 +553,50 @@ truncation when a small-SVD endpoint exists (the shared "QR/triangular/SVD/small
 endpoints" item, `Implementation-Coverage.md:330`), either as a declared primitive with a
 functional and an error contract or by linking a certified solver.
 
-### 3.5 Deflation (BL11)
+### 3.5 The first instance: column-wise CGS2 with threshold deflation (BL11)
+
+```
+cgs2Extend τ (Q, W):                   -- for each column c of W, in order
+    ν₀ := ‖w_c‖                        -- saved raw norm
+    (h, w') := cgs2([Q, Q'_{<c}], w_c) -- two classical passes against all earlier columns
+    β := ‖w'‖
+    if β ≤ τ·ν₀ then q'_c := 0, β := 0 else q'_c := w'/β
+    column c of [H; R] := (h, β)
+```
 
 In rounded arithmetic an exact zero test almost never fires, and a nearly dependent column is
 the normal case: a start block with close columns, or $N$ beyond the numerical rank, which is
 what low-rank approximation is for. `Lanczos.Reorth` on main keeps the exact guard, never
 deflates, and proves its strong results on the longest prefix passing $\tau\nu<\beta$. For
-$b=1$ the first failure is the end of the useful run. For $b>1$ it is not: the other columns
-of the queue are still good, and a guarantee that ends at the first failed column would cover
-only a prefix of the returned factors.
+$b=1$ the first failure is the end of the useful run. For $b>1$ it is not, and a guarantee
+that ends at the first failed column would cover only a prefix of the returned factors. Hence
+the threshold test, inside the scheme, with $\tau\ge0$ a parameter of the instance.
 
-So the test is part of the fixed program, with the threshold $\tau$ an input: a column with
-$\beta\le\tau\nu_0$ is stored as zero and the run continues. Consequences:
+What the instance proves (E3, E4 of §5):
 
-* Every nonzero stored column passes the admissibility test by construction, so the
-  orthogonality bound of §4.3 covers all nonzero columns of the returned factors, not a prefix.
-* A deflated column leaves a residual of size at most $\tau\nu_0\le\tau\|\mathbf A\|_2$ in the
-  relation it belongs to, in place of a rounding-level one. The bounds of §4.3–4.4 get a term
-  $\tau\sqrt{D}\,\|\mathbf A\|_2$, $D$ the number of deflated columns; the admissible window for
-  $\tau$ is the one of `RoundedSpectral` (bounded below by a multiple of the rounding level).
-* A zero column has zero descendants along $i\mapsto i+b$, in exact and in rounded arithmetic
-  ($\mathbf A\mathbf 0=\mathbf 0$ has $\nu_0=0$ and deflates for every $\tau\ge0$), so the block
-  width shrinks without any change of the tree: no `bindIdx` on a shrinking width is needed.
-* At $\tau=0$ in exact arithmetic the output is exactly `rbki` (§3.1). At $\tau>0$ in exact
-  arithmetic it is `rsvd` at a subspace of the Krylov space; no exact theorem is proposed for
-  that case, the rounded analysis covers it through the residual term.
+* **Rounded contract** with $\mu=2(2c+2(\eta_0+c)^2/\tau+E)$ and $\varepsilon=3c+E+\tau$, $c$ the
+  one-pass coefficient and $E$ the normalization envelope of `RoundedSpectral`, for $\tau$ in
+  its window (bounded below by a multiple of the rounding level). Every kept column passes the
+  admissibility test by construction, which is what turns `IsOrthErr`'s relative clause into
+  the absolute $\mu$. A dropped column has $\|\mathbf w'\|\le\tau\nu_0$, which goes into
+  $\varepsilon$. The pure part is `IsOrthErr` at the CGS2 constants, already on main
+  (`Matrix/FinitePrecision/ClassicalGramSchmidt.lean`).
+* **Exact contract** at $\tau=0$ in the exact model: the test is $\beta=0$, the zero guard of
+  the rank-revealing MGS on main, and the output is `IsBasisExtension`.
 
-The alternative is the `Lanczos.Reorth` convention (exact guard, analysis on a prefix); it
-keeps the exact identity for all inputs and makes the rounded guarantee end at the first
-numerical deflation.
+A zero column of $\mathbf V$ gives a zero product, which every scheme maps to a zero column, so
+the effective block width shrinks without any change of the tree (no `bindIdx` on a shrinking
+width). At $\tau>0$ in exact arithmetic the output is `rsvd` at a subspace of the Krylov
+space; no exact theorem is proposed for that case, the rounded analysis covers it through
+$\varepsilon$.
 
 ## 4. Guarantees
 
 ### 4.1 G1: exact certificate and Gaussian tape (planned, L for the execution proof)
 
-`Algorithm` for the exact BLAS model at $\tau=0$: for every admitted $(m,n,b,q)$, every input
-and tape, the canonical run succeeds, the three output buffers decode to matrices with
+First for the abstract driver: under the exact contract for `OrthOp.extend` and the exact
+operator pair, then linked with the CGS2 instance at $\tau=0$ into an `Algorithm` for the exact
+BLAS model. For every admitted $(m,n,b,q)$, every input and tape, the canonical run succeeds, the three output buffers decode to matrices with
 $\mathbf U\mathbf S^{\mathsf H}\mathbf V_+^{\mathsf H}=\mathsf{rbki}(\mathbf A,\mathbf\Omega,q)$,
 $\mathbf\Omega$ the decoded tape window, scratch is released, exactly $nb$ samples are consumed,
 and the counts are $N$ `matvec`, $N$ `rmatvec`, with work, span and storage bounds. Then, as
@@ -514,34 +611,39 @@ for $b\ge t+2$, §2.3–2.4 for the rest.
 
 ### 4.2 G2: rounded total execution (planned, L)
 
-The `runs_solve` shape of `Lanczos.Reorth`: under `StdModel`, `IsBlas1`, normwise
-`IsMatvecPair`, exact comparison and a size-only precision envelope, the run succeeds for every
-input with no orthogonality, rank or nonbreakdown hypothesis, and the output carries the
-executed history: for every appended column its raw vector, both passes (`TwoPassOut`), saved
-raw norm, deflation test, normalization, and the decoded stored entries.
+For the abstract driver: under the rounded contract `extendRel dec η₀ μ ε` and normwise
+`IsMatvecPair` with allowance $\varepsilon_{\rm mv}$, the run succeeds for every input with no
+orthogonality, rank or nonbreakdown hypothesis, and the output carries the executed history:
+for every block step the decoded product block and the extension relation
+`IsBasisExtensionErr` between the stored blocks. The driver does no arithmetic, so this proof
+is storage bookkeeping only. Linked with the CGS2 instance it gives the `runs_solve` shape of
+`Lanczos.Reorth` under `StdModel`, `IsBlas1`, exact comparison and a size-only precision
+envelope.
 
 ### 4.3 G3: orthogonality, residuals, forward bound (planned, M each)
 
-With the deflation of §3.5 (BL11 a) the statements are about all nonzero stored columns, and
-$D$ is the number of deflated ones; with the exact guard (BL11 b) they hold on the longest
-column prefix passing the saved test and $D=0$. On each side:
+All in the contract parameters $(\eta_0,\mu,\varepsilon)$ and $\varepsilon_{\rm mv}$, for every
+scheme, under the window $\sqrt{3(N+b)}\,\mu\le\eta_0$; the CGS2 corollaries substitute the
+values of §3.5. On each side:
 
 * $\|\bar{\mathbf U}^{\mathsf T}\bar{\mathbf U}-\mathbf I\|_{\mathsf F}\le\sqrt{3N}\,\mu$ on the
-  nonzero columns, and the same for $\bar{\mathbf V}_+$, with
-  $\mu=2(2c+2(\eta+c)^2/\tau+E)$ as in `RoundedSpectral`; this is
-  `frobNorm_transpose_mul_self_sub_one_le_of_columns` applied to the column sequence, with the
-  same fixed-point window. In particular the number of nonzero columns is at most $m$,
-  respectively $n$.
+  nonzero columns, and the same for $\bar{\mathbf V}_+$: the column clause of the contract and
+  `frobNorm_transpose_mul_self_sub_one_le_of_columns`. In particular the number of nonzero
+  columns is at most $m$, respectively $n$.
 * Residual relations $\|\mathbf A\bar{\mathbf V}-\bar{\mathbf U}\bar{\mathbf R}\|_{\mathsf F}$,
   $\|\mathbf A^{\mathsf T}\bar{\mathbf U}-\bar{\mathbf V}_+\bar{\mathbf S}\|_{\mathsf F}\le
-  \bigl(c'\sqrt N\,(\varepsilon_{\rm mv}+\varepsilon_2)+\tau\sqrt D\bigr)\|\mathbf A\|_2$.
+  c'\sqrt N\,(\varepsilon_{\rm mv}+\varepsilon)\|\mathbf A\|_2$: the residual clause, block by
+  block.
 * **Forward bound for the returned factors**:
   $$\|\mathbf A-\bar{\mathbf U}\bar{\mathbf S}^{\mathsf T}\bar{\mathbf V}_+^{\mathsf T}\|\le
   \|(\mathbf I-\mathbf P_{\bar{\mathbf U}})\mathbf A\|+
-  \bigl(c''\sqrt N\,(\mu+\varepsilon_{\rm mv}+\varepsilon_2)+\tau\sqrt D\bigr)\|\mathbf A\|_2,$$
+  c''\sqrt N\,(\mu+\varepsilon_{\rm mv}+\varepsilon)\|\mathbf A\|_2,$$
   $\mathbf P_{\bar{\mathbf U}}$ the orthogonal projector onto the computed range, in the spectral
   and Frobenius norms. This says the returned factors are as good as projecting $\mathbf A$ onto
   the computed left basis; it needs nothing about Krylov spaces.
+
+For the CGS2 instance $\varepsilon$ contains the deflation threshold $\tau$, so the price of
+deflation is visible as a $\tau\|\mathbf A\|_2$ term in the last two bounds.
 
 The constants $c,c',c''$ are fixed by the proofs and go to `docs/constants.toml`.
 
@@ -570,7 +672,7 @@ exactly when $\mathbf S'_{[0,N)}=\mathbf R'^{\mathsf T}$, which together with th
 shape chosen above, and
 $\mathbf E=\mathbf D_1\mathbf Q_V^{\mathsf T}+\mathbf Q_U\mathbf D_2^{\mathsf T}(\mathbf I-\mathbf Q_V\mathbf Q_V^{\mathsf T})$
 satisfies them with $\|\mathbf E\|_{\mathsf F}\le\|\mathbf D_1\|_{\mathsf F}+\|\mathbf D_2\|_{\mathsf F}=
-O((N\mu+\tau\sqrt D)\|\mathbf A\|_2)$. Then $(\mathbf A+\mathbf E)\mathbf Q_V=\mathbf Q_U\mathbf R'$ and
+O(N(\mu+\varepsilon_{\rm mv}+\varepsilon)\|\mathbf A\|_2)$. Then $(\mathbf A+\mathbf E)\mathbf Q_V=\mathbf Q_U\mathbf R'$ and
 $(\mathbf A+\mathbf E)^{\mathsf T}\mathbf Q_U=\mathbf Q_{V_+}\mathbf S'$ hold exactly, and by
 induction on blocks, using only the triangular shapes,
 $$\operatorname{range}\mathbf Q_U\supseteq(\mathbf A+\mathbf E)\,
@@ -633,37 +735,43 @@ $(\mathbf A+\mathbf E,\tilde{\mathbf\Omega})$. Three routes:
 | A9 | Gaussian head/tail event: $\sum g_i^{-2}\le4t^3/\delta^2$, tail energy by Markov; public small-ball lemma | planned | S | small ball, rotation invariance |
 | A10 | single-vector gapped tail bound (§2.3), spectral and Frobenius | planned | M | A7–A9 |
 | A11 | single-vector gapless $(1+\varepsilon)$ tail bound for the truncated output | planned | M | A10, case split |
-| A12 | every block size (§2.4): A10, A11 for a Gaussian block; asymptotic forms | planned | S | A3 |
+| A12 | every block size (§2.4): A10, A11 for a Gaussian block; the clean corollaries (readable constants, rate, asymptotic forms) | planned | S | A3 |
 | A13 | necessity: multiplicity above $b$ at some $\sigma_i>\sigma_r$ gives error $\ge\sigma_i$ for every $q$ (§2.6) | planned | M (S if the eigenspace projection lemma exists) | `blockKrylovSpace_eq_iSup_krylovSpace`, grade |
-| P1 | `bandGolubKahanState`: ranges are the block Krylov spaces, nonzero columns orthonormal | planned | M | `blockKrylovSpace_succ`, MGS facts |
+| E1 | `IsBasisExtension`, `IsBasisExtensionErr`: monotonicity in the parameters, the exact one implies the rounded one at $(\eta_0,0,0)$ | planned | S | — |
+| E2 | composition: a sequence of extensions meeting the rounded contract has $\|\mathbf G-\mathbf I\|_{\mathsf F}\le\sqrt{3N}\mu$ on the nonzero columns, under $\sqrt{3N}\mu\le\eta_0$ | planned | S | `frobNorm_transpose_mul_self_sub_one_le_of_columns` |
+| E3 | `cgs2Extend_spec`: column-wise CGS2 with threshold $\tau$ meets `extendRel` at the constants of §3.5 | planned | M | `cgs2_spec`, `IsOrthErr` at the CGS2 constants, `Lanczos.Reorth` normalization proofs |
+| E4 | the same implementation at $\tau=0$ in the exact model meets `exactExtendRel` | planned | M | rank-revealing MGS facts |
+| E5 | linking: the abstract certificates composed with E3/E4 through `Algorithm.link`, costs and storage recomputed | planned | M | `Algorithm.link`, `Profile.Refines` |
+| P1 | `bandGolubKahanState`, for any exact extension: ranges are the block Krylov spaces, nonzero columns orthonormal | planned | M | `blockKrylovSpace_succ`, E1 |
 | P2 | $\mathbf U\mathbf U^{\mathsf H}=$ `rangeProjector (A * K_q)`; $\mathbf A^{\mathsf H}\mathbf U=\mathbf V_+\mathbf S$; $\mathbf U\mathbf S^{\mathsf H}\mathbf V_+^{\mathsf H}=$ `rsvd A K_q` (in `Krylov`), `= rbki A Ω q` (corollary in `LowRank`) | planned | M | P1, `rbki_eq_rangeProjector` |
 | P3 | band structure, $\mathbf R=\mathbf S^{\mathsf H}_{[0,N)}$; $b=1$ is Golub–Kahan | planned | S | P1 |
 | O1–O3 | `OperatorPairOp`, exact and normwise contracts, joint realization; dense and COO adjoint lowerings | planned | S, M, M | `Operator`, `StoredOperator` |
-| Q1 | `appendOrth` exact and rounded `Writes` specifications, cost and peak | planned | M | `cgs2_spec`, `Reorth.advance` proofs |
-| Q2 | `BandGolubKahan.solve`: total exact `Writes` theorem, output $=$ P1 state | planned | L | Q1, loop and archive rules |
+| Q2 | `BandGolubKahan.solve` over the abstract `OrthOp`: total exact `Writes` theorem, output $=$ P1 state | planned | L | `exactExtendRel`, loop and archive rules |
 | Q3 | canonical exact certificate with counts ($N$ + $N$ products, $nb$ samples), work, span, storage | planned | M | `Algorithm.ofWp`, static manifests |
 | Q4 | Gaussian tape: transfer of the existing gapped and gapless bounds and of A10–A12 to the stored output | planned | M | Hutch++ `Samples`, `Probability` |
-| R1 | rounded total execution with history (G2) | planned | L | Q1 rounded, `Rounded.History` pattern |
-| R2 | orthogonality of both bases on the nonzero columns (G3) | planned | M | column lemma; `reorthSteps` API under BL11 b |
-| R3 | residual relations (G3) | planned | M | `TwoPassOut.norm_sub_sub_sum_le` |
+| R1 | rounded total execution with history (G2), under `extendRel` | planned | L | `Rounded.History` pattern |
+| R2 | orthogonality of both bases on the nonzero columns (G3), in $(\eta_0,\mu)$ | planned | M | E2 |
+| R3 | residual relations (G3), in $(\varepsilon,\varepsilon_{\rm mv})$ | planned | M | residual clause |
 | R4 | forward bound for the returned factors (G3) | planned | M | R2, R3 |
-| R5 | rounded canonical certificate, scalar-linked and stored | planned | L | `RoundedStoredCertificate` pattern |
+| R5 | rounded canonical certificate for the CGS2 instance, scalar-linked and stored | planned | L | E3, E5, `RoundedStoredCertificate` pattern |
 
-Totals: 28 rows, twins counted with their row (S 10, M 15, L 3). Later stages: G4 backward
+Totals: 32 rows, twins counted with their row (S 12, M 17, L 3). Order: E1, E2 and the generic
+P, Q2–Q3, R1–R4 first (everything in the contract's parameters), then the instance E3–E5 and
+the linked certificates Q4, R5. The theory rows A1–A13 are independent of the program rows. Later stages: G4 backward
 model (L), G5 (BL8), truncation (BL6), block-size-aware probability (§2.5), Hermitian twin and
 `nystromBKI` program, odd product counts.
 
 ## 6. Shared proof machinery (planned first)
 
-* **`appendOrth`**: one procedure and one pair of specifications (exact, rounded) for "reduce
-  against the first $k$ stored columns, save the raw norm, normalize with the zero guard, append
-  the column and its coefficients". The program calls it three times (start block, left step,
-  right step). `Lanczos.Reorth.advance` is the same step specialized to the three-term update;
-  whether to restate it through `appendOrth` is not part of this stage, but the new proofs
-  should be written so that it can be.
-* **Column-queue archive invariant**: stored prefix of a basis buffer plus an upper-triangular
-  coefficient buffer, with a source index $i\mapsto i+b$. One loop rule instance, used for both
-  bases.
+* **The orthogonalization contract** (§3.1a): `IsBasisExtension`, `IsBasisExtensionErr`,
+  `OrthOp.extend`, and the composition lemma E2. Every later method that keeps an orthonormal
+  basis (the Hermitian twin, block Arnoldi, a randomized range finder, GMRES) is a consumer,
+  and every scheme (CGS2, MGS2, BCGS2, Householder) is an instance proved once. Adding a
+  scheme is: implement it, prove its `…_spec` against `extendRel`, link.
+  `Lanczos.Reorth.advance` hard-wires CGS2 today; restating it over the contract is not part
+  of this stage, but nothing here should prevent it.
+* **Block archive invariant**: stored block prefix of a basis buffer plus a block
+  upper-triangular coefficient buffer. One loop rule instance, used for both bases.
 * **Adjoint operator**: contracts and lowerings once, for every later two-sided algorithm
   (RSVD, generalized Nyström, LSQR, GK-based SVD).
 * **Two-basis backward construction** (G4): a pure `Matrix/Perturbation` lemma, the rectangular
@@ -683,7 +791,8 @@ model (L), G5 (BL8), truncation (BL6), block-size-aware probability (§2.5), Her
 | A13 | documentation of why A10 has a gap hypothesis; `LowerBounds/LowRank` |
 | P1–P3 | Q2 (specification of the program), G4 (shape of the backward relation) |
 | `OperatorPairOp`, adjoint lowerings | this program; RSVD, generalized Nyström, LSQR, any two-sided method |
-| `appendOrth` | this program three times; the Hermitian twin; optionally `Lanczos.Reorth` |
+| `IsBasisExtension(Err)`, `OrthOp.extend`, E2 | this program at three call sites; the Hermitian twin; later range finders, block Arnoldi; optionally `Lanczos.Reorth` |
+| `cgs2ExtendImpl`, E3–E5 | the concrete certificates Q4, R5; any consumer of the contract that wants CGS2 |
 | Q2–Q4, R1–R5 | the algorithm page for RBKI; G4–G5; the truncation stage |
 
 ## 7. Files and placement
@@ -702,8 +811,11 @@ model (L), G5 (BL8), truncation (BL6), block-size-aware probability (§2.5), Her
 | `LowerBounds/LowRank/BlockSize.lean` | A13 | new |
 | `Krylov/Processes/BandGolubKahan.lean` | P1–P3, stated with `rsvd`, `rangeProjector`, `blockKrylovMatrix` (all below `LowRank`) | new |
 | `Ops/Catalog/OperatorPair.lean`, `Ops/Profiles/StoredDense.lean`, `StoredCOO.lean` | O1–O3 | new; two edits |
-| `Krylov/Processes/AppendOrth.lean` | Q1 | new |
-| `Krylov/GolubKahan/Band/{Alg,Solve,Certification}.lean` | Q2, Q3: the program is a Krylov process, next to `Krylov/Lanczos/Reorth/` | new |
+| `Matrix/Perturbation/BasisExtension.lean` | E1, E2: the two predicates and the composition lemma, next to `OrthErr.lean` | new |
+| `Ops/Catalog/Orth.lean` | `OrthOp`, `extendRel`, `exactExtendRel` | new |
+| `Matrix/Factorizations/CGS2/{Extend,ExtendRounded,ExtendExact}.lean` | E3, E4: the scheme is a factorization routine, independent of Krylov | new |
+| `Krylov/GolubKahan/Band/{Alg,Solve,Certification}.lean` | Q2, Q3: the abstract program is a Krylov process, next to `Krylov/Lanczos/Reorth/` | new |
+| `Krylov/GolubKahan/Band/Linked.lean` | E5 | new |
 | `Krylov/GolubKahan/Band/{Rounded,RoundedOutput,RoundedCertificate}.lean`, `Krylov/FinitePrecision/BandGolubKahanRun.lean` | R1–R5 | new |
 | `LowRank/BlockKrylov/{Samples,Probability}.lean` | the `rbki` corollary of P2, Q4 | new, after `Estimation/Trace/HutchPlusPlus/` |
 
@@ -729,7 +841,36 @@ perturbation argument for gap-free statements (their Corollaries 14, 16), Schatt
 The retired routine-certificate program proofs of `Krylov-LanczosReorth.md` are not used;
 `IsOrthErr` and the column lemma are, as pure mathematics.
 
-## 9. Open questions
+## 9. Decisions and open questions
+
+**Decided by the maintainer, 2026-11-14** ("math statements can be messy, we will have clean
+corollaries. otherwise stuff is good. ideally we start with abstractions for how we do
+orthogonalization, and then prove a concrete one by subbing something in."):
+
+| id | decision |
+|---|---|
+| APPROVE | approved with the two changes below |
+| BL1 | a: single vector with explicit constants and every block size by monotonicity now; block-size-aware bounds in stage 2 |
+| BL2 | b: sharp statements (exponent $2(t-1)$, all factors); clean corollaries on top |
+| BL3 | c: tail bound and truncated expectation, the messy forms; clean corollaries on top |
+| BL4 | a: two-sided block Golub–Kahan with full reorthogonalization |
+| BL5 | a: full coefficient columns |
+| BL6 | a: untruncated factors now |
+| BL7 | **changed**: neither option; the orthogonalization is an abstract operation with a contract (§3.1a), the driver is proved against it, and column-wise CGS2 is the first scheme substituted |
+| BL8 | a: backward model, then uniform bounds through the gap, as a research branch |
+| BL9 | a: `OperatorPairOp` |
+| BL10 | a: exact over `RCLike`, rounded over $\mathbb R$ |
+| BL11 | a, as a property of the CGS2 instance and not of the driver (§3.5) |
+
+BL2 and BL3 are read from "statements can be messy"; BL11 from "otherwise stuff is good".
+
+**Open**, raised by the change to BL7:
+
+| id | question | options | recommendation | why |
+|---|---|---|---|---|
+| BL12 | granularity and shape of the orthogonalization contract | **a block extension with an absolute per-column guarantee $(\eta_0,\mu,\varepsilon)$, the rank decision owned by the scheme (§3.1a)** / b single-vector `IsOrthErr` $(\eta_0,\varepsilon_1,\varepsilon_2,\varepsilon_3)$ with admissibility left to the driver, as in `Krylov-LanczosReorth.md` / c both, with b ⟹ a proved once | a (c if `Lanczos.Reorth` is to be restated over the contract soon) | (a) admits block schemes and makes the driver free of rank logic; (b) is the finer contract and already has its CGS2 constants on main, and "b plus a threshold test ⟹ a" is exactly the instance proof E3 |
+
+The original options, for the record:
 
 | id | question | options | recommendation | why |
 |---|---|---|---|---|
@@ -772,6 +913,13 @@ Findings applied:
   to four library facts (`Lagrange.eq_interpolate`, the private small-ball lemma, a name that
   no longer exists, the positive-semidefinite hypothesis of the Nyström twins).
 
-Not re-reviewed after these changes: §3.5 and the $\tau\sqrt D$ terms are new text and have had
-no independent check. The reviewer could not run numerics and could not confirm the
+Maintainer decisions, 2026-11-14 (§9), applied in a second revision: the single-vector
+statements carry the sharp exponent, with clean corollaries planned (A12); §3 is rewritten
+around an abstract orthogonalization operation (§3.1a), the driver theorems of §4 are stated in
+the contract's parameters, and column-wise CGS2 with threshold deflation is the first instance
+(§3.5, E3–E5). The first stage grew from 28 to 32 statements.
+
+Not re-reviewed: the contract of §3.1a (its two predicates are sketches, the column clause in
+particular), the instance constants of §3.5, and the restated bounds of §4.3–4.4 are new text
+and have had no independent check. The reviewer could not run numerics and could not confirm the
 Tropp–Webber quotation; line-number locators in §0 were not checked.

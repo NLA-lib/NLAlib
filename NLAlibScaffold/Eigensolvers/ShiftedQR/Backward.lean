@@ -37,8 +37,9 @@ exact development's worklist cannot take a failing decoupler.
 * `NLAlib.ShiftedQR.isRoundedRowRotation_machineRowRotation`,
   `NLAlib.ShiftedQR.isRoundedColRotation_machineColRotation`: the rotations the program computes
   from rounded coefficients are rounded Givens rotations.
-* `NLAlib.ShiftedQR.isPerturbedUnitarySimilar_machineColRotation`: one rounded round is a
-  perturbed unitary similarity with error $49\boldsymbol{u}\|\mathbf{Z}\|_2$.
+* `NLAlib.ShiftedQR.specNorm_machineColRotation_sub_le`,
+  `NLAlib.ShiftedQR.isPerturbedUnitarySimilar_machineColRotation`: one rounded round is within
+  $49\boldsymbol{u}\|\mathbf{Z}\|_2$ of the exact conjugation, a perturbed unitary similarity.
 * `NLAlib.ShiftedQR.shiftedStep_isPerturbedUnitarySimilar`: the rounded single step.
 -/
 
@@ -179,19 +180,19 @@ theorem isRoundedColRotation_machineColRotation (hM : StdModel u id M) (hu : 0 �
   simp only [star_star] at h
   exact h
 
-/-- **One rounded round of the shifted QR sweep is a perturbed unitary similarity**: on a machine
-with the standard model at $0 \le \boldsymbol{u} \le 1/576$, rotating the rows $i \ne j$ of
-$\mathbf{Z}$ and then its columns by the coefficients computed from $(p, q)$ gives
-$\mathbf{G}(\mathbf{Z} + \mathbf{E})\mathbf{G}^{\mathsf{H}}$ for the exact Givens rotation
-$\mathbf{G}$ of $(p, q)$, with $\|\mathbf{E}\|_2 \le 49\boldsymbol{u}\|\mathbf{Z}\|_2$: each
-rotation contributes $24\boldsymbol{u}$ (`NLAlib.IsRoundedRowRotation.specNorm_sub_le`), the
-second one relative to the rotated matrix. [Higham2002, Lemma 19.8]. -/
-theorem isPerturbedUnitarySimilar_machineColRotation (hM : StdModel u id M) (hu : 0 ≤ u)
+/-- **One rounded round of the shifted QR sweep is close to the exact conjugation**: on a
+machine with the standard model at $0 \le \boldsymbol{u} \le 1/576$, rotating the rows $i \ne j$
+of $\mathbf{Z}$ and then its columns by the coefficients computed from $(p, q)$ is within
+$49\boldsymbol{u}\|\mathbf{Z}\|_2$ of $\mathbf{G}\mathbf{Z}\mathbf{G}^{\mathsf{H}}$ for the exact
+Givens rotation $\mathbf{G}$ of $(p, q)$: each rotation contributes $24\boldsymbol{u}$
+(`NLAlib.IsRoundedRowRotation.specNorm_sub_le`), the second one relative to the rotated matrix.
+[Higham2002, Lemma 19.8]. -/
+theorem specNorm_machineColRotation_sub_le (hM : StdModel u id M) (hu : 0 ≤ u)
     (hu' : u ≤ 1 / 576) (hij : i ≠ j) (p q : ℂ) (Z : Matrix (Fin n) (Fin n) ℂ) :
-    IsPerturbedUnitarySimilar Z
-      (machineColRotation M i j (coefficientWords M p q).1 (coefficientWords M p q).2
-        (machineRowRotation M i j (coefficientWords M p q).1 (coefficientWords M p q).2 Z))
-      (49 * u * specNorm Z) := by
+    specNorm (machineColRotation M i j (coefficientWords M p q).1 (coefficientWords M p q).2
+        (machineRowRotation M i j (coefficientWords M p q).1 (coefficientWords M p q).2 Z) -
+      givens i j (givensCoeffs p q).1 (givensCoeffs p q).2 * Z *
+        (givens i j (givensCoeffs p q).1 (givensCoeffs p q).2)ᴴ) ≤ 49 * u * specNorm Z := by
   have hu100 : u ≤ 1 / 100 := by linarith
   set G := givens i j (givensCoeffs p q).1 (givensCoeffs p q).2
   have hG : HasOrthonormalCols G :=
@@ -207,8 +208,6 @@ theorem isPerturbedUnitarySimilar_machineColRotation (hM : StdModel u id M) (hu 
     have := specNorm_add_le (G * Z) (Z₁ - G * Z)
     rw [← e, hG.specNorm_mul_left] at this
     linarith
-  refine IsPerturbedUnitarySimilar.of_specNorm_sub_le hG.conjTranspose ?_
-  rw [Matrix.conjTranspose_conjTranspose]
   have e : Z₂ - G * Z * Gᴴ = (Z₂ - Z₁ * Gᴴ) + (Z₁ - G * Z) * Gᴴ := by
     rw [Matrix.sub_mul]
     abel
@@ -218,6 +217,24 @@ theorem isPerturbedUnitarySimilar_machineColRotation (hM : StdModel u id M) (hu 
   have hZ : 0 ≤ specNorm Z := specNorm_nonneg Z
   nlinarith [mul_le_mul_of_nonneg_left hZ₁ (by positivity : (0 : ℝ) ≤ 2 * (12 * u)),
     mul_nonneg (mul_nonneg hu hZ) (by linarith : (0 : ℝ) ≤ 1 - 576 * u)]
+
+/-- **One rounded round of the shifted QR sweep is a perturbed unitary similarity**: on a machine
+with the standard model at $0 \le \boldsymbol{u} \le 1/576$, rotating the rows $i \ne j$ of
+$\mathbf{Z}$ and then its columns by the coefficients computed from $(p, q)$ gives
+$\mathbf{G}(\mathbf{Z} + \mathbf{E})\mathbf{G}^{\mathsf{H}}$ for the exact Givens rotation
+$\mathbf{G}$ of $(p, q)$, with $\|\mathbf{E}\|_2 \le 49\boldsymbol{u}\|\mathbf{Z}\|_2$
+(`NLAlib.ShiftedQR.specNorm_machineColRotation_sub_le`). [Higham2002, Lemma 19.8]. -/
+theorem isPerturbedUnitarySimilar_machineColRotation (hM : StdModel u id M) (hu : 0 ≤ u)
+    (hu' : u ≤ 1 / 576) (hij : i ≠ j) (p q : ℂ) (Z : Matrix (Fin n) (Fin n) ℂ) :
+    IsPerturbedUnitarySimilar Z
+      (machineColRotation M i j (coefficientWords M p q).1 (coefficientWords M p q).2
+        (machineRowRotation M i j (coefficientWords M p q).1 (coefficientWords M p q).2 Z))
+      (49 * u * specNorm Z) := by
+  have hG : HasOrthonormalCols (givens i j (givensCoeffs p q).1 (givensCoeffs p q).2) :=
+    hasOrthonormalCols_givens hij (norm_givensCoeffs_fst_sq_add p q)
+  refine IsPerturbedUnitarySimilar.of_specNorm_sub_le hG.conjTranspose ?_
+  rw [Matrix.conjTranspose_conjTranspose]
+  exact specNorm_machineColRotation_sub_le hM hu hu' hij p q Z
 
 end MachineRound
 

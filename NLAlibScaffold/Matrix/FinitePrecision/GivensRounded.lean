@@ -451,12 +451,13 @@ def IsRoundedColRotation (η : ℝ) (i j : Fin n) (c s : ℂ) (A A' : Matrix (Fi
     ∀ r, Real.sqrt (‖A' r i - (A * (givens i j c s)ᴴ) r i‖ ^ 2 +
       ‖A' r j - (A * (givens i j c s)ᴴ) r j‖ ^ 2) ≤ η * Real.sqrt (‖A r i‖ ^ 2 + ‖A r j‖ ^ 2)
 
-/-- **A rotation of two rows computed pairwise has spectral-norm error $2\eta\|\mathbf{A}\|_2$**:
-the error is supported on two rows, its Frobenius norm is at most $\eta$ times the Frobenius
-norm of those rows, which is at most $\sqrt 2\,\|\mathbf{A}\|_2$. [Higham2002, Lemma 19.8]. -/
-theorem IsRoundedRowRotation.specNorm_sub_le {η : ℝ} {i j : Fin n} {c s : ℂ}
+/-- **A rotation of two rows computed pairwise has Frobenius-norm error
+$2\eta\|\mathbf{A}\|_2$**: the error is supported on two rows, its Frobenius norm is at most
+$\eta$ times the Frobenius norm of those rows, which is at most $\sqrt 2\,\|\mathbf{A}\|_2$.
+[Higham2002, Lemma 19.8]. -/
+theorem IsRoundedRowRotation.frobNorm_sub_le {η : ℝ} {i j : Fin n} {c s : ℂ}
     {A A' : Matrix (Fin n) (Fin n) ℂ} (h : IsRoundedRowRotation η i j c s A A') (hη : 0 ≤ η) :
-    specNorm (A' - givens i j c s * A) ≤ 2 * η * specNorm A := by
+    frobNorm (A' - givens i j c s * A) ≤ 2 * η * specNorm A := by
   obtain ⟨hout, hcol⟩ := h
   have hrow : ∀ r : Fin n, ∑ k, ‖A r k‖ ^ 2 ≤ specNorm A ^ 2 := by
     intro r
@@ -498,9 +499,15 @@ theorem IsRoundedRowRotation.specNorm_sub_le {η : ℝ} {i j : Fin n} {c s : ℂ
           mul_le_mul_of_nonneg_left (add_le_add (hrow i) (hrow j)) (sq_nonneg η)
       _ ≤ (2 * η * specNorm A) ^ 2 := by
           nlinarith [mul_nonneg (sq_nonneg η) (sq_nonneg (specNorm A))]
-  have hF := (sq_le_sq₀ (frobNorm_nonneg _)
+  exact (sq_le_sq₀ (frobNorm_nonneg _)
     (mul_nonneg (mul_nonneg (by norm_num) hη) (specNorm_nonneg A))).1 hfro
-  exact (specNorm_le_frobNorm _).trans hF
+
+/-- **A rotation of two rows computed pairwise has spectral-norm error $2\eta\|\mathbf{A}\|_2$**
+(`NLAlib.IsRoundedRowRotation.frobNorm_sub_le`). [Higham2002, Lemma 19.8]. -/
+theorem IsRoundedRowRotation.specNorm_sub_le {η : ℝ} {i j : Fin n} {c s : ℂ}
+    {A A' : Matrix (Fin n) (Fin n) ℂ} (h : IsRoundedRowRotation η i j c s A A') (hη : 0 ≤ η) :
+    specNorm (A' - givens i j c s * A) ≤ 2 * η * specNorm A :=
+  (specNorm_le_frobNorm _).trans (h.frobNorm_sub_le hη)
 
 /-- **A rotation of two columns computed pairwise has spectral-norm error
 $2\eta\|\mathbf{A}\|_2$.** [Higham2002, Lemma 19.8]. -/

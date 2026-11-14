@@ -40,6 +40,11 @@ $k$ subdiagonals).
 
 * `NLAlib.IsStableQRStep`: Definition 3.4 with an absolute error.
 * `NLAlib.IsStableQRChain`: a degree $m$ step as a chain of single steps.
+
+## Main results
+
+* `NLAlib.isStableQRStep_upperHessenbergPart`: a stable step from a Hessenberg factorization and
+  a nearby similarity.
 -/
 
 @[expose] public section
@@ -75,6 +80,63 @@ inductive IsStableQRChain (x : ℝ) :
       {Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)}
       (h : IsStableQRStep (x * (specNorm H + ‖s‖)) H s H₁ R)
       (t : IsStableQRChain x H₁ ss H' Rs) : IsStableQRChain x H (s :: ss) H' (R :: Rs)
+
+/-- **A stable step from a Hessenberg factorization and a nearby similarity**: if $\mathbf{Q}$
+is unitary and upper Hessenberg, $\mathbf{R}$ upper triangular,
+$\|\mathbf{H} - s\mathbf{I} - \mathbf{Q}\mathbf{R}\|_2 \le d$ and
+$\|\mathbf{Q}\mathbf{Z}\mathbf{Q}^{\mathsf H} - \mathbf{H}\|_2 \le e$, then $\mathbf{Z}$ with its
+entries below the subdiagonal deleted is a backward-stable step with error
+$d + \sqrt{n+1}\,(d + e)$ (and at least $d$): $\mathbf{R}\mathbf{Q} + s\mathbf{I}$ is upper
+Hessenberg and within $d$ of $\mathbf{Q}^{\mathsf H}\mathbf{H}\mathbf{Q}$, and the deletion costs
+at most a Frobenius norm. No printed source; the paper's step is computed Hessenberg. -/
+theorem isStableQRStep_upperHessenbergPart {H Z Q R : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {s : ℂ} {d e ε : ℝ} (hQ : HasOrthonormalCols Q) (hQH : IsUpperHessenberg Q)
+    (hR : R.IsUpperTriangular) (hd : specNorm (H - s • (1 : Matrix _ _ ℂ) - Q * R) ≤ d)
+    (he : specNorm (Q * Z * Qᴴ - H) ≤ e) (hdε : d ≤ ε)
+    (hε : d + √(n + 1 : ℝ) * (d + e) ≤ ε) :
+    IsStableQRStep ε H s (upperHessenbergPart Z) R := by
+  set D := H - s • (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) - Q * R with hD
+  set K := R * Q + s • (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+  have hQQ : Qᴴ * Q = 1 := hQ.conjTranspose_mul_self
+  have hQQ' : Q * Qᴴ = 1 := hQ.mul_conjTranspose_self
+  have hnorm : ∀ X : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, specNorm (Qᴴ * X * Q) = specNorm X := by
+    intro X
+    rw [Matrix.mul_assoc, hQ.conjTranspose.specNorm_mul_left,
+      ← Matrix.conjTranspose_conjTranspose Q, hQ.conjTranspose.specNorm_mul_conjTranspose_right]
+  have hK : IsUpperHessenberg K := by
+    intro i j hij
+    rw [show K i j = (R * Q + s • (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) i j from rfl,
+      Matrix.add_apply, IsUpperHessenberg.isUpperTriangular_mul hR hQH i j hij, Matrix.smul_apply,
+      Matrix.one_apply_ne (fun h => by subst h; omega), smul_zero, add_zero]
+  have hHQ : Qᴴ * H * Q = K + Qᴴ * D * Q := by
+    have hH : H = Q * R + s • (1 : Matrix _ _ ℂ) + D := by rw [hD]; abel
+    rw [hH]
+    simp only [K, Matrix.mul_add, Matrix.add_mul, Matrix.mul_smul, Matrix.smul_mul, Matrix.mul_one,
+      ← Matrix.mul_assoc Qᴴ Q, hQQ, Matrix.one_mul]
+  clear_value K D
+  have hZK : K - Z = -(Qᴴ * D * Q + Qᴴ * (Q * Z * Qᴴ - H) * Q) := by
+    have hZ : Qᴴ * (Q * Z * Qᴴ) * Q = Z := by
+      simp only [← Matrix.mul_assoc, hQQ, Matrix.one_mul]
+      rw [Matrix.mul_assoc, hQQ, Matrix.mul_one]
+    rw [Matrix.mul_sub, Matrix.sub_mul, hZ, hHQ]
+    abel
+  have hKZ : specNorm (K - Z) ≤ d + e := by
+    rw [hZK, specNorm_neg]
+    refine (specNorm_add_le _ _).trans (add_le_add ?_ ?_) <;> rw [hnorm]
+    · exact hd
+    · exact he
+  have hF : specNorm (K - upperHessenbergPart Z) ≤ √(n + 1 : ℝ) * (d + e) := by
+    refine (specNorm_le_frobNorm _).trans ((hK.frobNorm_sub_upperHessenbergPart_le).trans ?_)
+    refine (frobNorm_le_sqrt_card_mul_specNorm _).trans ?_
+    rw [Fintype.card_fin, Nat.cast_add, Nat.cast_one]
+    exact mul_le_mul_of_nonneg_left hKZ (Real.sqrt_nonneg _)
+  refine ⟨isUpperHessenberg_upperHessenbergPart Z, hR, Q, hQ, ?_, by rw [← hD]; exact hd.trans hdε⟩
+  have e1 : upperHessenbergPart Z - Qᴴ * H * Q = -(K - upperHessenbergPart Z) - Qᴴ * D * Q := by
+    rw [hHQ]; abel
+  rw [e1]
+  refine (specNorm_sub_le _ _).trans ?_
+  rw [specNorm_neg, hnorm]
+  linarith
 
 /-- A backward-stable single step is a perturbed unitary similarity with the same error. -/
 theorem IsStableQRStep.isPerturbedUnitarySimilar {ε : ℝ} {H H' R : Matrix (Fin (n + 1))

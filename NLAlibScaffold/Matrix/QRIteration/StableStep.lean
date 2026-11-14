@@ -171,6 +171,53 @@ theorem potential_le_or_exists_lt_of_sub_le {k : ℕ} (hk : 0 < k) {ω : ℝ} (h
       ‖H₁ i.succ i.castSucc - H₂ i.succ i.castSucc‖ ≤ 0.001 * ω) :
     (∃ i : Fin n, n ≤ (i : ℕ) + k ∧ ‖H₁ i.succ i.castSucc‖ < ω) ∨
       hessenbergPotential k H₁ ≤ 1.0011 * hessenbergPotential k H₂ := by
-  sorry
+  by_cases hex : ∃ i : Fin n, n ≤ (i : ℕ) + k ∧ ‖H₁ i.succ i.castSucc‖ < ω
+  · exact Or.inl hex
+  right
+  simp only [not_exists, not_and, not_lt] at hex
+  set S := Finset.univ.filter (fun i : Fin n => n ≤ (i : ℕ) + k) with hS
+  have hent : ∀ i ∈ S, ‖H₁ i.succ i.castSucc‖ ≤ 1.0011 * ‖H₂ i.succ i.castSucc‖ := by
+    intro i hi
+    rw [hS, Finset.mem_filter] at hi
+    have h1 := hex i hi.2
+    have h2 := hclose i hi.2
+    have h3 := norm_sub_norm_le (H₁ i.succ i.castSucc) (H₂ i.succ i.castSucc)
+    linarith
+  have hcard : S.card ≤ k := by
+    have := Finset.card_le_card_of_injOn (fun i : Fin n => (i : ℕ) + k - n) (s := S)
+      (t := Finset.range k)
+      (by
+        intro i hi
+        simp only [hS, Finset.coe_filter, Finset.mem_univ, true_and, Set.mem_setOf_eq,
+          Finset.mem_coe, Finset.mem_range] at hi ⊢
+        have := i.isLt
+        omega)
+      (by
+        intro i hi j hj hij
+        simp only [hS, Finset.coe_filter, Finset.mem_univ, true_and, Set.mem_setOf_eq,
+          Finset.mem_coe] at hi hj
+        simp only at hij
+        have := i.isLt
+        have := j.isLt
+        apply Fin.ext
+        omega)
+    simpa using this
+  have hprod : ∏ i ∈ S, ‖H₁ i.succ i.castSucc‖ ≤ 1.0011 ^ k * ∏ i ∈ S, ‖H₂ i.succ i.castSucc‖ := by
+    calc ∏ i ∈ S, ‖H₁ i.succ i.castSucc‖ ≤ ∏ i ∈ S, (1.0011 * ‖H₂ i.succ i.castSucc‖) :=
+          Finset.prod_le_prod (fun i _ => norm_nonneg _) hent
+      _ = 1.0011 ^ S.card * ∏ i ∈ S, ‖H₂ i.succ i.castSucc‖ := by
+          rw [Finset.prod_mul_distrib, Finset.prod_const]
+      _ ≤ 1.0011 ^ k * ∏ i ∈ S, ‖H₂ i.succ i.castSucc‖ :=
+          mul_le_mul_of_nonneg_right (pow_le_pow_right₀ (by norm_num) hcard)
+            (Finset.prod_nonneg fun i _ => norm_nonneg _)
+  have hk' : (k : ℝ) ≠ 0 := by exact_mod_cast hk.ne'
+  unfold hessenbergPotential
+  rw [← hS]
+  calc (∏ i ∈ S, ‖H₁ i.succ i.castSucc‖) ^ ((k : ℝ)⁻¹)
+      ≤ (1.0011 ^ k * ∏ i ∈ S, ‖H₂ i.succ i.castSucc‖) ^ ((k : ℝ)⁻¹) :=
+        Real.rpow_le_rpow (Finset.prod_nonneg fun i _ => norm_nonneg _) hprod (by positivity)
+    _ = 1.0011 * (∏ i ∈ S, ‖H₂ i.succ i.castSucc‖) ^ ((k : ℝ)⁻¹) := by
+        rw [Real.mul_rpow (by positivity) (Finset.prod_nonneg fun i _ => norm_nonneg _),
+          Real.pow_rpow_inv_natCast (by norm_num) hk.ne']
 
 end NLAlib

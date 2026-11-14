@@ -278,6 +278,100 @@ theorem Ops.StdModel.norm_roundedGivensCoeffs_sub_le {M : Machine ℝ} {u : ℝ}
     simp only [hne, hr.ne', if_false]
     exact ⟨rounded_comp_le hM hu hu' hr hq', rounded_comp_le hM hu hu' hr hq'⟩
 
+/-- One rounded subtraction of two approximations, in the form of
+`NLAlib.Ops.StdModel.abs_add_sub_le`. -/
+private lemma stdModel_sub_combine {u : ℝ} {M : Machine ℝ} (hM : StdModel u id M) (hu : 0 ≤ u)
+    {a b S₁ S₂ T₁ T₂ e : ℝ} (h1 : |a - S₁| ≤ e * T₁) (h2 : |b - S₂| ≤ e * T₂)
+    (hS₁ : |S₁| ≤ T₁) (hS₂ : |S₂| ≤ T₂) :
+    |M.sub a b - (S₁ - S₂)| ≤ ((1 + u) * (1 + e) - 1) * (T₁ + T₂) := by
+  have h := hM.sub a b
+  simp only [id] at h
+  have ha : |a| ≤ (1 + e) * T₁ := by
+    have := abs_add_le S₁ (a - S₁)
+    rw [add_sub_cancel] at this
+    linarith
+  have hb : |b| ≤ (1 + e) * T₂ := by
+    have := abs_add_le S₂ (b - S₂)
+    rw [add_sub_cancel] at this
+    linarith
+  have hab : |a - b| ≤ (1 + e) * (T₁ + T₂) := (abs_sub a b).trans (by linarith)
+  have h3 : |M.sub a b - (S₁ - S₂)| ≤ |M.sub a b - (a - b)| + |a - S₁| + |b - S₂| := by
+    have := abs_add_three (M.sub a b - (a - b)) (a - S₁) (-(b - S₂))
+    rw [abs_neg] at this
+    have e3 : M.sub a b - (S₁ - S₂) = (M.sub a b - (a - b)) + (a - S₁) + -(b - S₂) := by ring
+    rw [e3]
+    exact this
+  have h4 : u * |a - b| ≤ u * ((1 + e) * (T₁ + T₂)) := mul_le_mul_of_nonneg_left hab hu
+  nlinarith
+
+/-- The coefficient of the two rounded levels, `(1 + u)³ - 1 = 3u + 3u² + u³`, lies in
+`[0, 7u/2]` for `0 ≤ u ≤ 1/100`. -/
+private lemma linearWords_coeff_bounds {u : ℝ} (hu : 0 ≤ u) (hu' : u ≤ 1 / 100) :
+    0 ≤ (1 + u) * (1 + ((1 + u) * (1 + u) - 1)) - 1 ∧
+      (1 + u) * (1 + ((1 + u) * (1 + u) - 1)) - 1 ≤ 7 / 2 * u := by
+  have hE : (1 + u) * (1 + ((1 + u) * (1 + u) - 1)) - 1 = 3 * u + 3 * u ^ 2 + u ^ 3 := by ring
+  rw [hE]
+  refine ⟨by positivity, ?_⟩
+  nlinarith [mul_nonneg hu (sub_nonneg.2 hu'), mul_nonneg (mul_nonneg hu hu) (sub_nonneg.2 hu')]
+
+/-- `2 (E S)² ≤ (5 u S)²` once `0 ≤ E ≤ 7u/2`. -/
+private lemma two_sq_mul_le {E u : ℝ} (hE0 : 0 ≤ E) (hEu : E ≤ 7 / 2 * u)
+    (S : ℝ) : 2 * (E * S) ^ 2 ≤ (5 * u * S) ^ 2 := by
+  have h := mul_le_mul_of_nonneg_right (pow_le_pow_left₀ hE0 hEu 2) (sq_nonneg S)
+  nlinarith [sq_nonneg (u * S)]
+
+/-- A complex difference from a pair of real parts with errors `≤ B` has norm at most `C` when
+`2 B² ≤ C²`. -/
+private lemma norm_mk_sub_le {R I C B : ℝ} {z : ℂ} (hC : 0 ≤ C) (hR : |R - z.re| ≤ B)
+    (hI : |I - z.im| ≤ B) (h2 : 2 * B ^ 2 ≤ C ^ 2) :
+    ‖(⟨R, I⟩ : ℂ) - z‖ ≤ C := by
+  have hB : 0 ≤ B := (abs_nonneg _).trans hR
+  rw [← sq_le_sq₀ (norm_nonneg _) hC, Complex.sq_norm, Complex.normSq_apply]
+  change (R - z.re) * (R - z.re) + (I - z.im) * (I - z.im) ≤ C ^ 2
+  have hr : (R - z.re) * (R - z.re) ≤ B ^ 2 := by
+    nlinarith [abs_mul_abs_self (R - z.re), abs_nonneg (R - z.re)]
+  have hi : (I - z.im) * (I - z.im) ≤ B ^ 2 := by
+    nlinarith [abs_mul_abs_self (I - z.im), abs_nonneg (I - z.im)]
+  linarith
+
+/-- The modulus of a real pair product sum: Cauchy–Schwarz for `|p r| + |q s|`. -/
+private lemma abs_mul_add_abs_mul_le (p q r s : ℝ) :
+    |p * r| + |q * s| ≤ √(p ^ 2 + q ^ 2) * √(r ^ 2 + s ^ 2) := by
+  have hAB : |p * r| * |q * s| = |p * s| * |q * r| := by
+    rw [← abs_mul, ← abs_mul]
+    congr 1
+    ring
+  have key : (|p * r| + |q * s|) ^ 2 ≤ (p ^ 2 + q ^ 2) * (r ^ 2 + s ^ 2) := by
+    nlinarith [sq_nonneg (|p * s| - |q * r|), sq_abs (p * s), sq_abs (q * r),
+      sq_abs (p * r), sq_abs (q * s)]
+  rw [← Real.sqrt_mul (by positivity)]
+  calc |p * r| + |q * s| = √((|p * r| + |q * s|) ^ 2) := (Real.sqrt_sq (by positivity)).symm
+    _ ≤ √((p ^ 2 + q ^ 2) * (r ^ 2 + s ^ 2)) := Real.sqrt_le_sqrt key
+
+/-- One rounded addition of two approximations, for the words of `linearWords`. -/
+private lemma linearWords_add_combine {u : ℝ} {M : Machine ℝ} (hM : StdModel u id M) (hu : 0 ≤ u)
+    {a b S₁ S₂ T₁ T₂ e : ℝ} (h1 : |a - S₁| ≤ e * T₁) (h2 : |b - S₂| ≤ e * T₂)
+    (hS₁ : |S₁| ≤ T₁) (hS₂ : |S₂| ≤ T₂) :
+    |M.add a b - (S₁ + S₂)| ≤ ((1 + u) * (1 + e) - 1) * (T₁ + T₂) := by
+  have h := hM.add a b
+  simp only [id] at h
+  have ha : |a| ≤ (1 + e) * T₁ := by
+    have := abs_add_le S₁ (a - S₁)
+    rw [add_sub_cancel] at this
+    linarith
+  have hb : |b| ≤ (1 + e) * T₂ := by
+    have := abs_add_le S₂ (b - S₂)
+    rw [add_sub_cancel] at this
+    linarith
+  have hab : |a + b| ≤ (1 + e) * (T₁ + T₂) := (abs_add_le a b).trans (by linarith)
+  have h3 : |M.add a b - (S₁ + S₂)| ≤ |M.add a b - (a + b)| + |a - S₁| + |b - S₂| := by
+    have := abs_add_three (M.add a b - (a + b)) (a - S₁) (b - S₂)
+    have e3 : M.add a b - (S₁ + S₂) = (M.add a b - (a + b)) + (a - S₁) + (b - S₂) := by ring
+    rw [e3]
+    exact this
+  have h4 : u * |a + b| ≤ u * ((1 + e) * (T₁ + T₂)) := mul_le_mul_of_nonneg_left hab hu
+  nlinarith
+
 /-- **Rounded complex linear combination**: the pair computed by `NLAlib.Ops.Pair.linearWords`
 from the pairs of $a, b, x, y$ is within $5\boldsymbol{u}(\lvert a\rvert\lvert x\rvert +
 \lvert b\rvert\lvert y\rvert)$ of $a x + b y$, for $0 \le \boldsymbol{u} \le 1/100$
@@ -287,7 +381,53 @@ theorem Ops.StdModel.norm_linearWords_sub_le {M : Machine ℝ} {u : ℝ} (hM : S
     ‖(⟨(Pair.linearWords M (a.re, a.im) (b.re, b.im) (x.re, x.im) (y.re, y.im)).1,
         (Pair.linearWords M (a.re, a.im) (b.re, b.im) (x.re, x.im) (y.re, y.im)).2⟩ : ℂ) -
         (a * x + b * y)‖ ≤ 5 * u * (‖a‖ * ‖x‖ + ‖b‖ * ‖y‖) := by
-  sorry
+  have pr : ∀ p q : ℝ, |M.mul p q - p * q| ≤ u * |p * q| := fun p q => by
+    have h := hM.mul p q
+    simp only [id] at h
+    exact h
+  -- real part: two levels of rounded operations on the four products
+  have d1 := stdModel_sub_combine hM hu (pr a.re x.re) (pr a.im x.im) le_rfl le_rfl
+  have d2 := stdModel_sub_combine hM hu (pr b.re y.re) (pr b.im y.im) le_rfl le_rfl
+  have hre := linearWords_add_combine hM hu d1 d2 (abs_sub _ _) (abs_sub _ _)
+  -- imaginary part: the same tree, with additions only
+  have i1 := linearWords_add_combine hM hu (pr a.re x.im) (pr a.im x.re) le_rfl le_rfl
+  have i2 := linearWords_add_combine hM hu (pr b.re y.im) (pr b.im y.re) le_rfl le_rfl
+  have him := linearWords_add_combine hM hu i1 i2 (abs_add_le _ _) (abs_add_le _ _)
+  -- Cauchy–Schwarz on the products
+  have na : ‖a‖ = √(a.re ^ 2 + a.im ^ 2) := by
+    rw [Complex.norm_def, Complex.normSq_apply]; congr 1; ring
+  have nb : ‖b‖ = √(b.re ^ 2 + b.im ^ 2) := by
+    rw [Complex.norm_def, Complex.normSq_apply]; congr 1; ring
+  have nx : ‖x‖ = √(x.re ^ 2 + x.im ^ 2) := by
+    rw [Complex.norm_def, Complex.normSq_apply]; congr 1; ring
+  have ny : ‖y‖ = √(y.re ^ 2 + y.im ^ 2) := by
+    rw [Complex.norm_def, Complex.normSq_apply]; congr 1; ring
+  have nx' : ‖x‖ = √(x.im ^ 2 + x.re ^ 2) := by rw [nx, add_comm]
+  have ny' : ‖y‖ = √(y.im ^ 2 + y.re ^ 2) := by rw [ny, add_comm]
+  have c1 := abs_mul_add_abs_mul_le a.re a.im x.re x.im
+  have c2 := abs_mul_add_abs_mul_le b.re b.im y.re y.im
+  have c3 := abs_mul_add_abs_mul_le a.re a.im x.im x.re
+  have c4 := abs_mul_add_abs_mul_le b.re b.im y.im y.re
+  rw [← na, ← nx] at c1
+  rw [← nb, ← ny] at c2
+  rw [← na, ← nx'] at c3
+  rw [← nb, ← ny'] at c4
+  have hS1 : |a.re * x.re| + |a.im * x.im| + (|b.re * y.re| + |b.im * y.im|) ≤
+      ‖a‖ * ‖x‖ + ‖b‖ * ‖y‖ := by linarith
+  have hS2 : |a.re * x.im| + |a.im * x.re| + (|b.re * y.im| + |b.im * y.re|) ≤
+      ‖a‖ * ‖x‖ + ‖b‖ * ‖y‖ := by linarith
+  obtain ⟨hE0, hEu⟩ := linearWords_coeff_bounds hu hu'
+  have hSn : 0 ≤ ‖a‖ * ‖x‖ + ‖b‖ * ‖y‖ := by positivity
+  have hre' := hre.trans (mul_le_mul_of_nonneg_left
+    (le_trans (by linarith) hS1) hE0)
+  have him' := him.trans (mul_le_mul_of_nonneg_left hS2 hE0)
+  have hzre : (a * x + b * y).re = a.re * x.re - a.im * x.im + (b.re * y.re - b.im * y.im) := by
+    simp [Complex.mul_re]
+  have hzim : (a * x + b * y).im = (a.re * x.im + a.im * x.re) + (b.re * y.im + b.im * y.re) := by
+    simp [Complex.mul_im]
+  simp only [Pair.linearWords]
+  exact norm_mk_sub_le (mul_nonneg (mul_nonneg (by norm_num) hu) hSn)
+    (by rw [hzre]; exact hre') (by rw [hzim]; exact him') (two_sq_mul_le hE0 hEu _)
 
 variable {n : ℕ}
 

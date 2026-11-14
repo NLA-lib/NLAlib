@@ -5,7 +5,7 @@ sharp statements with clean corollaries, and orthogonalization as an abstract co
 concrete scheme substituted. One independent review applied to the first draft; the contract
 (§3.1a) is new text and not yet reviewed. Nothing proved, no library file changed.** Branch
 `design/block-lanczos` from `origin/main` @ `cbf64ea9` (PR #137). Decision sheet: harness
-`state/decisions/BLOCK-LANCZOS.json` (ids BL1–BL12 below).
+`state/decisions/BLOCK-LANCZOS.json` (ids BL1–BL12 below, all decided).
 
 The maintainer asked to "begin thinking about block Lanczos methods for low-rank approximation":
 the library has the Tropp–Webber and Musco–Musco analyses of ordinary RBKI; the request is to
@@ -862,9 +862,12 @@ orthogonalization, and then prove a concrete one by subbing something in."):
 | BL10 | a: exact over `RCLike`, rounded over $\mathbb R$ |
 | BL11 | a, as a property of the CGS2 instance and not of the driver (§3.5) |
 
-BL2 and BL3 are read from "statements can be messy"; BL11 from "otherwise stuff is good".
+| BL12 | a ("yeah a is fine"): block extension with an absolute per-column guarantee, the rank decision owned by the scheme |
 
-**Open**, raised by the change to BL7:
+BL2 and BL3 are read from "statements can be messy"; BL11 from "otherwise stuff is good".
+No decision is open.
+
+BL12 as it was put, raised by the change to BL7:
 
 | id | question | options | recommendation | why |
 |---|---|---|---|---|

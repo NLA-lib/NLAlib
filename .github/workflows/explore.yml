@@ -36,13 +36,38 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 scripts/explore_publish.py
+      - name: Find a compatible build from successful main CI
+        id: build-cache
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/ci_build_cache.py select
+      - name: Download the verified main build
+        id: download-build
+        if: steps.build-cache.outputs.run_id != ''
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ steps.build-cache.outputs.name }}
+          run-id: ${{ steps.build-cache.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}/lean-build-cache
+      - name: Verify and restore the build artifact
+        if: steps.download-build.outcome == 'success'
+        env:
+          CACHE_SHA: ${{ steps.build-cache.outputs.sha }}
+          CACHE_RUN_ID: ${{ steps.build-cache.outputs.run_id }}
+          CACHE_RUN_ATTEMPT: ${{ steps.build-cache.outputs.run_attempt }}
+        run: python3 scripts/ci_build_cache.py restore --directory "$RUNNER_TEMP/lean-build-cache"
       - name: Build NLAlib with the Mathlib cache
         uses: leanprover/lean-action@v1
         with:
           use-mathlib-cache: true
-          build-args: "NLAlib"
+          build-args: "--rehash NLAlib"
           lint: false
           test: false
+          use-github-cache: false
+      - name: Build outputs are current
+        run: lake build --no-build --rehash NLAlib
       - name: Extract
         run: bash scripts/explore_data.sh explore-data.json
       - name: Publish to the explore-data release

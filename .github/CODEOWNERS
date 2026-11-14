@@ -29,6 +29,8 @@
 /scripts/Explore.lean @tchen01
 /scripts/explore_metadata.py @tchen01
 /scripts/explore_publish.py @tchen01
+/scripts/ci_build_cache.py @tchen01
+/scripts/test_ci_build_cache.py @tchen01
 /scripts/proved_modules.py @tchen01
 # Structural program certificates, the operation model and canonical accounting semantics.
 /scripts/OpsPrograms.lean @tchen01

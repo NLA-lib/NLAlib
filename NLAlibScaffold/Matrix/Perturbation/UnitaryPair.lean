@@ -67,7 +67,28 @@ first unitary factor, which keeps its spectral norm. -/
 theorem trans {ε₁ ε₂ : ℝ} {P P' P'' : Matrix n n 𝕜 × Matrix n n 𝕜}
     (h₁ : IsPerturbedUnitaryPair a b ε₁ P P') (h₂ : IsPerturbedUnitaryPair a b ε₂ P' P'') :
     IsPerturbedUnitaryPair a b (ε₁ + ε₂) P P'' := by
-  sorry
+  obtain ⟨U₁, E₁, F₁, hU₁, hE₁, hF₁, h1, h2⟩ := h₁
+  obtain ⟨U₂, E₂, F₂, hU₂, hE₂, hF₂, h3, h4⟩ := h₂
+  have hI : U₁ᴴ * U₁ = 1 := hU₁.conjTranspose_mul_self
+  have hJ : U₁ * U₁ᴴ = 1 := hU₁.mul_conjTranspose_self
+  refine ⟨U₁ * U₂, E₁ + U₁ * E₂, F₁ + U₁ * F₂ * U₁ᴴ, ?_, ?_, ?_, ?_, ?_⟩
+  · rw [hasOrthonormalCols_iff, Matrix.conjTranspose_mul, Matrix.mul_assoc,
+      ← Matrix.mul_assoc U₁ᴴ, hU₁.conjTranspose_mul_self, Matrix.one_mul,
+      hU₂.conjTranspose_mul_self]
+  · refine (specNorm_add_le _ _).trans ?_
+    rw [add_mul]
+    exact add_le_add hE₁ (by rwa [hU₁.specNorm_mul_left])
+  · refine (specNorm_add_le _ _).trans ?_
+    rw [add_mul]
+    exact add_le_add hF₁ (by rwa [hU₁.specNorm_mul_conjTranspose_right, hU₁.specNorm_mul_left])
+  · rw [h3, h1]
+    simp only [Matrix.conjTranspose_mul, Matrix.mul_add, Matrix.mul_assoc]
+    simp only [← Matrix.mul_assoc U₁ᴴ U₁, hI, Matrix.one_mul]
+    abel
+  · rw [h4, h2]
+    simp only [Matrix.conjTranspose_mul, Matrix.mul_add, Matrix.add_mul, Matrix.mul_assoc]
+    simp only [← Matrix.mul_assoc U₁ᴴ U₁, hI, Matrix.one_mul]
+    abel
 
 /-- A larger bound is weaker, for nonnegative scales. -/
 theorem mono (ha : 0 ≤ a) (hb : 0 ≤ b) {ε ε' : ℝ} {P P' : Matrix n n 𝕜 × Matrix n n 𝕜}

@@ -59,6 +59,7 @@ public import NLAlib.Ops.Counted
 public import NLAlib.Ops.Examples.Bilinear
 public import NLAlib.Ops.Examples.Certification
 public import NLAlib.Ops.Examples.Resources
+public import NLAlib.Ops.Examples.Oracles
 public import NLAlib.Ops.Examples.Bits
 public import NLAlib.Ops.Examples.Built
 public import NLAlib.Ops.Examples.Cgs
@@ -127,6 +128,7 @@ public import NLAlib.Ops.Profiles.RoundedBlas
 public import NLAlib.Ops.Profiles.RoundedScalarBlas
 public import NLAlib.Ops.Profiles.ContextDenseRounded
 public import NLAlib.Ops.Profiles.ContextLinearRounded
+public import NLAlib.Ops.Profiles.Confined
 
 /-!
 # Conditional headline guidance over imported Ops modules

@@ -101,7 +101,8 @@ theorem mono (ha : 0 ≤ a) (hb : 0 ≤ b) {ε ε' : ℝ} {P P' : Matrix n n �
 $\varepsilon b$. -/
 theorem isPerturbedUnitarySimilar_snd {ε : ℝ} {P P' : Matrix n n 𝕜 × Matrix n n 𝕜}
     (h : IsPerturbedUnitaryPair a b ε P P') : IsPerturbedUnitarySimilar P.2 P'.2 (ε * b) := by
-  sorry
+  obtain ⟨U, E, F, hU, _, hF, _, h2⟩ := h
+  exact ⟨U, F, hU, hF, h2⟩
 
 /-- The factorization component: the same unitary factor reproduces the first input from the
 first output up to $\varepsilon a$, $\|\mathbf{W} - \mathbf{U}\mathbf{W}'\|_2 \le \varepsilon a$,

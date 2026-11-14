@@ -7,6 +7,7 @@ public import NLAlib.Eigensolvers.Deflation.Probability
 public import NLAlib.Eigensolvers.RandomizedDeflation
 public import NLAlib.Eigensolvers.ShiftedQR.Acceptance
 public import NLAlib.Eigensolvers.ShiftedQR.Alg
+public import NLAlib.Eigensolvers.ShiftedQR.Backward
 public import NLAlib.Eigensolvers.ShiftedQR.BlockCopy
 public import NLAlib.Eigensolvers.ShiftedQR.Certification
 public import NLAlib.Eigensolvers.ShiftedQR.Coefficients
@@ -772,6 +773,7 @@ public import NLAlib.Matrix.FinitePrecision.Deflation
 public import NLAlib.Matrix.FinitePrecision.EntrywiseRounding
 public import NLAlib.Matrix.FinitePrecision.FixedPoint
 public import NLAlib.Matrix.FinitePrecision.Float
+public import NLAlib.Matrix.FinitePrecision.GivensRounded
 public import NLAlib.Matrix.FinitePrecision.GridMachine
 public import NLAlib.Matrix.FinitePrecision.Machine
 public import NLAlib.Matrix.FinitePrecision.NativeFloat
@@ -793,6 +795,7 @@ public import NLAlib.Matrix.FinitePrecision.OpsSampling
 public import NLAlib.Matrix.FinitePrecision.OpsSamplingMeasurable
 public import NLAlib.Matrix.FinitePrecision.OpsUnitarySimilarity
 public import NLAlib.Matrix.FinitePrecision.ResidualGap
+public import NLAlib.Matrix.FinitePrecision.RootsRounded
 public import NLAlib.Matrix.FinitePrecision.Rounding
 public import NLAlib.Matrix.FinitePrecision.Samples
 public import NLAlib.Matrix.FinitePrecision.SpectralBisection
@@ -896,6 +899,7 @@ public import NLAlib.Matrix.Perturbation.BestRankApprox
 public import NLAlib.Matrix.Perturbation.Continuity
 public import NLAlib.Matrix.Perturbation.DavisKahan
 public import NLAlib.Matrix.Perturbation.DavisKahanGap
+public import NLAlib.Matrix.Perturbation.EigenvalueBackward
 public import NLAlib.Matrix.Perturbation.ExteriorEigenvalueBranches
 public import NLAlib.Matrix.Perturbation.GramCutoff
 public import NLAlib.Matrix.Perturbation.GramSoftMin
@@ -907,6 +911,7 @@ public import NLAlib.Matrix.Perturbation.OrthErr
 public import NLAlib.Matrix.Perturbation.PencilRoots
 public import NLAlib.Matrix.Perturbation.Pseudoinverse
 public import NLAlib.Matrix.Perturbation.Pseudospectrum
+public import NLAlib.Matrix.Perturbation.QRFactorization
 public import NLAlib.Matrix.Perturbation.Relative
 public import NLAlib.Matrix.Perturbation.Residual
 public import NLAlib.Matrix.Perturbation.SimpleEigenvalue
@@ -916,6 +921,7 @@ public import NLAlib.Matrix.Perturbation.SymmetricBackward
 public import NLAlib.Matrix.Perturbation.TruncationWindow
 public import NLAlib.Matrix.Perturbation.TruncationWindowFrobenius
 public import NLAlib.Matrix.Perturbation.TruncationWindowNuclear
+public import NLAlib.Matrix.Perturbation.UnitaryPair
 public import NLAlib.Matrix.Perturbation.UnitarySimilarity
 public import NLAlib.Matrix.Perturbation.Wedin
 public import NLAlib.Matrix.Pseudoinverse.ConditionNumber
@@ -938,9 +944,11 @@ public import NLAlib.Matrix.QRIteration.EigenvectorWeights
 public import NLAlib.Matrix.QRIteration.FindRitzSolve
 public import NLAlib.Matrix.QRIteration.HessenbergDeflation
 public import NLAlib.Matrix.QRIteration.Ritz
+public import NLAlib.Matrix.QRIteration.RoundedStrategy
 public import NLAlib.Matrix.QRIteration.ShiftSearch
 public import NLAlib.Matrix.QRIteration.ShiftedQR
 public import NLAlib.Matrix.QRIteration.ShiftedQRConjugation
+public import NLAlib.Matrix.QRIteration.StableStep
 public import NLAlib.Matrix.QRIteration.Strategy
 public import NLAlib.Matrix.Spectral.BestRankApprox
 public import NLAlib.Matrix.Spectral.Congruence
@@ -1230,6 +1238,7 @@ public import NLAlib.Probability.BoundedDifferences
 public import NLAlib.Probability.ConvexOrder
 public import NLAlib.Probability.Distributions.ChiSquare
 public import NLAlib.Probability.Distributions.ChiSquareMoments
+public import NLAlib.Probability.Distributions.DiskUniform
 public import NLAlib.Probability.Distributions.Gaussian
 public import NLAlib.Probability.Distributions.GaussianComparison
 public import NLAlib.Probability.Distributions.GaussianConcentration

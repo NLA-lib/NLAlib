@@ -350,6 +350,199 @@ theorem IsStableQRChain.exists_frobNorm_conj_sub_le {x C κ d : ℝ} {H H' V : M
           Real.sqrt (n + 1) * x := by
   sorry
 
+/-- The triangular factors of a chain are upper triangular. -/
+private theorem IsStableQRChain.forall_isUpperTriangular {x : ℝ}
+    {H H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ss : List ℂ}
+    {Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)} (h : IsStableQRChain x H ss H' Rs) :
+    ∀ R ∈ Rs, R.IsUpperTriangular := by
+  induction h with
+  | nil => simp
+  | cons hstep _ ih =>
+    intro R hR
+    rcases List.mem_cons.mp hR with rfl | hR
+    exacts [hstep.2.1, ih R hR]
+
+/-- A product of upper triangular matrices is upper triangular, with the products of the
+diagonal entries on its diagonal. -/
+private theorem list_prod_isUpperTriangular_apply_self
+    {L : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)} (hL : ∀ R ∈ L, R.IsUpperTriangular)
+    (i : Fin (n + 1)) :
+    L.prod.IsUpperTriangular ∧ L.prod i i = (L.map fun R => R i i).prod := by
+  induction L with
+  | nil => exact ⟨Matrix.blockTriangular_one, by simp⟩
+  | cons R L ih =>
+    obtain ⟨hU, hd⟩ := ih fun R' hR' => hL R' (by simp [hR'])
+    have hR := hL R (by simp)
+    refine ⟨by simpa using hR.mul hU, ?_⟩
+    rw [List.prod_cons, hR.mul_apply_self hU, hd, List.map_cons, List.prod_cons]
+
+/-- A row has Euclidean norm at most the spectral norm. -/
+private theorem norm_toLp_row_le_specNorm' (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+    (i : Fin (n + 1)) : ‖WithLp.toLp 2 (A i)‖ ≤ specNorm A := by
+  have := norm_toLp_col_le_specNorm Aᵀ i
+  rwa [specNorm_transpose] at this
+
+/-- A row of a square matrix with orthonormal columns, conjugate transposed, has norm one. -/
+private theorem norm_toLp_conjTranspose_row_eq_one {Q : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    (hQ : HasOrthonormalCols Q) (i : Fin (n + 1)) : ‖WithLp.toLp 2 (Qᴴ i)‖ = 1 := by
+  have h := congrFun (congrFun hQ.conjTranspose_mul_self i) i
+  simp only [Matrix.mul_apply, Matrix.conjTranspose_apply, Matrix.one_apply_eq] at h
+  have h' : ∑ j, ((‖Q j i‖ ^ 2 : ℝ) : ℂ) = 1 := by
+    rw [← h]
+    refine Finset.sum_congr rfl fun j _ => ?_
+    rw [Complex.star_def, mul_comm, Complex.mul_conj, Complex.normSq_eq_norm_sq]
+  rw [← Complex.ofReal_sum, Complex.ofReal_eq_one] at h'
+  rw [EuclideanSpace.norm_eq]
+  simp only [Matrix.conjTranspose_apply, norm_star]
+  rw [h', Real.sqrt_one]
+
+/-- An eigenvalue is at most the spectral norm. -/
+private theorem norm_le_specNorm_of_mul_eq_mul_diagonal'
+    {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {e : Fin (n + 1) → ℂ} (hV : IsUnit V)
+    (hHV : H * V = V * Matrix.diagonal e) (i : Fin (n + 1)) : ‖e i‖ ≤ specNorm H := by
+  set v := V *ᵥ Pi.single i 1
+  have hv : H *ᵥ v = e i • v := by
+    rw [Matrix.mulVec_mulVec, hHV, ← Matrix.mulVec_mulVec, Matrix.mulVec_single,
+      Matrix.mulVec_smul]
+    simp [v]
+  have hv0 : WithLp.toLp 2 v ≠ 0 := fun h0 => by
+    have := congrFun (Matrix.mulVec_injective_iff_isUnit.mpr hV
+      (show v = V *ᵥ 0 by rw [Matrix.mulVec_zero]; exact congrArg WithLp.ofLp h0)) i
+    simp at this
+  have h := norm_toLp_mulVec_le H v
+  rw [hv, WithLp.toLp_smul, norm_smul] at h
+  exact le_of_mul_le_mul_right h (norm_pos_iff.mpr hv0)
+
+/-- A shift polynomial at distance at least $d$ from every shift is at least $d^m$. -/
+private theorem pow_le_norm_eval_shiftPoly {d : ℝ} (hd : 0 ≤ d) {z : ℂ} {ss : List ℂ}
+    (h : ∀ s ∈ ss, d ≤ ‖z - s‖) : d ^ ss.length ≤ ‖(shiftPoly ss).eval z‖ := by
+  induction ss with
+  | nil => simp [shiftPoly]
+  | cons s ss ih =>
+    rw [shiftPoly, List.map_cons, List.prod_cons, ← shiftPoly, Polynomial.eval_mul,
+      norm_mul, List.length_cons, pow_succ']
+    simp only [Polynomial.eval_sub, Polynomial.eval_X, Polynomial.eval_C]
+    exact mul_le_mul (h s (by simp)) (ih fun r hr => h r (by simp [hr])) (by positivity)
+      (norm_nonneg _)
+
+/-- A shift polynomial of a diagonalised matrix acts on the eigenvectors diagonally:
+$p(\mathbf{H})\mathbf{V} = \mathbf{V}\operatorname{diag}(p(\mathbf{e}))$. -/
+private theorem aeval_shiftPoly_mul_eq_mul_diagonal {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {e : Fin (n + 1) → ℂ} (hHV : H * V = V * Matrix.diagonal e) (ss : List ℂ) :
+    Polynomial.aeval H (shiftPoly ss) * V =
+      V * Matrix.diagonal fun i => (shiftPoly ss).eval (e i) := by
+  induction ss with
+  | nil => simp [shiftPoly]
+  | cons s ss ih =>
+    have hs : (H - s • (1 : Matrix _ _ ℂ)) * V = V * Matrix.diagonal fun i => e i - s := by
+      rw [Matrix.sub_mul, hHV, Matrix.smul_mul, Matrix.one_mul, show
+        (Matrix.diagonal fun i => e i - s) = Matrix.diagonal e - s • (1 : Matrix _ _ ℂ) by
+          ext i j; by_cases hij : i = j <;> simp [hij],
+        Matrix.mul_sub, Matrix.mul_smul, Matrix.mul_one]
+    have e' : Polynomial.aeval H (shiftPoly (s :: ss)) =
+        (H - s • (1 : Matrix _ _ ℂ)) * Polynomial.aeval H (shiftPoly ss) := by
+      rw [shiftPoly, List.map_cons, List.prod_cons, map_mul, ← shiftPoly]
+      simp [Algebra.algebraMap_eq_smul_one]
+    rw [e', Matrix.mul_assoc, ih, ← Matrix.mul_assoc, hs, Matrix.mul_assoc,
+      Matrix.diagonal_mul_diagonal]
+    congr 2
+    ext i
+    simp [shiftPoly]
+
+/-- The inverse of the shift polynomial of a diagonalisable matrix, with every shift at distance
+at least $d > 0$ from every eigenvalue, has norm at most $\kappa(\mathbf{V})/d^m$. -/
+private theorem specNorm_inv_aeval_shiftPoly_le {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {e : Fin (n + 1) → ℂ} {ss : List ℂ} {d : ℝ} (hd : 0 < d) (hV : IsUnit V)
+    (hHV : H * V = V * Matrix.diagonal e) (hdist : ∀ s ∈ ss, ∀ i, d ≤ ‖e i - s‖) :
+    Polynomial.aeval H (shiftPoly ss) * (Polynomial.aeval H (shiftPoly ss))⁻¹ = 1 ∧
+      specNorm (Polynomial.aeval H (shiftPoly ss))⁻¹ ≤
+        pseudoConditionNumber V / d ^ ss.length := by
+  have hle : ∀ i, d ^ ss.length ≤ ‖(shiftPoly ss).eval (e i)‖ := fun i =>
+    pow_le_norm_eval_shiftPoly hd.le fun s hs => hdist s hs i
+  have hne : ∀ i, (shiftPoly ss).eval (e i) ≠ 0 := fun i h0 => by
+    have := hle i
+    rw [h0, norm_zero] at this
+    exact absurd this (not_le.mpr (by positivity))
+  have hdet := (Matrix.isUnit_iff_isUnit_det V).mp hV
+  have hMW : Polynomial.aeval H (shiftPoly ss) *
+      (V * (Matrix.diagonal fun i => ((shiftPoly ss).eval (e i))⁻¹) * V⁻¹) = 1 := by
+    rw [← Matrix.mul_assoc, ← Matrix.mul_assoc, aeval_shiftPoly_mul_eq_mul_diagonal hHV,
+      Matrix.mul_assoc V, Matrix.diagonal_mul_diagonal,
+      show (fun i => (shiftPoly ss).eval (e i) * ((shiftPoly ss).eval (e i))⁻¹) = 1 from
+        funext fun i => mul_inv_cancel₀ (hne i),
+      Pi.one_def, Matrix.diagonal_one, Matrix.mul_one, Matrix.mul_nonsing_inv V hdet]
+  have hdetM : IsUnit (Polynomial.aeval H (shiftPoly ss)).det :=
+    IsUnit.of_mul_eq_one _ (by rw [← Matrix.det_mul, hMW, Matrix.det_one])
+  refine ⟨Matrix.mul_nonsing_inv _ hdetM, ?_⟩
+  rw [Matrix.inv_eq_right_inv hMW, pseudoConditionNumber, pinv_of_isUnit hV]
+  have hdiag : specNorm (Matrix.diagonal fun i => ((shiftPoly ss).eval (e i))⁻¹) ≤
+      1 / d ^ ss.length := specNorm_diagonal_le (by positivity) fun i => by
+    rw [norm_inv, one_div]
+    exact inv_anti₀ (by positivity) (hle i)
+  calc _ ≤ specNorm (V * Matrix.diagonal fun i => ((shiftPoly ss).eval (e i))⁻¹) *
+        specNorm V⁻¹ := specNorm_mul_le _ _
+    _ ≤ specNorm V * (1 / d ^ ss.length) * specNorm V⁻¹ := by
+        gcongr
+        exact (specNorm_mul_le _ _).trans (by gcongr)
+    _ = _ := by ring
+
+/-- The last diagonal entry of a perturbed QR factorization: if $\mathbf{M}$ is invertible and
+$\mathbf{M} = \mathbf{Q}\widehat{\mathbf{R}} + \mathbf{E}$ with $\mathbf{Q}$ unitary,
+$\widehat{\mathbf{R}}$ upper triangular and $\|\mathbf{M}^{-1}\|_2\|\mathbf{E}\|_2 \le 4/8004$,
+then $\lvert\widehat{\mathbf{R}}_{nn}\rvert$ is within $0.0006$, relatively, of
+$\|\mathbf{e}_n^{\mathsf T}\mathbf{M}^{-1}\|^{-1}$. -/
+private theorem abs_norm_last_sub_inv_le_of_mul {M Q Rh : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    (hQ : HasOrthonormalCols Q) (hU : Rh.IsUpperTriangular) (hMM : M * M⁻¹ = 1)
+    (hη : specNorm M⁻¹ * specNorm (M - Q * Rh) ≤ 4 / 8004) :
+    |‖Rh (Fin.last n) (Fin.last n)‖ - ‖WithLp.toLp 2 (M⁻¹ (Fin.last n))‖⁻¹| ≤
+      0.0006 * ‖WithLp.toLp 2 (M⁻¹ (Fin.last n))‖⁻¹ := by
+  set E := M - Q * Rh
+  set r := Rh (Fin.last n) (Fin.last n)
+  -- the last row of `Qᴴ = R̂M⁻¹ + QᴴEM⁻¹`
+  have hkey : Qᴴ = Rh * M⁻¹ + Qᴴ * E * M⁻¹ := by
+    calc Qᴴ = Qᴴ * (M * M⁻¹) := by rw [hMM, Matrix.mul_one]
+      _ = Qᴴ * Q * Rh * M⁻¹ + Qᴴ * E * M⁻¹ := by simp only [E]; noncomm_ring
+      _ = _ := by rw [hQ.conjTranspose_mul_self, Matrix.one_mul]
+  have hrowR : (Rh * M⁻¹) (Fin.last n) = r • M⁻¹ (Fin.last n) := by
+    funext j
+    rw [Matrix.mul_apply, Finset.sum_eq_single (Fin.last n)]
+    · rfl
+    · intro k _ hk
+      rw [show Rh (Fin.last n) k = 0 from hU (Fin.lt_last_iff_ne_last.mpr hk), zero_mul]
+    · simp
+  have hrow : WithLp.toLp 2 (Qᴴ (Fin.last n)) = r • WithLp.toLp 2 (M⁻¹ (Fin.last n)) +
+      WithLp.toLp 2 ((Qᴴ * E * M⁻¹) (Fin.last n)) := by
+    rw [← WithLp.toLp_smul, ← hrowR, ← WithLp.toLp_add]
+    exact congrArg (WithLp.toLp 2) (congrFun hkey (Fin.last n))
+  have hw : ‖WithLp.toLp 2 ((Qᴴ * E * M⁻¹) (Fin.last n))‖ ≤ specNorm M⁻¹ * specNorm E := by
+    refine (norm_toLp_row_le_specNorm' _ _).trans ?_
+    refine (specNorm_mul_le _ _).trans ?_
+    rw [mul_comm]
+    gcongr
+    refine (specNorm_mul_le _ _).trans ?_
+    rw [specNorm_conjTranspose]
+    nlinarith [hQ.specNorm_le_one, specNorm_nonneg E, specNorm_nonneg Q]
+  have h1 := norm_toLp_conjTranspose_row_eq_one hQ (Fin.last n)
+  set N := ‖WithLp.toLp 2 (M⁻¹ (Fin.last n))‖
+  have hup : ‖r‖ * N ≤ 1 + specNorm M⁻¹ * specNorm E := by
+    have := norm_sub_le (WithLp.toLp 2 (Qᴴ (Fin.last n)))
+      (WithLp.toLp 2 ((Qᴴ * E * M⁻¹) (Fin.last n)))
+    rw [hrow, add_sub_cancel_right, norm_smul, ← hrow, h1] at this
+    linarith
+  have hlo : 1 - specNorm M⁻¹ * specNorm E ≤ ‖r‖ * N := by
+    have := norm_add_le (r • WithLp.toLp 2 (M⁻¹ (Fin.last n)))
+      (WithLp.toLp 2 ((Qᴴ * E * M⁻¹) (Fin.last n)))
+    rw [← hrow, h1, norm_smul] at this
+    linarith
+  have hN : 0 < N := by
+    by_contra hc
+    rw [le_antisymm (not_lt.mp hc) (norm_nonneg _), mul_zero] at hlo
+    linarith
+  rw [show ‖r‖ - N⁻¹ = (‖r‖ * N - 1) * N⁻¹ by field_simp, abs_mul,
+    abs_of_pos (inv_pos.mpr hN)]
+  exact mul_le_mul_of_nonneg_right (abs_le.mpr ⟨by linarith, by linarith⟩)
+    (inv_nonneg.mpr hN.le)
+
 /-- **The last diagonal entries of the triangular factors** (corrected
 [BanksGarzaVargasSrivastava2022, Lemma 3.9]): let $\mathbf{H}\mathbf{V} = \mathbf{V}\mathbf{D}$
 with $\kappa(\mathbf{V}) \le \kappa$, $\mathbf{H} \ne 0$, every shift in
@@ -371,7 +564,59 @@ theorem IsStableQRChain.abs_prod_last_sub_le {x C κ d : ℝ} {H H' V : Matrix (
     |(Rs.map fun R => ‖R (Fin.last n) (Fin.last n)‖).prod -
         ‖WithLp.toLp 2 ((Polynomial.aeval H (shiftPoly ss))⁻¹ (Fin.last n))‖⁻¹| ≤
       0.0006 * ‖WithLp.toLp 2 ((Polynomial.aeval H (shiftPoly ss))⁻¹ (Fin.last n))‖⁻¹ := by
-  sorry
+  set m := ss.length
+  set M := Polynomial.aeval H (shiftPoly ss)
+  have hκ1 : 1 ≤ κ := (one_le_pseudoConditionNumber hV.ne_zero).trans hκ
+  have hH : 0 < specNorm H :=
+    (specNorm_nonneg H).lt_of_ne fun h0 => hH0 (specNorm_eq_zero_iff.mp h0.symm)
+  have hL : 0 < (2 + 2 * C) * specNorm H := by positivity
+  set ρ := d / ((2 + 2 * C) * specNorm H)
+  have hρ : ρ ^ m ≤ (1 / 2) ^ m := by
+    rcases eq_or_ne ss [] with hss | hss
+    · simp [m, hss]
+    · obtain ⟨s, hs'⟩ := List.exists_mem_of_ne_nil ss hss
+      have h1 := hdist s hs' 0
+      have h2 := norm_le_specNorm_of_mul_eq_mul_diagonal' hV hHV 0
+      have h3 := norm_sub_le (e 0) s
+      have h4 := hs s hs'
+      refine pow_le_pow_left₀ (by positivity) ?_ m
+      rw [div_le_iff₀ hL]
+      nlinarith
+  have hx' : x ≤ 8004⁻¹ * (1 / 2) ^ m := by
+    refine hu.trans ?_
+    rw [mul_inv]
+    calc 8004⁻¹ * κ⁻¹ * ρ ^ m ≤ 8004⁻¹ * 1 * (1 / 2) ^ m := by
+          gcongr
+          exact inv_le_one_of_one_le₀ hκ1
+      _ = _ := by ring
+  have h2m : (m : ℝ) * (1 / 2) ^ m ≤ 1 := by
+    rw [one_div, inv_pow, ← div_eq_mul_inv, div_le_one (by positivity)]
+    exact_mod_cast Nat.lt_two_pow_self.le
+  have hmx : (m : ℝ) * x ≤ 1 / 4 := by
+    nlinarith [mul_le_mul_of_nonneg_left hx' (Nat.cast_nonneg m : (0 : ℝ) ≤ m)]
+  obtain ⟨Q, hQ, hE⟩ := h.exists_specNorm_aeval_sub_le hx hC hs hmx
+  set Rh := Rs.reverse.prod
+  set E := M - Q * Rh
+  obtain ⟨hMM, hMi⟩ := specNorm_inv_aeval_shiftPoly_le hd hV hHV hdist
+  have hη : specNorm M⁻¹ * specNorm E ≤ 4 / 8004 := by
+    have hEb : specNorm E ≤ 4 * d ^ m / (8004 * κ) := by
+      calc specNorm E ≤ 4 * ((2 + 2 * C) * specNorm H) ^ m * x := by
+            rw [show (2 + 2 * C) * specNorm H = 2 * (1 + C) * specNorm H by ring]; exact hE
+        _ ≤ 4 * ((2 + 2 * C) * specNorm H) ^ m * ((8004 * κ)⁻¹ * ρ ^ m) := by gcongr
+        _ = 4 * d ^ m / (8004 * κ) := by
+            rw [div_pow]
+            field_simp
+    calc _ ≤ κ / d ^ m * (4 * d ^ m / (8004 * κ)) :=
+          mul_le_mul (hMi.trans (by gcongr)) hEb (specNorm_nonneg _) (by positivity)
+      _ = 4 / 8004 := by field_simp
+  obtain ⟨hU, hdiag⟩ := list_prod_isUpperTriangular_apply_self (L := Rs.reverse)
+    (fun R hR => h.forall_isUpperTriangular R (List.mem_reverse.mp hR)) (Fin.last n)
+  set r := Rh (Fin.last n) (Fin.last n)
+  have hprod : (Rs.map fun R => ‖R (Fin.last n) (Fin.last n)‖).prod = ‖r‖ := by
+    rw [show r = _ from hdiag, List.norm_prod, List.map_map, List.map_reverse, List.prod_reverse]
+    rfl
+  rw [hprod]
+  exact abs_norm_last_sub_inv_le_of_mul hQ hU hMM hη
 
 /-- **The potential after a rounded step** (corrected [BanksGarzaVargasSrivastava2022,
 Lemma 5.2]): if the computed $\widehat{\mathbf{H}}'$ is within $0.001\omega$ of the exact step

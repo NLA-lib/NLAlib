@@ -55,14 +55,13 @@ space of $\mathbf{A}$, and the error vanishes almost surely.
   gapped tail bounds for one start vector.
 * `NLAlib.integral_setOf_specNorm_sub_rbki_sq_le_of_hasLaw_gaussianVector`: the expectation on the
   head event.
-*
-`NLAlib.measureReal_specNorm_sub_truncatedSVD_rbki_sq_gt_one_add_sq_mul_le_of_hasLaw_gaussianVector`:
-  the gapless $(1 + \varepsilon)$ tail bound for one start vector.
-* `NLAlib.measureReal_specNorm_sub_rbki_sq_gt_le_of_hasLaw_gaussianMatrix`,
+* the gapless $(1 + \varepsilon)$ tail bound for one start vector:
+`NLAlib.measureReal_specNorm_sub_truncatedSVD_rbki_sq_gt_one_add_sq_mul_le_of_hasLaw_gaussianVector`
+* the same bounds for a Gaussian block of any size:
+  `NLAlib.measureReal_specNorm_sub_rbki_sq_gt_le_of_hasLaw_gaussianMatrix`,
   `NLAlib.measureReal_frobNorm_sub_rbki_sq_gt_le_of_hasLaw_gaussianMatrix`,
   `NLAlib.measureReal_specNorm_sub_truncatedSVD_rbki_sq_gt_le_of_hasLaw_gaussianMatrix`,
-`NLAlib.measureReal_specNorm_sub_truncatedSVD_rbki_sq_gt_one_add_sq_mul_le_of_hasLaw_gaussianMatrix`:
-  the same bounds for a Gaussian block of any size.
+`NLAlib.measureReal_specNorm_sub_truncatedSVD_rbki_sq_gt_one_add_sq_mul_le_of_hasLaw_gaussianMatrix`
 -/
 
 @[expose] public section
@@ -125,6 +124,7 @@ theorem sum_inv_sq_le_card_div_sq_of_forall_le_abs {ι : Type*} [Fintype ι] {g 
   refine (Finset.sum_le_card_nsmul _ _ _ h).trans (le_of_eq ?_)
   rw [Finset.card_univ, nsmul_eq_mul, mul_one_div]
 
+omit [DecidableEq n] in
 /-- The tail energy of a Gaussian start vector: for a standard Gaussian vector $\mathbf{x}$ in
 $\mathbb{R}^n$ (independent standard normal entries), a real matrix $\mathbf{M}$ and $\eta > 0$,
 $$\mathbb{P}\Bigl[\|\mathbf{M}\mathbf{x}\|_2^2 >
@@ -135,6 +135,7 @@ $\mathbb{E}\|\mathbf{M}\mathbf{x}\|_2^2 = \|\mathbf{M}\|_{\mathsf{F}}^2$
 theorem measureReal_norm_mulVec_sq_gt_le_of_hasLaw_gaussianVector
     (hx : HasLaw x (gaussianVector n) μ) (M : Matrix m n ℝ) {η : ℝ} (hη : 0 < η) :
     μ.real {ω | frobNorm M ^ 2 / η < ‖WithLp.toLp 2 (M *ᵥ x ω)‖ ^ 2} ≤ η := by
+  classical
   have := hx.isProbabilityMeasure
   have hiso := isIsotropic_of_hasLaw_gaussianVector hx
   have hint := hiso.integrable_norm_mulVec_sq M

@@ -388,7 +388,7 @@ theorem cgs2Extend_spec {M : Machine K} {dec : K → ℝ} {u η₀ c E : ℝ} {�
     (hS : IsScalar M I) (hM : StdModel u dec M) (hB : IsBlas1 dec ε okB I) (hCmp : IsCmp dec I)
     (hu : 0 ≤ u) (hu₁ : 4 * u ≤ c) (hη₀ : 0 ≤ η₀) (hη : η₀ ≤ 1 / 100) (hc : c ≤ 1 / 100)
     (hE : 0 ≤ E) (hE' : E ≤ 1 / 100) (hτ : 0 < τ)
-    (ha : 0 ≤ ε.axpy) (hs : 0 ≤ ε.sqrt) (hsc : 0 ≤ ε.scal) (hscal : ε.scal ≤ E)
+    (ha : 0 ≤ ε.axpy) (hs : 0 ≤ ε.sqrt) (hscal : ε.scal ≤ E)
     (hokB : ∀ n k b, ok n k b → okB n) (hdot : ∀ n k b, ok n k b → 0 ≤ ε.dot n)
     (hbudget : ∀ n k b, ok n k b → ((k + b : ℕ) + 1) * ε.dot n * (1 + η₀) ^ 2 +
       ((1 + ε.axpy) ^ (k + b) - 1) * (1 + (k + b : ℕ) * (1 + ε.dot n) * (1 + η₀) ^ 2) ≤ c)
@@ -396,7 +396,6 @@ theorem cgs2Extend_spec {M : Machine K} {dec : K → ℝ} {u η₀ c E : ℝ} {�
     (cgs2ExtendImpl (Op := Op) (Tst := Tst) τ).Triple I .total
       ((extendRel dec η₀ (cgs2ExtendMu (2 * c) (2 * (η₀ + c) ^ 2) E τ)
         (cgs2ExtendEps (3 * c) E τ) ok).spec ExtendOperands) := by
-  have _ := hsc
   have ops : ColOps M dec ε.dot ε.axpy (fun n => IsNrm2Err dec (ε.dot n) ε.sqrt n)
       (fun n => IsScalErr dec ε.scal n) okB I :=
     ⟨hS, hB.dot, hB.axpy, hM.neg, meets_nrm2RelOf hB.nrm2, meets_scalRelOf hB.scal, hB.copy,

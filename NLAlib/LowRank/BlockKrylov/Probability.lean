@@ -43,10 +43,9 @@ stored output are integrals of $\mathsf{rbki}$ and no measurability of the run i
   transfer of expectations.
 * `NLAlib.BlockKrylov.measureReal_not_accepts_le_of_hasLaw_gaussianMatrix`: the gapped tail bound
   for a Gaussian start block of any size, for the stored output.
-*
-`NLAlib.BlockKrylov.integral_specNorm_sub_storedOutput_sq_le_singularGapRatio_of_hasLaw_gaussianMatrix`:
-  the gapped bound in expectation for a Gaussian start block of at least $t + 2$ columns, for the
-  stored output.
+* the gapped bound in expectation for a Gaussian start block of at least $t + 2$ columns, for the
+  stored output, in the `NLAlib` namespace:
+`BlockKrylov.integral_specNorm_sub_storedOutput_sq_le_singularGapRatio_of_hasLaw_gaussianMatrix`
 -/
 
 @[expose] public section

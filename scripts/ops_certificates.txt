@@ -14,6 +14,7 @@ NLAlib.Krylov.CG.HSPCG.Rounded.Stored.algorithm hyps=10 uniform=yes confined=yes
 NLAlib.Krylov.CG.HSPCG.Stored.algorithm hyps=2 uniform=yes confined=yes charged=no budget=manifest scratch=manifest
 NLAlib.Krylov.CG.Reorth.Certification.algorithm hyps=4 uniform=no confined=yes charged=no budget=manifest scratch=manifest
 NLAlib.Krylov.CG.Reorth.Stored.algorithm hyps=2 uniform=yes confined=yes charged=no budget=manifest scratch=manifest
+NLAlib.Krylov.GolubKahan.Band.Certification.algorithm hyps=0 uniform=no confined=yes charged=no budget=manifest scratch=closed
 NLAlib.Krylov.Lanczos.Certification.algorithm hyps=6 uniform=no confined=yes charged=no budget=manifest scratch=closed
 NLAlib.Krylov.Lanczos.Certification.exactReferenceAlgorithm hyps=1 uniform=no confined=yes charged=no budget=manifest scratch=closed
 NLAlib.Krylov.Lanczos.Certification.ritzAlgorithm hyps=2 uniform=no confined=yes charged=no budget=manifest scratch=closed

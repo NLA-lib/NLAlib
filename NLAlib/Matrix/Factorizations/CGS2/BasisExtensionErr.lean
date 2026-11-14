@@ -107,13 +107,14 @@ private theorem norm_toLp_submatrix_transpose_mulVec {V : Matrix (Fin n) ι ℝ}
   rw [EuclideanSpace.norm_eq, EuclideanSpace.norm_eq]
   exact congrArg Real.sqrt h
 
-omit [DecidableEq ι] in
+omit [Fintype ι] [DecidableEq ι] in
 /-- The nonzero columns of a matrix can be enumerated: there is an injective selection of
 nonzero columns outside of which every column is zero. -/
-private theorem exists_injective_col_ne_zero (V : Matrix (Fin n) ι ℝ) :
+private theorem exists_injective_col_ne_zero [Finite ι] (V : Matrix (Fin n) ι ℝ) :
     ∃ (j : ℕ) (e : Fin j → ι), Function.Injective e ∧ (∀ k, V.col (e k) ≠ 0) ∧
       ∀ i, i ∉ Set.range e → V.col i = 0 := by
   classical
+  have := Fintype.ofFinite ι
   refine ⟨_, fun k => ((Fintype.equivFin {i // V.col i ≠ 0}).symm k : ι),
     Subtype.val_injective.comp (Fintype.equivFin _).symm.injective,
     fun k => ((Fintype.equivFin {i // V.col i ≠ 0}).symm k).2, fun i hi => ?_⟩
@@ -217,12 +218,12 @@ meet the guarantee on the support with parameters
 $(\eta_0, \varepsilon_1, \varepsilon_2, \varepsilon_3)$ for the input $\mathbf{w}$ and the basis
 $\mathbf{V}$, whose Gram defect on the support $\mathbf{D}$ satisfies
 $\|\mathbf{D}\|_2 \le \eta_0 \le 1/100$, with
-$0 \le \varepsilon_1, \varepsilon_2, \varepsilon_3 \le 1/10$. Then
+$\varepsilon_1, \varepsilon_3 \le 1/10$ and $0 \le \varepsilon_2 \le 1/10$. Then
 $\|\mathbf{w}'\| \le 2\|\mathbf{w}\|$. -/
 theorem IsOrthErrOnSupport.norm_le_two_mul {V : Matrix (Fin n) ι ℝ} {w : Fin n → ℝ} {h : ι → ℝ}
     {w' : Fin n → ℝ} (hO : IsOrthErrOnSupport η₀ ε₁ ε₂ ε₃ V w h w')
-    (hV : specNorm (gramDefect V) ≤ η₀) (hη : η₀ ≤ 1 / 100) (hε₁ : 0 ≤ ε₁) (hε₁' : ε₁ ≤ 1 / 10)
-    (hε₂ : 0 ≤ ε₂) (hε₂' : ε₂ ≤ 1 / 10) (hε₃ : 0 ≤ ε₃) (hε₃' : ε₃ ≤ 1 / 10) :
+    (hV : specNorm (gramDefect V) ≤ η₀) (hη : η₀ ≤ 1 / 100) (hε₁' : ε₁ ≤ 1 / 10)
+    (hε₂ : 0 ≤ ε₂) (hε₂' : ε₂ ≤ 1 / 10) (hε₃' : ε₃ ≤ 1 / 10) :
     ‖WithLp.toLp 2 w'‖ ≤ 2 * ‖WithLp.toLp 2 w‖ := by
   obtain ⟨j, e, hinj, hne, hz⟩ := exists_injective_col_ne_zero V
   obtain ⟨hOe, hVe⟩ := hO.isOrthErr_submatrix hV hinj hne hz
@@ -417,8 +418,8 @@ single-vector guarantee, a dropped column (`q = 0`, `r = 0`) or a kept one (`r =
 private theorem IsOrthErrOnSupport.norm_residual_col_le {E τ ν β r : ℝ}
     {V : Matrix (Fin n) ι ℝ} {w : Fin n → ℝ} {h : ι → ℝ} {w' q : Fin n → ℝ}
     (hO : IsOrthErrOnSupport η₀ ε₁ ε₂ ε₃ V w h w') (hV : specNorm (gramDefect V) ≤ η₀)
-    (hη : η₀ ≤ 1 / 100) (hε₁ : 0 ≤ ε₁) (hε₁' : ε₁ ≤ 1 / 10) (hε₂ : 0 ≤ ε₂) (hε₂' : ε₂ ≤ 1 / 10)
-    (hε₃ : 0 ≤ ε₃) (hε₃' : ε₃ ≤ 1 / 10) (hE : 0 ≤ E) (hE' : E ≤ 1 / 100) (hτ : 0 < τ)
+    (hη : η₀ ≤ 1 / 100) (hε₁' : ε₁ ≤ 1 / 10) (hε₂ : 0 ≤ ε₂) (hε₂' : ε₂ ≤ 1 / 10)
+    (hε₃' : ε₃ ≤ 1 / 10) (hE : 0 ≤ E) (hE' : E ≤ 1 / 100) (hτ : 0 < τ)
     (hν : |ν - ‖WithLp.toLp 2 w‖| ≤ E * ‖WithLp.toLp 2 w‖)
     (hβ : |β - ‖WithLp.toLp 2 w'‖| ≤ E * ‖WithLp.toLp 2 w'‖)
     (hstep : (β ≤ 3 / 2 * τ * ν ∧ q = 0 ∧ r = 0) ∨
@@ -426,7 +427,7 @@ private theorem IsOrthErrOnSupport.norm_residual_col_le {E τ ν β r : ℝ}
     ‖WithLp.toLp 2 (w - V *ᵥ h - r • q)‖ ≤ cgs2ExtendEps ε₂ E τ * ‖WithLp.toLp 2 w‖ := by
   unfold cgs2ExtendEps
   have hres := hO.residual hV
-  have h2 := hO.norm_le_two_mul hV hη hε₁ hε₁' hε₂ hε₂' hε₃ hε₃'
+  have h2 := hO.norm_le_two_mul hV hη hε₁' hε₂ hε₂' hε₃'
   have ha0 := norm_nonneg (WithLp.toLp 2 w)
   have hp0 := norm_nonneg (WithLp.toLp 2 w')
   have ht0 : 0 ≤ τ * ‖WithLp.toLp 2 w‖ := mul_nonneg hτ.le ha0
@@ -601,7 +602,7 @@ theorem isBasisExtensionErr_of_columns {k b : ℕ} {E τ : ℝ} {Q : Matrix (Fin
       rw [h1, mul_col_eq_of_blockTriangular Q' hR, Matrix.fromCols_mulVec_sumElim]
       abel
     rw [hcol]
-    exact (hO c).norm_residual_col_le hVc hη hε₁ hε₁' hε₂ hε₂' hε₃ hε₃' hE hE' hτ (hν c) (hβ c)
+    exact (hO c).norm_residual_col_le hVc hη hε₁' hε₂ hε₂' hε₃' hE hE' hτ (hν c) (hβ c)
       (hstep c)
 
 end NLAlib

@@ -30,6 +30,8 @@ Design: `docs/design/LowRank-BlockLanczos.md` §3.1a.
   antecedent.
 * `NLAlib.blockPrefix`, `NLAlib.blockCols`: the first $j$ blocks and the block $j$ of a matrix
   stored as consecutive blocks of $b$ columns.
+* `NLAlib.blockRowPrefix`, `NLAlib.blockRows`: the first $j$ blocks of rows and block $j$ of the
+  rows of a matrix stored as consecutive blocks of $b$ rows.
 
 ## Main results
 
@@ -470,6 +472,24 @@ def blockCols (b : ℕ) (V : Matrix m (Fin N) 𝕜) (j : ℕ) : Matrix m (Fin b)
 theorem blockPrefix_self {b q : ℕ} (V : Matrix m (Fin (q * b)) 𝕜) : blockPrefix b V q = V := by
   ext i d
   simp [blockPrefix]
+
+/-- The first $j$ blocks of rows of a matrix $\mathbf{C}$ whose rows are stored as consecutive
+blocks of $b$ rows: its rows $0, \dots, jb - 1$. A row index beyond the height of $\mathbf{C}$
+gives a zero row. -/
+def blockRowPrefix (b : ℕ) (C : Matrix (Fin N) κ 𝕜) (j : ℕ) : Matrix (Fin (j * b)) κ 𝕜 :=
+  Matrix.of fun d c => if h : (d : ℕ) < N then C ⟨d, h⟩ c else 0
+
+/-- Block $j$ of the rows of a matrix $\mathbf{C}$ whose rows are stored as consecutive blocks of
+$b$ rows: its rows $jb, \dots, jb + b - 1$. A row index beyond the height of $\mathbf{C}$ gives a
+zero row. -/
+def blockRows (b : ℕ) (C : Matrix (Fin N) κ 𝕜) (j : ℕ) : Matrix (Fin b) κ 𝕜 :=
+  Matrix.of fun r c => if h : j * b + (r : ℕ) < N then C ⟨j * b + r, h⟩ c else 0
+
+/-- The prefix of all $q$ blocks of rows of a matrix with $qb$ rows is the matrix. -/
+theorem blockRowPrefix_self {b q : ℕ} (C : Matrix (Fin (q * b)) κ 𝕜) :
+    blockRowPrefix b C q = C := by
+  ext d c
+  simp [blockRowPrefix]
 
 /-- The prefix of $j + 1$ blocks is the prefix of $j$ blocks followed by block $j$, up to the
 identification of the column indices; in particular the two have the same Gram defect on the

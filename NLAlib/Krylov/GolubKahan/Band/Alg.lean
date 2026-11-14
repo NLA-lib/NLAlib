@@ -5,10 +5,9 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Matrix.Perturbation.BasisExtension
+public import NLAlib.Matrix.Factorizations.BasisExtensionContract
 public import NLAlib.Ops.Blas.Sampling
 public import NLAlib.Ops.Catalog.OperatorPair
-public import NLAlib.Ops.Catalog.Orth
 public import NLAlib.Ops.Cert
 
 /-!
@@ -27,7 +26,10 @@ for j < q:  U block j,   block column j of R := extend(U blocks < j, A · (V blo
 
 Full reorthogonalization is the fact that every extension is against all stored columns of its
 side. A concrete orthogonalization scheme is an implementation of `extend` proved against the
-contract and substituted by linking. Design: `docs/design/LowRank-BlockLanczos.md` §3.
+contract (`NLAlib.Ops.extendRel`, `NLAlib.Ops.exactExtendRel`) and substituted by linking. The
+stored-run predicates of this file are related to the pure relations
+`NLAlib.IsBlockGolubKahan` and `NLAlib.IsBlockGolubKahanErr` in
+`NLAlib/Krylov/GolubKahan/Band/Run.lean`. Design: `docs/design/LowRank-BlockLanczos.md` §3.
 
 **Storage.** All blocks are column-major, one word per entry. `U` has `q * b * m` words and `V`
 has `(q + 1) * b * n`; a new block is written by `extend` directly after the stored columns of
@@ -40,9 +42,6 @@ columns of `V`, at the offset `b * b * (j * (j + 3) / 2)`. The scratch block of
 
 ## Main definitions
 
-* `NLAlib.Ops.extendRel`, `NLAlib.Ops.exactExtendRel`: the rounded and the exact contract of
-  `NLAlib.Ops.OrthOp.extend`, the decoded `NLAlib.IsBasisExtensionErr` and
-  `NLAlib.IsBasisExtension`.
 * `NLAlib.Krylov.GolubKahan.Band.applyColumns`, `NLAlib.Krylov.GolubKahan.Band.step`,
   `NLAlib.Krylov.GolubKahan.Band.solve`, `NLAlib.Krylov.GolubKahan.Band.program`: the program.
 * `NLAlib.Krylov.GolubKahan.Band.coefOffsetR`, `NLAlib.Krylov.GolubKahan.Band.coefOffsetS`,
@@ -55,7 +54,8 @@ columns of `V`, at the offset `b * b * (j * (j + 3) / 2)`. The scratch block of
 
 ## Main results
 
-* `NLAlib.Ops.Interp.Meets.extendRel_mono`: the rounded contract is monotone in its parameters.
+* `NLAlib.Krylov.GolubKahan.Band.extendPred_of_eq_zero`: an extension of the empty basis does not
+  depend on the name of the empty column type.
 * `NLAlib.Krylov.GolubKahan.Band.coefOffsetR_succ`,
   `NLAlib.Krylov.GolubKahan.Band.coefOffsetS_succ`: consecutive block columns are adjacent.
 * `NLAlib.Krylov.GolubKahan.Band.writes_applyColumns`,
@@ -70,38 +70,6 @@ columns of `V`, at the offset `b * b * (j * (j + 3) / 2)`. The scratch block of
 @[expose] public section
 
 open scoped Matrix
-
-namespace NLAlib.Ops
-
-variable {K Op Tst : Type} [Inhabited K]
-
-/-- **The rounded contract of a basis extension** with parameters
-$(\eta_0, \mu, \varepsilon)$: the decoded basis $\mathbf{Q}$, input block $\mathbf{W}$, new block
-$\mathbf{Q}'$ and coefficients $\mathbf{H}$, $\mathbf{R}$ satisfy the rounded extension
-predicate `NLAlib.IsBasisExtensionErr`. Nothing is said of the words left over the input block.
-The call succeeds at the dimensions `[n, k, b]` admitted by `ok`. -/
-def extendRel (dec : K → ℝ) (η₀ μ ε : ℝ) (ok : ℕ → ℕ → ℕ → Prop) : BlockRel K :=
-  extendRelOf dec ok fun _ _ _ Q W Q' H R => IsBasisExtensionErr η₀ μ ε Q W Q' H R
-
-/-- **The exact contract of a basis extension**: the decoded basis $\mathbf{Q}$, input block
-$\mathbf{W}$, new block $\mathbf{Q}'$ and coefficients $\mathbf{H}$, $\mathbf{R}$ satisfy the
-exact extension predicate `NLAlib.IsBasisExtension`, at all dimensions. -/
-def exactExtendRel {𝕜 : Type} [RCLike 𝕜] (dec : K → 𝕜) : BlockRel K :=
-  extendRelOf dec (fun _ _ _ => True) fun _ _ _ Q W Q' H R => IsBasisExtension Q W Q' H R
-
-/-- An operation that meets the rounded contract of a basis extension with parameters
-$(\eta_0, \mu, \varepsilon)$, $\mu \ge 0$, meets it with a smaller window $\eta_0' \le \eta_0$,
-larger parameters $\mu \le \mu'$, $\varepsilon \le \varepsilon'$ and fewer admitted
-dimensions. -/
-theorem Interp.Meets.extendRel_mono {dec : K → ℝ} {η₀ μ ε η₀' μ' ε' : ℝ}
-    {ok ok' : ℕ → ℕ → ℕ → Prop} {I : Interp Op Tst K} {o : Op}
-    (h : I.Meets .total o ((extendRel dec η₀ μ ε ok).spec ExtendOperands))
-    (hok : ∀ n k b, ok' n k b → ok n k b) (hμ0 : 0 ≤ μ) (hη : η₀' ≤ η₀) (hμ : μ ≤ μ')
-    (hε : ε ≤ ε') :
-    I.Meets .total o ((extendRel dec η₀' μ' ε' ok').spec ExtendOperands) :=
-  h.extendRelOf_mono hok fun _ _ _ _ _ _ _ _ hE => hE.mono hμ0 hη hμ hε
-
-end NLAlib.Ops
 
 namespace NLAlib.Krylov.GolubKahan.Band
 
@@ -204,7 +172,9 @@ abbrev RunPred (m n b q : ℕ) : Type :=
 /-- **The stored blocks of a run are related block by block**, for an extension predicate `Ext`
 and relations `Mv`, `Rmv` between a block and the block of its computed products with
 $\mathbf{A}$ and with $\mathbf{A}^{\mathsf{H}}$. Block $0$ of $\mathbf{V}$ and $\mathbf{G}$
-extend the empty basis by $\mathbf{\Omega}$. For every $j < q$: block $j$ of $\mathbf{U}$ and
+extend the empty basis by $\mathbf{\Omega}$; the empty basis is the prefix of zero blocks of
+$\mathbf{V}$, with column type `Fin (0 * b)`, as in `NLAlib.IsBlockGolubKahan`. For every
+$j < q$: block $j$ of $\mathbf{U}$ and
 block column $j$ of the left coefficients extend the first $j$ blocks of $\mathbf{U}$ by a
 product block of block $j$ of $\mathbf{V}$; block $j + 1$ of $\mathbf{V}$ and block column $j$
 of the right coefficients extend the first $j + 1$ blocks of $\mathbf{V}$ by a product block of
@@ -217,8 +187,9 @@ structure IsStoredRun {m n b q : ℕ} (Ext : ExtendPred ℝ)
     (V : Matrix (Fin n) (Fin ((q + 1) * b)) ℝ) (G : Matrix (Fin b) (Fin b) ℝ)
     (R : (j : ℕ) → Matrix (Fin (j * b + b)) (Fin b) ℝ)
     (S : (j : ℕ) → Matrix (Fin ((j + 1) * b + b)) (Fin b) ℝ) : Prop where
-  /-- The start block: block $0$ of $\mathbf{V}$ extends the empty basis by $\mathbf{\Omega}$. -/
-  start : Ext n 0 b 0 Ω (blockCols b V 0) 0 G
+  /-- The start block: block $0$ of $\mathbf{V}$ extends the empty basis, the prefix of zero
+  blocks of $\mathbf{V}$, by $\mathbf{\Omega}$. -/
+  start : Ext n (0 * b) b (blockPrefix b V 0) Ω (blockCols b V 0) 0 G
   /-- Block $j$ of $\mathbf{U}$ extends the first $j$ blocks of $\mathbf{U}$ by the products of
   $\mathbf{A}$ with block $j$ of $\mathbf{V}$. -/
   left : ∀ j < q, ∃ W, Mv (blockCols b V j) W ∧
@@ -228,6 +199,26 @@ structure IsStoredRun {m n b q : ℕ} (Ext : ExtendPred ℝ)
   right : ∀ j < q, ∃ W, Rmv (blockCols b U j) W ∧
     Ext n ((j + 1) * b) b (blockPrefix b V (j + 1)) W (blockCols b V (j + 1))
       (coefTop (S j)) (coefBot (S j))
+
+/-- An extension of the empty basis is an extension of every basis with no columns: a predicate
+`Ext` on the matrices of a basis extension that holds at the basis with column type `Fin 0`, as
+returned by a call at the dimensions `[n, 0, b]`, holds at every basis $\mathbf{Q}$ and
+coefficient block $\mathbf{H}$ with column and row type `Fin k`, $k = 0$; in particular at
+`Fin (0 * b)`, the form of the start block in
+`NLAlib.Krylov.GolubKahan.Band.IsStoredRun`. -/
+theorem extendPred_of_eq_zero (Ext : ExtendPred ℝ) {n k b : ℕ} (hk : k = 0)
+    (Q : Matrix (Fin n) (Fin k) ℝ) (H : Matrix (Fin k) (Fin b) ℝ)
+    {W Q' : Matrix (Fin n) (Fin b) ℝ} {R : Matrix (Fin b) (Fin b) ℝ}
+    (h : Ext n 0 b 0 W Q' 0 R) : Ext n k b Q W Q' H R := by
+  subst hk
+  have hQ : Q = 0 := by
+    ext i j
+    exact j.elim0
+  have hH : H = 0 := by
+    ext i j
+    exact i.elim0
+  rw [hQ, hH]
+  exact h
 
 /-- The stored blocks of an exact run: every extension is exact (`NLAlib.IsBasisExtension`) and
 the extended blocks are the products $\mathbf{A}\mathbf{V}_j$ and
@@ -364,7 +355,8 @@ theorem solve_writes {dec : K → ℝ} {m n b q : ℕ} {A : Matrix (Fin m) (Fin 
   -- 3. `writes_call` with `hO` at `[n, 0, b]`: the admission `ExtendOperands` holds with
   --    `Q = V`, `Q' = (V.1, V.2 + 0 * n)`, `C = G` (distinct buffers from `hbuf` and from the
   --    freshness of `W`); the basis block of length `0 * n` reads as `[]`. This gives `start`
-  --    after identifying the `(0 + b) × b` decoded block with the `b × b` matrix `G`.
+  --    after identifying the `(0 + b) × b` decoded block with the `b × b` matrix `G` and moving
+  --    from the column type `Fin 0` to `Fin (0 * b)` by `extendPred_of_eq_zero`.
   -- 4. `writes_loop` over `j < q` with the invariant: the position is `μ.pos + n * b`; the
   --    first `j * b * m` words of `U`, `(j + 1) * b * n` words of `V`, `coefOffsetR b j` words
   --    of `R` and `coefOffsetS b j` words of `S` are readable and satisfy `left` and `right`

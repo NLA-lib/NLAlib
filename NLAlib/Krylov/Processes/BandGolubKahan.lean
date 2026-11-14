@@ -38,8 +38,6 @@ start block is the prefix of zero blocks of $\mathbf{V}$, a matrix with no colum
 
 ## Main definitions
 
-* `NLAlib.blockRowPrefix`, `NLAlib.blockRows`: the first $j$ blocks of rows and block $j$ of the
-  rows of a matrix.
 * `NLAlib.IsBlockGolubKahan`: the process as a relation on the stored matrices.
 
 ## Main results
@@ -81,32 +79,6 @@ open scoped Matrix
 namespace NLAlib
 
 variable {𝕜 : Type*} [RCLike 𝕜]
-
-/-! ### Blocks of rows -/
-
-section BlockRows
-
-variable {κ : Type*} {N : ℕ}
-
-/-- The first $j$ blocks of rows of a matrix $\mathbf{C}$ whose rows are stored as consecutive
-blocks of $b$ rows: its rows $0, \dots, jb - 1$. A row index beyond the height of $\mathbf{C}$
-gives a zero row. -/
-def blockRowPrefix (b : ℕ) (C : Matrix (Fin N) κ 𝕜) (j : ℕ) : Matrix (Fin (j * b)) κ 𝕜 :=
-  Matrix.of fun d c => if h : (d : ℕ) < N then C ⟨d, h⟩ c else 0
-
-/-- Block $j$ of the rows of a matrix $\mathbf{C}$ whose rows are stored as consecutive blocks of
-$b$ rows: its rows $jb, \dots, jb + b - 1$. A row index beyond the height of $\mathbf{C}$ gives a
-zero row. -/
-def blockRows (b : ℕ) (C : Matrix (Fin N) κ 𝕜) (j : ℕ) : Matrix (Fin b) κ 𝕜 :=
-  Matrix.of fun r c => if h : j * b + (r : ℕ) < N then C ⟨j * b + r, h⟩ c else 0
-
-/-- The prefix of all $q$ blocks of rows of a matrix with $qb$ rows is the matrix. -/
-theorem blockRowPrefix_self {b q : ℕ} (C : Matrix (Fin (q * b)) κ 𝕜) :
-    blockRowPrefix b C q = C := by
-  ext d c
-  simp [blockRowPrefix]
-
-end BlockRows
 
 /-! ### The process -/
 

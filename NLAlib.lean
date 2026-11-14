@@ -12,11 +12,18 @@ public import NLAlib.Eigensolvers.ShiftedQR.Certification
 public import NLAlib.Eigensolvers.ShiftedQR.Coefficients
 public import NLAlib.Eigensolvers.ShiftedQR.CompleteSearch
 public import NLAlib.Eigensolvers.ShiftedQR.Constants
+public import NLAlib.Eigensolvers.ShiftedQR.Decouple
+public import NLAlib.Eigensolvers.ShiftedQR.DecoupleConstants
+public import NLAlib.Eigensolvers.ShiftedQR.DecoupleLoop
+public import NLAlib.Eigensolvers.ShiftedQR.DecouplePrepared
+public import NLAlib.Eigensolvers.ShiftedQR.DecoupleRound
+public import NLAlib.Eigensolvers.ShiftedQR.DecoupleState
 public import NLAlib.Eigensolvers.ShiftedQR.Deflation
 public import NLAlib.Eigensolvers.ShiftedQR.DeflationCertificate
 public import NLAlib.Eigensolvers.ShiftedQR.DeflationInput
 public import NLAlib.Eigensolvers.ShiftedQR.DeflationProgram
 public import NLAlib.Eigensolvers.ShiftedQR.Division
+public import NLAlib.Eigensolvers.ShiftedQR.Exact
 public import NLAlib.Eigensolvers.ShiftedQR.FindRitz
 public import NLAlib.Eigensolvers.ShiftedQR.FindRitzAlg
 public import NLAlib.Eigensolvers.ShiftedQR.FindRitzCopy
@@ -32,6 +39,7 @@ public import NLAlib.Eigensolvers.ShiftedQR.GridSearch
 public import NLAlib.Eigensolvers.ShiftedQR.HalfNorm
 public import NLAlib.Eigensolvers.ShiftedQR.Iteration
 public import NLAlib.Eigensolvers.ShiftedQR.IterationAlg
+public import NLAlib.Eigensolvers.ShiftedQR.IterationCorrect
 public import NLAlib.Eigensolvers.ShiftedQR.IterationSearch
 public import NLAlib.Eigensolvers.ShiftedQR.IterationWords
 public import NLAlib.Eigensolvers.ShiftedQR.Kernels

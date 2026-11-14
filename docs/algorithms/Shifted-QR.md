@@ -88,6 +88,13 @@ multiplicity, where
 spectral_norm(E) <= (N - 1) * delta * frobenius_norm(H).
 ```
 
+The [forward certificate](../../NLAlib/Eigensolvers/ShiftedQR/ForwardError.lean),
+`exactForwardAlgorithm`, also proves that every stored output lies within
+`(B/2)*(N-1)*delta*frobenius_norm(H)` of some eigenvalue of H. This is the directed
+Bauer–Fike bound (HD9), using the raw input condition `2*kappa(V) <= B`.
+It retains the complete backward guarantee and the same resource bounds. It does not assert
+a bijective matching of individual eigenvalues or reverse coverage of the original spectrum.
+
 The [canonical specification](../../NLAlib/Eigensolvers/ShiftedQR/DeflationCertificate.lean)
 uses the full instruction manifest `staticCost` of the actual program. Modeled work and
 sequential span evaluate that same manifest with the declared kernel charges. Scratch uses

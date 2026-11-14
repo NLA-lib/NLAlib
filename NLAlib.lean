@@ -34,6 +34,7 @@ public import NLAlib.Eigensolvers.ShiftedQR.FindRitzMath
 public import NLAlib.Eigensolvers.ShiftedQR.FindRitzNorms
 public import NLAlib.Eigensolvers.ShiftedQR.FindRitzRegisters
 public import NLAlib.Eigensolvers.ShiftedQR.FinishSearch
+public import NLAlib.Eigensolvers.ShiftedQR.ForwardError
 public import NLAlib.Eigensolvers.ShiftedQR.Grid
 public import NLAlib.Eigensolvers.ShiftedQR.GridSearch
 public import NLAlib.Eigensolvers.ShiftedQR.HalfNorm

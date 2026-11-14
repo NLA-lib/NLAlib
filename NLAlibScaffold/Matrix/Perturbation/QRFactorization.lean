@@ -71,7 +71,52 @@ theorem IsQR.last_le_of_add (hM : IsUnit M) (h : IsQR M Q R) (h' : IsQR (M + E) 
     (hR : ∀ i, 0 < R i i) (hη : specNorm M⁻¹ * specNorm E < 1) :
     ‖R' (Fin.last n) (Fin.last n)‖ ≤
       (1 - specNorm M⁻¹ * specNorm E)⁻¹ * ‖R (Fin.last n) (Fin.last n)‖ := by
-  sorry
+  have hη0 : 0 ≤ specNorm M⁻¹ * specNorm E := by positivity
+  have hRR : R * R⁻¹ = 1 := Matrix.mul_nonsing_inv _
+    ((Matrix.isUnit_iff_isUnit_det R).mp (h.isUnit fun i => (hR i).ne'))
+  -- `X = Q'ᴴ (1 + E M⁻¹) Q = R' R⁻¹`.
+  have hX : Q'ᴴ * (1 + E * M⁻¹) * Q = R' * R⁻¹ := by
+    have hQ : (1 + E * M⁻¹) * Q = (M + E) * R⁻¹ := by
+      calc (1 + E * M⁻¹) * Q = (1 + E * M⁻¹) * M * R⁻¹ := by
+            rw [Matrix.mul_assoc, h.mul_inv_eq (h.isUnit fun i => (hR i).ne')]
+        _ = (M + E) * R⁻¹ := by
+            rw [Matrix.add_mul, Matrix.one_mul, Matrix.mul_assoc E,
+              Matrix.nonsing_inv_mul _ ((Matrix.isUnit_iff_isUnit_det M).mp hM),
+              Matrix.mul_one]
+    rw [Matrix.mul_assoc, hQ, ← Matrix.mul_assoc, h'.conjTranspose_mul_eq]
+  have hlast : ∀ A B : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, A.IsUpperTriangular →
+      (A * B) (Fin.last n) (Fin.last n) =
+        A (Fin.last n) (Fin.last n) * B (Fin.last n) (Fin.last n) := by
+    intro A B hA
+    rw [Matrix.mul_apply, Finset.sum_eq_single (Fin.last n)]
+    · intro k _ hk
+      have h0 : A (Fin.last n) k = 0 := hA (lt_of_le_of_ne (Fin.le_last k) hk)
+      rw [h0, zero_mul]
+    · simp
+  have hent : R' (Fin.last n) (Fin.last n) =
+      (Q'ᴴ * (1 + E * M⁻¹) * Q) (Fin.last n) (Fin.last n) * R (Fin.last n) (Fin.last n) := by
+    have h1 := hlast R R⁻¹ h.isUpperTriangular
+    rw [hRR, Matrix.one_apply_eq] at h1
+    rw [hX, hlast R' R⁻¹ h'.isUpperTriangular, mul_assoc, mul_comm _ (R _ _), ← h1, mul_one]
+  have hspec : specNorm (Q'ᴴ * (1 + E * M⁻¹) * Q) ≤ 1 + specNorm M⁻¹ * specNorm E := by
+    calc specNorm (Q'ᴴ * (1 + E * M⁻¹) * Q)
+        ≤ specNorm Q'ᴴ * specNorm (1 + E * M⁻¹) * specNorm Q :=
+          (specNorm_mul_le _ _).trans (by gcongr; exact specNorm_mul_le _ _)
+      _ ≤ 1 * (1 + specNorm M⁻¹ * specNorm E) * 1 := by
+          rw [specNorm_conjTranspose]
+          gcongr
+          · exact h'.hasOrthonormalCols.specNorm_le_one
+          · refine (specNorm_add_le _ _).trans (add_le_add specNorm_one_le ?_)
+            rw [mul_comm]
+            exact specNorm_mul_le _ _
+          · exact h.hasOrthonormalCols.specNorm_le_one
+      _ = _ := by ring
+  have hinv : 1 + specNorm M⁻¹ * specNorm E ≤ (1 - specNorm M⁻¹ * specNorm E)⁻¹ := by
+    rw [inv_eq_one_div (1 - specNorm M⁻¹ * specNorm E), le_div_iff₀ (by linarith)]
+    nlinarith
+  rw [hent, norm_mul]
+  gcongr
+  exact ((norm_apply_le_specNorm _ _ _).trans hspec).trans hinv
 
 /-- **The last diagonal entry under perturbation**, lower bound:
 $(1 + \eta)^{-1}\mathbf{R}_{nn} \le \lvert\widehat{\mathbf{R}}_{nn}\rvert$.

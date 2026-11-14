@@ -1234,6 +1234,7 @@ public import NLAlib.Polynomial.Orthogonal.RadauJacobi
 public import NLAlib.Polynomial.Orthogonal.Recurrence
 public import NLAlib.Polynomial.Orthogonal.Zeros
 public import NLAlib.Probability.AdaptiveUnionBound
+public import NLAlib.Probability.AdaptiveUnionBoundMeasurable
 public import NLAlib.Probability.BoundedDifferences
 public import NLAlib.Probability.ConvexOrder
 public import NLAlib.Probability.Distributions.ChiSquare

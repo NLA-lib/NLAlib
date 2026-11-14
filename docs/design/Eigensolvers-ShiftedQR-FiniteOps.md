@@ -23,7 +23,7 @@ and no target, check, allowlist, CI file or build pin changes.
 * **Layers (§4).** L1 deterministic backward error (rounded Givens sweep, weakened contracts,
   worklist by composition); L2 rounded convergence mathematics; L3 randomness; L4 the headline
   theorems. L1 lands first, on its own.
-* **Skeleton.** 9 new files and one theorem appended to an existing file, 39 sorried statements,
+* **Skeleton.** 10 new files, 39 sorried statements,
   full `lake build` (5071 jobs), `check_rules` 0 errors. 21 more statements (the rounded programs
   and the headlines) are specified here and skeletonized with their programs (§4).
 * **Model (§3).** Real words, `Machine ℝ` with `StdModel u id M` (it has a rounded square root);
@@ -164,7 +164,7 @@ $\beta$). The worklist's scalar arithmetic is exact in C4 and rounded in P3.
 | D1, D2 | `isProbabilityMeasure_diskUniform`, `measureReal_diskUniform_closedBall_le` | Probability/Distributions/DiskUniform | S, M | skel |
 | D3 | `measureReal_exists_norm_add_sub_lt_le` (L3.10) | same | M | skel |
 | D4 | `measureReal_exists_norm_add_sub_lt_le_of_separated` (Exc translate, 11) | same | M | skel |
-| U1 | `measureReal_exists_lt_mem_le` (adaptive union bound, measurable states) | Probability/AdaptiveUnionBound | M | skel |
+| U1 | `measureReal_exists_lt_mem_le` (adaptive union bound, measurable states) | Probability/AdaptiveUnionBoundMeasurable | M | skel |
 | P13 | tape coupling: disk sampler and SmallEig as tape-window functions; independence of a call's window from its input state (`IsTapeLaw.integral_future`) | Eigensolvers/ShiftedQR/RoundedProbability (new) | M | plan |
 | P14 | Regularize failure $\le \varphi$ (SmallEig $\varphi/2$ + D3 $\varphi/2$) | same | M | plan |
 | P15 | Sh failure $\le \varphi$ (D4 with $\eta = \varepsilon\tilde R\sqrt{\varphi/(11n)}$) | same | S | plan |
@@ -225,7 +225,7 @@ landing); 4 = P4–P12; 5 = P13–P16, T1–T5.
 | `Matrix/QRIteration/StableStep.lean` (new) | Q1–Q6, defs |
 | `Matrix/QRIteration/RoundedStrategy.lean` (new) | S1–S6, `findRitzWith` |
 | `Probability/Distributions/DiskUniform.lean` (new) | D1–D4 |
-| `Probability/AdaptiveUnionBound.lean` (existing, main) | U1 appended: same topic as the countable-state lemma |
+| `Probability/AdaptiveUnionBoundMeasurable.lean` (new) | U1 (a separate file so that the proved countable-state lemma stays sorry-free) |
 | `Eigensolvers/ShiftedQR/Backward.lean` (new, Codex's folder) | C1–C4, contracts |
 | `docs/references.bib` | Sun1991, BauerFike1960, ChangPaigeStewart1997 |
 

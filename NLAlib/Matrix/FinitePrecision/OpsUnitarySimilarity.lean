@@ -25,6 +25,12 @@ is a backward step with error $0$ (`NLAlib.Ops.BackwardStep.of_unitarySimilar`).
 * `NLAlib.isBackwardErrorRel_isPerturbedUnitarySimilar`: the relation.
 * `NLAlib.Ops.BackwardStep.of_unitarySimilar`: an exact unitary similarity is a backward step
   with error $0$.
+* `NLAlib.Ops.BackwardStep.of_specNorm_sub_le`: an exact unitary similarity up to an error
+  $\varepsilon$ is a backward step with error $\varepsilon$.
+
+`NLAlib.Ops.BackwardStep.loop_rel` applies with the spectral norm as the size of the state, by
+`NLAlib.IsPerturbedUnitarySimilar.specNorm_le`: a per-round error $\nu\|\mathbf{H}_k\|_2$
+sums to $((1 + \nu)^N - 1)\|\mathbf{H}\|_2$.
 -/
 
 @[expose] public section
@@ -56,6 +62,18 @@ theorem BackwardStep.of_unitarySimilar
     BackwardStep md I τ c ρ F (fun ε A B => IsPerturbedUnitarySimilar A B ε) S S' 0 :=
   fun A m hA => (h A m hA).mono le_rfl fun _ _ ⟨_, B, hU, hB, hS⟩ =>
     ⟨B, hB ▸ hU.isPerturbedUnitarySimilar A, hS⟩
+
+/-- A step that returns an exact unitary similarity up to an error is a backward step: if from
+every memory holding $\mathbf{A}$ the run of `c` ends holding $\mathbf{B}$ with
+$\|\mathbf{B} - \mathbf{U}^{\mathsf{H}}\mathbf{A}\mathbf{U}\|_2 \le \varepsilon$ for some
+$\mathbf{U}$ with orthonormal columns, it is a backward step for the perturbed unitary
+similarity with error $\varepsilon$. The form a rounded kernel contract gives. -/
+theorem BackwardStep.of_specNorm_sub_le {ε : ℝ}
+    (h : ∀ A m, S A m → Writes md I τ c ρ F (fun m' => ∃ U B : Matrix n n 𝕜,
+      HasOrthonormalCols U ∧ specNorm (B - Uᴴ * A * U) ≤ ε ∧ S' B m') m) :
+    BackwardStep md I τ c ρ F (fun ε A B => IsPerturbedUnitarySimilar A B ε) S S' ε :=
+  fun A m hA => (h A m hA).mono le_rfl fun _ _ ⟨_, B, hU, hB, hS⟩ =>
+    ⟨B, IsPerturbedUnitarySimilar.of_specNorm_sub_le hU hB, hS⟩
 
 end Ops
 

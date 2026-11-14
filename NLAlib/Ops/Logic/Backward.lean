@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import Mathlib.Tactic.Ring
 public import NLAlib.Ops.Logic.Loop
 
 /-!
@@ -45,7 +46,10 @@ the loop with early exit sums the rounds run and the continuation.
 * `NLAlib.Ops.BackwardStep.skip`, `NLAlib.Ops.BackwardStep.of_exact`: exact steps, error $0$.
 * `NLAlib.Ops.BackwardStep.mono`: weakening.
 * `NLAlib.Ops.BackwardStep.seq`, `NLAlib.Ops.BackwardStep.loop`, `NLAlib.Ops.BackwardStep.ite`,
-  `NLAlib.Ops.BackwardStep.whileFuel`: composition.
+  `NLAlib.Ops.BackwardStep.whileFuel`: composition; a branch and the loop with early exit pass
+  the outcome of the test to the arm that runs.
+* `NLAlib.Ops.BackwardStep.loop_rel`: a loop whose error per round is relative to a size of the
+  state (geometric growth of the bound).
 -/
 
 @[expose] public section
@@ -97,9 +101,11 @@ theorem of_exact (f : α → α)
     (hf : ∀ a, R 0 a (f a)) : BackwardStep md I τ c ρ F R S S' 0 :=
   fun a m ha => (h a m ha).mono le_rfl fun _ _ hb => ⟨f a, hf a, hb⟩
 
-/-- Doing nothing is a backward step with error $0$. -/
-theorem skip (hR : IsBackwardErrorRel R) : BackwardStep md I τ .skip ρ ⊥ R S S 0 :=
-  fun a _ ha => Writes.skip ⟨a, hR.refl a, ha⟩
+/-- Doing nothing is a backward step with error $0$, to any predicate that the memory already
+satisfies. -/
+theorem skip (hR : IsBackwardErrorRel R) (hS : ∀ a m, S a m → S' a m) :
+    BackwardStep md I τ .skip ρ ⊥ R S S' 0 :=
+  fun a m ha => Writes.skip ⟨a, hR.refl a, hS a m ha⟩
 
 /-- Sequence: the backward errors add, the footprints are joined. -/
 theorem seq (hR : IsBackwardErrorRel R) (h : BackwardStep md I τ c ρ F R S S' ε)
@@ -119,48 +125,83 @@ theorem loop (hR : IsBackwardErrorRel R) {n : IExp} {body : Stmt Op Tst} {N : �
       ((h i hi).writes_add hR hab hb).mono le_rfl fun _ _ hd => by
         rwa [Finset.sum_range_succ]
 
-/-- The branch: if both arms are backward steps with error `ε` and the test succeeds on the
-memories of `S`, the branch is one. -/
+/-- The branch: if the test succeeds on the memories of `S` with an outcome `c` described by
+`T c`, and each arm is a backward step with error `ε` from `S` and the outcome of its arm, the
+branch is one. -/
 theorem ite {q : Tst} {ds : List IExp} {ins : List Operand} {t e : Stmt Op Tst}
-    (htest : ∀ a m, S a m → md.Holds (I.testAt q ds ins ρ m) fun _ => True)
-    (ht : BackwardStep md I τ t ρ F R S S' ε) (he : BackwardStep md I τ e ρ F R S S' ε) :
+    (T : Bool → α → Mem K → Prop)
+    (htest : ∀ a m, S a m → md.Holds (I.testAt q ds ins ρ m) fun c => T c a m)
+    (ht : BackwardStep md I τ t ρ F R (fun a m => S a m ∧ T true a m) S' ε)
+    (he : BackwardStep md I τ e ρ F R (fun a m => S a m ∧ T false a m) S' ε) :
     BackwardStep md I τ (.ite q ds ins t e) ρ F R S S' ε :=
-  fun a m ha => writes_ite_holds ((htest a m ha).mono fun c _ => by
+  fun a m ha => writes_ite_holds ((htest a m ha).mono fun c hc => by
     cases c
-    · exact he a m ha
-    · exact ht a m ha)
+    · exact he a m ⟨ha, hc⟩
+    · exact ht a m ⟨ha, hc⟩)
 
-/-- The loop with early exit: if round `i` is a backward step from `S i` to `S (i + 1)` with
-error $\varepsilon_i \ge 0$, the continuation after any round $i \le N$ is one from `S i` to `S'`
-with error `ε'`, and the test succeeds on the memories of `S i`, the loop is a backward step
-from `S 0` to `S'` with error $\sum_{i < N} \varepsilon_i + \varepsilon'$. -/
+/-- The loop with early exit: the test at round $i < N$ succeeds on the memories of `S i` with an
+outcome `c` described by `T i c`. If the round is a backward step from `S i` and a true outcome
+to `S (i + 1)` with error $\varepsilon_i \ge 0$, the continuation after a false outcome at round
+$i < N$, and after the round $N$ from `S N`, are backward steps to `S'` with error `ε'`, the loop
+is a backward step from `S 0` to `S'` with error $\sum_{i < N} \varepsilon_i + \varepsilon'$. -/
 theorem whileFuel (hR : IsBackwardErrorRel R) {fuel : IExp} {q : Tst} {ds : List IExp}
     {ins : List Operand} {body k : Stmt Op Tst} {N : ℕ} (hn : fuel.eval ρ.idx = some N)
-    (S : ℕ → α → Mem K → Prop) (ε : ℕ → ℝ) (hε : ∀ i < N, 0 ≤ ε i)
+    (S : ℕ → α → Mem K → Prop) (T : ℕ → Bool → α → Mem K → Prop) (ε : ℕ → ℝ)
+    (hε : ∀ i < N, 0 ≤ ε i)
     (htest : ∀ i < N, ∀ a m, S i a m →
-      md.Holds (I.testAt q ds ins (ρ.pushIdx i) m) fun _ => True)
-    (h : ∀ i < N, BackwardStep md I τ body (ρ.pushIdx i) F R (S i) (S (i + 1)) (ε i))
-    (hk : ∀ i ≤ N, BackwardStep md I τ k (ρ.pushIdx i) G R (S i) S' ε') :
+      md.Holds (I.testAt q ds ins (ρ.pushIdx i) m) fun c => T i c a m)
+    (h : ∀ i < N, BackwardStep md I τ body (ρ.pushIdx i) F R
+      (fun a m => S i a m ∧ T i true a m) (S (i + 1)) (ε i))
+    (hk : ∀ i < N, BackwardStep md I τ k (ρ.pushIdx i) G R
+      (fun a m => S i a m ∧ T i false a m) S' ε')
+    (hcap : BackwardStep md I τ k (ρ.pushIdx N) G R (S N) S' ε') :
     BackwardStep md I τ (.whileFuel fuel q ds ins body k) ρ (F ⊔ G) R (S 0) S'
       (∑ i ∈ Finset.range N, ε i + ε') := by
   intro a m ha
   have hsum : ∀ i ≤ N, ∑ j ∈ Finset.range i, ε j ≤ ∑ j ∈ Finset.range N, ε j := fun i hi =>
     Finset.sum_le_sum_of_subset_of_nonneg (Finset.range_subset_range.mpr hi)
       fun j hj _ => hε j (Finset.mem_range.mp hj)
-  have hexit : ∀ i ≤ N, ∀ b m', R (∑ j ∈ Finset.range i, ε j) a b → S i b m' →
+  have hexit : ∀ i ≤ N, ∀ {P : α → Mem K → Prop}, BackwardStep md I τ k (ρ.pushIdx i) G R P S' ε' →
+      ∀ b m', R (∑ j ∈ Finset.range i, ε j) a b → P b m' →
       Writes md I τ k (ρ.pushIdx i) G
         (fun m'' => ∃ d, R (∑ j ∈ Finset.range N, ε j + ε') a d ∧ S' d m'') m' :=
-    fun i hi b m' hab hb => ((hk i hi).writes_add hR hab hb).mono le_rfl
+    fun i hi _ hki b m' hab hb => (hki.writes_add hR hab hb).mono le_rfl
       fun _ _ ⟨d, had, hd⟩ => ⟨d, hR.mono (by linarith [hsum i hi]) had, hd⟩
   refine writes_whileFuel hn (fun _ => F) (fun _ _ => le_rfl) G
     (fun i m' => ∃ b, R (∑ j ∈ Finset.range i, ε j) a b ∧ S i b m') _
     ⟨a, by simpa using hR.refl a, ha⟩ (fun i hi m' _ ⟨b, hab, hb⟩ => ?_)
-    fun m' _ ⟨b, hab, hb⟩ => hexit N le_rfl b m' hab hb
-  refine (htest i hi b m' hb).mono fun c _ => ?_
+    fun m' _ ⟨b, hab, hb⟩ => hexit N le_rfl hcap b m' hab hb
+  refine (htest i hi b m' hb).mono fun c hc => ?_
   cases c
-  · exact hexit i hi.le b m' hab hb
-  · exact ((h i hi).writes_add hR hab hb).mono le_rfl fun _ _ hd => by
+  · exact hexit i hi.le (hk i hi) b m' hab ⟨hb, hc⟩
+  · exact ((h i hi).writes_add hR hab ⟨hb, hc⟩).mono le_rfl fun _ _ hd => by
       rwa [Finset.sum_range_succ]
+
+/-- A counted loop with a relative backward error: let $g$ be a size of the states that grows by
+at most the backward error ($R_\varepsilon(a, b)$ implies $g(b) \le g(a) + \varepsilon$). If round
+$i$ is, for every bound $M$, a backward step from `S i` and $g \le M$ to `S (i + 1)` with error
+$\nu M$, then $N$ rounds from `S 0` and $g \le M_0$ end in `S N` with
+$g \le (1 + \nu)^N M_0$, with error $(1 + \nu)^N M_0 - M_0$. -/
+theorem loop_rel (hR : IsBackwardErrorRel R) {n : IExp} {body : Stmt Op Tst} {N : ℕ}
+    (hn : n.eval ρ.idx = some N) (S : ℕ → α → Mem K → Prop) (g : α → ℝ)
+    (hg : ∀ {ε : ℝ} {a b : α}, R ε a b → g b ≤ g a + ε) (ν M₀ : ℝ)
+    (h : ∀ i < N, ∀ M : ℝ, BackwardStep md I τ body (ρ.pushIdx i) F R
+      (fun a m => S i a m ∧ g a ≤ M) (S (i + 1)) (ν * M)) :
+    BackwardStep md I τ (.loop n body) ρ F R (fun a m => S 0 a m ∧ g a ≤ M₀)
+      (fun b m => S N b m ∧ g b ≤ (1 + ν) ^ N * M₀) ((1 + ν) ^ N * M₀ - M₀) := by
+  have hl := loop (F := F) hR hn (fun i a m => S i a m ∧ g a ≤ (1 + ν) ^ i * M₀)
+    (fun i => ν * ((1 + ν) ^ i * M₀)) fun i hi a m ha =>
+      (h i hi _ a m ha).mono le_rfl fun _ _ ⟨b, hab, hb⟩ =>
+        have key : (1 + ν) ^ (i + 1) * M₀ = (1 + ν) ^ i * M₀ + ν * ((1 + ν) ^ i * M₀) := by
+          ring
+        ⟨b, hab, hb, by linarith [hg hab, ha.2]⟩
+  have hsum : ∀ N : ℕ,
+      ∑ i ∈ Finset.range N, ν * ((1 + ν) ^ i * M₀) = (1 + ν) ^ N * M₀ - M₀ := by
+    intro N
+    induction N with
+    | zero => simp
+    | succ N ih => rw [Finset.sum_range_succ, ih]; ring
+  simpa [hsum] using hl
 
 end BackwardStep
 

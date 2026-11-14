@@ -70,31 +70,58 @@ The bridge (`NLAlib/Matrix/FinitePrecision/OpsUnitarySimilarity.lean`) proves
 | `isPerturbedUnitarySimilar_zero_iff` | error `0` ↔ `∃ U, HasOrthonormalCols U ∧ B = Uᴴ * A * U` |
 | `HasOrthonormalCols.isPerturbedUnitarySimilar` | `IsPerturbedUnitarySimilar A (Uᴴ * A * U) 0` |
 | `isPerturbedUnitarySimilar_add`, `.add_right` | a perturbation `F` of the output adds `specNorm F` |
+| `.of_specNorm_sub_le` | `specNorm (B - Uᴴ * A * U) ≤ ε`, `U` unitary: error `ε` (kernel entry point) |
+| `.of_near_unitary` | `specNorm (Û - U) ≤ η`, `U` unitary: `Ûᴴ * A * Û` with error `(2η + η²)·specNorm A` |
 | `.sub_single`, `specNorm_single_le` | zeroing an entry of modulus `≤ δ` adds `δ` (deflation) |
-| `.exists_fromBlocks₁₁`, `.exists_fromBlocks₂₂` | a step on a diagonal block of a block upper triangular matrix is a step on the matrix, same error |
+| `.exists_submatrix` | a step on the principal block `A.submatrix e e` (`e` injective, e.g. a range of a partition) is a step on `A`, same error; entries off the block kept; block triangularity kept for any labelling constant on the block |
+| `.submatrix_equiv` | relabelling the indices by a bijection |
+| `.exists_fromBlocks₁₁`, `.exists_fromBlocks₂₂` | the two-block `Sum` case |
 | `.specNorm_le` | `specNorm B ≤ specNorm A + ε` |
 | `BackwardStep.writes_add` | continue from an accumulated error `e`: error `e + ε` |
-| `BackwardStep.skip`, `.of_exact` | exact steps have error `0` |
+| `BackwardStep.skip`, `.of_exact` | exact steps have error `0`; `skip` to any predicate implied by `S` |
 | `BackwardStep.mono` | footprint, error, final predicate |
 | `BackwardStep.seq` | errors add, footprints join |
 | `BackwardStep.loop` | `N` rounds `i ↦ ε i`: error `∑ i ∈ range N, ε i` |
-| `BackwardStep.ite` | both arms with `ε`, test succeeds on `S`: error `ε` |
-| `BackwardStep.whileFuel` | rounds with `ε i ≥ 0`, continuation `ε'`: `∑ i ∈ range N, ε i + ε'` |
+| `BackwardStep.loop_rel` | per-round error `ν·M` from `g a ≤ M`, `g` growing by at most the error: error `(1+ν)^N M₀ - M₀`, final `g ≤ (1+ν)^N M₀` |
+| `BackwardStep.ite` | the test's outcome `T c` is passed to the arm `c`; both arms with `ε` |
+| `BackwardStep.whileFuel` | outcome `T i true` to the round, `T i false` to the exit at round `i < N`, `S N` to the exit at the cap; rounds `ε i ≥ 0`, exit `ε'`: `∑ i ∈ range N, ε i + ε'` |
 | `Ops.BackwardStep.of_unitarySimilar` | a `Writes` returning `∃ U B, HasOrthonormalCols U ∧ B = Uᴴ * A * U ∧ S' B m'` is a `BackwardStep … 0` |
+| `Ops.BackwardStep.of_specNorm_sub_le` | a `Writes` returning `∃ U B, HasOrthonormalCols U ∧ specNorm (B - Uᴴ * A * U) ≤ ε ∧ S' B m'` is a `BackwardStep … ε` |
 
-Relative budgets ($\varepsilon \le \nu\|\mathbf{A}\|_2$) become additive by carrying a norm
-bound `specNorm A ≤ M` in `S`, which `specNorm_le` re-establishes with `M + ε`.
+**Relative budgets (worked lemma `loop_rel`).** Part II charges each step
+$\nu\,\boldsymbol{u}\,\|\mathbf{H}_k\|_2$. With `g := specNorm` and `hg :=
+IsPerturbedUnitarySimilar.specNorm_le`, a kernel stated as `∀ M, BackwardStep … (S ∧ specNorm ≤
+M) S' (ν * M)` composes over `N` rounds to error `((1+ν)^N - 1)·M₀` from `specNorm H ≤ M₀`,
+and the final matrix keeps `specNorm ≤ (1+ν)^N M₀`. No consumer re-derives the geometric sum.
 
-Example (`NLAlib/Ops/Examples/Backward.lean`): three abstract steps with errors `u, v, w` in a
-loop of `N` rounds give `N * (u + v + w)`, in three lines from `loop`, `seq`, `mono`.
+Examples (`NLAlib/Ops/Examples/Backward.lean`): three abstract steps in a loop of `N` rounds give
+`N * (u + v + w)`; `backwardStep_loop_ite` (the shape of `decoupleRound` in a counted loop) and
+`backwardStep_whileFuel_skip` (the shape of `worklistLoop`) give `N * u`, the skipped arm and the
+exit using the outcome of the test.
+
+**Do the revised rules reproduce Codex's exact loops?** Checked against 4e46b269 (read only).
+`decoupleRound_writes` splits on `IsDecoupledAbs τ H`, feeds `I.test … = some b` to `writes_ite`,
+and in the skip arm re-establishes `DecoupleInv … (j+1)` by `DecoupleInv.stopped … hdec`. With
+`T j b H μ := ScanHolds H (τ^2) n r μ.store ∧ (b = true ↔ ¬IsDecoupledAbs τ H)` (obtained from
+`hC.test_isZero` and `ScanHolds.flag_iff`), `htest` is `holds_testAt`, the true arm is
+`IterationContract` + scan (via `of_unitarySimilar` after `shqrAcceptStep_exists_unitary`), and
+the false arm is `skip` with `DecoupleInv.stopped` from `T j false`: exactly
+`backwardStep_loop_ite`, error `0`. `worklistLoop_writes` exits through `writes_whileFuel` with
+`get stack = some 0`: with `T j b μ := ∃ count, get stack = some count ∧ (b = true ↔ 0 < count)`,
+the false exit gives `count = 0`, and the cap uses the invariant's progress measure (`hcap` from
+`S N`): exactly `backwardStep_whileFuel_skip`. This is checked on paper and by the two examples,
+not by re-proving Codex's files, which are not on `main`.
 
 ## Exact arithmetic is ν = 0
 
 Codex's exact contracts end with `∃ U H', HasOrthonormalCols U ∧ H' = Uᴴ * H * U ∧ … ∧
 HoldsMatrix w H' μ'.store`. Taking `S H μ` to be the preconditions (`IsUpperHessenberg H`,
 `HoldsMatrix w H μ.store`, the parameter words, the geometry) and `S'` the remaining conjuncts,
-`BackwardStep.of_unitarySimilar` turns `IterationContract` and `DecouplingContract` into
-`BackwardStep … (fun ε A B => IsPerturbedUnitarySimilar A B ε) S S' 0` with no mathematics.
+`BackwardStep.of_unitarySimilar` turns `DecouplingContract` into
+`BackwardStep … (fun ε A B => IsPerturbedUnitarySimilar A B ε) S S' 0` with no mathematics
+(after moving its `μ'.pos = μ.pos` conjunct into `S'` with the position pinned).
+`IterationContract` returns `HoldsMatrix w (shqrAcceptStep τ B θ α γ m H ss)`, not `Uᴴ H U`; it
+needs `shqrAcceptStep_exists_unitary` (DeflationHypotheses.lean, with `U := 1`) first, one line.
 `DecoupleInv`'s `H = Uᴴ * H₀ * U` is `IsPerturbedUnitarySimilar H₀ H 0`
 (`isPerturbedUnitarySimilar_zero_iff`), and `DeflationInv`'s witness is
 `IsPerturbedUnitarySimilar H M ε` verbatim. The bridge is stated generically on `main`, since
@@ -115,34 +142,42 @@ that branch is not merged; it does not modify it.
    the norm bound carried in `S`. The potential-contraction part of `DecoupleInv` stays a
    separate conjunct of `S`; whether it survives rounding is the rounded convergence question.
 4. **Deflation.** `DeflationInv`'s `ε` accumulates `sub_single` (each zeroed subdiagonal adds
-   `≤ τ`) and the backward errors of the block steps, lifted to the whole matrix by
-   `exists_fromBlocks₁₁`/`₂₂` (after reindexing the range to a `Sum` split). The final theorem's
-   `(N-1)·δ·frobNorm H` becomes `(N-1)·δ·frobNorm H + (blocks)·F·ν·M`.
+   `≤ τ`, from the true outcome of the deflation test) and the backward errors of the block
+   steps, lifted to the whole matrix by `exists_submatrix` with `e := blockIndex n r` (it keeps
+   the other blocks and `BlockTriangular (rangeLabel …)`; the perturbed form of Codex's private
+   `exists_embed_conj`). Better still, the hidden `M` of `DeflationInv` becomes the
+   `BackwardStep` state and the rest of the invariant `S M m`, so the worklist is one
+   `BackwardStep`. The final theorem's `(N-1)·δ·frobNorm H` gains the summed block errors.
 
 ## What is left
 
-- The Givens backward-error analysis (a rounded rotation is the exact rotation of a perturbed
-  pair, a sweep a perturbed unitary similarity, `c(n)` explicit), over a generic `Machine`.
-- Rounded convergence: that the potential still contracts with rounding (BGS Part II), which
-  needs the shift-strategy analysis under perturbation, not just backward errors.
-- Lifting a step on a contiguous range of `Fin (n+1)` to the whole matrix through the `Sum`
-  reindexing (`specNorm_submatrix_equiv` exists; `DeflationInv.conj` does the exact case).
+1. **Next step: the rounded Givens sweep as a `BackwardStep` over a generic `Machine`** with
+   `StdModel`: coefficients from rounded data are a nearly unitary rotation (`of_near_unitary`),
+   their application to two rows or columns gives componentwise errors bounded in `specNorm`
+   through `frobNorm` (`of_specNorm_sub_le`), `n` rotations compose by `trans`, and the relative
+   budget `c(n)·u·specNorm H` goes through `loop_rel`. This is the main mathematical work of the
+   backward side; Codex's kernels are proved under `ExactModel id Mch` and have to be re-proved
+   under a rounding model.
+2. Retargeting `DeflationInv` onto `IsPerturbedUnitarySimilar` (and moving its spectral
+   consequences, the characteristic polynomial and Bauer–Fike, onto the relation), with a
+   vocabulary row, when the exact branch lands.
+3. Rounded convergence: shifts and acceptance under rounding, the potential contraction absorbing
+   the perturbation (BGS Part II). This is forward-error analysis, outside this design.
 
-## Open questions
+## Open questions (answered by review, Fable, 2026-11-14)
 
-1. **Norm.** Spectral only. The deflation bound of [BanksGarzaVargasSrivastava2022] is stated in
-   the Frobenius norm. Recommendation: keep `specNorm` (it is what Bauer–Fike and `DeflationInv`
-   use); add a Frobenius twin only when a consumer needs it.
-2. **State-dependent budgets.** `BackwardStep` takes an additive `ε`; relative bounds go through a
-   norm bound in `S`. Recommendation: keep it additive; a budget `ε : α → ℝ` complicates the loop
-   rule and every consumer bounds the norm anyway.
-3. **Frame forwarding in the loop rule.** `BackwardStep.loop` asks each round for a
-   `BackwardStep` from any memory, so facts relative to the loop's initial memory (its position,
-   its parameter words) must be stated in `S` with fixed values. Recommendation: accept; add a
-   framed variant (as `writes_loop_frame_iterate`) only if a second consumer needs it.
-4. **Operation-level backward contracts.** A `BlockRel` whose relation is "the output decodes to a
-   perturbed similarity of the decoded input" would let a whole kernel be a declared primitive
-   with a backward contract. Recommendation: not now; the shifted QR kernels are actual code, and
-   a call already meets `BackwardStep` through `writes_call`.
-5. **Placement of the generic relation.** `IsBackwardErrorRel` is pure order theory but lives in
-   Ops because Ops imports only Mathlib and Ops. Recommendation: keep it there.
+1. **Norm.** Keep `specNorm`: `trans` needs a unitarily invariant norm, a Frobenius twin would copy
+   the file, and Part II's `δ·frobNorm H` is a scalar threshold, not a norm on `E`. No
+   generalization over gauges.
+2. **State-dependent budgets.** Keep `ε : ℝ` additive; relative budgets go through the ℕ-indexed
+   `S` and a norm bound, now the worked lemma `loop_rel`.
+3. **Frame forwarding.** Accept: Codex's posts already pin `pos` in `S`, and parameter words are
+   read-only views pinned by value.
+4. **Operation-level backward contracts.** Not now. The replacing pattern is a kernel's
+   `BackwardStep` as a `Prop` parameter of the convergence theorem, as `IterationContract` is a
+   parameter of the decoupling theorem (BGS Part II assumes a black-box backward-stable QR
+   step); the Givens analysis and the rounded convergence proof are then independent.
+5. **Placement of `IsBackwardErrorRel`.** Keep it in Ops; Mathlib has no graded relation to host it.
+
+Watch item: when the first Ops kernel is proved as a `BackwardStep`, state once its implication to
+an `IsQRErr`-style black box, so "backward-stable kernel" keeps one spelling.

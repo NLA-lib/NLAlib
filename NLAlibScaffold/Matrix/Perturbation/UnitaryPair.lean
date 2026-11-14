@@ -129,7 +129,8 @@ end IsPerturbedUnitaryPair
 /-- A perturbed unitary action on a pair at nonnegative scales is a backward-error relation of
 the operation core. -/
 theorem isBackwardErrorRel_isPerturbedUnitaryPair {a b : ℝ} (ha : 0 ≤ a) (hb : 0 ≤ b) :
-    Ops.IsBackwardErrorRel (IsPerturbedUnitaryPair (𝕜 := 𝕜) (n := n) a b) := by
-  sorry
+    Ops.IsBackwardErrorRel (IsPerturbedUnitaryPair (𝕜 := 𝕜) (n := n) a b) :=
+  ⟨IsPerturbedUnitaryPair.refl, IsPerturbedUnitaryPair.trans,
+    IsPerturbedUnitaryPair.mono ha hb⟩
 
 end NLAlib

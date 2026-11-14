@@ -984,6 +984,80 @@ $N+b\le n$ or not: the zero-column convention makes $N>\operatorname{rank}$ harm
 exact certificate, and in the rounded analysis the nonzero columns number at most $m$ and $n$
 by near-orthogonality, so no bound is proposed); (O3) exact names against [N13]–[N15].
 
+## 9a. Skeleton record (2026-11-14)
+
+The Lean skeleton of the first stage is on this branch. Every file compiles through the shared
+gate (one combined build of all new modules, 3761 jobs), `check_rules` reports 0 errors, and
+about 65 statements are `sorry`, each preceded by a proof outline. Nothing is pushed. The
+branch is based on `cbf64ea9`; `origin/main` has since moved to PR #138, which changes
+`Ops/Catalog/Operator.lean` and `Ops/Logic/Writes.lean`, so a rebase needs a rebuild and a
+recheck of `OperatorPair.lean` and `Band/Alg.lean`.
+
+| File | Contents | Proved / sorry |
+|---|---|---|
+| `Matrix/Perturbation/BasisExtension.lean` | `colSupport`, `gramDefect`, `IsBasisExtension`, `ExtensionWindow`, `IsBasisExtensionErr`, block helpers, E1, E2 | 26 / 4 |
+| `Matrix/Perturbation/OrthErr.lean` | admissible-column lemma added | all proved |
+| `Matrix/Factorizations/BasisExtensionContract.lean` | `extendRel`, `exactExtendRel` | all proved |
+| `Ops/Catalog/Orth.lean`, `OperatorPair.lean` | `OrthOp.extend` with a generic decoded-matrix contract; `OperatorPairOp` | all proved |
+| `Krylov/Processes/BandGolubKahan.lean` | `IsBlockGolubKahan`, P1–P3, existence | 4 / 15 |
+| `Krylov/FinitePrecision/BandGolubKahanRun.lean` | `IsBlockGolubKahanErr`, R2–R4 | 5 / 8 |
+| `Krylov/GolubKahan/Band/Alg.lean` | driver `solve`, `program`, stored-run predicates, Q2, R1 | definitions complete; specifications sorry |
+| `Krylov/GolubKahan/Band/Run.lean` | assembly of packed coefficients, bridges to the pure relations, consequences | all proved |
+| `Krylov/GolubKahan/Band/Certification.lean`, `Linked.lean` | canonical exact certificate (Q3), scheme-generic linking (E5) | certificates proved from the driver specification; 6 accounting lemmas sorry |
+| `Matrix/Factorizations/CGS2/*.lean`, `Krylov/Orthogonalization/CGS2/*.lean` | the CGS2 instance: pure lemmas, `cgs2ExtendImpl`, E3, E4 | definitions complete; 12 sorry |
+| `LowRank/BlockKrylov/{Factored,Samples,Probability}.lean` | output equals `rbki`; Gaussian tape; generic transfer and two corollaries (Q4) | all proved |
+| `Krylov/Basic/BlockSpace.lean`, `LowRank/Structural/BlockKrylov.lean` | A1–A4 | all proved |
+| `ForMathlib/LinearAlgebra/Vandermonde.lean`, `Krylov/Basic/KrylovVandermonde.lean`, `Polynomial/Interpolation/LagrangeBound.lean` | A5, A6 | 8 / 2 |
+| `LowRank/Structural/SmallBlock.lean` | A7 and the residual lemma | 0 / 4 |
+| `LowRank/Gaussian/BlockKrylov.lean`, `Probability/Distributions/GaussianLogOverlap.lean` | A8, public small-ball lemma | all proved |
+| `LowRank/Gaussian/SmallBlock.lean`, `LowerBounds/LowRank/BlockSize.lean` | A9–A13 | 4 / 10 |
+
+Where the skeleton departs from the text above (the Lean files are authoritative):
+
+* **Layering of the contract.** `Ops` is the bottom layer and cannot import `Matrix`, so
+  `Ops/Catalog/Orth.lean` holds a contract generic in a predicate on the decoded matrices, and
+  the two concrete contracts are in `Matrix/Factorizations/BasisExtensionContract.lean`.
+* **Placement of the CGS2 program files.** `cgsPass`, `passRel`, `PassOut` are in
+  `Krylov/Lanczos/Reorth/Sweep*.lean`, a layer above `Matrix`, so the instance's program files
+  are in `Krylov/Orthogonalization/CGS2/`. Their intended home is
+  `Matrix/Factorizations/CGS2/` once the two sweep files move down (they import only `Ops`).
+  This touches files on main and is left as a recommendation.
+* **Realization of the abstract model.** `AccessModel.realize` is a field, so the abstract
+  model needs a witness. It is a choice-based word function built from
+  `exists_isBasisExtension`, not the CGS2 triple; the abstract certificate therefore needs no
+  scheme, and still quantifies over every interpretation meeting the contract.
+* **Expectation transfer (O1).** The core has only a failure-probability transfer. The stored
+  product equals `rbki` for every sample, so integrals transfer by equality, with no
+  measurability or integrability hypothesis (`integral_comp_storedOutput`).
+* **Operand layout (O4).** Adjacency in one buffer is one equation in the admission predicate;
+  zero-length blocks need nothing. Coefficients are stored packed by block column.
+* **Constants of the CGS2 instance.** $\mu=2\varepsilon_1+4\varepsilon_3/\tau+5E$, that is
+  $4c+8(\eta_0+c)^2/\tau+5E$, and $\varepsilon=3c+2E+2\tau$; $\tau\le1$ is not needed. The norm
+  clause needs about $4.1E$, so the $2E$ of §3.5 was too small.
+* **Zero columns in the instance.** `IsOrthErr`'s antecedent fails on a basis with zero
+  columns; the instance uses `IsOrthErrOnSupport` (antecedent on the Gram defect) and a
+  compression lemma. No exact-zero assumption on the arithmetic is needed.
+* **Product errors** in the rounded relation are column-wise, which gives a zero product for a
+  zero column.
+* **Theory.** A6 needs no positivity of the nodes. The rank-deficient companion of A7 needs
+  distinct singular values ("error zero once $q$ reaches the rank" is false without them). The
+  probabilistic statements need no `hpos`. A13 is singular value by singular value and needs no
+  positivity. The Nyström twin of A2 needs positive semidefiniteness. A truncated gapped tail
+  bound was added because A11 needs it; the truncated block bound is not a comparison of
+  outputs and reruns the range-monotone chain.
+* **Scalars.** The exact extension contract is generic in the field; the driver's stored-run
+  predicates and certificate are over $\mathbb R$ so far (BL10 asked for the exact program over
+  `RCLike`; not done).
+
+Not yet stated: the rounded canonical `Algorithm` (R5; only its Triple and counted-run forms),
+the clean corollaries of A12 beyond the two transfer corollaries, G4. Missing library facts
+found while writing: the spectral and Frobenius error of projecting onto an arbitrary
+eigenframe of the top $r$ directions (needed by A7); the Musco–Musco case-split lemma is still
+private in `BlockKrylovGapless.lean` (needed by A11); a reindexing lemma for
+`blockPrefix (j+1)` as `fromCols` (every block induction goes through it). The hard proofs are
+the driver's loop invariant (`solve_writes`), the two CGS2 `Triple`s, the residual lemma of
+A7, and `exists_isBasisExtension`.
+
 ## 10. Review record
 
 One independent review of the first draft, 2026-11-14 (a fresh agent given the note and the

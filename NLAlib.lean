@@ -561,6 +561,8 @@ public import NLAlib.Krylov.Functions.Optimality
 public import NLAlib.Krylov.Functions.Quadrature
 public import NLAlib.Krylov.Functions.QuadratureBounds
 public import NLAlib.Krylov.GolubKahan.Band.Alg
+public import NLAlib.Krylov.GolubKahan.Band.Certification
+public import NLAlib.Krylov.GolubKahan.Band.Linked
 public import NLAlib.Krylov.GolubKahan.Band.Run
 public import NLAlib.Krylov.Lanczos.Advance
 public import NLAlib.Krylov.Lanczos.Alg
@@ -662,6 +664,9 @@ public import NLAlib.Krylov.LinearSystems.PCG
 public import NLAlib.Krylov.LinearSystems.PCGRecurrence
 public import NLAlib.Krylov.LinearSystems.Richardson
 public import NLAlib.Krylov.LinearSystems.WorstCase
+public import NLAlib.Krylov.Orthogonalization.CGS2.Extend
+public import NLAlib.Krylov.Orthogonalization.CGS2.ExtendExact
+public import NLAlib.Krylov.Orthogonalization.CGS2.ExtendRounded
 public import NLAlib.Krylov.Processes.ArnoldiRecurrence
 public import NLAlib.Krylov.Processes.BandGolubKahan
 public import NLAlib.Krylov.Processes.Lanczos
@@ -671,6 +676,8 @@ public import NLAlib.Krylov.Processes.LanczosRecurrence
 public import NLAlib.Krylov.Processes.LanczosReorthRecurrence
 public import NLAlib.Krylov.Processes.PreconditionedLanczos
 public import NLAlib.LowRank.BlockKrylov.Factored
+public import NLAlib.LowRank.BlockKrylov.Probability
+public import NLAlib.LowRank.BlockKrylov.Samples
 public import NLAlib.LowRank.Gaussian.BlockKrylov
 public import NLAlib.LowRank.Gaussian.BlockKrylovGapless
 public import NLAlib.LowRank.Gaussian.EarlyTruncation
@@ -744,6 +751,8 @@ public import NLAlib.Matrix.Basic.QuadForm
 public import NLAlib.Matrix.Basic.SchurComplement
 public import NLAlib.Matrix.Basic.Selection
 public import NLAlib.Matrix.Factorizations.BasisExtensionContract
+public import NLAlib.Matrix.Factorizations.CGS2.BasisExtension
+public import NLAlib.Matrix.Factorizations.CGS2.BasisExtensionErr
 public import NLAlib.Matrix.Factorizations.Cholesky
 public import NLAlib.Matrix.Factorizations.ColumnVolume
 public import NLAlib.Matrix.Factorizations.Elimination

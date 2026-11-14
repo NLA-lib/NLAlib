@@ -7,6 +7,7 @@ module
 
 public import Mathlib.LinearAlgebra.Matrix.Gershgorin
 public import Mathlib.LinearAlgebra.Matrix.Irreducible.Defs
+public import NLAlib.Matrix.Spectral.EigenvectorPairing
 public import NLAlib.Matrix.Spectral.Schur
 
 /-!
@@ -36,6 +37,9 @@ The off-diagonal row sum $R_i(\mathbf{A}) = \sum_{j \ne i} \lvert \mathbf{A}_{i,
 * `NLAlib.det_ne_zero_of_isIrreducible_of_forall_sum_le`: Taussky's theorem.
 * `NLAlib.card_roots_charpoly_filter_mem_iUnion_closedBall`: counting eigenvalues in a union of
   discs.
+* `NLAlib.exists_mem_closedBall_mem_spectrum_of_disjoint`: an isolated disc holds an eigenvalue.
+* `NLAlib.exists_mulVec_single_add_eq_smul_of_mulVec_eq_smul`: a normalized perturbed eigenvector.
+* `NLAlib.exists_mulVec_single_add_eq_smul_of_two_mul_card_mul_specNorm_lt`: its isolated eigenpair.
 -/
 
 @[expose] public section
@@ -452,5 +456,158 @@ theorem card_roots_charpoly_filter_mem_iUnion_closedBall (A : Matrix n n ℂ) (I
   refine ⟨fun hi => ?_, hmem I i⟩
   by_contra hiI
   exact Set.disjoint_left.mp h hi (hmem Iᶜ i (Finset.mem_compl.mpr hiI))
+
+open Classical in
+/-- **An isolated Gershgorin disc contains an eigenvalue**: for a complex matrix $\mathbf{A}$, if
+the closed disc of centre $\mathbf{A}_{i,i}$ and radius
+$R_i(\mathbf{A}) = \sum_{j \ne i} \lvert \mathbf{A}_{i,j} \rvert$ is disjoint from the disc of
+every other row $j \ne i$, it contains an eigenvalue of $\mathbf{A}$. The case $I = \{i\}$ of the
+counting theorem. [HornJohnson2013, Theorem 6.1.1]. -/
+theorem exists_mem_closedBall_mem_spectrum_of_disjoint (A : Matrix n n ℂ) (i : n)
+    (h : ∀ j, j ≠ i → Disjoint (Metric.closedBall (A i i) (gershgorinRadius A i))
+      (Metric.closedBall (A j j) (gershgorinRadius A j))) :
+    ∃ μ ∈ Metric.closedBall (A i i) (gershgorinRadius A i), μ ∈ spectrum ℂ A := by
+  have hdisj : Disjoint (⋃ k ∈ ({i} : Finset n), Metric.closedBall (A k k) (gershgorinRadius A k))
+      (⋃ k ∈ ({i} : Finset n)ᶜ, Metric.closedBall (A k k) (gershgorinRadius A k)) := by
+    rw [Finset.set_biUnion_singleton]
+    refine Set.disjoint_iUnion₂_right.mpr fun j hj => h j ?_
+    simpa using hj
+  have hcard := card_roots_charpoly_filter_mem_iUnion_closedBall A {i} hdisj
+  rw [Finset.card_singleton] at hcard
+  obtain ⟨μ, hμ⟩ := Multiset.card_pos_iff_exists_mem.mp (hcard ▸ Nat.one_pos)
+  rw [Multiset.mem_filter, Finset.set_biUnion_singleton] at hμ
+  refine ⟨μ, hμ.2, Matrix.mem_spectrum_iff_isRoot_charpoly.mpr ?_⟩
+  exact (Polynomial.mem_roots (Matrix.charpoly_monic A).ne_zero).mp hμ.1
+
+/-! ### Eigenpairs of a perturbed diagonal matrix -/
+
+/-- Away from row $i$ an eigenvector of $\operatorname{diag}(\mathbf{d}) + \mathbf{F}$ is
+controlled by $\mathbf{F}$: if $(\operatorname{diag}(\mathbf{d}) + \mathbf{F})\mathbf{w} =
+\mu\mathbf{w}$ and $0 \le \delta \le \lvert \mu - \mathbf{d}_j \rvert$ for $j \ne i$, then
+$\delta \|\mathbf{w} - \mathbf{w}_i\mathbf{e}_i\| \le \|\mathbf{F}\|_2 \|\mathbf{w}\|$. -/
+private theorem mul_norm_toLp_sub_single_le {d : n → 𝕜} {F : Matrix n n 𝕜} {μ : 𝕜} {w : n → 𝕜}
+    (hw : (Matrix.diagonal d + F) *ᵥ w = μ • w) {i : n} {δ : ℝ}
+    (hδ : ∀ j, j ≠ i → δ ≤ ‖μ - d j‖) (hδ0 : 0 ≤ δ) :
+    δ * ‖WithLp.toLp 2 (w - Pi.single i (w i))‖ ≤ specNorm F * ‖WithLp.toLp 2 w‖ := by
+  have hcomp : ∀ j, ‖((δ : 𝕜) • (w - Pi.single i (w i)) : n → 𝕜) j‖ ≤ ‖(F *ᵥ w) j‖ := by
+    intro j
+    by_cases hj : j = i
+    · subst hj
+      simp
+    · have hwj := congrFun hw j
+      simp only [Matrix.add_mulVec, Pi.add_apply, Matrix.mulVec_diagonal, Pi.smul_apply,
+        smul_eq_mul] at hwj
+      have hFj : (F *ᵥ w) j = (μ - d j) * w j := by rw [sub_mul, ← hwj]; ring
+      rw [Pi.smul_apply, Pi.sub_apply, Pi.single_eq_of_ne hj, sub_zero, smul_eq_mul, norm_mul,
+        hFj, norm_mul, RCLike.norm_ofReal, abs_of_nonneg hδ0]
+      exact mul_le_mul_of_nonneg_right (hδ j hj) (norm_nonneg _)
+  have h := EuclideanSpace.norm_toLp_le_norm_toLp hcomp
+  rw [WithLp.toLp_smul, norm_smul, RCLike.norm_ofReal, abs_of_nonneg hδ0] at h
+  exact h.trans (norm_toLp_mulVec_le F w)
+
+/-- An eigenvector of a perturbed diagonal matrix is a coordinate vector plus a small
+correction: let $(\operatorname{diag}(\mathbf{d}) + \mathbf{F})\mathbf{w} = \mu\mathbf{w}$ with
+$\mathbf{w} \ne \mathbf{0}$, and let $\delta \le \lvert \mu - \mathbf{d}_j \rvert$ for every
+$j \ne i$, with $\|\mathbf{F}\|_2 < \delta$. Then $\mathbf{w}_i \ne 0$, and the rescaled
+eigenvector is $\mathbf{e}_i + \mathbf{z}$ with $\mathbf{z}_i = 0$ and
+$\|\mathbf{z}\| (\delta - \|\mathbf{F}\|_2) \le \|\mathbf{F}\|_2$. -/
+theorem exists_mulVec_single_add_eq_smul_of_mulVec_eq_smul {d : n → 𝕜} {F : Matrix n n 𝕜}
+    {μ : 𝕜} {w : n → 𝕜} (hw0 : w ≠ 0) (hw : (Matrix.diagonal d + F) *ᵥ w = μ • w) {i : n}
+    {δ : ℝ} (hδ : ∀ j, j ≠ i → δ ≤ ‖μ - d j‖) (hF : specNorm F < δ) :
+    ∃ z : n → 𝕜, z i = 0 ∧
+      (Matrix.diagonal d + F) *ᵥ (Pi.single i 1 + z) = μ • (Pi.single i 1 + z) ∧
+      ‖WithLp.toLp 2 z‖ * (δ - specNorm F) ≤ specNorm F := by
+  have hδ0 : 0 ≤ δ := (specNorm_nonneg F).trans hF.le
+  have hwi : w i ≠ 0 := by
+    intro h0
+    have h := mul_norm_toLp_sub_single_le hw hδ hδ0
+    rw [h0, Pi.single_zero, sub_zero] at h
+    have hn : ‖WithLp.toLp 2 w‖ = 0 := by
+      by_contra hne
+      have hpos := lt_of_le_of_ne (norm_nonneg _) (Ne.symm hne)
+      exact absurd h (not_le.mpr (mul_lt_mul_of_pos_right hF hpos))
+    exact hw0 (by simpa using hn)
+  set u := (w i)⁻¹ • w with hu
+  have hui : u i = 1 := by simp [hu, hwi]
+  have huv : (Matrix.diagonal d + F) *ᵥ u = μ • u := by
+    rw [hu, Matrix.mulVec_smul, hw, smul_comm]
+  refine ⟨u - Pi.single i 1, by simp [hui], by rw [add_sub_cancel]; exact huv, ?_⟩
+  have h := mul_norm_toLp_sub_single_le huv hδ hδ0
+  rw [hui] at h
+  have h1 : ‖WithLp.toLp 2 u‖ ≤ 1 + ‖WithLp.toLp 2 (u - Pi.single i 1)‖ := by
+    calc ‖WithLp.toLp 2 u‖ = ‖WithLp.toLp 2 (Pi.single i 1 + (u - Pi.single i 1))‖ := by
+          rw [add_sub_cancel]
+      _ ≤ ‖WithLp.toLp 2 (Pi.single i (1 : 𝕜) : n → 𝕜)‖ +
+          ‖WithLp.toLp 2 (u - Pi.single i 1)‖ := EuclideanSpace.norm_toLp_add_le _ _
+      _ = 1 + ‖WithLp.toLp 2 (u - Pi.single i 1)‖ := by
+          rw [show ‖WithLp.toLp 2 (Pi.single i (1 : 𝕜) : n → 𝕜)‖ = 1 by simp]
+  have h2 := mul_le_mul_of_nonneg_left h1 (specNorm_nonneg F)
+  linarith
+
+/-- Every Gershgorin disc of $\operatorname{diag}(\mathbf{d}) + \mathbf{F}$ lies in the disc of
+centre $\mathbf{d}_k$ and radius $\lvert n \rvert \|\mathbf{F}\|_2$. -/
+private theorem closedBall_diagonal_add_subset (d : n → ℂ) (F : Matrix n n ℂ) (k : n) :
+    Metric.closedBall ((Matrix.diagonal d + F) k k) (gershgorinRadius (Matrix.diagonal d + F) k)
+      ⊆ Metric.closedBall (d k) (Fintype.card n * specNorm F) := by
+  intro x hx
+  rw [Metric.mem_closedBall, dist_eq_norm] at hx ⊢
+  have hR : gershgorinRadius (Matrix.diagonal d + F) k = ∑ j ∈ Finset.univ.erase k, ‖F k j‖ :=
+    Finset.sum_congr rfl fun j hj => by
+      rw [Matrix.add_apply, Matrix.diagonal_apply_ne _ (Finset.mem_erase.mp hj).1.symm, zero_add]
+  have hkk : (Matrix.diagonal d + F) k k = d k + F k k := by
+    rw [Matrix.add_apply, Matrix.diagonal_apply_eq]
+  have hsum : ‖F k k‖ + ∑ j ∈ Finset.univ.erase k, ‖F k j‖ ≤ Fintype.card n * specNorm F := by
+    rw [Finset.add_sum_erase _ (fun j => ‖F k j‖) (Finset.mem_univ k)]
+    calc ∑ j, ‖F k j‖ ≤ ∑ _j : n, specNorm F :=
+          Finset.sum_le_sum fun j _ => norm_apply_le_specNorm F k j
+      _ = Fintype.card n * specNorm F := by rw [Finset.sum_const, nsmul_eq_mul, Finset.card_univ]
+  rw [hR, hkk] at hx
+  calc ‖x - d k‖ = ‖(x - (d k + F k k)) + F k k‖ := by ring_nf
+    _ ≤ ‖x - (d k + F k k)‖ + ‖F k k‖ := norm_add_le _ _
+    _ ≤ _ := by linarith
+
+/-- **The eigenpair of a perturbed diagonal matrix at an isolated entry**: let
+$\lvert \mathbf{d}_i - \mathbf{d}_j \rvert \ge g$ for every $j \ne i$ and
+$2 \lvert n \rvert \|\mathbf{F}\|_2 < g$. Then $\operatorname{diag}(\mathbf{d}) + \mathbf{F}$ has
+an eigenpair $(\mu, \mathbf{e}_i + \mathbf{z})$ with $\mathbf{z}_i = 0$,
+$\lvert \mu - \mathbf{d}_i \rvert \le \lvert n \rvert \|\mathbf{F}\|_2$ and
+$\|\mathbf{z}\| (g - \lvert n \rvert \|\mathbf{F}\|_2 - \|\mathbf{F}\|_2) \le \|\mathbf{F}\|_2$.
+The Gershgorin disc of row $i$ is isolated and holds the eigenvalue
+(`exists_mem_closedBall_mem_spectrum_of_disjoint`); the eigenvector is then normalised by
+`exists_mulVec_single_add_eq_smul_of_mulVec_eq_smul`. [HornJohnson2013, Theorem 6.1.1]. -/
+theorem exists_mulVec_single_add_eq_smul_of_two_mul_card_mul_specNorm_lt {d : n → ℂ}
+    {F : Matrix n n ℂ} {i : n} {g : ℝ} (hgap : ∀ j, j ≠ i → g ≤ ‖d i - d j‖)
+    (hF : 2 * (Fintype.card n * specNorm F) < g) :
+    ∃ (μ : ℂ) (z : n → ℂ), z i = 0 ∧ ‖μ - d i‖ ≤ Fintype.card n * specNorm F ∧
+      (Matrix.diagonal d + F) *ᵥ (Pi.single i 1 + z) = μ • (Pi.single i 1 + z) ∧
+      ‖WithLp.toLp 2 z‖ * (g - Fintype.card n * specNorm F - specNorm F) ≤ specNorm F := by
+  set r := (Fintype.card n : ℝ) * specNorm F with hr
+  have hdisj : ∀ j, j ≠ i → Disjoint
+      (Metric.closedBall ((Matrix.diagonal d + F) i i) (gershgorinRadius (Matrix.diagonal d + F) i))
+      (Metric.closedBall ((Matrix.diagonal d + F) j j)
+        (gershgorinRadius (Matrix.diagonal d + F) j)) := by
+    intro j hj
+    refine Set.disjoint_left.mpr fun x hxi hxj => ?_
+    have h1 := closedBall_diagonal_add_subset d F i hxi
+    have h2 := closedBall_diagonal_add_subset d F j hxj
+    rw [Metric.mem_closedBall, dist_eq_norm] at h1 h2
+    have ht : ‖d i - d j‖ ≤ ‖x - d i‖ + ‖x - d j‖ := by
+      simpa only [norm_sub_rev (d i) x] using
+        (_root_.norm_sub_le_norm_sub_add_norm_sub (d i) x (d j))
+    linarith [hgap j hj]
+  obtain ⟨μ, hμ, hμs⟩ := exists_mem_closedBall_mem_spectrum_of_disjoint _ i hdisj
+  have hμi : ‖μ - d i‖ ≤ r := by
+    simpa [dist_eq_norm] using closedBall_diagonal_add_subset d F i hμ
+  obtain ⟨w, hw0, hw⟩ := exists_mulVec_eq_smul_of_mem_spectrum hμs
+  have hδ : ∀ j, j ≠ i → g - r ≤ ‖μ - d j‖ := fun j hj => by
+    have ht : ‖d i - d j‖ ≤ ‖μ - d i‖ + ‖μ - d j‖ := by
+      simpa only [norm_sub_rev (d i) μ] using
+        (_root_.norm_sub_le_norm_sub_add_norm_sub (d i) μ (d j))
+    linarith [hgap j hj]
+  have hcard : (1 : ℝ) ≤ Fintype.card n := by exact_mod_cast Fintype.card_pos_iff.mpr ⟨i⟩
+  have hFr : specNorm F ≤ r := le_mul_of_one_le_left (specNorm_nonneg F) hcard
+  obtain ⟨z, hzi, hz, hzn⟩ :=
+    exists_mulVec_single_add_eq_smul_of_mulVec_eq_smul hw0 hw hδ (by linarith)
+  exact ⟨μ, z, hzi, hμi, hz, by linarith⟩
 
 end NLAlib

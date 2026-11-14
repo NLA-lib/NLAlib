@@ -33,6 +33,8 @@ $\mathbf{A}\mathbf{X} - \mathbf{X}\mathbf{B} = \mathbf{C}$ in
 
 ## Main results
 
+* `NLAlib.mul_eq_mul_diagonal_iff`: columns of an eigenvector matrix are eigenvectors.
+
 * `NLAlib.isDiagonalizable_iff_exists_eq_mul_diagonal_mul_inv`.
 * `NLAlib.isDiagonalizable_of_injective_of_forall_mem_spectrum`: distinct eigenvalues.
 * `NLAlib.isDiagonalizable_iff_isSemisimple`.
@@ -82,7 +84,7 @@ theorem isDiagonalizable_iff_exists_eq_mul_diagonal_mul_inv {A : Matrix n n K} :
 /-- A matrix equation $\mathbf{A}\mathbf{V} = \mathbf{V} \operatorname{diag}(\mathbf{d})$ says
 that the columns of $\mathbf{V}$ are eigenvectors: $\mathbf{A}\mathbf{v}_j = \mathbf{d}_j
 \mathbf{v}_j$ for each column $\mathbf{v}_j$. -/
-private theorem mul_eq_mul_diagonal_iff {A V : Matrix n n K} {d : n → K} :
+theorem mul_eq_mul_diagonal_iff {A V : Matrix n n K} {d : n → K} :
     A * V = V * Matrix.diagonal d ↔ ∀ j, A *ᵥ V.col j = d j • V.col j := by
   refine ⟨fun h j => funext fun i => ?_, fun h => Matrix.ext fun i j => ?_⟩
   · have h1 := congrFun (congrFun h i) j

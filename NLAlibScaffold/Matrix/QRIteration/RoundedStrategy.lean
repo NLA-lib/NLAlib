@@ -130,6 +130,211 @@ noncomputable def findRitzWith (t : ℕ → List ℂ → ℝ) : ℕ → ℕ → 
     else
       findRitzWith t m (2 * e) (ss.drop (ss.length / 2))
 
+/-- The last row of an inverse power of a shift polynomial with no root at an eigenvalue is
+nonzero. -/
+private theorem norm_toLp_inv_aeval_pow_last_pos {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {d : Fin (n + 1) → ℂ} (hV : IsUnit V) (hHV : H * V = V * Matrix.diagonal d) (q : ℕ)
+    {l : List ℂ} (hl : ∀ i, (shiftPoly l).eval (d i) ≠ 0) :
+    0 < ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly l))⁻¹ ^ q) (Fin.last n))‖ := by
+  have hA : (Polynomial.aeval H (shiftPoly l))⁻¹ ^ q =
+      V * Matrix.diagonal (fun i => ((shiftPoly l).eval (d i))⁻¹ ^ q) * V⁻¹ := by
+    rw [inv_aeval_eq_mul_diagonal_mul_inv hV hHV hl, mul_diagonal_mul_inv_pow hV]
+    rfl
+  have hle := sum_lastRowWeights_mul_sq_le hV (fun i => ((shiftPoly l).eval (d i))⁻¹ ^ q)
+  have hX : 0 < ∑ i, lastRowWeights V i * ‖((shiftPoly l).eval (d i))⁻¹ ^ q‖ ^ 2 := by
+    obtain ⟨i, hi⟩ : ∃ i, 0 < lastRowWeights V i := by
+      by_contra hc
+      push Not at hc
+      have := Finset.sum_nonpos fun i (_ : i ∈ Finset.univ) => hc i
+      rw [sum_lastRowWeights hV] at this
+      norm_num at this
+    exact Finset.sum_pos' (fun j _ => by have := lastRowWeights_nonneg V j; positivity)
+      ⟨i, Finset.mem_univ _, mul_pos hi (by
+        simp only [norm_pow, norm_inv]
+        exact pow_pos (pow_pos (inv_pos.mpr (norm_pos_iff.mpr (hl i))) q) 2)⟩
+  rw [hA]
+  refine (norm_nonneg _).lt_of_ne fun h0 => ?_
+  rw [← h0] at hle
+  linarith
+
+/-- One halving step with comparisons up to the factor $c$: the moment of the concatenation is
+at most $c^2\kappa^4$ times the moment of the kept half, with doubled exponent. -/
+private theorem sum_div_shiftPoly_append_le_of_le_mul
+    {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} (hV : IsUnit V)
+    (hHV : H * V = V * Matrix.diagonal d) {a b h : List ℂ} (hd : ∀ i, ∀ s ∈ a ++ b, d i ≠ s)
+    (hh : h = a ∨ h = b) (q : ℕ) {c : ℝ}
+    (hmax : ∀ g ∈ [a, b],
+      ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly g))⁻¹ ^ q) (Fin.last n))‖ ≤
+        c * ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly h))⁻¹ ^ q) (Fin.last n))‖) :
+    ∑ i, lastRowWeights V i / ‖(shiftPoly (a ++ b)).eval (d i)‖ ^ q ≤
+      c ^ 2 * pseudoConditionNumber V ^ 4 *
+        ∑ i, lastRowWeights V i / ‖(shiftPoly h).eval (d i)‖ ^ (2 * q) := by
+  have hne : ∀ l : List ℂ, (∀ i, ∀ s ∈ l, d i ≠ s) → ∀ i, (shiftPoly l).eval (d i) ≠ 0 :=
+    fun _ hl i => eval_shiftPoly_ne_zero (hl i)
+  have hna : ∀ i, (shiftPoly a).eval (d i) ≠ 0 :=
+    hne a fun i s hs => hd i s (List.mem_append_left _ hs)
+  have hnb : ∀ i, (shiftPoly b).eval (d i) ≠ 0 :=
+    hne b fun i s hs => hd i s (List.mem_append_right _ hs)
+  have hnh : ∀ i, (shiftPoly h).eval (d i) ≠ 0 := by
+    rcases hh with rfl | rfl
+    · exact hna
+    · exact hnb
+  -- the two-sided moment bounds
+  have hsand : ∀ l : List ℂ, (∀ i, (shiftPoly l).eval (d i) ≠ 0) →
+      ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly l))⁻¹ ^ q) (Fin.last n))‖ ^ 2 ≤
+          pseudoConditionNumber V ^ 2 *
+            ∑ i, lastRowWeights V i * ‖((shiftPoly l).eval (d i))⁻¹ ^ q‖ ^ 2 ∧
+        ∑ i, lastRowWeights V i * ‖((shiftPoly l).eval (d i))⁻¹ ^ q‖ ^ 2 ≤
+          pseudoConditionNumber V ^ 2 *
+            ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly l))⁻¹ ^ q) (Fin.last n))‖ ^ 2 := by
+    intro l hl
+    have hA : (Polynomial.aeval H (shiftPoly l))⁻¹ ^ q =
+        V * Matrix.diagonal (fun i => ((shiftPoly l).eval (d i))⁻¹ ^ q) * V⁻¹ := by
+      rw [inv_aeval_eq_mul_diagonal_mul_inv hV hHV hl, mul_diagonal_mul_inv_pow hV]
+      rfl
+    rw [hA]
+    exact ⟨norm_mul_diagonal_mul_inv_last_sq_le hV _, sum_lastRowWeights_mul_sq_le hV _⟩
+  have hpt : ∀ i, lastRowWeights V i / ‖(shiftPoly (a ++ b)).eval (d i)‖ ^ q ≤
+      lastRowWeights V i * (‖((shiftPoly a).eval (d i))⁻¹ ^ q‖ ^ 2 +
+        ‖((shiftPoly b).eval (d i))⁻¹ ^ q‖ ^ 2) / 2 := by
+    intro i
+    rw [shiftPoly_append, Polynomial.eval_mul, norm_mul]
+    simp only [norm_pow, norm_inv]
+    have hw := lastRowWeights_nonneg V i
+    set x := ‖(shiftPoly a).eval (d i)‖
+    set y := ‖(shiftPoly b).eval (d i)‖
+    have huv : ((x * y) ^ q)⁻¹ = (x⁻¹) ^ q * (y⁻¹) ^ q := by
+      rw [mul_pow, mul_inv, inv_pow, inv_pow]
+    have ham : (x⁻¹) ^ q * (y⁻¹) ^ q ≤ (((x⁻¹) ^ q) ^ 2 + ((y⁻¹) ^ q) ^ 2) / 2 := by
+      nlinarith [sq_nonneg ((x⁻¹) ^ q - (y⁻¹) ^ q)]
+    rw [div_eq_mul_inv, huv]
+    nlinarith [mul_le_mul_of_nonneg_left ham hw]
+  have hsumh : ∑ i, lastRowWeights V i / ‖(shiftPoly h).eval (d i)‖ ^ (2 * q) =
+      ∑ i, lastRowWeights V i * ‖((shiftPoly h).eval (d i))⁻¹ ^ q‖ ^ 2 := by
+    refine Finset.sum_congr rfl fun i _ => ?_
+    rw [norm_pow, norm_inv, ← pow_mul, inv_pow, div_eq_mul_inv, mul_comm 2 q]
+  rw [hsumh]
+  obtain ⟨hKh, hXh⟩ := hsand h hnh
+  -- a moment of `g ∈ {a, b}` is at most `c²κ⁴` times the moment of `h`
+  have hmom : ∀ g ∈ [a, b], (∀ i, (shiftPoly g).eval (d i) ≠ 0) →
+      ∑ i, lastRowWeights V i * ‖((shiftPoly g).eval (d i))⁻¹ ^ q‖ ^ 2 ≤
+        c ^ 2 * pseudoConditionNumber V ^ 4 *
+          ∑ i, lastRowWeights V i * ‖((shiftPoly h).eval (d i))⁻¹ ^ q‖ ^ 2 := by
+    intro g hg hng
+    have hKg := (hsand g hng).2
+    have hsq := pow_le_pow_left₀ (norm_nonneg _) (hmax g hg) 2
+    calc _ ≤ _ := hKg
+      _ ≤ pseudoConditionNumber V ^ 2 * (c * ‖WithLp.toLp 2
+            (((Polynomial.aeval H (shiftPoly h))⁻¹ ^ q) (Fin.last n))‖) ^ 2 := by gcongr
+      _ ≤ pseudoConditionNumber V ^ 2 * (c ^ 2 * (pseudoConditionNumber V ^ 2 *
+            ∑ i, lastRowWeights V i * ‖((shiftPoly h).eval (d i))⁻¹ ^ q‖ ^ 2)) := by
+          rw [mul_pow]; gcongr
+      _ = _ := by ring
+  have hXa' := hmom a (by simp) hna
+  have hXb' := hmom b (by simp) hnb
+  calc ∑ i, lastRowWeights V i / ‖(shiftPoly (a ++ b)).eval (d i)‖ ^ q
+      ≤ ∑ i, lastRowWeights V i * (‖((shiftPoly a).eval (d i))⁻¹ ^ q‖ ^ 2 +
+          ‖((shiftPoly b).eval (d i))⁻¹ ^ q‖ ^ 2) / 2 := Finset.sum_le_sum fun i _ => hpt i
+    _ = (∑ i, lastRowWeights V i * ‖((shiftPoly a).eval (d i))⁻¹ ^ q‖ ^ 2 +
+          ∑ i, lastRowWeights V i * ‖((shiftPoly b).eval (d i))⁻¹ ^ q‖ ^ 2) / 2 := by
+        rw [← Finset.sum_add_distrib, Finset.sum_div]
+        exact Finset.sum_congr rfl fun i _ => by ring
+    _ ≤ _ := by linarith
+
+/-- `NLAlib.findRitzWith` returns a member of a list of length $2^m$. -/
+private theorem findRitzWith_mem (t : ℕ → List ℂ → ℝ) {m f : ℕ} {ss : List ℂ}
+    (hss : ss.length = 2 ^ m) : findRitzWith t m f ss ∈ ss := by
+  induction m generalizing f ss with
+  | zero =>
+    obtain ⟨a, rfl⟩ := List.length_eq_one_iff.mp (by simpa using hss)
+    simp [findRitzWith]
+  | succ m ih =>
+    have hlen : ss.length / 2 = 2 ^ m := by rw [hss, pow_succ]; omega
+    rw [findRitzWith]
+    split_ifs
+    · exact List.mem_of_mem_take (ih (by rw [List.length_take, hlen, hss, pow_succ]; omega))
+    · exact List.mem_of_mem_drop (ih (by rw [List.length_drop, hss, pow_succ]; omega))
+
+/-- `NLAlib.findRitzWith` keeps the moment bound with the factor $c^2\kappa^4$ per level, where
+$c = 1.0011/0.9989$ is the loss of one comparison of computed values. -/
+private theorem sum_div_le_findRitzWith {t : ℕ → List ℂ → ℝ}
+    {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} (hV : IsUnit V)
+    (hHV : H * V = V * Matrix.diagonal d)
+    (ht : ∀ f (h : List ℂ), |t f h -
+      ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly h))⁻¹ ^ f) (Fin.last n))‖⁻¹| ≤
+        0.0011 * ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly h))⁻¹ ^ f) (Fin.last n))‖⁻¹)
+    (m : ℕ) :
+    ∀ (f : ℕ) (ss : List ℂ), ss.length = 2 ^ m → (∀ i, ∀ s ∈ ss, d i ≠ s) →
+      ∑ i, lastRowWeights V i / ‖(shiftPoly ss).eval (d i)‖ ^ f ≤
+        ((1.0011 / 0.9989 : ℝ) ^ 2 * pseudoConditionNumber V ^ 4) ^ m *
+          ∑ i, lastRowWeights V i / ‖d i - findRitzWith t m f ss‖ ^ (f * 2 ^ m) := by
+  induction m with
+  | zero =>
+    intro f ss hlen hd
+    obtain ⟨s, rfl⟩ := List.length_eq_one_iff.mp (by simpa using hlen)
+    simp [shiftPoly, findRitzWith]
+  | succ j ih =>
+    intro f ss hlen hd
+    set a := ss.take (ss.length / 2)
+    set b := ss.drop (ss.length / 2)
+    have hhalf : ss.length / 2 = 2 ^ j := by
+      rw [hlen, pow_succ, Nat.mul_div_cancel _ (by norm_num)]
+    have ha : a.length = 2 ^ j := by
+      rw [List.length_take, hhalf, hlen]
+      exact Nat.min_eq_left (Nat.pow_le_pow_right (by norm_num) (by omega))
+    have hb : b.length = 2 ^ j := by
+      rw [List.length_drop, hhalf, hlen, pow_succ]
+      omega
+    have hdis : ∀ i, ∀ s ∈ a ++ b, d i ≠ s := by simpa only [a, b, List.take_append_drop] using hd
+    have hpos : ∀ g ∈ [a, b],
+        0 < ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly g))⁻¹ ^ f) (Fin.last n))‖ := by
+      intro g hg
+      refine norm_toLp_inv_aeval_pow_last_pos hV hHV f fun i => eval_shiftPoly_ne_zero ?_
+      intro s hs
+      rcases List.mem_pair.mp hg with rfl | rfl
+      exacts [hdis i s (List.mem_append_left _ hs), hdis i s (List.mem_append_right _ hs)]
+    -- one comparison of computed values loses at most the factor `c`
+    have hcmp : ∀ g h : List ℂ, g ∈ [a, b] → h ∈ [a, b] → t f h ≤ t f g →
+        ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly g))⁻¹ ^ f) (Fin.last n))‖ ≤
+          1.0011 / 0.9989 *
+            ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly h))⁻¹ ^ f) (Fin.last n))‖ := by
+      intro g h hg hh hle
+      have hNg := hpos g hg
+      have hNh := hpos h hh
+      set Ng := ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly g))⁻¹ ^ f) (Fin.last n))‖
+      set Nh := ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly h))⁻¹ ^ f) (Fin.last n))‖
+      have h1 := (abs_le.mp (ht f g)).2
+      have h2 := (abs_le.mp (ht f h)).1
+      have hineq : 0.9989 * Nh⁻¹ ≤ 1.0011 * Ng⁻¹ := by linarith
+      rw [div_mul_eq_mul_div, le_div_iff₀ (by norm_num)]
+      have := mul_le_mul_of_nonneg_left hineq (mul_nonneg hNg.le hNh.le)
+      field_simp at this
+      linarith
+    obtain ⟨h, hh, hlh, hfr, hmax⟩ : ∃ h : List ℂ, (h = a ∨ h = b) ∧ h.length = 2 ^ j ∧
+        findRitzWith t (j + 1) f ss = findRitzWith t j (2 * f) h ∧ ∀ g ∈ [a, b],
+          ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly g))⁻¹ ^ f) (Fin.last n))‖ ≤
+            1.0011 / 0.9989 *
+              ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly h))⁻¹ ^ f) (Fin.last n))‖ := by
+      by_cases hc : t f a ≤ t f b
+      · refine ⟨a, Or.inl rfl, ha, by rw [findRitzWith, if_pos hc], fun g hg => ?_⟩
+        rcases List.mem_pair.mp hg with rfl | rfl
+        exacts [hcmp _ _ (by simp) (by simp) le_rfl, hcmp _ _ (by simp) (by simp) hc]
+      · refine ⟨b, Or.inr rfl, hb, by rw [findRitzWith, if_neg hc], fun g hg => ?_⟩
+        rcases List.mem_pair.mp hg with rfl | rfl
+        exacts [hcmp _ _ (by simp) (by simp) (not_le.mp hc).le,
+          hcmp _ _ (by simp) (by simp) le_rfl]
+    have hih := ih (2 * f) h hlh fun i s hs =>
+      hdis i s (by rcases hh with rfl | rfl <;> simp [hs])
+    rw [show ∑ i, lastRowWeights V i / ‖(shiftPoly ss).eval (d i)‖ ^ f =
+        ∑ i, lastRowWeights V i / ‖(shiftPoly (a ++ b)).eval (d i)‖ ^ f by
+      rw [List.take_append_drop], hfr, show f * 2 ^ (j + 1) = 2 * f * 2 ^ j by ring]
+    calc _ ≤ _ := sum_div_shiftPoly_append_le_of_le_mul hV hHV hdis hh f hmax
+      _ ≤ (1.0011 / 0.9989 : ℝ) ^ 2 * pseudoConditionNumber V ^ 4 *
+          (((1.0011 / 0.9989 : ℝ) ^ 2 * pseudoConditionNumber V ^ 4) ^ j *
+            ∑ i, lastRowWeights V i / ‖d i - findRitzWith t j (2 * f) h‖ ^ (2 * f * 2 ^ j)) :=
+        mul_le_mul_of_nonneg_left hih (by positivity)
+      _ = _ := by ring
+
 /-- **`Find` with computed values is promising** ([BanksGarzaVargasSrivastava2022, Lemma 5.1]):
 if every comparison value is within the relative error $0.0011$ of
 $\|\mathbf{e}_n^{\mathsf T}p_h(\mathbf{H})^{-e}\|^{-1}$, then for $2^m$ shifts, none an
@@ -143,7 +348,25 @@ theorem isPromisingRitzValue_findRitzWith {B : ℝ} {m : ℕ} {t : ℕ → List 
       ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly h))⁻¹ ^ f) (Fin.last n))‖⁻¹| ≤
         0.0011 * ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly h))⁻¹ ^ f) (Fin.last n))‖⁻¹) :
     IsPromisingRitzValue ((1.01 * B) ^ ((4 * m : ℝ) / 2 ^ m)) V e ss (findRitzWith t m 1 ss) := by
-  sorry
+  have hcard := sum_div_le_findRitzWith hV hHV ht m 1 ss hlen fun i s hs => hne s hs i
+  simp only [pow_one, one_mul] at hcard
+  have hS0 : 0 ≤ ∑ i, lastRowWeights V i / ‖e i - findRitzWith t m 1 ss‖ ^ 2 ^ m :=
+    Finset.sum_nonneg fun i _ => div_nonneg (lastRowWeights_nonneg V i) (by positivity)
+  have hκ0 := pseudoConditionNumber_nonneg V
+  have hB0 : 0 ≤ B := hκ0.trans hκ
+  refine ⟨findRitzWith_mem t hlen, ?_⟩
+  rw [hlen]
+  have hα : ((1.01 * B) ^ ((4 * m : ℝ) / 2 ^ m)) ^ (2 ^ m : ℕ) = ((1.01 * B) ^ 4) ^ m := by
+    rw [← Real.rpow_natCast, ← Real.rpow_mul (by positivity), ← pow_mul,
+      ← Real.rpow_natCast (1.01 * B) (4 * m)]
+    congr 1
+    push_cast
+    field_simp
+  rw [hα]
+  refine hcard.trans (mul_le_mul_of_nonneg_right (pow_le_pow_left₀ (by positivity) ?_ m) hS0)
+  rw [mul_pow]
+  gcongr
+  norm_num
 
 /-- **The exceptional shifts contain a contracting shift** (the deterministic core of `Exc`,
 [BanksGarzaVargasSrivastava2022, Lemma 5.3], with the corrections of G13): let

@@ -187,7 +187,11 @@ $$\mathsf{rbki}(\mathbf{A}, \mathbf{K}_{s+1}(\mathbf{H}, \mathbf{\Omega}), q + 1
 \mathsf{rbki}(\mathbf{A}, \mathbf{\Omega}, s + q + 1)\,:$$
 RBKI with block $\mathbf{\Omega}$ and $s + q + 1$ blocks is RBKI with the simulated block
 $[\mathbf{\Omega}, \mathbf{H}\mathbf{\Omega}, \dots, \mathbf{H}^{s}\mathbf{\Omega}]$ and
-$q + 1$ blocks, so a bound for wide blocks applies to narrow ones at larger depth. -/
+$q + 1$ blocks, so a bound for wide blocks applies to narrow ones at larger depth.
+[MeyerMuscoMusco2023, §3.1], there for one start vector and a positive semidefinite matrix, as an
+equality of Krylov subspaces; [ChenEpperlyMeyerMuscoRao2025, Observation 3.3], there as an
+equality of block Krylov subspaces; here as an equality of the approximations.
+Result: rbki-simulated-block -/
 theorem rbki_blockKrylovMatrix (A : Matrix m n 𝕜) (Ω : Matrix n l 𝕜) (s q : ℕ) :
     rbki A (blockKrylovMatrix (Aᴴ * A) Ω (s + 1)) (q + 1) = rbki A Ω (s + q + 1) := by
   rw [rbki, rbki, rsvd, rsvd]
@@ -201,7 +205,10 @@ every $s, q \ge 0$,
 $$\mathsf{nystromBKI}(\mathbf{H}, \mathbf{K}_{s+1}(\mathbf{H}, \mathbf{\Omega}), q + 1) =
 \mathsf{nystromBKI}(\mathbf{H}, \mathbf{\Omega}, s + q + 1)\,,$$
 since the Nyström approximation of a positive semidefinite matrix depends on the test matrix only
-through its range. -/
+through its range.
+[ChenEpperlyMeyerMuscoRao2025, Observation 3.3], there the equality of the two block Krylov
+subspaces; the statement for the Nyström approximation is not printed there.
+Result: nystrom-bki-simulated-block -/
 theorem _root_.Matrix.PosSemidef.nystromBKI_blockKrylovMatrix {H : Matrix n n 𝕜}
     (hH : H.PosSemidef) (Ω : Matrix n l 𝕜) (s q : ℕ) :
     nystromBKI H (blockKrylovMatrix H Ω (s + 1)) (q + 1) = nystromBKI H Ω (s + q + 1) :=
@@ -212,7 +219,9 @@ lies in the range of $\mathbf{\Omega}$ (a sub-block, or any column combinations)
 number of blocks $q$ and every $i$,
 $$\sigma_i(\mathbf{A} - \mathsf{rbki}(\mathbf{A}, \mathbf{\Omega}, q)) \le
 \sigma_i(\mathbf{A} - \mathsf{rbki}(\mathbf{A}, \mathbf{\Omega}', q))\,,$$
-so in every unitarily invariant norm. -/
+so in every unitarily invariant norm.
+No printed source.
+Result: rbki-block-monotonicity -/
 theorem singularValues_sub_rbki_le_of_range_le {l' : Type*} [Fintype l'] (A : Matrix m n 𝕜)
     {Ω : Matrix n l 𝕜} {Ω' : Matrix n l' 𝕜}
     (h : LinearMap.range Ω'.mulVecLin ≤ LinearMap.range Ω.mulVecLin) (q i : ℕ) :
@@ -234,7 +243,9 @@ so in every unitarily invariant norm: the columns of
 $f(\mathbf{H})\mathbf{K}_s(\mathbf{H}, \mathbf{\Omega})$ are polynomials of degree at most
 $s + d - 2 < q$ in $\mathbf{H}$ applied to the columns of $\mathbf{\Omega}$. At $s = 1$,
 $d = q$ it is the bound for filters of $\mathbf{\Omega}$ itself; $s = 0$ and $d = 0$ are allowed
-and give $\sigma_i(\mathbf{A})$ on the right. -/
+and give $\sigma_i(\mathbf{A})$ on the right.
+[MeyerMuscoMusco2023, §3.1], the argument, not the statement: there the analysis of block Krylov
+iteration is applied to the simulated block of one start vector. -/
 theorem singularValues_sub_rbki_le_of_degree_lt_of_add_le {R : Type*} [CommSemiring R]
     [Algebra R 𝕜] (A : Matrix m n 𝕜) (Ω : Matrix n l 𝕜) {q s d : ℕ} {f : R[X]}
     (hf : f.degree < d) (hsd : s + d ≤ q + 1) (i : ℕ) :

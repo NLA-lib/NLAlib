@@ -536,7 +536,8 @@ then $(\mathbf{Q}', \mathbf{H}, \mathbf{R})$ is a rounded extension of $\mathbf{
 $\mathbf{W}$ with parameters $\eta_0$,
 $\mu = 2\varepsilon_1 + 4\varepsilon_3/\tau + 5E$ and
 $\varepsilon = \varepsilon_2 + 2E + 2\tau$. No printed source;
-`docs/design/LowRank-BlockLanczos.md` §3.5. -/
+`docs/design/LowRank-BlockLanczos.md` §3.5.
+Result: cgs2-basis-extension-error -/
 theorem isBasisExtensionErr_of_columns {k b : ℕ} {E τ : ℝ} {Q : Matrix (Fin n) (Fin k) ℝ}
     {W W' Q' : Matrix (Fin n) (Fin b) ℝ} {H : Matrix (Fin k) (Fin b) ℝ}
     {R : Matrix (Fin b) (Fin b) ℝ} {ν β : Fin b → ℝ}

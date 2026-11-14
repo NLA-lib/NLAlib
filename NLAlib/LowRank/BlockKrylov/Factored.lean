@@ -34,14 +34,16 @@ open scoped Matrix
 
 namespace NLAlib
 
-/-- The factored output of block Golub–Kahan bidiagonalization in exact arithmetic is randomized
-block Krylov iteration: if $\mathbf{U}$, $\mathbf{V}$, $\mathbf{R}_0$, $\mathbf{R}$, $\mathbf{S}$
-are related to $\mathbf{A}$, $\mathbf{\Omega}$, $q$ by the process, then
+/-- **The factored output of block Golub–Kahan bidiagonalization in exact arithmetic is
+randomized block Krylov iteration**: if $\mathbf{U}$, $\mathbf{V}$, $\mathbf{R}_0$, $\mathbf{R}$,
+$\mathbf{S}$ are related to $\mathbf{A}$, $\mathbf{\Omega}$, $q$ by the process, then
 $$\mathbf{U}\mathbf{S}^{\mathsf{H}}\mathbf{V}^{\mathsf{H}} =
 \mathsf{rbki}(\mathbf{A}, \mathbf{\Omega}, q),$$
 for every $\mathbf{A}$, every start block $\mathbf{\Omega}$ and every exact orthogonalization
 scheme: dependent start columns, rank-deficient $\mathbf{A}$ and breakdown inside the run are
-included. -/
+included.
+No printed source.
+Result: block-golub-kahan-factored-output -/
 theorem IsBlockGolubKahan.mul_conjTranspose_mul_conjTranspose_eq_rbki {𝕜 : Type*} [RCLike 𝕜]
     {m n b q : ℕ} {A : Matrix (Fin m) (Fin n) 𝕜} {Ω : Matrix (Fin n) (Fin b) 𝕜}
     {U : Matrix (Fin m) (Fin (q * b)) 𝕜} {V : Matrix (Fin n) (Fin ((q + 1) * b)) 𝕜}
@@ -51,12 +53,14 @@ theorem IsBlockGolubKahan.mul_conjTranspose_mul_conjTranspose_eq_rbki {𝕜 : Ty
   rw [rbki_def]
   exact h.mul_conjTranspose_mul_conjTranspose_eq_rsvd
 
-/-- The stored factors of an exact run of the block Golub–Kahan program are randomized block
-Krylov iteration: if $\mathbf{U}$, $\mathbf{V}$ and the packed coefficient block columns
+/-- **The stored factors of an exact run of the block Golub–Kahan program are randomized block
+Krylov iteration**: if $\mathbf{U}$, $\mathbf{V}$ and the packed coefficient block columns
 $\mathbf{S}_j$ are stored blocks of an exact run for $\mathbf{A}$ from $\mathbf{\Omega}$, and
 $\mathbf{S}$ is the assembled $(q+1)b \times qb$ matrix, then
-$\mathbf{U}\mathbf{S}^{\mathsf{H}}\mathbf{V}^{\mathsf{H}} =
-\mathsf{rbki}(\mathbf{A}, \mathbf{\Omega}, q)$. -/
+$$\mathbf{U}\mathbf{S}^{\mathsf{H}}\mathbf{V}^{\mathsf{H}} =
+\mathsf{rbki}(\mathbf{A}, \mathbf{\Omega}, q)\,.$$
+No printed source.
+Result: block-golub-kahan-factored-output -/
 theorem Krylov.GolubKahan.Band.IsExactStoredRun.mul_conjTranspose_mul_conjTranspose_eq_rbki
     {m n b q : ℕ} {A : Matrix (Fin m) (Fin n) ℝ} {Ω : Matrix (Fin n) (Fin b) ℝ}
     {U : Matrix (Fin m) (Fin (q * b)) ℝ} {V : Matrix (Fin n) (Fin ((q + 1) * b)) ℝ}

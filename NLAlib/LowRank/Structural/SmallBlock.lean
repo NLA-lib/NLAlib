@@ -221,7 +221,10 @@ $$\bigl\|(\mathbf{B} - \mathbf{B}\mathbf{Z}\mathbf{Z}^{\mathsf{H}})\mathbf{K}
 (\mathbf{Z}^{\mathsf{H}}\mathbf{K})^{+}\bigr\|_{\mathsf{F}}^2 \le
 a^2\,\Delta^{-2(t-1)}\Bigl(\sum_{i<t}\lvert(\mathbf{Z}^{\mathsf{H}}\mathbf{x})_i\rvert^{-2}\Bigr)
 \|(\mathbf{A} - \mathbf{A}\mathbf{Z}\mathbf{Z}^{\mathsf{H}})\mathbf{x}\|_2^2\,.$$
-The exponent $2(t - 1)$ is in $\mathbb{N}$; for $t = 0$ both sides vanish. -/
+The exponent $2(t - 1)$ is in $\mathbb{N}$; for $t = 0$ both sides vanish.
+[MeyerMuscoMusco2023, Theorem 3 (proof)], the argument, not the statement: there for a Gaussian
+vector and a positive semidefinite matrix, through Lagrange interpolation at the squared head
+singular values; constants differ. -/
 theorem frobNorm_sub_mul_mul_blockKrylovMatrix_mul_pinv_sq_le {t : ℕ}
     (A : Matrix m n 𝕜) (x : n → 𝕜) {Z : Matrix n (Fin t) 𝕜} (hZ : HasOrthonormalCols Z)
     (hAZ : Aᴴ * A * Z =
@@ -295,7 +298,12 @@ $\|\mathbf{A}\|_2^2$. The gap hypothesis does not separate $\sigma_{t-1}$ from $
 the tail is that of the frame $\mathbf{Z}$, which need not be the truncated SVD. The first $r$
 columns of $\mathbf{Z}$ are the head frame of the filtered structural bound, and the head block
 $\mathbf{Z}^{\mathsf{H}}[\mathbf{x}, \mathbf{H}\mathbf{x}, \dots, \mathbf{H}^{t-1}\mathbf{x}]$ is
-a diagonal matrix times a Vandermonde matrix, invertible under the hypotheses. -/
+a diagonal matrix times a Vandermonde matrix, invertible under the hypotheses.
+[MeyerMuscoMusco2023, Theorem 3], there the simulated block of a Gaussian vector is shown, in
+probability and for a positive semidefinite matrix, to be a good starting matrix of block Krylov
+iteration; here the deterministic bound for a given vector, composed with a polynomial filter;
+constants differ.
+Result: rbki-single-vector-structural-error -/
 theorem specNorm_sub_rbki_replicateCol_sq_le {t : ℕ} (A : Matrix m n 𝕜)
     (x : n → 𝕜) {Z : Matrix n (Fin t) 𝕜} (hZ : HasOrthonormalCols Z)
     (hAZ : Aᴴ * A * Z =
@@ -353,7 +361,12 @@ $$\|\mathbf{A} - \mathsf{rbki}(\mathbf{A}, \mathbf{x}, q)\|_{\mathsf{F}}^2 \le
 The exponent $2(t - 1)$ is in $\mathbb{N}$. The head frame of the filtered structural bound is
 the first $r$ columns $\mathbf{W}$ of $\mathbf{Z}$; when $\sigma_{r-1} = \sigma_r$ (possible only
 for $r = t$) the matrix $\mathbf{A}\mathbf{W}\mathbf{W}^{\mathsf{H}}$ need not be
-$\llbracket\mathbf{A}\rrbracket_r$, but the two have the same Frobenius error. -/
+$\llbracket\mathbf{A}\rrbracket_r$, but the two have the same Frobenius error.
+[MeyerMuscoMusco2023, Theorem 3], there the simulated block of a Gaussian vector is shown, in
+probability and for a positive semidefinite matrix, to be a good starting matrix of block Krylov
+iteration; here the deterministic bound for a given vector, composed with a polynomial filter;
+constants differ.
+Result: rbki-single-vector-structural-error -/
 theorem frobNorm_sub_rbki_replicateCol_sq_le {t : ℕ} (A : Matrix m n 𝕜)
     (x : n → 𝕜) {Z : Matrix n (Fin t) 𝕜} (hZ : HasOrthonormalCols Z)
     (hAZ : Aᴴ * A * Z =
@@ -405,7 +418,9 @@ This is the case the gapped single-vector bound excludes by asking for positive 
 values: there $\mathbf{A}$ vanishes on the complement of the frame, and the Krylov space of depth
 $t$ already contains the range of $\mathbf{Z}$. Distinctness and the nonvanishing coordinates
 cannot be dropped: the Krylov space of one vector has dimension at most the number of distinct
-eigenvalues it meets. -/
+eigenvalues it meets.
+No printed source.
+Result: rbki-single-vector-structural-error -/
 theorem rbki_replicateCol_eq_self {t : ℕ} (A : Matrix m n 𝕜)
     (x : n → 𝕜) {Z : Matrix n (Fin t) 𝕜} (hZ : HasOrthonormalCols Z)
     (hAZ : Aᴴ * A * Z =

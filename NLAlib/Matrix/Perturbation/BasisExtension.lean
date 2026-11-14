@@ -204,8 +204,8 @@ theorem gramDefect_fromCols [Fintype m] [DecidableEq ι] [DecidableEq κ] (Q : M
 /-- The loss of orthogonality when a block of columns is appended, with zero columns allowed:
 with $\mathbf{D}(\cdot)$ the Gram defect on the support,
 $$\|\mathbf{D}([\mathbf{Q}, \mathbf{Q}'])\|_{\mathsf{F}}^2 =
-\|\mathbf{D}(\mathbf{Q})\|_{\mathsf{F}}^2 + 2\|\mathbf{Q}^{\mathsf{H}}\mathbf{Q}'\|_{\mathsf{F}}^2
-+ \|\mathbf{D}(\mathbf{Q}')\|_{\mathsf{F}}^2.$$ -/
+\|\mathbf{D}(\mathbf{Q})\|_{\mathsf{F}}^2 + 2\|\mathbf{Q}^{\mathsf{H}}\mathbf{Q}'\|_{\mathsf{F}}^2 +
+\|\mathbf{D}(\mathbf{Q}')\|_{\mathsf{F}}^2.$$ -/
 theorem frobNorm_gramDefect_fromCols_sq [Fintype m] [Fintype ι] [Fintype κ] [DecidableEq ι]
     [DecidableEq κ] (Q : Matrix m ι 𝕜) (Q' : Matrix m κ 𝕜) :
     frobNorm (gramDefect (Matrix.fromCols Q Q')) ^ 2 =
@@ -590,12 +590,17 @@ theorem IsBasisExtensionErr.column_sq_le (hE : IsBasisExtensionErr η₀ μ ε Q
       rw [hs]
       linarith
 
-/-- One block step of the loss of orthogonality: if $(\mathbf{Q}', \mathbf{H}, \mathbf{R})$ is a
-rounded extension of $\mathbf{Q}$ with parameters $(\eta_0, \mu, \varepsilon)$, $\mathbf{Q}'$ has
-$b$ columns and $\mathbf{Q}$ is in the window for $(\eta_0, \mu)$ and $b$, then, with
-$\mathbf{D}(\cdot)$ the Gram defect on the support,
-$\|\mathbf{D}([\mathbf{Q}, \mathbf{Q}'])\|_{\mathsf{F}}^2 \le
-\|\mathbf{D}(\mathbf{Q})\|_{\mathsf{F}}^2 + 3b\mu^2$. -/
+/-- **One block step of the loss of orthogonality**: let $\mathbf{D}(\cdot)$ be the Gram defect
+on the support, $\mathbf{D}(\mathbf{Q}) = \mathbf{Q}^{\mathsf{T}}\mathbf{Q} -
+\operatorname{diag}(\mathbf{s})$ with $s_j = 0$ at a zero column of $\mathbf{Q}$ and $s_j = 1$
+otherwise. If $(\mathbf{Q}', \mathbf{H}, \mathbf{R})$ is a rounded extension
+(`NLAlib.IsBasisExtensionErr`) of the real basis $\mathbf{Q}$ with parameters
+$(\eta_0, \mu, \varepsilon)$, $\mathbf{Q}'$ has $b$ columns and $\mathbf{Q}$ is in the window,
+$\sqrt{\|\mathbf{D}(\mathbf{Q})\|_{\mathsf{F}}^2 + 3b\mu^2} \le \eta_0$, then
+$$\|\mathbf{D}([\mathbf{Q}, \mathbf{Q}'])\|_{\mathsf{F}}^2 \le
+\|\mathbf{D}(\mathbf{Q})\|_{\mathsf{F}}^2 + 3b\mu^2\,.$$
+No printed source.
+Result: basis-extension-gram-defect -/
 theorem IsBasisExtensionErr.frobNorm_gramDefect_fromCols_sq_le
     (hE : IsBasisExtensionErr η₀ μ ε Q W Q' H R) (hw : ExtensionWindow η₀ μ b Q) :
     frobNorm (gramDefect (Matrix.fromCols Q Q')) ^ 2 ≤
@@ -780,13 +785,18 @@ theorem gramDefect_blockPrefix_succ_eq_zero_iff [Fintype m] (b : ℕ) (V : Matri
       gramDefect (Matrix.fromCols (blockPrefix b V j) (blockCols b V j)) = 0 := by
   rw [← frobNorm_eq_zero_iff, frobNorm_gramDefect_blockPrefix_succ, frobNorm_eq_zero_iff]
 
-/-- The loss of orthogonality of a run of block extensions: let the columns of $\mathbf{V}$ be
-stored as consecutive blocks of width $b$, with $\mathbf{V}_j$ the first $j$ blocks, and assume
-that for every $j < q$ block $j$ is a rounded extension of $\mathbf{V}_j$ with parameters
-$(\eta_0, \mu, \varepsilon)$, for some input block and coefficients. If $\mu \ge 0$ and
-$\sqrt{3qb}\,\mu \le \eta_0$, then for every $j \le q$ the Gram defect on the support
-$\mathbf{D}_j$ of $\mathbf{V}_j$ satisfies $\|\mathbf{D}_j\|_{\mathsf{F}} \le \sqrt{3jb}\,\mu$.
-The window of every step follows from the bound of the previous one. -/
+/-- **The loss of orthogonality of a run of block extensions**: let the columns of the real
+matrix $\mathbf{V}$ be stored as consecutive blocks of width $b$, with $\mathbf{V}_j$ the first
+$j$ blocks, and assume that for every $j < q$ block $j$ is a rounded extension
+(`NLAlib.IsBasisExtensionErr`) of $\mathbf{V}_j$ with parameters $(\eta_0, \mu, \varepsilon)$,
+for some input block and coefficients. If $\mu \ge 0$ and $\sqrt{3qb}\,\mu \le \eta_0$, then for
+every $j \le q$ the Gram defect on the support $\mathbf{D}_j =
+\mathbf{V}_j^{\mathsf{T}}\mathbf{V}_j - \operatorname{diag}(\mathbf{s})$ ($s_c = 0$ at a zero
+column of $\mathbf{V}_j$, $s_c = 1$ otherwise) satisfies
+$$\|\mathbf{D}_j\|_{\mathsf{F}} \le \sqrt{3jb}\,\mu\,.$$
+The window of every step follows from the bound of the previous one.
+No printed source.
+Result: basis-extension-gram-defect -/
 theorem frobNorm_gramDefect_le_of_blocks {n b q : ℕ} {η₀ μ ε : ℝ} (V : Matrix (Fin n) (Fin N) ℝ)
     (W : ℕ → Matrix (Fin n) (Fin b) ℝ) (H : ∀ j : ℕ, Matrix (Fin (j * b)) (Fin b) ℝ)
     (R : ℕ → Matrix (Fin b) (Fin b) ℝ) (hμ : 0 ≤ μ) (hw : Real.sqrt (3 * q * b) * μ ≤ η₀)

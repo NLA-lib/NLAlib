@@ -121,7 +121,8 @@ variable [Has SampleOp Op]
 `[m, n, b, q]`: draw the `n × b` start block from the stream into the scratch block, extend the
 empty basis by it (block `0` of `V` and the start coefficients `G`), and run `q` block steps.
 The outputs are `U` (`q * b * m` words), `V` (`(q + 1) * b * n`), `G` (`b * b`) and the packed
-coefficients `R` and `S`. The scratch block has `max m n * b` words. -/
+coefficients `R` and `S`. The scratch block has `max m n * b` words.
+Algorithm: block-golub-kahan -/
 def solve (stream : ℕ) : Impl Op Tst := opsImpl% [m, n, b, q] () → (U, V, G, R, S) {
   let W ← alloc ((m + (n - m)) * b);
   run (sampleVector stream).body [n * b] (W);

@@ -411,7 +411,8 @@ coefficients $\mathbf{H}_1 + \mathbf{H}_2$ and $\mathbf{R}_1 + \mathbf{R}_2 + \m
 $\mathbf{D}$ the diagonal matrix of the norms of the columns of $\mathbf{W}_2$, is an exact
 extension of $\mathbf{Q}$ by $\mathbf{W}$. No hypothesis on $\mathbf{Q}$: the orthonormality of
 $\mathbf{Q}$ on its support is used only by the clause that preserves it. No printed source;
-`docs/design/LowRank-BlockLanczos.md` §3.5. -/
+`docs/design/LowRank-BlockLanczos.md` §3.5.
+Result: cgs2-basis-extension -/
 theorem isBasisExtension_of_two_passes {n k : ℕ} {Q : Matrix (Fin n) (Fin k) 𝕜}
     {W Q' W₁ W₂ : Matrix (Fin n) (Fin b) 𝕜} {H₁ H₂ : Matrix (Fin k) (Fin b) 𝕜}
     {R₁ R₂ : Matrix (Fin b) (Fin b) 𝕜}

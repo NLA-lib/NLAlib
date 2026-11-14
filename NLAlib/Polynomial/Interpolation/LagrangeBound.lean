@@ -59,7 +59,11 @@ $\lvert x - \lambda_k\rvert \le \lambda_k$ and $\lambda_k - \lambda_i \ge \Delta
 $k > i$, $\lvert x - \lambda_k\rvert \le \lambda_{k-1}$ and
 $\lambda_i - \lambda_k \ge \Delta\lambda_{k-1}$. Positivity of the nodes is not assumed: where
 nodes coincide (necessarily at $0$) the division convention $a/0 = 0$ makes the factor vanish.
-The exponent is in $\mathbb{N}$; for $t = 0$ there is no basis polynomial. -/
+The exponent is in $\mathbb{N}$; for $t = 0$ there is no basis polynomial.
+[MeyerMuscoMusco2023, Theorem 3 (proof)], there for the squared head singular values of a
+positive semidefinite matrix, with the gap relative to the smaller of two consecutive singular
+values; constants differ.
+Result: lagrange-basis-relative-gap-bound -/
 theorem abs_eval_basis_le_inv_pow {t : ℕ} {v : Fin t → ℝ} {Δ : ℝ} (hΔ : 0 < Δ)
     (hgap : ∀ i j : Fin t, (i : ℕ) + 1 = j → v j ≤ (1 - Δ) * v i) {x : ℝ} (hx0 : 0 ≤ x)
     (hx : ∀ i, x ≤ v i) (i : Fin t) :

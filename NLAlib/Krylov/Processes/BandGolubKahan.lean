@@ -596,9 +596,12 @@ theorem exists_isBasisExtension {n k b : ℕ} (Q : Matrix (Fin n) (Fin k) 𝕜)
       rw [Matrix.conjTranspose_apply,
         show gramSchmidtQ (W - Q * (Qᴴ * W)) i c = 0 from congrFun hc i, star_zero, zero_mul]
 
-/-- The process has a run for every input: for every $\mathbf{A}$, $\mathbf{\Omega}$ and $q$
+/-- **Block Golub–Kahan bidiagonalization has a run for every input**: for every
+$\mathbf{A}$, $\mathbf{\Omega}$ and $q$
 there are $\mathbf{U}$, $\mathbf{V}$, $\mathbf{R}_0$, $\mathbf{R}$, $\mathbf{S}$ related to them by
-block Golub–Kahan bidiagonalization with full reorthogonalization in exact arithmetic. -/
+block Golub–Kahan bidiagonalization with full reorthogonalization in exact arithmetic.
+No printed source.
+Result: block-golub-kahan-existence -/
 theorem exists_isBlockGolubKahan (A : Matrix (Fin m) (Fin n) 𝕜) (Ω : Matrix (Fin n) (Fin b) 𝕜)
     (q : ℕ) :
     ∃ (U : Matrix (Fin m) (Fin (q * b)) 𝕜) (V : Matrix (Fin n) (Fin ((q + 1) * b)) 𝕜)
@@ -711,32 +714,41 @@ private theorem range_blockPrefix_aux (h : IsBlockGolubKahan A Ω q U V R₀ R S
       Matrix.mulVecLin_mul, Submodule.map_comp, ← hsum, Submodule.map_sup, ← sup_assoc,
       sup_eq_left.2 hle]
 
-/-- The first $j + 1 \le q + 1$ blocks of the right basis $\mathbf{V}$ of block Golub–Kahan
+/-- **The right basis of block Golub–Kahan bidiagonalization spans the block Krylov space.**
+The first $j + 1 \le q + 1$ blocks of the right basis $\mathbf{V}$ of block Golub–Kahan
 bidiagonalization in exact arithmetic span the block Krylov space
 $\mathcal{K}_{j+1}(\mathbf{A}^{\mathsf{H}}\mathbf{A}, \mathbf{\Omega}) =
 \operatorname{range}[\mathbf{\Omega}, \mathbf{A}^{\mathsf{H}}\mathbf{A}\mathbf{\Omega}, \dots,
 (\mathbf{A}^{\mathsf{H}}\mathbf{A})^{j}\mathbf{\Omega}]$, for every start block
-$\mathbf{\Omega}$ and every exact orthogonalization scheme, zero columns included. -/
+$\mathbf{\Omega}$ and every exact orthogonalization scheme, zero columns included.
+No printed source.
+Result: block-golub-kahan-krylov-range -/
 theorem range_blockPrefix_right (h : IsBlockGolubKahan A Ω q U V R₀ R S) {j : ℕ} (hj : j ≤ q) :
     LinearMap.range (blockPrefix b V (j + 1)).mulVecLin = blockKrylovSpace (Aᴴ * A) Ω (j + 1) := by
   exact (range_blockPrefix_aux h j).2.2 hj
 
-/-- The first $j \le q$ blocks of the left basis $\mathbf{U}$ of block Golub–Kahan
+/-- **The left basis of block Golub–Kahan bidiagonalization spans the image of the block Krylov
+space.** The first $j \le q$ blocks of the left basis $\mathbf{U}$ of block Golub–Kahan
 bidiagonalization in exact arithmetic span the image under $\mathbf{A}$ of the block Krylov space
 $\mathcal{K}_{j}(\mathbf{A}^{\mathsf{H}}\mathbf{A}, \mathbf{\Omega}) =
 \operatorname{range}[\mathbf{\Omega}, \dots,
 (\mathbf{A}^{\mathsf{H}}\mathbf{A})^{j-1}\mathbf{\Omega}]$ (the zero space for $j = 0$), for
-every start block $\mathbf{\Omega}$ and every exact orthogonalization scheme. -/
+every start block $\mathbf{\Omega}$ and every exact orthogonalization scheme.
+No printed source.
+Result: block-golub-kahan-krylov-range -/
 theorem range_blockPrefix_left (h : IsBlockGolubKahan A Ω q U V R₀ R S) {j : ℕ} (hj : j ≤ q) :
     LinearMap.range (blockPrefix b U j).mulVecLin =
       (blockKrylovSpace (Aᴴ * A) Ω j).map A.mulVecLin := by
   exact (range_blockPrefix_aux h j).1 hj
 
-/-- The left basis $\mathbf{U}$ of block Golub–Kahan bidiagonalization in exact arithmetic gives
+/-- **The left basis of block Golub–Kahan bidiagonalization gives the range projector.**
+The left basis $\mathbf{U}$ of block Golub–Kahan bidiagonalization in exact arithmetic gives
 the orthogonal projector onto the range of $\mathbf{A}\mathbf{K}_q$, where
 $\mathbf{K}_q = [\mathbf{\Omega}, \mathbf{A}^{\mathsf{H}}\mathbf{A}\mathbf{\Omega}, \dots,
 (\mathbf{A}^{\mathsf{H}}\mathbf{A})^{q-1}\mathbf{\Omega}]$ is the block Krylov matrix:
-$\mathbf{U}\mathbf{U}^{\mathsf{H}} = \mathbf{P}_{\mathbf{A}\mathbf{K}_q}$. -/
+$$\mathbf{U}\mathbf{U}^{\mathsf{H}} = \mathbf{P}_{\mathbf{A}\mathbf{K}_q}\,.$$
+No printed source.
+Result: block-golub-kahan-krylov-range -/
 theorem mul_conjTranspose_left_eq_rangeProjector (h : IsBlockGolubKahan A Ω q U V R₀ R S) :
     U * Uᴴ = rangeProjector (A * blockKrylovMatrix (Aᴴ * A) Ω q) := by
   have hU := h.range_blockPrefix_left (le_refl q)
@@ -770,15 +782,17 @@ theorem conjTranspose_mul_left_eq (h : IsBlockGolubKahan A Ω q U V R₀ R S) :
     blockPrefix_mul_blockRowPrefix_eq_mul V (blockCols b S j) (k := j + 1 + 1)
       (Nat.mul_le_mul_right b (by omega)) (fun i c hi => h.right_support j hj i c hi)]
 
-/-- The factored output of block Golub–Kahan bidiagonalization in exact arithmetic is the
-randomized SVD approximation at the block Krylov matrix:
+/-- **The factored output of block Golub–Kahan bidiagonalization in exact arithmetic is the
+randomized SVD approximation at the block Krylov matrix**:
 $$\mathbf{U}\mathbf{S}^{\mathsf{H}}\mathbf{V}^{\mathsf{H}} =
 \mathsf{rsvd}(\mathbf{A}, \mathbf{K}_q) = \mathbf{P}_{\mathbf{A}\mathbf{K}_q}\mathbf{A},
 \qquad \mathbf{K}_q = [\mathbf{\Omega}, \mathbf{A}^{\mathsf{H}}\mathbf{A}\mathbf{\Omega}, \dots,
 (\mathbf{A}^{\mathsf{H}}\mathbf{A})^{q-1}\mathbf{\Omega}],$$
 for every $\mathbf{A}$, every start block $\mathbf{\Omega}$ and every exact orthogonalization
 scheme: dependent start columns, rank-deficient $\mathbf{A}$ and breakdown inside the run are
-included. -/
+included.
+No printed source.
+Result: block-golub-kahan-factored-output -/
 theorem mul_conjTranspose_mul_conjTranspose_eq_rsvd (h : IsBlockGolubKahan A Ω q U V R₀ R S) :
     U * Sᴴ * Vᴴ = rsvd A (blockKrylovMatrix (Aᴴ * A) Ω q) := by
   rw [rsvd, ← h.mul_conjTranspose_left_eq_rangeProjector, Matrix.mul_assoc U Sᴴ,
@@ -827,8 +841,11 @@ theorem coef_left_eq_conjTranspose_blockRowPrefix (h : IsBlockGolubKahan A Ω q 
     Matrix.conjTranspose_conjTranspose]
   exact h.coef_left_eq
 
-/-- The coefficient matrix $\mathbf{R}$ of the left steps of block Golub–Kahan bidiagonalization
-in exact arithmetic is upper triangular. -/
+/-- **The left coefficient matrix of block Golub–Kahan bidiagonalization is upper triangular.**
+The coefficient matrix $\mathbf{R}$ of the left steps of block Golub–Kahan bidiagonalization
+in exact arithmetic is upper triangular.
+No printed source.
+Result: block-golub-kahan-band-structure -/
 theorem blockTriangular_left (h : IsBlockGolubKahan A Ω q U V R₀ R S) : R.BlockTriangular id := by
   intro i d hdi
   obtain ⟨j, hj, c, hd⟩ := exists_block_index d
@@ -836,9 +853,12 @@ theorem blockTriangular_left (h : IsBlockGolubKahan A Ω q U V R₀ R S) : R.Blo
   exact apply_eq_zero_of_block (blockCols b R j) (k := j) (h.left_support j hj)
     (h.left j hj).upper i c (by rw [hd]; exact hdi)
 
-/-- The coefficient matrix $\mathbf{S}$ of the right steps of block Golub–Kahan
+/-- **The right coefficient matrix of block Golub–Kahan bidiagonalization is banded.**
+The coefficient matrix $\mathbf{S}$ of the right steps of block Golub–Kahan
 bidiagonalization in exact arithmetic, with blocks of width $b$, is zero below its $b$-th
-subdiagonal: $S_{ic} = 0$ for $i > c + b$. -/
+subdiagonal: $S_{ic} = 0$ for $i > c + b$.
+No printed source.
+Result: block-golub-kahan-band-structure -/
 theorem coef_right_apply_eq_zero_of_add_lt (h : IsBlockGolubKahan A Ω q U V R₀ R S)
     (i : Fin ((q + 1) * b)) (c : Fin (q * b)) (hic : (c : ℕ) + b < (i : ℕ)) : S i c = 0 := by
   obtain ⟨j, hj, c', hd⟩ := exists_block_index c
@@ -847,10 +867,13 @@ theorem coef_right_apply_eq_zero_of_add_lt (h : IsBlockGolubKahan A Ω q U V R�
     (fun i c hi => h.right_support j hj i c hi) (h.right j hj).upper i c'
     (by rw [Nat.add_one_mul]; omega)
 
-/-- The coefficient matrix $\mathbf{S}$ of the right steps of block Golub–Kahan
+/-- **The right coefficient matrix of block Golub–Kahan bidiagonalization is zero above its
+diagonal.** The coefficient matrix $\mathbf{S}$ of the right steps of block Golub–Kahan
 bidiagonalization in exact arithmetic is zero above its diagonal: $S_{ic} = 0$ for $i < c$.
 With the vanishing below the $b$-th subdiagonal, $\mathbf{S}^{\mathsf{H}}$ is zero outside the
-band $0 \le \text{column} - \text{row} \le b$; for $b = 1$ it is upper bidiagonal. -/
+band $0 \le \text{column} - \text{row} \le b$; for $b = 1$ it is upper bidiagonal.
+No printed source.
+Result: block-golub-kahan-band-structure -/
 theorem coef_right_apply_eq_zero_of_lt (h : IsBlockGolubKahan A Ω q U V R₀ R S)
     (i : Fin ((q + 1) * b)) (c : Fin (q * b)) (hic : (i : ℕ) < (c : ℕ)) : S i c = 0 := by
   have hi' : (i : ℕ) < q * b := hic.trans c.isLt
@@ -860,10 +883,13 @@ theorem coef_right_apply_eq_zero_of_lt (h : IsBlockGolubKahan A Ω q U V R₀ R 
     blockRowPrefix_apply_of_eq S (j := q) (d := ⟨i, hi'⟩) (d' := i) rfl c] at hR
   exact star_eq_zero.1 hR.symm
 
-/-- The coefficient matrix $\mathbf{R}$ of the left steps of block Golub–Kahan bidiagonalization
+/-- **The left coefficient matrix of block Golub–Kahan bidiagonalization is banded.**
+The coefficient matrix $\mathbf{R}$ of the left steps of block Golub–Kahan bidiagonalization
 in exact arithmetic, with blocks of width $b$, is zero above its $b$-th superdiagonal:
 $R_{ic} = 0$ for $c > i + b$. With upper triangularity, $\mathbf{R}$ is zero outside the band
-$0 \le \text{column} - \text{row} \le b$. -/
+$0 \le \text{column} - \text{row} \le b$.
+No printed source.
+Result: block-golub-kahan-band-structure -/
 theorem coef_left_apply_eq_zero_of_add_lt (h : IsBlockGolubKahan A Ω q U V R₀ R S)
     (i c : Fin (q * b)) (hic : (i : ℕ) + b < (c : ℕ)) : R i c = 0 := by
   have hc' : (c : ℕ) < (q + 1) * b := c.isLt.trans_le (Nat.mul_le_mul_right b (Nat.le_succ q))

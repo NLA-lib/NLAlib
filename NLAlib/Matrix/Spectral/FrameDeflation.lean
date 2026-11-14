@@ -61,14 +61,16 @@ theorem HasOrthonormalCols.frobNorm_sub_mul_mul_conjTranspose_sq {r : Type*} [Fi
   rw [h1, h2] at hP
   linarith
 
-/-- Deflating top right singular vectors shifts the singular values: for an orthonormal frame
+/-- **Deflating top right singular vectors shifts the singular values**: for an orthonormal frame
 $\mathbf{W} \in \Bbbk^{n \times r}$ with $\mathbf{A}^{\mathsf{H}}\mathbf{A}\mathbf{W} =
 \mathbf{W}\operatorname{diag}(\sigma_0(\mathbf{A})^2, \dots, \sigma_{r-1}(\mathbf{A})^2)$ and
 every $i$,
 $$\sigma_i(\mathbf{A} - \mathbf{A}\mathbf{W}\mathbf{W}^{\mathsf{H}}) =
 \sigma_{r+i}(\mathbf{A})\,.$$
 No gap is assumed: under ties $\mathbf{A}\mathbf{W}\mathbf{W}^{\mathsf{H}}$ need not be the chosen
-truncated SVD, but the deflated matrix has the same singular values. -/
+truncated SVD, but the deflated matrix has the same singular values.
+No printed source.
+Result: eigenframe-deflation-singular-values -/
 theorem HasOrthonormalCols.singularValues_sub_mul_mul_conjTranspose {r : ℕ} {A : Matrix m n 𝕜}
     {W : Matrix n (Fin r) 𝕜} (hW : HasOrthonormalCols W)
     (hAW : Aᴴ * A * W =
@@ -91,10 +93,12 @@ theorem HasOrthonormalCols.singularValues_sub_mul_mul_conjTranspose {r : ℕ} {A
   · rw [singularValues_of_card_cols_le _ hi,
       singularValues_of_card_cols_le _ (hi.trans (Nat.le_add_left _ r))]
 
-/-- The spectral norm of a deflation by top right singular vectors: for an orthonormal frame
+/-- **The spectral norm of a deflation by top right singular vectors**: for an orthonormal frame
 $\mathbf{W} \in \Bbbk^{n \times r}$ with $\mathbf{A}^{\mathsf{H}}\mathbf{A}\mathbf{W} =
 \mathbf{W}\operatorname{diag}(\sigma_0(\mathbf{A})^2, \dots, \sigma_{r-1}(\mathbf{A})^2)$,
-$$\|\mathbf{A} - \mathbf{A}\mathbf{W}\mathbf{W}^{\mathsf{H}}\|_2 = \sigma_r(\mathbf{A})\,.$$ -/
+$$\|\mathbf{A} - \mathbf{A}\mathbf{W}\mathbf{W}^{\mathsf{H}}\|_2 = \sigma_r(\mathbf{A})\,.$$
+No printed source.
+Result: eigenframe-deflation-singular-values -/
 theorem HasOrthonormalCols.specNorm_sub_mul_mul_conjTranspose {r : ℕ} {A : Matrix m n 𝕜}
     {W : Matrix n (Fin r) 𝕜} (hW : HasOrthonormalCols W)
     (hAW : Aᴴ * A * W =
@@ -103,13 +107,15 @@ theorem HasOrthonormalCols.specNorm_sub_mul_mul_conjTranspose {r : ℕ} {A : Mat
   rw [← singularValues_zero_eq_specNorm, hW.singularValues_sub_mul_mul_conjTranspose hAW,
     add_zero]
 
-/-- The Frobenius norm of a deflation by top right singular vectors: for an orthonormal frame
+/-- **The Frobenius norm of a deflation by top right singular vectors**: for an orthonormal frame
 $\mathbf{W} \in \Bbbk^{n \times r}$ with $\mathbf{A}^{\mathsf{H}}\mathbf{A}\mathbf{W} =
 \mathbf{W}\operatorname{diag}(\sigma_0(\mathbf{A})^2, \dots, \sigma_{r-1}(\mathbf{A})^2)$,
 $$\|\mathbf{A} - \mathbf{A}\mathbf{W}\mathbf{W}^{\mathsf{H}}\|_{\mathsf{F}}^2 =
 \|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_r\|_{\mathsf{F}}^2\,,$$
 although $\mathbf{A}\mathbf{W}\mathbf{W}^{\mathsf{H}}$ need not be
-$\llbracket\mathbf{A}\rrbracket_r$ under ties. -/
+$\llbracket\mathbf{A}\rrbracket_r$ under ties.
+No printed source.
+Result: eigenframe-deflation-singular-values -/
 theorem HasOrthonormalCols.frobNorm_sub_mul_mul_conjTranspose_sq_eq_truncatedSVD {r : ℕ}
     {A : Matrix m n 𝕜} {W : Matrix n (Fin r) 𝕜} (hW : HasOrthonormalCols W)
     (hAW : Aᴴ * A * W =

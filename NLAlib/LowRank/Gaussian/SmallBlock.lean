@@ -673,8 +673,8 @@ private theorem measureReal_specNorm_sub_truncatedSVD_rbki_sq_gt_le_of_range_le 
 
 /-! ### One Gaussian start vector, gapped -/
 
-/-- The gapped tail bound for randomized block Krylov iteration from one start vector, spectral
-norm: for a real matrix $\mathbf{A}$ with singular values $\sigma_0 \ge \sigma_1 \ge \dots$, a
+/-- **The gapped tail bound for randomized block Krylov iteration from one start vector, spectral
+norm**: for a real matrix $\mathbf{A}$ with singular values $\sigma_0 \ge \sigma_1 \ge \dots$, a
 standard Gaussian vector $\mathbf{x}$ in $\mathbb{R}^n$ (independent standard normal entries), a
 head of $r = h + 1$ singular values, a tail index $t \ge r$, depth $q \ge t$, a gap $\Delta > 0$
 with $\sigma_{i+1}^2 \le (1 - \Delta)\sigma_i^2$ for every $i + 1 < t$, and $\delta > 0$, with
@@ -686,7 +686,12 @@ The start vector is the one-column block `Matrix.replicateCol Unit (x ω)`. The 
 vectors act as a block of $t$ columns and the Chebyshev filter has degree $q - t$. No positivity
 of $\sigma_{t-1}$ is assumed: when $\operatorname{rank}\mathbf{A} < t$ the gap hypothesis makes
 the positive singular values distinct and the error is zero almost surely. No gap between
-$\sigma_{t-1}$ and $\sigma_t$ is assumed. -/
+$\sigma_{t-1}$ and $\sigma_t$ is assumed.
+[MeyerMuscoMusco2023, Theorem 6], there for the projection onto the output basis with a factor
+$1 + \varepsilon$, as a number of iterations in $O(\cdot)$ form with unspecified constants, in
+the gap between two singular values and the smallest relative gap among the leading ones; here a
+tail bound with explicit constants.
+Result: rbki-single-vector-gapped-error -/
 theorem measureReal_specNorm_sub_rbki_sq_gt_le_of_hasLaw_gaussianVector (A : Matrix m n ℝ)
     (hx : HasLaw x (gaussianVector n) μ) {h r t q : ℕ} (hr : h + 1 = r) (hrt : r ≤ t)
     (hq : t ≤ q) {Δ δ : ℝ} (hΔ : 0 < Δ) (hδ : 0 < δ)
@@ -722,8 +727,8 @@ theorem measureReal_specNorm_sub_rbki_sq_gt_le_of_hasLaw_gaussianVector (A : Mat
     rw [Set.mem_ofPred_eq] at hω ⊢
     linarith
 
-/-- The gapped tail bound for randomized block Krylov iteration from one start vector, Frobenius
-norm: for a real matrix $\mathbf{A}$ with singular values $\sigma_0 \ge \sigma_1 \ge \dots$, a
+/-- **The gapped tail bound for randomized block Krylov iteration from one start vector, Frobenius
+norm**: for a real matrix $\mathbf{A}$ with singular values $\sigma_0 \ge \sigma_1 \ge \dots$, a
 standard Gaussian vector $\mathbf{x}$ in $\mathbb{R}^n$ (independent standard normal entries), a
 head of $r = h + 1$ singular values, a tail index $t \ge r$, depth $q \ge t$, a gap $\Delta > 0$
 with $\sigma_{i+1}^2 \le (1 - \Delta)\sigma_i^2$ for every $i + 1 < t$, and $\delta > 0$, with
@@ -734,7 +739,12 @@ $$\mathbb{P}\Bigl[\|\mathbf{A} - \mathsf{rbki}(\mathbf{A}, \mathbf{x}, q)\|_{\ma
 \|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_t\|_{\mathsf{F}}^2\Bigr] \le \delta\,.$$
 The start vector is the one-column block `Matrix.replicateCol Unit (x ω)`. No positivity of
 $\sigma_{t-1}$ is assumed: when $\operatorname{rank}\mathbf{A} < t$ the error is zero almost
-surely. -/
+surely.
+[MeyerMuscoMusco2023, Theorem 6], there for the projection onto the output basis with a factor
+$1 + \varepsilon$, as a number of iterations in $O(\cdot)$ form with unspecified constants, in
+the gap between two singular values and the smallest relative gap among the leading ones; here a
+tail bound with explicit constants.
+Result: rbki-single-vector-gapped-error -/
 theorem measureReal_frobNorm_sub_rbki_sq_gt_le_of_hasLaw_gaussianVector (A : Matrix m n ℝ)
     (hx : HasLaw x (gaussianVector n) μ) {h r t q : ℕ} (hr : h + 1 = r) (hrt : r ≤ t)
     (hq : t ≤ q) {Δ δ : ℝ} (hΔ : 0 < Δ) (hδ : 0 < δ)
@@ -770,8 +780,8 @@ theorem measureReal_frobNorm_sub_rbki_sq_gt_le_of_hasLaw_gaussianVector (A : Mat
     rw [Set.mem_ofPred_eq] at hω ⊢
     linarith
 
-/-- The gapped tail bound for truncated randomized block Krylov iteration from one start vector,
-spectral norm: for a real matrix $\mathbf{A}$ with singular values
+/-- **The gapped tail bound for truncated randomized block Krylov iteration from one start
+vector, spectral norm**: for a real matrix $\mathbf{A}$ with singular values
 $\sigma_0 \ge \sigma_1 \ge \dots$, a standard Gaussian vector $\mathbf{x}$ in $\mathbb{R}^n$
 (independent standard normal entries), a head of $r = h + 1$ singular values, a tail index
 $t \ge r$, depth $q \ge t$, a gap $\Delta > 0$ with
@@ -784,7 +794,12 @@ $$\mathbb{P}\Bigl[\|\mathbf{A} -
 \|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_t\|_{\mathsf{F}}^2\Bigr] \le \delta\,.$$
 The start vector is the one-column block `Matrix.replicateCol Unit (x ω)`. No positivity of
 $\sigma_{t-1}$ is assumed: when $\operatorname{rank}\mathbf{A} < t$ the output is $\mathbf{A}$
-almost surely. -/
+almost surely.
+[MeyerMuscoMusco2023, Theorem 6], there for the projection onto the output basis with a factor
+$1 + \varepsilon$, as a number of iterations in $O(\cdot)$ form with unspecified constants, in
+the gap between two singular values and the smallest relative gap among the leading ones; here a
+tail bound with explicit constants.
+Result: rbki-single-vector-gapped-error -/
 theorem measureReal_specNorm_sub_truncatedSVD_rbki_sq_gt_le_of_hasLaw_gaussianVector
     (A : Matrix m n ℝ) (hx : HasLaw x (gaussianVector n) μ) {h r t q : ℕ} (hr : h + 1 = r)
     (hrt : r ≤ t) (hq : t ≤ q) {Δ δ : ℝ} (hΔ : 0 < Δ) (hδ : 0 < δ)
@@ -796,8 +811,8 @@ theorem measureReal_specNorm_sub_truncatedSVD_rbki_sq_gt_le_of_hasLaw_gaussianVe
   exact measureReal_specNorm_sub_truncatedSVD_rbki_sq_gt_le_of_range_le A hx (fun _ => le_rfl) hr
     hrt hq hΔ hδ hgap
 
-/-- The expectation of the error of randomized block Krylov iteration from one start vector on
-the head event: for a real matrix $\mathbf{A}$ with singular values
+/-- **The expectation of the error of randomized block Krylov iteration from one start vector
+on the head event**: for a real matrix $\mathbf{A}$ with singular values
 $\sigma_0 \ge \sigma_1 \ge \dots$, a standard Gaussian vector $\mathbf{x}$ in $\mathbb{R}^n$
 (independent standard normal entries), an orthonormal frame $\mathbf{Z}$ of $t$ columns with
 $\mathbf{A}^{\mathsf{H}}\mathbf{A}\mathbf{Z} =
@@ -814,7 +829,11 @@ The complement of $E$ has probability at most $\delta$
 (`NLAlib.measureReal_exists_abs_conjTranspose_mulVec_le_le_of_hasLaw_gaussianVector` at
 $a = \delta/t$). On $E$ the sum $\sum_i (\mathbf{Z}^{\mathsf{H}}\mathbf{x})_i^{-2}$ is at most
 $t^3/\delta^2$, and the tail energy is integrated over the whole space, so the independence of
-the head and tail coordinates is not used. -/
+the head and tail coordinates is not used.
+[MeyerMuscoMusco2023, Theorem 6], there in probability, as a number of iterations in $O(\cdot)$
+form with unspecified constants; here the expectation restricted to the event $E$, with explicit
+constants.
+Result: rbki-single-vector-gapped-error -/
 theorem setIntegral_specNorm_sub_rbki_sq_le_of_hasLaw_gaussianVector (A : Matrix m n ℝ)
     (hx : HasLaw x (gaussianVector n) μ) {h r t q : ℕ} {Z : Matrix n (Fin t) ℝ}
     (hZ : HasOrthonormalCols Z)
@@ -943,8 +962,8 @@ private theorem measureReal_gt_one_add_sq_mul_le_of_gapped [IsProbabilityMeasure
     rw [Set.mem_ofPred_eq]
     linarith
 
-/-- The gapless tail bound for truncated randomized block Krylov iteration from one start vector,
-$(1 + \varepsilon)$ form: for a real matrix $\mathbf{A}$ with singular values
+/-- **The gapless tail bound for truncated randomized block Krylov iteration from one start
+vector, $(1 + \varepsilon)$ form**: for a real matrix $\mathbf{A}$ with singular values
 $\sigma_0 \ge \sigma_1 \ge \dots$, a standard Gaussian vector $\mathbf{x}$ in $\mathbb{R}^n$
 (independent standard normal entries), a target rank $r$, depth $q \ge r$, a gap $\Delta > 0$
 with $\sigma_{i+1}^2 \le (1 - \Delta)\sigma_i^2$ for every $i + 1 < r$, $\delta > 0$ and
@@ -956,7 +975,12 @@ $$\mathbb{P}\Bigl[\|\mathbf{A} -
 \|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_r\|_{\mathsf{F}}^2\Bigr] \le \delta\,.$$
 The start vector is the one-column block `Matrix.replicateCol Unit (x ω)`. No gap between
 $\sigma_{r-1}$ and $\sigma_r$ is assumed; the gap $\Delta$ among the top $r$ singular values is
-the price of the single start vector. -/
+the price of the single start vector.
+[MeyerMuscoMusco2023, Theorem 1], there as a number of iterations in $O(\cdot)$ form with
+unspecified constants, for a factor $1 + \varepsilon$ on the optimal error in the spectral or the
+Frobenius norm; here a tail bound in the spectral norm with explicit constants and an additive
+Frobenius term.
+Result: rbki-single-vector-gapless-error -/
 theorem measureReal_specNorm_sub_truncatedSVD_rbki_sq_gt_one_add_sq_mul_le_of_hasLaw_gaussianVector
     (A : Matrix m n ℝ) (hx : HasLaw x (gaussianVector n) μ) {r q : ℕ} (hq : r ≤ q)
     {Δ δ ε : ℝ} (hΔ : 0 < Δ) (hδ : 0 < δ) (hε : 0 < ε)
@@ -984,8 +1008,8 @@ private theorem range_replicateCol_col_le (X : Matrix n l ℝ) (j : l) :
   ext i u
   simp [Matrix.mul_apply, Pi.single_apply]
 
-/-- The gapped tail bound for randomized block Krylov iteration with a block of any size,
-spectral norm: for a real matrix $\mathbf{A}$ with singular values
+/-- **The gapped tail bound for randomized block Krylov iteration with a block of any size,
+spectral norm**: for a real matrix $\mathbf{A}$ with singular values
 $\sigma_0 \ge \sigma_1 \ge \dots$, a standard Gaussian $n \times \ell$ test matrix $\mathbf{X}$
 (independent standard normal entries) with $\ell \ge 1$ columns, a head of $r = h + 1$ singular
 values, a tail index $t \ge r$, depth $q \ge t$, a gap $\Delta > 0$ with
@@ -998,7 +1022,11 @@ The index type of the columns is assumed nonempty. The block does at least as we
 column at the same depth, so the bound does not improve with $\ell$; for $t + 2 \le \ell$ the
 bound in expectation
 `NLAlib.integral_specNorm_sub_rbki_sq_le_singularGapRatio_of_hasLaw_gaussianMatrix` needs no gap
-$\Delta$. -/
+$\Delta$.
+[MeyerMuscoMusco2023, Theorem 6], there for one start vector, as a number of iterations in
+$O(\cdot)$ form with unspecified constants; here a tail bound with explicit constants for a block
+of any size, which does not use the block size.
+Result: rbki-any-block-gapped-error -/
 theorem measureReal_specNorm_sub_rbki_sq_gt_le_of_hasLaw_gaussianMatrix [Nonempty l]
     (A : Matrix m n ℝ) (hX : HasLaw X (gaussianMatrix n l) μ) {h r t q : ℕ} (hr : h + 1 = r)
     (hrt : r ≤ t) (hq : t ≤ q) {Δ δ : ℝ} (hΔ : 0 < Δ) (hδ : 0 < δ)
@@ -1016,8 +1044,8 @@ theorem measureReal_specNorm_sub_rbki_sq_gt_le_of_hasLaw_gaussianMatrix [Nonempt
   rw [singularValues_zero_eq_specNorm, singularValues_zero_eq_specNorm] at h1
   exact lt_of_lt_of_le hω (pow_le_pow_left₀ (specNorm_nonneg _) h1 2)
 
-/-- The gapped tail bound for randomized block Krylov iteration with a block of any size,
-Frobenius norm: for a real matrix $\mathbf{A}$ with singular values
+/-- **The gapped tail bound for randomized block Krylov iteration with a block of any size,
+Frobenius norm**: for a real matrix $\mathbf{A}$ with singular values
 $\sigma_0 \ge \sigma_1 \ge \dots$, a standard Gaussian $n \times \ell$ test matrix $\mathbf{X}$
 (independent standard normal entries) with $\ell \ge 1$ columns, a head of $r = h + 1$ singular
 values, a tail index $t \ge r$, depth $q \ge t$, a gap $\Delta > 0$ with
@@ -1028,7 +1056,11 @@ $$\mathbb{P}\Bigl[\|\mathbf{A} - \mathsf{rbki}(\mathbf{A}, \mathbf{X}, q)\|_{\ma
 32e^{-8(q-t)\sqrt{\gamma}}\,\Delta^{-2(t-1)}\,\frac{t^3}{\delta^3}\,
 \|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_t\|_{\mathsf{F}}^2\Bigr] \le \delta\,.$$
 The index type of the columns is assumed nonempty. The block does at least as well as its first
-column at the same depth. -/
+column at the same depth.
+[MeyerMuscoMusco2023, Theorem 6], there for one start vector, as a number of iterations in
+$O(\cdot)$ form with unspecified constants; here a tail bound with explicit constants for a block
+of any size, which does not use the block size.
+Result: rbki-any-block-gapped-error -/
 theorem measureReal_frobNorm_sub_rbki_sq_gt_le_of_hasLaw_gaussianMatrix [Nonempty l]
     (A : Matrix m n ℝ) (hX : HasLaw X (gaussianMatrix n l) μ) {h r t q : ℕ} (hr : h + 1 = r)
     (hrt : r ≤ t) (hq : t ≤ q) {Δ δ : ℝ} (hΔ : 0 < Δ) (hδ : 0 < δ)
@@ -1047,8 +1079,8 @@ theorem measureReal_frobNorm_sub_rbki_sq_gt_le_of_hasLaw_gaussianMatrix [Nonempt
   rw [lpGauge_two_matrixNorm, lpGauge_two_matrixNorm] at h1
   exact lt_of_lt_of_le hω (pow_le_pow_left₀ (frobNorm_nonneg _) h1 2)
 
-/-- The gapped tail bound for truncated randomized block Krylov iteration with a block of any
-size, spectral norm: for a real matrix $\mathbf{A}$ with singular values
+/-- **The gapped tail bound for truncated randomized block Krylov iteration with a block of any
+size, spectral norm**: for a real matrix $\mathbf{A}$ with singular values
 $\sigma_0 \ge \sigma_1 \ge \dots$, a standard Gaussian $n \times \ell$ test matrix $\mathbf{X}$
 (independent standard normal entries) with $\ell \ge 1$ columns, a head of $r = h + 1$ singular
 values, a tail index $t \ge r$, depth $q \ge t$, a gap $\Delta > 0$ with
@@ -1060,7 +1092,11 @@ $$\mathbb{P}\Bigl[\|\mathbf{A} -
 \|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_t\|_{\mathsf{F}}^2\Bigr] \le \delta\,.$$
 The index type of the columns is assumed nonempty. The truncated error is not monotone in the
 block, so this is not a comparison of outputs: the bound for one column is proved through a
-quantity that is monotone in the range of the sketch. -/
+quantity that is monotone in the range of the sketch.
+[MeyerMuscoMusco2023, Theorem 6], there for one start vector, as a number of iterations in
+$O(\cdot)$ form with unspecified constants; here a tail bound with explicit constants for a block
+of any size, which does not use the block size.
+Result: rbki-any-block-gapped-error -/
 theorem measureReal_specNorm_sub_truncatedSVD_rbki_sq_gt_le_of_hasLaw_gaussianMatrix
     [Nonempty l] (A : Matrix m n ℝ) (hX : HasLaw X (gaussianMatrix n l) μ) {h r t q : ℕ}
     (hr : h + 1 = r) (hrt : r ≤ t) (hq : t ≤ q) {Δ δ : ℝ} (hΔ : 0 < Δ) (hδ : 0 < δ)
@@ -1074,8 +1110,8 @@ theorem measureReal_specNorm_sub_truncatedSVD_rbki_sq_gt_le_of_hasLaw_gaussianMa
     (hasLaw_col_of_hasLaw_gaussianMatrix hX j) (fun ω => range_replicateCol_col_le (X ω) j) hr
     hrt hq hΔ hδ hgap
 
-/-- The gapless tail bound for truncated randomized block Krylov iteration with a block of any
-size, $(1 + \varepsilon)$ form: for a real matrix $\mathbf{A}$ with singular values
+/-- **The gapless tail bound for truncated randomized block Krylov iteration with a block of any
+size, $(1 + \varepsilon)$ form**: for a real matrix $\mathbf{A}$ with singular values
 $\sigma_0 \ge \sigma_1 \ge \dots$, a standard Gaussian $n \times \ell$ test matrix $\mathbf{X}$
 (independent standard normal entries) with $\ell \ge 1$ columns, a target rank $r$, depth
 $q \ge r$, a gap $\Delta > 0$ with $\sigma_{i+1}^2 \le (1 - \Delta)\sigma_i^2$ for every
@@ -1087,7 +1123,12 @@ $$\mathbb{P}\Bigl[\|\mathbf{A} -
 \|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_r\|_{\mathsf{F}}^2\Bigr] \le \delta\,.$$
 The index type of the columns is assumed nonempty. For $r + 2 \le \ell$ the bound in expectation
 `NLAlib.integral_specNorm_sub_truncatedSVD_rbki_sq_le_one_add_sq_mul_of_hasLaw_gaussianMatrix`
-needs no gap $\Delta$. -/
+needs no gap $\Delta$.
+[MeyerMuscoMusco2023, Theorem 1], there for one start vector, as a number of iterations in
+$O(\cdot)$ form with unspecified constants; here a tail bound with explicit constants for a block
+of any size under the gap hypothesis of one vector, which does not use the block size, unlike
+[MeyerMuscoMusco2023, Theorem 11].
+Result: rbki-any-block-gapless-error -/
 theorem measureReal_specNorm_sub_truncatedSVD_rbki_sq_gt_one_add_sq_mul_le_of_hasLaw_gaussianMatrix
     [Nonempty l] (A : Matrix m n ℝ) (hX : HasLaw X (gaussianMatrix n l) μ) {r q : ℕ}
     (hq : r ≤ q) {Δ δ ε : ℝ} (hΔ : 0 < Δ) (hδ : 0 < δ) (hε : 0 < ε)

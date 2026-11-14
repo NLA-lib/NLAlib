@@ -450,7 +450,9 @@ $$\mathcal{K}_{q+1}(\mathbf{A}, \mathbf{K}_{s+1}(\mathbf{A}, \mathbf{B})) =
 for every $s, q \ge 0$: a block method with block $\mathbf{B}$ and depth $s + q + 1$ is the
 same method with the simulated block $\mathbf{K}_{s+1}(\mathbf{A}, \mathbf{B})$ and depth
 $q + 1$. With no block on either side the identity fails ($\mathcal{K}_{q}(\mathbf{A},
-\mathbf{K}_0) = \{\mathbf{0}\}$). -/
+\mathbf{K}_0) = \{\mathbf{0}\}$).
+[ChenEpperlyMeyerMuscoRao2025, Observation 3.3]; [MeyerMuscoMusco2023, §3.1], there for one
+start vector and a positive semidefinite matrix. -/
 theorem blockKrylovSpace_blockKrylovMatrix {𝕜 : Type*} [RCLike 𝕜] {n p : Type*} [Fintype n]
     [DecidableEq n] [Fintype p] (A : Matrix n n 𝕜) (B : Matrix n p 𝕜) (s q : ℕ) :
     blockKrylovSpace A (blockKrylovMatrix A B (s + 1)) (q + 1) =

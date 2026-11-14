@@ -88,7 +88,8 @@ def cgs2Extend (τ : ℚ) : Stmt Op Tst := ops% [n, k, b] (Q, W) → (Qn, W, C) 
 
 /-- The implementation of `NLAlib.Ops.OrthOp.extend` by column-wise two-pass classical
 Gram–Schmidt with the deflation threshold `τ`: three dimensions `[n, k, b]`, the two inputs
-`Q`, `W` and the three outputs `Qn`, `W`, `C`. -/
+`Q`, `W` and the three outputs `Qn`, `W`, `C`.
+Algorithm: cgs2-basis-extension -/
 def cgs2ExtendImpl (τ : ℚ) : Impl Op Tst := ⟨3, 2, 3, cgs2Extend τ⟩
 
 /-- The operations of column `c` of a block extension at the dimensions `[n, k, b]`: two norms,

@@ -83,7 +83,7 @@ theorem norm_toLp_mulVec_of_conjTranspose_mul_self_mulVec_eq_smul (A : Matrix m 
     smul_eq_mul, ← RCLike.ofReal_mul, RCLike.ofReal_inj, ← mul_pow] at h
   exact (sq_eq_sq₀ (by positivity) (by positivity)).1 h.symm
 
-/-- Necessity of a gap for block Krylov iteration, every singular value: for a matrix
+/-- **Necessity of a gap for block Krylov iteration, every singular value**: for a matrix
 $\mathbf{A}$ over $\Bbbk$ with singular values $\sigma_0 \ge \sigma_1 \ge \dots$, any block
 $\mathbf{\Omega}$ with $b$ columns, and indices $i$, $k$ with $\sigma_i = \sigma_{i+b+k}$, for
 every depth $q$,
@@ -93,7 +93,9 @@ The block is arbitrary (no law, no rank condition) and $\sigma_i = 0$ is allowed
 is trivial. The eigenspace of $\mathbf{A}^{\mathsf{H}}\mathbf{A}$ for $\sigma_i^2 > 0$ has
 dimension at least $b + k + 1$ and meets the orthogonal complement of the block Krylov space in
 dimension at least $k + 1$; there $\mathbf{A} - \mathsf{rbki}(\mathbf{A}, \mathbf{\Omega}, q)$
-acts as $\mathbf{A}$, which scales norms by $\sigma_i$. -/
+acts as $\mathbf{A}$, which scales norms by $\sigma_i$.
+No printed source.
+Result: rbki-multiplicity-lower-bound -/
 theorem singularValues_le_singularValues_sub_rbki_of_singularValues_eq (A : Matrix m n 𝕜)
     (Ω : Matrix n l 𝕜) (q : ℕ) {i k : ℕ}
     (h : singularValues A i = singularValues A (i + Fintype.card l + k)) :
@@ -142,13 +144,15 @@ theorem singularValues_le_singularValues_sub_rbki_of_singularValues_eq (A : Matr
     rw [Matrix.mulVecLin_apply, sub_rbki_mulVec_of_mulVec_eq_smul A Ω q hw hy',
       norm_toLp_mulVec_of_conjTranspose_mul_self_mulVec_eq_smul A hpos.le hw]
 
-/-- Necessity of a gap for block Krylov iteration, spectral norm: for a matrix $\mathbf{A}$ over
+/-- **Necessity of a gap for block Krylov iteration, spectral norm**: for a matrix $\mathbf{A}$ over
 $\Bbbk$ with singular values $\sigma_0 \ge \sigma_1 \ge \dots$, any block $\mathbf{\Omega}$ with
 $b$ columns, and an index $i$ with $\sigma_i = \sigma_{i+b}$ (the singular value $\sigma_i$ has
 multiplicity above the block size), for every depth $q$,
 $$\sigma_i(\mathbf{A}) \le \|\mathbf{A} - \mathsf{rbki}(\mathbf{A}, \mathbf{\Omega}, q)\|_2\,.$$
 When $\sigma_i > \sigma_r$ the error stays above the optimal rank-$r$ error $\sigma_r$ at every
-depth. -/
+depth.
+No printed source.
+Result: rbki-multiplicity-lower-bound -/
 theorem singularValues_le_specNorm_sub_rbki_of_singularValues_eq (A : Matrix m n 𝕜)
     (Ω : Matrix n l 𝕜) (q : ℕ) {i : ℕ}
     (h : singularValues A i = singularValues A (i + Fintype.card l)) :

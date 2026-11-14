@@ -105,7 +105,9 @@ $\widehat{\mathbf{A}} = \mathbf{U}\mathbf{S}^{\mathsf{H}}\mathbf{V}^{\mathsf{H}}
 $$\|\mathbf{A} - \widehat{\mathbf{A}}\|_2^2 \le \sigma_r^2 +
 32e^{-8(q-t)\sqrt{\gamma}}\,\Delta^{-2(t-1)}\,\frac{t^3}{\delta^3}\,
 \|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_t\|_{\mathsf{F}}^2\,.$$
-No success of the execution is assumed. -/
+No success of the execution is assumed.
+[MeyerMuscoMusco2023, Theorem 6], there for one start vector, as a number of iterations in
+$O(\cdot)$ form with unspecified constants. -/
 theorem measureReal_not_accepts_le_of_hasLaw_gaussianMatrix (alg : Algorithm L S) (stream : ℕ)
     (hgood : ∀ d (x : problem.Input d) τ c μ, S.good d x τ c μ → Good stream d (matrix x) τ μ)
     {d : Fin 4 → ℕ} (hb : 0 < d 2) (input : problem.Input d) (I : Interp Lo CmpTst ℝ)
@@ -196,7 +198,8 @@ $\widehat{\mathbf{A}} = \mathbf{U}\mathbf{S}^{\mathsf{H}}\mathbf{V}^{\mathsf{H}}
 the tape of $\mathbf{X}$ satisfies
 $$\mathbb{E}\|\mathbf{A} - \widehat{\mathbf{A}}\|_2^2 \le \sigma_r^2 +
 4e^{-8(q-1)\sqrt{\gamma}}\,\frac{t}{b - t - 1}\,
-\|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_t\|_{\mathsf{F}}^2\,.$$ -/
+\|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_t\|_{\mathsf{F}}^2\,.$$
+[TroppWebber2023, Theorem 9.2 (RBKI)], there with $m = 2q$ products. -/
 theorem integral_specNorm_sub_storedOutput_sq_le_singularGapRatio_of_hasLaw_gaussianMatrix
     (alg : Algorithm L S) (stream : ℕ)
     (hgood : ∀ d (x : problem.Input d) τ c μ, S.good d x τ c μ → Good stream d (matrix x) τ μ)

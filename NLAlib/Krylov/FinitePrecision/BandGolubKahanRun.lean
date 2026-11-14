@@ -167,24 +167,31 @@ private theorem exists_norm_mul_conjTranspose_sub_rangeProjector_eq (Q : Matrix 
   · rw [hM]
     exact frobNorm_eq_of_conjTranspose_mul_self_eq hg
 
-/-- For every matrix $\mathbf{Q}$, with zero columns allowed, $\mathbf{Q}\mathbf{Q}^{\mathsf{H}}$
-differs from the orthogonal projector $\mathbf{P}_{\mathbf{Q}}$ onto the column space of
-$\mathbf{Q}$ by at most the Gram defect on the support $\mathbf{D} =
-\mathbf{Q}^{\mathsf{H}}\mathbf{Q} - \operatorname{diag}(\mathbf{s})$ ($s_j = 0$ at a zero column,
-$s_j = 1$ otherwise): $\|\mathbf{Q}\mathbf{Q}^{\mathsf{H}} - \mathbf{P}_{\mathbf{Q}}\|_2 \le
-\|\mathbf{D}\|_2$. -/
+/-- **The Gram defect on the support bounds the distance to the range projector, spectral
+norm**: for every matrix $\mathbf{Q}$, with zero columns allowed,
+$\mathbf{Q}\mathbf{Q}^{\mathsf{H}}$ differs from the orthogonal projector
+$\mathbf{P}_{\mathbf{Q}}$ onto the column space of $\mathbf{Q}$ by at most the Gram defect on
+the support $\mathbf{D} = \mathbf{Q}^{\mathsf{H}}\mathbf{Q} - \operatorname{diag}(\mathbf{s})$
+($s_j = 0$ at a zero column, $s_j = 1$ otherwise),
+$$\|\mathbf{Q}\mathbf{Q}^{\mathsf{H}} - \mathbf{P}_{\mathbf{Q}}\|_2 \le \|\mathbf{D}\|_2\,.$$
+No printed source.
+Result: gram-defect-projector-distance -/
 theorem specNorm_mul_conjTranspose_sub_rangeProjector_le_gramDefect (Q : Matrix m ι 𝕜) :
     specNorm (Q * Qᴴ - rangeProjector Q) ≤ specNorm (gramDefect Q) := by
   obtain ⟨C, hC, hs, -⟩ := exists_norm_mul_conjTranspose_sub_rangeProjector_eq Q
   rw [hs]
   exact (specNorm_mul_le _ _).trans (mul_le_of_le_one_right (specNorm_nonneg _) hC)
 
-/-- For every matrix $\mathbf{Q}$, with zero columns allowed, $\mathbf{Q}\mathbf{Q}^{\mathsf{H}}$
-differs from the orthogonal projector $\mathbf{P}_{\mathbf{Q}}$ onto the column space of
-$\mathbf{Q}$ by at most the Gram defect on the support $\mathbf{D} =
-\mathbf{Q}^{\mathsf{H}}\mathbf{Q} - \operatorname{diag}(\mathbf{s})$ ($s_j = 0$ at a zero column,
-$s_j = 1$ otherwise), in the Frobenius norm: $\|\mathbf{Q}\mathbf{Q}^{\mathsf{H}} -
-\mathbf{P}_{\mathbf{Q}}\|_{\mathsf{F}} \le \|\mathbf{D}\|_{\mathsf{F}}$. -/
+/-- **The Gram defect on the support bounds the distance to the range projector, Frobenius
+norm**: for every matrix $\mathbf{Q}$, with zero columns allowed,
+$\mathbf{Q}\mathbf{Q}^{\mathsf{H}}$ differs from the orthogonal projector
+$\mathbf{P}_{\mathbf{Q}}$ onto the column space of $\mathbf{Q}$ by at most the Gram defect on
+the support $\mathbf{D} = \mathbf{Q}^{\mathsf{H}}\mathbf{Q} - \operatorname{diag}(\mathbf{s})$
+($s_j = 0$ at a zero column, $s_j = 1$ otherwise),
+$$\|\mathbf{Q}\mathbf{Q}^{\mathsf{H}} - \mathbf{P}_{\mathbf{Q}}\|_{\mathsf{F}} \le
+\|\mathbf{D}\|_{\mathsf{F}}\,.$$
+No printed source.
+Result: gram-defect-projector-distance -/
 theorem frobNorm_mul_conjTranspose_sub_rangeProjector_le_gramDefect (Q : Matrix m ι 𝕜) :
     frobNorm (Q * Qᴴ - rangeProjector Q) ≤ frobNorm (gramDefect Q) := by
   obtain ⟨C, hC, -, hf⟩ := exists_norm_mul_conjTranspose_sub_rangeProjector_eq Q
@@ -486,12 +493,15 @@ namespace IsBlockGolubKahanErr
 
 /-! ### Orthogonality on the support -/
 
-/-- Orthogonality of the computed left basis on its nonzero columns. Let $\mathbf{U}$
+/-- **Orthogonality of the computed left basis on its nonzero columns.** Let $\mathbf{U}$
 ($qb$ columns) be the left basis of a rounded run of block Golub–Kahan bidiagonalization with
 scheme parameters $(\eta_0, \mu, \varepsilon)$, and let $\mathbf{D} =
 \mathbf{U}^{\mathsf{T}}\mathbf{U} - \operatorname{diag}(\mathbf{s})$ be its Gram defect on the
 support ($s_c = 0$ at a zero column, $s_c = 1$ otherwise). If $\mu \ge 0$ and
-$\sqrt{3qb}\,\mu \le \eta_0$ then $\|\mathbf{D}\|_{\mathsf{F}} \le \sqrt{3qb}\,\mu$. -/
+$\sqrt{3qb}\,\mu \le \eta_0$ then
+$$\|\mathbf{D}\|_{\mathsf{F}} \le \sqrt{3qb}\,\mu\,.$$
+No printed source.
+Result: block-golub-kahan-orthogonality -/
 theorem frobNorm_gramDefect_left_le (h : IsBlockGolubKahanErr η₀ μ ε εmv A Ω q U V R₀ R S)
     (hμ : 0 ≤ μ) (hw : Real.sqrt (3 * q * b) * μ ≤ η₀) :
     frobNorm (gramDefect U) ≤ Real.sqrt (3 * q * b) * μ := by
@@ -501,12 +511,15 @@ theorem frobNorm_gramDefect_left_le (h : IsBlockGolubKahanErr η₀ μ ε εmv A
     hμ hw (fun j hj => by simp only [dif_pos hj]; exact hE j hj) (le_refl q)
   rwa [blockPrefix_self] at h0
 
-/-- Orthogonality of the computed right basis on its nonzero columns. Let $\mathbf{V}$
+/-- **Orthogonality of the computed right basis on its nonzero columns.** Let $\mathbf{V}$
 ($(q+1)b$ columns) be the right basis of a rounded run of block Golub–Kahan bidiagonalization
 with scheme parameters $(\eta_0, \mu, \varepsilon)$, and let $\mathbf{D} =
 \mathbf{V}^{\mathsf{T}}\mathbf{V} - \operatorname{diag}(\mathbf{s})$ be its Gram defect on the
 support ($s_c = 0$ at a zero column, $s_c = 1$ otherwise). If $\mu \ge 0$ and
-$\sqrt{3(q+1)b}\,\mu \le \eta_0$ then $\|\mathbf{D}\|_{\mathsf{F}} \le \sqrt{3(q+1)b}\,\mu$. -/
+$\sqrt{3(q+1)b}\,\mu \le \eta_0$ then
+$$\|\mathbf{D}\|_{\mathsf{F}} \le \sqrt{3(q+1)b}\,\mu\,.$$
+No printed source.
+Result: block-golub-kahan-orthogonality -/
 theorem frobNorm_gramDefect_right_le (h : IsBlockGolubKahanErr η₀ μ ε εmv A Ω q U V R₀ R S)
     (hμ : 0 ≤ μ) (hw : Real.sqrt (3 * (q + 1 : ℕ) * b) * μ ≤ η₀) :
     frobNorm (gramDefect V) ≤ Real.sqrt (3 * (q + 1 : ℕ) * b) * μ := by
@@ -637,14 +650,16 @@ private theorem frobNorm_left_le (h : IsBlockGolubKahanErr η₀ μ ε εmv A Ω
 
 /-! ### The residual relations -/
 
-/-- The first residual relation of a rounded run of block Golub–Kahan bidiagonalization with
+/-- **The first residual relation of a rounded run of block Golub–Kahan bidiagonalization** with
 scheme parameters $(\eta_0, \mu, \varepsilon)$ and product parameter
 $\varepsilon_{\mathrm{mv}}$, $q$ steps and block width $b$. With $\mathbf{V}_{<q}$ the first $q$
 blocks of the right basis, $\mathbf{U}$ the left basis and $\mathbf{R}$ the stored coefficients:
 if $\mu, \varepsilon, \varepsilon_{\mathrm{mv}} \ge 0$ and $\sqrt{3(q+1)b}\,\mu \le \eta_0$ then
 $$\|\mathbf{A}\mathbf{V}_{<q} - \mathbf{U}\mathbf{R}\|_{\mathsf{F}} \le
 \bigl(\varepsilon_{\mathrm{mv}} + \varepsilon(1 + \varepsilon_{\mathrm{mv}})\bigr)
-\sqrt{qb(1 + \eta_0)}\,\|\mathbf{A}\|_2.$$ -/
+\sqrt{qb(1 + \eta_0)}\,\|\mathbf{A}\|_2.$$
+No printed source.
+Result: block-golub-kahan-residual -/
 theorem frobNorm_mul_blockPrefix_sub_mul_le
     (h : IsBlockGolubKahanErr η₀ μ ε εmv A Ω q U V R₀ R S) (hμ : 0 ≤ μ) (hε : 0 ≤ ε)
     (hmv : 0 ≤ εmv) (hw : Real.sqrt (3 * (q + 1 : ℕ) * b) * μ ≤ η₀) :
@@ -669,14 +684,16 @@ theorem frobNorm_mul_blockPrefix_sub_mul_le
         mul_le_mul_of_nonneg_left (h.frobNorm_blockPrefix_right_le hμ hw) hκ
     _ = (εmv + ε * (1 + εmv)) * Real.sqrt (q * b * (1 + η₀)) * specNorm A := by ring
 
-/-- The second residual relation of a rounded run of block Golub–Kahan bidiagonalization with
+/-- **The second residual relation of a rounded run of block Golub–Kahan bidiagonalization** with
 scheme parameters $(\eta_0, \mu, \varepsilon)$ and product parameter
 $\varepsilon_{\mathrm{mv}}$, $q$ steps and block width $b$. With $\mathbf{U}$ the left basis,
 $\mathbf{V}$ the right basis (all $q + 1$ blocks) and $\mathbf{S}$ the stored coefficients: if
 $\mu, \varepsilon, \varepsilon_{\mathrm{mv}} \ge 0$ and $\sqrt{3(q+1)b}\,\mu \le \eta_0$ then
 $$\|\mathbf{A}^{\mathsf{T}}\mathbf{U} - \mathbf{V}\mathbf{S}\|_{\mathsf{F}} \le
 \bigl(\varepsilon_{\mathrm{mv}} + \varepsilon(1 + \varepsilon_{\mathrm{mv}})\bigr)
-\sqrt{qb(1 + \eta_0)}\,\|\mathbf{A}\|_2.$$ -/
+\sqrt{qb(1 + \eta_0)}\,\|\mathbf{A}\|_2.$$
+No printed source.
+Result: block-golub-kahan-residual -/
 theorem frobNorm_transpose_mul_sub_mul_le
     (h : IsBlockGolubKahanErr η₀ μ ε εmv A Ω q U V R₀ R S) (hμ : 0 ≤ μ) (hε : 0 ≤ ε)
     (hmv : 0 ≤ εmv) (hw : Real.sqrt (3 * (q + 1 : ℕ) * b) * μ ≤ η₀) :
@@ -726,8 +743,8 @@ private theorem sub_mul_transpose_mul_transpose_eq (A : Matrix (Fin m) (Fin n) �
     Matrix.mul_sub, Matrix.sub_mul, Matrix.one_mul, Matrix.mul_assoc]
   abel
 
-/-- The forward bound for the factors returned by a rounded run of block Golub–Kahan
-bidiagonalization, in the spectral norm. Let $\mathbf{U}$, $\mathbf{V}$, $\mathbf{S}$ be the
+/-- **The forward bound for the factors returned by a rounded run of block Golub–Kahan
+bidiagonalization, in the spectral norm.** Let $\mathbf{U}$, $\mathbf{V}$, $\mathbf{S}$ be the
 stored bases and coefficients of a run of $q$ steps with block width $b$, scheme parameters
 $(\eta_0, \mu, \varepsilon)$ and product parameter $\varepsilon_{\mathrm{mv}}$, and
 $\mathbf{P}_{\mathbf{U}}$ the orthogonal projector onto the range of $\mathbf{U}$. If
@@ -737,7 +754,9 @@ $$\|\mathbf{A} - \mathbf{U}\mathbf{S}^{\mathsf{T}}\mathbf{V}^{\mathsf{T}}\|_2 \l
 \sqrt{1 + \eta_0}\,\bigl(\varepsilon_{\mathrm{mv}} + \varepsilon(1 + \varepsilon_{\mathrm{mv}})
 \bigr)\sqrt{qb(1 + \eta_0)}\Bigr)\|\mathbf{A}\|_2.$$
 The returned factors are as accurate as the projection of $\mathbf{A}$ onto the computed left
-range, up to the loss of orthogonality and the residual of the second relation. -/
+range, up to the loss of orthogonality and the residual of the second relation.
+No printed source.
+Result: block-golub-kahan-forward-error -/
 theorem specNorm_sub_mul_transpose_mul_transpose_le
     (h : IsBlockGolubKahanErr η₀ μ ε εmv A Ω q U V R₀ R S) (hμ : 0 ≤ μ) (hε : 0 ≤ ε)
     (hmv : 0 ≤ εmv) (hw : Real.sqrt (3 * (q + 1 : ℕ) * b) * μ ≤ η₀) :
@@ -767,8 +786,8 @@ theorem specNorm_sub_mul_transpose_mul_transpose_le
   exact ((specNorm_add_le _ _).trans (add_le_add ((specNorm_sub_le _ _).trans
     (add_le_add le_rfl h2)) h3)).trans_eq (by ring)
 
-/-- The forward bound for the factors returned by a rounded run of block Golub–Kahan
-bidiagonalization, in the Frobenius norm. Let $\mathbf{U}$, $\mathbf{V}$, $\mathbf{S}$ be the
+/-- **The forward bound for the factors returned by a rounded run of block Golub–Kahan
+bidiagonalization, in the Frobenius norm.** Let $\mathbf{U}$, $\mathbf{V}$, $\mathbf{S}$ be the
 stored bases and coefficients of a run of $q$ steps with block width $b$, scheme parameters
 $(\eta_0, \mu, \varepsilon)$ and product parameter $\varepsilon_{\mathrm{mv}}$, and
 $\mathbf{P}_{\mathbf{U}}$ the orthogonal projector onto the range of $\mathbf{U}$. If
@@ -776,7 +795,9 @@ $\mu, \varepsilon, \varepsilon_{\mathrm{mv}} \ge 0$ and $\sqrt{3(q+1)b}\,\mu \le
 $$\|\mathbf{A} - \mathbf{U}\mathbf{S}^{\mathsf{T}}\mathbf{V}^{\mathsf{T}}\|_{\mathsf{F}} \le
 \|(\mathbf{I} - \mathbf{P}_{\mathbf{U}})\mathbf{A}\|_{\mathsf{F}} + \Bigl(\sqrt{3qb}\,\mu +
 \sqrt{1 + \eta_0}\,\bigl(\varepsilon_{\mathrm{mv}} + \varepsilon(1 + \varepsilon_{\mathrm{mv}})
-\bigr)\sqrt{qb(1 + \eta_0)}\Bigr)\|\mathbf{A}\|_2.$$ -/
+\bigr)\sqrt{qb(1 + \eta_0)}\Bigr)\|\mathbf{A}\|_2.$$
+No printed source.
+Result: block-golub-kahan-forward-error -/
 theorem frobNorm_sub_mul_transpose_mul_transpose_le
     (h : IsBlockGolubKahanErr η₀ μ ε εmv A Ω q U V R₀ R S) (hμ : 0 ≤ μ) (hε : 0 ≤ ε)
     (hmv : 0 ≤ εmv) (hw : Real.sqrt (3 * (q + 1 : ℕ) * b) * μ ≤ η₀) :

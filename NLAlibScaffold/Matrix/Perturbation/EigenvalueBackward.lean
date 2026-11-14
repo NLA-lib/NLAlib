@@ -42,13 +42,39 @@ open scoped Matrix
 namespace NLAlib
 
 /-- **Forward eigenvalue error implies backward error**: if $\mathbf{d}$ lists the eigenvalues of
-$\mathbf{L}$ and $\lvert\mu_i - d_i\rvert \le \beta$ for every $i$, then $\mu$ lists the
-eigenvalues of some $\mathbf{L}'$ with $\|\mathbf{L}' - \mathbf{L}\|_2 \le \beta$.
-[HornJohnson2013, Theorem 2.3.1]; [BanksGarzaVargasSrivastava2022, proof of Theorem 6.3]. -/
+$\mathbf{L}$, $\beta \ge 0$ and $\lvert\mu_i - d_i\rvert \le \beta$ for every $i$, then $\mu$ lists
+the eigenvalues of some $\mathbf{L}'$ with $\|\mathbf{L}' - \mathbf{L}\|_2 \le \beta$.
+[HornJohnson2013, Theorem 2.3.1]; [BanksGarzaVargasSrivastava2022, proof of Theorem 6.3].
+
+Proof: Schur with the listing order, $\mathbf{U}^{\mathsf{H}}\mathbf{L}\mathbf{U}$ upper triangular
+with diagonal $\mathbf{d}$; take $\mathbf{L}' = \mathbf{L} +
+\mathbf{U}\operatorname{diag}(\mu - \mathbf{d})\mathbf{U}^{\mathsf{H}}$. The hypothesis
+$\beta \ge 0$ matters only for $m = 0$. -/
 theorem IsEigenvalueListing.exists_specNorm_sub_le {m : ℕ} {L : Matrix (Fin m) (Fin m) ℂ}
-    {d μ : Fin m → ℂ} {β : ℝ} (hd : IsEigenvalueListing L d) (hβ : ∀ i, ‖μ i - d i‖ ≤ β) :
+    {d μ : Fin m → ℂ} {β : ℝ} (hd : IsEigenvalueListing L d) (hβ0 : 0 ≤ β)
+    (hβ : ∀ i, ‖μ i - d i‖ ≤ β) :
     ∃ L' : Matrix (Fin m) (Fin m) ℂ, specNorm (L' - L) ≤ β ∧ IsEigenvalueListing L' μ := by
-  sorry
+  obtain ⟨U, hU, hT, hdiag⟩ := hd.exists_hasOrthonormalCols_isUpperTriangular
+  set D := Matrix.diagonal (μ - d)
+  have hUU : Uᴴ * U = 1 := hU.conjTranspose_mul_self
+  have hconj : Uᴴ * (L + U * D * Uᴴ) * U = Uᴴ * L * U + D := by
+    simp only [Matrix.mul_add, Matrix.add_mul, ← Matrix.mul_assoc, hUU, Matrix.one_mul]
+    rw [Matrix.mul_assoc _ Uᴴ U, hUU, Matrix.mul_one]
+  refine ⟨L + U * D * Uᴴ, ?_, ?_⟩
+  · rw [add_sub_cancel_left, hU.specNorm_mul_conjTranspose_right, hU.specNorm_mul_left]
+    exact specNorm_diagonal_le hβ0 hβ
+  · have hT' : (Uᴴ * (L + U * D * Uᴴ) * U).IsUpperTriangular := by
+      rw [hconj]
+      intro i j hij
+      have hij' : j < i := hij
+      simp only [Matrix.add_apply, hT hij, D, zero_add]
+      exact Matrix.diagonal_apply_ne _ (ne_of_gt hij')
+    have h := hU.isEigenvalueListing_of_isUpperTriangular_conjTranspose_mul_mul hT'
+    have hfun : (fun i => (Uᴴ * (L + U * D * Uᴴ) * U) i i) = μ := by
+      funext i
+      rw [hconj]
+      simp [D, hdiag i]
+    rwa [hfun] at h
 
 /-- **Eigenvalue separation after a perturbation** (Bauer–Fike with disjoint disks): for
 $\mathbf{A}\mathbf{V} = \mathbf{V}\mathbf{D}$, $\kappa(\mathbf{V}) \le B$, eigenvalues at mutual

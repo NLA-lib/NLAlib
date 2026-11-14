@@ -97,6 +97,9 @@ Statement changes made on the skeleton:
   $\|\mathbf{e}_n^{\mathsf T}(\mathbf{H} - s)^{-2}\| \le 36 < ((1-\gamma)\psi)^{-2}$. P9 supplies `hd`
   as it supplies S4's `hne` (same `ss`): the Ritz shifts are tried first, and an eigenvalue shift
   is accepted (exactly: `det_sub_smul_one_ne_zero_of_find_none`). `hkn`, `hγ`, `hε2` are unused.
+* **E1** gains `hβ0 : 0 ≤ β`. Without it false at $m = 0$: with $\beta = -1$ the forward
+  hypothesis is vacuous, but every $0\times0$ $\mathbf{L}'$ has $\|\mathbf{L}' - \mathbf{L}\|_2 = 0 > \beta$.
+  A skeleton gap, not a paper error; T1 supplies it (an error bound, $\beta \ge 0$). Proved.
 * **Q3** `hm`: $m^2 x \le 1/4 \to m x \le 1/4$ (sufficient and minimal; G16 row).
 * Labels: R1/R2 H → L (elementary proof); E2 L → H (needs Codex's matching).
 * **R4** lower bound $(1 + \eta)^{-1}\mathbf{R}_{nn} \le |\widehat{\mathbf{R}}_{nn}| \to
@@ -157,7 +160,7 @@ skeletonized with its program.
 | G5 | `Ops.StdModel.norm_rotatePair_sub_le` ($12\boldsymbol{u}$) | same | M | skel |
 | Q1 | `IsStableQRStep.isPerturbedUnitarySimilar` | Matrix/QRIteration/StableStep | S | skel |
 | Q2 | `IsStableQRChain.isPerturbedUnitarySimilar` (G16 corrected) | same | M | skel |
-| E1 | `IsEigenvalueListing.exists_specNorm_sub_le` (forward ⇒ backward, Schur) | Matrix/Perturbation/EigenvalueBackward | M | skel |
+| E1 | `IsEigenvalueListing.exists_specNorm_sub_le` (forward ⇒ backward, Schur; $\beta \ge 0$) | Matrix/Perturbation/EigenvalueBackward | M | skel |
 | C1, C2 | `IterationContract.backward`, `DecouplingContract.backward` (ν = 0 bridges) | Eigensolvers/ShiftedQR/Backward | S, S | skel |
 | C3 | `shiftedStep_isPerturbedUnitarySimilar` (rounded step, $50(n+1)\boldsymbol{u}\|\mathbf{H}\|$) | same | L | skel |
 | C4 | `solve_backward` (worklist with a backward decoupling implementation) | same | H | skel |

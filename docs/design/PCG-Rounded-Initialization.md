@@ -53,12 +53,12 @@ BLAS errors are retained separately. The target `step_spec` takes `IsScalar`, `S
 `IsBlas1`, system `IsMatvec`, and the local functional tagged preconditioner contract.
 `step_writes` exposes the resulting stored state; the existing AST gives the resource counts.
 
-A full `PCGRun` extraction must also identify a recomputed incoming dot with the preceding
-round's final dot. The fixed scalar BLAS backend supplies this functionality; generic
-relational rounded BLAS contracts alone do not. Final numerator nonnegativity must likewise
-be derived from suitable input/precision assumptions before claiming a run certificate.
-The active-step bridge deliberately asserts neither unproved fact. Existing decoded BLAS
-bounds and scalar standard laws are reused, as are shared block and allocation proof rules.
+Full `PCGRun` extraction identifies a recomputed incoming dot with the preceding round's
+final dot through the fixed scalar BLAS backend's functional contract. Generic relational
+rounded BLAS contracts alone do not supply that identity. The pairing evidence in
+`FinitePrecision/Pairing.lean` preserves this additional local fact through the existing
+step proof. Preconditioner spectral precision derives final pairing nonnegativity. Existing
+decoded BLAS bounds, scalar standard laws and shared block/allocation rules are reused.
 
 `HSPCG/FinitePrecision/Guards.lean` derives both local input margins from separate spectral
 windows and precision inequalities for the system and reference inverse preconditioner,
@@ -66,16 +66,17 @@ using the actual oracle identity and nonzero incoming residual/direction. It reu
 ordinary CG curvature-margin theorem, so the nonlinear oracle needs no new positivity axiom.
 These are local mathematical assumptions, not a complete full-loop nonbreakdown proof.
 
-The missing global result is propagation of a nonzero search direction from a nonzero
-residual throughout rounded PCG under raw-input spectral/precision assumptions. Existing
-`PCGRun` assumes positive pairings/curvatures and does not prove this continuation fact.
-Moreover, the existing fixed-horizon HSPCG tree has no residual-zero stopping guard; SPD
-alone cannot justify arbitrary horizons, even at zero rounding error. A full rounded solver
-certificate must use a stopping implementation and prove that continuation theorem, or prove
-a quantitative raw-input horizon condition. Assuming an admitted computed trajectory is not
-a substitute for either result.
+The global continuation result is `PCGRun.p_ne_zero_of_r_ne_zero_of_le_cap` in
+`Krylov/FinitePrecision/PCGContinuationPrecision.lean`. It derives a nonzero search direction
+from a nonzero residual using the actual matrices' positive spectral windows and explicit
+finite-cap precision bounds. The details and conservative geometric window are recorded in
+[the continuation design](PCG-Rounded-Continuation.md). No admitted computed trajectory is
+assumed. The existing fixed-horizon HSPCG tree itself has no residual-zero stopping guard;
+the rounded `FinitePrecision/Alg.lean` wrapper supplies a scoped computed-pairing cache and
+stops before the next division when that pairing is zero. The total loop and solver proofs
+connect every returned vector to the existing PCG run model.
 
-A one-step extraction does not require the missing continuation theorem.
+The one-step extraction remains useful independently of this continuation theorem.
 `Krylov/FinitePrecision/PCGRunConstruction.lean` supplies `PCGRun.ofOneStep`, a pure constructor
 from the zero-start oracle recurrence's local normwise defects, SPD reference preconditioner,
 Hermitian system, common error allowance, and nonnegative final pairing. A subsequent local
@@ -94,5 +95,7 @@ nonzero right-hand side and inverse-preconditioner spectral precision bound.
 `step_writes_pcgRun_one` composes this with the active-step execution proof and existing-run
 extraction: it consumes the actual initializer state and raw A/P spectral/precision inputs,
 then stores the terminal state of an existing one-step PCG run. It has no computed-trajectory,
-execution-success or final-sign assumption. This is a scoped first-step endpoint, not a
-canonical counted certificate for an arbitrary-cap PCG solver.
+execution-success or final-sign assumption. This scoped first-step endpoint is reused by
+`RunPrefix`; the complete stored scalar certificate lives in
+`FinitePrecision/StoredCertificate.lean`. Its count, work, span, scratch and resident-memory
+bounds are computed on the final tree after both raw matrix actions and BLAS are lowered.

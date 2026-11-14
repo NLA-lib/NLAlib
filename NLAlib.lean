@@ -12,6 +12,7 @@ public import NLAlib.Eigensolvers.ShiftedQR.Certification
 public import NLAlib.Eigensolvers.ShiftedQR.Coefficients
 public import NLAlib.Eigensolvers.ShiftedQR.CompleteSearch
 public import NLAlib.Eigensolvers.ShiftedQR.Constants
+public import NLAlib.Eigensolvers.ShiftedQR.Cost
 public import NLAlib.Eigensolvers.ShiftedQR.Decouple
 public import NLAlib.Eigensolvers.ShiftedQR.DecoupleConstants
 public import NLAlib.Eigensolvers.ShiftedQR.DecoupleLoop

@@ -103,6 +103,9 @@ The program proof also establishes the following bridges:
 `RapidDecouplingHyps.iteration_lt` says that an undecoupled state still leaves fuel.
 `DecoupleInv.decoupled_at_cap` therefore proves that the capped loop exits decoupled. The
 worklist's range invariant proves that its bounded traversal processes every range.
+The active-block norm bound lets the local rapid-decoupling proof use relative tolerance
+delta/2 against the global absolute threshold. This accounts for `log(2/delta)` in the
+full solver's fuel condition.
 
 ## File and dependency map
 
@@ -121,7 +124,7 @@ of the execution layer. Shared memory and scalar rules live in Ops; solver files
 | One strategy iteration | `Iteration*`, `PrepareIteration`, `Constants` | Concrete `iteration` and `iteration_contract` |
 | Decoupling and deflation | `Decouple*`, `Scan`, `BlockCopy`, `Worklist*`, `Range*`, `Deflation*`, `Output` | Capped progress, range ownership, complete solver and backward certificate |
 | Closed numerical certificates | `Exact`, `ForwardError` | `exactAlgorithm`, `exactForwardAlgorithm` |
-| Resources | `StepProgram`, `Workspace`, `SearchWorkspace`, canonical specification | Same-tree manifest and independent component scratch bounds |
+| Resources | `StepProgram`, `Workspace`, `SearchWorkspace`, `Cost`, canonical specification | Same-tree manifest, component scratch bounds and an explicit full-work majorant |
 
 Existing support changes belong in `Matrix/Norms/Frobenius` (norm bounds),
 `Matrix/Perturbation/Inverse` (small perturbations), `Matrix/Pseudoinverse/ConditionNumber`
@@ -189,8 +192,30 @@ allocation. Kernel work and workspace are charged explicitly. Resident capacity 
 Independent stored-scratch bounds are `2*N*N + 14` for one shifted step and `4*N*N + 14` for
 repeated/list shifts and streamed grid trials. These exclude caller-owned inputs/outputs and
 primitive-internal workspace. Complete program scratch includes every allocation and the
-chosen kernel workspace. A readable full-work bound must retain the scalar and control
-charges as well as spectral-kernel work; matrix-only projections describe a different scope.
+chosen kernel workspace. [Cost.lean](../../NLAlib/Eigensolvers/ShiftedQR/Cost.lean) exposes a full-work expression.
+Set `b = N+m+k+F+M+1`. Let K(L) be the finite maximum of both supplied spectral costs over
+all dimension lists of length at most two with entries at most L. The complete program has
+
+```text
+modeled work, sequential span <= 17109 * b^14 * (1 + K(b^5)).
+```
+
+The coefficient 17109, work degree 14, call-dimension degree 5 and maximum call arity 2 come
+from the fixed instrumented tree. The generic analysis preserves separate index-slot bounds;
+sequential code adds coefficients, loops add iteration degrees, and frames substitute each
+slot separately. The finite kernel maximum admits arbitrary nonmonotone costs, includes
+malformed shapes conservatively, and imposes no unbounded global ceiling.
+
+This is a conservative full-program bound, not an optimized NLA complexity. The overhead
+`17109*b^14` is polynomial in the five explicit natural input values; the whole expression
+need not be polynomial when the supplied kernel costs are not. Since `k = 2^m`, this is no
+assertion of polynomial dependence on m alone, bit length or accuracy. F and M remain explicit
+inputs.
+
+`exactAlgorithmWithPolynomialWork` retains the original full count budget, scratch, resident
+memory, backward guarantee and HD9 forward guarantee, and exposes this expression in its
+work/span fields. Its run is identified with the original run by deterministic execution.
+The shared machinery is in [Ops-PolynomialWork.md](Ops-PolynomialWork.md).
 
 ## What is not certified
 

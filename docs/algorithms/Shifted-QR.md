@@ -101,6 +101,24 @@ sequential span evaluate that same manifest with the declared kernel charges. Sc
 `staticPeak`, including local primitive workspace; resident payload adds the supplied
 `2N² + 5 + 2N` real-word cells. Scoped buffers are released and the tape position is unchanged.
 
+The [readable full-work certificate](../../NLAlib/Eigensolvers/ShiftedQR/Cost.lean),
+`exactAlgorithmWithPolynomialWork`, combines both numerical guarantees with
+
+```text
+work, sequential span <= 17109 * b^14 * (1 + K(b^5)),
+b = N + m + k + F + M + 1.
+```
+
+K(L) is the finite maximum of the supplied Ritz/small-eigenvalue costs over dimension lists
+of length at most two and entries at most L. The constants come from the fixed instrumented
+program, with individual bounds for each index slot. All scalar, index, comparison, address,
+control and allocation charges are included.
+
+This is a conservative full-program bound. It asserts polynomial overhead in the explicit
+natural parameters; it does not assert tight complexity, polynomial kernel growth, or
+polynomial dependence on m alone (`k=2^m`), bit length or accuracy. Count, scratch and
+resident-memory guarantees are retained from the detailed manifest.
+
 Independent [component workspace bounds](../../NLAlib/Eigensolvers/ShiftedQR/Workspace.lean)
 count stored real-word scratch, excluding caller-owned inputs and outputs:
 

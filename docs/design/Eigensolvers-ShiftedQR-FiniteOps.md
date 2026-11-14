@@ -90,6 +90,19 @@ Statement changes made on the skeleton:
   (eq:boundonpottilde); with a flat $1.001$ the constant $13$ fails for $k \ge 60$. P6 accordingly.
 * **Q3** `hm`: $m^2 x \le 1/4 \to m x \le 1/4$ (sufficient and minimal; G16 row).
 * Labels: R1/R2 H → L (elementary proof); E2 L → H (needs Codex's matching).
+* **R4** lower bound $(1 + \eta)^{-1}\mathbf{R}_{nn} \le |\widehat{\mathbf{R}}_{nn}| \to
+  (1 - \eta)\mathbf{R}_{nn} \le |\widehat{\mathbf{R}}_{nn}|$: false as first stated ($n = 0$,
+  $\mathbf{M} = 1$, $\mathbf{E} = -1/2$: $2/3 \le 1/2$ fails; still false at $\eta \le 1/4$ with
+  $\mathbf{E} = -1/4$). The review's interval for $\|\mathbf{e}_n^{\mathsf T}(\mathbf{M} +
+  \mathbf{E})^{-1}\|$ is right; its inversion to $\widehat{\mathbf{R}}_{nn}$ swapped the ends. Q5
+  only needs $|\text{ratio} - 1| \le \eta/(1 - \eta)$, which the corrected R3/R4 give. Proved.
+* **R1/R2** constants: proved as $16/3$ and $3$ (not $7.02$, $3.64$) by a shorter route than the
+  review's det/AM–GM: $\mathbf{T} = \widehat{\mathbf{R}}\mathbf{R}^{-1}$ has
+  $\|\mathbf{T} - \mathbf{I}\|_{\mathsf F} \le \|\mathbf{T} - \mathbf{T}^{-\mathsf H}\|_{\mathsf F}
+  \le \|\mathbf{T}^{-1}\|_2\|\mathbf{T}^{\mathsf H}\mathbf{T} - \mathbf{I}\|_{\mathsf F}
+  \le 3\|\mathbf{M}^{-1}\|\|\mathbf{E}\|_{\mathsf F}$, and
+  $(\widehat{\mathbf{Q}} - \mathbf{Q})\mathbf{T} = \mathbf{E}\mathbf{M}^{-1}\mathbf{Q} -
+  \mathbf{Q}(\mathbf{T} - \mathbf{I})$ with $\|\mathbf{T}^{-1}\|_2 \le 4/3$.
 
 Confirmed paper errors (both passes and the review agree): G8 (+ phase G8'), G9, G10, G10b,
 G11, G12, G13 (i)–(iv), G13v, G13vi, G14 ($k \ge 2$), G16 (fix $m x \le 1/4$), G17, G18
@@ -157,7 +170,7 @@ $\beta$). The worklist's scalar arithmetic is exact in C4 and rounded in P3.
 
 | id | statement | where | diff | status |
 |---|---|---|---|---|
-| R1–R4 | QR perturbation: `IsQR.frobNorm_sub_le_of_add`, `IsQR.frobNorm_sub_triangular_le_of_add` ($\|\mathbf{E}\|_{\mathsf F}$; elementary det/AM–GM proof, constants $7.02$, $3.64 \le 8$), `IsQR.last_le_of_add`, `IsQR.le_last_of_add` ($\mathbf{R}_{nn}$ ratio) | Matrix/Perturbation/QRFactorization | L, L, M, M | skel |
+| R1–R4 | QR perturbation: `IsQR.frobNorm_sub_le_of_add`, `IsQR.frobNorm_sub_triangular_le_of_add` ($\|\mathbf{E}\|_{\mathsf F}$; proved through $\|\widehat{\mathbf{R}}\mathbf{R}^{-1} - \mathbf{I}\|_{\mathsf F} \le 3\|\mathbf{M}^{-1}\|\|\mathbf{E}\|_{\mathsf F}$, constants $16/3$ and $3 \le 8$), `IsQR.last_le_of_add`, `IsQR.le_last_of_add` ($\mathbf{R}_{nn}$ ratio in $[1 - \eta, (1 - \eta)^{-1}]$; R4 corrected) | Matrix/Perturbation/QRFactorization | L, L, M, M | skel |
 | Q3 | `IsStableQRChain.exists_specNorm_aeval_sub_le` (L3.6 second part, $mx \le 1/4$) | StableStep | L | skel |
 | Q4 | `IsStableQRChain.exists_frobNorm_conj_sub_le` (L3.8 corrected, phase $\mathbf{D}$, constant $66 + 2C$) | same | L | skel |
 | Q5 | `IsStableQRChain.abs_prod_last_sub_le` (L3.9 corrected, 8004, $0.0006$) | same | M | skel |

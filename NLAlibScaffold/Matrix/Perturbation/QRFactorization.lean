@@ -25,7 +25,8 @@ used here. The constants $8$ at $\eta \le 1/4$ are deliberately loose.
 
 The last diagonal entry has a sharper, elementary bound that needs no factor perturbation:
 $\mathbf{R}_{nn} = \|\mathbf{e}_n^{\mathsf T}\mathbf{M}^{-1}\|_2^{-1}$, so
-$\widehat{\mathbf{R}}_{nn} / \mathbf{R}_{nn} \in [(1 + \eta)^{-1}, (1 - \eta)^{-1}]$.
+$|\widehat{\mathbf{R}}_{nn}| / \mathbf{R}_{nn} \in [1 - \eta, 1 + \eta]$ (the lower end cannot be
+$(1 + \eta)^{-1}$: take $n = 0$, $\mathbf{M} = 1$, $\mathbf{E} = -1/2$).
 
 ## Main results
 
@@ -238,19 +239,16 @@ theorem IsQR.frobNorm_sub_le_of_add (hM : IsUnit M) (h : IsQR M Q R) (h' : IsQR 
     _ ≤ _ := by nlinarith
 
 
-/-- **The last diagonal entry under perturbation**, upper bound: with
-$\eta = \|\mathbf{M}^{-1}\|_2\|\mathbf{E}\|_2 < 1$, $|\widehat{\mathbf{R}}_{nn}| \le
-(1 - \eta)^{-1}\mathbf{R}_{nn}$, for any QR factorization of $\mathbf{M} + \mathbf{E}$ (no sign
-normalization). Proof through
-$\mathbf{R}_{nn} = \|\mathbf{e}_n^{\mathsf T}\mathbf{M}^{-1}\|^{-1}$. [Sun1991, Theorem 1.6]. -/
-theorem IsQR.last_le_of_add (hM : IsUnit M) (h : IsQR M Q R) (h' : IsQR (M + E) Q' R')
-    (hR : ∀ i, 0 < R i i) (hη : specNorm M⁻¹ * specNorm E < 1) :
-    ‖R' (Fin.last n) (Fin.last n)‖ ≤
-      (1 - specNorm M⁻¹ * specNorm E)⁻¹ * ‖R (Fin.last n) (Fin.last n)‖ := by
-  have hη0 : 0 ≤ specNorm M⁻¹ * specNorm E := by positivity
+/-- The factor
+$\mathbf{X} = \widehat{\mathbf{Q}}^{\mathsf H}(\mathbf{I} + \mathbf{E}\mathbf{M}^{-1})\mathbf{Q}$
+equals $\widehat{\mathbf{R}}\mathbf{R}^{-1}$, so it is upper triangular and
+$\widehat{\mathbf{R}}_{nn} = \mathbf{X}_{nn}\mathbf{R}_{nn}$. -/
+private theorem IsQR.last_eq_of_add (hM : IsUnit M) (h : IsQR M Q R) (h' : IsQR (M + E) Q' R')
+    (hR : ∀ i, 0 < R i i) :
+    (Q'ᴴ * (1 + E * M⁻¹) * Q).IsUpperTriangular ∧ R' (Fin.last n) (Fin.last n) =
+      (Q'ᴴ * (1 + E * M⁻¹) * Q) (Fin.last n) (Fin.last n) * R (Fin.last n) (Fin.last n) := by
   have hRR : R * R⁻¹ = 1 := Matrix.mul_nonsing_inv _
     ((Matrix.isUnit_iff_isUnit_det R).mp (h.isUnit fun i => (hR i).ne'))
-  -- `X = Q'ᴴ (1 + E M⁻¹) Q = R' R⁻¹`.
   have hX : Q'ᴴ * (1 + E * M⁻¹) * Q = R' * R⁻¹ := by
     have hQ : (1 + E * M⁻¹) * Q = (M + E) * R⁻¹ := by
       calc (1 + E * M⁻¹) * Q = (1 + E * M⁻¹) * M * R⁻¹ := by
@@ -269,11 +267,21 @@ theorem IsQR.last_le_of_add (hM : IsUnit M) (h : IsQR M Q R) (h' : IsQR (M + E) 
       have h0 : A (Fin.last n) k = 0 := hA (lt_of_le_of_ne (Fin.le_last k) hk)
       rw [h0, zero_mul]
     · simp
-  have hent : R' (Fin.last n) (Fin.last n) =
-      (Q'ᴴ * (1 + E * M⁻¹) * Q) (Fin.last n) (Fin.last n) * R (Fin.last n) (Fin.last n) := by
-    have h1 := hlast R R⁻¹ h.isUpperTriangular
-    rw [hRR, Matrix.one_apply_eq] at h1
-    rw [hX, hlast R' R⁻¹ h'.isUpperTriangular, mul_assoc, mul_comm _ (R _ _), ← h1, mul_one]
+  refine ⟨hX ▸ h'.isUpperTriangular.mul h.isUpperTriangular.inv, ?_⟩
+  have h1 := hlast R R⁻¹ h.isUpperTriangular
+  rw [hRR, Matrix.one_apply_eq] at h1
+  rw [hX, hlast R' R⁻¹ h'.isUpperTriangular, mul_assoc, mul_comm _ (R _ _), ← h1, mul_one]
+
+/-- **The last diagonal entry under perturbation**, upper bound: with
+$\eta = \|\mathbf{M}^{-1}\|_2\|\mathbf{E}\|_2 < 1$, $|\widehat{\mathbf{R}}_{nn}| \le
+(1 - \eta)^{-1}\mathbf{R}_{nn}$, for any QR factorization of $\mathbf{M} + \mathbf{E}$ (no sign
+normalization). The proof gives the sharper factor $1 + \eta$. -/
+theorem IsQR.last_le_of_add (hM : IsUnit M) (h : IsQR M Q R) (h' : IsQR (M + E) Q' R')
+    (hR : ∀ i, 0 < R i i) (hη : specNorm M⁻¹ * specNorm E < 1) :
+    ‖R' (Fin.last n) (Fin.last n)‖ ≤
+      (1 - specNorm M⁻¹ * specNorm E)⁻¹ * ‖R (Fin.last n) (Fin.last n)‖ := by
+  have hη0 : 0 ≤ specNorm M⁻¹ * specNorm E := by positivity
+  have hent := (h.last_eq_of_add hM h' hR).2
   have hspec : specNorm (Q'ᴴ * (1 + E * M⁻¹) * Q) ≤ 1 + specNorm M⁻¹ * specNorm E := by
     calc specNorm (Q'ᴴ * (1 + E * M⁻¹) * Q)
         ≤ specNorm Q'ᴴ * specNorm (1 + E * M⁻¹) * specNorm Q :=
@@ -295,12 +303,47 @@ theorem IsQR.last_le_of_add (hM : IsUnit M) (h : IsQR M Q R) (h' : IsQR (M + E) 
   exact ((norm_apply_le_specNorm _ _ _).trans hspec).trans hinv
 
 /-- **The last diagonal entry under perturbation**, lower bound:
-$(1 + \eta)^{-1}\mathbf{R}_{nn} \le \lvert\widehat{\mathbf{R}}_{nn}\rvert$.
-[Sun1991, Theorem 1.6]. -/
+$(1 - \eta)\mathbf{R}_{nn} \le \lvert\widehat{\mathbf{R}}_{nn}\rvert$, for any QR factorization of
+$\mathbf{M} + \mathbf{E}$. The last row of the upper triangular
+$\mathbf{X} = \widehat{\mathbf{Q}}^{\mathsf H}(\mathbf{I} + \mathbf{E}\mathbf{M}^{-1})\mathbf{Q}$ is
+$\mathbf{X}_{nn}\mathbf{e}_n^{\mathsf T}$, of norm at least $1 - \eta$. The factor $1 - \eta$ cannot
+be raised to $(1 + \eta)^{-1}$: take $n = 0$, $\mathbf{M} = 1$, $\mathbf{E} = -1/2$. -/
 theorem IsQR.le_last_of_add (hM : IsUnit M) (h : IsQR M Q R) (h' : IsQR (M + E) Q' R')
     (hR : ∀ i, 0 < R i i) (hη : specNorm M⁻¹ * specNorm E < 1) :
-    (1 + specNorm M⁻¹ * specNorm E)⁻¹ * ‖R (Fin.last n) (Fin.last n)‖ ≤
+    (1 - specNorm M⁻¹ * specNorm E) * ‖R (Fin.last n) (Fin.last n)‖ ≤
       ‖R' (Fin.last n) (Fin.last n)‖ := by
-  sorry
+  obtain ⟨hXU, hent⟩ := h.last_eq_of_add hM h' hR
+  have hKs : specNorm (E * M⁻¹)ᴴ ≤ specNorm M⁻¹ * specNorm E := by
+    rw [specNorm_conjTranspose]; exact (specNorm_mul_le E M⁻¹).trans_eq (mul_comm _ _)
+  generalize E * M⁻¹ = K at hXU hent hKs
+  set X := Q'ᴴ * (1 + K) * Q
+  set e : Fin (n + 1) → ℂ := Pi.single (Fin.last n) 1
+  -- The last row of `X` is `X_nn eₙᵀ`.
+  have hv : Xᴴ *ᵥ e = Pi.single (Fin.last n) (star (X (Fin.last n) (Fin.last n))) := by
+    funext i
+    simp only [e, Matrix.mulVec_single, MulOpposite.op_one, one_smul, Matrix.col_apply,
+      Matrix.conjTranspose_apply]
+    rcases (Fin.le_last i).lt_or_eq with hi | rfl
+    · rw [show X (Fin.last n) i = 0 from hXU hi, star_zero, Pi.single_eq_of_ne hi.ne]
+    · rw [Pi.single_eq_same]
+  have hXe : Xᴴ *ᵥ e = Qᴴ *ᵥ ((Q' *ᵥ e) + Kᴴ *ᵥ (Q' *ᵥ e)) := by
+    simp only [X, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose,
+      Matrix.conjTranspose_add, Matrix.conjTranspose_one, ← Matrix.mulVec_mulVec,
+      Matrix.add_mulVec, Matrix.one_mulVec]
+  have hw : ‖WithLp.toLp 2 (Q' *ᵥ e)‖ = 1 := by
+    rw [h'.hasOrthonormalCols.norm_toLp_mulVec]
+    rw [PiLp.toLp_single, PiLp.norm_single, norm_one]
+  have hnorm : ‖X (Fin.last n) (Fin.last n)‖ = ‖WithLp.toLp 2 (Xᴴ *ᵥ e)‖ := by
+    rw [hv, PiLp.toLp_single, PiLp.norm_single, norm_star]
+  have hX : 1 - specNorm M⁻¹ * specNorm E ≤ ‖X (Fin.last n) (Fin.last n)‖ := by
+    rw [hnorm, hXe, h.hasOrthonormalCols.conjTranspose.norm_toLp_mulVec, WithLp.toLp_add]
+    have h1 := norm_toLp_mulVec_le Kᴴ (Q' *ᵥ e)
+    have h2 := norm_sub_le (WithLp.toLp 2 (Q' *ᵥ e) + WithLp.toLp 2 (Kᴴ *ᵥ (Q' *ᵥ e)))
+      (WithLp.toLp 2 (Kᴴ *ᵥ (Q' *ᵥ e)))
+    rw [add_sub_cancel_right, hw] at h2
+    rw [hw] at h1
+    nlinarith
+  rw [hent, norm_mul]
+  exact mul_le_mul_of_nonneg_right hX (norm_nonneg _)
 
 end NLAlib

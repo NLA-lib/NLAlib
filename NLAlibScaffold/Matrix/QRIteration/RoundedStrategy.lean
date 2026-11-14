@@ -55,7 +55,13 @@ theorem isOptimalRitzValues_of_lt {θ t : ℝ} {H : Matrix (Fin (n + 1)) (Fin (n
       0.0009 * (θ * hessenbergPotential ss.length H) ^ ss.length)
     (hlt : t < 0.999 * (θ * hessenbergPotential ss.length H) ^ ss.length) :
     IsOptimalRitzValues θ H ss := by
-  sorry
+  have h0 : 0 ≤ 0.0009 * (θ * hessenbergPotential ss.length H) ^ ss.length :=
+    (abs_nonneg _).trans ht
+  have hX : 0 ≤ (θ * hessenbergPotential ss.length H) ^ ss.length := by
+    linarith
+  obtain ⟨h1, h2⟩ := abs_le.mp ht
+  unfold IsOptimalRitzValues
+  linarith
 
 /-- **The optimality test with a computed norm, negative branch** (Optimal,
 [BanksGarzaVargasSrivastava2022, Lemma 4.5]): if $t \ge 0.999(\theta\psi_k)^k$ with the same

@@ -1111,6 +1111,49 @@ should replace them there; the sweep files should move to the Matrix layer (§9a
 linter warnings (three long docstring lines, three unused hypotheses, one unused instance
 argument).
 
+## 9c. Explorer and inventory record (2026-11-14)
+
+The branch was rebased a second time, onto `origin/main` @ `f329b7ff` (PR #145), and the whole
+library builds on it (5094 jobs, no error, no `sorry`).
+
+**Library side.** 23 `Result:` ids on 46 theorems, each with a bold name and a citation or
+"No printed source."; `Algorithm:` tags `block-golub-kahan` (specification, run model, and the
+driver program) and `cgs2-basis-extension` (the implementation); bibliography entries
+`MeyerMuscoMusco2023` and `ChenEpperlyMeyerMuscoRao2025`, with the cited labels checked against
+the arXiv versions (the locators of §1 for those two papers are thereby verified against
+arXiv; the Tropp–Webber remark on block size below rank could not be checked and is not
+cited); ten vocabulary rows; the curated page `docs/algorithms/Block-Golub-Kahan.md`.
+Program-side theorems carry no result ids, as on main. With an extraction of this branch
+(`scripts/explore_data.sh`), `scripts/check_rules.py` runs all 106 rules with 0 errors; the
+extraction-tier naming rules had not run before, and found five names, since fixed (two
+stored-run predicates restated as `Prop`-valued, one restricted expectation renamed
+`integral_setOf_…`, two range lemmas renamed without `mulVecLin`).
+
+**Certificate inventory** (new on main with PRs #143 and #145: `scripts/OpsPrograms.lean`
+against `scripts/ops_certificates.txt`). The driver certificate's model is proved confined,
+and its specification states a closed-form scratch bound. It is not uniform, because the
+matrix-free operator pair is a declared oracle, which the algorithm page and the docstrings
+name. Its budget is the full static count, a manifest. The check therefore still asks for a
+reviewed line, which is the maintainer's to add:
+
+```
+NLAlib.Krylov.GolubKahan.Band.Certification.algorithm hyps=0 uniform=no confined=yes charged=no budget=manifest scratch=closed
+```
+
+Until that line is in the registry, `scripts/OpsPrograms.lean` (and so CI and
+`scripts/stage_check.sh`) fails on this branch with that one error.
+
+**Site side.** Content pages on the local branch `feat/block-lanczos-explorer` of the site
+repository (worktree `~/work/nla-site-block-lanczos`, on the site's main @ `420155a`; content
+pages only, not pushed): a new algorithm page for block Golub–Kahan, a page for its driver, a
+Gram–Schmidt implementation page for the two-pass basis extension, the RBKI page extended with
+the results for block sizes below the target rank, and placements on the Nyström BKI page, two
+theory pages and two task pages. Against the extraction of this branch at `37bc6516`: the
+site build passes (137 authored pages, 580 result groups), `audit_math.py` reports 0 issues
+(580 of 580 result groups curated, 28 of 28 tagged methods placed), `audit_organization.py`
+reports 0 issues, and the site's unit tests pass. The site build rejects unknown ids, so the
+library branch has to be published before the site branch.
+
 ## 10. Review record
 
 One independent review of the first draft, 2026-11-14 (a fresh agent given the note and the

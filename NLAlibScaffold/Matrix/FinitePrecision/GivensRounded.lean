@@ -455,7 +455,50 @@ norm of those rows, which is at most $\sqrt 2\,\|\mathbf{A}\|_2$. [Higham2002, L
 theorem IsRoundedRowRotation.specNorm_sub_le {η : ℝ} {i j : Fin n} {c s : ℂ}
     {A A' : Matrix (Fin n) (Fin n) ℂ} (h : IsRoundedRowRotation η i j c s A A') (hη : 0 ≤ η) :
     specNorm (A' - givens i j c s * A) ≤ 2 * η * specNorm A := by
-  sorry
+  obtain ⟨hout, hcol⟩ := h
+  have hrow : ∀ r : Fin n, ∑ k, ‖A r k‖ ^ 2 ≤ specNorm A ^ 2 := by
+    intro r
+    have h1 := norm_toLp_col_le_specNorm Aᴴ r
+    rw [specNorm_conjTranspose] at h1
+    have h2 := pow_le_pow_left₀ (norm_nonneg _) h1 2
+    rw [EuclideanSpace.norm_sq_eq] at h2
+    simpa [Matrix.col_apply, Matrix.conjTranspose_apply] using h2
+  have hD : ∀ r k, r ≠ i → r ≠ j → (A' - givens i j c s * A) r k = 0 := by
+    intro r k hr hr'
+    rw [Matrix.sub_apply, hout r k hr hr', givens_mul_apply_of_ne hr hr', sub_self]
+  have hcolsq : ∀ k, ‖(A' - givens i j c s * A) i k‖ ^ 2 + ‖(A' - givens i j c s * A) j k‖ ^ 2 ≤
+      η ^ 2 * (‖A i k‖ ^ 2 + ‖A j k‖ ^ 2) := by
+    intro k
+    have h3 := (sq_le_sq₀ (Real.sqrt_nonneg _) (mul_nonneg hη (Real.sqrt_nonneg _))).2 (hcol k)
+    rw [mul_pow, Real.sq_sqrt (add_nonneg (sq_nonneg _) (sq_nonneg _)),
+      Real.sq_sqrt (add_nonneg (sq_nonneg _) (sq_nonneg _))] at h3
+    simpa [Matrix.sub_apply] using h3
+  have hsum : ∑ r, ∑ k, ‖(A' - givens i j c s * A) r k‖ ^ 2 ≤
+      ∑ k, (‖(A' - givens i j c s * A) i k‖ ^ 2 + ‖(A' - givens i j c s * A) j k‖ ^ 2) := by
+    by_cases hij : i = j
+    · rw [Fintype.sum_eq_single i]
+      · exact Finset.sum_le_sum fun k _ => le_add_of_nonneg_right (sq_nonneg _)
+      · intro r hr
+        exact Finset.sum_eq_zero fun k _ => by
+          simp [hD r k hr (fun h => hr (h.trans hij.symm))]
+    · rw [Fintype.sum_eq_add i j hij]
+      · exact le_of_eq (Finset.sum_add_distrib).symm
+      · intro r hr
+        exact Finset.sum_eq_zero fun k _ => by simp [hD r k hr.1 hr.2]
+  have hfro : frobNorm (A' - givens i j c s * A) ^ 2 ≤ (2 * η * specNorm A) ^ 2 := by
+    rw [frobNorm_sq_eq_sum]
+    calc ∑ r, ∑ k, ‖(A' - givens i j c s * A) r k‖ ^ 2
+        ≤ ∑ k, (‖(A' - givens i j c s * A) i k‖ ^ 2 + ‖(A' - givens i j c s * A) j k‖ ^ 2) := hsum
+      _ ≤ ∑ k, η ^ 2 * (‖A i k‖ ^ 2 + ‖A j k‖ ^ 2) := Finset.sum_le_sum fun k _ => hcolsq k
+      _ = η ^ 2 * (∑ k, ‖A i k‖ ^ 2 + ∑ k, ‖A j k‖ ^ 2) := by
+          rw [← Finset.mul_sum, Finset.sum_add_distrib]
+      _ ≤ η ^ 2 * (specNorm A ^ 2 + specNorm A ^ 2) :=
+          mul_le_mul_of_nonneg_left (add_le_add (hrow i) (hrow j)) (sq_nonneg η)
+      _ ≤ (2 * η * specNorm A) ^ 2 := by
+          nlinarith [mul_nonneg (sq_nonneg η) (sq_nonneg (specNorm A))]
+  have hF := (sq_le_sq₀ (frobNorm_nonneg _)
+    (mul_nonneg (mul_nonneg (by norm_num) hη) (specNorm_nonneg A))).1 hfro
+  exact (specNorm_le_frobNorm _).trans hF
 
 /-- **A rotation of two columns computed pairwise has spectral-norm error
 $2\eta\|\mathbf{A}\|_2$.** [Higham2002, Lemma 19.8]. -/

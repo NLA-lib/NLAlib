@@ -35,12 +35,57 @@ def sqrtIter {K : Type} (M : Machine K) : ℕ → K → K
   | 0, a => a
   | m + 1, a => sqrtIter M m (M.sqrt a)
 
+private theorem sqrtIter_succ_eq {K : Type} (M : Machine K) (m : ℕ) (a : K) :
+    sqrtIter M (m + 1) a = M.sqrt (sqrtIter M m a) := by
+  induction m generalizing a with
+  | zero => rfl
+  | succ m ih => exact ih (M.sqrt a)
+
+private theorem abs_sqrtIter_sub_le_aux {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M)
+    (hu : 0 ≤ u) (hu' : u ≤ 1 / 100) (m : ℕ) {a : ℝ} (ha : 0 ≤ a) :
+    |sqrtIter M m a - a ^ ((2 : ℝ) ^ m)⁻¹| ≤ 3 * u * a ^ ((2 : ℝ) ^ m)⁻¹ := by
+  induction m generalizing a with
+  | zero =>
+    simp only [sqrtIter, pow_zero, inv_one, Real.rpow_one, sub_self, abs_zero]
+    exact mul_nonneg (mul_nonneg (by norm_num) hu) ha
+  | succ m ih =>
+    rw [sqrtIter_succ_eq]
+    have hbd := ih ha
+    have ht0 : 0 ≤ a ^ ((2 : ℝ) ^ m)⁻¹ := Real.rpow_nonneg ha _
+    have hr0 : 0 ≤ a ^ ((2 : ℝ) ^ (m + 1))⁻¹ := Real.rpow_nonneg ha _
+    have htr : a ^ ((2 : ℝ) ^ m)⁻¹ = (a ^ ((2 : ℝ) ^ (m + 1))⁻¹) ^ 2 := by
+      rw [show ((a ^ ((2 : ℝ) ^ (m + 1))⁻¹) ^ 2 : ℝ) = a ^ (((2 : ℝ) ^ (m + 1))⁻¹ * 2) from by
+        rw [← Real.rpow_natCast, ← Real.rpow_mul ha]; norm_num]
+      congr 1
+      rw [pow_succ]
+      field_simp
+    generalize a ^ ((2 : ℝ) ^ (m + 1))⁻¹ = r at hr0 htr ⊢
+    rw [htr] at hbd ht0
+    generalize sqrtIter M m a = x at hbd ⊢
+    have hx0 : 0 ≤ x := by nlinarith [(abs_le.mp hbd).1, sq_nonneg r]
+    have hsq : |M.sqrt x - √x| ≤ u * √x := hM.sqrt x hx0
+    have hs0 : 0 ≤ √x := Real.sqrt_nonneg _
+    have hss : (√x) ^ 2 = x := Real.sq_sqrt hx0
+    generalize √x = s at hsq hs0 hss
+    subst hss
+    obtain ⟨h1, h2⟩ := abs_le.mp hbd
+    have hd1 : s ^ 2 - r ^ 2 ≤ 3 * u * r ^ 2 := by nlinarith [mul_nonneg hu (sq_nonneg r)]
+    have hd2 : r ^ 2 - s ^ 2 ≤ 3 * u * r ^ 2 := by nlinarith [mul_nonneg hu (sq_nonneg r)]
+    have hup : s ≤ 1.02 * r := by nlinarith [mul_nonneg hu (sq_nonneg r)]
+    have hlo : 0.98 * r ≤ s := by nlinarith [mul_nonneg hu (sq_nonneg r)]
+    have hA : u * s ≤ 1.02 * u * r := by nlinarith
+    have hB1 : s - r ≤ 1.9 * u * r := by nlinarith [mul_nonneg hu (sq_nonneg r)]
+    have hB2 : r - s ≤ 1.9 * u * r := by nlinarith [mul_nonneg hu (sq_nonneg r)]
+    have hsr : |s - r| ≤ 1.9 * u * r := abs_le.mpr ⟨by linarith, hB1⟩
+    have hfin := abs_sub_le (M.sqrt (s ^ 2)) s r
+    linarith [mul_nonneg hu hr0]
+
 /-- **Rounded roots of order $2^m$**: under the standard model with $0 \le \boldsymbol{u} \le
 1/100$, $m$ rounded square roots of $a \ge 0$ are within $3\boldsymbol{u}\,a^{1/2^m}$ of
 $a^{1/2^m}$. [BanksGarzaVargasSrivastava2022, Lemma 2.1], for $k = 2^m$. -/
 theorem Ops.StdModel.abs_sqrtIter_sub_le {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M)
     (hu : 0 ≤ u) (hu' : u ≤ 1 / 100) (m : ℕ) {a : ℝ} (ha : 0 ≤ a) :
-    |sqrtIter M m a - a ^ ((2 : ℝ) ^ m)⁻¹| ≤ 3 * u * a ^ ((2 : ℝ) ^ m)⁻¹ := by
-  sorry
+    |sqrtIter M m a - a ^ ((2 : ℝ) ^ m)⁻¹| ≤ 3 * u * a ^ ((2 : ℝ) ^ m)⁻¹ :=
+  abs_sqrtIter_sub_le_aux hM hu hu' m ha
 
 end NLAlib

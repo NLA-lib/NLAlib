@@ -389,6 +389,19 @@ Original list:
    `exists_pseudoConditionNumber_add_le` (E2 becomes S/M), and the bottom-$k$ "$\le \omega$" scan.
 4. Bottom-$k$ deflation threshold "$\le \omega$" and a fail word in the worklist (P3), or a new
    worklist round in our files reusing `writeAndSplit`.
+6. (batch-2 review, Fable §4) **DONE on our side** (prove/sqrfp-b2work), hypotheses only, exact
+   theorems kept as one-line corollaries with unchanged names and statements: the stack/scan memory
+   lemmas assumed `ExactModel id M` but used only exact natural literals, so they could not be
+   applied under `StdModel u` with `u > 0`. New machine-generic forms:
+   `Worklist` (`rangePush_writes_of_isExactNatLit`, `rangePop_writes_of_isExactNatLit`,
+   `stackInit_writes_of_isExactNatLit`), `Deflation` (`splitPush_writes_of_isExactNatLit`),
+   `RangeSplit` (`writeAndSplit_writes_of_isExactNatLit`, `IsExactNatLit id M (n+1)`), each taking
+   `IsExactNatLit id M B` and bounds of the literals written. `scanRound_writes` also used exact
+   arithmetic (its squared modulus), not only literals: it now derives from
+   `Scan.scanRound_writes_word` (any scalar machine, `IsExactNatLit id M n`; the stored word is
+   `subdiagonalSqWord M H k`, bounded by `subdiagonalSqWord_bounds` under `StdModel`), on
+   `PairScalar.normSq_writes_word` and `StdModel.add_mul_self_bounds` (`Ops/Blas/NormSq`). The
+   exact `scanLoop`/`scan_writes` are unchanged.
 
 ## 8. Assumed kernels and oracles
 

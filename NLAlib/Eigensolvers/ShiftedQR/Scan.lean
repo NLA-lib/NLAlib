@@ -21,6 +21,8 @@ five-word output view contains three arithmetic temporaries, the flag, and the i
 
 * `NLAlib.ShiftedQR.scan`: the computable scalar traversal.
 * `NLAlib.ShiftedQR.scanPrefix`: its exact mathematical last-index specification.
+* `NLAlib.ShiftedQR.scanRound_writes_word`: one visit on any scalar machine with exact natural
+  literals, with the rounded word `NLAlib.ShiftedQR.subdiagonalSqWord`.
 -/
 
 @[expose] public section
@@ -35,6 +37,33 @@ def subdiagonalSq {n : ℕ} (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (i : �
   let z := H ⟨min (i + 1) n, Nat.lt_succ_of_le (min_le_right _ _)⟩
     ⟨min i n, Nat.lt_succ_of_le (min_le_right _ _)⟩
   z.re ^ 2 + z.im ^ 2
+
+/-- The machine word the scan computes at one subdiagonal position:
+$\mathrm{fl}(\mathrm{fl}(x^2) + \mathrm{fl}(y^2))$ for the entry $x + iy$, clamped as
+`NLAlib.ShiftedQR.subdiagonalSq`. -/
+def subdiagonalSqWord (M : Machine ℝ) {n : ℕ} (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+    (i : ℕ) : ℝ :=
+  let z := H ⟨min (i + 1) n, Nat.lt_succ_of_le (min_le_right _ _)⟩
+    ⟨min i n, Nat.lt_succ_of_le (min_le_right _ _)⟩
+  M.add (M.mul z.re z.re) (M.mul z.im z.im)
+
+/-- Under the standard model with $0 \le u \le 1$ the scan word at a valid subdiagonal position
+is within the factors $(1 \mp u)^2$ of the squared modulus. -/
+theorem subdiagonalSqWord_bounds {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M) (hu : 0 ≤ u)
+    (hu1 : u ≤ 1) {n : ℕ} (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (i : Fin n) :
+    (1 - u) ^ 2 * ‖H i.succ i.castSucc‖ ^ 2 ≤ subdiagonalSqWord M H i ∧
+      subdiagonalSqWord M H i ≤ (1 + u) ^ 2 * ‖H i.succ i.castSucc‖ ^ 2 := by
+  have hi : (i : ℕ) ≤ n := by omega
+  have his : (i : ℕ) + 1 ≤ n := by omega
+  have hr : (⟨min ((i : ℕ) + 1) n, Nat.lt_succ_of_le (min_le_right _ _)⟩ : Fin (n + 1)) =
+      i.succ := Fin.ext (by simp)
+  have hc : (⟨min (i : ℕ) n, Nat.lt_succ_of_le (min_le_right _ _)⟩ : Fin (n + 1)) =
+      i.castSucc := Fin.ext (by simp)
+  have hn : ‖H i.succ i.castSucc‖ ^ 2 =
+      (H i.succ i.castSucc).re ^ 2 + (H i.succ i.castSucc).im ^ 2 := by
+    rw [Complex.sq_norm, Complex.normSq_apply]; ring
+  simp only [subdiagonalSqWord, hr, hc, hn]
+  exact hM.add_mul_self_bounds hu hu1 _ _
 
 open Classical in
 /-- The last qualifying subdiagonal index among the first `k` visits. -/
@@ -162,6 +191,76 @@ def scan : Impl Op Tst := opsImpl% [N] (A, threshold) → (R) {
   run (scanLoop (Op := Op) (Tst := Tst)).body [N] (A, threshold, R)
 }
 
+/-- One visit on any scalar machine whose natural literals up to `n` are exact: it computes the
+word `NLAlib.ShiftedQR.subdiagonalSqWord` and, when it passes the actual comparison with the
+threshold word, writes the flag $1$ and the index $k$; otherwise the flag and index words are
+kept. The matrix and threshold have disjoint views from the five arithmetic/flag/index words. -/
+theorem scanRound_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
+    (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp id I)
+    {τ : Tape ℝ} {m : Mem ℝ} {n k : ℕ} {a t r : ℕ × ℕ} (hN : IsExactNatLit id M n)
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {threshold flag index : ℝ}
+    (hk : k < n) (hH : HoldsMatrix a H m.store)
+    (ht : m.store.get t.1 t.2 = some threshold)
+    (hflag : m.store.get r.1 (r.2 + 3) = some flag)
+    (hindex : m.store.get r.1 (r.2 + 4) = some index)
+    (hl : m.Live [a, t, r]) (hroom : r.2 + 5 ≤ m.store.len r.1)
+    (hA : Fp.Disj (Store.inBlock r.1 r.2 5)
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))))
+    (hT : Fp.Disj (Store.inBlock r.1 r.2 5) (Store.inBlock t.1 t.2 1)) :
+    Writes .total I τ (scanRound (Op := Op) (Tst := Tst)).body
+      (Env.frame [n + 1, k] [a, t, r]) (Store.inBlock r.1 r.2 5)
+      (fun m' => m'.pos = m.pos ∧
+        m'.store.get r.1 (r.2 + 3) =
+          some (if subdiagonalSqWord M H k ≤ threshold then 1 else flag) ∧
+        m'.store.get r.1 (r.2 + 4) =
+          some (if subdiagonalSqWord M H k ≤ threshold then (k : ℝ) else index)) m := by
+  classical
+  let z := H ⟨k + 1, by omega⟩ ⟨k, by omega⟩
+  have hx := hH.get_re ⟨k + 1, by omega⟩ ⟨k, by omega⟩
+  have hy := hH.get_im ⟨k + 1, by omega⟩ ⟨k, by omega⟩
+  have hidx := Idx.add_lt_mul (show k < n + 1 by omega) (show k + 1 < n + 1 by omega)
+  have hlocal : Fp.Disj (Store.inBlock a.1 (a.2 + 2 * (k * (n + 1) + k + 1)) 2)
+      (Store.inBlock r.1 r.2 3) := hA.symm.mono (by fp_sub) (by fp_sub)
+  have hsq : subdiagonalSqWord M H k = M.add (M.mul z.re z.re) (M.mul z.im z.im) := by
+    simp [subdiagonalSqWord, z, min_eq_left (show k + 1 ≤ n by omega),
+      min_eq_left (show k ≤ n by omega)]
+  have hw := PairScalar.normSq_writes_word (τ := τ) hS
+    (x := (a.1, a.2 + 2 * (k * (n + 1) + k + 1))) (t := r)
+    (by simpa [Nat.add_assoc] using hx) (by simpa [Nat.add_assoc] using hy)
+    (by omega) hlocal
+  unfold scanRound
+  refine hw.frame_seq_le rfl rfl
+    (by simpa [Mem.Live] using And.intro (hl a (by simp)) (hl r (by simp)))
+    (by fp_sub) ?_
+  intro m₁ hfr₁ ⟨hp₁, hNorm⟩
+  have ht₁ := hfr₁.keep (Store.readsOnly_get _ _ _) (hT.mono (by fp_sub) le_rfl) ht
+  have hflag₁ := hfr₁.keep (Store.readsOnly_get _ _ _) (by disjoint) hflag
+  have hindex₁ := hfr₁.keep (Store.readsOnly_get _ _ _) (by disjoint) hindex
+  have htest := hC.test_le (d := []) (x := (r.1, r.2 + 2)) (y := t) hNorm ht₁
+  refine writes_ite rfl rfl htest ?_
+  rw [hsq]
+  by_cases hsmall : M.add (M.mul z.re z.re) (M.mul z.im z.im) ≤ threshold
+  · dsimp only [z] at hsmall
+    simp only [id_eq, decide_eq_true_eq]
+    rw [if_pos hsmall]
+    refine (writes_indexLit hL rfl rfl
+      (by dsimp only; rw [hfr₁.len_eq]; omega)).seq_le (by fp_sub) ?_
+    intro m₂ hfr₂ ⟨hp₂, hOne⟩
+    refine (writes_indexLit hL rfl rfl (by dsimp only; rw [hfr₂.len_eq, hfr₁.len_eq]; omega)).mono
+      (by fp_sub) ?_
+    intro m₃ hfr₃ ⟨hp₃, hK⟩
+    have hOne' := hfr₃.keep (Store.readsOnly_get _ _ _) (by disjoint) hOne
+    have hlit : M.lit (k : ℚ) = (k : ℝ) := by simpa using hN k hk.le
+    have hone : M.lit (1 : ℚ) = (1 : ℝ) := by simpa using hN 1 (by omega)
+    refine ⟨hp₃.trans (hp₂.trans hp₁), ?_, ?_⟩
+    · simpa [z, hsmall, hone] using hOne'
+    · simpa [z, hsmall, hlit] using hK
+  · dsimp only [z] at hsmall
+    simp only [id_eq, decide_eq_true_eq]
+    rw [if_neg hsmall]
+    refine (Writes.skip (md := .total) (I := I) (τ := τ) ?_).mono bot_le (fun _ _ hp => hp)
+    exact ⟨hp₁, by simpa [z, hsmall] using hflag₁, by simpa [z, hsmall] using hindex₁⟩
+
 /-- One visit updates exactly the last-index specification using its actual scalar comparison.
 The matrix and threshold have disjoint views from the five arithmetic/flag/index words. -/
 theorem scanRound_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
@@ -178,51 +277,20 @@ theorem scanRound_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
       (Env.frame [n + 1, k] [a, t, r]) (Store.inBlock r.1 r.2 5)
       (fun m' => m'.pos = m.pos ∧ ScanHolds H threshold (k + 1) r m'.store) m := by
   classical
-  let z := H ⟨k + 1, by omega⟩ ⟨k, by omega⟩
-  have hx := hH.get_re ⟨k + 1, by omega⟩ ⟨k, by omega⟩
-  have hy := hH.get_im ⟨k + 1, by omega⟩ ⟨k, by omega⟩
-  have hidx := Idx.add_lt_mul (show k < n + 1 by omega) (show k + 1 < n + 1 by omega)
-  have hlocal : Fp.Disj (Store.inBlock a.1 (a.2 + 2 * (k * (n + 1) + k + 1)) 2)
-      (Store.inBlock r.1 r.2 3) := hA.symm.mono (by fp_sub) (by fp_sub)
-  have hsq : subdiagonalSq H k = z.re ^ 2 + z.im ^ 2 := by
-    simp [subdiagonalSq, z, min_eq_left (show k + 1 ≤ n by omega),
-      min_eq_left (show k ≤ n by omega)]
-  have hw := PairScalar.normSq_writes (τ := τ) hS hE
-    (x := (a.1, a.2 + 2 * (k * (n + 1) + k + 1))) (t := r)
-    (by simpa [Nat.add_assoc] using hx) (by simpa [Nat.add_assoc] using hy)
-    (by omega) hlocal
-  unfold scanRound
-  refine hw.frame_seq_le rfl rfl
-    (by simpa [Mem.Live] using And.intro (hl a (by simp)) (hl r (by simp)))
-    (by fp_sub) ?_
-  intro m₁ hfr₁ ⟨hp₁, hNorm⟩
-  have ht₁ := hfr₁.keep (Store.readsOnly_get _ _ _) (hT.mono (by fp_sub) le_rfl) ht
-  have hflag := hfr₁.keep (Store.readsOnly_get _ _ _) (by disjoint) hstate.1
-  have hindex := hfr₁.keep (Store.readsOnly_get _ _ _) (by disjoint) hstate.2
-  have htest := hC.test_le (d := []) (x := (r.1, r.2 + 2)) (y := t) hNorm ht₁
-  refine writes_ite rfl rfl htest ?_
-  by_cases hsmall : subdiagonalSq H k ≤ threshold
-  · have hsmall' : z.re ^ 2 + z.im ^ 2 ≤ threshold := hsq ▸ hsmall
-    dsimp only [z] at hsmall'
-    simp only [id_eq, decide_eq_true_eq]
-    rw [if_pos hsmall']
-    refine (writes_indexLit hL rfl rfl
-      (by dsimp only; rw [hfr₁.len_eq]; omega)).seq_le (by fp_sub) ?_
-    intro m₂ hfr₂ ⟨hp₂, hOne⟩
-    refine (writes_indexLit hL rfl rfl (by dsimp only; rw [hfr₂.len_eq, hfr₁.len_eq]; omega)).mono
-      (by fp_sub) ?_
-    intro m₃ hfr₃ ⟨hp₃, hK⟩
-    have hOne' := hfr₃.keep (Store.readsOnly_get _ _ _) (by disjoint) hOne
-    have hlit (j : ℕ) : M.lit (j : ℚ) = (j : ℝ) := by simpa using hE.lit (j : ℚ)
-    have hone : M.lit (1 : ℚ) = (1 : ℝ) := by simpa using hE.lit 1
-    exact ⟨hp₃.trans (hp₂.trans hp₁), by
-      simpa [ScanHolds, scanPrefix, hsmall, hlit, hone] using And.intro hOne' hK⟩
-  · have hsmall' : ¬z.re ^ 2 + z.im ^ 2 ≤ threshold := hsq ▸ hsmall
-    dsimp only [z] at hsmall'
-    simp only [id_eq, decide_eq_true_eq]
-    rw [if_neg hsmall']
-    refine (Writes.skip (md := .total) (I := I) (τ := τ) ?_).mono bot_le (fun _ _ hp => hp)
-    exact ⟨hp₁, by simpa [ScanHolds, scanPrefix, hsmall] using And.intro hflag hindex⟩
+  have hadd (x y : ℝ) : M.add x y = x + y := hE.add x y
+  have hmul (x y : ℝ) : M.mul x y = x * y := hE.mul x y
+  have hword : subdiagonalSqWord M H k = subdiagonalSq H k := by
+    simp only [subdiagonalSqWord, subdiagonalSq, hadd, hmul, pow_two]
+  refine (scanRound_writes_word (τ := τ) hS hL hC (hE.isExactNatLit n) hk hH ht hstate.1
+    hstate.2 hl hroom hA hT).mono le_rfl ?_
+  intro m' _ ⟨hp, hF, hI⟩
+  rw [hword] at hF hI
+  refine ⟨hp, ?_⟩
+  by_cases hs : subdiagonalSq H k ≤ threshold
+  · rw [if_pos hs] at hF hI
+    simpa [ScanHolds, scanPrefix, hs] using And.intro hF hI
+  · rw [if_neg hs] at hF hI
+    simpa only [ScanHolds, scanPrefix, if_neg hs] using And.intro hF hI
 
 /-- The actual scan loop implements the mathematical prefix recurrence on every visit. -/
 private theorem scanLoop_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}

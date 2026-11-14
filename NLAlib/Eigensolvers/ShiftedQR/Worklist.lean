@@ -22,7 +22,8 @@ new range and count through counted dimension literals. Persistent capacity is a
 
 * `NLAlib.ShiftedQR.StackHolds` describes the actual active stack words.
 * `NLAlib.ShiftedQR.rangePush`, `NLAlib.ShiftedQR.rangePop` are scalar/index implementations.
-* `NLAlib.ShiftedQR.rangePush_writes` proves total range insertion.
+* `NLAlib.ShiftedQR.rangePush_writes_of_isExactNatLit` proves total range insertion on any machine
+  whose natural literals are exact (`NLAlib.ShiftedQR.rangePush_writes`: exact arithmetic).
 -/
 
 @[expose] public section
@@ -83,16 +84,18 @@ theorem StackHolds.push {b : ℕ × ℕ} {rs : List (ℕ × ℕ)} {st st' : Stor
     simpa using And.intro hl hd
 
 /-- Push executes the bounded query and three dimension-literal calls on the actual stack.
-The persistent capacity and strict count bound guarantee room before any write. -/
-theorem rangePush_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
-    (hL : IsIndexLit M I) (hQ : IsToNat id I) (hE : ExactModel id M)
+The persistent capacity and strict count bound guarantee room before any write. Only the three
+literals written need to be exact: the machine is otherwise arbitrary (e.g. rounded). -/
+theorem rangePush_writes_of_isExactNatLit {M : Machine ℝ} {I : Interp Op Tst ℝ}
+    (hL : IsIndexLit M I) (hQ : IsToNat id I) {B : ℕ} (hN : IsExactNatLit id M B)
     {τ : Tape ℝ} {m : Mem ℝ} {capacity lo size : ℕ} {b : ℕ × ℕ}
+    (hlo : lo ≤ B) (hsize : size ≤ B) (hcB : capacity ≤ B)
     {rs : List (ℕ × ℕ)} (hSt : StackHolds b rs m.store) (hcap : rs.length < capacity)
     (hroom : b.2 + 1 + 2 * capacity ≤ m.store.len b.1) :
     Writes .total I τ (rangePush (Op := Op) (Tst := Tst)).body
       (Env.frame [capacity, lo, size] [b]) (pushFp b rs.length)
       (fun m' => m'.pos = m.pos ∧ StackHolds b (rs ++ [(lo, size)]) m'.store) m := by
-  have hlit (n : ℕ) : M.lit (n : ℚ) = (n : ℝ) := by simpa using hE.lit (n : ℚ)
+  have hlit (n : ℕ) (hn : n ≤ B) : M.lit (n : ℚ) = (n : ℝ) := by simpa using hN n hn
   suffices hw : Writes .total I τ (rangePush (Op := Op) (Tst := Tst)).body
       (Env.frame [capacity, lo, size] [b]) (pushFp b rs.length)
       (fun m' => m'.pos = m.pos ∧
@@ -111,12 +114,26 @@ theorem rangePush_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
   refine (writes_indexLit hL rfl rfl (by dsimp only; rw [hfr₂.len_eq, hfr₁.len_eq]; omega)).mono
     (by fp_sub [pushFp]) ?_
   intro m₃ hfr₃ ⟨hp₃, hCount⟩
-  refine ⟨hp₃.trans (hp₂.trans hp₁), by simpa only [hlit] using hCount, ?_, ?_⟩
+  refine ⟨hp₃.trans (hp₂.trans hp₁), by simpa only [hlit (rs.length + 1) (by omega)] using hCount,
+    ?_, ?_⟩
   · have hLo₂ := hfr₂.keep (Store.readsOnly_get _ _ _) (by disjoint) hLo
     have hLo₃ := hfr₃.keep (Store.readsOnly_get _ _ _) (by disjoint) hLo₂
-    simpa only [hlit] using hLo₃
+    simpa only [hlit _ hlo] using hLo₃
   · have hSize₃ := hfr₃.keep (Store.readsOnly_get _ _ _) (by disjoint) hSize
-    simpa only [hlit] using hSize₃
+    simpa only [hlit _ hsize] using hSize₃
+
+/-- Push executes the bounded query and three dimension-literal calls on the actual stack.
+The persistent capacity and strict count bound guarantee room before any write. -/
+theorem rangePush_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
+    (hL : IsIndexLit M I) (hQ : IsToNat id I) (hE : ExactModel id M)
+    {τ : Tape ℝ} {m : Mem ℝ} {capacity lo size : ℕ} {b : ℕ × ℕ}
+    {rs : List (ℕ × ℕ)} (hSt : StackHolds b rs m.store) (hcap : rs.length < capacity)
+    (hroom : b.2 + 1 + 2 * capacity ≤ m.store.len b.1) :
+    Writes .total I τ (rangePush (Op := Op) (Tst := Tst)).body
+      (Env.frame [capacity, lo, size] [b]) (pushFp b rs.length)
+      (fun m' => m'.pos = m.pos ∧ StackHolds b (rs ++ [(lo, size)]) m'.store) m :=
+  rangePush_writes_of_isExactNatLit hL hQ (hE.isExactNatLit (capacity + lo + size))
+    (by omega) (by omega) (by omega) hSt hcap hroom
 
 /-- A range stack survives writes to a separate view of the same arena. -/
 theorem StackHolds.of_eqOff {b : ℕ × ℕ} {rs : List (ℕ × ℕ)} {st st' : Store ℝ}
@@ -155,10 +172,12 @@ private theorem StackHolds.pop_count {b : ℕ × ℕ} {rs : List (ℕ × ℕ)} {
 
 /-- Pop reads the actual bounded count, copies the last pair into a separate output view,
 and writes the decremented count. The persistent stack and output capacities are raw premises;
-the earlier ranges and tape position are preserved by the same total run. -/
-theorem rangePop_writes [Has ScalarOp Op] {M : Machine ℝ} {I : Interp Op Tst ℝ}
-    (hS : IsScalar M I) (hL : IsIndexLit M I) (hQ : IsToNat id I) (hE : ExactModel id M)
-    {τ : Tape ℝ} {m : Mem ℝ} {capacity : ℕ} {b out : ℕ × ℕ}
+the earlier ranges and tape position are preserved by the same total run. Only the count
+literal needs to be exact. -/
+theorem rangePop_writes_of_isExactNatLit [Has ScalarOp Op] {M : Machine ℝ} {I : Interp Op Tst ℝ}
+    (hS : IsScalar M I) (hL : IsIndexLit M I) (hQ : IsToNat id I) {capacity : ℕ}
+    (hN : IsExactNatLit id M capacity)
+    {τ : Tape ℝ} {m : Mem ℝ} {b out : ℕ × ℕ}
     {rs : List (ℕ × ℕ)} {r : ℕ × ℕ} (hSt : StackHolds b (rs ++ [r]) m.store)
     (hcap : rs.length + 1 ≤ capacity)
     (hroom : b.2 + 1 + 2 * capacity ≤ m.store.len b.1)
@@ -193,16 +212,60 @@ theorem rangePop_writes [Has ScalarOp Op] {M : Machine ℝ} {I : Interp Op Tst �
   intro m₂ hfr₂ ⟨hp₂, hCount⟩
   have hCount' : m₂.store.get b.1 b.2 = some (rs.length : ℝ) := by
     simpa only [Nat.add_sub_cancel, show M.lit (rs.length : ℚ) = (rs.length : ℝ) by
-      simpa using hE.lit (rs.length : ℚ)] using hCount
+      simpa using hN rs.length (by omega)] using hCount
   refine ⟨hp₂.trans hp₁, hSt₁.pop_count hfr₂ hCount', ?_⟩
   exact hfr₂.keep (Store.readsOnly_readBlock _ _ _ _)
     (hd.symm.mono (by fp_sub) le_rfl) hOut
+
+/-- Pop reads the actual bounded count, copies the last pair into a separate output view,
+and writes the decremented count. The persistent stack and output capacities are raw premises;
+the earlier ranges and tape position are preserved by the same total run. -/
+theorem rangePop_writes [Has ScalarOp Op] {M : Machine ℝ} {I : Interp Op Tst ℝ}
+    (hS : IsScalar M I) (hL : IsIndexLit M I) (hQ : IsToNat id I) (hE : ExactModel id M)
+    {τ : Tape ℝ} {m : Mem ℝ} {capacity : ℕ} {b out : ℕ × ℕ}
+    {rs : List (ℕ × ℕ)} {r : ℕ × ℕ} (hSt : StackHolds b (rs ++ [r]) m.store)
+    (hcap : rs.length + 1 ≤ capacity)
+    (hroom : b.2 + 1 + 2 * capacity ≤ m.store.len b.1)
+    (hout : out.2 + 2 ≤ m.store.len out.1) (hl : m.Live [b, out])
+    (hd : Fp.Disj (Store.inBlock out.1 out.2 2)
+      (Store.inBlock b.1 b.2 (1 + 2 * capacity))) :
+    Writes .total I τ (rangePop (Op := Op) (Tst := Tst)).body
+      (Env.frame [capacity] [b, out])
+      (Store.inBlock b.1 b.2 1 ⊔ Store.inBlock out.1 out.2 2)
+      (fun m' => m'.pos = m.pos ∧ StackHolds b rs m'.store ∧
+        m'.store.readBlock out.1 out.2 2 = some [(r.1 : ℝ), (r.2 : ℝ)]) m :=
+  rangePop_writes_of_isExactNatLit hS hL hQ (hE.isExactNatLit capacity) hSt hcap hroom hout hl hd
 
 /-- Initialize an empty count and push one initial range into reserved stack storage. -/
 def stackInit : Impl Op Tst := opsImpl% [capacity, lo, size] () → (St) {
   call (Has.inj IndexOp.lit) [0] () → (St);
   run (rangePush (Op := Op) (Tst := Tst)).body [capacity, lo, size] (St)
 }
+
+/-- The initial stack is built from literal words, with no initialized stack premise. Only the
+literals written need to be exact. -/
+theorem stackInit_writes_of_isExactNatLit {M : Machine ℝ} {I : Interp Op Tst ℝ}
+    (hL : IsIndexLit M I) (hQ : IsToNat id I) {B : ℕ} (hN : IsExactNatLit id M B)
+    {τ : Tape ℝ} {m : Mem ℝ} {capacity lo size : ℕ} {b : ℕ × ℕ}
+    (hlo : lo ≤ B) (hsize : size ≤ B) (hcB : capacity ≤ B)
+    (hcap : 0 < capacity) (hroom : b.2 + 1 + 2 * capacity ≤ m.store.len b.1) :
+    Writes .total I τ (stackInit (Op := Op) (Tst := Tst)).body
+      (Env.frame [capacity, lo, size] [b]) (Store.inBlock b.1 b.2 (1 + 2 * capacity))
+      (fun m' => m'.pos = m.pos ∧ StackHolds b [(lo, size)] m'.store) m := by
+  have hlit : M.lit (0 : ℚ) = (0 : ℝ) := by simpa using hN 0 (Nat.zero_le _)
+  unfold stackInit
+  refine (writes_indexLit hL rfl rfl (by dsimp only; omega)).seq_le (by fp_sub) ?_
+  intro m₁ hfr₁ ⟨hp₁, hzero⟩
+  have hs : StackHolds b [] m₁.store :=
+    ⟨by simpa only [List.length_nil, Nat.cast_zero, hlit] using hzero,
+      fun _ ht => by simp only [List.length_nil] at ht; omega⟩
+  have hw := rangePush_writes_of_isExactNatLit (τ := τ) hL hQ hN hlo hsize hcB hs
+    (capacity := capacity) hcap (by rw [hfr₁.len_eq]; exact hroom)
+  refine (hw.in_frame rfl rfl ?_).mono (by simp only [List.length_nil]; fp_sub [pushFp]) ?_
+  · have hb := Store.lt_length_of_lt_len (show b.2 < m.store.len b.1 by omega)
+    simpa [Mem.Live, ← hfr₁.length_eq] using hb
+  · intro _ _ ⟨hp₂, hstack⟩
+    exact ⟨hp₂.trans hp₁, by simpa only [List.nil_append] using hstack⟩
 
 /-- The initial stack is built from literal words, with no initialized stack premise. -/
 theorem stackInit_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
@@ -211,20 +274,8 @@ theorem stackInit_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hcap : 0 < capacity) (hroom : b.2 + 1 + 2 * capacity ≤ m.store.len b.1) :
     Writes .total I τ (stackInit (Op := Op) (Tst := Tst)).body
       (Env.frame [capacity, lo, size] [b]) (Store.inBlock b.1 b.2 (1 + 2 * capacity))
-      (fun m' => m'.pos = m.pos ∧ StackHolds b [(lo, size)] m'.store) m := by
-  have hlit : M.lit (0 : ℚ) = (0 : ℝ) := by simpa using hE.lit 0
-  unfold stackInit
-  refine (writes_indexLit hL rfl rfl (by dsimp only; omega)).seq_le (by fp_sub) ?_
-  intro m₁ hfr₁ ⟨hp₁, hzero⟩
-  have hs : StackHolds b [] m₁.store :=
-    ⟨by simpa only [List.length_nil, Nat.cast_zero, hlit] using hzero,
-      fun _ ht => by simp only [List.length_nil] at ht; omega⟩
-  have hw := rangePush_writes (τ := τ) hL hQ hE hs (capacity := capacity)
-    (lo := lo) (size := size) hcap (by rw [hfr₁.len_eq]; exact hroom)
-  refine (hw.in_frame rfl rfl ?_).mono (by simp only [List.length_nil]; fp_sub [pushFp]) ?_
-  · have hb := Store.lt_length_of_lt_len (show b.2 < m.store.len b.1 by omega)
-    simpa [Mem.Live, ← hfr₁.length_eq] using hb
-  · intro _ _ ⟨hp₂, hstack⟩
-    exact ⟨hp₂.trans hp₁, by simpa only [List.nil_append] using hstack⟩
+      (fun m' => m'.pos = m.pos ∧ StackHolds b [(lo, size)] m'.store) m :=
+  stackInit_writes_of_isExactNatLit hL hQ (hE.isExactNatLit (capacity + lo + size))
+    (by omega) (by omega) (by omega) hcap hroom
 
 end NLAlib.ShiftedQR

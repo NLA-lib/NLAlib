@@ -33,6 +33,8 @@ the probabilistic part of the random shift regularization of shifted QR
 ## Main definitions
 
 * `NLAlib.diskUniform`: the uniform law on a closed disk.
+* `NLAlib.polarDisk`: the polar sampler, uniform on the disk by
+  `NLAlib.map_polarDisk_eq_diskUniform`.
 -/
 
 @[expose] public section
@@ -303,5 +305,18 @@ theorem measureReal_exists_norm_add_sub_lt_le_of_separated (S Λ : Finset ℂ) {
           (by exact_mod_cast card_filter_le_eleven hR hηR hS) (by positivity)
     _ = 11 * Λ.card * (η / R) ^ 2 := by
         rw [Finset.sum_const, nsmul_eq_mul]; ring
+
+/-- **The polar sampler**: two draws $x_0, x_1 \in [0, 1]$ give the point
+$c + R\sqrt{x_0}\,e^{2\pi i x_1}$ of the closed disk $\mathbb{D}(c, R)$. -/
+noncomputable def polarDisk (c : ℂ) (R : ℝ) (x : Fin 2 → ℝ) : ℂ :=
+  c + ((R * Real.sqrt (x 0) : ℝ) : ℂ) * Complex.exp (((2 * Real.pi * x 1 : ℝ) : ℂ) * Complex.I)
+
+/-- **The polar sampler is uniform on the disk**: the image of the uniform law on $[0, 1]^2$
+under `NLAlib.polarDisk c R` is the uniform law on $\mathbb{D}(c, R)$, for $R > 0$ (the area
+element $r\,dr\,d\vartheta$ becomes $\pi R^2\,dx_0\,dx_1$). -/
+theorem map_polarDisk_eq_diskUniform (c : ℂ) {R : ℝ} (hR : 0 < R) :
+    (Measure.pi fun _ : Fin 2 => (volume : Measure ℝ).restrict (Set.Icc 0 1)).map
+      (polarDisk c R) = diskUniform c R := by
+  sorry
 
 end NLAlib

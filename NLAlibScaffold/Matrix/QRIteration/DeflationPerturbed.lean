@@ -8,6 +8,7 @@ module
 public import NLAlib.Matrix.QRIteration.HessenbergDeflation
 public import NLAlib.Matrix.Perturbation.UnitarySimilarity
 public import NLAlib.Matrix.Spectral.Schur
+public import NLAlibScaffold.Matrix.Perturbation.EigenvalueBackward
 
 /-!
 # Deflation with perturbed block steps
@@ -31,6 +32,8 @@ composed as a backward step ([BanksGarzaVargasSrivastava2022, §6], Theorem 6.3,
   active block.
 * `NLAlib.DeflationInv.finish_of_specNorm_le`: a block finished with the roots of a perturbed
   block.
+* `NLAlib.DeflationInv.exists_pseudoConditionNumber_subBlock_le_and_le_norm_sub`: condition and
+  separation of the active blocks after a perturbation.
 -/
 
 @[expose] public section
@@ -133,5 +136,25 @@ theorem DeflationInv.finish_of_specNorm_le
   have hne : r' ≠ r := fun h =>
     (List.nodup_cons.mp (List.nodup_append.mp hpart.1).1).1 (h ▸ hr')
   exact (hset.2 r' (by simp [hr']) hne).symm
+
+/-- **Condition and separation of every active block after a perturbation**: under the invariant
+`NLAlib.DeflationInv` with perturbation bound $\varepsilon$, if
+$\mathbf{H}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$ with $\mathbf{V}$ invertible,
+$\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le B$, eigenvalues separated by $g > 0$ and
+$\varepsilon \le g/(16(n + 1)B)$, then every active block of $\mathbf{A}$ is diagonalizable with
+condition at most $2B$ and eigenvalues separated by $g/2$: its eigenvalues are some of those of
+$\mathbf{H} + \mathbf{E}$, which keep the separation $g - 2B\|\mathbf{E}\|_2$
+(`NLAlib.exists_pseudoConditionNumber_le_and_le_norm_sub`). The condition half is
+`NLAlib.DeflationInv.exists_pseudoConditionNumber_subBlock_le`. -/
+theorem DeflationInv.exists_pseudoConditionNumber_subBlock_le_and_le_norm_sub
+    {H A V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ε : ℝ} {active done : List (ℕ × ℕ)}
+    {out : Fin (n + 1) → ℂ} (h : DeflationInv H ε active done A out) {d : Fin (n + 1) → ℂ}
+    (hV : IsUnit V) (hHV : H * V = V * Matrix.diagonal d) {B g : ℝ}
+    (hB : pseudoConditionNumber V ≤ B) (hg : 0 < g) (hgap : ∀ i j, i ≠ j → g ≤ ‖d i - d j‖)
+    (hε : ε ≤ g / (16 * (n + 1) * B)) {r : ℕ × ℕ} (hr : r ∈ active) :
+    ∃ (Vr : Matrix (Fin r.2) (Fin r.2) ℂ) (dr : Fin r.2 → ℂ), IsUnit Vr ∧
+      subBlock A r * Vr = Vr * Matrix.diagonal dr ∧ pseudoConditionNumber Vr ≤ 2 * B ∧
+      ∀ i j, i ≠ j → g / 2 ≤ ‖dr i - dr j‖ := by
+  sorry
 
 end NLAlib

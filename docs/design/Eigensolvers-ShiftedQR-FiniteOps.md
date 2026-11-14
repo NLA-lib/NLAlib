@@ -589,3 +589,268 @@ outcome-dependent rule. A factor $\le 2$; irrelevant for the precision theorem.
 * Risk: C4a is the bulk (a replay of Codex's `processRange`/`worklistRound` memory proofs with
   the new branches); P1 needs a pair version of C3's sweep lemma and the residual bookkeeping of
   the triangular factor.
+
+## 14. Toward the headline: L2–L4 (batch 3 onward)
+
+Branch `design/sqrfp-headline` (from `integrate/sqrfp` @f9679b04). Maintainer (2026-11-14): "lets
+work on the next bits to get a true headline theorem. some of L2 might belong in its own place."
+State on entry: L1 and batches 1–2 proved with standard axioms (C4 `solveRounded_backward`, P1–P3,
+R1–R4, Q1–Q6, S1–S6, D1–D4, U1, E1–E2, K1, DP1–DP3, B*, G*, C1–C3). This section fixes the
+headline, works backwards to those results, places every new result, and settles the C4
+interface for the probability layer. The general probability layer has its own note,
+[Ops-Probabilistic-Specs](Ops-Probabilistic-Specs.md).
+
+### 14.1 The headline
+
+**T1c (Theorem 6.3 with Theorem 1.4's quantifiers, corrected).** Let $\mathbf{H}$ be upper
+Hessenberg of order $n + 1$, $\mathbf{H}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$
+with $\kappa(\mathbf{V}) \le B$, eigenvalues separated by $\Gamma > 0$, $\|\mathbf{H}\|_2 \le
+\Sigma$, $0 < \delta \le \Sigma$, $0 < \varphi \le 1$, and $k = 2^m$ chosen from $B$ as in
+(eqn:setk) (so $B^{2/k} \le 2$). On a machine with `StdModel u id`, Borel operations, exact natural
+literals up to $n + 1$, a tape whose stream $s_U$ is uniform on $[0, 1]$, an exact polar disk
+sampler and a `SmallEig` kernel meeting Definition 1.2 (forward error $\beta_{\mathrm{se}}$,
+failure $\varphi_{\mathrm{se}}$ on a bad window), with the parameter words set by
+`shqrParams n k B Γ Σ δ φ` and
+
+$$\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{ShQR}}(n, k, B, \Gamma, \Sigma, \delta, \varphi),$$
+
+the program `roundedShQR` run on the stored $\mathbf{H}$ **always terminates** (every tape;
+capped, C4), and with probability at least $1 - \varphi$ it sets the failure word to $0$ and stores
+all eigenvalues, with multiplicity, of $\mathbf{H} + \mathbf{E}$ for some
+$\|\mathbf{E}\|_2 \le \delta$. Lean form (planned, with the programs of wave 9):
+
+```lean
+theorem roundedShQR_measureReal_not_spectrum_le … (hM : StdModel u id Mch) (hMeas : Mch.IsMeasurable)
+    (hNat : IsExactNatLit id Mch (n + 1)) (hSE : IsRandomSmallEig law sU βse φse I)
+    (hDisk : IsPolarDiskSampler law sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
+    (hHess : IsUpperHessenberg H) (hV : IsUnit V) (hHV : H * V = V * diagonal d)
+    (hκ : pseudoConditionNumber V ≤ B) (hΓ : 0 < Γ) (hgap : ∀ i j, i ≠ j → Γ ≤ ‖d i - d j‖)
+    (hΣ : specNorm H ≤ Σ) (hδ : 0 < δ) (hδΣ : δ ≤ Σ) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
+    (hk : k = shqrDegree B) (hpar : … stored params = shqrParams n k B Γ Σ δ φ)
+    (hse : βse ≤ shqrSmallEigAccuracy n k B Γ Σ δ) (hφse : φse ≤ shqrSmallEigFailure n k B Γ Σ δ φ)
+    (hu : u ≤ uShQR n k B Γ Σ δ φ) … (hξ : IsTapeLaw law P ξ) :
+    P.real {ω | ¬ Writes .total I (ξ ω) (roundedShQR …).body env F
+      (fun μ' => Fl = 0 ∧ ∃ roots E, HoldsMatrix out roots μ'.store ∧ specNorm E ≤ δ ∧
+        (H + E).charpoly.roots = List.ofFn roots) μ} ≤ φ
+```
+
+**T1 (in the skeleton, the worklist level).** `NLAlib.ShiftedQR.solveRounded_measureReal_not_spectrum_le`
+(`NLAlibScaffold/Eigensolvers/ShiftedQR/RoundedHeadline.lean`, **proved** from C4p
+`solveRounded_pwrites`): the same program `solveRounded D L` as C4, with a decoupler meeting
+`RandomDecouplingContract law (2B) (g/2) φ_D …` (a probabilistic block specification on the class:
+Hessenberg, norm $\le N$, condition $\le 2B$, separation $\ge g/2$) and a leaf meeting
+`RandomLeafContract law β φ_L`, fails to store the spectrum of some $\mathbf{H} + \mathbf{E}$,
+$\|\mathbf{E}\|_2 \le 2(n+1)(c + \varepsilon(N_0) + \beta)$, with probability at most
+$2(n + 1)(\varphi_D + \varphi_L)$, provided $2(n+1)(c + \varepsilon(N_0) + \beta) \le
+g/(16(n+1)B)$ (class preservation, via `DeflationInv.exists_pseudoConditionNumber_subBlock_le`
+and the new P12a). T1c is T1 with $D$ = the Lemma 6.4 loop of `Regularize` + $\mathrm{Sh}_{k,B}$
+(P11p: $\varphi_D = F\varphi_{\mathrm{it}}$, $\varepsilon(N) = F\varepsilon_{\mathrm{it}}(N)$),
+$L$ = `SmallEig` + E1, and the parameter arithmetic PAR1. Why the split: the iteration programs
+(P4–P10) do not exist yet, and the headline's shape must not wait for them; T1 is a real theorem
+about the C4 program now, and T1c's statement is fixed here.
+
+**T2 (bits).** $\log_2(1/\boldsymbol{u}_{\mathrm{ShQR}}) \le c_1 k \log_2(n B \Sigma/(\delta\Gamma\varphi)) + c_2$
+with explicit $c_1, c_2$; $\Sigma$ appears (errata N8). `uShQR` is one closed-form definition
+(min of the loop budget, $\boldsymbol{u}_{\mathrm{Regularize}}$, $\boldsymbol{u}_{\mathrm{Sh}}$
+with the corrected G8/G9/G13/G16 forms), bounded once. **T3**: relative form $\delta\|\mathbf{H}\|_2$
+with $\Sigma$ an input word, $\|\mathbf{H}\|_2 \le \Sigma \le c\|\mathbf{H}\|_2$ (or $\Sigma$
+computed as a rounded $2\|\mathbf{H}\|_{\mathsf F}$). **T5**: work bound on every tape (the cap
+makes it deterministic; the paper's holds only w.p. $1-\varphi$, errata N10).
+
+**Hypotheses and why each is honest.** Hessenberg input (Givens QR is a QR factorization only
+then; Q4, S3); $\kappa$ and gap as data of an explicit diagonalization (the paper's
+$B \ge 2\kappa_V$, $\Gamma \le \mathrm{gap}/2$ with the factor 2 moved into the contract classes);
+$\Sigma \ge \|\mathbf{H}\|$; `StdModel` (no under/overflow, Part II's model); Borel machine
+operations (needed: the failure event of a call is a function of the computed input block, and
+with non-measurable rounding the adaptive union bound fails); exact literals for the index words;
+exact polar sampler (decision D1c; a rounded sampler is a coupling within $O(\boldsymbol{u}R)$,
+absorbed in G13vi's slack — not formalized); `SmallEig` an oracle with a bad-window contract
+(Part III out of scope; its precision is not counted); parameter words exact (the $(k-1)$-th root
+in Exc's $\varepsilon$, the cap $F$, $k$, the thresholds are supplied, computed outside the model).
+
+**What it does not claim.** No Hessenberg reduction or random preprocessing of a general matrix
+(Remark 1.3); no statement about `SmallEig`'s own cost or precision; no running-time bound beyond
+T5's count of operations; no forward error for eigenvalues; no rounded disk sampler; nothing for
+$\kappa_V = \infty$ or repeated eigenvalues ($\Gamma > 0$ is a hypothesis).
+
+### 14.2 Backwards from the headline
+
+`✓` = proved on `integrate/sqrfp`; `skel` = sorried here; `plan` = specified, skeletonized with
+its program. Gen = general library (own topic file, stage-free docstring), Stg = this algorithm.
+
+| id | statement | place | G/S | diff | status | wave |
+|---|---|---|---|---|---|---|
+| T1c | `roundedShQR_measureReal_not_spectrum_le` | Eigensolvers/ShiftedQR/RoundedHeadline | Stg | M | plan | 10 |
+| T2, T3, T5 | bits; relative form; work bound | same | Stg | L, M, M | plan | 10 |
+| T4 | Hermitian corollary ($k = 2$, $B = 1$; optional) | same | Stg | L | plan | 10 |
+| PAR1 | `shqrParams`/`uShQR` meet T1's and P11p's hypotheses (ω, $c$, threshold word, budget, $\varphi$ split $\varphi/(4(n+1))$ each) | same | Stg | L | plan | 9 |
+| T1 | `solveRounded_measureReal_not_spectrum_le` | RoundedHeadline | Stg | S | **proved** (from C4p) | — |
+| C4p | `solveRounded_pwrites` (worklist as `PWrites`; class preservation; rounds add) | RoundedHeadline | Stg | H | skel | 7 |
+| C4cap | D interface `[n+1, k, np, F]` (the loop cap as a dimension; §14.4) | RoundedSolve | Stg | S | plan | 7 |
+| P12a | `DeflationInv.exists_pseudoConditionNumber_subBlock_le_and_le_norm_sub` (active blocks: condition $2B$, separation $g/2$) | Matrix/QRIteration/DeflationPerturbed | Gen | M | skel | 5 |
+| P12b | iterate class: a perturbed unitary similarity within $g/(16NB)$ keeps condition $2B$, separation $g/2$, norm (from E2) | Matrix/Perturbation/EigenvalueBackward | Gen | S | plan | 5 |
+| LF1 | `SmallEig` kernel (`IsRandomSmallEig`: forward $\beta$ off a bad window) meets `RandomLeafContract` (E1) | Eigensolvers/ShiftedQR/RoundedKernels | Stg | M | plan | 7 |
+| P11d | `roundedDecouple` (Lemma 6.4 loop: bottom scan P3, iteration, cap $F$) meets `RoundedDecouplingContract True` | Eigensolvers/ShiftedQR/RoundedDecouple | Stg | M | plan | 9 |
+| P11p | `roundedDecouple` meets `RandomDecouplingContract` ($\varphi_D = F\varphi_{\mathrm{it}}$) by S6 ✓ + PL5 + P12b | same | Stg | L | plan | 9 |
+| P10b | `shIteration` = Regularize; Sh: `ShIterationContract` (decoupled at the bottom, or $\psi_k$ contracted by $1.002(1-\gamma)$; error $\varepsilon_{\mathrm{it}}$; failure $\varphi_{\mathrm{it}}$) | Eigensolvers/ShiftedQR/RoundedIteration | Stg | M | plan | 9 |
+| P10 | `regularize` program (SmallEig of the trailing block, $k$ disk draws, Optimal, $\le k$ trials) — PWrites from S1–S3 ✓, RZ1, D3 ✓, Q4 ✓ | Eigensolvers/ShiftedQR/RoundedRegularize | Stg | L | plan | 8 |
+| P9 | `shStep` program (Find, comptau test, Exc, trials, fail word) — PWrites from S4 ✓, S5 ✓, Q5 ✓, Q6 ✓, D4 ✓ | Eigensolvers/ShiftedQR/RoundedSh | Stg | L | plan | 8 |
+| P14 | Regularize's failure $\le \varphi$: SmallEig $\varphi/2$ + D3 ✓ $\varphi/2$, by PL3b on the joint window | RoundedRegularize | Stg | M | plan | 7 |
+| P15 | Exc translate failure (D4 ✓, $\eta = \varepsilon\tilde R\sqrt{\varphi/(11n)}$), PL3b | Eigensolvers/ShiftedQR/RoundedExc | Stg | S | plan | 7 |
+| P8 | `excShifts` program (net of $\mathbb{D}(r, (1+\varepsilon)\tilde R)$, translate, rounding $\le \min(0.005\varepsilon\tilde R, \eta/2)$) meets S5's cover/card and D4's separation | RoundedExc | Stg | L | plan | 8 |
+| P7 | `findRounded` program (halving with comptau of half-products via P2 ✓) meets S4's hypothesis | Eigensolvers/ShiftedQR/RoundedFind | Stg | M | plan | 8 |
+| P6 | `roundedPotential` (bottom product + `sqrtIter` K1 ✓, FP1): $\tilde\psi$ within $0.001\psi/k$ | Eigensolvers/ShiftedQR/RoundedRitz | Stg | S | plan | 7 |
+| P5 | `comptau` ($\mathrm{fl}\prod\lvert\widehat{\mathbf{R}}_{nn}\rvert$ from P2 ✓; Q5 ✓ + FP1) | RoundedRitz | Stg | S | plan | 7 |
+| P4 | `optimalTest` program ($\widehat{\mathbf{v}}_k$ recurrence; FP2) meets S1/S2's $0.0009$ hypothesis | RoundedRitz | Stg | M | plan | 7 |
+| FP2 | rounded $\mathbf{e}_n^{\mathsf T}p(\mathbf{H})$ by the recurrence $\widehat{\mathbf{v}}_{j+1} = \mathrm{fl}((\mathbf{H} - s_{j+1})^{\mathsf H}\widehat{\mathbf{v}}_j)$: error $\le 2(n+1)^2(2+2C)^k\|\mathbf{H}\|^k\boldsymbol{u}$ (Lemma 4.5) | Matrix/FinitePrecision/HessenbergRowPoly | Gen | M | plan | 6 |
+| FP1 | rounded product of $k$ words: relative error $(1+\boldsymbol{u})^{k-1} - 1$ | Matrix/FinitePrecision/ProductRounded | Gen | S | plan | 5 |
+| GR1 | separated covering net of a disk (square grid): covers $\mathbb{D}(0,1)$ at radius $\varepsilon$, $0.99\varepsilon$-separated, $\le 9/\varepsilon^2$ points for $\varepsilon \le 1/2$ | ForMathlib/Analysis/Complex/DiskNet | Gen | M | plan | 5 |
+| RZ1 | `exists_perm_forall₂_ritzValues` (a forward-accurate listing of the trailing block, reordered, is entrywise within $\beta$ of `ritzValues`) | Matrix/QRIteration/RitzApprox | Gen | S | skel | 5 |
+| D5 | `map_polarDisk_eq_diskUniform` (two uniform draws → the uniform disk law) | Probability/Distributions/DiskUniform | Gen | M | skel | 5 |
+| PL0–PL5 | probabilistic block specifications ([Ops-Probabilistic-Specs](Ops-Probabilistic-Specs.md)): run measurability (H), strong Markov at stopping positions (L), `PWrites` rules (3 proved; 4 skel; 4 plan), measurable catalog (M), `PBackwardStep.whileFuel` (L) | Ops/Logic/Probabilistic, Ops/TapeStopping | Gen | — | 3 ✓, 6 skel, 6 plan | 5–6 |
+
+Proved and used unchanged: C4, C4a and their sublemmas (deterministic skeleton of C4p),
+P1–P3, Q1–Q6, R1–R4, S1–S6, D1–D4, E1, E2, K1, DP1–DP3, B*, G*. U1 is no longer on the critical
+path (`PWrites.seq` subsumes the adaptive union bound); it stays as a law-level lemma.
+
+**Counts (new).** Skeleton: 10 sorried (S 1, M 5, L 2, H 2) + 4 proved (PL3a ×3, T1). Planned:
+33 (S 9, M 16, L 8). By layer, open statements: L2 16 (S 5, M 7, L 4: RZ1, P12a, P12b, FP1, FP2,
+GR1, P4–P10, P10b, P11d, P11p); L3 16 (S 2, M 10, L 3, H 1: PL1, PL2, PL3b–f, PL4, PL5, D5, LF1,
+P14, P15) + 3 proved; L4 8 (S 1, M 3, L 3, H 1: C4cap, C4p, PAR1, T1c, T2, T3, T5, T4) + T1
+proved; infrastructure from the rule candidates 3 (S 2, M 1, §14.5). 43 open in all.
+
+### 14.3 Placement (the maintainer's point)
+
+**General, own topic files, docstrings without this stage:** the Ops probability layer PL0–PL5
+(`Ops/Logic/Probabilistic`, `Ops/TapeStopping`, `Ops/Catalog/ScalarMeasurable`); the polar sampler
+D5 (`Probability/Distributions/DiskUniform`); approximate Ritz values RZ1
+(`Matrix/QRIteration/RitzApprox`); class preservation P12a/P12b (`DeflationPerturbed`,
+`EigenvalueBackward`); rounded products FP1 and the rounded last-row polynomial FP2
+(`Matrix/FinitePrecision/*`); the disk net GR1 (`ForMathlib/Analysis/Complex/DiskNet`, a
+Mathlib-shaped covering lemma). Already general and proved: perturbation of the Hessenberg
+potential (Q6), optimal Ritz values under perturbation (S1–S3), Find with computed values (S4),
+Exc's covering argument (S5), the abstract while loop (S6), disk regularization (D3, D4), the
+measurable union bound (U1).
+
+**Stage-specific (`Eigensolvers/ShiftedQR/…`):** the programs and their contracts (P4–P11,
+LF1, P14, P15), C4p, PAR1, the headlines.
+
+Earliest waves are the general ones (5–6); the stage programs follow (7–9); assembly last (9–10).
+
+### 14.4 The C4 interface change (decision C4-CHANGE)
+
+The watch item (batch-2 review §3): `fails : Prop` is global, so C4 does not expose which call
+failed. The suggested `fails : ℕ → Prop` with `∃ pos, fails pos ∧ Fl = 1` **does not suffice**:
+the contract quantifies the tape inside, so for a randomized decoupler (which fails on some tape
+at every start position) `fails pos` must be true for every `pos` — no information. A usable
+per-call event must depend on the tape and the call's input block,
+`fails : (m : ℕ) → Matrix (Fin (m+1)) (Fin (m+1)) ℂ → Tape ℝ → ℕ → Prop`, and C4's fail branch
+would expose `∃ j < 2(n+1), ∃ p Hⱼ, (Hⱼ an active block …) ∧ fails Hⱼ τ p ∧ Fl = 1`.
+
+Options:
+
+* **(a, recommended) Keep C4 and C4a as proved; add C4p.** The per-call failure event lives in
+  each call's good set (`PWrites`), and the union bound is `PWrites.seq`/`whileFuel` (PL3, PL5).
+  C4 stays the all-tapes backward statement (instantiated with `fails := True` for a randomized
+  decoupler); C4p replays C4a's round with PWrites rules, reusing its deterministic sublemmas
+  (`roundedRange_writes`, `roundedLarge_writes`, `roundedCut_core`, `RoundedGeometry.*`) for the
+  branches without random calls. Re-proof of C4/C4a: **0 lines**. New: C4p (H, ~400 lines, mostly
+  PWrites bookkeeping over existing sublemmas). One small edit is needed anyway (**C4cap**, S,
+  ~20–40 lines): the decoupler's interface gains the cap dimension `F`
+  (`[n+1, k, np, F] (W, P) → (W, Fl)`, as Codex's exact `decouple` has `[N, m, k, F, M]`), because
+  the Ops builder has no way to pass a Lean-level constant to a loop bound, and $F = \lfloor
+  N_{\mathrm{dec}}\rfloor + 1$ is not a function of $n$. It changes `RoundedDecouplingContract`,
+  `roundedProcessLarge` (one `run` line), `solveRounded`'s interface and the frames in C4a/C4.
+* (b) Restate C4 with the tape-indexed per-call event above. Re-proof: `RoundedWorklistState`'s
+  fail branch carries the witness, C4a's fail branch builds it from the popped block (M, ~150
+  lines). But the union bound then needs the call positions and input blocks as **random
+  variables** identified with C4's existential witness — a call-trace semantics for Ops that does
+  not exist (H, specific to this proof). Not recommended.
+* (c) `fails : ℕ → Prop`: insufficient (above).
+
+### 14.5 Shared machinery and rule candidates (planned as early waves)
+
+From batch 2 (RoundedSolve, program:math ≈ 816:94):
+
+| candidate | where it goes | status |
+|---|---|---|
+| `DeflationInv.of_isPerturbedUnitarySimilar`, `DeflationInv.exists_isPerturbedUnitarySimilar_finish/_split`, `IsEigenvalueListing.charpoly_roots_eq_ofFn` (stated in `RoundedSolve`, general) | move to `Matrix/QRIteration/DeflationPerturbed`, `Matrix/Spectral/EigenvalueListing` | wave 5 (move only) |
+| `writeAndSplit_writes_mem` (machine-generic split) | Codex's `RangeSplit` (with §7.4 item 6) | wave 5 (move) |
+| witness-exposing `IsPerturbedUnitaryPair.exists_witness` (U, E, F as data for consumers that re-embed) | `Matrix/Perturbation/UnitaryPair` | wave 5, S |
+| allocation geometry: `RoundedGeometry`/`WorklistGeometry` are the same structure (views live, room, pairwise apart) with the same six lemmas (`of_eqOff`, `live_of_subset`, `disj`, `disj_scratch`, `allocated`) | `Ops/Logic/Geometry` (`Ops.Geometry views lens μ`) | wave 5, M |
+| `BackwardStep` through allocation (C4 used `writes_allocs_preserving_post` by hand) | `Ops/Logic/Backward` | wave 6, S |
+| `PWrites` rules mirroring `Writes` 1:1 (seq/ite/loop/whileFuel/bindIdx/allocs/in_frame) | PL3 | wave 6 |
+| `PBackwardStep.whileFuel` (backward error and failure add per round) — makes C4p, P11p and the Sh trial loops procedural | PL5 | wave 6 |
+| a random-call rule from a kernel's bad-window contract (`PWrites.of_window` + frame) | PL3b | wave 6 |
+
+New programs reuse: `multiStepStable` (P2) for every trial step, `bottomScan` (P3) for every
+decoupling test, Codex's `BlockCopy`/`copyToWork` for trial copies, `sqrtIter` (K1) for roots.
+
+### 14.6 Edge cases checked (per new statement)
+
+* **C4p / T1.** $n = 0$: one leaf, D never called, bound $2\varphi_L$; $k = 0$: D gets
+  $1\times1$ blocks, its success needs an index in `Fin 0`, so `RandomDecouplingContract` forces
+  $\varphi_D \ge 1$ and the bound is trivial; $n + 1 \le k$: leaves only; $\varphi_D < 0$ or
+  $\varphi_L < 0$: the contract is false under a genuine tape law (some instance has a satisfiable
+  precondition), so no vacuous success; $B$: $\kappa \ge 1$ gives $B \ge 1$, no division by $0$ in
+  `hsmall`; $g > 0$ assumed (else separation is empty and the class has no content); $\beta < 0$,
+  $\varepsilon(N_0) < 0$ excluded (as C4); $\omega < 0$: D's success impossible, forces
+  $\varphi_D \ge 1$; the classes are $2B$, $g/2$ (P12a needs total error $\le g/(16(n+1)B)$, and
+  $2B\cdot g/(16(n+1)B) \le g/2$); the norm class $N_0$ covers every block (C4's `hN₀`).
+* **P12a.** $r.2 = 0$ (empty block: vacuous); $\varepsilon < 0$ (invariant unsatisfiable);
+  separation inherited only because the block's eigenvalues are a sub-multiset of those of
+  $\mathbf{H} + \mathbf{E}$ (injective there) — stated with $\forall i \ne j$ on the block's own
+  listing.
+* **RZ1.** $k = 0$ (both lists empty); $\beta < 0$ (hypothesis unsatisfiable for $k \ge 1$); the
+  order of `ritzValues` is `Multiset.toList` (arbitrary), hence the existential reorder.
+* **D5.** $R > 0$ assumed ($R = 0$ makes `diskUniform` the conditional law on a null set, $0$);
+  the image of $[0,1]^2$ is the closed disk; boundary null.
+* **PL0–PL3, PL2.** See [Ops-Probabilistic-Specs](Ops-Probabilistic-Specs.md) §4 ($\varphi < 0$,
+  $\varphi \ge 1$, `DeterminedFrom`, `W = 0`, test failure, `N = 0`, stopping positions that
+  peek).
+* **Junk values to watch in the planned statements.** P4/P9/P10: shifts equal to eigenvalues
+  (Lean's inverse is $0$) — carried as `hne`/`hd` from D3/D4's distance $> 0$, as S3/S5 require;
+  P6: $\psi = 0$ (an exactly decoupled block: the loop exits before Sh, so P9 assumes
+  $\omega < $ every bottom subdiagonal); P8: $\varepsilon$ is an input word, $\varepsilon \le 1/2$
+  checked (G13v); P7: $k = 2^m$, $m = 0$ (Find returns the single shift); P11p: $F = 0$ (the
+  contract then requires the input already decoupled — false in general, so PAR1 must give
+  $F \ge 1$); PAR1: $\log$ of ratios $\le 1$ ($\delta \le \Sigma$, $\varphi \le 1$ needed for the
+  bit count to be nonnegative).
+
+### 14.7 Skeleton and checks
+
+New files: `NLAlibScaffold/Ops/TapeStopping.lean` (PL2), `NLAlibScaffold/Ops/Logic/Probabilistic.lean`
+(PL0, PL1, PL3a–e), `NLAlibScaffold/Matrix/QRIteration/RitzApprox.lean` (RZ1),
+`NLAlibScaffold/Eigensolvers/ShiftedQR/RoundedHeadline.lean` (contracts, C4p, T1). Added to
+existing scaffold files: D5 (`DiskUniform`), P12a (`DeflationPerturbed`). No proved statement
+changed. `lake build NLAlib NLAlibScaffold` and `check_rules` results: §14.10.
+
+### 14.8 Batches
+
+* **Batch 3 (general library, waves 5–6):** PL1, PL2, PL3b–f, PL4, PL5, D5, RZ1, P12a, P12b, FP1,
+  FP2, GR1, the batch-2 moves and the geometry structure. Independent of the stage; reviewable on
+  its own.
+* **Batch 4 (stage programs, waves 7–8):** C4cap, C4p, LF1, P4–P10, P14, P15.
+* **Batch 5 (assembly, waves 9–10):** P10b, P11d, P11p, PAR1, T1c, T2, T3, T5 (T4 optional).
+
+### 14.9 Risks
+
+* PL1 (run measurability) is new Ops infrastructure by induction over `Stmt` with fuel; the only
+  H in the general layer. Fallback: state PL3c with measurability of the intermediate memory as a
+  hypothesis and discharge it per program (costly; not recommended).
+* C4p is a replay of C4a's round in PWrites form; without PL5 it repeats the per-round state
+  bookkeeping (H rather than L).
+* The iteration programs (P7–P10) are the bulk of the program side (Find's half-products, Exc's
+  net and trials); their contracts are fixed by S1–S6, so the risk is volume, not truth.
+* `uShQR` assembles many corrected constants; T2 is L only if PAR1 defines it once.
+* Measurable machine operations are a new hypothesis of the headline (honest, and true for any
+  rounding to a discrete format), but a reviewer should confirm it is acceptable.
+
+### 14.10 Checks run
+
+`lake build NLAlib NLAlibScaffold`: 5090 jobs, success. `check_rules --files` on the changed and
+new files: 0 errors, 0 warnings. `scripts/stage_check.sh`: exit 0 (1351 proved modules, axiom
+audit 0 violations, 14 linters 0 errors, strict replay of `NLAlib` 0 violations; the 10 new
+`sorry`s are in `NLAlibScaffold` only). Decision sheet:
+`~/nlalib-harness/state/decisions/SQR-FP-HEADLINE.json`; targets (batches 3–5, waves 5–10):
+`~/nlalib-harness/pilot/sqr-fp-targets.json`.

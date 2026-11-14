@@ -199,6 +199,71 @@ theorem exists_decoupled_of_contract {k N : ℕ} {q ω S : ℝ}
     (hS : hessenbergPotential k (Hs 0) ≤ S) (hN : q ^ N * S ≤ ω) :
     ∃ j ≤ N, (∃ i : Fin n, n ≤ (i : ℕ) + k ∧ ‖Hs j i.succ i.castSucc‖ ≤ ω) ∧
       IsPerturbedUnitarySimilar (Hs 0) (Hs j) (∑ i ∈ Finset.range j, ε i) := by
-  sorry
+  have back : ∀ j ≤ N, IsPerturbedUnitarySimilar (Hs 0) (Hs j) (∑ i ∈ Finset.range j, ε i) := by
+    intro j
+    induction j with
+    | zero => intro _; simpa using IsPerturbedUnitarySimilar.refl (Hs 0)
+    | succ j ih =>
+      intro hj
+      rw [Finset.sum_range_succ]
+      exact (ih (by omega)).trans (hstep j (by omega))
+  by_contra hcon
+  have hnd : ∀ j ≤ N, ¬ ∃ i : Fin n, n ≤ (i : ℕ) + k ∧ ‖Hs j i.succ i.castSucc‖ ≤ ω :=
+    fun j hj hd => hcon ⟨j, hj, hd, back j hj⟩
+  have hpot : ∀ j ≤ N, hessenbergPotential k (Hs j) ≤ q ^ j * S := by
+    intro j
+    induction j with
+    | zero => intro _; simpa using hS
+    | succ j ih =>
+      intro hj
+      have hall : ∀ i : Fin n, n ≤ (i : ℕ) + k → ω < ‖Hs j i.succ i.castSucc‖ := fun i hi => by
+        by_contra h
+        exact hnd j (by omega) ⟨i, hi, not_lt.mp h⟩
+      rcases hcontract j (by omega) hall with ⟨i, hi, hle⟩ | hpot'
+      · exact absurd ⟨i, hi, hle⟩ (hnd (j + 1) hj)
+      · calc hessenbergPotential k (Hs (j + 1)) ≤ q * hessenbergPotential k (Hs j) := hpot'
+          _ ≤ q * (q ^ j * S) := mul_le_mul_of_nonneg_left (ih (by omega)) hq
+          _ = q ^ (j + 1) * S := by ring
+  -- when not decoupled at the bottom, the potential exceeds ω
+  have hgt : ∀ j ≤ N, ω < hessenbergPotential k (Hs j) := by
+    intro j hj
+    have hall : ∀ i : Fin n, n ≤ (i : ℕ) + k → ω < ‖Hs j i.succ i.castSucc‖ := fun i hi => by
+      by_contra h
+      exact hnd j hj ⟨i, hi, not_lt.mp h⟩
+    have hc1 : (Finset.univ.filter fun i : Fin n => n ≤ (i : ℕ) + k).card =
+        (Finset.Ico (n - k) n).card := by
+      refine Finset.card_nbij (fun i : Fin n => (i : ℕ)) ?_ ?_ ?_
+      · intro i hi
+        simp only [Finset.mem_coe, Finset.mem_filter, Finset.mem_univ, true_and,
+          Set.mem_setOf_eq, Finset.mem_Ico] at hi ⊢
+        omega
+      · intro a _ b _ hab
+        exact Fin.ext hab
+      · intro m hm
+        simp only [Finset.mem_coe, Finset.mem_Ico] at hm
+        refine ⟨⟨m, by omega⟩, ?_, rfl⟩
+        simp only [Finset.mem_coe, Finset.mem_filter, Finset.mem_univ, true_and,
+          Set.mem_setOf_eq]
+        omega
+    have hcard : (Finset.univ.filter fun i : Fin n => n ≤ (i : ℕ) + k).card = k := by
+      rw [hc1, Nat.card_Ico]; omega
+    have hprod : ω ^ k < ∏ i ∈ Finset.univ.filter (fun i : Fin n => n ≤ (i : ℕ) + k),
+        ‖Hs j i.succ i.castSucc‖ := by
+      have hne : (Finset.univ.filter fun i : Fin n => n ≤ (i : ℕ) + k).Nonempty := by
+        rw [← Finset.card_pos, hcard]; exact hk
+      have := Finset.prod_lt_prod_of_nonempty (f := fun _ : Fin n => ω)
+        (g := fun i : Fin n => ‖Hs j i.succ i.castSucc‖)
+        (fun i _ => hω)
+        (fun i hi => by
+          simp only [Finset.mem_filter, Finset.mem_univ, true_and] at hi
+          exact hall i hi) hne
+      rw [Finset.prod_const, hcard] at this
+      exact this
+    unfold hessenbergPotential
+    calc ω = (ω ^ k) ^ ((k : ℝ)⁻¹) := (Real.pow_rpow_inv_natCast hω.le hk.ne').symm
+      _ < _ := Real.rpow_lt_rpow (by positivity) hprod (by positivity)
+  have := hgt N le_rfl
+  have := hpot N le_rfl
+  linarith [hN]
 
 end NLAlib

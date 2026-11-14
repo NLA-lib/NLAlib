@@ -31,8 +31,7 @@ and from a packed coefficient buffer in the vocabulary of `NLAlib.blockPrefix` a
 
 * `NLAlib.Krylov.GolubKahan.Band.decodeMatrix_take`,
   `NLAlib.Krylov.GolubKahan.Band.blockCols_decodeMatrix`,
-  `NLAlib.Krylov.GolubKahan.Band.blockPrefix_decodeMatrix`,
-  `NLAlib.Krylov.GolubKahan.Band.decv_drop_take`: blocks and columns of a decoded block.
+  `NLAlib.Krylov.GolubKahan.Band.blockPrefix_decodeMatrix`: blocks of a decoded block.
 * `NLAlib.Krylov.GolubKahan.Band.readBlock_take_eq`,
   `NLAlib.Krylov.GolubKahan.Band.readBlock_drop_take_eq`,
   `NLAlib.Krylov.GolubKahan.Band.exists_readBlock_of_columns`: parts of a block that was read.
@@ -92,14 +91,6 @@ theorem blockPrefix_decodeMatrix (dec : K → ℝ) {r N b i : ℕ} (xs : List K)
   ext x d
   have hd : (d : ℕ) < N := by omega
   simp only [blockPrefix, Matrix.of_apply, dif_pos hd, decodeMatrix_apply]
-
-/-- Column $j$ of a decoded block of $b$ columns of length $r$ is the decoded vector of its
-words $jr, \dots, jr + r - 1$. -/
-theorem decv_drop_take (dec : K → ℝ) {r b : ℕ} (xs : List K) (j : Fin b) :
-    decv dec r ((xs.drop (j * r)).take r) = (decodeMatrix dec r b xs).col j := by
-  ext i
-  simp only [decv, vec, Matrix.col_apply, decodeMatrix_apply]
-  rw [Store.getD_drop_take _ _ _ _ i.2]
 
 /-! ### Parts of a block that was read -/
 

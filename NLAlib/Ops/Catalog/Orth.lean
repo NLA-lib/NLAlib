@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Ops.BlockRel
+public import NLAlib.Ops.Catalog.Operator
 public import NLAlib.Ops.Logic.EntryLayout
 
 /-!
@@ -45,6 +46,8 @@ of a basis extension are instances stated where the matrix predicates are availa
 
 ## Main results
 
+* `NLAlib.Ops.decv_drop_take`: a column of a stored block, decoded, is the column of the decoded
+  block.
 * `NLAlib.Ops.extendRelOf_rel_mono`, `NLAlib.Ops.Interp.Meets.extendRelOf_mono`: a contract with
   a weaker predicate and fewer admitted dimensions is met.
 -/
@@ -93,6 +96,14 @@ def decodeMatrix (dec : K → 𝕜) (n k : ℕ) (xs : List K) : Matrix (Fin n) (
 theorem decodeMatrix_apply (dec : K → 𝕜) (n k : ℕ) (xs : List K) (i : Fin n) (j : Fin k) :
     decodeMatrix dec n k xs i j = dec (vec xs (j * n + i)) := by
   simp [decodeMatrix, EntryCodec.matrix]
+
+/-- Column $c$ of a decoded block of $b$ columns of length $n$ is the decoded vector of its
+words $cn, \dots, cn + n - 1$. -/
+theorem decv_drop_take {dec : K → ℝ} {n b : ℕ} (ws : List K) (c : Fin b) :
+    decv dec n ((ws.drop (c * n)).take n) = (decodeMatrix dec n b ws).col c := by
+  funext i
+  rw [Matrix.col_apply, decodeMatrix_apply]
+  exact congrArg dec (vec_drop_take i.isLt)
 
 /-- A predicate on the matrices of a basis extension with `n` rows, `k` old columns and `b` new
 columns: the basis $\mathbf{Q}$, the block $\mathbf{W}$, the new block $\mathbf{Q}'$ and the

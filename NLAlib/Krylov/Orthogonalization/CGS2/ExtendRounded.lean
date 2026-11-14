@@ -322,19 +322,19 @@ theorem isBasisExtensionErr_of_colsDone {M : Machine K} {dec : K → ℝ} {u η�
           Matrix.of_apply, if_pos hlt, coefBot, Matrix.submatrix_apply, id_eq]
         congr 1
         exact Fin.ext (by simp only [Fin.natAdd_mk]; omega)
-    rw [submatrix_fromCols_colsBefore hqs c', hh, ← decv_take_drop ws c',
-      ← decv_take_drop wd c']
+    rw [submatrix_fromCols_colsBefore hqs c', hh, ← decv_drop_take ws c',
+      ← decv_drop_take wd c']
     exact hO c'
-  · rw [← decv_take_drop ws c', ← decv_take_drop wd c']
+  · rw [← decv_drop_take ws c', ← decv_drop_take wd c']
     exact hz c'
-  · rw [← decv_take_drop ws c']
+  · rw [← decv_drop_take ws c']
     exact hν c'
-  · rw [← decv_take_drop wd c']
+  · rw [← decv_drop_take wd c']
     exact hβ c'
   · have hR : coefBot (decodeMatrix dec (k + b) b cs) c' c' =
         dec (vec ((cs.drop (c' * (k + b))).take (k + b)) (k + c')) :=
       (dec_vec_coef cs c' (i := k + c') (by have := c'.isLt; omega)).symm
-    rw [← decv_take_drop qn c', ← decv_take_drop wd c', hR]
+    rw [← decv_drop_take qn c', ← decv_drop_take wd c', hR]
     exact hstep c'
 
 variable [Has ScalarOp Op] [Has Blas1Op Op] [Has CmpTst Tst]

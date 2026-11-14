@@ -1117,8 +1117,9 @@ The branch was rebased a second time, onto `origin/main` @ `f329b7ff` (PR #145),
 library builds on it (5094 jobs, no error, no `sorry`).
 
 **Library side.** 23 `Result:` ids on 46 theorems, each with a bold name and a citation or
-"No printed source."; `Algorithm:` tags `block-golub-kahan` (specification, run model, and the
-driver program) and `cgs2-basis-extension` (the implementation); bibliography entries
+"No printed source."; `Algorithm:` tags `block-golub-kahan` on the specification and the
+run model only (the two programs, the driver and the CGS2 basis extension, carry none, as for
+the other algorithms on main); bibliography entries
 `MeyerMuscoMusco2023` and `ChenEpperlyMeyerMuscoRao2025`, with the cited labels checked against
 the arXiv versions (the locators of §1 for those two papers are thereby verified against
 arXiv; the Tropp–Webber remark on block size below rank could not be checked and is not

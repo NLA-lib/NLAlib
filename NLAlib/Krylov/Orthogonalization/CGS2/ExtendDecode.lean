@@ -28,8 +28,7 @@ the old and the new columns, and decodes the columns of the block and of the coe
 * `NLAlib.CGS2.storedCol_injective`, `NLAlib.CGS2.eq_inr_of_notMem_range_storedCol`: the stored
   columns are distinct, and the others are new columns from $c$ on.
 * `NLAlib.CGS2.submatrix_fromCols_colsBefore`: the stored block of round $c$, decoded.
-* `NLAlib.CGS2.decv_take_drop`, `NLAlib.CGS2.dec_vec_coef`: a column of a block and an entry of
-  a coefficient column, decoded.
+* `NLAlib.CGS2.dec_vec_coef`: an entry of a coefficient column, decoded.
 * `NLAlib.CGS2.col_fromCols_colsBefore_eq_zero`, `NLAlib.CGS2.storedCol_mulVec`,
   `NLAlib.CGS2.transpose_mulVec_storedCol_inl`, `NLAlib.CGS2.transpose_mulVec_storedCol_inr`:
   products with the stored block.
@@ -134,14 +133,6 @@ theorem submatrix_fromCols_colsBefore {dec : K → ℝ} {n k b : ℕ} {qs qn : L
       Fin.lt_def.mpr (show (j : ℕ) - k < c by omega)
     rw [dif_neg hjk, Matrix.fromCols_apply_inr, vec_append_right hge, hsub]
     simp only [colsBefore, Matrix.of_apply, if_pos hc', decodeMatrix_apply]
-
-/-- Column `c` of a stored block of columns of length `n`, decoded, is column `c` of the
-decoded block. -/
-theorem decv_take_drop {dec : K → ℝ} {n b : ℕ} (ws : List K) (c : Fin b) :
-    decv dec n ((ws.drop (c * n)).take n) = (decodeMatrix dec n b ws).col c := by
-  funext i
-  rw [Matrix.col_apply, decodeMatrix_apply]
-  exact congrArg dec (vec_drop_take i.isLt)
 
 /-- Entry `i` of column `c` of a stored coefficient block of `k + b` rows, decoded, is the
 entry `(i, c)` of the decoded block. -/

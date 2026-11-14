@@ -150,8 +150,8 @@ theorem exact_column {M : Machine K} {dec : K → ℝ} {n k b : ℕ} {qs ws qn w
   have hcb := c.isLt
   obtain ⟨w₁, hw₁, hw₂, hadd, hzero, hdiag, hq⟩ := colOut_exact hM (hdone c c.isLt)
   rw [← submatrix_fromCols_colsBefore hqs c] at hw₁ hw₂ hadd
-  rw [decv_take_drop ws c, storedCol_mulVec] at hw₁
-  rw [storedCol_mulVec, decv_take_drop wd c] at hw₂
+  rw [decv_drop_take ws c, storedCol_mulVec] at hw₁
+  rw [storedCol_mulVec, decv_drop_take wd c] at hw₂
   have hmul : ∀ {κ : Type} [Fintype κ] (X : Matrix (Fin n) κ ℝ)
       (A : Matrix (Fin n) (Fin b) ℝ) (i : κ), (Xᴴ * A) i c = (Xᵀ *ᵥ A.col c) i :=
     fun X A i => by
@@ -165,9 +165,9 @@ theorem exact_column {M : Machine K} {dec : K → ℝ} {n k b : ℕ} {qs ws qn w
     rw [hW₂, col_sub_mul_conjTranspose_mul_sub_mul_strictUpper,
       Matrix.conjTranspose_eq_transpose_of_trivial, ← hw₁']
     exact hw₂
-  rw [decv_take_drop wd c] at hdiag hq
-  rw [decv_take_drop qn c] at hq
-  rw [decv_take_drop ws c] at hadd
+  rw [decv_drop_take wd c] at hdiag hq
+  rw [decv_drop_take qn c] at hq
+  rw [decv_drop_take ws c] at hadd
   refine ⟨?_, fun i => ?_, fun c' => ?_⟩
   · rw [← hw₂']
     exact hq

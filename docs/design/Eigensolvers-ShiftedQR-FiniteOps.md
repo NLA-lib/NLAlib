@@ -219,6 +219,7 @@ $\beta$). The worklist's scalar arithmetic is exact in C4 and rounded in P3.
 | P5 | comptau program: $\mathrm{fl}(\prod\lvert\widehat{\mathbf{R}}_{nn}\rvert)$ within $0.001$ | RoundedRitz | M | plan |
 | P6 | rounded potential: $\tilde\psi_k$ within $20\boldsymbol{u}\psi_k$ (at least the paper's (eq:boundonpottilde), $0.001\psi_k/k$; moduli, product, `sqrtIter`) | RoundedRitz | S | plan |
 | P7 | Find program meets S4's hypothesis | RoundedFind (new) | M | plan |
+| P7b | `comptauHalf_isHalfTau`: the concrete comparison routine (copy, the half $l$ repeated $e$ times, `multiStepStable` P2 + `comptau` P5) meets `IsHalfTau`, P7's routine contract; bridge `shiftPoly_flatten_replicate` ($p_{l^e} = p_l^{\,e}$) | RoundedFind | M | plan |
 | P8 | Exc program: net of $\mathbb{D}(r,(1+\varepsilon)\tilde R)$, translate, rounding $\le \min(0.005\varepsilon\tilde R, \eta/2)$ | RoundedExc (new) | L | plan |
 | P9 | Sh iteration (one call of Find, comptau, Exc, trials): decoupled at the bottom or $\psi_k$ contracted by $1.002(1-\gamma)$ on the good event | RoundedIteration (new) | L | plan |
 | P10 | Regularize program: SmallEig + samples + Optimal + decoupling trials | RoundedRegularize (new) | L | plan |
@@ -714,6 +715,7 @@ its program. Gen = general library (own topic file, stage-free docstring), Stg =
 | P14 | Regularize's failure $\le \varphi$: SmallEig $\varphi/2$ + D3 ✓ $\varphi/2$, by PL3b on the joint window | RoundedRegularize | Stg | M | plan | 7 |
 | P15 | Exc translate failure (D4 ✓, $\eta = \varepsilon\tilde R\sqrt{\varphi/(11n)}$), PL3b | Eigensolvers/ShiftedQR/RoundedExc | Stg | S | plan | 7 |
 | P8 | `excShifts` program (net of $\mathbb{D}(r, (1+\varepsilon)\tilde R)$, translate, rounding $\le \min(0.005\varepsilon\tilde R, \eta/2)$) meets S5's cover/card and D4's separation | RoundedExc | Stg | L | plan | 8 |
+| P7b | `comptauHalf` (copy $\mathbf{H}$, `repeatBlock` $l^e$, `stepComptau` = `multiStepStable` P2 ✓ + `comptau` P5 ✓) meets `IsHalfTau` ($0.0011$) under $300(n+1)^2\boldsymbol{u} \le (8004B)^{-1}(d/((2+2C)\|\mathbf{H}\|))^{k/2}$, $30000(k/2+1)\boldsymbol{u} \le 1$, $(n+1)\boldsymbol{u} \le 1/2500$; P9 passes it to P7 | Eigensolvers/ShiftedQR/RoundedFind | Stg | M | plan | 8 |
 | P7 | `findRounded` program (halving with comptau of half-products via P2 ✓) meets S4's hypothesis | Eigensolvers/ShiftedQR/RoundedFind | Stg | M | plan | 8 |
 | P6 | `roundedPotential` (bottom product + `sqrtIter` K1 ✓, FP1): $\tilde\psi$ within $20\boldsymbol{u}\psi$ (under $20000k\boldsymbol{u} \le 1$; P9 takes $10^5k\boldsymbol{u} \le 1$) | Eigensolvers/ShiftedQR/RoundedRitz | Stg | S | plan | 7 |
 | P5 | `comptau` ($\mathrm{fl}\prod\lvert\widehat{\mathbf{R}}_{nn}\rvert$ from P2 ✓; Q5 ✓ + FP1) | RoundedRitz | Stg | S | plan | 7 |

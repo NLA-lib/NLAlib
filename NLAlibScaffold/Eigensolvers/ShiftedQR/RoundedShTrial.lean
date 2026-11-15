@@ -132,7 +132,7 @@ $\psi_T, \psi_H \ge 0$, the threshold $P$ is within $\boldsymbol{u}$, relatively
 $1.0015(1 - \gamma)p_H$, $\gamma \le 1$, $2 \cdot 10^5\boldsymbol{u} \le 1$ and $p_T < P$, then
 $\psi_T \le 1.002(1 - \gamma)\psi_H$. -/
 theorem potential_contract_of_lt {u ψT ψH pT pH P γ : ℝ} (hu0 : 0 ≤ u)
-    (hu : 200000 * u ≤ 1) (hγ1 : γ ≤ 1) (hψT : 0 ≤ ψT) (hψH : 0 ≤ ψH)
+    (hu : 200000 * u ≤ 1) (hγ1 : γ ≤ 1) (hψH : 0 ≤ ψH)
     (hpT : |pT - ψT| ≤ 20 * u * ψT) (hpH : |pH - ψH| ≤ 20 * u * ψH)
     (hP : |P - 1.0015 * (1 - γ) * pH| ≤ u * |1.0015 * (1 - γ) * pH|) (hlt : pT < P) :
     ψT ≤ 1.002 * (1 - γ) * ψH := by

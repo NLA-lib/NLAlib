@@ -198,8 +198,8 @@ omit [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] in
 $2$: from the words $c_r$, $c_p$ and $p$ at `Cr`, `Cp`, `Rt`, `NLAlib.ShiftedQR.shExcInit`
 stores $\mathrm{fl}(c_r p)$ at `Rt`, $\mathrm{fl}(c_p p)$ at `Pt`, $1$ at `Gw` and $2$ at
 `Fl`, and writes only these. -/
-theorem shExcInit_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I) {u : ℝ}
-    (hM : StdModel u id M) (hNat : IsExactNatLit id M 2) {τ : Tape ℝ} {m : Mem ℝ}
+theorem shExcInit_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    (hNat : IsExactNatLit id M 2) {τ : Tape ℝ} {m : Mem ℝ}
     {cr cp rt pt gw f : ℕ × ℕ} {crv cpv p : ℝ} (hcr : m.store.get cr.1 cr.2 = some crv)
     (hcp : m.store.get cp.1 cp.2 = some cpv) (hrt : m.store.get rt.1 rt.2 = some p)
     (hpt : pt.2 < m.store.len pt.1) (hgw : gw.2 < m.store.len gw.1)
@@ -734,7 +734,7 @@ theorem shOutcome_of_accepted {M : Machine ℝ} {u x C γ tv pH : ℝ} (hM : Std
   rcases hacc with h | ⟨p, hp, hlt⟩
   · exact Or.inl h
   · exact Or.inr (potential_contract_of_lt hM.roundoff_nonneg hu hγ1
-      (hessenbergPotential_nonneg k H') (hessenbergPotential_nonneg k H) hp hpH (hM.mul _ _) hlt)
+      (hessenbergPotential_nonneg k H) hp hpH (hM.mul _ _) hlt)
 
 end NLAlib.ShiftedQR
 
@@ -931,7 +931,7 @@ theorem shExc_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hI : I.I
           Store.inBlock thr.1 thr.2 1) :=
       Fp.disj_sup_left.mpr ⟨by disjoint, hfI⟩
     refine ((shExcInit_writes (τ := τ) (rt := (L + 1, 0)) (pt := (L + 2, 0))
-      (gw := (L + 11, 0)) (f := f) hS hM (hNat.mono (by omega)) hcr' hcp' hRt (by simp [h2])
+      (gw := (L + 11, 0)) (f := f) hS (hNat.mono (by omega)) hcr' hcp' hRt (by simp [h2])
       (by simp [h11]) hf' (Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr
         ⟨Fp.disj_sup_right.mpr ⟨hfI.mono le_rfl (by fp_sub), by disjoint⟩, by disjoint⟩,
           by disjoint⟩) (by disjoint) (by disjoint)).in_frame rfl rfl

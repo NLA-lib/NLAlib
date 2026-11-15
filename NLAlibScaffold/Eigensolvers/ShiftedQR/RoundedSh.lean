@@ -55,10 +55,10 @@ Lemma 5.4]): let $N > 0$ (the norm $\|\mathbf{e}_n^{\mathsf T}(\mathbf{H} - r)^{
 computed $t$ within $0.001$, relatively, of $N^{-1}$, the computed threshold within
 $(10k + 12)\boldsymbol{u}$, relatively, of $(1 - \gamma)^k\psi^k$, $\psi \ge 0$, $\gamma \le 1$,
 $k \ge 2$ and $10^5k\boldsymbol{u} \le 1$. If $t$ is below the threshold and
-$\psi'^k N \le 1.0011^k$ with $\psi' \ge 0$, then $\psi' \le 1.002(1 - \gamma)\psi$. -/
+$\psi'^k N \le 1.0011^k$, then $\psi' \le 1.002(1 - \gamma)\psi$. -/
 theorem potential_contract_of_comptau_lt {u γ t thr N ψ ψ' : ℝ} {k : ℕ} (hk : 2 ≤ k)
-    (hu0 : 0 ≤ u) (hku : 100000 * k * u ≤ 1) (hγ1 : γ ≤ 1) (hψ : 0 ≤ ψ) (hψ' : 0 ≤ ψ')
-    (hN : 0 < N) (ht : |t - N⁻¹| ≤ 0.001 * N⁻¹)
+    (hu0 : 0 ≤ u) (hku : 100000 * k * u ≤ 1) (hγ1 : γ ≤ 1) (hψ : 0 ≤ ψ) (hN : 0 < N)
+    (ht : |t - N⁻¹| ≤ 0.001 * N⁻¹)
     (hthr : |thr - (1 - γ) ^ k * ψ ^ k| ≤ (10 * k + 12) * u * ((1 - γ) ^ k * ψ ^ k))
     (hlt : t < thr) (hpot : ψ' ^ k * N ≤ 1.0011 ^ k) : ψ' ≤ 1.002 * (1 - γ) * ψ := by
   have hk1 : (2 : ℝ) ≤ k := by exact_mod_cast hk
@@ -401,7 +401,7 @@ theorem shAccept_decoupled_or_contract {M : Machine ℝ} {u C B S d ω γ tv tc 
     have h2 : ‖H' i.succ i.castSucc‖ ^ 2 ≤ ω ^ 2 := pow_le_pow_left₀ (norm_nonneg _) hi.le 2
     nlinarith [sq_nonneg (1 - u), sq_nonneg ‖H' i.succ i.castSucc‖]
   · refine Or.inr (potential_contract_of_comptau_lt hk hu0 hku hγ1
-      (hessenbergPotential_nonneg k H) (hessenbergPotential_nonneg k H') hN htc ?_ hlt hpot)
+      (hessenbergPotential_nonneg k H) hN htc ?_ hlt hpot)
     have := abs_optimalThresholdWord_sub_le hM hk0 hkn (by nlinarith) (c := (1 - γ) ^ k)
       (pow_nonneg (by linarith) k) H
     simpa [mul_pow] using this
@@ -646,6 +646,7 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has
   [Has IdxTst Q]
 
 
+omit [Has IdxTst Q] in
 /-- **The decision of `Sh` as a probabilistic block**: `NLAlib.ShiftedQR.shDecide` from the
 state `NLAlib.ShiftedQR.ShState3` (with the words $(1 - \gamma)^k$,
 $2^{1/k}\theta\alpha B^{1/k}$, $\varepsilon/2$, $1.0015(1 - \gamma)$) ends in

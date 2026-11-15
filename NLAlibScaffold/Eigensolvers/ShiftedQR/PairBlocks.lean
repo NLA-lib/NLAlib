@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Ops.Store
+public import NLAlib.Ops.Frame
 public import Mathlib.Analysis.Complex.Basic
 
 /-!
@@ -20,6 +21,7 @@ lemmas read single entries, windows and whole blocks of such a list.
 * `NLAlib.ShiftedQR.get_of_readBlock_flatMap_pair`,
   `NLAlib.ShiftedQR.readBlock_flatMap_pair_of_get`: a block of pairs and its cells.
 * `NLAlib.ShiftedQR.readBlock_flatMap_pair_window`: a window of a block of pairs.
+* `NLAlib.ShiftedQR.readBlock_flatMap_pair_of_forall`: a block of pairs from its pairs.
 -/
 
 @[expose] public section
@@ -98,5 +100,29 @@ theorem readBlock_flatMap_pair_window {s : Store ℝ} {b o : ℕ} {l : List ℂ}
     s.readBlock b (o + 2 * a) (2 * h) =
       some (((l.drop a).take h).flatMap fun z => [z.re, z.im]) := by
   rw [Store.readBlock_sub hl (by omega), drop_flatMap_pair, take_flatMap_pair]
+
+/-- A list of complex numbers stored as interleaved pairs, read pair by pair. -/
+theorem readBlock_flatMap_pair_of_forall {s : Store ℝ} {b o : ℕ} {zs : List ℂ}
+    (h : ∀ j < zs.length,
+      s.readBlock b (o + 2 * j) 2 = some [(zs.getD j 0).re, (zs.getD j 0).im]) :
+    s.readBlock b o (2 * zs.length) = some (zs.flatMap fun z => [z.re, z.im]) := by
+  induction zs generalizing o with
+  | nil => simp
+  | cons z zs ih =>
+    have h0 := h 0 (by simp)
+    have ht := ih (o := o + 2) fun j hj => by
+      have := h (j + 1) (by simpa using hj)
+      rwa [show o + 2 * (j + 1) = o + 2 + 2 * j by ring, List.getD_cons_succ] at this
+    rw [List.length_cons, show 2 * (zs.length + 1) = 2 + 2 * zs.length by ring, List.flatMap_cons]
+    exact Store.readBlock_add (by simpa using h0) ht
+
+/-- A pair read from its two cells. -/
+theorem readBlock_pair_of_get {s : Store ℝ} {b o : ℕ} {x y : ℝ} (hx : s.get b o = some x)
+    (hy : s.get b (o + 1) = some y) : s.readBlock b o 2 = some [x, y] := by
+  rw [Store.readBlock_eq_some_iff]
+  refine ⟨rfl, fun j hj => ?_⟩
+  rcases (by omega : j = 0 ∨ j = 1) with rfl | rfl
+  · simpa using hx
+  · simpa using hy
 
 end NLAlib.ShiftedQR

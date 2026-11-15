@@ -8,6 +8,7 @@ module
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedRitz
 public import NLAlibScaffold.Matrix.QRIteration.Ritz
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedSolve
+public import NLAlibScaffold.Eigensolvers.ShiftedQR.PairBlocks
 
 /-!
 # The trials of the rounded `Regularize`
@@ -163,31 +164,6 @@ end NLAlib
 namespace NLAlib.ShiftedQR
 
 open Ops
-
-/-- A list of complex numbers stored as interleaved pairs, read pair by pair. -/
-theorem readBlock_flatMap_pair_of_forall {s : Store ℝ} {b o : ℕ} {zs : List ℂ}
-    (h : ∀ j < zs.length,
-      s.readBlock b (o + 2 * j) 2 = some [(zs.getD j 0).re, (zs.getD j 0).im]) :
-    s.readBlock b o (2 * zs.length) = some (zs.flatMap fun z => [z.re, z.im]) := by
-  induction zs generalizing o with
-  | nil => simp
-  | cons z zs ih =>
-    have h0 := h 0 (by simp)
-    have ht := ih (o := o + 2) fun j hj => by
-      have := h (j + 1) (by simpa using hj)
-      rwa [show o + 2 * (j + 1) = o + 2 + 2 * j by ring, List.getD_cons_succ] at this
-    rw [List.length_cons, show 2 * (zs.length + 1) = 2 + 2 * zs.length by ring, List.flatMap_cons]
-    exact Store.readBlock_add (by simpa using h0) ht
-
-/-- A pair read from its two cells. -/
-theorem readBlock_pair_of_get {s : Store ℝ} {b o : ℕ} {x y : ℝ} (hx : s.get b o = some x)
-    (hy : s.get b (o + 1) = some y) : s.readBlock b o 2 = some [x, y] := by
-  rw [Store.readBlock_eq_some_iff]
-  refine ⟨rfl, fun j hj => ?_⟩
-  have hj' : j < 2 := hj
-  interval_cases j
-  · simpa using hx
-  · simpa using hy
 
 section Program
 

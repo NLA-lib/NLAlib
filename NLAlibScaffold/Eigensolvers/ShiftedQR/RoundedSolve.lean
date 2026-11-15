@@ -9,6 +9,7 @@ public import NLAlib.Eigensolvers.ShiftedQR.WorklistSolve
 public import NLAlib.Eigensolvers.ShiftedQR.WorklistAllocation
 public import NLAlibScaffold.Matrix.QRIteration.DeflationPerturbed
 public import NLAlibScaffold.Ops.Logic.BackwardFrame
+public import NLAlibScaffold.Ops.Logic.Geometry
 public import NLAlib.Matrix.FinitePrecision.OpsUnitarySimilarity
 
 /-!
@@ -223,16 +224,11 @@ work matrix, the scan registers and the failure word. -/
 def roundedWorklistFp (N : ℕ) (a st out w r f : ℕ × ℕ) : Fp :=
   Fp.blocks [a, st, out, w, r, f] [2 * (N * N), 1 + 2 * N, 2 * N, 2 * (N * N), 5, 1]
 
-/-- The eight views of the rounded worklist are live, have room and are pairwise apart. -/
-structure RoundedGeometry (N np : ℕ) (a t p st out w r f : ℕ × ℕ) (μ : Mem ℝ) : Prop where
-  /-- Each view refers to a live buffer. -/
-  live : μ.Live [a, t, p, st, out, w, r, f]
-  /-- Matrix, threshold, parameters, stack, output, work matrix, scan registers, failure word. -/
-  room : μ.Room [a, t, p, st, out, w, r, f]
-    [2 * (N * N), 1, np, 1 + 2 * N, 2 * N, 2 * (N * N), 5, 1]
-  /-- The views are pairwise apart. -/
-  apart : Fp.Apart [a, t, p, st, out, w, r, f]
-    [2 * (N * N), 1, np, 1 + 2 * N, 2 * N, 2 * (N * N), 5, 1]
+/-- The eight views of the rounded worklist (matrix, threshold, parameters, stack, output, work
+matrix, scan registers, failure word) are live, have room and are pairwise apart
+(`NLAlib.Ops.Geometry`). -/
+abbrev RoundedGeometry (N np : ℕ) (a t p st out w r f : ℕ × ℕ) (μ : Mem ℝ) : Prop :=
+  Geometry [a, t, p, st, out, w, r, f] [2 * (N * N), 1, np, 1 + 2 * N, 2 * N, 2 * (N * N), 5, 1] μ
 
 /-- **The state of the rounded worklist before round `j`** at the current matrix $\mathbf{M}$,
 for the input $\mathbf{H}_0$, the per-round error `e`, the threshold `thr` and the decoupler's
@@ -284,13 +280,13 @@ def RoundedPopped {n : ℕ} (H₀ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (e t
 theorem RoundedGeometry.of_eqOff {N np : ℕ} {a t p st out w r f : ℕ × ℕ} {μ μ' : Mem ℝ} {F : Fp}
     (h : RoundedGeometry N np a t p st out w r f μ) (hfr : μ.store.EqOff F μ'.store) :
     RoundedGeometry N np a t p st out w r f μ' :=
-  ⟨h.live.congr hfr.length_eq, h.room.congr hfr.len_eq, h.apart⟩
+  Geometry.of_eqOff h hfr
 
 /-- Any list of the eight views of the rounded worklist is live. -/
 theorem RoundedGeometry.live_of_subset {N np : ℕ} {a t p st out w r f : ℕ × ℕ} {μ : Mem ℝ}
     (h : RoundedGeometry N np a t p st out w r f μ) {l : List (ℕ × ℕ)}
     (hl : ∀ x ∈ l, x ∈ [a, t, p, st, out, w, r, f]) : μ.Live l :=
-  fun x hx => h.live x (hl x hx)
+  Geometry.live_of_subset h hl
 
 /-- Two distinct views of the rounded worklist have disjoint words. -/
 theorem RoundedGeometry.disj {N np : ℕ} {a t p st out w r f : ℕ × ℕ} {μ : Mem ℝ}
@@ -491,21 +487,14 @@ theorem roundedGeometry_allocated {N np : ℕ} {μ : Mem ℝ} {a t p out f : ℕ
       (μ.store.length + 2, 0) f ⟨s, μ.pos⟩ := by
   let L := μ.store.length
   let ns := [1 + 2 * N, 2 * (N * N), 5]
-  have hRaw : (⟨s, μ.pos⟩ : Mem ℝ).Room [a, t, p, out, f] [2 * (N * N), 1, np, 2 * N, 1] := by
-    rw [Mem.room_eq_of_below hBelow (fun z hz => hl z hz)]
-    exact hr
-  have hFresh : (⟨s, μ.pos⟩ : Mem ℝ).Room [(L, 0), (L + 1, 0), (L + 2, 0)] ns := by
-    simpa [ns, List.range_succ, Nat.add_assoc] using Mem.room_allocs ⟨s, μ.pos⟩ L ns hlens
-  have hFreshApart : Fp.Apart [(L, 0), (L + 1, 0), (L + 2, 0)] ns := by
-    simpa [ns, List.range_succ, Nat.add_assoc] using Fp.apart_allocs L ns
-  have hCross : Fp.Disj (Fp.blocks [a, t, p, out, f] [2 * (N * N), 1, np, 2 * N, 1])
-      (Fp.blocks [(L, 0), (L + 1, 0), (L + 2, 0)] ns) := by
-    refine (Fp.blocks_disj_above (fun z hz => hl z hz)).mono le_rfl ?_
-    exact Fp.blocks_le_above (by
-      intro z hz
-      simp only [List.mem_cons, List.not_mem_nil, or_false] at hz
-      rcases hz with rfl | rfl | rfl <;> omega)
-  have hAll := ha.append hFreshApart rfl hCross
+  have hA := (show Geometry [a, t, p, out, f] [2 * (N * N), 1, np, 2 * N, 1] μ from
+    ⟨hl, hr, ha⟩).allocated (ns := ns) hs hlens hBelow
+  have hRoom : (⟨s, μ.pos⟩ : Mem ℝ).Room [a, t, p, out, f, (L, 0), (L + 1, 0), (L + 2, 0)]
+      [2 * (N * N), 1, np, 2 * N, 1, 1 + 2 * N, 2 * (N * N), 5] := by
+    simpa [ns, L, List.range_succ] using hA.room
+  have hAll : Fp.Apart [a, t, p, out, f, (L, 0), (L + 1, 0), (L + 2, 0)]
+      [2 * (N * N), 1, np, 2 * N, 1, 1 + 2 * N, 2 * (N * N), 5] := by
+    simpa [ns, L, List.range_succ] using hA.apart
   let e : Fin 8 → Fin 8 := ![0, 1, 2, 5, 3, 6, 7, 4]
   have hReorder := hAll.subviews (fun i : Fin 8 => e i) (fun _ => 0)
     (fun i => ([2 * (N * N), 1, np, 2 * N, 1, 1 + 2 * N, 2 * (N * N), 5] : List ℕ).getD (e i) 0)
@@ -526,8 +515,8 @@ theorem roundedGeometry_allocated {N np : ℕ} {μ : Mem ℝ} {a t p out f : ℕ
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hz
     rcases hz with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
     all_goals (simp only [hs]; omega)
-  · exact ⟨hRaw.1, hRaw.2.1, hRaw.2.2.1, hFresh.1, hRaw.2.2.2.1, hFresh.2.1, hFresh.2.2.1,
-      hRaw.2.2.2.2.1, trivial⟩
+  · exact ⟨hRoom.1, hRoom.2.1, hRoom.2.2.1, hRoom.2.2.2.2.2.1, hRoom.2.2.2.1,
+      hRoom.2.2.2.2.2.2.1, hRoom.2.2.2.2.2.2.2.1, hRoom.2.2.2.2.1, trivial⟩
   · simpa [e, ns, L, List.ofFn_succ] using hReorder
 
 /-- A listing of the eigenvalues of a square matrix by `Fin d` is its multiset of characteristic

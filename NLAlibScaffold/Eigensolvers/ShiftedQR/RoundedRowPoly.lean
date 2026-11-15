@@ -7,6 +7,7 @@ module
 
 public import NLAlib.Eigensolvers.ShiftedQR.Shift
 public import NLAlib.Ops.Blas.Pair
+public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedModuli
 public import NLAlib.Ops.Logic.Functional
 public import NLAlib.Ops.Logic.Loop
 public import NLAlib.Ops.Logic.IndependentLoop
@@ -33,14 +34,17 @@ $12N^{3/2}\boldsymbol{u}$, the per-step hypothesis of
 ## Main definitions
 
 * `NLAlib.ShiftedQR.rowEntryWord`: the machine accumulation of one entry.
-* `NLAlib.ShiftedQR.rowEntry`, `NLAlib.ShiftedQR.rowMul`, `NLAlib.ShiftedQR.rowShiftStep`: the
-  programs.
+* `NLAlib.ShiftedQR.rowEntry`, `NLAlib.ShiftedQR.rowMul`, `NLAlib.ShiftedQR.rowShiftStep`,
+  `NLAlib.ShiftedQR.rowInit`, `NLAlib.ShiftedQR.rowPolyLoop`: the programs.
+* `NLAlib.ShiftedQR.rowPolyVec`: the vectors of the rounded recurrence.
 
 ## Main results
 
 * `NLAlib.ShiftedQR.norm_rowEntryWord_sub_le`: the error of one accumulated entry.
 * `NLAlib.ShiftedQR.norm_toLp_sub_vecMul_le_of_forall`: entrywise errors to a Euclidean bound.
 * `NLAlib.ShiftedQR.norm_toLp_sub_vecMul_sub_smul_le`: the relative error of one rounded step.
+* `NLAlib.ShiftedQR.rowPolyLoop_writes_word`: the stored row of the recurrence.
+* `NLAlib.ShiftedQR.norm_toLp_rowMulVec_sub_le`: one stored step as a relative error.
 -/
 
 @[expose] public section
@@ -52,19 +56,6 @@ namespace NLAlib.ShiftedQR
 open Ops
 
 /-! ### The accumulated entry -/
-
-/-- $(1 + \boldsymbol{u})^N \le 1 + 2N\boldsymbol{u}$ for $\boldsymbol{u} \ge 0$ and
-$N\boldsymbol{u} \le 1$. -/
-theorem one_add_pow_le_one_add_two_mul {u : ℝ} (hu : 0 ≤ u) {N : ℕ} (hN : N * u ≤ 1) :
-    (1 + u) ^ N ≤ 1 + 2 * N * u := by
-  have hNu : 0 ≤ (N : ℝ) * u := by positivity
-  have h1 : (1 + u) ^ N ≤ Real.exp (N * u) := by
-    rw [Real.exp_nat_mul]
-    exact pow_le_pow_left₀ (by linarith) (by linarith [Real.add_one_le_exp u]) N
-  have h2 := Real.abs_exp_sub_one_le (x := N * u) (by rw [abs_of_nonneg hNu]; exact hN)
-  rw [abs_of_nonneg hNu] at h2
-  linarith [(abs_le.mp h2).2]
-
 
 /-- The complex number of a word pair. -/
 def pairToComplex (w : ℝ × ℝ) : ℂ := ⟨w.1, w.2⟩
@@ -220,16 +211,6 @@ theorem norm_toLp_sub_vecMul_sub_smul_le {n : ℕ} {u C : ℝ} (hu : 0 ≤ u) (h
         nlinarith [mul_le_mul_of_nonneg_left hNs hA, mul_le_mul_of_nonneg_right hu10 hB]
 
 /-! ### The programs -/
-
-/-- The entries of a vector of length $N$ as a sequence, $0$ beyond $N$. -/
-def vecGetD {N : ℕ} (r : Fin N → ℂ) (l : ℕ) : ℂ := if h : l < N then r ⟨l, h⟩ else 0
-
-/-- A sum over `Fin N` is the sum over the first $N$ terms of the padded sequence. -/
-theorem sum_fin_eq_sum_range_vecGetD {N : ℕ} (f : Fin N → ℂ) :
-    ∑ l, f l = ∑ l ∈ Finset.range N, vecGetD f l := by
-  rw [Finset.sum_range fun l => vecGetD f l]
-  refine Finset.sum_congr rfl fun l _ => ?_
-  simp [vecGetD, l.isLt]
 
 variable {Op Tst : Type} [Has ScalarOp Op]
 
@@ -393,7 +374,8 @@ theorem rowEntry_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
   intro l hl1 m' hfr ⟨hp', hw0, hw1⟩
   have hfr' : m.store.EqOff F m'.store := (hfr₁₂.trans' hfr).mono (sup_le (le_refl F) (le_refl F))
   have hround := rowEntry_round_writes (τ := τ) (m := m') (l := l) hS hi hl1
-    (hV.of_eqOff hfr' (hFR.mono le_rfl (by fp_sub))) (hA.of_eqOff hfr' (hFR.mono le_rfl (by fp_sub)))
+    (hV.of_eqOff hfr' (hFR.mono le_rfl (by fp_sub)))
+    (hA.of_eqOff hfr' (hFR.mono le_rfl (by fp_sub)))
     (hfr'.keep (Store.readsOnly_readBlock _ _ _ _) (hFR.mono le_rfl (by fp_sub)) ho)
     hw0 hw1 (by rw [hfr'.len_eq]; exact ht) (by rw [hfr'.len_eq]; exact hz)
     (by rw [hfr'.len_eq]; exact hy) (hl.congr hfr'.length_eq) hsep htz htY hzY
@@ -546,8 +528,6 @@ theorem rowShiftStep_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (by simp [Mem.Live, hlive]) (by fp_sub) ?_
   intro m₁ hfr₁ ⟨hp₁, hW₁⟩
   rw [List.map_id] at hW₁
-  have hkeep₁ : ∀ G, Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1)))) G →
-      m.store.EqOff (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1)))) m₁.store := fun _ _ => hfr₁
   have hs₁ := hfr₁.keep (Store.readsOnly_readBlock _ _ _ _) (hsep.mono (by fp_sub) (by fp_sub)) hs
   have hsh := shiftDiagonal_writes_word (τ := τ) (m := m₁) (n := n + 1) (b := w) (a := s) hS
     (by simp [Mem.Live, hfr₁.length_eq, hlive]) hW₁ hs₁ (hsep.mono (by fp_sub) (by fp_sub))
@@ -582,7 +562,8 @@ theorem rowShiftStep_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
       some (matrixWords (Matrix.replicateCol (Fin 1)
         (rowMulVec M oo r (machineShiftedPrefix M H sh (n + 1))))) := by
     simpa [HoldsMatrix] using hY₃
-  have hYV : Fp.Disj (Store.inBlock y.1 y.2 (2 * (n + 1))) (Store.inBlock v.1 v.2 (2 * (n + 1))) := by
+  have hYV : Fp.Disj (Store.inBlock y.1 y.2 (2 * (n + 1)))
+      (Store.inBlock v.1 v.2 (2 * (n + 1))) := by
     have := hsep.mono (show Store.inBlock y.1 y.2 (2 * (1 * (n + 1))) ≤ _ by fp_sub)
       (show Store.inBlock v.1 v.2 (2 * (1 * (n + 1))) ≤ _ by fp_sub)
     simpa using this
@@ -636,5 +617,231 @@ theorem norm_toLp_rowMulVec_sub_le {M : Machine ℝ} {u C : ℝ} (hM : StdModel 
         ‖WithLp.toLp 2 r‖ :=
   norm_toLp_sub_vecMul_sub_smul_le hu (by linarith) hNu hs
     (specNorm_machineShiftedPrefix_sub_le hM hu H s) fun i => norm_rowMulVec_sub_le hM hu hu' r _ i
+
+/-- **The start of the row recurrence**: the vector `V` of length $n$ set to
+$\mathbf{e}_{n-1}$ (zeros, then the literal $1$ in the last entry) and the pair `O` to the
+literals $(1, 0)$. The interface is `[n] () → (V, O)`. -/
+def rowInit : Impl Op Tst := opsImpl% [n] () → (V, O) {
+  call (Has.inj (ScalarOp.lit 1)) [] () → (O);
+  call (Has.inj (ScalarOp.lit 0)) [] () → (O[1]);
+  for i < n {
+    call (Has.inj (ScalarOp.lit 0)) [] () → (V[2 * i]);
+    call (Has.inj (ScalarOp.lit 0)) [] () → (V[2 * i + 1])
+  };
+  call (Has.inj (ScalarOp.lit 1)) [] () → (V[2 * n - 2])
+}
+
+/-- The vector `rowInit` stores, on the machine `M`: the literal $1$ in the last entry, the
+literal $0$ elsewhere. -/
+def rowInitVec (M : Machine ℝ) (n : ℕ) : Fin (n + 1) → ℂ :=
+  fun i => if i = Fin.last n then ⟨M.lit 1, M.lit 0⟩ else ⟨M.lit 0, M.lit 0⟩
+
+/-- With exact literals $0$ and $1$ the start vector is $\mathbf{e}_n$. -/
+theorem rowInitVec_eq {M : Machine ℝ} (h0 : M.lit 0 = 0) (h1 : M.lit 1 = 1) (n : ℕ) :
+    rowInitVec M n = Pi.single (Fin.last n) 1 := by
+  funext i
+  by_cases hi : i = Fin.last n <;> simp [rowInitVec, hi, h0, h1, Complex.ext_iff]
+
+/-- The start of the row recurrence on any scalar machine: `rowInit` stores
+`NLAlib.ShiftedQR.rowInitVec` at `V` and the literal pair $(1, 0)$ at `O`, and writes only
+these. -/
+theorem rowInit_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
+    (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {v o : ℕ × ℕ}
+    (hv : v.2 + 2 * (1 * (n + 1)) ≤ m.store.len v.1) (ho : o.2 + 2 ≤ m.store.len o.1)
+    (hvo : Fp.Disj (Store.inBlock v.1 v.2 (2 * (1 * (n + 1)))) (Store.inBlock o.1 o.2 2)) :
+    Writes .total I τ (rowInit (Op := Op) (Tst := Tst)).body (Env.frame [n + 1] [v, o])
+      (Store.inBlock v.1 v.2 (2 * (1 * (n + 1))) ⊔ Store.inBlock o.1 o.2 2)
+      (fun m' => m'.pos = m.pos ∧
+        HoldsMatrix v (Matrix.replicateCol (Fin 1) (rowInitVec M n)) m'.store ∧
+        m'.store.readBlock o.1 o.2 2 = some [M.lit 1, M.lit 0]) m := by
+  unfold rowInit
+  refine (writes_call_const (hS (.lit 1)) (z := o) (out := ⟨1, .var 2⟩) rfl trivial
+    (by omega)).seq_le (by fp_sub) ?_
+  intro m₁ hfr₁ ⟨hp₁, hO0⟩
+  refine (writes_call_const (hS (.lit 0)) (z := (o.1, o.2 + 1))
+    (out := ⟨1, .var 2 + .const 1⟩) rfl trivial
+    (by have := hfr₁.len_eq o.1; dsimp only; omega)).seq_le (by fp_sub) ?_
+  intro m₂ hfr₂ ⟨hp₂, hO1⟩
+  have hO0' := hfr₂.keep (Store.readsOnly_get _ _ _) (Fp.disj_inBlock_of_le (by omega)).symm hO0
+  have hlen₂ : ∀ b, m₂.store.len b = m.store.len b := fun b => by
+    rw [hfr₂.len_eq, hfr₁.len_eq]
+  refine (writes_loop_disjoint_prefix (N := n + 1) (F := Store.inBlock v.1 v.2 (2 * (1 * (n + 1))))
+    (region := fun i => Store.inBlock v.1 (v.2 + 2 * i) 2)
+    (result := fun i st => st.get v.1 (v.2 + 2 * i) = some (M.lit 0) ∧
+      st.get v.1 (v.2 + 2 * i + 1) = some (M.lit 0)) rfl
+    (fun i hi => Fp.inBlock_le_inBlock (by omega) (by omega))
+    (fun i _ j _ hij => by
+      rcases Nat.lt_or_gt_of_ne hij with h | h
+      · exact Fp.disj_inBlock_of_le (by omega)
+      · exact (Fp.disj_inBlock_of_le (by omega)).symm)
+    (fun i _ => fun s s' hg ⟨h0, h1⟩ =>
+      ⟨(hg v.1 (v.2 + 2 * i) ⟨rfl, by omega, by omega⟩).trans h0,
+       (hg v.1 (v.2 + 2 * i + 1) ⟨rfl, by omega, by omega⟩).trans h1⟩) ?_).seq_le
+    (by fp_sub) ?_
+  · intro i hi m' hfr
+    have hl' : ∀ b, m'.store.len b = m.store.len b := fun b => by rw [hfr.len_eq, hlen₂]
+    refine (writes_call_const (hS (.lit 0)) (z := (v.1, v.2 + 2 * i))
+      (out := ⟨0, .var 1 + .const 2 * .var 3⟩) rfl trivial
+      (by have := hl' v.1; dsimp only; omega)).seq_le (by fp_sub) ?_
+    intro m'' hfr' ⟨hp', h0⟩
+    refine (writes_call_const (hS (.lit 0)) (z := (v.1, v.2 + 2 * i + 1))
+      (out := ⟨0, .var 1 + .const 2 * .var 3 + .const 1⟩) rfl trivial
+      (by have := hl' v.1; have := hfr'.len_eq v.1; dsimp only; omega)).mono (by fp_sub) ?_
+    intro m''' hfr'' ⟨hp'', h1⟩
+    exact ⟨hp''.trans hp', hfr''.keep (Store.readsOnly_get _ _ _)
+      (Fp.disj_inBlock_of_le (by omega)).symm h0, h1⟩
+  intro m₃ hfr₃ ⟨hp₃, hall⟩
+  have hO0₃ := hfr₃.keep (Store.readsOnly_get _ _ _) (hvo.mono le_rfl (by fp_sub)) hO0'
+  have hO1₃ := hfr₃.keep (Store.readsOnly_get _ _ _) (hvo.mono le_rfl (by fp_sub)) hO1
+  refine (writes_call_const (hS (.lit 1)) (z := (v.1, v.2 + 2 * n))
+    (out := ⟨0, .var 1 + (.const 2 * .var 0 - .const 2)⟩)
+    (by simp [Operand.eval, Env.frame, IExp.eval]; omega) trivial
+    (by have := hfr₃.len_eq v.1; have := hlen₂ v.1; dsimp only; omega)).mono (by fp_sub) ?_
+  intro m₄ hfr₄ ⟨hp₄, hlast⟩
+  refine ⟨hp₄.trans (hp₃.trans (hp₂.trans hp₁)), HoldsMatrix.of_get (fun i j => ?_)
+    (fun i j => ?_), ?_⟩
+  · have hj : j = 0 := Subsingleton.elim _ _
+    subst hj
+    by_cases hi : i = Fin.last n
+    · subst hi; simpa [rowInitVec] using hlast
+    · have hin : (i : ℕ) < n := by
+        have := i.isLt; have : (i : ℕ) ≠ n := fun h => hi (Fin.ext h); omega
+      have := hfr₄.keep (Store.readsOnly_get _ _ _)
+        (Fp.disj_inBlock_of_le (by omega)).symm (hall i i.isLt).1
+      simpa [rowInitVec, hi] using this
+  · have hj : j = 0 := Subsingleton.elim _ _
+    subst hj
+    by_cases hi : i = Fin.last n
+    · subst hi
+      have := hfr₄.keep (Store.readsOnly_get _ _ _)
+        (Fp.disj_inBlock_of_le (by simp)) (hall (Fin.last n) (by simp)).2
+      simpa [rowInitVec] using this
+    · have hin : (i : ℕ) < n := by
+        have := i.isLt; have : (i : ℕ) ≠ n := fun h => hi (Fin.ext h); omega
+      have := hfr₄.keep (Store.readsOnly_get _ _ _)
+        (Fp.disj_inBlock_of_le (by omega)).symm (hall i i.isLt).2
+      simpa [rowInitVec, hi] using this
+  · have h0 := hfr₄.keep (Store.readsOnly_get _ _ _) (hvo.mono (by fp_sub) (by fp_sub)) hO0₃
+    have h1 := hfr₄.keep (Store.readsOnly_get _ _ _) (hvo.mono (by fp_sub) (by fp_sub)) hO1₃
+    rw [Store.readBlock_eq_some_iff]
+    refine ⟨rfl, fun k hk => ?_⟩
+    have hk' : k < 2 := hk
+    interval_cases k
+    · simpa using h0
+    · simpa using h1
+
+/-- The words of the entries of a list of complex numbers stored as interleaved pairs. -/
+theorem getD_flatMap_pair (zs : List ℂ) {j : ℕ} (hj : j < zs.length) :
+    (zs.flatMap fun z => [z.re, z.im]).getD (2 * j) 0 = (zs.getD j 0).re ∧
+      (zs.flatMap fun z => [z.re, z.im]).getD (2 * j + 1) 0 = (zs.getD j 0).im := by
+  induction zs generalizing j with
+  | nil => simp at hj
+  | cons z zs ih =>
+    cases j with
+    | zero => simp
+    | succ j =>
+      have := ih (j := j) (by simpa using hj)
+      rw [List.flatMap_cons, show 2 * (j + 1) = 2 * j + 1 + 1 by ring]
+      simpa only [List.cons_append, List.nil_append, List.getD_cons_succ] using this
+
+
+/-- The pair of entry $j$ of a list of complex numbers stored as interleaved pairs. -/
+theorem readBlock_pair_of_flatMap {s : Store ℝ} {b : ℕ × ℕ} {zs : List ℂ}
+    (h : s.readBlock b.1 b.2 (2 * zs.length) = some (zs.flatMap fun z => [z.re, z.im]))
+    {j : ℕ} (hj : j < zs.length) :
+    s.readBlock b.1 (b.2 + 2 * j) 2 = some [(zs.getD j 0).re, (zs.getD j 0).im] := by
+  obtain ⟨h0, h1⟩ := getD_flatMap_pair zs hj
+  have g0 := Store.get_of_readBlock h (j := 2 * j) (by omega) 0
+  have g1 := Store.get_of_readBlock h (j := 2 * j + 1) (by omega) 0
+  rw [h0] at g0; rw [h1] at g1
+  rw [Store.readBlock_eq_some_iff]
+  refine ⟨rfl, fun k hk => ?_⟩
+  have hk' : k < 2 := hk
+  interval_cases k
+  · simpa using g0
+  · simpa [Nat.add_assoc] using g1
+
+/-- **The row recurrence**: $k$ rounded steps (`NLAlib.ShiftedQR.rowShiftStep`) in place on
+`V` with the shifts `S[2j]`, $j < k$. The interface is `[n, k] (V, A, S, O, W, T, Z, Y) → (V)`. -/
+def rowPolyLoop : Impl Op Tst := opsImpl% [n, k] (V, A, S, O, W, T, Z, Y) → (V) {
+  for j < k {
+    run rowShiftStep.body [n] (V, A, S[2 * j], O, W, T, Z, Y, V)
+  }
+}
+
+/-- The vectors of the rounded row recurrence on the machine `M`: from $\mathbf{r}_0$, step $j$
+is the row product `NLAlib.ShiftedQR.rowMulVec` with the machine shift of $\mathbf{H}$ by the
+$j$-th shift. -/
+def rowPolyVec (M : Machine ℝ) (o : ℝ × ℝ) {n : ℕ} (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+    (ss : List ℂ) (r₀ : Fin (n + 1) → ℂ) : ℕ → Fin (n + 1) → ℂ
+  | 0 => r₀
+  | j + 1 => rowMulVec M o (rowPolyVec M o H ss r₀ j)
+      (machineShiftedPrefix M H (ss.getD j 0) (n + 1))
+
+
+/-- **The row recurrence** on any scalar machine: with $\mathbf{r}_0$ at `V`, $\mathbf{H}$ at
+`A`, the shifts `ss` stored as pairs at `S`, the pair `oo` at `O`, the scratch views `W`, `T`,
+`Z`, `Y` apart from each other and from the inputs, and `V` apart from the other inputs,
+`rowPolyLoop` stores at `V` the vector `NLAlib.ShiftedQR.rowPolyVec` after all the shifts, and
+writes only `V` and the scratch. -/
+theorem rowPolyLoop_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
+    (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {v a s o w t z y : ℕ × ℕ}
+    {r₀ : Fin (n + 1) → ℂ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ss : List ℂ}
+    {oo : ℝ × ℝ}
+    (hV : HoldsMatrix v (Matrix.replicateCol (Fin 1) r₀) m.store) (hA : HoldsMatrix a H m.store)
+    (hs : m.store.readBlock s.1 s.2 (2 * ss.length) = some (ss.flatMap fun z => [z.re, z.im]))
+    (ho : m.store.readBlock o.1 o.2 2 = some [oo.1, oo.2])
+    (hw : w.2 + 2 * ((n + 1) * (n + 1)) ≤ m.store.len w.1)
+    (ht : t.2 + 2 ≤ m.store.len t.1) (hz : z.2 + 2 ≤ m.store.len z.1)
+    (hy : y.2 + 2 * (1 * (n + 1)) ≤ m.store.len y.1) (hl : m.Live [v, a, s, o, w, t, z, y])
+    (hsep : Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock t.1 t.2 2 ⊔
+        Store.inBlock z.1 z.2 2 ⊔ Store.inBlock y.1 y.2 (2 * (1 * (n + 1))))
+      (Store.inBlock v.1 v.2 (2 * (1 * (n + 1))) ⊔ Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))
+        ⊔ Store.inBlock s.1 s.2 (2 * ss.length) ⊔ Store.inBlock o.1 o.2 2))
+    (hvin : Fp.Disj (Store.inBlock v.1 v.2 (2 * (1 * (n + 1))))
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * ss.length) ⊔
+        Store.inBlock o.1 o.2 2))
+    (hwt : Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock t.1 t.2 2))
+    (hwz : Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock z.1 z.2 2))
+    (hwy : Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock y.1 y.2 (2 * (1 * (n + 1)))))
+    (htz : Fp.Disj (Store.inBlock t.1 t.2 2) (Store.inBlock z.1 z.2 2))
+    (hty : Fp.Disj (Store.inBlock t.1 t.2 2) (Store.inBlock y.1 y.2 (2 * (1 * (n + 1)))))
+    (hzy : Fp.Disj (Store.inBlock z.1 z.2 2) (Store.inBlock y.1 y.2 (2 * (1 * (n + 1))))) :
+    Writes .total I τ (rowPolyLoop (Op := Op) (Tst := Tst)).body
+      (Env.frame [n + 1, ss.length] [v, a, s, o, w, t, z, y, v])
+      (Store.inBlock v.1 v.2 (2 * (1 * (n + 1))) ⊔
+        (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock t.1 t.2 2 ⊔
+          Store.inBlock z.1 z.2 2 ⊔ Store.inBlock y.1 y.2 (2 * (1 * (n + 1)))))
+      (fun m' => m'.pos = m.pos ∧ HoldsMatrix v
+        (Matrix.replicateCol (Fin 1) (rowPolyVec M oo H ss r₀ ss.length)) m'.store) m := by
+  set Sc := Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock t.1 t.2 2 ⊔
+    Store.inBlock z.1 z.2 2 ⊔ Store.inBlock y.1 y.2 (2 * (1 * (n + 1)))
+  set F := Store.inBlock v.1 v.2 (2 * (1 * (n + 1))) ⊔ Sc
+  have hFin : Fp.Disj F (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+      Store.inBlock s.1 s.2 (2 * ss.length) ⊔ Store.inBlock o.1 o.2 2) :=
+    Fp.disj_sup_left.mpr ⟨hvin, hsep.mono le_rfl (by fp_sub)⟩
+  unfold rowPolyLoop
+  refine writes_loop (N := ss.length) rfl (fun _ => F) (fun _ _ => le_rfl)
+    (fun j m' => m'.pos = m.pos ∧
+      HoldsMatrix v (Matrix.replicateCol (Fin 1) (rowPolyVec M oo H ss r₀ j)) m'.store)
+    ⟨rfl, hV⟩ ?_
+  intro j hj m' hfr ⟨hp', hV'⟩
+  have hsj := readBlock_pair_of_flatMap
+    (hfr.keep (Store.readsOnly_readBlock _ _ _ _) (hFin.mono le_rfl (by fp_sub)) hs) hj
+  have hSj : Store.inBlock s.1 (s.2 + 2 * j) 2 ≤ Store.inBlock s.1 s.2 (2 * ss.length) :=
+    Fp.inBlock_le_inBlock (by omega) (by omega)
+  have hstep := rowShiftStep_writes_word (τ := τ) (m := m') (s := (s.1, s.2 + 2 * j)) hS hV'
+    (hA.of_eqOff hfr (hFin.mono le_rfl (by fp_sub))) hsj
+    (hfr.keep (Store.readsOnly_readBlock _ _ _ _) (hFin.mono le_rfl (by fp_sub)) ho)
+    (by rw [hfr.len_eq]; exact hw) (by rw [hfr.len_eq]; exact ht) (by rw [hfr.len_eq]; exact hz)
+    (by rw [hfr.len_eq]; exact hy) (by simpa [Mem.Live, hfr.length_eq] using hl)
+    (hsep.mono le_rfl (sup_le (sup_le (sup_le le_sup_left le_sup_right |>.trans
+      (by fp_sub)) (hSj.trans (by fp_sub))) (by fp_sub))) hwt hwz hwy htz hty hzy
+  refine (hstep.in_frame (by simp [IExp.evalList, IExp.eval, Env.frame, Env.pushIdx])
+    (by simp [Operand.evalList, Operand.eval, Env.frame, Env.pushIdx, IExp.eval])
+    (by simp only [Mem.Live, List.mem_cons, List.not_mem_nil] at hl ⊢
+        rw [hfr.length_eq]; aesop)).mono le_rfl fun m'' _ ⟨hp'', hV''⟩ =>
+      ⟨hp''.trans hp', by simpa [rowPolyVec] using hV''⟩
 
 end NLAlib.ShiftedQR

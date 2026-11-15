@@ -7,16 +7,15 @@ module
 
 public import NLAlib.Eigensolvers.ShiftedQR.Potential
 public import NLAlib.Eigensolvers.ShiftedQR.Radius
-public import NLAlibScaffold.Matrix.FinitePrecision.ProductRounded
 public import NLAlibScaffold.Matrix.FinitePrecision.RootsRounded
 public import NLAlibScaffold.Matrix.QRIteration.StableStep
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedRowPoly
 public import NLAlibScaffold.Matrix.QRIteration.RoundedStrategy
 
 /-!
-# Rounded potentials and `comptau`
+# Rounded potentials, `comptau` and `Optimal`
 
-The scalar quantities of the finite-precision shifting strategy
+The scalar decisions of the finite-precision shifting strategy
 [BanksGarzaVargasSrivastava2022, §§4–5], computed on a machine with the standard model:
 
 * the potential $\psi_k(\mathbf{H})$, $k = 2^q$, as $q + 1$ rounded square roots of the rounded
@@ -26,28 +25,33 @@ The scalar quantities of the finite-precision shifting strategy
 * `comptau`, the rounded $\prod_\ell \lvert(\widehat{\mathbf{R}}_\ell)_{nn}\rvert$ of the last
   diagonal entries of the triangular factors of a degree $k$ rounded step
   (`NLAlib.ShiftedQR.comptau`), within $0.001$, relatively, of
-  $\|\mathbf{e}_n^{\mathsf T}p(\mathbf{H})^{-1}\|_2^{-1}$.
+  $\|\mathbf{e}_n^{\mathsf T}p(\mathbf{H})^{-1}\|_2^{-1}$;
+* `Optimal` (`NLAlib.ShiftedQR.optimalTest`): the rounded row
+  $\mathrm{fl}(\mathbf{e}_n^{\mathsf T}p(\mathbf{H}))$, its rounded norm, and the comparison with
+  the rounded $0.999\theta^k\psi_k^k$, which decides $\theta$-optimality against
+  $0.998^{1/k}\theta$-optimality.
 
-Both read a product of squared moduli of stored pairs; one loop lemma
-(`NLAlib.ShiftedQR.writes_loop_normSqMulRound`) gives the stored word on any scalar machine.
+The words are read with the loop rules of `NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedModuli`
+and the row recurrence of `NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedRowPoly`.
 
 ## Main definitions
 
-* `NLAlib.ShiftedQR.normSqWord`, `NLAlib.ShiftedQR.normSqOpRound`: the squared modulus of a
-  pair on the machine, and one round of a fold of them.
-* `NLAlib.ShiftedQR.foldWords`: words combined left to right by a machine function.
-* `NLAlib.ShiftedQR.roundedPotential`, `NLAlib.ShiftedQR.comptau`: the programs.
+* `NLAlib.ShiftedQR.roundedPotential`, `NLAlib.ShiftedQR.comptau`,
+  `NLAlib.ShiftedQR.optimalTest`: the programs.
 
 ## Main results
 
-* `NLAlib.ShiftedQR.writes_loop_normSqOpRound`, `NLAlib.ShiftedQR.writes_loop_normSqMulRound`:
-  the fold and product loops on any scalar machine.
 * `NLAlib.ShiftedQR.subdiagProduct_writes_word`: the bottom product on any scalar machine.
 * `NLAlib.ShiftedQR.roundedPotential_writes`: the rounded potential within $0.001\psi_k/k$.
 * `NLAlib.ShiftedQR.comptau_writes`: `comptau` within $0.001$.
+* `NLAlib.ShiftedQR.norm_toLp_rowPolyVec_sub_aeval_le`: the rounded last row of a shift
+  polynomial.
+* `NLAlib.ShiftedQR.optimalTest_writes`: the guarantees of `Optimal`.
 -/
 
 @[expose] public section
+
+open scoped Matrix
 
 namespace NLAlib.ShiftedQR
 
@@ -55,261 +59,12 @@ open Ops
 
 variable {Op Tst : Type} [Has ScalarOp Op]
 
-/-! ### The squared modulus of a pair and the product loop -/
-
-/-- The squared modulus $\mathrm{fl}(\mathrm{fl}(x^2) + \mathrm{fl}(y^2))$ of the pair
-$(x, y)$ of a complex number on the machine `M`, as `NLAlib.Ops.PairScalar.normSq` computes it. -/
-def normSqWord (M : Machine ℝ) (z : ℂ) : ℝ := M.add (M.mul z.re z.re) (M.mul z.im z.im)
-
-/-- Under the standard model with $0 \le \boldsymbol{u} \le 1$, the machine squared modulus is
-within the factors $(1 \mp \boldsymbol{u})^2$ of $\lvert z\rvert^2$. -/
-theorem normSqWord_bounds {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M) (hu : 0 ≤ u)
-    (hu1 : u ≤ 1) (z : ℂ) :
-    (1 - u) ^ 2 * ‖z‖ ^ 2 ≤ normSqWord M z ∧ normSqWord M z ≤ (1 + u) ^ 2 * ‖z‖ ^ 2 := by
-  have hn : ‖z‖ ^ 2 = z.re ^ 2 + z.im ^ 2 := by
-    rw [Complex.sq_norm, Complex.normSq_apply]; ring
-  rw [hn]
-  exact hM.add_mul_self_bounds hu hu1 _ _
-
-/-- The words of a product started at the word `v` and continued by the squared moduli of
-`z 0, z 1, …`: the word sequence `NLAlib.prodWords` multiplies. -/
-def normSqFactors (M : Machine ℝ) (v : ℝ) (z : ℕ → ℂ) : ℕ → ℝ
-  | 0 => v
-  | j + 1 => normSqWord M (z j)
-
-/-- The words `w 0, w 1, …` combined left to right by the machine function `g`:
-`foldWords g w 0` $= w_0$, `foldWords g w (j + 1)` $= g(\,$`foldWords g w j`$, w_{j+1})$. For
-`g = M.mul` it is `NLAlib.prodWords` (`NLAlib.ShiftedQR.foldWords_mul`). -/
-def foldWords (g : ℝ → ℝ → ℝ) (w : ℕ → ℝ) : ℕ → ℝ
-  | 0 => w 0
-  | j + 1 => g (foldWords g w j) (w (j + 1))
-
-/-- The fold of the machine multiplication is the rounded product. -/
-theorem foldWords_mul (M : Machine ℝ) (w : ℕ → ℝ) (j : ℕ) :
-    foldWords M.mul w j = prodWords M w j := by
-  induction j with
-  | zero => rfl
-  | succ j ih => simp [foldWords, prodWords, ih]
-
-/-- One round of a fold of squared moduli by the scalar operation `o`: the squared modulus of
-the pair `x` into the three scratch words `t`, then the accumulator word `p` combined in place
-with the third of them. -/
-def normSqOpRound (o : ScalarOp) (x t p : Operand) : Stmt Op Tst :=
-  .seq (.frame [] [x, t] PairScalar.normSq.body)
-    (.call (Has.inj o) [] [p, ⟨t.buf, t.off + .const 2⟩] [p])
-
-/-- One round of a product of squared moduli. -/
-abbrev normSqMulRound (x t p : Operand) : Stmt Op Tst := normSqOpRound .mul x t p
-
 /-- The bottom-product round of the exact development is a product round. -/
 theorem subdiagProductRound_eq :
     (subdiagProductRound : Stmt Op Tst) = normSqMulRound
       ⟨0, .var 2 + .const 2 *
         ((.var 0 - .const 1 - .var 1 + .var 5) * .var 0 +
           (.var 0 - .const 1 - .var 1 + .var 5 + .const 1))⟩ ⟨1, .var 3⟩ ⟨2, .var 4⟩ := rfl
-
-/-- **The fold loop of squared moduli** on any scalar machine: let the scalar operation `o` be
-the machine function `g`. If, in round $i < N$, the operand `x` addresses a pair holding $z_i$,
-inside a region `R` apart from the scratch view `t` (three words) and the accumulator word `p`,
-and `p` holds $v$, then the loop stores in `p` the fold `NLAlib.ShiftedQR.foldWords` by `g` of
-$v$ and the machine squared moduli of $z_0, \dots, z_{N-1}$, and writes only `p` and `t`. -/
-theorem writes_loop_normSqOpRound {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS : IsScalar M I)
-    {o : ScalarOp} {g : ℝ → ℝ → ℝ} (hg : M.fn o = .bin fun a b => some (g a b))
-    {τ : Tape ℝ} {m : Mem ℝ} {ρ : Env} {cnt : IExp} {N : ℕ} (hN : cnt.eval ρ.idx = some N)
-    {x t p : Operand} {xs : ℕ → ℕ × ℕ} {tl pl : ℕ × ℕ} {R : Fp} {z : ℕ → ℂ} {v : ℝ}
-    (hx : ∀ i < N, x.eval (ρ.pushIdx i) = some (xs i))
-    (ht : ∀ i < N, t.eval (ρ.pushIdx i) = some tl)
-    (ht2 : ∀ i < N, Operand.eval (ρ.pushIdx i) ⟨t.buf, t.off + .const 2⟩ = some (tl.1, tl.2 + 2))
-    (hp : ∀ i < N, p.eval (ρ.pushIdx i) = some pl)
-    (hxR : ∀ i < N, Store.inBlock (xs i).1 (xs i).2 2 ≤ R)
-    (hre : ∀ i < N, m.store.get (xs i).1 (xs i).2 = some (z i).re)
-    (him : ∀ i < N, m.store.get (xs i).1 ((xs i).2 + 1) = some (z i).im)
-    (hroom : tl.2 + 3 ≤ m.store.len tl.1) (hv : m.store.get pl.1 pl.2 = some v)
-    (hRt : Fp.Disj R (Store.inBlock tl.1 tl.2 3)) (hRp : Fp.Disj R (Store.inBlock pl.1 pl.2 1))
-    (htp : Fp.Disj (Store.inBlock tl.1 tl.2 3) (Store.inBlock pl.1 pl.2 1)) :
-    Writes .total I τ (.loop cnt (normSqOpRound o x t p)) ρ
-      (Store.inBlock pl.1 pl.2 1 ⊔ Store.inBlock tl.1 tl.2 3)
-      (fun m' => m'.pos = m.pos ∧
-        m'.store.get pl.1 pl.2 = some (foldWords g (normSqFactors M v z) N)) m := by
-  have htl := Store.lt_length_of_lt_len (show tl.2 < m.store.len tl.1 by omega)
-  refine writes_loop hN (fun _ => Store.inBlock pl.1 pl.2 1 ⊔ Store.inBlock tl.1 tl.2 3)
-    (fun _ _ => le_rfl)
-    (fun i m' => m'.pos = m.pos ∧
-      m'.store.get pl.1 pl.2 = some (foldWords g (normSqFactors M v z) i))
-    ⟨rfl, by simpa [foldWords, normSqFactors] using hv⟩ ?_
-  intro i hi m' hfr ⟨hpos, hProd⟩
-  have hdis : Fp.Disj (Store.inBlock (xs i).1 (xs i).2 2)
-      (Store.inBlock pl.1 pl.2 1 ⊔ Store.inBlock tl.1 tl.2 3) :=
-    (Fp.disj_sup_right.mpr ⟨hRp, hRt⟩).mono (hxR i hi) le_rfl
-  have hre' := hfr.keep (Store.readsOnly_get _ _ _) (hdis.symm.mono le_rfl (by fp_sub)) (hre i hi)
-  have him' := hfr.keep (Store.readsOnly_get _ _ _) (hdis.symm.mono le_rfl (by fp_sub)) (him i hi)
-  have hnorm := PairScalar.normSq_writes_word (τ := τ) (m := m') (x := xs i) (t := tl) hS
-    hre' him' (by rw [hfr.len_eq]; exact hroom) (hRt.mono (hxR i hi) le_rfl)
-  unfold normSqOpRound
-  refine hnorm.frame_seq_le rfl (by simp [Operand.evalList, hx i hi, ht i hi])
-    (by simp [Mem.Live, Store.lt_length_of_get hre', hfr.length_eq ▸ htl]) le_sup_right ?_
-  intro m'' hfr' ⟨hp', hNorm⟩
-  have hProd' := hfr'.keep (Store.readsOnly_get _ _ _) htp hProd
-  have hpl'' := Store.lt_len_of_get hProd'
-  have hplL := Store.lt_length_of_get hProd'
-  have htlL := Store.lt_length_of_get hNorm
-  have hI := hS o
-  rw [hg] at hI
-  refine (writes_call_bin hI (y := (tl.1, tl.2 + 2))
-    (by simp [Operand.evalList, hp i hi, ht2 i hi])
-    (by simp [Operand.evalList, hp i hi]) trivial hProd' hNorm rfl
-    (fun _ => ⟨by simp [Mem.Live, hplL, htlL], hpl''⟩)).mono le_sup_left ?_
-  intro m''' _ ⟨hp'', hMul⟩
-  exact ⟨hp''.trans (hp'.trans hpos), by simpa [foldWords, normSqFactors, normSqWord] using hMul⟩
-
-/-- **The product loop of squared moduli** on any scalar machine: the fold loop
-(`NLAlib.ShiftedQR.writes_loop_normSqOpRound`) by the multiplication stores the rounded product
-`NLAlib.prodWords` of $v$ and the machine squared moduli of $z_0, \dots, z_{N-1}$. -/
-theorem writes_loop_normSqMulRound {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS : IsScalar M I)
-    {τ : Tape ℝ} {m : Mem ℝ} {ρ : Env} {cnt : IExp} {N : ℕ} (hN : cnt.eval ρ.idx = some N)
-    {x t p : Operand} {xs : ℕ → ℕ × ℕ} {tl pl : ℕ × ℕ} {R : Fp} {z : ℕ → ℂ} {v : ℝ}
-    (hx : ∀ i < N, x.eval (ρ.pushIdx i) = some (xs i))
-    (ht : ∀ i < N, t.eval (ρ.pushIdx i) = some tl)
-    (ht2 : ∀ i < N, Operand.eval (ρ.pushIdx i) ⟨t.buf, t.off + .const 2⟩ = some (tl.1, tl.2 + 2))
-    (hp : ∀ i < N, p.eval (ρ.pushIdx i) = some pl)
-    (hxR : ∀ i < N, Store.inBlock (xs i).1 (xs i).2 2 ≤ R)
-    (hre : ∀ i < N, m.store.get (xs i).1 (xs i).2 = some (z i).re)
-    (him : ∀ i < N, m.store.get (xs i).1 ((xs i).2 + 1) = some (z i).im)
-    (hroom : tl.2 + 3 ≤ m.store.len tl.1) (hv : m.store.get pl.1 pl.2 = some v)
-    (hRt : Fp.Disj R (Store.inBlock tl.1 tl.2 3)) (hRp : Fp.Disj R (Store.inBlock pl.1 pl.2 1))
-    (htp : Fp.Disj (Store.inBlock tl.1 tl.2 3) (Store.inBlock pl.1 pl.2 1)) :
-    Writes .total I τ (.loop cnt (normSqMulRound x t p)) ρ
-      (Store.inBlock pl.1 pl.2 1 ⊔ Store.inBlock tl.1 tl.2 3)
-      (fun m' => m'.pos = m.pos ∧
-        m'.store.get pl.1 pl.2 = some (prodWords M (normSqFactors M v z) N)) m := by
-  simpa only [foldWords_mul] using writes_loop_normSqOpRound (τ := τ) hS (o := .mul) rfl hN hx
-    ht ht2 hp hxR hre him hroom hv hRt hRp htp
-
-/-! ### Scalar estimates -/
-
-/-- **A relative perturbation under a root**: if $(1 - y)P \le x \le (1 + y)P$ with
-$P \ge 0$, $0 \le y \le 1/2$ and $p \ge 1$, then
-$\lvert x^{1/p} - P^{1/p}\rvert \le (2y/p)\,P^{1/p}$. -/
-theorem abs_rpow_inv_natCast_sub_le {x P y : ℝ} {p : ℕ} (hp : 0 < p) (hP : 0 ≤ P)
-    (hy : 0 ≤ y) (hy2 : y ≤ 1 / 2) (hlo : (1 - y) * P ≤ x) (hhi : x ≤ (1 + y) * P) :
-    |x ^ ((p : ℝ)⁻¹) - P ^ ((p : ℝ)⁻¹)| ≤ 2 * y / p * P ^ ((p : ℝ)⁻¹) := by
-  have hp' : (1 : ℝ) ≤ p := by exact_mod_cast hp
-  have hp0 : (0 : ℝ) < p := by linarith
-  have he : (0 : ℝ) ≤ (p : ℝ)⁻¹ := by positivity
-  have hQ := Real.rpow_nonneg hP ((p : ℝ)⁻¹)
-  -- the root of `1 + c` is at most `1 + c / p`
-  have hroot : ∀ c : ℝ, 0 ≤ c → (1 + c) ^ ((p : ℝ)⁻¹) ≤ 1 + c / p := fun c hc => by
-    have hb : 1 + c ≤ (1 + c / p) ^ p := by
-      have hcp : 0 ≤ c / p := by positivity
-      have := one_add_mul_le_pow (a := c / p) (by linarith) p
-      rwa [mul_div_cancel₀ _ hp0.ne'] at this
-    calc (1 + c) ^ ((p : ℝ)⁻¹) ≤ ((1 + c / p) ^ p) ^ ((p : ℝ)⁻¹) :=
-          Real.rpow_le_rpow (by linarith) hb he
-      _ = 1 + c / p := Real.pow_rpow_inv_natCast (by positivity) hp.ne'
-  have hx0 : 0 ≤ x := le_trans (mul_nonneg (by linarith) hP) hlo
-  have hup : x ^ ((p : ℝ)⁻¹) ≤ (1 + y / p) * P ^ ((p : ℝ)⁻¹) := by
-    calc x ^ ((p : ℝ)⁻¹) ≤ ((1 + y) * P) ^ ((p : ℝ)⁻¹) := Real.rpow_le_rpow hx0 hhi he
-      _ = (1 + y) ^ ((p : ℝ)⁻¹) * P ^ ((p : ℝ)⁻¹) := Real.mul_rpow (by linarith) hP
-      _ ≤ (1 + y / p) * P ^ ((p : ℝ)⁻¹) := mul_le_mul_of_nonneg_right (hroot y hy) hQ
-  have hlow : (1 - 2 * y / p) * P ^ ((p : ℝ)⁻¹) ≤ x ^ ((p : ℝ)⁻¹) := by
-    have h1y : 0 < 1 - y := by linarith
-    have hinv : (1 - y)⁻¹ ≤ 1 + 2 * y := by
-      rw [inv_le_iff_one_le_mul₀ h1y]; nlinarith
-    have hr : (1 - y) ^ ((p : ℝ)⁻¹) ≥ (1 + 2 * y / p)⁻¹ := by
-      have h3 : ((1 - y)⁻¹) ^ ((p : ℝ)⁻¹) ≤ 1 + 2 * y / p := by
-        calc ((1 - y)⁻¹) ^ ((p : ℝ)⁻¹) ≤ (1 + 2 * y) ^ ((p : ℝ)⁻¹) :=
-              Real.rpow_le_rpow (by positivity) hinv he
-          _ ≤ 1 + 2 * y / p := hroot (2 * y) (by linarith)
-      rw [Real.inv_rpow h1y.le] at h3
-      have hpos : 0 < (1 - y) ^ ((p : ℝ)⁻¹) := Real.rpow_pos_of_pos h1y _
-      rw [ge_iff_le, inv_le_comm₀ (by positivity) hpos]
-      exact h3
-    have hq : 1 - 2 * y / p ≤ (1 + 2 * y / p)⁻¹ := by
-      have hc : 0 ≤ 2 * y / p := by positivity
-      rw [inv_eq_one_div, le_div_iff₀ (by positivity)]
-      nlinarith
-    calc (1 - 2 * y / p) * P ^ ((p : ℝ)⁻¹) ≤ (1 - y) ^ ((p : ℝ)⁻¹) * P ^ ((p : ℝ)⁻¹) :=
-          mul_le_mul_of_nonneg_right (hq.trans hr) hQ
-      _ = ((1 - y) * P) ^ ((p : ℝ)⁻¹) := (Real.mul_rpow h1y.le hP).symm
-      _ ≤ x ^ ((p : ℝ)⁻¹) := Real.rpow_le_rpow (mul_nonneg h1y.le hP) hlo he
-  have hyp : y / p ≤ 2 * y / p := by
-    rw [div_le_div_iff_of_pos_right hp0]; linarith
-  rw [abs_le]
-  constructor <;> nlinarith
-
-/-- **The rounded product of squared moduli**: under the standard model with
-$8(k+1)\boldsymbol{u} \le 1$, the product of the rounded literal $1$ and the machine squared
-moduli of $z_0, \dots, z_{k-1}$, accumulated by $k$ rounded multiplications, is within the
-factors $1 \mp 8(k+1)\boldsymbol{u}$ of $\prod_{j<k}\lvert z_j\rvert^2$. -/
-theorem prodWords_normSqFactors_bounds {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M)
-    {k : ℕ} (hku : 8 * (k + 1) * u ≤ 1) (z : ℕ → ℂ) :
-    (1 - 8 * (k + 1) * u) * ∏ j ∈ Finset.range k, ‖z j‖ ^ 2 ≤
-        prodWords M (normSqFactors M (M.lit 1) z) k ∧
-      prodWords M (normSqFactors M (M.lit 1) z) k ≤
-        (1 + 8 * (k + 1) * u) * ∏ j ∈ Finset.range k, ‖z j‖ ^ 2 := by
-  have hu := hM.roundoff_nonneg
-  have hk0 : (0 : ℝ) ≤ k := Nat.cast_nonneg k
-  have hu1 : u ≤ 1 := by nlinarith
-  set P := ∏ j ∈ Finset.range k, ‖z j‖ ^ 2
-  have hP : 0 ≤ P := Finset.prod_nonneg fun _ _ => by positivity
-  set w := normSqFactors M (M.lit 1) z
-  have hlit : |M.lit 1 - 1| ≤ u := by simpa using hM.lit 1
-  have hw0 : 1 - u ≤ w 0 ∧ w 0 ≤ 1 + u := by
-    simp only [w, normSqFactors]; constructor <;> linarith [(abs_le.mp hlit).1, (abs_le.mp hlit).2]
-  have hb := fun j => normSqWord_bounds hM hu hu1 (z j)
-  have hS : ∏ i ∈ Finset.range (k + 1), w i = w 0 * ∏ j ∈ Finset.range k, normSqWord M (z j) := by
-    rw [Finset.prod_range_succ', mul_comm]; rfl
-  have hQlo : (1 - u) ^ (2 * k) * P ≤ ∏ j ∈ Finset.range k, normSqWord M (z j) := by
-    rw [pow_mul, ← Finset.card_range k, ← Finset.prod_const, Finset.card_range,
-      ← Finset.prod_mul_distrib]
-    exact Finset.prod_le_prod (fun _ _ => by positivity) fun j _ => (hb j).1
-  have hQhi : ∏ j ∈ Finset.range k, normSqWord M (z j) ≤ (1 + u) ^ (2 * k) * P := by
-    rw [pow_mul, ← Finset.card_range k, ← Finset.prod_const, Finset.card_range,
-      ← Finset.prod_mul_distrib]
-    exact Finset.prod_le_prod (fun j _ => le_trans (by positivity) (hb j).1) fun j _ => (hb j).2
-  have hQ0 : 0 ≤ ∏ j ∈ Finset.range k, normSqWord M (z j) :=
-    le_trans (by have : 0 ≤ 1 - u := by linarith
-                 positivity) hQlo
-  have hW0 : 0 ≤ ∏ i ∈ Finset.range (k + 1), w i := by
-    rw [hS]; exact mul_nonneg (by linarith [hw0.1]) hQ0
-  have hfp := hM.abs_prodWords_sub_le w k
-  simp only [id] at hfp
-  have habs : ∏ i ∈ Finset.range (k + 1), |w i| = ∏ i ∈ Finset.range (k + 1), w i := by
-    rw [← Finset.abs_prod, abs_of_nonneg hW0]
-  rw [habs] at hfp
-  obtain ⟨hf1, hf2⟩ := abs_le.mp hfp
-  set W := ∏ i ∈ Finset.range (k + 1), w i
-  -- the factors
-  have hup1 : (1 + u) ^ k ≤ 1 + 2 * k * u :=
-    one_add_pow_le_one_add_two_mul hu (by nlinarith)
-  have hup2 : (1 + u) ^ (3 * k + 1) ≤ 1 + 2 * ((3 * k + 1 : ℕ) : ℝ) * u :=
-    one_add_pow_le_one_add_two_mul hu (by push_cast; nlinarith)
-  have hlo2 : 1 - (2 * k + 1) * u ≤ (1 - u) ^ (2 * k + 1) := by
-    have := one_add_mul_le_pow (a := -u) (by linarith) (2 * k + 1)
-    rw [← sub_eq_add_neg] at this
-    push_cast at this; linarith
-  have hWhi : W ≤ (1 + u) ^ (2 * k + 1) * P := by
-    rw [hS, pow_succ, mul_comm ((1 + u) ^ (2 * k)) (1 + u), mul_assoc]
-    exact mul_le_mul hw0.2 hQhi hQ0 (by linarith)
-  have hWlo : (1 - u) ^ (2 * k + 1) * P ≤ W := by
-    rw [hS, pow_succ, mul_comm ((1 - u) ^ (2 * k)) (1 - u), mul_assoc]
-    exact mul_le_mul hw0.1 hQlo (by have : 0 ≤ 1 - u := by linarith
-                                    positivity) (by linarith [hw0.1])
-  constructor
-  · have h1 : (1 - 2 * k * u) * W ≤ prodWords M w k := by nlinarith
-    have h2 : (1 - 2 * k * u) * ((1 - (2 * k + 1) * u) * P) ≤ (1 - 2 * k * u) * W :=
-      mul_le_mul_of_nonneg_left ((mul_le_mul_of_nonneg_right hlo2 hP).trans hWlo) (by nlinarith)
-    nlinarith [mul_nonneg (mul_nonneg hk0 hu) (mul_nonneg hu hP), mul_nonneg hu hP,
-      mul_nonneg (mul_nonneg hk0 hu) hP]
-  · have h1 : prodWords M w k ≤ (1 + u) ^ k * W := by linarith
-    have h2 : (1 + u) ^ k * W ≤ (1 + u) ^ (3 * k + 1) * P := by
-      calc (1 + u) ^ k * W ≤ (1 + u) ^ k * ((1 + u) ^ (2 * k + 1) * P) :=
-            mul_le_mul_of_nonneg_left hWhi (by positivity)
-        _ = (1 + u) ^ (3 * k + 1) * P := by ring
-    have h3 : (1 + u) ^ (3 * k + 1) * P ≤ (1 + 2 * ((3 * k + 1 : ℕ) : ℝ) * u) * P :=
-      mul_le_mul_of_nonneg_right hup2 hP
-    push_cast at h3
-    nlinarith [mul_nonneg (mul_nonneg hk0 hu) hP, mul_nonneg hu hP]
 
 /-! ### The bottom product and the rounded potential -/
 
@@ -564,20 +319,6 @@ theorem roundedPotential_writes {M : Machine ℝ} {I : Interp Op Tst ℝ} {u : �
 
 /-! ### `comptau` -/
 
-/-- The words of the entries of a list of complex numbers stored as interleaved pairs. -/
-theorem getD_flatMap_pair (zs : List ℂ) {j : ℕ} (hj : j < zs.length) :
-    (zs.flatMap fun z => [z.re, z.im]).getD (2 * j) 0 = (zs.getD j 0).re ∧
-      (zs.flatMap fun z => [z.re, z.im]).getD (2 * j + 1) 0 = (zs.getD j 0).im := by
-  induction zs generalizing j with
-  | nil => simp at hj
-  | cons z zs ih =>
-    cases j with
-    | zero => simp
-    | succ j =>
-      have := ih (j := j) (by simpa using hj)
-      rw [List.flatMap_cons, show 2 * (j + 1) = 2 * j + 1 + 1 by ring]
-      simpa only [List.cons_append, List.nil_append, List.getD_cons_succ] using this
-
 /-- A product over the positions of a list is the product of the mapped list. -/
 theorem prod_range_getD_eq_prod_map (zs : List ℂ) (f : ℂ → ℝ) :
     ∏ j ∈ Finset.range zs.length, f (zs.getD j 0) = (zs.map f).prod := by
@@ -671,42 +412,6 @@ theorem comptau_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
   exact (hbody.in_frame rfl rfl (by simp [Mem.Live, t, hlen]; omega)).mono
     (sup_le le_sup_left (Fp.inBlock_le_sup_above le_rfl)) (fun _ _ h => h)
 
-/-- **The rounded product of moduli**: under the standard model with
-$30000(k + 1)\boldsymbol{u} \le 1$, the machine square root of the rounded product of the rounded
-literal $1$ and the machine squared moduli of $z_0, \dots, z_{k-1}$ is within
-$10(k + 1)\boldsymbol{u}$, relatively, of $\prod_{j<k}\lvert z_j\rvert$. -/
-theorem abs_sqrt_prodWords_normSqFactors_sub_le {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M)
-    (z : ℕ → ℂ) {k : ℕ} (hu : 30000 * (k + 1) * u ≤ 1) :
-    |M.sqrt (prodWords M (normSqFactors M (M.lit 1) z) k) - ∏ j ∈ Finset.range k, ‖z j‖| ≤
-      10 * (k + 1) * u * ∏ j ∈ Finset.range k, ‖z j‖ := by
-  have hu0 := hM.roundoff_nonneg
-  set T := ∏ j ∈ Finset.range k, ‖z j‖
-  have hT : 0 ≤ T := Finset.prod_nonneg fun _ _ => norm_nonneg _
-  have hk0 : (0 : ℝ) ≤ k := Nat.cast_nonneg k
-  obtain ⟨hlo, hhi⟩ := prodWords_normSqFactors_bounds hM (k := k) (by nlinarith) z
-  have hP : ∏ j ∈ Finset.range k, ‖z j‖ ^ 2 = T ^ 2 := by rw [Finset.prod_pow]
-  rw [hP] at hlo hhi
-  set x := prodWords M (normSqFactors M (M.lit 1) z) k
-  set y : ℝ := 8 * (k + 1) * u
-  have hy0 : 0 ≤ y := by positivity
-  have hx0 : 0 ≤ x := le_trans (mul_nonneg (by nlinarith) (sq_nonneg T)) hlo
-  have hroot := abs_rpow_inv_natCast_sub_le (p := 2) (by norm_num) (sq_nonneg T) hy0
-    (by nlinarith) hlo hhi
-  have hT2 : (T ^ 2) ^ (((2 : ℕ) : ℝ))⁻¹ = T := Real.pow_rpow_inv_natCast hT (by norm_num)
-  have hsx : x ^ (((2 : ℕ) : ℝ))⁻¹ = √x := by rw [Real.sqrt_eq_rpow]; norm_num
-  rw [hT2, hsx] at hroot
-  have hsq := hM.sqrt x hx0
-  simp only [id] at hsq
-  have h2 : √x ≤ (1 + y) * T := by
-    have := (abs_le.mp hroot).2; norm_num at this ⊢; linarith
-  have h3 := abs_sub_le (M.sqrt x) (√x) T
-  have h4 : u * √x ≤ u * ((1 + y) * T) := mul_le_mul_of_nonneg_left h2 hu0
-  have h5 : 2 * y / ((2 : ℕ) : ℝ) * T = y * T := by norm_num
-  have h6 : u * y ≤ u := by
-    have : y ≤ 1 := by simp only [y]; nlinarith
-    nlinarith
-  nlinarith [mul_nonneg hu0 hT, mul_le_mul_of_nonneg_right h6 hT]
-
 /-- **The rounded product of moduli** of a list: under the standard model with
 $30000(k + 1)\boldsymbol{u} \le 1$, the word `NLAlib.ShiftedQR.comptauWord` of $k$ complex
 numbers $d_1, \dots, d_k$ is within $10(k + 1)\boldsymbol{u}$, relatively, of
@@ -774,182 +479,503 @@ theorem comptau_writes {M : Machine ℝ} {I : Interp Op Tst ℝ} {u : ℝ}
       obtain ⟨R, -, rfl⟩ := List.mem_map.mp h; exact norm_nonneg _) (by norm_num)
   linarith
 
-/-! ### The rounded Euclidean norm of a stored vector -/
+/-! ### `Optimal` -/
 
-/-- **A rounded sum of nonnegative words**: under the standard model with $0 \le \boldsymbol{u}
-\le 1$, the words $w_0, \dots, w_j \ge 0$ summed left to right by $j$ rounded additions give a
-sum between $(1 - \boldsymbol{u})^j$ and $(1 + \boldsymbol{u})^j$ times $\sum_{i \le j} w_i$. -/
-theorem foldWords_add_bounds {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M) (hu1 : u ≤ 1)
-    {w : ℕ → ℝ} (hw : ∀ i, 0 ≤ w i) (j : ℕ) :
-    (1 - u) ^ j * ∑ i ∈ Finset.range (j + 1), w i ≤ foldWords M.add w j ∧
-      foldWords M.add w j ≤ (1 + u) ^ j * ∑ i ∈ Finset.range (j + 1), w i := by
-  have hu := hM.roundoff_nonneg
-  induction j with
-  | zero => simp [foldWords]
-  | succ j ih =>
-    obtain ⟨h1, h2⟩ := ih
-    set S := ∑ i ∈ Finset.range (j + 1), w i
-    have hS : 0 ≤ S := Finset.sum_nonneg fun i _ => hw i
-    have hu1' : 0 ≤ 1 - u := by linarith
-    have hF0 : 0 ≤ foldWords M.add w j := le_trans (by positivity) h1
-    have ha := abs_le.mp (hM.add (foldWords M.add w j) (w (j + 1)))
-    simp only [id] at ha
-    rw [abs_of_nonneg (add_nonneg hF0 (hw _))] at ha
-    simp only [foldWords]
-    rw [Finset.sum_range_succ, pow_succ, pow_succ]
-    have hw1 := hw (j + 1)
-    have hp1 : (1 - u) ^ j ≤ 1 := pow_le_one₀ (by linarith) (by linarith)
-    have hp2 : 1 ≤ (1 + u) ^ j := one_le_pow₀ (by linarith)
-    have hp0 : 0 ≤ (1 - u) ^ j := pow_nonneg (by linarith) j
-    obtain ⟨ha1, ha2⟩ := ha
-    have e1 := mul_le_mul_of_nonneg_left h1 hu1'
-    have e2 := mul_le_mul_of_nonneg_left h2 (show 0 ≤ 1 + u by linarith)
-    have e3 : (1 - u) ^ j * (1 - u) * w (j + 1) ≤ (1 - u) * w (j + 1) :=
-      mul_le_mul_of_nonneg_right (by nlinarith) hw1
-    have e4 : (1 + u) * w (j + 1) ≤ (1 + u) ^ j * (1 + u) * w (j + 1) :=
-      mul_le_mul_of_nonneg_right (by nlinarith) hw1
-    constructor <;> nlinarith
+section Optimal
 
-/-- **The rounded Euclidean norm** of $k$ complex numbers: under the standard model with
-$4(k + 2)\boldsymbol{u} \le 1$, the machine square root of the rounded sum of the exact literal
-$0$ and the machine squared moduli of $z_0, \dots, z_{k-1}$ is within
-$(2k + 6)\boldsymbol{u}$, relatively, of $\bigl(\sum_{j<k}\lvert z_j\rvert^2\bigr)^{1/2}$. -/
-theorem abs_sqrt_sumNormSq_sub_le {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M)
-    (z : ℕ → ℂ) {k : ℕ} (hu : 4 * (k + 2) * u ≤ 1) :
-    |M.sqrt (foldWords M.add (normSqFactors M (M.lit 0) z) k) -
-        √(∑ j ∈ Finset.range k, ‖z j‖ ^ 2)| ≤
-      (2 * k + 6) * u * √(∑ j ∈ Finset.range k, ‖z j‖ ^ 2) := by
-  have hu0 := hM.roundoff_nonneg
-  have hk0 : (0 : ℝ) ≤ k := Nat.cast_nonneg k
-  have hu1 : u ≤ 1 := by nlinarith
-  have h0 : M.lit 0 = 0 := by simpa using hM.lit 0
-  set Q := ∑ j ∈ Finset.range k, ‖z j‖ ^ 2
-  have hQ : 0 ≤ Q := Finset.sum_nonneg fun _ _ => by positivity
-  set w := normSqFactors M (M.lit 0) z
-  have hb := fun j => normSqWord_bounds hM hu0 hu1 (z j)
-  have hw : ∀ i, 0 ≤ w i := fun i => by
-    cases i with
-    | zero => simp [w, normSqFactors, h0]
-    | succ j => exact le_trans (by positivity) (hb j).1
-  have hsum : ∑ i ∈ Finset.range (k + 1), w i = ∑ j ∈ Finset.range k, normSqWord M (z j) := by
-    rw [Finset.sum_range_succ']; simp [w, normSqFactors, h0]
-  obtain ⟨hf1, hf2⟩ := foldWords_add_bounds hM hu1 hw k
-  rw [hsum] at hf1 hf2
-  have hs1 : (1 - u) ^ 2 * Q ≤ ∑ j ∈ Finset.range k, normSqWord M (z j) := by
-    rw [Finset.mul_sum]; exact Finset.sum_le_sum fun j _ => (hb j).1
-  have hs2 : ∑ j ∈ Finset.range k, normSqWord M (z j) ≤ (1 + u) ^ 2 * Q := by
-    rw [Finset.mul_sum]; exact Finset.sum_le_sum fun j _ => (hb j).2
-  set x := foldWords M.add w k
-  set y : ℝ := 2 * (k + 2) * u
-  have hy0 : 0 ≤ y := by positivity
-  have hup : (1 + u) ^ (k + 2) ≤ 1 + y :=
-    (one_add_pow_le_one_add_two_mul hu0 (by push_cast; nlinarith)).trans (by push_cast; simp [y])
-  have hlow : 1 - y ≤ (1 - u) ^ (k + 2) := by
-    have := one_add_mul_le_pow (a := -u) (by linarith) (k + 2)
-    rw [← sub_eq_add_neg] at this
-    push_cast at this; simp only [y]; nlinarith
-  have hpk0 : 0 ≤ (1 - u) ^ k := pow_nonneg (by linarith) k
-  have hxlo : (1 - y) * Q ≤ x := by
-    calc (1 - y) * Q ≤ (1 - u) ^ (k + 2) * Q := mul_le_mul_of_nonneg_right hlow hQ
-      _ = (1 - u) ^ k * ((1 - u) ^ 2 * Q) := by ring
-      _ ≤ (1 - u) ^ k * ∑ j ∈ Finset.range k, normSqWord M (z j) :=
-          mul_le_mul_of_nonneg_left hs1 hpk0
-      _ ≤ x := hf1
-  have hxhi : x ≤ (1 + y) * Q := by
-    calc x ≤ (1 + u) ^ k * ∑ j ∈ Finset.range k, normSqWord M (z j) := hf2
-      _ ≤ (1 + u) ^ k * ((1 + u) ^ 2 * Q) := mul_le_mul_of_nonneg_left hs2 (by positivity)
-      _ = (1 + u) ^ (k + 2) * Q := by ring
-      _ ≤ (1 + y) * Q := mul_le_mul_of_nonneg_right hup hQ
-  have hx0 : 0 ≤ x := le_trans (mul_nonneg (by nlinarith) hQ) hxlo
-  have hroot := abs_rpow_inv_natCast_sub_le (p := 2) (by norm_num) hQ hy0 (by nlinarith) hxlo hxhi
-  have hsx : ∀ a : ℝ, a ^ (((2 : ℕ) : ℝ))⁻¹ = √a := fun a => by rw [Real.sqrt_eq_rpow]; norm_num
-  rw [hsx, hsx] at hroot
-  have hsq := hM.sqrt x hx0
-  simp only [id] at hsq
-  have hQs := Real.sqrt_nonneg Q
-  have h2 : √x ≤ (1 + y) * √Q := by
-    have := (abs_le.mp hroot).2; norm_num at this ⊢; linarith
-  have h3 := abs_sub_le (M.sqrt x) (√x) √Q
-  have h4 : u * √x ≤ u * ((1 + y) * √Q) := mul_le_mul_of_nonneg_left h2 hu0
-  have h5 : 2 * y / ((2 : ℕ) : ℝ) * √Q = y * √Q := by norm_num
-  have h6 : u * y ≤ u := by
-    have : y ≤ 1 := by simp only [y]; nlinarith
-    nlinarith
-  have h7 : y * √Q + u * ((1 + y) * √Q) ≤ (2 * k + 6) * u * √Q := by
-    simp only [y]; nlinarith [mul_le_mul_of_nonneg_right h6 hQs, mul_nonneg hu0 hQs]
-  linarith
+variable [Has CmpTst Tst]
 
-/-- **The rounded Euclidean norm of a stored complex vector** of length $k$ at `D`, with three
-caller-owned scratch words `T`: the exact literal $0$, plus the machine squared moduli of the
-$k$ pairs, then one square root, into the word `P`. The interface is `[k] (D, T) → (P)`. -/
-def pairVecNormWithScratch : Impl Op Tst := opsImpl% [k] (D, T) → (P) {
-  call (Has.inj (ScalarOp.lit 0)) [] () → (P);
-  for j < k {
-    run PairScalar.normSq.body [] (D[2 * j], T);
-    call (Has.inj ScalarOp.add) [] (P, T[2]) → (P)
-  };
-  call (Has.inj ScalarOp.sqrt) [] (P) → (P)
+/-- **The decision of `Optimal`**: the rounded norm $t$ of the stored row `V` (three scratch
+words `U`, into `Q[0]`), the threshold $\mathrm{fl}(c\,\mathrm{fl}(\sqrt{\cdot}))$ of the rounded
+bottom product of the order-$n$ matrix `A` and the stored word `C` (into `Q[1]`), and the flag
+`F` set to the literal $1$ if $t$ is below the threshold, to $0$ otherwise. The interface is
+`[n, k] (A, C, V, U, Q) → (F)`. -/
+def optimalDecide : Impl Op Tst := opsImpl% [n, k] (A, C, V, U, Q) → (F) {
+  run pairVecNormWithScratch.body [n] (V, U, Q);
+  run subdiagProduct.body [n, k] (A, Q[1]);
+  call (Has.inj ScalarOp.sqrt) [] (Q[1]) → (Q[1]);
+  call (Has.inj ScalarOp.mul) [] (C, Q[1]) → (Q[1]);
+  if (Has.inj CmpTst.lt) [] (Q, Q[1]) {
+    call (Has.inj (ScalarOp.lit 1)) [] () → (F)
+  } else {
+    call (Has.inj (ScalarOp.lit 0)) [] () → (F)
+  }
 }
 
-/-- The word `NLAlib.ShiftedQR.pairVecNormWithScratch` stores for the vector $\mathbf{r}$. -/
-def pairVecNormWord (M : Machine ℝ) {N : ℕ} (r : Fin N → ℂ) : ℝ :=
-  M.sqrt (foldWords M.add (normSqFactors M (M.lit 0) (vecGetD r)) N)
+/-- The threshold word of `NLAlib.ShiftedQR.optimalDecide`: the stored word $c$ times the rounded
+square root of the rounded bottom product. -/
+def optimalThresholdWord (M : Machine ℝ) {n : ℕ} (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+    (k : ℕ) (c : ℝ) : ℝ :=
+  M.mul c (M.sqrt (prodWords M (normSqFactors M (M.lit 1) fun j => subdiagEntry H (n - k + j)) k))
 
-/-- The rounded Euclidean norm on any scalar machine: with the vector $\mathbf{r}$ stored at `D`
-and the three scratch words and the output word apart from it and from each other,
-`pairVecNormWithScratch` stores `NLAlib.ShiftedQR.pairVecNormWord` and writes only the output
-and the scratch. -/
-theorem pairVecNormWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
-    (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ} {N : ℕ} {r : Fin N → ℂ} {d t p : ℕ × ℕ}
-    (hD : HoldsMatrix d (Matrix.replicateCol (Fin 1) r) m.store)
-    (ht : t.2 + 3 ≤ m.store.len t.1) (hp : p.2 < m.store.len p.1)
-    (hdt : Fp.Disj (Store.inBlock d.1 d.2 (2 * (1 * N))) (Store.inBlock t.1 t.2 3))
-    (hdp : Fp.Disj (Store.inBlock d.1 d.2 (2 * (1 * N))) (Store.inBlock p.1 p.2 1))
-    (htp : Fp.Disj (Store.inBlock t.1 t.2 3) (Store.inBlock p.1 p.2 1)) :
-    Writes .total I τ pairVecNormWithScratch.body (Env.frame [N] [d, t, p])
-      (Store.inBlock p.1 p.2 1 ⊔ Store.inBlock t.1 t.2 3)
-      (fun m' => m'.pos = m.pos ∧ m'.store.get p.1 p.2 = some (pairVecNormWord M r)) m := by
-  unfold pairVecNormWithScratch
-  refine (writes_call_const (hS (.lit 0)) rfl trivial hp).seq_le le_sup_left ?_
-  intro m₁ hfr₁ ⟨hp₁, hZero⟩
-  have hD₁ := hD.of_eqOff hfr₁ hdp.symm
-  have hloop := writes_loop_normSqOpRound (τ := τ) (m := m₁) (N := N) hS (o := .add) rfl
-    (ρ := Env.frame [N] [d, t, p]) (cnt := .var 0) rfl
-    (xs := fun i => (d.1, d.2 + 2 * i)) (tl := t) (pl := p)
-    (R := Store.inBlock d.1 d.2 (2 * (1 * N))) (z := vecGetD r) (v := M.lit 0)
-    (x := ⟨0, .var 1 + .const 2 * .var 4⟩) (t := ⟨1, .var 2⟩) (p := ⟨2, .var 3⟩)
-    (fun i _ => by simp [Operand.eval, Env.frame, Env.pushIdx, IExp.eval])
-    (fun i _ => by simp [Operand.eval, Env.frame, Env.pushIdx, IExp.eval])
-    (fun i _ => by simp [Operand.eval, Env.frame, Env.pushIdx, IExp.eval])
-    (fun i _ => by simp [Operand.eval, Env.frame, Env.pushIdx, IExp.eval])
-    (fun i hi => Fp.inBlock_le_inBlock (by omega) (by omega))
-    (fun i hi => by
-      have h := hD₁.get_re ⟨i, hi⟩ 0
-      simpa [vecGetD, hi] using h)
-    (fun i hi => by
-      have h := hD₁.get_im ⟨i, hi⟩ 0
-      simpa [vecGetD, hi, Nat.add_assoc] using h)
-    (by rw [hfr₁.len_eq]; exact ht) hZero hdt hdp htp
-  refine (hloop.seq_le le_rfl ?_)
-  intro m₂ _ ⟨hp₂, hP₂⟩
-  refine (writes_call_un (hS .sqrt) rfl rfl trivial hP₂ rfl
-    (Store.lt_len_of_get hP₂)).mono le_sup_left ?_
-  intro m₃ _ ⟨hp₃, hR₃⟩
-  exact ⟨hp₃.trans (hp₂.trans hp₁), hR₃⟩
+open Classical in
+/-- The decision of `Optimal` on any scalar machine with exact comparisons: `optimalDecide` sets
+the flag to the literal $1$ if the rounded norm `NLAlib.ShiftedQR.pairVecNormWord` of the stored
+row is below `NLAlib.ShiftedQR.optimalThresholdWord`, to the literal $0$ otherwise, and writes only
+the flag and its scratch. -/
+theorem optimalDecide_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
+    (hS : IsScalar M I) (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {n k : ℕ}
+    {a c v w q f : ℕ × ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {r : Fin (n + 1) → ℂ}
+    {cv : ℝ} (hk : k ≤ n) (hH : HoldsMatrix a H m.store) (hc : m.store.get c.1 c.2 = some cv)
+    (hV : HoldsMatrix v (Matrix.replicateCol (Fin 1) r) m.store)
+    (hw : w.2 + 3 ≤ m.store.len w.1) (hq : q.2 + 2 ≤ m.store.len q.1)
+    (hf : f.2 < m.store.len f.1) (hl : m.Live [a, c, v, w, q, f])
+    (hsep : Fp.Disj (Store.inBlock w.1 w.2 3 ⊔ Store.inBlock q.1 q.2 2 ⊔ Store.inBlock f.1 f.2 1)
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock c.1 c.2 1 ⊔
+        Store.inBlock v.1 v.2 (2 * (1 * (n + 1)))))
+    (hwq : Fp.Disj (Store.inBlock w.1 w.2 3) (Store.inBlock q.1 q.2 2)) :
+    Writes .total I τ (optimalDecide (Op := Op) (Tst := Tst)).body
+      (Env.frame [n + 1, k] [a, c, v, w, q, f])
+      (Store.inBlock w.1 w.2 3 ⊔ Store.inBlock q.1 q.2 2 ⊔ Store.inBlock f.1 f.2 1)
+      (fun m' => m'.pos = m.pos ∧ m'.store.get f.1 f.2 = some
+        (if pairVecNormWord M r < optimalThresholdWord M H k cv then M.lit 1 else M.lit 0)) m := by
+  have hlive : a.1 < m.store.length ∧ c.1 < m.store.length ∧ v.1 < m.store.length ∧
+      w.1 < m.store.length ∧ q.1 < m.store.length ∧ f.1 < m.store.length := by
+    simpa [Mem.Live] using hl
+  have hq0 : Fp.Disj (Store.inBlock q.1 q.2 1) (Store.inBlock q.1 (q.2 + 1) 1) :=
+    Fp.disj_inBlock_of_le le_rfl
+  unfold optimalDecide
+  have hn := pairVecNormWithScratch_writes_word (τ := τ) (m := m) (t := w) (p := q) hS hV hw
+    (by omega) (hsep.symm.mono (by fp_sub) (by fp_sub))
+    (hsep.symm.mono (by fp_sub) (by fp_sub)) (hwq.mono le_rfl (by fp_sub))
+  refine hn.frame_seq_le rfl rfl (by simp [Mem.Live, hlive]) (by fp_sub) ?_
+  intro m₁ hfr₁ ⟨hp₁, hN₁⟩
+  have hH₁ := hH.of_eqOff hfr₁ (hsep.mono (by fp_sub) (by fp_sub))
+  have hc₁ := hfr₁.keep (Store.readsOnly_get _ _ _) (hsep.mono (by fp_sub) (by fp_sub)) hc
+  have hpr := subdiagProduct_writes_word (τ := τ) (m := m₁) (p := (q.1, q.2 + 1)) hS hk hH₁
+    (by rw [hfr₁.len_eq]; dsimp only; omega) (hsep.symm.mono (by fp_sub) (by fp_sub))
+  refine hpr.frame_seq_le rfl rfl (by simp [Mem.Live, hfr₁.length_eq, hlive]) (by fp_sub) ?_
+  intro m₂ hfr₂ ⟨hp₂, hP₂⟩
+  have hN₂ := hfr₂.keep (Store.readsOnly_get _ _ _) (hq0.symm.mono le_rfl (by fp_sub)) hN₁
+  have hc₂ := hfr₂.keep (Store.readsOnly_get _ _ _) (hsep.mono (by fp_sub) (by fp_sub)) hc₁
+  refine (writes_call_un (hS .sqrt) (x := (q.1, q.2 + 1)) (z := (q.1, q.2 + 1)) rfl rfl trivial
+    hP₂ rfl (Store.lt_len_of_get hP₂)).seq_le (by fp_sub) ?_
+  intro m₃ hfr₃ ⟨hp₃, hR₃⟩
+  have hN₃ := hfr₃.keep (Store.readsOnly_get _ _ _) hq0.symm hN₂
+  have hc₃ := hfr₃.keep (Store.readsOnly_get _ _ _) (hsep.mono (by fp_sub) (by fp_sub)) hc₂
+  refine (writes_call_bin (hS .mul) (x := c) (y := (q.1, q.2 + 1)) (z := (q.1, q.2 + 1)) rfl rfl
+    trivial hc₃ hR₃ rfl (fun _ => ⟨by simp [Mem.Live, Store.lt_length_of_get hc₃,
+      Store.lt_length_of_get hR₃], Store.lt_len_of_get hR₃⟩)).seq_le (by fp_sub) ?_
+  intro m₄ hfr₄ ⟨hp₄, hT₄⟩
+  have hN₄ := hfr₄.keep (Store.readsOnly_get _ _ _) hq0.symm hN₃
+  have hfl : f.2 < m₄.store.len f.1 := by
+    rw [hfr₄.len_eq, hfr₃.len_eq, hfr₂.len_eq, hfr₁.len_eq]; exact hf
+  refine writes_ite rfl rfl (hC.test_lt (d := []) hN₄ hT₄) ?_
+  simp only [id_eq, decide_eq_true_eq]
+  have hpos : m₄.pos = m.pos := hp₄.trans (hp₃.trans (hp₂.trans hp₁))
+  by_cases hlt : pairVecNormWord M r < optimalThresholdWord M H k cv
+  · have hlt' : pairVecNormWord M r < M.mul cv (M.sqrt (prodWords M
+        (normSqFactors M (M.lit 1) fun j => subdiagEntry H (n - k + j)) k)) := hlt
+    rw [if_pos hlt', if_pos hlt]
+    exact (writes_call_const (hS (.lit 1)) (z := f) (out := ⟨5, .var 7⟩) rfl trivial hfl).mono
+      (by fp_sub) fun m₅ _ ⟨hp₅, hF⟩ => ⟨hp₅.trans hpos, hF⟩
+  · have hlt' : ¬ pairVecNormWord M r < M.mul cv (M.sqrt (prodWords M
+        (normSqFactors M (M.lit 1) fun j => subdiagEntry H (n - k + j)) k)) := hlt
+    rw [if_neg hlt', if_neg hlt]
+    exact (writes_call_const (hS (.lit 0)) (z := f) (out := ⟨5, .var 7⟩) rfl trivial hfl).mono
+      (by fp_sub) fun m₅ _ ⟨hp₅, hF⟩ => ⟨hp₅.trans hpos, hF⟩
 
-/-- **The rounded Euclidean norm is accurate**: under the standard model with
-$4(N + 2)\boldsymbol{u} \le 1$, `NLAlib.ShiftedQR.pairVecNormWord` of $\mathbf{r} \in
-\mathbb{C}^N$ is within $(2N + 6)\boldsymbol{u}\|\mathbf{r}\|$ of $\|\mathbf{r}\|$. -/
-theorem abs_pairVecNormWord_sub_le {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M) {N : ℕ}
-    (hu : 4 * (N + 2) * u ≤ 1) (r : Fin N → ℂ) :
-    |pairVecNormWord M r - ‖WithLp.toLp 2 r‖| ≤ (2 * N + 6) * u * ‖WithLp.toLp 2 r‖ := by
-  have h := abs_sqrt_sumNormSq_sub_le hM (vecGetD r) (k := N) hu
-  have e : √(∑ j ∈ Finset.range N, ‖vecGetD r j‖ ^ 2) = ‖WithLp.toLp 2 r‖ := by
-    rw [EuclideanSpace.norm_eq, Finset.sum_range fun j => ‖vecGetD r j‖ ^ 2]
-    congr 1
-    refine Finset.sum_congr rfl fun l _ => ?_
-    simp [vecGetD, l.isLt]
-  rw [e] at h
-  exact h
+end Optimal
+
+section OptimalTest
+
+variable [Has CmpTst Tst]
+
+/-- `Optimal` with caller-owned scratch: the row recurrence from $\mathbf{e}_n$
+(`NLAlib.ShiftedQR.rowInit`, `NLAlib.ShiftedQR.rowPolyLoop`) and the decision
+(`NLAlib.ShiftedQR.optimalDecide`). The interface is
+`[n, k] (A, S, C, V, Y, W, O, T, Z, U, Q) → (F)`. -/
+def optimalTestWithScratch : Impl Op Tst :=
+  opsImpl% [n, k] (A, S, C, V, Y, W, O, T, Z, U, Q) → (F) {
+    run rowInit.body [n] (V, O);
+    run rowPolyLoop.body [n, k] (V, A, S, O, W, T, Z, Y, V);
+    run optimalDecide.body [n, k] (A, C, V, U, Q, F)
+  }
+
+/-- **`Optimal`** ([BanksGarzaVargasSrivastava2022, §4]): for the order-$n$ matrix `A`, the $k$
+shifts stored as pairs at `S` and the threshold factor `C` (the word $0.999\theta^k$), the flag
+`F` is the literal $1$ if the rounded $\|\mathrm{fl}(\mathbf{e}_n^{\mathsf T}p(\mathbf{A}))\|$
+is below the rounded $c\,\psi_k(\mathbf{A})^k$, and $0$ otherwise. All scratch is scoped. The
+interface is `[n, k] (A, S, C) → (F)`. -/
+def optimalTest : Impl Op Tst := opsImpl% [n, k] (A, S, C) → (F) {
+  let V ← alloc (2 * n);
+  let Y ← alloc (2 * n);
+  let W ← alloc (2 * (n * n));
+  let O ← alloc 2;
+  let T ← alloc 2;
+  let Z ← alloc 2;
+  let U ← alloc 3;
+  let Q ← alloc 2;
+  run optimalTestWithScratch.body [n, k] (A, S, C, V, Y, W, O, T, Z, U, Q, F)
+}
+
+/-- The flag word `Optimal` stores, on the machine `M`. -/
+noncomputable def optimalTestWord (M : Machine ℝ) {n : ℕ} (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+    (ss : List ℂ) (c : ℝ) : ℝ :=
+  if pairVecNormWord M (rowPolyVec M (M.lit 1, M.lit 0) H ss (rowInitVec M n) ss.length) <
+      optimalThresholdWord M H ss.length c then M.lit 1 else M.lit 0
+
+/-- `Optimal` with scratch in fresh buffers `L, …, L + 7` (offset $0$, as an allocation gives
+them) on any scalar machine with exact comparisons: it stores `NLAlib.ShiftedQR.optimalTestWord`
+in `F` and writes only `F` and the scratch. -/
+theorem optimalTestWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
+    (hS : IsScalar M I) (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {n L : ℕ}
+    {a s c f : ℕ × ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ss : List ℂ} {cv : ℝ}
+    (hk : ss.length ≤ n) (hH : HoldsMatrix a H m.store)
+    (hs : m.store.readBlock s.1 s.2 (2 * ss.length) = some (ss.flatMap fun z => [z.re, z.im]))
+    (hc : m.store.get c.1 c.2 = some cv) (hf : f.2 < m.store.len f.1)
+    (ha : a.1 < L) (hsL : s.1 < L) (hcL : c.1 < L) (hfL : f.1 < L)
+    (hlen : m.store.length = L + 8) (hv : m.store.len L = 2 * (n + 1))
+    (hy : m.store.len (L + 1) = 2 * (n + 1)) (hw : m.store.len (L + 2) = 2 * ((n + 1) * (n + 1)))
+    (ho : m.store.len (L + 3) = 2) (ht : m.store.len (L + 4) = 2)
+    (hz : m.store.len (L + 5) = 2) (hu : m.store.len (L + 6) = 3)
+    (hq : m.store.len (L + 7) = 2)
+    (has : Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+      Store.inBlock s.1 s.2 (2 * ss.length) ⊔ Store.inBlock c.1 c.2 1)) :
+    Writes .total I τ (optimalTestWithScratch (Op := Op) (Tst := Tst)).body
+      (Env.frame [n + 1, ss.length] [a, s, c, (L, 0), (L + 1, 0), (L + 2, 0), (L + 3, 0),
+        (L + 4, 0), (L + 5, 0), (L + 6, 0), (L + 7, 0), f])
+      (Store.inBlock f.1 f.2 1 ⊔ Fp.above L)
+      (fun m' => m'.pos = m.pos ∧ m'.store.get f.1 f.2 = some (optimalTestWord M H ss cv)) m := by
+  have hal : a.1 < m.store.length := by omega
+  unfold optimalTestWithScratch
+  have hi := rowInit_writes_word (τ := τ) (m := m) (n := n) (v := (L, 0)) (o := (L + 3, 0)) hS
+    (by simp [hv]) (by simp [ho]) (by disjoint)
+  refine hi.frame_seq_le rfl rfl (by simp [Mem.Live]; omega)
+    (by intro b x hx; simp [fpNF] at hx ⊢; omega) ?_
+  intro m₁ hfr₁ ⟨hp₁, hV₁, hO₁⟩
+  have hl₁ : ∀ b, m₁.store.len b = m.store.len b := hfr₁.len_eq
+  have hH₁ := hH.of_eqOff hfr₁ (by disjoint)
+  have hs₁ := hfr₁.keep (Store.readsOnly_readBlock _ _ _ _) (by disjoint) hs
+  have hrp := rowPolyLoop_writes_word (τ := τ) (m := m₁) (v := (L, 0)) (a := a) (s := s)
+    (o := (L + 3, 0)) (w := (L + 2, 0)) (t := (L + 4, 0)) (z := (L + 5, 0)) (y := (L + 1, 0))
+    (oo := (M.lit 1, M.lit 0)) hS hV₁ hH₁ hs₁ hO₁ (by simp [hl₁, hw]) (by simp [hl₁, ht])
+    (by simp [hl₁, hz]) (by simp [hl₁, hy]) (by simp [Mem.Live, hfr₁.length_eq]; omega)
+    (by disjoint) (by disjoint) (by disjoint) (by disjoint) (by disjoint) (by disjoint)
+    (by disjoint) (by disjoint)
+  refine hrp.frame_seq_le rfl rfl (by simp [Mem.Live, hfr₁.length_eq]; omega)
+    (by intro b x hx; simp [fpNF] at hx ⊢; omega) ?_
+  intro m₂ hfr₂ ⟨hp₂, hV₂⟩
+  have hl₂ : ∀ b, m₂.store.len b = m.store.len b := fun b => by rw [hfr₂.len_eq, hl₁]
+  have hH₂ := hH₁.of_eqOff hfr₂ (by disjoint)
+  have hc₂ := hfr₂.keep (Store.readsOnly_get _ _ _) (by disjoint)
+    (hfr₁.keep (Store.readsOnly_get _ _ _) (by disjoint) hc)
+  have hd := optimalDecide_writes_word (τ := τ) (m := m₂) (a := a) (c := c) (v := (L, 0))
+    (w := (L + 6, 0)) (q := (L + 7, 0)) (f := f) hS hC hk hH₂ hc₂ hV₂ (by simp [hl₂, hu])
+    (by simp [hl₂, hq]) (by rw [hl₂]; exact hf)
+    (by simp [Mem.Live, hfr₁.length_eq, hfr₂.length_eq]; omega)
+    (Fp.disj_sup_left.mpr ⟨by disjoint, Fp.disj_sup_right.mpr ⟨Fp.disj_sup_right.mpr
+      ⟨has.mono le_rfl (by fp_sub), has.mono le_rfl (by fp_sub)⟩, by disjoint⟩⟩)
+    (by disjoint)
+  refine (hd.in_frame rfl rfl (by simp [Mem.Live, hfr₁.length_eq, hfr₂.length_eq]; omega)).mono
+    (by intro b x hx; simp [fpNF] at hx ⊢; omega) ?_
+  intro m₃ _ ⟨hp₃, hF₃⟩
+  exact ⟨hp₃.trans (hp₂.trans hp₁), hF₃⟩
+
+
+/-- `Optimal` on any scalar machine with exact comparisons: with the order-$(n+1)$ matrix
+$\mathbf{H}$ at `A`, the shifts `ss` ($k \le n$ of them) stored as pairs at `S`, the word $c$ at
+`C`, and the flag word apart from these, `optimalTest` stores
+`NLAlib.ShiftedQR.optimalTestWord` in `F` and writes only `F`. -/
+theorem optimalTest_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
+    (hS : IsScalar M I) (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ}
+    {a s c f : ℕ × ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ss : List ℂ} {cv : ℝ}
+    (hk : ss.length ≤ n) (hH : HoldsMatrix a H m.store)
+    (hs : m.store.readBlock s.1 s.2 (2 * ss.length) = some (ss.flatMap fun z => [z.re, z.im]))
+    (hc : m.store.get c.1 c.2 = some cv) (hf : f.2 < m.store.len f.1) (hl : m.Live [a, s, c, f])
+    (has : Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+      Store.inBlock s.1 s.2 (2 * ss.length) ⊔ Store.inBlock c.1 c.2 1)) :
+    Writes .total I τ (optimalTest (Op := Op) (Tst := Tst)).body
+      (Env.frame [n + 1, ss.length] [a, s, c, f]) (Store.inBlock f.1 f.2 1)
+      (fun m' => m'.pos = m.pos ∧ m'.store.get f.1 f.2 = some (optimalTestWord M H ss cv)) m := by
+  have hlive : a.1 < m.store.length ∧ s.1 < m.store.length ∧ c.1 < m.store.length ∧
+      f.1 < m.store.length := by simpa [Mem.Live] using hl
+  unfold optimalTest
+  allocs_preserving [2 * (n + 1), 2 * (n + 1), 2 * ((n + 1) * (n + 1)), 2, 2, 2, 3, 2]
+  case sizes => rfl
+  case keep =>
+    intro s s' p hBelow hp
+    exact ⟨hp.1, ((hBelow f.1 hlive.2.2.2).2 f.2).trans hp.2⟩
+  intro store hlen hlens hBelow
+  have hl8 := fun i (hi : i < 8) => hlens i (by simpa using hi)
+  have hw := optimalTestWithScratch_writes_word (τ := τ) (m := ⟨store, m.pos⟩)
+    (L := m.store.length) hS hC hk (hH.of_below hBelow hlive.1)
+    (hBelow.readBlock_of hlive.2.1 hs) (((hBelow c.1 hlive.2.2.1).2 c.2).trans hc)
+    (by rw [(hBelow f.1 hlive.2.2.2).1]; exact hf) hlive.1 hlive.2.1 hlive.2.2.1 hlive.2.2.2
+    (by simpa using hlen) (by simpa using hl8 0 (by norm_num))
+    (by simpa using hl8 1 (by norm_num)) (by simpa using hl8 2 (by norm_num))
+    (by simpa using hl8 3 (by norm_num)) (by simpa using hl8 4 (by norm_num))
+    (by simpa using hl8 5 (by norm_num)) (by simpa using hl8 6 (by norm_num))
+    (by simpa using hl8 7 (by norm_num)) has
+  exact (hw.in_frame rfl (by simp [Operand.evalList, Operand.eval, Env.frame, IExp.eval])
+    (by simp [Mem.Live, hlen]; omega)).mono le_rfl fun _ _ h => h
+
+end OptimalTest
+
+/-! ### The guarantees of `Optimal` -/
+
+/-- The product of the last $k \le n$ subdiagonal moduli is $\psi_k(\mathbf{H})^k$. -/
+theorem prod_range_norm_subdiagEntry {n k : ℕ} (hk : 0 < k) (hkn : k ≤ n)
+    (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) :
+    ∏ j ∈ Finset.range k, ‖subdiagEntry H (n - k + j)‖ = hessenbergPotential k H ^ k := by
+  have key : subdiagNormSqProd k H = hessenbergPotential k H ^ (2 * k) := by
+    rw [mul_comm, pow_mul, hessenbergPotential_pow hk, subdiagNormSqProd, Finset.prod_pow]
+  have h2 : (∏ j ∈ Finset.range k, ‖subdiagEntry H (n - k + j)‖) ^ 2 =
+      (hessenbergPotential k H ^ k) ^ 2 := by
+    rw [← Finset.prod_pow, prod_range_norm_subdiagEntry_sq hkn, key, ← pow_mul, mul_comm]
+  exact (pow_left_inj₀ (Finset.prod_nonneg fun _ _ => norm_nonneg _)
+    (pow_nonneg (hessenbergPotential_nonneg k H) k) (by norm_num)).mp h2
+
+/-- The last row of a shift polynomial with shifts $\lvert s\rvert \le C\|\mathbf{H}\|_2$ has
+norm at most $((1 + C)\|\mathbf{H}\|_2)^k$. -/
+theorem norm_toLp_aeval_shiftPoly_last_le {n : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {ss : List ℂ} {C : ℝ} (hs : ∀ s ∈ ss, ‖s‖ ≤ C * specNorm H) :
+    ‖WithLp.toLp 2 ((Polynomial.aeval H (shiftPoly ss)) (Fin.last n))‖ ≤
+      ((1 + C) * specNorm H) ^ ss.length := by
+  have hrow : (Polynomial.aeval H (shiftPoly ss)) (Fin.last n) =
+      (Pi.single (Fin.last n) 1 : Fin (n + 1) → ℂ) ᵥ* Polynomial.aeval H (shiftPoly ss) := by
+    rw [Matrix.single_one_vecMul]; rfl
+  rw [hrow]
+  refine (norm_toLp_vecMul_le _ _).trans ?_
+  rw [PiLp.toLp_single, PiLp.norm_single, norm_one, mul_one]
+  refine specNorm_aeval_shiftPoly_le fun s hs' => ?_
+  refine (specNorm_sub_le _ _).trans ?_
+  rw [specNorm_smul, specNorm_one, mul_one]
+  linarith [hs s hs']
+
+/-- **The rounded threshold of `Optimal`**: under the standard model with
+$30000(k + 1)\boldsymbol{u} \le 1$, $0 < k \le n$ and $c \ge 0$, the word
+`NLAlib.ShiftedQR.optimalThresholdWord` is within $(10k + 12)\boldsymbol{u}\,c\,\psi_k^k$ of
+$c\,\psi_k(\mathbf{H})^k$. -/
+theorem abs_optimalThresholdWord_sub_le {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M)
+    {n k : ℕ} (hk : 0 < k) (hkn : k ≤ n) (hu : 30000 * (k + 1) * u ≤ 1) {c : ℝ} (hc : 0 ≤ c)
+    (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) :
+    |optimalThresholdWord M H k c - c * hessenbergPotential k H ^ k| ≤
+      (10 * k + 12) * u * (c * hessenbergPotential k H ^ k) := by
+  have hu0 := hM.roundoff_nonneg
+  have hp := abs_sqrt_prodWords_normSqFactors_sub_le hM (fun j => subdiagEntry H (n - k + j)) hu
+  rw [prod_range_norm_subdiagEntry hk hkn] at hp
+  set P := hessenbergPotential k H ^ k
+  have hP : 0 ≤ P := pow_nonneg (hessenbergPotential_nonneg k H) k
+  set p := M.sqrt (prodWords M (normSqFactors M (M.lit 1) fun j => subdiagEntry H (n - k + j)) k)
+  have hm := hM.mul c p
+  simp only [id] at hm
+  have hpP : p ≤ (1 + 10 * (k + 1) * u) * P := by linarith [(abs_le.mp hp).2]
+  have hp0 : 0 ≤ p := by
+    have : 10 * ((k : ℝ) + 1) * u ≤ 1 := by nlinarith
+    nlinarith [(abs_le.mp hp).1]
+  have hw : optimalThresholdWord M H k c = M.mul c p := rfl
+  rw [hw]
+  rw [abs_of_nonneg (mul_nonneg hc hp0)] at hm
+  have h1 : |c * p - c * P| ≤ c * (10 * (k + 1) * u * P) := by
+    rw [← mul_sub, abs_mul, abs_of_nonneg hc]; exact mul_le_mul_of_nonneg_left hp hc
+  have h2 : u * (c * p) ≤ u * (c * ((1 + 10 * (k + 1) * u) * P)) :=
+    mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left hpP hc) hu0
+  have h3 : 10 * ((k : ℝ) + 1) * u ≤ 1 := by nlinarith
+  have h4 := abs_sub_le (M.mul c p) (c * p) (c * P)
+  have hcP : 0 ≤ c * P := mul_nonneg hc hP
+  nlinarith [mul_nonneg hu0 hcP, mul_le_mul_of_nonneg_right h3 (mul_nonneg hu0 hcP)]
+
+/-- **The rounded last row of a shift polynomial** (corrected [BanksGarzaVargasSrivastava2022,
+Lemma 4.5]): under the standard model with $100N^2\boldsymbol{u} \le 1$ ($N = n + 1$) and shifts
+$\lvert s_j\rvert \le C\|\mathbf{H}\|_2$, the vector of $k$ rounded steps of the row recurrence
+from $\mathbf{e}_n$ (`NLAlib.ShiftedQR.rowPolyVec`) satisfies
+$$\|\widehat{\mathbf{r}}_k - \mathbf{e}_n^{\mathsf T}p(\mathbf{H})\| \le
+6kN^{3/2}\boldsymbol{u}\,((2 + 2C)\|\mathbf{H}\|_2)^k.$$
+The paper's constant $2n^2$ (with the norm rounding) does not follow from its proof, which
+gives $n + kn^{3/2}$; here the per-step error is $12N^{3/2}\boldsymbol{u}$. -/
+theorem norm_toLp_rowPolyVec_sub_aeval_le {M : Machine ℝ} {u C : ℝ} (hM : StdModel u id M)
+    {n : ℕ} (hu : 100 * ((n + 1 : ℕ) : ℝ) ^ 2 * u ≤ 1)
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ss : List ℂ}
+    (hs : ∀ s ∈ ss, ‖s‖ ≤ C * specNorm H) :
+    ‖WithLp.toLp 2 (rowPolyVec M (1, 0) H ss (Pi.single (Fin.last n) 1) ss.length -
+        (Polynomial.aeval H (shiftPoly ss)) (Fin.last n))‖ ≤
+      6 * ss.length * (((n + 1 : ℕ) : ℝ) * √((n + 1 : ℕ) : ℝ) * u) *
+        ((2 + 2 * C) * specNorm H) ^ ss.length := by
+  have hu0 := hM.roundoff_nonneg
+  set N : ℝ := ((n + 1 : ℕ) : ℝ)
+  have hN1 : 1 ≤ N := by simp only [N]; exact_mod_cast Nat.succ_pos n
+  have hsq : √N ≤ N := by
+    rw [Real.sqrt_le_left (by linarith)]; nlinarith
+  have hsq0 : 0 ≤ √N := Real.sqrt_nonneg N
+  have hη1 : 12 * (N * √N * u) ≤ 1 := by
+    have : N * √N ≤ N ^ 2 := by nlinarith
+    have := mul_le_mul_of_nonneg_right this hu0
+    nlinarith
+  have h := norm_toLp_sub_aeval_shiftPoly_row_le (H := H) (ss := ss) (C := C)
+    (η := 12 * (N * √N * u)) hs (by positivity) hη1
+    (r := rowPolyVec M (1, 0) H ss (Pi.single (Fin.last n) 1)) rfl (fun j hj => by
+      have hget : ss.getD j 0 = ss[j] := by simp [List.getD_eq_getElem?_getD, hj]
+      have hNN : N * u ≤ N ^ 2 * u := mul_le_mul_of_nonneg_right (by nlinarith) hu0
+      have h5 : 5 * N * u ≤ 1 := by nlinarith
+      have h100 : u ≤ 1 / 100 := by nlinarith
+      have := norm_toLp_rowMulVec_sub_le (n := n) hM hu0 h100 h5 (hs ss[j] (List.getElem_mem hj))
+        (rowPolyVec M (1, 0) H ss (Pi.single (Fin.last n) 1) j)
+      have hrec : rowPolyVec M (1, 0) H ss (Pi.single (Fin.last n) 1) (j + 1) =
+          rowMulVec M (1, 0) (rowPolyVec M (1, 0) H ss (Pi.single (Fin.last n) 1) j)
+            (machineShiftedPrefix M H ss[j] (n + 1)) := by
+        rw [rowPolyVec, hget]
+      rw [hrec]
+      exact this)
+  refine h.trans (le_of_eq ?_)
+  ring
+
+/-- The scalar bookkeeping of `Optimal`: with $a, G, A \ge 0$, $k \ge 1$, a row error
+$E = 6kaG$ with $30000kaG \le A$, a norm $X \le G$, a computed row of norm $R$ within $E$ of
+$X$, its rounded norm $t$ within $\varepsilon R$ of $R$, $\varepsilon \le 8ka$, and a
+threshold within $0.00012A$ of $0.999A$, the shifted value
+$t + (0.999A - \mathrm{thr})$ is within $0.0009A$ of $X$. -/
+private theorem abs_optimal_bookkeeping {k a G A X R t ε thr : ℝ} (hk : 1 ≤ k) (ha : 0 ≤ a)
+    (hG : 0 ≤ G) (hu : 30000 * k * a * G ≤ A) (hX : X ≤ G)
+    (hR : |R - X| ≤ 6 * k * a * G) (ht : |t - R| ≤ ε * R) (hε : ε ≤ 8 * k * a)
+    (hε0 : 0 ≤ ε) (hε1 : ε ≤ 1) (hthr : |thr - 0.999 * A| ≤ 0.00012 * A) :
+    |t + (0.999 * A - thr) - X| ≤ 0.0009 * A := by
+  have hP : 0 ≤ k * a * G := by positivity
+  have hRp : R ≤ X + 6 * (k * a * G) := by linarith [(abs_le.mp hR).2]
+  have h1 : ε * R ≤ ε * G + ε * (6 * (k * a * G)) := by
+    rw [← mul_add]; exact mul_le_mul_of_nonneg_left (by linarith) hε0
+  have h2 : ε * G ≤ 8 * k * a * G := mul_le_mul_of_nonneg_right hε hG
+  have h3 : ε * (6 * (k * a * G)) ≤ 6 * (k * a * G) := by
+    have := mul_le_mul_of_nonneg_right hε1 (show 0 ≤ 6 * (k * a * G) by positivity)
+    linarith
+  rw [abs_le] at hR ht hthr ⊢
+  constructor <;> nlinarith
+
+/-- The computed norm of `Optimal` is within $0.0009(\theta\psi_k)^k$ of
+$\|\mathbf{e}_n^{\mathsf T}p(\mathbf{H})\|$, after the threshold's rounding is moved to it: the
+hypothesis of `NLAlib.isOptimalRitzValues_of_lt` and `NLAlib.not_isOptimalRitzValues_of_le`. -/
+private theorem abs_optimal_shifted_sub_le {M : Machine ℝ} {u θ C : ℝ} (hM : StdModel u id M)
+    (hNat : IsExactNatLit id M 1) {n : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {ss : List ℂ} (hss : ss ≠ []) (hk : ss.length ≤ n) (hθ : 0 < θ)
+    (hs : ∀ s ∈ ss, ‖s‖ ≤ C * specNorm H)
+    (hu : 30000 * ss.length * (((n + 1 : ℕ) : ℝ) * √((n + 1 : ℕ) : ℝ) * u) *
+      ((2 + 2 * C) * specNorm H) ^ ss.length ≤ (θ * hessenbergPotential ss.length H) ^ ss.length)
+    (hu1 : 100000 * ((n + 1 + ss.length : ℕ) : ℝ) ^ 2 * u ≤ 1) :
+    |pairVecNormWord M (rowPolyVec M (M.lit 1, M.lit 0) H ss (rowInitVec M n) ss.length) +
+        (0.999 * (θ * hessenbergPotential ss.length H) ^ ss.length -
+          optimalThresholdWord M H ss.length (0.999 * θ ^ ss.length)) -
+        ‖WithLp.toLp 2 ((Polynomial.aeval H (shiftPoly ss)) (Fin.last n))‖| ≤
+      0.0009 * (θ * hessenbergPotential ss.length H) ^ ss.length := by
+  have hu0 := hM.roundoff_nonneg
+  have h0 : M.lit 0 = 0 := by simpa using hM.lit 0
+  have h1 : M.lit 1 = 1 := by simpa using hNat 1 le_rfl
+  have hk1 : 1 ≤ ss.length := List.length_pos_iff.mpr hss
+  have hk1' : (1 : ℝ) ≤ ss.length := by exact_mod_cast hk1
+  have hN1 : (1 : ℝ) ≤ ((n + 1 : ℕ) : ℝ) := by exact_mod_cast Nat.succ_pos n
+  have hsq1 : 1 ≤ √((n + 1 : ℕ) : ℝ) := Real.one_le_sqrt.mpr hN1
+  have hNk : ((n + 1 : ℕ) : ℝ) + ss.length = ((n + 1 + ss.length : ℕ) : ℝ) := by push_cast; ring
+  have hNk2 : ((n + 1 : ℕ) : ℝ) + ss.length ≤ ((n + 1 + ss.length : ℕ) : ℝ) ^ 2 := by
+    rw [hNk]; nlinarith
+  have hsmall : (((n + 1 : ℕ) : ℝ) + ss.length) * u ≤ 1 / 100000 := by
+    nlinarith [mul_le_mul_of_nonneg_right hNk2 hu0]
+  have hN2 : ((n + 1 : ℕ) : ℝ) ^ 2 * u ≤ ((n + 1 + ss.length : ℕ) : ℝ) ^ 2 * u :=
+    mul_le_mul_of_nonneg_right (pow_le_pow_left₀ (by linarith) (by linarith) 2) hu0
+  have hrow : rowPolyVec M (M.lit 1, M.lit 0) H ss (rowInitVec M n) ss.length =
+      rowPolyVec M (1, 0) H ss (Pi.single (Fin.last n) 1) ss.length := by
+    rw [h1, h0, rowInitVec_eq h0 h1]
+  rw [hrow]
+  have hE := norm_toLp_rowPolyVec_sub_aeval_le (C := C) hM (n := n) (ss := ss)
+    (by nlinarith) hs
+  have hG0 : 0 ≤ (2 + 2 * C) * specNorm H := by
+    obtain ⟨s0, hs0⟩ := List.exists_mem_of_ne_nil ss hss
+    have : 0 ≤ C * specNorm H := (norm_nonneg s0).trans (hs s0 hs0)
+    nlinarith [specNorm_nonneg H]
+  have hX : ‖WithLp.toLp 2 ((Polynomial.aeval H (shiftPoly ss)) (Fin.last n))‖ ≤
+      ((2 + 2 * C) * specNorm H) ^ ss.length := (norm_toLp_aeval_shiftPoly_last_le hs).trans
+    (pow_le_pow_left₀ (by nlinarith [hG0]) (by nlinarith [hG0]) ss.length)
+  have hku := mul_le_mul_of_nonneg_right hk1' hu0
+  have hn := abs_pairVecNormWord_sub_le hM (N := n + 1) (by push_cast at hsmall ⊢; nlinarith)
+    (rowPolyVec M (1, 0) H ss (Pi.single (Fin.last n) 1) ss.length)
+  have hR : |‖WithLp.toLp 2 (rowPolyVec M (1, 0) H ss (Pi.single (Fin.last n) 1) ss.length)‖ -
+      ‖WithLp.toLp 2 ((Polynomial.aeval H (shiftPoly ss)) (Fin.last n))‖| ≤
+      6 * ss.length * (((n + 1 : ℕ) : ℝ) * √((n + 1 : ℕ) : ℝ) * u) *
+        ((2 + 2 * C) * specNorm H) ^ ss.length := by
+    refine (abs_norm_sub_norm_le _ _).trans ?_
+    rw [← WithLp.toLp_sub]; exact hE
+  have ht := abs_optimalThresholdWord_sub_le hM (n := n) (k := ss.length) (by omega) hk
+    (by nlinarith) (c := 0.999 * θ ^ ss.length) (by positivity) H
+  have hcA : 0.999 * θ ^ ss.length * hessenbergPotential ss.length H ^ ss.length =
+      0.999 * (θ * hessenbergPotential ss.length H) ^ ss.length := by rw [mul_pow]; ring
+  rw [hcA] at ht
+  have hA0 : 0 ≤ (θ * hessenbergPotential ss.length H) ^ ss.length :=
+    pow_nonneg (mul_nonneg hθ.le (hessenbergPotential_nonneg _ _)) _
+  have ht' : |optimalThresholdWord M H ss.length (0.999 * θ ^ ss.length) -
+      0.999 * (θ * hessenbergPotential ss.length H) ^ ss.length| ≤
+      0.00012 * (θ * hessenbergPotential ss.length H) ^ ss.length := by
+    refine ht.trans ?_
+    have : (10 * (ss.length : ℝ) + 12) * u ≤ 0.00012 := by nlinarith
+    nlinarith
+  refine abs_optimal_bookkeeping (k := ss.length) hk1' (by positivity) (by positivity) hu hX
+    hR hn ?_ (by positivity) ?_ ht'
+  · have e1 : ((n + 1 : ℕ) : ℝ) ≤ ((n + 1 : ℕ) : ℝ) * √((n + 1 : ℕ) : ℝ) :=
+      le_mul_of_one_le_right (by positivity) hsq1
+    have e2 : ((n + 1 : ℕ) : ℝ) * √((n + 1 : ℕ) : ℝ) ≤
+        ss.length * (((n + 1 : ℕ) : ℝ) * √((n + 1 : ℕ) : ℝ)) :=
+      le_mul_of_one_le_left (by positivity) hk1'
+    have e3 : 2 * ((n + 1 : ℕ) : ℝ) + 6 ≤ 8 * ss.length *
+        (((n + 1 : ℕ) : ℝ) * √((n + 1 : ℕ) : ℝ)) := by linarith
+    have e4 := mul_le_mul_of_nonneg_right e3 hu0
+    calc (2 * ((n + 1 : ℕ) : ℝ) + 6) * u ≤ 8 * ss.length *
+          (((n + 1 : ℕ) : ℝ) * √((n + 1 : ℕ) : ℝ)) * u := e4
+      _ = _ := by ring
+  · nlinarith [hku, hsmall]
+
+section OptimalTarget
+
+variable [Has CmpTst Tst]
+
+/-- **`Optimal` decides optimality** (P4; corrected [BanksGarzaVargasSrivastava2022,
+Lemma 4.5]): on a scalar machine with the standard model, exact literals $0, 1$ and exact
+comparisons, let $\mathbf{H}$ of order $N = n + 1$ be stored at `A`, the $k \ge 1$ shifts
+$s_j$, $k \le n$, $\lvert s_j\rvert \le C\|\mathbf{H}\|_2$, stored as pairs at `S`, the word
+$0.999\theta^k$ at `C`, $\theta > 0$, $\psi_k(\mathbf{H}) > 0$, and
+$$30000\,kN^{3/2}\boldsymbol{u}\,((2 + 2C)\|\mathbf{H}\|_2)^k \le (\theta\psi_k(\mathbf{H}))^k,
+\qquad 10^5 (N + k)^2\boldsymbol{u} \le 1.$$
+Then `optimalTest` writes only its flag word, and stores there $b \in \{0, 1\}$ with: $b = 1$
+implies the shifts are $\theta$-optimal, and $b = 0$ implies they are not
+$0.998^{1/k}\theta$-optimal. The computed norm, shifted by the threshold's rounding, meets the
+$0.0009(\theta\psi_k)^k$ hypothesis of `NLAlib.isOptimalRitzValues_of_lt` and
+`NLAlib.not_isOptimalRitzValues_of_le`. The paper's precision
+$(2 \cdot 10^3 n^2)^{-1}(\psi_k/(\theta(2 + 2C)\|\mathbf{H}\|))^k$ rests on the constant $2n^2$,
+which its proof does not give ($n + kn^{3/2}$); here $kN^{3/2}$. -/
+theorem optimalTest_writes {M : Machine ℝ} {I : Interp Op Tst ℝ} {u : ℝ}
+    (hS : IsScalar M I) (hM : StdModel u id M) (hNat : IsExactNatLit id M 1) (hC : IsCmp id I)
+    {τ : Tape ℝ} {μ : Mem ℝ} {n : ℕ} {a s c f : ℕ × ℕ}
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ss : List ℂ} {θ C : ℝ}
+    (hss : ss ≠ []) (hk : ss.length ≤ n) (hθ : 0 < θ) (hψ : 0 < hessenbergPotential ss.length H)
+    (hs : ∀ s ∈ ss, ‖s‖ ≤ C * specNorm H)
+    (hu : 30000 * ss.length * (((n + 1 : ℕ) : ℝ) * √((n + 1 : ℕ) : ℝ) * u) *
+      ((2 + 2 * C) * specNorm H) ^ ss.length ≤ (θ * hessenbergPotential ss.length H) ^ ss.length)
+    (hu1 : 100000 * ((n + 1 + ss.length : ℕ) : ℝ) ^ 2 * u ≤ 1)
+    (hH : HoldsMatrix a H μ.store)
+    (hsS : μ.store.readBlock s.1 s.2 (2 * ss.length) = some (ss.flatMap fun z => [z.re, z.im]))
+    (hc : μ.store.get c.1 c.2 = some (0.999 * θ ^ ss.length)) (hf : f.2 < μ.store.len f.1)
+    (hl : μ.Live [a, s, c, f])
+    (has : Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+      Store.inBlock s.1 s.2 (2 * ss.length) ⊔ Store.inBlock c.1 c.2 1)) :
+    Writes .total I τ (optimalTest (Op := Op) (Tst := Tst)).body
+      (Env.frame [n + 1, ss.length] [a, s, c, f]) (Store.inBlock f.1 f.2 1)
+      (fun μ' => μ'.pos = μ.pos ∧ ∃ b : ℝ, μ'.store.get f.1 f.2 = some b ∧ (b = 0 ∨ b = 1) ∧
+        (b = 1 → IsOptimalRitzValues θ H ss) ∧
+        (b = 0 → ¬IsOptimalRitzValues ((0.998 : ℝ) ^ ((ss.length : ℝ)⁻¹) * θ) H ss)) μ := by
+  have h0 : M.lit 0 = 0 := by simpa using hM.lit 0
+  have h1 : M.lit 1 = 1 := by simpa using hNat 1 le_rfl
+  refine (optimalTest_writes_word (τ := τ) hS hC hk hH hsS hc hf hl has).mono le_rfl
+    fun μ' _ ⟨hp, hF⟩ => ⟨hp, _, hF, ?_⟩
+  have ht := abs_optimal_shifted_sub_le hM hNat hss hk hθ hs hu hu1
+  set t := pairVecNormWord M (rowPolyVec M (M.lit 1, M.lit 0) H ss (rowInitVec M n) ss.length)
+  set thr := optimalThresholdWord M H ss.length (0.999 * θ ^ ss.length)
+  set A := (θ * hessenbergPotential ss.length H) ^ ss.length
+  have hw : optimalTestWord M H ss (0.999 * θ ^ ss.length) = if t < thr then 1 else 0 := by
+    change (if t < thr then M.lit 1 else M.lit 0) = _
+    rw [h0, h1]
+  rw [hw]
+  by_cases hlt : t < thr
+  · simp only [hlt, if_true, one_ne_zero, false_or, true_implies, false_implies, and_true]
+    exact ⟨trivial, isOptimalRitzValues_of_lt ht (by linarith)⟩
+  · simp only [hlt, if_false, zero_ne_one, or_false, true_implies, false_implies, true_and]
+    exact not_isOptimalRitzValues_of_le hθ hψ hss ht (by linarith [not_lt.mp hlt])
+
+end OptimalTarget
 
 end NLAlib.ShiftedQR

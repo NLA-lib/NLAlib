@@ -14,6 +14,7 @@ public import NLAlibScaffold.Matrix.QRIteration.DeflationPerturbed
 public import NLAlibScaffold.Matrix.QRIteration.Ritz
 public import NLAlibScaffold.Matrix.QRIteration.RoundedStrategy
 public import NLAlibScaffold.Matrix.QRIteration.StableStep
+public import NLAlibScaffold.Matrix.QRIteration.Strategy
 public import NLAlibScaffold.Ops.Logic.BackwardFrame
 public import NLAlibScaffold.Ops.Logic.Probabilistic
 public import NLAlibScaffold.Ops.TapeStopping

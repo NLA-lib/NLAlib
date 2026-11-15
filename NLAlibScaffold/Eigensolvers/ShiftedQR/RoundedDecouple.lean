@@ -10,6 +10,30 @@ public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedIteration
 
 /-!
 # The rounded decoupling loop with randomized iterations
+
+[BanksGarzaVargasSrivastava2022, Lemma 6.4] in floating point: the decoupler of the rounded
+worklist scans the bottom $k$ subdiagonal entries and, while none passes, runs one iteration
+(`NLAlib.ShiftedQR.shIteration`: `Regularize`, then $\mathrm{Sh}_{k,B}$), for at most $F$
+rounds. On the good tapes each iteration decouples the matrix at the bottom or contracts
+$\psi_k$ by $1.002(1 - \gamma)$, so a matrix still coupled after $F$ rounds is impossible, and
+the failure probabilities of the rounds add (`NLAlib.Ops.PWrites.whileFuel`). The scan of the
+loop has its own threshold $t_L$: the iteration certifies only
+$(1 - \boldsymbol{u})^2\lvert h\rvert^2 \le t$, which a rounded scan with the same threshold can
+miss, so $(1 + \boldsymbol{u})^2 t \le (1 - \boldsymbol{u})^2 t_L$.
+
+## Main definitions
+
+* `NLAlib.ShiftedQR.roundedDecouple`: the program; `NLAlib.ShiftedQR.roundedDecoupleParams`:
+  its parameter words.
+* `NLAlib.ShiftedQR.DecoupleLoopCtx`, `NLAlib.ShiftedQR.DecoupleLoopState`,
+  `NLAlib.ShiftedQR.DecoupleLoopMid`: the operands and the states of the loop.
+
+## Main results
+
+* `NLAlib.ShiftedQR.roundedDecoupleScan_writes`,
+  `NLAlib.ShiftedQR.roundedDecoupleIteration_pwrites`: the scan and the iteration of a round.
+* `NLAlib.ShiftedQR.roundedDecouple_randomDecouplingContract`: the loop meets
+  `NLAlib.ShiftedQR.RandomDecouplingContract` (P11p).
 -/
 
 @[expose] public section
@@ -26,6 +50,13 @@ section Program
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O]
   [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q]
 
+/-- **The rounded decoupling loop** ([BanksGarzaVargasSrivastava2022, Lemma 6.4]): with scan
+registers `R`, read the index words $m$ ($k = 2^m$) and $n_0$ (the net size) from the
+parameter words, scan the bottom $k$ subdiagonal entries with the threshold `P[0]`, and while
+none passed, for at most $F$ rounds, run `NLAlib.ShiftedQR.shIteration` with the words
+`P[1..7]` and the net at `P[10]`, then scan again. The flag is $0$ if the last scan passed and
+$1$ otherwise. The interface is `[N, k, np, F] (W, P) → (W, Fl)`, that of the worklist's
+decoupler. -/
 def roundedDecouple : Impl O Q :=
   opsImpl% [N, k, np, F] (W, P) → (W, Fl) {
     let R ← alloc 5;
@@ -59,6 +90,7 @@ noncomputable def roundedDecoupleParams (tL R tv γ B α ε : ℝ) (k q : ℕ) :
     ε / 2, 1.0015 * (1 - γ), (q : ℝ), ((excNet ε).length : ℝ)] ++
     (excNet ε).flatMap fun z => [z.re, z.im]
 
+/-- The number of parameter words of the decoupling loop. -/
 theorem length_roundedDecoupleParams (tL R tv γ B α ε : ℝ) (k q : ℕ) :
     (roundedDecoupleParams tL R tv γ B α ε k q).length = 10 + 2 * (excNet ε).length := by
   simp [roundedDecoupleParams, List.length_flatMap]
@@ -195,6 +227,7 @@ section Iteration
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O]
   [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q]
 
+-- The hypothesis list of the iteration, with its long real constants, makes elaboration heavy.
 set_option maxHeartbeats 1000000 in
 /-- **One iteration of the decoupling loop on the good tapes**: from the state before round $i$
 with the scan flag $0$, the iterate is in the class of `NLAlib.ShiftedQR.shIteration_pwrites`
@@ -364,6 +397,280 @@ theorem roundedDecoupleIteration_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} 
       _ ≤ 1.002 * (1 - γ) * ((1.002 * (1 - γ)) ^ i * hessenbergPotential k H) :=
         mul_le_mul_of_nonneg_left hψ hc0
       _ = (1.002 * (1 - γ)) ^ (i + 1) * hessenbergPotential k H := by ring
+
+-- The loop's program term and the hypotheses of the iteration make elaboration heavy.
+set_option maxHeartbeats 4000000 in
+/-- **The rounded decoupling loop meets the randomized decoupling contract**
+([BanksGarzaVargasSrivastava2022, Lemma 6.4] in floating point, corrected): on a machine with the
+standard model at $\boldsymbol{u} < 1$, exact natural literals up to $n_{\max} + 1$, a measurable
+interpretation reading the tape only in its windows, a `SmallEig` kernel and an exact polar disk
+sampler, `NLAlib.ShiftedQR.roundedDecouple` with the parameter words
+`NLAlib.ShiftedQR.roundedDecoupleParams` meets `NLAlib.ShiftedQR.RandomDecouplingContract` on the
+class (condition $2B$, separation $g/2$) for orders up to $n_{\max} + 1$ and norms up to
+$N_{\max}$, with failure probability $F(\varphi_{\mathrm{se}} + \varphi_R/2 + \varphi)$, the level
+$\omega_D$ and the backward error $FE$, $E = (1 + C)S((1 + 300(n_{\max}+1)^2\boldsymbol{u})^k - 1)$.
+The hypotheses are those of `NLAlib.ShiftedQR.shIteration_pwrites` at the order $n_{\max} + 1$,
+the class constant $B_i \ge 4B$ and the iterate norm $S$, and the loop's: the scan thresholds
+$(1 + \boldsymbol{u})^2 t \le (1 - \boldsymbol{u})^2 t_L \le (1 - \boldsymbol{u})^4\omega_D^2$,
+the cap $(1 + \boldsymbol{u})^2((1.002(1 - \gamma))^F N_{\max})^2 \le t_L$, the iterate norms
+$N_{\max} + FE \le S$ and the class preservation $FE \le (g/2)/(16(n_{\max} + 1) \cdot 2B)$.
+Each round is one iteration (P10b) and a scan; the iterates stay in the class (condition $4B$,
+separation $g/4$,
+`NLAlib.IsPerturbedUnitarySimilar.exists_pseudoConditionNumber_le_and_le_norm_sub`);
+a coupled matrix had its potential contracted, so after $F$ rounds the scan passes
+(`NLAlib.exists_norm_subdiag_le_hessenbergPotential`), and the failures of the rounds add
+(`NLAlib.Ops.PWrites.whileFuel`). -/
+theorem roundedDecouple_randomDecouplingContract {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u < 1) (hL : IsIndexLit M I) {nmax : ℕ}
+    (hNat : IsExactNatLit id M (nmax + 1)) (hC : IsCmp id I) (hQ : IsToNat id I)
+    {law : ℕ → Measure ℝ} {s₀ : ℕ} {β φse : ℝ} (hSE : IsRandomSmallEig law s₀ β φse I)
+    (hβ0 : 0 ≤ β) (hφse : 0 ≤ φse) (hDisk : IsPolarDiskSampler s₀ I)
+    (hU : law s₀ = volume.restrict (Set.Icc 0 1)) {k q F : ℕ} (hkq : k = 2 ^ q) (hk : 2 ≤ k)
+    {B g Bi Nmax S ω ωD tL tv R φR α γ φ C ε : ℝ} (hg : 0 < g) (hBi : 4 * B ≤ Bi)
+    (hS0 : 0 ≤ S) (hBk : Bi ^ ((2 : ℝ) / k) ≤ 2) (hω : 0 < ω) (hgapS : 2 * ω ^ 2 / S ≤ g / 4)
+    (hR : 0 < R) (hφR : 0 < φR) (hφR1 : φR ≤ 1)
+    (hβ : β + R + 2 * u * (S + β + R) ≤ ω ^ 2 / (20 * 101 * S))
+    (hdη : 4 * u * (S + β + R) ≤ R * √(φR / (2 * k))) (hnu : (nmax + 1 : ℝ) * u ≤ 1 / 2500)
+    (huo : 30000 * k * (((nmax + 1 : ℕ) : ℝ) * √((nmax + 1 : ℕ) : ℝ) * u) *
+      ((2 + 2 * 1.1) * S) ^ k ≤
+      (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * Bi ^ 4) ^ ((2 * k : ℝ)⁻¹) * ω) ^ k)
+    (huo1 : 100000 * ((nmax + 1 + k : ℕ) : ℝ) ^ 2 * u ≤ 1)
+    (hxuR : 300 * (nmax + 1) ^ 2 * u ≤
+      (16 * Bi)⁻¹ * (R * √(φR / (2 * k)) / 2 / ((2 + 2 * 1.1) * S)) ^ k)
+    (hboundR : (66 + 2 * 1.1) * Bi * S * ((2 + 2 * 1.1) * S / (R * √(φR / (2 * k)) / 2)) ^ k *
+      √(nmax + 1) * (300 * (nmax + 1) ^ 2 * u) ≤ ω / 2)
+    (hα : α = (1.01 * Bi) ^ ((4 * q : ℝ) / 2 ^ q)) (hγ : 0 < γ) (hγ1 : γ < 1)
+    (hε : ε = (0.998 * (1 - γ) * (1 - γ) / ((13 * Bi ^ 4) ^ ((k : ℝ)⁻¹) * α ^ 2 *
+      (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * Bi ^ 4) ^ ((2 * k : ℝ)⁻¹)) ^ 2)) ^
+        ((k : ℝ) / (k - 1))) (hε2 : ε ≤ 1 / 2) (hφ : 0 < φ) (hφ1 : φ ≤ 1 / 5)
+    (hd : R * √(φR / (2 * k)) / 2 ≤ ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) *
+      (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * Bi ^ 4) ^ ((2 * k : ℝ)⁻¹)) * α *
+        Bi ^ ((k : ℝ)⁻¹) * ω) * √(φ / (11 * ((nmax + 1 : ℕ) : ℝ))) / 4)
+    (hC1 : 1.1 + 2.1 * ((2.002 : ℝ) ^ ((k : ℝ)⁻¹) *
+      (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * Bi ^ 4) ^ ((2 * k : ℝ)⁻¹)) * α *
+        Bi ^ ((k : ℝ)⁻¹)) ≤ C)
+    (hxu : 300 * (nmax + 1) ^ 2 * u ≤
+      (8004 * Bi)⁻¹ * (R * √(φR / (2 * k)) / 2 / ((2 + 2 * C) * S)) ^ k)
+    (hbound : (66 + 2 * C) * Bi * S * ((2 + 2 * C) * S / (R * √(φR / (2 * k)) / 2)) ^ k *
+      √(nmax + 1) * (300 * (nmax + 1) ^ 2 * u) ≤ 0.001 * ω)
+    (hexc1 : 6 * u * (1.1 * S + 3 * ((2.002 : ℝ) ^ ((k : ℝ)⁻¹) *
+      (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * Bi ^ 4) ^ ((2 * k : ℝ)⁻¹)) * α *
+        Bi ^ ((k : ℝ)⁻¹) * S)) ≤ 0.005 * ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) *
+      (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * Bi ^ 4) ^ ((2 * k : ℝ)⁻¹)) * α *
+        Bi ^ ((k : ℝ)⁻¹) * ω))
+    (hexc2 : 6 * u * (1.1 * S + 3 * ((2.002 : ℝ) ^ ((k : ℝ)⁻¹) *
+      (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * Bi ^ 4) ^ ((2 * k : ℝ)⁻¹)) * α *
+        Bi ^ ((k : ℝ)⁻¹) * S)) ≤ ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) *
+      (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * Bi ^ 4) ^ ((2 * k : ℝ)⁻¹)) * α *
+        Bi ^ ((k : ℝ)⁻¹) * ω) * √(φ / (11 * ((nmax + 1 : ℕ) : ℝ))) / 8)
+    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) (hthr : (1 + u) ^ 2 * tv ≤ (1 - u) ^ 2 * tL)
+    (hcut : tL ≤ (1 - u) ^ 2 * ωD ^ 2) (hωD : 0 ≤ ωD)
+    (hfuel : (1 + u) ^ 2 * ((1.002 * (1 - γ)) ^ F * Nmax) ^ 2 ≤ tL)
+    (hSN : Nmax + F * ((1 + C) * S * ((1 + 300 * (nmax + 1) ^ 2 * u) ^ k - 1)) ≤ S)
+    (hsmall : F * ((1 + C) * S * ((1 + 300 * (nmax + 1) ^ 2 * u) ^ k - 1)) ≤
+      g / 2 / (16 * (nmax + 1) * (2 * B))) :
+    RandomDecouplingContract law (2 * B) (g / 2) (F * (φse + φR / 2 + φ)) k F nmax Nmax
+      (roundedDecoupleParams tL R tv γ Bi α ε k q) ωD
+      (fun _ => F * ((1 + C) * S * ((1 + 300 * (nmax + 1) ^ 2 * u) ^ k - 1)))
+      (roundedDecouple (O := O) (Q := Q)) I := by
+  intro n N w p f H V d hkn hn hN hHess hnorm hV hHV hκ hgap
+  have hu := hM.roundoff_nonneg
+  set E := (1 + C) * S * ((1 + 300 * (nmax + 1) ^ 2 * u) ^ k - 1) with hEdef
+  set ps := roundedDecoupleParams tL R tv γ Bi α ε k q with hps
+  have hnn : (n : ℝ) + 1 ≤ nmax + 1 := by exact_mod_cast Nat.succ_le_succ hn
+  have hnn' : ((n + 1 : ℕ) : ℝ) ≤ ((nmax + 1 : ℕ) : ℝ) := by exact_mod_cast Nat.succ_le_succ hn
+  have hn0 : (0 : ℝ) < n + 1 := by positivity
+  have hB0 : 1 / 2 ≤ B := by
+    have := (one_le_pseudoConditionNumber hV.ne_zero).trans hκ
+    linarith
+  have hBi0 : 0 ≤ Bi := by linarith
+  have hα0 : 0 ≤ α := hα ▸ Real.rpow_nonneg (by positivity) _
+  have hε0 : 0 ≤ ε := hε ▸ Real.rpow_nonneg (div_nonneg (by nlinarith) (by positivity)) _
+  have hC0 : 0 ≤ C := by
+    have : 0 ≤ 2.1 * ((2.002 : ℝ) ^ ((k : ℝ)⁻¹) *
+        (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * Bi ^ 4) ^ ((2 * k : ℝ)⁻¹)) * α *
+          Bi ^ ((k : ℝ)⁻¹)) := by positivity
+    linarith
+  have hx : 300 * ((n : ℝ) + 1) ^ 2 * u ≤ 300 * (nmax + 1) ^ 2 * u := by gcongr
+  have hE0 : 0 ≤ E := by
+    have : 1 ≤ (1 + 300 * ((nmax : ℝ) + 1) ^ 2 * u) ^ k := one_le_pow₀ (by nlinarith)
+    have : 0 ≤ (1 + 300 * ((nmax : ℝ) + 1) ^ 2 * u) ^ k - 1 := by linarith
+    positivity
+  have hEn : (1 + C) * S * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1) ≤ E := by
+    rw [hEdef]; gcongr
+  have hgB : g / 2 / (16 * (nmax + 1) * (2 * B)) ≤ g / 2 / (16 * (n + 1) * (2 * B)) := by
+    gcongr
+  have hc0 : 0 ≤ 1.002 * (1 - γ) := by nlinarith
+  have htv0 : 0 ≤ tv := le_trans (by positivity) hthrω
+  have hp1 : 0 < (1 - u) ^ 2 := by nlinarith
+  have htL0 : 0 ≤ tL := le_of_mul_le_mul_left
+    (by nlinarith [mul_nonneg (sq_nonneg (1 + u)) htv0] : (1 - u) ^ 2 * 0 ≤ (1 - u) ^ 2 * tL) hp1
+  have htL : tv ≤ tL := by
+    have h1 : tv ≤ (1 + u) ^ 2 * tv := le_mul_of_one_le_left htv0 (by nlinarith)
+    have h2 : (1 - u) ^ 2 * tL ≤ tL := mul_le_of_le_one_left htL0 (by nlinarith)
+    linarith
+  have hωL : (1 + u) ^ 2 * ω ^ 2 ≤ tL := hthrω.trans htL
+  -- the iteration's hypotheses at the order `n + 1`
+  have hNat' : IsExactNatLit id M (n + 1) := hNat.mono (by omega)
+  have hnu' : (n + 1 : ℝ) * u ≤ 1 / 2500 := le_trans (by gcongr) hnu
+  have huo' : 30000 * k * (((n + 1 : ℕ) : ℝ) * √((n + 1 : ℕ) : ℝ) * u) *
+      ((2 + 2 * 1.1) * S) ^ k ≤
+      (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * Bi ^ 4) ^ ((2 * k : ℝ)⁻¹) * ω) ^ k :=
+    le_trans (by gcongr) huo
+  have huo1' : 100000 * ((n + 1 + k : ℕ) : ℝ) ^ 2 * u ≤ 1 :=
+    le_trans (by gcongr) huo1
+  have hxuR' := hx.trans hxuR
+  have hxu' := hx.trans hxu
+  have hboundR' : (66 + 2 * 1.1) * Bi * S * ((2 + 2 * 1.1) * S / (R * √(φR / (2 * k)) / 2)) ^ k *
+      √(n + 1) * (300 * (n + 1) ^ 2 * u) ≤ ω / 2 := le_trans (by gcongr) hboundR
+  have hbound' : (66 + 2 * C) * Bi * S * ((2 + 2 * C) * S / (R * √(φR / (2 * k)) / 2)) ^ k *
+      √(n + 1) * (300 * (n + 1) ^ 2 * u) ≤ 0.001 * ω := le_trans (by gcongr) hbound
+  have hd' : R * √(φR / (2 * k)) / 2 ≤ ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) *
+      (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * Bi ^ 4) ^ ((2 * k : ℝ)⁻¹)) * α *
+        Bi ^ ((k : ℝ)⁻¹) * ω) * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 4 := hd.trans (by gcongr)
+  have hexc2' : 6 * u * (1.1 * S + 3 * ((2.002 : ℝ) ^ ((k : ℝ)⁻¹) *
+      (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * Bi ^ 4) ^ ((2 * k : ℝ)⁻¹)) * α *
+        Bi ^ ((k : ℝ)⁻¹) * S)) ≤ ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) *
+      (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * Bi ^ 4) ^ ((2 * k : ℝ)⁻¹)) * α *
+        Bi ^ ((k : ℝ)⁻¹) * ω) * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 8 := hexc2.trans (by gcongr)
+  have h0lit : M.lit ((0 : ℕ) : ℚ) = 0 := by simpa using hNat 0 (Nat.zero_le _)
+  have hlen := length_roundedDecoupleParams tL R tv γ Bi α ε k q
+  unfold roundedDecouple
+  refine PWrites.allocs (lens := [.const 5]) (ns := [5]) rfl
+    (Pre₁ := fun L μ => DecoupleLoopCtx n L w p f ps μ ∧ HoldsMatrix w H μ.store) ?_ ?_
+    fun L => ?_
+  · rintro μ s₁ ⟨hW, hp, hl, hrw, hrf, hWF, hPWF⟩ hlen' hlens hBelow
+    have h1 : w.1 < μ.store.length := hl w (by simp)
+    have h2 : p.1 < μ.store.length := hl p (by simp)
+    have h3 : f.1 < μ.store.length := hl f (by simp)
+    have hl0 := hlens 0 (by simp)
+    simp only [List.length_cons, List.length_nil] at hlen'
+    refine ⟨⟨h1, h2, h3, ?_, hBelow.readBlock_of h2 hp, by rw [(hBelow w.1 h1).1]; exact hrw,
+      by rw [(hBelow f.1 h3).1]; exact hrf, by simpa using hl0.ge, hWF, hPWF⟩,
+      hW.of_below hBelow h1⟩
+    simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,
+      forall_eq, hlen']
+    omega
+  · rintro μ ⟨-, -, hl, -⟩ st st' pos hBelow ⟨hf0, H', h1, h2, h3, hW'⟩
+    exact ⟨hBelow.get_of (hl f (by simp)) hf0, H', h1, h2, h3,
+      hW'.of_below hBelow (hl w (by simp))⟩
+  have hget : ∀ μ, DecoupleLoopCtx n L w p f ps μ → ∀ j < 10,
+      μ.store.get p.1 (p.2 + j) = some (ps.getD j 0) :=
+    fun μ h j hj => Store.get_of_readBlock h.2.2.2.2.1 (by rw [hlen]; omega) 0
+  refine PWrites.bindIdx hI (a := [(p.1, p.2 + 8)]) rfl rfl
+    (fun μ ⟨hctx, _⟩ => ⟨q, ?_, hQ.index_eq_of_decode_nat (hget μ hctx 8 (by omega)) rfl⟩)
+    fun v hv => ?_
+  · rw [hkq]; exact Nat.lt_two_pow_self.le
+  by_cases hvq : v = q
+  swap
+  · exact PWrites.of_writes (by positivity) fun μ _ ⟨⟨hctx, _⟩, hv'⟩ => (hvq (Option.some.inj
+      (hv'.symm.trans (hQ.index_eq_of_decode_nat (hget μ hctx 8 (by omega)) rfl)))).elim
+  subst v
+  refine PWrites.bindIdx hI (a := [(p.1, p.2 + 9)]) rfl rfl
+    (fun μ ⟨⟨hctx, _⟩, _⟩ => ⟨(excNet ε).length, by rw [hlen]; omega,
+      hQ.index_eq_of_decode_nat (hget μ hctx 9 (by omega)) rfl⟩) fun v hv => ?_
+  by_cases hvq : v = (excNet ε).length
+  swap
+  · exact PWrites.of_writes (by positivity) fun μ _ ⟨⟨⟨hctx, _⟩, _⟩, hv'⟩ => (hvq (Option.some.inj
+      (hv'.symm.trans (hQ.index_eq_of_decode_nat (hget μ hctx 9 (by omega)) rfl)))).elim
+  subst hvq
+  have hlive : ∀ μ, DecoupleLoopCtx n L w p f ps μ → μ.Live [w, (p.1, p.2 + 1), (p.1, p.2 + 2),
+      (p.1, p.2 + 3), (p.1, p.2 + 4), (p.1, p.2 + 5), (p.1, p.2 + 6), (p.1, p.2 + 7),
+      (p.1, p.2 + 10), w, f] := fun μ h => by
+    have := h.2.2.2.1
+    simp only [Mem.live_cons, Mem.live_nil, and_true] at this ⊢
+    tauto
+  have hlive3 : ∀ μ, DecoupleLoopCtx n L w p f ps μ → μ.Live [w, p, (L, 0)] := fun μ h =>
+    h.2.2.2.1.mono (by simp)
+  have hiE : ∀ i < F, (i : ℝ) * E ≤ F * E := fun i hi =>
+    mul_le_mul_of_nonneg_right (by exact_mod_cast hi.le) hE0
+  have hRle : Store.inBlock L 0 5 ≤ Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
+      Store.inBlock f.1 f.2 1 ⊔ Fp.above L :=
+    le_sup_of_le_right fun b i h => (show L ≤ b from h.1 ▸ le_rfl)
+  have hscan0 : PWrites law I (Stmt.frame [IExp.var 0, IExp.var 1]
+      [⟨0, IExp.var 4⟩, ⟨1, IExp.var 5⟩, ⟨4, IExp.const 0⟩] (bottomScan (O := O) (Q := Q)).body)
+      (((⟨(Env.frame [n + 1, k, ps.length, F] [w, p, w, f]).idx,
+          (Env.frame [n + 1, k, ps.length, F] [w, p, w, f]).buf ++
+            List.map (fun x => L + x) (List.range [5].length)⟩ : Env).pushIdx q).pushIdx
+        (excNet ε).length)
+      (Store.inBlock L 0 5) (fun μ => DecoupleLoopCtx n L w p f ps μ ∧ HoldsMatrix w H μ.store)
+      (fun μ => DecoupleLoopCtx n L w p f ps μ ∧
+        DecoupleLoopState u k H tL (1.002 * (1 - γ)) E w (L, 0) 0 μ) 0 :=
+    (PWrites.of_writes le_rfl fun μ τ ⟨hctx, hW⟩ =>
+      roundedDecoupleScan_writes (τ := τ) (i := 0) (tv := tv) (E := E)
+      (c := 1.002 * (1 - γ)) hS hM hu1 hL hNat' hC hkn rfl (by rw [hlen]; omega) hthr hctx
+      ⟨H, by simpa using IsPerturbedUnitarySimilar.refl H, hHess, hW, Or.inr (by simp)⟩).in_frame
+      rfl rfl fun μ h => hlive3 μ h.1
+  refine (PWrites.seq hI hloc (by positivity) (hscan0.mono ?pre0 le_rfl
+      (fun _ h => h) le_rfl)
+    (PWrites.whileFuel (F := Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock f.1 f.2 1 ⊔ Store.inBlock L 0 5) (G := Store.inBlock f.1 f.2 1) (N := F)
+      hI hloc rfl (fun i μ => DecoupleLoopCtx n L w p f ps μ ∧
+        DecoupleLoopState u k H tL (1.002 * (1 - γ)) E w (L, 0) i μ)
+      (fun _ => φse + φR / 2 + φ) (fun _ _ => by positivity) le_rfl (fun _ h => h) ?test ?body
+      ?exit)).mono (fun _ h => h)
+    (sup_le hRle (sup_le (sup_le le_sup_left hRle) (le_sup_of_le_left le_sup_right)))
+    (fun _ h => h) ?phi
+  case pre0 => exact fun μ h => h.1.1
+  case phi =>
+    simp only [zero_add, add_zero, Finset.sum_const, Finset.card_range, nsmul_eq_mul]
+    exact le_rfl
+  case test =>
+    rintro i - μ ⟨-, H', -, -, -, ⟨h1, -⟩ | ⟨h0, -⟩⟩
+    · simp only [zero_add] at h1
+      exact ⟨_, (Interp.testAt_eq (a := [(L, 3)]) rfl rfl).trans (hC.test_isZero h1)⟩
+    · simp only [zero_add] at h0
+      exact ⟨_, (Interp.testAt_eq (a := [(L, 3)]) rfl rfl).trans (hC.test_isZero h0)⟩
+  case body =>
+    intro i hi
+    refine (PWrites.seq hI hloc le_rfl
+      ((roundedDecoupleIteration_pwrites (L := L) (i := i) (p := p) hI hloc hS hM hu1 hL hNat' hC
+        hQ hSE hβ0 hφse hDisk hU hkq hk hkn hV hHV hκ hg hgap ((hiE i hi).trans (hsmall.trans hgB))
+        (by linarith [hiE i hi]) hEn rfl hBi hBk hω hωL hgapS hR hφR hφR1 hβ hdη hnu' huo' huo1'
+        hxuR' hboundR' hα hγ hγ1 hε hε2 hφ hφ1 hd' hC1 hxu' hbound' hexc1 hexc2'
+        hthrω).in_frame rfl rfl fun μ h => hlive μ h.1)
+      ((PWrites.of_writes le_rfl fun μ τ ⟨hctx, hmid⟩ =>
+        roundedDecoupleScan_writes (τ := τ) hS hM hu1 hL hNat' hC hkn rfl
+          (by rw [hlen]; omega) hthr hctx hmid).in_frame rfl rfl fun μ h => hlive3 μ h.1)).mono
+      (fun μ ⟨⟨hctx, hst⟩, htest⟩ => ⟨hctx, hst, ?_⟩) (sup_le le_sup_left le_sup_right)
+      (fun _ h => h) (by simp)
+    obtain ⟨H', -, -, -, ⟨h1, -⟩ | ⟨h0, -⟩⟩ := hst
+    · simp only [zero_add] at h1
+      rw [Interp.testAt_eq (a := [(L, 3)]) rfl rfl, hC.test_isZero h1] at htest
+      simp at htest
+    · simpa using h0
+  case exit =>
+    intro i hi
+    refine PWrites.of_writes le_rfl fun μ τ ⟨⟨hctx, H', hHH', hHess', hW', hcase⟩, hend⟩ => ?_
+    rcases hcase with ⟨h1, j, hj, hjt⟩ | ⟨h0, hall, hψ⟩
+    · simp only [zero_add] at h1
+      refine writes_ite (a := [(L, 3)]) rfl rfl (hC.test_isPos h1) ?_
+      rw [show decide (0 < id (1 : ℝ)) = true by simp, if_pos rfl]
+      refine (writes_indexLit hL rfl rfl (by have := hctx.2.2.2.2.2.2.1; omega)).mono le_rfl ?_
+      rintro μ' hfr ⟨-, hF⟩
+      have hh : (1 - u) ^ 2 * ‖H' j.succ j.castSucc‖ ^ 2 ≤ (1 - u) ^ 2 * ωD ^ 2 := hjt.trans hcut
+      have h0lit' : M.lit (0 : ℚ) = 0 := by simpa using h0lit
+      refine ⟨by simpa [h0lit'] using hF, H', hHH'.mono ?_, hHess', ⟨j, hj, ?_⟩,
+        hW'.of_eqOff hfr hctx.2.2.2.2.2.2.2.2.1.symm⟩
+      · have : (i : ℝ) ≤ F := by exact_mod_cast hi
+        exact mul_le_mul_of_nonneg_right this hE0
+      · exact (pow_le_pow_iff_left₀ (norm_nonneg _) hωD two_ne_zero).mp
+          (le_of_mul_le_mul_left hh hp1)
+    · exfalso
+      rcases hend with rfl | htest
+      · have hψH : hessenbergPotential k H ≤ Nmax :=
+          ((hessenbergPotential_le_specNorm (by omega) hkn H).trans hnorm).trans hN
+        obtain ⟨j, hj, hjle⟩ := exists_norm_subdiag_le_hessenbergPotential (by omega) hkn H'
+        have h1 := hall j hj
+        have h2 : ‖H' j.succ j.castSucc‖ ≤ (1.002 * (1 - γ)) ^ i * Nmax :=
+          hjle.trans (hψ.trans (mul_le_mul_of_nonneg_left hψH (pow_nonneg hc0 _)))
+        have h3 := pow_le_pow_left₀ (norm_nonneg _) h2 2
+        have h4 := mul_le_mul_of_nonneg_left h3 (sq_nonneg (1 + u))
+        linarith
+      · simp only [zero_add] at h0
+        rw [Interp.testAt_eq (a := [(L, 3)]) rfl rfl, hC.test_isZero h0] at htest
+        simp at htest
 
 end Iteration
 

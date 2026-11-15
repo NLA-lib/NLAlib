@@ -130,6 +130,16 @@ Statement changes made on the skeleton:
   T1 instantiate `nmax := n`, `Nmax := N₀` (every block they hand to D has order $\le n + 1$ and
   norm $\le N_0$); no other hypothesis changes. Signature:
   `RandomDecouplingContract law B g φ k F nmax Nmax ps ω ε D I`.
+* **P11p: the loop's scan has its own threshold.** The iteration's outcome certifies only
+  $(1 - \boldsymbol{u})^2|h|^2 \le t$; a rounded `bottomScan` with the same $t$ fails whenever
+  $t < (1 + \boldsymbol{u})^2|h|^2$, so the single threshold of the review (Statements3, item 3)
+  can let a decoupled iterate through. `roundedDecouple` scans with the first parameter word
+  $t_L$, $(1 + \boldsymbol{u})^2 t \le (1 - \boldsymbol{u})^2 t_L$, and certifies
+  $|h| \le \omega_D$ from $t_L \le (1 - \boldsymbol{u})^2\omega_D^2$. The cap is stated as
+  $(1 + \boldsymbol{u})^2((1.002(1-\gamma))^F N_{\max})^2 \le t_L$ (via
+  `exists_norm_subdiag_le_hessenbergPotential`), the iterate norms as $N_{\max} + FE \le S$, the
+  class as $FE \le (g/2)/(16(n_{\max}+1)2B)$. $F$ is a runtime dimension (no literal); $m$ and
+  $n_0$ are read from the parameter words by `bindIdx`.
 * **Q3** `hm`: $m^2 x \le 1/4 \to m x \le 1/4$ (sufficient and minimal; G16 row).
 * Labels: R1/R2 H → L (elementary proof); E2 L → H (needs Codex's matching).
 * **R4** lower bound $(1 + \eta)^{-1}\mathbf{R}_{nn} \le |\widehat{\mathbf{R}}_{nn}| \to
@@ -718,7 +728,7 @@ its program. Gen = general library (own topic file, stage-free docstring), Stg =
 | P12b | iterate class: a perturbed unitary similarity within $g/(16NB)$ of a block with condition $\le 2B$, separation $\ge g/2$ has condition $\le 4B$, separation $\ge g/4$ (from E2; §14.11 B3) | Matrix/Perturbation/EigenvalueBackward | Gen | S | plan | 5 |
 | LF1 | `SmallEig` kernel (`IsRandomSmallEig`: forward $\beta$ off a bad window) meets `RandomLeafContract` (E1) | Eigensolvers/ShiftedQR/RoundedKernels | Stg | M | plan | 7 |
 | P11d | `roundedDecouple` (Lemma 6.4 loop: bottom scan P3, iteration, cap $F$) meets `RoundedDecouplingContract True` | Eigensolvers/ShiftedQR/RoundedDecouple | Stg | M | plan | 9 |
-| P11p | `roundedDecouple` meets `RandomDecouplingContract` ($\varphi_D = F\varphi_{\mathrm{it}}$) by S6 ✓ + PL5 + P12b | same | Stg | L | plan | 9 |
+| P11p | `roundedDecouple_randomDecouplingContract`: `roundedDecouple` meets `RandomDecouplingContract` at $(2B, g/2)$, orders $\le n_{\max}+1$, norms $\le N_{\max}$ ($\varphi_D = F\varphi_{\mathrm{it}}$, error $F(1+C)S((1+300(n_{\max}+1)^2\boldsymbol{u})^k-1)$; iterates at $(B_i \ge 4B, g/4)$, norm $S$) by P10b + PL5 (`whileFuel`) + P12b | RoundedDecouple | Stg | L | **proved** | 9 |
 | P10b | `shIteration` = Regularize; Sh: `ShIterationContract` (decoupled at the bottom, or $\psi_k$ contracted by $1.002(1-\gamma)$; error $\varepsilon_{\mathrm{it}}$; failure $\varphi_{\mathrm{it}}$) | Eigensolvers/ShiftedQR/RoundedIteration | Stg | M | plan | 9 |
 | P10 | `regularize` program (SmallEig of the trailing block, $k$ disk draws, Optimal, $\le k$ trials) — PWrites from S1–S3 ✓, RZ1, D3 ✓, Q4 ✓ | Eigensolvers/ShiftedQR/RoundedRegularize | Stg | L | plan | 8 |
 | P9 | `shStep` program (Find, comptau test, Exc, trials, fail word) — PWrites from S4 ✓, S5 ✓, Q5 ✓, Q6 ✓, D4 ✓ | Eigensolvers/ShiftedQR/RoundedSh | Stg | L | plan | 8 |

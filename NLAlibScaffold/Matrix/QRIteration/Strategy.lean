@@ -25,6 +25,10 @@ subset of the disk instead of a grid.
 * `NLAlib.squareGrid_pairwise_separated`: distinct grid points are $0.99\,\varepsilon R$ apart.
 * `NLAlib.exists_mem_filter_squareGrid_norm_sub_le`: the restricted grid covers the disk.
 * `NLAlib.card_filter_squareGrid_le`: the restricted grid has at most $9/\varepsilon^2$ points.
+* `NLAlib.length_squareGrid_mul_sq_le`: the whole grid has at most
+  $(\sqrt2 + 2\varepsilon)^2/\varepsilon^2$ points.
+* `NLAlib.squareGrid_mul_eq_map`: the grid of radius $tR$ is the grid of radius $R$ around $0$,
+  scaled by $t$ and translated by the centre.
 -/
 
 @[expose] public section
@@ -126,5 +130,33 @@ theorem card_filter_squareGrid_le (c : ℂ) (R : ℝ) {ε : ℝ} (hε : 0 < ε) 
   have h0 : 0 ≤ ((⌈Real.sqrt 2 / ε⌉₊ : ℝ) + 1) * ε := by positivity
   rw [le_div_iff₀ (by positivity)]
   nlinarith [pow_le_pow_left₀ h0 hmε 2]
+
+/-- **The size of the square grid**: for $\varepsilon > 0$, `NLAlib.squareGrid c R ε` has at most
+$(\sqrt2 + 2\varepsilon)^2/\varepsilon^2$ points. -/
+theorem length_squareGrid_mul_sq_le (c : ℂ) (R : ℝ) {ε : ℝ} (hε : 0 < ε) :
+    ((squareGrid c R ε).length : ℝ) * ε ^ 2 ≤ (Real.sqrt 2 + 2 * ε) ^ 2 := by
+  have hlen :
+      (squareGrid c R ε).length = (⌈Real.sqrt 2 / ε⌉₊ + 1) * (⌈Real.sqrt 2 / ε⌉₊ + 1) := by
+    simp [squareGrid, List.length_flatMap, List.length_map, List.length_range]
+  rw [hlen]
+  push_cast
+  obtain ⟨-, hmlt⟩ := ceil_sqrt_two_div_bounds hε
+  have hmε : ((⌈Real.sqrt 2 / ε⌉₊ : ℝ) + 1) * ε ≤ Real.sqrt 2 + 2 * ε := by
+    have := mul_lt_mul_of_pos_right hmlt hε
+    rw [add_mul, div_mul_cancel₀ _ hε.ne', one_mul] at this
+    nlinarith
+  have h0 : 0 ≤ ((⌈Real.sqrt 2 / ε⌉₊ : ℝ) + 1) * ε := by positivity
+  nlinarith [pow_le_pow_left₀ h0 hmε 2]
+
+/-- **The square grid scales with its radius**: the grid of centre $c$ and radius $tR$ is the
+grid of centre $0$ and radius $R$, each point $g$ mapped to $c + tg$. -/
+theorem squareGrid_mul_eq_map (c : ℂ) (t R ε : ℝ) :
+    squareGrid c (t * R) ε = (squareGrid 0 R ε).map fun g => c + (t : ℂ) * g := by
+  unfold squareGrid
+  simp only [List.map_flatMap, List.map_map]
+  refine List.flatMap_congr fun i _ => List.map_congr_left fun j _ => ?_
+  simp only [Function.comp_apply, zero_add]
+  push_cast
+  ring
 
 end NLAlib

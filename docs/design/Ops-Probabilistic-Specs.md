@@ -124,7 +124,27 @@ Rule 10 placement: every statement is about Ops semantics and tape laws only.
   `NLAlibScaffold/Ops/RunMeasurable.lean` (the file-size rule); PL1 stays in
   `Ops/Logic/Probabilistic`.
 
-## 6. Drafted statements (PL3f, PL4, PL5, PL6; sorried, for review)
+* **PL4 restated at the `BlockFn` level** (Fable review of the drafts, item 3). The scalar
+  catalog's operation types (`DenseOp` and others) are inductives, not sums, so the `⊕` assembly
+  did not apply. The statements are now `BlockFn.MeasurableApply f` (every `f.apply d ins outs` is
+  a measurable step), `Interp.ofFns_isMeasurableCall` (`Iff.rfl`), and the shape lemmas
+  `BlockFn.measurableApply_const/un/bin`. From them come
+  `Machine.IsMeasurable.measurableApply_fn` (each `ScalarOp`) and
+  `Machine.measurableApply_indexFn`. Tests and indices are handled the same way:
+  `Interp.IsMeasurableTest`/`IsMeasurableIndex`, with `CmpTst.isMeasurableTest` and
+  `isMeasurableIndex_toNat` for any interpretation whose test (index) equals the canonical
+  `readBlocks` form. The assembly is `Interp.isMeasurable_of_calls` (`∀ o`, `∀ q`), which
+  replaces `Interp.isMeasurable_of_sum`. Consumers are unaffected: they keep
+  `hI : I.IsMeasurable`.
+* **`PBackwardStep` rules** (item 2), in `Ops/Logic/ProbabilisticBackward`: `mono`,
+  `of_backwardStep` (a deterministic `BackwardStep .total` on every tape, failure `0`),
+  `pwrites` (elimination to `∀ a, PWrites …`), `seq` (`0 ≤ φ'`), `loop` (`∀ i < N, 0 ≤ φ i`),
+  `ite` and `whileFuel`. The converse of `pwrites` is false in general, so the P-contracts are
+  stated as `PBackwardStep` directly.
+* **C4p / T1** take `0 ≤ φD`, `0 ≤ φL` (item §2 of the review). **T1c** (SQR-FP §14.1) takes
+  `hI`, `hloc` instead of `hMeas` (item 1).
+
+## 6. Drafted statements (PL3f, PL4, PL5, PL6; reviewed GO by Fable, now proved)
 
 Drafted from §3 and from the deterministic rules they mirror. These checks apply to all of them:
 a bound that is added to another bound is assumed nonnegative (§5), and nothing depends on the

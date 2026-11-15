@@ -7,6 +7,7 @@ module
 
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedExc
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedRitz
+public import NLAlibScaffold.Matrix.QRIteration.Ritz
 
 /-!
 # The rounded `Regularize`
@@ -1159,5 +1160,58 @@ theorem regularizeDecide_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
       hb1 rfl⟩
 
 end Trials
+
+end NLAlib.ShiftedQR
+
+namespace NLAlib.ShiftedQR
+
+/-- **The dichotomy of `Regularize`, with rounded steps** ([BanksGarzaVargasSrivastava2022,
+proof of Lemma 4.6], with the corrections G10, G11 of the errata): let $\mathbf{H}$ be upper
+Hessenberg of order $n + 1$, $\mathbf{H}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{e})$
+with $\kappa(\mathbf{V}) \le B$, $B^{2/k} \le 2$, $1 \le k \le n$, eigenvalues separated by
+$2\omega^2/\Sigma$, $\|\mathbf{H}\|_2 \le \Sigma$, $0 < \omega \le \psi_k(\mathbf{H})$, and
+shifts $z_1, \dots, z_k$ within $\omega^2/(2020\Sigma)$ of a listing of the eigenvalues of the
+trailing $k \times k$ block, with $\lvert z_j\rvert \le 1.1\|\mathbf{H}\|_2$ and at distance at
+least $d > 0$ from every $e_i$. If the shifts are not $0.998^{1/k}\theta$-optimal,
+$\theta = 1.01 \cdot 0.998^{-1/k}(2B^4)^{1/(2k)}$, then some $z_{j^*}$ has the property that
+every backward-stable chain of $k$ steps with the shift $z_{j^*}$ and relative error $x \ge 0$,
+$$x \le (16B)^{-1}\Bigl(\frac{d}{4.2\Sigma}\Bigr)^k, \qquad
+68.2B\Sigma\Bigl(\frac{4.2\Sigma}{d}\Bigr)^k\sqrt{n + 1}\,x \le \frac{\omega}{2},$$
+ends in a matrix with a bottom subdiagonal entry of modulus at most $\omega$. -/
+theorem exists_forall_isStableQRChain_exists_norm_subdiag_le {n k : ℕ} {B S ω d x : ℝ}
+    {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {e : Fin (n + 1) → ℂ} {zs lam : Fin k → ℂ}
+    (hH : IsUpperHessenberg H) (hk : 0 < k) (hkn : k ≤ n) (hBk : B ^ ((2 : ℝ) / k) ≤ 2)
+    (hω : 0 < ω) (hV : IsUnit V) (hHV : H * V = V * Matrix.diagonal e)
+    (hκ : pseudoConditionNumber V ≤ B) (hgap : ∀ i j, i ≠ j → 2 * ω ^ 2 / S ≤ ‖e i - e j‖)
+    (hS : specNorm H ≤ S) (hψ : ω ≤ hessenbergPotential k H)
+    (hlam : IsEigenvalueListing (trailingBlock k H) lam)
+    (hzl : ∀ j, ‖zs j - lam j‖ ≤ ω ^ 2 / (20 * 101 * S))
+    (hz : ∀ j, ‖zs j‖ ≤ 1.1 * specNorm H) (hd : 0 < d) (hdist : ∀ j i, d ≤ ‖e i - zs j‖)
+    (hopt : ¬IsOptimalRitzValues ((0.998 : ℝ) ^ ((k : ℝ)⁻¹) *
+      (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹))) H (List.ofFn zs))
+    (hx : 0 ≤ x) (hxu : x ≤ (16 * B)⁻¹ * (d / ((2 + 2 * 1.1) * S)) ^ k)
+    (hbound : (66 + 2 * 1.1) * B * S * ((2 + 2 * 1.1) * S / d) ^ k * √(n + 1) * x ≤ ω / 2) :
+    ∃ jstar : Fin k, ∀ (H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) Rs,
+      IsStableQRChain x H (List.replicate k (zs jstar)) H' Rs →
+        ∃ i : Fin n, n ≤ (i : ℕ) + k ∧ ‖H' i.succ i.castSucc‖ ≤ ω := by
+  have hB : 1 ≤ B := (one_le_pseudoConditionNumber hV.ne_zero).trans hκ
+  have hψH := hessenbergPotential_le_specNorm hk hkn H
+  have hH0 : H ≠ 0 := fun h0 => by
+    rw [h0, specNorm_zero] at hψH
+    rw [h0] at hψ
+    linarith
+  obtain ⟨ss, hperm, hss⟩ := exists_perm_forall₂_ritzValues hlam hzl
+  have hne : ∀ r ∈ ss, ∀ i, e i ≠ r := by
+    intro r hr i he
+    obtain ⟨j, rfl⟩ := List.mem_ofFn.mp (hperm.subset hr)
+    have := hdist j i
+    rw [he, sub_self, norm_zero] at this
+    linarith
+  obtain ⟨r, hr, hτ⟩ := exists_mem_le_norm_inv_pow_of_not_isOptimalRitzValues hH hk hkn hB hBk hω
+    hV hHV hκ hgap hS hψ hss hne (by rwa [isOptimalRitzValues_iff_of_perm hperm])
+  obtain ⟨jstar, rfl⟩ := List.mem_ofFn.mp (hperm.subset hr)
+  refine ⟨jstar, fun H' Rs hch => ?_⟩
+  exact hch.exists_norm_subdiag_le_of_le_norm_inv_pow hx (by norm_num) hd hω hk hkn hH0 hH hV hHV
+    hκ hS (hz jstar) (fun i => hdist jstar i) hτ hxu hbound
 
 end NLAlib.ShiftedQR

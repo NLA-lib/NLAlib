@@ -23,6 +23,7 @@ public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedShTrial
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedSolve
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedSolveTermination
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedTheorems
+public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedTheoremsBits
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedWorklistTermination
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.StableStep
 public import NLAlibScaffold.Matrix.FinitePrecision.GivensRounded

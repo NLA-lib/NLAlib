@@ -41,6 +41,9 @@ the iterates), iterate norm $4\Sigma$, block norm $2\Sigma$.
   and $B^{2/k} \le 2$.
 * `NLAlib.ShiftedQR.shqrEps_le_half`, `NLAlib.ShiftedQR.shqrEps_ge`: Exc's
   $1/100 \le \varepsilon \le 1/2$ under (eqn:setk).
+* `NLAlib.ShiftedQR.shqrAlpha_le`, `NLAlib.ShiftedQR.shqrTheta_le`, `NLAlib.ShiftedQR.shqrC_le`,
+  `NLAlib.ShiftedQR.shqrDegree_le`: under (eqn:setk), $\alpha \le 1.8$, $\theta \le 1.2$,
+  $C \le 7$ and $k \le 512B^2$.
 * `NLAlib.ShiftedQR.uShQR_pos`, `NLAlib.ShiftedQR.shqrSmallEigAccuracy_pos`,
   `NLAlib.ShiftedQR.shqrSmallEigFailure_pos`: the thresholds are positive (review B1).
 * `NLAlib.ShiftedQR.shqrDecoupleError_le`, `NLAlib.ShiftedQR.shqrContraction_pow_shqrCap_mul_lt`:
@@ -358,6 +361,191 @@ theorem shqrEps_le_half {B : ℝ} (hB : 1 ≤ B) : shqrEps (shqrDegree B) B ≤ 
     _ ≤ (0.998 * (1 - 0.2) * (1 - 0.2) / P) ^ (1 : ℝ) :=
         rpow_le_rpow_of_exponent_ge hb0 (by linarith) hexp
     _ ≤ 1 / 2 := by rw [rpow_one]; exact hb
+
+/-! ### Bounds on the constants under (eqn:setk) -/
+
+/-- A root bound: $x \le c^m$ gives $x^{1/m} \le c$. -/
+theorem rpow_inv_natCast_le_of_le_pow {x c : ℝ} {m : ℕ} (hm : m ≠ 0) (hx : 0 ≤ x) (hc : 0 ≤ c)
+    (h : x ≤ c ^ m) : x ^ ((m : ℝ)⁻¹) ≤ c := by
+  calc x ^ ((m : ℝ)⁻¹) ≤ (c ^ m) ^ ((m : ℝ)⁻¹) := rpow_le_rpow hx h (by positivity)
+    _ = c := pow_rpow_inv_natCast hc hm
+
+/-- The facts of (eqn:setk) used for the constants: at $k = 2^q$, $q \ge 2$,
+$B^{q/k} \le 1.148$ and $B^{1/k} \le 1.042$. -/
+theorem setk_rpow_bounds {B : ℝ} (hB : 1 ≤ B) :
+    B ^ ((shqrLogDegree B : ℝ) / shqrDegree B) ≤ 1.148 ∧
+      B ^ ((shqrDegree B : ℝ)⁻¹) ≤ 1.042 := by
+  set q := shqrLogDegree B with hqdef
+  have hq := two_le_shqrLogDegree hB
+  obtain ⟨-, hs⟩ := satisfiesSetk_shqrLogDegree hB
+  rw [← hqdef] at hs
+  have hk : (shqrDegree B : ℝ) = 2 ^ q := by simp [shqrDegree, q]
+  have h4 : (4 : ℝ) ≤ 2 ^ q :=
+    calc (4 : ℝ) = 2 ^ 2 := by norm_num
+      _ ≤ 2 ^ q := pow_le_pow_right₀ (by norm_num) hq
+  have hk1 : (0 : ℝ) < 2 ^ q - 1 := by linarith
+  have hq0 : (2 : ℝ) ≤ q := by exact_mod_cast hq
+  set e : ℝ := (8 * q + 11) / (2 ^ q - 1) with he
+  have he0 : 0 < e := by positivity
+  -- $B^e \le 3$
+  have hBe : B ^ e ≤ 3 := by
+    have h8 : B ^ ((8 : ℝ) / (2 ^ q - 1)) ≤ (2 * B ^ 4) ^ ((2 : ℝ) / (2 ^ q - 1)) := by
+      rw [show (8 : ℝ) / (2 ^ q - 1) = ((4 : ℕ) : ℝ) * (2 / (2 ^ q - 1)) by push_cast; ring,
+        rpow_natCast_mul (by linarith)]
+      exact rpow_le_rpow (by positivity) (by nlinarith [one_le_pow₀ (n := 4) hB])
+        (by positivity)
+    calc B ^ e = B ^ ((8 * q + 3 : ℝ) / (2 ^ q - 1)) * B ^ ((8 : ℝ) / (2 ^ q - 1)) := by
+          rw [← rpow_add (by linarith)]; congr 1; rw [he]; field_simp; ring
+      _ ≤ B ^ ((8 * q + 3 : ℝ) / (2 ^ q - 1)) * (2 * B ^ 4) ^ ((2 : ℝ) / (2 ^ q - 1)) := by
+          gcongr
+      _ ≤ 3 := hs
+  have key : ∀ {x : ℝ} {m : ℕ}, m ≠ 0 → x ≤ e / m → B ^ x ≤ 3 ^ ((m : ℝ)⁻¹) := by
+    intro x m hm hx
+    have hm0 : (0 : ℝ) < m := by exact_mod_cast Nat.pos_of_ne_zero hm
+    calc B ^ x ≤ B ^ (e * (m : ℝ)⁻¹) := rpow_le_rpow_of_exponent_le hB (by rwa [← div_eq_mul_inv])
+      _ = (B ^ e) ^ ((m : ℝ)⁻¹) := rpow_mul (by linarith) _ _
+      _ ≤ 3 ^ ((m : ℝ)⁻¹) := rpow_le_rpow (by positivity) hBe (by positivity)
+  refine ⟨?_, ?_⟩
+  · refine (key (m := 8) (by norm_num) ?_).trans
+      (rpow_inv_natCast_le_of_le_pow (by norm_num) (by norm_num) (by norm_num) (by norm_num))
+    rw [hk, he, div_div, div_le_div_iff₀ (by positivity) (by positivity)]
+    push_cast
+    nlinarith
+  · refine (key (m := 27) (by norm_num) ?_).trans
+      (rpow_inv_natCast_le_of_le_pow (by norm_num) (by norm_num) (by norm_num) (by norm_num))
+    rw [hk, he, div_div, ← one_div, div_le_div_iff₀ (by positivity) (by positivity)]
+    push_cast
+    nlinarith
+
+/-- The shift degree is $k = 2^q$ with $2q \le k$ and $k \ge 4$. -/
+theorem shqrDegree_facts {B : ℝ} (hB : 1 ≤ B) :
+    (4 : ℝ) ≤ shqrDegree B ∧ 2 * (shqrLogDegree B : ℝ) ≤ shqrDegree B := by
+  have hq := two_le_shqrLogDegree hB
+  have hk : (shqrDegree B : ℝ) = 2 ^ shqrLogDegree B := by simp [shqrDegree]
+  rw [hk]
+  refine ⟨?_, ?_⟩
+  · calc (4 : ℝ) = 2 ^ 2 := by norm_num
+      _ ≤ 2 ^ shqrLogDegree B := pow_le_pow_right₀ (by norm_num) hq
+  · have h : ∀ q : ℕ, 2 * q ≤ 2 ^ q := by
+      intro q
+      induction q with
+      | zero => simp
+      | succ q ih => rw [pow_succ]; have := Nat.lt_two_pow_self (n := q); omega
+    exact_mod_cast h _
+
+/-- **The promising factor under (eqn:setk)**: for $B \ge 1$ and $k$ the degree of (eqn:setk),
+$\alpha = (1.01B)^{4\log_2 k/k} \le 1.8$ (numerically $\le 1.64$). No printed source. -/
+theorem shqrAlpha_le {B : ℝ} (hB : 1 ≤ B) : shqrAlpha (shqrDegree B) B ≤ 1.8 := by
+  obtain ⟨hq, -⟩ := setk_rpow_bounds hB
+  obtain ⟨hk4, h2q⟩ := shqrDegree_facts hB
+  have hlog : Nat.log 2 (shqrDegree B) = shqrLogDegree B := by
+    simp [shqrDegree, Nat.log_pow (by norm_num : 1 < 2)]
+  have hk0 : (0 : ℝ) < shqrDegree B := by linarith
+  unfold shqrAlpha
+  rw [hlog, mul_rpow (by norm_num) (by linarith)]
+  have h1 : (1.01 : ℝ) ^ ((4 * shqrLogDegree B : ℝ) / shqrDegree B) ≤ 1.01 ^ (2 : ℝ) :=
+    rpow_le_rpow_of_exponent_le (by norm_num) (by rw [div_le_iff₀ hk0]; linarith)
+  have h2 : B ^ ((4 * shqrLogDegree B : ℝ) / shqrDegree B) ≤ 1.148 ^ 4 := by
+    rw [mul_div_assoc, rpow_mul (by linarith)]
+    calc (B ^ (4 : ℝ)) ^ ((shqrLogDegree B : ℝ) / shqrDegree B)
+        = (B ^ ((shqrLogDegree B : ℝ) / shqrDegree B)) ^ (4 : ℕ) := by
+          rw [← rpow_natCast, ← rpow_mul (by linarith), ← rpow_mul (by linarith)]
+          push_cast; ring_nf
+      _ ≤ 1.148 ^ 4 := pow_le_pow_left₀ (by positivity) hq 4
+  calc (1.01 : ℝ) ^ ((4 * shqrLogDegree B : ℝ) / shqrDegree B) *
+        B ^ ((4 * shqrLogDegree B : ℝ) / shqrDegree B) ≤ 1.01 ^ (2 : ℝ) * 1.148 ^ 4 := by
+        gcongr
+    _ ≤ 1.8 := by rw [show (2 : ℝ) = ((2 : ℕ) : ℝ) by norm_num, rpow_natCast]; norm_num
+
+/-- **The optimality factor under (eqn:setk)**: for $B \ge 1$ and $k$ the degree of (eqn:setk),
+$\theta = 1.01 \cdot 0.998^{-1/k}(2B^4)^{1/(2k)} \le 1.2$ (numerically $\le 1.15$, and
+$\le 1.05$ for $B \ge 4$). No printed source. -/
+theorem shqrTheta_le {B : ℝ} (hB : 1 ≤ B) : shqrTheta (shqrDegree B) B ≤ 1.2 := by
+  obtain ⟨-, hb⟩ := setk_rpow_bounds hB
+  obtain ⟨hk4, -⟩ := shqrDegree_facts hB
+  set k := shqrDegree B
+  have hk0 : (0 : ℝ) < k := by linarith
+  have hB0 : 0 ≤ B := by linarith
+  unfold shqrTheta
+  have h1 : (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) ≤ 0.998 ^ (-1 : ℝ) :=
+    rpow_le_rpow_of_exponent_ge (by norm_num) (by norm_num)
+      (by rw [neg_le_neg_iff, inv_le_one₀ hk0]; linarith)
+  have h2 : (2 : ℝ) ^ ((2 * k : ℝ)⁻¹) ≤ 1.091 := by
+    refine (rpow_le_rpow_of_exponent_le (by norm_num) (?_ : (2 * k : ℝ)⁻¹ ≤ ((8 : ℕ) : ℝ)⁻¹)).trans
+      (rpow_inv_natCast_le_of_le_pow (by norm_num) (by norm_num) (by norm_num) (by norm_num))
+    exact inv_anti₀ (by norm_num) (by push_cast; linarith)
+  have h3 : (B ^ 4) ^ ((2 * k : ℝ)⁻¹) ≤ 1.042 ^ 2 := by
+    calc (B ^ 4) ^ ((2 * k : ℝ)⁻¹) = (B ^ ((k : ℝ)⁻¹)) ^ (2 : ℕ) := by
+          rw [← rpow_natCast, ← rpow_natCast, ← rpow_mul hB0, ← rpow_mul hB0]
+          congr 1; field_simp; norm_num
+      _ ≤ 1.042 ^ 2 := pow_le_pow_left₀ (by positivity) hb 2
+  rw [mul_rpow (by norm_num) (by positivity)]
+  calc 1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * ((2 : ℝ) ^ ((2 * k : ℝ)⁻¹) * (B ^ 4) ^ ((2 * k : ℝ)⁻¹))
+      ≤ 1.01 * 0.998 ^ (-1 : ℝ) * (1.091 * 1.042 ^ 2) := by gcongr
+    _ ≤ 1.2 := by rw [rpow_neg_one]; norm_num
+
+/-- **The shift reach under (eqn:setk)**: for $B \ge 1$ and $k$ the degree of (eqn:setk),
+$C = 1.1 + 2.1 \cdot 2.002^{1/k}\theta\alpha B^{1/k} \le 7$ (a factorwise bound; numerically
+$C \le 4.69$, errata N2's $4.7$, which needs a joint analysis of the factors). No printed
+source. -/
+theorem shqrC_le {B : ℝ} (hB : 1 ≤ B) : shqrC (shqrDegree B) B ≤ 7 := by
+  obtain ⟨-, hb⟩ := setk_rpow_bounds hB
+  obtain ⟨hk4, -⟩ := shqrDegree_facts hB
+  have hα := shqrAlpha_le hB
+  have hθ := shqrTheta_le hB
+  have hα0 := shqrAlpha_pos (shqrDegree B) (by linarith : 0 < B)
+  have hθ0 := shqrTheta_pos (shqrDegree B) (by linarith : 0 < B)
+  set k := shqrDegree B
+  have hk0 : (0 : ℝ) < k := by linarith
+  have h1 : (2.002 : ℝ) ^ ((k : ℝ)⁻¹) ≤ 1.19 := by
+    refine (rpow_le_rpow_of_exponent_le (by norm_num) (?_ : (k : ℝ)⁻¹ ≤ ((4 : ℕ) : ℝ)⁻¹)).trans
+      (rpow_inv_natCast_le_of_le_pow (by norm_num) (by norm_num) (by norm_num) (by norm_num))
+    exact inv_anti₀ (by norm_num) (by push_cast; linarith)
+  unfold shqrC shqrRadiusHi
+  have : (2.002 : ℝ) ^ ((k : ℝ)⁻¹) * shqrTheta k B * shqrAlpha k B * B ^ ((k : ℝ)⁻¹) ≤
+      1.19 * 1.2 * 1.8 * 1.042 := by gcongr
+  linarith
+
+/-- **An upper bound for the shift degree**: for $B \ge 1$, the degree of (eqn:setk) is at most
+$512B^2$: (eqn:setk) holds at $q = 2m + 9$ for $2^m \le B < 2^{m+1}$. No printed source. -/
+theorem shqrDegree_le {B : ℝ} (hB : 1 ≤ B) : (shqrDegree B : ℝ) ≤ 512 * B ^ 2 := by
+  obtain ⟨m, hm1, hm2⟩ := exists_nat_pow_near hB (by norm_num : (1 : ℝ) < 2)
+  have hB0 : 0 < B := by linarith
+  have hsq : ∀ j : ℕ, (j + 1) ^ 2 ≤ 4 ^ j := by
+    intro j
+    induction j with
+    | zero => norm_num
+    | succ j ih =>
+      rw [pow_succ 4]
+      have : (j + 1 + 1) ^ 2 ≤ 4 * (j + 1) ^ 2 := by ring_nf; omega
+      omega
+  have hset : SatisfiesSetk B (2 * m + 9) := by
+    rw [satisfiesSetk_iff hB0 (by omega)]
+    have hl : log B ≤ (m + 1) * log 2 := by
+      have := log_le_log hB0 hm2.le
+      rw [log_pow] at this; push_cast at this; exact this
+    have hl0 : 0 ≤ log B := log_nonneg hB
+    have hl2 : 0 < log 2 := log_pos (by norm_num)
+    have hl23 : log 2 ≤ log 3 := log_le_log (by norm_num) (by norm_num)
+    have hnat : ((16 * m + 83) * (m + 1) + 3 : ℝ) ≤ 2 ^ (2 * m + 9) := by
+      have : (16 * m + 83) * (m + 1) + 3 ≤ 2 ^ (2 * m + 9) := by
+        rw [pow_add, pow_mul]; norm_num; nlinarith [hsq m]
+      exact_mod_cast this
+    push_cast
+    have h2 : (1 : ℝ) ≤ 2 ^ (2 * m + 9) - 1 := by nlinarith
+    have hm0 : (0 : ℝ) ≤ m := m.cast_nonneg
+    calc (8 * (2 * (m : ℝ) + 9) + 11) * log B + 2 * log 2
+        ≤ (8 * (2 * (m : ℝ) + 9) + 11) * ((m + 1) * log 2) + 2 * log 2 := by gcongr
+      _ = ((16 * m + 83) * (m + 1) + 2) * log 2 := by ring
+      _ ≤ (2 ^ (2 * m + 9) - 1) * log 2 := by gcongr; linarith
+      _ ≤ (2 ^ (2 * m + 9) - 1) * log 3 := by gcongr
+  have hle : shqrLogDegree B ≤ 2 * m + 9 := Nat.sInf_le hset
+  have : (shqrDegree B : ℝ) ≤ 2 ^ (2 * m + 9) := by
+    simp only [shqrDegree, Nat.cast_pow, Nat.cast_ofNat]
+    exact pow_le_pow_right₀ (by norm_num) hle
+  calc (shqrDegree B : ℝ) ≤ 2 ^ (2 * m + 9) := this
+    _ = 512 * (2 ^ m) ^ 2 := by ring
+    _ ≤ 512 * B ^ 2 := by gcongr
 
 /-- The logarithm of Exc's denominator $P = (13B^4)^{1/k}\alpha^2\theta^2$ at $k = 2^q$, $B > 0$,
 times $k$: $k\log P = \log 26 + (8 + 8q)\log B + 8q\log 1.01 + 2k\log 1.01 - 2\log 0.998$. -/

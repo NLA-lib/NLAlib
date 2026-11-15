@@ -7,8 +7,10 @@ module
 
 public import Mathlib.Analysis.SpecialFunctions.Log.Base
 public import NLAlib.Ops.Confined
+public import NLAlib.Ops.MonomialWork
 public import NLAlib.Ops.Static
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedDecoupleSpec
+public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedTheoremsBits
 
 /-!
 # The rounded shifted QR algorithm: headline theorems
@@ -229,12 +231,28 @@ $$\log_2(1/\boldsymbol{u}_{\mathrm{ShQR}}) \le
   c_1 k \log_2\frac{4(n + 1)B\Sigma^2}{\delta\min(\Gamma, \Sigma)\varphi} + c_2.$$
 The argument is scale-invariant ($\delta$ is an absolute error, so $\Sigma^2/(\delta\Gamma)$, not
 $\Sigma/(\delta\Gamma)$) and at least $4$; $\min(\Gamma, \Sigma)$ covers $n = 0$, where the gap is
-vacuous and $\Gamma$ unbounded (for $n \ge 1$, $\Gamma \le 2\Sigma$). -/
+vacuous and $\Gamma$ unbounded (for $n \ge 1$, $\Gamma \le 2\Sigma$). The constants $c_1 = 63$ and
+$c_2 = 0$ suffice: $\boldsymbol{u}_{\mathrm{ShQR}}$ is at least the argument to the power
+$-(53k + 40)$ (`NLAlib.ShiftedQR.one_le_uShQR_mul`). -/
 theorem logb_inv_uShQR_le : ∃ c₁ c₂ : ℝ, ∀ {n k : ℕ} {B Γ S δ φ : ℝ}, 1 ≤ B → 0 < Γ → 0 < δ →
     δ ≤ S → 0 < φ → φ ≤ 1 → k = shqrDegree (4 * B) →
     Real.logb 2 (uShQR n k B Γ S δ φ)⁻¹ ≤
       c₁ * k * Real.logb 2 (4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)) + c₂ := by
-  sorry
+  refine ⟨63, 0, fun {n k B Γ S δ φ} hB hΓ hδ hδS hφ hφ1 hk => ?_⟩
+  obtain ⟨hY4, h⟩ := one_le_uShQR_mul (n := n) hB hΓ hδ hδS hφ hφ1 hk
+  set Y := 4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)
+  have hk4 : (4 : ℝ) ≤ k := hk ▸ (shqrDegree_facts (by linarith : (1 : ℝ) ≤ 4 * B)).1
+  have hu : 0 < uShQR n k B Γ S δ φ :=
+    uShQR_pos (by exact_mod_cast (show (0 : ℝ) < k by linarith)) hB hΓ hδ (hδ.trans_le hδS) hφ
+  have hY0 : 0 < Y := by linarith
+  have hL : 0 ≤ Real.logb 2 Y := Real.logb_nonneg (by norm_num) (by linarith)
+  have h1 : (uShQR n k B Γ S δ φ)⁻¹ ≤ Y ^ (53 * k + 40) := by
+    rw [inv_le_iff_one_le_mul₀ hu, mul_comm]; exact h
+  calc Real.logb 2 (uShQR n k B Γ S δ φ)⁻¹ ≤ Real.logb 2 (Y ^ (53 * k + 40)) :=
+        Real.logb_le_logb_of_le (by norm_num) (inv_pos.mpr hu) h1
+    _ = ((53 * k + 40 : ℕ) : ℝ) * Real.logb 2 Y := by rw [Real.logb_pow]
+    _ ≤ 63 * k * Real.logb 2 Y := by push_cast; nlinarith
+    _ = 63 * k * Real.logb 2 Y + 0 := by ring
 
 /-- **The relative backward error** (T3): under the hypotheses of
 `NLAlib.ShiftedQR.roundedShQR_measureReal_not_spectrum_le` with a norm word $\Sigma > 0$,
@@ -326,11 +344,29 @@ theorem roundedShQR_hermitian {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
 degree $k$, $n_p$ parameter words and the cap $F$ has at most
 $c(n + 1)^4(k + 1)^4(n_p + 1)(F + 1)$ operations and tests, each `SmallEig` call counting one.
 The count holds on every tape, not only with probability $1 - \varphi$ (errata N10): the run is
-capped. -/
+capped. The exponents are a crude static bound: the monomial bound of the tree
+(`NLAlib.Ops.size_stmtCost_le_stmtWorkMono`) gives $2011(n + 1)^3(k + 1)^3(n_p + 1)(F + 1)$, and
+the order of the count is $N^3F(k^3 + n_pk)$: $2N$ worklist rounds of $F$ iterations, each a
+`Find` of $k^3N^2$ (the static supremum over its index words $m \le k$, $he \le k^2$, against
+the paper's $k\log k$ steps) and Exc's $n_p$ trials of $kN^2$. -/
 theorem roundedShQR_work_le : ∃ c : ℕ, ∀ n k np F : ℕ,
     Count.size (stmtCost (roundedShQR (O := O) (Q := Q)).body [n + 1, k, np, F]) ≤
       c * (n + 1) ^ 4 * (k + 1) ^ 4 * (np + 1) * (F + 1) := by
-  sorry
+  refine ⟨2011, fun n k np F => ?_⟩
+  have hw : stmtWorkMono (roundedShQR (O := O) (Q := Q)).body
+      [⟨1, 1, 0, 0, 0⟩, ⟨1, 0, 1, 0, 0⟩, ⟨1, 0, 0, 1, 0⟩, ⟨1, 0, 0, 0, 1⟩] =
+        ⟨2011, 3, 3, 1, 1⟩ := by
+    kernel_rfl
+  have hσ : SlotsLe (n + 1) (k + 1) (np + 1) (F + 1) [n + 1, k, np, F]
+      [⟨1, 1, 0, 0, 0⟩, ⟨1, 0, 1, 0, 0⟩, ⟨1, 0, 0, 1, 0⟩, ⟨1, 0, 0, 0, 1⟩] := by
+    simp only [SlotsLe, WorkMono.eval, List.forall₂_cons, List.Forall₂.nil, and_true]
+    refine ⟨by simp, by simp, by simp, by simp⟩
+  refine (size_stmtCost_le_stmtWorkMono (by omega) _ hσ).trans ?_
+  rw [hw, WorkMono.eval]
+  have h0 : (n + 1) ^ 3 ≤ (n + 1) ^ 4 := Nat.pow_le_pow_right (by omega) (by omega)
+  have h1 : (k + 1) ^ 3 ≤ (k + 1) ^ 4 := Nat.pow_le_pow_right (by omega) (by omega)
+  simp only [pow_one]
+  gcongr
 
 end Theorems
 

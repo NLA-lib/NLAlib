@@ -262,7 +262,16 @@ theorem roundedShQR_relative {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQR (O := O) (Q := Q)).body
       (Env.frame (shqrDims n k B Γ S (δ * S / c) φ) [a, t, p, out, f]) (shqrFp n a out f)
       (ShQRSpectrum out f H (δ * specNorm H)) μ} ≤ φ := by
-  sorry
+  have hc0 : 0 < c := by linarith
+  have h1 : 0 < δ * S / c := by positivity
+  have h2 : δ * S / c ≤ S := by rw [div_le_iff₀ hc0]; nlinarith
+  have h3 : δ * S / c ≤ δ * specNorm H := by rw [div_le_iff₀ hc0]; nlinarith
+  have hT := roundedShQR_measureReal_not_spectrum_le hS hM hL hNat hQ hC hI hloc hSE hDisk hU
+    hHess hV hHV hκ hΓ hgap hHS h1 h2 hφ hφ1 hk hβse0 hse hφse0 hφse hu hin hξ
+  have := hξ.isProbabilityMeasure
+  refine le_trans ?_ hT
+  refine measureReal_mono fun ω' hω' hW => hω' ?_
+  exact hW.mono le_rfl fun μ' _ ⟨hf, roots, E, hO, hE, hR⟩ => ⟨hf, roots, E, hO, hE.trans h3, hR⟩
 
 /-- **Hermitian inputs** (T4; [BanksGarzaVargasSrivastava2022, Remark 1.7], at $B = 1$): for a
 Hermitian upper Hessenberg (tridiagonal) $\mathbf{H}$ with eigenvalues separated by $\Gamma > 0$

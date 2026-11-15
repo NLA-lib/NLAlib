@@ -17,8 +17,8 @@ $2\varepsilon R/(\sqrt2 + \varepsilon)$, so for $\varepsilon \le 1/2$ distinct g
 distance at least $0.99\,\varepsilon R$, the separation a random translate of a net needs. The
 grid restricted to the disk $\mathbb{D}(c, (1 + \varepsilon)R)$ still covers $\mathbb{D}(c, R)$
 at distance $\varepsilon R$ and has at most $9/\varepsilon^2$ points.
-[BanksGarzaVargasSrivastava2021, proof of Lemma 4.7] uses a maximal $\varepsilon R$-separated subset of
-the disk instead of a grid.
+[BanksGarzaVargasSrivastava2021, proof of Lemma 4.7] uses a maximal $\varepsilon R$-separated
+subset of the disk instead of a grid.
 
 ## Main results
 

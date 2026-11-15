@@ -29,6 +29,8 @@ scan).
   `NLAlib.ShiftedQR.solveRoundedHyps_of_le_uShQR`, `NLAlib.ShiftedQR.shIterationHyps_of_le_uShQR`.
 * `NLAlib.ShiftedQR.shqrParams_spec`: all four at once (PAR1).
 * `NLAlib.ShiftedQR.shqrLoopThreshold_spec`: the decoupling loop's scan threshold word.
+* `NLAlib.ShiftedQR.shqrEta_div_two_le`, `NLAlib.ShiftedQR.shqrExc_of_le_uShQR`: the decoupling
+  loop's window and Exc hypotheses (P11p's `hd`, `hexc1`, `hexc2`).
 -/
 
 @[expose] public section
@@ -421,6 +423,98 @@ theorem shqrLoopThreshold_spec (hu0 : 0 ≤ u) (hu : u ≤ uShQR n k B Γ S δ �
       field_simp [show (1 : ℝ) - v ≠ 0 by linarith]
     rw [e]
     gcongr
+
+/-- **Regularize's window is below Exc's translate scale** (P11p's `hd`): for $B \ge 1$,
+$\Gamma > 0$, $0 < \delta \le \Sigma$, $\varphi > 0$ and $k$ the degree of (eqn:setk) at $4B$,
+the stored shifts' distance $\eta/2 = R\sqrt{\varphi_R/(2k)}/2$ is at most
+$\varepsilon c_{\mathrm{lo}}\omega\sqrt{\varphi_1/(11(n + 1))}/4$, with
+$\varphi_R = 2\varphi_1$, $\varphi_1 = \varphi/(12F(n + 1))$; so Sh's separation
+`NLAlib.ShiftedQR.shqrDist` is $\eta/2$. The margin exceeds $10^4$: $\varepsilon \ge 1/100$
+(`NLAlib.ShiftedQR.shqrEps_ge`), $c_{\mathrm{lo}} \ge 1$ and $R \le \omega/(32320 \cdot 12(n + 1))$.
+No printed source. -/
+theorem shqrEta_div_two_le (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ)
+    (hk : k = shqrDegree (4 * B)) :
+    shqrEta n k B Γ S δ φ / 2 ≤ shqrEps k (4 * B) * (shqrRadiusLo k (4 * B) * shqrOmega n B Γ δ) *
+      √(shqrSmallEigFailure n B Γ S δ φ / (11 * ((n + 1 : ℕ) : ℝ))) / 4 := by
+  have hB1 : 1 ≤ 4 * B := by linarith
+  have hS : 0 < S := hδ.trans_le hδS
+  have hk1 : (1 : ℝ) ≤ k := by
+    have := hk ▸ two_le_shqrDegree hB1; exact_mod_cast (by omega : 1 ≤ k)
+  have hω := shqrOmega_pos (n := n) hB hΓ hδ
+  have hb := shqrOmega_mul (n := n) (B := B) (Γ := Γ) (δ := δ)
+  have hbδ := shqrBudget_le_left (n := n) (B := B) (Γ := Γ) (δ := δ)
+  have hf := shqrSmallEigFailure_pos (n := n) (B := B) (Γ := Γ) (S := S) (δ := δ) hφ
+  have hε : 1 / 100 ≤ shqrEps k (4 * B) := hk ▸ shqrEps_ge hB1
+  have hlo : 1 ≤ shqrRadiusLo k (4 * B) := by
+    unfold shqrRadiusLo
+    have h1 : (1 : ℝ) ≤ (1.998 : ℝ) ^ ((k : ℝ)⁻¹) := one_le_rpow (by norm_num) (by positivity)
+    have h2 : (1 : ℝ) ≤ (4 * B) ^ ((k : ℝ)⁻¹) := one_le_rpow hB1 (by positivity)
+    have h3 := one_le_shqrTheta k hB1
+    have h4 := one_le_shqrAlpha k hB1
+    have h12 : 1 ≤ (1.998 : ℝ) ^ ((k : ℝ)⁻¹) * shqrTheta k (4 * B) :=
+      one_le_mul_of_one_le_of_one_le h1 h3
+    exact one_le_mul_of_one_le_of_one_le (one_le_mul_of_one_le_of_one_le h12 h4) h2
+  set φ₁ := shqrSmallEigFailure n B Γ S δ φ
+  set ω := shqrOmega n B Γ δ
+  set m : ℝ := ((n + 1 : ℕ) : ℝ) with hm
+  have hm1 : 1 ≤ m := by rw [hm]; exact_mod_cast Nat.succ_pos n
+  have hmn : m = (n : ℝ) + 1 := by rw [hm]; push_cast; ring
+  set s := √(φ₁ / (11 * m))
+  have hs0 : 0 ≤ s := Real.sqrt_nonneg _
+  -- $\sqrt{\varphi_R/(2k)} \le \sqrt{\varphi_1} = s\sqrt{11m} \le 11ms$
+  have hw : √(shqrRegularizeFailure n B Γ S δ φ / (2 * k)) ≤ 11 * m * s := by
+    have e1 : √φ₁ = s * √(11 * m) := by
+      rw [← Real.sqrt_mul (by positivity), div_mul_cancel₀ _ (by positivity)]
+    have e2 : √(11 * m) ≤ 11 * m := by
+      rw [Real.sqrt_le_left (by positivity)]; nlinarith
+    calc √(shqrRegularizeFailure n B Γ S δ φ / (2 * k)) ≤ √φ₁ := by
+          apply Real.sqrt_le_sqrt
+          unfold shqrRegularizeFailure
+          rw [div_le_iff₀ (by positivity)]; nlinarith
+      _ = s * √(11 * m) := e1
+      _ ≤ s * (11 * m) := mul_le_mul_of_nonneg_left e2 hs0
+      _ = 11 * m * s := by ring
+  -- $22mR \le \omega/100$
+  have hR : 22 * m * shqrRadius n B Γ S δ ≤ ω / 100 := by
+    unfold shqrRadius
+    rw [mul_div_assoc', div_le_div_iff₀ (by positivity) (by norm_num)]
+    have : ω * (12 * m) ≤ S := by rw [hmn]; linarith
+    nlinarith
+  unfold shqrEta
+  have hR0 := shqrRadius_pos (n := n) hB hΓ hδ hS
+  calc shqrRadius n B Γ S δ * √(shqrRegularizeFailure n B Γ S δ φ / (2 * k)) / 2
+      ≤ shqrRadius n B Γ S δ * (11 * m * s) / 2 := by gcongr
+    _ = 22 * m * shqrRadius n B Γ S δ * s / 4 := by ring
+    _ ≤ ω / 100 * s / 4 := by gcongr
+    _ ≤ shqrEps k (4 * B) * (shqrRadiusLo k (4 * B) * ω) * s / 4 := by
+        gcongr
+        have := mul_le_mul hε (le_mul_of_one_le_left hω.le hlo) hω.le (by linarith)
+        linarith
+
+/-- **The parameter choices meet the decoupling loop's Exc hypotheses** (P11p's `hexc1`,
+`hexc2`, with the iterate norm $4\Sigma$ on the left and the threshold $\omega$ on the right):
+for $B \ge 1$, $0 < \delta \le \Sigma$ and $\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{ShQR}}$,
+$6\boldsymbol{u}(1.1 \cdot 4\Sigma + 3c_{\mathrm{hi}} \cdot 4\Sigma)$ is at most
+$0.005\varepsilon c_{\mathrm{lo}}\omega$ and at most
+$\varepsilon c_{\mathrm{lo}}\omega\sqrt{\varphi_1/(11(n + 1))}/8$,
+$\varphi_1 = \varphi/(12F(n + 1))$, at condition $4B$. No printed source. -/
+theorem shqrExc_of_le_uShQR (hB : 1 ≤ B) (hδ : 0 < δ) (hδS : δ ≤ S) (hu : u ≤ uShQR n k B Γ S δ φ) :
+    6 * u * (1.1 * (4 * S) + 3 * (shqrRadiusHi k (4 * B) * (4 * S))) ≤
+        0.005 * shqrEps k (4 * B) * (shqrRadiusLo k (4 * B) * shqrOmega n B Γ δ) ∧
+      6 * u * (1.1 * (4 * S) + 3 * (shqrRadiusHi k (4 * B) * (4 * S))) ≤
+        shqrEps k (4 * B) * (shqrRadiusLo k (4 * B) * shqrOmega n B Γ δ) *
+          √(shqrSmallEigFailure n B Γ S δ φ / (11 * ((n + 1 : ℕ) : ℝ))) / 8 := by
+  have hB4 : 0 < 4 * B := by linarith
+  have hS : 0 < S := hδ.trans_le hδS
+  have := shqrRadiusHi_pos k hB4
+  have hSh := hu.trans uShQR_le_uShQRSh
+  unfold uShQRSh at hSh
+  have s3 := hSh.trans ((min_le_right _ _).trans ((min_le_right _ _).trans (min_le_left _ _)))
+  have s4 := hSh.trans ((min_le_right _ _).trans ((min_le_right _ _).trans (min_le_right _ _)))
+  rw [le_div_iff₀ (by positivity)] at s3 s4
+  constructor
+  · linarith
+  · linarith
 
 /-- **The parameter choices meet the worklist's hypotheses** (T1 with the block norm $2\Sigma$):
 under the hypotheses of `NLAlib.ShiftedQR.shStepHyps_of_le_uShQR`, for a leaf error

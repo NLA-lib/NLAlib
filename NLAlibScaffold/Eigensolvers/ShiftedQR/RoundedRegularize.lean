@@ -1491,3 +1491,144 @@ theorem regularizeDecide_outcome {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
 end Tail
 
 end NLAlib.ShiftedQR
+
+namespace NLAlib.ShiftedQR
+
+open Ops MeasureTheory
+
+section Assembly
+
+variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O]
+  [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q]
+
+omit [Has IdxTst Q] in
+/-- **`Regularize` with scratch as a probabilistic block**: `NLAlib.ShiftedQR.regularizeWithScratch`
+from the context `NLAlib.ShiftedQR.RegularizeCtx` ends in `NLAlib.ShiftedQR.RegularizeOutcome`
+except with probability at most $\varphi_{\mathrm{se}} + \varphi/2$: `SmallEig` fails with
+probability at most $\varphi_{\mathrm{se}}$, the $k$ perturbations with probability at most
+$\varphi/2$, the rest is deterministic. -/
+theorem regularizeWithScratch_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I) {n : ℕ}
+    (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I) {law : ℕ → Measure ℝ} {s₀ : ℕ}
+    {β φse : ℝ} (hSE : IsRandomSmallEig law s₀ β φse I) (hβ0 : 0 ≤ β) (hφse : 0 ≤ φse)
+    (hD : IsPolarDiskSampler s₀ I) (hU : law s₀ = volume.restrict (Set.Icc 0 1)) {k L : ℕ}
+    (hk0 : 0 < k) (hk : k ≤ n) {a rd c thr s f : ℕ × ℕ}
+    (hv : RegularizeViews L n k a rd c thr s f)
+    {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {e : Fin (n + 1) → ℂ}
+    {B S ω R φ tv : ℝ} (hH : IsUpperHessenberg H) (hV : IsUnit V)
+    (hHV : H * V = V * Matrix.diagonal e) (hκ : pseudoConditionNumber V ≤ B)
+    (hBk : B ^ ((2 : ℝ) / k) ≤ 2) (hω : 0 < ω) (hψ : ω ≤ hessenbergPotential k H)
+    (hSH : specNorm H ≤ S) (hgap : ∀ i j, i ≠ j → 2 * ω ^ 2 / S ≤ ‖e i - e j‖)
+    (hR : 0 < R) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
+    (hβ : β + R + 2 * u * (S + β + R) ≤ ω ^ 2 / (20 * 101 * S))
+    (hdη : 4 * u * (S + β + R) ≤ R * √(φ / (2 * k))) (hnu : (n + 1 : ℝ) * u ≤ 1 / 2500)
+    (huo : 30000 * k * (((n + 1 : ℕ) : ℝ) * √((n + 1 : ℕ) : ℝ) * u) * ((2 + 2 * 1.1) * S) ^ k ≤
+      (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹) * ω) ^ k)
+    (huo1 : 100000 * ((n + 1 + k : ℕ) : ℝ) ^ 2 * u ≤ 1)
+    (hxu : 300 * (n + 1) ^ 2 * u ≤
+      (16 * B)⁻¹ * (R * √(φ / (2 * k)) / 2 / ((2 + 2 * 1.1) * S)) ^ k)
+    (hbound : (66 + 2 * 1.1) * B * S * ((2 + 2 * 1.1) * S / (R * √(φ / (2 * k)) / 2)) ^ k *
+      √(n + 1) * (300 * (n + 1) ^ 2 * u) ≤ ω / 2)
+    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) :
+    PWrites law I (regularizeWithScratch (O := O) (Q := Q)).body
+      (Env.frame [n + 1, k] [a, rd, c, thr, (L, 0), (L + 1, 0), (L + 2, 0), (L + 3, 0),
+        (L + 4, 0), (L + 5, 0), (L + 6, 0), a, s, f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔
+        Store.inBlock f.1 f.2 1 ⊔ Fp.above L)
+      (RegularizeCtx L k H R
+        (0.999 * (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) ^ k) tv
+        a rd c thr s f)
+      (RegularizeOutcome k H e u (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) *
+        (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) (R * √(φ / (2 * k)) / 2) tv
+        ((1 + 1.1) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a s f)
+      (φse + φ / 2) := by
+  set cw := 0.999 * (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) ^ k
+  set η := R * √(φ / (2 * k))
+  set Ctx := RegularizeCtx L k H R cw tv a rd c thr s f
+  set Lam := fun lam : Fin k → ℂ => IsEigenvalueListing (trailingBlock k H) lam
+  have hv' := hv
+  obtain ⟨⟨ha, hrd, hcl, htl, hsl, hfl⟩, has, haf, hsf, hio⟩ := hv'
+  have hIn : ∀ {F : Fp}, Fp.Disj F (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+      Store.inBlock rd.1 rd.2 1 ⊔ Store.inBlock c.1 c.2 1 ⊔ Store.inBlock thr.1 thr.2 1) →
+      ∀ {m m'}, Ctx m → m.store.EqOff F m'.store → Ctx m' := fun hF _ _ h hfr => h.of_eqOff hfr hF
+  have hsep : ∀ i j, e i ≠ e j → 4 * R ≤ ‖e i - e j‖ := by
+    intro i j hij
+    have hS0 : 0 < S := lt_of_lt_of_le (lt_of_lt_of_le hω
+      (hψ.trans (hessenbergPotential_le_specNorm hk0 hk H))) hSH
+    have h1 := hgap i j (fun h => hij (h ▸ rfl))
+    have hu0 := hM.roundoff_nonneg
+    have h2 : 0 ≤ 2 * u * (S + β + R) := by positivity
+    have h3 : ω ^ 2 / (20 * 101 * S) = 2 * ω ^ 2 / S / 4040 := by field_simp; ring
+    have h4 : 0 ≤ 2 * ω ^ 2 / S := by positivity
+    linarith
+  have hsIn : Fp.Disj (Store.inBlock s.1 s.2 (2 * k))
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock rd.1 rd.2 1 ⊔
+        Store.inBlock c.1 c.2 1 ⊔ Store.inBlock thr.1 thr.2 1) :=
+    Fp.disj_sup_right.mpr ⟨Fp.disj_sup_right.mpr ⟨Fp.disj_sup_right.mpr ⟨has.symm,
+      hio.mono (by fp_sub) (by fp_sub)⟩, hio.mono (by fp_sub) (by fp_sub)⟩,
+      hio.mono (by fp_sub) (by fp_sub)⟩
+  have hHt : IsUpperHessenberg (trailingBlock k H) := hH.subBlock (r := (n + 1 - k, k)) (by omega)
+  unfold regularizeWithScratch
+  -- the trailing block
+  have h1 : PWrites law I (copyToWork (Op := O) (Tst := Q)).body
+      (Env.frame [n + 1, n + 1 - k, k] [a, (L, 0)]) (Store.inBlock L 0 (2 * (k * k))) Ctx
+      (fun m => Ctx m ∧ HoldsMatrix (L, 0) (trailingBlock k H) m.store) 0 := by
+    refine PWrites.of_writes le_rfl fun m τ hm => ?_
+    obtain ⟨hA, -, -, -, -, -, hlen, h0, -⟩ := id hm
+    refine (copyToWork_writes (τ := τ) (w := (L, 0)) (lo := n + 1 - k) (d := k) hS
+      (by simp [Mem.Live, hlen]; omega) hA (by omega) (by simp [h0]) (by disjoint)).mono le_rfl ?_
+    rintro m' hfr ⟨-, hB⟩
+    exact ⟨hIn (by disjoint) hm hfr, hB⟩
+  -- `SmallEig` of the trailing block
+  have h2 : PWrites law I (smallEigLeaf (O := O) (Q := Q)).body (Env.frame [k] [(L, 0), s])
+      (Store.inBlock s.1 s.2 (2 * k))
+      (fun m => Ctx m ∧ HoldsMatrix (L, 0) (trailingBlock k H) m.store)
+      (fun m => Ctx m ∧ DrawsInv u β R η Lam e rd (L + 1, 0) s 0 m) φse := by
+    refine (hSE.smallEigLeaf_pwrites (trailingBlock k H) hHt).mono_eqOff ?_ ?_
+    · rintro m ⟨hm, hB⟩
+      obtain ⟨-, -, -, -, hrs, -, hlen, -⟩ := hm
+      exact ⟨hB, by simp [Mem.Live, hlen]; omega, hrs, by disjoint⟩
+    · rintro m m' ⟨hm, -⟩ hfr ⟨roots, ev, hev, hfw, hO⟩
+      have hm' := hIn hsIn hm hfr
+      obtain ⟨-, hrd', -, -, -, -, -, -, hz', -⟩ := id hm'
+      refine ⟨hm', hrd', by simp [hz'], ev, hev, roots, fun j => ?_, fun j =>
+        ⟨fun _ => hfw j, fun h => absurd h (Nat.not_lt_zero _)⟩⟩
+      simpa using hO.read_entry j 0
+  -- the `k` perturbations
+  have h3 : PWrites law I (regularizeDraws (O := O) (Q := Q)).body
+      (Env.frame [k] [rd, (L + 1, 0), s])
+      (Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock (L + 1) 0 2)
+      (fun m => Ctx m ∧ DrawsInv u β R η Lam e rd (L + 1, 0) s 0 m)
+      (fun m => Ctx m ∧ DrawsInv u β R η Lam e rd (L + 1, 0) s k m) (φ / 2) :=
+    (regularizeDraws_pwrites (β := β) hI hloc hS hM hD hU hk0 Lam e hR hφ.le hφ1 hsep
+      (by disjoint) (by disjoint) (hio.mono (by fp_sub) (by fp_sub))).mono_eqOff
+      (fun _ h => h.2) fun m m' hm hfr hinv =>
+        ⟨hIn (Fp.disj_sup_left.mpr ⟨hsIn, by disjoint⟩) hm.1 hfr, hinv⟩
+  -- the decision
+  have h4 : PWrites law I (regularizeDecide (O := O) (Q := Q)).body
+      (Env.frame [n + 1, k] [a, s, c, thr, (L + 3, 0), (L + 4, 0), (L + 5, 0), (L + 6, 0), a,
+        (L + 2, 0), f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 2) 0 1 ⊔
+        Store.inBlock f.1 f.2 1 ⊔ (Store.inBlock (L + 3) 0 (2 * ((n + 1) * (n + 1))) ⊔
+          Store.inBlock (L + 4) 0 (2 * k) ⊔ Store.inBlock (L + 5) 0 (2 * k) ⊔
+          Store.inBlock (L + 6) 0 5))
+      (fun m => Ctx m ∧ DrawsInv u β R η Lam e rd (L + 1, 0) s k m)
+      (RegularizeOutcome k H e u (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) *
+        (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) (η / 2) tv
+        ((1 + 1.1) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a s f) 0 :=
+    PWrites.of_writes le_rfl fun m τ ⟨hm, hinv⟩ => regularizeDecide_outcome hS hM hu1 hL hNat hC
+      hk0 hk hv hH hV hHV hκ hBk hω hψ hSH hgap (by positivity) hβ hdη hnu huo huo1 hxu hbound
+      hthrω hm hinv
+  have hlive : ∀ (l : List (ℕ × ℕ)), (∀ x ∈ l, x.1 < L + 7) → ∀ m, Ctx m → m.Live l :=
+    fun l hl m hm x hx => by obtain ⟨-, -, -, -, -, -, hlen, -⟩ := hm; rw [hlen]; exact hl x hx
+  refine (PWrites.seq hI hloc (by positivity) (h1.in_frame rfl rfl (hlive _ (by simp; omega)))
+    (PWrites.seq hI hloc (by positivity) (h2.in_frame rfl rfl fun m hm =>
+      hlive _ (by simp; omega) m hm.1)
+      (PWrites.seq hI hloc le_rfl (h3.in_frame rfl rfl fun m hm => hlive _ (by simp; omega) m hm.1)
+        (h4.in_frame rfl rfl fun m hm => hlive _ (by simp; omega) m hm.1)))).mono
+    (fun _ h => h) (by fp_sub) (fun _ h => h) (by simp)
+
+end Assembly
+
+end NLAlib.ShiftedQR

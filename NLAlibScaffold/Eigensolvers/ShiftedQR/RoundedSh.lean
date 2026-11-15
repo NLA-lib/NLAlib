@@ -247,19 +247,26 @@ def shTestStep : Impl O Q := opsImpl% [N, k] (A, Z, Cg) → (T, SR, P0, P1) {
   run shThreshold.body [N, k] (A, Cg, P1)
 }
 
-/-- The exceptional branch of `Sh`: the flag `Fl` is $2$ (no step yet) and the search word `Gw`
-is $1$; the threshold $\mathrm{fl}(c_p\tilde\psi)$ of the potential test into `Pt` and the
-radius $\mathrm{fl}(c_r\tilde\psi)$ into `Rt` (which held $\tilde\psi$); the exceptional shifts
-around the centre `Z` (`NLAlib.ShiftedQR.excShifts`, with the translate factor `Cw` and the
-net `G`) into `Ss`; and the trials (`NLAlib.ShiftedQR.shTrials`). The interface is
+/-- The start of the exceptional branch of `Sh`: the flag `Fl` is $2$ (no step yet), the
+search word `Gw` is $1$, the threshold $\mathrm{fl}(c_p\tilde\psi)$ of the potential test goes
+to `Pt` and the radius $\mathrm{fl}(c_r\tilde\psi)$ to `Rt` (which held $\tilde\psi$). The
+interface is `[] (Cr, Cp, Rt) → (Rt, Pt, Gw, Fl)`. -/
+def shExcInit : Impl O Q := opsImpl% [] (Cr, Cp, Rt) → (Rt, Pt, Gw, Fl) {
+  call (Has.inj (ScalarOp.lit 2)) [] () → (Fl);
+  call (Has.inj (ScalarOp.lit 1)) [] () → (Gw);
+  call (Has.inj ScalarOp.mul) [] (Cp, Rt) → (Pt);
+  call (Has.inj ScalarOp.mul) [] (Cr, Rt) → (Rt)
+}
+
+/-- The exceptional branch of `Sh`: its start (`NLAlib.ShiftedQR.shExcInit`), the exceptional
+shifts around the centre `Z` (`NLAlib.ShiftedQR.excShifts`, with the radius `Rt`, the
+translate factor `Cw` and the net `G`) into `Ss`, and the trials (`NLAlib.ShiftedQR.shTrials`).
+The interface is
 `[N, k, q, n0] (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, T, SR, Ds, Rg, P2, Ss) → (A, Gw, Fl)`. -/
 def shExc : Impl O Q :=
   opsImpl% [N, k, q, n0] (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, T, SR, Ds, Rg, P2, Ss) →
       (A, Gw, Fl) {
-    call (Has.inj (ScalarOp.lit 2)) [] () → (Fl);
-    call (Has.inj (ScalarOp.lit 1)) [] () → (Gw);
-    call (Has.inj ScalarOp.mul) [] (Cp, Rt) → (Pt);
-    call (Has.inj ScalarOp.mul) [] (Cr, Rt) → (Rt);
+    run shExcInit.body [] (Cr, Cp, Rt, Rt, Pt, Gw, Fl);
     run (excShifts (O := O) (Q := Q)).body [n0] (Z, Rt, Cw, G, Ss);
     run shTrials.body [N, k, q, n0] (A, Ss, Thr, Pt, T, SR, Ds, Rg, P2, A, Gw, Fl)
   }
@@ -458,6 +465,65 @@ theorem shTestStep_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS :
   refine ⟨hp₄.trans (hp₃.trans (hp₂.trans hp₁)), H', Rs, hch, hH', hT₃.of_eqOff hfr₄
     (hp1.mono le_rfl le_sup_left), ⟨tc, hfr₄.keep (Store.readsOnly_get _ _ _)
       (hp1.mono le_rfl le_sup_right) htc, hb⟩, hP₄⟩
+
+omit [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] in
+/-- The start of the exceptional branch on a scalar machine with exact natural literals up to
+$2$: from the words $c_r$, $c_p$ and $p$ at `Cr`, `Cp`, `Rt`, `NLAlib.ShiftedQR.shExcInit`
+stores $\mathrm{fl}(c_r p)$ at `Rt`, $\mathrm{fl}(c_p p)$ at `Pt`, $1$ at `Gw` and $2$ at
+`Fl`, and writes only these. -/
+theorem shExcInit_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I) {u : ℝ}
+    (hM : StdModel u id M) (hNat : IsExactNatLit id M 2) {τ : Tape ℝ} {m : Mem ℝ}
+    {cr cp rt pt gw f : ℕ × ℕ} {crv cpv p : ℝ} (hcr : m.store.get cr.1 cr.2 = some crv)
+    (hcp : m.store.get cp.1 cp.2 = some cpv) (hrt : m.store.get rt.1 rt.2 = some p)
+    (hpt : pt.2 < m.store.len pt.1) (hgw : gw.2 < m.store.len gw.1)
+    (hf : f.2 < m.store.len f.1)
+    (hW : Fp.Disj (Store.inBlock f.1 f.2 1 ⊔ Store.inBlock gw.1 gw.2 1 ⊔ Store.inBlock pt.1 pt.2 1)
+      (Store.inBlock cr.1 cr.2 1 ⊔ Store.inBlock cp.1 cp.2 1 ⊔ Store.inBlock rt.1 rt.2 1))
+    (hfg : Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock gw.1 gw.2 1))
+    (hfgp : Fp.Disj (Store.inBlock f.1 f.2 1 ⊔ Store.inBlock gw.1 gw.2 1)
+      (Store.inBlock pt.1 pt.2 1)) :
+    Writes .total I τ (shExcInit (O := O) (Q := Q)).body
+      (Env.frame [] [cr, cp, rt, rt, pt, gw, f])
+      (Store.inBlock rt.1 rt.2 1 ⊔ Store.inBlock pt.1 pt.2 1 ⊔ Store.inBlock gw.1 gw.2 1 ⊔
+        Store.inBlock f.1 f.2 1)
+      (fun m' => m'.pos = m.pos ∧ m'.store.get rt.1 rt.2 = some (M.mul crv p) ∧
+        m'.store.get pt.1 pt.2 = some (M.mul cpv p) ∧ m'.store.get gw.1 gw.2 = some 1 ∧
+        m'.store.get f.1 f.2 = some 2) m := by
+  have h1 : M.lit 1 = 1 := by simpa using hNat 1 (by omega)
+  have h2 : M.lit 2 = 2 := by simpa using hNat 2 le_rfl
+  have hk : ∀ {F G : Fp} {b : ℕ × ℕ} {v : ℝ} {μ μ' : Mem ℝ}, μ.store.EqOff F μ'.store →
+      Fp.Disj F G → Store.inBlock b.1 b.2 1 ≤ G → μ.store.get b.1 b.2 = some v →
+      μ'.store.get b.1 b.2 = some v := fun hfr hd hb hv =>
+    hfr.keep (Store.readsOnly_get _ _ _) (hd.mono le_rfl hb) hv
+  unfold shExcInit
+  refine (writes_call_const (hS (.lit 2)) (z := f) rfl trivial hf).seq_le (by fp_sub) ?_
+  rintro m₁ hfr₁ ⟨hp₁, hF₁⟩
+  refine (writes_call_const (hS (.lit 1)) (z := gw) rfl trivial
+    (by rw [hfr₁.len_eq]; exact hgw)).seq_le (by fp_sub) ?_
+  rintro m₂ hfr₂ ⟨hp₂, hG₂⟩
+  have hcp₂ := hk hfr₂ (hW.mono (by fp_sub) le_rfl) (by fp_sub) (hk hfr₁ (hW.mono (by fp_sub)
+    le_rfl) (by fp_sub) hcp)
+  have hrt₂ := hk hfr₂ (hW.mono (by fp_sub) le_rfl) (by fp_sub) (hk hfr₁ (hW.mono (by fp_sub)
+    le_rfl) (by fp_sub) hrt)
+  have hcr₂ := hk hfr₂ (hW.mono (by fp_sub) le_rfl) (by fp_sub) (hk hfr₁ (hW.mono (by fp_sub)
+    le_rfl) (by fp_sub) hcr)
+  refine (writes_call_bin (hS .mul) (x := cp) (y := rt) (z := pt) rfl rfl trivial hcp₂ hrt₂ rfl
+    (fun _ => ⟨by simp [Mem.Live, hfr₂.length_eq, hfr₁.length_eq, Store.lt_length_of_get hcp,
+      Store.lt_length_of_get hrt, Store.lt_length_of_lt_len hpt],
+      by rw [hfr₂.len_eq, hfr₁.len_eq]; exact hpt⟩)).seq_le (by fp_sub) ?_
+  rintro m₃ hfr₃ ⟨hp₃, hP₃⟩
+  have hrt₃ := hk hfr₃ (hW.mono (by fp_sub) le_rfl) (by fp_sub) hrt₂
+  have hcr₃ := hk hfr₃ (hW.mono (by fp_sub) le_rfl) (by fp_sub) hcr₂
+  refine (writes_call_bin (hS .mul) (x := cr) (y := rt) (z := rt) rfl rfl trivial hcr₃ hrt₃ rfl
+    (fun _ => ⟨by simp [Mem.Live, Store.lt_length_of_get hcr₃, Store.lt_length_of_get hrt₃],
+      Store.lt_len_of_get hrt₃⟩)).mono (by fp_sub) ?_
+  rintro m₄ hfr₄ ⟨hp₄, hR₄⟩
+  refine ⟨hp₄.trans (hp₃.trans (hp₂.trans hp₁)), hR₄,
+    hk hfr₄ (hW.symm.mono (by fp_sub) le_rfl) (by fp_sub) hP₃, ?_, ?_⟩
+  · refine hk hfr₄ (hW.symm.mono (by fp_sub) le_rfl) (by fp_sub)
+      (hk hfr₃ hfgp.symm (by fp_sub) (by rw [hG₂, h1]))
+  · refine hk hfr₄ (hW.symm.mono (by fp_sub) le_rfl) (by fp_sub)
+      (hk hfr₃ hfgp.symm (by fp_sub) (hk hfr₂ hfg.symm le_rfl (by rw [hF₁, h2])))
 
 end Test
 

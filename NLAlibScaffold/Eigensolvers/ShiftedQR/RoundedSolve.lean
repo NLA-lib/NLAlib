@@ -167,6 +167,13 @@ def roundedProcessLarge (D : Impl O Q) : Impl O Q :=
     }
   }
 
+/-- The part of `NLAlib.ShiftedQR.roundedProcessLarge` after the decoupling call: on failure
+abort; otherwise scan, and split or abort. -/
+def roundedLargeTail (D : Impl O Q) : Stmt O Q :=
+  match (roundedProcessLarge D).body with
+  | .seq _ c => c
+  | c => c
+
 /-- Copy the active block to `W`; a block of order at most $k$ goes to the leaf routine, which
 writes its roots at offset $2\,lo$ of `Out`; a larger one to
 `NLAlib.ShiftedQR.roundedProcessLarge`. -/
@@ -740,40 +747,30 @@ theorem writeAndSplit_writes_mem {M : Machine ℝ} {I : Interp O Q ℝ} (hS : Is
   exact ⟨hp₂.trans hp₁, hA₁.of_eqOff hfr₂ hAS.symm, hSt₂⟩
 
 omit [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
-/-- **The leaf branch of a round**: the leaf routine on the copied block of the popped range
-finishes it, a perturbed unitary similarity with error $\beta \le e$. -/
-theorem roundedLeaf_writes {I : Interp O Q ℝ} {β : ℝ} (L : Impl O Q)
-    (hLeaf : BackwardLeafContract β L I) {tape : Tape ℝ} {μ : Mem ℝ} {fails : Prop} {n j : ℕ}
-    {a t p st out w r f : ℕ × ℕ} {H₀ M A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
-    {roots : Fin (n + 1) → ℂ} {e thr : ℝ} {ps : List ℝ} {lo d : ℕ} {rest done : List (ℕ × ℕ)}
+/-- **The leaf of a round, mathematics**: from a popped state, a run that writes only the output
+words of the popped range $(lo, d)$ and stores there a listing of the eigenvalues of the popped
+block plus $\mathbf{F}$, $\|\mathbf{F}\|_2 \le \beta \le e$, ends in the core state of the next
+round, reached by a perturbed unitary similarity with error $e$. -/
+theorem roundedLeaf_core {fails : Prop} {n j : ℕ} {a t p st out w r f : ℕ × ℕ}
+    {H₀ M A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {roots : Fin (n + 1) → ℂ} {e thr β : ℝ}
+    {ps : List ℝ} {lo d : ℕ} {rest done : List (ℕ × ℕ)} {μ μ' : Mem ℝ}
     (hP : RoundedPopped H₀ e thr ps a t p st out w r f j M lo d rest done A roots μ)
-    (hW : HoldsMatrix w (subBlock A (lo, d)) μ.store) (hβe : β ≤ e) :
-    Writes .total I tape L.body (Env.frame [d] [w, (out.1, out.2 + 2 * lo)])
-      (Store.inBlock out.1 (out.2 + 2 * lo) (2 * d))
-      (fun μ' => ∃ M', IsPerturbedUnitarySimilar M M' e ∧
-        RoundedCore fails H₀ e a st out f (j + 1) M' μ') μ := by
+    (hβe : β ≤ e) (hfr : μ.store.EqOff (Store.inBlock out.1 (out.2 + 2 * lo) (2 * d)) μ'.store)
+    (hpost : ∃ (rts : Fin d → ℂ) (F : Matrix (Fin d) (Fin d) ℂ), specNorm F ≤ β ∧
+      IsEigenvalueListing (subBlock A (lo, d) + F) rts ∧
+      HoldsMatrix (out.1, out.2 + 2 * lo) (Matrix.of fun i (_ : Fin 1) => rts i) μ'.store) :
+    ∃ M', IsPerturbedUnitarySimilar M M' e ∧ RoundedCore fails H₀ e a st out f (j + 1) M' μ' := by
   obtain ⟨hG, -, -, hf, hnorm, hInv, hA, hOut, hSt, hj⟩ := hP
+  obtain ⟨rts, F, hF, hList, hO⟩ := hpost
   have hr := hInv.active_block (r := (lo, d)) List.mem_cons_self
-  have hd : d ≤ n + 1 := by have := hr.2.1; omega
-  have hsq := Nat.mul_le_mul hd hd
-  have hroomO : out.2 + 2 * (n + 1) ≤ μ.store.len out.1 := hG.room.2.2.2.2.1
   have houtFp : Store.inBlock out.1 (out.2 + 2 * lo) (2 * d) ≤
       Store.inBlock out.1 out.2 (2 * (n + 1)) := by have := hr.2.1; fp_sub
-  have hWO : Fp.Disj (Store.inBlock w.1 w.2 (2 * (d * d)))
-      (Store.inBlock out.1 (out.2 + 2 * lo) (2 * d)) := by
-    have hfull : Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))))
-        (Store.inBlock out.1 out.2 (2 * (n + 1))) := by simpa using hG.disj 5 4 (by simp)
-    exact hfull.mono (by fp_sub) houtFp
   have hOA : Fp.Disj (Store.inBlock out.1 out.2 (2 * (n + 1)))
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) := by simpa using hG.disj 4 0 (by simp)
   have hOS : Fp.Disj (Store.inBlock out.1 out.2 (2 * (n + 1)))
       (Store.inBlock st.1 st.2 (1 + 2 * (n + 1))) := by simpa using hG.disj 4 3 (by simp)
   have hOF : Fp.Disj (Store.inBlock out.1 out.2 (2 * (n + 1))) (Store.inBlock f.1 f.2 1) := by
     simpa using hG.disj 4 7 (by simp)
-  have hlWO : μ.Live [w, (out.1, out.2 + 2 * lo)] := by
-    simpa [Mem.Live] using And.intro (hG.live w (by simp)) (hG.live out (by simp))
-  refine (hLeaf (subBlock A (lo, d)) hr.2.2 hW hlWO (by dsimp only; omega) hWO).mono le_rfl ?_
-  rintro μ' hfr ⟨rts, F, hF, hList, hO⟩
   obtain ⟨M', hMM', hInv'⟩ := hInv.exists_isPerturbedUnitarySimilar_finish hF hList
   have hrest : rest.length ≤ n + 1 := by
     have hb := hInv.length_le
@@ -796,6 +793,47 @@ theorem roundedLeaf_writes {I : Interp O Q ℝ} {β : ℝ} (L : Impl O Q)
     linarith
   · simp only [List.length_cons]
     omega
+
+omit [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
+/-- The operands of the leaf call of a round: the work matrix and the output words of the popped
+range are live, have room and are apart. -/
+theorem RoundedPopped.leaf_operands {n j : ℕ} {a t p st out w r f : ℕ × ℕ}
+    {H₀ M A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {roots : Fin (n + 1) → ℂ} {e thr : ℝ}
+    {ps : List ℝ} {lo d : ℕ} {rest done : List (ℕ × ℕ)} {μ : Mem ℝ}
+    (hP : RoundedPopped H₀ e thr ps a t p st out w r f j M lo d rest done A roots μ) :
+    μ.Live [w, (out.1, out.2 + 2 * lo)] ∧
+      (out.1, out.2 + 2 * lo).2 + 2 * d ≤ μ.store.len (out.1, out.2 + 2 * lo).1 ∧
+      Fp.Disj (Store.inBlock w.1 w.2 (2 * (d * d)))
+        (Store.inBlock out.1 (out.2 + 2 * lo) (2 * d)) := by
+  have hG := hP.1
+  have hr := hP.2.2.2.2.2.1.active_block (r := (lo, d)) List.mem_cons_self
+  have hd : d ≤ n + 1 := by have := hr.2.1; omega
+  have hsq := Nat.mul_le_mul hd hd
+  have hroomO : out.2 + 2 * (n + 1) ≤ μ.store.len out.1 := hG.room.2.2.2.2.1
+  have houtFp : Store.inBlock out.1 (out.2 + 2 * lo) (2 * d) ≤
+      Store.inBlock out.1 out.2 (2 * (n + 1)) := by have := hr.2.1; fp_sub
+  have hfull : Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock out.1 out.2 (2 * (n + 1))) := by simpa using hG.disj 5 4 (by simp)
+  exact ⟨by simpa [Mem.Live] using And.intro (hG.live w (by simp)) (hG.live out (by simp)),
+    by dsimp only; have := hr.2.1; omega, hfull.mono (by fp_sub) houtFp⟩
+
+omit [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
+/-- **The leaf branch of a round**: the leaf routine on the copied block of the popped range
+finishes it, a perturbed unitary similarity with error $\beta \le e$. -/
+theorem roundedLeaf_writes {I : Interp O Q ℝ} {β : ℝ} (L : Impl O Q)
+    (hLeaf : BackwardLeafContract β L I) {tape : Tape ℝ} {μ : Mem ℝ} {fails : Prop} {n j : ℕ}
+    {a t p st out w r f : ℕ × ℕ} {H₀ M A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {roots : Fin (n + 1) → ℂ} {e thr : ℝ} {ps : List ℝ} {lo d : ℕ} {rest done : List (ℕ × ℕ)}
+    (hP : RoundedPopped H₀ e thr ps a t p st out w r f j M lo d rest done A roots μ)
+    (hW : HoldsMatrix w (subBlock A (lo, d)) μ.store) (hβe : β ≤ e) :
+    Writes .total I tape L.body (Env.frame [d] [w, (out.1, out.2 + 2 * lo)])
+      (Store.inBlock out.1 (out.2 + 2 * lo) (2 * d))
+      (fun μ' => ∃ M', IsPerturbedUnitarySimilar M M' e ∧
+        RoundedCore fails H₀ e a st out f (j + 1) M' μ') μ := by
+  obtain ⟨hlWO, hroom, hWO⟩ := hP.leaf_operands
+  have hr := hP.2.2.2.2.2.1.active_block (r := (lo, d)) List.mem_cons_self
+  exact (hLeaf (subBlock A (lo, d)) hr.2.2 hW hlWO hroom hWO).mono le_rfl
+    fun μ' hfr hpost => roundedLeaf_core hP hβe hfr hpost
 
 /-- **The cut of a round, mathematics**: after a successful decoupling call with output
 $\mathbf{H}'$ (error $\varepsilon(N_0)$) and a scan that passed at $i$ with
@@ -831,28 +869,36 @@ theorem roundedCut_core {fails : Prop} {n j lo d : ℕ} {a st out f : ℕ × ℕ
   · simp only [List.length_cons]
     omega
 
-/-- **The large branch of a round**: the decoupler on the copied block of the popped range
-$(lo, d + 1)$, $d \ge k$, either fails (failure word $1$, stack count $0$) or is followed by the
-bottom scan, which then always passes, and the cut and the push of both children; the core state of
-the next round is reached with error $e \ge \varepsilon(N_0) + c$. -/
-theorem roundedLarge_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+/-- **The large branch of a round after the decoupling call**: from the memory after a
+decoupling call on the copied block of the popped range $(lo, d + 1)$, $d \ge k$, that wrote only
+the work matrix and the flag and either failed (flag $1$, allowed when `fails` holds) or returned
+an upper Hessenberg perturbed unitary similarity $\mathbf{H}'$ of the block with error
+$\varepsilon(N_0)$ and a bottom-$k$ subdiagonal entry of modulus at most $\omega$ (flag $0$), the
+rest of the branch aborts, or scans, cuts and pushes both children (the scan always passes); the
+core state of the next round is reached with error $e \ge \varepsilon(N_0) + c$, $e \ge 0$. -/
+theorem roundedLargeTail_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu : 0 ≤ u) (hu1 : u < 1)
     (hL : IsIndexLit Mch I) {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
     (hC : IsCmp id I) {fails : Prop} {k F : ℕ} {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} (D : Impl O Q)
-    (hD : RoundedDecouplingContract fails k F ps ω ε D I)
-    {tape : Tape ℝ} {μ : Mem ℝ} {j lo d : ℕ} {a t p st out w r f : ℕ × ℕ}
+    {tape : Tape ℝ} {μ μ₁ : Mem ℝ} {j lo d : ℕ} {a t p st out w r f : ℕ × ℕ}
     {H₀ M A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {roots : Fin (n + 1) → ℂ}
     {rest done : List (ℕ × ℕ)} {thr c e N₀ : ℝ}
     (hP : RoundedPopped H₀ e thr ps a t p st out w r f j M lo (d + 1) rest done A roots μ)
-    (hW : HoldsMatrix w (subBlock A (lo, d + 1)) μ.store) (hk : k ≤ d)
-    (hfind : (1 + u) ^ 2 * ω ^ 2 ≤ thr) (hcut : thr ≤ (1 - u) ^ 2 * c ^ 2) (hc : 0 ≤ c)
-    (he : c + ε N₀ ≤ e) (he0 : 0 ≤ e) (hN₀ : specNorm H₀ + 2 * (n + 1) * e ≤ N₀)
-    (hj : j < 2 * (n + 1)) :
-    Writes .total I tape (roundedProcessLarge D).body
+    (hk : k ≤ d) (hfind : (1 + u) ^ 2 * ω ^ 2 ≤ thr) (hcut : thr ≤ (1 - u) ^ 2 * c ^ 2)
+    (hc : 0 ≤ c) (he : c + ε N₀ ≤ e) (he0 : 0 ≤ e)
+    (hfr₁ : μ.store.EqOff (Store.inBlock w.1 w.2 (2 * ((d + 1) * (d + 1))) ⊔
+      Store.inBlock f.1 f.2 1) μ₁.store)
+    (hD₁ : (fails ∧ μ₁.store.get f.1 f.2 = some 1) ∨
+      (μ₁.store.get f.1 f.2 = some 0 ∧
+        ∃ H' : Matrix (Fin (d + 1)) (Fin (d + 1)) ℂ,
+          IsPerturbedUnitarySimilar (subBlock A (lo, d + 1)) H' (ε N₀) ∧
+          IsUpperHessenberg H' ∧ (∃ i : Fin d, d ≤ (i : ℕ) + k ∧ ‖H' i.succ i.castSucc‖ ≤ ω) ∧
+          HoldsMatrix w H' μ₁.store)) :
+    Writes .total I tape (roundedLargeTail D)
       (Env.frame [n + 1, k, ps.length, F, lo, d + 1] [a, t, p, st, out, w, r, f])
       (roundedWorklistFp (n + 1) a st out w r f)
       (fun μ' => ∃ M', IsPerturbedUnitarySimilar M M' e ∧
-        RoundedCore fails H₀ e a st out f (j + 1) M' μ') μ := by
+        RoundedCore fails H₀ e a st out f (j + 1) M' μ') μ₁ := by
   obtain ⟨hG, ht, hp, hf, hnorm, hInv, hA, hOut, hSt, hj'⟩ := id hP
   have hr := hInv.active_block (r := (lo, d + 1)) List.mem_cons_self
   have hd : d + 1 ≤ n + 1 := by have := hr.2.1; omega
@@ -867,17 +913,9 @@ theorem roundedLarge_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     finishedFp_le (fun q hq => (hInv.partition.2.1 q (List.mem_append_right _ hq)).2)
   obtain ⟨hWA, hWT, hWP, hWS, hWO, hWF, hRA, hRT, hRS, hRO,
     hRF, hRW, hFA, hFS, hFO, hFT, hAS, hAO, hSO, hPF⟩ := hG.disj_round
-  have hlD : μ.Live [w, p, w, f] := hG.live_of_subset (by simp)
-  have hw := hD (tape := tape) (N := N₀) (subBlock A (lo, d + 1)) hk hr.2.2
-    (hP.specNorm_subBlock_le he0 hN₀ hj) hW hp hlD
-    (by have := hG.room.2.2.2.2.2.1; omega) hG.room.2.2.2.2.2.2.2.1 (hWF.mono hWw le_rfl)
-    (Fp.disj_sup_right.mpr ⟨hWP.symm.mono le_rfl hWw, hPF⟩)
   have hDfp : Store.inBlock w.1 w.2 (2 * ((d + 1) * (d + 1))) ⊔ Store.inBlock f.1 f.2 1 ≤
       Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 :=
     sup_le_sup_right hWw _
-  unfold roundedProcessLarge
-  refine hw.frame_seq_le rfl rfl hlD (by fp_sub [roundedWorklistFp]) ?_
-  intro μ₁ hfr₁ hD₁
   have hG₁ := hG.of_eqOff hfr₁
   have hA₁ := hA.of_eqOff hfr₁ ((Fp.disj_sup_left.mpr ⟨hWA, hFA⟩).mono hDfp le_rfl)
   have hSt₁ := hSt.of_eqOff hfr₁ ((Fp.disj_sup_left.mpr ⟨hWS, hFS⟩).mono hDfp
@@ -933,6 +971,92 @@ theorem roundedLarge_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
       have h2 : ‖H' i₀.succ i₀.castSucc‖ ^ 2 ≤ ω ^ 2 := pow_le_pow_left₀ (norm_nonneg _) hi₀ 2
       nlinarith [sq_nonneg (1 + u)]
 
+/-- The operands of the decoupling call of a round on the popped range $(lo, d + 1)$, and the
+popped block's norm bound: the work matrix, the parameter words and the flag are live, have room
+and are apart, and the block has norm at most $N_0$ when
+$\|\mathbf{H}_0\|_2 + 2(n+1)e \le N_0$, $e \ge 0$ and $j < 2(n+1)$. -/
+theorem RoundedPopped.decouple_operands {n j lo d : ℕ} {a t p st out w r f : ℕ × ℕ}
+    {H₀ M A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {roots : Fin (n + 1) → ℂ} {e thr N₀ : ℝ}
+    {ps : List ℝ} {rest done : List (ℕ × ℕ)} {μ : Mem ℝ}
+    (hP : RoundedPopped H₀ e thr ps a t p st out w r f j M lo (d + 1) rest done A roots μ)
+    (he0 : 0 ≤ e) (hN₀ : specNorm H₀ + 2 * (n + 1) * e ≤ N₀) (hj : j < 2 * (n + 1)) :
+    IsUpperHessenberg (subBlock A (lo, d + 1)) ∧ specNorm (subBlock A (lo, d + 1)) ≤ N₀ ∧
+      μ.store.readBlock p.1 p.2 ps.length = some ps ∧ μ.Live [w, p, w, f] ∧
+      w.2 + 2 * ((d + 1) * (d + 1)) ≤ μ.store.len w.1 ∧ f.2 + 1 ≤ μ.store.len f.1 ∧
+      Fp.Disj (Store.inBlock w.1 w.2 (2 * ((d + 1) * (d + 1)))) (Store.inBlock f.1 f.2 1) ∧
+      Fp.Disj (Store.inBlock p.1 p.2 ps.length)
+        (Store.inBlock w.1 w.2 (2 * ((d + 1) * (d + 1))) ⊔ Store.inBlock f.1 f.2 1) := by
+  have hG := hP.1
+  have hr := hP.2.2.2.2.2.1.active_block (r := (lo, d + 1)) List.mem_cons_self
+  have hd : d + 1 ≤ n + 1 := by have := hr.2.1; omega
+  have hsq := Nat.mul_le_mul hd hd
+  have hWw : Store.inBlock w.1 w.2 (2 * ((d + 1) * (d + 1))) ≤
+      Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) := by fp_sub
+  obtain ⟨-, -, hWP, -, -, hWF, -, -, -, -, -, -, -, -, -, -, -, -, -, hPF⟩ := hG.disj_round
+  exact ⟨hr.2.2, hP.specNorm_subBlock_le he0 hN₀ hj, hP.2.2.1, hG.live_of_subset (by simp),
+    by have := hG.room.2.2.2.2.2.1; omega, hG.room.2.2.2.2.2.2.2.1, hWF.mono hWw le_rfl,
+    Fp.disj_sup_right.mpr ⟨hWP.symm.mono le_rfl hWw, hPF⟩⟩
+
+/-- **The large branch of a round**: the decoupler on the copied block of the popped range
+$(lo, d + 1)$, $d \ge k$, either fails (failure word $1$, stack count $0$) or is followed by the
+bottom scan, which then always passes, and the cut and the push of both children; the core state
+of the next round is reached with error $e \ge \varepsilon(N_0) + c$. -/
+theorem roundedLarge_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu : 0 ≤ u) (hu1 : u < 1)
+    (hL : IsIndexLit Mch I) {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
+    (hC : IsCmp id I) {fails : Prop} {k F : ℕ} {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} (D : Impl O Q)
+    (hD : RoundedDecouplingContract fails k F ps ω ε D I)
+    {tape : Tape ℝ} {μ : Mem ℝ} {j lo d : ℕ} {a t p st out w r f : ℕ × ℕ}
+    {H₀ M A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {roots : Fin (n + 1) → ℂ}
+    {rest done : List (ℕ × ℕ)} {thr c e N₀ : ℝ}
+    (hP : RoundedPopped H₀ e thr ps a t p st out w r f j M lo (d + 1) rest done A roots μ)
+    (hW : HoldsMatrix w (subBlock A (lo, d + 1)) μ.store) (hk : k ≤ d)
+    (hfind : (1 + u) ^ 2 * ω ^ 2 ≤ thr) (hcut : thr ≤ (1 - u) ^ 2 * c ^ 2) (hc : 0 ≤ c)
+    (he : c + ε N₀ ≤ e) (he0 : 0 ≤ e) (hN₀ : specNorm H₀ + 2 * (n + 1) * e ≤ N₀)
+    (hj : j < 2 * (n + 1)) :
+    Writes .total I tape (roundedProcessLarge D).body
+      (Env.frame [n + 1, k, ps.length, F, lo, d + 1] [a, t, p, st, out, w, r, f])
+      (roundedWorklistFp (n + 1) a st out w r f)
+      (fun μ' => ∃ M', IsPerturbedUnitarySimilar M M' e ∧
+        RoundedCore fails H₀ e a st out f (j + 1) M' μ') μ := by
+  obtain ⟨hHess, hnorm, hp, hlD, hroomW, hroomF, hWF, hPWF⟩ := hP.decouple_operands he0 hN₀ hj
+  have hw := hD (tape := tape) (N := N₀) (subBlock A (lo, d + 1)) hk hHess hnorm hW hp hlD
+    hroomW hroomF hWF hPWF
+  have hr := hP.2.2.2.2.2.1.active_block (r := (lo, d + 1)) List.mem_cons_self
+  have hd : d + 1 ≤ n + 1 := by have := hr.2.1; omega
+  have hsq := Nat.mul_le_mul hd hd
+  unfold roundedProcessLarge
+  refine hw.frame_seq_le rfl rfl hlD (by fp_sub [roundedWorklistFp]) ?_
+  intro μ₁ hfr₁ hD₁
+  exact roundedLargeTail_writes hS hM hu hu1 hL hNat hQ hC D hP hk hfind hcut hc he he0 hfr₁ hD₁
+
+omit [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
+/-- **The copy of a round**: from a popped state, `copyToWork` copies the popped block into the
+work matrix, and the popped state survives. -/
+theorem RoundedPopped.writes_copyToWork {Mch : Machine ℝ} {I : Interp O Q ℝ}
+    {tape : Tape ℝ} {μ : Mem ℝ} {n j lo d : ℕ} {a t p st out w r f : ℕ × ℕ}
+    {H₀ M A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {roots : Fin (n + 1) → ℂ} {e thr : ℝ}
+    {ps : List ℝ} {rest done : List (ℕ × ℕ)}
+    (hP : RoundedPopped H₀ e thr ps a t p st out w r f j M lo d rest done A roots μ)
+    (hS : IsScalar Mch I) :
+    Writes .total I tape (copyToWork (Op := O) (Tst := Q)).body (Env.frame [n + 1, lo, d] [a, w])
+      (Store.inBlock w.1 w.2 (2 * (d * d)))
+      (fun μ₁ => RoundedPopped H₀ e thr ps a t p st out w r f j M lo d rest done A roots μ₁ ∧
+        HoldsMatrix w (subBlock A (lo, d)) μ₁.store) μ := by
+  have hG := hP.1
+  have hr := hP.2.2.2.2.2.1.active_block (r := (lo, d)) List.mem_cons_self
+  have hd : d ≤ n + 1 := by have := hr.2.1; omega
+  have hsq := Nat.mul_le_mul hd hd
+  have hAW : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock w.1 w.2 (2 * (d * d))) :=
+    (by simpa using hG.disj 0 5 (by simp) : Fp.Disj (Store.inBlock a.1 a.2
+      (2 * ((n + 1) * (n + 1)))) (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))))).mono
+      le_rfl (by fp_sub)
+  refine (copyToWork_writes (τ := tape) (lo := lo) (d := d) hS (hG.live_of_subset (by simp))
+    hP.2.2.2.2.2.2.1 hr.2.1 (by have := hG.room.2.2.2.2.2.1; omega) hAW).mono le_rfl ?_
+  rintro μ₁ hfr₁ ⟨-, hW₁⟩
+  exact ⟨hP.of_eqOff_work hfr₁ (by fp_sub), hW₁⟩
+
 /-- **Processing a popped range**: the copy of its block, then the leaf routine (order at most
 $k$) or the large branch; the core state of the next round is reached with error $e$. -/
 theorem roundedRange_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
@@ -953,23 +1077,14 @@ theorem roundedRange_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
       (roundedWorklistFp (n + 1) a st out w r f)
       (fun μ' => ∃ M', IsPerturbedUnitarySimilar M M' e ∧
         RoundedCore fails H₀ e a st out f (j + 1) M' μ') μ := by
-  have hG := hP.1
-  have hInv := hP.2.2.2.2.2.1
-  have hr := hInv.active_block (r := (lo, d)) List.mem_cons_self
+  have hr := hP.2.2.2.2.2.1.active_block (r := (lo, d)) List.mem_cons_self
+  have hlAW : μ.Live [a, w] := hP.1.live_of_subset (by simp)
+  unfold roundedProcessRange
   have hd : d ≤ n + 1 := by have := hr.2.1; omega
   have hsq := Nat.mul_le_mul hd hd
-  have hAW : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
-      (Store.inBlock w.1 w.2 (2 * (d * d))) :=
-    (by simpa using hG.disj 0 5 (by simp) : Fp.Disj (Store.inBlock a.1 a.2
-      (2 * ((n + 1) * (n + 1)))) (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))))).mono
-      le_rfl (by fp_sub)
-  have hlAW : μ.Live [a, w] := hG.live_of_subset (by simp)
-  have hcopy := copyToWork_writes (τ := tape) (lo := lo) (d := d) hS hlAW hP.2.2.2.2.2.2.1
-    hr.2.1 (by have := hG.room.2.2.2.2.2.1; omega) hAW
-  unfold roundedProcessRange
-  refine hcopy.frame_seq_le rfl rfl hlAW (by fp_sub [roundedWorklistFp]) ?_
-  rintro μ₁ hfr₁ ⟨-, hW₁⟩
-  have hP₁ := hP.of_eqOff_work hfr₁ (by fp_sub)
+  refine (hP.writes_copyToWork (tape := tape) hS).frame_seq_le rfl rfl hlAW
+    (by fp_sub [roundedWorklistFp]) ?_
+  rintro μ₁ - ⟨hP₁, hW₁⟩
   have hG₁ := hP₁.1
   by_cases hs : d ≤ k
   · refine (writes_ifPos (P := fun μ₂ => ∃ M', IsPerturbedUnitarySimilar M M' e ∧
@@ -991,6 +1106,68 @@ theorem roundedRange_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     rw [if_pos (by omega)]
     exact (roundedLarge_writes hS hM hu hu1 hL hNat hQ hC D hD hP₁ hW₁ (by omega) hfind hcut hc
       (by linarith) (by linarith) hN₀ hj).in_frame rfl rfl hG₁.live
+
+omit [Has CmpTst Q] in
+/-- **The pop of a round**: from a state of the worklist with a positive stack count,
+`rangePop` pops the top range $(lo, d)$ into the scan registers and reaches a popped state. -/
+theorem RoundedWorklistState.writes_rangePop {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
+    (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) (hQ : IsToNat id I)
+    (hNat : IsExactNatLit id Mch (n + 1)) {fails : Prop} {tape : Tape ℝ} {μ : Mem ℝ} {j : ℕ}
+    {a t p st out w r f : ℕ × ℕ} {H₀ M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {e thr : ℝ}
+    {ps : List ℝ} {count : ℕ}
+    (h : RoundedWorklistState fails H₀ e thr ps a t p st out w r f j M μ)
+    (hcount : μ.store.get st.1 st.2 = some (count : ℝ)) (hpos : 0 < count) :
+    Writes .total I tape (rangePop (Op := O) (Tst := Q)).body (Env.frame [n + 1] [st, r])
+      (Store.inBlock st.1 st.2 1 ⊔ Store.inBlock r.1 r.2 2)
+      (fun μ₁ => ∃ (lo d : ℕ) (rest done : List (ℕ × ℕ))
+        (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (roots : Fin (n + 1) → ℂ),
+        RoundedPopped H₀ e thr ps a t p st out w r f j M lo d rest done A roots μ₁ ∧
+          μ₁.store.get r.1 r.2 = some (lo : ℝ) ∧ μ₁.store.get r.1 (r.2 + 1) = some (d : ℝ)) μ := by
+  obtain ⟨hG, ht, hp, hcore⟩ := h
+  rcases hcore with ⟨-, -, hS0⟩ | ⟨hf, hnorm, active, done, A, roots, hInv, hA, hOut, hSt, hj'⟩
+  · have h0 : (count : ℝ) = 0 := Option.some.inj (hcount.symm.trans hS0)
+    exact absurd (by exact_mod_cast h0 : count = 0) (by omega)
+  cases active with
+  | nil =>
+    have hc0 : (count : ℝ) = 0 := Option.some.inj (hcount.symm.trans (by simpa using hSt.1))
+    exact absurd (by exact_mod_cast hc0 : count = 0) (by omega)
+  | cons range rest =>
+    rcases range with ⟨lo, d⟩
+    have hrest : rest.length + 1 ≤ n + 1 := by
+      have hb := hInv.length_le
+      simp only [List.length_append, List.length_cons] at hb
+      omega
+    have htop : StackHolds st (rest.reverse ++ [(lo, d)]) μ.store := by
+      simpa only [List.reverse_cons] using hSt
+    have hRS : Fp.Disj (Store.inBlock r.1 r.2 2) (Store.inBlock st.1 st.2 (1 + 2 * (n + 1))) :=
+      (by simpa using hG.disj 6 3 (by simp) : Fp.Disj (Store.inBlock r.1 r.2 5)
+        (Store.inBlock st.1 st.2 (1 + 2 * (n + 1)))).mono (by fp_sub) le_rfl
+    have hlSR : μ.Live [st, r] := hG.live_of_subset (by simp)
+    refine (rangePop_writes_of_isExactNatLit (τ := tape) hS hL hQ hNat htop
+      (by simpa using hrest) (by simpa only [Nat.add_assoc] using hG.room.2.2.2.1)
+      (by have := hG.room.2.2.2.2.2.2.1; omega) hlSR hRS).mono le_rfl ?_
+    rintro μ₁ hfr₁ ⟨-, hSt₁, hRange⟩
+    have hpop : Store.inBlock st.1 st.2 1 ⊔ Store.inBlock r.1 r.2 2 ≤
+        roundedWorklistFp (n + 1) a st out w r f := by fp_sub [roundedWorklistFp]
+    have hpar := hG.disj_params.mono hpop le_rfl
+    have hfin : finishedFp out done ≤ Store.inBlock out.1 out.2 (2 * (n + 1)) :=
+      finishedFp_le (fun q hq => (hInv.partition.2.1 q (List.mem_append_right _ hq)).2)
+    have hpd {X : Fp} (h1 : Fp.Disj (Store.inBlock st.1 st.2 (1 + 2 * (n + 1))) X)
+        (h2 : Fp.Disj (Store.inBlock r.1 r.2 5) X) :
+        Fp.Disj (Store.inBlock st.1 st.2 1 ⊔ Store.inBlock r.1 r.2 2) X :=
+      Fp.disj_sup_left.mpr ⟨h1.mono (by fp_sub) le_rfl, h2.mono (by fp_sub) le_rfl⟩
+    refine ⟨lo, d, rest, done, A, roots, ⟨hG.of_eqOff hfr₁,
+      hfr₁.keep (Store.readsOnly_get _ _ _) (hpar.mono le_rfl le_sup_left) ht,
+      hfr₁.keep (Store.readsOnly_readBlock _ _ _ _) (hpar.mono le_rfl le_sup_right) hp,
+      hfr₁.keep (Store.readsOnly_get _ _ _) (hpd (by simpa using hG.disj 3 7 (by simp))
+        (by simpa using hG.disj 6 7 (by simp))) hf,
+      hnorm, hInv, hA.of_eqOff hfr₁ (hpd (by simpa using hG.disj 3 0 (by simp))
+        (by simpa using hG.disj 6 0 (by simp))),
+      hOut.of_eqOff hfr₁ ((hpd (by simpa using hG.disj 3 4 (by simp))
+        (by simpa using hG.disj 6 4 (by simp))).mono le_rfl hfin), hSt₁,
+      by simp only [List.length_cons] at hj'; omega⟩, ?_, ?_⟩
+    · simpa [vec] using Store.get_of_readBlock hRange (j := 0) (by omega) (0 : ℝ)
+    · simpa [vec] using Store.get_of_readBlock hRange (j := 1) (by omega) (0 : ℝ)
 
 /-- **One round of the rounded worklist is a backward step** (the per-round half of
 [BanksGarzaVargasSrivastava2022, Theorem 6.3], backward error): on a machine with the standard model
@@ -1021,65 +1198,22 @@ theorem roundedWorklistRound_backwardStep {Mch : Machine ℝ} {I : Interp O Q �
       (fun M μ => RoundedWorklistState fails H₀ e thr ps a t p st out w r f j M μ ∧
         ∃ count : ℕ, μ.store.get st.1 st.2 = some (count : ℝ) ∧ 0 < count)
       (RoundedWorklistState fails H₀ e thr ps a t p st out w r f (j + 1)) e := by
-  rintro M μ ⟨⟨hG, ht, hp, hcore⟩, count, hcount, hpos⟩
+  rintro M μ ⟨hst, count, hcount, hpos⟩
+  obtain ⟨hG, ht, hp, -⟩ := id hst
   refine Writes.mono (P := fun μ' => ∃ M', IsPerturbedUnitarySimilar M M' e ∧
     RoundedCore fails H₀ e a st out f (j + 1) M' μ') ?_ le_rfl
     (fun μ' hfr ⟨M', hMM', hcore'⟩ =>
       ⟨M', hMM', RoundedWorklistState.of_core hG ht hp hfr le_rfl hcore'⟩)
-  rcases hcore with ⟨-, -, hS0⟩ | ⟨hf, hnorm, active, done, A, roots, hInv, hA, hOut, hSt, hj'⟩
-  · have h0 : (count : ℝ) = 0 := Option.some.inj (hcount.symm.trans hS0)
-    exact absurd (by exact_mod_cast h0 : count = 0) (by omega)
-  cases active with
-  | nil =>
-    have hc0 : st.1 = st.1 ∧ (count : ℝ) = 0 := ⟨rfl, Option.some.inj (hcount.symm.trans
-      (by simpa using hSt.1))⟩
-    exact absurd (by exact_mod_cast hc0.2 : count = 0) (by omega)
-  | cons range rest =>
-    rcases range with ⟨lo, d⟩
-    have hbounds := hInv.active_block (r := (lo, d)) List.mem_cons_self
-    have hrest : rest.length + 1 ≤ n + 1 := by
-      have hb := hInv.length_le
-      simp only [List.length_append, List.length_cons] at hb
-      omega
-    have htop : StackHolds st (rest.reverse ++ [(lo, d)]) μ.store := by
-      simpa only [List.reverse_cons] using hSt
-    have hRS : Fp.Disj (Store.inBlock r.1 r.2 2) (Store.inBlock st.1 st.2 (1 + 2 * (n + 1))) :=
-      (by simpa using hG.disj 6 3 (by simp) : Fp.Disj (Store.inBlock r.1 r.2 5)
-        (Store.inBlock st.1 st.2 (1 + 2 * (n + 1)))).mono (by fp_sub) le_rfl
-    have hlSR : μ.Live [st, r] := hG.live_of_subset (by simp)
-    have hw := rangePop_writes_of_isExactNatLit (τ := tape) hS hL hQ hNat htop
-      (by simpa using hrest) (by simpa only [Nat.add_assoc] using hG.room.2.2.2.1)
-      (by have := hG.room.2.2.2.2.2.2.1; omega) hlSR hRS
-    unfold roundedWorklistRound
-    refine hw.frame_seq_le rfl rfl hlSR (by fp_sub [roundedWorklistFp]) ?_
-    rintro μ₁ hfr₁ ⟨-, hSt₁, hRange⟩
-    have hpop : Store.inBlock st.1 st.2 1 ⊔ Store.inBlock r.1 r.2 2 ≤
-        roundedWorklistFp (n + 1) a st out w r f := by fp_sub [roundedWorklistFp]
-    have hpar := hG.disj_params.mono hpop le_rfl
-    have hfin : finishedFp out done ≤ Store.inBlock out.1 out.2 (2 * (n + 1)) :=
-      finishedFp_le (fun q hq => (hInv.partition.2.1 q (List.mem_append_right _ hq)).2)
-    have hpd {X : Fp} (h1 : Fp.Disj (Store.inBlock st.1 st.2 (1 + 2 * (n + 1))) X)
-        (h2 : Fp.Disj (Store.inBlock r.1 r.2 5) X) :
-        Fp.Disj (Store.inBlock st.1 st.2 1 ⊔ Store.inBlock r.1 r.2 2) X :=
-      Fp.disj_sup_left.mpr ⟨h1.mono (by fp_sub) le_rfl, h2.mono (by fp_sub) le_rfl⟩
-    have hP₁ : RoundedPopped H₀ e thr ps a t p st out w r f j M lo d rest done A roots μ₁ :=
-      ⟨hG.of_eqOff hfr₁, hfr₁.keep (Store.readsOnly_get _ _ _) (hpar.mono le_rfl le_sup_left) ht,
-        hfr₁.keep (Store.readsOnly_readBlock _ _ _ _) (hpar.mono le_rfl le_sup_right) hp,
-        hfr₁.keep (Store.readsOnly_get _ _ _) (hpd (by simpa using hG.disj 3 7 (by simp))
-          (by simpa using hG.disj 6 7 (by simp))) hf,
-        hnorm, hInv, hA.of_eqOff hfr₁ (hpd (by simpa using hG.disj 3 0 (by simp))
-          (by simpa using hG.disj 6 0 (by simp))),
-        hOut.of_eqOff hfr₁ ((hpd (by simpa using hG.disj 3 4 (by simp))
-          (by simpa using hG.disj 6 4 (by simp))).mono le_rfl hfin), hSt₁,
-        by simp only [List.length_cons] at hj'; omega⟩
-    have hLo : μ₁.store.get r.1 r.2 = some (lo : ℝ) := by
-      simpa [vec] using Store.get_of_readBlock hRange (j := 0) (by omega) (0 : ℝ)
-    have hSize : μ₁.store.get r.1 (r.2 + 1) = some (d : ℝ) := by
-      simpa [vec] using Store.get_of_readBlock hRange (j := 1) (by omega) (0 : ℝ)
-    refine writes_bindIdx_of_decode_nat hQ rfl rfl hLo rfl (by have := hbounds.2.1; omega) ?_
-    refine writes_bindIdx_of_decode_nat hQ rfl rfl hSize rfl (by have := hbounds.2.1; omega) ?_
-    exact (roundedRange_writes hS hM hu hu1 hL hNat hQ hC D hD L hLeaf hP₁ hfind hcut hc hβ hε0
-      he hN₀ hj).in_frame rfl rfl hP₁.1.live
+  have hlSR : μ.Live [st, r] := hG.live_of_subset (by simp)
+  unfold roundedWorklistRound
+  refine (hst.writes_rangePop hS hL hQ hNat hcount hpos).frame_seq_le rfl rfl hlSR
+    (by fp_sub [roundedWorklistFp]) ?_
+  rintro μ₁ - ⟨lo, d, rest, done, A, roots, hP₁, hLo, hSize⟩
+  have hbounds := hP₁.2.2.2.2.2.1.active_block (r := (lo, d)) List.mem_cons_self
+  refine writes_bindIdx_of_decode_nat hQ rfl rfl hLo rfl (by have := hbounds.2.1; omega) ?_
+  refine writes_bindIdx_of_decode_nat hQ rfl rfl hSize rfl (by have := hbounds.2.1; omega) ?_
+  exact (roundedRange_writes hS hM hu hu1 hL hNat hQ hC D hD L hLeaf hP₁ hfind hcut hc hβ hε0
+    he hN₀ hj).in_frame rfl rfl hP₁.1.live
 
 /-- **The capped loop of the rounded worklist**, from the initialized state: the rounds compose
 by `NLAlib.Ops.BackwardStep.whileFuel` (C4a each), and both exits find an empty stack and skip;

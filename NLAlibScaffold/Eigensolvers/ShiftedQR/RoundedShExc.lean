@@ -690,3 +690,125 @@ theorem shExcShifts_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hI
 end Random
 
 end NLAlib.ShiftedQR
+
+namespace NLAlib.ShiftedQR
+
+open Ops
+
+variable {n : ℕ}
+
+/-- **The outcome of `Sh`**, with the decoupling rate $\gamma$, the scan threshold $t$ and the
+backward error $\varepsilon$: the flag is $1$ and `a` holds an upper Hessenberg perturbed unitary
+similarity $\widehat{\mathbf{H}}$ of $\mathbf{H}$ with error $\varepsilon$ that is decoupled at
+the bottom (one of its last $k$ subdiagonal entries passes the scan) or has
+$\psi_k(\widehat{\mathbf{H}}) \le 1.002(1 - \gamma)\psi_k(\mathbf{H})$. -/
+def ShOutcome (u : ℝ) (k : ℕ) (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (γ tv ε : ℝ)
+    (a f : ℕ × ℕ) (m' : Mem ℝ) : Prop :=
+  m'.store.get f.1 f.2 = some 1 ∧ ∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+    IsPerturbedUnitarySimilar H H' ε ∧ IsUpperHessenberg H' ∧ HoldsMatrix a H' m'.store ∧
+    ((∃ i : Fin n, n ≤ (i : ℕ) + k ∧ (1 - u) ^ 2 * ‖H' i.succ i.castSucc‖ ^ 2 ≤ tv) ∨
+      hessenbergPotential k H' ≤ 1.002 * (1 - γ) * hessenbergPotential k H)
+
+/-- An accepted trial is the outcome of `Sh`: a backward-stable step with the shift $s$ repeated,
+$\lvert s\rvert \le C\|\mathbf{H}\|_2$, accepted against the potential threshold
+$\mathrm{fl}(1.0015(1 - \gamma)p_H)$, $p_H$ within $20\boldsymbol{u}$, relatively, of
+$\psi_k(\mathbf{H})$, $\gamma \le 1$, $2 \cdot 10^5\boldsymbol{u} \le 1$, with the error
+$(1 + C)\|\mathbf{H}\|_2((1 + x)^k - 1)$. -/
+theorem shOutcome_of_accepted {M : Machine ℝ} {u x C γ tv pH : ℝ} (hM : StdModel u id M)
+    (hu : 200000 * u ≤ 1) (hx : 0 ≤ x) (hC : 0 ≤ C) (hγ1 : γ ≤ 1) {k : ℕ}
+    {H H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {s : ℂ}
+    {Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)} {a f : ℕ × ℕ} {m' : Mem ℝ}
+    (hpH : |pH - hessenbergPotential k H| ≤ 20 * u * hessenbergPotential k H)
+    (hs : ‖s‖ ≤ C * specNorm H) (hch : IsStableQRChain x H (List.replicate k s) H' Rs)
+    (hH' : IsUpperHessenberg H') (hA : HoldsMatrix a H' m'.store)
+    (hf : m'.store.get f.1 f.2 = some 1)
+    (hacc : ShAccepted u k tv (M.mul (1.0015 * (1 - γ)) pH) H') :
+    ShOutcome u k H γ tv ((1 + C) * specNorm H * ((1 + x) ^ k - 1)) a f m' := by
+  have hsim := hch.isPerturbedUnitarySimilar hx hC (fun t ht => by
+    rw [List.eq_of_mem_replicate ht]; exact hs)
+  rw [List.length_replicate] at hsim
+  refine ⟨hf, H', hsim, hH', hA, ?_⟩
+  rcases hacc with h | ⟨p, hp, hlt⟩
+  · exact Or.inl h
+  · exact Or.inr (potential_contract_of_lt hM.roundoff_nonneg hu hγ1
+      (hessenbergPotential_nonneg k H') (hessenbergPotential_nonneg k H) hp hpH (hM.mul _ _) hlt)
+
+end NLAlib.ShiftedQR
+
+namespace NLAlib.ShiftedQR
+
+open Ops
+
+variable {n : ℕ}
+
+section Trials
+
+variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q]
+
+omit [Has IdxTst Q] in
+/-- **The trials of the exceptional branch**: on a scalar machine with the standard model at
+$(n + 1)\boldsymbol{u} \le 1/2500$ and $10^5k\boldsymbol{u} \le 1$, exact comparisons, index
+literals and exact natural literals up to $n + 1$, for $2 \le k = 2^q \le n$, $\mathbf{H}$ upper
+Hessenberg with $0 < \omega \le \psi_k(\mathbf{H})$, $\gamma < 1$, the threshold word
+$t \ge (1 + \boldsymbol{u})^2\omega^2$, $c_p = 1.0015(1 - \gamma)$ and the forward-error conditions
+of `NLAlib.IsStableQRChain.exists_norm_subdiag_lt_or_potential_pow_mul_le` at the distance $d$,
+from the state `NLAlib.ShiftedQR.ShExcMid2` the trials end in `NLAlib.ShiftedQR.ShOutcome`
+with the backward error $(1 + C)\|\mathbf{H}\|_2((1 + x)^k - 1)$, $x = 300(n+1)^2\boldsymbol{u}$. -/
+theorem shExcTrials_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
+    (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I)
+    (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {L k q : ℕ}
+    (hk2 : 2 ≤ k) (hkn : k ≤ n) (hkq : k = 2 ^ q) (hku : 100000 * k * u ≤ 1) {ε : ℝ}
+    {a s wg wr ww wp g thr f : ℕ × ℕ} (hv : ShViews L n k ε a s wg wr ww wp g thr f)
+    {B S ω γ d C cg cr cw cp tv : ℝ} {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {e : Fin (n + 1) → ℂ} {ss : List ℂ} (hH : IsUpperHessenberg H) (hV : IsUnit V)
+    (hHV : H * V = V * Matrix.diagonal e) (hκ : pseudoConditionNumber V ≤ B)
+    (hSH : specNorm H ≤ S) (hnu : (n + 1 : ℝ) * u ≤ 1 / 2500) (hC0 : 0 ≤ C) (hd : 0 < d)
+    (hω : 0 < ω) (hψ : ω ≤ hessenbergPotential k H) (hγ1 : γ < 1)
+    (hxu : 300 * (n + 1) ^ 2 * u ≤ (16 * B)⁻¹ * (d / ((2 + 2 * C) * S)) ^ k)
+    (hbound : (66 + 2 * C) * B * S * ((2 + 2 * C) * S / d) ^ k * √(n + 1) *
+      (300 * (n + 1) ^ 2 * u) ≤ 0.001 * ω)
+    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) (hcp : cp = 1.0015 * (1 - γ))
+    (hm : ShExcMid2 M u L k ε H e ss γ cg cr cw cp tv d C a s wg wr ww wp g thr f m) :
+    Writes .total I τ (shTrials (O := O) (Q := Q)).body
+      (Env.frame [n + 1, k, q, (excNet ε).length] [a, (L + 10, 0), thr, (L + 2, 0), (L + 5, 0),
+        (L + 6, 0), (L + 7, 0), (L + 8, 0), (L + 9, 0), a, (L + 11, 0), f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 11) 0 1 ⊔
+        Store.inBlock f.1 f.2 1 ⊔ (Store.inBlock (L + 5) 0 (2 * ((n + 1) * (n + 1))) ⊔
+          Store.inBlock (L + 6) 0 (2 * k) ⊔ Store.inBlock (L + 7) 0 (2 * k) ⊔
+          Store.inBlock (L + 8) 0 5 ⊔ Store.inBlock (L + 9) 0 1))
+      (ShOutcome u k H γ tv ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a f)
+      m := by
+  obtain ⟨⟨ha, hs, hwg, hwr, hww, hwp, hg, hthl, hfl⟩, haf, hio⟩ := hv
+  obtain ⟨⟨hA, -, -, -, -, -, -, hthr, -, -, -, -, h2, -, -, h5, h6, h7, h8, h9, -, -⟩,
+    ⟨zs, hzs, ⟨j, hj⟩, hdist, hnear⟩, ⟨p, hp, hPt⟩, hGw, hF⟩ := hm
+  subst hcp
+  have hu0 := hM.roundoff_nonneg
+  have hk0 : 0 < k := by omega
+  have hk1 : (2 : ℝ) ≤ k := by exact_mod_cast hk2
+  have hψ0 : 0 < hessenbergPotential k H := lt_of_lt_of_le hω hψ
+  have hH0 : H ≠ 0 := fun h0 => by
+    have h1 : specNorm H = 0 := by rw [h0, specNorm_zero]
+    linarith [hessenbergPotential_le_specNorm hk0 hkn H]
+  have hthrA : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+      Store.inBlock f.1 f.2 1) (Store.inBlock thr.1 thr.2 1) := hio.mono le_rfl (by fp_sub)
+  refine (shTrials_writes (τ := τ) (s := (L + 10, 0)) (pt := (L + 2, 0)) (t := (L + 5, 0))
+    (sr := (L + 6, 0)) (ds := (L + 7, 0)) (rg := (L + 8, 0)) (p2 := (L + 9, 0))
+    (g := (L + 11, 0)) hS hM hu1 hL hNat hC hk0 hkn hkq (by nlinarith) hH hnu hA
+    (fun j => by simpa using hzs j) hthr hPt hGw hF (by simp [h5]) (by simp [h6])
+    (by simp [h7]) (by simp [h8]) (by simp [h9]) (by disjoint) (by disjoint) (by disjoint)
+    (by disjoint) (by disjoint)
+    (Fp.disj_sup_left.mpr ⟨by disjoint, Fp.disj_sup_right.mpr ⟨by disjoint, haf.symm⟩⟩)
+    (by disjoint)
+    (Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨Fp.disj_sup_right.mpr ⟨by disjoint,
+      hthrA.mono le_sup_left le_rfl⟩, by disjoint⟩, Fp.disj_sup_right.mpr ⟨by disjoint,
+        hthrA.mono le_sup_right le_rfl⟩⟩)
+    (by disjoint) (by disjoint) j
+    (shTrial_good hM (by nlinarith) hC0 hd hω hk0 hkn hH0 hH hV hHV hκ hSH (hnear j)
+      (fun i => hdist j i) hxu hbound hγ1 hψ0 hp hj) hthrω).mono le_rfl ?_
+  rintro m' - ⟨hf1, j', H', Rs, hch, hH', hA', hacc⟩
+  exact shOutcome_of_accepted hM (by nlinarith) (by positivity) hC0 hγ1.le hp (hnear j') hch hH'
+    hA' hf1 hacc
+
+end Trials
+
+end NLAlib.ShiftedQR

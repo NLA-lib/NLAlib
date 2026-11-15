@@ -729,6 +729,54 @@ theorem shDecide_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     rw [Interp.testAt_eq rfl rfl, hC.test_lt htc hthr] at he
     simpa using he
 
+omit [Has DiskSampleOp O] in
+/-- **The start of `Sh`**: from the context `NLAlib.ShiftedQR.ShCtx`, the rounded potential,
+`Find` and the computation of the `comptau` test (`NLAlib.ShiftedQR.shPotential_writes`,
+`NLAlib.ShiftedQR.shFind_writes`, `NLAlib.ShiftedQR.shTest_writes`) reach
+`NLAlib.ShiftedQR.ShState3` with $\alpha = (1.01B)^{4m/2^m}$. -/
+theorem shPrefix_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
+    (hM : StdModel u id M) (hL : IsIndexLit M I) (hC : IsCmp id I) (hQ : IsToNat id I)
+    (hNat : IsExactNatLit id M (n + 1)) {τ : Tape ℝ} {m : Mem ℝ} {L k q : ℕ} (hkq : k = 2 ^ q)
+    (hk : 2 ≤ k) (hkn : k ≤ n) {ε : ℝ} {a s wg wr ww wp g thr f : ℕ × ℕ}
+    (hv : ShViews L n k ε a s wg wr ww wp g thr f) {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {e : Fin (n + 1) → ℂ} {ss : List ℂ} {B C d α cg cr cw cp tv : ℝ} (hH : IsUpperHessenberg H)
+    (hH0 : H ≠ 0) (hV : IsUnit V) (hHV : H * V = V * Matrix.diagonal e)
+    (hκ : pseudoConditionNumber V ≤ B) (hC0 : 0 ≤ C) (hd : 0 < d) (hlen : ss.length = k)
+    (hs : ∀ s ∈ ss, ‖s‖ ≤ C * specNorm H) (hdist : ∀ s ∈ ss, ∀ i, d ≤ ‖e i - s‖)
+    (hα : α = (1.01 * B) ^ ((4 * q : ℝ) / 2 ^ q))
+    (hnu : (n + 1 : ℝ) * u ≤ 1 / 2500) (hku : 100000 * k * u ≤ 1)
+    (hxuT : 300 * (n + 1) ^ 2 * u ≤ (8004 * B)⁻¹ * (d / ((2 + 2 * C) * specNorm H)) ^ k)
+    (hxuF : 300 * (n + 1) ^ 2 * u ≤
+      (8004 * B)⁻¹ * (d / ((2 + 2 * C) * specNorm H)) ^ (k / 2))
+    (hm : ShCtx L k ε H ss cg cr cw cp tv a s wg wr ww wp g thr f m) :
+    Writes .total I τ (shPrefix (O := O) (Q := Q)).body
+      (Env.frame [n + 1, q, k] [a, s, wg, (L, 0), (L + 1, 0), (L + 3, 0), (L + 4, 0), (L + 5, 0),
+        (L + 6, 0)])
+      (Store.inBlock (L + 1) 0 1 ⊔ Store.inBlock L 0 2 ⊔
+        (Store.inBlock (L + 5) 0 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 6) 0 (2 * k) ⊔
+          Store.inBlock (L + 3) 0 1 ⊔ Store.inBlock (L + 4) 0 1))
+      (ShState3 M u L k ε H V e ss α cg cr cw cp tv a s wg wr ww wp g thr f) m := by
+  have hv' := hv
+  obtain ⟨⟨ha, hs', hwg, hwr, hww, hwp, hg, hthl, hfl⟩, -, -⟩ := hv'
+  have hk2 : (2 : ℝ) ≤ k := by exact_mod_cast hk
+  have hu0 := hM.roundoff_nonneg
+  have hlen' := hm.2.2.2.2.2.2.2.2.2.1
+  unfold shPrefix
+  refine (shPotential_writes (τ := τ) hS hM hkq hkn (by nlinarith) hv hm).frame_seq_le rfl rfl
+    (by simp [Mem.Live, hlen']; omega) (by fp_sub) ?_
+  intro m₁ hfr₁ hm₁
+  have hl₁ : m₁.store.length = L + 12 := by rw [hfr₁.length_eq, hlen']
+  have hk2' : ((k / 2 : ℕ) : ℝ) ≤ k := by exact_mod_cast Nat.div_le_self k 2
+  refine (shFind_writes (τ := τ) hS hM hL hC hQ hNat hkq hkn hv hH hH0 hV hHV hκ hC0 hd hlen hs
+    hdist hnu (by nlinarith) hxuF hm₁).frame_seq_le rfl rfl
+    (by simp [Mem.Live, hl₁]; omega) (by fp_sub) ?_
+  intro m₂ hfr₂ hm₂
+  have hl₂ : m₂.store.length = L + 12 := by rw [hfr₂.length_eq, hl₁]
+  rw [← hα] at hm₂
+  exact ((shTest_writes (τ := τ) hS hM hC (by omega) hkn hv hH hH0 hV hHV hκ hC0 hd hs hdist hnu
+    (by nlinarith) hxuT hm₂).in_frame rfl rfl (by simp [Mem.Live, hl₂]; omega)).mono
+    (by fp_sub) fun _ _ h => h
+
 end Assembly
 
 end NLAlib.ShiftedQR

@@ -6,6 +6,7 @@ public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedHeadline
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedKernels
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedModuli
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedRegularize
+public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedRegularizeTrial
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedRitz
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedRowPoly
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedSolve

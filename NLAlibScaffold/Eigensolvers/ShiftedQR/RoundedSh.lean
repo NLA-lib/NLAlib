@@ -593,3 +593,87 @@ theorem ShState3.shExcPre {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M) {m 
 end Steps
 
 end NLAlib.ShiftedQR
+
+namespace NLAlib.ShiftedQR
+
+open Ops MeasureTheory
+
+variable {n : ℕ}
+
+section Assembly
+
+/-- The forms of the precision condition $x \le (8004B)^{-1}(d/((2 + 2C)\Sigma))^k$ that the
+steps of `Sh` use: with $\|\mathbf{H}\|_2$ for $\Sigma \ge \|\mathbf{H}\|_2 > 0$, with the
+exponent $k/2$ (as $d \le (2 + 2C)\|\mathbf{H}\|_2$), and with $16$ for $8004$. -/
+theorem shPrecision_forms {x B C d S : ℝ} {k : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    (hHp : 0 < specNorm H) (hSH : specNorm H ≤ S) (hC0 : 0 ≤ C) (hd : 0 < d) (hB : 0 < B)
+    (hdH : d ≤ (2 + 2 * C) * specNorm H)
+    (hxu : x ≤ (8004 * B)⁻¹ * (d / ((2 + 2 * C) * S)) ^ k) :
+    x ≤ (8004 * B)⁻¹ * (d / ((2 + 2 * C) * specNorm H)) ^ k ∧
+      x ≤ (8004 * B)⁻¹ * (d / ((2 + 2 * C) * specNorm H)) ^ (k / 2) ∧
+      x ≤ (16 * B)⁻¹ * (d / ((2 + 2 * C) * S)) ^ k := by
+  have hS0 : 0 < S := hHp.trans_le hSH
+  have hρ0 : 0 ≤ d / ((2 + 2 * C) * S) := by positivity
+  have hρ : d / ((2 + 2 * C) * S) ≤ d / ((2 + 2 * C) * specNorm H) := by gcongr
+  have hρ1 : d / ((2 + 2 * C) * specNorm H) ≤ 1 := (div_le_one (by positivity)).mpr hdH
+  have h1 : x ≤ (8004 * B)⁻¹ * (d / ((2 + 2 * C) * specNorm H)) ^ k :=
+    hxu.trans (by gcongr)
+  refine ⟨h1, h1.trans ?_, hxu.trans ?_⟩
+  · exact mul_le_mul_of_nonneg_left (pow_le_pow_of_le_one (by positivity) hρ1
+      (Nat.div_le_self k 2)) (by positivity)
+  · exact mul_le_mul_of_nonneg_right (inv_anti₀ (by positivity) (by linarith)) (by positivity)
+
+
+variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q]
+  [Has IdxTst Q]
+
+/-- **`Sh` with scratch as a probabilistic block**: `NLAlib.ShiftedQR.shStepWithScratch` from the
+context `NLAlib.ShiftedQR.ShCtx` (with the words $(1 - \gamma)^k$,
+$2^{1/k}\theta\alpha B^{1/k}$, $\varepsilon/2$, $1.0015(1 - \gamma)$) ends in
+`NLAlib.ShiftedQR.ShOutcome` except with probability at most $\varphi$, under the hypotheses of
+`NLAlib.ShiftedQR.shStep_pwrites`. -/
+theorem shStepWithScratch_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I)
+    (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I) (hQ : IsToNat id I)
+    {law : ℕ → Measure ℝ} {s₀ : ℕ} (hD : IsPolarDiskSampler s₀ I)
+    (hU : law s₀ = volume.restrict (Set.Icc 0 1)) {L k q : ℕ} (hkq : k = 2 ^ q) (hk : 2 ≤ k)
+    (hkn : k ≤ n) {ε : ℝ} {a s wg wr ww wp g thr f : ℕ × ℕ}
+    (hv : ShViews L n k ε a s wg wr ww wp g thr f)
+    {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {e : Fin (n + 1) → ℂ} {ss : List ℂ}
+    {B S ω θ α γ φ C d tv : ℝ} (hH : IsUpperHessenberg H) (hV : IsUnit V)
+    (hHV : H * V = V * Matrix.diagonal e) (hκ : pseudoConditionNumber V ≤ B)
+    (hSH : specNorm H ≤ S) (hω : 0 < ω) (hψ : ω ≤ hessenbergPotential k H)
+    (hlen : ss.length = k) (hopt : IsOptimalRitzValues θ H ss) (hθ : 1 ≤ θ) (hd' : 0 < d)
+    (hdist : ∀ s ∈ ss, ∀ i, d ≤ ‖e i - s‖) (hsH : ∀ s ∈ ss, ‖s‖ ≤ 1.1 * specNorm H)
+    (hα : α = (1.01 * B) ^ ((4 * q : ℝ) / 2 ^ q)) (hγ : 0 < γ) (hγ1 : γ < 1)
+    (hε : ε = (0.998 * (1 - γ) * (1 - γ) / ((13 * B ^ 4) ^ ((k : ℝ)⁻¹) * α ^ 2 * θ ^ 2)) ^
+      ((k : ℝ) / (k - 1))) (hε2 : ε ≤ 1 / 2) (hφ : 0 < φ) (hφ1 : φ ≤ 1 / 5)
+    (hd : d ≤ ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) *
+      hessenbergPotential k H) * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 4)
+    (hC1 : 1.1 + 2.1 * ((2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹)) ≤ C)
+    (hnu : (n + 1 : ℝ) * u ≤ 1 / 2500) (hku : 100000 * k * u ≤ 1)
+    (hxu : 300 * (n + 1) ^ 2 * u ≤ (8004 * B)⁻¹ * (d / ((2 + 2 * C) * S)) ^ k)
+    (hbound : (66 + 2 * C) * B * S * ((2 + 2 * C) * S / d) ^ k * √(n + 1) *
+      (300 * (n + 1) ^ 2 * u) ≤ 0.001 * ω)
+    (hexc1 : 6 * u * (1.1 * S + 3 * ((2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) *
+      hessenbergPotential k H)) ≤ 0.005 * ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α *
+        B ^ ((k : ℝ)⁻¹) * hessenbergPotential k H))
+    (hexc2 : 6 * u * (1.1 * S + 3 * ((2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) *
+      hessenbergPotential k H)) ≤ ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α *
+        B ^ ((k : ℝ)⁻¹) * hessenbergPotential k H) * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 8)
+    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) :
+    PWrites law I (shStepWithScratch (O := O) (Q := Q)).body
+      (Env.frame [n + 1, q, k, (excNet ε).length] [a, s, wg, wr, ww, wp, g, thr, (L, 0),
+        (L + 1, 0), (L + 2, 0), (L + 3, 0), (L + 4, 0), (L + 5, 0), (L + 6, 0), (L + 7, 0),
+        (L + 8, 0), (L + 9, 0), (L + 10, 0), (L + 11, 0), a, f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔ Fp.above L)
+      (ShCtx L k ε H ss ((1 - γ) ^ k) ((2 : ℝ) ^ ((k : ℝ)⁻¹) * (θ * α * B ^ ((k : ℝ)⁻¹)))
+        (ε / 2) (1.0015 * (1 - γ)) tv a s wg wr ww wp g thr f)
+      (ShOutcome u k H γ tv ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a f)
+      φ := by
+  sorry
+
+end Assembly
+
+end NLAlib.ShiftedQR

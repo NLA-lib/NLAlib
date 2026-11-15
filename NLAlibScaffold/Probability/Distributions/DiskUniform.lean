@@ -5,8 +5,10 @@ Authors: NLAlib contributors
 -/
 module
 
+public import Mathlib.Analysis.SpecialFunctions.PolarCoord
 public import Mathlib.MeasureTheory.Constructions.Pi
 public import Mathlib.MeasureTheory.Measure.Lebesgue.Complex
+public import Mathlib.MeasureTheory.Measure.Lebesgue.VolumeOfBalls
 public import Mathlib.Probability.ConditionalProbability
 
 /-!
@@ -311,12 +313,175 @@ $c + R\sqrt{x_0}\,e^{2\pi i x_1}$ of the closed disk $\mathbb{D}(c, R)$. -/
 noncomputable def polarDisk (c : ℂ) (R : ℝ) (x : Fin 2 → ℝ) : ℂ :=
   c + ((R * Real.sqrt (x 0) : ℝ) : ℂ) * Complex.exp (((2 * Real.pi * x 1 : ℝ) : ℂ) * Complex.I)
 
+section PolarSampler
+
+open Set Real
+
+/-- The polar coordinates $(R\sqrt{x_0}, 2\pi x_1 - \pi)$ of a point of the unit square. -/
+private noncomputable def squarePolar (R : ℝ) (x : ℝ × ℝ) : ℝ × ℝ := (R * √x.1, 2 * π * x.2 - π)
+
+/-- The derivative of `squarePolar`, a diagonal matrix. -/
+private noncomputable def squarePolarDeriv (R : ℝ) (x : ℝ × ℝ) : ℝ × ℝ →L[ℝ] ℝ × ℝ :=
+  (Matrix.toLin (.finTwoProd ℝ) (.finTwoProd ℝ)
+    !![R * (1 / (2 * √x.1)), 0; 0, 2 * π]).toContinuousLinearMap
+
+/-- `squarePolar` has derivative `squarePolarDeriv` off $x_0 = 0$. -/
+private theorem hasFDerivAt_squarePolar (R : ℝ) {x : ℝ × ℝ} (hx : x.1 ≠ 0) :
+    HasFDerivAt (squarePolar R) (squarePolarDeriv R x) x := by
+  unfold squarePolarDeriv
+  rw [Matrix.toLin_finTwoProd_toContinuousLinearMap]
+  convert! HasFDerivAt.prodMk (𝕜 := ℝ)
+    (((Real.hasDerivAt_sqrt hx).const_mul R).comp_hasFDerivAt x hasFDerivAt_fst)
+    ((hasFDerivAt_snd.const_mul (2 * π)).sub_const π) using 2 <;> simp
+
+/-- The Jacobian of `squarePolar`. -/
+private theorem det_squarePolarDeriv (R : ℝ) (x : ℝ × ℝ) :
+    (squarePolarDeriv R x).det = R * (1 / (2 * √x.1)) * (2 * π) := by
+  simp [squarePolarDeriv, LinearMap.det_toContinuousLinearMap, LinearMap.det_toLin,
+    Matrix.det_fin_two_of]
+
+/-- `squarePolar` maps the open unit square onto $(0, R) \times (-\pi, \pi)$. -/
+private theorem image_squarePolar {R : ℝ} (hR : 0 < R) :
+    squarePolar R '' (Ioo 0 1 ×ˢ Ioo 0 1) = Ioo 0 R ×ˢ Ioo (-π) π := by
+  ext ⟨r, θ⟩
+  simp only [mem_image, mem_prod, mem_Ioo, Prod.exists, squarePolar, Prod.mk.injEq]
+  constructor
+  · rintro ⟨a, b, ⟨⟨ha0, ha1⟩, hb0, hb1⟩, rfl, rfl⟩
+    have hs0 : 0 < √a := Real.sqrt_pos.mpr ha0
+    have hs1 : √a < 1 := (Real.sqrt_lt' one_pos).mpr (by simpa using ha1)
+    refine ⟨⟨by positivity, by nlinarith⟩, by nlinarith [pi_pos], by nlinarith [pi_pos]⟩
+  · rintro ⟨⟨hr0, hrR⟩, hθ0, hθ1⟩
+    refine ⟨(r / R) ^ 2, (θ + π) / (2 * π), ⟨⟨by positivity, ?_⟩, ?_, ?_⟩, ?_, ?_⟩
+    · rw [div_pow, div_lt_one (by positivity)]; nlinarith
+    · have := pi_pos; apply div_pos <;> linarith
+    · have := pi_pos; rw [div_lt_one (by positivity)]; linarith
+    · rw [Real.sqrt_sq (by positivity)]; field_simp
+    · have := pi_pos; field_simp; ring
+
+/-- `squarePolar` is injective on the open unit square. -/
+private theorem injOn_squarePolar {R : ℝ} (hR : 0 < R) :
+    InjOn (squarePolar R) (Ioo 0 1 ×ˢ Ioo 0 1) := by
+  rintro ⟨a, b⟩ ⟨ha, -⟩ ⟨a', b'⟩ ⟨ha', -⟩ h
+  simp only [squarePolar, Prod.mk.injEq] at h
+  obtain ⟨h1, h2⟩ := h
+  have hs : √a = √a' := mul_left_cancel₀ hR.ne' h1
+  have ha0 : 0 ≤ a := ha.1.le
+  have ha0' : 0 ≤ a' := ha'.1.le
+  have haa : a = a' := by
+    rw [← Real.sq_sqrt ha0, ← Real.sq_sqrt ha0', hs]
+  have := pi_pos
+  have hbb : b = b' := by
+    have : 2 * π * b = 2 * π * b' := by linarith
+    exact mul_left_cancel₀ (by positivity) this
+  rw [haa, hbb]
+
+/-- The change of variables from the open unit square to the disk $\mathbb{D}(0, R)$: the
+Jacobian of the polar sampler is the constant $\pi R^2$. -/
+private theorem lintegral_squarePolar {R : ℝ} (hR : 0 < R) (f : ℂ → ENNReal) :
+    ∫⁻ x in Ioo 0 1 ×ˢ Ioo 0 1, f (Complex.polarCoord.symm (squarePolar R x)) =
+      ENNReal.ofReal (1 / (π * R ^ 2)) * ∫⁻ z in Metric.ball 0 R, f z := by
+  have hT : MeasurableSet (Ioo (0 : ℝ) 1 ×ˢ Ioo (0 : ℝ) 1) :=
+    measurableSet_Ioo.prod measurableSet_Ioo
+  have h1 := lintegral_image_eq_lintegral_abs_det_fderiv_mul volume hT
+    (fun x hx => (hasFDerivAt_squarePolar R (ne_of_gt hx.1.1)).hasFDerivWithinAt)
+    (injOn_squarePolar hR)
+    (fun y => ENNReal.ofReal (1 / (π * R ^ 2)) *
+      (ENNReal.ofReal y.1 * f (Complex.polarCoord.symm y)))
+  rw [image_squarePolar hR] at h1
+  have h2 : ∫⁻ x in Ioo 0 1 ×ˢ Ioo 0 1, f (Complex.polarCoord.symm (squarePolar R x)) =
+      ∫⁻ x in Ioo 0 1 ×ˢ Ioo 0 1, ENNReal.ofReal |(squarePolarDeriv R x).det| *
+        (ENNReal.ofReal (1 / (π * R ^ 2)) *
+          (ENNReal.ofReal (squarePolar R x).1 *
+            f (Complex.polarCoord.symm (squarePolar R x)))) := by
+    refine setLIntegral_congr_fun hT fun x hx => ?_
+    have hs : 0 < √x.1 := Real.sqrt_pos.mpr hx.1.1
+    have := pi_pos
+    rw [← mul_assoc, ← mul_assoc, ← ENNReal.ofReal_mul (abs_nonneg _),
+      ← ENNReal.ofReal_mul (by positivity), det_squarePolarDeriv, squarePolar]
+    have : |R * (1 / (2 * √x.1)) * (2 * π)| * (1 / (π * R ^ 2)) * (R * √x.1) = 1 := by
+      rw [abs_of_pos (by positivity)]; field_simp
+    rw [this, ENNReal.ofReal_one, one_mul]
+  rw [h2, ← h1, lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
+  congr 1
+  rw [← lintegral_indicator measurableSet_ball, ← Complex.lintegral_comp_polarCoord_symm,
+    show polarCoord.target = Ioi (0 : ℝ) ×ˢ Ioo (-π) π from rfl,
+    ← lintegral_indicator (measurableSet_Ioi.prod measurableSet_Ioo),
+    ← lintegral_indicator (measurableSet_Ioo.prod measurableSet_Ioo)]
+  congr 1
+  ext ⟨r, θ⟩
+  by_cases hr : 0 < r
+  · have hn : ‖Complex.polarCoord.symm (r, θ)‖ = r := by
+      rw [Complex.norm_polarCoord_symm, abs_of_pos hr]
+    simp only [indicator, mem_prod, mem_Ioo, mem_Ioi, Metric.mem_ball, dist_zero_right, hn, hr,
+      true_and, smul_eq_mul]
+    by_cases hrR : r < R <;> by_cases hθ : -π < θ ∧ θ < π <;> simp [hrR, hθ]
+  · simp [indicator, hr]
+
+/-- The polar sampler through `squarePolar` and Mathlib's polar coordinates. -/
+private theorem polarDisk_eq (c : ℂ) (R : ℝ) (x : Fin 2 → ℝ) :
+    polarDisk c R x =
+      c - Complex.polarCoord.symm (squarePolar R (MeasurableEquiv.finTwoArrow x)) := by
+  simp only [polarDisk, squarePolar, MeasurableEquiv.finTwoArrow_apply,
+    Complex.polarCoord_symm_apply,
+    Real.cos_sub_pi, Real.sin_sub_pi, Complex.exp_mul_I, ← Complex.ofReal_cos, ← Complex.ofReal_sin]
+  push_cast
+  ring
+
+/-- The open and the closed disk differ by a null set. -/
+private theorem volume_inter_ball_eq (c : ℂ) (R : ℝ) {S : Set ℂ} :
+    volume (S ∩ Metric.ball c R) = volume (Metric.closedBall c R ∩ S) := by
+  have hae : Metric.ball c R =ᵐ[volume] Metric.closedBall c R :=
+    ae_eq_of_subset_of_measure_ge Metric.ball_subset_closedBall
+      (Measure.addHaar_closedBall_eq_addHaar_ball volume c R).le
+      measurableSet_ball.nullMeasurableSet measure_closedBall_lt_top.ne
+  rw [inter_comm]
+  exact measure_congr (hae.inter (Filter.EventuallyEq.refl _ S))
+
 /-- **The polar sampler is uniform on the disk**: the image of the uniform law on $[0, 1]^2$
 under `NLAlib.polarDisk c R` is the uniform law on $\mathbb{D}(c, R)$, for $R > 0$ (the area
 element $r\,dr\,d\vartheta$ becomes $\pi R^2\,dx_0\,dx_1$). -/
 theorem map_polarDisk_eq_diskUniform (c : ℂ) {R : ℝ} (hR : 0 < R) :
     (Measure.pi fun _ : Fin 2 => (volume : Measure ℝ).restrict (Set.Icc 0 1)).map
       (polarDisk c R) = diskUniform c R := by
-  sorry
+  have hmeas : Measurable (polarDisk c R) := by unfold polarDisk; fun_prop
+  set g : ℝ × ℝ → ℂ := fun y => c - Complex.polarCoord.symm (squarePolar R y) with hgdef
+  have hg : Measurable g := by
+    simp only [hgdef, Complex.polarCoord_symm_apply, squarePolar]; fun_prop
+  have hres : ((volume : Measure ℝ).restrict (Icc 0 1)).prod
+      ((volume : Measure ℝ).restrict (Icc 0 1)) = volume.restrict (Ioo 0 1 ×ˢ Ioo 0 1) := by
+    rw [← Measure.restrict_congr_set Ioo_ae_eq_Icc, Measure.prod_restrict]; rfl
+  ext S hS
+  have hpre : polarDisk c R ⁻¹' S = MeasurableEquiv.finTwoArrow ⁻¹' (g ⁻¹' S) := by
+    ext x; simp only [mem_preimage, polarDisk_eq, hgdef]
+  rw [Measure.map_apply hmeas hS, hpre,
+    (measurePreserving_finTwoArrow _).measure_preimage (hg hS).nullMeasurableSet, hres,
+    ← lintegral_indicator_one (hg hS)]
+  have hind : ∀ y, (g ⁻¹' S).indicator 1 y =
+      ((fun w => c - w) ⁻¹' S).indicator (1 : ℂ → ENNReal)
+        (Complex.polarCoord.symm (squarePolar R y)) :=
+    fun y => by
+      by_cases h : g y ∈ S
+      · rw [Set.indicator_of_mem (show y ∈ g ⁻¹' S from h),
+          Set.indicator_of_mem (show _ ∈ (fun w => c - w) ⁻¹' S from h)]
+        rfl
+      · rw [Set.indicator_of_notMem (show y ∉ g ⁻¹' S from h),
+          Set.indicator_of_notMem (show _ ∉ (fun w => c - w) ⁻¹' S from h)]
+  have hcS : MeasurableSet ((fun w : ℂ => c - w) ⁻¹' S) :=
+    measurableSet_preimage (by fun_prop) hS
+  rw [lintegral_congr hind, lintegral_squarePolar hR, lintegral_indicator_one hcS,
+    Measure.restrict_apply hcS]
+  have hset : (fun w => c - w) ⁻¹' S ∩ Metric.ball 0 R =
+      (fun w => c - w) ⁻¹' (S ∩ Metric.ball c R) := by
+    ext z; simp [dist_eq_norm]
+  rw [hset, (Measure.measurePreserving_sub_left volume c).measure_preimage
+    (hS.inter measurableSet_ball).nullMeasurableSet, volume_inter_ball_eq, diskUniform,
+    ProbabilityTheory.cond_apply measurableSet_closedBall, Complex.volume_closedBall]
+  congr 1
+  rw [← ENNReal.ofReal_pow hR.le, one_div, ENNReal.ofReal_inv_of_pos (by positivity),
+    ENNReal.ofReal_mul pi_pos.le, mul_comm]
+  congr 2
+  rw [← NNReal.coe_real_pi, ENNReal.ofReal_coe_nnreal]
+
+end PolarSampler
 
 end NLAlib

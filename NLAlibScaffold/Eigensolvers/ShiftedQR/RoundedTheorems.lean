@@ -10,7 +10,9 @@ public import NLAlib.Ops.Confined
 public import NLAlib.Ops.MonomialWork
 public import NLAlib.Ops.Static
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedDecoupleSpec
+public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedDecoupleTermination
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedTheoremsBits
+public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedWorklistTermination
 
 /-!
 # The rounded shifted QR algorithm: headline theorems
@@ -199,29 +201,40 @@ theorem roundedShQR_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Interp 
   exact hW.mono le_rfl fun μ' _ ⟨hf, roots, E', hO, hE', hR⟩ =>
     ⟨hf, roots, E', hO, hE'.trans hδ', hR⟩
 
-/-- **The rounded shifted QR algorithm terminates on every tape** (T1d): under the hypotheses of
-`NLAlib.ShiftedQR.roundedShQR_measureReal_not_spectrum_le` other than those on the randomness
-(measurability, tape locality, the uniform stream, the tape law), the run of
-`NLAlib.ShiftedQR.roundedShQR` from a memory holding the input succeeds on every tape: the
-worklist and the decoupling loop are capped, and the kernels always succeed. Correctness is only
-the probability statement (the paper's form); no all-tape backward error is claimed. -/
-theorem roundedShQR_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
-    {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
+/-- **The rounded shifted QR algorithm terminates on every tape** (T1d): on a scalar machine
+with index literals, natural literals up to $n + 1$ that are exact, exact index conversion and
+comparisons, a `SmallEig` kernel meeting `NLAlib.ShiftedQR.IsRandomSmallEig` and an exact polar
+disk sampler, for any $(n + 1) \times (n + 1)$ matrix $\mathbf{H}$ (no structure assumed), any
+$B, \Gamma, \Sigma, \delta, \varphi$ and $k$ the degree of (eqn:setk) at $4B$, the run of
+`NLAlib.ShiftedQR.roundedShQR` from a memory holding the input (`NLAlib.ShiftedQR.ShQRInput`)
+succeeds on every tape: the worklist and the decoupling loop are capped, every bounded index read
+is an exact natural literal within its bound, and every operation succeeds on stored operands
+(`NLAlib.ShiftedQR.solveRounded_terminates`,
+`NLAlib.ShiftedQR.roundedDecouple_terminatingDecoupler`). No unit roundoff, class or
+precision hypothesis is needed, so this is stronger than the paper, whose loop is uncapped.
+Correctness is only the probability statement
+(`NLAlib.ShiftedQR.roundedShQR_measureReal_not_spectrum_le`); no all-tape backward error is
+claimed. -/
+theorem roundedShQR_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ}
+    {n : ℕ} (hS : IsScalar Mch I) (hL : IsIndexLit Mch I)
     (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
     {law : ℕ → Measure ℝ} {sU : ℕ} {βse φse : ℝ} (hSE : IsRandomSmallEig law sU βse φse I)
     (hDisk : IsPolarDiskSampler sU I)
-    {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {k : ℕ}
-    {B Γ S δ φ : ℝ} (hHess : IsUpperHessenberg H) (hV : IsUnit V)
-    (hHV : H * V = V * Matrix.diagonal d) (hκ : pseudoConditionNumber V ≤ B) (hΓ : 0 < Γ)
-    (hgap : ∀ i j, i ≠ j → Γ ≤ ‖d i - d j‖) (hHS : specNorm H ≤ S) (hδ : 0 < δ) (hδS : δ ≤ S)
-    (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hk : k = shqrDegree (4 * B)) (hβse0 : 0 ≤ βse)
-    (hse : βse ≤ shqrSmallEigAccuracy n B Γ S δ) (hφse0 : 0 ≤ φse)
-    (hφse : φse ≤ shqrSmallEigFailure n B Γ S δ φ) (hu : u ≤ uShQR n k B Γ S δ φ)
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {k : ℕ}
+    {B Γ S δ φ : ℝ} (hk : k = shqrDegree (4 * B))
     {a t p out f : ℕ × ℕ} {μ : Mem ℝ} (hin : ShQRInput k B Γ S δ φ a t p out f H μ)
     (τ : Tape ℝ) :
     Wp .total I τ (roundedShQR (O := O) (Q := Q)).body
       (Env.frame (shqrDims n k B Γ S δ φ) [a, t, p, out, f]) (fun _ => True) μ := by
-  sorry
+  have hkq : k = 2 ^ Nat.log 2 k := by
+    rw [hk, shqrDegree, Nat.log_pow (by norm_num)]
+  have hD : TerminatingDecoupler n k (shqrCap n B Γ S δ) (shqrParams n k B Γ S δ φ)
+      (roundedDecouple (O := O) (Q := Q)) I :=
+    roundedDecouple_terminatingDecoupler (O := O) (Q := Q) (F := shqrCap n B Γ S δ) hS hL hNat hC hQ hSE hDisk hkq (shqrLoopThreshold n k B Γ S δ φ) (shqrRadius n B Γ S δ)
+    (shqrScanThreshold n k B Γ S δ φ) 0.2 (4 * B) (shqrAlpha k (4 * B)) (shqrEps k (4 * B))
+  obtain ⟨hl, hr, ha, hA, ht, hp⟩ := hin
+  exact (solveRounded_terminates hS hL hNat hQ hC _ hD _ hSE.terminatingLeaf (tape := τ) hl hr
+    ha hA ht hp).wp fun _ _ _ => trivial
 
 /-- **The bits of precision** (T2; [BanksGarzaVargasSrivastava2022, Theorem 1.4], corrected by
 errata N8 and N14): there are absolute constants $c_1, c_2$ such that for every order $n + 1$,

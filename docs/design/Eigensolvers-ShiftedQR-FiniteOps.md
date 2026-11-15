@@ -1019,9 +1019,15 @@ T1c follows §14.1's Lean text with Fable's fixes (`hI : I.IsMeasurable` with `h
   $\tfrac12\log_2(n+1)$ bits inside $c_1 k\log_2(n+1)$. $c_1, c_2$ are existential before the
   $\forall$ (absolute); explicit numerals are left to the proof.
 * **Quantifiers.** $k$, $F$, `shqrParams` and the tape law are fixed outside; `P.real` of the
-  failure set (outer measure if not measurable, so the bound is no weaker). T1d keeps the
-  class hypotheses of T1c; termination likely does not need them (to be decided at proof time;
-  dropping them would strengthen it).
+  failure set (outer measure if not measurable, so the bound is no weaker). T1d **drops** the
+  class and precision hypotheses of T1c (a strengthening, decided at proof time): it keeps only
+  the machine classes (`IsScalar`, `IsIndexLit`, `IsExactNatLit (n+1)`, `IsToNat`, `IsCmp`), the
+  totality of `SmallEig` and of the disk sampler, $k$ = `shqrDegree (4B)` (so $k = 2^q$) and the
+  input memory; no `StdModel`, no Hessenberg input. Its route is not C4/P11d but termination-only
+  lemmas: `TerminatingDecoupler`/`TerminatingLeaf` (RoundedSolveTermination),
+  `solveRounded_terminates` (RoundedWorklistTermination), `roundedDecouple_terminatingDecoupler`
+  (RoundedDecoupleTermination), with `multiStepStable_terminates` (StableStep) and
+  `findRounded_terminates` (RoundedFind) in the programs' home files.
 * **T5.** Static count (bound values, `whileFuel` fuel, `bindIdx` worst value), so it holds on
   every tape (errata N10). Estimate: $2(n+1)$ rounds, $F$ iterations, per iteration
   $O((k^3 + n_p k)(n+1)^2)$ (Find's $\le k$ levels of $\le k^2$ shifted steps, Exc's $\le n_p$

@@ -5,6 +5,8 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.Ops.Logic.Footprint
+public import NLAlib.Ops.Logic.Writes
 public import NLAlib.Ops.Tape
 public import NLAlib.Ops.TapeLaw
 
@@ -451,5 +453,139 @@ theorem Tape.measurable_unshift (q : ℕ) : Measurable fun w : Tape K => w.unshi
       exact (measurable_pi_apply s).comp (measurable_pi_apply (p - q))
 
 end Cut
+
+/-! ### Allocation chains -/
+
+section Alloc
+
+/-- The store with fresh uninitialised buffers of the lengths `ns` pushed on top, in order. -/
+def Store.pushAll (s : Store K) : List ℕ → Store K
+  | [] => s
+  | n :: ns => (s.push n).pushAll ns
+
+/-- The number of buffers after pushing `ns`. -/
+theorem Store.length_pushAll (s : Store K) (ns : List ℕ) :
+    (s.pushAll ns).length = s.length + ns.length := by
+  induction ns generalizing s with
+  | nil => rfl
+  | cons n ns ih =>
+    simp [Store.pushAll, ih, Store.push]
+    omega
+
+/-- Pushing buffers keeps the store below its length. -/
+theorem Store.below_pushAll (s : Store K) (ns : List ℕ) :
+    Store.Below s.length s (s.pushAll ns) := by
+  induction ns generalizing s with
+  | nil => exact Store.Below.refl _ _
+  | cons n ns ih =>
+    exact (Store.below_push s n).trans ((ih (s.push n)).mono (by simp [Store.push]))
+
+/-- The pushed buffers have the lengths `ns`. -/
+theorem Store.len_pushAll (s : Store K) (ns : List ℕ) (i : ℕ) (hi : i < ns.length) :
+    (s.pushAll ns).len (s.length + i) = ns[i] := by
+  induction ns generalizing s i with
+  | nil => simp at hi
+  | cons n ns ih =>
+    rcases i with _ | i
+    · simp only [Store.pushAll, List.getElem_cons_zero, Nat.add_zero]
+      rw [((Store.below_pushAll (s.push n) ns) s.length (by simp [Store.push])).1]
+      simp [Store.push]
+    · have := ih (s.push n) i (by simpa using hi)
+      simp only [Store.pushAll, List.getElem_cons_succ]
+      rwa [show (s.push n).length + i = s.length + (i + 1) by simp [Store.push]; omega] at this
+
+/-- The number of buffers after popping `k` times. -/
+theorem Store.length_iterate_pop (k : ℕ) (s : Store K) :
+    (Store.pop^[k] s).length = s.length - k := by
+  induction k generalizing s with
+  | zero => rfl
+  | succ k ih =>
+    rw [Function.iterate_succ_apply, ih, Store.pop, List.length_dropLast]
+    omega
+
+/-- Popping `k` buffers from `L + k` keeps the store below `L`. -/
+theorem Store.below_iterate_pop {L : ℕ} (k : ℕ) {s : Store K} (h : s.length = L + k) :
+    Store.Below L s (Store.pop^[k] s) := by
+  induction k generalizing s with
+  | zero => exact Store.Below.refl _ _
+  | succ k ih =>
+    rw [Function.iterate_succ_apply]
+    exact ((Store.below_pop (L := L + k) h).mono (by omega)).trans
+      (ih (by simp [Store.pop, List.length_dropLast, h]))
+
+theorem Store.len_of_le_length {s : Store K} {b : ℕ} (hb : s.length ≤ b) : s.len b = 0 := by
+  simp [Store.len, List.getElem?_eq_none hb]
+
+theorem Store.get_of_le_length {s : Store K} {b : ℕ} (hb : s.length ≤ b) (i : ℕ) :
+    s.get b i = none := by
+  simp [Store.get, List.getElem?_eq_none hb]
+
+/-- **The frame of an allocation chain**: a run on the store with `ns` pushed that writes only
+`F` and the scratch buffers leaves, after the pops, only `F` written. -/
+theorem Store.EqOff.iterate_pop {F : Fp} {s s' : Store K} {ns : List ℕ}
+    (h : Store.EqOff (F ⊔ Fp.above s.length) (s.pushAll ns) s') :
+    Store.EqOff F s (Store.pop^[ns.length] s') := by
+  have hl : s'.length = s.length + ns.length := by rw [h.length_eq, Store.length_pushAll]
+  have hB := Store.below_iterate_pop ns.length hl
+  have hP := Store.below_pushAll s ns
+  have hlp : (Store.pop^[ns.length] s').length = s.length := by
+    rw [Store.length_iterate_pop, hl]
+    omega
+  refine ⟨Store.shape_eq_iff.mpr ⟨hlp, fun b => ?_⟩, fun b i hn => ?_⟩
+  · by_cases hb : b < s.length
+    · rw [(hB b hb).1, h.len_eq b, (hP b hb).1]
+    · rw [Store.len_of_le_length (by omega), Store.len_of_le_length (by omega)]
+  · by_cases hb : b < s.length
+    · rw [(hB b hb).2 i, h.get_eq (fun hf => hf.elim hn fun h' => absurd h' (by
+        simp only [Fp.above]; omega)), (hP b hb).2 i]
+    · rw [Store.get_of_le_length (by omega), Store.get_of_le_length (by omega)]
+
+/-- **The run of an allocation chain**: the body runs on the store with the buffers pushed, at
+the handles `L, L + 1, …` above the `L` buffers of the memory, and they are popped after it. -/
+theorem eval_allocs {Op Tst : Type} {I : Interp Op Tst K} {τ : Tape K} {lens : List IExp}
+    {body : Stmt Op Tst} : ∀ {ρ : Env} {m : Mem K} {ns : List ℕ},
+    IExp.evalList ρ.idx lens = some ns →
+    eval I τ (Stmt.allocs lens body) ρ m =
+      (eval I τ body ⟨ρ.idx, ρ.buf ++ (List.range ns.length).map (m.store.length + ·)⟩
+        ⟨m.store.pushAll ns, m.pos⟩).map fun m' => ⟨Store.pop^[ns.length] m'.store, m'.pos⟩ := by
+  induction lens with
+  | nil =>
+    intro ρ m ns hn
+    simp only [IExp.evalList_nil, Option.some.injEq] at hn
+    subst hn
+    cases ρ
+    simp [Stmt.allocs, Store.pushAll]
+  | cons len lens ih =>
+    intro ρ m ns hn
+    rw [IExp.evalList_cons] at hn
+    obtain ⟨n, hl, hn⟩ := Option.bind_eq_some_iff.mp hn
+    obtain ⟨ns', hns', rfl⟩ := Option.map_eq_some_iff.mp hn
+    simp only [Stmt.allocs, Stmt.alloc, eval, hl, Option.bind_some]
+    rw [ih (ρ := ρ.pushBuf m.store.length) (m := ⟨m.store.push n, m.pos⟩) hns', Option.map_map]
+    have e : (⟨(ρ.pushBuf m.store.length).idx, (ρ.pushBuf m.store.length).buf ++
+        (List.range ns'.length).map ((m.store.push n).length + ·)⟩ : Env) =
+        ⟨ρ.idx, ρ.buf ++ (List.range (n :: ns').length).map (m.store.length + ·)⟩ := by
+      simp only [List.length_cons, List.range_succ_eq_map, List.map_cons, List.map_map,
+        Env.idx_pushBuf, Env.buf_pushBuf, List.append_assoc, List.singleton_append,
+        Nat.add_zero, Store.push, List.length_append, List.length_nil]
+      congr 3
+      refine List.map_congr_left fun i _ => ?_
+      simp only [Function.comp_apply]
+      omega
+    rw [e]
+    congr 1
+    funext m'
+    simp [Function.iterate_succ_apply']
+
+variable [Inhabited K] [MeasurableSpace K]
+
+/-- Pushing a list of fresh buffers is measurable. -/
+theorem Mem.measurable_pushAll (ns : List ℕ) :
+    Measurable fun m : Mem K => (⟨m.store.pushAll ns, m.pos⟩ : Mem K) := by
+  induction ns with
+  | nil => exact measurable_id
+  | cons n ns ih => exact ih.comp (Mem.measurable_push n)
+
+end Alloc
 
 end NLAlib.Ops

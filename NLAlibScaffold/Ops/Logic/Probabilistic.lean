@@ -730,7 +730,28 @@ theorem allocs {lens : List IExp} {body : Stmt Op Tst} {ns : List ℕ}
     (h : ∀ L, PWrites law I body ⟨ρ.idx, ρ.buf ++ (List.range ns.length).map (L + ·)⟩
       (F ⊔ Fp.above L) (Pre₁ L) Post φ) :
     PWrites law I (Stmt.allocs lens body) ρ F Pre Post φ := by
-  sorry
+  choose Gs hGm hGd hG using h
+  let A : Mem K → Mem K := fun m => ⟨m.store.pushAll ns, m.pos⟩
+  have hA : Measurable A := Mem.measurable_pushAll ns
+  refine ⟨fun m => Gs m.store.length (A m), ?_, fun m τ τ' hτ => hGd _ (A m) τ τ' hτ,
+    fun m hm => ?_⟩
+  · have e : {x : Mem K × Tape K | x.2 ∈ Gs x.1.store.length (A x.1)} =
+        ⋃ L, (Prod.fst ⁻¹' {m : Mem K | m.store.length = L}) ∩
+          ((fun x : Mem K × Tape K => (A x.1, x.2)) ⁻¹' {y | y.2 ∈ Gs L y.1}) := by
+      ext x
+      simp
+    rw [e]
+    exact .iUnion fun L =>
+      (measurable_fst (Mem.measurable_length (measurableSet_singleton L))).inter
+        (((hA.comp measurable_fst).prodMk measurable_snd) (hGm L))
+  · have hP₁ : Pre₁ m.store.length (A m) := hpre m _ hm (Store.length_pushAll _ _)
+      (fun i hi => Store.len_pushAll _ _ i hi) (Store.below_pushAll _ _)
+    obtain ⟨hW, hPr⟩ := hG m.store.length (A m) hP₁
+    refine ⟨fun τ hτ => ?_, hPr⟩
+    obtain ⟨m'', he, hEq, hPost⟩ := hW τ hτ
+    refine ⟨⟨Store.pop^[ns.length] m''.store, m''.pos⟩, by rw [eval_allocs hn, he]; rfl,
+      hEq.iterate_pop, hkeep m hm (Store.below_iterate_pop _ ?_) hPost⟩
+    rw [hEq.length_eq, Store.length_pushAll]
 
 /-- **A procedure instance** (PL3f-frame): the body in the environment of the frame, from
 memories in which the frame's operands are live. -/

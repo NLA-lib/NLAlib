@@ -9,6 +9,7 @@ public import NLAlibScaffold.Matrix.FinitePrecision.GivensRounded
 public import NLAlibScaffold.Matrix.FinitePrecision.HessenbergRowPoly
 public import NLAlibScaffold.Matrix.FinitePrecision.ProductRounded
 public import NLAlibScaffold.Matrix.FinitePrecision.RootsRounded
+public import NLAlibScaffold.Matrix.Perturbation.BackwardClosed
 public import NLAlibScaffold.Matrix.Perturbation.EigenvalueBackward
 public import NLAlibScaffold.Matrix.Perturbation.QRFactorization
 public import NLAlibScaffold.Matrix.Perturbation.UnitaryPair
@@ -22,6 +23,7 @@ public import NLAlibScaffold.Ops.Logic.BackwardFrame
 public import NLAlibScaffold.Ops.Logic.Geometry
 public import NLAlibScaffold.Ops.Logic.Probabilistic
 public import NLAlibScaffold.Ops.Logic.ProbabilisticBackward
+public import NLAlibScaffold.Ops.Logic.ProbabilisticFamily
 public import NLAlibScaffold.Ops.RunMeasurable
 public import NLAlibScaffold.Ops.TapeStopping
 public import NLAlibScaffold.Probability.AdaptiveUnionBoundMeasurable

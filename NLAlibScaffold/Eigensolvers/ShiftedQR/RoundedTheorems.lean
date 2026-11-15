@@ -10,6 +10,7 @@ public import NLAlib.Ops.Confined
 public import NLAlib.Ops.Static
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedDecouple
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedPrecision
+public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedTheoremsBits
 
 /-!
 # The rounded shifted QR algorithm: headline theorems
@@ -194,12 +195,28 @@ $$\log_2(1/\boldsymbol{u}_{\mathrm{ShQR}}) \le
   c_1 k \log_2\frac{4(n + 1)B\Sigma^2}{\delta\min(\Gamma, \Sigma)\varphi} + c_2.$$
 The argument is scale-invariant ($\delta$ is an absolute error, so $\Sigma^2/(\delta\Gamma)$, not
 $\Sigma/(\delta\Gamma)$) and at least $4$; $\min(\Gamma, \Sigma)$ covers $n = 0$, where the gap is
-vacuous and $\Gamma$ unbounded (for $n \ge 1$, $\Gamma \le 2\Sigma$). -/
+vacuous and $\Gamma$ unbounded (for $n \ge 1$, $\Gamma \le 2\Sigma$). The constants $c_1 = 63$ and
+$c_2 = 0$ suffice: $\boldsymbol{u}_{\mathrm{ShQR}}$ is at least the argument to the power
+$-(53k + 40)$ (`NLAlib.ShiftedQR.one_le_uShQR_mul`). -/
 theorem logb_inv_uShQR_le : ∃ c₁ c₂ : ℝ, ∀ {n k : ℕ} {B Γ S δ φ : ℝ}, 1 ≤ B → 0 < Γ → 0 < δ →
     δ ≤ S → 0 < φ → φ ≤ 1 → k = shqrDegree (4 * B) →
     Real.logb 2 (uShQR n k B Γ S δ φ)⁻¹ ≤
       c₁ * k * Real.logb 2 (4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)) + c₂ := by
-  sorry
+  refine ⟨63, 0, fun {n k B Γ S δ φ} hB hΓ hδ hδS hφ hφ1 hk => ?_⟩
+  obtain ⟨hY4, h⟩ := one_le_uShQR_mul (n := n) hB hΓ hδ hδS hφ hφ1 hk
+  set Y := 4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)
+  have hk4 : (4 : ℝ) ≤ k := hk ▸ (shqrDegree_facts (by linarith : (1 : ℝ) ≤ 4 * B)).1
+  have hu : 0 < uShQR n k B Γ S δ φ :=
+    uShQR_pos (by exact_mod_cast (show (0 : ℝ) < k by linarith)) hB hΓ hδ (hδ.trans_le hδS) hφ
+  have hY0 : 0 < Y := by linarith
+  have hL : 0 ≤ Real.logb 2 Y := Real.logb_nonneg (by norm_num) (by linarith)
+  have h1 : (uShQR n k B Γ S δ φ)⁻¹ ≤ Y ^ (53 * k + 40) := by
+    rw [inv_le_iff_one_le_mul₀ hu, mul_comm]; exact h
+  calc Real.logb 2 (uShQR n k B Γ S δ φ)⁻¹ ≤ Real.logb 2 (Y ^ (53 * k + 40)) :=
+        Real.logb_le_logb_of_le (by norm_num) (inv_pos.mpr hu) h1
+    _ = ((53 * k + 40 : ℕ) : ℝ) * Real.logb 2 Y := by rw [Real.logb_pow]
+    _ ≤ 63 * k * Real.logb 2 Y := by push_cast; nlinarith
+    _ = 63 * k * Real.logb 2 Y + 0 := by ring
 
 /-- **The relative backward error** (T3): under the hypotheses of
 `NLAlib.ShiftedQR.roundedShQR_measureReal_not_spectrum_le` with a norm word $\Sigma > 0$,

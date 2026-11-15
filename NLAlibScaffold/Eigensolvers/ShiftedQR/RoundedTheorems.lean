@@ -230,7 +230,8 @@ theorem roundedShQR_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ}
     rw [hk, shqrDegree, Nat.log_pow (by norm_num)]
   have hD : TerminatingDecoupler n k (shqrCap n B Γ S δ) (shqrParams n k B Γ S δ φ)
       (roundedDecouple (O := O) (Q := Q)) I :=
-    roundedDecouple_terminatingDecoupler (O := O) (Q := Q) (F := shqrCap n B Γ S δ) hS hL hNat hC hQ hSE hDisk hkq (shqrLoopThreshold n k B Γ S δ φ) (shqrRadius n B Γ S δ)
+    roundedDecouple_terminatingDecoupler (O := O) (Q := Q) (F := shqrCap n B Γ S δ) hS hL
+      hNat hC hQ hSE hDisk hkq (shqrLoopThreshold n k B Γ S δ φ) (shqrRadius n B Γ S δ)
     (shqrScanThreshold n k B Γ S δ φ) 0.2 (4 * B) (shqrAlpha k (4 * B)) (shqrEps k (4 * B))
   obtain ⟨hl, hr, ha, hA, ht, hp⟩ := hin
   exact (solveRounded_terminates hS hL hNat hQ hC _ hD _ hSE.terminatingLeaf (tape := τ) hl hr

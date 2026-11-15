@@ -351,8 +351,8 @@ section Iteration
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O]
   [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q]
 
-set_option maxHeartbeats 1000000 in
 -- The hypothesis list of the iteration, with its long real constants, makes elaboration heavy.
+set_option maxHeartbeats 1000000 in
 /-- **One iteration of the decoupling loop on the good tapes**: from the state before round $i$
 with the scan flag $0$, the iterate is in the class of `NLAlib.ShiftedQR.shIteration_pwrites`
 (condition at most $4B \le B_i$ and separation at least $g/4 \ge 2\omega^2/S$ by
@@ -655,8 +655,8 @@ theorem roundedDecouple_pwrites_of_loop {I : Interp O Q ℝ} (hI : I.IsMeasurabl
     (sup_le_sup_left hRL _) (fun _ h => h) le_rfl
   exact fun μ h => h.1.1
 
-set_option maxHeartbeats 4000000 in
 -- The loop's program term and the hypotheses of the iteration make elaboration heavy.
+set_option maxHeartbeats 4000000 in
 /-- **The rounded decoupling loop meets the randomized decoupling contract**
 ([BanksGarzaVargasSrivastava2022, Lemma 6.4] in floating point, corrected): on a machine with the
 standard model at $\boldsymbol{u} < 1$, exact natural literals up to $n_{\max} + 1$, a measurable

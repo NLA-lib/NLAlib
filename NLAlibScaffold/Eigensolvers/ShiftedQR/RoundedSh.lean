@@ -528,3 +528,141 @@ theorem shExcInit_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M
 end Test
 
 end NLAlib.ShiftedQR
+
+namespace NLAlib.ShiftedQR
+
+open Ops
+
+/-- The outcomes of the exceptional shifts that `Sh` uses, as pairs of a memory before and after:
+the frame `F`, an initialised column of $n_0$ complex words at `b`, one of them a shift $s$ with
+$\|\mathbf{e}_n^{\mathsf T}(\mathbf{H} - s)^{-k}\| \ge K$, all at distance at least $d$ from
+every $e_i$ and of modulus at most $c$. They form a measurable set. -/
+theorem measurableSet_excOutcome {n : ℕ} (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (k n0 : ℕ)
+    (e : Fin (n + 1) → ℂ) (K d c : ℝ) (b : ℕ × ℕ) (F : Fp) :
+    MeasurableSet {x : Mem ℝ × Mem ℝ | x.1.store.EqOff F x.2.store ∧
+      (∀ j < 2 * (1 * n0), (x.2.store.get b.1 (b.2 + j)).isSome) ∧
+      (∃ j : Fin n0, K ≤ ‖WithLp.toLp 2 ((Polynomial.aeval H (shiftPoly
+        (List.replicate k (storedMatrix b n0 1 x.2.store j 0))))⁻¹ (Fin.last n))‖) ∧
+      (∀ j : Fin n0, ∀ i, d ≤ ‖e i - storedMatrix b n0 1 x.2.store j 0‖) ∧
+      ∀ j : Fin n0, ‖storedMatrix b n0 1 x.2.store j 0‖ ≤ c} := by
+  have hcol (j : Fin n0) : Measurable fun x : Mem ℝ × Mem ℝ => storedMatrix b n0 1 x.2.store j 0 :=
+    (Matrix.measurable_apply j (0 : Fin 1)).comp ((measurable_storedMatrix b n0 1).comp
+      measurable_snd)
+  have hN := measurable_norm_toLp_inv_aeval_replicate_last H k
+  simp only [Set.ofPred_and]
+  refine (Mem.measurableSet_eqOff F).inter ((measurable_snd (measurableSet_forall_isSome b _)).inter
+    ((?_ : MeasurableSet _).inter ((?_ : MeasurableSet _).inter ?_)))
+  · simp only [Set.ofPred_exists]
+    exact MeasurableSet.iUnion fun j => measurableSet_le measurable_const (hN.comp (hcol j))
+  · simp only [Set.ofPred_forall]
+    exact MeasurableSet.iInter fun j => MeasurableSet.iInter fun i =>
+      measurableSet_le measurable_const ((hcol j).const_sub _).norm
+  · simp only [Set.ofPred_forall]
+    exact MeasurableSet.iInter fun j => measurableSet_le (hcol j).norm measurable_const
+
+/-- A column of complex words stored as interleaved pairs is read back entrywise by
+`NLAlib.ShiftedQR.storedMatrix`. -/
+theorem storedMatrix_col_of_readBlock {s : Store ℝ} {b : ℕ × ℕ} {zs : List ℂ}
+    (h : s.readBlock b.1 b.2 (2 * zs.length) = some (zs.flatMap fun z => [z.re, z.im]))
+    (j : Fin zs.length) : storedMatrix b zs.length 1 s j 0 = zs[j] := by
+  obtain ⟨h1, h2⟩ := get_of_readBlock_flatMap_pair h j.isLt
+  apply Complex.ext <;> simp [storedMatrix, h1, h2]
+
+end NLAlib.ShiftedQR
+
+namespace NLAlib.ShiftedQR
+
+open Ops
+
+variable {n : ℕ}
+
+/-- **The stored exceptional shifts contain a contracting shift** (the deterministic core of
+`Exc`, [BanksGarzaVargasSrivastava2022, Lemma 5.3], corrected as in the errata G13, read on the
+shifts `NLAlib.ShiftedQR.excShifts` stores): let
+$\mathbf{H}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{e})$ with
+$\kappa(\mathbf{V}) \le B$, the $k \ge 2$ shifts `ss` $\theta$-optimal ($\theta \ge 1$), none an
+eigenvalue, $r$ an $\alpha$-promising one ($\alpha \ge 1$) that stagnates with the ratio
+$\xi = 0.998(1 - \gamma)$, $0 < \gamma < 1$, $\psi_k(\mathbf{H}) > 0$, the radius $\tilde R$
+in the window $[1.998^{1/k}, 2.002^{1/k}]\,\theta\alpha B^{1/k}\psi_k(\mathbf{H})$,
+$\varepsilon = (\xi(1 - \gamma)/((13B^4)^{1/k}\alpha^2\theta^2))^{k/(k-1)} \le 1/2$, and a list
+of at most $9/\varepsilon^2$ shifts covering $\mathbb{D}(r, \tilde R)$ at radius
+$\varepsilon\tilde R$, each at distance at least $\delta > 0$ from every eigenvalue. Then one
+of them, $s$, has $\|\mathbf{e}_n^{\mathsf T}(\mathbf{H} - s)^{-k}\| \ge
+((1 - \gamma)\psi_k(\mathbf{H}))^{-k}$. -/
+theorem exists_mem_le_norm_inv_pow_of_excShifts {B θ α γ R ε δ : ℝ} {k : ℕ}
+    {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {e : Fin (n + 1) → ℂ} {ss zs : List ℂ} {r : ℂ}
+    (hk : 2 ≤ k) (hkn : k ≤ n) (hlen : ss.length = k) (hV : IsUnit V)
+    (hHV : H * V = V * Matrix.diagonal e) (hκ : pseudoConditionNumber V ≤ B)
+    (hopt : IsOptimalRitzValues θ H ss) (hr : IsPromisingRitzValue α V e ss r)
+    (hd : ∀ i, ∀ s ∈ ss, e i ≠ s) (hψ : 0 < hessenbergPotential k H) (hγ : 0 < γ)
+    (hγ1 : γ < 1) (hθ : 1 ≤ θ) (hα : 1 ≤ α)
+    (hτ : ‖WithLp.toLp 2 ((Polynomial.aeval H (shiftPoly (List.replicate k r)))⁻¹
+      (Fin.last n))‖ ≤ (0.998 * (1 - γ) * hessenbergPotential k H)⁻¹ ^ k)
+    (hRlo : (1.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) * hessenbergPotential k H ≤ R)
+    (hRhi : R ≤ (2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) * hessenbergPotential k H)
+    (hε : ε = (0.998 * (1 - γ) * (1 - γ) / ((13 * B ^ 4) ^ ((k : ℝ)⁻¹) * α ^ 2 * θ ^ 2)) ^
+      ((k : ℝ) / (k - 1))) (hε2 : ε ≤ 1 / 2)
+    (hcard : (zs.length : ℝ) ≤ 9 / ε ^ 2)
+    (hcover : ∀ z : ℂ, ‖z - r‖ ≤ R → ∃ s ∈ zs, ‖z - s‖ ≤ ε * R) (hδ : 0 < δ)
+    (hdist : ∀ s ∈ zs, ∀ i, δ ≤ ‖e i - s‖) :
+    ∃ s ∈ zs, ((1 - γ) * hessenbergPotential k H)⁻¹ ^ k ≤
+      ‖WithLp.toLp 2 ((Polynomial.aeval H (shiftPoly (List.replicate k s)))⁻¹ (Fin.last n))‖ := by
+  classical
+  obtain ⟨s, hs, hle⟩ := exists_mem_le_norm_inv_pow_of_covers (S := zs.toFinset) (ξ := 0.998 * (1 - γ))
+    hk hkn hlen hV hHV hκ hopt hr hd hψ hγ hγ1 (by nlinarith) hθ hα hτ hRlo hRhi hε hε2
+    (fun z hz => by
+      obtain ⟨s, hs, h⟩ := hcover z hz
+      exact ⟨s, List.mem_toFinset.mpr hs, h⟩)
+    ((Nat.cast_le.mpr (List.toFinset_card_le zs)).trans hcard)
+    (fun s hs i he => by
+      have := hdist s (List.mem_toFinset.mp hs) i
+      rw [he, sub_self, norm_zero] at this
+      linarith)
+  exact ⟨s, List.mem_toFinset.mp hs, hle⟩
+
+/-- **A contracting exceptional shift passes the trial**: under the hypotheses of
+`NLAlib.IsStableQRChain.exists_norm_subdiag_lt_or_potential_pow_mul_le` for the shift $s$ (with
+$x = 300(n+1)^2\boldsymbol{u}$), if $\|\mathbf{e}_n^{\mathsf T}(\mathbf{H} - s)^{-k}\| \ge
+((1 - \gamma)\psi)^{-k}$, $\psi = \psi_k(\mathbf{H}) > 0$, $\gamma < 1$, the word $p_H$ is within
+$20\boldsymbol{u}$, relatively, of $\psi$, and $2 \cdot 10^5\boldsymbol{u} \le 1$, then every rounded
+step with $s$ repeated has a bottom subdiagonal entry of modulus below $\omega$, or every value
+within $20\boldsymbol{u}$, relatively, of its potential is below $\mathrm{fl}(1.0015(1 - \gamma)p_H)$. -/
+theorem shTrial_good {M : Machine ℝ} {u C B S d ω γ pH : ℝ} (hM : StdModel u id M) {k : ℕ}
+    {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {e : Fin (n + 1) → ℂ} {s : ℂ}
+    (hu : 200000 * u ≤ 1) (hC : 0 ≤ C) (hd : 0 < d) (hω : 0 < ω) (hk : 0 < k) (hkn : k ≤ n)
+    (hH0 : H ≠ 0) (hH : IsUpperHessenberg H) (hV : IsUnit V)
+    (hHV : H * V = V * Matrix.diagonal e) (hκ : pseudoConditionNumber V ≤ B)
+    (hS : specNorm H ≤ S) (hs : ‖s‖ ≤ C * specNorm H) (hdist : ∀ i, d ≤ ‖e i - s‖)
+    (hxu : 300 * (n + 1) ^ 2 * u ≤ (16 * B)⁻¹ * (d / ((2 + 2 * C) * S)) ^ k)
+    (hbound : (66 + 2 * C) * B * S * ((2 + 2 * C) * S / d) ^ k * √(n + 1) *
+      (300 * (n + 1) ^ 2 * u) ≤ 0.001 * ω)
+    (hγ1 : γ < 1) (hψ : 0 < hessenbergPotential k H)
+    (hpH : |pH - hessenbergPotential k H| ≤ 20 * u * hessenbergPotential k H)
+    (hN : ((1 - γ) * hessenbergPotential k H)⁻¹ ^ k ≤
+      ‖WithLp.toLp 2 ((Polynomial.aeval H (shiftPoly (List.replicate k s)))⁻¹ (Fin.last n))‖)
+    (H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ))
+    (hch : IsStableQRChain (300 * (n + 1) ^ 2 * u) H (List.replicate k s) H' Rs) :
+    (∃ i : Fin n, n ≤ (i : ℕ) + k ∧ ‖H' i.succ i.castSucc‖ < ω) ∨
+      ∀ p : ℝ, |p - hessenbergPotential k H'| ≤ 20 * u * hessenbergPotential k H' →
+        p < M.mul (1.0015 * (1 - γ)) pH := by
+  have hu0 := hM.roundoff_nonneg
+  rcases hch.exists_norm_subdiag_lt_or_potential_pow_mul_le (by positivity) hC hd hω hk hkn hH0 hH
+    hV hHV hκ hS hs hdist hxu hbound with h | h
+  · exact Or.inl h
+  right
+  intro p hp
+  have hg : 0 < (1 - γ) * hessenbergPotential k H := mul_pos (by linarith) hψ
+  set c := (1 - γ) * hessenbergPotential k H
+  have hA0 : 0 ≤ hessenbergPotential k H' ^ k := by
+    have := hessenbergPotential_nonneg k H'; positivity
+  have h1 : hessenbergPotential k H' ^ k * c⁻¹ ^ k ≤ 1.0011 ^ k :=
+    (mul_le_mul_of_nonneg_left hN hA0).trans h
+  have hle : hessenbergPotential k H' ^ k ≤ (1.0011 * c) ^ k := by
+    calc hessenbergPotential k H' ^ k = hessenbergPotential k H' ^ k * c⁻¹ ^ k * c ^ k := by
+          rw [mul_assoc, ← mul_pow, inv_mul_cancel₀ hg.ne', one_pow, mul_one]
+      _ ≤ 1.0011 ^ k * c ^ k := mul_le_mul_of_nonneg_right h1 (by positivity)
+      _ = _ := (mul_pow _ _ _).symm
+  have hle' := le_of_pow_le_pow_left₀ hk.ne' (by positivity) hle
+  exact lt_of_potential_contract hu0 hu hγ1 hψ hp hpH (hM.mul _ _) (by linarith)
+
+end NLAlib.ShiftedQR

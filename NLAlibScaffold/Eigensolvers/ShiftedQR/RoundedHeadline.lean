@@ -64,20 +64,22 @@ variable {O Q : Type}
 /-- **The contract of a randomized decoupling implementation** with the stream laws `law`, the
 class bounds `B` (condition) and `g` (separation), the failure probability `φ`, the bottom width
 `k`, the iteration cap `F` (fixed outside the quantifiers, so that `φ` may depend on it), the
-parameter words `ps`, the coupling threshold `ω` and the backward error `ε N` for inputs
-of norm at most `N`. From an upper Hessenberg matrix of order $n + 1 \ge k + 1$ stored in place,
-of norm at most $N$, diagonalizable with condition at most $B$ and eigenvalues separated by $g$,
+outer bounds `nmax` on the order and `Nmax` on the norm (fixed outside the quantifiers, so that a
+precision and a cap chosen for them serve every block within them), the parameter words `ps`,
+the coupling threshold `ω` and the backward error `ε N` for inputs of norm at most `N`. From an
+upper Hessenberg matrix of order $n + 1$, $k \le n \le n_{\max}$, stored in place, of norm at most
+$N \le N_{\max}$, diagonalizable with condition at most $B$ and eigenvalues separated by $g$,
 the run, except with probability at most $\varphi$, writes only the matrix and the one-word flag,
 sets the flag to $0$ and stores an upper Hessenberg perturbed unitary similarity with backward
 error $\varepsilon(N)$ having one of its bottom $k$ subdiagonal entries of modulus at most
 $\omega$ (the success branch of `NLAlib.ShiftedQR.RoundedDecouplingContract`). The interface is
 `[n, k, np, F] (W, P) → (W, Fl)`. -/
-def RandomDecouplingContract (law : ℕ → Measure ℝ) (B g φ : ℝ) (k F : ℕ) (ps : List ℝ) (ω : ℝ)
-    (ε : ℝ → ℝ) (D : Impl O Q) (I : Interp O Q ℝ) : Prop :=
+def RandomDecouplingContract (law : ℕ → Measure ℝ) (B g φ : ℝ) (k F nmax : ℕ) (Nmax : ℝ)
+    (ps : List ℝ) (ω : ℝ) (ε : ℝ → ℝ) (D : Impl O Q) (I : Interp O Q ℝ) : Prop :=
   ∀ {n : ℕ} {N : ℝ} {w q f : ℕ × ℕ} (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
     (V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (d : Fin (n + 1) → ℂ),
-    k ≤ n → IsUpperHessenberg H → specNorm H ≤ N → IsUnit V → H * V = V * Matrix.diagonal d →
-    pseudoConditionNumber V ≤ B → (∀ i j, i ≠ j → g ≤ ‖d i - d j‖) →
+    k ≤ n → n ≤ nmax → N ≤ Nmax → IsUpperHessenberg H → specNorm H ≤ N → IsUnit V →
+    H * V = V * Matrix.diagonal d → pseudoConditionNumber V ≤ B → (∀ i j, i ≠ j → g ≤ ‖d i - d j‖) →
     PWrites law I D.body (Env.frame [n + 1, k, ps.length, F] [w, q, w, f])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
       (fun μ => HoldsMatrix w H μ.store ∧ μ.store.readBlock q.1 q.2 ps.length = some ps ∧
@@ -304,11 +306,12 @@ error $\varepsilon(N_0)$ and a bottom-$k$ subdiagonal entry of modulus at most $
 theorem roundedDecouple_pwrites {I : Interp O Q ℝ} (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
     (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ} {B g φD : ℝ} {k F : ℕ}
     {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} (D : Impl O Q)
-    (hD : RandomDecouplingContract law (2 * B) (g / 2) φD k F ps ω ε D I) {n j lo d : ℕ}
+    {n : ℕ} {N₀ : ℝ}
+    (hD : RandomDecouplingContract law (2 * B) (g / 2) φD k F n N₀ ps ω ε D I) {j lo d : ℕ}
     {a t p st out w r f : ℕ × ℕ} {H₀ V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
-    {dd : Fin (n + 1) → ℂ} {e thr N₀ : ℝ} (hV : IsUnit V)
+    {dd : Fin (n + 1) → ℂ} {e thr : ℝ} (hV : IsUnit V)
     (hHV : H₀ * V = V * Matrix.diagonal dd) (hκ : pseudoConditionNumber V ≤ B) (hg : 0 < g)
-    (hgap : ∀ i j, i ≠ j → g ≤ ‖dd i - dd j‖) (hk : k ≤ d) (he0 : 0 ≤ e)
+    (hgap : ∀ i j, i ≠ j → g ≤ ‖dd i - dd j‖) (hk : k ≤ d) (hdn : d ≤ n) (he0 : 0 ≤ e)
     (hN₀ : specNorm H₀ + 2 * (n + 1) * e ≤ N₀)
     (hsmall : 2 * (n + 1) * e ≤ g / (16 * (n + 1) * B)) (hj : j < 2 * (n + 1)) :
     PWrites law I D.body (Env.frame [d + 1, k, ps.length, F] [w, p, w, f])
@@ -331,8 +334,8 @@ theorem roundedDecouple_pwrites {I : Interp O Q ℝ} (hI : I.IsMeasurable) {win 
       ∀ i j, i ≠ j → g / 2 ≤ ‖dr i - dr j‖}
   have hst := PWrites.pstep_of_forall hI hloc (fun x : ι =>
     have hx := x.2.2.2.choose_spec.choose_spec
-    hD (n := d) (N := N₀) (w := w) (q := p) (f := f) x.1 _ _ hk x.2.1 x.2.2.1 hx.1 hx.2.1
-      hx.2.2.1 hx.2.2.2)
+    hD (n := d) (N := N₀) (w := w) (q := p) (f := f) x.1 _ _ hk hdn le_rfl x.2.1 x.2.2.1 hx.1
+      hx.2.1 hx.2.2.1 hx.2.2.2)
     (measurableSet_decoupleOutcome d k (ε N₀) ω w f
       (Store.inBlock w.1 w.2 (2 * ((d + 1) * (d + 1))) ⊔ Store.inBlock f.1 f.2 1)) ?_
   · refine PStep.mono hst (fun μ ⟨M, rest, done, A, roots, hHM, hP, hW⟩ => ?_)
@@ -368,9 +371,10 @@ theorem roundedLarge_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hC : IsCmp id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
     (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ} {B g φD : ℝ} {k F : ℕ}
     {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} (D : Impl O Q)
-    (hD : RandomDecouplingContract law (2 * B) (g / 2) φD k F ps ω ε D I) {j lo d : ℕ}
+    {N₀ : ℝ} (hD : RandomDecouplingContract law (2 * B) (g / 2) φD k F n N₀ ps ω ε D I)
+    {j lo d : ℕ}
     {a t p st out w r f : ℕ × ℕ} {H₀ V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
-    {dd : Fin (n + 1) → ℂ} {e thr c N₀ : ℝ} (hV : IsUnit V)
+    {dd : Fin (n + 1) → ℂ} {e thr c : ℝ} (hV : IsUnit V)
     (hHV : H₀ * V = V * Matrix.diagonal dd) (hκ : pseudoConditionNumber V ≤ B) (hg : 0 < g)
     (hgap : ∀ i j, i ≠ j → g ≤ ‖dd i - dd j‖) (hd : lo + (d + 1) ≤ n + 1) (hk : k ≤ d)
     (hfind : (1 + u) ^ 2 * ω ^ 2 ≤ thr) (hcut : thr ≤ (1 - u) ^ 2 * c ^ 2) (hc : 0 ≤ c)
@@ -382,7 +386,8 @@ theorem roundedLarge_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
       (RoundedCopied H₀ e thr ps a t p st out w r f j lo (d + 1))
       (RoundedReached H₀ e thr ps a t p st out w r f (j + 1)) φD := by
   have hD' := roundedDecouple_pwrites (a := a) (t := t) (p := p) (st := st) (out := out) (w := w)
-    (r := r) (f := f) (lo := lo) (thr := thr) hI hloc D hD hV hHV hκ hg hgap hk he0 hN₀ hsmall hj
+    (r := r) (f := f) (lo := lo) (thr := thr) hI hloc D hD hV hHV hκ hg hgap hk (by omega) he0 hN₀
+    hsmall hj
   have hsq := Nat.mul_le_mul (show d + 1 ≤ n + 1 by omega) (show d + 1 ≤ n + 1 by omega)
   unfold roundedProcessLarge
   refine (PWrites.seq hI hloc le_rfl (hD'.in_frame rfl rfl
@@ -408,10 +413,10 @@ theorem roundedRange_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hC : IsCmp id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
     (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ} {B g φD β φL : ℝ} {k F : ℕ}
     {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} (D : Impl O Q)
-    (hD : RandomDecouplingContract law (2 * B) (g / 2) φD k F ps ω ε D I)
+    {N₀ : ℝ} (hD : RandomDecouplingContract law (2 * B) (g / 2) φD k F n N₀ ps ω ε D I)
     (L : Impl O Q) (hLeaf : RandomLeafContract law β φL L I) (hφD : 0 ≤ φD) (hφL : 0 ≤ φL)
     {j lo d : ℕ} {a t p st out w r f : ℕ × ℕ} {H₀ V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
-    {dd : Fin (n + 1) → ℂ} {e thr c N₀ : ℝ} (hV : IsUnit V)
+    {dd : Fin (n + 1) → ℂ} {e thr c : ℝ} (hV : IsUnit V)
     (hHV : H₀ * V = V * Matrix.diagonal dd) (hκ : pseudoConditionNumber V ≤ B) (hg : 0 < g)
     (hgap : ∀ i j, i ≠ j → g ≤ ‖dd i - dd j‖) (hd : lo + d ≤ n + 1)
     (hfind : (1 + u) ^ 2 * ω ^ 2 ≤ thr) (hcut : thr ≤ (1 - u) ^ 2 * c ^ 2) (hc : 0 ≤ c)
@@ -477,10 +482,10 @@ theorem roundedWorklistRound_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
     (hC : IsCmp id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
     (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ} {B g φD β φL : ℝ} {k F : ℕ}
     {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} (D : Impl O Q)
-    (hD : RandomDecouplingContract law (2 * B) (g / 2) φD k F ps ω ε D I)
+    {N₀ : ℝ} (hD : RandomDecouplingContract law (2 * B) (g / 2) φD k F n N₀ ps ω ε D I)
     (L : Impl O Q) (hLeaf : RandomLeafContract law β φL L I) (hφD : 0 ≤ φD) (hφL : 0 ≤ φL)
     {j : ℕ} {a t p st out w r f : ℕ × ℕ} {H₀ V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
-    {dd : Fin (n + 1) → ℂ} {e thr c N₀ : ℝ} (hV : IsUnit V)
+    {dd : Fin (n + 1) → ℂ} {e thr c : ℝ} (hV : IsUnit V)
     (hHV : H₀ * V = V * Matrix.diagonal dd) (hκ : pseudoConditionNumber V ≤ B) (hg : 0 < g)
     (hgap : ∀ i j, i ≠ j → g ≤ ‖dd i - dd j‖)
     (hfind : (1 + u) ^ 2 * ω ^ 2 ≤ thr) (hcut : thr ≤ (1 - u) ^ 2 * c ^ 2) (hc : 0 ≤ c)
@@ -550,10 +555,10 @@ theorem roundedWorklist_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
     (hC : IsCmp id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
     (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ} {B g φD β φL : ℝ} {k F : ℕ}
     {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} (D : Impl O Q)
-    (hD : RandomDecouplingContract law (2 * B) (g / 2) φD k F ps ω ε D I)
+    {N₀ : ℝ} (hD : RandomDecouplingContract law (2 * B) (g / 2) φD k F n N₀ ps ω ε D I)
     (L : Impl O Q) (hLeaf : RandomLeafContract law β φL L I) (hφD : 0 ≤ φD) (hφL : 0 ≤ φL)
     {a t p st out w r f : ℕ × ℕ} {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
-    {dd : Fin (n + 1) → ℂ} {thr c N₀ : ℝ} (hHess : IsUpperHessenberg H) (hV : IsUnit V)
+    {dd : Fin (n + 1) → ℂ} {thr c : ℝ} (hHess : IsUpperHessenberg H) (hV : IsUnit V)
     (hHV : H * V = V * Matrix.diagonal dd) (hκ : pseudoConditionNumber V ≤ B) (hg : 0 < g)
     (hgap : ∀ i j, i ≠ j → g ≤ ‖dd i - dd j‖)
     (hfind : (1 + u) ^ 2 * ω ^ 2 ≤ thr) (hcut : thr ≤ (1 - u) ^ 2 * c ^ 2) (hc : 0 ≤ c)
@@ -647,8 +652,8 @@ theorem roundedWorklist_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
 Theorem 6.3], the worklist with the probability of success): on a machine with the standard model
 at $0 \le \boldsymbol{u} < 1$ whose natural literals up to $n + 1$ are exact, with a measurable
 interpretation that reads the tape only in its windows, let the decoupler `D` meet
-`NLAlib.ShiftedQR.RandomDecouplingContract` on the class (condition $2B$, separation $g/2$) with
-failure probability $\varphi_D \ge 0$, and the leaf `L` meet
+`NLAlib.ShiftedQR.RandomDecouplingContract` on the class (condition $2B$, separation $g/2$) up
+to order $n + 1$ and norm $N_0$, with failure probability $\varphi_D \ge 0$, and the leaf `L` meet
 `NLAlib.ShiftedQR.RandomLeafContract` with error $\beta \ge 0$ and failure probability
 $\varphi_L \ge 0$. Let $\mathbf{H}$ be upper Hessenberg of
 order $n + 1$ with $\mathbf{H}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$,
@@ -666,10 +671,10 @@ theorem solveRounded_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} 
     (hC : IsCmp id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
     (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ} {B g φD β φL : ℝ} {k F : ℕ}
     {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} (D : Impl O Q)
-    (hD : RandomDecouplingContract law (2 * B) (g / 2) φD k F ps ω ε D I)
+    {N₀ : ℝ} (hD : RandomDecouplingContract law (2 * B) (g / 2) φD k F n N₀ ps ω ε D I)
     (L : Impl O Q) (hLeaf : RandomLeafContract law β φL L I) (hφD : 0 ≤ φD) (hφL : 0 ≤ φL)
     {a t p out f : ℕ × ℕ}
-    {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {thr c N₀ : ℝ}
+    {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {thr c : ℝ}
     (hHess : IsUpperHessenberg H) (hV : IsUnit V) (hHV : H * V = V * Matrix.diagonal d)
     (hκ : pseudoConditionNumber V ≤ B) (hg : 0 < g) (hgap : ∀ i j, i ≠ j → g ≤ ‖d i - d j‖)
     (hfind : (1 + u) ^ 2 * ω ^ 2 ≤ thr) (hcut : thr ≤ (1 - u) ^ 2 * c ^ 2) (hc : 0 ≤ c)
@@ -725,10 +730,10 @@ theorem solveRounded_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Interp
     (hC : IsCmp id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
     (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ} {B g φD β φL : ℝ} {k F : ℕ}
     {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} (D : Impl O Q)
-    (hD : RandomDecouplingContract law (2 * B) (g / 2) φD k F ps ω ε D I)
+    {N₀ : ℝ} (hD : RandomDecouplingContract law (2 * B) (g / 2) φD k F n N₀ ps ω ε D I)
     (L : Impl O Q) (hLeaf : RandomLeafContract law β φL L I) (hφD : 0 ≤ φD) (hφL : 0 ≤ φL)
     {a t p out f : ℕ × ℕ}
-    {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {thr c N₀ : ℝ}
+    {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {thr c : ℝ}
     (hHess : IsUpperHessenberg H) (hV : IsUnit V) (hHV : H * V = V * Matrix.diagonal d)
     (hκ : pseudoConditionNumber V ≤ B) (hg : 0 < g) (hgap : ∀ i j, i ≠ j → g ≤ ‖d i - d j‖)
     (hfind : (1 + u) ^ 2 * ω ^ 2 ≤ thr) (hcut : thr ≤ (1 - u) ^ 2 * c ^ 2) (hc : 0 ≤ c)

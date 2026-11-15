@@ -120,6 +120,16 @@ Statement changes made on the skeleton:
 * **E1** gains `hβ0 : 0 ≤ β`. Without it false at $m = 0$: with $\beta = -1$ the forward
   hypothesis is vacuous, but every $0\times0$ $\mathbf{L}'$ has $\|\mathbf{L}' - \mathbf{L}\|_2 = 0 > \beta$.
   A skeleton gap, not a paper error; T1 supplies it (an error bound, $\beta \ge 0$). Proved.
+* **RandomDecouplingContract** gains outer bounds `nmax` (order) and `Nmax` (norm), with the
+  hypotheses $n \le n_{\max}$, $N \le N_{\max}$ (found while proving P11p; maintainer approved).
+  As first stated, with $n$ and $N$ quantified inside while $\boldsymbol{u}$, the cap $F$, $\varphi$
+  and the parameter words are fixed, it is unprovable for the Lemma 6.4 loop: the precision and the
+  cap the loop needs grow with the block's order and norm ($F \approx \log(N/\omega)/\gamma$, the
+  iteration's $\boldsymbol{u}$ bound decreases in $n$ and $N$), so no fixed choice serves every
+  block. The change only weakens what a decoupler must deliver, so C4p becomes stronger; C4p and
+  T1 instantiate `nmax := n`, `Nmax := N₀` (every block they hand to D has order $\le n + 1$ and
+  norm $\le N_0$); no other hypothesis changes. Signature:
+  `RandomDecouplingContract law B g φ k F nmax Nmax ps ω ε D I`.
 * **Q3** `hm`: $m^2 x \le 1/4 \to m x \le 1/4$ (sufficient and minimal; G16 row).
 * Labels: R1/R2 H → L (elementary proof); E2 L → H (needs Codex's matching).
 * **R4** lower bound $(1 + \eta)^{-1}\mathbf{R}_{nn} \le |\widehat{\mathbf{R}}_{nn}| \to
@@ -905,7 +915,8 @@ audit 0 violations, 14 linters 0 errors, strict replay of `NLAlib` 0 violations;
   contract at $(4B, \Gamma/4)$.
 * **B4 (C4cap).** Wave 6, before C4p. Planned signatures after C4cap:
   `RoundedDecouplingContract fails k F ps ω ε D I` and
-  `RandomDecouplingContract law B g φ k F ps ω ε D I`, frame `[n + 1, k, ps.length, F]`, with `F`
+  `RandomDecouplingContract law B g φ k F ps ω ε D I` (later `… k F nmax Nmax ps …`, §2.1), frame
+  `[n + 1, k, ps.length, F]`, with `F`
   fixed outside the `∀`; `solveRounded D L : [N, k, np, F] …`. The skeleton's C4p (frame
   `[n + 1, k, ps.length]`) is restated in the C4cap commit, and only then dispatched. The reason
   given in §14.4 is corrected: `IExp.const` exists; `F` is runtime data so that the decoupler is

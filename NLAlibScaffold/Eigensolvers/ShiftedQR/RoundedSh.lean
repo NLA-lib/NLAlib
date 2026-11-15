@@ -525,6 +525,71 @@ theorem shTest_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsS
     (by disjoint) hP⟩, r, hfr.keep (Store.readsOnly_readBlock _ _ _ _) (by disjoint) hZ, hr, H',
     Rs, hch, hH', hT, htc, hthr⟩
 
+omit [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] in
+/-- **The accepted branch of `Sh`**: from `NLAlib.ShiftedQR.ShState3` with the word
+$c_g = (1 - \gamma)^k$ and the computed $t_c$ below the threshold, the acceptance
+(`NLAlib.ShiftedQR.trialAccept`) ends in `NLAlib.ShiftedQR.ShOutcome`, under the hypotheses of
+`NLAlib.ShiftedQR.shAccept_decoupled_or_contract` for the shifts. -/
+theorem shAccept_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
+    (hM : StdModel u id M) (hNat : IsExactNatLit id M 1) {τ : Tape ℝ} {m : Mem ℝ} {L k : ℕ}
+    (hk : 2 ≤ k) (hkn : k ≤ n) (hku : 100000 * k * u ≤ 1) {ε : ℝ}
+    {a s wg wr ww wp g thr f : ℕ × ℕ} (hv : ShViews L n k ε a s wg wr ww wp g thr f)
+    {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {e : Fin (n + 1) → ℂ} {ss : List ℂ}
+    {B S C d ω γ α cr cw cp tv : ℝ} (hH : IsUpperHessenberg H) (hH0 : H ≠ 0) (hV : IsUnit V)
+    (hHV : H * V = V * Matrix.diagonal e) (hκ : pseudoConditionNumber V ≤ B)
+    (hSH : specNorm H ≤ S) (hC0 : 0 ≤ C) (hd : 0 < d) (hω : 0 < ω)
+    (hs : ∀ s ∈ ss, ‖s‖ ≤ C * specNorm H) (hdist : ∀ s ∈ ss, ∀ i, d ≤ ‖e i - s‖)
+    (hxu : 300 * (n + 1) ^ 2 * u ≤ (16 * B)⁻¹ * (d / ((2 + 2 * C) * S)) ^ k)
+    (hbound : (66 + 2 * C) * B * S * ((2 + 2 * C) * S / d) ^ k * √(n + 1) *
+      (300 * (n + 1) ^ 2 * u) ≤ 0.001 * ω) (hγ1 : γ ≤ 1) (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv)
+    (hm : ShState3 M u L k ε H V e ss α ((1 - γ) ^ k) cr cw cp tv a s wg wr ww wp g thr f m)
+    (hlt : ∀ tc, m.store.get (L + 3) 0 = some tc →
+      tc < optimalThresholdWord M H k ((1 - γ) ^ k)) :
+    Writes .total I τ (trialAccept (O := O) (Q := Q)).body
+      (Env.frame [n + 1] [(L + 5, 0), a, (L + 11, 0), f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 11) 0 1 ⊔
+        Store.inBlock f.1 f.2 1)
+      (ShOutcome u k H γ tv ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a f)
+      m := by
+  obtain ⟨⟨ha, hs', hwg, hwr, hww, hwp, hg, hthl, hfl⟩, haf, -⟩ := hv
+  obtain ⟨⟨⟨hA, -, -, -, -, -, -, -, hf, -, -, -, -, -, -, -, -, -, -, -, -, h11⟩, -⟩, r, -, hr, H',
+    Rs, hch, hH', hT, ⟨tc, htc, htcb⟩, -⟩ := hm
+  have hu0 := hM.roundoff_nonneg
+  refine (trialAccept_writes (τ := τ) (t := (L + 5, 0)) (a := a) (g := (L + 11, 0)) (f := f) hS
+    hM hNat hT (Store.le_len_of_readBlock hA (by positivity)) (by simp [h11]) hf (by disjoint)
+    (Fp.disj_sup_left.mpr ⟨by disjoint, haf.symm⟩) (by disjoint)).mono le_rfl ?_
+  rintro m' - ⟨hA', -, hF⟩
+  have hsim := hch.isPerturbedUnitarySimilar (by positivity) hC0 (fun t ht => by
+    rw [List.eq_of_mem_replicate ht]; exact hs r hr.1)
+  rw [List.length_replicate] at hsim
+  exact ⟨hF, H', hsim, hH', hA', shAccept_decoupled_or_contract hM hch hk hkn hku hC0 hd hω hH0 hH
+    hV hHV hκ hSH (hs r hr.1) (hdist r hr.1) hxu hbound hγ1 hthrω htcb (hlt tc htc)⟩
+
+/-- **The rejected branch of `Sh` enters the exceptional branch**: from
+`NLAlib.ShiftedQR.ShState3` with $c_g = (1 - \gamma)^k$, $\gamma < 1$,
+$\psi_k(\mathbf{H}) > 0$, $2 \le k \le n$, $10^5k\boldsymbol{u} \le 1$, shifts that are no
+eigenvalue, and the computed $t_c$ not below the threshold, the state is
+`NLAlib.ShiftedQR.ShExcPre`: the promising shift stagnates with the ratio $0.998(1 - \gamma)$. -/
+theorem ShState3.shExcPre {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M) {m : Mem ℝ} {L k : ℕ}
+    (hk : 2 ≤ k) (hkn : k ≤ n) (hku : 100000 * k * u ≤ 1) {ε : ℝ}
+    {a s wg wr ww wp g thr f : ℕ × ℕ} {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {e : Fin (n + 1) → ℂ} {ss : List ℂ} {γ α cr cw cp tv : ℝ}
+    (hm : ShState3 M u L k ε H V e ss α ((1 - γ) ^ k) cr cw cp tv a s wg wr ww wp g thr f m)
+    (hV : IsUnit V) (hHV : H * V = V * Matrix.diagonal e) (hne : ∀ r ∈ ss, ∀ i, e i ≠ r)
+    (hγ1 : γ < 1) (hψ : 0 < hessenbergPotential k H)
+    (hle : ∀ tc, m.store.get (L + 3) 0 = some tc →
+      optimalThresholdWord M H k ((1 - γ) ^ k) ≤ tc) :
+    ShExcPre u L k ε H V e ss α γ ((1 - γ) ^ k) cr cw cp tv a s wg wr ww wp g thr f m := by
+  obtain ⟨⟨hctx, hp⟩, r, hZ, hr, H', Rs, -, -, -, ⟨tc, htc, htcb⟩, -⟩ := hm
+  have hN := norm_toLp_inv_aeval_replicate_last_pos hV hHV (fun i => hne r hr.1 i) k
+  have hthr := abs_optimalThresholdWord_sub_le hM (by omega) hkn
+    (by have : (2 : ℝ) ≤ k := by exact_mod_cast hk
+        nlinarith [hM.roundoff_nonneg]) (c := (1 - γ) ^ k)
+    (pow_nonneg (by linarith) k) H
+  refine ⟨hctx, ⟨r, hZ, hr, norm_inv_le_of_le_comptau hk hM.roundoff_nonneg hku hγ1 hψ hN htcb
+    ?_ (hle tc htc)⟩, hp⟩
+  simpa [mul_pow] using hthr
+
 end Steps
 
 end NLAlib.ShiftedQR

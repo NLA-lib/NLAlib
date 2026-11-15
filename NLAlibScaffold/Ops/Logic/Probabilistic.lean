@@ -660,7 +660,32 @@ theorem loop (hI : I.IsMeasurable) {win : Op → List ℕ → ℕ} (hloc : ∀ o
     (hbody : ∀ i < N, PWrites law I body (ρ.pushIdx i) F (Inv i) (Inv (i + 1)) (φ i))
     (hpost : ∀ m, Inv N m → Post m) :
     PWrites law I (.loop n body) ρ F Pre Post (∑ i ∈ Finset.range N, φ i) := by
-  sorry
+  let f : ℕ → Tape K → Mem K → Option (Mem K) := fun i τ m => eval I τ body (ρ.pushIdx i) m
+  have hk : ∀ k ≤ N, PStep law (fun τ m => NLAlib.Ops.iter (fun i => f i τ) k m) Pre
+      (fun m m' => m.store.EqOff F m'.store ∧ Inv k m') (∑ i ∈ Finset.range k, φ i) := by
+    intro k
+    induction k with
+    | zero =>
+      intro _
+      refine ⟨fun _ => Set.univ, by simp, fun _ _ _ _ => Iff.rfl, fun m hm =>
+        ⟨fun τ _ => ⟨m, rfl, Store.EqOff.refl _ _, h0 m hm⟩, fun P ξ hξ => ?_⟩⟩
+      simp
+    | succ k ih =>
+      intro hkN
+      refine (PStep.bind (f := fun τ m => NLAlib.Ops.iter (fun i => f i τ) k m) (g := f k)
+        (MeasurableRun.iter (f := f) (fun i => hI.measurable_eval body (ρ.pushIdx i)) k)
+        (fun τ τ' => Follows.iter (fun i => run_follows hloc τ τ' body (ρ.pushIdx i)) k)
+        (ih (by omega)) (fun _ _ _ hq => hq.2) (hbody k (by omega)) (hφ k (by omega))).mono
+        (fun _ h => h) (fun _ _ _ ⟨_, ⟨e₁, _⟩, ⟨e₂, hp⟩⟩ => ⟨e₁.trans e₂, hp⟩) ?_
+      rw [Finset.sum_range_succ]
+  change PStep law (fun τ m => eval I τ (.loop n body) ρ m) Pre _ _
+  have e : (fun τ m => eval I τ (.loop n body) ρ m) =
+      fun τ m => NLAlib.Ops.iter (fun i => f i τ) N m := by
+    funext τ m
+    simp only [eval, hn, Option.bind_some]
+    rfl
+  rw [e]
+  exact (hk N le_rfl).mono (fun _ h => h) (fun _ _ _ h => ⟨h.1, hpost _ h.2⟩) le_rfl
 
 /-- **The index binder** (PL3f-bindIdx): if from every memory of the precondition the index query
 returns a number $v \le B$, and the body at every such $v$ fails with probability at most
@@ -672,7 +697,24 @@ theorem bindIdx (hI : I.IsMeasurable) {q : Tst} {ins : List Operand} {bound : IE
     (h : ∀ v ≤ B, PWrites law I body (ρ.pushIdx v) F (fun m => Pre m ∧ I.index q a m = some v)
       Post φ) :
     PWrites law I (.bindIdx q ins bound body) ρ F Pre Post φ := by
-  sorry
+  have h' : ∀ v, PWrites law I body (ρ.pushIdx v) F
+      (fun m => Pre m ∧ I.index q a m = some v ∧ v ≤ B) Post φ := fun v =>
+    if hv : v ≤ B then (h v hv).mono (fun m hm => ⟨hm.1, hm.2.1⟩) le_rfl (fun _ h => h) le_rfl
+    else ⟨fun _ => ∅, by simp, fun _ _ _ _ => Iff.rfl, fun m hm => absurd hm.2.2 hv⟩
+  choose Gs hGm hGd hG using h'
+  have hv : Measurable fun m : Mem K => (I.index q a m).getD 0 := (hI.2.2 q a).2
+  refine ⟨fun m => Gs ((I.index q a m).getD 0) m, ?_, fun m => hGd _ m, fun m hm => ?_⟩
+  · have e : {x : Mem K × Tape K | x.2 ∈ Gs ((I.index q a x.1).getD 0) x.1} =
+        ⋃ j, (Prod.fst ⁻¹' {m | (I.index q a m).getD 0 = j}) ∩ {x | x.2 ∈ Gs j x.1} := by
+      ext x
+      simp
+    rw [e]
+    exact MeasurableSet.iUnion fun j => (measurable_fst (hv (measurableSet_singleton j))).inter
+      (hGm j)
+  · obtain ⟨v, hvB, hiv⟩ := hidx m hm
+    obtain ⟨hW, hP⟩ := hG v m ⟨hm, hiv, hvB⟩
+    simp only [hiv, Option.getD_some]
+    exact ⟨fun τ hτ => writes_bindIdx ha hB hiv hvB (hW τ hτ), hP⟩
 
 /-- **Scratch allocations** (PL3f-allocs, the mirror of `writes_allocs_preserving_post`): the
 body runs on the memory with fresh buffers at the handles $L, L + 1, \dots$ above the
@@ -693,11 +735,13 @@ theorem allocs {lens : List IExp} {body : Stmt Op Tst} {ns : List ℕ}
 /-- **A procedure instance** (PL3f-frame): the body in the environment of the frame, from
 memories in which the frame's operands are live. -/
 theorem in_frame {ds : List IExp} {args : List Operand} {body : Stmt Op Tst} {d : List ℕ}
-    {a : List (ℕ × ℕ)} (hd : IExp.evalList ρ.idx ds = some d)
-    (ha : Operand.evalList ρ args = some a) (hl : ∀ m, Pre m → m.Live a)
-    (h : PWrites law I body (Env.frame d a) F Pre Post φ) :
+    {a : List (ℕ × ℕ)} (h : PWrites law I body (Env.frame d a) F Pre Post φ)
+    (hd : IExp.evalList ρ.idx ds = some d) (ha : Operand.evalList ρ args = some a)
+    (hl : ∀ m, Pre m → m.Live a) :
     PWrites law I (.frame ds args body) ρ F Pre Post φ := by
-  sorry
+  obtain ⟨G, hGm, hGd, hG⟩ := h
+  exact ⟨G, hGm, hGd, fun m hm =>
+    ⟨fun τ hτ => Writes.in_frame ((hG m hm).1 τ hτ) hd ha (hl m hm), (hG m hm).2⟩⟩
 
 /-- **The bridge to the law-level statements of `Ops/Law`** (PL6): if every successful run from
 `m` is within the counts `B` and the workspace `M`, the run misses the counted postcondition
@@ -710,7 +754,14 @@ theorem measureReal_not_conditionalRuns_le (h : PWrites law I c ρ F Pre Post φ
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape K} (hξ : IsTapeLaw law P ξ) :
     P.real {ω | ¬ ConditionalRuns I W (ξ ω) c ρ m B M
       fun m' => m.store.EqOff F m'.store ∧ Post m'} ≤ φ := by
-  sorry
+  obtain ⟨G, -, -, hG⟩ := h
+  have := hξ.isProbabilityMeasure
+  refine (measureReal_mono fun ω (hω : ω ∈ {ω | ¬ ConditionalRuns I W (ξ ω) c ρ m B M
+      fun m' => m.store.EqOff F m'.store ∧ Post m'}) (hmem : ξ ω ∈ G m) => hω ?_).trans
+    ((hG m hm).2 P ξ hξ)
+  obtain ⟨m', he, hEq, hPost⟩ := (hG m hm).1 _ hmem
+  obtain ⟨st', h1, h2, h3, h4⟩ := hcost _ m' he
+  exact ⟨st', h1, h2, h3, h4 ▸ ⟨hEq, hPost⟩⟩
 
 end PWrites
 

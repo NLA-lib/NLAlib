@@ -20,8 +20,9 @@ The scalar decisions of the finite-precision shifting strategy
 
 * the potential $\psi_k(\mathbf{H})$, $k = 2^q$, as $q + 1$ rounded square roots of the rounded
   product of the last $k$ squared subdiagonal moduli (`NLAlib.ShiftedQR.roundedPotential`),
-  within $0.001\,\psi_k(\mathbf{H})/k$ (the paper's (eq:boundonpottilde), which the exceptional
-  radius needs; a flat $0.001$ is not enough);
+  within $20\boldsymbol{u}\,\psi_k(\mathbf{H})$, relatively (sharper than the paper's
+  (eq:boundonpottilde), $0.001\,\psi_k/k$, which does not fit the exceptional radius window
+  $\tilde R \le 2.002^{1/k}\theta\alpha B^{1/k}\psi_k$ for $k \ge 2$);
 * `comptau`, the rounded $\prod_\ell \lvert(\widehat{\mathbf{R}}_\ell)_{nn}\rvert$ of the last
   diagonal entries of the triangular factors of a degree $k$ rounded step
   (`NLAlib.ShiftedQR.comptau`), within $0.001$, relatively, of
@@ -42,7 +43,7 @@ and the row recurrence of `NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedRowPoly`
 ## Main results
 
 * `NLAlib.ShiftedQR.subdiagProduct_writes_word`: the bottom product on any scalar machine.
-* `NLAlib.ShiftedQR.roundedPotential_writes`: the rounded potential within $0.001\psi_k/k$.
+* `NLAlib.ShiftedQR.roundedPotential_writes`: the rounded potential within $20\boldsymbol{u}\psi_k$.
 * `NLAlib.ShiftedQR.comptau_writes`: `comptau` within $0.001$.
 * `NLAlib.ShiftedQR.norm_toLp_rowPolyVec_sub_aeval_le`: the rounded last row of a shift
   polynomial.
@@ -233,19 +234,19 @@ theorem roundedPotential_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
   intro μ₂ _ ⟨hp₂, hR₂⟩
   exact ⟨hp₂.trans hp₁, hR₂⟩
 
-/-- **The rounded potential is within $0.001\,\psi_k/k$**: under the standard model with
-$20000\,k\boldsymbol{u} \le 1$, for $k = 2^q \le n$ the word
+/-- **The rounded potential is within $20\boldsymbol{u}\,\psi_k$**: under the standard model
+with $20000\,k\boldsymbol{u} \le 1$, for $k = 2^q \le n$ the word
 `NLAlib.ShiftedQR.roundedPotentialWord` ($q + 1$ rounded square roots of the rounded product of
 the last $k$ squared subdiagonal moduli of $\mathbf{H}$) satisfies
-$$\lvert\tilde\psi - \psi_k(\mathbf{H})\rvert \le \frac{0.001}{k}\,\psi_k(\mathbf{H}).$$
-The relative error is $20\boldsymbol{u}$: $8(k + 1)\boldsymbol{u}$ in the product, divided by
-$2k$ in the root, and $3\boldsymbol{u}$ for the rounded roots. [BanksGarzaVargasSrivastava2022,
+$$\lvert\tilde\psi - \psi_k(\mathbf{H})\rvert \le 20\boldsymbol{u}\,\psi_k(\mathbf{H}):$$
+$8(k + 1)\boldsymbol{u}$ in the product, divided by $2k$ in the root, and $3\boldsymbol{u}$ for
+the rounded roots. This is at most the $0.001\,\psi_k/k$ of [BanksGarzaVargasSrivastava2022,
 (eq:boundonpottilde)], where $\psi_k^k$ is taken as exact. -/
 theorem abs_roundedPotentialWord_sub_le {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M)
     {n k q : ℕ} (hkq : k = 2 ^ q) (hkn : k ≤ n) (hu : 20000 * k * u ≤ 1)
     (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) :
     |roundedPotentialWord M H k q - hessenbergPotential k H| ≤
-      0.001 / k * hessenbergPotential k H := by
+      20 * u * hessenbergPotential k H := by
   have hu0 := hM.roundoff_nonneg
   have hk1 : 1 ≤ k := hkq ▸ Nat.one_le_two_pow
   have hk1' : (1 : ℝ) ≤ k := by exact_mod_cast hk1
@@ -292,17 +293,18 @@ theorem abs_roundedPotentialWord_sub_le {M : Machine ℝ} {u : ℝ} (hM : StdMod
       mul_le_mul_of_nonneg_right hyk' hψ
     have h4 : u ≤ 1 / 48 := by nlinarith
     nlinarith [mul_nonneg (mul_nonneg hu0 hu0) hψ, mul_nonneg hu0 hψ]
-  refine hfin.trans (mul_le_mul_of_nonneg_right ?_ hψ)
-  rw [le_div_iff₀ (by positivity)]
-  nlinarith
+  exact hfin
 
 /-- **The rounded potential** (P6; [BanksGarzaVargasSrivastava2022, (eq:boundonpottilde)]): on a
 scalar machine with the standard model at $20000\,k\boldsymbol{u} \le 1$, for $k = 2^q \le n$ and
 an order-$(n + 1)$ matrix $\mathbf{H}$ stored at `A`, the program `roundedPotential` writes only
 its output word, and stores there a $\tilde\psi$ with
-$$\lvert\tilde\psi - \psi_k(\mathbf{H})\rvert \le \frac{0.001}{k}\,\psi_k(\mathbf{H}).$$
-The tolerance $0.001/k$, not a flat $0.001$, is what the exceptional radius needs
-($\tilde R \le 2.002^{1/k}\theta\alpha B^{1/k}\psi_k$). Matrix and output are disjoint views. -/
+$$\lvert\tilde\psi - \psi_k(\mathbf{H})\rvert \le 20\boldsymbol{u}\,\psi_k(\mathbf{H}).$$
+The relative error $20\boldsymbol{u}$ is exposed, not the paper's $0.001/k$ (which it implies
+here): the radius word $\mathrm{fl}(2^{1/k}\theta\alpha B^{1/k}\tilde\psi)$ meets the exceptional
+radius window $[1.998^{1/k}, 2.002^{1/k}]\,\theta\alpha B^{1/k}\psi_k$ for every $k \ge 1$ under,
+for instance, $10^5 k\boldsymbol{u} \le 1$, which $0.001/k$ does not give for $k \ge 2$. Matrix
+and output are disjoint views. -/
 theorem roundedPotential_writes {M : Machine ℝ} {I : Interp Op Tst ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) {τ : Tape ℝ} {μ : Mem ℝ}
     {n k q : ℕ} {a p : ℕ × ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
@@ -313,7 +315,7 @@ theorem roundedPotential_writes {M : Machine ℝ} {I : Interp Op Tst ℝ} {u : �
     Writes .total I τ roundedPotential.body (Env.frame [n + 1, k, q] [a, p])
       (Store.inBlock p.1 p.2 1)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ ψ : ℝ, μ'.store.get p.1 p.2 = some ψ ∧
-        |ψ - hessenbergPotential k H| ≤ 0.001 / k * hessenbergPotential k H) μ :=
+        |ψ - hessenbergPotential k H| ≤ 20 * u * hessenbergPotential k H) μ :=
   (roundedPotential_writes_word (τ := τ) hS hkn hH hp hap).mono le_rfl fun _ _ h =>
     ⟨h.1, _, h.2, abs_roundedPotentialWord_sub_le hM hkq hkn hu H⟩
 

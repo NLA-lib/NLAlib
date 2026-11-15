@@ -94,8 +94,13 @@ Statement changes made on the skeleton:
   bound $1.3\cdot10^{-9}$, $\kappa \le 3.44$, $d = 2.9\cdot10^{-7}$), but every phase $\mathbf{D}$
   leaves error $\ge 0.251$ against the bound $1.5\cdot10^{-4}$. Every use applies Q4 to a
   Hessenberg iterate.
-* **S5** `hRhi`: $1.001\cdot2^{1/k} \to 2.002^{1/k}$, i.e. $\tilde\psi$ within $0.001/k$ as the paper's
-  (eq:boundonpottilde); with a flat $1.001$ the constant $13$ fails for $k \ge 60$. P6 accordingly.
+* **S5** `hRhi`: $1.001\cdot2^{1/k} \to 2.002^{1/k}$; with a flat $1.001$ the constant $13$ fails for
+  $k \ge 60$. The paper's (eq:boundonpottilde), $\tilde\psi$ within $0.001/k$, is not quite enough
+  (second-order slip, Fable review of the agent statements): with the radius word
+  $\mathrm{fl}(2^{1/k}\theta\alpha B^{1/k}\tilde\psi)$ the upper end needs
+  $(1 + 0.001/k)(1 + \boldsymbol{u}) \le 1.001^{1/k}$, false for every $k \ge 2$. P6 therefore exposes
+  $\lvert\tilde\psi - \psi_k\rvert \le 20\boldsymbol{u}\psi_k$; P9 takes $10^5k\boldsymbol{u} \le 1$
+  ($\tilde\psi$ within $0.0002/k$), which fits both ends for every $k \ge 1$.
 * **C1** `BackwardIterationContract ν` → `BackwardIterationContract θ ν` (θ a parameter, as in
   `BackwardDecouplingContract θ ε`). With θ quantified inside, C1 is false: let `Iter'` test the
   stored θ word against θ₀ and run `iteration` (meets `IterationContract θ₀`) or `abort`; at the
@@ -212,7 +217,7 @@ $\beta$). The worklist's scalar arithmetic is exact in C4 and rounded in P3.
 | K1 | `Ops.StdModel.abs_sqrtIter_sub_le` ($k$-th root, $3\boldsymbol{u}$) | Matrix/FinitePrecision/RootsRounded | S | skel |
 | P4 | Optimal program: rounded $\mathbf{e}_n^{\mathsf T}p(\mathbf{H})$ recurrence within $0.0009(\theta\psi)^k$ under $\boldsymbol{u}_{\mathrm{Optimal}}$ | Eigensolvers/ShiftedQR/RoundedRitz (new) | M | plan |
 | P5 | comptau program: $\mathrm{fl}(\prod\lvert\widehat{\mathbf{R}}_{nn}\rvert)$ within $0.001$ | RoundedRitz | M | plan |
-| P6 | rounded potential: $\tilde\psi_k$ within $0.001\psi_k/k$, the paper's (eq:boundonpottilde) (moduli, product, `sqrtIter`) | RoundedRitz | S | plan |
+| P6 | rounded potential: $\tilde\psi_k$ within $20\boldsymbol{u}\psi_k$ (at least the paper's (eq:boundonpottilde), $0.001\psi_k/k$; moduli, product, `sqrtIter`) | RoundedRitz | S | plan |
 | P7 | Find program meets S4's hypothesis | RoundedFind (new) | M | plan |
 | P8 | Exc program: net of $\mathbb{D}(r,(1+\varepsilon)\tilde R)$, translate, rounding $\le \min(0.005\varepsilon\tilde R, \eta/2)$ | RoundedExc (new) | L | plan |
 | P9 | Sh iteration (one call of Find, comptau, Exc, trials): decoupled at the bottom or $\psi_k$ contracted by $1.002(1-\gamma)$ on the good event | RoundedIteration (new) | L | plan |
@@ -710,7 +715,7 @@ its program. Gen = general library (own topic file, stage-free docstring), Stg =
 | P15 | Exc translate failure (D4 ✓, $\eta = \varepsilon\tilde R\sqrt{\varphi/(11n)}$), PL3b | Eigensolvers/ShiftedQR/RoundedExc | Stg | S | plan | 7 |
 | P8 | `excShifts` program (net of $\mathbb{D}(r, (1+\varepsilon)\tilde R)$, translate, rounding $\le \min(0.005\varepsilon\tilde R, \eta/2)$) meets S5's cover/card and D4's separation | RoundedExc | Stg | L | plan | 8 |
 | P7 | `findRounded` program (halving with comptau of half-products via P2 ✓) meets S4's hypothesis | Eigensolvers/ShiftedQR/RoundedFind | Stg | M | plan | 8 |
-| P6 | `roundedPotential` (bottom product + `sqrtIter` K1 ✓, FP1): $\tilde\psi$ within $0.001\psi/k$ | Eigensolvers/ShiftedQR/RoundedRitz | Stg | S | plan | 7 |
+| P6 | `roundedPotential` (bottom product + `sqrtIter` K1 ✓, FP1): $\tilde\psi$ within $20\boldsymbol{u}\psi$ (under $20000k\boldsymbol{u} \le 1$; P9 takes $10^5k\boldsymbol{u} \le 1$) | Eigensolvers/ShiftedQR/RoundedRitz | Stg | S | plan | 7 |
 | P5 | `comptau` ($\mathrm{fl}\prod\lvert\widehat{\mathbf{R}}_{nn}\rvert$ from P2 ✓; Q5 ✓ + FP1) | RoundedRitz | Stg | S | plan | 7 |
 | P4 | `optimalTest` program ($\widehat{\mathbf{v}}_k$ recurrence; FP2) meets S1/S2's $0.0009$ hypothesis | RoundedRitz | Stg | M | plan | 7 |
 | FP2 | rounded $\mathbf{e}_n^{\mathsf T}p(\mathbf{H})$ by the recurrence $\widehat{\mathbf{v}}_{j+1} = \mathrm{fl}((\mathbf{H} - s_{j+1})^{\mathsf H}\widehat{\mathbf{v}}_j)$: error $\le 2(n+1)^2(2+2C)^k\|\mathbf{H}\|^k\boldsymbol{u}$ (Lemma 4.5) | Matrix/FinitePrecision/HessenbergRowPoly | Gen | M | plan | 6 |

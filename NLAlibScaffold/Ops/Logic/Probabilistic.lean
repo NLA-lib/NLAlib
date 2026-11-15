@@ -573,7 +573,29 @@ theorem of_window {s W : ℕ} {Bad : Mem K → Set (Fin W → K)}
     (hφ : ∀ m, Pre m → (Measure.pi fun _ : Fin W => law s).real (Bad m) ≤ φ)
     (h : ∀ m τ, Pre m → Tape.windowFn τ s m.pos W ∉ Bad m → Writes .total I τ c ρ F Post m) :
     PWrites law I c ρ F Pre Post φ := by
-  sorry
+  have hwin : Measurable fun x : Mem K × Tape K => Tape.windowFn x.2 s x.1.pos W := by
+    have hp : ∀ p : ℕ, Measurable fun x : Mem K × Tape K => Tape.windowFn x.2 s p W := fun p =>
+      measurable_pi_lambda _ fun j =>
+        (measurable_pi_apply s).comp ((measurable_pi_apply (p + j)).comp measurable_snd)
+    exact (measurable_from_prod_countable_left (f := fun y : (Mem K × Tape K) × ℕ =>
+      Tape.windowFn y.1.2 s y.2 W) hp).comp (measurable_id.prodMk
+        (Mem.measurable_pos.comp measurable_fst))
+  refine ⟨fun m => {τ | Tape.windowFn τ s m.pos W ∉ Bad m},
+    (measurable_fst.prodMk hwin hBad).compl, fun m τ τ' hττ' => ?_, fun m hm =>
+      ⟨fun τ hτ => h m τ hm hτ, fun P ξ hξ => ?_⟩⟩
+  · have : Tape.windowFn τ s m.pos W = Tape.windowFn τ' s m.pos W :=
+      funext fun j => by simp only [Tape.windowFn, hττ' (m.pos + j) (Nat.le_add_right _ _)]
+    simp only [Set.mem_ofPred_eq, this]
+  · have hξm : Measurable fun ω => Tape.windowFn (ξ ω) s m.pos W :=
+      measurable_pi_lambda _ fun j => hξ.measurable _ _
+    have hB : MeasurableSet (Bad m) := measurable_prodMk_left hBad
+    calc P.real {ω | ξ ω ∉ {τ | Tape.windowFn τ s m.pos W ∉ Bad m}}
+        = (P.map fun ω => Tape.windowFn (ξ ω) s m.pos W).real (Bad m) := by
+          rw [map_measureReal_apply hξm hB]
+          congr 1
+          ext ω
+          simp
+      _ ≤ φ := by rw [hξ.map_windowFn]; exact hφ m hm
 
 /-- **Sequence**: under a measurable interpretation whose operations read the tape only in their
 windows, the failure probabilities of the two parts add. -/
@@ -591,7 +613,52 @@ theorem ite (hI : I.IsMeasurable) {q : Tst} {ds : List IExp} {ins : List Operand
     (ht : PWrites law I t ρ F (fun m => Pre m ∧ I.testAt q ds ins ρ m = some true) Post φ₁)
     (he : PWrites law I e ρ F (fun m => Pre m ∧ I.testAt q ds ins ρ m = some false) Post φ₂) :
     PWrites law I (.ite q ds ins t e) ρ F Pre Post (max φ₁ φ₂) := by
-  sorry
+  obtain ⟨Gt, hGtm, hGtd, hGt⟩ := ht
+  obtain ⟨Ge, hGem, hGed, hGe⟩ := he
+  have hT := hI.measurable_testAt q ds ins ρ
+  have hS : MeasurableSet {m : Mem K | I.testAt q ds ins ρ m = some true} := by
+    have e : {m : Mem K | I.testAt q ds ins ρ m = some true} =
+        {m | (I.testAt q ds ins ρ m).isSome = true} ∩
+          {m | (I.testAt q ds ins ρ m).getD false = true} := by
+      ext m
+      simp only [Set.mem_ofPred_eq, Set.mem_inter_iff]
+      generalize I.testAt q ds ins ρ m = o
+      cases o with
+      | none => simp
+      | some b => cases b <;> simp
+    rw [e]
+    exact (hT.1 (measurableSet_singleton true)).inter (hT.2 (measurableSet_singleton true))
+  have hwr : ∀ {m : Mem K} {τ : Tape K} {b : Bool}, I.testAt q ds ins ρ m = some b →
+      Writes .total I τ (if b then t else e) ρ F Post m →
+        Writes .total I τ (.ite q ds ins t e) ρ F Post m := by
+    intro m τ b hb hw
+    obtain ⟨d, hd, hb⟩ := Option.bind_eq_some_iff.mp hb
+    obtain ⟨a, ha, hb⟩ := Option.bind_eq_some_iff.mp hb
+    exact wp_ite hd ha hb hw
+  refine ⟨fun m => if I.testAt q ds ins ρ m = some true then Gt m else Ge m, ?_, fun m => ?_,
+    fun m hm => ?_⟩
+  · have e : {x : Mem K × Tape K | x.2 ∈ (fun m => if I.testAt q ds ins ρ m = some true then Gt m
+        else Ge m) x.1} = (Prod.fst ⁻¹' {m | I.testAt q ds ins ρ m = some true} ∩
+          {x | x.2 ∈ Gt x.1}) ∪
+        (Prod.fst ⁻¹' {m | I.testAt q ds ins ρ m = some true}ᶜ ∩ {x | x.2 ∈ Ge x.1}) := by
+      ext x
+      by_cases h : I.testAt q ds ins ρ x.1 = some true <;> simp [h]
+    rw [e]
+    exact ((measurable_fst hS).inter hGtm).union ((measurable_fst hS.compl).inter hGem)
+  · dsimp only
+    split_ifs
+    exacts [hGtd m, hGed m]
+  · obtain ⟨b, hb⟩ := htest m hm
+    cases b with
+    | false =>
+      have hne : ¬ I.testAt q ds ins ρ m = some true := by simp [hb]
+      obtain ⟨hW, hP⟩ := hGe m ⟨hm, hb⟩
+      simp only [hne, if_false]
+      exact ⟨fun τ hτ => hwr hb (hW τ hτ), fun P ξ hξ => (hP P ξ hξ).trans (le_max_right _ _)⟩
+    | true =>
+      obtain ⟨hW, hP⟩ := hGt m ⟨hm, hb⟩
+      simp only [hb, if_true]
+      exact ⟨fun τ hτ => hwr hb (hW τ hτ), fun P ξ hξ => (hP P ξ hξ).trans (le_max_left _ _)⟩
 
 /-- **The loop with early exit**: with the fuel $N$, a round from the invariant `Inv i` with a
 true test fails with probability at most $\varphi_i$, and the exit block from `Inv i` with a

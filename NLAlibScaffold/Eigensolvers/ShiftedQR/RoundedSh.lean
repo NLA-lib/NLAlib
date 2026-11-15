@@ -861,6 +861,124 @@ theorem shStepWithScratch_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
         (Fp.inBlock_le_sup_above (by omega))) (Fp.inBlock_le_sup_above (by omega)))
         (Fp.inBlock_le_sup_above (by omega)))) le_rfl) (fun _ h => h) (by simp)
 
+/-- **The rounded shifting strategy `Sh` as a probabilistic block** (P9;
+[BanksGarzaVargasSrivastava2022, Lemma 5.4], corrected as in the errata G13, G14, N2 and N11):
+on a scalar machine with the standard model, exact comparisons, index literals, index
+conversion and exact natural literals up to $n + 1$, a measurable tape-local interpretation
+with an exact polar disk sampler on a stream `s₀` uniform on $[0, 1]$: let $\mathbf{H}$ be upper
+Hessenberg of order $n + 1$, $\mathbf{H}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{e})$
+with $\kappa(\mathbf{V}) \le B$, $\|\mathbf{H}\|_2 \le \Sigma$, $2 \le k = 2^m \le n$,
+$0 < \omega \le \psi_k(\mathbf{H})$, the $k$ stored shifts $\theta$-optimal ($\theta \ge 1$), in
+$\mathbb{D}(0, 1.1\|\mathbf{H}\|_2)$ and at distance at least $d > 0$ from every $e_i$;
+$\alpha = (1.01B)^{4m/2^m}$, $0 < \gamma < 1$,
+$\varepsilon = (0.998(1 - \gamma)^2/((13B^4)^{1/k}\alpha^2\theta^2))^{k/(k-1)} \le 1/2$,
+$0 < \varphi \le 1/5$, $d \le \varepsilon R_{\mathrm{lo}}\sqrt{\varphi/(11(n + 1))}/4$ for
+$[R_{\mathrm{lo}}, R_{\mathrm{hi}}] = [1.998^{1/k}, 2.002^{1/k}]\,\theta\alpha B^{1/k}
+\psi_k(\mathbf{H})$, $1.1 + 2.1 \cdot 2.002^{1/k}\theta\alpha B^{1/k} \le C$, the stored words
+$(1 - \gamma)^k$, $2^{1/k}\theta\alpha B^{1/k}$, $\varepsilon/2$, $1.0015(1 - \gamma)$, the net
+`NLAlib.ShiftedQR.excNet ε`, a scan threshold $t \ge (1 + \boldsymbol{u})^2\omega^2$, and the
+precision conditions $(n + 1)\boldsymbol{u} \le 1/2500$, $10^5k\boldsymbol{u} \le 1$,
+$x = 300(n+1)^2\boldsymbol{u} \le (8004B)^{-1}(d/((2 + 2C)\Sigma))^k$,
+$(66 + 2C)B\Sigma((2 + 2C)\Sigma/d)^k\sqrt{n + 1}\,x \le 0.001\,\omega$ and
+$6\boldsymbol{u}(1.1\Sigma + 3R_{\mathrm{hi}}) \le \min(0.005, \sqrt{\varphi/(11(n + 1))}/8)
+\,\varepsilon R_{\mathrm{lo}}$. Then `NLAlib.ShiftedQR.shStep` writes only the matrix and the
+flag and, except with probability at most $\varphi$, ends in `NLAlib.ShiftedQR.ShOutcome`: the
+flag is $1$ and the matrix is an upper Hessenberg perturbed unitary similarity of $\mathbf{H}$
+with error $(1 + C)\|\mathbf{H}\|_2((1 + x)^k - 1)$, decoupled at the bottom (a bottom
+subdiagonal entry passes the scan) or with $\psi_k \le 1.002(1 - \gamma)\psi_k(\mathbf{H})$. -/
+theorem shStep_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I)
+    (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I) (hQ : IsToNat id I)
+    {law : ℕ → Measure ℝ} {s₀ : ℕ} (hD : IsPolarDiskSampler s₀ I)
+    (hU : law s₀ = volume.restrict (Set.Icc 0 1)) {k q : ℕ} (hkq : k = 2 ^ q) (hk : 2 ≤ k)
+    (hkn : k ≤ n) {ε : ℝ} {a s wg wr ww wp g thr f : ℕ × ℕ}
+    (haf : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock f.1 f.2 1))
+    (hio : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
+      (Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock wg.1 wg.2 1 ⊔ Store.inBlock wr.1 wr.2 1 ⊔
+        Store.inBlock ww.1 ww.2 1 ⊔ Store.inBlock wp.1 wp.2 1 ⊔
+        Store.inBlock g.1 g.2 (2 * (excNet ε).length) ⊔ Store.inBlock thr.1 thr.2 1))
+    {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {e : Fin (n + 1) → ℂ} {ss : List ℂ}
+    {B S ω θ α γ φ C d tv : ℝ} (hH : IsUpperHessenberg H) (hV : IsUnit V)
+    (hHV : H * V = V * Matrix.diagonal e) (hκ : pseudoConditionNumber V ≤ B)
+    (hSH : specNorm H ≤ S) (hω : 0 < ω) (hψ : ω ≤ hessenbergPotential k H)
+    (hlen : ss.length = k) (hopt : IsOptimalRitzValues θ H ss) (hθ : 1 ≤ θ) (hd' : 0 < d)
+    (hdist : ∀ s ∈ ss, ∀ i, d ≤ ‖e i - s‖) (hsH : ∀ s ∈ ss, ‖s‖ ≤ 1.1 * specNorm H)
+    (hα : α = (1.01 * B) ^ ((4 * q : ℝ) / 2 ^ q)) (hγ : 0 < γ) (hγ1 : γ < 1)
+    (hε : ε = (0.998 * (1 - γ) * (1 - γ) / ((13 * B ^ 4) ^ ((k : ℝ)⁻¹) * α ^ 2 * θ ^ 2)) ^
+      ((k : ℝ) / (k - 1))) (hε2 : ε ≤ 1 / 2) (hφ : 0 < φ) (hφ1 : φ ≤ 1 / 5)
+    (hd : d ≤ ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) *
+      hessenbergPotential k H) * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 4)
+    (hC1 : 1.1 + 2.1 * ((2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹)) ≤ C)
+    (hnu : (n + 1 : ℝ) * u ≤ 1 / 2500) (hku : 100000 * k * u ≤ 1)
+    (hxu : 300 * (n + 1) ^ 2 * u ≤ (8004 * B)⁻¹ * (d / ((2 + 2 * C) * S)) ^ k)
+    (hbound : (66 + 2 * C) * B * S * ((2 + 2 * C) * S / d) ^ k * √(n + 1) *
+      (300 * (n + 1) ^ 2 * u) ≤ 0.001 * ω)
+    (hexc1 : 6 * u * (1.1 * S + 3 * ((2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) *
+      hessenbergPotential k H)) ≤ 0.005 * ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α *
+        B ^ ((k : ℝ)⁻¹) * hessenbergPotential k H))
+    (hexc2 : 6 * u * (1.1 * S + 3 * ((2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) *
+      hessenbergPotential k H)) ≤ ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α *
+        B ^ ((k : ℝ)⁻¹) * hessenbergPotential k H) * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 8)
+    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) :
+    PWrites law I (shStep (O := O) (Q := Q)).body
+      (Env.frame [n + 1, q, k, (excNet ε).length] [a, s, wg, wr, ww, wp, g, thr, a, f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
+      (fun m => m.Live [a, s, wg, wr, ww, wp, g, thr, f] ∧ HoldsMatrix a H m.store ∧
+        m.store.readBlock s.1 s.2 (2 * k) = some (ss.flatMap fun z => [z.re, z.im]) ∧
+        m.store.get wg.1 wg.2 = some ((1 - γ) ^ k) ∧
+        m.store.get wr.1 wr.2 = some ((2 : ℝ) ^ ((k : ℝ)⁻¹) * (θ * α * B ^ ((k : ℝ)⁻¹))) ∧
+        m.store.get ww.1 ww.2 = some (ε / 2) ∧ m.store.get wp.1 wp.2 = some (1.0015 * (1 - γ)) ∧
+        m.store.readBlock g.1 g.2 (2 * (excNet ε).length) =
+          some ((excNet ε).flatMap fun z => [z.re, z.im]) ∧
+        m.store.get thr.1 thr.2 = some tv ∧ f.2 < m.store.len f.1)
+      (ShOutcome u k H γ tv ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a f)
+      φ := by
+  have e : (shStep (O := O) (Q := Q)).body = Stmt.allocs [.const 2, .const 1, .const 1,
+      .const 1, .const 1, .const 2 * (.var 0 * .var 0), .const 2 * .var 2, .const 2 * .var 2,
+      .const 5, .const 1, .const 2 * .var 3, .const 1]
+      (.frame [.var 0, .var 1, .var 2, .var 3] [⟨0, .var 4⟩, ⟨1, .var 5⟩, ⟨2, .var 6⟩,
+        ⟨3, .var 7⟩, ⟨4, .var 8⟩, ⟨5, .var 9⟩, ⟨6, .var 10⟩, ⟨7, .var 11⟩, ⟨10, .const 0⟩,
+        ⟨11, .const 0⟩, ⟨12, .const 0⟩, ⟨13, .const 0⟩, ⟨14, .const 0⟩, ⟨15, .const 0⟩,
+        ⟨16, .const 0⟩, ⟨17, .const 0⟩, ⟨18, .const 0⟩, ⟨19, .const 0⟩, ⟨20, .const 0⟩,
+        ⟨21, .const 0⟩, ⟨0, .var 4⟩, ⟨9, .var 13⟩]
+        (shStepWithScratch (O := O) (Q := Q)).body) := rfl
+  rw [e]
+  refine PWrites.allocs rfl (Pre₁ := fun L μ => ShViews L n k ε a s wg wr ww wp g thr f ∧
+    ShCtx L k ε H ss ((1 - γ) ^ k) ((2 : ℝ) ^ ((k : ℝ)⁻¹) * (θ * α * B ^ ((k : ℝ)⁻¹))) (ε / 2)
+      (1.0015 * (1 - γ)) tv a s wg wr ww wp g thr f μ) ?_ ?_ fun L => ?_
+  · rintro m s₁ ⟨hl, hA, hs, hwg, hwr, hww, hwp, hg, hthr, hrf⟩ hlen hlens hBelow
+    obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9⟩ : a.1 < m.store.length ∧ s.1 < m.store.length ∧
+        wg.1 < m.store.length ∧ wr.1 < m.store.length ∧ ww.1 < m.store.length ∧
+        wp.1 < m.store.length ∧ g.1 < m.store.length ∧ thr.1 < m.store.length ∧
+        f.1 < m.store.length := by simpa [Mem.Live] using hl
+    have hl12 := fun i (hi : i < 12) => hlens i (by simpa using hi)
+    refine ⟨⟨⟨h1, h2, h3, h4, h5, h6, h7, h8, h9⟩, haf, hio⟩, hA.of_below hBelow h1,
+      hBelow.readBlock_of h2 hs, hBelow.get_of h3 hwg, hBelow.get_of h4 hwr, hBelow.get_of h5 hww,
+      hBelow.get_of h6 hwp, hBelow.readBlock_of h7 hg, hBelow.get_of h8 hthr,
+      by rw [(hBelow f.1 h9).1]; exact hrf, by simpa using hlen, ?_⟩
+    simpa using ⟨hl12 0 (by norm_num), hl12 1 (by norm_num), hl12 2 (by norm_num),
+      hl12 3 (by norm_num), hl12 4 (by norm_num), hl12 5 (by norm_num), hl12 6 (by norm_num),
+      hl12 7 (by norm_num), hl12 8 (by norm_num), hl12 9 (by norm_num), hl12 10 (by norm_num),
+      hl12 11 (by norm_num)⟩
+  · rintro m ⟨hl, -⟩ st st' p hBelow ⟨hF, H', hsim, hH', hA, hdec⟩
+    have hlv : a.1 < m.store.length ∧ f.1 < m.store.length := by
+      simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,
+        forall_eq] at hl
+      exact ⟨hl.1, hl.2.2.2.2.2.2.2.2⟩
+    exact ⟨hBelow.get_of hlv.2 hF, H', hsim, hH', hA.of_below hBelow hlv.1, hdec⟩
+  · by_cases hvL : ShViews L n k ε a s wg wr ww wp g thr f
+    · refine ((shStepWithScratch_pwrites hI hloc hS hM hu1 hL hNat hC hQ hD hU hkq hk hkn hvL hH hV
+        hHV hκ hSH hω hψ hlen hopt hθ hd' hdist hsH hα hγ hγ1 hε hε2 hφ hφ1 hd hC1 hnu hku hxu
+        hbound hexc1 hexc2 hthrω).in_frame rfl rfl ?_).mono (fun _ h => h.2) (by fp_sub)
+        (fun _ h => h) le_rfl
+      rintro μ ⟨-, -, -, -, -, -, -, -, -, hlen, -⟩
+      obtain ⟨⟨h1, h2, h3, h4, h5, h6, h7, h8, h9⟩, -⟩ := hvL
+      simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,
+        forall_eq, hlen]
+      omega
+    · exact PWrites.of_writes hφ.le fun _ _ h => absurd h.1 hvL
+
 end Assembly
 
 end NLAlib.ShiftedQR

@@ -138,25 +138,43 @@ def shTestStep : Impl O Q := opsImpl% [N, k] (A, Z, Cg) → (T, SR, P0, P1) {
   run shThreshold.body [N, k] (A, Cg, P1)
 }
 
-/-- `Sh` with caller-owned scratch: the rounded potential $\tilde\psi$ of `A` into `Rt`, `Find`
-(`NLAlib.ShiftedQR.findRounded` with `NLAlib.ShiftedQR.comptauHalf`) over the $k = 2^m$ shifts
-`SS` into `Z`, the `comptau` test (`NLAlib.ShiftedQR.shTestStep`, word `Cg`); below the
-threshold the step is accepted (`NLAlib.ShiftedQR.trialAccept`, flag $1$), otherwise the
-exceptional branch runs (`NLAlib.ShiftedQR.shExc`). The interface is
+/-- The deterministic start of `Sh`: the rounded potential $\tilde\psi$ of the order-$N$ matrix
+`A` into `Rt`, `Find` (`NLAlib.ShiftedQR.findRounded` with `NLAlib.ShiftedQR.comptauHalf`) over
+the $k = 2^m$ shifts `SS` into `Z`, and the computation of the `comptau` test
+(`NLAlib.ShiftedQR.shTestStep`, word `Cg`) into `P0`, `P1`. The interface is
+`[N, m, k] (A, SS, Cg) → (Z, Rt, P0, P1, T, SR)`. -/
+def shPrefix : Impl O Q := opsImpl% [N, m, k] (A, SS, Cg) → (Z, Rt, P0, P1, T, SR) {
+  run roundedPotential.body [N, k, m] (A, Rt);
+  run (findRounded (comptauHalf (O := O) (Q := Q))).body [N, m, k] (A, SS, Z);
+  run shTestStep.body [N, k] (A, Z, Cg, T, SR, P0, P1)
+}
+
+/-- The decision of `Sh`: below the threshold (`P0 < P1`) the step `T` is accepted
+(`NLAlib.ShiftedQR.trialAccept`, flag $1$), otherwise the exceptional branch runs
+(`NLAlib.ShiftedQR.shExc`). The interface is
+`[N, k, q, n0] (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, P0, P1, T, SR, Ds, Rg, P2, Ss) → (A, Gw, Fl)`.
+-/
+def shDecide : Impl O Q :=
+  opsImpl% [N, k, q, n0] (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, P0, P1, T, SR, Ds, Rg, P2, Ss) →
+      (A, Gw, Fl) {
+    if (Has.inj CmpTst.lt) [] (P0, P1) {
+      run trialAccept.body [N] (T, A, Gw, Fl)
+    } else {
+      run shExc.body [N, k, q, n0]
+        (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, T, SR, Ds, Rg, P2, Ss, A, Gw, Fl)
+    }
+  }
+
+/-- `Sh` with caller-owned scratch: the start (`NLAlib.ShiftedQR.shPrefix`) and the decision
+(`NLAlib.ShiftedQR.shDecide`). The interface is
 `[N, m, k, n0] (A, SS, Cg, Cr, Cw, Cp, G, Thr, Z, Rt, Pt, P0, P1, T, SR, Ds, Rg, P2, Ss, Gw) →
 (A, Fl)`. -/
 def shStepWithScratch : Impl O Q :=
   opsImpl% [N, m, k, n0]
       (A, SS, Cg, Cr, Cw, Cp, G, Thr, Z, Rt, Pt, P0, P1, T, SR, Ds, Rg, P2, Ss, Gw) → (A, Fl) {
-    run roundedPotential.body [N, k, m] (A, Rt);
-    run (findRounded (comptauHalf (O := O) (Q := Q))).body [N, m, k] (A, SS, Z);
-    run shTestStep.body [N, k] (A, Z, Cg, T, SR, P0, P1);
-    if (Has.inj CmpTst.lt) [] (P0, P1) {
-      run trialAccept.body [N] (T, A, Gw, Fl)
-    } else {
-      run shExc.body [N, k, m, n0]
-        (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, T, SR, Ds, Rg, P2, Ss, A, Gw, Fl)
-    }
+    run shPrefix.body [N, m, k] (A, SS, Cg, Z, Rt, P0, P1, T, SR);
+    run shDecide.body [N, k, m, n0]
+      (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, P0, P1, T, SR, Ds, Rg, P2, Ss, A, Gw, Fl)
   }
 
 /-- **The shifting strategy `Sh`** ([BanksGarzaVargasSrivastava2022, Lemma 5.4], with the fail
@@ -627,33 +645,36 @@ theorem shPrecision_forms {x B C d S : ℝ} {k : ℕ} {H : Matrix (Fin (n + 1)) 
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q]
   [Has IdxTst Q]
 
-/-- **`Sh` with scratch as a probabilistic block**: `NLAlib.ShiftedQR.shStepWithScratch` from the
-context `NLAlib.ShiftedQR.ShCtx` (with the words $(1 - \gamma)^k$,
+
+/-- **The decision of `Sh` as a probabilistic block**: `NLAlib.ShiftedQR.shDecide` from the
+state `NLAlib.ShiftedQR.ShState3` (with the words $(1 - \gamma)^k$,
 $2^{1/k}\theta\alpha B^{1/k}$, $\varepsilon/2$, $1.0015(1 - \gamma)$) ends in
-`NLAlib.ShiftedQR.ShOutcome` except with probability at most $\varphi$, under the hypotheses of
-`NLAlib.ShiftedQR.shStep_pwrites`. -/
-theorem shStepWithScratch_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+`NLAlib.ShiftedQR.ShOutcome` except with probability at most $\varphi$: the accepted branch
+(`NLAlib.ShiftedQR.shAccept_writes`) never fails, the exceptional one
+(`NLAlib.ShiftedQR.shExc_pwrites`) fails with probability at most $\varphi$. -/
+theorem shDecide_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I)
-    (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I) (hQ : IsToNat id I)
+    (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I)
     {law : ℕ → Measure ℝ} {s₀ : ℕ} (hD : IsPolarDiskSampler s₀ I)
     (hU : law s₀ = volume.restrict (Set.Icc 0 1)) {L k q : ℕ} (hkq : k = 2 ^ q) (hk : 2 ≤ k)
     (hkn : k ≤ n) {ε : ℝ} {a s wg wr ww wp g thr f : ℕ × ℕ}
     (hv : ShViews L n k ε a s wg wr ww wp g thr f)
     {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {e : Fin (n + 1) → ℂ} {ss : List ℂ}
-    {B S ω θ α γ φ C d tv : ℝ} (hH : IsUpperHessenberg H) (hV : IsUnit V)
+    {B S ω θ α γ φ C d tv : ℝ} (hH : IsUpperHessenberg H) (hH0 : H ≠ 0) (hV : IsUnit V)
     (hHV : H * V = V * Matrix.diagonal e) (hκ : pseudoConditionNumber V ≤ B)
     (hSH : specNorm H ≤ S) (hω : 0 < ω) (hψ : ω ≤ hessenbergPotential k H)
     (hlen : ss.length = k) (hopt : IsOptimalRitzValues θ H ss) (hθ : 1 ≤ θ) (hd' : 0 < d)
     (hdist : ∀ s ∈ ss, ∀ i, d ≤ ‖e i - s‖) (hsH : ∀ s ∈ ss, ‖s‖ ≤ 1.1 * specNorm H)
-    (hα : α = (1.01 * B) ^ ((4 * q : ℝ) / 2 ^ q)) (hγ : 0 < γ) (hγ1 : γ < 1)
+    (hsC : ∀ s ∈ ss, ‖s‖ ≤ C * specNorm H) (hne : ∀ r ∈ ss, ∀ i, e i ≠ r) (hα1 : 1 ≤ α)
+    (hγ : 0 < γ) (hγ1 : γ < 1)
     (hε : ε = (0.998 * (1 - γ) * (1 - γ) / ((13 * B ^ 4) ^ ((k : ℝ)⁻¹) * α ^ 2 * θ ^ 2)) ^
       ((k : ℝ) / (k - 1))) (hε2 : ε ≤ 1 / 2) (hφ : 0 < φ) (hφ1 : φ ≤ 1 / 5)
     (hd : d ≤ ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) *
       hessenbergPotential k H) * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 4)
     (hC1 : 1.1 + 2.1 * ((2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹)) ≤ C)
     (hnu : (n + 1 : ℝ) * u ≤ 1 / 2500) (hku : 100000 * k * u ≤ 1)
-    (hxu : 300 * (n + 1) ^ 2 * u ≤ (8004 * B)⁻¹ * (d / ((2 + 2 * C) * S)) ^ k)
+    (hxu16 : 300 * (n + 1) ^ 2 * u ≤ (16 * B)⁻¹ * (d / ((2 + 2 * C) * S)) ^ k)
     (hbound : (66 + 2 * C) * B * S * ((2 + 2 * C) * S / d) ^ k * √(n + 1) *
       (300 * (n + 1) ^ 2 * u) ≤ 0.001 * ω)
     (hexc1 : 6 * u * (1.1 * S + 3 * ((2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) *
@@ -663,16 +684,50 @@ theorem shStepWithScratch_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
       hessenbergPotential k H)) ≤ ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α *
         B ^ ((k : ℝ)⁻¹) * hessenbergPotential k H) * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 8)
     (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) :
-    PWrites law I (shStepWithScratch (O := O) (Q := Q)).body
-      (Env.frame [n + 1, q, k, (excNet ε).length] [a, s, wg, wr, ww, wp, g, thr, (L, 0),
-        (L + 1, 0), (L + 2, 0), (L + 3, 0), (L + 4, 0), (L + 5, 0), (L + 6, 0), (L + 7, 0),
-        (L + 8, 0), (L + 9, 0), (L + 10, 0), (L + 11, 0), a, f])
+    PWrites law I (shDecide (O := O) (Q := Q)).body
+      (Env.frame [n + 1, k, q, (excNet ε).length] [a, (L, 0), wr, ww, wp, g, thr, (L + 1, 0),
+        (L + 2, 0), (L + 3, 0), (L + 4, 0), (L + 5, 0), (L + 6, 0), (L + 7, 0), (L + 8, 0),
+        (L + 9, 0), (L + 10, 0), a, (L + 11, 0), f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔ Fp.above L)
-      (ShCtx L k ε H ss ((1 - γ) ^ k) ((2 : ℝ) ^ ((k : ℝ)⁻¹) * (θ * α * B ^ ((k : ℝ)⁻¹)))
-        (ε / 2) (1.0015 * (1 - γ)) tv a s wg wr ww wp g thr f)
+      (ShState3 M u L k ε H V e ss α ((1 - γ) ^ k)
+        ((2 : ℝ) ^ ((k : ℝ)⁻¹) * (θ * α * B ^ ((k : ℝ)⁻¹))) (ε / 2) (1.0015 * (1 - γ)) tv
+        a s wg wr ww wp g thr f)
       (ShOutcome u k H γ tv ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a f)
       φ := by
-  sorry
+  have hv' := hv
+  obtain ⟨⟨ha, hs, hwg, hwr, hww, hwp, hg, hthl, hfl⟩, -, -⟩ := hv'
+  have hψ0 : 0 < hessenbergPotential k H := lt_of_lt_of_le hω hψ
+  have hC0 : 0 ≤ C := by
+    have : 0 ≤ (2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) := by
+      have : 0 ≤ θ := by linarith
+      have : 0 ≤ α := by linarith
+      have : 0 ≤ B := le_trans zero_le_one ((one_le_pseudoConditionNumber hV.ne_zero).trans hκ)
+      positivity
+    linarith
+  have hlive : ∀ (l : List (ℕ × ℕ)), (∀ x ∈ l, x.1 < L + 12) → ∀ m,
+      ShCtx L k ε H ss ((1 - γ) ^ k) ((2 : ℝ) ^ ((k : ℝ)⁻¹) * (θ * α * B ^ ((k : ℝ)⁻¹)))
+        (ε / 2) (1.0015 * (1 - γ)) tv a s wg wr ww wp g thr f m → m.Live l :=
+    fun l hl m hm x hx => by rw [hm.2.2.2.2.2.2.2.2.2.1]; exact hl x hx
+  unfold shDecide
+  refine (PWrites.ite hI (φ₁ := 0) (φ₂ := φ) ?_ ?_ ?_).mono (fun _ h => h) le_rfl (fun _ h => h)
+    (by simp [hφ.le])
+  · rintro m ⟨-, r, -, -, H', Rs, -, -, -, ⟨tc, htc, -⟩, hthr⟩
+    exact ⟨_, by rw [Interp.testAt_eq rfl rfl, hC.test_lt htc hthr]⟩
+  · refine PWrites.of_writes (le_refl 0) fun m τ ⟨hm, ht⟩ => ?_
+    refine ((shAccept_writes (τ := τ) hS hM (hNat.mono (by omega)) hk hkn hku hv hH hH0 hV hHV
+      hκ hSH hC0 hd' hω hsC hdist hxu16 hbound hγ1.le hthrω hm fun tc htc => ?_).in_frame
+      rfl rfl (hlive _ (by simp; omega) m hm.1.1)).mono (by fp_sub) fun _ _ h => h
+    obtain ⟨-, r, -, -, H', Rs, -, -, -, -, hthr⟩ := hm
+    rw [Interp.testAt_eq rfl rfl, hC.test_lt htc hthr] at ht
+    simpa using ht
+  · refine ((shExc_pwrites hI hloc hS hM hu1 hL hNat hC hD hU hk hkn hkq hku hv hH hlen hV hHV hκ
+      hSH hopt (fun i s hs => hne s hs i) hsH hω hψ hγ hγ1 hθ hα1 hε hε2 hφ hφ1 hd hd' hC1 hexc1
+      hexc2 hnu hxu16 hbound hthrω rfl rfl rfl).in_frame rfl rfl fun m hm =>
+        hlive _ (by simp; omega) m hm.1).mono (fun m ⟨hm, he⟩ => hm.shExcPre hM hk hkn hku hV hHV
+          hne hγ1 hψ0 fun tc htc => ?_) le_rfl (fun _ h => h) le_rfl
+    obtain ⟨-, r, -, -, H', Rs, -, -, -, -, hthr⟩ := hm
+    rw [Interp.testAt_eq rfl rfl, hC.test_lt htc hthr] at he
+    simpa using he
 
 end Assembly
 

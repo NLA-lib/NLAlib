@@ -8,6 +8,7 @@ module
 public import NLAlib.Matrix.Spectral.Schur
 public import NLAlib.Matrix.Pseudoinverse.ConditionNumber
 public import NLAlib.Matrix.Perturbation.Residual
+public import NLAlib.Matrix.Perturbation.UnitarySimilarity
 public import NLAlib.Matrix.QRIteration.DeflationConditioning
 
 /-!
@@ -35,6 +36,8 @@ $B > 32$ (G18).
 * `NLAlib.IsEigenvalueListing.exists_specNorm_sub_le`: forward implies backward.
 * `NLAlib.exists_pseudoConditionNumber_le_and_le_norm_sub`: conditioning and separation after a
   perturbation.
+* `NLAlib.IsPerturbedUnitarySimilar.exists_pseudoConditionNumber_le_and_le_norm_sub`: the same
+  along a perturbed unitary similarity, with the class constants doubled once.
 * `NLAlib.norm_sub_le_of_matching`: Bauer–Fike refines a matching within $g/16$ to one within
   $B\|\mathbf{E}\|_2$.
 -/
@@ -139,5 +142,42 @@ theorem exists_pseudoConditionNumber_le_and_le_norm_sub {n : ℕ}
     calc ‖d i - d j‖ = ‖(d' i - d' j) - (d' i - d i) + (d' j - d j)‖ := by ring_nf
       _ ≤ _ := (norm_add_le _ _).trans (by gcongr; exact norm_sub_le _ _)
   linarith [hgap i j hij]
+
+/-- **Condition and separation along a perturbed unitary similarity**: let
+$\mathbf{A}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$ with $\mathbf{V}$ invertible,
+$\kappa(\mathbf{V}) = \|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le B$ and eigenvalues at mutual
+distance at least $g > 0$. If $\mathbf{A}' = \mathbf{U}^{\mathsf H}(\mathbf{A} +
+\mathbf{E})\mathbf{U}$ with $\mathbf{U}$ unitary and $\|\mathbf{E}\|_2 \le e \le g/(16(n + 1)B)$,
+then $\mathbf{A}'$ has a diagonalization $\mathbf{V}'$, $\mathbf{d}'$ with
+$\kappa(\mathbf{V}') \le 2B$ and eigenvalues at mutual distance at least $g/2$: one doubling of
+the class constants per perturbation. [BanksGarzaVargasSrivastava2022, Lemma 6.1], with the
+separation of `NLAlib.exists_pseudoConditionNumber_le_and_le_norm_sub`. -/
+theorem IsPerturbedUnitarySimilar.exists_pseudoConditionNumber_le_and_le_norm_sub {n : ℕ}
+    {A A' V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {e : ℝ} (hA : IsPerturbedUnitarySimilar A A' e)
+    {d : Fin (n + 1) → ℂ} (hV : IsUnit V) (hAV : A * V = V * Matrix.diagonal d) {B g : ℝ}
+    (hB : pseudoConditionNumber V ≤ B) (hg : 0 < g) (hgap : ∀ i j, i ≠ j → g ≤ ‖d i - d j‖)
+    (he : e ≤ g / (16 * (n + 1) * B)) :
+    ∃ (V' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (d' : Fin (n + 1) → ℂ), IsUnit V' ∧
+      A' * V' = V' * Matrix.diagonal d' ∧ pseudoConditionNumber V' ≤ 2 * B ∧
+      ∀ i j, i ≠ j → g / 2 ≤ ‖d' i - d' j‖ := by
+  obtain ⟨U, E, hU, hE, rfl⟩ := hA
+  have hB1 : 1 ≤ B := (one_le_pseudoConditionNumber hV.ne_zero).trans hB
+  have hE' := hE.trans he
+  obtain ⟨V', d', hV', hAV', hκ, hsep⟩ :=
+    NLAlib.exists_pseudoConditionNumber_le_and_le_norm_sub hV hAV hB hg hgap hE'
+  have hBE : B * specNorm E ≤ g / 16 := by
+    calc B * specNorm E ≤ B * (g / (16 * (n + 1) * B)) :=
+          mul_le_mul_of_nonneg_left hE' (by linarith)
+      _ = g / (16 * (n + 1)) := by field_simp
+      _ ≤ g / 16 := by gcongr; linarith [(n.cast_nonneg : (0 : ℝ) ≤ n)]
+  have hUU : U * Uᴴ = 1 := hU.mul_conjTranspose_self
+  have hQ : HasOrthonormalCols Uᴴ := by
+    rw [hasOrthonormalCols_iff, Matrix.conjTranspose_conjTranspose, hUU]
+  have hUu : IsUnit Uᴴ := ⟨⟨Uᴴ, U, hU.conjTranspose_mul_self, hUU⟩, rfl⟩
+  refine ⟨Uᴴ * V', d', hUu.mul hV', ?_, by rw [hQ.pseudoConditionNumber_mul_left]; exact hκ,
+    fun i j hij => (by linarith : g / 2 ≤ g - 2 * B * specNorm E).trans (hsep i j hij)⟩
+  calc Uᴴ * (A + E) * U * (Uᴴ * V') = Uᴴ * ((A + E) * V') := by
+        rw [Matrix.mul_assoc, ← Matrix.mul_assoc U, hUU, Matrix.one_mul, Matrix.mul_assoc]
+    _ = _ := by rw [hAV', Matrix.mul_assoc]
 
 end NLAlib

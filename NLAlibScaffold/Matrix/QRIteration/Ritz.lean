@@ -37,6 +37,17 @@ theorem exists_perm_forall₂_ritzValues {k : ℕ} {H : Matrix (Fin (n + 1)) (Fi
     (hev : ∀ i, ‖ev i - lam i‖ ≤ β) :
     ∃ ss : List ℂ, ss.Perm (List.ofFn ev) ∧
       List.Forall₂ (fun r ρ => ‖r - ρ‖ ≤ β) ss (ritzValues k H) := by
-  sorry
+  have hroots : (trailingBlock k H).charpoly.roots = (List.ofFn lam : Multiset ℂ) := by
+    rw [isEigenvalueListing_iff.mp hlam]
+    simpa only [Multiset.map_coe, Multiset.prod_coe, List.map_ofFn,
+      List.prod_ofFn, Function.comp_def] using
+      Polynomial.roots_multiset_prod_X_sub_C (List.ofFn lam : Multiset ℂ)
+  have hperm : (ritzValues k H).Perm (List.ofFn lam) := by
+    rw [← Multiset.coe_eq_coe, ritzValues, Multiset.coe_toList, hroots]
+  have hpair : List.Forall₂ (flip fun r ρ : ℂ => ‖r - ρ‖ ≤ β) (List.ofFn lam) (List.ofFn ev) :=
+    List.forall₂_iff_get.mpr
+      ⟨by simp, fun i h1 _ => by simpa [flip] using hev ⟨i, by simpa using h1⟩⟩
+  obtain ⟨ss, hss, hssp⟩ := List.perm_comp_forall₂ hperm hpair
+  exact ⟨ss, hssp, hss.flip⟩
 
 end NLAlib

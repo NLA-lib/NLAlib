@@ -35,6 +35,8 @@ with the size $\max(\|\mathbf{W}\|_2 / a, \|\mathbf{Z}\|_2 / b)$.
   `NLAlib.IsPerturbedUnitaryPair.mono`, `NLAlib.isBackwardErrorRel_isPerturbedUnitaryPair`.
 * `NLAlib.IsPerturbedUnitaryPair.isPerturbedUnitarySimilar_snd`: the similarity component.
 * `NLAlib.IsPerturbedUnitaryPair.exists_specNorm_sub_mul_le`: the factorization component.
+* `NLAlib.IsPerturbedUnitaryPair.exists_witness`: the witnesses, with the inputs recovered from the
+  outputs.
 -/
 
 @[expose] public section
@@ -123,6 +125,26 @@ theorem exists_specNorm_sub_mul_le {ε : ℝ} {P P' : Matrix n n 𝕜 × Matrix 
       abel
     rw [this, hU.specNorm_conjTranspose_mul_mul]
     exact hF
+
+/-- **The witnesses of a perturbed pair, solved for the inputs**: the unitary factor
+$\mathbf{U}$ ($\mathbf{U}\mathbf{U}^{\mathsf H} = \mathbf{1}$) and the perturbations
+$\|\mathbf{E}\|_2 \le \varepsilon a$, $\|\mathbf{F}\|_2 \le \varepsilon b$ as data, with both
+the forward identities $\mathbf{W}' = \mathbf{U}^{\mathsf H}(\mathbf{W} + \mathbf{E})$,
+$\mathbf{Z}' = \mathbf{U}^{\mathsf H}(\mathbf{Z} + \mathbf{F})\mathbf{U}$ and the inputs
+recovered from the outputs, $\mathbf{W} + \mathbf{E} = \mathbf{U}\mathbf{W}'$ and
+$\mathbf{Z} + \mathbf{F} = \mathbf{U}\mathbf{Z}'\mathbf{U}^{\mathsf H}$: the form a consumer
+needs to re-embed the outputs into a larger matrix. -/
+theorem exists_witness {ε : ℝ} {P P' : Matrix n n 𝕜 × Matrix n n 𝕜}
+    (h : IsPerturbedUnitaryPair a b ε P P') :
+    ∃ U E F : Matrix n n 𝕜, HasOrthonormalCols U ∧ U * Uᴴ = 1 ∧ specNorm E ≤ ε * a ∧
+      specNorm F ≤ ε * b ∧ P'.1 = Uᴴ * (P.1 + E) ∧ P'.2 = Uᴴ * (P.2 + F) * U ∧
+      P.1 + E = U * P'.1 ∧ P.2 + F = U * P'.2 * Uᴴ := by
+  obtain ⟨U, E, F, hU, hE, hF, h1, h2⟩ := h
+  have hJ : U * Uᴴ = 1 := hU.mul_conjTranspose_self
+  refine ⟨U, E, F, hU, hJ, hE, hF, h1, h2, ?_, ?_⟩
+  · rw [h1, ← Matrix.mul_assoc, hJ, Matrix.one_mul]
+  · rw [h2, ← Matrix.mul_assoc, ← Matrix.mul_assoc, hJ, Matrix.one_mul, Matrix.mul_assoc, hJ,
+      Matrix.mul_one]
 
 end IsPerturbedUnitaryPair
 

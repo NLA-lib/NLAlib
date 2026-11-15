@@ -32,6 +32,10 @@ composed as a backward step ([BanksGarzaVargasSrivastava2022, §6], Theorem 6.3,
   active block.
 * `NLAlib.DeflationInv.finish_of_specNorm_le`: a block finished with the roots of a perturbed
   block.
+* `NLAlib.IsEigenvalueListing.exists_injective_eq_comp_of_charpoly_dvd`: the eigenvalues of a
+  matrix whose characteristic polynomial divides one with simple roots are a subfamily of them.
+* `Matrix.BlockTriangular.charpoly_subBlock_dvd`: a diagonal block's characteristic polynomial
+  divides the whole.
 * `NLAlib.DeflationInv.exists_pseudoConditionNumber_subBlock_le_and_le_norm_sub`: condition and
   separation of the active blocks after a perturbation.
 -/
@@ -137,6 +141,68 @@ theorem DeflationInv.finish_of_specNorm_le
     (List.nodup_cons.mp (List.nodup_append.mp hpart.1).1).1 (h ▸ hr')
   exact (hset.2 r' (by simp [hr']) hne).symm
 
+/-- **A subfamily of a simple spectrum**: if $\mathbf{a}$ lists the eigenvalues of $\mathbf{A}$,
+$\mathbf{b}$ lists those of $\mathbf{B}$ and is injective, and the characteristic polynomial of
+$\mathbf{A}$ divides that of $\mathbf{B}$, then $\mathbf{a} = \mathbf{b} \circ f$ for an
+injective $f$: the eigenvalues of $\mathbf{A}$ are distinct and are among those of
+$\mathbf{B}$. -/
+theorem IsEigenvalueListing.exists_injective_eq_comp_of_charpoly_dvd {K ι κ m l : Type*}
+    [Field K] [Fintype ι] [Fintype κ] [Fintype m] [DecidableEq m] [Fintype l] [DecidableEq l]
+    {A : Matrix m m K} {B : Matrix l l K} {a : ι → K} {b : κ → K}
+    (ha : IsEigenvalueListing A a) (hb : IsEigenvalueListing B b)
+    (hdvd : A.charpoly ∣ B.charpoly) (hinj : Function.Injective b) :
+    ∃ f : ι → κ, Function.Injective f ∧ ∀ i, a i = b (f i) := by
+  classical
+  have hra : A.charpoly.roots = Finset.univ.val.map a := by
+    rw [isEigenvalueListing_iff.mp ha, Finset.prod_eq_multiset_prod]
+    simpa only [Multiset.map_map, Function.comp_def] using
+      Polynomial.roots_multiset_prod_X_sub_C (Finset.univ.val.map a)
+  have hrb : B.charpoly.roots = Finset.univ.val.map b := by
+    rw [isEigenvalueListing_iff.mp hb, Finset.prod_eq_multiset_prod]
+    simpa only [Multiset.map_map, Function.comp_def] using
+      Polynomial.roots_multiset_prod_X_sub_C (Finset.univ.val.map b)
+  have hle : Finset.univ.val.map a ≤ Finset.univ.val.map b := by
+    rw [← hra, ← hrb]
+    exact Polynomial.roots.le_of_dvd B.charpoly_monic.ne_zero hdvd
+  have hnd : (Finset.univ.val.map a).Nodup :=
+    Multiset.nodup_of_le hle (Multiset.Nodup.map hinj Finset.univ.nodup)
+  have hmem : ∀ i, ∃ j, b j = a i := fun i => by
+    simpa using Multiset.mem_of_le hle (Multiset.mem_map_of_mem a (Finset.mem_univ i))
+  choose f hf using hmem
+  refine ⟨f, fun i j hij => ?_, fun i => (hf i).symm⟩
+  have : a i = a j := by rw [← hf i, ← hf j, hij]
+  exact Multiset.inj_on_of_nodup_map hnd i (Finset.mem_univ _) j (Finset.mem_univ _) this
+
+/-- **The characteristic polynomial of a diagonal block divides the whole**: if $\mathbf{M}$ is
+block upper triangular for a partition `rs` of the indices into ranges and $r$ is one of its
+ranges, the characteristic polynomial of the block of $\mathbf{M}$ on $r$ divides that of
+$\mathbf{M}$. -/
+theorem _root_.Matrix.BlockTriangular.charpoly_subBlock_dvd
+    {M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {rs : List (ℕ × ℕ)}
+    (hM : M.BlockTriangular (rangeLabel rs)) (hrs : IsRangePartition (n + 1) rs)
+    {r : ℕ × ℕ} (hr : r ∈ rs) : (subBlock M r).charpoly ∣ M.charpoly := by
+  have hrv := hrs.2.1 r hr
+  have hidx := hrs.val_blockIndex hr
+  let φ : Fin r.2 → {i // rangeLabel rs i = r.1} := fun a =>
+    ⟨blockIndex n r a, hrs.rangeLabel_eq hr (by rw [hidx]; omega) (by rw [hidx]; omega)⟩
+  have hφ : Function.Bijective φ := by
+    refine ⟨fun a b hab => hrs.blockIndex_injective hr (congrArg Subtype.val hab),
+      fun ⟨i, hi⟩ => ?_⟩
+    obtain ⟨r', ⟨hr', h₁, h₂⟩, -⟩ := hrs.2.2 i i.2
+    have hr'v := hrs.2.1 r' hr'
+    have hlab := hrs.rangeLabel_eq hr' h₁ h₂
+    have : r' = r := (hrs.2.2 r.1 (by omega)).unique ⟨hr', by omega, by omega⟩
+      ⟨hr, le_rfl, by omega⟩
+    subst this
+    exact ⟨⟨i - r'.1, by omega⟩, Subtype.ext (Fin.ext (by rw [hidx]; simp; omega))⟩
+  let e := Equiv.ofBijective φ hφ
+  have hblk : subBlock M r =
+      Matrix.reindex e.symm e.symm (M.toSquareBlock (rangeLabel rs) r.1) := by
+    ext a b; simp [subBlock, Matrix.toSquareBlock, Matrix.toSquareBlockProp, e, φ]
+  rw [hblk, Matrix.charpoly_reindex, hM.charpoly]
+  exact Finset.dvd_prod_of_mem _
+    (Finset.mem_image.mpr ⟨_, Finset.mem_univ _, (φ ⟨0, by omega⟩).2⟩)
+
 /-- **Condition and separation of every active block after a perturbation**: under the invariant
 `NLAlib.DeflationInv` with perturbation bound $\varepsilon$, if
 $\mathbf{H}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$ with $\mathbf{V}$ invertible,
@@ -144,8 +210,8 @@ $\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le B$, eigenvalues separated by $g > 0$ 
 $\varepsilon \le g/(16(n + 1)B)$, then every active block of $\mathbf{A}$ is diagonalizable with
 condition at most $2B$ and eigenvalues separated by $g/2$: its eigenvalues are some of those of
 $\mathbf{H} + \mathbf{E}$, which keep the separation $g - 2B\|\mathbf{E}\|_2$
-(`NLAlib.exists_pseudoConditionNumber_le_and_le_norm_sub`). The condition half is
-`NLAlib.DeflationInv.exists_pseudoConditionNumber_subBlock_le`. -/
+(`NLAlib.IsPerturbedUnitarySimilar.exists_pseudoConditionNumber_le_and_le_norm_sub`). The
+condition half is `NLAlib.DeflationInv.exists_pseudoConditionNumber_subBlock_le`. -/
 theorem DeflationInv.exists_pseudoConditionNumber_subBlock_le_and_le_norm_sub
     {H A V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ε : ℝ} {active done : List (ℕ × ℕ)}
     {out : Fin (n + 1) → ℂ} (h : DeflationInv H ε active done A out) {d : Fin (n + 1) → ℂ}
@@ -155,6 +221,27 @@ theorem DeflationInv.exists_pseudoConditionNumber_subBlock_le_and_le_norm_sub
     ∃ (Vr : Matrix (Fin r.2) (Fin r.2) ℂ) (dr : Fin r.2 → ℂ), IsUnit Vr ∧
       subBlock A r * Vr = Vr * Matrix.diagonal dr ∧ pseudoConditionNumber Vr ≤ 2 * B ∧
       ∀ i j, i ≠ j → g / 2 ≤ ‖dr i - dr j‖ := by
-  sorry
+  obtain ⟨Vr, dr, hVr, hAr, hκr⟩ :=
+    h.exists_pseudoConditionNumber_subBlock_le hV hHV hB hg hgap hε hr
+  refine ⟨Vr, dr, hVr, hAr, hκr, ?_⟩
+  obtain ⟨M, U, E, hUU, hE, hM, hpart, hbt, hact, -⟩ := h
+  have hHM : IsPerturbedUnitarySimilar H M ε := ⟨U, E, hUU, hE, hM⟩
+  obtain ⟨V', d', hV', hMV', -, hsep⟩ :=
+    hHM.exists_pseudoConditionNumber_le_and_le_norm_sub hV hHV hB hg hgap hε
+  have hLM : IsEigenvalueListing M d' :=
+    isEigenvalueListing_of_mul_eq_mul_diagonal ((Matrix.isUnit_iff_isUnit_det _).mp hV') hMV'
+  have hLr : IsEigenvalueListing (subBlock M r) dr := by
+    rw [(hact r hr).1]
+    exact isEigenvalueListing_of_mul_eq_mul_diagonal ((Matrix.isUnit_iff_isUnit_det _).mp hVr) hAr
+  have hd' : Function.Injective d' := fun i j hij => by
+    by_contra hne
+    have := hsep i j hne
+    rw [hij, sub_self, norm_zero] at this
+    linarith
+  obtain ⟨f, hf, hfe⟩ := hLr.exists_injective_eq_comp_of_charpoly_dvd hLM
+    (hbt.charpoly_subBlock_dvd hpart (List.mem_append_left _ hr)) hd'
+  intro i j hij
+  rw [hfe i, hfe j]
+  exact hsep _ _ (hf.ne hij)
 
 end NLAlib

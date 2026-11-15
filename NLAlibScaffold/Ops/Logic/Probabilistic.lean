@@ -6,7 +6,6 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Ops.Logic.Allocation
-public import NLAlib.Ops.Logic.Backward
 public import NLAlib.Ops.Logic.Loop
 public import NLAlib.Ops.Static
 public import NLAlib.Ops.Logic.Writes
@@ -785,43 +784,5 @@ theorem measureReal_not_conditionalRuns_le (h : PWrites law I c ρ F Pre Post φ
   exact ⟨st', h1, h2, h3, h4 ▸ ⟨hEq, hPost⟩⟩
 
 end PWrites
-
-/-! ### Probabilistic backward steps (drafted statements, PL5) -/
-
-/-- **A probabilistic backward step**: there are good sets of tapes, as for
-`NLAlib.Ops.PWrites`, such that from every memory holding a state `a` (`S a m`) the run of `c`
-writes only `F` and ends in a memory holding a state `b` (`S' b ·`) reached from `a` with
-backward error at most $\varepsilon$ (`R ε a b`) for every good tape, and the good set fails with
-probability at most $\varphi$. The good set depends on the memory only, not on the state. -/
-def PBackwardStep {α : Type*} [Inhabited K] [MeasurableSpace K] (law : ℕ → Measure K)
-    (I : Interp Op Tst K) (c : Stmt Op Tst) (ρ : Env) (F : Fp) (R : ℝ → α → α → Prop)
-    (S S' : α → Mem K → Prop) (ε φ : ℝ) : Prop :=
-  PStep law (fun τ m => eval I τ c ρ m) (fun m => ∃ a, S a m)
-    (fun m m' => m.store.EqOff F m'.store ∧ ∀ a, S a m → ∃ b, R ε a b ∧ S' b m') φ
-
-/-- **The loop with early exit of probabilistic backward steps** (PL5, the probabilistic
-`NLAlib.Ops.BackwardStep.whileFuel`): with the fuel $N$, if the test at round $i < N$ succeeds
-on the memories of `S i`, a round with a true test is a backward step to `S (i + 1)` with error
-$\varepsilon_i \ge 0$ and failure $\varphi_i \ge 0$, and the continuation after a false test or at
-the cap is one to `S'` with error $\varepsilon'$ and failure $\psi \ge 0$, then the loop is a
-backward step with error $\sum_{i<N} \varepsilon_i + \varepsilon'$ and failure
-$\sum_{i<N} \varphi_i + \psi$. -/
-theorem PBackwardStep.whileFuel {α : Type*} [Inhabited K] [MeasurableSpace K]
-    {law : ℕ → Measure K} {I : Interp Op Tst K} {ρ : Env} {R : ℝ → α → α → Prop}
-    (hR : IsBackwardErrorRel R) (hI : I.IsMeasurable) {win : Op → List ℕ → ℕ}
-    (hloc : ∀ o, I.TapeLocal o (win o)) {fuel : IExp} {q : Tst} {ds : List IExp}
-    {ins : List Operand} {body k : Stmt Op Tst} {N : ℕ} (hn : fuel.eval ρ.idx = some N)
-    {F G : Fp} (S : ℕ → α → Mem K → Prop) {S' : α → Mem K → Prop} (ε φ : ℕ → ℝ) {ε' ψ : ℝ}
-    (hε : ∀ i < N, 0 ≤ ε i) (hφ : ∀ i < N, 0 ≤ φ i) (hψ : 0 ≤ ψ)
-    (htest : ∀ i < N, ∀ a m, S i a m → ∃ b, I.testAt q ds ins (ρ.pushIdx i) m = some b)
-    (h : ∀ i < N, PBackwardStep law I body (ρ.pushIdx i) F R
-      (fun a m => S i a m ∧ I.testAt q ds ins (ρ.pushIdx i) m = some true) (S (i + 1)) (ε i)
-      (φ i))
-    (hk : ∀ i < N, PBackwardStep law I k (ρ.pushIdx i) G R
-      (fun a m => S i a m ∧ I.testAt q ds ins (ρ.pushIdx i) m = some false) S' ε' ψ)
-    (hcap : PBackwardStep law I k (ρ.pushIdx N) G R (S N) S' ε' ψ) :
-    PBackwardStep law I (.whileFuel fuel q ds ins body k) ρ (F ⊔ G) R (S 0) S'
-      (∑ i ∈ Finset.range N, ε i + ε') (∑ i ∈ Finset.range N, φ i + ψ) := by
-  sorry
 
 end NLAlib.Ops

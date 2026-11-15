@@ -20,6 +20,7 @@ public import NLAlibScaffold.Ops.Catalog.ScalarMeasurable
 public import NLAlibScaffold.Ops.Logic.BackwardFrame
 public import NLAlibScaffold.Ops.Logic.Geometry
 public import NLAlibScaffold.Ops.Logic.Probabilistic
+public import NLAlibScaffold.Ops.Logic.ProbabilisticBackward
 public import NLAlibScaffold.Ops.RunMeasurable
 public import NLAlibScaffold.Ops.TapeStopping
 public import NLAlibScaffold.Probability.AdaptiveUnionBoundMeasurable

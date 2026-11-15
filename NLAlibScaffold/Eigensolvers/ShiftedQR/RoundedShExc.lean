@@ -335,7 +335,8 @@ theorem exists_mem_le_norm_inv_pow_of_excShifts {B θ α γ R ε δ : ℝ} {k : 
     ∃ s ∈ zs, ((1 - γ) * hessenbergPotential k H)⁻¹ ^ k ≤
       ‖WithLp.toLp 2 ((Polynomial.aeval H (shiftPoly (List.replicate k s)))⁻¹ (Fin.last n))‖ := by
   classical
-  obtain ⟨s, hs, hle⟩ := exists_mem_le_norm_inv_pow_of_covers (S := zs.toFinset) (ξ := 0.998 * (1 - γ))
+  obtain ⟨s, hs, hle⟩ := exists_mem_le_norm_inv_pow_of_covers (S := zs.toFinset)
+    (ξ := 0.998 * (1 - γ))
     hk hkn hlen hV hHV hκ hopt hr hd hψ hγ hγ1 (by nlinarith) hθ hα hτ hRlo hRhi hε hε2
     (fun z hz => by
       obtain ⟨s, hs, h⟩ := hcover z hz
@@ -351,9 +352,10 @@ theorem exists_mem_le_norm_inv_pow_of_excShifts {B θ α γ R ε δ : ℝ} {k : 
 `NLAlib.IsStableQRChain.exists_norm_subdiag_lt_or_potential_pow_mul_le` for the shift $s$ (with
 $x = 300(n+1)^2\boldsymbol{u}$), if $\|\mathbf{e}_n^{\mathsf T}(\mathbf{H} - s)^{-k}\| \ge
 ((1 - \gamma)\psi)^{-k}$, $\psi = \psi_k(\mathbf{H}) > 0$, $\gamma < 1$, the word $p_H$ is within
-$20\boldsymbol{u}$, relatively, of $\psi$, and $2 \cdot 10^5\boldsymbol{u} \le 1$, then every rounded
-step with $s$ repeated has a bottom subdiagonal entry of modulus below $\omega$, or every value
-within $20\boldsymbol{u}$, relatively, of its potential is below $\mathrm{fl}(1.0015(1 - \gamma)p_H)$. -/
+$20\boldsymbol{u}$, relatively, of $\psi$, and $2 \cdot 10^5\boldsymbol{u} \le 1$, then every
+rounded step with $s$ repeated has a bottom subdiagonal entry of modulus below $\omega$, or every
+value within $20\boldsymbol{u}$, relatively, of its potential is below
+$\mathrm{fl}(1.0015(1 - \gamma)p_H)$. -/
 theorem shTrial_good {M : Machine ℝ} {u C B S d ω γ pH : ℝ} (hM : StdModel u id M) {k : ℕ}
     {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {e : Fin (n + 1) → ℂ} {s : ℂ}
     (hu : 200000 * u ≤ 1) (hC : 0 ≤ C) (hd : 0 < d) (hω : 0 < ω) (hk : 0 < k) (hkn : k ≤ n)
@@ -599,7 +601,8 @@ exact polar sampler on a stream `s₀` uniform on $[0, 1]$, from the state
 `NLAlib.ShiftedQR.ShExcMid2`, except with probability at most $\varphi$, $0 < \varphi \le 1/5$,
 under the hypotheses of `NLAlib.ShiftedQR.excOutcome_of_excShifts` on the data, the words
 $c_r = 2^{1/k}\theta\alpha B^{1/k}$ and $c_w = \varepsilon/2$, and the rounding budget
-$6\boldsymbol{u}(1.1\Sigma + 3R_{\mathrm{hi}}) \le \min(0.005, \sqrt{q}/8)\,\varepsilon R_{\mathrm{lo}}$,
+$6\boldsymbol{u}(1.1\Sigma + 3R_{\mathrm{hi}}) \le
+\min(0.005, \sqrt{q}/8)\,\varepsilon R_{\mathrm{lo}}$,
 $q = \varphi/(11(n + 1))$, for the window $[R_{\mathrm{lo}}, R_{\mathrm{hi}}] =
 [1.998^{1/k}, 2.002^{1/k}]\,\theta\alpha B^{1/k}\psi_k(\mathbf{H})$ of the radius. The random
 shifts form one probabilistic block per centre and radius; their outcome is the measurable set

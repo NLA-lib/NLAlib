@@ -50,30 +50,45 @@ section Program
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O]
   [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q]
 
-/-- **The rounded decoupling loop** ([BanksGarzaVargasSrivastava2022, Lemma 6.4]): with scan
-registers `R`, read the index words $m$ ($k = 2^m$) and $n_0$ (the net size) from the
-parameter words, scan the bottom $k$ subdiagonal entries with the threshold `P[0]`, and while
-none passed, for at most $F$ rounds, run `NLAlib.ShiftedQR.shIteration` with the words
-`P[1..7]` and the net at `P[10]`, then scan again. The flag is $0$ if the last scan passed and
-$1$ otherwise. The interface is `[N, k, np, F] (W, P) → (W, Fl)`, that of the worklist's
-decoupler. -/
-def roundedDecouple : Impl O Q :=
-  opsImpl% [N, k, np, F] (W, P) → (W, Fl) {
-    let R ← alloc 5;
-    let m ← index (Has.inj IdxTst.toNat) (P[8]) ≤ k;
-    let n0 ← index (Has.inj IdxTst.toNat) (P[9]) ≤ np;
+/-- The exit of the decoupling loop: the flag is $0$ if the last scan passed (scan flag `R[3]`
+positive) and $1$ otherwise. The interface is `[] (R) → (Fl)`. -/
+def roundedDecoupleExit : Impl O Q :=
+  opsImpl% [] (R) → (Fl) {
+    if (Has.inj CmpTst.isPos) [] (R[3]) {
+      call (Has.inj IndexOp.lit) [0] () → (Fl)
+    } else {
+      call (Has.inj IndexOp.lit) [1] () → (Fl)
+    }
+  }
+
+/-- The rounds of the decoupling loop with the scan registers `R` and the index words $m$
+($k = 2^m$) and $n_0$ (the net size) as dimensions: scan the bottom $k$ subdiagonal entries with
+the threshold `P[0]`, and while none passed, for at most $F$ rounds, run
+`NLAlib.ShiftedQR.shIteration` with the words `P[1..7]` and the net at `P[10]`, then scan again;
+then `NLAlib.ShiftedQR.roundedDecoupleExit`. The interface is
+`[N, k, np, F, m, n0] (W, P, R) → (W, Fl)`. -/
+def roundedDecoupleLoop : Impl O Q :=
+  opsImpl% [N, k, np, F, m, n0] (W, P, R) → (W, Fl) {
     run (bottomScan (O := O) (Q := Q)).body [N, k] (W, P, R);
     while j < F, (Has.inj CmpTst.isZero) [] (R[3]) {
       run (shIteration (O := O) (Q := Q)).body [N, m, k, n0]
         (W, P[1], P[2], P[3], P[4], P[5], P[6], P[7], P[10], W, Fl);
       run (bottomScan (O := O) (Q := Q)).body [N, k] (W, P, R)
     } then {
-      if (Has.inj CmpTst.isPos) [] (R[3]) {
-        call (Has.inj IndexOp.lit) [0] () → (Fl)
-      } else {
-        call (Has.inj IndexOp.lit) [1] () → (Fl)
-      }
+      run (roundedDecoupleExit (O := O) (Q := Q)).body [] (R, Fl)
     }
+  }
+
+/-- **The rounded decoupling loop** ([BanksGarzaVargasSrivastava2022, Lemma 6.4]): allocate the
+scan registers `R`, read the index words $m$ ($k = 2^m$) and $n_0$ (the net size) from
+`P[8]`, `P[9]`, and run `NLAlib.ShiftedQR.roundedDecoupleLoop`. The interface is
+`[N, k, np, F] (W, P) → (W, Fl)`, that of the worklist's decoupler. -/
+def roundedDecouple : Impl O Q :=
+  opsImpl% [N, k, np, F] (W, P) → (W, Fl) {
+    let R ← alloc 5;
+    let m ← index (Has.inj IdxTst.toNat) (P[8]) ≤ k;
+    let n0 ← index (Has.inj IdxTst.toNat) (P[9]) ≤ np;
+    run (roundedDecoupleLoop (O := O) (Q := Q)).body [N, k, np, F, m, n0] (W, P, R, W, Fl)
   }
 
 end Program
@@ -154,6 +169,68 @@ def DecoupleLoopState (u : ℝ) (k : ℕ) (H : Matrix (Fin (n + 1)) (Fin (n + 1)
         (∀ j : Fin n, n ≤ (j : ℕ) + k → tL < (1 + u) ^ 2 * ‖H' j.succ j.castSucc‖ ^ 2) ∧
         hessenbergPotential k H' ≤ c ^ i * hessenbergPotential k H))
 
+/-- **The iterate of a round**: in the state before round $i$ with the scan flag $0$, the
+iterate $\mathbf{H}'$ of a block of condition at most $2B$ and separation $g/2$ has, when
+$iE \le (g/2)/(16(n+1)2B)$, condition at most $4B \le B_i$ and separation
+$g/4 \ge 2\omega^2/S$
+(`NLAlib.IsPerturbedUnitarySimilar.exists_pseudoConditionNumber_le_and_le_norm_sub`),
+norm at most $\|\mathbf{H}\|_2 + iE \le S$, and $\psi_k(\mathbf{H}') \ge \omega$, because every
+bottom entry failed the loop's test and one of them is at most $\psi_k$
+(`NLAlib.exists_norm_subdiag_le_hessenbergPotential`). -/
+theorem DecoupleLoopState.exists_iterate {u : ℝ} {k L i : ℕ}
+    {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {w : ℕ × ℕ}
+    {B g Bi S ω tL c E : ℝ} {μ : Mem ℝ} (hst : DecoupleLoopState u k H tL c E w (L, 0) i μ)
+    (h0 : μ.store.get L 3 = some 0) (hk : 0 < k) (hkn : k ≤ n) (hV : IsUnit V)
+    (hHV : H * V = V * Matrix.diagonal d) (hκ : pseudoConditionNumber V ≤ 2 * B) (hg : 0 < g)
+    (hgap : ∀ i j, i ≠ j → g / 2 ≤ ‖d i - d j‖)
+    (hiE : i * E ≤ g / 2 / (16 * (n + 1) * (2 * B))) (hSi : specNorm H + i * E ≤ S)
+    (hBi : 4 * B ≤ Bi) (hωL : (1 + u) ^ 2 * ω ^ 2 ≤ tL) (hgapS : 2 * ω ^ 2 / S ≤ g / 4) :
+    ∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, IsPerturbedUnitarySimilar H H' (i * E) ∧
+      IsUpperHessenberg H' ∧ HoldsMatrix w H' μ.store ∧
+      hessenbergPotential k H' ≤ c ^ i * hessenbergPotential k H ∧ specNorm H' ≤ S ∧
+      ω ≤ hessenbergPotential k H' ∧ ∃ (Vx : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+        (dx : Fin (n + 1) → ℂ), IsUnit Vx ∧ H' * Vx = Vx * Matrix.diagonal dx ∧
+        pseudoConditionNumber Vx ≤ Bi ∧ ∀ i j, i ≠ j → 2 * ω ^ 2 / S ≤ ‖dx i - dx j‖ := by
+  obtain ⟨H', hHH', hHess', hW, ⟨h1, -⟩ | ⟨-, hall, hψ⟩⟩ := hst
+  · simp only [zero_add] at h1
+    rw [h0] at h1
+    norm_num at h1
+  obtain ⟨V', d', hV', hHV', hκ', hsep'⟩ :=
+    hHH'.exists_pseudoConditionNumber_le_and_le_norm_sub hV hHV hκ (by positivity) hgap hiE
+  refine ⟨H', hHH', hHess', hW, hψ, hHH'.specNorm_le.trans hSi, ?_, V', d', hV', hHV',
+    hκ'.trans (by linarith), fun i j hij => hgapS.trans ((by ring : g / 2 / 2 = g / 4) ▸
+      hsep' i j hij)⟩
+  by_contra hlt
+  push Not at hlt
+  obtain ⟨j, hj, hjle⟩ := exists_norm_subdiag_le_hessenbergPotential hk hkn H'
+  have h1 := hall j hj
+  have h2 : ‖H' j.succ j.castSucc‖ ^ 2 ≤ ω ^ 2 :=
+    pow_le_pow_left₀ (norm_nonneg _) (hjle.trans hlt.le) 2
+  nlinarith [sq_nonneg (1 + u)]
+
+/-- The words of an iteration read from the parameter words of the loop
+(`NLAlib.ShiftedQR.roundedDecoupleParams`): the operands are live, the first ten words and the
+net are stored, and the flag has room. -/
+theorem DecoupleLoopCtx.iteration_words {L : ℕ} {w p f : ℕ × ℕ} {ps : List ℝ}
+    {tL R tv γ Bi α ε : ℝ} {k q : ℕ} {μ : Mem ℝ} (hctx : DecoupleLoopCtx n L w p f ps μ)
+    (hps : ps = roundedDecoupleParams tL R tv γ Bi α ε k q) :
+    μ.Live [w, (p.1, p.2 + 1), (p.1, p.2 + 2), (p.1, p.2 + 3),
+      (p.1, p.2 + 4), (p.1, p.2 + 5), (p.1, p.2 + 6), (p.1, p.2 + 7), (p.1, p.2 + 10), f] ∧
+      (∀ j < 10, μ.store.get p.1 (p.2 + j) =
+        some ((roundedDecoupleParams tL R tv γ Bi α ε k q).getD j 0)) ∧
+      μ.store.readBlock p.1 (p.2 + 10) (2 * (excNet ε).length) =
+        some ((excNet ε).flatMap fun z => [z.re, z.im]) ∧ f.2 < μ.store.len f.1 := by
+  obtain ⟨-, -, -, hl, hp, -, hrf, -, -, -⟩ := hctx
+  rw [hps] at hp
+  have hnet := Store.readBlock_sub hp (o := 10) (n := 2 * (excNet ε).length)
+    (by rw [length_roundedDecoupleParams])
+  have hfl : (List.flatMap (fun z : ℂ => [z.re, z.im]) (excNet ε)).length =
+      2 * (excNet ε).length := by simp [List.length_flatMap, mul_comm]
+  refine ⟨?_, fun j hj => Store.get_of_readBlock hp (by rw [length_roundedDecoupleParams]; omega) 0,
+    by simpa [roundedDecoupleParams, List.take_of_length_le hfl.le] using hnet, by omega⟩
+  simp only [Mem.live_cons] at hl ⊢
+  tauto
+
 section Theorems
 
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q]
@@ -220,6 +297,53 @@ theorem mem_iterationOutcome_of_shIterationOutcome {u : ℝ} {k : ℕ}
   rw [← hH.eq_storedMatrix, ← hA.eq_storedMatrix]
   exact ⟨hfr, fun j hj => by rw [Store.get_of_readBlock hA hj 0]; rfl, hsim.mono hE, hHess, hdec⟩
 
+omit [Has ScalarOp O] [Has IdxTst Q] in
+/-- **The exit of the decoupling loop**: from the state before round $i \le F$ at the cap or
+with a scan that passed, the loop sets the flag to $0$ and holds an upper Hessenberg perturbed
+unitary similarity with error $FE$ and a bottom entry of modulus at most $\omega_D$
+($t_L \le (1 - \boldsymbol{u})^2\omega_D^2$). At the cap the scan has passed: a coupled matrix
+has $\psi_k \le c^F\psi_k(\mathbf{H}) \le c^F N_{\max}$, and one of its bottom entries is at most
+$\psi_k$, which fails the loop's test when $(1 + \boldsymbol{u})^2(c^F N_{\max})^2 \le t_L$. -/
+theorem roundedDecoupleExit_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hu1 : u < 1)
+    (hL : IsIndexLit M I) (hC : IsCmp id I) (h0lit : M.lit (0 : ℚ) = 0) {τ : Tape ℝ}
+    {μ : Mem ℝ} {k L i F : ℕ} (hk : 0 < k) (hkn : k ≤ n) {w p f : ℕ × ℕ} {ps : List ℝ}
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {tL c E ωD Nmax : ℝ}
+    (hcut : tL ≤ (1 - u) ^ 2 * ωD ^ 2) (hωD : 0 ≤ ωD) (hc0 : 0 ≤ c) (hE0 : 0 ≤ E)
+    (hψH : hessenbergPotential k H ≤ Nmax) (hfuel : (1 + u) ^ 2 * (c ^ F * Nmax) ^ 2 ≤ tL)
+    (hiF : i ≤ F) (hctx : DecoupleLoopCtx n L w p f ps μ)
+    (hst : DecoupleLoopState u k H tL c E w (L, 0) i μ)
+    (hend : i = F ∨ I.test (Has.inj CmpTst.isZero) [] [(L, 3)] μ = some false) :
+    Writes .total I τ (roundedDecoupleExit (O := O) (Q := Q)).body (Env.frame [] [(L, 0), f])
+      (Store.inBlock f.1 f.2 1)
+      (fun μ' => μ'.store.get f.1 f.2 = some 0 ∧ ∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+        IsPerturbedUnitarySimilar H H' (F * E) ∧ IsUpperHessenberg H' ∧
+        (∃ j : Fin n, n ≤ (j : ℕ) + k ∧ ‖H' j.succ j.castSucc‖ ≤ ωD) ∧
+        HoldsMatrix w H' μ'.store) μ := by
+  have hp1 : 0 < (1 - u) ^ 2 := by nlinarith
+  obtain ⟨H', hHH', hHess', hW', ⟨h1, j, hj, hjt⟩ | ⟨h0, hall, hψ⟩⟩ := hst
+  · simp only [zero_add] at h1
+    refine writes_ite (a := [(L, 3)]) rfl rfl (hC.test_isPos h1) ?_
+    rw [show decide (0 < id (1 : ℝ)) = true by simp, if_pos rfl]
+    refine (writes_indexLit hL rfl rfl (by have := hctx.2.2.2.2.2.2.1; omega)).mono le_rfl ?_
+    rintro μ' hfr ⟨-, hF⟩
+    have hh : (1 - u) ^ 2 * ‖H' j.succ j.castSucc‖ ^ 2 ≤ (1 - u) ^ 2 * ωD ^ 2 := hjt.trans hcut
+    exact ⟨by simpa [h0lit] using hF, H', hHH'.mono
+      (mul_le_mul_of_nonneg_right (by exact_mod_cast hiF) hE0), hHess',
+      ⟨j, hj, (pow_le_pow_iff_left₀ (norm_nonneg _) hωD two_ne_zero).mp
+        (le_of_mul_le_mul_left hh hp1)⟩, hW'.of_eqOff hfr hctx.2.2.2.2.2.2.2.2.1.symm⟩
+  · exfalso
+    simp only [zero_add] at h0
+    rcases hend with rfl | htest
+    · obtain ⟨j, hj, hjle⟩ := exists_norm_subdiag_le_hessenbergPotential hk hkn H'
+      have h1 := hall j hj
+      have h2 : ‖H' j.succ j.castSucc‖ ≤ c ^ i * Nmax :=
+        hjle.trans (hψ.trans (mul_le_mul_of_nonneg_left hψH (pow_nonneg hc0 _)))
+      have h3 := pow_le_pow_left₀ (norm_nonneg _) h2 2
+      have h4 := mul_le_mul_of_nonneg_left h3 (sq_nonneg (1 + u))
+      linarith
+    · rw [hC.test_isZero h0] at htest
+      simp at htest
+
 end Theorems
 
 section Iteration
@@ -227,8 +351,8 @@ section Iteration
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O]
   [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q]
 
--- The hypothesis list of the iteration, with its long real constants, makes elaboration heavy.
 set_option maxHeartbeats 1000000 in
+-- The hypothesis list of the iteration, with its long real constants, makes elaboration heavy.
 /-- **One iteration of the decoupling loop on the good tapes**: from the state before round $i$
 with the scan flag $0$, the iterate is in the class of `NLAlib.ShiftedQR.shIteration_pwrites`
 (condition at most $4B \le B_i$ and separation at least $g/4 \ge 2\omega^2/S$ by
@@ -346,49 +470,16 @@ theorem roundedDecoupleIteration_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} 
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1))
     (fun x _ _ hP hfr hO => mem_iterationOutcome_of_shIterationOutcome hP.2.1 hfr hO
       ((mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left x.2.2.1 hC0) hcu).trans hE))
-  -- the iterate of a state with the scan flag `0`
-  have hiter : ∀ μ, DecoupleLoopCtx n L w p f ps μ →
-      DecoupleLoopState u k H tL (1.002 * (1 - γ)) E w (L, 0) i μ → μ.store.get L 3 = some 0 →
-      ∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, IsPerturbedUnitarySimilar H H' (i * E) ∧
-        IsUpperHessenberg H' ∧ HoldsMatrix w H' μ.store ∧
-        (∀ j : Fin n, n ≤ (j : ℕ) + k → tL < (1 + u) ^ 2 * ‖H' j.succ j.castSucc‖ ^ 2) ∧
-        hessenbergPotential k H' ≤ (1.002 * (1 - γ)) ^ i * hessenbergPotential k H := by
-    rintro μ - ⟨H', hHH', hHess', hW, ⟨h1, -⟩ | ⟨-, hall, hψ⟩⟩ h0
-    · simp only [zero_add] at h1
-      rw [h0] at h1
-      norm_num at h1
-    · exact ⟨H', hHH', hHess', hW, hall, hψ⟩
   refine PStep.mono hst (fun μ ⟨hctx, hstate, h0⟩ => ?_)
     (fun μ μ' ⟨hctx, hstate, h0⟩ hT => ?_) le_rfl
-  · obtain ⟨H', hHH', hHess', hW, hall, -⟩ := hiter μ hctx hstate h0
-    obtain ⟨V', d', hV', hHV', hκ', hsep'⟩ :=
-      hHH'.exists_pseudoConditionNumber_le_and_le_norm_sub hV hHV hκ (by positivity) hgap hiE
-    have hnorm : specNorm H' ≤ S := hHH'.specNorm_le.trans hSi
-    have hψω : ω ≤ hessenbergPotential k H' := by
-      by_contra hlt
-      push Not at hlt
-      obtain ⟨j, hj, hjle⟩ := exists_norm_subdiag_le_hessenbergPotential (by omega) hkn H'
-      have h1 := hall j hj
-      have h2 : ‖H' j.succ j.castSucc‖ ^ 2 ≤ ω ^ 2 :=
-        pow_le_pow_left₀ (norm_nonneg _) (hjle.trans hlt.le) 2
-      nlinarith [sq_nonneg (1 + u)]
-    obtain ⟨-, -, -, hl, hp, -, hrf, -, -, -⟩ := hctx
-    rw [hps] at hp
-    have hget : ∀ j < 10, μ.store.get p.1 (p.2 + j) =
-        some ((roundedDecoupleParams tL R tv γ Bi α ε k q).getD j 0) := fun j hj =>
-      Store.get_of_readBlock hp (by rw [length_roundedDecoupleParams]; omega) 0
-    have hnet := Store.readBlock_sub hp (o := 10) (n := 2 * (excNet ε).length)
-      (by rw [length_roundedDecoupleParams])
-    refine ⟨⟨H', hHess', hnorm, hψω, V', d', hV', hHV', hκ'.trans (by linarith),
-      fun i j hij => hgapS.trans ((by ring : g / 2 / 2 = g / 4) ▸ hsep' i j hij)⟩, ?_,
-      hW, hget 1 (by omega), hget 2 (by omega), hget 3 (by omega), hget 4 (by omega),
-      hget 5 (by omega), hget 6 (by omega), hget 7 (by omega), ?_, by omega⟩
-    · simp only [Mem.live_cons] at hl ⊢
-      tauto
-    · have hfl : (List.flatMap (fun z : ℂ => [z.re, z.im]) (excNet ε)).length =
-          2 * (excNet ε).length := by simp [List.length_flatMap, mul_comm]
-      simpa [roundedDecoupleParams, List.take_of_length_le hfl.le] using hnet
-  · obtain ⟨H', hHH', -, hW, -, hψ⟩ := hiter μ hctx hstate h0
+  · obtain ⟨H', -, hHess', hW, -, hnorm, hψω, V', d', hV', hHV', hκ', hsep'⟩ :=
+      hstate.exists_iterate h0 (by omega) hkn hV hHV hκ hg hgap hiE hSi hBi hωL hgapS
+    obtain ⟨hl, hget, hnet, hf⟩ := hctx.iteration_words hps
+    exact ⟨⟨H', hHess', hnorm, hψω, V', d', hV', hHV', hκ', hsep'⟩, hl, hW, hget 1 (by omega),
+      hget 2 (by omega), hget 3 (by omega), hget 4 (by omega), hget 5 (by omega),
+      hget 6 (by omega), hget 7 (by omega), hnet, hf⟩
+  · obtain ⟨H', hHH', -, hW, hψ, -⟩ :=
+      hstate.exists_iterate h0 (by omega) hkn hV hHV hκ hg hgap hiE hSi hBi hωL hgapS
     obtain ⟨hfr, H'', hsim, hHess'', hW'', hdec⟩ := shIterationOutcome_of_mem hW hT
     refine ⟨hfr, hctx.of_eqOff le_sup_left hfr, H'', (hHH'.trans hsim).mono
       (le_of_eq (by push_cast; ring)), hHess'', hW'', hdec.imp id fun h => ?_⟩
@@ -398,8 +489,174 @@ theorem roundedDecoupleIteration_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} 
         mul_le_mul_of_nonneg_left hψ hc0
       _ = (1.002 * (1 - γ)) ^ (i + 1) * hessenbergPotential k H := by ring
 
--- The loop's program term and the hypotheses of the iteration make elaboration heavy.
+/-- **The rounds of the decoupling loop on the good tapes**: if each iteration from the state
+before round $i < F$ with the scan flag $0$ reaches the state after it except with probability
+at most $\varphi \ge 0$, then from a stored upper Hessenberg $\mathbf{H}$ with
+$\psi_k(\mathbf{H}) \le N_{\max}$ the initial scan, the at most $F$ rounds (iteration and scan,
+`NLAlib.ShiftedQR.roundedDecoupleScan_writes`) and the exit
+(`NLAlib.ShiftedQR.roundedDecoupleExit_writes`) set the flag to $0$ and hold an upper Hessenberg
+perturbed unitary similarity with error $FE$ and a bottom entry of modulus at most $\omega_D$,
+except with probability at most $F\varphi$ (`NLAlib.Ops.PWrites.whileFuel`). -/
+theorem roundedDecoupleLoop_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u < 1) (hL : IsIndexLit M I)
+    (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I) {law : ℕ → Measure ℝ}
+    {k q n0 F L : ℕ} (hk : 0 < k) (hkn : k ≤ n) {w p f : ℕ × ℕ} {ps : List ℝ}
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {tL tv c E ωD Nmax φ : ℝ}
+    (hps : ps.getD 0 0 = tL) (hps0 : 0 < ps.length) (hHess : IsUpperHessenberg H)
+    (hψH : hessenbergPotential k H ≤ Nmax) (hthr : (1 + u) ^ 2 * tv ≤ (1 - u) ^ 2 * tL)
+    (hcut : tL ≤ (1 - u) ^ 2 * ωD ^ 2) (hωD : 0 ≤ ωD) (hc0 : 0 ≤ c) (hE0 : 0 ≤ E)
+    (hφ : 0 ≤ φ) (hfuel : (1 + u) ^ 2 * (c ^ F * Nmax) ^ 2 ≤ tL)
+    (hit : ∀ i < F, PWrites law I (shIteration (O := O) (Q := Q)).body
+      (Env.frame [n + 1, q, k, n0] [w, (p.1, p.2 + 1), (p.1, p.2 + 2), (p.1, p.2 + 3),
+        (p.1, p.2 + 4), (p.1, p.2 + 5), (p.1, p.2 + 6), (p.1, p.2 + 7), (p.1, p.2 + 10), w, f])
+      (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
+      (fun μ => DecoupleLoopCtx n L w p f ps μ ∧ DecoupleLoopState u k H tL c E w (L, 0) i μ ∧
+        μ.store.get L 3 = some 0)
+      (fun μ' => DecoupleLoopCtx n L w p f ps μ' ∧ DecoupleLoopMid u k H tv c E w (i + 1) μ')
+      φ) :
+    PWrites law I (roundedDecoupleLoop (O := O) (Q := Q)).body
+      (Env.frame [n + 1, k, ps.length, F, q, n0] [w, p, (L, 0), w, f])
+      (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
+        Store.inBlock L 0 5)
+      (fun μ => DecoupleLoopCtx n L w p f ps μ ∧ HoldsMatrix w H μ.store)
+      (fun μ' => μ'.store.get f.1 f.2 = some 0 ∧ ∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+        IsPerturbedUnitarySimilar H H' (F * E) ∧ IsUpperHessenberg H' ∧
+        (∃ j : Fin n, n ≤ (j : ℕ) + k ∧ ‖H' j.succ j.castSucc‖ ≤ ωD) ∧
+        HoldsMatrix w H' μ'.store) (F * φ) := by
+  have h0lit : M.lit (0 : ℚ) = 0 := by simpa using hNat 0 (Nat.zero_le _)
+  have hlive3 : ∀ μ, DecoupleLoopCtx n L w p f ps μ → μ.Live [w, p, (L, 0)] := fun μ h =>
+    h.2.2.2.1.mono (by simp)
+  unfold roundedDecoupleLoop
+  refine (PWrites.seq (φ₁ := 0) hI hloc (by positivity) ?scan
+    (PWrites.whileFuel (F := Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock f.1 f.2 1 ⊔ Store.inBlock L 0 5)
+      (G := Store.inBlock f.1 f.2 1) (N := F) hI hloc rfl
+      (fun i μ => DecoupleLoopCtx n L w p f ps μ ∧ DecoupleLoopState u k H tL c E w (L, 0) i μ)
+      (fun _ => φ) (fun _ _ => hφ) le_rfl (fun _ h => h) ?test ?body ?exit)).mono (fun _ h => h)
+    (sup_le le_sup_right (sup_le le_rfl (le_sup_of_le_left le_sup_right))) (fun _ h => h) ?phi
+  case scan =>
+    exact (PWrites.of_writes le_rfl fun μ τ ⟨hctx, hW⟩ =>
+      roundedDecoupleScan_writes (τ := τ) (i := 0) (tv := tv) (E := E) (c := c) hS hM hu1 hL
+        hNat hC hkn hps hps0 hthr hctx ⟨H, by simpa using IsPerturbedUnitarySimilar.refl H,
+          hHess, hW, Or.inr (by simp)⟩).in_frame rfl rfl fun μ h => hlive3 μ h.1
+  case phi =>
+    simp only [zero_add, add_zero, Finset.sum_const, Finset.card_range, nsmul_eq_mul]
+    exact le_rfl
+  case test =>
+    rintro i - μ ⟨-, H', -, -, -, ⟨h1, -⟩ | ⟨h0, -⟩⟩
+    · simp only [zero_add] at h1
+      exact ⟨_, (Interp.testAt_eq (a := [(L, 3)]) rfl rfl).trans (hC.test_isZero h1)⟩
+    · simp only [zero_add] at h0
+      exact ⟨_, (Interp.testAt_eq (a := [(L, 3)]) rfl rfl).trans (hC.test_isZero h0)⟩
+  case body =>
+    intro i hi
+    refine (PWrites.seq hI hloc le_rfl ((hit i hi).in_frame rfl rfl fun μ h => ?_)
+      ((PWrites.of_writes le_rfl fun μ τ ⟨hctx, hmid⟩ =>
+        roundedDecoupleScan_writes (τ := τ) hS hM hu1 hL hNat hC hkn hps hps0 hthr hctx
+          hmid).in_frame rfl rfl fun μ h => hlive3 μ h.1)).mono
+      (fun μ ⟨⟨hctx, hst⟩, htest⟩ => ⟨hctx, hst, ?_⟩) (sup_le le_sup_left le_sup_right)
+      (fun _ h => h) (by simp)
+    · have := h.1.2.2.2.1
+      simp only [Mem.live_cons, Mem.live_nil, and_true] at this ⊢
+      tauto
+    obtain ⟨H', -, -, -, ⟨h1, -⟩ | ⟨h0, -⟩⟩ := hst
+    · simp only [zero_add] at h1
+      rw [Interp.testAt_eq (a := [(L, 3)]) rfl rfl, hC.test_isZero h1] at htest
+      simp at htest
+    · simpa using h0
+  case exit =>
+    intro i hi
+    refine (PWrites.of_writes le_rfl fun μ τ h => ?_).in_frame rfl rfl fun μ h =>
+      h.1.1.2.2.2.1.mono (by simp)
+    obtain ⟨⟨hctx, hst⟩, hend⟩ := h
+    rw [Interp.testAt_eq (a := [(L, 3)]) rfl rfl] at hend
+    exact roundedDecoupleExit_writes hu1 hL hC h0lit hk hkn hcut hωD hc0 hE0 hψH hfuel hi hctx
+      hst hend
+
+/-- **The decoupling loop from its rounds**: the allocation of the scan registers and the two
+index reads of $m$ and $n_0$ from the parameter words (`NLAlib.Ops.PWrites.allocs`,
+`NLAlib.Ops.PWrites.bindIdx`) carry a probabilistic specification of
+`NLAlib.ShiftedQR.roundedDecoupleLoop` at every fresh buffer to `NLAlib.ShiftedQR.roundedDecouple`
+from the precondition of `NLAlib.ShiftedQR.RandomDecouplingContract`. -/
+theorem roundedDecouple_pwrites_of_loop {I : Interp O Q ℝ} (hI : I.IsMeasurable)
+    (hQ : IsToNat id I) {law : ℕ → Measure ℝ} {k q F : ℕ} (hqk : q ≤ k) {w p f : ℕ × ℕ}
+    {ps : List ℝ} {tL R tv γ Bi α ε : ℝ} (hps : ps = roundedDecoupleParams tL R tv γ Bi α ε k q)
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {e ωD φ : ℝ} (hφ : 0 ≤ φ)
+    (hloop : ∀ L, PWrites law I (roundedDecoupleLoop (O := O) (Q := Q)).body
+      (Env.frame [n + 1, k, ps.length, F, q, (excNet ε).length] [w, p, (L, 0), w, f])
+      (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
+        Store.inBlock L 0 5)
+      (fun μ => DecoupleLoopCtx n L w p f ps μ ∧ HoldsMatrix w H μ.store)
+      (fun μ' => μ'.store.get f.1 f.2 = some 0 ∧ ∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+        IsPerturbedUnitarySimilar H H' e ∧ IsUpperHessenberg H' ∧
+        (∃ j : Fin n, n ≤ (j : ℕ) + k ∧ ‖H' j.succ j.castSucc‖ ≤ ωD) ∧
+        HoldsMatrix w H' μ'.store) φ) :
+    PWrites law I (roundedDecouple (O := O) (Q := Q)).body
+      (Env.frame [n + 1, k, ps.length, F] [w, p, w, f])
+      (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
+      (fun μ => HoldsMatrix w H μ.store ∧ μ.store.readBlock p.1 p.2 ps.length = some ps ∧
+        μ.Live [w, p, w, f] ∧ w.2 + 2 * ((n + 1) * (n + 1)) ≤ μ.store.len w.1 ∧
+        f.2 + 1 ≤ μ.store.len f.1 ∧
+        Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock f.1 f.2 1) ∧
+        Fp.Disj (Store.inBlock p.1 p.2 ps.length)
+          (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1))
+      (fun μ' => μ'.store.get f.1 f.2 = some 0 ∧ ∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+        IsPerturbedUnitarySimilar H H' e ∧ IsUpperHessenberg H' ∧
+        (∃ j : Fin n, n ≤ (j : ℕ) + k ∧ ‖H' j.succ j.castSucc‖ ≤ ωD) ∧
+        HoldsMatrix w H' μ'.store) φ := by
+  have hlen : ps.length = 10 + 2 * (excNet ε).length := by
+    rw [hps, length_roundedDecoupleParams]
+  unfold roundedDecouple
+  refine PWrites.allocs (lens := [.const 5]) (ns := [5]) rfl
+    (Pre₁ := fun L μ => DecoupleLoopCtx n L w p f ps μ ∧ HoldsMatrix w H μ.store) ?_ ?_
+    fun L => ?_
+  · rintro μ s₁ ⟨hW, hp, hl, hrw, hrf, hWF, hPWF⟩ hlen' hlens hBelow
+    have h1 : w.1 < μ.store.length := hl w (by simp)
+    have h2 : p.1 < μ.store.length := hl p (by simp)
+    have h3 : f.1 < μ.store.length := hl f (by simp)
+    have hl0 := hlens 0 (by simp)
+    simp only [List.length_cons, List.length_nil] at hlen'
+    refine ⟨⟨h1, h2, h3, ?_, hBelow.readBlock_of h2 hp, by rw [(hBelow w.1 h1).1]; exact hrw,
+      by rw [(hBelow f.1 h3).1]; exact hrf, by simpa using hl0.ge, hWF, hPWF⟩,
+      hW.of_below hBelow h1⟩
+    simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,
+      forall_eq, hlen']
+    omega
+  · rintro μ ⟨-, -, hl, -⟩ st st' pos hBelow ⟨hf0, H', h1, h2, h3, hW'⟩
+    exact ⟨hBelow.get_of (hl f (by simp)) hf0, H', h1, h2, h3,
+      hW'.of_below hBelow (hl w (by simp))⟩
+  have hget : ∀ μ, DecoupleLoopCtx n L w p f ps μ → ∀ j < 10,
+      μ.store.get p.1 (p.2 + j) = some (ps.getD j 0) :=
+    fun μ h j hj => Store.get_of_readBlock h.2.2.2.2.1 (by rw [hlen]; omega) 0
+  have h8 : ∀ μ, DecoupleLoopCtx n L w p f ps μ →
+      I.index (Has.inj IdxTst.toNat) [(p.1, p.2 + 8)] μ = some q := fun μ h =>
+    hQ.index_eq_of_decode_nat (hget μ h 8 (by omega)) (by subst hps; rfl)
+  have h9 : ∀ μ, DecoupleLoopCtx n L w p f ps μ →
+      I.index (Has.inj IdxTst.toNat) [(p.1, p.2 + 9)] μ = some (excNet ε).length := fun μ h =>
+    hQ.index_eq_of_decode_nat (hget μ h 9 (by omega)) (by subst hps; rfl)
+  refine PWrites.bindIdx hI (a := [(p.1, p.2 + 8)]) rfl rfl
+    (fun μ ⟨hctx, _⟩ => ⟨q, hqk, h8 μ hctx⟩) fun v hv => ?_
+  by_cases hvq : v = q
+  swap
+  · exact PWrites.of_writes hφ fun μ _ ⟨⟨hctx, _⟩, hv'⟩ =>
+      (hvq (Option.some.inj (hv'.symm.trans (h8 μ hctx)))).elim
+  subst v
+  refine PWrites.bindIdx hI (a := [(p.1, p.2 + 9)]) rfl rfl
+    (fun μ ⟨⟨hctx, _⟩, _⟩ => ⟨(excNet ε).length, by rw [hlen]; omega, h9 μ hctx⟩)
+    fun v hv => ?_
+  by_cases hvq : v = (excNet ε).length
+  swap
+  · exact PWrites.of_writes hφ fun μ _ ⟨⟨⟨hctx, _⟩, _⟩, hv'⟩ =>
+      (hvq (Option.some.inj (hv'.symm.trans (h9 μ hctx)))).elim
+  subst hvq
+  have hRL : Store.inBlock L 0 5 ≤ Fp.above L := fun b i h => (show L ≤ b from h.1 ▸ le_rfl)
+  refine ((hloop L).in_frame rfl rfl fun μ h => h.1.2.2.2.1.mono (by simp)).mono ?_
+    (sup_le_sup_left hRL _) (fun _ h => h) le_rfl
+  exact fun μ h => h.1.1
+
 set_option maxHeartbeats 4000000 in
+-- The loop's program term and the hypotheses of the iteration make elaboration heavy.
 /-- **The rounded decoupling loop meets the randomized decoupling contract**
 ([BanksGarzaVargasSrivastava2022, Lemma 6.4] in floating point, corrected): on a machine with the
 standard model at $\boldsymbol{u} < 1$, exact natural literals up to $n_{\max} + 1$, a measurable
@@ -534,143 +791,19 @@ theorem roundedDecouple_randomDecouplingContract {M : Machine ℝ} {I : Interp O
         Bi ^ ((k : ℝ)⁻¹) * S)) ≤ ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) *
       (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * Bi ^ 4) ^ ((2 * k : ℝ)⁻¹)) * α *
         Bi ^ ((k : ℝ)⁻¹) * ω) * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 8 := hexc2.trans (by gcongr)
-  have h0lit : M.lit ((0 : ℕ) : ℚ) = 0 := by simpa using hNat 0 (Nat.zero_le _)
   have hlen := length_roundedDecoupleParams tL R tv γ Bi α ε k q
-  unfold roundedDecouple
-  refine PWrites.allocs (lens := [.const 5]) (ns := [5]) rfl
-    (Pre₁ := fun L μ => DecoupleLoopCtx n L w p f ps μ ∧ HoldsMatrix w H μ.store) ?_ ?_
-    fun L => ?_
-  · rintro μ s₁ ⟨hW, hp, hl, hrw, hrf, hWF, hPWF⟩ hlen' hlens hBelow
-    have h1 : w.1 < μ.store.length := hl w (by simp)
-    have h2 : p.1 < μ.store.length := hl p (by simp)
-    have h3 : f.1 < μ.store.length := hl f (by simp)
-    have hl0 := hlens 0 (by simp)
-    simp only [List.length_cons, List.length_nil] at hlen'
-    refine ⟨⟨h1, h2, h3, ?_, hBelow.readBlock_of h2 hp, by rw [(hBelow w.1 h1).1]; exact hrw,
-      by rw [(hBelow f.1 h3).1]; exact hrf, by simpa using hl0.ge, hWF, hPWF⟩,
-      hW.of_below hBelow h1⟩
-    simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,
-      forall_eq, hlen']
-    omega
-  · rintro μ ⟨-, -, hl, -⟩ st st' pos hBelow ⟨hf0, H', h1, h2, h3, hW'⟩
-    exact ⟨hBelow.get_of (hl f (by simp)) hf0, H', h1, h2, h3,
-      hW'.of_below hBelow (hl w (by simp))⟩
-  have hget : ∀ μ, DecoupleLoopCtx n L w p f ps μ → ∀ j < 10,
-      μ.store.get p.1 (p.2 + j) = some (ps.getD j 0) :=
-    fun μ h j hj => Store.get_of_readBlock h.2.2.2.2.1 (by rw [hlen]; omega) 0
-  refine PWrites.bindIdx hI (a := [(p.1, p.2 + 8)]) rfl rfl
-    (fun μ ⟨hctx, _⟩ => ⟨q, ?_, hQ.index_eq_of_decode_nat (hget μ hctx 8 (by omega)) rfl⟩)
-    fun v hv => ?_
-  · rw [hkq]; exact Nat.lt_two_pow_self.le
-  by_cases hvq : v = q
-  swap
-  · exact PWrites.of_writes (by positivity) fun μ _ ⟨⟨hctx, _⟩, hv'⟩ => (hvq (Option.some.inj
-      (hv'.symm.trans (hQ.index_eq_of_decode_nat (hget μ hctx 8 (by omega)) rfl)))).elim
-  subst v
-  refine PWrites.bindIdx hI (a := [(p.1, p.2 + 9)]) rfl rfl
-    (fun μ ⟨⟨hctx, _⟩, _⟩ => ⟨(excNet ε).length, by rw [hlen]; omega,
-      hQ.index_eq_of_decode_nat (hget μ hctx 9 (by omega)) rfl⟩) fun v hv => ?_
-  by_cases hvq : v = (excNet ε).length
-  swap
-  · exact PWrites.of_writes (by positivity) fun μ _ ⟨⟨⟨hctx, _⟩, _⟩, hv'⟩ => (hvq (Option.some.inj
-      (hv'.symm.trans (hQ.index_eq_of_decode_nat (hget μ hctx 9 (by omega)) rfl)))).elim
-  subst hvq
-  have hlive : ∀ μ, DecoupleLoopCtx n L w p f ps μ → μ.Live [w, (p.1, p.2 + 1), (p.1, p.2 + 2),
-      (p.1, p.2 + 3), (p.1, p.2 + 4), (p.1, p.2 + 5), (p.1, p.2 + 6), (p.1, p.2 + 7),
-      (p.1, p.2 + 10), w, f] := fun μ h => by
-    have := h.2.2.2.1
-    simp only [Mem.live_cons, Mem.live_nil, and_true] at this ⊢
-    tauto
-  have hlive3 : ∀ μ, DecoupleLoopCtx n L w p f ps μ → μ.Live [w, p, (L, 0)] := fun μ h =>
-    h.2.2.2.1.mono (by simp)
+  have hψH : hessenbergPotential k H ≤ Nmax :=
+    ((hessenbergPotential_le_specNorm (by omega) hkn H).trans hnorm).trans hN
   have hiE : ∀ i < F, (i : ℝ) * E ≤ F * E := fun i hi =>
     mul_le_mul_of_nonneg_right (by exact_mod_cast hi.le) hE0
-  have hRle : Store.inBlock L 0 5 ≤ Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
-      Store.inBlock f.1 f.2 1 ⊔ Fp.above L :=
-    le_sup_of_le_right fun b i h => (show L ≤ b from h.1 ▸ le_rfl)
-  have hscan0 : PWrites law I (Stmt.frame [IExp.var 0, IExp.var 1]
-      [⟨0, IExp.var 4⟩, ⟨1, IExp.var 5⟩, ⟨4, IExp.const 0⟩] (bottomScan (O := O) (Q := Q)).body)
-      (((⟨(Env.frame [n + 1, k, ps.length, F] [w, p, w, f]).idx,
-          (Env.frame [n + 1, k, ps.length, F] [w, p, w, f]).buf ++
-            List.map (fun x => L + x) (List.range [5].length)⟩ : Env).pushIdx q).pushIdx
-        (excNet ε).length)
-      (Store.inBlock L 0 5) (fun μ => DecoupleLoopCtx n L w p f ps μ ∧ HoldsMatrix w H μ.store)
-      (fun μ => DecoupleLoopCtx n L w p f ps μ ∧
-        DecoupleLoopState u k H tL (1.002 * (1 - γ)) E w (L, 0) 0 μ) 0 :=
-    (PWrites.of_writes le_rfl fun μ τ ⟨hctx, hW⟩ =>
-      roundedDecoupleScan_writes (τ := τ) (i := 0) (tv := tv) (E := E)
-      (c := 1.002 * (1 - γ)) hS hM hu1 hL hNat' hC hkn rfl (by rw [hlen]; omega) hthr hctx
-      ⟨H, by simpa using IsPerturbedUnitarySimilar.refl H, hHess, hW, Or.inr (by simp)⟩).in_frame
-      rfl rfl fun μ h => hlive3 μ h.1
-  refine (PWrites.seq hI hloc (by positivity) (hscan0.mono ?pre0 le_rfl
-      (fun _ h => h) le_rfl)
-    (PWrites.whileFuel (F := Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
-        Store.inBlock f.1 f.2 1 ⊔ Store.inBlock L 0 5) (G := Store.inBlock f.1 f.2 1) (N := F)
-      hI hloc rfl (fun i μ => DecoupleLoopCtx n L w p f ps μ ∧
-        DecoupleLoopState u k H tL (1.002 * (1 - γ)) E w (L, 0) i μ)
-      (fun _ => φse + φR / 2 + φ) (fun _ _ => by positivity) le_rfl (fun _ h => h) ?test ?body
-      ?exit)).mono (fun _ h => h)
-    (sup_le hRle (sup_le (sup_le le_sup_left hRle) (le_sup_of_le_left le_sup_right)))
-    (fun _ h => h) ?phi
-  case pre0 => exact fun μ h => h.1.1
-  case phi =>
-    simp only [zero_add, add_zero, Finset.sum_const, Finset.card_range, nsmul_eq_mul]
-    exact le_rfl
-  case test =>
-    rintro i - μ ⟨-, H', -, -, -, ⟨h1, -⟩ | ⟨h0, -⟩⟩
-    · simp only [zero_add] at h1
-      exact ⟨_, (Interp.testAt_eq (a := [(L, 3)]) rfl rfl).trans (hC.test_isZero h1)⟩
-    · simp only [zero_add] at h0
-      exact ⟨_, (Interp.testAt_eq (a := [(L, 3)]) rfl rfl).trans (hC.test_isZero h0)⟩
-  case body =>
-    intro i hi
-    refine (PWrites.seq hI hloc le_rfl
-      ((roundedDecoupleIteration_pwrites (L := L) (i := i) (p := p) hI hloc hS hM hu1 hL hNat' hC
-        hQ hSE hβ0 hφse hDisk hU hkq hk hkn hV hHV hκ hg hgap ((hiE i hi).trans (hsmall.trans hgB))
-        (by linarith [hiE i hi]) hEn rfl hBi hBk hω hωL hgapS hR hφR hφR1 hβ hdη hnu' huo' huo1'
-        hxuR' hboundR' hα hγ hγ1 hε hε2 hφ hφ1 hd' hC1 hxu' hbound' hexc1 hexc2'
-        hthrω).in_frame rfl rfl fun μ h => hlive μ h.1)
-      ((PWrites.of_writes le_rfl fun μ τ ⟨hctx, hmid⟩ =>
-        roundedDecoupleScan_writes (τ := τ) hS hM hu1 hL hNat' hC hkn rfl
-          (by rw [hlen]; omega) hthr hctx hmid).in_frame rfl rfl fun μ h => hlive3 μ h.1)).mono
-      (fun μ ⟨⟨hctx, hst⟩, htest⟩ => ⟨hctx, hst, ?_⟩) (sup_le le_sup_left le_sup_right)
-      (fun _ h => h) (by simp)
-    obtain ⟨H', -, -, -, ⟨h1, -⟩ | ⟨h0, -⟩⟩ := hst
-    · simp only [zero_add] at h1
-      rw [Interp.testAt_eq (a := [(L, 3)]) rfl rfl, hC.test_isZero h1] at htest
-      simp at htest
-    · simpa using h0
-  case exit =>
-    intro i hi
-    refine PWrites.of_writes le_rfl fun μ τ ⟨⟨hctx, H', hHH', hHess', hW', hcase⟩, hend⟩ => ?_
-    rcases hcase with ⟨h1, j, hj, hjt⟩ | ⟨h0, hall, hψ⟩
-    · simp only [zero_add] at h1
-      refine writes_ite (a := [(L, 3)]) rfl rfl (hC.test_isPos h1) ?_
-      rw [show decide (0 < id (1 : ℝ)) = true by simp, if_pos rfl]
-      refine (writes_indexLit hL rfl rfl (by have := hctx.2.2.2.2.2.2.1; omega)).mono le_rfl ?_
-      rintro μ' hfr ⟨-, hF⟩
-      have hh : (1 - u) ^ 2 * ‖H' j.succ j.castSucc‖ ^ 2 ≤ (1 - u) ^ 2 * ωD ^ 2 := hjt.trans hcut
-      have h0lit' : M.lit (0 : ℚ) = 0 := by simpa using h0lit
-      refine ⟨by simpa [h0lit'] using hF, H', hHH'.mono ?_, hHess', ⟨j, hj, ?_⟩,
-        hW'.of_eqOff hfr hctx.2.2.2.2.2.2.2.2.1.symm⟩
-      · have : (i : ℝ) ≤ F := by exact_mod_cast hi
-        exact mul_le_mul_of_nonneg_right this hE0
-      · exact (pow_le_pow_iff_left₀ (norm_nonneg _) hωD two_ne_zero).mp
-          (le_of_mul_le_mul_left hh hp1)
-    · exfalso
-      rcases hend with rfl | htest
-      · have hψH : hessenbergPotential k H ≤ Nmax :=
-          ((hessenbergPotential_le_specNorm (by omega) hkn H).trans hnorm).trans hN
-        obtain ⟨j, hj, hjle⟩ := exists_norm_subdiag_le_hessenbergPotential (by omega) hkn H'
-        have h1 := hall j hj
-        have h2 : ‖H' j.succ j.castSucc‖ ≤ (1.002 * (1 - γ)) ^ i * Nmax :=
-          hjle.trans (hψ.trans (mul_le_mul_of_nonneg_left hψH (pow_nonneg hc0 _)))
-        have h3 := pow_le_pow_left₀ (norm_nonneg _) h2 2
-        have h4 := mul_le_mul_of_nonneg_left h3 (sq_nonneg (1 + u))
-        linarith
-      · simp only [zero_add] at h0
-        rw [Interp.testAt_eq (a := [(L, 3)]) rfl rfl, hC.test_isZero h0] at htest
-        simp at htest
+  refine roundedDecouple_pwrites_of_loop hI hQ (by rw [hkq]; exact Nat.lt_two_pow_self.le) rfl
+    (by positivity) fun L => ?_
+  exact roundedDecoupleLoop_pwrites hI hloc hS hM hu1 hL hNat' hC (by omega) hkn rfl
+    (by rw [hlen]; omega) hHess hψH hthr hcut hωD hc0 hE0 (by positivity) hfuel fun i hi =>
+    roundedDecoupleIteration_pwrites (L := L) (i := i) (p := p) hI hloc hS hM hu1 hL hNat' hC
+      hQ hSE hβ0 hφse hDisk hU hkq hk hkn hV hHV hκ hg hgap ((hiE i hi).trans (hsmall.trans hgB))
+      (by linarith [hiE i hi]) hEn rfl hBi hBk hω hωL hgapS hR hφR hφR1 hβ hdη hnu' huo' huo1'
+      hxuR' hboundR' hα hγ hγ1 hε hε2 hφ hφ1 hd' hC1 hxu' hbound' hexc1 hexc2' hthrω
 
 end Iteration
 

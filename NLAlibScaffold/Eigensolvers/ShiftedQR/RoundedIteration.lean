@@ -260,6 +260,96 @@ theorem shStep_pwrites_of_forall {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
     obtain ⟨j, rfl⟩ := List.mem_ofFn.mp hs
     exact hsH j
 
+variable [Has EigenvalueKernelOp O]
+
+omit [Has IdxTst Q] in
+/-- `Regularize` inside an iteration: the outcome of `NLAlib.ShiftedQR.regularize_pwrites`, with
+the words of `Sh` kept. -/
+theorem shIteration_regularize_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I)
+    (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I) {law : ℕ → Measure ℝ} {s₀ : ℕ}
+    {β φse : ℝ} (hSE : IsRandomSmallEig law s₀ β φse I) (hβ0 : 0 ≤ β) (hφse : 0 ≤ φse)
+    (hD : IsPolarDiskSampler s₀ I) (hU : law s₀ = volume.restrict (Set.Icc 0 1)) {k : ℕ}
+    (hk0 : 0 < k) (hk : k ≤ n) {ε : ℝ} {ρ : Env} {a rd c thr wg wr ww wp g s f : ℕ × ℕ}
+    (has : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock s.1 s.2 (2 * k)))
+    (haf : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock f.1 f.2 1))
+    (hsf : Fp.Disj (Store.inBlock s.1 s.2 (2 * k)) (Store.inBlock f.1 f.2 1))
+    (hio : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+      Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock f.1 f.2 1)
+        (Store.inBlock rd.1 rd.2 1 ⊔ Store.inBlock c.1 c.2 1 ⊔ Store.inBlock thr.1 thr.2 1 ⊔
+          Store.inBlock wg.1 wg.2 1 ⊔ Store.inBlock wr.1 wr.2 1 ⊔ Store.inBlock ww.1 ww.2 1 ⊔
+          Store.inBlock wp.1 wp.2 1 ⊔ Store.inBlock g.1 g.2 (2 * (excNet ε).length)))
+    (hρ : IExp.evalList ρ.idx [.var 0, .var 2] = some [n + 1, k])
+    (hρa : Operand.evalList ρ [⟨0, .const 0⟩, ⟨1, .const 0⟩, ⟨2, .const 0⟩, ⟨3, .const 0⟩,
+      ⟨10, .const 0⟩, ⟨9, .const 0⟩, ⟨11, .const 0⟩] = some [a, rd, c, thr, a, s, f])
+    {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {e : Fin (n + 1) → ℂ}
+    {B S ω R φ tv cg cr cw cp : ℝ} (hH : IsUpperHessenberg H) (hV : IsUnit V)
+    (hHV : H * V = V * Matrix.diagonal e) (hκ : pseudoConditionNumber V ≤ B)
+    (hBk : B ^ ((2 : ℝ) / k) ≤ 2) (hω : 0 < ω) (hψ : ω ≤ hessenbergPotential k H)
+    (hSH : specNorm H ≤ S) (hgap : ∀ i j, i ≠ j → 2 * ω ^ 2 / S ≤ ‖e i - e j‖)
+    (hR : 0 < R) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
+    (hβ : β + R + 2 * u * (S + β + R) ≤ ω ^ 2 / (20 * 101 * S))
+    (hdη : 4 * u * (S + β + R) ≤ R * √(φ / (2 * k))) (hnu : (n + 1 : ℝ) * u ≤ 1 / 2500)
+    (huo : 30000 * k * (((n + 1 : ℕ) : ℝ) * √((n + 1 : ℕ) : ℝ) * u) * ((2 + 2 * 1.1) * S) ^ k ≤
+      (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹) * ω) ^ k)
+    (huo1 : 100000 * ((n + 1 + k : ℕ) : ℝ) ^ 2 * u ≤ 1)
+    (hxu : 300 * (n + 1) ^ 2 * u ≤
+      (16 * B)⁻¹ * (R * √(φ / (2 * k)) / 2 / ((2 + 2 * 1.1) * S)) ^ k)
+    (hbound : (66 + 2 * 1.1) * B * S * ((2 + 2 * 1.1) * S / (R * √(φ / (2 * k)) / 2)) ^ k *
+      √(n + 1) * (300 * (n + 1) ^ 2 * u) ≤ ω / 2)
+    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) :
+    PWrites law I (.frame [.var 0, .var 2] [⟨0, .const 0⟩, ⟨1, .const 0⟩, ⟨2, .const 0⟩,
+        ⟨3, .const 0⟩, ⟨10, .const 0⟩, ⟨9, .const 0⟩, ⟨11, .const 0⟩]
+        (regularize (O := O) (Q := Q)).body) ρ
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔
+        Store.inBlock f.1 f.2 1)
+      (fun m => m.Live [a, rd, c, thr, wg, wr, ww, wp, g, s, f] ∧ HoldsMatrix a H m.store ∧
+        m.store.get rd.1 rd.2 = some R ∧ m.store.get c.1 c.2 = some
+          (0.999 * (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) ^ k) ∧
+        m.store.get thr.1 thr.2 = some tv ∧ m.store.get wg.1 wg.2 = some cg ∧
+        m.store.get wr.1 wr.2 = some cr ∧ m.store.get ww.1 ww.2 = some cw ∧
+        m.store.get wp.1 wp.2 = some cp ∧
+        m.store.readBlock g.1 g.2 (2 * (excNet ε).length) =
+          some ((excNet ε).flatMap fun z => [z.re, z.im]) ∧
+        s.2 + 2 * k ≤ m.store.len s.1 ∧ f.2 < m.store.len f.1)
+      (fun m' => RegularizeOutcome k H e u (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) *
+          (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) (R * √(φ / (2 * k)) / 2) tv
+          ((1 + 1.1) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a s f m' ∧
+        m'.Live [a, rd, c, thr, wg, wr, ww, wp, g, s, f] ∧
+        m'.store.get thr.1 thr.2 = some tv ∧ m'.store.get wg.1 wg.2 = some cg ∧
+        m'.store.get wr.1 wr.2 = some cr ∧ m'.store.get ww.1 ww.2 = some cw ∧
+        m'.store.get wp.1 wp.2 = some cp ∧
+        m'.store.readBlock g.1 g.2 (2 * (excNet ε).length) =
+          some ((excNet ε).flatMap fun z => [z.re, z.im]) ∧ f.2 < m'.store.len f.1)
+      (φse + φ / 2) := by
+  have hio' : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+      Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock f.1 f.2 1)
+        (Store.inBlock rd.1 rd.2 1 ⊔ Store.inBlock c.1 c.2 1 ⊔ Store.inBlock thr.1 thr.2 1) :=
+    hio.mono le_rfl (by fp_sub)
+  refine ((regularize_pwrites hI hloc hS hM hu1 hL hNat hC hSE hβ0 hφse hD hU hk0 hk has haf hsf
+    hio' hH hV hHV hκ hBk hω hψ hSH hgap hR hφ hφ1 hβ hdη hnu huo huo1 hxu hbound
+    hthrω).in_frame hρ hρa ?_).mono_eqOff ?_ ?_
+  · rintro m ⟨hl, -⟩
+    exact (hl.mono (by intro x hx; simp only [List.mem_cons, List.not_mem_nil, or_false] at hx ⊢; tauto))
+  · rintro m ⟨hl, hA, hrd, hc, ht, -, -, -, -, -, hs, hf⟩
+    exact ⟨hl.mono (by intro x hx; simp only [List.mem_cons, List.not_mem_nil, or_false] at hx ⊢; tauto),
+      hA, hrd, hc, ht, hs, hf⟩
+  · rintro m m' ⟨hl, -, -, -, ht, hwg, hwr, hww, hwp, hg, -, hf⟩ hfr hout
+    have hD' : ∀ {G : Fp}, G ≤ Store.inBlock rd.1 rd.2 1 ⊔ Store.inBlock c.1 c.2 1 ⊔
+        Store.inBlock thr.1 thr.2 1 ⊔ Store.inBlock wg.1 wg.2 1 ⊔ Store.inBlock wr.1 wr.2 1 ⊔
+        Store.inBlock ww.1 ww.2 1 ⊔ Store.inBlock wp.1 wp.2 1 ⊔
+        Store.inBlock g.1 g.2 (2 * (excNet ε).length) → Fp.Disj _ G := fun hG => hio.mono le_rfl hG
+    exact ⟨hout, hl.congr hfr.length_eq,
+      hfr.keep (Store.readsOnly_get _ _ _) (hD' (by fp_sub)) ht,
+      hfr.keep (Store.readsOnly_get _ _ _) (hD' (by fp_sub)) hwg,
+      hfr.keep (Store.readsOnly_get _ _ _) (hD' (by fp_sub)) hwr,
+      hfr.keep (Store.readsOnly_get _ _ _) (hD' (by fp_sub)) hww,
+      hfr.keep (Store.readsOnly_get _ _ _) (hD' (by fp_sub)) hwp,
+      hfr.keep (Store.readsOnly_readBlock _ _ _ _) (hD' (by fp_sub)) hg,
+      by rw [hfr.len_eq]; exact hf⟩
+
 end Assembly
 
 end NLAlib.ShiftedQR

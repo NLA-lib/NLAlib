@@ -210,8 +210,8 @@ $\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le B$, eigenvalues separated by $g > 0$ 
 $\varepsilon \le g/(16(n + 1)B)$, then every active block of $\mathbf{A}$ is diagonalizable with
 condition at most $2B$ and eigenvalues separated by $g/2$: its eigenvalues are some of those of
 $\mathbf{H} + \mathbf{E}$, which keep the separation $g - 2B\|\mathbf{E}\|_2$
-(`NLAlib.exists_pseudoConditionNumber_le_and_le_norm_sub`). The condition half is
-`NLAlib.DeflationInv.exists_pseudoConditionNumber_subBlock_le`. -/
+(`NLAlib.IsPerturbedUnitarySimilar.exists_pseudoConditionNumber_le_and_le_norm_sub`). The
+condition half is `NLAlib.DeflationInv.exists_pseudoConditionNumber_subBlock_le`. -/
 theorem DeflationInv.exists_pseudoConditionNumber_subBlock_le_and_le_norm_sub
     {H A V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ε : ℝ} {active done : List (ℕ × ℕ)}
     {out : Fin (n + 1) → ℂ} (h : DeflationInv H ε active done A out) {d : Fin (n + 1) → ℂ}
@@ -224,23 +224,13 @@ theorem DeflationInv.exists_pseudoConditionNumber_subBlock_le_and_le_norm_sub
   obtain ⟨Vr, dr, hVr, hAr, hκr⟩ :=
     h.exists_pseudoConditionNumber_subBlock_le hV hHV hB hg hgap hε hr
   refine ⟨Vr, dr, hVr, hAr, hκr, ?_⟩
-  obtain ⟨M, U, E, hUU, hE, rfl, hpart, hbt, hact, -⟩ := h
-  have hB1 : 1 ≤ B := (one_le_pseudoConditionNumber hV.ne_zero).trans hB
-  have hE' := hE.trans hε
-  obtain ⟨V', d', hV', hV'd, -, hsep⟩ :=
-    exists_pseudoConditionNumber_le_and_le_norm_sub hV hHV hB hg hgap hE'
-  have hBE : B * specNorm E ≤ g / 16 := by
-    calc B * specNorm E ≤ B * (g / (16 * (n + 1) * B)) :=
-          mul_le_mul_of_nonneg_left hE' (by linarith)
-      _ = g / (16 * (n + 1)) := by field_simp
-      _ ≤ g / 16 := by gcongr; linarith [(n.cast_nonneg : (0 : ℝ) ≤ n)]
-  have hsmall : g / 2 ≤ g - 2 * B * specNorm E := by linarith
-  have hLM : IsEigenvalueListing (Uᴴ * (H + E) * U) d' := by
-    rw [isEigenvalueListing_iff, Matrix.charpoly_mul_comm, ← Matrix.mul_assoc,
-      hUU.mul_conjTranspose_self, Matrix.one_mul, ← isEigenvalueListing_iff]
-    exact isEigenvalueListing_of_mul_eq_mul_diagonal ((Matrix.isUnit_iff_isUnit_det _).mp hV')
-      hV'd
-  have hLr : IsEigenvalueListing (subBlock (Uᴴ * (H + E) * U) r) dr := by
+  obtain ⟨M, U, E, hUU, hE, hM, hpart, hbt, hact, -⟩ := h
+  have hHM : IsPerturbedUnitarySimilar H M ε := ⟨U, E, hUU, hE, hM⟩
+  obtain ⟨V', d', hV', hMV', -, hsep⟩ :=
+    hHM.exists_pseudoConditionNumber_le_and_le_norm_sub hV hHV hB hg hgap hε
+  have hLM : IsEigenvalueListing M d' :=
+    isEigenvalueListing_of_mul_eq_mul_diagonal ((Matrix.isUnit_iff_isUnit_det _).mp hV') hMV'
+  have hLr : IsEigenvalueListing (subBlock M r) dr := by
     rw [(hact r hr).1]
     exact isEigenvalueListing_of_mul_eq_mul_diagonal ((Matrix.isUnit_iff_isUnit_det _).mp hVr) hAr
   have hd' : Function.Injective d' := fun i j hij => by
@@ -252,6 +242,6 @@ theorem DeflationInv.exists_pseudoConditionNumber_subBlock_le_and_le_norm_sub
     (hbt.charpoly_subBlock_dvd hpart (List.mem_append_left _ hr)) hd'
   intro i j hij
   rw [hfe i, hfe j]
-  exact hsmall.trans (hsep _ _ (hf.ne hij))
+  exact hsep _ _ (hf.ne hij)
 
 end NLAlib

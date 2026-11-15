@@ -777,6 +777,90 @@ theorem shPrefix_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : I
     (by nlinarith) hxuT hm₂).in_frame rfl rfl (by simp [Mem.Live, hl₂]; omega)).mono
     (by fp_sub) fun _ _ h => h
 
+/-- **`Sh` with scratch as a probabilistic block**: `NLAlib.ShiftedQR.shStepWithScratch` from the
+context `NLAlib.ShiftedQR.ShCtx` (with the words $(1 - \gamma)^k$,
+$2^{1/k}\theta\alpha B^{1/k}$, $\varepsilon/2$, $1.0015(1 - \gamma)$) ends in
+`NLAlib.ShiftedQR.ShOutcome` except with probability at most $\varphi$, under the hypotheses of
+`NLAlib.ShiftedQR.shStep_pwrites`. -/
+theorem shStepWithScratch_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I)
+    (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I) (hQ : IsToNat id I)
+    {law : ℕ → Measure ℝ} {s₀ : ℕ} (hD : IsPolarDiskSampler s₀ I)
+    (hU : law s₀ = volume.restrict (Set.Icc 0 1)) {L k q : ℕ} (hkq : k = 2 ^ q) (hk : 2 ≤ k)
+    (hkn : k ≤ n) {ε : ℝ} {a s wg wr ww wp g thr f : ℕ × ℕ}
+    (hv : ShViews L n k ε a s wg wr ww wp g thr f)
+    {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {e : Fin (n + 1) → ℂ} {ss : List ℂ}
+    {B S ω θ α γ φ C d tv : ℝ} (hH : IsUpperHessenberg H) (hV : IsUnit V)
+    (hHV : H * V = V * Matrix.diagonal e) (hκ : pseudoConditionNumber V ≤ B)
+    (hSH : specNorm H ≤ S) (hω : 0 < ω) (hψ : ω ≤ hessenbergPotential k H)
+    (hlen : ss.length = k) (hopt : IsOptimalRitzValues θ H ss) (hθ : 1 ≤ θ) (hd' : 0 < d)
+    (hdist : ∀ s ∈ ss, ∀ i, d ≤ ‖e i - s‖) (hsH : ∀ s ∈ ss, ‖s‖ ≤ 1.1 * specNorm H)
+    (hα : α = (1.01 * B) ^ ((4 * q : ℝ) / 2 ^ q)) (hγ : 0 < γ) (hγ1 : γ < 1)
+    (hε : ε = (0.998 * (1 - γ) * (1 - γ) / ((13 * B ^ 4) ^ ((k : ℝ)⁻¹) * α ^ 2 * θ ^ 2)) ^
+      ((k : ℝ) / (k - 1))) (hε2 : ε ≤ 1 / 2) (hφ : 0 < φ) (hφ1 : φ ≤ 1 / 5)
+    (hd : d ≤ ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) *
+      hessenbergPotential k H) * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 4)
+    (hC1 : 1.1 + 2.1 * ((2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹)) ≤ C)
+    (hnu : (n + 1 : ℝ) * u ≤ 1 / 2500) (hku : 100000 * k * u ≤ 1)
+    (hxu : 300 * (n + 1) ^ 2 * u ≤ (8004 * B)⁻¹ * (d / ((2 + 2 * C) * S)) ^ k)
+    (hbound : (66 + 2 * C) * B * S * ((2 + 2 * C) * S / d) ^ k * √(n + 1) *
+      (300 * (n + 1) ^ 2 * u) ≤ 0.001 * ω)
+    (hexc1 : 6 * u * (1.1 * S + 3 * ((2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) *
+      hessenbergPotential k H)) ≤ 0.005 * ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α *
+        B ^ ((k : ℝ)⁻¹) * hessenbergPotential k H))
+    (hexc2 : 6 * u * (1.1 * S + 3 * ((2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) *
+      hessenbergPotential k H)) ≤ ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α *
+        B ^ ((k : ℝ)⁻¹) * hessenbergPotential k H) * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 8)
+    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) :
+    PWrites law I (shStepWithScratch (O := O) (Q := Q)).body
+      (Env.frame [n + 1, q, k, (excNet ε).length] [a, s, wg, wr, ww, wp, g, thr, (L, 0),
+        (L + 1, 0), (L + 2, 0), (L + 3, 0), (L + 4, 0), (L + 5, 0), (L + 6, 0), (L + 7, 0),
+        (L + 8, 0), (L + 9, 0), (L + 10, 0), (L + 11, 0), a, f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔ Fp.above L)
+      (ShCtx L k ε H ss ((1 - γ) ^ k) ((2 : ℝ) ^ ((k : ℝ)⁻¹) * (θ * α * B ^ ((k : ℝ)⁻¹)))
+        (ε / 2) (1.0015 * (1 - γ)) tv a s wg wr ww wp g thr f)
+      (ShOutcome u k H γ tv ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a f)
+      φ := by
+  have hv' := hv
+  obtain ⟨⟨ha, hs, hwg, hwr, hww, hwp, hg, hthl, hfl⟩, -, -⟩ := hv'
+  have hk0 : 0 < k := by omega
+  have hψ0 : 0 < hessenbergPotential k H := lt_of_lt_of_le hω hψ
+  have hHp : 0 < specNorm H := hψ0.trans_le (hessenbergPotential_le_specNorm hk0 hkn H)
+  have hH0 : H ≠ 0 := fun h0 => by rw [h0, specNorm_zero] at hHp; exact lt_irrefl 0 hHp
+  have hB1 : 1 ≤ B := (one_le_pseudoConditionNumber hV.ne_zero).trans hκ
+  have hα1 : 1 ≤ α := hα ▸ Real.one_le_rpow (by linarith) (by positivity)
+  have hC0 : (1.1 : ℝ) ≤ C := by
+    have : 0 ≤ (2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) := by
+      have : 0 ≤ θ := by linarith
+      have : 0 ≤ α := by linarith
+      positivity
+    linarith
+  have hsC : ∀ s ∈ ss, ‖s‖ ≤ C * specNorm H := fun s hs =>
+    (hsH s hs).trans (mul_le_mul_of_nonneg_right hC0 hHp.le)
+  have hne : ∀ r ∈ ss, ∀ i, e i ≠ r := fun r hr i he => by
+    have := hdist r hr i; rw [he, sub_self, norm_zero] at this; linarith
+  obtain ⟨s₁, hs₁⟩ : ∃ s₁, s₁ ∈ ss := List.exists_mem_of_length_pos (by omega)
+  have hdH : d ≤ (2 + 2 * C) * specNorm H := by
+    have h1 := hdist s₁ hs₁ 0
+    have h2 := norm_sub_le (e 0) s₁
+    have h3 := norm_le_specNorm_of_mul_eq_mul_diagonal hV hHV 0
+    nlinarith [hsC s₁ hs₁]
+  obtain ⟨hxuT, hxuF, hxu16⟩ := shPrecision_forms hHp hSH (by linarith) hd' (by linarith) hdH hxu
+  unfold shStepWithScratch
+  refine (PWrites.seq hI hloc (φ₁ := 0) (φ₂ := φ) hφ.le (PWrites.of_writes le_rfl
+    fun m τ hm => (shPrefix_writes (τ := τ) hS hM hL hC hQ hNat hkq hk hkn hv hH hH0 hV hHV hκ
+      (by linarith) hd' hlen hsC hdist hα hnu hku hxuT hxuF hm).in_frame rfl rfl
+      (by simp [Mem.Live, hm.2.2.2.2.2.2.2.2.2.1]; omega))
+    ((shDecide_pwrites hI hloc hS hM hu1 hL hNat hC hD hU hkq hk hkn hv hH hH0 hV hHV hκ hSH hω hψ
+      hlen hopt hθ hd' hdist hsH hsC hne hα1 hγ hγ1 hε hε2 hφ hφ1 hd hC1 hnu hku hxu16 hbound hexc1
+      hexc2 hthrω).in_frame rfl rfl fun m hm => by
+        simp [Mem.Live, hm.1.1.2.2.2.2.2.2.2.2.2.1]; omega)).mono (fun _ h => h)
+    (sup_le (sup_le (sup_le (Fp.inBlock_le_sup_above (by omega)) (Fp.inBlock_le_sup_above le_rfl))
+      (sup_le (sup_le (sup_le (Fp.inBlock_le_sup_above (by omega))
+        (Fp.inBlock_le_sup_above (by omega))) (Fp.inBlock_le_sup_above (by omega)))
+        (Fp.inBlock_le_sup_above (by omega)))) le_rfl) (fun _ h => h) (by simp)
+
 end Assembly
 
 end NLAlib.ShiftedQR

@@ -1,6 +1,7 @@
 module  -- shake: keep-all --deprecated_module: ignore
 
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.Backward
+public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedExc
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedHeadline
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedKernels
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedModuli

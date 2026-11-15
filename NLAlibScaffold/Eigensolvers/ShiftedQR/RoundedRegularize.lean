@@ -316,6 +316,21 @@ def regularizeTrials : Impl O Q :=
     }
   }
 
+/-- The decision of `Regularize`: `Optimal` of the $k$ shifts `S` with the word `C` into `G`; if
+optimal, the flag `Fl` is $0$; otherwise `Fl` is $2$, `G` is $1$, and the trials run. The
+interface is `[N, k] (A, S, C, Thr, T, SR, Ds, Rg) → (A, G, Fl)`. -/
+def regularizeDecide : Impl O Q :=
+  opsImpl% [N, k] (A, S, C, Thr, T, SR, Ds, Rg) → (A, G, Fl) {
+    run optimalTest.body [N, k] (A, S, C, G);
+    if (Has.inj CmpTst.isPos) [] (G) {
+      call (Has.inj (ScalarOp.lit 0)) [] () → (Fl)
+    } else {
+      call (Has.inj (ScalarOp.lit 2)) [] () → (Fl);
+      call (Has.inj (ScalarOp.lit 1)) [] () → (G);
+      run regularizeTrials.body [N, k] (A, S, Thr, T, SR, Ds, Rg, A, G, Fl)
+    }
+  }
+
 /-- `Regularize` with caller-owned scratch: the trailing $k \times k$ block of the order-$N$
 matrix `A` into `B`, `SmallEig` of it into the $k$ pairs `S`, one random perturbation of each
 pair (radius word `Rd`), `Optimal` with the word `C` into `G`; if optimal, the flag `Fl` is $0$;
@@ -326,14 +341,7 @@ def regularizeWithScratch : Impl O Q :=
     run copyToWork.body [N, N - k, k] (A, B);
     run smallEigLeaf.body [k] (B, S);
     run regularizeDraws.body [k] (Rd, Z, S);
-    run optimalTest.body [N, k] (A, S, C, G);
-    if (Has.inj CmpTst.isPos) [] (G) {
-      call (Has.inj (ScalarOp.lit 0)) [] () → (Fl)
-    } else {
-      call (Has.inj (ScalarOp.lit 2)) [] () → (Fl);
-      call (Has.inj (ScalarOp.lit 1)) [] () → (G);
-      run regularizeTrials.body [N, k] (A, S, Thr, T, SR, Ds, Rg, A, G, Fl)
-    }
+    run regularizeDecide.body [N, k] (A, S, C, Thr, T, SR, Ds, Rg, A, G, Fl)
   }
 
 /-- **`Regularize`** ([BanksGarzaVargasSrivastava2022, §4.2], $\mathsf{RitzOrDecouple}$): from
@@ -1013,6 +1021,142 @@ theorem regularizeTrials_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
   · rintro μ - (⟨-, -, -, hjs⟩ | ⟨-, hF, hrest⟩)
     · exact absurd jstar.isLt (by omega)
     · exact ⟨hF, hrest⟩
+
+omit [Has IdxTst Q] in
+/-- **The decision of `Regularize`** on a scalar machine with the standard model, exact
+comparisons, index literals and exact natural literals up to $n + 1$: with the $k$ shifts $z_j$
+at `S`, the word $0.999\theta^k$ at `C` and the hypotheses of `NLAlib.ShiftedQR.optimalTest_writes`,
+`NLAlib.ShiftedQR.regularizeDecide` either sets the flag to $0$, leaves $\mathbf{H}$ at `A` and
+the shifts are $\theta$-optimal, or sets the flag to $1$ and stores at `A` an accepted step
+(`NLAlib.ShiftedQR.regularizeTrials_writes`), given that, when the shifts are not
+$0.998^{1/k}\theta$-optimal, some shift decouples every backward-stable step with it. -/
+theorem regularizeDecide_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
+    (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I) {n : ℕ}
+    (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {k : ℕ}
+    (hk0 : 0 < k) (hk : k ≤ n) {a s c thr t sr ds rg g f : ℕ × ℕ}
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {zs : Fin k → ℂ} {tv ω θ C : ℝ}
+    (hH : IsUpperHessenberg H) (hnu : (n + 1 : ℝ) * u ≤ 1 / 2500) (hθ : 0 < θ)
+    (hψ : 0 < hessenbergPotential k H) (hzs : ∀ j, ‖zs j‖ ≤ C * specNorm H)
+    (huo : 30000 * k * (((n + 1 : ℕ) : ℝ) * √((n + 1 : ℕ) : ℝ) * u) *
+      ((2 + 2 * C) * specNorm H) ^ k ≤ (θ * hessenbergPotential k H) ^ k)
+    (huo1 : 100000 * ((n + 1 + k : ℕ) : ℝ) ^ 2 * u ≤ 1)
+    (hA : HoldsMatrix a H m.store)
+    (hs : ∀ j : Fin k, m.store.readBlock s.1 (s.2 + 2 * j) 2 = some [(zs j).re, (zs j).im])
+    (hc : m.store.get c.1 c.2 = some (0.999 * θ ^ k))
+    (hthr : m.store.get thr.1 thr.2 = some tv) (hrg' : g.2 < m.store.len g.1)
+    (hrf : f.2 < m.store.len f.1)
+    (hrt : t.2 + 2 * ((n + 1) * (n + 1)) ≤ m.store.len t.1)
+    (hrsr : sr.2 + 2 * k ≤ m.store.len sr.1) (hrds : ds.2 + 2 * k ≤ m.store.len ds.1)
+    (hrrg : rg.2 + 5 ≤ m.store.len rg.1)
+    (hW : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔
+      Store.inBlock sr.1 sr.2 (2 * k) ⊔ Store.inBlock ds.1 ds.2 (2 * k) ⊔
+      Store.inBlock rg.1 rg.2 5) (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock thr.1 thr.2 1))
+    (hts : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock sr.1 sr.2 (2 * k)))
+    (htd : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock ds.1 ds.2 (2 * k)))
+    (hsd : Fp.Disj (Store.inBlock sr.1 sr.2 (2 * k)) (Store.inBlock ds.1 ds.2 (2 * k)))
+    (hrg : Fp.Disj (Store.inBlock rg.1 rg.2 5)
+      (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1)))))
+    (hGF : Fp.Disj (Store.inBlock g.1 g.2 1 ⊔ Store.inBlock f.1 f.2 1)
+      (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock sr.1 sr.2 (2 * k) ⊔
+        Store.inBlock ds.1 ds.2 (2 * k) ⊔ Store.inBlock rg.1 rg.2 5 ⊔
+        Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))))
+    (hgf : Fp.Disj (Store.inBlock g.1 g.2 1) (Store.inBlock f.1 f.2 1))
+    (hAS : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock g.1 g.2 1 ⊔
+      Store.inBlock f.1 f.2 1) (Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock thr.1 thr.2 1 ⊔
+        Store.inBlock c.1 c.2 1))
+    (hdich : ¬IsOptimalRitzValues ((0.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ) H (List.ofFn zs) →
+      ∃ jstar : Fin k, ∀ (H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) Rs,
+        IsStableQRChain (300 * (n + 1) ^ 2 * u) H (List.replicate k (zs jstar)) H' Rs →
+          ∃ i : Fin n, n ≤ (i : ℕ) + k ∧ ‖H' i.succ i.castSucc‖ ≤ ω)
+    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) :
+    Writes .total I τ (regularizeDecide (O := O) (Q := Q)).body
+      (Env.frame [n + 1, k] [a, s, c, thr, t, sr, ds, rg, a, g, f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock g.1 g.2 1 ⊔
+        Store.inBlock f.1 f.2 1 ⊔ (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔
+          Store.inBlock sr.1 sr.2 (2 * k) ⊔ Store.inBlock ds.1 ds.2 (2 * k) ⊔
+          Store.inBlock rg.1 rg.2 5))
+      (fun m' => (m'.store.get f.1 f.2 = some 0 ∧ HoldsMatrix a H m'.store ∧
+          IsOptimalRitzValues θ H (List.ofFn zs)) ∨
+        (m'.store.get f.1 f.2 = some 1 ∧ ∃ (j : Fin k)
+          (H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+          (Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)),
+          IsStableQRChain (300 * (n + 1) ^ 2 * u) H (List.replicate k (zs j)) H' Rs ∧
+            IsUpperHessenberg H' ∧ HoldsMatrix a H' m'.store ∧
+            ∃ i : Fin n, n ≤ (i : ℕ) + k ∧ (1 - u) ^ 2 * ‖H' i.succ i.castSucc‖ ^ 2 ≤ tv)) m := by
+  have h0 : M.lit 0 = 0 := by simpa using hM.lit 0
+  have h1 : M.lit 1 = 1 := by simpa using hNat 1 (by omega)
+  have h2 : M.lit 2 = 2 := by simpa using hNat 2 (by omega)
+  have hlen : (List.ofFn zs).length = k := List.length_ofFn
+  have hsS : m.store.readBlock s.1 s.2 (2 * (List.ofFn zs).length) =
+      some ((List.ofFn zs).flatMap fun z => [z.re, z.im]) :=
+    readBlock_flatMap_pair_of_forall fun j hj => by
+      have := hs ⟨j, by simpa using hj⟩
+      simpa [List.getD_eq_getElem?_getD, List.getElem?_ofFn, hlen ▸ hj] using this
+  have hal := Store.lt_length_of_get (Store.get_of_readBlock hA (j := 0) (by positivity) 0)
+  have hsl := Store.lt_length_of_get (Store.get_of_readBlock (hs ⟨0, hk0⟩) (j := 0)
+    (by norm_num) 0)
+  have hgl := Store.lt_length_of_lt_len hrg'
+  have hopt := optimalTest_writes (τ := τ) (ss := List.ofFn zs) (a := a) (s := s) (c := c)
+    (f := g) hS hM (hNat.mono (by omega)) hC (by simp; omega) (by simp; omega) hθ
+    (by simpa using hψ) (by simpa using fun j => hzs j) (by simpa using huo)
+    (by simpa using huo1) hA hsS (by simpa using hc) hrg'
+    (by simp [Mem.Live, hal, hsl, Store.lt_length_of_get hc, hgl])
+    (by
+      rw [hlen]
+      exact Fp.disj_sup_right.mpr ⟨Fp.disj_sup_right.mpr ⟨hGF.mono le_sup_left le_sup_right,
+        hAS.mono (by fp_sub) (by fp_sub)⟩, hAS.mono (by fp_sub) (by fp_sub)⟩)
+  rw [hlen] at hopt
+  unfold regularizeDecide
+  refine hopt.frame_seq_le rfl rfl (by simp [Mem.Live, hal, hsl, Store.lt_length_of_get hc, hgl])
+    (by fp_sub) ?_
+  rintro m₁ hfr₁ ⟨-, b, hb, hb01, hb1, hb0⟩
+  have hA₁ := hA.of_eqOff hfr₁ (hGF.mono le_sup_left le_sup_right)
+  refine writes_ite rfl rfl (hC.test_isPos (d := []) (x := g) hb) ?_
+  rcases hb01 with rfl | rfl
+  · rw [show decide (0 < id (0 : ℝ)) = false by simp, if_neg (by simp)]
+    obtain ⟨jstar, hgood⟩ := hdich (hb0 rfl)
+    refine (writes_call_const (hS (.lit 2)) (z := f) rfl trivial
+      (by rw [hfr₁.len_eq]; exact hrf)).seq_le (by fp_sub) ?_
+    rintro m₂ hfr₂ ⟨-, hF₂⟩
+    refine (writes_call_const (hS (.lit 1)) (z := g) rfl trivial
+      (by rw [hfr₂.len_eq, hfr₁.len_eq]; exact hrg')).seq_le (by fp_sub) ?_
+    rintro m₃ hfr₃ ⟨-, hG₃⟩
+    have hfr := (hfr₁.trans' hfr₂).trans' hfr₃
+    have hl : ∀ b, m₃.store.len b = m.store.len b := fun b => by
+      rw [hfr₃.len_eq, hfr₂.len_eq, hfr₁.len_eq]
+    have hkeep : Fp.Disj (Store.inBlock g.1 g.2 1 ⊔ Store.inBlock f.1 f.2 1 ⊔
+        Store.inBlock g.1 g.2 1) (Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock thr.1 thr.2 1) :=
+      hAS.mono (by fp_sub) (by fp_sub)
+    have hs₃ : ∀ j : Fin k, m₃.store.readBlock s.1 (s.2 + 2 * j) 2 =
+        some [(zs j).re, (zs j).im] := fun j => hfr.keep (Store.readsOnly_readBlock _ _ _ _)
+      (hkeep.mono le_rfl ((Fp.inBlock_le_inBlock (by omega) (by omega)).trans le_sup_left))
+      (hs j)
+    have hthr₃ := hfr.keep (Store.readsOnly_get _ _ _) (hkeep.mono le_rfl le_sup_right) hthr
+    have hA₃ := hA.of_eqOff hfr (hGF.mono (by fp_sub) le_sup_right)
+    have hF₃ := hfr₃.keep (Store.readsOnly_get _ _ _) hgf hF₂
+    have htr := regularizeTrials_writes (τ := τ) hS hM hu1 hL hNat hC hk0 hk hH hnu hA₃ hs₃
+      hthr₃ (by rw [hG₃, h1]) hF₃ (by rw [hl]; exact hrt) (by rw [hl]; exact hrsr)
+      (by rw [hl]; exact hrds) (by rw [hl]; exact hrrg) hW hts htd hsd hrg hGF hgf
+      (hAS.mono le_rfl (by fp_sub)) jstar hgood hthrω
+    have hL₃ : m₃.store.length = m.store.length := hfr.length_eq
+    refine (htr.in_frame rfl rfl ?_).mono (by fp_sub) fun _ _ h => Or.inr h
+    simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq,
+      hL₃]
+    exact ⟨hal, hsl, Store.lt_length_of_get hthr,
+      Store.lt_length_of_lt_len (show t.2 < m.store.len t.1 by nlinarith),
+      Store.lt_length_of_lt_len (show sr.2 < m.store.len sr.1 by omega),
+      Store.lt_length_of_lt_len (show ds.2 < m.store.len ds.1 by omega),
+      Store.lt_length_of_lt_len (show rg.2 < m.store.len rg.1 by omega), hal, hgl,
+      Store.lt_length_of_lt_len hrf⟩
+  · rw [show decide (0 < id (1 : ℝ)) = true by simp, if_pos rfl]
+    refine (writes_call_const (hS (.lit 0)) (z := f) rfl trivial
+      (by rw [hfr₁.len_eq]; exact hrf)).mono (by fp_sub) ?_
+    rintro m₂ hfr₂ ⟨-, hF₂⟩
+    exact Or.inl ⟨by rw [hF₂, h0], hA₁.of_eqOff hfr₂ (hGF.mono le_sup_right le_sup_right),
+      hb1 rfl⟩
 
 end Trials
 

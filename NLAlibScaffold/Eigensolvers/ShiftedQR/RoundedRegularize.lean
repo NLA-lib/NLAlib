@@ -15,9 +15,9 @@ public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedRitz
 computes forward-approximate Ritz values with `SmallEig`, perturbs each by an independent uniform
 sample of a small disk, and tests the perturbed values with `Optimal`. If they are optimal it
 returns them; otherwise the dichotomy
-(`NLAlib.exists_mem_le_norm_inv_pow_of_not_isOptimalRitzValues`) gives one among them whose degree $k$ step decouples, and the program tries them in turn. The
-random perturbation keeps every shift away from the spectrum, which the forward error of the
-rounded steps needs.
+(`NLAlib.exists_mem_le_norm_inv_pow_of_not_isOptimalRitzValues`) gives one among them whose
+degree $k$ step decouples, and the program tries them in turn. The random perturbation keeps
+every shift away from the spectrum, which the forward error of the rounded steps needs.
 
 ## Main results
 

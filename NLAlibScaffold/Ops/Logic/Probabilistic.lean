@@ -74,13 +74,443 @@ def Interp.IsMeasurable [Inhabited K] [MeasurableSpace K] (I : Interp Op Tst K) 
     ∀ q ins, Measurable (fun m : Mem K => (I.index q ins m).isSome) ∧
       Measurable (fun m : Mem K => (I.index q ins m).getD 0)
 
+/-! ### Measurable memories -/
+
+section Shape
+
+/-- Two stores have the same shape when they have the same number of buffers and the same
+buffer lengths. -/
+theorem Store.shape_eq_iff {s t : Store K} :
+    s.shape = t.shape ↔ s.length = t.length ∧ ∀ b, s.len b = t.len b := by
+  constructor
+  · intro h
+    refine ⟨by simpa [Store.shape] using congrArg List.length h, fun b => ?_⟩
+    have := congrArg (fun l : List ℕ => (l[b]?).getD 0) h
+    simpa [Store.shape, Store.len, List.getElem?_map] using this
+  · rintro ⟨hl, hb⟩
+    refine List.ext_getElem? fun b => ?_
+    simp only [Store.shape, List.getElem?_map]
+    by_cases hlt : b < s.length
+    · have := hb b
+      simp only [Store.len] at this
+      rw [List.getElem?_eq_getElem hlt, List.getElem?_eq_getElem (hl ▸ hlt)] at this ⊢
+      simpa using this
+    · rw [List.getElem?_eq_none (not_lt.mp hlt), List.getElem?_eq_none (hl ▸ not_lt.mp hlt)]
+
+/-- The buffer lengths after pushing a fresh buffer. -/
+theorem Store.len_push (s : Store K) (n b : ℕ) :
+    (s.push n).len b = if b = s.length then n else s.len b := by
+  rcases lt_trichotomy b s.length with h | rfl | h
+  · rw [if_neg h.ne, Store.push, Store.len_append_of_lt h]
+  · simp [Store.push]
+  · rw [if_neg h.ne']
+    simp [Store.len, Store.push, List.getElem?_append_right (show s.length ≤ b by omega),
+      List.getElem?_eq_none (show s.length ≤ b by omega), show b - s.length ≠ 0 by omega]
+
+/-- The cells after pushing a fresh buffer: the new buffer is uninitialised. -/
+theorem Store.get_push (s : Store K) (n b i : ℕ) :
+    (s.push n).get b i = if b < s.length then s.get b i else none := by
+  by_cases h : b < s.length
+  · rw [if_pos h, Store.push, Store.get_append_of_lt h]
+  · rw [if_neg h]
+    simp only [Store.get, Store.push, List.getElem?_append_right (not_lt.mp h)]
+    rcases Nat.eq_zero_or_pos (b - s.length) with h0 | h0
+    · rw [h0]
+      simp only [List.getElem?_cons_zero, Option.bind_some, List.getElem?_replicate]
+      split_ifs <;> rfl
+    · simp [h0.ne']
+
+/-- The buffer lengths after popping the top buffer. -/
+theorem Store.len_pop (s : Store K) (b : ℕ) :
+    s.pop.len b = if b < s.length - 1 then s.len b else 0 := by
+  simp only [Store.len, Store.pop, List.getElem?_dropLast]
+  split_ifs <;> rfl
+
+/-- The cells after popping the top buffer. -/
+theorem Store.get_pop (s : Store K) (b i : ℕ) :
+    s.pop.get b i = if b < s.length - 1 then s.get b i else none := by
+  simp only [Store.get, Store.pop, List.getElem?_dropLast]
+  split_ifs <;> rfl
+
+end Shape
+
+
+section Measurability
+
+variable [Inhabited K] [MeasurableSpace K]
+
+/-- The observation of a memory is measurable. -/
+theorem Mem.measurable_obs : Measurable (Mem.obs : Mem K → _) := comap_measurable _
+
+/-- A map into memories is measurable if and only if its observation is. -/
+theorem Mem.measurable_iff {X : Type} [MeasurableSpace X] {f : X → Mem K} :
+    Measurable f ↔ Measurable fun x => (f x).obs := by
+  refine ⟨Mem.measurable_obs.comp, fun h t ⟨u, hu, e⟩ => ?_⟩
+  rw [← e]
+  exact h hu
+
+/-- The tape position of a memory is measurable. -/
+theorem Mem.measurable_pos : Measurable fun m : Mem K => m.pos :=
+  measurable_fst.comp Mem.measurable_obs
+
+/-- The number of buffers of a memory is measurable. -/
+theorem Mem.measurable_length : Measurable fun m : Mem K => m.store.length :=
+  measurable_fst.comp (measurable_snd.comp Mem.measurable_obs)
+
+/-- The length of a buffer of a memory is measurable. -/
+theorem Mem.measurable_len (b : ℕ) : Measurable fun m : Mem K => m.store.len b :=
+  (measurable_pi_apply b).comp
+    (measurable_fst.comp (measurable_snd.comp (measurable_snd.comp Mem.measurable_obs)))
+
+/-- A cell of a memory, as a flag and a value, is measurable. -/
+theorem Mem.measurable_cell (z : ℕ × ℕ) :
+    Measurable fun m : Mem K =>
+      ((m.store.get z.1 z.2).isSome, (m.store.get z.1 z.2).getD default) :=
+  (measurable_pi_apply z).comp
+    (measurable_snd.comp (measurable_snd.comp (measurable_snd.comp Mem.measurable_obs)))
+
+/-- A map into memories is measurable if its position, its number of buffers, its buffer lengths
+and its cells are. -/
+theorem Mem.measurable_of {X : Type} [MeasurableSpace X] {f : X → Mem K}
+    (hp : Measurable fun x => (f x).pos) (hl : Measurable fun x => (f x).store.length)
+    (hb : ∀ b, Measurable fun x => (f x).store.len b)
+    (hc : ∀ z : ℕ × ℕ, Measurable fun x =>
+      (((f x).store.get z.1 z.2).isSome, ((f x).store.get z.1 z.2).getD default)) :
+    Measurable f :=
+  Mem.measurable_iff.mpr
+    (hp.prodMk (hl.prodMk ((measurable_pi_lambda _ hb).prodMk (measurable_pi_lambda _ hc))))
+
+/-- Two measurable memories have the same shape on a measurable set. -/
+theorem Mem.measurableSet_shape_eq {X : Type} [MeasurableSpace X] {f g : X → Mem K}
+    (hf : Measurable f) (hg : Measurable g) :
+    MeasurableSet {x | (f x).store.shape = (g x).store.shape} := by
+  simp only [Store.shape_eq_iff, Set.ofPred_and, Set.ofPred_forall]
+  exact (measurableSet_eq_fun (Mem.measurable_length.comp hf) (Mem.measurable_length.comp hg)).inter
+    (MeasurableSet.iInter fun b =>
+      measurableSet_eq_fun ((Mem.measurable_len b).comp hf) ((Mem.measurable_len b).comp hg))
+
+/-- The memories in which given operands are live form a measurable set. -/
+theorem Mem.measurableSet_live (l : List (ℕ × ℕ)) : MeasurableSet {m : Mem K | m.Live l} :=
+  Mem.measurable_length (MeasurableSet.of_discrete (s := {n | ∀ x ∈ l, x.1 < n}))
+
+/-- Pushing a fresh buffer is measurable. -/
+theorem Mem.measurable_push (n : ℕ) :
+    Measurable fun m : Mem K => (⟨m.store.push n, m.pos⟩ : Mem K) := by
+  refine Mem.measurable_of Mem.measurable_pos ?_ (fun b => ?_) (fun z => ?_)
+  · simp only [Store.push, List.length_append, List.length_singleton]
+    exact (measurable_of_countable (· + 1)).comp Mem.measurable_length
+  · simp only [Store.len_push]
+    exact Measurable.ite (Mem.measurable_length (MeasurableSet.of_discrete (s := {k | b = k})))
+      measurable_const (Mem.measurable_len b)
+  · convert Measurable.ite (p := fun m : Mem K => z.1 < m.store.length)
+      (Mem.measurable_length (MeasurableSet.of_discrete (s := {k | z.1 < k})))
+      (Mem.measurable_cell (K := K) z) (measurable_const (a := (false, (default : K)))) using 1
+    · funext m
+      by_cases h : z.1 < m.store.length <;> simp [Store.get_push, h]
+    · exact fun _ => inferInstance
+
+/-- Popping the top buffer is measurable. -/
+theorem Mem.measurable_pop : Measurable fun m : Mem K => (⟨m.store.pop, m.pos⟩ : Mem K) := by
+  refine Mem.measurable_of Mem.measurable_pos ?_ (fun b => ?_) (fun z => ?_)
+  · simp only [Store.pop, List.length_dropLast]
+    exact (measurable_of_countable (· - 1)).comp Mem.measurable_length
+  · simp only [Store.len_pop]
+    exact Measurable.ite
+      (Mem.measurable_length (MeasurableSet.of_discrete (s := {k | b < k - 1})))
+      (Mem.measurable_len b) measurable_const
+  · convert Measurable.ite (p := fun m : Mem K => z.1 < m.store.length - 1)
+      (Mem.measurable_length (MeasurableSet.of_discrete (s := {k | z.1 < k - 1})))
+      (Mem.measurable_cell (K := K) z) (measurable_const (a := (false, (default : K)))) using 1
+    · funext m
+      by_cases h : z.1 < m.store.length - 1 <;> simp [Store.get_pop, h]
+    · exact fun _ => inferInstance
+
+end Measurability
+
+/-! ### Measurable runs -/
+
+section Runs
+
+variable [Inhabited K] [MeasurableSpace K]
+
+/-- A step on memories that is given the tape is **measurable**: its success flag and its result
+(the initial memory on failure) are measurable functions of the tape and the memory. -/
+def MeasurableRun (f : Tape K → Mem K → Option (Mem K)) : Prop :=
+  Measurable (fun x : Tape K × Mem K => (f x.1 x.2).isSome) ∧
+    Measurable (fun x : Tape K × Mem K => (f x.1 x.2).getD x.2)
+
+namespace MeasurableRun
+
+/-- The step that does nothing is measurable. -/
+theorem some_mem : MeasurableRun (K := K) fun _ m => some m := ⟨measurable_const, measurable_snd⟩
+
+/-- The failing step is measurable. -/
+theorem none_mem : MeasurableRun (K := K) fun _ _ => none := ⟨measurable_const, measurable_snd⟩
+
+/-- The result of a measurable step, at a measurably chosen tape and memory, with any measurable
+default. -/
+theorem measurable_getD {f : Tape K → Mem K → Option (Mem K)} (hf : MeasurableRun f)
+    {X : Type} [MeasurableSpace X] {u : X → Tape K × Mem K} (hu : Measurable u)
+    {d : X → Mem K} (hd : Measurable d) : Measurable fun x => (f (u x).1 (u x).2).getD (d x) := by
+  convert Measurable.ite (p := fun x => (f (u x).1 (u x).2).isSome = true)
+    ((hf.1.comp hu) (measurableSet_singleton true)) (hf.2.comp hu) hd using 1
+  · funext x
+    dsimp only [Function.comp_apply]
+    by_cases hs : (f (u x).1 (u x).2).isSome = true
+    · obtain ⟨a, ha⟩ := Option.isSome_iff_exists.mp hs
+      simp [ha]
+    · simp [Option.not_isSome_iff_eq_none.mp hs]
+  · exact fun _ => inferInstance
+
+/-- **A guarded result**: a step that succeeds on a measurable set, with a measurable result. -/
+theorem guard {p : Tape K → Mem K → Prop} [∀ τ m, Decidable (p τ m)]
+    {g : Tape K × Mem K → Mem K} (hp : MeasurableSet {x : Tape K × Mem K | p x.1 x.2})
+    (hg : Measurable g) : MeasurableRun fun τ m => if p τ m then some (g (τ, m)) else none := by
+  refine ⟨?_, ?_⟩
+  · convert Measurable.ite hp (measurable_const (a := true)) (measurable_const (a := false))
+      using 1
+    · funext x
+      dsimp only
+      split_ifs <;> rfl
+    · exact fun _ => inferInstance
+  · convert Measurable.ite hp hg measurable_snd using 1
+    · funext x
+      dsimp only
+      split_ifs <;> rfl
+    · exact fun _ => inferInstance
+
+/-- **Branch** on a measurable condition. -/
+theorem ite {p : Tape K → Mem K → Prop} [∀ τ m, Decidable (p τ m)]
+    {f g : Tape K → Mem K → Option (Mem K)} (hp : MeasurableSet {x : Tape K × Mem K | p x.1 x.2})
+    (hf : MeasurableRun f) (hg : MeasurableRun g) :
+    MeasurableRun fun τ m => if p τ m then f τ m else g τ m := by
+  refine ⟨?_, ?_⟩
+  · convert Measurable.ite hp hf.1 hg.1 using 1
+    · funext x
+      dsimp only
+      split_ifs <;> rfl
+    · exact fun _ => inferInstance
+  · convert Measurable.ite hp hf.2 hg.2 using 1
+    · funext x
+      dsimp only
+      split_ifs <;> rfl
+    · exact fun _ => inferInstance
+
+/-- A measurable step from a memory that is a measurable function of the tape and the memory. -/
+theorem comp {f : Tape K → Mem K → Option (Mem K)} (hf : MeasurableRun f)
+    {h : Tape K → Mem K → Mem K} (hh : Measurable fun x : Tape K × Mem K => h x.1 x.2) :
+    MeasurableRun fun τ m => f τ (h τ m) :=
+  ⟨hf.1.comp (measurable_fst.prodMk hh), hf.measurable_getD (measurable_fst.prodMk hh)
+    measurable_snd⟩
+
+/-- **Sequence** of measurable steps. -/
+theorem bind {f g : Tape K → Mem K → Option (Mem K)} (hf : MeasurableRun f)
+    (hg : MeasurableRun g) : MeasurableRun fun τ m => (f τ m).bind (g τ) := by
+  have e : (fun τ m => (f τ m).bind (g τ)) = fun τ m =>
+      if (f τ m).isSome = true then g τ ((f τ m).getD m) else none := by
+    funext τ m
+    cases f τ m <;> rfl
+  rw [e]
+  exact ite (hf.1 (measurableSet_singleton true)) (hg.comp hf.2) none_mem
+
+/-- A measurable step followed by a measurable map of memories. -/
+theorem map {f : Tape K → Mem K → Option (Mem K)} (hf : MeasurableRun f) {g : Mem K → Mem K}
+    (hg : Measurable g) : MeasurableRun fun τ m => (f τ m).map g := by
+  have e : (fun τ m => (f τ m).map g) = fun τ m =>
+      if (f τ m).isSome = true then some (g ((f τ m).getD m)) else none := by
+    funext τ m
+    cases f τ m <;> rfl
+  rw [e]
+  exact guard (p := fun τ m => (f τ m).isSome = true) (g := fun x => g ((f x.1 x.2).getD x.2))
+    (hf.1 (measurableSet_singleton true)) (hg.comp hf.2)
+
+/-- **A step chosen by a measurable value** in a countable set: the family of steps indexed by
+the value `v` of the tape and the memory. -/
+theorem indexed {α : Type} [Countable α] [MeasurableSpace α] [MeasurableSingletonClass α]
+    {v : Tape K → Mem K → α} (hv : Measurable fun x : Tape K × Mem K => v x.1 x.2)
+    {f : α → Tape K → Mem K → Option (Mem K)} (hf : ∀ a, MeasurableRun (f a)) :
+    MeasurableRun fun τ m => f (v τ m) τ m := by
+  have hu : Measurable fun x : Tape K × Mem K => (x, v x.1 x.2) := measurable_id.prodMk hv
+  refine ⟨?_, ?_⟩
+  · exact (measurable_from_prod_countable_left (f := fun y : (Tape K × Mem K) × α =>
+      (f y.2 y.1.1 y.1.2).isSome) fun a => (hf a).1).comp hu
+  · exact (measurable_from_prod_countable_left (f := fun y : (Tape K × Mem K) × α =>
+      (f y.2 y.1.1 y.1.2).getD y.1.2) fun a => (hf a).2).comp hu
+
+/-- **A step that binds a measurable optional value** in a countable set. -/
+theorem bind_value {α : Type} [Countable α] [MeasurableSpace α] [MeasurableSingletonClass α]
+    (d : α) {t : Tape K → Mem K → Option α}
+    (ht₁ : Measurable fun x : Tape K × Mem K => (t x.1 x.2).isSome)
+    (ht₂ : Measurable fun x : Tape K × Mem K => (t x.1 x.2).getD d)
+    {f : α → Tape K → Mem K → Option (Mem K)} (hf : ∀ a, MeasurableRun (f a)) :
+    MeasurableRun fun τ m => (t τ m).bind fun a => f a τ m := by
+  have e : (fun τ m => (t τ m).bind fun a => f a τ m) = fun τ m =>
+      if (t τ m).isSome = true then f ((t τ m).getD d) τ m else none := by
+    funext τ m
+    cases t τ m <;> rfl
+  rw [e]
+  exact ite (ht₁ (measurableSet_singleton true)) (indexed ht₂ hf) none_mem
+
+/-- **Bounded iteration** of measurable steps. -/
+theorem iter {f : ℕ → Tape K → Mem K → Option (Mem K)} (hf : ∀ i, MeasurableRun (f i)) (k : ℕ) :
+    MeasurableRun fun τ m => NLAlib.Ops.iter (fun i => f i τ) k m := by
+  induction k with
+  | zero => exact some_mem
+  | succ k ih => exact ih.bind (hf k)
+
+/-- **The loop with early exit** of measurable steps, followed by a measurable continuation
+indexed by the number of rounds done. -/
+theorem whileIter {T : ℕ → Mem K → Option Bool}
+    (hT : ∀ i, Measurable (fun m => (T i m).isSome) ∧ Measurable (fun m => (T i m).getD false))
+    {B C : ℕ → Tape K → Mem K → Option (Mem K)} (hB : ∀ i, MeasurableRun (B i))
+    (hC : ∀ i, MeasurableRun (C i)) (r i : ℕ) :
+    MeasurableRun fun τ m =>
+      (NLAlib.Ops.whileIter (fun i m => (T i m).map fun b => (b, m)) (fun i => B i τ) r i m).bind
+        fun jm => C jm.1 τ jm.2 := by
+  induction r generalizing i with
+  | zero => exact hC i
+  | succ r ih =>
+    have e : (fun τ m => (NLAlib.Ops.whileIter (fun i m => (T i m).map fun b => (b, m))
+        (fun i => B i τ) (r + 1) i m).bind fun jm => C jm.1 τ jm.2) = fun τ m =>
+        (T i m).bind fun b => (if b then fun τ m => (B i τ m).bind fun m' =>
+          (NLAlib.Ops.whileIter (fun i m => (T i m).map fun b => (b, m)) (fun i => B i τ) r
+            (i + 1) m').bind fun jm => C jm.1 τ jm.2 else C i) τ m := by
+      funext τ m
+      simp only [NLAlib.Ops.whileIter]
+      cases T i m with
+      | none => rfl
+      | some b => cases b <;> simp [Option.bind_assoc]
+    rw [e]
+    refine bind_value false ((hT i).1.comp measurable_snd) ((hT i).2.comp measurable_snd)
+      fun b => ?_
+    cases b
+    · exact hC i
+    · exact (hB i).bind (ih (i + 1))
+
+end MeasurableRun
+
+end Runs
+
+/-- The call of the evaluator under a measurable interpretation is a measurable step: liveness
+and the shape guard depend on the memory only through its observation. -/
+theorem Interp.IsMeasurable.measurableRun_callS [Inhabited K] [MeasurableSpace K]
+    {I : Interp Op Tst K} (hI : I.IsMeasurable) (o : Op) (d : List ℕ) (a b : List (ℕ × ℕ)) :
+    MeasurableRun (I.callS o d a b) := by
+  have e : I.callS o d a b = fun τ m => if m.Live (a ++ b) ∧ (I.call o d a b τ m).isSome = true ∧
+      ((I.call o d a b τ m).getD m).store.shape = m.store.shape then
+      some ((I.call o d a b τ m).getD m) else none := by
+    funext τ m
+    unfold Interp.callS
+    by_cases hl : m.Live (a ++ b)
+    · cases I.call o d a b τ m with
+      | none => simp [hl]
+      | some m' => by_cases hs : m'.store.shape = m.store.shape <;> simp [hl, hs]
+    · simp [hl]
+  rw [e]
+  exact MeasurableRun.guard (g := fun x => (I.call o d a b x.1 x.2).getD x.2)
+    ((measurable_snd (Mem.measurableSet_live _)).inter
+      (((hI.1 o d a b).1 (measurableSet_singleton true)).inter
+        (Mem.measurableSet_shape_eq (hI.1 o d a b).2 measurable_snd))) (hI.1 o d a b).2
+
+/-- The test of a loop or a branch is measurable in the memory. -/
+theorem Interp.IsMeasurable.measurable_testAt [Inhabited K] [MeasurableSpace K]
+    {I : Interp Op Tst K} (hI : I.IsMeasurable) (q : Tst) (ds : List IExp) (ins : List Operand)
+    (ρ : Env) : Measurable (fun m : Mem K => (I.testAt q ds ins ρ m).isSome) ∧
+      Measurable (fun m : Mem K => (I.testAt q ds ins ρ m).getD false) := by
+  unfold Interp.testAt
+  cases IExp.evalList ρ.idx ds with
+  | none => exact ⟨measurable_const, measurable_const⟩
+  | some d =>
+    cases Operand.evalList ρ ins with
+    | none => exact ⟨measurable_const, measurable_const⟩
+    | some a => exact hI.2.1 q d a
+
 /-- **Runs are measurable**: under a measurable interpretation, the success flag and the final
 memory of the run of a statement are measurable functions of the tape and the initial memory. -/
 theorem Interp.IsMeasurable.measurable_eval [Inhabited K] [MeasurableSpace K]
     {I : Interp Op Tst K} (hI : I.IsMeasurable) (c : Stmt Op Tst) (ρ : Env) :
     Measurable (fun x : Tape K × Mem K => (eval I x.1 c ρ x.2).isSome) ∧
       Measurable (fun x : Tape K × Mem K => (eval I x.1 c ρ x.2).getD x.2) := by
-  sorry
+  suffices h : ∀ ρ, MeasurableRun fun τ m => eval I τ c ρ m from h ρ
+  induction c with
+  | skip => exact fun _ => MeasurableRun.some_mem
+  | abort => exact fun _ => MeasurableRun.none_mem
+  | seq s t ihs iht => exact fun ρ => (ihs ρ).bind (iht ρ)
+  | call o ds ins outs =>
+    intro ρ
+    simp only [eval]
+    cases IExp.evalList ρ.idx ds with
+    | none => exact MeasurableRun.none_mem
+    | some d =>
+      cases Operand.evalList ρ ins with
+      | none => exact MeasurableRun.none_mem
+      | some a =>
+        cases Operand.evalList ρ outs with
+        | none => exact MeasurableRun.none_mem
+        | some b => exact hI.measurableRun_callS o d a b
+  | ite q ds ins t e iht ihe =>
+    intro ρ
+    simp only [eval]
+    cases IExp.evalList ρ.idx ds with
+    | none => exact MeasurableRun.none_mem
+    | some d =>
+      cases Operand.evalList ρ ins with
+      | none => exact MeasurableRun.none_mem
+      | some a =>
+        refine MeasurableRun.bind_value false ((hI.2.1 q d a).1.comp measurable_snd)
+          ((hI.2.1 q d a).2.comp measurable_snd) fun b => ?_
+        cases b
+        · exact ihe ρ
+        · exact iht ρ
+  | whileFuel fuel q ds ins body k ih ihk =>
+    intro ρ
+    simp only [eval]
+    cases fuel.eval ρ.idx with
+    | none => exact MeasurableRun.none_mem
+    | some n =>
+      exact MeasurableRun.whileIter (fun i => hI.measurable_testAt q ds ins (ρ.pushIdx i))
+        (fun i => ih (ρ.pushIdx i)) (fun j => ihk (ρ.pushIdx j)) n 0
+  | bindIdx q ins bound body ih =>
+    intro ρ
+    simp only [eval]
+    cases Operand.evalList ρ ins with
+    | none => exact MeasurableRun.none_mem
+    | some a =>
+      cases bound.eval ρ.idx with
+      | none => exact MeasurableRun.none_mem
+      | some B =>
+        simp only [Option.bind_some]
+        exact MeasurableRun.bind_value 0 ((hI.2.2 q a).1.comp measurable_snd)
+          ((hI.2.2 q a).2.comp measurable_snd) fun v =>
+            MeasurableRun.ite (p := fun _ _ => v ≤ B) (MeasurableSet.const _) (ih _)
+              MeasurableRun.none_mem
+  | allocAs fmt len body ih =>
+    intro ρ
+    simp only [eval]
+    cases len.eval ρ.idx with
+    | none => exact MeasurableRun.none_mem
+    | some n =>
+      exact MeasurableRun.indexed (v := fun _ m => m.store.length)
+        (Mem.measurable_length.comp measurable_snd) fun j =>
+          ((ih (ρ.pushBuf j)).comp (h := fun _ m => ⟨m.store.push n, m.pos⟩)
+            ((Mem.measurable_push n).comp measurable_snd)).map Mem.measurable_pop
+  | loop n body ih =>
+    intro ρ
+    simp only [eval]
+    cases n.eval ρ.idx with
+    | none => exact MeasurableRun.none_mem
+    | some k => exact MeasurableRun.iter (fun i => ih (ρ.pushIdx i)) k
+  | frame ds args body ih =>
+    intro ρ
+    simp only [eval]
+    cases IExp.evalList ρ.idx ds with
+    | none => exact MeasurableRun.none_mem
+    | some d =>
+      cases Operand.evalList ρ args with
+      | none => exact MeasurableRun.none_mem
+      | some a =>
+        exact MeasurableRun.ite (p := fun _ m => m.Live a)
+          (measurable_snd (Mem.measurableSet_live a)) (ih _) MeasurableRun.none_mem
 
 /-- A set of tapes is **determined from the position** `p`: two tapes that agree at every position
 from `p` on are both in it or both not. -/

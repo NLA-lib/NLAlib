@@ -1215,3 +1215,165 @@ theorem exists_forall_isStableQRChain_exists_norm_subdiag_le {n k : ℕ} {B S ω
     hκ hS (hz jstar) (fun i => hdist jstar i) hτ hxu hbound
 
 end NLAlib.ShiftedQR
+
+namespace NLAlib.ShiftedQR
+
+open Ops MeasureTheory
+
+section SmallEig
+
+variable {O Q : Type} [Has EigenvalueKernelOp O]
+
+/-- **A randomized small-eigenvalue kernel with its forward error** ([BanksGarzaVargasSrivastava2022,
+Definition 1.2]): if the interpretation's `smallEig` is a randomized kernel with forward error
+$\beta$ and failure probability $\varphi$ on the stream `s` (`NLAlib.ShiftedQR.IsRandomSmallEig`),
+the leaf routine that calls it on an upper Hessenberg $\mathbf{B}$ of order $d$ writes only its
+output and, except with probability at most $\varphi$, stores values within $\beta$ of a listing
+of the eigenvalues of $\mathbf{B}$ with multiplicity. -/
+theorem IsRandomSmallEig.smallEigLeaf_pwrites {law : ℕ → Measure ℝ} {s : ℕ} {β φ : ℝ}
+    {I : Interp O Q ℝ} (h : IsRandomSmallEig law s β φ I) {d : ℕ} {w o : ℕ × ℕ}
+    (B : Matrix (Fin d) (Fin d) ℂ) (hB : IsUpperHessenberg B) :
+    PWrites law I (smallEigLeaf (O := O) (Q := Q)).body (Env.frame [d] [w, o])
+      (Store.inBlock o.1 o.2 (2 * d))
+      (fun μ => HoldsMatrix w B μ.store ∧ μ.Live [w, o] ∧ o.2 + 2 * d ≤ μ.store.len o.1 ∧
+        Fp.Disj (Store.inBlock w.1 w.2 (2 * (d * d))) (Store.inBlock o.1 o.2 (2 * d)))
+      (fun μ' => ∃ roots ev : Fin d → ℂ, IsEigenvalueListing B ev ∧
+        (∀ i, ‖roots i - ev i‖ ≤ β) ∧
+        HoldsMatrix o (Matrix.of fun i (_ : Fin 1) => roots i) μ'.store) φ := by
+  obtain ⟨W, Bad, hBad, hφ, hI⟩ := h
+  refine PWrites.of_window (s := s) (W := W d) (Bad := fun _ => Bad d B)
+    (measurable_snd (hBad d B)) (fun _ _ => hφ d B hB) ?_
+  rintro μ τ ⟨hH, hl, hroom, hdisj⟩ hgood
+  unfold smallEigLeaf
+  have hread : μ.readBlocks [w] [2 * (d * d)] = some [matrixWords B] := by
+    simp [Mem.readBlocks, show μ.store.readBlock w.1 w.2 (2 * (d * d)) =
+      some (matrixWords B) from hH]
+  refine (writes_call (R := randomSmallEigRel s W Bad β) hI (d := [d]) (a := [w]) (b := [o])
+    (k := W d) (ls := [2 * d]) rfl rfl rfl rfl rfl rfl trivial (by simp [Fp.Apart])
+    (fun _ => ⟨by simpa [Mem.Live] using hl, ⟨[matrixWords B], hread, trivial⟩,
+      by simpa [Mem.Room] using hroom⟩)).mono (by simp [Fp.blocks]) ?_
+  rintro μ' - ⟨-, xs, ys, hr, hys, hrel⟩
+  have hxs : xs = [matrixWords B] := Option.some.inj (hr.symm.trans hread)
+  have hwin : (fun j : Fin (W d) => (τ.window s μ.pos (W d)).getD j 0) =
+      Tape.windowFn τ s μ.pos (W d) := by
+    funext j
+    simp [Tape.window, Tape.windowFn, List.getD_eq_getElem?_getD]
+  obtain ⟨roots, ev, hev, hfw, rfl⟩ := hrel d (matrixWords B) rfl hxs
+    (by simpa using hB) (by
+      change (fun j : Fin (W d) => (τ.window s μ.pos (W d)).getD j 0) ∉ _
+      rw [hwin]
+      simpa using hgood)
+  rw [matrixOfWords_matrixWords] at hev
+  refine ⟨roots, ev, hev, hfw, ?_⟩
+  obtain ⟨y, hy, hyy⟩ := Option.bind_eq_some_iff.mp
+    (by simpa [Mem.readBlocks, randomSmallEigRel] using hys)
+  simp only [Option.some.injEq, List.cons.injEq, and_true] at hyy
+  simpa [HoldsMatrix] using hyy ▸ hy
+
+end SmallEig
+
+end NLAlib.ShiftedQR
+
+namespace NLAlib
+
+variable {n : ℕ}
+
+/-- An eigenvalue of the trailing $k \times k$ block, $k \le n + 1$, is at most
+$\|\mathbf{H}\|_2$. -/
+theorem IsEigenvalueListing.norm_le_specNorm_of_trailingBlock {k : ℕ}
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {lam : Fin k → ℂ}
+    (hlam : IsEigenvalueListing (trailingBlock k H) lam) (hkn : k ≤ n + 1) (j : Fin k) :
+    ‖lam j‖ ≤ specNorm H := by
+  have hroots : (trailingBlock k H).charpoly.roots = (List.ofFn lam : Multiset ℂ) := by
+    rw [isEigenvalueListing_iff.mp hlam]
+    simpa only [Multiset.map_coe, Multiset.prod_coe, List.map_ofFn,
+      List.prod_ofFn, Function.comp_def] using
+      Polynomial.roots_multiset_prod_X_sub_C (List.ofFn lam : Multiset ℂ)
+  refine norm_le_specNorm_of_mem_ritzValues hkn ?_
+  rw [ritzValues, Multiset.mem_toList, hroots, Multiset.mem_coe]
+  exact List.mem_ofFn.mpr ⟨j, rfl⟩
+
+end NLAlib
+
+namespace NLAlib.ShiftedQR
+
+open Ops
+
+/-- The words `Regularize` with scratch at `L, …, L + 6` reads, and the room it writes into: the
+matrix $\mathbf{H}$ at `a`, the radius word $R$ at `rd`, the word $c_w$ at `c`, the threshold
+word $t$ at `thr`, room for the $k$ output pairs at `s` and the flag at `f`, and seven scratch
+buffers of the lengths of `NLAlib.ShiftedQR.regularize` above the $L$ buffers of the caller. -/
+def RegularizeCtx (L : ℕ) {n : ℕ} (k : ℕ) (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+    (R cw tv : ℝ) (a rd c thr s f : ℕ × ℕ) (m : Mem ℝ) : Prop :=
+  HoldsMatrix a H m.store ∧ m.store.get rd.1 rd.2 = some R ∧ m.store.get c.1 c.2 = some cw ∧
+    m.store.get thr.1 thr.2 = some tv ∧ s.2 + 2 * k ≤ m.store.len s.1 ∧
+    f.2 < m.store.len f.1 ∧ m.store.length = L + 7 ∧ m.store.len L = 2 * (k * k) ∧
+    m.store.len (L + 1) = 2 ∧ m.store.len (L + 2) = 1 ∧
+    m.store.len (L + 3) = 2 * ((n + 1) * (n + 1)) ∧ m.store.len (L + 4) = 2 * k ∧
+    m.store.len (L + 5) = 2 * k ∧ m.store.len (L + 6) = 5
+
+/-- The context survives a write apart from the matrix and the three input words. -/
+theorem RegularizeCtx.of_eqOff {L n k : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {R cw tv : ℝ} {a rd c thr s f : ℕ × ℕ} {m m' : Mem ℝ} {F : Fp}
+    (h : RegularizeCtx L k H R cw tv a rd c thr s f m) (hfr : m.store.EqOff F m'.store)
+    (hF : Fp.Disj F (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+      Store.inBlock rd.1 rd.2 1 ⊔ Store.inBlock c.1 c.2 1 ⊔ Store.inBlock thr.1 thr.2 1)) :
+    RegularizeCtx L k H R cw tv a rd c thr s f m' := by
+  obtain ⟨hA, hrd, hc, ht, hs, hf, hlen, h0, h1, h2, h3, h4, h5, h6⟩ := h
+  refine ⟨hA.of_eqOff hfr (hF.mono le_rfl (by fp_sub)),
+    hfr.keep (Store.readsOnly_get _ _ _) (hF.mono le_rfl (by fp_sub)) hrd,
+    hfr.keep (Store.readsOnly_get _ _ _) (hF.mono le_rfl (by fp_sub)) hc,
+    hfr.keep (Store.readsOnly_get _ _ _) (hF.mono le_rfl (by fp_sub)) ht, ?_⟩
+  simp only [hfr.len_eq, hfr.length_eq]
+  exact ⟨hs, hf, hlen, h0, h1, h2, h3, h4, h5, h6⟩
+
+/-- **The outcome of `Regularize`**, with the optimality parameter $\theta$, the distance $d$ to
+the spectrum, the threshold word $t$ and the backward error $\varepsilon$: either the flag is $0$,
+`a` still holds $\mathbf{H}$, and `s` holds $k$ shifts that are $\theta$-optimal, at distance at
+least $d$ from every $e_i$ and in $\mathbb{D}(0, 1.1\|\mathbf{H}\|_2)$; or the flag is $1$ and
+`a` holds an upper Hessenberg perturbed unitary similarity of $\mathbf{H}$ with error
+$\varepsilon$ one of whose bottom $k$ subdiagonal entries passes the scan. -/
+def RegularizeOutcome {n : ℕ} (k : ℕ) (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+    (e : Fin (n + 1) → ℂ) (u θ d tv ε : ℝ) (a s f : ℕ × ℕ) (m' : Mem ℝ) : Prop :=
+  (m'.store.get f.1 f.2 = some 0 ∧ HoldsMatrix a H m'.store ∧ ∃ zs : Fin k → ℂ,
+      m'.store.readBlock s.1 s.2 (2 * k) = some ((List.ofFn zs).flatMap fun z => [z.re, z.im]) ∧
+      IsOptimalRitzValues θ H (List.ofFn zs) ∧ (∀ j i, d ≤ ‖e i - zs j‖) ∧
+      ∀ j, ‖zs j‖ ≤ 1.1 * specNorm H) ∨
+    (m'.store.get f.1 f.2 = some 1 ∧ ∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+      IsPerturbedUnitarySimilar H H' ε ∧ IsUpperHessenberg H' ∧ HoldsMatrix a H' m'.store ∧
+      ∃ i : Fin n, n ≤ (i : ℕ) + k ∧ (1 - u) ^ 2 * ‖H' i.succ i.castSucc‖ ^ 2 ≤ tv)
+
+/-- The bounds on the perturbed shifts that `Regularize` needs: from shifts $z_j$ within
+$\beta + R + \delta_j$ of a listing $\lambda$ of the eigenvalues of the trailing block, with
+$\lvert z_j - e_l\rvert + \delta_j \ge \eta$, $\delta_j = 2\boldsymbol{u}(\lvert\lambda_j\rvert
++ \beta + R)$, under $\beta + R + 2\boldsymbol{u}(\Sigma + \beta + R) \le \omega^2/(2020\Sigma)$,
+$4\boldsymbol{u}(\Sigma + \beta + R) \le \eta$ and $0 < \omega \le \psi_k(\mathbf{H})$,
+$\|\mathbf{H}\|_2 \le \Sigma$: the shifts are within $\omega^2/(2020\Sigma)$ of $\lambda$, in
+$\mathbb{D}(0, 1.1\|\mathbf{H}\|_2)$ and at distance at least $\eta/2$ from every $e_l$. -/
+theorem regularize_shift_bounds {n k N : ℕ} {u β R η ω S : ℝ}
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {lam zs : Fin k → ℂ} {e : Fin N → ℂ}
+    (hu0 : 0 ≤ u) (hk : 0 < k) (hkn : k ≤ n) (hω : 0 < ω) (hψ : ω ≤ hessenbergPotential k H)
+    (hS : specNorm H ≤ S) (hlam : IsEigenvalueListing (trailingBlock k H) lam)
+    (hβ : β + R + 2 * u * (S + β + R) ≤ ω ^ 2 / (20 * 101 * S))
+    (hdη : 4 * u * (S + β + R) ≤ η)
+    (hz : ∀ j : Fin k, ‖zs j - lam j‖ ≤ β + R + 2 * u * (‖lam j‖ + β + R) ∧
+      ∀ l, η ≤ ‖zs j - e l‖ + 2 * u * (‖lam j‖ + β + R)) :
+    (∀ j, ‖zs j - lam j‖ ≤ ω ^ 2 / (20 * 101 * S)) ∧ (∀ j, ‖zs j‖ ≤ 1.1 * specNorm H) ∧
+      ∀ j l, η / 2 ≤ ‖e l - zs j‖ := by
+  have hψH := hessenbergPotential_le_specNorm hk hkn H
+  have hS0 : 0 < S := by linarith
+  have hlH : ∀ j, ‖lam j‖ ≤ specNorm H := fun j => hlam.norm_le_specNorm_of_trailingBlock (by omega) j
+  have hδ : ∀ j, 2 * u * (‖lam j‖ + β + R) ≤ 2 * u * (S + β + R) := fun j => by
+    have := hlH j; gcongr; linarith
+  have hsmall : ω ^ 2 / (20 * 101 * S) ≤ 0.1 * specNorm H := by
+    rw [div_le_iff₀ (by positivity)]
+    nlinarith
+  refine ⟨fun j => ?_, fun j => ?_, fun j l => ?_⟩
+  · linarith [(hz j).1, hδ j]
+  · have h1 := norm_le_norm_add_norm_sub' (zs j) (lam j)
+    linarith [(hz j).1, hδ j, hlH j]
+  · have := (hz j).2 l
+    rw [norm_sub_rev] at this
+    nlinarith [hδ j]
+
+end NLAlib.ShiftedQR

@@ -389,3 +389,109 @@ theorem shAccept_decoupled_or_contract {M : Machine ℝ} {u C B S d ω γ tv tc 
     simpa [mul_pow] using this
 
 end NLAlib.ShiftedQR
+
+namespace NLAlib.ShiftedQR
+
+open Ops
+
+variable {n : ℕ}
+
+/-- The state of `Sh` after the rounded potential: the context and at `L + 1` a $p$ within
+$20\boldsymbol{u}$, relatively, of $\psi_k(\mathbf{H})$. -/
+def ShState1 (u : ℝ) (L k : ℕ) (ε : ℝ) (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+    (ss : List ℂ) (cg cr cw cp tv : ℝ) (a s wg wr ww wp g thr f : ℕ × ℕ) (m : Mem ℝ) : Prop :=
+  ShCtx L k ε H ss cg cr cw cp tv a s wg wr ww wp g thr f m ∧
+    ∃ p : ℝ, |p - hessenbergPotential k H| ≤ 20 * u * hessenbergPotential k H ∧
+      m.store.get (L + 1) 0 = some p
+
+/-- The state of `Sh` after `Find`: `NLAlib.ShiftedQR.ShState1` and an $\alpha$-promising shift at
+`L` (a pair). -/
+def ShState2 (u : ℝ) (L k : ℕ) (ε : ℝ) (H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+    (e : Fin (n + 1) → ℂ) (ss : List ℂ) (α cg cr cw cp tv : ℝ)
+    (a s wg wr ww wp g thr f : ℕ × ℕ) (m : Mem ℝ) : Prop :=
+  ShState1 u L k ε H ss cg cr cw cp tv a s wg wr ww wp g thr f m ∧
+    ∃ r : ℂ, m.store.readBlock L 0 2 = some [r.re, r.im] ∧ IsPromisingRitzValue α V e ss r
+
+/-- The state of `Sh` after the computation of the `comptau` test: `NLAlib.ShiftedQR.ShState1`,
+an $\alpha$-promising shift $r$ at `L`, at `L + 5` a backward-stable degree $k$ step with $r$
+repeated, at `L + 3` a value within $0.001$, relatively, of
+$\|\mathbf{e}_n^{\mathsf T}(\mathbf{H} - r)^{-k}\|^{-1}$, and at `L + 4` the rounded threshold. -/
+def ShState3 (M : Machine ℝ) (u : ℝ) (L k : ℕ) (ε : ℝ)
+    (H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (e : Fin (n + 1) → ℂ) (ss : List ℂ)
+    (α cg cr cw cp tv : ℝ) (a s wg wr ww wp g thr f : ℕ × ℕ) (m : Mem ℝ) : Prop :=
+  ShState1 u L k ε H ss cg cr cw cp tv a s wg wr ww wp g thr f m ∧
+    ∃ r : ℂ, m.store.readBlock L 0 2 = some [r.re, r.im] ∧ IsPromisingRitzValue α V e ss r ∧
+      ∃ (H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+        (Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)),
+        IsStableQRChain (300 * (n + 1) ^ 2 * u) H (List.replicate k r) H' Rs ∧
+          IsUpperHessenberg H' ∧ HoldsMatrix (L + 5, 0) H' m.store ∧
+          (∃ tc : ℝ, m.store.get (L + 3) 0 = some tc ∧
+            |tc - ‖WithLp.toLp 2 ((Polynomial.aeval H
+              (shiftPoly (List.replicate k r)))⁻¹ (Fin.last n))‖⁻¹| ≤ 0.001 * ‖WithLp.toLp 2
+                ((Polynomial.aeval H (shiftPoly (List.replicate k r)))⁻¹ (Fin.last n))‖⁻¹) ∧
+          m.store.get (L + 4) 0 = some (optimalThresholdWord M H k cg)
+
+section Steps
+
+variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q]
+  [Has IdxTst Q]
+
+omit [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] in
+/-- The rounded potential of `Sh` reaches `NLAlib.ShiftedQR.ShState1` (P6), for
+$k = 2^q \le n$ and $20000k\boldsymbol{u} \le 1$. -/
+theorem shPotential_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
+    (hM : StdModel u id M) {τ : Tape ℝ} {m : Mem ℝ} {L k q : ℕ} (hkq : k = 2 ^ q) (hkn : k ≤ n)
+    (hu : 20000 * k * u ≤ 1) {ε : ℝ} {a s wg wr ww wp g thr f : ℕ × ℕ}
+    (hv : ShViews L n k ε a s wg wr ww wp g thr f) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {ss : List ℂ} {cg cr cw cp tv : ℝ}
+    (hm : ShCtx L k ε H ss cg cr cw cp tv a s wg wr ww wp g thr f m) :
+    Writes .total I τ (roundedPotential (Op := O) (Tst := Q)).body
+      (Env.frame [n + 1, k, q] [a, (L + 1, 0)]) (Store.inBlock (L + 1) 0 1)
+      (ShState1 u L k ε H ss cg cr cw cp tv a s wg wr ww wp g thr f) m := by
+  obtain ⟨⟨ha, hs, hwg, hwr, hww, hwp, hg, hthl, hfl⟩, -, -⟩ := hv
+  obtain ⟨hA, -, -, -, -, -, -, -, -, -, -, h1, -⟩ := id hm
+  refine (roundedPotential_writes (τ := τ) (p := (L + 1, 0)) hS hM hkq hkn hu hA (by simp [h1])
+    (by disjoint)).mono le_rfl ?_
+  rintro m' hfr ⟨-, p, hp, hpψ⟩
+  exact ⟨hm.of_eqOff hfr (by disjoint), p, hpψ, hp⟩
+
+omit [Has DiskSampleOp O] in
+/-- `Find` of `Sh` (P7 with the comparison routine of P7b) reaches
+`NLAlib.ShiftedQR.ShState2`: from `NLAlib.ShiftedQR.ShState1`, for $k = 2^m$ shifts at distance at
+least $d > 0$ from the spectrum and in $\mathbb{D}(0, C\|\mathbf{H}\|_2)$, $\mathbf{H} \ne 0$
+upper Hessenberg, under the precision conditions of `NLAlib.ShiftedQR.comptauHalf_isHalfTau`,
+the stored shift is $(1.01B)^{4m/2^m}$-promising. -/
+theorem shFind_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
+    (hM : StdModel u id M) (hL : IsIndexLit M I) (hC : IsCmp id I) (hQ : IsToNat id I)
+    (hNat : IsExactNatLit id M (n + 1)) {τ : Tape ℝ} {m : Mem ℝ} {L k q : ℕ} (hkq : k = 2 ^ q)
+    (hkn : k ≤ n) {ε : ℝ} {a s wg wr ww wp g thr f : ℕ × ℕ}
+    (hv : ShViews L n k ε a s wg wr ww wp g thr f) {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {e : Fin (n + 1) → ℂ} {ss : List ℂ} {B C d cg cr cw cp tv : ℝ} (hH : IsUpperHessenberg H)
+    (hH0 : H ≠ 0) (hV : IsUnit V) (hHV : H * V = V * Matrix.diagonal e)
+    (hκ : pseudoConditionNumber V ≤ B) (hC0 : 0 ≤ C) (hd : 0 < d) (hlen : ss.length = k)
+    (hs : ∀ s ∈ ss, ‖s‖ ≤ C * specNorm H) (hdist : ∀ s ∈ ss, ∀ i, d ≤ ‖e i - s‖)
+    (hnu : (n + 1 : ℝ) * u ≤ 1 / 2500) (hu : 30000 * (((k / 2 : ℕ) : ℝ) + 1) * u ≤ 1)
+    (hxu : 300 * (n + 1) ^ 2 * u ≤
+      (8004 * B)⁻¹ * (d / ((2 + 2 * C) * specNorm H)) ^ (k / 2))
+    (hm : ShState1 u L k ε H ss cg cr cw cp tv a s wg wr ww wp g thr f m) :
+    Writes .total I τ (findRounded (comptauHalf (O := O) (Q := Q))).body
+      (Env.frame [n + 1, q, k] [a, s, (L, 0)]) (Store.inBlock L 0 2)
+      (ShState2 u L k ε H V e ss ((1.01 * B) ^ ((4 * q : ℝ) / 2 ^ q)) cg cr cw cp tv
+        a s wg wr ww wp g thr f) m := by
+  obtain ⟨⟨ha, hs', hwg, hwr, hww, hwp, hg, hthl, hfl⟩, -, -⟩ := hv
+  obtain ⟨⟨hA, hss, -, -, -, -, -, -, -, hlen', h0, -⟩, -⟩ := id hm
+  have hne : ∀ r ∈ ss, ∀ i, e i ≠ r := fun r hr i he => by
+    have := hdist r hr i; rw [he, sub_self, norm_zero] at this; linarith
+  have hTau := comptauHalf_isHalfTau (I := I) hS hM hC hH hH0 hV hHV hκ hC0 hd hs hdist hnu
+    (by rw [hlen]; exact hu) (by rw [hlen]; exact hxu)
+  refine (findRounded_writes (τ := τ) (b := a) (ss := s) (z := (L, 0)) hS hL hC hQ hV hHV hκ hne
+    hTau (hNat.mono (by omega)) hkq hlen hA (by rw [hlen]; exact hss)
+    (by simp [Mem.Live, hlen']; omega) (by disjoint) (by simp [h0])).mono le_rfl ?_
+  rintro m' hfr ⟨-, c, hc, hpr⟩
+  obtain ⟨hctx, p, hp, hP⟩ := hm
+  exact ⟨⟨hctx.of_eqOff hfr (by disjoint), p, hp, hfr.keep (Store.readsOnly_get _ _ _)
+    (by disjoint) hP⟩, c, hc, hpr⟩
+
+end Steps
+
+end NLAlib.ShiftedQR

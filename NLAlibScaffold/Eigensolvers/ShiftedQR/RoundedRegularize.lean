@@ -270,27 +270,49 @@ def replicatePair : Impl O Q := opsImpl% [k] (S) → (SR) {
   }
 }
 
-/-- **One trial of `Regularize`**: if the search word `G` is positive, the degree $k$ rounded
-step with the shift `S` repeated $k$ times is computed on a copy `T` of `A`, and its bottom $k$
-subdiagonal entries are scanned against the threshold word `Thr`; if one passes, the step is
-copied back to `A`, `G` is set to $0$ and the flag `Fl` to $1$. The interface is
+/-- The computation of one trial of `Regularize`: the degree $k$ rounded step with the shift `S`
+repeated $k$ times on a copy `T` of `A` (`SR` the repeated shifts, `Ds` the diagonal outputs),
+and the scan of its bottom $k$ subdiagonal entries against the threshold word `Thr` into the
+registers `Rg`. The interface is `[N, k] (A, S, Thr) → (T, SR, Ds, Rg)`. -/
+def trialStep : Impl O Q := opsImpl% [N, k] (A, S, Thr) → (T, SR, Ds, Rg) {
+  run (unaryMap (Has.inj ScalarOp.copy)).body [2 * (N * N)] (A, T);
+  run replicatePair.body [k] (S, SR);
+  run multiStepStable.body [N, k] (T, SR, T, Ds);
+  run bottomScan.body [N, k] (T, Thr, Rg)
+}
+
+/-- The acceptance of a trial: copy the step `T` back to `A`, set the search word `G` to $0$ and
+the flag `Fl` to $1$. The interface is `[N] (T) → (A, G, Fl)`. -/
+def trialAccept : Impl O Q := opsImpl% [N] (T) → (A, G, Fl) {
+  run (unaryMap (Has.inj ScalarOp.copy)).body [2 * (N * N)] (T, A);
+  call (Has.inj (ScalarOp.lit 0)) [] () → (G);
+  call (Has.inj (ScalarOp.lit 1)) [] () → (Fl)
+}
+
+/-- **One trial of `Regularize`**: if the search word `G` is positive, run
+`NLAlib.ShiftedQR.trialStep`; if its scan found a small entry (`Rg[3]` positive), accept it
+(`NLAlib.ShiftedQR.trialAccept`). The interface is
 `[N, k] (A, S, Thr, T, SR, Ds, Rg) → (A, G, Fl)`. -/
 def regularizeTrial : Impl O Q :=
   opsImpl% [N, k] (A, S, Thr, T, SR, Ds, Rg) → (A, G, Fl) {
     if (Has.inj CmpTst.isPos) [] (G) {
-      run (unaryMap (Has.inj ScalarOp.copy)).body [2 * (N * N)] (A, T);
-      run replicatePair.body [k] (S, SR);
-      run multiStepStable.body [N, k] (T, SR, T, Ds);
-      run bottomScan.body [N, k] (T, Thr, Rg);
+      run trialStep.body [N, k] (A, S, Thr, T, SR, Ds, Rg);
       if (Has.inj CmpTst.isPos) [] (Rg[3]) {
-        run (unaryMap (Has.inj ScalarOp.copy)).body [2 * (N * N)] (T, A);
-        call (Has.inj (ScalarOp.lit 0)) [] () → (G);
-        call (Has.inj (ScalarOp.lit 1)) [] () → (Fl)
+        run trialAccept.body [N] (T, A, G, Fl)
       } else {
         skip
       }
     } else {
       skip
+    }
+  }
+
+/-- The $k$ trials of `Regularize`, with the shifts `S[2j]` in turn. The interface is
+`[N, k] (A, S, Thr, T, SR, Ds, Rg) → (A, G, Fl)`. -/
+def regularizeTrials : Impl O Q :=
+  opsImpl% [N, k] (A, S, Thr, T, SR, Ds, Rg) → (A, G, Fl) {
+    for j < k {
+      run regularizeTrial.body [N, k] (A, S[2 * j], Thr, T, SR, Ds, Rg, A, G, Fl)
     }
   }
 
@@ -310,9 +332,7 @@ def regularizeWithScratch : Impl O Q :=
     } else {
       call (Has.inj (ScalarOp.lit 2)) [] () → (Fl);
       call (Has.inj (ScalarOp.lit 1)) [] () → (G);
-      for j < k {
-        run regularizeTrial.body [N, k] (A, S[2 * j], Thr, T, SR, Ds, Rg, A, G, Fl)
-      }
+      run regularizeTrials.body [N, k] (A, S, Thr, T, SR, Ds, Rg, A, G, Fl)
     }
   }
 
@@ -597,5 +617,278 @@ theorem regularizeDraws_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     Store.lt_length_of_lt_len (show z.2 < m.store.len z.1 by omega)]
 
 end Draws
+
+end NLAlib.ShiftedQR
+
+namespace NLAlib.ShiftedQR
+
+open Ops
+
+section Trials
+
+variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q]
+
+omit [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
+/-- `NLAlib.ShiftedQR.replicatePair` on any scalar machine stores the pair $r$ of `S` $k$ times
+at `SR`, writing only `SR`. -/
+theorem replicatePair_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    {τ : Tape ℝ} {m : Mem ℝ} {k : ℕ} {sp sr : ℕ × ℕ} {r : ℂ}
+    (hs : m.store.readBlock sp.1 sp.2 2 = some [r.re, r.im])
+    (hsr : sr.2 + 2 * k ≤ m.store.len sr.1)
+    (hd : Fp.Disj (Store.inBlock sp.1 sp.2 2) (Store.inBlock sr.1 sr.2 (2 * k))) :
+    Writes .total I τ (replicatePair (O := O) (Q := Q)).body (Env.frame [k] [sp, sr])
+      (Store.inBlock sr.1 sr.2 (2 * k))
+      (fun m' => m'.pos = m.pos ∧
+        m'.store.readBlock sr.1 sr.2 (2 * (List.replicate k r).length) =
+          some ((List.replicate k r).flatMap fun z => [z.re, z.im])) m := by
+  have hsl := Store.lt_length_of_get (Store.get_of_readBlock hs (j := 0) (by norm_num) 0)
+  unfold replicatePair
+  refine (writes_loop (N := k) rfl (fun _ => Store.inBlock sr.1 sr.2 (2 * k))
+    (fun _ _ => le_rfl) (fun l μ => μ.pos = m.pos ∧ μ.store.readBlock sr.1 sr.2 (2 * l) =
+      some ((List.replicate l r).flatMap fun z => [z.re, z.im])) ⟨rfl, by simp⟩ ?_).mono
+    le_rfl ?_
+  · intro l hl μ hfr ⟨hp, hpre⟩
+    have hsμ := hfr.keep (Store.readsOnly_readBlock _ _ _ _) hd.symm hs
+    have hsub : Store.inBlock sr.1 (sr.2 + 2 * l) 2 ≤ Store.inBlock sr.1 sr.2 (2 * k) :=
+      Fp.inBlock_le_inBlock (by omega) (by omega)
+    have hc := writes_unaryMap_of_disj_or_eq (md := .total) (τ := τ) (f := id) (x := sp)
+      (y := (sr.1, sr.2 + 2 * l)) (hS .copy) (Or.inl (hd.mono le_rfl hsub)) hsμ
+      (by rw [hfr.len_eq]; dsimp only; omega)
+    refine (hc.in_frame rfl rfl ?_).mono hsub ?_
+    · have h0 : sr.2 < m.store.len sr.1 := by omega
+      simp [Mem.Live, hfr.length_eq, hsl, Store.lt_length_of_lt_len h0]
+    rintro μ' hfr' ⟨hp', hnew⟩
+    refine ⟨hp'.trans hp, ?_⟩
+    have hold := hfr'.keep (Store.readsOnly_readBlock _ _ _ _)
+      (Fp.disj_inBlock_of_le le_rfl).symm hpre
+    rw [show 2 * (l + 1) = 2 * l + 2 by ring, List.replicate_succ', List.flatMap_append]
+    exact Store.readBlock_add hold (by simpa using hnew)
+  · rintro μ - ⟨hp, h⟩
+    exact ⟨hp, by simpa using h⟩
+
+omit [Has IdxTst Q] in
+/-- **The computation of one trial** on a scalar machine with the standard model at
+$(n + 1)\boldsymbol{u} \le 1/2500$, exact comparisons, index literals and exact natural literals
+up to $n + 1$: from an upper Hessenberg $\mathbf{H}$ of order $n + 1$ at `A`, the shift $r$ at `S`
+and the threshold word $t$ at `Thr`, `NLAlib.ShiftedQR.trialStep` writes only its four outputs
+and stores at `T` a backward-stable degree $k$ step $\widehat{\mathbf{H}}$ with the shift $r$
+repeated (relative error $300(n+1)^2\boldsymbol{u}$), upper Hessenberg, and in `Rg` the scan
+of its bottom $k$ subdiagonal entries (`NLAlib.ShiftedQR.bottomScan_writes`). -/
+theorem trialStep_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
+    (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I) {n : ℕ}
+    (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {k : ℕ}
+    (hk0 : 0 < k) (hk : k ≤ n) {a sp thr t sr ds rg : ℕ × ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {r : ℂ} {tv : ℝ} (hH : IsUpperHessenberg H) (hnu : (n + 1 : ℝ) * u ≤ 1 / 2500)
+    (hA : HoldsMatrix a H m.store) (hs : m.store.readBlock sp.1 sp.2 2 = some [r.re, r.im])
+    (hthr : m.store.get thr.1 thr.2 = some tv)
+    (hrt : t.2 + 2 * ((n + 1) * (n + 1)) ≤ m.store.len t.1)
+    (hrsr : sr.2 + 2 * k ≤ m.store.len sr.1) (hrds : ds.2 + 2 * k ≤ m.store.len ds.1)
+    (hrrg : rg.2 + 5 ≤ m.store.len rg.1)
+    (hW : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔
+      Store.inBlock sr.1 sr.2 (2 * k) ⊔ Store.inBlock ds.1 ds.2 (2 * k) ⊔
+      Store.inBlock rg.1 rg.2 5) (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock sp.1 sp.2 2 ⊔ Store.inBlock thr.1 thr.2 1))
+    (hts : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock sr.1 sr.2 (2 * k)))
+    (htd : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock ds.1 ds.2 (2 * k)))
+    (hsd : Fp.Disj (Store.inBlock sr.1 sr.2 (2 * k)) (Store.inBlock ds.1 ds.2 (2 * k)))
+    (hrg : Fp.Disj (Store.inBlock rg.1 rg.2 5)
+      (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))) :
+    Writes .total I τ (trialStep (O := O) (Q := Q)).body
+      (Env.frame [n + 1, k] [a, sp, thr, t, sr, ds, rg])
+      (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock sr.1 sr.2 (2 * k) ⊔
+        Store.inBlock ds.1 ds.2 (2 * k) ⊔ Store.inBlock rg.1 rg.2 5)
+      (fun m' => ∃ (H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+        (Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)),
+        IsStableQRChain (300 * (n + 1) ^ 2 * u) H (List.replicate k r) H' Rs ∧
+          IsUpperHessenberg H' ∧ HoldsMatrix t H' m'.store ∧
+          ((m'.store.get rg.1 (rg.2 + 3) = some 1 ∧ ∃ i : Fin n, n ≤ (i : ℕ) + k ∧
+              (1 - u) ^ 2 * ‖H' i.succ i.castSucc‖ ^ 2 ≤ tv) ∨
+            (m'.store.get rg.1 (rg.2 + 3) = some 0 ∧ ∀ i : Fin n, n ≤ (i : ℕ) + k →
+              tv < (1 + u) ^ 2 * ‖H' i.succ i.castSucc‖ ^ 2))) m := by
+  have hu0 := hM.roundoff_nonneg
+  have hal := Store.lt_length_of_get (Store.get_of_readBlock hA (j := 0) (by positivity) 0)
+  have hsl := Store.lt_length_of_get (Store.get_of_readBlock hs (j := 0) (by norm_num) 0)
+  have htl := Store.lt_length_of_lt_len (show t.2 < m.store.len t.1 by nlinarith)
+  have hsrl := Store.lt_length_of_lt_len (show sr.2 < m.store.len sr.1 by omega)
+  have hdsl := Store.lt_length_of_lt_len (show ds.2 < m.store.len ds.1 by omega)
+  have hrgl := Store.lt_length_of_lt_len (show rg.2 < m.store.len rg.1 by omega)
+  have hthl := Store.lt_length_of_get hthr
+  unfold trialStep
+  refine (copyMatrix_writes (τ := τ) hS hA hrt (hW.symm.mono (by fp_sub) (by fp_sub))).frame_seq_le
+    rfl rfl (by simp [Mem.Live, hal, htl]) (by fp_sub) ?_
+  rintro m₁ hfr₁ ⟨-, hT₁⟩
+  have hs₁ := hfr₁.keep (Store.readsOnly_readBlock _ _ _ _) (hW.mono (by fp_sub) (by fp_sub)) hs
+  have hthr₁ := hfr₁.keep (Store.readsOnly_get _ _ _) (hW.mono (by fp_sub) (by fp_sub)) hthr
+  have hrep := replicatePair_writes (τ := τ) (sr := sr) hS hs₁ (by rw [hfr₁.len_eq]; exact hrsr)
+    (hW.symm.mono (by fp_sub) (by fp_sub))
+  refine hrep.frame_seq_le rfl rfl (by simp [Mem.Live, hfr₁.length_eq, hsl, hsrl]) (by fp_sub) ?_
+  rintro m₂ hfr₂ ⟨-, hSR₂⟩
+  have hT₂ := hT₁.of_eqOff hfr₂ hts.symm
+  have hthr₂ := hfr₂.keep (Store.readsOnly_get _ _ _) (hW.mono (by fp_sub) (by fp_sub)) hthr₁
+  have hl₂ : ∀ b, m₂.store.len b = m.store.len b := fun b => by rw [hfr₂.len_eq, hfr₁.len_eq]
+  have hL₂ : m₂.store.length = m.store.length := by rw [hfr₂.length_eq, hfr₁.length_eq]
+  have hms := multiStepStable_isStableQRChain (τ := τ) (m := m₂) (a := t) (s := sr) (ds := ds)
+    (ss := List.replicate k r) hS hM hu0 hC hH hnu (by simp [Mem.Live, hL₂, htl, hsrl, hdsl])
+    hT₂ hSR₂ (by rw [hl₂, List.length_replicate]; exact hrds)
+    (by simpa using hts) (by simpa using htd) (by simpa using hsd)
+  rw [List.length_replicate] at hms
+  refine hms.frame_seq_le rfl rfl (by simp [Mem.Live, hL₂, htl, hsrl, hdsl]) (by fp_sub) ?_
+  rintro m₃ hfr₃ ⟨-, H', Rs, hch, hH', hT₃, -⟩
+  have hthr₃ := hfr₃.keep (Store.readsOnly_get _ _ _)
+    (Fp.disj_sup_left.mpr ⟨hW.mono (by fp_sub) (by fp_sub), hW.mono (by fp_sub) (by fp_sub)⟩)
+    hthr₂
+  have hL₃ : m₃.store.length = m.store.length := by rw [hfr₃.length_eq, hL₂]
+  have hb := bottomScan_writes (τ := τ) (m := m₃) (a := t) (t := thr) (r := rg) hS hM hu0 hu1
+    hL hNat hC hk hT₃ hthr₃ (by simp [Mem.Live, hL₃, htl, hthl, hrgl])
+    (by rw [hfr₃.len_eq, hl₂]; exact hrrg) hrg (hW.mono (by fp_sub) (by fp_sub))
+  refine (hb.in_frame rfl rfl (by simp [Mem.Live, hL₃, htl, hthl, hrgl])).mono (by fp_sub) ?_
+  rintro m₄ hfr₄ ⟨-, hscan⟩
+  refine ⟨H', Rs, hch, hH', hT₃.of_eqOff hfr₄ hrg, ?_⟩
+  rcases hscan with ⟨h1, i, hi, -, hle⟩ | h0
+  · exact Or.inl ⟨h1, i, hi, hle⟩
+  · exact Or.inr h0
+
+omit [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
+/-- The acceptance of a trial on a scalar machine with the standard model and exact natural
+literals up to $1$: `NLAlib.ShiftedQR.trialAccept` copies the matrix at `T` to `A`, stores $0$
+in `G` and $1$ in `Fl`, and writes only these. -/
+theorem trialAccept_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
+    (hM : StdModel u id M) (hNat : IsExactNatLit id M 1) {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ}
+    {t a g f : ℕ × ℕ} {H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    (hT : HoldsMatrix t H' m.store) (hra : a.2 + 2 * ((n + 1) * (n + 1)) ≤ m.store.len a.1)
+    (hrg : g.2 < m.store.len g.1) (hrf : f.2 < m.store.len f.1)
+    (hta : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))))
+    (hga : Fp.Disj (Store.inBlock g.1 g.2 1 ⊔ Store.inBlock f.1 f.2 1)
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))))
+    (hgf : Fp.Disj (Store.inBlock g.1 g.2 1) (Store.inBlock f.1 f.2 1)) :
+    Writes .total I τ (trialAccept (O := O) (Q := Q)).body (Env.frame [n + 1] [t, a, g, f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock g.1 g.2 1 ⊔
+        Store.inBlock f.1 f.2 1)
+      (fun m' => HoldsMatrix a H' m'.store ∧ m'.store.get g.1 g.2 = some 0 ∧
+        m'.store.get f.1 f.2 = some 1) m := by
+  have h0 : M.lit 0 = 0 := by simpa using hM.lit 0
+  have h1 : M.lit 1 = 1 := by simpa using hNat 1 le_rfl
+  have htl := Store.lt_length_of_get (Store.get_of_readBlock hT (j := 0) (by positivity) 0)
+  have hal := Store.lt_length_of_lt_len (show a.2 < m.store.len a.1 by nlinarith)
+  unfold trialAccept
+  refine (copyMatrix_writes (τ := τ) hS hT hra hta).frame_seq_le rfl rfl
+    (by simp [Mem.Live, htl, hal]) (by fp_sub) ?_
+  rintro m₁ hfr₁ ⟨-, hA₁⟩
+  refine (writes_call_const (hS (.lit 0)) (z := g) rfl trivial
+    (by rw [hfr₁.len_eq]; exact hrg)).seq_le (by fp_sub) ?_
+  rintro m₂ hfr₂ ⟨-, hG₂⟩
+  refine (writes_call_const (hS (.lit 1)) (z := f) rfl trivial
+    (by rw [hfr₂.len_eq, hfr₁.len_eq]; exact hrf)).mono (by fp_sub) ?_
+  rintro m₃ hfr₃ ⟨-, hF₃⟩
+  refine ⟨(hA₁.of_eqOff hfr₂ (hga.mono (by fp_sub) le_rfl)).of_eqOff hfr₃
+    (hga.mono (by fp_sub) le_rfl), ?_, by rw [hF₃, h1]⟩
+  rw [hfr₃.keep (Store.readsOnly_get _ _ _) hgf.symm hG₂, h0]
+
+/-- The outcome of one trial of `Regularize` from the search word $g$, the flag word $f$ and
+the matrix $\mathbf{H}$ at `a`, with the shift $r$ and the threshold $t$: either nothing visible
+changed (and, if $g > 0$, the computed step had no small bottom entry), or $g > 0$ and a
+decoupled step was accepted: `G` is $0$, `Fl` is $1$ and `a` holds a backward-stable degree $k$
+step with a bottom entry passing the scan. -/
+def TrialPost (u : ℝ) {n : ℕ} (k : ℕ) (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (r : ℂ)
+    (tv gv fv : ℝ) (a g f : ℕ × ℕ) (m' : Mem ℝ) : Prop :=
+  (m'.store.get g.1 g.2 = some gv ∧ m'.store.get f.1 f.2 = some fv ∧ HoldsMatrix a H m'.store ∧
+    (0 < gv → ∃ (H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+      (Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)),
+      IsStableQRChain (300 * (n + 1) ^ 2 * u) H (List.replicate k r) H' Rs ∧
+        ∀ i : Fin n, n ≤ (i : ℕ) + k → tv < (1 + u) ^ 2 * ‖H' i.succ i.castSucc‖ ^ 2)) ∨
+  (0 < gv ∧ m'.store.get g.1 g.2 = some 0 ∧ m'.store.get f.1 f.2 = some 1 ∧
+    ∃ (H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+      (Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)),
+      IsStableQRChain (300 * (n + 1) ^ 2 * u) H (List.replicate k r) H' Rs ∧
+        IsUpperHessenberg H' ∧ HoldsMatrix a H' m'.store ∧
+        ∃ i : Fin n, n ≤ (i : ℕ) + k ∧ (1 - u) ^ 2 * ‖H' i.succ i.castSucc‖ ^ 2 ≤ tv)
+
+omit [Has IdxTst Q] in
+/-- **One trial of `Regularize`** on a scalar machine with the standard model at
+$(n + 1)\boldsymbol{u} \le 1/2500$, exact comparisons, index literals and exact natural literals
+up to $n + 1$: `NLAlib.ShiftedQR.regularizeTrial` writes only the matrix `A`, the words `G`,
+`Fl` and its scratch, and ends in `NLAlib.ShiftedQR.TrialPost`. -/
+theorem regularizeTrial_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
+    (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I) {n : ℕ}
+    (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {k : ℕ}
+    (hk0 : 0 < k) (hk : k ≤ n) {a sp thr t sr ds rg g f : ℕ × ℕ}
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {r : ℂ} {tv gv fv : ℝ}
+    (hH : IsUpperHessenberg H) (hnu : (n + 1 : ℝ) * u ≤ 1 / 2500)
+    (hA : HoldsMatrix a H m.store) (hs : m.store.readBlock sp.1 sp.2 2 = some [r.re, r.im])
+    (hthr : m.store.get thr.1 thr.2 = some tv) (hg : m.store.get g.1 g.2 = some gv)
+    (hf : m.store.get f.1 f.2 = some fv)
+    (hrt : t.2 + 2 * ((n + 1) * (n + 1)) ≤ m.store.len t.1)
+    (hrsr : sr.2 + 2 * k ≤ m.store.len sr.1) (hrds : ds.2 + 2 * k ≤ m.store.len ds.1)
+    (hrrg : rg.2 + 5 ≤ m.store.len rg.1)
+    (hW : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔
+      Store.inBlock sr.1 sr.2 (2 * k) ⊔ Store.inBlock ds.1 ds.2 (2 * k) ⊔
+      Store.inBlock rg.1 rg.2 5) (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock sp.1 sp.2 2 ⊔ Store.inBlock thr.1 thr.2 1))
+    (hts : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock sr.1 sr.2 (2 * k)))
+    (htd : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock ds.1 ds.2 (2 * k)))
+    (hsd : Fp.Disj (Store.inBlock sr.1 sr.2 (2 * k)) (Store.inBlock ds.1 ds.2 (2 * k)))
+    (hrg : Fp.Disj (Store.inBlock rg.1 rg.2 5)
+      (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1)))))
+    (hGF : Fp.Disj (Store.inBlock g.1 g.2 1 ⊔ Store.inBlock f.1 f.2 1)
+      (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock sr.1 sr.2 (2 * k) ⊔
+        Store.inBlock ds.1 ds.2 (2 * k) ⊔ Store.inBlock rg.1 rg.2 5 ⊔
+        Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))))
+    (hgf : Fp.Disj (Store.inBlock g.1 g.2 1) (Store.inBlock f.1 f.2 1)) :
+    Writes .total I τ (regularizeTrial (O := O) (Q := Q)).body
+      (Env.frame [n + 1, k] [a, sp, thr, t, sr, ds, rg, a, g, f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock g.1 g.2 1 ⊔
+        Store.inBlock f.1 f.2 1 ⊔ (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔
+          Store.inBlock sr.1 sr.2 (2 * k) ⊔ Store.inBlock ds.1 ds.2 (2 * k) ⊔
+          Store.inBlock rg.1 rg.2 5))
+      (TrialPost u k H r tv gv fv a g f) m := by
+  have h1 : M.lit 1 = 1 := by simpa using hNat 1 (by omega)
+  unfold regularizeTrial
+  refine writes_ite rfl rfl (hC.test_isPos (d := []) (x := g) hg) ?_
+  by_cases hgp : 0 < gv
+  · rw [show decide (0 < id gv) = true by simpa using hgp, if_pos rfl]
+    have hstep := trialStep_writes (τ := τ) hS hM hu1 hL hNat hC hk0 hk hH hnu hA hs hthr hrt hrsr
+      hrds hrrg hW hts htd hsd hrg
+    have hal := Store.lt_length_of_get (Store.get_of_readBlock hA (j := 0) (by positivity) 0)
+    refine hstep.frame_seq_le rfl rfl (by
+        simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,
+          forall_eq]
+        refine ⟨hal, Store.lt_length_of_get (Store.get_of_readBlock hs (j := 0) (by norm_num) 0),
+          Store.lt_length_of_get hthr,
+          Store.lt_length_of_lt_len (show t.2 < m.store.len t.1 by nlinarith),
+          Store.lt_length_of_lt_len (show sr.2 < m.store.len sr.1 by omega),
+          Store.lt_length_of_lt_len (show ds.2 < m.store.len ds.1 by omega),
+          Store.lt_length_of_lt_len (show rg.2 < m.store.len rg.1 by omega)⟩) (le_sup_right) ?_
+    rintro m₁ hfr₁ ⟨H', Rs, hch, hH', hT₁, hscan⟩
+    have hA₁ := hA.of_eqOff hfr₁ (hW.mono le_rfl (by fp_sub))
+    have hg₁ := hfr₁.keep (Store.readsOnly_get _ _ _) (hGF.symm.mono (by fp_sub) (by fp_sub)) hg
+    have hf₁ := hfr₁.keep (Store.readsOnly_get _ _ _) (hGF.symm.mono (by fp_sub) (by fp_sub)) hf
+    rcases hscan with ⟨hR1, hdec⟩ | ⟨hR0, hall⟩
+    · refine writes_ite rfl rfl (hC.test_isPos (d := []) (x := (rg.1, rg.2 + 3)) hR1) ?_
+      rw [show decide (0 < id (1 : ℝ)) = true by simp, if_pos rfl]
+      have hacc := trialAccept_writes (τ := τ) (a := a) (g := g) (f := f) hS hM
+        (hNat.mono (by omega)) hT₁
+        (by rw [hfr₁.len_eq]; exact Store.le_len_of_readBlock hA (by positivity))
+        (by rw [hfr₁.len_eq]; exact Store.lt_len_of_get hg)
+        (by rw [hfr₁.len_eq]; exact Store.lt_len_of_get hf)
+        (hW.mono (by fp_sub) (by fp_sub)) (hGF.mono le_rfl (by fp_sub)) hgf
+      refine (hacc.in_frame rfl rfl (by
+        simp [Mem.Live, hfr₁.length_eq, Store.lt_length_of_get hg, Store.lt_length_of_get hf, hal,
+          Store.lt_length_of_lt_len (show t.2 < m.store.len t.1 by nlinarith)])).mono
+        (by fp_sub) ?_
+      rintro m₂ - ⟨hA₂, hG₂, hF₂⟩
+      exact Or.inr ⟨hgp, hG₂, hF₂, H', Rs, hch, hH', hA₂, hdec⟩
+    · refine writes_ite rfl rfl (hC.test_isPos (d := []) (x := (rg.1, rg.2 + 3)) hR0) ?_
+      rw [show decide (0 < id (0 : ℝ)) = false by simp, if_neg (by simp)]
+      exact (Writes.skip (Or.inl ⟨hg₁, hf₁, hA₁, fun _ => ⟨H', Rs, hch, hall⟩⟩)).mono bot_le
+        fun _ _ h => h
+  · rw [show decide (0 < id gv) = false by simpa using hgp, if_neg (by simp)]
+    exact (Writes.skip (Or.inl ⟨hg, hf, hA, fun h => absurd h hgp⟩)).mono bot_le fun _ _ h => h
+
+end Trials
 
 end NLAlib.ShiftedQR

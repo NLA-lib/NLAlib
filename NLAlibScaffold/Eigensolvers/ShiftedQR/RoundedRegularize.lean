@@ -1629,6 +1629,117 @@ theorem regularizeWithScratch_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u 
         (h4.in_frame rfl rfl fun m hm => hlive _ (by simp; omega) m hm.1)))).mono
     (fun _ h => h) (by fp_sub) (fun _ h => h) (by simp)
 
+omit [Has IdxTst Q] in
+/-- **`Regularize` as a probabilistic block** (P10; [BanksGarzaVargasSrivastava2022, Lemma 4.6],
+corrected as in the errata G10, G11 and N14): on a scalar machine with the standard model,
+exact comparisons, index literals and exact natural literals up to $n + 1$, a measurable
+tape-local interpretation whose `SmallEig` is a randomized kernel with forward error
+$\beta \ge 0$ and failure probability $\varphi_{\mathrm{se}} \ge 0$ on a stream `s₀` uniform on
+$[0, 1]$, and an exact polar disk sampler on the same stream: let $\mathbf{H}$ be upper
+Hessenberg of order $n + 1$, $\mathbf{H}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{e})$
+with $\kappa(\mathbf{V}) \le B$ and $B^{2/k} \le 2$, $1 \le k \le n$, $\|\mathbf{H}\|_2 \le
+\Sigma$, $0 < \omega \le \psi_k(\mathbf{H})$, eigenvalues separated by $2\omega^2/\Sigma$, the
+radius word $R > 0$, $0 < \varphi \le 1$, $\eta = R\sqrt{\varphi/(2k)}$,
+$\theta = 1.01 \cdot 0.998^{-1/k}(2B^4)^{1/(2k)}$, the word $0.999\theta^k$ and a threshold word
+$t \ge (1 + \boldsymbol{u})^2\omega^2$, and the precision conditions
+$\beta + R + 2\boldsymbol{u}(\Sigma + \beta + R) \le \omega^2/(2020\Sigma)$,
+$4\boldsymbol{u}(\Sigma + \beta + R) \le \eta$, those of `Optimal` (with $C = 1.1$), and those
+of the forward error of the rounded steps at the distance $\eta/2$
+(`NLAlib.IsStableQRChain.exists_norm_subdiag_le_of_le_norm_inv_pow`). Then
+`NLAlib.ShiftedQR.regularize` writes only the matrix, the $k$ output pairs and the flag, and
+except with probability at most $\varphi_{\mathrm{se}} + \varphi/2$ ends in
+`NLAlib.ShiftedQR.RegularizeOutcome`: $\theta$-optimal shifts at distance at least $\eta/2$
+from the spectrum with $\mathbf{H}$ unchanged, or a decoupled perturbed unitary similarity with
+backward error $2.1\|\mathbf{H}\|_2((1 + x)^k - 1)$, $x = 300(n+1)^2\boldsymbol{u}$. -/
+theorem regularize_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I) {n : ℕ}
+    (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I) {law : ℕ → Measure ℝ} {s₀ : ℕ}
+    {β φse : ℝ} (hSE : IsRandomSmallEig law s₀ β φse I) (hβ0 : 0 ≤ β) (hφse : 0 ≤ φse)
+    (hD : IsPolarDiskSampler s₀ I) (hU : law s₀ = volume.restrict (Set.Icc 0 1)) {k : ℕ}
+    (hk0 : 0 < k) (hk : k ≤ n) {a rd c thr s f : ℕ × ℕ}
+    (has : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock s.1 s.2 (2 * k)))
+    (haf : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock f.1 f.2 1))
+    (hsf : Fp.Disj (Store.inBlock s.1 s.2 (2 * k)) (Store.inBlock f.1 f.2 1))
+    (hio : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+      Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock f.1 f.2 1)
+        (Store.inBlock rd.1 rd.2 1 ⊔ Store.inBlock c.1 c.2 1 ⊔ Store.inBlock thr.1 thr.2 1))
+    {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {e : Fin (n + 1) → ℂ}
+    {B S ω R φ tv : ℝ} (hH : IsUpperHessenberg H) (hV : IsUnit V)
+    (hHV : H * V = V * Matrix.diagonal e) (hκ : pseudoConditionNumber V ≤ B)
+    (hBk : B ^ ((2 : ℝ) / k) ≤ 2) (hω : 0 < ω) (hψ : ω ≤ hessenbergPotential k H)
+    (hSH : specNorm H ≤ S) (hgap : ∀ i j, i ≠ j → 2 * ω ^ 2 / S ≤ ‖e i - e j‖)
+    (hR : 0 < R) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
+    (hβ : β + R + 2 * u * (S + β + R) ≤ ω ^ 2 / (20 * 101 * S))
+    (hdη : 4 * u * (S + β + R) ≤ R * √(φ / (2 * k))) (hnu : (n + 1 : ℝ) * u ≤ 1 / 2500)
+    (huo : 30000 * k * (((n + 1 : ℕ) : ℝ) * √((n + 1 : ℕ) : ℝ) * u) * ((2 + 2 * 1.1) * S) ^ k ≤
+      (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹) * ω) ^ k)
+    (huo1 : 100000 * ((n + 1 + k : ℕ) : ℝ) ^ 2 * u ≤ 1)
+    (hxu : 300 * (n + 1) ^ 2 * u ≤
+      (16 * B)⁻¹ * (R * √(φ / (2 * k)) / 2 / ((2 + 2 * 1.1) * S)) ^ k)
+    (hbound : (66 + 2 * 1.1) * B * S * ((2 + 2 * 1.1) * S / (R * √(φ / (2 * k)) / 2)) ^ k *
+      √(n + 1) * (300 * (n + 1) ^ 2 * u) ≤ ω / 2)
+    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) :
+    PWrites law I (regularize (O := O) (Q := Q)).body
+      (Env.frame [n + 1, k] [a, rd, c, thr, a, s, f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔
+        Store.inBlock f.1 f.2 1)
+      (fun m => m.Live [a, rd, c, thr, s, f] ∧ HoldsMatrix a H m.store ∧
+        m.store.get rd.1 rd.2 = some R ∧ m.store.get c.1 c.2 = some
+          (0.999 * (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) ^ k) ∧
+        m.store.get thr.1 thr.2 = some tv ∧ s.2 + 2 * k ≤ m.store.len s.1 ∧
+        f.2 < m.store.len f.1)
+      (RegularizeOutcome k H e u (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) *
+        (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) (R * √(φ / (2 * k)) / 2) tv
+        ((1 + 1.1) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a s f)
+      (φse + φ / 2) := by
+  have hφ0 : 0 ≤ φse + φ / 2 := by positivity
+  have e : (regularize (O := O) (Q := Q)).body = Stmt.allocs [.const 2 * (.var 1 * .var 1),
+      .const 2, .const 1, .const 2 * (.var 0 * .var 0), .const 2 * .var 1, .const 2 * .var 1,
+      .const 5] (.frame [.var 0, .var 1] [⟨0, .var 2⟩, ⟨1, .var 3⟩, ⟨2, .var 4⟩, ⟨3, .var 5⟩,
+        ⟨7, .const 0⟩, ⟨8, .const 0⟩, ⟨9, .const 0⟩, ⟨10, .const 0⟩, ⟨11, .const 0⟩,
+        ⟨12, .const 0⟩, ⟨13, .const 0⟩, ⟨0, .var 2⟩, ⟨5, .var 7⟩, ⟨6, .var 8⟩]
+        (regularizeWithScratch (O := O) (Q := Q)).body) := rfl
+  rw [e]
+  refine PWrites.allocs rfl (Pre₁ := fun L μ => RegularizeViews L n k a rd c thr s f ∧
+    RegularizeCtx L k H R
+      (0.999 * (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) ^ k) tv
+      a rd c thr s f μ) ?_ ?_ fun L => ?_
+  · rintro m s₁ ⟨hl, hA, hrd, hc, hthr, hrs, hrf⟩ hlen hlens hBelow
+    have hlv : a.1 < m.store.length ∧ rd.1 < m.store.length ∧ c.1 < m.store.length ∧
+        thr.1 < m.store.length ∧ s.1 < m.store.length ∧ f.1 < m.store.length := by
+      simpa [Mem.Live] using hl
+    obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hlv
+    have hl7 := fun i (hi : i < 7) => hlens i (by simpa using hi)
+    refine ⟨⟨⟨h1, h2, h3, h4, h5, h6⟩, has, haf, hsf, hio⟩, hA.of_below hBelow h1,
+      hBelow.get_of h2 hrd, hBelow.get_of h3 hc, hBelow.get_of h4 hthr,
+      by rw [(hBelow s.1 h5).1]; exact hrs, by rw [(hBelow f.1 h6).1]; exact hrf,
+      by simpa using hlen, ?_⟩
+    simpa using ⟨hl7 0 (by norm_num), hl7 1 (by norm_num), hl7 2 (by norm_num),
+      hl7 3 (by norm_num), hl7 4 (by norm_num), hl7 5 (by norm_num), hl7 6 (by norm_num)⟩
+  · rintro m ⟨hl, -⟩ st st' p hBelow hout
+    have hlv : a.1 < m.store.length ∧ s.1 < m.store.length ∧ f.1 < m.store.length := by
+      simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,
+        forall_eq] at hl
+      exact ⟨hl.1, hl.2.2.2.2.1, hl.2.2.2.2.2⟩
+    obtain ⟨h1, h5, h6⟩ := hlv
+    rcases hout with ⟨hF, hA, zs, hzs, hrest⟩ | ⟨hF, H', hsim, hH', hA, hdec⟩
+    · exact Or.inl ⟨hBelow.get_of h6 hF, hA.of_below hBelow h1, zs,
+        hBelow.readBlock_of h5 hzs, hrest⟩
+    · exact Or.inr ⟨hBelow.get_of h6 hF, H', hsim, hH', hA.of_below hBelow h1, hdec⟩
+  · by_cases hvL : RegularizeViews L n k a rd c thr s f
+    · refine ((regularizeWithScratch_pwrites hI hloc hS hM hu1 hL hNat hC hSE hβ0 hφse hD hU hk0
+        hk hvL hH hV hHV hκ hBk hω hψ hSH hgap hR hφ hφ1 hβ hdη hnu huo huo1 hxu hbound
+        hthrω).in_frame rfl rfl ?_).mono (fun _ h => h.2) (by fp_sub) (fun _ h => h) le_rfl
+      rintro μ ⟨-, -, -, -, -, -, hlen, -⟩
+      obtain ⟨⟨h1, h2, h3, h4, h5, h6⟩, -⟩ := hvL
+      simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,
+        forall_eq, hlen]
+      omega
+    · exact PWrites.of_writes hφ0 fun _ _ h => absurd h.1 hvL
+
+
 end Assembly
 
 end NLAlib.ShiftedQR

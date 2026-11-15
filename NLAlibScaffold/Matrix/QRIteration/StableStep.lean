@@ -209,7 +209,7 @@ private theorem aeval_shiftPoly_mul_eq_mul_aeval {A B X : Matrix (Fin (n + 1)) (
 
 /-- A shift polynomial is bounded by the product of its factors: $\|p(\mathbf{B})\|_2 \le D^m$
 when $\|\mathbf{B} - s\mathbf{I}\|_2 \le D$ for every shift. -/
-private theorem specNorm_aeval_shiftPoly_le {B : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {D : ℝ}
+theorem specNorm_aeval_shiftPoly_le {B : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {D : ℝ}
     {ss : List ℂ} (hB : ∀ s ∈ ss, specNorm (B - s • (1 : Matrix _ _ ℂ)) ≤ D) :
     specNorm (Polynomial.aeval B (shiftPoly ss)) ≤ D ^ ss.length := by
   induction ss with

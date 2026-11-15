@@ -336,3 +336,56 @@ theorem shTestStep_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS :
 end Test
 
 end NLAlib.ShiftedQR
+
+namespace NLAlib.ShiftedQR
+
+open Ops
+
+variable {n : ℕ}
+
+/-- **The accepted branch of the `comptau` test decouples or contracts**
+([BanksGarzaVargasSrivastava2022, proof of Lemma 5.4]): under the hypotheses of
+`NLAlib.IsStableQRChain.exists_norm_subdiag_lt_or_potential_pow_mul_le` for the shift $r$ (with
+$x = 300(n+1)^2\boldsymbol{u}$), $2 \le k \le n$, $10^5k\boldsymbol{u} \le 1$, $\gamma \le 1$, a
+threshold word $t \ge (1 + \boldsymbol{u})^2\omega^2$, a computed $t_c$ within $0.001$,
+relatively, of $\|\mathbf{e}_n^{\mathsf T}(\mathbf{H} - r)^{-k}\|^{-1}$ and below the rounded
+threshold `NLAlib.ShiftedQR.optimalThresholdWord` with the word $(1 - \gamma)^k$, the computed
+step $\widehat{\mathbf{H}}$ has a bottom subdiagonal entry passing the scan, or
+$\psi_k(\widehat{\mathbf{H}}) \le 1.002(1 - \gamma)\psi_k(\mathbf{H})$. -/
+theorem shAccept_decoupled_or_contract {M : Machine ℝ} {u C B S d ω γ tv tc : ℝ}
+    (hM : StdModel u id M) {k : ℕ} {H H' V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {e : Fin (n + 1) → ℂ} {r : ℂ} {Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)}
+    (hch : IsStableQRChain (300 * (n + 1) ^ 2 * u) H (List.replicate k r) H' Rs)
+    (hk : 2 ≤ k) (hkn : k ≤ n) (hku : 100000 * k * u ≤ 1) (hC : 0 ≤ C) (hd : 0 < d)
+    (hω : 0 < ω) (hH0 : H ≠ 0) (hH : IsUpperHessenberg H) (hV : IsUnit V)
+    (hHV : H * V = V * Matrix.diagonal e) (hκ : pseudoConditionNumber V ≤ B)
+    (hS : specNorm H ≤ S) (hr : ‖r‖ ≤ C * specNorm H) (hdist : ∀ i, d ≤ ‖e i - r‖)
+    (hxu : 300 * (n + 1) ^ 2 * u ≤ (16 * B)⁻¹ * (d / ((2 + 2 * C) * S)) ^ k)
+    (hbound : (66 + 2 * C) * B * S * ((2 + 2 * C) * S / d) ^ k * √(n + 1) *
+      (300 * (n + 1) ^ 2 * u) ≤ 0.001 * ω)
+    (hγ1 : γ ≤ 1) (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv)
+    (htc : |tc - ‖WithLp.toLp 2 ((Polynomial.aeval H
+      (shiftPoly (List.replicate k r)))⁻¹ (Fin.last n))‖⁻¹| ≤ 0.001 * ‖WithLp.toLp 2
+        ((Polynomial.aeval H (shiftPoly (List.replicate k r)))⁻¹ (Fin.last n))‖⁻¹)
+    (hlt : tc < optimalThresholdWord M H k ((1 - γ) ^ k)) :
+    (∃ i : Fin n, n ≤ (i : ℕ) + k ∧ (1 - u) ^ 2 * ‖H' i.succ i.castSucc‖ ^ 2 ≤ tv) ∨
+      hessenbergPotential k H' ≤ 1.002 * (1 - γ) * hessenbergPotential k H := by
+  have hu0 := hM.roundoff_nonneg
+  have hk0 : 0 < k := by omega
+  have hk2 : (2 : ℝ) ≤ k := by exact_mod_cast hk
+  have hne : ∀ i, e i ≠ r := fun i he => by
+    have := hdist i; rw [he, sub_self, norm_zero] at this; linarith
+  have hN := norm_toLp_inv_aeval_replicate_last_pos hV hHV hne k
+  rcases hch.exists_norm_subdiag_lt_or_potential_pow_mul_le (by positivity) hC hd hω hk0 hkn hH0
+    hH hV hHV hκ hS hr hdist hxu hbound with ⟨i, hik, hi⟩ | hpot
+  · refine Or.inl ⟨i, hik, ?_⟩
+    have h1 : (1 - u) ^ 2 ≤ (1 + u) ^ 2 := by nlinarith
+    have h2 : ‖H' i.succ i.castSucc‖ ^ 2 ≤ ω ^ 2 := pow_le_pow_left₀ (norm_nonneg _) hi.le 2
+    nlinarith [sq_nonneg (1 - u), sq_nonneg ‖H' i.succ i.castSucc‖]
+  · refine Or.inr (potential_contract_of_comptau_lt hk hu0 hku hγ1
+      (hessenbergPotential_nonneg k H) (hessenbergPotential_nonneg k H') hN htc ?_ hlt hpot)
+    have := abs_optimalThresholdWord_sub_le hM hk0 hkn (by nlinarith) (c := (1 - γ) ^ k)
+      (pow_nonneg (by linarith) k) H
+    simpa [mul_pow] using this
+
+end NLAlib.ShiftedQR

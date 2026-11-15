@@ -9,8 +9,7 @@ public import Mathlib.Analysis.SpecialFunctions.Log.Base
 public import NLAlib.Ops.Confined
 public import NLAlib.Ops.MonomialWork
 public import NLAlib.Ops.Static
-public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedDecouple
-public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedPrecision
+public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedDecoupleSpec
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedTheoremsBits
 
 /-!
@@ -162,7 +161,43 @@ theorem roundedShQR_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Interp 
     P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQR (O := O) (Q := Q)).body
       (Env.frame (shqrDims n k B Γ S δ φ) [a, t, p, out, f]) (shqrFp n a out f)
       (ShQRSpectrum out f H δ) μ} ≤ φ := by
-  sorry
+  have hu0 := hM.roundoff_nonneg
+  have hB : 1 ≤ B := (one_le_pseudoConditionNumber hV.ne_zero).trans hκ
+  have hSp : 0 < S := hδ.trans_le hδS
+  obtain ⟨-, -, SR, IT⟩ := shqrParams_spec hB hΓ hδ hδS hφ hφ1 hk hu0 hu hβse0 hse
+  -- explicit, so that the contract's own implicit binders stay bound
+  have hD := @roundedDecouple_randomDecouplingContract_of_le_uShQR O Q _ _ _ _ _ _ Mch I u hI win
+    hloc hS hM hL n hNat hC hQ law sU βse φse hSE hDisk hU k B Γ S δ φ hB hΓ hδ hδS hφ hφ1 hk
+    hβse0 hse hφse0 hu
+  have hLeaf := @IsRandomSmallEig.randomLeafContract O Q _ law sU βse φse I hSE hβse0
+  have hE := shqrLoopError_le_shqrDecoupleError (n := n) (k := k) (B := B) (Γ := Γ) (δ := δ)
+    hSp.le hu0
+  set E := (shqrCap n B Γ S δ : ℝ) *
+    ((1 + shqrC k (4 * B)) * (4 * S) * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) with hEdef
+  have hE0 : 0 ≤ E := by
+    have := shqrC_pos k (by linarith : 0 < 4 * B)
+    have : 1 ≤ (1 + 300 * ((n : ℝ) + 1) ^ 2 * u) ^ k := one_le_pow₀ (by nlinarith)
+    have : 0 ≤ (1 + 300 * ((n : ℝ) + 1) ^ 2 * u) ^ k - 1 := by linarith
+    positivity
+  have hφ₁ := shqrSmallEigFailure_pos (n := n) (B := B) (Γ := Γ) (S := S) (δ := δ) hφ
+  have hφD : 0 ≤ (shqrCap n B Γ S δ : ℝ) * (φse + shqrRegularizeFailure n B Γ S δ φ / 2 +
+      shqrSmallEigFailure n B Γ S δ φ) := by unfold shqrRegularizeFailure; positivity
+  have hc := SR.hc
+  have hN : specNorm H + 2 * (n + 1) * (shqrCut n k B Γ S δ φ + E + βse) ≤ 2 * S := by
+    have := SR.hN₀; nlinarith
+  have hsm : 2 * (n + 1) * (shqrCut n k B Γ S δ φ + E + βse) ≤ Γ / (16 * (n + 1) * B) := by
+    have := SR.hsmall; nlinarith
+  have hδ' : 2 * (n + 1) * (shqrCut n k B Γ S δ φ + E + βse) ≤ δ := by
+    have := SR.hδ; nlinarith
+  obtain ⟨hl, hr, ha, hA, ht, hp⟩ := hin
+  have h := solveRounded_measureReal_not_spectrum_le hS hM hu0 SR.hu1 hL hNat hQ hC hI hloc _ hD
+    _ hLeaf hφD hφse0 hHess hV hHV hκ hΓ hgap SR.hfind SR.hcut hc hβse0 hE0 hN hsm hl hr ha hA
+    ht hp hξ
+  have := hξ.isProbabilityMeasure
+  refine le_trans ?_ (h.trans (IT.hfail φse hφse0 hφse))
+  refine measureReal_mono fun ω' hω' hW => hω' ?_
+  exact hW.mono le_rfl fun μ' _ ⟨hf, roots, E', hO, hE', hR⟩ =>
+    ⟨hf, roots, E', hO, hE'.trans hδ', hR⟩
 
 /-- **The rounded shifted QR algorithm terminates on every tape** (T1d): under the hypotheses of
 `NLAlib.ShiftedQR.roundedShQR_measureReal_not_spectrum_le` other than those on the randomness
@@ -245,14 +280,31 @@ theorem roundedShQR_relative {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQR (O := O) (Q := Q)).body
       (Env.frame (shqrDims n k B Γ S (δ * S / c) φ) [a, t, p, out, f]) (shqrFp n a out f)
       (ShQRSpectrum out f H (δ * specNorm H)) μ} ≤ φ := by
-  sorry
+  have hc0 : 0 < c := by linarith
+  have h1 : 0 < δ * S / c := by positivity
+  have h2 : δ * S / c ≤ S := by rw [div_le_iff₀ hc0]; nlinarith
+  have h3 : δ * S / c ≤ δ * specNorm H := by rw [div_le_iff₀ hc0]; nlinarith
+  have hT := roundedShQR_measureReal_not_spectrum_le hS hM hL hNat hQ hC hI hloc hSE hDisk hU
+    hHess hV hHV hκ hΓ hgap hHS h1 h2 hφ hφ1 hk hβse0 hse hφse0 hφse hu hin hξ
+  have := hξ.isProbabilityMeasure
+  refine le_trans ?_ hT
+  refine measureReal_mono fun ω' hω' hW => hω' ?_
+  exact hW.mono le_rfl fun μ' _ ⟨hf, roots, E, hO, hE, hR⟩ => ⟨hf, roots, E, hO, hE.trans h3, hR⟩
 
 /-- **Hermitian inputs** (T4; [BanksGarzaVargasSrivastava2022, Remark 1.7], at $B = 1$): for a
-Hermitian upper Hessenberg (tridiagonal) $\mathbf{H}$ with eigenvalues separated by $\Gamma > 0$
-no diagonalization is supplied: the unitary one has condition $1$, so the run at $B = 1$ and
-$k$ the degree of (eqn:setk) at $4$ meets the bound of
-`NLAlib.ShiftedQR.roundedShQR_measureReal_not_spectrum_le`. The paper's $k = 2$ for Hermitian
-inputs is not this degree and is not claimed. -/
+Hermitian upper Hessenberg (tridiagonal) $\mathbf{H}$ of order $n + 1$ with eigenvalues separated
+by $\Gamma > 0$, $\|\mathbf{H}\|_2 \le \Sigma$, $0 < \delta \le \Sigma$, $0 < \varphi \le 1$, and
+the machine, kernels and tape law of `NLAlib.ShiftedQR.roundedShQR_measureReal_not_spectrum_le` at
+$B = 1$, no diagonalization is supplied: the unitary eigenvector matrix has condition $1$. So the
+run with the parameter words at $B = 1$ fails to write only the matrix, the output and the
+failure word, set the failure word to $0$ and store all eigenvalues of some $\mathbf{H} +
+\mathbf{E}$, $\|\mathbf{E}\|_2 \le \delta$, with probability at most $\varphi$.
+
+The shift degree is $k = 128$, the degree of (eqn:setk) at $4$: the paper's own (eqn:setk) gives
+$k = 64$ at its $B \ge 2\kappa_V = 2$, and the two-level class bookkeeping (the worklist at
+condition $2B$, the iterates at $4B$) adds one more doubling. The paper's $k = 2$ for Hermitian
+inputs is a different algorithm (exact Ritz values), not $\mathrm{Sh}_{k,B}$ under (eqn:setk),
+and is not claimed. -/
 theorem roundedShQR_hermitian {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
     (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
@@ -270,7 +322,21 @@ theorem roundedShQR_hermitian {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQR (O := O) (Q := Q)).body
       (Env.frame (shqrDims n k 1 Γ S δ φ) [a, t, p, out, f]) (shqrFp n a out f)
       (ShQRSpectrum out f H δ) μ} ≤ φ := by
-  sorry
+  set U := (hH.eigenvectorUnitary : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+  have hUo : HasOrthonormalCols U := hH.hasOrthonormalCols_eigenvectorUnitary
+  have hHU : H * U = U * Matrix.diagonal fun i => (hH.eigenvalues i : ℂ) := by
+    have h := hH.spectral_theorem
+    rw [Unitary.conjStarAlgAut_apply] at h
+    refine (congrArg (· * U) h).trans ?_
+    rw [Matrix.mul_assoc, Unitary.coe_star_mul_self, Matrix.mul_one]
+    rfl
+  have hgap' : ∀ i j, i ≠ j → Γ ≤ ‖(hH.eigenvalues i : ℂ) - (hH.eigenvalues j : ℂ)‖ := by
+    intro i j hij
+    rw [← Complex.ofReal_sub, Complex.norm_real, Real.norm_eq_abs]
+    exact hgap i j hij
+  exact roundedShQR_measureReal_not_spectrum_le hS hM hL hNat hQ hC hI hloc hSE hDisk hU hHess
+    hUo.isUnit hHU hUo.pseudoConditionNumber_eq_one.le hΓ hgap' hHS hδ hδS hφ hφ1
+    (by rw [mul_one]; exact hk) hβse0 hse hφse0 hφse hu hin hξ
 
 /-- **The operation count** (T5): there is an absolute constant $c$ such that the static count
 (`NLAlib.Ops.stmtCost`; every counted run on every tape stays within it,

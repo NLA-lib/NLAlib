@@ -438,7 +438,7 @@ theorem one_le_uShQR_mul (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ) (hδS : δ
   have hk4 : (4 : ℝ) ≤ k := hk ▸ (shqrDegree_facts hB4).1
   have hk1 : 1 ≤ k := by exact_mod_cast (show (1 : ℝ) ≤ k by linarith)
   have hkB : (k : ℝ) ≤ 512 * (4 * B) ^ 2 := hk ▸ shqrDegree_le hB4
-  have hε : 1 / 100 ≤ shqrEps k (4 * B) := hk ▸ one_div_hundred_le_shqrEps hB4
+  have hε : 1 / 100 ≤ shqrEps k (4 * B) := hk ▸ shqrEps_ge hB4
   have hC : shqrC k (4 * B) ≤ 7 := hk ▸ shqrC_le hB4
   have hC0 := shqrC_pos k (by linarith : (0 : ℝ) < 4 * B)
   have hθ1 := one_le_shqrTheta k hB4

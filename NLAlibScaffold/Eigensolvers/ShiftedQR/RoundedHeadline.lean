@@ -5,8 +5,11 @@ Authors: NLAlib contributors
 -/
 module
 
+public import Mathlib.MeasureTheory.Constructions.BorelSpace.Complex
+public import NLAlib.ForMathlib.MeasureTheory.Matrix
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedSolve
-public import NLAlibScaffold.Ops.Logic.Probabilistic
+public import NLAlibScaffold.Matrix.Perturbation.BackwardClosed
+public import NLAlibScaffold.Ops.Logic.ProbabilisticFamily
 
 /-!
 # The rounded deflation worklist with randomized routines
@@ -93,9 +96,363 @@ def RandomLeafContract (law : ℕ → Measure ℝ) (β φ : ℝ) (L : Impl O Q) 
         IsEigenvalueListing (B + F) roots ∧
         HoldsMatrix o (Matrix.of fun i (_ : Fin 1) => roots i) μ'.store) φ
 
+/-! ### Measurable outcomes of the randomized calls -/
+
+/-- The complex matrix read entrywise from the pair-codec block at `b` (column-major, real and
+imaginary parts in adjacent words), with an uninitialised word read as $0$. -/
+def storedMatrix (b : ℕ × ℕ) (rows cols : ℕ) (s : Store ℝ) : Matrix (Fin rows) (Fin cols) ℂ :=
+  Matrix.of fun i j => ⟨(s.get b.1 (b.2 + 2 * (j * rows + i))).getD 0,
+    (s.get b.1 (b.2 + 2 * (j * rows + i) + 1)).getD 0⟩
+
+/-- A stored matrix is the matrix read from its block. -/
+theorem HoldsMatrix.eq_storedMatrix {rows cols : ℕ} {b : ℕ × ℕ}
+    {A : Matrix (Fin rows) (Fin cols) ℂ} {s : Store ℝ} (h : HoldsMatrix b A s) :
+    A = storedMatrix b rows cols s := by
+  ext i j
+  apply Complex.ext <;> simp [storedMatrix, h.get_re i j, h.get_im i j]
+
+/-- A block whose words are all initialised holds the matrix read from it. -/
+theorem holdsMatrix_storedMatrix {rows cols : ℕ} {b : ℕ × ℕ} {s : Store ℝ}
+    (h : ∀ j < 2 * (cols * rows), (s.get b.1 (b.2 + j)).isSome) :
+    HoldsMatrix b (storedMatrix b rows cols s) s := by
+  let xs := List.ofFn fun j : Fin (2 * (cols * rows)) => (s.get b.1 (b.2 + j)).getD 0
+  have hr : s.readBlock b.1 b.2 (2 * (cols * rows)) = some xs := by
+    refine Store.readBlock_eq_some_iff.mpr ⟨by simp [xs], fun j hj => ?_⟩
+    obtain ⟨v, hv⟩ := Option.isSome_iff_exists.mp (h j hj)
+    simp [xs, hv, hj]
+  let A₀ : Matrix (Fin rows) (Fin cols) ℂ :=
+    decodeMatrix id ((EntryCodec.pair ℝ).matrix rows cols xs)
+  have hw : matrixWords A₀ = xs := by
+    have hcomponents : (A₀.map fun z => (z.re, z.im)) = (EntryCodec.pair ℝ).matrix rows cols xs :=
+      by ext i j <;> rfl
+    unfold matrixWords
+    rw [hcomponents]
+    exact (EntryCodec.pair ℝ).packFinMatrix_matrix rows cols xs (by
+      simp only [xs, List.length_ofFn]
+      ring)
+  have hA₀ : HoldsMatrix b A₀ s := by
+    rw [HoldsMatrix, hw]
+    exact hr
+  rwa [← hA₀.eq_storedMatrix]
+
+/-- The matrix read from a block is a measurable function of the memory. -/
+theorem measurable_storedMatrix (b : ℕ × ℕ) (rows cols : ℕ) :
+    Measurable fun m : Mem ℝ => storedMatrix b rows cols m.store := by
+  have hw : ∀ z : ℕ × ℕ, Measurable fun m : Mem ℝ => (m.store.get z.1 z.2).getD 0 :=
+    fun z => measurable_snd.comp (Mem.measurable_cell z)
+  refine Matrix.measurable_iff.mpr fun i j => ?_
+  have := (Complex.equivRealProdCLM.symm.continuous.measurable).comp
+    ((hw (b.1, b.2 + 2 * (j * rows + i))).prodMk (hw (b.1, b.2 + 2 * (j * rows + i) + 1)))
+  convert this using 1
+  funext m
+  apply Complex.ext <;> simp [storedMatrix]
+
+/-- The memories whose first `N` words of the block at `b` are initialised. -/
+theorem measurableSet_forall_isSome (b : ℕ × ℕ) (N : ℕ) :
+    MeasurableSet {m : Mem ℝ | ∀ j < N, (m.store.get b.1 (b.2 + j)).isSome} := by
+  have e : {m : Mem ℝ | ∀ j < N, (m.store.get b.1 (b.2 + j)).isSome} =
+      ⋂ j : Fin N, {m | (m.store.get b.1 (b.2 + j)).isSome} := by
+    ext m
+    simp only [Set.mem_ofPred_eq, Set.mem_iInter]
+    exact ⟨fun h j => h j j.isLt, fun h j hj => h ⟨j, hj⟩⟩
+  rw [e]
+  exact .iInter fun j =>
+    (measurable_fst.comp (Mem.measurable_cell (b.1, b.2 + j))) (measurableSet_singleton true)
+
+/-- The outcomes of a decoupling call that the worklist uses, as pairs of a memory before and
+after: the frame `F`, the flag $0$, an initialised work matrix, and the matrix read after is an
+upper Hessenberg perturbed unitary similarity with error $\varepsilon$ of the matrix read before,
+with a bottom-$k$ subdiagonal entry of modulus at most $\omega$. They form a measurable set. -/
+theorem measurableSet_decoupleOutcome (d k : ℕ) (ε ω : ℝ) (w f : ℕ × ℕ) (F : Fp) :
+    MeasurableSet {x : Mem ℝ × Mem ℝ | x.1.store.EqOff F x.2.store ∧
+      x.2.store.get f.1 f.2 = some 0 ∧
+      (∀ j < 2 * ((d + 1) * (d + 1)), (x.2.store.get w.1 (w.2 + j)).isSome) ∧
+      IsPerturbedUnitarySimilar (storedMatrix w (d + 1) (d + 1) x.1.store)
+        (storedMatrix w (d + 1) (d + 1) x.2.store) ε ∧
+      IsUpperHessenberg (storedMatrix w (d + 1) (d + 1) x.2.store) ∧
+      ∃ i : Fin d, d ≤ (i : ℕ) + k ∧
+        ‖storedMatrix w (d + 1) (d + 1) x.2.store i.succ i.castSucc‖ ≤ ω} := by
+  have hm := measurable_storedMatrix w (d + 1) (d + 1)
+  have hpair : Measurable fun x : Mem ℝ × Mem ℝ =>
+      (storedMatrix w (d + 1) (d + 1) x.1.store, storedMatrix w (d + 1) (d + 1) x.2.store) :=
+    (hm.comp measurable_fst).prodMk (hm.comp measurable_snd)
+  have hent (i j : Fin (d + 1)) : Measurable fun x : Mem ℝ × Mem ℝ =>
+      storedMatrix w (d + 1) (d + 1) x.2.store i j :=
+    (Matrix.measurable_apply i j).comp (hm.comp measurable_snd)
+  simp only [Set.ofPred_and]
+  refine (Mem.measurableSet_eqOff F).inter ((measurable_snd (Mem.measurableSet_get_eq f 0)).inter
+    ((measurable_snd (measurableSet_forall_isSome w _)).inter
+      (((isClosed_setOf_isPerturbedUnitarySimilar ε).measurableSet.preimage hpair).inter
+        ((?_ : MeasurableSet _).inter ?_))))
+  · simp only [IsUpperHessenberg, Set.ofPred_forall]
+    refine .iInter fun i => .iInter fun j => ?_
+    by_cases hij : (j : ℕ) + 1 < i
+    · simpa [hij] using measurableSet_eq_fun (hent i j) measurable_const
+    · simp [hij]
+  · simp only [Set.ofPred_exists, Set.ofPred_and]
+    exact .iUnion fun i => (MeasurableSet.const _).inter
+      (measurableSet_le (hent _ _).norm measurable_const)
+
+/-- The outcomes of a leaf call that the worklist uses, as pairs of a memory before and after:
+the frame `F`, an initialised output column of $d$ complex words at `o`, and the column read after
+lists the eigenvalues of the matrix read at `w` before plus some $\|\mathbf{F}\|_2 \le \beta$.
+They form a measurable set. -/
+theorem measurableSet_leafOutcome (d : ℕ) (β : ℝ) (w o : ℕ × ℕ) (F : Fp) :
+    MeasurableSet {x : Mem ℝ × Mem ℝ | x.1.store.EqOff F x.2.store ∧
+      (∀ j < 2 * (1 * d), (x.2.store.get o.1 (o.2 + j)).isSome) ∧
+      ∃ G : Matrix (Fin d) (Fin d) ℂ, specNorm G ≤ β ∧
+        IsEigenvalueListing (storedMatrix w d d x.1.store + G)
+          (fun i => storedMatrix o d 1 x.2.store i 0)} := by
+  have hcol : Measurable fun x : Mem ℝ × Mem ℝ => fun i => storedMatrix o d 1 x.2.store i 0 :=
+    measurable_pi_lambda _ fun i =>
+      (Matrix.measurable_apply i (0 : Fin 1)).comp ((measurable_storedMatrix o d 1).comp
+        measurable_snd)
+  have hpair : Measurable fun x : Mem ℝ × Mem ℝ =>
+      (storedMatrix w d d x.1.store, fun i => storedMatrix o d 1 x.2.store i 0) :=
+    ((measurable_storedMatrix w d d).comp measurable_fst).prodMk hcol
+  have hC : MeasurableSet {p : Matrix (Fin d) (Fin d) ℂ × (Fin d → ℂ) |
+      ∃ G : Matrix (Fin d) (Fin d) ℂ, specNorm G ≤ β ∧ IsEigenvalueListing (p.1 + G) p.2} :=
+    (isClosed_setOf_exists_specNorm_le_isEigenvalueListing β).measurableSet
+  exact (Mem.measurableSet_eqOff F).inter ((measurable_snd (measurableSet_forall_isSome o _)).inter
+    (hpair hC))
+
+/-- The state of the rounded worklist before round `j` on the good tapes: a state of
+`NLAlib.ShiftedQR.RoundedWorklistState` that has not failed, at a matrix reached from
+$\mathbf{H}_0$ by a perturbed unitary similarity with error $j e$. -/
+def RoundedReached {n : ℕ} (H₀ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (e thr : ℝ) (ps : List ℝ)
+    (a t p st out w r f : ℕ × ℕ) (j : ℕ) (μ : Mem ℝ) : Prop :=
+  ∃ M, IsPerturbedUnitarySimilar H₀ M (j * e) ∧
+    RoundedWorklistState False H₀ e thr ps a t p st out w r f j M μ
+
+/-- The state of round `j` on the good tapes after the pop of the range $(lo, d)$ and the copy
+of its block to the work matrix, at a matrix reached from $\mathbf{H}_0$ with error $j e$. -/
+def RoundedCopied {n : ℕ} (H₀ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (e thr : ℝ) (ps : List ℝ)
+    (a t p st out w r f : ℕ × ℕ) (j lo d : ℕ) (μ : Mem ℝ) : Prop :=
+  ∃ (M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (rest done : List (ℕ × ℕ))
+    (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (roots : Fin (n + 1) → ℂ),
+    IsPerturbedUnitarySimilar H₀ M (j * e) ∧
+      RoundedPopped H₀ e thr ps a t p st out w r f j M lo d rest done A roots μ ∧
+      HoldsMatrix w (subBlock A (lo, d)) μ.store
+
 section Theorems
 
 variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q]
+
+omit [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
+/-- **The leaf call of a round on the good tapes**: from a copied state of round $j$, a leaf
+routine meeting `NLAlib.ShiftedQR.RandomLeafContract` with error $\beta \le e$ reaches the state
+before round $j + 1$, except with probability at most $\varphi_L$. -/
+theorem roundedLeaf_pwrites {I : Interp O Q ℝ} (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
+    (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ} {β φL : ℝ} (L : Impl O Q)
+    (hLeaf : RandomLeafContract law β φL L I) {n j lo d : ℕ} {a t p st out w r f : ℕ × ℕ}
+    {H₀ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {e thr : ℝ} {ps : List ℝ} (hβe : β ≤ e) :
+    PWrites law I L.body (Env.frame [d] [w, (out.1, out.2 + 2 * lo)])
+      (Store.inBlock out.1 (out.2 + 2 * lo) (2 * d))
+      (RoundedCopied H₀ e thr ps a t p st out w r f j lo d)
+      (RoundedReached H₀ e thr ps a t p st out w r f (j + 1)) φL := by
+  have hst := PWrites.pstep_of_forall (ι := {B : Matrix (Fin d) (Fin d) ℂ // IsUpperHessenberg B})
+    hI hloc (fun x => hLeaf (w := w) (o := (out.1, out.2 + 2 * lo)) x.1 x.2)
+    (measurableSet_leafOutcome d β w (out.1, out.2 + 2 * lo)
+      (Store.inBlock out.1 (out.2 + 2 * lo) (2 * d))) ?_
+  · refine PStep.mono hst (fun μ ⟨M, rest, done, A, roots, _, hP, hW⟩ => ?_)
+      (fun μ μ' ⟨M, rest, done, A, roots, hHM, hP, hW⟩ ⟨hfr, hinit, G, hG, hList⟩ => ?_) le_rfl
+    · have hr := hP.2.2.2.2.2.1.active_block (r := (lo, d)) List.mem_cons_self
+      exact ⟨⟨subBlock A (lo, d), hr.2.2⟩, hW, hP.leaf_operands⟩
+    · rw [← hW.eq_storedMatrix] at hList
+      have hcol : (Matrix.of fun i (_ : Fin 1) =>
+          storedMatrix (out.1, out.2 + 2 * lo) d 1 μ'.store i 0) =
+          storedMatrix (out.1, out.2 + 2 * lo) d 1 μ'.store := by
+        ext i k
+        fin_cases k
+        rfl
+      obtain ⟨M', hMM', hcore⟩ := roundedLeaf_core hP hβe hfr
+        ⟨_, G, hG, hList, hcol ▸ holdsMatrix_storedMatrix hinit⟩
+      refine ⟨hfr, M', (hHM.trans hMM').mono (le_of_eq (by push_cast; ring)),
+        RoundedWorklistState.of_core hP.1 hP.2.1 hP.2.2.1 hfr ?_ hcore⟩
+      have hr := hP.2.2.2.2.2.1.active_block (r := (lo, d)) List.mem_cons_self
+      have := hr.2.1
+      fp_sub [roundedWorklistFp]
+  · rintro x μ μ' ⟨hH, -, -, -⟩ hfr ⟨roots, G, hG, hList, hO⟩
+    refine ⟨hfr, fun i hi => by rw [Store.get_of_readBlock hO hi 0]; rfl, G, hG, ?_⟩
+    have hroots : (fun i => storedMatrix (out.1, out.2 + 2 * lo) d 1 μ'.store i 0) = roots := by
+      funext i
+      rw [← hO.eq_storedMatrix]
+      rfl
+    rw [← hH.eq_storedMatrix, hroots]
+    exact hList
+
+omit [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
+/-- **The decoupling call of a round on the good tapes**: from a copied state of round
+$j < 2(n + 1)$ on the range $(lo, d + 1)$, $d \ge k$, the copied block is in the decoupler's class
+(norm at most $N_0$, condition at most $2B$, separation $g/2$, by
+`NLAlib.DeflationInv.exists_pseudoConditionNumber_subBlock_le_and_le_norm_sub`), so a decoupler
+meeting `NLAlib.ShiftedQR.RandomDecouplingContract` returns, except with probability at most
+$\varphi_D$, the flag $0$ and an upper Hessenberg perturbed unitary similarity of the block with
+error $\varepsilon(N_0)$ and a bottom-$k$ subdiagonal entry of modulus at most $\omega$. -/
+theorem roundedDecouple_pwrites {I : Interp O Q ℝ} (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
+    (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ} {B g φD : ℝ} {k F : ℕ}
+    {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} (D : Impl O Q)
+    (hD : RandomDecouplingContract law (2 * B) (g / 2) φD k F ps ω ε D I) {n j lo d : ℕ}
+    {a t p st out w r f : ℕ × ℕ} {H₀ V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {dd : Fin (n + 1) → ℂ} {e thr N₀ : ℝ} (hV : IsUnit V)
+    (hHV : H₀ * V = V * Matrix.diagonal dd) (hκ : pseudoConditionNumber V ≤ B) (hg : 0 < g)
+    (hgap : ∀ i j, i ≠ j → g ≤ ‖dd i - dd j‖) (hk : k ≤ d) (he0 : 0 ≤ e)
+    (hN₀ : specNorm H₀ + 2 * (n + 1) * e ≤ N₀)
+    (hsmall : 2 * (n + 1) * e ≤ g / (16 * (n + 1) * B)) (hj : j < 2 * (n + 1)) :
+    PWrites law I D.body (Env.frame [d + 1, k, ps.length, F] [w, p, w, f])
+      (Store.inBlock w.1 w.2 (2 * ((d + 1) * (d + 1))) ⊔ Store.inBlock f.1 f.2 1)
+      (RoundedCopied H₀ e thr ps a t p st out w r f j lo (d + 1))
+      (fun μ₁ => ∃ (μ : Mem ℝ) (M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+        (rest done : List (ℕ × ℕ)) (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+        (roots : Fin (n + 1) → ℂ), IsPerturbedUnitarySimilar H₀ M (j * e) ∧
+        RoundedPopped H₀ e thr ps a t p st out w r f j M lo (d + 1) rest done A roots μ ∧
+        μ.store.EqOff (Store.inBlock w.1 w.2 (2 * ((d + 1) * (d + 1))) ⊔
+          Store.inBlock f.1 f.2 1) μ₁.store ∧
+        μ₁.store.get f.1 f.2 = some 0 ∧
+        ∃ H' : Matrix (Fin (d + 1)) (Fin (d + 1)) ℂ,
+          IsPerturbedUnitarySimilar (subBlock A (lo, d + 1)) H' (ε N₀) ∧
+          IsUpperHessenberg H' ∧ (∃ i : Fin d, d ≤ (i : ℕ) + k ∧ ‖H' i.succ i.castSucc‖ ≤ ω) ∧
+          HoldsMatrix w H' μ₁.store) φD := by
+  let ι := {H : Matrix (Fin (d + 1)) (Fin (d + 1)) ℂ // IsUpperHessenberg H ∧ specNorm H ≤ N₀ ∧
+    ∃ (Vr : Matrix (Fin (d + 1)) (Fin (d + 1)) ℂ) (dr : Fin (d + 1) → ℂ), IsUnit Vr ∧
+      H * Vr = Vr * Matrix.diagonal dr ∧ pseudoConditionNumber Vr ≤ 2 * B ∧
+      ∀ i j, i ≠ j → g / 2 ≤ ‖dr i - dr j‖}
+  have hst := PWrites.pstep_of_forall hI hloc (fun x : ι =>
+    have hx := x.2.2.2.choose_spec.choose_spec
+    hD (n := d) (N := N₀) (w := w) (q := p) (f := f) x.1 _ _ hk x.2.1 x.2.2.1 hx.1 hx.2.1
+      hx.2.2.1 hx.2.2.2)
+    (measurableSet_decoupleOutcome d k (ε N₀) ω w f
+      (Store.inBlock w.1 w.2 (2 * ((d + 1) * (d + 1))) ⊔ Store.inBlock f.1 f.2 1)) ?_
+  · refine PStep.mono hst (fun μ ⟨M, rest, done, A, roots, hHM, hP, hW⟩ => ?_)
+      (fun μ μ' ⟨M, rest, done, A, roots, hHM, hP, hW⟩
+        ⟨hfr, hf0, hinit, hPUS, hHess, hsm⟩ => ?_) le_rfl
+    · obtain ⟨hHess, hnorm, hp, hlD, hroomW, hroomF, hWF, hPWF⟩ := hP.decouple_operands he0 hN₀ hj
+      have hInv := hP.2.2.2.2.2.1.of_isPerturbedUnitarySimilar hHM
+      have hje : (j : ℝ) * e + 0 ≤ g / (16 * (n + 1) * B) := by
+        have : (j : ℝ) * e ≤ 2 * (n + 1) * e :=
+          mul_le_mul_of_nonneg_right (by exact_mod_cast hj.le) he0
+        linarith
+      obtain ⟨Vr, dr, hVr, hHVr, hκr, hgr⟩ :=
+        hInv.exists_pseudoConditionNumber_subBlock_le_and_le_norm_sub hV hHV hκ hg hgap hje
+          (r := (lo, d + 1)) List.mem_cons_self
+      exact ⟨⟨subBlock A (lo, d + 1), hHess, hnorm, Vr, dr, hVr, hHVr, hκr, hgr⟩,
+        hW, hp, hlD, hroomW, hroomF, hWF, hPWF⟩
+    · rw [← hW.eq_storedMatrix] at hPUS
+      exact ⟨hfr, μ, M, rest, done, A, roots, hHM, hP, hfr, hf0, _, hPUS, hHess, hsm,
+        holdsMatrix_storedMatrix hinit⟩
+  · rintro x μ μ' ⟨hH, -⟩ hfr ⟨hf0, H', hPUS, hHess, hsm, hW'⟩
+    rw [hH.eq_storedMatrix, hW'.eq_storedMatrix] at hPUS
+    rw [hW'.eq_storedMatrix] at hHess hsm
+    exact ⟨hfr, hf0, fun i hi => by rw [Store.get_of_readBlock hW' hi 0]; rfl, hPUS, hHess, hsm⟩
+
+/-- **The large branch of a round on the good tapes**: from a copied state of round
+$j < 2(n + 1)$ on the range $(lo, d + 1)$, $d \ge k$, the decoupling call
+(`NLAlib.ShiftedQR.roundedDecouple_pwrites`) and the deterministic rest of the branch
+(`NLAlib.ShiftedQR.roundedLargeTail_writes`) reach the state before round $j + 1$, except with
+probability at most $\varphi_D$. -/
+theorem roundedLarge_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu : 0 ≤ u) (hu1 : u < 1)
+    (hL : IsIndexLit Mch I) {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
+    (hC : IsCmp id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
+    (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ} {B g φD : ℝ} {k F : ℕ}
+    {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} (D : Impl O Q)
+    (hD : RandomDecouplingContract law (2 * B) (g / 2) φD k F ps ω ε D I) {j lo d : ℕ}
+    {a t p st out w r f : ℕ × ℕ} {H₀ V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {dd : Fin (n + 1) → ℂ} {e thr c N₀ : ℝ} (hV : IsUnit V)
+    (hHV : H₀ * V = V * Matrix.diagonal dd) (hκ : pseudoConditionNumber V ≤ B) (hg : 0 < g)
+    (hgap : ∀ i j, i ≠ j → g ≤ ‖dd i - dd j‖) (hd : lo + (d + 1) ≤ n + 1) (hk : k ≤ d)
+    (hfind : (1 + u) ^ 2 * ω ^ 2 ≤ thr) (hcut : thr ≤ (1 - u) ^ 2 * c ^ 2) (hc : 0 ≤ c)
+    (he : c + ε N₀ ≤ e) (he0 : 0 ≤ e) (hN₀ : specNorm H₀ + 2 * (n + 1) * e ≤ N₀)
+    (hsmall : 2 * (n + 1) * e ≤ g / (16 * (n + 1) * B)) (hj : j < 2 * (n + 1)) :
+    PWrites law I (roundedProcessLarge D).body
+      (Env.frame [n + 1, k, ps.length, F, lo, d + 1] [a, t, p, st, out, w, r, f])
+      (roundedWorklistFp (n + 1) a st out w r f)
+      (RoundedCopied H₀ e thr ps a t p st out w r f j lo (d + 1))
+      (RoundedReached H₀ e thr ps a t p st out w r f (j + 1)) φD := by
+  have hD' := roundedDecouple_pwrites (a := a) (t := t) (p := p) (st := st) (out := out) (w := w) (r := r) (f := f)
+    (lo := lo) (thr := thr) hI hloc D hD hV hHV hκ hg hgap hk he0 hN₀ hsmall hj
+  have hsq := Nat.mul_le_mul (show d + 1 ≤ n + 1 by omega) (show d + 1 ≤ n + 1 by omega)
+  unfold roundedProcessLarge
+  refine (PWrites.seq hI hloc le_rfl (hD'.in_frame rfl rfl
+    fun μ ⟨_, _, _, _, _, _, hP, _⟩ => hP.1.live_of_subset (by simp))
+    (PWrites.of_writes (F := roundedWorklistFp (n + 1) a st out w r f) le_rfl
+      fun μ₁ τ hμ₁ => ?_)).mono (fun _ h => h) (by fp_sub [roundedWorklistFp]) (fun _ h => h)
+    (by simp)
+  obtain ⟨μ, M, rest, done, A, roots, hHM, hP, hfr, hf0, H', h1, h2, h3, h4⟩ := hμ₁
+  refine (roundedLargeTail_writes hS hM hu hu1 hL hNat hQ hC D (fails := False) (tape := τ) hP hk
+    hfind hcut hc he he0 hfr (Or.inr ⟨hf0, H', h1, h2, h3, h4⟩)).mono le_rfl ?_
+  rintro μ' hfr' ⟨M', hMM', hcore⟩
+  exact ⟨M', (hHM.trans hMM').mono (le_of_eq (by push_cast; ring)),
+    RoundedWorklistState.of_core hP.1 hP.2.1 hP.2.2.1 (hfr.trans' hfr')
+      (by fp_sub [roundedWorklistFp]) hcore⟩
+
+/-- **Processing a popped range on the good tapes**: from a popped state of round
+$j < 2(n + 1)$ on the range $(lo, d)$, $lo + d \le n + 1$, the copy, then the leaf call
+(order at most $k$) or the large branch reach the state before round $j + 1$, except with
+probability at most $\varphi_L + \varphi_D$. -/
+theorem roundedRange_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu : 0 ≤ u) (hu1 : u < 1)
+    (hL : IsIndexLit Mch I) {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
+    (hC : IsCmp id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
+    (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ} {B g φD β φL : ℝ} {k F : ℕ}
+    {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} (D : Impl O Q)
+    (hD : RandomDecouplingContract law (2 * B) (g / 2) φD k F ps ω ε D I)
+    (L : Impl O Q) (hLeaf : RandomLeafContract law β φL L I) (hφD : 0 ≤ φD) (hφL : 0 ≤ φL)
+    {j lo d : ℕ} {a t p st out w r f : ℕ × ℕ} {H₀ V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {dd : Fin (n + 1) → ℂ} {e thr c N₀ : ℝ} (hV : IsUnit V)
+    (hHV : H₀ * V = V * Matrix.diagonal dd) (hκ : pseudoConditionNumber V ≤ B) (hg : 0 < g)
+    (hgap : ∀ i j, i ≠ j → g ≤ ‖dd i - dd j‖) (hd : lo + d ≤ n + 1)
+    (hfind : (1 + u) ^ 2 * ω ^ 2 ≤ thr) (hcut : thr ≤ (1 - u) ^ 2 * c ^ 2) (hc : 0 ≤ c)
+    (hβ : 0 ≤ β) (hε0 : 0 ≤ ε N₀) (he : c + ε N₀ + β ≤ e)
+    (hN₀ : specNorm H₀ + 2 * (n + 1) * e ≤ N₀)
+    (hsmall : 2 * (n + 1) * e ≤ g / (16 * (n + 1) * B)) (hj : j < 2 * (n + 1)) :
+    PWrites law I (roundedProcessRange D L).body
+      (Env.frame [n + 1, k, ps.length, F, lo, d] [a, t, p, st, out, w, r, f])
+      (roundedWorklistFp (n + 1) a st out w r f)
+      (fun μ => ∃ (M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (rest done : List (ℕ × ℕ))
+        (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (roots : Fin (n + 1) → ℂ),
+        IsPerturbedUnitarySimilar H₀ M (j * e) ∧
+          RoundedPopped H₀ e thr ps a t p st out w r f j M lo d rest done A roots μ)
+      (RoundedReached H₀ e thr ps a t p st out w r f (j + 1)) (φL + φD) := by
+  have hsq := Nat.mul_le_mul (show d ≤ n + 1 by omega) (show d ≤ n + 1 by omega)
+  have hcopy : ∀ ds args, IExp.evalList
+      (Env.frame [n + 1, k, ps.length, F, lo, d] [a, t, p, st, out, w, r, f]).idx ds =
+        some [n + 1, lo, d] →
+      Operand.evalList (Env.frame [n + 1, k, ps.length, F, lo, d] [a, t, p, st, out, w, r, f])
+        args = some [a, w] →
+      PWrites law I (Stmt.frame ds args (copyToWork (Op := O) (Tst := Q)).body)
+        (Env.frame [n + 1, k, ps.length, F, lo, d] [a, t, p, st, out, w, r, f])
+        (Store.inBlock w.1 w.2 (2 * (d * d)))
+        (fun μ => ∃ (M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (rest done : List (ℕ × ℕ))
+          (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (roots : Fin (n + 1) → ℂ),
+          IsPerturbedUnitarySimilar H₀ M (j * e) ∧
+            RoundedPopped H₀ e thr ps a t p st out w r f j M lo d rest done A roots μ)
+        (RoundedCopied H₀ e thr ps a t p st out w r f j lo d) 0 := fun ds args hds hargs =>
+    PWrites.of_writes le_rfl fun μ τ ⟨M, rest, done, A, roots, hHM, hP⟩ =>
+      ((hP.writes_copyToWork (tape := τ) hS).in_frame hds hargs
+        (hP.1.live_of_subset (by simp))).mono le_rfl fun μ₁ _ ⟨hP₁, hW₁⟩ =>
+          ⟨M, rest, done, A, roots, hHM, hP₁, hW₁⟩
+  unfold roundedProcessRange
+  by_cases hs : d ≤ k
+  · refine (PWrites.seq hI hloc (by positivity) (hcopy _ _ rfl rfl) (PWrites.seq hI hloc hφD
+      (PWrites.ifPos (n := k + 1 - d) rfl hφL
+        (fun _ => (roundedLeaf_pwrites hI hloc L hLeaf (show β ≤ e by linarith) (a := a) (t := t)
+          (p := p) (st := st) (out := out) (w := w) (r := r) (f := f) (H₀ := H₀) (thr := thr)
+          (ps := ps) (j := j) (lo := lo) (d := d)).in_frame
+          rfl rfl fun μ ⟨_, _, _, _, _, _, hP, _⟩ => hP.leaf_operands.1)
+        (fun h0 => absurd h0 (by omega)))
+      (PWrites.ifPos (F := ⊥) (n := d - k) rfl hφD (fun h => absurd h (by omega))
+        fun _ _ h => h))).mono
+      (fun _ h => h) (by fp_sub [roundedWorklistFp]) (fun _ h => h) (by simp)
+  · obtain ⟨d', rfl⟩ : ∃ d', d = d' + 1 := ⟨d - 1, by omega⟩
+    refine (PWrites.seq hI hloc (by positivity) (hcopy _ _ rfl rfl) (PWrites.seq hI hloc hφD
+      (PWrites.ifPos (F := ⊥) (n := k + 1 - (d' + 1)) rfl hφL (fun h => absurd h (by omega))
+        fun _ _ h => h)
+      (PWrites.ifPos (n := d' + 1 - k) rfl hφD (fun _ => (roundedLarge_pwrites hS hM hu hu1 hL hNat hQ hC hI hloc
+        D hD hV hHV hκ hg hgap hd (by omega) hfind hcut hc (by linarith) (by linarith) hN₀
+        hsmall hj).in_frame rfl rfl fun μ ⟨_, _, _, _, _, _, hP, _⟩ => hP.1.live)
+        (fun h0 => absurd h0 (by omega))))).mono
+      (fun _ h => h) (by fp_sub [roundedWorklistFp]) (fun _ h => h) (by simp)
 
 /-- **The rounded worklist with randomized routines** ([BanksGarzaVargasSrivastava2022,
 Theorem 6.3], the worklist with the probability of success): on a machine with the standard model

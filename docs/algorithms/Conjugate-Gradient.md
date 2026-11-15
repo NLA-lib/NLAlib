@@ -168,12 +168,35 @@ matvec allowance is derived from the scalar roundoff and dimension, and the theo
 the resulting common-error and accumulated-precision inequalities explicitly. Full instruction,
 work, span, scratch and resident-memory bounds are recomputed after both lowerings.
 
-The scalar standard model remains distinct from a finite-format model with overflow and
-underflow. This certificate establishes standard-model stored execution, rather than native
-IEEE execution. PCG has rounded zero-start initialization, active-step contracts, and
-one-step `PCGRun` extraction with actual stored outputs. Spectral windows, precision and a
-nonzero RHS supply that first step's guards. These results do not assert a total arbitrary-cap
-rounded PCG solver. The reorthogonalized CG canonical certificates currently cover exact arithmetic.
+The [rounded stored PCG certificate](../../NLAlib/Krylov/CG/HSPCG/FinitePrecision/StoredCertificate.lean)
+executes a capped zero-start variant using both supplied raw matrices. Initialization copies
+`b` into `r`, applies the actual rounded inverse preconditioner to form `z`, and copies `z`
+into `p`. A scoped scalar stores `dot(r,z)`. Each round tests that scalar, executes the existing
+PCG step, and refreshes the scalar. Repeated dots on identical operands agree because the
+scalar implementation has a functional contract; a relative-error interval alone would not
+establish this identity. The extra cache refresh is an executed, counted dot product.
+
+For spectral intervals `[a,aUpper]` and `[p,pUpper]`, let `kappaA = aUpper/a` and
+`kappaP = pUpper/p`. The common error allowance `E` bounds scalar division, sequential BLAS,
+and both dense operator errors. The sufficient continuation conditions include
+
+```text
+6*E*aUpper <= a
+6*E*pUpper <= p
+E*(1024*kappaA*kappaP)^(cap+1) <= 1/2
+```
+
+Together with positive lower endpoints and `E <= 1/100`, these input assumptions justify all
+divisions. They do not assume a successful run or a nonzero search direction along its
+trajectory. Early exit implies a zero computed residual; reaching the cap returns the actual
+prefix without asserting convergence. The zero RHS and zero cap are included. The geometric
+precision window is conservative: it permits positive rounding error for every finite cap,
+but is too restrictive to represent a practical long-run tolerance. The returned physical
+vectors match the existing `PCGRun`, so its numerical analysis applies to the same output.
+
+These scalar standard-model certificates describe arithmetic without finite-format overflow
+or underflow; native IEEE execution requires a corresponding finite-format model. The
+reorthogonalized CG canonical certificates currently cover exact arithmetic.
 
 ## Checked sources
 
@@ -190,5 +213,7 @@ rounded PCG solver. The reorthogonalized CG canonical certificates currently cov
 
 - Rounded stored scalar carried CG: [canonical certificate](../../NLAlib/Krylov/CG/HSCG/Carried/FinitePrecision/StoredCertificate.lean),
   [actual stored word theorem](../../NLAlib/Krylov/CG/HSCG/Carried/FinitePrecision/StoredWords.lean).
-- Rounded PCG local execution: [initialization](../../NLAlib/Krylov/CG/HSPCG/FinitePrecision/Initialization.lean),
-  [active step](../../NLAlib/Krylov/CG/HSPCG/FinitePrecision/Step.lean).
+- Rounded stored scalar PCG: [canonical certificate](../../NLAlib/Krylov/CG/HSPCG/FinitePrecision/StoredCertificate.lean),
+  [total solver](../../NLAlib/Krylov/CG/HSPCG/FinitePrecision/Solve.lean),
+  [continuation from input precision](../../NLAlib/Krylov/FinitePrecision/PCGContinuationPrecision.lean),
+  [functional dot evidence](../../NLAlib/Krylov/CG/HSPCG/FinitePrecision/Pairing.lean).

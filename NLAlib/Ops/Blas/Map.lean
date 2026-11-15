@@ -10,15 +10,16 @@ public import NLAlib.Ops.Tactic
 public import NLAlib.Ops.Catalog.Scalar
 
 /-!
-# Unary scalar maps over stored vectors
+# Scalar maps over stored vectors
 
-A unary scalar operation applied independently to a vector is one counted loop. Its proof
-uses only the scalar block function, so negation, conversion, and other unary operations reuse
-the same memory argument.
+Unary and binary scalar operations applied independently to vectors are counted loops. Their
+proofs use only the scalar block functions, so arithmetic and conversion kernels reuse the
+same memory argument, including exact in-place aliases.
 
 ## Main results
 
-* `NLAlib.Ops.unaryMap` is the implementation of a unary operation over a vector.
+* `NLAlib.Ops.unaryMap` and `NLAlib.Ops.binaryMap` implement pointwise scalar maps.
+* `NLAlib.Ops.writes_binaryMap` permits exact aliases or disjoint input/output views.
 * `NLAlib.Ops.wp_unaryMap_of_disj_or_eq` permits disjoint regions of the same arena buffer.
 * `NLAlib.Ops.wp_unaryMap` identifies the complete updated memory for distinct buffers or
   exactly in-place operands, from the operation's functional contract.
@@ -102,5 +103,57 @@ theorem wp_unaryMap {o : Op} {f : K → K} {I : Interp Op Tst K}
     (hQ : Q (m.updBlock y (xs.map f))) :
     Wp md I τ (unaryMap o).body (Env.frame [n] [x, y]) Q m :=
   wp_unaryMap_of_disj_or_eq hI (hxy.imp Fp.disj_inBlock_of_ne id) hx hy hQ
+
+/-- Apply one binary scalar operation to corresponding entries of two stored vectors.
+The output may be exactly either input, or spatially disjoint from it. -/
+def binaryMap (o : Op) : Impl Op Tst where
+  nd := 1
+  nin := 2
+  nout := 1
+  body := .loop (.var 0) (.call o []
+    [⟨0, .var 1 + .var 4⟩, ⟨1, .var 2 + .var 4⟩] [⟨2, .var 3 + .var 4⟩])
+
+/-- A binary map performs one declared scalar call per output word. -/
+theorem stmtCost_binaryMap (o : Op) (n x y z : ℕ) :
+    stmtCost (binaryMap (Tst := Tst) o).body [n, x, y, z] = n • Count.one o [] := by
+  simp [binaryMap, stmtCost, useCost]
+
+/-- The only workspace of a binary map is the workspace of its scalar operation. -/
+theorem stmtPeak_binaryMap_le (o : Op) (W : Op → List ℕ → ℕ) (n x y z : ℕ) :
+    stmtPeak W (binaryMap (Tst := Tst) o).body [n, x, y, z] ≤ W o [] := by
+  simp only [binaryMap, stmtPeak]
+  exact Finset.sup_le fun _ _ => le_rfl
+
+omit [Inhabited K] in
+/-- A binary scalar map writes its pointwise mathematical result. Exact aliases and
+spatially separate input/output views are admitted independently for both inputs. -/
+theorem writes_binaryMap {o : Op} {f : K → K → K} {I : Interp Op Tst K}
+    (hI : I.IsFn .total o (.bin fun x y => some (f x y)) AnyOperands)
+    {τ : Tape K} {m : Mem K} {n : ℕ} {x y z : ℕ × ℕ} {vx vy : ℕ → K}
+    (hx : m.store.HoldsVec x.1 x.2 n vx) (hy : m.store.HoldsVec y.1 y.2 n vy)
+    (hz : z.2 + n ≤ m.store.len z.1)
+    (hxz : Fp.Disj (Store.inBlock x.1 x.2 n) (Store.inBlock z.1 z.2 n) ∨ x = z)
+    (hyz : Fp.Disj (Store.inBlock y.1 y.2 n) (Store.inBlock z.1 z.2 n) ∨ y = z) :
+    Writes .total I τ (binaryMap (Tst := Tst) o).body (Env.frame [n] [x, y, z])
+      (Store.inBlock z.1 z.2 n)
+      (fun m' => m'.store.HoldsVec z.1 z.2 n (fun i => f (vx i) (vy i)) ∧ m'.pos = m.pos) m := by
+  refine writes_fill rfl (fun i => f (vx i) (vy i)) (fun _ => m.pos) rfl
+    fun i hi m' hfr _ hpos => ?_
+  have hread (a : ℕ × ℕ) (v : ℕ → K) (ha : m.store.HoldsVec a.1 a.2 n v)
+      (haz : Fp.Disj (Store.inBlock a.1 a.2 n) (Store.inBlock z.1 z.2 n) ∨ a = z) :
+      m'.store.get a.1 (a.2 + i) = some (v i) := by
+    rw [hfr.get_eq ?_]
+    · exact ha i hi
+    · intro hw
+      rcases haz with hd | rfl
+      · exact hd _ _ ⟨rfl, by omega, by omega⟩
+          ⟨hw.1, hw.2.1, by have := hw.2.2; omega⟩
+      · rcases hw with ⟨_, h₁, h₂⟩
+        omega
+  have hroom : z.2 + i < m'.store.len z.1 := by rw [hfr.len_eq]; omega
+  refine wp_call_bin hI rfl rfl rfl trivial (hread x vx hx hxz) (hread y vy hy hyz)
+    rfl hroom ?_
+  exact ⟨(Store.EqOff.refl _ _).upd ⟨rfl, le_rfl, by omega⟩ _,
+    Store.get_upd_self hroom _, hpos⟩
 
 end NLAlib.Ops

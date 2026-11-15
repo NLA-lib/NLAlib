@@ -19,6 +19,8 @@ error bounds for the solution of a linear system in terms of the condition numbe
 ## Main results
 
 * `NLAlib.isUnit_one_sub_of_specNorm_lt_one`, `NLAlib.hasSum_pow_inv_one_sub`: the Neumann series.
+* `NLAlib.isUnit_one_add_of_specNorm_lt_one`, `NLAlib.pseudoConditionNumber_one_add_le`: a
+  perturbed identity and its condition number.
 * `NLAlib.isUnit_add_of_specNorm_inv_mul_lt_one`, `NLAlib.specNorm_inv_add_le`,
   `NLAlib.specNorm_inv_add_sub_inv_le`: perturbation of the inverse.
 * `NLAlib.norm_sub_le_specNorm_inv_mul_norm_sub_mulVec`: forward error from the residual.
@@ -86,6 +88,25 @@ theorem specNorm_inv_one_sub_sub_one_le {F : Matrix n n 𝕜} (h : specNorm F < 
   rw [he, div_eq_mul_inv]
   exact (specNorm_mul_le _ _).trans
     (mul_le_mul_of_nonneg_left (specNorm_inv_one_sub_le h) (specNorm_nonneg F))
+
+/-- If $\|\mathbf{Z}\|_2 < 1$ then $\mathbf{I} + \mathbf{Z}$ is invertible.
+[HornJohnson2013, Corollary 5.6.16]. -/
+theorem isUnit_one_add_of_specNorm_lt_one {Z : Matrix n n 𝕜} (h : specNorm Z < 1) :
+    IsUnit (1 + Z) := by
+  simpa only [sub_neg_eq_add] using
+    isUnit_one_sub_of_specNorm_lt_one (F := -Z) (by rwa [specNorm_neg])
+
+/-- **The condition number of a perturbed identity**: if $\|\mathbf{Z}\|_2 < 1$ then
+$\kappa(\mathbf{I} + \mathbf{Z}) \le (1 + \|\mathbf{Z}\|_2) / (1 - \|\mathbf{Z}\|_2)$.
+[GolubVanLoan2013, Theorem 2.3.4]. -/
+theorem pseudoConditionNumber_one_add_le {Z : Matrix n n 𝕜} (h : specNorm Z < 1) :
+    pseudoConditionNumber (1 + Z) ≤ (1 + specNorm Z) / (1 - specNorm Z) := by
+  rw [pseudoConditionNumber_of_isUnit (isUnit_one_add_of_specNorm_lt_one h), div_eq_mul_inv]
+  have h1 : specNorm (1 + Z) ≤ 1 + specNorm Z :=
+    (specNorm_add_le _ _).trans (add_le_add_left specNorm_one_le _)
+  have h2 := specNorm_inv_one_sub_le (F := -Z) (by rwa [specNorm_neg])
+  rw [sub_neg_eq_add, specNorm_neg] at h2
+  exact mul_le_mul h1 h2 (specNorm_nonneg _) (by linarith [specNorm_nonneg Z])
 
 /-! ### The inverse of a perturbed matrix -/
 

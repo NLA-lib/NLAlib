@@ -43,6 +43,14 @@ def decv (dec : K → ℝ) (n : ℕ) (xs : List K) : Fin n → ℝ := fun i => d
 theorem decv_ofFn {n : ℕ} (v : Fin n → ℝ) : decv id n (List.ofFn v) = v :=
   funext fun i => by simp [decv, vec, List.getD_eq_getElem?_getD]
 
+/-- Re-encoding a decoded real block of the declared length recovers its actual words. -/
+theorem ofFn_decv {n : ℕ} {xs : List ℝ} (hx : xs.length = n) :
+    List.ofFn (decv id n xs) = xs := by
+  apply List.ext_getElem
+  · simpa using hx.symm
+  · intro i hi hi'
+    simp [decv, vec, List.getD_eq_getElem?_getD, hi']
+
 /-- The dimensions match the matrix and input and output use different buffers. -/
 @[admNF] def MatvecOperands (m n : ℕ) : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop :=
   fun d ins outs => d = [m, n] ∧ ∀ x ∈ ins, ∀ y ∈ outs, x.1 ≠ y.1
@@ -132,15 +140,17 @@ def matvecFn {m n : ℕ} (kernel : (Fin n → K) → Fin m → K) : BlockFn K :=
 
 /-- A proved word-kernel accuracy bound supplies the declared rounded matvec contract.
 No memory/execution theorem is required from the backend author. -/
-theorem Interp.IsFn.meets_matvec_error {I : Interp Op Tst K} {o : Op} {m n : ℕ}
+theorem Interp.IsFn.meets_matvec_error_of_admission {I : Interp Op Tst K} {o : Op} {m n : ℕ}
     {A : Matrix (Fin m) (Fin n) ℝ} {dec : K → ℝ} {delta : ℝ}
     {kernel : (Fin n → K) → Fin m → K}
-    (h : I.IsFn .total o (matvecFn kernel) AnyOperands)
+    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop}
+    (h : I.IsFn .total o (matvecFn kernel) adm)
+    (hadm : ∀ d ins outs, MatvecOperands m n d ins outs → adm d ins outs)
     (hk : ∀ v : Fin n → K,
       ‖WithLp.toLp 2 (A *ᵥ (fun i => dec (v i)) - (fun i => dec (kernel v i)))‖ ≤
         delta * ‖WithLp.toLp 2 (fun i => dec (v i))‖) :
     I.Meets .total o ((matvecErrorRel dec A delta).spec (MatvecOperands m n)) := by
-  refine h.meets_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl)
+  refine h.meets_rel hadm rfl rfl (fun _ => rfl)
     (fun _ => rfl) (fun _ => rfl) ?_
   intro d w X μ ins outs hnd hw hadm hr hdom
   rcases hadm with ⟨rfl, _⟩
@@ -152,6 +162,18 @@ theorem Interp.IsFn.meets_matvec_error {I : Interp Op Tst K} {o : Op} {m n : ℕ
       delta * ‖WithLp.toLp 2 (decv dec n xs)‖
   rw [decv_ofFn_decode]
   exact hk (fun i => vec xs i)
+
+/-- A word-kernel accuracy bound transfers a functional primitive with unrestricted operand
+admission to the shaped rounded matrix-vector contract. -/
+theorem Interp.IsFn.meets_matvec_error {I : Interp Op Tst K} {o : Op} {m n : ℕ}
+    {A : Matrix (Fin m) (Fin n) ℝ} {dec : K → ℝ} {delta : ℝ}
+    {kernel : (Fin n → K) → Fin m → K}
+    (h : I.IsFn .total o (matvecFn kernel) AnyOperands)
+    (hk : ∀ v : Fin n → K,
+      ‖WithLp.toLp 2 (A *ᵥ (fun i => dec (v i)) - (fun i => dec (kernel v i)))‖ ≤
+        delta * ‖WithLp.toLp 2 (fun i => dec (v i))‖) :
+    I.Meets .total o ((matvecErrorRel dec A delta).spec (MatvecOperands m n)) :=
+  h.meets_matvec_error_of_admission (fun _ _ _ _ => trivial) hk
 
 /-- The block function for the exact real matrix-vector product. -/
 noncomputable def exactMatvecFn {m n : ℕ} (A : Matrix (Fin m) (Fin n) ℝ) : BlockFn ℝ :=

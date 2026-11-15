@@ -169,7 +169,7 @@ structure CGRun (n k : ℕ) where
 /-- The two spectral facts used for a symmetric matrix with spectrum in $[a, a']$, $a \ge 0$:
 $\|\mathbf{A}\|_2 \le a'$ and $a\|\mathbf{p}\|^2 \le \mathbf{p}^{\mathsf{T}}\mathbf{A}\mathbf{p}$,
 for a nonzero $\mathbf{p}$ (which makes the spectrum nonempty). -/
-private theorem specNorm_le_and_le_dotProduct {n : ℕ} {A : Matrix (Fin n) (Fin n) ℝ}
+theorem specNorm_le_and_le_dotProduct {n : ℕ} {A : Matrix (Fin n) (Fin n) ℝ}
     (hA : Aᵀ = A) {a a' : ℝ} (ha : 0 ≤ a) (hs : spectrum ℝ A ⊆ Set.Icc a a') {p : Fin n → ℝ}
     (hp : p ≠ 0) :
     a ≤ a' ∧ specNorm A ≤ a' ∧ a * ‖WithLp.toLp 2 p‖ ^ 2 ≤ p ⬝ᵥ (A *ᵥ p) := by

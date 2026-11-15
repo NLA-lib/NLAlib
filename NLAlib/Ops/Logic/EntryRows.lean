@@ -77,6 +77,20 @@ theorem disj_entryBlock_of_ne (C : EntryCodec K E) {b off i j : ℕ} (h : i ≠ 
   · exact C.disj_entryBlock_of_lt h
   · exact (C.disj_entryBlock_of_lt h).symm
 
+/-- Different finite matrix coordinates occupy disjoint physical entry blocks. The layout
+is dense column-major; entry width and arbitrary word offset are handled by the codec. -/
+theorem disj_entryBlock_matrix (C : EntryCodec K E) {rows cols b off : ℕ}
+    {i i' : Fin rows} {j j' : Fin cols} (hne : (i, j) ≠ (i', j')) :
+    Fp.Disj (C.entryBlock b off (j * rows + i))
+      (C.entryBlock b off (j' * rows + i')) := by
+  apply C.disj_entryBlock_of_ne
+  intro he
+  have hr := congrArg (fun q => q % rows) he
+  have hc := congrArg (fun q => q / rows) he
+  rw [Idx.mod_add i.isLt, Idx.mod_add i'.isLt] at hr
+  rw [Idx.div_add i.isLt, Idx.div_add i'.isLt] at hc
+  exact hne (Prod.ext (Fin.ext hr) (Fin.ext hc))
+
 /-- The entries already visited by a fill with column-dependent row counts. -/
 def regionUpto (C : EntryCodec K E) (b off : ℕ) (index : ℕ → ℕ → ℕ) (N : ℕ → ℕ) (j i : ℕ) : Fp :=
   fun b' x => ∃ r c, ((c < j ∧ r < N c) ∨ (c = j ∧ r < i)) ∧

@@ -44,6 +44,7 @@ that form; `positivity` knows `frobNorm`, so `gcongr` passes between a bound and
   Pythagoras.
 * `NLAlib.abs_frobInner_le`: Cauchy–Schwarz.
 * `NLAlib.frobInner_mul_left`, `NLAlib.frobInner_mul_right`: adjoints move across the pairing.
+* `NLAlib.frobNorm_le_sqrt_card_mul_of_forall_norm_toLp_col_le`: a bound from column norms.
 * `NLAlib.frobNorm_eq_norm`: the bridge to Mathlib's Frobenius norm.
 * `NLAlib.sum_rowNormSqDistribution`: the squared-row-norm weights
   $\|\mathbf{a}_i\|^2/\|\mathbf{A}\|_{\mathsf{F}}^2$ are a probability vector for
@@ -280,6 +281,21 @@ theorem frobNorm_sq_eq_sum_col (A : Matrix m n 𝕜) :
 theorem frobNorm_sq_eq_sum_row (A : Matrix m n 𝕜) :
     frobNorm A ^ 2 = ∑ i, ‖WithLp.toLp 2 (A.row i)‖ ^ 2 := by
   simp only [frobNorm_sq_eq_sum, EuclideanSpace.norm_sq_eq, Matrix.row_apply]
+
+/-- Columns of norm at most $c$ bound the Frobenius norm: if
+$\|\mathbf{A}_{:,j}\| \le c$ for every column, then
+$\|\mathbf{A}\|_{\mathsf{F}} \le \sqrt{\lvert n \rvert}\, c$. -/
+theorem frobNorm_le_sqrt_card_mul_of_forall_norm_toLp_col_le {A : Matrix m n 𝕜} {c : ℝ}
+    (h : ∀ j, ‖WithLp.toLp 2 (A.col j)‖ ≤ c) : frobNorm A ≤ √(Fintype.card n) * c := by
+  rcases isEmpty_or_nonempty n with hn | ⟨⟨j₀⟩⟩
+  · have h0 : frobNorm A ^ 2 = 0 := by simp [frobNorm_sq_eq_sum]
+    simp [pow_eq_zero_iff two_ne_zero |>.mp h0]
+  have hc : 0 ≤ c := (norm_nonneg _).trans (h j₀)
+  refine (pow_le_pow_iff_left₀ (frobNorm_nonneg A) (by positivity) two_ne_zero).mp ?_
+  rw [frobNorm_sq_eq_sum_col, mul_pow, Real.sq_sqrt (Nat.cast_nonneg _)]
+  calc ∑ j, ‖WithLp.toLp 2 (A.col j)‖ ^ 2 ≤ ∑ _j : n, c ^ 2 :=
+        Finset.sum_le_sum fun j _ => pow_le_pow_left₀ (norm_nonneg _) (h j) 2
+    _ = Fintype.card n * c ^ 2 := by rw [Finset.sum_const, nsmul_eq_mul, Finset.card_univ]
 
 open scoped Matrix.Norms.Frobenius in
 /-- Bridge to Mathlib: the Frobenius norm $\|\mathbf{A}\|_{\mathsf{F}}$ (`frobNorm`) is the

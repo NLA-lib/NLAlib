@@ -111,6 +111,38 @@ theorem of_total (h : Writes .total I τ c ρ F P m) : Writes md I τ c ρ F P m
 
 end Writes
 
+/-- Two total contracts with the same block shapes and input domain jointly describe the
+same output blocks when those blocks are apart. This combines an error relation with a
+functional word relation without assuming two independent executions agree. -/
+theorem Interp.Meets.and_rel {I : Interp Op Tst K} {o : Op} {R : BlockRel K}
+    {Q : List ℕ → List (List K) → List K → List (List K) → Prop}
+    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop}
+    (hR : I.Meets .total o (R.spec adm))
+    (hQ : I.Meets .total o ({ R with rel := Q }.spec adm))
+    (hap : ∀ d ins outs (m : Mem K),
+      adm d ins outs → m.Room outs (R.outLens d) → Fp.Apart outs (R.outLens d)) :
+    I.Meets .total o
+      ({ R with rel := fun d xs w ys => R.rel d xs w ys ∧ Q d xs w ys }.spec adm) := by
+  intro d ins outs τ m hp
+  obtain ⟨m', hc, xs, hr, hz, ys, hlen, hrel, hm⟩ := hR d ins outs τ m hp
+  obtain ⟨m'', hc', xs', hr', _, ys', hlen', hrel', hm'⟩ := hQ d ins outs τ m hp
+  have hxs : xs' = xs := Option.some.inj (hr'.symm.trans hr)
+  subst xs'
+  have hmem : m'' = m' := Option.some.inj (hc'.symm.trans hc)
+  have hys : ys' = ys := by
+    have hread := Mem.readBlocks_updBlocks (m := m) (ys := ys)
+      (by rw [hlen]; exact hap d ins outs m hp.2.1 hz) (by rwa [hlen])
+    have hread' := Mem.readBlocks_updBlocks (m := m) (ys := ys')
+      (by rw [hlen']; exact hap d ins outs m hp.2.1 hz) (by rwa [hlen'])
+    have heq : (m.updBlocks outs ys').store = (m.updBlocks outs ys).store := by
+      simpa only [hm, hm', Mem.advance] using congrArg Mem.store hmem
+    rw [hlen] at hread
+    rw [hlen'] at hread'
+    rw [Mem.readBlocks_congr heq] at hread'
+    exact Option.some.inj (hread'.symm.trans hread)
+  subst ys'
+  exact ⟨m', hc, xs, hr, hz, ys, hlen, ⟨hrel, hrel'⟩, hm⟩
+
 section Rules
 
 variable {md : Mode} {I : Interp Op Tst K} {τ : Tape K} {ρ : Env} {m : Mem K}

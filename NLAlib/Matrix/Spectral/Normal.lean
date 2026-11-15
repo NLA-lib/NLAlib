@@ -25,6 +25,8 @@ Frobenius distance (Hoffman–Wielandt).
 * `IsStarNormal.exists_eq_mul_diagonal_mul_conjTranspose_of_isEigenvalueListing`: with a prescribed
   order.
 * `IsStarNormal.isDiag_of_isUpperTriangular`.
+* `IsStarNormal.apply_eq_zero_of_blockTriangular`: normal block triangular matrices are
+  block diagonal.
 * `IsStarNormal.conjTranspose_mul_mul`: normality is invariant under unitary similarity.
 * `IsStarNormal.mul_eq_mul_iff_conjTranspose_mul_eq_mul_conjTranspose`: Fuglede–Putnam.
 * `IsStarNormal.exists_eq_mul_mul_conjTranspose_iff_charpoly_eq`: unitary similarity.
@@ -168,6 +170,62 @@ theorem eq_zero_of_isStarNormal_fromBlocks {A : Matrix m m 𝕜} {B : Matrix n n
   simp only [Matrix.conjTranspose_zero, Matrix.mul_zero, add_zero, Matrix.trace_add] at h11
   rw [Matrix.trace_mul_comm Aᴴ A, left_eq_add] at h11
   exact Matrix.trace_mul_conjTranspose_self_eq_zero_iff.mp h11
+
+/-- For a normal matrix, if the columns indexed by a finset `F` vanish outside `F`, then so do the
+rows indexed by `F`: compare the diagonal entries of $\mathbf{N}^{\mathsf H}\mathbf{N} =
+\mathbf{N}\mathbf{N}^{\mathsf H}$ summed over `F`. -/
+private lemma rowSpill_eq_zero {m : Type*} [Fintype m] {N : Matrix m m 𝕜}
+    (hN : IsStarNormal N) (F : Finset m) (hcol : ∀ x ∈ F, ∀ k ∉ F, N k x = 0) {x k : m}
+    (hx : x ∈ F) (hk : k ∉ F) : N x k = 0 := by
+  classical
+  have hdiag : ∀ y, ∑ l, star (N l y) * N l y = ∑ l, N y l * star (N y l) := fun y => by
+    have h := congrFun (congrFun hN.star_comm_self y) y
+    simpa [Matrix.mul_apply, Matrix.star_apply] using h
+  have hA : ∀ y ∈ F, ∑ l ∈ F, star (N l y) * N l y = ∑ l, star (N l y) * N l y := fun y hy =>
+    Finset.sum_subset (Finset.subset_univ F) fun l _ hl => by simp [hcol y hy l hl]
+  have key : ∑ y ∈ F, ∑ l ∈ Fᶜ, N y l * star (N y l) = 0 := by
+    have h5 : ∀ y ∈ F, ∑ l ∈ Fᶜ, N y l * star (N y l) =
+        (∑ l, N y l * star (N y l)) - ∑ l ∈ F, N y l * star (N y l) := fun y _ => by
+      rw [eq_sub_iff_add_eq, add_comm]
+      exact Finset.sum_add_sum_compl F _
+    have h1 : ∑ y ∈ F, ∑ l ∈ F, N y l * star (N y l) =
+        ∑ y ∈ F, ∑ l ∈ F, star (N l y) * N l y := by
+      rw [Finset.sum_comm]
+      exact Finset.sum_congr rfl fun y _ => Finset.sum_congr rfl fun l _ => mul_comm _ _
+    have h2 : ∑ y ∈ F, ∑ l, N y l * star (N y l) = ∑ y ∈ F, ∑ l ∈ F, star (N l y) * N l y := by
+      rw [Finset.sum_congr rfl fun y _ => (hdiag y).symm]
+      exact Finset.sum_congr rfl fun y hy => (hA y hy).symm
+    rw [Finset.sum_congr rfl h5, Finset.sum_sub_distrib, h2, h1, sub_self]
+  have hnn : ∀ y l : m, N y l * star (N y l) = ((‖N y l‖ ^ 2 : ℝ) : 𝕜) :=
+    fun y l => by rw [RCLike.star_def, RCLike.mul_conj, RCLike.ofReal_pow]
+  simp only [hnn] at key
+  have key2 : ∑ y ∈ F, ∑ l ∈ Fᶜ, ‖N y l‖ ^ 2 = 0 := by
+    have h := congrArg RCLike.re key
+    simpa only [map_sum, RCLike.ofReal_re, map_zero] using h
+  have hz := (Finset.sum_eq_zero_iff_of_nonneg fun y _ =>
+    Finset.sum_nonneg fun l _ => sq_nonneg ‖N y l‖).mp key2 x hx
+  have hz2 := (Finset.sum_eq_zero_iff_of_nonneg fun l _ => sq_nonneg ‖N x l‖).mp hz k
+    (Finset.mem_compl.mpr hk)
+  exact norm_eq_zero.mp (sq_eq_zero_iff.mp hz2)
+
+/-- A normal block triangular matrix is block diagonal: if $\mathbf{N}$ is normal and block
+upper triangular for the labels $b$, its entries between different blocks vanish. Compare the
+Frobenius norms of the first block row and the first block column of
+$\mathbf{N}^{\mathsf H}\mathbf{N} = \mathbf{N}\mathbf{N}^{\mathsf H}$ and induct on the labels; the
+block form of `IsStarNormal.isDiag_of_isUpperTriangular`. -/
+theorem _root_.IsStarNormal.apply_eq_zero_of_blockTriangular {m α : Type*} [Fintype m]
+    [LinearOrder α] {N : Matrix m m 𝕜} (hN : IsStarNormal N) {b : m → α}
+    (hb : N.BlockTriangular b) {i j : m} (hij : b i ≠ b j) : N i j = 0 := by
+  classical
+  rcases lt_or_gt_of_ne hij with h | h
+  · refine rowSpill_eq_zero hN (Finset.univ.filter fun k => b k ≤ b i) ?_
+      (Finset.mem_filter.mpr ⟨Finset.mem_univ _, le_rfl⟩) ?_
+    · intro x hx k hk
+      have hk' : b i < b k :=
+        not_le.mp fun h' => hk (Finset.mem_filter.mpr ⟨Finset.mem_univ _, h'⟩)
+      exact hb ((Finset.mem_filter.mp hx).2.trans_lt hk')
+    · exact fun hj => absurd (Finset.mem_filter.mp hj).2 (not_le.mpr h)
+  · exact hb h
 
 /-- A normal matrix with listed eigenvalues $\mathbf{d}$ is Hermitian exactly when the
 $\mathbf{d}_i$ are real. -/

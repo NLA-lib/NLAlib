@@ -113,6 +113,20 @@ theorem writes_call_const {o : Op} {v : K}
   exact ⟨(Store.EqOff.refl _ _).upd ⟨rfl, le_rfl, by omega⟩ _, rfl,
     Store.get_upd_self hz _⟩
 
+/-- A unary scalar call returns its known word with the ordinary cell footprint. Input and
+output may alias exactly; output capacity and the actual input read imply their liveness. -/
+theorem writes_call_un {o : Op} {g : K → Option K}
+    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop}
+    (hI : I.IsFn .total o (.un g) adm) {ins outs : List Operand} {x z : ℕ × ℕ}
+    (ha : Operand.evalList ρ ins = some [x]) (hb : Operand.evalList ρ outs = some [z])
+    (hadm : adm [] [x] [z]) {a v : K} (hx : m.store.get x.1 x.2 = some a)
+    (hg : g a = some v) (hz : z.2 < m.store.len z.1) :
+    Writes md I τ (.call o [] ins outs) ρ (Store.inBlock z.1 z.2 1)
+      (fun m' => m'.pos = m.pos ∧ m'.store.get z.1 z.2 = some v) m := by
+  apply wp_call_un hI rfl ha hb hadm hx hg hz
+  exact ⟨(Store.EqOff.refl _ _).upd ⟨rfl, le_rfl, by omega⟩ _, rfl,
+    Store.get_upd_self hz _⟩
+
 /-- A framed scalar result is an exact mathematical memory update. Algorithms can continue
 from that update without reproving cell extensionality or unfolding execution. -/
 theorem Writes.wp_eq_upd {c : Stmt Op Tst} {z : ℕ × ℕ} {v : K}

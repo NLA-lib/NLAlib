@@ -71,7 +71,7 @@ theorem step_writes_pcgRun_one {Op Tst : Type}
     (hS : IsScalar F I) (hF : StdModel u id F) (hB : IsBlas1 id ε ok I) (hok : ok n)
     (hOp : IsMatvec id A (em * specNorm A) I)
     (hOracle : I.IsFn .total (Tagged.inj Preconditioner OperatorOp.matvec)
-      (matvecFn O.mulVec) AnyOperands)
+      (matvecFn O.mulVec) (MatvecOperands n n))
     (hA : A.IsHermitian) (hP : P.PosDef) (hu : 0 ≤ u)
     (hd : 0 ≤ ε.dot n) (hv : 0 ≤ ε.axpy) (hem : em ≤ e) (hue : u ≤ e)
     (hde : ε.dot n ≤ e) (hve : ε.axpy ≤ e) (he : e ≤ 1 / 100)

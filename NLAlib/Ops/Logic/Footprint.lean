@@ -164,6 +164,30 @@ theorem disj_blocks_of_forall_getD (F : Fp) (zs : List (ℕ × ℕ)) (ls : List 
         simpa only [List.getD_cons_succ] using h (i + 1) (by simpa using hi)
       exact fun b q hf hb => hb.elim (hh b q hf) (ht b q hf)
 
+/-- Two selections from an apart operand collection are spatially disjoint whenever their
+source indices are distinct across the selections. Each selection can reorder or repeat its
+own members; the bound premises ensure that no list default becomes an operand. -/
+theorem Apart.disj_select {zs : List (ℕ × ℕ)} {ls : List ℕ} (h : Apart zs ls)
+    (left right : List ℕ)
+    (hleft : ∀ i ∈ left, i < min zs.length ls.length)
+    (hright : ∀ j ∈ right, j < min zs.length ls.length)
+    (hcross : List.Disjoint left right) :
+    Disj (blocks (left.map fun i => zs.getD i (0, 0)) (left.map fun i => ls.getD i 0))
+      (blocks (right.map fun i => zs.getD i (0, 0)) (right.map fun i => ls.getD i 0)) := by
+  apply disj_blocks_of_forall_getD
+  intro j hj
+  apply Disj.symm
+  apply disj_blocks_of_forall_getD
+  intro i hi
+  have hi' : i < left.length := by simpa using hi
+  have hj' : j < right.length := by simpa using hj
+  have hli := List.getElem_mem hi'
+  have hrj := List.getElem_mem hj'
+  have hd := h.disj_getD (hleft _ hli) (hright _ hrj) (List.disjoint_iff_ne.mp hcross _ hli _ hrj)
+  simpa only [List.getD_eq_getElem?_getD, List.getElem?_map,
+    List.getElem?_eq_getElem hi', List.getElem?_eq_getElem hj',
+    Option.map_some, Option.getD_some] using hd.symm
+
 /-- A standard apart-block collection can be constructed from its indexed pairwise spatial
 facts. Combined with indexed projection, this supports reshaping buffer collections and
 refining arena blocks into scalar or matrix subviews without bespoke list inductions. -/

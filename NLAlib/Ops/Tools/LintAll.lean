@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public meta import NLAlib.Ops.Tools.Lint
+public import NLAlib.Ops.Blas.BlockCopy
 public import NLAlib.Ops.Blas.Broadcast
 public import NLAlib.Ops.Blas.Clamp
 public import NLAlib.Ops.Blas.Hermitian
@@ -21,6 +22,8 @@ public import NLAlib.Ops.Blas.MapCorrect
 public import NLAlib.Ops.Blas.Matrix
 public import NLAlib.Ops.Blas.MatrixCorrect
 public import NLAlib.Ops.Blas.Mixed
+public import NLAlib.Ops.Blas.NormSq
+public import NLAlib.Ops.Blas.Power
 public import NLAlib.Ops.Blas.Pair
 public import NLAlib.Ops.Blas.Sampling
 public import NLAlib.Ops.Catalog.Dense
@@ -32,6 +35,10 @@ public import NLAlib.Ops.Catalog.Sampling
 public import NLAlib.Ops.Catalog.StoredOperator
 public import NLAlib.Ops.Examples.Consequences
 public import NLAlib.Ops.Examples.FixedPoint
+public import NLAlib.Ops.IndexDegrees
+public import NLAlib.Ops.ContextWork
+public import NLAlib.Ops.PolynomialWork
+public import NLAlib.Ops.WeightEnvelope
 public import NLAlib.Ops.Profiles.Dense
 public import NLAlib.Ops.Profiles.DenseWeight
 public import NLAlib.Ops.Profiles.DenseWork
@@ -47,6 +54,8 @@ public import NLAlib.Ops.Catalog.Blas1
 public import NLAlib.Ops.Catalog.Compare
 public import NLAlib.Ops.Catalog.Isotropic
 public import NLAlib.Ops.Catalog.Operator
+public import NLAlib.Ops.Catalog.OperatorPair
+public import NLAlib.Ops.Catalog.Orth
 public import NLAlib.Ops.Catalog.Random
 public import NLAlib.Ops.Catalog.Scalar
 public import NLAlib.Ops.Catalog.Tagged
@@ -56,6 +65,7 @@ public import NLAlib.Ops.Counted
 public import NLAlib.Ops.Examples.Bilinear
 public import NLAlib.Ops.Examples.Certification
 public import NLAlib.Ops.Examples.Resources
+public import NLAlib.Ops.Examples.Oracles
 public import NLAlib.Ops.Examples.Bits
 public import NLAlib.Ops.Examples.Built
 public import NLAlib.Ops.Examples.Cgs
@@ -124,6 +134,7 @@ public import NLAlib.Ops.Profiles.RoundedBlas
 public import NLAlib.Ops.Profiles.RoundedScalarBlas
 public import NLAlib.Ops.Profiles.ContextDenseRounded
 public import NLAlib.Ops.Profiles.ContextLinearRounded
+public import NLAlib.Ops.Profiles.Confined
 
 /-!
 # Conditional headline guidance over imported Ops modules

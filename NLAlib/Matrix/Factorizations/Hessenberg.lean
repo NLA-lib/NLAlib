@@ -24,6 +24,7 @@ $(k + 1) \times k$ Hessenberg matrices.
 ## Main definitions
 
 * `NLAlib.IsUpperHessenberg`, `NLAlib.IsTridiagonal`.
+* `NLAlib.upperHessenbergPart`: retain the upper Hessenberg entries and zero the rest.
 
 ## Main results
 
@@ -50,6 +51,41 @@ variable {𝕜 : Type*} [RCLike 𝕜] {R : Type*} {m n : ℕ}
 subdiagonal vanish: $\mathbf{H}_{i,j} = 0$ for $j + 1 < i$. [GolubVanLoan2013, §7.4]. -/
 def IsUpperHessenberg [Zero R] (H : Matrix (Fin m) (Fin n) R) : Prop :=
   ∀ (i : Fin m) (j : Fin n), (j : ℕ) + 1 < (i : ℕ) → H i j = 0
+
+/-- Retain the upper Hessenberg profile and replace every entry below the first subdiagonal
+by zero. This is an entry projection, not a unitary similarity. -/
+def upperHessenbergPart [Zero R] (A : Matrix (Fin m) (Fin n) R) :
+    Matrix (Fin m) (Fin n) R :=
+  Matrix.of fun i j => if (j : ℕ) + 1 < (i : ℕ) then 0 else A i j
+
+/-- Deleting the entries below the first subdiagonal gives an upper Hessenberg matrix. -/
+theorem isUpperHessenberg_upperHessenbergPart [Zero R] (A : Matrix (Fin m) (Fin n) R) :
+    IsUpperHessenberg (upperHessenbergPart A) := by
+  intro i j hij
+  simp only [upperHessenbergPart, Matrix.of_apply, if_pos hij]
+
+/-- The profile projection leaves every upper Hessenberg matrix unchanged. -/
+theorem IsUpperHessenberg.upperHessenbergPart_eq [Zero R] {A : Matrix (Fin m) (Fin n) R}
+    (hA : IsUpperHessenberg A) : upperHessenbergPart A = A := by
+  ext i j
+  by_cases hij : (j : ℕ) + 1 < (i : ℕ)
+  · simp only [upperHessenbergPart, Matrix.of_apply, if_pos hij, hA i j hij]
+  · simp only [upperHessenbergPart, Matrix.of_apply, if_neg hij]
+
+/-- Deleting structural fill cannot increase Frobenius distance to an upper Hessenberg
+target. No spectral-norm contraction is asserted. -/
+theorem IsUpperHessenberg.frobNorm_sub_upperHessenbergPart_le
+    {A H : Matrix (Fin m) (Fin n) 𝕜} (hH : IsUpperHessenberg H) :
+    frobNorm (H - upperHessenbergPart A) ≤ frobNorm (H - A) := by
+  apply (sq_le_sq₀ (frobNorm_nonneg _) (frobNorm_nonneg _)).mp
+  simp only [frobNorm_sq_eq_sum]
+  refine Finset.sum_le_sum fun i _ => Finset.sum_le_sum fun j _ => ?_
+  by_cases hij : (j : ℕ) + 1 < (i : ℕ)
+  · simp only [Matrix.sub_apply, upperHessenbergPart, Matrix.of_apply, if_pos hij,
+      hH i j hij, sub_self, norm_zero, ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true,
+      zero_pow]
+    exact sq_nonneg _
+  · simp only [Matrix.sub_apply, upperHessenbergPart, Matrix.of_apply, if_neg hij, le_refl]
 
 /-- An **unreduced upper Hessenberg matrix** vanishes below its first subdiagonal,
 and every entry on that subdiagonal is nonzero. [GolubVanLoan2013, §7.4.3]. -/

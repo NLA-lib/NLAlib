@@ -31,6 +31,8 @@ order for two ("twice is enough"). Design: `docs/design/Krylov-LanczosReorth.md`
 * `NLAlib.IsOrthErr.mono`: monotonicity in the four parameters.
 * `NLAlib.IsOrthErr.norm_coef_le`: the coefficients are small for a nearly orthogonal input.
 * `NLAlib.IsOrthErr.norm_transpose_mulVec_smul_le`: orthogonality of the normalized output.
+* `NLAlib.IsOrthErr.norm_transpose_mulVec_le_of_admissible`: an admissible normalized column is
+  nearly orthogonal to the basis, with an absolute bound.
 * `NLAlib.specNorm_le_sqrt_of_specNorm_transpose_mul_self_sub_one_le`,
   `NLAlib.frobNorm_le_sqrt_of_specNorm_transpose_mul_self_sub_one_le`: norms of a nearly
   orthonormal basis.
@@ -267,5 +269,84 @@ theorem le_of_specNorm_transpose_mul_self_sub_one_lt_one {V : Matrix (Fin n) (Fi
   have hinj : Function.Injective (Matrix.mulVecLin V) :=
     injective_mulVec_of_specNorm_transpose_mul_self_sub_one_lt_one hV
   simpa using LinearMap.finrank_le_finrank_of_injective hinj
+
+/-! ### One admissible column -/
+
+/-- One admissible normalized column is nearly orthogonal to the basis, with an absolute bound.
+Let $(\mathbf{h}, \mathbf{w}')$ meet `NLAlib.IsOrthErr` with parameters
+$(\eta_0, \varepsilon_1, \varepsilon_2, \varepsilon_3)$ for the input $\mathbf{w}$ and the basis
+$\mathbf{V}$, with $\|\mathbf{V}^{\mathsf{T}}\mathbf{V} - \mathbf{I}\|_2 \le \eta_0 \le 1/100$
+and $\varepsilon_1, \varepsilon_3 \ge 0$. Let $\nu$ and $\beta$ be computed norms,
+$\lvert\nu - \|\mathbf{w}\|\rvert \le E\|\mathbf{w}\|$ and
+$\lvert\beta - \|\mathbf{w}'\|\rvert \le E\|\mathbf{w}'\|$ with $0 \le E \le 1/100$, let
+$\mathbf{v}$ be the computed normalized vector, $\beta\mathbf{v} = \mathbf{w}' +
+\boldsymbol\delta$ with $\|\boldsymbol\delta\| \le E\|\mathbf{w}'\|$, and let the step be
+admissible for a threshold $\tau > 0$: $\tau\nu < \beta$. Then
+$$\|\mathbf{V}^{\mathsf{T}}\mathbf{v}\| \le 2(\varepsilon_1 + \varepsilon_3/\tau + E).$$ -/
+theorem IsOrthErr.norm_transpose_mulVec_le_of_admissible {n k : ℕ}
+    {η₀ ε₁ ε₂ ε₃ E τ ν β : ℝ} {V : Matrix (Fin n) (Fin k) ℝ} {w : Fin n → ℝ} {h : Fin k → ℝ}
+    {w' v δ : Fin n → ℝ} (hO : IsOrthErr η₀ ε₁ ε₂ ε₃ V w h w')
+    (hV : specNorm (Vᵀ * V - 1) ≤ η₀) (hη : η₀ ≤ 1 / 100) (hε₁ : 0 ≤ ε₁) (hε₃ : 0 ≤ ε₃)
+    (he0 : 0 ≤ E) (he1 : E ≤ 1 / 100) (hτ : 0 < τ)
+    (hν : |ν - ‖WithLp.toLp 2 w‖| ≤ E * ‖WithLp.toLp 2 w‖)
+    (hβ : |β - ‖WithLp.toLp 2 w'‖| ≤ E * ‖WithLp.toLp 2 w'‖)
+    (hv : β • v = w' + δ) (hδ : ‖WithLp.toLp 2 δ‖ ≤ E * ‖WithLp.toLp 2 w'‖)
+    (hadm : τ * ν < β) :
+    ‖WithLp.toLp 2 (Vᵀ *ᵥ v)‖ ≤ 2 * (ε₁ + ε₃ / τ + E) := by
+  have hord := hO.orth hV
+  have hs : Real.sqrt (1 + η₀) ≤ 3 / 2 := by
+    rw [Real.sqrt_le_iff]
+    constructor <;> nlinarith
+  have hsq : specNorm Vᵀ ≤ Real.sqrt (1 + η₀) := by
+    rw [specNorm_transpose]
+    exact specNorm_le_sqrt_of_specNorm_transpose_mul_self_sub_one_le hV
+  have hδ' := (norm_toLp_mulVec_le Vᵀ δ).trans
+    (mul_le_mul hsq hδ (norm_nonneg _) (Real.sqrt_nonneg _))
+  have hvec : β • (Vᵀ *ᵥ v) = Vᵀ *ᵥ w' + Vᵀ *ᵥ δ := by
+    rw [← Matrix.mulVec_add, ← hv, Matrix.mulVec_smul]
+  have hν' := abs_le.mp hν
+  have hβ' := abs_le.mp hβ
+  have hq0 := norm_nonneg (WithLp.toLp 2 w)
+  have hp0 := norm_nonneg (WithLp.toLp 2 w')
+  set a := ‖WithLp.toLp 2 (Vᵀ *ᵥ v)‖ with ha
+  set p := ‖WithLp.toLp 2 w'‖ with hp
+  set q := ‖WithLp.toLp 2 w‖ with hq
+  set s := Real.sqrt (1 + η₀) with hsdef
+  set T := ε₃ / τ with hT
+  have hτν : τ * ((1 - E) * q) ≤ τ * ν := mul_le_mul_of_nonneg_left (by linarith) hτ.le
+  have hτq : 0 ≤ τ * ((1 - E) * q) := mul_nonneg hτ.le (mul_nonneg (by linarith) hq0)
+  have hβpos : 0 < β := by linarith
+  have hnorm : β * a = ‖WithLp.toLp 2 (β • (Vᵀ *ᵥ v))‖ := by
+    rw [WithLp.toLp_smul, norm_smul, Real.norm_of_nonneg hβpos.le]
+  have hb : β * a ≤ ε₁ * p + ε₃ * q + s * (E * p) := by
+    rw [hnorm, hvec, WithLp.toLp_add]
+    exact (norm_add_le _ _).trans (by linarith)
+  have hF2 : τ * ((1 - E) * q) ≤ (1 + E) * p := by linarith
+  have hT0 : 0 ≤ T := div_nonneg hε₃ hτ.le
+  have hq2 : ε₃ * q * (1 - E) ≤ T * (1 + E) * p := by
+    have h := mul_le_mul_of_nonneg_left hF2 hT0
+    calc ε₃ * q * (1 - E) = T * (τ * ((1 - E) * q)) := by
+          rw [hT]; field_simp
+      _ ≤ T * ((1 + E) * p) := h
+      _ = T * (1 + E) * p := by ring
+  have hβlow : (1 - E) * p ≤ β := by linarith [hβ'.1]
+  have h1 : a * β * (1 - E) ≤ ((1 - E) * (ε₁ + s * E) + T * (1 + E)) * p := by
+    nlinarith [mul_le_mul_of_nonneg_right hb (by linarith : (0 : ℝ) ≤ 1 - E)]
+  have hpoly : (1 - E) * (ε₁ + s * E) + T * (1 + E) ≤ 2 * (ε₁ + T + E) * (1 - E) ^ 2 := by
+    have c1 : 0 ≤ ε₁ * (1 - E) * (1 - 2 * E) :=
+      mul_nonneg (mul_nonneg hε₁ (by linarith)) (by linarith)
+    have c2 : 0 ≤ T * (1 - 5 * E + 2 * E ^ 2) := mul_nonneg hT0 (by nlinarith)
+    have c3 : 0 ≤ E * (1 - E) * (2 * (1 - E) - s) :=
+      mul_nonneg (mul_nonneg he0 (by linarith)) (by linarith)
+    nlinarith [c1, c2, c3]
+  have h2 : ((1 - E) * (ε₁ + s * E) + T * (1 + E)) * p ≤ 2 * (ε₁ + T + E) * (1 - E) * β := by
+    have hK : 0 ≤ 2 * (ε₁ + T + E) * (1 - E) := by
+      have : 0 ≤ ε₁ + T + E := by linarith
+      have : 0 ≤ 1 - E := by linarith
+      positivity
+    linarith [mul_le_mul_of_nonneg_right hpoly hp0, mul_le_mul_of_nonneg_left hβlow hK]
+  have hpos : 0 < β * (1 - E) := mul_pos hβpos (by linarith)
+  by_contra! hcon
+  linarith [mul_lt_mul_of_pos_right hcon hpos]
 
 end NLAlib

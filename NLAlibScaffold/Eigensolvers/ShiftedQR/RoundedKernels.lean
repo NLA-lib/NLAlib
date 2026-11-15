@@ -7,6 +7,7 @@ module
 
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedHeadline
 public import NLAlibScaffold.Matrix.Perturbation.EigenvalueBackward
+public import NLAlibScaffold.Probability.Distributions.DiskUniform
 
 /-!
 # Randomized kernels of the rounded shifted QR algorithm
@@ -22,10 +23,18 @@ meets `NLAlib.ShiftedQR.RandomLeafContract` with the backward error $\beta$.
 The window has a fixed length at each order, read at the call position; a routine that draws an
 adaptive number of samples does not fit this model.
 
+The disk sampler of the random shifts reads a radius word $R$ and a window of two entries
+$x_0, x_1$ of one stream, and writes the pair of the polar sample
+$R\sqrt{x_0}\,e^{2\pi i x_1}$ exactly (`NLAlib.polarDisk`): for uniform draws it is uniform on
+$\mathbb{D}(0, R)$ (`NLAlib.map_polarDisk_eq_diskUniform`). The sample is exact, as in the
+paper; a rounded sampler is not modelled.
+
 ## Main definitions
 
 * `NLAlib.ShiftedQR.randomSmallEigRel`: the kernel's contract in operand form.
 * `NLAlib.ShiftedQR.IsRandomSmallEig`: the interpretation's `smallEig` is such a kernel.
+* `NLAlib.ShiftedQR.DiskSampleOp`, `NLAlib.ShiftedQR.polarDiskRel`,
+  `NLAlib.ShiftedQR.IsPolarDiskSampler`: the exact polar disk sampler.
 
 ## Main results
 
@@ -38,6 +47,8 @@ adaptive number of samples does not fit this model.
 namespace NLAlib.ShiftedQR
 
 open Ops MeasureTheory
+
+section SmallEig
 
 variable {O Q : Type} [Has EigenvalueKernelOp O]
 
@@ -118,5 +129,41 @@ theorem IsRandomSmallEig.randomLeafContract {law : ℕ → Measure ℝ} {s : ℕ
     simp only [Option.some.injEq, List.cons.injEq, and_true] at hyy
     exact hyy ▸ hy
   simpa [HoldsMatrix] using hys'
+
+end SmallEig
+
+section DiskSampler
+
+/-- The operation of the exact disk sampler. -/
+inductive DiskSampleOp where
+  /-- `polar [] [R] [W]`: the polar sample of radius `R` from two entries of the stream, as the
+  pair `W`. -/
+  | polar
+  deriving DecidableEq
+
+/-- **The contract in operand form of the exact polar disk sampler** reading the stream `s`: the
+call reads one radius word $R$ and a window $(x_0, x_1)$ of two entries of the stream, and writes
+the real and imaginary parts of `NLAlib.polarDisk 0 R (x₀, x₁)`
+$= R\sqrt{x_0}\,e^{2\pi i x_1}$. -/
+def polarDiskRel (s : ℕ) : BlockRel ℝ where
+  nd := 0
+  stream := s
+  win _ := 2
+  inLens _ := [1]
+  outLens _ := [2]
+  rel _ xs w ys := ∀ R : ℝ, xs = [[R]] →
+    ys = [[(polarDisk 0 R fun j : Fin 2 => w.getD j 0).re,
+      (polarDisk 0 R fun j : Fin 2 => w.getD j 0).im]]
+
+variable {O Q : Type} [Has DiskSampleOp O]
+
+/-- **An exact polar disk sampler** on the stream `s`: the interpretation's `polar` always
+succeeds on live, readable operands with room and meets `NLAlib.ShiftedQR.polarDiskRel`. For a
+uniform stream on $[0, 1]$ its sample is uniform on the disk of the radius word
+(`NLAlib.map_polarDisk_eq_diskUniform`). -/
+def IsPolarDiskSampler (s : ℕ) (I : Interp O Q ℝ) : Prop :=
+  I.Meets .total (Has.inj DiskSampleOp.polar) ((polarDiskRel s).spec AnyOperands)
+
+end DiskSampler
 
 end NLAlib.ShiftedQR

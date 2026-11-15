@@ -36,6 +36,8 @@ the finite-precision shifted QR layer of `NLAlib/Eigensolvers/ShiftedQR`.
 ## Main definitions
 
 * `NLAlib.findRitzWith`: `Find` with a supplied comparison value per half.
+* `NLAlib.IsFindRitzChoice`: the results of `Find` with computed comparison values, as a
+  relation (for a program that computes each value once).
 -/
 
 @[expose] public section
@@ -429,6 +431,148 @@ theorem isPromisingRitzValue_findRitzWith {B : ℝ} {m : ℕ} {t : ℕ → List 
   rw [mul_pow]
   gcongr
   norm_num
+
+/-- **The results of `Find` with computed comparison values**: `IsFindRitzChoice H m f ss r`
+says that $r$ results from $m$ halving steps on `ss` from the exponent $f$, each step comparing
+two computed values $t_a$, $t_b$ within the relative error $0.0011$ of
+$\|\mathbf{e}_n^{\mathsf T}p_g(\mathbf{H})^{-f}\|^{-1}$ for the two halves $g = a, b$ of equal
+length and keeping the half with the smaller value (the first on a tie), with the exponent
+doubled. This is `NLAlib.findRitzWith` for a program whose values are known only at the halves
+it visits. [BanksGarzaVargasSrivastava2022, §5]. -/
+inductive IsFindRitzChoice (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) :
+    ℕ → ℕ → List ℂ → ℂ → Prop
+  /-- A single shift is the result. -/
+  | single (f : ℕ) (r : ℂ) : IsFindRitzChoice H 0 f [r] r
+  /-- The first half has the smaller computed value and is kept. -/
+  | left {m f : ℕ} {a b : List ℂ} {r : ℂ} (tA tB : ℝ) (hab : a.length = b.length)
+      (hA : |tA - ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly a))⁻¹ ^ f) (Fin.last n))‖⁻¹| ≤
+        0.0011 * ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly a))⁻¹ ^ f) (Fin.last n))‖⁻¹)
+      (hB : |tB - ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly b))⁻¹ ^ f) (Fin.last n))‖⁻¹| ≤
+        0.0011 * ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly b))⁻¹ ^ f) (Fin.last n))‖⁻¹)
+      (hle : tA ≤ tB) (h : IsFindRitzChoice H m (2 * f) a r) :
+      IsFindRitzChoice H (m + 1) f (a ++ b) r
+  /-- The second half has the smaller computed value and is kept. -/
+  | right {m f : ℕ} {a b : List ℂ} {r : ℂ} (tA tB : ℝ) (hab : a.length = b.length)
+      (hA : |tA - ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly a))⁻¹ ^ f) (Fin.last n))‖⁻¹| ≤
+        0.0011 * ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly a))⁻¹ ^ f) (Fin.last n))‖⁻¹)
+      (hB : |tB - ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly b))⁻¹ ^ f) (Fin.last n))‖⁻¹| ≤
+        0.0011 * ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly b))⁻¹ ^ f) (Fin.last n))‖⁻¹)
+      (hlt : tB < tA) (h : IsFindRitzChoice H m (2 * f) b r) :
+      IsFindRitzChoice H (m + 1) f (a ++ b) r
+
+/-- One comparison of computed values within the relative error $0.0011$ of the inverse norms
+$N_g^{-1}$, $N_h^{-1}$ (both norms positive): if $t_h \le t_g$ then
+$N_g \le (1.0011/0.9989)N_h$. -/
+private theorem le_mul_of_computed_le {Ng Nh tg th : ℝ} (hNg : 0 < Ng) (hNh : 0 < Nh)
+    (hg : |tg - Ng⁻¹| ≤ 0.0011 * Ng⁻¹) (hh : |th - Nh⁻¹| ≤ 0.0011 * Nh⁻¹) (hle : th ≤ tg) :
+    Ng ≤ 1.0011 / 0.9989 * Nh := by
+  have h1 := (abs_le.mp hg).2
+  have h2 := (abs_le.mp hh).1
+  have hineq : 0.9989 * Nh⁻¹ ≤ 1.0011 * Ng⁻¹ := by linarith
+  rw [div_mul_eq_mul_div, le_div_iff₀ (by norm_num)]
+  have := mul_le_mul_of_nonneg_left hineq (mul_nonneg hNg.le hNh.le)
+  field_simp at this
+  linarith
+
+namespace IsFindRitzChoice
+
+variable {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+
+/-- The result of `Find` is one of the shifts, and the list has $2^m$ shifts. -/
+theorem mem_and_length {m f : ℕ} {ss : List ℂ} {r : ℂ} (h : IsFindRitzChoice H m f ss r) :
+    r ∈ ss ∧ ss.length = 2 ^ m := by
+  induction h with
+  | single f r => simp
+  | left tA tB hab _ _ _ _ ih =>
+    exact ⟨List.mem_append_left _ ih.1, by rw [List.length_append, ← hab, ih.2]; ring⟩
+  | right tA tB hab _ _ _ _ ih =>
+    exact ⟨List.mem_append_right _ ih.1, by rw [List.length_append, hab, ih.2]; ring⟩
+
+/-- The moment bound of `Find` with computed values, with the factor $c^2\kappa^4$ per level,
+$c = 1.0011/0.9989$. -/
+private theorem sum_div_le {V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ}
+    (hV : IsUnit V) (hHV : H * V = V * Matrix.diagonal d) {m f : ℕ} {ss : List ℂ} {r : ℂ}
+    (h : IsFindRitzChoice H m f ss r) (hd : ∀ i, ∀ s ∈ ss, d i ≠ s) :
+    ∑ i, lastRowWeights V i / ‖(shiftPoly ss).eval (d i)‖ ^ f ≤
+      ((1.0011 / 0.9989 : ℝ) ^ 2 * pseudoConditionNumber V ^ 4) ^ m *
+        ∑ i, lastRowWeights V i / ‖d i - r‖ ^ (f * 2 ^ m) := by
+  induction h with
+  | single f r => simp [shiftPoly]
+  | @left m f a b r tA tB hab hA hB hle _ ih | @right m f a b r tA tB hab hA hB hle _ ih =>
+    have hpos : ∀ g ∈ [a, b],
+        0 < ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly g))⁻¹ ^ f) (Fin.last n))‖ := by
+      intro g hg
+      refine norm_toLp_inv_aeval_pow_last_pos hV hHV f fun i => eval_shiftPoly_ne_zero ?_
+      intro s hs
+      rcases List.mem_pair.mp hg with rfl | rfl
+      exacts [hd i s (List.mem_append_left _ hs), hd i s (List.mem_append_right _ hs)]
+    first
+    | (have hmax : ∀ g ∈ [a, b],
+          ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly g))⁻¹ ^ f) (Fin.last n))‖ ≤
+            1.0011 / 0.9989 *
+              ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly a))⁻¹ ^ f) (Fin.last n))‖ := by
+          intro g hg
+          rcases List.mem_pair.mp hg with rfl | rfl
+          · exact le_mul_of_computed_le (hpos _ (by simp)) (hpos _ (by simp)) hA hA le_rfl
+          · exact le_mul_of_computed_le (hpos _ (by simp)) (hpos _ (by simp)) hB hA hle
+       have hih := ih fun i s hs => hd i s (List.mem_append_left _ hs)
+       rw [show f * 2 ^ (m + 1) = 2 * f * 2 ^ m by ring]
+       calc _ ≤ _ := sum_div_shiftPoly_append_le_of_le_mul hV hHV hd (Or.inl rfl) f hmax
+         _ ≤ (1.0011 / 0.9989 : ℝ) ^ 2 * pseudoConditionNumber V ^ 4 *
+             (((1.0011 / 0.9989 : ℝ) ^ 2 * pseudoConditionNumber V ^ 4) ^ m *
+               ∑ i, lastRowWeights V i / ‖d i - r‖ ^ (2 * f * 2 ^ m)) :=
+           mul_le_mul_of_nonneg_left hih (by positivity)
+         _ = _ := by ring)
+    | (have hmax : ∀ g ∈ [a, b],
+          ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly g))⁻¹ ^ f) (Fin.last n))‖ ≤
+            1.0011 / 0.9989 *
+              ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly b))⁻¹ ^ f) (Fin.last n))‖ := by
+          intro g hg
+          rcases List.mem_pair.mp hg with rfl | rfl
+          · exact le_mul_of_computed_le (hpos _ (by simp)) (hpos _ (by simp)) hA hB hle.le
+          · exact le_mul_of_computed_le (hpos _ (by simp)) (hpos _ (by simp)) hB hB le_rfl
+       have hih := ih fun i s hs => hd i s (List.mem_append_right _ hs)
+       rw [show f * 2 ^ (m + 1) = 2 * f * 2 ^ m by ring]
+       calc _ ≤ _ := sum_div_shiftPoly_append_le_of_le_mul hV hHV hd (Or.inr rfl) f hmax
+         _ ≤ (1.0011 / 0.9989 : ℝ) ^ 2 * pseudoConditionNumber V ^ 4 *
+             (((1.0011 / 0.9989 : ℝ) ^ 2 * pseudoConditionNumber V ^ 4) ^ m *
+               ∑ i, lastRowWeights V i / ‖d i - r‖ ^ (2 * f * 2 ^ m)) :=
+           mul_le_mul_of_nonneg_left hih (by positivity)
+         _ = _ := by ring)
+
+/-- **`Find` with computed values is promising, in relation form**
+([BanksGarzaVargasSrivastava2022, Lemma 5.1]): let $\mathbf{H}\mathbf{V} = \mathbf{V}\mathbf{D}$
+with $\kappa(\mathbf{V}) \le B$ and no shift of `ss` an eigenvalue. If $r$ results from $m$
+halving steps from the exponent $1$ whose compared values are each within the relative error
+$0.0011$ of $\|\mathbf{e}_n^{\mathsf T}p_h(\mathbf{H})^{-e}\|^{-1}$
+(`NLAlib.IsFindRitzChoice`), then $r$ is $(1.01B)^{4m/2^m}$-promising. -/
+theorem isPromisingRitzValue {B : ℝ} {m : ℕ} {V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {e : Fin (n + 1) → ℂ} {ss : List ℂ} {r : ℂ} (h : IsFindRitzChoice H m 1 ss r)
+    (hV : IsUnit V) (hHV : H * V = V * Matrix.diagonal e) (hκ : pseudoConditionNumber V ≤ B)
+    (hne : ∀ r ∈ ss, ∀ i, e i ≠ r) :
+    IsPromisingRitzValue ((1.01 * B) ^ ((4 * m : ℝ) / 2 ^ m)) V e ss r := by
+  obtain ⟨hmem, hlen⟩ := h.mem_and_length
+  have hcard := h.sum_div_le hV hHV fun i s hs => hne s hs i
+  simp only [pow_one, one_mul] at hcard
+  have hS0 : 0 ≤ ∑ i, lastRowWeights V i / ‖e i - r‖ ^ 2 ^ m :=
+    Finset.sum_nonneg fun i _ => div_nonneg (lastRowWeights_nonneg V i) (by positivity)
+  have hκ0 := pseudoConditionNumber_nonneg V
+  have hB0 : 0 ≤ B := hκ0.trans hκ
+  refine ⟨hmem, ?_⟩
+  rw [hlen]
+  have hα : ((1.01 * B) ^ ((4 * m : ℝ) / 2 ^ m)) ^ (2 ^ m : ℕ) = ((1.01 * B) ^ 4) ^ m := by
+    rw [← Real.rpow_natCast, ← Real.rpow_mul (by positivity), ← pow_mul,
+      ← Real.rpow_natCast (1.01 * B) (4 * m)]
+    congr 1
+    push_cast
+    field_simp
+  rw [hα]
+  refine hcard.trans (mul_le_mul_of_nonneg_right (pow_le_pow_left₀ (by positivity) ?_ m) hS0)
+  rw [mul_pow]
+  gcongr
+  norm_num
+
+end IsFindRitzChoice
 
 /-- The arithmetic of the averaging step over a covering of at most $9/\varepsilon^2$ shifts:
 the weight bound with $t = 1/1.998$, the averaging and the moment bound at the chosen point give

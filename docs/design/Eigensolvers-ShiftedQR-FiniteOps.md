@@ -949,3 +949,97 @@ audit 0 violations, 14 linters 0 errors, strict replay of `NLAlib` 0 violations;
 * **Proving order.** PROB-LOGIC P1 (PL1, PL2, PL4) → P2 (PL3b–f, PL6) → P3 (PL5), in parallel
   with SQR-FP wave 5 (D5, RZ1, P12a, P12b, FP1, GR1, moves, RC1–RC3) and wave 6 (FP2, C4cap); then
   wave 7 (C4p, LF1, P4–P6, P14, P15) once PROB-LOGIC is on main; waves 8–10 as §14.8.
+
+## 15. The headline statements (wave 10, phase 1: statements only)
+
+File `NLAlibScaffold/Eigensolvers/ShiftedQR/RoundedTheorems.lean` (it imports P11p's
+`RoundedDecouple` and PAR1's `RoundedPrecision`, which `RoundedHeadline` cannot). Six sorried
+statements; every block they use is proved.
+
+### 15.1 The program and its words
+
+* `roundedShQR := solveRounded roundedDecouple smallEigLeaf`, interface
+  `[N, k, np, F] (A, Thr, P) → (Out, Fl)`; dimensions `shqrDims = [n + 1, k, np, shqrCap …]`.
+* `shqrParams n k B Γ Σ δ φ := roundedDecoupleParams tL R tv 0.2 (4B) (shqrAlpha k (4B))
+  (shqrEps k (4B)) k (Nat.log 2 k)` with $t_L$ = `shqrLoopThreshold`, $R$ = `shqrRadius`,
+  $t$ = `shqrScanThreshold`; the threshold word is `shqrDeflationThreshold`.
+* P11p's mapping: $n_{\max} = n$, $N_{\max} = 2\Sigma$, $S = 4\Sigma$, $B_i = 4B$, $g = \Gamma$,
+  $\varphi_{\mathrm{it}}$ = `shqrSmallEigFailure`, $\varphi_R$ = `shqrRegularizeFailure`,
+  $C$ = `shqrC k (4B)`, $F$ = `shqrCap`.
+* **PAR1 adjustment.** P11p needs $(1+\boldsymbol{u})^2 t \le (1-\boldsymbol{u})^2 t_L \le
+  (1-\boldsymbol{u})^4\omega_D^2$; the old $\omega_D = (1+v)\omega/(1-v)$ ($v = \boldsymbol{u}_{\mathrm{ShQR}}$)
+  cannot meet it (at $u = v > 0$ it needs $(1+v)^2(1-v)^2 \le (1-v)^4$). New:
+  $t_L = (1+v)^2 t/(1-v)^2$ (`shqrLoopThreshold`) and $\omega_D = \sqrt{t_L}/(1-v) =
+  (1+v)^2\omega/(1-v)^2$ (`shqrDecoupled`); the cut level becomes $(1+v)^3\omega/(1-v)^3 \le 2\omega$
+  (`shqrCut_le`, now via $(1+v)^3 \le 2(1-v)^3$ for $v \le 1/10$), so the worklist's budget is
+  unchanged. New lemma `shqrLoopThreshold_spec` (P11p's `hthr`, `hcut`). `shqrParams_spec` is
+  re-proved unchanged in statement.
+
+### 15.2 Statements
+
+| id | Lean name | informal |
+|---|---|---|
+| T1c | `roundedShQR_measureReal_not_spectrum_le` | the §14.1 headline: probability $\le \varphi$ of not (footprint, `Fl = 0`, spectrum of $\mathbf{H}+\mathbf{E}$, $\|\mathbf{E}\|_2 \le \delta$) |
+| T1d | `roundedShQR_terminates` | on every tape the run succeeds (`Wp .total … (fun _ => True)`); termination only (maintainer: P11d dropped, correctness is the probability statement) |
+| T2 | `logb_inv_uShQR_le` | $\exists c_1, c_2$ absolute: $\log_2(1/\boldsymbol{u}_{\mathrm{ShQR}}) \le c_1 k \log_2\frac{4(n+1)B\Sigma^2}{\delta\min(\Gamma,\Sigma)\varphi} + c_2$ |
+| T3 | `roundedShQR_relative` | $0 < \Sigma$, $\|\mathbf{H}\|_2 \le \Sigma \le c\|\mathbf{H}\|_2$, $c \ge 1$, $0 < \delta \le 1$: parameters at $\delta\Sigma/c$ give $\|\mathbf{E}\|_2 \le \delta\|\mathbf{H}\|_2$ w.p. $\ge 1-\varphi$ |
+| T4 | `roundedShQR_hermitian` | Hermitian Hessenberg input, gap on `hH.eigenvalues`, no $\mathbf{V}$ supplied; $B = 1$, $k$ = `shqrDegree 4` |
+| T5 | `roundedShQR_work_le` | $\exists c$: `Count.size (stmtCost roundedShQR.body [n+1, k, np, F])` $\le c(n+1)^4(k+1)^4(n_p+1)(F+1)$ (static, so on every tape, `exec_within`) |
+
+T1c follows §14.1's Lean text with Fable's fixes (`hI : I.IsMeasurable` with `hloc`;
+`IsPolarDiskSampler sU I` and `hU`; `k = shqrDegree (4 * B)`) and the machine hypotheses of T1
+(`IsScalar`, `IsIndexLit`, `IsToNat`, `IsCmp`); the memory precondition is bundled as
+`ShQRInput`, the success event as `ShQRSpectrum`, the footprint as `shqrFp`. Added next to
+`hse`, `hφse`: `hβse0 : 0 ≤ βse`, `hφse0 : 0 ≤ φse` (needed by LF1 and P11p; §14.1 allowed it).
+`0 ≤ u` comes from `StdModel`; `1 ≤ B` from $\kappa(\mathbf{V}) \ge 1$.
+
+### 15.3 Edge cases checked
+
+* **Junk values.** $B \ge 1$ (from `one_le_pseudoConditionNumber`), $\Sigma \ge \delta > 0$,
+  $n + 1 \ge 1$: no division by $0$ in `shqrBudget`, `shqrOmega`, `shqrRadius`; $1 - v \ge 9/10$
+  in `shqrLoopThreshold`, `shqrDecoupled`, `shqrCut`; `Nat.log 2 k = q` at $k = 2^q$; Exc's
+  $\varepsilon \le 1/2$ (`shqrEps_le_half`); $\sqrt{\cdot}$ of positive failures; `shqrCap ≥ 1`.
+* **$n = 0$, $k$ vs $n$.** $k \ge 2$ (PAR1k), so $n + 1 \le k$ gives leaves only (the decoupler is
+  never called; its contract is vacuous at $k > n$); the gap is vacuous at $n = 0$. In T2 this is
+  why the argument has $\min(\Gamma, \Sigma)$: at $n = 0$, $\Gamma \to \infty$ leaves
+  $\boldsymbol{u}_{\mathrm{ShQR}}$ fixed (budget $= \delta$) while $\log(1/\Gamma) \to -\infty$.
+  In T3, $n = 0$ and $\mathbf{H} = 0$ satisfy T1c's hypotheses but $\|\mathbf{E}\|_2 \le 0$ asks
+  for exact output, hence `hS0 : 0 < S` (which with $\Sigma \le c\|\mathbf{H}\|_2$ gives
+  $\mathbf{H} \ne 0$).
+* **$\varphi = 1$**: T1c, T3, T4 are then trivially true but not vacuous elsewhere; all
+  failures stay positive. **$\delta = \Sigma$**: allowed (budget $\min(\Sigma,
+  \Gamma/(16(n+1)B))$). **$B = 1$**: $k$ = `shqrDegree 4` = $128$ (setk at $4B$; the paper's $k = 2$
+  for Hermitian inputs is not claimed in T4).
+* **T2's form (counterexample to §14.1's $\log_2(nB\Sigma/(\delta\Gamma\varphi))$).** Every term
+  of `uShQR` is a ratio of $\delta$, $\Gamma$, $\Sigma$ (budget/$\Sigma$, $R/\Sigma$, $\eta/\Sigma$,
+  $\log(4\Sigma/\omega)$), so $(\Sigma, \delta, \Gamma) \mapsto t(\Sigma, \delta, \Gamma)$ leaves
+  it fixed while $\log_2(\Sigma/(\delta\Gamma))$ drops by $\log_2 t$: false for $t$ large, any
+  $c_1, c_2$. Fixed with $\Sigma^2/(\delta\Gamma)$ ($\delta$ is absolute in T1c). The factor $4$
+  makes the argument $\ge 4$, so the $k\cdot$const terms fit in $c_1$. N14's $\sqrt n$ is
+  $\tfrac12\log_2(n+1)$ bits inside $c_1 k\log_2(n+1)$. $c_1, c_2$ are existential before the
+  $\forall$ (absolute); explicit numerals are left to the proof.
+* **Quantifiers.** $k$, $F$, `shqrParams` and the tape law are fixed outside; `P.real` of the
+  failure set (outer measure if not measurable, so the bound is no weaker). T1d keeps the
+  class hypotheses of T1c; termination likely does not need them (to be decided at proof time;
+  dropping them would strengthen it).
+* **T5.** Static count (bound values, `whileFuel` fuel, `bindIdx` worst value), so it holds on
+  every tape (errata N10). Estimate: $2(n+1)$ rounds, $F$ iterations, per iteration
+  $O((k^3 + n_p k)(n+1)^2)$ (Find's $\le k$ levels of $\le k^2$ shifted steps, Exc's $\le n_p$
+  trials of $k$ steps, Optimal's dense row product $O(n^2)$ per step); the exponents carry
+  margin. `SmallEig` counts one per call (its cost is not claimed).
+* **Joint satisfiability.** PAR1p: `uShQR`, `shqrSmallEigAccuracy`, `shqrSmallEigFailure` are
+  positive, so $0 < \boldsymbol{u} \le \boldsymbol{u}_{\mathrm{ShQR}}$ exists; an exact
+  `SmallEig` ($\beta = \varphi = 0$, empty bad sets) and the exact polar sampler meet their
+  contracts; tape laws exist (product measure); PL4 gives a measurable, tape-local
+  interpretation meeting the contracts.
+
+### 15.4 Gaps for the proving phase
+
+* **P11p's `hd` is not in PAR1.** P11p feeds Sh the separation $\eta/2$ of Regularize's shifts
+  and requires $\eta/2 \le \varepsilon\,c_{\mathrm{lo}}\,\omega\sqrt{\varphi_{\mathrm{it}}/(11(n+1))}/4$
+  directly; PAR1's `shqrDist` is the *minimum* of the two, so `shStepHyps_of_le_uShQR` does not
+  give it. It holds with a margin of about $10^5$ (numerically $\varepsilon \ge 0.2$,
+  $c_{\mathrm{lo}} \ge 1.4$ under setk), but needs a lower bound on `shqrEps` (new PAR1 lemma) or
+  a smaller radius $R$.
+* P11p's backward error $F(1+C)S(\dots)$ is below `shqrDecoupleError` ($F(3.1+C)4\Sigma(\dots)$):
+  monotone, fine. P11p's `hfuel` from `hcap` ($0.8016^F \cdot 4\Sigma < \omega$, $N_{\max} = 2\Sigma$).

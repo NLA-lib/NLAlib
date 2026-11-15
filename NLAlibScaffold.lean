@@ -19,6 +19,7 @@ public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedSh
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedShExc
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedShTrial
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedSolve
+public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedTheorems
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.StableStep
 public import NLAlibScaffold.Matrix.FinitePrecision.GivensRounded
 public import NLAlibScaffold.Matrix.FinitePrecision.HessenbergRowPoly

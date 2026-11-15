@@ -28,6 +28,7 @@ scan).
 * `NLAlib.ShiftedQR.shStepHyps_of_le_uShQR`, `NLAlib.ShiftedQR.regularizeHyps_of_le_uShQR`,
   `NLAlib.ShiftedQR.solveRoundedHyps_of_le_uShQR`, `NLAlib.ShiftedQR.shIterationHyps_of_le_uShQR`.
 * `NLAlib.ShiftedQR.shqrParams_spec`: all four at once (PAR1).
+* `NLAlib.ShiftedQR.shqrLoopThreshold_spec`: the decoupling loop's scan threshold word.
 -/
 
 @[expose] public section
@@ -373,19 +374,53 @@ theorem regularizeHyps_of_le_uShQR (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ) 
   · rw [le_div_iff₀ (by positivity)] at r4; linarith
   · rw [le_div_iff₀ (by positivity)] at r5; linarith
 
-/-- The cut level is at most $2\omega$: $((1 + v)/(1 - v))^2 \le 2$ for $0 \le v \le 1/10$. -/
+/-- The cut level is at most $2\omega$: $((1 + v)/(1 - v))^3 \le 2$ for $0 \le v \le 1/10$. -/
 theorem shqrCut_le (hu0 : 0 ≤ u) (hu : u ≤ uShQR n k B Γ S δ φ) (hω : 0 ≤ shqrOmega n B Γ δ) :
     shqrCut n k B Γ S δ φ ≤ 2 * shqrOmega n B Γ δ := by
   set v := uShQR n k B Γ S δ φ with hvdef
   have hv0 : 0 ≤ v := hu0.trans hu
   have hv1 : v ≤ 1 / 10 := uShQR_le_one_div_ten
-  have e : shqrCut n k B Γ S δ φ = (1 + v) ^ 2 * shqrOmega n B Γ δ / (1 - v) ^ 2 := by
+  have e : shqrCut n k B Γ S δ φ = (1 + v) ^ 3 * shqrOmega n B Γ δ / (1 - v) ^ 3 := by
     unfold shqrCut shqrDecoupled
     rw [← hvdef]
     field_simp [show (1 : ℝ) - v ≠ 0 by linarith]
-  rw [e, div_le_iff₀ (by nlinarith)]
-  have h2 : (1 + v) ^ 2 ≤ 2 * (1 - v) ^ 2 := by nlinarith
+  have hp : 0 < (1 - v) ^ 3 := pow_pos (by linarith) 3
+  rw [e, div_le_iff₀ hp]
+  have h2 : (1 + v) ^ 3 ≤ 2 * (1 - v) ^ 3 := by
+    nlinarith [sq_nonneg v, mul_nonneg hv0 (sq_nonneg v)]
   nlinarith [mul_le_mul_of_nonneg_right h2 hω]
+
+/-- **The loop's scan threshold word** (P11p's `hthr`, `hcut`): for
+$0 \le \boldsymbol{u} \le \boldsymbol{u}_{\mathrm{ShQR}}$, a rounded scan with $t_L$ finds every
+entry the iteration certified with $t$, $(1 + \boldsymbol{u})^2 t \le (1 - \boldsymbol{u})^2 t_L$,
+and a passing scan with $t_L$ certifies $\omega_D$, $t_L \le (1 - \boldsymbol{u})^2\omega_D^2$. -/
+theorem shqrLoopThreshold_spec (hu0 : 0 ≤ u) (hu : u ≤ uShQR n k B Γ S δ φ) :
+    (1 + u) ^ 2 * shqrScanThreshold n k B Γ S δ φ ≤
+        (1 - u) ^ 2 * shqrLoopThreshold n k B Γ S δ φ ∧
+      shqrLoopThreshold n k B Γ S δ φ ≤ (1 - u) ^ 2 * shqrDecoupled n k B Γ S δ φ ^ 2 := by
+  set v := uShQR n k B Γ S δ φ with hvdef
+  have hv1 : v ≤ 1 / 10 := uShQR_le_one_div_ten
+  have hp : 0 < (1 - v) ^ 2 := pow_pos (by linarith) 2
+  have hvu : (1 - v) ^ 2 ≤ (1 - u) ^ 2 := by gcongr; linarith
+  have ht0 : 0 ≤ shqrScanThreshold n k B Γ S δ φ := by unfold shqrScanThreshold; positivity
+  have hL : shqrLoopThreshold n k B Γ S δ φ * (1 - v) ^ 2 =
+      (1 + v) ^ 2 * shqrScanThreshold n k B Γ S δ φ := by
+    unfold shqrLoopThreshold; rw [← hvdef]
+    field_simp [show (1 : ℝ) - v ≠ 0 by linarith]
+  have hL0 : 0 ≤ shqrLoopThreshold n k B Γ S δ φ := by
+    unfold shqrLoopThreshold; positivity
+  constructor
+  · calc (1 + u) ^ 2 * shqrScanThreshold n k B Γ S δ φ
+        ≤ (1 + v) ^ 2 * shqrScanThreshold n k B Γ S δ φ := by gcongr
+      _ = (1 - v) ^ 2 * shqrLoopThreshold n k B Γ S δ φ := by rw [← hL]; ring
+      _ ≤ (1 - u) ^ 2 * shqrLoopThreshold n k B Γ S δ φ := by gcongr
+  · have e : shqrLoopThreshold n k B Γ S δ φ =
+        (1 - v) ^ 2 * shqrDecoupled n k B Γ S δ φ ^ 2 := by
+      unfold shqrLoopThreshold shqrDecoupled shqrScanThreshold
+      rw [← hvdef]
+      field_simp [show (1 : ℝ) - v ≠ 0 by linarith]
+    rw [e]
+    gcongr
 
 /-- **The parameter choices meet the worklist's hypotheses** (T1 with the block norm $2\Sigma$):
 under the hypotheses of `NLAlib.ShiftedQR.shStepHyps_of_le_uShQR`, for a leaf error
@@ -412,7 +447,7 @@ theorem solveRoundedHyps_of_le_uShQR (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ
   have he := shqrDecoupleError_le hk0 hB hS hu0 hu
   have hωD : 0 ≤ shqrDecoupled n k B Γ S δ φ := by
     unfold shqrDecoupled; rw [← hvdef]
-    exact div_nonneg (by positivity) (by linarith)
+    exact div_nonneg (mul_nonneg (sq_nonneg _) hω.le) (sq_nonneg _)
   have hc0 : 0 ≤ shqrCut n k B Γ S δ φ := by
     unfold shqrCut; rw [← hvdef]
     exact div_nonneg (by positivity) (by linarith)
@@ -514,7 +549,14 @@ theorem shIterationHyps_of_le_uShQR (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ)
       unfold shqrScanThreshold at hh; rw [← hvdef] at hh; nlinarith
     have h3 : (1 - u) * h ≤ (1 + v) * shqrOmega n B Γ δ :=
       (pow_le_pow_iff_left₀ (by nlinarith) (by positivity) two_ne_zero).mp h2
-    unfold shqrDecoupled; rw [← hvdef, le_div_iff₀ (by linarith)]
+    have hp : 0 < (1 - v) ^ 2 := pow_pos (by linarith) 2
+    unfold shqrDecoupled; rw [← hvdef, le_div_iff₀ hp]
+    have h4 : h * (1 - v) ^ 2 ≤ h * (1 - v) := by
+      have : (1 - v) ^ 2 ≤ 1 - v := by nlinarith
+      exact mul_le_mul_of_nonneg_left this hh0
+    have h5 : (1 + v) * shqrOmega n B Γ δ ≤ (1 + v) ^ 2 * shqrOmega n B Γ δ := by
+      have : 1 + v ≤ (1 + v) ^ 2 := by nlinarith
+      exact mul_le_mul_of_nonneg_right this hω.le
     nlinarith
   · have h1 : (1 + u) ^ 2 * shqrOmega n B Γ δ ^ 2 ≤ shqrScanThreshold n k B Γ S δ φ := by
       unfold shqrScanThreshold; gcongr

@@ -32,6 +32,8 @@ the iterates), iterate norm $4\Sigma$, block norm $2\Sigma$.
   `NLAlib.ShiftedQR.shqrSmallEigFailure`, `NLAlib.ShiftedQR.shqrSmallEigAccuracy`,
   `NLAlib.ShiftedQR.shqrDist`: the parameter choices.
 * `NLAlib.ShiftedQR.uShQR`: the precision threshold.
+* `NLAlib.ShiftedQR.shqrScanThreshold`, `NLAlib.ShiftedQR.shqrLoopThreshold`,
+  `NLAlib.ShiftedQR.shqrDecoupled`: the words that depend on it.
 
 ## Main results
 
@@ -469,11 +471,21 @@ $\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{ShQR}}$). -/
 noncomputable def shqrScanThreshold (n k : ℕ) (B Γ S δ φ : ℝ) : ℝ :=
   (1 + uShQR n k B Γ S δ φ) ^ 2 * shqrOmega n B Γ δ ^ 2
 
+/-- The scan threshold word $t_L = (1 + \boldsymbol{u}_{\mathrm{ShQR}})^2 t/(1 -
+\boldsymbol{u}_{\mathrm{ShQR}})^2$ of the decoupling loop, for the iteration's threshold word
+$t$ (`NLAlib.ShiftedQR.shqrScanThreshold`): a rounded scan with $t_L$ cannot miss an entry the
+iteration certified with $t$, $(1 + \boldsymbol{u})^2 t \le (1 - \boldsymbol{u})^2 t_L$. -/
+noncomputable def shqrLoopThreshold (n k : ℕ) (B Γ S δ φ : ℝ) : ℝ :=
+  (1 + uShQR n k B Γ S δ φ) ^ 2 * shqrScanThreshold n k B Γ S δ φ /
+    (1 - uShQR n k B Γ S δ φ) ^ 2
+
 /-- The decoupling level
-$\omega_D = (1 + \boldsymbol{u}_{\mathrm{ShQR}})\omega/(1 - \boldsymbol{u}_{\mathrm{ShQR}})$
-that a passing bottom scan certifies. -/
+$\omega_D = \sqrt{t_L}/(1 - \boldsymbol{u}_{\mathrm{ShQR}})
+= (1 + \boldsymbol{u}_{\mathrm{ShQR}})^2\omega/(1 - \boldsymbol{u}_{\mathrm{ShQR}})^2$
+that a passing scan with the loop's threshold word $t_L$
+(`NLAlib.ShiftedQR.shqrLoopThreshold`) certifies: $t_L \le (1 - \boldsymbol{u})^2\omega_D^2$. -/
 noncomputable def shqrDecoupled (n k : ℕ) (B Γ S δ φ : ℝ) : ℝ :=
-  (1 + uShQR n k B Γ S δ φ) * shqrOmega n B Γ δ / (1 - uShQR n k B Γ S δ φ)
+  (1 + uShQR n k B Γ S δ φ) ^ 2 * shqrOmega n B Γ δ / (1 - uShQR n k B Γ S δ φ) ^ 2
 
 /-- The worklist's deflation threshold word $(1 + \boldsymbol{u}_{\mathrm{ShQR}})^2\omega_D^2$. -/
 noncomputable def shqrDeflationThreshold (n k : ℕ) (B Γ S δ φ : ℝ) : ℝ :=

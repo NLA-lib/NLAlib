@@ -1148,6 +1148,7 @@ public import NLAlib.Ops.Logic.VectorUpdate
 public import NLAlib.Ops.Logic.WeightedLoop
 public import NLAlib.Ops.Logic.While
 public import NLAlib.Ops.Logic.Writes
+public import NLAlib.Ops.MonomialWork
 public import NLAlib.Ops.PolynomialWork
 public import NLAlib.Ops.Probability
 public import NLAlib.Ops.Profile

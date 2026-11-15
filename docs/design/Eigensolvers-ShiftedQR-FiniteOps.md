@@ -633,7 +633,7 @@ next to `hφse`.
 theorem roundedShQR_measureReal_not_spectrum_le … (hM : StdModel u id Mch)
     (hI : I.IsMeasurable) (hloc : ∀ o, I.TapeLocal o (win o))
     (hNat : IsExactNatLit id Mch (n + 1)) (hSE : IsRandomSmallEig law sU βse φse I)
-    (hDisk : IsPolarDiskSampler law sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
+    (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
     (hHess : IsUpperHessenberg H) (hV : IsUnit V) (hHV : H * V = V * diagonal d)
     (hκ : pseudoConditionNumber V ≤ B) (hΓ : 0 < Γ) (hgap : ∀ i j, i ≠ j → Γ ≤ ‖d i - d j‖)
     (hΣ : specNorm H ≤ Σ) (hδ : 0 < δ) (hδΣ : δ ≤ Σ) (hφ : 0 < φ) (hφ1 : φ ≤ 1)

@@ -354,7 +354,7 @@ private theorem norm_sub_le_of_abs_re_im {u : ℝ} {w z : ℂ} (hre : |w.re - z.
 /-- **The rounded shift**: on a machine with the standard model, subtracting the shift from the
 diagonal moves $\mathbf{H} - s\mathbf{I}$ by at most $\boldsymbol{u}(\|\mathbf{H}\|_2 + \lvert
 s\rvert)$ in the spectral norm (the error is diagonal). -/
-private theorem specNorm_machineShiftedPrefix_sub_le {M : Machine ℝ} {u : ℝ}
+theorem specNorm_machineShiftedPrefix_sub_le {M : Machine ℝ} {u : ℝ}
     (hM : StdModel u id M) (hu : 0 ≤ u) (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (s : ℂ) :
     specNorm (machineShiftedPrefix M H s (n + 1) - (H - s • (1 : Matrix _ _ ℂ))) ≤
       u * (specNorm H + ‖s‖) := by

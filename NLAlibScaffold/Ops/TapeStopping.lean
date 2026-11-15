@@ -6,26 +6,27 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Ops.TapeLaw
+public import Mathlib.Probability.Process.Stopping
 
 /-!
-# The tape after a stopping position
+# The tape after a stopping time
 
 A program that reads its tape adaptively starts a subroutine at a position that depends on the
-draws made so far. Such a position is a **stopping position**: whether it equals $q$ is decided by
-the entries before $q$. For a tape with independent entries whose law depends only on the stream
-(`NLAlib.Ops.IsTapeLaw`), the tape shifted to a stopping position has the same law and is
-independent of everything decided before it (the strong Markov property of an i.i.d. sequence).
-This is what lets a failure bound proved for a subroutine started from a fixed memory be used for
-the same subroutine started at a random time.
-
-## Main definitions
-
-* `NLAlib.Ops.Tape.IsStoppingPos`: a random position decided by the past.
+draws made so far, and on some tapes it never gets there (an earlier part fails). Such a position
+is a **stopping time** of the filtration of positions (`NLAlib.Ops.IsTapeLaw.filtration`), with
+values in `WithTop ℕ`, `⊤` for "never": whether it is at most $q$ is decided by the entries before
+$q$. For a tape with independent entries whose law depends only on the stream
+(`NLAlib.Ops.IsTapeLaw`), the tape shifted to a stopping time, on the event that it is finite,
+has the law of the tape and is independent of everything decided before it (the strong Markov
+property of an i.i.d. sequence). A failure bound proved for a subroutine started from a fixed
+memory thus transfers to the same subroutine started at a random time.
 
 ## Main results
 
-* `NLAlib.Ops.IsTapeLaw.shiftAt`: the shifted tape at a stopping position is a tape with the same
-  law, independent of any random variable decided before the position.
+* `NLAlib.Ops.IsTapeLaw.measure_inter_shift_mem`: for an event $S$ of the stopped σ-algebra and a
+  measurable set $A$ of tapes,
+  $\mathbb{P}(S \cap \{p < \top,\ \xi \text{ shifted to } p \in A\}) =
+  \mathbb{P}(S \cap \{p < \top\})\,\mathbb{P}(\xi \in A)$.
 -/
 
 @[expose] public section
@@ -36,21 +37,18 @@ namespace NLAlib.Ops
 
 variable {K Ω : Type} [MeasurableSpace K] {mΩ : MeasurableSpace Ω}
 
-/-- `p` is a **stopping position** of the random tape `ξ`: for every `q` the event `p = q` is
-measurable with respect to the entries before `q` (`NLAlib.Ops.Tape.past`). -/
-def Tape.IsStoppingPos (ξ : Ω → Tape K) (p : Ω → ℕ) : Prop :=
-  ∀ q, MeasurableSet[Tape.past ξ q] {ω | p ω = q}
-
-/-- **The strong Markov property of the tape**: let `p` be a stopping position of a tape `ξ`
-with independent entries of law `law s` in the stream `s`, and let `X` be a measurable random
-variable decided before `p` (on the event `p = q` it agrees with a function of the entries before
-`q`). Then the tape shifted to `p` has the same law, and it is independent of `X`. -/
-theorem IsTapeLaw.shiftAt {law : ℕ → Measure K} {P : Measure Ω} {ξ : Ω → Tape K}
-    (h : IsTapeLaw law P ξ) {p : Ω → ℕ} (hp : Tape.IsStoppingPos ξ p) {γ : Type}
-    [MeasurableSpace γ] {X : Ω → γ} (hXm : Measurable X)
-    (hX : ∀ q, ∃ Y : Ω → γ, Measurable[Tape.past ξ q] Y ∧ ∀ ω, p ω = q → X ω = Y ω) :
-    IsTapeLaw law P (fun ω => (ξ ω).shift (p ω)) ∧
-      IndepFun X (fun ω => (ξ ω).shift (p ω)) P := by
+/-- **The strong Markov property of the tape**: let `p` be a stopping time, with values in
+`WithTop ℕ`, of the filtration of positions of a tape `ξ` with independent entries of law
+`law s` in the stream `s`. For an event `S` decided at time `p` (measurable for the stopped
+σ-algebra) and a measurable set `A` of tapes, the event "`p` is finite, `S` holds and the tape
+shifted to `p` lies in `A`" has probability $\mathbb{P}(S \cap \{p < \top\})\,\mathbb{P}(\xi
+\in A)$. -/
+theorem IsTapeLaw.measure_inter_shift_mem {law : ℕ → Measure K} {P : Measure Ω}
+    {ξ : Ω → Tape K} (h : IsTapeLaw law P ξ) {p : Ω → WithTop ℕ}
+    (hp : IsStoppingTime h.filtration p) {S : Set Ω} (hS : MeasurableSet[hp.measurableSpace] S)
+    {A : Set (Tape K)} (hA : MeasurableSet A) :
+    P (S ∩ {ω | ∃ q : ℕ, p ω = q ∧ (ξ ω).shift q ∈ A}) =
+      P (S ∩ {ω | p ω ≠ ⊤}) * P.map ξ A := by
   sorry
 
 end NLAlib.Ops

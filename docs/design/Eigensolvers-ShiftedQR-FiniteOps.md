@@ -602,7 +602,7 @@ interface for the probability layer. The general probability layer has its own n
 
 ### 14.1 The headline
 
-**T1c (Theorem 6.3 with Theorem 1.4's quantifiers, corrected).** Let $\mathbf{H}$ be upper
+**T1c (Theorem 6.3 with Theorem 1.4's quantifiers, corrected; constants revised in §14.11).** Let $\mathbf{H}$ be upper
 Hessenberg of order $n + 1$, $\mathbf{H}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$
 with $\kappa(\mathbf{V}) \le B$, eigenvalues separated by $\Gamma > 0$, $\|\mathbf{H}\|_2 \le
 \Sigma$, $0 < \delta \le \Sigma$, $0 < \varphi \le 1$, and $k = 2^m$ chosen from $B$ as in
@@ -626,7 +626,7 @@ theorem roundedShQR_measureReal_not_spectrum_le … (hM : StdModel u id Mch) (hM
     (hHess : IsUpperHessenberg H) (hV : IsUnit V) (hHV : H * V = V * diagonal d)
     (hκ : pseudoConditionNumber V ≤ B) (hΓ : 0 < Γ) (hgap : ∀ i j, i ≠ j → Γ ≤ ‖d i - d j‖)
     (hΣ : specNorm H ≤ Σ) (hδ : 0 < δ) (hδΣ : δ ≤ Σ) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
-    (hk : k = shqrDegree B) (hpar : … stored params = shqrParams n k B Γ Σ δ φ)
+    (hk : k = shqrDegree (4 * B)) (hpar : … stored params = shqrParams n k B Γ Σ δ φ)
     (hse : βse ≤ shqrSmallEigAccuracy n k B Γ Σ δ) (hφse : φse ≤ shqrSmallEigFailure n k B Γ Σ δ φ)
     (hu : u ≤ uShQR n k B Γ Σ δ φ) … (hξ : IsTapeLaw law P ξ) :
     P.real {ω | ¬ Writes .total I (ξ ω) (roundedShQR …).body env F
@@ -671,7 +671,9 @@ in Exc's $\varepsilon$, the cap $F$, $k$, the thresholds are supplied, computed 
 **What it does not claim.** No Hessenberg reduction or random preprocessing of a general matrix
 (Remark 1.3); no statement about `SmallEig`'s own cost or precision; no running-time bound beyond
 T5's count of operations; no forward error for eigenvalues; no rounded disk sampler; nothing for
-$\kappa_V = \infty$ or repeated eigenvalues ($\Gamma > 0$ is a hypothesis).
+$\kappa_V = \infty$ or repeated eigenvalues ($\Gamma > 0$ is a hypothesis). Modelling choices that are stronger than
+the paper: `SmallEig`'s randomness is a fixed window of the uniform stream, and the parameter
+words are exact reals, not floats (§14.11).
 
 ### 14.2 Backwards from the headline
 
@@ -684,11 +686,14 @@ its program. Gen = general library (own topic file, stage-free docstring), Stg =
 | T2, T3, T5 | bits; relative form; work bound | same | Stg | L, M, M | plan | 10 |
 | T4 | Hermitian corollary ($k = 2$, $B = 1$; optional) | same | Stg | L | plan | 10 |
 | PAR1 | `shqrParams`/`uShQR` meet T1's and P11p's hypotheses (ω, $c$, threshold word, budget, $\varphi$ split $\varphi/(4(n+1))$ each) | same | Stg | L | plan | 9 |
+| PAR1p | positivity under T1c's hypotheses: `0 < uShQR …`, `0 < shqrSmallEigAccuracy …`, `0 < shqrSmallEigFailure …` (else T1c is vacuous through $0 \le u \le$ `uShQR` and T2's $\log$ is junk); review B1 | same | Stg | M | plan | 9 |
+| PAR1k | `2 ≤ shqrDegree B` and $B^{2/k} \le 2$ (N11, S3's `hBk`) | same | Stg | S | plan | 9 |
+| T1d | the all-tape statement for `roundedShQR`: on every tape the run is total, writes only $\mathbf{A}$, `Out`, `Fl`, and `Fl = 0` implies the spectrum of some $\mathbf{H}+\mathbf{E}$, $\|\mathbf{E}\|_2 \le \delta$ (C4 with `fails := True` + P11d + the leaf's all-tape contract) | RoundedHeadline | Stg | S | plan | 10 |
 | T1 | `solveRounded_measureReal_not_spectrum_le` | RoundedHeadline | Stg | S | **proved** (from C4p) | — |
 | C4p | `solveRounded_pwrites` (worklist as `PWrites`; class preservation; rounds add) | RoundedHeadline | Stg | H | skel | 7 |
-| C4cap | D interface `[n+1, k, np, F]` (the loop cap as a dimension; §14.4) | RoundedSolve | Stg | S | plan | 7 |
+| C4cap | D interface `[n+1, k, np, F]`, `F` an outer parameter of both decoupling contracts (§14.4, §14.11 B4); **before C4p** | RoundedSolve | Stg | S | plan | 6 |
 | P12a | `DeflationInv.exists_pseudoConditionNumber_subBlock_le_and_le_norm_sub` (active blocks: condition $2B$, separation $g/2$) | Matrix/QRIteration/DeflationPerturbed | Gen | M | skel | 5 |
-| P12b | iterate class: a perturbed unitary similarity within $g/(16NB)$ keeps condition $2B$, separation $g/2$, norm (from E2) | Matrix/Perturbation/EigenvalueBackward | Gen | S | plan | 5 |
+| P12b | iterate class: a perturbed unitary similarity within $g/(16NB)$ of a block with condition $\le 2B$, separation $\ge g/2$ has condition $\le 4B$, separation $\ge g/4$ (from E2; §14.11 B3) | Matrix/Perturbation/EigenvalueBackward | Gen | S | plan | 5 |
 | LF1 | `SmallEig` kernel (`IsRandomSmallEig`: forward $\beta$ off a bad window) meets `RandomLeafContract` (E1) | Eigensolvers/ShiftedQR/RoundedKernels | Stg | M | plan | 7 |
 | P11d | `roundedDecouple` (Lemma 6.4 loop: bottom scan P3, iteration, cap $F$) meets `RoundedDecouplingContract True` | Eigensolvers/ShiftedQR/RoundedDecouple | Stg | M | plan | 9 |
 | P11p | `roundedDecouple` meets `RandomDecouplingContract` ($\varphi_D = F\varphi_{\mathrm{it}}$) by S6 ✓ + PL5 + P12b | same | Stg | L | plan | 9 |
@@ -704,30 +709,29 @@ its program. Gen = general library (own topic file, stage-free docstring), Stg =
 | P4 | `optimalTest` program ($\widehat{\mathbf{v}}_k$ recurrence; FP2) meets S1/S2's $0.0009$ hypothesis | RoundedRitz | Stg | M | plan | 7 |
 | FP2 | rounded $\mathbf{e}_n^{\mathsf T}p(\mathbf{H})$ by the recurrence $\widehat{\mathbf{v}}_{j+1} = \mathrm{fl}((\mathbf{H} - s_{j+1})^{\mathsf H}\widehat{\mathbf{v}}_j)$: error $\le 2(n+1)^2(2+2C)^k\|\mathbf{H}\|^k\boldsymbol{u}$ (Lemma 4.5) | Matrix/FinitePrecision/HessenbergRowPoly | Gen | M | plan | 6 |
 | FP1 | rounded product of $k$ words: relative error $(1+\boldsymbol{u})^{k-1} - 1$ | Matrix/FinitePrecision/ProductRounded | Gen | S | plan | 5 |
-| GR1 | separated covering net of a disk (square grid): covers $\mathbb{D}(0,1)$ at radius $\varepsilon$, $0.99\varepsilon$-separated, $\le 9/\varepsilon^2$ points for $\varepsilon \le 1/2$ | ForMathlib/Analysis/Complex/DiskNet | Gen | M | plan | 5 |
-| RZ1 | `exists_perm_forall₂_ritzValues` (a forward-accurate listing of the trailing block, reordered, is entrywise within $\beta$ of `ritzValues`) | Matrix/QRIteration/RitzApprox | Gen | S | skel | 5 |
+| GR1 | main's `squareGrid c R ε`, filtered to $\mathbb{D}(c, (1+\varepsilon)R)$: still covers $\mathbb{D}(c,R)$ at $\varepsilon R$ (a covering point is within $\varepsilon R$; `exists_mem_squareGrid_norm_sub_le` reused), is $0.99\varepsilon R$-separated (spacing $2\varepsilon R/(\sqrt2+\varepsilon)$, $\varepsilon \le 1/2$), and has $\le 9/\varepsilon^2$ points (S5's count; the unfiltered `length_squareGrid_le` gives only $12/\varepsilon^2$). Two lemmas `squareGrid_pairwise_separated`, `card_filter_squareGrid_le`; no new net | Matrix/QRIteration/Strategy | Gen | M | plan | 5 |
+| RZ1 | `exists_perm_forall₂_ritzValues` (a forward-accurate listing of the trailing block, reordered, is entrywise within $\beta$ of `ritzValues`) | Matrix/QRIteration/Ritz | Gen | S | skel | 5 |
 | D5 | `map_polarDisk_eq_diskUniform` (two uniform draws → the uniform disk law) | Probability/Distributions/DiskUniform | Gen | M | skel | 5 |
-| PL0–PL5 | probabilistic block specifications ([Ops-Probabilistic-Specs](Ops-Probabilistic-Specs.md)): run measurability (H), strong Markov at stopping positions (L), `PWrites` rules (3 proved; 4 skel; 4 plan), measurable catalog (M), `PBackwardStep.whileFuel` (L) | Ops/Logic/Probabilistic, Ops/TapeStopping | Gen | — | 3 ✓, 6 skel, 6 plan | 5–6 |
+| PL0–PL6 | **stage PROB-LOGIC** ([Ops-Probabilistic-Specs](Ops-Probabilistic-Specs.md), own targets file): run measurability, strong Markov at stopping times, `PWrites` rules, measurable catalog, `PBackwardStep.whileFuel`, bridge to `Ops/Law` | Ops/Logic/Probabilistic, Ops/TapeStopping | Gen | — | separate stage | PROB-LOGIC 1–3 |
 
 Proved and used unchanged: C4, C4a and their sublemmas (deterministic skeleton of C4p),
 P1–P3, Q1–Q6, R1–R4, S1–S6, D1–D4, E1, E2, K1, DP1–DP3, B*, G*. U1 is no longer on the critical
 path (`PWrites.seq` subsumes the adaptive union bound); it stays as a law-level lemma.
 
-**Counts (new).** Skeleton: 10 sorried (S 1, M 5, L 2, H 2) + 4 proved (PL3a ×3, T1). Planned:
-33 (S 9, M 16, L 8). By layer, open statements: L2 16 (S 5, M 7, L 4: RZ1, P12a, P12b, FP1, FP2,
-GR1, P4–P10, P10b, P11d, P11p); L3 16 (S 2, M 10, L 3, H 1: PL1, PL2, PL3b–f, PL4, PL5, D5, LF1,
-P14, P15) + 3 proved; L4 8 (S 1, M 3, L 3, H 1: C4cap, C4p, PAR1, T1c, T2, T3, T5, T4) + T1
-proved; infrastructure from the rule candidates 3 (S 2, M 1, §14.5). 43 open in all.
+**Counts (revised, §14.11).** SQR-FP: skeleton 4 sorried (S 1, M 2, H 1: RZ1, D5, P12a, C4p)
++ T1 proved; planned 30 (S 10, M 13, L 7). PROB-LOGIC (its own stage, PL0–PL6): skeleton 6
+sorried (M 3, L 2, H 1) + 3 proved; planned 7 (S 2, M 4, L 1).
 
 ### 14.3 Placement (the maintainer's point)
 
-**General, own topic files, docstrings without this stage:** the Ops probability layer PL0–PL5
-(`Ops/Logic/Probabilistic`, `Ops/TapeStopping`, `Ops/Catalog/ScalarMeasurable`); the polar sampler
+**General, own topic files, docstrings without this stage:** the Ops probability layer PL0–PL6
+as the separate stage PROB-LOGIC (`Ops/Logic/Probabilistic`, `Ops/TapeStopping`,
+`Ops/Catalog/ScalarMeasurable`); the polar sampler
 D5 (`Probability/Distributions/DiskUniform`); approximate Ritz values RZ1
-(`Matrix/QRIteration/RitzApprox`); class preservation P12a/P12b (`DeflationPerturbed`,
+(`Matrix/QRIteration/Ritz`); class preservation P12a/P12b (`DeflationPerturbed`,
 `EigenvalueBackward`); rounded products FP1 and the rounded last-row polynomial FP2
-(`Matrix/FinitePrecision/*`); the disk net GR1 (`ForMathlib/Analysis/Complex/DiskNet`, a
-Mathlib-shaped covering lemma). Already general and proved: perturbation of the Hessenberg
+(`Matrix/FinitePrecision/*`); the separation of main's square grid GR1 (`Matrix/QRIteration/Strategy`, next to its covering and
+count; no new net). Already general and proved: perturbation of the Hessenberg
 potential (Q6), optimal Ritz values under perturbation (S1–S3), Find with computed values (S4),
 Exc's covering argument (S5), the abstract while loop (S6), disk regularization (D3, D4), the
 measurable union bound (U1).
@@ -757,9 +761,11 @@ Options:
   branches without random calls. Re-proof of C4/C4a: **0 lines**. New: C4p (H, ~400 lines, mostly
   PWrites bookkeeping over existing sublemmas). One small edit is needed anyway (**C4cap**, S,
   ~20–40 lines): the decoupler's interface gains the cap dimension `F`
-  (`[n+1, k, np, F] (W, P) → (W, Fl)`, as Codex's exact `decouple` has `[N, m, k, F, M]`), because
-  the Ops builder has no way to pass a Lean-level constant to a loop bound, and $F = \lfloor
-  N_{\mathrm{dec}}\rfloor + 1$ is not a function of $n$. It changes `RoundedDecouplingContract`,
+  (`[n+1, k, np, F] (W, P) → (W, Fl)`, as Codex's exact `decouple` has `[N, m, k, F, M]`), so that
+  `roundedDecouple` is one program term with the cap as runtime data (a Lean constant could be a
+  loop bound through `IExp.const`, but that makes a family of programs, one per $F$; review
+  §4). `F` is an outer parameter of `RoundedDecouplingContract`/`RandomDecouplingContract`, like
+  `k`, never quantified inside (the C1 lesson): $\varphi_D = F\varphi_{\mathrm{it}}$ depends on it. It changes `RoundedDecouplingContract`,
   `roundedProcessLarge` (one `run` line), `solveRounded`'s interface and the frames in C4a/C4.
 * (b) Restate C4 with the tape-indexed per-call event above. Re-proof: `RoundedWorklistState`'s
   fail branch carries the witness, C4a's fail branch builds it from the popped block (M, ~150
@@ -820,18 +826,20 @@ decoupling test, Codex's `BlockCopy`/`copyToWork` for trial copies, `sqrtIter` (
 ### 14.7 Skeleton and checks
 
 New files: `NLAlibScaffold/Ops/TapeStopping.lean` (PL2), `NLAlibScaffold/Ops/Logic/Probabilistic.lean`
-(PL0, PL1, PL3a–e), `NLAlibScaffold/Matrix/QRIteration/RitzApprox.lean` (RZ1),
+(PL0, PL1, PL3a–e; both stage PROB-LOGIC), `NLAlibScaffold/Matrix/QRIteration/Ritz.lean` (RZ1; lands in main's `Ritz.lean`),
 `NLAlibScaffold/Eigensolvers/ShiftedQR/RoundedHeadline.lean` (contracts, C4p, T1). Added to
 existing scaffold files: D5 (`DiskUniform`), P12a (`DeflationPerturbed`). No proved statement
 changed. `lake build NLAlib NLAlibScaffold` and `check_rules` results: §14.10.
 
 ### 14.8 Batches
 
-* **Batch 3 (general library, waves 5–6):** PL1, PL2, PL3b–f, PL4, PL5, D5, RZ1, P12a, P12b, FP1,
-  FP2, GR1, the batch-2 moves and the geometry structure. Independent of the stage; reviewable on
-  its own.
-* **Batch 4 (stage programs, waves 7–8):** C4cap, C4p, LF1, P4–P10, P14, P15.
-* **Batch 5 (assembly, waves 9–10):** P10b, P11d, P11p, PAR1, T1c, T2, T3, T5 (T4 optional).
+* **PROB-LOGIC (separate stage, first):** waves P1–P3 of its own note; must be on main before
+  SQR-FP wave 7.
+* **Batch 3 (general library, waves 5–6):** wave 5: D5, RZ1, P12a, P12b, FP1, GR1, RC1–RC3 and the
+  batch-2 moves; wave 6: FP2, **C4cap** (before C4p).
+* **Batch 4 (stage programs, waves 7–8):** wave 7: C4p, LF1, P4–P6, P14, P15; wave 8: P7–P10.
+* **Batch 5 (assembly, waves 9–10):** wave 9: P10b, P11d, P11p, PAR1, PAR1p, PAR1k; wave 10:
+  T1c, T1d, T2, T3, T5 (T4 optional).
 
 ### 14.9 Risks
 
@@ -854,3 +862,56 @@ audit 0 violations, 14 linters 0 errors, strict replay of `NLAlib` 0 violations;
 `sorry`s are in `NLAlibScaffold` only). Decision sheet:
 `~/nlalib-harness/state/decisions/SQR-FP-HEADLINE.json`; targets (batches 3–5, waves 5–10):
 `~/nlalib-harness/pilot/sqr-fp-targets.json`.
+
+### 14.11 Revision after review (Fable, `Review-Fable-SQR-FP-Headline.md`; maintainer approved)
+
+* **B1 (positivity).** New targets PAR1p (`0 < uShQR`, `0 < shqrSmallEigAccuracy`,
+  `0 < shqrSmallEigFailure` under T1c's hypotheses) and PAR1k (`2 ≤ shqrDegree B`,
+  $B^{2/k} \le 2$). Without PAR1p T1c could be vacuous through $0 \le u \le$ `uShQR`, and T2's
+  $\log_2(1/\boldsymbol{u}_{\mathrm{ShQR}})$ would be junk. PAR1 also checks that every natural
+  literal the inner programs store (stack counts, trial counters, $k$, $F$) is covered by the
+  `IsExactNatLit` bound of T1c (stated for the maximum).
+* **B2 (PL2).** Restated with Mathlib's `IsStoppingTime (IsTapeLaw.filtration h) p`,
+  `p : Ω → WithTop ℕ`, conclusion on `{p ≠ ⊤}`
+  (`IsTapeLaw.measure_inter_shift_mem`); `Tape.IsStoppingPos` removed. A failing run has no end
+  position: `PWrites.seq` uses the stopping time "end position on success, `⊤` on failure". The
+  clamp to `m.pos` on failure is not a stopping time. PL3b–e still compose: `of_window`, `ite`
+  need no stopping time; `seq` uses PL2 as above (or, equivalently, the per-position
+  decomposition with `IsTapeLaw.shift` and `integral_future` that the review checked);
+  `whileFuel` is `seq`/`ite` by induction. See [Ops-Probabilistic-Specs](Ops-Probabilistic-Specs.md) §2.
+* **B3 (class constants, end to end).** One rule: each level hands the next a class with the
+  constants doubled once. Input: $\kappa(\mathbf{V}) \le B$, separation $\Gamma$. Worklist (C4p,
+  P12a): blocks given to D have condition $\le 2B$, separation $\ge \Gamma/2$, norm $\le N_0$
+  (total error $\le \Gamma/(16(n+1)B)$). Inside D (P12b): iterates are perturbed similarities of
+  that block within $(\Gamma/2)/(16(n+1)\cdot 2B)$, so they have condition $\le 4B$, separation
+  $\ge \Gamma/4$. Sh/Find/Exc/Regularize (P7–P10) are instantiated with $B' = 4B$, $\Gamma' =
+  \Gamma/4$: T1c takes `k = shqrDegree (4 * B)`, and `shqrParams`/`uShQR` are written in
+  $(4B, \Gamma/4)$. Cost: constants in $\log(1/\boldsymbol{u})$ only (the paper's single factor
+  $2$ in $B \ge 2\kappa_V$, $\Gamma \le \mathrm{gap}/2$ becomes $4$; T2's asymptotics unchanged).
+  `RandomDecouplingContract` is instantiated at $(2B, \Gamma/2)$ (as in C4p) and the iteration
+  contract at $(4B, \Gamma/4)$.
+* **B4 (C4cap).** Wave 6, before C4p. Planned signatures after C4cap:
+  `RoundedDecouplingContract fails k F ps ω ε D I` and
+  `RandomDecouplingContract law B g φ k F ps ω ε D I`, frame `[n + 1, k, ps.length, F]`, with `F`
+  fixed outside the `∀`; `solveRounded D L : [N, k, np, F] …`. The skeleton's C4p (frame
+  `[n + 1, k, ps.length]`) is restated in the C4cap commit, and only then dispatched. The reason
+  given in §14.4 is corrected: `IExp.const` exists; `F` is runtime data so that the decoupler is
+  one program.
+* **T1d** added (all-tape statement; termination, footprint, backward error when `Fl = 0`).
+* **Modelling choices (not paper assumptions), added to the "not claimed" list of §14.1.**
+  (a) `SmallEig`'s randomness is a **fixed-length window $W$ of the uniform stream at the call
+  position**, wrong only on a bad window (`PWrites.of_window`). This is stronger than Definition
+  1.2's black box ("with probability $\ge 1 - \varphi$"); an oracle that draws an adaptive number
+  of samples does not fit. Its measurability and tape locality are part of `IsRandomSmallEig`
+  (the same for `IsPolarDiskSampler`). (b) Parameter words (Σ, B, Γ, δ, φ, ω, k, F, Exc's
+  ε, thresholds) are **arbitrary reals** supplied exactly (`Machine ℝ`, `dec = id`), not
+  floating-point numbers.
+* **Placement.** GR1 reuses main's `squareGrid` (option (b)): separation and a filtered count in
+  `Strategy.lean`, no new net. RZ1 moved to `NLAlibScaffold/Matrix/QRIteration/Ritz.lean`
+  (destination main's `Ritz.lean`). PL0–PL6 are the separate stage **PROB-LOGIC** (stage note
+  [Ops-Probabilistic-Specs](Ops-Probabilistic-Specs.md), targets
+  `~/nlalib-harness/pilot/prob-logic-targets.json`), with a bridge PL6 to `Ops/Law`'s law-level
+  shape; PL4 is stated per operation with a sum-type assembly.
+* **Proving order.** PROB-LOGIC P1 (PL1, PL2, PL4) → P2 (PL3b–f, PL6) → P3 (PL5), in parallel
+  with SQR-FP wave 5 (D5, RZ1, P12a, P12b, FP1, GR1, moves, RC1–RC3) and wave 6 (FP2, C4cap); then
+  wave 7 (C4p, LF1, P4–P6, P14, P15) once PROB-LOGIC is on main; waves 8–10 as §14.8.

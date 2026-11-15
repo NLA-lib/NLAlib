@@ -10,7 +10,7 @@ public import NLAlibScaffold.Matrix.Perturbation.EigenvalueBackward
 public import NLAlibScaffold.Matrix.Perturbation.QRFactorization
 public import NLAlibScaffold.Matrix.Perturbation.UnitaryPair
 public import NLAlibScaffold.Matrix.QRIteration.DeflationPerturbed
-public import NLAlibScaffold.Matrix.QRIteration.RitzApprox
+public import NLAlibScaffold.Matrix.QRIteration.Ritz
 public import NLAlibScaffold.Matrix.QRIteration.RoundedStrategy
 public import NLAlibScaffold.Matrix.QRIteration.StableStep
 public import NLAlibScaffold.Ops.Logic.BackwardFrame

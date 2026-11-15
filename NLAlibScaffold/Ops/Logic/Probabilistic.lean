@@ -25,7 +25,8 @@ bad window of its own draws has the probability of that window (`PWrites.of_wind
 sequence, a branch, a counted loop and a loop with early exit add the failure probabilities of
 their parts (`PWrites.seq`, `PWrites.ite`, `PWrites.whileFuel`). The union bound over adaptively
 started calls is thus proved once, in `PWrites.seq`, from the strong Markov property of the tape
-(`NLAlib.Ops.IsTapeLaw.shiftAt`) and the measurability of runs
+(`NLAlib.Ops.IsTapeLaw.measure_inter_shift_mem`, at the stopping time "end position of the
+first part, `⊤` if it fails") and the measurability of runs
 (`NLAlib.Ops.Interp.IsMeasurable.measurable_eval`); a program proof applies the rules and never
 names the random state of a call.
 

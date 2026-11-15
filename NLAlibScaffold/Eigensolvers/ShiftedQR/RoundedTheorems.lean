@@ -274,11 +274,19 @@ theorem roundedShQR_relative {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
   exact hW.mono le_rfl fun μ' _ ⟨hf, roots, E, hO, hE, hR⟩ => ⟨hf, roots, E, hO, hE.trans h3, hR⟩
 
 /-- **Hermitian inputs** (T4; [BanksGarzaVargasSrivastava2022, Remark 1.7], at $B = 1$): for a
-Hermitian upper Hessenberg (tridiagonal) $\mathbf{H}$ with eigenvalues separated by $\Gamma > 0$
-no diagonalization is supplied: the unitary one has condition $1$, so the run at $B = 1$ and
-$k$ the degree of (eqn:setk) at $4$ meets the bound of
-`NLAlib.ShiftedQR.roundedShQR_measureReal_not_spectrum_le`. The paper's $k = 2$ for Hermitian
-inputs is not this degree and is not claimed. -/
+Hermitian upper Hessenberg (tridiagonal) $\mathbf{H}$ of order $n + 1$ with eigenvalues separated
+by $\Gamma > 0$, $\|\mathbf{H}\|_2 \le \Sigma$, $0 < \delta \le \Sigma$, $0 < \varphi \le 1$, and
+the machine, kernels and tape law of `NLAlib.ShiftedQR.roundedShQR_measureReal_not_spectrum_le` at
+$B = 1$, no diagonalization is supplied: the unitary eigenvector matrix has condition $1$. So the
+run with the parameter words at $B = 1$ fails to write only the matrix, the output and the
+failure word, set the failure word to $0$ and store all eigenvalues of some $\mathbf{H} +
+\mathbf{E}$, $\|\mathbf{E}\|_2 \le \delta$, with probability at most $\varphi$.
+
+The shift degree is $k = 128$, the degree of (eqn:setk) at $4$: the paper's own (eqn:setk) gives
+$k = 64$ at its $B \ge 2\kappa_V = 2$, and the two-level class bookkeeping (the worklist at
+condition $2B$, the iterates at $4B$) adds one more doubling. The paper's $k = 2$ for Hermitian
+inputs is a different algorithm (exact Ritz values), not $\mathrm{Sh}_{k,B}$ under (eqn:setk),
+and is not claimed. -/
 theorem roundedShQR_hermitian {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
     (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
@@ -296,7 +304,21 @@ theorem roundedShQR_hermitian {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQR (O := O) (Q := Q)).body
       (Env.frame (shqrDims n k 1 Γ S δ φ) [a, t, p, out, f]) (shqrFp n a out f)
       (ShQRSpectrum out f H δ) μ} ≤ φ := by
-  sorry
+  set U := (hH.eigenvectorUnitary : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+  have hUo : HasOrthonormalCols U := hH.hasOrthonormalCols_eigenvectorUnitary
+  have hHU : H * U = U * Matrix.diagonal fun i => (hH.eigenvalues i : ℂ) := by
+    have h := hH.spectral_theorem
+    rw [Unitary.conjStarAlgAut_apply] at h
+    refine (congrArg (· * U) h).trans ?_
+    rw [Matrix.mul_assoc, Unitary.coe_star_mul_self, Matrix.mul_one]
+    rfl
+  have hgap' : ∀ i j, i ≠ j → Γ ≤ ‖(hH.eigenvalues i : ℂ) - (hH.eigenvalues j : ℂ)‖ := by
+    intro i j hij
+    rw [← Complex.ofReal_sub, Complex.norm_real, Real.norm_eq_abs]
+    exact hgap i j hij
+  exact roundedShQR_measureReal_not_spectrum_le hS hM hL hNat hQ hC hI hloc hSE hDisk hU hHess
+    hUo.isUnit hHU hUo.pseudoConditionNumber_eq_one.le hΓ hgap' hHS hδ hδS hφ hφ1
+    (by rw [mul_one]; exact hk) hβse0 hse hφse0 hφse hu hin hξ
 
 /-- **The operation count** (T5): there is an absolute constant $c$ such that the static count
 (`NLAlib.Ops.stmtCost`; every counted run on every tape stays within it,

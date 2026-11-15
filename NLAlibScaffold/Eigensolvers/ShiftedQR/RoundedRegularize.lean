@@ -1377,3 +1377,117 @@ theorem regularize_shift_bounds {n k N : ℕ} {u β R η ω S : ℝ}
     nlinarith [hδ j]
 
 end NLAlib.ShiftedQR
+
+namespace NLAlib.ShiftedQR
+
+open Ops
+
+section Tail
+
+variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
+
+/-- The views of `Regularize` are apart: the matrix, the output pairs and the flag from each other
+and from the three input words, all below the scratch handle $L$. -/
+structure RegularizeViews (L : ℕ) (n k : ℕ) (a rd c thr s f : ℕ × ℕ) : Prop where
+  lt : a.1 < L ∧ rd.1 < L ∧ c.1 < L ∧ thr.1 < L ∧ s.1 < L ∧ f.1 < L
+  as : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock s.1 s.2 (2 * k))
+  af : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock f.1 f.2 1)
+  sf : Fp.Disj (Store.inBlock s.1 s.2 (2 * k)) (Store.inBlock f.1 f.2 1)
+  io : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔
+    Store.inBlock f.1 f.2 1) (Store.inBlock rd.1 rd.2 1 ⊔ Store.inBlock c.1 c.2 1 ⊔
+      Store.inBlock thr.1 thr.2 1)
+
+/-- **The deterministic tail of `Regularize`**: from the context
+`NLAlib.ShiftedQR.RegularizeCtx` and $k \ge 1$ perturbed shifts at `s` as
+`NLAlib.ShiftedQR.DrawsInv` leaves them (within $\beta + R + \delta_j$ of a listing of the
+eigenvalues of the trailing block, $\eta - \delta_j$ from every eigenvalue), under the precision
+conditions of `Optimal`, of the rounded steps and of the scan, the decision of `Regularize` ends
+in `NLAlib.ShiftedQR.RegularizeOutcome` with $d = \eta/2$, the optimality parameter
+$\theta = 1.01 \cdot 0.998^{-1/k}(2B^4)^{1/(2k)}$ and the backward error
+$2.1\|\mathbf{H}\|_2((1 + x)^k - 1)$, $x = 300(n+1)^2\boldsymbol{u}$. -/
+theorem regularizeDecide_outcome {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
+    (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I) {n : ℕ}
+    (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {k L : ℕ}
+    (hk0 : 0 < k) (hk : k ≤ n) {a rd c thr s f : ℕ × ℕ}
+    (hv : RegularizeViews L n k a rd c thr s f)
+    {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {e : Fin (n + 1) → ℂ}
+    {B S ω β R η tv : ℝ} (hH : IsUpperHessenberg H) (hV : IsUnit V)
+    (hHV : H * V = V * Matrix.diagonal e) (hκ : pseudoConditionNumber V ≤ B)
+    (hBk : B ^ ((2 : ℝ) / k) ≤ 2) (hω : 0 < ω) (hψ : ω ≤ hessenbergPotential k H)
+    (hSH : specNorm H ≤ S) (hgap : ∀ i j, i ≠ j → 2 * ω ^ 2 / S ≤ ‖e i - e j‖) (hη : 0 < η)
+    (hβ : β + R + 2 * u * (S + β + R) ≤ ω ^ 2 / (20 * 101 * S))
+    (hdη : 4 * u * (S + β + R) ≤ η) (hnu : (n + 1 : ℝ) * u ≤ 1 / 2500)
+    (huo : 30000 * k * (((n + 1 : ℕ) : ℝ) * √((n + 1 : ℕ) : ℝ) * u) * ((2 + 2 * 1.1) * S) ^ k ≤
+      (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹) * ω) ^ k)
+    (huo1 : 100000 * ((n + 1 + k : ℕ) : ℝ) ^ 2 * u ≤ 1)
+    (hxu : 300 * (n + 1) ^ 2 * u ≤ (16 * B)⁻¹ * (η / 2 / ((2 + 2 * 1.1) * S)) ^ k)
+    (hbound : (66 + 2 * 1.1) * B * S * ((2 + 2 * 1.1) * S / (η / 2)) ^ k * √(n + 1) *
+      (300 * (n + 1) ^ 2 * u) ≤ ω / 2)
+    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv)
+    (hctx : RegularizeCtx L k H R
+      (0.999 * (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) ^ k) tv
+      a rd c thr s f m)
+    (hinv : DrawsInv u β R η (fun lam : Fin k → ℂ => IsEigenvalueListing (trailingBlock k H) lam)
+      e rd (L + 1, 0) s k m) :
+    Writes .total I τ (regularizeDecide (O := O) (Q := Q)).body
+      (Env.frame [n + 1, k] [a, s, c, thr, (L + 3, 0), (L + 4, 0), (L + 5, 0), (L + 6, 0), a,
+        (L + 2, 0), f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 2) 0 1 ⊔
+        Store.inBlock f.1 f.2 1 ⊔ (Store.inBlock (L + 3) 0 (2 * ((n + 1) * (n + 1))) ⊔
+          Store.inBlock (L + 4) 0 (2 * k) ⊔ Store.inBlock (L + 5) 0 (2 * k) ⊔
+          Store.inBlock (L + 6) 0 5))
+      (RegularizeOutcome k H e u (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) *
+        (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) (η / 2) tv
+        ((1 + 1.1) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a s f) m := by
+  set θ := 1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹) with hθdef
+  obtain ⟨⟨ha, hrd, hcl, htl, hsl, hfl⟩, has, haf, hsf, hio⟩ := hv
+  obtain ⟨hA, -, hc, hthr, -, hrf, hlen, -, -, h2, h3, h4, h5, h6⟩ := hctx
+  obtain ⟨-, -, lam, hlam, zs, hpairs, hzk⟩ := hinv
+  have hu0 := hM.roundoff_nonneg
+  have hψH := hessenbergPotential_le_specNorm hk0 hk H
+  have hψ0 : 0 < hessenbergPotential k H := lt_of_lt_of_le hω hψ
+  have hS0 : 0 < S := by linarith
+  have hB0 : 0 < B := lt_of_lt_of_le one_pos ((one_le_pseudoConditionNumber hV.ne_zero).trans hκ)
+  have hθ : 0 < θ := by positivity
+  obtain ⟨hzl, hz, hdist⟩ := regularize_shift_bounds hu0 hk0 hk hω hψ hSH hlam hβ hdη
+    (fun j => (hzk j).2 j.isLt)
+  have hx : (0 : ℝ) ≤ 300 * (n + 1) ^ 2 * u := by positivity
+  have huo' : 30000 * k * (((n + 1 : ℕ) : ℝ) * √((n + 1 : ℕ) : ℝ) * u) *
+      ((2 + 2 * 1.1) * specNorm H) ^ k ≤ (θ * hessenbergPotential k H) ^ k := by
+    refine le_trans ?_ (huo.trans (by gcongr))
+    gcongr
+  have hdich := fun hopt => exists_forall_isStableQRChain_exists_norm_subdiag_le (d := η / 2)
+    hH hk0 hk hBk hω hV hHV hκ hgap hSH hψ hlam hzl hz (by positivity)
+    (fun j i => hdist j i) hopt hx hxu hbound
+  have hdec := regularizeDecide_writes (τ := τ) (m := m) (a := a) (s := s) (c := c) (thr := thr)
+    (t := (L + 3, 0)) (sr := (L + 4, 0)) (ds := (L + 5, 0)) (rg := (L + 6, 0)) (g := (L + 2, 0))
+    (f := f) (C := 1.1) hS hM hu1 hL hNat hC hk0 hk hH hnu hθ hψ0 hz huo' huo1 hA hpairs hc hthr
+    (by simp [h2]) hrf (by simp [h3]) (by simp [h4]) (by simp [h5]) (by simp [h6])
+    (by disjoint) (by disjoint) (by disjoint) (by disjoint) (by disjoint)
+    (Fp.disj_sup_left.mpr ⟨by disjoint, Fp.disj_sup_right.mpr ⟨by disjoint, haf.symm⟩⟩)
+    (by disjoint) (Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨Fp.disj_sup_right.mpr
+      ⟨Fp.disj_sup_right.mpr ⟨has, hio.mono (by fp_sub) (by fp_sub)⟩,
+        hio.mono (by fp_sub) (by fp_sub)⟩, by disjoint⟩, Fp.disj_sup_right.mpr
+      ⟨Fp.disj_sup_right.mpr ⟨hsf.symm, hio.mono (by fp_sub) (by fp_sub)⟩,
+        hio.mono (by fp_sub) (by fp_sub)⟩⟩) hdich hthrω
+  refine hdec.mono le_rfl ?_
+  rintro m' hfr (⟨hF, hA', hopt⟩ | ⟨hF, j, H', Rs, hch, hH', hA', hdec'⟩)
+  · refine Or.inl ⟨hF, hA', zs, ?_, hopt, fun j i => hdist j i, hz⟩
+    have := readBlock_flatMap_pair_of_forall (s := m'.store) (b := s.1) (o := s.2)
+      (zs := List.ofFn zs) fun j hj => by
+        have hj' : j < k := by simpa using hj
+        have hkeep := hfr.keep (Store.readsOnly_readBlock _ _ _ _) (Fp.disj_sup_left.mpr
+          ⟨Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨has.symm.mono
+            (Fp.inBlock_le_inBlock (by omega) (by omega)) le_rfl |>.symm, by disjoint⟩,
+            hsf.mono (Fp.inBlock_le_inBlock (by omega) (by omega)) le_rfl |>.symm⟩,
+            by disjoint⟩) (hpairs ⟨j, hj'⟩)
+        simpa [List.getD_eq_getElem?_getD, List.getElem?_ofFn, hj'] using hkeep
+    simpa using this
+  · refine Or.inr ⟨hF, H', ?_, hH', hA', hdec'⟩
+    have hsim := hch.isPerturbedUnitarySimilar hx (C := 1.1) (by norm_num) (fun s hs => by
+      rw [List.eq_of_mem_replicate hs]; exact hz j)
+    simpa using hsim
+
+end Tail
+
+end NLAlib.ShiftedQR

@@ -538,3 +538,155 @@ theorem excOutcome_of_excShifts {s : Store ℝ} {b : ℕ × ℕ} {N : ℕ} {zs :
     nlinarith
 
 end NLAlib.ShiftedQR
+
+namespace NLAlib.ShiftedQR
+
+open Ops MeasureTheory
+
+variable {n : ℕ}
+
+/-- The state of `Sh` before the exceptional shifts: the context, the promising centre $r$ at
+`L` (a pair), stagnating with the ratio $0.998(1 - \gamma)$; the words
+$\mathrm{fl}(c_r p)$ at `L + 1` and $\mathrm{fl}(c_p p)$ at `L + 2` for a $p$ within
+$20\boldsymbol{u}$, relatively, of $\psi_k(\mathbf{H})$; the search word $1$ at `L + 11` and
+the flag $2$. -/
+def ShExcMid1 (M : Machine ℝ) (u : ℝ) (L k : ℕ) (ε : ℝ)
+    (H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (e : Fin (n + 1) → ℂ) (ss : List ℂ)
+    (α γ cg cr cw cp tv : ℝ) (a s wg wr ww wp g thr f : ℕ × ℕ) (m : Mem ℝ) : Prop :=
+  ShCtx L k ε H ss cg cr cw cp tv a s wg wr ww wp g thr f m ∧
+    (∃ r : ℂ, m.store.readBlock L 0 2 = some [r.re, r.im] ∧ IsPromisingRitzValue α V e ss r ∧
+      ‖WithLp.toLp 2 ((Polynomial.aeval H (shiftPoly (List.replicate k r)))⁻¹ (Fin.last n))‖ ≤
+        (0.998 * (1 - γ) * hessenbergPotential k H)⁻¹ ^ k) ∧
+    (∃ p : ℝ, |p - hessenbergPotential k H| ≤ 20 * u * hessenbergPotential k H ∧
+      m.store.get (L + 1) 0 = some (M.mul cr p) ∧ m.store.get (L + 2) 0 = some (M.mul cp p)) ∧
+    m.store.get (L + 11) 0 = some 1 ∧ m.store.get f.1 f.2 = some 2
+
+/-- The state of `Sh` after the exceptional shifts: the context, the $n_0$ shifts as pairs at
+`L + 10`, one contracting, all at distance at least $d$ from every $e_i$ and of modulus at most
+$C\|\mathbf{H}\|_2$; the word $\mathrm{fl}(c_p p)$ at `L + 2`; the search word $1$ and the flag
+$2$. -/
+def ShExcMid2 (M : Machine ℝ) (u : ℝ) (L k : ℕ) (ε : ℝ)
+    (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (e : Fin (n + 1) → ℂ) (ss : List ℂ)
+    (γ cg cr cw cp tv d C : ℝ) (a s wg wr ww wp g thr f : ℕ × ℕ) (m : Mem ℝ) : Prop :=
+  ShCtx L k ε H ss cg cr cw cp tv a s wg wr ww wp g thr f m ∧
+    (∃ zs : Fin (excNet ε).length → ℂ,
+      (∀ j : Fin (excNet ε).length,
+        m.store.readBlock (L + 10) (2 * j) 2 = some [(zs j).re, (zs j).im]) ∧
+      (∃ j, ((1 - γ) * hessenbergPotential k H)⁻¹ ^ k ≤
+        ‖WithLp.toLp 2 ((Polynomial.aeval H (shiftPoly (List.replicate k (zs j))))⁻¹
+          (Fin.last n))‖) ∧
+      (∀ j i, d ≤ ‖e i - zs j‖) ∧ ∀ j, ‖zs j‖ ≤ C * specNorm H) ∧
+    (∃ p : ℝ, |p - hessenbergPotential k H| ≤ 20 * u * hessenbergPotential k H ∧
+      m.store.get (L + 2) 0 = some (M.mul cp p)) ∧
+    m.store.get (L + 11) 0 = some 1 ∧ m.store.get f.1 f.2 = some 2
+
+end NLAlib.ShiftedQR
+
+namespace NLAlib.ShiftedQR
+
+open Ops MeasureTheory
+
+variable {n : ℕ}
+
+section Random
+
+variable {O Q : Type} [Has ScalarOp O] [Has DiskSampleOp O]
+
+/-- **The exceptional shifts of `Sh` as a probabilistic block**: under a measurable, tape-local
+interpretation on a scalar machine with the standard model at $10^5k\boldsymbol{u} \le 1$ and an
+exact polar sampler on a stream `s₀` uniform on $[0, 1]$, from the state
+`NLAlib.ShiftedQR.ShExcMid1` the shifts `NLAlib.ShiftedQR.excShifts` reach the state
+`NLAlib.ShiftedQR.ShExcMid2`, except with probability at most $\varphi$, $0 < \varphi \le 1/5$,
+under the hypotheses of `NLAlib.ShiftedQR.excOutcome_of_excShifts` on the data, the words
+$c_r = 2^{1/k}\theta\alpha B^{1/k}$ and $c_w = \varepsilon/2$, and the rounding budget
+$6\boldsymbol{u}(1.1\Sigma + 3R_{\mathrm{hi}}) \le \min(0.005, \sqrt{q}/8)\,\varepsilon R_{\mathrm{lo}}$,
+$q = \varphi/(11(n + 1))$, for the window $[R_{\mathrm{lo}}, R_{\mathrm{hi}}] =
+[1.998^{1/k}, 2.002^{1/k}]\,\theta\alpha B^{1/k}\psi_k(\mathbf{H})$ of the radius. The random
+shifts form one probabilistic block per centre and radius; their outcome is the measurable set
+`NLAlib.ShiftedQR.measurableSet_excOutcome`. -/
+theorem shExcShifts_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hI : I.IsMeasurable)
+    {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) (hS : IsScalar M I)
+    (hM : StdModel u id M) {law : ℕ → Measure ℝ} {s₀ : ℕ} (hD : IsPolarDiskSampler s₀ I)
+    (hU : law s₀ = volume.restrict (Set.Icc 0 1)) {L k : ℕ} (hk : 2 ≤ k) (hkn : k ≤ n)
+    {ε : ℝ} {a s wg wr ww wp g thr f : ℕ × ℕ} (hv : ShViews L n k ε a s wg wr ww wp g thr f)
+    {B S θ α γ φ d C cg cr cw cp tv : ℝ} {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {e : Fin (n + 1) → ℂ} {ss : List ℂ} (hlen : ss.length = k) (hV : IsUnit V)
+    (hHV : H * V = V * Matrix.diagonal e) (hκ : pseudoConditionNumber V ≤ B)
+    (hSH : specNorm H ≤ S) (hopt : IsOptimalRitzValues θ H ss)
+    (hd0 : ∀ i, ∀ s ∈ ss, e i ≠ s) (hsH : ∀ s ∈ ss, ‖s‖ ≤ 1.1 * specNorm H)
+    (hψ : 0 < hessenbergPotential k H) (hγ : 0 < γ) (hγ1 : γ < 1) (hθ : 1 ≤ θ) (hα : 1 ≤ α)
+    (hε : ε = (0.998 * (1 - γ) * (1 - γ) / ((13 * B ^ 4) ^ ((k : ℝ)⁻¹) * α ^ 2 * θ ^ 2)) ^
+      ((k : ℝ) / (k - 1))) (hε2 : ε ≤ 1 / 2) (hφ : 0 < φ) (hφ1 : φ ≤ 1 / 5)
+    (hd : d ≤ ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) *
+      hessenbergPotential k H) * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 4) (hd' : 0 < d)
+    (hC : 1.1 + 2.1 * ((2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹)) ≤ C)
+    (hku : 100000 * k * u ≤ 1)
+    (hexc1 : 6 * u * (1.1 * S + 3 * ((2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) *
+      hessenbergPotential k H)) ≤ 0.005 * ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α *
+        B ^ ((k : ℝ)⁻¹) * hessenbergPotential k H))
+    (hexc2 : 6 * u * (1.1 * S + 3 * ((2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) *
+      hessenbergPotential k H)) ≤ ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α *
+        B ^ ((k : ℝ)⁻¹) * hessenbergPotential k H) * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 8)
+    (hcr : cr = (2 : ℝ) ^ ((k : ℝ)⁻¹) * (θ * α * B ^ ((k : ℝ)⁻¹))) (hcw : cw = ε / 2) :
+    PWrites law I (excShifts (O := O) (Q := Q)).body
+      (Env.frame [(excNet ε).length] [(L, 0), (L + 1, 0), ww, g, (L + 10, 0)])
+      (Store.inBlock (L + 10) 0 (2 * (excNet ε).length))
+      (ShExcMid1 M u L k ε H V e ss α γ cg cr cw cp tv a s wg wr ww wp g thr f)
+      (ShExcMid2 M u L k ε H e ss γ cg cr cw cp tv d C a s wg wr ww wp g thr f) φ := by
+  classical
+  obtain ⟨⟨ha, hs, hwg, hwr, hww, hwp, hg, hthr, hf⟩, -, -⟩ := hv
+  have hu0 := hM.roundoff_nonneg
+  have hB1 : 1 ≤ B := (one_le_pseudoConditionNumber hV.ne_zero).trans hκ
+  have hψH := hessenbergPotential_le_specNorm (by omega) hkn H
+  set ψ := hessenbergPotential k H
+  set Rlo := (1.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) * ψ
+  set Rhi := (2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) * ψ
+  have hRlo0 : 0 < Rlo := by positivity
+  have hg : 0 < 1 - γ := by linarith
+  have hε0 : 0 < ε := by rw [hε]; positivity
+  have hk2r : (2 : ℝ) ≤ k := by exact_mod_cast hk
+  have hu1 : u ≤ 0.00001 := by nlinarith
+  let ι := {x : ℂ × ℝ // IsPromisingRitzValue α V e ss x.1 ∧
+    ‖WithLp.toLp 2 ((Polynomial.aeval H (shiftPoly (List.replicate k x.1)))⁻¹ (Fin.last n))‖ ≤
+      (0.998 * (1 - γ) * ψ)⁻¹ ^ k ∧ Rlo ≤ x.2 ∧ x.2 ≤ Rhi}
+  have hbud : ∀ x : ι, 6 * u * (‖x.1.1‖ + 3 * x.1.2) ≤ 6 * u * (1.1 * S + 3 * Rhi) := fun x => by
+    have h1 := hsH _ x.2.1.1
+    have h2 := x.2.2.2.2
+    exact mul_le_mul_of_nonneg_left (by linarith) (by positivity)
+  have hfam : ∀ x : ι, _ := fun x => excShifts_pwrites (O := O) (Q := Q) hS hM hD hU e
+    (r := x.1.1) (R := x.1.2) (lt_of_lt_of_le hRlo0 x.2.2.2.1) hε0 hε2 hφ.le hφ1
+    (by linarith)
+    ((hbud x).trans (hexc1.trans (by gcongr; exact x.2.2.2.1)))
+    ((hbud x).trans (hexc2.trans (by gcongr; exact x.2.2.2.1)))
+    (c := (L, 0)) (rt := (L + 1, 0)) (cw := ww) (g := g) (ss := (L + 10, 0))
+  have hst := PWrites.pstep_of_forall hI hloc hfam (measurableSet_excOutcome H k
+    (excNet ε).length e (((1 - γ) * ψ)⁻¹ ^ k) d (C * specNorm H) (L + 10, 0)
+    (Store.inBlock (L + 10) 0 (2 * (excNet ε).length))) (by
+      rintro x μ μ' - hfr ⟨zs, hzl, hblk, hcard, hcov, hdist, hnear⟩
+      exact ⟨hfr, excOutcome_of_excShifts hk hkn hlen hV hHV hκ hopt x.2.1 hd0 hψ hγ hγ1 hθ hα
+        x.2.2.1 x.2.2.2.1 x.2.2.2.2 hε hε2 hφ hd hd' (hsH _ x.2.1.1) hC hzl hblk hcard hcov
+        hdist hnear⟩)
+  refine PStep.mono hst (fun μ ⟨hctx, ⟨r, hZ, hr, hτ⟩, ⟨p, hp, hRt, hPt⟩, hGw, hF⟩ => ?_)
+    (fun μ μ' ⟨hctx, _, ⟨p, hp, _, hPt⟩, hGw, hF⟩ ⟨hfr, hsome, hj, hdist, hnear⟩ => ?_) le_rfl
+  · obtain ⟨-, -, -, -, hcw', -, hG, -, -, hlen', -, -, -, -, -, -, -, -, -, -, h10, -⟩ := hctx
+    obtain ⟨hlo, hhi⟩ := excRadius_window hM (by omega) hku (X := θ * α * B ^ ((k : ℝ)⁻¹))
+      (by positivity) hψ.le hp
+    have e1 : (1.998 : ℝ) ^ ((k : ℝ)⁻¹) * (θ * α * B ^ ((k : ℝ)⁻¹)) * ψ = Rlo := by ring
+    have e2 : (2.002 : ℝ) ^ ((k : ℝ)⁻¹) * (θ * α * B ^ ((k : ℝ)⁻¹)) * ψ = Rhi := by ring
+    rw [← hcr, e1] at hlo
+    rw [← hcr, e2] at hhi
+    have h0 := Store.get_of_readBlock hZ (j := 0) (by norm_num) 0
+    have h1 := Store.get_of_readBlock hZ (j := 1) (by norm_num) 0
+    simp only [Nat.add_zero, List.getD_cons_zero, List.getD_cons_succ, Nat.zero_add] at h0 h1
+    refine ⟨⟨(r, M.mul cr p), hr, hτ, hlo, hhi⟩, by simp [Mem.Live, hlen']; omega, h0, h1, hRt,
+      by rw [hcw', hcw], hG, by simp [h10], by disjoint, by disjoint⟩
+  · refine ⟨hfr, hctx.of_eqOff hfr (by disjoint), ⟨fun j => storedMatrix (L + 10, 0)
+      (excNet ε).length 1 μ'.store j 0, fun j => ?_, hj, hdist, hnear⟩,
+      ⟨p, hp, hfr.keep (Store.readsOnly_get _ _ _) (by disjoint) hPt⟩,
+      hfr.keep (Store.readsOnly_get _ _ _) (by disjoint) hGw,
+      hfr.keep (Store.readsOnly_get _ _ _) (by disjoint) hF⟩
+    simpa using (holdsMatrix_storedMatrix hsome).read_entry j 0
+
+end Random
+
+end NLAlib.ShiftedQR

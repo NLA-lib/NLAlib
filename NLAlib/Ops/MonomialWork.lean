@@ -392,7 +392,7 @@ open Lean Elab Tactic Meta in
 definitional check; the kernel checks it when the declaration is added (and fails it there if
 `a` and `b` are not definitionally equal). For closed computations, such as the monomial bound
 of a fixed program, that the kernel evaluates with sharing. -/
-elab "kernel_rfl" : tactic => withMainContext do
+elab (name := kernelRfl) "kernel_rfl" : tactic => withMainContext do
   let g ← getMainGoal
   let t ← instantiateMVars (← g.getType)
   let some (_, a, _) := t.eq? | throwError "kernel_rfl: not an equation"

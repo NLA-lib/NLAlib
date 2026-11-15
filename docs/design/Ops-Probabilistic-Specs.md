@@ -124,7 +124,55 @@ Rule 10 placement: every statement is about Ops semantics and tape laws only.
   `NLAlibScaffold/Ops/RunMeasurable.lean` (the file-size rule); PL1 stays in
   `Ops/Logic/Probabilistic`.
 
-## 6. Waves and counts
+## 6. Drafted statements (PL3f, PL4, PL5, PL6; sorried, for review)
+
+Drafted from §3 and from the deterministic rules they mirror. These checks apply to all of them:
+a bound that is added to another bound is assumed nonnegative (§5), and nothing depends on the
+value of a failed run.
+
+* **PL3f-loop `PWrites.loop`**. Rounds `Inv i → Inv (i+1)` with a fixed footprint `F` and
+  bounds `φ i` (`∀ i < N, 0 ≤ φ i`). The bound is `∑_{i<N} φ i`. `h0 : Pre → Inv 0` and
+  `hpost : Inv N → Post`. Checks: with `N = 0` the loop is `skip`, the bound is `0` and
+  `Pre → Inv 0 → Post` holds with frame `refl`. It needs `hI`/`hloc` (it is a chain of `seq`).
+  The footprint is fixed, unlike `writes_loop`'s growing `F i` (the rounds of the consumers write
+  one region); a growing family can be added if a consumer needs it.
+* **PL3f-bindIdx `PWrites.bindIdx`**. `hidx`: from every `Pre` memory the query returns some
+  `v ≤ B`; otherwise the run fails and no bound below `1` holds (the analogue of `htest`). There
+  is one bound `φ` for all `v`, and the good set is `G_{index m} m`. It needs `hI`
+  (measurability of the index) but not `hloc`.
+* **PL3f-allocs `PWrites.allocs`**. Base length `L = m.store.length` varies with `m`, so the
+  body's specification is `∀ L` (environment `ρ.buf ++ [L, L+1, …]`, footprint `F ⊔ above L`,
+  precondition `Pre₁ L`). `hpre` describes the allocated store abstractly, as in
+  `writes_allocs_preserving_post`, and `hkeep` carries `Post` through the release (`Below`).
+  Checks: `ns = []` gives `allocs [] body = body` with `s₁ = m.store`. Neither `hI` nor `hloc` is
+  needed, because allocation keeps the position and is measurable (`Mem.measurable_push`). A
+  first draft with a fixed `L` for all `Pre` memories was rejected: C4p's precondition does not
+  fix the buffer count.
+* **PL3f-frame `PWrites.in_frame`**. `hl`: the operands are live on every `Pre` memory (else
+  the frame fails). The good set is unchanged, so no `hI` is needed.
+* **PL4 (`Ops/Catalog/ScalarMeasurable`)**. Restated: the note's "Borel machine ⇒ the catalog
+  meanings of `I` are measurable" is false for an arbitrary `I` meeting `IsScalar`/`IsCmp`.
+  Those contracts constrain `I.call`/`I.test` only on admissible operands and readable blocks,
+  and elsewhere `I` may be any (non-measurable) function, while `Interp.IsMeasurable` quantifies
+  over all inputs. So PL4 is about the canonical meanings: `Interp.ofFns M.fn` per scalar
+  operation (`Machine.IsMeasurable`: measurable word functions on all words, division by zero
+  included), the dimension literal, the readBlocks forms of the comparisons and of `toNat` for a
+  measurable `dec`, and the assembly `Interp.isMeasurable_of_sum` over `O₁ ⊕ O₂`. Consumers keep
+  `hI : I.IsMeasurable` as a hypothesis. PL4 makes it satisfiable: exact real arithmetic is a
+  measurable machine.
+* **PL5 `PBackwardStep`, `.whileFuel`**. `PBackwardStep` is a `PStep` whose precondition is
+  `∃ a, S a m` and whose relation is `EqOff F ∧ ∀ a, S a m → ∃ b, R ε a b ∧ S' b m'`. The good set
+  depends on the memory only: a good set per state `a` would have to be chosen measurably in `m`
+  when several states are held, which fails in general. Checks: `hε` (as in
+  `BackwardStep.whileFuel`, for early exits), `hφ`, `hψ`, and `htest` with the test outcome read
+  through `testAt` (no `T` predicate). `N = 0` leaves only `hcap`.
+* **PL6 `PWrites.measureReal_not_conditionalRuns_le`** (renamed from `conditionalRunsLaw`).
+  `ConditionalRunsLaw` (every sample succeeds) is not a failure-bound shape; the transferable
+  shape is `μ.real {¬ ConditionalRuns …} ≤ δ` (`Profile.Refines.measureReal_not_runs_le_of`).
+  `PWrites` knows no counts, so `hcost` gives them for every successful run from `m`. The
+  statement is for one `m` with `Pre m`.
+
+## 7. Waves and counts
 
 PROB-LOGIC wave 1: PL1 (H), PL2 (L), PL4 (M), PL3f-frame (S). Wave 2: PL3b–e, PL3f (loop,
 bindIdx, allocs), PL6. Wave 3: PL5 (on PL3e). Open: 6 skeleton (M 3, L 2, H 1) + 7 planned

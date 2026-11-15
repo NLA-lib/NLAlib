@@ -5,7 +5,10 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.Ops.Logic.Allocation
+public import NLAlib.Ops.Logic.Backward
 public import NLAlib.Ops.Logic.Loop
+public import NLAlib.Ops.Static
 public import NLAlib.Ops.Logic.Writes
 public import NLAlib.Ops.Tape
 public import NLAlibScaffold.Ops.RunMeasurable
@@ -646,6 +649,107 @@ theorem whileFuel (hI : I.IsMeasurable) {win : Op → List ℕ → ℕ}
   rw [e, Finset.range_eq_Ico]
   exact (hW N 0 (zero_add N)).mono h0 (fun _ _ _ h => h) le_rfl
 
+/-! ### Planned rules (drafted statements, PL3f and PL6) -/
+
+/-- **The counted loop** (PL3f-loop): if round `i` from `Inv i` ends in `Inv (i + 1)`, writing
+only `F`, with failure probability at most $\varphi_i \ge 0$, the loop of $N$ rounds fails with
+probability at most $\sum_{i < N} \varphi_i$. With $N = 0$ the loop does nothing. -/
+theorem loop (hI : I.IsMeasurable) {win : Op → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    {n : IExp} {body : Stmt Op Tst} {N : ℕ} (hn : n.eval ρ.idx = some N)
+    (Inv : ℕ → Mem K → Prop) (φ : ℕ → ℝ) (hφ : ∀ i < N, 0 ≤ φ i) (h0 : ∀ m, Pre m → Inv 0 m)
+    (hbody : ∀ i < N, PWrites law I body (ρ.pushIdx i) F (Inv i) (Inv (i + 1)) (φ i))
+    (hpost : ∀ m, Inv N m → Post m) :
+    PWrites law I (.loop n body) ρ F Pre Post (∑ i ∈ Finset.range N, φ i) := by
+  sorry
+
+/-- **The index binder** (PL3f-bindIdx): if from every memory of the precondition the index query
+returns a number $v \le B$, and the body at every such $v$ fails with probability at most
+$\varphi$ from the memories where the query returns $v$, the binder fails with probability at
+most $\varphi$. -/
+theorem bindIdx (hI : I.IsMeasurable) {q : Tst} {ins : List Operand} {bound : IExp}
+    {body : Stmt Op Tst} {a : List (ℕ × ℕ)} {B : ℕ} (ha : Operand.evalList ρ ins = some a)
+    (hB : bound.eval ρ.idx = some B) (hidx : ∀ m, Pre m → ∃ v ≤ B, I.index q a m = some v)
+    (h : ∀ v ≤ B, PWrites law I body (ρ.pushIdx v) F (fun m => Pre m ∧ I.index q a m = some v)
+      Post φ) :
+    PWrites law I (.bindIdx q ins bound body) ρ F Pre Post φ := by
+  sorry
+
+/-- **Scratch allocations** (PL3f-allocs, the mirror of `writes_allocs_preserving_post`): the
+body runs on the memory with fresh buffers at the handles $L, L + 1, \dots$ above the
+$L$ buffers of the memory, may write above $L$, and its postcondition survives the release of
+the scratch buffers. The failure probability is the body's. -/
+theorem allocs {lens : List IExp} {body : Stmt Op Tst} {ns : List ℕ}
+    (hn : IExp.evalList ρ.idx lens = some ns) {Pre₁ : ℕ → Mem K → Prop}
+    (hpre : ∀ m (s₁ : Store K), Pre m → s₁.length = m.store.length + ns.length →
+      (∀ i (hi : i < ns.length), s₁.len (m.store.length + i) = ns[i]) →
+      Store.Below m.store.length m.store s₁ → Pre₁ m.store.length ⟨s₁, m.pos⟩)
+    (hkeep : ∀ m, Pre m → ∀ {s s' : Store K} {p : ℕ}, Store.Below m.store.length s s' →
+      Post ⟨s, p⟩ → Post ⟨s', p⟩)
+    (h : ∀ L, PWrites law I body ⟨ρ.idx, ρ.buf ++ (List.range ns.length).map (L + ·)⟩
+      (F ⊔ Fp.above L) (Pre₁ L) Post φ) :
+    PWrites law I (Stmt.allocs lens body) ρ F Pre Post φ := by
+  sorry
+
+/-- **A procedure instance** (PL3f-frame): the body in the environment of the frame, from
+memories in which the frame's operands are live. -/
+theorem in_frame {ds : List IExp} {args : List Operand} {body : Stmt Op Tst} {d : List ℕ}
+    {a : List (ℕ × ℕ)} (hd : IExp.evalList ρ.idx ds = some d)
+    (ha : Operand.evalList ρ args = some a) (hl : ∀ m, Pre m → m.Live a)
+    (h : PWrites law I body (Env.frame d a) F Pre Post φ) :
+    PWrites law I (.frame ds args body) ρ F Pre Post φ := by
+  sorry
+
+/-- **The bridge to the law-level statements of `Ops/Law`** (PL6): if every successful run from
+`m` is within the counts `B` and the workspace `M`, the run misses the counted postcondition
+(`NLAlib.Ops.ConditionalRuns`) with probability at most $\varphi$. This is the hypothesis shape of
+`NLAlib.Ops.Profile.Refines.measureReal_not_runs_le_of`, so the bound transfers through
+linking. -/
+theorem measureReal_not_conditionalRuns_le (h : PWrites law I c ρ F Pre Post φ) {m : Mem K}
+    (hm : Pre m) {W : Op → List ℕ → ℕ} {B : Count Op Tst} {M : ℕ}
+    (hcost : ∀ τ m', eval I τ c ρ m = some m' → ConditionalRuns I W τ c ρ m B M (· = m'))
+    {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape K} (hξ : IsTapeLaw law P ξ) :
+    P.real {ω | ¬ ConditionalRuns I W (ξ ω) c ρ m B M
+      fun m' => m.store.EqOff F m'.store ∧ Post m'} ≤ φ := by
+  sorry
+
 end PWrites
+
+/-! ### Probabilistic backward steps (drafted statements, PL5) -/
+
+/-- **A probabilistic backward step**: there are good sets of tapes, as for
+`NLAlib.Ops.PWrites`, such that from every memory holding a state `a` (`S a m`) the run of `c`
+writes only `F` and ends in a memory holding a state `b` (`S' b ·`) reached from `a` with
+backward error at most $\varepsilon$ (`R ε a b`) for every good tape, and the good set fails with
+probability at most $\varphi$. The good set depends on the memory only, not on the state. -/
+def PBackwardStep {α : Type*} [Inhabited K] [MeasurableSpace K] (law : ℕ → Measure K)
+    (I : Interp Op Tst K) (c : Stmt Op Tst) (ρ : Env) (F : Fp) (R : ℝ → α → α → Prop)
+    (S S' : α → Mem K → Prop) (ε φ : ℝ) : Prop :=
+  PStep law (fun τ m => eval I τ c ρ m) (fun m => ∃ a, S a m)
+    (fun m m' => m.store.EqOff F m'.store ∧ ∀ a, S a m → ∃ b, R ε a b ∧ S' b m') φ
+
+/-- **The loop with early exit of probabilistic backward steps** (PL5, the probabilistic
+`NLAlib.Ops.BackwardStep.whileFuel`): with the fuel $N$, if the test at round $i < N$ succeeds
+on the memories of `S i`, a round with a true test is a backward step to `S (i + 1)` with error
+$\varepsilon_i \ge 0$ and failure $\varphi_i \ge 0$, and the continuation after a false test or at
+the cap is one to `S'` with error $\varepsilon'$ and failure $\psi \ge 0$, then the loop is a
+backward step with error $\sum_{i<N} \varepsilon_i + \varepsilon'$ and failure
+$\sum_{i<N} \varphi_i + \psi$. -/
+theorem PBackwardStep.whileFuel {α : Type*} [Inhabited K] [MeasurableSpace K]
+    {law : ℕ → Measure K} {I : Interp Op Tst K} {ρ : Env} {R : ℝ → α → α → Prop}
+    (hR : IsBackwardErrorRel R) (hI : I.IsMeasurable) {win : Op → List ℕ → ℕ}
+    (hloc : ∀ o, I.TapeLocal o (win o)) {fuel : IExp} {q : Tst} {ds : List IExp}
+    {ins : List Operand} {body k : Stmt Op Tst} {N : ℕ} (hn : fuel.eval ρ.idx = some N)
+    {F G : Fp} (S : ℕ → α → Mem K → Prop) {S' : α → Mem K → Prop} (ε φ : ℕ → ℝ) {ε' ψ : ℝ}
+    (hε : ∀ i < N, 0 ≤ ε i) (hφ : ∀ i < N, 0 ≤ φ i) (hψ : 0 ≤ ψ)
+    (htest : ∀ i < N, ∀ a m, S i a m → ∃ b, I.testAt q ds ins (ρ.pushIdx i) m = some b)
+    (h : ∀ i < N, PBackwardStep law I body (ρ.pushIdx i) F R
+      (fun a m => S i a m ∧ I.testAt q ds ins (ρ.pushIdx i) m = some true) (S (i + 1)) (ε i)
+      (φ i))
+    (hk : ∀ i < N, PBackwardStep law I k (ρ.pushIdx i) G R
+      (fun a m => S i a m ∧ I.testAt q ds ins (ρ.pushIdx i) m = some false) S' ε' ψ)
+    (hcap : PBackwardStep law I k (ρ.pushIdx N) G R (S N) S' ε' ψ) :
+    PBackwardStep law I (.whileFuel fuel q ds ins body k) ρ (F ⊔ G) R (S 0) S'
+      (∑ i ∈ Finset.range N, ε i + ε') (∑ i ∈ Finset.range N, φ i + ψ) := by
+  sorry
 
 end NLAlib.Ops

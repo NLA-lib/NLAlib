@@ -13,6 +13,7 @@ public import NLAlibScaffold.Matrix.QRIteration.DeflationPerturbed
 public import NLAlibScaffold.Matrix.QRIteration.Ritz
 public import NLAlibScaffold.Matrix.QRIteration.RoundedStrategy
 public import NLAlibScaffold.Matrix.QRIteration.StableStep
+public import NLAlibScaffold.Ops.Catalog.ScalarMeasurable
 public import NLAlibScaffold.Ops.Logic.BackwardFrame
 public import NLAlibScaffold.Ops.Logic.Probabilistic
 public import NLAlibScaffold.Ops.RunMeasurable

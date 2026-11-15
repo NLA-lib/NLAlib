@@ -5,6 +5,7 @@ public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedHeadline
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedSolve
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.StableStep
 public import NLAlibScaffold.Matrix.FinitePrecision.GivensRounded
+public import NLAlibScaffold.Matrix.FinitePrecision.ProductRounded
 public import NLAlibScaffold.Matrix.FinitePrecision.RootsRounded
 public import NLAlibScaffold.Matrix.Perturbation.EigenvalueBackward
 public import NLAlibScaffold.Matrix.Perturbation.QRFactorization

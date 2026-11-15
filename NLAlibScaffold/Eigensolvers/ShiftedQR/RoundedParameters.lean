@@ -38,6 +38,10 @@ the iterates), iterate norm $4\Sigma$, block norm $2\Sigma$.
 * `NLAlib.ShiftedQR.two_le_shqrDegree`, `NLAlib.ShiftedQR.rpow_two_div_shqrDegree_le`: $k \ge 2$
   and $B^{2/k} \le 2$.
 * `NLAlib.ShiftedQR.shqrEps_le_half`: Exc's $\varepsilon \le 1/2$ under (eqn:setk).
+* `NLAlib.ShiftedQR.uShQR_pos`, `NLAlib.ShiftedQR.shqrSmallEigAccuracy_pos`,
+  `NLAlib.ShiftedQR.shqrSmallEigFailure_pos`: the thresholds are positive (review B1).
+* `NLAlib.ShiftedQR.shqrDecoupleError_le`, `NLAlib.ShiftedQR.shqrContraction_pow_shqrCap_mul_lt`:
+  the loop's error budget and cap.
 -/
 
 @[expose] public section
@@ -571,5 +575,155 @@ theorem uShQR_pos (hk : 0 < k) (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ) (hS 
   · exact lt_min (by positivity) (by positivity)
 
 end Positivity
+
+/-! ### Facts about the choices -/
+
+section Facts
+
+variable {n k : ℕ} {B Γ S δ φ u : ℝ}
+
+theorem uShQR_le_uShQRBasic : uShQR n k B Γ S δ φ ≤ uShQRBasic n k := min_le_left _ _
+
+theorem uShQR_le_uShQRRegularize : uShQR n k B Γ S δ φ ≤ uShQRRegularize n k B Γ S δ φ :=
+  (min_le_right _ _).trans (min_le_left _ _)
+
+theorem uShQR_le_uShQRSh : uShQR n k B Γ S δ φ ≤ uShQRSh n k B Γ S δ φ :=
+  (min_le_right _ _).trans ((min_le_right _ _).trans (min_le_left _ _))
+
+theorem uShQR_le_uShQRLoop : uShQR n k B Γ S δ φ ≤ uShQRLoop n k B Γ S δ :=
+  (min_le_right _ _).trans ((min_le_right _ _).trans (min_le_right _ _))
+
+theorem uShQR_le_one_div_ten : uShQR n k B Γ S δ φ ≤ 1 / 10 :=
+  uShQR_le_uShQRBasic.trans (min_le_left _ _)
+
+/-- The counting conditions: $(n + 1)\boldsymbol{u} \le 1/2500$, $10^5k\boldsymbol{u} \le 1$ and
+$10^5(n + 1 + k)^2\boldsymbol{u} \le 1$. -/
+theorem counts_of_le_uShQR (hu0 : 0 ≤ u) (hu : u ≤ uShQR n k B Γ S δ φ) :
+    (n + 1 : ℝ) * u ≤ 1 / 2500 ∧ 100000 * k * u ≤ 1 ∧
+      100000 * ((n + 1 + k : ℕ) : ℝ) ^ 2 * u ≤ 1 := by
+  have h := hu.trans (uShQR_le_uShQRBasic.trans (min_le_right _ _))
+  have hN : (0 : ℝ) < ((n + 1 + k : ℕ) : ℝ) ^ 2 := by positivity
+  rw [le_div_iff₀ (by positivity)] at h
+  have hk0 : (0 : ℝ) ≤ k := k.cast_nonneg
+  have hn0 : (0 : ℝ) ≤ n := n.cast_nonneg
+  have h1 : (1 : ℝ) ≤ ((n + 1 + k : ℕ) : ℝ) := by push_cast; linarith
+  have hsq : ((n + 1 + k : ℕ) : ℝ) ≤ ((n + 1 + k : ℕ) : ℝ) ^ 2 := by nlinarith
+  have hn1 : (n + 1 : ℝ) ≤ ((n + 1 + k : ℕ) : ℝ) ^ 2 := by
+    have : (n + 1 : ℝ) ≤ ((n + 1 + k : ℕ) : ℝ) := by push_cast; linarith
+    linarith
+  have hk1 : (k : ℝ) ≤ ((n + 1 + k : ℕ) : ℝ) ^ 2 := by
+    have : (k : ℝ) ≤ ((n + 1 + k : ℕ) : ℝ) := by push_cast; linarith
+    linarith
+  refine ⟨?_, ?_, by linarith⟩ <;> nlinarith
+
+theorem shqrBudget_le_left : shqrBudget n B Γ δ ≤ δ := min_le_left _ _
+
+theorem shqrBudget_le_right : shqrBudget n B Γ δ ≤ Γ / (16 * (n + 1) * B) := min_le_right _ _
+
+theorem shqrOmega_mul : shqrOmega n B Γ δ * (12 * (n + 1)) = shqrBudget n B Γ δ := by
+  unfold shqrOmega; field_simp
+
+theorem shqrOmega_le_div (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ) :
+    shqrOmega n B Γ δ ≤ shqrBudget n B Γ δ / 12 := by
+  have := shqrBudget_pos (n := n) hB hΓ hδ
+  unfold shqrOmega
+  gcongr
+  have : (0 : ℝ) ≤ n := by positivity
+  linarith
+
+theorem shqrOmega_le_S (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ) (hδS : δ ≤ S) :
+    shqrOmega n B Γ δ ≤ S := by
+  have := shqrOmega_le_div (n := n) hB hΓ hδ
+  have := shqrBudget_pos (n := n) hB hΓ hδ
+  linarith [shqrBudget_le_left (n := n) (B := B) (Γ := Γ) (δ := δ)]
+
+/-- The cap outlasts the contraction: $0.8016^F \cdot 4\Sigma < \omega$. -/
+theorem shqrContraction_pow_shqrCap_mul_lt (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ)
+    (hS : 0 < S) : shqrContraction ^ shqrCap n B Γ S δ * (4 * S) < shqrOmega n B Γ δ := by
+  have hω := shqrOmega_pos (n := n) hB hΓ hδ
+  set ρ := shqrContraction with hρ
+  have hρ0 : 0 < ρ := by rw [hρ, shqrContraction]; norm_num
+  have hρ1 : ρ < 1 := by rw [hρ, shqrContraction]; norm_num
+  have hl : 0 < log (1 / ρ) := log_pos (by rw [one_div]; exact one_lt_inv_iff₀.mpr ⟨hρ0, hρ1⟩)
+  set x := log (4 * S / shqrOmega n B Γ δ) / log (1 / ρ)
+  set m := ⌈x⌉₊
+  have hm : x ≤ m := Nat.le_ceil x
+  have hlogρ : log ρ = -log (1 / ρ) := by rw [one_div, log_inv, neg_neg]
+  -- $\rho^m \cdot 4\Sigma \le \omega$
+  have h1 : ρ ^ m * (4 * S) ≤ shqrOmega n B Γ δ := by
+    rw [← log_le_log_iff (by positivity) hω, log_mul (by positivity) (by positivity), log_pow,
+      hlogρ]
+    have : log (4 * S / shqrOmega n B Γ δ) ≤ m * log (1 / ρ) := by
+      rw [div_le_iff₀ hl] at hm; linarith
+    rw [log_div (by positivity) hω.ne'] at this
+    linarith
+  calc ρ ^ shqrCap n B Γ S δ * (4 * S) = ρ * (ρ ^ m * (4 * S)) := by
+        simp only [shqrCap, pow_succ, ρ, m, x]; ring
+    _ ≤ ρ * shqrOmega n B Γ δ := by gcongr
+    _ < shqrOmega n B Γ δ := by nlinarith
+
+/-- The decoupler's backward error is at most a sixth of the budget per round:
+$F(3.1 + C) \cdot 4\Sigma((1 + 300(n + 1)^2\boldsymbol{u})^k - 1)
+\le \mathrm{budget}/(6(n + 1))$. -/
+theorem shqrDecoupleError_le (hk : 0 < k) (hB : 1 ≤ B) (hS : 0 < S) (hu0 : 0 ≤ u)
+    (hu : u ≤ uShQR n k B Γ S δ φ) :
+    shqrDecoupleError n k B Γ S δ u ≤ shqrBudget n B Γ δ / (6 * (n + 1)) := by
+  have hB4 : 0 < 4 * B := by linarith
+  have hC := shqrC_pos k hB4
+  have hF : (1 : ℝ) ≤ shqrCap n B Γ S δ := by exact_mod_cast one_le_shqrCap
+  have hkr : (0 : ℝ) < k := by exact_mod_cast hk
+  have hL := hu.trans uShQR_le_uShQRLoop
+  have h1 : u ≤ 1 / (2 * k * (300 * (n + 1) ^ 2)) := hL.trans (min_le_left _ _)
+  have h2 := hL.trans (min_le_right _ _)
+  set x := 300 * (n + 1) ^ 2 * u with hx
+  have hx0 : 0 ≤ x := by positivity
+  have hkx : k * x ≤ 1 / 2 := by
+    rw [le_div_iff₀ (by positivity)] at h1
+    rw [hx]; nlinarith
+  -- $(1 + x)^k - 1 \le kx/(1 - kx) \le 2kx$
+  have hγ : (1 + x) ^ k - 1 ≤ 2 * (k * x) := by
+    have hk1 : (1 : ℝ) ≤ k := by exact_mod_cast hk
+    have hkx0 : 0 ≤ (k : ℝ) * x := by positivity
+    have e1 := Computation.one_add_pow_sub_one_le_roundingFactor (n := k) hx0 (by nlinarith)
+    have e2 := Computation.roundingFactor_le (n := k) hx0 (by linarith)
+    have e3 : k * x / (1 - k * x) ≤ 2 * (k * x) := by
+      rw [div_le_iff₀ (by linarith)]
+      nlinarith [mul_nonneg hkx0 (by linarith : (0 : ℝ) ≤ 1 - 2 * (k * x))]
+    linarith
+  have hpos : 0 < shqrCap n B Γ S δ * ((3.1 + shqrC k (4 * B)) * (4 * S)) *
+      (2 * k * (300 * (n + 1) ^ 2)) := by positivity
+  rw [le_div_iff₀ hpos] at h2
+  unfold shqrDecoupleError
+  rw [← hx]
+  have hA : (0 : ℝ) ≤ shqrCap n B Γ S δ * ((3.1 + shqrC k (4 * B)) * (4 * S)) := by positivity
+  calc (shqrCap n B Γ S δ : ℝ) * ((3.1 + shqrC k (4 * B)) * (4 * S) * ((1 + x) ^ k - 1))
+      = shqrCap n B Γ S δ * ((3.1 + shqrC k (4 * B)) * (4 * S)) * ((1 + x) ^ k - 1) := by ring
+    _ ≤ shqrCap n B Γ S δ * ((3.1 + shqrC k (4 * B)) * (4 * S)) * (2 * (k * x)) := by gcongr
+    _ ≤ shqrBudget n B Γ δ / (6 * (n + 1)) := by rw [hx]; linarith
+
+/-- Regularize's rounding budget for the translates:
+$\beta + R + 2\boldsymbol{u}(4\Sigma + \beta + R) \le \omega^2/(2020 \cdot 4\Sigma)$ when
+$4\Sigma + \beta + R \le 8\Sigma$, $\beta \le R$ and
+$\boldsymbol{u} \le \omega^2/(16160(4\Sigma)^2)$. -/
+theorem add_shqrRadius_add_le {β : ℝ} (hS : 0 < S)
+    (hsum : 4 * S + β + shqrRadius n B Γ S δ ≤ 2 * (4 * S)) (hu0 : 0 ≤ u)
+    (r1 : u ≤ shqrOmega n B Γ δ ^ 2 / (16160 * (4 * S) ^ 2)) (hβR : β ≤ shqrRadius n B Γ S δ) :
+    β + shqrRadius n B Γ S δ + 2 * u * (4 * S + β + shqrRadius n B Γ S δ) ≤
+      shqrOmega n B Γ δ ^ 2 / (20 * 101 * (4 * S)) := by
+  have a1 : 2 * u * (4 * S + β + shqrRadius n B Γ S δ) ≤ 2 * u * (2 * (4 * S)) :=
+    mul_le_mul_of_nonneg_left hsum (by positivity)
+  have a2 : 4 * u * (4 * S) ≤ 4 * (shqrOmega n B Γ δ ^ 2 / (16160 * (4 * S) ^ 2)) * (4 * S) := by
+    gcongr
+  have e1 : 4 * (shqrOmega n B Γ δ ^ 2 / (16160 * (4 * S) ^ 2)) * (4 * S) =
+      shqrOmega n B Γ δ ^ 2 / (4040 * (4 * S)) := by field_simp; ring
+  have e2 : 2 * shqrRadius n B Γ S δ = shqrOmega n B Γ δ ^ 2 / (4040 * (4 * S)) := by
+    unfold shqrRadius; field_simp; ring
+  have e3 : shqrOmega n B Γ δ ^ 2 / (20 * 101 * (4 * S)) =
+      2 * (shqrOmega n B Γ δ ^ 2 / (4040 * (4 * S))) := by field_simp; ring
+  rw [e3]
+  linarith
+
+end Facts
+
 
 end NLAlib.ShiftedQR

@@ -393,3 +393,148 @@ theorem shTrial_good {M : Machine ℝ} {u C B S d ω γ pH : ℝ} (hM : StdModel
   exact lt_of_potential_contract hu0 hu hγ1 hψ hp hpH (hM.mul _ _) (by linarith)
 
 end NLAlib.ShiftedQR
+
+namespace NLAlib.ShiftedQR
+
+open Ops
+
+variable {n : ℕ}
+
+/-- A column of complex words of length $N$ stored as interleaved pairs is read back entrywise. -/
+theorem storedMatrix_col_of_readBlock' {s : Store ℝ} {b : ℕ × ℕ} {N : ℕ} {zs : List ℂ}
+    (hlen : zs.length = N)
+    (h : s.readBlock b.1 b.2 (2 * N) = some (zs.flatMap fun z => [z.re, z.im])) (j : Fin N) :
+    storedMatrix b N 1 s j 0 = zs[(j : ℕ)]'(hlen ▸ j.isLt) := by
+  subst hlen
+  exact storedMatrix_col_of_readBlock h j
+
+/-- The words `Sh` with scratch at `L, …, L + 11` reads, and the room it writes into: the
+matrix $\mathbf{H}$ at `a`, the $k$ shifts `ss` at `s`, the words $c_g$, $c_r$, $c_w$, $c_p$
+at `wg`, `wr`, `ww`, `wp`, the net `NLAlib.ShiftedQR.excNet ε` at `g`, the threshold word $t$
+at `thr`, room for the flag at `f`, and twelve scratch buffers of the lengths of
+`NLAlib.ShiftedQR.shStep` above the $L$ buffers of the caller. -/
+def ShCtx (L : ℕ) (k : ℕ) (ε : ℝ) (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (ss : List ℂ)
+    (cg cr cw cp tv : ℝ) (a s wg wr ww wp g thr f : ℕ × ℕ) (m : Mem ℝ) : Prop :=
+  HoldsMatrix a H m.store ∧
+    m.store.readBlock s.1 s.2 (2 * k) = some (ss.flatMap fun z => [z.re, z.im]) ∧
+    m.store.get wg.1 wg.2 = some cg ∧ m.store.get wr.1 wr.2 = some cr ∧
+    m.store.get ww.1 ww.2 = some cw ∧ m.store.get wp.1 wp.2 = some cp ∧
+    m.store.readBlock g.1 g.2 (2 * (excNet ε).length) =
+      some ((excNet ε).flatMap fun z => [z.re, z.im]) ∧
+    m.store.get thr.1 thr.2 = some tv ∧ f.2 < m.store.len f.1 ∧ m.store.length = L + 12 ∧
+    m.store.len L = 2 ∧ m.store.len (L + 1) = 1 ∧ m.store.len (L + 2) = 1 ∧
+    m.store.len (L + 3) = 1 ∧ m.store.len (L + 4) = 1 ∧
+    m.store.len (L + 5) = 2 * ((n + 1) * (n + 1)) ∧ m.store.len (L + 6) = 2 * k ∧
+    m.store.len (L + 7) = 2 * k ∧ m.store.len (L + 8) = 5 ∧ m.store.len (L + 9) = 1 ∧
+    m.store.len (L + 10) = 2 * (excNet ε).length ∧ m.store.len (L + 11) = 1
+
+/-- The context survives a write apart from the matrix and the input words. -/
+theorem ShCtx.of_eqOff {L k : ℕ} {ε : ℝ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {ss : List ℂ} {cg cr cw cp tv : ℝ} {a s wg wr ww wp g thr f : ℕ × ℕ} {m m' : Mem ℝ} {F : Fp}
+    (h : ShCtx L k ε H ss cg cr cw cp tv a s wg wr ww wp g thr f m)
+    (hfr : m.store.EqOff F m'.store)
+    (hF : Fp.Disj F (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+      Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock wg.1 wg.2 1 ⊔ Store.inBlock wr.1 wr.2 1 ⊔
+      Store.inBlock ww.1 ww.2 1 ⊔ Store.inBlock wp.1 wp.2 1 ⊔
+      Store.inBlock g.1 g.2 (2 * (excNet ε).length) ⊔ Store.inBlock thr.1 thr.2 1)) :
+    ShCtx L k ε H ss cg cr cw cp tv a s wg wr ww wp g thr f m' := by
+  obtain ⟨hA, hs, hg, hr, hw, hp, hG, ht, hf, hlen, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10,
+    h11⟩ := h
+  refine ⟨hA.of_eqOff hfr (hF.mono le_rfl (by fp_sub)),
+    hfr.keep (Store.readsOnly_readBlock _ _ _ _) (hF.mono le_rfl (by fp_sub)) hs,
+    hfr.keep (Store.readsOnly_get _ _ _) (hF.mono le_rfl (by fp_sub)) hg,
+    hfr.keep (Store.readsOnly_get _ _ _) (hF.mono le_rfl (by fp_sub)) hr,
+    hfr.keep (Store.readsOnly_get _ _ _) (hF.mono le_rfl (by fp_sub)) hw,
+    hfr.keep (Store.readsOnly_get _ _ _) (hF.mono le_rfl (by fp_sub)) hp,
+    hfr.keep (Store.readsOnly_readBlock _ _ _ _) (hF.mono le_rfl (by fp_sub)) hG,
+    hfr.keep (Store.readsOnly_get _ _ _) (hF.mono le_rfl (by fp_sub)) ht, ?_⟩
+  simp only [hfr.len_eq, hfr.length_eq]
+  exact ⟨hf, hlen, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11⟩
+
+/-- The views of `Sh` are apart: the matrix and the flag from each other and from the input
+words, all below the scratch handle $L$. -/
+structure ShViews (L n k : ℕ) (ε : ℝ) (a s wg wr ww wp g thr f : ℕ × ℕ) : Prop where
+  /-- Every view is below the scratch handle. -/
+  lt : a.1 < L ∧ s.1 < L ∧ wg.1 < L ∧ wr.1 < L ∧ ww.1 < L ∧ wp.1 < L ∧ g.1 < L ∧ thr.1 < L ∧
+    f.1 < L
+  /-- The matrix and the flag are apart. -/
+  af : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock f.1 f.2 1)
+  /-- The outputs are apart from the inputs. -/
+  io : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
+    (Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock wg.1 wg.2 1 ⊔ Store.inBlock wr.1 wr.2 1 ⊔
+      Store.inBlock ww.1 ww.2 1 ⊔ Store.inBlock wp.1 wp.2 1 ⊔
+      Store.inBlock g.1 g.2 (2 * (excNet ε).length) ⊔ Store.inBlock thr.1 thr.2 1)
+
+end NLAlib.ShiftedQR
+
+namespace NLAlib.ShiftedQR
+
+open Ops
+
+variable {n : ℕ}
+
+/-- **The outcome of the exceptional shifts, read from the memory**: under the hypotheses of
+`NLAlib.ShiftedQR.exists_mem_le_norm_inv_pow_of_excShifts` (with $\delta = \varepsilon\tilde R
+\sqrt{\varphi/(11(n + 1))}/4$), if $N$ shifts are stored as pairs at `b`, cover
+$\mathbb{D}(r, \tilde R)$ at radius $\varepsilon\tilde R$, are at most $9/\varepsilon^2$, at
+distance at least $\delta$ from every eigenvalue and in $\mathbb{D}(r, 2.1\tilde R)$, then the
+column read at `b` is initialised, contains a contracting shift, and its entries are at distance
+at least $d \le \varepsilon\,1.998^{1/k}\theta\alpha B^{1/k}\psi_k(\mathbf{H})
+\sqrt{\varphi/(11(n + 1))}/4$ from every eigenvalue and of modulus at most $C\|\mathbf{H}\|_2$,
+for $\lvert r\rvert \le 1.1\|\mathbf{H}\|_2$ and
+$1.1 + 2.1 \cdot 2.002^{1/k}\theta\alpha B^{1/k} \le C$. -/
+theorem excOutcome_of_excShifts {s : Store ℝ} {b : ℕ × ℕ} {N : ℕ} {zs : List ℂ}
+    {B θ α γ R ε φ d C : ℝ} {k : ℕ} {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {e : Fin (n + 1) → ℂ} {ss : List ℂ} {r : ℂ}
+    (hk : 2 ≤ k) (hkn : k ≤ n) (hlen : ss.length = k) (hV : IsUnit V)
+    (hHV : H * V = V * Matrix.diagonal e) (hκ : pseudoConditionNumber V ≤ B)
+    (hopt : IsOptimalRitzValues θ H ss) (hr : IsPromisingRitzValue α V e ss r)
+    (hd0 : ∀ i, ∀ s ∈ ss, e i ≠ s) (hψ : 0 < hessenbergPotential k H) (hγ : 0 < γ)
+    (hγ1 : γ < 1) (hθ : 1 ≤ θ) (hα : 1 ≤ α)
+    (hτ : ‖WithLp.toLp 2 ((Polynomial.aeval H (shiftPoly (List.replicate k r)))⁻¹
+      (Fin.last n))‖ ≤ (0.998 * (1 - γ) * hessenbergPotential k H)⁻¹ ^ k)
+    (hRlo : (1.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) * hessenbergPotential k H ≤ R)
+    (hRhi : R ≤ (2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) * hessenbergPotential k H)
+    (hε : ε = (0.998 * (1 - γ) * (1 - γ) / ((13 * B ^ 4) ^ ((k : ℝ)⁻¹) * α ^ 2 * θ ^ 2)) ^
+      ((k : ℝ) / (k - 1))) (hε2 : ε ≤ 1 / 2) (hφ : 0 < φ)
+    (hd : d ≤ ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) *
+      hessenbergPotential k H) * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 4) (hd' : 0 < d)
+    (hrH : ‖r‖ ≤ 1.1 * specNorm H)
+    (hC : 1.1 + 2.1 * ((2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹)) ≤ C)
+    (hzl : zs.length = N)
+    (hblk : s.readBlock b.1 b.2 (2 * N) = some (zs.flatMap fun z => [z.re, z.im]))
+    (hcard : (zs.length : ℝ) ≤ 9 / ε ^ 2)
+    (hcover : ∀ z : ℂ, ‖z - r‖ ≤ R → ∃ s ∈ zs, ‖z - s‖ ≤ ε * R)
+    (hdist : ∀ s ∈ zs, ∀ i, ε * R * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 4 ≤ ‖e i - s‖)
+    (hnear : ∀ s ∈ zs, ‖s - r‖ ≤ 2.1 * R) :
+    (∀ j < 2 * (1 * N), (s.get b.1 (b.2 + j)).isSome) ∧
+      (∃ j : Fin N, ((1 - γ) * hessenbergPotential k H)⁻¹ ^ k ≤ ‖WithLp.toLp 2
+        ((Polynomial.aeval H (shiftPoly (List.replicate k (storedMatrix b N 1 s j 0))))⁻¹
+          (Fin.last n))‖) ∧
+      (∀ j : Fin N, ∀ i, d ≤ ‖e i - storedMatrix b N 1 s j 0‖) ∧
+      ∀ j : Fin N, ‖storedMatrix b N 1 s j 0‖ ≤ C * specNorm H := by
+  have hcol := storedMatrix_col_of_readBlock' hzl hblk
+  have hB1 : 1 ≤ B := (one_le_pseudoConditionNumber hV.ne_zero).trans hκ
+  have hX : 0 ≤ (2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) := by positivity
+  have hψH := hessenbergPotential_le_specNorm (by omega) hkn H
+  have hmem : ∀ j : Fin N, storedMatrix b N 1 s j 0 ∈ zs := fun j => by
+    rw [hcol j]; exact List.getElem_mem _
+  have hRd : d ≤ ε * R * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 4 := by
+    have hε0 : 0 ≤ ε := by rw [hε]; positivity
+    refine hd.trans ?_
+    gcongr
+  refine ⟨fun j hj => ?_, ?_, fun j i => hRd.trans (hdist _ (hmem j) i), fun j => ?_⟩
+  · rw [Option.isSome_iff_exists]
+    exact ⟨_, Store.get_of_readBlock hblk (j := j) (by omega) 0⟩
+  · obtain ⟨t, ht, hle⟩ := exists_mem_le_norm_inv_pow_of_excShifts hk hkn hlen hV hHV hκ hopt hr
+      hd0 hψ hγ hγ1 hθ hα hτ hRlo hRhi hε hε2 hcard hcover (lt_of_lt_of_le hd' hRd) hdist
+    obtain ⟨i, hi, rfl⟩ := List.mem_iff_getElem.mp ht
+    exact ⟨⟨i, hzl ▸ hi⟩, by rw [hcol]; exact hle⟩
+  · have h1 := hnear _ (hmem j)
+    have h2 := norm_le_norm_add_norm_sub' (storedMatrix b N 1 s j 0) r
+    have h3 : R ≤ (2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) * specNorm H :=
+      hRhi.trans (mul_le_mul_of_nonneg_left hψH hX)
+    have h4 := mul_le_mul_of_nonneg_right hC (specNorm_nonneg H)
+    nlinarith
+
+end NLAlib.ShiftedQR

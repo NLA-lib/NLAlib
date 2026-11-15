@@ -102,8 +102,9 @@ Theorem 6.3], the worklist with the probability of success): on a machine with t
 at $0 \le \boldsymbol{u} < 1$ whose natural literals up to $n + 1$ are exact, with a measurable
 interpretation that reads the tape only in its windows, let the decoupler `D` meet
 `NLAlib.ShiftedQR.RandomDecouplingContract` on the class (condition $2B$, separation $g/2$) with
-failure probability $\varphi_D$, and the leaf `L` meet `NLAlib.ShiftedQR.RandomLeafContract` with
-error $\beta \ge 0$ and failure probability $\varphi_L$. Let $\mathbf{H}$ be upper Hessenberg of
+failure probability $\varphi_D \ge 0$, and the leaf `L` meet
+`NLAlib.ShiftedQR.RandomLeafContract` with error $\beta \ge 0$ and failure probability
+$\varphi_L \ge 0$. Let $\mathbf{H}$ be upper Hessenberg of
 order $n + 1$ with $\mathbf{H}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$,
 $\kappa(\mathbf{V}) \le B$ and eigenvalues separated by $g > 0$; let the threshold word $t$
 satisfy $(1 + \boldsymbol{u})^2\omega^2 \le t \le (1 - \boldsymbol{u})^2c^2$, $c \ge 0$, let
@@ -120,7 +121,8 @@ theorem solveRounded_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} 
     (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ} {B g φD β φL : ℝ} {k F : ℕ}
     {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} (D : Impl O Q)
     (hD : RandomDecouplingContract law (2 * B) (g / 2) φD k F ps ω ε D I)
-    (L : Impl O Q) (hLeaf : RandomLeafContract law β φL L I) {a t p out f : ℕ × ℕ}
+    (L : Impl O Q) (hLeaf : RandomLeafContract law β φL L I) (hφD : 0 ≤ φD) (hφL : 0 ≤ φL)
+    {a t p out f : ℕ × ℕ}
     {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {thr c N₀ : ℝ}
     (hHess : IsUpperHessenberg H) (hV : IsUnit V) (hHV : H * V = V * Matrix.diagonal d)
     (hκ : pseudoConditionNumber V ≤ B) (hg : 0 < g) (hgap : ∀ i j, i ≠ j → g ≤ ‖d i - d j‖)
@@ -157,7 +159,8 @@ theorem solveRounded_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Interp
     (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ} {B g φD β φL : ℝ} {k F : ℕ}
     {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} (D : Impl O Q)
     (hD : RandomDecouplingContract law (2 * B) (g / 2) φD k F ps ω ε D I)
-    (L : Impl O Q) (hLeaf : RandomLeafContract law β φL L I) {a t p out f : ℕ × ℕ}
+    (L : Impl O Q) (hLeaf : RandomLeafContract law β φL L I) (hφD : 0 ≤ φD) (hφL : 0 ≤ φL)
+    {a t p out f : ℕ × ℕ}
     {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {thr c N₀ : ℝ}
     (hHess : IsUpperHessenberg H) (hV : IsUnit V) (hHV : H * V = V * Matrix.diagonal d)
     (hκ : pseudoConditionNumber V ≤ B) (hg : 0 < g) (hgap : ∀ i j, i ≠ j → g ≤ ‖d i - d j‖)
@@ -181,8 +184,8 @@ theorem solveRounded_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Interp
           specNorm E ≤ 2 * (n + 1) * (c + ε N₀ + β) ∧
           (H + E).charpoly.roots = (List.ofFn roots : Multiset ℂ)) μ} ≤
       2 * (n + 1) * (φD + φL) :=
-  (solveRounded_pwrites hS hM hu hu1 hL hNat hQ hC hI hloc D hD L hLeaf hHess hV hHV hκ hg hgap
-    hfind hcut hc hβ hε0 hN₀ hsmall).measureReal_not_writes_le ⟨hl, hr, ha, hA, ht, hp⟩ hξ
+  (solveRounded_pwrites hS hM hu hu1 hL hNat hQ hC hI hloc D hD L hLeaf hφD hφL hHess hV hHV hκ
+    hg hgap hfind hcut hc hβ hε0 hN₀ hsmall).measureReal_not_writes_le ⟨hl, hr, ha, hA, ht, hp⟩ hξ
 
 end Theorems
 

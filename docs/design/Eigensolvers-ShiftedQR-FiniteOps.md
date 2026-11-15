@@ -617,10 +617,16 @@ $$\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{ShQR}}(n, k, B, \Gamma, \Sigma, \de
 the program `roundedShQR` run on the stored $\mathbf{H}$ **always terminates** (every tape;
 capped, C4), and with probability at least $1 - \varphi$ it sets the failure word to $0$ and stores
 all eigenvalues, with multiplicity, of $\mathbf{H} + \mathbf{E}$ for some
-$\|\mathbf{E}\|_2 \le \delta$. Lean form (planned, with the programs of wave 9):
+$\|\mathbf{E}\|_2 \le \delta$. Lean form (planned, with the programs of wave 9). It takes
+`hI : I.IsMeasurable` and `hloc` as C4p does. The earlier `hMeas : Mch.IsMeasurable` does not
+give `hI`: the contracts leave `I` free off their operands (Fable review of the PROB-LOGIC
+drafts, item 1). PL4 instead shows that a measurable interpretation meeting the contracts
+exists. In T1c, `0 ≤ φse` follows from `IsRandomSmallEig` at any Hessenberg input, or is added
+next to `hφse`.
 
 ```lean
-theorem roundedShQR_measureReal_not_spectrum_le … (hM : StdModel u id Mch) (hMeas : Mch.IsMeasurable)
+theorem roundedShQR_measureReal_not_spectrum_le … (hM : StdModel u id Mch)
+    (hI : I.IsMeasurable) (hloc : ∀ o, I.TapeLocal o (win o))
     (hNat : IsExactNatLit id Mch (n + 1)) (hSE : IsRandomSmallEig law sU βse φse I)
     (hDisk : IsPolarDiskSampler law sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
     (hHess : IsUpperHessenberg H) (hV : IsUnit V) (hHV : H * V = V * diagonal d)

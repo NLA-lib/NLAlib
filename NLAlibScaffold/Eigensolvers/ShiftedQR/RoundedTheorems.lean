@@ -8,8 +8,7 @@ module
 public import Mathlib.Analysis.SpecialFunctions.Log.Base
 public import NLAlib.Ops.Confined
 public import NLAlib.Ops.Static
-public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedDecouple
-public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedPrecision
+public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedDecoupleSpec
 
 /-!
 # The rounded shifted QR algorithm: headline theorems
@@ -160,7 +159,43 @@ theorem roundedShQR_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Interp 
     P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQR (O := O) (Q := Q)).body
       (Env.frame (shqrDims n k B Γ S δ φ) [a, t, p, out, f]) (shqrFp n a out f)
       (ShQRSpectrum out f H δ) μ} ≤ φ := by
-  sorry
+  have hu0 := hM.roundoff_nonneg
+  have hB : 1 ≤ B := (one_le_pseudoConditionNumber hV.ne_zero).trans hκ
+  have hSp : 0 < S := hδ.trans_le hδS
+  obtain ⟨-, -, SR, IT⟩ := shqrParams_spec hB hΓ hδ hδS hφ hφ1 hk hu0 hu hβse0 hse
+  -- explicit, so that the contract's own implicit binders stay bound
+  have hD := @roundedDecouple_randomDecouplingContract_of_le_uShQR O Q _ _ _ _ _ _ Mch I u hI win
+    hloc hS hM hL n hNat hC hQ law sU βse φse hSE hDisk hU k B Γ S δ φ hB hΓ hδ hδS hφ hφ1 hk
+    hβse0 hse hφse0 hu
+  have hLeaf := @IsRandomSmallEig.randomLeafContract O Q _ law sU βse φse I hSE hβse0
+  have hE := shqrLoopError_le_shqrDecoupleError (n := n) (k := k) (B := B) (Γ := Γ) (δ := δ)
+    hSp.le hu0
+  set E := (shqrCap n B Γ S δ : ℝ) *
+    ((1 + shqrC k (4 * B)) * (4 * S) * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) with hEdef
+  have hE0 : 0 ≤ E := by
+    have := shqrC_pos k (by linarith : 0 < 4 * B)
+    have : 1 ≤ (1 + 300 * ((n : ℝ) + 1) ^ 2 * u) ^ k := one_le_pow₀ (by nlinarith)
+    have : 0 ≤ (1 + 300 * ((n : ℝ) + 1) ^ 2 * u) ^ k - 1 := by linarith
+    positivity
+  have hφ₁ := shqrSmallEigFailure_pos (n := n) (B := B) (Γ := Γ) (S := S) (δ := δ) hφ
+  have hφD : 0 ≤ (shqrCap n B Γ S δ : ℝ) * (φse + shqrRegularizeFailure n B Γ S δ φ / 2 +
+      shqrSmallEigFailure n B Γ S δ φ) := by unfold shqrRegularizeFailure; positivity
+  have hc := SR.hc
+  have hN : specNorm H + 2 * (n + 1) * (shqrCut n k B Γ S δ φ + E + βse) ≤ 2 * S := by
+    have := SR.hN₀; nlinarith
+  have hsm : 2 * (n + 1) * (shqrCut n k B Γ S δ φ + E + βse) ≤ Γ / (16 * (n + 1) * B) := by
+    have := SR.hsmall; nlinarith
+  have hδ' : 2 * (n + 1) * (shqrCut n k B Γ S δ φ + E + βse) ≤ δ := by
+    have := SR.hδ; nlinarith
+  obtain ⟨hl, hr, ha, hA, ht, hp⟩ := hin
+  have h := solveRounded_measureReal_not_spectrum_le hS hM hu0 SR.hu1 hL hNat hQ hC hI hloc _ hD
+    _ hLeaf hφD hφse0 hHess hV hHV hκ hΓ hgap SR.hfind SR.hcut hc hβse0 hE0 hN hsm hl hr ha hA
+    ht hp hξ
+  have := hξ.isProbabilityMeasure
+  refine le_trans ?_ (h.trans (IT.hfail φse hφse0 hφse))
+  refine measureReal_mono fun ω' hω' hW => hω' ?_
+  exact hW.mono le_rfl fun μ' _ ⟨hf, roots, E', hO, hE', hR⟩ =>
+    ⟨hf, roots, E', hO, hE'.trans hδ', hR⟩
 
 /-- **The rounded shifted QR algorithm terminates on every tape** (T1d): under the hypotheses of
 `NLAlib.ShiftedQR.roundedShQR_measureReal_not_spectrum_le` other than those on the randomness

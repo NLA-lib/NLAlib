@@ -111,6 +111,21 @@ theorem Store.get_pop (s : Store K) (b i : ℕ) :
   simp only [Store.get, Store.pop, List.getElem?_dropLast]
   split_ifs <;> rfl
 
+/-- The cells after a write of one cell: the written cell holds the value if it lies inside its
+buffer; nothing else changes. -/
+theorem Store.get_upd (s : Store K) (b i : ℕ) (v : K) (b' i' : ℕ) :
+    (s.upd b i v).get b' i' = if b' = b ∧ i' = i ∧ i < s.len b then some v else s.get b' i' := by
+  by_cases h : b' = b ∧ i' = i
+  · obtain ⟨rfl, rfl⟩ := h
+    by_cases hi : i' < s.len b'
+    · simp [hi, Store.get_upd_self hi]
+    · simp only [hi, and_false, if_false]
+      have h1 : ∀ a, (s.upd b' i' v).get b' i' ≠ some a := fun a ha =>
+        hi (by simpa using Store.lt_len_of_get ha)
+      have h2 : ∀ a, s.get b' i' ≠ some a := fun a ha => hi (Store.lt_len_of_get ha)
+      rw [Option.eq_none_iff_forall_ne_some.mpr h1, Option.eq_none_iff_forall_ne_some.mpr h2]
+  · rw [if_neg (fun h' => h ⟨h'.1, h'.2.1⟩), Store.get_upd_of_ne (by tauto)]
+
 end Shape
 
 
@@ -202,6 +217,27 @@ theorem Mem.measurable_pop : Measurable fun m : Mem K => (⟨m.store.pop, m.pos�
       (Mem.measurable_cell (K := K) z) (measurable_const (a := (false, (default : K)))) using 1
     · funext m
       by_cases h : z.1 < m.store.length - 1 <;> simp [Store.get_pop, h]
+    · exact fun _ => inferInstance
+
+/-- Writing one cell is measurable in the memory and the value. -/
+theorem Mem.measurable_upd (z : ℕ × ℕ) : Measurable fun p : Mem K × K => p.1.upd z p.2 := by
+  refine Mem.measurable_of ?_ ?_ (fun b => ?_) (fun z' => ?_)
+  · simp only [Mem.pos_upd]
+    exact Mem.measurable_pos.comp measurable_fst
+  · simp only [Mem.upd, Store.length_upd]
+    exact Mem.measurable_length.comp measurable_fst
+  · simp only [Mem.upd, Store.len_upd]
+    exact (Mem.measurable_len b).comp measurable_fst
+  · convert Measurable.ite
+      (p := fun p : Mem K × K => z'.1 = z.1 ∧ z'.2 = z.2 ∧ z.2 < p.1.store.len z.1)
+      ((MeasurableSet.const _).inter ((MeasurableSet.const _).inter
+        (((Mem.measurable_len z.1).comp measurable_fst) (MeasurableSet.of_discrete
+          (s := {k | z.2 < k})))))
+      ((measurable_const (a := true)).prodMk measurable_snd)
+      ((Mem.measurable_cell z').comp measurable_fst) using 1
+    · funext p
+      by_cases h : z'.1 = z.1 ∧ z'.2 = z.2 ∧ z.2 < p.1.store.len z.1 <;>
+        simp [Mem.upd, Store.get_upd, h]
     · exact fun _ => inferInstance
 
 end Measurability

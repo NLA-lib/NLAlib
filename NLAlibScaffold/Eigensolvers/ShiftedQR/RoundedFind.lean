@@ -1011,7 +1011,8 @@ theorem findRounded_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {Tau : Imp
   have hrb : r.1 ≠ b.1 := by simp only [r]; omega
   have hrs : r.1 ≠ ss.1 := by simp only [r]; omega
   refine Writes.in_frame (Writes.mono (F := Store.inBlock r.1 r.2 6 ⊔ Store.inBlock z.1 z.2 2) ?_
-    (sup_le (Fp.inBlock_le_sup_above le_rfl) le_sup_left) fun _ _ h => h) rfl rfl (show (⟨store, μ.pos⟩ : Mem ℝ).Live [b, ss, r, z] by
+    (sup_le (Fp.inBlock_le_sup_above le_rfl) le_sup_left) fun _ _ h => h) rfl rfl
+    (show (⟨store, μ.pos⟩ : Mem ℝ).Live [b, ss, r, z] by
       simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,
         forall_eq]
       exact ⟨by omega, by omega, by simp only [r]; omega, by omega⟩)

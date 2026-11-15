@@ -39,17 +39,19 @@ open scoped Matrix
 
 variable {O Q : Type}
 
-/-- **A terminating decoupler** with the bottom width `k`, the iteration cap `F` and the
-parameter words `ps`: from any matrix of order $n + 1 \ge k + 1$ stored in place (no structure
+/-- **A terminating decoupler** for orders up to $n_{\max} + 1$, with the bottom width `k`, the
+iteration cap `F` and the parameter words `ps`: from any matrix of order $n + 1 \ge k + 1$,
+$n \le n_{\max}$, stored in place (no structure
 assumed) and on every tape, the run is total, writes only the matrix and the one-word flag, and
 leaves a stored matrix and a stored flag. The geometry is that of
 `NLAlib.ShiftedQR.RoundedDecouplingContract`. The interface is `[n, k, np, F] (W, P) → (W, Fl)`.
 -/
-def TerminatingDecoupler (k F : ℕ) (ps : List ℝ) (D : Impl O Q) (I : Interp O Q ℝ) : Prop :=
+def TerminatingDecoupler (nmax k F : ℕ) (ps : List ℝ) (D : Impl O Q) (I : Interp O Q ℝ) : Prop :=
   ∀ {n : ℕ} {w q f : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ}
     (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
-    k ≤ n → HoldsMatrix w H μ.store → μ.store.readBlock q.1 q.2 ps.length = some ps →
-    μ.Live [w, q, w, f] → w.2 + 2 * ((n + 1) * (n + 1)) ≤ μ.store.len w.1 →
+    k ≤ n → n ≤ nmax → HoldsMatrix w H μ.store →
+    μ.store.readBlock q.1 q.2 ps.length = some ps → μ.Live [w, q, w, f] →
+    w.2 + 2 * ((n + 1) * (n + 1)) ≤ μ.store.len w.1 →
     f.2 + 1 ≤ μ.store.len f.1 →
     Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock f.1 f.2 1) →
     Fp.Disj (Store.inBlock q.1 q.2 ps.length)

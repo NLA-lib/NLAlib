@@ -840,6 +840,468 @@ theorem shDecide_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScala
     · rintro m' - ⟨hA', -, hF'⟩
       exact ⟨hA', hF'⟩
 
+omit [Has IndexOp O] [Has DiskSampleOp O] [Has IdxTst Q] in
+/-- **The `comptau` test of `Sh` terminates on any matrix**: with the views and the room of `Sh`,
+from any matrix at `A`, any pair at `Z = L` and a stored word at `Cg`, $k \le n$, on a scalar
+machine with exact comparisons and the literal $0$ exact, `NLAlib.ShiftedQR.shTestStep` leaves
+the step at `T = L + 5` and the words at `P0 = L + 3`, `P1 = L + 4` stored. -/
+theorem shTestStep_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    (hzero : M.lit 0 = 0) (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {L k : ℕ} (hkn : k ≤ n)
+    {ε : ℝ} {a s wg wr ww wp g thr f : ℕ × ℕ} (hv : ShViews L n k ε a s wg wr ww wp g thr f)
+    (hr : ShRoom L n k ε f m) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {z : ℂ} {cg : ℝ}
+    (hA : HoldsMatrix a H m.store) (hZ : m.store.readBlock L 0 2 = some [z.re, z.im])
+    (hcg : m.store.get wg.1 wg.2 = some cg) :
+    Writes .total I τ (shTestStep (O := O) (Q := Q)).body
+      (Env.frame [n + 1, k] [a, (L, 0), wg, (L + 5, 0), (L + 6, 0), (L + 3, 0), (L + 4, 0)])
+      (Store.inBlock (L + 5) 0 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 6) 0 (2 * k) ⊔
+        Store.inBlock (L + 3) 0 1 ⊔ Store.inBlock (L + 4) 0 1)
+      (fun m' => (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+        HoldsMatrix (L + 5, 0) H' m'.store) ∧ (∃ x, m'.store.get (L + 3) 0 = some x) ∧
+        ∃ x, m'.store.get (L + 4) 0 = some x) m := by
+  obtain ⟨⟨ha, hsl, hwg, hwr, hww, hwp, hgl, hthl, hfl⟩, -, -⟩ := hv
+  obtain ⟨-, hlen, -, -, -, h3, h4, h5, h6, -⟩ := hr
+  unfold shTestStep
+  refine (copyMatrix_writes (τ := τ) (b := (L + 5, 0)) hS hA (by simp [h5])
+    (by disjoint)).frame_seq_le rfl rfl (by simp [Mem.Live, hlen]; omega) (by fp_sub) ?_
+  rintro m₁ hfr₁ ⟨-, hT₁⟩
+  have hrep := replicatePair_writes (τ := τ) (k := k) (sp := (L, 0)) (sr := (L + 6, 0)) hS
+    (hfr₁.keep (Store.readsOnly_readBlock _ _ _ _) (by disjoint) hZ)
+    (by rw [hfr₁.len_eq]; simp [h6]) (by disjoint)
+  rw [List.length_replicate] at hrep
+  refine hrep.frame_seq_le rfl rfl (by simp [Mem.Live, hfr₁.length_eq, hlen]) (by fp_sub) ?_
+  rintro m₂ hfr₂ ⟨-, hSR⟩
+  have hL₂ : m₂.store.length = L + 12 := by rw [hfr₂.length_eq, hfr₁.length_eq, hlen]
+  refine (stepComptau_terminates (τ := τ) (a := (L + 5, 0)) (s := (L + 6, 0))
+    (p := (L + 3, 0)) hS hzero hC (by simp [Mem.Live, hL₂]) (hT₁.of_eqOff hfr₂ (by disjoint)) hSR
+    (by rw [hfr₂.len_eq, hfr₁.len_eq]; simp [h3]) (by disjoint) (by disjoint)).frame_seq_le
+    rfl rfl (by simp [Mem.Live, hL₂]) (by fp_sub) ?_
+  rintro m₃ hfr₃ ⟨⟨H', hT₃⟩, x, hP₃⟩
+  have hL₃ : m₃.store.length = L + 12 := by rw [hfr₃.length_eq, hL₂]
+  have hfr := (hfr₁.trans' hfr₂).trans' hfr₃
+  refine (shThreshold_writes (τ := τ) (p := (L + 4, 0)) hS hkn (hA.of_eqOff hfr (by disjoint))
+    (hfr.keep (Store.readsOnly_get _ _ _) (by disjoint) hcg)
+    (by rw [hfr₃.len_eq, hfr₂.len_eq, hfr₁.len_eq]; simp [h4]) (by disjoint)
+    (by disjoint)).in_frame rfl rfl (by simp [Mem.Live, hL₃]; omega) |>.mono (by fp_sub) ?_
+  rintro m₄ hfr₄ ⟨-, hP₄⟩
+  exact ⟨⟨H', hT₃.of_eqOff hfr₄ (by disjoint)⟩,
+    ⟨x, hfr₄.keep (Store.readsOnly_get _ _ _) (by disjoint) hP₃⟩, ⟨_, hP₄⟩⟩
+
+omit [Has DiskSampleOp O] in
+/-- **The start of `Sh` terminates on any matrix**: from the context `NLAlib.ShiftedQR.ShCtx` (any
+matrix, shifts and words), $k = 2^q \le n$, on a scalar machine with exact comparisons, index
+literals, index conversion and exact natural literals up to $n + 1$, the potential, `Find` and
+the `comptau` test (`NLAlib.ShiftedQR.shPrefix`) keep the context and leave the pair `Z`, the
+words `Rt`, `P0`, `P1` and the step `T` stored. -/
+theorem shPrefix_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    (hL : IsIndexLit M I) (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I)
+    (hQ : IsToNat id I) {τ : Tape ℝ} {m : Mem ℝ} {L k q : ℕ} (hkq : k = 2 ^ q) (hkn : k ≤ n)
+    {ε : ℝ} {a s wg wr ww wp g thr f : ℕ × ℕ} (hv : ShViews L n k ε a s wg wr ww wp g thr f)
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ss : List ℂ} {cg cr cw cp tv : ℝ}
+    (hctx : ShCtx L k ε H ss cg cr cw cp tv a s wg wr ww wp g thr f m) :
+    Writes .total I τ (shPrefix (O := O) (Q := Q)).body
+      (Env.frame [n + 1, q, k] [a, s, wg, (L, 0), (L + 1, 0), (L + 3, 0), (L + 4, 0), (L + 5, 0),
+        (L + 6, 0)])
+      (Store.inBlock (L + 1) 0 1 ⊔ Store.inBlock L 0 2 ⊔
+        (Store.inBlock (L + 5) 0 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 6) 0 (2 * k) ⊔
+          Store.inBlock (L + 3) 0 1 ⊔ Store.inBlock (L + 4) 0 1))
+      (fun m' => ShCtx L k ε H ss cg cr cw cp tv a s wg wr ww wp g thr f m' ∧
+        (∃ z : ℂ, m'.store.readBlock L 0 2 = some [z.re, z.im]) ∧
+        (∃ x, m'.store.get (L + 1) 0 = some x) ∧ (∃ x, m'.store.get (L + 3) 0 = some x) ∧
+        (∃ x, m'.store.get (L + 4) 0 = some x) ∧
+        ∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix (L + 5, 0) H' m'.store) m := by
+  have hv' := hv
+  obtain ⟨⟨ha, hsl, hwg, hwr, hww, hwp, hgl, hthl, hfl⟩, -, -⟩ := hv'
+  obtain ⟨hA, hss, hcg, -, -, -, -, -, -, hlen, h0, h1, -⟩ := id hctx
+  have hzero : M.lit 0 = 0 := by simpa using hNat 0 (Nat.zero_le _)
+  unfold shPrefix
+  refine (roundedPotential_writes_word (τ := τ) (q := q) (p := (L + 1, 0)) hS hkn hA
+    (by simp [h1]) (by disjoint)).frame_seq_le rfl rfl (by simp [Mem.Live, hlen]; omega)
+    (by fp_sub) ?_
+  rintro m₁ hfr₁ ⟨-, hR₁⟩
+  have hc₁ := hctx.of_eqOff hfr₁ (by disjoint)
+  have hL₁ : m₁.store.length = L + 12 := by rw [hfr₁.length_eq, hlen]
+  refine (findRounded_terminates (τ := τ) (m := q) (z := (L, 0)) hS hL hC hQ
+    (comptauHalf_terminatingHalfTau hS hzero hC n k) (hNat.mono (by omega)) hkq hc₁.1 hc₁.2.1
+    (by simp [Mem.Live, hL₁]; omega) (by disjoint)
+    (by rw [hfr₁.len_eq]; simp [h0])).frame_seq_le rfl rfl (by simp [Mem.Live, hL₁]; omega)
+    (by fp_sub) ?_
+  rintro m₂ hfr₂ ⟨z, hZ₂⟩
+  have hc₂ := hc₁.of_eqOff hfr₂ (by disjoint)
+  have hL₂ : m₂.store.length = L + 12 := by rw [hfr₂.length_eq, hL₁]
+  refine (shTestStep_terminates (τ := τ) hS hzero hC hkn hv hc₂.shRoom hc₂.1 hZ₂
+    hc₂.2.2.1).in_frame rfl rfl (by simp [Mem.Live, hL₂]; omega) |>.mono (by fp_sub) ?_
+  rintro m₃ hfr₃ ⟨hT₃, hP0, hP1⟩
+  exact ⟨hc₂.of_eqOff hfr₃ (by disjoint),
+    ⟨z, hfr₃.keep (Store.readsOnly_readBlock _ _ _ _) (by disjoint) hZ₂⟩,
+    ⟨_, hfr₃.keep (Store.readsOnly_get _ _ _) (by disjoint)
+      (hfr₂.keep (Store.readsOnly_get _ _ _) (by disjoint) hR₁)⟩, hP0, hP1, hT₃⟩
+
+/-- **`Sh` with scratch terminates on any matrix**: from the views and the context of `Sh` (any
+matrix, shifts and words), $1 \le k = 2^q \le n$, on a scalar machine with exact comparisons,
+index literals, index conversion, exact natural literals up to $n + 1$ and an exact polar
+sampler, `NLAlib.ShiftedQR.shStepWithScratch` leaves the matrix and the flag stored. -/
+theorem shStepWithScratch_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    (hL : IsIndexLit M I) (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I)
+    (hQ : IsToNat id I) {s₀ : ℕ} (hD : IsPolarDiskSampler s₀ I) {τ : Tape ℝ} {m : Mem ℝ}
+    {L k q : ℕ} (hkq : k = 2 ^ q) (hkn : k ≤ n) {ε : ℝ} {a s wg wr ww wp g thr f : ℕ × ℕ}
+    (hv : ShViews L n k ε a s wg wr ww wp g thr f) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {ss : List ℂ} {cg cr cw cp tv : ℝ}
+    (hctx : ShCtx L k ε H ss cg cr cw cp tv a s wg wr ww wp g thr f m) :
+    Writes .total I τ (shStepWithScratch (O := O) (Q := Q)).body
+      (Env.frame [n + 1, q, k, (excNet ε).length] [a, s, wg, wr, ww, wp, g, thr, (L, 0),
+        (L + 1, 0), (L + 2, 0), (L + 3, 0), (L + 4, 0), (L + 5, 0), (L + 6, 0), (L + 7, 0),
+        (L + 8, 0), (L + 9, 0), (L + 10, 0), (L + 11, 0), a, f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔ Fp.above L)
+      (fun m' => (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a H' m'.store) ∧
+        ∃ x, m'.store.get f.1 f.2 = some x) m := by
+  have hv' := hv
+  obtain ⟨⟨ha, hsl, hwg, hwr, hww, hwp, hgl, hthl, hfl⟩, -, -⟩ := hv'
+  have hlen := hctx.2.2.2.2.2.2.2.2.2.1
+  have hk0 : 0 < k := hkq ▸ Nat.two_pow_pos q
+  unfold shStepWithScratch
+  refine (shPrefix_terminates (τ := τ) hS hL hNat hC hQ hkq hkn hv hctx).frame_seq_le rfl rfl
+    (by simp [Mem.Live, hlen]; omega) (by fp_sub) ?_
+  rintro m₁ hfr₁ ⟨hc₁, ⟨z, hZ⟩, ⟨p, hRt⟩, ⟨p0, hP0⟩, ⟨p1, hP1⟩, H', hT⟩
+  exact ((shDecide_terminates (τ := τ) (q := q) hS hL hNat hC hD hk0 hkn hv hc₁ hZ hRt hP0 hP1
+    hT).in_frame rfl rfl (by simp [Mem.Live, hc₁.2.2.2.2.2.2.2.2.2.1]; omega)).mono
+    (by fp_sub) fun _ _ h => h
+
+/-- **`Sh` terminates on any matrix** ([BanksGarzaVargasSrivastava2022, Lemma 5.4]): on a scalar
+machine with exact comparisons, index literals, index conversion, exact natural literals up to
+$n + 1$ and an exact polar sampler, for $k = 2^q \le n$, from any matrix of order $n + 1$ at `a`,
+any $2k$ shift words at `s`, any words at `wg`, `wr`, `ww`, `wp`, `thr`, the net words of
+`NLAlib.ShiftedQR.excNet ε` at `g` and room for the flag, the views live and apart as in
+`NLAlib.ShiftedQR.shStep_pwrites`, `NLAlib.ShiftedQR.shStep` writes only the matrix and the flag
+and leaves both stored, on every tape. -/
+theorem shStep_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    (hL : IsIndexLit M I) (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I)
+    (hQ : IsToNat id I) {s₀ : ℕ} (hD : IsPolarDiskSampler s₀ I) {τ : Tape ℝ} {m : Mem ℝ}
+    {k q : ℕ} (hkq : k = 2 ^ q) (hkn : k ≤ n) {ε : ℝ} {a s wg wr ww wp g thr f : ℕ × ℕ}
+    (haf : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock f.1 f.2 1))
+    (hio : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
+      (Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock wg.1 wg.2 1 ⊔ Store.inBlock wr.1 wr.2 1 ⊔
+        Store.inBlock ww.1 ww.2 1 ⊔ Store.inBlock wp.1 wp.2 1 ⊔
+        Store.inBlock g.1 g.2 (2 * (excNet ε).length) ⊔ Store.inBlock thr.1 thr.2 1))
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {xs : List ℝ} {cg cr cw cp tv : ℝ}
+    (hl : m.Live [a, s, wg, wr, ww, wp, g, thr, f]) (hA : HoldsMatrix a H m.store)
+    (hs : m.store.readBlock s.1 s.2 (2 * k) = some xs)
+    (hwg : m.store.get wg.1 wg.2 = some cg) (hwr : m.store.get wr.1 wr.2 = some cr)
+    (hww : m.store.get ww.1 ww.2 = some cw) (hwp : m.store.get wp.1 wp.2 = some cp)
+    (hg : m.store.readBlock g.1 g.2 (2 * (excNet ε).length) =
+      some ((excNet ε).flatMap fun z => [z.re, z.im]))
+    (hthr : m.store.get thr.1 thr.2 = some tv) (hrf : f.2 < m.store.len f.1) :
+    Writes .total I τ (shStep (O := O) (Q := Q)).body
+      (Env.frame [n + 1, q, k, (excNet ε).length] [a, s, wg, wr, ww, wp, g, thr, a, f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
+      (fun m' => (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a H' m'.store) ∧
+        ∃ x, m'.store.get f.1 f.2 = some x) m := by
+  have e : (shStep (O := O) (Q := Q)).body = Stmt.allocs [.const 2, .const 1, .const 1,
+      .const 1, .const 1, .const 2 * (.var 0 * .var 0), .const 2 * .var 2, .const 2 * .var 2,
+      .const 5, .const 1, .const 2 * .var 3, .const 1]
+      (.frame [.var 0, .var 1, .var 2, .var 3] [⟨0, .var 4⟩, ⟨1, .var 5⟩, ⟨2, .var 6⟩,
+        ⟨3, .var 7⟩, ⟨4, .var 8⟩, ⟨5, .var 9⟩, ⟨6, .var 10⟩, ⟨7, .var 11⟩, ⟨10, .const 0⟩,
+        ⟨11, .const 0⟩, ⟨12, .const 0⟩, ⟨13, .const 0⟩, ⟨14, .const 0⟩, ⟨15, .const 0⟩,
+        ⟨16, .const 0⟩, ⟨17, .const 0⟩, ⟨18, .const 0⟩, ⟨19, .const 0⟩, ⟨20, .const 0⟩,
+        ⟨21, .const 0⟩, ⟨0, .var 4⟩, ⟨9, .var 13⟩]
+        (shStepWithScratch (O := O) (Q := Q)).body) := rfl
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9⟩ : a.1 < m.store.length ∧ s.1 < m.store.length ∧
+      wg.1 < m.store.length ∧ wr.1 < m.store.length ∧ ww.1 < m.store.length ∧
+      wp.1 < m.store.length ∧ g.1 < m.store.length ∧ thr.1 < m.store.length ∧
+      f.1 < m.store.length := by simpa [Mem.Live] using hl
+  obtain ⟨ss, hssk, hss⟩ := Store.exists_readBlock_flatMap_pair hs
+  rw [hssk] at hss
+  rw [e]
+  refine writes_allocs_preserving_post rfl
+    (fun hBelow ⟨⟨H', hA'⟩, ⟨x, hF'⟩⟩ => ⟨⟨H', hA'.of_below hBelow h1⟩,
+      ⟨x, hBelow.get_of h9 hF'⟩⟩) ?_
+  intro s₁ hlen hlens hBelow
+  have hl12 := fun i (hi : i < 12) => hlens i (by simpa using hi)
+  have hctx : ShCtx m.store.length k ε H ss cg cr cw cp tv a s wg wr ww wp g thr f
+      ⟨s₁, m.pos⟩ := by
+    refine ⟨hA.of_below hBelow h1, hBelow.readBlock_of h2 hss, hBelow.get_of h3 hwg,
+      hBelow.get_of h4 hwr, hBelow.get_of h5 hww, hBelow.get_of h6 hwp,
+      hBelow.readBlock_of h7 hg, hBelow.get_of h8 hthr, by rw [(hBelow f.1 h9).1]; exact hrf,
+      by simpa using hlen, ?_⟩
+    simpa using ⟨hl12 0 (by norm_num), hl12 1 (by norm_num), hl12 2 (by norm_num),
+      hl12 3 (by norm_num), hl12 4 (by norm_num), hl12 5 (by norm_num), hl12 6 (by norm_num),
+      hl12 7 (by norm_num), hl12 8 (by norm_num), hl12 9 (by norm_num), hl12 10 (by norm_num),
+      hl12 11 (by norm_num)⟩
+  refine ((shStepWithScratch_terminates hS hL hNat hC hQ hD hkq hkn
+    ⟨⟨h1, h2, h3, h4, h5, h6, h7, h8, h9⟩, haf, hio⟩ hctx).in_frame rfl rfl ?_).mono
+    (by fp_sub) fun _ _ h => h
+  simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,
+    forall_eq, hctx.2.2.2.2.2.2.2.2.2.1]
+  omega
+
 end Sh
+
+/-! ### The decoupling loop on any matrix -/
+
+section Decouple
+
+variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O]
+  [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] {n : ℕ}
+
+/-- **One iteration terminates on any matrix**: on a scalar machine with exact comparisons,
+index literals, index conversion and exact natural literals up to $n + 1$, a `SmallEig` kernel
+meeting `NLAlib.ShiftedQR.IsRandomSmallEig` and an exact polar sampler, for $k = 2^q \le n$, from
+any matrix of order $n + 1$ at `a`, any words at `rd`, `c`, `thr`, `wg`, `wr`, `ww`, `wp`, the
+net words of `NLAlib.ShiftedQR.excNet ε` at `g` and room for the flag, the matrix and the flag
+apart from each other and from the inputs, `NLAlib.ShiftedQR.shIteration` (`Regularize`, then
+`Sh`) writes only the matrix and the flag and leaves both stored, on every tape. -/
+theorem shIteration_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    (hL : IsIndexLit M I) (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I)
+    (hQ : IsToNat id I) {law : ℕ → MeasureTheory.Measure ℝ} {s₀ : ℕ} {β φse : ℝ}
+    (hSE : IsRandomSmallEig law s₀ β φse I) (hD : IsPolarDiskSampler s₀ I) {τ : Tape ℝ}
+    {m : Mem ℝ} {k q : ℕ} (hkq : k = 2 ^ q) (hkn : k ≤ n) {ε : ℝ}
+    {a rd c thr wg wr ww wp g f : ℕ × ℕ}
+    (haf : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock f.1 f.2 1))
+    (hio : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
+      (Store.inBlock rd.1 rd.2 1 ⊔ Store.inBlock c.1 c.2 1 ⊔ Store.inBlock thr.1 thr.2 1 ⊔
+        Store.inBlock wg.1 wg.2 1 ⊔ Store.inBlock wr.1 wr.2 1 ⊔ Store.inBlock ww.1 ww.2 1 ⊔
+        Store.inBlock wp.1 wp.2 1 ⊔ Store.inBlock g.1 g.2 (2 * (excNet ε).length)))
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {R cv tv cg cr cw cp : ℝ}
+    (hl : m.Live [a, rd, c, thr, wg, wr, ww, wp, g, f]) (hA : HoldsMatrix a H m.store)
+    (hrd : m.store.get rd.1 rd.2 = some R) (hc : m.store.get c.1 c.2 = some cv)
+    (hthr : m.store.get thr.1 thr.2 = some tv) (hwg : m.store.get wg.1 wg.2 = some cg)
+    (hwr : m.store.get wr.1 wr.2 = some cr) (hww : m.store.get ww.1 ww.2 = some cw)
+    (hwp : m.store.get wp.1 wp.2 = some cp)
+    (hg : m.store.readBlock g.1 g.2 (2 * (excNet ε).length) =
+      some ((excNet ε).flatMap fun z => [z.re, z.im])) (hrf : f.2 < m.store.len f.1) :
+    Writes .total I τ (shIteration (O := O) (Q := Q)).body
+      (Env.frame [n + 1, q, k, (excNet ε).length] [a, rd, c, thr, wg, wr, ww, wp, g, a, f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
+      (fun m' => (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a H' m'.store) ∧
+        ∃ x, m'.store.get f.1 f.2 = some x) m := by
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h10⟩ : a.1 < m.store.length ∧
+      rd.1 < m.store.length ∧ c.1 < m.store.length ∧ thr.1 < m.store.length ∧
+      wg.1 < m.store.length ∧ wr.1 < m.store.length ∧ ww.1 < m.store.length ∧
+      wp.1 < m.store.length ∧ g.1 < m.store.length ∧ f.1 < m.store.length := by
+    simpa [Mem.Live] using hl
+  change Writes .total I τ (Stmt.allocs [.const 2 * .var 2] _) _ _ _ m
+  refine writes_allocs_preserving_post (ns := [2 * k]) rfl
+    (fun hBelow ⟨⟨H', hA'⟩, x, hF'⟩ => ⟨⟨H', hA'.of_below hBelow h1⟩,
+      x, hBelow.get_of h10 hF'⟩) ?_
+  intro store hlen hlens hBelow
+  set L := m.store.length
+  have hsl : store.len L = 2 * k := by simpa using hlens 0 (by simp)
+  have hLs : store.length = L + 1 := by simpa using hlen
+  have hS0 : ∀ {z : ℕ × ℕ} {l : ℕ}, z.1 < L →
+      Fp.Disj (Store.inBlock L 0 (2 * k)) (Store.inBlock z.1 z.2 l) :=
+    fun hz => Fp.disj_inBlock_of_ne (by omega)
+  have hfI : Fp.Disj (Store.inBlock f.1 f.2 1) _ := hio.mono le_sup_right le_rfl
+  have hAI : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) _ :=
+    hio.mono le_sup_left le_rfl
+  refine Writes.in_frame (Writes.mono (F := Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+    Store.inBlock L 0 (2 * k) ⊔ Store.inBlock f.1 f.2 1) ?_ (by fp_sub) fun _ _ h => h) rfl rfl
+    (by simp [Mem.Live, hLs]; omega)
+  unfold shIterationWithScratch
+  refine (regularize_terminates (τ := τ) (s := (L, 0)) hS hL hNat hC hSE hD hkn
+    (hS0 h1).symm haf (hS0 h10)
+    (Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨hAI.mono le_rfl (by fp_sub),
+      Fp.disj_sup_right.mpr ⟨Fp.disj_sup_right.mpr ⟨hS0 h2, hS0 h3⟩, hS0 h4⟩⟩,
+      hfI.mono le_rfl (by fp_sub)⟩)
+    (by simp [Mem.Live, hLs]; omega) (hA.of_below hBelow h1) (hBelow.get_of h2 hrd)
+    (hBelow.get_of h3 hc) (hBelow.get_of h4 hthr) (by simp [hsl])
+    (by rw [(hBelow f.1 h10).1]; exact hrf)).frame_seq_le rfl rfl
+    (by simp [Mem.Live, hLs]; omega) le_rfl ?_
+  rintro m₁ hfr₁ ⟨⟨H₁, hA₁⟩, ⟨xs, hS₁⟩, ⟨x, hF₁⟩⟩
+  have hk : ∀ {z : ℕ × ℕ} {v : ℝ}, z.1 < L → Fp.Disj (Store.inBlock f.1 f.2 1)
+      (Store.inBlock z.1 z.2 1) → Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock z.1 z.2 1) → m.store.get z.1 z.2 = some v →
+      m₁.store.get z.1 z.2 = some v := fun hz hf ha hv =>
+    hfr₁.keep (Store.readsOnly_get _ _ _) (Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr
+      ⟨ha, hS0 hz⟩, hf⟩) (hBelow.get_of hz hv)
+  refine writes_ite rfl rfl (hC.test_isZero (d := []) (x := f) hF₁) ?_
+  split_ifs
+  · refine ((shStep_terminates (τ := τ) (s := (L, 0)) hS hL hNat hC hQ hD hkq hkn haf
+      (Fp.disj_sup_right.mpr ⟨?_, hio⟩ |>.mono le_rfl (by fp_sub))
+      (by simp [Mem.Live, hfr₁.length_eq, hLs]; omega) hA₁ hS₁
+      (hk h5 (hfI.mono le_rfl (by fp_sub)) (hAI.mono le_rfl (by fp_sub)) hwg)
+      (hk h6 (hfI.mono le_rfl (by fp_sub)) (hAI.mono le_rfl (by fp_sub)) hwr)
+      (hk h7 (hfI.mono le_rfl (by fp_sub)) (hAI.mono le_rfl (by fp_sub)) hww)
+      (hk h8 (hfI.mono le_rfl (by fp_sub)) (hAI.mono le_rfl (by fp_sub)) hwp)
+      (hfr₁.keep (Store.readsOnly_readBlock _ _ _ _) (Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr
+        ⟨hAI.mono le_rfl (by fp_sub), hS0 h9⟩, hfI.mono le_rfl (by fp_sub)⟩)
+        (hBelow.readBlock_of h9 hg))
+      (hk h4 (hfI.mono le_rfl (by fp_sub)) (hAI.mono le_rfl (by fp_sub)) hthr)
+      (by rw [hfr₁.len_eq, (hBelow f.1 h10).1]; exact hrf)).in_frame rfl rfl
+      (by simp [Mem.Live, hfr₁.length_eq, hLs]; omega)).mono (by fp_sub) fun _ _ h => h
+    exact Fp.disj_sup_left.mpr ⟨(hS0 h1).symm, (hS0 h10).symm⟩
+  · exact (Writes.skip ⟨⟨_, hA₁⟩, ⟨_, hF₁⟩⟩).mono bot_le fun _ _ h => h
+
+omit [Has EigenvalueKernelOp O] [Has DiskSampleOp O] [Has IdxTst Q] in
+/-- The scan of the decoupling loop on any matrix keeps the loop's operands and stores the scan
+flag. -/
+theorem roundedDecoupleScan_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    (hL : IsIndexLit M I) (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I) {τ : Tape ℝ}
+    {μ : Mem ℝ} {k L : ℕ} (hk : k ≤ n) {w q f : ℕ × ℕ} {ps : List ℝ} (hps0 : 0 < ps.length)
+    (hctx : DecoupleLoopCtx n L w q f ps μ) (hW : ∃ H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+      HoldsMatrix w H μ.store) :
+    Writes .total I τ (bottomScan (O := O) (Q := Q)).body (Env.frame [n + 1, k] [w, q, (L, 0)])
+      (Store.inBlock L 0 5)
+      (fun μ' => DecoupleLoopCtx n L w q f ps μ' ∧
+        (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix w H' μ'.store) ∧
+        ∃ x, μ'.store.get L 3 = some x) μ := by
+  obtain ⟨hw, hq, hf, hl, hp, hrw, hrf, hrL, hWF, hPWF⟩ := id hctx
+  obtain ⟨H, hH⟩ := hW
+  have hRW : Fp.Disj (Store.inBlock (L, 0).1 (L, 0).2 5)
+      (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1)))) := Fp.disj_inBlock_of_ne (by simp; omega)
+  have ht := Store.get_of_readBlock hp hps0 0
+  rw [Nat.add_zero] at ht
+  refine (bottomScan_terminates (τ := τ) hS hL hNat hC hk hH ht (hl.mono (by simp))
+    (by simpa using hrL) hRW (Fp.disj_inBlock_of_ne (by simp; omega))).mono le_rfl ?_
+  rintro μ' hfr ⟨-, hscan⟩
+  refine ⟨hctx.of_eqOff (by simp) hfr, ⟨H, hH.of_eqOff hfr hRW⟩, ?_⟩
+  rcases hscan with ⟨h1, -⟩ | ⟨h0, -⟩
+  exacts [⟨_, by simpa using h1⟩, ⟨_, by simpa using h0⟩]
+
+omit [Has ScalarOp O] [Has EigenvalueKernelOp O] [Has DiskSampleOp O] [Has IdxTst Q] in
+/-- The exit of the decoupling loop on any scan flag stores the flag and keeps the matrix. -/
+theorem roundedDecoupleExit_terminates {M : Machine ℝ} {I : Interp O Q ℝ}
+    (hL : IsIndexLit M I) (hC : IsCmp id I) {τ : Tape ℝ} {μ : Mem ℝ} {L : ℕ} {w p f : ℕ × ℕ}
+    {ps : List ℝ} (hctx : DecoupleLoopCtx n L w p f ps μ)
+    (hW : ∃ H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix w H μ.store) {x : ℝ}
+    (hx : μ.store.get L 3 = some x) :
+    Writes .total I τ (roundedDecoupleExit (O := O) (Q := Q)).body (Env.frame [] [(L, 0), f])
+      (Store.inBlock f.1 f.2 1)
+      (fun μ' => (∃ x, μ'.store.get f.1 f.2 = some x) ∧
+        ∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix w H' μ'.store) μ := by
+  obtain ⟨H, hW⟩ := hW
+  have hrf := hctx.2.2.2.2.2.2.1
+  have hWF := hctx.2.2.2.2.2.2.2.2.1
+  unfold roundedDecoupleExit
+  refine writes_ite (a := [(L, 3)]) rfl rfl (hC.test_isPos hx) ?_
+  split_ifs <;>
+  · refine (writes_indexLit hL rfl rfl (by omega)).mono le_rfl ?_
+    rintro μ' hfr ⟨-, hF⟩
+    exact ⟨⟨_, hF⟩, H, hW.of_eqOff hfr hWF.symm⟩
+
+/-- **The decoupling loop terminates on any matrix**: under the hypotheses of
+`NLAlib.ShiftedQR.shIteration_terminates` on the parameter words `ps` (the words of
+`NLAlib.ShiftedQR.roundedDecoupleParams`: ten words, then the net), from the operands of the loop
+`NLAlib.ShiftedQR.DecoupleLoopCtx` and any matrix, `NLAlib.ShiftedQR.roundedDecoupleLoop` writes
+only the matrix, the flag and its registers and leaves the matrix and the flag stored. -/
+theorem roundedDecoupleLoop_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    (hL : IsIndexLit M I) (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I)
+    (hQ : IsToNat id I) {law : ℕ → MeasureTheory.Measure ℝ} {s₀ : ℕ} {β φse : ℝ}
+    (hSE : IsRandomSmallEig law s₀ β φse I) (hD : IsPolarDiskSampler s₀ I) {τ : Tape ℝ}
+    {μ : Mem ℝ} {k q F L : ℕ} (hkq : k = 2 ^ q) (hkn : k ≤ n) {ε : ℝ} {w p f : ℕ × ℕ}
+    {ps : List ℝ} (hlen : ps.length = 10 + 2 * (excNet ε).length)
+    (hnet : ps.drop 10 = (excNet ε).flatMap fun z => [z.re, z.im])
+    (hctx : DecoupleLoopCtx n L w p f ps μ) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    (hW : HoldsMatrix w H μ.store) :
+    Writes .total I τ (roundedDecoupleLoop (O := O) (Q := Q)).body
+      (Env.frame [n + 1, k, ps.length, F, q, (excNet ε).length] [w, p, (L, 0), w, f])
+      (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
+        Store.inBlock L 0 5)
+      (fun μ' => (∃ x, μ'.store.get f.1 f.2 = some x) ∧
+        ∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix w H' μ'.store) μ := by
+  have hps0 : 0 < ps.length := by omega
+  set Inv : ℕ → Mem ℝ → Prop := fun _ μ' => DecoupleLoopCtx n L w p f ps μ' ∧
+    (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix w H' μ'.store) ∧
+    ∃ x, μ'.store.get L 3 = some x
+  unfold roundedDecoupleLoop
+  refine (roundedDecoupleScan_terminates (τ := τ) hS hL hNat hC hkn hps0 hctx ⟨H, hW⟩).frame_seq_le
+    rfl rfl (hctx.2.2.2.1.mono (by simp)) (by fp_sub) ?_
+  rintro μ₁ - hinv₁
+  refine (writes_whileFuel (N := F) rfl (fun _ => Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1)))
+    ⊔ Store.inBlock f.1 f.2 1 ⊔ Store.inBlock L 0 5) (fun _ _ => le_rfl)
+    (Store.inBlock f.1 f.2 1) Inv _ hinv₁ ?_ ?_).mono (by fp_sub) fun _ _ h => h
+  · rintro i - μ' - ⟨hc, hW', x, hx⟩
+    refine ⟨_, (Interp.testAt_eq (a := [(L, 3)]) rfl rfl).trans (hC.test_isZero hx), ?_⟩
+    dsimp only
+    split_ifs
+    · obtain ⟨hw, hq, hf, hl, hp, hrw, hrf, hrL, hWF, hPWF⟩ := id hc
+      obtain ⟨H', hW'⟩ := hW'
+      have hget : ∀ j < 10, μ'.store.get p.1 (p.2 + j) = some (ps.getD j 0) :=
+        fun j hj => Store.get_of_readBlock hp (by omega) 0
+      have hnet' : μ'.store.readBlock p.1 (p.2 + 10) (2 * (excNet ε).length) =
+          some ((excNet ε).flatMap fun z => [z.re, z.im]) := by
+        rw [Store.readBlock_sub hp (by omega), hnet, List.take_of_length_le]
+        simp [List.length_flatMap]
+        omega
+      have hPd : ∀ j < 10, Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
+          Store.inBlock f.1 f.2 1) (Store.inBlock p.1 (p.2 + j) 1) := fun j hj =>
+        hPWF.symm.mono le_rfl (Fp.inBlock_le_inBlock (by omega) (by omega))
+      have hit := shIteration_terminates (τ := τ) (ε := ε) (a := w) (rd := (p.1, p.2 + 1))
+        (c := (p.1, p.2 + 2)) (thr := (p.1, p.2 + 3)) (wg := (p.1, p.2 + 4))
+        (wr := (p.1, p.2 + 5)) (ww := (p.1, p.2 + 6)) (wp := (p.1, p.2 + 7))
+        (g := (p.1, p.2 + 10)) (f := f) hS hL hNat hC hQ hSE hD hkq hkn hWF
+        (by
+          refine hPWF.symm.mono le_rfl ?_
+          refine sup_le (sup_le (sup_le (sup_le (sup_le (sup_le (sup_le ?_ ?_) ?_) ?_) ?_) ?_) ?_)
+            ?_ <;> exact Fp.inBlock_le_inBlock (by dsimp only; omega) (by dsimp only; omega))
+        (by have := hl; simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false,
+          forall_eq_or_imp, forall_eq] at this ⊢; tauto)
+        hW' (hget 1 (by omega)) (hget 2 (by omega)) (hget 3 (by omega)) (hget 4 (by omega))
+        (hget 5 (by omega)) (hget 6 (by omega)) (hget 7 (by omega)) hnet' (by omega)
+      refine hit.frame_seq_le rfl rfl (by
+        have := hl; simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false,
+          forall_eq_or_imp, forall_eq] at this ⊢; tauto) (by fp_sub) ?_
+      rintro μ₂ hfr₂ ⟨hW₂, -⟩
+      have hc₂ := hc.of_eqOff (by fp_sub) hfr₂
+      refine ((roundedDecoupleScan_terminates (τ := τ) hS hL hNat hC hkn hps0 hc₂
+        hW₂).in_frame rfl rfl (hc₂.2.2.2.1.mono (by simp))).mono (by fp_sub) fun _ _ h => h
+    · exact (roundedDecoupleExit_terminates hL hC hc hW' hx).in_frame rfl rfl
+        (by have := hc.2.2.2.1; simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false,
+          forall_eq_or_imp, forall_eq] at this ⊢; tauto)
+  · rintro μ' - ⟨hc, hW', x, hx⟩
+    exact (roundedDecoupleExit_terminates hL hC hc hW' hx).in_frame rfl rfl
+      (by have := hc.2.2.2.1; simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false,
+        forall_eq_or_imp, forall_eq] at this ⊢; tauto)
+
+/-- **The rounded decoupling loop terminates on every tape and every matrix**
+([BanksGarzaVargasSrivastava2022, Lemma 6.4], termination only): on a scalar machine with exact
+comparisons, index literals, index conversion and exact natural literals up to $n_{\max} + 1$, a
+`SmallEig` kernel meeting `NLAlib.ShiftedQR.IsRandomSmallEig` and an exact polar sampler,
+`NLAlib.ShiftedQR.roundedDecouple` with the parameter words
+`NLAlib.ShiftedQR.roundedDecoupleParams` and $k = 2^q$ is a
+`NLAlib.ShiftedQR.TerminatingDecoupler` for orders up to $n_{\max} + 1$, with any iteration cap
+$F$. No numerical hypothesis is needed: the loop is capped, every operation succeeds on stored
+operands, and the two index words $q \le k$ and $|\mathrm{net}| \le n_p$ are exact. -/
+theorem roundedDecouple_terminatingDecoupler {M : Machine ℝ} {I : Interp O Q ℝ}
+    (hS : IsScalar M I) (hL : IsIndexLit M I) {nmax : ℕ} (hNat : IsExactNatLit id M (nmax + 1))
+    (hC : IsCmp id I) (hQ : IsToNat id I) {law : ℕ → MeasureTheory.Measure ℝ} {s₀ : ℕ}
+    {β φse : ℝ} (hSE : IsRandomSmallEig law s₀ β φse I) (hD : IsPolarDiskSampler s₀ I)
+    {k q F : ℕ} (hkq : k = 2 ^ q) (tL R tv γ B α ε : ℝ) :
+    TerminatingDecoupler nmax k F (roundedDecoupleParams tL R tv γ B α ε k q)
+      (roundedDecouple (O := O) (Q := Q)) I := by
+  intro n w p f tape μ H hk hn hW hp hl hrw hrf hWF hPWF
+  set ps := roundedDecoupleParams tL R tv γ B α ε k q with hps
+  have hlen : ps.length = 10 + 2 * (excNet ε).length := length_roundedDecoupleParams ..
+  have hnet : ps.drop 10 = (excNet ε).flatMap fun z => [z.re, z.im] := by
+    simp [ps, roundedDecoupleParams]
+  have hqk : q ≤ k := hkq ▸ (Nat.lt_two_pow_self).le
+  have hNat' : IsExactNatLit id M (n + 1) := hNat.mono (by omega)
+  have h1 : w.1 < μ.store.length := hl w (by simp)
+  have h2 : p.1 < μ.store.length := hl p (by simp)
+  have h3 : f.1 < μ.store.length := hl f (by simp)
+  unfold roundedDecouple
+  change Writes .total I tape (Stmt.allocs [.const 5] _) _ _ _ μ
+  refine writes_allocs_preserving_post (ns := [5]) rfl
+    (fun hBelow ⟨⟨x, hF'⟩, H', hW'⟩ => ⟨⟨x, hBelow.get_of h3 hF'⟩, H', hW'.of_below hBelow h1⟩) ?_
+  intro s₁ hlen' hlens hBelow
+  set L := μ.store.length
+  have hl0 := hlens 0 (by simp)
+  simp only [List.length_cons, List.length_nil] at hlen'
+  have hctx : DecoupleLoopCtx n L w p f ps ⟨s₁, μ.pos⟩ := by
+    refine ⟨h1, h2, h3, ?_, hBelow.readBlock_of h2 hp, by rw [(hBelow w.1 h1).1]; exact hrw,
+      by rw [(hBelow f.1 h3).1]; exact hrf, by simpa using hl0.ge, hWF, hPWF⟩
+    simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,
+      forall_eq, hlen']
+    omega
+  have hget : ∀ j < 10, s₁.get p.1 (p.2 + j) = some (ps.getD j 0) :=
+    fun j hj => Store.get_of_readBlock hctx.2.2.2.2.1 (by omega) 0
+  refine writes_bindIdx_of_decode_nat hQ rfl rfl (hget 8 (by omega)) (by simp [ps,
+    roundedDecoupleParams]) hqk ?_
+  refine writes_bindIdx_of_decode_nat hQ rfl rfl (hget 9 (by omega)) (by simp [ps,
+    roundedDecoupleParams]) (show (excNet ε).length ≤ ps.length by omega) ?_
+  refine ((roundedDecoupleLoop_terminates (τ := tape) (F := F) hS hL hNat' hC hQ hSE hD hkq hk hlen
+    hnet hctx (hW.of_below hBelow h1)).in_frame rfl rfl ?_).mono ?_ fun _ _ h => h
+  · exact hctx.2.2.2.1.mono (by simp)
+  · exact sup_le le_sup_left (fun b i h => Or.inr (show L ≤ b from h.1 ▸ le_rfl))
+
+end Decouple
 
 end NLAlib.ShiftedQR

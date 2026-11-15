@@ -218,7 +218,7 @@ runs to completion and leaves the core `NLAlib.ShiftedQR.RoundedStoredCore`. -/
 theorem roundedLarge_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar Mch I)
     (hL : IsIndexLit Mch I) {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
     (hC : IsCmp id I) {k F : ℕ} {ps : List ℝ} (D : Impl O Q)
-    (hD : TerminatingDecoupler k F ps D I) {tape : Tape ℝ} {μ : Mem ℝ}
+    (hD : TerminatingDecoupler n k F ps D I) {tape : Tape ℝ} {μ : Mem ℝ}
     {lo d : ℕ} {a t p st out w r f : ℕ × ℕ} {rs : List (ℕ × ℕ)}
     {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr : ℝ}
     (hG : RoundedGeometry (n + 1) ps.length a t p st out w r f μ)
@@ -239,7 +239,7 @@ theorem roundedLarge_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : I
   obtain ⟨hWA, hWT, hWP, hWS, -, hWF, -, -, -, -, -, -, hFA, hFS, -, hFT, -, -, -, hPF⟩ :=
     hG.disj_round
   have hlD : μ.Live [w, p, w, f] := hG.live_of_subset (by simp)
-  have hw := hD (tape := tape) (subBlock A (lo, d + 1)) hk hW hp hlD
+  have hw := hD (tape := tape) (subBlock A (lo, d + 1)) hk (by omega) hW hp hlD
     (by have := hG.room.2.2.2.2.2.1; omega) hG.room.2.2.2.2.2.2.2.1 (hWF.mono hWw le_rfl)
     (Fp.disj_sup_right.mpr ⟨hWP.symm.mono le_rfl hWw, hPF⟩)
   unfold roundedProcessLarge
@@ -264,7 +264,7 @@ fit in the order, `NLAlib.ShiftedQR.roundedProcessRange` runs to completion and 
 theorem roundedRange_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar Mch I)
     (hL : IsIndexLit Mch I) {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
     (hC : IsCmp id I) {k F : ℕ} {ps : List ℝ} (D : Impl O Q)
-    (hD : TerminatingDecoupler k F ps D I) (L : Impl O Q) (hLeaf : TerminatingLeaf L I)
+    (hD : TerminatingDecoupler n k F ps D I) (L : Impl O Q) (hLeaf : TerminatingLeaf L I)
     {tape : Tape ℝ} {μ : Mem ℝ} {lo d : ℕ} {a t p st out w r f : ℕ × ℕ} {rs : List (ℕ × ℕ)}
     {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr x : ℝ}
     (hG : RoundedGeometry (n + 1) ps.length a t p st out w r f μ)
@@ -332,7 +332,7 @@ $n + 1$ are exact, with exact `toNat` and comparisons, a terminating decoupler
 theorem roundedWorklistRound_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
     (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1))
     (hQ : IsToNat id I) (hC : IsCmp id I) {k F : ℕ} {ps : List ℝ} (D : Impl O Q)
-    (hD : TerminatingDecoupler k F ps D I) (L : Impl O Q) (hLeaf : TerminatingLeaf L I)
+    (hD : TerminatingDecoupler n k F ps D I) (L : Impl O Q) (hLeaf : TerminatingLeaf L I)
     {tape : Tape ℝ} {μ : Mem ℝ} {a t p st out w r f : ℕ × ℕ} {cnt : ℕ}
     (h : RoundedStoredState n ps a t p st out w r f μ)
     (hcount : μ.store.get st.1 st.2 = some (cnt : ℝ)) (hpos : 0 < cnt) :
@@ -417,7 +417,7 @@ within the round footprint. -/
 theorem roundedWorklist_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
     (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1))
     (hQ : IsToNat id I) (hC : IsCmp id I) {k F : ℕ} {ps : List ℝ} (D : Impl O Q)
-    (hD : TerminatingDecoupler k F ps D I) (L : Impl O Q) (hLeaf : TerminatingLeaf L I)
+    (hD : TerminatingDecoupler n k F ps D I) (L : Impl O Q) (hLeaf : TerminatingLeaf L I)
     {tape : Tape ℝ} {μ : Mem ℝ} {a t p st out w r f : ℕ × ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr : ℝ}
     (hG : RoundedGeometry (n + 1) ps.length a t p st out w r f μ)
@@ -478,7 +478,7 @@ word. The views are live, have room and are pairwise apart. Nothing numerical is
 theorem solveRounded_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
     (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1))
     (hQ : IsToNat id I) (hC : IsCmp id I) {k F : ℕ} {ps : List ℝ} (D : Impl O Q)
-    (hD : TerminatingDecoupler k F ps D I) (L : Impl O Q) (hLeaf : TerminatingLeaf L I)
+    (hD : TerminatingDecoupler n k F ps D I) (L : Impl O Q) (hLeaf : TerminatingLeaf L I)
     {tape : Tape ℝ} {μ : Mem ℝ} {a t p out f : ℕ × ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr : ℝ}
     (hl : μ.Live [a, t, p, out, f])

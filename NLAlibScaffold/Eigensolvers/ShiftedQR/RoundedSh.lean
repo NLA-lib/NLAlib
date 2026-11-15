@@ -492,6 +492,39 @@ theorem shFind_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsS
   exact ⟨⟨hctx.of_eqOff hfr (by disjoint), p, hp, hfr.keep (Store.readsOnly_get _ _ _)
     (by disjoint) hP⟩, c, hc, hpr⟩
 
+omit [Has IndexOp O] [Has DiskSampleOp O] [Has IdxTst Q] in
+/-- The computation of the `comptau` test of `Sh` (`NLAlib.ShiftedQR.shTestStep_writes`) reaches
+`NLAlib.ShiftedQR.ShState3` from `NLAlib.ShiftedQR.ShState2`, for $1 \le k \le n$ and shifts at
+distance at least $d > 0$ from the spectrum and in $\mathbb{D}(0, C\|\mathbf{H}\|_2)$. -/
+theorem shTest_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
+    (hM : StdModel u id M) (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {L k : ℕ} (hk0 : 0 < k)
+    (hkn : k ≤ n) {ε : ℝ} {a s wg wr ww wp g thr f : ℕ × ℕ}
+    (hv : ShViews L n k ε a s wg wr ww wp g thr f) {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {e : Fin (n + 1) → ℂ} {ss : List ℂ} {B C d α cg cr cw cp tv : ℝ} (hH : IsUpperHessenberg H)
+    (hH0 : H ≠ 0) (hV : IsUnit V) (hHV : H * V = V * Matrix.diagonal e)
+    (hκ : pseudoConditionNumber V ≤ B) (hC0 : 0 ≤ C) (hd : 0 < d)
+    (hs : ∀ s ∈ ss, ‖s‖ ≤ C * specNorm H) (hdist : ∀ s ∈ ss, ∀ i, d ≤ ‖e i - s‖)
+    (hnu : (n + 1 : ℝ) * u ≤ 1 / 2500) (hu : 30000 * (k + 1) * u ≤ 1)
+    (hxu : 300 * (n + 1) ^ 2 * u ≤ (8004 * B)⁻¹ * (d / ((2 + 2 * C) * specNorm H)) ^ k)
+    (hm : ShState2 u L k ε H V e ss α cg cr cw cp tv a s wg wr ww wp g thr f m) :
+    Writes .total I τ (shTestStep (O := O) (Q := Q)).body
+      (Env.frame [n + 1, k] [a, (L, 0), wg, (L + 5, 0), (L + 6, 0), (L + 3, 0), (L + 4, 0)])
+      (Store.inBlock (L + 5) 0 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 6) 0 (2 * k) ⊔
+        Store.inBlock (L + 3) 0 1 ⊔ Store.inBlock (L + 4) 0 1)
+      (ShState3 M u L k ε H V e ss α cg cr cw cp tv a s wg wr ww wp g thr f) m := by
+  obtain ⟨⟨ha, hs', hwg, hwr, hww, hwp, hg, hthl, hfl⟩, -, -⟩ := hv
+  obtain ⟨⟨hctx, p, hp, hP⟩, r, hZ, hr⟩ := hm
+  obtain ⟨hA, -, hcg, -, -, -, -, -, -, -, -, -, -, h3, h4, h5, h6, -⟩ := id hctx
+  refine (shTestStep_writes (τ := τ) (z := (L, 0)) (cg := wg) (t := (L + 5, 0))
+    (sr := (L + 6, 0)) (p0 := (L + 3, 0)) (p1 := (L + 4, 0)) hS hM hC hH hH0 hV hHV hκ hC0 hd
+    (hs r hr.1) (hdist r hr.1) hk0 hkn hnu hu hxu hA hZ hcg (by simp [h5]) (by simp [h6])
+    (by simp [h3]) (by simp [h4]) (Fp.disj_sup_right.mpr ⟨by disjoint, by disjoint⟩)
+    (by disjoint) (by disjoint) (by disjoint)).mono le_rfl ?_
+  rintro m' hfr ⟨-, H', Rs, hch, hH', hT, htc, hthr⟩
+  exact ⟨⟨hctx.of_eqOff hfr (by disjoint), p, hp, hfr.keep (Store.readsOnly_get _ _ _)
+    (by disjoint) hP⟩, r, hfr.keep (Store.readsOnly_readBlock _ _ _ _) (by disjoint) hZ, hr, H',
+    Rs, hch, hH', hT, htc, hthr⟩
+
 end Steps
 
 end NLAlib.ShiftedQR

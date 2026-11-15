@@ -812,3 +812,145 @@ theorem shExcTrials_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS 
 end Trials
 
 end NLAlib.ShiftedQR
+
+namespace NLAlib.ShiftedQR
+
+open Ops MeasureTheory
+
+variable {n : ℕ}
+
+/-- The state of `Sh` before the exceptional branch: the context, the promising centre $r$ at `L`
+(a pair), stagnating with the ratio $0.998(1 - \gamma)$, and at `L + 1` a $p$ within
+$20\boldsymbol{u}$, relatively, of $\psi_k(\mathbf{H})$. -/
+def ShExcPre (u : ℝ) (L k : ℕ) (ε : ℝ) (H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+    (e : Fin (n + 1) → ℂ) (ss : List ℂ) (α γ cg cr cw cp tv : ℝ)
+    (a s wg wr ww wp g thr f : ℕ × ℕ) (m : Mem ℝ) : Prop :=
+  ShCtx L k ε H ss cg cr cw cp tv a s wg wr ww wp g thr f m ∧
+    (∃ r : ℂ, m.store.readBlock L 0 2 = some [r.re, r.im] ∧ IsPromisingRitzValue α V e ss r ∧
+      ‖WithLp.toLp 2 ((Polynomial.aeval H (shiftPoly (List.replicate k r)))⁻¹ (Fin.last n))‖ ≤
+        (0.998 * (1 - γ) * hessenbergPotential k H)⁻¹ ^ k) ∧
+    ∃ p : ℝ, |p - hessenbergPotential k H| ≤ 20 * u * hessenbergPotential k H ∧
+      m.store.get (L + 1) 0 = some p
+
+section Branch
+
+variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q]
+  [Has IdxTst Q]
+
+omit [Has IdxTst Q] in
+/-- **The exceptional branch of `Sh` as a probabilistic block**: under the hypotheses of
+`NLAlib.ShiftedQR.shExcShifts_pwrites` and `NLAlib.ShiftedQR.shExcTrials_writes`, from the state
+`NLAlib.ShiftedQR.ShExcPre` the branch `NLAlib.ShiftedQR.shExc` writes only the matrix, the flag
+and the scratch, and ends in `NLAlib.ShiftedQR.ShOutcome` except with probability at most
+$\varphi$ (the random translate). -/
+theorem shExc_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hI : I.IsMeasurable)
+    {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) (hS : IsScalar M I)
+    (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I)
+    (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I) {law : ℕ → Measure ℝ} {s₀ : ℕ}
+    (hD : IsPolarDiskSampler s₀ I) (hU : law s₀ = volume.restrict (Set.Icc 0 1)) {L k q : ℕ}
+    (hk : 2 ≤ k) (hkn : k ≤ n) (hkq : k = 2 ^ q) (hku : 100000 * k * u ≤ 1) {ε : ℝ}
+    {a s wg wr ww wp g thr f : ℕ × ℕ} (hv : ShViews L n k ε a s wg wr ww wp g thr f)
+    {B S θ α γ φ d C ω cg cr cw cp tv : ℝ} {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {e : Fin (n + 1) → ℂ} {ss : List ℂ} (hH : IsUpperHessenberg H) (hlen : ss.length = k)
+    (hV : IsUnit V) (hHV : H * V = V * Matrix.diagonal e) (hκ : pseudoConditionNumber V ≤ B)
+    (hSH : specNorm H ≤ S) (hopt : IsOptimalRitzValues θ H ss)
+    (hd0 : ∀ i, ∀ s ∈ ss, e i ≠ s) (hsH : ∀ s ∈ ss, ‖s‖ ≤ 1.1 * specNorm H)
+    (hω : 0 < ω) (hψ : ω ≤ hessenbergPotential k H) (hγ : 0 < γ) (hγ1 : γ < 1) (hθ : 1 ≤ θ)
+    (hα : 1 ≤ α)
+    (hε : ε = (0.998 * (1 - γ) * (1 - γ) / ((13 * B ^ 4) ^ ((k : ℝ)⁻¹) * α ^ 2 * θ ^ 2)) ^
+      ((k : ℝ) / (k - 1))) (hε2 : ε ≤ 1 / 2) (hφ : 0 < φ) (hφ1 : φ ≤ 1 / 5)
+    (hd : d ≤ ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) *
+      hessenbergPotential k H) * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 4) (hd' : 0 < d)
+    (hC1 : 1.1 + 2.1 * ((2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹)) ≤ C)
+    (hexc1 : 6 * u * (1.1 * S + 3 * ((2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) *
+      hessenbergPotential k H)) ≤ 0.005 * ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α *
+        B ^ ((k : ℝ)⁻¹) * hessenbergPotential k H))
+    (hexc2 : 6 * u * (1.1 * S + 3 * ((2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) *
+      hessenbergPotential k H)) ≤ ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α *
+        B ^ ((k : ℝ)⁻¹) * hessenbergPotential k H) * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 8)
+    (hnu : (n + 1 : ℝ) * u ≤ 1 / 2500)
+    (hxu : 300 * (n + 1) ^ 2 * u ≤ (16 * B)⁻¹ * (d / ((2 + 2 * C) * S)) ^ k)
+    (hbound : (66 + 2 * C) * B * S * ((2 + 2 * C) * S / d) ^ k * √(n + 1) *
+      (300 * (n + 1) ^ 2 * u) ≤ 0.001 * ω)
+    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv)
+    (hcr : cr = (2 : ℝ) ^ ((k : ℝ)⁻¹) * (θ * α * B ^ ((k : ℝ)⁻¹))) (hcw : cw = ε / 2)
+    (hcp : cp = 1.0015 * (1 - γ)) :
+    PWrites law I (shExc (O := O) (Q := Q)).body
+      (Env.frame [n + 1, k, q, (excNet ε).length] [a, (L, 0), wr, ww, wp, g, thr, (L + 1, 0),
+        (L + 2, 0), (L + 5, 0), (L + 6, 0), (L + 7, 0), (L + 8, 0), (L + 9, 0), (L + 10, 0), a,
+        (L + 11, 0), f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔ Fp.above L)
+      (ShExcPre u L k ε H V e ss α γ cg cr cw cp tv a s wg wr ww wp g thr f)
+      (ShOutcome u k H γ tv ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a f)
+      φ := by
+  have hv' := hv
+  obtain ⟨⟨ha, hs, hwg, hwr, hww, hwp, hg, hthl, hfl⟩, haf, hio⟩ := hv'
+  have hψ0 : 0 < hessenbergPotential k H := lt_of_lt_of_le hω hψ
+  have hB0 : 0 ≤ B := le_trans zero_le_one ((one_le_pseudoConditionNumber hV.ne_zero).trans hκ)
+  have hX : 0 ≤ (2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) := by
+    have : 0 ≤ θ := by linarith
+    have : 0 ≤ α := by linarith
+    positivity
+  have hC0 : 0 ≤ C := by linarith
+  have hfI : Fp.Disj (Store.inBlock f.1 f.2 1)
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔
+        Store.inBlock wg.1 wg.2 1 ⊔ Store.inBlock wr.1 wr.2 1 ⊔ Store.inBlock ww.1 ww.2 1 ⊔
+        Store.inBlock wp.1 wp.2 1 ⊔ Store.inBlock g.1 g.2 (2 * (excNet ε).length) ⊔
+        Store.inBlock thr.1 thr.2 1) :=
+    (Fp.disj_sup_right.mpr ⟨haf.symm, hio.mono le_sup_right le_rfl⟩).mono le_rfl (by fp_sub)
+  unfold shExc
+  refine (PWrites.seq hI hloc (φ₁ := 0) (φ₂ := φ + 0)
+    (F₁ := Store.inBlock (L + 1) 0 1 ⊔ Store.inBlock (L + 2) 0 1 ⊔ Store.inBlock (L + 11) 0 1 ⊔
+      Store.inBlock f.1 f.2 1)
+    (F₂ := Store.inBlock (L + 10) 0 (2 * (excNet ε).length) ⊔
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 11) 0 1 ⊔
+        Store.inBlock f.1 f.2 1 ⊔ (Store.inBlock (L + 5) 0 (2 * ((n + 1) * (n + 1))) ⊔
+          Store.inBlock (L + 6) 0 (2 * k) ⊔ Store.inBlock (L + 7) 0 (2 * k) ⊔
+          Store.inBlock (L + 8) 0 5 ⊔ Store.inBlock (L + 9) 0 1)))
+    (Mid := ShExcMid1 M u L k ε H V e ss α γ cg cr cw cp tv a s wg wr ww wp g thr f) (by positivity)
+    ?_ (PWrites.seq hI hloc (φ₁ := φ) (φ₂ := 0)
+      (F₁ := Store.inBlock (L + 10) 0 (2 * (excNet ε).length))
+      (F₂ := Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 11) 0 1 ⊔
+        Store.inBlock f.1 f.2 1 ⊔ (Store.inBlock (L + 5) 0 (2 * ((n + 1) * (n + 1))) ⊔
+          Store.inBlock (L + 6) 0 (2 * k) ⊔ Store.inBlock (L + 7) 0 (2 * k) ⊔
+          Store.inBlock (L + 8) 0 5 ⊔ Store.inBlock (L + 9) 0 1))
+      (Mid := ShExcMid2 M u L k ε H e ss γ cg cr cw cp tv d C a s wg wr ww wp g thr f) le_rfl ?_
+      ?_)).mono (fun _ h => h) ?_ (fun _ h => h) (by simp)
+  · -- the start of the branch
+    refine PWrites.of_writes le_rfl fun m τ ⟨hctx, ⟨r, hZ, hr⟩, ⟨p, hp, hRt⟩⟩ => ?_
+    obtain ⟨-, -, -, hcr', -, hcp', -, -, hf', hlen', -, h1, h2, -, -, -, -, -, -, -, -, h11⟩ :=
+      id hctx
+    have hfo : Fp.Disj (Store.inBlock (L + 1) 0 1 ⊔ Store.inBlock (L + 2) 0 1 ⊔
+        Store.inBlock (L + 11) 0 1 ⊔ Store.inBlock f.1 f.2 1)
+        (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔
+          Store.inBlock wg.1 wg.2 1 ⊔ Store.inBlock wr.1 wr.2 1 ⊔ Store.inBlock ww.1 ww.2 1 ⊔
+          Store.inBlock wp.1 wp.2 1 ⊔ Store.inBlock g.1 g.2 (2 * (excNet ε).length) ⊔
+          Store.inBlock thr.1 thr.2 1) :=
+      Fp.disj_sup_left.mpr ⟨by disjoint, hfI⟩
+    refine ((shExcInit_writes (τ := τ) (rt := (L + 1, 0)) (pt := (L + 2, 0))
+      (gw := (L + 11, 0)) (f := f) hS hM (hNat.mono (by omega)) hcr' hcp' hRt (by simp [h2])
+      (by simp [h11]) hf' (Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr
+        ⟨Fp.disj_sup_right.mpr ⟨hfI.mono le_rfl (by fp_sub), by disjoint⟩, by disjoint⟩,
+          by disjoint⟩) (by disjoint) (by disjoint)).in_frame rfl rfl
+      (by simp [Mem.Live, hlen']; omega)).mono (by fp_sub) ?_
+    rintro m' hfr ⟨-, hR, hP, hG, hF⟩
+    exact ⟨hctx.of_eqOff hfr hfo, ⟨r, hfr.keep (Store.readsOnly_readBlock _ _ _ _)
+      (by disjoint) hZ, hr⟩, ⟨p, hp, hR, hP⟩, hG, hF⟩
+  · -- the exceptional shifts
+    refine (shExcShifts_pwrites hI hloc hS hM hD hU hk hkn hv hlen hV hHV hκ hSH hopt hd0 hsH hψ0
+      hγ hγ1 hθ hα hε hε2 hφ hφ1 hd hd' hC1 hku hexc1 hexc2 hcr hcw).in_frame rfl rfl ?_
+    rintro m ⟨⟨-, -, -, -, -, -, -, -, -, hlen', -⟩, -⟩
+    simp [Mem.Live, hlen']
+    omega
+  · -- the trials
+    refine PWrites.of_writes le_rfl fun m τ hm => ?_
+    refine (shExcTrials_writes hS hM hu1 hL hNat hC hk hkn hkq hku hv hH hV hHV hκ hSH hnu hC0 hd'
+      hω hψ hγ1 hxu hbound hthrω hcp hm).in_frame rfl rfl ?_
+    obtain ⟨⟨-, -, -, -, -, -, -, -, -, hlen', -⟩, -⟩ := hm
+    simp [Mem.Live, hlen']
+    omega
+  · fp_sub
+
+end Branch
+
+end NLAlib.ShiftedQR

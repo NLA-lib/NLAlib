@@ -15,6 +15,7 @@ public import NLAlibScaffold.Matrix.QRIteration.RoundedStrategy
 public import NLAlibScaffold.Matrix.QRIteration.StableStep
 public import NLAlibScaffold.Ops.Logic.BackwardFrame
 public import NLAlibScaffold.Ops.Logic.Probabilistic
+public import NLAlibScaffold.Ops.RunMeasurable
 public import NLAlibScaffold.Ops.TapeStopping
 public import NLAlibScaffold.Probability.AdaptiveUnionBoundMeasurable
 public import NLAlibScaffold.Probability.Distributions.DiskUniform

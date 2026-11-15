@@ -98,7 +98,33 @@ Rule 10 placement: every statement is about Ops semantics and tape laws only.
 * PL1: allocation changes the shape; `Mem.obs` records lengths and the buffer count, so `alloc`
   and the shape guard of `Interp.callS` are measurable.
 
-## 5. Waves and counts
+## 5. Corrections (prover, approved)
+
+* **PL3c `PWrites.seq` needs `0 ≤ φ₂`, PL3e `PWrites.whileFuel` needs `∀ i < N, 0 ≤ φ i` and
+  `0 ≤ ψ`.** Counterexample to the skeleton statement (checked in Lean): `Op = Tst = Empty`,
+  `K = Bool`, `law = dirac`, `c₁ = abort`, `c₂ = skip`, `Pre = True`, `Mid = False`, `φ₁ = 1`,
+  `φ₂ = -1`. `h₁` holds with `G = ∅`, `h₂` vacuously, and the conclusion asks for failure
+  probability `0` for a run that always aborts. The §4 edge case "`φ < 0` is vacuous" is true of
+  one specification but not of a sum. `whileFuel` fails in the same way through a negative later
+  round or exit bound.
+* **Consumers.** C4p (`solveRounded_pwrites`) composes `hD` and `hLeaf` with bounds `φD`, `φL`
+  and does not assume them nonnegative. They are nonnegative whenever a tape law exists and the
+  contracts' preconditions are satisfiable (`PWrites.nonneg`; the leaf contract at order `0` and
+  the decoupler at a diagonal class matrix), and without a tape law every `PWrites` holds with
+  `G = ∅`. The simplest route is to add `0 ≤ φD` and `0 ≤ φL` to C4p and T1. P9, P10 and P11p
+  are planned (via PL5) and should carry nonnegative bounds from the start. LF1 uses only PL3b.
+* **Proof route of `seq`.** `Mid` is not measurable, so the bound uses the measurable set
+  `{m' | P(ξ ∉ G₂ m') ≤ φ₂} ⊇ Mid` and a union over the end position `q` of the first part. At
+  each `q` it uses `IsTapeLaw.measure_past_shift_mem` (a function of the past and the tape shifted
+  to `q`), with the memory read off the tape cut at `q` (`Tape.cut`, `Follows.cut_of_eq`). The
+  rule is proved once for abstract steps (`PStep.bind`, with the branch `PStep.bind_test`) and
+  `whileFuel` is an induction on the rounds. PL2, the stopping-time form, is proved but this
+  route does not need it.
+* **Layout.** `Mem.obs`, its σ-algebra and the measurable-step combinators moved to
+  `NLAlibScaffold/Ops/RunMeasurable.lean` (the file-size rule); PL1 stays in
+  `Ops/Logic/Probabilistic`.
+
+## 6. Waves and counts
 
 PROB-LOGIC wave 1: PL1 (H), PL2 (L), PL4 (M), PL3f-frame (S). Wave 2: PL3b–e, PL3f (loop,
 bindIdx, allocs), PL6. Wave 3: PL5 (on PL3e). Open: 6 skeleton (M 3, L 2, H 1) + 7 planned

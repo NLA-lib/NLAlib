@@ -27,6 +27,8 @@ memory thus transfers to the same subroutine started at a random time.
   measurable set $A$ of tapes,
   $\mathbb{P}(S \cap \{p < \top,\ \xi \text{ shifted to } p \in A\}) =
   \mathbb{P}(S \cap \{p < \top\})\,\mathbb{P}(\xi \in A)$.
+* `NLAlib.Ops.IsTapeLaw.measure_past_shift_mem`: the same at a fixed position, for a pair of a
+  function of the past and the shifted tape.
 -/
 
 @[expose] public section
@@ -66,6 +68,25 @@ theorem map_eq (h : IsTapeLaw law P ξ) :
 theorem map_shift (h : IsTapeLaw law P ξ) (q : ℕ) :
     P.map (fun ω => (ξ ω).shift q) = P.map ξ := by
   rw [(h.shift q).map_eq, h.map_eq]
+
+/-- **A function of the past and the tape from a fixed position**: for `X` measurable with
+respect to the past of `q` and a measurable set `B` of pairs, the probability that `X` and the tape
+shifted to `q` lie in `B` integrates, over the value of `X`, the probability of the section. -/
+theorem measure_past_shift_mem (h : IsTapeLaw law P ξ) {α : Type} [MeasurableSpace α] {q : ℕ}
+    {X : Ω → α} (hX : Measurable[Tape.past ξ q] X) {B : Set (α × Tape K)}
+    (hB : MeasurableSet B) :
+    P {ω | (X ω, (ξ ω).shift q) ∈ B} = ∫⁻ ω, P {ω' | (X ω, (ξ ω').shift q) ∈ B} ∂P := by
+  have := h.isProbabilityMeasure
+  have hXm : Measurable X := hX.mono (h.sigma_le _) le_rfl
+  have hW : Measurable fun ω => (ξ ω).shift q := (h.shift q).measurable_tape
+  have hmap := (indepFun_iff_map_prod_eq_prod_map_map hXm.aemeasurable hW.aemeasurable).mp
+    (h.indepFun_past_future hX (Tape.measurable_shift q))
+  rw [show {ω | (X ω, (ξ ω).shift q) ∈ B} = (fun ω => (X ω, (ξ ω).shift q)) ⁻¹' B from rfl,
+    ← Measure.map_apply (hXm.prodMk hW) hB, hmap, Measure.prod_apply hB,
+    lintegral_map (measurable_measure_prodMk_left hB) hXm]
+  refine lintegral_congr fun ω => ?_
+  rw [Measure.map_apply hW (measurable_prodMk_left hB)]
+  rfl
 
 end IsTapeLaw
 

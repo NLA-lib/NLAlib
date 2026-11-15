@@ -48,21 +48,22 @@ variable {O Q : Type}
 
 /-- **The contract of a randomized decoupling implementation** with the stream laws `law`, the
 class bounds `B` (condition) and `g` (separation), the failure probability `φ`, the bottom width
-`k`, the parameter words `ps`, the coupling threshold `ω` and the backward error `ε N` for inputs
+`k`, the iteration cap `F` (fixed outside the quantifiers, so that `φ` may depend on it), the
+parameter words `ps`, the coupling threshold `ω` and the backward error `ε N` for inputs
 of norm at most `N`. From an upper Hessenberg matrix of order $n + 1 \ge k + 1$ stored in place,
 of norm at most $N$, diagonalizable with condition at most $B$ and eigenvalues separated by $g$,
 the run, except with probability at most $\varphi$, writes only the matrix and the one-word flag,
 sets the flag to $0$ and stores an upper Hessenberg perturbed unitary similarity with backward
 error $\varepsilon(N)$ having one of its bottom $k$ subdiagonal entries of modulus at most
 $\omega$ (the success branch of `NLAlib.ShiftedQR.RoundedDecouplingContract`). The interface is
-`[n, k, np] (W, P) → (W, Fl)`. -/
-def RandomDecouplingContract (law : ℕ → Measure ℝ) (B g φ : ℝ) (k : ℕ) (ps : List ℝ) (ω : ℝ)
+`[n, k, np, F] (W, P) → (W, Fl)`. -/
+def RandomDecouplingContract (law : ℕ → Measure ℝ) (B g φ : ℝ) (k F : ℕ) (ps : List ℝ) (ω : ℝ)
     (ε : ℝ → ℝ) (D : Impl O Q) (I : Interp O Q ℝ) : Prop :=
   ∀ {n : ℕ} {N : ℝ} {w q f : ℕ × ℕ} (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
     (V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (d : Fin (n + 1) → ℂ),
     k ≤ n → IsUpperHessenberg H → specNorm H ≤ N → IsUnit V → H * V = V * Matrix.diagonal d →
     pseudoConditionNumber V ≤ B → (∀ i j, i ≠ j → g ≤ ‖d i - d j‖) →
-    PWrites law I D.body (Env.frame [n + 1, k, ps.length] [w, q, w, f])
+    PWrites law I D.body (Env.frame [n + 1, k, ps.length, F] [w, q, w, f])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
       (fun μ => HoldsMatrix w H μ.store ∧ μ.store.readBlock q.1 q.2 ps.length = some ps ∧
         μ.Live [w, q, w, f] ∧ w.2 + 2 * ((n + 1) * (n + 1)) ≤ μ.store.len w.1 ∧
@@ -116,9 +117,9 @@ theorem solveRounded_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} 
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu : 0 ≤ u) (hu1 : u < 1)
     (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
     (hC : IsCmp id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
-    (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ} {B g φD β φL : ℝ} {k : ℕ}
+    (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ} {B g φD β φL : ℝ} {k F : ℕ}
     {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} (D : Impl O Q)
-    (hD : RandomDecouplingContract law (2 * B) (g / 2) φD k ps ω ε D I)
+    (hD : RandomDecouplingContract law (2 * B) (g / 2) φD k F ps ω ε D I)
     (L : Impl O Q) (hLeaf : RandomLeafContract law β φL L I) {a t p out f : ℕ × ℕ}
     {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {thr c N₀ : ℝ}
     (hHess : IsUpperHessenberg H) (hV : IsUnit V) (hHV : H * V = V * Matrix.diagonal d)
@@ -127,7 +128,7 @@ theorem solveRounded_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} 
     (hβ : 0 ≤ β) (hε0 : 0 ≤ ε N₀)
     (hN₀ : specNorm H + 2 * (n + 1) * (c + ε N₀ + β) ≤ N₀)
     (hsmall : 2 * (n + 1) * (c + ε N₀ + β) ≤ g / (16 * (n + 1) * B)) :
-    PWrites law I (solveRounded D L).body (Env.frame [n + 1, k, ps.length] [a, t, p, out, f])
+    PWrites law I (solveRounded D L).body (Env.frame [n + 1, k, ps.length, F] [a, t, p, out, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock out.1 out.2 (2 * (n + 1)) ⊔ Store.inBlock f.1 f.2 1)
       (fun μ => μ.Live [a, t, p, out, f] ∧
@@ -153,9 +154,9 @@ theorem solveRounded_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Interp
     {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu : 0 ≤ u) (hu1 : u < 1)
     (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
     (hC : IsCmp id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
-    (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ} {B g φD β φL : ℝ} {k : ℕ}
+    (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ} {B g φD β φL : ℝ} {k F : ℕ}
     {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} (D : Impl O Q)
-    (hD : RandomDecouplingContract law (2 * B) (g / 2) φD k ps ω ε D I)
+    (hD : RandomDecouplingContract law (2 * B) (g / 2) φD k F ps ω ε D I)
     (L : Impl O Q) (hLeaf : RandomLeafContract law β φL L I) {a t p out f : ℕ × ℕ}
     {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {thr c N₀ : ℝ}
     (hHess : IsUpperHessenberg H) (hV : IsUnit V) (hHV : H * V = V * Matrix.diagonal d)
@@ -171,7 +172,7 @@ theorem solveRounded_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Interp
     (hp : μ.store.readBlock p.1 p.2 ps.length = some ps) {Ω : Type} [MeasurableSpace Ω]
     {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
     P.real {ω' | ¬ Writes .total I (ξ ω') (solveRounded D L).body
-      (Env.frame [n + 1, k, ps.length] [a, t, p, out, f])
+      (Env.frame [n + 1, k, ps.length, F] [a, t, p, out, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock out.1 out.2 (2 * (n + 1)) ⊔ Store.inBlock f.1 f.2 1)
       (fun μ' => μ'.store.get f.1 f.2 = some 0 ∧

@@ -9,6 +9,7 @@ public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedKernels
 public import NLAlibScaffold.Matrix.QRIteration.Strategy
 public import NLAlib.Ops.Logic.IndependentLoop
 public import NLAlibScaffold.Matrix.FinitePrecision.ProductRounded
+public import NLAlibScaffold.Eigensolvers.ShiftedQR.PairBlocks
 
 /-!
 # The rounded exceptional shifts
@@ -161,43 +162,6 @@ def excCentreWord (M : Machine ℝ) (r w : ℂ) : ℝ × ℝ := (M.add r.re w.re
 rounded centre `z`, the radius word `R` and the net point `g`. -/
 def excShiftWord (M : Machine ℝ) (z : ℝ × ℝ) (R : ℝ) (g : ℂ) : ℂ :=
   ⟨M.add z.1 (M.mul R g.re), M.add z.2 (M.mul R g.im)⟩
-
-/-- The entries $2j$ and $2j + 1$ of the pairs of a list of complex numbers. -/
-private theorem getElem?_flatMap_pair (zs : List ℂ) {j : ℕ} (hj : j < zs.length) :
-    (zs.flatMap fun z => [z.re, z.im])[2 * j]? = some zs[j].re ∧
-      (zs.flatMap fun z => [z.re, z.im])[2 * j + 1]? = some zs[j].im := by
-  induction zs generalizing j with
-  | nil => simp at hj
-  | cons z zs ih =>
-    cases j with
-    | zero => simp
-    | succ j =>
-      obtain ⟨h1, h2⟩ := ih (j := j) (by simpa using hj)
-      rw [List.flatMap_cons, show 2 * (j + 1) = 2 * j + 1 + 1 by ring,
-        show 2 * j + 1 + 1 + 1 = 2 * j + 1 + 1 + 1 from rfl]
-      simpa using And.intro h1 h2
-
-/-- A block of pairs read from its cells. -/
-private theorem readBlock_flatMap_pair_of_get {s : Store ℝ} {b o : ℕ} {zs : List ℂ}
-    (h : ∀ j (hj : j < zs.length), s.get b (o + 2 * j) = some zs[j].re ∧
-      s.get b (o + 2 * j + 1) = some zs[j].im) :
-    s.readBlock b o (2 * zs.length) = some (zs.flatMap fun z => [z.re, z.im]) := by
-  refine Store.readBlock_eq_some_iff.mpr ⟨by simp [List.length_flatMap]; ring, fun k hk => ?_⟩
-  obtain ⟨j, rfl | rfl⟩ := Nat.even_or_odd' k
-  · have hj : j < zs.length := by omega
-    rw [(h j hj).1, (getElem?_flatMap_pair zs hj).1]
-  · have hj : j < zs.length := by omega
-    rw [← Nat.add_assoc, (h j hj).2, (getElem?_flatMap_pair zs hj).2]
-
-/-- The cells of a block of pairs. -/
-private theorem get_of_readBlock_flatMap_pair {s : Store ℝ} {b o : ℕ} {zs : List ℂ}
-    (h : s.readBlock b o (2 * zs.length) = some (zs.flatMap fun z => [z.re, z.im]))
-    {j : ℕ} (hj : j < zs.length) :
-    s.get b (o + 2 * j) = some zs[j].re ∧ s.get b (o + 2 * j + 1) = some zs[j].im := by
-  obtain ⟨-, hg⟩ := Store.readBlock_eq_some_iff.mp h
-  refine ⟨(hg (2 * j) (by omega)).trans (getElem?_flatMap_pair zs hj).1, ?_⟩
-  rw [Nat.add_assoc]
-  exact (hg (2 * j + 1) (by omega)).trans (getElem?_flatMap_pair zs hj).2
 
 section Program
 

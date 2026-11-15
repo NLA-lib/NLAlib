@@ -5,6 +5,7 @@ public import NLAlibScaffold.Eigensolvers.ShiftedQR.PairBlocks
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedExc
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedFind
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedHeadline
+public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedIteration
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedKernels
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedModuli
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedRegularize

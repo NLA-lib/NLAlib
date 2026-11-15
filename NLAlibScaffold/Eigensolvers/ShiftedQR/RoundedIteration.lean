@@ -329,9 +329,11 @@ theorem shIteration_regularize_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u
     hio' hH hV hHV hκ hBk hω hψ hSH hgap hR hφ hφ1 hβ hdη hnu huo huo1 hxu hbound
     hthrω).in_frame hρ hρa ?_).mono_eqOff ?_ ?_
   · rintro m ⟨hl, -⟩
-    exact (hl.mono (by intro x hx; simp only [List.mem_cons, List.not_mem_nil, or_false] at hx ⊢; tauto))
+    exact hl.mono (by
+      intro x hx; simp only [List.mem_cons, List.not_mem_nil, or_false] at hx ⊢; tauto)
   · rintro m ⟨hl, hA, hrd, hc, ht, -, -, -, -, -, hs, hf⟩
-    exact ⟨hl.mono (by intro x hx; simp only [List.mem_cons, List.not_mem_nil, or_false] at hx ⊢; tauto),
+    exact ⟨hl.mono (by
+      intro x hx; simp only [List.mem_cons, List.not_mem_nil, or_false] at hx ⊢; tauto),
       hA, hrd, hc, ht, hs, hf⟩
   · rintro m m' ⟨hl, -, -, -, ht, hwg, hwr, hww, hwp, hg, -, hf⟩ hfr hout
     have hD' : ∀ {G : Fp}, G ≤ Store.inBlock rd.1 rd.2 1 ⊔ Store.inBlock c.1 c.2 1 ⊔
@@ -473,9 +475,9 @@ theorem shIterationWithScratch_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u
   unfold shIterationWithScratch
   refine (PWrites.seq hI hloc (le_max_right φ 0)
     (shIteration_regularize_pwrites (ρ := Env.frame [n + 1, q, k, (excNet ε).length]
-      [a, rd, c, thr, wg, wr, ww, wp, g, s, a, f]) hI hloc hS hM hu1 hL hNat hC hSE hβ0 hφse hD hU (by omega)
-      hkn has haf hsf hio ?_ ?_ hH hV hHV hκ hBk hω hψ hSH hgap hR hφR hφR1 hβ hdη hnu huo
-      huo1 hxuR hboundR hthrω)
+      [a, rd, c, thr, wg, wr, ww, wp, g, s, a, f]) hI hloc hS hM hu1 hL hNat hC hSE hβ0 hφse hD hU
+      (by omega) hkn has haf hsf hio ?_ ?_ hH hV hHV hκ hBk hω hψ hSH hgap hR hφR hφR1 hβ hdη hnu
+      huo huo1 hxuR hboundR hthrω)
     (PWrites.ite hI ?_ ((hsh.in_frame ?_ ?_ ?_).mono ?_ le_rfl (fun _ h => h) le_rfl)
       (PWrites.of_writes le_rfl ?_))).mono (fun _ h => h) (by fp_sub) (fun _ h => h)
       (by rw [max_eq_left hφ.le])
@@ -515,7 +517,8 @@ $\kappa(\mathbf{V}) \le B$, $B^{2/k} \le 2$, $2 \le k = 2^m \le n$, $\|\mathbf{H
 of `Regularize` (radius $R > 0$, $0.999\theta^k$ for
 $\theta = 1.01 \cdot 0.998^{-1/k}(2B^4)^{1/(2k)}$, the threshold $t \ge (1 + \boldsymbol{u})^2
 \omega^2$) with $0 < \varphi_R \le 1$, $\eta = R\sqrt{\varphi_R/(2k)}$ and $d = \eta/2$, and the
-words of `Sh` ($(1 - \gamma)^k$, $2^{1/k}\theta\alpha B^{1/k}$, $\varepsilon/2$, $1.0015(1 - \gamma)$,
+words of `Sh` ($(1 - \gamma)^k$, $2^{1/k}\theta\alpha B^{1/k}$, $\varepsilon/2$,
+$1.0015(1 - \gamma)$,
 the net `NLAlib.ShiftedQR.excNet ε`) with $\alpha = (1.01B)^{4m/2^m}$, $0 < \gamma < 1$,
 $\varepsilon = (0.998(1 - \gamma)^2/((13B^4)^{1/k}\alpha^2\theta^2))^{k/(k-1)} \le 1/2$,
 $0 < \varphi \le 1/5$, $1.1 + 2.1 \cdot 2.002^{1/k}\theta\alpha B^{1/k} \le C$,
@@ -599,11 +602,12 @@ theorem shIteration_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
   have e : (shIteration (O := O) (Q := Q)).body = Stmt.allocs [.const 2 * .var 2]
       (.frame [.var 0, .var 1, .var 2, .var 3] [⟨0, .var 4⟩, ⟨1, .var 5⟩, ⟨2, .var 6⟩,
         ⟨3, .var 7⟩, ⟨4, .var 8⟩, ⟨5, .var 9⟩, ⟨6, .var 10⟩, ⟨7, .var 11⟩, ⟨8, .var 12⟩,
-        ⟨11, .const 0⟩, ⟨0, .var 4⟩, ⟨10, .var 14⟩] (shIterationWithScratch (O := O) (Q := Q)).body) :=
+        ⟨11, .const 0⟩, ⟨0, .var 4⟩, ⟨10, .var 14⟩]
+        (shIterationWithScratch (O := O) (Q := Q)).body) :=
     rfl
   rw [e]
-  refine PWrites.allocs (ns := [2 * k]) ?_ (Pre₁ := fun L μ => (a.1 < L ∧ rd.1 < L ∧ c.1 < L ∧ thr.1 < L ∧
-      wg.1 < L ∧ wr.1 < L ∧ ww.1 < L ∧ wp.1 < L ∧ g.1 < L ∧ f.1 < L) ∧
+  refine PWrites.allocs (ns := [2 * k]) ?_ (Pre₁ := fun L μ => (a.1 < L ∧ rd.1 < L ∧ c.1 < L ∧
+      thr.1 < L ∧ wg.1 < L ∧ wr.1 < L ∧ ww.1 < L ∧ wp.1 < L ∧ g.1 < L ∧ f.1 < L) ∧
     μ.Live [a, rd, c, thr, wg, wr, ww, wp, g, (L, 0), f] ∧ HoldsMatrix a H μ.store ∧
       μ.store.get rd.1 rd.2 = some R ∧ μ.store.get c.1 c.2 = some
         (0.999 * (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) ^ k) ∧

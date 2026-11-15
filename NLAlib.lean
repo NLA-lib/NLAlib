@@ -1084,6 +1084,7 @@ public import NLAlib.Ops.Catalog.RCLikeStar
 public import NLAlib.Ops.Catalog.Random
 public import NLAlib.Ops.Catalog.Sampling
 public import NLAlib.Ops.Catalog.Scalar
+public import NLAlib.Ops.Catalog.ScalarMeasurable
 public import NLAlib.Ops.Catalog.StoredOperator
 public import NLAlib.Ops.Catalog.Tagged
 public import NLAlib.Ops.Cert
@@ -1163,6 +1164,9 @@ public import NLAlib.Ops.Logic.Loop
 public import NLAlib.Ops.Logic.Matrix
 public import NLAlib.Ops.Logic.MatrixPacked
 public import NLAlib.Ops.Logic.PrefixRead
+public import NLAlib.Ops.Logic.Probabilistic
+public import NLAlib.Ops.Logic.ProbabilisticBackward
+public import NLAlib.Ops.Logic.ProbabilisticFamily
 public import NLAlib.Ops.Logic.RCLikeBlas
 public import NLAlib.Ops.Logic.RCLikeBlasReal
 public import NLAlib.Ops.Logic.ReadTuple
@@ -1206,6 +1210,7 @@ public import NLAlib.Ops.Profiles.StoredDense
 public import NLAlib.Ops.Profiles.StoredDenseRounded
 public import NLAlib.Ops.Profiles.StoredScalar
 public import NLAlib.Ops.Rules
+public import NLAlib.Ops.RunMeasurable
 public import NLAlib.Ops.Static
 public import NLAlib.Ops.Store
 public import NLAlib.Ops.StoreSimp
@@ -1214,6 +1219,7 @@ public import NLAlib.Ops.Syntax
 public import NLAlib.Ops.Tactic
 public import NLAlib.Ops.Tape
 public import NLAlib.Ops.TapeLaw
+public import NLAlib.Ops.TapeStopping
 public import NLAlib.Ops.Tools.Demo
 public import NLAlib.Ops.Tools.Exec
 public import NLAlib.Ops.Tools.Lint

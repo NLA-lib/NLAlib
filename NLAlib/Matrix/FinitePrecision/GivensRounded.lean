@@ -41,6 +41,10 @@ $32n^{3/2}\boldsymbol{u}$). [Higham2002, Lemmas 19.7–19.8].
   order.
 * `NLAlib.IsRoundedRowRotation`, `NLAlib.IsRoundedColRotation`: a rotation computed pairwise
   within a relative error.
+## Main results
+
+* `NLAlib.exists_hasOrthonormalCols_rotateTo`: rotations taking $\mathbf{e}_N$ to a computed
+  vector, as used by the random Hessenberg form of [BanksGarzaVargasSrivastava2025].
 -/
 
 @[expose] public section
@@ -693,5 +697,36 @@ theorem Ops.StdModel.norm_linearWords_rotation_sub_le {M : Machine ℝ} {u : ℝ
   calc _ ≤ Real.sqrt ((12 * u * Real.sqrt (‖x‖ ^ 2 + ‖y‖ ^ 2)) ^ 2) :=
         Real.sqrt_le_sqrt (key.trans h12)
     _ = _ := Real.sqrt_sq (by positivity)
+
+/-- Rotating $\mathbf{e}_N$ to a computed vector: let $n$ adjacent rotations, step $j$ by the
+exact Givens rotation $\mathbf{G}_j$ of the coefficients $(c_j, s_j)$ that
+`NLAlib.givensCoeffs` computes from $(\bar g^{(j)}_{j+1}, -\bar g^{(j)}_j)$ (so that
+$\mathbf{G}_j$ zeros entry $j$ of $\mathbf{g}^{(j)}$), take the vectors
+$\mathbf{g}^{(j+1)}$ within $\eta\|\mathbf{g}^{(j)}\|$ of $\mathbf{G}_j\mathbf{g}^{(j)}$, and the
+matrices $\mathbf{A}_{j+1}$ by a rounded rotation of the rows $j, j + 1$ and then of the columns
+$j, j + 1$ of $\mathbf{A}_j$ (`NLAlib.IsRoundedRowRotation`, `NLAlib.IsRoundedColRotation`, relative
+error $\eta \ge 0$), with $n\eta \le 1/8$ and $\mathbf{g}^{(0)} \ne 0$. Then there are a unitary
+$\mathbf{Q}$ and $\lvert c\rvert = 1$ with
+$$\|\mathbf{Q}\mathbf{e}_N - c\,\mathbf{g}^{(0)}/\|\mathbf{g}^{(0)}\|\| \le 5n\eta, \qquad
+  \|\mathbf{A}_n - \mathbf{Q}^{\mathsf{H}}\mathbf{A}_0\mathbf{Q}\|_2 \le
+  8n\eta\|\mathbf{A}_0\|_2\,.$$
+The rounded coefficients and their application meet the hypotheses with $\eta = 12\boldsymbol{u}$
+(`NLAlib.Ops.StdModel.norm_rotatePair_sub_le`). The last column is close to the direction of
+$\mathbf{g}^{(0)}$, not equal to it: the computed rotations do not zero their entries exactly.
+No printed source. -/
+theorem exists_hasOrthonormalCols_rotateTo {η : ℝ} (hη : 0 ≤ η) (hnη : n * η ≤ 1 / 8)
+    {cs : ℕ → ℂ × ℂ} {g : ℕ → Fin (n + 1) → ℂ} {A : ℕ → Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    (hcs : ∀ j : Fin n, cs j = givensCoeffs (star (g j j.succ)) (-star (g j j.castSucc)))
+    (hg : ∀ j : Fin n, ‖WithLp.toLp 2 (g ((j : ℕ) + 1) -
+      givens j.castSucc j.succ (cs j).1 (cs j).2 *ᵥ g j)‖ ≤ η * ‖WithLp.toLp 2 (g j)‖)
+    (hA : ∀ j : Fin n, ∃ A' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+      IsRoundedRowRotation η j.castSucc j.succ (cs j).1 (cs j).2 (A j) A' ∧
+        IsRoundedColRotation η j.castSucc j.succ (cs j).1 (cs j).2 A' (A ((j : ℕ) + 1)))
+    (hg0 : g 0 ≠ 0) :
+    ∃ (Q : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (c : ℂ), HasOrthonormalCols Q ∧ ‖c‖ = 1 ∧
+      ‖WithLp.toLp 2 ((fun k => Q k (Fin.last n)) -
+          (c * ((‖WithLp.toLp 2 (g 0)‖⁻¹ : ℝ) : ℂ)) • g 0)‖ ≤ 5 * n * η ∧
+      specNorm (A n - Qᴴ * A 0 * Q) ≤ 8 * n * η * specNorm (A 0) := by
+  sorry
 
 end NLAlib

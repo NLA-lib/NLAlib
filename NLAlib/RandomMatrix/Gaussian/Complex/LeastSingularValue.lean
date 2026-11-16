@@ -29,6 +29,8 @@ $\|\mathbf{G}^{-1}\|_2$ in $\|\mathbf{G}^{-1}\mathbf{g}\|$ with probability at l
   $r^2x^2$.
 * `NLAlib.measureReal_singularValues_le_le_exp_one_mul_of_hasLaw_complexGaussianMatrix`: the probe
   bound $e\,r x^2$.
+* `NLAlib.measureReal_norm_dotProduct_le_le_of_hasLaw_complexGaussianVector`: anti-concentration
+  in a fixed direction.
 -/
 
 @[expose] public section
@@ -649,5 +651,16 @@ theorem measureReal_singularValues_le_le_exp_one_mul_of_hasLaw_complexGaussianMa
     _ ≤ μ.real {ω | singularValues (G ω) k ≤ 0} + μ.real (G ⁻¹' B) := measureReal_union_le _ _
     _ = ρ.real B := by rw [h0, zero_add]; exact hG.measureReal_eq (p := (· ∈ B)) hB
     _ ≤ _ := hBle
+
+/-- **Anti-concentration of a Gaussian vector in a fixed direction**: for a standard complex
+Gaussian vector $\mathbf{g}$, a unit vector $\mathbf{v}$ and $s \ge 0$,
+$\mathbb{P}[\lvert\langle \mathbf{v}, \mathbf{g}\rangle\rvert \le s] \le s^2$. It replaces the
+uniform direction on the sphere of [BanksGarzaVargasSrivastava2025, Lemma 5.2]: the direction of
+a Gaussian vector is uniform, and its norm is controlled separately. -/
+theorem measureReal_norm_dotProduct_le_le_of_hasLaw_complexGaussianVector {g : Ω → n → ℂ}
+    (hg : HasLaw g (complexGaussianVector n) μ) {v : n → ℂ} (hv : ‖WithLp.toLp 2 v‖ = 1)
+    {s : ℝ} (hs : 0 ≤ s) :
+    μ.real {ω | ‖star v ⬝ᵥ g ω‖ ≤ s} ≤ s ^ 2 := by
+  sorry
 
 end NLAlib

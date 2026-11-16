@@ -50,6 +50,9 @@ $\mathbf{A}\mathbf{X} - \mathbf{X}\mathbf{B} = \mathbf{C}$ in
 * `NLAlib.norm_le_specNorm_of_mul_eq_mul_diagonal`: an eigenvalue is at most the spectral norm.
 * `IsStarNormal.exists_isUnit_mul_eq_mul_diagonal_and_pseudoConditionNumber_eq_one`: a normal
   matrix has a unitary eigenvector matrix.
+* `NLAlib.mul_eq_mul_diagonal_add_smul_one_iff`: a shift keeps the eigenvectors.
+* `NLAlib.isClosed_setOf_exists_pseudoConditionNumber_le_and_le_norm_sub`: the diagonalization
+  class is closed.
 -/
 
 @[expose] public section
@@ -593,5 +596,29 @@ theorem _root_.IsStarNormal.exists_isUnit_mul_eq_mul_diagonal_and_pseudoConditio
       hU.specNorm_eq_one, mul_one]
 
 end Polynomial
+
+/-! ### The diagonalization class -/
+
+/-- A shift by a multiple of the identity moves the eigenvalues and keeps the eigenvectors:
+$(\mathbf{A} + c\mathbf{I})\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d} + c)$ if and only
+if $\mathbf{A}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$. So the separation of the
+eigenvalues and the condition number of the eigenvector matrix are those of $\mathbf{A}$. -/
+theorem mul_eq_mul_diagonal_add_smul_one_iff {A V : Matrix n n K} {d : n → K} (c : K) :
+    (A + c • (1 : Matrix n n K)) * V = V * Matrix.diagonal (fun i => d i + c) ↔
+      A * V = V * Matrix.diagonal d := by
+  sorry
+
+/-- The diagonalization class is closed: for $B, g \in \mathbb{R}$, the set of complex
+matrices $\mathbf{A}$ of order $n + 1$ with $\mathbf{A}\mathbf{V} =
+\mathbf{V}\operatorname{diag}(\mathbf{d})$ for some invertible $\mathbf{V}$ with
+$\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le B$ and eigenvalues $d_i$ at mutual distance at least
+$g$ is closed. It is the good set of a perturbation by a random matrix, so its complement is a
+measurable bad set. No printed source. -/
+theorem isClosed_setOf_exists_pseudoConditionNumber_le_and_le_norm_sub (n : ℕ) (B g : ℝ) :
+    IsClosed {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ |
+      ∃ (V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (d : Fin (n + 1) → ℂ), IsUnit V ∧
+        A * V = V * Matrix.diagonal d ∧ pseudoConditionNumber V ≤ B ∧
+          ∀ i j, i ≠ j → g ≤ ‖d i - d j‖} := by
+  sorry
 
 end NLAlib

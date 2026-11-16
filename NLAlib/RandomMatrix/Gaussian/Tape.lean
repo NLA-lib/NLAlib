@@ -8,6 +8,7 @@ module
 public import NLAlib.Matrix.FinitePrecision.Samples
 public import NLAlib.RandomMatrix.Gaussian.Complex
 public import NLAlib.RandomMatrix.TapeLaw
+public import NLAlib.Ops.TapeLaw
 
 /-!
 # The complex Gaussian matrix of a Gaussian tape
@@ -18,6 +19,9 @@ $1/\sqrt2$ (`NLAlib.Computation.tapeComplexMatrix`), is a standard complex Gauss
 ## Main results
 
 * `NLAlib.Computation.hasLaw_tapeComplexMatrix_of_hasLaw_tapeLaw`: the law of the sample.
+* `NLAlib.Computation.hasLaw_complexGaussianMatrix_windowFn`,
+  `NLAlib.Computation.hasLaw_complexGaussianVector_windowFn`: the same for a window of a Gaussian
+  stream of an operation-core tape (`NLAlib.Ops.IsTapeLaw`).
 -/
 
 @[expose] public section
@@ -110,5 +114,31 @@ theorem hasLaw_tapeComplexMatrix_of_hasLaw_tapeLaw {Ω : Type} {mΩ : Measurable
     rw [← hPmap, ← hHG.map_eq, Measure.map_map hPm hHG.measurable]
     rfl
   exact (HasLaw.mk hFm.aemeasurable hmap).comp hY
+
+/-- **A window of a Gaussian stream is a complex Gaussian matrix**: under a tape law
+(`NLAlib.Ops.IsTapeLaw`) whose stream $s$ is standard real Gaussian, the $N \times N$ matrix with
+entry $(i, j)$ equal to $(x_{2(i + Nj)} + i\,x_{2(i + Nj) + 1})/\sqrt2$, for the $2N^2$ entries
+$x$ of the stream $s$ from the position $p$, has the law of a matrix with independent standard
+complex Gaussian entries. It is the law of the perturbation drawn by the program of
+[BanksGarzaVargasSrivastava2025, Theorem 1.1]. -/
+theorem hasLaw_complexGaussianMatrix_windowFn {Ω : Type} {mΩ : MeasurableSpace Ω}
+    {P : Measure Ω} {law : ℕ → Measure ℝ} {ξ : Ω → Ops.Tape ℝ} (hξ : Ops.IsTapeLaw law P ξ)
+    {s : ℕ} (hs : law s = gaussianReal 0 1) (p N : ℕ) :
+    HasLaw (fun ω => tapeComplexMatrix (fun j => ξ ω (p + j) s) N)
+      (complexGaussianMatrix (Fin N) (Fin N)) P := by
+  sorry
+
+/-- **A window of a Gaussian stream is a complex Gaussian vector**: under a tape law whose stream
+$s$ is standard real Gaussian, the vector with entry $i$ equal to
+$(x_{2i} + i\,x_{2i + 1})/\sqrt2$, for the $2N$ entries $x$ of the stream $s$ from the position
+$p$, has independent standard complex Gaussian entries. It is the law of the random direction
+of [BanksGarzaVargasSrivastava2025, Proposition 5.3], drawn as a Gaussian vector. -/
+theorem hasLaw_complexGaussianVector_windowFn {Ω : Type} {mΩ : MeasurableSpace Ω}
+    {P : Measure Ω} {law : ℕ → Measure ℝ} {ξ : Ω → Ops.Tape ℝ} (hξ : Ops.IsTapeLaw law P ξ)
+    {s : ℕ} (hs : law s = gaussianReal 0 1) (p N : ℕ) :
+    HasLaw (fun ω (i : Fin N) =>
+        (⟨ξ ω (p + 2 * i) s / √2, ξ ω (p + 2 * i + 1) s / √2⟩ : ℂ))
+      (complexGaussianVector (Fin N)) P := by
+  sorry
 
 end NLAlib.Computation

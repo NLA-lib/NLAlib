@@ -45,6 +45,8 @@ value [Edelman1988], an elementary small-ball bound.
 * `NLAlib.measureReal_specNorm_ge_le_of_hasLaw_complexGaussianMatrix`,
   `NLAlib.measureReal_specNorm_ge_add_le_of_hasLaw_complexGaussianMatrix`: Lemma 3.2, and the norm
   tail $e^{-t^2}$ from Gaussian concentration.
+* `NLAlib.measureReal_specNorm_ge_mul_le_of_hasLaw_complexGaussianMatrix`: the norm tail of
+  $(\gamma/\sqrt n)\mathbf{G}$ at a free failure probability.
 
 The smallest singular value is in `NLAlib/RandomMatrix/Gaussian/Complex/LeastSingularValue.lean`.
 -/
@@ -579,6 +581,19 @@ theorem measureReal_specNorm_ge_add_le_of_hasLaw_complexGaussianMatrix {G : Ω �
   refine (measureReal_mono fun X hX => ?_).trans h
   simp only [Set.mem_preimage, Set.mem_ofPred_eq, id] at hX ⊢
   linarith
+
+/-- **Norm tail of a rescaled complex Gaussian matrix** ([BanksGarzaVargasSrivastava2025,
+Theorem 1.1], the norm of its perturbation, with a free failure probability): for a standard
+complex Gaussian
+$n \times n$ matrix $\mathbf{G}$, $\gamma > 0$ and $0 < \varphi \le 1$,
+$$\mathbb{P}\Bigl[\gamma\Bigl(2\sqrt2 + \sqrt{\log(1/\varphi)/n}\Bigr) \le
+  \Bigl\|\frac{\gamma}{\sqrt n}\mathbf{G}\Bigr\|_2\Bigr] \le \varphi\,.$$ -/
+theorem measureReal_specNorm_ge_mul_le_of_hasLaw_complexGaussianMatrix
+    {G : Ω → Matrix n n ℂ} (hG : HasLaw G (complexGaussianMatrix n n) μ) {γ φ : ℝ} (hγ : 0 < γ)
+    (hφ : 0 < φ) (hφ1 : φ ≤ 1) :
+    μ.real {ω | γ * (2 * √2 + √(Real.log φ⁻¹ / Fintype.card n)) ≤
+      specNorm ((γ / √(Fintype.card n : ℝ)) • G ω)} ≤ φ := by
+  sorry
 
 end Laws
 

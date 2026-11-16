@@ -31,6 +31,9 @@ $\mathbf{H}$ at $\mathbf{e}_n$.
 * `NLAlib.lastRowWeights_nonneg`, `NLAlib.sum_lastRowWeights`: a probability vector.
 * `NLAlib.sum_lastRowWeights_mul_sq_le`, `NLAlib.norm_mul_diagonal_mul_inv_last_sq_le`: the two
   sides of the approximate functional calculus.
+* `NLAlib.lastRowWeights_conjTranspose_mul`, `NLAlib.le_lastRowWeights_conjTranspose_mul`: the
+  weights after a unitary similarity with a prescribed last column
+  [BanksGarzaVargasSrivastava2025].
 -/
 
 @[expose] public section
@@ -153,5 +156,38 @@ theorem norm_mul_diagonal_mul_inv_last_sq_le {V : Matrix (Fin (n + 1)) (Fin (n +
   rw [pseudoConditionNumber_of_isUnit hV, mul_pow]
   nlinarith [mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_right hDle hT)
     (sq_nonneg (specNorm V⁻¹))]
+
+/-! ### Weights after a unitary similarity -/
+
+/-- **The last-row weights of $\mathbf{Q}^{\mathsf{H}}\mathbf{V}$ are the squared overlaps with
+the last column of $\mathbf{Q}$** ([BanksGarzaVargasSrivastava2025, Proposition 5.3],
+deterministic part): if the last column of $\mathbf{Q}$ is $c\,\mathbf{x}$ with
+$\lvert c\rvert = 1$, the weight of $i$ is
+$$\frac{\lvert\langle \mathbf{x}, \mathbf{v}_i\rangle\rvert^2}
+  {\|\mathbf{V}^{\mathsf{H}}\mathbf{x}\|^2}\,,$$
+$\mathbf{v}_i$ the $i$-th column of $\mathbf{V}$. The phase $c$ of a rotation to $\mathbf{x}$
+cancels, which the paper's reflector does not make explicit (its erratum P3). -/
+theorem lastRowWeights_conjTranspose_mul {Q V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {x : Fin (n + 1) → ℂ} {c : ℂ} (hc : ‖c‖ = 1) (hQx : ∀ k, Q k (Fin.last n) = c * x k)
+    (i : Fin (n + 1)) :
+    lastRowWeights (Qᴴ * V) i =
+      ‖star x ⬝ᵥ (fun k => V k i)‖ ^ 2 / ‖WithLp.toLp 2 (Vᴴ *ᵥ x)‖ ^ 2 := by
+  sorry
+
+/-- **A large overlap gives a large weight** ([BanksGarzaVargasSrivastava2025, Proposition 5.3],
+deterministic part): let $\mathbf{V}$ be invertible, the last column of $\mathbf{Q}$ be
+$c\,\mathbf{g}/\|\mathbf{g}\|$ with $\lvert c\rvert = 1$, $\|\mathbf{g}\| \le R$, $s \ge 0$, and
+$\lvert\langle \mathbf{g}, \mathbf{v}_i\rangle\rvert \ge s\,\|\mathbf{v}_i\|$ for the $i$-th
+column $\mathbf{v}_i$ of $\mathbf{V}$. Then
+$$\frac{s^2}{R^2\,(\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2)^2} \le
+  w_i(\mathbf{Q}^{\mathsf{H}}\mathbf{V})\,,$$
+for any scaling of the columns of $\mathbf{V}$. -/
+theorem le_lastRowWeights_conjTranspose_mul {Q V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {g : Fin (n + 1) → ℂ} {c : ℂ} {R s : ℝ} (hV : IsUnit V) (hc : ‖c‖ = 1)
+    (hQx : ∀ k, Q k (Fin.last n) = c * ((‖WithLp.toLp 2 g‖⁻¹ : ℝ) : ℂ) * g k)
+    (hg : ‖WithLp.toLp 2 g‖ ≤ R) (hs : 0 ≤ s) {i : Fin (n + 1)}
+    (hgi : s * ‖WithLp.toLp 2 (fun k => V k i)‖ ≤ ‖star g ⬝ᵥ (fun k => V k i)‖) :
+    s ^ 2 / (R ^ 2 * pseudoConditionNumber V ^ 2) ≤ lastRowWeights (Qᴴ * V) i := by
+  sorry
 
 end NLAlib

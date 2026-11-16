@@ -2,6 +2,7 @@ module  -- shake: keep-all --deprecated_module: ignore
 
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.Backward
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.PairBlocks
+public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedCertificate
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedDecouple
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedDecoupleSpec
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedDecoupleTermination

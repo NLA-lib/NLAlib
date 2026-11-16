@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import Mathlib.Analysis.CStarAlgebra.Matrix
+public import Mathlib.Analysis.Normed.Algebra.Spectrum
 public import Mathlib.Tactic.Positivity.Core
 public import NLAlib.ForMathlib.Analysis.InnerProductSpace.PiL2
 
@@ -382,6 +383,17 @@ theorem isCompact_setOf_specNorm_le (β : ℝ) : IsCompact {A : Matrix m n 𝕜 
   refine hbox.of_isClosed_subset (isClosed_le continuous_specNorm continuous_const)
     fun (A : Matrix m n 𝕜) hA i _ j _ => mem_closedBall_zero_iff.mpr ?_
   exact (norm_apply_le_specNorm A i j).trans hA
+
+/-- An eigenvalue is at most the spectral norm: $\lvert\mu\rvert \le \|\mathbf{A}\|_2$ for
+$\mu$ in the spectrum of the square matrix $\mathbf{A}$. -/
+theorem norm_le_specNorm_of_mem_spectrum [DecidableEq n] {A : Matrix n n 𝕜} {μ : 𝕜}
+    (h : μ ∈ spectrum 𝕜 A) : ‖μ‖ ≤ specNorm A := by
+  open scoped Matrix.Norms.L2Operator in
+  cases isEmpty_or_nonempty n
+  · rw [spectrum.of_subsingleton] at h
+    exact absurd h (Set.notMem_empty μ)
+  · rw [specNorm_eq_norm]
+    exact spectrum.norm_le_norm_of_mem h
 
 end NLAlib
 

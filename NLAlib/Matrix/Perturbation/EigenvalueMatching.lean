@@ -50,7 +50,17 @@ theorem exists_tendsto_isEigenvalueListing {n : ℕ} {A : ℕ → Matrix (Fin n)
     (hev : ∀ j, IsEigenvalueListing (A j) (ev j)) :
     ∃ (φ : ℕ → ℕ) (σ : ℕ → Equiv.Perm (Fin n)) (e : Fin n → ℂ), StrictMono φ ∧
       IsEigenvalueListing A₀ e ∧ Tendsto (fun j => ev (φ j) ∘ σ j) atTop (𝓝 e) := by
-  sorry
+  -- the listings lie in a compact box, since `‖ev j i‖ ≤ ‖A j‖₂` and `‖A j‖₂` is bounded
+  obtain ⟨M, hM⟩ := ((continuous_specNorm.tendsto A₀).comp hA).bddAbove_range
+  have hmem : ∀ j, ev j ∈ Set.univ.pi fun _ : Fin n => Metric.closedBall (0 : ℂ) M :=
+    fun j i _ => mem_closedBall_zero_iff.mpr <| (norm_le_specNorm_of_mem_spectrum
+      ((hev j).spectrum_eq_range ▸ Set.mem_range_self i)).trans (hM ⟨j, rfl⟩)
+  obtain ⟨e, -, φ, hφ, hlim⟩ :=
+    (isCompact_univ_pi fun _ => isCompact_closedBall (0 : ℂ) M).tendsto_subseq hmem
+  -- no relabelling is needed; the limit is a listing because listings form a closed relation
+  refine ⟨φ, fun _ => Equiv.refl _, e, hφ, ?_, hlim⟩
+  exact isClosed_setOf_isEigenvalueListing.mem_of_tendsto
+    ((hA.comp hφ.tendsto_atTop).prodMk_nhds hlim) (Eventually.of_forall fun j => hev (φ j))
 
 /-- The determinant step of Elsner's bound: if $\mu$ is an eigenvalue of the complex matrix
 $\mathbf{A}'$ of order $n + 1$, then for every $\mathbf{A}$ of the same order

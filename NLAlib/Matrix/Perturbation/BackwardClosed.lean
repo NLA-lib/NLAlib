@@ -112,4 +112,15 @@ theorem isClosed_setOf_exists_specNorm_le_isEigenvalueListing (β : ℝ) :
     rw [Matrix.eval_charpoly, Polynomial.eval_prod, h t]
     simp
 
+/-- Eigenvalue listings form a closed relation: the pairs $(\mathbf{A}, \mu)$ of a complex square
+matrix and a family listing its eigenvalues, with multiplicity, form a closed set. -/
+theorem isClosed_setOf_isEigenvalueListing :
+    IsClosed {p : Matrix n n ℂ × (ι → ℂ) | IsEigenvalueListing p.1 p.2} := by
+  convert isClosed_setOf_exists_specNorm_le_isEigenvalueListing (n := n) (ι := ι) 0 using 1
+  ext p
+  simp only [Set.mem_ofPred_eq]
+  refine ⟨fun h => ⟨0, by rw [specNorm_zero], by rwa [add_zero]⟩, ?_⟩
+  rintro ⟨F, hF, h⟩
+  rwa [specNorm_eq_zero_iff.mp (le_antisymm hF (specNorm_nonneg F)), add_zero] at h
+
 end NLAlib

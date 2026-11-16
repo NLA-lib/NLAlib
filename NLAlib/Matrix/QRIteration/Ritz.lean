@@ -9,6 +9,7 @@ public import Mathlib.LinearAlgebra.Matrix.NonsingularInverse
 public import NLAlib.ForMathlib.Analysis.MeanInequalities
 public import NLAlib.Matrix.QRIteration.EigenvectorWeights
 public import NLAlib.Matrix.QRIteration.ShiftedQR
+public import NLAlib.Matrix.Spectral.EigenvalueListing
 public import NLAlib.Matrix.Spectral.Diagonalizable
 
 /-!
@@ -48,6 +49,8 @@ $\kappa_V^{4\log_2 k/k}$-promising Ritz value (Lemma 4.5 there).
   almost-monotonicity.
 * `NLAlib.sum_lastRowWeights_div_norm_eval_shiftPoly_le`, `NLAlib.findRitz_mem`,
   `NLAlib.isPromisingRitzValue_findRitz`: the binary search.
+* `NLAlib.exists_perm_forall₂_ritzValues`: a forward-accurate listing of the eigenvalues of the
+  trailing block, reordered, is entrywise within $\beta$ of the Ritz values.
 -/
 
 @[expose] public section
@@ -536,5 +539,32 @@ theorem isPromisingRitzValue_findRitz {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) 
   calc _ ≤ _ := hcard
     _ ≤ α ^ 2 ^ m * ∑ i, lastRowWeights V i / ‖d i - findRitz H m 1 ss‖ ^ 2 ^ m :=
         mul_le_mul_of_nonneg_right hα hS0
+
+/-! ### Approximate Ritz values in the order of `NLAlib.ritzValues`
+
+An eigenvalue routine with forward error $\beta$ returns the Ritz values in its own order; the
+strategy lemmas take them matched entry by entry with `NLAlib.ritzValues`. -/
+
+/-- **Forward-approximate Ritz values in the order of `NLAlib.ritzValues`**: if `ev` is within
+$\beta$ of a listing `lam` of the eigenvalues (with multiplicity) of the trailing $k \times k$ block
+of $\mathbf{H}$, some reordering of `ev` is entrywise within $\beta$ of the Ritz values of order
+$k$. -/
+theorem exists_perm_forall₂_ritzValues {k : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {ev lam : Fin k → ℂ} {β : ℝ} (hlam : IsEigenvalueListing (trailingBlock k H) lam)
+    (hev : ∀ i, ‖ev i - lam i‖ ≤ β) :
+    ∃ ss : List ℂ, ss.Perm (List.ofFn ev) ∧
+      List.Forall₂ (fun r ρ => ‖r - ρ‖ ≤ β) ss (ritzValues k H) := by
+  have hroots : (trailingBlock k H).charpoly.roots = (List.ofFn lam : Multiset ℂ) := by
+    rw [isEigenvalueListing_iff.mp hlam]
+    simpa only [Multiset.map_coe, Multiset.prod_coe, List.map_ofFn,
+      List.prod_ofFn, Function.comp_def] using
+      Polynomial.roots_multiset_prod_X_sub_C (List.ofFn lam : Multiset ℂ)
+  have hperm : (ritzValues k H).Perm (List.ofFn lam) := by
+    rw [← Multiset.coe_eq_coe, ritzValues, Multiset.coe_toList, hroots]
+  have hpair : List.Forall₂ (flip fun r ρ : ℂ => ‖r - ρ‖ ≤ β) (List.ofFn lam) (List.ofFn ev) :=
+    List.forall₂_iff_get.mpr
+      ⟨by simp, fun i h1 _ => by simpa [flip] using hev ⟨i, by simpa using h1⟩⟩
+  obtain ⟨ss, hss, hssp⟩ := List.perm_comp_forall₂ hperm hpair
+  exact ⟨ss, hssp, hss.flip⟩
 
 end NLAlib

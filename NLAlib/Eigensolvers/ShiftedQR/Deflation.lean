@@ -18,7 +18,8 @@ all roots of the small block directly to its persistent output range.
 
 ## Main results
 
-* `NLAlib.ShiftedQR.splitPush_writes`: two actual bounded-query pushes.
+* `NLAlib.ShiftedQR.splitPush_writes_of_isExactNatLit`: two actual bounded-query pushes, on any
+  machine with exact natural literals (`NLAlib.ShiftedQR.splitPush_writes`: exact arithmetic).
 * `NLAlib.ShiftedQR.finishRange_writes`: exact eigenvalues at their persistent output offset.
 -/
 
@@ -41,6 +42,33 @@ def splitPush : Impl O Q := opsImpl% [capacity, lo, d, i] (St) → () {
 }
 
 /-- Splitting is two total stack operations on the actual stored count. The two persistent
+slots have capacity before execution; the existing stack words are retained by the frame. Only
+the literals written need to be exact. -/
+theorem splitPush_writes_of_isExactNatLit {M : Machine ℝ} {I : Interp O Q ℝ}
+    (hL : IsIndexLit M I) (hQ : IsToNat id I) {B : ℕ} (hN : IsExactNatLit id M B)
+    {τ : Tape ℝ} {m : Mem ℝ} {capacity lo d i : ℕ} {b : ℕ × ℕ}
+    (hli : lo + i + 1 ≤ B) (hd : d ≤ B) (hcB : capacity ≤ B)
+    {rs : List (ℕ × ℕ)} (hl : m.Live [b]) (hSt : StackHolds b rs m.store)
+    (hcap : rs.length + 2 ≤ capacity) (hroom : b.2 + 1 + 2 * capacity ≤ m.store.len b.1) :
+    Writes .total I τ (splitPush (O := O) (Q := Q)).body
+      (Env.frame [capacity, lo, d, i] [b]) (Store.inBlock b.1 b.2 (1 + 2 * capacity))
+      (fun m' => m'.pos = m.pos ∧
+        StackHolds b (rs ++ [(lo + i + 1, d - i - 1), (lo, i + 1)]) m'.store) m := by
+  unfold splitPush
+  refine (rangePush_writes_of_isExactNatLit (τ := τ) hL hQ hN hli (by omega) hcB hSt
+    (capacity := capacity) (lo := lo + i + 1) (size := d - i - 1) (by omega)
+    hroom).frame_seq_le rfl rfl hl (by fp_sub [pushFp]) ?_
+  intro m₁ hfr₁ ⟨hp₁, hSt₁⟩
+  have hw := rangePush_writes_of_isExactNatLit (τ := τ) hL hQ hN (by omega) (by omega) hcB hSt₁
+    (capacity := capacity) (lo := lo) (size := i + 1)
+    (by simp; omega) (by rw [hfr₁.len_eq]; exact hroom)
+  refine (hw.in_frame rfl rfl (hl.congr hfr₁.length_eq)).mono
+    (by simp only [List.length_append, List.length_singleton]; fp_sub [pushFp]) ?_
+  intro _ _ ⟨hp₂, hSt₂⟩
+  exact ⟨hp₂.trans hp₁, by simpa only [List.append_assoc, List.cons_append,
+    List.nil_append] using hSt₂⟩
+
+/-- Splitting is two total stack operations on the actual stored count. The two persistent
 slots have capacity before execution; the existing stack words are retained by the frame. -/
 theorem splitPush_writes {M : Machine ℝ} {I : Interp O Q ℝ}
     (hL : IsIndexLit M I) (hQ : IsToNat id I) (hE : ExactModel id M)
@@ -50,20 +78,9 @@ theorem splitPush_writes {M : Machine ℝ} {I : Interp O Q ℝ}
     Writes .total I τ (splitPush (O := O) (Q := Q)).body
       (Env.frame [capacity, lo, d, i] [b]) (Store.inBlock b.1 b.2 (1 + 2 * capacity))
       (fun m' => m'.pos = m.pos ∧
-        StackHolds b (rs ++ [(lo + i + 1, d - i - 1), (lo, i + 1)]) m'.store) m := by
-  unfold splitPush
-  refine (rangePush_writes (τ := τ) hL hQ hE hSt (capacity := capacity)
-    (lo := lo + i + 1) (size := d - i - 1) (by omega) hroom).frame_seq_le rfl rfl hl
-    (by fp_sub [pushFp]) ?_
-  intro m₁ hfr₁ ⟨hp₁, hSt₁⟩
-  have hw := rangePush_writes (τ := τ) hL hQ hE hSt₁
-    (capacity := capacity) (lo := lo) (size := i + 1)
-    (by simp; omega) (by rw [hfr₁.len_eq]; exact hroom)
-  refine (hw.in_frame rfl rfl (hl.congr hfr₁.length_eq)).mono
-    (by simp only [List.length_append, List.length_singleton]; fp_sub [pushFp]) ?_
-  intro _ _ ⟨hp₂, hSt₂⟩
-  exact ⟨hp₂.trans hp₁, by simpa only [List.append_assoc, List.cons_append,
-    List.nil_append] using hSt₂⟩
+        StackHolds b (rs ++ [(lo + i + 1, d - i - 1), (lo, i + 1)]) m'.store) m :=
+  splitPush_writes_of_isExactNatLit hL hQ (hE.isExactNatLit (lo + i + 1 + d + capacity))
+    (by omega) (by omega) (by omega) hl hSt hcap hroom
 
 end Stack
 

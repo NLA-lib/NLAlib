@@ -319,7 +319,10 @@ def check(decls, registered=()):
         # N9 laws
         if stat_prefix(e) in ('integral', 'variance', 'measureReal', 'measure', 'integrable'):
             bt = binder_text(e, True)
-            laws = set(re.findall(r'HasLaw (?:\([^()]*(?:\([^()]*\)[^()]*)*\)|\S+) \(?([a-z]\w*)', bt))
+            # The law is the whole token after the variable; only a named (ASCII) law counts, so a
+            # generic measure variable such as `ν` is not misread as part of the variable.
+            tokens = re.findall(r'HasLaw (?:\([^()]*(?:\([^()]*\)[^()]*)*\)|\S+) \(?([^\s()]+)', bt)
+            laws = {m.group(0) for t in tokens if (m := re.match(r'[a-z]\w*', t))}
             if laws and not any(re.search(r'(^|_)' + law + r'(_|$)', e['short']) for law in laws):
                 bad('N9', e, 'a `HasLaw` hypothesis is named `_of_hasLaw_<law>` ('
                     + ', '.join(sorted(laws)) + ')')

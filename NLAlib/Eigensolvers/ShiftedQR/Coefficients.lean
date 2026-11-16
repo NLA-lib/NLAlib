@@ -10,6 +10,7 @@ public import NLAlib.Ops.Logic.SpatialScalar
 public import NLAlib.Ops.Logic.Allocation
 public import NLAlib.Ops.Catalog.Compare
 public import NLAlib.Matrix.Factorizations.Givens
+public import NLAlib.Matrix.FinitePrecision.GivensRounded
 
 /-!
 # Givens coefficients computed from real scalar words
@@ -23,8 +24,9 @@ divides conjugated components by the positive radius. No rotation operation is a
 
 * `NLAlib.ShiftedQR.coefficientsWithScratch` is the scalar coefficient program.
 * `NLAlib.ShiftedQR.coefficients` scopes its seven scratch cells.
-* `NLAlib.ShiftedQR.coefficientWords`: the coefficients the program computes on any machine;
-  in exact arithmetic `givensCoeffs` (`NLAlib.ShiftedQR.coefficientWords_eq`).
+* `NLAlib.ShiftedQR.roundedGivensCoeffs_eq_ite`: the program computes `NLAlib.roundedGivensCoeffs`
+  on any machine; in exact arithmetic `givensCoeffs`
+  (`NLAlib.ShiftedQR.roundedGivensCoeffs_eq_givensCoeffs`).
 * `NLAlib.ShiftedQR.coefficientsWithScratch_writes_word`,
   `NLAlib.ShiftedQR.coefficients_writes_word`: the routines on any machine; the exact theorems
   are their corollaries.
@@ -97,15 +99,15 @@ def coefficientRadius (M : Machine ℝ) (u v : ℂ) : ℝ :=
   M.sqrt (M.add (M.add (M.mul u.re u.re) (M.mul u.im u.im))
     (M.add (M.mul v.re v.re) (M.mul v.im v.im)))
 
-/-- The Givens coefficients the coefficient program stores on the machine `M` from the pair
-$(u, v)$: unless the computed radius (`NLAlib.ShiftedQR.coefficientRadius`) is zero, the computed
-quotients of the conjugated components by it (conjugation by negation of a word); at a zero
-radius the literals $(1, 0)$. In exact arithmetic these are `NLAlib.givensCoeffs`
-(`NLAlib.ShiftedQR.coefficientWords_eq`). -/
-noncomputable def coefficientWords (M : Machine ℝ) (u v : ℂ) : ℂ × ℂ :=
-  if coefficientRadius M u v = 0 then (⟨M.lit 1, M.lit 0⟩, ⟨M.lit 0, M.lit 0⟩)
-  else (⟨M.div u.re (coefficientRadius M u v), M.div (M.neg u.im) (coefficientRadius M u v)⟩,
-    ⟨M.div v.re (coefficientRadius M u v), M.div (M.neg v.im) (coefficientRadius M u v)⟩)
+/-- The Givens coefficients the coefficient program stores are `NLAlib.roundedGivensCoeffs`:
+unless the computed radius (`NLAlib.ShiftedQR.coefficientRadius`) is zero, the computed quotients
+of the conjugated components by it; at a zero radius the literals $(1, 0)$. -/
+theorem roundedGivensCoeffs_eq_ite (M : Machine ℝ) (u v : ℂ) :
+    roundedGivensCoeffs M u v =
+      if coefficientRadius M u v = 0 then (⟨M.lit 1, M.lit 0⟩, ⟨M.lit 0, M.lit 0⟩)
+      else (⟨M.div u.re (coefficientRadius M u v), M.div (M.neg u.im) (coefficientRadius M u v)⟩,
+        ⟨M.div v.re (coefficientRadius M u v), M.div (M.neg v.im) (coefficientRadius M u v)⟩) :=
+  rfl
 
 /-- In exact arithmetic the computed radius is $\sqrt{\lvert u\rvert^2 + \lvert v\rvert^2}$. -/
 theorem coefficientRadius_eq {M : Machine ℝ} (hE : ExactModel id M) (u v : ℂ) :
@@ -119,12 +121,12 @@ theorem coefficientRadius_eq {M : Machine ℝ} (hE : ExactModel id M) (u v : ℂ
   exact (show M.sqrt _ = Real.sqrt _ from hE.sqrt _ hn).trans (coefficient_radius_eq u v)
 
 /-- In exact arithmetic the computed coefficients are the Givens coefficients. -/
-theorem coefficientWords_eq {M : Machine ℝ} (hE : ExactModel id M) (u v : ℂ) :
-    coefficientWords M u v = givensCoeffs u v := by
+theorem roundedGivensCoeffs_eq_givensCoeffs {M : Machine ℝ} (hE : ExactModel id M) (u v : ℂ) :
+    roundedGivensCoeffs M u v = givensCoeffs u v := by
   have h1 : M.lit 1 = 1 := by simpa using hE.lit 1
   have h0 : M.lit 0 = 0 := by simpa using hE.lit 0
   have hneg : ∀ x, M.neg x = -x := hE.neg
-  rw [coefficientWords, coefficientRadius_eq hE]
+  rw [roundedGivensCoeffs_eq_ite, coefficientRadius_eq hE]
   by_cases hz : Real.sqrt (‖u‖ ^ 2 + ‖v‖ ^ 2) = 0
   · simp only [givensCoeffs, hz, if_true, h1, h0]
     exact Prod.ext (Complex.ext rfl rfl) (Complex.ext rfl rfl)
@@ -372,7 +374,7 @@ private theorem coefficientDivide_writes {M : Machine ℝ} {I : Interp Op Tst �
       simpa only [Mem.store_upd, Store.len_upd] using And.intro hc (And.intro hs trivial)
 
 /-- The coefficient program on any machine, with the actual zero test of the computed radius,
-stores `NLAlib.ShiftedQR.coefficientWords` for every pair, including the zero pair. The scratch
+stores `NLAlib.roundedGivensCoeffs` for every pair, including the zero pair. The scratch
 buffer is separate from all inputs and outputs; the two output views are spatially disjoint and
 may share a buffer. Outputs may coincide with the original inputs because their components are
 captured first. [GolubVanLoan2013, Algorithm 5.1.3]. -/
@@ -390,8 +392,8 @@ theorem coefficientsWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst
     Writes .total I τ coefficientsWithScratch.body (Env.frame [] [a, b, t, c, s])
       (Fp.blocks [t, c, s] [7, 2, 2])
       (fun m' => m'.pos = m.pos ∧ m'.readBlocks [c, s] [2, 2] =
-        some [[(coefficientWords M u v).1.re, (coefficientWords M u v).1.im],
-          [(coefficientWords M u v).2.re, (coefficientWords M u v).2.im]]) m := by
+        some [[(roundedGivensCoeffs M u v).1.re, (roundedGivensCoeffs M u v).1.im],
+          [(roundedGivensCoeffs M u v).2.re, (roundedGivensCoeffs M u v).2.im]]) m := by
   classical
   change Writes .total I τ (.seq _ _) _ _ _ m
   refine Writes.seq_le (coefficientPrefix_writes hS hta htb hu0 hu1 hv0 hv1 ht)
@@ -405,13 +407,13 @@ theorem coefficientsWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst
     refine writes_ite rfl rfl htest ?_
     refine (coefficientZero_writes hS hcs hc' hs').mono le_sup_right ?_
     rintro m'' _ ⟨hpos', hread⟩
-    exact ⟨hpos'.trans hpos, by simpa only [coefficientWords, hz, if_pos] using hread⟩
+    exact ⟨hpos'.trans hpos, by simpa only [roundedGivensCoeffs_eq_ite, hz, if_pos] using hread⟩
   · simp only [id_eq, hz, decide_false] at htest
     refine writes_ite rfl rfl htest ?_
     refine (coefficientDivide_writes hS htc hts hcs h0 h1 h2 h3 h4 ht' hc' hs').mono
       le_rfl ?_
     rintro m'' _ ⟨hpos', hread⟩
-    exact ⟨hpos'.trans hpos, by simpa only [coefficientWords, hz, if_false] using hread⟩
+    exact ⟨hpos'.trans hpos, by simpa only [roundedGivensCoeffs_eq_ite, hz, if_false] using hread⟩
 
 /-- Exact scalar arithmetic and the actual zero test compute the mathematical Givens
 coefficients for every pair, including the zero pair. The scratch buffer is separate from
@@ -434,10 +436,11 @@ theorem coefficientsWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
       (fun m' => m'.pos = m.pos ∧ m'.readBlocks [c, s] [2, 2] =
         some [[(givensCoeffs u v).1.re, (givensCoeffs u v).1.im],
           [(givensCoeffs u v).2.re, (givensCoeffs u v).2.im]]) m := by
-  simpa only [coefficientWords_eq hE] using coefficientsWithScratch_writes_word (τ := τ) hS hCmp
-    hta htb htc hts hcs hu0 hu1 hv0 hv1 ht hc hs
+  simpa only [roundedGivensCoeffs_eq_givensCoeffs hE] using
+    coefficientsWithScratch_writes_word (τ := τ) hS hCmp hta htb htc hts hcs hu0 hu1 hv0 hv1 ht hc
+      hs
 
-/-- Scoped coefficient computation on any machine stores `NLAlib.ShiftedQR.coefficientWords`
+/-- Scoped coefficient computation on any machine stores `NLAlib.roundedGivensCoeffs`
 and releases all scratch. Input and output views may overlap; the two output views are apart.
 The actual radius test covers the zero pair without a division by zero.
 [GolubVanLoan2013, Algorithm 5.1.3]. -/
@@ -453,8 +456,8 @@ theorem coefficients_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     Writes .total I τ coefficients.body (Env.frame [] [a, b, c, s])
       (Fp.blocks [c, s] [2, 2])
       (fun m' => m'.pos = m.pos ∧ m'.readBlocks [c, s] [2, 2] =
-        some [[(coefficientWords M u v).1.re, (coefficientWords M u v).1.im],
-          [(coefficientWords M u v).2.re, (coefficientWords M u v).2.im]]) m := by
+        some [[(roundedGivensCoeffs M u v).1.re, (roundedGivensCoeffs M u v).1.im],
+          [(roundedGivensCoeffs M u v).2.re, (roundedGivensCoeffs M u v).2.im]]) m := by
   have hal : a.1 < m.store.length := Store.lt_length_of_get hu0
   have hbl : b.1 < m.store.length := Store.lt_length_of_get hv0
   have hcl : c.1 < m.store.length := Store.lt_length_of_lt_len (by omega : c.2 < _)
@@ -516,7 +519,7 @@ theorem coefficients_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
       (fun m' => m'.pos = m.pos ∧ m'.readBlocks [c, s] [2, 2] =
         some [[(givensCoeffs u v).1.re, (givensCoeffs u v).1.im],
           [(givensCoeffs u v).2.re, (givensCoeffs u v).2.im]]) m := by
-  simpa only [coefficientWords_eq hE] using coefficients_writes_word (τ := τ) hS hCmp
-    hcs hu0 hu1 hv0 hv1 hc hs
+  simpa only [roundedGivensCoeffs_eq_givensCoeffs hE] using
+    coefficients_writes_word (τ := τ) hS hCmp hcs hu0 hu1 hv0 hv1 hc hs
 
 end NLAlib.ShiftedQR

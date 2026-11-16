@@ -32,7 +32,9 @@ public import NLAlib.Ops.Catalog.Matrix
 public import NLAlib.Ops.Catalog.MatrixWorkspace
 public import NLAlib.Ops.Catalog.RCLikeBlas
 public import NLAlib.Ops.Catalog.Sampling
+public import NLAlib.Ops.Catalog.ScalarMeasurable
 public import NLAlib.Ops.Catalog.StoredOperator
+public import NLAlib.Ops.Examples.Backward
 public import NLAlib.Ops.Examples.Consequences
 public import NLAlib.Ops.Examples.FixedPoint
 public import NLAlib.Ops.IndexDegrees

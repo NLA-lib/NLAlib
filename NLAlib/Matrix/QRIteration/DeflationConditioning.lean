@@ -51,26 +51,13 @@ namespace NLAlib
 
 variable {n : ℕ}
 
-/-- The label of an index in a range of a partition is the start of that range. -/
-private theorem rangeLabel_eq_of_mem {N : ℕ} {rs : List (ℕ × ℕ)}
-    (hrs : IsRangePartition N rs) {r : ℕ × ℕ} (hr : r ∈ rs) {k : Fin N} (hk₁ : r.1 ≤ (k : ℕ))
-    (hk₂ : (k : ℕ) < r.1 + r.2) : rangeLabel rs k = r.1 := by
-  unfold rangeLabel
-  cases hf : rs.find? (fun r => (r.1 ≤ (k : ℕ) ∧ (k : ℕ) < r.1 + r.2 : Bool)) with
-  | none => exact absurd (List.find?_eq_none.mp hf r hr) (by simp [hk₁, hk₂])
-  | some r₀ =>
-    have h₀ := List.find?_some hf
-    simp only [decide_eq_true_eq] at h₀
-    have := (hrs.2.2 k k.2).unique ⟨List.mem_of_find?_eq_some hf, h₀⟩ ⟨hr, hk₁, hk₂⟩
-    simp [this]
-
 /-- On a partition into ranges the label is monotone in the index. -/
 private theorem rangeLabel_le_of_le {N : ℕ} {rs : List (ℕ × ℕ)} (hrs : IsRangePartition N rs)
     {i j : Fin N} (h : i ≤ j) : rangeLabel rs i ≤ rangeLabel rs j := by
   obtain ⟨ri, ⟨hri, hi₁, hi₂⟩, -⟩ := hrs.2.2 i i.2
   obtain ⟨rj, ⟨hrj, hj₁, hj₂⟩, -⟩ := hrs.2.2 j j.2
   have hij : (i : ℕ) ≤ j := h
-  rw [rangeLabel_eq_of_mem hrs hri hi₁ hi₂, rangeLabel_eq_of_mem hrs hrj hj₁ hj₂]
+  rw [hrs.rangeLabel_eq hri hi₁ hi₂, hrs.rangeLabel_eq hrj hj₁ hj₂]
   by_contra hlt
   have := (hrs.2.2 ri.1 (by omega)).unique ⟨hri, le_rfl, by omega⟩ ⟨hrj, by omega, by omega⟩
   rw [this] at hlt
@@ -86,22 +73,13 @@ private theorem rangeLabel_eq_iff_mem_range {rs : List (ℕ × ℕ)}
   refine ⟨fun hk => ?_, ?_⟩
   · obtain ⟨r', ⟨hr', h₁, h₂⟩, -⟩ := hrs.2.2 k k.2
     have hr'v := hrs.2.1 r' hr'
-    rw [rangeLabel_eq_of_mem hrs hr' h₁ h₂] at hk
+    rw [hrs.rangeLabel_eq hr' h₁ h₂] at hk
     have : r' = r := (hrs.2.2 r.1 (by omega)).unique ⟨hr', by omega, by omega⟩
       ⟨hr, le_rfl, by omega⟩
     subst this
     exact ⟨⟨k - r'.1, by omega⟩, Fin.ext (by rw [hidx]; simp; omega)⟩
   · rintro ⟨a, rfl⟩
-    exact rangeLabel_eq_of_mem hrs hr (by rw [hidx]; omega) (by rw [hidx]; omega)
-
-/-- The block of a range of a partition is read at injective indices. -/
-private theorem blockIndex_injective {rs : List (ℕ × ℕ)} (hrs : IsRangePartition (n + 1) rs)
-    {r : ℕ × ℕ} (hr : r ∈ rs) : Function.Injective (blockIndex n r) := by
-  have hrv := hrs.2.1 r hr
-  intro a b hab
-  have := congrArg Fin.val hab
-  simp only [blockIndex] at this
-  exact Fin.ext (by omega)
+    exact hrs.rangeLabel_eq hr (by rw [hidx]; omega) (by rw [hidx]; omega)
 
 /-- The diagonal block of a product of block triangular matrices, read on the indices of one
 label, is the product of the diagonal blocks. -/
@@ -277,7 +255,7 @@ theorem _root_.Matrix.BlockTriangular.exists_pseudoConditionNumber_subBlock_le
     hRu i j (lt_of_not_ge fun h => hij.not_ge (rangeLabel_le_of_le hrs h))
   have hRib := Matrix.blockTriangular_inv_of_blockTriangular hRb
   have hNb := (hRb.mul hM).mul hRib
-  have he := blockIndex_injective hrs hr
+  have he := hrs.blockIndex_injective hr
   have hea := rangeLabel_eq_iff_mem_range hrs hr
   set e := blockIndex n r
   -- a Hermitian polynomial `p(N)` of which `N` is a polynomial `q`

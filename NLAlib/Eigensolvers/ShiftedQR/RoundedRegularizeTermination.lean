@@ -1,0 +1,568 @@
+/-
+Copyright (c) 2026 NLAlib contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: NLAlib contributors
+-/
+module
+
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedDecouple
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveTermination
+public import NLAlib.Eigensolvers.ShiftedQR.StableStepTermination
+
+/-!
+# Termination of the rounded `Regularize`
+
+`Regularize` of [BanksGarzaVargasSrivastava2022, §4] (`NLAlib.ShiftedQR.regularize`: `SmallEig`
+of the trailing block, the disk draws, `Optimal` and the trials) runs to completion on every tape
+and from every stored matrix. Nothing numerical is assumed: the matrix need not be upper
+Hessenberg, the machine need not round well, the shifts may be arbitrary words. Each block is
+shown to succeed from stored inputs, leaving its outputs stored: the scalar operations, the
+comparisons and the kernels always succeed on stored operands with room, every loop is capped,
+and every bounded index read is within its bound because the index words are exact natural
+literals.
+
+## Main results
+
+* `NLAlib.ShiftedQR.Store.exists_holdsMatrix_of_readBlock`: a stored block holds a matrix.
+* `NLAlib.ShiftedQR.trialStep_terminates`: one trial step (rounded step and scan).
+* `NLAlib.ShiftedQR.regularize_terminates`: `Regularize`.
+-/
+
+@[expose] public section
+
+namespace NLAlib.ShiftedQR
+
+open Ops
+open scoped Matrix
+
+/-! ### Stored matrices -/
+
+/-- A stored block of $2 \cdot rc$ words holds an $r \times c$ matrix. -/
+theorem Store.exists_holdsMatrix_of_readBlock {s : Store ℝ} {b : ℕ × ℕ} {rows cols : ℕ}
+    {xs : List ℝ} (h : s.readBlock b.1 b.2 (2 * (cols * rows)) = some xs) :
+    ∃ A : Matrix (Fin rows) (Fin cols) ℂ, HoldsMatrix b A s :=
+  ⟨_, holdsMatrix_storedMatrix fun j hj => by rw [Store.get_of_readBlock h hj 0]; rfl⟩
+
+/-! ### The trials of `Regularize` on any matrix -/
+
+section Trials
+
+variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
+
+/-- The computation of one trial terminates on any matrix: on a scalar machine with exact
+comparisons, index literals and exact natural literals up to $n + 1$, from any matrix of order
+$n + 1$ at `A`, any shift pair at `S` and any threshold word at `Thr`, $k \le n$,
+`NLAlib.ShiftedQR.trialStep` writes only its four outputs and leaves the step stored at `T` and
+the scan flag stored in `Rg`. The views are live and have room; the four outputs are apart from
+the three inputs, the step `T` from `SR`, `Ds` and `Rg`, and `SR` from `Ds`. -/
+theorem trialStep_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    (hL : IsIndexLit M I) {n : ℕ} (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I)
+    {τ : Tape ℝ} {m : Mem ℝ} {k : ℕ} (hk : k ≤ n) {a sp thr t sr ds rg : ℕ × ℕ}
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {r : ℂ} {tv : ℝ}
+    (hl : m.Live [a, sp, thr, t, sr, ds, rg])
+    (hA : HoldsMatrix a H m.store) (hs : m.store.readBlock sp.1 sp.2 2 = some [r.re, r.im])
+    (hthr : m.store.get thr.1 thr.2 = some tv)
+    (hrt : t.2 + 2 * ((n + 1) * (n + 1)) ≤ m.store.len t.1)
+    (hrsr : sr.2 + 2 * k ≤ m.store.len sr.1) (hrds : ds.2 + 2 * k ≤ m.store.len ds.1)
+    (hrrg : rg.2 + 5 ≤ m.store.len rg.1)
+    (hW : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔
+      Store.inBlock sr.1 sr.2 (2 * k) ⊔ Store.inBlock ds.1 ds.2 (2 * k) ⊔
+      Store.inBlock rg.1 rg.2 5) (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock sp.1 sp.2 2 ⊔ Store.inBlock thr.1 thr.2 1))
+    (hts : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock sr.1 sr.2 (2 * k)))
+    (htd : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock ds.1 ds.2 (2 * k)))
+    (hsd : Fp.Disj (Store.inBlock sr.1 sr.2 (2 * k)) (Store.inBlock ds.1 ds.2 (2 * k)))
+    (hrg : Fp.Disj (Store.inBlock rg.1 rg.2 5)
+      (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))) :
+    Writes .total I τ (trialStep (O := O) (Q := Q)).body
+      (Env.frame [n + 1, k] [a, sp, thr, t, sr, ds, rg])
+      (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock sr.1 sr.2 (2 * k) ⊔
+        Store.inBlock ds.1 ds.2 (2 * k) ⊔ Store.inBlock rg.1 rg.2 5)
+      (fun m' => (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix t H' m'.store) ∧
+        ∃ x, m'.store.get rg.1 (rg.2 + 3) = some x) m := by
+  have hzero : M.lit 0 = 0 := by simpa using hNat 0 (Nat.zero_le _)
+  unfold trialStep
+  refine (copyMatrix_writes (τ := τ) hS hA hrt (hW.symm.mono (by fp_sub) (by fp_sub))).frame_seq_le
+    rfl rfl (hl.mono (by simp)) (by fp_sub) ?_
+  rintro m₁ hfr₁ ⟨-, hT₁⟩
+  have hs₁ := hfr₁.keep (Store.readsOnly_readBlock _ _ _ _) (hW.mono (by fp_sub) (by fp_sub)) hs
+  have hthr₁ := hfr₁.keep (Store.readsOnly_get _ _ _) (hW.mono (by fp_sub) (by fp_sub)) hthr
+  have hrep := replicatePair_writes (τ := τ) (sr := sr) hS hs₁ (by rw [hfr₁.len_eq]; exact hrsr)
+    (hW.symm.mono (by fp_sub) (by fp_sub))
+  refine hrep.frame_seq_le rfl rfl ((hl.congr hfr₁.length_eq).mono (by simp)) (by fp_sub) ?_
+  rintro m₂ hfr₂ ⟨-, hSR₂⟩
+  rw [List.length_replicate] at hSR₂
+  have hT₂ := hT₁.of_eqOff hfr₂ hts.symm
+  have hthr₂ := hfr₂.keep (Store.readsOnly_get _ _ _) (hW.mono (by fp_sub) (by fp_sub)) hthr₁
+  have hl₂ : ∀ b, m₂.store.len b = m.store.len b := fun b => by rw [hfr₂.len_eq, hfr₁.len_eq]
+  have hL₂ : m₂.store.length = m.store.length := by rw [hfr₂.length_eq, hfr₁.length_eq]
+  have hms := multiStepStable_terminates (τ := τ) (m := m₂) (a := t) (s := sr) (ds := ds)
+    hS hzero hC ((hl.congr hL₂).mono (by simp)) hT₂ hSR₂
+    (by rw [hl₂]; exact hrds) hts htd hsd
+  refine hms.frame_seq_le rfl rfl ((hl.congr hL₂).mono (by simp)) (by fp_sub) ?_
+  rintro m₃ hfr₃ ⟨-, ⟨H', hT₃⟩, -⟩
+  have hthr₃ := hfr₃.keep (Store.readsOnly_get _ _ _)
+    (Fp.disj_sup_left.mpr ⟨hW.mono (by fp_sub) (by fp_sub), hW.mono (by fp_sub) (by fp_sub)⟩)
+    hthr₂
+  have hL₃ : m₃.store.length = m.store.length := by rw [hfr₃.length_eq, hL₂]
+  have hb := bottomScan_terminates (τ := τ) (m := m₃) (a := t) (t := thr) (r := rg) hS hL hNat hC
+    hk hT₃ hthr₃ ((hl.congr hL₃).mono (by simp))
+    (by rw [hfr₃.len_eq, hl₂]; exact hrrg) hrg (hW.mono (by fp_sub) (by fp_sub))
+  refine (hb.in_frame rfl rfl ((hl.congr hL₃).mono (by simp))).mono (by fp_sub) ?_
+  rintro m₄ hfr₄ ⟨-, hscan⟩
+  refine ⟨⟨H', hT₃.of_eqOff hfr₄ hrg⟩, ?_⟩
+  rcases hscan with ⟨h1, -⟩ | ⟨h0, -⟩
+  exacts [⟨_, h1⟩, ⟨_, h0⟩]
+
+omit [Has IndexOp O] [Has CmpTst Q] in
+/-- The acceptance of a trial terminates on any matrix: on a scalar machine,
+`NLAlib.ShiftedQR.trialAccept` copies any matrix at `T` to `A` and stores words in `G` and `Fl`,
+writing only these. -/
+theorem trialAccept_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {t a g f : ℕ × ℕ} {H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    (hl : m.Live [t, a, g, f])
+    (hT : HoldsMatrix t H' m.store) (hra : a.2 + 2 * ((n + 1) * (n + 1)) ≤ m.store.len a.1)
+    (hrg : g.2 < m.store.len g.1) (hrf : f.2 < m.store.len f.1)
+    (hta : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))))
+    (hga : Fp.Disj (Store.inBlock g.1 g.2 1 ⊔ Store.inBlock f.1 f.2 1)
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))))
+    (hgf : Fp.Disj (Store.inBlock g.1 g.2 1) (Store.inBlock f.1 f.2 1)) :
+    Writes .total I τ (trialAccept (O := O) (Q := Q)).body (Env.frame [n + 1] [t, a, g, f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock g.1 g.2 1 ⊔
+        Store.inBlock f.1 f.2 1)
+      (fun m' => HoldsMatrix a H' m'.store ∧ (∃ x, m'.store.get g.1 g.2 = some x) ∧
+        ∃ x, m'.store.get f.1 f.2 = some x) m := by
+  unfold trialAccept
+  refine (copyMatrix_writes (τ := τ) hS hT hra hta).frame_seq_le rfl rfl
+    (hl.mono (by simp)) (by fp_sub) ?_
+  rintro m₁ hfr₁ ⟨-, hA₁⟩
+  refine (writes_call_const (hS (.lit 0)) (z := g) rfl trivial
+    (by rw [hfr₁.len_eq]; exact hrg)).seq_le (by fp_sub) ?_
+  rintro m₂ hfr₂ ⟨-, hG₂⟩
+  refine (writes_call_const (hS (.lit 1)) (z := f) rfl trivial
+    (by rw [hfr₂.len_eq, hfr₁.len_eq]; exact hrf)).mono (by fp_sub) ?_
+  rintro m₃ hfr₃ ⟨-, hF₃⟩
+  exact ⟨(hA₁.of_eqOff hfr₂ (hga.mono (by fp_sub) le_rfl)).of_eqOff hfr₃
+    (hga.mono (by fp_sub) le_rfl), ⟨_, hfr₃.keep (Store.readsOnly_get _ _ _) hgf.symm hG₂⟩,
+    ⟨_, hF₃⟩⟩
+
+/-- One trial of `Regularize` terminates on any matrix: on a scalar machine with exact
+comparisons, index literals and exact natural literals up to $n + 1$, from any matrix of order
+$n + 1$ at `A`, any shift pair at `S`, any threshold word at `Thr` and any words at `G` and `Fl`,
+$k \le n$, with live views, room for the scratch `T`, `SR`, `Ds`, `Rg`, the scratch apart from
+the inputs, `T` from `SR`, `Ds` and `Rg`, `SR` from `Ds`, and `G`, `Fl` apart from each other,
+from the scratch and from the matrix, `NLAlib.ShiftedQR.regularizeTrial` writes only the matrix,
+`G`, `Fl` and its scratch, and leaves the matrix, `G` and `Fl` stored. -/
+theorem regularizeTrial_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    (hL : IsIndexLit M I) {n : ℕ} (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I)
+    {τ : Tape ℝ} {m : Mem ℝ} {k : ℕ} (hk : k ≤ n) {a sp thr t sr ds rg g f : ℕ × ℕ}
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {r : ℂ} {tv gv fv : ℝ}
+    (hl : m.Live [a, sp, thr, t, sr, ds, rg, a, g, f])
+    (hA : HoldsMatrix a H m.store) (hs : m.store.readBlock sp.1 sp.2 2 = some [r.re, r.im])
+    (hthr : m.store.get thr.1 thr.2 = some tv) (hg : m.store.get g.1 g.2 = some gv)
+    (hf : m.store.get f.1 f.2 = some fv)
+    (hrt : t.2 + 2 * ((n + 1) * (n + 1)) ≤ m.store.len t.1)
+    (hrsr : sr.2 + 2 * k ≤ m.store.len sr.1) (hrds : ds.2 + 2 * k ≤ m.store.len ds.1)
+    (hrrg : rg.2 + 5 ≤ m.store.len rg.1)
+    (hW : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔
+      Store.inBlock sr.1 sr.2 (2 * k) ⊔ Store.inBlock ds.1 ds.2 (2 * k) ⊔
+      Store.inBlock rg.1 rg.2 5) (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock sp.1 sp.2 2 ⊔ Store.inBlock thr.1 thr.2 1))
+    (hts : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock sr.1 sr.2 (2 * k)))
+    (htd : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock ds.1 ds.2 (2 * k)))
+    (hsd : Fp.Disj (Store.inBlock sr.1 sr.2 (2 * k)) (Store.inBlock ds.1 ds.2 (2 * k)))
+    (hrg : Fp.Disj (Store.inBlock rg.1 rg.2 5)
+      (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1)))))
+    (hGF : Fp.Disj (Store.inBlock g.1 g.2 1 ⊔ Store.inBlock f.1 f.2 1)
+      (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock sr.1 sr.2 (2 * k) ⊔
+        Store.inBlock ds.1 ds.2 (2 * k) ⊔ Store.inBlock rg.1 rg.2 5 ⊔
+        Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))))
+    (hgf : Fp.Disj (Store.inBlock g.1 g.2 1) (Store.inBlock f.1 f.2 1)) :
+    Writes .total I τ (regularizeTrial (O := O) (Q := Q)).body
+      (Env.frame [n + 1, k] [a, sp, thr, t, sr, ds, rg, a, g, f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock g.1 g.2 1 ⊔
+        Store.inBlock f.1 f.2 1 ⊔ (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔
+          Store.inBlock sr.1 sr.2 (2 * k) ⊔ Store.inBlock ds.1 ds.2 (2 * k) ⊔
+          Store.inBlock rg.1 rg.2 5))
+      (fun m' => (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a H' m'.store) ∧
+        (∃ x, m'.store.get g.1 g.2 = some x) ∧ ∃ x, m'.store.get f.1 f.2 = some x) m := by
+  unfold regularizeTrial
+  refine writes_ite rfl rfl (hC.test_isPos (d := []) (x := g) hg) ?_
+  split_ifs
+  · have hstep := trialStep_terminates (τ := τ) hS hL hNat hC hk (hl.mono (by simp)) hA hs hthr
+      hrt hrsr hrds hrrg hW hts htd hsd hrg
+    refine hstep.frame_seq_le rfl rfl (hl.mono (by simp)) le_sup_right ?_
+    rintro m₁ hfr₁ ⟨⟨H', hT₁⟩, x, hR⟩
+    have hA₁ := hA.of_eqOff hfr₁ (hW.mono le_rfl (by fp_sub))
+    have hg₁ := hfr₁.keep (Store.readsOnly_get _ _ _) (hGF.symm.mono (by fp_sub) (by fp_sub)) hg
+    have hf₁ := hfr₁.keep (Store.readsOnly_get _ _ _) (hGF.symm.mono (by fp_sub) (by fp_sub)) hf
+    refine writes_ite rfl rfl (hC.test_isPos (d := []) (x := (rg.1, rg.2 + 3)) hR) ?_
+    split_ifs
+    · have hacc := trialAccept_terminates (τ := τ) (a := a) (g := g) (f := f) hS
+        ((hl.congr hfr₁.length_eq).mono (by simp)) hT₁
+        (by rw [hfr₁.len_eq]; exact Store.le_len_of_readBlock hA (by positivity))
+        (by rw [hfr₁.len_eq]; exact Store.lt_len_of_get hg)
+        (by rw [hfr₁.len_eq]; exact Store.lt_len_of_get hf)
+        (hW.mono (by fp_sub) (by fp_sub)) (hGF.mono le_rfl (by fp_sub)) hgf
+      refine (hacc.in_frame rfl rfl ((hl.congr hfr₁.length_eq).mono (by simp))).mono
+        (by fp_sub) ?_
+      rintro m₂ - ⟨hA₂, hG₂, hF₂⟩
+      exact ⟨⟨_, hA₂⟩, hG₂, hF₂⟩
+    · exact (Writes.skip ⟨⟨_, hA₁⟩, ⟨_, hg₁⟩, ⟨_, hf₁⟩⟩).mono bot_le fun _ _ h => h
+  · exact (Writes.skip ⟨⟨_, hA⟩, ⟨_, hg⟩, ⟨_, hf⟩⟩).mono bot_le fun _ _ h => h
+
+/-- The trials of `Regularize` terminate on any matrix: on a scalar machine with exact
+comparisons, index literals and exact natural literals up to $n + 1$, from any matrix of order
+$n + 1$ at `A`, any $2k$ shift words at `S`, any threshold word at `Thr` and any words at `G` and
+`Fl`, $k \le n$, with live views, room for the scratch `T`, `SR`, `Ds`, `Rg`, the scratch apart
+from the inputs, `T` from `SR`, `Ds` and `Rg`, `SR` from `Ds`, `G`, `Fl` apart from each other,
+from the scratch and from the matrix, and the matrix, `G` and `Fl` apart from `S` and `Thr`,
+`NLAlib.ShiftedQR.regularizeTrials` leaves the matrix, `G` and `Fl` stored. -/
+theorem regularizeTrials_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    (hL : IsIndexLit M I) {n : ℕ} (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I)
+    {τ : Tape ℝ} {m : Mem ℝ} {k : ℕ} (hk : k ≤ n) {a s thr t sr ds rg g f : ℕ × ℕ}
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {xs : List ℝ} {tv gv fv : ℝ}
+    (hl : m.Live [a, s, thr, t, sr, ds, rg, a, g, f])
+    (hA : HoldsMatrix a H m.store) (hs : m.store.readBlock s.1 s.2 (2 * k) = some xs)
+    (hthr : m.store.get thr.1 thr.2 = some tv) (hg : m.store.get g.1 g.2 = some gv)
+    (hf : m.store.get f.1 f.2 = some fv)
+    (hrt : t.2 + 2 * ((n + 1) * (n + 1)) ≤ m.store.len t.1)
+    (hrsr : sr.2 + 2 * k ≤ m.store.len sr.1) (hrds : ds.2 + 2 * k ≤ m.store.len ds.1)
+    (hrrg : rg.2 + 5 ≤ m.store.len rg.1)
+    (hW : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔
+      Store.inBlock sr.1 sr.2 (2 * k) ⊔ Store.inBlock ds.1 ds.2 (2 * k) ⊔
+      Store.inBlock rg.1 rg.2 5) (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock thr.1 thr.2 1))
+    (hts : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock sr.1 sr.2 (2 * k)))
+    (htd : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock ds.1 ds.2 (2 * k)))
+    (hsd : Fp.Disj (Store.inBlock sr.1 sr.2 (2 * k)) (Store.inBlock ds.1 ds.2 (2 * k)))
+    (hrg : Fp.Disj (Store.inBlock rg.1 rg.2 5)
+      (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1)))))
+    (hGF : Fp.Disj (Store.inBlock g.1 g.2 1 ⊔ Store.inBlock f.1 f.2 1)
+      (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock sr.1 sr.2 (2 * k) ⊔
+        Store.inBlock ds.1 ds.2 (2 * k) ⊔ Store.inBlock rg.1 rg.2 5 ⊔
+        Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))))
+    (hgf : Fp.Disj (Store.inBlock g.1 g.2 1) (Store.inBlock f.1 f.2 1))
+    (hAS : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock g.1 g.2 1 ⊔
+      Store.inBlock f.1 f.2 1) (Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock thr.1 thr.2 1)) :
+    Writes .total I τ (regularizeTrials (O := O) (Q := Q)).body
+      (Env.frame [n + 1, k] [a, s, thr, t, sr, ds, rg, a, g, f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock g.1 g.2 1 ⊔
+        Store.inBlock f.1 f.2 1 ⊔ (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔
+          Store.inBlock sr.1 sr.2 (2 * k) ⊔ Store.inBlock ds.1 ds.2 (2 * k) ⊔
+          Store.inBlock rg.1 rg.2 5))
+      (fun m' => (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a H' m'.store) ∧
+        (∃ x, m'.store.get g.1 g.2 = some x) ∧ ∃ x, m'.store.get f.1 f.2 = some x) m := by
+  set F := Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock g.1 g.2 1 ⊔
+    Store.inBlock f.1 f.2 1 ⊔ (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔
+      Store.inBlock sr.1 sr.2 (2 * k) ⊔ Store.inBlock ds.1 ds.2 (2 * k) ⊔
+      Store.inBlock rg.1 rg.2 5)
+  have hFS : Fp.Disj F (Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock thr.1 thr.2 1) :=
+    Fp.disj_sup_left.mpr ⟨hAS, hW.mono le_rfl (by fp_sub)⟩
+  unfold regularizeTrials
+  refine writes_loop (N := k) rfl (fun _ => F) (fun _ _ => le_rfl)
+    (fun _ μ => (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a H' μ.store) ∧
+      (∃ x, μ.store.get g.1 g.2 = some x) ∧ ∃ x, μ.store.get f.1 f.2 = some x)
+    ⟨⟨H, hA⟩, ⟨_, hg⟩, ⟨_, hf⟩⟩ ?_
+  rintro j hj μ hfr ⟨⟨Hμ, hAμ⟩, ⟨gμ, hgμ⟩, ⟨fμ, hfμ⟩⟩
+  have hl' : ∀ b, μ.store.len b = m.store.len b := fun b => hfr.len_eq b
+  have hsμ := hfr.keep (Store.readsOnly_readBlock _ _ _ _) (hFS.mono le_rfl le_sup_left) hs
+  obtain ⟨z, hsj⟩ := Store.exists_readBlock_pair hsμ (o := 2 * j) (by omega)
+  have hthrμ := hfr.keep (Store.readsOnly_get _ _ _) (hFS.mono le_rfl le_sup_right) hthr
+  have hpair : Store.inBlock s.1 (s.2 + 2 * j) 2 ≤ Store.inBlock s.1 s.2 (2 * k) :=
+    Fp.inBlock_le_inBlock (by omega) (by omega)
+  have hlμ : μ.Live [a, (s.1, s.2 + 2 * j), thr, t, sr, ds, rg, a, g, f] := by
+    have := hl.congr hfr.length_eq
+    simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,
+      forall_eq] at this ⊢
+    tauto
+  have htr := regularizeTrial_terminates (τ := τ) (sp := (s.1, s.2 + 2 * j)) hS hL hNat hC hk
+    hlμ hAμ hsj hthrμ hgμ hfμ (by rw [hl']; exact hrt) (by rw [hl']; exact hrsr)
+    (by rw [hl']; exact hrds) (by rw [hl']; exact hrrg)
+    (hW.mono le_rfl (sup_le_sup_right (sup_le_sup_left hpair _) _)) hts htd hsd hrg hGF hgf
+  exact (htr.in_frame rfl rfl hlμ).mono le_rfl fun _ _ h => h
+
+/-- The decision of `Regularize` terminates on any matrix: with the scratch of
+`NLAlib.ShiftedQR.regularize` at `L + 2, …, L + 6`, the views `NLAlib.ShiftedQR.RegularizeViews`,
+the context `NLAlib.ShiftedQR.RegularizeCtx` (any matrix and any words) and any $2k$ shift words
+at `S`, $k \le n$, `NLAlib.ShiftedQR.regularizeDecide` leaves the matrix and the flag
+stored. -/
+theorem regularizeDecide_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    (hL : IsIndexLit M I) {n : ℕ} (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I)
+    {τ : Tape ℝ} {m : Mem ℝ} {k L : ℕ} (hk : k ≤ n) {a rd c thr s f : ℕ × ℕ}
+    (hv : RegularizeViews L n k a rd c thr s f) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {R cw tv : ℝ} (hctx : RegularizeCtx L k H R cw tv a rd c thr s f m) {xs : List ℝ}
+    (hs : m.store.readBlock s.1 s.2 (2 * k) = some xs) :
+    Writes .total I τ (regularizeDecide (O := O) (Q := Q)).body
+      (Env.frame [n + 1, k] [a, s, c, thr, (L + 3, 0), (L + 4, 0), (L + 5, 0), (L + 6, 0), a,
+        (L + 2, 0), f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 2) 0 1 ⊔
+        Store.inBlock f.1 f.2 1 ⊔ (Store.inBlock (L + 3) 0 (2 * ((n + 1) * (n + 1))) ⊔
+          Store.inBlock (L + 4) 0 (2 * k) ⊔ Store.inBlock (L + 5) 0 (2 * k) ⊔
+          Store.inBlock (L + 6) 0 5))
+      (fun m' => (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a H' m'.store) ∧
+        ∃ x, m'.store.get f.1 f.2 = some x) m := by
+  obtain ⟨⟨ha, hrd, hcl, htl, hsl, hfl⟩, has, haf, hsf, hio⟩ := hv
+  obtain ⟨hA, -, hc, hthr, -, hrf, hlen, -, -, h2, h3, h4, h5, h6⟩ := hctx
+  obtain ⟨zs, hzs, hsS⟩ := Store.exists_readBlock_flatMap_pair hs
+  have hopt := optimalTest_writes_word (τ := τ) (ss := zs) (a := a) (s := s) (c := c)
+    (f := (L + 2, 0)) hS hC (by omega) hA hsS hc (by simp [h2])
+    (by simp [Mem.Live, hlen]; omega)
+    (by
+      rw [hzs]
+      exact Fp.disj_sup_right.mpr ⟨Fp.disj_sup_right.mpr ⟨by disjoint, by disjoint⟩,
+        by disjoint⟩)
+  rw [hzs] at hopt
+  simp only at hopt
+  unfold regularizeDecide
+  refine hopt.frame_seq_le rfl rfl (by simp [Mem.Live, hlen]; omega) (by fp_sub) ?_
+  rintro m₁ hfr₁ ⟨-, hb⟩
+  have hA₁ := hA.of_eqOff hfr₁ (Fp.disj_inBlock_of_ne (by omega))
+  refine writes_ite rfl rfl (hC.test_isPos (d := []) (x := (L + 2, 0)) hb) ?_
+  split_ifs
+  · refine (writes_call_const (hS (.lit 0)) (z := f) rfl trivial
+      (by rw [hfr₁.len_eq]; exact hrf)).mono (by fp_sub) ?_
+    rintro m₂ hfr₂ ⟨-, hF₂⟩
+    exact ⟨⟨_, hA₁.of_eqOff hfr₂ haf.symm⟩, ⟨_, hF₂⟩⟩
+  refine (writes_call_const (hS (.lit 2)) (z := f) rfl trivial
+    (by rw [hfr₁.len_eq]; exact hrf)).seq_le (by fp_sub) ?_
+  rintro m₂ hfr₂ ⟨-, hF₂⟩
+  refine (writes_call_const (hS (.lit 1)) (z := (L + 2, 0)) rfl trivial
+    (by rw [hfr₂.len_eq, hfr₁.len_eq]; simp [h2])).seq_le (by fp_sub) ?_
+  rintro m₃ hfr₃ ⟨-, hG₃⟩
+  have hfr := (hfr₁.trans' hfr₂).trans' hfr₃
+  have hl : ∀ b, m₃.store.len b = m.store.len b := fun b => by
+    rw [hfr₃.len_eq, hfr₂.len_eq, hfr₁.len_eq]
+  have hG : ∀ {z : ℕ × ℕ} {l : ℕ}, z.1 < L →
+      Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock z.1 z.2 l) →
+      Fp.Disj (Store.inBlock (L + 2) 0 1 ⊔ Store.inBlock f.1 f.2 1 ⊔
+        Store.inBlock (L + 2, 0).1 (L + 2, 0).2 1) (Store.inBlock z.1 z.2 l) := fun hz hfz =>
+    Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨Fp.disj_inBlock_of_ne (by omega), hfz⟩,
+      Fp.disj_inBlock_of_ne (by dsimp only; omega)⟩
+  have hs₃ := hfr.keep (Store.readsOnly_readBlock _ _ _ _) (hG hsl hsf.symm) hs
+  have hthr₃ := hfr.keep (Store.readsOnly_get _ _ _)
+    (hG htl (hio.mono (by fp_sub) (by fp_sub))) hthr
+  have hA₃ := hA.of_eqOff hfr (hG ha haf.symm)
+  have hF₃ := hfr₃.keep (Store.readsOnly_get _ _ _) (by disjoint) hF₂
+  have hL₃ : m₃.store.length = L + 7 := by rw [hfr.length_eq, hlen]
+  have htr := regularizeTrials_terminates (τ := τ) (a := a) (s := s) (thr := thr)
+    (t := (L + 3, 0)) (sr := (L + 4, 0)) (ds := (L + 5, 0)) (rg := (L + 6, 0))
+    (g := (L + 2, 0)) (f := f) hS hL hNat hC hk (by simp [Mem.Live, hL₃]; omega) hA₃ hs₃ hthr₃
+    hG₃ hF₃
+    (by simp [hl, h3]) (by simp [hl, h4]) (by simp [hl, h5]) (by simp [hl, h6])
+    (by disjoint) (by disjoint) (by disjoint) (by disjoint) (by disjoint)
+    (Fp.disj_sup_left.mpr ⟨by disjoint, Fp.disj_sup_right.mpr ⟨by disjoint, haf.symm⟩⟩)
+    (by disjoint) (Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨Fp.disj_sup_right.mpr
+      ⟨has, hio.mono (by fp_sub) (by fp_sub)⟩, by disjoint⟩, Fp.disj_sup_right.mpr
+      ⟨hsf.symm, hio.mono (by fp_sub) (by fp_sub)⟩⟩)
+  refine (htr.in_frame rfl rfl (by simp [Mem.Live, hL₃]; omega)).mono (by fp_sub) ?_
+  rintro m₄ - ⟨hA₄, -, hF₄⟩
+  exact ⟨hA₄, hF₄⟩
+
+end Trials
+
+/-! ### `Regularize` on any matrix -/
+
+section Regularize
+
+variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O]
+  [Has DiskSampleOp O] [Has CmpTst Q]
+
+omit [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] in
+/-- The `SmallEig` leaf stores its output: a randomized small-eigenvalue kernel
+(`NLAlib.ShiftedQR.IsRandomSmallEig`) called on any matrix of order $d$ at `w`, with room for the
+$2d$ output words at `o`, writes only the output and leaves it stored, on every tape. -/
+theorem IsRandomSmallEig.smallEigLeaf_terminates {law : ℕ → MeasureTheory.Measure ℝ} {s : ℕ}
+    {β φ : ℝ} {I : Interp O Q ℝ} (h : IsRandomSmallEig law s β φ I) {d : ℕ} {w o : ℕ × ℕ}
+    {τ : Tape ℝ} {μ : Mem ℝ} {B : Matrix (Fin d) (Fin d) ℂ} (hH : HoldsMatrix w B μ.store)
+    (hl : μ.Live [w, o]) (hroom : o.2 + 2 * d ≤ μ.store.len o.1) :
+    Writes .total I τ (smallEigLeaf (O := O) (Q := Q)).body (Env.frame [d] [w, o])
+      (Store.inBlock o.1 o.2 (2 * d))
+      (fun μ' => ∃ ys, μ'.store.readBlock o.1 o.2 (2 * d) = some ys) μ := by
+  obtain ⟨W, Bad, -, -, hI⟩ := h
+  unfold smallEigLeaf
+  have hread : μ.readBlocks [w] [2 * (d * d)] = some [matrixWords B] := by
+    simp [Mem.readBlocks, show μ.store.readBlock w.1 w.2 (2 * (d * d)) =
+      some (matrixWords B) from hH]
+  refine (writes_call (R := randomSmallEigRel s W Bad β) hI (d := [d]) (a := [w]) (b := [o])
+    (k := W d) (ls := [2 * d]) rfl rfl rfl rfl rfl rfl trivial (by simp [Fp.Apart])
+    (fun _ => ⟨by simpa [Mem.Live] using hl, ⟨[matrixWords B], hread, trivial⟩,
+      by simpa [Mem.Room] using hroom⟩)).mono (by simp [Fp.blocks]) ?_
+  rintro μ' - ⟨-, xs, ys, -, hys, -⟩
+  obtain ⟨y, hy, -⟩ := Option.bind_eq_some_iff.mp (by simpa [Mem.readBlocks] using hys)
+  exact ⟨y, hy⟩
+
+omit [Has IndexOp O] [Has EigenvalueKernelOp O] [Has CmpTst Q] in
+/-- The $k$ random perturbations terminate on any words: on a scalar machine with an exact
+polar sampler, from any radius word at `Rd` and any $2k$ words at `S`, with the scratch pair `Z`
+apart from `S`, `NLAlib.ShiftedQR.regularizeDraws` writes only `S` and `Z` and leaves `S`
+stored. -/
+theorem regularizeDraws_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    {s₀ : ℕ} (hD : IsPolarDiskSampler s₀ I) {τ : Tape ℝ} {m : Mem ℝ} {k : ℕ}
+    {rd z s : ℕ × ℕ} {R : ℝ} {xs : List ℝ} (hl : m.Live [rd, z, s])
+    (hrd : m.store.get rd.1 rd.2 = some R) (hs : m.store.readBlock s.1 s.2 (2 * k) = some xs)
+    (hz : z.2 + 2 ≤ m.store.len z.1)
+    (hzs : Fp.Disj (Store.inBlock z.1 z.2 2) (Store.inBlock s.1 s.2 (2 * k)))
+    (hzr : Fp.Disj (Store.inBlock z.1 z.2 2) (Store.inBlock rd.1 rd.2 1))
+    (hsr : Fp.Disj (Store.inBlock s.1 s.2 (2 * k)) (Store.inBlock rd.1 rd.2 1)) :
+    Writes .total I τ (regularizeDraws (O := O) (Q := Q)).body (Env.frame [k] [rd, z, s])
+      (Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock z.1 z.2 2)
+      (fun m' => ∃ ys, m'.store.readBlock s.1 s.2 (2 * k) = some ys) m := by
+  unfold regularizeDraws
+  refine writes_loop (N := k) rfl (fun _ => Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock z.1 z.2 2)
+    (fun _ _ => le_rfl) (fun _ μ => ∃ ys, μ.store.readBlock s.1 s.2 (2 * k) = some ys)
+    ⟨xs, hs⟩ ?_
+  rintro i hi μ hfr ⟨ys, hys⟩
+  obtain ⟨r, hsi⟩ := Store.exists_readBlock_pair hys (o := 2 * i) (by omega)
+  have hsub : Store.inBlock s.1 (s.2 + 2 * i) 2 ≤ Store.inBlock s.1 s.2 (2 * k) :=
+    Fp.inBlock_le_inBlock (by omega) (by omega)
+  have hdraw := regularizeDraw_writes (τ := τ) (m := μ) (sp := (s.1, s.2 + 2 * i)) (z := z) hS hD
+    (hfr.keep (Store.readsOnly_get _ _ _) (Fp.disj_sup_left.mpr ⟨hsr, hzr.symm.symm⟩) hrd) hsi
+    (by rw [hfr.len_eq]; exact hz) (hzs.mono le_rfl hsub)
+  have hlμ := hl.congr hfr.length_eq
+  refine (hdraw.in_frame rfl rfl (by
+      simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,
+        forall_eq] at hlμ ⊢
+      exact ⟨hlμ.1, hlμ.2.2, hlμ.2.1, hlμ.2.2⟩)).mono
+    (sup_le (hsub.trans le_sup_left) le_sup_right) ?_
+  rintro μ' hfr' ⟨-, hnew⟩
+  refine Store.exists_readBlock_of_eqOff_sub hys (by omega) hfr' ?_ hnew
+  refine Fp.disj_sup_left.mpr ⟨Fp.disj_sup_right.mpr ⟨(Fp.disj_inBlock_of_le le_rfl).symm,
+    Fp.disj_inBlock_of_le le_rfl⟩, hzs.mono le_rfl (sup_le ?_ ?_)⟩
+  · exact Fp.inBlock_le_inBlock le_rfl (by omega)
+  · exact Fp.inBlock_le_inBlock (by omega) (by omega)
+
+/-- `Regularize` with scratch terminates on any matrix: with the views
+`NLAlib.ShiftedQR.RegularizeViews` and the context `NLAlib.ShiftedQR.RegularizeCtx` (any matrix of
+order $n + 1$, any words), $k \le n$, a `SmallEig` kernel meeting
+`NLAlib.ShiftedQR.IsRandomSmallEig` and an exact polar sampler, on a scalar machine with exact
+comparisons, index literals and exact natural literals up to $n + 1$,
+`NLAlib.ShiftedQR.regularizeWithScratch` writes only the matrix, the $k$ output pairs, the flag
+and the scratch above $L$, and leaves the matrix, the pairs and the flag stored. -/
+theorem regularizeWithScratch_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    (hL : IsIndexLit M I) {n : ℕ} (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I)
+    {law : ℕ → MeasureTheory.Measure ℝ} {s₀ : ℕ} {β φse : ℝ}
+    (hSE : IsRandomSmallEig law s₀ β φse I) (hD : IsPolarDiskSampler s₀ I) {τ : Tape ℝ}
+    {m : Mem ℝ} {k L : ℕ} (hk : k ≤ n) {a rd c thr s f : ℕ × ℕ}
+    (hv : RegularizeViews L n k a rd c thr s f) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {R cw tv : ℝ} (hctx : RegularizeCtx L k H R cw tv a rd c thr s f m) :
+    Writes .total I τ (regularizeWithScratch (O := O) (Q := Q)).body
+      (Env.frame [n + 1, k] [a, rd, c, thr, (L, 0), (L + 1, 0), (L + 2, 0), (L + 3, 0),
+        (L + 4, 0), (L + 5, 0), (L + 6, 0), a, s, f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔
+        Store.inBlock f.1 f.2 1 ⊔ Fp.above L)
+      (fun m' => (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a H' m'.store) ∧
+        (∃ ys, m'.store.readBlock s.1 s.2 (2 * k) = some ys) ∧
+        ∃ x, m'.store.get f.1 f.2 = some x) m := by
+  have hv' := hv
+  obtain ⟨⟨ha, hrd, hcl, htl, hsl, hfl⟩, has, haf, hsf, hio⟩ := hv'
+  obtain ⟨hA, hR, -, -, hrs, -, hlen, h0, h1, -⟩ := id hctx
+  have hIn : ∀ {F : Fp} {μ μ' : Mem ℝ}, Fp.Disj F (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))
+      ⊔ Store.inBlock rd.1 rd.2 1 ⊔ Store.inBlock c.1 c.2 1 ⊔ Store.inBlock thr.1 thr.2 1) →
+      RegularizeCtx L k H R cw tv a rd c thr s f μ → μ.store.EqOff F μ'.store →
+      RegularizeCtx L k H R cw tv a rd c thr s f μ' := fun hF h hfr => h.of_eqOff hfr hF
+  have hsIn : Fp.Disj (Store.inBlock s.1 s.2 (2 * k))
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock rd.1 rd.2 1 ⊔
+        Store.inBlock c.1 c.2 1 ⊔ Store.inBlock thr.1 thr.2 1) :=
+    Fp.disj_sup_right.mpr ⟨Fp.disj_sup_right.mpr ⟨Fp.disj_sup_right.mpr ⟨has.symm,
+      hio.mono (by fp_sub) (by fp_sub)⟩, hio.mono (by fp_sub) (by fp_sub)⟩,
+      hio.mono (by fp_sub) (by fp_sub)⟩
+  unfold regularizeWithScratch
+  refine (copyToWork_writes (τ := τ) (w := (L, 0)) (lo := n + 1 - k) (d := k) hS
+    (by simp [Mem.Live, hlen]; omega) hA (by omega) (by simp [h0]) (by disjoint)).frame_seq_le
+    rfl rfl (by simp [Mem.Live, hlen]; omega) (Fp.inBlock_le_sup_above le_rfl) ?_
+  rintro m₁ hfr₁ ⟨-, hB⟩
+  have hc₁ := hIn (by disjoint) hctx hfr₁
+  have hL₁ : m₁.store.length = L + 7 := by rw [hfr₁.length_eq, hlen]
+  refine (hSE.smallEigLeaf_terminates (τ := τ) (w := (L, 0)) (o := s) hB
+    (by simp [Mem.Live, hL₁]; omega) (by dsimp only; rw [hfr₁.len_eq]; exact hrs)).frame_seq_le
+    rfl rfl (by simp [Mem.Live, hL₁]; omega) (by fp_sub) ?_
+  rintro m₂ hfr₂ ⟨xs, hS₂⟩
+  have hc₂ := hIn hsIn hc₁ hfr₂
+  have hL₂ : m₂.store.length = L + 7 := by rw [hfr₂.length_eq, hL₁]
+  obtain ⟨-, hrd₂, -⟩ := id hc₂
+  obtain ⟨R', hR'⟩ : ∃ x, m₂.store.get rd.1 rd.2 = some x := ⟨_, hrd₂⟩
+  refine (regularizeDraws_terminates (τ := τ) (z := (L + 1, 0)) hS hD
+    (by simp [Mem.Live, hL₂]; omega) hR' hS₂
+    (by dsimp only; rw [hfr₂.len_eq, hfr₁.len_eq]; simp [h1]) (by disjoint) (by disjoint)
+    (hio.mono (by fp_sub) (by fp_sub))).frame_seq_le rfl rfl (by simp [Mem.Live, hL₂]; omega)
+    (by fp_sub) ?_
+  rintro m₃ hfr₃ ⟨ys, hS₃⟩
+  have hc₃ := hIn (Fp.disj_sup_left.mpr ⟨hsIn, by disjoint⟩) hc₂ hfr₃
+  refine (regularizeDecide_terminates (τ := τ) hS hL hNat hC hk hv hc₃ hS₃).in_frame rfl rfl
+    (by simp [Mem.Live, hc₃.2.2.2.2.2.2.1]; omega) |>.mono (by fp_sub) ?_
+  rintro m₄ hfr₄ ⟨hA₄, hF₄⟩
+  refine ⟨hA₄, ⟨_, hfr₄.keep (Store.readsOnly_readBlock _ _ _ _) ?_ hS₃⟩, hF₄⟩
+  exact Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨has, by disjoint⟩,
+    hsf.symm⟩, by disjoint⟩
+
+/-- **`Regularize` terminates on any matrix** ([BanksGarzaVargasSrivastava2022, §4.2]): on a
+scalar machine with exact comparisons, index literals and exact natural literals up to $n + 1$,
+with a `SmallEig` kernel meeting `NLAlib.ShiftedQR.IsRandomSmallEig` and an exact polar sampler,
+from any matrix of order $n + 1$ at `a`, any words at `rd`, `c`, `thr`, room for $k \le n$ output
+pairs at `s` and the flag at `f` (the views live, the matrix, the pairs and the flag apart from
+each other and from the three words), `NLAlib.ShiftedQR.regularize` writes only the matrix, the
+pairs and the flag, and leaves all three stored, on every tape. -/
+theorem regularize_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    (hL : IsIndexLit M I) {n : ℕ} (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I)
+    {law : ℕ → MeasureTheory.Measure ℝ} {s₀ : ℕ} {β φse : ℝ}
+    (hSE : IsRandomSmallEig law s₀ β φse I) (hD : IsPolarDiskSampler s₀ I) {τ : Tape ℝ}
+    {m : Mem ℝ} {k : ℕ} (hk : k ≤ n) {a rd c thr s f : ℕ × ℕ}
+    (has : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock s.1 s.2 (2 * k)))
+    (haf : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock f.1 f.2 1))
+    (hsf : Fp.Disj (Store.inBlock s.1 s.2 (2 * k)) (Store.inBlock f.1 f.2 1))
+    (hio : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+      Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock f.1 f.2 1)
+        (Store.inBlock rd.1 rd.2 1 ⊔ Store.inBlock c.1 c.2 1 ⊔ Store.inBlock thr.1 thr.2 1))
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {R cw tv : ℝ}
+    (hl : m.Live [a, rd, c, thr, s, f]) (hA : HoldsMatrix a H m.store)
+    (hrd : m.store.get rd.1 rd.2 = some R) (hc : m.store.get c.1 c.2 = some cw)
+    (hthr : m.store.get thr.1 thr.2 = some tv) (hrs : s.2 + 2 * k ≤ m.store.len s.1)
+    (hrf : f.2 < m.store.len f.1) :
+    Writes .total I τ (regularize (O := O) (Q := Q)).body
+      (Env.frame [n + 1, k] [a, rd, c, thr, a, s, f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔
+        Store.inBlock f.1 f.2 1)
+      (fun m' => (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a H' m'.store) ∧
+        (∃ ys, m'.store.readBlock s.1 s.2 (2 * k) = some ys) ∧
+        ∃ x, m'.store.get f.1 f.2 = some x) m := by
+  have e : (regularize (O := O) (Q := Q)).body = Stmt.allocs [.const 2 * (.var 1 * .var 1),
+      .const 2, .const 1, .const 2 * (.var 0 * .var 0), .const 2 * .var 1, .const 2 * .var 1,
+      .const 5] (.frame [.var 0, .var 1] [⟨0, .var 2⟩, ⟨1, .var 3⟩, ⟨2, .var 4⟩, ⟨3, .var 5⟩,
+        ⟨7, .const 0⟩, ⟨8, .const 0⟩, ⟨9, .const 0⟩, ⟨10, .const 0⟩, ⟨11, .const 0⟩,
+        ⟨12, .const 0⟩, ⟨13, .const 0⟩, ⟨0, .var 2⟩, ⟨5, .var 7⟩, ⟨6, .var 8⟩]
+        (regularizeWithScratch (O := O) (Q := Q)).body) := rfl
+  have hlv : a.1 < m.store.length ∧ rd.1 < m.store.length ∧ c.1 < m.store.length ∧
+      thr.1 < m.store.length ∧ s.1 < m.store.length ∧ f.1 < m.store.length := by
+    simpa [Mem.Live] using hl
+  obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hlv
+  rw [e]
+  refine writes_allocs_preserving_post rfl
+    (fun hBelow ⟨⟨H', hA'⟩, ⟨ys, hS'⟩, ⟨x, hF'⟩⟩ => ⟨⟨H', hA'.of_below hBelow h1⟩,
+      ⟨ys, hBelow.readBlock_of h5 hS'⟩, ⟨x, hBelow.get_of h6 hF'⟩⟩) ?_
+  intro s₁ hlen hlens hBelow
+  have hl7 := fun i (hi : i < 7) => hlens i (by simpa using hi)
+  have hctx : RegularizeCtx m.store.length k H R cw tv a rd c thr s f ⟨s₁, m.pos⟩ := by
+    refine ⟨hA.of_below hBelow h1, hBelow.get_of h2 hrd, hBelow.get_of h3 hc,
+      hBelow.get_of h4 hthr, by rw [(hBelow s.1 h5).1]; exact hrs,
+      by rw [(hBelow f.1 h6).1]; exact hrf, by simpa using hlen, ?_⟩
+    simpa using ⟨hl7 0 (by norm_num), hl7 1 (by norm_num), hl7 2 (by norm_num),
+      hl7 3 (by norm_num), hl7 4 (by norm_num), hl7 5 (by norm_num), hl7 6 (by norm_num)⟩
+  refine ((regularizeWithScratch_terminates hS hL hNat hC hSE hD hk
+    ⟨⟨h1, h2, h3, h4, h5, h6⟩, has, haf, hsf, hio⟩ hctx).in_frame rfl rfl ?_).mono
+    (by fp_sub) fun _ _ h => h
+  simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,
+    forall_eq, hctx.2.2.2.2.2.2.1]
+  omega
+
+end Regularize
+
+end NLAlib.ShiftedQR

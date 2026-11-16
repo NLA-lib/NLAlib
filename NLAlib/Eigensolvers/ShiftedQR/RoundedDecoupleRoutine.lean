@@ -17,15 +17,12 @@ parameter words (the view `P[np - 12]`), and its cap dimension $T$ is a dimensio
 decoupler. Inside, `SE.body` is inlined, so every operation the proofs see is an operation of the
 routine; a randomized program such as the one of [BanksGarzaVargasSrivastava2025] meets the
 routine contract `NLAlib.ShiftedQR.RandomSmallEigContract`, and the kernel does as a routine
-(`NLAlib.ShiftedQR.IsRandomSmallEig.randomSmallEigContract`). The merged programs
-(`NLAlib.ShiftedQR.regularize`, `NLAlib.ShiftedQR.shIteration`, `NLAlib.ShiftedQR.roundedDecouple`)
-call the kernel directly; their statements are unchanged.
-
-## Main definitions
-
-* `NLAlib.ShiftedQR.regularizeWith`, `NLAlib.ShiftedQR.shIterationWith`,
-  `NLAlib.ShiftedQR.roundedDecoupleLoopWith`, `NLAlib.ShiftedQR.roundedDecoupleWith`: the programs
-  with a routine.
+(`NLAlib.ShiftedQR.IsRandomSmallEig.randomSmallEigContract`). The programs
+(`NLAlib.ShiftedQR.regularizeWith`, `NLAlib.ShiftedQR.shIterationWith`,
+`NLAlib.ShiftedQR.roundedDecoupleWith`) are defined with their merged wrappers
+(`NLAlib.ShiftedQR.regularize`, `NLAlib.ShiftedQR.shIteration`, `NLAlib.ShiftedQR.roundedDecouple`,
+the routine the kernel and the cap $0$); the theorems here are the cases of the general ones with
+the word count `qs.length` (`NLAlib.ShiftedQR.regularizeWith_pwrites_at` and the like).
 
 ## Main results
 
@@ -44,95 +41,6 @@ open scoped Matrix
 namespace NLAlib.ShiftedQR
 
 open Ops
-
-section Program
-
-variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q]
-  [Has IdxTst Q]
-
-/-- `NLAlib.ShiftedQR.regularizeWithScratch` with the routine `SE` in place of the kernel: the
-trailing $k \times k$ block of the order-$N$ matrix `A` into `B`, the routine with the words `Qw`
-and the cap $T$ into the $k$ pairs `S`, one random perturbation of each pair, `Optimal`, and the
-trials. The interface is
-`[N, k, nq, T] (A, Rd, C, Thr, Qw, B, Z, G, Tm, SR, Ds, Rg) → (A, S, Fl)`. -/
-def regularizeWithScratchWith (SE : Impl O Q) : Impl O Q :=
-  opsImpl% [N, k, nq, T] (A, Rd, C, Thr, Qw, B, Z, G, Tm, SR, Ds, Rg) → (A, S, Fl) {
-    run (copyToWork (Op := O) (Tst := Q)).body [N, N - k, k] (A, B);
-    run SE.body [k, nq, T] (B, Qw, S);
-    run (regularizeDraws (O := O) (Q := Q)).body [k] (Rd, Z, S);
-    run (regularizeDecide (O := O) (Q := Q)).body [N, k] (A, S, C, Thr, Tm, SR, Ds, Rg, A, G, Fl)
-  }
-
-/-- **`Regularize` with a small-eigenvalue routine** ([BanksGarzaVargasSrivastava2022, §4.2],
-RitzOrDecouple there): `NLAlib.ShiftedQR.regularize` with the approximate Ritz values computed by
-the routine `SE` with the words `Qw` and the cap $T$. All scratch is scoped. The interface is
-`[N, k, nq, T] (A, Rd, C, Thr, Qw) → (A, S, Fl)`. -/
-def regularizeWith (SE : Impl O Q) : Impl O Q :=
-  opsImpl% [N, k, nq, T] (A, Rd, C, Thr, Qw) → (A, S, Fl) {
-    let B ← alloc (2 * (k * k));
-    let Z ← alloc 2;
-    let G ← alloc 1;
-    let Tm ← alloc (2 * (N * N));
-    let SR ← alloc (2 * k);
-    let Ds ← alloc (2 * k);
-    let Rg ← alloc 5;
-    run (regularizeWithScratchWith SE).body [N, k, nq, T]
-      (A, Rd, C, Thr, Qw, B, Z, G, Tm, SR, Ds, Rg, A, S, Fl)
-  }
-
-/-- One iteration with a small-eigenvalue routine and caller-owned scratch:
-`NLAlib.ShiftedQR.regularizeWith`, then `NLAlib.ShiftedQR.shStep` if the shifts are optimal. The
-interface is `[N, m, k, n0, nq, T] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw, S) → (A, Fl)`. -/
-def shIterationWithScratchWith (SE : Impl O Q) : Impl O Q :=
-  opsImpl% [N, m, k, n0, nq, T] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw, S) → (A, Fl) {
-    run (regularizeWith SE).body [N, k, nq, T] (A, Rd, C, Thr, Qw, A, S, Fl);
-    if (Has.inj CmpTst.isZero) [] (Fl) {
-      run (shStep (O := O) (Q := Q)).body [N, m, k, n0] (A, S, Cg, Cr, Cw, Cp, G, Thr, A, Fl)
-    } else { skip }
-  }
-
-/-- **One iteration of the decoupling loop with a small-eigenvalue routine**
-([BanksGarzaVargasSrivastava2022, Lemma 6.4], the body of the loop): `Regularize` with the
-routine `SE`, then `Sh`. The interface is
-`[N, m, k, n0, nq, T] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw) → (A, Fl)`. -/
-def shIterationWith (SE : Impl O Q) : Impl O Q :=
-  opsImpl% [N, m, k, n0, nq, T] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw) → (A, Fl) {
-    let S ← alloc (2 * k);
-    run (shIterationWithScratchWith SE).body [N, m, k, n0, nq, T]
-      (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw, S, A, Fl)
-  }
-
-/-- The rounds of the decoupling loop with a small-eigenvalue routine: as
-`NLAlib.ShiftedQR.roundedDecoupleLoop`, the iteration `NLAlib.ShiftedQR.shIterationWith` reading
-the routine's $12$ words as the tail `P[np - 12]` of the parameter words and the cap $T$. The
-interface is `[N, k, np, F, T, m, n0] (W, P, R) → (W, Fl)`. -/
-def roundedDecoupleLoopWith (SE : Impl O Q) : Impl O Q :=
-  opsImpl% [N, k, np, F, T, m, n0] (W, P, R) → (W, Fl) {
-    run (bottomScan (O := O) (Q := Q)).body [N, k] (W, P, R);
-    while j < F, (Has.inj CmpTst.isZero) [] (R[3]) {
-      run (shIterationWith SE).body [N, m, k, n0, 12, T]
-        (W, P[1], P[2], P[3], P[4], P[5], P[6], P[7], P[10], P[np - 12], W, Fl);
-      run (bottomScan (O := O) (Q := Q)).body [N, k] (W, P, R)
-    } then {
-      run (roundedDecoupleExit (O := O) (Q := Q)).body [] (R, Fl)
-    }
-  }
-
-/-- **The rounded decoupling loop with a small-eigenvalue routine**
-([BanksGarzaVargasSrivastava2022, Lemma 6.4]): allocate the scan registers, read the index words
-$m$ ($k = 2^m$) and $n_0$ from `P[8]`, `P[9]`, and run
-`NLAlib.ShiftedQR.roundedDecoupleLoopWith`. The interface is
-`[N, k, np, F, T] (W, P) → (W, Fl)`, that of the decoupling routine of
-`NLAlib.ShiftedQR.solveRoundedWith`. -/
-def roundedDecoupleWith (SE : Impl O Q) : Impl O Q :=
-  opsImpl% [N, k, np, F, T] (W, P) → (W, Fl) {
-    let R ← alloc 5;
-    let m ← index (Has.inj IdxTst.toNat) (P[8]) ≤ k;
-    let n0 ← index (Has.inj IdxTst.toNat) (P[9]) ≤ np;
-    run (roundedDecoupleLoopWith SE).body [N, k, np, F, T, m, n0] (W, P, R, W, Fl)
-  }
-
-end Program
 
 section Theorems
 
@@ -204,8 +112,9 @@ theorem regularizeWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
       (RegularizeOutcome k H e u (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) *
         (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) (R * √(φ / (2 * k)) / 2) tv
         ((1 + 1.1) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a s f)
-      (φse + φ / 2) := by
-  sorry
+      (φse + φ / 2) :=
+  regularizeWith_pwrites_at hI hloc hS hM hu1 hL hNat hC hβ0 hφse hD hU hk0 hk has haf hsf hio hH
+    hV hHV hκ hBk hω hψ hSH hgap hR hφ hφ1 hβ hdη hnu huo huo1 hxu hbound hthrω hSE.at hqw
 
 /-- **One iteration of the decoupling loop with a small-eigenvalue routine**
 ([BanksGarzaVargasSrivastava2022, Lemma 6.4], the body of the loop; the routine of
@@ -294,8 +203,10 @@ theorem shIterationWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
         m.store.readBlock g.1 g.2 (2 * (excNet ε).length) =
           some ((excNet ε).flatMap fun z => [z.re, z.im]) ∧ f.2 < m.store.len f.1)
       (ShIterationOutcome u k H γ tv ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1))
-        a) (φse + φR / 2 + φ) := by
-  sorry
+        a) (φse + φR / 2 + φ) :=
+  shIterationWith_pwrites_at hI hloc hS hM hu1 hL hNat hC hQ hβ0 hφse hD hU hkq hk hkn haf hio hH
+    hV hHV hκ hBk hω hψ hSH hgap hR hφR hφR1 hβ hdη hnu huo huo1 hxuR hboundR hα hγ hγ1 hε hε2 hφ
+    hφ1 hd hC1 hxu hbound hexc1 hexc2 hthrω hSE.at hqw
 
 -- The default heartbeat budget does not cover the elaboration of this statement.
 set_option maxHeartbeats 4000000 in
@@ -374,8 +285,11 @@ theorem roundedDecoupleWith_randomDecouplingRoutineContract {M : Machine ℝ} {I
     RandomDecouplingRoutineContract law (2 * B) (g / 2) (F * (φse + φR / 2 + φ)) k F T nmax
       Nmax (roundedDecoupleParams tL R tv γ Bi α ε k q ++ qs) ωD
       (fun _ => F * ((1 + C) * S * ((1 + 300 * (nmax + 1) ^ 2 * u) ^ k - 1)))
-      (roundedDecoupleWith SE) I := by
-  sorry
+      (roundedDecoupleWith SE) I :=
+  roundedDecoupleWith_randomDecouplingRoutineContract_at hI hloc hS hM hu1 hL hNat hC hQ hβ0 hφse
+    hDisk hU hkq hk hg hBi hS0 hBk hω hgapS hR hφR hφR1 hβ hdη hnu huo huo1 hxuR hboundR hα hγ hγ1
+    hε hε2 hφ hφ1 hd hC1 hxu hbound hexc1 hexc2 hthrω hthr hcut hωD hfuel hSN hsmall
+    (hqs ▸ hSE.at) (Or.inr hqs)
 
 /-- **`Regularize` with a terminating small-eigenvalue routine terminates on any matrix**
 ([BanksGarzaVargasSrivastava2022, §4.2]): on a scalar machine with exact comparisons, index
@@ -414,8 +328,9 @@ theorem regularizeWith_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
         Store.inBlock f.1 f.2 1)
       (fun m' => (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a H' m'.store) ∧
         (∃ ys, m'.store.readBlock s.1 s.2 (2 * k) = some ys) ∧
-        ∃ x, m'.store.get f.1 f.2 = some x) m := by
-  sorry
+        ∃ x, m'.store.get f.1 f.2 = some x) m :=
+  regularizeWith_terminates_at hS hL hNat hC hD hk has haf hsf hio hl hA hrd hc hthr hrs hrf hSE.at
+    hlq hq hqw
 
 /-- One iteration with a terminating small-eigenvalue routine terminates on any matrix: on a
 scalar machine with exact comparisons, index literals, index conversion and exact natural
@@ -454,8 +369,9 @@ theorem shIterationWith_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
         [a, rd, c, thr, wg, wr, ww, wp, g, qw, a, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
       (fun m' => (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a H' m'.store) ∧
-        ∃ x, m'.store.get f.1 f.2 = some x) m := by
-  sorry
+        ∃ x, m'.store.get f.1 f.2 = some x) m :=
+  shIterationWith_terminates_at hS hL hNat hC hQ hD hkq hkn haf hio hl hA hrd hc hthr hwg hwr hww
+    hwp hg hrf hSE.at hlq hq hqw
 
 /-- **The rounded decoupling loop with a terminating small-eigenvalue routine terminates on
 every tape and every matrix** ([BanksGarzaVargasSrivastava2022, Lemma 6.4], termination only): on
@@ -472,8 +388,9 @@ theorem roundedDecoupleWith_terminatingDecouplerRoutine {M : Machine ℝ} {I : I
     {k q F : ℕ} (hkq : k = 2 ^ q) (tL R tv γ B α ε : ℝ) {T : ℕ} {qs : List ℝ}
     {SE : Impl O Q} (hSE : TerminatingSmallEig k T qs SE I) (hqs : qs.length = 12) :
     TerminatingDecouplerRoutine nmax k F T (roundedDecoupleParams tL R tv γ B α ε k q ++ qs)
-      (roundedDecoupleWith SE) I := by
-  sorry
+      (roundedDecoupleWith SE) I :=
+  roundedDecoupleWith_terminatingDecouplerRoutine_at hS hL hNat hC hQ hD hkq tL R tv γ B α ε
+    (hqs ▸ hSE.at) (Or.inr hqs)
 
 end Theorems
 

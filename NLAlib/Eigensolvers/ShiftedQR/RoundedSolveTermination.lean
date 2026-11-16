@@ -127,20 +127,30 @@ theorem TerminatingLeaf.terminatingLeafRoutine {L : Impl O Q} {I : Interp O Q �
   exact (h B hB (by simp_all [Mem.Live]) hroom hwo).in_frame (by simp)
     (by simp [Operand.evalList, Operand.eval]) (by simp_all [Mem.Live])
 
+/-- The leaf routine of a terminating small-eigenvalue routine with the word count $12$ and the
+words `qs` (none, or $12$; `NLAlib.ShiftedQR.TerminatingSmallEigAt`) terminates, with any words
+`ps₀` before `qs`. -/
+theorem TerminatingSmallEigAt.terminatingLeafRoutine {kmax T : ℕ} {qs ps₀ : List ℝ}
+    {SE : Impl O Q} {I : Interp O Q ℝ} (h : TerminatingSmallEigAt kmax 12 T qs SE I)
+    (hq12 : qs = [] ∨ qs.length = 12) :
+    TerminatingLeafRoutine kmax (ps₀ ++ qs) T (seLeaf SE) I := by
+  intro d w p o tape μ B hd hB hp hl hroom hwo hpo
+  obtain ⟨hq, hsub⟩ := Store.readBlock_tail_twelve hq12 hp
+  unfold seLeaf
+  refine (h (q := (p.1, p.2 + ((ps₀ ++ qs).length - 12))) tape μ B hd hB hq
+    (by simpa [Mem.Live] using hl) hroom hwo
+    (hpo.mono (Store.inBlock_le_inBlock (by omega) (by omega)) le_rfl)).in_frame ?_ ?_ ?_
+    |>.mono le_rfl fun _ _ _ => trivial
+  · simp
+  · simp [Operand.evalList, Operand.eval]
+  · simpa [Mem.Live] using hl
+
 /-- The leaf routine of a terminating small-eigenvalue routine with $12$ words `qs` terminates,
 with any words `ps₀` before `qs`. -/
 theorem TerminatingSmallEig.terminatingLeafRoutine {kmax T : ℕ} {qs ps₀ : List ℝ}
     {SE : Impl O Q} {I : Interp O Q ℝ} (h : TerminatingSmallEig kmax T qs SE I)
-    (hqs : qs.length = 12) : TerminatingLeafRoutine kmax (ps₀ ++ qs) T (seLeaf SE) I := by
-  intro d w p o tape μ B hd hB hp hl hroom hwo hpo
-  unfold seLeaf
-  refine (h.at (q := (p.1, p.2 + ps₀.length)) tape μ B hd hB (Store.readBlock_append_right hp)
-    (by simpa [Mem.Live] using hl) hroom hwo
-    (hpo.mono (Store.inBlock_le_inBlock (by omega) (by simp; omega)) le_rfl)).in_frame ?_ ?_ ?_
-    |>.mono le_rfl fun _ _ _ => trivial
-  · simp [hqs]
-  · simp [Operand.evalList, Operand.eval, hqs]
-  · simpa [Mem.Live] using hl
+    (hqs : qs.length = 12) : TerminatingLeafRoutine kmax (ps₀ ++ qs) T (seLeaf SE) I :=
+  TerminatingSmallEigAt.terminatingLeafRoutine (hqs ▸ h.at) (Or.inr hqs)
 
 section Leaf
 

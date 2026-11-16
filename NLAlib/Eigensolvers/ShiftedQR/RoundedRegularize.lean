@@ -21,8 +21,9 @@ every shift away from the spectrum, which the forward error of the rounded steps
 
 ## Main definitions
 
-* `NLAlib.ShiftedQR.regularize`: the program; `NLAlib.ShiftedQR.RegularizeOutcome`: its
-  outcome.
+* `NLAlib.ShiftedQR.regularizeWith`: the program with a small-eigenvalue routine;
+  `NLAlib.ShiftedQR.regularize`: the program with the `SmallEig` kernel;
+  `NLAlib.ShiftedQR.RegularizeOutcome`: its outcome.
 
 ## Main results
 
@@ -31,7 +32,8 @@ every shift away from the spectrum, which the forward error of the rounded steps
 * `NLAlib.ShiftedQR.regularizeDraws_pwrites`: the $k$ perturbations fail with probability at most
   $\varphi/2$.
 * `NLAlib.ShiftedQR.IsRandomSmallEig.smallEigLeaf_pwrites`: `SmallEig` with its forward error.
-* `NLAlib.ShiftedQR.regularize_pwrites`: `Regularize` as a probabilistic block.
+* `NLAlib.ShiftedQR.regularizeWith_pwrites_at`, `NLAlib.ShiftedQR.regularize_pwrites`:
+  `Regularize` as a probabilistic block.
 -/
 
 @[expose] public section
@@ -772,6 +774,16 @@ section Assembly
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O]
   [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q]
 
+/-- The shifts of `Regularize` are apart from the matrix and the three input words. -/
+theorem RegularizeViews.disj_shifts {L n k : ℕ} {a rd c thr s f : ℕ × ℕ}
+    (hv : RegularizeViews L n k a rd c thr s f) :
+    Fp.Disj (Store.inBlock s.1 s.2 (2 * k))
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock rd.1 rd.2 1 ⊔
+        Store.inBlock c.1 c.2 1 ⊔ Store.inBlock thr.1 thr.2 1) :=
+  Fp.disj_sup_right.mpr ⟨Fp.disj_sup_right.mpr ⟨Fp.disj_sup_right.mpr ⟨hv.as.symm,
+    hv.io.mono (by fp_sub) (by fp_sub)⟩, hv.io.mono (by fp_sub) (by fp_sub)⟩,
+    hv.io.mono (by fp_sub) (by fp_sub)⟩
+
 omit [Has IdxTst Q] [Has EigenvalueKernelOp O] in
 /-- `Regularize` with a small-eigenvalue routine and scratch as a probabilistic block:
 `NLAlib.ShiftedQR.regularizeWithScratchWith` from the context `NLAlib.ShiftedQR.RegularizeCtx`
@@ -829,12 +841,7 @@ theorem regularizeWithScratchWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ}
       Store.inBlock rd.1 rd.2 1 ⊔ Store.inBlock c.1 c.2 1 ⊔ Store.inBlock thr.1 thr.2 1) →
       ∀ {m m'}, Ctx m → m.store.EqOff F m'.store → Ctx m' := fun hF _ _ h hfr => h.of_eqOff hfr hF
   have hsep := regularize_sep_of_gap hM.roundoff_nonneg hk0 hk hω hψ hSH hgap hβ0 hR.le hβ
-  have hsIn : Fp.Disj (Store.inBlock s.1 s.2 (2 * k))
-      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock rd.1 rd.2 1 ⊔
-        Store.inBlock c.1 c.2 1 ⊔ Store.inBlock thr.1 thr.2 1) :=
-    Fp.disj_sup_right.mpr ⟨Fp.disj_sup_right.mpr ⟨Fp.disj_sup_right.mpr ⟨has.symm,
-      hio.mono (by fp_sub) (by fp_sub)⟩, hio.mono (by fp_sub) (by fp_sub)⟩,
-      hio.mono (by fp_sub) (by fp_sub)⟩
+  have hsIn := hv.disj_shifts
   have hHt : IsUpperHessenberg (trailingBlock k H) := hH.subBlock (r := (n + 1 - k, k)) (by omega)
   have hHtS : specNorm (trailingBlock k H) ≤ S := (specNorm_trailingBlock_le H (by omega)).trans hSH
   have hqLw : ∀ {o m : ℕ}, Fp.Disj (Store.inBlock L o m) (Store.inBlock qw.1 qw.2 qs.length) :=

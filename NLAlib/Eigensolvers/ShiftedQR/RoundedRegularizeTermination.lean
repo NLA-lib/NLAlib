@@ -509,7 +509,7 @@ theorem regularizeWithScratchWith_terminates {M : Machine ℝ} {I : Interp O Q �
   exact Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨has, by disjoint⟩,
     hsf.symm⟩, by disjoint⟩
 
-/-- **`Regularize` with a terminating small-eigenvalue routine terminates on any matrix**, with
+/-- `Regularize` with a terminating small-eigenvalue routine terminates on any matrix, with
 the word count `nq` apart from the words `qs` (`NLAlib.ShiftedQR.TerminatingSmallEigAt`): as
 `NLAlib.ShiftedQR.regularize_terminates` for `NLAlib.ShiftedQR.regularizeWith`, with the routine's
 words stored at `qw`, apart from the outputs. On a

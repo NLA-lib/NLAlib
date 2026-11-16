@@ -336,6 +336,14 @@ theorem _root_.NLAlib.Ops.Store.readBlock_append_right {K : Type} {s : Store K} 
   rw [this, List.getElem?_append_right (by omega)]
   simp
 
+/-- The head of a stored list of words: if `xs ++ ys` is stored at offset `off`, then `xs` is
+stored there. -/
+theorem _root_.NLAlib.Ops.Store.readBlock_append_left {K : Type} {s : Store K} {b off : ℕ}
+    {xs ys : List K} (h : s.readBlock b off (xs ++ ys).length = some (xs ++ ys)) :
+    s.readBlock b off xs.length = some xs := by
+  have := Store.readBlock_sub h (o := 0) (n := xs.length) (by simp)
+  simpa using this
+
 /-- A block inside a larger block of the same buffer. -/
 theorem _root_.NLAlib.Ops.Store.inBlock_le_inBlock {b off n off' n' : ℕ} (h1 : off ≤ off')
     (h2 : off' + n' ≤ off + n) : Store.inBlock b off' n' ≤ Store.inBlock b off n := by
@@ -350,6 +358,50 @@ def seLeaf (SE : Impl O Q) : Impl O Q := opsImpl% [d, np, T] (Bk, P) → (Ev) {
   run SE.body [d, 12, T] (Bk, P[np - 12], Ev)
 }
 
+/-- The routine contract is monotone in the norm bound. -/
+theorem RandomSmallEigContractAt.mono_norm {law : ℕ → Measure ℝ} {β φ : ℝ} {kmax nq T : ℕ}
+    {S S' : ℝ} {qs : List ℝ} {SE : Impl O Q} {I : Interp O Q ℝ}
+    (h : RandomSmallEigContractAt law β φ kmax nq T S qs SE I) (hS : S' ≤ S) :
+    RandomSmallEigContractAt law β φ kmax nq T S' qs SE I :=
+  fun B hd hB hBn => h B hd hB (hBn.trans hS)
+
+/-- The words of a routine stored as the tail of the parameter words: none, or the last $12$. -/
+theorem _root_.NLAlib.Ops.Store.readBlock_tail_twelve {s : Store ℝ} {b off : ℕ}
+    {ps₀ qs : List ℝ} (hq12 : qs = [] ∨ qs.length = 12)
+    (h : s.readBlock b off (ps₀ ++ qs).length = some (ps₀ ++ qs)) :
+    s.readBlock b (off + ((ps₀ ++ qs).length - 12)) qs.length = some qs ∧
+      (ps₀ ++ qs).length - 12 + qs.length ≤ (ps₀ ++ qs).length := by
+  rcases hq12 with rfl | hqs
+  · simp
+  · have e : (ps₀ ++ qs).length - 12 = ps₀.length := by simp [hqs]
+    rw [e]
+    exact ⟨Store.readBlock_append_right h, by simp⟩
+
+/-- A small-eigenvalue routine is a leaf routine, with the word count $12$ apart from the
+words `qs` (none, or $12$; `NLAlib.ShiftedQR.RandomSmallEigContractAt`): its leaf routine
+`NLAlib.ShiftedQR.seLeaf` meets `NLAlib.ShiftedQR.RandomLeafRoutineContract` with backward error
+$\beta \ge 0$ on the same orders and norms, with any words `ps₀` before `qs`. -/
+theorem RandomSmallEigContractAt.randomLeafRoutineContract {law : ℕ → Measure ℝ} {β φ : ℝ}
+    {kmax T : ℕ} {S : ℝ} {qs ps₀ : List ℝ} {SE : Impl O Q} {I : Interp O Q ℝ}
+    (h : RandomSmallEigContractAt law β φ kmax 12 T S qs SE I) (hβ : 0 ≤ β)
+    (hq12 : qs = [] ∨ qs.length = 12) :
+    RandomLeafRoutineContract law β φ kmax S (ps₀ ++ qs) T (seLeaf SE) I := by
+  intro d w p o B hd hB hBn
+  have key := h (w := w) (q := (p.1, p.2 + ((ps₀ ++ qs).length - 12))) (o := o) B hd hB hBn
+  unfold seLeaf
+  refine (key.in_frame ?_ ?_ ?_).mono ?_ le_rfl ?_ le_rfl
+  · simp
+  · simp [Operand.evalList, Operand.eval]
+  · rintro μ ⟨-, -, hl, -⟩
+    simpa [Mem.Live] using hl
+  · rintro μ ⟨hH, hp, hl, hroom, hwo, hpo⟩
+    obtain ⟨hq, hsub⟩ := Store.readBlock_tail_twelve hq12 hp
+    exact ⟨hH, hq, by simpa [Mem.Live] using hl, hroom, hwo,
+      hpo.mono (Store.inBlock_le_inBlock (by omega) (by omega)) le_rfl⟩
+  · rintro μ' ⟨roots, ev, hev, hfw, hO⟩
+    obtain ⟨L', hL', hL'ev⟩ := hev.exists_specNorm_sub_le hβ hfw
+    exact ⟨roots, L' - B, hL', by simpa using hL'ev, hO⟩
+
 /-- **A small-eigenvalue routine is a leaf routine** ([BanksGarzaVargasSrivastava2025,
 Corollary 1.3] in the worklist of [BanksGarzaVargasSrivastava2022, Theorem 6.3]): if `SE` meets
 `NLAlib.ShiftedQR.RandomSmallEigContract` with forward error $\beta \ge 0$ and $12$ words `qs`,
@@ -359,21 +411,8 @@ forward error implies backward error (`NLAlib.IsEigenvalueListing.exists_specNor
 theorem RandomSmallEigContract.randomLeafRoutineContract {law : ℕ → Measure ℝ} {β φ : ℝ}
     {kmax T : ℕ} {S : ℝ} {qs ps₀ : List ℝ} {SE : Impl O Q} {I : Interp O Q ℝ}
     (h : RandomSmallEigContract law β φ kmax T S qs SE I) (hβ : 0 ≤ β) (hqs : qs.length = 12) :
-    RandomLeafRoutineContract law β φ kmax S (ps₀ ++ qs) T (seLeaf SE) I := by
-  intro d w p o B hd hB hBn
-  have key := h.at (w := w) (q := (p.1, p.2 + ps₀.length)) (o := o) B hd hB hBn
-  unfold seLeaf
-  refine (key.in_frame ?_ ?_ ?_).mono ?_ le_rfl ?_ le_rfl
-  · simp [hqs]
-  · simp [Operand.evalList, Operand.eval, hqs]
-  · rintro μ ⟨-, -, hl, -⟩
-    simpa [Mem.Live] using hl
-  · rintro μ ⟨hH, hp, hl, hroom, hwo, hpo⟩
-    exact ⟨hH, Store.readBlock_append_right hp, by simpa [Mem.Live] using hl, hroom, hwo,
-      hpo.mono (Store.inBlock_le_inBlock (by omega) (by simp; omega)) le_rfl⟩
-  · rintro μ' ⟨roots, ev, hev, hfw, hO⟩
-    obtain ⟨L', hL', hL'ev⟩ := hev.exists_specNorm_sub_le hβ hfw
-    exact ⟨roots, L' - B, hL', by simpa using hL'ev, hO⟩
+    RandomLeafRoutineContract law β φ kmax S (ps₀ ++ qs) T (seLeaf SE) I :=
+  RandomSmallEigContractAt.randomLeafRoutineContract (hqs ▸ h.at) hβ (Or.inr hqs)
 
 end Routine
 

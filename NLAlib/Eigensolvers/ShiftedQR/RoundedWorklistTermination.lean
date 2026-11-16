@@ -151,8 +151,8 @@ literals up to $n + 1$ are exact, with exact `toNat` and comparisons, from the g
 rounded worklist of order $n + 1$ with a threshold word, any failure word $x$, a matrix stored at
 `a`, any matrix $\mathbf{H}'$ of order $d + 1 \ge k + 1$ in the work matrix, and a stack whose
 ranges after the popped $(lo, d + 1)$ fit in the order (`NLAlib.ShiftedQR.RangesFit`), the rest of
-`NLAlib.ShiftedQR.roundedProcessLargeWith` (abort, or scan and split or abort) runs to completion and
-leaves the core `NLAlib.ShiftedQR.RoundedStoredCore`. -/
+`NLAlib.ShiftedQR.roundedProcessLargeWith` (abort, or scan and split or abort) runs to completion
+and leaves the core `NLAlib.ShiftedQR.RoundedStoredCore`. -/
 theorem roundedLargeRest_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar Mch I)
     (hL : IsIndexLit Mch I) {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
     (hC : IsCmp id I) {k F T : ℕ} {ps : List ℝ} (D : Impl O Q) {tape : Tape ℝ} {μ₁ : Mem ℝ}
@@ -215,7 +215,8 @@ are exact, with exact `toNat` and comparisons and a terminating decoupling routi
 rounded worklist of order $n + 1$ with the threshold and parameter words stored, any failure
 word, a matrix $\mathbf{A}$ stored at `a` whose block on $(lo, d + 1)$ is in the work matrix, and
 a stack whose ranges after $(lo, d + 1)$ fit in the order,
-`NLAlib.ShiftedQR.roundedProcessLargeWith` runs to completion and leaves the core `NLAlib.ShiftedQR.RoundedStoredCore`. -/
+`NLAlib.ShiftedQR.roundedProcessLargeWith` runs to completion and leaves the core
+`NLAlib.ShiftedQR.RoundedStoredCore`. -/
 theorem roundedLarge_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar Mch I)
     (hL : IsIndexLit Mch I) {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
     (hC : IsCmp id I) {k F T : ℕ} {ps : List ℝ} (D : Impl O Q)
@@ -419,8 +420,8 @@ theorem roundedWorklistExit_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} 
 /-- The capped loop of the rounded worklist terminates: on a scalar machine whose natural
 literals up to $n + 1$ are exact, with exact `toNat` and comparisons, a terminating decoupler
 (`NLAlib.ShiftedQR.TerminatingDecouplerRoutine`) and a terminating leaf
-(`NLAlib.ShiftedQR.TerminatingLeafRoutine`), from the geometry of the rounded worklist of order $n + 1$
-(`NLAlib.ShiftedQR.RoundedGeometry`) with any matrix $\mathbf{H}$ stored at `a`, the threshold
+(`NLAlib.ShiftedQR.TerminatingLeafRoutine`), from the geometry of the rounded worklist of order $n
++ 1$ (`NLAlib.ShiftedQR.RoundedGeometry`) with any matrix $\mathbf{H}$ stored at `a`, the threshold
 word stored and the parameter words `ps`, `NLAlib.ShiftedQR.roundedWorklistWith` runs to completion
 within the round footprint. -/
 theorem roundedWorklist_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}

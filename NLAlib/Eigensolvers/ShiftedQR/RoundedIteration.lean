@@ -21,12 +21,14 @@ potential $\psi_k$ has contracted by $1.002(1 - \gamma)$.
 
 ## Main definitions
 
-* `NLAlib.ShiftedQR.shIteration`: the program; `NLAlib.ShiftedQR.ShIterationOutcome`: its
-  outcome.
+* `NLAlib.ShiftedQR.shIterationWith`: the program with a small-eigenvalue routine;
+  `NLAlib.ShiftedQR.shIteration`: the program with the `SmallEig` kernel;
+  `NLAlib.ShiftedQR.ShIterationOutcome`: its outcome.
 
 ## Main results
 
-* `NLAlib.ShiftedQR.shIteration_pwrites`: one iteration as a probabilistic block.
+* `NLAlib.ShiftedQR.shIterationWith_pwrites_at`, `NLAlib.ShiftedQR.shIteration_pwrites`: one
+  iteration as a probabilistic block.
 -/
 
 @[expose] public section
@@ -344,7 +346,8 @@ theorem shIteration_regularize_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔
         Store.inBlock f.1 f.2 1)
       (fun m => m.Live [a, rd, c, thr, wg, wr, ww, wp, g, qw, s, f] ∧ HoldsMatrix a H m.store ∧
-        m.store.readBlock qw.1 qw.2 qs.length = some qs ∧ m.store.get rd.1 rd.2 = some R ∧ m.store.get c.1 c.2 = some
+        m.store.readBlock qw.1 qw.2 qs.length = some qs ∧
+        m.store.get rd.1 rd.2 = some R ∧ m.store.get c.1 c.2 = some
           (0.999 * (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) ^ k) ∧
         m.store.get thr.1 thr.2 = some tv ∧ m.store.get wg.1 wg.2 = some cg ∧
         m.store.get wr.1 wr.2 = some cr ∧ m.store.get ww.1 ww.2 = some cw ∧
@@ -476,7 +479,8 @@ theorem shIterationWithScratchWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔
         Store.inBlock f.1 f.2 1)
       (fun m => m.Live [a, rd, c, thr, wg, wr, ww, wp, g, qw, s, f] ∧ HoldsMatrix a H m.store ∧
-        m.store.readBlock qw.1 qw.2 qs.length = some qs ∧ m.store.get rd.1 rd.2 = some R ∧ m.store.get c.1 c.2 = some
+        m.store.readBlock qw.1 qw.2 qs.length = some qs ∧
+        m.store.get rd.1 rd.2 = some R ∧ m.store.get c.1 c.2 = some
           (0.999 * (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) ^ k) ∧
         m.store.get thr.1 thr.2 = some tv ∧ m.store.get wg.1 wg.2 = some ((1 - γ) ^ k) ∧
         m.store.get wr.1 wr.2 = some ((2 : ℝ) ^ ((k : ℝ)⁻¹) *
@@ -651,7 +655,8 @@ theorem shIterationWith_pwrites_at {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
         [a, rd, c, thr, wg, wr, ww, wp, g, qw, a, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
       (fun m => m.Live [a, rd, c, thr, wg, wr, ww, wp, g, qw, f] ∧ HoldsMatrix a H m.store ∧
-        m.store.readBlock qw.1 qw.2 qs.length = some qs ∧ m.store.get rd.1 rd.2 = some R ∧ m.store.get c.1 c.2 = some
+        m.store.readBlock qw.1 qw.2 qs.length = some qs ∧
+        m.store.get rd.1 rd.2 = some R ∧ m.store.get c.1 c.2 = some
           (0.999 * (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) ^ k) ∧
         m.store.get thr.1 thr.2 = some tv ∧ m.store.get wg.1 wg.2 = some ((1 - γ) ^ k) ∧
         m.store.get wr.1 wr.2 = some ((2 : ℝ) ^ ((k : ℝ)⁻¹) *
@@ -673,7 +678,8 @@ theorem shIterationWith_pwrites_at {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
   refine PWrites.allocs (ns := [2 * k]) ?_ (Pre₁ := fun L μ => (a.1 < L ∧ rd.1 < L ∧ c.1 < L ∧
       thr.1 < L ∧ wg.1 < L ∧ wr.1 < L ∧ ww.1 < L ∧ wp.1 < L ∧ g.1 < L ∧ f.1 < L ∧ qw.1 < L) ∧
     μ.Live [a, rd, c, thr, wg, wr, ww, wp, g, qw, (L, 0), f] ∧ HoldsMatrix a H μ.store ∧
-      μ.store.readBlock qw.1 qw.2 qs.length = some qs ∧ μ.store.get rd.1 rd.2 = some R ∧ μ.store.get c.1 c.2 = some
+      μ.store.readBlock qw.1 qw.2 qs.length = some qs ∧
+      μ.store.get rd.1 rd.2 = some R ∧ μ.store.get c.1 c.2 = some
         (0.999 * (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) ^ k) ∧
       μ.store.get thr.1 thr.2 = some tv ∧ μ.store.get wg.1 wg.2 = some ((1 - γ) ^ k) ∧
       μ.store.get wr.1 wr.2 = some ((2 : ℝ) ^ ((k : ℝ)⁻¹) *
@@ -694,7 +700,8 @@ theorem shIterationWith_pwrites_at {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
     have hl0 := hlens 0 (by simp)
     simp only [List.length_cons, List.length_nil] at hlen
     refine ⟨⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11⟩, ?_, hA.of_below hBelow h1,
-      (hBelow.readBlock h11 qw.2 qs.length).trans hq, hBelow.get_of h2 hrd, hBelow.get_of h3 hc, hBelow.get_of h4 ht, hBelow.get_of h5 hwg,
+      (hBelow.readBlock h11 qw.2 qs.length).trans hq, hBelow.get_of h2 hrd, hBelow.get_of h3 hc,
+      hBelow.get_of h4 ht, hBelow.get_of h5 hwg,
       hBelow.get_of h6 hwr, hBelow.get_of h7 hww, hBelow.get_of h8 hwp,
       hBelow.readBlock_of h9 hg, by simpa using hl0.ge, by rw [(hBelow f.1 h10).1]; exact hf⟩
     simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,

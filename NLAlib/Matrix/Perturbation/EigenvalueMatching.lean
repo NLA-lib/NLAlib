@@ -27,7 +27,8 @@ leaves the class. [BanksGarzaVargasSrivastava2025]
 ## Main results
 
 * `NLAlib.exists_tendsto_isEigenvalueListing`: continuity of listings up to a permutation.
-* `NLAlib.exists_norm_sub_le_rpow_of_mem_spectrum`: Elsner's bound for one eigenvalue.
+* `NLAlib.norm_det_smul_one_sub_le_of_mem_spectrum`,
+  `NLAlib.exists_norm_sub_le_rpow_of_mem_spectrum`: Elsner's bound for one eigenvalue.
 * `NLAlib.exists_isEigenvalueListing_norm_sub_le_rpow`: the Ostrowski–Elsner matching.
 * `NLAlib.exists_isEigenvalueListing_norm_sub_le_of_class`: the matching through a
   diagonalizable matrix.
@@ -51,6 +52,60 @@ theorem exists_tendsto_isEigenvalueListing {n : ℕ} {A : ℕ → Matrix (Fin n)
       IsEigenvalueListing A₀ e ∧ Tendsto (fun j => ev (φ j) ∘ σ j) atTop (𝓝 e) := by
   sorry
 
+/-- The determinant step of Elsner's bound: if $\mu$ is an eigenvalue of the complex matrix
+$\mathbf{A}'$ of order $n + 1$, then for every $\mathbf{A}$ of the same order
+$$\lvert\det(\mu\mathbf{I} - \mathbf{A})\rvert \le \|\mathbf{A}' - \mathbf{A}\|_2\,
+  (\|\mathbf{A}\|_2 + \|\mathbf{A}'\|_2)^n.$$ -/
+theorem norm_det_smul_one_sub_le_of_mem_spectrum {n : ℕ}
+    {A A' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {μ : ℂ} (hμ : μ ∈ spectrum ℂ A') :
+    ‖(μ • (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) - A).det‖ ≤
+      specNorm (A' - A) * (specNorm A + specNorm A') ^ n := by
+  -- a Schur form of `A'` with `μ` first: `Uᴴ A' U = T` upper triangular, `T₀₀ = μ`
+  obtain ⟨d, hd⟩ := exists_isEigenvalueListing A'
+  obtain ⟨k, hk⟩ : μ ∈ Set.range d := hd.spectrum_eq_range ▸ hμ
+  obtain ⟨U, hU, hT, hdiag⟩ :=
+    (hd.comp_equiv (Equiv.swap 0 k)).exists_hasOrthonormalCols_isUpperTriangular
+  set T := Uᴴ * A' * U
+  set M := Uᴴ * (μ • (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) - A) * U
+  have hUU : Uᴴ * U = 1 := hU
+  have hdet : M.det = (μ • (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) - A).det := by
+    rw [Matrix.det_mul, Matrix.det_mul, mul_comm (Uᴴ.det), mul_assoc, ← Matrix.det_mul, hUU,
+      Matrix.det_one, mul_one]
+  have hM : M = (μ • 1 - T) + Uᴴ * (A' - A) * U := by
+    simp only [M, T, Matrix.mul_sub, Matrix.sub_mul, Matrix.mul_smul, Matrix.smul_mul,
+      Matrix.mul_one, hUU]
+    abel
+  -- the first column of `M` is that of `Uᴴ (A' - A) U`
+  have hcol0 : M.col 0 = (Uᴴ * (A' - A) * U).col 0 := by
+    ext i
+    rw [hM]
+    simp only [Matrix.col_apply, Matrix.add_apply, Matrix.sub_apply, Matrix.smul_apply,
+      Matrix.one_apply, smul_eq_mul, add_eq_right, sub_eq_zero]
+    rcases eq_or_ne i 0 with rfl | hi
+    · rw [hdiag, Function.comp_apply, Equiv.swap_apply_left, hk, if_pos rfl, mul_one]
+    · rw [if_neg hi, mul_zero, hT (Fin.pos_iff_ne_zero.mpr hi)]
+  have hS : specNorm M ≤ specNorm A + specNorm A' := by
+    have hμT : ‖μ‖ ≤ specNorm A' := by
+      have h := norm_apply_le_specNorm T 0 0
+      rwa [hdiag, Function.comp_apply, Equiv.swap_apply_left, hk,
+        hU.specNorm_conjTranspose_mul_mul] at h
+    rw [hU.specNorm_conjTranspose_mul_mul]
+    refine (specNorm_sub_le _ _).trans ?_
+    rw [specNorm_smul, specNorm_one, mul_one]
+    linarith
+  rw [← hdet]
+  refine (norm_det_le_prod_norm_col M).trans ?_
+  rw [Fin.prod_univ_succ, hcol0]
+  refine mul_le_mul ((norm_toLp_col_le_specNorm _ 0).trans
+    (hU.specNorm_conjTranspose_mul_mul _).le) ?_ (Finset.prod_nonneg fun _ _ => norm_nonneg _)
+    (specNorm_nonneg _)
+  calc ∏ i : Fin n, ‖WithLp.toLp 2 (M.col i.succ)‖
+      ≤ ∏ _i : Fin n, (specNorm A + specNorm A') :=
+        Finset.prod_le_prod (fun _ _ => norm_nonneg _)
+          fun i _ => (norm_toLp_col_le_specNorm M i.succ).trans hS
+    _ = (specNorm A + specNorm A') ^ n := by rw [Finset.prod_const, Finset.card_univ,
+          Fintype.card_fin]
+
 /-- Every eigenvalue $\mu$ of a complex matrix $\mathbf{A}'$ of order $n + 1$ is within
 $$(\|\mathbf{A}\|_2 + \|\mathbf{A}'\|_2)^{1 - 1/(n + 1)}\,
   \|\mathbf{A}' - \mathbf{A}\|_2^{1/(n + 1)}$$
@@ -60,7 +115,39 @@ theorem exists_norm_sub_le_rpow_of_mem_spectrum {n : ℕ}
     {A A' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {μ : ℂ} (hμ : μ ∈ spectrum ℂ A') :
     ∃ ν ∈ spectrum ℂ A, ‖μ - ν‖ ≤ (specNorm A + specNorm A') ^ (1 - 1 / ((n : ℝ) + 1)) *
       specNorm (A' - A) ^ (1 / ((n : ℝ) + 1)) := by
-  sorry
+  obtain ⟨ev, hev⟩ := exists_isEigenvalueListing A
+  obtain ⟨i, -, hi⟩ := Finset.exists_min_image Finset.univ (fun i => ‖μ - ev i‖)
+    Finset.univ_nonempty
+  refine ⟨ev i, hev.spectrum_eq_range ▸ Set.mem_range_self i, ?_⟩
+  set S := specNorm A + specNorm A'
+  set δ := ‖μ - ev i‖
+  have hS : 0 ≤ S := add_nonneg (specNorm_nonneg _) (specNorm_nonneg _)
+  have hE : 0 ≤ specNorm (A' - A) := specNorm_nonneg _
+  -- `δ^(n+1) ≤ ∏ ‖μ - ev j‖ = ‖det(μ I - A)‖ ≤ ‖A' - A‖ S^n`
+  have hpow : δ ^ (n + 1) ≤ specNorm (A' - A) * S ^ n := by
+    have hdet : (μ • (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) - A).det = ∏ j, (μ - ev j) := by
+      have h := congrArg (Polynomial.eval μ) hev
+      rw [Matrix.eval_charpoly, Polynomial.eval_prod, Matrix.scalar_apply,
+        ← Matrix.smul_one_eq_diagonal] at h
+      simpa only [Polynomial.eval_sub, Polynomial.eval_X, Polynomial.eval_C] using h
+    refine le_trans ?_ (norm_det_smul_one_sub_le_of_mem_spectrum (A := A) hμ)
+    rw [hdet, norm_prod]
+    calc δ ^ (n + 1) = ∏ _j : Fin (n + 1), δ := by
+          rw [Finset.prod_const, Finset.card_univ, Fintype.card_fin]
+      _ ≤ ∏ j, ‖μ - ev j‖ :=
+          Finset.prod_le_prod (fun _ _ => norm_nonneg _) fun j _ => hi j (Finset.mem_univ j)
+  have hN : ((n : ℝ) + 1) ≠ 0 := by positivity
+  calc δ = (δ ^ (n + 1)) ^ (1 / ((n : ℝ) + 1)) := by
+        rw [← Real.rpow_natCast, ← Real.rpow_mul (norm_nonneg _)]
+        push_cast
+        rw [mul_one_div_cancel hN, Real.rpow_one]
+    _ ≤ (specNorm (A' - A) * S ^ n) ^ (1 / ((n : ℝ) + 1)) :=
+        Real.rpow_le_rpow (by positivity) hpow (by positivity)
+    _ = S ^ (1 - 1 / ((n : ℝ) + 1)) * specNorm (A' - A) ^ (1 / ((n : ℝ) + 1)) := by
+        rw [Real.mul_rpow hE (by positivity), ← Real.rpow_natCast, ← Real.rpow_mul hS, mul_comm]
+        congr 2
+        field_simp
+        ring
 
 /-- **The Ostrowski–Elsner matching** ([BanksGarzaVargasSrivastava2025, Lemma 1.2]; the constant
 $2N - 1$ of the component argument at the order $N = n + 1$, where Bhatia, Elsner and Krause

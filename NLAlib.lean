@@ -417,6 +417,7 @@ public import NLAlib.ForMathlib.LinearAlgebra.Matrix.CauchyBinet
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.ConjTranspose
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.Hadamard
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.Hermitian
+public import NLAlib.ForMathlib.LinearAlgebra.Matrix.NonsingularInverse
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.PosDef
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.Rank
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.SchurComplement

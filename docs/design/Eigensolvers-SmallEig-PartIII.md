@@ -261,7 +261,8 @@ dimension:
   [programs](../contributing/programs.md) "fixed programs"). So the call must read words: the
   `SmallEig` interface widens from `[d] (Bk) → (Ev)` to `[d, nq, T] (Bk, Q) → (Ev)`, with `Q` the
   view `P[np - nq]` of the parameter words: the SmallEig words are the tail of `P` and `nq`, their
-  fixed count, is a literal. The length of `roundedDecoupleParams …` is
+  fixed count, is a numeral of the program text (`opsIdx` accepts numerals and scoped names
+  only, so it cannot be a Lean variable; PA1 states `(smallEigParams …).length = nq₀`). The length of `roundedDecoupleParams …` is
   $10 + 2|\mathrm{excNet}\,\varepsilon|$ (`RoundedDecouple.lean:102–112`), not a literal (review B2);
   `IExp.sub` is truncated and `np` is in scope at both call sites. The With theorems are stated for
   `roundedDecoupleParams … ++ qs`; the merged ones are the case `qs = []`.
@@ -314,7 +315,8 @@ theorem RandomSmallEigContract.randomLeafRoutineContract (h : RandomSmallEigCont
 def SmallEigCaps (T : ℕ) (qs : List ℝ) : Prop := …
 ```
 
-`TerminatingSmallEig T qs SE I` is claimed for `smallEigProg` only under `SmallEigCaps T qs`:
+`TerminatingSmallEig kmax T qs SE I` (orders $\le k_{\max}$) is claimed for `smallEigProg` only
+under `SmallEigCaps T qs` and `IsExactNatLit id Mch kmax`:
 `bindIdx` fails on a negative or too large word (`Ops/Exec.lean:127`), so a run with junk cap words
 is not total.
 
@@ -594,7 +596,7 @@ are in the JSON only.
 | D3b | `NLAlib.SmallEig.smallEigDecoupler_randomDecouplingContract` — `RandomDecouplingContract law (2B) (g/2) φ_D 1 F nmax Nmax ps ω (fun N => ε_D N) smallEigDecoupler I` with φ_D = φ_RH + φ_OE, ε_D N = (c_R N² + 3.5 m₂ ν) u N, under u ≤ u_D (nmax, Nmax) | Eigensolvers/SmallEig/Decoupler.lean | L | D3a, RH3, OE2, DC2, D3d | 4 | stage |
 | CO2 | `NLAlib.SmallEig.smallEigCore_terminates` — Total on every tape | Eigensolvers/SmallEig/Core.lean | S | D3c, LF2, RF2b | 4 | stage |
 | CO1 | `NLAlib.SmallEig.smallEigCore_measureReal_not_spectrum_le` — Theorem 6.1 (`eig.tex:32`; 'Theorem 5.1' in the sizing study) in the class form: `smallEigCore := solveRoundedWith smallEigDecoupler copyLeaf` at k = 1 on an upper Hessenberg A of order n+1 with κ ≤ B, gap ≥ g, ‖A‖ ≤ S, threshold and params of PA1, u ≤ u_core: fails to store the spectrum of A + E, ‖E‖ ≤ 2(n+1)(c + ε_D + 0), with probability ≤ 2(n+1)φ_D | Eigensolvers/SmallEig/Core.lean | M | RF2b, D3b, LF1 | 5 | stage |
-| SE2 | `NLAlib.SmallEig.smallEigProg_terminates` — `SmallEigCaps T qs → TerminatingSmallEig T qs smallEigProg I` (review B5: `bindIdx` fails on a negative or too large word, so not for every qs): every tape, any input matrix; no literal above the order is written, so `IsExactNatLit id Mch d` suffices | Eigensolvers/SmallEig/Program.lean | M | SE1, CO2, HR3 | 5 | stage |
+| SE2 | `NLAlib.SmallEig.smallEigProg_terminates` — `SmallEigCaps T qs → IsExactNatLit id Mch kmax → TerminatingSmallEig kmax T qs smallEigProg I` (review B5: `bindIdx` fails on a negative or too large word, so not for every qs): every tape, any input matrix; no literal above the order is written, so `IsExactNatLit id Mch kmax` suffices | Eigensolvers/SmallEig/Program.lean | M | SE1, CO2, HR3 | 5 | stage |
 | PA1 | `NLAlib.SmallEig.smallEigParams, smallEigParams_spec` — Words (γ, ω, β' = ω/20, η₁, η₂, threshold, t_L, m, q, t, m₂) from (nmax, S, δ, φ, c₁, c₂) at an outer order bound nmax, valid at every order ≤ nmax (review B1); failure budget φ/4 each to gap, κ, norm and core (review S2) and the side conditions of GP3, RH3, OE2, DC2, D3b, CO1 at once; Lemma 6.5 replaced by RM4/RM5 (no shattering vocabulary) | Eigensolvers/SmallEig/Parameters.lean | L | RM5, M4a, M4b, M4c, CO1, D3b, GP3 | 6 | stage |
 | PA2 | `NLAlib.SmallEig.smallEigParams_pos, smallEigCaps_le` — Positivity of every word and of u_SmallEig; caps m, t, m₂ ≥ 1 and ≤ T := smallEigCap, q ≤ m, m = 2^q (review B4, D6); the words satisfy `SmallEigCaps T qs` (they are read by `bindIdx` with bound T from exact parameter words, so no literal above the order is written: `IsExactNatLit id Mch (n + 1)` suffices, as PAR1 checked for Part II) | Eigensolvers/SmallEig/Parameters.lean | M | PA1 | 7 | stage |
 | PA3 | `NLAlib.SmallEig.uSmallEig, uSmallEig_spec` — u_SmallEig nmax … := min(u_GP, u_HR, u_RH, u_DS, u_DC, u_core) closed form at the outer bound nmax (review B1) (P12/G8/G9/G16 corrected inputs); spec: u ≤ uSmallEig ⇒ every u-hypothesis of GP3 … CO1 | Eigensolvers/SmallEig/Precision.lean | L | PA1 | 7 | stage |
@@ -615,7 +617,7 @@ are in the JSON only.
 | RM4 | `NLAlib.measureReal_not_exists_class_le_of_hasLaw_complexGaussianMatrix` — For every M (no norm condition), every γ > 0 (the program's rounded scale γ'/√d is a valid γ, review B1), 0 < t₁ ≤ γ, 0 < t₂ ≤ 1, RM1 c₁, RM2 c₂: μ.real {ω \| ¬ ∃ V d, IsUnit V ∧ (M + (γ/√n) G ω) V = V diag d ∧ κ(V) ≤ t₂⁻¹ ∧ ∀ i ≠ j, t₁ ≤ ‖d i - d j‖} ≤ tail c₁ n (K/…) + tail c₂ …, K = (‖M‖ + 4γ)/γ | RandomMatrix/Gaussian/Complex/Shattering.lean (new; collaborator's file, ours: defs + glue) | M | RM1, RM2, M13, RMn | 2 | gen |
 | RM5 | `NLAlib.SmallEig.ginibreClass_spec` — At an outer order bound nmax (review B1) and a free failure budget φ' (review S2): t₁(φ', nmax, S, γ, c₁), t₂(φ', nmax, S, γ, c₂) with each tail ≤ φ' at every order ≤ nmax (normalized record, a ≥ 0), 0 < t₁ ≤ γ, 0 < t₂ ≤ 1, and log₂(1/t_i) ≤ (a log₂(4 nmax) + log₂(C/φ') + c log₂ K + 1)/(b/2) | Eigensolvers/SmallEig/Parameters.lean | M | RM1, RM2, RMn | 2 | stage |
 | RM3 | `NLAlib.complexGaussianGapTail_of_preferred, complexGaussianConditionTail_of_preferred` — The collaborator's preferred statements imply RM1 at (1, 3, 2, 0) and RM2 at (18, 3, 2, 2) (review S9: in the range 2γ ≤ ‖M‖, 2√2 + 1 ≤ 1.92‖M‖/γ and √(4L) ≤ L + 1, no case split; the earlier (8, 3, 2, 2) is false: at t = 1, ‖M‖ = 2γ the preferred bound is 46.6 n³) | RandomMatrix/Gaussian/Complex/Shattering.lean (new; collaborator's file, ours: defs + glue) | S | RM1, RM2 | 6 | hyp |
-| RF1 | `NLAlib.ShiftedQR.RandomSmallEigContract, TerminatingSmallEig, smallEigKernel, IsRandomSmallEig.randomSmallEigContract, IsRandomSmallEig.terminatingSmallEig` — `RandomSmallEigContract law β φ kmax T S qs SE I`: ∀ d ≤ kmax, B Hessenberg, specNorm B ≤ S, PWrites law I SE.body (frame [d, qs.length, T] [w, q, o]) (inBlock o (2d)) (B, qs stored, live, room, apart) (∃ roots ev, IsEigenvalueListing B ev ∧ ∀ i, ‖roots i - ev i‖ ≤ β ∧ HoldsMatrix o (col roots)) φ; `TerminatingSmallEig T qs SE I` the all-tape total run; `smallEigKernel : [d, nq, T] (Bk, Q) → (Ev)` calls the kernel and ignores Q; bridges: IsRandomSmallEig law s β φ I → RandomSmallEigContract law β φ kmax T S qs smallEigKernel I (any kmax, T, S, qs) and → TerminatingSmallEig | Eigensolvers/ShiftedQR/RoundedKernels.lean | S | — | 0 | refactor |
+| RF1 | `NLAlib.ShiftedQR.RandomSmallEigContract, TerminatingSmallEig, smallEigKernel, IsRandomSmallEig.randomSmallEigContract, IsRandomSmallEig.terminatingSmallEig` — `RandomSmallEigContract law β φ kmax T S qs SE I`: ∀ d ≤ kmax, B Hessenberg, specNorm B ≤ S, PWrites law I SE.body (frame [d, qs.length, T] [w, q, o]) (inBlock o (2d)) (B, qs stored, live, room, apart) (∃ roots ev, IsEigenvalueListing B ev ∧ ∀ i, ‖roots i - ev i‖ ≤ β ∧ HoldsMatrix o (col roots)) φ; `TerminatingSmallEig kmax T qs SE I` the all-tape total run on orders ≤ kmax (elaboration: an unbounded order would need exact natural literals of every size); `smallEigKernel : [d, nq, T] (Bk, Q) → (Ev)` calls the kernel and ignores Q; bridges: IsRandomSmallEig law s β φ I → RandomSmallEigContract law β φ kmax T S qs smallEigKernel I (any kmax, T, S, qs) and → TerminatingSmallEig | Eigensolvers/ShiftedQR/RoundedKernels.lean | S | — | 0 | refactor |
 | RF2a | `NLAlib.ShiftedQR.solveRoundedWith, liftLeaf; solveRounded as a wrapper` — `solveRoundedWith D L : [N, k, np, F, T] (A, Thr, P) → (Out, Fl)`, leaf call `run L.body [d, np, T] (W, P, Out[2 lo])`; `liftLeaf L : [d, np, T] (Bk, P) → (Ev) := run L.body [d] (Bk, Ev)`; `solveRounded D L := opsImpl% [N,k,np,F] … { run (solveRoundedWith D (liftLeaf L)).body [N,k,np,F,0] … }` (interface and every merged statement unchanged); contracts `RandomLeafRoutineContract law β φ kmax Nmax ps T L I`, `BackwardLeafRoutineContract`, `TerminatingLeafRoutine` (leaf frame [d, ps.length, T] [w, p, o], d ≤ kmax, norm ≤ Nmax) with bridges from the merged ones through liftLeaf | Eigensolvers/ShiftedQR/RoundedSolve.lean | M | RF1 | 1 | refactor |
 | RF3 | `regularizeWith, regularizeWithScratchWith, shIterationWith, roundedDecoupleLoopWith, roundedDecoupleWith; merged names as wrappers` — Each program gains the routine `SE : Impl O Q`, the operand `Q` (the view `P[np - nq]`: the SmallEig words are the tail of P; `nq` is the fixed word count of `smallEigParams`, a literal; review B2: the merged `roundedDecoupleParams` has length 10 + 2·\|excNet ε\|, not a literal) and the dimension `T`; `run smallEigLeaf.body [k] (B, S)` becomes `run SE.body [k, nq, T] (B, Q, S)`; the merged `regularize`, `shIteration`, `roundedDecouple` are wrappers at `SE := smallEigKernel`, `nq = T = 0` | Eigensolvers/ShiftedQR/RoundedRegularize.lean, RoundedIteration.lean, RoundedDecouple.lean | M | RF1 | 1 | refactor |
 | RF2b | `solveRoundedWith_pwrites, solveRoundedWith_backward, solveRoundedWith_terminates; merged solveRounded_* as corollaries` — The worklist theorems for `solveRoundedWith` with `RandomLeafRoutineContract … n N₀ ps T` (the leaf gets blocks of order ≤ k and norm ≤ N₀); `solveRounded_pwrites`, `solveRounded_backward`, `solveRounded_measureReal_not_spectrum_le`, `solveRounded_terminates` re-derived, statements unchanged | Eigensolvers/ShiftedQR/RoundedHeadline.lean, RoundedSolveBackward.lean, RoundedSolveTermination.lean, RoundedWorklistTermination.lean | L | RF2a | 2 | refactor |
@@ -623,7 +625,7 @@ are in the JSON only.
 | RF4b | `With versions: shIterationWith contract (P10b) threading SE` — shIterationWith contract (P10b) threading SE; the parameter list is `roundedDecoupleParams … ++ qs` (review B2); the merged statements are the case `qs = []`, re-derived unchanged | Eigensolvers/ShiftedQR/RoundedIteration.lean, Eigensolvers/ShiftedQR/RoundedSh*.lean | L | RF3, RF1 | 2 | refactor |
 | RF4c | `With versions: roundedDecoupleWith_randomDecouplingContract (P11p) with ps = roundedDecoupleParams … ++ qs` — roundedDecoupleWith_randomDecouplingContract (P11p) with ps = roundedDecoupleParams … ++ qs; the parameter list is `roundedDecoupleParams … ++ qs` (review B2); the merged statements are the case `qs = []`, re-derived unchanged | Eigensolvers/ShiftedQR/RoundedDecouple.lean, Eigensolvers/ShiftedQR/RoundedDecoupleSpec.lean | L | RF3, RF1 | 2 | refactor |
 | RF4d | `With versions: termination of the With versions from TerminatingSmallEig` — termination of the With versions from TerminatingSmallEig; the parameter list is `roundedDecoupleParams … ++ qs` (review B2); the merged statements are the case `qs = []`, re-derived unchanged | Eigensolvers/ShiftedQR/RoundedRegularizeTermination.lean, Eigensolvers/ShiftedQR/RoundedDecoupleTermination.lean, Eigensolvers/ShiftedQR/RoundedSolveTermination.lean | L | RF3, RF1 | 2 | refactor |
-| RF8 | `NLAlib.ShiftedQR.RandomSmallEigContract.randomLeafRoutineContract, TerminatingSmallEig.terminatingLeafRoutine` — 0 ≤ β, RandomSmallEigContract law β φ kmax T S qs SE I ⇒ RandomLeafRoutineContract law β φ kmax S ps T (seLeaf SE) I (forward ⇒ backward by `IsEigenvalueListing.exists_specNorm_sub_le`), and the termination bridge (review S7 i) | Eigensolvers/ShiftedQR/RoundedKernels.lean | S | RF1, RF2a | 2 | refactor |
+| RF8 | `NLAlib.ShiftedQR.RandomSmallEigContract.randomLeafRoutineContract, TerminatingSmallEig.terminatingLeafRoutine` — 0 ≤ β, RandomSmallEigContract law β φ kmax T S qs SE I ⇒ qs.length = nq₀ (the numeral of the program text) ⇒ RandomLeafRoutineContract law β φ kmax S (ps₀ ++ qs) T (seLeaf SE) I (forward ⇒ backward by `IsEigenvalueListing.exists_specNorm_sub_le`), and the termination bridge (review S7 i) | Eigensolvers/ShiftedQR/RoundedKernels.lean | S | RF1, RF2a | 2 | refactor |
 | RF5 | `roundedShQRWith, roundedShQRWith_measureReal_not_spectrum_le, roundedShQRWith_terminates` — `roundedShQRWith SE := solveRoundedWith (roundedDecoupleWith SE) (seLeaf SE)` with dims [n+1, k, np, F, T]; T1c and T1d for it, with the contract at (k, T, 4Σ, βse, φse) in place of `hSE : IsRandomSmallEig` | Eigensolvers/ShiftedQR/RoundedTheorems.lean | M | RF2b, RF4a, RF4b, RF4c, RF4d, RF8 | 3 | refactor |
 | RF6 | `roundedShQR_* re-derived (T1c, T1d, T3, T4, T5)` — `roundedShQR := wrapper of roundedShQRWith smallEigKernel at T = 0`; every merged headline re-proved from RF5, statement text unchanged; T5's witness constant (2011) re-computed by `kernel_rfl` if the wrapper frame changes the static count (the statement is ∃ c, unchanged) | Eigensolvers/ShiftedQR/RoundedTheorems.lean | S | RF5 | 4 | refactor |
 | HL5 | `NLAlib.ShiftedQR.roundedShQRSmallEig_work_le` — ∃ c, static count of roundedShQRSmallEig at [n+1, k, np, F, T] ≤ c (n+1)^4 (k+1)^5 (np+1)(F+1)(T+1)^2 — SmallEig's cost now counted | Eigensolvers/ShiftedQR/RoundedSmallEig.lean (new) | M | RF5, TH5 | 4 | stage |
@@ -829,9 +831,7 @@ Per statement, to be checked in the skeleton (the Part II lessons in brackets):
 ## 10. Checks run
 
 Design only: no Lean file was added or changed, so `lake build`, `check_rules --files` and
-`stage_check.sh` were not run for this note. The headline statements were **not elaborated**:
-at both the first version and this revision a full `lake build NLAlib` of the worktree was
-running (an elaboration with `lake env lean` waits for it); to be done at the skeleton step.
+`stage_check.sh` were not run for this note. The key statements were **elaborated** (§13).
 `docs/design/` notes are not inputs of the rules checker.
 
 ## 11. Material
@@ -874,3 +874,35 @@ note and in `~/nlalib-harness/pilot/smalleig-targets.json`.
 
 Counts after review: 92 core (was 83): L1 21, L2 41, L3 10, L4 20; S 43, M 34, L 15; twelve
 waves (0–11). The collaborator spec was re-read: L3 is aligned with its §3 statements (§2.8).
+
+## 13. Elaboration (scratch, not in the repo)
+
+File `/home/ubuntu/.claude/jobs/59127b8e/tmp/smalleig-elab/SmallEigStatements.lean` (seed of the
+skeleton), checked with `lake env lean` against the built `NLAlib` of @6f049b04: **no errors**;
+new definitions are stubs, proofs `sorry` (except RM9, proved by repackaging). Elaborated:
+`PolyLogTail`, `PolyLogTail.normalize`, `ComplexGaussianGapTail`, `ComplexGaussianConditionTail`
+(RM1, RM2, the spec's weak-form bodies verbatim), `ComplexGaussianGapTail.normalize` (RMn),
+`exists_complexGaussianGapTail_iff` (RM9: the spec's `exists_forall_…` statement, verbatim, ↔ the
+record form; proved), the preferred Theorem A and RM3's statement, M12, M11c;
+`RandomSmallEigContract`, `TerminatingSmallEig`, `RandomLeafRoutineContract`, `smallEigKernel`
+(an `opsImpl%` program), `IsRandomSmallEig.randomSmallEigContract`, `seLeaf` (an `opsImpl%`
+program with the view `P[np - 12]`), `RandomSmallEigContract.randomLeafRoutineContract`;
+signatures of `solveRoundedWith`, `regularizeWith`, `roundedDecoupleWith`, `roundedShQRWith`;
+headline (a) `smallEig_measureReal_not_spectrum_le`, headline (b)
+`smallEigProg_randomSmallEigContract`, `smallEigProg_terminates`, and headline (c)
+`roundedShQRSmallEig_measureReal_not_spectrum_le` with `shqrSmallEigParams`, `shqrSmallEigDims`,
+`uShQRSmallEig`, `ShQRSmallEigInput`.
+
+Fixes from elaboration:
+
+* **`nq` is a numeral, not a variable.** `opsIdx` (`Ops/Logic/Builder.lean:82–101`) accepts
+  numerals, scoped names and arithmetic only, so `P[np - nq]` is written with the fixed word count
+  (12 in the scratch). PA1 gains `length_smallEigParams`, and RF8's bridge takes
+  `qs.length = nq₀` (§2.1, RF8, PA1).
+* **`TerminatingSmallEig` gets an order bound `kmax`.** With every order inside the quantifier,
+  SE2 needed `∀ d, IsExactNatLit id Mch d` (literals of every size exact), which would make the
+  termination theorem nearly vacuous for a rounded machine. Now `d ≤ kmax` and SE2 takes
+  `IsExactNatLit id Mch kmax` (RF1, SE2).
+* No vacuity found in (a)–(c): the tail predicates are false only for $C < 0$ at order $1$, which
+  RMn's normalization excludes; at order $0$ their range ($2\gamma \le \|\mathbf{M}\| = 0$) is empty.
+

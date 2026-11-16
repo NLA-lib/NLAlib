@@ -249,6 +249,76 @@ def RoundedCopied {n : ℕ} (H₀ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (e t
       RoundedPopped H₀ e thr ps a t p st out w r f j M lo d rest done A roots μ ∧
       HoldsMatrix w (subBlock A (lo, d)) μ.store
 
+/-! ### Randomized routines with parameter words and a cap dimension -/
+
+/-- **The contract of a randomized leaf routine with parameter words and a cap**
+([BanksGarzaVargasSrivastava2025, Theorem 1.1], as the worklist calls it), with the backward
+error `β`, the failure probability `φ`, the order bound `kmax`, the norm bound `Nmax`, the
+parameter words `ps` and the cap `T`, all fixed outside the quantifiers: from an upper Hessenberg
+matrix $\mathbf{B}$ of order $d \le k_{\max}$ with $\|\mathbf{B}\|_2 \le N_{\max}$ and the words
+stored, except with probability at most $\varphi$, the run writes only its $2d$ output words and
+stores a listing of the eigenvalues, with multiplicity, of $\mathbf{B} + \mathbf{F}$ for some
+$\|\mathbf{F}\|_2 \le \beta$. The interface is `[d, np, T] (B, P) → (Ev)`. The bounds are what a
+routine that is not an oracle can meet; `NLAlib.ShiftedQR.RandomLeafContract` quantifies every
+order. -/
+def RandomLeafRoutineContract (law : ℕ → Measure ℝ) (β φ : ℝ) (kmax : ℕ) (Nmax : ℝ)
+    (ps : List ℝ) (T : ℕ) (L : Impl O Q) (I : Interp O Q ℝ) : Prop :=
+  ∀ {d : ℕ} {w p o : ℕ × ℕ} (B : Matrix (Fin d) (Fin d) ℂ), d ≤ kmax → IsUpperHessenberg B →
+    specNorm B ≤ Nmax →
+    PWrites law I L.body (Env.frame [d, ps.length, T] [w, p, o]) (Store.inBlock o.1 o.2 (2 * d))
+      (fun μ => HoldsMatrix w B μ.store ∧ μ.store.readBlock p.1 p.2 ps.length = some ps ∧
+        μ.Live [w, p, o] ∧ o.2 + 2 * d ≤ μ.store.len o.1 ∧
+        Fp.Disj (Store.inBlock w.1 w.2 (2 * (d * d))) (Store.inBlock o.1 o.2 (2 * d)) ∧
+        Fp.Disj (Store.inBlock p.1 p.2 ps.length) (Store.inBlock o.1 o.2 (2 * d)))
+      (fun μ' => ∃ (roots : Fin d → ℂ) (F : Matrix (Fin d) (Fin d) ℂ), specNorm F ≤ β ∧
+        IsEigenvalueListing (B + F) roots ∧
+        HoldsMatrix o (Matrix.of fun i (_ : Fin 1) => roots i) μ'.store) φ
+
+/-- **The contract of a randomized decoupling routine with a cap dimension**:
+`NLAlib.ShiftedQR.RandomDecouplingContract` for a decoupler with the interface
+`[n, k, np, F, T] (W, P) → (W, Fl)`, with the class bounds `B`, `g`, the failure probability `φ`,
+the bottom width `k`, the iteration cap `F`, the routine cap `T`, the outer bounds `nmax`,
+`Nmax`, the words `ps`, the threshold `ω` and the error `ε`. From an upper Hessenberg
+$\mathbf{H}$ of order $n + 1$, $k \le n \le n_{\max}$, stored in place, of norm at most
+$N \le N_{\max}$, diagonalizable with condition at most $B$ and eigenvalues separated by $g$,
+except with probability at most $\varphi$ the run writes only the matrix and the flag, sets the
+flag to $0$ and stores an upper Hessenberg perturbed unitary similarity with backward error
+$\varepsilon(N)$ having one of its bottom $k$ subdiagonal entries of modulus at most $\omega$. -/
+def RandomDecouplingRoutineContract (law : ℕ → Measure ℝ) (B g φ : ℝ) (k F T nmax : ℕ)
+    (Nmax : ℝ) (ps : List ℝ) (ω : ℝ) (ε : ℝ → ℝ) (D : Impl O Q) (I : Interp O Q ℝ) : Prop :=
+  ∀ {n : ℕ} {N : ℝ} {w q f : ℕ × ℕ} (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+    (V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (d : Fin (n + 1) → ℂ),
+    k ≤ n → n ≤ nmax → N ≤ Nmax → IsUpperHessenberg H → specNorm H ≤ N → IsUnit V →
+    H * V = V * Matrix.diagonal d → pseudoConditionNumber V ≤ B → (∀ i j, i ≠ j → g ≤ ‖d i - d j‖) →
+    PWrites law I D.body (Env.frame [n + 1, k, ps.length, F, T] [w, q, w, f])
+      (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
+      (fun μ => HoldsMatrix w H μ.store ∧ μ.store.readBlock q.1 q.2 ps.length = some ps ∧
+        μ.Live [w, q, w, f] ∧ w.2 + 2 * ((n + 1) * (n + 1)) ≤ μ.store.len w.1 ∧
+        f.2 + 1 ≤ μ.store.len f.1 ∧
+        Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock f.1 f.2 1) ∧
+        Fp.Disj (Store.inBlock q.1 q.2 ps.length)
+          (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1))
+      (fun μ' => μ'.store.get f.1 f.2 = some 0 ∧
+        ∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, IsPerturbedUnitarySimilar H H' (ε N) ∧
+          IsUpperHessenberg H' ∧ (∃ i : Fin n, n ≤ (i : ℕ) + k ∧ ‖H' i.succ i.castSucc‖ ≤ ω) ∧
+          HoldsMatrix w H' μ'.store) φ
+
+/-- A randomized leaf routine (`NLAlib.ShiftedQR.RandomLeafContract`), lifted by
+`NLAlib.ShiftedQR.liftLeaf`, meets the routine contract for every order bound, norm bound,
+parameter words and cap. -/
+theorem RandomLeafContract.randomLeafRoutineContract {law : ℕ → Measure ℝ} {β φ : ℝ}
+    {L : Impl O Q} {I : Interp O Q ℝ} (h : RandomLeafContract law β φ L I) (kmax : ℕ) (Nmax : ℝ)
+    (ps : List ℝ) (T : ℕ) : RandomLeafRoutineContract law β φ kmax Nmax ps T (liftLeaf L) I := by
+  sorry
+
+/-- A randomized decoupler (`NLAlib.ShiftedQR.RandomDecouplingContract`), lifted by
+`NLAlib.ShiftedQR.liftDecoupler`, meets the routine contract for every cap. -/
+theorem RandomDecouplingContract.randomDecouplingRoutineContract {law : ℕ → Measure ℝ}
+    {B g φ : ℝ} {k F nmax : ℕ} {Nmax : ℝ} {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} {D : Impl O Q}
+    {I : Interp O Q ℝ} (h : RandomDecouplingContract law B g φ k F nmax Nmax ps ω ε D I) (T : ℕ) :
+    RandomDecouplingRoutineContract law B g φ k F T nmax Nmax ps ω ε (liftDecoupler D) I := by
+  sorry
+
 section Theorems
 
 variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q]
@@ -774,6 +844,55 @@ theorem solveRounded_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Interp
       2 * (n + 1) * (φD + φL) :=
   (solveRounded_pwrites hS hM hu hu1 hL hNat hQ hC hI hloc D hD L hLeaf hφD hφL hHess hV hHV hκ
     hg hgap hfind hcut hc hβ hε0 hN₀ hsmall).measureReal_not_writes_le ⟨hl, hr, ha, hA, ht, hp⟩ hξ
+
+/-- **The rounded worklist with routines as a probabilistic block**
+([BanksGarzaVargasSrivastava2025, Theorem 6.1]; [BanksGarzaVargasSrivastava2022, Theorem 6.3]):
+`NLAlib.ShiftedQR.solveRounded_pwrites` for `NLAlib.ShiftedQR.solveRoundedWith`, with a decoupling
+routine meeting `NLAlib.ShiftedQR.RandomDecouplingRoutineContract` at the class $(2B, g/2)$ and a
+leaf routine meeting `NLAlib.ShiftedQR.RandomLeafRoutineContract` on the blocks of order at most
+$k$ and norm at most $N_0$. On a machine with the standard model at $0 \le \boldsymbol{u} < 1$,
+exact natural literals up to $n + 1$, exact `toNat` and comparisons, a measurable interpretation
+reading the tape only in its windows, let $\mathbf{H}$ of order $n + 1$ be upper Hessenberg,
+$\mathbf{H}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$ with
+$\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le B$ and eigenvalues separated by $g > 0$, the threshold
+$t$ with $(1 + \boldsymbol{u})^2\omega^2 \le t \le (1 - \boldsymbol{u})^2c^2$, $c, \beta,
+\varepsilon(N_0) \ge 0$, $\|\mathbf{H}\|_2 + 2(n + 1)(c + \varepsilon(N_0) + \beta) \le N_0$ and
+$2(n + 1)(c + \varepsilon(N_0) + \beta) \le g/(16(n + 1)B)$. Then, from the stored input, except
+with probability at most $2(n + 1)(\varphi_D + \varphi_L)$, the run writes only the matrix, the
+output and the failure word, sets the failure word to $0$ and stores all eigenvalues of
+$\mathbf{H} + \mathbf{E}$ for some $\|\mathbf{E}\|_2 \le 2(n + 1)(c + \varepsilon(N_0) + \beta)$. -/
+theorem solveRoundedWith_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : ℕ}
+    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu : 0 ≤ u) (hu1 : u < 1)
+    (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
+    (hC : IsCmp id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
+    (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ} {B g φD β φL : ℝ} {k F T : ℕ}
+    {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} (D : Impl O Q) {N₀ : ℝ}
+    (hD : RandomDecouplingRoutineContract law (2 * B) (g / 2) φD k F T n N₀ ps ω ε D I)
+    (L : Impl O Q) (hLeaf : RandomLeafRoutineContract law β φL k N₀ ps T L I) (hφD : 0 ≤ φD)
+    (hφL : 0 ≤ φL) {a t p out f : ℕ × ℕ}
+    {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {thr c : ℝ}
+    (hHess : IsUpperHessenberg H) (hV : IsUnit V) (hHV : H * V = V * Matrix.diagonal d)
+    (hκ : pseudoConditionNumber V ≤ B) (hg : 0 < g) (hgap : ∀ i j, i ≠ j → g ≤ ‖d i - d j‖)
+    (hfind : (1 + u) ^ 2 * ω ^ 2 ≤ thr) (hcut : thr ≤ (1 - u) ^ 2 * c ^ 2) (hc : 0 ≤ c)
+    (hβ : 0 ≤ β) (hε0 : 0 ≤ ε N₀)
+    (hN₀ : specNorm H + 2 * (n + 1) * (c + ε N₀ + β) ≤ N₀)
+    (hsmall : 2 * (n + 1) * (c + ε N₀ + β) ≤ g / (16 * (n + 1) * B)) :
+    PWrites law I (solveRoundedWith D L).body
+      (Env.frame [n + 1, k, ps.length, F, T] [a, t, p, out, f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock out.1 out.2 (2 * (n + 1)) ⊔ Store.inBlock f.1 f.2 1)
+      (fun μ => μ.Live [a, t, p, out, f] ∧
+        μ.Room [a, t, p, out, f] [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * (n + 1), 1] ∧
+        Fp.Apart [a, t, p, out, f] [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * (n + 1), 1] ∧
+        HoldsMatrix a H μ.store ∧ μ.store.get t.1 t.2 = some thr ∧
+        μ.store.readBlock p.1 p.2 ps.length = some ps)
+      (fun μ' => μ'.store.get f.1 f.2 = some 0 ∧
+        ∃ (roots : Fin (n + 1) → ℂ) (E : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
+          HoldsMatrix out (Matrix.of fun i (_ : Fin 1) => roots i) μ'.store ∧
+          specNorm E ≤ 2 * (n + 1) * (c + ε N₀ + β) ∧
+          (H + E).charpoly.roots = (List.ofFn roots : Multiset ℂ))
+      (2 * (n + 1) * (φD + φL)) := by
+  sorry
 
 end Theorems
 

@@ -841,6 +841,47 @@ theorem solveRounded_backward {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     · obtain ⟨E, hE, hR⟩ := (hInv.of_isPerturbedUnitarySimilar hHM).exists_roots_eq
       exact Or.inr ⟨hf, roots, E, hOut, by simpa using hE, hR⟩
 
+/-- **The rounded worklist with routines, backward error** ([BanksGarzaVargasSrivastava2025,
+Theorem 6.1]; [BanksGarzaVargasSrivastava2022, Theorem 6.3], backward half):
+`NLAlib.ShiftedQR.solveRounded_backward` for `NLAlib.ShiftedQR.solveRoundedWith`, with a decoupling
+routine meeting `NLAlib.ShiftedQR.RoundedDecouplingRoutineContract` and a leaf routine with
+backward error $\beta \ge 0$ on the blocks of order at most $k$ and norm at most $N_0$
+(`NLAlib.ShiftedQR.BackwardLeafRoutineContract`). On a machine with the standard model at
+$0 \le \boldsymbol{u} < 1$ and exact natural literals up to $n + 1$, for $\mathbf{H}$ upper
+Hessenberg of order $n + 1$, a threshold $t$ with
+$(1 + \boldsymbol{u})^2\omega^2 \le t \le (1 - \boldsymbol{u})^2c^2$, $c \ge 0$,
+$\varepsilon(N_0) \ge 0$ and $\|\mathbf{H}\|_2 + 2(n + 1)(c + \varepsilon(N_0) + \beta) \le N_0$,
+the run is total, writes only the matrix, the output and the failure word, and either fails
+(only when `fails` holds) or stores all eigenvalues of $\mathbf{H} + \mathbf{E}$ for some
+$\|\mathbf{E}\|_2 \le 2(n + 1)(c + \varepsilon(N_0) + \beta)$ with the failure word $0$. -/
+theorem solveRoundedWith_backward {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : ℕ}
+    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu : 0 ≤ u) (hu1 : u < 1)
+    (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
+    (hC : IsCmp id I) {fails : Prop} {k F T : ℕ} {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ}
+    (D : Impl O Q) (hD : RoundedDecouplingRoutineContract fails k F T ps ω ε D I)
+    {β N₀ : ℝ} (L : Impl O Q) (hLeaf : BackwardLeafRoutineContract β k N₀ ps T L I)
+    {tape : Tape ℝ} {μ : Mem ℝ} {a t p out f : ℕ × ℕ}
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr c : ℝ}
+    (hl : μ.Live [a, t, p, out, f])
+    (hr : μ.Room [a, t, p, out, f] [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * (n + 1), 1])
+    (ha : Fp.Apart [a, t, p, out, f] [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * (n + 1), 1])
+    (hHess : IsUpperHessenberg H) (hA : HoldsMatrix a H μ.store)
+    (ht : μ.store.get t.1 t.2 = some thr) (hp : μ.store.readBlock p.1 p.2 ps.length = some ps)
+    (hfind : (1 + u) ^ 2 * ω ^ 2 ≤ thr) (hcut : thr ≤ (1 - u) ^ 2 * c ^ 2) (hc : 0 ≤ c)
+    (hβ : 0 ≤ β) (hε0 : 0 ≤ ε N₀)
+    (hN₀ : specNorm H + 2 * (n + 1) * (c + ε N₀ + β) ≤ N₀) :
+    Writes .total I tape (solveRoundedWith D L).body
+      (Env.frame [n + 1, k, ps.length, F, T] [a, t, p, out, f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock out.1 out.2 (2 * (n + 1)) ⊔ Store.inBlock f.1 f.2 1)
+      (fun μ' => (fails ∧ μ'.store.get f.1 f.2 = some 1) ∨
+        (μ'.store.get f.1 f.2 = some 0 ∧
+          ∃ (roots : Fin (n + 1) → ℂ) (E : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
+            HoldsMatrix out (Matrix.of fun i (_ : Fin 1) => roots i) μ'.store ∧
+            specNorm E ≤ 2 * (n + 1) * (c + ε N₀ + β) ∧
+            (H + E).charpoly.roots = (List.ofFn roots : Multiset ℂ))) μ := by
+  sorry
+
 end Theorems
 
 end NLAlib.ShiftedQR

@@ -40,6 +40,16 @@ paper; a rounded sampler is not modelled.
 
 * `NLAlib.ShiftedQR.IsRandomSmallEig.randomLeafContract`: the leaf routine that calls the kernel
   meets `NLAlib.ShiftedQR.RandomLeafContract`.
+
+## Small-eigenvalue routines
+
+A program in the kernel's place reads parameter words and draws an adaptive number of samples
+([BanksGarzaVargasSrivastava2025]). Its contract is a routine contract
+(`NLAlib.ShiftedQR.RandomSmallEigContract`, `NLAlib.ShiftedQR.TerminatingSmallEig`) on bounded
+orders and norms, with the interface `[d, nq, T] (Bk, Q) → (Ev)`; the kernel meets it as a routine
+(`NLAlib.ShiftedQR.smallEigKernel`, `NLAlib.ShiftedQR.IsRandomSmallEig.randomSmallEigContract`),
+and a routine gives a leaf routine of the worklist (`NLAlib.ShiftedQR.seLeaf`,
+`NLAlib.ShiftedQR.RandomSmallEigContract.randomLeafRoutineContract`).
 -/
 
 @[expose] public section
@@ -130,7 +140,91 @@ theorem IsRandomSmallEig.randomLeafContract {law : ℕ → Measure ℝ} {s : ℕ
     exact hyy ▸ hy
   simpa [HoldsMatrix] using hys'
 
+/-- **The forward contract of a randomized small-eigenvalue routine**
+([BanksGarzaVargasSrivastava2025, Corollary 1.3]) with the stream laws `law`, the forward error
+`β`, the failure probability `φ`, the order bound `kmax`, the cap `T`, the norm bound `S` and the
+parameter words `qs`, all fixed outside the quantifiers: from an upper Hessenberg $\mathbf{B}$ of
+order $d \le k_{\max}$ with $\|\mathbf{B}\|_2 \le \Sigma$, stored with the words, except with
+probability at most $\varphi$, the run writes only its $2d$ output words and stores a family
+$\mu$ with $\lvert\mu_i - \lambda_i\rvert \le \beta$ for a listing $\lambda$ of the eigenvalues
+of $\mathbf{B}$ with multiplicity. The routine may read any number of streams, adaptively. The
+interface is `[d, nq, T] (Bk, Q) → (Ev)`. -/
+def RandomSmallEigContract (law : ℕ → Measure ℝ) (β φ : ℝ) (kmax T : ℕ) (S : ℝ) (qs : List ℝ)
+    (SE : Impl O Q) (I : Interp O Q ℝ) : Prop :=
+  ∀ {d : ℕ} {w q o : ℕ × ℕ} (B : Matrix (Fin d) (Fin d) ℂ), d ≤ kmax →
+    IsUpperHessenberg B → specNorm B ≤ S →
+    PWrites law I SE.body (Env.frame [d, qs.length, T] [w, q, o]) (Store.inBlock o.1 o.2 (2 * d))
+      (fun μ => HoldsMatrix w B μ.store ∧ μ.store.readBlock q.1 q.2 qs.length = some qs ∧
+        μ.Live [w, q, o] ∧ o.2 + 2 * d ≤ μ.store.len o.1 ∧
+        Fp.Disj (Store.inBlock w.1 w.2 (2 * (d * d))) (Store.inBlock o.1 o.2 (2 * d)) ∧
+        Fp.Disj (Store.inBlock q.1 q.2 qs.length) (Store.inBlock o.1 o.2 (2 * d)))
+      (fun μ' => ∃ roots ev : Fin d → ℂ, IsEigenvalueListing B ev ∧
+        (∀ i, ‖roots i - ev i‖ ≤ β) ∧
+        HoldsMatrix o (Matrix.of fun i (_ : Fin 1) => roots i) μ'.store) φ
+
+/-- **A terminating small-eigenvalue routine** on orders at most `kmax`, with the cap `T` and the
+parameter words `qs`: from any matrix of order $d \le k_{\max}$ (no structure assumed) stored with
+the words, on every tape, the run is total and writes only its $2d$ output words. The order bound
+keeps the literals a run writes below a fixed size. The interface is
+`[d, nq, T] (Bk, Q) → (Ev)`. -/
+def TerminatingSmallEig (kmax T : ℕ) (qs : List ℝ) (SE : Impl O Q) (I : Interp O Q ℝ) : Prop :=
+  ∀ {d : ℕ} {w q o : ℕ × ℕ} (tape : Tape ℝ) (μ : Mem ℝ) (B : Matrix (Fin d) (Fin d) ℂ),
+    d ≤ kmax → HoldsMatrix w B μ.store → μ.store.readBlock q.1 q.2 qs.length = some qs →
+    μ.Live [w, q, o] → o.2 + 2 * d ≤ μ.store.len o.1 →
+    Fp.Disj (Store.inBlock w.1 w.2 (2 * (d * d))) (Store.inBlock o.1 o.2 (2 * d)) →
+    Fp.Disj (Store.inBlock q.1 q.2 qs.length) (Store.inBlock o.1 o.2 (2 * d)) →
+    Writes .total I tape SE.body (Env.frame [d, qs.length, T] [w, q, o])
+      (Store.inBlock o.1 o.2 (2 * d)) (fun _ => True) μ
+
+/-- The kernel as a routine `[d, nq, T] (Bk, Q) → (Ev)`: one call of `smallEig`; the parameter
+words and the cap are ignored. -/
+def smallEigKernel : Impl O Q := opsImpl% [d, nq, T] (Bk, Qw) → (Ev) {
+  call (Has.inj EigenvalueKernelOp.smallEig) [d] (Bk) → (Ev)
+}
+
+/-- A randomized small-eigenvalue kernel (`NLAlib.ShiftedQR.IsRandomSmallEig`) with forward error
+$\beta$ and failure probability $\varphi$, called as a routine
+(`NLAlib.ShiftedQR.smallEigKernel`), meets the routine contract for every order bound, cap, norm
+bound and parameter words. -/
+theorem IsRandomSmallEig.randomSmallEigContract {law : ℕ → Measure ℝ} {s : ℕ} {β φ : ℝ}
+    {I : Interp O Q ℝ} (h : IsRandomSmallEig law s β φ I) (kmax T : ℕ) (S : ℝ) (qs : List ℝ) :
+    RandomSmallEigContract law β φ kmax T S qs (smallEigKernel (O := O) (Q := Q)) I := by
+  sorry
+
+/-- A randomized small-eigenvalue kernel, called as a routine, terminates for every order bound,
+cap and parameter words: the kernel always succeeds on live, readable operands with room. -/
+theorem IsRandomSmallEig.terminatingSmallEig {law : ℕ → Measure ℝ} {s : ℕ} {β φ : ℝ}
+    {I : Interp O Q ℝ} (h : IsRandomSmallEig law s β φ I) (kmax T : ℕ) (qs : List ℝ) :
+    TerminatingSmallEig kmax T qs (smallEigKernel (O := O) (Q := Q)) I := by
+  sorry
+
 end SmallEig
+
+section Routine
+
+variable {O Q : Type}
+
+/-- The leaf routine of a small-eigenvalue routine `SE`: `[d, np, T] (Bk, P) → (Ev)` runs `SE`
+with its parameter words read as the last $12$ words of `P`, the view `P[np - 12]`. The count $12$
+is a numeral of the program text (the length of `NLAlib.SmallEig.smallEigParams`): index
+expressions are numerals and dimensions, never Lean terms. -/
+def seLeaf (SE : Impl O Q) : Impl O Q := opsImpl% [d, np, T] (Bk, P) → (Ev) {
+  run SE.body [d, 12, T] (Bk, P[np - 12], Ev)
+}
+
+/-- **A small-eigenvalue routine is a leaf routine** ([BanksGarzaVargasSrivastava2025,
+Corollary 1.3] in the worklist of [BanksGarzaVargasSrivastava2022, Theorem 6.3]): if `SE` meets
+`NLAlib.ShiftedQR.RandomSmallEigContract` with forward error $\beta \ge 0$ and $12$ words `qs`,
+its leaf routine `NLAlib.ShiftedQR.seLeaf` meets `NLAlib.ShiftedQR.RandomLeafRoutineContract`
+with backward error $\beta$ on the same orders and norms, with any words `ps₀` before `qs`:
+forward error implies backward error (`NLAlib.IsEigenvalueListing.exists_specNorm_sub_le`). -/
+theorem RandomSmallEigContract.randomLeafRoutineContract {law : ℕ → Measure ℝ} {β φ : ℝ}
+    {kmax T : ℕ} {S : ℝ} {qs ps₀ : List ℝ} {SE : Impl O Q} {I : Interp O Q ℝ}
+    (h : RandomSmallEigContract law β φ kmax T S qs SE I) (hβ : 0 ≤ β) (hqs : qs.length = 12) :
+    RandomLeafRoutineContract law β φ kmax S (ps₀ ++ qs) T (seLeaf SE) I := by
+  sorry
+
+end Routine
 
 section DiskSampler
 

@@ -504,6 +504,32 @@ theorem solveRounded_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : �
     ((hBelow.readBlock (hl p (by simp)) p.2 ps.length).trans hp)
   exact (hw.in_frame rfl rfl hG.live).mono (by fp_sub [roundedWorklistFp]) fun _ _ h => h
 
+/-- **The rounded worklist with routines terminates**: `NLAlib.ShiftedQR.solveRounded_terminates`
+for `NLAlib.ShiftedQR.solveRoundedWith`. On a scalar machine whose natural literals up to $n + 1$
+are exact, with exact `toNat` and comparisons, let the decoupling routine terminate
+(`NLAlib.ShiftedQR.TerminatingDecouplerRoutine`) and the leaf routine terminate on orders at most
+$k$ (`NLAlib.ShiftedQR.TerminatingLeafRoutine`). Then for any matrix $\mathbf{H}$ of order $n + 1$
+stored at `a`, any threshold word and on every tape, `solveRoundedWith D L` runs to completion
+and writes only the matrix, the output and the failure word. -/
+theorem solveRoundedWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
+    (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1))
+    (hQ : IsToNat id I) (hC : IsCmp id I) {k F T : ℕ} {ps : List ℝ} (D : Impl O Q)
+    (hD : TerminatingDecouplerRoutine n k F T ps D I) (L : Impl O Q)
+    (hLeaf : TerminatingLeafRoutine k ps T L I)
+    {tape : Tape ℝ} {μ : Mem ℝ} {a t p out f : ℕ × ℕ}
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr : ℝ}
+    (hl : μ.Live [a, t, p, out, f])
+    (hr : μ.Room [a, t, p, out, f] [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * (n + 1), 1])
+    (ha : Fp.Apart [a, t, p, out, f] [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * (n + 1), 1])
+    (hA : HoldsMatrix a H μ.store)
+    (ht : μ.store.get t.1 t.2 = some thr) (hp : μ.store.readBlock p.1 p.2 ps.length = some ps) :
+    Writes .total I tape (solveRoundedWith D L).body
+      (Env.frame [n + 1, k, ps.length, F, T] [a, t, p, out, f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock out.1 out.2 (2 * (n + 1)) ⊔ Store.inBlock f.1 f.2 1)
+      (fun _ => True) μ := by
+  sorry
+
 end Theorems
 
 end NLAlib.ShiftedQR

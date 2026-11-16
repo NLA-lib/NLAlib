@@ -6,6 +6,8 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Matrix.FinitePrecision.OpsMachine
+public import NLAlib.Matrix.FinitePrecision.Samples
+public import NLAlib.Matrix.Norms.Spectral
 
 /-!
 # Mathematical samplers from the actual Ops scalar operations
@@ -29,6 +31,8 @@ scalar semantics is constructed.
   normalization and scalar products, independently of the sample law.
 * `NLAlib.Ops.StdModel.isAccurate_toFloatMachine`: the combined matrix-machine numerical
   interface, including explicit multiplication and QR accuracy assumptions.
+* `NLAlib.Ops.StdModel.specNorm_perturbWords_sub_le`: the rounding of a Gaussian perturbation
+  scaled by $\gamma/\sqrt N$ (`NLAlib.Ops.Machine.perturbWords`).
 -/
 
 @[expose] public section
@@ -294,5 +298,33 @@ theorem isAccurate_toFloatMachine (h : Ops.StdModel u dec M) (hu : 0 ≤ u)
       (le_max_of_le_left (norm_nonneg z)))
 
 end Ops.StdModel
+
+/-- The matrix $\mathbf{A} + \gamma' \mathbf{G}$ computed by a machine from the real Gaussian
+words $x$ (column-major, real and imaginary parts adjacent): the scale
+$\gamma' = \mathrm{fl}(\gamma/\mathrm{fl}(\sqrt N))$, each word multiplied by the stored
+$\sqrt{1/2}$ and by $\gamma'$, and added to the entry of $\mathbf{A}$, all rounded. -/
+noncomputable def Ops.Machine.perturbWords (M : Ops.Machine ℝ) {N : ℕ} (γ : ℝ)
+    (A : Matrix (Fin N) (Fin N) ℂ) (x : ℕ → ℝ) : Matrix (Fin N) (Fin N) ℂ :=
+  Matrix.of fun i j =>
+    ⟨M.add (A i j).re (M.mul (M.mul (x (2 * (j * N + i))) M.sqrtHalf)
+        (M.div γ (M.sqrt (M.lit (N : ℚ))))),
+      M.add (A i j).im (M.mul (M.mul (x (2 * (j * N + i) + 1)) M.sqrtHalf)
+        (M.div γ (M.sqrt (M.lit (N : ℚ)))))⟩
+
+/-- **The rounding of a scaled Gaussian perturbation** ([BanksGarzaVargasSrivastava2025,
+Theorem 1.1], the perturbation step): on a machine with the standard model at
+$0 \le \boldsymbol{u} \le 1/100$, for $N \ge 1$, $\gamma \ge 0$, a complex $\mathbf{A}$ of order
+$N$ and real words $x$, the computed $\widehat{\mathbf{A}}$ (`NLAlib.Ops.Machine.perturbWords`)
+and the complex matrix $\mathbf{G}$ of the words (`NLAlib.Computation.tapeComplexMatrix`,
+entries $(x_{2k} + i x_{2k+1})/\sqrt2$) satisfy
+$$\Bigl\|\widehat{\mathbf{A}} - \Bigl(\mathbf{A} + \frac{\gamma}{\sqrt N}\mathbf{G}\Bigr)\Bigr\|_2
+  \le 20N\boldsymbol{u}\Bigl(\|\mathbf{A}\|_2 + \frac{\gamma}{\sqrt N}\|\mathbf{G}\|_2\Bigr).$$ -/
+theorem Ops.StdModel.specNorm_perturbWords_sub_le {M : Ops.Machine ℝ} {u : ℝ}
+    (hM : Ops.StdModel u id M) (hu0 : 0 ≤ u) (hu : u ≤ 1 / 100) {N : ℕ} (hN : 1 ≤ N) {γ : ℝ}
+    (hγ : 0 ≤ γ) (A : Matrix (Fin N) (Fin N) ℂ) (x : ℕ → ℝ) :
+    specNorm (M.perturbWords γ A x -
+        (A + ((γ / √(N : ℝ) : ℝ) : ℂ) • Computation.tapeComplexMatrix x N)) ≤
+      20 * N * u * (specNorm A + γ / √(N : ℝ) * specNorm (Computation.tapeComplexMatrix x N)) := by
+  sorry
 
 end NLAlib

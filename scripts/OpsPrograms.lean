@@ -25,15 +25,16 @@ certificate declaration the check prints one line (the format of
   its definition (`NLAlib/Ops/Confined.lean`). A model that is not uniform has an oracle; one
   that is not confined has a primitive or query that is not in operand form; one that is not
   charged has free or zero weights;
-* `budget`, `scratch`: `closed` when the specification does not mention the static count or
-  static workspace of a program, `manifest` when it does (a bound by the program's own syntax).
+* `budget`, `work`, `scratch`: `closed` when that field of the specification (the count budget;
+  the work and the span; the scratch) does not mention the static count or static workspace of
+  a program, `manifest` when it does (a bound by the program's own syntax).
 
 The lines are compared with `scripts/ops_certificates.txt`:
 
 * a certificate of that file may not lose `uniform`, `confined`, `charged` or a `closed` bound,
   nor gain hypotheses: update its line in the same change, which makes the weakening visible;
-* a certificate that is not in the file must be `confined` with a `closed` budget, or be added
-  to the file.
+* a certificate that is not in the file must be `confined` with `closed` work, or be added to
+  the file.
 
 Program declarations with parameters are listed: a tree built from a parameter is one tree per
 value, not one fixed program, when the parameter also fixes the admitted sizes.
@@ -79,6 +80,21 @@ def mentions (env : Environment) (targets : List Name) (e : Expr) : Bool := Id.r
         todo := d.value.getUsedConstants.toList ++ todo
   return false
 
+/-- The budget, work, span and scratch fields of a specification, when its definition unfolds
+to the constructor. -/
+def specFields (S : Expr) : MetaM (Option (Expr × Expr × Expr × Expr)) := do
+  let mut e := S
+  for _ in [0:8] do
+    let e' ← whnfCore e
+    if e'.getAppFn.isConstOf ``NLAlib.Ops.Specification.mk then
+      let args := e'.getAppArgs
+      let n := args.size
+      return some (args[n - 6]!, args[n - 4]!, args[n - 3]!, args[n - 5]!)
+    match ← withTransparency .all (unfoldDefinition? e') with
+    | some e'' => e := e''
+    | none => return none
+  return none
+
 /-- One line of `scripts/ops_certificates.txt`. -/
 structure CertLine where
   name : Name
@@ -87,13 +103,15 @@ structure CertLine where
   confined : Bool
   charged : Bool
   budgetClosed : Bool
+  workClosed : Bool
   scratchClosed : Bool
 
 def CertLine.format (c : CertLine) : String :=
   let mark (b : Bool) := if b then "yes" else "no"
   let bound (b : Bool) := if b then "closed" else "manifest"
   s!"{c.name} hyps={c.hyps} uniform={mark c.uniform} confined={mark c.confined} {""
-    }charged={mark c.charged} budget={bound c.budgetClosed} scratch={bound c.scratchClosed}"
+    }charged={mark c.charged} budget={bound c.budgetClosed} {""
+    }work={bound c.workClosed} scratch={bound c.scratchClosed}"
 
 def CertLine.parse (line : String) : Option CertLine := do
   let name :: fields := line.splitOn " " | none
@@ -106,9 +124,10 @@ def CertLine.parse (line : String) : Option CertLine := do
   let confined ← get "confined"
   let charged ← get "charged"
   let budget ← get "budget"
+  let work ← get "work"
   let scratch ← get "scratch"
   some ⟨name.toName, hyps.toNat!, uniform == "yes", confined == "yes", charged == "yes",
-    budget == "closed", scratch == "closed"⟩
+    budget == "closed", work == "closed", scratch == "closed"⟩
 
 run_cmd liftTermElabM do
   let env ← getEnv
@@ -164,9 +183,13 @@ run_cmd liftTermElabM do
         let uniform ← modelHas ``NLAlib.Ops.AccessModel.Uniform M
         let confined ← modelHas ``NLAlib.Ops.AccessModel.Confined M
         let charged ← modelHas ``NLAlib.Ops.AccessModel.Charged M
-        let budget := !mentions env [``NLAlib.Ops.staticCost, ``NLAlib.Ops.stmtCost] S
-        let scratch := !mentions env [``NLAlib.Ops.staticPeak, ``NLAlib.Ops.stmtPeak] S
-        pure (⟨name, hyps, uniform, confined, charged, budget, scratch⟩ : CertLine)
+        let counts := [``NLAlib.Ops.staticCost, ``NLAlib.Ops.stmtCost]
+        let peaks := [``NLAlib.Ops.staticPeak, ``NLAlib.Ops.stmtPeak]
+        let (budget, work, scratch) := match ← specFields S with
+          | some (b, w, sp, sc) => (!mentions env counts b,
+              !mentions env counts w && !mentions env counts sp, !mentions env peaks sc)
+          | none => (!mentions env counts S, !mentions env counts S, !mentions env peaks S)
+        pure (⟨name, hyps, uniform, confined, charged, budget, work, scratch⟩ : CertLine)
       lines := lines.push line
   if programs = 0 ∨ algorithms = 0 then
     logError m!"missing Ops coverage: {programs} programs, {algorithms} certificates"
@@ -180,14 +203,15 @@ run_cmd liftTermElabM do
     match known.find? (·.name == c.name) with
     | some k =>
       if (k.uniform && !c.uniform) || (k.confined && !c.confined) || (k.charged && !c.charged) ||
-          (k.budgetClosed && !c.budgetClosed) || (k.scratchClosed && !c.scratchClosed) ||
+          (k.budgetClosed && !c.budgetClosed) || (k.workClosed && !c.workClosed) ||
+          (k.scratchClosed && !c.scratchClosed) ||
           k.hyps < c.hyps then
         logError m!"certificate {c.name} is weaker than scripts/ops_certificates.txt records:{""
           }\n  recorded: {k.format}\n  now:      {c.format}"
     | none =>
-      unless c.confined && c.budgetClosed do
-        logError m!"new certificate {c.name} must have a confined model and a closed-form {""
-          }budget, or a reviewed line in scripts/ops_certificates.txt:\n  {c.format}"
+      unless c.confined && c.workClosed do
+        logError m!"new certificate {c.name} must have a confined model and closed-form {""
+          }work and span, or a reviewed line in scripts/ops_certificates.txt:\n  {c.format}"
   for k in known do
     unless lines.any (·.name == k.name) do
       logError m!"scripts/ops_certificates.txt lists {k.name}, which is not a certificate"
@@ -195,7 +219,7 @@ run_cmd liftTermElabM do
   logInfo m!"ops programs: {programs} program declarations, {algorithms} certificate declarations"
   logInfo m!"ops certificates: {count (·.uniform)} uniform, {count (·.confined)} confined, {""
     }{count (·.charged)} charged, {count (·.budgetClosed)} closed budgets, {""
-    }{count (·.scratchClosed)} closed scratch, {count (·.hyps == 0)} without hypotheses"
+    }{count (·.workClosed)} closed work, {count (·.scratchClosed)} closed scratch, {count (·.hyps == 0)} without hypotheses"
 
 -- These are total canonical proofs, rather than conclusions accepted by a heuristic linter.
 #check NLAlib.Ops.Examples.Certification.certifies_repeatProgram

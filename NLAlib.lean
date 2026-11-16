@@ -190,6 +190,7 @@ public import NLAlib.Eigensolvers.SpectralBisection.NodeSolve
 public import NLAlib.Eigensolvers.SpectralBisection.NodeTotal
 public import NLAlib.Eigensolvers.SpectralBisection.NodeWork
 public import NLAlib.Eigensolvers.SpectralBisection.NodeWorkspace
+public import NLAlib.Eigensolvers.SpectralBisection.OperationCount
 public import NLAlib.Eigensolvers.SpectralBisection.Partition
 public import NLAlib.Eigensolvers.SpectralBisection.Probability
 public import NLAlib.Eigensolvers.SpectralBisection.ProbabilityTransfer
@@ -203,6 +204,7 @@ public import NLAlib.Eigensolvers.SpectralBisection.Resources
 public import NLAlib.Eigensolvers.SpectralBisection.Result
 public import NLAlib.Eigensolvers.SpectralBisection.ResultGeometry
 public import NLAlib.Eigensolvers.SpectralBisection.RootCopy
+public import NLAlib.Eigensolvers.SpectralBisection.RunTheorem
 public import NLAlib.Eigensolvers.SpectralBisection.Samples
 public import NLAlib.Eigensolvers.SpectralBisection.SignWork
 public import NLAlib.Eigensolvers.SpectralBisection.SlotNodes
@@ -426,9 +428,11 @@ public import NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Certificate
 public import NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Guards
 public import NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Initialization
 public import NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Linked
+public import NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.OperationCount
 public import NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Prefix
 public import NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Recurrence
 public import NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Rounds
+public import NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.ScalarTheorem
 public import NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Solve
 public import NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Stability
 public import NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Standard
@@ -459,6 +463,7 @@ public import NLAlib.Krylov.CG.HSPCG.Exact
 public import NLAlib.Krylov.CG.HSPCG.FinitePrecision.Alg
 public import NLAlib.Krylov.CG.HSPCG.FinitePrecision.Guards
 public import NLAlib.Krylov.CG.HSPCG.FinitePrecision.Initialization
+public import NLAlib.Krylov.CG.HSPCG.FinitePrecision.OperationCount
 public import NLAlib.Krylov.CG.HSPCG.FinitePrecision.Pairing
 public import NLAlib.Krylov.CG.HSPCG.FinitePrecision.Preconditioner
 public import NLAlib.Krylov.CG.HSPCG.FinitePrecision.Prefix
@@ -597,11 +602,13 @@ public import NLAlib.Krylov.Lanczos.Reorth.RoundedAnalysis
 public import NLAlib.Krylov.Lanczos.Reorth.RoundedHistory
 public import NLAlib.Krylov.Lanczos.Reorth.RoundedInitialization
 public import NLAlib.Krylov.Lanczos.Reorth.RoundedModels
+public import NLAlib.Krylov.Lanczos.Reorth.RoundedOperationCount
 public import NLAlib.Krylov.Lanczos.Reorth.RoundedOrthogonality
 public import NLAlib.Krylov.Lanczos.Reorth.RoundedOutput
 public import NLAlib.Krylov.Lanczos.Reorth.RoundedPrefix
 public import NLAlib.Krylov.Lanczos.Reorth.RoundedRounds
 public import NLAlib.Krylov.Lanczos.Reorth.RoundedRun
+public import NLAlib.Krylov.Lanczos.Reorth.RoundedScalarTheorem
 public import NLAlib.Krylov.Lanczos.Reorth.RoundedSolve
 public import NLAlib.Krylov.Lanczos.Reorth.RoundedSpectral
 public import NLAlib.Krylov.Lanczos.Reorth.RoundedStability
@@ -628,12 +635,14 @@ public import NLAlib.Krylov.Lanczos.RoundedInterface
 public import NLAlib.Krylov.Lanczos.RoundedLinked
 public import NLAlib.Krylov.Lanczos.RoundedModels
 public import NLAlib.Krylov.Lanczos.RoundedNormalization
+public import NLAlib.Krylov.Lanczos.RoundedOperationCount
 public import NLAlib.Krylov.Lanczos.RoundedOutput
 public import NLAlib.Krylov.Lanczos.RoundedPrecision
 public import NLAlib.Krylov.Lanczos.RoundedRecurrence
 public import NLAlib.Krylov.Lanczos.RoundedRitz
 public import NLAlib.Krylov.Lanczos.RoundedRounds
 public import NLAlib.Krylov.Lanczos.RoundedRun
+public import NLAlib.Krylov.Lanczos.RoundedScalarTheorem
 public import NLAlib.Krylov.Lanczos.RoundedSolve
 public import NLAlib.Krylov.Lanczos.RoundedStability
 public import NLAlib.Krylov.Lanczos.RoundedState
@@ -1173,6 +1182,7 @@ public import NLAlib.Ops.Logic.VectorUpdate
 public import NLAlib.Ops.Logic.WeightedLoop
 public import NLAlib.Ops.Logic.While
 public import NLAlib.Ops.Logic.Writes
+public import NLAlib.Ops.OperationCount
 public import NLAlib.Ops.PolynomialWork
 public import NLAlib.Ops.Probability
 public import NLAlib.Ops.Profile

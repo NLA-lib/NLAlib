@@ -57,6 +57,12 @@ The maintainer's draft states the bound as $\lesssim_k \varepsilon\|\mathbf{A}\|
 formalization has the factor $3000k^3$. -/
 noncomputable irreducible_def lanczosGramCommutatorFactor (k : ℕ) : ℝ := 30 * (k : ℝ) ^ 2
 
+/-- The explicit value the documentation displays: the Gram commutator factor of $k$ steps is at
+most <!-- value lanczosGramCommutatorFactor k -->$30k^2$ (at present an equality). -/
+theorem lanczosGramCommutatorFactor_le (k : ℕ) :
+    lanczosGramCommutatorFactor k ≤ 30 * (k : ℝ) ^ 2 := by
+  rw [lanczosGramCommutatorFactor_def]
+
 namespace LanczosRun
 
 variable {n k : ℕ} (L : LanczosRun n k)

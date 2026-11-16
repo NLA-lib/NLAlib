@@ -378,6 +378,20 @@ expression equals $10k+1$ by the inverse-of-zero convention. No printed source. 
 noncomputable irreducible_def earlyTruncatedGNCorangeDim (k : ℕ) (ε : ℝ) : ℝ :=
   10 * (k : ℝ) / ε + 10 * k + 1
 
+/-- The explicit value the documentation displays: the sufficient Gaussian range width is at
+most <!-- value earlyTruncatedGNRangeDim k \varepsilon -->$\max\{900,500k/\varepsilon^2\}$ (at
+present an equality). -/
+theorem earlyTruncatedGNRangeDim_le (k : ℕ) (ε : ℝ) :
+    earlyTruncatedGNRangeDim k ε ≤ max 900 (500 * (k : ℝ) / ε ^ 2) := by
+  rw [earlyTruncatedGNRangeDim_def]
+
+/-- The explicit value the documentation displays: the sufficient Gaussian co-range width is at
+most <!-- value earlyTruncatedGNCorangeDim k \varepsilon -->$10k/\varepsilon+10k+1$ (at present
+an equality). -/
+theorem earlyTruncatedGNCorangeDim_le (k : ℕ) (ε : ℝ) :
+    earlyTruncatedGNCorangeDim k ε ≤ 10 * (k : ℝ) / ε + 10 * k + 1 := by
+  rw [earlyTruncatedGNCorangeDim_def]
+
 /-- The Gaussian completion factor with nine tenths of the accuracy allocated to the range. -/
 private theorem gaussianProjectionFactor_mul_one_add_nine_div_ten_le {k c : ℕ} {ε : ℝ}
     (hε : 0 < ε) (hkc : k + 2 ≤ c)

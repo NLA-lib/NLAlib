@@ -66,6 +66,14 @@ value: none; proved without a literature source. Value proved: as displayed. Con
 noncomputable irreducible_def gaussianClippedInvMomentConstant (q : ℕ) : ℝ :=
   2 * q * 0.9 ^ (-(2 * q + 1 : ℤ)) * Real.exp ((2 * q + 1) ^ 2 / 50) * √(2 * π) + 1
 
+/-- The explicit value the documentation displays: the clipped inverse-moment constant is at
+most <!-- value gaussianClippedInvMomentConstant q -->
+$2q (0.9)^{-(2q + 1)} e^{(2q + 1)^2/50}\sqrt{2\pi} + 1$ (at present an equality). -/
+theorem gaussianClippedInvMomentConstant_le (q : ℕ) :
+    gaussianClippedInvMomentConstant q ≤
+      2 * q * 0.9 ^ (-(2 * q + 1 : ℤ)) * Real.exp ((2 * q + 1) ^ 2 / 50) * √(2 * π) + 1 := by
+  rw [gaussianClippedInvMomentConstant_def]
+
 private theorem sqrt_two_mul_pi_le : √(2 * π) ≤ 2.5067 := by
   rw [Real.sqrt_le_left (by norm_num)]
   nlinarith [Real.pi_lt_d6]

@@ -97,6 +97,14 @@ theorem randomStartLanczosBound_nonneg (N q : ℕ) : 0 ≤ randomStartLanczosBou
   rw [randomStartLanczosBound_def]
   positivity
 
+/-- The explicit value the documentation displays: the random-start Lanczos factor is at
+most <!-- value randomStartLanczosBound N q -->
+$4((\log(2N) + 2 + \log 2)^2 + 4)/((\log 2)^2 q^2)$ (at present an equality). -/
+theorem randomStartLanczosBound_le (N q : ℕ) :
+    randomStartLanczosBound N q ≤
+      4 * ((Real.log (2 * N) + 2 + Real.log 2) ^ 2 + 4) / (Real.log 2 ^ 2 * q ^ 2) := by
+  rw [randomStartLanczosBound_def]
+
 /-- A coarse form of the random-start power-method factor: for $N \ge 2$ and
 $q \ge 1$, <!-- value randomStartPowerBound N q -->
 $(\log(2N) + 2)/(2q + 1) \le 3\log(N)/q$. -/

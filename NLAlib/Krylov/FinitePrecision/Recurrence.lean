@@ -56,6 +56,11 @@ from $\sqrt{k}$ columns bounded by the local error factor at the last step. The 
 draft has $\sqrt{k}\max_j\|\mathbf{f}_j\|$; its formalization has the factor $700k^2$. -/
 noncomputable irreducible_def lanczosResidualFactor (k : ℕ) : ℝ := 6 * k * Real.sqrt k
 
+/-- The explicit value the documentation displays: the residual factor of $k$ steps is at
+most <!-- value lanczosResidualFactor k -->$6k\sqrt{k}$ (at present an equality). -/
+theorem lanczosResidualFactor_le (k : ℕ) : lanczosResidualFactor k ≤ 6 * k * Real.sqrt k := by
+  rw [lanczosResidualFactor_def]
+
 namespace LanczosRun
 
 variable {n k : ℕ} (L : LanczosRun n k)

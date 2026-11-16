@@ -91,6 +91,18 @@ noncomputable irreducible_def truncatedGNFactor (k l p : ℕ) : ℝ :=
     4 * √(2 * k * ((25 * gaussianProjectionFactor k l + 484) / p)) +
       8 * k * ((25 * gaussianProjectionFactor k l + 484) / p)
 
+/-- The explicit value the documentation displays: the truncated generalized Nyström factor is at
+most <!-- value truncatedGNFactor k \ell p -->
+$$1 + \frac{k}{\ell - k - 1} + 4\sqrt{\frac{2k}{p}\Bigl(25\Bigl(1 + \frac{k}{\ell - k - 1}\Bigr) +
+484\Bigr)} + \frac{8k}{p}\Bigl(25\Bigl(1 + \frac{k}{\ell - k - 1}\Bigr) + 484\Bigr)$$
+(at present an equality). -/
+theorem truncatedGNFactor_le (k l p : ℕ) :
+    truncatedGNFactor k l p ≤
+      1 + (k : ℝ) / ((l : ℝ) - k - 1) +
+        4 * √(2 * k * ((25 * (1 + (k : ℝ) / ((l : ℝ) - k - 1)) + 484) / p)) +
+          8 * k * ((25 * (1 + (k : ℝ) / ((l : ℝ) - k - 1)) + 484) / p) := by
+  rw [truncatedGNFactor_def, gaussianProjectionFactor_def]
+
 /-- The truncated generalized Nyström factor is at least $1$: for
 $4k \le \ell$, <!-- value truncatedGNFactor k \ell p -->
 $$1 \le 1 + \frac{k}{\ell - k - 1} + 4\sqrt{\frac{2k}{p}\Bigl(25\Bigl(1 + \frac{k}{\ell - k - 1}

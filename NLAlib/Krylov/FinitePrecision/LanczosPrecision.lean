@@ -35,6 +35,12 @@ small-roundoff window. No computed trajectory quantity appears in the budget. -/
 noncomputable irreducible_def lanczosImplementationRoundoffBound (N : ℕ) (u : ℝ) : ℝ :=
   16 * ((N : ℝ) + 1) ^ 2 * u
 
+/-- The explicit value the documentation displays: the stored Lanczos roundoff budget is at
+most <!-- value lanczosImplementationRoundoffBound N u -->$16(N+1)^2u$ (at present an equality). -/
+theorem lanczosImplementationRoundoffBound_le (N : ℕ) (u : ℝ) :
+    lanczosImplementationRoundoffBound N u ≤ 16 * ((N : ℝ) + 1) ^ 2 * u := by
+  rw [lanczosImplementationRoundoffBound_def]
+
 /-- The implementation precision budget is nonnegative at nonnegative unit roundoff. -/
 theorem lanczosImplementationRoundoffBound_nonneg (N : ℕ) {u : ℝ} (hu : 0 ≤ u) :
     0 ≤ lanczosImplementationRoundoffBound N u := by

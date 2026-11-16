@@ -172,7 +172,20 @@ theorem lastRowWeights_conjTranspose_mul {Q V : Matrix (Fin (n + 1)) (Fin (n + 1
     (i : Fin (n + 1)) :
     lastRowWeights (Qᴴ * V) i =
       ‖star x ⬝ᵥ (fun k => V k i)‖ ^ 2 / ‖WithLp.toLp 2 (Vᴴ *ᵥ x)‖ ^ 2 := by
-  sorry
+  have hrow : ∀ j, (Qᴴ * V) (Fin.last n) j = star c * (star x ⬝ᵥ (fun k => V k j)) := by
+    intro j
+    simp only [Matrix.mul_apply, Matrix.conjTranspose_apply, hQx, star_mul', dotProduct,
+      Pi.star_apply, Finset.mul_sum, mul_assoc]
+  have hcol : ∀ j, (Vᴴ *ᵥ x) j = star (star x ⬝ᵥ (fun k => V k j)) := by
+    intro j
+    simp only [Matrix.mulVec, dotProduct, Matrix.conjTranspose_apply, star_sum, star_mul',
+      Pi.star_apply, star_star, mul_comm]
+  have hsq : ‖WithLp.toLp 2 ((Qᴴ * V) (Fin.last n))‖ ^ 2 = ‖WithLp.toLp 2 (Vᴴ *ᵥ x)‖ ^ 2 := by
+    rw [EuclideanSpace.norm_sq_eq, EuclideanSpace.norm_sq_eq]
+    refine Finset.sum_congr rfl fun j _ => ?_
+    simp only [hrow, hcol, norm_mul, norm_star, hc, one_mul]
+  unfold lastRowWeights
+  rw [hsq, hrow, norm_mul, norm_star, hc, one_mul]
 
 /-- **A large overlap gives a large weight** ([BanksGarzaVargasSrivastava2025, Proposition 5.3],
 deterministic part): let $\mathbf{V}$ be invertible, the last column of $\mathbf{Q}$ be

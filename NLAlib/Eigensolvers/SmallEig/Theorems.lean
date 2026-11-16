@@ -1,0 +1,195 @@
+/-
+Copyright (c) 2026 NLAlib contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: NLAlib contributors
+-/
+module
+
+public import NLAlib.Eigensolvers.SmallEig.Program
+public import NLAlib.Matrix.Perturbation.EigenvalueMatching
+public import NLAlib.Ops.Confined
+public import NLAlib.Ops.Static
+
+/-!
+# The small-eigenvalue solver: headline theorems
+
+[BanksGarzaVargasSrivastava2025, Theorem 1.1] as a theorem about the fixed program
+`NLAlib.SmallEig.smallEigProg`: on any complex matrix $\mathbf{M}$ of order at most $n_{\max}$ and
+norm at most $\Sigma$, with probability at least $1 - \varphi$ the program stores all eigenvalues
+of $\mathbf{M} + \mathbf{E}$ for some $\|\mathbf{E}\|_2 \le \delta$, at the unit roundoff
+$\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{SmallEig}}$, conditional on the two random-matrix
+theorems (`NLAlib.ComplexGaussianGapTail`, `NLAlib.ComplexGaussianConditionTail`), which are
+hypotheses. The error is absolute: $\Sigma$ is an input, the paper's relative form is the corollary
+`NLAlib.SmallEig.smallEig_relative`. [BanksGarzaVargasSrivastava2025, Corollary 1.3] is the
+forward contract on blocks of order at most $k_{\max}$ and norm at most $\Sigma$
+(`NLAlib.SmallEig.smallEigProg_randomSmallEigContract`), which the shifted QR algorithm consumes.
+
+What is not claimed: a rounded Gaussian or disk sampler (the draws are exact tape values; their
+rounding after the draw is modelled), range safety, the paper's question of $O(n^3)$ work.
+
+## Main results
+
+* `NLAlib.SmallEig.smallEig_measureReal_not_spectrum_le`: Theorem 1.1.
+* `NLAlib.SmallEig.smallEig_relative`: the relative form.
+* `NLAlib.SmallEig.smallEigProg_randomSmallEigContract`: Corollary 1.3 as a routine contract.
+* `NLAlib.SmallEig.smallEig_measureReal_not_forward_le`: Corollary 1.3 for one input.
+* `NLAlib.SmallEig.smallEig_work_le`: the operation count.
+-/
+
+@[expose] public section
+
+open MeasureTheory ProbabilityTheory
+open scoped Matrix
+
+namespace NLAlib.SmallEig
+
+open Ops ShiftedQR
+
+variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has SampleOp O] [Has DiskSampleOp O]
+  [Has CmpTst Q] [Has IdxTst Q]
+
+/-- **The small-eigenvalue solver** ([BanksGarzaVargasSrivastava2025, Theorem 1.1], corrected:
+$\Sigma$ an input, the base case of order $1$, every loop capped, the error absolute). Let the
+machine have the standard model at $\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{SmallEig}}$, index
+literals, exact natural literals up to $n + 1$, exact `toNat` and comparisons, a measurable
+interpretation reading the tape only in its windows, draws that store the tape entry, a stream
+$s_U$ uniform on $[0, 1]$ with an exact polar disk sampler on it, and a stream $s_G$ with the
+standard real Gaussian law; let the eigenvalue gap and the eigenvector condition of a complex
+Ginibre perturbation have the tails $c_1$, $c_2$ with $b_1, b_2 > 0$. Let $n + 1 \le n_{\max}$,
+$\mathbf{M}$ of order $n + 1$ with $\|\mathbf{M}\|_2 \le \Sigma$, $0 < \delta \le \Sigma$ and
+$0 < \varphi \le 1$. Then from a memory holding $\mathbf{M}$ and the words of
+`NLAlib.SmallEig.smallEigParams`, under a random tape with the stream laws,
+$$\mathbb{P}\bigl[\mathsf{smallEigProg}(\mathbf{M}) \text{ fails, or writes outside its output,
+  or lists no } \operatorname{spec}(\mathbf{M} + \mathbf{E}),\ \|\mathbf{E}\|_2 \le \delta\bigr]
+  \le \varphi\,.$$
+Here $\boldsymbol{u}_{\mathrm{SmallEig}}$ is `NLAlib.SmallEig.uSmallEig` at $n_{\max}$.
+[BanksGarzaVargasSrivastava2025, Theorem 1.1]; there $\Sigma$ is not an input (its errata P9,
+N4) and the error is relative.
+
+Note: The run terminates on every tape (`NLAlib.SmallEig.smallEigProg_terminates`). The failure
+is split in four: the gap, the condition, the norm of the perturbation, and the worklist. -/
+theorem smallEig_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
+    (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
+    (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
+    (hG : law sG = gaussianReal 0 1) {c₁ c₂ : PolyLogTail}
+    (hA : ComplexGaussianGapTail c₁) (hB : ComplexGaussianConditionTail c₂)
+    (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) {nmax : ℕ} (hn : n + 1 ≤ nmax)
+    {M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {S δ φ : ℝ} (hMS : specNorm M ≤ S)
+    (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
+    (hu : u ≤ uSmallEig nmax S δ φ c₁ c₂)
+    {w q o : ℕ × ℕ} {μ : Mem ℝ} (hin : SmallEigInput nmax S δ φ c₁ c₂ w q o M μ)
+    {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
+    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG).body
+      (Env.frame (smallEigDims n nmax S δ φ c₁ c₂) [w, q, o])
+      (Store.inBlock o.1 o.2 (2 * (n + 1))) (SmallEigSpectrum o M δ) μ} ≤ φ := by
+  sorry
+
+/-- **The small-eigenvalue solver, relative form** ([BanksGarzaVargasSrivastava2025,
+Theorem 1.1], as printed: the error relative to $\|\mathbf{M}\|_2$). With the hypotheses on the
+machine, the streams and the tails of `NLAlib.SmallEig.smallEig_measureReal_not_spectrum_le`
+written out below: let $n + 1 \le n_{\max}$, $\mathbf{M}$ of order $n + 1$, $c \ge 1$ and
+$\Sigma > 0$ with $\|\mathbf{M}\|_2 \le \Sigma \le c\|\mathbf{M}\|_2$, $0 < \varepsilon \le 1$,
+$0 < \varphi \le 1$, and $\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{SmallEig}}$ at the absolute
+error $\varepsilon\Sigma/c$. Then from a memory holding $\mathbf{M}$ and the words at
+$\delta = \varepsilon\Sigma/c$,
+$$\mathbb{P}\bigl[\mathsf{smallEigProg}(\mathbf{M}) \text{ fails, or writes outside its output,
+  or lists no } \operatorname{spec}(\mathbf{M} + \mathbf{E}),\
+  \|\mathbf{E}\|_2 \le \varepsilon\|\mathbf{M}\|_2\bigr] \le \varphi\,.$$
+[BanksGarzaVargasSrivastava2025, Theorem 1.1]; the bound $\Sigma$ of the norm is an input there
+too (its errata P9, N4). -/
+theorem smallEig_relative {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
+    (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
+    (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
+    (hG : law sG = gaussianReal 0 1) {c₁ c₂ : PolyLogTail}
+    (hA : ComplexGaussianGapTail c₁) (hB : ComplexGaussianConditionTail c₂)
+    (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) {nmax : ℕ} (hn : n + 1 ≤ nmax)
+    {M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {S c ε φ : ℝ} (hS0 : 0 < S) (hMS : specNorm M ≤ S)
+    (hc : 1 ≤ c) (hSM : S ≤ c * specNorm M) (hε : 0 < ε) (hε1 : ε ≤ 1) (hφ : 0 < φ)
+    (hφ1 : φ ≤ 1) (hu : u ≤ uSmallEig nmax S (ε * S / c) φ c₁ c₂)
+    {w q o : ℕ × ℕ} {μ : Mem ℝ} (hin : SmallEigInput nmax S (ε * S / c) φ c₁ c₂ w q o M μ)
+    {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
+    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG).body
+      (Env.frame (smallEigDims n nmax S (ε * S / c) φ c₁ c₂) [w, q, o])
+      (Store.inBlock o.1 o.2 (2 * (n + 1))) (SmallEigSpectrum o M (ε * specNorm M)) μ} ≤ φ := by
+  sorry
+
+/-- **The small-eigenvalue solver as a forward routine** ([BanksGarzaVargasSrivastava2025,
+Corollary 1.3]): on a machine with the standard model at
+$\boldsymbol{u} \le \boldsymbol{u}^{\mathrm{fwd}}_{\mathrm{SmallEig}}$, index literals, exact
+natural literals up to $k'_{\max} \le k_{\max}$, exact `toNat` and comparisons, a measurable
+interpretation
+reading the tape only in its windows, draws that store the tape entry, a stream $s_U$ uniform on
+$[0, 1]$ with an exact polar disk sampler and a stream $s_G$ with the standard real Gaussian law,
+with the tails $c_1$, $c_2$ ($b_1, b_2 > 0$), $0 < \beta \le \Sigma$ and $0 < \varphi \le 1$:
+`NLAlib.SmallEig.smallEigProg` with the words `NLAlib.SmallEig.smallEigForwardParams` and the cap
+`NLAlib.SmallEig.smallEigForwardCap` meets `NLAlib.ShiftedQR.RandomSmallEigContract` with the
+forward error $\beta$ and the failure probability $\varphi$ on orders at most $k'_{\max}$ and norms
+at most $\Sigma$: one list of words, chosen at $k_{\max}$, serves every order. Here
+$\boldsymbol{u}^{\mathrm{fwd}}_{\mathrm{SmallEig}}$ is `NLAlib.SmallEig.uSmallEigForward`.
+[BanksGarzaVargasSrivastava2025, Corollary 1.3]; there the order is fixed and the words depend on
+it. -/
+theorem smallEigProg_randomSmallEigContract {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
+    {kmax kmax' : ℕ} (hk' : kmax' ≤ kmax) (hNat : IsExactNatLit id Mch kmax') (hQ : IsToNat id I)
+    (hC : IsCmp id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
+    (hloc : ∀ o, I.TapeLocal o (win o)) (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
+    (hG : law sG = gaussianReal 0 1) {c₁ c₂ : PolyLogTail}
+    (hA : ComplexGaussianGapTail c₁) (hB : ComplexGaussianConditionTail c₂)
+    (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) {S β φ : ℝ} (hβ : 0 < β) (hβS : β ≤ S) (hφ : 0 < φ)
+    (hφ1 : φ ≤ 1) (hu : u ≤ uSmallEigForward kmax S β φ c₁ c₂) :
+    RandomSmallEigContract law β φ kmax' (smallEigForwardCap kmax S β φ c₁ c₂) S
+      (smallEigForwardParams kmax S β φ c₁ c₂) (smallEigProg (O := O) (Q := Q) sG) I := by
+  sorry
+
+/-- **The forward error on one input** ([BanksGarzaVargasSrivastava2025, Corollary 1.3]): with the
+hypotheses on the machine, the streams and the tails written out in
+`NLAlib.SmallEig.smallEigProg_randomSmallEigContract` (standard model at
+$\boldsymbol{u} \le \boldsymbol{u}^{\mathrm{fwd}}_{\mathrm{SmallEig}}$, exact literals up to
+$k_{\max}$, a measurable tape-local interpretation, the uniform and Gaussian streams, the tails
+with $b_1, b_2 > 0$): for $\mathbf{M}$ of order $n + 1 \le k_{\max}$ with
+$\|\mathbf{M}\|_2 \le \Sigma$, $0 < \beta \le \Sigma$ and $0 < \varphi \le 1$, from a memory
+holding $\mathbf{M}$ and the words `NLAlib.SmallEig.smallEigForwardParams`,
+$$\mathbb{P}\bigl[\mathsf{smallEigProg}(\mathbf{M}) \text{ fails, or writes outside its output,
+  or lists no } \boldsymbol{\mu} \text{ with } \lvert\mu_i - \lambda_i\rvert \le \beta\bigr]
+  \le \varphi$$
+for a listing $\boldsymbol{\lambda}$ of the eigenvalues of $\mathbf{M}$. -/
+theorem smallEig_measureReal_not_forward_le {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
+    {kmax : ℕ} (hNat : IsExactNatLit id Mch kmax) (hQ : IsToNat id I) (hC : IsCmp id I)
+    (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
+    (hG : law sG = gaussianReal 0 1) {c₁ c₂ : PolyLogTail}
+    (hA : ComplexGaussianGapTail c₁) (hB : ComplexGaussianConditionTail c₂)
+    (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) {S β φ : ℝ} (hβ : 0 < β) (hβS : β ≤ S) (hφ : 0 < φ)
+    (hφ1 : φ ≤ 1) (hu : u ≤ uSmallEigForward kmax S β φ c₁ c₂) {n : ℕ} (hn : n + 1 ≤ kmax)
+    {M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hMS : specNorm M ≤ S) {w q o : ℕ × ℕ}
+    {μ : Mem ℝ} (hin : SmallEigInput kmax S (forwardBackwardError kmax S β) φ c₁ c₂ w q o M μ)
+    {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
+    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG).body
+      (Env.frame (smallEigDims n kmax S (forwardBackwardError kmax S β) φ c₁ c₂) [w, q, o])
+      (Store.inBlock o.1 o.2 (2 * (n + 1)))
+      (fun μ' => ∃ roots ev : Fin (n + 1) → ℂ, IsEigenvalueListing M ev ∧
+        (∀ i, ‖roots i - ev i‖ ≤ β) ∧
+        HoldsMatrix o (Matrix.of fun i (_ : Fin 1) => roots i) μ'.store) μ} ≤ φ := by
+  sorry
+
+/-- **The operation count of the small-eigenvalue program** ([BanksGarzaVargasSrivastava2025,
+Theorem 1.1], running time, on every tape): there is an absolute constant $c$ such that the static
+count (`NLAlib.Ops.stmtCost`) of `NLAlib.SmallEig.smallEigProg` at the order $n + 1$, $n_q$ words
+and the cap $T$ has at most $c(n + 1)^4(T + 1)^2$ operations and tests. The count holds on every
+tape: the loops are capped by $T$ ($m, t, m_2 \le T$, $q \le m$). The paper's count has the factor
+$n$ in its last term (its erratum N5). -/
+theorem smallEig_work_le (sG : ℕ) : ∃ c : ℕ, ∀ n nq T : ℕ,
+    Count.size (stmtCost (smallEigProg (O := O) (Q := Q) sG).body [n + 1, nq, T]) ≤
+      c * (n + 1) ^ 4 * (T + 1) ^ 2 := by
+  sorry
+
+end NLAlib.SmallEig

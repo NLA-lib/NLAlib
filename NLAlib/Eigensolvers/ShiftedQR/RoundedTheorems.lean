@@ -9,6 +9,7 @@ public import Mathlib.Analysis.SpecialFunctions.Log.Base
 public import NLAlib.Ops.Confined
 public import NLAlib.Ops.MonomialWork
 public import NLAlib.Ops.Static
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedDecoupleRoutine
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedDecoupleSpec
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedDecoupleTermination
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedTheoremsBits
@@ -61,6 +62,10 @@ tape law); that one interpretation is measurable (`NLAlib.Ops.Interp.IsMeasurabl
 * `NLAlib.ShiftedQR.roundedShQR_relative`: the relative backward error.
 * `NLAlib.ShiftedQR.roundedShQR_hermitian`: Hermitian inputs.
 * `NLAlib.ShiftedQR.roundedShQR_work_le`: the operation count.
+* `NLAlib.ShiftedQR.roundedShQRWith`,
+  `NLAlib.ShiftedQR.roundedShQRWith_measureReal_not_spectrum_le`,
+  `NLAlib.ShiftedQR.roundedShQRWith_terminates`: the algorithm with a small-eigenvalue routine in
+  the place of the kernel [BanksGarzaVargasSrivastava2025].
 
 The headline and the operation count concern the same program, not one run. The headline on one run,
 with explicit work and span bounds conjoined with correctness, is the certificate
@@ -419,5 +424,104 @@ theorem roundedShQR_work_le : ∃ c : ℕ, ∀ n k np F : ℕ,
   gcongr
 
 end Theorems
+
+/-! ### The algorithm with a small-eigenvalue routine -/
+
+section Routine
+
+variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q]
+  [Has IdxTst Q]
+
+/-- **The rounded shifted QR algorithm with a small-eigenvalue routine**
+([BanksGarzaVargasSrivastava2022, Theorem 6.3] with the routine of
+[BanksGarzaVargasSrivastava2025, Corollary 1.3]): the worklist `NLAlib.ShiftedQR.solveRoundedWith`
+with the
+decoupling loop `NLAlib.ShiftedQR.roundedDecoupleWith SE` and the leaf
+`NLAlib.ShiftedQR.seLeaf SE`. The routine reads the last $12$ parameter words and the cap $T$. The
+interface is `[N, k, np, F, T] (A, Thr, P) → (Out, Fl)`.
+Algorithm: shifted-qr-rounded -/
+def roundedShQRWith (SE : Impl O Q) : Impl O Q :=
+  solveRoundedWith (roundedDecoupleWith SE) (seLeaf SE)
+
+/-- **The rounded shifted QR algorithm with a small-eigenvalue routine**
+([BanksGarzaVargasSrivastava2022, Theorem 6.3] with the quantifiers of Theorem 1.4, corrected).
+Let $\mathbf{H}$ be upper Hessenberg of order $n + 1$,
+$\mathbf{H}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$ with
+$\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le B$ and eigenvalues separated by $\Gamma > 0$,
+$\|\mathbf{H}\|_2 \le \Sigma$, $0 < \delta \le \Sigma$, $0 < \varphi \le 1$ and $k$ the degree of
+(eqn:setk) at $4B$. Let the machine have the standard model at
+$\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{ShQR}}$, exact natural literals up to $n + 1$, a
+measurable interpretation reading the tape only in its windows, a stream $s_U$ uniform on
+$[0, 1]$ with an exact polar disk sampler, and a routine `SE` meeting
+`NLAlib.ShiftedQR.RandomSmallEigContract` on orders at most $\min(k, n + 1)$ and norms at most
+$4\Sigma$, with
+the cap $T$, $12$ words `qs`, forward error $0 \le \beta_{\mathrm{se}} \le$
+`shqrSmallEigAccuracy` and failure $0 \le \varphi_{\mathrm{se}} \le$ `shqrSmallEigFailure`. Then
+from a memory holding $\mathbf{H}$, the deflation threshold word and the words of
+`NLAlib.ShiftedQR.shqrParams` followed by `qs`, under a random tape with the stream laws,
+`NLAlib.ShiftedQR.roundedShQRWith SE` fails to write only the matrix, the output and the failure
+word, set the failure word to $0$ and store all eigenvalues, with multiplicity, of
+$\mathbf{H} + \mathbf{E}$ for some $\|\mathbf{E}\|_2 \le \delta$, with probability at most
+$\varphi$. -/
+theorem roundedShQRWith_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Interp O Q ℝ}
+    {u : ℝ} {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
+    (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
+    (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    {law : ℕ → Measure ℝ} {sU : ℕ} (hDisk : IsPolarDiskSampler sU I)
+    (hU : law sU = volume.restrict (Set.Icc 0 1))
+    {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {k : ℕ}
+    {B Γ S δ φ : ℝ} (hHess : IsUpperHessenberg H) (hV : IsUnit V)
+    (hHV : H * V = V * Matrix.diagonal d) (hκ : pseudoConditionNumber V ≤ B) (hΓ : 0 < Γ)
+    (hgap : ∀ i j, i ≠ j → Γ ≤ ‖d i - d j‖) (hHS : specNorm H ≤ S) (hδ : 0 < δ) (hδS : δ ≤ S)
+    (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hk : k = shqrDegree (4 * B)) {βse φse : ℝ} {T : ℕ}
+    {qs : List ℝ} {SE : Impl O Q}
+    (hSE : RandomSmallEigContract law βse φse (min k (n + 1)) T (4 * S) qs SE I)
+    (hqs : qs.length = 12) (hβse0 : 0 ≤ βse) (hse : βse ≤ shqrSmallEigAccuracy n B Γ S δ)
+    (hφse0 : 0 ≤ φse) (hφse : φse ≤ shqrSmallEigFailure n B Γ S δ φ)
+    (hu : u ≤ uShQR n k B Γ S δ φ) {a t p out f : ℕ × ℕ} {μ : Mem ℝ}
+    (hl : μ.Live [a, t, p, out, f])
+    (hr : μ.Room [a, t, p, out, f]
+      [2 * ((n + 1) * (n + 1)), 1, (shqrParams n k B Γ S δ φ ++ qs).length, 2 * (n + 1), 1])
+    (ha : Fp.Apart [a, t, p, out, f]
+      [2 * ((n + 1) * (n + 1)), 1, (shqrParams n k B Γ S δ φ ++ qs).length, 2 * (n + 1), 1])
+    (hA : HoldsMatrix a H μ.store)
+    (ht : μ.store.get t.1 t.2 = some (shqrDeflationThreshold n k B Γ S δ φ))
+    (hp : μ.store.readBlock p.1 p.2 (shqrParams n k B Γ S δ φ ++ qs).length =
+      some (shqrParams n k B Γ S δ φ ++ qs))
+    {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
+    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRWith SE).body
+      (Env.frame [n + 1, k, (shqrParams n k B Γ S δ φ ++ qs).length, shqrCap n B Γ S δ, T]
+        [a, t, p, out, f]) (shqrFp n a out f) (ShQRSpectrum out f H δ) μ} ≤ φ := by
+  sorry
+
+/-- **The rounded shifted QR algorithm with a terminating small-eigenvalue routine terminates on
+every tape**: on a scalar machine with index literals, exact natural literals up to $n + 1$, exact
+`toNat` and comparisons, an exact polar disk sampler, and a routine `SE` that terminates on orders
+at most $\min(k, n + 1)$ with the cap $T$ and $12$ words `qs`
+(`NLAlib.ShiftedQR.TerminatingSmallEig`), for any
+$(n + 1) \times (n + 1)$ matrix $\mathbf{H}$, any $B, \Gamma, \Sigma, \delta, \varphi$ and $k$ the
+degree of (eqn:setk) at $4B$, the run of `NLAlib.ShiftedQR.roundedShQRWith SE` from a memory
+holding the input with the words `NLAlib.ShiftedQR.shqrParams` followed by `qs` succeeds on every
+tape and writes only the matrix, the output and the failure word. -/
+theorem roundedShQRWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ}
+    {n : ℕ} (hS : IsScalar Mch I) (hL : IsIndexLit Mch I)
+    (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I) {sU : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {k : ℕ}
+    {B Γ S δ φ : ℝ} (hk : k = shqrDegree (4 * B)) {T : ℕ} {qs : List ℝ} {SE : Impl O Q}
+    (hSE : TerminatingSmallEig (min k (n + 1)) T qs SE I) (hqs : qs.length = 12)
+    {a t p out f : ℕ × ℕ} {μ : Mem ℝ} (hl : μ.Live [a, t, p, out, f])
+    (hr : μ.Room [a, t, p, out, f]
+      [2 * ((n + 1) * (n + 1)), 1, (shqrParams n k B Γ S δ φ ++ qs).length, 2 * (n + 1), 1])
+    (ha : Fp.Apart [a, t, p, out, f]
+      [2 * ((n + 1) * (n + 1)), 1, (shqrParams n k B Γ S δ φ ++ qs).length, 2 * (n + 1), 1])
+    (hA : HoldsMatrix a H μ.store) {thr : ℝ} (ht : μ.store.get t.1 t.2 = some thr)
+    (hp : μ.store.readBlock p.1 p.2 (shqrParams n k B Γ S δ φ ++ qs).length =
+      some (shqrParams n k B Γ S δ φ ++ qs)) (τ : Tape ℝ) :
+    Writes .total I τ (roundedShQRWith SE).body
+      (Env.frame [n + 1, k, (shqrParams n k B Γ S δ φ ++ qs).length, shqrCap n B Γ S δ, T]
+        [a, t, p, out, f]) (shqrFp n a out f) (fun _ => True) μ := by
+  sorry
+
+end Routine
 
 end NLAlib.ShiftedQR

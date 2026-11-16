@@ -7,7 +7,7 @@ module
 
 public import NLAlib.Ops.Catalog.Sampling
 public import NLAlib.Ops.Logic.Builder
-public import NLAlib.Ops.Logic
+public import NLAlib.Ops.Logic.Writes
 
 /-!
 # Draws of a stream into a buffer

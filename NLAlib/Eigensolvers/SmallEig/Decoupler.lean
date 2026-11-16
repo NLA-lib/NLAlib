@@ -1,0 +1,153 @@
+/-
+Copyright (c) 2026 NLAlib contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: NLAlib contributors
+-/
+module
+
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveTermination
+public import NLAlib.Eigensolvers.SmallEig.Decouple
+public import NLAlib.Eigensolvers.SmallEig.OneEig
+public import NLAlib.Eigensolvers.SmallEig.Precision
+public import NLAlib.Eigensolvers.SmallEig.RandomHessenberg
+
+/-!
+# The decoupler of the small-eigenvalue solver
+
+One node of the deflation of [BanksGarzaVargasSrivastava2025, §6] (the paper's `Eig` on a block,
+with `RHess` at every node, decision D7 of the design): `RHess` makes the last-row weights large,
+`OneEig` finds a shift within $\beta' = \omega/20$ of an eigenvalue and at least $\eta_1$ away from
+the spectrum, and `Decouple` makes the last subdiagonal entry at most $\omega$. As the decoupler of
+the rounded worklist at the bottom width $k = 1$ it meets the randomized decoupling contract on the
+class of the blocks; Lemma 6.2's preservation of the class is carried by the composition of the
+three contracts, and the class inside the node by one doubling
+(`NLAlib.SmallEig.class_of_rhess`).
+
+## Main definitions
+
+* `NLAlib.SmallEig.smallEigDecoupler`: the program `[N, k, np, F, T] (W, P) → (W, Fl)`.
+* `NLAlib.SmallEig.smallEigDecoupleError`: its backward error.
+
+## Main results
+
+* `NLAlib.SmallEig.class_of_rhess`,
+  `NLAlib.SmallEig.smallEigDecoupler_randomDecouplingRoutineContract`,
+  `NLAlib.SmallEig.smallEigDecoupler_terminatingDecouplerRoutine`.
+-/
+
+@[expose] public section
+
+open MeasureTheory ProbabilityTheory
+open scoped Matrix
+
+namespace NLAlib.SmallEig
+
+open Ops ShiftedQR
+
+section Program
+
+variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has SampleOp O] [Has DiskSampleOp O]
+  [Has CmpTst Q] [Has IdxTst Q]
+
+/-- **The decoupler of the small-eigenvalue solver** ([BanksGarzaVargasSrivastava2025, §6], one
+node): read the cap words $m$ (bound $T$), $q$ (bound $m$), $t$ and $m_2$ (bound $T$) from
+`P[8..11]`; `NLAlib.SmallEig.rhess` on the block `W` in place; `NLAlib.SmallEig.oneEig` with the
+words `P` into the shift `Lam` and the flag; if the flag is $0$,
+`NLAlib.SmallEig.decoupleLast` with the shift. The interface is
+`[N, k, np, F, T] (W, P) → (W, Fl)`, that of the decoupling routine of
+`NLAlib.ShiftedQR.solveRoundedWith`; the bottom width and the iteration cap are not read.
+Algorithm: small-eig -/
+def smallEigDecoupler (sG : ℕ) : Impl O Q := opsImpl% [N, k, np, F, T] (W, P) → (W, Fl) {
+  let m ← index (Has.inj IdxTst.toNat) (P[8]) ≤ T;
+  let q ← index (Has.inj IdxTst.toNat) (P[9]) ≤ m;
+  let t ← index (Has.inj IdxTst.toNat) (P[10]) ≤ T;
+  let m2 ← index (Has.inj IdxTst.toNat) (P[11]) ≤ T;
+  let Lam ← alloc 2;
+  run (rhess (O := O) (Q := Q) sG).body [N] (W, W);
+  run (oneEig (O := O) (Q := Q)).body [N, m, q, t] (W, P, Lam, Fl);
+  if (Has.inj CmpTst.isZero) [] (Fl) {
+    run (decoupleLast (O := O) (Q := Q)).body [N, m2] (W, Lam, P, W, Fl)
+  } else { skip }
+}
+
+end Program
+
+/-- The backward error of the decoupler on a block of norm at most $N$ at the unit roundoff
+$\boldsymbol{u}$: `RHess`, $200(n_{\max} + 1)^2\boldsymbol{u}N$, and `Decouple` from a block of norm
+at most $2N$ with the shift reach $10$,
+$11 \cdot 2N((1 + 300(n_{\max} + 1)^2\boldsymbol{u})^{m_2} - 1)$. -/
+noncomputable def smallEigDecoupleError (nmax : ℕ) (S δ φ : ℝ) (c₂ : PolyLogTail) (u N : ℝ) :
+    ℝ :=
+  200 * ((nmax : ℝ) + 1) ^ 2 * u * N +
+    11 * (2 * N) * ((1 + 300 * ((nmax : ℝ) + 1) ^ 2 * u) ^ smallEigDecoupleSteps nmax S δ φ c₂ - 1)
+
+/-- **The class after `RHess`** ([BanksGarzaVargasSrivastava2025, Lemma 6.2], the class part, as
+the merged deflation's class doubling): if $\mathbf{A}\mathbf{V} =
+\mathbf{V}\operatorname{diag}(\mathbf{d})$ with $\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le 2B$,
+eigenvalues separated by $g/2$, $g > 0$, $\mathbf{Q}$ unitary and
+$\|\mathbf{H} - \mathbf{Q}^{\mathsf{H}}\mathbf{A}\mathbf{Q}\|_2 \le g/(64(n + 1)B)$, then
+$\mathbf{H}$ has a diagonalization with condition at most $4B$ and eigenvalues separated by
+$g/4$. -/
+theorem class_of_rhess {n : ℕ} {A H Q V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {d : Fin (n + 1) → ℂ} {B g : ℝ} (hV : IsUnit V) (hAV : A * V = V * Matrix.diagonal d)
+    (hκ : pseudoConditionNumber V ≤ 2 * B) (hg : 0 < g)
+    (hgap : ∀ i j, i ≠ j → g / 2 ≤ ‖d i - d j‖) (hQ : HasOrthonormalCols Q)
+    (hH : specNorm (H - Qᴴ * A * Q) ≤ g / (64 * (n + 1) * B)) :
+    ∃ (V' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (d' : Fin (n + 1) → ℂ), IsUnit V' ∧
+      H * V' = V' * Matrix.diagonal d' ∧ pseudoConditionNumber V' ≤ 4 * B ∧
+      ∀ i j, i ≠ j → g / 4 ≤ ‖d' i - d' j‖ := by
+  sorry
+
+section Theorems
+
+variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has SampleOp O] [Has DiskSampleOp O]
+  [Has CmpTst Q] [Has IdxTst Q]
+
+/-- **The decoupler meets the randomized decoupling contract** ([BanksGarzaVargasSrivastava2025,
+Theorem 6.1], one node; [BanksGarzaVargasSrivastava2025, Lemma 6.2] carried by the composition):
+on a scalar machine with the standard model at $\boldsymbol{u} \le$
+`NLAlib.SmallEig.uSmallEig`, $M.\mathrm{lit}(0) = 0$, index literals, exact natural literals up to
+$n_{\max} + 1$, exact comparisons and conversion, a measurable interpretation reading the tape
+only in its windows whose draws store the tape entry, a stream `sG` with the standard real
+Gaussian law and an exact polar sampler on a stream `sU` uniform on $[0, 1]$: for tail records
+with $b_1, b_2 > 0$, $1 \le n_{\max}$, $0 < \delta \le \Sigma$ and $0 < \varphi \le 1$,
+`NLAlib.SmallEig.smallEigDecoupler` with the words `NLAlib.SmallEig.smallEigParams` and the cap
+`NLAlib.SmallEig.smallEigCap` meets `NLAlib.ShiftedQR.RandomDecouplingRoutineContract` at the
+bottom width $1$, any iteration cap, orders up to $n_{\max}$ and norms up to $2\Sigma$, on the
+class $(2B_c, g_c/2)$ of the blocks ($B_c, g_c$ = `NLAlib.SmallEig.smallEigCondition`,
+`NLAlib.SmallEig.smallEigSeparation`), with failure probability $\varphi_D$ =
+`NLAlib.SmallEig.smallEigDecouplerFailure`, the level $1.5\,\omega$ and the backward error
+`NLAlib.SmallEig.smallEigDecoupleError`. -/
+theorem smallEigDecoupler_randomDecouplingRoutineContract {M : Machine ℝ} {I : Interp O Q ℝ}
+    {u : ℝ} (hS : IsScalar M I) (hM : StdModel u id M) (hzero : M.lit 0 = 0)
+    (hL : IsIndexLit M I) {nmax : ℕ} (hNat : IsExactNatLit id M (nmax + 1)) (hC : IsCmp id I)
+    (hQ : IsToNat id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
+    (hloc : ∀ o, I.TapeLocal o (win o)) (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
+    (hG : law sG = gaussianReal 0 1) {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b)
+    (hn : 1 ≤ nmax) {S δ φ : ℝ} (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
+    (hu : u ≤ uSmallEig nmax S δ φ c₁ c₂) (F : ℕ) :
+    RandomDecouplingRoutineContract law (2 * smallEigCondition nmax S δ φ c₂)
+      (smallEigSeparation nmax S δ φ c₁ / 2) (smallEigDecouplerFailure nmax φ) 1 F
+      (smallEigCap nmax S δ φ c₁ c₂) nmax (2 * S) (smallEigParams nmax S δ φ c₁ c₂)
+      (1.5 * smallEigOmega nmax S δ φ c₁ c₂) (smallEigDecoupleError nmax S δ φ c₂ u)
+      (smallEigDecoupler (O := O) (Q := Q) sG) I := by
+  sorry
+
+/-- **The decoupler terminates**: on a scalar machine with index literals, exact natural literals
+up to $n_{\max} + 1$, exact comparisons and conversion, draws that store the tape entry and an
+exact polar sampler, for words `qs` with valid cap words for the cap $T$
+(`NLAlib.SmallEig.SmallEigCaps`) and at least twelve words, `NLAlib.SmallEig.smallEigDecoupler`
+is a terminating decoupling routine (`NLAlib.ShiftedQR.TerminatingDecouplerRoutine`) at the
+bottom width $1$, any iteration cap and orders up to $n_{\max} + 1$. -/
+theorem smallEigDecoupler_terminatingDecouplerRoutine {M : Machine ℝ} {I : Interp O Q ℝ}
+    (hS : IsScalar M I) (hL : IsIndexLit M I) {nmax : ℕ} (hNat : IsExactNatLit id M (nmax + 1))
+    (hC : IsCmp id I) (hQ : IsToNat id I) (hSmp : IsSample I) {sU sG : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) {T F : ℕ} {qs : List ℝ} (hqs : SmallEigCaps T qs)
+    (hlen : 12 ≤ qs.length) :
+    TerminatingDecouplerRoutine nmax 1 F T qs (smallEigDecoupler (O := O) (Q := Q) sG) I := by
+  sorry
+
+end Theorems
+
+end NLAlib.SmallEig

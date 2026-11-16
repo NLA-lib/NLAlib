@@ -141,7 +141,7 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has
 
 /-- **`Regularize` with a small-eigenvalue routine as a probabilistic block**
 ([BanksGarzaVargasSrivastava2022, Lemma 4.6], corrected; the routine of
-[BanksGarzaVargasSrivastava2025]): on a scalar machine with the standard model, exact
+[BanksGarzaVargasSrivastava2025, Corollary 1.3]): on a scalar machine with the standard model, exact
 comparisons, index literals and exact natural literals up to $n + 1$, a measurable interpretation
 reading the tape only in its windows and an exact polar disk sampler on a stream `s₀` uniform on
 $[0, 1]$, let the routine `SE` meet `NLAlib.ShiftedQR.RandomSmallEigContract` on orders at most
@@ -209,7 +209,7 @@ theorem regularizeWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
 
 /-- **One iteration of the decoupling loop with a small-eigenvalue routine**
 ([BanksGarzaVargasSrivastava2022, Lemma 6.4], the body of the loop; the routine of
-[BanksGarzaVargasSrivastava2025]): on a scalar machine with the standard model, exact
+[BanksGarzaVargasSrivastava2025, Corollary 1.3]): on a scalar machine with the standard model, exact
 comparisons, index literals, index conversion and exact natural literals up to $n + 1$, a
 measurable interpretation reading the tape only in its windows and an exact polar disk sampler on
 a stream `s₀` uniform on $[0, 1]$, let the routine `SE` meet
@@ -302,12 +302,14 @@ set_option maxHeartbeats 4000000 in
 -- The hypotheses of the iteration make the elaboration of the statement heavy.
 /-- **The rounded decoupling loop with a small-eigenvalue routine meets the randomized
 decoupling contract** ([BanksGarzaVargasSrivastava2022, Lemma 6.4] in floating point, corrected;
-the routine of [BanksGarzaVargasSrivastava2025]): on a machine with the standard model at
+the routine of [BanksGarzaVargasSrivastava2025, Corollary 1.3]): on a machine with the
+standard model
+at
 $\boldsymbol{u} < 1$, exact natural literals up to $n_{\max} + 1$, a measurable interpretation
 reading the tape only in its windows and an exact polar disk sampler on a stream `s₀` uniform on
 $[0, 1]$, let the routine `SE` meet `NLAlib.ShiftedQR.RandomSmallEigContract` on orders at most
 $k$ and norms at most $S$ (the iterate norm) with forward error $\beta \ge 0$, failure probability
-$\varphi_{\mathrm{se}} \ge 0$, cap $T$ and $12$ words `qs`. With the hypotheses of the iteration
+$\varphi_{\mathrm{se}} \ge 0$, cap $T$ and $12$ words `qs`. Under the conditions of one iteration
 at the order $n_{\max} + 1$, the class constant $B_i \ge 4B$ and the iterate norm $S$, and those
 of the loop (the scan thresholds, the cap, $N_{\max} + FE \le S$ and
 $FE \le (g/2)/(16(n_{\max} + 1) \cdot 2B)$ for

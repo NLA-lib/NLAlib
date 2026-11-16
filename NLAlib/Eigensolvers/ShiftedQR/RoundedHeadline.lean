@@ -850,7 +850,8 @@ theorem solveRounded_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Interp
 `NLAlib.ShiftedQR.solveRounded_pwrites` for `NLAlib.ShiftedQR.solveRoundedWith`, with a decoupling
 routine meeting `NLAlib.ShiftedQR.RandomDecouplingRoutineContract` at the class $(2B, g/2)$ and a
 leaf routine meeting `NLAlib.ShiftedQR.RandomLeafRoutineContract` on the blocks of order at most
-$k$ and norm at most $N_0$. On a machine with the standard model at $0 \le \boldsymbol{u} < 1$,
+$\min(k, n + 1)$ and norm at most $N_0$. On a machine with the standard model at
+$0 \le \boldsymbol{u} < 1$,
 exact natural literals up to $n + 1$, exact `toNat` and comparisons, a measurable interpretation
 reading the tape only in its windows, let $\mathbf{H}$ of order $n + 1$ be upper Hessenberg,
 $\mathbf{H}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$ with
@@ -868,7 +869,8 @@ theorem solveRoundedWith_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
     (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ} {B g φD β φL : ℝ} {k F T : ℕ}
     {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} (D : Impl O Q) {N₀ : ℝ}
     (hD : RandomDecouplingRoutineContract law (2 * B) (g / 2) φD k F T n N₀ ps ω ε D I)
-    (L : Impl O Q) (hLeaf : RandomLeafRoutineContract law β φL k N₀ ps T L I) (hφD : 0 ≤ φD)
+    (L : Impl O Q) (hLeaf : RandomLeafRoutineContract law β φL (min k (n + 1)) N₀ ps T L I)
+    (hφD : 0 ≤ φD)
     (hφL : 0 ≤ φL) {a t p out f : ℕ × ℕ}
     {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {thr c : ℝ}
     (hHess : IsUpperHessenberg H) (hV : IsUnit V) (hHV : H * V = V * Matrix.diagonal d)

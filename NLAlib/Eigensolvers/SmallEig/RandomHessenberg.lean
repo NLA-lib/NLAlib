@@ -21,7 +21,8 @@ bottom-up Hessenberg reduction, which fixes the last coordinate vector. The dire
 complex Gaussian vector $\mathbf{g}$ of $2N$ draws, rotated to $\mathbf{e}_N$ by $N - 1$ rounded
 Givens rotations, instead of the paper's uniform vector on the sphere applied by a reflector: the
 phase of the last column is explicit (the paper's erratum P3), anti-concentration in a fixed
-direction is that of a Gaussian (`NLAlib.measureReal_norm_dotProduct_le_le_of_hasLaw_complexGaussianVector`),
+direction is that of a Gaussian
+(`NLAlib.measureReal_norm_dotProduct_le_le_of_hasLaw_complexGaussianVector`),
 and the weights are taken for the eigenvectors of the input, fixed before the draw, then
 transferred to the output (`NLAlib.exists_lastRowWeights_ge_of_norm_sub_le`, the erratum P4).
 

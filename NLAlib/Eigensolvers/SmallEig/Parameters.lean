@@ -158,8 +158,8 @@ noncomputable def smallEigNoiseLevel (φ : ℝ) : ℝ := 3 + √(log (4 / φ))
 noncomputable def smallEigScale (δ φ : ℝ) : ℝ := δ / (4 * smallEigNoiseLevel φ)
 
 /-- The separation $t_1$ of the perturbed matrix: the gap threshold at the scale $\gamma/2$ and the
-failure $\varphi/(4 \cdot 2^{\bar c_1})$, so that the tail at any scale in $[\gamma/2, 2\gamma]$ (the
-rounded scale of the program) is at most $\varphi/4$. -/
+failure $\varphi/(4 \cdot 2^{\bar c_1})$, so that the tail at any scale in
+$[\gamma/2, 2\gamma]$ (the rounded scale of the program) is at most $\varphi/4$. -/
 noncomputable def smallEigGap (nmax : ℕ) (S δ φ : ℝ) (c₁ : PolyLogTail) : ℝ :=
   ginibreGapThreshold nmax S (smallEigScale δ φ / 2) (φ / (4 * 2 ^ c₁.normalize.c)) c₁
 
@@ -246,11 +246,11 @@ noncomputable def smallEigCap (nmax : ℕ) (S δ φ : ℝ) (c₁ c₂ : PolyLogT
     (max (smallEigRounds nmax S δ φ c₁ c₂) (smallEigDecoupleSteps nmax S δ φ c₂))
 
 /-- **Valid cap words** for the cap dimension $T$: the words $8$ to $11$ of `qs` are exact
-naturals $m, q, t, m_2$ with $m = 2^q$, $m, t, m_2 \le T$ and $t, m_2 \ge 1$. The program reads
-them with bounded index reads, which fail on a negative or too large word. -/
+naturals $m, q, t, m_2$ with $m = 2^q$ and $m, t, m_2 \le T$. The program reads them with bounded
+index reads, which fail on a negative or too large word. -/
 def SmallEigCaps (T : ℕ) (qs : List ℝ) : Prop :=
   ∃ m q t m₂ : ℕ, qs.getD 8 0 = m ∧ qs.getD 9 0 = q ∧ qs.getD 10 0 = t ∧ qs.getD 11 0 = m₂ ∧
-    m = 2 ^ q ∧ m ≤ T ∧ t ≤ T ∧ m₂ ≤ T ∧ 1 ≤ t ∧ 1 ≤ m₂
+    m = 2 ^ q ∧ m ≤ T ∧ t ≤ T ∧ m₂ ≤ T
 
 /-- The program has twelve parameter words. -/
 theorem length_smallEigParams (nmax : ℕ) (S δ φ : ℝ) (c₁ c₂ : PolyLogTail) :
@@ -295,10 +295,9 @@ theorem smallEigParams_pos {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂
   sorry
 
 /-- **The cap words are valid** for the cap `NLAlib.SmallEig.smallEigCap`: the words $8$ to $11$
-of `NLAlib.SmallEig.smallEigParams` are the exact naturals $m = 2^q$, $q$, $t \ge 1$,
-$m_2 \ge 1$, all at most the cap. -/
-theorem smallEigCaps_smallEigParams {c₁ c₂ : PolyLogTail} {nmax : ℕ} {S δ φ : ℝ} (hδ : 0 < δ)
-    (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hn : 1 ≤ nmax) :
+of `NLAlib.SmallEig.smallEigParams` are the exact naturals $m = 2^q$, $q$, $t$, $m_2$, all at
+most the cap, for any arguments. -/
+theorem smallEigCaps_smallEigParams (nmax : ℕ) (S δ φ : ℝ) (c₁ c₂ : PolyLogTail) :
     SmallEigCaps (smallEigCap nmax S δ φ c₁ c₂) (smallEigParams nmax S δ φ c₁ c₂) := by
   sorry
 

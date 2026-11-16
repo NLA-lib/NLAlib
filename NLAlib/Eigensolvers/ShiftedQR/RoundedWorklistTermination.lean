@@ -508,14 +508,15 @@ theorem solveRounded_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : �
 for `NLAlib.ShiftedQR.solveRoundedWith`. On a scalar machine whose natural literals up to $n + 1$
 are exact, with exact `toNat` and comparisons, let the decoupling routine terminate
 (`NLAlib.ShiftedQR.TerminatingDecouplerRoutine`) and the leaf routine terminate on orders at most
-$k$ (`NLAlib.ShiftedQR.TerminatingLeafRoutine`). Then for any matrix $\mathbf{H}$ of order $n + 1$
+$\min(k, n + 1)$ (`NLAlib.ShiftedQR.TerminatingLeafRoutine`). Then for any matrix $\mathbf{H}$ of
+order $n + 1$
 stored at `a`, any threshold word and on every tape, `solveRoundedWith D L` runs to completion
 and writes only the matrix, the output and the failure word. -/
 theorem solveRoundedWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
     (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1))
     (hQ : IsToNat id I) (hC : IsCmp id I) {k F T : ℕ} {ps : List ℝ} (D : Impl O Q)
     (hD : TerminatingDecouplerRoutine n k F T ps D I) (L : Impl O Q)
-    (hLeaf : TerminatingLeafRoutine k ps T L I)
+    (hLeaf : TerminatingLeafRoutine (min k (n + 1)) ps T L I)
     {tape : Tape ℝ} {μ : Mem ℝ} {a t p out f : ℕ × ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr : ℝ}
     (hl : μ.Live [a, t, p, out, f])

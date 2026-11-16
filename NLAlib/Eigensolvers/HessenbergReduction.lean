@@ -84,7 +84,8 @@ noncomputable def reduceLastStepWord (M : Machine ℝ) {N : ℕ} (r c : ℕ)
   if h : c + 1 < N ∧ r < N then
     let i : Fin N := ⟨c, by omega⟩
     let j : Fin N := ⟨c + 1, h.1⟩
-    let cs := roundedGivensCoeffs M (A ⟨r, h.2⟩ j) ⟨M.neg (A ⟨r, h.2⟩ i).re, M.neg (A ⟨r, h.2⟩ i).im⟩
+    let cs := roundedGivensCoeffs M (A ⟨r, h.2⟩ j)
+      ⟨M.neg (A ⟨r, h.2⟩ i).re, M.neg (A ⟨r, h.2⟩ i).im⟩
     machineRowRotation M i j cs.1 cs.2 (machineColRotation M i j cs.1 cs.2 A)
   else A
 
@@ -93,7 +94,8 @@ noncomputable def reduceLastStepWord (M : Machine ℝ) {N : ℕ} (r c : ℕ)
 replaced by the pair of the literal $0$. -/
 noncomputable def hessenbergReduceLastWord (M : Machine ℝ) {N : ℕ}
     (A : Matrix (Fin N) (Fin N) ℂ) : Matrix (Fin N) (Fin N) ℂ :=
-  let B := ((List.range (N - 2)).flatMap fun i => (List.range (N - 2 - i)).map fun c => (i, c)).foldl
+  let B := ((List.range (N - 2)).flatMap fun i =>
+      (List.range (N - 2 - i)).map fun c => (i, c)).foldl
     (fun X ic => reduceLastStepWord M (N - 1 - ic.1) ic.2 X) A
   Matrix.of fun i j => if (j : ℕ) + 1 < i then ⟨M.lit 0, M.lit 0⟩ else B i j
 

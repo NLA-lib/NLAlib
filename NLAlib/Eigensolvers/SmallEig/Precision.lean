@@ -10,7 +10,7 @@ public import NLAlib.Eigensolvers.SmallEig.Parameters
 /-!
 # The precision of the small-eigenvalue solver
 
-The unit roundoff $\boldsymbol{u}_{\mathsf{SmallEig}}$ of [BanksGarzaVargasSrivastava2025,
+The unit roundoff $\boldsymbol{u}_{\mathrm{SmallEig}}$ of [BanksGarzaVargasSrivastava2025,
 Theorem 1.1], defined once as the minimum of named terms, one per block of the program: the
 counts, the perturbation and the Hessenberg reduction, `RHess`, `DistSpec`, `Decouple` and the
 backward error of the decoupler in the worklist. Each block's theorem takes its own term; the
@@ -47,7 +47,8 @@ noncomputable def uSmallEigBasic (nmax : ℕ) : ℝ :=
 $1000(n_{\max} + 1)^2\boldsymbol{u}\cdot 2\Sigma$, is within $\delta/8$ and keeps the class of the
 perturbation (condition $2/t_2$, separation $t_1$) up to one doubling. -/
 noncomputable def uSmallEigReduce (nmax : ℕ) (S δ φ : ℝ) (c₁ c₂ : PolyLogTail) : ℝ :=
-  min (δ / 8) (smallEigGap nmax S δ φ c₁ / (64 * ((nmax : ℝ) + 1) * (2 / smallEigCond nmax S δ φ c₂))) /
+  min (δ / 8)
+      (smallEigGap nmax S δ φ c₁ / (64 * ((nmax : ℝ) + 1) * (2 / smallEigCond nmax S δ φ c₂))) /
     (1000 * ((nmax : ℝ) + 1) ^ 2 * (2 * S))
 
 /-- The precision term of `RHess` on a block of the core (condition $2B_c$, separation $g_c/2$):
@@ -65,7 +66,8 @@ $8B_c$, the shift reach $10$, the norm $2\Sigma$ and the distance $\eta_1$. -/
 noncomputable def uSmallEigDistSpec (nmax : ℕ) (S δ φ : ℝ) (c₁ c₂ : PolyLogTail) : ℝ :=
   min (1 / (30000 * ((2 : ℝ) ^ smallEigDegreeLog nmax S δ φ c₂ + 1)))
     ((8004 * (8 * smallEigCondition nmax S δ φ c₂))⁻¹ *
-      (smallEigInnerRadius nmax S δ φ c₁ c₂ / (22 * (2 * S))) ^ (2 ^ smallEigDegreeLog nmax S δ φ c₂)
+      (smallEigInnerRadius nmax S δ φ c₁ c₂ / (22 * (2 * S))) ^
+        (2 ^ smallEigDegreeLog nmax S δ φ c₂)
       / (300 * ((nmax : ℝ) + 1) ^ 2))
 
 /-- The precision term of `Decouple` (`NLAlib.SmallEig.decoupleLast_spec`): the forward error of
@@ -96,9 +98,9 @@ noncomputable def uSmallEig (nmax : ℕ) (S δ φ : ℝ) (c₁ c₂ : PolyLogTai
 
 /-- **The precision threshold is positive and below every term**: for tail records with
 $b_1, b_2 > 0$, $n_{\max} \ge 1$, $0 < \delta \le \Sigma$ and $0 < \varphi \le 1$,
-$0 < \boldsymbol{u}_{\mathsf{SmallEig}}$ and $\boldsymbol{u}_{\mathsf{SmallEig}}$ is at most each of
+$0 < \boldsymbol{u}_{\mathrm{SmallEig}}$ and $\boldsymbol{u}_{\mathrm{SmallEig}}$ is at most each of
 its six terms. Without positivity the headline would be vacuous through
-$0 \le \boldsymbol{u} \le \boldsymbol{u}_{\mathsf{SmallEig}}$. -/
+$0 \le \boldsymbol{u} \le \boldsymbol{u}_{\mathrm{SmallEig}}$. -/
 theorem uSmallEig_spec {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) {nmax : ℕ}
     (hn : 1 ≤ nmax) {S δ φ : ℝ} (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1) :
     0 < uSmallEig nmax S δ φ c₁ c₂ ∧ uSmallEig nmax S δ φ c₁ c₂ ≤ uSmallEigBasic nmax ∧
@@ -113,7 +115,7 @@ theorem uSmallEig_spec {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ : 0
 Theorem 1.1], $O(\log^2)$ bits): for tail records with $b_1, b_2 > 0$ there are constants
 $e_1, e_2$ (depending on the records) such that for every $n_{\max} \ge 1$,
 $0 < \delta \le \Sigma$ and $0 < \varphi \le 1$,
-$$\log_2\frac{1}{\boldsymbol{u}_{\mathsf{SmallEig}}} \le e_1\log_2^2 Y + e_2, \qquad
+$$\log_2\frac{1}{\boldsymbol{u}_{\mathrm{SmallEig}}} \le e_1\log_2^2 Y + e_2, \qquad
   Y = \frac{4n_{\max}\Sigma}{\delta\varphi}\,.$$ -/
 theorem logb_inv_uSmallEig_le (c₁ c₂ : PolyLogTail) (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) :
     ∃ e₁ e₂ : ℝ, ∀ {nmax : ℕ} {S δ φ : ℝ}, 1 ≤ nmax → 0 < δ → δ ≤ S → 0 < φ → φ ≤ 1 →

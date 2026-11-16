@@ -845,7 +845,7 @@ theorem solveRounded_backward {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
 Theorem 6.1]; [BanksGarzaVargasSrivastava2022, Theorem 6.3], backward half):
 `NLAlib.ShiftedQR.solveRounded_backward` for `NLAlib.ShiftedQR.solveRoundedWith`, with a decoupling
 routine meeting `NLAlib.ShiftedQR.RoundedDecouplingRoutineContract` and a leaf routine with
-backward error $\beta \ge 0$ on the blocks of order at most $k$ and norm at most $N_0$
+backward error $\beta \ge 0$ on the blocks of order at most $\min(k, n + 1)$ and norm at most $N_0$
 (`NLAlib.ShiftedQR.BackwardLeafRoutineContract`). On a machine with the standard model at
 $0 \le \boldsymbol{u} < 1$ and exact natural literals up to $n + 1$, for $\mathbf{H}$ upper
 Hessenberg of order $n + 1$, a threshold $t$ with
@@ -859,7 +859,7 @@ theorem solveRoundedWith_backward {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : 
     (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
     (hC : IsCmp id I) {fails : Prop} {k F T : ℕ} {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ}
     (D : Impl O Q) (hD : RoundedDecouplingRoutineContract fails k F T ps ω ε D I)
-    {β N₀ : ℝ} (L : Impl O Q) (hLeaf : BackwardLeafRoutineContract β k N₀ ps T L I)
+    {β N₀ : ℝ} (L : Impl O Q) (hLeaf : BackwardLeafRoutineContract β (min k (n + 1)) N₀ ps T L I)
     {tape : Tape ℝ} {μ : Mem ℝ} {a t p out f : ℕ × ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr c : ℝ}
     (hl : μ.Live [a, t, p, out, f])

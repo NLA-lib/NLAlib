@@ -15,7 +15,10 @@ Part of the [contributor guide](../../CONTRIBUTING.md).
   needs it. `Fin k` is appropriate where its order or recursion carries content: the `k` sorted
   columns of an SVD produced by an existence theorem, total recursions
   defining algorithms. A theorem stated over `Fin` because a dependency was is a defect to fix at
-  the dependency (review lists: [T6], and [T7] for theorems over ℝ only).
+  the dependency (review lists: [T6], and [T7] for theorems over ℝ only). The headline of a
+  result (§2, "One headline per result") is the one other place for `Fin`: a corollary that
+  instantiates the general theorem at `Fin`, so that every size is a natural number. It is added
+  after the general theorem, never instead of it, and nothing is proved from it.
 - Transpose: lemmas are stated with `ᴴ` [T5]. Over ℝ, `Aᴴ = Aᵀ` is `Matrix.conjTranspose_eq_transpose_of_trivial`
   (`@[simp]`). Transpose twins are not written.
 - Vectors: `n → 𝕜` with `⬝ᵥ` as the pairing; the Euclidean norm is `‖WithLp.toLp 2 x‖`
@@ -58,11 +61,25 @@ Part of the [contributor guide](../../CONTRIBUTING.md).
   inequality halves are corollaries.
 - General form first, corollaries after, in the same file. A corollary specialises the field, the
   index type, or a hypothesis; it does not restate the proof.
-- Probabilistic results are stated as tails, not sample sizes: the primary theorem bounds the
+- **One headline per result.** For each `Result:` id one declaration is the headline: the
+  statement a reader checks against the mathematics, as simple as it can be made, even at some
+  cost in generality. Its signature has no `Fintype.card` and no `[Nonempty …]`: every size the
+  statement uses is a natural number (`{k n : ℕ}`) and the objects are indexed by `Fin`, or by
+  sums and products of `Fin` for a block statement; positivity is a hypothesis `0 < k` only when
+  the other hypotheses do not imply it; sizes are never subtracted as natural numbers. A general
+  theorem whose signature already has this form is the headline itself. Otherwise the headline
+  is a corollary that instantiates the general theorem, in the same file, after it, with a
+  proof of a few lines. `docs/design/Headline-Statements.md` gives the statement shape for each
+  type of bound and the letters; [docstrings](docstrings.md) item 6 gives the docstring. The
+  headline is designated by `primary` in the explorer's `explore/results.toml`, never by a
+  default. These rules are judged by review.
+- Probabilistic results are stated as tails, not sample sizes: the general theorem bounds the
   failure probability in closed form (`μ.real {ω | ¬ good ω} ≤ 2 d exp (−ε² k / (3 L))` for a
   predicate `good`; [naming](naming.md) N15 says how a scalar event is stated); the
   "`k ≥ …` suffices" form is a corollary. Inverting the tail is where ugly constants and side
   conditions appear, so it is done once, not by every consumer. Tails are in `μ.real` [T14].
+  For a sketch property or an algorithm guarantee the sample-size corollary, at natural-number
+  sizes, is the result's headline; for a concentration inequality the closed-form tail is.
 - **A lower moment from a higher one is not a separate theorem** [T15].
   The primary statement is the moment the proof gives, usually the squared one. When a source
   prints the Jensen-weakened form (HMT Theorem 10.5's $\mathbb{E}\|\cdot\|_{\mathsf{F}}$), the
@@ -130,6 +147,14 @@ Part of the [contributor guide](../../CONTRIBUTING.md).
      `previous_*` fields; and let CI confirm. Nothing checks the LaTeX against the Lean
      mathematically: the reviewer compares `lean_body` and `latex`, which sit side by side in
      the diff, on every change to a bound.
+
+     **In a headline** a constant that is part of the mathematics (exact or sharp) is written
+     out, and a constant that is an artifact of the proof is a symbol in the formula with its
+     value in the last sentence of the statement, which starts with "Here" and carries the
+     marker: "Here <!-- value hansonWrightConstant -->$C = 1/196$." A constant with no explicit
+     value does not appear in a headline. Every named constant a headline shows has a public
+     value theorem, a one-sided comparison in the direction its consumers use
+     (`le_hansonWrightConstant`).
   3. A universal constant with no explicit value in the literature is a named
      `noncomputable def` chosen from an existence lemma quantified outside all dimensions, and is
      documented as such. A bare `∃ C` never appears in a statement [B2]: quantified after the
@@ -144,14 +169,19 @@ Part of the [contributor guide](../../CONTRIBUTING.md).
      appears in the threshold, never inside $C$. Index types are fixed to `Type` [B4]. A result
      of this kind without its asymptotic form is on a review list [B5]. The name starts
      `exists_forall_`, derived from the explicit theorem's name ([naming](naming.md) N17); the proof instantiates
-     the explicit theorem, which stays primary and whose docstring names its asymptotic form. The
+     the explicit theorem, which its `Asymptotic:` tag names and whose docstring names its
+     asymptotic form. The
      asymptotic form's docstring says "$O(\ldots)$ suffices" in words [B3] and ends with the line
      `Asymptotic: <full name of the explicit theorem>` (before any `Result:` line; a name too long
      for the line goes alone on the next one), and the explicit theorem's docstring says
-     "Asymptotic form: `…`." The explorer leads with the asymptotic form and offers the explicit
-     bound beside it, so each docstring states its hypotheses and conclusion on its own, and at
-     least one of the pair carries a `Result:` id. `scripts/check_refs.py` checks the tags and the
-     pairing.
+     "Asymptotic form: `…`." The explorer leads with the result's headline, which is explicit,
+     and offers the asymptotic form beside it, so each docstring states its hypotheses and
+     conclusion on its own, and at least one of the pair carries a `Result:` id.
+     `scripts/check_refs.py` checks the tags and the pairing. A headline that is a corollary of
+     the explicit theorem names the asymptotic form in its notes in other words ("the $O(\cdot)$
+     reading is `…`"): the phrase "Asymptotic form:" belongs to the theorem the tag points to. A
+     headline that shows a proof-artifact constant has an asymptotic form through its general
+     theorem, in every topic, not only in the two that [B5] lists.
   4. Incomparable bounds coexist, each named by what distinguishes it: its hypothesis
      (`_of_bounded`, `_of_variance_le`) or the parameter its bound is in (`_intrinsicDimension`). Each
      docstring says in which regime it is better and names the other.

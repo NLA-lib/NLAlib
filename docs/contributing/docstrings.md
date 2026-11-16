@@ -21,8 +21,10 @@ theorem Matrix.IsHermitian.eigenvalue_add_le ...
    learn the statement from it without reading the Lean. So the docstring states its hypotheses
    and notation itself, never "under the hypotheses of `X`", "as there", "as in the tail", "on the
    same instance" or "if moreover" [D2]. Independence of the summands, rows or sketches is always
-   said in words, and a headline theorem names the law of each `HasLaw` hypothesis [D12]; a
-   headline theorem's `[Nonempty n]` is said too ("$n$ nonempty", review list: [D13]).
+   said in words, and a `Result:` or bold-named theorem names the law of each `HasLaw` hypothesis
+   [D12]; its `[Nonempty n]` is said too ("$n$ nonempty", review list: [D13]). The *headline* of
+   a result (item 6) is a narrower notion: it has no `[Nonempty n]` to mention, and its
+   docstring has the fixed layout given there, with remarks in a notes block.
 2. **Citation:** `[Key, label]` where `Key` is an entry of `docs/references.bib` and `label` is the
    printed theorem, section or equation, for every source where this result or the result it
    generalises or specialises appears. A citation of a specific result carries its label; a bare
@@ -86,7 +88,7 @@ theorem Matrix.IsHermitian.eigenvalue_add_le ...
    | Object | LaTeX | Shown |
    |---|---|---|
    | matrix, vector | `\mathbf{A}`, `\mathbf{x}`; entries `\mathbf{A}_{i,j}`, `\mathbf{x}_i` | bold upright |
-   | scalars, indices, dimensions | `c`, `t`, `i`, `k`, `n`; the size of an index type `n` is `\lvert n \rvert` | italic |
+   | scalars, indices, dimensions | `c`, `t`, `i`, `k`, `n`; the size of an index type `n` is `\lvert n \rvert`; a headline (item 6) has natural-number sizes and writes them as plain letters, never `\lvert n \rvert` | italic |
    | random variables | random scalar `X` (capital, italic); random vector `\mathbf{x}`, `\mathbf{g}` (lowercase bold, like every vector, and lowercase in the Lean too: `x : Ω → n → ℝ`); random matrix `\mathbf{G}`; a random process over an arbitrary index set stays `X_t` | |
    | submatrix on index sets `s`, `t` (`s : Finset n`) | `\mathbf{A}_{s,t}`, principal `\mathbf{A}_{s,s}`, minor `\det \mathbf{A}_{s,s}` | |
    | identity, zero matrix | `\mathbf{I}`, `\mathbf{0}` | |
@@ -102,7 +104,7 @@ theorem Matrix.IsHermitian.eigenvalue_add_le ...
    | Loewner order [M17] | `\mathbf{A} \preceq \mathbf{B}`, `\mathbf{0} \preceq \mathbf{A}` | |
    | expectation, probability, variance [M10, M1] | `\mathbb{E}`, `\mathbb{P}`, `\operatorname{Var}` | |
    | number fields, the `RCLike` field [M13] | `\mathbb{R}`, `\mathbb{C}`, `\Bbbk` | |
-   | named constants | the value in place of the constant, `\exp\bigl(-\tfrac{1}{196}\min(…)\bigr)`, with a value marker before the span and the Lean name in words nearby (`` `hansonWrightConstant` ``); a symbol such as `C_{\mathrm{HW}}` only in prose about the constant itself | |
+   | named constants | the value in place of the constant, `\exp\bigl(-\tfrac{1}{196}\min(…)\bigr)`, with a value marker before the span and the Lean name in words nearby (`` `hansonWrightConstant` ``); a symbol such as `C_{\mathrm{HW}}` only in prose about the constant itself; in a headline a proof-artifact constant is a symbol with a "Here" value line (item 6) | |
    | truncated SVD (best rank-`k` approximation) [M14] | `\llbracket \mathbf{A} \rrbracket_k` | |
    | named algorithm outputs [M2, M3, M4, M5] | `\mathsf{rsvd}(\mathbf{A}, \mathbf{\Omega})`, `\mathsf{nystrom}(\mathbf{H}, \mathbf{\Omega})`, `\mathsf{gn}(\mathbf{A}, \mathbf{\Omega}, \mathbf{\Psi})`: the Lean name verbatim in `\mathsf`, or a short name registered in the [vocabulary](vocabulary.md) row "short algorithm names in `\mathsf`" (`gn`), never the formula it unfolds to; the definition's docstring alone shows the formula, as `\mathsf{rsvd}(\mathbf{A}, \mathbf{\Omega}) := \mathbf{P}_{\mathbf{A}\mathbf{\Omega}}\mathbf{A}` | |
    | bold Greek matrices [M11] | `\mathbf{\Sigma}`, `\mathbf{\Lambda}` | |
@@ -118,6 +120,8 @@ theorem Matrix.IsHermitian.eigenvalue_add_le ...
    states its event explicitly, for example `$\mathbb{P}[\mathrm{error}\le t]\ge1-\delta$`;
    prose may still say "with probability at least $1-\delta$". This is a documentation
    convention; formal Lean statements keep the measure interface in [statements](statements.md) §3.
+   A headline (item 6) writes the event of its Lean statement, the bad one,
+   `$\mathbb{P}[\mathrm{error} > t] \le \delta$`, and no other wording.
 
    A conclusion with a fraction or longer than a line is displayed (`$$…$$`, review list: [D3]),
    a long display split with `\begin{aligned}`; `\frac` in displays, `/` inline [D4].
@@ -130,6 +134,49 @@ theorem Matrix.IsHermitian.eigenvalue_add_le ...
    `scripts/check_latex.mjs` renders every docstring's LaTeX with KaTeX in CI and fails on an
    error; it checks the syntax, not that the LaTeX says what the Lean says, which is the
    reviewer's job.
+6. **Headline.** Each result id has one headline ([statements](statements.md) §2, "One headline
+   per result"): the declaration the explorer shows first and a reader checks against the
+   mathematics. Its docstring has these parts, in this order (judged by review; the reasons and
+   a worked example for each type of bound are in `docs/design/Headline-Statements.md`):
+
+   1. *Statement paragraph*: the bold name, then the hypotheses and the conclusion only, in
+      words and LaTeX. It mirrors the Lean statement one to one: every hypothesis, in the
+      signature's order; the same event; the same inequality with the same two sides. A named
+      predicate in the conclusion is written out once by its definition. No Lean identifier in
+      backticks, no proof route, no tightness remark, no comparison with another result. Sizes
+      are plain letters ($k$, $\ell$, $n$), never `\lvert k \rvert` or "$k$ nonempty"; a
+      positivity hypothesis `0 < k` is "$k \ge 1$". A probability is the Lean tail,
+      `$\mathbb{P}[\,\text{bad}\,] \le \delta$`; the paragraph does not say "with probability at
+      least", "except with probability", "outside probability" or "failure probability".
+   2. *Value line*, if the paragraph uses a symbol for a proof-artifact constant
+      ([statements](statements.md) §2 rule 2): its last sentence starts with "Here" and gives each
+      value, for example "Here $C = 6400$ and $\varepsilon_0 = 1/6500$."; a named bound's value
+      has its marker there.
+   3. *Citation*, as in item 2, with the relation to the source.
+   4. *Notes block*: a blank line, then one or more paragraphs, the first starting with the
+      literal `Note:` at the start of its line. Tightness, matching bounds, the proof route,
+      degenerate cases, the Lean names of related declarations and of the bounds used, and
+      "General form: `NLAlib.…`" for a headline that is a corollary. The explorer shows the
+      notes apart from the statement.
+   5. *Tag lines* (`Asymptotic:`, `Result:`) last, as in item 4.
+
+   A headline uses one letter per role, the same in the Lean binder and in the LaTeX:
+
+   | Role | Lean | LaTeX |
+   |---|---|---|
+   | dimensions of the matrix; a square matrix | `m`, `n`; `n` | `m`, `n` |
+   | target rank; rank of the input when it is a parameter | `k`; `r` | `k`; `r` |
+   | sketch size: rows of a sketch, columns of a test matrix, number of probes; a second one | `l`; `p` | `\ell`; `p` |
+   | subspace dimension | `d` | `d` |
+   | matrix–vector products, queries, iterations | `q` | `q` |
+   | accuracy; failure probability; free tail parameter | `ε`; `δ`; `t` | `\varepsilon`; `\delta`; `t` |
+   | random test matrix, applied on the right ($n \times \ell$); a second one | `X`; `Ψ` | `\mathbf{X}`; `\mathbf{\Psi}` |
+   | sketch, applied on the left ($\ell \times n$) | `S` | `\mathbf{S}` |
+
+   A *test matrix* multiplies on the right and a *sketch* on the left; a statement uses one of
+   the two words. A random matrix with a named law keeps its letter (`G` Gaussian, `Q` Haar
+   frame) and the statement defines $\mathbf{S}$ from it. Other declarations take these letters
+   when their file is touched.
 
 Module docstrings follow Mathlib [D9]: `# Title`, a paragraph, `## Main results` [D10] listing the
 names, which exist [D11].

@@ -12,7 +12,7 @@ and `docs/rules/DIGEST.md`.
 
 - **Layer 3** (`docs/rules/layers.toml`): a file imports only modules of its own layer and lower (**P1**). [layout §1]
 - **B2** No bare `∃ C` in a statement, except in an `exists_forall_` asymptotic form. Fix: Use a named constant, or an asymptotic form with `∃ C` before every dimension. [statements §2] rule 3
-- **B3** An asymptotic form says "$O(\ldots)$ suffices" in its docstring. Fix: Say in words which $O(\cdot)$ size suffices. [statements §2] rule 3
+- **B3** An asymptotic form says "$O(\ldots)$ suffices", or for a lower bound "$\Omega(\ldots)$ is necessary", in its docstring. Fix: Say in words which $O(\cdot)$ size suffices, or which $\Omega(\cdot)$ cost is necessary. [statements §2] rule 3
 - **B4** An asymptotic form puts its constants first and fixes index types to `Type`. Fix: State `∃ C ε₀ : ℝ, … ∀ {Ω m n … : Type} …`. [statements §2] rule 3
 - **B5** (warning) A Sketching or LowRank sample-size result has its asymptotic form. Fix: Add its `exists_forall_` corollary. [statements §2] rule 3
 - **D12** A docstring says when summands are independent; a headline theorem names its laws. Fix: Say in words that the summands, rows or sketches are independent (`iIndepFun`, `IndepFun`), and, for a headline theorem, which law a `HasLaw` hypothesis gives. [docstrings] item 1

@@ -171,7 +171,9 @@ Part of the [contributor guide](../../CONTRIBUTING.md).
      `exists_forall_`, derived from the explicit theorem's name ([naming](naming.md) N17); the proof instantiates
      the explicit theorem, which its `Asymptotic:` tag names and whose docstring names its
      asymptotic form. The
-     asymptotic form's docstring says "$O(\ldots)$ suffices" in words [B3] and ends with the line
+     asymptotic form's docstring says "$O(\ldots)$ suffices" in words, or, when the explicit
+     theorem is a lower bound on a cost (queries, products, sketch size), "$\Omega(\ldots)$ is
+     necessary", with `c * (threshold without constants) < cost` as its conclusion [B3]. It ends with the line
      `Asymptotic: <full name of the explicit theorem>` (before any `Result:` line; a name too long
      for the line goes alone on the next one), and the explicit theorem's docstring says
      "Asymptotic form: `…`." The explorer leads with the result's headline, which is explicit,

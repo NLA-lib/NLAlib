@@ -78,10 +78,10 @@ area = "bounds"
 severity = "error"
 check = "source"
 scope = "library"
-home = ["NLAlib/Sketching", "NLAlib/LowRank"]
+home = ["NLAlib/Sketching", "NLAlib/LowRank", "NLAlib/LowerBounds"]
 section = "statements §2 rule 3"
-statement = '''An asymptotic form says "$O(\ldots)$ suffices" in its docstring'''
-fix = '''Say in words which $O(\cdot)$ size suffices'''
+statement = '''An asymptotic form says "$O(\ldots)$ suffices", or for a lower bound "$\Omega(\ldots)$ is necessary", in its docstring'''
+fix = '''Say in words which $O(\cdot)$ size suffices, or which $\Omega(\cdot)$ cost is necessary'''
 
 [[rule]]
 id = "B4"

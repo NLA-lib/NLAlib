@@ -439,6 +439,7 @@ theorem regularizeDraws_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
   · exact Fp.inBlock_le_inBlock le_rfl (by omega)
   · exact Fp.inBlock_le_inBlock (by omega) (by omega)
 
+omit [Has EigenvalueKernelOp O] in
 /-- `Regularize` with a small-eigenvalue routine and scratch terminates on any matrix: with the
 views `NLAlib.ShiftedQR.RegularizeViews` and the context `NLAlib.ShiftedQR.RegularizeCtx` (any
 matrix of order $n + 1$, any words), $k \le n$, a routine that terminates on orders at most $k$
@@ -487,7 +488,7 @@ theorem regularizeWithScratchWith_terminates {M : Machine ℝ} {I : Interp O Q �
   have hq₁ := hfr₁.keep (Store.readsOnly_readBlock _ _ _ _)
     (Fp.disj_inBlock_of_ne (by omega)) hq
   refine (hSE (w := (L, 0)) (q := qw) (o := s) τ m₁ _ le_rfl hB hq₁
-    (by simp [Mem.Live, hL₁]; omega) (by dsimp only; rw [hfr₁.len_eq]; exact hrs)
+    (by simp [Mem.Live, hL₁]; omega) (by rw [hfr₁.len_eq]; exact hrs)
     (by disjoint) hqw.symm).frame_seq_le
     rfl rfl (by simp [Mem.Live, hL₁]; omega) (by fp_sub) ?_
   rintro m₂ hfr₂ ⟨xs, hS₂⟩
@@ -509,6 +510,7 @@ theorem regularizeWithScratchWith_terminates {M : Machine ℝ} {I : Interp O Q �
   exact Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨has, by disjoint⟩,
     hsf.symm⟩, by disjoint⟩
 
+omit [Has EigenvalueKernelOp O] in
 /-- `Regularize` with a terminating small-eigenvalue routine terminates on any matrix, with
 the word count `nq` apart from the words `qs` (`NLAlib.ShiftedQR.TerminatingSmallEigAt`): as
 `NLAlib.ShiftedQR.regularize_terminates` for `NLAlib.ShiftedQR.regularizeWith`, with the routine's
@@ -571,7 +573,7 @@ theorem regularizeWith_terminates_at {M : Machine ℝ} {I : Interp O Q ℝ} (hS 
       hl7 3 (by norm_num), hl7 4 (by norm_num), hl7 5 (by norm_num), hl7 6 (by norm_num)⟩
   refine ((regularizeWithScratchWith_terminates hS hL hNat hC hD hk
     ⟨⟨h1, h2, h3, h4, h5, h6⟩, has, haf, hsf, hio⟩ hctx hSE hlq
-    ((hBelow.readBlock hlq qw.2 qs.length).trans hq) (hqw.symm.mono le_rfl (by fp_sub))).in_frame
+    ((hBelow.readBlock hlq qw.2 qs.length).trans hq) (hqw.mono (by fp_sub) le_rfl)).in_frame
     rfl rfl ?_).mono
     (by fp_sub) fun _ _ h => h
   simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,

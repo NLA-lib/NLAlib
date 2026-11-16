@@ -23,10 +23,11 @@ public import NLAlib.Eigensolvers.ShiftedQR.RoundedParameterChoices
 [BanksGarzaVargasSrivastava2022, Theorem 1.4], in floating point, corrected: the decoupling loop
 is capped, the deflation scan covers the bottom $k$ subdiagonal entries, and the precision
 threshold is recomputed for the corrected constants of the blocks. The program is the rounded
-deflation worklist (`NLAlib.ShiftedQR.solveRounded`) with the decoupling loop of Lemma 6.4
-(`NLAlib.ShiftedQR.roundedDecouple`: `Regularize`, then
-$\mathrm{Sh}_{k,B}$, capped at $F$ rounds) and the `SmallEig` leaf
-(`NLAlib.ShiftedQR.smallEigLeaf`), run with the parameter words of
+deflation worklist (`NLAlib.ShiftedQR.solveRoundedWith`) with the decoupling loop of Lemma 6.4
+(`NLAlib.ShiftedQR.roundedDecoupleWith`: `Regularize`, then
+$\mathrm{Sh}_{k,B}$, capped at $F$ rounds) and the leaf (`NLAlib.ShiftedQR.seLeaf`), both running
+a small-eigenvalue routine; `NLAlib.ShiftedQR.roundedShQR` runs the `SmallEig` kernel
+(`NLAlib.ShiftedQR.smallEigKernel`) with the cap $0$. It is run with the parameter words of
 `NLAlib.ShiftedQR.shqrParams` and the threshold word `NLAlib.ShiftedQR.shqrDeflationThreshold`
 on a machine with unit roundoff $\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{ShQR}}$
 (`NLAlib.ShiftedQR.uShQR`).
@@ -215,12 +216,13 @@ theorem roundedShQRWith_measureReal_not_spectrum_le_at {Mch : Machine ℝ} {I : 
     by_cases hkn : k ≤ n + 1
     · rw [min_eq_left hkn] at hSE
       exact roundedDecoupleWith_randomDecouplingRoutineContract_of_le_uShQR_at hI hloc hS hM hL
-        hNat hC hQ hDisk hU hB hΓ hδ hδS hφ hφ1 hk hβse0 hse hφse0 hu hSE hq12
+        hNat hC hQ hDisk hU hB hΓ hδ hδS hφ hφ1 hk hβse0 hse hφse0 hu hSE hq12 rfl
     · intro n' N w q f H' V' d' hk' hn'
       omega
   have hLeaf : RandomLeafRoutineContract law βse φse (min k (n + 1)) (2 * S)
       (shqrParams n k B Γ S δ φ ++ qs) T (seLeaf SE) I :=
-    (hSE.mono_norm (by linarith)).randomLeafRoutineContract hβse0 hq12
+    RandomSmallEigContractAt.randomLeafRoutineContract (hSE.mono_norm (S' := 2 * S) (by linarith))
+      hβse0 hq12
   have hE := shqrLoopError_le_shqrDecoupleError (n := n) (k := k) (B := B) (Γ := Γ) (δ := δ)
     hSp.le hu0
   set E := (shqrCap n B Γ S δ : ℝ) *
@@ -281,7 +283,7 @@ theorem roundedShQRWith_terminates_at {Mch : Machine ℝ} {I : Interp O Q ℝ}
       exact roundedDecoupleWith_terminatingDecouplerRoutine_at (F := shqrCap n B Γ S δ) hS hL
         hNat hC hQ hDisk hkq (shqrLoopThreshold n k B Γ S δ φ) (shqrRadius n B Γ S δ)
         (shqrScanThreshold n k B Γ S δ φ) 0.2 (4 * B) (shqrAlpha k (4 * B)) (shqrEps k (4 * B))
-        hSE hq12
+        hSE hq12 rfl
     · intro n' w q f tape μ' H' hk' hn'
       omega
   exact solveRoundedWith_terminates hS hL hNat hQ hC _ hD _ (hSE.terminatingLeafRoutine hq12)
@@ -335,9 +337,10 @@ theorem roundedShQR_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Interp 
     hφse hu hl (by simpa using hr) (by simpa using ha) hA ht (by simpa using hp) hξ
   simp only [List.append_nil] at h
   have := hξ.isProbabilityMeasure
-  refine le_trans (measureReal_mono fun ω' hω' hW => hω' ?_) h
+  refine le_trans ?_ h
+  refine measureReal_mono fun ω' hω' hW => hω' ?_
   unfold roundedShQR
-  exact hW.in_frame (by simp [shqrDims]) (by simp [Operand.evalList, Operand.eval]) hl
+  exact hW.in_frame (by simp [shqrDims]) (by simp [shqrDims, Operand.evalList, Operand.eval]) hl
 
 /-- **The rounded shifted QR algorithm terminates on every tape**: on a scalar machine
 with index literals, natural literals up to $n + 1$ that are exact, exact index conversion and
@@ -374,7 +377,7 @@ theorem roundedShQR_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (by simpa using ha) hA ht (by simpa using hp) τ
   simp only [List.append_nil] at h
   unfold roundedShQR
-  exact h.in_frame (by simp [shqrDims]) (by simp [Operand.evalList, Operand.eval]) hl
+  exact h.in_frame (by simp [shqrDims]) (by simp [shqrDims, Operand.evalList, Operand.eval]) hl
 
 /-- **The bits of precision** ([BanksGarzaVargasSrivastava2022, Theorem 1.4], corrected: the
 printed argument $nB/(\delta\Gamma\varphi)$ is not invariant under scaling of $\mathbf{H}$, and

@@ -395,6 +395,7 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O
 -- The default heartbeat budget does not cover the elaboration of this statement.
 set_option maxHeartbeats 1000000 in
 -- The hypothesis list of the iteration, with its long real constants, makes elaboration heavy.
+omit [Has EigenvalueKernelOp O] in
 /-- One iteration of the decoupling loop on the good tapes: from the state before round $i$
 with the scan flag $0$, the iterate is in the class of `NLAlib.ShiftedQR.shIteration_pwrites`
 (condition at most $4B \le B_i$ and separation at least $g/4 \ge 2\omega^2/S$ by
@@ -525,7 +526,8 @@ theorem roundedDecoupleIteration_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} 
       hstate.exists_iterate h0 (by omega) hkn hV hHV hκ hg hgap hiE hSi hBi hωL hgapS
     obtain ⟨hl, hget, hnet, hf⟩ := hctx.iteration_words hps
     have hpl : p.1 < μ.store.length := hctx.2.2.2.1 p (by simp)
-    refine ⟨⟨H', hHess', hnorm, hψω, V', d', hV', hHV', hκ', hsep'⟩, ?_, hW, (hctx.routine_words hps hq12).1,
+    refine ⟨⟨H', hHess', hnorm, hψω, V', d', hV', hHV', hκ', hsep'⟩, ?_, hW,
+      (hctx.routine_words hps hq12).1,
       hget 1 (by omega),
       hget 2 (by omega), hget 3 (by omega), hget 4 (by omega), hget 5 (by omega),
       hget 6 (by omega), hget 7 (by omega), hnet, hf⟩
@@ -542,6 +544,7 @@ theorem roundedDecoupleIteration_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} 
         mul_le_mul_of_nonneg_left hψ hc0
       _ = (1.002 * (1 - γ)) ^ (i + 1) * hessenbergPotential k H := by ring
 
+omit [Has EigenvalueKernelOp O] in
 /-- The rounds of the decoupling loop on the good tapes: if each iteration from the state
 before round $i < F$ with the scan flag $0$ reaches the state after it except with probability
 at most $\varphi \ge 0$, then from a stored upper Hessenberg $\mathbf{H}$ with
@@ -628,11 +631,13 @@ theorem roundedDecoupleLoop_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : 
     exact roundedDecoupleExit_writes hu1 hL hC h0lit hk hkn hcut hωD hc0 hE0 hψH hfuel hi hctx
       hst hend
 
+omit [Has EigenvalueKernelOp O] in
 /-- The decoupling loop from its rounds: the allocation of the scan registers and the two
 index reads of $m$ and $n_0$ from the parameter words (`NLAlib.Ops.PWrites.allocs`,
 `NLAlib.Ops.PWrites.bindIdx`) carry a probabilistic specification of
-`NLAlib.ShiftedQR.roundedDecoupleLoop` at every fresh buffer to `NLAlib.ShiftedQR.roundedDecouple`
-from the precondition of `NLAlib.ShiftedQR.RandomDecouplingContract`. -/
+`NLAlib.ShiftedQR.roundedDecoupleLoopWith` at every fresh buffer to
+`NLAlib.ShiftedQR.roundedDecoupleWith` from the precondition of
+`NLAlib.ShiftedQR.RandomDecouplingRoutineContract`. -/
 theorem roundedDecouple_pwrites_of_loop {I : Interp O Q ℝ} (hI : I.IsMeasurable)
     (hQ : IsToNat id I) {law : ℕ → Measure ℝ} {k q F T : ℕ} {SE : Impl O Q} (hqk : q ≤ k)
     {w p f : ℕ × ℕ} {ps qs : List ℝ} {tL R tv γ Bi α ε : ℝ}
@@ -721,6 +726,7 @@ theorem roundedDecouple_pwrites_of_loop {I : Interp O Q ℝ} (hI : I.IsMeasurabl
 -- The default heartbeat budget does not cover the elaboration of this statement.
 set_option maxHeartbeats 4000000 in
 -- The loop's program term and the hypotheses of the iteration make elaboration heavy.
+omit [Has EigenvalueKernelOp O] in
 /-- **The rounded decoupling loop with a small-eigenvalue routine meets the randomized decoupling
 contract**, with the parameter words `NLAlib.ShiftedQR.roundedDecoupleParams` followed by the
 routine's words `qs` (none, or $12$) and the routine meeting
@@ -798,15 +804,15 @@ theorem roundedDecoupleWith_randomDecouplingRoutineContract_at {M : Machine ℝ}
     (hsmall : F * ((1 + C) * S * ((1 + 300 * (nmax + 1) ^ 2 * u) ^ k - 1)) ≤
       g / 2 / (16 * (nmax + 1) * (2 * B))) {T : ℕ} {qs : List ℝ} {SE : Impl O Q}
     (hSE : RandomSmallEigContractAt law β φse k 12 T S qs SE I)
-    (hq12 : qs = [] ∨ qs.length = 12) :
+    (hq12 : qs = [] ∨ qs.length = 12) {ps : List ℝ}
+    (hps : ps = roundedDecoupleParams tL R tv γ Bi α ε k q ++ qs) :
     RandomDecouplingRoutineContract law (2 * B) (g / 2) (F * (φse + φR / 2 + φ)) k F T nmax Nmax
-      (roundedDecoupleParams tL R tv γ Bi α ε k q ++ qs) ωD
+      ps ωD
       (fun _ => F * ((1 + C) * S * ((1 + 300 * (nmax + 1) ^ 2 * u) ^ k - 1)))
       (roundedDecoupleWith SE) I := by
   intro n N w p f H V d hkn hn hN hHess hnorm hV hHV hκ hgap
   have hu := hM.roundoff_nonneg
   set E := (1 + C) * S * ((1 + 300 * (nmax + 1) ^ 2 * u) ^ k - 1) with hEdef
-  set ps := roundedDecoupleParams tL R tv γ Bi α ε k q ++ qs with hps
   have hnn : (n : ℝ) + 1 ≤ nmax + 1 := by exact_mod_cast Nat.succ_le_succ hn
   have hnn' : ((n + 1 : ℕ) : ℝ) ≤ ((nmax + 1 : ℕ) : ℝ) := by exact_mod_cast Nat.succ_le_succ hn
   have hn0 : (0 : ℝ) < n + 1 := by positivity
@@ -869,13 +875,13 @@ theorem roundedDecoupleWith_randomDecouplingRoutineContract_at {M : Machine ℝ}
     ((hessenbergPotential_le_specNorm (by omega) hkn H).trans hnorm).trans hN
   have hiE : ∀ i < F, (i : ℝ) * E ≤ F * E := fun i hi =>
     mul_le_mul_of_nonneg_right (by exact_mod_cast hi.le) hE0
-  refine roundedDecouple_pwrites_of_loop hI hQ (by rw [hkq]; exact Nat.lt_two_pow_self.le) rfl
+  refine roundedDecouple_pwrites_of_loop hI hQ (by rw [hkq]; exact Nat.lt_two_pow_self.le) hps
     (by positivity) fun L => ?_
-  exact roundedDecoupleLoop_pwrites hI hloc hS hM hu1 hL hNat' hC (by omega) hkn rfl
+  exact roundedDecoupleLoop_pwrites hI hloc hS hM hu1 hL hNat' hC (by omega) hkn (by rw [hps]; rfl)
     (by rw [hlen]; omega) hHess hψH hthr hcut hωD hc0 hE0 (by positivity) hfuel fun i hi =>
     roundedDecoupleIteration_pwrites (L := L) (i := i) (p := p) hI hloc hS hM hu1 hL hNat' hC
       hQ hβ0 hφse hDisk hU hkq hk hkn hV hHV hκ hg hgap ((hiE i hi).trans (hsmall.trans hgB))
-      (by linarith [hiE i hi]) hEn rfl hBi hBk hω hωL hgapS hR hφR hφR1 hβ hdη hnu' huo' huo1'
+      (by linarith [hiE i hi]) hEn hps hBi hBk hω hωL hgapS hR hφR hφR1 hβ hdη hnu' huo' huo1'
       hxuR' hboundR' hα hγ hγ1 hε hε2 hφ hφ1 hd' hC1 hxu' hbound' hexc1 hexc2' hthrω hSE hq12
 
 -- The default heartbeat budget does not cover the elaboration of this statement.
@@ -956,13 +962,12 @@ theorem roundedDecouple_randomDecouplingContract {M : Machine ℝ} {I : Interp O
       (fun _ => F * ((1 + C) * S * ((1 + 300 * (nmax + 1) ^ 2 * u) ^ k - 1)))
       (roundedDecouple (O := O) (Q := Q)) I := by
   intro n N w p f H V d hkn hn hN hHess hnorm hV hHV hκ hgap
-  have hc := roundedDecoupleWith_randomDecouplingRoutineContract_at hI hloc hS hM hu1 hL hNat hC
+  unfold roundedDecouple
+  exact (roundedDecoupleWith_randomDecouplingRoutineContract_at hI hloc hS hM hu1 hL hNat hC
     hQ hβ0 hφse hDisk hU hkq hk hg hBi hS0 hBk hω hgapS hR hφR hφR1 hβ hdη hnu huo huo1 hxuR
     hboundR hα hγ hγ1 hε hε2 hφ hφ1 hd hC1 hxu hbound hexc1 hexc2 hthrω hthr hcut hωD hfuel hSN
     hsmall (T := 0) (hSE.randomSmallEigContractAt k 12 0 S []) (Or.inl rfl)
-  simp only [List.append_nil] at hc
-  unfold roundedDecouple
-  exact (hc H V d hkn hn hN hHess hnorm hV hHV hκ hgap).in_frame (by simp)
+    (List.append_nil _).symm H V d hkn hn hN hHess hnorm hV hHV hκ hgap).in_frame (by simp)
     (by simp [Operand.evalList, Operand.eval]) fun _ hμ => by simpa [Mem.Live] using hμ.2.2.1
 
 end Iteration

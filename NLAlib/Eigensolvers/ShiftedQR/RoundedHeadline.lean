@@ -312,8 +312,8 @@ theorem RandomLeafContract.randomLeafRoutineContract {law : ℕ → Measure ℝ}
   intro d w p o B _ hB _
   unfold liftLeaf
   exact ((h (w := w) (o := o) B hB).in_frame (by simp)
-    (by simp [Operand.evalList, Operand.eval]) fun _ hμ => by simp_all [Mem.Live]).mono
-    (fun _ ⟨hH, _, hl, hroom, hwo, _⟩ => ⟨hH, by simp_all [Mem.Live], hroom, hwo⟩) le_rfl
+    (by simp [Operand.evalList, Operand.eval]) fun _ hμ => hμ.2.1).mono
+    (fun _ ⟨hH, _, hl, hroom, hwo, _⟩ => ⟨hH, hl.mono (by simp), hroom, hwo⟩) le_rfl
     (fun _ h => h) le_rfl
 
 /-- A randomized decoupler (`NLAlib.ShiftedQR.RandomDecouplingContract`), lifted by

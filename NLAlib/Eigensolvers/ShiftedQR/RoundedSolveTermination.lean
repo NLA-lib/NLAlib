@@ -124,8 +124,8 @@ theorem TerminatingLeaf.terminatingLeafRoutine {L : Impl O Q} {I : Interp O Q â„
     TerminatingLeafRoutine kmax ps T (liftLeaf L) I := by
   intro d w p o tape Î¼ B _ hB _ hl hroom hwo _
   unfold liftLeaf
-  exact (h B hB (by simp_all [Mem.Live]) hroom hwo).in_frame (by simp)
-    (by simp [Operand.evalList, Operand.eval]) (by simp_all [Mem.Live])
+  exact (h B hB (hl.mono (by simp)) hroom hwo).in_frame (by simp)
+    (by simp [Operand.evalList, Operand.eval]) (hl.mono (by simp))
 
 /-- The leaf routine of a terminating small-eigenvalue routine with the word count $12$ and the
 words `qs` (none, or $12$; `NLAlib.ShiftedQR.TerminatingSmallEigAt`) terminates, with any words

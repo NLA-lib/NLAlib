@@ -300,7 +300,7 @@ variable [Has EigenvalueKernelOp O]
 -- The default heartbeat budget does not cover the elaboration of this statement.
 set_option maxHeartbeats 1000000 in
 -- The hypothesis lists of `Regularize` and the kept words of `Sh` make elaboration heavy.
-omit [Has IdxTst Q] in
+omit [Has IdxTst Q] [Has EigenvalueKernelOp O] in
 /-- `Regularize` with a small-eigenvalue routine inside an iteration: the outcome of
 `NLAlib.ShiftedQR.regularizeWith_pwrites_at`, with the words of `Sh` kept. -/
 theorem shIteration_regularize_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
@@ -409,6 +409,7 @@ theorem one_le_regularizeTheta {B : ℝ} (hB : 1 ≤ B) (k : ℕ) :
 set_option maxHeartbeats 1000000 in
 -- The hypothesis lists of `Regularize` and `Sh` together, with their long real constants, make
 -- the elaboration of the composition heavy.
+omit [Has EigenvalueKernelOp O] in
 /-- One iteration with caller-owned scratch as a probabilistic block: the hypotheses of
 `NLAlib.ShiftedQR.shIteration_pwrites`, with the $k$ shift pairs at `s` apart from the other
 views. -/
@@ -557,6 +558,7 @@ theorem shIterationWithScratchWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ
 set_option maxHeartbeats 1000000 in
 -- The hypothesis lists of `Regularize` and `Sh` together, with their long real constants, make
 -- the elaboration of the composition heavy.
+omit [Has EigenvalueKernelOp O] in
 /-- **One rounded iteration with a small-eigenvalue routine as a probabilistic block**, with the
 word count `nq` apart from the words `qs` (`NLAlib.ShiftedQR.RandomSmallEigContractAt`), the
 words stored at `qw` apart from the matrix and the flag: `NLAlib.ShiftedQR.shIteration_pwrites`

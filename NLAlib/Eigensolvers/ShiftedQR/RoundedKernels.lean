@@ -280,7 +280,7 @@ theorem IsRandomSmallEig.randomSmallEigContractAt {law : ℕ → Measure ℝ} {s
     (qs : List ℝ) :
     RandomSmallEigContractAt law β φ kmax nq T S qs (smallEigKernel (O := O) (Q := Q)) I :=
   fun B _ hB _ => (h.smallEigKernel_pwrites B hB).mono
-    (fun _ ⟨hw, _, hl, hr, hd, _⟩ => ⟨hw, by simp_all [Mem.Live], hr, hd⟩) le_rfl
+    (fun _ ⟨hw, _, hl, hr, hd, _⟩ => ⟨hw, hl.mono (by simp), hr, hd⟩) le_rfl
     (fun _ h => h) le_rfl
 
 /-- A randomized small-eigenvalue kernel (`NLAlib.ShiftedQR.IsRandomSmallEig`) with forward error
@@ -305,7 +305,7 @@ theorem IsRandomSmallEig.terminatingSmallEigAt {law : ℕ → Measure ℝ} {s : 
       some (matrixWords B) from hH]
   refine (writes_call (R := randomSmallEigRel s W Bad β) hI (d := [d]) (a := [w]) (b := [o])
     (k := W d) (ls := [2 * d]) rfl rfl rfl rfl rfl rfl trivial (by simp [Fp.Apart])
-    (fun _ => ⟨by simp_all [Mem.Live], ⟨[matrixWords B], hread, trivial⟩,
+    (fun _ => ⟨hl.mono (by simp), ⟨[matrixWords B], hread, trivial⟩,
       by simpa [Mem.Room] using hroom⟩)).mono (by simp [Fp.blocks]) ?_
   rintro μ' - ⟨-, xs, ys, -, hys, -⟩
   obtain ⟨y, hy, -⟩ := Option.bind_eq_some_iff.mp (by simpa [Mem.readBlocks] using hys)

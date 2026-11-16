@@ -59,6 +59,7 @@ theorem shqrLoopError_le_shqrDecoupleError {n k : ℕ} {B Γ S δ u : ℝ} (hS :
 set_option maxHeartbeats 1000000 in
 -- Matching the contract's hypotheses, with their long real constants, against the parameter
 -- choices is heavy.
+omit [Has EigenvalueKernelOp O] in
 /-- **The rounded decoupling loop with a small-eigenvalue routine meets the randomized decoupling
 contract at the headline's parameters**, with the routine's words `qs` (none, or $12$) after the
 words of `NLAlib.ShiftedQR.roundedDecoupleParams` and the routine meeting
@@ -89,13 +90,13 @@ theorem roundedDecoupleWith_randomDecouplingRoutineContract_of_le_uShQR_at {M : 
     (hk : k = shqrDegree (4 * B)) (hβ0 : 0 ≤ β) (hβ : β ≤ shqrSmallEigAccuracy n B Γ S δ)
     (hφse : 0 ≤ φse) (hu : u ≤ uShQR n k B Γ S δ φ) {T : ℕ} {qs : List ℝ} {SE : Impl O Q}
     (hSE : RandomSmallEigContractAt law β φse k 12 T (4 * S) qs SE I)
-    (hq12 : qs = [] ∨ qs.length = 12) :
+    (hq12 : qs = [] ∨ qs.length = 12) {ps : List ℝ}
+    (hps : ps = roundedDecoupleParams (shqrLoopThreshold n k B Γ S δ φ) (shqrRadius n B Γ S δ)
+        (shqrScanThreshold n k B Γ S δ φ) 0.2 (4 * B) (shqrAlpha k (4 * B)) (shqrEps k (4 * B)) k
+        (Nat.log 2 k) ++ qs) :
     RandomDecouplingRoutineContract law (2 * B) (Γ / 2)
       (shqrCap n B Γ S δ * (φse + shqrRegularizeFailure n B Γ S δ φ / 2 +
-        shqrSmallEigFailure n B Γ S δ φ)) k (shqrCap n B Γ S δ) T n (2 * S)
-      (roundedDecoupleParams (shqrLoopThreshold n k B Γ S δ φ) (shqrRadius n B Γ S δ)
-        (shqrScanThreshold n k B Γ S δ φ) 0.2 (4 * B) (shqrAlpha k (4 * B)) (shqrEps k (4 * B)) k
-        (Nat.log 2 k) ++ qs)
+        shqrSmallEigFailure n B Γ S δ φ)) k (shqrCap n B Γ S δ) T n (2 * S) ps
       (shqrDecoupled n k B Γ S δ φ)
       (fun _ => shqrCap n B Γ S δ *
         ((1 + shqrC k (4 * B)) * (4 * S) * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)))
@@ -161,7 +162,7 @@ theorem roundedDecoupleWith_randomDecouplingRoutineContract_of_le_uShQR_at {M : 
     hβ0 hφse hDisk hU hkq hk2 hΓ le_rfl (by positivity) RG.hBk RG.hω RG.hgap RG.hR RG.hφ RG.hφ1
     RG.hβ RG.hdη RG.hnu RG.huo RG.huo1 RG.hxu RG.hbound (SH.hα _ hkq) SH.hγ SH.hγ1 SH.hε
     SH.hε2 SH.hφ SH.hφ1 hd SH.hC1 hxu hbound hexc1 hexc2 SH.hthrω hthr hcut hωD hfuel
-    (by linarith) hsmall hSE hq12 H V d hkn hn hN hHess hnorm hV hHV hκ hgap
+    (by linarith) hsmall hSE hq12 hps H V d hkn hn hN hHess hnorm hV hHV hκ hgap
 
 
 -- The default heartbeat budget does not cover the elaboration of this statement.
@@ -204,12 +205,11 @@ theorem roundedDecouple_randomDecouplingContract_of_le_uShQR {M : Machine ℝ}
         ((1 + shqrC k (4 * B)) * (4 * S) * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)))
       (roundedDecouple (O := O) (Q := Q)) I := by
   intro n' N w q f H V d hkn hn hN hHess hnorm hV hHV hκ hgap
-  have hc := roundedDecoupleWith_randomDecouplingRoutineContract_of_le_uShQR_at hI hloc hS hM hL
-    hNat hC hQ hDisk hU hB hΓ hδ hδS hφ hφ1 hk hβ0 hβ hφse hu (T := 0)
-    (hSE.randomSmallEigContractAt k 12 0 (4 * S) []) (Or.inl rfl)
-  simp only [List.append_nil] at hc
   unfold roundedDecouple
-  exact (hc H V d hkn hn hN hHess hnorm hV hHV hκ hgap).in_frame (by simp)
+  exact (roundedDecoupleWith_randomDecouplingRoutineContract_of_le_uShQR_at hI hloc hS hM hL
+    hNat hC hQ hDisk hU hB hΓ hδ hδS hφ hφ1 hk hβ0 hβ hφse hu (T := 0)
+    (hSE.randomSmallEigContractAt k 12 0 (4 * S) []) (Or.inl rfl) (List.append_nil _).symm
+    H V d hkn hn hN hHess hnorm hV hHV hκ hgap).in_frame (by simp)
     (by simp [Operand.evalList, Operand.eval]) fun _ hμ => by simpa [Mem.Live] using hμ.2.2.1
 
 end NLAlib.ShiftedQR

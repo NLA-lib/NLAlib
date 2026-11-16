@@ -179,8 +179,8 @@ theorem BackwardLeafContract.backwardLeafRoutineContract {β : ℝ} {L : Impl O 
     (T : ℕ) : BackwardLeafRoutineContract β kmax Nmax ps T (liftLeaf L) I := by
   intro d w p o tape μ B _ hB _ hH _ hl hroom hwo _
   unfold liftLeaf
-  exact (h B hB hH (by simp_all [Mem.Live]) hroom hwo).in_frame (by simp)
-    (by simp [Operand.evalList, Operand.eval]) (by simp_all [Mem.Live])
+  exact (h B hB hH (hl.mono (by simp)) hroom hwo).in_frame (by simp)
+    (by simp [Operand.evalList, Operand.eval]) (hl.mono (by simp))
 
 /-- A rounded decoupler (`NLAlib.ShiftedQR.RoundedDecouplingContract`), lifted by
 `NLAlib.ShiftedQR.liftDecoupler`, meets the routine contract for every cap. -/

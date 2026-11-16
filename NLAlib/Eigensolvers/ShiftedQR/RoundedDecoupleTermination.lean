@@ -39,6 +39,7 @@ section Decouple
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O]
   [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] {n : ℕ}
 
+omit [Has EigenvalueKernelOp O] in
 /-- One iteration with a terminating small-eigenvalue routine terminates on any matrix, with the
 word count `nq` apart from the words `qs` (`NLAlib.ShiftedQR.TerminatingSmallEigAt`) stored at
 `qw` apart from the matrix and the flag: `NLAlib.ShiftedQR.shIteration_terminates` for
@@ -229,6 +230,7 @@ theorem roundedDecoupleExit_terminates {M : Machine ℝ} {I : Interp O Q ℝ}
     rintro μ' hfr ⟨-, hF⟩
     exact ⟨⟨_, hF⟩, H, hW.of_eqOff hfr hWF.symm⟩
 
+omit [Has EigenvalueKernelOp O] in
 /-- The decoupling loop terminates on any matrix: on a scalar machine with exact comparisons,
 index literals, index conversion and exact natural literals up to $n + 1$, a `SmallEig` kernel
 meeting `NLAlib.ShiftedQR.IsRandomSmallEig` and an exact polar sampler, for $k = 2^q \le n$, with
@@ -322,6 +324,7 @@ theorem roundedDecoupleLoopWith_terminates {M : Machine ℝ} {I : Interp O Q ℝ
       (by have := hc.2.2.2.1; simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false,
         forall_eq_or_imp, forall_eq] at this ⊢; tauto)
 
+omit [Has EigenvalueKernelOp O] in
 /-- **The rounded decoupling loop with a terminating small-eigenvalue routine terminates**, with
 the parameter words `NLAlib.ShiftedQR.roundedDecoupleParams` followed by the routine's words `qs`
 (none, or $12$) and the routine meeting `NLAlib.ShiftedQR.TerminatingSmallEigAt` with the word
@@ -340,15 +343,14 @@ theorem roundedDecoupleWith_terminatingDecouplerRoutine_at {M : Machine ℝ} {I 
     (hS : IsScalar M I) (hL : IsIndexLit M I) {nmax : ℕ} (hNat : IsExactNatLit id M (nmax + 1))
     (hC : IsCmp id I) (hQ : IsToNat id I) {s₀ : ℕ} (hD : IsPolarDiskSampler s₀ I)
     {k q F : ℕ} (hkq : k = 2 ^ q) (tL R tv γ B α ε : ℝ) {T : ℕ} {qs : List ℝ} {SE : Impl O Q}
-    (hSE : TerminatingSmallEigAt k 12 T qs SE I) (hq12 : qs = [] ∨ qs.length = 12) :
-    TerminatingDecouplerRoutine nmax k F T (roundedDecoupleParams tL R tv γ B α ε k q ++ qs)
-      (roundedDecoupleWith SE) I := by
+    (hSE : TerminatingSmallEigAt k 12 T qs SE I) (hq12 : qs = [] ∨ qs.length = 12)
+    {ps : List ℝ} (hps : ps = roundedDecoupleParams tL R tv γ B α ε k q ++ qs) :
+    TerminatingDecouplerRoutine nmax k F T ps (roundedDecoupleWith SE) I := by
   intro n w p f tape μ H hk hn hW hp hl hrw hrf hWF hPWF
-  set ps := roundedDecoupleParams tL R tv γ B α ε k q ++ qs with hps
   have hlen : ps.length = 10 + 2 * (excNet ε).length + qs.length := by
     rw [hps, List.length_append, length_roundedDecoupleParams]
   have hnet : ps.drop 10 = ((excNet ε).flatMap fun z => [z.re, z.im]) ++ qs := by
-    simp [ps, roundedDecoupleParams]
+    simp [hps, roundedDecoupleParams]
   have hqk : q ≤ k := hkq ▸ (Nat.lt_two_pow_self).le
   have hNat' : IsExactNatLit id M (n + 1) := hNat.mono (by omega)
   have h1 : w.1 < μ.store.length := hl w (by simp)
@@ -371,9 +373,11 @@ theorem roundedDecoupleWith_terminatingDecouplerRoutine_at {M : Machine ℝ} {I 
   have hget : ∀ j < 10, s₁.get p.1 (p.2 + j) = some (ps.getD j 0) :=
     fun j hj => Store.get_of_readBlock hctx.2.2.2.2.1 (by omega) 0
   refine writes_bindIdx_of_decode_nat hQ rfl rfl (hget 8 (by omega)) (by
-    simp [ps, roundedDecoupleParams, List.getD_append _ _ _ _ (show 8 < 10 + _ by omega)]) hqk ?_
+    rw [hps, List.getD_append _ _ _ _ (by rw [length_roundedDecoupleParams]; omega)]
+    simp [roundedDecoupleParams]) hqk ?_
   refine writes_bindIdx_of_decode_nat hQ rfl rfl (hget 9 (by omega)) (by
-    simp [ps, roundedDecoupleParams, List.getD_append _ _ _ _ (show 9 < 10 + _ by omega)])
+    rw [hps, List.getD_append _ _ _ _ (by rw [length_roundedDecoupleParams]; omega)]
+    simp [roundedDecoupleParams])
     (show (excNet ε).length ≤ ps.length by omega) ?_
   refine ((roundedDecoupleLoopWith_terminates (τ := tape) (F := F) hS hL hNat' hC hQ hD hkq hk hSE
     hq12 hlen hnet hctx (hW.of_below hBelow h1)).in_frame rfl rfl ?_).mono ?_ fun _ _ h => h
@@ -397,11 +401,10 @@ theorem roundedDecouple_terminatingDecoupler {M : Machine ℝ} {I : Interp O Q �
     TerminatingDecoupler nmax k F (roundedDecoupleParams tL R tv γ B α ε k q)
       (roundedDecouple (O := O) (Q := Q)) I := by
   intro n w p f tape μ H hk hn hW hp hl hrw hrf hWF hPWF
-  have hc := roundedDecoupleWith_terminatingDecouplerRoutine_at hS hL hNat hC hQ hD (F := F) hkq tL
-    R tv γ B α ε (T := 0) (hSE.terminatingSmallEigAt k 12 0 []) (Or.inl rfl)
-  simp only [List.append_nil] at hc
   unfold roundedDecouple
-  exact (hc H hk hn hW hp hl hrw hrf hWF hPWF).in_frame (by simp)
+  exact (roundedDecoupleWith_terminatingDecouplerRoutine_at hS hL hNat hC hQ hD (F := F) hkq tL
+    R tv γ B α ε (T := 0) (hSE.terminatingSmallEigAt k 12 0 []) (Or.inl rfl)
+    (List.append_nil _).symm H hk hn hW hp hl hrw hrf hWF hPWF).in_frame (by simp)
     (by simp [Operand.evalList, Operand.eval]) (by simpa [Mem.Live] using hl)
 
 end Decouple

@@ -911,7 +911,7 @@ theorem regularizeWithScratchWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ}
         (h4.in_frame rfl rfl fun m hm => hlive _ (by simp; omega) m hm.1)))).mono
     (fun _ h => h) (by fp_sub) (fun _ h => h) (by simp)
 
-omit [Has IdxTst Q] in
+omit [Has IdxTst Q] [Has EigenvalueKernelOp O] in
 /-- **`Regularize` with a small-eigenvalue routine as a probabilistic block**, with the word count
 `nq` apart from the words `qs` (`NLAlib.ShiftedQR.RandomSmallEigContractAt`):
 `NLAlib.ShiftedQR.regularize_pwrites` for `NLAlib.ShiftedQR.regularizeWith`; the merged statement

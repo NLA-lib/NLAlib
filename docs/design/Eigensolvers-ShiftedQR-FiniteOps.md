@@ -1036,8 +1036,11 @@ T1c follows §14.1's Lean text with Fable's fixes (`hI : I.IsMeasurable` with `h
 * **Joint satisfiability.** PAR1p: `uShQR`, `shqrSmallEigAccuracy`, `shqrSmallEigFailure` are
   positive, so $0 < \boldsymbol{u} \le \boldsymbol{u}_{\mathrm{ShQR}}$ exists; an exact
   `SmallEig` ($\beta = \varphi = 0$, empty bad sets) and the exact polar sampler meet their
-  contracts; tape laws exist (product measure); PL4 gives a measurable, tape-local
-  interpretation meeting the contracts.
+  contracts; tape laws exist (product measure). PL4 covers only the catalog's scalar, index and
+  comparison meanings: that a measurable interpretation (`I.IsMeasurable`) meets the `SmallEig`
+  contract at the same time is **assumed, not exhibited** (it needs a measurable eigenvalue
+  listing; `SmallEig` is an oracle, Definition 1.2). A Borel listing exists (lexicographically
+  sorted roots), so the hypotheses are not contradictory, but no Lean lemma states it.
 
 ### 15.4 Gaps for the proving phase
 

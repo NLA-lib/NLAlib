@@ -22,7 +22,8 @@ and the exits of a `whileFuel`, so the bound needs one count that dominates them
 exists that depends only on the bounds of the slots. The bound of a fixed program is evaluated
 by `kernel_rfl`, an equation by reflexivity left to the kernel (which evaluates it with sharing,
 where the elaborator's `rfl` does not). It keeps each base with its own exponent, unlike the
-one-base estimate `NLAlib.Ops.stmtWeightedCost_le_coefficient_mul_pow`.
+one-base estimate `NLAlib.Ops.stmtWeightedCost_le_coefficient_mul_pow`. The number of bases is
+fixed at four; a version over a list of bases would serve programs with other numbers of sizes.
 
 ## Main definitions
 

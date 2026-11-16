@@ -29,7 +29,9 @@ relational contract `NLAlib.ShiftedQR.randomSmallEigRel` at fixed window lengths
 sets; the disk sampler is exact. The model is realized by exact eigenvalues and the exact polar
 sampler. The `Ritz` kernel is in the operation signature (the operations are shared with the
 exact-arithmetic program) but the program never calls it; its contract is the exact block
-function. The weights of `SmallEig` and `Ritz` are caller parameters, possibly $0$ and not bounded
+function. That a measurable interpretation meets the `SmallEig` contract (a hypothesis of the
+probability statement) is assumed, not exhibited: `SmallEig` is an oracle. The weights of
+`SmallEig` and `Ritz` are caller parameters, possibly $0$ and not bounded
 by $1$; every other primitive, query and structural instruction costs one unit.
 
 The admitted sizes have $k \le n$ (the shift degree below the order $n + 1$): the degenerate
@@ -431,7 +433,7 @@ theorem shqrProgram_lift_le {K : Type} (R : ResourceModel ShQROp Tst) {I : Inter
       · exact Nat.zero_le _
     · exact Nat.zero_le _
 
-/-- **The work of every run**: under the costs `NLAlib.ShiftedQR.shqrResources`, every successful
+/-- The work of every run: under the costs `NLAlib.ShiftedQR.shqrResources`, every successful
 counted run of the program has work at most `NLAlib.ShiftedQR.shqrWork kernelWork` and span at
 most `NLAlib.ShiftedQR.shqrWork kernelSpan` at its sizes. -/
 theorem shqrProgram_work_le {K : Type}

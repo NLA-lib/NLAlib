@@ -39,7 +39,11 @@ $N_{\max} = 2\Sigma$, $S = 4\Sigma$, the loop's threshold word $t_L$
 What is not claimed: no Hessenberg reduction or preprocessing of a general matrix; nothing on
 `SmallEig`'s own cost or precision; no forward error for the eigenvalues; no rounded disk
 sampler; nothing for repeated eigenvalues. Modelling assumptions the paper does not make: `SmallEig`
-reads a fixed window of the uniform stream, and the parameter words are exact reals.
+reads a fixed window of the uniform stream, and the parameter words are exact reals. The
+realizability of the hypotheses is shown for each separately (the machine, the exact kernels, a
+tape law); that one interpretation is measurable (`NLAlib.Ops.Interp.IsMeasurable`) and meets the
+`SmallEig` contract at the same time is assumed, not exhibited: `SmallEig` is an oracle
+([BanksGarzaVargasSrivastava2022, Definition 1.2]).
 
 ## Main definitions
 
@@ -344,10 +348,11 @@ failure word, set the failure word to $0$ and store all eigenvalues of some $\ma
 \mathbf{E}$, $\|\mathbf{E}\|_2 \le \delta$, with probability at most $\varphi$.
 
 The shift degree is $k = 128$, the degree of (eqn:setk) at $4$: the paper's own (eqn:setk) gives
-$k = 64$ at its $B \ge 2\kappa_V = 2$, and the two-level class bookkeeping (the worklist at
-condition $2B$, the iterates at $4B$) adds one more doubling. The paper's $k = 2$ for Hermitian
-inputs is a different algorithm (exact Ritz values), not $\mathrm{Sh}_{k,B}$ under (eqn:setk),
-and is not claimed. -/
+$k = 4$ at $B = 1$ and $k = 64$ at its $B \ge 2\kappa_V = 2$, and the two-level class bookkeeping
+(the worklist at condition $2B$, the iterates at $4B$) adds one more doubling. The $k = 2$,
+$B = 1$ of [BanksGarzaVargasSrivastava2022, Remark 1.7] fails (eqn:setk) for every $B \ge 1$
+(`NLAlib.ShiftedQR.two_le_shqrLogDegree`); it is a different algorithm (exact Ritz values), not
+$\mathrm{Sh}_{k,B}$ under (eqn:setk), and is not claimed. -/
 theorem roundedShQR_hermitian {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
     (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)

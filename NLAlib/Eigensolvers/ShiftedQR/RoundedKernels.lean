@@ -318,6 +318,24 @@ section Routine
 
 variable {O Q : Type}
 
+/-- The tail of a stored list of words: if `xs ++ ys` is stored at offset `off`, then `ys` is
+stored at offset `off + xs.length`. -/
+theorem _root_.NLAlib.Ops.Store.readBlock_append_right {K : Type} {s : Store K} {b off : ℕ}
+    {xs ys : List K} (h : s.readBlock b off (xs ++ ys).length = some (xs ++ ys)) :
+    s.readBlock b (off + xs.length) ys.length = some ys := by
+  obtain ⟨-, hg⟩ := Store.readBlock_eq_some_iff.mp h
+  refine Store.readBlock_eq_some_iff.mpr ⟨rfl, fun j hj => ?_⟩
+  have := hg (xs.length + j) (by simp; omega)
+  rw [← add_assoc] at this
+  rw [this, List.getElem?_append_right (by omega)]
+  simp
+
+/-- A block inside a larger block of the same buffer. -/
+theorem _root_.NLAlib.Ops.Store.inBlock_le_inBlock {b off n off' n' : ℕ} (h1 : off ≤ off')
+    (h2 : off' + n' ≤ off + n) : Store.inBlock b off' n' ≤ Store.inBlock b off n := by
+  intro b' i ⟨hb, hi, hi'⟩
+  exact ⟨hb, by omega, by omega⟩
+
 /-- The leaf routine of a small-eigenvalue routine `SE`: `[d, np, T] (Bk, P) → (Ev)` runs `SE`
 with its parameter words read as the last $12$ words of `P`, the view `P[np - 12]`. The count $12$
 is a numeral of the program text (the length of `NLAlib.SmallEig.smallEigParams`): index
@@ -345,15 +363,8 @@ theorem RandomSmallEigContract.randomLeafRoutineContract {law : ℕ → Measure 
   · rintro μ ⟨-, -, hl, -⟩
     simpa [Mem.Live] using hl
   · rintro μ ⟨hH, hp, hl, hroom, hwo, hpo⟩
-    refine ⟨hH, ?_, by simpa [Mem.Live] using hl, hroom, hwo, hpo.mono ?_ le_rfl⟩
-    · obtain ⟨hl', hg⟩ := Store.readBlock_eq_some_iff.mp hp
-      refine Store.readBlock_eq_some_iff.mpr ⟨rfl, fun j hj => ?_⟩
-      have := hg (ps₀.length + j) (by simp; omega)
-      rw [← add_assoc] at this
-      rw [this, List.getElem?_append_right (by omega)]
-      simp
-    · intro b i ⟨hb, hi, hi'⟩
-      exact ⟨hb, by omega, by simp at hi' ⊢; omega⟩
+    exact ⟨hH, Store.readBlock_append_right hp, by simpa [Mem.Live] using hl, hroom, hwo,
+      hpo.mono (Store.inBlock_le_inBlock (by omega) (by simp; omega)) le_rfl⟩
   · rintro μ' ⟨roots, ev, hev, hfw, hO⟩
     obtain ⟨L', hL', hL'ev⟩ := hev.exists_specNorm_sub_le hβ hfw
     exact ⟨roots, L' - B, hL', by simpa using hL'ev, hO⟩

@@ -309,7 +309,12 @@ parameter words and cap. -/
 theorem RandomLeafContract.randomLeafRoutineContract {law : ℕ → Measure ℝ} {β φ : ℝ}
     {L : Impl O Q} {I : Interp O Q ℝ} (h : RandomLeafContract law β φ L I) (kmax : ℕ) (Nmax : ℝ)
     (ps : List ℝ) (T : ℕ) : RandomLeafRoutineContract law β φ kmax Nmax ps T (liftLeaf L) I := by
-  sorry
+  intro d w p o B _ hB _
+  unfold liftLeaf
+  exact ((h (w := w) (o := o) B hB).in_frame (by simp)
+    (by simp [Operand.evalList, Operand.eval]) fun _ hμ => by simp_all [Mem.Live]).mono
+    (fun _ ⟨hH, _, hl, hroom, hwo, _⟩ => ⟨hH, by simp_all [Mem.Live], hroom, hwo⟩) le_rfl
+    (fun _ h => h) le_rfl
 
 /-- A randomized decoupler (`NLAlib.ShiftedQR.RandomDecouplingContract`), lifted by
 `NLAlib.ShiftedQR.liftDecoupler`, meets the routine contract for every cap. -/
@@ -317,7 +322,10 @@ theorem RandomDecouplingContract.randomDecouplingRoutineContract {law : ℕ → 
     {B g φ : ℝ} {k F nmax : ℕ} {Nmax : ℝ} {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} {D : Impl O Q}
     {I : Interp O Q ℝ} (h : RandomDecouplingContract law B g φ k F nmax Nmax ps ω ε D I) (T : ℕ) :
     RandomDecouplingRoutineContract law B g φ k F T nmax Nmax ps ω ε (liftDecoupler D) I := by
-  sorry
+  intro n N w q f H V d hk hn hN hH hHN hV hHV hκ hgap
+  unfold liftDecoupler
+  exact (h H V d hk hn hN hH hHN hV hHV hκ hgap).in_frame (by simp)
+    (by simp [Operand.evalList, Operand.eval]) fun _ hμ => by simpa [Mem.Live] using hμ.2.2.1
 
 section Theorems
 

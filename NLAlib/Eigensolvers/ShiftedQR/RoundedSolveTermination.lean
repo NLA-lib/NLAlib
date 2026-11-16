@@ -112,21 +112,34 @@ decoupling routine for every cap. -/
 theorem TerminatingDecoupler.terminatingDecouplerRoutine {nmax k F : ℕ} {ps : List ℝ}
     {D : Impl O Q} {I : Interp O Q ℝ} (h : TerminatingDecoupler nmax k F ps D I) (T : ℕ) :
     TerminatingDecouplerRoutine nmax k F T ps (liftDecoupler D) I := by
-  sorry
+  intro n w q f tape μ H hk hn hH hq hl hw hf hwf hqwf
+  unfold liftDecoupler
+  exact (h H hk hn hH hq hl hw hf hwf hqwf).in_frame (by simp)
+    (by simp [Operand.evalList, Operand.eval]) (by simpa [Mem.Live] using hl)
 
 /-- A terminating leaf, lifted by `NLAlib.ShiftedQR.liftLeaf`, is a terminating leaf routine for
 every order bound, parameter words and cap. -/
 theorem TerminatingLeaf.terminatingLeafRoutine {L : Impl O Q} {I : Interp O Q ℝ}
     (h : TerminatingLeaf L I) (kmax : ℕ) (ps : List ℝ) (T : ℕ) :
     TerminatingLeafRoutine kmax ps T (liftLeaf L) I := by
-  sorry
+  intro d w p o tape μ B _ hB _ hl hroom hwo _
+  unfold liftLeaf
+  exact (h B hB (by simp_all [Mem.Live]) hroom hwo).in_frame (by simp)
+    (by simp [Operand.evalList, Operand.eval]) (by simp_all [Mem.Live])
 
 /-- The leaf routine of a terminating small-eigenvalue routine with $12$ words `qs` terminates,
 with any words `ps₀` before `qs`. -/
 theorem TerminatingSmallEig.terminatingLeafRoutine {kmax T : ℕ} {qs ps₀ : List ℝ}
     {SE : Impl O Q} {I : Interp O Q ℝ} (h : TerminatingSmallEig kmax T qs SE I)
     (hqs : qs.length = 12) : TerminatingLeafRoutine kmax (ps₀ ++ qs) T (seLeaf SE) I := by
-  sorry
+  intro d w p o tape μ B hd hB hp hl hroom hwo hpo
+  unfold seLeaf
+  refine (h.at (q := (p.1, p.2 + ps₀.length)) tape μ B hd hB (Store.readBlock_append_right hp)
+    (by simpa [Mem.Live] using hl) hroom hwo
+    (hpo.mono (Store.inBlock_le_inBlock (by omega) (by simp; omega)) le_rfl)).in_frame ?_ ?_ ?_
+  · simp [hqs]
+  · simp [Operand.evalList, Operand.eval, hqs]
+  · simpa [Mem.Live] using hl
 
 section Leaf
 

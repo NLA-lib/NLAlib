@@ -177,7 +177,10 @@ parameter words and cap. -/
 theorem BackwardLeafContract.backwardLeafRoutineContract {β : ℝ} {L : Impl O Q}
     {I : Interp O Q ℝ} (h : BackwardLeafContract β L I) (kmax : ℕ) (Nmax : ℝ) (ps : List ℝ)
     (T : ℕ) : BackwardLeafRoutineContract β kmax Nmax ps T (liftLeaf L) I := by
-  sorry
+  intro d w p o tape μ B _ hB _ hH _ hl hroom hwo _
+  unfold liftLeaf
+  exact (h B hB hH (by simp_all [Mem.Live]) hroom hwo).in_frame (by simp)
+    (by simp [Operand.evalList, Operand.eval]) (by simp_all [Mem.Live])
 
 /-- A rounded decoupler (`NLAlib.ShiftedQR.RoundedDecouplingContract`), lifted by
 `NLAlib.ShiftedQR.liftDecoupler`, meets the routine contract for every cap. -/
@@ -185,7 +188,10 @@ theorem RoundedDecouplingContract.roundedDecouplingRoutineContract {fails : Prop
     {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} {D : Impl O Q} {I : Interp O Q ℝ}
     (h : RoundedDecouplingContract fails k F ps ω ε D I) (T : ℕ) :
     RoundedDecouplingRoutineContract fails k F T ps ω ε (liftDecoupler D) I := by
-  sorry
+  intro n N w q f tape μ H hk hH hN hW hq hl hw hf hwf hqwf
+  unfold liftDecoupler
+  exact (h H hk hH hN hW hq hl hw hf hwf hqwf).in_frame (by simp)
+    (by simp [Operand.evalList, Operand.eval]) (by simpa [Mem.Live] using hl)
 
 section Leaf
 

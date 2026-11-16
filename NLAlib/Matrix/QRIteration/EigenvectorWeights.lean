@@ -31,6 +31,8 @@ $\mathbf{H}$ at $\mathbf{e}_n$.
 * `NLAlib.lastRowWeights_nonneg`, `NLAlib.sum_lastRowWeights`: a probability vector.
 * `NLAlib.sum_lastRowWeights_mul_sq_le`, `NLAlib.norm_mul_diagonal_mul_inv_last_sq_le`: the two
   sides of the approximate functional calculus.
+* `NLAlib.sqrt_lastRowWeights_le_mul_one_add`: the weights after a right factor
+  $\mathbf{I} + \mathbf{Z}$.
 * `NLAlib.lastRowWeights_conjTranspose_mul`, `NLAlib.le_lastRowWeights_conjTranspose_mul`: the
   weights after a unitary similarity with a prescribed last column
   [BanksGarzaVargasSrivastava2025].
@@ -156,6 +158,63 @@ theorem norm_mul_diagonal_mul_inv_last_sq_le {V : Matrix (Fin (n + 1)) (Fin (n +
   rw [pseudoConditionNumber_of_isUnit hV, mul_pow]
   nlinarith [mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_right hDle hT)
     (sq_nonneg (specNorm V⁻¹))]
+
+/-! ### Weights under a perturbation of the columns -/
+
+/-- The square root of a last-row weight is a ratio of moduli:
+$\sqrt{w_i} = \lvert\mathbf{V}_{n,i}\rvert / \|\mathbf{e}_n^{\mathsf{H}}\mathbf{V}\|$. -/
+theorem sqrt_lastRowWeights (V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (i : Fin (n + 1)) :
+    √(lastRowWeights V i) = ‖V (Fin.last n) i‖ / ‖WithLp.toLp 2 (V (Fin.last n))‖ := by
+  unfold lastRowWeights
+  rw [Real.sqrt_div' _ (sq_nonneg _), Real.sqrt_sq (norm_nonneg _), Real.sqrt_sq (norm_nonneg _)]
+
+/-- The weights after a right factor near the identity: for every $\mathbf{W}$, $\mathbf{Z}$
+and $i$, the last-row weights of $\mathbf{W}$ and $\mathbf{W}(\mathbf{I} + \mathbf{Z})$ satisfy
+$$\sqrt{w_i(\mathbf{W})} \le (1 + \|\mathbf{Z}\|_2)\sqrt{w_i(\mathbf{W}(\mathbf{I} +
+  \mathbf{Z}))} + \|\mathbf{Z}\|_2.$$
+With $\mathbf{W} = \mathbf{Q}^{\mathsf{H}}\mathbf{V}$ and $\mathbf{V}(\mathbf{I} + \mathbf{Z})$ the
+eigenvectors of a perturbed matrix, this transfers weights to the perturbed eigenvectors.
+No printed source. -/
+theorem sqrt_lastRowWeights_le_mul_one_add (W Z : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+    (i : Fin (n + 1)) :
+    √(lastRowWeights W i) ≤
+      (1 + specNorm Z) * √(lastRowWeights (W * (1 + Z)) i) + specNorm Z := by
+  set r := W (Fin.last n)
+  set ζ := specNorm Z
+  have hζ : 0 ≤ ζ := specNorm_nonneg Z
+  have hrow : (W * (1 + Z)) (Fin.last n) = r + r ᵥ* Z := by
+    rw [Matrix.mul_add, Matrix.mul_one]
+    ext j
+    simp [r, Matrix.vecMul, dotProduct, Matrix.mul_apply]
+  rw [sqrt_lastRowWeights, sqrt_lastRowWeights, hrow]
+  set r' := r + r ᵥ* Z
+  have hS : 0 ≤ (1 + ζ) * (‖r' i‖ / ‖WithLp.toLp 2 r'‖) := by positivity
+  rcases eq_or_lt_of_le (norm_nonneg (WithLp.toLp 2 r)) with h0 | hpos
+  · rw [← h0, div_zero]
+    linarith
+  -- `|r_i| ≤ |r'_i| + ‖Z‖₂‖r‖` and `‖r'‖ ≤ (1 + ‖Z‖₂)‖r‖`
+  have hZr : ‖WithLp.toLp 2 (r ᵥ* Z)‖ ≤ ζ * ‖WithLp.toLp 2 r‖ := norm_toLp_vecMul_le Z r
+  have hri : ‖r i‖ ≤ ‖r' i‖ + ζ * ‖WithLp.toLp 2 r‖ := by
+    have h := norm_sub_le (r' i) ((r ᵥ* Z) i)
+    rw [show r' i - (r ᵥ* Z) i = r i by simp [r']] at h
+    have h2 : ‖(r ᵥ* Z) i‖ ≤ ζ * ‖WithLp.toLp 2 r‖ :=
+      (PiLp.norm_apply_le (WithLp.toLp 2 (r ᵥ* Z)) i).trans hZr
+    linarith
+  have hr' : ‖WithLp.toLp 2 r'‖ ≤ (1 + ζ) * ‖WithLp.toLp 2 r‖ := by
+    rw [WithLp.toLp_add]
+    exact (norm_add_le _ _).trans (by linarith)
+  have hfirst : ‖r' i‖ / ‖WithLp.toLp 2 r‖ ≤ (1 + ζ) * (‖r' i‖ / ‖WithLp.toLp 2 r'‖) := by
+    rcases eq_or_lt_of_le (norm_nonneg (WithLp.toLp 2 r')) with h0' | hpos'
+    · have : ‖r' i‖ = 0 := le_antisymm
+        ((PiLp.norm_apply_le (WithLp.toLp 2 r') i).trans h0'.symm.le) (norm_nonneg _)
+      rw [this]
+      simp
+    · rw [mul_div_assoc', div_le_div_iff₀ hpos hpos', mul_assoc]
+      nlinarith [mul_le_mul_of_nonneg_left hr' (norm_nonneg (r' i))]
+  calc ‖r i‖ / ‖WithLp.toLp 2 r‖ ≤ ‖r' i‖ / ‖WithLp.toLp 2 r‖ + ζ := by
+        rw [div_le_iff₀ hpos, add_mul, div_mul_cancel₀ _ hpos.ne']
+        exact hri
+    _ ≤ (1 + ζ) * (‖r' i‖ / ‖WithLp.toLp 2 r'‖) + ζ := by linarith
 
 /-! ### Weights after a unitary similarity -/
 

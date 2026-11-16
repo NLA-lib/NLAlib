@@ -209,6 +209,34 @@ theorem exists_lastRowWeights_ge_of_norm_sub_le {n : ℕ}
           (1 + √(n + 1) * (64 * (n + 1) * B ^ 2 * specNorm E / g)) *
               √(lastRowWeights (Qᴴ * V') i) +
             64 * (n + 1) * B ^ 2 * specNorm E / g := by
-  sorry
+  obtain ⟨Z, d', hU, hAV', -, hκZ, hm, hZ⟩ :=
+    exists_add_mul_mul_one_add_eq_mul_diagonal hV hAV hB hg hgap hE
+  have hB1 : 1 ≤ B := (one_le_pseudoConditionNumber hV.ne_zero).trans hB
+  refine ⟨V * (1 + Z), d', hV.mul hU, hAV', ?_, hm, fun Q i _ => ?_⟩
+  · calc pseudoConditionNumber (V * (1 + Z))
+        ≤ pseudoConditionNumber V * pseudoConditionNumber (1 + Z) :=
+          pseudoConditionNumber_mul_le hV hU
+      _ ≤ 2 * B := by nlinarith [pseudoConditionNumber_nonneg (1 + Z)]
+  -- `‖Z‖₂ ≤ 2√(n+1) B‖E‖₂/g` is at most `θ` and at most `√(n+1) θ`
+  set θ := 64 * (n + 1) * B ^ 2 * specNorm E / g
+  have hE0 : 0 ≤ specNorm E := specNorm_nonneg E
+  have hN : (1 : ℝ) ≤ n + 1 := by linarith [(n.cast_nonneg : (0 : ℝ) ≤ n)]
+  have hsN : √((n : ℝ) + 1) ≤ n + 1 := Real.sqrt_le_iff.mpr ⟨by linarith, by nlinarith⟩
+  have hs0 : 0 ≤ √((n : ℝ) + 1) := Real.sqrt_nonneg _
+  have hBB : 2 * B ≤ 64 * (n + 1) * B ^ 2 := by
+    nlinarith [mul_le_mul_of_nonneg_right hN (sq_nonneg B)]
+  have h2θ : 2 * B * specNorm E / g ≤ θ :=
+    div_le_div_of_nonneg_right (mul_le_mul_of_nonneg_right hBB hE0) hg.le
+  have hZθ : specNorm Z ≤ θ := hZ.trans (div_le_div_of_nonneg_right (by
+    nlinarith [mul_le_mul hsN (by nlinarith : B ≤ 32 * B ^ 2) (by linarith) (by linarith)])
+    hg.le)
+  have hZθ' : specNorm Z ≤ √(n + 1) * θ := hZ.trans (by
+    rw [show 2 * √((n : ℝ) + 1) * B * specNorm E / g = √(n + 1) * (2 * B * specNorm E / g) by
+      ring]
+    exact mul_le_mul_of_nonneg_left h2θ hs0)
+  have h := sqrt_lastRowWeights_le_mul_one_add (Qᴴ * V) Z i
+  rw [← Matrix.mul_assoc]
+  refine h.trans ?_
+  gcongr
 
 end NLAlib

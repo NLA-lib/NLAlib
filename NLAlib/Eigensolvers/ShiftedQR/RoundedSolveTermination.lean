@@ -112,21 +112,45 @@ decoupling routine for every cap. -/
 theorem TerminatingDecoupler.terminatingDecouplerRoutine {nmax k F : ℕ} {ps : List ℝ}
     {D : Impl O Q} {I : Interp O Q ℝ} (h : TerminatingDecoupler nmax k F ps D I) (T : ℕ) :
     TerminatingDecouplerRoutine nmax k F T ps (liftDecoupler D) I := by
-  sorry
+  intro n w q f tape μ H hk hn hH hq hl hw hf hwf hqwf
+  unfold liftDecoupler
+  exact (h H hk hn hH hq hl hw hf hwf hqwf).in_frame (by simp)
+    (by simp [Operand.evalList, Operand.eval]) (by simpa [Mem.Live] using hl)
 
 /-- A terminating leaf, lifted by `NLAlib.ShiftedQR.liftLeaf`, is a terminating leaf routine for
 every order bound, parameter words and cap. -/
 theorem TerminatingLeaf.terminatingLeafRoutine {L : Impl O Q} {I : Interp O Q ℝ}
     (h : TerminatingLeaf L I) (kmax : ℕ) (ps : List ℝ) (T : ℕ) :
     TerminatingLeafRoutine kmax ps T (liftLeaf L) I := by
-  sorry
+  intro d w p o tape μ B _ hB _ hl hroom hwo _
+  unfold liftLeaf
+  exact (h B hB (hl.mono (by simp)) hroom hwo).in_frame (by simp)
+    (by simp [Operand.evalList, Operand.eval]) (hl.mono (by simp))
+
+/-- The leaf routine of a terminating small-eigenvalue routine with the word count $12$ and the
+words `qs` (none, or $12$; `NLAlib.ShiftedQR.TerminatingSmallEigAt`) terminates, with any words
+`ps₀` before `qs`. -/
+theorem TerminatingSmallEigAt.terminatingLeafRoutine {kmax T : ℕ} {qs ps₀ : List ℝ}
+    {SE : Impl O Q} {I : Interp O Q ℝ} (h : TerminatingSmallEigAt kmax 12 T qs SE I)
+    (hq12 : qs = [] ∨ qs.length = 12) :
+    TerminatingLeafRoutine kmax (ps₀ ++ qs) T (seLeaf SE) I := by
+  intro d w p o tape μ B hd hB hp hl hroom hwo hpo
+  obtain ⟨hq, hsub⟩ := Store.readBlock_tail_twelve hq12 hp
+  unfold seLeaf
+  refine (h (q := (p.1, p.2 + ((ps₀ ++ qs).length - 12))) tape μ B hd hB hq
+    (by simpa [Mem.Live] using hl) hroom hwo
+    (hpo.mono (Store.inBlock_le_inBlock (by omega) (by omega)) le_rfl)).in_frame ?_ ?_ ?_
+    |>.mono le_rfl fun _ _ _ => trivial
+  · simp
+  · simp [Operand.evalList, Operand.eval]
+  · simpa [Mem.Live] using hl
 
 /-- The leaf routine of a terminating small-eigenvalue routine with $12$ words `qs` terminates,
 with any words `ps₀` before `qs`. -/
 theorem TerminatingSmallEig.terminatingLeafRoutine {kmax T : ℕ} {qs ps₀ : List ℝ}
     {SE : Impl O Q} {I : Interp O Q ℝ} (h : TerminatingSmallEig kmax T qs SE I)
-    (hqs : qs.length = 12) : TerminatingLeafRoutine kmax (ps₀ ++ qs) T (seLeaf SE) I := by
-  sorry
+    (hqs : qs.length = 12) : TerminatingLeafRoutine kmax (ps₀ ++ qs) T (seLeaf SE) I :=
+  TerminatingSmallEigAt.terminatingLeafRoutine (hqs ▸ h.at) (Or.inr hqs)
 
 section Leaf
 

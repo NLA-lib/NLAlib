@@ -23,10 +23,11 @@ public import NLAlib.Eigensolvers.ShiftedQR.RoundedParameterChoices
 [BanksGarzaVargasSrivastava2022, Theorem 1.4], in floating point, corrected: the decoupling loop
 is capped, the deflation scan covers the bottom $k$ subdiagonal entries, and the precision
 threshold is recomputed for the corrected constants of the blocks. The program is the rounded
-deflation worklist (`NLAlib.ShiftedQR.solveRounded`) with the decoupling loop of Lemma 6.4
-(`NLAlib.ShiftedQR.roundedDecouple`: `Regularize`, then
-$\mathrm{Sh}_{k,B}$, capped at $F$ rounds) and the `SmallEig` leaf
-(`NLAlib.ShiftedQR.smallEigLeaf`), run with the parameter words of
+deflation worklist (`NLAlib.ShiftedQR.solveRoundedWith`) with the decoupling loop of Lemma 6.4
+(`NLAlib.ShiftedQR.roundedDecoupleWith`: `Regularize`, then
+$\mathrm{Sh}_{k,B}$, capped at $F$ rounds) and the leaf (`NLAlib.ShiftedQR.seLeaf`), both running
+a small-eigenvalue routine; `NLAlib.ShiftedQR.roundedShQR` runs the `SmallEig` kernel
+(`NLAlib.ShiftedQR.smallEigKernel`) with the cap $0$. It is run with the parameter words of
 `NLAlib.ShiftedQR.shqrParams` and the threshold word `NLAlib.ShiftedQR.shqrDeflationThreshold`
 on a machine with unit roundoff $\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{ShQR}}$
 (`NLAlib.ShiftedQR.uShQR`).
@@ -88,13 +89,27 @@ section Program
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O]
   [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q]
 
+/-- **The rounded shifted QR algorithm with a small-eigenvalue routine**
+([BanksGarzaVargasSrivastava2022, Theorem 6.3] with the routine of
+[BanksGarzaVargasSrivastava2025, Corollary 1.3]): the worklist `NLAlib.ShiftedQR.solveRoundedWith`
+with the decoupling loop `NLAlib.ShiftedQR.roundedDecoupleWith SE` and the leaf
+`NLAlib.ShiftedQR.seLeaf SE`. The routine reads the last $12$ parameter words and the cap $T$. The
+interface is `[N, k, np, F, T] (A, Thr, P) → (Out, Fl)`.
+Algorithm: shifted-qr-rounded -/
+def roundedShQRWith (SE : Impl O Q) : Impl O Q :=
+  solveRoundedWith (roundedDecoupleWith SE) (seLeaf SE)
+
 /-- **The rounded shifted QR algorithm** ([BanksGarzaVargasSrivastava2022, Theorem 6.3]): the
-rounded deflation worklist with the decoupling loop of Lemma 6.4 and the `SmallEig` leaf. The
-interface is `[N, k, np, F] (A, Thr, P) → (Out, Fl)`: the order, the shift degree, the number of
-parameter words and the iteration cap; the matrix (overwritten), the deflation threshold word,
-the parameter words; the $2N$ output words and the failure word. -/
-def roundedShQR : Impl O Q :=
-  solveRounded (roundedDecouple (O := O) (Q := Q)) (smallEigLeaf (O := O) (Q := Q))
+rounded deflation worklist with the decoupling loop of Lemma 6.4 and the `SmallEig` leaf,
+`NLAlib.ShiftedQR.roundedShQRWith` with the kernel as the routine
+(`NLAlib.ShiftedQR.smallEigKernel`) and the cap $0$. The interface is
+`[N, k, np, F] (A, Thr, P) → (Out, Fl)`: the order, the shift degree, the number of parameter
+words and the iteration cap; the matrix (overwritten), the deflation threshold word, the parameter
+words; the $2N$ output words and the failure word. -/
+def roundedShQR : Impl O Q := opsImpl% [N, k, np, F] (A, Thr, P) → (Out, Fl) {
+  run (roundedShQRWith (smallEigKernel (O := O) (Q := Q))).body [N, k, np, F, 0]
+    (A, Thr, P, Out, Fl)
+}
 
 end Program
 
@@ -144,6 +159,138 @@ def shqrFp (n : ℕ) (a out f : ℕ × ℕ) : Fp :=
   Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock out.1 out.2 (2 * (n + 1)) ⊔
     Store.inBlock f.1 f.2 1
 
+section RoutineAt
+
+variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q]
+  [Has IdxTst Q]
+
+-- The default heartbeat budget does not cover the elaboration of this statement.
+set_option maxHeartbeats 1000000 in
+-- The headline's hypotheses, with their long real constants, make elaboration heavy.
+/-- The rounded shifted QR algorithm with a small-eigenvalue routine, with the word count $12$
+apart from the routine's words `qs` (none, or $12$; `NLAlib.ShiftedQR.RandomSmallEigContractAt`):
+the statement of `NLAlib.ShiftedQR.roundedShQRWith_measureReal_not_spectrum_le`, of which
+`NLAlib.ShiftedQR.roundedShQR_measureReal_not_spectrum_le` is the case of the kernel and no
+words. -/
+theorem roundedShQRWith_measureReal_not_spectrum_le_at {Mch : Machine ℝ} {I : Interp O Q ℝ}
+    {u : ℝ} {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
+    (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
+    (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    {law : ℕ → Measure ℝ} {sU : ℕ} (hDisk : IsPolarDiskSampler sU I)
+    (hU : law sU = volume.restrict (Set.Icc 0 1))
+    {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {k : ℕ}
+    {B Γ S δ φ : ℝ} (hHess : IsUpperHessenberg H) (hV : IsUnit V)
+    (hHV : H * V = V * Matrix.diagonal d) (hκ : pseudoConditionNumber V ≤ B) (hΓ : 0 < Γ)
+    (hgap : ∀ i j, i ≠ j → Γ ≤ ‖d i - d j‖) (hHS : specNorm H ≤ S) (hδ : 0 < δ) (hδS : δ ≤ S)
+    (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hk : k = shqrDegree (4 * B)) {βse φse : ℝ} {T : ℕ}
+    {qs : List ℝ} {SE : Impl O Q}
+    (hSE : RandomSmallEigContractAt law βse φse (min k (n + 1)) 12 T (4 * S) qs SE I)
+    (hq12 : qs = [] ∨ qs.length = 12) (hβse0 : 0 ≤ βse)
+    (hse : βse ≤ shqrSmallEigAccuracy n B Γ S δ)
+    (hφse0 : 0 ≤ φse) (hφse : φse ≤ shqrSmallEigFailure n B Γ S δ φ)
+    (hu : u ≤ uShQR n k B Γ S δ φ) {a t p out f : ℕ × ℕ} {μ : Mem ℝ}
+    (hl : μ.Live [a, t, p, out, f])
+    (hr : μ.Room [a, t, p, out, f]
+      [2 * ((n + 1) * (n + 1)), 1, (shqrParams n k B Γ S δ φ ++ qs).length, 2 * (n + 1), 1])
+    (ha : Fp.Apart [a, t, p, out, f]
+      [2 * ((n + 1) * (n + 1)), 1, (shqrParams n k B Γ S δ φ ++ qs).length, 2 * (n + 1), 1])
+    (hA : HoldsMatrix a H μ.store)
+    (ht : μ.store.get t.1 t.2 = some (shqrDeflationThreshold n k B Γ S δ φ))
+    (hp : μ.store.readBlock p.1 p.2 (shqrParams n k B Γ S δ φ ++ qs).length =
+      some (shqrParams n k B Γ S δ φ ++ qs))
+    {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
+    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRWith SE).body
+      (Env.frame [n + 1, k, (shqrParams n k B Γ S δ φ ++ qs).length, shqrCap n B Γ S δ, T]
+        [a, t, p, out, f]) (shqrFp n a out f) (ShQRSpectrum out f H δ) μ} ≤ φ := by
+  have hu0 := hM.roundoff_nonneg
+  have hB : 1 ≤ B := (one_le_pseudoConditionNumber hV.ne_zero).trans hκ
+  have hSp : 0 < S := hδ.trans_le hδS
+  obtain ⟨-, -, SR, IT⟩ := shqrParams_spec hB hΓ hδ hδS hφ hφ1 hk hu0 hu hβse0 hse
+  have hD : RandomDecouplingRoutineContract law (2 * B) (Γ / 2)
+      (shqrCap n B Γ S δ * (φse + shqrRegularizeFailure n B Γ S δ φ / 2 +
+        shqrSmallEigFailure n B Γ S δ φ)) k (shqrCap n B Γ S δ) T n (2 * S)
+      (shqrParams n k B Γ S δ φ ++ qs) (shqrDecoupled n k B Γ S δ φ)
+      (fun _ => shqrCap n B Γ S δ *
+        ((1 + shqrC k (4 * B)) * (4 * S) * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)))
+      (roundedDecoupleWith SE) I := by
+    by_cases hkn : k ≤ n + 1
+    · rw [min_eq_left hkn] at hSE
+      exact roundedDecoupleWith_randomDecouplingRoutineContract_of_le_uShQR_at hI hloc hS hM hL
+        hNat hC hQ hDisk hU hB hΓ hδ hδS hφ hφ1 hk hβse0 hse hφse0 hu hSE hq12 rfl
+    · intro n' N w q f H' V' d' hk' hn'
+      omega
+  have hLeaf : RandomLeafRoutineContract law βse φse (min k (n + 1)) (2 * S)
+      (shqrParams n k B Γ S δ φ ++ qs) T (seLeaf SE) I :=
+    RandomSmallEigContractAt.randomLeafRoutineContract (hSE.mono_norm (S' := 2 * S) (by linarith))
+      hβse0 hq12
+  have hE := shqrLoopError_le_shqrDecoupleError (n := n) (k := k) (B := B) (Γ := Γ) (δ := δ)
+    hSp.le hu0
+  set E := (shqrCap n B Γ S δ : ℝ) *
+    ((1 + shqrC k (4 * B)) * (4 * S) * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) with hEdef
+  have hE0 : 0 ≤ E := by
+    have := shqrC_pos k (by linarith : 0 < 4 * B)
+    have : 1 ≤ (1 + 300 * ((n : ℝ) + 1) ^ 2 * u) ^ k := one_le_pow₀ (by nlinarith)
+    have : 0 ≤ (1 + 300 * ((n : ℝ) + 1) ^ 2 * u) ^ k - 1 := by linarith
+    positivity
+  have hφ₁ := shqrSmallEigFailure_pos (n := n) (B := B) (Γ := Γ) (S := S) (δ := δ) hφ
+  have hφD : 0 ≤ (shqrCap n B Γ S δ : ℝ) * (φse + shqrRegularizeFailure n B Γ S δ φ / 2 +
+      shqrSmallEigFailure n B Γ S δ φ) := by unfold shqrRegularizeFailure; positivity
+  have hc := SR.hc
+  have hN : specNorm H + 2 * (n + 1) * (shqrCut n k B Γ S δ φ + E + βse) ≤ 2 * S := by
+    have := SR.hN₀; nlinarith
+  have hsm : 2 * (n + 1) * (shqrCut n k B Γ S δ φ + E + βse) ≤ Γ / (16 * (n + 1) * B) := by
+    have := SR.hsmall; nlinarith
+  have hδ' : 2 * (n + 1) * (shqrCut n k B Γ S δ φ + E + βse) ≤ δ := by
+    have := SR.hδ; nlinarith
+  have h := (solveRoundedWith_pwrites hS hM hu0 SR.hu1 hL hNat hQ hC hI hloc _ hD _ hLeaf hφD
+    hφse0 hHess hV hHV hκ hΓ hgap SR.hfind SR.hcut hc hβse0 hE0 hN hsm).measureReal_not_writes_le
+    ⟨hl, hr, ha, hA, ht, hp⟩ hξ
+  have := hξ.isProbabilityMeasure
+  refine le_trans ?_ (h.trans (IT.hfail φse hφse0 hφse))
+  refine measureReal_mono fun ω' hω' hW => hω' ?_
+  exact hW.mono le_rfl fun μ' _ ⟨hf, roots, E', hO, hE', hR⟩ =>
+    ⟨hf, roots, E', hO, hE'.trans hδ', hR⟩
+
+/-- The rounded shifted QR algorithm with a terminating small-eigenvalue routine terminates on
+every tape, with the word count $12$ apart from the routine's words `qs` (none, or $12$;
+`NLAlib.ShiftedQR.TerminatingSmallEigAt`): the statement of
+`NLAlib.ShiftedQR.roundedShQRWith_terminates`, of which `NLAlib.ShiftedQR.roundedShQR_terminates`
+is the case of the kernel and no words. -/
+theorem roundedShQRWith_terminates_at {Mch : Machine ℝ} {I : Interp O Q ℝ}
+    {n : ℕ} (hS : IsScalar Mch I) (hL : IsIndexLit Mch I)
+    (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I) {sU : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {k : ℕ}
+    {B Γ S δ φ : ℝ} (hk : k = shqrDegree (4 * B)) {T : ℕ} {qs : List ℝ} {SE : Impl O Q}
+    (hSE : TerminatingSmallEigAt (min k (n + 1)) 12 T qs SE I)
+    (hq12 : qs = [] ∨ qs.length = 12)
+    {a t p out f : ℕ × ℕ} {μ : Mem ℝ} (hl : μ.Live [a, t, p, out, f])
+    (hr : μ.Room [a, t, p, out, f]
+      [2 * ((n + 1) * (n + 1)), 1, (shqrParams n k B Γ S δ φ ++ qs).length, 2 * (n + 1), 1])
+    (ha : Fp.Apart [a, t, p, out, f]
+      [2 * ((n + 1) * (n + 1)), 1, (shqrParams n k B Γ S δ φ ++ qs).length, 2 * (n + 1), 1])
+    (hA : HoldsMatrix a H μ.store) {thr : ℝ} (ht : μ.store.get t.1 t.2 = some thr)
+    (hp : μ.store.readBlock p.1 p.2 (shqrParams n k B Γ S δ φ ++ qs).length =
+      some (shqrParams n k B Γ S δ φ ++ qs)) (τ : Tape ℝ) :
+    Writes .total I τ (roundedShQRWith SE).body
+      (Env.frame [n + 1, k, (shqrParams n k B Γ S δ φ ++ qs).length, shqrCap n B Γ S δ, T]
+        [a, t, p, out, f]) (shqrFp n a out f) (fun _ => True) μ := by
+  have hkq : k = 2 ^ Nat.log 2 k := by
+    rw [hk, shqrDegree, Nat.log_pow (by norm_num)]
+  have hD : TerminatingDecouplerRoutine n k (shqrCap n B Γ S δ) T
+      (shqrParams n k B Γ S δ φ ++ qs) (roundedDecoupleWith SE) I := by
+    by_cases hkn : k ≤ n + 1
+    · rw [min_eq_left hkn] at hSE
+      exact roundedDecoupleWith_terminatingDecouplerRoutine_at (F := shqrCap n B Γ S δ) hS hL
+        hNat hC hQ hDisk hkq (shqrLoopThreshold n k B Γ S δ φ) (shqrRadius n B Γ S δ)
+        (shqrScanThreshold n k B Γ S δ φ) 0.2 (4 * B) (shqrAlpha k (4 * B)) (shqrEps k (4 * B))
+        hSE hq12 rfl
+    · intro n' w q f tape μ' H' hk' hn'
+      omega
+  exact solveRoundedWith_terminates hS hL hNat hQ hC _ hD _ (hSE.terminatingLeafRoutine hq12)
+    (tape := τ) hl hr ha hA ht hp
+
+end RoutineAt
+
 section Theorems
 
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O]
@@ -183,43 +330,17 @@ theorem roundedShQR_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Interp 
     P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQR (O := O) (Q := Q)).body
       (Env.frame (shqrDims n k B Γ S δ φ) [a, t, p, out, f]) (shqrFp n a out f)
       (ShQRSpectrum out f H δ) μ} ≤ φ := by
-  have hu0 := hM.roundoff_nonneg
-  have hB : 1 ≤ B := (one_le_pseudoConditionNumber hV.ne_zero).trans hκ
-  have hSp : 0 < S := hδ.trans_le hδS
-  obtain ⟨-, -, SR, IT⟩ := shqrParams_spec hB hΓ hδ hδS hφ hφ1 hk hu0 hu hβse0 hse
-  -- explicit, so that the contract's own implicit binders stay bound
-  have hD := @roundedDecouple_randomDecouplingContract_of_le_uShQR O Q _ _ _ _ _ _ Mch I u hI win
-    hloc hS hM hL n hNat hC hQ law sU βse φse hSE hDisk hU k B Γ S δ φ hB hΓ hδ hδS hφ hφ1 hk
-    hβse0 hse hφse0 hu
-  have hLeaf := @IsRandomSmallEig.randomLeafContract O Q _ law sU βse φse I hSE hβse0
-  have hE := shqrLoopError_le_shqrDecoupleError (n := n) (k := k) (B := B) (Γ := Γ) (δ := δ)
-    hSp.le hu0
-  set E := (shqrCap n B Γ S δ : ℝ) *
-    ((1 + shqrC k (4 * B)) * (4 * S) * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) with hEdef
-  have hE0 : 0 ≤ E := by
-    have := shqrC_pos k (by linarith : 0 < 4 * B)
-    have : 1 ≤ (1 + 300 * ((n : ℝ) + 1) ^ 2 * u) ^ k := one_le_pow₀ (by nlinarith)
-    have : 0 ≤ (1 + 300 * ((n : ℝ) + 1) ^ 2 * u) ^ k - 1 := by linarith
-    positivity
-  have hφ₁ := shqrSmallEigFailure_pos (n := n) (B := B) (Γ := Γ) (S := S) (δ := δ) hφ
-  have hφD : 0 ≤ (shqrCap n B Γ S δ : ℝ) * (φse + shqrRegularizeFailure n B Γ S δ φ / 2 +
-      shqrSmallEigFailure n B Γ S δ φ) := by unfold shqrRegularizeFailure; positivity
-  have hc := SR.hc
-  have hN : specNorm H + 2 * (n + 1) * (shqrCut n k B Γ S δ φ + E + βse) ≤ 2 * S := by
-    have := SR.hN₀; nlinarith
-  have hsm : 2 * (n + 1) * (shqrCut n k B Γ S δ φ + E + βse) ≤ Γ / (16 * (n + 1) * B) := by
-    have := SR.hsmall; nlinarith
-  have hδ' : 2 * (n + 1) * (shqrCut n k B Γ S δ φ + E + βse) ≤ δ := by
-    have := SR.hδ; nlinarith
   obtain ⟨hl, hr, ha, hA, ht, hp⟩ := hin
-  have h := solveRounded_measureReal_not_spectrum_le hS hM hu0 SR.hu1 hL hNat hQ hC hI hloc _ hD
-    _ hLeaf hφD hφse0 hHess hV hHV hκ hΓ hgap SR.hfind SR.hcut hc hβse0 hE0 hN hsm hl hr ha hA
-    ht hp hξ
+  have h := roundedShQRWith_measureReal_not_spectrum_le_at hS hM hL hNat hQ hC hI hloc hDisk hU
+    hHess hV hHV hκ hΓ hgap hHS hδ hδS hφ hφ1 hk (T := 0)
+    (hSE.randomSmallEigContractAt (min k (n + 1)) 12 0 (4 * S) []) (Or.inl rfl) hβse0 hse hφse0
+    hφse hu hl (by simpa using hr) (by simpa using ha) hA ht (by simpa using hp) hξ
+  simp only [List.append_nil] at h
   have := hξ.isProbabilityMeasure
-  refine le_trans ?_ (h.trans (IT.hfail φse hφse0 hφse))
+  refine le_trans ?_ h
   refine measureReal_mono fun ω' hω' hW => hω' ?_
-  exact hW.mono le_rfl fun μ' _ ⟨hf, roots, E', hO, hE', hR⟩ =>
-    ⟨hf, roots, E', hO, hE'.trans hδ', hR⟩
+  unfold roundedShQR
+  exact hW.in_frame (by simp [shqrDims]) (by simp [shqrDims, Operand.evalList, Operand.eval]) hl
 
 /-- **The rounded shifted QR algorithm terminates on every tape**: on a scalar machine
 with index literals, natural literals up to $n + 1$ that are exact, exact index conversion and
@@ -250,16 +371,13 @@ theorem roundedShQR_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ}
     Writes .total I τ (roundedShQR (O := O) (Q := Q)).body
       (Env.frame (shqrDims n k B Γ S δ φ) [a, t, p, out, f]) (shqrFp n a out f) (fun _ => True)
       μ := by
-  have hkq : k = 2 ^ Nat.log 2 k := by
-    rw [hk, shqrDegree, Nat.log_pow (by norm_num)]
-  have hD : TerminatingDecoupler n k (shqrCap n B Γ S δ) (shqrParams n k B Γ S δ φ)
-      (roundedDecouple (O := O) (Q := Q)) I :=
-    roundedDecouple_terminatingDecoupler (O := O) (Q := Q) (F := shqrCap n B Γ S δ) hS hL
-      hNat hC hQ hSE hDisk hkq (shqrLoopThreshold n k B Γ S δ φ) (shqrRadius n B Γ S δ)
-    (shqrScanThreshold n k B Γ S δ φ) 0.2 (4 * B) (shqrAlpha k (4 * B)) (shqrEps k (4 * B))
   obtain ⟨hl, hr, ha, hA, ht, hp⟩ := hin
-  exact solveRounded_terminates hS hL hNat hQ hC _ hD _ hSE.terminatingLeaf (tape := τ) hl hr
-    ha hA ht hp
+  have h := roundedShQRWith_terminates_at hS hL hNat hQ hC hDisk hk (T := 0)
+    (hSE.terminatingSmallEigAt (min k (n + 1)) 12 0 []) (Or.inl rfl) hl (by simpa using hr)
+    (by simpa using ha) hA ht (by simpa using hp) τ
+  simp only [List.append_nil] at h
+  unfold roundedShQR
+  exact h.in_frame (by simp [shqrDims]) (by simp [shqrDims, Operand.evalList, Operand.eval]) hl
 
 /-- **The bits of precision** ([BanksGarzaVargasSrivastava2022, Theorem 1.4], corrected: the
 printed argument $nB/(\delta\Gamma\varphi)$ is not invariant under scaling of $\mathbf{H}$, and
@@ -433,17 +551,6 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has
   [Has IdxTst Q]
 
 /-- **The rounded shifted QR algorithm with a small-eigenvalue routine**
-([BanksGarzaVargasSrivastava2022, Theorem 6.3] with the routine of
-[BanksGarzaVargasSrivastava2025, Corollary 1.3]): the worklist `NLAlib.ShiftedQR.solveRoundedWith`
-with the
-decoupling loop `NLAlib.ShiftedQR.roundedDecoupleWith SE` and the leaf
-`NLAlib.ShiftedQR.seLeaf SE`. The routine reads the last $12$ parameter words and the cap $T$. The
-interface is `[N, k, np, F, T] (A, Thr, P) → (Out, Fl)`.
-Algorithm: shifted-qr-rounded -/
-def roundedShQRWith (SE : Impl O Q) : Impl O Q :=
-  solveRoundedWith (roundedDecoupleWith SE) (seLeaf SE)
-
-/-- **The rounded shifted QR algorithm with a small-eigenvalue routine**
 ([BanksGarzaVargasSrivastava2022, Theorem 6.3] with the quantifiers of Theorem 1.4, corrected).
 Let $\mathbf{H}$ be upper Hessenberg of order $n + 1$,
 $\mathbf{H}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$ with
@@ -491,8 +598,10 @@ theorem roundedShQRWith_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Int
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
     P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRWith SE).body
       (Env.frame [n + 1, k, (shqrParams n k B Γ S δ φ ++ qs).length, shqrCap n B Γ S δ, T]
-        [a, t, p, out, f]) (shqrFp n a out f) (ShQRSpectrum out f H δ) μ} ≤ φ := by
-  sorry
+        [a, t, p, out, f]) (shqrFp n a out f) (ShQRSpectrum out f H δ) μ} ≤ φ :=
+  roundedShQRWith_measureReal_not_spectrum_le_at hS hM hL hNat hQ hC hI hloc hDisk hU hHess hV hHV
+    hκ hΓ hgap hHS hδ hδS hφ hφ1 hk (hqs ▸ hSE.at) (Or.inr hqs) hβse0 hse hφse0 hφse hu hl hr ha
+    hA ht hp hξ
 
 /-- **The rounded shifted QR algorithm with a terminating small-eigenvalue routine terminates on
 every tape**: on a scalar machine with index literals, exact natural literals up to $n + 1$, exact
@@ -519,8 +628,9 @@ theorem roundedShQRWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ}
       some (shqrParams n k B Γ S δ φ ++ qs)) (τ : Tape ℝ) :
     Writes .total I τ (roundedShQRWith SE).body
       (Env.frame [n + 1, k, (shqrParams n k B Γ S δ φ ++ qs).length, shqrCap n B Γ S δ, T]
-        [a, t, p, out, f]) (shqrFp n a out f) (fun _ => True) μ := by
-  sorry
+        [a, t, p, out, f]) (shqrFp n a out f) (fun _ => True) μ :=
+  roundedShQRWith_terminates_at hS hL hNat hQ hC hDisk hk (hqs ▸ hSE.at) (Or.inr hqs) hl hr ha hA ht
+    hp τ
 
 end Routine
 

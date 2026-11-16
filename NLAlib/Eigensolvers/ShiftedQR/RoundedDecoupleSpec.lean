@@ -59,14 +59,19 @@ theorem shqrLoopError_le_shqrDecoupleError {n k : ℕ} {B Γ S δ u : ℝ} (hS :
 set_option maxHeartbeats 1000000 in
 -- Matching the contract's hypotheses, with their long real constants, against the parameter
 -- choices is heavy.
-/-- **The rounded decoupling loop meets the randomized decoupling contract at the headline's
-parameters** ([BanksGarzaVargasSrivastava2022, Lemma 6.4] in floating point, corrected): on a
-machine with the standard model at $\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{ShQR}}$, exact
-natural literals up to $n + 1$, a measurable interpretation reading the tape only in its windows,
-a `SmallEig` kernel on a stream uniform on $[0, 1]$ with forward error
-$0 \le \beta \le$ `shqrSmallEigAccuracy` and failure $\varphi_{\mathrm{se}} \ge 0$, and an exact
-polar disk sampler on it, for $B \ge 1$, $\Gamma > 0$, $0 < \delta \le \Sigma$,
-$0 < \varphi \le 1$ and $k$ the degree of (eqn:setk) at $4B$, the loop
+omit [Has EigenvalueKernelOp O] in
+/-- **The rounded decoupling loop with a small-eigenvalue routine meets the randomized decoupling
+contract at the headline's parameters**, with the routine's words `qs` (none, or $12$) after the
+words of `NLAlib.ShiftedQR.roundedDecoupleParams` and the routine meeting
+`NLAlib.ShiftedQR.RandomSmallEigContractAt` on orders at most $k$ and norms at most $4\Sigma$ (the
+iterate norm): the merged statement is the case of the kernel. The rounded decoupling loop meets
+the randomized decoupling contract at the headline's parameters ([BanksGarzaVargasSrivastava2022,
+Lemma 6.4] in floating point, corrected): on a machine with the standard model at $\boldsymbol{u}
+\le \boldsymbol{u}_{\mathrm{ShQR}}$, exact natural literals up to $n + 1$, a measurable
+interpretation reading the tape only in its windows, a `SmallEig` kernel on a stream uniform on
+$[0, 1]$ with forward error $0 \le \beta \le$ `shqrSmallEigAccuracy` and failure
+$\varphi_{\mathrm{se}} \ge 0$, and an exact polar disk sampler on it, for $B \ge 1$, $\Gamma > 0$,
+$0 < \delta \le \Sigma$, $0 < \varphi \le 1$ and $k$ the degree of (eqn:setk) at $4B$, the loop
 `NLAlib.ShiftedQR.roundedDecouple` with the words of `NLAlib.ShiftedQR.roundedDecoupleParams` at
 the parameter choices of `NLAlib.Eigensolvers.ShiftedQR.RoundedParameters` meets
 `NLAlib.ShiftedQR.RandomDecouplingContract` on the class (condition $2B$, separation $\Gamma/2$)
@@ -74,26 +79,28 @@ for orders up to $n + 1$ and norms up to $2\Sigma$, with the cap $F$, failure pr
 $F(\varphi_{\mathrm{se}} + \varphi_R/2 + \varphi_1)$ ($\varphi_1 = \varphi/(12F(n + 1))$,
 $\varphi_R = 2\varphi_1$), the level $\omega_D$ and the backward error $F(1 + C) \cdot 4\Sigma((1 +
 300(n + 1)^2\boldsymbol{u})^k - 1)$. No printed source. -/
-theorem roundedDecouple_randomDecouplingContract_of_le_uShQR {M : Machine ℝ}
+theorem roundedDecoupleWith_randomDecouplingRoutineContract_of_le_uShQR_at {M : Machine ℝ}
     {I : Interp O Q ℝ} {u : ℝ} (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
     (hloc : ∀ o, I.TapeLocal o (win o)) (hS : IsScalar M I) (hM : StdModel u id M)
     (hL : IsIndexLit M I) {n : ℕ} (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I)
     (hQ : IsToNat id I) {law : ℕ → Measure ℝ} {s₀ : ℕ} {β φse : ℝ}
-    (hSE : IsRandomSmallEig law s₀ β φse I) (hDisk : IsPolarDiskSampler s₀ I)
+    (hDisk : IsPolarDiskSampler s₀ I)
     (hU : law s₀ = volume.restrict (Set.Icc 0 1)) {k : ℕ} {B Γ S δ φ : ℝ} (hB : 1 ≤ B)
     (hΓ : 0 < Γ) (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
     (hk : k = shqrDegree (4 * B)) (hβ0 : 0 ≤ β) (hβ : β ≤ shqrSmallEigAccuracy n B Γ S δ)
-    (hφse : 0 ≤ φse) (hu : u ≤ uShQR n k B Γ S δ φ) :
-    RandomDecouplingContract law (2 * B) (Γ / 2)
-      (shqrCap n B Γ S δ * (φse + shqrRegularizeFailure n B Γ S δ φ / 2 +
-        shqrSmallEigFailure n B Γ S δ φ)) k (shqrCap n B Γ S δ) n (2 * S)
-      (roundedDecoupleParams (shqrLoopThreshold n k B Γ S δ φ) (shqrRadius n B Γ S δ)
+    (hφse : 0 ≤ φse) (hu : u ≤ uShQR n k B Γ S δ φ) {T : ℕ} {qs : List ℝ} {SE : Impl O Q}
+    (hSE : RandomSmallEigContractAt law β φse k 12 T (4 * S) qs SE I)
+    (hq12 : qs = [] ∨ qs.length = 12) {ps : List ℝ}
+    (hps : ps = roundedDecoupleParams (shqrLoopThreshold n k B Γ S δ φ) (shqrRadius n B Γ S δ)
         (shqrScanThreshold n k B Γ S δ φ) 0.2 (4 * B) (shqrAlpha k (4 * B)) (shqrEps k (4 * B)) k
-        (Nat.log 2 k))
+        (Nat.log 2 k) ++ qs) :
+    RandomDecouplingRoutineContract law (2 * B) (Γ / 2)
+      (shqrCap n B Γ S δ * (φse + shqrRegularizeFailure n B Γ S δ φ / 2 +
+        shqrSmallEigFailure n B Γ S δ φ)) k (shqrCap n B Γ S δ) T n (2 * S) ps
       (shqrDecoupled n k B Γ S δ φ)
       (fun _ => shqrCap n B Γ S δ *
         ((1 + shqrC k (4 * B)) * (4 * S) * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)))
-      (roundedDecouple (O := O) (Q := Q)) I := by
+      (roundedDecoupleWith SE) I := by
   have hu0 := hM.roundoff_nonneg
   obtain ⟨SH, RG, SR, IT⟩ := shqrParams_spec hB hΓ hδ hδS hφ hφ1 hk hu0 hu hβ0 hβ
   have hSp : 0 < S := hδ.trans_le hδS
@@ -151,10 +158,58 @@ theorem roundedDecouple_randomDecouplingContract_of_le_uShQR {M : Machine ℝ}
       nlinarith
     rw [e1]; linarith
   intro n' N w q f H V d hkn hn hN hHess hnorm hV hHV hκ hgap
-  exact roundedDecouple_randomDecouplingContract hI hloc hS hM SR.hu1 hL hNat hC hQ hSE hβ0
-    hφse hDisk hU hkq hk2 hΓ le_rfl (by positivity) RG.hBk RG.hω RG.hgap RG.hR RG.hφ RG.hφ1
+  exact roundedDecoupleWith_randomDecouplingRoutineContract_at hI hloc hS hM SR.hu1 hL hNat hC hQ
+    hβ0 hφse hDisk hU hkq hk2 hΓ le_rfl (by positivity) RG.hBk RG.hω RG.hgap RG.hR RG.hφ RG.hφ1
     RG.hβ RG.hdη RG.hnu RG.huo RG.huo1 RG.hxu RG.hbound (SH.hα _ hkq) SH.hγ SH.hγ1 SH.hε
     SH.hε2 SH.hφ SH.hφ1 hd SH.hC1 hxu hbound hexc1 hexc2 SH.hthrω hthr hcut hωD hfuel
-    (by linarith) hsmall H V d hkn hn hN hHess hnorm hV hHV hκ hgap
+    (by linarith) hsmall hSE hq12 hps H V d hkn hn hN hHess hnorm hV hHV hκ hgap
+
+
+-- The default heartbeat budget does not cover the elaboration of this statement.
+set_option maxHeartbeats 1000000 in
+-- Matching the contract's hypotheses, with their long real constants, against the parameter
+-- choices is heavy.
+/-- **The rounded decoupling loop meets the randomized decoupling contract at the headline's
+parameters** ([BanksGarzaVargasSrivastava2022, Lemma 6.4] in floating point, corrected): on a
+machine with the standard model at $\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{ShQR}}$, exact
+natural literals up to $n + 1$, a measurable interpretation reading the tape only in its windows,
+a `SmallEig` kernel on a stream uniform on $[0, 1]$ with forward error
+$0 \le \beta \le$ `shqrSmallEigAccuracy` and failure $\varphi_{\mathrm{se}} \ge 0$, and an exact
+polar disk sampler on it, for $B \ge 1$, $\Gamma > 0$, $0 < \delta \le \Sigma$,
+$0 < \varphi \le 1$ and $k$ the degree of (eqn:setk) at $4B$, the loop
+`NLAlib.ShiftedQR.roundedDecouple` with the words of `NLAlib.ShiftedQR.roundedDecoupleParams` at
+the parameter choices of `NLAlib.Eigensolvers.ShiftedQR.RoundedParameters` meets
+`NLAlib.ShiftedQR.RandomDecouplingContract` on the class (condition $2B$, separation $\Gamma/2$)
+for orders up to $n + 1$ and norms up to $2\Sigma$, with the cap $F$, failure probability
+$F(\varphi_{\mathrm{se}} + \varphi_R/2 + \varphi_1)$ ($\varphi_1 = \varphi/(12F(n + 1))$,
+$\varphi_R = 2\varphi_1$), the level $\omega_D$ and the backward error $F(1 + C) \cdot 4\Sigma((1 +
+300(n + 1)^2\boldsymbol{u})^k - 1)$. No printed source. -/
+theorem roundedDecouple_randomDecouplingContract_of_le_uShQR {M : Machine ℝ}
+    {I : Interp O Q ℝ} {u : ℝ} (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
+    (hloc : ∀ o, I.TapeLocal o (win o)) (hS : IsScalar M I) (hM : StdModel u id M)
+    (hL : IsIndexLit M I) {n : ℕ} (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I)
+    (hQ : IsToNat id I) {law : ℕ → Measure ℝ} {s₀ : ℕ} {β φse : ℝ}
+    (hSE : IsRandomSmallEig law s₀ β φse I) (hDisk : IsPolarDiskSampler s₀ I)
+    (hU : law s₀ = volume.restrict (Set.Icc 0 1)) {k : ℕ} {B Γ S δ φ : ℝ} (hB : 1 ≤ B)
+    (hΓ : 0 < Γ) (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
+    (hk : k = shqrDegree (4 * B)) (hβ0 : 0 ≤ β) (hβ : β ≤ shqrSmallEigAccuracy n B Γ S δ)
+    (hφse : 0 ≤ φse) (hu : u ≤ uShQR n k B Γ S δ φ) :
+    RandomDecouplingContract law (2 * B) (Γ / 2)
+      (shqrCap n B Γ S δ * (φse + shqrRegularizeFailure n B Γ S δ φ / 2 +
+        shqrSmallEigFailure n B Γ S δ φ)) k (shqrCap n B Γ S δ) n (2 * S)
+      (roundedDecoupleParams (shqrLoopThreshold n k B Γ S δ φ) (shqrRadius n B Γ S δ)
+        (shqrScanThreshold n k B Γ S δ φ) 0.2 (4 * B) (shqrAlpha k (4 * B)) (shqrEps k (4 * B)) k
+        (Nat.log 2 k))
+      (shqrDecoupled n k B Γ S δ φ)
+      (fun _ => shqrCap n B Γ S δ *
+        ((1 + shqrC k (4 * B)) * (4 * S) * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)))
+      (roundedDecouple (O := O) (Q := Q)) I := by
+  intro n' N w q f H V d hkn hn hN hHess hnorm hV hHV hκ hgap
+  unfold roundedDecouple
+  exact (roundedDecoupleWith_randomDecouplingRoutineContract_of_le_uShQR_at hI hloc hS hM hL
+    hNat hC hQ hDisk hU hB hΓ hδ hδS hφ hφ1 hk hβ0 hβ hφse hu (T := 0)
+    (hSE.randomSmallEigContractAt k 12 0 (4 * S) []) (Or.inl rfl) (List.append_nil _).symm
+    H V d hkn hn hN hHess hnorm hV hHV hκ hgap).in_frame (by simp)
+    (by simp [Operand.evalList, Operand.eval]) fun _ hμ => by simpa [Mem.Live] using hμ.2.2.1
 
 end NLAlib.ShiftedQR

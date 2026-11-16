@@ -353,9 +353,9 @@ def shqrSlots : List WorkMono :=
 def shqrDegrees : List ℕ := List.replicate 4 1 ++ List.replicate 5 0
 
 /-- The monomial bound of the instructions of the instrumented program is
-$196017\,b_0^3 b_1^3 b_2 b_3$. -/
+$196222\,b_0^3 b_1^3 b_2 b_3$. -/
 theorem stmtWorkMono_shqrProgram :
-    stmtWorkMono shqrProgram.body.instrument shqrSlots = ⟨196017, 3, 3, 1, 1⟩ := by
+    stmtWorkMono shqrProgram.body.instrument shqrSlots = ⟨196222, 3, 3, 1, 1⟩ := by
   kernel_rfl
 
 /-- The selected-call tree of the kernel calls has coefficient $8$. -/
@@ -383,13 +383,13 @@ def shqrBase (d : Fin 4 → ℕ) : ℕ := d 0 + d 1 + d 2 + d 3 + 2
 
 /-- **The work (and span) polynomial** of the rounded shifted QR algorithm at the sizes
 $(n, k, n_p, F)$ = `d` and the kernel weight `kernel`:
-$$196017\,(n + 1)^3(k + 1)^3(n_p + 1)(F + 1) + 8\,b^4\,\overline{w},$$
+$$196222\,(n + 1)^3(k + 1)^3(n_p + 1)(F + 1) + 8\,b^4\,\overline{w},$$
 with $b = n + k + n_p + F + 2$ and $\overline{w}$ the largest kernel weight
 (`NLAlib.ShiftedQR.spectralWorkEnvelope`) over the call dimensions of at most one entry of at
 most $b^2$. The first term bounds the instructions (each of unit weight), the second the number
 $8b^4$ of kernel calls times their largest weight. -/
 def shqrWork (kernel : EigenvalueKernelOp → List ℕ → ℕ) (d : Fin 4 → ℕ) : ℕ :=
-  196017 * (d 0 + 1) ^ 3 * (d 1 + 1) ^ 3 * (d 2 + 1) * (d 3 + 1) +
+  196222 * (d 0 + 1) ^ 3 * (d 1 + 1) ^ 3 * (d 2 + 1) * (d 3 + 1) +
     8 * shqrBase d ^ 4 * spectralWorkEnvelope kernel 1 (shqrBase d ^ 2)
 
 /-- The weighted count of every successful counted run of the program, under weights of at most

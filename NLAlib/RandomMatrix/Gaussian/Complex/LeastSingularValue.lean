@@ -661,6 +661,30 @@ theorem measureReal_norm_dotProduct_le_le_of_hasLaw_complexGaussianVector {g : �
     (hg : HasLaw g (complexGaussianVector n) μ) {v : n → ℂ} (hv : ‖WithLp.toLp 2 v‖ = 1)
     {s : ℝ} (hs : 0 ≤ s) :
     μ.real {ω | ‖star v ⬝ᵥ g ω‖ ≤ s} ≤ s ^ 2 := by
-  sorry
+  classical
+  have hvv : star v ⬝ᵥ v = 1 := by
+    have h := inner_self_eq_norm_sq_to_K (𝕜 := ℂ) (WithLp.toLp 2 v)
+    rw [EuclideanSpace.inner_toLp_toLp, hv, dotProduct_comm] at h
+    simpa using h
+  set P : Matrix n n ℂ := Matrix.vecMulVec v (star v) with hP
+  have hPg : ∀ w : n → ℂ, P *ᵥ w = (star v ⬝ᵥ w) • v := fun w => by
+    rw [hP, Matrix.vecMulVec_mulVec, op_smul_eq_smul]
+  have hProj : IsStarProjection P := by
+    refine ⟨?_, ?_⟩
+    · change P * P = P
+      rw [hP, Matrix.vecMulVec_mul_vecMulVec, hvv, one_smul]
+    · change Pᴴ = P
+      rw [hP, Matrix.conjTranspose_vecMulVec, star_star]
+  have hP0 : P ≠ 0 := fun h0 => by
+    have h := hPg v
+    rw [h0, Matrix.zero_mulVec, hvv, one_smul] at h
+    have := hv
+    rw [← h] at this
+    simp at this
+  refine le_of_eq_of_le ?_ (measureReal_norm_mulVec_le_le_of_hasLaw_complexGaussianVector hg hProj
+    hP0 hs)
+  congr 1
+  ext ω
+  simp only [Set.mem_ofPred_eq, hPg, WithLp.toLp_smul, norm_smul, hv, mul_one]
 
 end NLAlib

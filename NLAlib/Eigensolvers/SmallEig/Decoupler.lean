@@ -81,6 +81,21 @@ noncomputable def smallEigDecoupleError (nmax : ℕ) (S δ φ : ℝ) (c₂ : Pol
   200 * ((nmax : ℝ) + 1) ^ 2 * u * N +
     11 * (2 * N) * ((1 + 300 * ((nmax : ℝ) + 1) ^ 2 * u) ^ smallEigDecoupleSteps nmax S δ φ c₂ - 1)
 
+/-- A unitary similarity carries a diagonalization: $\mathbf{Q}^{\mathsf{H}}\mathbf{A}\mathbf{Q}$ is
+diagonalized by $\mathbf{Q}^{\mathsf{H}}\mathbf{V}$, with the same eigenvalues and condition. -/
+private theorem exists_diagonalization_conjTranspose_mul_mul {n : ℕ}
+    {A Q V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} (hV : IsUnit V)
+    (hAV : A * V = V * Matrix.diagonal d) (hQ : HasOrthonormalCols Q) :
+    IsUnit (Qᴴ * V) ∧ (Qᴴ * A * Q) * (Qᴴ * V) = (Qᴴ * V) * Matrix.diagonal d ∧
+      pseudoConditionNumber (Qᴴ * V) = pseudoConditionNumber V := by
+  have hQQ : Q * Qᴴ = 1 := mul_eq_one_comm.mp hQ.conjTranspose_mul_self
+  have hU : HasOrthonormalCols Qᴴ := by
+    unfold HasOrthonormalCols; rwa [Matrix.conjTranspose_conjTranspose]
+  have hQu : IsUnit Qᴴ := ⟨⟨Qᴴ, Q, hQ.conjTranspose_mul_self, hQQ⟩, rfl⟩
+  refine ⟨hQu.mul hV, ?_,
+    hU.pseudoConditionNumber_mul_left V⟩
+  simp only [Matrix.mul_assoc, ← Matrix.mul_assoc Q, hQQ, Matrix.one_mul, hAV]
+
 /-- **The class after `RHess`** ([BanksGarzaVargasSrivastava2025, Lemma 6.2], the class part, as
 the merged deflation's class doubling): if $\mathbf{A}\mathbf{V} =
 \mathbf{V}\operatorname{diag}(\mathbf{d})$ with $\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le 2B$,
@@ -96,7 +111,22 @@ theorem class_of_rhess {n : ℕ} {A H Q V : Matrix (Fin (n + 1)) (Fin (n + 1)) �
     ∃ (V' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (d' : Fin (n + 1) → ℂ), IsUnit V' ∧
       H * V' = V' * Matrix.diagonal d' ∧ pseudoConditionNumber V' ≤ 4 * B ∧
       ∀ i j, i ≠ j → g / 4 ≤ ‖d' i - d' j‖ := by
-  sorry
+  have hB : 0 < B := by
+    have := (one_le_pseudoConditionNumber hV.ne_zero).trans hκ; linarith
+  obtain ⟨hV₀, hAV₀, hκ₀⟩ := exists_diagonalization_conjTranspose_mul_mul hV hAV hQ
+  have hE : specNorm (H - Qᴴ * A * Q) ≤ g / 2 / (16 * (n + 1) * (2 * B)) := by
+    convert hH using 1; field_simp; ring
+  obtain ⟨V', d', hV', hHV', hκ', hgap'⟩ := exists_pseudoConditionNumber_le_and_le_norm_sub hV₀
+    hAV₀ (hκ₀.trans_le hκ) (by positivity) hgap hE
+  rw [add_sub_cancel] at hHV'
+  refine ⟨V', d', hV', hHV', by linarith, fun i j hij => le_trans ?_ (hgap' i j hij)⟩
+  have hn : (1 : ℝ) ≤ n + 1 := by linarith [(n.cast_nonneg : (0 : ℝ) ≤ n)]
+  have h1 : 2 * (2 * B) * specNorm (H - Qᴴ * A * Q) ≤ g / 16 := by
+    calc 2 * (2 * B) * specNorm (H - Qᴴ * A * Q) ≤ 4 * B * (g / (64 * (n + 1) * B)) := by
+          rw [← mul_assoc, show (2 : ℝ) * 2 = 4 by norm_num]; gcongr
+      _ = g / (16 * (n + 1)) := by field_simp; ring
+      _ ≤ g / 16 := div_le_div_of_nonneg_left hg.le (by norm_num) (by linarith)
+  linarith
 
 section Theorems
 

@@ -51,6 +51,13 @@ theorem gaussDraws_writes {I : Interp O Q ℝ} (hSmp : IsSample I) {sG m : ℕ} 
       (Store.inBlock g.1 g.2 m)
       (fun μ' => μ'.pos = μ.pos + m ∧ μ'.store.readBlock g.1 g.2 m = some (τ.window sG μ.pos m))
       μ := by
-  sorry
+  obtain ⟨S, p⟩ := μ
+  refine wp_loop_fill (b := g.1) (o := g.2) (fun i => τ (p + i) sG) (fun i => p + i) rfl
+    (fun i hi s' hfr _ => ?_) hg fun s' hfr hr => ⟨hfr, rfl, hr.trans ?_⟩
+  · exact wp_call_draw (hSmp sG) (z := (g.1, g.2 + i)) rfl
+      (by simp [Operand.evalList]) (by simp [Operand.evalList, Operand.eval, Env.frame,
+        Env.pushIdx, IExp.eval]) trivial
+      (by change g.2 + i < s'.len g.1; rw [hfr.len_eq]; exact lt_of_lt_of_le (by omega) hg) rfl
+  · rfl
 
 end NLAlib.SmallEig

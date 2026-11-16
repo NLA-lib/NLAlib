@@ -24,6 +24,7 @@ unspecified constants $c_{\mathrm{root}}, C_{\mathrm{root}}$.
 ## Main results
 
 * `NLAlib.Ops.StdModel.abs_sqrtIter_sub_le`: the relative error of $m$ rounded square roots.
+* `NLAlib.abs_rpow_inv_sub_le_of_abs_sub_pow_le`: a $k$-th root keeps a relative error.
 -/
 
 @[expose] public section
@@ -81,6 +82,37 @@ private theorem abs_sqrtIter_sub_le_aux {M : Machine ℝ} {u : ℝ} (hM : StdMod
     have hsr : |s - r| ≤ 1.9 * u * r := abs_le.mpr ⟨by linarith, hB1⟩
     have hfin := abs_sub_le (M.sqrt (s ^ 2)) s r
     linarith [mul_nonneg hu hr0]
+
+/-- A $k$-th root keeps a relative error: if $\lvert t - \tau^k\rvert \le \varepsilon\,\tau^k$
+with $\tau \ge 0$, $0 \le \varepsilon \le 1$ and $k \ge 1$, then
+$\lvert t^{1/k} - \tau\rvert \le \varepsilon\,\tau$. -/
+theorem abs_rpow_inv_sub_le_of_abs_sub_pow_le {k : ℕ} (hk : k ≠ 0) {τ t ε : ℝ} (hτ : 0 ≤ τ)
+    (hε : 0 ≤ ε) (hε1 : ε ≤ 1) (ht : |t - τ ^ k| ≤ ε * τ ^ k) :
+    |t ^ ((k : ℝ)⁻¹) - τ| ≤ ε * τ := by
+  obtain ⟨h1, h2⟩ := abs_le.mp ht
+  have hτk : 0 ≤ τ ^ k := by positivity
+  have hk1 : (1 : ℝ) ≤ k := by exact_mod_cast Nat.one_le_iff_ne_zero.mpr hk
+  have hinv : (k : ℝ)⁻¹ ≤ 1 := inv_le_one_of_one_le₀ hk1
+  have hinv0 : 0 ≤ (k : ℝ)⁻¹ := by positivity
+  have hroot : (τ ^ k) ^ ((k : ℝ)⁻¹) = τ := Real.pow_rpow_inv_natCast hτ hk
+  have hup : t ^ ((k : ℝ)⁻¹) ≤ (1 + ε) * τ := by
+    calc t ^ ((k : ℝ)⁻¹) ≤ ((1 + ε) * τ ^ k) ^ ((k : ℝ)⁻¹) :=
+          Real.rpow_le_rpow (by nlinarith) (by linarith) hinv0
+      _ = (1 + ε) ^ ((k : ℝ)⁻¹) * τ := by rw [Real.mul_rpow (by linarith) hτk, hroot]
+      _ ≤ (1 + ε) * τ := by
+          gcongr
+          calc (1 + ε) ^ ((k : ℝ)⁻¹) ≤ (1 + ε) ^ (1 : ℝ) :=
+                Real.rpow_le_rpow_of_exponent_le (by linarith) hinv
+            _ = 1 + ε := Real.rpow_one _
+  have hlo : (1 - ε) * τ ≤ t ^ ((k : ℝ)⁻¹) := by
+    calc (1 - ε) * τ ≤ (1 - ε) ^ ((k : ℝ)⁻¹) * τ := by
+          gcongr
+          calc 1 - ε = (1 - ε) ^ (1 : ℝ) := (Real.rpow_one _).symm
+            _ ≤ (1 - ε) ^ ((k : ℝ)⁻¹) :=
+                Real.rpow_le_rpow_of_exponent_ge' (by linarith) (by linarith) hinv0 hinv
+      _ = ((1 - ε) * τ ^ k) ^ ((k : ℝ)⁻¹) := by rw [Real.mul_rpow (by linarith) hτk, hroot]
+      _ ≤ t ^ ((k : ℝ)⁻¹) := Real.rpow_le_rpow (by nlinarith) (by linarith) hinv0
+  exact abs_le.mpr ⟨by linarith, by linarith⟩
 
 /-- **Rounded roots of order $2^m$**: under the standard model with $0 \le \boldsymbol{u} \le
 1/100$, $m$ rounded square roots of $a \ge 0$ are within $3\boldsymbol{u}\,a^{1/2^m}$ of

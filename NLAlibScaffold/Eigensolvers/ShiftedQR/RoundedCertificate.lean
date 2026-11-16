@@ -31,8 +31,8 @@ sampler. The weights of `SmallEig` and `Ritz` are caller parameters, possibly $0
 by $1$; every other primitive, query and structural instruction costs one unit.
 
 The admitted sizes have $k \le n$ (the shift degree below the order $n + 1$): the degenerate
-regime of [Audit, B4], in which the program is a copy and one `SmallEig` call of full size, is
-excluded.
+regime of finding B4 of the Ops audit, in which the program is a copy and one `SmallEig` call
+of full size, is excluded.
 
 The every-tape output claim (`NLAlib.Ops.Specification.good`) is empty: `SmallEig` is relational
 ([BanksGarzaVargasSrivastava2022, Definition 1.2]), so the output is not a function of the input

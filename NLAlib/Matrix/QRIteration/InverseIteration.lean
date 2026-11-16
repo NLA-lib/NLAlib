@@ -138,6 +138,86 @@ distance at the angle $\pi/6$ from the nearest net point, largest on one of the 
 noncomputable def hexNetRadius (r₁ r₂ r : ℝ) : ℝ :=
   max (√(r₁ ^ 2 + r ^ 2 - √3 * r₁ * r)) (√(r₂ ^ 2 + r ^ 2 - √3 * r₂ * r))
 
+/-- The six directions have unit modulus. -/
+theorem norm_hexDir (j : Fin 6) : ‖hexDir j‖ = 1 := by
+  rw [hexDir, Complex.norm_exp_ofReal_mul_I]
+
+private theorem hexDir_re_im (j : Fin 6) :
+    (hexDir j).re = Real.cos (Real.pi * j / 3) ∧ (hexDir j).im = Real.sin (Real.pi * j / 3) :=
+  ⟨Complex.exp_ofReal_mul_I_re _, Complex.exp_ofReal_mul_I_im _⟩
+
+/-- One of the six directions is within $\pi/6$ of every complex number: for every
+$u \in \mathbb{C}$ some $j < 6$ has
+$\sqrt3\,\lvert u\rvert \le 2\operatorname{Re}(\overline{e^{i\pi j/3}}\,u)$. -/
+theorem exists_sqrt_three_mul_norm_le_re_conj_hexDir_mul (u : ℂ) :
+    ∃ j : Fin 6, √3 * ‖u‖ ≤ 2 * (starRingEnd ℂ (hexDir j) * u).re := by
+  have h3 : √3 ^ 2 = 3 := Real.sq_sqrt (by norm_num)
+  have h3p : 0 < √3 := by positivity
+  have hcos2 : Real.cos (Real.pi * 2 / 3) = -(1 / 2) := by
+    rw [show Real.pi * 2 / 3 = Real.pi - Real.pi / 3 by ring, Real.cos_pi_sub,
+      Real.cos_pi_div_three]
+  have hsin2 : Real.sin (Real.pi * 2 / 3) = √3 / 2 := by
+    rw [show Real.pi * 2 / 3 = Real.pi - Real.pi / 3 by ring, Real.sin_pi_sub,
+      Real.sin_pi_div_three]
+  have hcos4 : Real.cos (Real.pi * 4 / 3) = -(1 / 2) := by
+    rw [show Real.pi * 4 / 3 = Real.pi / 3 + Real.pi by ring, Real.cos_add_pi,
+      Real.cos_pi_div_three]
+  have hsin4 : Real.sin (Real.pi * 4 / 3) = -(√3 / 2) := by
+    rw [show Real.pi * 4 / 3 = Real.pi / 3 + Real.pi by ring, Real.sin_add_pi,
+      Real.sin_pi_div_three]
+  have hcos5 : Real.cos (Real.pi * 5 / 3) = 1 / 2 := by
+    rw [show Real.pi * 5 / 3 = -(Real.pi / 3) + 2 * Real.pi by ring, Real.cos_add_two_pi,
+      Real.cos_neg, Real.cos_pi_div_three]
+  have hsin5 : Real.sin (Real.pi * 5 / 3) = -(√3 / 2) := by
+    rw [show Real.pi * 5 / 3 = -(Real.pi / 3) + 2 * Real.pi by ring, Real.sin_add_two_pi,
+      Real.sin_neg, Real.sin_pi_div_three]
+  set a := u.re
+  set b := u.im
+  have hu : ‖u‖ ^ 2 = a ^ 2 + b ^ 2 := by rw [Complex.sq_norm, Complex.normSq_apply]; ring
+  -- `√3 ‖u‖ ≤ 2 p` follows from `0 ≤ p` and `3 (a² + b²) ≤ 4 p²`
+  have key : ∀ p : ℝ, 0 ≤ p → 3 * (a ^ 2 + b ^ 2) ≤ 4 * p ^ 2 → √3 * ‖u‖ ≤ 2 * p := by
+    intro p hp h
+    refine (pow_le_pow_iff_left₀ (by positivity) (by positivity) two_ne_zero).mp ?_
+    rw [mul_pow, h3, hu]; linarith
+  have hre : ∀ j : Fin 6, (starRingEnd ℂ (hexDir j) * u).re =
+      Real.cos (Real.pi * j / 3) * a + Real.sin (Real.pi * j / 3) * b := fun j => by
+    obtain ⟨h1, h2⟩ := hexDir_re_im j
+    simp only [Complex.mul_re, Complex.conj_re, Complex.conj_im, h1, h2, a, b]; ring
+  rcases le_or_gt (√3 * |b|) |a| with hab | hab
+  · rcases le_or_gt 0 a with ha | ha
+    · refine ⟨0, key _ ?_ ?_⟩ <;> simp only [hre, Fin.val_zero, Nat.cast_zero, mul_zero,
+        zero_div, Real.cos_zero, Real.sin_zero, one_mul, zero_mul, add_zero]
+      · exact ha
+      · rw [abs_of_nonneg ha] at hab
+        nlinarith [sq_abs b, mul_self_le_mul_self (by positivity) hab]
+    · refine ⟨3, key _ ?_ ?_⟩ <;> simp only [hre, show ((3 : Fin 6) : ℕ) = 3 from rfl,
+        Nat.cast_ofNat, show Real.pi * 3 / 3 = Real.pi by ring, Real.cos_pi, Real.sin_pi,
+        zero_mul, add_zero]
+      · linarith
+      · rw [abs_of_neg ha] at hab
+        nlinarith [sq_abs b, mul_self_le_mul_self (by positivity) hab]
+  · rcases le_or_gt 0 b with hb0 | hb0 <;> rcases le_or_gt 0 a with ha | ha
+    · refine ⟨1, key _ ?_ ?_⟩ <;> simp only [hre, Fin.val_one, Nat.cast_one, mul_one,
+        Real.cos_pi_div_three, Real.sin_pi_div_three]
+      · positivity
+      · rw [abs_of_nonneg ha, abs_of_nonneg hb0] at hab
+        nlinarith [mul_nonneg ha (sub_nonneg.mpr hab.le)]
+    · refine ⟨2, key _ ?_ ?_⟩ <;> simp only [hre, show ((2 : Fin 6) : ℕ) = 2 from rfl,
+        Nat.cast_ofNat, hcos2, hsin2]
+      · nlinarith
+      · rw [abs_of_neg ha, abs_of_nonneg hb0] at hab
+        nlinarith [mul_nonneg (neg_nonneg.mpr ha.le) (sub_nonneg.mpr hab.le)]
+    · refine ⟨5, key _ ?_ ?_⟩ <;> simp only [hre, show ((5 : Fin 6) : ℕ) = 5 from rfl,
+        Nat.cast_ofNat, hcos5, hsin5]
+      · nlinarith
+      · rw [abs_of_nonneg ha, abs_of_neg hb0] at hab
+        nlinarith [mul_nonneg ha (sub_nonneg.mpr hab.le)]
+    · refine ⟨4, key _ ?_ ?_⟩ <;> simp only [hre, show ((4 : Fin 6) : ℕ) = 4 from rfl,
+        Nat.cast_ofNat, hcos4, hsin4]
+      · nlinarith
+      · rw [abs_of_neg ha, abs_of_neg hb0] at hab
+        nlinarith [mul_nonneg (neg_nonneg.mpr ha.le) (sub_nonneg.mpr hab.le)]
+
 /-- **The perturbed six-point net covers an annulus**
 ([BanksGarzaVargasSrivastava2025, Observation 3.2], with the radii as parameters): for
 $0 < r_1 \le r \le r_2$, every $z$ with $r_1 \le \lvert z - s\rvert \le r_2$ and every
@@ -147,7 +227,31 @@ $\lvert s + r e^{i\pi j/3} + w - z\rvert \le \rho + \eta$, where $\rho$ is
 theorem exists_norm_hexNet_add_sub_le {r₁ r r₂ η : ℝ} (h₁ : 0 < r₁) (h₁r : r₁ ≤ r)
     (hr₂ : r ≤ r₂) {s z w : ℂ} (hz₁ : r₁ ≤ ‖z - s‖) (hz₂ : ‖z - s‖ ≤ r₂) (hw : ‖w‖ ≤ η) :
     ∃ j : Fin 6, ‖s + r * hexDir j + w - z‖ ≤ hexNetRadius r₁ r₂ r + η := by
-  sorry
+  obtain ⟨j, hj⟩ := exists_sqrt_three_mul_norm_le_re_conj_hexDir_mul (z - s)
+  refine ⟨j, ?_⟩
+  set u := z - s
+  set t := ‖u‖
+  have hr : 0 ≤ r := h₁.le.trans h₁r
+  -- `‖r e - u‖² = r² + t² - 2 r Re(ē u) ≤ r² + t² - √3 r t`
+  have hsq : ‖(r : ℂ) * hexDir j - u‖ ^ 2 ≤ t ^ 2 + r ^ 2 - √3 * t * r := by
+    have he : (hexDir j).re * (hexDir j).re + (hexDir j).im * (hexDir j).im = 1 := by
+      rw [← Complex.normSq_apply, ← Complex.sq_norm, norm_hexDir, one_pow]
+    have ht : t ^ 2 = u.re * u.re + u.im * u.im := by rw [Complex.sq_norm, Complex.normSq_apply]
+    rw [Complex.sq_norm, Complex.normSq_apply]
+    simp only [Complex.sub_re, Complex.sub_im, Complex.mul_re, Complex.mul_im, Complex.ofReal_re,
+      Complex.ofReal_im, zero_mul, sub_zero, add_zero, Complex.conj_re, Complex.conj_im] at hj ⊢
+    nlinarith [mul_le_mul_of_nonneg_left hj hr]
+  -- the quadratic in `t` is largest at an end of `[r₁, r₂]`
+  have hend : ‖(r : ℂ) * hexDir j - u‖ ≤ hexNetRadius r₁ r₂ r := by
+    unfold hexNetRadius
+    rcases le_or_gt (t + r₁) (√3 * r) with h | h
+    · refine le_max_of_le_left (Real.le_sqrt_of_sq_le ?_)
+      nlinarith [mul_le_mul_of_nonneg_left h (sub_nonneg.mpr hz₁)]
+    · refine le_max_of_le_right (Real.le_sqrt_of_sq_le ?_)
+      nlinarith [mul_le_mul_of_nonneg_left (by linarith : √3 * r ≤ t + r₂) (sub_nonneg.mpr hz₂)]
+  calc ‖s + r * hexDir j + w - z‖ = ‖((r : ℂ) * hexDir j - u) + w‖ := by congr 1; ring
+    _ ≤ ‖(r : ℂ) * hexDir j - u‖ + ‖w‖ := norm_add_le _ _
+    _ ≤ hexNetRadius r₁ r₂ r + η := add_le_add hend hw
 
 /-- **The covering radius on the annulus of a $10\%$ distance estimate**
 ([BanksGarzaVargasSrivastava2025, Observation 3.2], corrected): on
@@ -155,6 +259,11 @@ $\tau/1.1 \le \lvert z - s\rvert \le \tau/0.9$ the six points $s + \tau e^{i\pi 
 $0.561\,\tau$, for $\tau \ge 0$. The paper's $0.57\tau$ for the annulus $[0.9\tau, 1.12\tau]$ is
 not the annulus a $10\%$ estimate gives. -/
 theorem hexNetRadius_le {τ : ℝ} (hτ : 0 ≤ τ) : hexNetRadius (τ / 1.1) (τ / 0.9) τ ≤ 0.561 * τ := by
-  sorry
+  have h3 : (1.73 : ℝ) ≤ √3 := Real.le_sqrt_of_sq_le (by norm_num)
+  have h := mul_le_mul_of_nonneg_right h3 (sq_nonneg τ)
+  unfold hexNetRadius
+  refine max_le ((Real.sqrt_le_iff).mpr ⟨by positivity, ?_⟩)
+    ((Real.sqrt_le_iff).mpr ⟨by positivity, ?_⟩) <;> ring_nf <;> ring_nf at h <;>
+    linarith [sq_nonneg τ]
 
 end NLAlib

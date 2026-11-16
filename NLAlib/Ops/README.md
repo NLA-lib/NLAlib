@@ -80,12 +80,20 @@ or has zero work; a unit-cost primitive can then write the answer (`Examples/Ora
   `AccessModel.Charged.size_le_work`: work is then at least the number of instructions.
 
 `Profiles/Confined.lean` proves these for the standard collections. `scripts/OpsPrograms.lean`
-reports them for every certificate, with its number of hypotheses and whether its budget and
-scratch are closed forms or manifests, and compares the report with
+reports them for every certificate, with its number of hypotheses and whether its count
+budget, its work and span, and its scratch are closed forms or manifests, and compares the report with
 `scripts/ops_certificates.txt`: a recorded certificate may not get weaker, and a new one must be
-confined with a closed-form budget or be added to that file. A family of certificates indexed
+confined with closed-form work or be added to that file. A family of certificates indexed
 by a parameter that fixes the admitted size is not one certificate; the check lists
 parametrised programs.
+
+`OperationCount.lean` gives the closed forms. `Program.countPoly` computes from the fixed
+instrumented tree a polynomial in the sizes, one variable per size, that bounds the number of
+instructions of every run (`Program.exec_work_le_countPoly`); the kernel evaluates it to an
+explicit list of terms. Under a model whose weights are at most one it bounds the work, and
+`Algorithm.withCountPoly` restates a certificate with it. The scalar conjugate gradient, PCG
+and Lanczos certificates are stated this way, e.g. `33 n² k + 157 n k + 242 k + 50 n + 127`
+instructions for conjugate gradient of order `n` with cap `k`.
 
 `Algorithm.ofWp` uses the total statement logic and full structural bounds to construct the
 certificate. `Algorithm.link` takes a fixed implementation table and verifies the entire lower

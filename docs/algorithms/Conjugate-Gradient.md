@@ -5,6 +5,123 @@ dot products and vector updates. NLAlib separates the algorithm's update order, 
 model giving those operations meaning, and the implementations of individual operations.
 The certificates describe the actual stored state and its counted execution.
 
+## Headline statement: scalar conjugate gradient in rounded arithmetic
+
+This is the strongest statement proved about a conjugate gradient program, as one theorem:
+[`exec_scalarProgram_work_le_and_quadForm_le`](../../NLAlib/Krylov/CG/HSCG/Carried/FinitePrecision/ScalarTheorem.lean).
+The other certificates on this page are for other programs or other operation models, and are
+listed under "Checked sources".
+
+**Theorem.** Let A be a real symmetric n × n matrix with spectrum in [a, a′], a > 0, stored
+entry by entry; let b be a real vector of length n; let k be the iteration cap; and write
+κ = a′/a. Run carried Hestenes–Stiefel conjugate gradient from x₀ = 0, with every
+matrix-vector product and vector operation written out as scalar loops, on any scalar machine
+in the standard model with unit roundoff u. Let E ≤ 1/100 be an error allowance with
+
+```text
+((1+u)^(2n) − 1)·√n ≤ E      one row-by-row matrix-vector product
+16·u ≤ E                      one scalar operation; one scaling
+16·((1+u)^n − 1) ≤ E          one sequential dot product of length n
+(1+u)² − 1 ≤ E                one vector update
+3·E·a′ ≤ a
+k²·√k·E·κ² ≤ 10⁻⁵
+```
+
+Then every run succeeds, and:
+
+1. **Cost.** It executes at most `33·n²·k + 157·n·k + 242·k + 50·n + 127` instructions of the
+   scalar model.
+2. **Stopping.** It performs some m ≤ k rounds and leaves an iterate x̂, a residual vector r̂
+   and a direction in memory. If m < k then r̂ = 0 exactly.
+3. **Accuracy.** For every solution x of A x = b,
+
+```text
+(x − x̂)ᵀ A (x − x̂) ≤ 4·((√(2κ+1) − 1)/(√(2κ+1) + 1))^(2m) · xᵀ A x
+                    + 12000·m²·√m·E·κ·a′·‖b‖² / a²
+                    + 135·m²·E·κ·‖b‖² / a
+```
+
+**Scope.** What the statement does and does not say:
+
+- *Every run* means: every admitted input, every interpretation of the seven scalar
+  operations and the comparisons that satisfies the model's contracts, and every tape. The
+  program is one fixed tree for all n and k.
+- *Instructions* are scalar operations, comparisons, and every structural instruction (index
+  arithmetic, operand addressing, loop control, allocation), each of unit cost. The count is
+  an upper bound read off the program; a branch is charged for both sides.
+- The standard model has no overflow or underflow, and comparisons of stored numbers are
+  exact. It is not IEEE arithmetic. Stored numbers are real numbers; a cell is not 64 bits.
+- The accuracy bound is in terms of the rounds m actually performed. Reaching the cap is not
+  a convergence claim, and the program has no tolerance-based stopping test.
+- The first term is the exact conjugate gradient rate at condition number 2κ + 1, not κ. The
+  other two terms are accumulated rounding; at the edge of the window k²√k·E·κ² ≤ 10⁻⁵ they
+  can exceed the initial error, so the bound is informative when E is well inside it.
+- The window limits the cap. For n = 1000 and u ≈ 1.1·10⁻¹⁶ the smallest admissible E is
+  about 7·10⁻¹², set by the matrix-vector condition, and the window then allows roughly
+  k ≤ 45 at κ = 10 and k ≤ 7 at κ = 100. No instance with n > 1 is exhibited in the library.
+- The spectral interval [a, a′] is part of the admitted input: the caller must know it.
+
+**Lean.** The statement, verbatim:
+
+```lean
+theorem exec_scalarProgram_work_le_and_quadForm_le (M : Machine ℝ) (u : ℝ)
+    (hM : StdModel u id M) (hu : 0 ≤ u) (em E : (Fin 2 → ℕ) → ℝ)
+    (hMatvec : ∀ d, domain d → ScalarProducts.roundoff u (d 0) * Real.sqrt (d 0) ≤ em d)
+    (hAccuracy : ∀ d, domain d → Standard.Accuracy (em d) u (E d) (Blas.seq.err u) (d 0))
+    (ha : ∀ d, domain d → 0 < lower d)
+    (hprec : ∀ d, domain d → 3 * E d * upper d ≤ lower d)
+    (hwindow : ∀ d, domain d → (d 1 : ℝ) ^ 2 * Real.sqrt (d 1) * E d *
+      (upper d / lower d) ^ 2 ≤ 1 / 10 ^ 5)
+    {d : Fin 2 → ℕ} (hd : domain d) (x : (problem lower upper domain admitted supply).Input d)
+    (I : Interp ScalarOp CmpTst ℝ)
+    (hI : (RoundedScalarBlas.model (problem lower upper domain admitted supply) M).contracts
+      d x I) (τ : Tape ℝ) :
+    ∃ st, exec scalarProgram I RoundedScalarBlas.resources
+        (problem lower upper domain admitted supply).formats τ d
+        ((problem lower upper domain admitted supply).initial d x) = some st ∧
+      RoundedScalarBlas.resources.work st.cost ≤
+        33 * d 0 ^ 2 * d 1 + 157 * d 0 * d 1 + 242 * d 1 + 50 * d 0 + 127 ∧
+      ∃ m ≤ d 1, ∃ (s : CGState ℝ (Fin (d 0))) (rho : ℝ),
+        StoresValues id (d 0) (2, 0) (3, 0) (4, 0) (5, 0) s rho st.mem ∧
+        (m < d 1 → s.r = 0) ∧
+        ∀ xs : Fin (d 0) → ℝ, inputMatrix x *ᵥ xs = inputRhs x →
+          quadForm (inputMatrix x) (xs - s.x) ≤
+            4 * ((Real.sqrt (2 * (upper d / lower d) + 1) - 1) /
+              (Real.sqrt (2 * (upper d / lower d) + 1) + 1)) ^ (2 * m) *
+                quadForm (inputMatrix x) xs +
+            2 * ‖WithLp.toLp 2 (inputRhs x)‖ ^ 2 *
+              (6000 * (m : ℝ) ^ 2 * Real.sqrt m * E d * (upper d / lower d) * upper d) /
+                lower d ^ 2 +
+            135 * (m : ℝ) ^ 2 * E d * (upper d / lower d) *
+              (‖WithLp.toLp 2 (inputRhs x)‖ ^ 2 / lower d)
+```
+
+**Translation notes.**
+
+| In the theorem | In the Lean | Where |
+|---|---|---|
+| n, k | `d 0`, `d 1`, the two sizes of the program | `d : Fin 2 → ℕ` |
+| which (n, k) are covered | `domain d`, a parameter: the theorem holds for whatever set of sizes satisfies its hypotheses | `hd : domain d` |
+| A, b | `inputMatrix x`, `inputRhs x`: the words of buffers 0 and 1, read as a matrix and a vector | [`ScalarTheorem.lean`](../../NLAlib/Krylov/CG/HSCG/Carried/FinitePrecision/ScalarTheorem.lean) |
+| A symmetric with spectrum in [a, a′] | part of being an input: `accepts lower upper d raw rhs` is `Aᵀ = A ∧ spectrum ℝ A ⊆ Set.Icc (lower d) (upper d)`; a, a′ are `lower d`, `upper d` | [`StoredCertificate.lean`](../../NLAlib/Krylov/CG/HSCG/Carried/FinitePrecision/StoredCertificate.lean) |
+| scalar machine in the standard model | `M : Machine ℝ` with `hM : StdModel u id M` | [`Catalog/Scalar.lean`](../../NLAlib/Ops/Catalog/Scalar.lean) |
+| the first four conditions on E, and E ≤ 1/100 | `hMatvec` and `hAccuracy`; `em d` is the matrix-vector allowance, `Blas.seq.err u` the sequential dot, update and scaling errors | [`Profiles/Standard.lean`](../../NLAlib/Ops/Profiles/Standard.lean), [`Profiles/BlasCert.lean`](../../NLAlib/Ops/Profiles/BlasCert.lean) |
+| E may depend on the sizes | `E d` | |
+| every interpretation meeting the model | `I` with `hI : (RoundedScalarBlas.model …).contracts d x I` | [`Profiles/RoundedScalarBlas.lean`](../../NLAlib/Ops/Profiles/RoundedScalarBlas.lean) |
+| the run succeeds | `exec scalarProgram … = some st` | [`Ops/Exec.lean`](../../NLAlib/Ops/Exec.lean) |
+| number of instructions | `RoundedScalarBlas.resources.work st.cost`; every weight of these resources is 1 | [`OperationCount.lean`](../../NLAlib/Krylov/CG/HSCG/Carried/FinitePrecision/OperationCount.lean) |
+| x̂, r̂, the direction and the retained scalar are in memory | `StoresValues id n (2,0) (3,0) (4,0) (5,0) s rho st.mem`: buffers 2, 3, 4 hold `s.x`, `s.r`, `s.p` and buffer 5 holds `rho` | [`State.lean`](../../NLAlib/Krylov/CG/HSCG/Carried/FinitePrecision/State.lean) |
+| (x − x̂)ᵀ A (x − x̂) | `quadForm (inputMatrix x) (xs - s.x)` | |
+| 12000·m²·√m·E·κ·a′·‖b‖²/a² | `2 * ‖b‖ ^ 2 * (6000 * m ^ 2 * √m * E d * κ * upper d) / lower d ^ 2` | |
+
+The Lean statement says three things the theorem above leaves implicit: the tape `τ` is
+arbitrary (the program draws nothing); the theorem is stated for a family `E`, `em`, `lower`,
+`upper` indexed by the sizes; and the three conclusions are about one execution state `st`.
+The proof only unfolds the certificate
+[`scalarCountedAlgorithm`](../../NLAlib/Krylov/CG/HSCG/Carried/FinitePrecision/OperationCount.lean);
+the energy bound is `NLAlib.CGRun.quadForm_sub_x_le_four_mul_pow_add` for the run the program
+executes.
+
 ## Algorithms and stopping rules
 
 | Algorithm | Distinguishing choice | Exact total result |

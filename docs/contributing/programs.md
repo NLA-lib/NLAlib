@@ -24,8 +24,10 @@ while choosing a meaningful statement and faithful primitive meanings remains a 
 
 A model of a published certificate is confined (`Ops.AccessModel.Confined`), and is uniform
 (`Ops.AccessModel.Uniform`) unless it declares an oracle, which the certificate's documentation
-names. State a closed-form budget where one is proved; a budget defined as `staticCost` of the
-program is a manifest and is reported as such. `scripts/OpsPrograms.lean` reports these
+names. State closed-form work and span: `Ops.Program.countPoly` computes an explicit polynomial
+in the sizes from the fixed tree and `Ops.Algorithm.withCountPoly` restates a certificate with
+it. Work defined as the weight of `staticCost` of the program is a manifest and is reported as
+such. `scripts/OpsPrograms.lean` reports these
 properties for every certificate against `scripts/ops_certificates.txt`
 ([Ops README](../../NLAlib/Ops/README.md), "What the model must also satisfy").
 

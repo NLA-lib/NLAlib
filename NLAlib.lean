@@ -1178,6 +1178,7 @@ public import NLAlib.Ops.Profiles.StoredDense
 public import NLAlib.Ops.Profiles.StoredDenseRounded
 public import NLAlib.Ops.Profiles.StoredScalar
 public import NLAlib.Ops.Rules
+public import NLAlib.Ops.SelectedWork
 public import NLAlib.Ops.Static
 public import NLAlib.Ops.Store
 public import NLAlib.Ops.StoreSimp

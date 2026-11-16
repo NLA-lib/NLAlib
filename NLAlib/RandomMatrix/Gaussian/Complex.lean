@@ -593,7 +593,30 @@ theorem measureReal_specNorm_ge_mul_le_of_hasLaw_complexGaussianMatrix
     (hφ : 0 < φ) (hφ1 : φ ≤ 1) :
     μ.real {ω | γ * (2 * √2 + √(Real.log φ⁻¹ / Fintype.card n)) ≤
       specNorm ((γ / √(Fintype.card n : ℝ)) • G ω)} ≤ φ := by
-  sorry
+  rcases Nat.eq_zero_or_pos (Fintype.card n) with hn | hn
+  · rw [show {ω | γ * (2 * √2 + √(Real.log φ⁻¹ / Fintype.card n)) ≤
+        specNorm ((γ / √(Fintype.card n : ℝ)) • G ω)} = ∅ from
+      Set.eq_empty_of_forall_notMem fun ω hω => ?_, measureReal_empty]
+    · exact hφ.le
+    simp only [Set.mem_ofPred_eq, hn, Nat.cast_zero, Real.sqrt_zero, div_zero, zero_smul,
+      specNorm_zero] at hω
+    nlinarith [Real.sqrt_nonneg 2, Real.one_lt_sqrt_two]
+  have : IsProbabilityMeasure μ := hG.isProbabilityMeasure_iff.2 inferInstance
+  have hN : (0 : ℝ) < √(Fintype.card n : ℝ) := Real.sqrt_pos.mpr (by exact_mod_cast hn)
+  have hL : 0 ≤ Real.log φ⁻¹ := Real.log_nonneg (one_le_inv₀ hφ |>.mpr hφ1)
+  have h := measureReal_specNorm_ge_add_le_of_hasLaw_complexGaussianMatrix hG
+    (Real.sqrt_nonneg (Real.log φ⁻¹))
+  rw [Real.sq_sqrt hL, Real.exp_neg, Real.exp_log (inv_pos.mpr hφ), inv_inv] at h
+  refine (measureReal_mono fun ω hω => ?_).trans h
+  simp only [Set.mem_ofPred_eq] at hω ⊢
+  rw [specNorm_real_smul, abs_of_pos (div_pos hγ hN), div_mul_eq_mul_div,
+    le_div_iff₀ hN] at hω
+  rw [Real.sqrt_div' _ (Nat.cast_nonneg _)] at hω
+  have e : γ * (2 * √2 + √(Real.log φ⁻¹) / √(Fintype.card n : ℝ)) * √(Fintype.card n : ℝ) =
+      γ * (√2 * (√(Fintype.card n : ℝ) + √(Fintype.card n : ℝ)) + √(Real.log φ⁻¹)) := by
+    field_simp; ring
+  rw [e] at hω
+  exact le_of_mul_le_mul_left hω hγ
 
 end Laws
 

@@ -218,14 +218,17 @@ comparisons, a `SmallEig` kernel meeting `NLAlib.ShiftedQR.IsRandomSmallEig` and
 disk sampler, for any $(n + 1) \times (n + 1)$ matrix $\mathbf{H}$ (no structure assumed), any
 $B, \Gamma, \Sigma, \delta, \varphi$ and $k$ the degree of (eqn:setk) at $4B$, the run of
 `NLAlib.ShiftedQR.roundedShQR` from a memory holding the input (`NLAlib.ShiftedQR.ShQRInput`)
-succeeds on every tape: the worklist and the decoupling loop are capped, every bounded index read
-is an exact natural literal within its bound, and every operation succeeds on stored operands
+succeeds on every tape and writes only the matrix, the output and the failure word
+(`NLAlib.ShiftedQR.shqrFp`): the worklist and the decoupling loop are capped, every bounded
+index read is an exact natural literal within its bound, and every operation succeeds on stored
+operands
 (`NLAlib.ShiftedQR.solveRounded_terminates`,
 `NLAlib.ShiftedQR.roundedDecouple_terminatingDecoupler`). No unit roundoff, class or
 precision hypothesis is needed. [BanksGarzaVargasSrivastava2022, Theorem 6.3]; its loop is uncapped,
 and its running time is bounded only with probability $1 - \varphi$. Correctness is only the
 probability statement (`NLAlib.ShiftedQR.roundedShQR_measureReal_not_spectrum_le`); no all-tape
-backward error is claimed. -/
+backward error is claimed: on a bad window `SmallEig` may return any words, and the worklist
+stores them with the failure word $0$. -/
 theorem roundedShQR_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ}
     {n : ℕ} (hS : IsScalar Mch I) (hL : IsIndexLit Mch I)
     (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
@@ -235,8 +238,9 @@ theorem roundedShQR_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ}
     {B Γ S δ φ : ℝ} (hk : k = shqrDegree (4 * B))
     {a t p out f : ℕ × ℕ} {μ : Mem ℝ} (hin : ShQRInput k B Γ S δ φ a t p out f H μ)
     (τ : Tape ℝ) :
-    Wp .total I τ (roundedShQR (O := O) (Q := Q)).body
-      (Env.frame (shqrDims n k B Γ S δ φ) [a, t, p, out, f]) (fun _ => True) μ := by
+    Writes .total I τ (roundedShQR (O := O) (Q := Q)).body
+      (Env.frame (shqrDims n k B Γ S δ φ) [a, t, p, out, f]) (shqrFp n a out f) (fun _ => True)
+      μ := by
   have hkq : k = 2 ^ Nat.log 2 k := by
     rw [hk, shqrDegree, Nat.log_pow (by norm_num)]
   have hD : TerminatingDecoupler n k (shqrCap n B Γ S δ) (shqrParams n k B Γ S δ φ)
@@ -245,8 +249,8 @@ theorem roundedShQR_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ}
       hNat hC hQ hSE hDisk hkq (shqrLoopThreshold n k B Γ S δ φ) (shqrRadius n B Γ S δ)
     (shqrScanThreshold n k B Γ S δ φ) 0.2 (4 * B) (shqrAlpha k (4 * B)) (shqrEps k (4 * B))
   obtain ⟨hl, hr, ha, hA, ht, hp⟩ := hin
-  exact (solveRounded_terminates hS hL hNat hQ hC _ hD _ hSE.terminatingLeaf (tape := τ) hl hr
-    ha hA ht hp).wp fun _ _ _ => trivial
+  exact solveRounded_terminates hS hL hNat hQ hC _ hD _ hSE.terminatingLeaf (tape := τ) hl hr
+    ha hA ht hp
 
 /-- **The bits of precision** ([BanksGarzaVargasSrivastava2022, Theorem 1.4], corrected: the
 printed argument $nB/(\delta\Gamma\varphi)$ is not invariant under scaling of $\mathbf{H}$, and

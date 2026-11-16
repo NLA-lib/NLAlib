@@ -35,15 +35,16 @@ by $1$; every other primitive, query and structural instruction costs one unit.
 The admitted sizes have $k \le n$ (the shift degree below the order $n + 1$): the degenerate
 regime $k > n$, in which the program is a copy and one `SmallEig` call of full size, is excluded.
 
-The every-tape output claim (`NLAlib.Ops.Specification.good`) is empty. The output is not a
-function of the input and the tape, since `SmallEig` is relational
-([BanksGarzaVargasSrivastava2022, Definition 1.2]); and no predicate on the tape alone implies a
-correct output for every interpretation of the model with probability at least $1 - \varphi$,
-since the positions of the windows the program reads, and the matrices that define their bad
-sets, depend on the earlier draws and on the kernel's outputs. Success and every resource bound
-hold on every tape; the spectrum claim is the postcondition of
-`NLAlib.Ops.Specification.Accepts`, bounded through the probabilistic program logic
-(`NLAlib.Ops.Algorithm.measureReal_not_accepts_le_of_wp`).
+The every-tape output claim (`NLAlib.Ops.Specification.good`) is the frame: the run writes only
+the matrix, the output and the failure word. No accuracy claim holds on every tape, not even
+one conditional on the failure word $0$: on a window in its bad set `SmallEig` may return any
+words, and a leaf block stores them as its eigenvalues with the failure word $0$. Nor does a
+predicate on the tape alone give accuracy for every interpretation of the model with probability
+at least $1 - \varphi$: the positions of the windows the program reads, and the matrices that
+define their bad sets, depend on the earlier draws and on the kernel's outputs. The spectrum
+claim is the postcondition of `NLAlib.Ops.Specification.Accepts` in
+`NLAlib.ShiftedQR.roundedShQR_algorithm_measureReal_not_accepts_le`, bounded through the
+probabilistic program logic (`NLAlib.Ops.Algorithm.measureReal_not_accepts_le_of_wp`).
 
 ## Main definitions
 
@@ -470,7 +471,8 @@ theorem shqrProblem_initialBytes (d : Fin 4 → ℕ) (x : (shqrProblem Mch admit
   simp [shqrProblem, ShQRData.buffers, List.ofFn_succ, shqrInputWords, ← x.val.1.words_eq,
     Nat.add_assoc]
 
-/-- The specification with the manifest work and span (the costs of the static count). -/
+/-- The specification with the manifest work and span (the costs of the static count) and the
+frame as the every-tape output claim. -/
 noncomputable def shqrManifestSpecification (Mch : Machine ℝ) (admitted : ∃ d, ShQRSizes Mch d)
     (R : ResourceModel ShQROp Tst) : Specification ShQROp Tst (shqrProblem Mch admitted) where
   budget := staticCost shqrProgram
@@ -478,17 +480,21 @@ noncomputable def shqrManifestSpecification (Mch : Machine ℝ) (admitted : ∃ 
   work d := R.work (staticCost shqrProgram d)
   span d := R.span (staticCost shqrProgram d)
   memory d := shqrInputWords d + staticPeak R shqrProgram d
-  good _ _ _ _ _ := True
+  good d x _ _ m := (shqrProblem Mch admitted).initial d x |>.store.EqOff
+    (shqrFp (d 0) (0, 0) (3, 0) (4, 0)) m.store
 
-/-- The program terminates on every admitted input, tape and interpretation of the model. -/
+/-- The program terminates on every admitted input, tape and interpretation of the model, and
+writes only the matrix, the output and the failure word. -/
 theorem shqrProgram_wp {s : ℕ} {W : ℕ → ℕ}
     {Bad : (d : ℕ) → Matrix (Fin d) (Fin d) ℂ → Set (Fin (W d) → ℝ)}
     (hBad : ∀ d B, MeasurableSet (Bad d B)) {β : ℝ} {hβ : 0 ≤ β} {R : ResourceModel ShQROp Tst}
     {d : Fin 4 → ℕ} (hd : ShQRSizes Mch d) (x : (shqrProblem Mch admitted).Input d)
     {I : Interp ShQROp Tst ℝ}
     (hI : (shqrModel (shqrProblem Mch admitted) Mch s W Bad hβ R).contracts d x I)
-    (τ : Tape ℝ) {Q : Mem ℝ → Prop} (hQ : ∀ m, Q m) :
-    Wp .total I τ shqrProgram.body (Program.environment (b := 5) d) Q
+    (τ : Tape ℝ) :
+    Wp .total I τ shqrProgram.body (Program.environment (b := 5) d)
+      (fun m => ((shqrProblem Mch admitted).initial d x).store.EqOff
+        (shqrFp (d 0) (0, 0) (3, 0) (4, 0)) m.store)
       ((shqrProblem Mch admitted).initial d x) := by
   obtain ⟨hS, hL, hC, hQ', hSE, hDisk⟩ := shqrModel_laws hI
   have hSE' : IsRandomSmallEig (fun _ => Measure.dirac 0) s β 1 I :=
@@ -496,7 +502,7 @@ theorem shqrProgram_wp {s : ℕ} {W : ℕ → ℕ}
   have hin := shqrProblem_initial_input (admitted := admitted) d x
   have hT := roundedShQR_terminates (O := ShQROp) (Q := Tst) hS hL hd.1 hQ' hC hSE' hDisk
     x.val.1.degree_eq hin τ
-  refine wp_frame ?_ ?_ hin.1 (hT.mono fun m _ => hQ m)
+  refine wp_frame ?_ ?_ hin.1 (hT.wp fun m h _ => h)
   · simp [Program.environment, IExp.evalList, IExp.eval, shqrDims, x.val.1.words_eq,
       x.val.1.cap_eq, List.ofFn_succ]
   · simp [Program.environment, Operand.evalList, Operand.eval, IExp.eval, List.ofFn_succ]
@@ -521,13 +527,14 @@ private noncomputable def roundedShQRManifestAlgorithm (Mch : Machine ℝ)
       (shqrManifestSpecification Mch admitted
         (shqrResources kernelWork kernelSpan kernelWorkspace hspan)) :=
   Algorithm.ofWp shqrProgram (shqrProgram_wellTyped kernelWork kernelSpan kernelWorkspace hspan)
-    (fun _ hd x _ hI τ => shqrProgram_wp hBad hd x hI τ fun _ _ _ => trivial)
+    (fun _ hd x _ hI τ => (shqrProgram_wp hBad hd x hI τ).mono fun _ h _ _ => h)
     (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl)
     (fun d _ x => by rw [shqrProblem_initialBytes]; exact le_rfl)
 
 /-- **The specification of the rounded shifted QR algorithm**: the budget, scratch and resident
 memory of the static count, the work `NLAlib.ShiftedQR.shqrWork kernelWork` and the span
-`NLAlib.ShiftedQR.shqrWork kernelSpan`, and no every-tape output claim. -/
+`NLAlib.ShiftedQR.shqrWork kernelSpan`, and on every tape the frame: the run writes only the
+matrix, the output and the failure word. -/
 noncomputable def shqrSpecification (Mch : Machine ℝ) (admitted : ∃ d, ShQRSizes Mch d)
     (kernelWork kernelSpan kernelWorkspace : EigenvalueKernelOp → List ℕ → ℕ)
     (hspan : ∀ k d, kernelSpan k d ≤ kernelWork k d) :
@@ -541,7 +548,10 @@ noncomputable def shqrSpecification (Mch : Machine ℝ) (admitted : ∃ d, ShQRS
 `NLAlib.ShiftedQR.shqrProgram`, over the model `NLAlib.ShiftedQR.shqrModel` with the costs
 `NLAlib.ShiftedQR.shqrResources`, succeeds on every admitted input, interpretation of the model
 and tape, within the static budget, scratch and memory, with work at most
-`NLAlib.ShiftedQR.shqrWork kernelWork` and span at most `NLAlib.ShiftedQR.shqrWork kernelSpan`.
+`NLAlib.ShiftedQR.shqrWork kernelWork` and span at most `NLAlib.ShiftedQR.shqrWork kernelSpan`,
+writing only the matrix, the output and the failure word. The output's accuracy holds with
+probability at least $1 - \varphi$
+(`NLAlib.ShiftedQR.roundedShQR_algorithm_measureReal_not_accepts_le`).
 Algorithm: shifted-qr (run model) -/
 noncomputable def roundedShQRAlgorithm (Mch : Machine ℝ)
     (admitted : ∃ d, ShQRSizes Mch d) (s : ℕ) (W : ℕ → ℕ)

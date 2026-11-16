@@ -6,6 +6,182 @@ the implementation of those operations, and the mathematical conclusions about s
 An eigenvalue theorem interprets the stored tridiagonal mathematically; the Lanczos program
 itself does not run an eigensolver.
 
+## Headline statements: scalar Lanczos in rounded arithmetic
+
+Two theorems, one per program, are the strongest statements proved about a Lanczos program.
+The other certificates on this page are for other operation models and are listed under
+"Canonical certificates".
+
+Both are for a real symmetric n × n matrix A stored entry by entry, a real vector b of length
+n and an iteration cap k, on any scalar machine in the standard model with unit roundoff u,
+with every matrix-vector product and vector operation written out as scalar loops. Both use an
+error allowance E ≤ 1/100 with
+
+```text
+((1+u)^(2n) − 1)·√n ≤ E      one row-by-row matrix-vector product
+(1+u)^n − 1 ≤ E               one sequential dot product of length n
+(1+u)² − 1 ≤ E                one vector update
+u ≤ E                         one scaling
+```
+
+In both, *every run* means every admitted input, every interpretation of the scalar
+operations and comparisons that satisfies the model's contracts, and every tape; the program
+is one fixed tree for all n and k; *instructions* are scalar operations, comparisons and every
+structural instruction, each of unit cost, counted by an upper bound read off the program; and
+the standard model has no overflow or underflow and exact comparisons, so it is not IEEE
+arithmetic.
+
+### Lanczos without reorthogonalization
+
+[`exec_scalarProgram_work_le_and_ritzResidual`](../../NLAlib/Krylov/Lanczos/RoundedScalarTheorem.lean).
+
+**Theorem.** Every run of the Lanczos recurrence (Paige's ordering) started from b succeeds,
+and:
+
+1. **Cost.** It executes at most `33·n²·k + 153·n·k + 302·k + 58·n + 179` instructions.
+2. **Output.** It performs some m ≤ k steps and leaves in memory v₁, …, v₍m+1₎ (zeros after
+   them), α₁, …, αₘ, β₁, …, βₘ and the computed norm of b. These are the values of a Lanczos
+   recurrence in which each operation is exact up to an error of at most E times its operands
+   and |‖vⱼ‖² − 1| ≤ E. If m < k, the last computed βₘ (for m = 0, the computed norm of b) is
+   exactly zero.
+3. **Ritz residuals.** If k > 0, b ≠ 0 and k·E ≤ 1/100, there is a length q, 1 ≤ q ≤ k, with
+   stored β_q = 0 when q < k, such that every θ and unit vector y with T_q y = θ y satisfy
+
+```text
+‖A V_q y − θ V_q y‖ ≤ √(1+E)·β_q·|y_q| + 6·q·√q·E·‖A‖₂
+```
+
+**Scope.** No orthogonality of the stored vectors is claimed. V_q y need not be close to a
+unit vector, so the residual bound alone does not place θ near an eigenvalue of A. In the
+proof q is the number m of steps performed; the statement does not record that.
+
+**Lean.** The conclusion, verbatim (hypotheses `hM : StdModel u id M`, `hu : 0 ≤ u`,
+`hprec : ∀ d, domain d → Lanczos.Rounded.Precision … (E d) (Blas.seq.err u) (d 0)`, an input
+`x`, an interpretation `I` meeting `RoundedScalarBlas.model`, a tape `τ`):
+
+```lean
+    ∃ st, exec scalarProgram I RoundedScalarBlas.resources (problem domain admitted).formats τ d
+        ((problem domain admitted).initial d x) = some st ∧
+      RoundedScalarBlas.resources.work st.cost ≤
+        33 * d 0 ^ 2 * d 1 + 153 * d 0 * d 1 + 302 * d 1 + 58 * d 0 + 179 ∧
+      ∃ vs cs, st.mem.store.readBlock 2 0 ((d 1 + 1) * d 0) = some vs ∧
+        st.mem.store.readBlock 3 0 (2 * d 1 + 2) = some cs ∧
+        Lanczos.Rounded.Output id (StoredProblem.matrix x) (decv id (d 0) x.val.1.2) (E d) (d 1)
+          vs cs ∧
+        (0 < d 1 → decv id (d 0) x.val.1.2 ≠ 0 → (d 1 : ℝ) * E d ≤ 1 / 100 →
+          Lanczos.Rounded.RitzResidual id (StoredProblem.matrix x) (E d) (d 1) vs cs)
+```
+
+**Translation notes.**
+
+| In the theorem | In the Lean | Where |
+|---|---|---|
+| n, k | `d 0`, `d 1`; the covered sizes are the parameter `domain` | |
+| A, b | `StoredProblem.matrix x` (buffer 0), `decv id (d 0) x.val.1.2` (buffer 1) | [`StoredProblem.lean`](../../NLAlib/Krylov/Lanczos/StoredProblem.lean) |
+| A symmetric | part of being an input (`StoredProblem.extra true`) | same file |
+| the conditions on E | `Lanczos.Rounded.Precision em u E e n` with `em = ScalarProducts.roundoff u n * √n` and `e = Blas.seq.err u`; it also asks `e.dot n + u * (1 + e.dot n) < 1` | [`RoundedPrecision.lean`](../../NLAlib/Krylov/Lanczos/RoundedPrecision.lean) |
+| the stored vectors and coefficients | `vs` is buffer 2, (k+1)·n words, vector j at offset (j−1)·n; `cs` is buffer 3, 2k+2 words: α at 0…k−1, β₀…β_k at k…2k, the norm of b at 2k+1 (`PackedOutput`) | [`RoundedOutput.lean`](../../NLAlib/Krylov/Lanczos/RoundedOutput.lean) |
+| item 2 | `Lanczos.Rounded.Output`: `∃ done ≤ cap, ∃ z, Outcome A rhs E done z ∧ PackedOutput … ∧ (done < cap → … = 0)`; `Outcome` holds the `LanczosRun` | [`RoundedState.lean`](../../NLAlib/Krylov/Lanczos/RoundedState.lean), [`LanczosRun.lean`](../../NLAlib/Krylov/FinitePrecision/LanczosRun.lean) |
+| item 3 | `Lanczos.Rounded.RitzResidual`; `6·q·√q` is `lanczosResidualFactor q` | [`RoundedRitz.lean`](../../NLAlib/Krylov/Lanczos/RoundedRitz.lean) |
+| V_q, T_q | `basisMatrix id n vs q`, `tridiagonalMatrix id k cs q` | [`Spec.lean`](../../NLAlib/Krylov/Lanczos/Spec.lean) |
+
+The theorem joins the certificate
+[`scalarCountedAlgorithm`](../../NLAlib/Krylov/Lanczos/RoundedOperationCount.lean) with
+`Lanczos.Rounded.Output.ritzResidual` applied to the output of the same run.
+
+### Lanczos with full reorthogonalization
+
+[`exec_scalarProgram_work_le_and_spectral`](../../NLAlib/Krylov/Lanczos/Reorth/RoundedScalarTheorem.lean).
+
+**Theorem.** Every run of the Lanczos recurrence started from b, in which each new vector is
+orthogonalized twice against all stored vectors before it is normalized, succeeds, and:
+
+1. **Cost.** It executes at most
+   `33·n²·k + 92·n·k² + 152·k² + 269·n·k + 581·k + 58·n + 179` instructions.
+2. **Output.** It performs some m ≤ k steps and leaves in memory v₁, …, v₍m+1₎, the
+   coefficients αⱼ, βⱼ and, for each step, the norm νⱼ of the new vector before
+   reorthogonalization. If m < k, the last computed βₘ (or the computed norm of b) is exactly
+   zero.
+3. **Orthogonality and Ritz values.** Take any threshold 0 < τ ≤ 1 and tolerances
+   0 ≤ η, c ≤ 1/100 that satisfy the three conditions below. Let r ≤ m be the number of
+   leading steps with βⱼ > τ·νⱼ, let δ = 2(2c + 2(η+c)²/τ + E) + E + 3c and
+   e = 100·(r+1)·δ·‖A‖₂. If r ≥ 1, then with θ₀ ≥ … ≥ θ₍r−1₎ the eigenvalues of T_r,
+
+```text
+‖V_rᵀ V_r − I‖₂ ≤ η
+λ₍i+n−r₎(A) − e ≤ θᵢ ≤ λᵢ(A) + e        for i < r
+```
+
+The three conditions involve only n, k, u and E:
+
+```text
+for j < k:  (j+2)·ε_dot·(1+η)² + ((1+ε_axpy)^(j+1) − 1)·(1 + (j+1)·(1+ε_dot)·(1+η)²) ≤ c
+√(3(k+1)) · 2(2c + 2(η+c)²/τ + E) ≤ η
+δ ≤ 1/100
+```
+
+with ε_dot = (1+u)^n − 1 and ε_axpy = (1+u)² − 1.
+
+**Scope.** The bounds hold on the prefix of r steps without severe cancellation in the
+reorthogonalization (βⱼ > τ·νⱼ), which is read off the stored output. The prefix can be
+shorter than the run, and is empty when β₁ ≤ τ·ν₁; nothing is claimed beyond it. τ, η and c
+are parameters of the analysis, not of the program: the statement holds for every admissible
+choice, and it does not say which choices are admissible at a given n, k and u. The
+eigenvalues are indexed from 0 in non-increasing order.
+
+**Lean.** After the same first two conjuncts as above (with cost
+`33 * d 0 ^ 2 * d 1 + 92 * d 0 * d 1 ^ 2 + 152 * d 1 ^ 2 + 269 * d 0 * d 1 + 581 * d 1 + 58 * d 0 + 179`
+and coefficient block `3 * d 1 + 2`), the conclusion is, verbatim:
+
+```lean
+        ∀ thr η c : ℝ, 0 < thr → thr ≤ 1 → 0 ≤ η → η ≤ 1 / 100 → 0 ≤ c → c ≤ 1 / 100 →
+          (∀ j < d 1, (j + 1 + 1 : ℝ) * (Blas.seq.err u).dot (d 0) * (1 + η) ^ 2 +
+            ((1 + (Blas.seq.err u).axpy) ^ (j + 1) - 1) *
+              (1 + (j + 1 : ℝ) * (1 + (Blas.seq.err u).dot (d 0)) * (1 + η) ^ 2) ≤ c) →
+          Real.sqrt (3 * ((d 1 : ℝ) + 1)) * (2 * (2 * c + 2 * (η + c) ^ 2 / thr + E d)) ≤ η →
+          2 * (2 * c + 2 * (η + c) ^ 2 / thr + E d) + E d + 3 * c ≤ 1 / 100 →
+          ∃ done ≤ d 1, ∃ z : Lanczos.Rounded.Values (d 0), ∃ nus : ℕ → ℝ,
+            Lanczos.Reorth.Rounded.History id (StoredProblem.matrix x)
+              (decv id (d 0) x.val.1.2) (ScalarProducts.roundoff u (d 0) * Real.sqrt (d 0)) u
+              (E d) (Blas.seq.err u) done z nus ∧
+            Lanczos.Reorth.Rounded.PackedOutput id (d 1) done z nus vs cs ∧
+            (done < d 1 → (if done = 0 then z.initialNorm else z.beta done) = 0) ∧
+            ∃ r ≤ done, (∀ j < r, thr * nus (j + 1) < z.beta (j + 1)) ∧
+              (r < done → z.beta (r + 1) ≤ thr * nus (r + 1)) ∧
+              (r = 0 ∨
+                (specNorm ((Lanczos.basisMatrix id (d 0) vs r)ᵀ *
+                    Lanczos.basisMatrix id (d 0) vs r - 1) ≤ η ∧
+                  ∀ i < r,
+                    eigenvalue (StoredProblem.matrix x) (i + (d 0 - r)) -
+                        100 * ((r : ℝ) + 1) *
+                          (2 * (2 * c + 2 * (η + c) ^ 2 / thr + E d) + E d + 3 * c) *
+                          specNorm (StoredProblem.matrix x) ≤
+                      eigenvalue (Lanczos.tridiagonalMatrix id (d 1) cs r) i ∧
+                    eigenvalue (Lanczos.tridiagonalMatrix id (d 1) cs r) i ≤
+                      eigenvalue (StoredProblem.matrix x) i +
+                        100 * ((r : ℝ) + 1) *
+                          (2 * (2 * c + 2 * (η + c) ^ 2 / thr + E d) + E d + 3 * c) *
+                          specNorm (StoredProblem.matrix x)))
+```
+
+**Translation notes.** As for the first theorem, and:
+
+| In the theorem | In the Lean | Where |
+|---|---|---|
+| m, the steps performed | `done` | |
+| τ | `thr` (the tape is `τ` in the Lean) | |
+| αⱼ, βⱼ, νⱼ, vⱼ | `z.alpha j`, `z.beta j`, `nus j`, `z.v j`, tied to the stored words `vs`, `cs` by `PackedOutput` | [`Reorth/RoundedOutput.lean`](../../NLAlib/Krylov/Lanczos/Reorth/RoundedOutput.lean) |
+| item 2 | `History`: the initialization followed by `done` executed steps, each with its local rounding witnesses | [`Reorth/RoundedState.lean`](../../NLAlib/Krylov/Lanczos/Reorth/RoundedState.lean) |
+| r is the longest admissible prefix | the two clauses `∀ j < r, thr * nus (j+1) < z.beta (j+1)` and `r < done → z.beta (r+1) ≤ thr * nus (r+1)` | |
+| the three conditions | the three implications before `∃ done`; `(Blas.seq.err u).dot n` is ε_dot and `.axpy` is ε_axpy | [`Profiles/BlasCert.lean`](../../NLAlib/Ops/Profiles/BlasCert.lean) |
+| λᵢ(A), θᵢ | `eigenvalue A i`, `eigenvalue (tridiagonalMatrix id k cs r) i` | |
+
+The theorem joins the certificate
+[`scalarCountedAlgorithm`](../../NLAlib/Krylov/Lanczos/Reorth/RoundedOperationCount.lean)
+with `Lanczos.Reorth.Rounded.Output.exists_spectral_prefix` and, for the run it exhibits,
+`NLAlib.LanczosReorthRun.specNorm_transpose_mul_self_sub_one_le` and
+`NLAlib.LanczosReorthRun.eigenvalue_sub_le_eigenvalue_tridiagonal`.
+
 ## Algorithm variants
 
 | Variant | Order of an active round | Additional stored output |

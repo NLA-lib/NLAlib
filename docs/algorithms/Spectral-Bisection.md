@@ -13,6 +13,125 @@ using the same arithmetic,
 matrix routines and tape. Numerical accuracy follows separately from the numerical reference
 bound and its [transfer to the counted execution](../../NLAlib/Eigensolvers/SpectralBisection/ProbabilityTransfer.lean).
 
+## Headline statement: cost and accuracy on one event
+
+The strongest statement proved about the spectral bisection program, as one theorem:
+[`measureReal_not_accepts_countedSpecification_le`](../../NLAlib/Eigensolvers/SpectralBisection/RunTheorem.lean).
+
+**Theorem.** Let A be a Hermitian n × n complex matrix with ‖A‖₂ ≤ R, n ≥ 2, stored as n²
+pairs of words, together with three parameter words: the radius R > 0, a tolerance
+0 < ε ≤ 2⁻¹⁵ and a sign accuracy β > 0. Let the depth be L ≥ ⌈log₂(1/ε)⌉ + 5 and the
+sign-iteration cap be c. Run randomized spectral bisection on a floating-point machine that is
+accurate with unit roundoff u, calling matrix multiplication and QR as primitives whose
+declared cost at order j is at most T(j), T monotone and superadditive, on a tape of
+independent uniform and standard Gaussian draws rounded to machine words. Fix a failure
+probability 0 < θ ≤ 1 and assume the numerical conditions listed below.
+
+Then for every interpretation of the primitives that meets the model, with probability at
+least 1 − θ over the tape, all of the following hold for the same run:
+
+1. **Success.** The run completes.
+2. **Cost.** Its work and its span are at most
+
+```text
+(L+1)·c·(362n³ + 146n² + 222n) + L·(1587n³ + 760n² + 2429n + 305)
+  + 1599n³ + 818n² + 2509n + 680 + (L+1)·(2c+11)·T(n)
+```
+
+3. **Storage.** Its scratch is at most `6n²L + 32n² + 4nL + 7n + 2L + 24 + W(n)` cells and
+   its resident memory at most `4n² + n + 3` more, W(n) the largest declared workspace of a
+   matrix primitive at order at most n.
+4. **Accuracy.** It leaves in memory a matrix U and a real vector d with
+
+```text
+‖A − U·diag(d)·Uᴴ‖₂ ≤ 2·ε·R        (1 − ε/3)²·I ⪯ Uᴴ U ⪯ (1 + ε/3)²·I
+```
+
+**Numerical conditions.** With s = `newtonSchulzSteps(θ/(12nL(L+1)), β/(16n))`, the cap must
+satisfy c ≥ s, and
+
+```text
+β ≤ (L−1)²·ε·√θ / (52·L²·(2L−1)·√(n·min(n,L+1)·min(n,e))·(2√2·√n + √(log(96·n·min(n,L+1)/θ))))
+146·n·L·(L+1)·(4μ_M(n) + 10 + 10√n)·u ≤ θ·β
+2048·(n + s + 1)·(4μ_M(n) + 10 + 10√n)·u ≤ β
+16·(4μ_Q(n) + 4√n·(c_N + 1) + 2μ_M(n) + 1)·u ≤ β
+```
+
+where μ_M, μ_Q and c_N are the accuracy constants of the machine's matrix multiplication, QR
+and normal sampler. Two further conditions bound the machine's absolute-error floor and its
+range bound (`hFloor`, `hBound` in the Lean).
+
+**Scope.** What the statement does and does not say:
+
+- Items 1 to 3 hold on every tape; only item 4 is probabilistic. The event of the theorem is
+  the failure of any of the four, so the probability 1 − θ covers them jointly.
+- The first four terms of the cost count every instruction that is not a matrix operation,
+  each at unit cost, by an upper bound read off the fixed program. A loop over the blocks of a
+  level is charged as if every block had order n, so the n³ there overestimates the scalar
+  overhead. The last term is the matrix work and uses the actual block sizes.
+- T is supplied by the caller; the statement is a bound in terms of it. No fast matrix
+  multiplication exponent is asserted.
+- The radius R is an input the caller must supply with ‖A‖₂ ≤ R.
+- "Accurate floating-point machine" is the hypothesis `FloatMachine.IsAccurate`. It is not IEEE
+  arithmetic; a word holds a number of the abstract machine, and a cell is not 64 bits.
+- U is nearly unitary, not unitary. Nothing is said about the order of the entries of d.
+- The program is one fixed tree for all n, L and c; the covered sizes are a parameter.
+
+**Lean.** The conclusion, verbatim (the hypotheses are those of `countedAlgorithm` and of
+`measureReal_not_isApproxDiagonalization_tapeMachine_le`, specialized to the input):
+
+```lean
+    P.real {omega | ¬ (countedSpecification M dec mm qr domain admitted matrixWorkspace T).Accepts
+      (Dense.resources matrixWork matrixWorkspace) d x
+        (exec (program (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) I
+          (Dense.resources matrixWork matrixWorkspace)
+          (problem (K := K) domain admitted).formats
+          (roundTape roundUnif roundGaussian (ideal omega)) d
+          ((problem (K := K) domain admitted).initial d x))
+        (fun _ m => StoresApproxDiagonalization dec (inputMatrix d x)
+          (2 * inputTolerance dec x * inputRadius dec x) (inputTolerance dec x / 3)
+          (2, 0) (3, 0) m)} ≤ theta
+```
+
+and the cost of the specification it refers to:
+
+```lean
+def operationCount (d : Fin 3 → ℕ) : ℕ :=
+  (d 1 + 1) * d 2 * (362 * d 0 ^ 3 + 146 * d 0 ^ 2 + 222 * d 0) +
+    d 1 * (1587 * d 0 ^ 3 + 760 * d 0 ^ 2 + 2429 * d 0 + 305) +
+    1599 * d 0 ^ 3 + 818 * d 0 ^ 2 + 2509 * d 0 + 680
+
+noncomputable def countedSpecification … :=
+  { workSpecification M dec mm qr domain admitted matrixWorkspace T with
+    work := fun d => operationCount d + (d 1 + 1) * (2 * d 2 + 11) * T (d 0)
+    span := fun d => operationCount d + (d 1 + 1) * (2 * d 2 + 11) * T (d 0) }
+```
+
+**Translation notes.**
+
+| In the theorem | In the Lean | Where |
+|---|---|---|
+| n, L, c | `d 0`, `d 1`, `d 2`; the covered sizes are the parameter `domain`, with `hN : 2 ≤ d 0` | |
+| A | `decodeMatrix dec (inputMatrix d x)`: buffer 0, 2n² words | [`Resources.lean`](../../NLAlib/Eigensolvers/SpectralBisection/Resources.lean) |
+| R, ε, β | `inputRadius dec x`, `inputTolerance dec x`, `inputBeta dec x`: the three words of buffer 1, decoded | [`RunTheorem.lean`](../../NLAlib/Eigensolvers/SpectralBisection/RunTheorem.lean) |
+| probability at least 1 − θ | `P.real {omega \| ¬ … } ≤ theta`: the measure of the failure set is at most θ | |
+| all of items 1 to 4 hold | `Specification.Accepts`: the run returned a state, its scratch, count, work, span and memory are within the specification, and the postcondition holds | [`Ops/Probability.lean`](../../NLAlib/Ops/Probability.lean) |
+| the cost bound | the `work` and `span` fields of `countedSpecification` | [`OperationCount.lean`](../../NLAlib/Eigensolvers/SpectralBisection/OperationCount.lean) |
+| the storage bounds | the `scratch` and `memory` fields of `workSpecification` | [`WorkSpecification.lean`](../../NLAlib/Eigensolvers/SpectralBisection/WorkSpecification.lean) |
+| item 4 | `StoresApproxDiagonalization dec A (2εR) (ε/3) (2,0) (3,0) m`: buffers 2 and 3 hold U and d with `IsApproxDiagonalization` | [`ProbabilityTransfer.lean`](../../NLAlib/Eigensolvers/SpectralBisection/ProbabilityTransfer.lean), [`SpectralBisection.lean`](../../NLAlib/Matrix/FinitePrecision/SpectralBisection.lean) |
+| the random tape | `roundTape roundUnif roundGaussian (ideal omega)` with `hTape : IsTapeLaw law P ideal` and `hStream`: the ideal tape has independent entries with the uniform and Gaussian laws on their streams, and the program reads their rounded words | [`TapeRounding.lean`](../../NLAlib/Eigensolvers/SpectralBisection/TapeRounding.lean), [`Ops/TapeLaw.lean`](../../NLAlib/Ops/TapeLaw.lean) |
+| accurate floating-point machine | `hAcc : FloatMachine.IsAccurate … u floor bound muM muQ cN` | [`Machine.lean`](../../NLAlib/Matrix/FinitePrecision/Machine.lean) |
+| T dominates matrix costs | `hMatrix`, `hT`, `hadd` | |
+| the numerical conditions | `hDepth`, `hFuel`, `hSteps`, `hBetaMax`, `hSign`, `hStop`, `hDeflate`, `hFloor`, `hBound` | |
+
+The theorem joins three results:
+[`countedAlgorithm`](../../NLAlib/Eigensolvers/SpectralBisection/OperationCount.lean) (total
+execution with the explicit work), `measureReal_not_accepts_le_of_wordSpecification` (a
+reference failure bound controls the failure of the run) and
+`measureReal_not_isApproxDiagonalization_tapeMachine_le` (the failure bound of the rounded
+reference computation, the setting of Shah's Theorem 4.2). On every tape the stored output
+equals that reference computation; this is the postcondition of `countedAlgorithm` itself.
+
 ## Algorithm and implementation
 
 At an active node with matrix A, radius R, tolerance ε and depth counter ℓ:

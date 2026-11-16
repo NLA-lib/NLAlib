@@ -204,6 +204,7 @@ public import NLAlib.Eigensolvers.SpectralBisection.Resources
 public import NLAlib.Eigensolvers.SpectralBisection.Result
 public import NLAlib.Eigensolvers.SpectralBisection.ResultGeometry
 public import NLAlib.Eigensolvers.SpectralBisection.RootCopy
+public import NLAlib.Eigensolvers.SpectralBisection.RunTheorem
 public import NLAlib.Eigensolvers.SpectralBisection.Samples
 public import NLAlib.Eigensolvers.SpectralBisection.SignWork
 public import NLAlib.Eigensolvers.SpectralBisection.SlotNodes
@@ -431,6 +432,7 @@ public import NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.OperationCount
 public import NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Prefix
 public import NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Recurrence
 public import NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Rounds
+public import NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.ScalarTheorem
 public import NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Solve
 public import NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Stability
 public import NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Standard
@@ -606,6 +608,7 @@ public import NLAlib.Krylov.Lanczos.Reorth.RoundedOutput
 public import NLAlib.Krylov.Lanczos.Reorth.RoundedPrefix
 public import NLAlib.Krylov.Lanczos.Reorth.RoundedRounds
 public import NLAlib.Krylov.Lanczos.Reorth.RoundedRun
+public import NLAlib.Krylov.Lanczos.Reorth.RoundedScalarTheorem
 public import NLAlib.Krylov.Lanczos.Reorth.RoundedSolve
 public import NLAlib.Krylov.Lanczos.Reorth.RoundedSpectral
 public import NLAlib.Krylov.Lanczos.Reorth.RoundedStability
@@ -639,6 +642,7 @@ public import NLAlib.Krylov.Lanczos.RoundedRecurrence
 public import NLAlib.Krylov.Lanczos.RoundedRitz
 public import NLAlib.Krylov.Lanczos.RoundedRounds
 public import NLAlib.Krylov.Lanczos.RoundedRun
+public import NLAlib.Krylov.Lanczos.RoundedScalarTheorem
 public import NLAlib.Krylov.Lanczos.RoundedSolve
 public import NLAlib.Krylov.Lanczos.RoundedStability
 public import NLAlib.Krylov.Lanczos.RoundedState

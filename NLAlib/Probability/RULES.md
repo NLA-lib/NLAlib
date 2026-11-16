@@ -21,7 +21,6 @@ Allowlisted here (`scripts/rules_allow.toml`, `scripts/names_allow.toml`), each 
 
 - **T15** `NLAlib.IsIsotropic.integral_norm_mulVec_le`: used by gaussNormMean_sq_le (ChiSquareMoments) and the Gaussian extreme-singular-value and spectral-norm proofs
 - **N4** `NLAlib.map_eval_uniformOn_injective`: `eval` is Mathlib's reading of `fun f => f j` (`Function.eval`); the token became a library function with `NLAlib.Computation.IExp.eval`, a different object
-- **N9** `NLAlib.measureReal_exists_mem_le_of_forall_measure_le_lintegral`: N9 reads the index `i` in `HasLaw (ζ i) ν μ` as the law; the law is ν and the name already has the grammar's form
 
 ## Every topic
 

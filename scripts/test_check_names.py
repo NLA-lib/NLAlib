@@ -122,6 +122,10 @@ class ShapeTests(unittest.TestCase):
         self.assertIn(('N9', 'NLAlib.integral_frobNorm_sq'), rules(thm('NLAlib.integral_frobNorm_sq', sig)))
         self.assertFalse(rules(thm('NLAlib.integral_frobNorm_sq_of_hasLaw_gaussianMatrix', sig)))
 
+    def test_law_variable_not_named(self):
+        sig = '(hζ : ∀ i, HasLaw (ζ i) ν μ) : μ.real {ω | ∃ i, ζ i ω ∈ s} ≤ c'
+        self.assertFalse(rules(thm('NLAlib.measureReal_exists_lt_mem_le', sig)))
+
     def test_mean_square_has_sq(self):
         sig = '(hX : HasLaw X (gaussianMatrix n l) μ) : ∫ (ω : Ω), frobNorm (X ω) ^ 2 ∂μ ≤ c'
         self.assertIn(('N13', 'NLAlib.integral_frobNorm_le_of_hasLaw_gaussianMatrix'),

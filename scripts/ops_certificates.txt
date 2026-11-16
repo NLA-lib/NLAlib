@@ -48,6 +48,7 @@ NLAlib.ShiftedQR.exactAlgorithm hyps=0 uniform=yes confined=yes charged=no budge
 NLAlib.ShiftedQR.exactAlgorithmWithPolynomialWork hyps=0 uniform=yes confined=yes charged=no budget=manifest work=closed scratch=manifest
 NLAlib.ShiftedQR.exactForwardAlgorithm hyps=0 uniform=yes confined=yes charged=no budget=manifest work=manifest scratch=manifest
 NLAlib.ShiftedQR.exactStepAlgorithm hyps=0 uniform=yes confined=yes charged=yes budget=manifest work=manifest scratch=manifest
+NLAlib.ShiftedQR.roundedShQRAlgorithm hyps=4 uniform=yes confined=yes charged=no budget=manifest work=closed scratch=manifest
 NLAlib.ShiftedQR.stepAlgorithm hyps=1 uniform=yes confined=yes charged=yes budget=manifest work=manifest scratch=manifest
 NLAlib.Sign.certifiedAlgorithm hyps=2 uniform=yes confined=yes charged=no budget=manifest work=manifest scratch=manifest
 NLAlib.SpectralBisection.certifiedAlgorithm hyps=7 uniform=yes confined=yes charged=no budget=closed work=closed scratch=closed

@@ -78,7 +78,6 @@ name = "NLAlib.map_eval_uniformOn_injective"
 rule = "N4"
 reason = "`eval` is Mathlib's reading of `fun f => f j` (`Function.eval`); the token became a library function with `NLAlib.Computation.IExp.eval`, a different object"
 
-
 [[allow]]
 name = "NLAlib.LanczosRun.transpose_dilatedBasis_mul_dilatedBasisSucc_mul"
 rule = "N4"
@@ -104,7 +103,3 @@ name = "NLAlib.CGRun.abs_quadForm_backwardH_sub_cgIterate_sub_le"
 rule = "N10"
 reason = "the gap between the model's error `quadForm (x⋆ − cgIterate)` (exact − computed) and the computed estimate; `cgIterate_sub` joins the error to the estimate"
 
-[[allow]]
-name = "NLAlib.measureReal_exists_mem_le_of_forall_measure_le_lintegral"
-rule = "N9"
-reason = "N9 reads the index `i` in `HasLaw (ζ i) ν μ` as the law; the law is ν and the name already has the grammar's form"

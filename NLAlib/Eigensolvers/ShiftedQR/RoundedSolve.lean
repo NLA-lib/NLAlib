@@ -236,87 +236,11 @@ def roundedAbort : Impl O Q := opsImpl% [] () → (St, Fl) {
   call (Has.inj IndexOp.lit) [0] () → (St)
 }
 
-/-- Process one large block held in `W`: decouple; on failure abort; otherwise scan its bottom
-$k$ couplings, and split at the index found (write back and push both children) or abort. -/
-def roundedProcessLarge (D : Impl O Q) : Impl O Q :=
-  opsImpl% [N, k, np, F, lo, d] (A, Thr, P, St) → (Out, W, R, Fl) {
-    run D.body [d, k, np, F] (W, P, W, Fl);
-    if (Has.inj CmpTst.isPos) [] (Fl) {
-      run (roundedAbort (O := O) (Q := Q)).body [] (St, Fl)
-    } else {
-      run (bottomScan (O := O) (Q := Q)).body [d, k] (W, Thr, R);
-      if (Has.inj CmpTst.isPos) [] (R[3]) {
-        let i ← index (Has.inj IdxTst.toNat) (R[4]) ≤ d;
-        run (writeAndSplit (O := O) (Q := Q)).body [N, lo, d, i] (A, St, W)
-      } else {
-        run (roundedAbort (O := O) (Q := Q)).body [] (St, Fl)
-      }
-    }
-  }
-
-/-- The part of `NLAlib.ShiftedQR.roundedProcessLarge` after the decoupling call: on failure
-abort; otherwise scan, and split or abort. -/
-def roundedLargeRest (D : Impl O Q) : Stmt O Q :=
-  match (roundedProcessLarge D).body with
-  | .seq _ c => c
-  | c => c
-
-/-- Copy the active block to `W`; a block of order at most $k$ goes to the leaf routine, which
-writes its roots at offset $2\,lo$ of `Out`; a larger one to
-`NLAlib.ShiftedQR.roundedProcessLarge`. -/
-def roundedProcessRange (D L : Impl O Q) : Impl O Q :=
-  opsImpl% [N, k, np, F, lo, d] (A, Thr, P, St) → (Out, W, R, Fl) {
-    run (copyToWork (Op := O) (Tst := Q)).body [N, lo, d] (A, W);
-    ifPos k + 1 - d {
-      run L.body [d] (W, Out[2 * lo])
-    };
-    ifPos d - k {
-      run (roundedProcessLarge D).body [N, k, np, F, lo, d] (A, Thr, P, St, Out, W, R, Fl)
-    }
-  }
-
-/-- Pop the top range, bounded-read its start and order, and process it. -/
-def roundedWorklistRound (D L : Impl O Q) : Impl O Q :=
-  opsImpl% [N, k, np, F] (A, Thr, P, St) → (Out, W, R, Fl) {
-    run (rangePop (Op := O) (Tst := Q)).body [N] (St, R);
-    let lo ← index (Has.inj IdxTst.toNat) (R) ≤ N;
-    let d ← index (Has.inj IdxTst.toNat) (R[1]) ≤ N;
-    run (roundedProcessRange D L).body [N, k, np, F, lo, d] (A, Thr, P, St, Out, W, R, Fl)
-  }
-
-/-- The capped worklist: clear the failure word, push the whole range, and process the top range
-while the stack is not empty, for at most $2N$ rounds; work left at the cap aborts. -/
-def roundedWorklist (D L : Impl O Q) : Impl O Q :=
-  opsImpl% [N, k, np, F] (A, Thr, P) → (St, Out, W, R, Fl) {
-    call (Has.inj IndexOp.lit) [0] () → (Fl);
-    run (stackInit (Op := O) (Tst := Q)).body [N, 0, N] (St);
-    while j < 2 * N, (Has.inj CmpTst.isPos) [] (St) {
-      run (roundedWorklistRound D L).body [N, k, np, F] (A, Thr, P, St, Out, W, R, Fl)
-    } then {
-      if (Has.inj CmpTst.isPos) [] (St) {
-        run (roundedAbort (O := O) (Q := Q)).body [] (St, Fl)
-      } else { skip }
-    }
-  }
-
-/-- **The rounded deflation worklist** with the decoupling implementation `D` and the leaf
-routine `L`: allocate the stack, the work matrix and the scan registers, and run the capped
-worklist. The interface is `[N, k, np, F] (A, Thr, P) → (Out, Fl)`, with `F` the decoupler's
-iteration cap passed through: the matrix (modified in place),
-the threshold word, the decoupler's `np` parameter words, the $2N$ output words and the failure
-word. -/
-def solveRounded (D L : Impl O Q) : Impl O Q :=
-  opsImpl% [N, k, np, F] (A, Thr, P) → (Out, Fl) {
-    let St ← alloc (1 + 2 * N);
-    let W ← alloc (2 * (N * N));
-    let R ← alloc 5;
-    run (roundedWorklist D L).body [N, k, np, F] (A, Thr, P, St, Out, W, R, Fl)
-  }
-
 /-! ### The worklist with routines that read parameter words and a cap dimension -/
 
-/-- `NLAlib.ShiftedQR.roundedProcessLarge` with the cap dimension `T` passed to the decoupler
-`[N, k, np, F, T] (W, P) → (W, Fl)`. -/
+/-- Process one large block held in `W`: decouple with the routine
+`[N, k, np, F, T] (W, P) → (W, Fl)`; on failure abort; otherwise scan its bottom $k$ couplings,
+and split at the index found (write back and push both children) or abort. -/
 def roundedProcessLargeWith (D : Impl O Q) : Impl O Q :=
   opsImpl% [N, k, np, F, T, lo, d] (A, Thr, P, St) → (Out, W, R, Fl) {
     run D.body [d, k, np, F, T] (W, P, W, Fl);
@@ -333,7 +257,14 @@ def roundedProcessLargeWith (D : Impl O Q) : Impl O Q :=
     }
   }
 
-/-- `NLAlib.ShiftedQR.roundedProcessRange` with routines that read the parameter words and the cap
+/-- The part of `NLAlib.ShiftedQR.roundedProcessLargeWith` after the decoupling call: on failure
+abort; otherwise scan, and split or abort. -/
+def roundedLargeRest (D : Impl O Q) : Stmt O Q :=
+  match (roundedProcessLargeWith D).body with
+  | .seq _ c => c
+  | c => c
+
+/-- Copy the active block to `W`, with routines that read the parameter words and the cap
 dimension: a block of order at most $k$ goes to the leaf routine `[d, np, T] (Bk, P) → (Ev)`, a
 larger one to `NLAlib.ShiftedQR.roundedProcessLargeWith`. -/
 def roundedProcessRangeWith (D L : Impl O Q) : Impl O Q :=
@@ -348,7 +279,7 @@ def roundedProcessRangeWith (D L : Impl O Q) : Impl O Q :=
     }
   }
 
-/-- `NLAlib.ShiftedQR.roundedWorklistRound` with the cap dimension `T`. -/
+/-- Pop the top range, bounded-read its start and order, and process it. -/
 def roundedWorklistRoundWith (D L : Impl O Q) : Impl O Q :=
   opsImpl% [N, k, np, F, T] (A, Thr, P, St) → (Out, W, R, Fl) {
     run (rangePop (Op := O) (Tst := Q)).body [N] (St, R);
@@ -358,7 +289,8 @@ def roundedWorklistRoundWith (D L : Impl O Q) : Impl O Q :=
       (A, Thr, P, St, Out, W, R, Fl)
   }
 
-/-- `NLAlib.ShiftedQR.roundedWorklist` with the cap dimension `T`. -/
+/-- The capped worklist: clear the failure word, push the whole range, and process the top range
+while the stack is not empty, for at most $2N$ rounds; work left at the cap aborts. -/
 def roundedWorklistWith (D L : Impl O Q) : Impl O Q :=
   opsImpl% [N, k, np, F, T] (A, Thr, P) → (St, Out, W, R, Fl) {
     call (Has.inj IndexOp.lit) [0] () → (Fl);
@@ -374,10 +306,11 @@ def roundedWorklistWith (D L : Impl O Q) : Impl O Q :=
 
 /-- **The rounded deflation worklist with routines** ([BanksGarzaVargasSrivastava2025,
 Theorem 6.1], whose worklist at $k = 1$ it is; [BanksGarzaVargasSrivastava2022, Theorem 6.3]):
-`NLAlib.ShiftedQR.solveRounded` with a decoupling routine
-`[N, k, np, F, T] (W, P) → (W, Fl)` and a leaf routine `[d, np, T] (Bk, P) → (Ev)`, both of which
-read the parameter words and the cap dimension $T$ of the routines they run. The interface is
-`[N, k, np, F, T] (A, Thr, P) → (Out, Fl)`. The merged worklist is the case of the lifted routines
+allocate the stack, the work matrix and the scan registers, and run the capped worklist with a
+decoupling routine `[N, k, np, F, T] (W, P) → (W, Fl)` and a leaf routine
+`[d, np, T] (Bk, P) → (Ev)`, both of which read the parameter words and the cap dimension $T$ of
+the routines they run. The interface is `[N, k, np, F, T] (A, Thr, P) → (Out, Fl)`.
+`NLAlib.ShiftedQR.solveRounded` is the case of the lifted routines
 (`NLAlib.ShiftedQR.liftDecoupler`, `NLAlib.ShiftedQR.liftLeaf`) at $T = 0$. -/
 def solveRoundedWith (D L : Impl O Q) : Impl O Q :=
   opsImpl% [N, k, np, F, T] (A, Thr, P) → (Out, Fl) {
@@ -385,6 +318,18 @@ def solveRoundedWith (D L : Impl O Q) : Impl O Q :=
     let W ← alloc (2 * (N * N));
     let R ← alloc 5;
     run (roundedWorklistWith D L).body [N, k, np, F, T] (A, Thr, P, St, Out, W, R, Fl)
+  }
+
+/-- **The rounded deflation worklist** with the decoupling implementation `D` and the leaf
+routine `L`: `NLAlib.ShiftedQR.solveRoundedWith` with the lifted routines
+(`NLAlib.ShiftedQR.liftDecoupler`, `NLAlib.ShiftedQR.liftLeaf`) and the cap $T = 0$. The
+interface is `[N, k, np, F] (A, Thr, P) → (Out, Fl)`, with `F` the decoupler's iteration cap
+passed through: the matrix (modified in place), the threshold word, the decoupler's `np`
+parameter words, the $2N$ output words and the failure word. -/
+def solveRounded (D L : Impl O Q) : Impl O Q :=
+  opsImpl% [N, k, np, F] (A, Thr, P) → (Out, Fl) {
+    run (solveRoundedWith (liftDecoupler D) (liftLeaf L)).body [N, k, np, F, 0]
+      (A, Thr, P, Out, Fl)
   }
 
 end Program

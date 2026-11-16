@@ -151,11 +151,11 @@ literals up to $n + 1$ are exact, with exact `toNat` and comparisons, from the g
 rounded worklist of order $n + 1$ with a threshold word, any failure word $x$, a matrix stored at
 `a`, any matrix $\mathbf{H}'$ of order $d + 1 \ge k + 1$ in the work matrix, and a stack whose
 ranges after the popped $(lo, d + 1)$ fit in the order (`NLAlib.ShiftedQR.RangesFit`), the rest of
-`NLAlib.ShiftedQR.roundedProcessLarge` (abort, or scan and split or abort) runs to completion and
+`NLAlib.ShiftedQR.roundedProcessLargeWith` (abort, or scan and split or abort) runs to completion and
 leaves the core `NLAlib.ShiftedQR.RoundedStoredCore`. -/
 theorem roundedLargeRest_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar Mch I)
     (hL : IsIndexLit Mch I) {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
-    (hC : IsCmp id I) {k F : ℕ} {ps : List ℝ} (D : Impl O Q) {tape : Tape ℝ} {μ₁ : Mem ℝ}
+    (hC : IsCmp id I) {k F T : ℕ} {ps : List ℝ} (D : Impl O Q) {tape : Tape ℝ} {μ₁ : Mem ℝ}
     {lo d : ℕ} {a t p st out w r f : ℕ × ℕ} {rs : List (ℕ × ℕ)}
     {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {H' : Matrix (Fin (d + 1)) (Fin (d + 1)) ℂ}
     {x thr : ℝ} (hG : RoundedGeometry (n + 1) ps.length a t p st out w r f μ₁)
@@ -164,7 +164,7 @@ theorem roundedLargeRest_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS
     (hSt : StackHolds st rs μ₁.store) (hfit : RangesFit (n + 1) ((lo, d + 1) :: rs))
     (hk : k ≤ d) :
     Writes .total I tape (roundedLargeRest D)
-      (Env.frame [n + 1, k, ps.length, F, lo, d + 1] [a, t, p, st, out, w, r, f])
+      (Env.frame [n + 1, k, ps.length, F, T, lo, d + 1] [a, t, p, st, out, w, r, f])
       (roundedWorklistFp (n + 1) a st out w r f) (RoundedStoredCore n a st f) μ₁ := by
   have hfit0 := hfit.1 _ List.mem_cons_self
   have hlen := hfit.length_add_le
@@ -210,16 +210,16 @@ theorem roundedLargeRest_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS
       (hG₂.live_of_subset (by simp))).mono (by fp_sub [roundedWorklistFp]) fun _ _ h => h
 
 /-- The large branch terminates: on a scalar machine whose natural literals up to $n + 1$
-are exact, with exact `toNat` and comparisons and a terminating decoupler
-(`NLAlib.ShiftedQR.TerminatingDecoupler`) of bottom width $k \le d$, from the geometry of the
+are exact, with exact `toNat` and comparisons and a terminating decoupling routine
+(`NLAlib.ShiftedQR.TerminatingDecouplerRoutine`) of bottom width $k \le d$, from the geometry of the
 rounded worklist of order $n + 1$ with the threshold and parameter words stored, any failure
 word, a matrix $\mathbf{A}$ stored at `a` whose block on $(lo, d + 1)$ is in the work matrix, and
-a stack whose ranges after $(lo, d + 1)$ fit in the order, `NLAlib.ShiftedQR.roundedProcessLarge`
-runs to completion and leaves the core `NLAlib.ShiftedQR.RoundedStoredCore`. -/
+a stack whose ranges after $(lo, d + 1)$ fit in the order,
+`NLAlib.ShiftedQR.roundedProcessLargeWith` runs to completion and leaves the core `NLAlib.ShiftedQR.RoundedStoredCore`. -/
 theorem roundedLarge_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar Mch I)
     (hL : IsIndexLit Mch I) {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
-    (hC : IsCmp id I) {k F : ℕ} {ps : List ℝ} (D : Impl O Q)
-    (hD : TerminatingDecoupler n k F ps D I) {tape : Tape ℝ} {μ : Mem ℝ}
+    (hC : IsCmp id I) {k F T : ℕ} {ps : List ℝ} (D : Impl O Q)
+    (hD : TerminatingDecouplerRoutine n k F T ps D I) {tape : Tape ℝ} {μ : Mem ℝ}
     {lo d : ℕ} {a t p st out w r f : ℕ × ℕ} {rs : List (ℕ × ℕ)}
     {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr : ℝ}
     (hG : RoundedGeometry (n + 1) ps.length a t p st out w r f μ)
@@ -227,8 +227,8 @@ theorem roundedLarge_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : I
     (hA : HoldsMatrix a A μ.store) (hW : HoldsMatrix w (subBlock A (lo, d + 1)) μ.store)
     (hSt : StackHolds st rs μ.store) (hfit : RangesFit (n + 1) ((lo, d + 1) :: rs))
     (hk : k ≤ d) :
-    Writes .total I tape (roundedProcessLarge D).body
-      (Env.frame [n + 1, k, ps.length, F, lo, d + 1] [a, t, p, st, out, w, r, f])
+    Writes .total I tape (roundedProcessLargeWith D).body
+      (Env.frame [n + 1, k, ps.length, F, T, lo, d + 1] [a, t, p, st, out, w, r, f])
       (roundedWorklistFp (n + 1) a st out w r f) (RoundedStoredCore n a st f) μ := by
   have hfit0 := hfit.1 _ List.mem_cons_self
   have hlen := hfit.length_add_le
@@ -243,7 +243,7 @@ theorem roundedLarge_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : I
   have hw := hD (tape := tape) (subBlock A (lo, d + 1)) hk (by omega) hW hp hlD
     (by have := hG.room.2.2.2.2.2.1; omega) hG.room.2.2.2.2.2.2.2.1 (hWF.mono hWw le_rfl)
     (Fp.disj_sup_right.mpr ⟨hWP.symm.mono le_rfl hWw, hPF⟩)
-  unfold roundedProcessLarge
+  unfold roundedProcessLargeWith
   refine hw.frame_seq_le rfl rfl hlD (by fp_sub [roundedWorklistFp]) ?_
   rintro μ₁ hfr₁ ⟨⟨x, hf₁⟩, H', hW₁⟩
   have hDfp : Store.inBlock w.1 w.2 (2 * ((d + 1) * (d + 1))) ⊔ Store.inBlock f.1 f.2 1 ≤
@@ -257,24 +257,25 @@ theorem roundedLarge_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : I
 
 /-- Processing a popped range terminates: on a scalar machine whose natural literals up to
 $n + 1$ are exact, with exact `toNat` and comparisons, a terminating decoupler
-(`NLAlib.ShiftedQR.TerminatingDecoupler`) of bottom width $k$ and a terminating leaf
-(`NLAlib.ShiftedQR.TerminatingLeaf`), from the geometry of
+(`NLAlib.ShiftedQR.TerminatingDecouplerRoutine`) of bottom width $k$ and a terminating leaf
+(`NLAlib.ShiftedQR.TerminatingLeafRoutine`), from the geometry of
 the rounded worklist of order $n + 1$ with the threshold and parameter words and the failure word
 stored, a matrix $\mathbf{A}$ stored at `a`, and a stack whose ranges after the popped $(lo, d)$
-fit in the order, `NLAlib.ShiftedQR.roundedProcessRange` runs to completion and leaves the core
+fit in the order, `NLAlib.ShiftedQR.roundedProcessRangeWith` runs to completion and leaves the core
 `NLAlib.ShiftedQR.RoundedStoredCore`. -/
 theorem roundedRange_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar Mch I)
     (hL : IsIndexLit Mch I) {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
-    (hC : IsCmp id I) {k F : ℕ} {ps : List ℝ} (D : Impl O Q)
-    (hD : TerminatingDecoupler n k F ps D I) (L : Impl O Q) (hLeaf : TerminatingLeaf L I)
+    (hC : IsCmp id I) {k F T : ℕ} {ps : List ℝ} (D : Impl O Q)
+    (hD : TerminatingDecouplerRoutine n k F T ps D I) (L : Impl O Q)
+    (hLeaf : TerminatingLeafRoutine (min k (n + 1)) ps T L I)
     {tape : Tape ℝ} {μ : Mem ℝ} {lo d : ℕ} {a t p st out w r f : ℕ × ℕ} {rs : List (ℕ × ℕ)}
     {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr x : ℝ}
     (hG : RoundedGeometry (n + 1) ps.length a t p st out w r f μ)
     (ht : μ.store.get t.1 t.2 = some thr) (hp : μ.store.readBlock p.1 p.2 ps.length = some ps)
     (hf : μ.store.get f.1 f.2 = some x) (hA : HoldsMatrix a A μ.store)
     (hSt : StackHolds st rs μ.store) (hfit : RangesFit (n + 1) ((lo, d) :: rs)) :
-    Writes .total I tape (roundedProcessRange D L).body
-      (Env.frame [n + 1, k, ps.length, F, lo, d] [a, t, p, st, out, w, r, f])
+    Writes .total I tape (roundedProcessRangeWith D L).body
+      (Env.frame [n + 1, k, ps.length, F, T, lo, d] [a, t, p, st, out, w, r, f])
       (roundedWorklistFp (n + 1) a st out w r f) (RoundedStoredCore n a st f) μ := by
   have hfit0 := hfit.1 _ List.mem_cons_self
   have hlen := hfit.length_add_le
@@ -286,7 +287,7 @@ theorem roundedRange_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : I
   obtain ⟨hWA, hWT, hWP, hWS, hWO, hWF, -, -, -, -, -, -, -, -, hFO, -, -, hAO, hSO, -⟩ :=
     hG.disj_round
   have hlAW : μ.Live [a, w] := hG.live_of_subset (by simp)
-  unfold roundedProcessRange
+  unfold roundedProcessRangeWith
   refine (copyToWork_writes (τ := tape) (lo := lo) (d := d) hS hlAW hA hfit0.2
     (by have := hG.room.2.2.2.2.2.1; omega) (hWA.symm.mono le_rfl hWfp)).frame_seq_le rfl rfl
     hlAW (by fp_sub [roundedWorklistFp]) ?_
@@ -295,17 +296,22 @@ theorem roundedRange_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : I
   have hf₁ := hfr₁.keep (Store.readsOnly_get _ _ _) (hWF.mono hWfp le_rfl) hf
   have hA₁ := hA.of_eqOff hfr₁ (hWA.mono hWfp le_rfl)
   have hSt₁ := hSt.of_eqOff hfr₁ (hWS.mono hWfp (by fp_sub))
+  have hp₁ := hfr₁.keep (Store.readsOnly_readBlock _ _ _ _) (hWP.mono hWfp le_rfl) hp
   by_cases hs : d ≤ k
   · refine (writes_ifPos (P := RoundedStoredCore n a st f) (n := k + 1 - d) rfl ?_).seq_le
       le_rfl ?_
     · rw [if_pos (by omega)]
-      have hl : μ₁.Live [w, (out.1, out.2 + 2 * lo)] := by
-        simpa [Mem.Live] using And.intro (hG₁.live w (by simp)) (hG₁.live out (by simp))
+      have hl : μ₁.Live [w, p, (out.1, out.2 + 2 * lo)] := by
+        simpa [Mem.Live] using ⟨hG₁.live w (by simp), hG₁.live p (by simp),
+          hG₁.live out (by simp)⟩
       have hOfp : Store.inBlock out.1 (out.2 + 2 * lo) (2 * d) ≤
           Store.inBlock out.1 out.2 (2 * (n + 1)) := by fp_sub
-      refine ((hLeaf (subBlock A (lo, d)) hW₁ hl
+      have hPO : Fp.Disj (Store.inBlock p.1 p.2 ps.length)
+          (Store.inBlock out.1 out.2 (2 * (n + 1))) := by simpa using hG.disj 2 4 (by simp)
+      refine ((hLeaf (subBlock A (lo, d)) (le_min hs hd) hW₁ hp₁ hl
         (by dsimp only; have := hG₁.room.2.2.2.2.1; omega)
-        (hWO.mono hWfp hOfp)).in_frame rfl rfl hl).mono (by fp_sub [roundedWorklistFp]) ?_
+        (hWO.mono hWfp hOfp) (hPO.mono le_rfl hOfp)).in_frame rfl rfl hl).mono
+        (by fp_sub [roundedWorklistFp]) ?_
       rintro μ₂ hfr₂ -
       exact ⟨⟨x, hfr₂.keep (Store.readsOnly_get _ _ _) (hFO.symm.mono hOfp le_rfl) hf₁⟩,
         ⟨A, hA₁.of_eqOff hfr₂ (hAO.symm.mono hOfp le_rfl)⟩, rs,
@@ -322,24 +328,25 @@ theorem roundedRange_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : I
     rw [if_pos (by omega)]
     exact (roundedLarge_terminates hS hL hNat hQ hC D hD hG₁
       (hfr₁.keep (Store.readsOnly_get _ _ _) (hWT.mono hWfp le_rfl) ht)
-      (hfr₁.keep (Store.readsOnly_readBlock _ _ _ _) (hWP.mono hWfp le_rfl) hp) hA₁ hW₁ hSt₁
+      hp₁ hA₁ hW₁ hSt₁
       hfit (by omega)).in_frame rfl rfl hG₁.live
 
 /-- One round keeps the value-free state: on a scalar machine whose natural literals up to
 $n + 1$ are exact, with exact `toNat` and comparisons, a terminating decoupler
-(`NLAlib.ShiftedQR.TerminatingDecoupler`) and a terminating leaf
-(`NLAlib.ShiftedQR.TerminatingLeaf`), from the value-free state
+(`NLAlib.ShiftedQR.TerminatingDecouplerRoutine`) and a terminating leaf
+(`NLAlib.ShiftedQR.TerminatingLeafRoutine`), from the value-free state
 `NLAlib.ShiftedQR.RoundedStoredState` of order $n + 1$ with a positive stack count, the round
-`NLAlib.ShiftedQR.roundedWorklistRound` runs to completion and reaches the value-free state. -/
+`NLAlib.ShiftedQR.roundedWorklistRoundWith` runs to completion and reaches the value-free state. -/
 theorem roundedWorklistRound_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
     (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1))
-    (hQ : IsToNat id I) (hC : IsCmp id I) {k F : ℕ} {ps : List ℝ} (D : Impl O Q)
-    (hD : TerminatingDecoupler n k F ps D I) (L : Impl O Q) (hLeaf : TerminatingLeaf L I)
+    (hQ : IsToNat id I) (hC : IsCmp id I) {k F T : ℕ} {ps : List ℝ} (D : Impl O Q)
+    (hD : TerminatingDecouplerRoutine n k F T ps D I) (L : Impl O Q)
+    (hLeaf : TerminatingLeafRoutine (min k (n + 1)) ps T L I)
     {tape : Tape ℝ} {μ : Mem ℝ} {a t p st out w r f : ℕ × ℕ} {cnt : ℕ}
     (h : RoundedStoredState n ps a t p st out w r f μ)
     (hcount : μ.store.get st.1 st.2 = some (cnt : ℝ)) (hpos : 0 < cnt) :
-    Writes .total I tape (roundedWorklistRound D L).body
-      (Env.frame [n + 1, k, ps.length, F] [a, t, p, st, out, w, r, f])
+    Writes .total I tape (roundedWorklistRoundWith D L).body
+      (Env.frame [n + 1, k, ps.length, F, T] [a, t, p, st, out, w, r, f])
       (roundedWorklistFp (n + 1) a st out w r f)
       (RoundedStoredState n ps a t p st out w r f) μ := by
   obtain ⟨hG, ⟨thr, ht⟩, hp, ⟨x, hf⟩, ⟨A, hA⟩, rs, hSt, hfit⟩ := h
@@ -357,7 +364,7 @@ theorem roundedWorklistRound_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (by simpa using hG.disj 6 3 (by simp) : Fp.Disj (Store.inBlock r.1 r.2 5)
       (Store.inBlock st.1 st.2 (1 + 2 * (n + 1)))).mono (by fp_sub) le_rfl
   have hlSR : μ.Live [st, r] := hG.live_of_subset (by simp)
-  unfold roundedWorklistRound
+  unfold roundedWorklistRoundWith
   refine (rangePop_writes_of_isExactNatLit (τ := tape) hS hL hQ hNat hSt (by omega)
     (by simpa only [Nat.add_assoc] using hG.room.2.2.2.1)
     (by have := hG.room.2.2.2.2.2.2.1; omega) hlSR hRS).frame_seq_le rfl rfl hlSR
@@ -389,16 +396,16 @@ omit [Has ScalarOp O] [Has IdxTst Q] in
 /-- The exit of the capped loop terminates: on a machine whose natural literals up to
 $n + 1$ are exact, with exact comparisons, from the value-free state
 `NLAlib.ShiftedQR.RoundedStoredState` of order $n + 1$, the exit of
-`NLAlib.ShiftedQR.roundedWorklist` (abort on a positive stack count, else skip) runs to
+`NLAlib.ShiftedQR.roundedWorklistWith` (abort on a positive stack count, else skip) runs to
 completion, at any round `i`. -/
 theorem roundedWorklistExit_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
     (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1)) (hC : IsCmp id I)
-    {k F : ℕ} {ps : List ℝ} {tape : Tape ℝ} {μ : Mem ℝ} {a t p st out w r f : ℕ × ℕ} (i : ℕ)
+    {k F T : ℕ} {ps : List ℝ} {tape : Tape ℝ} {μ : Mem ℝ} {a t p st out w r f : ℕ × ℕ} (i : ℕ)
     (h : RoundedStoredState n ps a t p st out w r f μ) :
-    Writes .total I tape (Stmt.ite (Has.inj CmpTst.isPos) [] [{ buf := 3, off := IExp.var 7 }]
-        (Stmt.frame [] [{ buf := 3, off := IExp.var 7 }, { buf := 7, off := IExp.var 11 }]
+    Writes .total I tape (Stmt.ite (Has.inj CmpTst.isPos) [] [{ buf := 3, off := IExp.var 8 }]
+        (Stmt.frame [] [{ buf := 3, off := IExp.var 8 }, { buf := 7, off := IExp.var 12 }]
           (roundedAbort (O := O) (Q := Q)).body) Stmt.skip)
-      ((Env.frame [n + 1, k, ps.length, F] [a, t, p, st, out, w, r, f]).pushIdx i)
+      ((Env.frame [n + 1, k, ps.length, F, T] [a, t, p, st, out, w, r, f]).pushIdx i)
       (roundedWorklistFp (n + 1) a st out w r f) (fun _ => True) μ := by
   obtain ⟨hG, -, -, -, hA, rs, hSt, -⟩ := h
   refine writes_ite rfl rfl (hC.test_isPos (d := []) (x := st) hSt.1) ?_
@@ -411,22 +418,23 @@ theorem roundedWorklistExit_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} 
 
 /-- The capped loop of the rounded worklist terminates: on a scalar machine whose natural
 literals up to $n + 1$ are exact, with exact `toNat` and comparisons, a terminating decoupler
-(`NLAlib.ShiftedQR.TerminatingDecoupler`) and a terminating leaf
-(`NLAlib.ShiftedQR.TerminatingLeaf`), from the geometry of the rounded worklist of order $n + 1$
+(`NLAlib.ShiftedQR.TerminatingDecouplerRoutine`) and a terminating leaf
+(`NLAlib.ShiftedQR.TerminatingLeafRoutine`), from the geometry of the rounded worklist of order $n + 1$
 (`NLAlib.ShiftedQR.RoundedGeometry`) with any matrix $\mathbf{H}$ stored at `a`, the threshold
-word stored and the parameter words `ps`, `NLAlib.ShiftedQR.roundedWorklist` runs to completion
+word stored and the parameter words `ps`, `NLAlib.ShiftedQR.roundedWorklistWith` runs to completion
 within the round footprint. -/
 theorem roundedWorklist_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
     (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1))
-    (hQ : IsToNat id I) (hC : IsCmp id I) {k F : ℕ} {ps : List ℝ} (D : Impl O Q)
-    (hD : TerminatingDecoupler n k F ps D I) (L : Impl O Q) (hLeaf : TerminatingLeaf L I)
+    (hQ : IsToNat id I) (hC : IsCmp id I) {k F T : ℕ} {ps : List ℝ} (D : Impl O Q)
+    (hD : TerminatingDecouplerRoutine n k F T ps D I) (L : Impl O Q)
+    (hLeaf : TerminatingLeafRoutine (min k (n + 1)) ps T L I)
     {tape : Tape ℝ} {μ : Mem ℝ} {a t p st out w r f : ℕ × ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr : ℝ}
     (hG : RoundedGeometry (n + 1) ps.length a t p st out w r f μ)
     (hA : HoldsMatrix a H μ.store) (ht : μ.store.get t.1 t.2 = some thr)
     (hp : μ.store.readBlock p.1 p.2 ps.length = some ps) :
-    Writes .total I tape (roundedWorklist D L).body
-      (Env.frame [n + 1, k, ps.length, F] [a, t, p, st, out, w, r, f])
+    Writes .total I tape (roundedWorklistWith D L).body
+      (Env.frame [n + 1, k, ps.length, F, T] [a, t, p, st, out, w, r, f])
       (roundedWorklistFp (n + 1) a st out w r f) (fun _ => True) μ := by
   obtain ⟨hFA, hFS⟩ : Fp.Disj (Store.inBlock f.1 f.2 1)
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) ∧ Fp.Disj (Store.inBlock f.1 f.2 1)
@@ -434,7 +442,7 @@ theorem roundedWorklist_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {n :
     ⟨by simpa using hG.disj 7 0 (by simp), by simpa using hG.disj 7 3 (by simp)⟩
   have hSA : Fp.Disj (Store.inBlock st.1 st.2 (1 + 2 * (n + 1)))
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) := by simpa using hG.disj 3 0 (by simp)
-  unfold roundedWorklist
+  unfold roundedWorklistWith
   refine (writes_indexLit hL rfl rfl (by have := hG.room.2.2.2.2.2.2.2.1; dsimp only; omega)).seq_le
     (by fp_sub [roundedWorklistFp]) ?_
   rintro μ₁ hfr₁ ⟨-, hF₁⟩
@@ -469,41 +477,6 @@ theorem roundedWorklist_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {n :
   · rw [if_neg (by simpa using hpos)]
     exact roundedWorklistExit_terminates hL hNat hC i hS'
 
-/-- The rounded deflation worklist terminates: on a scalar machine whose natural literals up
-to $n + 1$ are exact (the stack, the flags and the indices are such literals), with exact `toNat`
-and comparisons, let the decoupler `D` terminate with the bottom width $k$, the iteration cap $F$
-and the parameter words `ps` (`NLAlib.ShiftedQR.TerminatingDecoupler`) and the leaf routine `L`
-terminate (`NLAlib.ShiftedQR.TerminatingLeaf`). Then for any matrix $\mathbf{H}$ of order
-$n + 1$ stored at `a` (no structure assumed), any threshold word and on every tape,
-`solveRounded D L` runs to completion and writes only the matrix, the output and the failure
-word. The views are live, have room and are pairwise apart. Nothing numerical is assumed. -/
-theorem solveRounded_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
-    (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1))
-    (hQ : IsToNat id I) (hC : IsCmp id I) {k F : ℕ} {ps : List ℝ} (D : Impl O Q)
-    (hD : TerminatingDecoupler n k F ps D I) (L : Impl O Q) (hLeaf : TerminatingLeaf L I)
-    {tape : Tape ℝ} {μ : Mem ℝ} {a t p out f : ℕ × ℕ}
-    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr : ℝ}
-    (hl : μ.Live [a, t, p, out, f])
-    (hr : μ.Room [a, t, p, out, f] [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * (n + 1), 1])
-    (ha : Fp.Apart [a, t, p, out, f] [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * (n + 1), 1])
-    (hA : HoldsMatrix a H μ.store)
-    (ht : μ.store.get t.1 t.2 = some thr) (hp : μ.store.readBlock p.1 p.2 ps.length = some ps) :
-    Writes .total I tape (solveRounded D L).body
-      (Env.frame [n + 1, k, ps.length, F] [a, t, p, out, f])
-      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
-        Store.inBlock out.1 out.2 (2 * (n + 1)) ⊔ Store.inBlock f.1 f.2 1)
-      (fun _ => True) μ := by
-  unfold solveRounded
-  refine writes_allocs_preserving_post
-    (lens := [.const 1 + .const 2 * .var 0, .const 2 * (.var 0 * .var 0), .const 5])
-    (ns := [1 + 2 * (n + 1), 2 * ((n + 1) * (n + 1)), 5]) rfl (fun _ _ => trivial) ?_
-  intro s hs hlens hBelow
-  have hG := roundedGeometry_allocated (np := ps.length) hl hr ha hs hlens hBelow
-  have hw := roundedWorklist_terminates hS hL hNat hQ hC D hD L hLeaf (tape := tape) hG
-    (hA.of_below hBelow (hl a (by simp))) (hBelow.get_of (hl t (by simp)) ht)
-    ((hBelow.readBlock (hl p (by simp)) p.2 ps.length).trans hp)
-  exact (hw.in_frame rfl rfl hG.live).mono (by fp_sub [roundedWorklistFp]) fun _ _ h => h
-
 /-- **The rounded worklist with routines terminates**: `NLAlib.ShiftedQR.solveRounded_terminates`
 for `NLAlib.ShiftedQR.solveRoundedWith`. On a scalar machine whose natural literals up to $n + 1$
 are exact, with exact `toNat` and comparisons, let the decoupling routine terminate
@@ -529,7 +502,46 @@ theorem solveRoundedWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {n 
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock out.1 out.2 (2 * (n + 1)) ⊔ Store.inBlock f.1 f.2 1)
       (fun _ => True) μ := by
-  sorry
+  unfold solveRoundedWith
+  refine writes_allocs_preserving_post
+    (lens := [.const 1 + .const 2 * .var 0, .const 2 * (.var 0 * .var 0), .const 5])
+    (ns := [1 + 2 * (n + 1), 2 * ((n + 1) * (n + 1)), 5]) rfl (fun _ _ => trivial) ?_
+  intro s hs hlens hBelow
+  have hG := roundedGeometry_allocated (np := ps.length) hl hr ha hs hlens hBelow
+  have hw := roundedWorklist_terminates hS hL hNat hQ hC D hD L hLeaf (tape := tape) hG
+    (hA.of_below hBelow (hl a (by simp))) (hBelow.get_of (hl t (by simp)) ht)
+    ((hBelow.readBlock (hl p (by simp)) p.2 ps.length).trans hp)
+  exact (hw.in_frame rfl rfl hG.live).mono (by fp_sub [roundedWorklistFp]) fun _ _ h => h
+
+/-- The rounded deflation worklist terminates: on a scalar machine whose natural literals up
+to $n + 1$ are exact (the stack, the flags and the indices are such literals), with exact `toNat`
+and comparisons, let the decoupler `D` terminate with the bottom width $k$, the iteration cap $F$
+and the parameter words `ps` (`NLAlib.ShiftedQR.TerminatingDecoupler`) and the leaf routine `L`
+terminate (`NLAlib.ShiftedQR.TerminatingLeaf`). Then for any matrix $\mathbf{H}$ of order
+$n + 1$ stored at `a` (no structure assumed), any threshold word and on every tape,
+`solveRounded D L` runs to completion and writes only the matrix, the output and the failure
+word. The views are live, have room and are pairwise apart. Nothing numerical is assumed. -/
+theorem solveRounded_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
+    (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1))
+    (hQ : IsToNat id I) (hC : IsCmp id I) {k F : ℕ} {ps : List ℝ} (D : Impl O Q)
+    (hD : TerminatingDecoupler n k F ps D I) (L : Impl O Q) (hLeaf : TerminatingLeaf L I)
+    {tape : Tape ℝ} {μ : Mem ℝ} {a t p out f : ℕ × ℕ}
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr : ℝ}
+    (hl : μ.Live [a, t, p, out, f])
+    (hr : μ.Room [a, t, p, out, f] [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * (n + 1), 1])
+    (ha : Fp.Apart [a, t, p, out, f] [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * (n + 1), 1])
+    (hA : HoldsMatrix a H μ.store)
+    (ht : μ.store.get t.1 t.2 = some thr) (hp : μ.store.readBlock p.1 p.2 ps.length = some ps) :
+    Writes .total I tape (solveRounded D L).body
+      (Env.frame [n + 1, k, ps.length, F] [a, t, p, out, f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock out.1 out.2 (2 * (n + 1)) ⊔ Store.inBlock f.1 f.2 1)
+      (fun _ => True) μ := by
+  unfold solveRounded
+  exact (solveRoundedWith_terminates hS hL hNat hQ hC (liftDecoupler D)
+    (hD.terminatingDecouplerRoutine 0) (liftLeaf L)
+    (hLeaf.terminatingLeafRoutine (min k (n + 1)) ps 0) hl hr ha hA ht hp).in_frame (by simp)
+    (by simp [Operand.evalList, Operand.eval]) hl
 
 end Theorems
 

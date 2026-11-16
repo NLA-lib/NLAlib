@@ -137,6 +137,7 @@ theorem TerminatingSmallEig.terminatingLeafRoutine {kmax T : ℕ} {qs ps₀ : Li
   refine (h.at (q := (p.1, p.2 + ps₀.length)) tape μ B hd hB (Store.readBlock_append_right hp)
     (by simpa [Mem.Live] using hl) hroom hwo
     (hpo.mono (Store.inBlock_le_inBlock (by omega) (by simp; omega)) le_rfl)).in_frame ?_ ?_ ?_
+    |>.mono le_rfl fun _ _ _ => trivial
   · simp [hqs]
   · simp [Operand.evalList, Operand.eval, hqs]
   · simpa [Mem.Live] using hl

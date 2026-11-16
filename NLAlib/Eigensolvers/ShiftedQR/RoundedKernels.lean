@@ -164,8 +164,9 @@ def RandomSmallEigContract (law : ℕ → Measure ℝ) (β φ : ℝ) (kmax T : �
 
 /-- **A terminating small-eigenvalue routine** on orders at most `kmax`, with the cap `T` and the
 parameter words `qs`: from any matrix of order $d \le k_{\max}$ (no structure assumed) stored with
-the words, on every tape, the run is total and writes only its $2d$ output words. The order bound
-keeps the literals a run writes below a fixed size. The interface is
+the words, on every tape, the run is total, writes only its $2d$ output words and leaves them
+stored (the caller reads them). The order bound keeps the literals a run writes below a fixed
+size. The interface is
 `[d, nq, T] (Bk, Q) → (Ev)`. -/
 def TerminatingSmallEig (kmax T : ℕ) (qs : List ℝ) (SE : Impl O Q) (I : Interp O Q ℝ) : Prop :=
   ∀ {d : ℕ} {w q o : ℕ × ℕ} (tape : Tape ℝ) (μ : Mem ℝ) (B : Matrix (Fin d) (Fin d) ℂ),
@@ -174,7 +175,8 @@ def TerminatingSmallEig (kmax T : ℕ) (qs : List ℝ) (SE : Impl O Q) (I : Inte
     Fp.Disj (Store.inBlock w.1 w.2 (2 * (d * d))) (Store.inBlock o.1 o.2 (2 * d)) →
     Fp.Disj (Store.inBlock q.1 q.2 qs.length) (Store.inBlock o.1 o.2 (2 * d)) →
     Writes .total I tape SE.body (Env.frame [d, qs.length, T] [w, q, o])
-      (Store.inBlock o.1 o.2 (2 * d)) (fun _ => True) μ
+      (Store.inBlock o.1 o.2 (2 * d))
+      (fun μ' => ∃ ys, μ'.store.readBlock o.1 o.2 (2 * d) = some ys) μ
 
 /-- The kernel as a routine `[d, nq, T] (Bk, Q) → (Ev)`: one call of `smallEig`; the parameter
 words and the cap are ignored. -/
@@ -218,7 +220,8 @@ def TerminatingSmallEigAt (kmax nq T : ℕ) (qs : List ℝ) (SE : Impl O Q) (I :
     Fp.Disj (Store.inBlock w.1 w.2 (2 * (d * d))) (Store.inBlock o.1 o.2 (2 * d)) →
     Fp.Disj (Store.inBlock q.1 q.2 qs.length) (Store.inBlock o.1 o.2 (2 * d)) →
     Writes .total I tape SE.body (Env.frame [d, nq, T] [w, q, o])
-      (Store.inBlock o.1 o.2 (2 * d)) (fun _ => True) μ
+      (Store.inBlock o.1 o.2 (2 * d))
+      (fun μ' => ∃ ys, μ'.store.readBlock o.1 o.2 (2 * d) = some ys) μ
 
 omit [Has EigenvalueKernelOp O] in
 /-- Termination is termination with the word count `qs.length`. -/
@@ -300,10 +303,13 @@ theorem IsRandomSmallEig.terminatingSmallEigAt {law : ℕ → Measure ℝ} {s : 
   have hread : μ.readBlocks [w] [2 * (d * d)] = some [matrixWords B] := by
     simp [Mem.readBlocks, show μ.store.readBlock w.1 w.2 (2 * (d * d)) =
       some (matrixWords B) from hH]
-  exact (writes_call (R := randomSmallEigRel s W Bad β) hI (d := [d]) (a := [w]) (b := [o])
+  refine (writes_call (R := randomSmallEigRel s W Bad β) hI (d := [d]) (a := [w]) (b := [o])
     (k := W d) (ls := [2 * d]) rfl rfl rfl rfl rfl rfl trivial (by simp [Fp.Apart])
     (fun _ => ⟨by simp_all [Mem.Live], ⟨[matrixWords B], hread, trivial⟩,
-      by simpa [Mem.Room] using hroom⟩)).mono (by simp [Fp.blocks]) fun _ _ _ => trivial
+      by simpa [Mem.Room] using hroom⟩)).mono (by simp [Fp.blocks]) ?_
+  rintro μ' - ⟨-, xs, ys, -, hys, -⟩
+  obtain ⟨y, hy, -⟩ := Option.bind_eq_some_iff.mp (by simpa [Mem.readBlocks] using hys)
+  exact ⟨y, hy⟩
 
 /-- A randomized small-eigenvalue kernel, called as a routine, terminates for every order bound,
 cap and parameter words: the kernel always succeeds on live, readable operands with room. -/

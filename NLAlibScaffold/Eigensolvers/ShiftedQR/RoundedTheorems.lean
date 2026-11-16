@@ -53,6 +53,12 @@ reads a fixed window of the uniform stream, and the parameter words are exact re
 * `NLAlib.ShiftedQR.roundedShQR_relative` (T3): the relative backward error.
 * `NLAlib.ShiftedQR.roundedShQR_hermitian` (T4): Hermitian inputs.
 * `NLAlib.ShiftedQR.roundedShQR_work_le` (T5): the operation count.
+
+T1c and T5 concern the same program, not one run. The headline on one run, with explicit work
+and span bounds conjoined with correctness, is the certificate
+`NLAlib.ShiftedQR.roundedShQRAlgorithm` and its bound
+`NLAlib.ShiftedQR.roundedShQR_algorithm_measureReal_not_accepts_le`
+(`NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedCertificate`).
 -/
 
 @[expose] public section

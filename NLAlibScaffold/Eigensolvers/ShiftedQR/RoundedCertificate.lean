@@ -7,6 +7,7 @@ module
 
 public import NLAlib.Eigensolvers.ShiftedQR.Cost
 public import NLAlib.Ops.Probability
+public import NLAlib.Ops.Profiles.Confined
 public import NLAlib.Ops.SelectedWork
 public import NLAlibScaffold.Eigensolvers.ShiftedQR.RoundedTheorems
 
@@ -289,6 +290,23 @@ noncomputable def shqrModel (P : Problem ℝ 4 5) (Mch : Machine ℝ) (s : ℕ) 
           change ((m.readBlocks a (a.map fun _ => 1)).bind fun xs => toNatFn id xs.flatten) = _
           rw [h]; rfl⟩
 
+/-- **The rounded shifted QR model is confined**: every contract is in operand form. -/
+instance confined_shqrModel (P : Problem ℝ 4 5) (Mch : Machine ℝ) (s : ℕ) (W : ℕ → ℕ)
+    (Bad : (d : ℕ) → Matrix (Fin d) (Fin d) ℂ → Set (Fin (W d) → ℝ)) {β : ℝ} (hβ : 0 ≤ β)
+    (R : ResourceModel ShQROp Tst) : (shqrModel P Mch s W Bad hβ R).Confined := by
+  refine ⟨fun _ _ o => ?_, fun _ _ q => Dense.confined_queryContract id q⟩
+  rcases o with o | o | (k | k)
+  · exact BlockRel.confined_spec _ _
+  · exact BlockRel.confined_spec _ _
+  · cases k <;> exact BlockRel.confined_spec _ _
+  · cases k; exact BlockRel.confined_spec _ _
+
+/-- **The rounded shifted QR model is uniform**: no contract depends on the input. -/
+instance uniform_shqrModel (P : Problem ℝ 4 5) (Mch : Machine ℝ) (s : ℕ) (W : ℕ → ℕ)
+    (Bad : (d : ℕ) → Matrix (Fin d) (Fin d) ℂ → Set (Fin (W d) → ℝ)) {β : ℝ} (hβ : 0 ≤ β)
+    (R : ResourceModel ShQROp Tst) : (shqrModel P Mch s W Bad hβ R).Uniform :=
+  ⟨fun _ _ _ _ _ => rfl, fun _ _ _ _ _ => rfl⟩
+
 /-- The contracts of the model give the laws used by the program proofs. -/
 theorem shqrModel_laws {P : Problem ℝ 4 5} {Mch : Machine ℝ} {s : ℕ} {W : ℕ → ℕ}
     {Bad : (d : ℕ) → Matrix (Fin d) (Fin d) ℂ → Set (Fin (W d) → ℝ)} {β : ℝ} {hβ : 0 ≤ β}
@@ -486,7 +504,7 @@ theorem shqrProgram_wellTyped
   kernel_rfl
 
 /-- The certificate with the manifest work and span. -/
-noncomputable def roundedShQRManifestAlgorithm (Mch : Machine ℝ)
+private noncomputable def roundedShQRManifestAlgorithm (Mch : Machine ℝ)
     (admitted : ∃ d, ShQRSizes Mch d) (s : ℕ) (W : ℕ → ℕ)
     (Bad : (d : ℕ) → Matrix (Fin d) (Fin d) ℂ → Set (Fin (W d) → ℝ))
     (hBad : ∀ d B, MeasurableSet (Bad d B)) {β : ℝ} (hβ : 0 ≤ β)

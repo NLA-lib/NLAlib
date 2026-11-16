@@ -1049,3 +1049,49 @@ T1c follows §14.1's Lean text with Fable's fixes (`hI : I.IsMeasurable` with `h
   a smaller radius $R$.
 * P11p's backward error $F(1+C)S(\dots)$ is below `shqrDecoupleError` ($F(3.1+C)4\Sigma(\dots)$):
   monotone, fine. P11p's `hfuel` from `hcap` ($0.8016^F \cdot 4\Sigma < \omega$, $N_{\max} = 2\Sigma$).
+
+### 15.5 The certificate form (audit B1, B4)
+
+File `NLAlibScaffold/Eigensolvers/ShiftedQR/RoundedCertificate.lean`. T1c and T5 are about the
+same program but not the same run; the headline is restated as a canonical certificate
+(`Ops.Algorithm`) and one `Accepts` bound, so cost and correctness hold on one event.
+
+* **Program and problem.** `shqrProgram : Program ShQROp Tst 4 5` frames `roundedShQR` at
+  `[d 0 + 1, d 1, d 2, d 3]` = $(n + 1, k, n_p, F)$ on five raw buffers (matrix words, threshold
+  word, parameter words, output room, failure word). `shqrProblem Mch admitted`: the data are
+  $\mathbf{H}$ and $B, \Gamma, \Sigma, \delta, \varphi$ with $k$ = `shqrDegree (4B)`,
+  $n_p$ = `(shqrParams …).length`, $F$ = `shqrCap …`; the admitted sizes (`ShQRSizes`) have exact
+  natural literals up to $n + 1$ and **$k \le n$** (B4: the regime $k > n$, a copy and one
+  full-size `SmallEig` call, is excluded).
+* **Model** (`shqrModel`, confined and uniform, not charged): scalar arithmetic and literals are
+  the functions of the machine `Mch`; comparisons and index conversion exact; `SmallEig` meets
+  the relational `randomSmallEigRel sU W Bad β` (fixed windows and bad sets, $\beta \ge 0$);
+  `Ritz` the exact block function (never called); the polar sampler `polarDiskRel sU`. Realized
+  by `shqrInterp` (exact eigenvalues reading and ignoring the window, exact polar sampler).
+  `StdModel`, measurability, tape locality and the laws of the bad sets are hypotheses of the
+  probability theorem only.
+* **Costs** (`shqrResources kw ks kws`): kernels cost the caller's `kw`/`ks`/`kws` at their call
+  dimensions (possibly $0$, not bounded by $1$), everything else one unit.
+* **Specification** (`shqrSpecification`): budget, scratch, memory manifest (static count;
+  per-kind counts are a follow-up), `good` empty (`SmallEig` is relational, so the output is not
+  a function of input and tape), and
+  $$\mathrm{work} = 196017(n+1)^3(k+1)^3(n_p+1)(F+1) + 8b^4\,\overline{w}_{\mathrm{kw}},\qquad
+  \mathrm{span} = \text{the same with } \overline{w}_{\mathrm{ks}},$$
+  $b = n + k + n_p + F + 2$, $\overline{w}$ the largest kernel weight at one dimension
+  $\le b^2$ (`spectralWorkEnvelope`). The first term is the monomial bound of the instrumented
+  static count (`stmtWorkMono`, kernel-checked), the second the kernel-call polynomial of the
+  pruned tree (`Stmt.keepCalls`, coefficient $8$, degree $4$) times the envelope
+  (`Program.exec_lift_le_add_selected`, new in `NLAlib/Ops/SelectedWork.lean`).
+* **Certificate** `roundedShQRAlgorithm` (hypotheses: `admitted`, measurable `Bad`,
+  $\beta \ge 0$, `ks ≤ kw`): termination from T1d through `wp_frame`, work from the run bound.
+* **Headline** `roundedShQR_algorithm_measureReal_not_accepts_le`: under T1c's hypotheses, the
+  probability that the counted run is not accepted (success, every resource bound, the frame
+  `shqrFp`, `ShQRSpectrum` with error $\delta$) is $\le \varphi$. The bridge is
+  `Algorithm.measureReal_not_accepts_le_of_wp` (new, `NLAlib/Ops/Probability.lean`): a total
+  postcondition of the memory semantics of the certified program is a postcondition of the same
+  counted run (`exec_mem`), so no `good` that pins the output is needed. The tape law is on the
+  whole tape (`IsTapeLaw`), which covers every window the program reads.
+* **CI.** `scripts/OpsPrograms.lean` imports `NLAlib` only, so a scaffold certificate is not
+  inventoried. On promotion it needs the reviewed line
+  `NLAlib.ShiftedQR.roundedShQRAlgorithm hyps=4 uniform=yes confined=yes charged=no
+  budget=manifest scratch=manifest`.

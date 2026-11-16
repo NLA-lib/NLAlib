@@ -10,6 +10,7 @@ public import Mathlib.FieldTheory.IsAlgClosed.Basic
 public import Mathlib.LinearAlgebra.Eigenspace.Pi
 public import Mathlib.LinearAlgebra.Eigenspace.Semisimple
 public import Mathlib.LinearAlgebra.Matrix.Charpoly.Eigs
+public import NLAlib.Matrix.Perturbation.BackwardClosed
 public import NLAlib.Matrix.Pseudoinverse.ConditionNumber
 public import NLAlib.Matrix.Spectral.EigenvectorPairing
 public import NLAlib.Matrix.Spectral.Normal
@@ -625,6 +626,43 @@ theorem mul_eq_mul_diagonal_add_smul_one_iff {A V : Matrix n n K} {d : n → K} 
   rw [hD, Matrix.add_mul, Matrix.mul_add, Matrix.smul_mul, Matrix.mul_smul, Matrix.one_mul,
     Matrix.mul_one, add_left_inj]
 
+/-- A diagonalization rescaled to a unit-norm eigenvector matrix: if
+$\mathbf{A}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$ with $\mathbf{V}$ invertible,
+$\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le B$ and eigenvalues at mutual distance at least $g$,
+then $\mathbf{W} = \mathbf{V}/\|\mathbf{V}\|_2$ and $\mathbf{U} = \mathbf{W}^{-1}$ have
+$\|\mathbf{W}\|_2 \le 1$, $\|\mathbf{U}\|_2 \le B$, $\mathbf{W}\mathbf{U} = \mathbf{I}$, and
+$\mathbf{A}\mathbf{W} = \mathbf{W}\operatorname{diag}(\mathbf{e})$ with $\mathbf{e}$ the diagonal
+of $\mathbf{U}\mathbf{A}\mathbf{W}$, whose entries are at mutual distance at least $g$. -/
+private theorem exists_normalized_of_mul_eq_mul_diagonal {n : ℕ} {B g : ℝ}
+    {A V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} (hV : IsUnit V)
+    (hAV : A * V = V * Matrix.diagonal d) (hB : pseudoConditionNumber V ≤ B)
+    (hgap : ∀ i j, i ≠ j → g ≤ ‖d i - d j‖) :
+    ∃ W U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, (specNorm W ≤ 1 ∧ specNorm U ≤ B) ∧
+      W * U = 1 ∧ A * W = W * Matrix.diagonal (fun i => (U * A * W) i i) ∧
+      ∀ i j, i ≠ j → g ≤ ‖(U * A * W) i i - (U * A * W) j j‖ := by
+  have hdet := (Matrix.isUnit_iff_isUnit_det V).mp hV
+  have hc : 0 < specNorm V := lt_of_le_of_ne (specNorm_nonneg V) fun h =>
+    not_isUnit_zero (M₀ := Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+      (specNorm_eq_zero_iff.mp h.symm ▸ hV)
+  set c : ℂ := (specNorm V : ℂ)
+  have hc0 : c ≠ 0 := Complex.ofReal_ne_zero.mpr hc.ne'
+  have hWU : (c⁻¹ • V) * (c • V⁻¹) = 1 := by
+    rw [Matrix.smul_mul, Matrix.mul_smul, smul_smul, inv_mul_cancel₀ hc0, one_smul,
+      Matrix.mul_nonsing_inv V hdet]
+  have hAW : A * (c⁻¹ • V) = (c⁻¹ • V) * Matrix.diagonal d := by
+    rw [Matrix.mul_smul, hAV, Matrix.smul_mul]
+  have hD : (c • V⁻¹) * A * (c⁻¹ • V) = Matrix.diagonal d := by
+    rw [Matrix.mul_assoc, hAW, ← Matrix.mul_assoc, Matrix.smul_mul, Matrix.mul_smul, smul_smul,
+      mul_inv_cancel₀ hc0, one_smul, Matrix.nonsing_inv_mul V hdet, Matrix.one_mul]
+  refine ⟨c⁻¹ • V, c • V⁻¹, ⟨?_, ?_⟩, hWU, ?_, ?_⟩
+  · rw [specNorm_smul, norm_inv, Complex.norm_real, Real.norm_of_nonneg hc.le,
+      inv_mul_cancel₀ hc.ne']
+  · rwa [specNorm_smul, Complex.norm_real, Real.norm_of_nonneg hc.le,
+      ← pseudoConditionNumber_of_isUnit hV]
+  · simp only [hD, Matrix.diagonal_apply_eq]
+    exact hAW
+  · simpa only [hD, Matrix.diagonal_apply_eq] using hgap
+
 /-- The diagonalization class is closed: for $B, g \in \mathbb{R}$, the set of complex
 matrices $\mathbf{A}$ of order $n + 1$ with $\mathbf{A}\mathbf{V} =
 \mathbf{V}\operatorname{diag}(\mathbf{d})$ for some invertible $\mathbf{V}$ with
@@ -636,6 +674,41 @@ theorem isClosed_setOf_exists_pseudoConditionNumber_le_and_le_norm_sub (n : ℕ)
       ∃ (V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (d : Fin (n + 1) → ℂ), IsUnit V ∧
         A * V = V * Matrix.diagonal d ∧ pseudoConditionNumber V ≤ B ∧
           ∀ i j, i ≠ j → g ≤ ‖d i - d j‖} := by
-  sorry
+  set N := Fin (n + 1)
+  -- the eigenvalues are the diagonal of `W⁻¹ A W`, so only `(W, W⁻¹)` ranges over a compact set
+  have hK : IsCompact
+      ({W : Matrix N N ℂ | specNorm W ≤ 1} ×ˢ {U : Matrix N N ℂ | specNorm U ≤ B}) :=
+    (isCompact_setOf_specNorm_le 1).prod (isCompact_setOf_specNorm_le B)
+  have hC : IsClosed {p : Matrix N N ℂ × (Matrix N N ℂ × Matrix N N ℂ) |
+      p.2.1 * p.2.2 = 1 ∧ p.1 * p.2.1 =
+        p.2.1 * Matrix.diagonal (fun i => (p.2.2 * p.1 * p.2.1) i i) ∧
+      ∀ i j, i ≠ j → g ≤ ‖(p.2.2 * p.1 * p.2.1) i i - (p.2.2 * p.1 * p.2.1) j j‖} := by
+    have hW : Continuous fun p : Matrix N N ℂ × (Matrix N N ℂ × Matrix N N ℂ) => p.2.1 :=
+      continuous_fst.comp continuous_snd
+    have hU : Continuous fun p : Matrix N N ℂ × (Matrix N N ℂ × Matrix N N ℂ) => p.2.2 :=
+      continuous_snd.comp continuous_snd
+    have hM := (hU.matrix_mul continuous_fst).matrix_mul hW
+    have hD : ∀ i, Continuous fun p : Matrix N N ℂ × (Matrix N N ℂ × Matrix N N ℂ) =>
+        (p.2.2 * p.1 * p.2.1) i i := fun i => hM.matrix_elem i i
+    refine (isClosed_eq (hW.matrix_mul hU) continuous_const).inter
+      ((isClosed_eq (continuous_fst.matrix_mul hW)
+        (hW.matrix_mul (continuous_pi fun i => hD i).matrix_diagonal)).inter ?_)
+    change IsClosed {p : Matrix N N ℂ × (Matrix N N ℂ × Matrix N N ℂ) |
+      ∀ i j, i ≠ j → g ≤ ‖(p.2.2 * p.1 * p.2.1) i i - (p.2.2 * p.1 * p.2.1) j j‖}
+    simp only [Set.ofPred_forall]
+    exact isClosed_iInter fun i => isClosed_iInter fun j => isClosed_iInter fun _ =>
+      isClosed_le continuous_const ((hD i).sub (hD j)).norm
+  convert isClosed_setOf_exists_mem_of_isCompact hK hC using 1
+  ext A
+  simp only [Set.mem_ofPred_eq, Prod.exists, Set.mem_prod]
+  constructor
+  · rintro ⟨V, d, hV, hAV, hB, hgap⟩
+    exact exists_normalized_of_mul_eq_mul_diagonal hV hAV hB hgap
+  · rintro ⟨W, U, ⟨hW1, hUB⟩, hWU, hAW, hgap⟩
+    have hWu : IsUnit W := (Matrix.isUnit_iff_isUnit_det W).mpr
+      (Matrix.isUnit_det_of_right_inverse hWU)
+    refine ⟨W, _, hWu, hAW, ?_, hgap⟩
+    rw [pseudoConditionNumber_of_isUnit hWu, Matrix.inv_eq_right_inv hWU]
+    exact (mul_le_of_le_one_left (specNorm_nonneg U) hW1).trans hUB
 
 end NLAlib

@@ -374,6 +374,15 @@ theorem continuous_specNorm : Continuous (specNorm : Matrix m n 𝕜 → ℝ) :=
   open scoped Matrix.Norms.L2Operator in
   exact continuous_norm (E := Matrix m n 𝕜)
 
+/-- A closed ball of the spectral norm is compact for the entrywise topology: for every
+$\beta \in \mathbb{R}$ the matrices with $\|\mathbf{A}\|_2 \le \beta$ form a compact set. -/
+theorem isCompact_setOf_specNorm_le (β : ℝ) : IsCompact {A : Matrix m n 𝕜 | specNorm A ≤ β} := by
+  have hbox := isCompact_univ_pi fun _ : m => isCompact_univ_pi fun _ : n =>
+    isCompact_closedBall (0 : 𝕜) β
+  refine hbox.of_isClosed_subset (isClosed_le continuous_specNorm continuous_const)
+    fun (A : Matrix m n 𝕜) hA i _ j _ => mem_closedBall_zero_iff.mpr ?_
+  exact (norm_apply_le_specNorm A i j).trans hA
+
 end NLAlib
 
 namespace Mathlib.Meta.Positivity

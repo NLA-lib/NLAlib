@@ -88,12 +88,7 @@ closed set. -/
 theorem isClosed_setOf_exists_specNorm_le_isEigenvalueListing (β : ℝ) :
     IsClosed {p : Matrix n n ℂ × (ι → ℂ) |
       ∃ F : Matrix n n ℂ, specNorm F ≤ β ∧ IsEigenvalueListing (p.1 + F) p.2} := by
-  have hK : IsCompact {F : Matrix n n ℂ | specNorm F ≤ β} := by
-    have hbox := isCompact_univ_pi fun _ : n => isCompact_univ_pi fun _ : n =>
-      isCompact_closedBall (0 : ℂ) β
-    refine hbox.of_isClosed_subset (isClosed_le continuous_specNorm continuous_const)
-      fun (F : Matrix n n ℂ) hF i _ j _ => mem_closedBall_zero_iff.mpr ?_
-    exact (norm_apply_le_specNorm F i j).trans hF
+  have hK : IsCompact {F : Matrix n n ℂ | specNorm F ≤ β} := isCompact_setOf_specNorm_le β
   have hC : IsClosed {q : (Matrix n n ℂ × (ι → ℂ)) × Matrix n n ℂ |
       ∀ t : ℂ, (Matrix.scalar n t - (q.1.1 + q.2)).det = ∏ i, (t - q.1.2 i)} := by
     rw [Set.ofPred_forall]

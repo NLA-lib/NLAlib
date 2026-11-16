@@ -1,0 +1,17 @@
+{
+  "date": "2026-11-16",
+  "note": "The coefficients of the shifted QR coefficient program are the rounded Givens coefficients of Matrix/FinitePrecision/GivensRounded; the program-local spelling is merged into it.",
+  "renames": [
+    {
+      "old": "NLAlib.ShiftedQR.coefficientWords",
+      "new": "NLAlib.roundedGivensCoeffs",
+      "rule": "N5"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.coefficientWords_eq",
+      "new": "NLAlib.ShiftedQR.roundedGivensCoeffs_eq_givensCoeffs",
+      "rule": "N5"
+    }
+  ],
+  "statementChanged": []
+}

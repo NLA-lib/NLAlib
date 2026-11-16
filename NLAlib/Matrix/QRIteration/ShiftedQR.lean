@@ -441,6 +441,15 @@ theorem eval_shiftPoly_ne_zero {ss : List ℂ} {z : ℂ} (h : ∀ s ∈ ss, z �
 theorem shiftPoly_append (a b : List ℂ) : shiftPoly (a ++ b) = shiftPoly a * shiftPoly b := by
   simp [shiftPoly, List.map_append, List.prod_append]
 
+/-- The shift polynomial of a list repeated $e$ times is the $e$-th power:
+$p_{l^e} = p_l^{\,e}$. -/
+theorem shiftPoly_flatten_replicate (e : ℕ) (l : List ℂ) :
+    shiftPoly (List.replicate e l).flatten = shiftPoly l ^ e := by
+  induction e with
+  | zero => simp [shiftPoly]
+  | succ e ih => rw [List.replicate_succ', List.flatten_append, List.flatten_singleton,
+      shiftPoly_append, ih, pow_succ]
+
 /-- The shift polynomial of a repeated shift is a power: $p(\mathbf{H}) = (\mathbf{H} -
 r\mathbf{I})^k$ for the list of $k$ copies of $r$. -/
 theorem aeval_shiftPoly_replicate (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (k : ℕ) (r : ℂ) :

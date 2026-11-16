@@ -31,7 +31,7 @@ open scoped Matrix
 variable {Op Tst : Type} [Has ScalarOp Op] [Has CmpTst Tst]
 
 /-- One round on any machine computes the coefficient words `(cv, sv)` of the actual working
-column (`NLAlib.ShiftedQR.coefficientWords`), rotates the rows $k, k + 1$ of the working matrix
+column (`NLAlib.roundedGivensCoeffs`), rotates the rows $k, k + 1$ of the working matrix
 and conjugates the output by them (`NLAlib.ShiftedQR.machineRowRotation`,
 `NLAlib.ShiftedQR.machineColRotation`). The two matrices and four coefficient words are
 separated views; output aliases are exact. -/
@@ -39,7 +39,7 @@ theorem round_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k : ℕ} {w z cf : ℕ × ℕ}
     {W Z : Matrix (Fin n) (Fin n) ℂ} {cv sv : ℂ} (hk : k + 1 < n)
-    (hcs : coefficientWords M (W ⟨k, by omega⟩ ⟨k, by omega⟩) (W ⟨k + 1, hk⟩ ⟨k, by omega⟩) =
+    (hcs : roundedGivensCoeffs M (W ⟨k, by omega⟩ ⟨k, by omega⟩) (W ⟨k + 1, hk⟩ ⟨k, by omega⟩) =
       (cv, sv))
     (hW : HoldsMatrix w W m.store) (hZ : HoldsMatrix z Z m.store)
     (hc : cf.2 + 4 ≤ m.store.len cf.1)
@@ -83,7 +83,7 @@ theorem round_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (by simpa [Mem.Live, c, s] using And.intro hwl hcl)
     (hcf.trans le_sup_right) ?_
   intro m₁ hfr₁ ⟨hp₁, hcs₁⟩
-  rw [show coefficientWords M (W i i) (W j i) = (cv, sv) from hcs] at hcs₁
+  rw [show roundedGivensCoeffs M (W i i) (W j i) = (cv, sv) from hcs] at hcs₁
   have hc₁ := (Mem.readBlocks_cons_iff.mp hcs₁).1
   have hs₁ := (Mem.readBlocks_cons_iff.mp (Mem.readBlocks_cons_iff.mp hcs₁).2).1
   have hW₁ := hW.of_eqOff hfr₁ (hwc.symm.mono hcf le_rfl)
@@ -142,8 +142,8 @@ theorem round_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
           m'.store) m := by
   have hij : (⟨k, by omega⟩ : Fin n) ≠ ⟨k + 1, hk⟩ := Fin.ne_of_val_ne (Nat.succ_ne_self k).symm
   have he := givensHessenbergStep_of_lt W (by omega : k < n) hk (by omega : k < n)
-  refine (round_writes_word (τ := τ) hS hCmp hk (coefficientWords_eq hE _ _) hW hZ hc hwz hwc
-    hzc).mono le_rfl fun _ _ ⟨hp, hW', hZ'⟩ => ⟨hp, ?_, ?_⟩
+  refine (round_writes_word (τ := τ) hS hCmp hk (roundedGivensCoeffs_eq_givensCoeffs hE _ _) hW hZ
+    hc hwz hwc hzc).mono le_rfl fun _ _ ⟨hp, hW', hZ'⟩ => ⟨hp, ?_, ?_⟩
   · rwa [he, ← machineRowRotation_eq hE hij]
   · rwa [he, ← machineRowRotation_eq hE hij, ← machineColRotation_eq hE hij]
 

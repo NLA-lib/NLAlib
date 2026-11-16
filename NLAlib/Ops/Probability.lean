@@ -21,6 +21,9 @@ This includes `none`, all resource violations and failure of the stronger output
 * `NLAlib.Ops.Specification.Accepts`: one counted outcome satisfies all resource bounds and a post.
 * `NLAlib.Ops.Algorithm.failure_subset`: actual failure is contained in reference failure.
 * `NLAlib.Ops.Algorithm.measureReal_failure_le`: a reference bound controls complete run failure.
+* `NLAlib.Ops.Algorithm.accepts_of_wp`, `NLAlib.Ops.Algorithm.measureReal_not_accepts_le_of_wp`:
+  the bridge from a total word-level postcondition of the program's own run (a `Writes` or
+  `Wp` event, as the probabilistic program logic proves) to acceptance of the same counted run.
 -/
 
 @[expose] public section
@@ -86,6 +89,58 @@ theorem measureReal_failure_le [MeasurableSpace Omega] (mu : Measure Omega)
       (exec A.program I model.resources P.formats (tape omega) d (P.initial d x)) (Q omega)} ≤
       delta :=
   (measureReal_mono (A.failure_subset hd x I hI tape R Q hPost)).trans hBound
+
+end Algorithm
+
+namespace Algorithm
+
+variable {model : AccessModel Op Tst P} {S : Specification Op Tst P}
+  (A : Algorithm model S) {d : Fin r → ℕ} (hd : P.valid d) (x : P.Input d)
+  (I : Interp Op Tst K) (hI : model.contracts d x I)
+
+include hd hI
+
+/-- The bridge from the program logic: a total postcondition `Q` of the memory semantics of
+the certified program, at one tape, is a postcondition of the same counted run. The counted run
+succeeds within every resource bound of the specification (from the certificate) and its final
+memory is the final memory of the memory semantics, so it meets `Q`. Unlike
+`NLAlib.Ops.Algorithm.accepts_of_reference`, the output specification need not identify the
+final memory: a relational model is allowed. -/
+theorem accepts_of_wp {τ : Tape K} {Q : Mem K → Prop}
+    (h : Wp .total I τ A.program.body (Program.environment (b := b) d) Q (P.initial d x)) :
+    S.Accepts model.resources d x
+      (exec A.program I model.resources P.formats τ d (P.initial d x)) fun _ m => Q m := by
+  obtain ⟨st, hrun, hpeak, hcount, hwork, hspan, hmemory, -⟩ := A.correct d hd x I hI τ
+  obtain ⟨m', he, hQ⟩ := h
+  have hm := exec_mem A.program I model.resources P.formats τ d (P.initial d x)
+  rw [hrun, Option.map_some, Ops.run, if_pos ⟨A.wellTyped, by simp [Problem.initial]⟩, he] at hm
+  exact ⟨st, hrun, hpeak, hcount, hwork, hspan, hmemory, (Option.some.inj hm) ▸ hQ⟩
+
+/-- Complete failure of the counted run (failure, a violated resource bound of the
+specification, or failure of `Q`) is a subset of failure of the total postcondition `Q` of the
+memory semantics. -/
+theorem not_accepts_subset_of_wp {Omega : Type} (tape : Omega → Tape K)
+    (Q : Omega → Mem K → Prop) :
+    {omega | ¬ S.Accepts model.resources d x
+      (exec A.program I model.resources P.formats (tape omega) d (P.initial d x))
+        fun _ m => Q omega m} ⊆
+      {omega | ¬ Wp .total I (tape omega) A.program.body (Program.environment (b := b) d)
+        (Q omega) (P.initial d x)} :=
+  fun _ hbad hw => hbad (A.accepts_of_wp hd x I hI hw)
+
+/-- Same-run probability from the program logic: for finite measures, a bound `delta` on the
+probability that the memory semantics of the certified program fails the total postcondition `Q`
+bounds the probability that the counted run fails, violates a resource bound of the
+specification or fails `Q`. -/
+theorem measureReal_not_accepts_le_of_wp {Omega : Type} [MeasurableSpace Omega]
+    (mu : Measure Omega) [IsFiniteMeasure mu] (tape : Omega → Tape K)
+    (Q : Omega → Mem K → Prop) {delta : ℝ}
+    (hBound : mu.real {omega | ¬ Wp .total I (tape omega) A.program.body
+      (Program.environment (b := b) d) (Q omega) (P.initial d x)} ≤ delta) :
+    mu.real {omega | ¬ S.Accepts model.resources d x
+      (exec A.program I model.resources P.formats (tape omega) d (P.initial d x))
+        fun _ m => Q omega m} ≤ delta :=
+  (measureReal_mono (A.not_accepts_subset_of_wp hd x I hI tape Q)).trans hBound
 
 end Algorithm
 

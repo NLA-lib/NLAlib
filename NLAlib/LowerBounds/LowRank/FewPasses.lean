@@ -48,6 +48,9 @@ algorithmic lower bounds ($p = 2$), which go through the Krylov coupling, are pr
 * `NLAlib.div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le`,
   `NLAlib.div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le_of_lt_one`,
   `NLAlib.lt_of_forall_le_measureReal_specNorm_sub_mul_le`: query-count lower bounds.
+* `NLAlib.natCast_div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le`,
+  `NLAlib.natCast_div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le_of_lt_one`: the two-pass
+  and one-pass Frobenius query lower bounds with natural-number sizes.
 -/
 
 @[expose] public section
@@ -955,9 +958,11 @@ $\|\mathbf{A} - \mathbf{W}\mathbf{M}\|_{\mathsf{F}}^2 \le (1 + \varepsilon)
 \|\mathbf{A} - \llbracket \mathbf{A} \rrbracket_k\|_{\mathsf{F}}^2$ with probability at least
 $\tfrac12$ for every symmetric $\mathbf{A}$, then
 $$q > \frac{\lvert k \rvert}{6400\,\varepsilon} \,.$$
-Two passes of randomized SVD with $O(k/\varepsilon)$ products achieve this accuracy in
-expectation, so the rate $k/\varepsilon$ is optimal for two-pass algorithms.
 No printed source.
+
+Note: two passes of randomized SVD with $O(k/\varepsilon)$ products achieve this accuracy in
+expectation, so the rate $k/\varepsilon$ is optimal for two-pass algorithms. Integer-size form:
+`NLAlib.natCast_div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le`.
 Result: two-pass-low-rank-lower-bound -/
 theorem div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le [Nonempty k] {ε : ℝ} {q : ℕ}
     (hε : 0 < ε) (hε₁ : ε ≤ 1 / 6500) (hεk : ε ≤ Fintype.card k / 14000)
@@ -1092,16 +1097,19 @@ theorem natCast_div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le {k m q : 
   exact h hε hε₁ hεk hm halg hpass hp ρ hsucc
 
 omit [DecidableEq k] [DecidableEq m] in
-/-- **One-pass low-rank approximation needs $\Omega(k/\varepsilon)$ matrix–vector products**: the
-statement of `NLAlib.div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le` for algorithms whose
-products are all chosen in advance (one pass): with $k$ nonempty,
+/-- **One-pass low-rank approximation needs $\Omega(k/\varepsilon)$ matrix–vector products**: for
+algorithms whose products are all chosen in advance (one pass), with $k$ nonempty,
 $0 < \varepsilon \le \min\{1/6500, \lvert k \rvert/14000\}$ and
 $\lvert m \rvert = \lfloor \lvert k \rvert/(8\varepsilon) \rfloor$, an algorithm that is within
 $(1 + \varepsilon)$ of the best rank-$k$ Frobenius error with probability at least $\tfrac12$ on
-every symmetric input makes $q > \lvert k \rvert/(6400\varepsilon)$ products. Truncated generalized
-Nyström attains the error in expectation with $O(k/\varepsilon)$ one-pass products
-(`LowRank/Gaussian/TruncatedGeneralizedNystromRate`), so the bound is tight up to constants.
+every symmetric input makes $q > \lvert k \rvert/(6400\varepsilon)$ products.
 No printed source.
+
+Note: this is `NLAlib.div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le` restricted to one
+pass. Truncated generalized Nyström attains the error in expectation with $O(k/\varepsilon)$
+one-pass products (`LowRank/Gaussian/TruncatedGeneralizedNystromRate`), so the bound is tight up
+to constants. Integer-size form:
+`NLAlib.natCast_div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le_of_lt_one`.
 Result: one-pass-low-rank-lower-bound -/
 theorem div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le_of_lt_one [Nonempty k] {ε : ℝ}
     {q : ℕ} (hε : 0 < ε) (hε₁ : ε ≤ 1 / 6500) (hεk : ε ≤ Fintype.card k / 14000)

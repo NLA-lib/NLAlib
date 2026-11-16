@@ -42,6 +42,8 @@ $r \mapsto$ <!-- value chebyshevAccuracyBound r --> $1/(25088(r+1)^3(r+2))$.
   fixed-batch query lower bound.
 * `div_chebyshevQueryFactor_mul_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le_of_pass_lt`:
   the Chebyshev fixed-batch query lower bound, $q = \Omega(k/(\varepsilon(r+1)^3))$.
+* The same bound with natural-number sizes:
+`natCast_div_chebyshevQueryFactor_mul_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le_of_pass_lt`
 -/
 
 @[expose] public section
@@ -694,9 +696,12 @@ randomized algorithm using at most $r$ batches and attaining squared relative Fr
 $1+\varepsilon$ with probability at least $1/2$ on every PSD input of dimension
 $\lvert k\rvert+(r+1)\lvert m\rvert$ uses <!-- value chebyshevQueryFactor r -->
 $$q>\frac{\lvert k\rvert}{12544(r+1)^3\varepsilon}$$
-queries. The hard spectrum has its head at $1+1/(8(r+1)^2)$ and Chebyshev tail levels in
+queries. No printed source.
+
+Note: the hard spectrum has its head at $1+1/(8(r+1)^2)$ and Chebyshev tail levels in
 $[1/2,1]$ (`chebyshevLevelSpectrum`). The dependence on the batch count is polynomial; its
-optimal exponent is not asserted. No printed source.
+optimal exponent is not asserted. The integer-size form is
+`natCast_div_chebyshevQueryFactor_mul_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le_of_pass_lt`
 Result: fixed-batch-low-rank-lower-bound -/
 theorem div_chebyshevQueryFactor_mul_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le_of_pass_lt
     [Nonempty k] {r : ℕ} {ε : ℝ} {q : ℕ} (hε : 0 < ε)

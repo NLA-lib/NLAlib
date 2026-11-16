@@ -54,6 +54,14 @@ $\kappa$ and the weight $p$ ([BanksGarzaVargasSrivastava2025, Proposition 3.5], 
 `OneEig`, with $\log = \log_2$). -/
 noncomputable def distSpecDegree (κ p : ℝ) : ℕ := ⌈12 * logb 2 κ + 6 * logb 2 p⁻¹⌉₊
 
+/-- $2^{1/12} \le 1.09$: the factor by which a degree $m \ge 12\log_2 x$ lets $x^{1/m}$ exceed
+$1$. -/
+private theorem two_rpow_inv_twelve_le : (2 : ℝ) ^ ((12 : ℝ)⁻¹) ≤ 1.09 := by
+  have h : (2 : ℝ) ≤ 1.09 ^ (12 : ℕ) := by norm_num
+  calc (2 : ℝ) ^ ((12 : ℝ)⁻¹) ≤ ((1.09 : ℝ) ^ (12 : ℕ)) ^ ((12 : ℝ)⁻¹) := by gcongr
+    _ = 1.09 := by
+      rw [← Real.rpow_natCast, ← Real.rpow_mul (by norm_num)]; norm_num
+
 /-- **The degree of `DistSpec` is large enough** ([BanksGarzaVargasSrivastava2025,
 Observation 3.3], "$m$ is large enough", with $\log = \log_2$): for $\kappa \ge 1$,
 $0 < p \le 1$ and $m \ge 1$ at least `NLAlib.SmallEig.distSpecDegree` $\kappa$ $p$,
@@ -62,7 +70,31 @@ the two factors by which the estimate of `DistSpec` may miss the distance to the
 theorem distSpecDegree_spec {κ p : ℝ} (hκ : 1 ≤ κ) (hp : 0 < p) (hp1 : p ≤ 1) {m : ℕ}
     (hm0 : 0 < m) (hm : distSpecDegree κ p ≤ m) :
     0.9 ≤ 0.998 * κ ^ (-(m : ℝ)⁻¹) ∧ 1.003 * κ ^ ((m : ℝ)⁻¹) * p ^ (-(2 * (m : ℝ))⁻¹) ≤ 1.1 := by
-  sorry
+  have hm' : 12 * logb 2 κ + 6 * logb 2 p⁻¹ ≤ m := Nat.ceil_le.mp hm
+  have hmR : (0:ℝ) < m := by exact_mod_cast hm0
+  have ha : 0 ≤ logb 2 κ := logb_nonneg (by norm_num) hκ
+  have hb : 0 ≤ logb 2 p⁻¹ := logb_nonneg (by norm_num) (one_le_inv₀ hp |>.mpr hp1)
+  have hκ0 : 0 < κ := by linarith
+  have key : κ ^ ((m : ℝ)⁻¹) * p ^ (-(2 * (m : ℝ))⁻¹) ≤ 2 ^ ((12:ℝ)⁻¹) := by
+    have e1 : κ = 2 ^ logb 2 κ := (rpow_logb (by norm_num) (by norm_num) hκ0).symm
+    have e2 : p = 2 ^ (-logb 2 p⁻¹) := by
+      rw [logb_inv, neg_neg, rpow_logb (by norm_num) (by norm_num) hp]
+    rw [e1, e2, ← rpow_mul (by norm_num), ← rpow_mul (by norm_num), ← rpow_add (by norm_num)]
+    apply rpow_le_rpow_of_exponent_le (by norm_num)
+    rw [← sub_nonneg]
+    have : (12:ℝ)⁻¹ - (logb 2 κ * (m:ℝ)⁻¹ + -logb 2 p⁻¹ * -(2 * (m:ℝ))⁻¹) =
+        (m - (12 * logb 2 κ + 6 * logb 2 p⁻¹)) / (12 * m) := by field_simp; ring
+    rw [this]; apply div_nonneg <;> linarith
+  have h2 := two_rpow_inv_twelve_le
+  have hpos1 : 0 < κ ^ ((m : ℝ)⁻¹) := rpow_pos_of_pos hκ0 _
+  have hκ1 : 1 ≤ κ ^ ((m : ℝ)⁻¹) := one_le_rpow hκ (by positivity)
+  have hp2 : 1 ≤ p ^ (-(2 * (m : ℝ))⁻¹) :=
+    one_le_rpow_of_pos_of_le_one_of_nonpos hp hp1 (by rw [neg_nonpos]; positivity)
+  constructor
+  · rw [rpow_neg hκ0.le]
+    have : κ ^ ((m : ℝ)⁻¹) ≤ 1.09 := by nlinarith
+    rw [← div_eq_mul_inv, le_div_iff₀ hpos1]; nlinarith
+  · nlinarith
 
 /-- The round cap $t = \lceil 2\log_2(5.2\,\Sigma/\beta)\rceil$ of `OneEig` (the paper's
 $\lceil 2\log(\Sigma/(5\beta))\rceil$ corrected, its erratum P6). -/
@@ -77,7 +109,34 @@ The paper's $t$ fails the first for $\Sigma/\beta < 6 \cdot 10^7$. -/
 theorem oneEigRounds_spec {S β : ℝ} (hβ : 0 < β) (hβS : β ≤ S) :
     4.6 * 0.66 ^ oneEigRounds S β / 0.9 ≤ β / S ∧
       6 * (oneEigRounds S β : ℝ) + 1 ≤ 12 * logb 2 (7.8 * S / β) := by
-  sorry
+  have hS : 0 < S := hβ.trans_le hβS
+  set y := logb 2 (5.2 * S / β) with hy
+  have hr : 1 ≤ 5.2 * S / β := by rw [le_div_iff₀ hβ]; linarith
+  have hy0 : 0 ≤ y := logb_nonneg (by norm_num) hr
+  have ht : 2 * y ≤ oneEigRounds S β := Nat.le_ceil _
+  have ht' : (oneEigRounds S β : ℝ) < 2 * y + 1 := Nat.ceil_lt_add_one (by positivity)
+  constructor
+  · have h1 : (0.66:ℝ) ^ oneEigRounds S β ≤ (0.66:ℝ) ^ (2 * y) := by
+      rw [← rpow_natCast]; exact rpow_le_rpow_of_exponent_ge (by norm_num) (by norm_num) ht
+    have h2 : (0.66:ℝ) ^ (2 * y) ≤ β / (5.2 * S) := by
+      rw [rpow_mul (by norm_num)]
+      calc ((0.66:ℝ) ^ (2:ℝ)) ^ y ≤ (2⁻¹ : ℝ) ^ y := by
+            gcongr; rw [show (2:ℝ) = ((2:ℕ):ℝ) by norm_num, rpow_natCast]; norm_num
+        _ = β / (5.2 * S) := by
+            rw [inv_rpow (by norm_num), hy, rpow_logb (by norm_num) (by norm_num) (by linarith)]
+            field_simp
+    have h3 : β / (5.2 * S) * 5.2 = β / S := by field_simp
+    have : 0 ≤ (0.66:ℝ) ^ oneEigRounds S β := by positivity
+    rw [div_le_iff₀ (by norm_num)]
+    nlinarith [div_pos hβ hS]
+  · have e : logb 2 (7.8 * S / β) = y + logb 2 1.5 := by
+      rw [hy, ← logb_mul (by positivity) (by norm_num)]; congr 1; ring
+    have h15 : 7 ≤ 12 * logb 2 1.5 := by
+      rw [← logb_rpow_eq_mul_logb_of_pos (by norm_num),
+        le_logb_iff_rpow_le (by norm_num) (by positivity)]
+      rw [show (12:ℝ) = ((12:ℕ):ℝ) by norm_num, rpow_natCast,
+        show (7:ℝ) = ((7:ℕ):ℝ) by norm_num, rpow_natCast]; norm_num
+    rw [e]; linarith
 
 /-- The radius $\eta_2 = \min(\beta/40, g/3)$ of the disk samples of `OneEig` (the paper's
 $\beta/5$ corrected, its erratum P5). -/
@@ -100,7 +159,28 @@ theorem oneEigRadii_spec {S β g φ : ℝ} (hβ : 0 < β) (hβS : β ≤ 0.8 * S
       oneEigOuterRadius β g ≤ 0.02 * S ∧
       (6 * (oneEigRounds S β : ℝ) + 1) * (oneEigInnerRadius S β g φ / oneEigOuterRadius β g) ^ 2
         ≤ φ := by
-  sorry
+  have hS : 0 < S := by linarith
+  have h2 : 0 < oneEigOuterRadius β g := lt_min (by positivity) (by positivity)
+  have h2g : oneEigOuterRadius β g ≤ g / 3 := min_le_right _ _
+  have h2β : oneEigOuterRadius β g ≤ β / 40 := min_le_left _ _
+  set L := logb 2 (8 * S / β) with hL
+  have hL3 : 3 ≤ L := by
+    rw [hL, le_logb_iff_rpow_le (by norm_num) (by positivity), le_div_iff₀ hβ,
+      show (3:ℝ) = ((3:ℕ):ℝ) by norm_num, rpow_natCast]; linarith
+  have hq : φ / (12 * L) ≤ 1 / 36 := by
+    rw [div_le_div_iff₀ (by positivity) (by norm_num)]; nlinarith
+  have hsq : √(φ / (12 * L)) ≤ 1 / 6 := by
+    rw [sqrt_le_left (by norm_num)]; linarith
+  have hsq0 : 0 < √(φ / (12 * L)) := sqrt_pos.mpr (by positivity)
+  have hr := (oneEigRounds_spec (S := S) hβ (by linarith)).2
+  have hlog : logb 2 (7.8 * S / β) ≤ L :=
+    logb_le_logb_of_le (by norm_num) (by positivity) (by gcongr; norm_num)
+  refine ⟨mul_pos h2 hsq0, ?_, by linarith, ?_⟩
+  · unfold oneEigInnerRadius; nlinarith
+  · unfold oneEigInnerRadius
+    rw [mul_div_cancel_left₀ _ h2.ne', sq_sqrt (by positivity), ← mul_div_assoc,
+      div_le_iff₀ (by positivity)]
+    nlinarith
 
 /-- The step cap $m_2 = \lceil\log_2(\kappa/\sqrt p)\rceil + 1$ of `Decouple` for the condition
 $\kappa$ and the weight $p$: $\kappa \le 2^{m_2}\sqrt p$. -/

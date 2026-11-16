@@ -539,6 +539,20 @@ theorem inv_sub_smul_one_pow_eq_mul_diagonal_mul_inv (hV : IsUnit V)
   rw [h, mul_diagonal_mul_inv_pow hV]
   rfl
 
+/-- The resolvent powers of a diagonalised matrix: if $\mathbf{H}\mathbf{V} =
+\mathbf{V}\operatorname{diag}(\mathbf{d})$ with $\mathbf{V}$ invertible and no $\mathbf{d}_i$
+equals $s$, then $(s\mathbf{I} - \mathbf{H})^{-k} =
+\mathbf{V}\operatorname{diag}((s - \mathbf{d}_i)^{-k})\mathbf{V}^{-1}$. -/
+theorem inv_smul_one_sub_pow_eq_mul_diagonal_mul_inv (hV : IsUnit V)
+    (hHV : H * V = V * Matrix.diagonal d) {s : ℂ} (hs : ∀ i, s ≠ d i) (k : ℕ) :
+    (s • (1 : Matrix n n ℂ) - H)⁻¹ ^ k = V * Matrix.diagonal (fun i => (s - d i)⁻¹ ^ k) * V⁻¹ := by
+  have h := inv_aeval_eq_mul_diagonal_mul_inv hV hHV (p := Polynomial.C s - Polynomial.X)
+    fun i => by simpa [sub_eq_zero] using hs i
+  simp only [map_sub, Polynomial.aeval_X, Polynomial.aeval_C, Algebra.algebraMap_eq_smul_one,
+    Polynomial.eval_sub, Polynomial.eval_X, Polynomial.eval_C] at h
+  rw [h, mul_diagonal_mul_inv_pow hV]
+  rfl
+
 /-- An eigenvalue of a diagonalised matrix: if $\mathbf{H}\mathbf{V} =
 \mathbf{V}\operatorname{diag}(\mathbf{d})$ with $\mathbf{V}$ invertible, then
 $\det(\mathbf{H} - \mathbf{d}_i\mathbf{I}) = 0$. -/

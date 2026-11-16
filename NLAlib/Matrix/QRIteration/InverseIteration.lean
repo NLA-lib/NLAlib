@@ -8,6 +8,7 @@ module
 public import Mathlib.Analysis.SpecialFunctions.Complex.Circle
 public import NLAlib.Matrix.QRIteration.EigenvectorWeights
 public import NLAlib.Matrix.QRIteration.ShiftedQR
+public import NLAlib.Matrix.Spectral.Diagonalizable
 
 /-!
 # Inverse iteration estimates of the distance to the spectrum
@@ -59,7 +60,26 @@ theorem norm_lastRow_inv_pow_le {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     (hs : ∀ i, s ≠ d i) (hm : 1 ≤ m) :
     ‖WithLp.toLp 2 (((s • (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) - H)⁻¹ ^ m) (Fin.last n))‖ ≤
       pseudoConditionNumber V * (⨅ i, ‖s - d i‖)⁻¹ ^ m := by
-  sorry
+  set g : Fin (n + 1) → ℂ := fun i => (s - d i)⁻¹ ^ m
+  have h := norm_mul_diagonal_mul_inv_last_sq_le hV g
+  rw [← inv_smul_one_sub_pow_eq_mul_diagonal_mul_inv hV hHV hs m] at h
+  obtain ⟨i₀, hi₀⟩ := exists_eq_ciInf_of_finite (f := fun i => ‖s - d i‖)
+  have hpos : 0 < ⨅ i, ‖s - d i‖ := by rw [← hi₀]; exact norm_pos_iff.mpr (sub_ne_zero.mpr (hs i₀))
+  have hg : ∀ i, ‖g i‖ ≤ (⨅ i, ‖s - d i‖)⁻¹ ^ m := fun i => by
+    rw [norm_pow, norm_inv]
+    gcongr
+    exact ciInf_le (Finite.bddBelow_range _) i
+  have hsum : ∑ i, lastRowWeights V i * ‖g i‖ ^ 2 ≤ ((⨅ i, ‖s - d i‖)⁻¹ ^ m) ^ 2 := by
+    calc ∑ i, lastRowWeights V i * ‖g i‖ ^ 2
+        ≤ ∑ i, lastRowWeights V i * ((⨅ i, ‖s - d i‖)⁻¹ ^ m) ^ 2 :=
+          Finset.sum_le_sum fun i _ => by
+            gcongr
+            · exact lastRowWeights_nonneg V i
+            · exact hg i
+      _ = ((⨅ i, ‖s - d i‖)⁻¹ ^ m) ^ 2 := by rw [← Finset.sum_mul, sum_lastRowWeights hV, one_mul]
+  have hκ : 0 ≤ pseudoConditionNumber V := pseudoConditionNumber_nonneg V
+  rw [← pow_le_pow_iff_left₀ (norm_nonneg _) (by positivity) two_ne_zero, mul_pow]
+  exact h.trans (mul_le_mul_of_nonneg_left hsum (sq_nonneg _))
 
 /-- **The last row of a resolvent power is at least every weighted inverse distance, divided by
 $\kappa(\mathbf{V})$** ([BanksGarzaVargasSrivastava2025, Proposition 3.1], the upper bound on
@@ -76,7 +96,17 @@ theorem sqrt_lastRowWeights_mul_le_norm_lastRow_inv_pow
       pseudoConditionNumber V *
         ‖WithLp.toLp 2 (((s • (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) - H)⁻¹ ^ m)
           (Fin.last n))‖ := by
-  sorry
+  set g : Fin (n + 1) → ℂ := fun i => (s - d i)⁻¹ ^ m
+  have h := sum_lastRowWeights_mul_sq_le hV g
+  rw [← inv_smul_one_sub_pow_eq_mul_diagonal_mul_inv hV hHV hs m] at h
+  have hi : lastRowWeights V i * ‖g i‖ ^ 2 ≤ ∑ j, lastRowWeights V j * ‖g j‖ ^ 2 :=
+    Finset.single_le_sum (f := fun j => lastRowWeights V j * ‖g j‖ ^ 2)
+      (fun j _ => mul_nonneg (lastRowWeights_nonneg V j) (sq_nonneg _)) (Finset.mem_univ i)
+  have hgi : ‖g i‖ = ‖s - d i‖⁻¹ ^ m := by rw [norm_pow, norm_inv]
+  have hκ : 0 ≤ pseudoConditionNumber V := pseudoConditionNumber_nonneg V
+  rw [← pow_le_pow_iff_left₀ (by positivity) (by positivity) two_ne_zero, mul_pow, mul_pow,
+    Real.sq_sqrt (lastRowWeights_nonneg V i), ← hgi]
+  exact hi.trans h
 
 /-- **Exact decoupling by a repeated shift** ([BanksGarzaVargasSrivastava2025, Lemma 4.1]): let
 $\mathbf{H}$ of order $n + 2$ be upper Hessenberg, $\mathbf{H}\mathbf{V} =

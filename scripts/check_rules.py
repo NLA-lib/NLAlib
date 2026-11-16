@@ -937,7 +937,9 @@ def asymptotic(doc):
 @rule('B3')
 def b_asym_words(c):
     return [V('B3', p, d['line'], d['full']) for p, d in public_src(c)
-            if asymptotic(d['doc']) and not (re.search(r'O\(', d['doc']) and 'suffice' in d['doc'])]
+            if asymptotic(d['doc']) and not (
+                (re.search(r'O\(', d['doc']) and 'suffice' in d['doc'])
+                or (re.search(r'\\Omega\(', d['doc']) and 'necessary' in d['doc']))]
 
 
 @rule('B4')

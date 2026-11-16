@@ -75,6 +75,12 @@ The maintainer's draft states the bound as $\lesssim_k \varepsilon\|\mathbf{A}\|
 formalization has the factor $240000k^6$, in the spectral norm. -/
 noncomputable irreducible_def lanczosDilatedResidualFactor (k : ℕ) : ℝ := 280 * (k : ℝ) ^ 3
 
+/-- The explicit value the documentation displays: the dilated residual factor of $k$ steps is at
+most <!-- value lanczosDilatedResidualFactor k -->$280k^3$ (at present an equality). -/
+theorem lanczosDilatedResidualFactor_le (k : ℕ) :
+    lanczosDilatedResidualFactor k ≤ 280 * (k : ℝ) ^ 3 := by
+  rw [lanczosDilatedResidualFactor_def]
+
 /-- **The factor of the backward perturbation** of a finite-precision Lanczos run of $k$ steps
 (`NLAlib.LanczosRun.frobNorm_backwardH_sub_dilatedH_le`, Frobenius norm), using the orthogonal
 completion estimate: <!-- value lanczosBackwardFactor k -->
@@ -82,6 +88,11 @@ $$400k^3 \,.$$
 The maintainer's draft states the bound as $\lesssim_k \varepsilon\|\mathbf{A}\|_2$; its
 formalization has the factor $480000k^6$, in the spectral norm. -/
 noncomputable irreducible_def lanczosBackwardFactor (k : ℕ) : ℝ := 400 * (k : ℝ) ^ 3
+
+/-- The explicit value the documentation displays: the backward perturbation factor of $k$ steps
+is at most <!-- value lanczosBackwardFactor k -->$400k^3$ (at present an equality). -/
+theorem lanczosBackwardFactor_le (k : ℕ) : lanczosBackwardFactor k ≤ 400 * (k : ℝ) ^ 3 := by
+  rw [lanczosBackwardFactor_def]
 
 namespace LanczosRun
 

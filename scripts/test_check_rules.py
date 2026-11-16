@@ -427,6 +427,13 @@ class RuleTests(unittest.TestCase):
         for rid in ('E1', 'E3', 'E4', 'E5', 'E6', 'E7', 'E8', 'E9'):
             self.assertNotIn(rid, check_rules.SPECS)  # retired, never reused
 
+    def test_b3_lower_bound_wording(self):
+        form = '/-- {}\nAsymptotic: NLAlib.foo -/\ntheorem exists_forall_foo : True := trivial'
+        self.assertEqual(violations('B3', form.format('$\\Omega(k)$ products are necessary.')), [])
+        self.assertTrue(violations('B3', form.format('$\\Omega(k)$ products.')))
+        self.assertTrue(violations('B3', form.format('$\\Omega(k)$ products suffice.')))
+        self.assertTrue(violations('B3', form.format('Many products are necessary.')))
+
     def test_scope(self):
         # a rule scoped to the Matrix layer (T7) ignores the same declaration in LowRank
         bad = FIX['T7'][0][0]

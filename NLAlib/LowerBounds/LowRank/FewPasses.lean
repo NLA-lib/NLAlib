@@ -48,6 +48,12 @@ algorithmic lower bounds ($p = 2$), which go through the Krylov coupling, are pr
 * `NLAlib.div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le`,
   `NLAlib.div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le_of_lt_one`,
   `NLAlib.lt_of_forall_le_measureReal_specNorm_sub_mul_le`: query-count lower bounds.
+* `NLAlib.natCast_div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le`,
+  `NLAlib.natCast_div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le_of_lt_one`: the two-pass
+  and one-pass Frobenius query lower bounds with natural-number sizes.
+* `NLAlib.exists_forall_natCast_div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le`,
+  `NLAlib.exists_forall_natCast_div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le_of_lt_one`:
+  their asymptotic forms.
 -/
 
 @[expose] public section
@@ -955,9 +961,11 @@ $\|\mathbf{A} - \mathbf{W}\mathbf{M}\|_{\mathsf{F}}^2 \le (1 + \varepsilon)
 \|\mathbf{A} - \llbracket \mathbf{A} \rrbracket_k\|_{\mathsf{F}}^2$ with probability at least
 $\tfrac12$ for every symmetric $\mathbf{A}$, then
 $$q > \frac{\lvert k \rvert}{6400\,\varepsilon} \,.$$
-Two passes of randomized SVD with $O(k/\varepsilon)$ products achieve this accuracy in
-expectation, so the rate $k/\varepsilon$ is optimal for two-pass algorithms.
 No printed source.
+
+Note: two passes of randomized SVD with $O(k/\varepsilon)$ products achieve this accuracy in
+expectation, so the rate $k/\varepsilon$ is optimal for two-pass algorithms. Integer-size form:
+`NLAlib.natCast_div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le`.
 Result: two-pass-low-rank-lower-bound -/
 theorem div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le [Nonempty k] {ε : ℝ} {q : ℕ}
     (hε : 0 < ε) (hε₁ : ε ≤ 1 / 6500) (hεk : ε ≤ Fintype.card k / 14000)
@@ -1045,17 +1053,113 @@ theorem div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le [Nonempty k] {ε 
   have hmono := MeasureTheory.measureReal_mono (μ := ρ) hsubset
   linarith
 
+/-- **Two-pass low-rank approximation needs $\Omega(k/\varepsilon)$ matrix–vector products**,
+integer sizes: let $k$, $m$ and $q$ be natural numbers and $n = k + 3m$, with
+$0 < \varepsilon \le \varepsilon_0$, $\varepsilon \le k/C_1$ and
+$m = \lfloor k/(8\varepsilon) \rfloor$. Let $(\mathcal{A}_s)$ be a randomized algorithm, that is,
+a measurable family of algorithms with seed $s$ drawn from a probability measure $\rho$, where
+every $\mathcal{A}_s$ makes $q$ matrix–vector products with its input $\mathbf{A}$ in at most two
+passes (the products of a pass are chosen before any response of that pass is seen) and returns
+$\mathbf{W} \in \mathbb{R}^{n \times k}$ and $\mathbf{M} \in \mathbb{R}^{k \times n}$. If for
+every symmetric $\mathbf{A} \in \mathbb{R}^{n \times n}$
+$$\mathbb{P}_{s \sim \rho}\bigl[\|\mathbf{A} - \mathbf{W}\mathbf{M}\|_{\mathsf{F}}^2 \le
+(1 + \varepsilon)\|\mathbf{A} - \llbracket \mathbf{A} \rrbracket_k\|_{\mathsf{F}}^2\bigr]
+\ge \frac{1}{2} \,,$$
+then
+$$q > \frac{k}{C\varepsilon} \,.$$
+Here $C = 6400$, $\varepsilon_0 = 1/6500$ and $C_1 = 14000$.
+No printed source.
+
+Note: the hypotheses force $k \ge 1$. The $n$ coordinates are indexed by
+`Fin k ⊕ (Fin 3 × Fin m)`: a head of $k$ coordinates and three tail levels of $m$ each. General
+form, with finite index types in place of $k$ and $m$:
+`NLAlib.div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le`. Two passes of randomized SVD
+with $O(k/\varepsilon)$ products achieve this accuracy in expectation, so the rate
+$k/\varepsilon$ is optimal for two-pass algorithms. Asymptotic form:
+`NLAlib.exists_forall_natCast_div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le`.
+Result: two-pass-low-rank-lower-bound -/
+theorem natCast_div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le {k m q : ℕ} {ε : ℝ}
+    (hε : 0 < ε) (hε₁ : ε ≤ 1 / 6500) (hεk : ε ≤ k / 14000)
+    (hm : m = ⌊(k : ℝ) / (8 * ε)⌋₊) {S : Type*} [MeasurableSpace S]
+    {alg : S → QueryAlgorithm (Fin k ⊕ (Fin 3 × Fin m) → ℝ) (Fin k ⊕ (Fin 3 × Fin m) → ℝ) q
+      (Matrix (Fin k ⊕ (Fin 3 × Fin m)) (Fin k) ℝ × Matrix (Fin k) (Fin k ⊕ (Fin 3 × Fin m)) ℝ)}
+    (halg : QueryAlgorithm.IsMeasurableFamily alg) {pass : S → ℕ → ℕ}
+    (hpass : ∀ s, (alg s).IsPassStructured (pass s)) (hp : ∀ s, ∀ i < q, pass s i < 2)
+    (ρ : Measure S) [IsProbabilityMeasure ρ]
+    (hsucc : ∀ A : Matrix (Fin k ⊕ (Fin 3 × Fin m)) (Fin k ⊕ (Fin 3 × Fin m)) ℝ,
+      A.IsHermitian →
+      1 / 2 ≤ ρ.real {s | frobNorm (A - ((alg s).run A.mulVec).1 * ((alg s).run A.mulVec).2) ^ 2 ≤
+        (1 + ε) * frobNorm (A - truncatedSVD A k) ^ 2}) :
+    (k : ℝ) / (6400 * ε) < q := by
+  have hk : 0 < k := Nat.pos_of_ne_zero fun h => by
+    rw [h, Nat.cast_zero, zero_div] at hεk
+    exact absurd hε (not_lt.mpr hεk)
+  have : Nonempty (Fin k) := ⟨⟨0, hk⟩⟩
+  have h := div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le (k := Fin k) (m := Fin m)
+    (ε := ε) (alg := alg)
+  simp only [Fintype.card_fin] at h
+  exact h hε hε₁ hεk hm halg hpass hp ρ hsucc
+
+/-- **$\Omega(k/\varepsilon)$ matrix–vector products are necessary for two-pass low-rank
+approximation**: there are absolute constants $c, \varepsilon_0 > 0$ such that the following
+holds for all natural numbers $k \ge 1$, $m$ and $q$ and $n = k + 3m$, with
+$0 < \varepsilon \le \varepsilon_0$ and $m = \lfloor k/(8\varepsilon) \rfloor$. Let
+$(\mathcal{A}_s)$ be a randomized algorithm, that is, a measurable family of algorithms with seed
+$s$ drawn from a probability measure $\rho$, where every $\mathcal{A}_s$ makes $q$ matrix–vector
+products with its input $\mathbf{A}$ in at most two
+passes (the products of a pass are chosen before any response of that pass is seen) and returns
+$\mathbf{W} \in \mathbb{R}^{n \times k}$ and $\mathbf{M} \in \mathbb{R}^{k \times n}$. If for
+every symmetric $\mathbf{A} \in \mathbb{R}^{n \times n}$
+$$\mathbb{P}_{s \sim \rho}\bigl[\|\mathbf{A} - \mathbf{W}\mathbf{M}\|_{\mathsf{F}}^2 \le
+(1 + \varepsilon)\|\mathbf{A} - \llbracket \mathbf{A} \rrbracket_k\|_{\mathsf{F}}^2\bigr]
+\ge \frac{1}{2} \,,$$
+then
+$$q > c\,\frac{k}{\varepsilon} \,.$$
+No printed source.
+
+Note: the asymptotic form of
+`NLAlib.natCast_div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le`, proved from it
+with $c = 1/6400$ and $\varepsilon_0 = 1/14000$. Two passes of randomized
+SVD with $O(k/\varepsilon)$ products achieve this accuracy in expectation, so $O(k/\varepsilon)$
+two-pass products suffice in expectation and the rate $k/\varepsilon$ is optimal for two-pass
+algorithms.
+Asymptotic: NLAlib.natCast_div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le
+Result: two-pass-low-rank-lower-bound -/
+theorem exists_forall_natCast_div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le :
+    ∃ c ε₀ : ℝ, 0 < c ∧ 0 < ε₀ ∧ ∀ {S : Type} [MeasurableSpace S] (k m q : ℕ) (ε : ℝ)
+      (alg : S → QueryAlgorithm (Fin k ⊕ (Fin 3 × Fin m) → ℝ) (Fin k ⊕ (Fin 3 × Fin m) → ℝ) q
+        (Matrix (Fin k ⊕ (Fin 3 × Fin m)) (Fin k) ℝ ×
+          Matrix (Fin k) (Fin k ⊕ (Fin 3 × Fin m)) ℝ))
+      (pass : S → ℕ → ℕ) (ρ : Measure S) [IsProbabilityMeasure ρ],
+      0 < k → 0 < ε → ε ≤ ε₀ → m = ⌊(k : ℝ) / (8 * ε)⌋₊ →
+      QueryAlgorithm.IsMeasurableFamily alg → (∀ s, (alg s).IsPassStructured (pass s)) →
+      (∀ s, ∀ i < q, pass s i < 2) →
+      (∀ A : Matrix (Fin k ⊕ (Fin 3 × Fin m)) (Fin k ⊕ (Fin 3 × Fin m)) ℝ, A.IsHermitian →
+        1 / 2 ≤ ρ.real {s |
+          frobNorm (A - ((alg s).run A.mulVec).1 * ((alg s).run A.mulVec).2) ^ 2 ≤
+            (1 + ε) * frobNorm (A - truncatedSVD A k) ^ 2}) →
+      c * (k / ε) < q := by
+  refine ⟨1 / 6400, 1 / 14000, by norm_num, by norm_num, ?_⟩
+  intro S _ k m q ε alg pass ρ _ hk hε hε₀ hm halg hpass hp hsucc
+  have hk1 : (1 : ℝ) ≤ k := by exact_mod_cast hk
+  have h := natCast_div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le hε
+    (by linarith) (by linarith) hm halg hpass hp ρ hsucc
+  rwa [show (1 / 6400 : ℝ) * (k / ε) = k / (6400 * ε) by field_simp]
+
 omit [DecidableEq k] [DecidableEq m] in
-/-- **One-pass low-rank approximation needs $\Omega(k/\varepsilon)$ matrix–vector products**: the
-statement of `NLAlib.div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le` for algorithms whose
-products are all chosen in advance (one pass): with $k$ nonempty,
+/-- **One-pass low-rank approximation needs $\Omega(k/\varepsilon)$ matrix–vector products**: for
+algorithms whose products are all chosen in advance (one pass), with $k$ nonempty,
 $0 < \varepsilon \le \min\{1/6500, \lvert k \rvert/14000\}$ and
 $\lvert m \rvert = \lfloor \lvert k \rvert/(8\varepsilon) \rfloor$, an algorithm that is within
 $(1 + \varepsilon)$ of the best rank-$k$ Frobenius error with probability at least $\tfrac12$ on
-every symmetric input makes $q > \lvert k \rvert/(6400\varepsilon)$ products. Truncated generalized
-Nyström attains the error in expectation with $O(k/\varepsilon)$ one-pass products
-(`LowRank/Gaussian/TruncatedGeneralizedNystromRate`), so the bound is tight up to constants.
+every symmetric input makes $q > \lvert k \rvert/(6400\varepsilon)$ products.
 No printed source.
+
+Note: this is `NLAlib.div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le` restricted to one
+pass. Truncated generalized Nyström attains the error in expectation with $O(k/\varepsilon)$
+one-pass products (`LowRank/Gaussian/TruncatedGeneralizedNystromRate`), so the bound is tight up
+to constants. Integer-size form:
+`NLAlib.natCast_div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le_of_lt_one`.
 Result: one-pass-low-rank-lower-bound -/
 theorem div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le_of_lt_one [Nonempty k] {ε : ℝ}
     {q : ℕ} (hε : 0 < ε) (hε₁ : ε ≤ 1 / 6500) (hεk : ε ≤ Fintype.card k / 14000)
@@ -1071,6 +1175,100 @@ theorem div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le_of_lt_one [Nonemp
     Fintype.card k / (6400 * ε) < q :=
   div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le hε hε₁ hεk hm halg hpass
     (fun s i hi => (hp s i hi).trans one_lt_two) ρ hsucc
+
+/-- **One-pass low-rank approximation needs $\Omega(k/\varepsilon)$ matrix–vector products**,
+integer sizes: let $k$, $m$ and $q$ be natural numbers and $n = k + 3m$, with
+$0 < \varepsilon \le \varepsilon_0$, $\varepsilon \le k/C_1$ and
+$m = \lfloor k/(8\varepsilon) \rfloor$. Let $(\mathcal{A}_s)$ be a randomized algorithm, that is,
+a measurable family of algorithms with seed $s$ drawn from a probability measure $\rho$, where
+every $\mathcal{A}_s$ makes $q$ matrix–vector products with its input $\mathbf{A}$ in one pass
+(all products are chosen before any response is seen) and returns
+$\mathbf{W} \in \mathbb{R}^{n \times k}$ and $\mathbf{M} \in \mathbb{R}^{k \times n}$. If for
+every symmetric $\mathbf{A} \in \mathbb{R}^{n \times n}$
+$$\mathbb{P}_{s \sim \rho}\bigl[\|\mathbf{A} - \mathbf{W}\mathbf{M}\|_{\mathsf{F}}^2 \le
+(1 + \varepsilon)\|\mathbf{A} - \llbracket \mathbf{A} \rrbracket_k\|_{\mathsf{F}}^2\bigr]
+\ge \frac{1}{2} \,,$$
+then
+$$q > \frac{k}{C\varepsilon} \,.$$
+Here $C = 6400$, $\varepsilon_0 = 1/6500$ and $C_1 = 14000$.
+No printed source.
+
+Note: the hypotheses force $k \ge 1$. The $n$ coordinates are indexed by
+`Fin k ⊕ (Fin 3 × Fin m)`: a head of $k$ coordinates and three tail levels of $m$ each. General
+form, with finite index types in place of $k$ and $m$:
+`NLAlib.div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le_of_lt_one`. Truncated generalized
+Nyström attains the error in expectation with $O(k/\varepsilon)$ one-pass products
+(`LowRank/Gaussian/TruncatedGeneralizedNystromRate`), so the bound is tight up to constants.
+Asymptotic form:
+`NLAlib.exists_forall_natCast_div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le_of_lt_one`.
+Result: one-pass-low-rank-lower-bound -/
+theorem natCast_div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le_of_lt_one {k m q : ℕ}
+    {ε : ℝ} (hε : 0 < ε) (hε₁ : ε ≤ 1 / 6500) (hεk : ε ≤ k / 14000)
+    (hm : m = ⌊(k : ℝ) / (8 * ε)⌋₊) {S : Type*} [MeasurableSpace S]
+    {alg : S → QueryAlgorithm (Fin k ⊕ (Fin 3 × Fin m) → ℝ) (Fin k ⊕ (Fin 3 × Fin m) → ℝ) q
+      (Matrix (Fin k ⊕ (Fin 3 × Fin m)) (Fin k) ℝ × Matrix (Fin k) (Fin k ⊕ (Fin 3 × Fin m)) ℝ)}
+    (halg : QueryAlgorithm.IsMeasurableFamily alg) {pass : S → ℕ → ℕ}
+    (hpass : ∀ s, (alg s).IsPassStructured (pass s)) (hp : ∀ s, ∀ i < q, pass s i < 1)
+    (ρ : Measure S) [IsProbabilityMeasure ρ]
+    (hsucc : ∀ A : Matrix (Fin k ⊕ (Fin 3 × Fin m)) (Fin k ⊕ (Fin 3 × Fin m)) ℝ,
+      A.IsHermitian →
+      1 / 2 ≤ ρ.real {s | frobNorm (A - ((alg s).run A.mulVec).1 * ((alg s).run A.mulVec).2) ^ 2 ≤
+        (1 + ε) * frobNorm (A - truncatedSVD A k) ^ 2}) :
+    (k : ℝ) / (6400 * ε) < q := by
+  have hk : 0 < k := Nat.pos_of_ne_zero fun h => by
+    rw [h, Nat.cast_zero, zero_div] at hεk
+    exact absurd hε (not_lt.mpr hεk)
+  have : Nonempty (Fin k) := ⟨⟨0, hk⟩⟩
+  have h := div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le_of_lt_one (k := Fin k)
+    (m := Fin m) (ε := ε) (alg := alg)
+  simp only [Fintype.card_fin] at h
+  exact h hε hε₁ hεk hm halg hpass hp ρ hsucc
+
+/-- **$\Omega(k/\varepsilon)$ matrix–vector products are necessary for one-pass low-rank
+approximation**: there are absolute constants $c, \varepsilon_0 > 0$ such that the following
+holds for all natural numbers $k \ge 1$, $m$ and $q$ and $n = k + 3m$, with
+$0 < \varepsilon \le \varepsilon_0$ and $m = \lfloor k/(8\varepsilon) \rfloor$. Let
+$(\mathcal{A}_s)$ be a randomized algorithm, that is, a measurable family of algorithms with seed
+$s$ drawn from a probability measure $\rho$, where every $\mathcal{A}_s$ makes $q$ matrix–vector
+products with its input $\mathbf{A}$ in one pass (all
+products are chosen before any response is seen) and returns
+$\mathbf{W} \in \mathbb{R}^{n \times k}$ and $\mathbf{M} \in \mathbb{R}^{k \times n}$. If for
+every symmetric $\mathbf{A} \in \mathbb{R}^{n \times n}$
+$$\mathbb{P}_{s \sim \rho}\bigl[\|\mathbf{A} - \mathbf{W}\mathbf{M}\|_{\mathsf{F}}^2 \le
+(1 + \varepsilon)\|\mathbf{A} - \llbracket \mathbf{A} \rrbracket_k\|_{\mathsf{F}}^2\bigr]
+\ge \frac{1}{2} \,,$$
+then
+$$q > c\,\frac{k}{\varepsilon} \,.$$
+No printed source.
+
+Note: the asymptotic form of
+`NLAlib.natCast_div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le_of_lt_one`, proved from it
+with $c = 1/6400$ and $\varepsilon_0 = 1/14000$. Truncated
+generalized Nyström attains the error in expectation with $O(k/\varepsilon)$ one-pass products
+(`LowRank/Gaussian/TruncatedGeneralizedNystromRate`), so $O(k/\varepsilon)$ one-pass products
+suffice in expectation and the bound is tight up to constants.
+Asymptotic: NLAlib.natCast_div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le_of_lt_one
+Result: one-pass-low-rank-lower-bound -/
+theorem exists_forall_natCast_div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le_of_lt_one :
+    ∃ c ε₀ : ℝ, 0 < c ∧ 0 < ε₀ ∧ ∀ {S : Type} [MeasurableSpace S] (k m q : ℕ) (ε : ℝ)
+      (alg : S → QueryAlgorithm (Fin k ⊕ (Fin 3 × Fin m) → ℝ) (Fin k ⊕ (Fin 3 × Fin m) → ℝ) q
+        (Matrix (Fin k ⊕ (Fin 3 × Fin m)) (Fin k) ℝ ×
+          Matrix (Fin k) (Fin k ⊕ (Fin 3 × Fin m)) ℝ))
+      (pass : S → ℕ → ℕ) (ρ : Measure S) [IsProbabilityMeasure ρ],
+      0 < k → 0 < ε → ε ≤ ε₀ → m = ⌊(k : ℝ) / (8 * ε)⌋₊ →
+      QueryAlgorithm.IsMeasurableFamily alg → (∀ s, (alg s).IsPassStructured (pass s)) →
+      (∀ s, ∀ i < q, pass s i < 1) →
+      (∀ A : Matrix (Fin k ⊕ (Fin 3 × Fin m)) (Fin k ⊕ (Fin 3 × Fin m)) ℝ, A.IsHermitian →
+        1 / 2 ≤ ρ.real {s |
+          frobNorm (A - ((alg s).run A.mulVec).1 * ((alg s).run A.mulVec).2) ^ 2 ≤
+            (1 + ε) * frobNorm (A - truncatedSVD A k) ^ 2}) →
+      c * (k / ε) < q := by
+  refine ⟨1 / 6400, 1 / 14000, by norm_num, by norm_num, ?_⟩
+  intro S _ k m q ε alg pass ρ _ hk hε hε₀ hm halg hpass hp hsucc
+  have hk1 : (1 : ℝ) ≤ k := by exact_mod_cast hk
+  have h := natCast_div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le_of_lt_one hε
+    (by linarith) (by linarith) hm halg hpass hp ρ hsucc
+  rwa [show (1 / 6400 : ℝ) * (k / ε) = k / (6400 * ε) by field_simp]
 
 omit [DecidableEq k] [DecidableEq m] in
 /-- Two-pass spectral low-rank approximation needs products proportional to the dimension:

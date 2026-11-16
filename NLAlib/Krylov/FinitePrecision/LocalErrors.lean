@@ -56,12 +56,24 @@ The maintainer's draft states the bound as $\lesssim_k \varepsilon\|\mathbf{A}\|
 formalization has the factor $700j$. -/
 noncomputable irreducible_def lanczosRecurrenceErrorFactor (j : ℕ) : ℝ := 6 * ((j : ℝ) + 1)
 
+/-- The explicit value the documentation displays: the local error factor at step $j$ is at
+most <!-- value lanczosRecurrenceErrorFactor j -->$6(j + 1)$ (at present an equality). -/
+theorem lanczosRecurrenceErrorFactor_le (j : ℕ) :
+    lanczosRecurrenceErrorFactor j ≤ 6 * ((j : ℝ) + 1) := by
+  rw [lanczosRecurrenceErrorFactor_def]
+
 /-- **The factor of the local orthogonality bound** of a finite-precision Lanczos run at step
 $j$ (`NLAlib.LanczosRun.abs_adjacentInner_le`): <!-- value lanczosAdjacentInnerFactor j -->
 $$7(j + 1) \,.$$
 The maintainer's draft states the bound as $\lesssim_k \varepsilon\|\mathbf{A}\|_2$; its
 formalization has the factor $1200j$. -/
 noncomputable irreducible_def lanczosAdjacentInnerFactor (j : ℕ) : ℝ := 7 * ((j : ℝ) + 1)
+
+/-- The explicit value the documentation displays: the local orthogonality factor at step $j$ is
+at most <!-- value lanczosAdjacentInnerFactor j -->$7(j + 1)$ (at present an equality). -/
+theorem lanczosAdjacentInnerFactor_le (j : ℕ) :
+    lanczosAdjacentInnerFactor j ≤ 7 * ((j : ℝ) + 1) := by
+  rw [lanczosAdjacentInnerFactor_def]
 
 namespace LanczosRun
 

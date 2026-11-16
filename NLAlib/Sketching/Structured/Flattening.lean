@@ -388,6 +388,17 @@ theorem srhtRowNormBound_nonneg (A : Matrix n r 𝕜) (ht : 0 ≤ t) : 0 ≤ srh
   have := specNorm_nonneg A
   positivity
 
+omit [DecidableEq n] in
+/-- The explicit value the documentation displays: the flattened row-norm bound is at
+most <!-- value srhtRowNormBound \mathbf{A} t -->
+$$\|\mathbf{A}\|_{\mathsf{F}}^2 + 2\|\mathbf{A}\|_{\mathsf{F}}\|\mathbf{A}\|_2\sqrt{t} +
+2\|\mathbf{A}\|_2^2 t$$
+(at present an equality). -/
+theorem srhtRowNormBound_le (A : Matrix n r 𝕜) (t : ℝ) :
+    srhtRowNormBound A t ≤
+      frobNorm A ^ 2 + 2 * frobNorm A * specNorm A * √t + 2 * specNorm A ^ 2 * t := by
+  rw [srhtRowNormBound_def]
+
 /-- The row matrix $\mathbf{M}_i = \mathbf{A}^{\mathsf{T}}\operatorname{diag}(\mathbf{F}_{i,\cdot})$
 of a general $\mathbf{A}$ has $\|\mathbf{M}_i\|_{\mathsf{F}}^2 \le
 \beta\|\mathbf{A}\|_{\mathsf{F}}^2/\lvert n\rvert$ and

@@ -13,7 +13,7 @@ and `docs/rules/DIGEST.md`.
 - **Layer 4** (`docs/rules/layers.toml`): a file imports only modules of its own layer and lower (**P1**). [layout §1]
 - **V3** A singular-value ratio is `singularGapRatio`, never spelled out. Fix: Use `singularGapRatio` (a bridge lemma relating the two is allowlisted). [vocabulary]
 - **B2** No bare `∃ C` in a statement, except in an `exists_forall_` asymptotic form. Fix: Use a named constant, or an asymptotic form with `∃ C` before every dimension. [statements §2] rule 3
-- **B3** An asymptotic form says "$O(\ldots)$ suffices" in its docstring. Fix: Say in words which $O(\cdot)$ size suffices. [statements §2] rule 3
+- **B3** An asymptotic form says "$O(\ldots)$ suffices", or for a lower bound "$\Omega(\ldots)$ is necessary", in its docstring. Fix: Say in words which $O(\cdot)$ size suffices, or which $\Omega(\cdot)$ cost is necessary. [statements §2] rule 3
 - **B4** An asymptotic form puts its constants first and fixes index types to `Type`. Fix: State `∃ C ε₀ : ℝ, … ∀ {Ω m n … : Type} …`. [statements §2] rule 3
 - **B5** (warning) A Sketching or LowRank sample-size result has its asymptotic form. Fix: Add its `exists_forall_` corollary. [statements §2] rule 3
 - **B6** (review) State the readable bound when the sharp form gains only a factor that is bounded and tends to 1 as the bound becomes small (a Chebyshev value, sech², $(1 + \rho^{2q})^2$). Fix: State the readable form; give the sharp form and the lost factor in one docstring sentence. [statements §2] rule 7

@@ -45,7 +45,7 @@ rules are in the topic files; the reasons are in the contributor guide.
 - V6 Every Lean name cited in the contributor guides (except the naming guide) or Mathlib-deviations.md exists.
 - B1 A named bound (`…Constant`, `…Bound`, `…Tail`, `…Dim`, `…Factor`) is in docs/constants.toml.
 - B2 No bare `∃ C` in a statement, except in an `exists_forall_` asymptotic form.
-- B3 An asymptotic form says "$O(\ldots)$ suffices" in its docstring.
+- B3 An asymptotic form says "$O(\ldots)$ suffices", or for a lower bound "$\Omega(\ldots)$ is necessary", in its docstring.
 - B4 An asymptotic form puts its constants first and fixes index types to `Type`.
 - D1 A `Result:` declaration starts its docstring with a bold name.
 - D2 A docstring states its own hypotheses and notation, never deferring to another statement.

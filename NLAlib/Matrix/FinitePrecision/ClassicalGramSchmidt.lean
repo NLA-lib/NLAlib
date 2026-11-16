@@ -36,6 +36,14 @@ $(1+\eta_0)\sqrt{j}\,(\gamma_N + \gamma_j) + 4u$. -/
 noncomputable irreducible_def cgsPassBound (N j : ℕ) (u η₀ : ℝ) : ℝ :=
   2 * (1 + η₀) * Real.sqrt ((j : ℝ) + 1) * ((N + j + 2 : ℕ) : ℝ) * u
 
+/-- The explicit value the documentation displays: the coefficient of one classical Gram–Schmidt
+pass is at most <!-- value cgsPassBound N j u \eta_0 -->$2(1+\eta_0)\sqrt{j+1}\,(N+j+2)\,u$ (at
+present an equality). -/
+theorem cgsPassBound_le (N j : ℕ) (u η₀ : ℝ) :
+    cgsPassBound N j u η₀ ≤
+      2 * (1 + η₀) * Real.sqrt ((j : ℝ) + 1) * ((N + j + 2 : ℕ) : ℝ) * u := by
+  rw [cgsPassBound_def]
+
 /-- The CGS pass bound `NLAlib.cgsPassBound` $N\,j\,u\,\eta_0$
 = <!-- value cgsPassBound N j u \eta_0 -->$2(1+\eta_0)\sqrt{j+1}\,(N+j+2)\,u$ is monotone in the
 number $j$ of columns for $u, \eta_0 \ge 0$. -/

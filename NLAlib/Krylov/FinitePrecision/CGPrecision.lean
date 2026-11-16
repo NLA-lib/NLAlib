@@ -34,6 +34,12 @@ every actual kernel error of the canonical stored CG implementation. -/
 noncomputable irreducible_def cgImplementationRoundoffBound (N : ℕ) (u : ℝ) : ℝ :=
   4 * (N : ℝ) ^ 2 * u
 
+/-- The explicit value the documentation displays: the stored CG roundoff budget is at
+most <!-- value cgImplementationRoundoffBound N u -->$4N^2u$ (at present an equality). -/
+theorem cgImplementationRoundoffBound_le (N : ℕ) (u : ℝ) :
+    cgImplementationRoundoffBound N u ≤ 4 * (N : ℝ) ^ 2 * u := by
+  rw [cgImplementationRoundoffBound_def]
+
 /-- The dimension-dependent roundoff bound is nonnegative at nonnegative roundoff. -/
 theorem cgImplementationRoundoffBound_nonneg (N : ℕ) {u : ℝ} (hu : 0 ≤ u) :
     0 ≤ cgImplementationRoundoffBound N u := by

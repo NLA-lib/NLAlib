@@ -554,7 +554,7 @@ and tape, within the static budget, scratch and memory, with work at most
 writing only the matrix, the output and the failure word. The output's accuracy holds with
 probability at least $1 - \varphi$
 (`NLAlib.ShiftedQR.roundedShQR_algorithm_measureReal_not_accepts_le`).
-Algorithm: shifted-qr (run model) -/
+Algorithm: shifted-qr-rounded (run model) -/
 noncomputable def roundedShQRAlgorithm (Mch : Machine ℝ)
     (admitted : ∃ d, ShQRSizes Mch d) (s : ℕ) (W : ℕ → ℕ)
     (Bad : (d : ℕ) → Matrix (Fin d) (Fin d) ℂ → Set (Fin (W d) → ℝ))

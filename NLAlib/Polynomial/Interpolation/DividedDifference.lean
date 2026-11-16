@@ -194,6 +194,12 @@ $$4^{r+1} \,.$$
 The binomial finite-difference coefficients have squared sum at most this value. -/
 noncomputable irreducible_def equispacedInterpolationFactor (r : ℕ) : ℝ := 4 ^ (r + 1)
 
+/-- The explicit value the documentation displays: the equispaced interpolation factor is at
+most <!-- value equispacedInterpolationFactor r -->$4^{r+1}$ (at present an equality). -/
+theorem equispacedInterpolationFactor_le (r : ℕ) :
+    equispacedInterpolationFactor r ≤ 4 ^ (r + 1) := by
+  rw [equispacedInterpolationFactor_def]
+
 
 /-- The squared finite-difference coefficients on the first `n` nodes have sum at most `4^n`. -/
 private theorem sum_neg_one_pow_mul_choose_sq_le (n : ℕ) :

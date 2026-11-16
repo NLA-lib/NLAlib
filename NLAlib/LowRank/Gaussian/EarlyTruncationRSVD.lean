@@ -80,6 +80,39 @@ noncomputable irreducible_def earlyTruncatedRSVDYoungFactor (k l : ℕ) (θ : �
       ((k : ℝ) / l) * √(1 + 2 / (k * l)) *
         √(((1 - √(k / l)) ^ 8)⁻¹ + 263 / √l) / θ) / (1 - θ)
 
+/-- The explicit value the documentation displays: the optimized Gaussian early-truncation factor
+is at most <!-- value earlyTruncatedRSVDFactor k \ell -->
+$$
+( ( 1+ \sqrt{ 2k/\ell} ) ( ( 1-\sqrt{ k/\ell} ) ^{ -2} + 10/\sqrt{ \ell} ) ) + 2( ( k/\ell)
+\sqrt{ 1+ 2/( k\ell) } \sqrt{ ( 1-\sqrt{ k/\ell} ) ^{ -8} + 263/\sqrt{ \ell} } ) + \sqrt{ 4( (
+k/\ell) \sqrt{ 1+ 2/( k\ell) } \sqrt{ ( 1-\sqrt{ k/\ell} ) ^{ -8} + 263/\sqrt{ \ell} } ) ( ( (
+1+ \sqrt{ 2k/\ell} ) ( ( 1-\sqrt{ k/\ell} ) ^{ -2} + 10/\sqrt{ \ell} ) ) + ( ( k/\ell) \sqrt{
+1+ 2/( k\ell) } \sqrt{ ( 1-\sqrt{ k/\ell} ) ^{ -8} + 263/\sqrt{ \ell} } ) ) }
+$$
+(at present an equality), written $a + 2b + \sqrt{4b(a + b)}$ with $a$ and $b$ its two repeated
+subexpressions. -/
+theorem earlyTruncatedRSVDFactor_le (k l : ℕ) :
+    earlyTruncatedRSVDFactor k l ≤
+      (let a := (1 + √(2 * k / l)) * (((1 - √(k / l)) ^ 2)⁻¹ + 10 / √l)
+       let b := ((k : ℝ) / l) * √(1 + 2 / (k * l)) * √(((1 - √(k / l)) ^ 8)⁻¹ + 263 / √l)
+       a + 2 * b + √(4 * b * (a + b))) := by
+  rw [earlyTruncatedRSVDFactor_def]
+
+/-- The explicit value the documentation displays: the Gaussian early-truncation factor with a free
+Young parameter is at most <!-- value earlyTruncatedRSVDYoungFactor k \ell \theta -->
+$$
+( ( 1+ \sqrt{ 2k/\ell} ) ( ( 1-\sqrt{ k/\ell} ) ^{ -2} + 10/\sqrt{ \ell} ) + ( ( k/\ell)
+\sqrt{ 1+ 2/( k\ell) } \sqrt{ ( 1-\sqrt{ k/\ell} ) ^{ -8} + 263/\sqrt{ \ell} } ) /\theta) /(
+1-\theta)
+$$
+(at present an equality). -/
+theorem earlyTruncatedRSVDYoungFactor_le (k l : ℕ) (θ : ℝ) :
+    earlyTruncatedRSVDYoungFactor k l θ ≤
+      ((1 + √(2 * k / l)) * (((1 - √(k / l)) ^ 2)⁻¹ + 10 / √l) +
+          ((k : ℝ) / l) * √(1 + 2 / (k * l)) *
+            √(((1 - √(k / l)) ^ 8)⁻¹ + 263 / √l) / θ) / (1 - θ) := by
+  rw [earlyTruncatedRSVDYoungFactor_def]
+
 /-- The sizes in the factor: for $100k \le \ell$, $y = \sqrt{k/\ell}$ satisfies
 $0 \le y \le 1/10$. -/
 private theorem sqrt_div_le_tenth {k l : ℕ} (h : 100 * k ≤ l) :
@@ -753,6 +786,13 @@ The relative-error theorem assumes $0<\varepsilon\le1$; at $\varepsilon=0$ this 
 expression equals $900$ by the inverse-of-zero convention. No printed source. -/
 noncomputable irreducible_def earlyTruncatedRSVDRelativeErrorDim (k : ℕ) (ε : ℝ) : ℝ :=
   max 900 (400 * (k : ℝ) / ε ^ 2)
+
+/-- The explicit value the documentation displays: the sufficient Gaussian width is at
+most <!-- value earlyTruncatedRSVDRelativeErrorDim k \varepsilon -->
+$\max\{900,400k/\varepsilon^2\}$ (at present an equality). -/
+theorem earlyTruncatedRSVDRelativeErrorDim_le (k : ℕ) (ε : ℝ) :
+    earlyTruncatedRSVDRelativeErrorDim k ε ≤ max 900 (400 * (k : ℝ) / ε ^ 2) := by
+  rw [earlyTruncatedRSVDRelativeErrorDim_def]
 
 -- The declaration name alone exceeds 100 characters.
 set_option linter.style.longLine false in

@@ -606,7 +606,10 @@ eigenvalues and the condition number of the eigenvector matrix are those of $\ma
 theorem mul_eq_mul_diagonal_add_smul_one_iff {A V : Matrix n n K} {d : n → K} (c : K) :
     (A + c • (1 : Matrix n n K)) * V = V * Matrix.diagonal (fun i => d i + c) ↔
       A * V = V * Matrix.diagonal d := by
-  sorry
+  have hD : Matrix.diagonal (fun i => d i + c) = Matrix.diagonal d + c • (1 : Matrix n n K) := by
+    ext i j; by_cases h : i = j <;> simp [h]
+  rw [hD, Matrix.add_mul, Matrix.mul_add, Matrix.smul_mul, Matrix.mul_smul, Matrix.one_mul,
+    Matrix.mul_one, add_left_inj]
 
 /-- The diagonalization class is closed: for $B, g \in \mathbb{R}$, the set of complex
 matrices $\mathbf{A}$ of order $n + 1$ with $\mathbf{A}\mathbf{V} =

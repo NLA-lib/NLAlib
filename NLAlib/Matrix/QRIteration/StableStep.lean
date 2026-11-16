@@ -43,8 +43,8 @@ error against the exact multishift step (Lemma 3.8) and the potential after a ro
 
 ## Main results
 
-* `NLAlib.isStableQRStep_upperHessenbergPart`: a stable step from a Hessenberg factorization and
-  a nearby similarity.
+* `NLAlib.HasOrthonormalCols.isStableQRStep_upperHessenbergPart`: a stable step from a Hessenberg
+  factorization and a nearby similarity.
 * `NLAlib.IsStableQRChain.snoc`: a chain extended by a step.
 * `NLAlib.IsStableQRChain.isPerturbedUnitarySimilar`: the backward error of the similarity.
 * `NLAlib.IsStableQRChain.exists_specNorm_aeval_sub_le`: the backward error of the factorization
@@ -95,8 +95,9 @@ entries below the subdiagonal deleted is a backward-stable step with error
 $d + \sqrt{n+1}\,(d + e)$ (and at least $d$): $\mathbf{R}\mathbf{Q} + s\mathbf{I}$ is upper
 Hessenberg and within $d$ of $\mathbf{Q}^{\mathsf H}\mathbf{H}\mathbf{Q}$, and the deletion costs
 at most a Frobenius norm. -/
-theorem isStableQRStep_upperHessenbergPart {H Z Q R : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
-    {s : ℂ} {d e ε : ℝ} (hQ : HasOrthonormalCols Q) (hQH : IsUpperHessenberg Q)
+theorem HasOrthonormalCols.isStableQRStep_upperHessenbergPart
+    {H Z Q R : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {s : ℂ} {d e ε : ℝ} (hQ : HasOrthonormalCols Q)
+    (hQH : IsUpperHessenberg Q)
     (hR : R.IsUpperTriangular) (hd : specNorm (H - s • (1 : Matrix _ _ ℂ) - Q * R) ≤ d)
     (he : specNorm (Q * Z * Qᴴ - H) ≤ e) (hdε : d ≤ ε)
     (hε : d + √(n + 1 : ℝ) * (d + e) ≤ ε) :

@@ -351,30 +351,6 @@ private lemma abs_mul_add_abs_mul_le (p q r s : ℝ) :
   calc |p * r| + |q * s| = √((|p * r| + |q * s|) ^ 2) := (Real.sqrt_sq (by positivity)).symm
     _ ≤ √((p ^ 2 + q ^ 2) * (r ^ 2 + s ^ 2)) := Real.sqrt_le_sqrt key
 
-/-- One rounded addition of two approximations, for the words of `linearWords`. -/
-private lemma linearWords_add_combine {u : ℝ} {M : Machine ℝ} (hM : StdModel u id M) (hu : 0 ≤ u)
-    {a b S₁ S₂ T₁ T₂ e : ℝ} (h1 : |a - S₁| ≤ e * T₁) (h2 : |b - S₂| ≤ e * T₂)
-    (hS₁ : |S₁| ≤ T₁) (hS₂ : |S₂| ≤ T₂) :
-    |M.add a b - (S₁ + S₂)| ≤ ((1 + u) * (1 + e) - 1) * (T₁ + T₂) := by
-  have h := hM.add a b
-  simp only [id] at h
-  have ha : |a| ≤ (1 + e) * T₁ := by
-    have := abs_add_le S₁ (a - S₁)
-    rw [add_sub_cancel] at this
-    linarith
-  have hb : |b| ≤ (1 + e) * T₂ := by
-    have := abs_add_le S₂ (b - S₂)
-    rw [add_sub_cancel] at this
-    linarith
-  have hab : |a + b| ≤ (1 + e) * (T₁ + T₂) := (abs_add_le a b).trans (by linarith)
-  have h3 : |M.add a b - (S₁ + S₂)| ≤ |M.add a b - (a + b)| + |a - S₁| + |b - S₂| := by
-    have := abs_add_three (M.add a b - (a + b)) (a - S₁) (b - S₂)
-    have e3 : M.add a b - (S₁ + S₂) = (M.add a b - (a + b)) + (a - S₁) + (b - S₂) := by ring
-    rw [e3]
-    exact this
-  have h4 : u * |a + b| ≤ u * ((1 + e) * (T₁ + T₂)) := mul_le_mul_of_nonneg_left hab hu
-  nlinarith
-
 /-- **Rounded complex linear combination**: the pair computed by `NLAlib.Ops.Pair.linearWords`
 from the pairs of $a, b, x, y$ is within $5\boldsymbol{u}(\lvert a\rvert\lvert x\rvert +
 \lvert b\rvert\lvert y\rvert)$ of $a x + b y$, for $0 \le \boldsymbol{u} \le 1/100$
@@ -391,11 +367,11 @@ theorem Ops.StdModel.norm_linearWords_sub_le {M : Machine ℝ} {u : ℝ} (hM : S
   -- real part: two levels of rounded operations on the four products
   have d1 := stdModel_sub_combine hM hu (pr a.re x.re) (pr a.im x.im) le_rfl le_rfl
   have d2 := stdModel_sub_combine hM hu (pr b.re y.re) (pr b.im y.im) le_rfl le_rfl
-  have hre := linearWords_add_combine hM hu d1 d2 (abs_sub _ _) (abs_sub _ _)
+  have hre := stdModel_add_combine hM hu d1 d2 (abs_sub _ _) (abs_sub _ _)
   -- imaginary part: the same tree, with additions only
-  have i1 := linearWords_add_combine hM hu (pr a.re x.im) (pr a.im x.re) le_rfl le_rfl
-  have i2 := linearWords_add_combine hM hu (pr b.re y.im) (pr b.im y.re) le_rfl le_rfl
-  have him := linearWords_add_combine hM hu i1 i2 (abs_add_le _ _) (abs_add_le _ _)
+  have i1 := stdModel_add_combine hM hu (pr a.re x.im) (pr a.im x.re) le_rfl le_rfl
+  have i2 := stdModel_add_combine hM hu (pr b.re y.im) (pr b.im y.re) le_rfl le_rfl
+  have him := stdModel_add_combine hM hu i1 i2 (abs_add_le _ _) (abs_add_le _ _)
   -- Cauchy–Schwarz on the products
   have na : ‖a‖ = √(a.re ^ 2 + a.im ^ 2) := by
     rw [Complex.norm_def, Complex.normSq_apply]; congr 1; ring

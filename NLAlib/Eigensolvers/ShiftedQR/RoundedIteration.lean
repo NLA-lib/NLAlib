@@ -380,6 +380,7 @@ theorem one_le_regularizeTheta {B : ℝ} (hB : 1 ≤ B) (k : ℕ) :
     Real.one_le_rpow (by nlinarith [one_le_pow₀ (n := 4) hB]) (by positivity)
   nlinarith
 
+-- The default heartbeat budget does not cover the elaboration of this statement.
 set_option maxHeartbeats 1000000 in
 -- The hypothesis lists of `Regularize` and `Sh` together, with their long real constants, make
 -- the elaboration of the composition heavy.
@@ -521,6 +522,7 @@ theorem shIterationWithScratch_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u
       norm_num at htest
     · exact (Writes.skip ⟨H', hsim.mono hCε, hH', hA, Or.inl hdec⟩).mono bot_le fun _ _ h => h
 
+-- The default heartbeat budget does not cover the elaboration of this statement.
 set_option maxHeartbeats 1000000 in
 -- The hypothesis lists of `Regularize` and `Sh` together, with their long real constants, make
 -- the elaboration of the composition heavy.

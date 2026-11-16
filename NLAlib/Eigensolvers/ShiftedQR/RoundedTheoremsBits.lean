@@ -456,7 +456,7 @@ theorem one_le_uShQR_mul (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ) (hδS : δ
       (one_le_mul_of_one_le_of_one_le h1 hθ1) hα1) h2
   have hrh : shqrRadiusHi k (4 * B) ≤ 3 := by
     unfold shqrC at hC; linarith
-  have hωS : shqrOmega n B Γ δ ≤ S := shqrOmega_le_S hB hΓ hδ hδS
+  have hωS : shqrOmega n B Γ δ ≤ S := shqrOmega_le_normBound hB hΓ hδ hδS
   have hω0 : 0 < shqrOmega n B Γ δ := shqrOmega_pos hB hΓ hδ
   obtain ⟨hY4, hNY, hBY, hδY, hmY, hφY⟩ := shqrArg_bounds (n := n) hB hΓ hδ hδS hφ hφ1 rfl
   set N : ℝ := (n : ℝ) + 1 with hN

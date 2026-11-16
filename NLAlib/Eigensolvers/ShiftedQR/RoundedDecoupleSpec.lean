@@ -55,6 +55,7 @@ theorem shqrLoopError_le_shqrDecoupleError {n k : ℕ} {B Γ S δ u : ℝ} (hS :
   gcongr
   norm_num
 
+-- The default heartbeat budget does not cover the elaboration of this statement.
 set_option maxHeartbeats 1000000 in
 -- Matching the contract's hypotheses, with their long real constants, against the parameter
 -- choices is heavy.

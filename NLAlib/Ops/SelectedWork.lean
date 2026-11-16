@@ -100,10 +100,6 @@ section Selected
 
 variable {sel : Op → Bool} {g : Op → List ℕ → ℕ}
 
-private theorem getD_map_zero {α : Type} (x : Option α) :
-    (x.map fun _ => (0 : ℕ)).getD 0 = 0 := by
-  cases x <;> rfl
-
 /-- A tree without a selected call has weighted cost zero under a weight supported on the
 selected calls, with zero query weight. -/
 theorem stmtWeightedCost_eq_zero_of_hasCall (hg : ∀ o ds, sel o = false → g o ds = 0) :
@@ -119,11 +115,13 @@ theorem stmtWeightedCost_eq_zero_of_hasCall (hg : ∀ o ds, sel o = false → g 
     cases IExp.evalList idx ds <;> simp [hg o _ h]
   | .ite q ds _ s t, h, idx => by
     simp only [Stmt.hasCall, Bool.or_eq_false_iff] at h
-    simp [stmtWeightedCost, getD_map_zero, stmtWeightedCost_eq_zero_of_hasCall hg s h.1,
+    simp only [stmtWeightedCost]
+    cases IExp.evalList idx ds <;> simp [stmtWeightedCost_eq_zero_of_hasCall hg s h.1,
       stmtWeightedCost_eq_zero_of_hasCall hg t h.2]
   | .whileFuel fuel q ds _ s t, h, idx => by
     simp only [Stmt.hasCall, Bool.or_eq_false_iff] at h
-    simp [stmtWeightedCost, getD_map_zero, stmtWeightedCost_eq_zero_of_hasCall hg s h.1,
+    have h0 (x : Option (List ℕ)) : (x.map fun _ => (0 : ℕ)).getD 0 = 0 := by cases x <;> rfl
+    simp [stmtWeightedCost, h0, stmtWeightedCost_eq_zero_of_hasCall hg s h.1,
       stmtWeightedCost_eq_zero_of_hasCall hg t h.2]
   | .bindIdx q _ bound s, h, idx => by
     simp [stmtWeightedCost, stmtWeightedCost_eq_zero_of_hasCall hg s h]

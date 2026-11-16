@@ -438,7 +438,7 @@ private theorem RoundedSweepInv.exists_isStableQRStep {u : ℝ} (hu : 0 ≤ u)
       (0 : ℝ) ≤ 50 * n * u)])
   obtain ⟨hb1, hb2⟩ := roundedSweep_budget (d := u * a + 100 * n * (u * a))
     (e := 50 * n * (u * a)) hua le_rfl le_rfl
-  refine ⟨W - J, isStableQRStep_upperHessenbergPart hP.conjTranspose (fun i j hij => ?_)
+  refine ⟨W - J, hP.conjTranspose.isStableQRStep_upperHessenbergPart (fun i j hij => ?_)
     (fun i t hti => ?_) hD hE hb1 hb2, ?_⟩
   · rw [Matrix.conjTranspose_apply, hP1 j i hij, star_zero]
   · have hti' : (t : ℕ) < i := hti

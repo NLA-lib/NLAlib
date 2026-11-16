@@ -330,7 +330,7 @@ theorem shqrOmega_le_div (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ) :
   have : (0 : ℝ) ≤ n := by positivity
   linarith
 
-theorem shqrOmega_le_S (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ) (hδS : δ ≤ S) :
+theorem shqrOmega_le_normBound (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ) (hδS : δ ≤ S) :
     shqrOmega n B Γ δ ≤ S := by
   have := shqrOmega_le_div (n := n) hB hΓ hδ
   have := shqrBudget_pos (n := n) hB hΓ hδ

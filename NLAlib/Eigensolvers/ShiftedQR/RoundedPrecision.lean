@@ -222,7 +222,7 @@ theorem shStepHyps_of_le_uShQR (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ) (hδ
   have hk2 : 2 ≤ k := hk ▸ two_le_shqrDegree hB1
   have hk0 : 0 < k := by omega
   have hω := shqrOmega_pos (n := n) hB hΓ hδ
-  have hωS := shqrOmega_le_S (n := n) hB hΓ hδ hδS
+  have hωS := shqrOmega_le_normBound (n := n) hB hΓ hδ hδS
   have hd := shqrDist_pos (n := n) hk0 hB hΓ hδ hS hφ
   have hf := shqrSmallEigFailure_pos (n := n) (B := B) (Γ := Γ) (S := S) (δ := δ) hφ
   have hε := shqrEps_pos k hB4
@@ -313,7 +313,7 @@ theorem regularizeHyps_of_le_uShQR (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ) 
   have hk2 : 2 ≤ k := hk ▸ two_le_shqrDegree hB1
   have hk0 : 0 < k := by omega
   have hω := shqrOmega_pos (n := n) hB hΓ hδ
-  have hωS := shqrOmega_le_S (n := n) hB hΓ hδ hδS
+  have hωS := shqrOmega_le_normBound (n := n) hB hΓ hδ hδS
   have hωb := shqrOmega_le_div (n := n) hB hΓ hδ
   have hR := shqrRadius_pos (n := n) hB hΓ hδ hS
   have hη := shqrEta_pos (n := n) hk0 hB hΓ hδ hS hφ
@@ -542,7 +542,7 @@ theorem solveRoundedHyps_of_le_uShQR (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ
   have hv0 : 0 ≤ v := hu0.trans hu
   have hv1 : v ≤ 1 / 10 := uShQR_le_one_div_ten
   have hω := shqrOmega_pos (n := n) hB hΓ hδ
-  have hωS := shqrOmega_le_S (n := n) hB hΓ hδ hδS
+  have hωS := shqrOmega_le_normBound (n := n) hB hΓ hδ hδS
   have hb := shqrOmega_mul (n := n) (B := B) (Γ := Γ) (δ := δ)
   have hbδ := shqrBudget_le_left (n := n) (B := B) (Γ := Γ) (δ := δ)
   have hbΓ := shqrBudget_le_right (n := n) (B := B) (Γ := Γ) (δ := δ)

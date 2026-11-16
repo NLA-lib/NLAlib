@@ -352,6 +352,7 @@ section Iteration
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O]
   [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q]
 
+-- The default heartbeat budget does not cover the elaboration of this statement.
 set_option maxHeartbeats 1000000 in
 -- The hypothesis list of the iteration, with its long real constants, makes elaboration heavy.
 /-- One iteration of the decoupling loop on the good tapes: from the state before round $i$
@@ -656,6 +657,7 @@ theorem roundedDecouple_pwrites_of_loop {I : Interp O Q ℝ} (hI : I.IsMeasurabl
     (sup_le_sup_left hRL _) (fun _ h => h) le_rfl
   exact fun μ h => h.1.1
 
+-- The default heartbeat budget does not cover the elaboration of this statement.
 set_option maxHeartbeats 4000000 in
 -- The loop's program term and the hypotheses of the iteration make elaboration heavy.
 /-- **The rounded decoupling loop meets the randomized decoupling contract**

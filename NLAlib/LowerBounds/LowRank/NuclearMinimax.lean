@@ -428,4 +428,57 @@ theorem div_chebyshevQueryFactor_mul_lt_of_forall_le_measureReal_nuclearNorm_sub
     (by linarith) (by linarith) (by norm_num) (by norm_num) hwidth hsmall
     (mul_sum_chebyshevTailLevel_lt hkpos hε hm) halg hpass hp ρ hsucc
 
+-- The theorem's name exceeds 100 characters.
+set_option linter.style.longLine false in
+/-- **Chebyshev fixed-batch nuclear-norm query lower bound**, integer sizes: let
+$k \ge 1$, $m$, $r$ and $q$ be natural numbers and $n = k + (r + 1)m$, with
+$0 < \varepsilon \le \varepsilon_r$ and $m = \lfloor k/(16\varepsilon(r+1)^3) \rfloor$. Let
+$(\mathcal{A}_s)$ be a randomized algorithm, that is, a measurable family of algorithms with seed
+$s$ drawn from a probability measure $\rho$, where every $\mathcal{A}_s$ makes $q$ matrix–vector
+products with its input $\mathbf{A}$ in at most $r$ batches (the products of a batch are chosen
+before any response of that batch is seen) and returns $\mathbf{W} \in \mathbb{R}^{n \times k}$
+and $\mathbf{M} \in \mathbb{R}^{k \times n}$. If for every symmetric positive semidefinite
+$\mathbf{A} \in \mathbb{R}^{n \times n}$
+$$\mathbb{P}_{s \sim \rho}\bigl[\|\mathbf{A} - \mathbf{W}\mathbf{M}\|_* \le
+(1 + \varepsilon)\|\mathbf{A} - \llbracket \mathbf{A} \rrbracket_k\|_*\bigr]
+\ge \frac{1}{2} \,,$$
+then
+$$q > \frac{k}{C_r\,\varepsilon} \,.$$
+Here <!-- value chebyshevQueryFactor r -->
+$C_r = 12544(r+1)^3$ and <!-- value chebyshevAccuracyBound r -->
+$\varepsilon_r = 1/(25088(r+1)^3(r+2))$.
+No printed source.
+
+Note: $C_r$ is `chebyshevQueryFactor r` and $\varepsilon_r$ is `chebyshevAccuracyBound r`.
+The $n$ coordinates are indexed by
+`Fin k ⊕ (Fin (r + 1) × Fin m)`: a head of $k$ coordinates and $r + 1$ tail levels of $m$ each.
+General form, with finite index types in place of $k$ and $m$:
+`div_chebyshevQueryFactor_mul_lt_of_forall_le_measureReal_nuclearNorm_sub_mul_le_of_pass_lt`.
+The hard spectrum has its head at $1+1/(8(r+1)^2)$ and Chebyshev tail levels in $[1/2,1]$
+(`chebyshevLevelSpectrum`). The dependence on the batch count is polynomial; its optimal exponent
+is not asserted.
+Result: fixed-batch-nuclear-lower-bound -/
+theorem
+    natCast_div_chebyshevQueryFactor_mul_lt_of_forall_le_measureReal_nuclearNorm_sub_mul_le_of_pass_lt
+    {k m r q : ℕ} {ε : ℝ} (hk : 0 < k) (hε : 0 < ε) (hεr : ε ≤ chebyshevAccuracyBound r)
+    (hm : m = ⌊(k : ℝ) / (16 * ε * ((r : ℝ) + 1) ^ 3)⌋₊) {S : Type*} [MeasurableSpace S]
+    {alg : S → QueryAlgorithm (Fin k ⊕ (Fin (r + 1) × Fin m) → ℝ)
+      (Fin k ⊕ (Fin (r + 1) × Fin m) → ℝ) q
+      (Matrix (Fin k ⊕ (Fin (r + 1) × Fin m)) (Fin k) ℝ ×
+        Matrix (Fin k) (Fin k ⊕ (Fin (r + 1) × Fin m)) ℝ)}
+    (halg : QueryAlgorithm.IsMeasurableFamily alg) {pass : S → ℕ → ℕ}
+    (hpass : ∀ s, (alg s).IsPassStructured (pass s)) (hp : ∀ s, ∀ i < q, pass s i < r)
+    (ρ : Measure S) [IsProbabilityMeasure ρ]
+    (hsucc : ∀ A : Matrix (Fin k ⊕ (Fin (r + 1) × Fin m)) (Fin k ⊕ (Fin (r + 1) × Fin m)) ℝ,
+      A.PosSemidef → 1 / 2 ≤ ρ.real {s |
+        nuclearNorm (A - ((alg s).run A.mulVec).1 * ((alg s).run A.mulVec).2) ≤
+          (1 + ε) * nuclearNorm (A - truncatedSVD A k)}) :
+    (k : ℝ) / (chebyshevQueryFactor r * ε) < q := by
+  have : Nonempty (Fin k) := ⟨⟨0, hk⟩⟩
+  have h :=
+    div_chebyshevQueryFactor_mul_lt_of_forall_le_measureReal_nuclearNorm_sub_mul_le_of_pass_lt
+    (k := Fin k) (m := Fin m) (r := r) (ε := ε) (alg := alg)
+  simp only [Fintype.card_fin] at h
+  exact h hε hεr hm halg hpass hp ρ hsucc
+
 end NLAlib

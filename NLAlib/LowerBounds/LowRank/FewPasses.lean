@@ -1045,6 +1045,52 @@ theorem div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le [Nonempty k] {ε 
   have hmono := MeasureTheory.measureReal_mono (μ := ρ) hsubset
   linarith
 
+/-- **Two-pass low-rank approximation needs $\Omega(k/\varepsilon)$ matrix–vector products**,
+integer sizes: let $k$, $m$ and $q$ be natural numbers and $n = k + 3m$, with
+$0 < \varepsilon \le \varepsilon_0$, $\varepsilon \le k/C_1$ and
+$m = \lfloor k/(8\varepsilon) \rfloor$. Let $(\mathcal{A}_s)$ be a randomized algorithm, that is,
+a measurable family of algorithms with seed $s$ drawn from a probability measure $\rho$, where
+every $\mathcal{A}_s$ makes $q$ matrix–vector products with its input $\mathbf{A}$ in at most two
+passes (the products of a pass are chosen before any response of that pass is seen) and returns
+$\mathbf{W} \in \mathbb{R}^{n \times k}$ and $\mathbf{M} \in \mathbb{R}^{k \times n}$. If for
+every symmetric $\mathbf{A} \in \mathbb{R}^{n \times n}$
+$$\mathbb{P}_{s \sim \rho}\bigl[\|\mathbf{A} - \mathbf{W}\mathbf{M}\|_{\mathsf{F}}^2 \le
+(1 + \varepsilon)\|\mathbf{A} - \llbracket \mathbf{A} \rrbracket_k\|_{\mathsf{F}}^2\bigr]
+\ge \frac{1}{2} \,,$$
+then
+$$q > \frac{k}{C\varepsilon} \,.$$
+Here $C = 6400$, $\varepsilon_0 = 1/6500$ and $C_1 = 14000$.
+No printed source.
+
+Note: the hypotheses force $k \ge 1$. The $n$ coordinates are indexed by
+`Fin k ⊕ (Fin 3 × Fin m)`: a head of $k$ coordinates and three tail levels of $m$ each. General
+form, with finite index types in place of $k$ and $m$:
+`NLAlib.div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le`. Two passes of randomized SVD
+with $O(k/\varepsilon)$ products achieve this accuracy in expectation, so the rate
+$k/\varepsilon$ is optimal for two-pass algorithms.
+Result: two-pass-low-rank-lower-bound -/
+theorem natCast_div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le {k m q : ℕ} {ε : ℝ}
+    (hε : 0 < ε) (hε₁ : ε ≤ 1 / 6500) (hεk : ε ≤ k / 14000)
+    (hm : m = ⌊(k : ℝ) / (8 * ε)⌋₊) {S : Type*} [MeasurableSpace S]
+    {alg : S → QueryAlgorithm (Fin k ⊕ (Fin 3 × Fin m) → ℝ) (Fin k ⊕ (Fin 3 × Fin m) → ℝ) q
+      (Matrix (Fin k ⊕ (Fin 3 × Fin m)) (Fin k) ℝ × Matrix (Fin k) (Fin k ⊕ (Fin 3 × Fin m)) ℝ)}
+    (halg : QueryAlgorithm.IsMeasurableFamily alg) {pass : S → ℕ → ℕ}
+    (hpass : ∀ s, (alg s).IsPassStructured (pass s)) (hp : ∀ s, ∀ i < q, pass s i < 2)
+    (ρ : Measure S) [IsProbabilityMeasure ρ]
+    (hsucc : ∀ A : Matrix (Fin k ⊕ (Fin 3 × Fin m)) (Fin k ⊕ (Fin 3 × Fin m)) ℝ,
+      A.IsHermitian →
+      1 / 2 ≤ ρ.real {s | frobNorm (A - ((alg s).run A.mulVec).1 * ((alg s).run A.mulVec).2) ^ 2 ≤
+        (1 + ε) * frobNorm (A - truncatedSVD A k) ^ 2}) :
+    (k : ℝ) / (6400 * ε) < q := by
+  have hk : 0 < k := Nat.pos_of_ne_zero fun h => by
+    rw [h, Nat.cast_zero, zero_div] at hεk
+    exact absurd hε (not_lt.mpr hεk)
+  have : Nonempty (Fin k) := ⟨⟨0, hk⟩⟩
+  have h := div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le (k := Fin k) (m := Fin m)
+    (ε := ε) (alg := alg)
+  simp only [Fintype.card_fin] at h
+  exact h hε hε₁ hεk hm halg hpass hp ρ hsucc
+
 omit [DecidableEq k] [DecidableEq m] in
 /-- **One-pass low-rank approximation needs $\Omega(k/\varepsilon)$ matrix–vector products**: the
 statement of `NLAlib.div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le` for algorithms whose
@@ -1071,6 +1117,52 @@ theorem div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le_of_lt_one [Nonemp
     Fintype.card k / (6400 * ε) < q :=
   div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le hε hε₁ hεk hm halg hpass
     (fun s i hi => (hp s i hi).trans one_lt_two) ρ hsucc
+
+/-- **One-pass low-rank approximation needs $\Omega(k/\varepsilon)$ matrix–vector products**,
+integer sizes: let $k$, $m$ and $q$ be natural numbers and $n = k + 3m$, with
+$0 < \varepsilon \le \varepsilon_0$, $\varepsilon \le k/C_1$ and
+$m = \lfloor k/(8\varepsilon) \rfloor$. Let $(\mathcal{A}_s)$ be a randomized algorithm, that is,
+a measurable family of algorithms with seed $s$ drawn from a probability measure $\rho$, where
+every $\mathcal{A}_s$ makes $q$ matrix–vector products with its input $\mathbf{A}$ in one pass
+(all products are chosen before any response is seen) and returns
+$\mathbf{W} \in \mathbb{R}^{n \times k}$ and $\mathbf{M} \in \mathbb{R}^{k \times n}$. If for
+every symmetric $\mathbf{A} \in \mathbb{R}^{n \times n}$
+$$\mathbb{P}_{s \sim \rho}\bigl[\|\mathbf{A} - \mathbf{W}\mathbf{M}\|_{\mathsf{F}}^2 \le
+(1 + \varepsilon)\|\mathbf{A} - \llbracket \mathbf{A} \rrbracket_k\|_{\mathsf{F}}^2\bigr]
+\ge \frac{1}{2} \,,$$
+then
+$$q > \frac{k}{C\varepsilon} \,.$$
+Here $C = 6400$, $\varepsilon_0 = 1/6500$ and $C_1 = 14000$.
+No printed source.
+
+Note: the hypotheses force $k \ge 1$. The $n$ coordinates are indexed by
+`Fin k ⊕ (Fin 3 × Fin m)`: a head of $k$ coordinates and three tail levels of $m$ each. General
+form, with finite index types in place of $k$ and $m$:
+`NLAlib.div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le_of_lt_one`. Truncated generalized
+Nyström attains the error in expectation with $O(k/\varepsilon)$ one-pass products
+(`LowRank/Gaussian/TruncatedGeneralizedNystromRate`), so the bound is tight up to constants.
+Result: one-pass-low-rank-lower-bound -/
+theorem natCast_div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le_of_lt_one {k m q : ℕ}
+    {ε : ℝ} (hε : 0 < ε) (hε₁ : ε ≤ 1 / 6500) (hεk : ε ≤ k / 14000)
+    (hm : m = ⌊(k : ℝ) / (8 * ε)⌋₊) {S : Type*} [MeasurableSpace S]
+    {alg : S → QueryAlgorithm (Fin k ⊕ (Fin 3 × Fin m) → ℝ) (Fin k ⊕ (Fin 3 × Fin m) → ℝ) q
+      (Matrix (Fin k ⊕ (Fin 3 × Fin m)) (Fin k) ℝ × Matrix (Fin k) (Fin k ⊕ (Fin 3 × Fin m)) ℝ)}
+    (halg : QueryAlgorithm.IsMeasurableFamily alg) {pass : S → ℕ → ℕ}
+    (hpass : ∀ s, (alg s).IsPassStructured (pass s)) (hp : ∀ s, ∀ i < q, pass s i < 1)
+    (ρ : Measure S) [IsProbabilityMeasure ρ]
+    (hsucc : ∀ A : Matrix (Fin k ⊕ (Fin 3 × Fin m)) (Fin k ⊕ (Fin 3 × Fin m)) ℝ,
+      A.IsHermitian →
+      1 / 2 ≤ ρ.real {s | frobNorm (A - ((alg s).run A.mulVec).1 * ((alg s).run A.mulVec).2) ^ 2 ≤
+        (1 + ε) * frobNorm (A - truncatedSVD A k) ^ 2}) :
+    (k : ℝ) / (6400 * ε) < q := by
+  have hk : 0 < k := Nat.pos_of_ne_zero fun h => by
+    rw [h, Nat.cast_zero, zero_div] at hεk
+    exact absurd hε (not_lt.mpr hεk)
+  have : Nonempty (Fin k) := ⟨⟨0, hk⟩⟩
+  have h := div_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le_of_lt_one (k := Fin k)
+    (m := Fin m) (ε := ε) (alg := alg)
+  simp only [Fintype.card_fin] at h
+  exact h hε hε₁ hεk hm halg hpass hp ρ hsucc
 
 omit [DecidableEq k] [DecidableEq m] in
 /-- Two-pass spectral low-rank approximation needs products proportional to the dimension:

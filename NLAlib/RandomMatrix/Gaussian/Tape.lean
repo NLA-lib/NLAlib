@@ -18,7 +18,9 @@ $1/\sqrt2$ (`NLAlib.Computation.tapeComplexMatrix`), is a standard complex Gauss
 
 ## Main results
 
-* `NLAlib.Computation.hasLaw_tapeComplexMatrix_of_hasLaw_tapeLaw`: the law of the sample.
+* `NLAlib.Computation.hasLaw_tapeComplexMatrix_of_hasLaw_pi`,
+  `NLAlib.Computation.hasLaw_tapeComplexMatrix_of_hasLaw_tapeLaw`: the law of the sample.
+* `NLAlib.Ops.IsTapeLaw.hasLaw_pi_of_injective`: distinct entries of a stream are independent.
 * `NLAlib.Computation.hasLaw_complexGaussianMatrix_windowFn`,
   `NLAlib.Computation.hasLaw_complexGaussianVector_windowFn`: the same for a window of a Gaussian
   stream of an operation-core tape (`NLAlib.Ops.IsTapeLaw`).
@@ -52,26 +54,25 @@ private lemma map_pair_eq_complexGaussian :
     ← Measure.map_prod_map _ _ (by fun_prop) (by fun_prop), hd]
   rfl
 
-/-- A Gaussian tape draws a complex Gaussian matrix: if $\xi$ has the law of the tape
-`NLAlib.Computation.tapeLaw` under $\mu$, the $n \times n$ matrix with entry $(i, j)$ equal to
-$(\xi_{2(i + nj)} + i\,\xi_{2(i + nj) + 1})/\sqrt2$, from the Gaussian draws, has the law of a
-matrix with independent standard complex Gaussian entries (`NLAlib.complexGaussianMatrix`). No
-printed source. -/
-theorem hasLaw_tapeComplexMatrix_of_hasLaw_tapeLaw {Ω : Type} {mΩ : MeasurableSpace Ω}
-    {μ : Measure Ω} {ξ : Ω → Dist → ℕ → ℝ} (hξ : HasLaw ξ tapeLaw μ) (n : ℕ) :
-    HasLaw (fun ω => tapeComplexMatrix (ξ ω .gaussian) n)
-      (complexGaussianMatrix (Fin n) (Fin n)) μ := by
-  have hf : Function.Injective fun p : (Fin n × Fin n) × Fin 2 =>
-      2 * (p.1.1 + n * p.1.2) + p.2.1 := by
-    rintro ⟨⟨i, j⟩, t⟩ ⟨⟨i', j'⟩, t'⟩ h
-    have h' : i.1 + n * j.1 = i'.1 + n * j'.1 := by simp only at h; omega
-    have ht : t.1 = t'.1 := by simp only at h; omega
-    obtain ⟨h1, h2⟩ := (Nat.add_mul_eq_add_mul_iff_of_lt i.2 i'.2).mp h'
-    exact Prod.ext (Prod.ext (Fin.ext h1) (Fin.ext h2)) (Fin.ext ht)
-  have hY : HasLaw
-      (fun ω (p : (Fin n × Fin n) × Fin 2) => ξ ω .gaussian (2 * (p.1.1 + n * p.1.2) + p.2.1))
-      (Measure.pi fun _ : (Fin n × Fin n) × Fin 2 => gaussianReal 0 1) μ :=
-    (hasLaw_apply_of_hasLaw_tapeLaw hξ .gaussian).comp_of_injective hf
+/-- The tape positions of the entries of `NLAlib.Computation.tapeComplexMatrix`, the real draw
+$t$ of entry $(i, j)$ at $2(i + nj) + t$, are distinct. -/
+private theorem injective_tapeComplexMatrix_pos (n : ℕ) :
+    Function.Injective fun p : (Fin n × Fin n) × Fin 2 => 2 * (p.1.1 + n * p.1.2) + p.2.1 := by
+  rintro ⟨⟨i, j⟩, t⟩ ⟨⟨i', j'⟩, t'⟩ h
+  have h' : i.1 + n * j.1 = i'.1 + n * j'.1 := by simp only at h; omega
+  have ht : t.1 = t'.1 := by simp only at h; omega
+  obtain ⟨h1, h2⟩ := (Nat.add_mul_eq_add_mul_iff_of_lt i.2 i'.2).mp h'
+  exact Prod.ext (Prod.ext (Fin.ext h1) (Fin.ext h2)) (Fin.ext ht)
+
+/-- Independent standard real Gaussian draws at the tape positions of
+`NLAlib.Computation.tapeComplexMatrix` give a complex Gaussian matrix: if the draws $x_{2(i + nj)
++ t}$, $t < 2$, are independent standard real Gaussians, the matrix has the law
+`NLAlib.complexGaussianMatrix`. -/
+theorem hasLaw_tapeComplexMatrix_of_hasLaw_pi {Ω : Type} {mΩ : MeasurableSpace Ω}
+    {μ : Measure Ω} {x : Ω → ℕ → ℝ} {n : ℕ}
+    (hY : HasLaw (fun ω (p : (Fin n × Fin n) × Fin 2) => x ω (2 * (p.1.1 + n * p.1.2) + p.2.1))
+      (Measure.pi fun _ : (Fin n × Fin n) × Fin 2 => gaussianReal 0 1) μ) :
+    HasLaw (fun ω => tapeComplexMatrix (x ω) n) (complexGaussianMatrix (Fin n) (Fin n)) μ := by
   -- the Gaussian entries regrouped by rows and columns, then the pair map
   have hG := measurePreserving_curry_pi (m := Fin n × Fin n) (n := Fin 2)
     (ν := fun _ _ => gaussianReal 0 1)
@@ -115,6 +116,32 @@ theorem hasLaw_tapeComplexMatrix_of_hasLaw_tapeLaw {Ω : Type} {mΩ : Measurable
     rfl
   exact (HasLaw.mk hFm.aemeasurable hmap).comp hY
 
+/-- A Gaussian tape draws a complex Gaussian matrix: if $\xi$ has the law of the tape
+`NLAlib.Computation.tapeLaw` under $\mu$, the $n \times n$ matrix with entry $(i, j)$ equal to
+$(\xi_{2(i + nj)} + i\,\xi_{2(i + nj) + 1})/\sqrt2$, from the Gaussian draws, has the law of a
+matrix with independent standard complex Gaussian entries (`NLAlib.complexGaussianMatrix`). No
+printed source. -/
+theorem hasLaw_tapeComplexMatrix_of_hasLaw_tapeLaw {Ω : Type} {mΩ : MeasurableSpace Ω}
+    {μ : Measure Ω} {ξ : Ω → Dist → ℕ → ℝ} (hξ : HasLaw ξ tapeLaw μ) (n : ℕ) :
+    HasLaw (fun ω => tapeComplexMatrix (ξ ω .gaussian) n)
+      (complexGaussianMatrix (Fin n) (Fin n)) μ :=
+  hasLaw_tapeComplexMatrix_of_hasLaw_pi
+    ((hasLaw_apply_of_hasLaw_tapeLaw hξ .gaussian).comp_of_injective
+      (injective_tapeComplexMatrix_pos n))
+
+/-- Distinct entries of a stream of a tape law are independent draws: under
+`NLAlib.Ops.IsTapeLaw`, for an injective $f : \iota \to \mathbb{N}$ on a finite type, the entries
+of the stream $s$ at the positions $f(i)$ have the product law of `law s`. -/
+theorem _root_.NLAlib.Ops.IsTapeLaw.hasLaw_pi_of_injective {Ω ι : Type} [Fintype ι]
+    {mΩ : MeasurableSpace Ω} {P : Measure Ω} {law : ℕ → Measure ℝ} {ξ : Ω → Ops.Tape ℝ}
+    (hξ : Ops.IsTapeLaw law P ξ) (s : ℕ) {f : ι → ℕ} (hf : Function.Injective f) :
+    HasLaw (fun ω i => ξ ω (f i) s) (Measure.pi fun _ : ι => law s) P := by
+  have := hξ.isProbabilityMeasure
+  have := hξ.isProbabilityMeasure_law s
+  have hind : iIndepFun (fun i ω => ξ ω (f i) s) P :=
+    hξ.indep.precomp (g := fun i => (f i, s)) fun a b hab => hf (by simpa using hab)
+  exact hind.hasLaw_pi fun i => ⟨(hξ.measurable _ _).aemeasurable, hξ.map (f i) s⟩
+
 /-- **A window of a Gaussian stream is a complex Gaussian matrix**: under a tape law
 (`NLAlib.Ops.IsTapeLaw`) whose stream $s$ is standard real Gaussian, the $N \times N$ matrix with
 entry $(i, j)$ equal to $(x_{2(i + Nj)} + i\,x_{2(i + Nj) + 1})/\sqrt2$, for the $2N^2$ entries
@@ -126,7 +153,10 @@ theorem hasLaw_complexGaussianMatrix_windowFn {Ω : Type} {mΩ : MeasurableSpace
     {s : ℕ} (hs : law s = gaussianReal 0 1) (p N : ℕ) :
     HasLaw (fun ω => tapeComplexMatrix (fun j => ξ ω (p + j) s) N)
       (complexGaussianMatrix (Fin N) (Fin N)) P := by
-  sorry
+  refine hasLaw_tapeComplexMatrix_of_hasLaw_pi ?_
+  rw [← hs]
+  exact hξ.hasLaw_pi_of_injective s
+    ((add_right_injective p).comp (injective_tapeComplexMatrix_pos N))
 
 /-- **A window of a Gaussian stream is a complex Gaussian vector**: under a tape law whose stream
 $s$ is standard real Gaussian, the vector with entry $i$ equal to
@@ -139,6 +169,32 @@ theorem hasLaw_complexGaussianVector_windowFn {Ω : Type} {mΩ : MeasurableSpace
     HasLaw (fun ω (i : Fin N) =>
         (⟨ξ ω (p + 2 * i) s / √2, ξ ω (p + 2 * i + 1) s / √2⟩ : ℂ))
       (complexGaussianVector (Fin N)) P := by
-  sorry
+  have hf : Function.Injective fun q : Fin N × Fin 2 => p + (2 * q.1.1 + q.2.1) := by
+    rintro ⟨i, t⟩ ⟨i', t'⟩ h
+    have hi : i.1 = i'.1 := by simp only at h; omega
+    have ht : t.1 = t'.1 := by simp only at h; omega
+    exact Prod.ext (Fin.ext hi) (Fin.ext ht)
+  have hY := hξ.hasLaw_pi_of_injective s hf
+  rw [hs] at hY
+  have hC := measurePreserving_curry_pi (m := Fin N) (n := Fin 2)
+    (ν := fun _ _ => gaussianReal 0 1)
+  have hpair : Measurable fun v : Fin 2 → ℝ => (⟨v 0 / √2, v 1 / √2⟩ : ℂ) :=
+    Complex.measurableEquivRealProd.symm.measurable.comp (f := fun v : Fin 2 → ℝ =>
+      (v 0 / √2, v 1 / √2)) (((measurable_pi_apply 0).div_const _).prodMk
+        ((measurable_pi_apply 1).div_const _))
+  have hPm : Measurable fun x : Fin N → Fin 2 → ℝ => fun i => (⟨x i 0 / √2, x i 1 / √2⟩ : ℂ) :=
+    measurable_pi_lambda _ fun i => hpair.comp (measurable_pi_apply i)
+  have hPmap : Measure.map (fun x : Fin N → Fin 2 → ℝ => fun i => (⟨x i 0 / √2, x i 1 / √2⟩ : ℂ))
+      (Measure.pi fun _ : Fin N => Measure.pi fun _ : Fin 2 => gaussianReal 0 1) =
+        complexGaussianVector (Fin N) := by
+    refine (Measure.pi_map_pi (f := fun _ (v : Fin 2 → ℝ) => (⟨v 0 / √2, v 1 / √2⟩ : ℂ))
+      (fun _ => hpair.aemeasurable)).trans ?_
+    exact congrArg Measure.pi (funext fun _ => map_pair_eq_complexGaussian)
+  have hmap : Measure.map (fun y : Fin N × Fin 2 → ℝ => fun i : Fin N =>
+      (⟨y (i, 0) / √2, y (i, 1) / √2⟩ : ℂ))
+      (Measure.pi fun _ : Fin N × Fin 2 => gaussianReal 0 1) = complexGaussianVector (Fin N) := by
+    rw [← hPmap, ← hC.map_eq, Measure.map_map hPm hC.measurable]
+    rfl
+  exact (HasLaw.mk (hPm.comp hC.measurable).aemeasurable hmap).comp hY
 
 end NLAlib.Computation

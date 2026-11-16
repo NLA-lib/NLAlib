@@ -454,8 +454,8 @@ $C_r = 12544(r+1)^3$ and <!-- value chebyshevAccuracyBound r -->
 $\varepsilon_r = 1/(25088(r+1)^3(r+2))$.
 No printed source.
 
-Note: $C_r$ is `chebyshevQueryFactor r` and $\varepsilon_r$ is `chebyshevAccuracyBound r`.
-The $n$ coordinates are indexed by
+Note: $C_r$ is `chebyshevQueryFactor r` (`chebyshevQueryFactor_le`) and $\varepsilon_r$ is
+`chebyshevAccuracyBound r` (`le_chebyshevAccuracyBound`). The $n$ coordinates are indexed by
 `Fin k ⊕ (Fin (r + 1) × Fin m)`: a head of $k$ coordinates and $r + 1$ tail levels of $m$ each.
 General form, with finite index types in place of $k$ and $m$:
 `div_chebyshevQueryFactor_mul_lt_of_forall_le_measureReal_nuclearNorm_sub_mul_le_of_pass_lt`.

@@ -25,6 +25,11 @@ spectrum (head $1+1/(8(r+1)^2)$, Chebyshev levels in $[1/2,1]$, $C = 4$).
   denominator and admissible squared-error accuracy.
 * `NLAlib.chebyshevQueryFactor`, `NLAlib.chebyshevAccuracyBound`: the Chebyshev ones.
 
+Their explicit values are the one-sided comparisons `NLAlib.equispacedQueryFactor_le`,
+`NLAlib.le_equispacedAccuracyBound`, `NLAlib.chebyshevQueryFactor_le` and
+`NLAlib.le_chebyshevAccuracyBound`, with `NLAlib.equispacedQueryFactor_pos` and
+`NLAlib.chebyshevQueryFactor_pos`.
+
 For natural $r$, the equispaced query factor is <!-- value equispacedQueryFactor r -->
 $256\cdot4^{r+1}(r+1)(r+2)$, and the accuracy cutoff is
 set to <!-- value equispacedAccuracyBound r -->
@@ -78,6 +83,47 @@ This makes the tail multiplicity large enough for the Gaussian width and the exc
 probability, for every positive target rank. -/
 noncomputable irreducible_def chebyshevAccuracyBound (r : ℕ) : ℝ :=
   1 / (25088 * ((r : ℝ) + 1) ^ 3 * (r + 2))
+
+/-- The equispaced query factor is positive: `equispacedQueryFactor r`, whose value
+is <!-- value equispacedQueryFactor r -->$256\cdot4^{r+1}(r+1)(r+2)$, is $> 0$ for every natural
+$r$. -/
+theorem equispacedQueryFactor_pos (r : ℕ) : 0 < equispacedQueryFactor r := by
+  rw [equispacedQueryFactor_def]
+  positivity
+
+/-- An explicit upper bound, $256\cdot4^{r+1}(r+1)(r+2)$, on `equispacedQueryFactor r`, whose
+value is <!-- value equispacedQueryFactor r -->$256\cdot4^{r+1}(r+1)(r+2)$. A smaller factor is a
+better query lower bound. -/
+theorem equispacedQueryFactor_le (r : ℕ) :
+    equispacedQueryFactor r ≤ 256 * 4 ^ (r + 1) * ((r : ℝ) + 1) * (r + 2) := by
+  rw [equispacedQueryFactor_def]
+
+/-- An explicit lower bound, $1/(512\cdot4^{r+1}(r+1)(r+2)^2)$, on `equispacedAccuracyBound r`,
+whose value is <!-- value equispacedAccuracyBound r -->$1/(512\cdot4^{r+1}(r+1)(r+2)^2)$. A
+larger cutoff admits more accuracies $\varepsilon$. -/
+theorem le_equispacedAccuracyBound (r : ℕ) :
+    1 / (512 * 4 ^ (r + 1) * ((r : ℝ) + 1) * (r + 2) ^ 2) ≤ equispacedAccuracyBound r := by
+  rw [equispacedAccuracyBound_def]
+
+/-- The Chebyshev query factor is positive: `chebyshevQueryFactor r`, whose value
+is <!-- value chebyshevQueryFactor r -->$12544(r+1)^3$, is $> 0$ for every natural $r$. -/
+theorem chebyshevQueryFactor_pos (r : ℕ) : 0 < chebyshevQueryFactor r := by
+  rw [chebyshevQueryFactor_def]
+  positivity
+
+/-- An explicit upper bound, $12544(r+1)^3$, on `chebyshevQueryFactor r`, whose value
+is <!-- value chebyshevQueryFactor r -->$12544(r+1)^3$. A smaller factor is a better query lower
+bound. -/
+theorem chebyshevQueryFactor_le (r : ℕ) :
+    chebyshevQueryFactor r ≤ 12544 * ((r : ℝ) + 1) ^ 3 := by
+  rw [chebyshevQueryFactor_def]
+
+/-- An explicit lower bound, $1/(25088(r+1)^3(r+2))$, on `chebyshevAccuracyBound r`, whose value
+is <!-- value chebyshevAccuracyBound r -->$1/(25088(r+1)^3(r+2))$. A larger cutoff admits more
+accuracies $\varepsilon$. -/
+theorem le_chebyshevAccuracyBound (r : ℕ) :
+    1 / (25088 * ((r : ℝ) + 1) ^ 3 * (r + 2)) ≤ chebyshevAccuracyBound r := by
+  rw [chebyshevAccuracyBound_def]
 
 end NLAlib
 
@@ -753,8 +799,8 @@ $C_r = 12544(r+1)^3$ and <!-- value chebyshevAccuracyBound r -->
 $\varepsilon_r = 1/(25088(r+1)^3(r+2))$.
 No printed source.
 
-Note: $C_r$ is `chebyshevQueryFactor r` and $\varepsilon_r$ is `chebyshevAccuracyBound r`.
-The $n$ coordinates are indexed by
+Note: $C_r$ is `chebyshevQueryFactor r` (`chebyshevQueryFactor_le`) and $\varepsilon_r$ is
+`chebyshevAccuracyBound r` (`le_chebyshevAccuracyBound`). The $n$ coordinates are indexed by
 `Fin k ⊕ (Fin (r + 1) × Fin m)`: a head of $k$ coordinates and $r + 1$ tail levels of $m$ each.
 General form, with finite index types in place of $k$ and $m$:
 `div_chebyshevQueryFactor_mul_lt_of_forall_le_measureReal_frobNorm_sub_mul_sq_le_of_pass_lt`.

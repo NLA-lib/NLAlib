@@ -48,6 +48,8 @@ value [Edelman1988], an elementary small-ball bound.
 * `NLAlib.measureReal_specNorm_ge_le_of_hasLaw_complexGaussianMatrix`,
   `NLAlib.measureReal_specNorm_ge_add_le_of_hasLaw_complexGaussianMatrix`: Lemma 3.2, and the norm
   tail $e^{-t^2}$ from Gaussian concentration.
+* `NLAlib.measureReal_specNorm_add_smul_ge_mul_le_of_hasLaw_complexGaussianMatrix`: the norm
+  cutoff of a Ginibre perturbation at a logarithmic scale.
 
 The smallest singular value is in `NLAlib/RandomMatrix/Gaussian/Complex/LeastSingularValue.lean`.
 -/
@@ -638,6 +640,90 @@ theorem measureReal_specNorm_ge_add_le_of_hasLaw_complexGaussianMatrix {G : Ω �
   refine (measureReal_mono fun X hX => ?_).trans h
   simp only [Set.mem_preimage, Set.mem_ofPred_eq, id] at hX ⊢
   linarith
+
+private theorem measureReal_specNorm_add_ge_le
+    {G : Ω → Matrix n n ℂ} (hG : HasLaw G (complexGaussianMatrix n n) μ) (M : Matrix n n ℂ)
+    (hn : 0 < Fintype.card n) {γ u : ℝ} (hγ : 0 < γ) (hu : 0 ≤ u) :
+    μ.real {ω | specNorm M + γ * (2 * √2 + u / √(Fintype.card n : ℝ)) ≤
+      specNorm (M + (γ / √(Fintype.card n : ℝ)) • G ω)} ≤ Real.exp (-u ^ 2) := by
+  have : IsProbabilityMeasure μ := hG.isProbabilityMeasure_iff.2 inferInstance
+  have hn : (0 : ℝ) < Fintype.card n := by exact_mod_cast hn
+  have hc : 0 < γ / √(Fintype.card n : ℝ) := by positivity
+  refine (measureReal_mono fun ω hω => ?_).trans
+    (measureReal_specNorm_ge_add_le_of_hasLaw_complexGaussianMatrix hG hu)
+  change √2 * (√(Fintype.card n : ℝ) + √(Fintype.card n : ℝ)) + u ≤ specNorm (G ω)
+  simp only [Set.mem_ofPred_eq] at hω
+  have hupper := specNorm_add_le M ((γ / √(Fintype.card n : ℝ)) • G ω)
+  rw [specNorm_real_smul, abs_of_pos hc] at hupper
+  have heq : γ * (2 * √2 + u / √(Fintype.card n : ℝ)) =
+      (γ / √(Fintype.card n : ℝ)) *
+        (√2 * (√(Fintype.card n : ℝ) + √(Fintype.card n : ℝ)) + u) := by
+    field_simp
+    ring
+  rw [heq] at hω
+  exact (mul_le_mul_iff_right₀ hc).1 (by linarith :
+    (γ / √(Fintype.card n : ℝ)) *
+      (√2 * (√(Fintype.card n : ℝ) + √(Fintype.card n : ℝ)) + u) ≤
+      (γ / √(Fintype.card n : ℝ)) * specNorm (G ω))
+
+private theorem sqrt_cutoff_le {N m L : ℝ} (hN : 1 ≤ N) (hm : 2 ≤ m) (hL : 0 ≤ L) :
+    m + 2 * √2 + √(2 * L) / √N ≤ 3 * (m + L) := by
+  have hNs : 1 ≤ √N := Real.one_le_sqrt.mpr hN
+  have hNp : 0 < √N := by linarith
+  have hu : √(2 * L) ≤ L + 1 := by
+    rw [Real.sqrt_le_iff]
+    constructor <;> nlinarith
+  have hud : √(2 * L) / √N ≤ √(2 * L) := by
+    rw [div_le_iff₀ hNp]
+    exact le_mul_of_one_le_right (by positivity) hNs
+  have htwo : 2 * √2 ≤ 3 := by
+    nlinarith [Real.sq_sqrt (show (0 : ℝ) ≤ 2 by norm_num), Real.sqrt_nonneg 2]
+  linarith
+
+/-- The norm cutoff of a Ginibre perturbation at a logarithmic scale: for a standard complex
+Gaussian $n \times n$ matrix $\mathbf{G}$, $0 < 2\gamma \le \|\mathbf{M}\|_2$ and
+$0 < \tau \le 1$,
+$$\mathbb{P}\bigl[3\gamma\bigl(\|\mathbf{M}\|_2/\gamma + \log(1/\tau)\bigr) \le
+  \|\mathbf{M} + \gamma n^{-1/2}\mathbf{G}\|_2\bigr] \le \tau^2\,.$$
+The norm tail of `NLAlib.measureReal_specNorm_ge_add_le_of_hasLaw_complexGaussianMatrix` at
+$u = \sqrt{2\log(1/\tau)}$, with $2\sqrt2 + \sqrt{2L} \le 3 + L$; it is the cutoff of the
+pseudospectral-area arguments for the gap and condition tails. No printed source. -/
+theorem measureReal_specNorm_add_smul_ge_mul_le_of_hasLaw_complexGaussianMatrix
+    {G : Ω → Matrix n n ℂ} (hG : HasLaw G (complexGaussianMatrix n n) μ) (M : Matrix n n ℂ)
+    {γ τ : ℝ} (hγ : 0 < γ) (hγM : 2 * γ ≤ specNorm M) (hτ : 0 < τ) (hτ1 : τ ≤ 1) :
+    μ.real {ω | 3 * γ * (specNorm M / γ + Real.log τ⁻¹) ≤
+      specNorm (M + (γ / √(Fintype.card n : ℝ)) • G ω)} ≤ τ ^ 2 := by
+  have : IsProbabilityMeasure μ := hG.isProbabilityMeasure_iff.2 inferInstance
+  have hn : 0 < Fintype.card n := by
+    by_contra h
+    have : IsEmpty n := Fintype.card_eq_zero_iff.mp (by omega)
+    have hM : M = 0 := Subsingleton.elim _ _
+    simp only [hM, specNorm_zero] at hγM
+    linarith
+  have hn1 : (1 : ℝ) ≤ Fintype.card n := by exact_mod_cast hn
+  let L := Real.log τ⁻¹
+  let u := √(2 * L)
+  have hL : 0 ≤ L := Real.log_nonneg ((one_le_inv₀ hτ).2 hτ1)
+  have hm : 2 ≤ specNorm M / γ := (le_div_iff₀ hγ).2 hγM
+  have hexp : Real.exp (-u ^ 2) = τ ^ 2 := by
+    have hlog : -u ^ 2 = Real.log (τ ^ 2) := by
+      dsimp [u, L]
+      rw [Real.sq_sqrt (by positivity : 0 ≤ 2 * Real.log τ⁻¹), Real.log_pow, Real.log_inv]
+      ring
+    rw [hlog, Real.exp_log (by positivity)]
+  have htail := measureReal_specNorm_add_ge_le hG M hn hγ (Real.sqrt_nonneg (2 * L))
+  rw [hexp] at htail
+  refine (measureReal_mono fun ω hω => ?_).trans htail
+  simp only [Set.mem_ofPred_eq] at hω ⊢
+  refine le_trans ?_ hω
+  have hh := mul_le_mul_of_nonneg_left (sqrt_cutoff_le hn1 hm hL) hγ.le
+  have heq : specNorm M + γ * (2 * √2 + u / √(Fintype.card n : ℝ)) =
+      γ * (specNorm M / γ + 2 * √2 + √(2 * L) / √(Fintype.card n : ℝ)) := by
+    dsimp [u]
+    field_simp
+    ring
+  rw [heq]
+  nlinarith
 
 end Laws
 

@@ -12,11 +12,14 @@ public import NLAlib.Matrix.Spectral.SingularValueInequalities
 # Eigenvalue clusters and small singular values
 
 Two eigenvalues of a diagonalized matrix close to a shift force its second-smallest shifted
-singular value to be small, with the loss given by the diagonalizer condition number.
+singular value to be small, with the loss given by the diagonalizer condition number: the
+deterministic step of the pseudospectral shattering argument of
+[BanksGarzaVargasKulkarniSrivastava2020].
 
 ## Main results
 
 * `NLAlib.singularValues_le_mul_pseudoConditionNumber_of_mul_eq_mul_diagonal`.
+* `NLAlib.exists_mem_singularValues_le_of_not_exists_isEigenvalueListing`: the net step.
 -/
 
 @[expose] public section
@@ -27,10 +30,10 @@ namespace NLAlib
 
 variable {n : Type*} [Fintype n] [DecidableEq n]
 
-/-- **Two eigenvalues in a disk force a small second singular value.** If a diagonalizer has
+/-- Two eigenvalues in a disk force a small second singular value: if a diagonalizer has
 two distinct columns whose eigenvalues are within $r\ge0$ of $z$, then the second-smallest
-singular value of $z\mathbf{I}-\mathbf{A}$ is at most $r$ times its condition number.
-[BanksGarzaVargasKulkarniSrivastava2023, Lemma 3.5], with the same argument over `RCLike`. -/
+singular value of $z\mathbf{I}-\mathbf{A}$ is at most $r$ times its condition number, over
+`RCLike`. No printed source; a step of the shattering argument. -/
 theorem singularValues_le_mul_pseudoConditionNumber_of_mul_eq_mul_diagonal
     {𝕜 : Type*} [RCLike 𝕜] {A V : Matrix n n 𝕜} {d : n → 𝕜} (hV : IsUnit V)
     (hAV : A * V = V * Matrix.diagonal d) {k : ℕ} (hk : k + 2 = Fintype.card n)
@@ -95,8 +98,7 @@ theorem singularValues_le_mul_pseudoConditionNumber_of_mul_eq_mul_diagonal
 
 /-- A net of a spectral disk detects a close eigenvalue pair whenever a diagonalizer has
 condition number at most $B$. Two net-near eigenvalues give a second singular value at most
-$2rB$. This is the deterministic net step of
-[BanksGarzaVargasKulkarniSrivastava2023, proof of Theorem 3.6]. -/
+$2rB$. No printed source; the deterministic net step of the shattering argument. -/
 theorem exists_mem_singularValues_le_of_not_exists_isEigenvalueListing
     {𝕜 : Type*} [RCLike 𝕜] {A V : Matrix n n 𝕜} {d : n → 𝕜}
     (hV : IsUnit V) (hAV : A * V = V * Matrix.diagonal d)

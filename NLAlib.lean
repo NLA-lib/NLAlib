@@ -1392,7 +1392,6 @@ public import NLAlib.RandomMatrix.Gaussian.BlockTail
 public import NLAlib.RandomMatrix.Gaussian.ClippedInverseMoments
 public import NLAlib.RandomMatrix.Gaussian.Complex
 public import NLAlib.RandomMatrix.Gaussian.Complex.LeastSingularValue
-public import NLAlib.RandomMatrix.Gaussian.Complex.Shattering
 public import NLAlib.RandomMatrix.Gaussian.Complex.SimpleSpectrum
 public import NLAlib.RandomMatrix.Gaussian.Concentration
 public import NLAlib.RandomMatrix.Gaussian.ExtremeSingularValues
@@ -1415,6 +1414,8 @@ public import NLAlib.RandomMatrix.Haar.Stabilizer
 public import NLAlib.RandomMatrix.Haar.Transfer
 public import NLAlib.RandomMatrix.Haar.Uniqueness
 public import NLAlib.RandomMatrix.Rademacher.Basic
+public import NLAlib.RandomMatrix.Shattering.ConditionTail
+public import NLAlib.RandomMatrix.Shattering.GapTail
 public import NLAlib.RandomMatrix.SubGaussian.ExtremeSingularValues
 public import NLAlib.RandomMatrix.TapeLaw
 public import NLAlib.RandomMatrix.UnitaryInvariance

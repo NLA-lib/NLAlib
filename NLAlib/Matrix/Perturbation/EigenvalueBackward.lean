@@ -188,7 +188,7 @@ $\mathbf{A}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$ with $\mathbf
 $\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le B$, eigenvalues separated by $g > 0$, and
 $\|\mathbf{E}\|_2 \le g/(16(n + 1)B)$. Then $\mathbf{A} + \mathbf{E}$ has a diagonalization
 $\mathbf{V}'$, $\mathbf{d}'$ with $\|\mathbf{V}'\|_2\|\mathbf{V}'^{-1}\|_2 \le 2B$,
-$\lvert d'_i - d_i\rvert \le g/16$, and for every unitary $\mathbf{Q}$ and every $i$ the last-row
+$\lvert d'_i - d_i\rvert \le g/16$, and for every matrix $\mathbf{Q}$ and every $i$ the last-row
 weights $w$ satisfy
 $$\sqrt{w_i(\mathbf{Q}^{\mathsf{H}}\mathbf{V})} \le
   (1 + \sqrt{n + 1}\,\theta)\sqrt{w_i(\mathbf{Q}^{\mathsf{H}}\mathbf{V}')} + \theta,
@@ -204,7 +204,7 @@ theorem exists_lastRowWeights_ge_of_norm_sub_le {n : ℕ}
     ∃ (V' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (d' : Fin (n + 1) → ℂ), IsUnit V' ∧
       (A + E) * V' = V' * Matrix.diagonal d' ∧ pseudoConditionNumber V' ≤ 2 * B ∧
       (∀ i, ‖d' i - d i‖ ≤ g / 16) ∧
-      ∀ (Q : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (i : Fin (n + 1)), HasOrthonormalCols Q →
+      ∀ (Q : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (i : Fin (n + 1)),
         √(lastRowWeights (Qᴴ * V) i) ≤
           (1 + √(n + 1) * (64 * (n + 1) * B ^ 2 * specNorm E / g)) *
               √(lastRowWeights (Qᴴ * V') i) +
@@ -212,7 +212,7 @@ theorem exists_lastRowWeights_ge_of_norm_sub_le {n : ℕ}
   obtain ⟨Z, d', hU, hAV', -, hκZ, hm, hZ⟩ :=
     exists_add_mul_mul_one_add_eq_mul_diagonal hV hAV hB hg hgap hE
   have hB1 : 1 ≤ B := (one_le_pseudoConditionNumber hV.ne_zero).trans hB
-  refine ⟨V * (1 + Z), d', hV.mul hU, hAV', ?_, hm, fun Q i _ => ?_⟩
+  refine ⟨V * (1 + Z), d', hV.mul hU, hAV', ?_, hm, fun Q i => ?_⟩
   · calc pseudoConditionNumber (V * (1 + Z))
         ≤ pseudoConditionNumber V * pseudoConditionNumber (1 + Z) :=
           pseudoConditionNumber_mul_le hV hU

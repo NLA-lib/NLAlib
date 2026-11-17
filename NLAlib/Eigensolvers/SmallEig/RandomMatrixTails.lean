@@ -351,7 +351,7 @@ private theorem exists_shift_specNorm {n : Type} [Fintype n] [DecidableEq n] [No
 of the shift $\mathbf{M} + s\mathbf{I}$: a diagonalization of the shifted matrix shifts back,
 and its diagonal is a listing, a permutation of any other. -/
 private theorem subset_class_shift {Ω : Type} {n : Type} [Fintype n] [DecidableEq n]
-    {G : Ω → Matrix n n ℂ} (M : Matrix n n ℂ) (s : ℂ) {β t₁ t₂ : ℝ} (ht₁ : 0 ≤ t₁) :
+    {G : Ω → Matrix n n ℂ} (M : Matrix n n ℂ) (s : ℂ) {β t₁ t₂ : ℝ} :
     {ω | ¬ ∃ (V : Matrix n n ℂ) (d : n → ℂ), IsUnit V ∧ (M + β • G ω) * V = V * Matrix.diagonal d ∧
         pseudoConditionNumber V ≤ t₂⁻¹ ∧ ∀ i j, i ≠ j → t₁ ≤ ‖d i - d j‖} ⊆
       {ω | ¬ ∃ d : n → ℂ, IsEigenvalueListing (M + s • 1 + β • G ω) d ∧
@@ -360,7 +360,7 @@ private theorem subset_class_shift {Ω : Type} {n : Type} [Fintype n] [Decidable
           (M + s • 1 + β • G ω) * V = V * Matrix.diagonal d ∧ pseudoConditionNumber V ≤ t₂⁻¹} := by
   intro ω hω
   by_contra hc
-  simp only [Set.mem_union, Set.mem_setOf_eq, not_or, not_not] at hc
+  simp only [Set.mem_union, Set.mem_ofPred_eq, not_or, not_not] at hc
   obtain ⟨⟨d₁, hd₁, hgap⟩, ⟨V, d, hV, hVd, hκ⟩⟩ := hc
   have hd := isEigenvalueListing_of_mul_eq_mul_diagonal ((Matrix.isUnit_iff_isUnit_det V).mp hV)
     hVd
@@ -368,7 +368,7 @@ private theorem subset_class_shift {Ω : Type} {n : Type} [Fintype n] [Decidable
   refine hω ⟨V, fun i => d i - s, hV, ?_, hκ, fun i j hij => ?_⟩
   · have hdiag : Matrix.diagonal (fun i => d i - s) = Matrix.diagonal d - s • 1 := by
       ext i j
-      by_cases h : i = j <;> simp [Matrix.diagonal_apply, Matrix.one_apply, h]
+      by_cases h : i = j <;> simp [h]
     rw [hdiag, Matrix.mul_sub, Matrix.mul_smul, Matrix.mul_one, ← hVd]
     simp only [Matrix.add_mul, Matrix.smul_mul, Matrix.one_mul]
     abel
@@ -419,7 +419,7 @@ theorem measureReal_not_exists_class_le_of_hasLaw_complexGaussianMatrix {c₁ c�
       exact add_nonneg hT₁ hT₂
   obtain ⟨s, hs₁, hs₂⟩ := exists_shift_specNorm hγ M
   set M' := M + s • (1 : Matrix n n ℂ)
-  refine (measureReal_mono (subset_class_shift (G := G) M s ht₁.le)).trans
+  refine (measureReal_mono (subset_class_shift (G := G) M s)).trans
     ((measureReal_union_le _ _).trans (add_le_add ?_ ?_))
   · refine (hA.normalize hG M' hγ hs₁ ht₁ ht₁γ).trans
       (tail_mono_base c₁ (Fintype.card n) (div_nonneg ht₁.le hγ.le) ?_ ?_)

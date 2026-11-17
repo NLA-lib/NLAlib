@@ -220,7 +220,7 @@ theorem smallEigProg_terminates_of_two_le {M : Machine ℝ} {I : Interp O Q ℝ}
   refine (ginibrePerturb_writes_word hS hL hSmp (sG := sG) (nq := qs.length) (τ := tape)
     (a := (L, 0)) (by simp [Mem.Live, hlen₃]; omega) hW₃
     (hB₂₃.get_of hql (by simpa using Store.get_of_readBlock hq₁ (j := 0) (by omega) 0))
-    (Fp.disj_inBlock_of_ne (by omega))).frame_seq_le rfl rfl
+    ).frame_seq_le rfl rfl
     (by simp [Mem.Live, hlen₃]; omega) (hab _ _ _ le_rfl) ?_
   rintro μ₄ hfr₄ ⟨-, hW₄⟩
   have hlen₄ : μ₄.store.length = L + 3 := by rw [hfr₄.length_eq, hlen₃]

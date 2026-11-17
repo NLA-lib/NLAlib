@@ -218,7 +218,8 @@ private theorem writes_scalePrelude {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
     rw [hf₂.2 _ _ (not_inBlock_of (by pomega)), hf₁.2 _ _ (not_inBlock_of (by pomega))]
     exact hq
   refine (writes_call_bin (hS .div) h₃ h₃' trivial hq₂ hg₂ rfl
-    (fun _ => ⟨by simp [Mem.Live, hf₂.length_eq, hf₁.length_eq]; pomega,
+    (fun _ => ⟨by simp only [Mem.live_cons, Mem.live_nil, and_true, and_self,
+        hf₂.length_eq, hf₁.length_eq]; pomega,
       by rw [hf₂.len_eq, hf₁.len_eq]; pomega⟩)).seq_le (hle 0 (by pomega)) ?_
   rintro m₃ hf₃ ⟨hp₃, hg₃⟩
   refine (writes_call_const (hS (.lit 1)) h₄ trivial
@@ -236,7 +237,8 @@ private theorem writes_scalePrelude {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
   have hSc₅ : m₅.store.len (L + 1) = 3 := by
     rw [hf₅.len_eq, hf₄.len_eq, hf₃.len_eq, hf₂.len_eq, hf₁.len_eq, hSc]
   refine (writes_call_bin (hS .div) h₆ h₆' trivial hg₄' hg₅ rfl
-    (fun _ => ⟨by simp [Mem.Live, hlen₅]; pomega, by pomega⟩)).seq_le (hle 1 (by pomega)) ?_
+    (fun _ => ⟨by simp only [Mem.live_cons, Mem.live_nil, and_true, and_self]; pomega,
+      by pomega⟩)).seq_le (hle 1 (by pomega)) ?_
   rintro m₆ hf₆ ⟨hp₆, hg₆⟩
   refine (writes_call_un (hS .sqrt) h₇ h₇' trivial hg₆ rfl
     (by rw [hf₆.len_eq]; pomega)).seq_le (hle 1 (by pomega)) ?_
@@ -251,6 +253,7 @@ private theorem writes_scalePrelude {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
     (hf₅.mono (hsub 2 (by pomega)))).trans (hf₆.mono (hsub 1 (by pomega)))).trans
     (hf₇.mono (hsub 1 (by pomega)))
 
+omit [Has IndexOp O] in
 /-- **One entry of the perturbation loop**: with $\gamma'$ in `Sc[0]`, $\sqrt{1/2}$ in `Sc[1]` and
 the words $w_0, w_1$ at `G[2j]`, `G[2j+1]`, the six calls store
 $\mathrm{fl}(a_k + \mathrm{fl}(\mathrm{fl}(w_k\sqrt{1/2})\gamma'))$ at `A[2j + k]`, writing only
@@ -294,41 +297,43 @@ private theorem writes_perturbEntry {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
       Store.inBlock L t 2 ⊔ Store.inBlock zb zo 2 :=
     fun k hk => le_sup_of_le_right (Fp.inBlock_le_inBlock (by pomega) (by pomega))
   refine (writes_call_bin (hS .mul) h₁ h₁' trivial hw₀ hh rfl
-    (fun _ => ⟨by simp [Mem.Live]; pomega, by pomega⟩)).seq_le
+    (fun _ => ⟨by simp only [Mem.live_cons, Mem.live_nil, and_true]; pomega, by pomega⟩)).seq_le
     (by simpa using hG 0 (by pomega)) ?_
   rintro m₁ hf₁ ⟨hp₁, hv₁⟩
   refine (writes_call_bin (hS .mul) h₂ h₂' trivial (K hf₁ (by pomega) hw₁) (K hf₁ (by pomega) hh)
-    rfl (fun _ => ⟨by simp [Mem.Live, hf₁.length_eq]; pomega, by
+    rfl (fun _ => ⟨by simp only [Mem.live_cons, Mem.live_nil, and_true, hf₁.length_eq]; pomega, by
       rw [hf₁.len_eq]; pomega⟩)).seq_le (hG 1 (by pomega)) ?_
   rintro m₂ hf₂ ⟨hp₂, hv₂⟩
   refine (writes_call_bin (hS .mul) h₃ h₃' trivial (K hf₂ (by pomega) hv₁)
     (K hf₂ (by pomega) (K hf₁ (by pomega) hg)) rfl
-    (fun _ => ⟨by simp [Mem.Live, hf₂.length_eq, hf₁.length_eq]; pomega, by
+    (fun _ => ⟨by simp only [Mem.live_cons, Mem.live_nil, and_true,
+        hf₂.length_eq, hf₁.length_eq]; pomega, by
       rw [hf₂.len_eq, hf₁.len_eq]; pomega⟩)).seq_le (by simpa using hG 0 (by pomega)) ?_
   rintro m₃ hf₃ ⟨hp₃, hv₃⟩
   have hlen₃ : m₃.store.length = m.store.length :=
     hf₃.length_eq.trans (hf₂.length_eq.trans hf₁.length_eq)
   refine (writes_call_bin (hS .mul) h₄ h₄' trivial (K hf₃ (by pomega) hv₂)
     (K hf₃ (by pomega) (K hf₂ (by pomega) (K hf₁ (by pomega) hg))) rfl
-    (fun _ => ⟨by simp [Mem.Live, hlen₃]; pomega, by
+    (fun _ => ⟨by simp only [Mem.live_cons, Mem.live_nil, and_true]; pomega, by
       rw [hf₃.len_eq, hf₂.len_eq, hf₁.len_eq]; pomega⟩)).seq_le (hG 1 (by pomega)) ?_
   rintro m₄ hf₄ ⟨hp₄, hv₄⟩
   have ha₀' := K hf₄ (by pomega) (K hf₃ (by pomega) (K hf₂ (by pomega) (K hf₁ (by pomega) ha₀)))
   have ha₁' := K hf₄ (by pomega) (K hf₃ (by pomega) (K hf₂ (by pomega) (K hf₁ (by pomega) ha₁)))
   have hlen₄ : m₄.store.length = m.store.length := hf₄.length_eq.trans hlen₃
   refine (writes_call_bin (hS .add) h₅ h₅' trivial ha₀' (K hf₄ (by pomega) hv₃) rfl
-    (fun _ => ⟨by simp [Mem.Live, hlen₄]; pomega, by
+    (fun _ => ⟨by simp only [Mem.live_cons, Mem.live_nil, and_true]; pomega, by
       rw [hf₄.len_eq, hf₃.len_eq, hf₂.len_eq, hf₁.len_eq]; pomega⟩)).seq_le
     (by simpa using hZ 0 (by pomega)) ?_
   rintro m₅ hf₅ ⟨hp₅, hv₅⟩
   refine (writes_call_bin (hS .add) h₆ h₆' trivial (K hf₅ (by pomega) ha₁')
     (K hf₅ (by pomega) hv₄) rfl
-    (fun _ => ⟨by simp [Mem.Live, hf₅.length_eq, hlen₄]; pomega, by
+    (fun _ => ⟨by simp only [Mem.live_cons, Mem.live_nil, and_true, hf₅.length_eq]; pomega, by
       rw [hf₅.len_eq, hf₄.len_eq, hf₃.len_eq, hf₂.len_eq, hf₁.len_eq]; pomega⟩)).mono
     (hZ 1 (by pomega)) ?_
   rintro m₆ hf₆ ⟨hp₆, hv₆⟩
   exact ⟨by rw [hp₆, hp₅, hp₄, hp₃, hp₂, hp₁], K hf₆ (by pomega) hv₅, hv₆⟩
 
+omit [Has IndexOp O] in
 /-- **The perturbation loop**: with $\gamma'$ in `Sc[0]`, $\sqrt{1/2}$ in `Sc[1]`, the words
 $x_t$ at `G[t]` and $\mathbf{A}$ at `a`, the $N^2$ rounds store
 `NLAlib.Ops.Machine.perturbWords` at `a`. -/
@@ -795,8 +800,7 @@ at the start position. -/
 theorem ginibrePerturb_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hL : IsIndexLit M I) (hSmp : IsSample I) {sG N nq : ℕ} {τ : Tape ℝ} {μ : Mem ℝ}
     {a q : ℕ × ℕ} {A : Matrix (Fin N) (Fin N) ℂ} {γ : ℝ} (hl : μ.Live [a, q])
-    (hA : HoldsMatrix a A μ.store) (hq : μ.store.get q.1 q.2 = some γ)
-    (haq : Fp.Disj (Store.inBlock a.1 a.2 (2 * (N * N))) (Store.inBlock q.1 q.2 1)) :
+    (hA : HoldsMatrix a A μ.store) (hq : μ.store.get q.1 q.2 = some γ) :
     Writes .total I τ (ginibrePerturb (O := O) (Q := Q) sG).body (Env.frame [N, nq] [a, q, a])
       (Store.inBlock a.1 a.2 (2 * (N * N)))
       (fun μ' => μ'.pos = μ.pos + 2 * (N * N) ∧
@@ -816,8 +820,9 @@ theorem ginibrePerturb_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
       Store.inBlock b o n ≤ Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Fp.above L :=
     fun b o n hb _ _ hi => Or.inr (hi.1 ▸ hb)
   refine (gaussDraws_writes (O := O) (Q := Q) hSmp (sG := sG) (m := 2 * (N * N)) (τ := τ)
-    (μ := ⟨s₁, μ.pos⟩) (g := (L, 0)) (by simp [Mem.Live]; pomega) (by simp [hG])).frame_seq_le
-    rfl rfl (by simp [Mem.Live]; pomega) (hab _ _ _ le_rfl) ?_
+    (μ := ⟨s₁, μ.pos⟩) (g := (L, 0)) (by simp only [Mem.live_cons, Mem.live_nil, and_true]; pomega)
+    (by simp [hG])).frame_seq_le
+    rfl rfl (by simp only [Mem.live_cons, Mem.live_nil, and_true]; pomega) (hab _ _ _ le_rfl) ?_
   rintro m₁ hf₁ ⟨hp₁, hr₁⟩
   have hq₁ : m₁.store.get q.1 q.2 = some γ :=
     (hf₁.2 _ _ (not_inBlock_of (by pomega))).trans (hBelow.get_of hql hq)
@@ -852,9 +857,8 @@ diagonalization $\mathbf{V}\operatorname{diag}(\mathbf{d})\mathbf{V}^{-1}$ with
 $\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le 2/t_2$ and eigenvalues separated by $t_1/2$, for
 $t_1, t_2$ = `NLAlib.SmallEig.smallEigGap`, `NLAlib.SmallEig.smallEigCond`. -/
 theorem ginibrePerturb_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
-    (hM : StdModel u id M) (hL : IsIndexLit M I) (hSmp : IsSample I) (hI : I.IsMeasurable)
-    {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ} {sG : ℕ}
-    (hG : law sG = gaussianReal 0 1) {c₁ c₂ : PolyLogTail} (hA : ComplexGaussianGapTail c₁)
+    (hM : StdModel u id M) (hL : IsIndexLit M I) (hSmp : IsSample I) {law : ℕ → Measure ℝ}
+    {sG : ℕ} (hG : law sG = gaussianReal 0 1) {c₁ c₂ : PolyLogTail} (hA : ComplexGaussianGapTail c₁)
     (hB : ComplexGaussianConditionTail c₂) (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) {nmax : ℕ}
     {S δ φ : ℝ} (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
     (hu : u ≤ uSmallEigReduce nmax S δ φ c₁ c₂) {n : ℕ} (hn : n + 1 ≤ nmax)
@@ -889,11 +893,10 @@ theorem ginibrePerturb_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} 
     exact measureReal_perturbBad_le hA hB hb₁ hb₂ hδ hδS hφ hφ1 hn hAS
   refine PWrites.of_window (s := sG) (W := 2 * ((n + 1) * (n + 1))) (Bad := fun _ => Bad)
     (measurable_snd (measurableSet_perturbBad _ _ _ _ _)) (fun _ _ => hprob) ?_
-  rintro μ τ ⟨hAμ, hq, hl, hdisj⟩ hgood
+  rintro μ τ ⟨hAμ, hq, hl, -⟩ hgood
   have hq0 : μ.store.get q.1 q.2 = some γ := by
     simpa [smallEigParams] using Store.get_of_readBlock hq (j := 0) (by simp [smallEigParams]) 0
-  refine (ginibrePerturb_writes_word hS hL hSmp hl hAμ hq0 (hdisj.mono le_rfl
-    (Fp.inBlock_le_inBlock le_rfl (by simp [smallEigParams])))).mono le_rfl ?_
+  refine (ginibrePerturb_writes_word hS hL hSmp hl hAμ hq0).mono le_rfl ?_
   rintro μ' - ⟨-, hW'⟩
   -- the good window
   set Gm := winMat (n + 1) (Tape.windowFn τ sG μ.pos (2 * ((n + 1) * (n + 1))))

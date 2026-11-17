@@ -47,6 +47,7 @@ section Theorems
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q]
   [Has IdxTst Q] {n : ℕ}
 
+omit [Has IdxTst Q] in
 /-- **`Regularize` with a small-eigenvalue routine as a probabilistic block**
 ([BanksGarzaVargasSrivastava2022, Lemma 4.6], corrected; the routine of
 [BanksGarzaVargasSrivastava2025, Corollary 1.3]): on a scalar machine with the standard model, exact
@@ -291,6 +292,7 @@ theorem roundedDecoupleWith_randomDecouplingRoutineContract {M : Machine ℝ} {I
     hε hε2 hφ hφ1 hd hC1 hxu hbound hexc1 hexc2 hthrω hthr hcut hωD hfuel hSN hsmall
     (hqs ▸ hSE.at) (Or.inr hqs) rfl
 
+omit [Has IdxTst Q] in
 /-- **`Regularize` with a terminating small-eigenvalue routine terminates on any matrix**
 ([BanksGarzaVargasSrivastava2022, §4.2]): on a scalar machine with exact comparisons, index
 literals and exact natural literals up to $n + 1$, with an exact polar sampler and a routine `SE`
@@ -302,8 +304,7 @@ views live, the matrix, the pairs and the flag apart from each other and from th
 three stored, on every tape. -/
 theorem regularizeWith_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hL : IsIndexLit M I) {n : ℕ} (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I)
-    {law : ℕ → MeasureTheory.Measure ℝ} {s₀ : ℕ} {β φse : ℝ}
-    (hD : IsPolarDiskSampler s₀ I) {τ : Tape ℝ}
+    {s₀ : ℕ} (hD : IsPolarDiskSampler s₀ I) {τ : Tape ℝ}
     {m : Mem ℝ} {k : ℕ} (hk : k ≤ n) {a rd c thr s f : ℕ × ℕ}
     (has : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
       (Store.inBlock s.1 s.2 (2 * k)))
@@ -342,8 +343,7 @@ of order $n + 1$ at `a`, any words at `rd`, `c`, `thr`, `wg`, `wr`, `ww`, `wp`, 
 every tape. -/
 theorem shIterationWith_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hL : IsIndexLit M I) (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I)
-    (hQ : IsToNat id I) {law : ℕ → MeasureTheory.Measure ℝ} {s₀ : ℕ} {β φse : ℝ}
-    (hD : IsPolarDiskSampler s₀ I) {τ : Tape ℝ}
+    (hQ : IsToNat id I) {s₀ : ℕ} (hD : IsPolarDiskSampler s₀ I) {τ : Tape ℝ}
     {m : Mem ℝ} {k q : ℕ} (hkq : k = 2 ^ q) (hkn : k ≤ n) {ε : ℝ}
     {a rd c thr wg wr ww wp g f : ℕ × ℕ}
     (haf : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock f.1 f.2 1))
@@ -383,8 +383,7 @@ followed by `qs` and $k = 2^q$ is a `NLAlib.ShiftedQR.TerminatingDecouplerRoutin
 to $n_{\max} + 1$, with any iteration cap $F$. -/
 theorem roundedDecoupleWith_terminatingDecouplerRoutine {M : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar M I) (hL : IsIndexLit M I) {nmax : ℕ} (hNat : IsExactNatLit id M (nmax + 1))
-    (hC : IsCmp id I) (hQ : IsToNat id I) {law : ℕ → MeasureTheory.Measure ℝ} {s₀ : ℕ}
-    (hD : IsPolarDiskSampler s₀ I)
+    (hC : IsCmp id I) (hQ : IsToNat id I) {s₀ : ℕ} (hD : IsPolarDiskSampler s₀ I)
     {k q F : ℕ} (hkq : k = 2 ^ q) (tL R tv γ B α ε : ℝ) {T : ℕ} {qs : List ℝ}
     {SE : Impl O Q} (hSE : TerminatingSmallEig k T qs SE I) (hqs : qs.length = 12) :
     TerminatingDecouplerRoutine nmax k F T (roundedDecoupleParams tL R tv γ B α ε k q ++ qs)

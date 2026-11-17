@@ -818,7 +818,7 @@ theorem distSpecAccurateOn_of {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (
 \le \eta_1^2$ (the precision of `DistSpec`), $0 < \eta_1 \le \Sigma/300$ and $\eta_1 L \le
 0.4\,\Sigma$ with $L \ge 0$: $2.4 \cdot 10^7\boldsymbol{u}\Sigma \le \eta_1$ and
 $4000\boldsymbol{u}\Sigma L \le \eta_1$. -/
-theorem rounding_le_innerRadius {u S η₁ L : ℝ} (hu0 : 0 ≤ u) (hS : 0 < S) (hη₁ : 0 < η₁)
+theorem rounding_le_innerRadius {u S η₁ L : ℝ} (hS : 0 < S) (hη₁ : 0 < η₁)
     (hη₁S : η₁ ≤ S / 300) (hprec : 480000 * u * S ^ 2 ≤ η₁ ^ 2) (hL0 : 0 ≤ L)
     (hη₁L : η₁ * L ≤ 0.4 * S) :
     24000000 * (u * S) ≤ η₁ ∧ 100 * (40 * u * S) * L ≤ η₁ := by
@@ -919,7 +919,7 @@ theorem oneEig_pwrites_of_norm_le {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
   have hη₂g : η₂ ≤ g / 3 := hη₂ ▸ min_le_right _ _
   have hprec := mul_sq_le_of_distSpec_precision hxu hκ1 hm2 hn (specNorm_nonneg H) hT0 hη₁0
     (by linarith) hu0
-  have huS := (rounding_le_innerRadius (L := 0) hu0 hT0 hη₁0 (by linarith) hprec le_rfl
+  have huS := (rounding_le_innerRadius (L := 0) hT0 hη₁0 (by linarith) hprec le_rfl
     (by rw [mul_zero]; positivity)).1
   have hηr : η₂ + 60 * u * S'' ≤ 0.027 * β' := by linarith
   have hsep : ∀ i j, d i ≠ d j → 2 * (η₁ + 40 * u * S'' + η₂) ≤ ‖d i - d j‖ := fun i j hij =>
@@ -935,7 +935,7 @@ theorem oneEig_pwrites_of_norm_le {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
   have hη₁L : η₁ * L ≤ 0.4 * S'' := by
     have := mul_le_mul_of_nonneg_right (show η₁ ≤ β' / 40 by linarith) hL0
     linarith
-  have hεL := (rounding_le_innerRadius hu0 hT0 hη₁0 (by linarith) hprec hL0 hη₁L).2
+  have hεL := (rounding_le_innerRadius hT0 hη₁0 (by linarith) hprec hL0 hη₁L).2
   have hφt := oneEigRadii_add_sq_le (ε := 40 * u * S'') hβ' hβ'S hg hφ (by positivity)
     (by rw [← hη₁]; exact hεL)
   rw [← ht, ← hη₁, ← hη₂] at hφt

@@ -820,8 +820,7 @@ norm at most $N \le 2\Sigma$ in the class $(2B_c, g_c/2)$, `RHess` stores a bloc
 probability at most $\varphi_D/2$. -/
 theorem smallEigDecoupler_rhess_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hzero : M.lit 0 = 0) (hC : IsCmp id I)
-    (hSmp : IsSample I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
-    (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ} {sG : ℕ}
+    (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sG : ℕ}
     (hG : law sG = gaussianReal 0 1) {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b)
     {nmax : ℕ} (hn : 1 ≤ nmax) {S δ φ : ℝ} (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
     (hu : u ≤ uSmallEig nmax S δ φ c₁ c₂) {n : ℕ} (hnn : n ≤ nmax) {N : ℝ}
@@ -858,7 +857,7 @@ theorem smallEigDecoupler_rhess_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {
     unfold smallEigDecouplerFailure; rw [div_le_one (by positivity)]
     have : (1 : ℝ) ≤ nmax := by exact_mod_cast hn
     nlinarith
-  exact (rhess_pwrites (a := w) hS hM hzero hC hSmp hI hloc hG hV hHV hκ (by positivity)
+  exact (rhess_pwrites (a := w) hS hM hzero hC hSmp hG hV hHV hκ (by positivity)
     hgap hHN hs (φ' := smallEigDecouplerFailure nmax φ / 4) (by positivity) (by linarith) hRr
     hnu hus huc).mono (fun _ h => h) le_rfl
     (fun μ' ⟨H₁, V', d', hW₁, hHess₁, hPUS₁, hV', hHV', hκ', hgap', hw'⟩ =>
@@ -991,8 +990,8 @@ theorem smallEigDecoupler_randomDecouplingRoutineContract_of_le {M : Machine ℝ
   have hnn : n ≤ nmax := hnb.trans hkb
   obtain ⟨k, rfl⟩ : ∃ k, n = k + 1 := ⟨n - 1, by omega⟩
   have hφD : 0 < smallEigDecouplerFailure nmax φ := by unfold smallEigDecouplerFailure; positivity
-  have hRH := smallEigDecoupler_rhess_pwrites (O := O) (Q := Q) (w := w) hS hM hzero hC hSmp hI
-    hloc hG hb₁ hb₂ hn hδ hδS hφ hφ1 hu hnn hN hHN hV hHV hκ hgap
+  have hRH := smallEigDecoupler_rhess_pwrites (O := O) (Q := Q) (w := w) hS hM hzero hC hSmp
+    hG hb₁ hb₂ hn hδ hδS hφ hφ1 hu hnn hN hHN hV hHV hκ hgap
   have hget : ∀ μ : Mem ℝ, μ.store.readBlock q.1 q.2 (smallEigParams nmax S δ φ c₁ c₂).length =
       some (smallEigParams nmax S δ φ c₁ c₂) → ∀ i < 12,
         μ.store.get q.1 (q.2 + i) = some ((smallEigParams nmax S δ φ c₁ c₂).getD i 0) :=

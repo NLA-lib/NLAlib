@@ -294,8 +294,7 @@ $\|\mathbf{E}\|_2 \le \delta/2$, with a diagonalization of condition at most $2/
 eigenvalues separated by $t_1/2$ (`NLAlib.SmallEig.smallEigCond`, `NLAlib.SmallEig.smallEigGap`).
 -/
 theorem smallEigProg_perturb_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
-    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I) (hI : I.IsMeasurable)
-    {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) (hSmp : IsSample I)
+    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I) (hSmp : IsSample I)
     {law : ℕ → Measure ℝ} {sG : ℕ} (hG : law sG = gaussianReal 0 1) {c₁ c₂ : PolyLogTail}
     (hA : ComplexGaussianGapTail c₁) (hB : ComplexGaussianConditionTail c₂) (hb₁ : 0 < c₁.b)
     (hb₂ : 0 < c₂.b) {nmax n : ℕ} (hn : n + 1 + 1 ≤ nmax) {S δ φ : ℝ} (hδ : 0 < δ) (hδS : δ ≤ S)
@@ -325,7 +324,7 @@ theorem smallEigProg_perturb_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
       Store.inBlock b k l ≤ Store.inBlock o.1 o.2 (2 * (n + 1 + 1)) ⊔ Fp.above L :=
     fun b k l hb _ _ hi => Or.inr (hi.1 ▸ hb)
   obtain ⟨_, _, hured, _⟩ := uSmallEig_spec (nmax := nmax) hb₁ hb₂ (by omega) hδ hδS hφ hφ1
-  refine (((ginibrePerturb_pwrites (O := O) (Q := Q) hS hM hL hSmp hI hloc hG hA hB hb₁ hb₂
+  refine (((ginibrePerturb_pwrites (O := O) (Q := Q) hS hM hL hSmp hG hA hB hb₁ hb₂
     hδ hδS hφ hφ1 (hu.trans hured) hn hMS (a := (L, 0)) (q := q)).in_frame hd ha
     fun μ h z hz => h.2.2.1 z (by simp at hz ⊢; tauto)).mono_eqOff
     (fun μ ⟨⟨h, _⟩, hW⟩ => ⟨hW, h.2.2.2.2.2.2.2.2.1, h.live _ (by simp),
@@ -561,7 +560,7 @@ theorem smallEigProg_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
       rfl (by simp only at hT ⊢; omega)).mono (hab _ _ _ (by omega))
       fun μ' hfr ⟨_, hTh⟩ => ⟨h.of_eqOff hfr (hab _ _ _ (by omega)) hwo hqo, hTh⟩
   · exact smallEigProg_copy_pwrites hS hwo hqo rfl rfl
-  · exact smallEigProg_perturb_pwrites hS hM hL hI hloc hSmp hG hA hB hb₁ hb₂ hn hδ hδS hφ hφ1 hu
+  · exact smallEigProg_perturb_pwrites hS hM hL hSmp hG hA hB hb₁ hb₂ hn hδ hδS hφ hφ1 hu
       hMS hwo hqo rfl rfl
   · exact smallEigProg_reduce_pwrites hS hM hzero hC hb₁ hb₂ hn hδ hδS hφ hφ1 hu hMS hwo hqo rfl
       rfl

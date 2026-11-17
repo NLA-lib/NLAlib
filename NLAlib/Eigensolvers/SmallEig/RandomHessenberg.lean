@@ -212,7 +212,8 @@ private theorem writes_rhessCoeffs {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
     (c := (L + 1, 0)) (s := (L + 1, 2)) (u := ⟨y₀, M.neg y₁⟩) (v := ⟨M.neg x₀, x₁⟩) hS hC
     (Fp.disj_inBlock_of_le le_rfl) (K hf₄ (by pomega) (K hf₃ (by pomega) (K hf₂ (by pomega) hv₁)))
     (K hf₄ (by pomega) (K hf₃ (by pomega) hv₂)) (K hf₄ (by pomega) hv₃) hv₄ (by pomega)
-    (by pomega)).frame_seq_le hd ha (by simp [Mem.Live, hlen₄]; pomega)
+    (by pomega)).frame_seq_le hd ha
+    (by simp only [Mem.live_cons, Mem.live_nil, and_true, and_self, and_self_left]; pomega)
     ((hcf.trans le_sup_left).trans hF) ?_
   rintro m₅ hf₅ ⟨hp₅, hcs⟩
   refine hnext m₅ ?_ (by rw [hp₅, hp₄, hp₃, hp₂, hp₁])
@@ -442,7 +443,7 @@ private theorem rotInv_step (hM : StdModel u id M) (hu : 0 ≤ u) (hu' : u ≤ 1
     · have hrj : (r : ℕ) < j := by
         have : (r : ℕ) ≠ j := fun h => hri (Fin.ext h)
         omega
-      have hrk : r ≠ k := Fin.ne_of_val_ne (by simp [k]; pomega)
+      have hrk : r ≠ k := Fin.ne_of_val_ne (by simp only [ne_eq, k]; pomega)
       have : v' r = v r := by simp [v', vecRot, hri, hrk]
       rw [this]
       exact (hz r hrj).trans hmono
@@ -510,7 +511,7 @@ private theorem exists_phase_norm_sub_le {n : ℕ} (w : Fin (n + 1) → ℂ) {R 
     ring
   have hzsq : ‖WithLp.toLp 2 z‖ ^ 2 = (∑ i : Fin n, ‖w i.castSucc‖ ^ 2) / R ^ 2 + (1 - ρ) ^ 2 := by
     rw [EuclideanSpace.norm_sq_eq, Fin.sum_univ_castSucc]
-    simp only [PiLp.toLp_apply, h1, h2, Complex.norm_real, Real.norm_eq_abs, sq_abs, div_pow,
+    simp only [h1, h2, Complex.norm_real, Real.norm_eq_abs, sq_abs, div_pow,
       Finset.sum_div]
   have hoffR : (∑ i : Fin n, ‖w i.castSucc‖ ^ 2) / R ^ 2 = 1 - ρ ^ 2 := by
     simp only [ρ]
@@ -529,7 +530,7 @@ private theorem rhess_matrix_bound {n : ℕ} {A B U Q' H : Matrix (Fin (n + 1)) 
     (hU : HasOrthonormalCols U) (hQ' : HasOrthonormalCols Q')
     (hB : specNorm (B - U * A * Uᴴ) ≤ ((1 + 50 * u) ^ n - 1) * specNorm A)
     (hE : specNorm (H - Q'ᴴ * B * Q') ≤ 50 * ((n : ℝ) + 1) ^ 2 * u * specNorm B)
-    (hu : 0 ≤ u) (hNu : ((n : ℝ) + 1) * u ≤ 1 / 100) (hnu : (n : ℝ) * u ≤ 1 / 100) :
+    (hu : 0 ≤ u) (hNu : ((n : ℝ) + 1) * u ≤ 1 / 100) :
     specNorm (H - (Uᴴ * Q')ᴴ * A * (Uᴴ * Q')) ≤ 200 * ((n : ℝ) + 1) ^ 2 * u * specNorm A := by
   have hgrow := one_add_pow_sub_one_le_two_mul (x := 50 * u) (n := n) (by positivity)
     (by nlinarith)
@@ -585,8 +586,8 @@ private theorem rhess_phase {n : ℕ} {U : Matrix (Fin (n + 1)) (Fin (n + 1)) �
       rw [EuclideanSpace.norm_sq_eq, Fin.sum_univ_castSucc]
       have hl : (v - e) (Fin.last n) = 0 := by simp [e]
       have hc : ∀ i : Fin n, (v - e) i.castSucc = v i.castSucc := fun i => by
-        simp [e, Pi.single_eq_of_ne (Fin.castSucc_ne_last i)]
-      simp only [PiLp.toLp_apply, WithLp.ofLp_toLp, hl, hc, norm_zero]
+        simp [e]
+      simp only [hl, hc, norm_zero]
       have hs : ∑ i : Fin n, ‖v i.castSucc‖ ^ 2 ≤ n * (15 * u * R) ^ 2 := by
         calc ∑ i : Fin n, ‖v i.castSucc‖ ^ 2 ≤ ∑ _i : Fin n, (15 * u * R) ^ 2 :=
               Finset.sum_le_sum fun i _ => pow_le_pow_left₀ (norm_nonneg _) (hvi i) 2
@@ -603,8 +604,8 @@ private theorem rhess_phase {n : ℕ} {U : Matrix (Fin (n + 1)) (Fin (n + 1)) �
     have h3 : ∑ i : Fin n, ‖w i.castSucc‖ ^ 2 ≤ ‖WithLp.toLp 2 (w - e)‖ ^ 2 := by
       rw [EuclideanSpace.norm_sq_eq, Fin.sum_univ_castSucc]
       have : ∀ i : Fin n, (w - e) i.castSucc = w i.castSucc := fun i => by
-        simp [e, Pi.single_eq_of_ne (Fin.castSucc_ne_last i)]
-      simp only [PiLp.toLp_apply, WithLp.ofLp_toLp, this]
+        simp [e]
+      simp only [this]
       exact le_add_of_nonneg_right (by positivity)
     exact h3.trans (pow_le_pow_left₀ (norm_nonneg _) h2 2)
   obtain ⟨c, hc, hcz⟩ := exists_phase_norm_sub_le w hR hw (by positivity) hδ hoff
@@ -628,6 +629,7 @@ section Rotate
 
 variable {O Q : Type} [Has ScalarOp O] [Has CmpTst Q]
 
+omit [Has CmpTst Q] in
 /-- **The rotations of one step of `RHess`**: with the coefficients in `Cf`, the rotation of the
 entries $j, j + 1$ of the vector at `G`, then of the rows and the columns $j, j + 1$ of the matrix
 at `a`; only `a`, `G` and the scratch `Tm` are written. -/
@@ -668,7 +670,7 @@ private theorem writes_rhessRotate {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
     intro b i hi
     simp [Fp.blocks, Store.inBlock] at hi
     right
-    show L ≤ b
+    change L ≤ b
     omega
   refine (writes_rotateLeftWithScratch_word (τ := τ) (m := m) (c := (L + 1, 0)) (s := (L + 1, 2))
     (x := (L, 2 * j)) (y := (L, 2 * j + 2)) (t := (L + 3, 0)) (cv := cs.1) (sv := cs.2)
@@ -677,8 +679,8 @@ private theorem writes_rhessRotate {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
     (by simpa [Nat.add_assoc] using hx1)
     (by simpa [show 2 * (j + 1) = 2 * j + 2 by omega] using hy0)
     (by simpa [show 2 * (j + 1) + 1 = 2 * j + 2 + 1 by omega] using hy1) (by simp [hTm])
-    (by simp [hG] <;> omega) (by simp [hG] <;> omega)).frame_seq_le hd₆ ha₆
-    (by simp [Mem.Live, hlen] <;> omega) habove ?_
+    (by simp [hG]; omega) (by simp [hG]; omega)).frame_seq_le hd₆ ha₆
+    (by simp [Mem.Live, hlen]) habove ?_
   rintro m₁ hf₁ ⟨hp₁, hr₁⟩
   have hdA : Fp.Disj (Fp.blocks [(L + 3, 0), (L, 2 * j), (L, 2 * j + 2)] [10, 2, 2])
       (Store.inBlock a.1 a.2 (2 * (N * N))) := fun b i h1 h2 => by
@@ -725,12 +727,15 @@ private theorem writes_rhessRotate {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
     fun _ => Fp.disj_inBlock_of_ne (by omega)
   have hlen₁ : m₁.store.length = L + 4 := hf₁.length_eq.trans hlen
   refine (rotateRows_writes_word (τ := τ) (k := j) hS hj hB₁ hc₁ hs₁ (hcs 0) (hcs 2)).frame_seq_le
-    hd₇ ha₇ (by simp [Mem.Live, hlen₁]; pomega) le_sup_left ?_
+    hd₇ ha₇ (by simp only [Mem.live_cons, Mem.live_nil, and_true, and_self_left]; pomega)
+    le_sup_left ?_
   rintro m₂ hf₂ ⟨hp₂, hB₂⟩
   have hc₂ := hf₂.keep (Store.readsOnly_readBlock _ _ _ _) (hcs 0) hc₁
   have hs₂ := hf₂.keep (Store.readsOnly_readBlock _ _ _ _) (hcs 2) hs₁
   refine ((rotateColumns_writes_word (τ := τ) (k := j) hS hj hB₂ hc₂ hs₂ (hcs 0) (hcs 2)).in_frame
-    hd₈ ha₈ (by simp [Mem.Live, hf₂.length_eq, hlen₁]; pomega)).mono le_sup_left ?_
+    hd₈ ha₈ (by simp only [Mem.live_cons, Mem.live_nil, and_true, and_self_left,
+        hf₂.length_eq]; pomega)).mono
+    le_sup_left ?_
   rintro m₃ hf₃ ⟨hp₃, hB₃⟩
   exact ⟨hp₃.trans (hp₂.trans hp₁), hB₃,
     (hV₁.of_eqOff hf₂ (hdV rfl)).of_eqOff hf₃ (hdV rfl)⟩
@@ -819,8 +824,10 @@ private theorem rhess_loop_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
       simp only [rotateToStepWord, dif_pos hjN]
       exact hW₃
   · rintro μ - ⟨hp', hl', -, -, -, -, hB, -⟩
-    refine ((hessenbergReduceLast_writes_word hS hC (by simp [Mem.Live, hl']; pomega) hB).in_frame
-      hdH haH (by simp [Mem.Live, hl']; pomega)).mono le_sup_left ?_
+    refine ((hessenbergReduceLast_writes_word hS hC
+      (by simp only [Mem.live_cons, Mem.live_nil, and_true]; pomega) hB).in_frame
+      hdH haH (by simp only [Mem.live_cons, Mem.live_nil, and_true, and_self]; pomega)).mono
+      le_sup_left ?_
     rintro μ' - ⟨hp'', hW'⟩
     exact ⟨hp''.trans hp', hW'⟩
 
@@ -1278,7 +1285,7 @@ theorem rhess_isPerturbedUnitarySimilar {M : Machine ℝ} {u : ℝ} (hM : StdMod
   obtain ⟨c, hc, hcv⟩ := rhess_phase hU hg hv hz hu hNu hnu'
   refine ⟨hH, Uᴴ * Q', c, hasOrthonormalCols_iff.mpr
     ((hU.conjTranspose.conjTranspose_mul_mul _ _).trans (hasOrthonormalCols_iff.mp hQ')), hc, ?_,
-    rhess_matrix_bound hU hQ' hB hE hu hNu hnu'⟩
+    rhess_matrix_bound hU hQ' hB hE hu hNu⟩
   have hcol : (fun k => (Uᴴ * Q') k (Fin.last n)) = Uᴴ *ᵥ Pi.single (Fin.last n) 1 := by
     ext r
     simp [Matrix.mul_apply, hlast, Matrix.mulVec, dotProduct, Pi.single_apply]
@@ -1304,7 +1311,6 @@ $\mathbf{V}'$, $\mathbf{d}'$ with $\|\mathbf{V}'\|_2\|\mathbf{V}'^{-1}\|_2 \le 2
 separated by $g/2$, and every last-row weight at least $s^2/(64R^2B^2)$. -/
 theorem rhess_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hzero : M.lit 0 = 0) (hC : IsCmp id I) (hSmp : IsSample I)
-    (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     {law : ℕ → Measure ℝ} {sG : ℕ} (hG : law sG = gaussianReal 0 1) {n : ℕ}
     {A V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {B g S s R φ' : ℝ}
     (hV : IsUnit V) (hAV : A * V = V * Matrix.diagonal d) (hκ : pseudoConditionNumber V ≤ B)

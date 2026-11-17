@@ -163,7 +163,8 @@ Here $\boldsymbol{u}_0$ is `NLAlib.ShiftedQR.uShQRSmallEig`.
 [BanksGarzaVargasSrivastava2022, Theorem 6.3]; there `SmallEig` is an oracle.
 
 Note: The run terminates on every tape (`NLAlib.ShiftedQR.roundedShQRSmallEig_terminates`).
-General form: `NLAlib.ShiftedQR.roundedShQRWith_measureReal_not_spectrum_le`. -/
+General form: `NLAlib.ShiftedQR.roundedShQRWith_measureReal_not_spectrum_le`.
+Result: shifted-qr-rounded-small-eig-backward-error -/
 theorem roundedShQRSmallEig_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Interp O Q ℝ}
     {u : ℝ} {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
     (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
@@ -441,7 +442,8 @@ $0 < \delta \le 1$, $0 < \varphi \le 1$, $k$ the degree of (eqn:setk) at $4B$, a
 the precision at the absolute error $\delta\Sigma/c$. Then the probability that the run fails,
 writes outside the matrix, the output and the failure word, or lists no spectrum of
 $\mathbf{H} + \mathbf{E}$ with $\|\mathbf{E}\|_2 \le \delta\|\mathbf{H}\|_2$ is at most
-$\varphi$. -/
+$\varphi$.
+Result: shifted-qr-rounded-small-eig-backward-error -/
 theorem roundedShQRSmallEig_relative {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : ℕ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
     (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
@@ -520,11 +522,13 @@ theorem roundedShQRSmallEig_hermitian {Mch : Machine ℝ} {I : Interp O Q ℝ} {
 
 /-! ### With the proved random-matrix tails -/
 
-/-- The unconditional form of `NLAlib.ShiftedQR.roundedShQRSmallEig_measureReal_not_spectrum_le`
+/-- **The rounded shifted QR algorithm with no oracle, unconditional**.
+The unconditional form of `NLAlib.ShiftedQR.roundedShQRSmallEig_measureReal_not_spectrum_le`
 ([BanksGarzaVargasSrivastava2022, Theorem 6.3]): the eigenvalue-gap and eigenvector-condition tails
 of a complex Ginibre perturbation are proved, at the records
 `NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$ and
-`NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$. -/
+`NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$.
+Result: shifted-qr-rounded-small-eig-backward-error -/
 theorem roundedShQRSmallEig_measureReal_not_spectrum_le_unconditional {Mch : Machine ℝ} {I : Interp
   O Q ℝ}
     {u : ℝ} {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
@@ -552,11 +556,13 @@ theorem roundedShQRSmallEig_measureReal_not_spectrum_le_unconditional {Mch : Mac
     (hA := boundsGinibreGap_ginibreGapTail) (hB := boundsGinibreCondition_ginibreConditionTail)
     (hb₁ := ginibreGapTail_b_pos) (hb₂ := ginibreConditionTail_b_pos) <;> assumption
 
-/-- The unconditional form of `NLAlib.ShiftedQR.roundedShQRSmallEig_relative`
+/-- **The algorithm with no oracle, relative form, unconditional**.
+The unconditional form of `NLAlib.ShiftedQR.roundedShQRSmallEig_relative`
 ([BanksGarzaVargasSrivastava2022, Theorem 6.3]): the eigenvalue-gap and eigenvector-condition tails
 of a complex Ginibre perturbation are proved, at the records
 `NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$ and
-`NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$. -/
+`NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$.
+Result: shifted-qr-rounded-small-eig-backward-error -/
 theorem roundedShQRSmallEig_relative_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n
   : ℕ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)

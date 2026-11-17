@@ -311,7 +311,8 @@ the words of `NLAlib.ShiftedQR.shqrParams`, under a random tape with the stream 
 `NLAlib.ShiftedQR.roundedShQR` fails to write only the matrix, the output and the failure word, set
 the failure word to $0$ and store all eigenvalues, with multiplicity, of $\mathbf{H} + \mathbf{E}$
 for some $\|\mathbf{E}\|_2 \le \delta$, with probability at most
-$\varphi$. The run terminates on every tape (`NLAlib.ShiftedQR.roundedShQR_terminates`). -/
+$\varphi$. The run terminates on every tape (`NLAlib.ShiftedQR.roundedShQR_terminates`).
+Result: shifted-qr-rounded-backward-error -/
 theorem roundedShQR_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
     (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
@@ -429,7 +430,8 @@ $\delta\Sigma/c$. Then from a memory holding $\mathbf{H}$ and the words of
 the stream laws, `NLAlib.ShiftedQR.roundedShQR` fails to write only the matrix, the output and
 the failure word, set the failure word to $0$ and store all eigenvalues, with multiplicity, of
 $\mathbf{H} + \mathbf{E}$ for some $\|\mathbf{E}\|_2 \le \delta\|\mathbf{H}\|_2$, with
-probability at most $\varphi$. -/
+probability at most $\varphi$.
+Result: shifted-qr-rounded-backward-error -/
 theorem roundedShQR_relative {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
     (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)

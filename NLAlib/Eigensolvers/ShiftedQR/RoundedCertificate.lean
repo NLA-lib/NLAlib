@@ -592,7 +592,8 @@ read the tape only in its windows, and let the tape $\xi$ have the stream laws `
 has work above `NLAlib.ShiftedQR.shqrWork kernelWork` or span above
 `NLAlib.ShiftedQR.shqrWork kernelSpan`, writes outside the matrix, the output and the failure
 word, or does not set the failure word to $0$ and store all eigenvalues of some
-$\mathbf{H} + \mathbf{E}$ with $\|\mathbf{E}\|_2 \le \delta$, is at most $\varphi$. -/
+$\mathbf{H} + \mathbf{E}$ with $\|\mathbf{E}\|_2 \le \delta$, is at most $\varphi$.
+Result: shifted-qr-rounded-certificate-accuracy -/
 theorem roundedShQR_algorithm_measureReal_not_accepts_le {u : ℝ} (hM : StdModel u id Mch)
     {sU : ℕ} {W : ℕ → ℕ} {Bad : (d : ℕ) → Matrix (Fin d) (Fin d) ℂ → Set (Fin (W d) → ℝ)}
     (hBad : ∀ d B, MeasurableSet (Bad d B)) {βse φse : ℝ} (hβse0 : 0 ≤ βse)

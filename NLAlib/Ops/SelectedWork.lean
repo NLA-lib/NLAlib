@@ -192,7 +192,7 @@ end Selected
 every operation, structural instruction and query be at most one plus `g`, where `g` charges only
 operations selected by `sel` (and no query). Then every successful counted run of the program
 `p` has weighted count at most the monomial bound of the instructions of its static count, at
-bases $b_0, \dots, b_3 \ge 1$ bounding its initial index slots, plus the polynomial of its
+bases `bs`, each at least $1$, bounding its initial index slots, plus the polynomial of its
 selected calls (`NLAlib.Ops.Stmt.keepCalls`) at a base at least $2$, times a ceiling `E` of `g`
 on the dimensions the selected calls may have. -/
 theorem Program.exec_lift_le_add_selected {K : Type} {r buffers : ℕ}
@@ -203,14 +203,14 @@ theorem Program.exec_lift_le_add_selected {K : Type} {r buffers : ℕ}
     {f : (Op ⊕ Bookkeeping) ⊕ Tst → List ℕ → ℕ} {g : Op ⊕ Bookkeeping → List ℕ → ℕ}
     (hfg : ∀ k ds, f k ds ≤ 1 + Sum.elim g (fun _ _ => 0) k ds)
     (hg : ∀ o ds, sel o = false → g o ds = 0)
-    {b0 b1 b2 b3 : ℕ} (hb : 1 ≤ b0 ∧ 1 ≤ b1 ∧ 1 ≤ b2 ∧ 1 ≤ b3) {σ : List WorkMono}
-    (hσ : SlotsLe b0 b1 b2 b3 (Program.environment (b := buffers) d).idx σ)
+    {bs : List ℕ} (hb : ∀ b ∈ bs, 1 ≤ b) {σ : List WorkMono}
+    (hσ : SlotsLe bs (Program.environment (b := buffers) d).idx σ)
     {base E : ℕ} {degrees : List ℕ} (hbase : 2 ≤ base)
     (hi : List.Forall₂ (fun v e => v ≤ base ^ e)
       (Program.environment (b := buffers) d).idx degrees)
     (hE : WorkEnvelope g (fun (_ : Tst) _ => 0) (p.body.instrument.keepCalls sel).callArity
       (base ^ (p.body.instrument.keepCalls sel).callDegreeAt degrees) E) :
-    Count.lift f st.cost ≤ (stmtWorkMono p.body.instrument σ).eval b0 b1 b2 b3 +
+    Count.lift f st.cost ≤ (stmtWorkMono p.body.instrument σ).eval bs +
       (p.body.instrument.keepCalls sel).workCoefficient *
         base ^ (p.body.instrument.keepCalls sel).workDegreeAt degrees * E := by
   refine (Count.lift_le_size_add hfg st.cost).trans (Nat.add_le_add ?_ ?_)

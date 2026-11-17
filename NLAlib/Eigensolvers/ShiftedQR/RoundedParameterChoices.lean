@@ -336,6 +336,27 @@ theorem shqrOmega_le_normBound (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ) (hδ
   have := shqrBudget_pos (n := n) hB hΓ hδ
   linarith [shqrBudget_le_left (n := n) (B := B) (Γ := Γ) (δ := δ)]
 
+/-- The forward accuracy required of `SmallEig` is at most the norm bound $4\Sigma$ of the
+blocks it receives: for $B \ge 1$, $\Gamma > 0$ and $0 < \delta \le \Sigma$,
+$\omega^2/(8080 \cdot 4\Sigma) \le 4\Sigma$. -/
+theorem shqrSmallEigAccuracy_le (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ) (hδS : δ ≤ S) :
+    shqrSmallEigAccuracy n B Γ S δ ≤ 4 * S := by
+  have hS : 0 < S := hδ.trans_le hδS
+  have hω := shqrOmega_pos (n := n) hB hΓ hδ
+  have hωS := shqrOmega_le_normBound (n := n) hB hΓ hδ hδS
+  unfold shqrSmallEigAccuracy shqrRadius
+  rw [div_le_iff₀ (by positivity)]
+  nlinarith
+
+/-- The failure allowed to `SmallEig` is at most $\varphi$: $\varphi/(12F(n + 1)) \le \varphi$ for
+$\varphi \ge 0$. -/
+theorem shqrSmallEigFailure_le (hφ : 0 ≤ φ) : shqrSmallEigFailure n B Γ S δ φ ≤ φ := by
+  have : (1 : ℝ) ≤ shqrCap n B Γ S δ := by exact_mod_cast one_le_shqrCap
+  unfold shqrSmallEigFailure
+  apply div_le_self hφ
+  have : (0 : ℝ) ≤ n := n.cast_nonneg
+  nlinarith
+
 /-- The cap outlasts the contraction: $0.8016^F \cdot 4\Sigma < \omega$. -/
 theorem shqrContraction_pow_shqrCap_mul_lt (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ)
     (hS : 0 < S) : shqrContraction ^ shqrCap n B Γ S δ * (4 * S) < shqrOmega n B Γ δ := by

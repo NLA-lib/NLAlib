@@ -527,18 +527,16 @@ theorem roundedShQR_work_le : ∃ c : ℕ, ∀ n k np F : ℕ,
       c * (n + 1) ^ 4 * (k + 1) ^ 4 * (np + 1) * (F + 1) := by
   refine ⟨2011, fun n k np F => ?_⟩
   have hw : stmtWorkMono (roundedShQR (O := O) (Q := Q)).body
-      [⟨1, 1, 0, 0, 0⟩, ⟨1, 0, 1, 0, 0⟩, ⟨1, 0, 0, 1, 0⟩, ⟨1, 0, 0, 0, 1⟩] =
-        ⟨2011, 3, 3, 1, 1⟩ := by
+      [⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 0, 0, 1]⟩] = ⟨2011, [3, 3, 1, 1]⟩ := by
     kernel_rfl
-  have hσ : SlotsLe (n + 1) (k + 1) (np + 1) (F + 1) [n + 1, k, np, F]
-      [⟨1, 1, 0, 0, 0⟩, ⟨1, 0, 1, 0, 0⟩, ⟨1, 0, 0, 1, 0⟩, ⟨1, 0, 0, 0, 1⟩] := by
-    simp only [SlotsLe, WorkMono.eval, List.forall₂_cons, List.Forall₂.nil, and_true]
-    refine ⟨by simp, by simp, by simp, by simp⟩
-  refine (size_stmtCost_le_stmtWorkMono (by omega) _ hσ).trans ?_
-  rw [hw, WorkMono.eval]
+  have hσ : SlotsLe [n + 1, k + 1, np + 1, F + 1] [n + 1, k, np, F]
+      [⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 0, 0, 1]⟩] := by
+    simp [SlotsLe, WorkMono.eval]
+  refine (size_stmtCost_le_stmtWorkMono (by simp) _ hσ).trans ?_
+  rw [hw]
   have h0 : (n + 1) ^ 3 ≤ (n + 1) ^ 4 := Nat.pow_le_pow_right (by omega) (by omega)
   have h1 : (k + 1) ^ 3 ≤ (k + 1) ^ 4 := Nat.pow_le_pow_right (by omega) (by omega)
-  simp only [pow_one]
+  simp only [WorkMono.eval, powProd_cons_cons, powProd_nil_left, pow_one, mul_one, ← mul_assoc]
   gcongr
 
 end Theorems

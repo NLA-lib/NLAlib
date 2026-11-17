@@ -8,6 +8,7 @@ module
 public import NLAlib.Eigensolvers.SmallEig.Program
 public import NLAlib.Matrix.Perturbation.EigenvalueMatching
 public import NLAlib.Ops.Confined
+public import NLAlib.Ops.MonomialWork
 public import NLAlib.Ops.Static
 
 /-!
@@ -186,10 +187,21 @@ Theorem 1.1], running time, on every tape): there is an absolute constant $c$ su
 count (`NLAlib.Ops.stmtCost`) of `NLAlib.SmallEig.smallEigProg` at the order $n + 1$, $n_q$ words
 and the cap $T$ has at most $c(n + 1)^4(T + 1)^2$ operations and tests. The count holds on every
 tape: the loops are capped by $T$ ($m, t, m_2 \le T$, $q \le m$). The paper's count has the factor
-$n$ in its last term (its erratum N5). -/
+$n$ in its last term (its erratum N5). The monomial bound of the tree
+(`NLAlib.Ops.size_stmtCost_le_stmtWorkMono`) gives $c = 3470$. -/
 theorem smallEig_work_le (sG : ℕ) : ∃ c : ℕ, ∀ n nq T : ℕ,
     Count.size (stmtCost (smallEigProg (O := O) (Q := Q) sG).body [n + 1, nq, T]) ≤
       c * (n + 1) ^ 4 * (T + 1) ^ 2 := by
-  sorry
+  refine ⟨3470, fun n nq T => ?_⟩
+  have hw : stmtWorkMono (smallEigProg (O := O) (Q := Q) sG).body
+      [⟨1, 1, 0, 0, 0⟩, ⟨1, 0, 1, 0, 0⟩, ⟨1, 0, 0, 1, 0⟩] = ⟨3470, 4, 0, 2, 0⟩ := by
+    kernel_rfl
+  have hσ : SlotsLe (n + 1) (nq + 1) (T + 1) 1 [n + 1, nq, T]
+      [⟨1, 1, 0, 0, 0⟩, ⟨1, 0, 1, 0, 0⟩, ⟨1, 0, 0, 1, 0⟩] := by
+    simp only [SlotsLe, WorkMono.eval, List.forall₂_cons, List.Forall₂.nil, and_true]
+    refine ⟨by simp, by simp, by simp⟩
+  refine (size_stmtCost_le_stmtWorkMono (by omega) _ hσ).trans ?_
+  rw [hw, WorkMono.eval]
+  simp only [pow_zero, mul_one, le_refl]
 
 end NLAlib.SmallEig

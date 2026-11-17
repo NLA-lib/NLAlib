@@ -1078,9 +1078,10 @@ same program but not the same run; the headline is restated as a canonical certi
 * **Specification** (`shqrSpecification`): budget, scratch, memory manifest (static count;
   per-kind counts are a follow-up), `good` empty (`SmallEig` is relational, so the output is not
   a function of input and tape), and
-  $$\mathrm{work} = 196017(n+1)^3(k+1)^3(n_p+1)(F+1) + 8b^4\,\overline{w}_{\mathrm{kw}},\qquad
+  $$\mathrm{work} = 196218(n+1)^3(k+1)^3(n_p+1)(F+1) + 8b^4\,\overline{w}_{\mathrm{kw}},\qquad
   \mathrm{span} = \text{the same with } \overline{w}_{\mathrm{ks}},$$
-  $b = n + k + n_p + F + 2$, $\overline{w}$ the largest kernel weight at one dimension
+  $b = n + k + n_p + F + 2$ (the constant was $196017$ before the programs became wrappers of
+  the `With` programs, SMALLEIG RF7), $\overline{w}$ the largest kernel weight at one dimension
   $\le b^2$ (`spectralWorkEnvelope`). The first term is the monomial bound of the instrumented
   static count (`stmtWorkMono`, kernel-checked), the second the kernel-call polynomial of the
   pruned tree (`Stmt.keepCalls`, coefficient $8$, degree $4$) times the envelope

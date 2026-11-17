@@ -279,8 +279,8 @@ dimension:
   `RandomDecouplingContract`'s `nmax`/`Nmax` (Part II note §2.1, found while proving P11p).
 * Statement-level consequences in merged code: none in theorem text. The certificate
   (`RoundedCertificate.lean`) states its work polynomial as numerals in a definition
-  (`196017(n+1)^3(k+1)^3(n_p+1)(F+1) + 8b^4\bar w`); the wrapper's extra frame may change the
-  static count, and then those numerals (RF7). T5's witness `2011` is inside a proof of `∃ c`.
+  (`196017(n+1)^3(k+1)^3(n_p+1)(F+1) + 8b^4\bar w` before this stage); the wrapper's extra frame
+  changed the static count, and with it the numeral, now `196218` (RF7, §14). T5's witness `2011` is inside a proof of `∃ c`.
 
 ### 2.2 `IsRandomSmallEig`: bounded orders and norm, any number of streams
 
@@ -551,8 +551,8 @@ are in the JSON only.
 | M4a | `NLAlib.SmallEig.distSpecDegree_spec` — 'm is large enough' (`oneig.tex:124`): m = 2^q ≥ m₁ = ⌈12 log₂ κ + 6 log₂(1/p)⌉ gives 0.998 ≤ κ^{-1/m} and κ^{1/m} p^{-1/(2m)} ≤ 1.003 (log = log₂, P7) | Eigensolvers/SmallEig/Parameters.lean | S | — | 0 | stage |
 | M4b | `NLAlib.SmallEig.oneEigRounds_spec` — P6 corrected: t = ⌈2 log₂(5.2 S/β)⌉ gives 4.6·0.66^t/0.9 ≤ β/S and 6t + 1 ≤ 12 log₂(7.8 S/β), for 0 < β ≤ S | Eigensolvers/SmallEig/Parameters.lean | S | — | 0 | stage |
 | M4c | `NLAlib.SmallEig.oneEigRadii_spec` — `oneig.tex:146` with P5, P6: η₂ = β/40 ∧ g/3, η₁ = η₂ (φ/(12 log₂(8S/β)))^{1/2}: for 0 < β ≤ 0.8 S (true at β' = ω/20; review S4): η₁ + η₂ ≤ g/2, η₂ ≤ 0.02 S, (6t+1)(η₁/η₂)² ≤ φ | Eigensolvers/SmallEig/Parameters.lean | S | — | 0 | stage |
-| M8 | `NLAlib.lastRowWeights_conjTranspose_mul` — A * V = V * diagonal d, x a unit vector, Q unitary with last column c • x, ‖c‖ = 1: lastRowWeights (Qᴴ * V) i = ‖star x ⬝ᵥ V.col i‖² / ‖toLp 2 (Vᴴ *ᵥ x)‖²  (Prop 5.3, deterministic part; P3 phase handled by c) | Matrix/QRIteration/EigenvectorWeights.lean | S | — | 0 | gen |
-| M10 | `NLAlib.exists_lastRowWeights_ge_of_norm_sub_le` — P4 fix (review: confirmed; direct eigenvector perturbation route): class (V, d, κ ≤ B, gap g) for A, ‖E‖ ≤ g/(16(n+1)B) · θ: ∃ V' d' diagonalizing A + E with κ(V') ≤ 2B and, for every unitary Q with Q e_n = c x, lastRowWeights (Qᴴ V') i ≥ lastRowWeights (Qᴴ V) i / 4 - c₀ n B² ‖E‖/g | Matrix/Perturbation/EigenvalueBackward.lean | L | — | 0 | gen |
+| M8 | `NLAlib.lastRowWeights_conjTranspose_mul` — A * V = V * diagonal d, x a unit vector, Q with last column c • x, ‖c‖ = 1 (as built: no unitarity hypothesis): lastRowWeights (Qᴴ * V) i = ‖star x ⬝ᵥ V.col i‖² / ‖toLp 2 (Vᴴ *ᵥ x)‖²  (Prop 5.3, deterministic part; P3 phase handled by c) | Matrix/QRIteration/EigenvectorWeights.lean | S | — | 0 | gen |
+| M10 | `NLAlib.exists_lastRowWeights_ge_of_norm_sub_le` — P4 fix (review: confirmed; direct eigenvector perturbation route): class (V, d, κ ≤ B, gap g) for A, ‖E‖ ≤ g/(16(n+1)B) · θ: ∃ V' d' diagonalizing A + E with κ(V') ≤ 2B and, for every Q (as built: no unitarity hypothesis) with Q e_n = c x, lastRowWeights (Qᴴ V') i ≥ lastRowWeights (Qᴴ V) i / 4 - c₀ n B² ‖E‖/g | Matrix/Perturbation/EigenvalueBackward.lean | L | — | 0 | gen |
 | M11a | `NLAlib.exists_tendsto_isEigenvalueListing` — Continuity of eigenvalue listings by compactness (review S5: no Rouché, no root continuity in the pinned Mathlib): A_j → A, ev_j listings of A_j ⇒ a subsequence and permutations σ_j with ev_j ∘ σ_j → ev, a listing of A (listings bounded by ‖A_j‖; `∏ (X - C (d i))` continuous in d; `charpoly` continuous; uniqueness of the factorization over ℂ) | Matrix/Perturbation/EigenvalueMatching.lean (new) | M | — | 0 | gen |
 | M11b | `NLAlib.exists_norm_sub_le_rpow_of_mem_spectrum` — Elsner's per-root bound: every eigenvalue λ' of A' (order N) has an eigenvalue λ of A with ‖λ' - λ‖ ≤ (‖A‖ + ‖A'‖)^{1 - 1/N} ‖A' - A‖^{1/N} | Matrix/Perturbation/EigenvalueMatching.lean (new) | S | — | 0 | gen |
 | M12 | `NLAlib.isClosed_setOf_exists_pseudoConditionNumber_le_and_le_norm_sub` — IsClosed {A : Matrix (Fin (n+1)) (Fin (n+1)) ℂ \| ∃ V d, IsUnit V ∧ A * V = V * diagonal d ∧ pseudoConditionNumber V ≤ B ∧ ∀ i j, i ≠ j → g ≤ ‖d i - d j‖} | Matrix/Spectral/Diagonalizable.lean | M | — | 0 | gen |
@@ -629,7 +629,7 @@ are in the JSON only.
 | RF5 | `roundedShQRWith, roundedShQRWith_measureReal_not_spectrum_le, roundedShQRWith_terminates` — `roundedShQRWith SE := solveRoundedWith (roundedDecoupleWith SE) (seLeaf SE)` with dims [n+1, k, np, F, T]; T1c and T1d for it, with the contract at (k, T, 4Σ, βse, φse) in place of `hSE : IsRandomSmallEig` | Eigensolvers/ShiftedQR/RoundedTheorems.lean | M | RF2b, RF4a, RF4b, RF4c, RF4d, RF8 | 3 | refactor |
 | RF6 | `roundedShQR_* re-derived (T1c, T1d, T3, T4, T5)` — `roundedShQR := wrapper of roundedShQRWith smallEigKernel at T = 0`; every merged headline re-proved from RF5, statement text unchanged; T5's witness constant (2011) re-computed by `kernel_rfl` if the wrapper frame changes the static count (the statement is ∃ c, unchanged) | Eigensolvers/ShiftedQR/RoundedTheorems.lean | S | RF5 | 4 | refactor |
 | HL5 | `NLAlib.ShiftedQR.roundedShQRSmallEig_work_le` — ∃ c, static count of roundedShQRSmallEig at [n+1, k, np, F, T] ≤ c (n+1)^4 (k+1)^5 (np+1)(F+1)(T+1)^2 — SmallEig's cost now counted | Eigensolvers/ShiftedQR/RoundedSmallEig.lean (new) | M | RF5, TH5 | 4 | stage |
-| RF7 | `shqrSpecification constants re-checked; roundedShQRAlgorithm unchanged in shape` — The explicit work polynomial `196017(n+1)^3(k+1)^3(np+1)(F+1) + 8b^4 w̄` and the kernel-call polynomial are recomputed by `kernel_rfl` for the wrapper body; if a numeral changes, the change is the only statement change of this stage in merged code (recorded in the PR read-back) | Eigensolvers/ShiftedQR/RoundedCertificate.lean | M | RF6 | 5 | refactor |
+| RF7 | `shqrSpecification constants re-checked; roundedShQRAlgorithm unchanged in shape` — The explicit work polynomial `196218(n+1)^3(k+1)^3(np+1)(F+1) + 8b^4 w̄` (was `196017`) and the kernel-call polynomial are recomputed by `kernel_rfl` for the wrapper body; if a numeral changes, the change is the only statement change of this stage in merged code (recorded in the PR read-back) | Eigensolvers/ShiftedQR/RoundedCertificate.lean | M | RF6 | 5 | refactor |
 | OL1 | `NLAlib.Ops.Interp.TapeAdapted, TapeLocal.tapeAdapted, run_follows_of_tapeAdapted` — def Interp.TapeAdapted I o := ∀ d ins outs τ τ', Follows τ τ' (I.call o d ins outs τ) (I.call o d ins outs τ'); TapeLocal ⇒ TapeAdapted; `run_follows` from ∀ o, TapeAdapted | Ops/Tape.lean | M | — | opt | optional |
 | OL4 | `NLAlib.Ops.PWrites.link_iff, PWrites.call_link` — PWrites law I (s.link T) ρ F Pre Post φ ↔ PWrites law (I.link T) s ρ F Pre Post φ; a call of a substituted operation meets the PWrites spec of its implementation body | Ops/Logic/Probabilistic.lean | S | — | opt | optional |
 | HL3 | `NLAlib.ShiftedQR.roundedShQRSmallEig_terminates` — Every tape; no u, class or RMT hypothesis; needs `hin` only (the stored words satisfy SmallEigCaps by PA2), as the merged `roundedShQR_terminates` | Eigensolvers/ShiftedQR/RoundedSmallEig.lean (new) | S | RF5, SE2, PA2 | 8 | stage |
@@ -906,3 +906,42 @@ Fixes from elaboration:
 * No vacuity found in (a)–(c): the tail predicates are false only for $C < 0$ at order $1$, which
   RMn's normalization excludes; at order $0$ their range ($2\gamma \le \|\mathbf{M}\| = 0$) is empty.
 
+## 14. As built: program changes after the review and the current numbers
+
+The program and statements changed in five places while the targets were proved; the review of
+the paper's errata (`Review-Fable-PartIII-Errata.md`) is unchanged by them.
+
+* **Zero-fill.** `smallEigProg` first zeroes its output `Ev` (`NLAlib.Ops.fillMap`), so that the
+  output is stored on every tape, also when the core stops early. Termination (SE2) then states
+  that the output is stored, not only that the run ends.
+* **The threshold word in scratch.** The block is copied to scratch (review S8), and the threshold
+  word read from `Q` is copied to a scratch word `Th` as well, before the perturbation; the core
+  reads it there (`smallEigCoreInput_of_scratch`).
+* **`12 ≤ qs.length`.** The termination statements (SE2, `smallEigCore_terminates`,
+  `smallEigDecoupler_terminatingDecouplerRoutine`) take at least twelve words, not exactly
+  twelve; the contract statements keep the words `smallEigParams …` (PA1, `length = 12`).
+* **The stored-output leaf contract.** The leaf contracts keep their output stored, and the
+  worklist keeps output words that are stored before it runs
+  (`NLAlib.ShiftedQR.solveRoundedWith_terminates_stored`, used by
+  `NLAlib.SmallEig.smallEigCore_terminates_stored`). This is what the zero-fill needs.
+* **CO1's literal bound.** CO1 (`smallEigCore_pwrites`) and D3b
+  (`smallEigDecoupler_randomDecouplingRoutineContract_of_le`) take exact natural literals up to the
+  block order $n + 1$ only, not up to $n_{\max} + 1$.
+
+Current constants of the static counts (all kernel-checked by `kernel_rfl`):
+
+| statement | constant | before |
+|---|---|---|
+| RF7, `stmtWorkMono_shqrProgram` (merged certificate) | $196218\,b_0^3b_1^3b_2b_3$ | 196017 on `main` |
+| TH5, `smallEig_work_le` | $3473\,(n+1)^4(T+1)^2$ | 3470 before the zero-fill |
+| HL5, `roundedShQRSmallEig_work_le` | $15895\,(n+1)^3(k+1)^4(n_p+1)(F+1)(T+1)^2$ | 15883 |
+| TH6, `smallEigWork` (certificate, instrumented) | $373483\,(n+1)^4(T+1)^2$ | — |
+| HL6, `shqrSmallEigWork` (certificate, instrumented) | $675307\,(n+1)^3(k+1)^4(n_p+1)(F+1)(T+1)^2$ | — |
+
+The instrumented counts of TH6 and HL6 are larger than TH5 and HL5 because the instrumentation
+counts every structural instruction at unit weight. HL5's exponent of $k + 1$ is $4$, not the
+$5$ of the target row.
+
+The random-matrix tails (RM1, RM2) are proved (`NLAlib.complexGaussianGapTail`,
+`NLAlib.complexGaussianConditionTail` at the records $(10000e, 5, 1/2, 2)$ and $(128e, 3, 2, 2)$), so
+every headline has an `_unconditional` form without the tail hypotheses.

@@ -774,4 +774,110 @@ theorem smallEig_work_le (sG : ℕ) : ∃ c : ℕ, ∀ n nq T : ℕ,
   rw [hw]
   simp [WorkMono.eval, mul_assoc]
 
+
+/-! ### With the proved random-matrix tails -/
+
+/-- The unconditional form of `NLAlib.SmallEig.smallEig_measureReal_not_spectrum_le`
+([BanksGarzaVargasSrivastava2025, Theorem 1.1]): the eigenvalue-gap and eigenvector-condition tails
+of a complex Ginibre perturbation are proved, at the records $(10000e, 5, 1/2, 2)$
+(`NLAlib.complexGaussianGapTail`) and $(128e, 3, 2, 2)$ (`NLAlib.complexGaussianConditionTail`). -/
+theorem smallEig_measureReal_not_spectrum_le_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
+  : ℝ}
+    {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
+    (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
+    (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
+    (hG : law sG = gaussianReal 0 1) {nmax : ℕ} (hn : n + 1 ≤ nmax)
+    {M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {S δ φ : ℝ} (hMS : specNorm M ≤ S)
+    (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
+    (hu : u ≤ uSmallEig nmax S δ φ ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩ ⟨128 * Real.exp 1, 3, 2, 2⟩)
+    {w q o : ℕ × ℕ} {μ : Mem ℝ} (hin : SmallEigInput nmax S δ φ ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
+      ⟨128 * Real.exp 1, 3, 2, 2⟩ w q o M μ)
+    {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
+    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG).body
+      (Env.frame (smallEigDims n nmax S δ φ ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
+        ⟨128 * Real.exp 1, 3, 2, 2⟩) [w, q, o])
+      (Store.inBlock o.1 o.2 (2 * (n + 1))) (SmallEigSpectrum o M δ) μ} ≤ φ := by
+  apply smallEig_measureReal_not_spectrum_le
+    (hA := complexGaussianGapTail) (hB := complexGaussianConditionTail)
+    (hb₁ := by norm_num) (hb₂ := by norm_num) <;> assumption
+
+/-- The unconditional form of `NLAlib.SmallEig.smallEig_relative` ([BanksGarzaVargasSrivastava2025,
+Theorem 1.1]): the eigenvalue-gap and eigenvector-condition tails of a complex Ginibre perturbation
+are proved, at the records $(10000e, 5, 1/2, 2)$ (`NLAlib.complexGaussianGapTail`) and $(128e, 3, 2,
+2)$ (`NLAlib.complexGaussianConditionTail`). -/
+theorem smallEig_relative_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
+    (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
+    (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
+    (hG : law sG = gaussianReal 0 1) {nmax : ℕ} (hn : n + 1 ≤ nmax)
+    {M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {S c ε φ : ℝ} (hS0 : 0 < S) (hMS : specNorm M ≤ S)
+    (hc : 1 ≤ c) (hSM : S ≤ c * specNorm M) (hε : 0 < ε) (hε1 : ε ≤ 1) (hφ : 0 < φ)
+    (hφ1 : φ ≤ 1) (hu : u ≤ uSmallEig nmax S (ε * S / c) φ ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
+      ⟨128 * Real.exp 1, 3, 2, 2⟩)
+    {w q o : ℕ × ℕ} {μ : Mem ℝ} (hin : SmallEigInput nmax S (ε * S / c) φ
+      ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩ ⟨128 * Real.exp 1, 3, 2, 2⟩ w q o M μ)
+    {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
+    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG).body
+      (Env.frame (smallEigDims n nmax S (ε * S / c) φ ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
+        ⟨128 * Real.exp 1, 3, 2, 2⟩) [w, q, o])
+      (Store.inBlock o.1 o.2 (2 * (n + 1))) (SmallEigSpectrum o M (ε * specNorm M)) μ} ≤ φ := by
+  apply smallEig_relative
+    (hA := complexGaussianGapTail) (hB := complexGaussianConditionTail)
+    (hb₁ := by norm_num) (hb₂ := by norm_num) <;> assumption
+
+/-- The unconditional form of `NLAlib.SmallEig.smallEigProg_randomSmallEigContract`
+([BanksGarzaVargasSrivastava2025, Corollary 1.3]): the eigenvalue-gap and eigenvector-condition
+tails of a complex Ginibre perturbation are proved, at the records $(10000e, 5, 1/2, 2)$
+(`NLAlib.complexGaussianGapTail`) and $(128e, 3, 2, 2)$ (`NLAlib.complexGaussianConditionTail`). -/
+theorem smallEigProg_randomSmallEigContract_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
+  ℝ}
+    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
+    {kmax kmax' : ℕ} (hk' : kmax' ≤ kmax) (hNat : IsExactNatLit id Mch kmax') (hQ : IsToNat id I)
+    (hC : IsCmp id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
+    (hloc : ∀ o, I.TapeLocal o (win o)) (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
+    (hG : law sG = gaussianReal 0 1) {S β φ : ℝ} (hβ : 0 < β) (hβS : β ≤ S) (hφ : 0 < φ)
+    (hφ1 : φ ≤ 1) (hu : u ≤ uSmallEigForward kmax S β φ ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
+      ⟨128 * Real.exp 1, 3, 2, 2⟩) :
+    RandomSmallEigContract law β φ kmax' (smallEigForwardCap kmax S β φ
+      ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩ ⟨128 * Real.exp 1, 3, 2, 2⟩) S
+      (smallEigForwardParams kmax S β φ ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
+        ⟨128 * Real.exp 1, 3, 2, 2⟩) (smallEigProg (O := O) (Q := Q) sG) I := by
+  apply smallEigProg_randomSmallEigContract
+    (hA := complexGaussianGapTail) (hB := complexGaussianConditionTail)
+    (hb₁ := by norm_num) (hb₂ := by norm_num) <;> assumption
+
+/-- The unconditional form of `NLAlib.SmallEig.smallEig_measureReal_not_forward_le`
+([BanksGarzaVargasSrivastava2025, Corollary 1.3]): the eigenvalue-gap and eigenvector-condition
+tails of a complex Ginibre perturbation are proved, at the records $(10000e, 5, 1/2, 2)$
+(`NLAlib.complexGaussianGapTail`) and $(128e, 3, 2, 2)$ (`NLAlib.complexGaussianConditionTail`). -/
+theorem smallEig_measureReal_not_forward_le_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
+  ℝ}
+    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
+    {kmax : ℕ} (hNat : IsExactNatLit id Mch kmax) (hQ : IsToNat id I) (hC : IsCmp id I)
+    (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
+    (hG : law sG = gaussianReal 0 1) {S β φ : ℝ} (hβ : 0 < β) (hβS : β ≤ S) (hφ : 0 < φ)
+    (hφ1 : φ ≤ 1) (hu : u ≤ uSmallEigForward kmax S β φ ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
+      ⟨128 * Real.exp 1, 3, 2, 2⟩) {n : ℕ} (hn : n + 1 ≤ kmax)
+    {M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hMS : specNorm M ≤ S) {w q o : ℕ × ℕ}
+    {μ : Mem ℝ} (hin : SmallEigInput kmax S (forwardBackwardError kmax S β) φ
+      ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩ ⟨128 * Real.exp 1, 3, 2, 2⟩ w q o M μ)
+    {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
+    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG).body
+      (Env.frame (smallEigDims n kmax S (forwardBackwardError kmax S β) φ
+        ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩ ⟨128 * Real.exp 1, 3, 2, 2⟩) [w, q, o])
+      (Store.inBlock o.1 o.2 (2 * (n + 1)))
+      (fun μ' => ∃ roots ev : Fin (n + 1) → ℂ, IsEigenvalueListing M ev ∧
+        (∀ i, ‖roots i - ev i‖ ≤ β) ∧
+        HoldsMatrix o (Matrix.of fun i (_ : Fin 1) => roots i) μ'.store) μ} ≤ φ := by
+  apply smallEig_measureReal_not_forward_le
+    (hA := complexGaussianGapTail) (hB := complexGaussianConditionTail)
+    (hb₁ := by norm_num) (hb₂ := by norm_num) <;> assumption
+
 end NLAlib.SmallEig

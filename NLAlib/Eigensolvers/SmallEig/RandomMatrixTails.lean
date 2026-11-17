@@ -5,12 +5,10 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.RandomMatrix.Gaussian.Complex
-public import NLAlib.Matrix.Spectral.Diagonalizable
-public import NLAlib.Matrix.Spectral.EigenvalueListing
+public import NLAlib.RandomMatrix.Shattering.GapTail
 
 /-!
-# Eigenvalue gap and eigenvector condition of a Ginibre perturbation
+# The random-matrix tails of the small-eigenvalue solver
 
 For a complex matrix $\mathbf{M}$ of order $n$, $\gamma > 0$ and a standard complex Gaussian
 matrix $\mathbf{G}$, the perturbation $\mathbf{M} + \gamma n^{-1/2}\mathbf{G}$ has, with high
@@ -20,8 +18,11 @@ whose eigenvector matrix has a condition number polynomial in $n/\gamma$ (Theore
 [BanksGarzaVargasKulkarniSrivastava2020] and [BanksKulkarniMukherjeeSrivastava2021]). This file
 states both, in a polylogarithmic tail form with a record of constants $(C, a, b, c)$, as named
 predicates (`NLAlib.ComplexGaussianGapTail`, `NLAlib.ComplexGaussianConditionTail`), and their
-preferred forms; the theorems are taken as hypotheses until they are proved. The records are
-normalized once ($C \ge 1$, $a, c \ge 0$), which keeps the tails monotone in the order and the
+preferred forms. The solver's theorems take the predicates as hypotheses; the tails of
+`NLAlib/RandomMatrix/Shattering/` prove them at the records $(10000e, 5, 1/2, 2)$ and
+$(128e, 3, 2, 2)$ (`NLAlib.complexGaussianGapTail`, `NLAlib.complexGaussianConditionTail`), which
+give the solver's unconditional theorems. The records are normalized once ($C \ge 1$,
+$a, c \ge 0$), which keeps the tails monotone in the order and the
 norm ratio. The two events combine, after a shift by $4\gamma\mathbf{I}$ when $\|\mathbf{M}\|_2$
 is small, into the diagonalization class (condition at most $t_2^{-1}$, separation at least
 $t_1$) that the eigenvalue solver of [BanksGarzaVargasSrivastava2025] consumes, and a tail can be
@@ -47,6 +48,7 @@ inverted at a target failure probability.
   `NLAlib.complexGaussianConditionTail_of_preferred`: the preferred forms imply the tail forms.
 * `NLAlib.measureReal_not_exists_class_le_of_hasLaw_complexGaussianMatrix`: the class event.
 * `NLAlib.polyLogTailInverse_spec`: the inverted tail.
+* `NLAlib.complexGaussianGapTail`, `NLAlib.complexGaussianConditionTail`: the two tails hold.
 -/
 
 @[expose] public section
@@ -547,5 +549,29 @@ theorem polyLogTailInverse_spec {c : PolyLogTail} (hb : 0 < c.b) {N K φ : ℝ} 
           gcongr
       _ = φ := by field_simp
   · rw [hL]
+
+
+/-! ### The proved tails -/
+
+/-- **The gap tail holds** at the record $(10000e, 5, 1/2, 2)$
+([BanksGarzaVargasSrivastava2025, Lemma B.1], in a weaker polynomial form):
+`NLAlib.measureReal_not_exists_isEigenvalueListing_le_le_log_sq_of_hasLaw_complexGaussianMatrix`,
+with $\sqrt{t/\gamma} = (t/\gamma)^{1/2}$. -/
+theorem complexGaussianGapTail : ComplexGaussianGapTail ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩ := by
+  intro Ω _mΩ μ n _ _ G hG M γ t hγ hγM ht htγ
+  simpa only [Real.rpow_ofNat, Real.sqrt_eq_rpow] using
+    measureReal_not_exists_isEigenvalueListing_le_le_log_sq_of_hasLaw_complexGaussianMatrix
+      hG M hγ hγM ht htγ
+
+/-- **The condition tail holds** at the record $(128e, 3, 2, 2)$
+([BanksGarzaVargasSrivastava2025, Lemma B.2], in a weaker polynomial form):
+`NLAlib.measureReal_not_exists_pseudoConditionNumber_le_le_log_sq_of_hasLaw_complexGaussianMatrix`.
+-/
+theorem complexGaussianConditionTail :
+    ComplexGaussianConditionTail ⟨128 * Real.exp 1, 3, 2, 2⟩ := by
+  intro Ω _mΩ μ n _ _ G hG M γ t hγ hγM ht ht1
+  simpa only [Real.rpow_ofNat] using
+    measureReal_not_exists_pseudoConditionNumber_le_le_log_sq_of_hasLaw_complexGaussianMatrix
+      hG M hγ hγM ht ht1
 
 end NLAlib

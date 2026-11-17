@@ -551,6 +551,101 @@ theorem roundedShQRSmallEig_measureReal_not_spectrum_le_of_spec {Mch : Machine �
     (complexGaussianGapTail_of_preferred hA) (complexGaussianConditionTail_of_preferred hB)
     (by norm_num) (by norm_num) hHess hV hHV hκ hΓ hgap hHS hδ hδS hφ hφ1 hk hu hin hξ
 
+
+/-! ### With the proved random-matrix tails -/
+
+/-- The unconditional form of `NLAlib.ShiftedQR.roundedShQRSmallEig_measureReal_not_spectrum_le`
+([BanksGarzaVargasSrivastava2022, Theorem 6.3]): the eigenvalue-gap and eigenvector-condition tails
+of a complex Ginibre perturbation are proved, at the records $(10000e, 5, 1/2, 2)$
+(`NLAlib.complexGaussianGapTail`) and $(128e, 3, 2, 2)$ (`NLAlib.complexGaussianConditionTail`). -/
+theorem roundedShQRSmallEig_measureReal_not_spectrum_le_unconditional {Mch : Machine ℝ} {I : Interp
+  O Q ℝ}
+    {u : ℝ} {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
+    (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
+    (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
+    (hG : law sG = gaussianReal 0 1) {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1)
+      → ℂ} {k : ℕ}
+    {B Γ S δ φ : ℝ} (hHess : IsUpperHessenberg H) (hV : IsUnit V)
+    (hHV : H * V = V * Matrix.diagonal d) (hκ : pseudoConditionNumber V ≤ B) (hΓ : 0 < Γ)
+    (hgap : ∀ i j, i ≠ j → Γ ≤ ‖d i - d j‖) (hHS : specNorm H ≤ S) (hδ : 0 < δ) (hδS : δ ≤ S)
+    (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hk : k = shqrDegree (4 * B))
+    (hu : u ≤ uShQRSmallEig n k B Γ S δ φ ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
+      ⟨128 * Real.exp 1, 3, 2, 2⟩)
+    {a t p out f : ℕ × ℕ} {μ : Mem ℝ}
+    (hin : ShQRSmallEigInput k B Γ S δ φ ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
+      ⟨128 * Real.exp 1, 3, 2, 2⟩ a t p out f H μ)
+    {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
+    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSmallEig (O := O) (Q := Q) sG).body
+      (Env.frame (shqrSmallEigDims n k B Γ S δ φ ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
+        ⟨128 * Real.exp 1, 3, 2, 2⟩) [a, t, p, out, f]) (shqrFp n a out f)
+      (ShQRSpectrum out f H δ) μ} ≤ φ := by
+  apply roundedShQRSmallEig_measureReal_not_spectrum_le
+    (hA := complexGaussianGapTail) (hB := complexGaussianConditionTail)
+    (hb₁ := by norm_num) (hb₂ := by norm_num) <;> assumption
+
+/-- The unconditional form of `NLAlib.ShiftedQR.roundedShQRSmallEig_relative`
+([BanksGarzaVargasSrivastava2022, Theorem 6.3]): the eigenvalue-gap and eigenvector-condition tails
+of a complex Ginibre perturbation are proved, at the records $(10000e, 5, 1/2, 2)$
+(`NLAlib.complexGaussianGapTail`) and $(128e, 3, 2, 2)$ (`NLAlib.complexGaussianConditionTail`). -/
+theorem roundedShQRSmallEig_relative_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n
+  : ℕ}
+    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
+    (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
+    (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
+    (hG : law sG = gaussianReal 0 1) {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1)
+      → ℂ} {k : ℕ}
+    {B Γ S c δ φ : ℝ} (hHess : IsUpperHessenberg H) (hV : IsUnit V)
+    (hHV : H * V = V * Matrix.diagonal d) (hκ : pseudoConditionNumber V ≤ B) (hΓ : 0 < Γ)
+    (hgap : ∀ i j, i ≠ j → Γ ≤ ‖d i - d j‖) (hS0 : 0 < S) (hHS : specNorm H ≤ S)
+    (hSc : S ≤ c * specNorm H) (hc : 1 ≤ c) (hδ : 0 < δ) (hδ1 : δ ≤ 1)
+    (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hk : k = shqrDegree (4 * B))
+    (hu : u ≤ uShQRSmallEig n k B Γ S (δ * S / c) φ ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
+      ⟨128 * Real.exp 1, 3, 2, 2⟩)
+    {a t p out f : ℕ × ℕ} {μ : Mem ℝ}
+    (hin : ShQRSmallEigInput k B Γ S (δ * S / c) φ ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
+      ⟨128 * Real.exp 1, 3, 2, 2⟩ a t p out f H μ)
+    {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
+    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSmallEig (O := O) (Q := Q) sG).body
+      (Env.frame (shqrSmallEigDims n k B Γ S (δ * S / c) φ ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
+        ⟨128 * Real.exp 1, 3, 2, 2⟩) [a, t, p, out, f])
+      (shqrFp n a out f) (ShQRSpectrum out f H (δ * specNorm H)) μ} ≤ φ := by
+  apply roundedShQRSmallEig_relative
+    (hA := complexGaussianGapTail) (hB := complexGaussianConditionTail)
+    (hb₁ := by norm_num) (hb₂ := by norm_num) <;> assumption
+
+/-- The unconditional form of `NLAlib.ShiftedQR.roundedShQRSmallEig_hermitian`
+([BanksGarzaVargasSrivastava2022, Theorem 6.3]): the eigenvalue-gap and eigenvector-condition tails
+of a complex Ginibre perturbation are proved, at the records $(10000e, 5, 1/2, 2)$
+(`NLAlib.complexGaussianGapTail`) and $(128e, 3, 2, 2)$ (`NLAlib.complexGaussianConditionTail`). -/
+theorem roundedShQRSmallEig_hermitian_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n
+  : ℕ}
+    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
+    (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
+    (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
+    (hG : law sG = gaussianReal 0 1) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {k : ℕ} {Γ S δ φ :
+      ℝ}
+    (hHess : IsUpperHessenberg H) (hH : H.IsHermitian) (hΓ : 0 < Γ)
+    (hgap : ∀ i j, i ≠ j → Γ ≤ |hH.eigenvalues i - hH.eigenvalues j|) (hHS : specNorm H ≤ S)
+    (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hk : k = shqrDegree 4)
+    (hu : u ≤ uShQRSmallEig n k 1 Γ S δ φ ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
+      ⟨128 * Real.exp 1, 3, 2, 2⟩)
+    {a t p out f : ℕ × ℕ} {μ : Mem ℝ} (hin : ShQRSmallEigInput k 1 Γ S δ φ
+      ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩ ⟨128 * Real.exp 1, 3, 2, 2⟩ a t p out f H μ)
+    {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
+    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSmallEig (O := O) (Q := Q) sG).body
+      (Env.frame (shqrSmallEigDims n k 1 Γ S δ φ ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
+        ⟨128 * Real.exp 1, 3, 2, 2⟩) [a, t, p, out, f]) (shqrFp n a out f)
+      (ShQRSpectrum out f H δ) μ} ≤ φ := by
+  apply roundedShQRSmallEig_hermitian
+    (hA := complexGaussianGapTail) (hB := complexGaussianConditionTail)
+    (hb₁ := by norm_num) (hb₂ := by norm_num) <;> assumption
+
 end Theorems
 
 end NLAlib.ShiftedQR

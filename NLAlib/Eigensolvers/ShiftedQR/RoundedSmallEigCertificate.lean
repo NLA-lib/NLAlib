@@ -336,4 +336,51 @@ theorem roundedShQRSmallEig_algorithm_measureReal_not_accepts_le {u : ℝ}
       x.val.1.cap_eq, x.val.1.smallEigCap_eq, List.ofFn_succ]
   · simp [Program.environment, Operand.evalList, Operand.eval, IExp.eval, List.ofFn_succ]
 
+
+/-! ### With the proved random-matrix tails -/
+
+/-- The unconditional form of
+`NLAlib.ShiftedQR.roundedShQRSmallEig_algorithm_measureReal_not_accepts_le`
+([BanksGarzaVargasSrivastava2022, Theorem 6.3 with Theorem 1.4's quantifiers, corrected]): the
+eigenvalue-gap and eigenvector-condition tails of a complex Ginibre perturbation are proved, at the
+records $(10000e, 5, 1/2, 2)$ (`NLAlib.complexGaussianGapTail`) and $(128e, 3, 2, 2)$
+(`NLAlib.complexGaussianConditionTail`). -/
+theorem roundedShQRSmallEig_algorithm_measureReal_not_accepts_le_unconditional
+    {admitted : ∃ d, ShQRSmallEigSizes Mch ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
+      ⟨128 * Real.exp 1, 3, 2, 2⟩ d} {u : ℝ}
+    (hM : StdModel u id Mch) {law : ℕ → Measure ℝ} {sU sG : ℕ}
+    (hU : law sU = volume.restrict (Set.Icc 0 1)) (hG : law sG = gaussianReal 0 1)
+    {d : Fin 5 → ℕ} (hd : ShQRSmallEigSizes Mch ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
+      ⟨128 * Real.exp 1, 3, 2, 2⟩ d)
+    (x : (shqrSmallEigProblem Mch ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩ ⟨128 * Real.exp 1, 3, 2, 2⟩
+      admitted).Input d) {I : Interp SmallEigOp Tst ℝ}
+    (hI : (smallEigModel (shqrSmallEigProblem Mch ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
+      ⟨128 * Real.exp 1, 3, 2, 2⟩ admitted) Mch sU).contracts d x I)
+    (hIm : I.IsMeasurable) {win : SmallEigOp → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    {V : Matrix (Fin (d 0 + 1)) (Fin (d 0 + 1)) ℂ} {ev : Fin (d 0 + 1) → ℂ}
+    (hHess : IsUpperHessenberg x.val.1.matrix) (hV : IsUnit V)
+    (hHV : x.val.1.matrix * V = V * Matrix.diagonal ev)
+    (hκ : pseudoConditionNumber V ≤ x.val.1.B) (hΓ : 0 < x.val.1.Γ)
+    (hgap : ∀ i j, i ≠ j → x.val.1.Γ ≤ ‖ev i - ev j‖)
+    (hHS : specNorm x.val.1.matrix ≤ x.val.1.S) (hδ : 0 < x.val.1.δ)
+    (hδS : x.val.1.δ ≤ x.val.1.S) (hφ : 0 < x.val.1.φ) (hφ1 : x.val.1.φ ≤ 1)
+    (hu : u ≤ uShQRSmallEig (d 0) (d 1) x.val.1.B x.val.1.Γ x.val.1.S x.val.1.δ x.val.1.φ
+      ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩ ⟨128 * Real.exp 1, 3, 2, 2⟩)
+    {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
+    P.real {ω | ¬ (shqrSmallEigSpecification Mch ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
+      ⟨128 * Real.exp 1, 3, 2, 2⟩ admitted sG).Accepts smallEigResources d x
+      (exec (roundedShQRSmallEigAlgorithm Mch ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
+        ⟨128 * Real.exp 1, 3, 2, 2⟩ admitted sU sG).program I smallEigResources
+        (shqrSmallEigProblem Mch ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩ ⟨128 * Real.exp 1, 3, 2, 2⟩
+          admitted).formats (ξ ω) d
+        ((shqrSmallEigProblem Mch ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩ ⟨128 * Real.exp 1, 3, 2, 2⟩
+          admitted).initial d x))
+      fun _ m => ((shqrSmallEigProblem Mch ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
+        ⟨128 * Real.exp 1, 3, 2, 2⟩ admitted).initial d x).store.EqOff
+          (shqrFp (d 0) (0, 0) (3, 0) (4, 0)) m.store ∧
+        ShQRSpectrum (3, 0) (4, 0) x.val.1.matrix x.val.1.δ m} ≤ x.val.1.φ := by
+  apply roundedShQRSmallEig_algorithm_measureReal_not_accepts_le
+    (hA := complexGaussianGapTail) (hB := complexGaussianConditionTail)
+    (hb₁ := by norm_num) (hb₂ := by norm_num) <;> assumption
+
 end NLAlib.ShiftedQR

@@ -677,7 +677,7 @@ worklist, `DistSpec`'s pieces and the sampler are reused and the sphere sampler 
 | `Matrix/FinitePrecision/GivensRounded.lean` | M15 | rounded rotations |
 | `Matrix/FinitePrecision/OpsSampling.lean` | GP2 | rounding of sampled words |
 | `Eigensolvers/HessenbergReduction.lean` (new) | HR1–HR3 | a general rounded program (consumers: SmallEig, any dense eigensolver); the merged exact `hessenbergReduction` (`Matrix/Factorizations/Hessenberg.lean:239`) is top-down, fixes $\mathbf{e}_1$ and is not a program, so any exact bottom-up statement goes next to it (review S11) |
-| `Eigensolvers/SmallEig/RandomMatrixTails.lean` (new, collaborator's) | RM1–RM4, RMn, RM9 | the spec's file; hypothesis predicates next to the theorems that discharge them |
+| `Eigensolvers/SmallEig/RandomMatrixTails.lean` (new) | RM1–RM4, RMn, RM9, the instances `complexGaussianGapTail`, `complexGaussianConditionTail` | the solver-facing records; the tails that discharge them are in `RandomMatrix/Shattering/` (design note `RandomMatrix-Shattering.md`) |
 | `RandomMatrix/Gaussian/Complex.lean`, `…/LeastSingularValue.lean`, `…/Gaussian/Tape.lean` | RM6, RM7, RM8 | Gaussian facts |
 | `Eigensolvers/SmallEig/` (new folder): `Draws`, `Perturb`, `OneEigMath`, `RandomHessenberg`, `DistSpec`, `OneEig`, `Decouple`, `Decoupler`, `Leaf`, `Core`, `Program`, `Parameters`, `Precision`, `Theorems`, `Certificate` | GD1 … TH6, M4a–c, M5, M6, M17, RM5 | the algorithm |
 | `Eigensolvers/ShiftedQR/Rounded*.lean` (merged) | RF1–RF7 | the refactor |

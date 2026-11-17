@@ -145,4 +145,101 @@ theorem OneEigRun.exists_le_of_rounds {Λ : Set ℂ} {η R β : ℝ} {t : ℕ} {
     have h5 := (h.dist_le_and_norm_le hΛ hR hs0 hηR hηβ hβ (fun i hi => (hex i hi).le) t le_rfl).1
     linarith [hex t le_rfl]
 
+/-- The distance to the range of a finite family is the least distance to its points. -/
+theorem infDist_range_eq_iInf {ι : Type*} [Finite ι] [Nonempty ι] (d : ι → ℂ) (z : ℂ) :
+    infDist z (Set.range d) = ⨅ i, ‖z - d i‖ := by
+  refine le_antisymm ?_ ((le_infDist (Set.range_nonempty d)).mpr ?_)
+  · obtain ⟨i, hi⟩ := exists_eq_ciInf_of_finite (f := fun i => ‖z - d i‖)
+    rw [← hi, ← dist_eq_norm]
+    exact infDist_le_dist_of_mem ⟨i, rfl⟩
+  · rintro _ ⟨i, rfl⟩
+    rw [dist_eq_norm]
+    exact ciInf_le (Set.finite_range _).bddBelow i
+
+/-- The potential of `OneEig` does not increase: for an abstract run of $t$ rounds on
+$\Lambda$ with a point $z \in \Lambda$ of modulus at most $R$, $\lvert s_0\rvert \le \eta_0$ and
+$\eta \le 0.2\,\tau_i$ for $i < t$, every $i \le t$ has
+$\lvert s_i\rvert + 3.6\,\tau_i \le \eta_0 + 3.96(\eta_0 + R)$. -/
+theorem OneEigRun.norm_add_le {Λ : Set ℂ} {η η₀ R : ℝ} {t : ℕ} {s : ℕ → ℂ} {τ : ℕ → ℝ}
+    (h : OneEigRun Λ η t s τ) {z : ℂ} (hz : z ∈ Λ) (hR : ‖z‖ ≤ R) (hs0 : ‖s 0‖ ≤ η₀)
+    (hητ : ∀ i < t, η ≤ 0.2 * τ i) :
+    ∀ i ≤ t, ‖s i‖ + 3.6 * τ i ≤ η₀ + 3.96 * (η₀ + R) := by
+  intro i
+  induction i with
+  | zero =>
+    intro _
+    have hd : infDist (s 0) Λ ≤ η₀ + R := (infDist_le_dist_of_mem hz).trans
+      ((dist_le_norm_add_norm (s 0) z).trans (add_le_add hs0 hR))
+    linarith [(h.accurate 0 (Nat.zero_le t)).2]
+  | succ i ih =>
+    intro hi
+    obtain ⟨j, w, hw, hs⟩ := h.step i (by omega)
+    have hc := h.contract i (by omega)
+    have hητi := hητ i (by omega)
+    have hτ0 : 0 ≤ τ i := by linarith [norm_nonneg w]
+    have hm : ‖s (i + 1)‖ ≤ ‖s i‖ + τ i + η := by
+      rw [hs]
+      calc ‖s i + τ i * hexDir j + w‖ ≤ ‖s i‖ + ‖(τ i : ℂ) * hexDir j‖ + ‖w‖ := norm_add₃_le
+        _ = ‖s i‖ + τ i + ‖w‖ := by
+            rw [norm_mul, norm_hexDir, mul_one, Complex.norm_real, Real.norm_of_nonneg hτ0]
+        _ ≤ ‖s i‖ + τ i + η := by linarith
+    linarith [ih (by omega)]
+
+/-- A run of `OneEig` extends by one round: a perturbed net point $p$ of the last point with an
+estimate within $10\%$ of its distance and at most $0.66$ times the last estimate. -/
+theorem OneEigRun.snoc {Λ : Set ℂ} {η : ℝ} {t : ℕ} {s : ℕ → ℂ} {τ : ℕ → ℝ}
+    (h : OneEigRun Λ η t s τ) {p w : ℂ} {τ' : ℝ} {j : Fin 6} (hw : ‖w‖ ≤ η)
+    (hp : p = s t + τ t * hexDir j + w) (hc : τ' ≤ 0.66 * τ t)
+    (ha : 0.9 * infDist p Λ ≤ τ' ∧ τ' ≤ 1.1 * infDist p Λ) :
+    OneEigRun Λ η (t + 1) (fun k => if k ≤ t then s k else p)
+      (fun k => if k ≤ t then τ k else τ') where
+  accurate i hi := by
+    rcases Nat.lt_or_ge t i with hti | hti
+    · have : ¬ i ≤ t := by omega
+      simpa only [this, if_false] using ha
+    · simpa only [hti, if_true] using h.accurate i hti
+  step i hi := by
+    rcases Nat.lt_or_ge i t with hit | hit
+    · obtain ⟨j', w', hw', hs⟩ := h.step i hit
+      exact ⟨j', w', hw', by simpa only [show i + 1 ≤ t by omega, show i ≤ t by omega,
+        if_true] using hs⟩
+    · obtain rfl : i = t := by omega
+      exact ⟨j, w, hw, by simpa only [show ¬ i + 1 ≤ i by omega, le_refl, if_true,
+        if_false] using hp⟩
+  contract i hi := by
+    rcases Nat.lt_or_ge i t with hit | hit
+    · simpa only [show i + 1 ≤ t by omega, show i ≤ t by omega, if_true] using h.contract i hit
+    · obtain rfl : i = t := by omega
+      simpa only [show ¬ i + 1 ≤ i by omega, le_refl, if_true, if_false] using hc
+
+/-- A run of no rounds: a start point with an estimate within $10\%$ of its distance. -/
+theorem oneEigRun_zero {Λ : Set ℂ} {η : ℝ} {s₀ : ℂ} {τ₀ : ℝ}
+    (ha : 0.9 * infDist s₀ Λ ≤ τ₀ ∧ τ₀ ≤ 1.1 * infDist s₀ Λ) :
+    OneEigRun Λ η 0 (fun _ => s₀) (fun _ => τ₀) where
+  accurate _ _ := ha
+  step _ hi := absurd hi (Nat.not_lt_zero _)
+  contract _ hi := absurd hi (Nat.not_lt_zero _)
+
+/-- **A net point near the spectrum** ([BanksGarzaVargasSrivastava2025, Observation 3.2]): for a
+finite nonempty $\Lambda$ and an estimate $\tau > 0$ of the distance from $s$ to $\Lambda$ within
+$10\%$, some unperturbed net point $s + \tau e^{i\pi j/3}$ is within $0.561\,\tau$ of
+$\Lambda$. -/
+theorem exists_infDist_hexNet_le {Λ : Set ℂ} (hΛ : Λ.Nonempty) (hΛf : Λ.Finite) {s : ℂ} {τ : ℝ}
+    (hτ : 0.9 * infDist s Λ ≤ τ ∧ τ ≤ 1.1 * infDist s Λ) (hτ0 : 0 < τ) :
+    ∃ j, infDist (s + τ * hexDir j) Λ ≤ 0.561 * τ := by
+  obtain ⟨z, hz, hdz⟩ := hΛf.isCompact.exists_infDist_eq_dist hΛ s
+  rw [hdz] at hτ
+  have hz1 : τ / 1.1 ≤ ‖z - s‖ := by
+    rw [div_le_iff₀ (by norm_num), ← dist_eq_norm, dist_comm]; linarith
+  have hz2 : ‖z - s‖ ≤ τ / 0.9 := by
+    rw [le_div_iff₀ (by norm_num), ← dist_eq_norm, dist_comm]; linarith
+  obtain ⟨j, hj⟩ := exists_norm_hexNet_add_sub_le (r := τ) (η := 0) (w := 0) (by positivity)
+    (div_le_self hτ0.le (by norm_num)) (le_div_self hτ0.le (by norm_num) (by norm_num)) hz1 hz2
+    (by simp)
+  refine ⟨j, (infDist_le_dist_of_mem hz).trans ?_⟩
+  rw [dist_eq_norm]
+  have hρ := hexNetRadius_le hτ0.le
+  simp only [add_zero] at hj
+  linarith
+
 end NLAlib.SmallEig

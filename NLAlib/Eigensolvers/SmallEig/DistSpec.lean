@@ -221,7 +221,7 @@ theorem distSpec_accuracy {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS :
   obtain ⟨i₀, hi₀⟩ := exists_eq_ciInf_of_finite (f := fun i => ‖s - d i‖)
   have hD : 0 < ⨅ i, ‖s - d i‖ := by rw [← hi₀]; exact norm_pos_iff.mpr (sub_ne_zero.mpr (hsd i₀))
   have hκV := (pseudoConditionNumber_nonneg V).trans hκ
-  have hb₁ := sqrt_lastRowWeights_mul_le_norm_lastRow_inv_pow hV hHV hsd hm0 i₀
+  have hb₁ := sqrt_lastRowWeights_mul_le_norm_lastRow_inv_pow (m := m) hV hHV hsd i₀
   rw [← hR, hi₀] at hb₁
   have hsw : √p ≤ √(lastRowWeights V i₀) := Real.sqrt_le_sqrt (hw i₀)
   have hDm : 0 < (⨅ i, ‖s - d i‖) ^ m := pow_pos hD m
@@ -232,7 +232,7 @@ theorem distSpec_accuracy {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS :
     have : 0 < √(lastRowWeights V i₀) * (⨅ i, ‖s - d i‖)⁻¹ ^ m :=
       mul_pos ((Real.sqrt_pos.mpr hp).trans_le hsw) (by positivity)
     linarith
-  have ha := norm_lastRow_inv_pow_le hV hHV hsd hm0
+  have ha := norm_lastRow_inv_pow_le (m := m) hV hHV hsd
   rw [← hR] at ha
   refine distSpec_root_bounds hκ1 hp hp1 hm0 hm hD (inv_nonneg.mpr hRpos.le) ?_ ?_
     (abs_distSpecWord_sub_le hM hu0 (by subst hmq; exact_mod_cast hum) (Real.rpow_nonneg

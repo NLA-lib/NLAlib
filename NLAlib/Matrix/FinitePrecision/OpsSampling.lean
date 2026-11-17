@@ -311,6 +311,267 @@ noncomputable def Ops.Machine.perturbWords (M : Ops.Machine ℝ) {N : ℕ} (γ :
       M.add (A i j).im (M.mul (M.mul (x (2 * (j * N + i) + 1)) M.sqrtHalf)
         (M.div γ (M.sqrt (M.lit (N : ℚ)))))⟩
 
+section PerturbRounding
+
+variable {M : Ops.Machine ℝ} {u : ℝ}
+
+/-- $\lvert\sqrt y - 1\rvert \le \lvert y - 1\rvert$ for $y \ge 0$. -/
+private theorem abs_sqrt_sub_one_le {y : ℝ} (hy : 0 ≤ y) : |√y - 1| ≤ |y - 1| := by
+  have hs := Real.sqrt_nonneg y
+  have e : y - 1 = (√y - 1) * (√y + 1) := by
+    rw [show (√y - 1) * (√y + 1) = √y ^ 2 - 1 by ring, Real.sq_sqrt hy]
+  rw [e, abs_mul, abs_of_nonneg (by linarith : 0 ≤ √y + 1)]
+  nlinarith [abs_nonneg (√y - 1)]
+
+/-- The stored $\sqrt{1/2}$ of a machine with the standard model and rounded literals, at
+$0 \le \boldsymbol{u} \le 1/100$: $\lvert\sqrt2\,h - 1\rvert \le 7\boldsymbol{u}$. -/
+private theorem abs_sqrt_two_mul_sqrtHalf_sub_one_le (hM : Ops.StdModel u id M) (hu0 : 0 ≤ u)
+    (hu : u ≤ 1 / 100) : |√2 * M.sqrtHalf - 1| ≤ 7 * u := by
+  have h1 : |M.lit 1 - 1| ≤ u := by simpa using hM.lit 1
+  have h2 : |M.lit 2 - 2| ≤ 2 * u := by
+    have := hM.lit 2
+    simp only [id] at this
+    rw [show ((2 : ℚ) : ℝ) = 2 by norm_num, abs_of_pos (by norm_num : (0 : ℝ) < 2)] at this
+    linarith
+  set a := M.lit 1
+  set b := M.lit 2
+  obtain ⟨h1l, h1r⟩ := abs_le.mp h1
+  obtain ⟨h2l, h2r⟩ := abs_le.mp h2
+  have hb : 0 < b := by linarith
+  have hb0 := hb.ne'
+  have hd := hM.div a b hb.ne'
+  simp only [id] at hd
+  set q := M.div a b
+  have hab : |2 * (a / b) - 1| ≤ 3 * u := by
+    rw [show 2 * (a / b) - 1 = (2 * a - b) / b by field_simp, abs_div, abs_of_pos hb,
+      div_le_iff₀ hb, abs_le]
+    constructor <;> nlinarith
+  have hab0 : 0 ≤ a / b := div_nonneg (by linarith) hb.le
+  rw [abs_of_nonneg hab0] at hd
+  have hq : |2 * q - 1| ≤ 5 * u := by
+    obtain ⟨hl, hr⟩ := abs_le.mp hd
+    obtain ⟨hl', hr'⟩ := abs_le.mp hab
+    rw [abs_le]
+    constructor <;> nlinarith
+  have hq0 : 0 ≤ q := by obtain ⟨hl, hr⟩ := abs_le.mp hq; linarith
+  have hs := hM.sqrt q hq0
+  simp only [id] at hs
+  have e2 : √2 * √q = √(2 * q) := (Real.sqrt_mul (by norm_num) q).symm
+  have hsq := abs_sqrt_sub_one_le (by linarith : 0 ≤ 2 * q)
+  have hsq1 : √(2 * q) ≤ 1 + 5 * u := by
+    have := (abs_le.mp (hsq.trans hq)).2
+    linarith
+  change |√2 * M.sqrt q - 1| ≤ 7 * u
+  have hsc : |√2 * M.sqrt q - √(2 * q)| ≤ u * √(2 * q) := by
+    rw [← e2, ← mul_sub, abs_mul, abs_of_pos (by positivity : (0 : ℝ) < √2), mul_comm u,
+      mul_assoc]
+    exact mul_le_mul_of_nonneg_left (by rw [mul_comm]; exact hs) (by positivity)
+  calc |√2 * M.sqrt q - 1| ≤ |√2 * M.sqrt q - √(2 * q)| + |√(2 * q) - 1| := abs_sub_le _ _ _
+    _ ≤ u * (1 + 5 * u) + 5 * u :=
+        add_le_add (hsc.trans (mul_le_mul_of_nonneg_left hsq1 hu0)) (hsq.trans hq)
+    _ ≤ 7 * u := by nlinarith
+
+/-- The computed scale $\mathrm{fl}(\gamma/\mathrm{fl}(\sqrt N))$ of a machine with the standard
+model at $0 \le \boldsymbol{u} \le 1/100$, for $N \ge 1$ and $\gamma \ge 0$, is within
+$4\boldsymbol{u}\gamma/\sqrt N$ of $\gamma/\sqrt N$. -/
+private theorem abs_div_sqrt_lit_sub_le (hM : Ops.StdModel u id M) (hu0 : 0 ≤ u)
+    (hu : u ≤ 1 / 100) {N : ℕ} (hN : 1 ≤ N) {γ : ℝ} (hγ : 0 ≤ γ) :
+    |M.div γ (M.sqrt (M.lit (N : ℚ))) - γ / √(N : ℝ)| ≤ 4 * u * (γ / √(N : ℝ)) := by
+  have hN0 : (1 : ℝ) ≤ N := by exact_mod_cast hN
+  have hN0' : (N : ℝ) ≠ 0 := by positivity
+  have hl := hM.lit (N : ℚ)
+  simp only [id, Rat.cast_natCast] at hl
+  rw [abs_of_nonneg (Nat.cast_nonneg N : (0 : ℝ) ≤ N)] at hl
+  set ℓ := M.lit (N : ℚ)
+  obtain ⟨hll, hlr⟩ := abs_le.mp hl
+  have hℓ0 : 0 ≤ ℓ := by nlinarith
+  have hs := hM.sqrt ℓ hℓ0
+  simp only [id] at hs
+  set s := M.sqrt ℓ
+  have hsN : 0 < √(N : ℝ) := Real.sqrt_pos.mpr (by linarith)
+  have hr : |ℓ / N - 1| ≤ u := by
+    rw [show ℓ / N - 1 = (ℓ - N) / N by field_simp, abs_div,
+      abs_of_pos (by linarith : (0 : ℝ) < N), div_le_iff₀ (by linarith)]
+    exact hl
+  have hr0 : 0 ≤ ℓ / N := div_nonneg hℓ0 (by linarith)
+  have hρ := (abs_sqrt_sub_one_le hr0).trans hr
+  set ρ := √(ℓ / N)
+  have eρ : √ℓ = ρ * √(N : ℝ) := by
+    rw [← Real.sqrt_mul hr0, div_mul_cancel₀ _ hN0']
+  obtain ⟨hρl, hρr⟩ := abs_le.mp hρ
+  obtain ⟨hsl, hsr⟩ := abs_le.mp hs
+  rw [eρ] at hsl hsr
+  set t := s / √(N : ℝ)
+  have es : s = t * √(N : ℝ) := by simp only [t]; field_simp
+  rw [es] at hsl hsr
+  have htl : ρ * (1 - u) ≤ t := by
+    have : ρ * (1 - u) * √(N : ℝ) ≤ t * √(N : ℝ) := by nlinarith
+    exact le_of_mul_le_mul_right this hsN
+  have htr : t ≤ ρ * (1 + u) := by
+    have : t * √(N : ℝ) ≤ ρ * (1 + u) * √(N : ℝ) := by nlinarith
+    exact le_of_mul_le_mul_right this hsN
+  have ht : |t - 1| ≤ 21 / 10 * u := by
+    rw [abs_le]
+    constructor <;> nlinarith
+  have ht0 : 0 < t := by nlinarith
+  have hs0 : 0 < s := by rw [es]; positivity
+  have hd := hM.div γ s hs0.ne'
+  simp only [id] at hd
+  set β := γ / √(N : ℝ)
+  have hβ : 0 ≤ β := div_nonneg hγ hsN.le
+  have eγ : γ / s = β / t := by
+    rw [es]
+    simp only [β]
+    field_simp
+  rw [eγ, abs_of_nonneg (div_nonneg hβ ht0.le)] at hd
+  have hbt : |β / t - β| ≤ 22 / 10 * u * β := by
+    rw [show β / t - β = β * (1 - t) / t by field_simp, abs_div, abs_mul, abs_of_nonneg hβ,
+      abs_of_pos ht0, div_le_iff₀ ht0, abs_sub_comm]
+    nlinarith [mul_le_mul_of_nonneg_left ht hβ,
+      mul_nonneg (mul_nonneg hβ hu0) (by nlinarith : (0 : ℝ) ≤ t - 979 / 1000)]
+  have hbt' : β / t ≤ β + 22 / 10 * u * β := by
+    have := (abs_le.mp hbt).2
+    linarith
+  calc |M.div γ s - β| ≤ |M.div γ s - β / t| + |β / t - β| := abs_sub_le _ _ _
+    _ ≤ u * (β + 22 / 10 * u * β) + 22 / 10 * u * β :=
+        add_le_add (hd.trans (mul_le_mul_of_nonneg_left hbt' hu0)) hbt
+    _ ≤ 4 * u * β := by
+        nlinarith [mul_nonneg (mul_nonneg hu0 hβ) (by linarith : (0 : ℝ) ≤ 1 / 100 - u)]
+
+/-- One rounded component $\mathrm{fl}(a + \mathrm{fl}(\mathrm{fl}(w h) g))$ against
+$a + \beta w/\sqrt2$, for $\lvert\sqrt2 h - 1\rvert \le 6\boldsymbol{u}$ and
+$\lvert g - \beta\rvert \le 4\boldsymbol{u}\beta$. -/
+private theorem abs_add_mul_mul_sub_le (hM : Ops.StdModel u id M) (hu0 : 0 ≤ u)
+    (hu : u ≤ 1 / 100) {a w h g β : ℝ} (hβ : 0 ≤ β) (hh : |√2 * h - 1| ≤ 7 * u)
+    (hg : |g - β| ≤ 4 * u * β) :
+    |M.add a (M.mul (M.mul w h) g) - (a + β * (w / √2))| ≤
+      u * |a| + 18 * u * |β * (w / √2)| := by
+  have hsmall : (0 : ℝ) ≤ 1 / 100 - u := by linarith
+  have hm1 := hM.mul w h
+  have hm2 := hM.mul (M.mul w h) g
+  have ha := hM.add a (M.mul (M.mul w h) g)
+  simp only [id] at hm1 hm2 ha
+  set m1 := M.mul w h
+  set m2 := M.mul m1 g
+  set W := |w / √2|
+  have hW : 0 ≤ W := abs_nonneg _
+  have ewh : w * h = w / √2 * (√2 * h) := by field_simp
+  have hsh : |√2 * h| ≤ 1 + 7 * u := by
+    have := abs_sub_abs_le_abs_sub (√2 * h) 1
+    rw [abs_one] at this
+    linarith
+  have hwh : |w * h| ≤ W * (1 + 7 * u) := by
+    rw [ewh, abs_mul]
+    exact mul_le_mul_of_nonneg_left hsh hW
+  have hm1' : |m1 - w / √2| ≤ 9 * u * W := by
+    have e : w * h - w / √2 = w / √2 * (√2 * h - 1) := by rw [ewh]; ring
+    calc |m1 - w / √2| ≤ |m1 - w * h| + |w * h - w / √2| := abs_sub_le _ _ _
+      _ ≤ u * (W * (1 + 7 * u)) + W * (7 * u) := by
+          refine add_le_add (hm1.trans (mul_le_mul_of_nonneg_left hwh hu0)) ?_
+          rw [e, abs_mul]
+          exact mul_le_mul_of_nonneg_left hh hW
+      _ ≤ 9 * u * W := by nlinarith [mul_nonneg (mul_nonneg hu0 hsmall) hW, mul_nonneg hu0 hW]
+  have hm1a : |m1| ≤ W * (1 + 9 * u) := by
+    have := abs_sub_abs_le_abs_sub m1 (w / √2)
+    nlinarith
+  have hga : |g| ≤ β * (1 + 4 * u) := by
+    have := abs_sub_abs_le_abs_sub g β
+    rw [abs_of_nonneg hβ] at this
+    nlinarith
+  have hp : |m1 * g - β * (w / √2)| ≤ 14 * u * (W * β) := by
+    have e : m1 * g - β * (w / √2) = m1 * (g - β) + β * (m1 - w / √2) := by ring
+    rw [e]
+    refine (abs_add_le _ _).trans ?_
+    rw [abs_mul, abs_mul, abs_of_nonneg hβ]
+    have h1 := mul_le_mul hm1a hg (abs_nonneg _) (by positivity)
+    have h2 := mul_le_mul_of_nonneg_left hm1' hβ
+    nlinarith [mul_nonneg (mul_nonneg hu0 hsmall) (mul_nonneg hW hβ),
+      mul_nonneg hu0 (mul_nonneg hW hβ)]
+  have hm1g : |m1 * g| ≤ W * β * (1 + 14 * u) := by
+    have := abs_sub_abs_le_abs_sub (m1 * g) (β * (w / √2))
+    rw [abs_mul β, abs_of_nonneg hβ] at this
+    nlinarith
+  have hp2 : |m2 - β * (w / √2)| ≤ 16 * u * (W * β) := by
+    calc |m2 - β * (w / √2)| ≤ |m2 - m1 * g| + |m1 * g - β * (w / √2)| := abs_sub_le _ _ _
+      _ ≤ u * (W * β * (1 + 14 * u)) + 14 * u * (W * β) :=
+          add_le_add (hm2.trans (mul_le_mul_of_nonneg_left hm1g hu0)) hp
+      _ ≤ 16 * u * (W * β) := by
+          nlinarith [mul_nonneg (mul_nonneg hu0 hsmall) (mul_nonneg hW hβ),
+            mul_nonneg hu0 (mul_nonneg hW hβ)]
+  have hWβ : |β * (w / √2)| = W * β := by rw [abs_mul, abs_of_nonneg hβ, mul_comm]
+  rw [hWβ]
+  have hsum : |a + m2| ≤ |a| + W * β * (1 + 16 * u) := by
+    refine (abs_add_le _ _).trans (add_le_add le_rfl ?_)
+    have := abs_sub_abs_le_abs_sub m2 (β * (w / √2))
+    rw [hWβ] at this
+    nlinarith
+  calc |M.add a m2 - (a + β * (w / √2))|
+      ≤ |M.add a m2 - (a + m2)| + |m2 - β * (w / √2)| := by
+        have := abs_sub_le (M.add a m2) (a + m2) (a + β * (w / √2))
+        rwa [show a + m2 - (a + β * (w / √2)) = m2 - β * (w / √2) by ring] at this
+    _ ≤ u * (|a| + W * β * (1 + 16 * u)) + 16 * u * (W * β) :=
+        add_le_add (ha.trans (mul_le_mul_of_nonneg_left hsum hu0)) hp2
+    _ ≤ u * |a| + 18 * u * (W * β) := by
+        nlinarith [mul_nonneg (mul_nonneg hu0 hsmall) (mul_nonneg hW hβ),
+      mul_nonneg hu0 (mul_nonneg hW hβ)]
+
+/-- A complex number whose components are bounded by sums of nonnegative pieces is bounded by the
+sum of the norms of the pieces. -/
+private theorem norm_le_of_abs_re_im_le {z a b : ℂ} {r s : ℝ} (hr : 0 ≤ r) (hs : 0 ≤ s)
+    (hre : |z.re| ≤ r * |a.re| + s * |b.re|) (him : |z.im| ≤ r * |a.im| + s * |b.im|) :
+    ‖z‖ ≤ r * ‖a‖ + s * ‖b‖ := by
+  let w : ℂ := ⟨r * |a.re| + s * |b.re|, r * |a.im| + s * |b.im|⟩
+  have hzw : ‖z‖ ≤ ‖w‖ := by
+    rw [Complex.norm_def, Complex.norm_def]
+    apply Real.sqrt_le_sqrt
+    simp only [Complex.normSq_apply, w]
+    have h1 := mul_self_le_mul_self (abs_nonneg _) hre
+    have h2 := mul_self_le_mul_self (abs_nonneg _) him
+    rw [abs_mul_abs_self] at h1 h2
+    linarith
+  have ew : w = (r : ℂ) * ⟨|a.re|, |a.im|⟩ + (s : ℂ) * ⟨|b.re|, |b.im|⟩ := by
+    apply Complex.ext <;> simp [w]
+  have hn : ∀ c : ℂ, ‖(⟨|c.re|, |c.im|⟩ : ℂ)‖ = ‖c‖ := fun c => by
+    rw [Complex.norm_def, Complex.norm_def]
+    simp only [Complex.normSq_apply, abs_mul_abs_self]
+  refine hzw.trans ?_
+  rw [ew]
+  refine (norm_add_le _ _).trans ?_
+  rw [norm_mul, norm_mul, hn, hn, Complex.norm_real, Complex.norm_real, Real.norm_of_nonneg hr,
+    Real.norm_of_nonneg hs]
+
+/-- The Frobenius norm is bounded by entrywise domination in norm. -/
+private theorem frobNorm_le_of_norm_apply_le {N : ℕ} {E A B : Matrix (Fin N) (Fin N) ℂ}
+    {r s : ℝ} (hr : 0 ≤ r) (hs : 0 ≤ s) (h : ∀ i j, ‖E i j‖ ≤ r * ‖A i j‖ + s * ‖B i j‖) :
+    frobNorm E ≤ r * frobNorm A + s * frobNorm B := by
+  let F : Matrix (Fin N) (Fin N) ℂ := Matrix.of fun i j => (‖A i j‖ : ℂ)
+  let G : Matrix (Fin N) (Fin N) ℂ := Matrix.of fun i j => (‖B i j‖ : ℂ)
+  have hF : frobNorm F = frobNorm A := by
+    have h1 := frobNorm_sq_eq_sum F
+    have h2 := frobNorm_sq_eq_sum A
+    simp only [F, Matrix.of_apply, Complex.norm_real, Real.norm_of_nonneg (norm_nonneg _)] at h1
+    rw [← h2] at h1
+    exact (sq_eq_sq₀ (frobNorm_nonneg _) (frobNorm_nonneg _)).mp h1
+  have hG : frobNorm G = frobNorm B := by
+    have h1 := frobNorm_sq_eq_sum G
+    have h2 := frobNorm_sq_eq_sum B
+    simp only [G, Matrix.of_apply, Complex.norm_real, Real.norm_of_nonneg (norm_nonneg _)] at h1
+    rw [← h2] at h1
+    exact (sq_eq_sq₀ (frobNorm_nonneg _) (frobNorm_nonneg _)).mp h1
+  have hle : frobNorm E ≤ frobNorm ((r : ℂ) • F + (s : ℂ) • G) := by
+    refine (sq_le_sq₀ (frobNorm_nonneg _) (frobNorm_nonneg _)).mp ?_
+    rw [frobNorm_sq_eq_sum, frobNorm_sq_eq_sum]
+    refine Finset.sum_le_sum fun i _ => Finset.sum_le_sum fun j _ => ?_
+    refine pow_le_pow_left₀ (norm_nonneg _) ((h i j).trans (le_of_eq ?_)) 2
+    simp only [F, G, Matrix.add_apply, Matrix.smul_apply, Matrix.of_apply, smul_eq_mul]
+    rw [← Complex.ofReal_mul, ← Complex.ofReal_mul, ← Complex.ofReal_add, Complex.norm_real,
+      Real.norm_of_nonneg (by positivity)]
+  refine hle.trans ((frobNorm_add_le _ _).trans (le_of_eq ?_))
+  rw [frobNorm_smul, frobNorm_smul, hF, hG, Complex.norm_real, Complex.norm_real,
+    Real.norm_of_nonneg hr, Real.norm_of_nonneg hs]
+
+end PerturbRounding
+
 /-- **The rounding of a scaled Gaussian perturbation** ([BanksGarzaVargasSrivastava2025,
 Theorem 1.1], the perturbation step): on a machine with the standard model at
 $0 \le \boldsymbol{u} \le 1/100$, for $N \ge 1$, $\gamma \ge 0$, a complex $\mathbf{A}$ of order
@@ -325,6 +586,42 @@ theorem Ops.StdModel.specNorm_perturbWords_sub_le {M : Ops.Machine ℝ} {u : ℝ
     specNorm (M.perturbWords γ A x -
         (A + ((γ / √(N : ℝ) : ℝ) : ℂ) • Computation.tapeComplexMatrix x N)) ≤
       20 * N * u * (specNorm A + γ / √(N : ℝ) * specNorm (Computation.tapeComplexMatrix x N)) := by
-  sorry
+  set β := γ / √(N : ℝ)
+  set G := Computation.tapeComplexMatrix x N
+  have hβ : 0 ≤ β := div_nonneg hγ (Real.sqrt_nonneg _)
+  have hh := abs_sqrt_two_mul_sqrtHalf_sub_one_le hM hu0 hu
+  have hg := abs_div_sqrt_lit_sub_le hM hu0 hu hN hγ
+  have hent : ∀ i j, ‖(M.perturbWords γ A x - (A + (β : ℂ) • G)) i j‖ ≤
+      u * ‖A i j‖ + 18 * u * ‖((β : ℂ) • G) i j‖ := by
+    intro i j
+    have hidx : (j : ℕ) * N + i = i + N * j := by ring
+    refine norm_le_of_abs_re_im_le hu0 (by positivity) ?_ ?_
+    · simpa [Ops.Machine.perturbWords, G, Computation.tapeComplexMatrix, hidx] using
+        abs_add_mul_mul_sub_le hM hu0 hu (a := (A i j).re) (w := x (2 * (i + N * j))) hβ hh hg
+    · simpa [Ops.Machine.perturbWords, G, Computation.tapeComplexMatrix, hidx] using
+        abs_add_mul_mul_sub_le hM hu0 hu (a := (A i j).im) (w := x (2 * (i + N * j) + 1)) hβ hh
+          hg
+  have hF := frobNorm_le_of_norm_apply_le hu0 (by positivity) hent
+  have hN1 : (1 : ℝ) ≤ N := by exact_mod_cast hN
+  have hsq : √(N : ℝ) ≤ N := by
+    have h1 : 1 ≤ √(N : ℝ) := Real.one_le_sqrt.mpr hN1
+    nlinarith [Real.mul_self_sqrt (by linarith : (0 : ℝ) ≤ N)]
+  have hA := frobNorm_le_sqrt_card_mul_specNorm A
+  have hP := frobNorm_le_sqrt_card_mul_specNorm ((β : ℂ) • G)
+  rw [Fintype.card_fin] at hA hP
+  rw [specNorm_smul, Complex.norm_real, Real.norm_of_nonneg hβ] at hP
+  refine (specNorm_le_frobNorm _).trans (hF.trans ?_)
+  have hAn := specNorm_nonneg A
+  have hGn := mul_nonneg hβ (specNorm_nonneg G)
+  have hs0 := Real.sqrt_nonneg (N : ℝ)
+  calc u * frobNorm A + 18 * u * frobNorm ((β : ℂ) • G)
+      ≤ u * (√(N : ℝ) * specNorm A) + 18 * u * (√(N : ℝ) * (β * specNorm G)) :=
+        add_le_add (mul_le_mul_of_nonneg_left hA hu0)
+          (mul_le_mul_of_nonneg_left hP (by positivity))
+    _ ≤ 20 * N * u * (specNorm A + β * specNorm G) := by
+        nlinarith [mul_le_mul_of_nonneg_right hsq (mul_nonneg hu0 hAn),
+          mul_le_mul_of_nonneg_right hsq (mul_nonneg hu0 hGn),
+          mul_nonneg (Nat.cast_nonneg N : (0 : ℝ) ≤ N) (mul_nonneg hu0 hAn),
+          mul_nonneg (Nat.cast_nonneg N : (0 : ℝ) ≤ N) (mul_nonneg hu0 hGn)]
 
 end NLAlib

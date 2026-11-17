@@ -382,6 +382,45 @@ theorem IsStableQRChain.exists_norm_subdiag_le_of_dist {m₂ : ℕ} {x C B p η�
     (hfwd : ∀ ℓ ≤ m₂, (66 + 2 * C) * B * specNorm H * ((2 + 2 * C) * specNorm H / η₁) ^ ℓ *
       √(n + 2) * x ≤ ω / 2) :
     ∃ ℓ ∈ Finset.Icc 1 m₂, ‖Hs ℓ (Fin.last (n + 1)) (Fin.last n).castSucc‖ ≤ ω := by
-  sorry
+  have hsd : ∀ j, s ≠ d j := fun j h => by
+    have := hdist j; rw [h, sub_self, norm_zero] at this; linarith
+  -- exact decoupling: some `ℓ` has `|h_ℓ|^m₂ √wᵢ ≤ κ |s - dᵢ|^m₂`, hence `|h_ℓ| ≤ 2β'`
+  obtain ⟨ℓ, hℓ, hex⟩ := exists_le_norm_subdiag_shiftedQR_pow hH hV hHV hsd hm₂ i
+  refine ⟨ℓ, hℓ, ?_⟩
+  have hℓm : ℓ ≤ m₂ := (Finset.mem_Icc.mp hℓ).2
+  set h := ‖multiShiftedQRStep H (List.replicate ℓ s) (Fin.last (n + 1)) (Fin.last n).castSucc‖
+  have hβ0 : 0 ≤ β' := (norm_nonneg _).trans hi
+  have hsp : 0 < √p := Real.sqrt_pos.mpr hp
+  have hexact : h ≤ 2 * β' := by
+    have hw : √p ≤ √(lastRowWeights V i) := Real.sqrt_le_sqrt hpi
+    have h1 : h ^ m₂ * √p ≤ (2 * β') ^ m₂ * √p := by
+      calc h ^ m₂ * √p ≤ h ^ m₂ * √(lastRowWeights V i) := by gcongr
+        _ ≤ pseudoConditionNumber V * ‖s - d i‖ ^ m₂ := hex
+        _ ≤ B * β' ^ m₂ := by
+            gcongr
+            exact (pseudoConditionNumber_nonneg V).trans hκ
+        _ ≤ 2 ^ m₂ * √p * β' ^ m₂ := by gcongr
+        _ = (2 * β') ^ m₂ * √p := by ring
+    exact (pow_le_pow_iff_left₀ (norm_nonneg _) (by positivity) (by omega)).mp
+      (le_of_mul_le_mul_right h1 hsp)
+  -- forward error of the rounded chain, up to a diagonal phase
+  obtain ⟨Rs, hR⟩ := hchain ℓ hℓm
+  obtain ⟨D, hD, hfro⟩ := hR.exists_frobNorm_conj_sub_le hx hC hη₁ hH0 hH hV hHV hκ
+    (fun t ht => by rw [List.eq_of_mem_replicate ht]; exact hs)
+    (fun t ht j => by rw [List.eq_of_mem_replicate ht]; exact hdist j)
+    (by rw [List.length_replicate]; exact hxu ℓ hℓm)
+  rw [List.length_replicate, show ((n + 1 : ℕ) : ℝ) + 1 = n + 2 by push_cast; ring] at hfro
+  have hent := (norm_apply_le_frobNorm _ (Fin.last (n + 1)) (Fin.last n).castSucc).trans
+    (hfro.trans (hfwd ℓ hℓm))
+  have hphase : ‖((Matrix.diagonal D)ᴴ * Hs ℓ * Matrix.diagonal D) (Fin.last (n + 1))
+      (Fin.last n).castSucc‖ = ‖Hs ℓ (Fin.last (n + 1)) (Fin.last n).castSucc‖ := by
+    rw [Matrix.diagonal_conjTranspose, Matrix.mul_diagonal, Matrix.diagonal_mul, norm_mul,
+      norm_mul, Pi.star_apply, norm_star, hD, hD, one_mul, mul_one]
+  rw [Matrix.sub_apply] at hent
+  have htri := norm_sub_norm_le ((((Matrix.diagonal D)ᴴ * Hs ℓ * Matrix.diagonal D))
+    (Fin.last (n + 1)) (Fin.last n).castSucc)
+    (multiShiftedQRStep H (List.replicate ℓ s) (Fin.last (n + 1)) (Fin.last n).castSucc)
+  rw [hphase] at htri
+  linarith
 
 end NLAlib

@@ -108,7 +108,16 @@ theorem uShQRSmallEig_pos {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ 
     0 < uShQRSmallEig n k B Γ S δ φ c₁ c₂ ∧
       (smallEigForwardParams k (4 * S) (shqrSmallEigAccuracy n B Γ S δ)
         (shqrSmallEigFailure n B Γ S δ φ) c₁ c₂).length = 12 := by
-  sorry
+  have hS : 0 < S := hδ.trans_le hδS
+  have hk2 : 2 ≤ k := hk ▸ two_le_shqrDegree (by linarith)
+  have hβ := shqrSmallEigAccuracy_pos (n := n) hB hΓ hδ hS
+  have hβS := shqrSmallEigAccuracy_le (n := n) hB hΓ hδ hδS
+  have hφse := shqrSmallEigFailure_pos (n := n) (B := B) (Γ := Γ) (S := S) (δ := δ) hφ
+  have hφse1 := (shqrSmallEigFailure_le (n := n) (B := B) (Γ := Γ) (S := S) (δ := δ) hφ.le).trans
+    hφ1
+  obtain ⟨hδb, hδbS, -⟩ := forwardBackwardError_spec (kmax := k) hβ hβS
+  refine ⟨lt_min (uShQR_pos (by omega) hB hΓ hδ hS hφ) ?_, length_smallEigParams _ _ _ _ _ _⟩
+  exact (uSmallEig_spec hb₁ hb₂ (by omega) hδb hδbS hφse hφse1).1
 
 section Program
 

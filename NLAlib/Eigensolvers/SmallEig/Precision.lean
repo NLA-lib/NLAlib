@@ -109,7 +109,30 @@ theorem uSmallEig_spec {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ : 0
       uSmallEig nmax S δ φ c₁ c₂ ≤ uSmallEigDistSpec nmax S δ φ c₁ c₂ ∧
       uSmallEig nmax S δ φ c₁ c₂ ≤ uSmallEigDecouple nmax S δ φ c₁ c₂ ∧
       uSmallEig nmax S δ φ c₁ c₂ ≤ uSmallEigCore nmax S δ φ c₂ := by
-  sorry
+  have hS : 0 < S := hδ.trans_le hδS
+  have hg := (smallEigGap_pos_le hb₁ hn hS.le hδ hφ hφ1).1
+  have hc := (smallEigCond_pos_le hb₂ hn hS.le hδ hφ hφ1).1
+  have hB : 0 < smallEigCondition nmax S δ φ c₂ := by
+    linarith [smallEigCondition_ge hb₂ hn hS.le hδ hφ hφ1]
+  have hsep := smallEigSeparation_pos hb₁ hn hS.le hδ hφ hφ1
+  have hp := (smallEigWeight_pos_le hb₂ hn hS.le hδ hφ hφ1).1
+  have hη := smallEigInnerRadius_pos hb₁ hb₂ hn hδ hδS hφ hφ1
+  have hω := smallEigOmega_pos hb₁ hb₂ hn hS.le hδ hφ hφ1
+  have h1 : 0 < uSmallEigBasic nmax := by unfold uSmallEigBasic; positivity
+  have h2 : 0 < uSmallEigReduce nmax S δ φ c₁ c₂ := by
+    unfold uSmallEigReduce; exact div_pos (lt_min (by positivity) (by positivity)) (by positivity)
+  have h3 : 0 < uSmallEigRHess nmax S δ φ c₁ c₂ := by
+    unfold uSmallEigRHess
+    have := sqrt_pos.mpr hp
+    exact div_pos (lt_min (by positivity) (by positivity)) (by positivity)
+  have h4 : 0 < uSmallEigDistSpec nmax S δ φ c₁ c₂ := by
+    unfold uSmallEigDistSpec; exact lt_min (by positivity) (by positivity)
+  have h5 : 0 < uSmallEigDecouple nmax S δ φ c₁ c₂ := by
+    unfold uSmallEigDecouple; exact div_pos (lt_min (by positivity) (by positivity)) (by positivity)
+  have h6 : 0 < uSmallEigCore nmax S δ φ c₂ := by unfold uSmallEigCore; positivity
+  unfold uSmallEig
+  refine ⟨lt_min h1 (lt_min h2 (lt_min h3 (lt_min h4 (lt_min h5 h6)))), min_le_left _ _, ?_, ?_,
+    ?_, ?_, ?_⟩ <;> simp only [min_le_iff, le_refl, true_or, or_true]
 
 /-- **The bits of precision of the small-eigenvalue solver** ([BanksGarzaVargasSrivastava2025,
 Theorem 1.1], $O(\log^2)$ bits): for tail records with $b_1, b_2 > 0$ there are constants

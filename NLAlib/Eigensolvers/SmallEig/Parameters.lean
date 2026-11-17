@@ -532,6 +532,22 @@ theorem smallEigParams_spec {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb�
   · rw [hΩ]; nlinarith [min_le_right (δ / 4) (smallEigSeparation nmax S δ φ c₁ /
       (16 * nmax * smallEigCondition nmax S δ φ c₂))]
 
+/-- The radius $\eta_1$ of `OneEig` is positive (`NLAlib.SmallEig.oneEigRadii_spec` at $\beta'$,
+$g_c/4$ and $\varphi_D/2$). -/
+theorem smallEigInnerRadius_pos {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b)
+    {nmax : ℕ} (hn : 1 ≤ nmax) {S δ φ : ℝ} (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ)
+    (hφ1 : φ ≤ 1) : 0 < smallEigInnerRadius nmax S δ φ c₁ c₂ := by
+  obtain ⟨hβ, hβS⟩ := smallEigAccuracy_le hb₁ hb₂ hn hδ hδS hφ hφ1
+  have hsep := smallEigSeparation_pos hb₁ hn (hδ.le.trans hδS) hδ hφ hφ1
+  have hn1 : (1 : ℝ) ≤ nmax := by exact_mod_cast hn
+  have hD : 0 < smallEigDecouplerFailure nmax φ / 2 := by
+    unfold smallEigDecouplerFailure; positivity
+  have hD1 : smallEigDecouplerFailure nmax φ / 2 ≤ 1 := by
+    unfold smallEigDecouplerFailure
+    rw [div_div, div_le_one (by positivity)]; nlinarith
+  exact (oneEigRadii_spec hβ hβS (by positivity : 0 < smallEigSeparation nmax S δ φ c₁ / 4)
+    hD hD1).1
+
 /-- **The parameter words are positive** ([BanksGarzaVargasSrivastava2025, Theorem 1.1]): for
 tail records with $b_1, b_2 > 0$, $n_{\max} \ge 1$, $0 < \delta \le \Sigma$ and
 $0 < \varphi \le 1$, the first eight words of `NLAlib.SmallEig.smallEigParams` (the scale, the
@@ -543,17 +559,9 @@ theorem smallEigParams_pos {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂
   have hS : 0 ≤ S := by linarith
   have hγ := smallEigScale_pos (φ := φ) hδ
   have hω := smallEigOmega_pos hb₁ hb₂ hn hS hδ hφ hφ1
-  obtain ⟨hβ, hβS⟩ := smallEigAccuracy_le hb₁ hb₂ hn hδ hδS hφ hφ1
+  have hβ := (smallEigAccuracy_le hb₁ hb₂ hn hδ hδS hφ hφ1).1
   have hsep := smallEigSeparation_pos hb₁ hn hS hδ hφ hφ1
-  have hn' : (0 : ℝ) < nmax := by exact_mod_cast hn
-  have hD : 0 < smallEigDecouplerFailure nmax φ / 2 := by
-    unfold smallEigDecouplerFailure; positivity
-  have hD1 : smallEigDecouplerFailure nmax φ / 2 ≤ 1 := by
-    unfold smallEigDecouplerFailure
-    have hn1 : (1 : ℝ) ≤ nmax := by exact_mod_cast hn
-    rw [div_div, div_le_one (by positivity)]; nlinarith
-  have hη1 := (oneEigRadii_spec hβ hβS (by positivity : 0 < smallEigSeparation nmax S δ φ c₁ / 4)
-    hD hD1).1
+  have hη1 := smallEigInnerRadius_pos hb₁ hb₂ hn hδ hδS hφ hφ1
   have hη2 : 0 < smallEigOuterRadius nmax S δ φ c₁ c₂ :=
     lt_min (by positivity) (by positivity)
   intro i hi

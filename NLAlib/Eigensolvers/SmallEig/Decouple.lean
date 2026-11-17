@@ -6,7 +6,8 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedDecouple
-public import NLAlib.Eigensolvers.ShiftedQR.StableStep
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveTermination
+public import NLAlib.Eigensolvers.ShiftedQR.StableStepTermination
 public import NLAlib.Matrix.QRIteration.StableStepForward
 
 /-!
@@ -252,6 +253,24 @@ theorem roundedDecoupleExit_writes_decoupleLast {M : Machine ℝ} {I : Interp O 
   (roundedDecoupleExit_writes_lastScan hL hC (hNat.mono (by omega)) hs hf).mono le_rfl
     fun _ hfr hF => ⟨i, H', Rs, hi, hc, hH', hW.of_eqOff hfr hhf.symm, hF⟩
 
+omit [Has IdxTst Q] in
+/-- The scan of `NLAlib.SmallEig.decoupleLast` on any matrix, from the operands of its loop
+(`NLAlib.SmallEig.DecoupleLastCtx`), stores a word in the scan flag. -/
+theorem bottomScan_terminates_decoupleLastCtx {M : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
+    (hS : IsScalar M I) (hL : IsIndexLit M I) (hNat : IsExactNatLit id M (n + 2))
+    (hC : IsCmp id I) {τ : Tape ℝ} {μ : Mem ℝ} {L : ℕ} {h lam qw f : ℕ × ℕ} {ζ : ℂ} {t : ℝ}
+    {H : Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ} (hc : DecoupleLastCtx n L h lam qw f ζ t μ.store)
+    (hW : HoldsMatrix h H μ.store) :
+    Writes .total I τ (bottomScan (O := O) (Q := Q)).body
+      (Env.frame [n + 2, 1] [h, (qw.1, qw.2 + 7), (L, 0)]) (Store.inBlock L 0 5)
+      (fun μ' => ∃ x, μ'.store.get L 3 = some x) μ := by
+  obtain ⟨hlen, hh, -, hq, -, -, ht, hL5, -⟩ := hc
+  refine (bottomScan_terminates (n := n + 1) (k := 1) hS hL hNat hC (by omega) hW ht
+    (by simp [Mem.Live, hlen]; omega) (by simp [hL5]) (Fp.disj_inBlock_of_ne (by omega))
+    (Fp.disj_inBlock_of_ne (by omega))).mono le_rfl ?_
+  rintro μ' - ⟨-, ⟨h1, -⟩ | ⟨h0, -⟩⟩
+  exacts [⟨_, by simpa using h1⟩, ⟨_, by simpa using h0⟩]
+
 /-- `NLAlib.SmallEig.decoupleLast` on a scalar machine with the standard model at
 $0 \le \boldsymbol{u}$, $(n + 2)\boldsymbol{u} \le 1/2500$, index literals, exact natural literals
 up to $n + 2$, exact comparisons and conversion: from `NLAlib.SmallEig.DecoupleInput` with an
@@ -390,12 +409,13 @@ theorem decoupleLast_spec {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS :
         (1 - u) * ‖H' (Fin.last (n + 1)) (Fin.last n).castSucc‖ ≤ √(qs.getD 7 0)) μ := by
   sorry
 
+omit [Has IdxTst Q] in
 /-- `NLAlib.SmallEig.decoupleLast` terminates on every tape: from `NLAlib.SmallEig.DecoupleInput`
 with any matrix of order $n + 2$ and at least eight words, on a scalar machine with index
-literals, exact natural literals up to $n + 2$, exact comparisons and conversion, it writes only
+literals, exact natural literals up to $n + 2$ and exact comparisons, it writes only
 the matrix and the flag and stores both. -/
 theorem decoupleLast_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
-    (hL : IsIndexLit M I) (hC : IsCmp id I) (hQ : IsToNat id I) {n m₂ : ℕ}
+    (hL : IsIndexLit M I) (hC : IsCmp id I) {n m₂ : ℕ}
     (hNat : IsExactNatLit id M (n + 2)) {H : Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ} {ζ : ℂ}
     {qs : List ℝ} (hqs : 8 ≤ qs.length) {τ : Tape ℝ} {μ : Mem ℝ} {h lam qw f : ℕ × ℕ}
     (hin : DecoupleInput H ζ qs h lam qw f μ) :
@@ -404,7 +424,77 @@ theorem decoupleLast_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsS
       (Store.inBlock h.1 h.2 (2 * ((n + 2) * (n + 2))) ⊔ Store.inBlock f.1 f.2 1)
       (fun μ' => (∃ H' : Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ, HoldsMatrix h H' μ'.store) ∧
         ∃ x, μ'.store.get f.1 f.2 = some x) μ := by
-  sorry
+  obtain ⟨hl, ⟨hhr, -, -, hfr, -⟩, ⟨dH, -, -, -⟩, hHs, hlam, hqw⟩ := hin
+  simp only [Fp.blocks_cons, Fp.blocks_nil] at dH
+  have hzero : M.lit 0 = 0 := by simpa using hNat 0 (by omega)
+  have hh1 : h.1 < μ.store.length := hl h (by simp)
+  have hl1 : lam.1 < μ.store.length := hl lam (by simp)
+  have hq1 : qw.1 < μ.store.length := hl qw (by simp)
+  have hf1 : f.1 < μ.store.length := hl f (by simp)
+  unfold decoupleLast
+  change Writes .total I τ (Stmt.allocs [.const 5, .const 2] _) _ _ _ μ
+  refine writes_allocs_preserving_post (ns := [5, 2]) rfl
+    (fun hBelow ⟨⟨H', hW⟩, x, hx⟩ => ⟨⟨H', hW.of_below hBelow hh1⟩, x, hBelow.get_of hf1 hx⟩) ?_
+  intro s₁ hlen hlens hBelow
+  set L := μ.store.length with hLdef
+  simp only [List.length_cons, List.length_nil] at hlen
+  set G := Store.inBlock h.1 h.2 (2 * ((n + 2) * (n + 2))) ⊔ Store.inBlock L 0 5 ⊔
+    Store.inBlock (L + 1) 0 2 with hG
+  have hc₁ : DecoupleLastCtx n L h lam qw f ζ (qs.getD 7 0) s₁ :=
+    ⟨by omega, hh1, hl1, hq1, hf1, hBelow.readBlock_of hl1 hlam,
+      hBelow.get_of hq1 (Store.get_of_readBlock hqw (by omega) 0),
+      by simpa using hlens 0 (by simp), by simpa using hlens 1 (by simp),
+      by rw [(hBelow f.1 hf1).1]; omega, dH.mono le_rfl (by fp_sub)⟩
+  have hRH : ∀ {o k : ℕ}, Fp.Disj (Store.inBlock L o k)
+      (Store.inBlock h.1 h.2 (2 * ((n + 2) * (n + 2)))) := Fp.disj_inBlock_of_ne (by omega)
+  set Inv : ℕ → Mem ℝ → Prop := fun _ μ' => DecoupleLastCtx n L h lam qw f ζ (qs.getD 7 0)
+    μ'.store ∧ (∃ H' : Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ, HoldsMatrix h H' μ'.store) ∧
+      ∃ x, μ'.store.get L 3 = some x with hInv
+  have hRG : Store.inBlock L 0 5 ≤ G := le_sup_right.trans le_sup_left
+  refine (bottomScan_terminates_decoupleLastCtx (τ := τ) (μ := ⟨s₁, μ.pos⟩) hS hL hNat hC
+    hc₁ (hHs.of_below hBelow hh1)).frame_seq_le rfl rfl (by simp [Mem.Live, hlen]; omega)
+    (fun b i hb => Or.inr (hb.1 ▸ le_rfl)) ?_
+  rintro μ₁ hfr₁ ⟨x₁, hx₁⟩
+  have hMG : Store.inBlock h.1 h.2 (2 * ((n + 1 + 1) * (n + 1 + 1))) ⊔
+      Store.inBlock (L + 1) 0 (2 * 1) ≤ G :=
+    sup_le (le_sup_left.trans le_sup_left) (show Store.inBlock (L + 1) 0 2 ≤ G from le_sup_right)
+  have hexit : ∀ μ' : Mem ℝ, Inv 0 μ' → Writes .total I τ
+      (roundedDecoupleExit (O := O) (Q := Q)).body (Env.frame [] [(L, 0), f])
+      (Store.inBlock f.1 f.2 1)
+      (fun μ'' => (∃ H' : Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ, HoldsMatrix h H' μ''.store) ∧
+        ∃ x, μ''.store.get f.1 f.2 = some x) μ' := by
+    rintro μ' ⟨hc', ⟨H', hW⟩, x, hx⟩
+    refine (roundedDecoupleExit_writes_word (r := (L, 0)) hL hC (by simpa using hx)
+      hc'.2.2.2.2.2.2.2.2.2.1).mono le_rfl ?_
+    rintro μ'' hfr ⟨y, hy⟩
+    exact ⟨⟨H', hW.of_eqOff hfr (hc'.2.2.2.2.2.2.2.2.2.2.mono le_rfl le_sup_right).symm⟩, y, hy⟩
+  refine (writes_whileFuel (N := m₂) rfl (fun _ => G) (fun _ _ => le_rfl)
+    (Store.inBlock f.1 f.2 1) Inv _ ⟨hc₁.of_eqOff hRG hfr₁,
+      ⟨H, (hHs.of_below hBelow hh1).of_eqOff hfr₁ hRH⟩, x₁, hx₁⟩ ?_ ?_).mono ?_
+    (fun _ _ h => h)
+  · rintro i hi μ' - ⟨hc', ⟨H', hW⟩, v, hv⟩
+    refine ⟨_, (Interp.testAt_eq (a := [(L, 3)]) rfl rfl).trans (hC.test_isZero hv), ?_⟩
+    dsimp only
+    split_ifs with hz
+    · refine (multiStepStable_terminates (k := 1) (τ := τ) (a := h) (s := lam)
+        (ds := (L + 1, 0)) hS hzero hC (by simp [Mem.Live, hc'.1]; omega) hW
+        (by simpa using hc'.2.2.2.2.2.1) (by simp [hc'.2.2.2.2.2.2.2.2.1])
+        (hc'.2.2.2.2.2.2.2.2.2.2.mono le_rfl (le_sup_left.trans le_sup_left))
+        (Fp.disj_inBlock_of_ne (by omega)) (Fp.disj_inBlock_of_ne (by omega))).frame_seq_le
+        rfl rfl (by simp [Mem.Live, hc'.1]; omega) hMG ?_
+      rintro μ₂ hfr₂ ⟨-, ⟨H'', hW'⟩, -⟩
+      have hc₂ := hc'.of_eqOff hMG hfr₂
+      refine ((bottomScan_terminates_decoupleLastCtx hS hL hNat hC hc₂ hW').in_frame rfl
+        rfl (by simp [Mem.Live, hc₂.1]; omega)).mono hRG ?_
+      rintro μ₃ hfr₃ hs₃
+      exact ⟨hc₂.of_eqOff hRG hfr₃, ⟨H'', hW'.of_eqOff hfr₃ hRH⟩, hs₃⟩
+    · exact (hexit μ' ⟨hc', ⟨H', hW⟩, v, hv⟩).in_frame rfl rfl
+        (by simp [Mem.Live, hc'.1]; omega)
+  · rintro μ' - hI
+    exact (hexit μ' hI).in_frame rfl rfl (by simp [Mem.Live, hI.1.1]; omega)
+  · exact sup_le (sup_le (sup_le (le_sup_left.trans le_sup_left)
+      (fun b i hb => Or.inr (hb.1 ▸ le_rfl))) (fun b i hb => Or.inr (hb.1 ▸ Nat.le_succ L)))
+      (le_sup_right.trans le_sup_left)
 
 end Theorems
 

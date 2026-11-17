@@ -352,7 +352,7 @@ theorem shTestStep_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSca
     (p := (L + 3, 0)) hS hzero hC (by simp [Mem.Live, hL₂]) (hT₁.of_eqOff hfr₂ (by disjoint)) hSR
     (by rw [hfr₂.len_eq, hfr₁.len_eq]; simp [h3]) (by disjoint) (by disjoint)).frame_seq_le
     rfl rfl (by simp [Mem.Live, hL₂]) (by fp_sub) ?_
-  rintro m₃ hfr₃ ⟨⟨H', hT₃⟩, x, hP₃⟩
+  rintro m₃ hfr₃ ⟨-, ⟨H', hT₃⟩, x, hP₃⟩
   have hL₃ : m₃.store.length = L + 12 := by rw [hfr₃.length_eq, hL₂]
   have hfr := (hfr₁.trans' hfr₂).trans' hfr₃
   refine (shThreshold_writes (τ := τ) (p := (L + 4, 0)) hS hkn (hA.of_eqOff hfr (by disjoint))

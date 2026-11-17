@@ -85,7 +85,7 @@ theorem smallEig_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Interp O Q
     (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
     (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
     (hG : law sG = gaussianReal 0 1) {c₁ c₂ : PolyLogTail}
-    (hA : ComplexGaussianGapTail c₁) (hB : ComplexGaussianConditionTail c₂)
+    (hA : PolyLogTail.BoundsGinibreGap c₁) (hB : PolyLogTail.BoundsGinibreCondition c₂)
     (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b)
     {nmax : ℕ} (hn : n + 1 ≤ nmax)
     {M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {S δ φ : ℝ} (hMS : specNorm M ≤ S)
@@ -162,7 +162,7 @@ theorem roundedShQRSmallEig_measureReal_not_spectrum_le {Mch : Machine ℝ} {I :
     (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
     (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
     (hG : law sG = gaussianReal 0 1) {c₁ c₂ : PolyLogTail}
-    (hA : ComplexGaussianGapTail c₁) (hB : ComplexGaussianConditionTail c₂)
+    (hA : PolyLogTail.BoundsGinibreGap c₁) (hB : PolyLogTail.BoundsGinibreCondition c₂)
     (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b)
     {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {k : ℕ}
     {B Γ S δ φ : ℝ} (hHess : IsUpperHessenberg H) (hV : IsUnit V)
@@ -395,7 +395,7 @@ $(8/t_2, t_1/8)$, inside the decoupler after `RHess` $(16/t_2, t_1/16)$; only lo
 ### 2.8 The random-matrix hypotheses
 
 The spec's two theorems are hypotheses through named predicates (rule 2), defined in the
-collaborator's file `Eigensolvers/SmallEig/RandomMatrixTails.lean` with the *weak forms'* bodies
+collaborator's file `RandomMatrix/Shattering/GinibreClass.lean` with the *weak forms'* bodies
 (RM1, RM2), parametrized by `PolyLogTail`. The weak forms are consumed because the preferred
 forms imply them (RM3, when delivered) and the spec allows either. The two events are combined by
 RM4 (ours, as the spec assigns): for every $\mathbf{M}$ (shift trick of §1.1), the probability
@@ -599,7 +599,7 @@ are in the JSON only.
 | SE2 | `NLAlib.SmallEig.smallEigProg_terminates` — `SmallEigCaps T qs → IsExactNatLit id Mch kmax → TerminatingSmallEig kmax T qs smallEigProg I` (review B5: `bindIdx` fails on a negative or too large word, so not for every qs): every tape, any input matrix; no literal above the order is written, so `IsExactNatLit id Mch kmax` suffices | Eigensolvers/SmallEig/Program.lean | M | SE1, CO2, HR3 | 5 | stage |
 | PA1 | `NLAlib.SmallEig.smallEigParams, smallEigParams_spec` — Words (γ, ω, β' = ω/20, η₁, η₂, threshold, t_L, m, q, t, m₂) from (nmax, S, δ, φ, c₁, c₂) at an outer order bound nmax, valid at every order ≤ nmax (review B1); failure budget φ/4 each to gap, κ, norm and core (review S2) and the side conditions of GP3, RH3, OE2, DC2, D3b, CO1 at once; Lemma 6.5 replaced by RM4/RM5 (no shattering vocabulary) | Eigensolvers/SmallEig/Parameters.lean | L | RM5, M4a, M4b, M4c, CO1, D3b, GP3 | 6 | stage |
 | PA2 | `NLAlib.SmallEig.smallEigParams_pos, smallEigCaps_le` — Positivity of every word and of u_SmallEig; caps m, t, m₂ ≥ 1 and ≤ T := smallEigCap, q ≤ m, m = 2^q (review B4, D6); the words satisfy `SmallEigCaps T qs` (they are read by `bindIdx` with bound T from exact parameter words, so no literal above the order is written: `IsExactNatLit id Mch (n + 1)` suffices, as PAR1 checked for Part II) | Eigensolvers/SmallEig/Parameters.lean | M | PA1 | 7 | stage |
-| PA3 | `NLAlib.SmallEig.uSmallEig, uSmallEig_spec` — u_SmallEig nmax … := min(u_GP, u_HR, u_RH, u_DS, u_DC, u_core) closed form at the outer bound nmax (review B1) (P12/G8/G9/G16 corrected inputs); spec: u ≤ uSmallEig ⇒ every u-hypothesis of GP3 … CO1 | Eigensolvers/SmallEig/Precision.lean | L | PA1 | 7 | stage |
+| PA3 | `NLAlib.SmallEig.uSmallEig, uSmallEig_spec` — u_SmallEig nmax … := min(u_GP, u_HR, u_RH, u_DS, u_DC) (u_core removed, §14.1) closed form at the outer bound nmax (review B1) (P12/G8/G9/G16 corrected inputs); spec: u ≤ uSmallEig ⇒ every u-hypothesis of GP3 … CO1 | Eigensolvers/SmallEig/Precision.lean | L | PA1 | 7 | stage |
 | PA4 | `NLAlib.SmallEig.logb_inv_uSmallEig_le` — ∀ normalized tail records c₁' c₂', ∃ c₁ c₂, ∀ …, log₂(1/uSmallEig nmax S δ φ c₁' c₂') ≤ c₁ · log₂(Y)² + c₂, Y = 4 nmax S/(δ φ) (review S1: the tail constants are quantified before ∃ c, their exponents enter c₁): Theorem 1.1's O(log²) bits | Eigensolvers/SmallEig/Precision.lean | M | PA3 | 8 | stage |
 | PA5 | `NLAlib.SmallEig.forwardBackwardError, uSmallEigForward` — δ_b(kmax, S, β) := S (β/(4(2kmax+1)S))^{kmax}·…: backward δ_b at order ≤ kmax gives forward β by M14; uSmallEigForward := uSmallEig at δ_b | Eigensolvers/SmallEig/Precision.lean | S | PA3, M14 | 8 | stage |
 | TH1 | `NLAlib.SmallEig.smallEig_measureReal_not_spectrum_le` — Headline (a), §1.1: order n + 1 ≤ nmax, words and u₀ at nmax | Eigensolvers/SmallEig/Theorems.lean | M | CO1, GP3, SE1, PA1, PA3, HR2, RMn | 8 | stage |
@@ -607,16 +607,14 @@ are in the JSON only.
 | TH3 | `NLAlib.SmallEig.smallEigProg_randomSmallEigContract` — Headline (b), §1.2: forward contract on orders ≤ kmax, norms ≤ S | Eigensolvers/SmallEig/Theorems.lean | M | TH1, PA5, M14 | 9 | stage |
 | TH6 | `NLAlib.SmallEig.smallEigAlgorithm, smallEig_algorithm_measureReal_not_accepts_le` — Canonical certificate (confined, uniform, no oracle) and the accepts bound: cost and correctness on one counted run | Eigensolvers/SmallEig/Certificate.lean | M | TH1, TH5, SE2 | 9 | stage |
 | TH4 | `NLAlib.SmallEig.smallEig_measureReal_not_forward_le` — Corollary 1.3 as a probability statement for one input of order n+1 ≤ kmax | Eigensolvers/SmallEig/Theorems.lean | S | TH3 | 10 | stage |
-| RM1 | `NLAlib.ComplexGaussianGapTail` — def ComplexGaussianGapTail (c : PolyLogTail) : Prop := ∀ {Ω : Type} {mΩ} {μ} {n : Type} [Fintype n] [DecidableEq n] {G}, HasLaw G (complexGaussianMatrix n n) μ → ∀ M {γ t}, 0 < γ → 2γ ≤ specNorm M → 0 < t → t ≤ γ → μ.real {ω \| ¬ ∃ d, IsEigenvalueListing (M + (γ/√card n) • G ω) d ∧ ∀ i j, i ≠ j → t < ‖d i - d j‖} ≤ c.C · card n ^ c.a · (t/γ)^c.b · (specNorm M/γ + log(γ/t))^c.c  (the body of the spec's weak form A; `PolyLogTail` = (C a b c : ℝ)) | Eigensolvers/SmallEig/RandomMatrixTails.lean (new; collaborator's file, ours: defs + glue) | S | — | 0 | hyp |
-| RM2 | `NLAlib.ComplexGaussianConditionTail` — def ComplexGaussianConditionTail (c : PolyLogTail) : Prop := (the body of the spec's weak form B: … 0 < t → t ≤ 1 → μ.real {ω \| ¬ ∃ V d, IsUnit V ∧ (M + (γ/√card n) • G ω) * V = V * diagonal d ∧ pseudoConditionNumber V ≤ t⁻¹} ≤ c.C card n^c.a t^c.b (specNorm M/γ + log t⁻¹)^c.c) | Eigensolvers/SmallEig/RandomMatrixTails.lean (new; collaborator's file, ours: defs + glue) | S | — | 0 | hyp |
+| RM1 | `NLAlib.PolyLogTail.BoundsGinibreGap` — def PolyLogTail.BoundsGinibreGap (c : PolyLogTail) : Prop := ∀ {Ω : Type} {mΩ} {μ} {n : Type} [Fintype n] [DecidableEq n] {G}, HasLaw G (complexGaussianMatrix n n) μ → ∀ M {γ t}, 0 < γ → 2γ ≤ specNorm M → 0 < t → t ≤ γ → μ.real {ω \| ¬ ∃ d, IsEigenvalueListing (M + (γ/√card n) • G ω) d ∧ ∀ i j, i ≠ j → t < ‖d i - d j‖} ≤ c.C · card n ^ c.a · (t/γ)^c.b · (specNorm M/γ + log(γ/t))^c.c  (the body of the spec's weak form A; `PolyLogTail` = (C a b c : ℝ)) | RandomMatrix/Shattering/GinibreClass.lean (new; collaborator's file, ours: defs + glue) | S | — | 0 | hyp |
+| RM2 | `NLAlib.PolyLogTail.BoundsGinibreCondition` — def PolyLogTail.BoundsGinibreCondition (c : PolyLogTail) : Prop := (the body of the spec's weak form B: … 0 < t → t ≤ 1 → μ.real {ω \| ¬ ∃ V d, IsUnit V ∧ (M + (γ/√card n) • G ω) * V = V * diagonal d ∧ pseudoConditionNumber V ≤ t⁻¹} ≤ c.C card n^c.a t^c.b (specNorm M/γ + log t⁻¹)^c.c) | RandomMatrix/Shattering/GinibreClass.lean (new; collaborator's file, ours: defs + glue) | S | — | 0 | hyp |
 | RM6 | `NLAlib.measureReal_specNorm_ge_mul_le_of_hasLaw_complexGaussianMatrix` — R1 rescaled, free budget (review S2): P[‖(γ/√n) G‖ ≥ γ W] ≤ φ' for W = 2√2 + √(log(1/φ')/n), 0 < φ' ≤ 1 | RandomMatrix/Gaussian/Complex.lean | S | — | 0 | gen |
 | RM7 | `NLAlib.measureReal_norm_dotProduct_le_le_of_hasLaw_complexGaussianVector` — R2 without the sphere: g complex Gaussian vector, ‖v‖ = 1: P[‖star v ⬝ᵥ g‖ ≤ s] ≤ s²; with RM6 for ‖g‖ (n × 1 matrix) this replaces Lemma 5.2 and Appendix A | RandomMatrix/Gaussian/Complex/LeastSingularValue.lean | S | — | 0 | gen |
 | RM8 | `NLAlib.hasLaw_complexGaussianMatrix_windowFn` — Under IsTapeLaw with law sG = gaussianReal 0 1, the matrix built from a window of 2N² entries of sG at a fixed position by (x + i y)/√2, column-major, has law complexGaussianMatrix (Fin N) (Fin N); likewise a vector from 2N entries | RandomMatrix/Gaussian/Tape.lean | S | — | 0 | gen |
-| RMn | `NLAlib.PolyLogTail.normalize, ComplexGaussianGapTail.normalize, ComplexGaussianConditionTail.normalize` — Normalized record (review S1): ComplexGaussianGapTail c ⇒ ComplexGaussianGapTail c.normalize with c.normalize = (max C 1, max a 0, b, max c 0) (valid: card n ≥ 1 and the base K ≥ 2 in the range); same for the condition tail. Every parameter is defined from the normalized record: log₂(C/φ) is not junk, tails are monotone in the order and in K | Eigensolvers/SmallEig/RandomMatrixTails.lean (new; collaborator's file, ours: defs + glue) | S | RM1, RM2 | 1 | gen |
-| RM9 | `NLAlib.exists_complexGaussianGapTail_iff, exists_complexGaussianConditionTail_iff (+ `example`s)` — Plug lemmas (review S7 ii): the spec's `exists_forall_measureReal_not_exists_isEigenvalueListing_le_of_hasLaw_complexGaussianMatrix` statement ↔ ∃ c, 0 < c.b ∧ ComplexGaussianGapTail c; likewise for `exists_forall_measureReal_not_exists_pseudoConditionNumber_le_le_of_hasLaw_complexGaussianMatrix`; each with an `example` restating the spec's binders verbatim, so a binder drift fails at skeleton time | Eigensolvers/SmallEig/RandomMatrixTails.lean (new; collaborator's file, ours: defs + glue) | S | RM1, RM2 | 1 | hyp |
-| RM4 | `NLAlib.measureReal_not_exists_class_le_of_hasLaw_complexGaussianMatrix` — For every M (no norm condition), every γ > 0 (the program's rounded scale γ'/√d is a valid γ, review B1), 0 < t₁ ≤ γ, 0 < t₂ ≤ 1, RM1 c₁, RM2 c₂: μ.real {ω \| ¬ ∃ V d, IsUnit V ∧ (M + (γ/√n) G ω) V = V diag d ∧ κ(V) ≤ t₂⁻¹ ∧ ∀ i ≠ j, t₁ ≤ ‖d i - d j‖} ≤ tail c₁ n (K/…) + tail c₂ …, K = (‖M‖ + 4γ)/γ | Eigensolvers/SmallEig/RandomMatrixTails.lean (new; collaborator's file, ours: defs + glue) | M | RM1, RM2, M13, RMn | 2 | gen |
+| RMn | `NLAlib.PolyLogTail.normalize, PolyLogTail.BoundsGinibreGap.normalize, PolyLogTail.BoundsGinibreCondition.normalize` — Normalized record (review S1): PolyLogTail.BoundsGinibreGap c ⇒ PolyLogTail.BoundsGinibreGap c.normalize with c.normalize = (max C 1, max a 0, b, max c 0) (valid: card n ≥ 1 and the base K ≥ 2 in the range); same for the condition tail. Every parameter is defined from the normalized record: log₂(C/φ) is not junk, tails are monotone in the order and in K | RandomMatrix/Shattering/GinibreClass.lean (new; collaborator's file, ours: defs + glue) | S | RM1, RM2 | 1 | gen |
+| RM4 | `NLAlib.measureReal_not_exists_class_le_of_hasLaw_complexGaussianMatrix` — For every M (no norm condition), every γ > 0 (the program's rounded scale γ'/√d is a valid γ, review B1), 0 < t₁ ≤ γ, 0 < t₂ ≤ 1, RM1 c₁, RM2 c₂: μ.real {ω \| ¬ ∃ V d, IsUnit V ∧ (M + (γ/√n) G ω) V = V diag d ∧ κ(V) ≤ t₂⁻¹ ∧ ∀ i ≠ j, t₁ ≤ ‖d i - d j‖} ≤ tail c₁ n (K/…) + tail c₂ …, K = (‖M‖ + 4γ)/γ | RandomMatrix/Shattering/GinibreClass.lean (new; collaborator's file, ours: defs + glue) | M | RM1, RM2, M13, RMn | 2 | gen |
 | RM5 | `NLAlib.SmallEig.ginibreClass_spec` — At an outer order bound nmax (review B1) and a free failure budget φ' (review S2): t₁(φ', nmax, S, γ, c₁), t₂(φ', nmax, S, γ, c₂) with each tail ≤ φ' at every order ≤ nmax (normalized record, a ≥ 0), 0 < t₁ ≤ γ, 0 < t₂ ≤ 1, and log₂(1/t_i) ≤ (a log₂(4 nmax) + log₂(C/φ') + c log₂ K + 1)/(b/2) | Eigensolvers/SmallEig/Parameters.lean | M | RM1, RM2, RMn | 2 | stage |
-| RM3 | `NLAlib.complexGaussianGapTail_of_preferred, complexGaussianConditionTail_of_preferred` — The collaborator's preferred statements imply RM1 at (1, 3, 2, 0) and RM2 at (18, 3, 2, 2) (review S9: in the range 2γ ≤ ‖M‖, 2√2 + 1 ≤ 1.92‖M‖/γ and √(4L) ≤ L + 1, no case split; the earlier (8, 3, 2, 2) is false: at t = 1, ‖M‖ = 2γ the preferred bound is 46.6 n³) | Eigensolvers/SmallEig/RandomMatrixTails.lean (new; collaborator's file, ours: defs + glue) | S | RM1, RM2 | 6 | hyp |
 | RF1 | `NLAlib.ShiftedQR.RandomSmallEigContract, TerminatingSmallEig, smallEigKernel, IsRandomSmallEig.randomSmallEigContract, IsRandomSmallEig.terminatingSmallEig` — `RandomSmallEigContract law β φ kmax T S qs SE I`: ∀ d ≤ kmax, B Hessenberg, specNorm B ≤ S, PWrites law I SE.body (frame [d, qs.length, T] [w, q, o]) (inBlock o (2d)) (B, qs stored, live, room, apart) (∃ roots ev, IsEigenvalueListing B ev ∧ ∀ i, ‖roots i - ev i‖ ≤ β ∧ HoldsMatrix o (col roots)) φ; `TerminatingSmallEig kmax T qs SE I` the all-tape total run on orders ≤ kmax (elaboration: an unbounded order would need exact natural literals of every size); `smallEigKernel : [d, nq, T] (Bk, Q) → (Ev)` calls the kernel and ignores Q; bridges: IsRandomSmallEig law s β φ I → RandomSmallEigContract law β φ kmax T S qs smallEigKernel I (any kmax, T, S, qs) and → TerminatingSmallEig | Eigensolvers/ShiftedQR/RoundedKernels.lean | S | — | 0 | refactor |
 | RF2a | `NLAlib.ShiftedQR.solveRoundedWith, liftLeaf; solveRounded as a wrapper` — `solveRoundedWith D L : [N, k, np, F, T] (A, Thr, P) → (Out, Fl)`, leaf call `run L.body [d, np, T] (W, P, Out[2 lo])`; `liftLeaf L : [d, np, T] (Bk, P) → (Ev) := run L.body [d] (Bk, Ev)`; `solveRounded D L := opsImpl% [N,k,np,F] … { run (solveRoundedWith D (liftLeaf L)).body [N,k,np,F,0] … }` (interface and every merged statement unchanged); contracts `RandomLeafRoutineContract law β φ kmax Nmax ps T L I`, `BackwardLeafRoutineContract`, `TerminatingLeafRoutine` (leaf frame [d, ps.length, T] [w, p, o], d ≤ kmax, norm ≤ Nmax) with bridges from the merged ones through liftLeaf | Eigensolvers/ShiftedQR/RoundedSolve.lean | M | RF1 | 1 | refactor |
 | RF3 | `regularizeWith, regularizeWithScratchWith, shIterationWith, roundedDecoupleLoopWith, roundedDecoupleWith; merged names as wrappers` — Each program gains the routine `SE : Impl O Q`, the operand `Q` (the view `P[np - nq]`: the SmallEig words are the tail of P; `nq` is the fixed word count of `smallEigParams`, a literal; review B2: the merged `roundedDecoupleParams` has length 10 + 2·\|excNet ε\|, not a literal) and the dimension `T`; `run smallEigLeaf.body [k] (B, S)` becomes `run SE.body [k, nq, T] (B, Q, S)`; the merged `regularize`, `shIteration`, `roundedDecouple` are wrappers at `SE := smallEigKernel`, `nq = T = 0` | Eigensolvers/ShiftedQR/RoundedRegularize.lean, RoundedIteration.lean, RoundedDecouple.lean | M | RF1 | 1 | refactor |
@@ -639,7 +637,6 @@ are in the JSON only.
 | HL2 | `NLAlib.ShiftedQR.roundedShQRSmallEig_measureReal_not_spectrum_le` — Headline (c), §1.3 | Eigensolvers/ShiftedQR/RoundedSmallEig.lean (new) | M | HL1, TH3, RF5, SE2 | 10 | stage |
 | HL4 | `NLAlib.ShiftedQR.logb_inv_uShQRSmallEig_le, shqrDegree_le_log` — ∃ c₁ c₂ c₃, log₂(1/uShQRSmallEig) ≤ c₁ k log₂ Y + c₂ k² (log₂ Y)² + c₃, Y = 4(n+1)BS²K/(δ min(Γ,S) φ); with k ≤ c (log₂ 4B + 1)(log₂ log₂ 16B + 1) this is O(log⁴ Y) up to (log log)² | Eigensolvers/ShiftedQR/RoundedSmallEig.lean (new) | M | HL1, PA4 | 10 | stage |
 | HL6 | `NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm, …_measureReal_not_accepts_le` — Certificate without a SmallEig oracle (the model is scalar + index + samples + polar sampler) | Eigensolvers/ShiftedQR/RoundedSmallEigCertificate.lean (new) | M | HL2, HL5, TH6 | 11 | stage |
-| HL8 | `NLAlib.ShiftedQR.roundedShQRSmallEig_measureReal_not_spectrum_le_of_spec (placeholder)` — The final corollary with hA, hB discharged from the collaborator's theorems through RM9/RM3 (review S7 iii); the statement is fixed now, its proof waits for the delivery | Eigensolvers/ShiftedQR/RoundedSmallEig.lean (new) | S | HL2, RM9, RM3 | 11 | stage |
 | HL7 | `NLAlib.ShiftedQR.roundedShQRSmallEig_relative, _hermitian` — Optional: the T3/T4 corollaries for the unconditional program | Eigensolvers/ShiftedQR/RoundedSmallEig.lean (new) | S | HL2 | 11 | stage |
 
 **Totals.**
@@ -677,7 +674,7 @@ worklist, `DistSpec`'s pieces and the sampler are reused and the sphere sampler 
 | `Matrix/FinitePrecision/GivensRounded.lean` | M15 | rounded rotations |
 | `Matrix/FinitePrecision/OpsSampling.lean` | GP2 | rounding of sampled words |
 | `Eigensolvers/HessenbergReduction.lean` (new) | HR1–HR3 | a general rounded program (consumers: SmallEig, any dense eigensolver); the merged exact `hessenbergReduction` (`Matrix/Factorizations/Hessenberg.lean:239`) is top-down, fixes $\mathbf{e}_1$ and is not a program, so any exact bottom-up statement goes next to it (review S11) |
-| `Eigensolvers/SmallEig/RandomMatrixTails.lean` (new) | RM1–RM4, RMn, RM9, the instances `complexGaussianGapTail`, `complexGaussianConditionTail` | the solver-facing records; the tails that discharge them are in `RandomMatrix/Shattering/` (design note `RandomMatrix-Shattering.md`) |
+| `RandomMatrix/Shattering/GinibreClass.lean` (new) | RM1–RM4, RMn, RM9, the instances `boundsGinibreGap_ginibreGapRecord`, `boundsGinibreCondition_ginibreConditionRecord` | the solver-facing records; the tails that discharge them are in `RandomMatrix/Shattering/` (design note `RandomMatrix-Shattering.md`) |
 | `RandomMatrix/Gaussian/Complex.lean`, `…/LeastSingularValue.lean`, `…/Gaussian/Tape.lean` | RM6, RM7, RM8 | Gaussian facts |
 | `Eigensolvers/SmallEig/` (new folder): `Draws`, `Perturb`, `OneEigMath`, `RandomHessenberg`, `DistSpec`, `OneEig`, `Decouple`, `Decoupler`, `Leaf`, `Core`, `Program`, `Parameters`, `Precision`, `Theorems`, `Certificate` | GD1 … TH6, M4a–c, M5, M6, M17, RM5 | the algorithm |
 | `Eigensolvers/ShiftedQR/Rounded*.lean` (merged) | RF1–RF7 | the refactor |
@@ -695,7 +692,7 @@ notions).
 | object | meaning | Mathlib bridge |
 |---|---|---|
 | `PolyLogTail` | record $(C, a, b, c)$ of a tail $C n^a\tau^b K^c$; `PolyLogTail.normalize` | none (data) |
-| `ComplexGaussianGapTail c`, `ComplexGaussianConditionTail c` | the collaborator's weak-form bodies as hypotheses | `HasLaw … complexGaussianMatrix`; RM9 to the spec's statements |
+| `PolyLogTail.BoundsGinibreGap c`, `PolyLogTail.BoundsGinibreCondition c` | the collaborator's weak-form bodies as hypotheses | `HasLaw … complexGaussianMatrix`; RM9 to the spec's statements |
 | `RandomSmallEigContract law β φ kmax T S qs SE I` | a randomized routine's forward contract on orders $\le k_{\max}$, norms $\le \Sigma$ | `PWrites`; bridge from `IsRandomSmallEig` |
 | `TerminatingSmallEig T qs SE I`, `SmallEigCaps T qs` | all-tape totality; valid cap words | `Writes .total` |
 | `RandomLeafRoutineContract`, `BackwardLeafRoutineContract`, `TerminatingLeafRoutine` | the merged leaf contracts with bounds and a parameter view | bridges from the merged contracts through `liftLeaf` |
@@ -794,8 +791,8 @@ Per statement, to be checked in the skeleton (the Part II lessons in brackets):
   **Recommend (a)** with RF first inside wave 0–2: the refactor touches merged files that later
   waves import, and the inner worklist needs the bounded leaf contract (RF2a) anyway, so (b) does
   not avoid it.
-* **D5 Names of the random-matrix predicates and the tail record.** (a) `ComplexGaussianGapTail`,
-  `ComplexGaussianConditionTail`, `PolyLogTail` (law in the name, N9-style); (b) consume the
+* **D5 Names of the random-matrix predicates and the tail record.** (a) `PolyLogTail.BoundsGinibreGap`,
+  `PolyLogTail.BoundsGinibreCondition`, `PolyLogTail` (law in the name, N9-style); (b) consume the
   collaborator's `exists_forall_…` statements directly (then $\boldsymbol{u}_0$ is not explicit).
   **Recommend (a)** with the record normalized once (RMn), so the headlines take `hA`, `hB` (and
   $0 < b$) only; names to be confirmed against naming.md.
@@ -880,8 +877,8 @@ waves (0–11). The collaborator spec was re-read: L3 is aligned with its §3 st
 File `/home/ubuntu/.claude/jobs/59127b8e/tmp/smalleig-elab/SmallEigStatements.lean` (seed of the
 skeleton), checked with `lake env lean` against the built `NLAlib` of @6f049b04: **no errors**;
 new definitions are stubs, proofs `sorry` (except RM9, proved by repackaging). Elaborated:
-`PolyLogTail`, `PolyLogTail.normalize`, `ComplexGaussianGapTail`, `ComplexGaussianConditionTail`
-(RM1, RM2, the spec's weak-form bodies verbatim), `ComplexGaussianGapTail.normalize` (RMn),
+`PolyLogTail`, `PolyLogTail.normalize`, `PolyLogTail.BoundsGinibreGap`, `PolyLogTail.BoundsGinibreCondition`
+(RM1, RM2, the spec's weak-form bodies verbatim), `PolyLogTail.BoundsGinibreGap.normalize` (RMn),
 `exists_complexGaussianGapTail_iff` (RM9: the spec's `exists_forall_…` statement, verbatim, ↔ the
 record form; proved), the preferred Theorem A and RM3's statement, M12, M11c;
 `RandomSmallEigContract`, `TerminatingSmallEig`, `RandomLeafRoutineContract`, `smallEigKernel`
@@ -942,6 +939,29 @@ The instrumented counts of TH6 and HL6 are larger than TH5 and HL5 because the i
 counts every structural instruction at unit weight. HL5's exponent of $k + 1$ is $4$, not the
 $5$ of the target row.
 
-The random-matrix tails (RM1, RM2) are proved (`NLAlib.complexGaussianGapTail`,
-`NLAlib.complexGaussianConditionTail` at the records $(10000e, 5, 1/2, 2)$ and $(128e, 3, 2, 2)$), so
+The random-matrix tails (RM1, RM2) are proved (`NLAlib.boundsGinibreGap_ginibreGapRecord`,
+`NLAlib.boundsGinibreCondition_ginibreConditionRecord` at the records $(10000e, 5, 1/2, 2)$ and $(128e, 3, 2, 2)$), so
 every headline has an `_unconditional` form without the tail hypotheses.
+
+### 14.1 Changes after the stage review (Fable, `Review-Fable-SMALLEIG-Stage.md`)
+
+* **B-1.** The tail record and the two predicates live in
+  `RandomMatrix/Shattering/GinibreClass.lean` with the class event and the tail inversion, named
+  `PolyLogTail.BoundsGinibreGap` and `PolyLogTail.BoundsGinibreCondition` (they no longer end in
+  `Tail`); the proved records are named `ginibreGapRecord` and `ginibreConditionRecord` and are
+  registered in `docs/constants.toml`; every `_unconditional` corollary states them by name.
+* **B-2.** `ShiftedQR.TerminatingLeaf` keeps its merged meaning (no claim on the output), so the
+  merged `solveRounded_terminates` keeps its statement. The worklist's termination lemmas take a
+  leaf routine that keeps its output stored under the same condition as the output words
+  (`TerminatingLeafRoutineIf rd`): at `rd = False` a merged leaf, at any `rd` a leaf that keeps its
+  output (the small-eigenvalue program's leaves).
+* **Scaffolding removed**: the preferred-form predicates, their implications, the asymptotic
+  `exists_…_iff` forms with their `example`s (RM3, RM9) and the conditional headline HL8.
+* **S-3.** The term `uSmallEigCore` of the precision threshold was never consumed (the backward
+  error of the core is within $\delta/8$ by the `Decouple` term) and is removed; every headline
+  gets a larger admissible $\boldsymbol{u}$.
+* **S-4.** `smallEigVectorRadius` is the radius `RHess` uses, $\sqrt2\,(3\sqrt{n_{\max}} +
+  \sqrt{2\log(4/\varphi_D)})$, and `smallEigWeight` is written as the bound of `rhess_pwrites`,
+  $s^2/(64R^2(2B_c)^2)$ (the same value as before).
+* **S-7.** `roundedDecoupleLoop_terminates` is restored, as a corollary of the `With` form.
+

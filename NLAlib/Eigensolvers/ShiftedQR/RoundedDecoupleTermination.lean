@@ -324,6 +324,37 @@ theorem roundedDecoupleLoopWith_terminates {M : Machine ℝ} {I : Interp O Q ℝ
       (by have := hc.2.2.2.1; simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false,
         forall_eq_or_imp, forall_eq] at this ⊢; tauto)
 
+
+/-- The decoupling loop terminates on any matrix: on a scalar machine with exact comparisons,
+index literals, index conversion and exact natural literals up to $n + 1$, a `SmallEig` kernel
+meeting `NLAlib.ShiftedQR.IsRandomSmallEig` and an exact polar sampler, for $k = 2^q \le n$, with
+parameter words `ps` of length $10 + 2\lvert\mathrm{net}\rvert$ whose words from offset $10$ are
+the net `NLAlib.ShiftedQR.excNet ε` (the layout of `NLAlib.ShiftedQR.roundedDecoupleParams`),
+from the operands of the loop `NLAlib.ShiftedQR.DecoupleLoopCtx` and any matrix at `w`,
+`NLAlib.ShiftedQR.roundedDecoupleLoop` writes only the matrix, the flag and its registers and
+leaves the matrix and the flag stored. -/
+theorem roundedDecoupleLoop_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    (hL : IsIndexLit M I) (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I)
+    (hQ : IsToNat id I) {law : ℕ → MeasureTheory.Measure ℝ} {s₀ : ℕ} {β φse : ℝ}
+    (hSE : IsRandomSmallEig law s₀ β φse I) (hD : IsPolarDiskSampler s₀ I) {τ : Tape ℝ}
+    {μ : Mem ℝ} {k q F L : ℕ} (hkq : k = 2 ^ q) (hkn : k ≤ n) {ε : ℝ} {w p f : ℕ × ℕ}
+    {ps : List ℝ} (hlen : ps.length = 10 + 2 * (excNet ε).length)
+    (hnet : ps.drop 10 = (excNet ε).flatMap fun z => [z.re, z.im])
+    (hctx : DecoupleLoopCtx n L w p f ps μ) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    (hW : HoldsMatrix w H μ.store) :
+    Writes .total I τ (roundedDecoupleLoop (O := O) (Q := Q)).body
+      (Env.frame [n + 1, k, ps.length, F, q, (excNet ε).length] [w, p, (L, 0), w, f])
+      (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
+        Store.inBlock L 0 5)
+      (fun μ' => (∃ x, μ'.store.get f.1 f.2 = some x) ∧
+        ∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix w H' μ'.store) μ := by
+  unfold roundedDecoupleLoop
+  exact (roundedDecoupleLoopWith_terminates (F := F) (T := 0) (qs := []) hS hL hNat hC hQ hD hkq
+    hkn (hSE.terminatingSmallEigAt k 12 0 []) (Or.inl rfl) (by simpa using hlen)
+    (by simpa using hnet) hctx hW).in_frame (by simp) (by simp [Operand.evalList, Operand.eval])
+    (by have := hctx.2.2.2.1; simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false,
+      forall_eq_or_imp, forall_eq] at this ⊢; tauto)
+
 omit [Has EigenvalueKernelOp O] in
 /-- **The rounded decoupling loop with a terminating small-eigenvalue routine terminates**, with
 the parameter words `NLAlib.ShiftedQR.roundedDecoupleParams` followed by the routine's words `qs`

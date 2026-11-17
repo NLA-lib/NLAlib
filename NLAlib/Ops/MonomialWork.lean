@@ -104,6 +104,18 @@ theorem powProd_le_powProd_maxExps {bs : List ℕ} (hb : ∀ b ∈ bs, 1 ≤ b) 
       · simp only [maxExps, powProd_cons_cons]
         exact Nat.mul_le_mul (Nat.pow_le_pow_right hb0 (le_max_left x y)) (ih hbs xs ys)
 
+/-- At bases at least $1$, raising each exponent raises the product. -/
+theorem powProd_le_powProd_of_forall₂ {bs : List ℕ} (hb : ∀ b ∈ bs, 1 ≤ b) {es fs : List ℕ}
+    (h : List.Forall₂ (· ≤ ·) es fs) : powProd bs es ≤ powProd bs fs := by
+  induction h generalizing bs with
+  | nil => simp
+  | cons hab _ ih =>
+    rcases bs with _ | ⟨b, bs⟩
+    · simp
+    · simp only [powProd_cons_cons]
+      exact Nat.mul_le_mul (Nat.pow_le_pow_right (hb b (by simp)) hab)
+        (ih fun c hc => hb c (by simp [hc]))
+
 /-- **A monomial in a list of bases**: $c\prod_i b_i^{e_i}$, with the exponents `e`. -/
 structure WorkMono where
   /-- The coefficient. -/
@@ -140,6 +152,11 @@ theorem add_eval_le_eval_add (hb : ∀ b ∈ bs, 1 ≤ b) (x y : WorkMono) :
   rw [maxExps_comm] at hy
   simp only [eval, add, Nat.add_mul]
   exact Nat.add_le_add (Nat.mul_le_mul_left _ hx) (Nat.mul_le_mul_left _ hy)
+
+/-- At bases at least $1$, raising the exponents raises the value. -/
+theorem eval_le_of_le (hb : ∀ b ∈ bs, 1 ≤ b) {c : ℕ} {es fs : List ℕ}
+    (h : List.Forall₂ (· ≤ ·) es fs) : eval ⟨c, es⟩ bs ≤ eval ⟨c, fs⟩ bs :=
+  Nat.mul_le_mul_left _ (powProd_le_powProd_of_forall₂ hb h)
 
 end WorkMono
 

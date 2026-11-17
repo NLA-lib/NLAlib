@@ -674,7 +674,7 @@ worklist, `DistSpec`'s pieces and the sampler are reused and the sphere sampler 
 | `Matrix/FinitePrecision/GivensRounded.lean` | M15 | rounded rotations |
 | `Matrix/FinitePrecision/OpsSampling.lean` | GP2 | rounding of sampled words |
 | `Eigensolvers/HessenbergReduction.lean` (new) | HR1–HR3 | a general rounded program (consumers: SmallEig, any dense eigensolver); the merged exact `hessenbergReduction` (`Matrix/Factorizations/Hessenberg.lean:239`) is top-down, fixes $\mathbf{e}_1$ and is not a program, so any exact bottom-up statement goes next to it (review S11) |
-| `RandomMatrix/Shattering/GinibreClass.lean` (new) | RM1–RM4, RMn, RM9, the instances `boundsGinibreGap_ginibreGapRecord`, `boundsGinibreCondition_ginibreConditionRecord` | the solver-facing records; the tails that discharge them are in `RandomMatrix/Shattering/` (design note `RandomMatrix-Shattering.md`) |
+| `RandomMatrix/Shattering/GinibreClass.lean` (new) | RM1–RM4, RMn, RM9, the instances `boundsGinibreGap_ginibreGapTail`, `boundsGinibreCondition_ginibreConditionTail` | the solver-facing records; the tails that discharge them are in `RandomMatrix/Shattering/` (design note `RandomMatrix-Shattering.md`) |
 | `RandomMatrix/Gaussian/Complex.lean`, `…/LeastSingularValue.lean`, `…/Gaussian/Tape.lean` | RM6, RM7, RM8 | Gaussian facts |
 | `Eigensolvers/SmallEig/` (new folder): `Draws`, `Perturb`, `OneEigMath`, `RandomHessenberg`, `DistSpec`, `OneEig`, `Decouple`, `Decoupler`, `Leaf`, `Core`, `Program`, `Parameters`, `Precision`, `Theorems`, `Certificate` | GD1 … TH6, M4a–c, M5, M6, M17, RM5 | the algorithm |
 | `Eigensolvers/ShiftedQR/Rounded*.lean` (merged) | RF1–RF7 | the refactor |
@@ -939,8 +939,8 @@ The instrumented counts of TH6 and HL6 are larger than TH5 and HL5 because the i
 counts every structural instruction at unit weight. HL5's exponent of $k + 1$ is $4$, not the
 $5$ of the target row.
 
-The random-matrix tails (RM1, RM2) are proved (`NLAlib.boundsGinibreGap_ginibreGapRecord`,
-`NLAlib.boundsGinibreCondition_ginibreConditionRecord` at the records $(10000e, 5, 1/2, 2)$ and $(128e, 3, 2, 2)$), so
+The random-matrix tails (RM1, RM2) are proved (`NLAlib.boundsGinibreGap_ginibreGapTail`,
+`NLAlib.boundsGinibreCondition_ginibreConditionTail` at the records $(10000e, 5, 1/2, 2)$ and $(128e, 3, 2, 2)$), so
 every headline has an `_unconditional` form without the tail hypotheses.
 
 ### 14.1 Changes after the stage review (Fable, `Review-Fable-SMALLEIG-Stage.md`)
@@ -948,7 +948,7 @@ every headline has an `_unconditional` form without the tail hypotheses.
 * **B-1.** The tail record and the two predicates live in
   `RandomMatrix/Shattering/GinibreClass.lean` with the class event and the tail inversion, named
   `PolyLogTail.BoundsGinibreGap` and `PolyLogTail.BoundsGinibreCondition` (they no longer end in
-  `Tail`); the proved records are named `ginibreGapRecord` and `ginibreConditionRecord` and are
+  `Tail`); the proved records are named `ginibreGapTail` and `ginibreConditionTail` and are
   registered in `docs/constants.toml`; every `_unconditional` corollary states them by name.
 * **B-2.** `ShiftedQR.TerminatingLeaf` keeps its merged meaning (no claim on the output), so the
   merged `solveRounded_terminates` keeps its statement. The worklist's termination lemmas take a

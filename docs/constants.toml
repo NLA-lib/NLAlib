@@ -785,19 +785,19 @@ lean_body = 'levelSampleSize (n : ℕ) : ℕ := n + 4 * (n * n)'
 body_hash = "fbb0ee6b083e7502"
 
 [[constant]]
-name = "NLAlib.ginibreGapRecord"
+name = "NLAlib.ginibreGapTail"
 kind = "tail record"
 file = "NLAlib/RandomMatrix/Shattering/GinibreClass.lean"
 args = []
 latex = '(10000e, 5, 1/2, 2)'
-lean_body = 'ginibreGapRecord : PolyLogTail := ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩'
-body_hash = "92d30314f6a6ad65"
+lean_body = 'ginibreGapTail : PolyLogTail := ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩'
+body_hash = "1a989107c7be9763"
 
 [[constant]]
-name = "NLAlib.ginibreConditionRecord"
+name = "NLAlib.ginibreConditionTail"
 kind = "tail record"
 file = "NLAlib/RandomMatrix/Shattering/GinibreClass.lean"
 args = []
 latex = '(128e, 3, 2, 2)'
-lean_body = 'ginibreConditionRecord : PolyLogTail := ⟨128 * Real.exp 1, 3, 2, 2⟩'
-body_hash = "0ccf3288e234fa19"
+lean_body = 'ginibreConditionTail : PolyLogTail := ⟨128 * Real.exp 1, 3, 2, 2⟩'
+body_hash = "e090d8b2a3c6f7df"

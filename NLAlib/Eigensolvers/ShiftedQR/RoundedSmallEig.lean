@@ -19,8 +19,8 @@ dimension, and its forward contract on the trailing blocks of order $k$ and norm
 $4\Sigma$ (`NLAlib.SmallEig.smallEigProg_randomSmallEigContract`) gives the merged accuracy and
 failure. The headline is conditional only on the two random-matrix theorems (the hypotheses
 `NLAlib.PolyLogTail.BoundsGinibreGap`, `NLAlib.PolyLogTail.BoundsGinibreCondition`), which are
-proved at the records `NLAlib.ginibreGapRecord` <!-- value ginibreGapRecord -->
-$(10000e, 5, 1/2, 2)$, `NLAlib.ginibreConditionRecord` <!-- value ginibreConditionRecord -->
+proved at the records `NLAlib.ginibreGapTail` <!-- value ginibreGapTail -->
+$(10000e, 5, 1/2, 2)$, `NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail -->
 $(128e, 3, 2, 2)$: the `_unconditional` corollaries. One unit roundoff serves the whole run:
 $\boldsymbol{u} \le \min(\boldsymbol{u}_{\mathrm{ShQR}},
 \boldsymbol{u}^{\mathrm{fwd}}_{\mathrm{SmallEig}})$, $O(\log^4)$ bits up to $(\log\log)^2$.
@@ -523,8 +523,8 @@ theorem roundedShQRSmallEig_hermitian {Mch : Machine ℝ} {I : Interp O Q ℝ} {
 /-- The unconditional form of `NLAlib.ShiftedQR.roundedShQRSmallEig_measureReal_not_spectrum_le`
 ([BanksGarzaVargasSrivastava2022, Theorem 6.3]): the eigenvalue-gap and eigenvector-condition tails
 of a complex Ginibre perturbation are proved, at the records
-`NLAlib.ginibreGapRecord` <!-- value ginibreGapRecord --> $(10000e, 5, 1/2, 2)$ and
-`NLAlib.ginibreConditionRecord` <!-- value ginibreConditionRecord --> $(128e, 3, 2, 2)$. -/
+`NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$ and
+`NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$. -/
 theorem roundedShQRSmallEig_measureReal_not_spectrum_le_unconditional {Mch : Machine ℝ} {I : Interp
   O Q ℝ}
     {u : ℝ} {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
@@ -538,25 +538,25 @@ theorem roundedShQRSmallEig_measureReal_not_spectrum_le_unconditional {Mch : Mac
     (hHV : H * V = V * Matrix.diagonal d) (hκ : pseudoConditionNumber V ≤ B) (hΓ : 0 < Γ)
     (hgap : ∀ i j, i ≠ j → Γ ≤ ‖d i - d j‖) (hHS : specNorm H ≤ S) (hδ : 0 < δ) (hδS : δ ≤ S)
     (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hk : k = shqrDegree (4 * B))
-    (hu : u ≤ uShQRSmallEig n k B Γ S δ φ ginibreGapRecord
-      ginibreConditionRecord)
+    (hu : u ≤ uShQRSmallEig n k B Γ S δ φ ginibreGapTail
+      ginibreConditionTail)
     {a t p out f : ℕ × ℕ} {μ : Mem ℝ}
-    (hin : ShQRSmallEigInput k B Γ S δ φ ginibreGapRecord
-      ginibreConditionRecord a t p out f H μ)
+    (hin : ShQRSmallEigInput k B Γ S δ φ ginibreGapTail
+      ginibreConditionTail a t p out f H μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
     P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSmallEig (O := O) (Q := Q) sG).body
-      (Env.frame (shqrSmallEigDims n k B Γ S δ φ ginibreGapRecord
-        ginibreConditionRecord) [a, t, p, out, f]) (shqrFp n a out f)
+      (Env.frame (shqrSmallEigDims n k B Γ S δ φ ginibreGapTail
+        ginibreConditionTail) [a, t, p, out, f]) (shqrFp n a out f)
       (ShQRSpectrum out f H δ) μ} ≤ φ := by
   apply roundedShQRSmallEig_measureReal_not_spectrum_le
-    (hA := boundsGinibreGap_ginibreGapRecord) (hB := boundsGinibreCondition_ginibreConditionRecord)
-    (hb₁ := ginibreGapRecord_b_pos) (hb₂ := ginibreConditionRecord_b_pos) <;> assumption
+    (hA := boundsGinibreGap_ginibreGapTail) (hB := boundsGinibreCondition_ginibreConditionTail)
+    (hb₁ := ginibreGapTail_b_pos) (hb₂ := ginibreConditionTail_b_pos) <;> assumption
 
 /-- The unconditional form of `NLAlib.ShiftedQR.roundedShQRSmallEig_relative`
 ([BanksGarzaVargasSrivastava2022, Theorem 6.3]): the eigenvalue-gap and eigenvector-condition tails
 of a complex Ginibre perturbation are proved, at the records
-`NLAlib.ginibreGapRecord` <!-- value ginibreGapRecord --> $(10000e, 5, 1/2, 2)$ and
-`NLAlib.ginibreConditionRecord` <!-- value ginibreConditionRecord --> $(128e, 3, 2, 2)$. -/
+`NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$ and
+`NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$. -/
 theorem roundedShQRSmallEig_relative_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n
   : ℕ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
@@ -571,25 +571,25 @@ theorem roundedShQRSmallEig_relative_unconditional {Mch : Machine ℝ} {I : Inte
     (hgap : ∀ i j, i ≠ j → Γ ≤ ‖d i - d j‖) (hS0 : 0 < S) (hHS : specNorm H ≤ S)
     (hSc : S ≤ c * specNorm H) (hc : 1 ≤ c) (hδ : 0 < δ) (hδ1 : δ ≤ 1)
     (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hk : k = shqrDegree (4 * B))
-    (hu : u ≤ uShQRSmallEig n k B Γ S (δ * S / c) φ ginibreGapRecord
-      ginibreConditionRecord)
+    (hu : u ≤ uShQRSmallEig n k B Γ S (δ * S / c) φ ginibreGapTail
+      ginibreConditionTail)
     {a t p out f : ℕ × ℕ} {μ : Mem ℝ}
-    (hin : ShQRSmallEigInput k B Γ S (δ * S / c) φ ginibreGapRecord
-      ginibreConditionRecord a t p out f H μ)
+    (hin : ShQRSmallEigInput k B Γ S (δ * S / c) φ ginibreGapTail
+      ginibreConditionTail a t p out f H μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
     P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSmallEig (O := O) (Q := Q) sG).body
-      (Env.frame (shqrSmallEigDims n k B Γ S (δ * S / c) φ ginibreGapRecord
-        ginibreConditionRecord) [a, t, p, out, f])
+      (Env.frame (shqrSmallEigDims n k B Γ S (δ * S / c) φ ginibreGapTail
+        ginibreConditionTail) [a, t, p, out, f])
       (shqrFp n a out f) (ShQRSpectrum out f H (δ * specNorm H)) μ} ≤ φ := by
   apply roundedShQRSmallEig_relative
-    (hA := boundsGinibreGap_ginibreGapRecord) (hB := boundsGinibreCondition_ginibreConditionRecord)
-    (hb₁ := ginibreGapRecord_b_pos) (hb₂ := ginibreConditionRecord_b_pos) <;> assumption
+    (hA := boundsGinibreGap_ginibreGapTail) (hB := boundsGinibreCondition_ginibreConditionTail)
+    (hb₁ := ginibreGapTail_b_pos) (hb₂ := ginibreConditionTail_b_pos) <;> assumption
 
 /-- The unconditional form of `NLAlib.ShiftedQR.roundedShQRSmallEig_hermitian`
 ([BanksGarzaVargasSrivastava2022, Theorem 6.3]): the eigenvalue-gap and eigenvector-condition tails
 of a complex Ginibre perturbation are proved, at the records
-`NLAlib.ginibreGapRecord` <!-- value ginibreGapRecord --> $(10000e, 5, 1/2, 2)$ and
-`NLAlib.ginibreConditionRecord` <!-- value ginibreConditionRecord --> $(128e, 3, 2, 2)$. -/
+`NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$ and
+`NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$. -/
 theorem roundedShQRSmallEig_hermitian_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n
   : ℕ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
@@ -602,18 +602,18 @@ theorem roundedShQRSmallEig_hermitian_unconditional {Mch : Machine ℝ} {I : Int
     (hHess : IsUpperHessenberg H) (hH : H.IsHermitian) (hΓ : 0 < Γ)
     (hgap : ∀ i j, i ≠ j → Γ ≤ |hH.eigenvalues i - hH.eigenvalues j|) (hHS : specNorm H ≤ S)
     (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hk : k = shqrDegree 4)
-    (hu : u ≤ uShQRSmallEig n k 1 Γ S δ φ ginibreGapRecord
-      ginibreConditionRecord)
+    (hu : u ≤ uShQRSmallEig n k 1 Γ S δ φ ginibreGapTail
+      ginibreConditionTail)
     {a t p out f : ℕ × ℕ} {μ : Mem ℝ} (hin : ShQRSmallEigInput k 1 Γ S δ φ
-      ginibreGapRecord ginibreConditionRecord a t p out f H μ)
+      ginibreGapTail ginibreConditionTail a t p out f H μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
     P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSmallEig (O := O) (Q := Q) sG).body
-      (Env.frame (shqrSmallEigDims n k 1 Γ S δ φ ginibreGapRecord
-        ginibreConditionRecord) [a, t, p, out, f]) (shqrFp n a out f)
+      (Env.frame (shqrSmallEigDims n k 1 Γ S δ φ ginibreGapTail
+        ginibreConditionTail) [a, t, p, out, f]) (shqrFp n a out f)
       (ShQRSpectrum out f H δ) μ} ≤ φ := by
   apply roundedShQRSmallEig_hermitian
-    (hA := boundsGinibreGap_ginibreGapRecord) (hB := boundsGinibreCondition_ginibreConditionRecord)
-    (hb₁ := ginibreGapRecord_b_pos) (hb₂ := ginibreConditionRecord_b_pos) <;> assumption
+    (hA := boundsGinibreGap_ginibreGapTail) (hB := boundsGinibreCondition_ginibreConditionTail)
+    (hb₁ := ginibreGapTail_b_pos) (hb₂ := ginibreConditionTail_b_pos) <;> assumption
 
 end Theorems
 

@@ -19,8 +19,8 @@ eigenvector matrix has a condition number polynomial in $n/\gamma$
 states both in a polylogarithmic tail form with a record of constants $(C, a, b, c)$, as
 predicates on the record (`NLAlib.PolyLogTail.BoundsGinibreGap`,
 `NLAlib.PolyLogTail.BoundsGinibreCondition`), and proves them at the records
-`NLAlib.ginibreGapRecord` <!-- value ginibreGapRecord --> $(10000e, 5, 1/2, 2)$ and
-`NLAlib.ginibreConditionRecord` <!-- value ginibreConditionRecord --> $(128e, 3, 2, 2)$ from the
+`NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$ and
+`NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$ from the
 tails of `NLAlib.RandomMatrix.Shattering.GapTail` and `NLAlib.RandomMatrix.Shattering.ConditionTail`
 . A consumer takes the predicates as hypotheses, so that a sharper record plugs in. The records are
 normalized once ($C \ge 1$, $a, c \ge 0$ ), which keeps the tails monotone in the order and the norm
@@ -34,7 +34,7 @@ and a tail can be inverted at a target failure probability.
   $C n^a \tau^b K^c$ and its normalization.
 * `NLAlib.PolyLogTail.BoundsGinibreGap`, `NLAlib.PolyLogTail.BoundsGinibreCondition`: the gap and
   the condition tails with a record.
-* `NLAlib.ginibreGapRecord`, `NLAlib.ginibreConditionRecord`: the proved records.
+* `NLAlib.ginibreGapTail`, `NLAlib.ginibreConditionTail`: the proved records.
 * `NLAlib.polyLogTailInverse`: a parameter at which a normalized tail is at most a target.
 
 ## Main results
@@ -43,8 +43,8 @@ and a tail can be inverted at a target failure probability.
   `NLAlib.PolyLogTail.BoundsGinibreCondition.normalize`.
 * `NLAlib.measureReal_not_exists_class_le_of_hasLaw_complexGaussianMatrix`: the class event.
 * `NLAlib.polyLogTailInverse_spec`: the inverted tail.
-* `NLAlib.boundsGinibreGap_ginibreGapRecord`,
-  `NLAlib.boundsGinibreCondition_ginibreConditionRecord`: the two tails hold.
+* `NLAlib.boundsGinibreGap_ginibreGapTail`,
+  `NLAlib.boundsGinibreCondition_ginibreConditionTail`: the two tails hold.
 -/
 
 @[expose] public section
@@ -415,45 +415,45 @@ theorem polyLogTailInverse_spec {c : PolyLogTail} (hb : 0 < c.b) {N K φ : ℝ} 
 /-! ### The proved tails -/
 
 /-- The tail record of the eigenvalue gap of a Ginibre perturbation that the library
-proves, <!-- value ginibreGapRecord --> $(10000e, 5, 1/2, 2)$: $C = 10000e$, $a = 5$,
+proves, <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$: $C = 10000e$, $a = 5$,
 $b = 1/2$, $c = 2$. -/
-noncomputable def ginibreGapRecord : PolyLogTail := ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
+noncomputable def ginibreGapTail : PolyLogTail := ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
 
 /-- The tail record of the eigenvector condition of a Ginibre perturbation that the library
-proves, <!-- value ginibreConditionRecord --> $(128e, 3, 2, 2)$: $C = 128e$, $a = 3$, $b = 2$,
+proves, <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$: $C = 128e$, $a = 3$, $b = 2$,
 $c = 2$. -/
-noncomputable def ginibreConditionRecord : PolyLogTail := ⟨128 * Real.exp 1, 3, 2, 2⟩
+noncomputable def ginibreConditionTail : PolyLogTail := ⟨128 * Real.exp 1, 3, 2, 2⟩
 
 /-- The exponent of the small parameter of the record
-`NLAlib.ginibreGapRecord` <!-- value ginibreGapRecord --> $(10000e, 5, 1/2, 2)$ is positive. -/
-theorem ginibreGapRecord_b_pos : 0 < ginibreGapRecord.b := by
-  norm_num [ginibreGapRecord]
+`NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$ is positive. -/
+theorem ginibreGapTail_b_pos : 0 < ginibreGapTail.b := by
+  norm_num [ginibreGapTail]
 
 /-- The exponent of the small parameter of the record
-`NLAlib.ginibreConditionRecord` <!-- value ginibreConditionRecord --> $(128e, 3, 2, 2)$ is
+`NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$ is
 positive. -/
-theorem ginibreConditionRecord_b_pos : 0 < ginibreConditionRecord.b := by
-  norm_num [ginibreConditionRecord]
+theorem ginibreConditionTail_b_pos : 0 < ginibreConditionTail.b := by
+  norm_num [ginibreConditionTail]
 
-/-- **The gap tail holds** at the record `NLAlib.ginibreGapRecord` <!-- value ginibreGapRecord -->
+/-- **The gap tail holds** at the record `NLAlib.ginibreGapTail` <!-- value ginibreGapTail -->
 $(10000e, 5, 1/2, 2)$ ([BanksGarzaVargasSrivastava2025, Lemma B.1], in a weaker polynomial form):
 `NLAlib.measureReal_not_exists_isEigenvalueListing_le_le_log_sq_of_hasLaw_complexGaussianMatrix`,
 with $\sqrt{t/\gamma} = (t/\gamma)^{1/2}$. -/
-theorem boundsGinibreGap_ginibreGapRecord : ginibreGapRecord.BoundsGinibreGap := by
+theorem boundsGinibreGap_ginibreGapTail : ginibreGapTail.BoundsGinibreGap := by
   intro Ω _mΩ μ n _ _ G hG M γ t hγ hγM ht htγ
-  simpa only [ginibreGapRecord, Real.rpow_ofNat, Real.sqrt_eq_rpow] using
+  simpa only [ginibreGapTail, Real.rpow_ofNat, Real.sqrt_eq_rpow] using
     measureReal_not_exists_isEigenvalueListing_le_le_log_sq_of_hasLaw_complexGaussianMatrix
       hG M hγ hγM ht htγ
 
 /-- **The condition tail holds** at the record
-`NLAlib.ginibreConditionRecord` <!-- value ginibreConditionRecord --> $(128e, 3, 2, 2)$
+`NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$
 ([BanksGarzaVargasSrivastava2025, Lemma B.2], in a weaker polynomial form):
 `NLAlib.measureReal_not_exists_pseudoConditionNumber_le_le_log_sq_of_hasLaw_complexGaussianMatrix`.
 -/
-theorem boundsGinibreCondition_ginibreConditionRecord :
-    ginibreConditionRecord.BoundsGinibreCondition := by
+theorem boundsGinibreCondition_ginibreConditionTail :
+    ginibreConditionTail.BoundsGinibreCondition := by
   intro Ω _mΩ μ n _ _ G hG M γ t hγ hγM ht ht1
-  simpa only [ginibreConditionRecord, Real.rpow_ofNat] using
+  simpa only [ginibreConditionTail, Real.rpow_ofNat] using
     measureReal_not_exists_pseudoConditionNumber_le_le_log_sq_of_hasLaw_complexGaussianMatrix
       hG M hγ hγM ht ht1
 

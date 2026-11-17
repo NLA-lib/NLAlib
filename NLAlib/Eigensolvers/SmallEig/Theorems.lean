@@ -21,8 +21,8 @@ of $\mathbf{M} + \mathbf{E}$ for some $\|\mathbf{E}\|_2 \le \delta$, at the unit
 $\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{SmallEig}}$, conditional on the two random-matrix
 theorems (`NLAlib.PolyLogTail.BoundsGinibreGap`, `NLAlib.PolyLogTail.BoundsGinibreCondition`),
 which are hypotheses here and proved at the records
-`NLAlib.ginibreGapRecord` <!-- value ginibreGapRecord --> $(10000e, 5, 1/2, 2)$,
-`NLAlib.ginibreConditionRecord` <!-- value ginibreConditionRecord --> $(128e, 3, 2, 2)$ (the
+`NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$,
+`NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$ (the
 `_unconditional` corollaries). The error is absolute: $\Sigma$ is an input, the paper's relative
 form is the corollary `NLAlib.SmallEig.smallEig_relative`. [BanksGarzaVargasSrivastava2025,
 Corollary 1.3] is the forward contract on blocks of order at most $k_{\max}$ and norm at most
@@ -757,8 +757,8 @@ theorem smallEig_work_le (sG : ℕ) : ∃ c : ℕ, ∀ n nq T : ℕ,
 /-- The unconditional form of `NLAlib.SmallEig.smallEig_measureReal_not_spectrum_le`
 ([BanksGarzaVargasSrivastava2025, Theorem 1.1]): the eigenvalue-gap and eigenvector-condition tails
 of a complex Ginibre perturbation are proved, at the records
-`NLAlib.ginibreGapRecord` <!-- value ginibreGapRecord --> $(10000e, 5, 1/2, 2)$ and
-`NLAlib.ginibreConditionRecord` <!-- value ginibreConditionRecord --> $(128e, 3, 2, 2)$. -/
+`NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$ and
+`NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$. -/
 theorem smallEig_measureReal_not_spectrum_le_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
   : ℝ}
     {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
@@ -769,22 +769,22 @@ theorem smallEig_measureReal_not_spectrum_le_unconditional {Mch : Machine ℝ} {
     (hG : law sG = gaussianReal 0 1) {nmax : ℕ} (hn : n + 1 ≤ nmax)
     {M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {S δ φ : ℝ} (hMS : specNorm M ≤ S)
     (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
-    (hu : u ≤ uSmallEig nmax S δ φ ginibreGapRecord ginibreConditionRecord)
-    {w q o : ℕ × ℕ} {μ : Mem ℝ} (hin : SmallEigInput nmax S δ φ ginibreGapRecord
-      ginibreConditionRecord w q o M μ)
+    (hu : u ≤ uSmallEig nmax S δ φ ginibreGapTail ginibreConditionTail)
+    {w q o : ℕ × ℕ} {μ : Mem ℝ} (hin : SmallEigInput nmax S δ φ ginibreGapTail
+      ginibreConditionTail w q o M μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
     P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG).body
-      (Env.frame (smallEigDims n nmax S δ φ ginibreGapRecord
-        ginibreConditionRecord) [w, q, o])
+      (Env.frame (smallEigDims n nmax S δ φ ginibreGapTail
+        ginibreConditionTail) [w, q, o])
       (Store.inBlock o.1 o.2 (2 * (n + 1))) (SmallEigSpectrum o M δ) μ} ≤ φ := by
   apply smallEig_measureReal_not_spectrum_le
-    (hA := boundsGinibreGap_ginibreGapRecord) (hB := boundsGinibreCondition_ginibreConditionRecord)
-    (hb₁ := ginibreGapRecord_b_pos) (hb₂ := ginibreConditionRecord_b_pos) <;> assumption
+    (hA := boundsGinibreGap_ginibreGapTail) (hB := boundsGinibreCondition_ginibreConditionTail)
+    (hb₁ := ginibreGapTail_b_pos) (hb₂ := ginibreConditionTail_b_pos) <;> assumption
 
 /-- The unconditional form of `NLAlib.SmallEig.smallEig_relative` ([BanksGarzaVargasSrivastava2025,
 Theorem 1.1]): the eigenvalue-gap and eigenvector-condition tails of a complex Ginibre perturbation
-are proved, at the records `NLAlib.ginibreGapRecord` <!-- value ginibreGapRecord -->
-$(10000e, 5, 1/2, 2)$ and `NLAlib.ginibreConditionRecord` <!-- value ginibreConditionRecord -->
+are proved, at the records `NLAlib.ginibreGapTail` <!-- value ginibreGapTail -->
+$(10000e, 5, 1/2, 2)$ and `NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail -->
 $(128e, 3, 2, 2)$. -/
 theorem smallEig_relative_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
@@ -795,24 +795,24 @@ theorem smallEig_relative_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hG : law sG = gaussianReal 0 1) {nmax : ℕ} (hn : n + 1 ≤ nmax)
     {M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {S c ε φ : ℝ} (hS0 : 0 < S) (hMS : specNorm M ≤ S)
     (hc : 1 ≤ c) (hSM : S ≤ c * specNorm M) (hε : 0 < ε) (hε1 : ε ≤ 1) (hφ : 0 < φ)
-    (hφ1 : φ ≤ 1) (hu : u ≤ uSmallEig nmax S (ε * S / c) φ ginibreGapRecord
-      ginibreConditionRecord)
+    (hφ1 : φ ≤ 1) (hu : u ≤ uSmallEig nmax S (ε * S / c) φ ginibreGapTail
+      ginibreConditionTail)
     {w q o : ℕ × ℕ} {μ : Mem ℝ} (hin : SmallEigInput nmax S (ε * S / c) φ
-      ginibreGapRecord ginibreConditionRecord w q o M μ)
+      ginibreGapTail ginibreConditionTail w q o M μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
     P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG).body
-      (Env.frame (smallEigDims n nmax S (ε * S / c) φ ginibreGapRecord
-        ginibreConditionRecord) [w, q, o])
+      (Env.frame (smallEigDims n nmax S (ε * S / c) φ ginibreGapTail
+        ginibreConditionTail) [w, q, o])
       (Store.inBlock o.1 o.2 (2 * (n + 1))) (SmallEigSpectrum o M (ε * specNorm M)) μ} ≤ φ := by
   apply smallEig_relative
-    (hA := boundsGinibreGap_ginibreGapRecord) (hB := boundsGinibreCondition_ginibreConditionRecord)
-    (hb₁ := ginibreGapRecord_b_pos) (hb₂ := ginibreConditionRecord_b_pos) <;> assumption
+    (hA := boundsGinibreGap_ginibreGapTail) (hB := boundsGinibreCondition_ginibreConditionTail)
+    (hb₁ := ginibreGapTail_b_pos) (hb₂ := ginibreConditionTail_b_pos) <;> assumption
 
 /-- The unconditional form of `NLAlib.SmallEig.smallEigProg_randomSmallEigContract`
 ([BanksGarzaVargasSrivastava2025, Corollary 1.3]): the eigenvalue-gap and eigenvector-condition
 tails of a complex Ginibre perturbation are proved, at the records
-`NLAlib.ginibreGapRecord` <!-- value ginibreGapRecord --> $(10000e, 5, 1/2, 2)$ and
-`NLAlib.ginibreConditionRecord` <!-- value ginibreConditionRecord --> $(128e, 3, 2, 2)$. -/
+`NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$ and
+`NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$. -/
 theorem smallEigProg_randomSmallEigContract_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
   ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
@@ -821,21 +821,21 @@ theorem smallEigProg_randomSmallEigContract_unconditional {Mch : Machine ℝ} {I
     (hloc : ∀ o, I.TapeLocal o (win o)) (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
     (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
     (hG : law sG = gaussianReal 0 1) {S β φ : ℝ} (hβ : 0 < β) (hβS : β ≤ S) (hφ : 0 < φ)
-    (hφ1 : φ ≤ 1) (hu : u ≤ uSmallEigForward kmax S β φ ginibreGapRecord
-      ginibreConditionRecord) :
+    (hφ1 : φ ≤ 1) (hu : u ≤ uSmallEigForward kmax S β φ ginibreGapTail
+      ginibreConditionTail) :
     RandomSmallEigContract law β φ kmax' (smallEigForwardCap kmax S β φ
-      ginibreGapRecord ginibreConditionRecord) S
-      (smallEigForwardParams kmax S β φ ginibreGapRecord
-        ginibreConditionRecord) (smallEigProg (O := O) (Q := Q) sG) I := by
+      ginibreGapTail ginibreConditionTail) S
+      (smallEigForwardParams kmax S β φ ginibreGapTail
+        ginibreConditionTail) (smallEigProg (O := O) (Q := Q) sG) I := by
   apply smallEigProg_randomSmallEigContract
-    (hA := boundsGinibreGap_ginibreGapRecord) (hB := boundsGinibreCondition_ginibreConditionRecord)
-    (hb₁ := ginibreGapRecord_b_pos) (hb₂ := ginibreConditionRecord_b_pos) <;> assumption
+    (hA := boundsGinibreGap_ginibreGapTail) (hB := boundsGinibreCondition_ginibreConditionTail)
+    (hb₁ := ginibreGapTail_b_pos) (hb₂ := ginibreConditionTail_b_pos) <;> assumption
 
 /-- The unconditional form of `NLAlib.SmallEig.smallEig_measureReal_not_forward_le`
 ([BanksGarzaVargasSrivastava2025, Corollary 1.3]): the eigenvalue-gap and eigenvector-condition
 tails of a complex Ginibre perturbation are proved, at the records
-`NLAlib.ginibreGapRecord` <!-- value ginibreGapRecord --> $(10000e, 5, 1/2, 2)$ and
-`NLAlib.ginibreConditionRecord` <!-- value ginibreConditionRecord --> $(128e, 3, 2, 2)$. -/
+`NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$ and
+`NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$. -/
 theorem smallEig_measureReal_not_forward_le_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
   ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
@@ -844,21 +844,21 @@ theorem smallEig_measureReal_not_forward_le_unconditional {Mch : Machine ℝ} {I
     (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
     (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
     (hG : law sG = gaussianReal 0 1) {S β φ : ℝ} (hβ : 0 < β) (hβS : β ≤ S) (hφ : 0 < φ)
-    (hφ1 : φ ≤ 1) (hu : u ≤ uSmallEigForward kmax S β φ ginibreGapRecord
-      ginibreConditionRecord) {n : ℕ} (hn : n + 1 ≤ kmax)
+    (hφ1 : φ ≤ 1) (hu : u ≤ uSmallEigForward kmax S β φ ginibreGapTail
+      ginibreConditionTail) {n : ℕ} (hn : n + 1 ≤ kmax)
     {M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hMS : specNorm M ≤ S) {w q o : ℕ × ℕ}
     {μ : Mem ℝ} (hin : SmallEigInput kmax S (forwardBackwardError kmax S β) φ
-      ginibreGapRecord ginibreConditionRecord w q o M μ)
+      ginibreGapTail ginibreConditionTail w q o M μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
     P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG).body
       (Env.frame (smallEigDims n kmax S (forwardBackwardError kmax S β) φ
-        ginibreGapRecord ginibreConditionRecord) [w, q, o])
+        ginibreGapTail ginibreConditionTail) [w, q, o])
       (Store.inBlock o.1 o.2 (2 * (n + 1)))
       (fun μ' => ∃ roots ev : Fin (n + 1) → ℂ, IsEigenvalueListing M ev ∧
         (∀ i, ‖roots i - ev i‖ ≤ β) ∧
         HoldsMatrix o (Matrix.of fun i (_ : Fin 1) => roots i) μ'.store) μ} ≤ φ := by
   apply smallEig_measureReal_not_forward_le
-    (hA := boundsGinibreGap_ginibreGapRecord) (hB := boundsGinibreCondition_ginibreConditionRecord)
-    (hb₁ := ginibreGapRecord_b_pos) (hb₂ := ginibreConditionRecord_b_pos) <;> assumption
+    (hA := boundsGinibreGap_ginibreGapTail) (hB := boundsGinibreCondition_ginibreConditionTail)
+    (hb₁ := ginibreGapTail_b_pos) (hb₂ := ginibreConditionTail_b_pos) <;> assumption
 
 end NLAlib.SmallEig

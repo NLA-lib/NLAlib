@@ -100,6 +100,24 @@ theorem distSpecDegree_spec {κ p : ℝ} (hκ : 1 ≤ κ) (hp : 0 < p) (hp1 : p 
 $\lceil 2\log(\Sigma/(5\beta))\rceil$ corrected, its erratum P6). -/
 noncomputable def oneEigRounds (S β : ℝ) : ℕ := ⌈2 * logb 2 (5.2 * S / β)⌉₊
 
+/-- The contraction of the round cap: for $0 < \beta \le \Sigma$ and $t$ =
+`NLAlib.SmallEig.oneEigRounds` $\Sigma$ $\beta$, $0.66^t \le \beta/(5.2\,\Sigma)$. -/
+theorem pow_oneEigRounds_le {S β : ℝ} (hβ : 0 < β) (hβS : β ≤ S) :
+    (0.66 : ℝ) ^ oneEigRounds S β ≤ β / (5.2 * S) := by
+  set y := logb 2 (5.2 * S / β) with hy
+  have hr : 1 ≤ 5.2 * S / β := by rw [le_div_iff₀ hβ]; linarith
+  have hy0 : 0 ≤ y := logb_nonneg (by norm_num) hr
+  have ht : 2 * y ≤ oneEigRounds S β := Nat.le_ceil _
+  have h1 : (0.66:ℝ) ^ oneEigRounds S β ≤ (0.66:ℝ) ^ (2 * y) := by
+    rw [← rpow_natCast]; exact rpow_le_rpow_of_exponent_ge (by norm_num) (by norm_num) ht
+  refine h1.trans ?_
+  rw [rpow_mul (by norm_num)]
+  calc ((0.66:ℝ) ^ (2:ℝ)) ^ y ≤ (2⁻¹ : ℝ) ^ y := by
+        gcongr; rw [show (2:ℝ) = ((2:ℕ):ℝ) by norm_num, rpow_natCast]; norm_num
+    _ = β / (5.2 * S) := by
+        rw [inv_rpow (by norm_num), hy, rpow_logb (by norm_num) (by norm_num) (by linarith)]
+        field_simp
+
 /-- **The round cap of `OneEig` suffices** ([BanksGarzaVargasSrivastava2025, Proposition 3.5],
 the choice of $t$ corrected): for $0 < \beta \le \Sigma$ and $t$ =
 `NLAlib.SmallEig.oneEigRounds` $\Sigma$ $\beta$,
@@ -113,18 +131,9 @@ theorem oneEigRounds_spec {S β : ℝ} (hβ : 0 < β) (hβS : β ≤ S) :
   set y := logb 2 (5.2 * S / β) with hy
   have hr : 1 ≤ 5.2 * S / β := by rw [le_div_iff₀ hβ]; linarith
   have hy0 : 0 ≤ y := logb_nonneg (by norm_num) hr
-  have ht : 2 * y ≤ oneEigRounds S β := Nat.le_ceil _
   have ht' : (oneEigRounds S β : ℝ) < 2 * y + 1 := Nat.ceil_lt_add_one (by positivity)
   constructor
-  · have h1 : (0.66:ℝ) ^ oneEigRounds S β ≤ (0.66:ℝ) ^ (2 * y) := by
-      rw [← rpow_natCast]; exact rpow_le_rpow_of_exponent_ge (by norm_num) (by norm_num) ht
-    have h2 : (0.66:ℝ) ^ (2 * y) ≤ β / (5.2 * S) := by
-      rw [rpow_mul (by norm_num)]
-      calc ((0.66:ℝ) ^ (2:ℝ)) ^ y ≤ (2⁻¹ : ℝ) ^ y := by
-            gcongr; rw [show (2:ℝ) = ((2:ℕ):ℝ) by norm_num, rpow_natCast]; norm_num
-        _ = β / (5.2 * S) := by
-            rw [inv_rpow (by norm_num), hy, rpow_logb (by norm_num) (by norm_num) (by linarith)]
-            field_simp
+  · have h2 := pow_oneEigRounds_le hβ hβS
     have h3 : β / (5.2 * S) * 5.2 = β / S := by field_simp
     have : 0 ≤ (0.66:ℝ) ^ oneEigRounds S β := by positivity
     rw [div_le_iff₀ (by norm_num)]

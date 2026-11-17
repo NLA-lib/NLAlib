@@ -140,7 +140,42 @@ theorem forwardBackwardError_spec {kmax : ℕ} {S β : ℝ} (hβ : 0 < β) (hβS
     0 < forwardBackwardError kmax S β ∧ forwardBackwardError kmax S β ≤ S ∧
       ∀ d : ℕ, d + 1 ≤ kmax → (2 * d + 1) * (3 * S) ^ (1 - 1 / ((d : ℝ) + 1)) *
         forwardBackwardError kmax S β ^ (1 / ((d : ℝ) + 1)) ≤ β := by
-  sorry
+  have hS : 0 < S := hβ.trans_le hβS
+  set r := β / (4 * (2 * kmax + 1) * S) with hr
+  have hr0 : 0 < r := by positivity
+  have hr1 : r ≤ 1 / 4 := by
+    rw [hr, div_le_iff₀ (by positivity)]
+    have : (1:ℝ) ≤ 2 * kmax + 1 := by have := kmax.cast_nonneg (α := ℝ); linarith
+    nlinarith
+  have hrk : r ^ kmax ≤ 1 := pow_le_one₀ hr0.le (by linarith)
+  refine ⟨by unfold forwardBackwardError; positivity, ?_, fun d hd => ?_⟩
+  · unfold forwardBackwardError; nlinarith [pow_pos hr0 kmax]
+  have hd1 : (0:ℝ) < d + 1 := by positivity
+  have hdk : ((d:ℝ) + 1) ≤ kmax := by exact_mod_cast hd
+  set e := 1 / ((d : ℝ) + 1) with he
+  have he0 : 0 < e := by positivity
+  have he1 : e ≤ 1 := by rw [he, div_le_one hd1]; linarith
+  -- δ_b^e = S^e r^(kmax e) ≤ S^e r
+  have hpow : (forwardBackwardError kmax S β) ^ e ≤ S ^ e * r := by
+    unfold forwardBackwardError
+    rw [mul_rpow hS.le (by positivity), ← rpow_natCast, ← rpow_mul hr0.le]
+    gcongr
+    calc r ^ ((kmax : ℝ) * e) ≤ r ^ (1:ℝ) := by
+          apply rpow_le_rpow_of_exponent_ge hr0 (by linarith)
+          rw [he, mul_one_div, le_div_iff₀ hd1]; linarith
+      _ = r := rpow_one r
+  have h3 : (3 * S) ^ (1 - e) * S ^ e ≤ 3 * S := by
+    rw [mul_rpow (by norm_num) hS.le, mul_assoc, ← rpow_add hS, sub_add_cancel, rpow_one]
+    gcongr
+    calc (3:ℝ) ^ (1 - e) ≤ 3 ^ (1:ℝ) := rpow_le_rpow_of_exponent_le (by norm_num) (by linarith)
+      _ = 3 := rpow_one 3
+  have h2d : (2 * (d:ℝ) + 1) ≤ 2 * kmax + 1 := by linarith
+  calc (2 * d + 1) * (3 * S) ^ (1 - e) * (forwardBackwardError kmax S β) ^ e
+      ≤ (2 * d + 1) * (3 * S) ^ (1 - e) * (S ^ e * r) := by gcongr
+    _ = (2 * d + 1) * ((3 * S) ^ (1 - e) * S ^ e) * r := by ring
+    _ ≤ (2 * kmax + 1) * (3 * S) * r := by gcongr
+    _ = 3 / 4 * β := by rw [hr]; field_simp
+    _ ≤ β := by linarith
 
 /-- The precision threshold of the forward form: `NLAlib.SmallEig.uSmallEig` at the backward
 accuracy `NLAlib.SmallEig.forwardBackwardError` and $n_{\max} = k_{\max}$. -/

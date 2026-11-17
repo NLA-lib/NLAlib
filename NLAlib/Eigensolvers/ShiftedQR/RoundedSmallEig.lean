@@ -203,7 +203,13 @@ theorem roundedShQRSmallEig_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} 
     Writes .total I τ (roundedShQRSmallEig (O := O) (Q := Q) sG).body
       (Env.frame (shqrSmallEigDims n k B Γ S δ φ c₁ c₂) [a, t, p, out, f]) (shqrFp n a out f)
       (fun _ => True) μ := by
-  sorry
+  obtain ⟨hl, hr, ha, hA, ht, hp⟩ := hin
+  have h12 := length_smallEigParams k (4 * S)
+    (forwardBackwardError k (4 * S) (shqrSmallEigAccuracy n B Γ S δ))
+    (shqrSmallEigFailure n B Γ S δ φ) c₁ c₂
+  exact roundedShQRWith_terminates hS hL hNat hQ hC hDisk hk
+    (smallEigProg_terminates hS hL hQ hC hSmp hDisk (smallEigCaps_smallEigParams _ _ _ _ _ _)
+      h12.ge (hNat.mono (min_le_right _ _))) h12 hl hr ha hA ht hp τ
 
 open Real in
 /-- **The shift degree is $O(\log B\log\log B)$**: there is an absolute constant $c$ with
@@ -396,10 +402,10 @@ now counted. -/
 theorem roundedShQRSmallEig_work_le (sG : ℕ) : ∃ c : ℕ, ∀ n k np F T : ℕ,
     Count.size (stmtCost (roundedShQRSmallEig (O := O) (Q := Q) sG).body [n + 1, k, np, F, T]) ≤
       c * (n + 1) ^ 4 * (k + 1) ^ 5 * (np + 1) * (F + 1) * (T + 1) ^ 2 := by
-  refine ⟨15883, fun n k np F T => ?_⟩
+  refine ⟨15895, fun n k np F T => ?_⟩
   have hw : stmtWorkMono (roundedShQRSmallEig (O := O) (Q := Q) sG).body
       [⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 0, 0, 1]⟩, ⟨1, [0, 0, 0, 0, 1]⟩] =
-        ⟨15883, [3, 4, 1, 1, 2]⟩ := by
+        ⟨15895, [3, 4, 1, 1, 2]⟩ := by
     kernel_rfl
   have hσ : SlotsLe [n + 1, k + 1, np + 1, F + 1, T + 1] [n + 1, k, np, F, T]
       [⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 0, 0, 1]⟩, ⟨1, [0, 0, 0, 0, 1]⟩] := by

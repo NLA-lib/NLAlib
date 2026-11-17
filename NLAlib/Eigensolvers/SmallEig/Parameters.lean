@@ -6,7 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import Mathlib.Analysis.SpecialFunctions.Log.Base
-public import NLAlib.Eigensolvers.SmallEig.RandomMatrixTails
+public import NLAlib.RandomMatrix.Shattering.GinibreClass
 
 /-!
 # The parameters of the small-eigenvalue solver
@@ -385,16 +385,18 @@ noncomputable def smallEigAccuracy (nmax : ℕ) (S δ φ : ℝ) (c₁ c₂ : Pol
 `RHess`, half to `OneEig`. -/
 noncomputable def smallEigDecouplerFailure (nmax : ℕ) (φ : ℝ) : ℝ := φ / (16 * nmax)
 
-/-- The norm bound $R = 3\sqrt{n_{\max}} + \sqrt{2\log(4/\varphi_D)}$ of the Gaussian direction of
-`RHess`. -/
+/-- The norm bound $R = \sqrt2\,(3\sqrt{n_{\max}} + \sqrt{2\log(4/\varphi_D)})$ of the window of
+$2N$ standard real Gaussian draws of `RHess` (its direction before normalization), the radius that
+`NLAlib.SmallEig.rhess_pwrites` takes at the failure $\varphi_D/4$. -/
 noncomputable def smallEigVectorRadius (nmax : ℕ) (φ : ℝ) : ℝ :=
-  3 * √nmax + √(2 * log (4 / smallEigDecouplerFailure nmax φ))
+  √2 * (3 * √nmax + √(2 * log (4 / smallEigDecouplerFailure nmax φ)))
 
-/-- The lower bound $p = (\varphi_D/(4n_{\max}))/(64R^2(4B_c)^2)$ of the last-row weights after
-`RHess`. -/
+/-- The lower bound $p = s^2/(64R^2(2B_c)^2)$, $s^2 = \varphi_D/(8n_{\max})$, of the last-row
+weights after `RHess` at the condition $2B_c$ and the radius $R$ =
+`NLAlib.SmallEig.smallEigVectorRadius`: the weight bound of `NLAlib.SmallEig.rhess_pwrites`. -/
 noncomputable def smallEigWeight (nmax : ℕ) (S δ φ : ℝ) (c₂ : PolyLogTail) : ℝ :=
-  smallEigDecouplerFailure nmax φ / (4 * nmax) /
-    (64 * smallEigVectorRadius nmax φ ^ 2 * (4 * smallEigCondition nmax S δ φ c₂) ^ 2)
+  smallEigDecouplerFailure nmax φ / (8 * nmax) /
+    (64 * smallEigVectorRadius nmax φ ^ 2 * (2 * smallEigCondition nmax S δ φ c₂) ^ 2)
 
 /-- The exponent $q$ of the degree $m = 2^q$ of `DistSpec`:
 $q = \lceil\log_2 m_1\rceil$ for $m_1$ = `NLAlib.SmallEig.distSpecDegree` at the condition
@@ -533,7 +535,8 @@ theorem smallEigWeight_pos_le {c₂ : PolyLogTail} (hb₂ : 0 < c₂.b) {nmax : 
     unfold smallEigVectorRadius
     have : 1 ≤ √(nmax : ℝ) := by rw [show (1:ℝ) = √1 by simp]; exact sqrt_le_sqrt hn'
     have := sqrt_nonneg (2 * log (4 / smallEigDecouplerFailure nmax φ))
-    linarith
+    have h2 : (1 : ℝ) ≤ √2 := by rw [show (1:ℝ) = √1 by simp]; exact sqrt_le_sqrt (by norm_num)
+    nlinarith
   have hD : 0 < smallEigDecouplerFailure nmax φ := by unfold smallEigDecouplerFailure; positivity
   have hD1 : smallEigDecouplerFailure nmax φ ≤ 1 := by
     unfold smallEigDecouplerFailure; rw [div_le_one (by positivity)]; linarith
@@ -544,9 +547,9 @@ theorem smallEigWeight_pos_le {c₂ : PolyLogTail} (hb₂ : 0 < c₂.b) {nmax : 
     positivity
   · rw [div_le_one (by positivity), div_le_iff₀ (by positivity)]
     have h1 : 1 ≤ 64 * smallEigVectorRadius nmax φ ^ 2 *
-        (4 * smallEigCondition nmax S δ φ c₂) ^ 2 := by
+        (2 * smallEigCondition nmax S δ φ c₂) ^ 2 := by
       have : (1:ℝ) ≤ smallEigVectorRadius nmax φ ^ 2 := by nlinarith
-      have : (1:ℝ) ≤ (4 * smallEigCondition nmax S δ φ c₂) ^ 2 := by nlinarith
+      have : (1:ℝ) ≤ (2 * smallEigCondition nmax S δ φ c₂) ^ 2 := by nlinarith
       nlinarith
     nlinarith
 

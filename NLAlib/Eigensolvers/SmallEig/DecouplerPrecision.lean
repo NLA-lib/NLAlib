@@ -128,7 +128,7 @@ theorem smallEigDecoupler_precision {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.
       (86 * (8 * smallEigCondition nmax S δ φ c₂) * (2 * S) *
         (22 * (2 * S) / smallEigInnerRadius nmax S δ φ c₁ c₂) ^
           smallEigDecoupleSteps nmax S δ φ c₂ * √((nmax : ℝ) + 1)) := by
-  obtain ⟨-, h1, -, h3, h4, h5, -⟩ := uSmallEig_spec hb₁ hb₂ hn hδ hδS hφ hφ1
+  obtain ⟨-, h1, -, h3, h4, h5⟩ := uSmallEig_spec hb₁ hb₂ hn hδ hδS hφ hφ1
   have hS : 0 < S := hδ.trans_le hδS
   have hN : (0 : ℝ) < ((nmax : ℝ) + 1) ^ 2 := by positivity
   have a := hu.trans h1
@@ -206,17 +206,17 @@ theorem smallEigDecoupler_rhess_precision {nmax n : ℕ} (hn : n ≤ nmax) {u N 
     exact div_le_div_of_nonneg_left (by positivity) (by positivity) (by nlinarith)
 
 /-- The parameters of `RHess` inside the decoupler: with the direction bound
-$s = \sqrt{\varphi_D/(8n_{\max})}$ and the radius $R' = \sqrt2\,R$ ($R$ =
-`NLAlib.SmallEig.smallEigVectorRadius`), for $n \le n_{\max}$, $n_{\max} \ge 1$ and
-$0 < \varphi \le 1$: the weight bound $p$ = `NLAlib.SmallEig.smallEigWeight` is the bound
-$s^2/(64R'^2(2B_c)^2)$ of `NLAlib.SmallEig.rhess_pwrites` at the condition $2B_c$, so
-$\sqrt p = s/(16R'B_c)$; $R'$ is a valid radius at the failure $\varphi_D/4$; and the failure
+$s = \sqrt{\varphi_D/(8n_{\max})}$ and the radius $R$ = `NLAlib.SmallEig.smallEigVectorRadius`,
+for $n \le n_{\max}$, $n_{\max} \ge 1$ and $0 < \varphi \le 1$: the weight bound $p$ =
+`NLAlib.SmallEig.smallEigWeight` is the bound $s^2/(64R^2(2B_c)^2)$ of
+`NLAlib.SmallEig.rhess_pwrites` at the condition $2B_c$, so $\sqrt p = s/(16RB_c)$; $R$ is a
+valid radius at the failure $\varphi_D/4$; and the failure
 $(n + 1)s^2 + \varphi_D/4$ is at most $\varphi_D/2$. -/
 theorem smallEigDecoupler_rhess_params {nmax n : ℕ} (hn1 : 1 ≤ nmax) (hn : n ≤ nmax)
     {φ Bc : ℝ} (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hBc : 0 < Bc) (S δ : ℝ) (c₂ : PolyLogTail)
     (hB : Bc = smallEigCondition nmax S δ φ c₂) :
     let s := √(smallEigDecouplerFailure nmax φ / (8 * nmax))
-    let R := √2 * smallEigVectorRadius nmax φ
+    let R := smallEigVectorRadius nmax φ
     0 < s ∧ 0 < R ∧
     smallEigWeight nmax S δ φ c₂ = s ^ 2 / (64 * R ^ 2 * (2 * Bc) ^ 2) ∧
     √(smallEigWeight nmax S δ φ c₂) = s / (16 * R * Bc) ∧
@@ -240,20 +240,16 @@ theorem smallEigDecoupler_rhess_params {nmax n : ℕ} (hn1 : 1 ≤ nmax) (hn : n
     have hlog : 2 ≤ Real.log (4 / φD) :=
       (Real.le_log_iff_exp_le (by positivity)).mpr (he.trans h64)
     rw [hL, Real.le_sqrt (by norm_num) (by linarith)]; linarith
-  have hRv : smallEigVectorRadius nmax φ = 3 * √(nmax : ℝ) + L := by
+  have hRv : smallEigVectorRadius nmax φ = √2 * (3 * √(nmax : ℝ) + L) := by
     rw [hL, hφD]; rfl
   have hsn : 1 ≤ √(nmax : ℝ) := by rw [show (1 : ℝ) = √1 by simp]; exact Real.sqrt_le_sqrt hn'
   have h2 : 1.41 ≤ √(2 : ℝ) := by
     rw [Real.le_sqrt (by norm_num) (by norm_num)]; norm_num
-  have hRv0 : 0 < smallEigVectorRadius nmax φ := by rw [hRv]; positivity
   have hs : 0 < s := Real.sqrt_pos.mpr (by positivity)
-  have hR : 0 < R := by positivity
+  have hR : 0 < R := by simp only [R, hRv]; positivity
   have hs2 : s ^ 2 = φD / (8 * nmax) := Real.sq_sqrt (by positivity)
-  have hR2 : R ^ 2 = 2 * smallEigVectorRadius nmax φ ^ 2 := by
-    simp only [R, mul_pow, Real.sq_sqrt (by norm_num : (0 : ℝ) ≤ 2)]
   have hp : smallEigWeight nmax S δ φ c₂ = s ^ 2 / (64 * R ^ 2 * (2 * Bc) ^ 2) := by
-    rw [hs2, hR2, smallEigWeight, ← hB, ← hφD]
-    field_simp; ring
+    rw [hs2, smallEigWeight, ← hB, ← hφD]
   refine ⟨hs, hR, hp, ?_, ?_, ?_⟩
   · rw [hp, show 64 * R ^ 2 * (2 * Bc) ^ 2 = (16 * R * Bc) ^ 2 by ring, ← div_pow,
       Real.sqrt_sq (by positivity)]

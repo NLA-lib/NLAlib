@@ -294,7 +294,15 @@ theorem stmtWorkMono_smallEigProgram (sG : ℕ) :
 
 /-- **The work (and span) polynomial** of the small-eigenvalue solver at the sizes
 $(n, n_q, T)$ = `d`: $373483\,(n + 1)^4(T + 1)^2$, the
-monomial bound of the instructions of the instrumented program, each of unit weight. -/
+monomial bound of the instructions of the instrumented program, each of unit weight; it is larger
+than the constant $3473$ of `NLAlib.SmallEig.smallEig_work_le` because the instrumentation counts
+every structural instruction too. The parameter words (thresholds, scales and caps, real numbers
+with logarithms and roots) are
+supplied in the input and their computation is not charged, as for the merged
+algorithm. The monomial is an envelope of the paper's count $n^4 + n^3\log^2$, not its shape: the
+cap $T$ = `NLAlib.SmallEig.smallEigCap` is the largest loop count ($m$, $t$, $m_2$), a logarithm of
+$n_{\max}\Sigma/(\delta\varphi)$ up to constants (bounded in the proof of
+`NLAlib.SmallEig.logb_inv_uSmallEig_le`). -/
 def smallEigWork (d : Fin 3 → ℕ) : ℕ := 373483 * (d 0 + 1) ^ 4 * (d 2 + 1) ^ 2
 
 /-- The number of instructions of the static count of the program is at most
@@ -416,8 +424,8 @@ $$\mathbb{P}\bigl[\mathsf{smallEigAlgorithm}(\mathbf{M}) \text{ fails, exceeds i
 on one counted run, with the work and the span `NLAlib.SmallEig.smallEigWork`. -/
 theorem smallEig_algorithm_measureReal_not_accepts_le {u : ℝ} (hM : StdModel u id Mch)
     {law : ℕ → Measure ℝ} {sU sG : ℕ} (hU : law sU = volume.restrict (Set.Icc 0 1))
-    (hG : law sG = gaussianReal 0 1) (hA : ComplexGaussianGapTail c₁)
-    (hB : ComplexGaussianConditionTail c₂) (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b)
+    (hG : law sG = gaussianReal 0 1) (hA : c₁.BoundsGinibreGap)
+    (hB : c₂.BoundsGinibreCondition) (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b)
     {d : Fin 3 → ℕ} (hd : SmallEigSizes Mch nmax c₁ c₂ d)
     (x : (smallEigProblem Mch nmax c₁ c₂ admitted).Input d) {I : Interp SmallEigOp Tst ℝ}
     (hI : (smallEigModel (smallEigProblem Mch nmax c₁ c₂ admitted) Mch sU).contracts d x I)
@@ -453,38 +461,39 @@ theorem smallEig_algorithm_measureReal_not_accepts_le {u : ℝ} (hM : StdModel u
 
 /-- The unconditional form of `NLAlib.SmallEig.smallEig_algorithm_measureReal_not_accepts_le`
 ([BanksGarzaVargasSrivastava2025, Theorem 1.1]): the eigenvalue-gap and eigenvector-condition tails
-of a complex Ginibre perturbation are proved, at the records $(10000e, 5, 1/2, 2)$
-(`NLAlib.complexGaussianGapTail`) and $(128e, 3, 2, 2)$ (`NLAlib.complexGaussianConditionTail`). -/
+of a complex Ginibre perturbation are proved, at the records
+`NLAlib.ginibreGapRecord` <!-- value ginibreGapRecord --> $(10000e, 5, 1/2, 2)$ and
+`NLAlib.ginibreConditionRecord` <!-- value ginibreConditionRecord --> $(128e, 3, 2, 2)$. -/
 theorem smallEig_algorithm_measureReal_not_accepts_le_unconditional
-    {admitted : ∃ d, SmallEigSizes Mch nmax ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
-      ⟨128 * Real.exp 1, 3, 2, 2⟩ d} {u : ℝ} (hM : StdModel u id Mch)
+    {admitted : ∃ d, SmallEigSizes Mch nmax ginibreGapRecord
+      ginibreConditionRecord d} {u : ℝ} (hM : StdModel u id Mch)
     {law : ℕ → Measure ℝ} {sU sG : ℕ} (hU : law sU = volume.restrict (Set.Icc 0 1))
     (hG : law sG = gaussianReal 0 1) {d : Fin 3 → ℕ} (hd : SmallEigSizes Mch nmax
-      ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩ ⟨128 * Real.exp 1, 3, 2, 2⟩ d)
-    (x : (smallEigProblem Mch nmax ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩ ⟨128 * Real.exp 1, 3, 2, 2⟩
+      ginibreGapRecord ginibreConditionRecord d)
+    (x : (smallEigProblem Mch nmax ginibreGapRecord ginibreConditionRecord
       admitted).Input d) {I : Interp SmallEigOp Tst ℝ}
-    (hI : (smallEigModel (smallEigProblem Mch nmax ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
-      ⟨128 * Real.exp 1, 3, 2, 2⟩ admitted) Mch sU).contracts d x I)
+    (hI : (smallEigModel (smallEigProblem Mch nmax ginibreGapRecord
+      ginibreConditionRecord admitted) Mch sU).contracts d x I)
     (hIm : I.IsMeasurable) {win : SmallEigOp → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     (hMS : specNorm x.val.1.matrix ≤ x.val.1.S) (hδ : 0 < x.val.1.δ)
     (hδS : x.val.1.δ ≤ x.val.1.S) (hφ : 0 < x.val.1.φ) (hφ1 : x.val.1.φ ≤ 1)
-    (hu : u ≤ uSmallEig nmax x.val.1.S x.val.1.δ x.val.1.φ ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
-      ⟨128 * Real.exp 1, 3, 2, 2⟩)
+    (hu : u ≤ uSmallEig nmax x.val.1.S x.val.1.δ x.val.1.φ ginibreGapRecord
+      ginibreConditionRecord)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ (smallEigSpecification Mch nmax ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
-      ⟨128 * Real.exp 1, 3, 2, 2⟩ admitted sG).Accepts smallEigResources d x
-      (exec (smallEigAlgorithm Mch nmax ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
-        ⟨128 * Real.exp 1, 3, 2, 2⟩ admitted sU sG).program I smallEigResources
-        (smallEigProblem Mch nmax ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩ ⟨128 * Real.exp 1, 3, 2, 2⟩
+    P.real {ω | ¬ (smallEigSpecification Mch nmax ginibreGapRecord
+      ginibreConditionRecord admitted sG).Accepts smallEigResources d x
+      (exec (smallEigAlgorithm Mch nmax ginibreGapRecord
+        ginibreConditionRecord admitted sU sG).program I smallEigResources
+        (smallEigProblem Mch nmax ginibreGapRecord ginibreConditionRecord
           admitted).formats (ξ ω) d
-        ((smallEigProblem Mch nmax ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩ ⟨128 * Real.exp 1, 3, 2, 2⟩
+        ((smallEigProblem Mch nmax ginibreGapRecord ginibreConditionRecord
           admitted).initial d x))
-      fun _ m => ((smallEigProblem Mch nmax ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
-        ⟨128 * Real.exp 1, 3, 2, 2⟩ admitted).initial d x).store.EqOff
+      fun _ m => ((smallEigProblem Mch nmax ginibreGapRecord
+        ginibreConditionRecord admitted).initial d x).store.EqOff
           (Store.inBlock 2 0 (2 * (d 0 + 1))) m.store ∧
         SmallEigSpectrum (2, 0) x.val.1.matrix x.val.1.δ m} ≤ x.val.1.φ := by
   apply smallEig_algorithm_measureReal_not_accepts_le
-    (hA := complexGaussianGapTail) (hB := complexGaussianConditionTail)
-    (hb₁ := by norm_num) (hb₂ := by norm_num) <;> assumption
+    (hA := boundsGinibreGap_ginibreGapRecord) (hB := boundsGinibreCondition_ginibreConditionRecord)
+    (hb₁ := ginibreGapRecord_b_pos) (hb₂ := ginibreConditionRecord_b_pos) <;> assumption
 
 end NLAlib.SmallEig

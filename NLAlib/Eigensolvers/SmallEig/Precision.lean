@@ -13,8 +13,9 @@ public import NLAlib.Eigensolvers.ShiftedQR.RoundedTheoremsBits
 
 The unit roundoff $\boldsymbol{u}_{\mathrm{SmallEig}}$ of [BanksGarzaVargasSrivastava2025,
 Theorem 1.1], defined once as the minimum of named terms, one per block of the program: the
-counts, the perturbation and the Hessenberg reduction, `RHess`, `DistSpec`, `Decouple` and the
-backward error of the decoupler in the worklist. Each block's theorem takes its own term; the
+counts, the perturbation and the Hessenberg reduction, `RHess`, `DistSpec` and `Decouple`; the
+`Decouple` term also keeps the backward error of the decoupler calls of the worklist within
+$\delta/8$. Each block's theorem takes its own term; the
 headline takes the minimum. Its logarithm is $O(\log^2(n_{\max}\Sigma/(\delta\varphi)))$ for
 fixed tail records (Theorem 1.1's $O(\log^2)$ bits). The forward form of Corollary 1.3 runs the
 backward form at the accuracy $\delta_b = \Sigma(\beta/(4(2k_{\max} + 1)\Sigma))^{k_{\max}}$, which
@@ -80,27 +81,22 @@ noncomputable def uSmallEigDecouple (nmax : ℕ) (S δ φ : ℝ) (c₁ c₂ : Po
       (22 * (2 * S) / smallEigInnerRadius nmax S δ φ c₁ c₂) ^ smallEigDecoupleSteps nmax S δ φ c₂ *
         √((nmax : ℝ) + 1))) / (300 * ((nmax : ℝ) + 1) ^ 2)
 
-/-- The precision term of the core: the backward error of $2(n_{\max} + 1)$ decoupler calls is
-within $\delta/8$. -/
-noncomputable def uSmallEigCore (nmax : ℕ) (S δ φ : ℝ) (c₂ : PolyLogTail) : ℝ :=
-  δ / 8 / (2 * ((nmax : ℝ) + 1) * (1000 * ((nmax : ℝ) + 1) ^ 2 +
-    1050 * smallEigDecoupleSteps nmax S δ φ c₂ * ((nmax : ℝ) + 1) ^ 2) * (2 * S))
-
 /-- **The precision threshold of the small-eigenvalue solver** ([BanksGarzaVargasSrivastava2025,
 Theorem 1.1], recomputed for the corrected constants of the blocks): the minimum of the terms
 `NLAlib.SmallEig.uSmallEigBasic`, `NLAlib.SmallEig.uSmallEigReduce`,
-`NLAlib.SmallEig.uSmallEigRHess`, `NLAlib.SmallEig.uSmallEigDistSpec`,
-`NLAlib.SmallEig.uSmallEigDecouple` and `NLAlib.SmallEig.uSmallEigCore`, at the outer order bound
-$n_{\max}$. -/
+`NLAlib.SmallEig.uSmallEigRHess`, `NLAlib.SmallEig.uSmallEigDistSpec` and
+`NLAlib.SmallEig.uSmallEigDecouple`, at the outer order bound $n_{\max}$. The backward error of
+the core (its decoupler calls) is within $\delta/8$ by the `Decouple` term
+(`NLAlib.SmallEig.smallEigDecoupleError_le_omega`). -/
 noncomputable def uSmallEig (nmax : ℕ) (S δ φ : ℝ) (c₁ c₂ : PolyLogTail) : ℝ :=
   min (uSmallEigBasic nmax) <| min (uSmallEigReduce nmax S δ φ c₁ c₂) <|
     min (uSmallEigRHess nmax S δ φ c₁ c₂) <| min (uSmallEigDistSpec nmax S δ φ c₁ c₂) <|
-      min (uSmallEigDecouple nmax S δ φ c₁ c₂) (uSmallEigCore nmax S δ φ c₂)
+      uSmallEigDecouple nmax S δ φ c₁ c₂
 
 /-- **The precision threshold is positive and below every term**: for tail records with
 $b_1, b_2 > 0$, $n_{\max} \ge 1$, $0 < \delta \le \Sigma$ and $0 < \varphi \le 1$,
 $0 < \boldsymbol{u}_{\mathrm{SmallEig}}$ and $\boldsymbol{u}_{\mathrm{SmallEig}}$ is at most each of
-its six terms. Without positivity the headline would be vacuous through
+its five terms. Without positivity the headline would be vacuous through
 $0 \le \boldsymbol{u} \le \boldsymbol{u}_{\mathrm{SmallEig}}$. -/
 theorem uSmallEig_spec {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) {nmax : ℕ}
     (hn : 1 ≤ nmax) {S δ φ : ℝ} (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1) :
@@ -108,8 +104,7 @@ theorem uSmallEig_spec {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ : 0
       uSmallEig nmax S δ φ c₁ c₂ ≤ uSmallEigReduce nmax S δ φ c₁ c₂ ∧
       uSmallEig nmax S δ φ c₁ c₂ ≤ uSmallEigRHess nmax S δ φ c₁ c₂ ∧
       uSmallEig nmax S δ φ c₁ c₂ ≤ uSmallEigDistSpec nmax S δ φ c₁ c₂ ∧
-      uSmallEig nmax S δ φ c₁ c₂ ≤ uSmallEigDecouple nmax S δ φ c₁ c₂ ∧
-      uSmallEig nmax S δ φ c₁ c₂ ≤ uSmallEigCore nmax S δ φ c₂ := by
+      uSmallEig nmax S δ φ c₁ c₂ ≤ uSmallEigDecouple nmax S δ φ c₁ c₂ := by
   have hS : 0 < S := hδ.trans_le hδS
   have hg := (smallEigGap_pos_le hb₁ hn hS.le hδ hφ hφ1).1
   have hc := (smallEigCond_pos_le hb₂ hn hS.le hδ hφ hφ1).1
@@ -130,10 +125,9 @@ theorem uSmallEig_spec {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ : 0
     unfold uSmallEigDistSpec; exact lt_min (by positivity) (by positivity)
   have h5 : 0 < uSmallEigDecouple nmax S δ φ c₁ c₂ := by
     unfold uSmallEigDecouple; exact div_pos (lt_min (by positivity) (by positivity)) (by positivity)
-  have h6 : 0 < uSmallEigCore nmax S δ φ c₂ := by unfold uSmallEigCore; positivity
   unfold uSmallEig
-  refine ⟨lt_min h1 (lt_min h2 (lt_min h3 (lt_min h4 (lt_min h5 h6)))), min_le_left _ _, ?_, ?_,
-    ?_, ?_, ?_⟩ <;> simp only [min_le_iff, le_refl, true_or, or_true]
+  refine ⟨lt_min h1 (lt_min h2 (lt_min h3 (lt_min h4 h5))), min_le_left _ _, ?_, ?_,
+    ?_, ?_⟩ <;> simp only [min_le_iff, le_refl, true_or, or_true]
 
 /-! ### The bits -/
 
@@ -355,14 +349,15 @@ private theorem unifLo_inner (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) :
 
 private theorem unifLo_weight (hb₂ : 0 < c₂.b) :
     UnifLo Adm arg (fun i => smallEigWeight i.1 i.2.1 i.2.2.1 i.2.2.2 c₂) := by
-  have hR : UnifHi Adm arg (fun i => smallEigVectorRadius i.1 i.2.2.2) := by
+  have hR0 : UnifHi Adm arg (fun i => 3 * √(i.1 : ℝ) +
+      √(2 * log (4 / smallEigDecouplerFailure i.1 i.2.2.2))) := by
     refine (((UnifHi.const arg_four (by norm_num : (0 : ℝ) < 3)).mul unifHi_order).add arg_two
       ((UnifHi.const arg_four (by norm_num : (0 : ℝ) < 128)).mul (unifHi_order.mul
         (UnifHi.inv unifLo_failure)))).of_le (fun i h => ?_) fun i h => ?_
     all_goals obtain ⟨hn, hδ, hδS, hφ, hφ1⟩ := h
     all_goals have hn1 : (1 : ℝ) ≤ i.1 := by exact_mod_cast hn
     · have : 0 < √(i.1 : ℝ) := sqrt_pos.mpr (by linarith)
-      unfold smallEigVectorRadius; positivity
+      positivity
     · have hD : 4 / smallEigDecouplerFailure i.1 i.2.2.2 = 64 * i.1 * i.2.2.2⁻¹ := by
         unfold smallEigDecouplerFailure; field_simp; ring
       have hφi : 1 ≤ i.2.2.2⁻¹ := one_le_inv₀ hφ |>.mpr hφ1
@@ -372,11 +367,14 @@ private theorem unifLo_weight (hb₂ : 0 < c₂.b) :
       have h1 : √(i.1 : ℝ) ≤ i.1 := by rw [sqrt_le_left (by linarith)]; nlinarith
       have h2 : √(2 * log (64 * i.1 * i.2.2.2⁻¹)) ≤ 128 * (i.1 * i.2.2.2⁻¹) := by
         rw [sqrt_le_left (by positivity)]; nlinarith
-      unfold smallEigVectorRadius; rw [hD]; linarith
+      rw [hD]; linarith
+  have hR : UnifHi Adm arg (fun i => smallEigVectorRadius i.1 i.2.2.2) :=
+    ((UnifHi.const arg_four (by positivity : (0 : ℝ) < √2)).mul hR0).congr fun i _ => by
+      simp only [smallEigVectorRadius]
   refine ((unifLo_failure.div ((UnifHi.const arg_four (by norm_num : (0 : ℝ) < 16)).mul
-    unifHi_order)).div ((UnifHi.const arg_four (by norm_num : (0 : ℝ) < 4)).mul unifHi_order)).div
+    unifHi_order)).div ((UnifHi.const arg_four (by norm_num : (0 : ℝ) < 8)).mul unifHi_order)).div
     (((UnifHi.const arg_four (by norm_num : (0 : ℝ) < 64)).mul (hR.pow 2)).mul
-      (((UnifHi.const arg_four (by norm_num : (0 : ℝ) < 4)).mul (unifLo_cond hb₂).2).pow 2))
+      (((UnifHi.const arg_four (by norm_num : (0 : ℝ) < 2)).mul (unifLo_cond hb₂).2).pow 2))
     |>.congr fun i h => ?_
   simp only [smallEigWeight, smallEigDecouplerFailure]
 
@@ -455,13 +453,6 @@ private theorem unifLo_decoupleRest (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) :
         (UnifHi.const arg_four (by norm_num : (0 : ℝ) < 2)) |>.mul (unifHi_succ.sqrt arg_one))).div
       hN)⟩
 
-private theorem unifLo_coreRest :
-    UnifLo Adm arg (fun i => i.2.2.1 / i.2.1 / 8 /
-      (2 * ((i.1 : ℝ) + 1) * ((i.1 : ℝ) + 1) ^ 2 * 2)) :=
-  (unifLo_delta.div (UnifHi.const arg_four (by norm_num : (0 : ℝ) < 8))).div
-    (((UnifHi.const arg_four (by norm_num : (0 : ℝ) < 2)).mul unifHi_succ).mul (unifHi_succ.pow 2)
-      |>.mul (UnifHi.const arg_four (by norm_num : (0 : ℝ) < 2)))
-
 private theorem uSmallEigDecouple_eq (nmax : ℕ) (S δ φ : ℝ) (c₁ c₂ : PolyLogTail) :
     uSmallEigDecouple nmax S δ φ c₁ c₂ =
       min ((16 * (8 * smallEigCondition nmax S δ φ c₂))⁻¹ / (300 * ((nmax : ℝ) + 1) ^ 2) *
@@ -490,13 +481,12 @@ private theorem loBd_uSmallEig (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) : ∃ K
   obtain ⟨a4, h4⟩ := unifLo_distSpecRest hb₂
   obtain ⟨x, hx⟩ := unifLo_innerRatio hb₁ hb₂
   obtain ⟨⟨a5, h5⟩, ⟨a6, h6⟩⟩ := unifLo_decoupleRest hb₁ hb₂
-  obtain ⟨a7, h7⟩ := unifLo_coreRest
-  refine ⟨a1 + a2 + a3 + 8 + a4 + a5 + a6 + a7 + 6, 2 * x + 1, fun i hi => ?_⟩
+  refine ⟨a1 + a2 + a3 + 8 + a4 + a5 + a6, 2 * x + 1, fun i hi => ?_⟩
   obtain ⟨n, S, δ, φ⟩ := i
   have hY := arg_four _ hi
   have hY1 : 1 ≤ arg (n, S, δ, φ) := by linarith
   obtain ⟨hS, hn⟩ := pos_of_adm hi
-  simp only at hS hn h1 h2 h3 h4 h5 h6 h7 hx ⊢
+  simp only at hS hn h1 h2 h3 h4 h5 h6 hx ⊢
   set Q := 2 ^ smallEigDegreeLog n S δ φ c₂
   set m := smallEigDecoupleSteps n S δ φ c₂
   have hD : LoBd (arg (n, S, δ, φ)) (8 + Q + (a4 + x * Q)) (uSmallEigDistSpec n S δ φ c₁ c₂) := by
@@ -509,19 +499,8 @@ private theorem loBd_uSmallEig (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) : ∃ K
       (uSmallEigDecouple n S δ φ c₁ c₂) := by
     rw [uSmallEigDecouple_eq]
     exact ((h5 _ hi).mul ((hx _ hi).pow m)).min' hY1 ((h6 _ hi).mul ((hx _ hi).pow m))
-  have hC : LoBd (arg (n, S, δ, φ)) (a7 + (6 + m)) (uSmallEigCore n S δ φ c₂) := by
-    refine ((h7 _ hi).mul (LoBd.one_div_mul_succ hY (by norm_num : (0 : ℝ) < 1050) (e := 6)
-      (by norm_num) m)).of_le ?_
-    have hm : (0 : ℝ) ≤ m := m.cast_nonneg
-    have e : uSmallEigCore n S δ φ c₂ = δ / S / 8 / (2 * ((n : ℝ) + 1) * ((n : ℝ) + 1) ^ 2 * 2) /
-        (1000 + 1050 * m) := by
-      unfold uSmallEigCore; field_simp; ring
-    rw [e, mul_one_div]
-    have : 0 ≤ δ / S / 8 / (2 * ((n : ℝ) + 1) * ((n : ℝ) + 1) ^ 2 * 2) := by
-      have := hi.2.1; positivity
-    exact div_le_div_of_nonneg_left this (by positivity) (by linarith)
   refine ((h1 _ hi).min' hY1 ((h2 _ hi).min' hY1 ((h3 _ hi).min' hY1
-    (hD.min' hY1 (hDec.min' hY1 hC))))).mono hY1 ?_
+    (hD.min' hY1 hDec)))).mono hY1 ?_
   nlinarith [Nat.zero_le (x * Q), Nat.zero_le (x * m)]
 
 private theorem natCeil_le_add_one {y z : ℝ} (hz : 0 ≤ z) (h : y ≤ z) : (⌈y⌉₊ : ℝ) ≤ z + 1 :=

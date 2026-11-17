@@ -18,9 +18,11 @@ merged algorithm assumes (`NLAlib.ShiftedQR.IsRandomSmallEig`) is replaced by th
 dimension, and its forward contract on the trailing blocks of order $k$ and norm at most
 $4\Sigma$ (`NLAlib.SmallEig.smallEigProg_randomSmallEigContract`) gives the merged accuracy and
 failure. The headline is conditional only on the two random-matrix theorems (the hypotheses
-`NLAlib.ComplexGaussianGapTail`, `NLAlib.ComplexGaussianConditionTail`); with their preferred
-forms it is `NLAlib.ShiftedQR.roundedShQRSmallEig_measureReal_not_spectrum_le_of_spec`. One unit
-roundoff serves the whole run: $\boldsymbol{u} \le \min(\boldsymbol{u}_{\mathrm{ShQR}},
+`NLAlib.PolyLogTail.BoundsGinibreGap`, `NLAlib.PolyLogTail.BoundsGinibreCondition`), which are
+proved at the records `NLAlib.ginibreGapRecord` <!-- value ginibreGapRecord -->
+$(10000e, 5, 1/2, 2)$, `NLAlib.ginibreConditionRecord` <!-- value ginibreConditionRecord -->
+$(128e, 3, 2, 2)$: the `_unconditional` corollaries. One unit roundoff serves the whole run:
+$\boldsymbol{u} \le \min(\boldsymbol{u}_{\mathrm{ShQR}},
 \boldsymbol{u}^{\mathrm{fwd}}_{\mathrm{SmallEig}})$, $O(\log^4)$ bits up to $(\log\log)^2$.
 
 ## Main definitions
@@ -37,8 +39,8 @@ roundoff serves the whole run: $\boldsymbol{u} \le \min(\boldsymbol{u}_{\mathrm{
 * `NLAlib.ShiftedQR.logb_inv_uShQRSmallEig_le`, `NLAlib.ShiftedQR.shqrDegree_le_log`: the bits.
 * `NLAlib.ShiftedQR.roundedShQRSmallEig_work_le`: the operation count.
 * `NLAlib.ShiftedQR.roundedShQRSmallEig_relative`, `NLAlib.ShiftedQR.roundedShQRSmallEig_hermitian`.
-* `NLAlib.ShiftedQR.roundedShQRSmallEig_measureReal_not_spectrum_le_of_spec`: with the preferred
-  random-matrix theorems.
+* `NLAlib.ShiftedQR.roundedShQRSmallEig_measureReal_not_spectrum_le_unconditional` and the other
+  `_unconditional` forms: with the proved random-matrix tails.
 -/
 
 @[expose] public section
@@ -169,7 +171,7 @@ theorem roundedShQRSmallEig_measureReal_not_spectrum_le {Mch : Machine ℝ} {I :
     (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
     (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
     (hG : law sG = gaussianReal 0 1) {c₁ c₂ : PolyLogTail}
-    (hA : ComplexGaussianGapTail c₁) (hB : ComplexGaussianConditionTail c₂)
+    (hA : c₁.BoundsGinibreGap) (hB : c₂.BoundsGinibreCondition)
     (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b)
     {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {k : ℕ}
     {B Γ S δ φ : ℝ} (hHess : IsUpperHessenberg H) (hV : IsUnit V)
@@ -447,7 +449,7 @@ theorem roundedShQRSmallEig_relative {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
     (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
     (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
     (hG : law sG = gaussianReal 0 1) {c₁ c₂ : PolyLogTail}
-    (hA : ComplexGaussianGapTail c₁) (hB : ComplexGaussianConditionTail c₂)
+    (hA : c₁.BoundsGinibreGap) (hB : c₂.BoundsGinibreCondition)
     (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b)
     {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {k : ℕ}
     {B Γ S c δ φ : ℝ} (hHess : IsUpperHessenberg H) (hV : IsUnit V)
@@ -488,7 +490,7 @@ theorem roundedShQRSmallEig_hermitian {Mch : Machine ℝ} {I : Interp O Q ℝ} {
     (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
     (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
     (hG : law sG = gaussianReal 0 1) {c₁ c₂ : PolyLogTail}
-    (hA : ComplexGaussianGapTail c₁) (hB : ComplexGaussianConditionTail c₂)
+    (hA : c₁.BoundsGinibreGap) (hB : c₂.BoundsGinibreCondition)
     (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b)
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {k : ℕ} {Γ S δ φ : ℝ}
     (hHess : IsUpperHessenberg H) (hH : H.IsHermitian) (hΓ : 0 < Γ)
@@ -516,48 +518,13 @@ theorem roundedShQRSmallEig_hermitian {Mch : Machine ℝ} {I : Interp O Q ℝ} {
     hG hA hB hb₁ hb₂ hHess hUo.isUnit hHU hUo.pseudoConditionNumber_eq_one.le hΓ hgap' hHS hδ hδS
     hφ hφ1 (by rw [mul_one]; exact hk) hu hin hξ
 
-/-- **The algorithm with no oracle, with the preferred random-matrix theorems**
-([BanksGarzaVargasSrivastava2022, Theorem 6.3] with [BanksGarzaVargasSrivastava2025,
-Theorem 1.1]): `NLAlib.ShiftedQR.roundedShQRSmallEig_measureReal_not_spectrum_le` with the tails
-of the preferred forms of the eigenvalue gap and the eigenvector condition of a complex Ginibre
-perturbation (`NLAlib.ComplexGaussianGapPreferred`, `NLAlib.ComplexGaussianConditionPreferred`), at
-the records $(1, 3, 2, 0)$ and $(18, 3, 2, 2)$: for the machine, the streams and the input of the
-signature, upper Hessenberg $\mathbf{H}$ in the class $(B, \Gamma)$, $\|\mathbf{H}\|_2 \le \Sigma$,
-$0 < \delta \le \Sigma$, $0 < \varphi \le 1$, $k$ the degree at $4B$; the probability that the
-run fails, writes outside the matrix, the output and the failure word, or lists no spectrum of
-$\mathbf{H} + \mathbf{E}$ with $\|\mathbf{E}\|_2 \le \delta$ is at most $\varphi$. The two
-hypotheses are discharged when the random-matrix theorems are proved. -/
-theorem roundedShQRSmallEig_measureReal_not_spectrum_le_of_spec {Mch : Machine ℝ}
-    {I : Interp O Q ℝ} {u : ℝ} {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch)
-    (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
-    (hC : IsCmp id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
-    (hloc : ∀ o, I.TapeLocal o (win o)) (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
-    (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
-    (hG : law sG = gaussianReal 0 1) (hA : ComplexGaussianGapPreferred)
-    (hB : ComplexGaussianConditionPreferred)
-    {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {k : ℕ}
-    {B Γ S δ φ : ℝ} (hHess : IsUpperHessenberg H) (hV : IsUnit V)
-    (hHV : H * V = V * Matrix.diagonal d) (hκ : pseudoConditionNumber V ≤ B) (hΓ : 0 < Γ)
-    (hgap : ∀ i j, i ≠ j → Γ ≤ ‖d i - d j‖) (hHS : specNorm H ≤ S) (hδ : 0 < δ) (hδS : δ ≤ S)
-    (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hk : k = shqrDegree (4 * B))
-    (hu : u ≤ uShQRSmallEig n k B Γ S δ φ ⟨1, 3, 2, 0⟩ ⟨18, 3, 2, 2⟩)
-    {a t p out f : ℕ × ℕ} {μ : Mem ℝ}
-    (hin : ShQRSmallEigInput k B Γ S δ φ ⟨1, 3, 2, 0⟩ ⟨18, 3, 2, 2⟩ a t p out f H μ)
-    {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSmallEig (O := O) (Q := Q) sG).body
-      (Env.frame (shqrSmallEigDims n k B Γ S δ φ ⟨1, 3, 2, 0⟩ ⟨18, 3, 2, 2⟩) [a, t, p, out, f])
-      (shqrFp n a out f) (ShQRSpectrum out f H δ) μ} ≤ φ :=
-  roundedShQRSmallEig_measureReal_not_spectrum_le hS hM hL hNat hQ hC hI hloc hSmp hDisk hU hG
-    (complexGaussianGapTail_of_preferred hA) (complexGaussianConditionTail_of_preferred hB)
-    (by norm_num) (by norm_num) hHess hV hHV hκ hΓ hgap hHS hδ hδS hφ hφ1 hk hu hin hξ
-
-
 /-! ### With the proved random-matrix tails -/
 
 /-- The unconditional form of `NLAlib.ShiftedQR.roundedShQRSmallEig_measureReal_not_spectrum_le`
 ([BanksGarzaVargasSrivastava2022, Theorem 6.3]): the eigenvalue-gap and eigenvector-condition tails
-of a complex Ginibre perturbation are proved, at the records $(10000e, 5, 1/2, 2)$
-(`NLAlib.complexGaussianGapTail`) and $(128e, 3, 2, 2)$ (`NLAlib.complexGaussianConditionTail`). -/
+of a complex Ginibre perturbation are proved, at the records
+`NLAlib.ginibreGapRecord` <!-- value ginibreGapRecord --> $(10000e, 5, 1/2, 2)$ and
+`NLAlib.ginibreConditionRecord` <!-- value ginibreConditionRecord --> $(128e, 3, 2, 2)$. -/
 theorem roundedShQRSmallEig_measureReal_not_spectrum_le_unconditional {Mch : Machine ℝ} {I : Interp
   O Q ℝ}
     {u : ℝ} {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
@@ -571,24 +538,25 @@ theorem roundedShQRSmallEig_measureReal_not_spectrum_le_unconditional {Mch : Mac
     (hHV : H * V = V * Matrix.diagonal d) (hκ : pseudoConditionNumber V ≤ B) (hΓ : 0 < Γ)
     (hgap : ∀ i j, i ≠ j → Γ ≤ ‖d i - d j‖) (hHS : specNorm H ≤ S) (hδ : 0 < δ) (hδS : δ ≤ S)
     (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hk : k = shqrDegree (4 * B))
-    (hu : u ≤ uShQRSmallEig n k B Γ S δ φ ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
-      ⟨128 * Real.exp 1, 3, 2, 2⟩)
+    (hu : u ≤ uShQRSmallEig n k B Γ S δ φ ginibreGapRecord
+      ginibreConditionRecord)
     {a t p out f : ℕ × ℕ} {μ : Mem ℝ}
-    (hin : ShQRSmallEigInput k B Γ S δ φ ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
-      ⟨128 * Real.exp 1, 3, 2, 2⟩ a t p out f H μ)
+    (hin : ShQRSmallEigInput k B Γ S δ φ ginibreGapRecord
+      ginibreConditionRecord a t p out f H μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
     P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSmallEig (O := O) (Q := Q) sG).body
-      (Env.frame (shqrSmallEigDims n k B Γ S δ φ ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
-        ⟨128 * Real.exp 1, 3, 2, 2⟩) [a, t, p, out, f]) (shqrFp n a out f)
+      (Env.frame (shqrSmallEigDims n k B Γ S δ φ ginibreGapRecord
+        ginibreConditionRecord) [a, t, p, out, f]) (shqrFp n a out f)
       (ShQRSpectrum out f H δ) μ} ≤ φ := by
   apply roundedShQRSmallEig_measureReal_not_spectrum_le
-    (hA := complexGaussianGapTail) (hB := complexGaussianConditionTail)
-    (hb₁ := by norm_num) (hb₂ := by norm_num) <;> assumption
+    (hA := boundsGinibreGap_ginibreGapRecord) (hB := boundsGinibreCondition_ginibreConditionRecord)
+    (hb₁ := ginibreGapRecord_b_pos) (hb₂ := ginibreConditionRecord_b_pos) <;> assumption
 
 /-- The unconditional form of `NLAlib.ShiftedQR.roundedShQRSmallEig_relative`
 ([BanksGarzaVargasSrivastava2022, Theorem 6.3]): the eigenvalue-gap and eigenvector-condition tails
-of a complex Ginibre perturbation are proved, at the records $(10000e, 5, 1/2, 2)$
-(`NLAlib.complexGaussianGapTail`) and $(128e, 3, 2, 2)$ (`NLAlib.complexGaussianConditionTail`). -/
+of a complex Ginibre perturbation are proved, at the records
+`NLAlib.ginibreGapRecord` <!-- value ginibreGapRecord --> $(10000e, 5, 1/2, 2)$ and
+`NLAlib.ginibreConditionRecord` <!-- value ginibreConditionRecord --> $(128e, 3, 2, 2)$. -/
 theorem roundedShQRSmallEig_relative_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n
   : ℕ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
@@ -603,24 +571,25 @@ theorem roundedShQRSmallEig_relative_unconditional {Mch : Machine ℝ} {I : Inte
     (hgap : ∀ i j, i ≠ j → Γ ≤ ‖d i - d j‖) (hS0 : 0 < S) (hHS : specNorm H ≤ S)
     (hSc : S ≤ c * specNorm H) (hc : 1 ≤ c) (hδ : 0 < δ) (hδ1 : δ ≤ 1)
     (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hk : k = shqrDegree (4 * B))
-    (hu : u ≤ uShQRSmallEig n k B Γ S (δ * S / c) φ ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
-      ⟨128 * Real.exp 1, 3, 2, 2⟩)
+    (hu : u ≤ uShQRSmallEig n k B Γ S (δ * S / c) φ ginibreGapRecord
+      ginibreConditionRecord)
     {a t p out f : ℕ × ℕ} {μ : Mem ℝ}
-    (hin : ShQRSmallEigInput k B Γ S (δ * S / c) φ ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
-      ⟨128 * Real.exp 1, 3, 2, 2⟩ a t p out f H μ)
+    (hin : ShQRSmallEigInput k B Γ S (δ * S / c) φ ginibreGapRecord
+      ginibreConditionRecord a t p out f H μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
     P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSmallEig (O := O) (Q := Q) sG).body
-      (Env.frame (shqrSmallEigDims n k B Γ S (δ * S / c) φ ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
-        ⟨128 * Real.exp 1, 3, 2, 2⟩) [a, t, p, out, f])
+      (Env.frame (shqrSmallEigDims n k B Γ S (δ * S / c) φ ginibreGapRecord
+        ginibreConditionRecord) [a, t, p, out, f])
       (shqrFp n a out f) (ShQRSpectrum out f H (δ * specNorm H)) μ} ≤ φ := by
   apply roundedShQRSmallEig_relative
-    (hA := complexGaussianGapTail) (hB := complexGaussianConditionTail)
-    (hb₁ := by norm_num) (hb₂ := by norm_num) <;> assumption
+    (hA := boundsGinibreGap_ginibreGapRecord) (hB := boundsGinibreCondition_ginibreConditionRecord)
+    (hb₁ := ginibreGapRecord_b_pos) (hb₂ := ginibreConditionRecord_b_pos) <;> assumption
 
 /-- The unconditional form of `NLAlib.ShiftedQR.roundedShQRSmallEig_hermitian`
 ([BanksGarzaVargasSrivastava2022, Theorem 6.3]): the eigenvalue-gap and eigenvector-condition tails
-of a complex Ginibre perturbation are proved, at the records $(10000e, 5, 1/2, 2)$
-(`NLAlib.complexGaussianGapTail`) and $(128e, 3, 2, 2)$ (`NLAlib.complexGaussianConditionTail`). -/
+of a complex Ginibre perturbation are proved, at the records
+`NLAlib.ginibreGapRecord` <!-- value ginibreGapRecord --> $(10000e, 5, 1/2, 2)$ and
+`NLAlib.ginibreConditionRecord` <!-- value ginibreConditionRecord --> $(128e, 3, 2, 2)$. -/
 theorem roundedShQRSmallEig_hermitian_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n
   : ℕ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
@@ -633,18 +602,18 @@ theorem roundedShQRSmallEig_hermitian_unconditional {Mch : Machine ℝ} {I : Int
     (hHess : IsUpperHessenberg H) (hH : H.IsHermitian) (hΓ : 0 < Γ)
     (hgap : ∀ i j, i ≠ j → Γ ≤ |hH.eigenvalues i - hH.eigenvalues j|) (hHS : specNorm H ≤ S)
     (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hk : k = shqrDegree 4)
-    (hu : u ≤ uShQRSmallEig n k 1 Γ S δ φ ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
-      ⟨128 * Real.exp 1, 3, 2, 2⟩)
+    (hu : u ≤ uShQRSmallEig n k 1 Γ S δ φ ginibreGapRecord
+      ginibreConditionRecord)
     {a t p out f : ℕ × ℕ} {μ : Mem ℝ} (hin : ShQRSmallEigInput k 1 Γ S δ φ
-      ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩ ⟨128 * Real.exp 1, 3, 2, 2⟩ a t p out f H μ)
+      ginibreGapRecord ginibreConditionRecord a t p out f H μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
     P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSmallEig (O := O) (Q := Q) sG).body
-      (Env.frame (shqrSmallEigDims n k 1 Γ S δ φ ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
-        ⟨128 * Real.exp 1, 3, 2, 2⟩) [a, t, p, out, f]) (shqrFp n a out f)
+      (Env.frame (shqrSmallEigDims n k 1 Γ S δ φ ginibreGapRecord
+        ginibreConditionRecord) [a, t, p, out, f]) (shqrFp n a out f)
       (ShQRSpectrum out f H δ) μ} ≤ φ := by
   apply roundedShQRSmallEig_hermitian
-    (hA := complexGaussianGapTail) (hB := complexGaussianConditionTail)
-    (hb₁ := by norm_num) (hb₂ := by norm_num) <;> assumption
+    (hA := boundsGinibreGap_ginibreGapRecord) (hB := boundsGinibreCondition_ginibreConditionRecord)
+    (hb₁ := ginibreGapRecord_b_pos) (hb₂ := ginibreConditionRecord_b_pos) <;> assumption
 
 end Theorems
 

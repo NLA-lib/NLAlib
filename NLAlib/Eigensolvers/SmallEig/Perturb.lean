@@ -747,8 +747,8 @@ thresholds $t_1, t_2$ and the noise threshold of
 `NLAlib.measureReal_specNorm_ge_mul_le_of_hasLaw_complexGaussianMatrix` at $\varphi/4$,
 the bad windows have probability at most $3\varphi/4$: the two class tails
 (`NLAlib.measureReal_not_exists_class_le_of_hasLaw_complexGaussianMatrix`) and the norm tail. -/
-private theorem measureReal_perturbBad_le {c₁ c₂ : PolyLogTail} (hA : ComplexGaussianGapTail c₁)
-    (hB : ComplexGaussianConditionTail c₂) (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) {nmax : ℕ}
+private theorem measureReal_perturbBad_le {c₁ c₂ : PolyLogTail} (hA : c₁.BoundsGinibreGap)
+    (hB : c₂.BoundsGinibreCondition) (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) {nmax : ℕ}
     {S δ φ : ℝ} (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1) {n : ℕ}
     (hn : n + 1 ≤ nmax) {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hAS : specNorm A ≤ S) :
     (Measure.pi fun _ : Fin (2 * ((n + 1) * (n + 1))) => gaussianReal 0 1).real
@@ -852,8 +852,8 @@ $\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le 2/t_2$ and eigenvalues separated by $
 $t_1, t_2$ = `NLAlib.SmallEig.smallEigGap`, `NLAlib.SmallEig.smallEigCond`. -/
 theorem ginibrePerturb_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hL : IsIndexLit M I) (hSmp : IsSample I) {law : ℕ → Measure ℝ}
-    {sG : ℕ} (hG : law sG = gaussianReal 0 1) {c₁ c₂ : PolyLogTail} (hA : ComplexGaussianGapTail c₁)
-    (hB : ComplexGaussianConditionTail c₂) (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) {nmax : ℕ}
+    {sG : ℕ} (hG : law sG = gaussianReal 0 1) {c₁ c₂ : PolyLogTail} (hA : c₁.BoundsGinibreGap)
+    (hB : c₂.BoundsGinibreCondition) (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) {nmax : ℕ}
     {S δ φ : ℝ} (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
     (hu : u ≤ uSmallEigReduce nmax S δ φ c₁ c₂) {n : ℕ} (hn : n + 1 ≤ nmax)
     {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hAS : specNorm A ≤ S) {a q : ℕ × ℕ} :

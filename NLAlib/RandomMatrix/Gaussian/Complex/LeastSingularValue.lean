@@ -19,7 +19,7 @@ The smallest singular value $\sigma_{\min}$ of an $r \times r$ standard complex 
 with any deterministic shift has
 $\mathbb{P}[\sigma_{\min} \le x] \le \min(r^2, e\,r)\,x^2$, against Edelman's exact law
 $1 - e^{-r x^2}$ [Edelman1988]. The bound $e\,r x^2$ is the probe argument of
-[SankarSpielmanTeng2006, Lemma 3.2]: an independent Gaussian probe $\mathbf{g}$ sees
+[SankarSpielmanTeng2006]: an independent Gaussian probe $\mathbf{g}$ sees
 $\|\mathbf{G}^{-1}\|_2$ in $\|\mathbf{G}^{-1}\mathbf{g}\|$ with probability at least $e^{-1}$
 (`NLAlib.measureReal_norm_sq_ge_le_of_hasLaw_complexGaussian`).
 
@@ -675,7 +675,7 @@ private theorem complexGaussianMatrix_real_exp_neg_one_le_le {r : Type*} [Fintyp
 for a deterministic complex square matrix $\mathbf{M}$, independent standard complex Gaussian
 entries of $\mathbf{G}$, $k+1 = \lvert r \rvert$ and $x \ge 0$,
 $\mathbb{P}[\sigma_k(\mathbf{M}+\mathbf{G}) \le x] \le e\,\lvert r \rvert x^2$.
-The complex version of the probe argument in [SankarSpielmanTeng2006, Lemma 3.2]. -/
+The complex version of the probe argument in [SankarSpielmanTeng2006, proof of Theorem 3.3]. -/
 theorem measureReal_singularValues_add_le_le_exp_one_mul_of_hasLaw_complexGaussianMatrix
     {r : Type*} [Fintype r] {G : Ω → Matrix r r ℂ} (hG : HasLaw G (complexGaussianMatrix r r) μ)
     (M : Matrix r r ℂ) {k : ℕ} (hk : k + 1 = Fintype.card r) {x : ℝ} (hx : 0 ≤ x) :
@@ -736,7 +736,8 @@ $\mathbf{G}$, $k+1 = \lvert r \rvert$, $\gamma > 0$ and $x \ge 0$,
 $$\mathbb{P}[\sigma_k(\mathbf{M} + (\gamma/\sqrt{\lvert r \rvert})\mathbf{G}) \le x]
 \le e\,\lvert r \rvert^2 x^2/\gamma^2.$$
 [BanksKulkarniMukherjeeSrivastava2021, Lemma 3.3] has constant $1$ in place of $e$;
-this is the elementary probe argument of [SankarSpielmanTeng2006, Lemma 3.2], complex version. -/
+this is the elementary probe argument of [SankarSpielmanTeng2006, proof of Theorem 3.3], complex
+version. -/
 theorem measureReal_singularValues_add_smul_le_le_exp_one_mul_of_hasLaw_complexGaussianMatrix
     {r : Type*} [Fintype r] {G : Ω → Matrix r r ℂ}
     (hG : HasLaw G (complexGaussianMatrix r r) μ) (M : Matrix r r ℂ)
@@ -767,8 +768,8 @@ $\mathbf{G}$ an $r \times r$ standard complex Gaussian matrix, $k + 1 = \lvert r
 $x \ge 0$, $\mathbb{P}[\sigma_k(\mathbf{G}) \le x] \le e\,\lvert r \rvert x^2$. Edelman's exact
 law $1 - e^{-\lvert r \rvert x^2}$ (cited in [Shah2024, Lemma 3.1]) is smaller by the factor
 $e$; the elementary `NLAlib.measureReal_singularValues_le_le_of_hasLaw_complexGaussianMatrix` has
-$\lvert r \rvert^2x^2$. The probe argument of [SankarSpielmanTeng2006, Lemma 3.2], complex
-version. -/
+$\lvert r \rvert^2x^2$. The probe argument of [SankarSpielmanTeng2006, proof of Theorem 3.3],
+complex version. -/
 theorem measureReal_singularValues_le_le_exp_one_mul_of_hasLaw_complexGaussianMatrix
     {r : Type*} [Fintype r] {G : Ω → Matrix r r ℂ} (hG : HasLaw G (complexGaussianMatrix r r) μ)
     {k : ℕ} (hk : k + 1 = Fintype.card r) {x : ℝ} (hx : 0 ≤ x) :

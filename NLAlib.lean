@@ -173,7 +173,6 @@ public import NLAlib.Eigensolvers.SmallEig.Program
 public import NLAlib.Eigensolvers.SmallEig.RandomHessenberg
 public import NLAlib.Eigensolvers.SmallEig.RandomHessenbergRotations
 public import NLAlib.Eigensolvers.SmallEig.RandomHessenbergWeights
-public import NLAlib.Eigensolvers.SmallEig.RandomMatrixTails
 public import NLAlib.Eigensolvers.SmallEig.Theorems
 public import NLAlib.Eigensolvers.SpectralBisection
 public import NLAlib.Eigensolvers.SpectralBisection.Accuracy
@@ -1447,6 +1446,7 @@ public import NLAlib.RandomMatrix.Haar.Uniqueness
 public import NLAlib.RandomMatrix.Rademacher.Basic
 public import NLAlib.RandomMatrix.Shattering.ConditionTail
 public import NLAlib.RandomMatrix.Shattering.GapTail
+public import NLAlib.RandomMatrix.Shattering.GinibreClass
 public import NLAlib.RandomMatrix.SubGaussian.ExtremeSingularValues
 public import NLAlib.RandomMatrix.TapeLaw
 public import NLAlib.RandomMatrix.UnitaryInvariance

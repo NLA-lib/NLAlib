@@ -160,6 +160,8 @@ public import NLAlib.Eigensolvers.SmallEig.Draws
 public import NLAlib.Eigensolvers.SmallEig.Leaf
 public import NLAlib.Eigensolvers.SmallEig.OneEig
 public import NLAlib.Eigensolvers.SmallEig.OneEigMath
+public import NLAlib.Eigensolvers.SmallEig.OneEigParts
+public import NLAlib.Eigensolvers.SmallEig.OneEigRounding
 public import NLAlib.Eigensolvers.SmallEig.Parameters
 public import NLAlib.Eigensolvers.SmallEig.Perturb
 public import NLAlib.Eigensolvers.SmallEig.Precision

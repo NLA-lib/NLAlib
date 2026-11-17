@@ -164,7 +164,7 @@ theorem smallEigDecoupler_randomDecouplingRoutineContract {M : Machine ℝ} {I :
       (smallEigDecoupler (O := O) (Q := Q) sG) I := by
   sorry
 
-/-- **The decoupler terminates**: on a scalar machine with index literals, exact natural literals
+/-- The decoupler terminates: on a scalar machine with index literals, exact natural literals
 up to $n_{\max} + 1$, exact comparisons and conversion, draws that store the tape entry and an
 exact polar sampler, for words `qs` with valid cap words for the cap $T$
 (`NLAlib.SmallEig.SmallEigCaps`) and at least twelve words, `NLAlib.SmallEig.smallEigDecoupler`
@@ -176,7 +176,74 @@ theorem smallEigDecoupler_terminatingDecouplerRoutine {M : Machine ℝ} {I : Int
     (hDisk : IsPolarDiskSampler sU I) {T F : ℕ} {qs : List ℝ} (hqs : SmallEigCaps T qs)
     (hlen : 12 ≤ qs.length) :
     TerminatingDecouplerRoutine nmax 1 F T qs (smallEigDecoupler (O := O) (Q := Q) sG) I := by
-  sorry
+  intro n w q f tape μ H hk hn hW hq hl hwr hfr hwf hqwf
+  obtain ⟨m, qq, t, m₂, h8, h9, h10, h11, hmq, hmT, htT, hm2T⟩ := hqs
+  obtain ⟨n', rfl⟩ : ∃ n', n = n' + 1 := ⟨n - 1, by omega⟩
+  have hget : ∀ i < qs.length, μ.store.get q.1 (q.2 + i) = some (qs.getD i 0) :=
+    fun i hi => Store.get_of_readBlock hq hi 0
+  have hlive : w.1 < μ.store.length ∧ q.1 < μ.store.length ∧ f.1 < μ.store.length := by
+    simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,
+      forall_eq] at hl
+    exact ⟨hl.1, hl.2.1, hl.2.2.2⟩
+  have hqm : qq ≤ m := hmq ▸ Nat.lt_two_pow_self.le
+  have hzero : M.lit 0 = 0 := by simpa using hNat 0 (by omega)
+  unfold smallEigDecoupler
+  refine writes_bindIdx_of_decode_nat hQ rfl rfl (hget 8 (by omega)) (by simpa using h8) hmT ?_
+  refine writes_bindIdx_of_decode_nat hQ rfl rfl (hget 9 (by omega)) (by simpa using h9) hqm ?_
+  refine writes_bindIdx_of_decode_nat hQ rfl rfl (hget 10 (by omega)) (by simpa using h10) htT ?_
+  refine writes_bindIdx_of_decode_nat hQ rfl rfl (hget 11 (by omega)) (by simpa using h11) hm2T ?_
+  change Writes .total I tape (Stmt.allocs [.const 2] _) _ _ _ μ
+  refine writes_allocs_preserving_post (ns := [2]) rfl (fun hBelow ⟨⟨x, hx⟩, H', hH'⟩ =>
+    ⟨⟨x, hBelow.get_of hlive.2.2 hx⟩, H', hH'.of_below hBelow hlive.1⟩) ?_
+  intro s₁ hlen hlens hBelow
+  set L := μ.store.length with hLdef
+  simp only [List.length_cons, List.length_nil] at hlen
+  have hL2 : s₁.len L = 2 := by simpa using hlens 0 (by simp)
+  have hq₁ := hBelow.readBlock_of hlive.2.1 hq
+  have hqr : q.2 + qs.length ≤ s₁.len q.1 := Store.le_len_of_readBlock hq₁ (by omega)
+  have hwr₁ : w.2 + 2 * ((n' + 1 + 1) * (n' + 1 + 1)) ≤ s₁.len w.1 := by
+    rw [(hBelow w.1 hlive.1).1]; exact hwr
+  have hfr₁ : f.2 + 1 ≤ s₁.len f.1 := by rw [(hBelow f.1 hlive.2.2).1]; exact hfr
+  have hD : ∀ {b o k : ℕ}, b < L → Fp.Disj (Store.inBlock L 0 2) (Store.inBlock b o k) :=
+    fun hb => Fp.disj_inBlock_of_ne (by omega)
+  refine (rhess_terminates (τ := tape) (μ := ⟨s₁, μ.pos⟩) hS hC hSmp
+    (by simp [Mem.Live, hlen]; omega) (hW.of_below hBelow hlive.1)).frame_seq_le rfl rfl
+    (by simp [Mem.Live, hlen]; omega) (by fp_sub) ?_
+  rintro μ₁ hfr₁' ⟨H₁, hH₁⟩
+  have hqw : Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n' + 1 + 1) * (n' + 1 + 1))))
+      (Store.inBlock q.1 q.2 qs.length) := (hqwf.mono le_rfl le_sup_left).symm
+  have hqf : Fp.Disj (Store.inBlock q.1 q.2 qs.length) (Store.inBlock f.1 f.2 1) :=
+    hqwf.mono le_rfl le_sup_right
+  have hq₂ := hfr₁'.keep (Store.readsOnly_readBlock _ _ _ _) hqw hq₁
+  have hin : OneEigInput H₁ qs w q (L, 0) f μ₁ := by
+    refine ⟨by simp [Mem.Live, hfr₁'.length_eq, hlen]; omega, ?_, ?_, hH₁, hq₂⟩
+    · simp only [Mem.Room, hfr₁'.len_eq]
+      exact ⟨hwr₁, hqr, by rw [hL2], by omega, trivial⟩
+    · simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
+        and_true]
+      exact ⟨⟨hqw, (hD hlive.1).symm, hwf⟩, ⟨(hD hlive.2.1).symm, hqf⟩, hD hlive.2.2⟩
+  refine (oneEig_terminates (m := m) (q := qq) (t := t) hS hzero hL hC hDisk (by omega)
+    hin).frame_seq_le rfl rfl (by simp [Mem.Live, hfr₁'.length_eq, hlen]; omega)
+    (by fp_sub) ?_
+  rintro μ₂ hfr₂ ⟨⟨z, hz⟩, x, hx⟩
+  have hH₂ : HoldsMatrix w H₁ μ₂.store :=
+    hH₁.of_eqOff hfr₂ (Fp.disj_sup_left.mpr ⟨hD hlive.1, hwf.symm⟩)
+  refine writes_ite (a := [f]) rfl rfl (hC.test_isZero hx) ?_
+  split_ifs
+  · have hin₂ : DecoupleInput H₁ z qs w (L, 0) q f μ₂ := by
+      refine ⟨by simp [Mem.Live, hfr₂.length_eq, hfr₁'.length_eq, hlen]; omega, ?_, ?_, hH₂, hz,
+        hfr₂.keep (Store.readsOnly_readBlock _ _ _ _)
+          (Fp.disj_sup_left.mpr ⟨hD hlive.2.1, hqf.symm⟩) hq₂⟩
+      · simp only [Mem.Room, hfr₂.len_eq, hfr₁'.len_eq]
+        exact ⟨hwr₁, by rw [hL2], hqr, by omega, trivial⟩
+      · simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right,
+          Fp.disj_bot_right, and_true]
+        exact ⟨⟨(hD hlive.1).symm, hqw, hwf⟩, ⟨hD hlive.2.1, hD hlive.2.2⟩, hqf⟩
+    exact ((decoupleLast_terminates (m₂ := m₂) hS hL hC (hNat.mono (by omega)) (by omega)
+      hin₂).in_frame rfl rfl
+      (by simp [Mem.Live, hfr₂.length_eq, hfr₁'.length_eq, hlen]; omega)).mono (by fp_sub)
+      fun _ _ ⟨⟨H₃, hH₃⟩, y, hy⟩ => ⟨⟨y, hy⟩, H₃, hH₃⟩
+  · exact (Writes.skip ⟨⟨x, hx⟩, H₁, hH₂⟩).mono bot_le fun _ _ h => h
 
 end Theorems
 

@@ -182,6 +182,94 @@ theorem oneEigRadii_spec {S β g φ : ℝ} (hβ : 0 < β) (hβS : β ≤ 0.8 * S
       div_le_iff₀ (by positivity)]
     nlinarith
 
+/-- $\log_2(40/39) \ge 1/30$. -/
+private theorem one_div_thirty_le_logb : (1 : ℝ) / 30 ≤ logb 2 (40 / 39) := by
+  rw [le_logb_iff_rpow_le (by norm_num) (by norm_num)]
+  have h : (2 : ℝ) ≤ (40 / 39) ^ (30 : ℕ) := by norm_num
+  calc (2 : ℝ) ^ ((1 : ℝ) / 30) ≤ ((40 / 39 : ℝ) ^ (30 : ℕ)) ^ ((1 : ℝ) / 30) := by gcongr
+    _ = 40 / 39 := by
+      rw [← Real.rpow_natCast, ← Real.rpow_mul (by norm_num)]; norm_num
+
+/-- **The radii of `OneEig` leave room for rounding** ([BanksGarzaVargasSrivastava2025,
+Observation 3.4], with $\eta_2 = \min(\beta/40, g/3)$): for $0 < \beta \le 0.8\,\Sigma$, $g > 0$,
+$\varphi > 0$ and $0 \le \varepsilon$ with
+$100\,\varepsilon\log_2(8\Sigma/\beta) \le \eta_1$, where $\eta_1, \eta_2$ =
+`NLAlib.SmallEig.oneEigInnerRadius`, `NLAlib.SmallEig.oneEigOuterRadius` and $t$ =
+`NLAlib.SmallEig.oneEigRounds` $\Sigma$ $\beta$: $(6t + 1)((\eta_1 + \varepsilon)/\eta_2)^2 \le
+\varphi$. -/
+theorem oneEigRadii_add_sq_le {S β g φ ε : ℝ} (hβ : 0 < β) (hβS : β ≤ 0.8 * S) (hg : 0 < g)
+    (hφ : 0 < φ) (hε : 0 ≤ ε)
+    (hεL : 100 * ε * logb 2 (8 * S / β) ≤ oneEigInnerRadius S β g φ) :
+    (6 * (oneEigRounds S β : ℝ) + 1) *
+      ((oneEigInnerRadius S β g φ + ε) / oneEigOuterRadius β g) ^ 2 ≤ φ := by
+  have hS : 0 < S := by linarith
+  have h2 : 0 < oneEigOuterRadius β g := lt_min (by positivity) (by positivity)
+  set η₂ := oneEigOuterRadius β g
+  set L := logb 2 (8 * S / β) with hL
+  have hL3 : 3 ≤ L := by
+    rw [hL, le_logb_iff_rpow_le (by norm_num) (by positivity), le_div_iff₀ hβ,
+      show (3:ℝ) = ((3:ℕ):ℝ) by norm_num, rpow_natCast]; linarith
+  have hr := (oneEigRounds_spec (S := S) hβ (by linarith)).2
+  have e : L = logb 2 (7.8 * S / β) + logb 2 (40 / 39) := by
+    rw [hL, ← logb_mul (by positivity) (by norm_num)]; congr 1; field_simp; norm_num
+  have hlog := one_div_thirty_le_logb
+  have ht : 6 * (oneEigRounds S β : ℝ) + 1 ≤ 12 * L - 0.4 := by linarith
+  set η₁ := oneEigInnerRadius S β g φ with hη₁
+  have hq0 : 0 ≤ φ / (12 * L) := by positivity
+  have hsq : η₁ ^ 2 * (12 * L) = φ * η₂ ^ 2 := by
+    rw [hη₁, oneEigInnerRadius, mul_pow, sq_sqrt hq0]; field_simp; rfl
+  have hη₁0 : 0 ≤ η₁ := mul_nonneg h2.le (sqrt_nonneg _)
+  have hεη : ε ≤ η₁ := by nlinarith
+  have hA : 0 ≤ 6 * (oneEigRounds S β : ℝ) + 1 := by positivity
+  rw [div_pow, ← mul_div_assoc, div_le_iff₀ (by positivity)]
+  have hb : (η₁ + ε) ^ 2 ≤ η₁ ^ 2 + 3 * η₁ * ε := by nlinarith
+  have hc : 36 * L * η₁ * ε ≤ 0.36 * η₁ ^ 2 := by nlinarith
+  calc (6 * (oneEigRounds S β : ℝ) + 1) * (η₁ + ε) ^ 2
+      ≤ (12 * L - 0.4) * (η₁ ^ 2 + 3 * η₁ * ε) := by
+        apply mul_le_mul ht hb (by positivity) (by linarith)
+    _ ≤ η₁ ^ 2 * (12 * L) := by nlinarith
+    _ = φ * η₂ ^ 2 := hsq
+
+/-- The inner radius of `OneEig` is at most a sixth of the outer one: for
+$0 < \beta \le 0.8\,\Sigma$, $g > 0$ and $\varphi \le 1$,
+`NLAlib.SmallEig.oneEigInnerRadius` $\Sigma$ $\beta$ $g$ $\varphi$ is at most
+`NLAlib.SmallEig.oneEigOuterRadius` $\beta$ $g$ divided by $6$. -/
+theorem oneEigInnerRadius_le {S β g φ : ℝ} (hβ : 0 < β) (hβS : β ≤ 0.8 * S) (hg : 0 < g)
+    (hφ1 : φ ≤ 1) : oneEigInnerRadius S β g φ ≤ oneEigOuterRadius β g / 6 := by
+  have hS : 0 < S := by linarith
+  have h2 : 0 < oneEigOuterRadius β g := lt_min (by positivity) (by positivity)
+  have hL3 : 3 ≤ Real.logb 2 (8 * S / β) := by
+    rw [Real.le_logb_iff_rpow_le (by norm_num) (by positivity), le_div_iff₀ hβ,
+      show (3:ℝ) = ((3:ℕ):ℝ) by norm_num, Real.rpow_natCast]; linarith
+  have hq : φ / (12 * Real.logb 2 (8 * S / β)) ≤ 1 / 36 := by
+    rw [div_le_div_iff₀ (by positivity) (by norm_num)]; nlinarith
+  have hsq : √(φ / (12 * Real.logb 2 (8 * S / β))) ≤ 1 / 6 := by
+    rw [Real.sqrt_le_left (by norm_num)]; linarith
+  unfold oneEigInnerRadius
+  nlinarith
+
+/-- $\log_2 y \le 2y$ for $y > 0$. -/
+theorem logb_two_le_two_mul {y : ℝ} (hy : 0 < y) : Real.logb 2 y ≤ 2 * y := by
+  have h2 := Real.log_two_gt_d9
+  have hl := Real.log_le_sub_one_of_pos hy
+  rw [Real.logb, div_le_iff₀ (by linarith)]
+  rcases le_or_gt 0 (Real.log y) with h | h <;> nlinarith
+
+/-- The degree of `DistSpec` is at least $2$ when the weight bound is at most $1/2$: for
+$\kappa \ge 1$, $0 < p \le 1/2$ and $m$ at least `NLAlib.SmallEig.distSpecDegree` $\kappa$ $p$,
+$m \ge 2$. -/
+theorem two_le_of_distSpecDegree_le {κ p : ℝ} {m : ℕ} (hκ : 1 ≤ κ) (hp : 0 < p) (hp2 : p ≤ 1 / 2)
+    (hm : distSpecDegree κ p ≤ m) : 2 ≤ m := by
+  have h1 : 0 ≤ Real.logb 2 κ := Real.logb_nonneg (by norm_num) hκ
+  have h2 : 1 ≤ Real.logb 2 p⁻¹ := by
+    rw [Real.le_logb_iff_rpow_le (by norm_num) (by positivity), Real.rpow_one,
+      le_inv_comm₀ (by norm_num) hp]
+    linarith
+  have h4 : (2 : ℝ) ≤ (distSpecDegree κ p : ℝ) := by
+    unfold distSpecDegree; exact (by linarith : (2 : ℝ) ≤ _).trans (Nat.le_ceil _)
+  have : 2 ≤ distSpecDegree κ p := by exact_mod_cast h4
+  omega
+
 /-- The step cap $m_2 = \lceil\log_2(\kappa/\sqrt p)\rceil + 1$ of `Decouple` for the condition
 $\kappa$ and the weight $p$: $\kappa \le 2^{m_2}\sqrt p$. -/
 noncomputable def decoupleSteps (κ p : ℝ) : ℕ := ⌈logb 2 (κ / √p)⌉₊ + 1

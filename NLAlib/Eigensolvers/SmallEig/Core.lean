@@ -116,7 +116,7 @@ theorem smallEigCore_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Interp
       φ / 4 := by
   sorry
 
-/-- **The core terminates**: on a scalar machine with index literals, exact natural literals up
+/-- The core terminates: on a scalar machine with index literals, exact natural literals up
 to $n + 1$, exact comparisons and conversion, draws that store the tape entry and an exact polar
 sampler, for words `qs` with valid cap words for the cap $T$ (`NLAlib.SmallEig.SmallEigCaps`) and
 at least twelve words, from `NLAlib.SmallEig.SmallEigCoreInput` with any matrix of order $n + 1$
@@ -132,8 +132,11 @@ theorem smallEigCore_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : I
       (Env.frame [n + 1, 1, qs.length, F, T] [a, t, p, out, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock out.1 out.2 (2 * (n + 1)) ⊔ Store.inBlock f.1 f.2 1)
-      (fun _ => True) μ := by
-  sorry
+      (fun _ => True) μ :=
+  solveRoundedWith_terminates hS hL hNat hQ hC _
+    (smallEigDecoupler_terminatingDecouplerRoutine hS hL hNat hC hQ hSmp hDisk hqs hlen) _
+    (copyLeaf_terminates hS _ qs T) hin.1 hin.2.1 hin.2.2.1 hin.2.2.2.1 hin.2.2.2.2.1
+    hin.2.2.2.2.2
 
 end Theorems
 

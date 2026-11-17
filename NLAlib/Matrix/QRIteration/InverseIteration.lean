@@ -58,12 +58,12 @@ variable {n : ℕ}
 distance to the spectrum, to the power $m$** ([BanksGarzaVargasSrivastava2025, Proposition 3.1],
 the lower bound on $\tau$, in row form): for
 $\mathbf{H}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$ with $\mathbf{V}$ invertible,
-a shift $s \ne d_i$ for every $i$ and $m \ge 1$,
+a shift $s \ne d_i$ for every $i$ and every $m$,
 $$\|\mathbf{e}_n^{\mathsf{T}}(s\mathbf{I} - \mathbf{H})^{-m}\| \le
   \|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2\,\bigl(\min_i \lvert s - d_i\rvert\bigr)^{-m}.$$ -/
 theorem norm_lastRow_inv_pow_le {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {d : Fin (n + 1) → ℂ} {s : ℂ} {m : ℕ} (hV : IsUnit V) (hHV : H * V = V * Matrix.diagonal d)
-    (hs : ∀ i, s ≠ d i) (hm : 1 ≤ m) :
+    (hs : ∀ i, s ≠ d i) :
     ‖WithLp.toLp 2 (((s • (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) - H)⁻¹ ^ m) (Fin.last n))‖ ≤
       pseudoConditionNumber V * (⨅ i, ‖s - d i‖)⁻¹ ^ m := by
   set g : Fin (n + 1) → ℂ := fun i => (s - d i)⁻¹ ^ m
@@ -90,13 +90,13 @@ theorem norm_lastRow_inv_pow_le {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
 /-- **The last row of a resolvent power is at least every weighted inverse distance, divided by
 $\kappa(\mathbf{V})$** ([BanksGarzaVargasSrivastava2025, Proposition 3.1], the upper bound on
 $\tau$, in row form): for $\mathbf{H}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$ with
-$\mathbf{V}$ invertible, a shift $s \ne d_i$ for every $i$, $m \ge 1$ and the last-row weights
+$\mathbf{V}$ invertible, a shift $s \ne d_i$ for every $i$, any $m$ and the last-row weights
 $w_i$ of $\mathbf{V}$, for every $i$
 $$\sqrt{w_i}\,\lvert s - d_i\rvert^{-m} \le \|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2
   \|\mathbf{e}_n^{\mathsf{T}}(s\mathbf{I} - \mathbf{H})^{-m}\|.$$ -/
 theorem sqrt_lastRowWeights_mul_le_norm_lastRow_inv_pow
     {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {s : ℂ} {m : ℕ}
-    (hV : IsUnit V) (hHV : H * V = V * Matrix.diagonal d) (hs : ∀ i, s ≠ d i) (hm : 1 ≤ m)
+    (hV : IsUnit V) (hHV : H * V = V * Matrix.diagonal d) (hs : ∀ i, s ≠ d i)
     (i : Fin (n + 1)) :
     √(lastRowWeights V i) * ‖s - d i‖⁻¹ ^ m ≤
       pseudoConditionNumber V *
@@ -313,7 +313,7 @@ theorem exists_le_norm_subdiag_shiftedQR_pow {H V : Matrix (Fin (n + 2)) (Fin (n
   have hpow : f ℓ₀ ^ m ≤ ∏ ℓ ∈ Finset.range m, f ℓ :=
     calc f ℓ₀ ^ m = ∏ _ℓ ∈ Finset.range m, f ℓ₀ := by rw [Finset.prod_const, Finset.card_range]
       _ ≤ _ := Finset.prod_le_prod (fun _ _ => norm_nonneg _) hmin
-  have hM1 := sqrt_lastRowWeights_mul_le_norm_lastRow_inv_pow hV hHV hs hm i
+  have hM1 := sqrt_lastRowWeights_mul_le_norm_lastRow_inv_pow (m := m) hV hHV hs i
   have hd : 0 < ‖s - d i‖ ^ m := pow_pos (norm_pos_iff.mpr (sub_ne_zero.mpr (hs i))) m
   have hw : √(lastRowWeights V i) ≤ pseudoConditionNumber V * ρ * ‖s - d i‖ ^ m := by
     have := mul_le_mul_of_nonneg_right hM1 hd.le

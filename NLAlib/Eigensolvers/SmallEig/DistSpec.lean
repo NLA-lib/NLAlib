@@ -29,6 +29,7 @@ With $m$ large for the condition $\kappa$ and the weight $p$
 ## Main results
 
 * `NLAlib.SmallEig.abs_distSpecWord_sub_le`: the rounding of the roots.
+* `NLAlib.SmallEig.distSpec_root_bounds`: the roots of an estimate of a power of a distance.
 * `NLAlib.SmallEig.distSpec_writes_word`, `NLAlib.SmallEig.distSpec_accuracy`,
   `NLAlib.SmallEig.distSpec_terminates`.
 -/
@@ -95,6 +96,45 @@ theorem norm_toLp_lastRow_inv_shiftPoly_singleton_pow {n : ℕ}
   · rw [h, neg_one_mul, show ∀ X : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, (-X) (Fin.last n) =
       -X (Fin.last n) from fun _ => rfl, WithLp.toLp_neg, norm_neg]
 
+/-- **The roots of an estimate of the $m$-th power of a distance** (the arithmetic of
+[BanksGarzaVargasSrivastava2025, Proposition 3.1] with "$m$ is large enough"): for $\kappa \ge 1$,
+$0 < p \le 1$, $m \ge 1$ at least `NLAlib.SmallEig.distSpecDegree` $\kappa$ $p$, $D > 0$ and
+$X \ge 0$ with $D^m \le \kappa X$ and $\sqrt p\,X \le \kappa D^m$, every $r$ within $0.002\,\tau_0$
+of $\tau_0 = X^{1/m}$ satisfies $0.9\,D \le r \le 1.1\,D$. -/
+theorem distSpec_root_bounds {κ p D X r : ℝ} {m : ℕ} (hκ : 1 ≤ κ) (hp : 0 < p) (hp1 : p ≤ 1)
+    (hm0 : 0 < m) (hm : distSpecDegree κ p ≤ m) (hD : 0 < D) (hX : 0 ≤ X)
+    (hlo : D ^ m ≤ κ * X) (hhi : √p * X ≤ κ * D ^ m)
+    (hr : |r - X ^ ((m : ℝ)⁻¹)| ≤ 0.002 * X ^ ((m : ℝ)⁻¹)) :
+    0.9 * D ≤ r ∧ r ≤ 1.1 * D := by
+  obtain ⟨h1, h2⟩ := distSpecDegree_spec hκ hp hp1 hm0 hm
+  have hκ0 : 0 < κ := by linarith
+  have hm' : (m : ℝ) ≠ 0 := by exact_mod_cast hm0.ne'
+  set τ₀ := X ^ ((m : ℝ)⁻¹) with hτ₀
+  have hτ0 : 0 ≤ τ₀ := Real.rpow_nonneg hX _
+  have hτm : τ₀ ^ m = X := Real.rpow_inv_natCast_pow hX hm0.ne'
+  -- `a ^ m` for `a = κ ^ (± 1 / m)` and `p ^ (-1 / (2m))`
+  have hpowκ : ∀ e : ℝ, (κ ^ (e * (m : ℝ)⁻¹)) ^ m = κ ^ e := fun e => by
+    rw [← Real.rpow_natCast, ← Real.rpow_mul hκ0.le, mul_assoc, inv_mul_cancel₀ hm', mul_one]
+  have hlow : D * κ ^ (-(m : ℝ)⁻¹) ≤ τ₀ := by
+    refine (pow_le_pow_iff_left₀ (by positivity) hτ0 hm0.ne').mp ?_
+    rw [mul_pow, show -(m : ℝ)⁻¹ = -1 * (m : ℝ)⁻¹ by ring, hpowκ, hτm, Real.rpow_neg_one,
+      ← div_eq_mul_inv, div_le_iff₀ hκ0]
+    linarith
+  have hsp : 0 < √p := Real.sqrt_pos.mpr hp
+  have hpp : (p ^ (-(2 * (m : ℝ))⁻¹)) ^ m = (√p)⁻¹ := by
+    rw [← Real.rpow_natCast, ← Real.rpow_mul hp.le, Real.sqrt_eq_rpow, ← Real.rpow_neg hp.le]
+    congr 1; field_simp
+  have hhigh : τ₀ ≤ D * (κ ^ ((m : ℝ)⁻¹) * p ^ (-(2 * (m : ℝ))⁻¹)) := by
+    refine (pow_le_pow_iff_left₀ hτ0 (by positivity) hm0.ne').mp ?_
+    rw [mul_pow, mul_pow, show (m : ℝ)⁻¹ = 1 * (m : ℝ)⁻¹ by ring, hpowκ, hpp, hτm,
+      Real.rpow_one, ← mul_assoc, le_mul_inv_iff₀ hsp]
+    linarith
+  have hr' := abs_le.mp hr
+  have hκ1 : 0 < κ ^ (-(m : ℝ)⁻¹) := Real.rpow_pos_of_pos hκ0 _
+  constructor
+  · nlinarith
+  · nlinarith
+
 section Theorems
 
 variable {O Q : Type} [Has ScalarOp O] [Has CmpTst Q]
@@ -133,7 +173,7 @@ theorem distSpec_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScal
 
 /-- **`DistSpec` is within $10\%$ of the distance to the spectrum**
 ([BanksGarzaVargasSrivastava2025, Proposition 3.1 and Observation 3.3]): on a scalar machine
-with the standard model at $0 \le \boldsymbol{u} \le 1/100$ and exact comparisons, let
+with the standard model at $\boldsymbol{u}$ and exact comparisons, let
 $\mathbf{H} \ne 0$ of order $n + 1$ be upper Hessenberg,
 $\mathbf{H}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$ with
 $\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le \kappa$ and every last-row weight at least $p > 0$, the
@@ -145,7 +185,7 @@ $\mathbf{H}$ at `h`, the pair of $s$ at `s` and room for the word `tau`, `NLAlib
 writes only that word, keeps the tape position, and stores $\hat\tau$ with
 $0.9\,D \le \hat\tau \le 1.1\,D$, $D = \min_i\lvert s - d_i\rvert$. -/
 theorem distSpec_accuracy {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
-    (hM : StdModel u id M) (hu : u ≤ 1 / 100) (hCmp : IsCmp id I) {n m q : ℕ}
+    (hM : StdModel u id M) (hCmp : IsCmp id I) {n m q : ℕ}
     {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {s : ℂ} {κ p C η₁ : ℝ}
     (hH : IsUpperHessenberg H) (hH0 : H ≠ 0) (hV : IsUnit V)
     (hHV : H * V = V * Matrix.diagonal d) (hκ : pseudoConditionNumber V ≤ κ) (hp : 0 < p)
@@ -161,7 +201,57 @@ theorem distSpec_accuracy {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS :
       (Store.inBlock tau.1 tau.2 1)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ t : ℝ, μ'.store.get tau.1 tau.2 = some t ∧
         0.9 * (⨅ i, ‖s - d i‖) ≤ t ∧ t ≤ 1.1 * (⨅ i, ‖s - d i‖)) μ := by
-  sorry
+  have hu0 : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
+  have hsd : ∀ i, s ≠ d i := fun i h => by
+    have := hdist i; rw [h, sub_self, norm_zero] at this; linarith
+  have hm0 : 0 < m := hmq ▸ by positivity
+  have hκ1 : 1 ≤ κ := (one_le_pseudoConditionNumber hV.ne_zero).trans hκ
+  have hp1 : p ≤ 1 := (hw 0).trans ((Finset.single_le_sum (fun j _ => lastRowWeights_nonneg V j)
+    (Finset.mem_univ 0)).trans_eq (sum_lastRowWeights hV))
+  have hT := comptauHalf_isHalfTau (shifts := List.replicate (2 * m) s) hS hM hCmp hH hH0 hV
+    hHV hκ hC hη₁ (fun z hz => (List.eq_of_mem_replicate hz) ▸ hs)
+    (fun z hz => (List.eq_of_mem_replicate hz) ▸ hdist) hnu
+    (by rwa [List.length_replicate, Nat.mul_div_cancel_left _ two_pos])
+    (by rwa [List.length_replicate, Nat.mul_div_cancel_left _ two_pos])
+  refine (distSpec_writes_word hS hm0 hT hl hHs hsp htau hth hts).mono le_rfl ?_
+  rintro μ' - ⟨hp', t, ht, hb⟩
+  refine ⟨hp', _, ht, ?_⟩
+  set R := ‖WithLp.toLp 2 (((s • (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) - H)⁻¹ ^ m)
+    (Fin.last n))‖ with hR
+  obtain ⟨i₀, hi₀⟩ := exists_eq_ciInf_of_finite (f := fun i => ‖s - d i‖)
+  have hD : 0 < ⨅ i, ‖s - d i‖ := by rw [← hi₀]; exact norm_pos_iff.mpr (sub_ne_zero.mpr (hsd i₀))
+  have hκV := (pseudoConditionNumber_nonneg V).trans hκ
+  have hb₁ := sqrt_lastRowWeights_mul_le_norm_lastRow_inv_pow hV hHV hsd hm0 i₀
+  rw [← hR, hi₀] at hb₁
+  have hsw : √p ≤ √(lastRowWeights V i₀) := Real.sqrt_le_sqrt (hw i₀)
+  have hDm : 0 < (⨅ i, ‖s - d i‖) ^ m := pow_pos hD m
+  have hRpos : 0 < R := by
+    by_contra h
+    have hR0 : R = 0 := le_antisymm (not_lt.mp h) (norm_nonneg _)
+    rw [hR0, mul_zero] at hb₁
+    have : 0 < √(lastRowWeights V i₀) * (⨅ i, ‖s - d i‖)⁻¹ ^ m :=
+      mul_pos ((Real.sqrt_pos.mpr hp).trans_le hsw) (by positivity)
+    linarith
+  have ha := norm_lastRow_inv_pow_le hV hHV hsd hm0
+  rw [← hR] at ha
+  refine distSpec_root_bounds hκ1 hp hp1 hm0 hm hD (inv_nonneg.mpr hRpos.le) ?_ ?_
+    (abs_distSpecWord_sub_le hM hu0 (by subst hmq; exact_mod_cast hum) (Real.rpow_nonneg
+      (inv_nonneg.mpr hRpos.le) _) (by rwa [← hmq, Real.rpow_inv_natCast_pow
+        (inv_nonneg.mpr hRpos.le) hm0.ne']))
+  · -- `R ≤ κ D⁻ᵐ`
+    rw [← div_eq_mul_inv, le_div_iff₀ hRpos]
+    calc (⨅ i, ‖s - d i‖) ^ m * R ≤ (⨅ i, ‖s - d i‖) ^ m * (κ * (⨅ i, ‖s - d i‖)⁻¹ ^ m) := by
+          gcongr; exact ha.trans (by gcongr)
+      _ = κ := by rw [inv_pow]; field_simp
+  · -- `√p D⁻ᵐ ≤ κ R`
+    rw [← div_eq_mul_inv, div_le_iff₀ hRpos]
+    have h1 : √p * (⨅ i, ‖s - d i‖)⁻¹ ^ m ≤ κ * R :=
+      ((mul_le_mul_of_nonneg_right hsw (by positivity)).trans hb₁).trans
+        (mul_le_mul_of_nonneg_right hκ (norm_nonneg _))
+    rw [inv_pow] at h1
+    calc √p = √p * ((⨅ i, ‖s - d i‖) ^ m)⁻¹ * (⨅ i, ‖s - d i‖) ^ m := by field_simp
+      _ ≤ κ * R * (⨅ i, ‖s - d i‖) ^ m := by gcongr
+      _ = κ * (⨅ i, ‖s - d i‖) ^ m * R := by ring
 
 /-- `DistSpec` terminates on every tape: on a scalar machine with exact comparisons and the
 literal $0$ exact, from any matrix of order $n + 1$ at `h`, any shift pair and room for the word

@@ -719,18 +719,16 @@ private theorem writes_rhessRotate {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
   have hdV : ∀ {F' : Fp}, F' = Store.inBlock a.1 a.2 (2 * (N * N)) →
       Fp.Disj F' (Store.inBlock L 0 (2 * (1 * N))) := fun hF' => by
     subst hF'; exact Fp.disj_inBlock_of_ne (by omega)
-  have hca : Fp.Disj (Store.inBlock a.1 a.2 (2 * (N * N))) (Store.inBlock (L + 1) 0 2) :=
-    Fp.disj_inBlock_of_ne (by omega)
-  have hsa : Fp.Disj (Store.inBlock a.1 a.2 (2 * (N * N))) (Store.inBlock (L + 1) 2 2) :=
-    Fp.disj_inBlock_of_ne (by omega)
+  have hcs : ∀ o, Fp.Disj (Store.inBlock a.1 a.2 (2 * (N * N))) (Store.inBlock (L + 1) o 2) :=
+    fun _ => Fp.disj_inBlock_of_ne (by omega)
   have hlen₁ : m₁.store.length = L + 4 := hf₁.length_eq.trans hlen
-  refine (rotateRows_writes_word (τ := τ) (k := j) hS hj hB₁ hc₁ hs₁ hca hsa).frame_seq_le
+  refine (rotateRows_writes_word (τ := τ) (k := j) hS hj hB₁ hc₁ hs₁ (hcs 0) (hcs 2)).frame_seq_le
     hd₇ ha₇ (by simp [Mem.Live, hlen₁]; pomega) le_sup_left ?_
   rintro m₂ hf₂ ⟨hp₂, hB₂⟩
-  have hc₂ := hf₂.keep (Store.readsOnly_readBlock _ _ _ _) hca hc₁
-  have hs₂ := hf₂.keep (Store.readsOnly_readBlock _ _ _ _) hsa hs₁
-  refine ((rotateColumns_writes_word (τ := τ) (k := j) hS hj hB₂ hc₂ hs₂ hca hsa).in_frame hd₈ ha₈
-    (by simp [Mem.Live, hf₂.length_eq, hlen₁]; pomega)).mono le_sup_left ?_
+  have hc₂ := hf₂.keep (Store.readsOnly_readBlock _ _ _ _) (hcs 0) hc₁
+  have hs₂ := hf₂.keep (Store.readsOnly_readBlock _ _ _ _) (hcs 2) hs₁
+  refine ((rotateColumns_writes_word (τ := τ) (k := j) hS hj hB₂ hc₂ hs₂ (hcs 0) (hcs 2)).in_frame
+    hd₈ ha₈ (by simp [Mem.Live, hf₂.length_eq, hlen₁]; pomega)).mono le_sup_left ?_
   rintro m₃ hf₃ ⟨hp₃, hB₃⟩
   exact ⟨hp₃.trans (hp₂.trans hp₁), hB₃,
     (hV₁.of_eqOff hf₂ (hdV rfl)).of_eqOff hf₃ (hdV rfl)⟩

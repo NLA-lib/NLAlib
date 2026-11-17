@@ -24,7 +24,8 @@ and exact natural literals up to the shift count are used.
 ## Main results
 
 * `NLAlib.ShiftedQR.stepComptau_terminates`: a degree $k$ rounded step and its `comptau`.
-* `NLAlib.ShiftedQR.comptauHalf_terminatingHalfTau`: the comparison routine terminates.
+* `NLAlib.ShiftedQR.comptauHalf_terminates`, `NLAlib.ShiftedQR.comptauHalf_terminatingHalfTau`:
+  the comparison routine terminates.
 * `NLAlib.ShiftedQR.findRounded_terminates`: the search terminates.
 -/
 
@@ -45,8 +46,8 @@ section Termination
 omit [Has IndexOp O] [Has IdxTst Q] in
 /-- `comptau` of a degree $k$ rounded step terminates on any matrix: on a scalar machine with
 exact comparisons and the literal $0$ exact, from any matrix of order $n + 1$ at `A` and any $2k$
-shift words at `S`, `NLAlib.ShiftedQR.stepComptau` writes only the matrix and `P` and leaves
-both stored. The matrix is disjoint from the shifts and from `P`. -/
+shift words at `S`, `NLAlib.ShiftedQR.stepComptau` writes only the matrix and `P`, keeps the
+tape position and leaves both stored. The matrix is disjoint from the shifts and from `P`. -/
 theorem stepComptau_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hzero : M.lit 0 = 0) (hCmp : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {n k : ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {xs : List ℝ} {a s p : ℕ × ℕ}
@@ -57,13 +58,14 @@ theorem stepComptau_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSc
     (hap : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock p.1 p.2 1)) :
     Writes .total I τ stepComptau.body (Env.frame [n + 1, k] [a, s, a, p])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock p.1 p.2 1)
-      (fun m' => (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a H' m'.store) ∧
+      (fun m' => m'.pos = m.pos ∧
+        (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a H' m'.store) ∧
         ∃ t, m'.store.get p.1 p.2 = some t) m := by
   have hlive : a.1 < m.store.length ∧ s.1 < m.store.length ∧ p.1 < m.store.length := by
     simpa [Mem.Live] using hl
   change Writes .total I τ (Stmt.allocs [.const 2 * .var 1] _) _ _ _ m
   refine writes_allocs_preserving_post (ns := [2 * k]) rfl
-    (fun hBelow ⟨⟨H', hA'⟩, t, ht⟩ => ⟨⟨H', hA'.of_below hBelow hlive.1⟩, t,
+    (fun hBelow ⟨hp, ⟨H', hA'⟩, t, ht⟩ => ⟨hp, ⟨H', hA'.of_below hBelow hlive.1⟩, t,
       ((hBelow p.1 hlive.2.2).2 p.2).trans ht⟩) ?_
   intro store hlen hlens hBelow
   let db : ℕ × ℕ := (m.store.length, 0)
@@ -75,7 +77,7 @@ theorem stepComptau_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSc
     (Fp.disj_inBlock_of_ne (by dsimp [db]; omega))
   refine hms.frame_seq_le rfl rfl (by simp [Mem.Live, db, hlen]; omega)
     (sup_le (le_sup_left.trans le_sup_left) (Fp.inBlock_le_sup_above le_rfl)) ?_
-  rintro μ₁ hfr₁ ⟨-, ⟨H', hA₁⟩, ys, hD₁⟩
+  rintro μ₁ hfr₁ ⟨hp₁, ⟨H', hA₁⟩, ys, hD₁⟩
   obtain ⟨zs, hzs, hD⟩ := Store.exists_readBlock_flatMap_pair hD₁
   have hp₀ : p.2 < μ₁.store.len p.1 := by
     rw [hfr₁.len_eq, (hBelow p.1 hlive.2.2).1]; exact hp
@@ -85,8 +87,8 @@ theorem stepComptau_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSc
   rw [hzs] at hct
   refine (hct.in_frame rfl rfl (by simp [Mem.Live, hfr₁.length_eq, db, hlen]; omega)).mono
     (le_sup_right.trans le_sup_left) ?_
-  rintro μ₂ hfr₂ ⟨-, ht⟩
-  exact ⟨⟨H', hfr₂.keep (Store.readsOnly_readBlock _ _ _ _) hap.symm hA₁⟩, _, ht⟩
+  rintro μ₂ hfr₂ ⟨hp₂, ht⟩
+  exact ⟨hp₂.trans hp₁, ⟨H', hfr₂.keep (Store.readsOnly_readBlock _ _ _ _) hap.symm hA₁⟩, _, ht⟩
 
 /-- **A terminating comparison routine of `Find`** for the order $n + 1$ and $k$ shifts: for
 every window start $a$, half length $h$ and exponent $e$ with $a + h \le k$ and $2he = k$, from
@@ -102,19 +104,25 @@ def TerminatingHalfTau (n k : ℕ) (Tau : Impl O Q) (I : Interp O Q ℝ) : Prop 
         (fun μ' => ∃ t, μ'.store.get P.1 P.2 = some t) μ
 
 omit [Has IndexOp O] [Has IdxTst Q] in
-/-- The comparison routine of `Find` terminates on any matrix: on a scalar machine with
-exact comparisons and the literal $0$ exact, `NLAlib.ShiftedQR.comptauHalf` meets
-`NLAlib.ShiftedQR.TerminatingHalfTau` for every order and number of shifts. -/
-theorem comptauHalf_terminatingHalfTau {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
-    (hzero : M.lit 0 = 0) (hCmp : IsCmp id I) (n k : ℕ) :
-    TerminatingHalfTau n k comptauHalf I := by
-  intro a h e hah hhe τ μ A S P H xs hl hA hSh hP hPA hPS
+/-- `comptauHalf` terminates on any matrix and any shift words: on a scalar machine with exact
+comparisons and the literal $0$ exact, for every half length $h$ and exponent $e$ (zero
+included), from any matrix of order $n + 1$ at `A` and any $2h$ words at `S`, on every tape,
+`NLAlib.ShiftedQR.comptauHalf` writes only the word `P`, keeps the tape position and leaves the
+word stored. -/
+theorem comptauHalf_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    (hzero : M.lit 0 = 0) (hCmp : IsCmp id I) {n h e : ℕ} {τ : Tape ℝ} {μ : Mem ℝ}
+    {A S P : ℕ × ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {xs : List ℝ}
+    (hl : μ.Live [A, S, P]) (hA : HoldsMatrix A H μ.store)
+    (hSh : μ.store.readBlock S.1 S.2 (2 * h) = some xs) (hP : P.2 < μ.store.len P.1) :
+    Writes .total I τ comptauHalf.body (Env.frame [n + 1, h, e] [A, S, P])
+      (Store.inBlock P.1 P.2 1) (fun μ' => μ'.pos = μ.pos ∧ ∃ t, μ'.store.get P.1 P.2 = some t)
+      μ := by
   have hlive : A.1 < μ.store.length ∧ S.1 < μ.store.length ∧ P.1 < μ.store.length := by
     simpa [Mem.Live] using hl
   change Writes .total I τ (Stmt.allocs [.const 2 * (.var 0 * .var 0),
     .const 2 * (.var 1 * .var 2)] _) _ _ _ μ
   refine writes_allocs_preserving_post (ns := [2 * ((n + 1) * (n + 1)), 2 * (h * e)]) rfl
-    (fun hBelow ⟨t, ht⟩ => ⟨t, ((hBelow P.1 hlive.2.2).2 P.2).trans ht⟩) ?_
+    (fun hBelow ⟨hp, t, ht⟩ => ⟨hp, t, ((hBelow P.1 hlive.2.2).2 P.2).trans ht⟩) ?_
   intro store hlen hlens hBelow
   let w : ℕ × ℕ := (μ.store.length, 0)
   let sb : ℕ × ℕ := (μ.store.length + 1, 0)
@@ -127,7 +135,7 @@ theorem comptauHalf_terminatingHalfTau {M : Machine ℝ} {I : Interp O Q ℝ} (h
   refine (copyMatrix_writes (τ := τ) (b := w) hS (hA.of_below hBelow hlive.1)
     (by rw [hw]; simp [w]) (Fp.disj_inBlock_of_ne (by dsimp [w]; omega))).frame_seq_le rfl rfl
     (hl₀.mono (by simp)) hwF ?_
-  rintro μ₁ hfr₁ ⟨-, hW₁⟩
+  rintro μ₁ hfr₁ ⟨hp₁, hW₁⟩
   have hrep := repeatBlock_writes (τ := τ) (m := μ₁) (s := S) (t := sb) (e := e) hS
     (by simp [Mem.Live, hfr₁.length_eq, sb, hlen]; omega) (by dsimp [sb]; omega)
     (hfr₁.keep (Store.readsOnly_readBlock _ _ _ _) (Fp.disj_inBlock_of_ne (by dsimp [w]; omega))
@@ -136,7 +144,7 @@ theorem comptauHalf_terminatingHalfTau {M : Machine ℝ} {I : Interp O Q ℝ} (h
   rw [Nat.mul_assoc] at hrep
   refine hrep.frame_seq_le rfl rfl (by simp [Mem.Live, hfr₁.length_eq, sb, hlen]; omega)
     (Fp.inBlock_le_sup_above (by dsimp [sb]; omega)) ?_
-  rintro μ₂ hfr₂ ⟨-, hSS₂⟩
+  rintro μ₂ hfr₂ ⟨hp₂, hSS₂⟩
   have hst := stepComptau_terminates (τ := τ) (m := μ₂) (a := w) (s := sb) (p := P)
     (k := h * e) hS hzero hCmp
     (by simp [Mem.Live, hfr₂.length_eq, hfr₁.length_eq, w, sb, hlen]; omega)
@@ -147,8 +155,18 @@ theorem comptauHalf_terminatingHalfTau {M : Machine ℝ} {I : Interp O Q ℝ} (h
   refine (hst.in_frame rfl rfl
     (by simp [Mem.Live, hfr₂.length_eq, hfr₁.length_eq, w, sb, hlen]; omega)).mono
     (sup_le hwF le_sup_left) ?_
-  rintro μ₃ _ ⟨-, t, ht⟩
-  exact ⟨t, ht⟩
+  rintro μ₃ _ ⟨hp₃, -, t, ht⟩
+  exact ⟨hp₃.trans (hp₂.trans hp₁), t, ht⟩
+
+omit [Has IndexOp O] [Has IdxTst Q] in
+/-- The comparison routine of `Find` terminates on any matrix: on a scalar machine with
+exact comparisons and the literal $0$ exact, `NLAlib.ShiftedQR.comptauHalf` meets
+`NLAlib.ShiftedQR.TerminatingHalfTau` for every order and number of shifts. -/
+theorem comptauHalf_terminatingHalfTau {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    (hzero : M.lit 0 = 0) (hCmp : IsCmp id I) (n k : ℕ) :
+    TerminatingHalfTau n k comptauHalf I :=
+  fun _ _ _ _ _ _ _ _ _ _ _ _ hl hA hSh hP _ _ =>
+    (comptauHalf_terminates hS hzero hCmp hl hA hSh hP).mono le_rfl fun _ _ h => h.2
 
 omit [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
 /-- The two comparison values of a level with a terminating routine are stored. -/

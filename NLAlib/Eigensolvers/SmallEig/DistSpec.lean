@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Eigensolvers.ShiftedQR.RoundedFind
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedFindTermination
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.NonsingularInverse
 public import NLAlib.Eigensolvers.SmallEig.Parameters
 public import NLAlib.Matrix.FinitePrecision.RootsRounded
@@ -163,18 +163,28 @@ theorem distSpec_accuracy {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS :
         0.9 * (⨅ i, ‖s - d i‖) ≤ t ∧ t ≤ 1.1 * (⨅ i, ‖s - d i‖)) μ := by
   sorry
 
-/-- `DistSpec` terminates on every tape: from any matrix of order $n + 1$ at `h`, any shift pair
-and room for the word `tau` in a buffer of its own, `NLAlib.SmallEig.distSpec` writes only that
-word and stores a word there. -/
+/-- `DistSpec` terminates on every tape: on a scalar machine with exact comparisons and the
+literal $0$ exact, from any matrix of order $n + 1$ at `h`, any shift pair and room for the word
+`tau`, for every degree $m$ (zero included) and $q$,
+`NLAlib.SmallEig.distSpec` writes only that word, keeps the tape position and stores a word
+there. -/
 theorem distSpec_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
-    (hCmp : IsCmp id I) {n m q : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {s : ℂ}
+    (hzero : M.lit 0 = 0) (hCmp : IsCmp id I) {n m q : ℕ}
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {s : ℂ}
     {τ : Tape ℝ} {μ : Mem ℝ} {h sp tau : ℕ × ℕ} (hl : μ.Live [h, sp, tau])
     (hHs : HoldsMatrix h H μ.store) (hsp : μ.store.readBlock sp.1 sp.2 2 = some [s.re, s.im])
-    (htau : tau.2 < μ.store.len tau.1) (hth : tau.1 ≠ h.1) (hts : tau.1 ≠ sp.1) :
+    (htau : tau.2 < μ.store.len tau.1) :
     Writes .total I τ (distSpec (O := O) (Q := Q)).body (Env.frame [n + 1, m, q] [h, sp, tau])
       (Store.inBlock tau.1 tau.2 1)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ t : ℝ, μ'.store.get tau.1 tau.2 = some t) μ := by
-  sorry
+  unfold distSpec
+  refine (comptauHalf_terminates (h := 1) (e := m) hS hzero hCmp hl hHs
+    (by simpa using hsp) htau).frame_seq_le rfl rfl hl le_rfl ?_
+  rintro μ₁ - ⟨hp₁, t, ht⟩
+  refine ((squareRoots_writes_word (τ := τ) (k := q) hS ht).in_frame rfl rfl
+    (by simpa [Mem.Live] using Store.lt_length_of_get ht)).mono le_rfl ?_
+  rintro μ₂ - ⟨hp₂, hR₂⟩
+  exact ⟨hp₂.trans hp₁, _, hR₂⟩
 
 end Theorems
 

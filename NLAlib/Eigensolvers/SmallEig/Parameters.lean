@@ -354,6 +354,138 @@ theorem length_smallEigParams (nmax : ℕ) (S δ φ : ℝ) (c₁ c₂ : PolyLogT
     (smallEigParams nmax S δ φ c₁ c₂).length = 12 := by
   simp [smallEigParams]
 
+/-- The noise level is positive. -/
+theorem smallEigNoiseLevel_pos (φ : ℝ) : 0 < smallEigNoiseLevel φ := by
+  unfold smallEigNoiseLevel; positivity
+
+/-- The perturbation scale $\gamma$ is positive for $\delta > 0$. -/
+theorem smallEigScale_pos {δ φ : ℝ} (hδ : 0 < δ) : 0 < smallEigScale δ φ := by
+  have := smallEigNoiseLevel_pos φ
+  unfold smallEigScale; positivity
+
+/-- The noise budget: $\gamma W = \delta/4$. -/
+theorem smallEigScale_mul_noiseLevel (δ φ : ℝ) :
+    smallEigScale δ φ * smallEigNoiseLevel φ = δ / 4 := by
+  have := (smallEigNoiseLevel_pos φ).ne'
+  unfold smallEigScale; field_simp
+
+/-- The separation $t_1$ is in $(0, \gamma/2]$ (`NLAlib.SmallEig.ginibreClass_spec` at the scale
+$\gamma/2$). -/
+theorem smallEigGap_pos_le {c₁ : PolyLogTail} (hb₁ : 0 < c₁.b) {nmax : ℕ} (hn : 1 ≤ nmax)
+    {S δ φ : ℝ} (hS : 0 ≤ S) (hδ : 0 < δ) (hφ : 0 < φ) (hφ1 : φ ≤ 1) :
+    0 < smallEigGap nmax S δ φ c₁ ∧ smallEigGap nmax S δ φ c₁ ≤ smallEigScale δ φ / 2 := by
+  have hc : (1 : ℝ) ≤ 2 ^ c₁.normalize.c := one_le_rpow (by norm_num) (le_max_right _ _)
+  have hγ : 0 < smallEigScale δ φ / 2 := by have := smallEigScale_pos (φ := φ) hδ; positivity
+  obtain ⟨h1, h2, -⟩ := ginibreClass_spec (c₂ := c₁) hb₁ hb₁ hn hS hγ
+    (φ := φ / (4 * 2 ^ c₁.normalize.c)) (by positivity)
+    (by rw [div_le_one (by positivity)]; nlinarith)
+  exact ⟨h1, h2⟩
+
+/-- The condition parameter $t_2$ is in $(0, 1]$. -/
+theorem smallEigCond_pos_le {c₂ : PolyLogTail} (hb₂ : 0 < c₂.b) {nmax : ℕ} (hn : 1 ≤ nmax)
+    {S δ φ : ℝ} (hS : 0 ≤ S) (hδ : 0 < δ) (hφ : 0 < φ) (hφ1 : φ ≤ 1) :
+    0 < smallEigCond nmax S δ φ c₂ ∧ smallEigCond nmax S δ φ c₂ ≤ 1 := by
+  have hγ : 0 < smallEigScale δ φ / 2 := by have := smallEigScale_pos (φ := φ) hδ; positivity
+  obtain ⟨-, -, h1, h2, -⟩ := ginibreClass_spec (c₁ := c₂) hb₂ hb₂ hn hS hγ
+    (φ := φ / 4) (by positivity) (by linarith)
+  exact ⟨h1, h2⟩
+
+/-- The condition bound $B_c = 4/t_2$ is at least $4$. -/
+theorem smallEigCondition_ge {c₂ : PolyLogTail} (hb₂ : 0 < c₂.b) {nmax : ℕ} (hn : 1 ≤ nmax)
+    {S δ φ : ℝ} (hS : 0 ≤ S) (hδ : 0 < δ) (hφ : 0 < φ) (hφ1 : φ ≤ 1) :
+    4 ≤ smallEigCondition nmax S δ φ c₂ := by
+  obtain ⟨h1, h2⟩ := smallEigCond_pos_le hb₂ hn hS hδ hφ hφ1
+  unfold smallEigCondition
+  rw [le_div_iff₀ h1]; linarith
+
+/-- The separation $g_c = t_1/4$ is positive. -/
+theorem smallEigSeparation_pos {c₁ : PolyLogTail} (hb₁ : 0 < c₁.b) {nmax : ℕ} (hn : 1 ≤ nmax)
+    {S δ φ : ℝ} (hS : 0 ≤ S) (hδ : 0 < δ) (hφ : 0 < φ) (hφ1 : φ ≤ 1) :
+    0 < smallEigSeparation nmax S δ φ c₁ := by
+  have := (smallEigGap_pos_le hb₁ hn hS hδ hφ hφ1).1
+  unfold smallEigSeparation; positivity
+
+/-- The coupling threshold $\omega$ is positive. -/
+theorem smallEigOmega_pos {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) {nmax : ℕ}
+    (hn : 1 ≤ nmax) {S δ φ : ℝ} (hS : 0 ≤ S) (hδ : 0 < δ) (hφ : 0 < φ) (hφ1 : φ ≤ 1) :
+    0 < smallEigOmega nmax S δ φ c₁ c₂ := by
+  have h1 := smallEigSeparation_pos hb₁ hn hS hδ hφ hφ1
+  have h2 := smallEigCondition_ge hb₂ hn hS hδ hφ hφ1
+  have hn' : (1 : ℝ) ≤ nmax := by exact_mod_cast hn
+  unfold smallEigOmega
+  apply div_pos (lt_min (by positivity) (div_pos h1 (by positivity))) (by positivity)
+
+/-- $2n_{\max}\cdot 2.25\,\omega = \tfrac38\min(\delta/4, g_c/(16n_{\max}B_c))$. -/
+theorem two_mul_mul_smallEigOmega {c₁ c₂ : PolyLogTail} {nmax : ℕ} (hn : 1 ≤ nmax)
+    (S δ φ : ℝ) :
+    2 * nmax * (2.25 * smallEigOmega nmax S δ φ c₁ c₂) = 3 / 8 *
+      min (δ / 4) (smallEigSeparation nmax S δ φ c₁ /
+        (16 * nmax * smallEigCondition nmax S δ φ c₂)) := by
+  have hn' : (0 : ℝ) < nmax := by exact_mod_cast hn
+  unfold smallEigOmega
+  field_simp
+  ring
+
+/-- The weight bound $p$ is in $(0, 1]$: $R \ge 3$, $B_c \ge 4$ and $\varphi_D \le 1$. -/
+theorem smallEigWeight_pos_le {c₂ : PolyLogTail} (hb₂ : 0 < c₂.b) {nmax : ℕ} (hn : 1 ≤ nmax)
+    {S δ φ : ℝ} (hS : 0 ≤ S) (hδ : 0 < δ) (hφ : 0 < φ) (hφ1 : φ ≤ 1) :
+    0 < smallEigWeight nmax S δ φ c₂ ∧ smallEigWeight nmax S δ φ c₂ ≤ 1 := by
+  have hB := smallEigCondition_ge hb₂ hn hS hδ hφ hφ1
+  have hn' : (1 : ℝ) ≤ nmax := by exact_mod_cast hn
+  have hR : 3 ≤ smallEigVectorRadius nmax φ := by
+    unfold smallEigVectorRadius
+    have : 1 ≤ √(nmax : ℝ) := by rw [show (1:ℝ) = √1 by simp]; exact sqrt_le_sqrt hn'
+    have := sqrt_nonneg (2 * log (4 / smallEigDecouplerFailure nmax φ))
+    linarith
+  have hD : 0 < smallEigDecouplerFailure nmax φ := by unfold smallEigDecouplerFailure; positivity
+  have hD1 : smallEigDecouplerFailure nmax φ ≤ 1 := by
+    unfold smallEigDecouplerFailure; rw [div_le_one (by positivity)]; linarith
+  unfold smallEigWeight
+  constructor
+  · have : 0 < smallEigVectorRadius nmax φ := by linarith
+    have : 0 < smallEigCondition nmax S δ φ c₂ := by linarith
+    positivity
+  · rw [div_le_one (by positivity), div_le_iff₀ (by positivity)]
+    have h1 : 1 ≤ 64 * smallEigVectorRadius nmax φ ^ 2 *
+        (4 * smallEigCondition nmax S δ φ c₂) ^ 2 := by
+      have : (1:ℝ) ≤ smallEigVectorRadius nmax φ ^ 2 := by nlinarith
+      have : (1:ℝ) ≤ (4 * smallEigCondition nmax S δ φ c₂) ^ 2 := by nlinarith
+      nlinarith
+    nlinarith
+
+/-- The degree $m = 2^q$ is at least `NLAlib.SmallEig.distSpecDegree` at $8B_c$ and $p$. -/
+theorem distSpecDegree_le_two_pow_smallEigDegreeLog (nmax : ℕ) (S δ φ : ℝ) (c₂ : PolyLogTail) :
+    distSpecDegree (8 * smallEigCondition nmax S δ φ c₂) (smallEigWeight nmax S δ φ c₂) ≤
+      2 ^ smallEigDegreeLog nmax S δ φ c₂ :=
+  Nat.le_pow_clog (by norm_num) _
+
+/-- The step cap suffices: $\kappa \le 2^{m_2}\sqrt p$ for $m_2$ =
+`NLAlib.SmallEig.decoupleSteps` $\kappa$ $p$ and $\kappa, p > 0$. -/
+theorem le_two_pow_decoupleSteps_mul_sqrt {κ p : ℝ} (hκ : 0 < κ) (hp : 0 < p) :
+    κ ≤ 2 ^ decoupleSteps κ p * √p := by
+  have hsp : 0 < √p := sqrt_pos.mpr hp
+  have h : logb 2 (κ / √p) ≤ (decoupleSteps κ p : ℝ) := by
+    unfold decoupleSteps; push_cast
+    linarith [Nat.le_ceil (logb 2 (κ / √p))]
+  rw [← div_le_iff₀ hsp, ← rpow_natCast]
+  calc κ / √p = 2 ^ logb 2 (κ / √p) := (rpow_logb (by norm_num) (by norm_num) (by positivity)).symm
+    _ ≤ 2 ^ (decoupleSteps κ p : ℝ) := rpow_le_rpow_of_exponent_le (by norm_num) h
+
+/-- The accuracy $\beta' = \omega/20$ is in $(0, 0.8 \cdot 2\Sigma]$. -/
+theorem smallEigAccuracy_le {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) {nmax : ℕ}
+    (hn : 1 ≤ nmax) {S δ φ : ℝ} (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1) :
+    0 < smallEigAccuracy nmax S δ φ c₁ c₂ ∧ smallEigAccuracy nmax S δ φ c₁ c₂ ≤ 0.8 * (2 * S) := by
+  have hS : 0 ≤ S := by linarith
+  have hω := smallEigOmega_pos hb₁ hb₂ hn hS hδ hφ hφ1
+  have h := two_mul_mul_smallEigOmega (c₁ := c₁) (c₂ := c₂) hn S δ φ
+  have hm := min_le_left (δ / 4) (smallEigSeparation nmax S δ φ c₁ /
+    (16 * nmax * smallEigCondition nmax S δ φ c₂))
+  have hn' : (1 : ℝ) ≤ nmax := by exact_mod_cast hn
+  unfold smallEigAccuracy
+  constructor
+  · positivity
+  · nlinarith
+
 /-- **The side conditions of the parameter words** ([BanksGarzaVargasSrivastava2025,
 Theorem 1.1], the parameter choices, corrected): for tail records with $b_1, b_2 > 0$,
 $n_{\max} \ge 1$, $0 < \delta \le \Sigma$ and $0 < \varphi \le 1$, with $\gamma, t_1, t_2, B_c,
@@ -379,7 +511,26 @@ theorem smallEigParams_spec {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb�
         2 ^ smallEigDegreeLog nmax S δ φ c₂ ∧
       8 * smallEigCondition nmax S δ φ c₂ ≤
         2 ^ smallEigDecoupleSteps nmax S δ φ c₂ * √(smallEigWeight nmax S δ φ c₂) := by
-  sorry
+  have hS : 0 ≤ S := by linarith
+  have hγ := smallEigScale_pos (φ := φ) hδ
+  obtain ⟨hg0, hg⟩ := smallEigGap_pos_le hb₁ hn hS hδ hφ hφ1
+  obtain ⟨hc0, hc1⟩ := smallEigCond_pos_le hb₂ hn hS hδ hφ hφ1
+  have hB := smallEigCondition_ge hb₂ hn hS hδ hφ hφ1
+  have hsep := smallEigSeparation_pos hb₁ hn hS hδ hφ hφ1
+  have hn' : (0 : ℝ) < nmax := by exact_mod_cast hn
+  have hm0 : 0 < min (δ / 4) (smallEigSeparation nmax S δ φ c₁ /
+      (16 * nmax * smallEigCondition nmax S δ φ c₂)) := lt_min (by positivity) (by positivity)
+  have hΩ := two_mul_mul_smallEigOmega (c₁ := c₁) (c₂ := c₂) hn S δ φ
+  obtain ⟨hp0, hp1⟩ := smallEigWeight_pos_le hb₂ hn hS hδ hφ hφ1
+  refine ⟨hγ, (smallEigScale_mul_noiseLevel δ φ).le, hg0, by linarith, hc0, hc1,
+    smallEigOmega_pos hb₁ hb₂ hn hS hδ hφ hφ1, ?_, ?_,
+    (smallEigAccuracy_le hb₁ hb₂ hn hδ hδS hφ hφ1).2, hp0, hp1,
+    distSpecDegree_le_two_pow_smallEigDegreeLog nmax S δ φ c₂,
+    le_two_pow_decoupleSteps_mul_sqrt (by linarith) hp0⟩
+  · rw [hΩ]; nlinarith [min_le_left (δ / 4) (smallEigSeparation nmax S δ φ c₁ /
+      (16 * nmax * smallEigCondition nmax S δ φ c₂))]
+  · rw [hΩ]; nlinarith [min_le_right (δ / 4) (smallEigSeparation nmax S δ φ c₁ /
+      (16 * nmax * smallEigCondition nmax S δ φ c₂))]
 
 /-- **The parameter words are positive** ([BanksGarzaVargasSrivastava2025, Theorem 1.1]): for
 tail records with $b_1, b_2 > 0$, $n_{\max} \ge 1$, $0 < \delta \le \Sigma$ and
@@ -389,13 +540,39 @@ $0 \le \boldsymbol{u} \le \boldsymbol{u}_0$ could be vacuous. -/
 theorem smallEigParams_pos {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) {nmax : ℕ}
     (hn : 1 ≤ nmax) {S δ φ : ℝ} (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1) :
     ∀ i < 8, 0 < (smallEigParams nmax S δ φ c₁ c₂).getD i 0 := by
-  sorry
+  have hS : 0 ≤ S := by linarith
+  have hγ := smallEigScale_pos (φ := φ) hδ
+  have hω := smallEigOmega_pos hb₁ hb₂ hn hS hδ hφ hφ1
+  obtain ⟨hβ, hβS⟩ := smallEigAccuracy_le hb₁ hb₂ hn hδ hδS hφ hφ1
+  have hsep := smallEigSeparation_pos hb₁ hn hS hδ hφ hφ1
+  have hn' : (0 : ℝ) < nmax := by exact_mod_cast hn
+  have hD : 0 < smallEigDecouplerFailure nmax φ / 2 := by
+    unfold smallEigDecouplerFailure; positivity
+  have hD1 : smallEigDecouplerFailure nmax φ / 2 ≤ 1 := by
+    unfold smallEigDecouplerFailure
+    have hn1 : (1 : ℝ) ≤ nmax := by exact_mod_cast hn
+    rw [div_div, div_le_one (by positivity)]; nlinarith
+  have hη1 := (oneEigRadii_spec hβ hβS (by positivity : 0 < smallEigSeparation nmax S δ φ c₁ / 4)
+    hD hD1).1
+  have hη2 : 0 < smallEigOuterRadius nmax S δ φ c₁ c₂ :=
+    lt_min (by positivity) (by positivity)
+  intro i hi
+  interval_cases i <;> simp only [smallEigParams, List.getD_cons_zero, List.getD_cons_succ]
+  · exact hγ
+  · exact hω
+  · exact hβ
+  · exact hη1
+  · exact hη2
+  · positivity
+  · positivity
+  · positivity
 
 /-- **The cap words are valid** for the cap `NLAlib.SmallEig.smallEigCap`: the words $8$ to $11$
 of `NLAlib.SmallEig.smallEigParams` are the exact naturals $m = 2^q$, $q$, $t$, $m_2$, all at
 most the cap, for any arguments. -/
 theorem smallEigCaps_smallEigParams (nmax : ℕ) (S δ φ : ℝ) (c₁ c₂ : PolyLogTail) :
-    SmallEigCaps (smallEigCap nmax S δ φ c₁ c₂) (smallEigParams nmax S δ φ c₁ c₂) := by
-  sorry
+    SmallEigCaps (smallEigCap nmax S δ φ c₁ c₂) (smallEigParams nmax S δ φ c₁ c₂) :=
+  ⟨_, _, _, _, rfl, rfl, rfl, rfl, rfl, le_max_left _ _,
+    (le_max_left _ _).trans (le_max_right _ _), (le_max_right _ _).trans (le_max_right _ _)⟩
 
 end NLAlib.SmallEig

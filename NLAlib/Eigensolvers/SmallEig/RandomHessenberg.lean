@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.Eigensolvers.SmallEig.RandomHessenbergWeights
 public import NLAlib.Eigensolvers.HessenbergReduction
 public import NLAlib.Eigensolvers.SmallEig.Draws
 public import NLAlib.Matrix.Perturbation.EigenvalueBackward
@@ -31,7 +32,6 @@ transferred to the output (`NLAlib.exists_lastRowWeights_ge_of_norm_sub_le`, the
 ## Main definitions
 
 * `NLAlib.SmallEig.rhess`: the program `[N] (A) → (A)`.
-* `NLAlib.SmallEig.rhessWord`: the matrix it stores on a machine.
 
 ## Main results
 
@@ -47,6 +47,7 @@ open scoped Matrix
 namespace NLAlib.SmallEig
 
 open Ops ShiftedQR
+open Matrix (replicateCol replicateCol_apply)
 
 section Program
 
@@ -81,34 +82,6 @@ def rhess (sG : ℕ) : Impl O Q := opsImpl% [N] (A) → (A) {
 
 end Program
 
-/-- The complex vector of $2N$ real words, $(x_{2i} + i x_{2i+1})_{i < N}$. -/
-def pairVector (x : ℕ → ℝ) (N : ℕ) : Fin N → ℂ := fun i => ⟨x (2 * i), x (2 * i + 1)⟩
-
-/-- One rotation of `NLAlib.SmallEig.rhess` on a machine: the rounded coefficients of
-$(\bar g_{j+1}, -\bar g_j)$, the rounded rotation of the entries $j, j + 1$ of $\mathbf{g}$, and of
-the rows, then the columns, $j, j + 1$ of $\mathbf{A}$; the identity when $j + 1 \ge N$. -/
-noncomputable def rotateToStepWord (M : Machine ℝ) {N : ℕ} (j : ℕ)
-    (Ag : Matrix (Fin N) (Fin N) ℂ × (Fin N → ℂ)) : Matrix (Fin N) (Fin N) ℂ × (Fin N → ℂ) :=
-  if h : j + 1 < N then
-    let i : Fin N := ⟨j, by omega⟩
-    let k : Fin N := ⟨j + 1, h⟩
-    let cs := roundedGivensCoeffs M ⟨(Ag.2 k).re, M.neg (Ag.2 k).im⟩
-      ⟨M.neg (Ag.2 i).re, (Ag.2 i).im⟩
-    (machineColRotation M i k cs.1 cs.2 (machineRowRotation M i k cs.1 cs.2 Ag.1),
-      fun r => if r = i then linearComplex M cs.1 cs.2 (Ag.2 i) (Ag.2 k)
-        else if r = k then
-          linearComplex M ⟨M.neg cs.2.re, cs.2.im⟩ ⟨cs.1.re, M.neg cs.1.im⟩ (Ag.2 i) (Ag.2 k)
-        else Ag.2 r)
-  else Ag
-
-/-- The matrix stored by `NLAlib.SmallEig.rhess` on the machine `M` from the matrix $\mathbf{A}$
-and the $2N$ drawn words $x$: the $N - 1$ steps `NLAlib.SmallEig.rotateToStepWord` from
-$(\mathbf{A}, \mathbf{g})$, then `NLAlib.hessenbergReduceLastWord`. -/
-noncomputable def rhessWord (M : Machine ℝ) {N : ℕ} (A : Matrix (Fin N) (Fin N) ℂ)
-    (x : ℕ → ℝ) : Matrix (Fin N) (Fin N) ℂ :=
-  hessenbergReduceLastWord M
-    ((List.range (N - 1)).foldl (fun Ag j => rotateToStepWord M j Ag) (A, pairVector x N)).1
-
 /-- `omega` after reducing the projections of literal pairs. -/
 local macro "pomega" : tactic => `(tactic| ((try dsimp only) <;> omega))
 
@@ -116,34 +89,24 @@ section Steps
 
 variable {O Q : Type} [Has ScalarOp O] [Has CmpTst Q]
 
-
-/-- A complex vector stored as a one-column matrix. -/
-private def colVec {N : ℕ} (v : Fin N → ℂ) : Matrix (Fin N) (Fin 1) ℂ := Matrix.of fun i _ => v i
-
 /-- The words of a stored vector. -/
 private theorem get_colVec {N L : ℕ} {s : Store ℝ} {v : Fin N → ℂ}
-    (h : HoldsMatrix (L, 0) (colVec v) s) (i : Fin N) :
+    (h : HoldsMatrix (L, 0) (replicateCol (Fin 1) v) s) (i : Fin N) :
     s.get L (2 * i) = some (v i).re ∧ s.get L (2 * i + 1) = some (v i).im := by
   have h0 := h.get_re i 0
   have h1 := h.get_im i 0
-  simp only [colVec, Matrix.of_apply, Fin.val_zero, zero_mul, zero_add] at h0 h1
+  simp only [replicateCol_apply, Fin.val_zero, zero_mul, zero_add] at h0 h1
   exact ⟨h0, h1⟩
 
 /-- A stored vector from its words. -/
 private theorem holdsMatrix_colVec {N L : ℕ} {s : Store ℝ} {v : Fin N → ℂ}
     (h : ∀ i : Fin N, s.get L (2 * i) = some (v i).re ∧ s.get L (2 * i + 1) = some (v i).im) :
-    HoldsMatrix (L, 0) (colVec v) s := by
+    HoldsMatrix (L, 0) (replicateCol (Fin 1) v) s := by
   refine HoldsMatrix.of_get (fun i j => ?_) (fun i j => ?_)
   · have : (j : ℕ) = 0 := Nat.lt_one_iff.mp j.isLt
-    simpa [colVec, this] using (h i).1
+    simpa [this] using (h i).1
   · have : (j : ℕ) = 0 := Nat.lt_one_iff.mp j.isLt
-    simpa [colVec, this] using (h i).2
-
-/-- A cell outside a block of another buffer, or before or after it, is not in the block. -/
-private theorem not_inBlock_of {b o n b' i : ℕ} (h : b' ≠ b ∨ i < o ∨ o + n ≤ i) :
-    ¬ Store.inBlock b o n b' i := fun hi => by
-  obtain ⟨h1, h2, h3⟩ := hi
-  omega
+    simpa [this] using (h i).2
 
 /-- **The coefficients of one rotation of `RHess`**: the four words
 $(\Re g_{j+1}, -\Im g_{j+1}, -\Re g_j, \Im g_j)$ into `Uv`, then their rounded Givens
@@ -186,7 +149,7 @@ private theorem writes_rhessCoeffs {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
     le_sup_of_le_right (Fp.inBlock_le_inBlock (by pomega) (by pomega))
   have K : ∀ {s s' : Store ℝ} {b o b' i : ℕ} {v : ℝ}, s.EqOff (Store.inBlock b o 1) s' →
       (b' ≠ b ∨ i ≠ o) → s.get b' i = some v → s'.get b' i = some v :=
-    fun hf hne hv => (hf.2 _ _ (not_inBlock_of (by pomega))).trans hv
+    fun hf hne hv => (hf.2 _ _ (Store.not_inBlock_of (by pomega))).trans hv
   refine (writes_call_un (hS .copy) h₁ h₁' trivial hy₀ rfl (by pomega)).seq_le
     ((hU 0 (by pomega)).trans hF) ?_
   rintro m₁ hf₁ ⟨hp₁, hv₁⟩
@@ -225,406 +188,6 @@ private theorem writes_rhessCoeffs {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
 
 end Steps
 
-section BackwardError
-
-variable {M : Machine ℝ} {u : ℝ}
-
-/-- $(1 + x)^n - 1 \le 2nx$ for $x \ge 0$ and $nx \le 1/2$. -/
-private theorem one_add_pow_sub_one_le_two_mul {x : ℝ} {n : ℕ} (hx : 0 ≤ x)
-    (hnx : n * x ≤ 1 / 2) : (1 + x) ^ n - 1 ≤ 2 * n * x := by
-  rcases Nat.eq_zero_or_pos n with rfl | hn
-  · simp
-  have hn1 : (1 : ℝ) ≤ n := by exact_mod_cast hn
-  have hx1 : x ≤ 1 / 2 := le_trans (le_mul_of_one_le_left hx hn1) hnx
-  have hB : 1 + n * (-x) ≤ (1 + -x) ^ n := one_add_mul_le_pow (by linarith) n
-  have hAB : (1 + x) ^ n * (1 + -x) ^ n ≤ 1 := by
-    rw [← mul_pow]
-    exact pow_le_one₀ (by nlinarith) (by nlinarith)
-  have hA : 0 ≤ (1 + x) ^ n := by positivity
-  have h1 : (1 + x) ^ n * (1 - n * x) ≤ 1 := by
-    nlinarith [mul_le_mul_of_nonneg_left hB hA]
-  have hy : 0 ≤ (n : ℝ) * x := by positivity
-  have hP : (1 + x) ^ n ≤ 2 := by nlinarith
-  nlinarith [mul_le_mul_of_nonneg_right hP hy]
-
-/-- One rounded round, rows then columns, within $50\boldsymbol{u}\|\mathbf{Z}\|_2$ of the exact
-conjugation, for $0 \le \boldsymbol{u} \le 1/288$. -/
-private theorem specNorm_rowCol_sub_le (hM : StdModel u id M) (hu : 0 ≤ u) (hu' : u ≤ 1 / 288)
-    {N : ℕ} {i j : Fin N} (hij : i ≠ j) (p q : ℂ) (Z : Matrix (Fin N) (Fin N) ℂ) :
-    specNorm (machineColRotation M i j (roundedGivensCoeffs M p q).1 (roundedGivensCoeffs M p q).2
-        (machineRowRotation M i j (roundedGivensCoeffs M p q).1 (roundedGivensCoeffs M p q).2 Z) -
-      givens i j (givensCoeffs p q).1 (givensCoeffs p q).2 * Z *
-        (givens i j (givensCoeffs p q).1 (givensCoeffs p q).2)ᴴ) ≤ 50 * u * specNorm Z := by
-  have hu100 : u ≤ 1 / 100 := by linarith
-  set G := givens i j (givensCoeffs p q).1 (givensCoeffs p q).2
-  have hG : HasOrthonormalCols G :=
-    hasOrthonormalCols_givens hij (norm_givensCoeffs_fst_sq_add p q)
-  set Z₁ := machineRowRotation M i j (roundedGivensCoeffs M p q).1 (roundedGivensCoeffs M p q).2 Z
-  set Z₂ := machineColRotation M i j (roundedGivensCoeffs M p q).1 (roundedGivensCoeffs M p q).2 Z₁
-  have h1 := (isRoundedRowRotation_machineRowRotation hM hu hu100 hij p q Z).specNorm_sub_le
-    (by positivity)
-  have h2 := (isRoundedColRotation_machineColRotation hM hu hu100 hij p q Z₁).specNorm_sub_le
-    (by positivity)
-  have hZ₁ : specNorm Z₁ ≤ (1 + 24 * u) * specNorm Z := by
-    have e : Z₁ = G * Z + (Z₁ - G * Z) := by abel
-    have := specNorm_add_le (G * Z) (Z₁ - G * Z)
-    rw [← e, hG.specNorm_mul_left] at this
-    linarith
-  have e : Z₂ - G * Z * Gᴴ = (Z₂ - Z₁ * Gᴴ) + (Z₁ - G * Z) * Gᴴ := by
-    rw [Matrix.sub_mul]
-    abel
-  rw [e]
-  refine (specNorm_add_le _ _).trans ?_
-  rw [hG.specNorm_mul_conjTranspose_right]
-  have hZ : 0 ≤ specNorm Z := specNorm_nonneg Z
-  nlinarith [mul_le_mul_of_nonneg_left hZ₁ (by positivity : (0 : ℝ) ≤ 2 * (12 * u)),
-    mul_nonneg (mul_nonneg hu hZ) (by linarith : (0 : ℝ) ≤ 2 - 576 * u)]
-
-/-- The rounded rotation of the entries $i, k$ of a vector, as `NLAlib.SmallEig.rhess` computes
-it. -/
-private noncomputable def vecRot (M : Machine ℝ) {N : ℕ} (i k : Fin N) (cs : ℂ × ℂ)
-    (v : Fin N → ℂ) : Fin N → ℂ :=
-  fun r => if r = i then linearComplex M cs.1 cs.2 (v i) (v k)
-    else if r = k then linearComplex M ⟨M.neg cs.2.re, cs.2.im⟩ ⟨cs.1.re, M.neg cs.1.im⟩ (v i) (v k)
-    else v r
-
-/-- The rounded rotation of two entries of a vector is within $12\boldsymbol{u}$ of the exact
-one, on those entries, and keeps the others. -/
-private theorem vecRot_sub_le (hM : StdModel u id M) (hu : 0 ≤ u) (hu' : u ≤ 1 / 100) {N : ℕ}
-    {i k : Fin N} (hik : i ≠ k) (p q : ℂ) (v : Fin N → ℂ) :
-    √(‖vecRot M i k (roundedGivensCoeffs M p q) v i -
-        (givens i k (givensCoeffs p q).1 (givensCoeffs p q).2 *ᵥ v) i‖ ^ 2 +
-      ‖vecRot M i k (roundedGivensCoeffs M p q) v k -
-        (givens i k (givensCoeffs p q).1 (givensCoeffs p q).2 *ᵥ v) k‖ ^ 2) ≤
-      12 * u * √(‖v i‖ ^ 2 + ‖v k‖ ^ 2) := by
-  let X : Matrix (Fin N) (Fin N) ℂ := Matrix.of fun r _ => v r
-  have h := (isRoundedRowRotation_machineRowRotation hM hu hu' hik p q X).2 i
-  have e1 : ∀ r, (givens i k (givensCoeffs p q).1 (givensCoeffs p q).2 * X) r i =
-      (givens i k (givensCoeffs p q).1 (givensCoeffs p q).2 *ᵥ v) r := fun r => by
-    simp [X, Matrix.mul_apply, Matrix.mulVec, dotProduct]
-  rw [e1, e1] at h
-  simpa [X, machineRowRotation, vecRot, Ne.symm hik] using h
-
-/-- The Euclidean norm of a vector supported on two entries. -/
-private theorem norm_toLp_eq_of_support {N : ℕ} {i k : Fin N} (hik : i ≠ k) {w : Fin N → ℂ}
-    (hw : ∀ r, r ≠ i → r ≠ k → w r = 0) :
-    ‖WithLp.toLp 2 w‖ = √(‖w i‖ ^ 2 + ‖w k‖ ^ 2) := by
-  rw [EuclideanSpace.norm_eq]
-  congr 1
-  rw [Fintype.sum_eq_add i k hik fun r hr => by simp [hw r hr.1 hr.2]]
-
-/-- Two entries have joint norm at most the Euclidean norm. -/
-private theorem sqrt_norm_sq_add_le_norm_toLp {N : ℕ} {i k : Fin N} (hik : i ≠ k)
-    (w : Fin N → ℂ) : √(‖w i‖ ^ 2 + ‖w k‖ ^ 2) ≤ ‖WithLp.toLp 2 w‖ := by
-  rw [EuclideanSpace.norm_eq]
-  refine Real.sqrt_le_sqrt ?_
-  have h := Finset.sum_le_sum_of_subset_of_nonneg (Finset.subset_univ {i, k})
-    (f := fun r => ‖w r‖ ^ 2) fun _ _ _ => sq_nonneg _
-  simpa [Finset.sum_pair hik] using h
-
-/-- The invariant of the rotations of `RHess` after $k$ steps from $(\mathbf{A}, \mathbf{g})$:
-a unitary $\mathbf{U}$ with $\mathbf{B}$ within $((1 + 50\boldsymbol{u})^k - 1)\|\mathbf{A}\|_2$ of
-$\mathbf{U}\mathbf{A}\mathbf{U}^{\mathsf{H}}$, $\mathbf{v}$ within
-$((1 + 12\boldsymbol{u})^k - 1)\|\mathbf{g}\|$ of $\mathbf{U}\mathbf{g}$, and the first $k$ entries
-of $\mathbf{v}$ at most $12\boldsymbol{u}(1 + 12\boldsymbol{u})^k\|\mathbf{g}\|$. -/
-private def RotInv (u : ℝ) {N : ℕ} (A : Matrix (Fin N) (Fin N) ℂ) (g : Fin N → ℂ) (k : ℕ)
-    (Bv : Matrix (Fin N) (Fin N) ℂ × (Fin N → ℂ)) : Prop :=
-  ∃ U : Matrix (Fin N) (Fin N) ℂ, HasOrthonormalCols U ∧
-    specNorm (Bv.1 - U * A * Uᴴ) ≤ ((1 + 50 * u) ^ k - 1) * specNorm A ∧
-    ‖WithLp.toLp 2 (Bv.2 - U *ᵥ g)‖ ≤ ((1 + 12 * u) ^ k - 1) * ‖WithLp.toLp 2 g‖ ∧
-    ∀ r : Fin N, (r : ℕ) < k → ‖Bv.2 r‖ ≤ 12 * u * (1 + 12 * u) ^ k * ‖WithLp.toLp 2 g‖
-
-/-- The step of `NLAlib.SmallEig.rotateToStepWord` on a machine with the standard model. -/
-private theorem rotateToStepWord_eq (hM : StdModel u id M) {N j : ℕ} (hj : j + 1 < N)
-    (B : Matrix (Fin N) (Fin N) ℂ) (v : Fin N → ℂ) :
-    rotateToStepWord M j (B, v) =
-      (machineColRotation M ⟨j, by omega⟩ ⟨j + 1, hj⟩
-        (roundedGivensCoeffs M (star (v ⟨j + 1, hj⟩)) (-star (v ⟨j, by omega⟩))).1
-        (roundedGivensCoeffs M (star (v ⟨j + 1, hj⟩)) (-star (v ⟨j, by omega⟩))).2
-        (machineRowRotation M ⟨j, by omega⟩ ⟨j + 1, hj⟩
-          (roundedGivensCoeffs M (star (v ⟨j + 1, hj⟩)) (-star (v ⟨j, by omega⟩))).1
-          (roundedGivensCoeffs M (star (v ⟨j + 1, hj⟩)) (-star (v ⟨j, by omega⟩))).2 B),
-        vecRot M ⟨j, by omega⟩ ⟨j + 1, hj⟩
-          (roundedGivensCoeffs M (star (v ⟨j + 1, hj⟩)) (-star (v ⟨j, by omega⟩))) v) := by
-  have hn (x : ℝ) : M.neg x = -x := hM.neg x
-  have e1 : (⟨(v ⟨j + 1, hj⟩).re, M.neg (v ⟨j + 1, hj⟩).im⟩ : ℂ) = star (v ⟨j + 1, hj⟩) := by
-    apply Complex.ext <;> simp [hn]
-  have e2 : (⟨M.neg (v ⟨j, by omega⟩).re, (v ⟨j, by omega⟩).im⟩ : ℂ) =
-      -star (v ⟨j, by omega⟩) := by
-    apply Complex.ext <;> simp [hn]
-  simp only [rotateToStepWord, dif_pos hj, e1, e2]
-  rfl
-
-/-- The matrix half of a rotation step of `RHess`: a step within $50\boldsymbol{u}\|\mathbf{B}\|_2$
-of $\mathbf{G}\mathbf{B}\mathbf{G}^{\mathsf{H}}$ adds one factor $1 + 50\boldsymbol{u}$. -/
-private theorem rotInv_matrix_step {N j : ℕ} {A B B' U G : Matrix (Fin N) (Fin N) ℂ}
-    (hU : HasOrthonormalCols U) (hG : HasOrthonormalCols G)
-    (hB : specNorm (B - U * A * Uᴴ) ≤ ((1 + 50 * u) ^ j - 1) * specNorm A) (hu : 0 ≤ u)
-    (hrc : specNorm (B' - G * B * Gᴴ) ≤ 50 * u * specNorm B) :
-    specNorm (B' - G * U * A * (G * U)ᴴ) ≤ ((1 + 50 * u) ^ (j + 1) - 1) * specNorm A := by
-  have hAU : specNorm (U * A * Uᴴ) = specNorm A := by
-    have := hU.conjTranspose.specNorm_conjTranspose_mul_mul A
-    rwa [Matrix.conjTranspose_conjTranspose] at this
-  have hBn : specNorm B ≤ (1 + 50 * u) ^ j * specNorm A := by
-    have e : B = (B - U * A * Uᴴ) + U * A * Uᴴ := by abel
-    have := specNorm_add_le (B - U * A * Uᴴ) (U * A * Uᴴ)
-    rw [← e, hAU] at this
-    linarith
-  have e : B' - G * U * A * (G * U)ᴴ = (B' - G * B * Gᴴ) + G * (B - U * A * Uᴴ) * Gᴴ := by
-    simp only [Matrix.conjTranspose_mul, Matrix.mul_sub, Matrix.sub_mul, Matrix.mul_assoc]
-    abel
-  rw [e]
-  refine (specNorm_add_le _ _).trans ?_
-  rw [hG.specNorm_mul_conjTranspose_right, hG.specNorm_mul_left, pow_succ]
-  nlinarith [mul_le_mul_of_nonneg_left hBn (by positivity : (0 : ℝ) ≤ 50 * u)]
-
-/-- One rotation of `RHess` keeps the invariant, with one more step. -/
-private theorem rotInv_step (hM : StdModel u id M) (hu : 0 ≤ u) (hu' : u ≤ 1 / 288) {N j : ℕ}
-    (hj : j + 1 < N) {A : Matrix (Fin N) (Fin N) ℂ} {g : Fin N → ℂ}
-    {X : Matrix (Fin N) (Fin N) ℂ × (Fin N → ℂ)} (h : RotInv u A g j X) :
-    RotInv u A g (j + 1) (rotateToStepWord M j X) := by
-  obtain ⟨B, v⟩ := X
-  obtain ⟨U, hU, hB, hv, hz⟩ := h
-  dsimp only at hB hv hz
-  rw [rotateToStepWord_eq hM hj]
-  set i : Fin N := ⟨j, by omega⟩
-  set k : Fin N := ⟨j + 1, hj⟩
-  have hik : i ≠ k := Fin.ne_of_val_ne (by simp [i, k])
-  set p := star (v k)
-  set q := -star (v i)
-  set G := givens i k (givensCoeffs p q).1 (givensCoeffs p q).2
-  have hG : HasOrthonormalCols G := hasOrthonormalCols_givens hik (norm_givensCoeffs_fst_sq_add _ _)
-  have hgn : ‖WithLp.toLp 2 (U *ᵥ g)‖ = ‖WithLp.toLp 2 g‖ := hU.norm_toLp_mulVec g
-  have hvn : ‖WithLp.toLp 2 v‖ ≤ (1 + 12 * u) ^ j * ‖WithLp.toLp 2 g‖ := by
-    have e : v = (v - U *ᵥ g) + U *ᵥ g := by abel
-    have := norm_add_le (WithLp.toLp 2 (v - U *ᵥ g)) (WithLp.toLp 2 (U *ᵥ g))
-    rw [← WithLp.toLp_add, ← e, hgn] at this
-    linarith
-  have hpair := vecRot_sub_le hM hu (by linarith) hik p q v
-  set v' := vecRot M i k (roundedGivensCoeffs M p q) v
-  have hsupp : ∀ r, r ≠ i → r ≠ k → (v' - G *ᵥ v) r = 0 := fun r h1 h2 => by
-    simp [v', vecRot, h1, h2, G, givens_mulVec_apply_of_ne h1 h2]
-  have hvv : ‖WithLp.toLp 2 (v' - G *ᵥ v)‖ ≤ 12 * u * ((1 + 12 * u) ^ j * ‖WithLp.toLp 2 g‖) := by
-    rw [norm_toLp_eq_of_support hik hsupp]
-    have hp' : √(‖(v' - G *ᵥ v) i‖ ^ 2 + ‖(v' - G *ᵥ v) k‖ ^ 2) ≤
-        12 * u * √(‖v i‖ ^ 2 + ‖v k‖ ^ 2) := by simpa using hpair
-    exact hp'.trans (mul_le_mul_of_nonneg_left
-      ((sqrt_norm_sq_add_le_norm_toLp hik v).trans hvn) (by positivity))
-  refine ⟨G * U, hasOrthonormalCols_iff.mpr ((hG.conjTranspose_mul_mul U U).trans
-    (hasOrthonormalCols_iff.mp hU)), ?_, ?_, fun r hr => ?_⟩
-  · dsimp only
-    exact rotInv_matrix_step hU hG hB hu (specNorm_rowCol_sub_le hM hu hu' hik p q B)
-  · dsimp only
-    have e : v' - (G * U) *ᵥ g = (v' - G *ᵥ v) + G *ᵥ (v - U *ᵥ g) := by
-      rw [← Matrix.mulVec_mulVec, Matrix.mulVec_sub]
-      abel
-    rw [e, WithLp.toLp_add]
-    refine (norm_add_le _ _).trans ?_
-    rw [hG.norm_toLp_mulVec, pow_succ]
-    nlinarith [hvv, hv, norm_nonneg (WithLp.toLp 2 g)]
-  · dsimp only
-    have hg0 : 0 ≤ ‖WithLp.toLp 2 g‖ := norm_nonneg _
-    have hmono : 12 * u * (1 + 12 * u) ^ j * ‖WithLp.toLp 2 g‖ ≤
-        12 * u * (1 + 12 * u) ^ (j + 1) * ‖WithLp.toLp 2 g‖ := by
-      rw [pow_succ]
-      have : 0 ≤ 12 * u * (1 + 12 * u) ^ j * ‖WithLp.toLp 2 g‖ := by positivity
-      nlinarith
-    by_cases hri : r = i
-    · subst hri
-      have h0 : (G *ᵥ v) i = 0 := by
-        have hz0 := congrArg star (neg_star_givensCoeffs_snd_mul_add p q)
-        simp only [p, q, star_add, star_mul', star_neg, star_star, star_zero] at hz0
-        rw [givens_mulVec_apply_left hik]
-        linear_combination -hz0
-      have hle : ‖v' i‖ ≤ ‖WithLp.toLp 2 (v' - G *ᵥ v)‖ := by
-        have := PiLp.norm_apply_le (WithLp.toLp 2 (v' - G *ᵥ v)) i
-        simpa [h0] using this
-      exact (hle.trans hvv).trans (le_of_eq_of_le (by ring) hmono)
-    · have hrj : (r : ℕ) < j := by
-        have : (r : ℕ) ≠ j := fun h => hri (Fin.ext h)
-        omega
-      have hrk : r ≠ k := Fin.ne_of_val_ne (by simp only [ne_eq, k]; pomega)
-      have : v' r = v r := by simp [v', vecRot, hri, hrk]
-      rw [this]
-      exact (hz r hrj).trans hmono
-
-/-- The rotations of `RHess` keep the invariant. -/
-private theorem rotInv_fold (hM : StdModel u id M) (hu : 0 ≤ u) {N : ℕ}
-    (hu' : 2 ≤ N → u ≤ 1 / 288) (A : Matrix (Fin N) (Fin N) ℂ) (g : Fin N → ℂ) :
-    ∀ k ≤ N - 1, RotInv u A g k
-      ((List.range k).foldl (fun Ag j => rotateToStepWord M j Ag) (A, g))
-  | 0, _ => ⟨1, hasOrthonormalCols_one, by simp, by simp, fun r hr => absurd hr (Nat.not_lt_zero _)⟩
-  | k + 1, hk => by
-    rw [List.range_succ, List.foldl_append, List.foldl_cons, List.foldl_nil]
-    exact rotInv_step hM hu (hu' (by omega)) (by omega)
-      (rotInv_fold hM hu hu' A g k (by omega))
-
-/-- **A phase for the last coordinate vector**: if $\|\mathbf{w}\| = R > 0$ and the entries of
-$\mathbf{w}$ other than the last have joint norm at most $\delta R$ with $0 \le \delta < 1$, there
-is $\lvert c\rvert = 1$ with $\|\mathbf{e}_{n+1} - (c/R)\mathbf{w}\| \le \sqrt2\,\delta$. -/
-private theorem exists_phase_norm_sub_le {n : ℕ} (w : Fin (n + 1) → ℂ) {R δ : ℝ} (hR : 0 < R)
-    (hw : ‖WithLp.toLp 2 w‖ = R) (hδ0 : 0 ≤ δ) (hδ : δ < 1)
-    (hoff : ∑ i : Fin n, ‖w i.castSucc‖ ^ 2 ≤ (δ * R) ^ 2) :
-    ∃ c : ℂ, ‖c‖ = 1 ∧
-      ‖WithLp.toLp 2 (Pi.single (Fin.last n) 1 - (c * ((R⁻¹ : ℝ) : ℂ)) • w)‖ ≤ √2 * δ := by
-  set a := w (Fin.last n)
-  have hsum : ∑ i : Fin n, ‖w i.castSucc‖ ^ 2 + ‖a‖ ^ 2 = R ^ 2 := by
-    rw [← hw, EuclideanSpace.norm_sq_eq, Fin.sum_univ_castSucc]
-  have ha2 : (1 - δ ^ 2) * R ^ 2 ≤ ‖a‖ ^ 2 := by nlinarith
-  have ha : 0 < ‖a‖ := by
-    have h0 : 0 < (1 - δ ^ 2) * R ^ 2 := by
-      have : δ ^ 2 < 1 := by nlinarith
-      have : 0 < 1 - δ ^ 2 := by linarith
-      positivity
-    by_contra hle
-    have : ‖a‖ = 0 := le_antisymm (not_lt.mp hle) (norm_nonneg _)
-    rw [this] at ha2
-    linarith
-  set c := star a / (‖a‖ : ℂ)
-  refine ⟨c, ?_, ?_⟩
-  · rw [norm_div, norm_star, Complex.norm_real, Real.norm_of_nonneg (norm_nonneg _),
-      div_self ha.ne']
-  have hca : c * a = (‖a‖ : ℂ) := by
-    simp only [c]
-    rw [div_mul_eq_mul_div, RCLike.star_def, Complex.conj_mul', ← Complex.ofReal_pow,
-      pow_two, Complex.ofReal_mul, mul_div_assoc, div_self (by exact_mod_cast ha.ne'), mul_one]
-  set ρ := ‖a‖ / R
-  have hρ1 : ρ ≤ 1 := by
-    rw [div_le_one hR]
-    have : 0 ≤ ∑ i : Fin n, ‖w i.castSucc‖ ^ 2 := Finset.sum_nonneg fun _ _ => sq_nonneg _
-    nlinarith [norm_nonneg a]
-  set z : Fin (n + 1) → ℂ := Pi.single (Fin.last n) 1 - (c * ((R⁻¹ : ℝ) : ℂ)) • w
-  have hc1 : ‖c‖ = 1 := by
-    rw [norm_div, norm_star, Complex.norm_real, Real.norm_of_nonneg (norm_nonneg _),
-      div_self ha.ne']
-  have h1 : ∀ i : Fin n, ‖z i.castSucc‖ = ‖w i.castSucc‖ / R := fun i => by
-    simp only [z, Pi.sub_apply, Pi.smul_apply, smul_eq_mul,
-      Pi.single_eq_of_ne (Fin.castSucc_ne_last i), zero_sub, norm_neg, norm_mul, hc1,
-      Complex.norm_real, Real.norm_of_nonneg (inv_nonneg.mpr hR.le), one_mul]
-    rw [div_eq_inv_mul]
-  have h2 : z (Fin.last n) = ((1 - ρ : ℝ) : ℂ) := by
-    simp only [z, Pi.sub_apply, Pi.smul_apply, smul_eq_mul, Pi.single_eq_same]
-    rw [mul_comm c, mul_assoc, hca]
-    push_cast
-    simp only [ρ]
-    push_cast
-    ring
-  have hzsq : ‖WithLp.toLp 2 z‖ ^ 2 = (∑ i : Fin n, ‖w i.castSucc‖ ^ 2) / R ^ 2 + (1 - ρ) ^ 2 := by
-    rw [EuclideanSpace.norm_sq_eq, Fin.sum_univ_castSucc]
-    simp only [h1, h2, Complex.norm_real, Real.norm_eq_abs, sq_abs, div_pow,
-      Finset.sum_div]
-  have hoffR : (∑ i : Fin n, ‖w i.castSucc‖ ^ 2) / R ^ 2 = 1 - ρ ^ 2 := by
-    simp only [ρ]
-    field_simp
-    linarith
-  have hδR : (∑ i : Fin n, ‖w i.castSucc‖ ^ 2) / R ^ 2 ≤ δ ^ 2 := by
-    rw [div_le_iff₀ (by positivity)]
-    nlinarith
-  refine (sq_le_sq₀ (norm_nonneg _) (by positivity)).mp ?_
-  rw [hzsq, mul_pow, Real.sq_sqrt (by norm_num)]
-  have hρ0 : 0 ≤ ρ := by positivity
-  nlinarith
-
-/-- The matrix bound of `RHess`: the reduction's error on top of the rotations' error. -/
-private theorem rhess_matrix_bound {n : ℕ} {A B U Q' H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
-    (hU : HasOrthonormalCols U) (hQ' : HasOrthonormalCols Q')
-    (hB : specNorm (B - U * A * Uᴴ) ≤ ((1 + 50 * u) ^ n - 1) * specNorm A)
-    (hE : specNorm (H - Q'ᴴ * B * Q') ≤ 50 * ((n : ℝ) + 1) ^ 2 * u * specNorm B)
-    (hu : 0 ≤ u) (hNu : ((n : ℝ) + 1) * u ≤ 1 / 100) :
-    specNorm (H - (Uᴴ * Q')ᴴ * A * (Uᴴ * Q')) ≤ 200 * ((n : ℝ) + 1) ^ 2 * u * specNorm A := by
-  have hgrow := one_add_pow_sub_one_le_two_mul (x := 50 * u) (n := n) (by positivity)
-    (by nlinarith)
-  have hAU : specNorm (U * A * Uᴴ) = specNorm A := by
-    have := hU.conjTranspose.specNorm_conjTranspose_mul_mul A
-    rwa [Matrix.conjTranspose_conjTranspose] at this
-  have hA0 := specNorm_nonneg A
-  have hB' : specNorm (B - U * A * Uᴴ) ≤ 100 * n * u * specNorm A := by
-    refine hB.trans ?_
-    nlinarith [mul_le_mul_of_nonneg_right hgrow hA0]
-  have hBn : specNorm B ≤ 2 * specNorm A := by
-    have e : B = (B - U * A * Uᴴ) + U * A * Uᴴ := by abel
-    have := specNorm_add_le (B - U * A * Uᴴ) (U * A * Uᴴ)
-    rw [← e, hAU] at this
-    nlinarith
-  have e : H - (Uᴴ * Q')ᴴ * A * (Uᴴ * Q') = (H - Q'ᴴ * B * Q') + Q'ᴴ * (B - U * A * Uᴴ) * Q' := by
-    simp only [Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose, Matrix.mul_sub,
-      Matrix.sub_mul, Matrix.mul_assoc]
-    abel
-  rw [e]
-  refine (specNorm_add_le _ _).trans ?_
-  rw [hQ'.specNorm_conjTranspose_mul_mul]
-  have hn2 : (n : ℝ) ≤ ((n : ℝ) + 1) ^ 2 := by nlinarith
-  nlinarith [mul_le_mul_of_nonneg_left hBn (by positivity : (0 : ℝ) ≤ 50 * ((n : ℝ) + 1) ^ 2 * u),
-    mul_le_mul_of_nonneg_right hn2 (mul_nonneg hu hA0)]
-
-/-- The direction bound of `RHess`: the last column of $\mathbf{U}^{\mathsf{H}}$ is within
-$60(n + 1)\boldsymbol{u}$ of a phase of $\mathbf{g}/\|\mathbf{g}\|$. -/
-private theorem rhess_phase {n : ℕ} {U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
-    {g v : Fin (n + 1) → ℂ} (hU : HasOrthonormalCols U) (hg : g ≠ 0)
-    (hv : ‖WithLp.toLp 2 (v - U *ᵥ g)‖ ≤ ((1 + 12 * u) ^ n - 1) * ‖WithLp.toLp 2 g‖)
-    (hz : ∀ r : Fin (n + 1), (r : ℕ) < n → ‖v r‖ ≤ 12 * u * (1 + 12 * u) ^ n * ‖WithLp.toLp 2 g‖)
-    (hu : 0 ≤ u) (hNu : ((n : ℝ) + 1) * u ≤ 1 / 100) (hnu : (n : ℝ) * u ≤ 1 / 100) :
-    ∃ c : ℂ, ‖c‖ = 1 ∧ ‖WithLp.toLp 2 (Uᴴ *ᵥ Pi.single (Fin.last n) 1 -
-      (c * ((‖WithLp.toLp 2 g‖⁻¹ : ℝ) : ℂ)) • g)‖ ≤ 60 * ((n : ℝ) + 1) * u := by
-  set R := ‖WithLp.toLp 2 g‖
-  have hR : 0 < R := norm_pos_iff.mpr (fun h => hg (by simpa using congrArg WithLp.ofLp h))
-  set w := U *ᵥ g
-  have hw : ‖WithLp.toLp 2 w‖ = R := hU.norm_toLp_mulVec g
-  have hgrow := one_add_pow_sub_one_le_two_mul (x := 12 * u) (n := n) (by positivity)
-    (by nlinarith)
-  have hP : (1 + 12 * u) ^ n ≤ 1 + 24 * n * u := by linarith
-  have hδ : (39 * ((n : ℝ) + 1) * u) < 1 := by nlinarith
-  -- the entries of `w` other than the last
-  have hoff : ∑ i : Fin n, ‖w i.castSucc‖ ^ 2 ≤ (39 * ((n : ℝ) + 1) * u * R) ^ 2 := by
-    set e : Fin (n + 1) → ℂ := Pi.single (Fin.last n) (v (Fin.last n))
-    have h1 : ‖WithLp.toLp 2 (v - e)‖ ≤ 15 * ((n : ℝ) + 1) * u * R := by
-      have hvi : ∀ i : Fin n, ‖v i.castSucc‖ ≤ 15 * u * R := fun i => by
-        refine (hz i.castSucc (by simp)).trans ?_
-        nlinarith [mul_le_mul_of_nonneg_left hP (by positivity : (0 : ℝ) ≤ 12 * u * R),
-          mul_le_mul_of_nonneg_left hnu (by positivity : (0 : ℝ) ≤ u * R)]
-      refine (sq_le_sq₀ (norm_nonneg _) (by positivity)).mp ?_
-      rw [EuclideanSpace.norm_sq_eq, Fin.sum_univ_castSucc]
-      have hl : (v - e) (Fin.last n) = 0 := by simp [e]
-      have hc : ∀ i : Fin n, (v - e) i.castSucc = v i.castSucc := fun i => by
-        simp [e]
-      simp only [hl, hc, norm_zero]
-      have hs : ∑ i : Fin n, ‖v i.castSucc‖ ^ 2 ≤ n * (15 * u * R) ^ 2 := by
-        calc ∑ i : Fin n, ‖v i.castSucc‖ ^ 2 ≤ ∑ _i : Fin n, (15 * u * R) ^ 2 :=
-              Finset.sum_le_sum fun i _ => pow_le_pow_left₀ (norm_nonneg _) (hvi i) 2
-          _ = n * (15 * u * R) ^ 2 := by simp
-      have hn2 : (n : ℝ) ≤ ((n : ℝ) + 1) ^ 2 := by nlinarith
-      have e1 : (15 * ((n : ℝ) + 1) * u * R) ^ 2 = ((n : ℝ) + 1) ^ 2 * (15 * u * R) ^ 2 := by ring
-      rw [e1]
-      nlinarith [mul_le_mul_of_nonneg_right hn2 (sq_nonneg (15 * u * R))]
-    have h2 : ‖WithLp.toLp 2 (w - e)‖ ≤ 39 * ((n : ℝ) + 1) * u * R := by
-      have e2 : w - e = (v - e) - (v - w) := by abel
-      rw [e2, WithLp.toLp_sub]
-      refine (norm_sub_le _ _).trans ?_
-      nlinarith [hv, mul_le_mul_of_nonneg_right hgrow hR.le]
-    have h3 : ∑ i : Fin n, ‖w i.castSucc‖ ^ 2 ≤ ‖WithLp.toLp 2 (w - e)‖ ^ 2 := by
-      rw [EuclideanSpace.norm_sq_eq, Fin.sum_univ_castSucc]
-      have : ∀ i : Fin n, (w - e) i.castSucc = w i.castSucc := fun i => by
-        simp [e]
-      simp only [this]
-      exact le_add_of_nonneg_right (by positivity)
-    exact h3.trans (pow_le_pow_left₀ (norm_nonneg _) h2 2)
-  obtain ⟨c, hc, hcz⟩ := exists_phase_norm_sub_le w hR hw (by positivity) hδ hoff
-  refine ⟨c, hc, ?_⟩
-  have hgw : g = Uᴴ *ᵥ w := by
-    rw [show w = U *ᵥ g from rfl, Matrix.mulVec_mulVec, hasOrthonormalCols_iff.mp hU,
-      Matrix.one_mulVec]
-  have e3 : Uᴴ *ᵥ Pi.single (Fin.last n) 1 - (c * ((R⁻¹ : ℝ) : ℂ)) • g =
-      Uᴴ *ᵥ (Pi.single (Fin.last n) 1 - (c * ((R⁻¹ : ℝ) : ℂ)) • w) := by
-    rw [Matrix.mulVec_sub, Matrix.mulVec_smul, ← hgw]
-  rw [e3, hU.conjTranspose.norm_toLp_mulVec]
-  refine hcz.trans ?_
-  have hs2 : √2 ≤ 1.42 := by
-    rw [Real.sqrt_le_left (by norm_num)]
-    norm_num
-  nlinarith [mul_le_mul_of_nonneg_right hs2 (by positivity : (0 : ℝ) ≤ 39 * ((n : ℝ) + 1) * u)]
-
-end BackwardError
-
 section Rotate
 
 variable {O Q : Type} [Has ScalarOp O] [Has CmpTst Q]
@@ -647,7 +210,7 @@ private theorem writes_rhessRotate {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
     (hTm : m.store.len (L + 3) = 10)
     (hc : m.store.readBlock (L + 1) 0 2 = some [cs.1.re, cs.1.im])
     (hs : m.store.readBlock (L + 1) 2 2 = some [cs.2.re, cs.2.im])
-    (hB : HoldsMatrix a B m.store) (hV : HoldsMatrix (L, 0) (colVec v) m.store) :
+    (hB : HoldsMatrix a B m.store) (hV : HoldsMatrix (L, 0) (replicateCol (Fin 1) v) m.store) :
     Writes .total I τ
       (.seq (.frame ds₆ as₆ (rotateLeftWithScratch (Op := O) (Tst := Q)).body)
         (.seq (.frame ds₇ as₇ (rotateRows (Op := O) (Tst := Q)).body)
@@ -656,7 +219,8 @@ private theorem writes_rhessRotate {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
       (fun m' => m'.pos = m.pos ∧
         HoldsMatrix a (machineColRotation M ⟨j, by omega⟩ ⟨j + 1, hj⟩ cs.1 cs.2
           (machineRowRotation M ⟨j, by omega⟩ ⟨j + 1, hj⟩ cs.1 cs.2 B)) m'.store ∧
-        HoldsMatrix (L, 0) (colVec (vecRot M ⟨j, by omega⟩ ⟨j + 1, hj⟩ cs v)) m'.store) m := by
+        HoldsMatrix (L, 0) (replicateCol (Fin 1) (vecRot M ⟨j, by omega⟩ ⟨j + 1, hj⟩ cs v))
+          m'.store) m := by
   have hc0 := Store.get_of_readBlock hc (j := 0) (by norm_num) (0 : ℝ)
   have hc1 := Store.get_of_readBlock hc (j := 1) (by norm_num) (0 : ℝ)
   have hs0 := Store.get_of_readBlock hs (j := 0) (by norm_num) (0 : ℝ)
@@ -693,7 +257,8 @@ private theorem writes_rhessRotate {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
   have hs₁ := hf₁.keep (Store.readsOnly_readBlock _ _ _ _) (hdC 2) hs
   have hx' := (Mem.readBlocks_cons_iff.mp hr₁).1
   have hy' := (Mem.readBlocks_cons_iff.mp (Mem.readBlocks_cons_iff.mp hr₁).2).1
-  have hV₁ : HoldsMatrix (L, 0) (colVec (vecRot M ⟨j, by omega⟩ ⟨j + 1, hj⟩ cs v)) m₁.store := by
+  have hV₁ : HoldsMatrix (L, 0)
+      (replicateCol (Fin 1) (vecRot M ⟨j, by omega⟩ ⟨j + 1, hj⟩ cs v)) m₁.store := by
     refine holdsMatrix_colVec fun r => ?_
     by_cases hri : (r : ℕ) = j
     · have hr : r = ⟨j, Nat.lt_of_succ_lt hj⟩ := Fin.ext hri
@@ -770,7 +335,7 @@ private theorem rhess_loop_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
     (haL : a.1 < L) (hlen : m.store.length = L + 4) (hG : m.store.len L = 2 * N)
     (hCf : m.store.len (L + 1) = 4) (hUv : m.store.len (L + 2) = 4)
     (hTm : m.store.len (L + 3) = 10) (hA : HoldsMatrix a A m.store)
-    (hV : HoldsMatrix (L, 0) (colVec (pairVector x N)) m.store) (hp : m.pos = p) :
+    (hV : HoldsMatrix (L, 0) (replicateCol (Fin 1) (pairVector x N)) m.store) (hp : m.pos = p) :
     Writes .total I τ
       (.seq (.loop n (.seq (.call (Has.inj ScalarOp.copy) [] i₁ u₁)
         (.seq (.call (Has.inj ScalarOp.neg) [] i₂ u₂) (.seq (.call (Has.inj ScalarOp.neg) [] i₃ u₃)
@@ -788,7 +353,7 @@ private theorem rhess_loop_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
   set Inv : ℕ → Mem ℝ → Prop := fun k μ => μ.pos = p ∧ μ.store.length = L + 4 ∧
     μ.store.len L = 2 * N ∧ μ.store.len (L + 1) = 4 ∧ μ.store.len (L + 2) = 4 ∧
     μ.store.len (L + 3) = 10 ∧ HoldsMatrix a (X k).1 μ.store ∧
-    HoldsMatrix (L, 0) (colVec (X k).2) μ.store
+    HoldsMatrix (L, 0) (replicateCol (Fin 1) (X k).2) μ.store
   refine (writes_loop (N := N - 1) hn (fun _ => F) (fun _ _ => le_rfl) Inv
     ⟨hp, hlen, hG, hCf, hUv, hTm, hA, hV⟩ ?_).seq_le le_rfl ?_
   · rintro j hj μ - ⟨hp', hl', hG', hCf', hUv', hTm', hB, hW⟩
@@ -833,374 +398,6 @@ private theorem rhess_loop_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
 
 end Rotate
 
-section Weights
-
-/-- The complex vector of a window of $2N$ real draws, $(x_{2i} + i x_{2i+1})_{i < N}$
-(`NLAlib.SmallEig.pairVector` on the window). -/
-private def winVec (N : ℕ) (x : Fin (N * 2) → ℝ) : Fin N → ℂ := fun i =>
-  ⟨x ⟨2 * i, by have := i.isLt; omega⟩, x ⟨2 * i + 1, by have := i.isLt; omega⟩⟩
-
-/-- The vector of a tape window is the direction the program draws. -/
-private theorem winVec_windowFn (N : ℕ) (τ : Tape ℝ) (s p : ℕ) :
-    winVec N (Tape.windowFn τ s p (N * 2)) = pairVector (fun j => τ (p + j) s) N := rfl
-
-/-- The entries of the vector of a window are measurable in the window. -/
-private theorem measurable_winVec_apply (N : ℕ) (k : Fin N) :
-    Measurable fun x => winVec N x k := by
-  have hpair : Measurable fun v : ℝ × ℝ => (⟨v.1, v.2⟩ : ℂ) :=
-    Complex.measurableEquivRealProd.symm.measurable
-  exact hpair.comp (f := fun x => ((winVec N x k).re, (winVec N x k).im))
-    ((measurable_pi_apply (⟨2 * k, by have := k.isLt; omega⟩ : Fin (N * 2))).prodMk
-      (measurable_pi_apply (⟨2 * k + 1, by have := k.isLt; omega⟩ : Fin (N * 2))))
-
-/-- The vector of a window has the Euclidean norm of the window. -/
-private theorem norm_winVec (N : ℕ) (x : Fin (N * 2) → ℝ) :
-    ‖WithLp.toLp 2 (winVec N x)‖ = ‖WithLp.toLp 2 x‖ := by
-  rw [← sq_eq_sq₀ (norm_nonneg _) (norm_nonneg _), EuclideanSpace.norm_sq_eq,
-    EuclideanSpace.norm_sq_eq, ← finProdFinEquiv.sum_comp, Fintype.sum_prod_type]
-  refine Finset.sum_congr rfl fun i _ => ?_
-  have h0 : finProdFinEquiv (i, (0 : Fin 2)) = ⟨2 * i, by have := i.isLt; omega⟩ :=
-    Fin.ext (by simp [finProdFinEquiv_apply_val])
-  have h1 : finProdFinEquiv (i, (1 : Fin 2)) = ⟨2 * i + 1, by have := i.isLt; omega⟩ :=
-    Fin.ext (by simp [finProdFinEquiv_apply_val]; ring)
-  simp only [Fin.sum_univ_two, h0, h1, Real.norm_eq_abs, sq_abs,
-    Complex.sq_norm, winVec, Complex.normSq_mk]
-  ring
-
-/-- The window, scaled by $1/\sqrt2$, is a standard complex Gaussian vector under independent
-standard real Gaussian draws. -/
-private theorem hasLaw_winVec (N : ℕ) :
-    HasLaw (fun x : Fin (N * 2) → ℝ => fun i : Fin N =>
-        (⟨x ⟨2 * i, by have := i.isLt; omega⟩ / √2,
-          x ⟨2 * i + 1, by have := i.isLt; omega⟩ / √2⟩ : ℂ))
-      (complexGaussianVector (Fin N)) (Measure.pi fun _ : Fin (N * 2) => gaussianReal 0 1) := by
-  have hlt : ∀ q : Fin N × Fin 2, 2 * q.1.1 + q.2.1 < N * 2 := fun q => by
-    have := q.1.isLt; have := q.2.isLt; omega
-  set gi : Fin N × Fin 2 → Fin (N * 2) := fun q => ⟨2 * q.1.1 + q.2.1, hlt q⟩
-  have hgi : Function.Injective gi := by
-    rintro ⟨i, t⟩ ⟨i', t'⟩ h
-    simp only [gi, Fin.mk.injEq] at h
-    have := t.isLt; have := t'.isLt
-    refine Prod.ext (Fin.ext ?_) (Fin.ext ?_) <;> simp only <;> omega
-  have hind := (iIndepFun_pi (μ := fun _ : Fin (N * 2) => gaussianReal 0 1)
-    (X := fun _ (y : ℝ) => y) fun _ => aemeasurable_id).precomp hgi
-  have hY := hind.hasLaw_pi fun q =>
-    ⟨(measurable_pi_apply (gi q)).aemeasurable, (measurePreserving_eval _ (gi q)).map_eq⟩
-  have hX := Computation.hasLaw_complexGaussianVector_of_hasLaw_pi
-    (x := fun (ω : Fin (N * 2) → ℝ) (k : ℕ) => if h : k < N * 2 then ω ⟨k, h⟩ else 0) (N := N)
-    (by
-      convert hY using 2 with ω
-      funext q
-      simp only [gi, dif_pos (hlt q)])
-  convert hX using 2 with ω
-  funext i
-  have h0 : 2 * (i : ℕ) < N * 2 := by have := i.isLt; omega
-  have h1 : 2 * (i : ℕ) + 1 < N * 2 := by have := i.isLt; omega
-  simp only [dif_pos h0, dif_pos h1]
-
-/-- The window as a one-column real matrix is a standard Gaussian matrix. -/
-private theorem hasLaw_colMat (W : ℕ) :
-    HasLaw (fun x : Fin W → ℝ => (Matrix.of fun j (_ : Fin 1) => x j : Matrix (Fin W) (Fin 1) ℝ))
-      (gaussianMatrix (Fin W) (Fin 1)) (Measure.pi fun _ : Fin W => gaussianReal 0 1) := by
-  refine hasLaw_gaussianMatrix_of_hasLaw_uncurry ?_
-  have hind := (iIndepFun_pi (μ := fun _ : Fin W => gaussianReal 0 1)
-    (X := fun _ (y : ℝ) => y) fun _ => aemeasurable_id).precomp
-    (Prod.fst_injective (α := Fin W) (β := Fin 1))
-  exact hind.hasLaw_pi fun p =>
-    ⟨(measurable_pi_apply p.1).aemeasurable, (measurePreserving_eval _ p.1).map_eq⟩
-
-/-- A vector's norm is at most the spectral norm of its one-column matrix. -/
-private theorem norm_le_specNorm_colMat {W : ℕ} (x : Fin W → ℝ) :
-    ‖WithLp.toLp 2 x‖ ≤ specNorm (Matrix.of fun j (_ : Fin 1) => x j) := by
-  have h := norm_toLp_mulVec_le (Matrix.of fun j (_ : Fin 1) => x j) (Pi.single 0 1)
-  have e : (Matrix.of fun j (_ : Fin 1) => x j) *ᵥ Pi.single (0 : Fin 1) (1 : ℝ) = x := by
-    ext j
-    simp [Matrix.mulVec, dotProduct]
-  rwa [e, PiLp.toLp_single, PiLp.norm_single, norm_one, mul_one] at h
-
-/-- Cauchy–Schwarz for the inner product of complex vectors. -/
-private theorem norm_star_dotProduct_le {N : ℕ} (a b : Fin N → ℂ) :
-    ‖star a ⬝ᵥ b‖ ≤ ‖WithLp.toLp 2 a‖ * ‖WithLp.toLp 2 b‖ := by
-  have h := norm_inner_le_norm (𝕜 := ℂ) (WithLp.toLp 2 a) (WithLp.toLp 2 b)
-  rwa [EuclideanSpace.inner_toLp_toLp, dotProduct_comm] at h
-
-/-- A column of an invertible matrix is not zero. -/
-private theorem norm_col_pos {N : ℕ} {V : Matrix (Fin N) (Fin N) ℂ} (hV : IsUnit V) (i : Fin N) :
-    0 < ‖WithLp.toLp 2 (fun k => V k i)‖ := by
-  refine norm_pos_iff.mpr fun h0 => ?_
-  have hv : V *ᵥ Pi.single i (1 : ℂ) = 0 := by
-    have := congrArg WithLp.ofLp h0
-    ext k
-    simpa [Matrix.mulVec, dotProduct, Pi.single_apply] using congrFun this k
-  have hdet := (Matrix.isUnit_iff_isUnit_det V).mp hV
-  have : (Pi.single i (1 : ℂ) : Fin N → ℂ) = 0 := by
-    rw [← Matrix.one_mulVec (Pi.single i (1 : ℂ)), ← Matrix.nonsing_inv_mul V hdet,
-      ← Matrix.mulVec_mulVec, hv, Matrix.mulVec_zero]
-  simpa using congrFun this i
-
-/-- The unit column $\mathbf{v}_i/\|\mathbf{v}_i\|$ of a matrix. -/
-private noncomputable def unitCol {N : ℕ} (V : Matrix (Fin N) (Fin N) ℂ) (i : Fin N) :
-    Fin N → ℂ :=
-  ((‖WithLp.toLp 2 (fun k => V k i)‖⁻¹ : ℝ) : ℂ) • fun k => V k i
-
-private theorem norm_unitCol {N : ℕ} {V : Matrix (Fin N) (Fin N) ℂ} (hV : IsUnit V) (i : Fin N) :
-    ‖WithLp.toLp 2 (unitCol V i)‖ = 1 := by
-  rw [unitCol, WithLp.toLp_smul, norm_smul, Complex.norm_real, Real.norm_of_nonneg
-    (inv_nonneg.mpr (norm_nonneg _)), inv_mul_cancel₀ (norm_col_pos hV i).ne']
-
-/-- The bad windows of `RHess`: the direction is nearly orthogonal to a unit eigenvector of the
-input (fixed before the draw), or the window has norm at least $R$. -/
-private def rhessBad {n : ℕ} (V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (s R : ℝ) :
-    Set (Fin ((n + 1) * 2) → ℝ) :=
-  (⋃ i, {x | ‖star (unitCol V i) ⬝ᵥ winVec (n + 1) x‖ ≤ s}) ∪ {x | R ≤ ‖WithLp.toLp 2 x‖}
-
-/-- The bad windows are measurable. -/
-private theorem measurableSet_rhessBad {n : ℕ} (V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
-    (s R : ℝ) : MeasurableSet (rhessBad V s R) := by
-  refine (MeasurableSet.iUnion fun i => measurableSet_le ?_ measurable_const).union
-    (measurableSet_le measurable_const
-      (continuous_norm.comp (PiLp.continuous_toLp 2 _)).measurable)
-  refine continuous_norm.measurable.comp ?_
-  simp only [dotProduct]
-  exact Finset.measurable_sum _ fun k _ => (measurable_winVec_apply (n + 1) k).const_mul _
-
-/-- **The probability of the bad windows of `RHess`**: under independent standard real Gaussian
-draws, for an invertible $\mathbf{V}$, $s > 0$, $0 < \varphi' \le 1$ and
-$R \ge 2(\sqrt{n + 1} + 1) + \sqrt{2\log(1/\varphi')}$, the bad windows have probability at most
-$(n + 1)s^2 + \varphi'$: anti-concentration in each fixed direction
-(`NLAlib.measureReal_norm_dotProduct_le_le_of_hasLaw_complexGaussianVector`) and the norm tail
-of a Gaussian vector (`NLAlib.measureReal_specNorm_ge_le_of_hasLaw_gaussianMatrix`). -/
-private theorem measureReal_rhessBad_le {n : ℕ} {V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
-    (hV : IsUnit V) {s R φ' : ℝ} (hs : 0 < s) (hφ' : 0 < φ') (hφ'1 : φ' ≤ 1)
-    (hR : 2 * (√((n : ℝ) + 1) + 1) + √(2 * Real.log φ'⁻¹) ≤ R) :
-    (Measure.pi fun _ : Fin ((n + 1) * 2) => gaussianReal 0 1).real (rhessBad V s R) ≤
-      (n + 1) * s ^ 2 + φ' := by
-  set P := Measure.pi fun _ : Fin ((n + 1) * 2) => gaussianReal 0 1
-  have hz := hasLaw_winVec (n + 1)
-  -- one direction
-  have h1 : ∀ i, P.real {x | ‖star (unitCol V i) ⬝ᵥ winVec (n + 1) x‖ ≤ s} ≤ s ^ 2 := by
-    intro i
-    refine (measureReal_mono fun x (hx : _ ≤ s) => ?_).trans
-      (measureReal_norm_dotProduct_le_le_of_hasLaw_complexGaussianVector hz (norm_unitCol hV i)
-        hs.le)
-    have e : winVec (n + 1) x = ((√2 : ℝ) : ℂ) • fun i : Fin (n + 1) =>
-        (⟨x ⟨2 * i, by have := i.isLt; omega⟩ / √2,
-          x ⟨2 * i + 1, by have := i.isLt; omega⟩ / √2⟩ : ℂ) := by
-      ext k
-      apply Complex.ext <;> simp [winVec] <;> field_simp
-    rw [e, dotProduct_smul, smul_eq_mul, norm_mul, Complex.norm_real,
-      Real.norm_of_nonneg (Real.sqrt_nonneg _)] at hx
-    change _ ≤ s
-    have h2 : (1 : ℝ) ≤ √2 := Real.one_le_sqrt.mpr (by norm_num)
-    nlinarith [norm_nonneg (star (unitCol V i) ⬝ᵥ fun i : Fin (n + 1) =>
-        (⟨x ⟨2 * i, by have := i.isLt; omega⟩ / √2,
-          x ⟨2 * i + 1, by have := i.isLt; omega⟩ / √2⟩ : ℂ))]
-  -- the norm
-  have hL : 0 ≤ Real.log φ'⁻¹ := Real.log_nonneg ((one_le_inv₀ hφ').mpr hφ'1)
-  have h2 : P.real {x | R ≤ ‖WithLp.toLp 2 x‖} ≤ φ' := by
-    have h := measureReal_specNorm_ge_le_of_hasLaw_gaussianMatrix (hasLaw_colMat ((n + 1) * 2))
-      (Real.sqrt_nonneg (2 * Real.log φ'⁻¹))
-    rw [Real.sq_sqrt (by positivity), show -(2 * Real.log φ'⁻¹) / 2 = -Real.log φ'⁻¹ by ring,
-      Real.exp_neg, Real.exp_log (inv_pos.mpr hφ'), inv_inv] at h
-    refine (measureReal_mono fun x (hx : R ≤ _) => ?_).trans h
-    simp only [Set.mem_ofPred_eq]
-    simp only [Fintype.card_fin, Nat.cast_mul, Nat.cast_add, Nat.cast_one, Nat.cast_ofNat,
-      Real.sqrt_one]
-    have hs2 : √(((n : ℝ) + 1) * 2) ≤ 2 * √((n : ℝ) + 1) := by
-      rw [Real.sqrt_mul (by positivity), mul_comm]
-      have : √(2 : ℝ) ≤ 2 := by
-        rw [Real.sqrt_le_left (by norm_num)]
-        norm_num
-      exact mul_le_mul_of_nonneg_right this (Real.sqrt_nonneg _)
-    have := norm_le_specNorm_colMat x
-    linarith
-  refine (measureReal_union_le _ _).trans ?_
-  have hU := measureReal_iUnion_fintype_le (μ := P)
-    fun i => {x | ‖star (unitCol V i) ⬝ᵥ winVec (n + 1) x‖ ≤ s}
-  have hS : ∑ i : Fin (n + 1), P.real {x | ‖star (unitCol V i) ⬝ᵥ winVec (n + 1) x‖ ≤ s} ≤
-      (n + 1) * s ^ 2 := by
-    refine (Finset.sum_le_sum fun i _ => h1 i).trans (le_of_eq ?_)
-    simp
-  linarith
-
-end Weights
-
-section Class
-
-/-- **The overlap of the computed direction**: if a column $\mathbf{v}$ has
-$\lvert\mathbf{g}^{\mathsf{H}}\mathbf{v}\rvert \ge s\|\mathbf{v}\|$, $0 < \|\mathbf{g}\| \le R$
-and $\mathbf{q}$ is within $s/(2R)$ of a unit multiple of $\mathbf{g}/\|\mathbf{g}\|$, then
-$\lvert\mathbf{q}^{\mathsf{H}}\mathbf{v}\rvert \ge (s/(2R))\|\mathbf{v}\|$. -/
-private theorem le_norm_star_dotProduct_of_near {N : ℕ} {q gv v : Fin N → ℂ} {c : ℂ} {s R : ℝ}
-    (hc : ‖c‖ = 1) (hs : 0 ≤ s) (hR : 0 < R) (hg0 : 0 < ‖WithLp.toLp 2 gv‖)
-    (hgR : ‖WithLp.toLp 2 gv‖ ≤ R)
-    (hgi : s * ‖WithLp.toLp 2 v‖ ≤ ‖star gv ⬝ᵥ v‖)
-    (hq : ‖WithLp.toLp 2 (q - (c * ((‖WithLp.toLp 2 gv‖⁻¹ : ℝ) : ℂ)) • gv)‖ ≤ s / (2 * R)) :
-    s / (2 * R) * ‖WithLp.toLp 2 v‖ ≤ ‖star q ⬝ᵥ v‖ := by
-  set a : ℂ := c * ((‖WithLp.toLp 2 gv‖⁻¹ : ℝ) : ℂ)
-  set r := q - a • gv
-  have hq' : q = a • gv + r := by simp [r]
-  have ha : ‖a‖ = ‖WithLp.toLp 2 gv‖⁻¹ := by
-    rw [norm_mul, hc, one_mul, Complex.norm_real, Real.norm_of_nonneg (inv_nonneg.mpr hg0.le)]
-  have h1 : ‖star (a • gv) ⬝ᵥ v‖ = ‖WithLp.toLp 2 gv‖⁻¹ * ‖star gv ⬝ᵥ v‖ := by
-    rw [star_smul, smul_dotProduct, smul_eq_mul, norm_mul, norm_star, ha]
-  have h2 : ‖star r ⬝ᵥ v‖ ≤ s / (2 * R) * ‖WithLp.toLp 2 v‖ :=
-    (norm_star_dotProduct_le r v).trans (mul_le_mul_of_nonneg_right hq (norm_nonneg _))
-  have h3 : s / R * ‖WithLp.toLp 2 v‖ ≤ ‖WithLp.toLp 2 gv‖⁻¹ * ‖star gv ⬝ᵥ v‖ := by
-    rw [inv_mul_eq_div, le_div_iff₀ hg0]
-    have hs0 : 0 ≤ s * ‖WithLp.toLp 2 v‖ := mul_nonneg hs (norm_nonneg _)
-    calc s / R * ‖WithLp.toLp 2 v‖ * ‖WithLp.toLp 2 gv‖
-        = s * ‖WithLp.toLp 2 v‖ * (‖WithLp.toLp 2 gv‖ / R) := by ring
-      _ ≤ s * ‖WithLp.toLp 2 v‖ * 1 :=
-        mul_le_mul_of_nonneg_left ((div_le_one hR).mpr hgR) hs0
-      _ ≤ ‖star gv ⬝ᵥ v‖ := by rw [mul_one]; exact hgi
-  have h4 : ‖star (a • gv) ⬝ᵥ v‖ ≤ ‖star q ⬝ᵥ v‖ + ‖star r ⬝ᵥ v‖ := by
-    have e : star (a • gv) ⬝ᵥ v = star q ⬝ᵥ v - star r ⬝ᵥ v := by
-      rw [hq', star_add, add_dotProduct]
-      ring
-    rw [e]
-    exact norm_sub_le _ _
-  have e2 : s / R * ‖WithLp.toLp 2 v‖ =
-      s / (2 * R) * ‖WithLp.toLp 2 v‖ + s / (2 * R) * ‖WithLp.toLp 2 v‖ := by
-    field_simp
-    ring
-  linarith
-
-/-- The weight of a column with a large overlap with the last column of a unitary
-$\mathbf{Q}$: if $\lvert\mathbf{q}^{\mathsf{H}}\mathbf{v}_i\rvert \ge (s/(2R))\|\mathbf{v}_i\|$
-and $\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le B$, then
-$\sqrt{w_i(\mathbf{Q}^{\mathsf{H}}\mathbf{V})} \ge s/(2RB)$
-(`NLAlib.le_lastRowWeights_conjTranspose_mul`). -/
-private theorem half_le_sqrt_lastRowWeights {n : ℕ} {V Q : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
-    {B s R : ℝ} (hV : IsUnit V) (hκ : pseudoConditionNumber V ≤ B) (hs : 0 < s) (hR : 0 < R)
-    (hQ : HasOrthonormalCols Q) {i : Fin (n + 1)}
-    (hqv : s / (2 * R) * ‖WithLp.toLp 2 (fun k => V k i)‖ ≤
-      ‖star (fun k => Q k (Fin.last n)) ⬝ᵥ (fun k => V k i)‖) :
-    s / (R * B) / 2 ≤ √(lastRowWeights (Qᴴ * V) i) := by
-  have hq1 : ‖WithLp.toLp 2 (fun k => Q k (Fin.last n))‖ = 1 := by
-    have e : (fun k => Q k (Fin.last n)) = Q *ᵥ Pi.single (Fin.last n) 1 := by
-      ext k
-      simp [Matrix.mulVec, dotProduct, Pi.single_apply]
-    rw [e, hQ.norm_toLp_mulVec, PiLp.toLp_single, PiLp.norm_single, norm_one]
-  have h := le_lastRowWeights_conjTranspose_mul (Q := Q) (V := V) (c := 1) (R := 1)
-    (g := fun k => Q k (Fin.last n)) hV (by simp) (fun k => by simp [hq1]) hq1.le
-    (by positivity) hqv
-  have hκ0 : 0 < pseudoConditionNumber V := by
-    linarith [one_le_pseudoConditionNumber hV.ne_zero]
-  have hB : 0 < B := hκ0.trans_le hκ
-  refine Real.le_sqrt_of_sq_le (le_trans ?_ h)
-  rw [one_pow, one_mul]
-  have e : (s / (R * B) / 2) ^ 2 = (s / (2 * R)) ^ 2 / B ^ 2 := by
-    field_simp
-  rw [e]
-  exact div_le_div_of_nonneg_left (sq_nonneg _) (by positivity) (pow_le_pow_left₀ hκ0.le hκ 2)
-
-/-- The weight after a small right factor: if $\sqrt{w_i(\mathbf{W})} \ge a/2$ and
-$\|\mathbf{Z}\|_2 \le \min(a/512, 1/16)$, then $w_i(\mathbf{W}(\mathbf{I} + \mathbf{Z})) \ge
-(a/8)^2$ (`NLAlib.sqrt_lastRowWeights_le_mul_one_add`). -/
-private theorem sq_div_eight_le_lastRowWeights {n : ℕ} {W Z : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
-    {a : ℝ} {i : Fin (n + 1)} (ha : 0 < a) (hw : a / 2 ≤ √(lastRowWeights W i))
-    (hζ₁ : specNorm Z ≤ a / 512) (hζ₂ : specNorm Z ≤ 1 / 16) :
-    (a / 8) ^ 2 ≤ lastRowWeights (W * (1 + Z)) i := by
-  have htr := sqrt_lastRowWeights_le_mul_one_add W Z i
-  set y := √(lastRowWeights (W * (1 + Z)) i)
-  have hy0 : 0 ≤ y := Real.sqrt_nonneg _
-  have hζ0 := specNorm_nonneg Z
-  have hy : a / 8 ≤ y := by
-    by_contra hlt
-    push Not at hlt
-    nlinarith
-  have hw' := pow_le_pow_left₀ (by positivity) hy 2
-  rwa [Real.sq_sqrt (lastRowWeights_nonneg _ _)] at hw'
-
-/-- **The class and the weights after `RHess`**: let $\mathbf{A}\mathbf{V} =
-\mathbf{V}\operatorname{diag}(\mathbf{d})$ with $\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le B$,
-eigenvalues separated by $g > 0$ and $\|\mathbf{A}\|_2 \le \Sigma$; let $\mathbf{Q}$ be unitary
-with last column $\mathbf{q}$ satisfying $\lvert\mathbf{q}^{\mathsf{H}}\mathbf{v}_i\rvert \ge
-(s/(2R))\|\mathbf{v}_i\|$ for every column $\mathbf{v}_i$ of $\mathbf{V}$, and
-$\|\widehat{\mathbf{H}} - \mathbf{Q}^{\mathsf{H}}\mathbf{A}\mathbf{Q}\|_2 \le \varepsilon \le
-\min(g/(32(n + 1)B), sg/(1024(n + 1)B^2R))$. Then $\widehat{\mathbf{H}}$ has a diagonalization
-with condition at most $2B$, separation $g/2$ and last-row weights at least $s^2/(64R^2B^2)$:
-the eigenvectors $\mathbf{Q}^{\mathsf{H}}\mathbf{V}(\mathbf{I} + \mathbf{Z})$ with
-$\|\mathbf{Z}\|_2 \le 2\sqrt{n + 1}\,B\varepsilon/g$
-(`NLAlib.exists_add_mul_mul_one_add_eq_mul_diagonal`), and the weights transferred by
-`NLAlib.sqrt_lastRowWeights_le_mul_one_add`. -/
-private theorem rhess_class {n : ℕ} {A V H Q : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
-    {d : Fin (n + 1) → ℂ} {B g s R ε : ℝ} (hV : IsUnit V) (hAV : A * V = V * Matrix.diagonal d)
-    (hκ : pseudoConditionNumber V ≤ B) (hg : 0 < g) (hgap : ∀ i j, i ≠ j → g ≤ ‖d i - d j‖)
-    (hs : 0 < s) (hR : 0 < R) (hQ : HasOrthonormalCols Q)
-    (hqv : ∀ i, s / (2 * R) * ‖WithLp.toLp 2 (fun k => V k i)‖ ≤
-      ‖star (fun k => Q k (Fin.last n)) ⬝ᵥ (fun k => V k i)‖)
-    (hH : specNorm (H - Qᴴ * A * Q) ≤ ε)
-    (hε : ε ≤ min (g / (32 * (n + 1) * B)) (s * g / (1024 * (n + 1) * B ^ 2 * R))) :
-    ∃ (V' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (d' : Fin (n + 1) → ℂ), IsUnit V' ∧
-      H * V' = V' * Matrix.diagonal d' ∧ pseudoConditionNumber V' ≤ 2 * B ∧
-      (∀ i j, i ≠ j → g / 2 ≤ ‖d' i - d' j‖) ∧
-      ∀ i, s ^ 2 / (64 * R ^ 2 * B ^ 2) ≤ lastRowWeights V' i := by
-  have hB1 : 1 ≤ B := (one_le_pseudoConditionNumber hV.ne_zero).trans hκ
-  have hN : (1 : ℝ) ≤ (n : ℝ) + 1 := by linarith [(Nat.cast_nonneg n : (0 : ℝ) ≤ n)]
-  have hQQ : Q * Qᴴ = 1 := hQ.mul_conjTranspose_self
-  have hQH : HasOrthonormalCols Qᴴ := hQ.conjTranspose
-  set V₀ := Qᴴ * V
-  have hQu : IsUnit Qᴴ := ⟨⟨Qᴴ, Q, hQ.conjTranspose_mul_self, hQQ⟩, rfl⟩
-  have hV₀ : IsUnit V₀ := hQu.mul hV
-  have hκ₀ : pseudoConditionNumber V₀ ≤ B := by rw [hQH.pseudoConditionNumber_mul_left]; exact hκ
-  have hAV₀ : Qᴴ * A * Q * V₀ = V₀ * Matrix.diagonal d := by
-    simp only [V₀, Matrix.mul_assoc]
-    rw [← Matrix.mul_assoc Q, hQQ, Matrix.one_mul, hAV]
-  set E := H - Qᴴ * A * Q
-  have hε₁ : ε ≤ g / (32 * (n + 1) * B) := hε.trans (min_le_left _ _)
-  have hε₂ : ε ≤ s * g / (1024 * (n + 1) * B ^ 2 * R) := hε.trans (min_le_right _ _)
-  have hE16 : specNorm E ≤ g / (16 * (n + 1) * B) :=
-    hH.trans (hε₁.trans (div_le_div_of_nonneg_left hg.le (by positivity) (by nlinarith)))
-  obtain ⟨Z, d', hZu, hAV', -, hκZ, hd', hZ⟩ :=
-    exists_add_mul_mul_one_add_eq_mul_diagonal hV₀ hAV₀ hκ₀ hg hgap hE16
-  have hHE : Qᴴ * A * Q + E = H := add_sub_cancel _ _
-  rw [hHE] at hAV'
-  refine ⟨V₀ * (1 + Z), d', hV₀.mul hZu, hAV', ?_, fun i j hij => ?_, fun i => ?_⟩
-  · calc pseudoConditionNumber (V₀ * (1 + Z))
-        ≤ pseudoConditionNumber V₀ * pseudoConditionNumber (1 + Z) :=
-          pseudoConditionNumber_mul_le hV₀ hZu
-      _ ≤ B * 2 := mul_le_mul hκ₀ hκZ (pseudoConditionNumber_nonneg _) (by linarith)
-      _ = 2 * B := by ring
-  · have h1 := hd' i
-    have h2 := hd' j
-    have h3 := hgap i j hij
-    have e : d i - d j = (d' i - d' j) - (d' i - d i) + (d' j - d j) := by ring
-    have h4 : ‖d i - d j‖ ≤ ‖d' i - d' j‖ + ‖d' i - d i‖ + ‖d' j - d j‖ := by
-      rw [e]
-      exact (norm_add_le _ _).trans (by linarith [norm_sub_le (d' i - d' j) (d' i - d i)])
-    linarith
-  -- the weights
-  set a := s / (R * B)
-  have ha : 0 < a := by positivity
-  -- the weight before the perturbation
-  have hw₀ : a / 2 ≤ √(lastRowWeights V₀ i) := half_le_sqrt_lastRowWeights hV hκ hs hR hQ (hqv i)
-  -- the size of `Z`
-  have hζ : specNorm Z ≤ a / 512 ∧ specNorm Z ≤ 1 / 16 := by
-    have hsN : √((n : ℝ) + 1) ≤ (n : ℝ) + 1 := Real.sqrt_le_iff.mpr ⟨by linarith, by nlinarith⟩
-    have hsN1 : 1 ≤ √((n : ℝ) + 1) := Real.one_le_sqrt.mpr hN
-    have hE0 := specNorm_nonneg E
-    have hEε := hH
-    constructor
-    · refine hZ.trans ?_
-      rw [div_le_iff₀ hg]
-      calc 2 * √((n : ℝ) + 1) * B * specNorm E ≤ 2 * ((n : ℝ) + 1) * B *
-            (s * g / (1024 * (n + 1) * B ^ 2 * R)) := by gcongr; linarith
-        _ = a / 512 * g := by simp only [a]; field_simp; ring
-    · refine hZ.trans ?_
-      rw [div_le_iff₀ hg]
-      calc 2 * √((n : ℝ) + 1) * B * specNorm E ≤ 2 * ((n : ℝ) + 1) * B *
-            (g / (32 * (n + 1) * B)) := by gcongr; linarith
-        _ = 1 / 16 * g := by field_simp; ring
-  have hw := sq_div_eight_le_lastRowWeights ha hw₀ hζ.1 hζ.2
-  refine le_trans (le_of_eq ?_) hw
-  simp only [a]
-  field_simp
-  ring
-
-end Class
-
 section Theorems
 
 variable {O Q : Type} [Has ScalarOp O] [Has SampleOp O] [Has CmpTst Q]
@@ -1233,7 +430,8 @@ theorem rhess_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar 
     (μ := ⟨s₁, μ.pos⟩) (g := (L, 0)) (by simp [Mem.Live]; omega) (by simp [hG])).frame_seq_le
     rfl rfl (by simp [Mem.Live]; omega) (fun b i hi => Or.inr (hi.1 ▸ le_rfl)) ?_
   rintro m₁ hf₁ ⟨hp₁, hr₁⟩
-  have hV₁ : HoldsMatrix (L, 0) (colVec (pairVector (fun j => τ (μ.pos + j) sG) N)) m₁.store :=
+  have hV₁ : HoldsMatrix (L, 0)
+      (replicateCol (Fin 1) (pairVector (fun j => τ (μ.pos + j) sG) N)) m₁.store :=
     holdsMatrix_colVec fun i => ⟨by
       simpa [pairVector, Tape.window, show 2 * (i : ℕ) < 2 * N by omega] using
         Store.get_of_readBlock hr₁ (j := 2 * i) (by omega) (0 : ℝ), by

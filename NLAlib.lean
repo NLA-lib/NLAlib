@@ -80,6 +80,7 @@ public import NLAlib.Eigensolvers.ShiftedQR.RoundedParameterChoices
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedParameters
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedPrecision
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedRegularize
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedRegularizeDraws
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedRegularizeTermination
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedRegularizeTrial
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedRitz
@@ -157,6 +158,7 @@ public import NLAlib.Eigensolvers.SmallEig.Certificate
 public import NLAlib.Eigensolvers.SmallEig.Core
 public import NLAlib.Eigensolvers.SmallEig.Decouple
 public import NLAlib.Eigensolvers.SmallEig.Decoupler
+public import NLAlib.Eigensolvers.SmallEig.DecouplerPrecision
 public import NLAlib.Eigensolvers.SmallEig.DistSpec
 public import NLAlib.Eigensolvers.SmallEig.Draws
 public import NLAlib.Eigensolvers.SmallEig.Leaf
@@ -169,6 +171,8 @@ public import NLAlib.Eigensolvers.SmallEig.Perturb
 public import NLAlib.Eigensolvers.SmallEig.Precision
 public import NLAlib.Eigensolvers.SmallEig.Program
 public import NLAlib.Eigensolvers.SmallEig.RandomHessenberg
+public import NLAlib.Eigensolvers.SmallEig.RandomHessenbergRotations
+public import NLAlib.Eigensolvers.SmallEig.RandomHessenbergWeights
 public import NLAlib.Eigensolvers.SmallEig.RandomMatrixTails
 public import NLAlib.Eigensolvers.SmallEig.Theorems
 public import NLAlib.Eigensolvers.SpectralBisection
@@ -868,6 +872,7 @@ public import NLAlib.Matrix.FinitePrecision.Deflation
 public import NLAlib.Matrix.FinitePrecision.EntrywiseRounding
 public import NLAlib.Matrix.FinitePrecision.FixedPoint
 public import NLAlib.Matrix.FinitePrecision.Float
+public import NLAlib.Matrix.FinitePrecision.GivensChain
 public import NLAlib.Matrix.FinitePrecision.GivensRounded
 public import NLAlib.Matrix.FinitePrecision.GridMachine
 public import NLAlib.Matrix.FinitePrecision.HessenbergRowPoly

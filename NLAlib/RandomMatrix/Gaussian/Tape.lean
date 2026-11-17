@@ -22,6 +22,9 @@ $1/\sqrt2$ (`NLAlib.Computation.tapeComplexMatrix`), is a standard complex Gauss
   `NLAlib.Computation.hasLaw_tapeComplexMatrix_of_hasLaw_tapeLaw`,
   `NLAlib.Computation.hasLaw_complexGaussianVector_of_hasLaw_pi`: the law of the sample.
 * `NLAlib.Ops.IsTapeLaw.hasLaw_pi_of_injective`: distinct entries of a stream are independent.
+* `NLAlib.Computation.hasLaw_complexGaussianVector_pi_gaussianReal`,
+  `NLAlib.Computation.hasLaw_gaussianMatrix_pi_gaussianReal`: independent standard real Gaussian
+  draws in pairs, and as a column.
 * `NLAlib.Computation.hasLaw_complexGaussianMatrix_windowFn`,
   `NLAlib.Computation.hasLaw_complexGaussianVector_windowFn`: the same for a window of a Gaussian
   stream of an operation-core tape (`NLAlib.Ops.IsTapeLaw`).
@@ -209,5 +212,51 @@ theorem hasLaw_complexGaussianVector_windowFn {Ω : Type} {mΩ : MeasurableSpace
   have hY := hξ.hasLaw_pi_of_injective s hf
   rw [hs] at hY
   exact hasLaw_complexGaussianVector_of_hasLaw_pi (x := fun ω j => ξ ω (p + j) s) hY
+
+/-- **Independent standard real Gaussians in pairs are a complex Gaussian vector**: under the
+product of $2N$ standard real Gaussian laws, the vector with entry $i$ equal to
+$(x_{2i} + i\,x_{2i+1})/\sqrt2$ has the law `NLAlib.complexGaussianVector`. No printed
+source. -/
+theorem hasLaw_complexGaussianVector_pi_gaussianReal (N : ℕ) :
+    HasLaw (fun x : Fin (N * 2) → ℝ => fun i : Fin N =>
+        (⟨x ⟨2 * i, by have := i.isLt; omega⟩ / √2,
+          x ⟨2 * i + 1, by have := i.isLt; omega⟩ / √2⟩ : ℂ))
+      (complexGaussianVector (Fin N)) (Measure.pi fun _ : Fin (N * 2) => gaussianReal 0 1) := by
+  have hlt : ∀ q : Fin N × Fin 2, 2 * q.1.1 + q.2.1 < N * 2 := fun q => by
+    have := q.1.isLt; have := q.2.isLt; omega
+  set gi : Fin N × Fin 2 → Fin (N * 2) := fun q => ⟨2 * q.1.1 + q.2.1, hlt q⟩
+  have hgi : Function.Injective gi := by
+    rintro ⟨i, t⟩ ⟨i', t'⟩ h
+    simp only [gi, Fin.mk.injEq] at h
+    have := t.isLt; have := t'.isLt
+    refine Prod.ext (Fin.ext ?_) (Fin.ext ?_) <;> simp only <;> omega
+  have hind := (iIndepFun_pi (μ := fun _ : Fin (N * 2) => gaussianReal 0 1)
+    (X := fun _ (y : ℝ) => y) fun _ => aemeasurable_id).precomp hgi
+  have hY := hind.hasLaw_pi fun q =>
+    ⟨(measurable_pi_apply (gi q)).aemeasurable, (measurePreserving_eval _ (gi q)).map_eq⟩
+  have hX := hasLaw_complexGaussianVector_of_hasLaw_pi
+    (x := fun (ω : Fin (N * 2) → ℝ) (k : ℕ) => if h : k < N * 2 then ω ⟨k, h⟩ else 0) (N := N)
+    (by
+      convert hY using 2 with ω
+      funext q
+      simp only [gi, dif_pos (hlt q)])
+  convert hX using 2 with ω
+  funext i
+  have h0 : 2 * (i : ℕ) < N * 2 := by have := i.isLt; omega
+  have h1 : 2 * (i : ℕ) + 1 < N * 2 := by have := i.isLt; omega
+  simp only [dif_pos h0, dif_pos h1]
+
+/-- **Independent standard real Gaussians as a column are a Gaussian matrix**: under the product
+of $W$ standard real Gaussian laws, the one-column matrix of the draws has the law
+`NLAlib.gaussianMatrix`. No printed source. -/
+theorem hasLaw_gaussianMatrix_pi_gaussianReal (W : ℕ) :
+    HasLaw (fun x : Fin W → ℝ => (Matrix.of fun j (_ : Fin 1) => x j : Matrix (Fin W) (Fin 1) ℝ))
+      (gaussianMatrix (Fin W) (Fin 1)) (Measure.pi fun _ : Fin W => gaussianReal 0 1) := by
+  refine hasLaw_gaussianMatrix_of_hasLaw_uncurry ?_
+  have hind := (iIndepFun_pi (μ := fun _ : Fin W => gaussianReal 0 1)
+    (X := fun _ (y : ℝ) => y) fun _ => aemeasurable_id).precomp
+    (Prod.fst_injective (α := Fin W) (β := Fin 1))
+  exact hind.hasLaw_pi fun p =>
+    ⟨(measurable_pi_apply p.1).aemeasurable, (measurePreserving_eval _ p.1).map_eq⟩
 
 end NLAlib.Computation

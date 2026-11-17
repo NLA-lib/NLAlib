@@ -343,7 +343,7 @@ private theorem unifLo_inner (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) :
     all_goals obtain ⟨h0, h1⟩ := smallEigAccuracy_le hb₁ hb₂ hn hδ hδS hφ hφ1
     · apply logb_pos (by norm_num); rw [one_lt_div h0]; nlinarith
     · have hS : 0 < i.2.1 := hδ.trans_le hδS
-      refine (NLAlib.ShiftedQR.logb_two_le_two_mul (by positivity)).trans (le_of_eq ?_)
+      refine (logb_two_le_two_mul (by positivity)).trans (le_of_eq ?_)
       field_simp; ring
   refine ((unifLo_outer hb₁ hb₂).mul ((((unifLo_failure.div ((UnifHi.const arg_four
     (by norm_num : (0 : ℝ) < 16)).mul unifHi_order)).div (UnifHi.const arg_four

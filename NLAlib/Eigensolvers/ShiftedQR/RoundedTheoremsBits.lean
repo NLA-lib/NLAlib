@@ -182,14 +182,6 @@ theorem HiBd.logb_le (hx : HiBd Y a x) : logb 2 x ≤ a * logb 2 Y := by
 theorem LoBd.logb_inv_le (hx : LoBd Y a x) : logb 2 x⁻¹ ≤ a * logb 2 Y :=
   (HiBd.inv hx).logb_le
 
-/-- $\log_2 x \le 2x$ for $x > 0$. -/
-theorem logb_two_le_two_mul {x : ℝ} (hx : 0 < x) : logb 2 x ≤ 2 * x := by
-  have h2 : (1 / 2 : ℝ) ≤ log 2 := by
-    have := Real.log_two_gt_d9; linarith
-  rw [logb, div_le_iff₀ (by linarith)]
-  have := log_le_sub_one_of_pos hx
-  nlinarith
-
 
 /-- $1/(c(m + 1)) \ge Y^{-(e + m)}$ for $Y \ge 4$ and $0 < c \le 4^e$. -/
 theorem LoBd.one_div_mul_succ (hY : 4 ≤ Y) {c : ℝ} (hc0 : 0 < c) {e : ℕ} (hc : c ≤ 4 ^ e)

@@ -194,14 +194,13 @@ theorem smallEig_work_le (sG : ℕ) : ∃ c : ℕ, ∀ n nq T : ℕ,
       c * (n + 1) ^ 4 * (T + 1) ^ 2 := by
   refine ⟨3470, fun n nq T => ?_⟩
   have hw : stmtWorkMono (smallEigProg (O := O) (Q := Q) sG).body
-      [⟨1, 1, 0, 0, 0⟩, ⟨1, 0, 1, 0, 0⟩, ⟨1, 0, 0, 1, 0⟩] = ⟨3470, 4, 0, 2, 0⟩ := by
+      [⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩] = ⟨3470, [4, 0, 2]⟩ := by
     kernel_rfl
-  have hσ : SlotsLe (n + 1) (nq + 1) (T + 1) 1 [n + 1, nq, T]
-      [⟨1, 1, 0, 0, 0⟩, ⟨1, 0, 1, 0, 0⟩, ⟨1, 0, 0, 1, 0⟩] := by
-    simp only [SlotsLe, WorkMono.eval, List.forall₂_cons, List.Forall₂.nil, and_true]
-    refine ⟨by simp, by simp, by simp⟩
-  refine (size_stmtCost_le_stmtWorkMono (by omega) _ hσ).trans ?_
-  rw [hw, WorkMono.eval]
-  simp only [pow_zero, mul_one, le_refl]
+  have hσ : SlotsLe [n + 1, nq + 1, T + 1] [n + 1, nq, T]
+      [⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩] := by
+    simp [SlotsLe, WorkMono.eval]
+  refine (size_stmtCost_le_stmtWorkMono (by simp) _ hσ).trans ?_
+  rw [hw]
+  simp [WorkMono.eval, mul_assoc]
 
 end NLAlib.SmallEig

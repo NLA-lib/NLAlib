@@ -230,6 +230,7 @@ theorem logb_inv_uShQRSmallEig_le (c₁ c₂ : PolyLogTail) (hb₁ : 0 < c₁.b)
           e₂ * k ^ 2 * Real.logb 2 (4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)) ^ 2 + e₃ := by
   sorry
 
+set_option maxRecDepth 100000 in
 /-- **The operation count of the algorithm with the small-eigenvalue program**
 ([BanksGarzaVargasSrivastava2022, Theorem 6.3] and [BanksGarzaVargasSrivastava2025, Theorem 1.1],
 running times, on every tape): there is an absolute constant $c$ such that the static count of
@@ -240,7 +241,20 @@ now counted. -/
 theorem roundedShQRSmallEig_work_le (sG : ℕ) : ∃ c : ℕ, ∀ n k np F T : ℕ,
     Count.size (stmtCost (roundedShQRSmallEig (O := O) (Q := Q) sG).body [n + 1, k, np, F, T]) ≤
       c * (n + 1) ^ 4 * (k + 1) ^ 5 * (np + 1) * (F + 1) * (T + 1) ^ 2 := by
-  sorry
+  refine ⟨15883, fun n k np F T => ?_⟩
+  have hw : stmtWorkMono (roundedShQRSmallEig (O := O) (Q := Q) sG).body
+      [⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 0, 0, 1]⟩, ⟨1, [0, 0, 0, 0, 1]⟩] =
+        ⟨15883, [3, 4, 1, 1, 2]⟩ := by
+    kernel_rfl
+  have hσ : SlotsLe [n + 1, k + 1, np + 1, F + 1, T + 1] [n + 1, k, np, F, T]
+      [⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 0, 0, 1]⟩, ⟨1, [0, 0, 0, 0, 1]⟩] := by
+    simp [SlotsLe, WorkMono.eval]
+  refine (size_stmtCost_le_stmtWorkMono (by simp) _ hσ).trans ?_
+  rw [hw]
+  have h0 : (n + 1) ^ 3 ≤ (n + 1) ^ 4 := Nat.pow_le_pow_right (by omega) (by omega)
+  have h1 : (k + 1) ^ 4 ≤ (k + 1) ^ 5 := Nat.pow_le_pow_right (by omega) (by omega)
+  simp only [WorkMono.eval, powProd_cons_cons, powProd_nil_left, pow_one, mul_one, ← mul_assoc]
+  gcongr
 
 /-- **The algorithm with no oracle, relative form** ([BanksGarzaVargasSrivastava2022,
 Theorem 6.3], the error relative to $\|\mathbf{H}\|_2$): with the machine, streams and tails of

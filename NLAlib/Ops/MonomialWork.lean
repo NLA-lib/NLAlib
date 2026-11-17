@@ -13,21 +13,23 @@ public meta import Lean.Elab.Tactic.Basic
 # Monomial bounds on the number of instructions of a program
 
 A syntactic bound on `NLAlib.Ops.Count.size` of the static count `NLAlib.Ops.stmtCost`, as a
-monomial $c\,b_0^{e_0}b_1^{e_1}b_2^{e_2}b_3^{e_3}$ in four bases, computed from the tree alone
+monomial $c\,\prod_i b_i^{e_i}$ in a list of bases, computed from the tree alone
 (`NLAlib.Ops.stmtWorkMono`): every index slot carries a monomial bound on its value, a loop or a
-`whileFuel` multiplies by the bound of its count, and a sum takes the larger exponents. A call
+`whileFuel` multiplies by the bound of its count, and a sum takes the larger exponents. The guard
+`ifPos (e + 1 - j)` of a comparison $j \le e$ narrows the bound of the slot $j$ in its body to
+that of $e$ (`NLAlib.Ops.loopSlots`). A call
 site contributes one instruction for each list of dimensions its bounds allow, counted once: the
 static count takes a pointwise supremum over the branches of an `ite`, the values of a `bindIdx`
 and the exits of a `whileFuel`, so the bound needs one count that dominates them all, and one
 exists that depends only on the bounds of the slots. The bound of a fixed program is evaluated
 by `kernel_rfl`, an equation by reflexivity left to the kernel (which evaluates it with sharing,
 where the elaborator's `rfl` does not). It keeps each base with its own exponent, unlike the
-one-base estimate `NLAlib.Ops.stmtWeightedCost_le_coefficient_mul_pow`. The number of bases is
-fixed at four; a version over a list of bases would serve programs with other numbers of sizes.
+one-base estimate `NLAlib.Ops.stmtWeightedCost_le_coefficient_mul_pow`. The bases are a list, one
+per size of the program; a monomial lists its exponents, missing ones being $0$.
 
 ## Main definitions
 
-* `NLAlib.Ops.WorkMono`: a monomial in four bases.
+* `NLAlib.Ops.WorkMono`: a monomial in a list of bases.
 * `NLAlib.Ops.stmtWorkMono`: the monomial bound of a tree at monomial bounds of its slots.
 
 ## Main results
@@ -41,61 +43,103 @@ fixed at four; a version over a list of bases would serve programs with other nu
 
 namespace NLAlib.Ops
 
-/-- **A monomial in four bases**: $c\,b_0^{e_0}b_1^{e_1}b_2^{e_2}b_3^{e_3}$. -/
+/-- The exponents of a sum: the larger exponent at each base, a missing exponent being $0$. -/
+def maxExps : List ℕ → List ℕ → List ℕ
+  | [], ys => ys
+  | x :: xs, [] => x :: xs
+  | x :: xs, y :: ys => max x y :: maxExps xs ys
+
+/-- The exponents of a product: the sum of the exponents at each base, a missing exponent being
+$0$. -/
+def addExps : List ℕ → List ℕ → List ℕ
+  | [], ys => ys
+  | x :: xs, [] => x :: xs
+  | x :: xs, y :: ys => (x + y) :: addExps xs ys
+
+/-- The product $\prod_i b_i^{e_i}$ of the bases `bs` at the exponents `es`, over the shorter of
+the two lists. -/
+def powProd : List ℕ → List ℕ → ℕ
+  | b :: bs, e :: es => b ^ e * powProd bs es
+  | _, _ => 1
+
+@[simp] theorem powProd_nil_left (es : List ℕ) : powProd [] es = 1 := by cases es <;> rfl
+
+@[simp] theorem powProd_nil_right (bs : List ℕ) : powProd bs [] = 1 := by cases bs <;> rfl
+
+@[simp] theorem powProd_cons_cons (b e : ℕ) (bs es : List ℕ) :
+    powProd (b :: bs) (e :: es) = b ^ e * powProd bs es := rfl
+
+theorem powProd_addExps : ∀ (bs xs ys : List ℕ),
+    powProd bs (addExps xs ys) = powProd bs xs * powProd bs ys
+  | [], _, _ => by simp
+  | _ :: _, [], ys => by simp [addExps]
+  | _ :: _, _ :: _, [] => by simp [addExps]
+  | b :: bs, x :: xs, y :: ys => by
+    simp only [addExps, powProd_cons_cons, powProd_addExps bs xs ys, pow_add]; ring
+
+theorem maxExps_comm : ∀ xs ys : List ℕ, maxExps xs ys = maxExps ys xs
+  | [], [] => rfl
+  | [], _ :: _ => rfl
+  | _ :: _, [] => rfl
+  | x :: xs, y :: ys => by simp only [maxExps, max_comm x y, maxExps_comm xs ys]
+
+/-- At bases at least $1$, raising the exponents to those of a sum raises the product. -/
+theorem powProd_le_powProd_maxExps {bs : List ℕ} (hb : ∀ b ∈ bs, 1 ≤ b) (xs ys : List ℕ) :
+    powProd bs xs ≤ powProd bs (maxExps xs ys) := by
+  induction bs generalizing xs ys with
+  | nil => simp
+  | cons b bs ih =>
+    have hb0 : 1 ≤ b := hb b (by simp)
+    have hbs : ∀ c ∈ bs, 1 ≤ c := fun c hc => hb c (by simp [hc])
+    rcases xs with _ | ⟨x, xs⟩
+    · simp only [powProd_nil_right]
+      exact Nat.one_le_iff_ne_zero.mpr (by
+        rcases ys with _ | ⟨y, ys⟩
+        · simp [maxExps]
+        · simp only [maxExps, powProd_cons_cons]
+          exact Nat.mul_ne_zero (pow_ne_zero _ (by omega))
+            (Nat.one_le_iff_ne_zero.mp ((ih hbs [] ys).trans' (by simp))))
+    · rcases ys with _ | ⟨y, ys⟩
+      · simp [maxExps]
+      · simp only [maxExps, powProd_cons_cons]
+        exact Nat.mul_le_mul (Nat.pow_le_pow_right hb0 (le_max_left x y)) (ih hbs xs ys)
+
+/-- **A monomial in a list of bases**: $c\prod_i b_i^{e_i}$, with the exponents `e`. -/
 structure WorkMono where
   /-- The coefficient. -/
   c : ℕ
-  /-- The exponent of the first base. -/
-  e0 : ℕ
-  /-- The exponent of the second base. -/
-  e1 : ℕ
-  /-- The exponent of the third base. -/
-  e2 : ℕ
-  /-- The exponent of the fourth base. -/
-  e3 : ℕ
+  /-- The exponents of the bases, in order; a missing exponent is $0$. -/
+  e : List ℕ
   deriving DecidableEq, Repr
 
 namespace WorkMono
 
 /-- The constant monomial $n$. -/
-def const (n : ℕ) : WorkMono := ⟨n, 0, 0, 0, 0⟩
+def const (n : ℕ) : WorkMono := ⟨n, []⟩
 
 /-- A monomial bounding a sum: the coefficients add, the exponents take the larger value. -/
-def add (x y : WorkMono) : WorkMono :=
-  ⟨x.c + y.c, max x.e0 y.e0, max x.e1 y.e1, max x.e2 y.e2, max x.e3 y.e3⟩
+def add (x y : WorkMono) : WorkMono := ⟨x.c + y.c, maxExps x.e y.e⟩
 
 /-- The product of two monomials. -/
-def mul (x y : WorkMono) : WorkMono :=
-  ⟨x.c * y.c, x.e0 + y.e0, x.e1 + y.e1, x.e2 + y.e2, x.e3 + y.e3⟩
+def mul (x y : WorkMono) : WorkMono := ⟨x.c * y.c, addExps x.e y.e⟩
 
-/-- The value of a monomial at the bases $b_0, b_1, b_2, b_3$. -/
-def eval (x : WorkMono) (b0 b1 b2 b3 : ℕ) : ℕ :=
-  x.c * b0 ^ x.e0 * b1 ^ x.e1 * b2 ^ x.e2 * b3 ^ x.e3
+/-- The value of a monomial at the bases `bs`. -/
+def eval (x : WorkMono) (bs : List ℕ) : ℕ := x.c * powProd bs x.e
 
-variable {b0 b1 b2 b3 : ℕ}
+variable {bs : List ℕ}
 
-@[simp] theorem eval_const (n : ℕ) : (const n).eval b0 b1 b2 b3 = n := by simp [const, eval]
+@[simp] theorem eval_const (n : ℕ) : (const n).eval bs = n := by simp [const, eval]
 
-theorem eval_mul (x y : WorkMono) :
-    (x.mul y).eval b0 b1 b2 b3 = x.eval b0 b1 b2 b3 * y.eval b0 b1 b2 b3 := by
-  simp only [mul, eval, pow_add]; ring
+theorem eval_mul (x y : WorkMono) : (x.mul y).eval bs = x.eval bs * y.eval bs := by
+  simp only [mul, eval, powProd_addExps]; ring
 
-/-- At bases at least $1$, raising the exponents raises the value. -/
-theorem eval_le_of_le (h0 : 1 ≤ b0) (h1 : 1 ≤ b1) (h2 : 1 ≤ b2) (h3 : 1 ≤ b3) {c : ℕ}
-    {e0 e1 e2 e3 f0 f1 f2 f3 : ℕ} (g0 : e0 ≤ f0) (g1 : e1 ≤ f1) (g2 : e2 ≤ f2) (g3 : e3 ≤ f3) :
-    eval ⟨c, e0, e1, e2, e3⟩ b0 b1 b2 b3 ≤ eval ⟨c, f0, f1, f2, f3⟩ b0 b1 b2 b3 := by
-  simp only [eval]
-  gcongr
-
-theorem add_eval_le_eval_add (h0 : 1 ≤ b0) (h1 : 1 ≤ b1) (h2 : 1 ≤ b2) (h3 : 1 ≤ b3)
-    (x y : WorkMono) :
-    x.eval b0 b1 b2 b3 + y.eval b0 b1 b2 b3 ≤ (x.add y).eval b0 b1 b2 b3 := by
-  have hx := eval_le_of_le h0 h1 h2 h3 (c := x.c) (le_max_left x.e0 y.e0)
-    (le_max_left x.e1 y.e1) (le_max_left x.e2 y.e2) (le_max_left x.e3 y.e3)
-  have hy := eval_le_of_le h0 h1 h2 h3 (c := y.c) (le_max_right x.e0 y.e0)
-    (le_max_right x.e1 y.e1) (le_max_right x.e2 y.e2) (le_max_right x.e3 y.e3)
-  calc x.eval b0 b1 b2 b3 + y.eval b0 b1 b2 b3 ≤ _ + _ := Nat.add_le_add hx hy
-    _ = (x.add y).eval b0 b1 b2 b3 := by simp only [add, eval]; ring
+theorem add_eval_le_eval_add (hb : ∀ b ∈ bs, 1 ≤ b) (x y : WorkMono) :
+    x.eval bs + y.eval bs ≤ (x.add y).eval bs := by
+  have hx := powProd_le_powProd_maxExps hb x.e y.e
+  have hy := powProd_le_powProd_maxExps hb y.e x.e
+  rw [maxExps_comm] at hy
+  simp only [eval, add, Nat.add_mul]
+  exact Nat.add_le_add (Nat.mul_le_mul_left _ hx) (Nat.mul_le_mul_left _ hy)
 
 end WorkMono
 
@@ -109,6 +153,21 @@ def IExp.workMono (σ : List WorkMono) : IExp → WorkMono
   | .sub a _ => a.workMono σ
   | .div a _ => a.workMono σ
 
+/-- The comparison a loop count guards: `some (e, j)` for the count
+$1 - (1 - (e + 1 - j))$ of `NLAlib.Ops.Stmt.ifPos` $(e + 1 - j)$, whose body runs only when the
+slot $j$ is at most $e$; `none` for any other count. -/
+def IExp.guardLe : IExp → Option (IExp × ℕ)
+  | .sub (.const 1) (.sub (.const 1) (.sub (.add e (.const 1)) (.var j))) => some (e, j)
+  | _ => none
+
+/-- The slot bounds in the body of a loop of count `n`: the bound of `n` for the counter; and in
+the body of the guard of $j \le e$ (`NLAlib.Ops.IExp.guardLe`), the bound of $e$ for the slot $j$.
+-/
+def loopSlots (σ : List WorkMono) (n : IExp) : List WorkMono :=
+  match n.guardLe with
+  | some (e, j) => σ.set j (e.workMono σ) ++ [n.workMono σ]
+  | none => σ ++ [n.workMono σ]
+
 /-- The monomial bound of the number of lists of dimensions a call site allows:
 $\prod_i (\hat d_i + 1)$. -/
 def boxWorkMono (σ : List WorkMono) : List IExp → WorkMono
@@ -119,8 +178,9 @@ variable {Op Tst : Type}
 
 /-- **The monomial bound of a tree** at monomial bounds `σ` of its slots: a call or a test counts
 the lists of dimensions it allows, a branch both sides, a loop and a `whileFuel` multiply by the
-bound of their count, a `bindIdx` binds its slot to the bound of its value, and a frame evaluates
-its dimensions and offsets. -/
+bound of their count (the guard of a comparison narrows a slot in its body,
+`NLAlib.Ops.loopSlots`), a `bindIdx` binds its slot to the bound of its value, and a frame
+evaluates its dimensions and offsets. -/
 def stmtWorkMono : Stmt Op Tst → List WorkMono → WorkMono
   | .skip, _ => WorkMono.const 0
   | .abort, _ => WorkMono.const 0
@@ -134,7 +194,7 @@ def stmtWorkMono : Stmt Op Tst → List WorkMono → WorkMono
   | .bindIdx _ _ bound body, σ =>
       (WorkMono.const 1).add (stmtWorkMono body (σ ++ [bound.workMono σ]))
   | .allocAs _ _ body, σ => stmtWorkMono body σ
-  | .loop n body, σ => (n.workMono σ).mul (stmtWorkMono body (σ ++ [n.workMono σ]))
+  | .loop n body, σ => (n.workMono σ).mul (stmtWorkMono body (loopSlots σ n))
   | .frame ds args body, σ =>
       stmtWorkMono body (ds.map (IExp.workMono σ) ++ (args.map Operand.off).map (IExp.workMono σ))
 
@@ -142,11 +202,11 @@ def stmtWorkMono : Stmt Op Tst → List WorkMono → WorkMono
 
 section Soundness
 
-variable {b0 b1 b2 b3 : ℕ}
+variable {bs : List ℕ}
 
 /-- The values `idx` are bounded by the monomials `σ` at the bases. -/
-abbrev SlotsLe (b0 b1 b2 b3 : ℕ) (idx : List ℕ) (σ : List WorkMono) : Prop :=
-  List.Forall₂ (fun v m => v ≤ WorkMono.eval m b0 b1 b2 b3) idx σ
+abbrev SlotsLe (bs : List ℕ) (idx : List ℕ) (σ : List WorkMono) : Prop :=
+  List.Forall₂ (fun v m => v ≤ WorkMono.eval m bs) idx σ
 
 private theorem forall₂_getElem? {α β : Type} {R : α → β → Prop} {l₁ : List α} {l₂ : List β}
     (h : List.Forall₂ R l₁ l₂) {i : ℕ} {a : α} (ha : l₁[i]? = some a) :
@@ -161,8 +221,8 @@ private theorem forall₂_getElem? {α β : Type} {R : α → β → Prop} {l₁
     | succ i => simpa using ih (by simpa using ha)
 
 theorem IExp.eval_le_workMono {idx : List ℕ} {σ : List WorkMono}
-    (hσ : SlotsLe b0 b1 b2 b3 idx σ) (hb : 1 ≤ b0 ∧ 1 ≤ b1 ∧ 1 ≤ b2 ∧ 1 ≤ b3) :
-    ∀ (e : IExp) {v : ℕ}, e.eval idx = some v → v ≤ (e.workMono σ).eval b0 b1 b2 b3
+    (hσ : SlotsLe bs idx σ) (hb : ∀ b ∈ bs, 1 ≤ b) :
+    ∀ (e : IExp) {v : ℕ}, e.eval idx = some v → v ≤ (e.workMono σ).eval bs
   | .var i, v, h => by
     obtain ⟨m, hm, hv⟩ := forall₂_getElem? hσ h
     simp only [IExp.workMono, List.getD_eq_getElem?_getD, hm, Option.getD_some]
@@ -177,7 +237,7 @@ theorem IExp.eval_le_workMono {idx : List ℕ} {σ : List WorkMono}
     rw [← h]
     exact (Nat.add_le_add (IExp.eval_le_workMono hσ hb a hx)
       (IExp.eval_le_workMono hσ hb c hy)).trans
-      (WorkMono.add_eval_le_eval_add hb.1 hb.2.1 hb.2.2.1 hb.2.2.2 _ _)
+      (WorkMono.add_eval_le_eval_add hb _ _)
   | .mul a c, v, h => by
     simp only [IExp.eval] at h
     split at h <;> simp only [Option.some.injEq, reduceCtorEq] at h
@@ -198,9 +258,9 @@ theorem IExp.eval_le_workMono {idx : List ℕ} {σ : List WorkMono}
     exact (Nat.div_le_self x y).trans (IExp.eval_le_workMono hσ hb a hx)
 
 theorem IExp.evalList_le_workMono {idx : List ℕ} {σ : List WorkMono}
-    (hσ : SlotsLe b0 b1 b2 b3 idx σ) (hb : 1 ≤ b0 ∧ 1 ≤ b1 ∧ 1 ≤ b2 ∧ 1 ≤ b3) :
+    (hσ : SlotsLe bs idx σ) (hb : ∀ b ∈ bs, 1 ≤ b) :
     ∀ (ds : List IExp) {d : List ℕ}, IExp.evalList idx ds = some d →
-      SlotsLe b0 b1 b2 b3 d (ds.map (IExp.workMono σ))
+      SlotsLe bs d (ds.map (IExp.workMono σ))
   | [], d, h => by simp only [IExp.evalList, Option.some.injEq] at h; subst h; exact .nil
   | e :: es, d, h => by
     simp only [IExp.evalList] at h
@@ -220,16 +280,16 @@ theorem mem_boxLists : ∀ {d bs : List ℕ}, List.Forall₂ (· ≤ ·) d bs �
     simp only [boxLists, Finset.mem_image, Finset.mem_product, Finset.mem_range, Prod.exists]
     exact ⟨x, _, ⟨by omega, mem_boxLists h⟩, rfl⟩
 
-theorem card_boxLists_le_eval (hb : 1 ≤ b0 ∧ 1 ≤ b1 ∧ 1 ≤ b2 ∧ 1 ≤ b3) (σ : List WorkMono) :
-    ∀ ds : List IExp, (boxLists (ds.map fun e => (e.workMono σ).eval b0 b1 b2 b3)).card ≤
-      (boxWorkMono σ ds).eval b0 b1 b2 b3
+theorem card_boxLists_le_eval (hb : ∀ b ∈ bs, 1 ≤ b) (σ : List WorkMono) :
+    ∀ ds : List IExp, (boxLists (ds.map fun e => (e.workMono σ).eval bs)).card ≤
+      (boxWorkMono σ ds).eval bs
   | [] => by simp [boxLists, boxWorkMono]
   | e :: es => by
     simp only [List.map_cons, boxLists, boxWorkMono, WorkMono.eval_mul]
     refine Finset.card_image_le.trans ?_
     rw [Finset.card_product, Finset.card_range]
     refine Nat.mul_le_mul ?_ (card_boxLists_le_eval hb σ es)
-    simpa using WorkMono.add_eval_le_eval_add hb.1 hb.2.1 hb.2.2.1 hb.2.2.2 (e.workMono σ)
+    simpa using WorkMono.add_eval_le_eval_add hb (e.workMono σ)
       (WorkMono.const 1)
 
 /-- The count with one use of `k` at each list of dimensions of `boxLists bs`. -/
@@ -249,13 +309,13 @@ theorem size_mono {c G : Count Op Tst} (h : c ≤ G) : Count.size c ≤ Count.si
 
 /-- A call site's count at bounded dimensions is dominated by its box count. -/
 theorem evalList_map_le_boxCount {k : Op ⊕ Tst} {idx : List ℕ} {σ : List WorkMono}
-    (hσ : SlotsLe b0 b1 b2 b3 idx σ) (hb : 1 ≤ b0 ∧ 1 ≤ b1 ∧ 1 ≤ b2 ∧ 1 ≤ b3) (ds : List IExp) :
+    (hσ : SlotsLe bs idx σ) (hb : ∀ b ∈ bs, 1 ≤ b) (ds : List IExp) :
     ((IExp.evalList idx ds).map fun d => Finsupp.single (k, d) 1).getD 0 ≤
-      boxCount k (ds.map fun e => (e.workMono σ).eval b0 b1 b2 b3) := by
+      boxCount k (ds.map fun e => (e.workMono σ).eval bs) := by
   cases hd : IExp.evalList idx ds with
   | none => exact zero_le
   | some d =>
-    have hm : d ∈ boxLists (ds.map fun e => (e.workMono σ).eval b0 b1 b2 b3) := by
+    have hm : d ∈ boxLists (ds.map fun e => (e.workMono σ).eval bs) := by
       refine mem_boxLists ?_
       have := IExp.evalList_le_workMono hσ hb ds hd
       unfold SlotsLe at this
@@ -272,33 +332,73 @@ theorem sum_range_le_nsmul {N M : ℕ} {f : ℕ → Count Op Tst} {G : Count Op 
   exact nsmul_le_nsmul_left zero_le hN
 
 theorem getD_eval_le_workMono {idx : List ℕ} {σ : List WorkMono}
-    (hσ : SlotsLe b0 b1 b2 b3 idx σ) (hb : 1 ≤ b0 ∧ 1 ≤ b1 ∧ 1 ≤ b2 ∧ 1 ≤ b3) (e : IExp) :
-    (e.eval idx).getD 0 ≤ (e.workMono σ).eval b0 b1 b2 b3 := by
+    (hσ : SlotsLe bs idx σ) (hb : ∀ b ∈ bs, 1 ≤ b) (e : IExp) :
+    (e.eval idx).getD 0 ≤ (e.workMono σ).eval bs := by
   cases h : e.eval idx with
   | none => exact Nat.zero_le _
   | some v => exact IExp.eval_le_workMono hσ hb e h
 
-theorem slotsLe_append {idx : List ℕ} {σ : List WorkMono} (hσ : SlotsLe b0 b1 b2 b3 idx σ)
-    {v : ℕ} {m : WorkMono} (hv : v ≤ m.eval b0 b1 b2 b3) :
-    SlotsLe b0 b1 b2 b3 (idx ++ [v]) (σ ++ [m]) :=
+theorem slotsLe_append {idx : List ℕ} {σ : List WorkMono} (hσ : SlotsLe bs idx σ)
+    {v : ℕ} {m : WorkMono} (hv : v ≤ m.eval bs) :
+    SlotsLe bs (idx ++ [v]) (σ ++ [m]) :=
   List.rel_append hσ (.cons hv .nil)
+
+theorem slotsLe_set {idx : List ℕ} {σ : List WorkMono} (hσ : SlotsLe bs idx σ) {j : ℕ}
+    {m : WorkMono} (hv : ∀ v, idx[j]? = some v → v ≤ m.eval bs) :
+    SlotsLe bs idx (σ.set j m) := by
+  induction hσ generalizing j with
+  | nil => exact .nil
+  | cons hr _ ih =>
+    cases j with
+    | zero => exact .cons (hv _ rfl) (by simpa using ‹List.Forall₂ _ _ _›)
+    | succ j => exact .cons hr (ih fun v h => hv v (by simpa using h))
+
+/-- The guard of a comparison holds in its body: a count $1 - (1 - (e + 1 - j))$ with a positive
+value has $j \le e$. -/
+theorem IExp.le_of_guardLe {n e : IExp} {j : ℕ} (hg : n.guardLe = some (e, j)) {idx : List ℕ}
+    {i : ℕ} (hi : i < (n.eval idx).getD 0) :
+    ∃ a, e.eval idx = some a ∧ ∀ v, idx[j]? = some v → v ≤ a := by
+  unfold IExp.guardLe at hg
+  split at hg <;> simp only [Option.some.injEq, Prod.mk.injEq, reduceCtorEq] at hg
+  obtain ⟨h1, h2⟩ := hg
+  subst e j
+  rename_i e j
+  cases he : e.eval idx with
+  | none => simp [IExp.eval, he] at hi
+  | some a =>
+    refine ⟨a, rfl, fun v hv => ?_⟩
+    simp only [IExp.eval, he, hv, Option.getD_some] at hi
+    omega
+
+/-- The slot bounds of a loop body hold at every value of its counter. -/
+theorem slotsLe_loopSlots {idx : List ℕ} {σ : List WorkMono} (hσ : SlotsLe bs idx σ)
+    (hb : ∀ b ∈ bs, 1 ≤ b) {n : IExp} {i : ℕ} (hi : i < (n.eval idx).getD 0) :
+    SlotsLe bs (idx ++ [i]) (loopSlots σ n) := by
+  have hn : i ≤ (n.workMono σ).eval bs := by have := getD_eval_le_workMono hσ hb n; omega
+  unfold loopSlots
+  split
+  · rename_i e j hg
+    obtain ⟨a, ha, hj⟩ := IExp.le_of_guardLe hg hi
+    exact slotsLe_append (slotsLe_set hσ fun v hv =>
+      (hj v hv).trans (IExp.eval_le_workMono hσ hb e ha)) hn
+  · exact slotsLe_append hσ hn
 
 /-- The bound of a tree: one count, depending only on the bounds of the slots, dominates the
 static count at every bounded slot values, and has at most the monomial bound of instructions. -/
-abbrev WorkMonoDominates (b0 b1 b2 b3 : ℕ) (s : Stmt Op Tst) (σ : List WorkMono) : Prop :=
-  ∃ G : Count Op Tst, Count.size G ≤ (stmtWorkMono s σ).eval b0 b1 b2 b3 ∧
-    ∀ idx, SlotsLe b0 b1 b2 b3 idx σ → stmtCost s idx ≤ G
+abbrev WorkMonoDominates (bs : List ℕ) (s : Stmt Op Tst) (σ : List WorkMono) : Prop :=
+  ∃ G : Count Op Tst, Count.size G ≤ (stmtWorkMono s σ).eval bs ∧
+    ∀ idx, SlotsLe bs idx σ → stmtCost s idx ≤ G
 
-theorem workMonoDominates_whileFuel (hb : 1 ≤ b0 ∧ 1 ≤ b1 ∧ 1 ≤ b2 ∧ 1 ≤ b3) {fuel : IExp}
+theorem workMonoDominates_whileFuel (hb : ∀ b ∈ bs, 1 ≤ b) {fuel : IExp}
     {q : Tst} {ds : List IExp} {ins : List Operand} {body k : Stmt Op Tst} {σ : List WorkMono}
-    (hB : WorkMonoDominates b0 b1 b2 b3 body (σ ++ [fuel.workMono σ]))
-    (hK : WorkMonoDominates b0 b1 b2 b3 k (σ ++ [fuel.workMono σ])) :
-    WorkMonoDominates b0 b1 b2 b3 (.whileFuel fuel q ds ins body k) σ := by
+    (hB : WorkMonoDominates bs body (σ ++ [fuel.workMono σ]))
+    (hK : WorkMonoDominates bs k (σ ++ [fuel.workMono σ])) :
+    WorkMonoDominates bs (.whileFuel fuel q ds ins body k) σ := by
   obtain ⟨Gb, hGb, hb'⟩ := hB
   obtain ⟨Gk, hGk, hk'⟩ := hK
-  have hadd := WorkMono.add_eval_le_eval_add hb.1 hb.2.1 hb.2.2.1 hb.2.2.2
-  refine ⟨(fuel.workMono σ).eval b0 b1 b2 b3 • (boxCount (.inr q)
-    (ds.map fun e => (e.workMono (σ ++ [fuel.workMono σ])).eval b0 b1 b2 b3) + Gb) + Gk, ?_,
+  have hadd := WorkMono.add_eval_le_eval_add hb
+  refine ⟨(fuel.workMono σ).eval bs • (boxCount (.inr q)
+    (ds.map fun e => (e.workMono (σ ++ [fuel.workMono σ])).eval bs) + Gb) + Gk, ?_,
     fun idx hσ => ?_⟩
   · rw [map_add, map_nsmul, map_add, size_boxCount, smul_eq_mul]
     simp only [stmtWorkMono]
@@ -317,8 +417,8 @@ theorem workMonoDominates_whileFuel (hb : 1 ≤ b0 ∧ 1 ≤ b1 ∧ 1 ≤ b2 ∧
 /-- The monomial bound dominates the static count: for every tree and monomial bounds of
 its slots there is one count, depending only on the bounds, that dominates the static count at
 all slot values within the bounds and has at most the monomial bound of instructions. -/
-theorem workMonoDominates (hb : 1 ≤ b0 ∧ 1 ≤ b1 ∧ 1 ≤ b2 ∧ 1 ≤ b3) :
-    ∀ (s : Stmt Op Tst) (σ : List WorkMono), WorkMonoDominates b0 b1 b2 b3 s σ
+theorem workMonoDominates (hb : ∀ b ∈ bs, 1 ≤ b) :
+    ∀ (s : Stmt Op Tst) (σ : List WorkMono), WorkMonoDominates bs s σ
   | .skip, _ => ⟨0, by simp, fun _ _ => le_rfl⟩
   | .abort, _ => ⟨0, by simp, fun _ _ => le_rfl⟩
   | .seq s t, σ => by
@@ -327,19 +427,19 @@ theorem workMonoDominates (hb : 1 ≤ b0 ∧ 1 ≤ b1 ∧ 1 ≤ b2 ∧ 1 ≤ b3)
     refine ⟨Gs + Gt, ?_, fun idx h => add_le_add (hs idx h) (ht idx h)⟩
     rw [map_add]
     exact (Nat.add_le_add hGs hGt).trans
-      (WorkMono.add_eval_le_eval_add hb.1 hb.2.1 hb.2.2.1 hb.2.2.2 _ _)
+      (WorkMono.add_eval_le_eval_add hb _ _)
   | .call o ds _ _, σ =>
-    ⟨boxCount (.inl o) (ds.map fun e => (e.workMono σ).eval b0 b1 b2 b3),
+    ⟨boxCount (.inl o) (ds.map fun e => (e.workMono σ).eval bs),
       by rw [size_boxCount]; exact card_boxLists_le_eval hb σ ds,
       fun _ h => evalList_map_le_boxCount h hb ds⟩
   | .ite q ds _ t e, σ => by
     obtain ⟨Gt, hGt, ht⟩ := workMonoDominates hb t σ
     obtain ⟨Ge, hGe, he⟩ := workMonoDominates hb e σ
-    refine ⟨boxCount (.inr q) (ds.map fun e => (e.workMono σ).eval b0 b1 b2 b3) + (Gt + Ge), ?_,
+    refine ⟨boxCount (.inr q) (ds.map fun e => (e.workMono σ).eval bs) + (Gt + Ge), ?_,
       fun idx h => add_le_add (evalList_map_le_boxCount h hb ds)
         (sup_le (le_add_right (ht idx h)) (le_add_left (he idx h)))⟩
     rw [map_add, map_add, size_boxCount]
-    have hadd := WorkMono.add_eval_le_eval_add hb.1 hb.2.1 hb.2.2.1 hb.2.2.2
+    have hadd := WorkMono.add_eval_le_eval_add hb
     exact (Nat.add_le_add (card_boxLists_le_eval hb σ ds)
       ((Nat.add_le_add hGt hGe).trans (hadd _ _))).trans (hadd _ _)
   | .whileFuel fuel q ds ins body k, σ =>
@@ -353,15 +453,16 @@ theorem workMonoDominates (hb : 1 ≤ b0 ∧ 1 ≤ b1 ∧ 1 ≤ b2 ∧ 1 ≤ b3)
         omega)))⟩
     rw [map_add, Count.test, size_single]
     simp only [stmtWorkMono]
-    have h1 := (Nat.add_le_add_left hGb 1).trans
-      (WorkMono.add_eval_le_eval_add hb.1 hb.2.1 hb.2.2.1 hb.2.2.2 (WorkMono.const 1) _)
-    simpa using h1
+    have h1 := WorkMono.add_eval_le_eval_add hb (WorkMono.const 1)
+      (stmtWorkMono body (σ ++ [bound.workMono σ]))
+    rw [WorkMono.eval_const] at h1
+    exact (Nat.add_le_add_left hGb 1).trans h1
   | .allocAs _ _ body, σ => workMonoDominates hb body σ
   | .loop n body, σ => by
-    obtain ⟨Gb, hGb, hb'⟩ := workMonoDominates hb body (σ ++ [n.workMono σ])
-    refine ⟨(n.workMono σ).eval b0 b1 b2 b3 • Gb, ?_, fun idx h =>
+    obtain ⟨Gb, hGb, hb'⟩ := workMonoDominates hb body (loopSlots σ n)
+    refine ⟨(n.workMono σ).eval bs • Gb, ?_, fun idx h =>
       sum_range_le_nsmul (getD_eval_le_workMono h hb n) fun i hi =>
-        hb' _ (slotsLe_append h (by have := getD_eval_le_workMono h hb n; omega))⟩
+        hb' _ (slotsLe_loopSlots h hb hi)⟩
     rw [map_nsmul, smul_eq_mul]
     simp only [stmtWorkMono]
     rw [WorkMono.eval_mul]
@@ -380,9 +481,9 @@ theorem workMonoDominates (hb : 1 ≤ b0 ∧ 1 ≤ b1 ∧ 1 ≤ b2 ∧ 1 ≤ b3)
 /-- The number of instructions of the static count is at most the monomial bound: at bases
 at least $1$ and slot values bounded by the monomials `σ`,
 `Count.size (stmtCost s idx) ≤ (stmtWorkMono s σ).eval b₀ b₁ b₂ b₃`. No printed source. -/
-theorem size_stmtCost_le_stmtWorkMono (hb : 1 ≤ b0 ∧ 1 ≤ b1 ∧ 1 ≤ b2 ∧ 1 ≤ b3)
-    (s : Stmt Op Tst) {σ : List WorkMono} {idx : List ℕ} (hσ : SlotsLe b0 b1 b2 b3 idx σ) :
-    Count.size (stmtCost s idx) ≤ (stmtWorkMono s σ).eval b0 b1 b2 b3 := by
+theorem size_stmtCost_le_stmtWorkMono (hb : ∀ b ∈ bs, 1 ≤ b)
+    (s : Stmt Op Tst) {σ : List WorkMono} {idx : List ℕ} (hσ : SlotsLe bs idx σ) :
+    Count.size (stmtCost s idx) ≤ (stmtWorkMono s σ).eval bs := by
   obtain ⟨G, hG, hg⟩ := workMonoDominates hb s σ
   exact (size_mono (hg idx hσ)).trans hG
 

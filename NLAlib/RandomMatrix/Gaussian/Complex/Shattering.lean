@@ -112,7 +112,7 @@ def ComplexGaussianConditionTail (c : PolyLogTail) : Prop :=
         pseudoConditionNumber V ≤ t⁻¹} ≤
       c.C * (Fintype.card n : ℝ) ^ c.a * t ^ c.b * (specNorm M / γ + Real.log t⁻¹) ^ c.c
 
-/-- **The normalized record dominates**: for $x = 0$ or $x \ge 1$, $y \ge 0$ and $z \ge 1$,
+/-- The normalized record dominates: for $x = 0$ or $x \ge 1$, $y \ge 0$ and $z \ge 1$,
 $C x^a y^b z^c \le \bar C x^{\bar a} y^{\bar b} z^{\bar c}$ for the normalized record
 $(\bar C, \bar a, \bar b, \bar c) = (\max(C, 1), \max(a, 0), b, \max(c, 0))$. -/
 theorem PolyLogTail.le_normalize (c : PolyLogTail) {x y z : ℝ} (hx : x = 0 ∨ 1 ≤ x)
@@ -437,7 +437,7 @@ private theorem one_add_rpow_le_exp {b c Λ : ℝ} (hb : 0 < b) (hc : 0 ≤ c) (
         rw [Real.mul_rpow (by positivity) (Real.exp_pos _).le, ← Real.exp_mul,
           div_mul_cancel₀ _ hc.ne']
 
-/-- **The inverted tail** of a record with $b > 0$, normalized: for $N \ge 1$, $K \ge 0$ and
+/-- The inverted tail of a record with $b > 0$, normalized: for $N \ge 1$, $K \ge 0$ and
 $0 < \varphi \le 1$, the parameter $\tau$ = `NLAlib.polyLogTailInverse` is in $(0, 1]$, the
 normalized tail $\bar C M^{\bar a}\tau^{b}(K + \log(1/\tau))^{\bar c}$ is at most $\varphi$ at every
 $1 \le M \le N$, and $\log(1/\tau) = (2/b)\log(s/\varphi)$ for the scale $s$ =

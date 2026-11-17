@@ -226,7 +226,24 @@ theorem ginibreClass_spec {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ 
         2 / c₁.b * logb 2 (polyLogTailScale c₁.normalize nmax ((S + 4 * γ) / γ) / φ) ∧
       logb 2 (ginibreConditionThreshold nmax S γ φ c₂)⁻¹ ≤
         2 / c₂.b * logb 2 (polyLogTailScale c₂.normalize nmax ((S + 4 * γ) / γ) / φ) := by
-  sorry
+  have hK : 0 ≤ (S + 4 * γ) / γ := div_nonneg (by linarith) hγ.le
+  have hN : (1 : ℝ) ≤ nmax := by exact_mod_cast hn
+  obtain ⟨h1p, h1le, h1t, h1l⟩ := polyLogTailInverse_spec (c := c₁) hb₁ hN hK hφ hφ1
+  obtain ⟨h2p, h2le, h2t, h2l⟩ := polyLogTailInverse_spec (c := c₂) hb₂ hN hK hφ hφ1
+  have e1 : ginibreGapThreshold nmax S γ φ c₁ / γ =
+      polyLogTailInverse c₁.normalize nmax ((S + 4 * γ) / γ) φ := by
+    rw [ginibreGapThreshold, mul_div_cancel_left₀ _ hγ.ne']
+  have e2 : γ / ginibreGapThreshold nmax S γ φ c₁ =
+      (polyLogTailInverse c₁.normalize nmax ((S + 4 * γ) / γ) φ)⁻¹ := by
+    rw [ginibreGapThreshold, div_mul_cancel_left₀ hγ.ne']
+  refine ⟨mul_pos hγ h1p, ?_, h2p, h2le, fun N hN1 hNn => ⟨?_, ?_⟩, ?_, ?_⟩
+  · rw [ginibreGapThreshold]
+    nlinarith
+  · rw [e1, e2]
+    exact h1t N (by exact_mod_cast hN1) (by exact_mod_cast hNn)
+  · exact h2t N (by exact_mod_cast hN1) (by exact_mod_cast hNn)
+  · rw [e2, logb, logb, h1l, mul_div_assoc]
+  · rw [logb, logb, ginibreConditionThreshold, h2l, mul_div_assoc]
 
 /-! ### The parameter words -/
 

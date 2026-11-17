@@ -70,7 +70,6 @@ def Interp.IsMeasurable [Inhabited K] [MeasurableSpace K] (I : Interp Op Tst K) 
     ∀ q ins, Measurable (fun m : Mem K => (I.index q ins m).isSome) ∧
       Measurable (fun m : Mem K => (I.index q ins m).getD 0)
 
-
 /-- The call of the evaluator under a measurable interpretation is a measurable step: liveness
 and the shape guard depend on the memory only through its observation. -/
 theorem Interp.IsMeasurable.measurableRun_callS [Inhabited K] [MeasurableSpace K]
@@ -714,6 +713,21 @@ theorem bindIdx (hI : I.IsMeasurable) {q : Tst} {ins : List Operand} {bound : IE
     obtain ⟨hW, hP⟩ := hG v m ⟨hm, hiv, hvB⟩
     simp only [hiv, Option.getD_some]
     exact ⟨fun τ hτ => writes_bindIdx ha hB hiv hvB (hW τ hτ), hP⟩
+
+/-- **The index binder at a known value**: if from every memory of the precondition the index
+query returns the same number $v \le B$, the binder fails with the probability of its body at
+$v$. -/
+theorem bindIdx_of_index_eq (hI : I.IsMeasurable) {q : Tst} {ins : List Operand}
+    {bound : IExp} {body : Stmt Op Tst} {a : List (ℕ × ℕ)} {B v : ℕ}
+    (ha : Operand.evalList ρ ins = some a) (hB : bound.eval ρ.idx = some B) (hvB : v ≤ B)
+    (hidx : ∀ m, Pre m → I.index q a m = some v) (hφ : 0 ≤ φ)
+    (h : PWrites law I body (ρ.pushIdx v) F Pre Post φ) :
+    PWrites law I (.bindIdx q ins bound body) ρ F Pre Post φ := by
+  refine bindIdx hI ha hB (fun m hm => ⟨v, hvB, hidx m hm⟩) fun v' _ => ?_
+  by_cases hv : v' = v
+  · subst hv; exact h.mono (fun m hm => hm.1) le_rfl (fun _ h => h) le_rfl
+  · exact of_writes hφ fun m τ hm => by
+      have := hm.2.symm.trans (hidx m hm.1); simp at this; omega
 
 /-- **Scratch allocations** (PL3f-allocs, the mirror of `writes_allocs_preserving_post`): the
 body runs on the memory with fresh buffers at the handles $L, L + 1, \dots$ above the

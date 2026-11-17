@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.Matrix.QRIteration.InverseIteration
 public import NLAlib.Matrix.QRIteration.StableStep
 
 /-!
@@ -22,6 +23,8 @@ small ([BanksGarzaVargasSrivastava2022, Lemma 5.2], over the last $k$ subdiagona
 
 * `NLAlib.IsStableQRChain.exists_frobNorm_conj_sub_le`: the forward error of the step.
 * `NLAlib.potential_le_or_exists_lt_of_sub_le`: the potential after a rounded step.
+* `NLAlib.IsStableQRChain.exists_norm_subdiag_le_of_dist`: rounded decoupling by a repeated shift
+  near a weighted eigenvalue [BanksGarzaVargasSrivastava2025].
 -/
 
 @[expose] public section
@@ -350,5 +353,74 @@ theorem potential_le_or_exists_lt_of_sub_le {k : ℕ} (hk : 0 < k) {ω : ℝ} (h
     _ = 1.0011 * (∏ i ∈ S, ‖H₂ i.succ i.castSucc‖) ^ ((k : ℝ)⁻¹) := by
         rw [Real.mul_rpow (by positivity) (Finset.prod_nonneg fun i _ => norm_nonneg _),
           Real.pow_rpow_inv_natCast (by norm_num) hk.ne']
+
+/-- **Rounded decoupling by a repeated shift near a weighted eigenvalue**
+([BanksGarzaVargasSrivastava2025, Lemma 4.2 and Proposition 4.3]): let $\mathbf{H} \ne 0$ of
+order $n + 2$ be upper Hessenberg,
+$\mathbf{H}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$ with
+$\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le B$ and last-row weights $w$, the shift $s$ with
+$\lvert s\rvert \le C\|\mathbf{H}\|_2$ ($C \ge 0$) at distance at least $\eta_1 > 0$ from every
+$d_j$ and within $\beta'$ of an eigenvalue $d_i$ of weight $w_i \ge p > 0$, $4\beta' \le \omega$,
+$1 \le m_2$ and $B \le 2^{m_2}\sqrt p$. Let $\widehat{\mathbf{H}}_\ell$, $\ell \le m_2$, be ends of
+backward-stable chains (`NLAlib.IsStableQRChain`, relative error $x \ge 0$) of $\ell$ steps with
+the shift $s$ from $\mathbf{H}$, with
+$x \le (16B)^{-1}(\eta_1/((2 + 2C)\|\mathbf{H}\|_2))^\ell$ and
+$$(66 + 2C)B\|\mathbf{H}\|_2\Bigl(\frac{(2 + 2C)\|\mathbf{H}\|_2}{\eta_1}\Bigr)^\ell
+  \sqrt{n + 2}\,x \le \frac{\omega}{2}$$
+for every $\ell \le m_2$. Then some $1 \le \ell \le m_2$ has the last subdiagonal entry of
+$\widehat{\mathbf{H}}_\ell$ of modulus at most $\omega$. -/
+theorem IsStableQRChain.exists_norm_subdiag_le_of_dist {m₂ : ℕ} {x C B p η₁ β' ω : ℝ}
+    {H V : Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ} {d : Fin (n + 2) → ℂ} {s : ℂ}
+    {Hs : ℕ → Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ}
+    (hchain : ∀ ℓ ≤ m₂, ∃ Rs, IsStableQRChain x H (List.replicate ℓ s) (Hs ℓ) Rs) (hx : 0 ≤ x)
+    (hC : 0 ≤ C) (hH : IsUpperHessenberg H) (hH0 : H ≠ 0) (hV : IsUnit V)
+    (hHV : H * V = V * Matrix.diagonal d) (hκ : pseudoConditionNumber V ≤ B)
+    (hs : ‖s‖ ≤ C * specNorm H) (hη₁ : 0 < η₁) (hdist : ∀ j, η₁ ≤ ‖d j - s‖) {i : Fin (n + 2)}
+    (hi : ‖s - d i‖ ≤ β') (hp : 0 < p) (hpi : p ≤ lastRowWeights V i) (hω : 4 * β' ≤ ω)
+    (hm₂ : 1 ≤ m₂) (hm₂B : B ≤ 2 ^ m₂ * √p)
+    (hxu : ∀ ℓ ≤ m₂, x ≤ (16 * B)⁻¹ * (η₁ / ((2 + 2 * C) * specNorm H)) ^ ℓ)
+    (hfwd : ∀ ℓ ≤ m₂, (66 + 2 * C) * B * specNorm H * ((2 + 2 * C) * specNorm H / η₁) ^ ℓ *
+      √(n + 2) * x ≤ ω / 2) :
+    ∃ ℓ ∈ Finset.Icc 1 m₂, ‖Hs ℓ (Fin.last (n + 1)) (Fin.last n).castSucc‖ ≤ ω := by
+  have hsd : ∀ j, s ≠ d j := fun j h => by
+    have := hdist j; rw [h, sub_self, norm_zero] at this; linarith
+  -- exact decoupling: some `ℓ` has `|h_ℓ|^m₂ √wᵢ ≤ κ |s - dᵢ|^m₂`, hence `|h_ℓ| ≤ 2β'`
+  obtain ⟨ℓ, hℓ, hex⟩ := exists_le_norm_subdiag_shiftedQR_pow hH hV hHV hsd hm₂ i
+  refine ⟨ℓ, hℓ, ?_⟩
+  have hℓm : ℓ ≤ m₂ := (Finset.mem_Icc.mp hℓ).2
+  set h := ‖multiShiftedQRStep H (List.replicate ℓ s) (Fin.last (n + 1)) (Fin.last n).castSucc‖
+  have hβ0 : 0 ≤ β' := (norm_nonneg _).trans hi
+  have hsp : 0 < √p := Real.sqrt_pos.mpr hp
+  have hexact : h ≤ 2 * β' := by
+    have hw : √p ≤ √(lastRowWeights V i) := Real.sqrt_le_sqrt hpi
+    have h1 : h ^ m₂ * √p ≤ (2 * β') ^ m₂ * √p := by
+      calc h ^ m₂ * √p ≤ h ^ m₂ * √(lastRowWeights V i) := by gcongr
+        _ ≤ pseudoConditionNumber V * ‖s - d i‖ ^ m₂ := hex
+        _ ≤ B * β' ^ m₂ := by
+            gcongr
+            exact (pseudoConditionNumber_nonneg V).trans hκ
+        _ ≤ 2 ^ m₂ * √p * β' ^ m₂ := by gcongr
+        _ = (2 * β') ^ m₂ * √p := by ring
+    exact (pow_le_pow_iff_left₀ (norm_nonneg _) (by positivity) (by omega)).mp
+      (le_of_mul_le_mul_right h1 hsp)
+  -- forward error of the rounded chain, up to a diagonal phase
+  obtain ⟨Rs, hR⟩ := hchain ℓ hℓm
+  obtain ⟨D, hD, hfro⟩ := hR.exists_frobNorm_conj_sub_le hx hC hη₁ hH0 hH hV hHV hκ
+    (fun t ht => by rw [List.eq_of_mem_replicate ht]; exact hs)
+    (fun t ht j => by rw [List.eq_of_mem_replicate ht]; exact hdist j)
+    (by rw [List.length_replicate]; exact hxu ℓ hℓm)
+  rw [List.length_replicate, show ((n + 1 : ℕ) : ℝ) + 1 = n + 2 by push_cast; ring] at hfro
+  have hent := (norm_apply_le_frobNorm _ (Fin.last (n + 1)) (Fin.last n).castSucc).trans
+    (hfro.trans (hfwd ℓ hℓm))
+  have hphase : ‖((Matrix.diagonal D)ᴴ * Hs ℓ * Matrix.diagonal D) (Fin.last (n + 1))
+      (Fin.last n).castSucc‖ = ‖Hs ℓ (Fin.last (n + 1)) (Fin.last n).castSucc‖ := by
+    rw [Matrix.diagonal_conjTranspose, Matrix.mul_diagonal, Matrix.diagonal_mul, norm_mul,
+      norm_mul, Pi.star_apply, norm_star, hD, hD, one_mul, mul_one]
+  rw [Matrix.sub_apply] at hent
+  have htri := norm_sub_norm_le ((((Matrix.diagonal D)ᴴ * Hs ℓ * Matrix.diagonal D))
+    (Fin.last (n + 1)) (Fin.last n).castSucc)
+    (multiShiftedQRStep H (List.replicate ℓ s) (Fin.last (n + 1)) (Fin.last n).castSucc)
+  rw [hphase] at htri
+  linarith
 
 end NLAlib

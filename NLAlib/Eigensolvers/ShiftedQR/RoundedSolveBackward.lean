@@ -253,15 +253,18 @@ theorem roundedLeaf_core {fails : Prop} {n j : ℕ} {a t p st out w r f : ℕ ×
     omega
 
 omit [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
-/-- The operands of the leaf call of a round: the work matrix and the output words of the popped
-range are live, have room and are apart. -/
+/-- The operands of the leaf call of a round: the work matrix, the parameter words and the output
+words of the popped range are live, the output has room, and the work matrix and the parameter
+words are apart from the output. -/
 theorem RoundedPopped.leaf_operands {n j : ℕ} {a t p st out w r f : ℕ × ℕ}
     {H₀ M A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {roots : Fin (n + 1) → ℂ} {e thr : ℝ}
     {ps : List ℝ} {lo d : ℕ} {rest done : List (ℕ × ℕ)} {μ : Mem ℝ}
     (hP : RoundedPopped H₀ e thr ps a t p st out w r f j M lo d rest done A roots μ) :
-    μ.Live [w, (out.1, out.2 + 2 * lo)] ∧
+    μ.Live [w, p, (out.1, out.2 + 2 * lo)] ∧
       (out.1, out.2 + 2 * lo).2 + 2 * d ≤ μ.store.len (out.1, out.2 + 2 * lo).1 ∧
       Fp.Disj (Store.inBlock w.1 w.2 (2 * (d * d)))
+        (Store.inBlock out.1 (out.2 + 2 * lo) (2 * d)) ∧
+      Fp.Disj (Store.inBlock p.1 p.2 ps.length)
         (Store.inBlock out.1 (out.2 + 2 * lo) (2 * d)) := by
   have hG := hP.1
   have hr := hP.2.2.2.2.2.1.active_block (r := (lo, d)) List.mem_cons_self
@@ -272,25 +275,31 @@ theorem RoundedPopped.leaf_operands {n j : ℕ} {a t p st out w r f : ℕ × ℕ
       Store.inBlock out.1 out.2 (2 * (n + 1)) := by have := hr.2.1; fp_sub
   have hfull : Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))))
       (Store.inBlock out.1 out.2 (2 * (n + 1))) := by simpa using hG.disj 5 4 (by simp)
-  exact ⟨by simpa [Mem.Live] using And.intro (hG.live w (by simp)) (hG.live out (by simp)),
-    by dsimp only; have := hr.2.1; omega, hfull.mono (by fp_sub) houtFp⟩
+  have hPO : Fp.Disj (Store.inBlock p.1 p.2 ps.length)
+      (Store.inBlock out.1 out.2 (2 * (n + 1))) := by simpa using hG.disj 2 4 (by simp)
+  exact ⟨by simpa [Mem.Live] using ⟨hG.live w (by simp), hG.live p (by simp),
+      hG.live out (by simp)⟩,
+    by dsimp only; have := hr.2.1; omega, hfull.mono (by fp_sub) houtFp, hPO.mono le_rfl houtFp⟩
 
 omit [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
-/-- The leaf branch of a round: the leaf routine on the copied block of the popped range
-finishes it, a perturbed unitary similarity with error $\beta \le e$. -/
-theorem roundedLeaf_writes {I : Interp O Q ℝ} {β : ℝ} (L : Impl O Q)
-    (hLeaf : BackwardLeafContract β L I) {tape : Tape ℝ} {μ : Mem ℝ} {fails : Prop} {n j : ℕ}
+/-- The leaf branch of a round: the leaf routine on the copied block of the popped range, of order
+at most $k_{\max}$ and norm at most $N_{\max}$, finishes it, a perturbed unitary similarity with
+error $\beta \le e$. -/
+theorem roundedLeaf_writes {I : Interp O Q ℝ} {β : ℝ} {kmax T : ℕ} {Nmax : ℝ} {ps : List ℝ}
+    (L : Impl O Q) (hLeaf : BackwardLeafRoutineContract β kmax Nmax ps T L I) {tape : Tape ℝ}
+    {μ : Mem ℝ} {fails : Prop} {n j : ℕ}
     {a t p st out w r f : ℕ × ℕ} {H₀ M A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
-    {roots : Fin (n + 1) → ℂ} {e thr : ℝ} {ps : List ℝ} {lo d : ℕ} {rest done : List (ℕ × ℕ)}
+    {roots : Fin (n + 1) → ℂ} {e thr : ℝ} {lo d : ℕ} {rest done : List (ℕ × ℕ)}
     (hP : RoundedPopped H₀ e thr ps a t p st out w r f j M lo d rest done A roots μ)
-    (hW : HoldsMatrix w (subBlock A (lo, d)) μ.store) (hβe : β ≤ e) :
-    Writes .total I tape L.body (Env.frame [d] [w, (out.1, out.2 + 2 * lo)])
+    (hW : HoldsMatrix w (subBlock A (lo, d)) μ.store) (hβe : β ≤ e) (hd : d ≤ kmax)
+    (hBn : specNorm (subBlock A (lo, d)) ≤ Nmax) :
+    Writes .total I tape L.body (Env.frame [d, ps.length, T] [w, p, (out.1, out.2 + 2 * lo)])
       (Store.inBlock out.1 (out.2 + 2 * lo) (2 * d))
       (fun μ' => ∃ M', IsPerturbedUnitarySimilar M M' e ∧
         RoundedCore fails H₀ e a st out f (j + 1) M' μ') μ := by
-  obtain ⟨hlWO, hroom, hWO⟩ := hP.leaf_operands
+  obtain ⟨hlWO, hroom, hWO, hPO⟩ := hP.leaf_operands
   have hr := hP.2.2.2.2.2.1.active_block (r := (lo, d)) List.mem_cons_self
-  exact (hLeaf (subBlock A (lo, d)) hr.2.2 hW hlWO hroom hWO).mono le_rfl
+  exact (hLeaf (subBlock A (lo, d)) hd hr.2.2 hBn hW hP.2.2.1 hlWO hroom hWO hPO).mono le_rfl
     fun μ' hfr hpost => roundedLeaf_core hP hβe hfr hpost
 
 /-- The cut of a round, mathematics: after a successful decoupling call with output
@@ -337,8 +346,8 @@ core state of the next round is reached with error $e \ge \varepsilon(N_0) + c$,
 theorem roundedLargeRest_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu : 0 ≤ u) (hu1 : u < 1)
     (hL : IsIndexLit Mch I) {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
-    (hC : IsCmp id I) {fails : Prop} {k F : ℕ} {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} (D : Impl O Q)
-    {tape : Tape ℝ} {μ μ₁ : Mem ℝ} {j lo d : ℕ} {a t p st out w r f : ℕ × ℕ}
+    (hC : IsCmp id I) {fails : Prop} {k F T : ℕ} {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ}
+    (D : Impl O Q) {tape : Tape ℝ} {μ μ₁ : Mem ℝ} {j lo d : ℕ} {a t p st out w r f : ℕ × ℕ}
     {H₀ M A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {roots : Fin (n + 1) → ℂ}
     {rest done : List (ℕ × ℕ)} {thr c e N₀ : ℝ}
     (hP : RoundedPopped H₀ e thr ps a t p st out w r f j M lo (d + 1) rest done A roots μ)
@@ -353,7 +362,7 @@ theorem roundedLargeRest_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
           IsUpperHessenberg H' ∧ (∃ i : Fin d, d ≤ (i : ℕ) + k ∧ ‖H' i.succ i.castSucc‖ ≤ ω) ∧
           HoldsMatrix w H' μ₁.store)) :
     Writes .total I tape (roundedLargeRest D)
-      (Env.frame [n + 1, k, ps.length, F, lo, d + 1] [a, t, p, st, out, w, r, f])
+      (Env.frame [n + 1, k, ps.length, F, T, lo, d + 1] [a, t, p, st, out, w, r, f])
       (roundedWorklistFp (n + 1) a st out w r f)
       (fun μ' => ∃ M', IsPerturbedUnitarySimilar M M' e ∧
         RoundedCore fails H₀ e a st out f (j + 1) M' μ') μ₁ := by
@@ -462,8 +471,8 @@ of the next round is reached with error $e \ge \varepsilon(N_0) + c$. -/
 theorem roundedLarge_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu : 0 ≤ u) (hu1 : u < 1)
     (hL : IsIndexLit Mch I) {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
-    (hC : IsCmp id I) {fails : Prop} {k F : ℕ} {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} (D : Impl O Q)
-    (hD : RoundedDecouplingContract fails k F ps ω ε D I)
+    (hC : IsCmp id I) {fails : Prop} {k F T : ℕ} {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ}
+    (D : Impl O Q) (hD : RoundedDecouplingRoutineContract fails k F T ps ω ε D I)
     {tape : Tape ℝ} {μ : Mem ℝ} {j lo d : ℕ} {a t p st out w r f : ℕ × ℕ}
     {H₀ M A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {roots : Fin (n + 1) → ℂ}
     {rest done : List (ℕ × ℕ)} {thr c e N₀ : ℝ}
@@ -472,8 +481,8 @@ theorem roundedLarge_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hfind : (1 + u) ^ 2 * ω ^ 2 ≤ thr) (hcut : thr ≤ (1 - u) ^ 2 * c ^ 2) (hc : 0 ≤ c)
     (he : c + ε N₀ ≤ e) (he0 : 0 ≤ e) (hN₀ : specNorm H₀ + 2 * (n + 1) * e ≤ N₀)
     (hj : j < 2 * (n + 1)) :
-    Writes .total I tape (roundedProcessLarge D).body
-      (Env.frame [n + 1, k, ps.length, F, lo, d + 1] [a, t, p, st, out, w, r, f])
+    Writes .total I tape (roundedProcessLargeWith D).body
+      (Env.frame [n + 1, k, ps.length, F, T, lo, d + 1] [a, t, p, st, out, w, r, f])
       (roundedWorklistFp (n + 1) a st out w r f)
       (fun μ' => ∃ M', IsPerturbedUnitarySimilar M M' e ∧
         RoundedCore fails H₀ e a st out f (j + 1) M' μ') μ := by
@@ -483,7 +492,7 @@ theorem roundedLarge_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
   have hr := hP.2.2.2.2.2.1.active_block (r := (lo, d + 1)) List.mem_cons_self
   have hd : d + 1 ≤ n + 1 := by have := hr.2.1; omega
   have hsq := Nat.mul_le_mul hd hd
-  unfold roundedProcessLarge
+  unfold roundedProcessLargeWith
   refine hw.frame_seq_le rfl rfl hlD (by fp_sub [roundedWorklistFp]) ?_
   intro μ₁ hfr₁ hD₁
   exact roundedLargeRest_writes hS hM hu hu1 hL hNat hQ hC D hP hk hfind hcut hc he he0 hfr₁ hD₁
@@ -520,24 +529,24 @@ $k$) or the large branch; the core state of the next round is reached with error
 theorem roundedRange_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu : 0 ≤ u) (hu1 : u < 1)
     (hL : IsIndexLit Mch I) {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
-    (hC : IsCmp id I) {fails : Prop} {k F : ℕ} {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} (D : Impl O Q)
-    (hD : RoundedDecouplingContract fails k F ps ω ε D I)
-    {β : ℝ} (L : Impl O Q) (hLeaf : BackwardLeafContract β L I)
+    (hC : IsCmp id I) {fails : Prop} {k F T : ℕ} {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ}
+    (D : Impl O Q) (hD : RoundedDecouplingRoutineContract fails k F T ps ω ε D I)
+    {β N₀ : ℝ} (L : Impl O Q) (hLeaf : BackwardLeafRoutineContract β (min k (n + 1)) N₀ ps T L I)
     {tape : Tape ℝ} {μ : Mem ℝ} {j lo d : ℕ} {a t p st out w r f : ℕ × ℕ}
     {H₀ M A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {roots : Fin (n + 1) → ℂ}
-    {rest done : List (ℕ × ℕ)} {thr c e N₀ : ℝ}
+    {rest done : List (ℕ × ℕ)} {thr c e : ℝ}
     (hP : RoundedPopped H₀ e thr ps a t p st out w r f j M lo d rest done A roots μ)
     (hfind : (1 + u) ^ 2 * ω ^ 2 ≤ thr) (hcut : thr ≤ (1 - u) ^ 2 * c ^ 2) (hc : 0 ≤ c)
     (hβ : 0 ≤ β) (hε0 : 0 ≤ ε N₀) (he : c + ε N₀ + β ≤ e)
     (hN₀ : specNorm H₀ + 2 * (n + 1) * e ≤ N₀) (hj : j < 2 * (n + 1)) :
-    Writes .total I tape (roundedProcessRange D L).body
-      (Env.frame [n + 1, k, ps.length, F, lo, d] [a, t, p, st, out, w, r, f])
+    Writes .total I tape (roundedProcessRangeWith D L).body
+      (Env.frame [n + 1, k, ps.length, F, T, lo, d] [a, t, p, st, out, w, r, f])
       (roundedWorklistFp (n + 1) a st out w r f)
       (fun μ' => ∃ M', IsPerturbedUnitarySimilar M M' e ∧
         RoundedCore fails H₀ e a st out f (j + 1) M' μ') μ := by
   have hr := hP.2.2.2.2.2.1.active_block (r := (lo, d)) List.mem_cons_self
   have hlAW : μ.Live [a, w] := hP.1.live_of_subset (by simp)
-  unfold roundedProcessRange
+  unfold roundedProcessRangeWith
   have hd : d ≤ n + 1 := by have := hr.2.1; omega
   have hsq := Nat.mul_le_mul hd hd
   refine (hP.writes_copyToWork (tape := tape) hS).frame_seq_le rfl rfl hlAW
@@ -548,9 +557,11 @@ theorem roundedRange_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
   · refine (writes_ifPos (P := fun μ₂ => ∃ M', IsPerturbedUnitarySimilar M M' e ∧
       RoundedCore fails H₀ e a st out f (j + 1) M' μ₂) (n := k + 1 - d) rfl ?_).seq_le le_rfl ?_
     · rw [if_pos (by omega)]
-      have hl : μ₁.Live [w, (out.1, out.2 + 2 * lo)] := by
-        simpa [Mem.Live] using And.intro (hG₁.live w (by simp)) (hG₁.live out (by simp))
-      exact ((roundedLeaf_writes L hLeaf hP₁ hW₁ (by linarith)).in_frame rfl rfl hl).mono
+      have hl : μ₁.Live [w, p, (out.1, out.2 + 2 * lo)] := by
+        simpa [Mem.Live] using ⟨hG₁.live w (by simp), hG₁.live p (by simp),
+          hG₁.live out (by simp)⟩
+      exact ((roundedLeaf_writes L hLeaf hP₁ hW₁ (by linarith) (le_min hs hd)
+        (hP₁.specNorm_subBlock_le (by linarith) hN₀ hj)).in_frame rfl rfl hl).mono
         (by have := hr.2.1; fp_sub [roundedWorklistFp]) (fun _ _ hp => hp)
     · intro μ₂ _ hpost
       refine writes_ifPos (n := d - k) rfl ?_
@@ -641,16 +652,16 @@ round $j + 1$. -/
 theorem roundedWorklistRound_backwardStep {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : ℕ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu : 0 ≤ u) (hu1 : u < 1)
     (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
-    (hC : IsCmp id I) {fails : Prop} {k F : ℕ} {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} (D : Impl O Q)
-    (hD : RoundedDecouplingContract fails k F ps ω ε D I)
-    {β : ℝ} (L : Impl O Q) (hLeaf : BackwardLeafContract β L I)
+    (hC : IsCmp id I) {fails : Prop} {k F T : ℕ} {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ}
+    (D : Impl O Q) (hD : RoundedDecouplingRoutineContract fails k F T ps ω ε D I)
+    {β N₀ : ℝ} (L : Impl O Q) (hLeaf : BackwardLeafRoutineContract β (min k (n + 1)) N₀ ps T L I)
     {tape : Tape ℝ} {j : ℕ} {a t p st out w r f : ℕ × ℕ}
-    {H₀ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr c e N₀ : ℝ}
+    {H₀ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr c e : ℝ}
     (hfind : (1 + u) ^ 2 * ω ^ 2 ≤ thr) (hcut : thr ≤ (1 - u) ^ 2 * c ^ 2) (hc : 0 ≤ c)
     (hβ : 0 ≤ β) (hε0 : 0 ≤ ε N₀) (he : c + ε N₀ + β ≤ e)
     (hN₀ : specNorm H₀ + 2 * (n + 1) * e ≤ N₀) (hj : j < 2 * (n + 1)) :
-    BackwardStep .total I tape (roundedWorklistRound D L).body
-      (Env.frame [n + 1, k, ps.length, F] [a, t, p, st, out, w, r, f])
+    BackwardStep .total I tape (roundedWorklistRoundWith D L).body
+      (Env.frame [n + 1, k, ps.length, F, T] [a, t, p, st, out, w, r, f])
       (roundedWorklistFp (n + 1) a st out w r f)
       (fun ε A B => IsPerturbedUnitarySimilar A B ε)
       (fun M μ => RoundedWorklistState fails H₀ e thr ps a t p st out w r f j M μ ∧
@@ -663,7 +674,7 @@ theorem roundedWorklistRound_backwardStep {Mch : Machine ℝ} {I : Interp O Q �
     (fun μ' hfr ⟨M', hMM', hcore'⟩ =>
       ⟨M', hMM', RoundedWorklistState.of_core hG ht hp hfr le_rfl hcore'⟩)
   have hlSR : μ.Live [st, r] := hG.live_of_subset (by simp)
-  unfold roundedWorklistRound
+  unfold roundedWorklistRoundWith
   refine (hst.writes_rangePop hS hL hQ hNat hcount hpos).frame_seq_le rfl rfl hlSR
     (by fp_sub [roundedWorklistFp]) ?_
   rintro μ₁ - ⟨lo, d, rest, done, A, roots, hP₁, hLo, hSize⟩
@@ -680,19 +691,19 @@ the final state is reached from $\mathbf{H}$ with error $2(n+1)e$. -/
 theorem roundedWorklist_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : ℕ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu : 0 ≤ u) (hu1 : u < 1)
     (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
-    (hC : IsCmp id I) {fails : Prop} {k F : ℕ} {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} (D : Impl O Q)
-    (hD : RoundedDecouplingContract fails k F ps ω ε D I)
-    {β : ℝ} (L : Impl O Q) (hLeaf : BackwardLeafContract β L I)
+    (hC : IsCmp id I) {fails : Prop} {k F T : ℕ} {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ}
+    (D : Impl O Q) (hD : RoundedDecouplingRoutineContract fails k F T ps ω ε D I)
+    {β N₀ : ℝ} (L : Impl O Q) (hLeaf : BackwardLeafRoutineContract β (min k (n + 1)) N₀ ps T L I)
     {tape : Tape ℝ} {μ : Mem ℝ} {a t p st out w r f : ℕ × ℕ}
-    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr c N₀ : ℝ}
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr c : ℝ}
     (hG : RoundedGeometry (n + 1) ps.length a t p st out w r f μ)
     (hHess : IsUpperHessenberg H) (hA : HoldsMatrix a H μ.store)
     (ht : μ.store.get t.1 t.2 = some thr) (hp : μ.store.readBlock p.1 p.2 ps.length = some ps)
     (hfind : (1 + u) ^ 2 * ω ^ 2 ≤ thr) (hcut : thr ≤ (1 - u) ^ 2 * c ^ 2) (hc : 0 ≤ c)
     (hβ : 0 ≤ β) (hε0 : 0 ≤ ε N₀)
     (hN₀ : specNorm H + 2 * (n + 1) * (c + ε N₀ + β) ≤ N₀) :
-    Writes .total I tape (roundedWorklist D L).body
-      (Env.frame [n + 1, k, ps.length, F] [a, t, p, st, out, w, r, f])
+    Writes .total I tape (roundedWorklistWith D L).body
+      (Env.frame [n + 1, k, ps.length, F, T] [a, t, p, st, out, w, r, f])
       (roundedWorklistFp (n + 1) a st out w r f)
       (fun μ' => ∃ M', IsPerturbedUnitarySimilar H M' (2 * (n + 1) * (c + ε N₀ + β)) ∧
         RoundedFinal fails out f M' μ') μ := by
@@ -704,7 +715,7 @@ theorem roundedWorklist_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
   have hSA : Fp.Disj (Store.inBlock st.1 st.2 (1 + 2 * (n + 1)))
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) := by simpa using hG.disj 3 0 (by simp)
   have hpar := hG.disj_params
-  unfold roundedWorklist
+  unfold roundedWorklistWith
   refine (writes_indexLit hL rfl rfl (by have := hG.room.2.2.2.2.2.2.2.1; dsimp only; omega)).seq_le
     (by fp_sub [roundedWorklistFp]) ?_
   rintro μ₁ hfr₁ ⟨-, hF₁⟩
@@ -728,10 +739,10 @@ theorem roundedWorklist_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
   have hR := isBackwardErrorRel_isPerturbedUnitarySimilar (𝕜 := ℂ) (n := Fin (n + 1))
   have hexit : ∀ i, ∀ M μ', RoundedWorklistState fails H (c + ε N₀ + β) thr ps a t p st out w r f
       i M μ' → μ'.store.get st.1 st.2 = some 0 →
-      Writes .total I tape (Stmt.ite (Has.inj CmpTst.isPos) [] [{ buf := 3, off := IExp.var 7 }]
-        (Stmt.frame [] [{ buf := 3, off := IExp.var 7 }, { buf := 7, off := IExp.var 11 }]
+      Writes .total I tape (Stmt.ite (Has.inj CmpTst.isPos) [] [{ buf := 3, off := IExp.var 8 }]
+        (Stmt.frame [] [{ buf := 3, off := IExp.var 8 }, { buf := 7, off := IExp.var 12 }]
           (roundedAbort (O := O) (Q := Q)).body) Stmt.skip)
-        ((Env.frame [n + 1, k, ps.length, F] [a, t, p, st, out, w, r, f]).pushIdx i) ⊥
+        ((Env.frame [n + 1, k, ps.length, F, T] [a, t, p, st, out, w, r, f]).pushIdx i) ⊥
         (fun μ'' => ∃ M', IsPerturbedUnitarySimilar M M' 0 ∧ RoundedFinal fails out f M' μ'')
         μ' := by
     intro i M μ' hS' h0
@@ -776,6 +787,68 @@ theorem roundedWorklist_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
     push_cast
     ring
 
+/-- **The rounded worklist with routines, backward error** ([BanksGarzaVargasSrivastava2025,
+Theorem 6.1]; [BanksGarzaVargasSrivastava2022, Theorem 6.3], backward half):
+`NLAlib.ShiftedQR.solveRounded_backward` for `NLAlib.ShiftedQR.solveRoundedWith`, with a decoupling
+routine meeting `NLAlib.ShiftedQR.RoundedDecouplingRoutineContract` and a leaf routine with
+backward error $\beta \ge 0$ on the blocks of order at most $\min(k, n + 1)$ and norm at most $N_0$
+(`NLAlib.ShiftedQR.BackwardLeafRoutineContract`). On a machine with the standard model at
+$0 \le \boldsymbol{u} < 1$ and exact natural literals up to $n + 1$, for $\mathbf{H}$ upper
+Hessenberg of order $n + 1$, a threshold $t$ with
+$(1 + \boldsymbol{u})^2\omega^2 \le t \le (1 - \boldsymbol{u})^2c^2$, $c \ge 0$,
+$\varepsilon(N_0) \ge 0$ and $\|\mathbf{H}\|_2 + 2(n + 1)(c + \varepsilon(N_0) + \beta) \le N_0$,
+the run is total, writes only the matrix, the output and the failure word, and either fails
+(only when `fails` holds) or stores all eigenvalues of $\mathbf{H} + \mathbf{E}$ for some
+$\|\mathbf{E}\|_2 \le 2(n + 1)(c + \varepsilon(N_0) + \beta)$ with the failure word $0$. -/
+theorem solveRoundedWith_backward {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : ℕ}
+    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu : 0 ≤ u) (hu1 : u < 1)
+    (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
+    (hC : IsCmp id I) {fails : Prop} {k F T : ℕ} {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ}
+    (D : Impl O Q) (hD : RoundedDecouplingRoutineContract fails k F T ps ω ε D I)
+    {β N₀ : ℝ} (L : Impl O Q) (hLeaf : BackwardLeafRoutineContract β (min k (n + 1)) N₀ ps T L I)
+    {tape : Tape ℝ} {μ : Mem ℝ} {a t p out f : ℕ × ℕ}
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr c : ℝ}
+    (hl : μ.Live [a, t, p, out, f])
+    (hr : μ.Room [a, t, p, out, f] [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * (n + 1), 1])
+    (ha : Fp.Apart [a, t, p, out, f] [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * (n + 1), 1])
+    (hHess : IsUpperHessenberg H) (hA : HoldsMatrix a H μ.store)
+    (ht : μ.store.get t.1 t.2 = some thr) (hp : μ.store.readBlock p.1 p.2 ps.length = some ps)
+    (hfind : (1 + u) ^ 2 * ω ^ 2 ≤ thr) (hcut : thr ≤ (1 - u) ^ 2 * c ^ 2) (hc : 0 ≤ c)
+    (hβ : 0 ≤ β) (hε0 : 0 ≤ ε N₀)
+    (hN₀ : specNorm H + 2 * (n + 1) * (c + ε N₀ + β) ≤ N₀) :
+    Writes .total I tape (solveRoundedWith D L).body
+      (Env.frame [n + 1, k, ps.length, F, T] [a, t, p, out, f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock out.1 out.2 (2 * (n + 1)) ⊔ Store.inBlock f.1 f.2 1)
+      (fun μ' => (fails ∧ μ'.store.get f.1 f.2 = some 1) ∨
+        (μ'.store.get f.1 f.2 = some 0 ∧
+          ∃ (roots : Fin (n + 1) → ℂ) (E : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
+            HoldsMatrix out (Matrix.of fun i (_ : Fin 1) => roots i) μ'.store ∧
+            specNorm E ≤ 2 * (n + 1) * (c + ε N₀ + β) ∧
+            (H + E).charpoly.roots = (List.ofFn roots : Multiset ℂ))) μ := by
+  unfold solveRoundedWith
+  refine writes_allocs_preserving_post
+    (lens := [.const 1 + .const 2 * .var 0, .const 2 * (.var 0 * .var 0), .const 5])
+    (ns := [1 + 2 * (n + 1), 2 * ((n + 1) * (n + 1)), 5]) rfl ?_ ?_
+  · intro s s' pos hBelow h
+    rcases h with ⟨hfa, hf⟩ | ⟨hf, roots, E, hOut, hE, hR⟩
+    · exact Or.inl ⟨hfa, hBelow.get_of (hl f (by simp)) hf⟩
+    · exact Or.inr ⟨hBelow.get_of (hl f (by simp)) hf, roots, E,
+        hOut.of_below hBelow (hl out (by simp)), hE, hR⟩
+  · intro s hs hlens hBelow
+    have hG := roundedGeometry_allocated (np := ps.length) hl hr ha hs hlens hBelow
+    have hA' := hA.of_below hBelow (hl a (by simp))
+    have ht' := hBelow.get_of (hl t (by simp)) ht
+    have hp' := (hBelow.readBlock (hl p (by simp)) p.2 ps.length).trans hp
+    have hw := roundedWorklist_writes hS hM hu hu1 hL hNat hQ hC D hD L hLeaf (tape := tape) hG
+      hHess hA' ht' hp' hfind hcut hc hβ hε0 hN₀
+    refine (hw.in_frame rfl rfl hG.live).mono (by fp_sub [roundedWorklistFp]) ?_
+    rintro μ' - ⟨M', hHM, hfin⟩
+    rcases hfin with h1 | ⟨hf, done, A, roots, hInv, hOut⟩
+    · exact Or.inl h1
+    · obtain ⟨E, hE, hR⟩ := (hInv.of_isPerturbedUnitarySimilar hHM).exists_roots_eq
+      exact Or.inr ⟨hf, roots, E, hOut, by simpa using hE, hR⟩
+
 /-- **Backward error of the rounded deflation worklist** ([BanksGarzaVargasSrivastava2022,
 Theorem 6.3], backward half, with `Deflate` scanning the bottom $k$ subdiagonal entries): on a
 machine with the standard model
@@ -819,27 +892,10 @@ theorem solveRounded_backward {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
             specNorm E ≤ 2 * (n + 1) * (c + ε N₀ + β) ∧
             (H + E).charpoly.roots = (List.ofFn roots : Multiset ℂ))) μ := by
   unfold solveRounded
-  refine writes_allocs_preserving_post
-    (lens := [.const 1 + .const 2 * .var 0, .const 2 * (.var 0 * .var 0), .const 5])
-    (ns := [1 + 2 * (n + 1), 2 * ((n + 1) * (n + 1)), 5]) rfl ?_ ?_
-  · intro s s' pos hBelow h
-    rcases h with ⟨hfa, hf⟩ | ⟨hf, roots, E, hOut, hE, hR⟩
-    · exact Or.inl ⟨hfa, hBelow.get_of (hl f (by simp)) hf⟩
-    · exact Or.inr ⟨hBelow.get_of (hl f (by simp)) hf, roots, E,
-        hOut.of_below hBelow (hl out (by simp)), hE, hR⟩
-  · intro s hs hlens hBelow
-    have hG := roundedGeometry_allocated (np := ps.length) hl hr ha hs hlens hBelow
-    have hA' := hA.of_below hBelow (hl a (by simp))
-    have ht' := hBelow.get_of (hl t (by simp)) ht
-    have hp' := (hBelow.readBlock (hl p (by simp)) p.2 ps.length).trans hp
-    have hw := roundedWorklist_writes hS hM hu hu1 hL hNat hQ hC D hD L hLeaf (tape := tape) hG
-      hHess hA' ht' hp' hfind hcut hc hβ hε0 hN₀
-    refine (hw.in_frame rfl rfl hG.live).mono (by fp_sub [roundedWorklistFp]) ?_
-    rintro μ' - ⟨M', hHM, hfin⟩
-    rcases hfin with h1 | ⟨hf, done, A, roots, hInv, hOut⟩
-    · exact Or.inl h1
-    · obtain ⟨E, hE, hR⟩ := (hInv.of_isPerturbedUnitarySimilar hHM).exists_roots_eq
-      exact Or.inr ⟨hf, roots, E, hOut, by simpa using hE, hR⟩
+  exact (solveRoundedWith_backward hS hM hu hu1 hL hNat hQ hC (liftDecoupler D)
+    (hD.roundedDecouplingRoutineContract 0) (liftLeaf L)
+    (hLeaf.backwardLeafRoutineContract _ N₀ ps 0) hl hr ha hHess hA ht hp hfind hcut hc hβ hε0
+    hN₀).in_frame (by simp) (by simp [Operand.evalList, Operand.eval]) hl
 
 end Theorems
 

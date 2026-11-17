@@ -88,12 +88,7 @@ closed set. -/
 theorem isClosed_setOf_exists_specNorm_le_isEigenvalueListing (β : ℝ) :
     IsClosed {p : Matrix n n ℂ × (ι → ℂ) |
       ∃ F : Matrix n n ℂ, specNorm F ≤ β ∧ IsEigenvalueListing (p.1 + F) p.2} := by
-  have hK : IsCompact {F : Matrix n n ℂ | specNorm F ≤ β} := by
-    have hbox := isCompact_univ_pi fun _ : n => isCompact_univ_pi fun _ : n =>
-      isCompact_closedBall (0 : ℂ) β
-    refine hbox.of_isClosed_subset (isClosed_le continuous_specNorm continuous_const)
-      fun (F : Matrix n n ℂ) hF i _ j _ => mem_closedBall_zero_iff.mpr ?_
-    exact (norm_apply_le_specNorm F i j).trans hF
+  have hK : IsCompact {F : Matrix n n ℂ | specNorm F ≤ β} := isCompact_setOf_specNorm_le β
   have hC : IsClosed {q : (Matrix n n ℂ × (ι → ℂ)) × Matrix n n ℂ |
       ∀ t : ℂ, (Matrix.scalar n t - (q.1.1 + q.2)).det = ∏ i, (t - q.1.2 i)} := by
     rw [Set.ofPred_forall]
@@ -116,5 +111,16 @@ theorem isClosed_setOf_exists_specNorm_le_isEigenvalueListing (β : ℝ) :
     refine Polynomial.funext fun t => ?_
     rw [Matrix.eval_charpoly, Polynomial.eval_prod, h t]
     simp
+
+/-- Eigenvalue listings form a closed relation: the pairs $(\mathbf{A}, \mu)$ of a complex square
+matrix and a family listing its eigenvalues, with multiplicity, form a closed set. -/
+theorem isClosed_setOf_isEigenvalueListing :
+    IsClosed {p : Matrix n n ℂ × (ι → ℂ) | IsEigenvalueListing p.1 p.2} := by
+  convert isClosed_setOf_exists_specNorm_le_isEigenvalueListing (n := n) (ι := ι) 0 using 1
+  ext p
+  simp only [Set.mem_ofPred_eq]
+  refine ⟨fun h => ⟨0, by rw [specNorm_zero], by rwa [add_zero]⟩, ?_⟩
+  rintro ⟨F, hF, h⟩
+  rwa [specNorm_eq_zero_iff.mp (le_antisymm hF (specNorm_nonneg F)), add_zero] at h
 
 end NLAlib

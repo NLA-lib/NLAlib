@@ -41,6 +41,13 @@ $32n^{3/2}\boldsymbol{u}$). [Higham2002, Lemmas 19.7–19.8].
   order.
 * `NLAlib.IsRoundedRowRotation`, `NLAlib.IsRoundedColRotation`: a rotation computed pairwise
   within a relative error.
+## Main results
+
+* `NLAlib.Ops.StdModel.norm_roundedGivensCoeffs_sub_le`,
+  `NLAlib.Ops.StdModel.norm_linearWords_sub_le`,
+  `NLAlib.Ops.StdModel.norm_linearWords_rotation_sub_le`: the coefficients and the outputs.
+* `NLAlib.IsRoundedRowRotation.specNorm_sub_le`, `NLAlib.IsRoundedColRotation.specNorm_sub_le`:
+  the spectral-norm error of a rotation of two rows (columns).
 -/
 
 @[expose] public section

@@ -158,4 +158,43 @@ theorem squareGrid_mul_eq_map (c : ℂ) (t R ε : ℝ) :
   push_cast
   ring
 
+/-- A finite net for a complex disk: for $R>0$ and $0<r\le R$, some finite set covers the
+closed disk of radius $R$ around $c$ at distance $r/2$ and has cardinality times $r^2$ at most
+$36R^2$. The square-grid estimate underlying
+[BanksGarzaVargasSrivastava2021, proof of Lemma 4.7]. -/
+theorem exists_finset_card_mul_sq_le_and_forall_norm_sub_le (c : ℂ) {R r : ℝ}
+    (hR : 0 < R) (hr : 0 < r) (hrR : r ≤ R) :
+    ∃ Z : Finset ℂ, (Z.card : ℝ) * r ^ 2 ≤ 36 * R ^ 2 ∧
+      ∀ z : ℂ, ‖z - c‖ ≤ R → ∃ y ∈ Z, ‖z - y‖ ≤ r / 2 := by
+  classical
+  let ε := r / (2 * R)
+  have hε : 0 < ε := by dsimp [ε]; positivity
+  have hε2 : ε ≤ 1 / 2 := by
+    dsimp [ε]
+    rw [div_le_iff₀ (by positivity : 0 < 2 * R)]
+    linarith
+  let Z := (squareGrid c R ε).toFinset
+  refine ⟨Z, ?_, ?_⟩
+  · have hc : (Z.card : ℝ) ≤ (squareGrid c R ε).length := by
+      exact_mod_cast (List.toFinset_card_le (squareGrid c R ε))
+    have hlen := length_squareGrid_mul_sq_le c R hε
+    have hsqrt : √2 ≤ (2 : ℝ) := by
+      nlinarith [Real.sq_sqrt (show (0 : ℝ) ≤ 2 by norm_num), Real.sqrt_nonneg 2]
+    have h9 : (Z.card : ℝ) * ε ^ 2 ≤ 9 := by
+      have hh : (√2 + 2 * ε) ^ 2 ≤ 9 := by
+        nlinarith [Real.sqrt_nonneg 2]
+      exact ((mul_le_mul_of_nonneg_right hc (sq_nonneg ε)).trans hlen).trans hh
+    calc
+      (Z.card : ℝ) * r ^ 2 = ((Z.card : ℝ) * ε ^ 2) * (4 * R ^ 2) := by
+        dsimp [ε]
+        field_simp
+        ring
+      _ ≤ 9 * (4 * R ^ 2) := mul_le_mul_of_nonneg_right h9 (by positivity)
+      _ = _ := by ring
+  · intro z hz
+    obtain ⟨y, hy, hzy⟩ := exists_mem_squareGrid_norm_sub_le hR.le hε hz
+    refine ⟨y, List.mem_toFinset.mpr hy, hzy.trans_eq ?_⟩
+    dsimp [ε]
+    field_simp
+
 end NLAlib

@@ -567,4 +567,27 @@ theorem exists_perm_forall₂_ritzValues {k : ℕ} {H : Matrix (Fin (n + 1)) (Fi
   obtain ⟨ss, hss, hssp⟩ := List.perm_comp_forall₂ hperm hpair
   exact ⟨ss, hssp, hss.flip⟩
 
+/-- An eigenvalue of the trailing $k \times k$ block, $k \le n + 1$, is at most
+$\|\mathbf{H}\|_2$. -/
+theorem IsEigenvalueListing.norm_le_specNorm_of_trailingBlock {k : ℕ}
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {lam : Fin k → ℂ}
+    (hlam : IsEigenvalueListing (trailingBlock k H) lam) (hkn : k ≤ n + 1) (j : Fin k) :
+    ‖lam j‖ ≤ specNorm H := by
+  have hroots := hlam.charpoly_roots_eq_ofFn
+  refine norm_le_specNorm_of_mem_ritzValues hkn ?_
+  rw [ritzValues, Multiset.mem_toList, hroots, Multiset.mem_coe]
+  exact List.mem_ofFn.mpr ⟨j, rfl⟩
+
+/-- The trailing $k \times k$ block, $k \le n + 1$, has spectral norm at most
+$\|\mathbf{H}\|_2$. -/
+theorem specNorm_trailingBlock_le {k : ℕ} (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+    (hkn : k ≤ n + 1) : specNorm (trailingBlock k H) ≤ specNorm H := by
+  have hinj : Function.Injective fun i : Fin k =>
+      (⟨min (n + 1 - k + i) n, Nat.lt_succ_of_le (min_le_right _ _)⟩ : Fin (n + 1)) := by
+    intro i j h
+    simp only [Fin.mk.injEq] at h
+    ext
+    omega
+  exact specNorm_submatrix_le H hinj hinj
+
 end NLAlib

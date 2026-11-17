@@ -1,0 +1,156 @@
+{
+  "date": "2026-11-17",
+  "note": "SMALLEIG. The merged rounded programs of the shifted QR algorithm take the small-eigenvalue routine (and the decoupling and leaf routines) as parameters: the programs and theorems with a fixed routine became the With forms, of which the old names were instances; the entries with \"removed\": true name the With form that now carries them. The merged wrappers regularize, shIteration, roundedDecouple, roundedDecoupleLoop, solveRounded and roundedShQR keep their names and theorems (same instructions, with extra frames and operands; their values are in statementChanged). WorkMono takes a list of exponents (fields e0-e3 become e), and stmtWorkMono narrows the bound of a slot under an ifPos guard (loopSlots); WorkMono.eval_le_of_le keeps its content (raising the exponents raises the value) with Forall₂ on the exponent lists. The static count of the merged certificate changed with the wrapper frames: shqrWork's constant is 196218 (was 196017), so shqrProgram_lift_le, shqrProgram_work_le, shqrSpecification, roundedShQRAlgorithm and its accepts bound, textually unchanged, bound the work by the new constant. The leaf termination contract TerminatingLeaf is unchanged; the worklist termination lemmas roundedRange_terminates, roundedWorklistRound_terminates and roundedWorklist_terminates take a leaf routine that keeps its output stored under the same condition rd as the output words (TerminatingLeafRoutineIf rd), so that solveRounded_terminates keeps its statement and a leaf that keeps its output gives the stored-output form. Strengthenings: clearBelowSubdiagonal_writes drops its room hypothesis; stepComptau_terminates and RoundedPopped.leaf_operands are stronger. Neutral generalizations: norm_le_specNorm_of_mul_eq_mul_diagonal and ae_eval_ne_zero_of_ne_zero over RCLike. Retargeted to the bounded routine contracts (old forms recoverable through IsRandomSmallEig.randomSmallEigContractAt): shIteration_regularize_pwrites, roundedDecoupleIteration_pwrites, roundedLeaf_pwrites, roundedLeaf_writes.",
+  "renames": [
+    {
+      "old": "NLAlib.ShiftedQR.regularizeWithScratch",
+      "new": "NLAlib.ShiftedQR.regularizeWithScratchWith",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.regularizeWithScratch_pwrites",
+      "new": "NLAlib.ShiftedQR.regularizeWithScratchWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.regularizeWithScratch_terminates",
+      "new": "NLAlib.ShiftedQR.regularizeWithScratchWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.shIterationWithScratch",
+      "new": "NLAlib.ShiftedQR.shIterationWithScratchWith",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.shIterationWithScratch_pwrites",
+      "new": "NLAlib.ShiftedQR.shIterationWithScratchWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedProcessLarge",
+      "new": "NLAlib.ShiftedQR.roundedProcessLargeWith",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedProcessRange",
+      "new": "NLAlib.ShiftedQR.roundedProcessRangeWith",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedWorklistRound",
+      "new": "NLAlib.ShiftedQR.roundedWorklistRoundWith",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedWorklist",
+      "new": "NLAlib.ShiftedQR.roundedWorklistWith",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.Ops.WorkMono.e0",
+      "new": "NLAlib.Ops.WorkMono.e",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.Ops.WorkMono.e1",
+      "new": "NLAlib.Ops.WorkMono.e",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.Ops.WorkMono.e2",
+      "new": "NLAlib.Ops.WorkMono.e",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.Ops.WorkMono.e3",
+      "new": "NLAlib.Ops.WorkMono.e",
+      "rule": "N12",
+      "removed": true
+    }
+  ],
+  "statementChanged": [
+    "NLAlib.Ops.IExp.evalList_le_workMono",
+    "NLAlib.Ops.IExp.eval_le_workMono",
+    "NLAlib.Ops.Program.exec_lift_le_add_selected",
+    "NLAlib.Ops.SlotsLe",
+    "NLAlib.Ops.WorkMono",
+    "NLAlib.Ops.WorkMono.add",
+    "NLAlib.Ops.WorkMono.add_eval_le_eval_add",
+    "NLAlib.Ops.WorkMono.const",
+    "NLAlib.Ops.WorkMono.eval",
+    "NLAlib.Ops.WorkMono.eval_const",
+    "NLAlib.Ops.WorkMono.eval_le_of_le",
+    "NLAlib.Ops.WorkMono.eval_mul",
+    "NLAlib.Ops.WorkMono.mul",
+    "NLAlib.Ops.WorkMonoDominates",
+    "NLAlib.Ops.card_boxLists_le_eval",
+    "NLAlib.Ops.evalList_map_le_boxCount",
+    "NLAlib.Ops.getD_eval_le_workMono",
+    "NLAlib.Ops.size_stmtCost_le_stmtWorkMono",
+    "NLAlib.Ops.slotsLe_append",
+    "NLAlib.Ops.stmtWorkMono",
+    "NLAlib.Ops.workMonoDominates",
+    "NLAlib.Ops.workMonoDominates_whileFuel",
+    "NLAlib.ShiftedQR.DecoupleLoopCtx.iteration_words",
+    "NLAlib.ShiftedQR.RoundedPopped.leaf_operands",
+    "NLAlib.ShiftedQR.RoundedStoredCore",
+    "NLAlib.ShiftedQR.RoundedStoredState",
+    "NLAlib.ShiftedQR.RoundedStoredState.of_core",
+    "NLAlib.ShiftedQR.clearBelowSubdiagonal_writes",
+    "NLAlib.ShiftedQR.regularize",
+    "NLAlib.ShiftedQR.roundedAbort_writes_core",
+    "NLAlib.ShiftedQR.roundedDecouple",
+    "NLAlib.ShiftedQR.roundedDecoupleIteration_pwrites",
+    "NLAlib.ShiftedQR.roundedDecoupleLoop",
+    "NLAlib.ShiftedQR.roundedDecoupleLoop_pwrites",
+    "NLAlib.ShiftedQR.roundedDecouple_pwrites",
+    "NLAlib.ShiftedQR.roundedDecouple_pwrites_of_loop",
+    "NLAlib.ShiftedQR.roundedLargeRest",
+    "NLAlib.ShiftedQR.roundedLargeRest_terminates",
+    "NLAlib.ShiftedQR.roundedLargeRest_writes",
+    "NLAlib.ShiftedQR.roundedLarge_pwrites",
+    "NLAlib.ShiftedQR.roundedLarge_terminates",
+    "NLAlib.ShiftedQR.roundedLarge_writes",
+    "NLAlib.ShiftedQR.roundedLeaf_pwrites",
+    "NLAlib.ShiftedQR.roundedLeaf_writes",
+    "NLAlib.ShiftedQR.roundedRange_pwrites",
+    "NLAlib.ShiftedQR.roundedRange_terminates",
+    "NLAlib.ShiftedQR.roundedRange_writes",
+    "NLAlib.ShiftedQR.roundedShQR",
+    "NLAlib.ShiftedQR.roundedShQRAlgorithm",
+    "NLAlib.ShiftedQR.roundedShQR_algorithm_measureReal_not_accepts_le",
+    "NLAlib.ShiftedQR.roundedWorklistExit_terminates",
+    "NLAlib.ShiftedQR.roundedWorklistRound_backwardStep",
+    "NLAlib.ShiftedQR.roundedWorklistRound_pwrites",
+    "NLAlib.ShiftedQR.roundedWorklistRound_terminates",
+    "NLAlib.ShiftedQR.roundedWorklist_pwrites",
+    "NLAlib.ShiftedQR.roundedWorklist_terminates",
+    "NLAlib.ShiftedQR.roundedWorklist_writes",
+    "NLAlib.ShiftedQR.shIteration",
+    "NLAlib.ShiftedQR.shIteration_regularize_pwrites",
+    "NLAlib.ShiftedQR.shqrProgram",
+    "NLAlib.ShiftedQR.shqrProgram_lift_le",
+    "NLAlib.ShiftedQR.shqrProgram_work_le",
+    "NLAlib.ShiftedQR.shqrSlots",
+    "NLAlib.ShiftedQR.shqrSpecification",
+    "NLAlib.ShiftedQR.shqrWork",
+    "NLAlib.ShiftedQR.solveRounded",
+    "NLAlib.ShiftedQR.stepComptau_terminates",
+    "NLAlib.ShiftedQR.stmtWorkMono_shqrProgram",
+    "NLAlib.ae_eval_ne_zero_of_ne_zero",
+    "NLAlib.norm_le_specNorm_of_mul_eq_mul_diagonal"
+  ]
+}

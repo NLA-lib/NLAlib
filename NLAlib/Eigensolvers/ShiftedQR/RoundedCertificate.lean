@@ -346,16 +346,16 @@ def shqrKernelWeight (kernel : EigenvalueKernelOp → List ℕ → ℕ) :
 
 /-- The slot bounds of the program's initial indices: the four sizes, then five zero offsets. -/
 def shqrSlots : List WorkMono :=
-  [⟨1, 1, 0, 0, 0⟩, ⟨1, 0, 1, 0, 0⟩, ⟨1, 0, 0, 1, 0⟩, ⟨1, 0, 0, 0, 1⟩] ++
+  [⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 0, 0, 1]⟩] ++
     List.replicate 5 (WorkMono.const 0)
 
 /-- The single-base degrees of the program's initial indices. -/
 def shqrDegrees : List ℕ := List.replicate 4 1 ++ List.replicate 5 0
 
 /-- The monomial bound of the instructions of the instrumented program is
-$196017\,b_0^3 b_1^3 b_2 b_3$. -/
+$196218\,b_0^3 b_1^3 b_2 b_3$. -/
 theorem stmtWorkMono_shqrProgram :
-    stmtWorkMono shqrProgram.body.instrument shqrSlots = ⟨196017, 3, 3, 1, 1⟩ := by
+    stmtWorkMono shqrProgram.body.instrument shqrSlots = ⟨196218, [3, 3, 1, 1]⟩ := by
   kernel_rfl
 
 /-- The selected-call tree of the kernel calls has coefficient $8$. -/
@@ -383,13 +383,13 @@ def shqrBase (d : Fin 4 → ℕ) : ℕ := d 0 + d 1 + d 2 + d 3 + 2
 
 /-- **The work (and span) polynomial** of the rounded shifted QR algorithm at the sizes
 $(n, k, n_p, F)$ = `d` and the kernel weight `kernel`:
-$$196017\,(n + 1)^3(k + 1)^3(n_p + 1)(F + 1) + 8\,b^4\,\overline{w},$$
+$$196218\,(n + 1)^3(k + 1)^3(n_p + 1)(F + 1) + 8\,b^4\,\overline{w},$$
 with $b = n + k + n_p + F + 2$ and $\overline{w}$ the largest kernel weight
 (`NLAlib.ShiftedQR.spectralWorkEnvelope`) over the call dimensions of at most one entry of at
 most $b^2$. The first term bounds the instructions (each of unit weight), the second the number
 $8b^4$ of kernel calls times their largest weight. -/
 def shqrWork (kernel : EigenvalueKernelOp → List ℕ → ℕ) (d : Fin 4 → ℕ) : ℕ :=
-  196017 * (d 0 + 1) ^ 3 * (d 1 + 1) ^ 3 * (d 2 + 1) * (d 3 + 1) +
+  196218 * (d 0 + 1) ^ 3 * (d 1 + 1) ^ 3 * (d 2 + 1) * (d 3 + 1) +
     8 * shqrBase d ^ 4 * spectralWorkEnvelope kernel 1 (shqrBase d ^ 2)
 
 /-- The weighted count of every successful counted run of the program, under weights of at most
@@ -402,7 +402,7 @@ theorem shqrProgram_lift_le {K : Type} (R : ResourceModel ShQROp Tst) {I : Inter
     {f : (ShQROp ⊕ Bookkeeping) ⊕ Tst → List ℕ → ℕ}
     (hf : ∀ k ds, f k ds ≤ 1 + Sum.elim (shqrKernelWeight kernel) (fun _ _ => 0) k ds) :
     Count.lift f st.cost ≤ shqrWork kernel d := by
-  have hσ : SlotsLe (d 0 + 1) (d 1 + 1) (d 2 + 1) (d 3 + 1)
+  have hσ : SlotsLe [d 0 + 1, d 1 + 1, d 2 + 1, d 3 + 1]
       (Program.environment (b := 5) d).idx shqrSlots := by
     change List.Forall₂ _ [d 0, d 1, d 2, d 3, 0, 0, 0, 0, 0] _
     simp [shqrSlots, WorkMono.eval, WorkMono.const]
@@ -415,7 +415,7 @@ theorem shqrProgram_lift_le {K : Type} (R : ResourceModel ShQROp Tst) {I : Inter
   have h := Program.exec_lift_le_add_selected shqrProgram R hr shqrKernelCall hf
     (by rintro (o | o) ds h <;> first | rfl | (rcases o with o | o | o | o <;> first | rfl |
       simp [shqrKernelCall] at h))
-    (by omega) hσ (E := spectralWorkEnvelope kernel 1 (shqrBase d ^ 2))
+    (by simp) hσ (E := spectralWorkEnvelope kernel 1 (shqrBase d ^ 2))
     (by dsimp [shqrBase]; omega) hi ?_
   · rw [stmtWorkMono_shqrProgram, workCoefficient_shqrKernels, workDegreeAt_shqrKernels] at h
     simpa [WorkMono.eval, shqrWork, mul_assoc] using h

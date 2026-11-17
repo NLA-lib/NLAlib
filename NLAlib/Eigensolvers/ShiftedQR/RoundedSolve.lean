@@ -42,6 +42,9 @@ relation): a round is exact (a failure), a leaf ($\beta$), or a decoupling call 
 * `NLAlib.ShiftedQR.RoundedDecouplingContract`: the decoupler's contract with a failure word.
 * `NLAlib.ShiftedQR.BackwardLeafContract`: a leaf routine with backward error $\beta$.
 * `NLAlib.ShiftedQR.bottomScan`, `NLAlib.ShiftedQR.solveRounded`: the programs.
+* `NLAlib.ShiftedQR.solveRoundedWith`, `NLAlib.ShiftedQR.liftLeaf`,
+  `NLAlib.ShiftedQR.liftDecoupler`: the worklist with routines that read parameter words and a cap
+  dimension [BanksGarzaVargasSrivastava2025].
 * `NLAlib.ShiftedQR.RoundedWorklistState`: the state between two rounds.
 
 ## Main results
@@ -108,6 +111,88 @@ def BackwardLeafContract (β : ℝ) (L : Impl O Q) (I : Interp O Q ℝ) : Prop :
         IsEigenvalueListing (B + F) roots ∧
         HoldsMatrix o (Matrix.of fun i (_ : Fin 1) => roots i) μ'.store) μ
 
+/-! ### Routines with parameter words and a cap dimension -/
+
+/-- A leaf routine `[d] (Bk) → (Ev)` as a routine with parameter words and a cap dimension,
+`[d, np, T] (Bk, P) → (Ev)`: the words and the cap are ignored. -/
+def liftLeaf (L : Impl O Q) : Impl O Q := opsImpl% [d, np, T] (Bk, P) → (Ev) {
+  run L.body [d] (Bk, Ev)
+}
+
+/-- A decoupler `[N, k, np, F] (W, P) → (W, Fl)` as a decoupler with a cap dimension,
+`[N, k, np, F, T] (W, P) → (W, Fl)`: the cap is ignored. -/
+def liftDecoupler (D : Impl O Q) : Impl O Q := opsImpl% [N, k, np, F, T] (W, P) → (W, Fl) {
+  run D.body [N, k, np, F] (W, P, W, Fl)
+}
+
+/-- **The contract of a rounded decoupling routine** with the cap dimension `T`:
+`NLAlib.ShiftedQR.RoundedDecouplingContract` for a decoupler with the interface
+`[n, k, np, F, T] (W, P) → (W, Fl)`. From an upper Hessenberg matrix of order $n + 1 \ge k + 1$
+stored in place, the run is total, writes only the matrix and the flag, and either sets the flag
+to $1$ (allowed only when `fails` holds) or sets it to $0$ and stores an upper Hessenberg perturbed
+unitary similarity with backward error $\varepsilon(N)$ having one of its bottom $k$ subdiagonal
+entries of modulus at most $\omega$. -/
+def RoundedDecouplingRoutineContract (fails : Prop) (k F T : ℕ) (ps : List ℝ) (ω : ℝ)
+    (ε : ℝ → ℝ) (D : Impl O Q) (I : Interp O Q ℝ) : Prop :=
+  ∀ {n : ℕ} {N : ℝ} {w q f : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ}
+    (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
+    k ≤ n → IsUpperHessenberg H → specNorm H ≤ N → HoldsMatrix w H μ.store →
+    μ.store.readBlock q.1 q.2 ps.length = some ps →
+    μ.Live [w, q, w, f] → w.2 + 2 * ((n + 1) * (n + 1)) ≤ μ.store.len w.1 →
+    f.2 + 1 ≤ μ.store.len f.1 →
+    Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock f.1 f.2 1) →
+    Fp.Disj (Store.inBlock q.1 q.2 ps.length)
+      (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1) →
+    Writes .total I tape D.body (Env.frame [n + 1, k, ps.length, F, T] [w, q, w, f])
+      (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
+      (fun μ' => (fails ∧ μ'.store.get f.1 f.2 = some 1) ∨
+        (μ'.store.get f.1 f.2 = some 0 ∧
+          ∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, IsPerturbedUnitarySimilar H H' (ε N) ∧
+            IsUpperHessenberg H' ∧ (∃ i : Fin n, n ≤ (i : ℕ) + k ∧ ‖H' i.succ i.castSucc‖ ≤ ω) ∧
+            HoldsMatrix w H' μ'.store)) μ
+
+/-- **The contract of a leaf routine with backward error `β`, parameter words and a cap**: from
+an upper Hessenberg matrix $\mathbf{B}$ of order $d \le k_{\max}$ with
+$\|\mathbf{B}\|_2 \le N_{\max}$, and the parameter words `ps` stored, the run is total, writes only
+its $2d$ output words, and stores a listing of the eigenvalues, with multiplicity, of
+$\mathbf{B} + \mathbf{F}$ for some $\|\mathbf{F}\|_2 \le \beta$. The interface is
+`[d, np, T] (B, P) → (Ev)`. -/
+def BackwardLeafRoutineContract (β : ℝ) (kmax : ℕ) (Nmax : ℝ) (ps : List ℝ) (T : ℕ)
+    (L : Impl O Q) (I : Interp O Q ℝ) : Prop :=
+  ∀ {d : ℕ} {w p o : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ} (B : Matrix (Fin d) (Fin d) ℂ),
+    d ≤ kmax → IsUpperHessenberg B → specNorm B ≤ Nmax → HoldsMatrix w B μ.store →
+    μ.store.readBlock p.1 p.2 ps.length = some ps → μ.Live [w, p, o] →
+    o.2 + 2 * d ≤ μ.store.len o.1 →
+    Fp.Disj (Store.inBlock w.1 w.2 (2 * (d * d))) (Store.inBlock o.1 o.2 (2 * d)) →
+    Fp.Disj (Store.inBlock p.1 p.2 ps.length) (Store.inBlock o.1 o.2 (2 * d)) →
+    Writes .total I tape L.body (Env.frame [d, ps.length, T] [w, p, o])
+      (Store.inBlock o.1 o.2 (2 * d))
+      (fun μ' => ∃ (roots : Fin d → ℂ) (F : Matrix (Fin d) (Fin d) ℂ), specNorm F ≤ β ∧
+        IsEigenvalueListing (B + F) roots ∧
+        HoldsMatrix o (Matrix.of fun i (_ : Fin 1) => roots i) μ'.store) μ
+
+/-- A leaf routine with backward error $\beta$ (`NLAlib.ShiftedQR.BackwardLeafContract`), lifted
+by `NLAlib.ShiftedQR.liftLeaf`, meets the routine contract for every order bound, norm bound,
+parameter words and cap. -/
+theorem BackwardLeafContract.backwardLeafRoutineContract {β : ℝ} {L : Impl O Q}
+    {I : Interp O Q ℝ} (h : BackwardLeafContract β L I) (kmax : ℕ) (Nmax : ℝ) (ps : List ℝ)
+    (T : ℕ) : BackwardLeafRoutineContract β kmax Nmax ps T (liftLeaf L) I := by
+  intro d w p o tape μ B _ hB _ hH _ hl hroom hwo _
+  unfold liftLeaf
+  exact (h B hB hH (hl.mono (by simp)) hroom hwo).in_frame (by simp)
+    (by simp [Operand.evalList, Operand.eval]) (hl.mono (by simp))
+
+/-- A rounded decoupler (`NLAlib.ShiftedQR.RoundedDecouplingContract`), lifted by
+`NLAlib.ShiftedQR.liftDecoupler`, meets the routine contract for every cap. -/
+theorem RoundedDecouplingContract.roundedDecouplingRoutineContract {fails : Prop} {k F : ℕ}
+    {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} {D : Impl O Q} {I : Interp O Q ℝ}
+    (h : RoundedDecouplingContract fails k F ps ω ε D I) (T : ℕ) :
+    RoundedDecouplingRoutineContract fails k F T ps ω ε (liftDecoupler D) I := by
+  intro n N w q f tape μ H hk hH hN hW hq hl hw hf hwf hqwf
+  unfold liftDecoupler
+  exact (h H hk hH hN hW hq hl hw hf hwf hqwf).in_frame (by simp)
+    (by simp [Operand.evalList, Operand.eval]) (by simpa [Mem.Live] using hl)
+
 section Leaf
 
 variable [Has EigenvalueKernelOp O]
@@ -151,11 +236,14 @@ def roundedAbort : Impl O Q := opsImpl% [] () → (St, Fl) {
   call (Has.inj IndexOp.lit) [0] () → (St)
 }
 
-/-- Process one large block held in `W`: decouple; on failure abort; otherwise scan its bottom
-$k$ couplings, and split at the index found (write back and push both children) or abort. -/
-def roundedProcessLarge (D : Impl O Q) : Impl O Q :=
-  opsImpl% [N, k, np, F, lo, d] (A, Thr, P, St) → (Out, W, R, Fl) {
-    run D.body [d, k, np, F] (W, P, W, Fl);
+/-! ### The worklist with routines that read parameter words and a cap dimension -/
+
+/-- Process one large block held in `W`: decouple with the routine
+`[N, k, np, F, T] (W, P) → (W, Fl)`; on failure abort; otherwise scan its bottom $k$ couplings,
+and split at the index found (write back and push both children) or abort. -/
+def roundedProcessLargeWith (D : Impl O Q) : Impl O Q :=
+  opsImpl% [N, k, np, F, T, lo, d] (A, Thr, P, St) → (Out, W, R, Fl) {
+    run D.body [d, k, np, F, T] (W, P, W, Fl);
     if (Has.inj CmpTst.isPos) [] (Fl) {
       run (roundedAbort (O := O) (Q := Q)).body [] (St, Fl)
     } else {
@@ -169,44 +257,46 @@ def roundedProcessLarge (D : Impl O Q) : Impl O Q :=
     }
   }
 
-/-- The part of `NLAlib.ShiftedQR.roundedProcessLarge` after the decoupling call: on failure
+/-- The part of `NLAlib.ShiftedQR.roundedProcessLargeWith` after the decoupling call: on failure
 abort; otherwise scan, and split or abort. -/
 def roundedLargeRest (D : Impl O Q) : Stmt O Q :=
-  match (roundedProcessLarge D).body with
+  match (roundedProcessLargeWith D).body with
   | .seq _ c => c
   | c => c
 
-/-- Copy the active block to `W`; a block of order at most $k$ goes to the leaf routine, which
-writes its roots at offset $2\,lo$ of `Out`; a larger one to
-`NLAlib.ShiftedQR.roundedProcessLarge`. -/
-def roundedProcessRange (D L : Impl O Q) : Impl O Q :=
-  opsImpl% [N, k, np, F, lo, d] (A, Thr, P, St) → (Out, W, R, Fl) {
+/-- Copy the active block to `W`, with routines that read the parameter words and the cap
+dimension: a block of order at most $k$ goes to the leaf routine `[d, np, T] (Bk, P) → (Ev)`, a
+larger one to `NLAlib.ShiftedQR.roundedProcessLargeWith`. -/
+def roundedProcessRangeWith (D L : Impl O Q) : Impl O Q :=
+  opsImpl% [N, k, np, F, T, lo, d] (A, Thr, P, St) → (Out, W, R, Fl) {
     run (copyToWork (Op := O) (Tst := Q)).body [N, lo, d] (A, W);
     ifPos k + 1 - d {
-      run L.body [d] (W, Out[2 * lo])
+      run L.body [d, np, T] (W, P, Out[2 * lo])
     };
     ifPos d - k {
-      run (roundedProcessLarge D).body [N, k, np, F, lo, d] (A, Thr, P, St, Out, W, R, Fl)
+      run (roundedProcessLargeWith D).body [N, k, np, F, T, lo, d]
+        (A, Thr, P, St, Out, W, R, Fl)
     }
   }
 
 /-- Pop the top range, bounded-read its start and order, and process it. -/
-def roundedWorklistRound (D L : Impl O Q) : Impl O Q :=
-  opsImpl% [N, k, np, F] (A, Thr, P, St) → (Out, W, R, Fl) {
+def roundedWorklistRoundWith (D L : Impl O Q) : Impl O Q :=
+  opsImpl% [N, k, np, F, T] (A, Thr, P, St) → (Out, W, R, Fl) {
     run (rangePop (Op := O) (Tst := Q)).body [N] (St, R);
     let lo ← index (Has.inj IdxTst.toNat) (R) ≤ N;
     let d ← index (Has.inj IdxTst.toNat) (R[1]) ≤ N;
-    run (roundedProcessRange D L).body [N, k, np, F, lo, d] (A, Thr, P, St, Out, W, R, Fl)
+    run (roundedProcessRangeWith D L).body [N, k, np, F, T, lo, d]
+      (A, Thr, P, St, Out, W, R, Fl)
   }
 
 /-- The capped worklist: clear the failure word, push the whole range, and process the top range
 while the stack is not empty, for at most $2N$ rounds; work left at the cap aborts. -/
-def roundedWorklist (D L : Impl O Q) : Impl O Q :=
-  opsImpl% [N, k, np, F] (A, Thr, P) → (St, Out, W, R, Fl) {
+def roundedWorklistWith (D L : Impl O Q) : Impl O Q :=
+  opsImpl% [N, k, np, F, T] (A, Thr, P) → (St, Out, W, R, Fl) {
     call (Has.inj IndexOp.lit) [0] () → (Fl);
     run (stackInit (Op := O) (Tst := Q)).body [N, 0, N] (St);
     while j < 2 * N, (Has.inj CmpTst.isPos) [] (St) {
-      run (roundedWorklistRound D L).body [N, k, np, F] (A, Thr, P, St, Out, W, R, Fl)
+      run (roundedWorklistRoundWith D L).body [N, k, np, F, T] (A, Thr, P, St, Out, W, R, Fl)
     } then {
       if (Has.inj CmpTst.isPos) [] (St) {
         run (roundedAbort (O := O) (Q := Q)).body [] (St, Fl)
@@ -214,18 +304,32 @@ def roundedWorklist (D L : Impl O Q) : Impl O Q :=
     }
   }
 
-/-- **The rounded deflation worklist** with the decoupling implementation `D` and the leaf
-routine `L`: allocate the stack, the work matrix and the scan registers, and run the capped
-worklist. The interface is `[N, k, np, F] (A, Thr, P) → (Out, Fl)`, with `F` the decoupler's
-iteration cap passed through: the matrix (modified in place),
-the threshold word, the decoupler's `np` parameter words, the $2N$ output words and the failure
-word. -/
-def solveRounded (D L : Impl O Q) : Impl O Q :=
-  opsImpl% [N, k, np, F] (A, Thr, P) → (Out, Fl) {
+/-- **The rounded deflation worklist with routines** ([BanksGarzaVargasSrivastava2025,
+Theorem 6.1], whose worklist at $k = 1$ it is; [BanksGarzaVargasSrivastava2022, Theorem 6.3]):
+allocate the stack, the work matrix and the scan registers, and run the capped worklist with a
+decoupling routine `[N, k, np, F, T] (W, P) → (W, Fl)` and a leaf routine
+`[d, np, T] (Bk, P) → (Ev)`, both of which read the parameter words and the cap dimension $T$ of
+the routines they run. The interface is `[N, k, np, F, T] (A, Thr, P) → (Out, Fl)`.
+`NLAlib.ShiftedQR.solveRounded` is the case of the lifted routines
+(`NLAlib.ShiftedQR.liftDecoupler`, `NLAlib.ShiftedQR.liftLeaf`) at $T = 0$. -/
+def solveRoundedWith (D L : Impl O Q) : Impl O Q :=
+  opsImpl% [N, k, np, F, T] (A, Thr, P) → (Out, Fl) {
     let St ← alloc (1 + 2 * N);
     let W ← alloc (2 * (N * N));
     let R ← alloc 5;
-    run (roundedWorklist D L).body [N, k, np, F] (A, Thr, P, St, Out, W, R, Fl)
+    run (roundedWorklistWith D L).body [N, k, np, F, T] (A, Thr, P, St, Out, W, R, Fl)
+  }
+
+/-- **The rounded deflation worklist** with the decoupling implementation `D` and the leaf
+routine `L`: `NLAlib.ShiftedQR.solveRoundedWith` with the lifted routines
+(`NLAlib.ShiftedQR.liftDecoupler`, `NLAlib.ShiftedQR.liftLeaf`) and the cap $T = 0$. The
+interface is `[N, k, np, F] (A, Thr, P) → (Out, Fl)`, with `F` the decoupler's iteration cap
+passed through: the matrix (modified in place), the threshold word, the decoupler's `np`
+parameter words, the $2N$ output words and the failure word. -/
+def solveRounded (D L : Impl O Q) : Impl O Q :=
+  opsImpl% [N, k, np, F] (A, Thr, P) → (Out, Fl) {
+    run (solveRoundedWith (liftDecoupler D) (liftLeaf L)).body [N, k, np, F, 0]
+      (A, Thr, P, Out, Fl)
   }
 
 end Program
@@ -529,16 +633,6 @@ theorem roundedGeometry_allocated {N np : ℕ} {μ : Mem ℝ} {a t p out f : ℕ
   · exact ⟨hRoom.1, hRoom.2.1, hRoom.2.2.1, hRoom.2.2.2.2.2.1, hRoom.2.2.2.1,
       hRoom.2.2.2.2.2.2.1, hRoom.2.2.2.2.2.2.2.1, hRoom.2.2.2.2.1, trivial⟩
   · simpa [e, ns, L, List.ofFn_succ] using hReorder
-
-/-- A listing of the eigenvalues of a square matrix by `Fin d` is its multiset of characteristic
-roots. -/
-theorem _root_.NLAlib.IsEigenvalueListing.charpoly_roots_eq_ofFn {d : ℕ}
-    {B : Matrix (Fin d) (Fin d) ℂ} {rts : Fin d → ℂ} (h : IsEigenvalueListing B rts) :
-    B.charpoly.roots = (List.ofFn rts : Multiset ℂ) := by
-  rw [isEigenvalueListing_iff.mp h]
-  simpa only [Multiset.map_coe, Multiset.prod_coe, List.map_ofFn,
-    List.prod_ofFn, Function.comp_def] using
-    Polynomial.roots_multiset_prod_X_sub_C (List.ofFn rts : Multiset ℂ)
 
 /-- A leaf as one perturbed similarity: at error $0$, finishing the first active block with
 the listing of the block plus $\mathbf{F}$, $\|\mathbf{F}\|_2 \le \beta$, is a perturbed unitary

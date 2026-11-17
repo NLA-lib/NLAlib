@@ -270,13 +270,6 @@ theorem specNorm_sub_decodeMatrix_hermShift_le (hM : M.IsArithAccurate dec u τ 
   rw [Complex.norm_real, Real.norm_eq_abs]
   refine h2.trans (mul_le_mul_of_nonneg_left (max_le_max ha le_rfl) hu)
 
-/-- Entrywise moduli are dominated in Frobenius norm -/
-private theorem frobNorm_le_of_norm_apply_le {m n : Type*} [Fintype m] [Fintype n]
-    {A B : Matrix m n ℂ} (h : ∀ i j, ‖A i j‖ ≤ ‖B i j‖) : frobNorm A ≤ frobNorm B := by
-  unfold frobNorm
-  exact Real.sqrt_le_sqrt (Finset.sum_le_sum fun i _ => Finset.sum_le_sum fun j _ =>
-    pow_le_pow_left₀ (norm_nonneg _) (h i j) 2)
-
 /-- $\max(\lvert x\rvert, \tau) \le \lvert x\rvert + \tau$ for $\tau \ge 0$. -/
 private theorem max_abs_le_abs_add {x τ : ℝ} (hτ : 0 ≤ τ) : max |x| τ ≤ |x| + τ :=
   max_le (le_add_of_nonneg_right hτ) (le_add_of_nonneg_left (abs_nonneg x))

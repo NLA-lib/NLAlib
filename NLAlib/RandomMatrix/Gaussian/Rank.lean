@@ -13,8 +13,9 @@ public import NLAlib.RandomMatrix.Gaussian.Basic
 /-!
 # The rank of a Gaussian matrix
 
-A nonzero polynomial in independent real coordinates with an atomless law is almost surely
-nonzero. Minors are polynomials in the entries, so a standard Gaussian matrix has full rank almost
+A nonzero polynomial in independent real or complex coordinates with an atomless law is almost
+surely nonzero. Minors are polynomials in the entries, so a standard Gaussian matrix has full rank
+almost
 surely, and so does every Gaussian sketch $\mathbf{A}\mathbf{G}$ up to the rank of $\mathbf{A}$:
 $\operatorname{rank}(\mathbf{A}\mathbf{G}) = \min(\operatorname{rank} \mathbf{A}, \lvert n \rvert)$
 almost surely, for $\mathbf{G}$ of size $m \times n$. In particular
@@ -46,9 +47,10 @@ variable {Ω : Type*} {mΩ : MeasurableSpace Ω} {μ : Measure Ω} {m n : Type*}
 
 /-- The `Fin n` case of `ae_eval_ne_zero_of_ne_zero`, by induction on $n$: split off the first
 coordinate, where the polynomial has finitely many roots. -/
-private theorem ae_eval_ne_zero_fin {ν : Measure ℝ} [IsProbabilityMeasure ν]
+private theorem ae_eval_ne_zero_fin {𝕜 : Type*} [RCLike 𝕜]
+    [MeasurableSpace 𝕜] [BorelSpace 𝕜] {ν : Measure 𝕜} [IsProbabilityMeasure ν]
     [NullSingletonClass ν] :
-    ∀ (n : ℕ) (f : MvPolynomial (Fin n) ℝ), f ≠ 0 →
+    ∀ (n : ℕ) (f : MvPolynomial (Fin n) 𝕜), f ≠ 0 →
       ∀ᵐ x ∂Measure.pi fun _ : Fin n => ν, MvPolynomial.eval x f ≠ 0 := by
   intro n
   induction n with
@@ -62,30 +64,30 @@ private theorem ae_eval_ne_zero_fin {ν : Measure ℝ} [IsProbabilityMeasure ν]
     simpa using hx
   | succ n ih =>
     intro f hf
-    set g := MvPolynomial.finSuccEquiv ℝ n f with hg
+    set g := MvPolynomial.finSuccEquiv 𝕜 n f with hg
     have hg0 : g ≠ 0 := by
       intro h; apply hf
-      exact (MvPolynomial.finSuccEquiv ℝ n).injective (by rw [← hg, h, map_zero])
+      exact (MvPolynomial.finSuccEquiv 𝕜 n).injective (by rw [← hg, h, map_zero])
     have hih := ih g.leadingCoeff (Polynomial.leadingCoeff_ne_zero.mpr hg0)
     rw [ae_iff]
     simp only [ne_eq, not_not]
     have hmp := measurePreserving_piFinSuccAbove (fun _ : Fin (n + 1) => ν) 0
-    let T : Set (ℝ × (Fin n → ℝ)) :=
-      {q | MvPolynomial.eval (Fin.cons q.1 q.2 : Fin (n + 1) → ℝ) f = 0}
+    let T : Set (𝕜 × (Fin n → 𝕜)) :=
+      {q | MvPolynomial.eval (Fin.cons q.1 q.2 : Fin (n + 1) → 𝕜) f = 0}
     have hT : MeasurableSet T := by
-      have hcont : Continuous fun q : ℝ × (Fin n → ℝ) =>
-          MvPolynomial.eval (Fin.cons q.1 q.2 : Fin (n + 1) → ℝ) f := by
+      have hcont : Continuous fun q : 𝕜 × (Fin n → 𝕜) =>
+          MvPolynomial.eval (Fin.cons q.1 q.2 : Fin (n + 1) → 𝕜) f := by
         apply (MvPolynomial.continuous_eval f).comp
         refine continuous_pi fun i => ?_
         refine Fin.cases ?_ (fun j => ?_) i
         · simpa using continuous_fst
         · simp only [Fin.cons_succ]; exact (continuous_apply j).comp continuous_snd
       exact hcont.measurable (measurableSet_singleton 0)
-    have hpre : MeasurableEquiv.piFinSuccAbove (fun _ => ℝ) 0 ⁻¹' T =
+    have hpre : MeasurableEquiv.piFinSuccAbove (fun _ => 𝕜) 0 ⁻¹' T =
         {x | MvPolynomial.eval x f = 0} := by
       ext x
-      have hx : (Fin.cons (MeasurableEquiv.piFinSuccAbove (fun _ => ℝ) 0 x).1
-          (MeasurableEquiv.piFinSuccAbove (fun _ => ℝ) 0 x).2 : Fin (n + 1) → ℝ) = x := by
+      have hx : (Fin.cons (MeasurableEquiv.piFinSuccAbove (fun _ => 𝕜) 0 x).1
+          (MeasurableEquiv.piFinSuccAbove (fun _ => 𝕜) 0 x).2 : Fin (n + 1) → 𝕜) = x := by
         ext i
         refine Fin.cases ?_ (fun j => ?_) i
         · simp [MeasurableEquiv.piFinSuccAbove_apply]
@@ -114,8 +116,9 @@ private theorem ae_eval_ne_zero_fin {ν : Measure ℝ} [IsProbabilityMeasure ν]
 
 /-- A nonzero polynomial in independent coordinates with an atomless law is almost surely
 nonzero. -/
-theorem ae_eval_ne_zero_of_ne_zero {ι : Type*} [Fintype ι] {ν : Measure ℝ}
-    [IsProbabilityMeasure ν] [NullSingletonClass ν] {f : MvPolynomial ι ℝ} (hf : f ≠ 0) :
+theorem ae_eval_ne_zero_of_ne_zero {𝕜 : Type*} [RCLike 𝕜]
+    [MeasurableSpace 𝕜] [BorelSpace 𝕜] {ι : Type*} [Fintype ι] {ν : Measure 𝕜}
+    [IsProbabilityMeasure ν] [NullSingletonClass ν] {f : MvPolynomial ι 𝕜} (hf : f ≠ 0) :
     ∀ᵐ x ∂Measure.pi fun _ : ι => ν, MvPolynomial.eval x f ≠ 0 := by
   let e : ι ≃ Fin (Fintype.card ι) := Fintype.equivFin ι
   have hg : MvPolynomial.rename e f ≠ 0 := by
@@ -123,8 +126,8 @@ theorem ae_eval_ne_zero_of_ne_zero {ι : Type*} [Fintype ι] {ν : Measure ℝ}
     exact MvPolynomial.rename_injective e e.injective (by rw [h, map_zero])
   have h := ae_eval_ne_zero_fin (ν := ν) _ _ hg
   have hmp := measurePreserving_arrowCongr' (fun _ : Fin (Fintype.card ι) => ν)
-    (fun _ : ι => ν) e.symm (MeasurableEquiv.refl ℝ) fun _ => MeasurePreserving.id _
-  have hmeas : MeasurableSet {x : ι → ℝ | MvPolynomial.eval x f ≠ 0} :=
+    (fun _ : ι => ν) e.symm (MeasurableEquiv.refl 𝕜) fun _ => MeasurePreserving.id _
+  have hmeas : MeasurableSet {x : ι → 𝕜 | MvPolynomial.eval x f ≠ 0} :=
     ((MvPolynomial.continuous_eval f).measurable (measurableSet_singleton 0)).compl
   rw [← hmp.map_eq, ae_map_iff hmp.measurable.aemeasurable hmeas]
   filter_upwards [h] with y hy

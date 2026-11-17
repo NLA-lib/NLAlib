@@ -10,6 +10,7 @@ public import NLAlib.Matrix.Pseudoinverse.ConditionNumber
 public import NLAlib.Matrix.Perturbation.Residual
 public import NLAlib.Matrix.Perturbation.UnitarySimilarity
 public import NLAlib.Matrix.QRIteration.DeflationConditioning
+public import NLAlib.Matrix.QRIteration.EigenvectorWeights
 
 /-!
 # Forward and backward eigenvalue errors
@@ -40,6 +41,8 @@ algorithm does not meet it for $B > 32$, and its proof needs only $\kappa_V^2$.
   along a perturbed unitary similarity, with the class constants doubled once.
 * `NLAlib.norm_sub_le_of_matching`: Bauer–Fike refines a matching within $g/16$ to one within
   $B\|\mathbf{E}\|_2$.
+* `NLAlib.exists_lastRowWeights_ge_of_norm_sub_le`: the last-row weights after a perturbation
+  [BanksGarzaVargasSrivastava2025].
 -/
 
 @[expose] public section
@@ -178,5 +181,75 @@ theorem IsPerturbedUnitarySimilar.exists_pseudoConditionNumber_le_and_le_norm_su
   calc Uᴴ * (A + E) * U * (Uᴴ * V') = Uᴴ * ((A + E) * V') := by
         rw [Matrix.mul_assoc, ← Matrix.mul_assoc U, hUU, Matrix.one_mul, Matrix.mul_assoc]
     _ = _ := by rw [hAV', Matrix.mul_assoc]
+
+/-- **Eigenvector weights survive a perturbation** ([BanksGarzaVargasSrivastava2025,
+Proposition 5.3], the eigenvector-perturbation step corrected for its erratum P4): let
+$\mathbf{A}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$ with $\mathbf{V}$ invertible,
+$\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le B$, eigenvalues separated by $g > 0$, and
+$\|\mathbf{E}\|_2 \le g/(16(n + 1)B)$. Then $\mathbf{A} + \mathbf{E}$ has a diagonalization
+$\mathbf{V}'$, $\mathbf{d}'$ with $\|\mathbf{V}'\|_2\|\mathbf{V}'^{-1}\|_2 \le 2B$,
+$\lvert d'_i - d_i\rvert \le g/16$, and for every matrix $\mathbf{Q}$ and every $i$ the last-row
+weights $w$ satisfy
+$$\sqrt{w_i(\mathbf{Q}^{\mathsf{H}}\mathbf{V})} \le
+  (1 + \sqrt{n + 1}\,\theta)\sqrt{w_i(\mathbf{Q}^{\mathsf{H}}\mathbf{V}')} + \theta,
+  \qquad \theta = \frac{64(n + 1)B^2\|\mathbf{E}\|_2}{g}\,.$$
+The paper transfers the anti-concentration of a random direction to eigenvectors that depend on
+it; here the weights of the fixed $\mathbf{V}$ are transferred to $\mathbf{V}'$ for every
+$\mathbf{Q}$ at once. -/
+theorem exists_lastRowWeights_ge_of_norm_sub_le {n : ℕ}
+    {A V E : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {B g : ℝ}
+    (hV : IsUnit V) (hAV : A * V = V * Matrix.diagonal d) (hB : pseudoConditionNumber V ≤ B)
+    (hg : 0 < g) (hgap : ∀ i j, i ≠ j → g ≤ ‖d i - d j‖)
+    (hE : specNorm E ≤ g / (16 * (n + 1) * B)) :
+    ∃ (V' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (d' : Fin (n + 1) → ℂ), IsUnit V' ∧
+      (A + E) * V' = V' * Matrix.diagonal d' ∧ pseudoConditionNumber V' ≤ 2 * B ∧
+      (∀ i, ‖d' i - d i‖ ≤ g / 16) ∧
+      ∀ (Q : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (i : Fin (n + 1)),
+        √(lastRowWeights (Qᴴ * V) i) ≤
+          (1 + √(n + 1) * (64 * (n + 1) * B ^ 2 * specNorm E / g)) *
+              √(lastRowWeights (Qᴴ * V') i) +
+            64 * (n + 1) * B ^ 2 * specNorm E / g := by
+  obtain ⟨Z, d', hU, hAV', -, hκZ, hm, hZ⟩ :=
+    exists_add_mul_mul_one_add_eq_mul_diagonal hV hAV hB hg hgap hE
+  have hB1 : 1 ≤ B := (one_le_pseudoConditionNumber hV.ne_zero).trans hB
+  refine ⟨V * (1 + Z), d', hV.mul hU, hAV', ?_, hm, fun Q i => ?_⟩
+  · calc pseudoConditionNumber (V * (1 + Z))
+        ≤ pseudoConditionNumber V * pseudoConditionNumber (1 + Z) :=
+          pseudoConditionNumber_mul_le hV hU
+      _ ≤ 2 * B := by nlinarith [pseudoConditionNumber_nonneg (1 + Z)]
+  -- `‖Z‖₂ ≤ 2√(n+1) B‖E‖₂/g` is at most `θ` and at most `√(n+1) θ`
+  set θ := 64 * (n + 1) * B ^ 2 * specNorm E / g
+  have hE0 : 0 ≤ specNorm E := specNorm_nonneg E
+  have hN : (1 : ℝ) ≤ n + 1 := by linarith [(n.cast_nonneg : (0 : ℝ) ≤ n)]
+  have hsN : √((n : ℝ) + 1) ≤ n + 1 := Real.sqrt_le_iff.mpr ⟨by linarith, by nlinarith⟩
+  have hs0 : 0 ≤ √((n : ℝ) + 1) := Real.sqrt_nonneg _
+  have hBB : 2 * B ≤ 64 * (n + 1) * B ^ 2 := by
+    nlinarith [mul_le_mul_of_nonneg_right hN (sq_nonneg B)]
+  have h2θ : 2 * B * specNorm E / g ≤ θ :=
+    div_le_div_of_nonneg_right (mul_le_mul_of_nonneg_right hBB hE0) hg.le
+  have hZθ : specNorm Z ≤ θ := hZ.trans (div_le_div_of_nonneg_right (by
+    nlinarith [mul_le_mul hsN (by nlinarith : B ≤ 32 * B ^ 2) (by linarith) (by linarith)])
+    hg.le)
+  have hZθ' : specNorm Z ≤ √(n + 1) * θ := hZ.trans (by
+    rw [show 2 * √((n : ℝ) + 1) * B * specNorm E / g = √(n + 1) * (2 * B * specNorm E / g) by
+      ring]
+    exact mul_le_mul_of_nonneg_left h2θ hs0)
+  have h := sqrt_lastRowWeights_le_mul_one_add (Qᴴ * V) Z i
+  rw [← Matrix.mul_assoc]
+  refine h.trans ?_
+  gcongr
+
+/-- A perturbed unitary similarity carries an eigenvalue listing back: if $\mathbf{B}$ is a
+perturbed unitary similarity of $\mathbf{A}$ with backward error $\varepsilon$ and `rts` lists the
+eigenvalues of $\mathbf{B}$, then `rts` lists those of $\mathbf{A} + \mathbf{G}$ for some
+$\|\mathbf{G}\|_2 \le \varepsilon$. -/
+theorem IsPerturbedUnitarySimilar.exists_isEigenvalueListing {n : ℕ}
+    {A B : Matrix (Fin n) (Fin n) ℂ} {ε : ℝ} (h : IsPerturbedUnitarySimilar A B ε)
+    {rts : Fin n → ℂ} (hB : IsEigenvalueListing B rts) :
+    ∃ G : Matrix (Fin n) (Fin n) ℂ, specNorm G ≤ ε ∧ IsEigenvalueListing (A + G) rts := by
+  obtain ⟨U, E, hU, hE, rfl⟩ := h
+  refine ⟨E, hE, ?_⟩
+  rw [isEigenvalueListing_iff] at hB ⊢
+  rwa [charpoly_mul_mul_of_mul_eq_one hU.conjTranspose_mul_self] at hB
 
 end NLAlib

@@ -4,6 +4,7 @@ public import NLAlib.Eigensolvers.Deflation.Alg
 public import NLAlib.Eigensolvers.Deflation.Certification
 public import NLAlib.Eigensolvers.Deflation.Execution
 public import NLAlib.Eigensolvers.Deflation.Probability
+public import NLAlib.Eigensolvers.HessenbergReduction
 public import NLAlib.Eigensolvers.RandomizedDeflation
 public import NLAlib.Eigensolvers.ShiftedQR.Acceptance
 public import NLAlib.Eigensolvers.ShiftedQR.Alg
@@ -65,6 +66,7 @@ public import NLAlib.Eigensolvers.ShiftedQR.RotationLoops
 public import NLAlib.Eigensolvers.ShiftedQR.Round
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedCertificate
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedDecouple
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedDecoupleRoutine
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedDecoupleSpec
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedDecoupleTermination
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedExc
@@ -78,6 +80,7 @@ public import NLAlib.Eigensolvers.ShiftedQR.RoundedParameterChoices
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedParameters
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedPrecision
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedRegularize
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedRegularizeDraws
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedRegularizeTermination
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedRegularizeTrial
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedRitz
@@ -87,6 +90,8 @@ public import NLAlib.Eigensolvers.ShiftedQR.RoundedShExc
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedShStep
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedShTermination
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedShTrial
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedSmallEig
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedSmallEigCertificate
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolve
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveBackward
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveTermination
@@ -149,6 +154,26 @@ public import NLAlib.Eigensolvers.Sign.Start
 public import NLAlib.Eigensolvers.Sign.State
 public import NLAlib.Eigensolvers.Sign.Step
 public import NLAlib.Eigensolvers.Sign.Test
+public import NLAlib.Eigensolvers.SmallEig.Certificate
+public import NLAlib.Eigensolvers.SmallEig.Core
+public import NLAlib.Eigensolvers.SmallEig.Decouple
+public import NLAlib.Eigensolvers.SmallEig.Decoupler
+public import NLAlib.Eigensolvers.SmallEig.DecouplerPrecision
+public import NLAlib.Eigensolvers.SmallEig.DistSpec
+public import NLAlib.Eigensolvers.SmallEig.Draws
+public import NLAlib.Eigensolvers.SmallEig.Leaf
+public import NLAlib.Eigensolvers.SmallEig.OneEig
+public import NLAlib.Eigensolvers.SmallEig.OneEigMath
+public import NLAlib.Eigensolvers.SmallEig.OneEigParts
+public import NLAlib.Eigensolvers.SmallEig.OneEigRounding
+public import NLAlib.Eigensolvers.SmallEig.Parameters
+public import NLAlib.Eigensolvers.SmallEig.Perturb
+public import NLAlib.Eigensolvers.SmallEig.Precision
+public import NLAlib.Eigensolvers.SmallEig.Program
+public import NLAlib.Eigensolvers.SmallEig.RandomHessenberg
+public import NLAlib.Eigensolvers.SmallEig.RandomHessenbergRotations
+public import NLAlib.Eigensolvers.SmallEig.RandomHessenbergWeights
+public import NLAlib.Eigensolvers.SmallEig.Theorems
 public import NLAlib.Eigensolvers.SpectralBisection
 public import NLAlib.Eigensolvers.SpectralBisection.Accuracy
 public import NLAlib.Eigensolvers.SpectralBisection.Alg
@@ -400,6 +425,7 @@ public import NLAlib.ForMathlib.LinearAlgebra.Matrix.CauchyBinet
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.ConjTranspose
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.Hadamard
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.Hermitian
+public import NLAlib.ForMathlib.LinearAlgebra.Matrix.NonsingularInverse
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.PosDef
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.Rank
 public import NLAlib.ForMathlib.LinearAlgebra.Matrix.SchurComplement
@@ -845,6 +871,7 @@ public import NLAlib.Matrix.FinitePrecision.Deflation
 public import NLAlib.Matrix.FinitePrecision.EntrywiseRounding
 public import NLAlib.Matrix.FinitePrecision.FixedPoint
 public import NLAlib.Matrix.FinitePrecision.Float
+public import NLAlib.Matrix.FinitePrecision.GivensChain
 public import NLAlib.Matrix.FinitePrecision.GivensRounded
 public import NLAlib.Matrix.FinitePrecision.GridMachine
 public import NLAlib.Matrix.FinitePrecision.HessenbergRowPoly
@@ -976,6 +1003,8 @@ public import NLAlib.Matrix.Perturbation.Continuity
 public import NLAlib.Matrix.Perturbation.DavisKahan
 public import NLAlib.Matrix.Perturbation.DavisKahanGap
 public import NLAlib.Matrix.Perturbation.EigenvalueBackward
+public import NLAlib.Matrix.Perturbation.EigenvalueClustering
+public import NLAlib.Matrix.Perturbation.EigenvalueMatching
 public import NLAlib.Matrix.Perturbation.ExteriorEigenvalueBranches
 public import NLAlib.Matrix.Perturbation.GramCutoff
 public import NLAlib.Matrix.Perturbation.GramSoftMin
@@ -986,6 +1015,7 @@ public import NLAlib.Matrix.Perturbation.MapConditioning
 public import NLAlib.Matrix.Perturbation.OrthErr
 public import NLAlib.Matrix.Perturbation.PencilRoots
 public import NLAlib.Matrix.Perturbation.Pseudoinverse
+public import NLAlib.Matrix.Perturbation.PseudospectralArea
 public import NLAlib.Matrix.Perturbation.Pseudospectrum
 public import NLAlib.Matrix.Perturbation.QRFactorization
 public import NLAlib.Matrix.Perturbation.Relative
@@ -1020,6 +1050,7 @@ public import NLAlib.Matrix.QRIteration.Dichotomy
 public import NLAlib.Matrix.QRIteration.EigenvectorWeights
 public import NLAlib.Matrix.QRIteration.FindRitzSolve
 public import NLAlib.Matrix.QRIteration.HessenbergDeflation
+public import NLAlib.Matrix.QRIteration.InverseIteration
 public import NLAlib.Matrix.QRIteration.Ritz
 public import NLAlib.Matrix.QRIteration.RoundedStrategy
 public import NLAlib.Matrix.QRIteration.ShiftSearch
@@ -1100,6 +1131,7 @@ public import NLAlib.Ops.Blas.Dot
 public import NLAlib.Ops.Blas.DotExecution
 public import NLAlib.Ops.Blas.DotFunction
 public import NLAlib.Ops.Blas.DotMixed
+public import NLAlib.Ops.Blas.Fill
 public import NLAlib.Ops.Blas.Hermitian
 public import NLAlib.Ops.Blas.HermitianCorrect
 public import NLAlib.Ops.Blas.HermitianEntry
@@ -1390,6 +1422,7 @@ public import NLAlib.RandomMatrix.Gaussian.BlockTail
 public import NLAlib.RandomMatrix.Gaussian.ClippedInverseMoments
 public import NLAlib.RandomMatrix.Gaussian.Complex
 public import NLAlib.RandomMatrix.Gaussian.Complex.LeastSingularValue
+public import NLAlib.RandomMatrix.Gaussian.Complex.SimpleSpectrum
 public import NLAlib.RandomMatrix.Gaussian.Concentration
 public import NLAlib.RandomMatrix.Gaussian.ExtremeSingularValues
 public import NLAlib.RandomMatrix.Gaussian.FourthMoment
@@ -1411,6 +1444,9 @@ public import NLAlib.RandomMatrix.Haar.Stabilizer
 public import NLAlib.RandomMatrix.Haar.Transfer
 public import NLAlib.RandomMatrix.Haar.Uniqueness
 public import NLAlib.RandomMatrix.Rademacher.Basic
+public import NLAlib.RandomMatrix.Shattering.ConditionTail
+public import NLAlib.RandomMatrix.Shattering.GapTail
+public import NLAlib.RandomMatrix.Shattering.GinibreClass
 public import NLAlib.RandomMatrix.SubGaussian.ExtremeSingularValues
 public import NLAlib.RandomMatrix.TapeLaw
 public import NLAlib.RandomMatrix.UnitaryInvariance

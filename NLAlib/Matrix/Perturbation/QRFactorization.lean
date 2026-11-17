@@ -57,20 +57,12 @@ private theorem norm_sub_one_le_norm_sub_star_inv {d : ℂ} (hd : 0 < d) :
     abs_of_pos (by positivity : 0 < 1 + r⁻¹)]
   exact le_mul_of_one_le_right (abs_nonneg _) (le_add_of_nonneg_right (by positivity))
 
-/-- Entrywise domination of moduli gives domination of Frobenius norms. -/
-private theorem frobNorm_le_of_forall_norm_apply_le {ι : Type*} [Fintype ι]
-    {A B : Matrix ι ι ℂ} (h : ∀ i j, ‖A i j‖ ≤ ‖B i j‖) : frobNorm A ≤ frobNorm B := by
-  refine (sq_le_sq₀ (frobNorm_nonneg _) (frobNorm_nonneg _)).1 ?_
-  rw [frobNorm_sq_eq_sum, frobNorm_sq_eq_sum]
-  exact Finset.sum_le_sum fun i _ => Finset.sum_le_sum fun j _ =>
-    pow_le_pow_left₀ (norm_nonneg _) (h i j) 2
-
 /-- An upper triangular $\mathbf{T}$ with positive diagonal satisfies $\|\mathbf{T} -
 \mathbf{I}\|_{\mathsf F} \le \|\mathbf{T} - \mathbf{T}^{-\mathsf H}\|_{\mathsf F}$. -/
 private theorem frobNorm_sub_one_le_of_isUpperTriangular {T : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     (hT : T.IsUpperTriangular) (hd : ∀ i, 0 < T i i) :
     frobNorm (T - 1) ≤ frobNorm (T - T⁻¹ᴴ) := by
-  refine frobNorm_le_of_forall_norm_apply_le fun i j => ?_
+  refine frobNorm_le_of_norm_apply_le fun i j => ?_
   simp only [Matrix.sub_apply, Matrix.conjTranspose_apply, Matrix.one_apply]
   rcases lt_trichotomy i j with hij | rfl | hij
   · rw [if_neg hij.ne, hT.inv hij, star_zero]

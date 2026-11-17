@@ -225,6 +225,21 @@ theorem HasOrthonormalCols.pseudoConditionNumber_mul_left [DecidableEq m] {Q : M
   rw [pseudoConditionNumber, hQ.pinv_mul_left, hQ.specNorm_mul_left,
     hQ.specNorm_mul_conjTranspose_right, pseudoConditionNumber]
 
+/-- **A unitary similarity carries a diagonalization**: if
+$\mathbf{A}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$ with $\mathbf{V}$ invertible
+and the square $\mathbf{Q}$ has orthonormal columns, then $\mathbf{Q}^{\mathsf{H}}\mathbf{V}$ is
+invertible, diagonalizes $\mathbf{Q}^{\mathsf{H}}\mathbf{A}\mathbf{Q}$ with the same
+$\mathbf{d}$, and has the pseudo-condition number of $\mathbf{V}$. -/
+theorem HasOrthonormalCols.isUnit_conjTranspose_mul_and_mul_eq_mul_diagonal [DecidableEq n]
+    {Q A V : Matrix n n 𝕜} {d : n → 𝕜} (hQ : HasOrthonormalCols Q) (hV : IsUnit V)
+    (hAV : A * V = V * Matrix.diagonal d) :
+    IsUnit (Qᴴ * V) ∧ Qᴴ * A * Q * (Qᴴ * V) = Qᴴ * V * Matrix.diagonal d ∧
+      pseudoConditionNumber (Qᴴ * V) = pseudoConditionNumber V := by
+  have hQQ : Q * Qᴴ = 1 := hQ.mul_conjTranspose_self
+  have hQu : IsUnit Qᴴ := ⟨⟨Qᴴ, Q, hQ.conjTranspose_mul_self, hQQ⟩, rfl⟩
+  refine ⟨hQu.mul hV, ?_, hQ.conjTranspose.pseudoConditionNumber_mul_left V⟩
+  simp only [Matrix.mul_assoc, ← Matrix.mul_assoc Q, hQQ, Matrix.one_mul, hAV]
+
 /-- A matrix with orthonormal columns, and at least one column, has pseudo-condition number one. -/
 theorem HasOrthonormalCols.pseudoConditionNumber_eq_one [DecidableEq n] [Nonempty n]
     {Q : Matrix m n 𝕜} (hQ : HasOrthonormalCols Q) : pseudoConditionNumber Q = 1 := by

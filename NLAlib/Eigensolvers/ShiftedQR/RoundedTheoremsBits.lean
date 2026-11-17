@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import Mathlib.Analysis.SpecialFunctions.Log.Base
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedParameters
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedParameterChoices
 
@@ -23,6 +24,7 @@ each at least a fixed power of $Y$; the predicates `NLAlib.ShiftedQR.LoBd` and
 ## Main definitions
 
 * `NLAlib.ShiftedQR.LoBd`, `NLAlib.ShiftedQR.HiBd`: $x \ge Y^{-e}$ and $x \le Y^e$.
+* `NLAlib.ShiftedQR.UnifLo`, `NLAlib.ShiftedQR.UnifHi`: the same with one exponent for a family.
 
 ## Main results
 
@@ -133,6 +135,156 @@ theorem const {c : ℝ} (hY : 4 ≤ Y) (hc : 0 < c) (h : c ≤ 4 ^ a) : HiBd Y a
   ⟨hc, h.trans (by gcongr)⟩
 
 end HiBd
+
+/-! ### Further bounds -/
+
+section More
+
+variable {Y x y : ℝ} {a b : ℕ}
+
+
+
+/-- A real power of $x \in (0, 1]$: $x^r \ge Y^{-a\lceil r\rceil}$. -/
+theorem LoBd.rpow_of_le_one (hx : LoBd Y a x) (hx1 : x ≤ 1) (r : ℝ) :
+    LoBd Y (a * ⌈r⌉₊) (x ^ r) := by
+  refine (hx.pow ⌈r⌉₊).of_le ?_
+  rw [← rpow_natCast]
+  exact rpow_le_rpow_of_exponent_ge hx.1 hx1 (Nat.le_ceil r)
+
+/-- A real power of $x \ge 1$: $x^r \le Y^{a\lceil r\rceil}$. -/
+theorem HiBd.rpow_of_one_le (hx : HiBd Y a x) (hx1 : 1 ≤ x) (r : ℝ) :
+    HiBd Y (a * ⌈r⌉₊) (x ^ r) := by
+  refine (hx.pow ⌈r⌉₊).of_le (rpow_pos_of_pos hx.1 r) ?_
+  rw [← rpow_natCast]
+  exact rpow_le_rpow_of_exponent_le hx1 (Nat.le_ceil r)
+
+/-- The minimum of two lower bounds of different exponents. -/
+theorem LoBd.min' (hY : 1 ≤ Y) (hx : LoBd Y a x) (hy : LoBd Y b y) :
+    LoBd Y (a + b) (Min.min x y) :=
+  (hx.mono hY (Nat.le_add_right a b)).min (hy.mono hY (Nat.le_add_left b a))
+
+/-- The sum of two upper bounds of different exponents. -/
+theorem HiBd.add' (hY : 2 ≤ Y) (hx : HiBd Y a x) (hy : HiBd Y b y) :
+    HiBd Y (a + b + 1) (x + y) :=
+  (hx.mono (by linarith) (Nat.le_add_right a b)).add hY
+    (hy.mono (by linarith) (Nat.le_add_left b a))
+
+/-- $1 \ge Y^{-a}$ for $Y \ge 1$. -/
+theorem LoBd.one (hY : 1 ≤ Y) (a : ℕ) : LoBd Y a 1 :=
+  ⟨one_pos, by rw [one_mul]; exact one_le_pow₀ hY⟩
+
+/-- A quantity with $x \le Y^a$ has $\log_2 x \le a\log_2 Y$. -/
+theorem HiBd.logb_le (hx : HiBd Y a x) : logb 2 x ≤ a * logb 2 Y := by
+  rw [← logb_pow]
+  exact logb_le_logb_of_le (by norm_num) hx.1 hx.2
+
+/-- A quantity with $x \ge Y^{-a}$ has $\log_2 x^{-1} \le a\log_2 Y$. -/
+theorem LoBd.logb_inv_le (hx : LoBd Y a x) : logb 2 x⁻¹ ≤ a * logb 2 Y :=
+  (HiBd.inv hx).logb_le
+
+
+/-- $1/(c(m + 1)) \ge Y^{-(e + m)}$ for $Y \ge 4$ and $0 < c \le 4^e$. -/
+theorem LoBd.one_div_mul_succ (hY : 4 ≤ Y) {c : ℝ} (hc0 : 0 < c) {e : ℕ} (hc : c ≤ 4 ^ e)
+    (m : ℕ) : LoBd Y (e + m) (1 / (c * (m + 1))) := by
+  have hm : (m : ℝ) + 1 ≤ 4 ^ m := by
+    have := one_add_mul_le_pow (by norm_num : (-2 : ℝ) ≤ 3) m
+    norm_num at this; linarith [m.cast_nonneg (α := ℝ)]
+  refine LoBd.inv ((HiBd.const hY hc0 hc).mul (HiBd.const hY (by positivity) hm)) |>.of_le ?_
+  rw [one_div]
+
+/-! ### Uniform polynomial bounds -/
+
+section Uniform
+
+variable {ι : Type*} {P : ι → Prop} {Y f g : ι → ℝ}
+
+/-- $f_i \ge Y_i^{-e}$ for one exponent $e$ and every $i$ with $P(i)$. -/
+def UnifLo (P : ι → Prop) (Y f : ι → ℝ) : Prop := ∃ e : ℕ, ∀ i, P i → LoBd (Y i) e (f i)
+
+/-- $f_i \le Y_i^{e}$ for one exponent $e$ and every $i$ with $P(i)$. -/
+def UnifHi (P : ι → Prop) (Y f : ι → ℝ) : Prop := ∃ e : ℕ, ∀ i, P i → HiBd (Y i) e (f i)
+
+namespace UnifLo
+
+theorem congr (h : UnifLo P Y f) (hfg : ∀ i, P i → f i = g i) : UnifLo P Y g := by
+  obtain ⟨e, he⟩ := h; exact ⟨e, fun i hi => hfg i hi ▸ he i hi⟩
+
+theorem of_le (h : UnifLo P Y f) (hfg : ∀ i, P i → f i ≤ g i) : UnifLo P Y g := by
+  obtain ⟨e, he⟩ := h; exact ⟨e, fun i hi => (he i hi).of_le (hfg i hi)⟩
+
+theorem mul (hf : UnifLo P Y f) (hg : UnifLo P Y g) : UnifLo P Y (fun i => f i * g i) := by
+  obtain ⟨a, ha⟩ := hf; obtain ⟨b, hb⟩ := hg; exact ⟨a + b, fun i hi => (ha i hi).mul (hb i hi)⟩
+
+theorem div (hf : UnifLo P Y f) (hg : UnifHi P Y g) : UnifLo P Y (fun i => f i / g i) := by
+  obtain ⟨a, ha⟩ := hf; obtain ⟨b, hb⟩ := hg; exact ⟨a + b, fun i hi => (ha i hi).div (hb i hi)⟩
+
+theorem min (hY : ∀ i, P i → 1 ≤ Y i) (hf : UnifLo P Y f) (hg : UnifLo P Y g) :
+    UnifLo P Y (fun i => Min.min (f i) (g i)) := by
+  obtain ⟨a, ha⟩ := hf; obtain ⟨b, hb⟩ := hg
+  exact ⟨a + b, fun i hi => (ha i hi).min' (hY i hi) (hb i hi)⟩
+
+theorem sqrt (hY : ∀ i, P i → 1 ≤ Y i) (hf : UnifLo P Y f) : UnifLo P Y (fun i => √(f i)) := by
+  obtain ⟨a, ha⟩ := hf; exact ⟨a, fun i hi => (ha i hi).sqrt (hY i hi)⟩
+
+theorem pow (hf : UnifLo P Y f) (m : ℕ) : UnifLo P Y (fun i => f i ^ m) := by
+  obtain ⟨a, ha⟩ := hf; exact ⟨a * m, fun i hi => (ha i hi).pow m⟩
+
+theorem rpow (hf : UnifLo P Y f) (hf1 : ∀ i, P i → f i ≤ 1) (r : ℝ) :
+    UnifLo P Y (fun i => f i ^ r) := by
+  obtain ⟨a, ha⟩ := hf; exact ⟨a * ⌈r⌉₊, fun i hi => (ha i hi).rpow_of_le_one (hf1 i hi) r⟩
+
+theorem const (hY : ∀ i, P i → 4 ≤ Y i) {c : ℝ} (hc : 0 < c) : UnifLo P Y (fun _ => c) := by
+  obtain ⟨a, ha⟩ := pow_unbounded_of_one_lt c⁻¹ (by norm_num : (1 : ℝ) < 4)
+  refine ⟨a, fun i hi => LoBd.const (hY i hi) hc ?_⟩
+  rw [inv_lt_iff_one_lt_mul₀ hc] at ha; linarith
+
+theorem inv (hf : UnifHi P Y f) : UnifLo P Y (fun i => (f i)⁻¹) := by
+  obtain ⟨a, ha⟩ := hf; exact ⟨a, fun i hi => LoBd.inv (ha i hi)⟩
+
+end UnifLo
+
+namespace UnifHi
+
+theorem congr (h : UnifHi P Y f) (hfg : ∀ i, P i → f i = g i) : UnifHi P Y g := by
+  obtain ⟨e, he⟩ := h; exact ⟨e, fun i hi => hfg i hi ▸ he i hi⟩
+
+theorem of_le (h : UnifHi P Y f) (hg : ∀ i, P i → 0 < g i) (hfg : ∀ i, P i → g i ≤ f i) :
+    UnifHi P Y g := by
+  obtain ⟨e, he⟩ := h; exact ⟨e, fun i hi => (he i hi).of_le (hg i hi) (hfg i hi)⟩
+
+theorem mul (hf : UnifHi P Y f) (hg : UnifHi P Y g) : UnifHi P Y (fun i => f i * g i) := by
+  obtain ⟨a, ha⟩ := hf; obtain ⟨b, hb⟩ := hg; exact ⟨a + b, fun i hi => (ha i hi).mul (hb i hi)⟩
+
+theorem div (hf : UnifHi P Y f) (hg : UnifLo P Y g) : UnifHi P Y (fun i => f i / g i) := by
+  obtain ⟨a, ha⟩ := hf; obtain ⟨b, hb⟩ := hg; exact ⟨a + b, fun i hi => (ha i hi).div (hb i hi)⟩
+
+theorem add (hY : ∀ i, P i → 2 ≤ Y i) (hf : UnifHi P Y f) (hg : UnifHi P Y g) :
+    UnifHi P Y (fun i => f i + g i) := by
+  obtain ⟨a, ha⟩ := hf; obtain ⟨b, hb⟩ := hg
+  exact ⟨a + b + 1, fun i hi => (ha i hi).add' (hY i hi) (hb i hi)⟩
+
+theorem sqrt (hY : ∀ i, P i → 1 ≤ Y i) (hf : UnifHi P Y f) : UnifHi P Y (fun i => √(f i)) := by
+  obtain ⟨a, ha⟩ := hf; exact ⟨a, fun i hi => (ha i hi).sqrt (hY i hi)⟩
+
+theorem pow (hf : UnifHi P Y f) (m : ℕ) : UnifHi P Y (fun i => f i ^ m) := by
+  obtain ⟨a, ha⟩ := hf; exact ⟨a * m, fun i hi => (ha i hi).pow m⟩
+
+theorem rpow (hf : UnifHi P Y f) (hf1 : ∀ i, P i → 1 ≤ f i) (r : ℝ) :
+    UnifHi P Y (fun i => f i ^ r) := by
+  obtain ⟨a, ha⟩ := hf; exact ⟨a * ⌈r⌉₊, fun i hi => (ha i hi).rpow_of_one_le (hf1 i hi) r⟩
+
+theorem const (hY : ∀ i, P i → 4 ≤ Y i) {c : ℝ} (hc : 0 < c) : UnifHi P Y (fun _ => c) := by
+  obtain ⟨a, ha⟩ := pow_unbounded_of_one_lt c (by norm_num : (1 : ℝ) < 4)
+  exact ⟨a, fun i hi => HiBd.const (hY i hi) hc ha.le⟩
+
+theorem inv (hf : UnifLo P Y f) : UnifHi P Y (fun i => (f i)⁻¹) := by
+  obtain ⟨a, ha⟩ := hf; exact ⟨a, fun i hi => HiBd.inv (ha i hi)⟩
+
+end UnifHi
+
+end Uniform
+
+end More
 
 section Bits
 
@@ -428,43 +580,32 @@ theorem shqrArg_bounds (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ) (hδS : δ �
       _ = φ * (4 * N * B * S ^ 2) := by ring⟩
   exact ⟨hY4, hNY, hBY, hδY, hmY, hφY⟩
 
-/-- The precision threshold is polynomial in the scale-invariant argument: for $B \ge 1$,
+/-- The scale-invariant argument bounds the quantities of the precision threshold: for $B \ge 1$,
 $\Gamma > 0$, $0 < \delta \le \Sigma$, $0 < \varphi \le 1$ and $k$ the degree of (eqn:setk) at
-$4B$, the argument $Y = 4(n + 1)B\Sigma^2/(\delta\min(\Gamma, \Sigma)\varphi)$ is at least $4$
-and $\boldsymbol{u}_{\mathrm{ShQR}} \ge Y^{-(53k + 40)}$. -/
-theorem one_le_uShQR_mul (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ)
+$4B$, with $Y = 4(n + 1)B\Sigma^2/(\delta\min(\Gamma, \Sigma)\varphi)$: $Y \ge 4$, $k \le Y^9$,
+$n + 1 \le Y$, $\mathrm{budget}/\Sigma \ge Y^{-5}$, $\omega/\Sigma \ge Y^{-8}$, $F \le Y^{12}$
+and the failure unit is at least $Y^{-16}$. -/
+theorem shqrArg_facts (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ)
     (hφ1 : φ ≤ 1) (hk : k = shqrDegree (4 * B)) :
     4 ≤ 4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ) ∧
-    1 ≤ uShQR n k B Γ S δ φ * (4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)) ^ (53 * k + 40) := by
+    HiBd (4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)) 9 (k : ℝ) ∧
+    HiBd (4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)) 1 ((n : ℝ) + 1) ∧
+    LoBd (4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)) 5 (shqrBudget n B Γ δ / S) ∧
+    LoBd (4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)) 8 (shqrOmega n B Γ δ / S) ∧
+    HiBd (4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)) 12 (shqrCap n B Γ S δ : ℝ) ∧
+    LoBd (4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)) 16 (shqrSmallEigFailure n B Γ S δ φ) := by
   have hS : 0 < S := hδ.trans_le hδS
-  have hB0 : 0 < B := by linarith
   have hB4 : 1 ≤ 4 * B := by linarith
-  have hk4 : (4 : ℝ) ≤ k := hk ▸ (shqrDegree_facts hB4).1
-  have hk1 : 1 ≤ k := by exact_mod_cast (show (1 : ℝ) ≤ k by linarith)
   have hkB : (k : ℝ) ≤ 512 * (4 * B) ^ 2 := hk ▸ shqrDegree_le hB4
-  have hε : 1 / 100 ≤ shqrEps k (4 * B) := hk ▸ shqrEps_ge hB4
-  have hC : shqrC k (4 * B) ≤ 7 := hk ▸ shqrC_le hB4
-  have hC0 := shqrC_pos k (by linarith : (0 : ℝ) < 4 * B)
-  have hθ1 := one_le_shqrTheta k hB4
-  have hα1 := one_le_shqrAlpha k hB4
-  have hrh0 := shqrRadiusHi_pos k (by linarith : (0 : ℝ) < 4 * B)
-  have hrl1 : 1 ≤ shqrRadiusLo k (4 * B) := by
-    unfold shqrRadiusLo
-    have h1 : 1 ≤ (1.998 : ℝ) ^ ((k : ℝ)⁻¹) := one_le_rpow (by norm_num) (by positivity)
-    have h2 : 1 ≤ (4 * B) ^ ((k : ℝ)⁻¹) := one_le_rpow hB4 (by positivity)
-    exact one_le_mul_of_one_le_of_one_le (one_le_mul_of_one_le_of_one_le
-      (one_le_mul_of_one_le_of_one_le h1 hθ1) hα1) h2
-  have hrh : shqrRadiusHi k (4 * B) ≤ 3 := by
-    unfold shqrC at hC; linarith
   have hωS : shqrOmega n B Γ δ ≤ S := shqrOmega_le_normBound hB hΓ hδ hδS
   have hω0 : 0 < shqrOmega n B Γ δ := shqrOmega_pos hB hΓ hδ
   obtain ⟨hY4, hNY, hBY, hδY, hmY, hφY⟩ := shqrArg_bounds (n := n) hB hΓ hδ hδS hφ hφ1 rfl
   set N : ℝ := (n : ℝ) + 1 with hN
   set Y := 4 * N * B * S ^ 2 / (δ * min Γ S * φ) with hY
-  refine ⟨hY4, ?_⟩
   have hY1 : 1 ≤ Y := by linarith
   set m := min Γ S with hm
   have hmΓ : m ≤ Γ := min_le_left _ _
+  have hk4 : (4 : ℝ) ≤ k := hk ▸ (shqrDegree_facts hB4).1
   have hkY : HiBd Y 9 (k : ℝ) :=
     ((HiBd.const hY4 (by norm_num) (by norm_num : (8192 : ℝ) ≤ 4 ^ 7)).mul
       (hBY.pow 2)).of_le (by linarith) (by nlinarith)
@@ -487,8 +628,40 @@ theorem one_le_uShQR_mul (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ) (hδS : δ
     rw [e]
     exact hbs.div ((HiBd.const hY4 (by norm_num) (by norm_num : (12 : ℝ) ≤ 4 ^ 2)).mul hNY)
   have hF := hiBd_shqrCap hY4 hS hω0 hωS hrr
-  have hφu : LoBd Y 16 (shqrSmallEigFailure n B Γ S δ φ) :=
-    hφY.div (((HiBd.const hY4 (by norm_num) (by norm_num : (12 : ℝ) ≤ 4 ^ 2)).mul hF).mul hNY)
+  exact ⟨hY4, hkY, hNY, hbs, hrr, hF,
+    hφY.div (((HiBd.const hY4 (by norm_num) (by norm_num : (12 : ℝ) ≤ 4 ^ 2)).mul hF).mul hNY)⟩
+
+/-- The precision threshold is polynomial in the scale-invariant argument: for $B \ge 1$,
+$\Gamma > 0$, $0 < \delta \le \Sigma$, $0 < \varphi \le 1$ and $k$ the degree of (eqn:setk) at
+$4B$, the argument $Y = 4(n + 1)B\Sigma^2/(\delta\min(\Gamma, \Sigma)\varphi)$ is at least $4$
+and $\boldsymbol{u}_{\mathrm{ShQR}} \ge Y^{-(53k + 40)}$. -/
+theorem one_le_uShQR_mul (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ)
+    (hφ1 : φ ≤ 1) (hk : k = shqrDegree (4 * B)) :
+    4 ≤ 4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ) ∧
+    1 ≤ uShQR n k B Γ S δ φ * (4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)) ^ (53 * k + 40) := by
+  have hS : 0 < S := hδ.trans_le hδS
+  have hB4 : 1 ≤ 4 * B := by linarith
+  have hk4 : (4 : ℝ) ≤ k := hk ▸ (shqrDegree_facts hB4).1
+  have hk1 : 1 ≤ k := by exact_mod_cast (show (1 : ℝ) ≤ k by linarith)
+  have hε : 1 / 100 ≤ shqrEps k (4 * B) := hk ▸ shqrEps_ge hB4
+  have hC : shqrC k (4 * B) ≤ 7 := hk ▸ shqrC_le hB4
+  have hC0 := shqrC_pos k (by linarith : (0 : ℝ) < 4 * B)
+  have hθ1 := one_le_shqrTheta k hB4
+  have hα1 := one_le_shqrAlpha k hB4
+  have hrh0 := shqrRadiusHi_pos k (by linarith : (0 : ℝ) < 4 * B)
+  have hrl1 : 1 ≤ shqrRadiusLo k (4 * B) := by
+    unfold shqrRadiusLo
+    have h1 : 1 ≤ (1.998 : ℝ) ^ ((k : ℝ)⁻¹) := one_le_rpow (by norm_num) (by positivity)
+    have h2 : 1 ≤ (4 * B) ^ ((k : ℝ)⁻¹) := one_le_rpow hB4 (by positivity)
+    exact one_le_mul_of_one_le_of_one_le (one_le_mul_of_one_le_of_one_le
+      (one_le_mul_of_one_le_of_one_le h1 hθ1) hα1) h2
+  have hrh : shqrRadiusHi k (4 * B) ≤ 3 := by
+    unfold shqrC at hC; linarith
+  obtain ⟨-, -, hBY, -, -, -⟩ := shqrArg_bounds (n := n) hB hΓ hδ hδS hφ hφ1 rfl
+  obtain ⟨hY4, hkY, hNY, hbs, hrr, hF, hφu⟩ := shqrArg_facts (n := n) hB hΓ hδ hδS hφ hφ1 hk
+  set N : ℝ := (n : ℝ) + 1 with hN
+  set Y := 4 * N * B * S ^ 2 / (δ * min Γ S * φ) with hY
+  refine ⟨hY4, ?_⟩
   have hη := loBd_shqrEta_div hY4 hS (by omega) hrr hφu hkY
   have hd := loBd_shqrDist_div hY4 hS hη hε hrl1 hrr hφu hNY
   have hu : LoBd Y (53 * k + 40) (uShQR n k B Γ S δ φ) :=

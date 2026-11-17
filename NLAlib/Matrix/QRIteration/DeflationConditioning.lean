@@ -36,6 +36,8 @@ Two facts give it under an eigenvalue gap ([BanksGarzaVargasSrivastava2022, Lemm
 * `IsStarNormal.apply_eq_zero_of_blockTriangular`: a normal block triangular matrix is block
   diagonal.
 * `Matrix.BlockTriangular.exists_pseudoConditionNumber_subBlock_le`: the diagonal blocks.
+* `NLAlib.exists_add_mul_mul_one_add_eq_mul_diagonal`: the perturbed eigenvectors
+  $\mathbf{V}(\mathbf{I} + \mathbf{Z})$, with $\|\mathbf{Z}\|_2$ linear in the perturbation.
 * `NLAlib.exists_pseudoConditionNumber_add_le_and_norm_sub_le`: the perturbation with an
   indexed eigenvalue matching.
 * `NLAlib.exists_pseudoConditionNumber_add_le`: the condition-only corollary.
@@ -328,6 +330,17 @@ private theorem le_one_div_of_mul_sub_le {x s r g N : ℝ} (hx : 0 ≤ x) (hg : 
   rw [le_div_iff₀ (by positivity), mul_comm]
   linarith [le_of_mul_le_mul_right h2 hg]
 
+/-- A similarity costs at most the condition number:
+$\|\mathbf{V}^{-1}\mathbf{E}\mathbf{V}\|_2 \le \kappa(\mathbf{V})\|\mathbf{E}\|_2$. -/
+private theorem specNorm_inv_mul_mul_le_mul {V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    (hV : IsUnit V) (E : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) :
+    specNorm (V⁻¹ * E * V) ≤ pseudoConditionNumber V * specNorm E := by
+  rw [pseudoConditionNumber_of_isUnit hV]
+  calc specNorm (V⁻¹ * E * V) ≤ specNorm V⁻¹ * specNorm E * specNorm V :=
+        (specNorm_mul_le _ _).trans (mul_le_mul_of_nonneg_right (specNorm_mul_le _ _)
+          (specNorm_nonneg _))
+    _ = specNorm V * specNorm V⁻¹ * specNorm E := by ring
+
 /-- The similar perturbation is small: $\|\mathbf{V}^{-1}\mathbf{E}\mathbf{V}\|_2 \le
 \kappa(\mathbf{V})\|\mathbf{E}\|_2 \le g/(16(n + 1))$ when $\kappa(\mathbf{V}) \le B$,
 $B \ge 1$ and $\|\mathbf{E}\|_2 \le g/(16(n + 1)B)$. -/
@@ -335,15 +348,18 @@ private theorem specNorm_inv_mul_mul_le {V E : Matrix (Fin (n + 1)) (Fin (n + 1)
     (hV : IsUnit V) {B g : ℝ} (hB : pseudoConditionNumber V ≤ B) (hB1 : 1 ≤ B)
     (hE : specNorm E ≤ g / (16 * (n + 1) * B)) :
     specNorm (V⁻¹ * E * V) ≤ g / (16 * (n + 1)) := by
-  have h1 : specNorm (V⁻¹ * E * V) ≤ pseudoConditionNumber V * specNorm E := by
-    rw [pseudoConditionNumber_of_isUnit hV]
-    calc specNorm (V⁻¹ * E * V) ≤ specNorm V⁻¹ * specNorm E * specNorm V :=
-          (specNorm_mul_le _ _).trans (mul_le_mul_of_nonneg_right (specNorm_mul_le _ _)
-            (specNorm_nonneg _))
-      _ = specNorm V * specNorm V⁻¹ * specNorm E := by ring
   calc specNorm (V⁻¹ * E * V) ≤ B * (g / (16 * (n + 1) * B)) :=
-        h1.trans (mul_le_mul hB hE (specNorm_nonneg _) (by linarith))
+        (specNorm_inv_mul_mul_le_mul hV E).trans
+          (mul_le_mul hB hE (specNorm_nonneg _) (by linarith))
     _ = g / (16 * (n + 1)) := by field_simp
+
+/-- The arithmetic of the eigenvector correction: if $x(g - r - s) \le s$ with
+$r, s \le g/16$, $s \ge 0$ and $x \ge 0$, then $x \le 2s/g$. -/
+private theorem le_two_mul_div_of_mul_sub_le {x s r g : ℝ} (hx : 0 ≤ x) (hg : 0 < g)
+    (hs0 : 0 ≤ s) (hs : s ≤ g / 16) (hr : r ≤ g / 16) (h : x * (g - r - s) ≤ s) :
+    x ≤ 2 * s / g := by
+  rw [le_div_iff₀ hg]
+  nlinarith [mul_le_mul_of_nonneg_left hr hx, mul_le_mul_of_nonneg_left hs hx]
 
 /-- A matrix $\mathbf{Z}$ whose columns have norm at most $1/(14(n + 1))$ has
 $\|\mathbf{Z}\|_2 \le 1/14$. -/
@@ -356,6 +372,73 @@ private theorem specNorm_le_one_div_fourteen {Z : Matrix (Fin (n + 1)) (Fin (n +
   have hs : √((n : ℝ) + 1) ≤ n + 1 := Real.sqrt_le_iff.mpr ⟨by linarith, by nlinarith⟩
   calc √((n : ℝ) + 1) * (1 / (14 * (n + 1))) ≤ (n + 1) * (1 / (14 * (n + 1))) := by gcongr
     _ = 1 / 14 := by field_simp
+
+/-- **The eigenvectors under a small perturbation**: let $\mathbf{A}\mathbf{V} =
+\mathbf{V}\operatorname{diag}(\mathbf{d})$ with $\mathbf{V}$ invertible,
+$\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le B$, and eigenvalues separated by $g > 0$:
+$\lvert\mathbf{d}_i - \mathbf{d}_j\rvert \ge g$ for $i \ne j$. If $\|\mathbf{E}\|_2 \le
+g/(16(n + 1)B)$, then $\mathbf{A} + \mathbf{E}$ has the eigenvector matrix
+$\mathbf{V}(\mathbf{I} + \mathbf{Z})$ with distinct eigenvalues $d'_i$, $\lvert d'_i - d_i\rvert \le
+g/16$, where $\mathbf{I} + \mathbf{Z}$ is invertible with
+$\|\mathbf{I} + \mathbf{Z}\|_2\|(\mathbf{I} + \mathbf{Z})^{-1}\|_2 \le 2$ and
+$$\|\mathbf{Z}\|_2 \le \frac{2\sqrt{n + 1}\,B\|\mathbf{E}\|_2}{g}.$$
+[BanksGarzaVargasSrivastava2022, Lemma 6.1]; the eigenvectors of
+$\operatorname{diag}(\mathbf{d}) + \mathbf{V}^{-1}\mathbf{E}\mathbf{V}$ by Gershgorin's theorem
+with counting. -/
+theorem exists_add_mul_mul_one_add_eq_mul_diagonal
+    {A V E : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {d : Fin (n + 1) → ℂ} (hV : IsUnit V) (hAV : A * V = V * Matrix.diagonal d) {B g : ℝ}
+    (hB : pseudoConditionNumber V ≤ B) (hg : 0 < g)
+    (hgap : ∀ i j, i ≠ j → g ≤ ‖d i - d j‖) (hE : specNorm E ≤ g / (16 * (n + 1) * B)) :
+    ∃ (Z : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (d' : Fin (n + 1) → ℂ), IsUnit (1 + Z) ∧
+      (A + E) * (V * (1 + Z)) = V * (1 + Z) * Matrix.diagonal d' ∧ Function.Injective d' ∧
+      pseudoConditionNumber (1 + Z) ≤ 2 ∧ (∀ i, ‖d' i - d i‖ ≤ g / 16) ∧
+      specNorm Z ≤ 2 * √(n + 1) * B * specNorm E / g := by
+  have hN : (1 : ℝ) ≤ n + 1 := by linarith [(n.cast_nonneg : (0 : ℝ) ≤ n)]
+  have hB1 : 1 ≤ B := (one_le_pseudoConditionNumber hV.ne_zero).trans hB
+  set F := V⁻¹ * E * V with hFdef
+  have hF := specNorm_inv_mul_mul_le hV hB hB1 hE
+  have hFB : specNorm F ≤ B * specNorm E :=
+    (specNorm_inv_mul_mul_le_mul hV E).trans (mul_le_mul_of_nonneg_right hB (specNorm_nonneg _))
+  have hr : (Fintype.card (Fin (n + 1)) : ℝ) * specNorm F ≤ g / 16 := by
+    rw [Fintype.card_fin, Nat.cast_add, Nat.cast_one]
+    calc ((n : ℝ) + 1) * specNorm F ≤ (n + 1) * (g / (16 * (n + 1))) := by gcongr
+      _ = g / 16 := by field_simp
+  have hF16 : specNorm F ≤ g / 16 :=
+    hF.trans (div_le_div_of_nonneg_left hg.le (by norm_num) (by linarith))
+  choose μ z hzi hμ hz hzn using fun i =>
+    exists_mulVec_single_add_eq_smul_of_two_mul_card_mul_specNorm_lt (F := F)
+      (fun j hj => hgap i j (Ne.symm hj)) (by linarith : 2 * _ < g)
+  set Z : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ := Matrix.of fun j i => z i j with hZdef
+  have hcol : ∀ i, (1 + Z).col i = Pi.single i 1 + z i := fun i => by
+    ext j
+    simp [Z, Matrix.one_apply, Pi.single_apply]
+  have hW : (Matrix.diagonal d + F) * (1 + Z) = (1 + Z) * Matrix.diagonal μ :=
+    mul_eq_mul_diagonal_iff.mpr fun i => by rw [hcol]; exact hz i
+  have hZ : specNorm Z ≤ 1 / 14 := specNorm_le_one_div_fourteen fun i =>
+    le_one_div_of_mul_sub_le (norm_nonneg _) hg hN hF hr (hzn i)
+  have hZ1 : specNorm Z < 1 := by linarith
+  have hU := isUnit_one_add_of_specNorm_lt_one hZ1
+  have hAE : (A + E) * V = V * (Matrix.diagonal d + F) := by
+    rw [Matrix.add_mul, hAV, Matrix.mul_add, hFdef, ← Matrix.mul_assoc, ← Matrix.mul_assoc,
+      Matrix.mul_nonsing_inv _ ((Matrix.isUnit_iff_isUnit_det V).mp hV), Matrix.one_mul]
+  refine ⟨Z, μ, hU, ?_, fun i j hij => ?_,
+    (pseudoConditionNumber_one_add_le hZ1).trans (by rw [div_le_iff₀ (by linarith)]; linarith),
+    fun i => (hμ i).trans hr, ?_⟩
+  · rw [← Matrix.mul_assoc, hAE, Matrix.mul_assoc, hW, Matrix.mul_assoc]
+  · by_contra hne
+    have h3 : ‖d i - d j‖ ≤ ‖μ j - d j‖ + ‖μ i - d i‖ := by
+      calc ‖d i - d j‖ = ‖(μ j - d j) - (μ i - d i)‖ := by rw [hij]; ring_nf
+        _ ≤ ‖μ j - d j‖ + ‖μ i - d i‖ := norm_sub_le _ _
+    linarith [hgap i j hne, hμ i, hμ j]
+  · -- every column of `Z` is at most `2‖F‖/g ≤ 2B‖E‖/g`
+    have hzc : ∀ i, ‖WithLp.toLp 2 (Z.col i)‖ ≤ 2 * (B * specNorm E) / g := fun i =>
+      (le_two_mul_div_of_mul_sub_le (norm_nonneg _) hg (specNorm_nonneg _) hF16 hr
+        (hzn i)).trans (by gcongr)
+    refine (specNorm_le_frobNorm Z).trans
+      ((frobNorm_le_sqrt_card_mul_of_forall_norm_toLp_col_le hzc).trans_eq ?_)
+    rw [Fintype.card_fin, Nat.cast_add, Nat.cast_one]
+    ring
 
 /-- **The condition under a small perturbation**: let $\mathbf{A}\mathbf{V} =
 \mathbf{V}\operatorname{diag}(\mathbf{d})$ with $\mathbf{V}$ invertible,
@@ -376,44 +459,15 @@ theorem exists_pseudoConditionNumber_add_le_and_norm_sub_le
     ∃ (V' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (d' : Fin (n + 1) → ℂ), IsUnit V' ∧
       (A + E) * V' = V' * Matrix.diagonal d' ∧ Function.Injective d' ∧
       pseudoConditionNumber V' ≤ 2 * B ∧ ∀ i, ‖d' i - d i‖ ≤ g / 16 := by
-  have hN : (1 : ℝ) ≤ n + 1 := by linarith [(n.cast_nonneg : (0 : ℝ) ≤ n)]
+  obtain ⟨Z, d', hU, hAV', hd', hκ, hm, -⟩ :=
+    exists_add_mul_mul_one_add_eq_mul_diagonal hV hAV hB hg hgap hE
   have hB1 : 1 ≤ B := (one_le_pseudoConditionNumber hV.ne_zero).trans hB
-  set F := V⁻¹ * E * V with hFdef
-  have hF := specNorm_inv_mul_mul_le hV hB hB1 hE
-  have hr : (Fintype.card (Fin (n + 1)) : ℝ) * specNorm F ≤ g / 16 := by
-    rw [Fintype.card_fin, Nat.cast_add, Nat.cast_one]
-    calc ((n : ℝ) + 1) * specNorm F ≤ (n + 1) * (g / (16 * (n + 1))) := by gcongr
-      _ = g / 16 := by field_simp
-  choose μ z hzi hμ hz hzn using fun i =>
-    exists_mulVec_single_add_eq_smul_of_two_mul_card_mul_specNorm_lt (F := F)
-      (fun j hj => hgap i j (Ne.symm hj)) (by linarith : 2 * _ < g)
-  set Z : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ := Matrix.of fun j i => z i j with hZdef
-  have hcol : ∀ i, (1 + Z).col i = Pi.single i 1 + z i := fun i => by
-    ext j
-    simp [Z, Matrix.one_apply, Pi.single_apply]
-  have hW : (Matrix.diagonal d + F) * (1 + Z) = (1 + Z) * Matrix.diagonal μ :=
-    mul_eq_mul_diagonal_iff.mpr fun i => by rw [hcol]; exact hz i
-  have hZ : specNorm Z ≤ 1 / 14 := specNorm_le_one_div_fourteen fun i =>
-    le_one_div_of_mul_sub_le (norm_nonneg _) hg hN hF hr (hzn i)
-  have hZ1 : specNorm Z < 1 := by linarith
-  have hU := isUnit_one_add_of_specNorm_lt_one hZ1
-  have hκ : pseudoConditionNumber (1 + Z) ≤ 2 :=
-    (pseudoConditionNumber_one_add_le hZ1).trans (by rw [div_le_iff₀ (by linarith)]; linarith)
-  have hAE : (A + E) * V = V * (Matrix.diagonal d + F) := by
-    rw [Matrix.add_mul, hAV, Matrix.mul_add, hFdef, ← Matrix.mul_assoc, ← Matrix.mul_assoc,
-      Matrix.mul_nonsing_inv _ ((Matrix.isUnit_iff_isUnit_det V).mp hV), Matrix.one_mul]
-  refine ⟨V * (1 + Z), μ, hV.mul hU, ?_, fun i j hij => ?_, ?_, fun i => (hμ i).trans hr⟩
-  · rw [← Matrix.mul_assoc, hAE, Matrix.mul_assoc, hW, Matrix.mul_assoc]
-  · by_contra hne
-    have h3 : ‖d i - d j‖ ≤ ‖μ j - d j‖ + ‖μ i - d i‖ := by
-      calc ‖d i - d j‖ = ‖(μ j - d j) - (μ i - d i)‖ := by rw [hij]; ring_nf
-        _ ≤ ‖μ j - d j‖ + ‖μ i - d i‖ := norm_sub_le _ _
-    linarith [hgap i j hne, hμ i, hμ j]
-  · calc pseudoConditionNumber (V * (1 + Z))
-        ≤ pseudoConditionNumber V * pseudoConditionNumber (1 + Z) :=
-          pseudoConditionNumber_mul_le hV hU
-      _ ≤ B * 2 := mul_le_mul hB hκ (pseudoConditionNumber_nonneg _) (by linarith)
-      _ = 2 * B := mul_comm _ _
+  refine ⟨V * (1 + Z), d', hV.mul hU, hAV', hd', ?_, hm⟩
+  calc pseudoConditionNumber (V * (1 + Z))
+      ≤ pseudoConditionNumber V * pseudoConditionNumber (1 + Z) :=
+        pseudoConditionNumber_mul_le hV hU
+    _ ≤ B * 2 := mul_le_mul hB hκ (pseudoConditionNumber_nonneg _) (by linarith)
+    _ = 2 * B := mul_comm _ _
 
 /-- **The condition under a small perturbation**: let $\mathbf{A}\mathbf{V} =
 \mathbf{V}\operatorname{diag}(\mathbf{d})$ with $\mathbf{V}$ invertible,

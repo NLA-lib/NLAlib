@@ -10,6 +10,7 @@ public import Mathlib.FieldTheory.IsAlgClosed.Basic
 public import Mathlib.LinearAlgebra.Eigenspace.Pi
 public import Mathlib.LinearAlgebra.Eigenspace.Semisimple
 public import Mathlib.LinearAlgebra.Matrix.Charpoly.Eigs
+public import NLAlib.Matrix.Perturbation.BackwardClosed
 public import NLAlib.Matrix.Pseudoinverse.ConditionNumber
 public import NLAlib.Matrix.Spectral.EigenvectorPairing
 public import NLAlib.Matrix.Spectral.Normal
@@ -50,6 +51,9 @@ $\mathbf{A}\mathbf{X} - \mathbf{X}\mathbf{B} = \mathbf{C}$ in
 * `NLAlib.norm_le_specNorm_of_mul_eq_mul_diagonal`: an eigenvalue is at most the spectral norm.
 * `IsStarNormal.exists_isUnit_mul_eq_mul_diagonal_and_pseudoConditionNumber_eq_one`: a normal
   matrix has a unitary eigenvector matrix.
+* `NLAlib.mul_eq_mul_diagonal_add_smul_one_iff`: a shift keeps the eigenvectors.
+* `NLAlib.isClosed_setOf_exists_pseudoConditionNumber_le_and_le_norm_sub`: the diagonalization
+  class is closed.
 -/
 
 @[expose] public section
@@ -536,6 +540,20 @@ theorem inv_sub_smul_one_pow_eq_mul_diagonal_mul_inv (hV : IsUnit V)
   rw [h, mul_diagonal_mul_inv_pow hV]
   rfl
 
+/-- The resolvent powers of a diagonalised matrix: if $\mathbf{H}\mathbf{V} =
+\mathbf{V}\operatorname{diag}(\mathbf{d})$ with $\mathbf{V}$ invertible and no $\mathbf{d}_i$
+equals $s$, then $(s\mathbf{I} - \mathbf{H})^{-k} =
+\mathbf{V}\operatorname{diag}((s - \mathbf{d}_i)^{-k})\mathbf{V}^{-1}$. -/
+theorem inv_smul_one_sub_pow_eq_mul_diagonal_mul_inv (hV : IsUnit V)
+    (hHV : H * V = V * Matrix.diagonal d) {s : ℂ} (hs : ∀ i, s ≠ d i) (k : ℕ) :
+    (s • (1 : Matrix n n ℂ) - H)⁻¹ ^ k = V * Matrix.diagonal (fun i => (s - d i)⁻¹ ^ k) * V⁻¹ := by
+  have h := inv_aeval_eq_mul_diagonal_mul_inv hV hHV (p := Polynomial.C s - Polynomial.X)
+    fun i => by simpa [sub_eq_zero] using hs i
+  simp only [map_sub, Polynomial.aeval_X, Polynomial.aeval_C, Algebra.algebraMap_eq_smul_one,
+    Polynomial.eval_sub, Polynomial.eval_X, Polynomial.eval_C] at h
+  rw [h, mul_diagonal_mul_inv_pow hV]
+  rfl
+
 /-- An eigenvalue of a diagonalised matrix: if $\mathbf{H}\mathbf{V} =
 \mathbf{V}\operatorname{diag}(\mathbf{d})$ with $\mathbf{V}$ invertible, then
 $\det(\mathbf{H} - \mathbf{d}_i\mathbf{I}) = 0$. -/
@@ -562,7 +580,8 @@ theorem det_sub_smul_one_ne_zero_of_forall_ne (hV : IsUnit V)
 /-- An eigenvalue of a diagonalised matrix is at most the norm: if $\mathbf{H}\mathbf{V} =
 \mathbf{V}\operatorname{diag}(\mathbf{d})$ with $\mathbf{V}$ invertible, then
 $\lvert\mathbf{d}_i\rvert \le \|\mathbf{H}\|_2$. -/
-theorem norm_le_specNorm_of_mul_eq_mul_diagonal (hV : IsUnit V)
+theorem norm_le_specNorm_of_mul_eq_mul_diagonal
+    {𝕜 : Type*} [RCLike 𝕜] {H V : Matrix n n 𝕜} {d : n → 𝕜} (hV : IsUnit V)
     (hHV : H * V = V * Matrix.diagonal d) (i : n) : ‖d i‖ ≤ specNorm H := by
   set x := V *ᵥ Pi.single i 1
   have hx : H *ᵥ x = d i • x := by
@@ -593,5 +612,168 @@ theorem _root_.IsStarNormal.exists_isUnit_mul_eq_mul_diagonal_and_pseudoConditio
       hU.specNorm_eq_one, mul_one]
 
 end Polynomial
+
+/-- **Eigenvector conditioning by rescaling columns.** Given an invertible eigenvector matrix,
+there is another diagonalizer for the same diagonal whose squared condition number is at most
+the dimension times the sum of the squared products of the original column norms and the
+corresponding inverse row norms. For simple eigenvalues these products are their individual
+condition numbers. The estimate also holds for a diagonalization with repeated eigenvalues.
+[BanksKulkarniMukherjeeSrivastava2021, Lemma 3.1]. -/
+theorem exists_isUnit_mul_eq_mul_diagonal_and_pseudoConditionNumber_sq_le
+    {𝕜 : Type*} [RCLike 𝕜] {A V : Matrix n n 𝕜} {d : n → 𝕜} (hV : IsUnit V)
+    (hAV : A * V = V * Matrix.diagonal d) :
+    ∃ W : Matrix n n 𝕜, IsUnit W ∧ A * W = W * Matrix.diagonal d ∧
+      pseudoConditionNumber W ^ 2 ≤ (Fintype.card n : ℝ) *
+        ∑ i, (‖WithLp.toLp 2 (V.col i)‖ * ‖WithLp.toLp 2 (V⁻¹.row i)‖) ^ 2 := by
+  have hn (i : n) : ‖WithLp.toLp 2 (V.col i)‖ ≠ 0 := by
+    rw [norm_ne_zero_iff]
+    intro h
+    exact (Matrix.linearIndependent_cols_iff_isUnit.mpr hV).ne_zero i
+      (congrArg WithLp.ofLp h)
+  let c : n → 𝕜 := fun i => (‖WithLp.toLp 2 (V.col i)‖ : 𝕜)⁻¹
+  let C := Matrix.diagonal c
+  have hc (i : n) : c i ≠ 0 := by dsimp [c]; exact inv_ne_zero (RCLike.ofReal_ne_zero.mpr (hn i))
+  have hC : IsUnit C := Matrix.isUnit_diagonal.mpr (Pi.isUnit_iff.mpr fun i =>
+    isUnit_iff_ne_zero.mpr (hc i))
+  let W := V * C
+  have hW : IsUnit W := hV.mul hC
+  have hcol (i : n) : W.col i = c i • V.col i := by
+    ext j
+    simp [W, C, Matrix.mul_diagonal, smul_eq_mul, mul_comm]
+  have hfW : frobNorm W ^ 2 = Fintype.card n := by
+    rw [frobNorm_sq_eq_sum_col]
+    simp only [hcol, WithLp.toLp_smul, norm_smul, c, norm_inv, RCLike.norm_ofReal,
+      abs_norm, inv_mul_cancel₀ (hn _), one_pow, Finset.sum_const, Finset.card_univ,
+      nsmul_eq_mul, mul_one]
+  have hCi : C⁻¹ = Matrix.diagonal (fun i => (‖WithLp.toLp 2 (V.col i)‖ : 𝕜)) := by
+    apply Matrix.inv_eq_left_inv
+    dsimp [C]
+    rw [Matrix.diagonal_mul_diagonal]
+    rw [← Matrix.diagonal_one]
+    apply congrArg Matrix.diagonal
+    funext i
+    change (‖WithLp.toLp 2 (V.col i)‖ : 𝕜) * (‖WithLp.toLp 2 (V.col i)‖ : 𝕜)⁻¹ = 1
+    exact mul_inv_cancel₀ (RCLike.ofReal_ne_zero.mpr (hn i))
+  have hrow (i : n) : W⁻¹.row i = (‖WithLp.toLp 2 (V.col i)‖ : 𝕜) • V⁻¹.row i := by
+    ext j
+    simp only [W, Matrix.mul_inv_rev, hCi, Matrix.row_apply, Matrix.diagonal_mul,
+      Pi.smul_apply, smul_eq_mul]
+  have hfI : frobNorm W⁻¹ ^ 2 = ∑ i,
+      (‖WithLp.toLp 2 (V.col i)‖ * ‖WithLp.toLp 2 (V⁻¹.row i)‖) ^ 2 := by
+    rw [frobNorm_sq_eq_sum_row]
+    simp only [hrow, WithLp.toLp_smul, norm_smul, RCLike.norm_ofReal, abs_norm]
+  refine ⟨W, hW, ?_, ?_⟩
+  · dsimp [W]
+    rw [← Matrix.mul_assoc, hAV, Matrix.mul_assoc, Matrix.mul_assoc]
+    congr 1
+    dsimp [C]
+    rw [Matrix.diagonal_mul_diagonal, Matrix.diagonal_mul_diagonal]
+    congr 1
+    ext i
+    exact mul_comm _ _
+  · rw [pseudoConditionNumber_of_isUnit hW, mul_pow]
+    calc specNorm W ^ 2 * specNorm W⁻¹ ^ 2
+        ≤ frobNorm W ^ 2 * frobNorm W⁻¹ ^ 2 := by
+          gcongr <;> exact specNorm_le_frobNorm _
+      _ = _ := by rw [hfW, hfI]
+
+/-! ### The diagonalization class -/
+
+/-- A shift by a multiple of the identity moves the eigenvalues and keeps the eigenvectors:
+$(\mathbf{A} + c\mathbf{I})\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d} + c)$ if and only
+if $\mathbf{A}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$. So the separation of the
+eigenvalues and the condition number of the eigenvector matrix are those of $\mathbf{A}$. -/
+theorem mul_eq_mul_diagonal_add_smul_one_iff {A V : Matrix n n K} {d : n → K} (c : K) :
+    (A + c • (1 : Matrix n n K)) * V = V * Matrix.diagonal (fun i => d i + c) ↔
+      A * V = V * Matrix.diagonal d := by
+  have hD : Matrix.diagonal (fun i => d i + c) = Matrix.diagonal d + c • (1 : Matrix n n K) := by
+    ext i j; by_cases h : i = j <;> simp [h]
+  rw [hD, Matrix.add_mul, Matrix.mul_add, Matrix.smul_mul, Matrix.mul_smul, Matrix.one_mul,
+    Matrix.mul_one, add_left_inj]
+
+/-- A diagonalization rescaled to a unit-norm eigenvector matrix: if
+$\mathbf{A}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$ with $\mathbf{V}$ invertible,
+$\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le B$ and eigenvalues at mutual distance at least $g$,
+then $\mathbf{W} = \mathbf{V}/\|\mathbf{V}\|_2$ and $\mathbf{U} = \mathbf{W}^{-1}$ have
+$\|\mathbf{W}\|_2 \le 1$, $\|\mathbf{U}\|_2 \le B$, $\mathbf{W}\mathbf{U} = \mathbf{I}$, and
+$\mathbf{A}\mathbf{W} = \mathbf{W}\operatorname{diag}(\mathbf{e})$ with $\mathbf{e}$ the diagonal
+of $\mathbf{U}\mathbf{A}\mathbf{W}$, whose entries are at mutual distance at least $g$. -/
+private theorem exists_normalized_of_mul_eq_mul_diagonal {n : ℕ} {B g : ℝ}
+    {A V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} (hV : IsUnit V)
+    (hAV : A * V = V * Matrix.diagonal d) (hB : pseudoConditionNumber V ≤ B)
+    (hgap : ∀ i j, i ≠ j → g ≤ ‖d i - d j‖) :
+    ∃ W U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, (specNorm W ≤ 1 ∧ specNorm U ≤ B) ∧
+      W * U = 1 ∧ A * W = W * Matrix.diagonal (fun i => (U * A * W) i i) ∧
+      ∀ i j, i ≠ j → g ≤ ‖(U * A * W) i i - (U * A * W) j j‖ := by
+  have hdet := (Matrix.isUnit_iff_isUnit_det V).mp hV
+  have hc : 0 < specNorm V := lt_of_le_of_ne (specNorm_nonneg V) fun h =>
+    not_isUnit_zero (M₀ := Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+      (specNorm_eq_zero_iff.mp h.symm ▸ hV)
+  set c : ℂ := (specNorm V : ℂ)
+  have hc0 : c ≠ 0 := Complex.ofReal_ne_zero.mpr hc.ne'
+  have hWU : (c⁻¹ • V) * (c • V⁻¹) = 1 := by
+    rw [Matrix.smul_mul, Matrix.mul_smul, smul_smul, inv_mul_cancel₀ hc0, one_smul,
+      Matrix.mul_nonsing_inv V hdet]
+  have hAW : A * (c⁻¹ • V) = (c⁻¹ • V) * Matrix.diagonal d := by
+    rw [Matrix.mul_smul, hAV, Matrix.smul_mul]
+  have hD : (c • V⁻¹) * A * (c⁻¹ • V) = Matrix.diagonal d := by
+    rw [Matrix.mul_assoc, hAW, ← Matrix.mul_assoc, Matrix.smul_mul, Matrix.mul_smul, smul_smul,
+      mul_inv_cancel₀ hc0, one_smul, Matrix.nonsing_inv_mul V hdet, Matrix.one_mul]
+  refine ⟨c⁻¹ • V, c • V⁻¹, ⟨?_, ?_⟩, hWU, ?_, ?_⟩
+  · rw [specNorm_smul, norm_inv, Complex.norm_real, Real.norm_of_nonneg hc.le,
+      inv_mul_cancel₀ hc.ne']
+  · rwa [specNorm_smul, Complex.norm_real, Real.norm_of_nonneg hc.le,
+      ← pseudoConditionNumber_of_isUnit hV]
+  · simp only [hD, Matrix.diagonal_apply_eq]
+    exact hAW
+  · simpa only [hD, Matrix.diagonal_apply_eq] using hgap
+
+/-- The diagonalization class is closed: for $B, g \in \mathbb{R}$, the set of complex
+matrices $\mathbf{A}$ of order $n + 1$ with $\mathbf{A}\mathbf{V} =
+\mathbf{V}\operatorname{diag}(\mathbf{d})$ for some invertible $\mathbf{V}$ with
+$\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le B$ and eigenvalues $d_i$ at mutual distance at least
+$g$ is closed. It is the good set of a perturbation by a random matrix, so its complement is a
+measurable bad set. No printed source. -/
+theorem isClosed_setOf_exists_pseudoConditionNumber_le_and_le_norm_sub (n : ℕ) (B g : ℝ) :
+    IsClosed {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ |
+      ∃ (V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (d : Fin (n + 1) → ℂ), IsUnit V ∧
+        A * V = V * Matrix.diagonal d ∧ pseudoConditionNumber V ≤ B ∧
+          ∀ i j, i ≠ j → g ≤ ‖d i - d j‖} := by
+  set N := Fin (n + 1)
+  -- the eigenvalues are the diagonal of `W⁻¹ A W`, so only `(W, W⁻¹)` ranges over a compact set
+  have hK : IsCompact
+      ({W : Matrix N N ℂ | specNorm W ≤ 1} ×ˢ {U : Matrix N N ℂ | specNorm U ≤ B}) :=
+    (isCompact_setOf_specNorm_le 1).prod (isCompact_setOf_specNorm_le B)
+  have hC : IsClosed {p : Matrix N N ℂ × (Matrix N N ℂ × Matrix N N ℂ) |
+      p.2.1 * p.2.2 = 1 ∧ p.1 * p.2.1 =
+        p.2.1 * Matrix.diagonal (fun i => (p.2.2 * p.1 * p.2.1) i i) ∧
+      ∀ i j, i ≠ j → g ≤ ‖(p.2.2 * p.1 * p.2.1) i i - (p.2.2 * p.1 * p.2.1) j j‖} := by
+    have hW : Continuous fun p : Matrix N N ℂ × (Matrix N N ℂ × Matrix N N ℂ) => p.2.1 :=
+      continuous_fst.comp continuous_snd
+    have hU : Continuous fun p : Matrix N N ℂ × (Matrix N N ℂ × Matrix N N ℂ) => p.2.2 :=
+      continuous_snd.comp continuous_snd
+    have hM := (hU.matrix_mul continuous_fst).matrix_mul hW
+    have hD : ∀ i, Continuous fun p : Matrix N N ℂ × (Matrix N N ℂ × Matrix N N ℂ) =>
+        (p.2.2 * p.1 * p.2.1) i i := fun i => hM.matrix_elem i i
+    refine (isClosed_eq (hW.matrix_mul hU) continuous_const).inter
+      ((isClosed_eq (continuous_fst.matrix_mul hW)
+        (hW.matrix_mul (continuous_pi fun i => hD i).matrix_diagonal)).inter ?_)
+    change IsClosed {p : Matrix N N ℂ × (Matrix N N ℂ × Matrix N N ℂ) |
+      ∀ i j, i ≠ j → g ≤ ‖(p.2.2 * p.1 * p.2.1) i i - (p.2.2 * p.1 * p.2.1) j j‖}
+    simp only [Set.ofPred_forall]
+    exact isClosed_iInter fun i => isClosed_iInter fun j => isClosed_iInter fun _ =>
+      isClosed_le continuous_const ((hD i).sub (hD j)).norm
+  convert isClosed_setOf_exists_mem_of_isCompact hK hC using 1
+  ext A
+  simp only [Set.mem_ofPred_eq, Prod.exists, Set.mem_prod]
+  constructor
+  · rintro ⟨V, d, hV, hAV, hB, hgap⟩
+    exact exists_normalized_of_mul_eq_mul_diagonal hV hAV hB hgap
+  · rintro ⟨W, U, ⟨hW1, hUB⟩, hWU, hAW, hgap⟩
+    have hWu : IsUnit W := (Matrix.isUnit_iff_isUnit_det W).mpr
+      (Matrix.isUnit_det_of_right_inverse hWU)
+    refine ⟨W, _, hWu, hAW, ?_, hgap⟩
+    rw [pseudoConditionNumber_of_isUnit hWu, Matrix.inv_eq_right_inv hWU]
+    exact (mul_le_of_le_one_left (specNorm_nonneg U) hW1).trans hUB
 
 end NLAlib

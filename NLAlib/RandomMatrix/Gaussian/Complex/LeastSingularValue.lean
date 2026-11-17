@@ -7,28 +7,36 @@ module
 
 public import NLAlib.RandomMatrix.Gaussian.Complex
 public import NLAlib.Matrix.Perturbation.Pseudospectrum
+public import NLAlib.Matrix.Spectral.SingularValueInequalities
 
 /-!
 # The smallest singular value of a complex Gaussian matrix
 
 Small-ball bounds for standard complex Gaussian vectors and matrices
-(`NLAlib.complexGaussianVector`, `NLAlib.complexGaussianMatrix`): a projection of a Gaussian
-vector onto a nonzero subspace has a small norm with probability quadratic in the radius, and so
-the smallest singular value $\sigma_{\min}$ of an $r \times r$ standard complex Gaussian matrix
-has $\mathbb{P}[\sigma_{\min} \le x] \le \min(r^2, e\,r)\,x^2$, against Edelman's exact law
+(`NLAlib.complexGaussianVector`, `NLAlib.complexGaussianMatrix`): a projection of a shifted
+Gaussian vector onto a nonzero subspace has a small norm with probability quadratic in the radius.
+The smallest singular value $\sigma_{\min}$ of an $r \times r$ standard complex Gaussian matrix
+with any deterministic shift has
+$\mathbb{P}[\sigma_{\min} \le x] \le \min(r^2, e\,r)\,x^2$, against Edelman's exact law
 $1 - e^{-r x^2}$ [Edelman1988]. The bound $e\,r x^2$ is the probe argument of
-[SankarSpielmanTeng2006, Lemma 3.2]: an independent Gaussian probe $\mathbf{g}$ sees
+[SankarSpielmanTeng2006]: an independent Gaussian probe $\mathbf{g}$ sees
 $\|\mathbf{G}^{-1}\|_2$ in $\|\mathbf{G}^{-1}\mathbf{g}\|$ with probability at least $e^{-1}$
 (`NLAlib.measureReal_norm_sq_ge_le_of_hasLaw_complexGaussian`).
 
 ## Main results
 
-* `NLAlib.measureReal_norm_mulVec_le_le_of_hasLaw_complexGaussianVector`: small ball of a
-  projection.
+* `NLAlib.measureReal_norm_mulVec_add_le_le_of_hasLaw_complexGaussianVector`: small ball of a
+  shifted projection.
+* `NLAlib.measureReal_singularValues_add_le_le_exp_one_mul_of_hasLaw_complexGaussianMatrix`:
+  shifted probe bound $e\,r x^2$.
+* `NLAlib.measureReal_singularValues_add_smul_le_le_exp_one_mul_of_hasLaw_complexGaussianMatrix`:
+  normalized Ginibre perturbations, $e\,r^2x^2/\gamma^2$.
 * `NLAlib.measureReal_singularValues_le_le_of_hasLaw_complexGaussianMatrix`: Lemma 3.1, with
   $r^2x^2$.
 * `NLAlib.measureReal_singularValues_le_le_exp_one_mul_of_hasLaw_complexGaussianMatrix`: the probe
   bound $e\,r x^2$.
+* `NLAlib.measureReal_norm_dotProduct_le_le_of_hasLaw_complexGaussianVector`: anti-concentration
+  in a fixed direction.
 -/
 
 @[expose] public section
@@ -41,44 +49,13 @@ namespace NLAlib
 variable {Ω : Type*} {mΩ : MeasurableSpace Ω} {μ : Measure Ω} {m n : Type*} [Fintype m]
   [Fintype n]
 
-/-- The disk of radius $s$ has mass at most $s^2$ under a standard complex Gaussian: $\sqrt2$
-times its real and imaginary parts form a standard Gaussian vector of dimension $2$. -/
-private theorem complexGaussian_real_closedBall_le {s : ℝ} (hs : 0 ≤ s) :
-    complexGaussian.real (Metric.closedBall 0 s) ≤ s ^ 2 := by
-  have h1 : MeasurePreserving (fun x : ℝ => √2 * x) (gaussianReal 0 2⁻¹) (gaussianReal 0 1) := by
-    refine ⟨measurable_const_mul _, ?_⟩
-    rw [gaussianReal_map_const_mul, mul_zero]
-    congr 1
-    ext
-    simp
-  have h2 : MeasurePreserving Complex.measurableEquivRealProd complexGaussian
-      ((gaussianReal 0 2⁻¹).prod (gaussianReal 0 2⁻¹)) :=
-    (MeasurePreserving.symm Complex.measurableEquivRealProd.symm
-      ⟨Complex.measurableEquivRealProd.symm.measurable, rfl⟩)
-  have hΦ := ((measurePreserving_finTwoArrow (gaussianReal 0 1)).symm.comp
-    (h1.prod h1)).comp h2
-  have key := measureReal_norm_sq_le_le_rpow_div_Gamma_of_hasLaw_gaussianVector hΦ.hasLaw
-    (u := 2 * s ^ 2) (by positivity)
-  refine (le_of_eq (congrArg complexGaussian.real ?_)).trans (key.trans (le_of_eq ?_))
-  · ext z
-    simp only [Metric.mem_closedBall, dist_zero_right, Set.mem_ofPred_eq, Function.comp_apply]
-    rw [EuclideanSpace.norm_toLp_sq_eq_sum_sq, Fin.sum_univ_two]
-    simp only [Complex.measurableEquivRealProd_apply, Prod.map_apply,
-      MeasurableEquiv.finTwoArrow_symm_apply, Fin.cons_zero, Fin.cons_one, mul_pow,
-      Real.sq_sqrt zero_le_two]
-    rw [← sq_le_sq₀ (norm_nonneg z) hs, Complex.sq_norm, Complex.normSq_apply]
-    constructor <;> intro h <;> nlinarith
-  · norm_num
-
-/-- Small ball of a projected complex Gaussian vector: for a standard complex Gaussian vector
-$\mathbf{g}$, a nonzero orthogonal projector $\mathbf{\Pi}$ and $s \ge 0$,
-$\mathbb{P}[\|\mathbf{\Pi}\mathbf{g}\| \le s] \le s^2$. A complex Gaussian has two real degrees of
-freedom per coordinate: $\lvert z \rvert^2$ is exponential, $\mathbb{P}[\lvert z \rvert \le s] =
-1 - e^{-s^2} \le s^2$. No printed source. -/
-theorem measureReal_norm_mulVec_le_le_of_hasLaw_complexGaussianVector {g : Ω → n → ℂ}
+/-- Small ball of a shifted projected complex Gaussian vector: for independent standard complex
+Gaussian entries, a nonzero orthogonal projector and any deterministic mean, the probability of
+norm at most $s \ge 0$ is at most $s^2$. No printed source. -/
+theorem measureReal_norm_mulVec_add_le_le_of_hasLaw_complexGaussianVector {g : Ω → n → ℂ}
     (hg : HasLaw g (complexGaussianVector n) μ) {P : Matrix n n ℂ} (hP : IsStarProjection P)
-    (hP₀ : P ≠ 0) {s : ℝ} (hs : 0 ≤ s) :
-    μ.real {ω | ‖WithLp.toLp 2 (P *ᵥ g ω)‖ ≤ s} ≤ s ^ 2 := by
+    (hP₀ : P ≠ 0) (a : n → ℂ) {s : ℝ} (hs : 0 ≤ s) :
+    μ.real {ω | ‖WithLp.toLp 2 (P *ᵥ (g ω + a))‖ ≤ s} ≤ s ^ 2 := by
   classical
   have : IsProbabilityMeasure μ := hg.isProbabilityMeasure_iff.2 inferInstance
   -- a unit vector `w` in the range of `P`
@@ -109,34 +86,110 @@ theorem measureReal_norm_mulVec_le_le_of_hasLaw_complexGaussianVector {g : Ω �
     ((measurePreserving_funUnique complexGaussian Unit).comp
       (measurePreserving_funUnique (complexGaussianVector Unit) Unit)).comp_hasLaw
       (hasLaw_conjTranspose_mul_of_hasLaw_complexGaussianMatrix hG hV)
-  calc μ.real {ω | ‖WithLp.toLp 2 (P *ᵥ g ω)‖ ≤ s}
-      ≤ μ.real {ω | ‖(Vᴴ * Matrix.of fun i (_ : Unit) => g ω i) () ()‖ ≤ s} :=
+  calc μ.real {ω | ‖WithLp.toLp 2 (P *ᵥ (g ω + a))‖ ≤ s}
+      ≤ μ.real {ω | ‖(Vᴴ * Matrix.of fun i (_ : Unit) => g ω i) () () -
+          -inner ℂ (WithLp.toLp 2 w) (WithLp.toLp 2 a)‖ ≤ s} :=
         measureReal_mono fun ω hω => by
           simp only [Set.mem_ofPred_eq] at hω ⊢
-          have h1 : (Vᴴ * Matrix.of fun i (_ : Unit) => g ω i) () () =
-              inner ℂ (WithLp.toLp 2 w) (WithLp.toLp 2 (P *ᵥ g ω)) := by
+          have h1 (b : n → ℂ) :
+              (Vᴴ * Matrix.of fun i (_ : Unit) => b i) () () =
+                inner ℂ (WithLp.toLp 2 w) (WithLp.toLp 2 (P *ᵥ b)) := by
             rw [EuclideanSpace.inner_toLp_toLp, dotProduct_comm, Matrix.dotProduct_mulVec,
               ← Matrix.conjTranspose_conjTranspose P, ← Matrix.star_mulVec, hPw]
             rfl
-          rw [h1]
+          have h2 : (Vᴴ * Matrix.of fun i (_ : Unit) => g ω i) () () -
+              -inner ℂ (WithLp.toLp 2 w) (WithLp.toLp 2 a) =
+              inner ℂ (WithLp.toLp 2 w) (WithLp.toLp 2 (P *ᵥ (g ω + a))) := by
+            rw [Matrix.mulVec_add, WithLp.toLp_add, inner_add_right, h1, sub_neg_eq_add]
+            congr 1
+            symm
+            rw [EuclideanSpace.inner_toLp_toLp, dotProduct_comm, Matrix.dotProduct_mulVec,
+              ← Matrix.conjTranspose_conjTranspose P, ← Matrix.star_mulVec, hPw,
+              EuclideanSpace.inner_toLp_toLp, dotProduct_comm]
+          rw [h2]
           refine (norm_inner_le_norm _ _).trans ?_
           rwa [hw, one_mul]
-    _ = complexGaussian.real (Metric.closedBall 0 s) := by
-      rw [hz.measureReal_eq (p := fun z => ‖z‖ ≤ s) (measurableSet_le measurable_norm
-        measurable_const)]
-      congr 1
-      ext z
-      simp
-    _ ≤ s ^ 2 := complexGaussian_real_closedBall_le hs
+    _ ≤ s ^ 2 := measureReal_norm_sub_le_le_of_hasLaw_complexGaussian hz _ hs
+
+/-- Small ball of a projected complex Gaussian vector: for a standard complex Gaussian vector
+$\mathbf{g}$, a nonzero orthogonal projector $\mathbf{\Pi}$ and $s \ge 0$,
+$\mathbb{P}[\|\mathbf{\Pi}\mathbf{g}\| \le s] \le s^2$. A complex Gaussian has two real degrees of
+freedom per coordinate: $\lvert z \rvert^2$ is exponential, $\mathbb{P}[\lvert z \rvert \le s] =
+1 - e^{-s^2} \le s^2$. No printed source. -/
+theorem measureReal_norm_mulVec_le_le_of_hasLaw_complexGaussianVector {g : Ω → n → ℂ}
+    (hg : HasLaw g (complexGaussianVector n) μ) {P : Matrix n n ℂ} (hP : IsStarProjection P)
+    (hP₀ : P ≠ 0) {s : ℝ} (hs : 0 ≤ s) :
+    μ.real {ω | ‖WithLp.toLp 2 (P *ᵥ g ω)‖ ≤ s} ≤ s ^ 2 := by
+  simpa only [add_zero] using
+    measureReal_norm_mulVec_add_le_le_of_hasLaw_complexGaussianVector hg hP hP₀ 0 hs
+
+private theorem rectangle_le {g : Ω → Fin 2 → ℂ}
+    (hg : HasLaw g (complexGaussianVector (Fin 2)) μ) (a : Fin 2 → ℂ)
+    {s : ℝ} (hs : 0 ≤ s) : μ.real {ω | ∀ i, ‖g ω i + a i‖ ≤ s} ≤ s ^ 4 := by
+  have hm : MeasurableSet {v : Fin 2 → ℂ | ∀ i, ‖v i + a i‖ ≤ s} := by
+    exact measurableSet_setOfPred.2 (by fun_prop)
+  rw [hg.measureReal_eq hm]
+  have heq : {v : Fin 2 → ℂ | ∀ i, ‖v i + a i‖ ≤ s} =
+      Set.pi Set.univ (fun i => {z : ℂ | ‖z + a i‖ ≤ s}) := by ext v; simp
+  rw [heq, measureReal_def, Measure.pi_pi, ENNReal.toReal_prod, Fin.prod_univ_two]
+  have hb (i : Fin 2) : complexGaussian.real {z | ‖z + a i‖ ≤ s} ≤ s ^ 2 := by
+    simpa only [id_eq, sub_neg_eq_add] using
+      measureReal_norm_sub_le_le_of_hasLaw_complexGaussian HasLaw.id (-a i) hs
+  calc _ ≤ s ^ 2 * s ^ 2 := mul_le_mul (hb 0) (hb 1) measureReal_nonneg (sq_nonneg s)
+    _ = _ := by ring
+
+/-- A shifted complex Gaussian projected onto a subspace of complex dimension at least two
+has probability at most $s^4$ of having norm at most $s\ge0$. Its coordinates are independent
+standard complex Gaussians before projection. No printed source. -/
+theorem measureReal_norm_mulVec_add_le_le_pow_four_of_hasLaw_complexGaussianVector
+    {g : Ω → n → ℂ}
+    (hg : HasLaw g (complexGaussianVector n) μ) {P : Matrix n n ℂ}
+    (hP : IsStarProjection P) (hr : 2 ≤ P.rank) (a : n → ℂ)
+    {s : ℝ} (hs : 0 ≤ s) :
+    μ.real {ω | ‖WithLp.toLp 2 (P *ᵥ (g ω + a))‖ ≤ s} ≤ s ^ 4 := by
+  classical
+  have : IsProbabilityMeasure μ := hg.isProbabilityMeasure_iff.2 inferInstance
+  obtain ⟨Q, hQ, hQP⟩ := hP.exists_hasOrthonormalCols_mul_conjTranspose_eq
+    (p := Fin P.rank) (by simp)
+  let e : Fin 2 ↪ Fin P.rank := Fin.castLEEmb hr
+  let U := Q.submatrix (Equiv.refl n) e
+  have hU : HasOrthonormalCols U := hQ.submatrix (Equiv.refl n) e.injective
+  have hPQ : P * Q = Q := by
+    calc
+      P * Q = (Q * Qᴴ) * Q := congrArg (fun T : Matrix n n ℂ => T * Q) hQP.symm
+      _ = Q := by rw [Matrix.mul_assoc, hQ.conjTranspose_mul_self, Matrix.mul_one]
+  have hPU : P * U = U := by
+    ext i j
+    exact congrFun (congrFun hPQ i) (e j)
+  have hUP : Uᴴ * P = Uᴴ := by
+    have hh := congrArg Matrix.conjTranspose hPU
+    simpa only [Matrix.conjTranspose_mul, hP.conjTranspose_eq] using hh
+  have hG : HasLaw (fun ω => Matrix.of fun i (_ : Unit) => g ω i)
+      (complexGaussianMatrix n Unit) μ :=
+    (measurePreserving_pi _ _ fun _ =>
+      (measurePreserving_funUnique complexGaussian Unit).symm).comp_hasLaw hg
+  have hv : HasLaw (fun ω => Uᴴ *ᵥ g ω) (complexGaussianVector (Fin 2)) μ := by
+    have hh := (measurePreserving_pi _ _ fun _ =>
+      measurePreserving_funUnique complexGaussian Unit).comp_hasLaw
+        (hasLaw_conjTranspose_mul_of_hasLaw_complexGaussianMatrix hG hU)
+    exact hh
+  refine (measureReal_mono fun ω hω => ?_).trans (rectangle_le hv (Uᴴ *ᵥ a) hs)
+  intro i
+  have heq : Uᴴ *ᵥ (g ω + a) = Uᴴ *ᵥ (P *ᵥ (g ω + a)) := by
+    rw [Matrix.mulVec_mulVec, hUP]
+  change ‖((Uᴴ *ᵥ g ω) + (Uᴴ *ᵥ a)) i‖ ≤ s
+  rw [← Matrix.mulVec_add, heq]
+  exact (PiLp.norm_apply_le (WithLp.toLp 2 (Uᴴ *ᵥ (P *ᵥ (g ω + a)))) i).trans
+    ((hU.norm_toLp_conjTranspose_mulVec_le _).trans hω)
 
 /-- The distance from column $j$ to the span of the other columns is at most the norm of any
 combination of the columns with coefficient $1$ on column $j$. -/
-private theorem iInf_norm_add_mulVec_le_iInf {r : Type*} [Fintype r] [DecidableEq r]
-    (A : Matrix r r ℂ) (j : r) :
+private theorem iInf_norm_add_mulVec_le_iInf {r q : Type*} [Fintype r] [Fintype q] [DecidableEq q]
+    (A : Matrix r q ℂ) (j : q) :
     ⨅ z : {j' // j' ≠ j} → ℂ, ‖WithLp.toLp 2 ((fun i => A i j) +
-      A.submatrix id (Subtype.val : {j' // j' ≠ j} → r) *ᵥ z)‖ ≤
-      ⨅ x : {x : r → ℂ // x j = 1}, ‖WithLp.toLp 2 (A *ᵥ x.1)‖ := by
-  have : Nonempty {x : r → ℂ // x j = 1} := ⟨⟨Pi.single j 1, by simp⟩⟩
+      A.submatrix id (Subtype.val : {j' // j' ≠ j} → q) *ᵥ z)‖ ≤
+      ⨅ x : {x : q → ℂ // x j = 1}, ‖WithLp.toLp 2 (A *ᵥ x.1)‖ := by
+  have : Nonempty {x : q → ℂ // x j = 1} := ⟨⟨Pi.single j 1, by simp⟩⟩
   refine le_ciInf fun ⟨x, hx⟩ => (ciInf_le ⟨0, ?_⟩ fun j' => x j'.1).trans_eq ?_
   · rintro _ ⟨z, rfl⟩
     positivity
@@ -167,14 +220,15 @@ private theorem one_sub_rangeProjector_ne_zero {r q : Type*} [Fintype r] [Fintyp
   rw [mul_pinv, ← sub_eq_zero.mp h0, Matrix.rank_one] at h1
   exact absurd (h1.trans (Matrix.rank_le_card_width Y)) (not_le.mpr h)
 
-/-- Column $j$ of a standard complex Gaussian square matrix is within $s$ of the span of the other
-columns with probability at most $s^2$: condition on the other columns, which are independent of
+/-- Column $j$ of a shifted standard complex Gaussian square matrix is within $s$ of the span
+of the other columns with probability at most $s^2$: condition on the other columns, independent of
 it. -/
 private theorem measureReal_iInf_norm_add_mulVec_le_le {r : Type*} [Fintype r]
-    [DecidableEq r] {G : Ω → Matrix r r ℂ} (hG : HasLaw G (complexGaussianMatrix r r) μ) (j : r)
+    [DecidableEq r] {G : Ω → Matrix r r ℂ} (hG : HasLaw G (complexGaussianMatrix r r) μ)
+    (A : Matrix r r ℂ) (j : r)
     {s : ℝ} (hs : 0 ≤ s) :
-    μ.real {ω | ⨅ z : {j' // j' ≠ j} → ℂ, ‖WithLp.toLp 2 ((fun i => G ω i j) +
-      (G ω).submatrix id (Subtype.val : {j' // j' ≠ j} → r) *ᵥ z)‖ ≤ s} ≤ s ^ 2 := by
+    μ.real {ω | ⨅ z : {j' // j' ≠ j} → ℂ, ‖WithLp.toLp 2 ((fun i => (A + G ω) i j) +
+      (A + G ω).submatrix id (Subtype.val : {j' // j' ≠ j} → r) *ᵥ z)‖ ≤ s} ≤ s ^ 2 := by
   have : IsProbabilityMeasure μ := hG.isProbabilityMeasure_iff.2 inferInstance
   -- split the matrix into column `j` and the other columns, which are independent
   let : Fintype {j' // j' = j} := Subtype.fintype _
@@ -189,7 +243,8 @@ private theorem measureReal_iInf_norm_add_mulVec_le_le {r : Type*} [Fintype r]
       (measurePreserving_pi _ _ fun _ =>
         measurePreserving_piEquivPiSubtypeProd (fun _ : r => complexGaussian) (· = j)))
   set S : Set ((r → ℂ) × (r → {j' // ¬j' = j} → ℂ)) :=
-    {p | ⨅ z : {j' // ¬j' = j} → ℂ, ‖WithLp.toLp 2 (p.1 + Matrix.of p.2 *ᵥ z)‖ ≤ s}
+    {p | ⨅ z : {j' // ¬j' = j} → ℂ, ‖WithLp.toLp 2 (((fun i => A i j) + p.1) +
+      (A.submatrix id Subtype.val + Matrix.of p.2) *ᵥ z)‖ ≤ s}
   have hS : MeasurableSet S := by
     refine measurableSet_le (UpperSemicontinuous.measurable (upperSemicontinuous_ciInf
       (fun p => ⟨0, ?_⟩) fun z => Continuous.upperSemicontinuous ?_)) measurable_const
@@ -203,16 +258,48 @@ private theorem measureReal_iInf_norm_add_mulVec_le_le {r : Type*} [Fintype r]
       rw [measureReal_def, Measure.prod_apply_symm hS]
       refine ENNReal.toReal_le_of_le_ofReal (sq_nonneg s) ?_
       refine (lintegral_mono fun y => ?_).trans_eq (by rw [lintegral_const, measure_univ, mul_one])
-      have h := measureReal_norm_mulVec_le_le_of_hasLaw_complexGaussianVector HasLaw.id
-        (isStarProjection_rangeProjector (Matrix.of y)).one_sub
-        (one_sub_rangeProjector_ne_zero _ (Fintype.card_subtype_lt (x := j) (by simp))) hs
+      let Y := A.submatrix id (Subtype.val : {j' // ¬j' = j} → r) + Matrix.of y
+      let P := 1 - rangeProjector Y
+      have h := measureReal_norm_mulVec_add_le_le_of_hasLaw_complexGaussianVector HasLaw.id
+        (isStarProjection_rangeProjector Y).one_sub
+        (one_sub_rangeProjector_ne_zero _ (Fintype.card_subtype_lt (x := j) (by simp)))
+        (fun i => A i j) hs
       calc _ ≤ complexGaussianVector r
-            {x | ‖WithLp.toLp 2 ((1 - rangeProjector (Matrix.of y)) *ᵥ x)‖ ≤ s} :=
-            measure_mono fun x hx => (norm_one_sub_rangeProjector_mulVec_le_iInf _ x).trans hx
+            {x | ‖WithLp.toLp 2 (P *ᵥ (x + fun i => A i j))‖ ≤ s} :=
+            measure_mono fun x hx => by
+              change (⨅ z, ‖WithLp.toLp 2 (((fun i => A i j) + x) + Y *ᵥ z)‖) ≤ s at hx
+              rw [add_comm (fun i => A i j) x] at hx
+              exact (norm_one_sub_rangeProjector_mulVec_le_iInf Y (x + fun i => A i j)).trans hx
         _ = ENNReal.ofReal ((complexGaussianVector r).real
-            {x | ‖WithLp.toLp 2 ((1 - rangeProjector (Matrix.of y)) *ᵥ x)‖ ≤ s}) :=
+            {x | ‖WithLp.toLp 2 (P *ᵥ (x + fun i => A i j))‖ ≤ s}) :=
             (ofReal_measureReal (measure_ne_top _ _)).symm
         _ ≤ ENNReal.ofReal (s ^ 2) := ENNReal.ofReal_le_ofReal h
+
+/-- **Smallest singular value of a shifted complex Gaussian matrix**: for a deterministic
+complex square matrix $\mathbf{A}$, a matrix $\mathbf{G}$ with independent standard complex
+Gaussian entries, $k + 1 = \lvert r \rvert$ and $x \ge 0$,
+$\mathbb{P}[\sigma_k(\mathbf{A}+\mathbf{G}) \le x] \le \lvert r \rvert^2 x^2$.
+The column-distance argument of [SankarSpielmanTeng2006, Lemma 3.2], with a quadratic
+complex small ball and a union bound over columns. -/
+theorem measureReal_singularValues_add_le_le_of_hasLaw_complexGaussianMatrix {r : Type*} [Fintype r]
+    {G : Ω → Matrix r r ℂ} (hG : HasLaw G (complexGaussianMatrix r r) μ) (A : Matrix r r ℂ) {k : ℕ}
+    (hk : k + 1 = Fintype.card r) {x : ℝ} (hx : 0 ≤ x) :
+    μ.real {ω | singularValues (A + G ω) k ≤ x} ≤ (Fintype.card r : ℝ) ^ 2 * x ^ 2 := by
+  classical
+  have : IsProbabilityMeasure μ := hG.isProbabilityMeasure_iff.2 inferInstance
+  calc μ.real {ω | singularValues (A + G ω) k ≤ x}
+      ≤ μ.real (⋃ j, {ω | ⨅ z : {j' // j' ≠ j} → ℂ, ‖WithLp.toLp 2 ((fun i => (A + G ω) i j) +
+          (A + G ω).submatrix id (Subtype.val : {j' // j' ≠ j} → r) *ᵥ z)‖ ≤
+            √(Fintype.card r) * x}) := measureReal_mono fun ω hω => by
+        obtain ⟨j, hj⟩ := exists_iInf_norm_mulVec_le_of_singularValues_le (A + G ω) hk hω
+        exact Set.mem_iUnion.2 ⟨j, (iInf_norm_add_mulVec_le_iInf _ j).trans hj⟩
+    _ ≤ ∑ j : r, (√(Fintype.card r) * x) ^ 2 := (measureReal_iUnion_fintype_le _).trans
+        (Finset.sum_le_sum fun j _ =>
+          measureReal_iInf_norm_add_mulVec_le_le hG A j (by positivity))
+    _ = (Fintype.card r : ℝ) ^ 2 * x ^ 2 := by
+      rw [Finset.sum_const, Finset.card_univ, nsmul_eq_mul, mul_pow,
+        Real.sq_sqrt (Nat.cast_nonneg _)]
+      ring
 
 /-- **Smallest singular value of a square complex Gaussian matrix** (Lemma 3.1): for a standard
 complex Gaussian $r \times r$ matrix $\mathbf{G}$, $k + 1 = \lvert r \rvert$ and $x \ge 0$,
@@ -227,21 +314,8 @@ theorem measureReal_singularValues_le_le_of_hasLaw_complexGaussianMatrix {r : Ty
     {G : Ω → Matrix r r ℂ} (hG : HasLaw G (complexGaussianMatrix r r) μ) {k : ℕ}
     (hk : k + 1 = Fintype.card r) {x : ℝ} (hx : 0 ≤ x) :
     μ.real {ω | singularValues (G ω) k ≤ x} ≤ (Fintype.card r : ℝ) ^ 2 * x ^ 2 := by
-  classical
-  have : IsProbabilityMeasure μ := hG.isProbabilityMeasure_iff.2 inferInstance
-  calc μ.real {ω | singularValues (G ω) k ≤ x}
-      ≤ μ.real (⋃ j, {ω | ⨅ z : {j' // j' ≠ j} → ℂ, ‖WithLp.toLp 2 ((fun i => G ω i j) +
-          (G ω).submatrix id (Subtype.val : {j' // j' ≠ j} → r) *ᵥ z)‖ ≤
-            √(Fintype.card r) * x}) := measureReal_mono fun ω hω => by
-        obtain ⟨j, hj⟩ := exists_iInf_norm_mulVec_le_of_singularValues_le (G ω) hk hω
-        exact Set.mem_iUnion.2 ⟨j, (iInf_norm_add_mulVec_le_iInf _ j).trans hj⟩
-    _ ≤ ∑ j : r, (√(Fintype.card r) * x) ^ 2 := (measureReal_iUnion_fintype_le _).trans
-        (Finset.sum_le_sum fun j _ =>
-          measureReal_iInf_norm_add_mulVec_le_le hG j (by positivity))
-    _ = (Fintype.card r : ℝ) ^ 2 * x ^ 2 := by
-      rw [Finset.sum_const, Finset.card_univ, nsmul_eq_mul, mul_pow,
-        Real.sq_sqrt (Nat.cast_nonneg _)]
-      ring
+  simpa only [zero_add] using
+    measureReal_singularValues_add_le_le_of_hasLaw_complexGaussianMatrix hG 0 hk hx
 
 /-- The realification $z \mapsto (\sqrt2\,\Re z, \sqrt2\,\Im z)$ maps a standard complex Gaussian
 to a standard Gaussian vector of dimension $2$. -/
@@ -396,15 +470,16 @@ private theorem exists_hasOrthonormalCols_col_eq {r : Type*} [Fintype r] [Decida
   rw [Equiv.sumCompl_symm_apply_of_pos (p := fun x => x = i) rfl, Matrix.fromCols_apply_inl]
   rfl
 
-/-- Column $j$ of a standard complex Gaussian square matrix is within $s$ of a combination of the
-other columns with probability at most $s^2$. -/
+/-- Column $j$ of a shifted standard complex Gaussian square matrix is within $s$ of a combination
+of the other columns with probability at most $s^2$. -/
 private theorem measureReal_exists_norm_mulVec_le_le {r : Type*} [Fintype r]
-    {G : Ω → Matrix r r ℂ} (hG : HasLaw G (complexGaussianMatrix r r) μ) (j : r) {s : ℝ}
+    {G : Ω → Matrix r r ℂ} (hG : HasLaw G (complexGaussianMatrix r r) μ)
+    (A : Matrix r r ℂ) (j : r) {s : ℝ}
     (hs : 0 ≤ s) :
-    μ.real {ω | ∃ y : r → ℂ, y j = 1 ∧ ‖WithLp.toLp 2 (G ω *ᵥ y)‖ ≤ s} ≤ s ^ 2 := by
+    μ.real {ω | ∃ y : r → ℂ, y j = 1 ∧ ‖WithLp.toLp 2 ((A + G ω) *ᵥ y)‖ ≤ s} ≤ s ^ 2 := by
   classical
   have : IsProbabilityMeasure μ := hG.isProbabilityMeasure_iff.2 inferInstance
-  refine (measureReal_mono fun ω hω => ?_).trans (measureReal_iInf_norm_add_mulVec_le_le hG j hs)
+  refine (measureReal_mono fun ω hω => ?_).trans (measureReal_iInf_norm_add_mulVec_le_le hG A j hs)
   obtain ⟨y, hy, hyle⟩ := hω
   simp only [Set.mem_ofPred_eq]
   refine (ciInf_le ⟨0, ?_⟩ fun j' => y j'.1).trans (le_of_eq_of_le ?_ hyle)
@@ -449,15 +524,16 @@ private theorem exists_dotProduct_eq_one_and_norm_mulVec_le {r : Type*} [Fintype
       norm_smul, hstar, norm_inv, norm_pow, Complex.norm_real, norm_norm]
     exact le_of_eq (by field_simp)
 
-/-- For a fixed probe $\mathbf{g}$ and $T > 0$, $\mathbb{P}[T \le
-\|\mathbf{G}^{-\mathsf{T}}\mathbf{g}\|^2] \le \|\mathbf{g}\|^2/T$. -/
+/-- For a deterministic shift $\mathbf{M}$, fixed probe $\mathbf{g}$ and $T > 0$,
+$\mathbb{P}[T \le \|(\mathbf{M}+\mathbf{G})^{-\mathsf{T}}\mathbf{g}\|^2]
+\le \|\mathbf{g}\|^2/T$ for a matrix with independent standard complex Gaussian entries. -/
 private theorem complexGaussianMatrix_real_le_norm_vecMul_inv_sq_le {r : Type*} [Fintype r]
-    [DecidableEq r] (g : r → ℂ) {T : ℝ} (hT : 0 < T) :
-    (complexGaussianMatrix r r).real {A | T ≤ ‖WithLp.toLp 2 (Matrix.vecMul g A⁻¹)‖ ^ 2} ≤
+    [DecidableEq r] (M : Matrix r r ℂ) (g : r → ℂ) {T : ℝ} (hT : 0 < T) :
+    (complexGaussianMatrix r r).real {A | T ≤ ‖WithLp.toLp 2 (Matrix.vecMul g (M + A)⁻¹)‖ ^ 2} ≤
       ‖WithLp.toLp 2 g‖ ^ 2 / T := by
   rcases eq_or_ne g 0 with rfl | hg
   · refine le_of_eq_of_le (by
-      rw [show {A : Matrix r r ℂ | T ≤ ‖WithLp.toLp 2 (Matrix.vecMul 0 A⁻¹)‖ ^ 2} = ∅ from
+      rw [show {A : Matrix r r ℂ | T ≤ ‖WithLp.toLp 2 (Matrix.vecMul 0 (M + A)⁻¹)‖ ^ 2} = ∅ from
         Set.eq_empty_of_forall_notMem fun A hA => by simp at hA; linarith, measureReal_empty])
       (by positivity)
   obtain ⟨j₀, -⟩ := Function.ne_iff.1 hg
@@ -471,15 +547,16 @@ private theorem complexGaussianMatrix_real_le_norm_vecMul_inv_sq_le {r : Type*} 
   obtain ⟨V, hV, hVcol⟩ := exists_hasOrthonormalCols_col_eq hu j₀
   have hVV : V * Vᴴ = 1 := mul_eq_one_comm.1 hV.conjTranspose_mul_self
   refine (measureReal_mono fun A hA => ?_).trans ((measureReal_exists_norm_mulVec_le_le
-    (hasLaw_mul_of_hasLaw_complexGaussianMatrix HasLaw.id hV) j₀ (s := n / √T)
+    (hasLaw_mul_of_hasLaw_complexGaussianMatrix HasLaw.id hV) (M * V) j₀ (s := n / √T)
     (by positivity)).trans_eq (by rw [div_pow, Real.sq_sqrt hT.le]))
   simp only [Set.mem_ofPred_eq] at hA ⊢
-  have ha : Matrix.vecMul g A⁻¹ ≠ 0 := fun h => by simp [h] at hA; linarith
-  have hdet : IsUnit A.det := by
+  have ha : Matrix.vecMul g (M + A)⁻¹ ≠ 0 := fun h => by simp [h] at hA; linarith
+  have hdet : IsUnit (M + A).det := by
     by_contra h
-    exact ha (by rw [Matrix.nonsing_inv_apply_not_isUnit A h, Matrix.vecMul_zero])
-  obtain ⟨x, hgx, hAx⟩ := exists_dotProduct_eq_one_and_norm_mulVec_le A hdet g ha
-  have hsq : √T ≤ ‖WithLp.toLp 2 (Matrix.vecMul g A⁻¹)‖ := Real.sqrt_le_iff.2 ⟨by positivity, hA⟩
+    exact ha (by rw [Matrix.nonsing_inv_apply_not_isUnit (M + A) h, Matrix.vecMul_zero])
+  obtain ⟨x, hgx, hAx⟩ := exists_dotProduct_eq_one_and_norm_mulVec_le (M + A) hdet g ha
+  have hsq : √T ≤ ‖WithLp.toLp 2 (Matrix.vecMul g (M + A)⁻¹)‖ :=
+    Real.sqrt_le_iff.2 ⟨by positivity, hA⟩
   refine ⟨(n : ℂ) • (Vᴴ *ᵥ x), ?_, ?_⟩
   · rw [← hgx, Pi.smul_apply, smul_eq_mul, Matrix.mulVec, dotProduct, dotProduct,
       Finset.mul_sum]
@@ -489,8 +566,8 @@ private theorem complexGaussianMatrix_real_le_norm_vecMul_inv_sq_le {r : Type*} 
       Complex.star_def, Complex.conj_ofReal, Complex.conj_conj]
     have hn' : (n : ℂ) ≠ 0 := by exact_mod_cast hn.ne'
     field_simp
-  · rw [Matrix.mulVec_smul, show (id A * V) *ᵥ (Vᴴ *ᵥ x) = A *ᵥ x by
-        rw [Matrix.mulVec_mulVec, Matrix.mul_assoc, hVV, Matrix.mul_one]; rfl,
+  · rw [Matrix.mulVec_smul, show (M * V + id A * V) *ᵥ (Vᴴ *ᵥ x) = (M + A) *ᵥ x by
+        rw [← Matrix.add_mul, Matrix.mulVec_mulVec, Matrix.mul_assoc, hVV, Matrix.mul_one]; rfl,
       WithLp.toLp_smul, norm_smul, Complex.norm_real, norm_norm, div_eq_mul_inv]
     gcongr
     exact hAx.trans (by simpa using inv_anti₀ (by positivity) hsq)
@@ -544,32 +621,35 @@ private theorem exp_neg_one_le_complexGaussianVector_real {r : Type*} [Fintype r
       have h2 := norm_nonneg (WithLp.toLp 2 (A *ᵥ w))
       nlinarith [mul_le_mul_of_nonneg_left hAw h1]
 
-/-- Markov and Fubini for the probe: the matrices $\mathbf{A}$ whose inverse is seen with
-probability at least $e^{-1}$ by a Gaussian probe, $\|\mathbf{v}^{\mathsf T}\mathbf{A}^{-1}\|^2
-\ge 1/x^2$, have mass at most $e\,\lvert r \rvert x^2$. -/
+/-- Markov and Fubini for the probe: shifted Gaussian matrices whose inverse is seen with
+probability at least $e^{-1}$ by an independent Gaussian probe,
+$\|\mathbf{v}^{\mathsf{T}}(\mathbf{M}+\mathbf{A})^{-1}\|^2 \ge 1/x^2$,
+have mass at most $e\,\lvert r \rvert x^2$. -/
 private theorem complexGaussianMatrix_real_exp_neg_one_le_le {r : Type*} [Fintype r]
-    [DecidableEq r] {x : ℝ} (hx : 0 < x) :
+    [DecidableEq r] (M : Matrix r r ℂ) {x : ℝ} (hx : 0 < x) :
     (complexGaussianMatrix r r).real {A | ENNReal.ofReal (Real.exp (-1)) ≤
       complexGaussianVector r (Prod.mk A ⁻¹'
-        {p : Matrix r r ℂ × (r → ℂ) | 1 / x ^ 2 ≤ ‖WithLp.toLp 2 (Matrix.vecMul p.2 p.1⁻¹)‖ ^ 2})} ≤
+        {p : Matrix r r ℂ × (r → ℂ) |
+          1 / x ^ 2 ≤ ‖WithLp.toLp 2 (Matrix.vecMul p.2 (M + p.1)⁻¹)‖ ^ 2})} ≤
       Real.exp 1 * (Fintype.card r : ℝ) * x ^ 2 := by
   set γ := complexGaussianVector r
   set ρ := complexGaussianMatrix r r
   set S : Set (Matrix r r ℂ × (r → ℂ)) :=
-    {p | 1 / x ^ 2 ≤ ‖WithLp.toLp 2 (Matrix.vecMul p.2 p.1⁻¹)‖ ^ 2}
+    {p | 1 / x ^ 2 ≤ ‖WithLp.toLp 2 (Matrix.vecMul p.2 (M + p.1)⁻¹)‖ ^ 2}
   have hS : MeasurableSet S := by
     have hv : Measurable fun q : (r → ℂ) × Matrix r r ℂ => Matrix.vecMul q.1 q.2 :=
       (continuous_fst.matrix_vecMul continuous_snd).measurable
     exact measurableSet_le measurable_const ((measurable_norm.comp
       ((PiLp.continuous_toLp 2 _).measurable.comp
-        (hv.comp (measurable_snd.prodMk measurable_fst.matrix_inv)))).pow_const 2)
+        (hv.comp (measurable_snd.prodMk
+          (measurable_const.add measurable_fst).matrix_inv)))).pow_const 2)
   set B : Set (Matrix r r ℂ) := {A | ENNReal.ofReal (Real.exp (-1)) ≤ γ (Prod.mk A ⁻¹' S)}
   -- Markov in `A`, Fubini, then the bound for a fixed probe `v`
   have hv : ∀ v, ρ ((fun A => (A, v)) ⁻¹' S) ≤
       ENNReal.ofReal (x ^ 2) * ENNReal.ofReal (‖WithLp.toLp 2 v‖ ^ 2) := fun v => by
     rw [← ENNReal.ofReal_mul (by positivity), ← ofReal_measureReal (measure_ne_top _ _)]
     refine ENNReal.ofReal_le_ofReal
-      ((complexGaussianMatrix_real_le_norm_vecMul_inv_sq_le v (by positivity)).trans_eq ?_)
+      ((complexGaussianMatrix_real_le_norm_vecMul_inv_sq_le M v (by positivity)).trans_eq ?_)
     field_simp
   have hE : ENNReal.ofReal (Real.exp (-1)) * ρ B ≤
       ENNReal.ofReal (x ^ 2) * (Fintype.card r : ENNReal) := by
@@ -591,21 +671,19 @@ private theorem complexGaussianMatrix_real_exp_neg_one_le_le {r : Type*} [Fintyp
     _ ≤ Real.exp 1 * (x ^ 2 * Fintype.card r) := by gcongr
     _ = _ := by ring
 
-/-- **Smallest singular value of a square complex Gaussian matrix, linear in the size**: for
-$\mathbf{G}$ an $r \times r$ standard complex Gaussian matrix, $k + 1 = \lvert r \rvert$ and
-$x \ge 0$, $\mathbb{P}[\sigma_k(\mathbf{G}) \le x] \le e\,\lvert r \rvert x^2$. Edelman's exact
-law $1 - e^{-\lvert r \rvert x^2}$ (cited in [Shah2024, Lemma 3.1]) is smaller by the factor
-$e$; the elementary `NLAlib.measureReal_singularValues_le_le_of_hasLaw_complexGaussianMatrix` has
-$\lvert r \rvert^2x^2$. The probe argument of [SankarSpielmanTeng2006, Lemma 3.2], complex
-version. -/
-theorem measureReal_singularValues_le_le_exp_one_mul_of_hasLaw_complexGaussianMatrix
+/-- **Smallest singular value of a shifted complex Gaussian matrix, linear in the size**:
+for a deterministic complex square matrix $\mathbf{M}$, independent standard complex Gaussian
+entries of $\mathbf{G}$, $k+1 = \lvert r \rvert$ and $x \ge 0$,
+$\mathbb{P}[\sigma_k(\mathbf{M}+\mathbf{G}) \le x] \le e\,\lvert r \rvert x^2$.
+The complex version of the probe argument in [SankarSpielmanTeng2006, proof of Theorem 3.3]. -/
+theorem measureReal_singularValues_add_le_le_exp_one_mul_of_hasLaw_complexGaussianMatrix
     {r : Type*} [Fintype r] {G : Ω → Matrix r r ℂ} (hG : HasLaw G (complexGaussianMatrix r r) μ)
-    {k : ℕ} (hk : k + 1 = Fintype.card r) {x : ℝ} (hx : 0 ≤ x) :
-    μ.real {ω | singularValues (G ω) k ≤ x} ≤ Real.exp 1 * (Fintype.card r : ℝ) * x ^ 2 := by
+    (M : Matrix r r ℂ) {k : ℕ} (hk : k + 1 = Fintype.card r) {x : ℝ} (hx : 0 ≤ x) :
+    μ.real {ω | singularValues (M + G ω) k ≤ x} ≤ Real.exp 1 * (Fintype.card r : ℝ) * x ^ 2 := by
   classical
   have : IsProbabilityMeasure μ := hG.isProbabilityMeasure_iff.2 inferInstance
-  have h0 : μ.real {ω | singularValues (G ω) k ≤ 0} = 0 := le_antisymm (by
-    simpa using measureReal_singularValues_le_le_of_hasLaw_complexGaussianMatrix hG hk le_rfl)
+  have h0 : μ.real {ω | singularValues (M + G ω) k ≤ 0} = 0 := le_antisymm (by
+    simpa using measureReal_singularValues_add_le_le_of_hasLaw_complexGaussianMatrix hG M hk le_rfl)
     measureReal_nonneg
   rcases hx.eq_or_lt with rfl | hx
   · rw [h0]
@@ -613,27 +691,29 @@ theorem measureReal_singularValues_le_le_exp_one_mul_of_hasLaw_complexGaussianMa
   set γ := complexGaussianVector r
   set ρ := complexGaussianMatrix r r
   set S : Set (Matrix r r ℂ × (r → ℂ)) :=
-    {p | 1 / x ^ 2 ≤ ‖WithLp.toLp 2 (Matrix.vecMul p.2 p.1⁻¹)‖ ^ 2}
+    {p | 1 / x ^ 2 ≤ ‖WithLp.toLp 2 (Matrix.vecMul p.2 (M + p.1)⁻¹)‖ ^ 2}
   have hS : MeasurableSet S := by
     have hv : Measurable fun q : (r → ℂ) × Matrix r r ℂ => Matrix.vecMul q.1 q.2 :=
       (continuous_fst.matrix_vecMul continuous_snd).measurable
     exact measurableSet_le measurable_const ((measurable_norm.comp
       ((PiLp.continuous_toLp 2 _).measurable.comp
-        (hv.comp (measurable_snd.prodMk measurable_fst.matrix_inv)))).pow_const 2)
+        (hv.comp (measurable_snd.prodMk
+          (measurable_const.add measurable_fst).matrix_inv)))).pow_const 2)
   set B : Set (Matrix r r ℂ) := {A | ENNReal.ofReal (Real.exp (-1)) ≤ γ (Prod.mk A ⁻¹' S)}
   have hB : MeasurableSet B := measurableSet_le measurable_const (measurable_measure_prodMk_left hS)
-  have hsub : {ω | singularValues (G ω) k ≤ x} ⊆ {ω | singularValues (G ω) k ≤ 0} ∪ G ⁻¹' B := by
+  have hsub : {ω | singularValues (M + G ω) k ≤ x} ⊆
+      {ω | singularValues (M + G ω) k ≤ 0} ∪ G ⁻¹' B := by
     intro ω hω
-    have hG' : (0 : ℂ) • (1 : Matrix r r ℂ) - -G ω = G ω := by simp
-    have hiff := fun ε => exists_norm_eq_one_and_norm_mulVec_le_iff (-G ω) 0 hk ε
+    have hG' : (0 : ℂ) • (1 : Matrix r r ℂ) - -(M + G ω) = M + G ω := by simp
+    have hiff := fun ε => exists_norm_eq_one_and_norm_mulVec_le_iff (-(M + G ω)) 0 hk ε
     rw [hG'] at hiff
-    by_cases hdet : IsUnit (G ω).det
+    by_cases hdet : IsUnit (M + G ω).det
     · right
       obtain ⟨w, hw, hAw⟩ := (hiff x).2 hω
       change ENNReal.ofReal _ ≤ γ _
       rw [← ofReal_measureReal (measure_ne_top _ _)]
       exact ENNReal.ofReal_le_ofReal
-        (exp_neg_one_le_complexGaussianVector_real (G ω) hdet hw hx hAw)
+        (exp_neg_one_le_complexGaussianVector_real (M + G ω) hdet hw hx hAw)
     · left
       obtain ⟨v, hv0, hv⟩ := Matrix.exists_mulVec_eq_zero_iff.2 (by
         simpa [isUnit_iff_ne_zero] using hdet)
@@ -643,11 +723,246 @@ theorem measureReal_singularValues_le_le_exp_one_mul_of_hasLaw_complexGaussianMa
       refine (hiff 0).1 ⟨(‖WithLp.toLp 2 v‖ : ℂ)⁻¹ • v, ?_, ?_⟩
       · simp [norm_smul, hn]
       · simp [Matrix.mulVec_smul, hv]
-  have hBle := complexGaussianMatrix_real_exp_neg_one_le_le (r := r) hx
-  calc μ.real {ω | singularValues (G ω) k ≤ x}
-      ≤ μ.real ({ω | singularValues (G ω) k ≤ 0} ∪ G ⁻¹' B) := measureReal_mono hsub
-    _ ≤ μ.real {ω | singularValues (G ω) k ≤ 0} + μ.real (G ⁻¹' B) := measureReal_union_le _ _
+  have hBle := complexGaussianMatrix_real_exp_neg_one_le_le (r := r) M hx
+  calc μ.real {ω | singularValues (M + G ω) k ≤ x}
+      ≤ μ.real ({ω | singularValues (M + G ω) k ≤ 0} ∪ G ⁻¹' B) := measureReal_mono hsub
+    _ ≤ μ.real {ω | singularValues (M + G ω) k ≤ 0} + μ.real (G ⁻¹' B) := measureReal_union_le _ _
     _ = ρ.real B := by rw [h0, zero_add]; exact hG.measureReal_eq (p := (· ∈ B)) hB
     _ ≤ _ := hBle
+
+/-- **Smallest singular value of a normalized Ginibre perturbation**: for any deterministic
+complex square matrix $\mathbf{M}$, independent standard complex Gaussian entries of
+$\mathbf{G}$, $k+1 = \lvert r \rvert$, $\gamma > 0$ and $x \ge 0$,
+$$\mathbb{P}[\sigma_k(\mathbf{M} + (\gamma/\sqrt{\lvert r \rvert})\mathbf{G}) \le x]
+\le e\,\lvert r \rvert^2 x^2/\gamma^2.$$
+[BanksKulkarniMukherjeeSrivastava2021, Lemma 3.3] has constant $1$ in place of $e$;
+this is the elementary probe argument of [SankarSpielmanTeng2006, proof of Theorem 3.3], complex
+version. -/
+theorem measureReal_singularValues_add_smul_le_le_exp_one_mul_of_hasLaw_complexGaussianMatrix
+    {r : Type*} [Fintype r] {G : Ω → Matrix r r ℂ}
+    (hG : HasLaw G (complexGaussianMatrix r r) μ) (M : Matrix r r ℂ)
+    {k : ℕ} (hk : k + 1 = Fintype.card r) {γ x : ℝ} (hγ : 0 < γ) (hx : 0 ≤ x) :
+    μ.real {ω | singularValues (M + (γ / √(Fintype.card r : ℝ)) • G ω) k ≤ x} ≤
+      Real.exp 1 * (Fintype.card r : ℝ) ^ 2 * x ^ 2 / γ ^ 2 := by
+  have : IsProbabilityMeasure μ := hG.isProbabilityMeasure_iff.2 inferInstance
+  have hn : (0 : ℝ) < Fintype.card r := by exact_mod_cast (show 0 < Fintype.card r by omega)
+  let c : ℝ := γ / √(Fintype.card r : ℝ)
+  have hc : 0 < c := by dsimp [c]; positivity
+  have heq (ω : Ω) : M + c • G ω = c • (c⁻¹ • M + G ω) := by
+    rw [smul_add, smul_smul, mul_inv_cancel₀ hc.ne', one_smul]
+  calc μ.real {ω | singularValues (M + c • G ω) k ≤ x}
+      ≤ μ.real {ω | singularValues (c⁻¹ • M + G ω) k ≤ x / c} := by
+        refine measureReal_mono (fun ω hω => ?_)
+        rw [Set.mem_ofPred_eq, heq, singularValues_real_smul, abs_of_pos hc] at hω
+        exact (le_div_iff₀ hc).2 (by simpa only [mul_comm] using hω)
+    _ ≤ Real.exp 1 * (Fintype.card r : ℝ) * (x / c) ^ 2 :=
+      measureReal_singularValues_add_le_le_exp_one_mul_of_hasLaw_complexGaussianMatrix
+        hG _ hk (by positivity)
+    _ = _ := by
+      dsimp [c]
+      rw [div_pow, div_pow, Real.sq_sqrt hn.le]
+      field_simp
+
+/-- **Smallest singular value of a square complex Gaussian matrix, linear in the size**: for
+$\mathbf{G}$ an $r \times r$ standard complex Gaussian matrix, $k + 1 = \lvert r \rvert$ and
+$x \ge 0$, $\mathbb{P}[\sigma_k(\mathbf{G}) \le x] \le e\,\lvert r \rvert x^2$. Edelman's exact
+law $1 - e^{-\lvert r \rvert x^2}$ (cited in [Shah2024, Lemma 3.1]) is smaller by the factor
+$e$; the elementary `NLAlib.measureReal_singularValues_le_le_of_hasLaw_complexGaussianMatrix` has
+$\lvert r \rvert^2x^2$. The probe argument of [SankarSpielmanTeng2006, proof of Theorem 3.3],
+complex version. -/
+theorem measureReal_singularValues_le_le_exp_one_mul_of_hasLaw_complexGaussianMatrix
+    {r : Type*} [Fintype r] {G : Ω → Matrix r r ℂ} (hG : HasLaw G (complexGaussianMatrix r r) μ)
+    {k : ℕ} (hk : k + 1 = Fintype.card r) {x : ℝ} (hx : 0 ≤ x) :
+    μ.real {ω | singularValues (G ω) k ≤ x} ≤ Real.exp 1 * (Fintype.card r : ℝ) * x ^ 2 := by
+  simpa only [zero_add] using
+    measureReal_singularValues_add_le_le_exp_one_mul_of_hasLaw_complexGaussianMatrix hG 0 hk hx
+
+private theorem measureReal_iInf_norm_add_mulVec_le_le_pow_four
+    {r q : Type*} [Fintype r] [Fintype q] [DecidableEq q]
+    {G : Ω → Matrix r q ℂ} (hG : HasLaw G (complexGaussianMatrix r q) μ)
+    (A : Matrix r q ℂ) (j : q) (hsize : Fintype.card q + 1 ≤ Fintype.card r)
+    {s : ℝ} (hs : 0 ≤ s) :
+    μ.real {ω | ⨅ z : {j' // j' ≠ j} → ℂ, ‖WithLp.toLp 2 ((fun i => (A + G ω) i j) +
+      (A + G ω).submatrix id (Subtype.val : {j' // j' ≠ j} → q) *ᵥ z)‖ ≤ s} ≤ s ^ 4 := by
+  classical
+  have : IsProbabilityMeasure μ := hG.isProbabilityMeasure_iff.2 inferInstance
+  -- split the matrix into column `j` and the other columns, which are independent
+  let : Fintype {j' // j' = j} := Subtype.fintype _
+  have h1 : MeasurePreserving (fun x : {j' // j' = j} → ℂ => x ⟨j, rfl⟩)
+      (Measure.pi fun _ => complexGaussian) complexGaussian := by
+    convert measurePreserving_funUnique complexGaussian {j' // j' = j}
+    exact congrArg _ (Subsingleton.elim _ _)
+  have hΨ := ((measurePreserving_pi _ _ fun _ => h1).prod
+      (MeasurePreserving.id (Measure.pi fun _ : r =>
+        Measure.pi fun _ : {j' // ¬j' = j} => complexGaussian))).comp
+    ((measurePreserving_arrowProdEquivProdArrow _ _ r _ _).comp
+      (measurePreserving_pi _ _ fun _ =>
+        measurePreserving_piEquivPiSubtypeProd (fun _ : q => complexGaussian) (· = j)))
+  set S : Set ((r → ℂ) × (r → {j' // ¬j' = j} → ℂ)) :=
+    {p | ⨅ z : {j' // ¬j' = j} → ℂ, ‖WithLp.toLp 2 (((fun i => A i j) + p.1) +
+      (A.submatrix id Subtype.val + Matrix.of p.2) *ᵥ z)‖ ≤ s}
+  have hS : MeasurableSet S := by
+    refine measurableSet_le (UpperSemicontinuous.measurable (upperSemicontinuous_ciInf
+      (fun p => ⟨0, ?_⟩) fun z => Continuous.upperSemicontinuous ?_)) measurable_const
+    · rintro _ ⟨z, rfl⟩
+      positivity
+    · fun_prop
+  calc _ = ((complexGaussianVector r).prod
+        (Measure.pi fun _ : r => Measure.pi fun _ : {j' // ¬j' = j} => complexGaussian)).real S :=
+        (hΨ.comp_hasLaw hG).measureReal_eq (p := (· ∈ S)) hS
+    _ ≤ s ^ 4 := by
+      rw [measureReal_def, Measure.prod_apply_symm hS]
+      refine ENNReal.toReal_le_of_le_ofReal (pow_nonneg hs 4) ?_
+      refine (lintegral_mono fun y => ?_).trans_eq (by rw [lintegral_const, measure_univ, mul_one])
+      let Y := A.submatrix id (Subtype.val : {j' // ¬j' = j} → q) + Matrix.of y
+      let P := 1 - rangeProjector Y
+      have hdim : 2 ≤ P.rank := by
+        have hsum := rank_one_sub_rangeProjector_add_rank Y
+        have hwr := Matrix.rank_le_card_width Y
+        have hcard : Fintype.card {j' : q // ¬j' = j} + 1 = Fintype.card q := by
+          rw [Fintype.card_subtype_compl, Fintype.card_subtype_eq]
+          have : 0 < Fintype.card q := Fintype.card_pos_iff.mpr ⟨j⟩
+          omega
+        dsimp [P]
+        omega
+      have h := measureReal_norm_mulVec_add_le_le_pow_four_of_hasLaw_complexGaussianVector
+        HasLaw.id (isStarProjection_rangeProjector Y).one_sub hdim (fun i => A i j) hs
+      calc _ ≤ complexGaussianVector r
+            {x | ‖WithLp.toLp 2 (P *ᵥ (x + fun i => A i j))‖ ≤ s} :=
+            measure_mono fun x hx => by
+              change (⨅ z, ‖WithLp.toLp 2 (((fun i => A i j) + x) + Y *ᵥ z)‖) ≤ s at hx
+              rw [add_comm (fun i => A i j) x] at hx
+              exact (norm_one_sub_rangeProjector_mulVec_le_iInf Y (x + fun i => A i j)).trans hx
+        _ = ENNReal.ofReal ((complexGaussianVector r).real
+            {x | ‖WithLp.toLp 2 (P *ᵥ (x + fun i => A i j))‖ ≤ s}) :=
+            (ofReal_measureReal (measure_ne_top _ _)).symm
+        _ ≤ ENNReal.ofReal (s ^ 4) := ENNReal.ofReal_le_ofReal h
+
+
+/-- For a shifted standard complex Gaussian matrix with at least one more row than columns,
+the smallest column-indexed singular value has a fourth-power tail. Entries are independent.
+The column-distance argument with a rank-two projected small ball. No printed source. -/
+theorem measureReal_singularValues_add_le_le_pow_four_of_hasLaw_complexGaussianMatrix
+    {r q : Type*} [Fintype r] [Fintype q]
+    {G : Ω → Matrix r q ℂ} (hG : HasLaw G (complexGaussianMatrix r q) μ)
+    (A : Matrix r q ℂ) (hsize : Fintype.card q + 1 ≤ Fintype.card r)
+    {k : ℕ} (hk : k + 1 = Fintype.card q) {x : ℝ} (hx : 0 ≤ x) :
+    μ.real {ω | singularValues (A + G ω) k ≤ x} ≤ (Fintype.card q : ℝ) ^ 3 * x ^ 4 := by
+  classical
+  have : IsProbabilityMeasure μ := hG.isProbabilityMeasure_iff.2 inferInstance
+  calc μ.real {ω | singularValues (A + G ω) k ≤ x}
+      ≤ μ.real (⋃ j, {ω | ⨅ z : {j' // j' ≠ j} → ℂ, ‖WithLp.toLp 2 ((fun i => (A + G ω) i j) +
+          (A + G ω).submatrix id (Subtype.val : {j' // j' ≠ j} → q) *ᵥ z)‖ ≤
+            √(Fintype.card q) * x}) := measureReal_mono fun ω hω => by
+        obtain ⟨j, hj⟩ := exists_iInf_norm_mulVec_le_of_singularValues_le (A + G ω) hk hω
+        exact Set.mem_iUnion.2 ⟨j, (iInf_norm_add_mulVec_le_iInf _ j).trans hj⟩
+    _ ≤ ∑ j : q, (√(Fintype.card q) * x) ^ 4 := (measureReal_iUnion_fintype_le _).trans
+        (Finset.sum_le_sum fun j _ =>
+          measureReal_iInf_norm_add_mulVec_le_le_pow_four hG A j hsize (by positivity))
+    _ = (Fintype.card q : ℝ) ^ 3 * x ^ 4 := by
+      rw [Finset.sum_const, Finset.card_univ, nsmul_eq_mul, mul_pow,
+        show (√(Fintype.card q : ℝ)) ^ 4 = (Fintype.card q : ℝ) ^ 2 by
+          rw [show 4 = 2 * 2 by norm_num, pow_mul, Real.sq_sqrt (Nat.cast_nonneg _)]]
+      ring
+
+/-- The second-smallest singular value of a square shifted standard complex Gaussian matrix has
+probability at most $n^3x^4$ of being at most $x\ge0$. Entries are independent. Deleting one
+fixed column reduces this to the rectangular least-singular-value bound. No printed source. -/
+theorem measureReal_singularValues_add_le_le_of_card_eq_add_two_of_hasLaw_complexGaussianMatrix
+    {G : Ω → Matrix n n ℂ} (hG : HasLaw G (complexGaussianMatrix n n) μ)
+    (A : Matrix n n ℂ) {k : ℕ} (hk : k + 2 = Fintype.card n) {x : ℝ} (hx : 0 ≤ x) :
+    μ.real {ω | singularValues (A + G ω) k ≤ x} ≤ (Fintype.card n : ℝ) ^ 3 * x ^ 4 := by
+  classical
+  have : IsProbabilityMeasure μ := hG.isProbabilityMeasure_iff.2 inferInstance
+  obtain ⟨j⟩ : Nonempty n := Fintype.card_pos_iff.mp (by omega)
+  let q := {l : n // l ≠ j}
+  have hc : Fintype.card q + 1 = Fintype.card n := by
+    dsimp [q]
+    rw [Fintype.card_subtype_compl, Fintype.card_subtype_eq]
+    omega
+  have hG' : HasLaw (fun ω => (G ω).submatrix id (Subtype.val : q → n))
+      (complexGaussianMatrix n q) μ := hasLaw_submatrix_of_hasLaw_complexGaussianMatrix hG
+    (f := id) Function.injective_id (e := (Subtype.val : q → n)) Subtype.val_injective
+  have hindex : k + 1 = Fintype.card q := by omega
+  have hb := measureReal_singularValues_add_le_le_pow_four_of_hasLaw_complexGaussianMatrix
+    (r := n) (q := q) hG' (A.submatrix id (Subtype.val : q → n)) hc.le hindex hx
+  calc
+    μ.real {ω | singularValues (A + G ω) k ≤ x}
+        ≤ μ.real {ω | singularValues ((A + G ω).submatrix id (Subtype.val : q → n)) k ≤ x} :=
+      measureReal_mono fun ω hω =>
+        (singularValues_submatrix_le (A + G ω)
+          Function.injective_id Subtype.val_injective k).trans hω
+    _ ≤ (Fintype.card q : ℝ) ^ 3 * x ^ 4 := by
+      exact hb
+    _ ≤ _ := by
+      gcongr
+      exact_mod_cast (show Fintype.card q ≤ Fintype.card n by omega)
+
+/-- A normalized Ginibre perturbation has second-smallest singular value at most $x\ge0$ with
+probability at most $n^5(x/\gamma)^4$ for every deterministic mean and $\gamma>0$.
+The Gaussian entries before normalization are independent and standard complex.
+No printed source. -/
+theorem measureReal_singularValues_add_smul_le_le_pow_four_of_hasLaw_complexGaussianMatrix
+    {G : Ω → Matrix n n ℂ} (hG : HasLaw G (complexGaussianMatrix n n) μ)
+    (M : Matrix n n ℂ) {k : ℕ} (hk : k + 2 = Fintype.card n)
+    {γ x : ℝ} (hγ : 0 < γ) (hx : 0 ≤ x) :
+    μ.real {ω | singularValues (M + (γ / √(Fintype.card n : ℝ)) • G ω) k ≤ x} ≤
+      (Fintype.card n : ℝ) ^ 5 * (x / γ) ^ 4 := by
+  have : IsProbabilityMeasure μ := hG.isProbabilityMeasure_iff.2 inferInstance
+  have hn : (0 : ℝ) < Fintype.card n := by exact_mod_cast (show 0 < Fintype.card n by omega)
+  let c : ℝ := γ / √(Fintype.card n : ℝ)
+  have hc : 0 < c := by dsimp [c]; positivity
+  have heq (ω : Ω) : M + c • G ω = c • (c⁻¹ • M + G ω) := by
+    rw [smul_add, smul_smul, mul_inv_cancel₀ hc.ne', one_smul]
+  calc
+    μ.real {ω | singularValues (M + c • G ω) k ≤ x}
+        ≤ μ.real {ω | singularValues (c⁻¹ • M + G ω) k ≤ x / c} := by
+      refine measureReal_mono (fun ω hω => ?_)
+      rw [Set.mem_ofPred_eq, heq, singularValues_real_smul, abs_of_pos hc] at hω
+      exact (le_div_iff₀ hc).2 (by simpa only [mul_comm] using hω)
+    _ ≤ (Fintype.card n : ℝ) ^ 3 * (x / c) ^ 4 :=
+      measureReal_singularValues_add_le_le_of_card_eq_add_two_of_hasLaw_complexGaussianMatrix
+        hG _ hk (by positivity)
+    _ = _ := by
+      dsimp [c]
+      rw [div_pow, div_pow,
+        show (√(Fintype.card n : ℝ)) ^ 4 = (Fintype.card n : ℝ) ^ 2 by
+          rw [show 4 = 2 * 2 by norm_num, pow_mul, Real.sq_sqrt hn.le]]
+      field_simp
+
+/-- **Anti-concentration of a Gaussian vector in a fixed direction**: for a standard complex
+Gaussian vector $\mathbf{g}$, a unit vector $\mathbf{v}$ and $s \ge 0$,
+$\mathbb{P}[\lvert\langle \mathbf{v}, \mathbf{g}\rangle\rvert \le s] \le s^2$. It replaces the
+uniform direction on the sphere of [BanksGarzaVargasSrivastava2025, Lemma 5.2]: the direction of
+a Gaussian vector is uniform, and its norm is controlled separately. -/
+theorem measureReal_norm_dotProduct_le_le_of_hasLaw_complexGaussianVector {g : Ω → n → ℂ}
+    (hg : HasLaw g (complexGaussianVector n) μ) {v : n → ℂ} (hv : ‖WithLp.toLp 2 v‖ = 1)
+    {s : ℝ} (hs : 0 ≤ s) :
+    μ.real {ω | ‖star v ⬝ᵥ g ω‖ ≤ s} ≤ s ^ 2 := by
+  classical
+  have hvv : star v ⬝ᵥ v = 1 := by
+    have h := inner_self_eq_norm_sq_to_K (𝕜 := ℂ) (WithLp.toLp 2 v)
+    rw [EuclideanSpace.inner_toLp_toLp, hv, dotProduct_comm] at h
+    simpa using h
+  set P : Matrix n n ℂ := Matrix.vecMulVec v (star v) with hP
+  have hPg : ∀ w : n → ℂ, P *ᵥ w = (star v ⬝ᵥ w) • v := fun w => by
+    rw [hP, Matrix.vecMulVec_mulVec, op_smul_eq_smul]
+  have hProj : IsStarProjection P := by
+    refine ⟨?_, ?_⟩
+    · change P * P = P
+      rw [hP, Matrix.vecMulVec_mul_vecMulVec, hvv, one_smul]
+    · change Pᴴ = P
+      rw [hP, Matrix.conjTranspose_vecMulVec, star_star]
+  have hP0 : P ≠ 0 := fun h0 => by
+    have h := hPg v
+    rw [h0, Matrix.zero_mulVec, hvv, one_smul] at h
+    have := hv
+    rw [← h] at this
+    simp at this
+  refine le_of_eq_of_le ?_ (measureReal_norm_mulVec_le_le_of_hasLaw_complexGaussianVector hg hProj
+    hP0 hs)
+  congr 1
+  ext ω
+  simp only [Set.mem_ofPred_eq, hPg, WithLp.toLp_smul, norm_smul, hv, mul_one]
 
 end NLAlib

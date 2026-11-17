@@ -260,6 +260,80 @@ theorem le_lastRowWeights_conjTranspose_mul {Q V : Matrix (Fin (n + 1)) (Fin (n 
     (hg : ‖WithLp.toLp 2 g‖ ≤ R) (hs : 0 ≤ s) {i : Fin (n + 1)}
     (hgi : s * ‖WithLp.toLp 2 (fun k => V k i)‖ ≤ ‖star g ⬝ᵥ (fun k => V k i)‖) :
     s ^ 2 / (R ^ 2 * pseudoConditionNumber V ^ 2) ≤ lastRowWeights (Qᴴ * V) i := by
-  sorry
+  rcases hs.eq_or_lt with rfl | hs
+  · simpa using lastRowWeights_nonneg (Qᴴ * V) i
+  set v : Fin (n + 1) → ℂ := fun k => V k i
+  set γ := ‖WithLp.toLp 2 g‖
+  have hdet := (Matrix.isUnit_iff_isUnit_det V).mp hV
+  -- `1 ≤ ‖V⁻¹‖₂ ‖vᵢ‖`
+  have hv1 : 1 ≤ specNorm V⁻¹ * ‖WithLp.toLp 2 v‖ := by
+    have h := norm_toLp_mulVec_le V⁻¹ v
+    have he : V⁻¹ *ᵥ v = Pi.single i 1 := by
+      rw [show v = V *ᵥ Pi.single i 1 by ext k; simp [v],
+        Matrix.mulVec_mulVec, Matrix.nonsing_inv_mul V hdet, Matrix.one_mulVec]
+    rwa [he, PiLp.toLp_single, PiLp.norm_single, norm_one] at h
+  have hvpos : 0 < ‖WithLp.toLp 2 v‖ := by
+    by_contra h0
+    have h0 : ‖WithLp.toLp 2 v‖ = 0 := le_antisymm (not_lt.mp h0) (norm_nonneg _)
+    rw [h0, mul_zero] at hv1; exact absurd hv1 (by norm_num)
+  have hγ : 0 < γ := by
+    by_contra h0
+    replace h0 := not_lt.mp h0
+    have hg0 : g = 0 := by
+      have : WithLp.toLp 2 g = 0 := norm_le_zero_iff.mp h0
+      simpa using congrArg WithLp.ofLp this
+    rw [hg0, star_zero, zero_dotProduct, norm_zero] at hgi
+    nlinarith [mul_pos hs hvpos]
+  set x : Fin (n + 1) → ℂ := fun k => ((γ⁻¹ : ℝ) : ℂ) * g k
+  have hw := lastRowWeights_conjTranspose_mul (Q := Q) (V := V) (x := x) hc
+    (fun k => by rw [hQx, mul_assoc]) i
+  set a := ‖star x ⬝ᵥ v‖
+  set b := ‖WithLp.toLp 2 (Vᴴ *ᵥ x)‖
+  have hx1 : ‖WithLp.toLp 2 x‖ = 1 := by
+    rw [show x = ((γ⁻¹ : ℝ) : ℂ) • g from rfl, WithLp.toLp_smul, norm_smul, Complex.norm_real,
+      Real.norm_eq_abs, abs_of_pos (inv_pos.mpr hγ), inv_mul_cancel₀ hγ.ne']
+  have ha : a = γ⁻¹ * ‖star g ⬝ᵥ v‖ := by
+    change ‖star x ⬝ᵥ v‖ = _
+    rw [show star x = ((γ⁻¹ : ℝ) : ℂ) • star g by ext k; simp [x],
+      smul_dotProduct, norm_smul, Complex.norm_real, Real.norm_eq_abs, abs_of_pos (inv_pos.mpr hγ)]
+  have hab : a ≤ b := by
+    have hcol : (Vᴴ *ᵥ x) i = star (star x ⬝ᵥ v) := by
+      simp only [Matrix.mulVec, dotProduct, Matrix.conjTranspose_apply, star_sum, star_mul',
+        Pi.star_apply, star_star, mul_comm, v]
+    have h := PiLp.norm_apply_le (WithLp.toLp 2 (Vᴴ *ᵥ x)) i
+    rwa [WithLp.ofLp_toLp, hcol, norm_star] at h
+  have hbV : b ≤ specNorm V := by
+    have h := norm_toLp_mulVec_le Vᴴ x
+    rwa [specNorm_conjTranspose, hx1, mul_one] at h
+  -- `s ‖vᵢ‖ / γ ≤ a`
+  have hsa : s * ‖WithLp.toLp 2 v‖ / γ ≤ a := by
+    rw [ha, div_eq_inv_mul]; exact mul_le_mul_of_nonneg_left hgi (inv_nonneg.mpr hγ.le)
+  have hapos : 0 < a := lt_of_lt_of_le (div_pos (mul_pos hs hvpos) hγ) hsa
+  have hbpos : 0 < b := hapos.trans_le hab
+  have hVpos : 0 < specNorm V := hbpos.trans_le hbV
+  rw [hw, pseudoConditionNumber_of_isUnit hV]
+  -- `s² / (R² ‖V‖² ‖V⁻¹‖²) ≤ (s ‖vᵢ‖ / γ)² / ‖V‖² ≤ a² / b²`
+  have hR : γ ≤ R := hg
+  have hstep1 : s ^ 2 / (R ^ 2 * (specNorm V * specNorm V⁻¹) ^ 2) ≤
+      (s * ‖WithLp.toLp 2 v‖ / γ) ^ 2 / specNorm V ^ 2 := by
+    have hRpos : 0 < R := hγ.trans_le hR
+    have hVi : 0 < specNorm V⁻¹ := by
+      by_contra h0
+      rw [le_antisymm (not_lt.mp h0) (specNorm_nonneg _), zero_mul] at hv1
+      exact absurd hv1 (by norm_num)
+    rw [div_pow, div_div, div_le_div_iff₀ (by positivity) (by positivity)]
+    have h1 : 1 ≤ (specNorm V⁻¹ * ‖WithLp.toLp 2 v‖) ^ 2 := one_le_pow₀ hv1
+    have h2 : γ ^ 2 ≤ R ^ 2 := pow_le_pow_left₀ hγ.le hR 2
+    have hs2 : 0 < s ^ 2 := by positivity
+    calc s ^ 2 * (γ ^ 2 * specNorm V ^ 2)
+        ≤ s ^ 2 * (R ^ 2 * specNorm V ^ 2) * (specNorm V⁻¹ * ‖WithLp.toLp 2 v‖) ^ 2 := by
+          nlinarith [mul_le_mul_of_nonneg_right h2 (sq_nonneg (specNorm V)),
+            mul_nonneg (mul_nonneg hs2.le (mul_nonneg (sq_nonneg R) (sq_nonneg (specNorm V))))
+              (sub_nonneg.mpr h1)]
+      _ = (s * ‖WithLp.toLp 2 v‖) ^ 2 * (R ^ 2 * (specNorm V * specNorm V⁻¹) ^ 2) := by ring
+  refine hstep1.trans ?_
+  calc (s * ‖WithLp.toLp 2 v‖ / γ) ^ 2 / specNorm V ^ 2 ≤ a ^ 2 / specNorm V ^ 2 := by
+        gcongr
+    _ ≤ a ^ 2 / b ^ 2 := by gcongr
 
 end NLAlib

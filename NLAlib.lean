@@ -976,6 +976,7 @@ public import NLAlib.Matrix.Perturbation.Continuity
 public import NLAlib.Matrix.Perturbation.DavisKahan
 public import NLAlib.Matrix.Perturbation.DavisKahanGap
 public import NLAlib.Matrix.Perturbation.EigenvalueBackward
+public import NLAlib.Matrix.Perturbation.EigenvalueClustering
 public import NLAlib.Matrix.Perturbation.ExteriorEigenvalueBranches
 public import NLAlib.Matrix.Perturbation.GramCutoff
 public import NLAlib.Matrix.Perturbation.GramSoftMin
@@ -986,6 +987,7 @@ public import NLAlib.Matrix.Perturbation.MapConditioning
 public import NLAlib.Matrix.Perturbation.OrthErr
 public import NLAlib.Matrix.Perturbation.PencilRoots
 public import NLAlib.Matrix.Perturbation.Pseudoinverse
+public import NLAlib.Matrix.Perturbation.PseudospectralArea
 public import NLAlib.Matrix.Perturbation.Pseudospectrum
 public import NLAlib.Matrix.Perturbation.QRFactorization
 public import NLAlib.Matrix.Perturbation.Relative
@@ -1390,6 +1392,8 @@ public import NLAlib.RandomMatrix.Gaussian.BlockTail
 public import NLAlib.RandomMatrix.Gaussian.ClippedInverseMoments
 public import NLAlib.RandomMatrix.Gaussian.Complex
 public import NLAlib.RandomMatrix.Gaussian.Complex.LeastSingularValue
+public import NLAlib.RandomMatrix.Gaussian.Complex.Shattering
+public import NLAlib.RandomMatrix.Gaussian.Complex.SimpleSpectrum
 public import NLAlib.RandomMatrix.Gaussian.Concentration
 public import NLAlib.RandomMatrix.Gaussian.ExtremeSingularValues
 public import NLAlib.RandomMatrix.Gaussian.FourthMoment

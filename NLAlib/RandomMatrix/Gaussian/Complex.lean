@@ -11,6 +11,7 @@ public import NLAlib.RandomMatrix.Gaussian.Invariance
 public import NLAlib.Matrix.Spectral.LeastSingularValue
 public import NLAlib.Matrix.Basic.Projector
 public import Mathlib.Probability.Distributions.Gaussian.Multivariate
+public import Mathlib.MeasureTheory.Measure.Lebesgue.VolumeOfBalls
 
 /-!
 # Complex Gaussian vectors and matrices
@@ -40,6 +41,8 @@ value [Edelman1988], an elementary small-ball bound.
 * `NLAlib.complexGaussianMatrix_eq_map_gaussianMatrix`: the realification.
 * `NLAlib.hasLaw_conjTranspose_mul_of_hasLaw_complexGaussianMatrix`,
   `NLAlib.hasLaw_submatrix_of_hasLaw_complexGaussianMatrix`.
+* `NLAlib.measureReal_norm_sub_le_le_of_hasLaw_complexGaussian`: small balls with arbitrary
+  centers.
 * `NLAlib.measureReal_norm_sq_ge_le_of_hasLaw_complexGaussian`: the exponential tail of
   $\lvert z \rvert^2$.
 * `NLAlib.measureReal_specNorm_ge_le_of_hasLaw_complexGaussianMatrix`,
@@ -368,6 +371,62 @@ private lemma gaussianPDFReal_two_inv (x : ℝ) :
   congr 2
   · ring_nf
   · ring
+
+private theorem complexGaussian_le_smul_volume :
+    complexGaussian ≤ ENNReal.ofReal Real.pi⁻¹ • (volume : Measure ℂ) := by
+  have hν : gaussianReal 0 2⁻¹ = volume.withDensity (gaussianPDF 0 2⁻¹) :=
+    gaussianReal_of_var_ne_zero _ (by norm_num)
+  have hpdf : ∀ p : ℝ × ℝ,
+      gaussianPDF 0 2⁻¹ p.1 * gaussianPDF 0 2⁻¹ p.2 ≤ ENNReal.ofReal Real.pi⁻¹ := by
+    intro p
+    simp only [gaussianPDF_def, gaussianPDFReal_two_inv]
+    rw [← ENNReal.ofReal_mul (by positivity)]
+    apply ENNReal.ofReal_le_ofReal
+    calc _ ≤ (√Real.pi)⁻¹ * 1 * ((√Real.pi)⁻¹ * 1) := by
+           gcongr <;> exact Real.exp_le_one_iff.mpr (neg_nonpos.mpr (sq_nonneg _))
+      _ = _ := by simp only [mul_one]; rw [← mul_inv, Real.mul_self_sqrt Real.pi_pos.le]
+  have hle : (gaussianReal 0 2⁻¹).prod (gaussianReal 0 2⁻¹) ≤
+      ENNReal.ofReal Real.pi⁻¹ • (volume : Measure (ℝ × ℝ)) := by
+    rw [hν, prod_withDensity (by fun_prop) (by fun_prop), ← Measure.volume_eq_prod,
+      ← withDensity_const]
+    exact withDensity_mono (Filter.Eventually.of_forall hpdf)
+  have h := Measure.map_mono hle Complex.measurableEquivRealProd.symm.measurable
+  simpa only [complexGaussian, Measure.map_smul,
+    (Complex.volume_preserving_equiv_real_prod.symm
+      Complex.measurableEquivRealProd).map_eq] using
+    h
+
+/-- A standard complex Gaussian assigns probability at most $s^2$ to every disk of radius
+$s \ge 0$, independently of its center. The real and imaginary parts are independent Gaussians
+of variance $1/2$. No printed source. -/
+theorem measureReal_norm_sub_le_le_of_hasLaw_complexGaussian
+    {z : Ω → ℂ} (hz : HasLaw z complexGaussian μ) (a : ℂ) {s : ℝ} (hs : 0 ≤ s) :
+    μ.real {ω | ‖z ω - a‖ ≤ s} ≤ s ^ 2 := by
+  rw [hz.measureReal_eq (p := fun z => ‖z - a‖ ≤ s)
+    (measurableSet_le (by fun_prop) measurable_const)]
+  have heq : {z : ℂ | ‖z - a‖ ≤ s} = Metric.closedBall a s := by
+    ext z
+    simp only [Metric.mem_closedBall, dist_eq_norm, Set.mem_ofPred_eq]
+  rw [heq, measureReal_def]
+  apply ENNReal.toReal_le_of_le_ofReal (sq_nonneg s)
+  calc complexGaussian (Metric.closedBall a s)
+      ≤ (ENNReal.ofReal Real.pi⁻¹ • (volume : Measure ℂ)) (Metric.closedBall a s) :=
+        complexGaussian_le_smul_volume _
+    _ = ENNReal.ofReal (s ^ 2) := by
+      rw [Measure.smul_apply, smul_eq_mul, Complex.volume_closedBall,
+        ENNReal.ofReal_inv_of_pos Real.pi_pos, ENNReal.ofReal_pow hs]
+      have hp : (ENNReal.ofReal Real.pi) ≠ 0 := by positivity
+      have hp' : (ENNReal.ofReal Real.pi) ≠ ⊤ := ENNReal.ofReal_ne_top
+      rw [mul_left_comm, ← ENNReal.ofReal_coe_nnreal, NNReal.coe_real_pi,
+        ENNReal.inv_mul_cancel hp hp', mul_one]
+
+/-- The standard complex Gaussian law has no atoms. -/
+instance nullSingletonClass_complexGaussian : NullSingletonClass complexGaussian := by
+  refine ⟨fun z => ?_⟩
+  have h := measureReal_norm_sub_le_le_of_hasLaw_complexGaussian HasLaw.id z (s := 0) le_rfl
+  have h0 : complexGaussian.real {z} = 0 :=
+    le_antisymm (by simpa [sub_eq_zero] using h) measureReal_nonneg
+  rw [← ofReal_measureReal (measure_ne_top _ _), h0, ENNReal.ofReal_zero]
 
 /-- The radial one-dimensional integral of the exponential tail: $\int_0^\infty r\,
 \mathbf 1_{\{s \le r^2\}} e^{-r^2}\,dr = e^{-s}/2$ for $s \ge 0$. -/

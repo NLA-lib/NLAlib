@@ -562,7 +562,8 @@ theorem det_sub_smul_one_ne_zero_of_forall_ne (hV : IsUnit V)
 /-- An eigenvalue of a diagonalised matrix is at most the norm: if $\mathbf{H}\mathbf{V} =
 \mathbf{V}\operatorname{diag}(\mathbf{d})$ with $\mathbf{V}$ invertible, then
 $\lvert\mathbf{d}_i\rvert \le \|\mathbf{H}\|_2$. -/
-theorem norm_le_specNorm_of_mul_eq_mul_diagonal (hV : IsUnit V)
+theorem norm_le_specNorm_of_mul_eq_mul_diagonal
+    {𝕜 : Type*} [RCLike 𝕜] {H V : Matrix n n 𝕜} {d : n → 𝕜} (hV : IsUnit V)
     (hHV : H * V = V * Matrix.diagonal d) (i : n) : ‖d i‖ ≤ specNorm H := by
   set x := V *ᵥ Pi.single i 1
   have hx : H *ᵥ x = d i • x := by
@@ -593,5 +594,69 @@ theorem _root_.IsStarNormal.exists_isUnit_mul_eq_mul_diagonal_and_pseudoConditio
       hU.specNorm_eq_one, mul_one]
 
 end Polynomial
+
+/-- **Eigenvector conditioning by rescaling columns.** Given an invertible eigenvector matrix,
+there is another diagonalizer for the same diagonal whose squared condition number is at most
+the dimension times the sum of the squared products of the original column norms and the
+corresponding inverse row norms. For simple eigenvalues these products are their individual
+condition numbers. The estimate also holds for a diagonalization with repeated eigenvalues.
+[BanksKulkarniMukherjeeSrivastava2021, Lemma 3.1]. -/
+theorem exists_isUnit_mul_eq_mul_diagonal_and_pseudoConditionNumber_sq_le
+    {𝕜 : Type*} [RCLike 𝕜] {A V : Matrix n n 𝕜} {d : n → 𝕜} (hV : IsUnit V)
+    (hAV : A * V = V * Matrix.diagonal d) :
+    ∃ W : Matrix n n 𝕜, IsUnit W ∧ A * W = W * Matrix.diagonal d ∧
+      pseudoConditionNumber W ^ 2 ≤ (Fintype.card n : ℝ) *
+        ∑ i, (‖WithLp.toLp 2 (V.col i)‖ * ‖WithLp.toLp 2 (V⁻¹.row i)‖) ^ 2 := by
+  have hn (i : n) : ‖WithLp.toLp 2 (V.col i)‖ ≠ 0 := by
+    rw [norm_ne_zero_iff]
+    intro h
+    exact (Matrix.linearIndependent_cols_iff_isUnit.mpr hV).ne_zero i
+      (congrArg WithLp.ofLp h)
+  let c : n → 𝕜 := fun i => (‖WithLp.toLp 2 (V.col i)‖ : 𝕜)⁻¹
+  let C := Matrix.diagonal c
+  have hc (i : n) : c i ≠ 0 := by dsimp [c]; exact inv_ne_zero (RCLike.ofReal_ne_zero.mpr (hn i))
+  have hC : IsUnit C := Matrix.isUnit_diagonal.mpr (Pi.isUnit_iff.mpr fun i =>
+    isUnit_iff_ne_zero.mpr (hc i))
+  let W := V * C
+  have hW : IsUnit W := hV.mul hC
+  have hcol (i : n) : W.col i = c i • V.col i := by
+    ext j
+    simp [W, C, Matrix.mul_diagonal, smul_eq_mul, mul_comm]
+  have hfW : frobNorm W ^ 2 = Fintype.card n := by
+    rw [frobNorm_sq_eq_sum_col]
+    simp only [hcol, WithLp.toLp_smul, norm_smul, c, norm_inv, RCLike.norm_ofReal,
+      abs_norm, inv_mul_cancel₀ (hn _), one_pow, Finset.sum_const, Finset.card_univ,
+      nsmul_eq_mul, mul_one]
+  have hCi : C⁻¹ = Matrix.diagonal (fun i => (‖WithLp.toLp 2 (V.col i)‖ : 𝕜)) := by
+    apply Matrix.inv_eq_left_inv
+    dsimp [C]
+    rw [Matrix.diagonal_mul_diagonal]
+    rw [← Matrix.diagonal_one]
+    apply congrArg Matrix.diagonal
+    funext i
+    change (‖WithLp.toLp 2 (V.col i)‖ : 𝕜) * (‖WithLp.toLp 2 (V.col i)‖ : 𝕜)⁻¹ = 1
+    exact mul_inv_cancel₀ (RCLike.ofReal_ne_zero.mpr (hn i))
+  have hrow (i : n) : W⁻¹.row i = (‖WithLp.toLp 2 (V.col i)‖ : 𝕜) • V⁻¹.row i := by
+    ext j
+    simp only [W, Matrix.mul_inv_rev, hCi, Matrix.row_apply, Matrix.diagonal_mul,
+      Pi.smul_apply, smul_eq_mul]
+  have hfI : frobNorm W⁻¹ ^ 2 = ∑ i,
+      (‖WithLp.toLp 2 (V.col i)‖ * ‖WithLp.toLp 2 (V⁻¹.row i)‖) ^ 2 := by
+    rw [frobNorm_sq_eq_sum_row]
+    simp only [hrow, WithLp.toLp_smul, norm_smul, RCLike.norm_ofReal, abs_norm]
+  refine ⟨W, hW, ?_, ?_⟩
+  · dsimp [W]
+    rw [← Matrix.mul_assoc, hAV, Matrix.mul_assoc, Matrix.mul_assoc]
+    congr 1
+    dsimp [C]
+    rw [Matrix.diagonal_mul_diagonal, Matrix.diagonal_mul_diagonal]
+    congr 1
+    ext i
+    exact mul_comm _ _
+  · rw [pseudoConditionNumber_of_isUnit hW, mul_pow]
+    calc specNorm W ^ 2 * specNorm W⁻¹ ^ 2
+        ≤ frobNorm W ^ 2 * frobNorm W⁻¹ ^ 2 := by
+          gcongr <;> exact specNorm_le_frobNorm _
+      _ = _ := by rw [hfW, hfI]
 
 end NLAlib

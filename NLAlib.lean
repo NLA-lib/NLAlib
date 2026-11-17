@@ -90,6 +90,7 @@ public import NLAlib.Eigensolvers.ShiftedQR.RoundedShStep
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedShTermination
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedShTrial
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSmallEig
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedSmallEigCertificate
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolve
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveBackward
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveTermination
@@ -152,6 +153,7 @@ public import NLAlib.Eigensolvers.Sign.Start
 public import NLAlib.Eigensolvers.Sign.State
 public import NLAlib.Eigensolvers.Sign.Step
 public import NLAlib.Eigensolvers.Sign.Test
+public import NLAlib.Eigensolvers.SmallEig.Certificate
 public import NLAlib.Eigensolvers.SmallEig.Core
 public import NLAlib.Eigensolvers.SmallEig.Decouple
 public import NLAlib.Eigensolvers.SmallEig.Decoupler

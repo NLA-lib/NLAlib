@@ -19,7 +19,8 @@ $1/\sqrt2$ (`NLAlib.Computation.tapeComplexMatrix`), is a standard complex Gauss
 ## Main results
 
 * `NLAlib.Computation.hasLaw_tapeComplexMatrix_of_hasLaw_pi`,
-  `NLAlib.Computation.hasLaw_tapeComplexMatrix_of_hasLaw_tapeLaw`: the law of the sample.
+  `NLAlib.Computation.hasLaw_tapeComplexMatrix_of_hasLaw_tapeLaw`,
+  `NLAlib.Computation.hasLaw_complexGaussianVector_of_hasLaw_pi`: the law of the sample.
 * `NLAlib.Ops.IsTapeLaw.hasLaw_pi_of_injective`: distinct entries of a stream are independent.
 * `NLAlib.Computation.hasLaw_complexGaussianMatrix_windowFn`,
   `NLAlib.Computation.hasLaw_complexGaussianVector_windowFn`: the same for a window of a Gaussian
@@ -158,24 +159,16 @@ theorem hasLaw_complexGaussianMatrix_windowFn {Ω : Type} {mΩ : MeasurableSpace
   exact hξ.hasLaw_pi_of_injective s
     ((add_right_injective p).comp (injective_tapeComplexMatrix_pos N))
 
-/-- **A window of a Gaussian stream is a complex Gaussian vector**: under a tape law whose stream
-$s$ is standard real Gaussian, the vector with entry $i$ equal to
-$(x_{2i} + i\,x_{2i + 1})/\sqrt2$, for the $2N$ entries $x$ of the stream $s$ from the position
-$p$, has independent standard complex Gaussian entries. It is the law of the random direction
-of [BanksGarzaVargasSrivastava2025, Proposition 5.3], drawn as a Gaussian vector. -/
-theorem hasLaw_complexGaussianVector_windowFn {Ω : Type} {mΩ : MeasurableSpace Ω}
-    {P : Measure Ω} {law : ℕ → Measure ℝ} {ξ : Ω → Ops.Tape ℝ} (hξ : Ops.IsTapeLaw law P ξ)
-    {s : ℕ} (hs : law s = gaussianReal 0 1) (p N : ℕ) :
-    HasLaw (fun ω (i : Fin N) =>
-        (⟨ξ ω (p + 2 * i) s / √2, ξ ω (p + 2 * i + 1) s / √2⟩ : ℂ))
-      (complexGaussianVector (Fin N)) P := by
-  have hf : Function.Injective fun q : Fin N × Fin 2 => p + (2 * q.1.1 + q.2.1) := by
-    rintro ⟨i, t⟩ ⟨i', t'⟩ h
-    have hi : i.1 = i'.1 := by simp only at h; omega
-    have ht : t.1 = t'.1 := by simp only at h; omega
-    exact Prod.ext (Fin.ext hi) (Fin.ext ht)
-  have hY := hξ.hasLaw_pi_of_injective s hf
-  rw [hs] at hY
+/-- Independent standard real Gaussian draws, two per entry, give a complex Gaussian vector: if
+the draws $x_{2i + t}$, $i < N$, $t < 2$, are independent standard real Gaussians, the vector
+with entry $i$ equal to $(x_{2i} + i\,x_{2i + 1})/\sqrt2$ has the law
+`NLAlib.complexGaussianVector`. No printed source. -/
+theorem hasLaw_complexGaussianVector_of_hasLaw_pi {Ω : Type} {mΩ : MeasurableSpace Ω}
+    {μ : Measure Ω} {x : Ω → ℕ → ℝ} {N : ℕ}
+    (hY : HasLaw (fun ω (q : Fin N × Fin 2) => x ω (2 * q.1.1 + q.2.1))
+      (Measure.pi fun _ : Fin N × Fin 2 => gaussianReal 0 1) μ) :
+    HasLaw (fun ω (i : Fin N) => (⟨x ω (2 * i) / √2, x ω (2 * i + 1) / √2⟩ : ℂ))
+      (complexGaussianVector (Fin N)) μ := by
   have hC := measurePreserving_curry_pi (m := Fin N) (n := Fin 2)
     (ν := fun _ _ => gaussianReal 0 1)
   have hpair : Measurable fun v : Fin 2 → ℝ => (⟨v 0 / √2, v 1 / √2⟩ : ℂ) :=
@@ -196,5 +189,25 @@ theorem hasLaw_complexGaussianVector_windowFn {Ω : Type} {mΩ : MeasurableSpace
     rw [← hPmap, ← hC.map_eq, Measure.map_map hPm hC.measurable]
     rfl
   exact (HasLaw.mk (hPm.comp hC.measurable).aemeasurable hmap).comp hY
+
+/-- **A window of a Gaussian stream is a complex Gaussian vector**: under a tape law whose stream
+$s$ is standard real Gaussian, the vector with entry $i$ equal to
+$(x_{2i} + i\,x_{2i + 1})/\sqrt2$, for the $2N$ entries $x$ of the stream $s$ from the position
+$p$, has independent standard complex Gaussian entries. It is the law of the random direction
+of [BanksGarzaVargasSrivastava2025, Proposition 5.3], drawn as a Gaussian vector. -/
+theorem hasLaw_complexGaussianVector_windowFn {Ω : Type} {mΩ : MeasurableSpace Ω}
+    {P : Measure Ω} {law : ℕ → Measure ℝ} {ξ : Ω → Ops.Tape ℝ} (hξ : Ops.IsTapeLaw law P ξ)
+    {s : ℕ} (hs : law s = gaussianReal 0 1) (p N : ℕ) :
+    HasLaw (fun ω (i : Fin N) =>
+        (⟨ξ ω (p + 2 * i) s / √2, ξ ω (p + 2 * i + 1) s / √2⟩ : ℂ))
+      (complexGaussianVector (Fin N)) P := by
+  have hf : Function.Injective fun q : Fin N × Fin 2 => p + (2 * q.1.1 + q.2.1) := by
+    rintro ⟨i, t⟩ ⟨i', t'⟩ h
+    have hi : i.1 = i'.1 := by simp only at h; omega
+    have ht : t.1 = t'.1 := by simp only at h; omega
+    exact Prod.ext (Fin.ext hi) (Fin.ext ht)
+  have hY := hξ.hasLaw_pi_of_injective s hf
+  rw [hs] at hY
+  exact hasLaw_complexGaussianVector_of_hasLaw_pi (x := fun ω j => ξ ω (p + j) s) hY
 
 end NLAlib.Computation

@@ -64,7 +64,45 @@ theorem OneEigRun.dist_le_and_norm_le {Λ : Set ℂ} {η R β : ℝ} {t : ℕ} {
     (hηR : η ≤ 0.02 * R) (hηβ : η ≤ β / 5) (hβ : 0 < β) (hτβ : ∀ i ≤ t, 0.9 * β ≤ τ i) :
     ∀ i ≤ t, τ i ≤ 2.3 * 0.66 ^ i * R ∧ ‖s i‖ ≤ 10 * R ∧
       ∀ (j : Fin 6) (w : ℂ), ‖w‖ ≤ η → ‖s i + τ i * hexDir j + w‖ ≤ 10 * R := by
-  sorry
+  obtain ⟨z, hz⟩ := hΛ
+  have hR0 : 0 ≤ R := (norm_nonneg z).trans (hR z hz)
+  -- the first estimate: `τ₀ ≤ 1.1 (η + R)`
+  have hτ0 : τ 0 ≤ 1.1 * (η + R) := by
+    have hd : infDist (s 0) Λ ≤ η + R := (infDist_le_dist_of_mem hz).trans
+      ((dist_le_norm_add_norm (s 0) z).trans (add_le_add hs0 (hR z hz)))
+    linarith [(h.accurate 0 (Nat.zero_le t)).2]
+  -- a net point moves by at most `τᵢ + η ≤ (11/9) τᵢ`
+  have hnet : ∀ i ≤ t, ∀ (j : Fin 6) (w : ℂ), ‖w‖ ≤ η →
+      ‖s i + τ i * hexDir j + w‖ ≤ ‖s i‖ + 11 / 9 * τ i := by
+    intro i hi j w hw
+    have hτi := hτβ i hi
+    have hτ0' : 0 ≤ τ i := by linarith
+    calc ‖s i + τ i * hexDir j + w‖ ≤ ‖s i‖ + ‖(τ i : ℂ) * hexDir j‖ + ‖w‖ := norm_add₃_le
+      _ = ‖s i‖ + τ i + ‖w‖ := by
+          rw [norm_mul, norm_hexDir, mul_one, Complex.norm_real, Real.norm_of_nonneg hτ0']
+      _ ≤ ‖s i‖ + 11 / 9 * τ i := by linarith
+  -- the potential `‖sᵢ‖ + 3.6 τᵢ` does not increase, and `τᵢ ≤ 0.66ⁱ τ₀`
+  have key : ∀ i ≤ t, τ i ≤ 0.66 ^ i * τ 0 ∧ ‖s i‖ + 3.6 * τ i ≤ η + 3.6 * τ 0 := by
+    intro i
+    induction i with
+    | zero => intro _; simp only [pow_zero, one_mul, le_refl, true_and]; linarith
+    | succ i ih =>
+      intro hi
+      obtain ⟨h1, h2⟩ := ih (by omega)
+      obtain ⟨j, w, hw, hs⟩ := h.step i (by omega)
+      have hc := h.contract i (by omega)
+      have hm := hnet i (by omega) j w hw
+      have hτi := hτβ i (by omega)
+      refine ⟨by rw [pow_succ]; nlinarith, ?_⟩
+      rw [hs]; nlinarith
+  refine fun i hi => ⟨?_, ?_, fun j w hw => ?_⟩
+  · have h1 := (key i hi).1
+    have hp : (0 : ℝ) ≤ 0.66 ^ i := by positivity
+    nlinarith
+  · have h2 := (key i hi).2
+    nlinarith [hτβ i hi]
+  · have h2 := (key i hi).2
+    nlinarith [hτβ i hi, hnet i hi j w hw]
 
 /-- **A round with accurate estimates makes progress** ([BanksGarzaVargasSrivastava2025,
 Lemma 3.8], its statement corrected): let $\Lambda$ be finite and nonempty, the estimate
@@ -76,7 +114,19 @@ theorem exists_hexNet_le {Λ : Set ℂ} (hΛ : Λ.Nonempty) (hΛf : Λ.Finite) {
     (hη : η ≤ 0.039 * τ) {τ' : Fin 6 → ℝ}
     (hτ' : ∀ j, τ' j ≤ 1.1 * infDist (s + τ * hexDir j + w) Λ) :
     ∃ j, τ' j ≤ 0.66 * τ := by
-  sorry
+  obtain ⟨z, hz, hdz⟩ := hΛf.isCompact.exists_infDist_eq_dist hΛ s
+  rw [hdz] at hτ
+  have hz1 : τ / 1.1 ≤ ‖z - s‖ := by
+    rw [div_le_iff₀ (by norm_num), ← dist_eq_norm, dist_comm]; linarith
+  have hz2 : ‖z - s‖ ≤ τ / 0.9 := by
+    rw [le_div_iff₀ (by norm_num), ← dist_eq_norm, dist_comm]; linarith
+  obtain ⟨j, hj⟩ := exists_norm_hexNet_add_sub_le (r := τ) (by positivity)
+    (div_le_self hτ0.le (by norm_num)) (le_div_self hτ0.le (by norm_num) (by norm_num)) hz1 hz2 hw
+  refine ⟨j, (hτ' j).trans ?_⟩
+  have hd : infDist (s + τ * hexDir j + w) Λ ≤ ‖s + τ * hexDir j + w - z‖ := by
+    rw [← dist_eq_norm]; exact infDist_le_dist_of_mem hz
+  have hρ := hexNetRadius_le hτ0.le
+  nlinarith
 
 /-- **`OneEig` succeeds within its round cap** ([BanksGarzaVargasSrivastava2025,
 Proposition 3.5], the paragraph "Probability of success", with the corrected cap): for an
@@ -88,6 +138,11 @@ theorem OneEigRun.exists_le_of_rounds {Λ : Set ℂ} {η R β : ℝ} {t : ℕ} {
     (h : OneEigRun Λ η t s τ) (hΛ : Λ.Nonempty) (hR : ∀ z ∈ Λ, ‖z‖ ≤ R) (hs0 : ‖s 0‖ ≤ η)
     (hηR : η ≤ 0.02 * R) (hηβ : η ≤ β / 5) (hβ : 0 < β) (ht : 2.3 * 0.66 ^ t * R ≤ 0.9 * β) :
     ∃ i ≤ t, τ i ≤ 0.9 * β ∧ infDist (s i) Λ ≤ β := by
-  sorry
+  by_cases hex : ∃ i ≤ t, τ i ≤ 0.9 * β
+  · obtain ⟨i, hi, hτi⟩ := hex
+    exact ⟨i, hi, hτi, by linarith [(h.accurate i hi).1]⟩
+  · push Not at hex
+    have h5 := (h.dist_le_and_norm_le hΛ hR hs0 hηR hηβ hβ (fun i hi => (hex i hi).le) t le_rfl).1
+    linarith [hex t le_rfl]
 
 end NLAlib.SmallEig

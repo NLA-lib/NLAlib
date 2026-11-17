@@ -270,14 +270,41 @@ def ComplexGaussianConditionPreferred : Prop :=
 /-- The preferred gap form is the gap tail with the record $(1, 3, 2, 0)$. -/
 theorem complexGaussianGapTail_of_preferred (h : ComplexGaussianGapPreferred) :
     ComplexGaussianGapTail ⟨1, 3, 2, 0⟩ := by
-  sorry
+  intro Ω _ μ n _ _ G hG M γ t hγ _ ht _
+  refine (h hG M hγ ht.le).trans (le_of_eq ?_)
+  simp only [Real.rpow_ofNat, Real.rpow_zero, one_mul, mul_one, div_pow]
+  ring
 
 /-- The preferred condition form is the condition tail with the record $(18, 3, 2, 2)$: in the
 range $2\gamma \le \|\mathbf{M}\|_2$, $2\sqrt2 + 1 \le 1.92\|\mathbf{M}\|_2/\gamma$ and
 $\sqrt{4L} \le L + 1$. -/
 theorem complexGaussianConditionTail_of_preferred (h : ComplexGaussianConditionPreferred) :
     ComplexGaussianConditionTail ⟨18, 3, 2, 2⟩ := by
-  sorry
+  intro Ω _ μ n _ _ G hG M γ t hγ hM ht ht1
+  refine (h hG M hγ (by linarith) ht).trans ?_
+  simp only [Real.rpow_ofNat]
+  set m := specNorm M / γ
+  set L := Real.log t⁻¹
+  have hm : 2 ≤ m := (le_div_iff₀ hγ).mpr hM
+  have hL : 0 ≤ L := Real.log_nonneg ((one_le_inv₀ ht).mpr ht1)
+  have hs2 : √2 ≤ 3 / 2 := by
+    rw [Real.sqrt_le_left (by norm_num)]
+    norm_num
+  have h4 : √(4 * L / Fintype.card n) ≤ L + 1 := by
+    rw [Real.sqrt_le_left (by positivity)]
+    rcases card_eq_zero_or_one_le n with h0 | h1
+    · rw [h0, div_zero]
+      positivity
+    · nlinarith [div_le_self (by positivity : (0:ℝ) ≤ 4 * L) h1, sq_nonneg (L - 1)]
+  have hsum : 0 ≤ 2 * √2 + m + √(4 * L / Fintype.card n) := by positivity
+  have hle : 2 * √2 + m + √(4 * L / Fintype.card n) ≤ 3 * (m + L) := by linarith
+  have hsq := pow_le_pow_left₀ hsum hle 2
+  have hnt : 0 ≤ (Fintype.card n : ℝ) ^ 3 * t ^ 2 := by positivity
+  calc 2 * (2 * √2 + m + √(4 * L / Fintype.card n)) ^ 2 * (Fintype.card n : ℝ) ^ 3 * t ^ 2
+      = 2 * (2 * √2 + m + √(4 * L / Fintype.card n)) ^ 2 * ((Fintype.card n : ℝ) ^ 3 * t ^ 2) := by
+        ring
+    _ ≤ 2 * (3 * (m + L)) ^ 2 * ((Fintype.card n : ℝ) ^ 3 * t ^ 2) := by gcongr
+    _ = 18 * (Fintype.card n : ℝ) ^ 3 * t ^ 2 * (m + L) ^ 2 := by ring
 
 /-! ### The class event -/
 

@@ -9,6 +9,7 @@ public meta import NLAlib.Ops.Tools.Lint
 public import NLAlib.Ops.Blas.BlockCopy
 public import NLAlib.Ops.Blas.Broadcast
 public import NLAlib.Ops.Blas.Clamp
+public import NLAlib.Ops.Blas.Fill
 public import NLAlib.Ops.Blas.Hermitian
 public import NLAlib.Ops.Blas.HermitianCorrect
 public import NLAlib.Ops.Blas.HermitianEntry

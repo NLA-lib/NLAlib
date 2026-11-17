@@ -213,7 +213,7 @@ theorem hasLaw_complexGaussianVector_windowFn {Ω : Type} {mΩ : MeasurableSpace
   rw [hs] at hY
   exact hasLaw_complexGaussianVector_of_hasLaw_pi (x := fun ω j => ξ ω (p + j) s) hY
 
-/-- **Independent standard real Gaussians in pairs are a complex Gaussian vector**: under the
+/-- Independent standard real Gaussians in pairs are a complex Gaussian vector: under the
 product of $2N$ standard real Gaussian laws, the vector with entry $i$ equal to
 $(x_{2i} + i\,x_{2i+1})/\sqrt2$ has the law `NLAlib.complexGaussianVector`. No printed
 source. -/
@@ -246,7 +246,7 @@ theorem hasLaw_complexGaussianVector_pi_gaussianReal (N : ℕ) :
   have h1 : 2 * (i : ℕ) + 1 < N * 2 := by have := i.isLt; omega
   simp only [dif_pos h0, dif_pos h1]
 
-/-- **Independent standard real Gaussians as a column are a Gaussian matrix**: under the product
+/-- Independent standard real Gaussians as a column are a Gaussian matrix: under the product
 of $W$ standard real Gaussian laws, the one-column matrix of the draws has the law
 `NLAlib.gaussianMatrix`. No printed source. -/
 theorem hasLaw_gaussianMatrix_pi_gaussianReal (W : ℕ) :

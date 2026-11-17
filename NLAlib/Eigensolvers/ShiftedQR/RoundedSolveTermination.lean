@@ -136,7 +136,7 @@ theorem TerminatingSmallEigAt.terminatingLeafRoutine {kmax T : ℕ} {qs ps₀ : 
     (hq12 : qs = [] ∨ qs.length = 12) :
     TerminatingLeafRoutine kmax (ps₀ ++ qs) T (seLeaf SE) I := by
   intro d w p o tape μ B hd hB hp hl hroom hwo hpo
-  obtain ⟨hq, hsub⟩ := Store.readBlock_tail_twelve hq12 hp
+  obtain ⟨hq, hsub⟩ := readBlock_tail_twelve hq12 hp
   unfold seLeaf
   refine (h (q := (p.1, p.2 + ((ps₀ ++ qs).length - 12))) tape μ B hd hB hq
     (by simpa [Mem.Live] using hl) hroom hwo

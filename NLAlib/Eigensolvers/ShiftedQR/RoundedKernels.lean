@@ -340,7 +340,7 @@ theorem RandomSmallEigContractAt.mono_norm {law : ℕ → Measure ℝ} {β φ : 
   fun B hd hB hBn => h B hd hB (hBn.trans hS)
 
 /-- The words of a routine stored as the tail of the parameter words: none, or the last $12$. -/
-theorem _root_.NLAlib.Ops.Store.readBlock_tail_twelve {s : Store ℝ} {b off : ℕ}
+theorem readBlock_tail_twelve {s : Store ℝ} {b off : ℕ}
     {ps₀ qs : List ℝ} (hq12 : qs = [] ∨ qs.length = 12)
     (h : s.readBlock b off (ps₀ ++ qs).length = some (ps₀ ++ qs)) :
     s.readBlock b (off + ((ps₀ ++ qs).length - 12)) qs.length = some qs ∧
@@ -369,7 +369,7 @@ theorem RandomSmallEigContractAt.randomLeafRoutineContract {law : ℕ → Measur
   · rintro μ ⟨-, -, hl, -⟩
     simpa [Mem.Live] using hl
   · rintro μ ⟨hH, hp, hl, hroom, hwo, hpo⟩
-    obtain ⟨hq, hsub⟩ := Store.readBlock_tail_twelve hq12 hp
+    obtain ⟨hq, hsub⟩ := readBlock_tail_twelve hq12 hp
     exact ⟨hH, hq, by simpa [Mem.Live] using hl, hroom, hwo,
       hpo.mono (Fp.inBlock_le_inBlock (by omega) (by omega)) le_rfl⟩
   · rintro μ' ⟨roots, ev, hev, hfw, hO⟩

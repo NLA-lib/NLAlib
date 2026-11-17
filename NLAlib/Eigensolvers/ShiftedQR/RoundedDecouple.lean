@@ -268,7 +268,7 @@ theorem DecoupleLoopCtx.routine_words {L : ℕ} {w p f : ℕ × ℕ} {ps qs : Li
       Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
         (Store.inBlock p.1 (p.2 + (ps.length - 12)) qs.length) := by
   subst hps
-  obtain ⟨hq, hsub⟩ := Store.readBlock_tail_twelve hq12 hctx.2.2.2.2.1
+  obtain ⟨hq, hsub⟩ := readBlock_tail_twelve hq12 hctx.2.2.2.2.1
   exact ⟨hq, hctx.2.2.2.2.2.2.2.2.2.symm.mono le_rfl
     (Fp.inBlock_le_inBlock (by omega) (by omega))⟩
 

@@ -34,7 +34,6 @@ abstract run (`NLAlib.SmallEig.OneEigRun`) with steps of size $\eta_2 + 60\bolds
 
 ## Main results
 
-* `NLAlib.SmallEig.measureReal_polarDisk_bad_le`: one polar sample for several centres.
 * `NLAlib.SmallEig.oneEigRound_pwrites`, `NLAlib.SmallEig.oneEigStart_pwrites`: the round and
   the start as probabilistic blocks.
 * `NLAlib.SmallEig.oneEig_writes_word`, `NLAlib.SmallEig.oneEig_pwrites`,

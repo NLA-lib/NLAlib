@@ -45,6 +45,8 @@ probabilistic part of a random regularization of shifts such as that of
 * `NLAlib.measureReal_exists_norm_add_sub_lt_le_of_separated`: a translated separated net avoids
   a finite set.
 * `NLAlib.map_polarDisk_eq_diskUniform`: the polar sampler is uniform on the disk.
+* `NLAlib.measureReal_polarDisk_bad_le`: one polar sample keeps several centres away from a
+  separated set.
 -/
 
 @[expose] public section

@@ -233,9 +233,7 @@ private theorem writes_rhessRotate {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
       Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Fp.above L := by
     intro b i hi
     simp [Fp.blocks, Store.inBlock] at hi
-    right
-    change L ≤ b
-    omega
+    exact Or.inr (show L ≤ b by omega)
   refine (writes_rotateLeftWithScratch_word (τ := τ) (m := m) (c := (L + 1, 0)) (s := (L + 1, 2))
     (x := (L, 2 * j)) (y := (L, 2 * j + 2)) (t := (L + 3, 0)) (cv := cs.1) (sv := cs.2)
     (xv := v ⟨j, by omega⟩) (yv := v ⟨j + 1, hj⟩) hS (by simp) (by simp) (by simp) (by simp)
@@ -261,14 +259,12 @@ private theorem writes_rhessRotate {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
       (replicateCol (Fin 1) (vecRot M ⟨j, by omega⟩ ⟨j + 1, hj⟩ cs v)) m₁.store := by
     refine holdsMatrix_colVec fun r => ?_
     by_cases hri : (r : ℕ) = j
-    · have hr : r = ⟨j, Nat.lt_of_succ_lt hj⟩ := Fin.ext hri
-      subst hr
+    · obtain rfl : r = ⟨j, Nat.lt_of_succ_lt hj⟩ := Fin.ext hri
       simp only [vecRot, if_true]
       exact ⟨by simpa using Store.get_of_readBlock hx' (j := 0) (by norm_num) (0 : ℝ),
         by simpa using Store.get_of_readBlock hx' (j := 1) (by norm_num) (0 : ℝ)⟩
     by_cases hrk : (r : ℕ) = j + 1
-    · have hr : r = ⟨j + 1, hj⟩ := Fin.ext hrk
-      subst hr
+    · obtain rfl : r = ⟨j + 1, hj⟩ := Fin.ext hrk
       have hne : (⟨j + 1, hj⟩ : Fin N) ≠ ⟨j, by omega⟩ := Fin.ne_of_val_ne (by simp)
       simp only [vecRot, hne, if_false, if_true]
       refine ⟨?_, ?_⟩

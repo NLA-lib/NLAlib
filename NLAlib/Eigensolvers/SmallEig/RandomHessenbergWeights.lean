@@ -127,7 +127,7 @@ theorem measurableSet_rhessBad {n : ℕ} (V : Matrix (Fin (n + 1)) (Fin (n + 1))
   simp only [dotProduct]
   exact Finset.measurable_sum _ fun k _ => (measurable_winVec_apply (n + 1) k).const_mul _
 
-/-- **The probability of the bad windows of `RHess`**: under independent standard real Gaussian
+/-- The probability of the bad windows of `RHess`: under independent standard real Gaussian
 draws, for an invertible $\mathbf{V}$, $s > 0$, $0 < \varphi' \le 1$ and
 $R \ge 2(\sqrt{n + 1} + 1) + \sqrt{2\log(1/\varphi')}$, the bad windows have probability at most
 $(n + 1)s^2 + \varphi'$: anti-concentration in each fixed direction
@@ -191,7 +191,7 @@ end Weights
 
 section Class
 
-/-- **The overlap of the computed direction**: if a column $\mathbf{v}$ has
+/-- The overlap of the computed direction: if a column $\mathbf{v}$ has
 $\lvert\mathbf{g}^{\mathsf{H}}\mathbf{v}\rvert \ge s\|\mathbf{v}\|$, $0 < \|\mathbf{g}\| \le R$
 and $\mathbf{q}$ is within $s/(2R)$ of a unit multiple of $\mathbf{g}/\|\mathbf{g}\|$, then
 $\lvert\mathbf{q}^{\mathsf{H}}\mathbf{v}\rvert \ge (s/(2R))\|\mathbf{v}\|$. -/
@@ -277,7 +277,7 @@ private theorem sq_div_eight_le_lastRowWeights {n : ℕ} {W Z : Matrix (Fin (n +
   have hw' := pow_le_pow_left₀ (by positivity) hy 2
   rwa [Real.sq_sqrt (lastRowWeights_nonneg _ _)] at hw'
 
-/-- **The class and the weights after `RHess`**: let $\mathbf{A}\mathbf{V} =
+/-- The class and the weights after `RHess`: let $\mathbf{A}\mathbf{V} =
 \mathbf{V}\operatorname{diag}(\mathbf{d})$ with $\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le B$,
 eigenvalues separated by $g > 0$ and $\|\mathbf{A}\|_2 \le \Sigma$; let $\mathbf{Q}$ be unitary
 with last column $\mathbf{q}$ satisfying $\lvert\mathbf{q}^{\mathsf{H}}\mathbf{v}_i\rvert \ge

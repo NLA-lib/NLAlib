@@ -52,33 +52,6 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has SampleOp O] [Has Dis
 
 /-! ### The pieces of the proofs -/
 
-/-- A multiset of characteristic roots is an eigenvalue listing: over $\mathbb{C}$, if the
-roots of the characteristic polynomial of $\mathbf{B}$ are the entries of `rts`, then `rts` lists
-the eigenvalues of $\mathbf{B}$ with multiplicity. The converse of
-`NLAlib.IsEigenvalueListing.charpoly_roots_eq_ofFn`. -/
-theorem _root_.NLAlib.isEigenvalueListing_of_charpoly_roots_eq_ofFn {d : ℕ}
-    {B : Matrix (Fin d) (Fin d) ℂ}
-    {rts : Fin d → ℂ} (h : B.charpoly.roots = (List.ofFn rts : Multiset ℂ)) :
-    IsEigenvalueListing B rts := by
-  rw [isEigenvalueListing_iff]
-  have e := (IsAlgClosed.splits B.charpoly).eq_prod_roots_of_monic (Matrix.charpoly_monic B)
-  rw [h] at e
-  rw [e]
-  simp [Multiset.map_coe, Multiset.prod_coe, List.map_ofFn, List.prod_ofFn, Function.comp_def]
-
-/-- A perturbed unitary similarity carries an eigenvalue listing back: if $\mathbf{B}$ is a
-perturbed unitary similarity of $\mathbf{A}$ with backward error $\varepsilon$ and `rts` lists the
-eigenvalues of $\mathbf{B}$, then `rts` lists those of $\mathbf{A} + \mathbf{G}$ for some
-$\|\mathbf{G}\|_2 \le \varepsilon$. -/
-theorem _root_.NLAlib.IsPerturbedUnitarySimilar.exists_isEigenvalueListing {n : ℕ}
-    {A B : Matrix (Fin n) (Fin n) ℂ} {ε : ℝ} (h : IsPerturbedUnitarySimilar A B ε)
-    {rts : Fin n → ℂ} (hB : IsEigenvalueListing B rts) :
-    ∃ G : Matrix (Fin n) (Fin n) ℂ, specNorm G ≤ ε ∧ IsEigenvalueListing (A + G) rts := by
-  obtain ⟨U, E, hU, hE, rfl⟩ := h
-  refine ⟨E, hE, ?_⟩
-  rw [isEigenvalueListing_iff] at hB ⊢
-  rwa [charpoly_mul_mul_of_mul_eq_one hU.conjTranspose_mul_self] at hB
-
 /-- **The class of the matrix the core receives** in `NLAlib.SmallEig.smallEigProg`, relative to
 the input $\mathbf{M}$: $\mathbf{H}$ is upper Hessenberg, diagonalizable with condition at most
 $B_c$ and eigenvalues separated by $g_c$ (`NLAlib.SmallEig.smallEigCondition`,
@@ -772,7 +745,6 @@ theorem smallEig_work_le (sG : ℕ) : ∃ c : ℕ, ∀ n nq T : ℕ,
   refine (size_stmtCost_le_stmtWorkMono (by simp) _ hσ).trans ?_
   rw [hw]
   simp [WorkMono.eval, mul_assoc]
-
 
 /-! ### With the proved random-matrix tails -/
 

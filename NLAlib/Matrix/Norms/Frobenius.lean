@@ -210,6 +210,16 @@ $\|\mathbf{A}\|_{\mathsf{F}}^2 = \sum_{i,j} \lvert \mathbf{A}_{i,j} \rvert^2$. -
 theorem frobNorm_sq_eq_sum (A : Matrix m n 𝕜) : frobNorm A ^ 2 = ∑ i, ∑ j, ‖A i j‖ ^ 2 := by
   exact Real.sq_sqrt (Finset.sum_nonneg fun i _ => Finset.sum_nonneg fun j _ => sq_nonneg _)
 
+/-- **Entrywise domination of moduli gives domination of Frobenius norms**: if
+$\lvert\mathbf{A}_{i,j}\rvert \le \lvert\mathbf{B}_{i,j}\rvert$ for all $i, j$, then
+$\|\mathbf{A}\|_{\mathsf{F}} \le \|\mathbf{B}\|_{\mathsf{F}}$. -/
+theorem frobNorm_le_of_norm_apply_le {A B : Matrix m n 𝕜} (h : ∀ i j, ‖A i j‖ ≤ ‖B i j‖) :
+    frobNorm A ≤ frobNorm B := by
+  refine (sq_le_sq₀ (frobNorm_nonneg _) (frobNorm_nonneg _)).1 ?_
+  rw [frobNorm_sq_eq_sum, frobNorm_sq_eq_sum]
+  exact Finset.sum_le_sum fun i _ => Finset.sum_le_sum fun j _ =>
+    pow_le_pow_left₀ (norm_nonneg _) (h i j) 2
+
 /-- The Frobenius norm is the Euclidean norm of the entries read as a vector indexed by
 $m \times n$. -/
 theorem frobNorm_eq_norm_toLp_uncurry (A : Matrix m n 𝕜) :

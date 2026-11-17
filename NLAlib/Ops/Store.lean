@@ -455,6 +455,26 @@ theorem readBlock_sub {s : Store K} {b off N : ℕ} {xs : List K}
   refine readBlock_eq_some_iff.mpr ⟨by simp; omega, fun j hj => ?_⟩
   rw [add_assoc, hg (o + j) (by omega), List.getElem?_take_of_lt hj, List.getElem?_drop]
 
+/-- The tail of a stored list of words: if `xs ++ ys` is stored at offset `off`, then `ys` is
+stored at offset `off + xs.length`. -/
+theorem readBlock_append_right {s : Store K} {b off : ℕ}
+    {xs ys : List K} (h : s.readBlock b off (xs ++ ys).length = some (xs ++ ys)) :
+    s.readBlock b (off + xs.length) ys.length = some ys := by
+  obtain ⟨-, hg⟩ := readBlock_eq_some_iff.mp h
+  refine readBlock_eq_some_iff.mpr ⟨rfl, fun j hj => ?_⟩
+  have := hg (xs.length + j) (by simp; omega)
+  rw [← add_assoc] at this
+  rw [this, List.getElem?_append_right (by omega)]
+  simp
+
+/-- The head of a stored list of words: if `xs ++ ys` is stored at offset `off`, then `xs` is
+stored there. -/
+theorem readBlock_append_left {s : Store K} {b off : ℕ}
+    {xs ys : List K} (h : s.readBlock b off (xs ++ ys).length = some (xs ++ ys)) :
+    s.readBlock b off xs.length = some xs := by
+  have := readBlock_sub h (o := 0) (n := xs.length) (by simp)
+  simpa using this
+
 theorem getD_drop_take (xs : List K) (o n j : ℕ) (hj : j < n) (d : K) :
     ((xs.drop o).take n).getD j d = xs.getD (o + j) d := by
   simp [List.getD_eq_getElem?_getD, List.getElem?_take_of_lt hj]

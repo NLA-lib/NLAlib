@@ -501,4 +501,28 @@ theorem IsEigenvalueListing.pow {A : Matrix n n K} {d : ι → K} (h : IsEigenva
   simp only [pow_apply_self_of_isUpperTriangular hT, hdiag, Function.comp_apply]
   exact (Fintype.equivOfCardEq h.card_eq.symm).prod_comp fun i => X - C (d i ^ k)
 
+/-- A listing of the eigenvalues of a square matrix by `Fin d` is its multiset of characteristic
+roots. -/
+theorem IsEigenvalueListing.charpoly_roots_eq_ofFn {d : ℕ}
+    {B : Matrix (Fin d) (Fin d) ℂ} {rts : Fin d → ℂ} (h : IsEigenvalueListing B rts) :
+    B.charpoly.roots = (List.ofFn rts : Multiset ℂ) := by
+  rw [isEigenvalueListing_iff.mp h]
+  simpa only [Multiset.map_coe, Multiset.prod_coe, List.map_ofFn,
+    List.prod_ofFn, Function.comp_def] using
+    Polynomial.roots_multiset_prod_X_sub_C (List.ofFn rts : Multiset ℂ)
+
+/-- A multiset of characteristic roots is an eigenvalue listing: over $\mathbb{C}$, if the
+roots of the characteristic polynomial of $\mathbf{B}$ are the entries of `rts`, then `rts` lists
+the eigenvalues of $\mathbf{B}$ with multiplicity. The converse of
+`NLAlib.IsEigenvalueListing.charpoly_roots_eq_ofFn`. -/
+theorem isEigenvalueListing_of_charpoly_roots_eq_ofFn {d : ℕ}
+    {B : Matrix (Fin d) (Fin d) ℂ}
+    {rts : Fin d → ℂ} (h : B.charpoly.roots = (List.ofFn rts : Multiset ℂ)) :
+    IsEigenvalueListing B rts := by
+  rw [isEigenvalueListing_iff]
+  have e := (IsAlgClosed.splits B.charpoly).eq_prod_roots_of_monic (Matrix.charpoly_monic B)
+  rw [h] at e
+  rw [e]
+  simp [Multiset.map_coe, Multiset.prod_coe, List.map_ofFn, List.prod_ofFn, Function.comp_def]
+
 end NLAlib

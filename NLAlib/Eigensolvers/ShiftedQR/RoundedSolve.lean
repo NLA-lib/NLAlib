@@ -634,16 +634,6 @@ theorem roundedGeometry_allocated {N np : ℕ} {μ : Mem ℝ} {a t p out f : ℕ
       hRoom.2.2.2.2.2.2.1, hRoom.2.2.2.2.2.2.2.1, hRoom.2.2.2.2.1, trivial⟩
   · simpa [e, ns, L, List.ofFn_succ] using hReorder
 
-/-- A listing of the eigenvalues of a square matrix by `Fin d` is its multiset of characteristic
-roots. -/
-theorem _root_.NLAlib.IsEigenvalueListing.charpoly_roots_eq_ofFn {d : ℕ}
-    {B : Matrix (Fin d) (Fin d) ℂ} {rts : Fin d → ℂ} (h : IsEigenvalueListing B rts) :
-    B.charpoly.roots = (List.ofFn rts : Multiset ℂ) := by
-  rw [isEigenvalueListing_iff.mp h]
-  simpa only [Multiset.map_coe, Multiset.prod_coe, List.map_ofFn,
-    List.prod_ofFn, Function.comp_def] using
-    Polynomial.roots_multiset_prod_X_sub_C (List.ofFn rts : Multiset ℂ)
-
 /-- A leaf as one perturbed similarity: at error $0$, finishing the first active block with
 the listing of the block plus $\mathbf{F}$, $\|\mathbf{F}\|_2 \le \beta$, is a perturbed unitary
 similarity with error $\beta$ to a matrix for which the invariant holds at error $0$. -/

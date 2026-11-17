@@ -239,4 +239,17 @@ theorem exists_lastRowWeights_ge_of_norm_sub_le {n : ℕ}
   refine h.trans ?_
   gcongr
 
+/-- A perturbed unitary similarity carries an eigenvalue listing back: if $\mathbf{B}$ is a
+perturbed unitary similarity of $\mathbf{A}$ with backward error $\varepsilon$ and `rts` lists the
+eigenvalues of $\mathbf{B}$, then `rts` lists those of $\mathbf{A} + \mathbf{G}$ for some
+$\|\mathbf{G}\|_2 \le \varepsilon$. -/
+theorem IsPerturbedUnitarySimilar.exists_isEigenvalueListing {n : ℕ}
+    {A B : Matrix (Fin n) (Fin n) ℂ} {ε : ℝ} (h : IsPerturbedUnitarySimilar A B ε)
+    {rts : Fin n → ℂ} (hB : IsEigenvalueListing B rts) :
+    ∃ G : Matrix (Fin n) (Fin n) ℂ, specNorm G ≤ ε ∧ IsEigenvalueListing (A + G) rts := by
+  obtain ⟨U, E, hU, hE, rfl⟩ := h
+  refine ⟨E, hE, ?_⟩
+  rw [isEigenvalueListing_iff] at hB ⊢
+  rwa [charpoly_mul_mul_of_mul_eq_one hU.conjTranspose_mul_self] at hB
+
 end NLAlib

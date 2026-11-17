@@ -26,7 +26,6 @@ distance and at most that bound.
 * `NLAlib.SmallEig.oneEigDirections`, `NLAlib.SmallEig.oneEigPoint`,
   `NLAlib.SmallEig.oneEigMove`, `NLAlib.SmallEig.oneEigRound`, `NLAlib.SmallEig.oneEigStart`,
   `NLAlib.SmallEig.oneEigCheck`: the parts.
-* `NLAlib.SmallEig.HoldsWords`: the cells of a store that hold words.
 * `NLAlib.SmallEig.DistSpecAccurateOn`: `DistSpec` accurate on a set of points.
 
 ## Main results
@@ -147,73 +146,6 @@ def oneEigCheck : Impl O Q := opsImpl% [] (Th, Tau) → (Fl) {
 
 end Program
 
-/-- The cells `cs` of the store `s` hold words. -/
-def HoldsWords (s : Store ℝ) (cs : List (ℕ × ℕ)) : Prop :=
-  ∀ c ∈ cs, ∃ v, s.get c.1 c.2 = some v
-
-namespace HoldsWords
-
-variable {s s' : Store ℝ} {cs : List (ℕ × ℕ)}
-
-/-- A cell of the list holds a word. -/
-theorem get (h : HoldsWords s cs) {b o : ℕ} (hc : (b, o) ∈ cs) : ∃ v, s.get b o = some v :=
-  h _ hc
-
-/-- Fewer cells hold words. -/
-theorem mono (h : HoldsWords s cs) {cs' : List (ℕ × ℕ)} (hsub : cs' ⊆ cs) :
-    HoldsWords s cs' :=
-  fun c hc => h c (hsub hc)
-
-/-- Cells off a footprint keep their words. -/
-theorem of_eqOff (h : HoldsWords s cs) {F : Fp} (hfr : s.EqOff F s')
-    (hd : ∀ c ∈ cs, ¬ F c.1 c.2) : HoldsWords s' cs :=
-  fun c hc => (h c hc).imp fun _ hv => (hfr.get_eq (hd c hc)).trans hv
-
-/-- A write of one word: the cells that held words still do, and so does the cell written. -/
-theorem cons_of_eqOff (h : HoldsWords s cs) {F : Fp} {b o : ℕ} {v : ℝ}
-    (hF : F ≤ Store.inBlock b o 1) (hfr : s.EqOff F s') (hz : s'.get b o = some v) :
-    HoldsWords s' ((b, o) :: cs) := by
-  intro c hc
-  by_cases hcz : c = (b, o)
-  · subst hcz; exact ⟨v, hz⟩
-  obtain ⟨w, hw⟩ := h c ((List.mem_cons.mp hc).resolve_left hcz)
-  refine ⟨w, (hfr.get_eq fun hF' => hcz ?_).trans hw⟩
-  obtain ⟨h1, h2, h3⟩ := hF _ _ hF'
-  exact Prod.ext h1 (by omega)
-
-/-- A write of a pair: the cells that held words still do, and so do the two cells written. -/
-theorem pair_of_eqOff (h : HoldsWords s cs) {F : Fp} {b o : ℕ} {x y : ℝ}
-    (hF : F ≤ Store.inBlock b o 2) (hfr : s.EqOff F s')
-    (hz : s'.readBlock b o 2 = some [x, y]) : HoldsWords s' ((b, o) :: (b, o + 1) :: cs) := by
-  have h0 : s'.get b o = some x := by
-    simpa using Store.get_of_readBlock hz (j := 0) (by omega) 0
-  have h1 : s'.get b (o + 1) = some y := by
-    simpa using Store.get_of_readBlock hz (j := 1) (by omega) 0
-  intro c hc
-  rcases c with ⟨cb, co⟩
-  by_cases hcz : cb = b ∧ o ≤ co ∧ co < o + 2
-  · obtain ⟨rfl, h₁, h₂⟩ := hcz
-    rcases (by omega : co = o ∨ co = o + 1) with rfl | rfl
-    exacts [⟨x, h0⟩, ⟨y, h1⟩]
-  have hc' : (cb, co) ∈ cs := by
-    rcases List.mem_cons.mp hc with hc | hc
-    · exact absurd ⟨congrArg Prod.fst hc, by simp at hc; omega, by simp at hc; omega⟩ hcz
-    rcases List.mem_cons.mp hc with hc | hc
-    · exact absurd ⟨congrArg Prod.fst hc, by simp at hc; omega, by simp at hc; omega⟩ hcz
-    exact hc
-  obtain ⟨w, hw⟩ := h _ hc'
-  exact ⟨w, (hfr.get_eq fun hF' => hcz (hF _ _ hF')).trans hw⟩
-
-/-- Two cells holding words read as a pair. -/
-theorem readBlock_pair (h : HoldsWords s cs) {b o : ℕ} (h0 : (b, o) ∈ cs)
-    (h1 : (b, o + 1) ∈ cs) : ∃ z : ℂ, s.readBlock b o 2 = some [z.re, z.im] := by
-  obtain ⟨x, hx⟩ := h.get h0
-  obtain ⟨y, hy⟩ := h.get h1
-  exact ⟨⟨x, y⟩, Store.readBlock_add (n := 1) (k := 1) (Store.readBlock_one_of_get hx)
-    (Store.readBlock_one_of_get hy)⟩
-
-end HoldsWords
-
 /-- The scratch buffers from `L` on are apart from a block below `L`. -/
 theorem disj_above_inBlock_of_lt {L b o n : ℕ} (hb : b < L) :
     Fp.Disj (Fp.above L) (Store.inBlock b o n) := fun _ _ ha hb' => by
@@ -250,7 +182,7 @@ theorem not_mem_oneEigCells {L : ℕ} {lam : ℕ × ℕ} {F : Fp} (hlam : ¬ F l
 
 /-- The cells of `NLAlib.SmallEig.oneEigCells` and the sample `Z` (at `L + 1`) keep their words
 across writes to the buffers from `L + 2` on other than `D` and `K[0]`. -/
-theorem HoldsWords.oneEigScratch_of_eqOff {s s' : Store ℝ} {F : Fp} {L : ℕ} {lam : ℕ × ℕ}
+theorem holdsWords_oneEigScratch_of_eqOff {s s' : Store ℝ} {F : Fp} {L : ℕ} {lam : ℕ × ℕ}
     (hlam : lam.1 < L) (h : HoldsWords s ((L + 1, 0) :: (L + 1, 1) :: oneEigCells L lam))
     (hfr : s.EqOff F s') (hF : ∀ b i, F b i → L + 2 ≤ b ∧ b ≠ L + 5 ∧ (b = L + 6 → 1 ≤ i)) :
     HoldsWords s' ((L + 1, 0) :: (L + 1, 1) :: oneEigCells L lam) := by
@@ -475,7 +407,7 @@ theorem oneEigCheck_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hL : IsIndexL
 
 /-- The frame of a round of `NLAlib.SmallEig.oneEig` with the scratch from `L` misses the factor
 `K[0]` and the directions `D`. -/
-theorem HoldsWords.directions_of_eqOff {s s' : Store ℝ} {F : Fp} {L : ℕ}
+theorem holdsWords_directions_of_eqOff {s s' : Store ℝ} {F : Fp} {L : ℕ}
     (h : HoldsWords s ((L + 6, 0) :: (List.range 12).map fun i => (L + 5, i)))
     (hfr : s.EqOff F s') (hF : ∀ i, ¬ F (L + 6) 0 ∧ ¬ F (L + 5) i) :
     HoldsWords s' ((L + 6, 0) :: (List.range 12).map fun i => (L + 5, i)) := by
@@ -534,9 +466,9 @@ theorem oneEigRound_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar
   rintro μ₃ hfr₃ ⟨-, hk₃⟩
   have hfrA := (hfr₁.trans' hfr₂).trans' hfr₃
   have hW₃ : HoldsWords μ₃.store ((L + 1, 0) :: (L + 1, 1) :: oneEigCells L lam) :=
-    ((hw.pair_of_eqOff le_rfl hfr₁ hw₁).oneEigScratch_of_eqOff hlam hfr₂ fun _ _ h => by
-      simp only [fpNF] at h; omega).oneEigScratch_of_eqOff hlam hfr₃ fun _ _ h => by
-        simp only [fpNF] at h; omega
+    holdsWords_oneEigScratch_of_eqOff hlam (holdsWords_oneEigScratch_of_eqOff hlam
+      (hw.pair_of_eqOff le_rfl hfr₁ hw₁) hfr₂ fun _ _ h => by simp only [fpNF] at h; omega)
+      hfr₃ fun _ _ h => by simp only [fpNF] at h; omega
   refine (writes_loop (N := 6) rfl (fun _ => Store.inBlock (L + 2) 0 2 ⊔
       Store.inBlock (L + 3) 0 1 ⊔ Store.inBlock (L + 4) 0 3 ⊔ Store.inBlock (L + 6) 1 1)
     (fun _ _ => le_rfl) (fun _ μ' => (∃ v, μ'.store.get (L + 4) 2 = some v) ∧
@@ -551,7 +483,8 @@ theorem oneEigRound_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar
       (by rw [hfr'.len_eq, hfrA.len_eq, h4]) (by rw [hfr'.len_eq, hfrA.len_eq, h6])
       ((hH.of_eqOff hfrA fun _ _ h₁ h₂ => by simp only [fpNF] at h₁ h₂; omega).of_eqOff hfr'
         fun _ _ h₁ h₂ => by simp only [fpNF] at h₁ h₂; omega)
-      (hW₃.oneEigScratch_of_eqOff hlam hfr' fun _ _ h => by simp only [fpNF] at h; omega)
+      (holdsWords_oneEigScratch_of_eqOff hlam hW₃ hfr' fun _ _ h => by
+        simp only [fpNF] at h; omega)
       hb' hK').in_frame rfl rfl
       (by simp [Mem.Live, hfr'.length_eq, hfrA.length_eq, hlen]; omega)).mono le_rfl
       fun _ _ h => h.2
@@ -570,8 +503,8 @@ theorem oneEigRound_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar
     (hF.of_eqOff hfrB fun _ _ h₁ h₂ => by simp only [fpNF] at h₁ h₂; omega)).in_frame rfl
     rfl (by simp [Mem.Live, hfrB.length_eq, hlen]; omega)).mono (by fp_sub) ?_
   rintro μ₅ hfr₅ ⟨hm, hF₅⟩
-  refine ⟨holdsWords_oneEigCells hm ((hKD.directions_of_eqOff hfrB fun i => ?_).directions_of_eqOff
-    hfr₅ fun i => ?_), hF₅⟩
+  refine ⟨holdsWords_oneEigCells hm (holdsWords_directions_of_eqOff
+    (holdsWords_directions_of_eqOff hKD hfrB fun i => ?_) hfr₅ fun i => ?_), hF₅⟩
   all_goals simp only [fpNF]; omega
 
 /-- The start of `NLAlib.SmallEig.oneEig` (`NLAlib.SmallEig.oneEigStart`) with the scratch from

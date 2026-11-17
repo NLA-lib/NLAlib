@@ -111,26 +111,6 @@ section Theorems
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has SampleOp O] [Has DiskSampleOp O]
   [Has CmpTst Q] [Has IdxTst Q]
 
-/-- The core keeps stored output words stored: `NLAlib.SmallEig.smallEigCore_terminates`,
-and if the $2(n + 1)$ output words are stored before the run, they are stored after it, also
-when the core stops early. -/
-theorem smallEigCore_terminates_stored {Mch : Machine ℝ} {I : Interp O Q ℝ}
-    (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1))
-    (hQ : IsToNat id I) (hC : IsCmp id I) (hSmp : IsSample I) {sU sG : ℕ}
-    (hDisk : IsPolarDiskSampler sU I) {T F : ℕ} {qs : List ℝ} (hqs : SmallEigCaps T qs)
-    (hlen : 12 ≤ qs.length) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {tape : Tape ℝ}
-    {a t p out f : ℕ × ℕ} {μ : Mem ℝ} (hin : SmallEigCoreInput qs a t p out f H μ) :
-    Writes .total I tape (smallEigCore (O := O) (Q := Q) sG).body
-      (Env.frame [n + 1, 1, qs.length, F, T] [a, t, p, out, f])
-      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
-        Store.inBlock out.1 out.2 (2 * (n + 1)) ⊔ Store.inBlock f.1 f.2 1)
-      (fun μ' => (∃ ys, μ.store.readBlock out.1 out.2 (2 * (n + 1)) = some ys) →
-        ∃ ys, μ'.store.readBlock out.1 out.2 (2 * (n + 1)) = some ys) μ :=
-  solveRoundedWith_terminates_stored hS hL hNat hQ hC _
-    (smallEigDecoupler_terminatingDecouplerRoutine hS hL hNat hC hQ hSmp hDisk hqs hlen) _
-    (copyLeaf_terminates hS _ qs T) hin.1 hin.2.1 hin.2.2.1 hin.2.2.2.1 hin.2.2.2.2.1
-    hin.2.2.2.2.2
-
 /-- The memory of the core's call in `NLAlib.SmallEig.smallEigProg`: the work matrix at
 `(L, 0)`, the failure word at `(L + 1, 0)` and the copied threshold word at `(L + 2, 0)` in three
 scratch buffers on top of the store, with the words and the output below them, apart. -/

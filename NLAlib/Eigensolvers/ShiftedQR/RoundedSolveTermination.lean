@@ -140,7 +140,7 @@ theorem TerminatingSmallEigAt.terminatingLeafRoutine {kmax T : ℕ} {qs ps₀ : 
   unfold seLeaf
   refine (h (q := (p.1, p.2 + ((ps₀ ++ qs).length - 12))) tape μ B hd hB hq
     (by simpa [Mem.Live] using hl) hroom hwo
-    (hpo.mono (Store.inBlock_le_inBlock (by omega) (by omega)) le_rfl)).in_frame ?_ ?_ ?_
+    (hpo.mono (Fp.inBlock_le_inBlock (by omega) (by omega)) le_rfl)).in_frame ?_ ?_ ?_
   · simp
   · simp [Operand.evalList, Operand.eval]
   · simpa [Mem.Live] using hl

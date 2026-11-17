@@ -582,7 +582,6 @@ theorem stepWithDiag_writes_of_sweep {M : Machine ℝ} {I : Interp Op Tst ℝ}
   intro m₂ hfr₂ ⟨hp₂, W, Z, hP, _, hZ₂, hD₂⟩
   have hclear := clearBelowSubdiagonal_writes (τ := τ) hS hzero (n := n + 1) (a := z)
     (by simp [Mem.Live, hfr₂.length_eq, hfr₁.length_eq, hlen]; omega) hZ₂
-    (by rw [hfr₂.len_eq, hfr₁.len_eq, (hBelow z.1 hlive.2.2.1).1]; exact hz)
   refine (hclear.in_frame rfl rfl
     (by simp [Mem.Live, hfr₂.length_eq, hfr₁.length_eq, hlen]; omega)).mono
     (le_sup_left.trans le_sup_left) ?_

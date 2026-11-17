@@ -490,6 +490,64 @@ theorem map_polarDisk_eq_diskUniform (c : ℂ) {R : ℝ} (hR : 0 < R) :
   congr 2
   rw [← NNReal.coe_real_pi, ENNReal.ofReal_coe_nnreal]
 
+/-- **A common polar disk sample keeps $k$ centres away from a separated family**
+([BanksGarzaVargasSrivastava2022, Lemma 3.10], one sample for several centres): for centres
+$c_1, \dots, c_k$, complex numbers $e_1, \dots, e_N$ whose distinct values are at distance at least
+$2(\eta + R)$, $R > 0$ and $\eta \ge 0$, the window $x \in \mathbb{R}^2$ of two uniform draws on
+$[0, 1]$ lies off the unit square or makes the polar sample $w$ of radius $R$ bring some
+$c_j + w$ within $\eta$ of some $e_i$ with probability at most $k(\eta/R)^2$. -/
+theorem measureReal_polarDisk_bad_le {k N : ℕ} (c : Fin k → ℂ) (e : Fin N → ℂ) {R η : ℝ}
+    (hR : 0 < R) (hη : 0 ≤ η) (hsep : ∀ i j, e i ≠ e j → 2 * (η + R) ≤ ‖e i - e j‖) :
+    (Measure.pi fun _ : Fin 2 => (volume : Measure ℝ).restrict (Set.Icc 0 1)).real
+      {x | (∃ j, x j ∉ Set.Icc (0 : ℝ) 1) ∨
+        ∃ j i, ‖c j + polarDisk 0 R x - e i‖ < η} ≤ k * (η / R) ^ 2 := by
+  classical
+  set Λ : Finset ℂ := Finset.univ.image e
+  have hΛ : ∀ a ∈ Λ, ∀ b ∈ Λ, a ≠ b → 2 * (η + R) ≤ ‖a - b‖ := by
+    intro a ha b hb hab
+    obtain ⟨i, -, rfl⟩ := Finset.mem_image.mp ha
+    obtain ⟨j, -, rfl⟩ := Finset.mem_image.mp hb
+    exact hsep i j hab
+  set U : Fin k → Set ℂ := fun j => {w | ∃ a ∈ Λ, ‖c j + w - a‖ < η}
+  have hU : ∀ j, MeasurableSet (U j) := fun j => by
+    have : U j = ⋃ a ∈ Λ, {w | ‖c j + w - a‖ < η} := by ext; simp [U]
+    rw [this]
+    exact Finset.measurableSet_biUnion _ fun a _ => measurableSet_lt (by fun_prop)
+      measurable_const
+  have h1 : ∀ j, (diskUniform 0 R).real (U j) ≤ (η / R) ^ 2 := fun j => by
+    have hD := measureReal_exists_norm_add_sub_lt_le (fun _ : Fin 1 => c j) Λ hR hη hΛ
+    have hmp := measurePreserving_funUnique (diskUniform 0 R) (Fin 1)
+    rw [← hmp.measureReal_preimage (hU j).nullMeasurableSet]
+    refine le_trans (le_of_eq ?_) (by simpa using hD)
+    congr 1
+  set μ := Measure.pi fun _ : Fin 2 => (volume : Measure ℝ).restrict (Set.Icc 0 1)
+  set A : Set (Fin 2 → ℝ) := ⋃ j, (fun x : Fin 2 → ℝ => x j) ⁻¹' (Set.Icc (0 : ℝ) 1)ᶜ
+  have hmeas : Measurable (polarDisk 0 R) := by unfold polarDisk; fun_prop
+  have hset : {x : Fin 2 → ℝ | (∃ j, x j ∉ Set.Icc (0 : ℝ) 1) ∨
+      ∃ j i, ‖c j + polarDisk 0 R x - e i‖ < η} = A ∪ ⋃ j, polarDisk 0 R ⁻¹' U j := by
+    ext x; simp [A, U, Λ]
+  have hA0 : μ A = 0 := by
+    refine measure_iUnion_null fun j => Measure.pi_eval_preimage_null _ ?_
+    rw [Measure.restrict_apply' measurableSet_Icc, Set.compl_inter_self, measure_empty]
+  have hmap : ∀ j, μ.real (polarDisk 0 R ⁻¹' U j) = (diskUniform 0 R).real (U j) := fun j => by
+    rw [← map_measureReal_apply hmeas (hU j), map_polarDisk_eq_diskUniform 0 hR]
+  rw [hset]
+  have : IsProbabilityMeasure μ := by
+    unfold μ
+    have : IsProbabilityMeasure ((volume : Measure ℝ).restrict (Set.Icc 0 1)) :=
+      ⟨by simp⟩
+    infer_instance
+  calc μ.real (A ∪ ⋃ j, polarDisk 0 R ⁻¹' U j)
+      ≤ μ.real A + μ.real (⋃ j, polarDisk 0 R ⁻¹' U j) := measureReal_union_le _ _
+    _ ≤ 0 + ∑ j, μ.real (polarDisk 0 R ⁻¹' U j) := by
+        rw [measureReal_def, hA0, ENNReal.toReal_zero]
+        gcongr
+        exact measureReal_iUnion_fintype_le _
+    _ ≤ ∑ _j : Fin k, (η / R) ^ 2 := by
+        rw [zero_add]
+        exact Finset.sum_le_sum fun j _ => (hmap j).trans_le (h1 j)
+    _ = k * (η / R) ^ 2 := by simp
+
 end PolarSampler
 
 end NLAlib

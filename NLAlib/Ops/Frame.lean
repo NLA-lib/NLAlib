@@ -275,6 +275,12 @@ theorem isSome_readBlock_iff {s : Store K} {b off n : ℕ} :
 /-- The cells `off, …, off + n - 1` of the buffer `b`. -/
 def inBlock (b off n : ℕ) : ℕ → ℕ → Prop := fun b' i => b' = b ∧ off ≤ i ∧ i < off + n
 
+/-- A cell of another buffer, or before or after a block, is not in the block. -/
+theorem not_inBlock_of {b o n b' i : ℕ} (h : b' ≠ b ∨ i < o ∨ o + n ≤ i) :
+    ¬ inBlock b o n b' i := fun hi => by
+  obtain ⟨h1, h2, h3⟩ := hi
+  omega
+
 /-- The cells of the buffer `b`. -/
 def inBuf (b : ℕ) : ℕ → ℕ → Prop := fun b' _ => b' = b
 
@@ -385,6 +391,19 @@ theorem isSome_readBlock (h : EqOff F s s') {b off n : ℕ} (hr : (s.readBlock b
   · exact hF j hj hf
   · rw [h.2 b _ hf]
     exact hr j hj
+
+/-- A readable block stays readable after a write to a readable part of it: if the block
+$[o, o + n)$ of buffer `b` is readable in `s`, and `s'` agrees with `s` off the block
+$[o', o' + n')$ of the same buffer, which is readable in `s'`, then $[o, o + n)$ is readable in
+`s'`. -/
+theorem readBlock_of_inBlock {b o n o' n' : ℕ} (h : s.EqOff (Store.inBlock b o' n') s')
+    (hr : ∃ ys, s.readBlock b o n = some ys) (hr' : ∃ ys, s'.readBlock b o' n' = some ys) :
+    ∃ ys, s'.readBlock b o n = some ys := by
+  rw [← Option.isSome_iff_exists] at hr hr' ⊢
+  refine h.isSome_readBlock hr fun j hj hF => ?_
+  obtain ⟨-, h1, h2⟩ := hF
+  have := isSome_readBlock_iff.mp hr' (o + j - o') (by omega)
+  rwa [show o' + (o + j - o') = o + j by omega] at this
 
 /-- **The frame after a scratch buffer is freed**: a run on `s.push n` that kept the store off
 `F` and the scratch buffer leaves, after the pop, a store that agrees with `s` off `F`. -/

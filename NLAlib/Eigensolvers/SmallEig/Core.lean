@@ -67,18 +67,6 @@ def SmallEigCoreInput {n : ℕ} (qs : List ℝ) (a t p out f : ℕ × ℕ)
     HoldsMatrix a H μ.store ∧ μ.store.get t.1 t.2 = some (qs.getD 6 0) ∧
     μ.store.readBlock p.1 p.2 qs.length = some qs
 
-/-- $(1 + y)^m - 1 \le 2my$ for $y \ge 0$ with $my \le 1/2$. -/
-theorem one_add_pow_sub_one_le {y : ℝ} {m : ℕ} (hy : 0 ≤ y) (h : m * y ≤ 1 / 2) :
-    (1 + y) ^ m - 1 ≤ 2 * m * y := by
-  induction m with
-  | zero => simp
-  | succ k ih =>
-    push_cast at h ⊢
-    have hk : (k : ℝ) * y ≤ 1 / 2 := by nlinarith
-    have h2 := one_add_pow_le_two hy hk
-    have := ih hk
-    rw [pow_succ]; nlinarith
-
 /-- The backward error of the decoupler at the norm bound $2\Sigma$ of the core is at most
 $\omega/100$: for tail records with $b_1, b_2 > 0$, $n_{\max} \ge 1$, $0 < \delta \le \Sigma$,
 $0 < \varphi \le 1$ and $0 \le \boldsymbol{u} \le$ `NLAlib.SmallEig.uSmallEig` (the `Decouple`
@@ -138,7 +126,8 @@ theorem smallEigDecoupleError_le_omega {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c�
     have : (1 : ℝ) ≤ nmax := by exact_mod_cast hn
     nlinarith
   have hmy : (m : ℝ) * y ≤ 1 / 2 := by nlinarith
-  have hpow := one_add_pow_sub_one_le hy0 hmy
+  have hpow : (1 + y) ^ m - 1 ≤ 2 * m * y := by
+    linarith [ShiftedQR.one_add_pow_le_one_add_two_mul hy0 (by linarith : (m : ℝ) * y ≤ 1)]
   have hpow0 : 0 ≤ (1 + y) ^ m - 1 := by
     have := one_le_pow₀ (M₀ := ℝ) (n := m) (le_add_of_nonneg_right hy0); linarith
   unfold smallEigDecoupleError
@@ -320,6 +309,26 @@ theorem smallEigCore_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : I
         Store.inBlock out.1 out.2 (2 * (n + 1)) ⊔ Store.inBlock f.1 f.2 1)
       (fun _ => True) μ :=
   solveRoundedWith_terminates hS hL hNat hQ hC _
+    (smallEigDecoupler_terminatingDecouplerRoutine hS hL hNat hC hQ hSmp hDisk hqs hlen) _
+    (copyLeaf_terminates hS _ qs T) hin.1 hin.2.1 hin.2.2.1 hin.2.2.2.1 hin.2.2.2.2.1
+    hin.2.2.2.2.2
+
+/-- The core keeps stored output words stored: `NLAlib.SmallEig.smallEigCore_terminates`,
+and if the $2(n + 1)$ output words are stored before the run, they are stored after it, also
+when the core stops early. -/
+theorem smallEigCore_terminates_stored {Mch : Machine ℝ} {I : Interp O Q ℝ}
+    (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1))
+    (hQ : IsToNat id I) (hC : IsCmp id I) (hSmp : IsSample I) {sU sG : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) {T F : ℕ} {qs : List ℝ} (hqs : SmallEigCaps T qs)
+    (hlen : 12 ≤ qs.length) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {tape : Tape ℝ}
+    {a t p out f : ℕ × ℕ} {μ : Mem ℝ} (hin : SmallEigCoreInput qs a t p out f H μ) :
+    Writes .total I tape (smallEigCore (O := O) (Q := Q) sG).body
+      (Env.frame [n + 1, 1, qs.length, F, T] [a, t, p, out, f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock out.1 out.2 (2 * (n + 1)) ⊔ Store.inBlock f.1 f.2 1)
+      (fun μ' => (∃ ys, μ.store.readBlock out.1 out.2 (2 * (n + 1)) = some ys) →
+        ∃ ys, μ'.store.readBlock out.1 out.2 (2 * (n + 1)) = some ys) μ :=
+  solveRoundedWith_terminates_stored hS hL hNat hQ hC _
     (smallEigDecoupler_terminatingDecouplerRoutine hS hL hNat hC hQ hSmp hDisk hqs hlen) _
     (copyLeaf_terminates hS _ qs T) hin.1 hin.2.1 hin.2.2.1 hin.2.2.2.1 hin.2.2.2.2.1
     hin.2.2.2.2.2

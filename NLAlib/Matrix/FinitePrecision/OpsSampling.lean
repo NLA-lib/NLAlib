@@ -541,7 +541,7 @@ private theorem norm_le_of_abs_re_im_le {z a b : ℂ} {r s : ℝ} (hr : 0 ≤ r)
     Real.norm_of_nonneg hs]
 
 /-- The Frobenius norm is bounded by entrywise domination in norm. -/
-private theorem frobNorm_le_of_norm_apply_le {N : ℕ} {E A B : Matrix (Fin N) (Fin N) ℂ}
+private theorem frobNorm_le_mul_add_mul_of_norm_apply_le {N : ℕ} {E A B : Matrix (Fin N) (Fin N) ℂ}
     {r s : ℝ} (hr : 0 ≤ r) (hs : 0 ≤ s) (h : ∀ i j, ‖E i j‖ ≤ r * ‖A i j‖ + s * ‖B i j‖) :
     frobNorm E ≤ r * frobNorm A + s * frobNorm B := by
   let F : Matrix (Fin N) (Fin N) ℂ := Matrix.of fun i j => (‖A i j‖ : ℂ)
@@ -559,10 +559,7 @@ private theorem frobNorm_le_of_norm_apply_le {N : ℕ} {E A B : Matrix (Fin N) (
     rw [← h2] at h1
     exact (sq_eq_sq₀ (frobNorm_nonneg _) (frobNorm_nonneg _)).mp h1
   have hle : frobNorm E ≤ frobNorm ((r : ℂ) • F + (s : ℂ) • G) := by
-    refine (sq_le_sq₀ (frobNorm_nonneg _) (frobNorm_nonneg _)).mp ?_
-    rw [frobNorm_sq_eq_sum, frobNorm_sq_eq_sum]
-    refine Finset.sum_le_sum fun i _ => Finset.sum_le_sum fun j _ => ?_
-    refine pow_le_pow_left₀ (norm_nonneg _) ((h i j).trans (le_of_eq ?_)) 2
+    refine frobNorm_le_of_norm_apply_le fun i j => (h i j).trans (le_of_eq ?_)
     simp only [F, G, Matrix.add_apply, Matrix.smul_apply, Matrix.of_apply, smul_eq_mul]
     rw [← Complex.ofReal_mul, ← Complex.ofReal_mul, ← Complex.ofReal_add, Complex.norm_real,
       Real.norm_of_nonneg (by positivity)]
@@ -601,7 +598,7 @@ theorem Ops.StdModel.specNorm_perturbWords_sub_le {M : Ops.Machine ℝ} {u : ℝ
     · simpa [Ops.Machine.perturbWords, G, Computation.tapeComplexMatrix, hidx] using
         abs_add_mul_mul_sub_le hM hu0 hu (a := (A i j).im) (w := x (2 * (i + N * j) + 1)) hβ hh
           hg
-  have hF := frobNorm_le_of_norm_apply_le hu0 (by positivity) hent
+  have hF := frobNorm_le_mul_add_mul_of_norm_apply_le hu0 (by positivity) hent
   have hN1 : (1 : ℝ) ≤ N := by exact_mod_cast hN
   have hsq : √(N : ℝ) ≤ N := by
     have h1 : 1 ≤ √(N : ℝ) := Real.one_le_sqrt.mpr hN1

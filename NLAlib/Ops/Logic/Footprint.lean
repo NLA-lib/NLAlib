@@ -33,6 +33,7 @@ A fact about a store is **kept** by a run that does not write what it reads
 * `NLAlib.Ops.Store.EqOff.updBlock_of_le`: the step of the `frame` tactic.
 * `NLAlib.Ops.Mem.eq_updBlocks_of_eqOff`: a frame on the output blocks and the blocks read back
   give the equation of a contract in operand form (any number of outputs).
+* `NLAlib.Ops.HoldsWords`: the cells of a store that hold words, kept off a footprint.
 -/
 
 @[expose] public section
@@ -697,5 +698,73 @@ macro_rules
       | (simp [fpNF, storeNF, Fp.Apart, $ts,*] <;>
           (repeat' apply And.intro) <;> (try intros) <;> idx)
       | fail "disjoint: the footprints are not shown to be disjoint")
+
+/-- **Cells holding words**: every cell `(b, o)` of the list `cs` holds a word of the store
+`s`. -/
+def HoldsWords (s : Store K) (cs : List (ℕ × ℕ)) : Prop :=
+  ∀ c ∈ cs, ∃ v, s.get c.1 c.2 = some v
+
+namespace HoldsWords
+
+variable {s s' : Store K} {cs : List (ℕ × ℕ)}
+
+/-- A cell of the list holds a word. -/
+theorem get (h : HoldsWords s cs) {b o : ℕ} (hc : (b, o) ∈ cs) : ∃ v, s.get b o = some v :=
+  h _ hc
+
+/-- Fewer cells hold words. -/
+theorem mono (h : HoldsWords s cs) {cs' : List (ℕ × ℕ)} (hsub : cs' ⊆ cs) :
+    HoldsWords s cs' :=
+  fun c hc => h c (hsub hc)
+
+/-- Cells off a footprint keep their words. -/
+theorem of_eqOff (h : HoldsWords s cs) {F : Fp} (hfr : s.EqOff F s')
+    (hd : ∀ c ∈ cs, ¬ F c.1 c.2) : HoldsWords s' cs :=
+  fun c hc => (h c hc).imp fun _ hv => (hfr.get_eq (hd c hc)).trans hv
+
+/-- A write of one word: the cells that held words still do, and so does the cell written. -/
+theorem cons_of_eqOff (h : HoldsWords s cs) {F : Fp} {b o : ℕ} {v : K}
+    (hF : F ≤ Store.inBlock b o 1) (hfr : s.EqOff F s') (hz : s'.get b o = some v) :
+    HoldsWords s' ((b, o) :: cs) := by
+  intro c hc
+  by_cases hcz : c = (b, o)
+  · subst hcz; exact ⟨v, hz⟩
+  obtain ⟨w, hw⟩ := h c ((List.mem_cons.mp hc).resolve_left hcz)
+  refine ⟨w, (hfr.get_eq fun hF' => hcz ?_).trans hw⟩
+  obtain ⟨h1, h2, h3⟩ := hF _ _ hF'
+  exact Prod.ext h1 (by omega)
+
+/-- A write of a pair: the cells that held words still do, and so do the two cells written. -/
+theorem pair_of_eqOff (h : HoldsWords s cs) {F : Fp} {b o : ℕ} {x y : K}
+    (hF : F ≤ Store.inBlock b o 2) (hfr : s.EqOff F s')
+    (hz : s'.readBlock b o 2 = some [x, y]) : HoldsWords s' ((b, o) :: (b, o + 1) :: cs) := by
+  have h0 : s'.get b o = some x := by
+    simpa using Store.get_of_readBlock hz (j := 0) (by omega) x
+  have h1 : s'.get b (o + 1) = some y := by
+    simpa using Store.get_of_readBlock hz (j := 1) (by omega) x
+  intro c hc
+  rcases c with ⟨cb, co⟩
+  by_cases hcz : cb = b ∧ o ≤ co ∧ co < o + 2
+  · obtain ⟨rfl, h₁, h₂⟩ := hcz
+    rcases (by omega : co = o ∨ co = o + 1) with rfl | rfl
+    exacts [⟨x, h0⟩, ⟨y, h1⟩]
+  have hc' : (cb, co) ∈ cs := by
+    rcases List.mem_cons.mp hc with hc | hc
+    · exact absurd ⟨congrArg Prod.fst hc, by simp at hc; omega, by simp at hc; omega⟩ hcz
+    rcases List.mem_cons.mp hc with hc | hc
+    · exact absurd ⟨congrArg Prod.fst hc, by simp at hc; omega, by simp at hc; omega⟩ hcz
+    exact hc
+  obtain ⟨w, hw⟩ := h _ hc'
+  exact ⟨w, (hfr.get_eq fun hF' => hcz (hF _ _ hF')).trans hw⟩
+
+/-- Two cells holding words read as a pair. -/
+theorem readBlock_pair (h : HoldsWords s cs) {b o : ℕ} (h0 : (b, o) ∈ cs)
+    (h1 : (b, o + 1) ∈ cs) : ∃ x y, s.readBlock b o 2 = some [x, y] := by
+  obtain ⟨x, hx⟩ := h.get h0
+  obtain ⟨y, hy⟩ := h.get h1
+  exact ⟨x, y, Store.readBlock_add (n := 1) (k := 1) (Store.readBlock_one_of_get hx)
+    (Store.readBlock_one_of_get hy)⟩
+
+end HoldsWords
 
 end NLAlib.Ops

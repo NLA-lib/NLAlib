@@ -170,12 +170,6 @@ section Steps
 
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O]
 
-/-- A cell outside a block of a different buffer, or before or after it, is not in the block. -/
-private theorem not_inBlock_of {b o n b' i : ℕ} (h : b' ≠ b ∨ i < o ∨ o + n ≤ i) :
-    ¬ Store.inBlock b o n b' i := fun hi => by
-  obtain ⟨h1, h2, h3⟩ := hi
-  omega
-
 /-- **The scale prelude** of `NLAlib.SmallEig.ginibrePerturb`: the index literal $N$, its rounded
 square root, $\gamma' = \mathrm{fl}(\gamma/\mathrm{fl}(\sqrt N))$ in `Sc[0]`, and the stored
 $\sqrt{1/2}$ in `Sc[1]`, written in the three cells of `Sc` only. -/
@@ -215,7 +209,7 @@ private theorem writes_scalePrelude {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
     (by rw [hf₁.len_eq]; pomega)).seq_le (hle 0 (by pomega)) ?_
   rintro m₂ hf₂ ⟨hp₂, hg₂⟩
   have hq₂ : m₂.store.get q.1 q.2 = some γ := by
-    rw [hf₂.2 _ _ (not_inBlock_of (by pomega)), hf₁.2 _ _ (not_inBlock_of (by pomega))]
+    rw [hf₂.2 _ _ (Store.not_inBlock_of (by pomega)), hf₁.2 _ _ (Store.not_inBlock_of (by pomega))]
     exact hq
   refine (writes_call_bin (hS .div) h₃ h₃' trivial hq₂ hg₂ rfl
     (fun _ => ⟨by simp only [Mem.live_cons, Mem.live_nil, and_true, and_self,
@@ -230,7 +224,7 @@ private theorem writes_scalePrelude {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
     (hle 2 (by pomega)) ?_
   rintro m₅ hf₅ ⟨hp₅, hg₅⟩
   have hg₄' : m₅.store.get (L + 1) 1 = some (M.lit 1) := by
-    rw [hf₅.2 _ _ (not_inBlock_of (by pomega))]
+    rw [hf₅.2 _ _ (Store.not_inBlock_of (by pomega))]
     exact hg₄
   have hlen₅ : m₅.store.length = m.store.length := by
     rw [hf₅.length_eq, hf₄.length_eq, hf₃.length_eq, hf₂.length_eq, hf₁.length_eq]
@@ -244,8 +238,8 @@ private theorem writes_scalePrelude {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
     (by rw [hf₆.len_eq]; pomega)).seq_le (hle 1 (by pomega)) ?_
   rintro m₇ hf₇ ⟨hp₇, hg₇⟩
   have hg₃' : m₇.store.get (L + 1) 0 = some (M.div γ (M.sqrt (M.lit (N : ℚ)))) := by
-    rw [hf₇.2 _ _ (not_inBlock_of (by pomega)), hf₆.2 _ _ (not_inBlock_of (by pomega)),
-      hf₅.2 _ _ (not_inBlock_of (by pomega)), hf₄.2 _ _ (not_inBlock_of (by pomega))]
+    rw [hf₇.2 _ _ (Store.not_inBlock_of (by pomega)), hf₆.2 _ _ (Store.not_inBlock_of (by pomega)),
+      hf₅.2 _ _ (Store.not_inBlock_of (by pomega)), hf₄.2 _ _ (Store.not_inBlock_of (by pomega))]
     exact hg₃
   refine hnext m₇ ?_ (by rw [hp₇, hp₆, hp₅, hp₄, hp₃, hp₂, hp₁]) hg₃' hg₇
   exact ((((((hf₁.mono (hsub 0 (by pomega))).trans (hf₂.mono (hsub 0 (by pomega)))).trans
@@ -290,7 +284,7 @@ private theorem writes_perturbEntry {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
         m'.store.get zb (zo + 1) = some (M.add a₁ (M.mul (M.mul w₁ h) g))) m := by
   have K : ∀ {s s' : Store ℝ} {b o b' i : ℕ} {v : ℝ}, s.EqOff (Store.inBlock b o 1) s' →
       (b' ≠ b ∨ i ≠ o) → s.get b' i = some v → s'.get b' i = some v :=
-    fun hf hne hv => (hf.2 _ _ (not_inBlock_of (by pomega))).trans hv
+    fun hf hne hv => (hf.2 _ _ (Store.not_inBlock_of (by pomega))).trans hv
   have hG : ∀ k < 2, Store.inBlock L (t + k) 1 ≤ Store.inBlock L t 2 ⊔ Store.inBlock zb zo 2 :=
     fun k hk => le_sup_of_le_left (Fp.inBlock_le_inBlock (by pomega) (by pomega))
   have hZ : ∀ k < 2, Store.inBlock zb (zo + k) 1 ≤
@@ -825,13 +819,13 @@ theorem ginibrePerturb_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
     rfl rfl (by simp only [Mem.live_cons, Mem.live_nil, and_true]; pomega) (hab _ _ _ le_rfl) ?_
   rintro m₁ hf₁ ⟨hp₁, hr₁⟩
   have hq₁ : m₁.store.get q.1 q.2 = some γ :=
-    (hf₁.2 _ _ (not_inBlock_of (by pomega))).trans (hBelow.get_of hql hq)
+    (hf₁.2 _ _ (Store.not_inBlock_of (by pomega))).trans (hBelow.get_of hql hq)
   refine writes_scalePrelude hS hL rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl hq₁
     (by pomega) (by rw [hf₁.length_eq]; pomega) (by rw [hf₁.len_eq]; exact hSc)
     (hab _ _ _ (by pomega)) ?_
   intro m₂ hf₂ hp₂ hg₂ hh₂
   have hx₂ : ∀ t < 2 * (N * N), m₂.store.get L t = some (τ (μ.pos + t) sG) := fun t ht => by
-    rw [hf₂.2 _ _ (not_inBlock_of (by pomega))]
+    rw [hf₂.2 _ _ (Store.not_inBlock_of (by pomega))]
     simpa [Tape.window, ht] using Store.get_of_readBlock hr₁ ht (0 : ℝ)
   have hA₂ : HoldsMatrix a A m₂.store :=
     ((hA.of_below hBelow hal).of_eqOff hf₁ (Fp.disj_inBlock_of_ne (by pomega))).of_eqOff hf₂

@@ -591,20 +591,10 @@ private theorem exists_isUnit_mul_eq_mul_diagonal_shiftedQRStep
     ∃ V' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, IsUnit V' ∧
       shiftedQRStep H s * V' = V' * Matrix.diagonal d ∧
       pseudoConditionNumber V' = pseudoConditionNumber V := by
-  set Q := givensHessenbergQ (H - s • (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ))
-  have hQ : HasOrthonormalCols Q := hasOrthonormalCols_givensHessenbergQ _
-  have hQQ : Q * Qᴴ = 1 := mul_eq_one_comm.mp hQ.conjTranspose_mul_self
-  have hU : IsUnit Qᴴ := ⟨⟨Qᴴ, Q, hQ.conjTranspose_mul_self, hQQ⟩, rfl⟩
-  have hinv : (Qᴴ * V)⁻¹ = V⁻¹ * Q := by
-    refine Matrix.inv_eq_right_inv ?_
-    rw [Matrix.mul_assoc, Matrix.mul_nonsing_inv_cancel_left _ _
-      ((Matrix.isUnit_iff_isUnit_det V).mp hV), hQ.conjTranspose_mul_self]
-  refine ⟨Qᴴ * V, hU.mul hV, ?_, ?_⟩
-  · change Qᴴ * H * Q * (Qᴴ * V) = _
-    simp only [Matrix.mul_assoc, ← Matrix.mul_assoc Q, hQQ, Matrix.one_mul, hHV]
-  · rw [pseudoConditionNumber_of_isUnit (hU.mul hV), pseudoConditionNumber_of_isUnit hV, hinv,
-      hQ.specNorm_mul_right, ← specNorm_conjTranspose, Matrix.conjTranspose_mul,
-      Matrix.conjTranspose_conjTranspose, hQ.specNorm_mul_right, specNorm_conjTranspose]
+  have hQ := hasOrthonormalCols_givensHessenbergQ
+    (H - s • (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ))
+  obtain ⟨hU, hHU, hκ⟩ := hQ.isUnit_conjTranspose_mul_and_mul_eq_mul_diagonal hV hHV
+  exact ⟨_, hU, hHU, hκ⟩
 
 /-- **The multi-shift QR step carries the eigenvector matrix**: if
 $\mathbf{H}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$ with $\mathbf{V}$ invertible,

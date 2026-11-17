@@ -270,7 +270,7 @@ theorem DecoupleLoopCtx.routine_words {L : ℕ} {w p f : ℕ × ℕ} {ps qs : Li
   subst hps
   obtain ⟨hq, hsub⟩ := Store.readBlock_tail_twelve hq12 hctx.2.2.2.2.1
   exact ⟨hq, hctx.2.2.2.2.2.2.2.2.2.symm.mono le_rfl
-    (Store.inBlock_le_inBlock (by omega) (by omega))⟩
+    (Fp.inBlock_le_inBlock (by omega) (by omega))⟩
 
 section Theorems
 
@@ -498,7 +498,7 @@ theorem roundedDecoupleIteration_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} 
       (Store.inBlock p.1 (p.2 + (ps.length - 12)) qs.length) := by
     rcases hq12 with rfl | h
     · exact fun _ _ _ h => by obtain ⟨-, h1, h2⟩ := h; simp at h2; omega
-    · exact hPWF.symm.mono le_rfl (Store.inBlock_le_inBlock (by omega) (by omega))
+    · exact hPWF.symm.mono le_rfl (Fp.inBlock_le_inBlock (by omega) (by omega))
   have hio : Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
       (Store.inBlock (p.1, p.2 + 1).1 (p.1, p.2 + 1).2 1 ⊔
         Store.inBlock (p.1, p.2 + 2).1 (p.1, p.2 + 2).2 1 ⊔
@@ -987,6 +987,5 @@ theorem roundedDecouple_randomDecouplingContract {M : Machine ℝ} {I : Interp O
     (by simp [Operand.evalList, Operand.eval]) fun _ hμ => by simpa [Mem.Live] using hμ.2.2.1
 
 end Iteration
-
 
 end NLAlib.ShiftedQR

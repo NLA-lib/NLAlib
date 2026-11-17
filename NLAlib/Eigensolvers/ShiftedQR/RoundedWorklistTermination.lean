@@ -135,20 +135,6 @@ theorem outStored_of_eqOff {n : ℕ} {rd : Prop} {out : ℕ × ℕ} {F : Fp} {μ
     rd → ∃ ys, μ'.store.readBlock out.1 out.2 (2 * (n + 1)) = some ys :=
   fun hr => (h hr).imp fun _ hy => hfr.keep (Store.readsOnly_readBlock _ _ _ _) hD hy
 
-/-- A readable block stays readable after a write to a readable part of it: if the block
-$[o, o + n)$ of buffer `b` is readable in `s`, and `s'` agrees with `s` off the block
-$[o', o' + n')$ of the same buffer, which is readable in `s'`, then $[o, o + n)$ is readable in
-`s'`. -/
-theorem _root_.NLAlib.Ops.Store.EqOff.readBlock_of_inBlock {K : Type} {s s' : Store K}
-    {b o n o' n' : ℕ} (h : s.EqOff (Store.inBlock b o' n') s')
-    (hr : ∃ ys, s.readBlock b o n = some ys) (hr' : ∃ ys, s'.readBlock b o' n' = some ys) :
-    ∃ ys, s'.readBlock b o n = some ys := by
-  rw [← Option.isSome_iff_exists] at hr hr' ⊢
-  refine h.isSome_readBlock hr fun j hj hF => ?_
-  obtain ⟨-, h1, h2⟩ := hF
-  have := Store.isSome_readBlock_iff.mp hr' (o + j - o') (by omega)
-  rwa [show o' + (o + j - o') = o + j by omega] at this
-
 section Theorems
 
 variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q]

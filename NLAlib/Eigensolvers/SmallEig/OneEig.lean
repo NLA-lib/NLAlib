@@ -24,7 +24,11 @@ a failure is counted in the probability.
 
 ## Main definitions
 
-* `NLAlib.SmallEig.oneEig`: the program `[N, m, q, t] (H, Q) → (Lam, Fl)`.
+* `NLAlib.SmallEig.oneEig`: the program `[N, m, q, t] (H, Q) → (Lam, Fl)`, with its parts
+  `NLAlib.SmallEig.oneEigDirections`, `NLAlib.SmallEig.oneEigPoint`,
+  `NLAlib.SmallEig.oneEigStart`, `NLAlib.SmallEig.oneEigMove`, `NLAlib.SmallEig.oneEigRound`
+  and `NLAlib.SmallEig.oneEigCheck`.
+* `NLAlib.SmallEig.HoldsWords`: the cells of a store that hold words.
 
 ## Main results
 
@@ -45,23 +49,11 @@ section Program
 
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q]
 
-/-- **`OneEig`** ([BanksGarzaVargasSrivastava2025, Proposition 3.5], corrected): the six
-directions $e^{i\pi j/3}$ from the literals $1$, $1/2$ and $\sqrt3$; the start `Lam` a polar
-sample of the radius $\eta_2$ = `Q[4]` and its estimate $\tau$ by `NLAlib.SmallEig.distSpec`; the
-flag $0$; then, while $0.9\beta'$ = `Q[5]` $< \tau$ and for at most $t$ rounds: one polar sample
-$w$, the estimates of the six points $s + \tau e^{i\pi j/3} + w$, and the move to the best one if
-its estimate is at most $0.66\,\tau$, otherwise the flag $1$ and the estimate $0$ (which ends the
-loop); at the cap with $0.9\beta' < \tau$, the flag $1$. The interface is
-`[N, m, q, t] (H, Q) → (Lam, Fl)`; the scratch is scoped.
+/-- **The six directions of `OneEig`**: the factor $0.66$ into `K` and the pairs
+$e^{i\pi j/3}$, $j < 6$, into `D`, from the literals $1$, $0$, $1/2$, $3$, a rounded square root
+and negations. The interface is `[] () → (D, K)`.
 Algorithm: small-eig -/
-def oneEig : Impl O Q := opsImpl% [N, m, q, t] (H, Qw) → (Lam, Fl) {
-  let Tau ← alloc 1;
-  let Z ← alloc 2;
-  let Pt ← alloc 2;
-  let Tc ← alloc 1;
-  let Bt ← alloc 3;
-  let D ← alloc 12;
-  let K ← alloc 2;
+def oneEigDirections : Impl O Q := opsImpl% [] () → (D, K) {
   call (Has.inj (ScalarOp.lit (66 / 100))) [] () → (K);
   call (Has.inj (ScalarOp.lit 1)) [] () → (D);
   call (Has.inj (ScalarOp.lit 0)) [] () → (D[1]);
@@ -76,41 +68,109 @@ def oneEig : Impl O Q := opsImpl% [N, m, q, t] (H, Qw) → (Lam, Fl) {
   call (Has.inj ScalarOp.copy) [] (D[4]) → (D[8]);
   call (Has.inj ScalarOp.neg) [] (D[3]) → (D[9]);
   call (Has.inj ScalarOp.copy) [] (D[2]) → (D[10]);
-  call (Has.inj ScalarOp.copy) [] (D[9]) → (D[11]);
+  call (Has.inj ScalarOp.copy) [] (D[9]) → (D[11])
+}
+
+/-- **One candidate point of a round of `OneEig`**: the point
+$s + \tau e^{i\pi j/3} + w$ into `Pt` (rounded, from the estimate `Tau`, the direction `D[2j]`,
+the point `Lam` and the sample `Z`), its estimate by `NLAlib.SmallEig.distSpec` into `Tc`, and,
+if the estimate is at most the best one `Bt[2]`, the point and its estimate into `Bt` and the
+mark $1$ into `K[1]`. The interface is `[N, m, q, j] (H, Tau, D, Lam, Z) → (Pt, Tc, Bt, K)`.
+Algorithm: small-eig -/
+def oneEigPoint : Impl O Q := opsImpl% [N, m, q, j] (H, Tau, D, Lam, Z) → (Pt, Tc, Bt, K) {
+  call (Has.inj ScalarOp.mul) [] (Tau, D[2 * j]) → (Pt);
+  call (Has.inj ScalarOp.add) [] (Pt, Lam) → (Pt);
+  call (Has.inj ScalarOp.add) [] (Pt, Z) → (Pt);
+  call (Has.inj ScalarOp.mul) [] (Tau, D[2 * j + 1]) → (Pt[1]);
+  call (Has.inj ScalarOp.add) [] (Pt[1], Lam[1]) → (Pt[1]);
+  call (Has.inj ScalarOp.add) [] (Pt[1], Z[1]) → (Pt[1]);
+  run (distSpec (O := O) (Q := Q)).body [N, m, q] (H, Pt, Tc);
+  if (Has.inj CmpTst.le) [] (Tc, Bt[2]) {
+    call (Has.inj ScalarOp.copy) [] (Pt) → (Bt);
+    call (Has.inj ScalarOp.copy) [] (Pt[1]) → (Bt[1]);
+    call (Has.inj ScalarOp.copy) [] (Tc) → (Bt[2]);
+    call (Has.inj IndexOp.lit) [1] () → (K[1])
+  } else { skip }
+}
+
+/-- **The end of a round of `OneEig`**: if the mark `K[1]` is positive, the best point `Bt` and
+its estimate `Bt[2]` into `Lam` and `Tau`; otherwise the flag $1$ and the estimate $0$. The
+interface is `[] (Bt, K) → (Lam, Tau, Fl)`.
+Algorithm: small-eig -/
+def oneEigMove : Impl O Q := opsImpl% [] (Bt, K) → (Lam, Tau, Fl) {
+  if (Has.inj CmpTst.isPos) [] (K[1]) {
+    call (Has.inj ScalarOp.copy) [] (Bt) → (Lam);
+    call (Has.inj ScalarOp.copy) [] (Bt[1]) → (Lam[1]);
+    call (Has.inj ScalarOp.copy) [] (Bt[2]) → (Tau)
+  } else {
+    call (Has.inj IndexOp.lit) [1] () → (Fl);
+    call (Has.inj (ScalarOp.lit 0)) [] () → (Tau)
+  }
+}
+
+/-- **One round of `OneEig`**: a polar sample $w$ of the radius $\eta_2$ = `Qw[4]` into `Z`, the
+bar $0.66\,\tau$ into `Bt[2]`, the mark $0$ into `K[1]`, the six candidate points
+(`NLAlib.SmallEig.oneEigPoint`), and the move to the best one if one was marked, otherwise the
+flag $1$ and the estimate $0$ (`NLAlib.SmallEig.oneEigMove`). The interface is
+`[N, m, q] (H, Qw, D) → (Lam, Tau, Fl, Z, Pt, Tc, Bt, K)`.
+Algorithm: small-eig -/
+def oneEigRound : Impl O Q :=
+    opsImpl% [N, m, q] (H, Qw, D) → (Lam, Tau, Fl, Z, Pt, Tc, Bt, K) {
+  call (Has.inj DiskSampleOp.polar) [] (Qw[4]) → (Z);
+  call (Has.inj ScalarOp.mul) [] (Tau, K) → (Bt[2]);
+  call (Has.inj IndexOp.lit) [0] () → (K[1]);
+  for j < 6 {
+    run (oneEigPoint (O := O) (Q := Q)).body [N, m, q, j] (H, Tau, D, Lam, Z, Pt, Tc, Bt, K)
+  };
+  run (oneEigMove (O := O) (Q := Q)).body [] (Bt, K, Lam, Tau, Fl)
+}
+
+/-- **The start of `OneEig`**: the six directions (`NLAlib.SmallEig.oneEigDirections`) into `D`
+and `K`, a polar sample of the radius $\eta_2$ = `Qw[4]` into `Lam`, its estimate by
+`NLAlib.SmallEig.distSpec` into `Tau`, and the flag $0$. The interface is
+`[N, m, q] (H, Qw) → (Lam, Tau, Fl, D, K)`.
+Algorithm: small-eig -/
+def oneEigStart : Impl O Q := opsImpl% [N, m, q] (H, Qw) → (Lam, Tau, Fl, D, K) {
+  run (oneEigDirections (O := O) (Q := Q)).body [] (D, K);
   call (Has.inj DiskSampleOp.polar) [] (Qw[4]) → (Lam);
   run (distSpec (O := O) (Q := Q)).body [N, m, q] (H, Lam, Tau);
-  call (Has.inj IndexOp.lit) [0] () → (Fl);
+  call (Has.inj IndexOp.lit) [0] () → (Fl)
+}
+
+/-- **The flag at the cap of `OneEig`**: if $0.9\beta'$ = `Th` $< \tau$ = `Tau`, the flag $1$
+into `Fl`. The interface is `[] (Th, Tau) → (Fl)`.
+Algorithm: small-eig -/
+def oneEigCheck : Impl O Q := opsImpl% [] (Th, Tau) → (Fl) {
+  if (Has.inj CmpTst.lt) [] (Th, Tau) {
+    call (Has.inj IndexOp.lit) [1] () → (Fl)
+  } else { skip }
+}
+
+/-- **`OneEig`** ([BanksGarzaVargasSrivastava2025, Proposition 3.5], corrected): the six
+directions $e^{i\pi j/3}$; the start `Lam` a polar sample of
+the radius $\eta_2$ = `Q[4]` and its estimate $\tau$ by `NLAlib.SmallEig.distSpec`; the flag $0$
+(`NLAlib.SmallEig.oneEigStart`);
+then, while $0.9\beta'$ = `Q[5]` $< \tau$ and for at most $t$ rounds, one round
+(`NLAlib.SmallEig.oneEigRound`: one polar sample $w$, the estimates of the six points
+$s + \tau e^{i\pi j/3} + w$, and the move to the best one if its estimate is at most
+$0.66\,\tau$, otherwise the flag $1$ and the estimate $0$, which ends the loop); at the cap with
+$0.9\beta' < \tau$, the flag $1$ (`NLAlib.SmallEig.oneEigCheck`). The interface is
+`[N, m, q, t] (H, Q) → (Lam, Fl)`; the scratch is scoped.
+Algorithm: small-eig -/
+def oneEig : Impl O Q := opsImpl% [N, m, q, t] (H, Qw) → (Lam, Fl) {
+  let Tau ← alloc 1;
+  let Z ← alloc 2;
+  let Pt ← alloc 2;
+  let Tc ← alloc 1;
+  let Bt ← alloc 3;
+  let D ← alloc 12;
+  let K ← alloc 2;
+  run (oneEigStart (O := O) (Q := Q)).body [N, m, q] (H, Qw, Lam, Tau, Fl, D, K);
   while i < t, (Has.inj CmpTst.lt) [] (Qw[5], Tau) {
-    call (Has.inj DiskSampleOp.polar) [] (Qw[4]) → (Z);
-    call (Has.inj ScalarOp.mul) [] (Tau, K) → (Bt[2]);
-    call (Has.inj IndexOp.lit) [0] () → (K[1]);
-    for j < 6 {
-      call (Has.inj ScalarOp.mul) [] (Tau, D[2 * j]) → (Pt);
-      call (Has.inj ScalarOp.add) [] (Pt, Lam) → (Pt);
-      call (Has.inj ScalarOp.add) [] (Pt, Z) → (Pt);
-      call (Has.inj ScalarOp.mul) [] (Tau, D[2 * j + 1]) → (Pt[1]);
-      call (Has.inj ScalarOp.add) [] (Pt[1], Lam[1]) → (Pt[1]);
-      call (Has.inj ScalarOp.add) [] (Pt[1], Z[1]) → (Pt[1]);
-      run (distSpec (O := O) (Q := Q)).body [N, m, q] (H, Pt, Tc);
-      if (Has.inj CmpTst.le) [] (Tc, Bt[2]) {
-        call (Has.inj ScalarOp.copy) [] (Pt) → (Bt);
-        call (Has.inj ScalarOp.copy) [] (Pt[1]) → (Bt[1]);
-        call (Has.inj ScalarOp.copy) [] (Tc) → (Bt[2]);
-        call (Has.inj IndexOp.lit) [1] () → (K[1])
-      } else { skip }
-    };
-    if (Has.inj CmpTst.isPos) [] (K[1]) {
-      call (Has.inj ScalarOp.copy) [] (Bt) → (Lam);
-      call (Has.inj ScalarOp.copy) [] (Bt[1]) → (Lam[1]);
-      call (Has.inj ScalarOp.copy) [] (Bt[2]) → (Tau)
-    } else {
-      call (Has.inj IndexOp.lit) [1] () → (Fl);
-      call (Has.inj (ScalarOp.lit 0)) [] () → (Tau)
-    }
+    run (oneEigRound (O := O) (Q := Q)).body [N, m, q]
+      (H, Qw, D, Lam, Tau, Fl, Z, Pt, Tc, Bt, K)
   } then {
-    if (Has.inj CmpTst.lt) [] (Qw[5], Tau) {
-      call (Has.inj IndexOp.lit) [1] () → (Fl)
-    } else { skip }
+    run (oneEigCheck (O := O) (Q := Q)).body [] (Qw[5], Tau, Fl)
   }
 }
 
@@ -125,22 +185,589 @@ def OneEigInput {n : ℕ} (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (qs : Lis
     Fp.Apart [h, qw, lam, f] [2 * ((n + 1) * (n + 1)), qs.length, 2, 1] ∧
     HoldsMatrix h H μ.store ∧ μ.store.readBlock qw.1 qw.2 qs.length = some qs
 
+/-! ### Cells holding words -/
+
+/-- The cells `cs` of the store `s` hold words. -/
+def HoldsWords (s : Store ℝ) (cs : List (ℕ × ℕ)) : Prop :=
+  ∀ c ∈ cs, ∃ v, s.get c.1 c.2 = some v
+
+namespace HoldsWords
+
+variable {s s' : Store ℝ} {cs : List (ℕ × ℕ)}
+
+/-- A cell of the list holds a word. -/
+theorem get (h : HoldsWords s cs) {b o : ℕ} (hc : (b, o) ∈ cs) : ∃ v, s.get b o = some v :=
+  h _ hc
+
+/-- Fewer cells hold words. -/
+theorem mono (h : HoldsWords s cs) {cs' : List (ℕ × ℕ)} (hsub : cs' ⊆ cs) :
+    HoldsWords s cs' :=
+  fun c hc => h c (hsub hc)
+
+/-- Cells off a footprint keep their words. -/
+theorem of_eqOff (h : HoldsWords s cs) {F : Fp} (hfr : s.EqOff F s')
+    (hd : ∀ c ∈ cs, ¬ F c.1 c.2) : HoldsWords s' cs :=
+  fun c hc => (h c hc).imp fun _ hv => (hfr.get_eq (hd c hc)).trans hv
+
+/-- A write of one word: the cells that held words still do, and so does the cell written. -/
+theorem cons_of_eqOff (h : HoldsWords s cs) {F : Fp} {b o : ℕ} {v : ℝ}
+    (hF : F ≤ Store.inBlock b o 1) (hfr : s.EqOff F s') (hz : s'.get b o = some v) :
+    HoldsWords s' ((b, o) :: cs) := by
+  intro c hc
+  by_cases hcz : c = (b, o)
+  · subst hcz; exact ⟨v, hz⟩
+  obtain ⟨w, hw⟩ := h c ((List.mem_cons.mp hc).resolve_left hcz)
+  refine ⟨w, (hfr.get_eq fun hF' => hcz ?_).trans hw⟩
+  obtain ⟨h1, h2, h3⟩ := hF _ _ hF'
+  exact Prod.ext h1 (by omega)
+
+/-- A write of a pair: the cells that held words still do, and so do the two cells written. -/
+theorem pair_of_eqOff (h : HoldsWords s cs) {F : Fp} {b o : ℕ} {x y : ℝ}
+    (hF : F ≤ Store.inBlock b o 2) (hfr : s.EqOff F s')
+    (hz : s'.readBlock b o 2 = some [x, y]) : HoldsWords s' ((b, o) :: (b, o + 1) :: cs) := by
+  have h0 : s'.get b o = some x := by
+    simpa using Store.get_of_readBlock hz (j := 0) (by omega) 0
+  have h1 : s'.get b (o + 1) = some y := by
+    simpa using Store.get_of_readBlock hz (j := 1) (by omega) 0
+  intro c hc
+  rcases c with ⟨cb, co⟩
+  by_cases hcz : cb = b ∧ o ≤ co ∧ co < o + 2
+  · obtain ⟨rfl, h₁, h₂⟩ := hcz
+    rcases (by omega : co = o ∨ co = o + 1) with rfl | rfl
+    exacts [⟨x, h0⟩, ⟨y, h1⟩]
+  have hc' : (cb, co) ∈ cs := by
+    rcases List.mem_cons.mp hc with hc | hc
+    · exact absurd ⟨congrArg Prod.fst hc, by simp at hc; omega, by simp at hc; omega⟩ hcz
+    rcases List.mem_cons.mp hc with hc | hc
+    · exact absurd ⟨congrArg Prod.fst hc, by simp at hc; omega, by simp at hc; omega⟩ hcz
+    exact hc
+  obtain ⟨w, hw⟩ := h _ hc'
+  exact ⟨w, (hfr.get_eq fun hF' => hcz (hF _ _ hF')).trans hw⟩
+
+/-- Two cells holding words read as a pair. -/
+theorem readBlock_pair (h : HoldsWords s cs) {b o : ℕ} (h0 : (b, o) ∈ cs)
+    (h1 : (b, o + 1) ∈ cs) : ∃ z : ℂ, s.readBlock b o 2 = some [z.re, z.im] := by
+  obtain ⟨x, hx⟩ := h.get h0
+  obtain ⟨y, hy⟩ := h.get h1
+  exact ⟨⟨x, y⟩, Store.readBlock_add (n := 1) (k := 1) (Store.readBlock_one_of_get hx)
+    (Store.readBlock_one_of_get hy)⟩
+
+end HoldsWords
+
+/-- The scratch buffers from `L` on are apart from a block below `L`. -/
+theorem disj_above_inBlock_of_lt {L b o n : ℕ} (hb : b < L) :
+    Fp.Disj (Fp.above L) (Store.inBlock b o n) := fun _ _ ha hb' => by
+  obtain ⟨rfl, -, -⟩ := hb'
+  exact absurd ha (Nat.not_le_of_gt hb)
+
+/-- The flag of `NLAlib.SmallEig.oneEig` at `f` is the literal $0$ or $1$. -/
+def OneEigFlag (M : Machine ℝ) (f : ℕ × ℕ) (s : Store ℝ) : Prop :=
+  s.get f.1 f.2 = some (M.lit 0) ∨ s.get f.1 f.2 = some (M.lit 1)
+
+/-- The flag survives writes apart from it. -/
+theorem OneEigFlag.of_eqOff {M : Machine ℝ} {f : ℕ × ℕ} {s s' : Store ℝ} {F : Fp}
+    (h : OneEigFlag M f s) (hfr : s.EqOff F s') (hd : Fp.Disj F (Store.inBlock f.1 f.2 1)) :
+    OneEigFlag M f s' :=
+  h.imp (hfr.keep (Store.readsOnly_get _ _ _) hd) (hfr.keep (Store.readsOnly_get _ _ _) hd)
+
+/-- The words a round of `NLAlib.SmallEig.oneEig` reads with the scratch from `L`: the estimate
+`Tau`, the point `Lam`, the factor `K[0]` and the twelve direction words `D`. -/
+def oneEigCells (L : ℕ) (lam : ℕ × ℕ) : List (ℕ × ℕ) :=
+  [(L, 0), lam, (lam.1, lam.2 + 1), (L + 6, 0)] ++ (List.range 12).map fun i => (L + 5, i)
+
+/-- The cells of `NLAlib.SmallEig.oneEigCells` lie in `Lam` (below `L`) or in the buffers `L`,
+`L + 5` and `K[0]`, off a footprint that misses them. -/
+theorem not_mem_oneEigCells {L : ℕ} {lam : ℕ × ℕ} {F : Fp} (hlam : ¬ F lam.1 lam.2)
+    (hlam1 : ¬ F lam.1 (lam.2 + 1)) (hT : ¬ F L 0) (hK : ¬ F (L + 6) 0)
+    (hD : ∀ i < 12, ¬ F (L + 5) i) : ∀ c ∈ oneEigCells L lam, ¬ F c.1 c.2 := by
+  intro c hc
+  rcases List.mem_append.mp hc with hc | hc
+  · simp only [List.mem_cons, List.not_mem_nil, or_false] at hc
+    rcases hc with rfl | rfl | rfl | rfl
+    exacts [hT, hlam, hlam1, hK]
+  · obtain ⟨i, hi, rfl⟩ := List.mem_map.mp hc
+    exact hD i (List.mem_range.mp hi)
+
+/-- The cells of `NLAlib.SmallEig.oneEigCells` and the sample `Z` (at `L + 1`) keep their words
+across writes to the buffers from `L + 2` on other than `D` and `K[0]`. -/
+theorem HoldsWords.oneEigScratch_of_eqOff {s s' : Store ℝ} {F : Fp} {L : ℕ} {lam : ℕ × ℕ}
+    (hlam : lam.1 < L) (h : HoldsWords s ((L + 1, 0) :: (L + 1, 1) :: oneEigCells L lam))
+    (hfr : s.EqOff F s') (hF : ∀ b i, F b i → L + 2 ≤ b ∧ b ≠ L + 5 ∧ (b = L + 6 → 1 ≤ i)) :
+    HoldsWords s' ((L + 1, 0) :: (L + 1, 1) :: oneEigCells L lam) := by
+  refine h.of_eqOff hfr fun c hc hc' => ?_
+  have hc'' := hF _ _ hc'
+  rcases List.mem_cons.mp hc with rfl | hc
+  · dsimp only at hc''; omega
+  rcases List.mem_cons.mp hc with rfl | hc
+  · dsimp only at hc''; omega
+  exact not_mem_oneEigCells (F := fun b i => L + 2 ≤ b ∧ b ≠ L + 5 ∧ (b = L + 6 → 1 ≤ i))
+    (by omega) (by omega) (by omega) (by omega) (fun i _ => by omega) c hc hc''
+
 section Theorems
 
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q]
 
-/-- `NLAlib.SmallEig.oneEig` on a scalar machine with index literals, exact comparisons and an
-exact polar sampler: from `NLAlib.SmallEig.OneEigInput` with at least six words, on every tape,
-it writes only the pair `lam` and the flag `f`, and stores a pair and a flag $0$ or $1$. -/
+omit [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] in
+/-- A polar sample stores a pair: on an exact polar disk sampler, from a radius word at `rd` and
+room for two words at `z`, the call writes only those two words and stores a pair there. -/
+theorem polar_writes_pair {I : Interp O Q ℝ} {sU : ℕ} (hDisk : IsPolarDiskSampler sU I)
+    {τ : Tape ℝ} {μ : Mem ℝ} {ρ : Env} {ins outs : List Operand} {rd z : ℕ × ℕ} {R : ℝ}
+    (ha : Operand.evalList ρ ins = some [rd]) (hb : Operand.evalList ρ outs = some [z])
+    (hrd : μ.store.get rd.1 rd.2 = some R) (hl : μ.Live [rd, z])
+    (hz : z.2 + 2 ≤ μ.store.len z.1) :
+    Writes .total I τ (.call (Has.inj DiskSampleOp.polar) [] ins outs) ρ
+      (Store.inBlock z.1 z.2 2)
+      (fun μ' => ∃ w : ℂ, μ'.store.readBlock z.1 z.2 2 = some [w.re, w.im]) μ := by
+  have hread : μ.readBlocks [rd] [1] = some [[R]] := by
+    simp [Mem.readBlocks, Store.readBlock, hrd]
+  refine (writes_call (R := polarDiskRel sU) hDisk (d := []) (a := [rd]) (b := [z])
+    (k := 2) (ls := [2]) rfl ha hb rfl rfl rfl trivial (by simp [Fp.Apart])
+    (fun _ => ⟨by simpa using hl, ⟨_, hread, trivial⟩, by simp [Mem.Room]; omega⟩)).mono
+    (by simp) ?_
+  rintro μ' - ⟨-, xs, ys, hr, hys, hrel⟩
+  have hys' := hrel R (Option.some.inj (hr.symm.trans hread))
+  subst hys'
+  obtain ⟨y, hy, hyy⟩ := Option.bind_eq_some_iff.mp (by simpa [Mem.readBlocks] using hys)
+  simp only [Option.some.injEq, List.cons.injEq, and_true] at hyy
+  exact ⟨_, by rw [hy, hyy]⟩
+
+omit [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] in
+/-- `NLAlib.SmallEig.oneEigDirections` on a scalar machine: with room for twelve words at `d`
+and one at `k` in another buffer, it writes only those words and stores words there. -/
+theorem oneEigDirections_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    {τ : Tape ℝ} {μ : Mem ℝ} {L : ℕ} (hlen : L + 7 ≤ μ.store.length)
+    (h5 : μ.store.len (L + 5) = 12) (h6 : μ.store.len (L + 6) = 2) :
+    Writes .total I τ (oneEigDirections (O := O) (Q := Q)).body
+      (Env.frame [] [(L + 5, 0), (L + 6, 0)])
+      (Store.inBlock (L + 5) 0 12 ⊔ Store.inBlock (L + 6) 0 1)
+      (fun μ' => HoldsWords μ'.store ((L + 6, 0) :: (List.range 12).map fun i => (L + 5, i)))
+      μ := by
+  unfold oneEigDirections
+  step (hS (.lit (66 / 100))) as μ₁ hfr₁ ⟨-, k₀, hk₀, -⟩
+  step (hS (.lit 1)) as μ₂ hfr₂ ⟨-, d₀, hd₀, -⟩
+  step (hS (.lit 0)) as μ₃ hfr₃ ⟨-, d₁, hd₁, -⟩
+  step (hS (.lit (1 / 2))) as μ₄ hfr₄ ⟨-, d₂, hd₂, -⟩
+  step (hS (.lit 3)) as μ₅ hfr₅ ⟨-, d₃, hd₃, -⟩
+  step (hS .sqrt) as μ₆ hfr₆ ⟨-, d₃', hd₃', -⟩
+  step (hS .mul) as μ₇ hfr₇ ⟨-, d₃'', hd₃'', -⟩
+  step (hS .neg) as μ₈ hfr₈ ⟨-, d₄, hd₄, -⟩
+  step (hS .copy) as μ₉ hfr₉ ⟨-, d₅, hd₅, -⟩
+  step (hS .neg) as μ₁₀ hfr₁₀ ⟨-, d₆, hd₆, -⟩
+  step (hS (.lit 0)) as μ₁₁ hfr₁₁ ⟨-, d₇, hd₇, -⟩
+  step (hS .copy) as μ₁₂ hfr₁₂ ⟨-, d₈, hd₈, -⟩
+  step (hS .neg) as μ₁₃ hfr₁₃ ⟨-, d₉, hd₉, -⟩
+  step (hS .copy) as μ₁₄ hfr₁₄ ⟨-, d₁₀, hd₁₀, -⟩
+  step (hS .copy) as μ₁₅ hfr₁₅ ⟨-, d₁₁, hd₁₁, -⟩
+  intro c hc
+  simp only [List.mem_cons, List.mem_map, List.mem_range] at hc
+  rcases hc with rfl | ⟨i, hi, rfl⟩
+  · exact ⟨_, by kept⟩
+  interval_cases i <;> exact ⟨_, by kept⟩
+
+omit [Has DiskSampleOp O] in
+/-- One candidate point (`NLAlib.SmallEig.oneEigPoint`) with the scratch of
+`NLAlib.SmallEig.oneEig` from `L`: on a scalar machine with the literal $0$ exact, index literals
+and exact comparisons, from any matrix of order $n + 1$ at `h`, words at the cells read and the
+mark `K[1]` $0$ or the best point stored, it writes only `Pt`, `Tc`, `Bt` and `K[1]`, keeps the
+tape position, and keeps the best estimate and the mark stored. -/
+theorem oneEigPoint_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    (hzero : M.lit 0 = 0) (hL : IsIndexLit M I) (hCmp : IsCmp id I) {n m q j L : ℕ}
+    (hj : j < 6) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {τ : Tape ℝ} {μ : Mem ℝ}
+    {h lam : ℕ × ℕ} (hh : h.1 < L) (hlam : lam.1 < L) (hlen : μ.store.length = L + 7)
+    (h2 : μ.store.len (L + 2) = 2) (h3 : μ.store.len (L + 3) = 1)
+    (h4 : μ.store.len (L + 4) = 3) (h6 : μ.store.len (L + 6) = 2)
+    (hH : HoldsMatrix h H μ.store)
+    (hw : HoldsWords μ.store ((L + 1, 0) :: (L + 1, 1) :: oneEigCells L lam))
+    (hb2 : ∃ v, μ.store.get (L + 4) 2 = some v)
+    (hK : μ.store.get (L + 6) 1 = some 0 ∨
+      HoldsWords μ.store [(L + 6, 1), (L + 4, 2), (L + 4, 1), (L + 4, 0)]) :
+    Writes .total I τ (oneEigPoint (O := O) (Q := Q)).body
+      (Env.frame [n + 1, m, q, j] [h, (L, 0), (L + 5, 0), lam, (L + 1, 0), (L + 2, 0),
+        (L + 3, 0), (L + 4, 0), (L + 6, 0)])
+      (Store.inBlock (L + 2) 0 2 ⊔ Store.inBlock (L + 3) 0 1 ⊔ Store.inBlock (L + 4) 0 3 ⊔
+        Store.inBlock (L + 6) 1 1)
+      (fun μ' => μ'.pos = μ.pos ∧ (∃ v, μ'.store.get (L + 4) 2 = some v) ∧
+        (μ'.store.get (L + 6) 1 = some 0 ∨
+          HoldsWords μ'.store [(L + 6, 1), (L + 4, 2), (L + 4, 1), (L + 4, 0)])) μ := by
+  have hm : ∀ {c}, c ∈ oneEigCells L lam →
+      c ∈ (L + 1, 0) :: (L + 1, 1) :: oneEigCells L lam := fun hc =>
+    List.mem_cons_of_mem _ (List.mem_cons_of_mem _ hc)
+  obtain ⟨vT, hT⟩ := hw.get (b := L) (o := 0) (hm (by simp [oneEigCells]))
+  obtain ⟨vD₀, hD₀⟩ := hw.get (b := L + 5) (o := 2 * j) (hm (List.mem_append_right _
+    (List.mem_map.mpr ⟨2 * j, List.mem_range.mpr (by omega), rfl⟩)))
+  obtain ⟨vD₁, hD₁⟩ := hw.get (b := L + 5) (o := 2 * j + 1) (hm (List.mem_append_right _
+    (List.mem_map.mpr ⟨2 * j + 1, List.mem_range.mpr (by omega), rfl⟩)))
+  obtain ⟨vL₀, hL₀⟩ := hw.get (b := lam.1) (o := lam.2) (hm (by simp [oneEigCells]))
+  obtain ⟨vL₁, hL₁⟩ := hw.get (b := lam.1) (o := lam.2 + 1) (hm (by simp [oneEigCells]))
+  obtain ⟨vZ₀, hZ₀⟩ := hw.get (b := L + 1) (o := 0) (by simp)
+  obtain ⟨vZ₁, hZ₁⟩ := hw.get (b := L + 1) (o := 1) (by simp)
+  obtain ⟨vB, hB⟩ := hb2
+  have hD₀' : μ.store.get (L + 5) (0 + 2 * j) = some vD₀ := by rwa [Nat.zero_add]
+  have hD₁' : μ.store.get (L + 5) (0 + (2 * j + 1)) = some vD₁ := by rwa [Nat.zero_add]
+  unfold oneEigPoint
+  step (hS .mul) as μ₁ hfr₁ ⟨hp₁, a₁, ha₁, -⟩
+  step (hS .add) as μ₂ hfr₂ ⟨hp₂, a₂, ha₂, -⟩
+  step (hS .add) as μ₃ hfr₃ ⟨hp₃, a₃, ha₃, -⟩
+  step (hS .mul) as μ₄ hfr₄ ⟨hp₄, b₁, hb₁, -⟩
+  step (hS .add) as μ₅ hfr₅ ⟨hp₅, b₂, hb₂, -⟩
+  step (hS .add) as μ₆ hfr₆ ⟨hp₆, b₃, hb₃, -⟩
+  have hsp : μ₆.store.readBlock (L + 2) 0 2 = some [(⟨a₃, b₃⟩ : ℂ).re, (⟨a₃, b₃⟩ : ℂ).im] :=
+    Store.readBlock_add (n := 1) (k := 1) (Store.readBlock_one_of_get (by kept))
+      (Store.readBlock_one_of_get (by kept))
+  have hH₆ : HoldsMatrix h H μ₆.store := by unfold HoldsMatrix at hH ⊢; kept
+  refine (distSpec_terminates (τ := τ) (μ := μ₆) (h := h) (sp := (L + 2, 0))
+    (tau := (L + 3, 0)) (m := m) (q := q) hS hzero hCmp (by room) hH₆ hsp
+    (by room)).frame_seq_le rfl rfl (by room) (by fp_sub) ?_
+  rintro μ₇ hfr₇ ⟨hp₇, t₇, ht₇⟩
+  refine writes_ite (a := [(L + 3, 0), (L + 4, 2)]) rfl rfl (hCmp.test_le ht₇ (by kept)) ?_
+  split_ifs
+  · step (hS .copy) as μ₈ hfr₈ ⟨hp₈, c₁, hc₁, -⟩
+    step (hS .copy) as μ₉ hfr₉ ⟨hp₉, c₂, hc₂, -⟩
+    step (hS .copy) as μ₁₀ hfr₁₀ ⟨hp₁₀, c₃, hc₃, -⟩
+    refine (writes_indexLit hL rfl rfl (by room)).mono (by fp_sub) ?_
+    rintro μ₁₁ hfr₁₁ ⟨hp₁₁, hk₁₁⟩
+    refine ⟨by simp only [hp₁₁, hp₁₀, hp₉, hp₈, hp₇, hp₆, hp₅, hp₄, hp₃, hp₂, hp₁],
+      ⟨_, by kept⟩, Or.inr fun c hc => ?_⟩
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hc
+    rcases hc with rfl | rfl | rfl | rfl
+    exacts [⟨_, hk₁₁⟩, ⟨_, by kept⟩, ⟨_, by kept⟩, ⟨_, by kept⟩]
+  · refine (Writes.skip ⟨by simp only [hp₇, hp₆, hp₅, hp₄, hp₃, hp₂, hp₁],
+      ⟨_, by kept⟩, ?_⟩).mono bot_le fun _ _ h => h
+    rcases hK with hK | hK
+    · exact Or.inl (by kept)
+    · obtain ⟨x₀, hx₀⟩ := hK.get (b := L + 6) (o := 1) (by simp)
+      obtain ⟨x₁, hx₁⟩ := hK.get (b := L + 4) (o := 2) (by simp)
+      obtain ⟨x₂, hx₂⟩ := hK.get (b := L + 4) (o := 1) (by simp)
+      obtain ⟨x₃, hx₃⟩ := hK.get (b := L + 4) (o := 0) (by simp)
+      refine Or.inr fun c hc => ?_
+      simp only [List.mem_cons, List.not_mem_nil, or_false] at hc
+      rcases hc with rfl | rfl | rfl | rfl <;> exact ⟨_, by kept⟩
+
+omit [Has DiskSampleOp O] in
+/-- The end of a round (`NLAlib.SmallEig.oneEigMove`) with the scratch of
+`NLAlib.SmallEig.oneEig` from `L`: on a scalar machine with index literals and exact
+comparisons, from the mark `K[1]` $0$ or the best point stored, a pair at `lam` and a
+flag $0$ or $1$ at `f` apart from it, it writes only `lam`, `Tau` and `f`, and stores words in
+`Tau` and `lam` and a flag $0$ or $1$. -/
+theorem oneEigMove_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    (hL : IsIndexLit M I) (hCmp : IsCmp id I) {L : ℕ} {τ : Tape ℝ}
+    {μ : Mem ℝ} {lam f : ℕ × ℕ} (hlam : lam.1 < L) (hf : f.1 < L)
+    (hlen : μ.store.length = L + 7) (h0 : μ.store.len L = 1)
+    (hroom : lam.2 + 2 ≤ μ.store.len lam.1) (hroomf : f.2 < μ.store.len f.1)
+    (hlf : Fp.Disj (Store.inBlock lam.1 lam.2 2) (Store.inBlock f.1 f.2 1))
+    (hw : HoldsWords μ.store [lam, (lam.1, lam.2 + 1)])
+    (hK : μ.store.get (L + 6) 1 = some 0 ∨
+      HoldsWords μ.store [(L + 6, 1), (L + 4, 2), (L + 4, 1), (L + 4, 0)])
+    (hF : OneEigFlag M f μ.store) :
+    Writes .total I τ (oneEigMove (O := O) (Q := Q)).body
+      (Env.frame [] [(L + 4, 0), (L + 6, 0), lam, (L, 0), f])
+      (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock L 0 1 ⊔ Store.inBlock f.1 f.2 1)
+      (fun μ' => HoldsWords μ'.store [(L, 0), lam, (lam.1, lam.2 + 1)] ∧
+        OneEigFlag M f μ'.store) μ := by
+  obtain ⟨k, hk, hk'⟩ : ∃ k, μ.store.get (L + 6) 1 = some k ∧
+      (k = 0 ∨ HoldsWords μ.store [(L + 4, 2), (L + 4, 1), (L + 4, 0)]) := by
+    rcases hK with hK | hK
+    · exact ⟨0, hK, Or.inl rfl⟩
+    · obtain ⟨k, hk⟩ := hK.get (b := L + 6) (o := 1) (by simp)
+      exact ⟨k, hk, Or.inr (hK.mono fun c hc => List.mem_cons_of_mem _ hc)⟩
+  obtain ⟨x₀, hx₀⟩ := hw.get (b := lam.1) (o := lam.2) (by simp)
+  unfold oneEigMove
+  refine writes_ite (a := [(L + 6, 1)]) rfl rfl (hCmp.test_isPos hk) ?_
+  split_ifs with hpos
+  · have hw' : HoldsWords μ.store [(L + 4, 2), (L + 4, 1), (L + 4, 0)] :=
+      hk'.resolve_left (by rintro rfl; simp at hpos)
+    obtain ⟨y₀, hy₀⟩ := hw'.get (b := L + 4) (o := 0) (by simp)
+    obtain ⟨y₁, hy₁⟩ := hw'.get (b := L + 4) (o := 1) (by simp)
+    obtain ⟨y₂, hy₂⟩ := hw'.get (b := L + 4) (o := 2) (by simp)
+    step (hS .copy) as μ₁ hfr₁ ⟨-, c₁, hc₁, -⟩
+    step (hS .copy) as μ₂ hfr₂ ⟨-, c₂, hc₂, -⟩
+    step (hS .copy) as μ₃ hfr₃ ⟨-, c₃, hc₃, -⟩
+    refine ⟨fun c hc => ?_, ((hF.of_eqOff hfr₁ (hlf.mono (by fp_sub) le_rfl)).of_eqOff hfr₂
+      (hlf.mono (by fp_sub) le_rfl)).of_eqOff hfr₃ (Fp.disj_inBlock_of_ne (by omega))⟩
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hc
+    rcases hc with rfl | rfl | rfl <;> exact ⟨_, by kept⟩
+  · refine (writes_indexLit (z := f) hL rfl rfl hroomf).seq_le (by fp_sub) ?_
+    rintro μ₁ hfr₁ ⟨-, hf₁⟩
+    step (hS (.lit 0)) as μ₂ hfr₂ ⟨-, t₂, ht₂, -⟩
+    refine ⟨((hw.cons_of_eqOff le_rfl hfr₁ hf₁).cons_of_eqOff le_rfl hfr₂ ht₂).mono ?_,
+      Or.inr (hfr₂.keep (Store.readsOnly_get _ _ _) (Fp.disj_inBlock_of_ne (by omega))
+        (by simpa using hf₁))⟩
+    intro c hc
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hc ⊢
+    rcases hc with rfl | rfl | rfl <;> simp
+
+omit [Has ScalarOp O] [Has DiskSampleOp O] in
+/-- `NLAlib.SmallEig.oneEigCheck` with index literals and exact comparisons: from words at `th`
+and `tau` and a flag $0$ or $1$ at `f`, it writes only the flag and keeps it $0$ or $1$. -/
+theorem oneEigCheck_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hL : IsIndexLit M I)
+    (hCmp : IsCmp id I) {τ : Tape ℝ} {μ : Mem ℝ} {th tau f : ℕ × ℕ} {a b : ℝ}
+    (hth : μ.store.get th.1 th.2 = some a) (htau : μ.store.get tau.1 tau.2 = some b)
+    (hroomf : f.2 < μ.store.len f.1) (hF : OneEigFlag M f μ.store) :
+    Writes .total I τ (oneEigCheck (O := O) (Q := Q)).body (Env.frame [] [th, tau, f])
+      (Store.inBlock f.1 f.2 1) (fun μ' => OneEigFlag M f μ'.store) μ := by
+  unfold oneEigCheck
+  refine writes_ite (a := [th, tau]) rfl rfl (hCmp.test_lt hth htau) ?_
+  split_ifs
+  · refine (writes_indexLit (z := f) hL rfl rfl hroomf).mono le_rfl ?_
+    rintro μ' - ⟨-, hf'⟩
+    exact Or.inr (by simpa using hf')
+  · exact (Writes.skip hF).mono bot_le fun _ _ h => h
+
+/-- The frame of a round of `NLAlib.SmallEig.oneEig` with the scratch from `L` misses the factor
+`K[0]` and the directions `D`. -/
+theorem HoldsWords.directions_of_eqOff {s s' : Store ℝ} {F : Fp} {L : ℕ}
+    (h : HoldsWords s ((L + 6, 0) :: (List.range 12).map fun i => (L + 5, i)))
+    (hfr : s.EqOff F s') (hF : ∀ i, ¬ F (L + 6) 0 ∧ ¬ F (L + 5) i) :
+    HoldsWords s' ((L + 6, 0) :: (List.range 12).map fun i => (L + 5, i)) := by
+  refine h.of_eqOff hfr fun c hc => ?_
+  simp only [List.mem_cons, List.mem_map, List.mem_range] at hc
+  rcases hc with rfl | ⟨i, -, rfl⟩
+  exacts [(hF 0).1, (hF i).2]
+
+/-- The words of `NLAlib.SmallEig.oneEigCells` from those of `Tau` and `Lam` and those of `K[0]`
+and `D`. -/
+theorem holdsWords_oneEigCells {s : Store ℝ} {L : ℕ} {lam : ℕ × ℕ}
+    (h₁ : HoldsWords s [(L, 0), lam, (lam.1, lam.2 + 1)])
+    (h₂ : HoldsWords s ((L + 6, 0) :: (List.range 12).map fun i => (L + 5, i))) :
+    HoldsWords s (oneEigCells L lam) := by
+  intro c hc
+  simp only [oneEigCells, List.cons_append, List.mem_cons] at hc
+  rcases hc with rfl | rfl | rfl | hc
+  exacts [h₁ _ (by simp), h₁ _ (by simp), h₁ _ (by simp), h₂ _ (List.mem_cons.mpr hc)]
+
+/-- One round of `NLAlib.SmallEig.oneEig` (`NLAlib.SmallEig.oneEigRound`) with the scratch from
+`L` (the buffers `Tau`, `Z`, `Pt`, `Tc`, `Bt`, `D`, `K` at `L`, …, `L + 6`): on a scalar machine
+with the literal $0$ exact, index literals, exact comparisons and an exact polar sampler, from any
+matrix of order $n + 1$ at `h`, at least six words at `qw`, words at
+`NLAlib.SmallEig.oneEigCells` and a flag $0$ or $1$ at `f` apart from `lam`, it writes only `lam`,
+`f` and the scratch, and keeps the words and the flag. -/
+theorem oneEigRound_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    (hzero : M.lit 0 = 0) (hL : IsIndexLit M I) (hCmp : IsCmp id I) {sU : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) {n m q L : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {qs : List ℝ} (hqs : 6 ≤ qs.length) {τ : Tape ℝ} {μ : Mem ℝ} {h qw lam f : ℕ × ℕ}
+    (hh : h.1 < L) (hqw : qw.1 < L) (hlam : lam.1 < L) (hf : f.1 < L)
+    (hlen : μ.store.length = L + 7) (h0 : μ.store.len L = 1) (h1 : μ.store.len (L + 1) = 2)
+    (h2 : μ.store.len (L + 2) = 2) (h3 : μ.store.len (L + 3) = 1)
+    (h4 : μ.store.len (L + 4) = 3) (h6 : μ.store.len (L + 6) = 2)
+    (hroom : lam.2 + 2 ≤ μ.store.len lam.1) (hroomf : f.2 < μ.store.len f.1)
+    (hlf : Fp.Disj (Store.inBlock lam.1 lam.2 2) (Store.inBlock f.1 f.2 1))
+    (hH : HoldsMatrix h H μ.store) (hq : μ.store.readBlock qw.1 qw.2 qs.length = some qs)
+    (hw : HoldsWords μ.store (oneEigCells L lam)) (hF : OneEigFlag M f μ.store) :
+    Writes .total I τ (oneEigRound (O := O) (Q := Q)).body
+      (Env.frame [n + 1, m, q] [h, qw, (L + 5, 0), lam, (L, 0), f, (L + 1, 0), (L + 2, 0),
+        (L + 3, 0), (L + 4, 0), (L + 6, 0)])
+      (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1 ⊔ Fp.above L)
+      (fun μ' => HoldsWords μ'.store (oneEigCells L lam) ∧ OneEigFlag M f μ'.store) μ := by
+  have hq4 : μ.store.get qw.1 (qw.2 + 4) = some (qs.getD 4 0) :=
+    Store.get_of_readBlock hq (by omega) 0
+  obtain ⟨vT, hT⟩ := hw.get (b := L) (o := 0) (by simp [oneEigCells])
+  obtain ⟨vK, hK⟩ := hw.get (b := L + 6) (o := 0) (by simp [oneEigCells])
+  have hKD : HoldsWords μ.store ((L + 6, 0) :: (List.range 12).map fun i => (L + 5, i)) :=
+    hw.mono fun c hc => by simp only [oneEigCells, List.cons_append, List.mem_cons] at hc ⊢; tauto
+  unfold oneEigRound
+  refine (polar_writes_pair hDisk (rd := (qw.1, qw.2 + 4)) (z := (L + 1, 0)) rfl rfl hq4
+    (by simp [Mem.Live]; omega) (by simp [h1])).seq_le (Fp.inBlock_le_sup_above (by omega)) ?_
+  rintro μ₁ hfr₁ ⟨w, hw₁⟩
+  step (hS .mul) as μ₂ hfr₂ ⟨-, b₂, hb₂, -⟩
+  refine (writes_indexLit (z := (L + 6, 1)) hL rfl rfl (by room)).seq_le
+    (Fp.inBlock_le_sup_above (by omega)) ?_
+  rintro μ₃ hfr₃ ⟨-, hk₃⟩
+  have hfrA := (hfr₁.trans' hfr₂).trans' hfr₃
+  have hW₃ : HoldsWords μ₃.store ((L + 1, 0) :: (L + 1, 1) :: oneEigCells L lam) :=
+    ((hw.pair_of_eqOff le_rfl hfr₁ hw₁).oneEigScratch_of_eqOff hlam hfr₂ fun _ _ h => by
+      simp only [fpNF] at h; omega).oneEigScratch_of_eqOff hlam hfr₃ fun _ _ h => by
+        simp only [fpNF] at h; omega
+  refine (writes_loop (N := 6) rfl (fun _ => Store.inBlock (L + 2) 0 2 ⊔
+      Store.inBlock (L + 3) 0 1 ⊔ Store.inBlock (L + 4) 0 3 ⊔ Store.inBlock (L + 6) 1 1)
+    (fun _ _ => le_rfl) (fun _ μ' => (∃ v, μ'.store.get (L + 4) 2 = some v) ∧
+      (μ'.store.get (L + 6) 1 = some 0 ∨
+        HoldsWords μ'.store [(L + 6, 1), (L + 4, 2), (L + 4, 1), (L + 4, 0)]))
+    ⟨⟨b₂, (hfr₃.get_eq (by simp only [fpNF]; omega)).trans hb₂⟩,
+      Or.inl (by rw [hk₃, Nat.cast_zero, hzero])⟩ ?_).seq_le (by fp_sub) ?_
+  · rintro j hj μ' hfr' ⟨hb', hK'⟩
+    refine ((oneEigPoint_writes hS hzero hL hCmp (j := j) (L := L) hj hh hlam
+      (by rw [hfr'.length_eq, hfrA.length_eq, hlen])
+      (by rw [hfr'.len_eq, hfrA.len_eq, h2]) (by rw [hfr'.len_eq, hfrA.len_eq, h3])
+      (by rw [hfr'.len_eq, hfrA.len_eq, h4]) (by rw [hfr'.len_eq, hfrA.len_eq, h6])
+      ((hH.of_eqOff hfrA fun _ _ h₁ h₂ => by simp only [fpNF] at h₁ h₂; omega).of_eqOff hfr'
+        fun _ _ h₁ h₂ => by simp only [fpNF] at h₁ h₂; omega)
+      (hW₃.oneEigScratch_of_eqOff hlam hfr' fun _ _ h => by simp only [fpNF] at h; omega)
+      hb' hK').in_frame rfl rfl
+      (by simp [Mem.Live, hfr'.length_eq, hfrA.length_eq, hlen]; omega)).mono le_rfl
+      fun _ _ h => h.2
+  rintro μ₄ hfr₄ ⟨-, hK₄⟩
+  have hfrB := hfrA.trans' hfr₄
+  have hw₄ : HoldsWords μ₄.store [lam, (lam.1, lam.2 + 1)] := by
+    refine (hw.mono fun c hc => ?_).of_eqOff hfrB fun c hc hc' => ?_
+    · simp only [List.mem_cons, List.not_mem_nil, or_false] at hc
+      rcases hc with rfl | rfl <;> simp [oneEigCells]
+    · simp only [List.mem_cons, List.not_mem_nil, or_false] at hc
+      simp only [fpNF] at hc'
+      rcases hc with rfl | rfl <;> omega
+  refine ((oneEigMove_writes hS hL hCmp hlam hf (by rw [hfrB.length_eq, hlen])
+    (by rw [hfrB.len_eq, h0]) (by rw [hfrB.len_eq]; exact hroom)
+    (by rw [hfrB.len_eq]; exact hroomf) hlf hw₄ hK₄
+    (hF.of_eqOff hfrB fun _ _ h₁ h₂ => by simp only [fpNF] at h₁ h₂; omega)).in_frame rfl
+    rfl (by simp [Mem.Live, hfrB.length_eq, hlen]; omega)).mono (by fp_sub) ?_
+  rintro μ₅ hfr₅ ⟨hm, hF₅⟩
+  refine ⟨holdsWords_oneEigCells hm ((hKD.directions_of_eqOff hfrB fun i => ?_).directions_of_eqOff
+    hfr₅ fun i => ?_), hF₅⟩
+  all_goals simp only [fpNF]; omega
+
+/-- The start of `NLAlib.SmallEig.oneEig` (`NLAlib.SmallEig.oneEigStart`) with the scratch from
+`L`: on a scalar machine with the literal $0$ exact, index literals, exact comparisons and an
+exact polar sampler, from any matrix of order $n + 1$ at `h` apart from `lam` and at least five
+words at `qw`, it writes only `lam`, `f` and the scratch, and stores words at
+`NLAlib.SmallEig.oneEigCells` and the flag $0$. -/
+theorem oneEigStart_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    (hzero : M.lit 0 = 0) (hL : IsIndexLit M I) (hCmp : IsCmp id I) {sU : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) {n m q L : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {τ : Tape ℝ} {μ : Mem ℝ} {h qw lam f : ℕ × ℕ} {r : ℝ}
+    (hh : h.1 < L) (hqw : qw.1 < L) (hlam : lam.1 < L)
+    (hlen : μ.store.length = L + 7) (h0 : μ.store.len L = 1) (h5 : μ.store.len (L + 5) = 12)
+    (h6 : μ.store.len (L + 6) = 2)
+    (hroom : lam.2 + 2 ≤ μ.store.len lam.1) (hroomf : f.2 < μ.store.len f.1)
+    (hlh : Fp.Disj (Store.inBlock lam.1 lam.2 2) (Store.inBlock h.1 h.2 (2 * ((n + 1) * (n + 1)))))
+    (hH : HoldsMatrix h H μ.store) (hq4 : μ.store.get qw.1 (qw.2 + 4) = some r) :
+    Writes .total I τ (oneEigStart (O := O) (Q := Q)).body
+      (Env.frame [n + 1, m, q] [h, qw, lam, (L, 0), f, (L + 5, 0), (L + 6, 0)])
+      (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1 ⊔ Fp.above L)
+      (fun μ' => HoldsWords μ'.store (oneEigCells L lam) ∧ OneEigFlag M f μ'.store) μ := by
+  unfold oneEigStart
+  refine ((oneEigDirections_writes hS (L := L) (by omega) h5 h6).frame_seq_le rfl rfl
+    (by simp [Mem.Live]; omega) (sup_le (Fp.inBlock_le_sup_above (by omega))
+      (Fp.inBlock_le_sup_above (by omega))) ?_)
+  rintro μ₁ hfr₁ hD₁
+  refine (polar_writes_pair hDisk (rd := (qw.1, qw.2 + 4)) (z := lam) rfl rfl
+    ((hfr₁.get_eq (by simp only [fpNF]; omega)).trans hq4)
+    (by simp [Mem.Live, hfr₁.length_eq]; omega) (by rw [hfr₁.len_eq]; exact hroom)).seq_le
+    (le_sup_left.trans le_sup_left) ?_
+  rintro μ₂ hfr₂ ⟨z₀, hz₀⟩
+  have hfr₁₂ := hfr₁.trans' hfr₂
+  refine (distSpec_terminates (τ := τ) (μ := μ₂) (h := h) (sp := lam) (tau := (L, 0)) (m := m)
+    (q := q) hS hzero hCmp (by simp [Mem.Live, hfr₁₂.length_eq]; omega)
+    ((hH.of_eqOff hfr₁ fun _ _ h₁ h₂ => by simp only [fpNF] at h₁ h₂; omega).of_eqOff hfr₂ hlh)
+    hz₀ (by rw [hfr₁₂.len_eq, h0]; omega)).frame_seq_le rfl rfl
+    (by simp [Mem.Live, hfr₁₂.length_eq]; omega) (Fp.inBlock_le_sup_above le_rfl) ?_
+  rintro μ₃ hfr₃ ⟨-, t₃, ht₃⟩
+  refine (writes_indexLit (z := f) hL rfl rfl
+    (by rw [hfr₃.len_eq, hfr₁₂.len_eq]; exact hroomf)).mono
+    (le_sup_right.trans le_sup_left) ?_
+  rintro μ₄ hfr₄ ⟨-, hf₄⟩
+  refine ⟨(((hD₁.pair_of_eqOff le_rfl hfr₂ hz₀).cons_of_eqOff le_rfl hfr₃ ht₃).cons_of_eqOff
+      le_rfl hfr₄ hf₄).mono fun c hc => ?_, Or.inl (by simpa using hf₄)⟩
+  simp only [oneEigCells, List.cons_append, List.mem_cons, Prod.mk.eta] at hc ⊢
+  tauto
+
+/-- The views of `NLAlib.SmallEig.OneEigInput` are apart: `lam` and `f` from the matrix, from
+each other and from the words. -/
+theorem OneEigInput.disj {n : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {qs : List ℝ}
+    {h qw lam f : ℕ × ℕ} {μ : Mem ℝ} (hin : OneEigInput H qs h qw lam f μ) :
+    Fp.Disj (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1)
+      (Store.inBlock h.1 h.2 (2 * ((n + 1) * (n + 1)))) ∧
+    Fp.Disj (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1)
+      (Store.inBlock qw.1 qw.2 qs.length) ∧
+    Fp.Disj (Store.inBlock lam.1 lam.2 2) (Store.inBlock f.1 f.2 1) := by
+  obtain ⟨-, -, ⟨dh, dq, dl, -⟩, -, -⟩ := hin
+  simp only [Fp.blocks_cons, Fp.blocks_nil] at dh dq dl
+  exact ⟨(dh.mono le_rfl (sup_le (le_sup_left.trans le_sup_right)
+      ((le_sup_left.trans le_sup_right).trans le_sup_right))).symm,
+    (dq.mono le_rfl (sup_le le_sup_left (le_sup_left.trans le_sup_right))).symm,
+    dl.mono le_rfl le_sup_left⟩
+
+/-- `NLAlib.SmallEig.oneEig` on a scalar machine with the literal $0$ exact, index literals,
+exact comparisons and an exact polar sampler: from `NLAlib.SmallEig.OneEigInput` with at least
+six words, on every tape, it writes only the pair `lam` and the flag `f`, and stores a pair and a
+flag $0$ or $1$. -/
 theorem oneEig_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
-    (hL : IsIndexLit M I) (hCmp : IsCmp id I) {sU : ℕ} (hDisk : IsPolarDiskSampler sU I)
-    {n m q t : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {qs : List ℝ} (hqs : 6 ≤ qs.length)
-    {τ : Tape ℝ} {μ : Mem ℝ} {h qw lam f : ℕ × ℕ} (hin : OneEigInput H qs h qw lam f μ) :
+    (hzero : M.lit 0 = 0) (hL : IsIndexLit M I) (hCmp : IsCmp id I) {sU : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) {n m q t : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {qs : List ℝ} (hqs : 6 ≤ qs.length) {τ : Tape ℝ} {μ : Mem ℝ} {h qw lam f : ℕ × ℕ}
+    (hin : OneEigInput H qs h qw lam f μ) :
     Writes .total I τ (oneEig (O := O) (Q := Q)).body (Env.frame [n + 1, m, q, t] [h, qw, lam, f])
       (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1)
       (fun μ' => (∃ z : ℂ, μ'.store.readBlock lam.1 lam.2 2 = some [z.re, z.im]) ∧
         (μ'.store.get f.1 f.2 = some (M.lit 0) ∨ μ'.store.get f.1 f.2 = some (M.lit 1))) μ := by
-  sorry
+  obtain ⟨hdh, hdq, hlf⟩ := hin.disj
+  obtain ⟨hl, ⟨-, -, hrl, hrf, -⟩, -, hH, hq⟩ := hin
+  have hlive : h.1 < μ.store.length ∧ qw.1 < μ.store.length ∧ lam.1 < μ.store.length ∧
+      f.1 < μ.store.length := by simpa [Mem.Live] using hl
+  unfold oneEig
+  change Writes .total I τ (Stmt.allocs [.const 1, .const 2, .const 2, .const 1, .const 3,
+    .const 12, .const 2] _) _ _ _ μ
+  refine writes_allocs_preserving_post (ns := [1, 2, 2, 1, 3, 12, 2]) rfl
+    (fun hBelow ⟨⟨z, hz⟩, hF⟩ => ⟨⟨z, hBelow.readBlock_of hlive.2.2.1 hz⟩,
+      hF.imp (hBelow.get_of hlive.2.2.2) (hBelow.get_of hlive.2.2.2)⟩) ?_
+  intro s₁ hlen hlens hBelow
+  set L := μ.store.length with hLd
+  simp only [List.length_cons, List.length_nil] at hlen
+  obtain ⟨hH₁, hq₁⟩ := And.intro (hH.of_below hBelow hlive.1) (hBelow.readBlock_of hlive.2.1 hq)
+  have hG : Fp.Disj (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1 ⊔ Fp.above L)
+      (Store.inBlock h.1 h.2 (2 * ((n + 1) * (n + 1)))) :=
+    Fp.disj_sup_left.mpr ⟨hdh, disj_above_inBlock_of_lt hlive.1⟩
+  have hGq : Fp.Disj (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1 ⊔ Fp.above L)
+      (Store.inBlock qw.1 qw.2 qs.length) :=
+    Fp.disj_sup_left.mpr ⟨hdq, disj_above_inBlock_of_lt hlive.2.1⟩
+  refine (oneEigStart_writes (μ := ⟨s₁, μ.pos⟩) (m := m) (q := q) hS hzero hL hCmp hDisk
+    hlive.1 hlive.2.1 hlive.2.2.1 hlen (by simpa using hlens 0 (by simp))
+    (by simpa using hlens 5 (by simp)) (by simpa using hlens 6 (by simp))
+    (by rw [(hBelow lam.1 hlive.2.2.1).1]; exact hrl)
+    (by rw [(hBelow f.1 hlive.2.2.2).1]; exact hrf)
+    (hdh.mono le_sup_left le_rfl) hH₁ (Store.get_of_readBlock hq₁ (by omega) 0)).frame_seq_le
+    rfl rfl (by simp [Mem.Live]; omega) le_rfl ?_
+  rintro μ₄ hfrA ⟨hW₄, hF₄⟩
+  have hcheck : ∀ μ' : Mem ℝ, (⟨s₁, μ.pos⟩ : Mem ℝ).store.EqOff (Store.inBlock lam.1 lam.2 2 ⊔
+      Store.inBlock f.1 f.2 1 ⊔ Fp.above L) μ'.store →
+      HoldsWords μ'.store (oneEigCells L lam) → OneEigFlag M f μ'.store →
+      (∃ v, μ'.store.get qw.1 (qw.2 + 5) = some v) ∧ ∃ v, μ'.store.get L 0 = some v := by
+    intro μ' hfr hW _
+    exact ⟨⟨_, hfr.keep (Store.readsOnly_get _ _ _) (hGq.mono le_rfl
+      (Fp.inBlock_le_inBlock (by omega) (by omega))) (Store.get_of_readBlock hq₁ (j := 5)
+        (by omega) 0)⟩, hW.get (by simp [oneEigCells])⟩
+  refine (writes_whileFuel (N := t) rfl (fun _ => Store.inBlock lam.1 lam.2 2 ⊔
+      Store.inBlock f.1 f.2 1 ⊔ Fp.above L) (fun _ _ => le_rfl) (Store.inBlock f.1 f.2 1)
+    (fun _ μ' => HoldsWords μ'.store (oneEigCells L lam) ∧ OneEigFlag M f μ'.store) _
+    ⟨hW₄, hF₄⟩ ?_ ?_).mono (sup_le le_rfl (le_sup_right.trans le_sup_left)) fun _ _ h => h
+  · rintro i - μ' hfr' ⟨hW', hF'⟩
+    have hfrC := hfrA.trans' hfr'
+    have hG' : Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1 ⊔ Fp.above L ⊔
+        (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1 ⊔ Fp.above L) ≤
+        Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1 ⊔ Fp.above L := sup_le le_rfl le_rfl
+    obtain ⟨⟨a, ha⟩, b, hb⟩ := hcheck μ' (hfrC.mono hG') hW' hF'
+    refine ⟨_, (Interp.testAt_eq (a := [(qw.1, qw.2 + 5), (L, 0)]) rfl rfl).trans
+      (hCmp.test_lt ha hb), ?_⟩
+    dsimp only
+    split_ifs
+    · refine (oneEigRound_writes hS hzero hL hCmp hDisk hqs hlive.1 hlive.2.1 hlive.2.2.1
+        hlive.2.2.2 (by rw [hfrC.length_eq]; exact hlen)
+        (by rw [hfrC.len_eq]; simpa using hlens 0 (by simp))
+        (by rw [hfrC.len_eq]; simpa using hlens 1 (by simp))
+        (by rw [hfrC.len_eq]; simpa using hlens 2 (by simp))
+        (by rw [hfrC.len_eq]; simpa using hlens 3 (by simp))
+        (by rw [hfrC.len_eq]; simpa using hlens 4 (by simp))
+        (by rw [hfrC.len_eq]; simpa using hlens 6 (by simp))
+        (by rw [hfrC.len_eq, (hBelow lam.1 hlive.2.2.1).1]; exact hrl)
+        (by rw [hfrC.len_eq, (hBelow f.1 hlive.2.2.2).1]; exact hrf) hlf
+        ((hH₁.of_eqOff (hfrC.mono hG') hG)) (hfrC.mono hG' |>.keep
+          (Store.readsOnly_readBlock _ _ _ _) hGq hq₁) hW' hF').in_frame rfl rfl
+        (by simp [Mem.Live, hfrC.length_eq]; omega)
+    · have hrf' : f.2 < μ'.store.len f.1 := by
+        rw [hfrC.len_eq, (hBelow f.1 hlive.2.2.2).1]; exact hrf
+      refine ((oneEigCheck_writes hL hCmp ha hb hrf' hF').in_frame rfl rfl
+        (by simp [Mem.Live, hfrC.length_eq]; omega)).mono le_rfl fun μ'' hfr'' hF'' => ⟨?_, hF''⟩
+      obtain ⟨z, hz⟩ := hW'.readBlock_pair (b := lam.1) (o := lam.2) (by simp [oneEigCells])
+        (by simp [oneEigCells])
+      exact ⟨z, hfr''.keep (Store.readsOnly_readBlock _ _ _ _) hlf.symm hz⟩
+  · rintro μ' hfr' ⟨hW', hF'⟩
+    have hfrC := (hfrA.trans' hfr').mono fun _ _ h => h.elim id id
+    obtain ⟨⟨a, ha⟩, b, hb⟩ := hcheck μ' hfrC hW' hF'
+    have hrf' : f.2 < μ'.store.len f.1 := by
+      rw [hfrC.len_eq, (hBelow f.1 hlive.2.2.2).1]; exact hrf
+    refine ((oneEigCheck_writes hL hCmp ha hb hrf' hF').in_frame rfl rfl
+      (by simp [Mem.Live, hfrC.length_eq]; omega)).mono le_rfl fun μ'' hfr'' hF'' => ⟨?_, hF''⟩
+    obtain ⟨z, hz⟩ := hW'.readBlock_pair (b := lam.1) (o := lam.2) (by simp [oneEigCells])
+      (by simp [oneEigCells])
+    exact ⟨z, hfr''.keep (Store.readsOnly_readBlock _ _ _ _) hlf.symm hz⟩
 
 /-- **`OneEig` finds a point near the spectrum** ([BanksGarzaVargasSrivastava2025,
 Proposition 3.5], corrected: $\eta_2 = \min(\beta'/40, g/3)$ (P5), the round cap (P6), $\log_2$
@@ -185,17 +812,21 @@ theorem oneEig_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : Is
         η₁ ≤ ⨅ i, ‖z - d i‖ ∧ ⨅ i, ‖z - d i‖ ≤ β') φ := by
   sorry
 
-/-- `NLAlib.SmallEig.oneEig` terminates on every tape: from `NLAlib.SmallEig.OneEigInput` with
-any matrix and at least six words, it writes only the pair and the flag and stores both. -/
+/-- `NLAlib.SmallEig.oneEig` terminates on every tape: on a scalar machine with the literal $0$
+exact, index literals, exact comparisons and an exact polar sampler, from
+`NLAlib.SmallEig.OneEigInput` with any matrix and at least six words, it writes only the pair and
+the flag and stores both. -/
 theorem oneEig_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
-    (hL : IsIndexLit M I) (hCmp : IsCmp id I) {sU : ℕ} (hDisk : IsPolarDiskSampler sU I)
+    (hzero : M.lit 0 = 0) (hL : IsIndexLit M I) (hCmp : IsCmp id I) {sU : ℕ}
+    (hDisk : IsPolarDiskSampler sU I)
     {n m q t : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {qs : List ℝ} (hqs : 6 ≤ qs.length)
     {τ : Tape ℝ} {μ : Mem ℝ} {h qw lam f : ℕ × ℕ} (hin : OneEigInput H qs h qw lam f μ) :
     Writes .total I τ (oneEig (O := O) (Q := Q)).body (Env.frame [n + 1, m, q, t] [h, qw, lam, f])
       (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1)
       (fun μ' => (∃ z : ℂ, μ'.store.readBlock lam.1 lam.2 2 = some [z.re, z.im]) ∧
-        ∃ x, μ'.store.get f.1 f.2 = some x) μ := by
-  sorry
+        ∃ x, μ'.store.get f.1 f.2 = some x) μ :=
+  (oneEig_writes_word hS hzero hL hCmp hDisk hqs hin).mono le_rfl fun _ _ ⟨hz, hF⟩ =>
+    ⟨hz, hF.elim (fun h => ⟨_, h⟩) fun h => ⟨_, h⟩⟩
 
 end Theorems
 

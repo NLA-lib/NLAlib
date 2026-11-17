@@ -6,7 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import Mathlib.Analysis.SpecialFunctions.Log.Base
-public import NLAlib.RandomMatrix.Gaussian.Complex.Shattering
+public import NLAlib.Eigensolvers.SmallEig.RandomMatrixTails
 
 /-!
 # The parameters of the small-eigenvalue solver

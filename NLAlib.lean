@@ -169,6 +169,7 @@ public import NLAlib.Eigensolvers.SmallEig.Perturb
 public import NLAlib.Eigensolvers.SmallEig.Precision
 public import NLAlib.Eigensolvers.SmallEig.Program
 public import NLAlib.Eigensolvers.SmallEig.RandomHessenberg
+public import NLAlib.Eigensolvers.SmallEig.RandomMatrixTails
 public import NLAlib.Eigensolvers.SmallEig.Theorems
 public import NLAlib.Eigensolvers.SpectralBisection
 public import NLAlib.Eigensolvers.SpectralBisection.Accuracy
@@ -1417,7 +1418,6 @@ public import NLAlib.RandomMatrix.Gaussian.BlockTail
 public import NLAlib.RandomMatrix.Gaussian.ClippedInverseMoments
 public import NLAlib.RandomMatrix.Gaussian.Complex
 public import NLAlib.RandomMatrix.Gaussian.Complex.LeastSingularValue
-public import NLAlib.RandomMatrix.Gaussian.Complex.Shattering
 public import NLAlib.RandomMatrix.Gaussian.Complex.SimpleSpectrum
 public import NLAlib.RandomMatrix.Gaussian.Concentration
 public import NLAlib.RandomMatrix.Gaussian.ExtremeSingularValues

@@ -205,14 +205,119 @@ theorem roundedShQRSmallEig_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} 
       (fun _ => True) μ := by
   sorry
 
+open Real in
 /-- **The shift degree is $O(\log B\log\log B)$**: there is an absolute constant $c$ with
 $k \le c(\log_2(4B) + 1)(\log_2\log_2(16B) + 1)$ for $k$ the degree of (eqn:setk) at $4B$, for
 every $B \ge 1$ ([BanksGarzaVargasSrivastava2022, Theorem 1.4], the choice of $k$). -/
 theorem shqrDegree_le_log : ∃ c : ℝ, ∀ {B : ℝ}, 1 ≤ B →
     (shqrDegree (4 * B) : ℝ) ≤ c * (Real.logb 2 (4 * B) + 1) *
       (Real.logb 2 (Real.logb 2 (16 * B)) + 1) := by
-  sorry
+  refine ⟨128, fun {B} hB => ?_⟩
+  have hB0 : 0 < B := by linarith
+  set x := logb 2 (4 * B) with hx
+  set y := logb 2 (logb 2 (16 * B)) with hy
+  have hx2 : 2 ≤ x := by
+    rw [hx, le_logb_iff_rpow_le (by norm_num) (by positivity)]; norm_num; linarith
+  have h16 : 4 ≤ logb 2 (16 * B) := by
+    rw [le_logb_iff_rpow_le (by norm_num) (by positivity)]; norm_num; linarith
+  have hy2 : 2 ≤ y := by
+    rw [hy, le_logb_iff_rpow_le (by norm_num) (by positivity)]; norm_num; linarith
+  have hxy : logb 2 (x + 1) ≤ y := by
+    have : x + 1 = logb 2 (8 * B) := by
+      rw [show (8 : ℝ) * B = 2 * (4 * B) by ring, logb_mul (by norm_num) (by positivity),
+        logb_self_eq_one (by norm_num : (1 : ℝ) < 2)]; ring
+    rw [this, hy]
+    exact logb_le_logb_of_le (by norm_num) (by
+      rw [← this]; linarith) (logb_le_logb_of_le (by norm_num) (by positivity) (by linarith))
+  have hyy : logb 2 (y + 1) ≤ y := by
+    rw [logb_le_iff_le_rpow (by norm_num) (by linarith)]
+    have := one_add_mul_self_le_rpow_one_add (by norm_num : (-1 : ℝ) ≤ 1) (by linarith : 1 ≤ y)
+    norm_num at this; linarith
+  set T := 64 * (x + 1) * (y + 1) with hT
+  have hT1 : 1 ≤ T := by nlinarith
+  obtain ⟨q, hq1, hq2⟩ := exists_nat_pow_near hT1 (by norm_num : (1 : ℝ) < 2)
+  have hqT : (q : ℝ) ≤ 6 + 2 * y := by
+    have h1 : (q : ℝ) ≤ logb 2 T := by
+      rw [le_logb_iff_rpow_le (by norm_num) (by linarith), rpow_natCast]; exact hq1
+    have h2 : logb 2 T = 6 + logb 2 (x + 1) + logb 2 (y + 1) := by
+      rw [hT, logb_mul (by positivity) (by linarith), logb_mul (by norm_num) (by linarith),
+        show (64 : ℝ) = 2 ^ (6 : ℕ) by norm_num, logb_pow, logb_self_eq_one (by norm_num)]
+      ring
+    linarith
+  have hset : SatisfiesSetk (4 * B) (q + 1) := by
+    rw [satisfiesSetk_iff (by positivity) (by omega)]
+    have hl2 : 0 < log 2 := log_pos (by norm_num)
+    have hl23 : log 2 ≤ log 3 := log_le_log (by norm_num) (by norm_num)
+    have hlB : log (4 * B) = x * log 2 := by
+      rw [hx, logb, div_mul_cancel₀ _ hl2.ne']
+    have hp : (8 * ((q : ℝ) + 1) + 11) * x + 3 ≤ 2 ^ (q + 1) := by nlinarith
+    have hp1 : (0 : ℝ) ≤ 2 ^ (q + 1) - 1 := by
+      have : (1 : ℝ) ≤ 2 ^ (q + 1) := one_le_pow₀ (by norm_num)
+      linarith
+    push_cast
+    rw [hlB]
+    calc (8 * ((q : ℝ) + 1) + 11) * (x * log 2) + 2 * log 2
+        ≤ (2 ^ (q + 1) - 1) * log 2 := by nlinarith
+      _ ≤ (2 ^ (q + 1) - 1) * log 3 := by gcongr
+  have hle : shqrLogDegree (4 * B) ≤ q + 1 := Nat.sInf_le hset
+  calc (shqrDegree (4 * B) : ℝ) = 2 ^ shqrLogDegree (4 * B) := by simp [shqrDegree]
+    _ ≤ 2 ^ (q + 1) := pow_le_pow_right₀ (by norm_num) hle
+    _ = 2 * 2 ^ q := by ring
+    _ ≤ 2 * T := by linarith
+    _ = 128 * (x + 1) * (y + 1) := by rw [hT]; ring
 
+open Real in
+/-- The argument of the bits of `NLAlib.SmallEig.uSmallEigForward` in the algorithm: for $B \ge 1$,
+$\Gamma > 0$, $0 < \delta \le \Sigma$, $0 < \varphi \le 1$ and $k$ the degree of (eqn:setk) at
+$4B$, the argument $4k \cdot 4\Sigma/(\delta_b\varphi_{\mathrm{se}})$ at the backward accuracy
+$\delta_b$ of the forward accuracy is at least $1$ and at most $Y^{26 + 36k}$,
+$Y = 4(n + 1)B\Sigma^2/(\delta\min(\Gamma, \Sigma)\varphi)$. -/
+theorem hiBd_smallEigForwardArg {n k : ℕ} {B Γ S δ φ : ℝ} (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ)
+    (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hk : k = shqrDegree (4 * B)) :
+    1 ≤ 4 * k * (4 * S) / (forwardBackwardError k (4 * S) (shqrSmallEigAccuracy n B Γ S δ) *
+        shqrSmallEigFailure n B Γ S δ φ) ∧
+      HiBd (4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)) (26 + 36 * k)
+        (4 * k * (4 * S) / (forwardBackwardError k (4 * S) (shqrSmallEigAccuracy n B Γ S δ) *
+          shqrSmallEigFailure n B Γ S δ φ)) := by
+  have hS : 0 < S := hδ.trans_le hδS
+  obtain ⟨hY4, hkY, -, -, hrr, -, hφu⟩ := shqrArg_facts (n := n) hB hΓ hδ hδS hφ hφ1 hk
+  set Y := 4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)
+  have hk1 : (1 : ℝ) ≤ k := by
+    have := two_le_shqrDegree (B := 4 * B) (by linarith); rw [← hk] at this
+    exact_mod_cast (by omega : 1 ≤ k)
+  set β := shqrSmallEigAccuracy n B Γ S δ
+  set φs := shqrSmallEigFailure n B Γ S δ φ
+  have hβ0 : 0 < β := shqrSmallEigAccuracy_pos hB hΓ hδ hS
+  have hβS : β ≤ 4 * S := shqrSmallEigAccuracy_le hB hΓ hδ hδS
+  have hφs0 : 0 < φs := shqrSmallEigFailure_pos hφ
+  have hφs1 : φs ≤ 1 := (shqrSmallEigFailure_le hφ.le).trans hφ1
+  set r := β / (4 * (2 * k + 1) * (4 * S)) with hr
+  have hr0 : 0 < r := by positivity
+  have hr1 : r ≤ 1 := by
+    rw [hr, div_le_one (by positivity)]; nlinarith
+  have hβr : LoBd Y 24 (β / S) := by
+    have e : β / S = (shqrOmega n B Γ δ / S) ^ 2 / 32320 := by
+      simp only [β, shqrSmallEigAccuracy, shqrRadius]; field_simp; ring
+    rw [e]; exact (hrr.pow 2).div (HiBd.const hY4 (by norm_num : (0 : ℝ) < 32320)
+      (by norm_num : (32320 : ℝ) ≤ 4 ^ 8))
+  have hrY : LoBd Y 36 r := by
+    have e : r = β / S / (16 * (2 * k + 1)) := by rw [hr]; field_simp; ring
+    rw [e]
+    exact hβr.div (((HiBd.const hY4 (by norm_num : (0 : ℝ) < 48) (by norm_num :
+      (48 : ℝ) ≤ 4 ^ 3)).mul hkY).of_le (by positivity) (by nlinarith))
+  have e : 4 * k * (4 * S) / (forwardBackwardError k (4 * S) β * φs) = 4 * k / (r ^ k * φs) := by
+    simp only [forwardBackwardError, ← hr]; field_simp
+  rw [e]
+  have hrk : r ^ k ≤ 1 := pow_le_one₀ hr0.le hr1
+  refine ⟨?_, ?_⟩
+  · rw [le_div_iff₀ (by positivity)]
+    have : r ^ k * φs ≤ 1 := mul_le_one₀ hrk hφs0.le hφs1
+    linarith
+  · have h := ((HiBd.const hY4 (by norm_num : (0 : ℝ) < 4) (by norm_num : (4 : ℝ) ≤ 4 ^ 1)).mul
+      hkY).div ((hrY.pow k).mul hφu)
+    refine h.mono (by linarith) (by ring_nf; omega)
+
+open Real in
 /-- **The bits of precision of the algorithm with the small-eigenvalue program**
 ([BanksGarzaVargasSrivastava2022, Theorem 1.4] with [BanksGarzaVargasSrivastava2025,
 Theorem 1.1]): for tail records with $b_1, b_2 > 0$ there are constants $e_1, e_2, e_3$ such that
@@ -228,7 +333,57 @@ theorem logb_inv_uShQRSmallEig_le (c₁ c₂ : PolyLogTail) (hb₁ : 0 < c₁.b)
       Real.logb 2 (uShQRSmallEig n k B Γ S δ φ c₁ c₂)⁻¹ ≤
         e₁ * k * Real.logb 2 (4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)) +
           e₂ * k ^ 2 * Real.logb 2 (4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)) ^ 2 + e₃ := by
-  sorry
+  obtain ⟨E₁, E₂, hE⟩ := logb_inv_uSmallEig_le c₁ c₂ hb₁ hb₂
+  refine ⟨93, max E₁ 0 * 3844, max E₂ 0, fun {n k B Γ S δ φ} hB hΓ hδ hδS hφ hφ1 hk => ?_⟩
+  have hS : 0 < S := hδ.trans_le hδS
+  obtain ⟨hY4, hu⟩ := one_le_uShQR_mul (n := n) hB hΓ hδ hδS hφ hφ1 hk
+  obtain ⟨hY'1, hY'⟩ := hiBd_smallEigForwardArg (n := n) hB hΓ hδ hδS hφ hφ1 hk
+  set Y := 4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)
+  set L := logb 2 Y
+  have hL : 2 ≤ L := by
+    rw [le_logb_iff_rpow_le (by norm_num) (by linarith)]; norm_num; linarith
+  have hk2 : 2 ≤ k := hk ▸ two_le_shqrDegree (by linarith)
+  have hkR : (2 : ℝ) ≤ k := by exact_mod_cast hk2
+  have hβ0 := shqrSmallEigAccuracy_pos (n := n) hB hΓ hδ hS
+  have hβS := shqrSmallEigAccuracy_le (n := n) hB hΓ hδ hδS
+  have hφs0 := shqrSmallEigFailure_pos (n := n) (B := B) (Γ := Γ) (S := S) (δ := δ) hφ
+  have hφs1 := (shqrSmallEigFailure_le (n := n) (B := B) (Γ := Γ) (S := S) (δ := δ) hφ.le).trans
+    hφ1
+  obtain ⟨hδb, hδbS, -⟩ := forwardBackwardError_spec (kmax := k) hβ0 hβS
+  -- the shifted QR term
+  have hA : logb 2 (uShQR n k B Γ S δ φ)⁻¹ ≤ 93 * k * L := by
+    have h := (LoBd.logb_inv_le ⟨uShQR_pos (by omega) hB hΓ hδ hS hφ, hu⟩ :
+      logb 2 (uShQR n k B Γ S δ φ)⁻¹ ≤ ((53 * k + 40 : ℕ) : ℝ) * L)
+    push_cast at h; nlinarith
+  -- the small-eigenvalue term
+  have hB' : logb 2 (uSmallEigForward k (4 * S) (shqrSmallEigAccuracy n B Γ S δ)
+      (shqrSmallEigFailure n B Γ S δ φ) c₁ c₂)⁻¹ ≤ max E₁ 0 * 3844 * k ^ 2 * L ^ 2 + max E₂ 0 := by
+    have h := hE (nmax := k) (by omega) hδb hδbS hφs0 hφs1
+    have hL' := hY'.logb_le
+    have hL'0 : 0 ≤ logb 2 (4 * k * (4 * S) / (forwardBackwardError k (4 * S)
+        (shqrSmallEigAccuracy n B Γ S δ) * shqrSmallEigFailure n B Γ S δ φ)) :=
+      logb_nonneg (by norm_num) hY'1
+    push_cast at hL' h
+    set L' := logb 2 (4 * k * (4 * S) / (forwardBackwardError k (4 * S)
+        (shqrSmallEigAccuracy n B Γ S δ) * shqrSmallEigFailure n B Γ S δ φ))
+    have h1 : L' ≤ 62 * k * L := by nlinarith
+    have h2 : L' ^ 2 ≤ 3844 * k ^ 2 * L ^ 2 := by nlinarith
+    unfold uSmallEigForward
+    calc _ ≤ E₁ * L' ^ 2 + E₂ := h
+      _ ≤ max E₁ 0 * L' ^ 2 + max E₂ 0 := by
+          gcongr
+          · exact le_max_left _ _
+          · exact le_max_left _ _
+      _ ≤ max E₁ 0 * (3844 * k ^ 2 * L ^ 2) + max E₂ 0 := by gcongr
+      _ = _ := by ring
+  have hL0 : 0 ≤ 93 * (k : ℝ) * L := by positivity
+  have h3 : 0 ≤ max E₁ 0 * 3844 * (k : ℝ) ^ 2 * L ^ 2 := by
+    have := le_max_right E₁ 0; positivity
+  have h4 : 0 ≤ max E₂ 0 := le_max_right _ _
+  unfold uShQRSmallEig
+  rcases min_choice (uShQR n k B Γ S δ φ) (uSmallEigForward k (4 * S)
+    (shqrSmallEigAccuracy n B Γ S δ) (shqrSmallEigFailure n B Γ S δ φ) c₁ c₂) with h | h <;>
+    rw [h] <;> linarith
 
 set_option maxRecDepth 100000 in
 /-- **The operation count of the algorithm with the small-eigenvalue program**

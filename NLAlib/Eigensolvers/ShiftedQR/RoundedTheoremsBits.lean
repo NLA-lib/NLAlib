@@ -588,43 +588,32 @@ theorem shqrArg_bounds (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ) (hδS : δ �
       _ = φ * (4 * N * B * S ^ 2) := by ring⟩
   exact ⟨hY4, hNY, hBY, hδY, hmY, hφY⟩
 
-/-- The precision threshold is polynomial in the scale-invariant argument: for $B \ge 1$,
+/-- The scale-invariant argument bounds the quantities of the precision threshold: for $B \ge 1$,
 $\Gamma > 0$, $0 < \delta \le \Sigma$, $0 < \varphi \le 1$ and $k$ the degree of (eqn:setk) at
-$4B$, the argument $Y = 4(n + 1)B\Sigma^2/(\delta\min(\Gamma, \Sigma)\varphi)$ is at least $4$
-and $\boldsymbol{u}_{\mathrm{ShQR}} \ge Y^{-(53k + 40)}$. -/
-theorem one_le_uShQR_mul (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ)
+$4B$, with $Y = 4(n + 1)B\Sigma^2/(\delta\min(\Gamma, \Sigma)\varphi)$: $Y \ge 4$, $k \le Y^9$,
+$n + 1 \le Y$, $\mathrm{budget}/\Sigma \ge Y^{-5}$, $\omega/\Sigma \ge Y^{-8}$, $F \le Y^{12}$
+and the failure unit is at least $Y^{-16}$. -/
+theorem shqrArg_facts (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ)
     (hφ1 : φ ≤ 1) (hk : k = shqrDegree (4 * B)) :
     4 ≤ 4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ) ∧
-    1 ≤ uShQR n k B Γ S δ φ * (4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)) ^ (53 * k + 40) := by
+    HiBd (4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)) 9 (k : ℝ) ∧
+    HiBd (4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)) 1 ((n : ℝ) + 1) ∧
+    LoBd (4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)) 5 (shqrBudget n B Γ δ / S) ∧
+    LoBd (4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)) 8 (shqrOmega n B Γ δ / S) ∧
+    HiBd (4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)) 12 (shqrCap n B Γ S δ : ℝ) ∧
+    LoBd (4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)) 16 (shqrSmallEigFailure n B Γ S δ φ) := by
   have hS : 0 < S := hδ.trans_le hδS
-  have hB0 : 0 < B := by linarith
   have hB4 : 1 ≤ 4 * B := by linarith
-  have hk4 : (4 : ℝ) ≤ k := hk ▸ (shqrDegree_facts hB4).1
-  have hk1 : 1 ≤ k := by exact_mod_cast (show (1 : ℝ) ≤ k by linarith)
   have hkB : (k : ℝ) ≤ 512 * (4 * B) ^ 2 := hk ▸ shqrDegree_le hB4
-  have hε : 1 / 100 ≤ shqrEps k (4 * B) := hk ▸ shqrEps_ge hB4
-  have hC : shqrC k (4 * B) ≤ 7 := hk ▸ shqrC_le hB4
-  have hC0 := shqrC_pos k (by linarith : (0 : ℝ) < 4 * B)
-  have hθ1 := one_le_shqrTheta k hB4
-  have hα1 := one_le_shqrAlpha k hB4
-  have hrh0 := shqrRadiusHi_pos k (by linarith : (0 : ℝ) < 4 * B)
-  have hrl1 : 1 ≤ shqrRadiusLo k (4 * B) := by
-    unfold shqrRadiusLo
-    have h1 : 1 ≤ (1.998 : ℝ) ^ ((k : ℝ)⁻¹) := one_le_rpow (by norm_num) (by positivity)
-    have h2 : 1 ≤ (4 * B) ^ ((k : ℝ)⁻¹) := one_le_rpow hB4 (by positivity)
-    exact one_le_mul_of_one_le_of_one_le (one_le_mul_of_one_le_of_one_le
-      (one_le_mul_of_one_le_of_one_le h1 hθ1) hα1) h2
-  have hrh : shqrRadiusHi k (4 * B) ≤ 3 := by
-    unfold shqrC at hC; linarith
   have hωS : shqrOmega n B Γ δ ≤ S := shqrOmega_le_normBound hB hΓ hδ hδS
   have hω0 : 0 < shqrOmega n B Γ δ := shqrOmega_pos hB hΓ hδ
   obtain ⟨hY4, hNY, hBY, hδY, hmY, hφY⟩ := shqrArg_bounds (n := n) hB hΓ hδ hδS hφ hφ1 rfl
   set N : ℝ := (n : ℝ) + 1 with hN
   set Y := 4 * N * B * S ^ 2 / (δ * min Γ S * φ) with hY
-  refine ⟨hY4, ?_⟩
   have hY1 : 1 ≤ Y := by linarith
   set m := min Γ S with hm
   have hmΓ : m ≤ Γ := min_le_left _ _
+  have hk4 : (4 : ℝ) ≤ k := hk ▸ (shqrDegree_facts hB4).1
   have hkY : HiBd Y 9 (k : ℝ) :=
     ((HiBd.const hY4 (by norm_num) (by norm_num : (8192 : ℝ) ≤ 4 ^ 7)).mul
       (hBY.pow 2)).of_le (by linarith) (by nlinarith)
@@ -647,8 +636,40 @@ theorem one_le_uShQR_mul (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ) (hδS : δ
     rw [e]
     exact hbs.div ((HiBd.const hY4 (by norm_num) (by norm_num : (12 : ℝ) ≤ 4 ^ 2)).mul hNY)
   have hF := hiBd_shqrCap hY4 hS hω0 hωS hrr
-  have hφu : LoBd Y 16 (shqrSmallEigFailure n B Γ S δ φ) :=
-    hφY.div (((HiBd.const hY4 (by norm_num) (by norm_num : (12 : ℝ) ≤ 4 ^ 2)).mul hF).mul hNY)
+  exact ⟨hY4, hkY, hNY, hbs, hrr, hF,
+    hφY.div (((HiBd.const hY4 (by norm_num) (by norm_num : (12 : ℝ) ≤ 4 ^ 2)).mul hF).mul hNY)⟩
+
+/-- The precision threshold is polynomial in the scale-invariant argument: for $B \ge 1$,
+$\Gamma > 0$, $0 < \delta \le \Sigma$, $0 < \varphi \le 1$ and $k$ the degree of (eqn:setk) at
+$4B$, the argument $Y = 4(n + 1)B\Sigma^2/(\delta\min(\Gamma, \Sigma)\varphi)$ is at least $4$
+and $\boldsymbol{u}_{\mathrm{ShQR}} \ge Y^{-(53k + 40)}$. -/
+theorem one_le_uShQR_mul (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ)
+    (hφ1 : φ ≤ 1) (hk : k = shqrDegree (4 * B)) :
+    4 ≤ 4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ) ∧
+    1 ≤ uShQR n k B Γ S δ φ * (4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)) ^ (53 * k + 40) := by
+  have hS : 0 < S := hδ.trans_le hδS
+  have hB4 : 1 ≤ 4 * B := by linarith
+  have hk4 : (4 : ℝ) ≤ k := hk ▸ (shqrDegree_facts hB4).1
+  have hk1 : 1 ≤ k := by exact_mod_cast (show (1 : ℝ) ≤ k by linarith)
+  have hε : 1 / 100 ≤ shqrEps k (4 * B) := hk ▸ shqrEps_ge hB4
+  have hC : shqrC k (4 * B) ≤ 7 := hk ▸ shqrC_le hB4
+  have hC0 := shqrC_pos k (by linarith : (0 : ℝ) < 4 * B)
+  have hθ1 := one_le_shqrTheta k hB4
+  have hα1 := one_le_shqrAlpha k hB4
+  have hrh0 := shqrRadiusHi_pos k (by linarith : (0 : ℝ) < 4 * B)
+  have hrl1 : 1 ≤ shqrRadiusLo k (4 * B) := by
+    unfold shqrRadiusLo
+    have h1 : 1 ≤ (1.998 : ℝ) ^ ((k : ℝ)⁻¹) := one_le_rpow (by norm_num) (by positivity)
+    have h2 : 1 ≤ (4 * B) ^ ((k : ℝ)⁻¹) := one_le_rpow hB4 (by positivity)
+    exact one_le_mul_of_one_le_of_one_le (one_le_mul_of_one_le_of_one_le
+      (one_le_mul_of_one_le_of_one_le h1 hθ1) hα1) h2
+  have hrh : shqrRadiusHi k (4 * B) ≤ 3 := by
+    unfold shqrC at hC; linarith
+  obtain ⟨-, -, hBY, -, -, -⟩ := shqrArg_bounds (n := n) hB hΓ hδ hδS hφ hφ1 rfl
+  obtain ⟨hY4, hkY, hNY, hbs, hrr, hF, hφu⟩ := shqrArg_facts (n := n) hB hΓ hδ hδS hφ hφ1 hk
+  set N : ℝ := (n : ℝ) + 1 with hN
+  set Y := 4 * N * B * S ^ 2 / (δ * min Γ S * φ) with hY
+  refine ⟨hY4, ?_⟩
   have hη := loBd_shqrEta_div hY4 hS (by omega) hrr hφu hkY
   have hd := loBd_shqrDist_div hY4 hS hη hε hrl1 hrr hφu hNY
   have hu : LoBd Y (53 * k + 40) (uShQR n k B Γ S δ φ) :=

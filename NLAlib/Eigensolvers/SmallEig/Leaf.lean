@@ -123,6 +123,7 @@ theorem copyLeaf_randomLeafRoutineContract {M : Machine ℝ} {I : Interp O Q ℝ
 theorem copyLeaf_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I) (kmax : ℕ)
     (ps : List ℝ) (T : ℕ) : TerminatingLeafRoutine kmax ps T (copyLeaf (O := O) (Q := Q)) I :=
   fun _ _ hH _ hl hroom hwo _ =>
-    (copyLeaf_writes hS hH hl hroom hwo).mono le_rfl fun _ _ _ => trivial
+    (copyLeaf_writes hS hH hl hroom hwo).mono le_rfl fun _ _ h =>
+      ⟨_, by simpa only [HoldsMatrix, Nat.one_mul] using h⟩
 
 end NLAlib.SmallEig

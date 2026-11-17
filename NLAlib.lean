@@ -1122,6 +1122,7 @@ public import NLAlib.Ops.Blas.Dot
 public import NLAlib.Ops.Blas.DotExecution
 public import NLAlib.Ops.Blas.DotFunction
 public import NLAlib.Ops.Blas.DotMixed
+public import NLAlib.Ops.Blas.Fill
 public import NLAlib.Ops.Blas.Hermitian
 public import NLAlib.Ops.Blas.HermitianCorrect
 public import NLAlib.Ops.Blas.HermitianEntry

@@ -63,14 +63,14 @@ def TerminatingDecoupler (nmax k F : ℕ) (ps : List ℝ) (D : Impl O Q) (I : In
         ∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix w H' μ'.store) μ
 
 /-- **A terminating leaf routine**: from any matrix of order $d$ stored at `w` (no structure
-assumed) and on every tape, the run is total and writes only its $2d$ output words, the output
-disjoint from the input. The interface is `[d] (B) → (Ev)`. -/
+assumed) and on every tape, the run is total, writes only its $2d$ output words, the output
+disjoint from the input, and leaves them stored. The interface is `[d] (B) → (Ev)`. -/
 def TerminatingLeaf (L : Impl O Q) (I : Interp O Q ℝ) : Prop :=
   ∀ {d : ℕ} {w o : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ} (B : Matrix (Fin d) (Fin d) ℂ),
     HoldsMatrix w B μ.store → μ.Live [w, o] → o.2 + 2 * d ≤ μ.store.len o.1 →
     Fp.Disj (Store.inBlock w.1 w.2 (2 * (d * d))) (Store.inBlock o.1 o.2 (2 * d)) →
     Writes .total I tape L.body (Env.frame [d] [w, o]) (Store.inBlock o.1 o.2 (2 * d))
-      (fun _ => True) μ
+      (fun μ' => ∃ ys, μ'.store.readBlock o.1 o.2 (2 * d) = some ys) μ
 
 /-- **A terminating decoupling routine with a cap dimension**:
 `NLAlib.ShiftedQR.TerminatingDecoupler` for a decoupler with the interface
@@ -95,7 +95,7 @@ def TerminatingDecouplerRoutine (nmax k F T : ℕ) (ps : List ℝ) (D : Impl O Q
 
 /-- **A terminating leaf routine with parameter words and a cap**: from any matrix of order
 $d \le k_{\max}$ stored at `w` (no structure assumed), the words `ps` stored, and on every tape,
-the run is total and writes only its $2d$ output words. The interface is
+the run is total, writes only its $2d$ output words and leaves them stored. The interface is
 `[d, np, T] (B, P) → (Ev)`. -/
 def TerminatingLeafRoutine (kmax : ℕ) (ps : List ℝ) (T : ℕ) (L : Impl O Q)
     (I : Interp O Q ℝ) : Prop :=
@@ -105,7 +105,8 @@ def TerminatingLeafRoutine (kmax : ℕ) (ps : List ℝ) (T : ℕ) (L : Impl O Q)
     Fp.Disj (Store.inBlock w.1 w.2 (2 * (d * d))) (Store.inBlock o.1 o.2 (2 * d)) →
     Fp.Disj (Store.inBlock p.1 p.2 ps.length) (Store.inBlock o.1 o.2 (2 * d)) →
     Writes .total I tape L.body (Env.frame [d, ps.length, T] [w, p, o])
-      (Store.inBlock o.1 o.2 (2 * d)) (fun _ => True) μ
+      (Store.inBlock o.1 o.2 (2 * d))
+      (fun μ' => ∃ ys, μ'.store.readBlock o.1 o.2 (2 * d) = some ys) μ
 
 /-- A terminating decoupler, lifted by `NLAlib.ShiftedQR.liftDecoupler`, is a terminating
 decoupling routine for every cap. -/
@@ -140,7 +141,6 @@ theorem TerminatingSmallEigAt.terminatingLeafRoutine {kmax T : ℕ} {qs ps₀ : 
   refine (h (q := (p.1, p.2 + ((ps₀ ++ qs).length - 12))) tape μ B hd hB hq
     (by simpa [Mem.Live] using hl) hroom hwo
     (hpo.mono (Store.inBlock_le_inBlock (by omega) (by omega)) le_rfl)).in_frame ?_ ?_ ?_
-    |>.mono le_rfl fun _ _ _ => trivial
   · simp
   · simp [Operand.evalList, Operand.eval]
   · simpa [Mem.Live] using hl
@@ -171,7 +171,10 @@ theorem IsRandomSmallEig.terminatingLeaf {law : ℕ → MeasureTheory.Measure �
   exact (writes_call (R := randomSmallEigRel s W Bad β) hI (d := [d]) (a := [w]) (b := [o])
     (k := W d) (ls := [2 * d]) rfl rfl rfl rfl rfl rfl trivial (by simp [Fp.Apart])
     (fun _ => ⟨by simpa [Mem.Live] using hl, ⟨[matrixWords B], hread, trivial⟩,
-      by simpa [Mem.Room] using hroom⟩)).mono (by simp [Fp.blocks]) fun _ _ _ => trivial
+      by simpa [Mem.Room] using hroom⟩)).mono (by simp [Fp.blocks]) fun _ _ h => by
+    obtain ⟨-, -, ys, -, hys, -⟩ := h
+    obtain ⟨y, hy, -⟩ := Option.bind_eq_some_iff.mp hys
+    exact ⟨y, hy⟩
 
 end Leaf
 

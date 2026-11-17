@@ -713,8 +713,9 @@ at $N$ whose last subdiagonal entry is at most $1.5\,\omega$. -/
 theorem smallEigDecoupler_decouple_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
     {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) {nmax : ℕ} (hn1 : 1 ≤ nmax)
-    (hNat : IsExactNatLit id M (nmax + 1)) {S δ φ : ℝ} (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ)
-    (hφ1 : φ ≤ 1) (hu : u ≤ uSmallEig nmax S δ φ c₁ c₂) {k : ℕ} (hk : k + 1 ≤ nmax) {N ε₁ : ℝ}
+    {S δ φ : ℝ} (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ)
+    (hφ1 : φ ≤ 1) (hu : u ≤ uSmallEig nmax S δ φ c₁ c₂) {k : ℕ} (hk : k + 1 ≤ nmax)
+    (hNat : IsExactNatLit id M (k + 1 + 1)) {N ε₁ : ℝ}
     {H H₁ V : Matrix (Fin (k + 1 + 1)) (Fin (k + 1 + 1)) ℂ} {d : Fin (k + 1 + 1) → ℂ}
     (hHN : specNorm H ≤ N) (hN : N ≤ 2 * S) (hH₁ : IsPerturbedUnitarySimilar H H₁ ε₁)
     (hε₁ : ε₁ ≤ 200 * ((nmax : ℝ) + 1) ^ 2 * u * N)
@@ -875,9 +876,10 @@ theorem smallEigDecoupler_tail_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     {law : ℕ → Measure ℝ} {sU : ℕ} (hDisk : IsPolarDiskSampler sU I)
     (hU : law sU = volume.restrict (Set.Icc 0 1)) {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b)
-    (hb₂ : 0 < c₂.b) {nmax : ℕ} (hn : 1 ≤ nmax) (hNat : IsExactNatLit id M (nmax + 1))
+    (hb₂ : 0 < c₂.b) {nmax : ℕ} (hn : 1 ≤ nmax)
     {S δ φ : ℝ} (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
-    (hu : u ≤ uSmallEig nmax S δ φ c₁ c₂) {k : ℕ} (hnn : k + 1 ≤ nmax) {N : ℝ}
+    (hu : u ≤ uSmallEig nmax S δ φ c₁ c₂) {k : ℕ} (hnn : k + 1 ≤ nmax)
+    (hNat : IsExactNatLit id M (k + 1 + 1)) {N : ℝ}
     {H H₁ : Matrix (Fin (k + 1 + 1)) (Fin (k + 1 + 1)) ℂ} (hHN : specNorm H ≤ N) (hN : N ≤ 2 * S)
     (hx : SmallEigRHessClass nmax S δ φ c₁ c₂ H (200 * (((k + 1 : ℕ) : ℝ) + 1) ^ 2 * u * N) H₁)
     {ρ : Env} {ds₁ ds₂ : List IExp} {args₁ tins args₂ : List Operand} {w q f : ℕ × ℕ} {L : ℕ}
@@ -929,8 +931,8 @@ theorem smallEigDecoupler_tail_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u
     (fun _ h => h) le_rfl (fun _ h => h) (by simp)
   refine writes_ite (a := [f]) rfl ht (hC.test_isZero hf0) ?_
   simp only [id, decide_true, if_true]
-  exact (smallEigDecoupler_decouple_writes (O := O) (Q := Q) hS hM hL hC hb₁ hb₂ hn hNat hδ
-    hδS hφ hφ1 hu hnn hHN hN hPUS₁ hε₁ hHess₁ hV' hHV' hκ' hgap' hw' hz1 hz2 hdin).in_frame
+  exact (smallEigDecoupler_decouple_writes (O := O) (Q := Q) hS hM hL hC hb₁ hb₂ hn hδ
+    hδS hφ hφ1 hu hnn hNat hHN hN hPUS₁ hε₁ hHess₁ hV' hHV' hκ' hgap' hw' hz1 hz2 hdin).in_frame
     hd₂ ha₂ (fun x hx => hdin.1 x (by
       simp only [List.mem_cons, List.not_mem_nil, or_false] at hx ⊢; tauto))
 
@@ -966,24 +968,14 @@ theorem OneEigInput.of_alloc {n : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) �
       and_true]
     exact ⟨⟨hqw, (hD hlw).symm, hwf⟩, ⟨(hD hlq).symm, hqf⟩, hD hlf⟩
 
-/-- **The decoupler meets the randomized decoupling contract** ([BanksGarzaVargasSrivastava2025,
-Theorem 6.1], one node; [BanksGarzaVargasSrivastava2025, Lemma 6.2] carried by the composition):
-on a scalar machine with the standard model at $\boldsymbol{u} \le$
-`NLAlib.SmallEig.uSmallEig`, $M.\mathrm{lit}(0) = 0$, index literals, exact natural literals up to
-$n_{\max} + 1$, exact comparisons and conversion, a measurable interpretation reading the tape
-only in its windows whose draws store the tape entry, a stream `sG` with the standard real
-Gaussian law and an exact polar sampler on a stream `sU` uniform on $[0, 1]$: for tail records
-with $b_1, b_2 > 0$, $1 \le n_{\max}$, $0 < \delta \le \Sigma$ and $0 < \varphi \le 1$,
-`NLAlib.SmallEig.smallEigDecoupler` with the words `NLAlib.SmallEig.smallEigParams` and the cap
-`NLAlib.SmallEig.smallEigCap` meets `NLAlib.ShiftedQR.RandomDecouplingRoutineContract` at the
-bottom width $1$, any iteration cap, orders up to $n_{\max}$ and norms up to $2\Sigma$, on the
-class $(2B_c, g_c/2)$ of the blocks ($B_c, g_c$ = `NLAlib.SmallEig.smallEigCondition`,
-`NLAlib.SmallEig.smallEigSeparation`), with failure probability $\varphi_D$ =
-`NLAlib.SmallEig.smallEigDecouplerFailure`, the level $1.5\,\omega$ and the backward error
-`NLAlib.SmallEig.smallEigDecoupleError`. -/
-theorem smallEigDecoupler_randomDecouplingRoutineContract {M : Machine ℝ} {I : Interp O Q ℝ}
-    {u : ℝ} (hS : IsScalar M I) (hM : StdModel u id M) (hzero : M.lit 0 = 0)
-    (hL : IsIndexLit M I) {nmax : ℕ} (hNat : IsExactNatLit id M (nmax + 1)) (hC : IsCmp id I)
+/-- The decoupler meets the randomized decoupling contract at a smaller order bound
+(`NLAlib.SmallEig.smallEigDecoupler_randomDecouplingRoutineContract` with the words still at
+$n_{\max}$): the contract holds at orders up to $k_b \le n_{\max}$ when the natural literals are
+exact up to $k_b + 1$ only. -/
+theorem smallEigDecoupler_randomDecouplingRoutineContract_of_le {M : Machine ℝ}
+    {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I) (hM : StdModel u id M) (hzero : M.lit 0 = 0)
+    (hL : IsIndexLit M I) {nmax kb : ℕ} (hkb : kb ≤ nmax) (hNat : IsExactNatLit id M (kb + 1))
+    (hC : IsCmp id I)
     (hQ : IsToNat id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
     (hloc : ∀ o, I.TapeLocal o (win o)) (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
     (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
@@ -992,10 +984,11 @@ theorem smallEigDecoupler_randomDecouplingRoutineContract {M : Machine ℝ} {I :
     (hu : u ≤ uSmallEig nmax S δ φ c₁ c₂) (F : ℕ) :
     RandomDecouplingRoutineContract law (2 * smallEigCondition nmax S δ φ c₂)
       (smallEigSeparation nmax S δ φ c₁ / 2) (smallEigDecouplerFailure nmax φ) 1 F
-      (smallEigCap nmax S δ φ c₁ c₂) nmax (2 * S) (smallEigParams nmax S δ φ c₁ c₂)
+      (smallEigCap nmax S δ φ c₁ c₂) kb (2 * S) (smallEigParams nmax S δ φ c₁ c₂)
       (1.5 * smallEigOmega nmax S δ φ c₁ c₂) (smallEigDecoupleError nmax S δ φ c₂ u)
       (smallEigDecoupler (O := O) (Q := Q) sG) I := by
-  intro n N w q f H V d hk hnn hN hH hHN hV hHV hκ hgap
+  intro n N w q f H V d hk hnb hN hH hHN hV hHV hκ hgap
+  have hnn : n ≤ nmax := hnb.trans hkb
   obtain ⟨k, rfl⟩ : ∃ k, n = k + 1 := ⟨n - 1, by omega⟩
   have hφD : 0 < smallEigDecouplerFailure nmax φ := by unfold smallEigDecouplerFailure; positivity
   have hRH := smallEigDecoupler_rhess_pwrites (O := O) (Q := Q) (w := w) hS hM hzero hC hSmp hI
@@ -1039,7 +1032,7 @@ theorem smallEigDecoupler_randomDecouplingRoutineContract {M : Machine ℝ} {I :
   refine PStep.mono (PWrites.pstep_of_forall hI hloc (F := F₂)
     (P := fun (x : ι) μ => OneEigInput x.1 (smallEigParams nmax S δ φ c₁ c₂) w q (L, 0) f μ)
     (fun x => smallEigDecoupler_tail_pwrites (O := O) (Q := Q) hS hM hL hC hI hloc hDisk hU hb₁
-      hb₂ hn hNat hδ hδS hφ hφ1 hu hnn hHN hN x.2 rfl rfl rfl rfl rfl)
+      hb₂ hn hδ hδS hφ hφ1 hu hnn (hNat.mono (by omega)) hHN hN x.2 rfl rfl rfl rfl rfl)
     (measurableSet_decoupleOutcome_of H (smallEigDecoupleError nmax S δ φ c₂ u N)
       (1.5 * smallEigOmega nmax S δ φ c₁ c₂) w f F₂) ?_) (fun μ h => h) ?_ le_rfl
   · rintro x μ μ' - hfr ⟨hf0, H', hPUS, hHess, hsm, hW'⟩
@@ -1047,6 +1040,38 @@ theorem smallEigDecoupler_randomDecouplingRoutineContract {M : Machine ℝ} {I :
     exact ⟨hfr, hf0, fun i hi => by rw [Store.get_of_readBlock hW' hi 0]; rfl, hPUS, hHess, hsm⟩
   · rintro μ μ' - ⟨hfr, hf0, hinit, hPUS, hHess, hsm⟩
     exact ⟨hfr, hf0, _, hPUS, hHess, hsm, holdsMatrix_storedMatrix hinit⟩
+
+/-- **The decoupler meets the randomized decoupling contract** ([BanksGarzaVargasSrivastava2025,
+Theorem 6.1], one node; [BanksGarzaVargasSrivastava2025, Lemma 6.2] carried by the composition):
+on a scalar machine with the standard model at $\boldsymbol{u} \le$
+`NLAlib.SmallEig.uSmallEig`, $M.\mathrm{lit}(0) = 0$, index literals, exact natural literals up to
+$n_{\max} + 1$, exact comparisons and conversion, a measurable interpretation reading the tape
+only in its windows whose draws store the tape entry, a stream `sG` with the standard real
+Gaussian law and an exact polar sampler on a stream `sU` uniform on $[0, 1]$: for tail records
+with $b_1, b_2 > 0$, $1 \le n_{\max}$, $0 < \delta \le \Sigma$ and $0 < \varphi \le 1$,
+`NLAlib.SmallEig.smallEigDecoupler` with the words `NLAlib.SmallEig.smallEigParams` and the cap
+`NLAlib.SmallEig.smallEigCap` meets `NLAlib.ShiftedQR.RandomDecouplingRoutineContract` at the
+bottom width $1$, any iteration cap, orders up to $n_{\max}$ and norms up to $2\Sigma$, on the
+class $(2B_c, g_c/2)$ of the blocks ($B_c, g_c$ = `NLAlib.SmallEig.smallEigCondition`,
+`NLAlib.SmallEig.smallEigSeparation`), with failure probability $\varphi_D$ =
+`NLAlib.SmallEig.smallEigDecouplerFailure`, the level $1.5\,\omega$ and the backward error
+`NLAlib.SmallEig.smallEigDecoupleError`. -/
+theorem smallEigDecoupler_randomDecouplingRoutineContract {M : Machine ℝ} {I : Interp O Q ℝ}
+    {u : ℝ} (hS : IsScalar M I) (hM : StdModel u id M) (hzero : M.lit 0 = 0)
+    (hL : IsIndexLit M I) {nmax : ℕ} (hNat : IsExactNatLit id M (nmax + 1)) (hC : IsCmp id I)
+    (hQ : IsToNat id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
+    (hloc : ∀ o, I.TapeLocal o (win o)) (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
+    (hG : law sG = gaussianReal 0 1) {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b)
+    (hn : 1 ≤ nmax) {S δ φ : ℝ} (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
+    (hu : u ≤ uSmallEig nmax S δ φ c₁ c₂) (F : ℕ) :
+    RandomDecouplingRoutineContract law (2 * smallEigCondition nmax S δ φ c₂)
+      (smallEigSeparation nmax S δ φ c₁ / 2) (smallEigDecouplerFailure nmax φ) 1 F
+      (smallEigCap nmax S δ φ c₁ c₂) nmax (2 * S) (smallEigParams nmax S δ φ c₁ c₂)
+      (1.5 * smallEigOmega nmax S δ φ c₁ c₂) (smallEigDecoupleError nmax S δ φ c₂ u)
+      (smallEigDecoupler (O := O) (Q := Q) sG) I :=
+  smallEigDecoupler_randomDecouplingRoutineContract_of_le hS hM hzero hL le_rfl hNat hC hQ hI hloc
+    hSmp hDisk hU hG hb₁ hb₂ hn hδ hδS hφ hφ1 hu F
 
 /-- The decoupler terminates: on a scalar machine with index literals, exact natural literals
 up to $n_{\max} + 1$, exact comparisons and conversion, draws that store the tape entry and an

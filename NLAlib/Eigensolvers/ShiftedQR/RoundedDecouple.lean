@@ -385,6 +385,22 @@ theorem roundedDecoupleExit_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
     · rw [hC.test_isZero h0] at htest
       simp at htest
 
+omit [Has ScalarOp O] [Has IdxTst Q] in
+/-- The exit of the decoupling loop on any scan flag: on every tape, from any word at `r[3]`
+and room for the flag `f`, `NLAlib.ShiftedQR.roundedDecoupleExit` writes only the flag and
+stores a word there. -/
+theorem roundedDecoupleExit_writes_word {M : Machine ℝ} {I : Interp O Q ℝ}
+    (hL : IsIndexLit M I) (hC : IsCmp id I) {τ : Tape ℝ} {μ : Mem ℝ} {r f : ℕ × ℕ} {x : ℝ}
+    (hx : μ.store.get r.1 (r.2 + 3) = some x) (hf : f.2 < μ.store.len f.1) :
+    Writes .total I τ (roundedDecoupleExit (O := O) (Q := Q)).body (Env.frame [] [r, f])
+      (Store.inBlock f.1 f.2 1) (fun μ' => ∃ x, μ'.store.get f.1 f.2 = some x) μ := by
+  unfold roundedDecoupleExit
+  refine writes_ite (a := [(r.1, r.2 + 3)]) rfl rfl (hC.test_isPos hx) ?_
+  split_ifs <;>
+  · refine (writes_indexLit hL rfl rfl hf).mono le_rfl ?_
+    rintro μ' - ⟨-, hF⟩
+    exact ⟨_, hF⟩
+
 end Theorems
 
 section Iteration

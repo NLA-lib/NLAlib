@@ -11,6 +11,7 @@ public import NLAlib.RandomMatrix.Gaussian.Invariance
 public import NLAlib.Matrix.Spectral.LeastSingularValue
 public import NLAlib.Matrix.Basic.Projector
 public import Mathlib.Probability.Distributions.Gaussian.Multivariate
+public import Mathlib.MeasureTheory.Measure.Lebesgue.VolumeOfBalls
 
 /-!
 # Complex Gaussian vectors and matrices
@@ -40,6 +41,8 @@ value [Edelman1988], an elementary small-ball bound.
 * `NLAlib.complexGaussianMatrix_eq_map_gaussianMatrix`: the realification.
 * `NLAlib.hasLaw_conjTranspose_mul_of_hasLaw_complexGaussianMatrix`,
   `NLAlib.hasLaw_submatrix_of_hasLaw_complexGaussianMatrix`.
+* `NLAlib.measureReal_norm_sub_le_le_of_hasLaw_complexGaussian`: small balls with arbitrary
+  centers.
 * `NLAlib.measureReal_norm_sq_ge_le_of_hasLaw_complexGaussian`: the exponential tail of
   $\lvert z \rvert^2$.
 * `NLAlib.measureReal_specNorm_ge_le_of_hasLaw_complexGaussianMatrix`,
@@ -47,6 +50,8 @@ value [Edelman1988], an elementary small-ball bound.
   tail $e^{-t^2}$ from Gaussian concentration.
 * `NLAlib.measureReal_specNorm_ge_mul_le_of_hasLaw_complexGaussianMatrix`: the norm tail of
   $(\gamma/\sqrt n)\mathbf{G}$ at a free failure probability.
+* `NLAlib.measureReal_specNorm_add_smul_ge_mul_le_of_hasLaw_complexGaussianMatrix`: the norm
+  cutoff of a Ginibre perturbation at a logarithmic scale.
 
 The smallest singular value is in `NLAlib/RandomMatrix/Gaussian/Complex/LeastSingularValue.lean`.
 -/
@@ -371,6 +376,62 @@ private lemma gaussianPDFReal_two_inv (x : ℝ) :
   · ring_nf
   · ring
 
+private theorem complexGaussian_le_smul_volume :
+    complexGaussian ≤ ENNReal.ofReal Real.pi⁻¹ • (volume : Measure ℂ) := by
+  have hν : gaussianReal 0 2⁻¹ = volume.withDensity (gaussianPDF 0 2⁻¹) :=
+    gaussianReal_of_var_ne_zero _ (by norm_num)
+  have hpdf : ∀ p : ℝ × ℝ,
+      gaussianPDF 0 2⁻¹ p.1 * gaussianPDF 0 2⁻¹ p.2 ≤ ENNReal.ofReal Real.pi⁻¹ := by
+    intro p
+    simp only [gaussianPDF_def, gaussianPDFReal_two_inv]
+    rw [← ENNReal.ofReal_mul (by positivity)]
+    apply ENNReal.ofReal_le_ofReal
+    calc _ ≤ (√Real.pi)⁻¹ * 1 * ((√Real.pi)⁻¹ * 1) := by
+           gcongr <;> exact Real.exp_le_one_iff.mpr (neg_nonpos.mpr (sq_nonneg _))
+      _ = _ := by simp only [mul_one]; rw [← mul_inv, Real.mul_self_sqrt Real.pi_pos.le]
+  have hle : (gaussianReal 0 2⁻¹).prod (gaussianReal 0 2⁻¹) ≤
+      ENNReal.ofReal Real.pi⁻¹ • (volume : Measure (ℝ × ℝ)) := by
+    rw [hν, prod_withDensity (by fun_prop) (by fun_prop), ← Measure.volume_eq_prod,
+      ← withDensity_const]
+    exact withDensity_mono (Filter.Eventually.of_forall hpdf)
+  have h := Measure.map_mono hle Complex.measurableEquivRealProd.symm.measurable
+  simpa only [complexGaussian, Measure.map_smul,
+    (Complex.volume_preserving_equiv_real_prod.symm
+      Complex.measurableEquivRealProd).map_eq] using
+    h
+
+/-- A standard complex Gaussian assigns probability at most $s^2$ to every disk of radius
+$s \ge 0$, independently of its center. The real and imaginary parts are independent Gaussians
+of variance $1/2$. No printed source. -/
+theorem measureReal_norm_sub_le_le_of_hasLaw_complexGaussian
+    {z : Ω → ℂ} (hz : HasLaw z complexGaussian μ) (a : ℂ) {s : ℝ} (hs : 0 ≤ s) :
+    μ.real {ω | ‖z ω - a‖ ≤ s} ≤ s ^ 2 := by
+  rw [hz.measureReal_eq (p := fun z => ‖z - a‖ ≤ s)
+    (measurableSet_le (by fun_prop) measurable_const)]
+  have heq : {z : ℂ | ‖z - a‖ ≤ s} = Metric.closedBall a s := by
+    ext z
+    simp only [Metric.mem_closedBall, dist_eq_norm, Set.mem_ofPred_eq]
+  rw [heq, measureReal_def]
+  apply ENNReal.toReal_le_of_le_ofReal (sq_nonneg s)
+  calc complexGaussian (Metric.closedBall a s)
+      ≤ (ENNReal.ofReal Real.pi⁻¹ • (volume : Measure ℂ)) (Metric.closedBall a s) :=
+        complexGaussian_le_smul_volume _
+    _ = ENNReal.ofReal (s ^ 2) := by
+      rw [Measure.smul_apply, smul_eq_mul, Complex.volume_closedBall,
+        ENNReal.ofReal_inv_of_pos Real.pi_pos, ENNReal.ofReal_pow hs]
+      have hp : (ENNReal.ofReal Real.pi) ≠ 0 := by positivity
+      have hp' : (ENNReal.ofReal Real.pi) ≠ ⊤ := ENNReal.ofReal_ne_top
+      rw [mul_left_comm, ← ENNReal.ofReal_coe_nnreal, NNReal.coe_real_pi,
+        ENNReal.inv_mul_cancel hp hp', mul_one]
+
+/-- The standard complex Gaussian law has no atoms. -/
+instance nullSingletonClass_complexGaussian : NullSingletonClass complexGaussian := by
+  refine ⟨fun z => ?_⟩
+  have h := measureReal_norm_sub_le_le_of_hasLaw_complexGaussian HasLaw.id z (s := 0) le_rfl
+  have h0 : complexGaussian.real {z} = 0 :=
+    le_antisymm (by simpa [sub_eq_zero] using h) measureReal_nonneg
+  rw [← ofReal_measureReal (measure_ne_top _ _), h0, ENNReal.ofReal_zero]
+
 /-- The radial one-dimensional integral of the exponential tail: $\int_0^\infty r\,
 \mathbf 1_{\{s \le r^2\}} e^{-r^2}\,dr = e^{-s}/2$ for $s \ge 0$. -/
 private lemma integral_Ioi_radial_tail {s : ℝ} (hs : 0 ≤ s) :
@@ -617,6 +678,52 @@ theorem measureReal_specNorm_ge_mul_le_of_hasLaw_complexGaussianMatrix
     field_simp; ring
   rw [e] at hω
   exact le_of_mul_le_mul_left hω hγ
+/-- The norm cutoff of a Ginibre perturbation at a logarithmic scale: for a standard complex
+Gaussian $n \times n$ matrix $\mathbf{G}$, $0 < 2\gamma \le \|\mathbf{M}\|_2$ and
+$0 < \tau \le 1$,
+$$\mathbb{P}\bigl[3\gamma\bigl(\|\mathbf{M}\|_2/\gamma + \log(1/\tau)\bigr) \le
+  \|\mathbf{M} + \gamma n^{-1/2}\mathbf{G}\|_2\bigr] \le \tau^2\,.$$
+The norm tail of `NLAlib.measureReal_specNorm_ge_mul_le_of_hasLaw_complexGaussianMatrix` at
+$\varphi = \tau^2$, with $2\sqrt2 + \sqrt{2L} \le 4 + L$; it is the cutoff of the
+pseudospectral-area arguments for the gap and condition tails. No printed source. -/
+theorem measureReal_specNorm_add_smul_ge_mul_le_of_hasLaw_complexGaussianMatrix
+    {G : Ω → Matrix n n ℂ} (hG : HasLaw G (complexGaussianMatrix n n) μ) (M : Matrix n n ℂ)
+    {γ τ : ℝ} (hγ : 0 < γ) (hγM : 2 * γ ≤ specNorm M) (hτ : 0 < τ) (hτ1 : τ ≤ 1) :
+    μ.real {ω | 3 * γ * (specNorm M / γ + Real.log τ⁻¹) ≤
+      specNorm (M + (γ / √(Fintype.card n : ℝ)) • G ω)} ≤ τ ^ 2 := by
+  have : IsProbabilityMeasure μ := hG.isProbabilityMeasure_iff.2 inferInstance
+  have hn : 0 < Fintype.card n := by
+    by_contra h
+    have : IsEmpty n := Fintype.card_eq_zero_iff.mp (by omega)
+    have hM : M = 0 := Subsingleton.elim _ _
+    simp only [hM, specNorm_zero] at hγM
+    linarith
+  have hn1 : (1 : ℝ) ≤ Fintype.card n := by exact_mod_cast hn
+  have hL : 0 ≤ Real.log τ⁻¹ := Real.log_nonneg ((one_le_inv₀ hτ).2 hτ1)
+  have htail := measureReal_specNorm_ge_mul_le_of_hasLaw_complexGaussianMatrix hG hγ
+    (pow_pos hτ 2) (pow_le_one₀ hτ.le hτ1)
+  refine (measureReal_mono fun ω hω => ?_).trans htail
+  simp only [Set.mem_ofPred_eq] at hω ⊢
+  have hlog : Real.log (τ ^ 2)⁻¹ = 2 * Real.log τ⁻¹ := by
+    rw [← inv_pow, Real.log_pow]
+    push_cast
+    ring
+  have hs : √(Real.log (τ ^ 2)⁻¹ / Fintype.card n) ≤ Real.log τ⁻¹ + 1 := by
+    rw [hlog]
+    calc √(2 * Real.log τ⁻¹ / Fintype.card n) ≤ √(2 * Real.log τ⁻¹) :=
+          Real.sqrt_le_sqrt (div_le_self (by positivity) hn1)
+      _ ≤ _ := by
+          rw [Real.sqrt_le_iff]
+          constructor <;> nlinarith
+  have htwo : 2 * √2 ≤ 3 := by
+    nlinarith [Real.sq_sqrt (show (0 : ℝ) ≤ 2 by norm_num), Real.sqrt_nonneg 2]
+  have htri := specNorm_add_le M ((γ / √(Fintype.card n : ℝ)) • G ω)
+  have hK : 3 * γ * (specNorm M / γ + Real.log τ⁻¹) =
+      3 * specNorm M + 3 * γ * Real.log τ⁻¹ := by
+    field_simp
+  rw [hK] at hω
+  nlinarith [mul_le_mul_of_nonneg_left hs hγ.le, mul_le_mul_of_nonneg_left htwo hγ.le,
+    mul_nonneg hγ.le hL]
 
 end Laws
 

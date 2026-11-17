@@ -352,6 +352,29 @@ private theorem rotateToStepWord_eq (hM : StdModel u id M) {N j : ℕ} (hj : j +
   simp only [rotateToStepWord, dif_pos hj, e1, e2]
   rfl
 
+/-- The matrix half of a rotation step of `RHess`: a step within $50\boldsymbol{u}\|\mathbf{B}\|_2$
+of $\mathbf{G}\mathbf{B}\mathbf{G}^{\mathsf{H}}$ adds one factor $1 + 50\boldsymbol{u}$. -/
+private theorem rotInv_matrix_step {N j : ℕ} {A B B' U G : Matrix (Fin N) (Fin N) ℂ}
+    (hU : HasOrthonormalCols U) (hG : HasOrthonormalCols G)
+    (hB : specNorm (B - U * A * Uᴴ) ≤ ((1 + 50 * u) ^ j - 1) * specNorm A) (hu : 0 ≤ u)
+    (hrc : specNorm (B' - G * B * Gᴴ) ≤ 50 * u * specNorm B) :
+    specNorm (B' - G * U * A * (G * U)ᴴ) ≤ ((1 + 50 * u) ^ (j + 1) - 1) * specNorm A := by
+  have hAU : specNorm (U * A * Uᴴ) = specNorm A := by
+    have := hU.conjTranspose.specNorm_conjTranspose_mul_mul A
+    rwa [Matrix.conjTranspose_conjTranspose] at this
+  have hBn : specNorm B ≤ (1 + 50 * u) ^ j * specNorm A := by
+    have e : B = (B - U * A * Uᴴ) + U * A * Uᴴ := by abel
+    have := specNorm_add_le (B - U * A * Uᴴ) (U * A * Uᴴ)
+    rw [← e, hAU] at this
+    linarith
+  have e : B' - G * U * A * (G * U)ᴴ = (B' - G * B * Gᴴ) + G * (B - U * A * Uᴴ) * Gᴴ := by
+    simp only [Matrix.conjTranspose_mul, Matrix.mul_sub, Matrix.sub_mul, Matrix.mul_assoc]
+    abel
+  rw [e]
+  refine (specNorm_add_le _ _).trans ?_
+  rw [hG.specNorm_mul_conjTranspose_right, hG.specNorm_mul_left, pow_succ]
+  nlinarith [mul_le_mul_of_nonneg_left hBn (by positivity : (0 : ℝ) ≤ 50 * u)]
+
 /-- One rotation of `RHess` keeps the invariant, with one more step. -/
 private theorem rotInv_step (hM : StdModel u id M) (hu : 0 ≤ u) (hu' : u ≤ 1 / 288) {N j : ℕ}
     (hj : j + 1 < N) {A : Matrix (Fin N) (Fin N) ℂ} {g : Fin N → ℂ}
@@ -387,28 +410,7 @@ private theorem rotInv_step (hM : StdModel u id M) (hu : 0 ≤ u) (hu' : u ≤ 1
   refine ⟨G * U, hasOrthonormalCols_iff.mpr ((hG.conjTranspose_mul_mul U U).trans
     (hasOrthonormalCols_iff.mp hU)), ?_, ?_, fun r hr => ?_⟩
   · dsimp only
-    have hAU : specNorm (U * A * Uᴴ) = specNorm A := by
-      have := hU.conjTranspose.specNorm_conjTranspose_mul_mul A
-      rwa [Matrix.conjTranspose_conjTranspose] at this
-    have hBn : specNorm B ≤ (1 + 50 * u) ^ j * specNorm A := by
-      have e : B = (B - U * A * Uᴴ) + U * A * Uᴴ := by abel
-      have := specNorm_add_le (B - U * A * Uᴴ) (U * A * Uᴴ)
-      rw [← e, hAU] at this
-      linarith
-    have hrc := specNorm_rowCol_sub_le hM hu hu' hik p q B
-    have e : machineColRotation M i k (roundedGivensCoeffs M p q).1 (roundedGivensCoeffs M p q).2
-        (machineRowRotation M i k (roundedGivensCoeffs M p q).1 (roundedGivensCoeffs M p q).2 B) -
-          G * U * A * (G * U)ᴴ =
-        (machineColRotation M i k (roundedGivensCoeffs M p q).1 (roundedGivensCoeffs M p q).2
-          (machineRowRotation M i k (roundedGivensCoeffs M p q).1 (roundedGivensCoeffs M p q).2 B) -
-          G * B * Gᴴ) + G * (B - U * A * Uᴴ) * Gᴴ := by
-      simp only [Matrix.conjTranspose_mul, Matrix.mul_sub, Matrix.sub_mul, Matrix.mul_assoc]
-      abel
-    rw [e]
-    refine (specNorm_add_le _ _).trans ?_
-    rw [hG.specNorm_mul_conjTranspose_right, hG.specNorm_mul_left]
-    rw [pow_succ]
-    nlinarith [mul_le_mul_of_nonneg_left hBn (by positivity : (0 : ℝ) ≤ 50 * u)]
+    exact rotInv_matrix_step hU hG hB hu (specNorm_rowCol_sub_le hM hu hu' hik p q B)
   · dsimp only
     have e : v' - (G * U) *ᵥ g = (v' - G *ᵥ v) + G *ᵥ (v - U *ᵥ g) := by
       rw [← Matrix.mulVec_mulVec, Matrix.mulVec_sub]
@@ -670,7 +672,8 @@ private theorem writes_rhessRotate {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
     (x := (L, 2 * j)) (y := (L, 2 * j + 2)) (t := (L + 3, 0)) (cv := cs.1) (sv := cs.2)
     (xv := v ⟨j, by omega⟩) (yv := v ⟨j + 1, hj⟩) hS (by simp) (by simp) (by simp) (by simp)
     (Fp.disj_inBlock_of_le (by omega)) hc0 hc1 (by simpa using hs0) (by simpa using hs1) hx0
-    (by simpa [Nat.add_assoc] using hx1) (by simpa [show 2 * (j + 1) = 2 * j + 2 by omega] using hy0)
+    (by simpa [Nat.add_assoc] using hx1)
+    (by simpa [show 2 * (j + 1) = 2 * j + 2 by omega] using hy0)
     (by simpa [show 2 * (j + 1) + 1 = 2 * j + 2 + 1 by omega] using hy1) (by simp [hTm])
     (by simp [hG] <;> omega) (by simp [hG] <;> omega)).frame_seq_le hd₆ ha₆
     (by simp [Mem.Live, hlen] <;> omega) habove ?_

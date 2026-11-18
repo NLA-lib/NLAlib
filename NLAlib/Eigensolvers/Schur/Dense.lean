@@ -196,18 +196,132 @@ noncomputable def uDenseSchur (n : ℕ) (δ φ : ℝ) : ℝ :=
       (shqrSmallEigAccuracy n (2 * denseSchurB n δ φ) (denseSchurΓ n δ φ / 2) 8
         (denseSchurDelta n δ)) (denseSchurLeafFailure n δ φ) ginibreGapTail ginibreConditionTail)
 
+/-- The basic parameters: $0 < \delta' \le 1/16$, the gap and the condition thresholds positive,
+$t_2 \le 1$, so $B = 2/t_2 \ge 2$ and $\Gamma > 0$. -/
+theorem denseSchur_params_basic {n : ℕ} {δ φ : ℝ} (hδ : 0 < δ) (hδ1 : δ ≤ 1) (hφ : 0 < φ)
+    (hφ1 : φ ≤ 1) :
+    0 < denseSchurDelta n δ ∧ denseSchurDelta n δ ≤ 1 / 16 ∧
+      0 < smallEigGap (n + 1) 4 (denseSchurDelta n δ) (φ / 2) ginibreGapTail ∧
+      0 < smallEigCond (n + 1) 4 (denseSchurDelta n δ) (φ / 2) ginibreConditionTail ∧
+      smallEigCond (n + 1) 4 (denseSchurDelta n δ) (φ / 2) ginibreConditionTail ≤ 1 ∧
+      2 ≤ denseSchurB n δ φ ∧ 0 < denseSchurΓ n δ φ := by
+  have hs1 : (1 : ℝ) ≤ √((n : ℝ) + 1) := by
+    rw [Real.one_le_sqrt]; have := (Nat.cast_nonneg n : (0 : ℝ) ≤ n); linarith
+  have hd0 : 0 < denseSchurDelta n δ := by unfold denseSchurDelta; positivity
+  have hd1 : denseSchurDelta n δ ≤ 1 / 16 := by
+    unfold denseSchurDelta
+    rw [div_le_iff₀ (by positivity)]; nlinarith
+  obtain ⟨hg, -⟩ := smallEigGap_pos_le ginibreGapTail_b_pos (le_add_self) (S := 4)
+    (by norm_num) hd0 (half_pos hφ) (by linarith) (nmax := n + 1)
+  obtain ⟨hc, hc1⟩ := smallEigCond_pos_le ginibreConditionTail_b_pos (le_add_self) (S := 4)
+    (by norm_num) hd0 (half_pos hφ) (by linarith) (nmax := n + 1)
+  refine ⟨hd0, hd1, hg, hc, hc1, ?_, by unfold denseSchurΓ; positivity⟩
+  unfold denseSchurB
+  rw [le_div_iff₀ hc]; linarith
+
+/-- The shift degree is positive. -/
+theorem denseSchurDegree_pos (n : ℕ) (δ φ : ℝ) : 0 < denseSchurDegree n δ φ :=
+  Nat.pos_of_ne_zero (by unfold denseSchurDegree shqrDegree; positivity)
+
+/-- **The terms of the precision threshold**: below `NLAlib.Schur.uDenseSchurWith`,
+$\boldsymbol{u}$ is below each of its eight terms. -/
+theorem le_of_le_uDenseSchurWith {n : ℕ} {δ φ u : ℝ} {np RL : ℕ}
+    (hu : u ≤ uDenseSchurWith n δ φ np RL) :
+    u ≤ uSmallEigReduce (n + 1) 4 (denseSchurDelta n δ) (φ / 2) ginibreGapTail
+        ginibreConditionTail ∧
+      u ≤ denseSchurDelta n δ / (3200 * ((n : ℝ) + 1) ^ 2) ∧
+      u ≤ smallEigGap (n + 1) 4 (denseSchurDelta n δ) (φ / 2) ginibreGapTail *
+        smallEigCond (n + 1) 4 (denseSchurDelta n δ) (φ / 2) ginibreConditionTail /
+          (28800 * ((n : ℝ) + 1) ^ 3) ∧
+      u ≤ uShQR n (denseSchurDegree n δ φ) (2 * denseSchurB n δ φ) (denseSchurΓ n δ φ / 2) 8
+        (denseSchurDelta n δ) (φ / 2) ∧
+      u ≤ 1 / 100 ∧
+      u ≤ uShQRSchurReplay n (denseSchurDegree n δ φ) np (denseSchurCap n δ φ)
+        (2 * denseSchurB n δ φ) (denseSchurΓ n δ φ / 2) 8 (denseSchurDelta n δ) ∧
+      u ≤ δ / (4096 * ((n : ℝ) + 1) * denseSchurRotationsWith n δ φ np RL) ∧
+      u ≤ δ / (64 * ((n : ℝ) + 1)) := by
+  unfold uDenseSchurWith at hu
+  simp only [le_min_iff] at hu
+  exact hu
+
+/-- **The precision threshold with a leaf is positive** for $0 < \delta \le 1$ and
+$0 < \varphi \le 1$. -/
+theorem uDenseSchurWith_pos {n : ℕ} {δ φ : ℝ} (np RL : ℕ) (hδ : 0 < δ) (hδ1 : δ ≤ 1)
+    (hφ : 0 < φ) (hφ1 : φ ≤ 1) : 0 < uDenseSchurWith n δ φ np RL := by
+  obtain ⟨hd0, hd1, hg, hc, -, hB, hΓ⟩ := denseSchur_params_basic (n := n) hδ hδ1 hφ hφ1
+  have hk := denseSchurDegree_pos n δ φ
+  have hR : 0 < (denseSchurRotationsWith n δ φ np RL : ℝ) := by
+    unfold denseSchurRotationsWith; positivity
+  have h1 : 0 < uSmallEigReduce (n + 1) 4 (denseSchurDelta n δ) (φ / 2) ginibreGapTail
+      ginibreConditionTail := by unfold uSmallEigReduce; positivity
+  have h4 := uShQR_pos (n := n) hk (by linarith : (1 : ℝ) ≤ 2 * denseSchurB n δ φ)
+    (half_pos hΓ) hd0 (by norm_num : (0 : ℝ) < 8) (half_pos hφ)
+  have h6 : 0 < uShQRSchurReplay n (denseSchurDegree n δ φ) np (denseSchurCap n δ φ)
+      (2 * denseSchurB n δ φ) (denseSchurΓ n δ φ / 2) 8 (denseSchurDelta n δ) := by
+    have := shqrBudget_pos (n := n) (by linarith : (1 : ℝ) ≤ 2 * denseSchurB n δ φ)
+      (half_pos hΓ) hd0
+    unfold uShQRSchurReplay; positivity
+  unfold uDenseSchurWith
+  simp only [lt_min_iff]
+  exact ⟨h1, by positivity, by positivity, h4, by norm_num, h6, by positivity, by positivity⟩
+
 /-- **The precision threshold is positive** for $0 < \delta \le 1$ and $0 < \varphi \le 1$: the
 headline is not vacuous. -/
 theorem uDenseSchur_pos {n : ℕ} {δ φ : ℝ} (hδ : 0 < δ) (hδ1 : δ ≤ 1) (hφ : 0 < φ) (hφ1 : φ ≤ 1) :
-    0 < uDenseSchur n δ φ := sorry
+    0 < uDenseSchur n δ φ := by
+  obtain ⟨hd0, -, -, -, -, hB, hΓ⟩ := denseSchur_params_basic (n := n) hδ hδ1 hφ hφ1
+  have hk := denseSchurDegree_pos n δ φ
+  have hB1 : (1 : ℝ) ≤ 2 * denseSchurB n δ φ := by linarith
+  have hβ := shqrSmallEigAccuracy_pos (n := n) hB1 (half_pos hΓ) hd0 (by norm_num : (0 : ℝ) < 8)
+  have hβS := shqrSmallEigAccuracy_le (n := n) hB1 (half_pos hΓ) hd0
+    (by linarith [(denseSchur_params_basic (n := n) hδ hδ1 hφ hφ1).2.1] : denseSchurDelta n δ ≤ 8)
+  obtain ⟨hf0, hfS, -⟩ := forwardBackwardError_spec (kmax := denseSchurDegree n δ φ)
+    hβ (by linarith : _ ≤ (32 : ℝ))
+  have hφL := shqrSmallEigFailure_pos (n := n) (B := 2 * denseSchurB n δ φ)
+    (Γ := denseSchurΓ n δ φ / 2) (S := 8) (δ := denseSchurDelta n δ) (half_pos hφ)
+  have hφL1 := shqrSmallEigFailure_le (n := n) (B := 2 * denseSchurB n δ φ)
+    (Γ := denseSchurΓ n δ φ / 2) (S := 8) (δ := denseSchurDelta n δ) (half_pos hφ).le
+  refine lt_min (uDenseSchurWith_pos _ _ hδ hδ1 hφ hφ1) ?_
+  exact (uSmallEig_spec ginibreGapTail_b_pos ginibreConditionTail_b_pos hk hf0 hfS hφL
+    (by linarith)).1
+
+/-- **The orthogonality bound is at most $\delta$** below the threshold of a leaf:
+$58R\boldsymbol{u} \le \delta$ and $24R\boldsymbol{u} \le 1/8$, $R$ =
+`NLAlib.Schur.denseSchurRotationsWith`. -/
+theorem mul_denseSchurRotationsWith_le {n : ℕ} {δ φ u : ℝ} {np RL : ℕ} (hδ : 0 < δ)
+    (hδ1 : δ ≤ 1) (hu : u ≤ uDenseSchurWith n δ φ np RL) :
+    58 * (denseSchurRotationsWith n δ φ np RL : ℝ) * u ≤ δ ∧
+      24 * (denseSchurRotationsWith n δ φ np RL : ℝ) * u ≤ 1 / 8 ∧
+      4096 * ((n : ℝ) + 1) * (denseSchurRotationsWith n δ φ np RL : ℝ) * u ≤ δ := by
+  have h7 := (le_of_le_uDenseSchurWith hu).2.2.2.2.2.2.1
+  have hR : 0 < (denseSchurRotationsWith n δ φ np RL : ℝ) := by
+    unfold denseSchurRotationsWith; positivity
+  have hn : (1 : ℝ) ≤ (n : ℝ) + 1 := by have := (Nat.cast_nonneg n : (0 : ℝ) ≤ n); linarith
+  have hK : 0 < 4096 * ((n : ℝ) + 1) * (denseSchurRotationsWith n δ φ np RL : ℝ) := by
+    positivity
+  have hRu : 4096 * ((n : ℝ) + 1) * (denseSchurRotationsWith n δ φ np RL : ℝ) * u ≤ δ := by
+    have := mul_le_mul_of_nonneg_left h7 hK.le
+    rwa [mul_div_cancel₀ _ hK.ne'] at this
+  have hRu' : 4096 * ((denseSchurRotationsWith n δ φ np RL : ℝ) * u) ≤ δ := by
+    by_cases hu0 : u ≤ 0
+    · nlinarith
+    · push Not at hu0
+      have : 4096 * ((denseSchurRotationsWith n δ φ np RL : ℝ) * u) ≤
+          4096 * ((n : ℝ) + 1) * (denseSchurRotationsWith n δ φ np RL : ℝ) * u := by
+        have := mul_le_mul_of_nonneg_right hn (by positivity :
+          (0 : ℝ) ≤ 4096 * ((denseSchurRotationsWith n δ φ np RL : ℝ) * u))
+        linarith
+      linarith
+  exact ⟨by nlinarith, by nlinarith, hRu⟩
 
 /-- **The orthogonality bound is at most $\delta$**: below the threshold,
 $58R\boldsymbol{u} \le \delta$ (and $24R\boldsymbol{u} \le 1/8$). -/
 theorem mul_denseSchurRotations_le {n : ℕ} {δ φ u : ℝ} (hδ : 0 < δ) (hδ1 : δ ≤ 1)
     (hu : u ≤ uDenseSchur n δ φ) :
     58 * (denseSchurRotations n δ φ : ℝ) * u ≤ δ ∧
-      24 * (denseSchurRotations n δ φ : ℝ) * u ≤ 1 / 8 :=
-  sorry
+      24 * (denseSchurRotations n δ φ : ℝ) * u ≤ 1 / 8 := by
+  obtain ⟨h1, h2, -⟩ := mul_denseSchurRotationsWith_le hδ hδ1 (hu.trans (min_le_left _ _))
+  exact ⟨h1, h2⟩
 
 /-! ### The programs -/
 

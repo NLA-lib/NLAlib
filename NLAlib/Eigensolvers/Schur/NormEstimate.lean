@@ -43,6 +43,7 @@ def frobNormStage : Impl O Q := opsImpl% [N] (A) → (S) {
   run (ShiftedQR.matrixNorm (Op := O) (Tst := Q)).body [N, N] (A, S)
 }
 
+omit [Has ScalarOp O] in
 /-- **A wider two-sided estimate**: a norm estimate with constants $c_1 \le c_1'$ and
 $c_2' \le c_2$ is one with $(c_1, c_2)$. -/
 theorem FrobNormEstimateContract.mono {c₁ c₂ c₁' c₂' : ℝ} {nmax : ℕ} {Nm : Impl O Q}
@@ -63,8 +64,23 @@ theorem frobNormStage_frobNormEstimateContract {M : Machine ℝ} {I : Interp O Q
     (hS : IsScalar M I) (hM : StdModel u id M) {nmax : ℕ}
     (hu : (2 * (nmax : ℝ) ^ 2 + 2) * u ≤ 1 / 2) :
     FrobNormEstimateContract (1 - (2 * (nmax : ℝ) ^ 2 + 2) * u)
-      (1 + (2 * (nmax : ℝ) ^ 2 + 2) * u) nmax (frobNormStage (O := O) (Q := Q)) I :=
-  sorry
+      (1 + (2 * (nmax : ℝ) ^ 2 + 2) * u) nmax (frobNormStage (O := O) (Q := Q)) I := by
+  intro N a s τ μ A hN hA hl hs has
+  have hNr : (N : ℝ) ≤ nmax := by exact_mod_cast hN
+  have hu0 : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
+  have hc : (((2 * (N * N) : ℕ) : ℝ) + 2) * u ≤ (2 * (nmax : ℝ) ^ 2 + 2) * u := by
+    push_cast
+    exact mul_le_mul_of_nonneg_right (by nlinarith [(Nat.cast_nonneg N : (0 : ℝ) ≤ N)]) hu0
+  have hn := RoundedScalarBlas.writes_nrm2_stdModel (τ := τ) (xs := matrixWords A)
+    (n := 2 * (N * N)) hS hM (hc.trans hu) hl hA (by omega) has
+  refine ((hn.in_frame rfl rfl hl).in_frame rfl rfl hl).mono le_rfl ?_
+  rintro μ' - ⟨-, x, hx, hlo, hhi⟩
+  rw [ShiftedQR.sum_sq_matrixWords, Real.sqrt_sq (frobNorm_nonneg A)] at hlo hhi
+  have hF := frobNorm_nonneg A
+  have hcc : 0 ≤ (2 * (nmax : ℝ) ^ 2 + 2) * u - (((2 * (N * N) : ℕ) : ℝ) + 2) * u := by
+    linarith
+  exact ⟨x, hx, (mul_le_mul_of_nonneg_right (by linarith) hF).trans hlo,
+    hhi.trans (mul_le_mul_of_nonneg_right (by linarith) hF)⟩
 
 /-- **The rounded Frobenius norm is a norm estimate with the constants $(1/2, 2)$** when
 $(2N_{\max}^2 + 2)\boldsymbol{u} \le 1/2$. -/

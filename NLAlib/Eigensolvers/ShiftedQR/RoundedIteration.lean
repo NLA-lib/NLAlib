@@ -50,37 +50,41 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O
 `C`, threshold word `Thr`, the routine `SE` with the words `Qw` and the cap $T$) into the $k$
 shift pairs `S` and the flag `Fl`; if the flag is $0$ (the shifts are optimal),
 `NLAlib.ShiftedQR.shStep` with them and the words `Cg`, `Cr`, `Cw`, `Cp`, the net `G` of $n_0$
-points and `Thr`. The interface is
-`[N, m, k, n0, nq, T] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw, S) → (A, Fl)`. -/
+points and `Thr`. The iteration's $k + 1 + n_0$ trial sites record their rotations in the slots
+$j_0, \dots, j_0 + k + n_0$ of the slotted log `Lg` of slot width $w$: `Regularize`'s trials at
+$j_0 + t$, `Sh`'s test step at $j_0 + k$ and its exceptional trials after it. The interface is
+`[N, m, k, n0, nq, T, w, j0] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw, S) → (A, Fl, Lg)`. -/
 def shIterationWithScratchWith (SE : Impl O Q) : Impl O Q :=
-  opsImpl% [N, m, k, n0, nq, T] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw, S) → (A, Fl) {
-    run (regularizeWith SE).body [N, k, nq, T] (A, Rd, C, Thr, Qw, A, S, Fl);
+  opsImpl% [N, m, k, n0, nq, T, w, j0] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw, S) → (A, Fl, Lg) {
+    run (regularizeWith SE).body [N, k, nq, T, w, j0] (A, Rd, C, Thr, Qw, A, S, Fl, Lg);
     if (Has.inj CmpTst.isZero) [] (Fl) {
-      run (shStep (O := O) (Q := Q)).body [N, m, k, n0] (A, S, Cg, Cr, Cw, Cp, G, Thr, A, Fl)
+      run (shStep (O := O) (Q := Q)).body [N, m, k, n0, w, j0 + k]
+        (A, S, Cg, Cr, Cw, Cp, G, Thr, A, Fl, Lg)
     } else { skip }
   }
 
 /-- **One iteration of the decoupling loop with a small-eigenvalue routine**
 ([BanksGarzaVargasSrivastava2022, Lemma 6.4], the body of the loop): `Regularize` with the
 routine `SE`, then `Sh` with its shifts if they are optimal. The scratch for the $k$ shift pairs
-is scoped. The interface is
-`[N, m, k, n0, nq, T] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw) → (A, Fl)`. -/
+is scoped; the rotations go to the slots $j_0, \dots, j_0 + k + n_0$ of the log `Lg`. The
+interface is `[N, m, k, n0, nq, T, w, j0] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw) → (A, Fl, Lg)`. -/
 def shIterationWith (SE : Impl O Q) : Impl O Q :=
-  opsImpl% [N, m, k, n0, nq, T] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw) → (A, Fl) {
+  opsImpl% [N, m, k, n0, nq, T, w, j0] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw) → (A, Fl, Lg) {
     let S ← alloc (2 * k);
-    run (shIterationWithScratchWith SE).body [N, m, k, n0, nq, T]
-      (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw, S, A, Fl)
+    run (shIterationWithScratchWith SE).body [N, m, k, n0, nq, T, w, j0]
+      (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw, S, A, Fl, Lg)
   }
 
 /-- **One iteration of the decoupling loop** ([BanksGarzaVargasSrivastava2022, Lemma 6.4], the
 body of the loop): `NLAlib.ShiftedQR.shIterationWith` with the `SmallEig` kernel
 (`NLAlib.ShiftedQR.smallEigKernel`), no words and the cap $0$: `Regularize`, then `Sh` with its
-shifts if they are optimal. The interface is
-`[N, m, k, n0] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G) → (A, Fl)`. -/
+shifts if they are optimal, recording the rotations in the slots $j_0, \dots, j_0 + k + n_0$ of
+the log `Lg`. The interface is `[N, m, k, n0, w, j0] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G) →
+(A, Fl, Lg)`. -/
 def shIteration : Impl O Q :=
-  opsImpl% [N, m, k, n0] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G) → (A, Fl) {
-    run (shIterationWith (smallEigKernel (O := O) (Q := Q))).body [N, m, k, n0, 0, 0]
-      (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Rd, A, Fl)
+  opsImpl% [N, m, k, n0, w, j0] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G) → (A, Fl, Lg) {
+    run (shIterationWith (smallEigKernel (O := O) (Q := Q))).body [N, m, k, n0, 0, 0, w, j0]
+      (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Rd, A, Fl, Lg)
   }
 
 end Program
@@ -98,6 +102,46 @@ def ShIterationOutcome (u : ℝ) (k : ℕ) (H : Matrix (Fin (n + 1)) (Fin (n + 1
     IsPerturbedUnitarySimilar H H' ε ∧ IsUpperHessenberg H' ∧ HoldsMatrix a H' m'.store ∧
     ((∃ i : Fin n, n ≤ (i : ℕ) + k ∧ (1 - u) ^ 2 * ‖H' i.succ i.castSucc‖ ^ 2 ≤ tv) ∨
       hessenbergPotential k H' ≤ 1.002 * (1 - γ) * hessenbergPotential k H)
+
+/-- **The outcome of one iteration by its recorded unitary**: `NLAlib.ShiftedQR.ShIterationOutcome`
+with the witness named. The iteration closes `c` slots `Ls` after the slots `LL` of the log at
+`lg`, and $\widehat{\mathbf{H}}$ is a perturbed similarity of $\mathbf{H}$ by the exact unitary
+of their valid entries. -/
+def ShIterationOutcomeBy (u : ℝ) (k : ℕ) (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+    (γ tv ε : ℝ) (a lg : ℕ × ℕ) (ns w : ℕ) (LL : List (Option (List GivensEntry))) (c : ℕ)
+    (m' : Mem ℝ) : Prop :=
+  ∃ Ls : List (Option (List GivensEntry)), Ls.length = c ∧
+    (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 1) ∧ HoldsSlottedLog lg ns w (LL ++ Ls) [] m'.store ∧
+  ∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+    IsPerturbedUnitarySimilarBy (givensLog (n + 1) (slotEntries w Ls)) H H' ε ∧
+    IsUpperHessenberg H' ∧ HoldsMatrix a H' m'.store ∧
+    ((∃ i : Fin n, n ≤ (i : ℕ) + k ∧ (1 - u) ^ 2 * ‖H' i.succ i.castSucc‖ ^ 2 ≤ tv) ∨
+      hessenbergPotential k H' ≤ 1.002 * (1 - γ) * hessenbergPotential k H)
+
+/-- Forgetting the witness of an outcome. -/
+theorem ShIterationOutcomeBy.shIterationOutcome {u : ℝ} {k : ℕ}
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {γ tv ε : ℝ} {a lg : ℕ × ℕ} {ns w c : ℕ}
+    {LL : List (Option (List GivensEntry))} {m' : Mem ℝ}
+    (h : ShIterationOutcomeBy u k H γ tv ε a lg ns w LL c m') :
+    ShIterationOutcome u k H γ tv ε a m' := by
+  obtain ⟨Ls, -, -, -, H', hby, hH', hA, hd⟩ := h
+  exact ⟨H', hby.isPerturbedUnitarySimilar, hH', hA, hd⟩
+
+/-- **The outcomes of an iteration by the recorded unitary form a measurable set**: as
+`NLAlib.ShiftedQR.measurableSet_iterationOutcome`, with the witness the unitary of the log read
+after (`NLAlib.slottedLogRead`) beyond its first `j0` slots. -/
+theorem measurableSet_iterationOutcomeBy (u : ℝ) (k : ℕ) (c tv ε : ℝ) (a lg : ℕ × ℕ)
+    (ns w j0 : ℕ) (F : Fp) :
+    MeasurableSet {x : Mem ℝ × Mem ℝ | x.1.store.EqOff F x.2.store ∧
+      (∀ j < 2 * ((n + 1) * (n + 1)), (x.2.store.get a.1 (a.2 + j)).isSome) ∧
+      IsPerturbedUnitarySimilarBy
+        (givensLog (n + 1) (slotEntries w ((slottedLogRead lg ns w x.2.store).drop j0)))
+        (storedMatrix a (n + 1) (n + 1) x.1.store) (storedMatrix a (n + 1) (n + 1) x.2.store) ε ∧
+      IsUpperHessenberg (storedMatrix a (n + 1) (n + 1) x.2.store) ∧
+      ((∃ i : Fin n, n ≤ (i : ℕ) + k ∧
+          (1 - u) ^ 2 * ‖storedMatrix a (n + 1) (n + 1) x.2.store i.succ i.castSucc‖ ^ 2 ≤ tv) ∨
+        hessenbergPotential k (storedMatrix a (n + 1) (n + 1) x.2.store) ≤
+          c * hessenbergPotential k (storedMatrix a (n + 1) (n + 1) x.1.store))} := sorry
 
 /-- The outcomes of an iteration form a measurable set: the pairs of a memory before and
 after with the frame `F`, an initialised matrix at `a` after, and the matrix read after an upper
@@ -159,9 +203,10 @@ theorem shIterationOutcome_of_mem {u : ℝ} {k : ℕ} {H : Matrix (Fin (n + 1)) 
 /-- An outcome of `Sh` is in the measurable form of the outcome of an iteration
 (`NLAlib.ShiftedQR.measurableSet_iterationOutcome`). -/
 theorem mem_iterationOutcome_of_shOutcome {u : ℝ} {k : ℕ}
-    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {γ tv ε : ℝ} {a f : ℕ × ℕ} {F : Fp}
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {γ tv ε : ℝ} {a f lg : ℕ × ℕ} {ns w c : ℕ}
+    {LL : List (Option (List GivensEntry))} {F : Fp}
     {m m' : Mem ℝ} (hH : HoldsMatrix a H m.store) (hfr : m.store.EqOff F m'.store)
-    (h : ShOutcome u k H γ tv ε a f m') :
+    (h : ShOutcome u k H γ tv ε a f lg ns w LL c m') :
     m.store.EqOff F m'.store ∧
       (∀ j < 2 * ((n + 1) * (n + 1)), (m'.store.get a.1 (a.2 + j)).isSome) ∧
       IsPerturbedUnitarySimilar (storedMatrix a (n + 1) (n + 1) m.store)
@@ -170,10 +215,7 @@ theorem mem_iterationOutcome_of_shOutcome {u : ℝ} {k : ℕ}
       ((∃ i : Fin n, n ≤ (i : ℕ) + k ∧
           (1 - u) ^ 2 * ‖storedMatrix a (n + 1) (n + 1) m'.store i.succ i.castSucc‖ ^ 2 ≤ tv) ∨
         hessenbergPotential k (storedMatrix a (n + 1) (n + 1) m'.store) ≤
-          1.002 * (1 - γ) * hessenbergPotential k (storedMatrix a (n + 1) (n + 1) m.store)) := by
-  obtain ⟨-, H', hsim, hHess, hA, hdec⟩ := h
-  rw [← hH.eq_storedMatrix, ← hA.eq_storedMatrix]
-  exact ⟨hfr, fun j hj => by rw [Store.get_of_readBlock hA hj 0]; rfl, hsim, hHess, hdec⟩
+          1.002 * (1 - γ) * hessenbergPotential k (storedMatrix a (n + 1) (n + 1) m.store)) := sorry
 
 section Assembly
 
@@ -238,10 +280,15 @@ theorem shStep_pwrites_of_forall {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
     (hexc2 : 6 * u * (1.1 * S + 3 * ((2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) * S)) ≤
       ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) * ω) *
         √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 8)
-    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) :
+    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv)
+    {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
+        (hj : LL.length + (excNet ε).length < ns) (hw : k * n ≤ w)
+    (hlgv : ∀ b ∈ [a, s, wg, wr, ww, wp, g, thr, f], b.1 ≠ lg.1) :
     PWrites law I (shStep (O := O) (Q := Q)).body
-      (Env.frame [n + 1, q, k, (excNet ε).length] [a, s, wg, wr, ww, wp, g, thr, a, f])
-      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
+      (Env.frame [n + 1, q, k, (excNet ε).length, w, LL.length]
+          [a, s, wg, wr, ww, wp, g, thr, a, f, lg])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
+        Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun m => m.Live [a, s, wg, wr, ww, wp, g, thr, f] ∧ HoldsMatrix a H m.store ∧
         m.store.get wg.1 wg.2 = some ((1 - γ) ^ k) ∧
         m.store.get wr.1 wr.2 = some ((2 : ℝ) ^ ((k : ℝ)⁻¹) * (θ * α * B ^ ((k : ℝ)⁻¹))) ∧
@@ -252,48 +299,11 @@ theorem shStep_pwrites_of_forall {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
           m.store.readBlock s.1 s.2 (2 * k) =
             some ((List.ofFn zs).flatMap fun z => [z.re, z.im]) ∧
           IsOptimalRitzValues θ H (List.ofFn zs) ∧ (∀ j i, d ≤ ‖e i - zs j‖) ∧
-          ∀ j, ‖zs j‖ ≤ 1.1 * specNorm H)
-      (ShIterationOutcome u k H γ tv ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1))
-        a) φ := by
-  have hu0 := hM.roundoff_nonneg
-  have hk0 : 0 < k := by omega
-  have hB1 : 1 ≤ B := (one_le_pseudoConditionNumber hV.ne_zero).trans hκ
-  have hψS : hessenbergPotential k H ≤ S := (hessenbergPotential_le_specNorm hk0 hkn H).trans hSH
-  have hα0 : 0 ≤ α := hα ▸ Real.rpow_nonneg (by positivity) _
-  have hε0 : 0 ≤ ε := hε ▸ Real.rpow_nonneg (div_nonneg (by nlinarith) (by positivity)) _
-  set c₁ := (1.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) with hc₁
-  set c₂ := (2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) with hc₂
-  have hc₁0 : 0 ≤ c₁ := by positivity
-  have hc₂0 : 0 ≤ c₂ := by positivity
-  have hL1 : 6 * u * (1.1 * S + 3 * (c₂ * hessenbergPotential k H)) ≤
-      6 * u * (1.1 * S + 3 * (c₂ * S)) := by gcongr
-  have hR1 : c₁ * ω ≤ c₁ * hessenbergPotential k H := by gcongr
-  have hdψ : d ≤ ε * (c₁ * hessenbergPotential k H) * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 4 :=
-    hd.trans (by gcongr)
-  have he1 : 6 * u * (1.1 * S + 3 * (c₂ * hessenbergPotential k H)) ≤
-      0.005 * ε * (c₁ * hessenbergPotential k H) := hL1.trans (hexc1.trans (by gcongr))
-  have he2 : 6 * u * (1.1 * S + 3 * (c₂ * hessenbergPotential k H)) ≤
-      ε * (c₁ * hessenbergPotential k H) * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 8 :=
-    hL1.trans (hexc2.trans (by gcongr))
-  have hst := PWrites.pstep_of_forall hI hloc
-    (ι := {zs : Fin k → ℂ // IsOptimalRitzValues θ H (List.ofFn zs) ∧
-      (∀ s ∈ List.ofFn zs, ∀ i, d ≤ ‖e i - s‖) ∧ ∀ s ∈ List.ofFn zs, ‖s‖ ≤ 1.1 * specNorm H})
-    (fun zs => shStep_pwrites (ss := List.ofFn zs.1) (e := e) hI hloc hS hM hu1 hL hNat hC hQ hD
-      hU hkq hk hkn haf hio hH hV hHV hκ hSH hω hψ (List.length_ofFn) zs.2.1 hθ hd' zs.2.2.1
-      zs.2.2.2 hα hγ hγ1 hε hε2 hφ hφ1 hdψ hC1 hnu hku hxu hbound he1 he2 hthrω)
-    (measurableSet_iterationOutcome (n := n) u k (1.002 * (1 - γ)) tv
-      ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a
-      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1))
-    (fun _ _ _ hP hfr hO => mem_iterationOutcome_of_shOutcome hP.2.1 hfr hO)
-  refine PStep.mono hst (fun m ⟨hl, hA, hwg, hwr, hww, hwp, hg, ht, hf, zs, hzs, hopt, hdist,
-    hsH⟩ => ⟨⟨zs, hopt, ?_, ?_⟩, hl, hA, hzs, hwg, hwr, hww, hwp, hg, ht, hf⟩)
-    (fun m m' hm hT => shIterationOutcome_of_mem hm.2.1 hT) le_rfl
-  · intro s hs i
-    obtain ⟨j, rfl⟩ := List.mem_ofFn.mp hs
-    exact hdist j i
-  · intro s hs
-    obtain ⟨j, rfl⟩ := List.mem_ofFn.mp hs
-    exact hsH j
+          ∀ j, ‖zs j‖ ≤ 1.1 * specNorm H ∧
+        HoldsSlottedLog lg ns w LL [] m.store ∧ m.Live [lg])
+      (ShIterationOutcomeBy u k H γ tv
+          ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1))
+        a lg ns w LL (1 + (excNet ε).length)) φ := sorry
 
 variable [Has EigenvalueKernelOp O]
 
@@ -323,8 +333,12 @@ theorem shIteration_regularize_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u
     (hqw : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
       Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock f.1 f.2 1)
         (Store.inBlock qw.1 qw.2 qs.length))
-    {ds : List IExp} {args : List Operand} (hρ : IExp.evalList ρ.idx ds = some [n + 1, k, nq, T])
-    (hρa : Operand.evalList ρ args = some [a, rd, c, thr, qw, a, s, f])
+    {ds : List IExp} {args : List Operand} {ns w : ℕ} {lg : ℕ × ℕ}
+        {LL : List (Option (List GivensEntry))}
+    (hρ : IExp.evalList ρ.idx ds = some [n + 1, k, nq, T, w, LL.length])
+    (hρa : Operand.evalList ρ args = some [a, rd, c, thr, qw, a, s, f, lg])
+    (hj : LL.length + k ≤ ns) (hw : k * n ≤ w)
+    (hlgv : ∀ b ∈ [a, rd, c, thr, wg, wr, ww, wp, g, qw, s, f], b.1 ≠ lg.1)
     {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {e : Fin (n + 1) → ℂ}
     {B S ω R φ tv cg cr cw cp : ℝ} (hH : IsUpperHessenberg H) (hV : IsUnit V)
     (hHV : H * V = V * Matrix.diagonal e) (hκ : pseudoConditionNumber V ≤ B)
@@ -344,8 +358,9 @@ theorem shIteration_regularize_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u
     (hSE : RandomSmallEigContractAt law β φse k nq T S qs SE I) :
     PWrites law I (.frame ds args (regularizeWith SE).body) ρ
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔
-        Store.inBlock f.1 f.2 1)
-      (fun m => m.Live [a, rd, c, thr, wg, wr, ww, wp, g, qw, s, f] ∧ HoldsMatrix a H m.store ∧
+        Store.inBlock f.1 f.2 1 ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (fun m => HoldsSlottedLog lg ns w LL [] m.store ∧ m.Live [lg] ∧
+          m.Live [a, rd, c, thr, wg, wr, ww, wp, g, qw, s, f] ∧ HoldsMatrix a H m.store ∧
         m.store.readBlock qw.1 qw.2 qs.length = some qs ∧
         m.store.get rd.1 rd.2 = some R ∧ m.store.get c.1 c.2 = some
           (0.999 * (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) ^ k) ∧
@@ -357,42 +372,15 @@ theorem shIteration_regularize_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u
         s.2 + 2 * k ≤ m.store.len s.1 ∧ f.2 < m.store.len f.1)
       (fun m' => RegularizeOutcome k H e u (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) *
           (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) (R * √(φ / (2 * k)) / 2) tv
-          ((1 + 1.1) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a s f m' ∧
+          ((1 + 1.1) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a s f lg ns w LL m' ∧
+        m'.Live [lg] ∧
         m'.Live [a, rd, c, thr, wg, wr, ww, wp, g, s, f] ∧
         m'.store.get thr.1 thr.2 = some tv ∧ m'.store.get wg.1 wg.2 = some cg ∧
         m'.store.get wr.1 wr.2 = some cr ∧ m'.store.get ww.1 ww.2 = some cw ∧
         m'.store.get wp.1 wp.2 = some cp ∧
         m'.store.readBlock g.1 g.2 (2 * (excNet ε).length) =
           some ((excNet ε).flatMap fun z => [z.re, z.im]) ∧ f.2 < m'.store.len f.1)
-      (φse + φ / 2) := by
-  have hio' : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
-      Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock f.1 f.2 1)
-        (Store.inBlock rd.1 rd.2 1 ⊔ Store.inBlock c.1 c.2 1 ⊔ Store.inBlock thr.1 thr.2 1) :=
-    hio.mono le_rfl (by fp_sub)
-  refine ((regularizeWith_pwrites_at hI hloc hS hM hu1 hL hNat hC hβ0 hφse hD hU hk0 hk has haf
-    hsf hio' hH hV hHV hκ hBk hω hψ hSH hgap hR hφ hφ1 hβ hdη hnu huo huo1 hxu hbound
-    hthrω hSE hqw).in_frame hρ hρa ?_).mono_eqOff ?_ ?_
-  · rintro m ⟨hl, -⟩
-    exact hl.mono (by
-      intro x hx; simp only [List.mem_cons, List.not_mem_nil, or_false] at hx ⊢; tauto)
-  · rintro m ⟨hl, hA, hq, hrd, hc, ht, -, -, -, -, -, hs, hf⟩
-    exact ⟨hl.mono (by
-      intro x hx; simp only [List.mem_cons, List.not_mem_nil, or_false] at hx ⊢; tauto),
-      hA, hq, hrd, hc, ht, hs, hf⟩
-  · rintro m m' ⟨hl, -, -, -, -, ht, hwg, hwr, hww, hwp, hg, -, hf⟩ hfr hout
-    have hD' : ∀ {G : Fp}, G ≤ Store.inBlock rd.1 rd.2 1 ⊔ Store.inBlock c.1 c.2 1 ⊔
-        Store.inBlock thr.1 thr.2 1 ⊔ Store.inBlock wg.1 wg.2 1 ⊔ Store.inBlock wr.1 wr.2 1 ⊔
-        Store.inBlock ww.1 ww.2 1 ⊔ Store.inBlock wp.1 wp.2 1 ⊔
-        Store.inBlock g.1 g.2 (2 * (excNet ε).length) → Fp.Disj _ G := fun hG => hio.mono le_rfl hG
-    exact ⟨hout, (hl.congr hfr.length_eq).mono (by
-      intro x hx; simp only [List.mem_cons, List.not_mem_nil, or_false] at hx ⊢; tauto),
-      hfr.keep (Store.readsOnly_get _ _ _) (hD' (by fp_sub)) ht,
-      hfr.keep (Store.readsOnly_get _ _ _) (hD' (by fp_sub)) hwg,
-      hfr.keep (Store.readsOnly_get _ _ _) (hD' (by fp_sub)) hwr,
-      hfr.keep (Store.readsOnly_get _ _ _) (hD' (by fp_sub)) hww,
-      hfr.keep (Store.readsOnly_get _ _ _) (hD' (by fp_sub)) hwp,
-      hfr.keep (Store.readsOnly_readBlock _ _ _ _) (hD' (by fp_sub)) hg,
-      by rw [hfr.len_eq]; exact hf⟩
+      (φse + φ / 2) := sorry
 
 /-- The optimality parameter of `Regularize`,
 $\theta = 1.01 \cdot 0.998^{-1/k}(2B^4)^{1/(2k)}$, is at least $1$ for $B \ge 1$. -/
@@ -473,12 +461,16 @@ theorem shIterationWithScratchWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ
     (hSE : RandomSmallEigContractAt law β φse k nq T S qs SE I) {qw : ℕ × ℕ}
     (hqw : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
       Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock f.1 f.2 1)
-        (Store.inBlock qw.1 qw.2 qs.length)) :
+        (Store.inBlock qw.1 qw.2 qs.length))
+    {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
+        (hj : LL.length + (k + 1 + (excNet ε).length) ≤ ns) (hw : k * n ≤ w)
+    (hlgv : ∀ b ∈ [a, rd, c, thr, wg, wr, ww, wp, g, qw, s, f], b.1 ≠ lg.1) :
     PWrites law I (shIterationWithScratchWith SE).body
-      (Env.frame [n + 1, q, k, (excNet ε).length, nq, T]
-        [a, rd, c, thr, wg, wr, ww, wp, g, qw, s, a, f])
+      (Env.frame [n + 1, q, k, (excNet ε).length, nq, T, w, LL.length]
+        [a, rd, c, thr, wg, wr, ww, wp, g, qw, s, a, f, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔
-        Store.inBlock f.1 f.2 1)
+        Store.inBlock f.1 f.2 1 ⊔
+        Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun m => m.Live [a, rd, c, thr, wg, wr, ww, wp, g, qw, s, f] ∧ HoldsMatrix a H m.store ∧
         m.store.readBlock qw.1 qw.2 qs.length = some qs ∧
         m.store.get rd.1 rd.2 = some R ∧ m.store.get c.1 c.2 = some
@@ -490,71 +482,11 @@ theorem shIterationWithScratchWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ
         m.store.get ww.1 ww.2 = some (ε / 2) ∧ m.store.get wp.1 wp.2 = some (1.0015 * (1 - γ)) ∧
         m.store.readBlock g.1 g.2 (2 * (excNet ε).length) =
           some ((excNet ε).flatMap fun z => [z.re, z.im]) ∧
-        s.2 + 2 * k ≤ m.store.len s.1 ∧ f.2 < m.store.len f.1)
-      (ShIterationOutcome u k H γ tv ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1))
-        a) (φse + φR / 2 + φ) := by
-  have hu0 := hM.roundoff_nonneg
-  have hB1 : 1 ≤ B := (one_le_pseudoConditionNumber hV.ne_zero).trans hκ
-  have hθ := one_le_regularizeTheta hB1 k
-  have hd' : 0 < R * √(φR / (2 * k)) / 2 := by
-    have : 0 < φR / (2 * k) := by have : (0 : ℝ) < k := by exact_mod_cast (by omega : 0 < k)
-                                  positivity
-    positivity
-  have hku : 100000 * k * u ≤ 1 := by
-    refine le_trans ?_ huo1
-    have : (k : ℝ) ≤ ((n + 1 + k : ℕ) : ℝ) ^ 2 := by
-      have : k ≤ (n + 1 + k) ^ 2 := by nlinarith
-      exact_mod_cast this
-    nlinarith
-  have hioS : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
-      (Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock wg.1 wg.2 1 ⊔ Store.inBlock wr.1 wr.2 1 ⊔
-        Store.inBlock ww.1 ww.2 1 ⊔ Store.inBlock wp.1 wp.2 1 ⊔
-        Store.inBlock g.1 g.2 (2 * (excNet ε).length) ⊔ Store.inBlock thr.1 thr.2 1) := by
-    have hfs := hsf.symm
-    simp only [Fp.disj_sup_left, Fp.disj_sup_right] at hio ⊢
-    tauto
-  have hCε : (1 + 1.1) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1) ≤
-      (1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1) := by
-    have hα0 : 0 ≤ α := hα ▸ Real.rpow_nonneg (by positivity) _
-    have hC11 : (1.1 : ℝ) ≤ C := le_trans (le_add_of_nonneg_right (by positivity)) hC1
-    have hx : 0 ≤ (1 + 300 * (n + 1) ^ 2 * u) ^ k - 1 :=
-      sub_nonneg.mpr (one_le_pow₀ (le_add_of_nonneg_right (by positivity)))
-    exact mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_right (by linarith)
-      (specNorm_nonneg H)) hx
-  have hsh := shStep_pwrites_of_forall (f := f) (a := a) (s := s) (wg := wg) (wr := wr)
-    (ww := ww) (wp := wp) (g := g) (thr := thr) hI hloc hS hM hu1 hL hNat hC hQ hD hU hkq hk hkn
-    haf hioS hH hV hHV hκ hSH hω hψ hθ hd' hα hγ hγ1 hε hε2 hφ hφ1 hd hC1 hnu hku hxu hbound
-    hexc1 hexc2 hthrω
-  unfold shIterationWithScratchWith
-  refine (PWrites.seq hI hloc (le_max_right φ 0)
-    (shIteration_regularize_pwrites (ρ := Env.frame [n + 1, q, k, (excNet ε).length, nq, T]
-      [a, rd, c, thr, wg, wr, ww, wp, g, qw, s, a, f]) hI hloc hS hM hu1 hL hNat hC hβ0 hφse hD hU
-      (by omega) hkn has haf hsf hio hqw ?_ ?_ hH hV hHV hκ hBk hω hψ hSH hgap hR hφR hφR1 hβ hdη
-      hnu huo huo1 hxuR hboundR hthrω hSE)
-    (PWrites.ite hI ?_ ((hsh.in_frame ?_ ?_ ?_).mono ?_ le_rfl (fun _ h => h) le_rfl)
-      (PWrites.of_writes le_rfl ?_))).mono (fun _ h => h) (by fp_sub) (fun _ h => h)
-      (by rw [max_eq_left hφ.le])
-  · rfl
-  · rfl
-  · rintro m ⟨⟨hF, -⟩ | ⟨hF, -⟩, -⟩ <;>
-      exact ⟨_, by rw [Interp.testAt_eq rfl rfl, hC.test_isZero hF]⟩
-  · rfl
-  · rfl
-  · rintro m ⟨hl, -⟩
-    exact hl.mono (by intro x hx; simp only [List.mem_cons, List.not_mem_nil, or_false] at hx ⊢
-                      tauto)
-  · rintro m ⟨⟨⟨hF, hA, zs, hzs, hopt, hdist, hsH⟩ | ⟨hF, -⟩, hl, ht, hwg, hwr, hww, hwp, hg, hf⟩,
-      htest⟩
-    · exact ⟨hl.mono (by intro x hx; simp only [List.mem_cons, List.not_mem_nil, or_false] at hx ⊢
-                         tauto), hA, hwg, hwr, hww, hwp, hg, ht, hf, zs, hzs, hopt, hdist, hsH⟩
-    · rw [Interp.testAt_eq rfl rfl, hC.test_isZero hF] at htest
-      norm_num at htest
-  · rintro m τ ⟨⟨⟨hF, -⟩ | ⟨hF, H', hsim, hH', hA, hdec⟩, -⟩, htest⟩
-    · rw [Interp.testAt_eq rfl rfl, hC.test_isZero hF] at htest
-      norm_num at htest
-    · exact (Writes.skip ⟨H', hsim.mono hCε, hH', hA, Or.inl hdec⟩).mono bot_le fun _ _ h => h
-
--- The default heartbeat budget does not cover the elaboration of this statement.
+        s.2 + 2 * k ≤ m.store.len s.1 ∧ f.2 < m.store.len f.1 ∧
+        HoldsSlottedLog lg ns w LL [] m.store ∧ m.Live [lg])
+      (ShIterationOutcomeBy u k H γ tv
+          ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1))
+        a lg ns w LL (k + 1 + (excNet ε).length)) (φse + φR / 2 + φ) := sorry
 set_option maxHeartbeats 1000000 in
 -- The hypothesis lists of `Regularize` and `Sh` together, with their long real constants, make
 -- the elaboration of the composition heavy.
@@ -651,11 +583,15 @@ theorem shIterationWith_pwrites_at {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
     (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) {nq T : ℕ} {qs : List ℝ} {SE : Impl O Q}
     (hSE : RandomSmallEigContractAt law β φse k nq T S qs SE I) {qw : ℕ × ℕ}
     (hqw : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
-      (Store.inBlock qw.1 qw.2 qs.length)) :
+      (Store.inBlock qw.1 qw.2 qs.length))
+    {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
+        (hj : LL.length + (k + 1 + (excNet ε).length) ≤ ns) (hw : k * n ≤ w)
+    (hlgv : ∀ b ∈ [a, rd, c, thr, wg, wr, ww, wp, g, qw, f], b.1 ≠ lg.1) :
     PWrites law I (shIterationWith SE).body
-      (Env.frame [n + 1, q, k, (excNet ε).length, nq, T]
-        [a, rd, c, thr, wg, wr, ww, wp, g, qw, a, f])
-      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
+      (Env.frame [n + 1, q, k, (excNet ε).length, nq, T, w, LL.length]
+        [a, rd, c, thr, wg, wr, ww, wp, g, qw, a, f, lg])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
+        Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun m => m.Live [a, rd, c, thr, wg, wr, ww, wp, g, qw, f] ∧ HoldsMatrix a H m.store ∧
         m.store.readBlock qw.1 qw.2 qs.length = some qs ∧
         m.store.get rd.1 rd.2 = some R ∧ m.store.get c.1 c.2 = some
@@ -666,89 +602,11 @@ theorem shIterationWith_pwrites_at {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
             B ^ ((k : ℝ)⁻¹))) ∧
         m.store.get ww.1 ww.2 = some (ε / 2) ∧ m.store.get wp.1 wp.2 = some (1.0015 * (1 - γ)) ∧
         m.store.readBlock g.1 g.2 (2 * (excNet ε).length) =
-          some ((excNet ε).flatMap fun z => [z.re, z.im]) ∧ f.2 < m.store.len f.1)
-      (ShIterationOutcome u k H γ tv ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1))
-        a) (φse + φR / 2 + φ) := by
-  have hφ0 : 0 ≤ φse + φR / 2 + φ := by positivity
-  have e : (shIterationWith SE).body = Stmt.allocs [.const 2 * .var 2]
-      (.frame [.var 0, .var 1, .var 2, .var 3, .var 4, .var 5] [⟨0, .var 6⟩, ⟨1, .var 7⟩,
-        ⟨2, .var 8⟩, ⟨3, .var 9⟩, ⟨4, .var 10⟩, ⟨5, .var 11⟩, ⟨6, .var 12⟩, ⟨7, .var 13⟩,
-        ⟨8, .var 14⟩, ⟨9, .var 15⟩, ⟨12, .const 0⟩, ⟨0, .var 6⟩, ⟨11, .var 17⟩]
-        (shIterationWithScratchWith SE).body) :=
-    rfl
-  rw [e]
-  refine PWrites.allocs (ns := [2 * k]) ?_ (Pre₁ := fun L μ => (a.1 < L ∧ rd.1 < L ∧ c.1 < L ∧
-      thr.1 < L ∧ wg.1 < L ∧ wr.1 < L ∧ ww.1 < L ∧ wp.1 < L ∧ g.1 < L ∧ f.1 < L ∧ qw.1 < L) ∧
-    μ.Live [a, rd, c, thr, wg, wr, ww, wp, g, qw, (L, 0), f] ∧ HoldsMatrix a H μ.store ∧
-      μ.store.readBlock qw.1 qw.2 qs.length = some qs ∧
-      μ.store.get rd.1 rd.2 = some R ∧ μ.store.get c.1 c.2 = some
-        (0.999 * (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) ^ k) ∧
-      μ.store.get thr.1 thr.2 = some tv ∧ μ.store.get wg.1 wg.2 = some ((1 - γ) ^ k) ∧
-      μ.store.get wr.1 wr.2 = some ((2 : ℝ) ^ ((k : ℝ)⁻¹) *
-        ((1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) * α *
-          B ^ ((k : ℝ)⁻¹))) ∧
-      μ.store.get ww.1 ww.2 = some (ε / 2) ∧ μ.store.get wp.1 wp.2 = some (1.0015 * (1 - γ)) ∧
-      μ.store.readBlock g.1 g.2 (2 * (excNet ε).length) =
-        some ((excNet ε).flatMap fun z => [z.re, z.im]) ∧
-      0 + 2 * k ≤ μ.store.len L ∧ f.2 < μ.store.len f.1) ?_ ?_ fun L => ?_
-  · rfl
-  · rintro m s₁ ⟨hl, hA, hq, hrd, hc, ht, hwg, hwr, hww, hwp, hg, hf⟩ hlen hlens hBelow
-    obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h11, h10⟩ : a.1 < m.store.length ∧
-        rd.1 < m.store.length ∧ c.1 < m.store.length ∧ thr.1 < m.store.length ∧
-        wg.1 < m.store.length ∧ wr.1 < m.store.length ∧ ww.1 < m.store.length ∧
-        wp.1 < m.store.length ∧ g.1 < m.store.length ∧ qw.1 < m.store.length ∧
-        f.1 < m.store.length := by
-      simpa [Mem.Live] using hl
-    have hl0 := hlens 0 (by simp)
-    simp only [List.length_cons, List.length_nil] at hlen
-    refine ⟨⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11⟩, ?_, hA.of_below hBelow h1,
-      (hBelow.readBlock h11 qw.2 qs.length).trans hq, hBelow.get_of h2 hrd, hBelow.get_of h3 hc,
-      hBelow.get_of h4 ht, hBelow.get_of h5 hwg,
-      hBelow.get_of h6 hwr, hBelow.get_of h7 hww, hBelow.get_of h8 hwp,
-      hBelow.readBlock_of h9 hg, by simpa using hl0.ge, by rw [(hBelow f.1 h10).1]; exact hf⟩
-    simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,
-      forall_eq, hlen]
-    omega
-  · rintro m ⟨hl, -⟩ st st' p hBelow ⟨H', hsim, hH', hA, hdec⟩
-    have h1 : a.1 < m.store.length := hl a (by simp)
-    exact ⟨H', hsim, hH', hA.of_below hBelow h1, hdec⟩
-  · by_cases hvL : a.1 < L ∧ rd.1 < L ∧ c.1 < L ∧ thr.1 < L ∧ wg.1 < L ∧ wr.1 < L ∧
-        ww.1 < L ∧ wp.1 < L ∧ g.1 < L ∧ f.1 < L ∧ qw.1 < L
-    · obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11⟩ := hvL
-      have hne : ∀ {b : ℕ × ℕ} {o n' : ℕ}, b.1 < L →
-          Fp.Disj (Store.inBlock b.1 b.2 o) (Store.inBlock (L, 0).1 (L, 0).2 n') :=
-        fun hb => Fp.disj_inBlock_of_ne (by simp; omega)
-      have hio' : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
-          Store.inBlock (L, 0).1 (L, 0).2 (2 * k) ⊔ Store.inBlock f.1 f.2 1)
-          (Store.inBlock rd.1 rd.2 1 ⊔ Store.inBlock c.1 c.2 1 ⊔ Store.inBlock thr.1 thr.2 1 ⊔
-            Store.inBlock wg.1 wg.2 1 ⊔ Store.inBlock wr.1 wr.2 1 ⊔ Store.inBlock ww.1 ww.2 1 ⊔
-            Store.inBlock wp.1 wp.2 1 ⊔ Store.inBlock g.1 g.2 (2 * (excNet ε).length)) := by
-        have := (hne h2 (o := 1) (n' := 2 * k)).symm; have := (hne h3 (o := 1) (n' := 2 * k)).symm
-        have := (hne h4 (o := 1) (n' := 2 * k)).symm; have := (hne h5 (o := 1) (n' := 2 * k)).symm
-        have := (hne h6 (o := 1) (n' := 2 * k)).symm; have := (hne h7 (o := 1) (n' := 2 * k)).symm
-        have := (hne h8 (o := 1) (n' := 2 * k)).symm
-        have := (hne h9 (o := 2 * (excNet ε).length) (n' := 2 * k)).symm
-        simp only [Fp.disj_sup_left, Fp.disj_sup_right] at hio ⊢
-        tauto
-      have hqw' : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
-          Store.inBlock (L, 0).1 (L, 0).2 (2 * k) ⊔ Store.inBlock f.1 f.2 1)
-          (Store.inBlock qw.1 qw.2 qs.length) := by
-        have := (hne h11 (o := qs.length) (n' := 2 * k)).symm
-        simp only [Fp.disj_sup_left] at hqw ⊢
-        tauto
-      refine ((shIterationWithScratchWith_pwrites (s := (L, 0)) hI hloc hS hM hu1 hL hNat hC hQ
-        hβ0 hφse hD hU hkq hk hkn (hne h1) haf (hne h10).symm hio' hH hV hHV hκ hBk hω hψ hSH
-        hgap hR hφR hφR1 hβ hdη hnu huo huo1 hxuR hboundR hα hγ hγ1 hε hε2 hφ hφ1 hd hC1 hxu
-        hbound hexc1 hexc2 hthrω hSE hqw').in_frame ?_ ?_ ?_).mono (fun _ h => h.2) (by fp_sub)
-        (fun _ h => h) le_rfl
-      · rfl
-      · rfl
-      · rintro μ ⟨hl, -⟩
-        exact hl.mono (by intro x hx; simp only [List.mem_cons, List.not_mem_nil, or_false] at hx ⊢
-                          tauto)
-    · exact PWrites.of_writes hφ0 fun _ _ h => absurd h.1 hvL
-
--- The default heartbeat budget does not cover the elaboration of this statement.
+          some ((excNet ε).flatMap fun z => [z.re, z.im]) ∧ f.2 < m.store.len f.1 ∧
+        HoldsSlottedLog lg ns w LL [] m.store ∧ m.Live [lg])
+      (ShIterationOutcomeBy u k H γ tv
+          ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1))
+        a lg ns w LL (k + 1 + (excNet ε).length)) (φse + φR / 2 + φ) := sorry
 set_option maxHeartbeats 1000000 in
 -- The hypothesis lists of `Regularize` and `Sh` together, with their long real constants, make
 -- the elaboration of the composition heavy.
@@ -837,10 +695,15 @@ theorem shIteration_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
         B ^ ((k : ℝ)⁻¹) * S)) ≤ ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) *
       (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) * α *
         B ^ ((k : ℝ)⁻¹) * ω) * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 8)
-    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) :
+    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv)
+    {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
+        (hj : LL.length + (k + 1 + (excNet ε).length) ≤ ns) (hw : k * n ≤ w)
+    (hlgv : ∀ b ∈ [a, rd, c, thr, wg, wr, ww, wp, g, f], b.1 ≠ lg.1) :
     PWrites law I (shIteration (O := O) (Q := Q)).body
-      (Env.frame [n + 1, q, k, (excNet ε).length] [a, rd, c, thr, wg, wr, ww, wp, g, a, f])
-      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
+      (Env.frame [n + 1, q, k, (excNet ε).length, w, LL.length]
+          [a, rd, c, thr, wg, wr, ww, wp, g, a, f, lg])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
+        Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun m => m.Live [a, rd, c, thr, wg, wr, ww, wp, g, f] ∧ HoldsMatrix a H m.store ∧
         m.store.get rd.1 rd.2 = some R ∧ m.store.get c.1 c.2 = some
           (0.999 * (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) ^ k) ∧
@@ -850,25 +713,11 @@ theorem shIteration_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
             B ^ ((k : ℝ)⁻¹))) ∧
         m.store.get ww.1 ww.2 = some (ε / 2) ∧ m.store.get wp.1 wp.2 = some (1.0015 * (1 - γ)) ∧
         m.store.readBlock g.1 g.2 (2 * (excNet ε).length) =
-          some ((excNet ε).flatMap fun z => [z.re, z.im]) ∧ f.2 < m.store.len f.1)
-      (ShIterationOutcome u k H γ tv ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1))
-        a) (φse + φR / 2 + φ) := by
-  unfold shIteration
-  refine ((shIterationWith_pwrites_at hI hloc hS hM hu1 hL hNat hC hQ hβ0 hφse hD hU hkq hk hkn
-    haf hio hH hV hHV hκ hBk hω hψ hSH hgap hR hφR hφR1 hβ hdη hnu huo huo1 hxuR hboundR hα hγ
-    hγ1 hε hε2 hφ hφ1 hd hC1 hxu hbound hexc1 hexc2 hthrω
-    (hSE.randomSmallEigContractAt k 0 0 S []) (qw := rd)
-    (fun _ _ _ h => by obtain ⟨-, h1, h2⟩ := h; simp at h2; omega)).in_frame (by simp)
-    (by simp [Operand.evalList, Operand.eval]) ?_).mono ?_ le_rfl (fun _ h => h) le_rfl
-  · rintro μ ⟨hl, -⟩
-    simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,
-      forall_eq] at hl ⊢
-    tauto
-  · rintro μ ⟨hl, hA, hrest⟩
-    refine ⟨?_, hA, by simp, hrest⟩
-    simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,
-      forall_eq] at hl ⊢
-    tauto
+          some ((excNet ε).flatMap fun z => [z.re, z.im]) ∧ f.2 < m.store.len f.1 ∧
+        HoldsSlottedLog lg ns w LL [] m.store ∧ m.Live [lg])
+      (ShIterationOutcomeBy u k H γ tv
+          ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1))
+        a lg ns w LL (k + 1 + (excNet ε).length)) (φse + φR / 2 + φ) := sorry
 
 end Assembly
 

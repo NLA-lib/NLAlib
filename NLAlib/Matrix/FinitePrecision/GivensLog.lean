@@ -10,6 +10,9 @@ public import NLAlib.Matrix.FinitePrecision.GivensCoefficients
 public import NLAlib.Matrix.Perturbation.UnitarySimilarity
 public import NLAlib.Ops.Catalog.Index
 public import NLAlib.Ops.Catalog.Compare
+public import NLAlib.Ops.RunMeasurable
+public import NLAlib.ForMathlib.MeasureTheory.Matrix
+public import Mathlib.MeasureTheory.Constructions.BorelSpace.Complex
 
 /-!
 # Slotted logs of Givens rotations and their replay
@@ -29,6 +32,7 @@ rotation moves its operand by at most $24\boldsymbol{u}$ times its norm from the
 ## Main definitions
 
 * `NLAlib.GivensEntry`, `NLAlib.slotEntries`, `NLAlib.padEntries`, `NLAlib.HoldsSlottedLog`.
+* `NLAlib.slottedLogRead`: the log read back from a store (for measurability).
 * `NLAlib.slottedLogOpen`, `NLAlib.slottedLogWrite`, `NLAlib.slottedLogValidate`: zero-fill the
   log, write an entry of a slot, validate a slot.
 * `NLAlib.givensReplayRows`, `NLAlib.givensReplayColumns`: replay the valid slots.
@@ -100,6 +104,31 @@ already zero). -/
 theorem HoldsSlottedLog.reject {lg : ℕ × ℕ} {ns w : ℕ} {L : List (Option (List GivensEntry))}
     {P : List GivensEntry} {s : Store ℝ} (h : HoldsSlottedLog lg ns w L P s)
     (hL : L.length < ns) : HoldsSlottedLog lg ns w (L ++ [none]) [] s := sorry
+
+/-- **The log read from a store**: the `ns` slots of `w` entries at `lg`, a slot accepted (`some`)
+iff its valid word is positive, each entry decoded from its five words (the plane by
+`Nat.floor`). Unwritten words read as $0$. -/
+noncomputable def slottedLogRead (lg : ℕ × ℕ) (ns w : ℕ) (s : Store ℝ) :
+    List (Option (List GivensEntry)) :=
+  (List.range ns).map fun j =>
+    let b := lg.2 + j * (1 + 5 * w)
+    let x := fun t => (s.get lg.1 (b + t)).getD 0
+    if 0 < x 0 then
+      some ((List.range w).map fun i =>
+        (⌊x (1 + 5 * i + 0)⌋₊, ⟨x (1 + 5 * i + 1), x (1 + 5 * i + 2)⟩,
+          ⟨x (1 + 5 * i + 3), x (1 + 5 * i + 4)⟩))
+    else none
+
+/-- A stored closed log is read back up to padding: its valid entries are those of the read. -/
+theorem HoldsSlottedLog.slotEntries_read {lg : ℕ × ℕ} {ns w : ℕ}
+    {L : List (Option (List GivensEntry))} {s : Store ℝ} (h : HoldsSlottedLog lg ns w L [] s)
+    (hL : L.length = ns) (hpl : ∀ e ∈ slotEntries w L, (e.1 : ℝ) = e.1) :
+    slotEntries w L = slotEntries w (slottedLogRead lg ns w s) := sorry
+
+/-- The unitary of the read log is a measurable function of the memory. -/
+theorem measurable_givensLog_slottedLogRead (lg : ℕ × ℕ) (ns w n : ℕ) :
+    Measurable fun m : Mem ℝ => givensLog n (slotEntries w (slottedLogRead lg ns w m.store)) :=
+  sorry
 
 /-! ### The log programs -/
 

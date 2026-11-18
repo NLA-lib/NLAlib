@@ -968,4 +968,25 @@ theorem IsTrackedUnitarySimilar.lift_leaf_block {N lo d : ℕ} (hN : lo + d ≤ 
       (mul_le_mul_of_nonneg_left hΔn (specNorm_nonneg U))
     linarith
 
+/-- The tracked matrix has norm at most that of the input plus the backward error. -/
+theorem IsTrackedUnitarySimilar.specNorm_le_add {n : Type*} [Fintype n]
+    [DecidableEq n]
+    {εU εT : ℝ} {U A U' A' : Matrix n n ℂ} (h : IsTrackedUnitarySimilar εU εT U A U' A') :
+    specNorm A' ≤ specNorm A + εT := by
+  obtain ⟨V, hV, -⟩ := h
+  exact hV.isPerturbedUnitarySimilar.specNorm_le
+
+/-- One round of tracked steps: if the state after $j$ rounds is tracked with the accumulator
+factor $F$ and the backward error $j e$, and the round is a tracked step with the factor
+$b \ge 1$ and the backward error $\delta$, then with $Fb \le F'$ and $\delta \le e$ the state after
+the round is tracked with $F'$ and $(j + 1)e$. -/
+theorem IsTrackedUnitarySimilar.round {n : Type*} [Fintype n] [DecidableEq n]
+    {U H U₁ A₁ U₂ A₂ : Matrix n n ℂ} {F b F' δ e : ℝ} {j : ℕ} (hb : 1 ≤ b)
+    (h₁ : IsTrackedUnitarySimilar (F - 1) (j * e) U H U₁ A₁)
+    (h₂ : IsTrackedUnitarySimilar (b - 1) δ U₁ A₁ U₂ A₂) (hFb : F * b ≤ F') (hδ : δ ≤ e) :
+    IsTrackedUnitarySimilar (F' - 1) ((j + 1 : ℕ) * e) U H U₂ A₂ :=
+  (h₁.trans (by linarith) h₂).mono
+    (by linarith [show (1 + (F - 1)) * (1 + (b - 1)) = F * b by ring])
+    (by push_cast; linarith)
+
 end NLAlib

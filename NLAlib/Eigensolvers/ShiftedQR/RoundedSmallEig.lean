@@ -705,7 +705,22 @@ theorem logb_inv_uShQRSmallEig_le (c₁ c₂ : PolyLogTail) (hb₁ : 0 < c₁.b)
     (shqrSmallEigAccuracy n B Γ S δ) (shqrSmallEigFailure n B Γ S δ φ) c₁ c₂) with h | h <;>
     rw [h] <;> linarith
 
+-- The kernel evaluates the bound of the whole instrumented tree; its recursion is deep.
 set_option maxRecDepth 100000 in
+/-- **The monomial work bound of the algorithm with the small-eigenvalue program**: the
+monomial bound `NLAlib.Ops.stmtWorkMono` of the instrumented tree of
+`NLAlib.ShiftedQR.roundedShQRSmallEig` at the slot bounds $(n + 1)$, $k$, $n_p$, $F$, $T$,
+$F(k + 1 + n_p)$, $k(n + 1)$ and the offsets $0, n_p, n_p, 0, \dots$ is
+$369224\,b_0^3 b_1^4 b_2 b_3 b_4^2$, by kernel evaluation. It serves both the count of the
+program and that of its Schur core frame (`NLAlib.ShiftedQR.roundedShQRSchur`). -/
+theorem stmtWorkMono_roundedShQRSmallEig (sG : ℕ) :
+    stmtWorkMono (roundedShQRSmallEig (O := O) (Q := Q) sG).body.instrument
+      ([⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 0, 0, 1]⟩, ⟨1, [0, 0, 0, 0, 1]⟩,
+        ⟨1, [0, 1, 1, 1]⟩, ⟨1, [1, 1]⟩, WorkMono.const 0, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 0, 1]⟩] ++
+        List.replicate 4 (WorkMono.const 0)) =
+      ⟨369224, [3, 4, 1, 1, 2]⟩ := by
+  kernel_rfl
+
 /-- **The operation count of the algorithm with the small-eigenvalue program**
 ([BanksGarzaVargasSrivastava2022, Theorem 6.3] and [BanksGarzaVargasSrivastava2025, Theorem 1.1],
 running times, on every tape): the instrumented static count (`NLAlib.Ops.stmtCost` of
@@ -718,15 +733,11 @@ theorem roundedShQRSmallEig_work_le (sG n k np F T : ℕ) :
     Count.size (stmtCost (roundedShQRSmallEig (O := O) (Q := Q) sG).body.instrument
         [n + 1, k, np, F, T, F * (k + 1 + np), k * (n + 1), 0, 0, 0, 0, 0, 0, 0]) ≤
       369224 * (n + 1) ^ 3 * (k + 1) ^ 4 * (np + 1) * (F + 1) * (T + 1) ^ 2 := by
-  have hw : stmtWorkMono (roundedShQRSmallEig (O := O) (Q := Q) sG).body.instrument
-      ([⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 0, 0, 1]⟩, ⟨1, [0, 0, 0, 0, 1]⟩,
-        ⟨1, [0, 1, 1, 1]⟩, ⟨1, [1, 1]⟩] ++ List.replicate 7 (WorkMono.const 0)) =
-        ⟨369224, [3, 4, 1, 1, 2]⟩ := by
-    kernel_rfl
   have hσ : SlotsLe [n + 1, k + 1, np + 1, F + 1, T + 1]
       [n + 1, k, np, F, T, F * (k + 1 + np), k * (n + 1), 0, 0, 0, 0, 0, 0, 0]
       ([⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 0, 0, 1]⟩, ⟨1, [0, 0, 0, 0, 1]⟩,
-        ⟨1, [0, 1, 1, 1]⟩, ⟨1, [1, 1]⟩] ++ List.replicate 7 (WorkMono.const 0)) := by
+        ⟨1, [0, 1, 1, 1]⟩, ⟨1, [1, 1]⟩, WorkMono.const 0, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 0, 1]⟩] ++
+        List.replicate 4 (WorkMono.const 0)) := by
     suffices F * (k + 1 + np) ≤ (k + 1) * ((np + 1) * (F + 1)) ∧
         k * (n + 1) ≤ (n + 1) * (k + 1) by
       simpa [SlotsLe, WorkMono.eval, WorkMono.const] using this
@@ -735,34 +746,53 @@ theorem roundedShQRSmallEig_work_le (sG n k np F T : ℕ) :
     constructor <;> nlinarith
   have h := size_stmtCost_le_stmtWorkMono (by simp)
     (roundedShQRSmallEig (O := O) (Q := Q) sG).body.instrument hσ
-  rw [hw] at h
+  rw [stmtWorkMono_roundedShQRSmallEig] at h
   simpa [WorkMono.eval, mul_assoc] using h
 
--- The kernel evaluates the bound of the whole instrumented tree; its recursion is deep.
-set_option maxRecDepth 100000 in
 /-- The instructions of the Schur core: the instrumented static count of
 `NLAlib.ShiftedQR.roundedShQRSchur` at the order $n + 1$, $n_q$ words, the shift degree $k$, the
 iteration cap $F$, the leaf cap $T$, the parameter words at the offset $p$ and the other operands
-at offset zero is at most $380748(n + 1)^3(k + 1)^4(p + n_q + 1)(F + 1)(T + 1)^2$ (the monomial
-bound, by `kernel_rfl`), the cost of `SmallEig` and of the structural instructions included. -/
+at offset zero is at most $380748(n + 1)^3(k + 1)^4(p + n_q + 1)(F + 1)(T + 1)^2$: the frame's
+$36$ structural instructions and the count of `NLAlib.ShiftedQR.roundedShQRSmallEig` at the frame's
+dimensions and offsets (`NLAlib.ShiftedQR.stmtWorkMono_roundedShQRSmallEig`), the cost of
+`SmallEig` included. -/
 theorem size_stmtCost_roundedShQRSchur_le (sG n nq k F T p : ℕ) :
     Count.size (stmtCost (roundedShQRSchur (O := O) (Q := Q) sG).body.instrument
         [n + 1, nq, k, F, T, 0, p, 0, 0, 0, 0]) ≤
       380748 * (n + 1) ^ 3 * (k + 1) ^ 4 * (p + nq + 1) * (F + 1) * (T + 1) ^ 2 := by
-  have hw : stmtWorkMono (roundedShQRSchur (O := O) (Q := Q) sG).body.instrument
-      ([⟨1, [1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 0, 1]⟩, ⟨1, [0, 0, 0, 0, 1]⟩,
-        WorkMono.const 0, ⟨1, [0, 0, 1]⟩] ++ List.replicate 4 (WorkMono.const 0)) =
-        ⟨380748, [3, 4, 1, 1, 2]⟩ := by
-    kernel_rfl
   have hσ : SlotsLe [n + 1, k + 1, p + nq + 1, F + 1, T + 1]
-      [n + 1, nq, k, F, T, 0, p, 0, 0, 0, 0]
-      ([⟨1, [1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 0, 1]⟩, ⟨1, [0, 0, 0, 0, 1]⟩,
-        WorkMono.const 0, ⟨1, [0, 0, 1]⟩] ++ List.replicate 4 (WorkMono.const 0)) := by
-    simp [SlotsLe, WorkMono.eval, WorkMono.const]; omega
+      [n + 1, k, nq - 1, F, T, F * (k + 1 + (nq - 1)), k * (n + 1), 0, p, p + 1, 0, 0, 0, 0]
+      ([⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 0, 0, 1]⟩, ⟨1, [0, 0, 0, 0, 1]⟩,
+        ⟨1, [0, 1, 1, 1]⟩, ⟨1, [1, 1]⟩, WorkMono.const 0, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 0, 1]⟩] ++
+        List.replicate 4 (WorkMono.const 0)) := by
+    suffices nq ≤ p + nq + 1 + 1 ∧ F * (k + 1 + (nq - 1)) ≤ (k + 1) * ((p + nq + 1) * (F + 1)) ∧
+        k * (n + 1) ≤ (n + 1) * (k + 1) ∧ p ≤ p + nq + 1 by
+      simpa [SlotsLe, WorkMono.eval, WorkMono.const] using this
+    have h1 : k + 1 + (nq - 1) ≤ (k + 1) * (p + nq + 1) := by nlinarith [Nat.sub_le nq 1]
+    have h2 := Nat.mul_le_mul_left F h1
+    refine ⟨by omega, by nlinarith, by nlinarith, by omega⟩
   have h := size_stmtCost_le_stmtWorkMono (by simp)
-    (roundedShQRSchur (O := O) (Q := Q) sG).body.instrument hσ
-  rw [hw] at h
-  simpa [WorkMono.eval, mul_assoc] using h
+    (roundedShQRSmallEig (O := O) (Q := Q) sG).body.instrument hσ
+  rw [stmtWorkMono_roundedShQRSmallEig] at h
+  have hin : Count.size (stmtCost (roundedShQRSmallEig (O := O) (Q := Q) sG).body.instrument
+      [n + 1, k, nq - 1, F, T, F * (k + 1 + (nq - 1)), k * (n + 1), 0, p, p + 1, 0, 0, 0, 0]) ≤
+      369224 * ((n + 1) ^ 3 * (k + 1) ^ 4 * (p + nq + 1) * (F + 1) * (T + 1) ^ 2) := by
+    simpa [WorkMono.eval, mul_assoc] using h
+  have hframe : ∀ X, Count.size (stmtCost (roundedShQRSmallEig (O := O) (Q := Q) sG).body.instrument
+      [n + 1, k, nq - 1, F, T, F * (k + 1 + (nq - 1)), k * (n + 1), 0, p, p + 1, 0, 0, 0, 0]) ≤ X →
+      Count.size (stmtCost (roundedShQRSchur (O := O) (Q := Q) sG).body.instrument
+        [n + 1, nq, k, F, T, 0, p, 0, 0, 0, 0]) ≤ 36 + X := fun X hX => by
+    have e : (IExp.var 1 - IExp.const 1) = IExp.sub (IExp.var 1) (IExp.const 1) := rfl
+    simp only [roundedShQRSmallEig] at hX
+    simp [roundedShQRSchur, roundedShQRSchurWith, Stmt.instrument, tally, indexBookkeeping,
+      operandBookkeeping, IExp.bookkeeping, stmtCost, useCost, IExp.evalList, IExp.eval,
+      Count.one, size_single, e]
+    omega
+  have hM : 1 ≤ (n + 1) ^ 3 * (k + 1) ^ 4 * (p + nq + 1) * (F + 1) * (T + 1) ^ 2 :=
+    Nat.one_le_iff_ne_zero.mpr (by positivity)
+  refine (hframe _ hin).trans ?_
+  simp only [mul_assoc] at hM ⊢
+  omega
 
 /-- **The algorithm with no oracle, relative form** ([BanksGarzaVargasSrivastava2022,
 Theorem 6.3], the error relative to $\|\mathbf{H}\|_2$): with the machine, streams and tails of

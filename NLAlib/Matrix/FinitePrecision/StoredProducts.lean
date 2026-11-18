@@ -886,4 +886,56 @@ theorem Ops.StdModel.specNorm_matMulWord_sub_le {M : Machine ℝ} {u : ℝ}
   exact mul_le_mul_of_nonneg_right (matMul_growth_le hu0 hu)
     (mul_nonneg (frobNorm_nonneg _) (frobNorm_nonneg _))
 
+/-- **A scaled stored matrix**: if every word of a stored $\mathbf{A}$ is replaced by its rounded
+product with $r$ under the standard model at $\boldsymbol{u}$, the block holds an
+$\mathbf{A}'$ with $\|\mathbf{A}' - r\mathbf{A}\|_{\mathsf F} \le
+\boldsymbol{u}\lvert r\rvert\,\|\mathbf{A}\|_{\mathsf F}$ whose zero entries are those of
+$\mathbf{A}$ at least. -/
+theorem Ops.StdModel.exists_holdsMatrix_mul {M : Machine ℝ} {u : ℝ}
+    (hM : StdModel u id M)
+    {N : ℕ} {b : ℕ × ℕ} {A : Matrix (Fin N) (Fin N) ℂ} {s s' : Store ℝ} {r : ℝ}
+    (hA : HoldsMatrix b A s)
+    (h : ∀ t < 2 * (N * N), ∀ w, s.get b.1 (b.2 + t) = some w →
+      s'.get b.1 (b.2 + t) = some (M.mul w r)) :
+    ∃ A' : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix b A' s' ∧
+      frobNorm (A' - (r : ℂ) • A) ≤ u * |r| * frobNorm A ∧ ∀ i j, A i j = 0 → A' i j = 0 := by
+  have hu : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
+  have hlt : ∀ (i j : Fin N), 2 * (j * N + i) + 1 < 2 * (N * N) := fun i j => by
+    have := Idx.add_lt_mul j.isLt i.isLt; omega
+  refine ⟨Matrix.of fun i j => ⟨M.mul (A i j).re r, M.mul (A i j).im r⟩, ?_, ?_, ?_⟩
+  · refine HoldsMatrix.of_get (fun i j => ?_) (fun i j => ?_)
+    · exact h _ (by have := hlt i j; omega) _ (hA.get_re i j)
+    · rw [Nat.add_assoc]; exact h _ (hlt i j) _ (by rw [← Nat.add_assoc]; exact hA.get_im i j)
+  · rw [show u * |r| * frobNorm A = ‖((u * |r| : ℝ) : ℂ)‖ * frobNorm A by
+      rw [Complex.norm_real, Real.norm_of_nonneg (by positivity)], ← frobNorm_smul]
+    refine frobNorm_le_of_norm_apply_le fun i j => ?_
+    have h1 := hM.mul (A i j).re r
+    have h2 := hM.mul (A i j).im r
+    simp only [id] at h1 h2
+    set z := A i j
+    have e1 : (Matrix.of (fun i j => (⟨M.mul (A i j).re r, M.mul (A i j).im r⟩ : ℂ)) -
+        (r : ℂ) • A) i j = ⟨M.mul z.re r - z.re * r, M.mul z.im r - z.im * r⟩ := by
+      apply Complex.ext <;> simp [z, mul_comm]
+    have e2 : (((u * |r| : ℝ) : ℂ) • A) i j = ((u * |r| : ℝ) : ℂ) * z := rfl
+    rw [e1, e2, norm_mul, Complex.norm_real, Real.norm_of_nonneg (by positivity)]
+    refine (sq_le_sq₀ (norm_nonneg _) (by positivity)).mp ?_
+    rw [Complex.sq_norm, Complex.normSq_mk, mul_pow, Complex.sq_norm, Complex.normSq_apply]
+    rw [abs_mul] at h1 h2
+    have h1' := sq_le_sq' (abs_le.mp h1).1 (abs_le.mp h1).2
+    have h2' := sq_le_sq' (abs_le.mp h2).1 (abs_le.mp h2).2
+    have hr2 : |r| ^ 2 = r ^ 2 := sq_abs r
+    have hz1 : |z.re| ^ 2 = z.re ^ 2 := sq_abs _
+    have hz2 : |z.im| ^ 2 = z.im ^ 2 := sq_abs _
+    nlinarith
+  · intro i j hz
+    have h0 := hM.mul (A i j).re r
+    apply Complex.ext
+    · simp only [Matrix.of_apply, Complex.zero_re]
+      have : (A i j).re = 0 := by rw [hz]; rfl
+      rw [this] at h0 ⊢; simpa using h0
+    · simp only [Matrix.of_apply, Complex.zero_im]
+      have h0' := hM.mul (A i j).im r
+      have : (A i j).im = 0 := by rw [hz]; rfl
+      rw [this] at h0' ⊢; simpa using h0'
+
 end NLAlib

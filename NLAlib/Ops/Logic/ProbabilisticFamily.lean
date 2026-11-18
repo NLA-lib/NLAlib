@@ -201,4 +201,29 @@ theorem pstep_of_forall (hI : I.IsMeasurable) {win : Op → List ℕ → ℕ}
 
 end PWrites
 
+/-- **A probabilistic block from its runs at each memory**: if from every memory of the
+precondition the block, started at that memory, writes only `F` and ends in `Post` except with
+probability $\varphi$, and the outcomes (the frame and `Post`) form a measurable set, the block
+fails with probability at most $\varphi$ from the precondition
+(`NLAlib.Ops.PWrites.pstep_of_forall` over the memories). -/
+theorem PWrites.of_forall_eq {Op Tst : Type} {I : Interp Op Tst ℝ}
+    (hI : I.IsMeasurable) {win : Op → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    {law : ℕ → Measure ℝ} {c : Stmt Op Tst} {ρ : Env} {F : Fp} {Pre Post : Mem ℝ → Prop}
+    {φ : ℝ} (h : ∀ m, Pre m → PWrites law I c ρ F (· = m) Post φ)
+    (hT : MeasurableSet {x : Mem ℝ × Mem ℝ | x.1.store.EqOff F x.2.store ∧ Post x.2}) :
+    PWrites law I c ρ F Pre Post φ :=
+  PStep.mono (PWrites.pstep_of_forall hI hloc (ι := {m // Pre m}) (P := fun x m => m = x.1)
+    (Q := fun _ => Post) (fun x => h x.1 x.2) hT fun _ _ _ _ hfr hq => ⟨hfr, hq⟩)
+    (fun m hm => ⟨⟨m, hm⟩, rfl⟩) (fun _ _ _ h => h) le_rfl
+
+/-- **Probabilistic blocks with the same runs** have the same specifications. -/
+theorem PWrites.congr_eval {Op Tst : Type} {I : Interp Op Tst ℝ}
+    {law : ℕ → Measure ℝ} {c c' : Stmt Op Tst} {ρ : Env} {F : Fp} {Pre Post : Mem ℝ → Prop}
+    {φ : ℝ} (he : ∀ τ m, eval I τ c ρ m = eval I τ c' ρ m)
+    (h : PWrites law I c ρ F Pre Post φ) : PWrites law I c' ρ F Pre Post φ := by
+  obtain ⟨G, h₁, h₂, h₃⟩ := h
+  refine ⟨G, h₁, h₂, fun m hm => ⟨fun τ hτ => ?_, (h₃ m hm).2⟩⟩
+  have := (h₃ m hm).1 τ hτ
+  simpa only [Writes, Wp, he] using this
+
 end NLAlib.Ops

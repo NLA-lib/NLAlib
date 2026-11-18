@@ -28,18 +28,6 @@ namespace NLAlib.Schur
 
 open Ops ShiftedQR SmallEig Real
 
-/-- A lower bound in the base $Y \ge 1$ is one in any base $Y'$ with $Y \le Y'^m$. -/
-theorem _root_.NLAlib.ShiftedQR.LoBd.of_hiBd {Y Y' x : ℝ} {a m : ℕ} (hY : 1 ≤ Y)
-    (h : LoBd Y a x) (hYY : HiBd Y' m Y) : LoBd Y' (m * a) x := by
-  refine ⟨h.1, h.2.trans ?_⟩
-  rw [pow_mul]
-  exact mul_le_mul_of_nonneg_left (pow_le_pow_left₀ (by linarith) hYY.2 a) h.1.le
-
-/-- An upper bound in the base $Y \ge 1$ is one in any base $Y'$ with $Y \le Y'^m$. -/
-theorem _root_.NLAlib.ShiftedQR.HiBd.of_hiBd {Y Y' x : ℝ} {a m : ℕ} (hY : 1 ≤ Y)
-    (h : HiBd Y a x) (hYY : HiBd Y' m Y) : HiBd Y' (m * a) x :=
-  ⟨h.1, h.2.trans (by rw [pow_mul]; exact pow_le_pow_left₀ (by linarith) hYY.2 a)⟩
-
 
 /-- The arguments of the bits are polynomial in $Y = 4(n + 1)/(\delta\varphi)$: there is an
 exponent $E$ such that for $0 < \delta \le 1$ and $0 < \varphi \le 1$, $Y \ge 4$, the argument

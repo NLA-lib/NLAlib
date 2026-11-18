@@ -555,13 +555,16 @@ planned. The polylog form (HD7) has $p = 15$.
 | `Eigensolvers/SmallEig` | Part III in Schur mode; `identityLeaf`; the leaf contract; the certificate |
 | `Eigensolvers/Schur` (new) | contracts, norm estimate, regularizer, pipeline, residual algebra, completion, the dense solver, its bits and its certificate |
 
-**Placement flags.** Some general lemmas are declared in `Eigensolvers/Schur` under their root
-names, next to their only consumer: `Ops.PWrites.of_forall_eq`, `Ops.PWrites.congr_eval`,
-`Ops.Writes.congr_eval`, `Ops.eval_seq_seq_seq_assoc`, `Ops.StdModel.exists_holdsMatrix_mul`
-(intended home `Ops/Logic` and `Ops/Catalog`), `Ops.stdModel_one_zero`,
-`Ops.RoundedScalarBlas.writes_nrm2` (`Ops/Catalog/Scalar`, `Ops/Profiles/RoundedScalarBlas`), and
-`ShiftedQR.LoBd.of_hiBd`, `ShiftedQR.HiBd.of_hiBd` (`ShiftedQR/RoundedTheoremsBits`). Files are
-split by topic during clean-up; declaration names are the stable references.
+**Placement.** The general lemmas proved for this stage live in the files of their topics:
+`Ops.PWrites.of_forall_eq`, `Ops.PWrites.congr_eval` (`Ops/Logic/ProbabilisticFamily`),
+`Ops.Writes.congr_eval`, `Ops.eval_seq_seq_seq_assoc` (`Ops/Logic/Writes`),
+`Ops.StdModel.exists_holdsMatrix_mul` (`Matrix/FinitePrecision/StoredProducts`),
+`Ops.stdModel_one_zero` (`Ops/Catalog/Scalar`), `Ops.RoundedScalarBlas.writes_nrm2` (its profile),
+`Ops.size_sup_add_size_inf` (`Ops/MonomialWork`), `ShiftedQR.LoBd.of_hiBd`,
+`ShiftedQR.HiBd.of_hiBd` (`ShiftedQR/RoundedTheoremsBits`), `IsTrackedUnitarySimilar.round`,
+`IsTrackedUnitarySimilar.specNorm_le_add` (`Matrix/Perturbation/UnitarySimilarity`), the
+`IsRangePartition` lemmas (`Matrix/QRIteration/DeflationRanges`) and the log lemmas
+(`Matrix/FinitePrecision/GivensLog`, `GivensReplay`, `GivensReplayBlocks`).
 
 **Vocabulary.** `IsPerturbedUnitarySimilarBy`, `IsTrackedUnitarySimilar`,
 `IsConditionedDiagonalizable`, `IsRangeBlockTriangular`, `givensAt`, `givensLog`, `GivensEntry`,

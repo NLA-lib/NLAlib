@@ -17,19 +17,17 @@ A Schur pipeline scales its input by the reciprocal of a norm estimate, runs sta
 tracked unitary similarity (`NLAlib.IsTrackedUnitarySimilar`) and scales the result back. This
 file has the pieces of that argument that do not mention the pipeline: the in-place scaling loop
 and the stored matrix it leaves, the stored identity, the residual of the scaled run in matrix
-form and its scalar budget, the near-unitary bounds of an accumulator, and two rules of the
-probabilistic program logic (a block from its runs at each memory, and blocks with the same runs).
+form and its scalar budget, and the near-unitary bounds of an accumulator.
 
 ## Main results
 
-* `NLAlib.Schur.writes_loop_mul_cell`, `NLAlib.Ops.StdModel.exists_holdsMatrix_mul`: the scaling
-  loop and the scaled stored matrix.
+* `NLAlib.Schur.writes_loop_mul_cell`: the scaling loop (its stored matrix is
+  `NLAlib.Ops.StdModel.exists_holdsMatrix_mul`).
 * `NLAlib.Schur.holdsMatrix_one_of_holdsVec`: the stored identity.
 * `NLAlib.Schur.specNorm_sub_mul_mul_conjTranspose_le_of_scaled`,
   `NLAlib.Schur.schurPipeline_budget`: the residual of a scaled run and its budget.
 * `NLAlib.Schur.exists_hasOrthonormalCols_add_eq_mul_mul_conjTranspose`: a computed Schur form is
   an exact Schur form of a nearby matrix.
-* `NLAlib.Ops.PWrites.of_forall_eq`, `NLAlib.Ops.PWrites.congr_eval`: probabilistic blocks.
 -/
 
 @[expose] public section
@@ -45,7 +43,7 @@ variable {O : Type}
 $o + t$ of the buffer $b$ by a cell $y$ outside the block, in place, stores in each cell of the
 block the machine product of its old word with the word of $y$; it writes only the block and keeps
 the tape position. -/
-theorem writes_loop_mul_cell {K : Type} [Inhabited K] [Has ScalarOp O] {Q : Type} {M : Machine K}
+theorem writes_loop_mul_cell {K : Type} [Has ScalarOp O] {Q : Type} {M : Machine K}
     {I : Interp O Q K} (hS : IsScalar M I) {τ : Tape K} {ρ : Env} {m : Mem K}
     {n : IExp} {N b o : ℕ} {y : ℕ × ℕ} {X Y : Operand} {r : K} (hn : n.eval ρ.idx = some N)
     (hX : ∀ t < N, Operand.evalList (ρ.pushIdx t) [X, Y] = some [(b, o + t), y])
@@ -119,58 +117,6 @@ theorem holdsMatrix_one_of_holdsVec {N : ℕ} {s : Store ℝ} {b : ℕ × ℕ}
     by_cases hij : i = j
     · subst hij; simp [hne]
     · simp [hne, Matrix.one_apply_ne hij]
-
-/-- **A scaled stored matrix**: if every word of a stored $\mathbf{A}$ is replaced by its rounded
-product with $r$ under the standard model at $\boldsymbol{u}$, the block holds an
-$\mathbf{A}'$ with $\|\mathbf{A}' - r\mathbf{A}\|_{\mathsf F} \le
-\boldsymbol{u}\lvert r\rvert\,\|\mathbf{A}\|_{\mathsf F}$ whose zero entries are those of
-$\mathbf{A}$ at least. -/
-theorem _root_.NLAlib.Ops.StdModel.exists_holdsMatrix_mul {M : Machine ℝ} {u : ℝ}
-    (hM : StdModel u id M)
-    {N : ℕ} {b : ℕ × ℕ} {A : Matrix (Fin N) (Fin N) ℂ} {s s' : Store ℝ} {r : ℝ}
-    (hA : HoldsMatrix b A s)
-    (h : ∀ t < 2 * (N * N), ∀ w, s.get b.1 (b.2 + t) = some w →
-      s'.get b.1 (b.2 + t) = some (M.mul w r)) :
-    ∃ A' : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix b A' s' ∧
-      frobNorm (A' - (r : ℂ) • A) ≤ u * |r| * frobNorm A ∧ ∀ i j, A i j = 0 → A' i j = 0 := by
-  have hu : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
-  have hlt : ∀ (i j : Fin N), 2 * (j * N + i) + 1 < 2 * (N * N) := fun i j => by
-    have := Idx.add_lt_mul j.isLt i.isLt; omega
-  refine ⟨Matrix.of fun i j => ⟨M.mul (A i j).re r, M.mul (A i j).im r⟩, ?_, ?_, ?_⟩
-  · refine HoldsMatrix.of_get (fun i j => ?_) (fun i j => ?_)
-    · exact h _ (by have := hlt i j; omega) _ (hA.get_re i j)
-    · rw [Nat.add_assoc]; exact h _ (hlt i j) _ (by rw [← Nat.add_assoc]; exact hA.get_im i j)
-  · rw [show u * |r| * frobNorm A = ‖((u * |r| : ℝ) : ℂ)‖ * frobNorm A by
-      rw [Complex.norm_real, Real.norm_of_nonneg (by positivity)], ← frobNorm_smul]
-    refine frobNorm_le_of_norm_apply_le fun i j => ?_
-    have h1 := hM.mul (A i j).re r
-    have h2 := hM.mul (A i j).im r
-    simp only [id] at h1 h2
-    set z := A i j
-    have e1 : (Matrix.of (fun i j => (⟨M.mul (A i j).re r, M.mul (A i j).im r⟩ : ℂ)) -
-        (r : ℂ) • A) i j = ⟨M.mul z.re r - z.re * r, M.mul z.im r - z.im * r⟩ := by
-      apply Complex.ext <;> simp [z, mul_comm]
-    have e2 : (((u * |r| : ℝ) : ℂ) • A) i j = ((u * |r| : ℝ) : ℂ) * z := rfl
-    rw [e1, e2, norm_mul, Complex.norm_real, Real.norm_of_nonneg (by positivity)]
-    refine (sq_le_sq₀ (norm_nonneg _) (by positivity)).mp ?_
-    rw [Complex.sq_norm, Complex.normSq_mk, mul_pow, Complex.sq_norm, Complex.normSq_apply]
-    rw [abs_mul] at h1 h2
-    have h1' := sq_le_sq' (abs_le.mp h1).1 (abs_le.mp h1).2
-    have h2' := sq_le_sq' (abs_le.mp h2).1 (abs_le.mp h2).2
-    have hr2 : |r| ^ 2 = r ^ 2 := sq_abs r
-    have hz1 : |z.re| ^ 2 = z.re ^ 2 := sq_abs _
-    have hz2 : |z.im| ^ 2 = z.im ^ 2 := sq_abs _
-    nlinarith
-  · intro i j hz
-    have h0 := hM.mul (A i j).re r
-    apply Complex.ext
-    · simp only [Matrix.of_apply, Complex.zero_re]
-      have : (A i j).re = 0 := by rw [hz]; rfl
-      rw [this] at h0 ⊢; simpa using h0
-    · simp only [Matrix.of_apply, Complex.zero_im]
-      have h0' := hM.mul (A i j).im r
-      have : (A i j).im = 0 := by rw [hz]; rfl
-      rw [this] at h0' ⊢; simpa using h0'
 
 /-- The accumulator term of the budget: $(2\varepsilon + \varepsilon^2)X \le
 5\varepsilon K/c_1 + (33/256)K\varepsilon_{C,T}$. -/
@@ -411,37 +357,6 @@ theorem specNorm_conjTranspose_mul_self_sub_one_le_of_specNorm_sub_le {m : ℕ}
     (add_le_add h₁ h₂)) h₃)).trans (le_of_eq ?_)
   ring
 
-/-- **A probabilistic block from its runs at each memory**: if from every memory of the
-precondition the block, started at that memory, writes only `F` and ends in `Post` except with
-probability $\varphi$, and the outcomes (the frame and `Post`) form a measurable set, the block
-fails with probability at most $\varphi$ from the precondition
-(`NLAlib.Ops.PWrites.pstep_of_forall` over the memories). -/
-theorem _root_.NLAlib.Ops.PWrites.of_forall_eq {Op Tst : Type} {I : Interp Op Tst ℝ}
-    (hI : I.IsMeasurable) {win : Op → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
-    {law : ℕ → Measure ℝ} {c : Stmt Op Tst} {ρ : Env} {F : Fp} {Pre Post : Mem ℝ → Prop}
-    {φ : ℝ} (h : ∀ m, Pre m → PWrites law I c ρ F (· = m) Post φ)
-    (hT : MeasurableSet {x : Mem ℝ × Mem ℝ | x.1.store.EqOff F x.2.store ∧ Post x.2}) :
-    PWrites law I c ρ F Pre Post φ :=
-  PStep.mono (PWrites.pstep_of_forall hI hloc (ι := {m // Pre m}) (P := fun x m => m = x.1)
-    (Q := fun _ => Post) (fun x => h x.1 x.2) hT fun _ _ _ _ hfr hq => ⟨hfr, hq⟩)
-    (fun m hm => ⟨⟨m, hm⟩, rfl⟩) (fun _ _ _ h => h) le_rfl
-
-/-- **Probabilistic blocks with the same runs** have the same specifications. -/
-theorem _root_.NLAlib.Ops.PWrites.congr_eval {Op Tst : Type} {I : Interp Op Tst ℝ}
-    {law : ℕ → Measure ℝ} {c c' : Stmt Op Tst} {ρ : Env} {F : Fp} {Pre Post : Mem ℝ → Prop}
-    {φ : ℝ} (he : ∀ τ m, eval I τ c ρ m = eval I τ c' ρ m)
-    (h : PWrites law I c ρ F Pre Post φ) : PWrites law I c' ρ F Pre Post φ := by
-  obtain ⟨G, h₁, h₂, h₃⟩ := h
-  refine ⟨G, h₁, h₂, fun m hm => ⟨fun τ hτ => ?_, (h₃ m hm).2⟩⟩
-  have := (h₃ m hm).1 τ hτ
-  simpa only [Writes, Wp, he] using this
-
-/-- Sequences associate: the runs of $(a; (b; c)); d$ and $a; (b; (c; d))$ agree. -/
-theorem _root_.NLAlib.Ops.eval_seq_seq_seq_assoc {Op Tst : Type} {I : Interp Op Tst ℝ}
-    (a b c d : Stmt Op Tst) (ρ : Env) (τ : Tape ℝ) (m : Mem ℝ) :
-    eval I τ ((a.seq (b.seq c)).seq d) ρ m = eval I τ (a.seq (b.seq (c.seq d))) ρ m := by
-  simp only [eval, Option.bind_assoc]
-
 /-- The pipeline's accumulator error on every tape: a reducer accumulator within $\varepsilon_H$
 of a unitary $\mathbf{V}_1$ and a core accumulator within $\varepsilon_C\|\mathbf{U}_1\|_2$ of
 $\mathbf{U}_1\mathbf{V}$ give $\|\mathbf{U}_2^{\mathsf H}\mathbf{U}_2 - \mathbf{I}\|_2 \le
@@ -466,13 +381,6 @@ theorem specNorm_conjTranspose_mul_self_sub_one_le_of_tracked {m : ℕ}
   refine (specNorm_add_le _ _).trans ?_
   rw [hV.specNorm_mul_right]
   nlinarith [mul_le_mul_of_nonneg_left hU₁ hεC]
-
-/-- Blocks with the same runs have the same deterministic specifications. -/
-theorem _root_.NLAlib.Ops.Writes.congr_eval {Op Tst : Type} {I : Interp Op Tst ℝ} {τ : Tape ℝ}
-    {c c' : Stmt Op Tst} {ρ : Env} {F : Fp} {P : Mem ℝ → Prop} {m : Mem ℝ}
-    (he : eval I τ c ρ m = eval I τ c' ρ m) (h : Writes .total I τ c ρ F P m) :
-    Writes .total I τ c' ρ F P m := by
-  simpa only [Writes, Wp, he] using h
 
 /-- The norms after the regularizer and the reducer: from $\|\mathbf{A}_1\|_2 \le 2/c_1$,
 $\|\mathbf{A}_2 - \mathbf{A}_1\|_2 \le \delta_R \le 1/c_1$ and a reduction of $\mathbf{A}_2$ to

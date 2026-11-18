@@ -570,11 +570,47 @@ theorem room_f (h : SchurPipelineMem n qs a p uo f L m) : f.2 + 1 ≤ m.store.le
 
 end SchurPipelineMem
 
+/-- The cells of the buffers from `L` on are not written by the pipeline's footprint. -/
+theorem not_schurFp_of_le {n : ℕ} {a uo f : ℕ × ℕ} {L b i : ℕ} (ha : a.1 < L) (hu : uo.1 < L)
+    (hf : f.1 < L) (hb : L ≤ b) : ¬ schurFp n a uo f b i := by
+  rintro ((⟨h, -⟩ | ⟨h, -⟩) | ⟨h, -⟩) <;> omega
+
 /-- The environment of the pipeline body after its two scratch allocations. -/
 def schurPipelineEnv (n nr nq k F T : ℕ) (a p uo f : ℕ × ℕ) (L : ℕ) : Env :=
   ⟨[n + 1, nr, nq, k, F, T, a.2, p.2, a.2, uo.2, f.2], [a.1, p.1, a.1, uo.1, f.1, L, L + 1]⟩
 
 section Steps
+/-- **Probabilistic blocks with the same runs** have the same specifications. -/
+theorem _root_.NLAlib.Ops.PWrites.congr_eval {Op Tst : Type} {I : Interp Op Tst ℝ}
+    {law : ℕ → Measure ℝ} {c c' : Stmt Op Tst} {ρ : Env} {F : Fp} {Pre Post : Mem ℝ → Prop}
+    {φ : ℝ} (he : ∀ τ m, eval I τ c ρ m = eval I τ c' ρ m)
+    (h : PWrites law I c ρ F Pre Post φ) : PWrites law I c' ρ F Pre Post φ := by
+  obtain ⟨G, h₁, h₂, h₃⟩ := h
+  refine ⟨G, h₁, h₂, fun m hm => ⟨fun τ hτ => ?_, (h₃ m hm).2⟩⟩
+  have := (h₃ m hm).1 τ hτ
+  simpa only [Writes, Wp, he] using this
+
+/-- Sequences associate: the runs of $(a; (b; c)); d$ and $a; (b; (c; d))$ agree. -/
+theorem _root_.NLAlib.Ops.eval_seq_seq_seq_assoc {Op Tst : Type} {I : Interp Op Tst ℝ}
+    (a b c d : Stmt Op Tst) (ρ : Env) (τ : Tape ℝ) (m : Mem ℝ) :
+    eval I τ ((a.seq (b.seq c)).seq d) ρ m = eval I τ (a.seq (b.seq (c.seq d))) ρ m := by
+  simp only [eval, Option.bind_assoc]
+
+/-- **A probabilistic block from its runs at each memory**: if from every memory of the
+precondition the block, started at that memory, writes only `F` and ends in `Post` except with
+probability $\varphi$, and the outcomes (the frame and `Post`) form a measurable set, the block
+fails with probability at most $\varphi$ from the precondition
+(`NLAlib.Ops.PWrites.pstep_of_forall` over the memories). -/
+theorem _root_.NLAlib.Ops.PWrites.of_forall_eq {Op Tst : Type} {I : Interp Op Tst ℝ}
+    (hI : I.IsMeasurable) {win : Op → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    {law : ℕ → Measure ℝ} {c : Stmt Op Tst} {ρ : Env} {F : Fp} {Pre Post : Mem ℝ → Prop}
+    {φ : ℝ} (h : ∀ m, Pre m → PWrites law I c ρ F (· = m) Post φ)
+    (hT : MeasurableSet {x : Mem ℝ × Mem ℝ | x.1.store.EqOff F x.2.store ∧ Post x.2}) :
+    PWrites law I c ρ F Pre Post φ :=
+  PStep.mono (PWrites.pstep_of_forall hI hloc (ι := {m // Pre m}) (P := fun x m => m = x.1)
+    (Q := fun _ => Post) (fun x => h x.1 x.2) hT fun _ _ _ _ hfr hq => ⟨hfr, hq⟩)
+    (fun m hm => ⟨⟨m, hm⟩, rfl⟩) (fun _ _ _ h => h) le_rfl
+
 
 variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
 
@@ -700,6 +736,82 @@ theorem schurPipeline_scale_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
   have h₄ : (1 + u) * u * frobNorm A ≤ 2 * u * frobNorm A := by
     have := mul_le_mul_of_nonneg_right hu1 (mul_nonneg hu hF); nlinarith
   linarith
+
+/-- The blocks of the core: the parameter words of the core are the tail of the words. -/
+theorem apart_tail {a p uo f : ℕ × ℕ} {la lu lf : ℕ} {qR qC : List ℝ}
+    (h : Fp.Apart [a, p, uo, f] [la, (qR ++ qC).length, lu, lf]) :
+    Fp.Apart [a, (p.1, p.2 + qR.length), uo, f] [la, qC.length, lu, lf] := by
+  obtain ⟨h1, h2, h3, h4, h5, h6⟩ := apart_four h
+  have hs : Store.inBlock p.1 (p.2 + qR.length) qC.length ≤
+      Store.inBlock p.1 p.2 (qR ++ qC).length :=
+    Fp.inBlock_le_inBlock (by omega) (by simp; omega)
+  simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
+    and_true]
+  exact ⟨⟨h1.mono le_rfl hs, h2, h3⟩, ⟨h4.mono hs le_rfl, h5.mono hs le_rfl⟩, h6⟩
+
+variable [Has IdxTst Q] in
+/-- **The core and the scaling back**: from a run memory holding the pair $(\mathbf{U}_1,
+\mathbf{H})$ ($\mathbf{H}$ upper Hessenberg of the core's class, $\|\mathbf{H}\|_2 \le 4/c_1$) and
+the norm estimate $x$, the core and the scaling of the words by $x$ end, except with probability
+$\varphi_C$, in a memory with the flag $0$, the accumulator $\mathbf{U}_2$ and the scaled
+$\mathbf{T}'$ of an upper triangular $\mathbf{T}$ tracked from $(\mathbf{U}_1, \mathbf{H})$. The
+conclusion is passed as `hpost`. -/
+theorem schurPipeline_core_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hI : I.IsMeasurable)
+    {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ}
+    {Core : Impl O Q} {n k F T L : ℕ} {c₁ εCU εCT φC : ℝ} {qR qC : List ℝ}
+    {C' : ∀ {m : ℕ}, Matrix (Fin (m + 1)) (Fin (m + 1)) ℂ → Prop}
+    (hCore : RandomSchurCoreContract law εCU εCT φC C' k F T (n + 1) (4 / c₁) qC Core I)
+    {a p uo f : ℕ × ℕ} {m : Mem ℝ} (hm : SchurPipelineMem n (qR ++ qC) a p uo f L m)
+    {x : ℝ} (hx : m.store.get L 0 = some x) {U₁ H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    (hpair : HoldsSchurPair a uo U₁ H m.store) (hH : IsUpperHessenberg H)
+    (hHn : specNorm H ≤ 4 / c₁) (hC' : C' H) {Goal : Mem ℝ → Prop}
+    (hpost : ∀ U₂ Tm T' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, Tm.IsUpperTriangular →
+      IsTrackedUnitarySimilar εCU εCT U₁ H U₂ Tm →
+      frobNorm (T' - (x : ℂ) • Tm) ≤ u * |x| * frobNorm Tm →
+      (∀ i j, Tm i j = 0 → T' i j = 0) → ∀ m' : Mem ℝ, m'.store.get f.1 f.2 = some 0 →
+      HoldsMatrix a T' m'.store → HoldsMatrix uo U₂ m'.store → Goal m') :
+    PWrites law I ((Stmt.frame [.var 0, .var 2, .var 3, .var 4, .var 5]
+        [⟨0, .var 6⟩, ⟨1, .var 7 + .var 1⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩, ⟨4, .var 10⟩]
+        Core.body).seq (.loop (.const 2 * (.var 0 * .var 0)) (.call (Has.inj ScalarOp.mul) []
+          [⟨0, .var 6 + .var 11⟩, ⟨5, .const 0⟩] [⟨0, .var 6 + .var 11⟩])))
+      (schurPipelineEnv n qR.length qC.length k F T a p uo f L) (schurFp n a uo f) (· = m)
+      Goal φC := by
+  obtain ⟨hlen, ha, hp, hu, hf, hroom, hL, -, hap, hq⟩ := id hm
+  obtain ⟨-, h2, h3, -, -, h6⟩ := apart_four hap
+  have hcore := ((hCore H U₁ le_rfl hH hHn hC' (a := a) (p := (p.1, p.2 + qR.length))
+    (uo := uo) (f := f)).in_frame (ρ := schurPipelineEnv n qR.length qC.length k F T a p uo f L)
+    (ds := [.var 0, .var 2, .var 3, .var 4, .var 5])
+    (args := [⟨0, .var 6⟩, ⟨1, .var 7 + .var 1⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩,
+      ⟨4, .var 10⟩]) rfl rfl
+    fun m' hm' z hz => hm'.2.2.1 z (by simp only [List.mem_cons, List.mem_nil_iff] at hz ⊢; tauto)).mono_eqOff
+    (Pre' := (· = m)) (Post' := fun m' => SchurPipelineMem n (qR ++ qC) a p uo f L m' ∧
+      m'.store.get L 0 = some x ∧ m'.store.get f.1 f.2 = some 0 ∧
+      ∃ U₂ Tm : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsSchurPair a uo U₂ Tm m'.store ∧
+        Tm.IsUpperTriangular ∧ IsTrackedUnitarySimilar εCU εCT U₁ H U₂ Tm)
+    (fun m' hm' => ?_) (fun m₀ m' hm₀ hfr ⟨hf0, U₂, Tm, hp₂, hTu, htr⟩ => ?_)
+  rotate_left
+  · subst hm'
+    refine ⟨hpair, Store.readBlock_append_right hq, fun z hz => ?_, ?_, apart_tail hap⟩
+    · simp only [List.mem_cons, List.mem_nil_iff, or_false] at hz
+      rcases hz with rfl | rfl | rfl | rfl <;> simp only [hlen] <;> omega
+    · have := hm.room_f; omega
+  · subst hm₀
+    refine ⟨hm.of_eqOff hfr (hm.disj_words.mono (fun _ _ h => Or.inl (Or.inl h)) le_rfl),
+      ?_, hf0, U₂, Tm, hp₂, hTu, htr⟩
+    rw [hfr.2 L 0 (not_schurFp_of_le ha hu hf le_rfl), hx]
+  refine (PWrites.seq hI hloc le_rfl hcore (PWrites.of_writes le_rfl fun m' τ hm' => ?_)).mono
+    (fun _ h => h) (sup_le le_rfl (fun _ _ h => Or.inl (Or.inl h))) (fun _ h => h) (by simp)
+  obtain ⟨hm', hx', hf0, U₂, Tm, ⟨hT₂, hU₂⟩, hTu, htr⟩ := hm'
+  refine (writes_loop_mul_cell hS (N := 2 * ((n + 1) * (n + 1))) (b := a.1) (o := a.2)
+    (y := (L, 0)) (r := x) rfl (fun t _ => rfl) (fun t _ => rfl)
+    (hm'.live_of_subset (by simp)) (fun t ht => ⟨_, Store.get_of_readBlock hT₂ ht 0⟩) hx'
+    (by rintro ⟨h, -⟩; omega)).mono le_rfl ?_
+  rintro m'' hfr ⟨-, hmul⟩
+  obtain ⟨T', hT', hTn, hz⟩ := hM.exists_holdsMatrix_mul hT₂ hmul
+  exact hpost U₂ Tm T' hTu htr hTn hz m''
+    (by rw [hfr.2 f.1 f.2 (fun h => h3 _ _ h ⟨rfl, le_rfl, by omega⟩), hf0]) hT'
+    (hU₂.of_eqOff hfr h2)
 
 end Steps
 

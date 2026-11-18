@@ -6,6 +6,9 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Eigensolvers.Schur.Dense
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedWorklistSchur
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveCompletion
+public import NLAlib.Eigensolvers.HessenbergAccumulate
 
 /-!
 # The dense Schur pipeline completes on any scalar machine
@@ -32,41 +35,6 @@ certificate's admitted sizes need no standard model.
 @[expose] public section
 
 open NLAlib.Ops NLAlib.ShiftedQR NLAlib.SmallEig
-
-/-- Every machine has the standard model at $\boldsymbol{u} = 1$ for the zero decoding: a
-trivial model, whose laws still give the totality of the lowered programs. -/
-theorem _root_.NLAlib.Ops.stdModel_one_zero {K : Type} (M : Machine K) :
-    StdModel 1 (fun _ => (0 : ℝ)) M where
-  lit q := by simp
-  add _ _ := by simp
-  sub _ _ := by simp
-  mul _ _ := by simp
-  div _ _ h := absurd rfl h
-  neg _ := by simp
-  sqrt _ _ := by simp
-
-open RoundedScalarBlas in
-/-- The scalar-lowered norm completes on any scalar machine and stores a word (the trivial model
-`NLAlib.Ops.stdModel_one_zero`). -/
-theorem _root_.NLAlib.Ops.RoundedScalarBlas.writes_nrm2 {Op Tst : Type} [Has ScalarOp Op]
-    {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS : IsScalar M I) {n : ℕ} {τ : Tape ℝ} {m : Mem ℝ}
-    {x z : ℕ × ℕ} {xs : List ℝ} (hl : m.Live [x, z])
-    (hx : m.store.readBlock x.1 x.2 n = some xs) (hz : z.2 < m.store.len z.1) (hxz : x.1 ≠ z.1) :
-    Writes .total I τ nrm2.body (Env.frame [n] [x, z]) (Store.inBlock z.1 z.2 1)
-      (fun μ => ∃ v : ℝ, μ.store.get z.1 z.2 = some v) m := by
-  let rename : Table ScalarOp Op Tst := fun o => .inr (Has.inj o)
-  let J := I.link rename
-  have hJ : IsScalar M J := fun o => Interp.link_meets_kept rfl (hS o)
-  have hB := (laws (stdModel_one_zero M) zero_le_one hJ).2
-  have hw := writes_call_cell (τ := τ) (m := m) (I := J.link table) hB.nrm2
-    (ρ := Env.frame [n] [x, z]) (d := [n]) (a := [x]) (z := z) (k := 0)
-    (ds := [.var 0]) (ins := [⟨0, .var 1⟩]) (outs := [⟨1, .var 2⟩])
-    rfl rfl rfl rfl rfl rfl (by simpa [OutApart] using hxz)
-    (fun _ => ⟨hl, ⟨[xs], by simp [Mem.readBlocks, nrm2Rel, hx], trivial⟩, hz⟩)
-  have hw' := hw.mono (P' := fun μ => ∃ v : ℝ, μ.store.get z.1 z.2 = some v) le_rfl
-    (fun μ _ hp => by obtain ⟨-, -, value, -, hvalue, -⟩ := hp; exact ⟨value, hvalue⟩)
-  change Writes .total I τ _ _ _ _ m
-  simpa only [Writes, Wp, nrm2, run_link, J, rename] using hw'
 
 namespace NLAlib.Schur
 

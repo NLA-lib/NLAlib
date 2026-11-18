@@ -323,6 +323,16 @@ def polarDiskRel (s : ℕ) : BlockRel ℝ where
     ys = [[(polarDisk 0 R fun j : Fin 2 => w.getD j 0).re,
       (polarDisk 0 R fun j : Fin 2 => w.getD j 0).im]]
 
+/-- The exact polar disk sampler on the stream `s`, as a block function. -/
+noncomputable def polarDiskFn (s : ℕ) : BlockFn ℝ where
+  nd := 0
+  stream := s
+  win _ := 2
+  inLens _ := [1]
+  outLens _ := [2]
+  fn _ w xs := some [[(polarDisk 0 ((xs.headD []).headD 0) fun j : Fin 2 => w.getD j 0).re,
+    (polarDisk 0 ((xs.headD []).headD 0) fun j : Fin 2 => w.getD j 0).im]]
+
 variable {O Q : Type} [Has DiskSampleOp O]
 
 /-- **An exact polar disk sampler** on the stream `s`: the interpretation's `polar` always

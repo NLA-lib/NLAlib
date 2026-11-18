@@ -272,4 +272,26 @@ theorem contracts_link {r b : ℕ} {P : Problem ℝ r b} {M : Machine ℝ} {u : 
     | scal => exact hB.scal
     | copy => exact hB.copy
 
+/-- The scalar-lowered norm completes on any scalar machine and stores a word (the trivial model
+`NLAlib.Ops.stdModel_one_zero`). -/
+theorem writes_nrm2 {Op Tst : Type} [Has ScalarOp Op]
+    {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS : IsScalar M I) {n : ℕ} {τ : Tape ℝ} {m : Mem ℝ}
+    {x z : ℕ × ℕ} {xs : List ℝ} (hl : m.Live [x, z])
+    (hx : m.store.readBlock x.1 x.2 n = some xs) (hz : z.2 < m.store.len z.1) (hxz : x.1 ≠ z.1) :
+    Writes .total I τ nrm2.body (Env.frame [n] [x, z]) (Store.inBlock z.1 z.2 1)
+      (fun μ => ∃ v : ℝ, μ.store.get z.1 z.2 = some v) m := by
+  let rename : Table ScalarOp Op Tst := fun o => .inr (Has.inj o)
+  let J := I.link rename
+  have hJ : IsScalar M J := fun o => Interp.link_meets_kept rfl (hS o)
+  have hB := (laws (stdModel_one_zero M) zero_le_one hJ).2
+  have hw := writes_call_cell (τ := τ) (m := m) (I := J.link table) hB.nrm2
+    (ρ := Env.frame [n] [x, z]) (d := [n]) (a := [x]) (z := z) (k := 0)
+    (ds := [.var 0]) (ins := [⟨0, .var 1⟩]) (outs := [⟨1, .var 2⟩])
+    rfl rfl rfl rfl rfl rfl (by simpa [OutApart] using hxz)
+    (fun _ => ⟨hl, ⟨[xs], by simp [Mem.readBlocks, nrm2Rel, hx], trivial⟩, hz⟩)
+  have hw' := hw.mono (P' := fun μ => ∃ v : ℝ, μ.store.get z.1 z.2 = some v) le_rfl
+    (fun μ _ hp => by obtain ⟨-, -, value, -, hvalue, -⟩ := hp; exact ⟨value, hvalue⟩)
+  change Writes .total I τ _ _ _ _ m
+  simpa only [Writes, Wp, nrm2, run_link, J, rename] using hw'
+
 end NLAlib.Ops.RoundedScalarBlas

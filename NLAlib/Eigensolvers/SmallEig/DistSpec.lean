@@ -145,8 +145,7 @@ order $n + 1$ and the list of $2m$ copies of $s$), then from $\mathbf{H}$ at `h`
 `s` and room for the word `tau` (in a buffer of its own), `NLAlib.SmallEig.distSpec` writes only
 that word, keeps the tape position, and stores $q$ rounded square roots of a $t$ within
 $0.0011$, relatively, of $\|\mathbf{e}_n^{\mathsf{T}}(\mathbf{H} - s\mathbf{I})^{-m}\|^{-1}$. -/
-theorem distSpec_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
-    (hL : IsIndexLit M I) {n m q : ℕ}
+theorem distSpec_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I) {n m q : ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {s : ℂ} (hm : 0 < m)
     (hT : IsHalfTau H (List.replicate (2 * m) s) (comptauHalf (O := O) (Q := Q)) I)
     {τ : Tape ℝ} {μ : Mem ℝ} {h sp tau : ℕ × ℕ} (hl : μ.Live [h, sp, tau])
@@ -218,7 +217,7 @@ theorem distSpec_accuracy {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS :
     (fun z hz => (List.eq_of_mem_replicate hz) ▸ hdist) hnu
     (by rwa [List.length_replicate, Nat.mul_div_cancel_left _ two_pos])
     (by rwa [List.length_replicate, Nat.mul_div_cancel_left _ two_pos])
-  refine (distSpec_writes_word hS hL hm0 hT hl hHs hsp htau hth hts).mono le_rfl ?_
+  refine (distSpec_writes_word hS hm0 hT hl hHs hsp htau hth hts).mono le_rfl ?_
   rintro μ' - ⟨hp', t, ht, hb⟩
   refine ⟨hp', _, ht, ?_⟩
   set R := ‖WithLp.toLp 2 (((s • (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) - H)⁻¹ ^ m)

@@ -8,6 +8,7 @@ module
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedShExc
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedFind
 public import NLAlib.Matrix.FinitePrecision.GivensLogSlots
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedShExcTrials
 
 /-!
 # The rounded shifting strategy

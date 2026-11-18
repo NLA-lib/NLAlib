@@ -11,6 +11,7 @@ public import NLAlib.Eigensolvers.ShiftedQR.Step
 public import NLAlib.Matrix.FinitePrecision.OpsUnitarySimilarity
 public import NLAlib.Matrix.FinitePrecision.GivensRounded
 public import NLAlib.Matrix.FinitePrecision.GivensLog
+public import NLAlib.Matrix.FinitePrecision.GivensReplay
 
 /-!
 # Backward-error contracts of shifted QR

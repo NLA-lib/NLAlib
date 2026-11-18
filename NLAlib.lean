@@ -4,13 +4,16 @@ public import NLAlib.Eigensolvers.Deflation.Alg
 public import NLAlib.Eigensolvers.Deflation.Certification
 public import NLAlib.Eigensolvers.Deflation.Execution
 public import NLAlib.Eigensolvers.Deflation.Probability
+public import NLAlib.Eigensolvers.HessenbergAccumulate
 public import NLAlib.Eigensolvers.HessenbergReduction
 public import NLAlib.Eigensolvers.RandomizedDeflation
 public import NLAlib.Eigensolvers.Schur.Certificate
 public import NLAlib.Eigensolvers.Schur.Completion
+public import NLAlib.Eigensolvers.Schur.Composition
 public import NLAlib.Eigensolvers.Schur.Contracts
 public import NLAlib.Eigensolvers.Schur.Dense
 public import NLAlib.Eigensolvers.Schur.DenseBits
+public import NLAlib.Eigensolvers.Schur.DenseParameters
 public import NLAlib.Eigensolvers.Schur.NormEstimate
 public import NLAlib.Eigensolvers.Schur.Pipeline
 public import NLAlib.Eigensolvers.Schur.Regularizer
@@ -58,6 +61,7 @@ public import NLAlib.Eigensolvers.ShiftedQR.IterationWords
 public import NLAlib.Eigensolvers.ShiftedQR.Kernels
 public import NLAlib.Eigensolvers.ShiftedQR.ModelConfined
 public import NLAlib.Eigensolvers.ShiftedQR.MultiStep
+public import NLAlib.Eigensolvers.ShiftedQR.MultiStepStable
 public import NLAlib.Eigensolvers.ShiftedQR.Output
 public import NLAlib.Eigensolvers.ShiftedQR.PairBlocks
 public import NLAlib.Eigensolvers.ShiftedQR.Pivot
@@ -70,8 +74,8 @@ public import NLAlib.Eigensolvers.ShiftedQR.RangeLarge
 public import NLAlib.Eigensolvers.ShiftedQR.RangeProcess
 public import NLAlib.Eigensolvers.ShiftedQR.RangeSplit
 public import NLAlib.Eigensolvers.ShiftedQR.Round
-public import NLAlib.Eigensolvers.ShiftedQR.RoundedCertificate
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedDecouple
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedDecoupleContract
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedDecoupleRoutine
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedDecoupleSpec
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedDecoupleTermination
@@ -80,6 +84,7 @@ public import NLAlib.Eigensolvers.ShiftedQR.RoundedFind
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedFindTermination
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedHeadline
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedIteration
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedIterationAt
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedKernels
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedModuli
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedParameterChoices
@@ -91,8 +96,10 @@ public import NLAlib.Eigensolvers.ShiftedQR.RoundedRegularizeTermination
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedRegularizeTrial
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedRitz
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedRowPoly
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedSchurLeaf
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSh
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedShExc
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedShExcTrials
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedShStep
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedShTermination
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedShTrial
@@ -100,10 +107,14 @@ public import NLAlib.Eigensolvers.ShiftedQR.RoundedSmallEig
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSmallEigCertificate
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolve
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveBackward
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveCompletion
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveSchur
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveSteps
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveTermination
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveUpdates
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedTheorems
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedTheoremsBits
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedWorklistSchur
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedWorklistTermination
 public import NLAlib.Eigensolvers.ShiftedQR.RowRotation
 public import NLAlib.Eigensolvers.ShiftedQR.RowSolve
@@ -163,6 +174,7 @@ public import NLAlib.Eigensolvers.Sign.Test
 public import NLAlib.Eigensolvers.SmallEig.Certificate
 public import NLAlib.Eigensolvers.SmallEig.Core
 public import NLAlib.Eigensolvers.SmallEig.Decouple
+public import NLAlib.Eigensolvers.SmallEig.DecoupleTermination
 public import NLAlib.Eigensolvers.SmallEig.Decoupler
 public import NLAlib.Eigensolvers.SmallEig.DecouplerPrecision
 public import NLAlib.Eigensolvers.SmallEig.DistSpec
@@ -176,6 +188,7 @@ public import NLAlib.Eigensolvers.SmallEig.Parameters
 public import NLAlib.Eigensolvers.SmallEig.Perturb
 public import NLAlib.Eigensolvers.SmallEig.Precision
 public import NLAlib.Eigensolvers.SmallEig.Program
+public import NLAlib.Eigensolvers.SmallEig.ProgramSchur
 public import NLAlib.Eigensolvers.SmallEig.RandomHessenberg
 public import NLAlib.Eigensolvers.SmallEig.RandomHessenbergRotations
 public import NLAlib.Eigensolvers.SmallEig.RandomHessenbergWeights
@@ -881,9 +894,10 @@ public import NLAlib.Matrix.FinitePrecision.GivensChain
 public import NLAlib.Matrix.FinitePrecision.GivensCoefficients
 public import NLAlib.Matrix.FinitePrecision.GivensLog
 public import NLAlib.Matrix.FinitePrecision.GivensLogClose
-public import NLAlib.Matrix.FinitePrecision.GivensLogReplay
 public import NLAlib.Matrix.FinitePrecision.GivensLogSlots
 public import NLAlib.Matrix.FinitePrecision.GivensPrograms
+public import NLAlib.Matrix.FinitePrecision.GivensReplay
+public import NLAlib.Matrix.FinitePrecision.GivensReplayBlocks
 public import NLAlib.Matrix.FinitePrecision.GivensRotation
 public import NLAlib.Matrix.FinitePrecision.GivensRounded
 public import NLAlib.Matrix.FinitePrecision.GridMachine

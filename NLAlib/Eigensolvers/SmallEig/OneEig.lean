@@ -731,6 +731,7 @@ theorem oneEig_pwrites_of {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS :
       · exact hP.1.le_of_testAt hCmp hqs hq5 (by rfl) (by rfl) hc v hv
     · obtain ⟨a, b, c, e, hlen⟩ := hP.1.1.lt_length; simp [Mem.Live, hlen]; omega
 
+omit [Has DiskSampleOp O] in
 /-- `DistSpec` is accurate on the reach of `OneEig` (`NLAlib.SmallEig.distSpec_accuracy`):
 under its hypotheses on $\mathbf{H} \ne 0$, the precision condition at the distance $\eta_1$
 and the shift reach $10\Sigma$, $\Sigma \ge 0$, `DistSpec` is accurate

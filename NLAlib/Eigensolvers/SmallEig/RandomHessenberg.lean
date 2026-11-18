@@ -440,7 +440,7 @@ private theorem rhess_step_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
     Fp.disj_sup_right.mpr ⟨(hRA (by omega)).symm, (hRA (by omega)).symm⟩
   have hlive : μ₁.Live [(L + 2, 0), (L + 2, 2), lg] := by
     simp only [Mem.live_cons, Mem.live_nil, and_true]; refine ⟨?_, ?_, ?_⟩ <;> pomega
-  refine ((slottedLogWrite_writes hS hL hNat (r := j) hjn hlg₁ hLn hPw hpb hqb hlive
+  refine ((slottedLogWrite_writes hS hL hNat (r := j) hjn hlg₁ hLn hPw hpb hqb
     hdUv).and (slottedLogWrite_pos hS hL (r := j) hlg₁ hLn hPw hpb hqb hdUv)).frame_seq_le
     hdW haW hlive (le_sup_right.trans le_sup_left) ?_
   rintro μ₂ hf₂ ⟨⟨-, hlg₂⟩, hp₂⟩

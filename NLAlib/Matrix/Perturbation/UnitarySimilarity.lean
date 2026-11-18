@@ -697,7 +697,6 @@ $\widetilde{\mathbf{V}} = \operatorname{diag}(\mathbf{I}, \mathbf{V}, \mathbf{I}
 a step on `T` by $\widetilde{\mathbf{V}}$ with backward error $\varepsilon + \rho$. -/
 theorem IsPerturbedUnitarySimilarBy.of_range_block {N lo d : ℕ} (hN : lo + d ≤ N)
     {T T' : Matrix (Fin N) (Fin N) 𝕜} {V : Matrix (Fin d) (Fin d) 𝕜} {ε ρ : ℝ}
-    (_hT : IsRangeBlockTriangular lo d T) (_hT' : IsRangeBlockTriangular lo d T')
     (h : IsPerturbedUnitarySimilarBy V (T.submatrix (rangeEmb hN) (rangeEmb hN))
       (T'.submatrix (rangeEmb hN) (rangeEmb hN)) ε)
     (hout : ∀ i j : Fin N, ¬(lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d) →
@@ -800,7 +799,7 @@ theorem IsTrackedUnitarySimilar.refl (U A : Matrix n n 𝕜) :
 /-- Tracked steps compose: the backward errors add, the relative accumulator errors compose
 as $(1 + \varepsilon_U)(1 + \varepsilon_U') - 1$. -/
 theorem IsTrackedUnitarySimilar.trans {εU εT εU' εT' : ℝ} {U A U' A' U'' A'' : Matrix n n 𝕜}
-    (_hεU : 0 ≤ εU) (hεU' : 0 ≤ εU') (h : IsTrackedUnitarySimilar εU εT U A U' A')
+    (hεU' : 0 ≤ εU') (h : IsTrackedUnitarySimilar εU εT U A U' A')
     (h' : IsTrackedUnitarySimilar εU' εT' U' A' U'' A'') :
     IsTrackedUnitarySimilar ((1 + εU) * (1 + εU') - 1) (εT + εT') U A U'' A'' := by
   obtain ⟨V, hV, hU'⟩ := h
@@ -847,8 +846,7 @@ $\varepsilon_U \le 1/8$, $\|\mathbf{A} - \widehat{\mathbf{U}}\widehat{\mathbf{T}
 (\|\mathbf{A}\|_2 + \varepsilon_T)$ and $\|\widehat{\mathbf{U}}^{\mathsf H}\widehat{\mathbf{U}} -
 \mathbf{I}\|_2 \le 2\varepsilon_U + \varepsilon_U^2$. -/
 theorem IsTrackedUnitarySimilar.specNorm_sub_mul_mul_conjTranspose_le {εU εT : ℝ}
-    {A U T : Matrix n n 𝕜} (h : IsTrackedUnitarySimilar εU εT 1 A U T) (hεU0 : 0 ≤ εU)
-    (_hεU : εU ≤ 1 / 8) :
+    {A U T : Matrix n n 𝕜} (h : IsTrackedUnitarySimilar εU εT 1 A U T) (hεU0 : 0 ≤ εU) :
     specNorm (A - U * T * Uᴴ) ≤ εT + (2 * εU + εU ^ 2) * (specNorm A + εT) ∧
       specNorm (Uᴴ * U - 1) ≤ 2 * εU + εU ^ 2 := by
   obtain ⟨V, E, hV, hΔ, hE, hAE⟩ := h.exists_eq_mul_mul_conjTranspose hεU0
@@ -908,8 +906,7 @@ whole matrix. The extra backward error $2\varepsilon_U\|\mathbf{T}\|_2$ is the c
 with $\mathbf{U}_b$ instead of the exact unitary. -/
 theorem IsTrackedUnitarySimilar.lift_leaf_block {N lo d : ℕ} (hN : lo + d ≤ N)
     {T T' U U' : Matrix (Fin N) (Fin N) 𝕜} {Ub Tb : Matrix (Fin d) (Fin d) 𝕜}
-    {εU εT ρ ρU : ℝ} (hεU0 : 0 ≤ εU) (hT : IsRangeBlockTriangular lo d T)
-    (hT' : IsRangeBlockTriangular lo d T')
+    {εU εT ρ ρU : ℝ} (hεU0 : 0 ≤ εU)
     (hleaf : IsTrackedUnitarySimilar εU εT 1 (T.submatrix (rangeEmb hN) (rangeEmb hN)) Ub Tb)
     (hblk : T'.submatrix (rangeEmb hN) (rangeEmb hN) = Tb)
     (hout : ∀ i j : Fin N, ¬(lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d) →
@@ -943,7 +940,7 @@ theorem IsTrackedUnitarySimilar.lift_leaf_block {N lo d : ℕ} (hN : lo + d ≤ 
   have hT0 := specNorm_nonneg T
   refine ⟨Vw, ?_, ?_⟩
   · rw [add_assoc]
-    refine IsPerturbedUnitarySimilarBy.of_range_block hN hT hT' hWb hout ?_
+    refine IsPerturbedUnitarySimilarBy.of_range_block hN hWb hout ?_
     have e : couplingPart lo d (T' - Vwᴴ * T * Vw) = couplingPart lo d (T' - Vbᴴ * T * Vb) +
         ((Vb - Vw)ᴴ * T * (1 - P) + (1 - P) * T * (Vb - Vw)) := by
       rw [hcp, hcp, hΔ, ← hP, hEb, hEw]

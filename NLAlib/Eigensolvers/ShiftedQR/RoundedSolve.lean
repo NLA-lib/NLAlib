@@ -13,6 +13,7 @@ public import NLAlib.Ops.Logic.Geometry
 public import NLAlib.Matrix.FinitePrecision.OpsUnitarySimilarity
 public import NLAlib.Matrix.FinitePrecision.GivensLog
 public import NLAlib.Matrix.FinitePrecision.StoredProducts
+public import NLAlib.Matrix.FinitePrecision.GivensReplay
 
 /-!
 # The rounded deflation worklist

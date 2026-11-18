@@ -5,7 +5,11 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Eigensolvers.ShiftedQR.RoundedCertificate
+public import NLAlib.Eigensolvers.ShiftedQR.Cost
+public import NLAlib.Ops.Probability
+public import NLAlib.Ops.Profiles.Confined
+public import NLAlib.Ops.SelectedWork
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedParameterChoices
 public import NLAlib.Eigensolvers.SmallEig.Theorems
 
 /-!

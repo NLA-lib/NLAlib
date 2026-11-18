@@ -33,7 +33,7 @@ iteration loop's needs (cap, iterate norm, failure split, scan).
 * `NLAlib.ShiftedQR.shqrLoopThreshold_spec`: the decoupling loop's scan threshold word.
 * `NLAlib.ShiftedQR.shqrEta_div_two_le`, `NLAlib.ShiftedQR.shqrExc_of_le_uShQR`: the decoupling
   loop's window and Exc hypotheses (`hd`, `hexc1`, `hexc2` of
-  `NLAlib.ShiftedQR.roundedDecouple_randomDecouplingContract`).
+  `NLAlib.ShiftedQR.roundedDecoupleWith_randomDecouplingRoutineContract_at`).
 -/
 
 @[expose] public section
@@ -398,7 +398,7 @@ theorem shqrCut_le (hu0 : 0 ≤ u) (hu : u ≤ uShQR n k B Γ S δ φ) (hω : 0 
   nlinarith [mul_le_mul_of_nonneg_right h2 hω]
 
 /-- The decoupling loop's scan threshold word (the hypotheses `hthr`, `hcut` of
-`NLAlib.ShiftedQR.roundedDecouple_randomDecouplingContract`): for
+`NLAlib.ShiftedQR.roundedDecoupleWith_randomDecouplingRoutineContract_at`): for
 $0 \le \boldsymbol{u} \le \boldsymbol{u}_{\mathrm{ShQR}}$, a rounded scan with $t_L$ finds every
 entry the iteration certified with $t$, $(1 + \boldsymbol{u})^2 t \le (1 - \boldsymbol{u})^2 t_L$,
 and a passing scan with $t_L$ certifies $\omega_D$, $t_L \le (1 - \boldsymbol{u})^2\omega_D^2$. -/
@@ -431,7 +431,7 @@ theorem shqrLoopThreshold_spec (hu0 : 0 ≤ u) (hu : u ≤ uShQR n k B Γ S δ �
     gcongr
 
 /-- Regularize's window is below Exc's translate scale (the hypothesis `hd` of
-`NLAlib.ShiftedQR.roundedDecouple_randomDecouplingContract`): for $B \ge 1$,
+`NLAlib.ShiftedQR.roundedDecoupleWith_randomDecouplingRoutineContract_at`): for $B \ge 1$,
 $\Gamma > 0$, $0 < \delta \le \Sigma$, $\varphi > 0$ and $k$ the degree of (eqn:setk) at $4B$,
 the stored shifts' distance $\eta/2 = R\sqrt{\varphi_R/(2k)}/2$ is at most
 $\varepsilon c_{\mathrm{lo}}\omega\sqrt{\varphi_1/(11(n + 1))}/4$, with
@@ -499,8 +499,8 @@ theorem shqrEta_div_two_le (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ) (hδS : 
         linarith
 
 /-- The parameter choices meet the decoupling loop's Exc hypotheses (`hexc1`, `hexc2` of
-`NLAlib.ShiftedQR.roundedDecouple_randomDecouplingContract`, with the iterate norm $4\Sigma$ on
-the left and the threshold $\omega$ on the right):
+`NLAlib.ShiftedQR.roundedDecoupleWith_randomDecouplingRoutineContract_at`, with the iterate norm
+$4\Sigma$ on the left and the threshold $\omega$ on the right):
 for $B \ge 1$, $0 < \delta \le \Sigma$ and $\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{ShQR}}$,
 $6\boldsymbol{u}(1.1 \cdot 4\Sigma + 3c_{\mathrm{hi}} \cdot 4\Sigma)$ is at most
 $0.005\varepsilon c_{\mathrm{lo}}\omega$ and at most

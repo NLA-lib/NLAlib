@@ -9,6 +9,7 @@ public import NLAlib.Eigensolvers.HessenbergReduction
 public import NLAlib.Eigensolvers.SmallEig.Core
 public import NLAlib.Eigensolvers.SmallEig.Perturb
 public import NLAlib.Ops.Blas.Fill
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveCompletion
 
 /-!
 # The small-eigenvalue program
@@ -486,8 +487,8 @@ theorem smallEigProg_terminatingLeafRoutineIf {M : Machine ℝ} {I : Interp O Q 
     have := one_le_pow₀ (M₀ := ℝ) (n := R) (by linarith : (1 : ℝ) ≤ 1 + 24 * u); linarith
   unfold smallEigProg
   have hl4 : μ.Live [w, p, w, ub] := fun x hx => hl x (by simp at hx ⊢; tauto)
-  refine (identityLeaf_writes (O := O) (Q := Q) (τ := tape) hS h0 h1 hl hroom
-    hwu).frame_seq_le rfl rfl hl4 le_sup_right ?_
+  refine (identityLeaf_writes (O := O) (Q := Q) (τ := tape) hS h0 h1 hroom).frame_seq_le rfl rfl hl4
+    le_sup_right ?_
   rintro μ₀ hfr₀ ⟨-, hU₀⟩
   have hB₀ : HoldsMatrix w B μ₀.store := hB.of_eqOff hfr₀ hwu.symm
   have hp₀ := hfr₀.keep (Store.readsOnly_readBlock _ _ _ _)

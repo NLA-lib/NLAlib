@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedDecoupleTermination
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedDecoupleContract
 
 /-!
 # The decoupling loop with a small-eigenvalue routine
@@ -20,9 +21,9 @@ routine contract `NLAlib.ShiftedQR.RandomSmallEigContract`, and the kernel does 
 (`NLAlib.ShiftedQR.IsRandomSmallEig.randomSmallEigContract`). The programs
 (`NLAlib.ShiftedQR.regularizeWith`, `NLAlib.ShiftedQR.shIterationWith`,
 `NLAlib.ShiftedQR.roundedDecoupleWith`) are defined with their merged wrappers
-(`NLAlib.ShiftedQR.regularize`, `NLAlib.ShiftedQR.shIteration`, `NLAlib.ShiftedQR.roundedDecouple`,
-the routine the kernel and the cap $0$); the theorems here are the cases of the general ones with
-the word count `qs.length` (`NLAlib.ShiftedQR.regularizeWith_pwrites_at` and the like).
+(`NLAlib.ShiftedQR.regularize`, `NLAlib.ShiftedQR.shIteration`, the routine the kernel and the
+cap $0$); the theorems here are the cases of the general ones with the word count
+`qs.length` (`NLAlib.ShiftedQR.regularizeWith_pwrites_at` and the like).
 
 ## Main results
 
@@ -223,6 +224,7 @@ theorem shIterationWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     hφ1 hd hC1 hxu hbound hexc1 hexc2 hthrω hSE.at hqw hj hw hlgv
 -- The hypotheses of the iteration make the elaboration of the statement heavy.
 set_option maxHeartbeats 4000000 in
+-- (heavy elaboration, see above)
 /-- **The rounded decoupling loop with a small-eigenvalue routine meets the randomized
 decoupling contract** ([BanksGarzaVargasSrivastava2022, Lemma 6.4] in floating point, corrected;
 the routine of [BanksGarzaVargasSrivastava2025, Corollary 1.3]): on a machine with the

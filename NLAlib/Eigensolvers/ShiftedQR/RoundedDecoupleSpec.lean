@@ -8,6 +8,7 @@ module
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedDecouple
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedPrecision
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedParameterChoices
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedDecoupleContract
 
 /-!
 # The rounded decoupling loop at the headline's parameters
@@ -15,10 +16,10 @@ public import NLAlib.Eigensolvers.ShiftedQR.RoundedParameterChoices
 [BanksGarzaVargasSrivastava2022, Lemma 6.4 and Theorem 6.3, corrected]: at the parameter choices
 of `NLAlib.Eigensolvers.ShiftedQR.RoundedParameters` and every
 $\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{ShQR}}$, the rounded decoupling loop
-`NLAlib.ShiftedQR.roundedDecouple` meets the randomized decoupling contract that the worklist
+`NLAlib.ShiftedQR.roundedDecoupleWith` meets the randomized decoupling contract that the worklist
 takes, on the class of the worklist (condition $2B$, separation $\Gamma/2$), for orders up to
 $n + 1$ and norms up to $2\Sigma$. It is
-`NLAlib.ShiftedQR.roundedDecouple_randomDecouplingContract` with $n_{\max} = n$,
+`NLAlib.ShiftedQR.roundedDecoupleWith_randomDecouplingRoutineContract_at` with $n_{\max} = n$,
 $N_{\max} = 2\Sigma$, iterate norm $4\Sigma$ and class constant $4B$, every hypothesis
 discharged at the parameter choices (`NLAlib.ShiftedQR.shqrParams_spec`,
 `NLAlib.ShiftedQR.shqrEta_div_two_le`, `NLAlib.ShiftedQR.shqrExc_of_le_uShQR`).
@@ -73,7 +74,7 @@ interpretation reading the tape only in its windows, a `SmallEig` kernel on a st
 $[0, 1]$ with forward error $0 \le \beta \le$ `shqrSmallEigAccuracy` and failure
 $\varphi_{\mathrm{se}} \ge 0$, and an exact polar disk sampler on it, for $B \ge 1$, $\Gamma > 0$,
 $0 < \delta \le \Sigma$, $0 < \varphi \le 1$ and $k$ the degree of (eqn:setk) at $4B$, the loop
-`NLAlib.ShiftedQR.roundedDecouple` with the words of `NLAlib.ShiftedQR.roundedDecoupleParams` at
+`NLAlib.ShiftedQR.roundedDecoupleWith` with the words of `NLAlib.ShiftedQR.roundedDecoupleParams` at
 the parameter choices of `NLAlib.Eigensolvers.ShiftedQR.RoundedParameters` meets
 `NLAlib.ShiftedQR.RandomDecouplingContract` on the class (condition $2B$, separation $\Gamma/2$)
 for orders up to $n_c + 1$, any $n_c \le n$ with a log width $w \ge kn_c$, and norms up to

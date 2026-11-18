@@ -352,4 +352,16 @@ theorem StdModel.dec_mul_of_eq_zero {u : ℝ} {dec : K → ℝ} {M : Machine K}
   simp only [hb, MulZeroClass.mul_zero, abs_zero, sub_zero] at this
   exact abs_nonpos_iff.mp this
 
+/-- Every machine has the standard model at $\boldsymbol{u} = 1$ for the zero decoding: a
+trivial model, whose laws still give the totality of the lowered programs. -/
+theorem stdModel_one_zero {K : Type} (M : Machine K) :
+    StdModel 1 (fun _ => (0 : ℝ)) M where
+  lit q := by simp
+  add _ _ := by simp
+  sub _ _ := by simp
+  mul _ _ := by simp
+  div _ _ h := absurd rfl h
+  neg _ := by simp
+  sqrt _ _ := by simp
+
 end NLAlib.Ops

@@ -7,7 +7,7 @@ module
 
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolve
 public import NLAlib.Matrix.FinitePrecision.StoredBlocks
-public import NLAlib.Matrix.FinitePrecision.GivensLogReplay
+public import NLAlib.Matrix.FinitePrecision.GivensReplay
 
 /-!
 # The Schur updates of a worklist round

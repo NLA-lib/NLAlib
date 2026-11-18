@@ -8,6 +8,7 @@ module
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedWorklistTermination
 public import NLAlib.Eigensolvers.SmallEig.Decoupler
 public import NLAlib.Eigensolvers.SmallEig.Leaf
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedDecoupleContract
 
 /-!
 # The core of the small-eigenvalue solver

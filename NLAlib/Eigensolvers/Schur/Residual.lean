@@ -332,13 +332,13 @@ errors. -/
 theorem specNorm_sub_mul_mul_conjTranspose_le_of_scaled {N : ℕ}
     {A A₁ A₂ U T T' : Matrix (Fin N) (Fin N) ℂ} {s u δR εT ε : ℝ} (hs : 0 < s) (hu : 0 ≤ u)
     (hA₁ : specNorm ((s : ℂ) • A₁ - A) ≤ 3 * u * frobNorm A) (hA₂ : specNorm (A₂ - A₁) ≤ δR)
-    (hT : IsTrackedUnitarySimilar ε εT 1 A₂ U T) (hε0 : 0 ≤ ε) (hε : ε ≤ 1 / 8)
+    (hT : IsTrackedUnitarySimilar ε εT 1 A₂ U T) (hε0 : 0 ≤ ε)
     (hT' : frobNorm (T' - (s : ℂ) • T) ≤ u * s * frobNorm T) :
     specNorm (A - U * T' * Uᴴ) ≤
       s * (δR + εT + (2 * ε + ε ^ 2) * (specNorm A₂ + εT)) + 3 * u * frobNorm A +
         (1 + ε) ^ 2 * u * s * √(N : ℝ) * (specNorm A₂ + εT) := by
   obtain ⟨V, E, hV, hUV, hE, hAE⟩ := hT.exists_eq_mul_mul_conjTranspose hε0
-  have hres := (hT.specNorm_sub_mul_mul_conjTranspose_le hε0 hε).1
+  have hres := (hT.specNorm_sub_mul_mul_conjTranspose_le hε0).1
   have hTn : specNorm T ≤ specNorm A₂ + εT := by
     rw [← hV.specNorm_mul_conjTranspose_right, ← hV.specNorm_mul_left, ← Matrix.mul_assoc, ← hAE]
     exact (specNorm_add_le _ _).trans (by linarith)

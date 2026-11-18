@@ -7,6 +7,8 @@ module
 
 public import NLAlib.Eigensolvers.Schur.Completion
 public import NLAlib.Eigensolvers.SmallEig.Certificate
+public import NLAlib.Eigensolvers.HessenbergAccumulate
+public import NLAlib.Eigensolvers.Schur.Composition
 
 /-!
 # The dense Schur solver as a canonical certificate

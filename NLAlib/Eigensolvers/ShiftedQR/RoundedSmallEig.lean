@@ -7,6 +7,7 @@ module
 
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedTheorems
 public import NLAlib.Eigensolvers.SmallEig.Theorems
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedSchurLeaf
 
 /-!
 # The rounded shifted QR algorithm with the small-eigenvalue program
@@ -726,7 +727,9 @@ theorem roundedShQRSmallEig_work_le (sG n k np F T : ℕ) :
       [n + 1, k, np, F, T, F * (k + 1 + np), k * (n + 1), 0, 0, 0, 0, 0, 0, 0]
       ([⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 0, 0, 1]⟩, ⟨1, [0, 0, 0, 0, 1]⟩,
         ⟨1, [0, 1, 1, 1]⟩, ⟨1, [1, 1]⟩] ++ List.replicate 7 (WorkMono.const 0)) := by
-    simp [SlotsLe, WorkMono.eval, WorkMono.const]
+    suffices F * (k + 1 + np) ≤ (k + 1) * ((np + 1) * (F + 1)) ∧
+        k * (n + 1) ≤ (n + 1) * (k + 1) by
+      simpa [SlotsLe, WorkMono.eval, WorkMono.const] using this
     have h1 : k + 1 + np ≤ (k + 1) * (np + 1) := by nlinarith
     have h2 := Nat.mul_le_mul_left F h1
     constructor <;> nlinarith

@@ -12,6 +12,7 @@ public import NLAlib.Eigensolvers.SmallEig.DecouplerPrecision
 public import NLAlib.Eigensolvers.SmallEig.RandomHessenberg
 public import NLAlib.Matrix.FinitePrecision.GivensLogClose
 public import NLAlib.Matrix.FinitePrecision.GivensLogSlots
+public import NLAlib.Eigensolvers.SmallEig.DecoupleTermination
 
 /-!
 # The decoupler of the small-eigenvalue solver
@@ -660,7 +661,7 @@ theorem smallEigDecoupler_open_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u 
       (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * ws)))
       (SmallEigDecouplerOpened H qs w q f lg ns ws L) μ := by
   obtain ⟨hin, hlgl, hlgr, hne⟩ := hμ
-  refine ((slottedLogOpen_writes hS hM hlgl hlgr).in_frame hd ha hlgl).mono le_rfl ?_
+  refine ((slottedLogOpen_writes hS hM hlgr).in_frame hd ha hlgl).mono le_rfl ?_
   rintro μ' hfr ⟨-, hlog⟩
   have hin' := hin.of_eqOff hfr (Fp.disj_inBlock_of_ne (hne q (by simp)).symm)
     (hin.2.2.2.1.of_eqOff hfr (Fp.disj_inBlock_of_ne (hne w (by simp)).symm))
@@ -781,12 +782,12 @@ theorem smallEigDecoupler_randomDecouplingRoutineContract_of_le {M : Machine ℝ
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * ws))))) ?_) (fun μ h => h) ?_ le_rfl
   · rintro x μ μ' - hfr ⟨hf0, H', L', hL', hpl, hlog, hby, hHess, hsm, hW'⟩
     rw [hW'.eq_storedMatrix] at hby hHess hsm
-    rw [hlog.slotEntries_read hL' fun _ _ => rfl] at hby
+    rw [hlog.slotEntries_read hL'] at hby
     exact ⟨hfr, hf0, fun i hi => by rw [Store.get_of_readBlock hW' hi 0]; rfl, hby, hHess, hsm,
       L', hL', hpl, by simpa using hlog⟩
   · rintro μ μ' - ⟨hfr, hf0, hinit, hby, hHess, hsm, L', hL', hpl, hlog⟩
     have hlog' : HoldsSlottedLog lg ns ws L' [] μ'.store := by simpa using hlog
-    rw [← hlog'.slotEntries_read hL' fun _ _ => rfl] at hby
+    rw [← hlog'.slotEntries_read hL'] at hby
     exact ⟨hfr, hf0, _, L', hL', hpl, hlog', hby, hHess, hsm, holdsMatrix_storedMatrix hinit⟩
 
 /-- **The decoupler meets the randomized decoupling contract** ([BanksGarzaVargasSrivastava2025,

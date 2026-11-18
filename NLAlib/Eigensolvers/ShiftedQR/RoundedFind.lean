@@ -10,6 +10,7 @@ public import NLAlib.Matrix.QRIteration.RoundedStrategy
 public import NLAlib.Eigensolvers.ShiftedQR.PairBlocks
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedRitz
 public import NLAlib.Eigensolvers.ShiftedQR.StableStep
+public import NLAlib.Eigensolvers.ShiftedQR.MultiStepStable
 
 /-!
 # `Find` in floating point
@@ -324,7 +325,7 @@ theorem comptauHalf_isHalfTau {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
   have hl₀ : (⟨store, μ.pos⟩ : Mem ℝ).Live [A, S, P, w, sb, lg] := by
     simp [Mem.Live, w, sb, lg, hlen]; omega
   refine (slottedLogOpen_writes (τ := τ) (μ := ⟨store, μ.pos⟩) (ns := 1) (w := h * e * n)
-    (lg := lg) hS hM (hl₀.mono (by simp)) (by simp [hlg, lg])).frame_seq_le rfl rfl
+    (lg := lg) hS hM (by simp [hlg, lg])).frame_seq_le rfl rfl
     (hl₀.mono (by simp)) (hab (by dsimp [lg]; omega)) ?_
   rintro μ₀ hfr₀ ⟨hp₀, hlog₀⟩
   -- the copy of the matrix

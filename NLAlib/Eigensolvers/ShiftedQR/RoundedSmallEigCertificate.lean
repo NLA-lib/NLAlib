@@ -11,9 +11,9 @@ public import NLAlib.Eigensolvers.SmallEig.Certificate
 /-!
 # The rounded shifted QR algorithm with the small-eigenvalue program as a canonical certificate
 
-The certificate of `NLAlib.Eigensolvers.ShiftedQR.RoundedCertificate` with no `SmallEig` oracle:
-the program is `NLAlib.ShiftedQR.roundedShQRSmallEig`, which runs the small-eigenvalue program
-`NLAlib.SmallEig.smallEigProg` in the place of the kernel. The program, fixed before every size
+The rounded shifted QR algorithm with no `SmallEig` oracle as one counted run: the program is
+`NLAlib.ShiftedQR.roundedShQRSmallEig`, which runs the small-eigenvalue program
+`NLAlib.SmallEig.smallEigProg` as its leaf. The program, fixed before every size
 and input, is a canonical certificate (`NLAlib.Ops.Algorithm`) over the model of the
 small-eigenvalue solver (`NLAlib.SmallEig.smallEigModel`: scalar arithmetic of a machine `Mch`,
 exact dimension literals, comparisons and index conversion, draws of the tape streams and the

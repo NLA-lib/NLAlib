@@ -11,7 +11,7 @@ public import NLAlib.Matrix.FinitePrecision.GivensLogClose
 /-!
 # Termination of the rounded decoupling loop
 
-The termination-only counterpart of the decoupler's contract: `NLAlib.ShiftedQR.roundedDecouple`
+The termination-only counterpart of the decoupler's contract: `NLAlib.ShiftedQR.roundedDecoupleWith`
 (the loop of [BanksGarzaVargasSrivastava2022, Lemma 6.4] with `Regularize` and
 $\mathrm{Sh}_{k,B}$) runs to completion on every tape and from every stored matrix. Nothing
 numerical is assumed: the matrix need not be upper Hessenberg, the machine need not round
@@ -329,7 +329,7 @@ theorem roundedDecoupleLoopWith_terminates {M : Machine ℝ} {I : Interp O Q ℝ
     (hnet : ps.drop 10 = ((excNet ε).flatMap fun z => [z.re, z.im]) ++ qs)
     (hctx : DecoupleLoopCtx n L w p f ps μ) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     (hW : HoldsMatrix w H μ.store)
-    {ns ws : ℕ} {lg : ℕ × ℕ} 
+    {ns ws : ℕ} {lg : ℕ × ℕ}
     (hlog : HoldsSlottedLog lg ns ws [] [] μ.store) (hj : F * (k + 1 + (excNet ε).length) ≤ ns)
         (hw : k * n ≤ ws)
     (hlgl : μ.Live [lg]) (hlgL : lg.1 < L) (hlgv : ∀ b ∈ [w, p, f], b.1 ≠ lg.1) :
@@ -434,7 +434,7 @@ every matrix
 ([BanksGarzaVargasSrivastava2022, Lemma 6.4], termination only): on a scalar machine with exact
 comparisons, index literals, index conversion and exact natural literals up to $n_{\max} + 1$, a
 `SmallEig` kernel meeting `NLAlib.ShiftedQR.IsRandomSmallEig` and an exact polar sampler,
-`NLAlib.ShiftedQR.roundedDecouple` with the parameter words
+`NLAlib.ShiftedQR.roundedDecoupleWith` with the parameter words
 `NLAlib.ShiftedQR.roundedDecoupleParams` and $k = 2^q$ is a
 `NLAlib.ShiftedQR.TerminatingDecoupler` for orders up to $n_{\max} + 1$, with any iteration cap
 $F$. No numerical hypothesis is needed: the loop is capped, every operation succeeds on stored

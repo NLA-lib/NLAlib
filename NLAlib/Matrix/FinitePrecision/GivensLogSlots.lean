@@ -320,7 +320,7 @@ theorem HoldsSlottedLog.slotEntries_read_drop {lg : ℕ × ℕ} {ns w : ℕ}
   have hlen := h.1
   simp only [List.length_append] at hlen
   have h' := h.drop.rejects (c := ns - L.length - L'.length) (by omega)
-  have hread := h'.slotEntries_read (by simp; omega) fun _ _ => rfl
+  have hread := h'.slotEntries_read (by simp; omega)
   rw [slottedLogRead_drop, ← hread]
   simp
 

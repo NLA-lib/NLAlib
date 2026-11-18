@@ -12,6 +12,7 @@ public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveBackward
 public import NLAlib.Eigensolvers.ShiftedQR.PairBlocks
 public import NLAlib.Matrix.QRIteration.StableStepForward
 public import NLAlib.Matrix.FinitePrecision.GivensLogSlots
+public import NLAlib.Eigensolvers.ShiftedQR.MultiStepStable
 
 /-!
 # The trials of the rounded `Regularize`

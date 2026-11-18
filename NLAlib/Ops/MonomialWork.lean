@@ -518,4 +518,13 @@ elab (name := kernelRfl) "kernel_rfl" : tactic => withMainContext do
   g.assign (← mkEqRefl a)
   replaceMainGoal []
 
+/-- The instructions of a supremum of counts and of their infimum add up to those of the two
+counts. -/
+theorem size_sup_add_size_inf {Op Tst : Type} (x y : Count Op Tst) :
+    Count.size (x ⊔ y) + Count.size (x ⊓ y) = Count.size x + Count.size y := by
+  rw [← map_add, ← map_add]
+  congr 1
+  ext a
+  simp [Finsupp.sup_apply, Finsupp.inf_apply, max_add_min]
+
 end NLAlib.Ops

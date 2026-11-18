@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveUpdates
+public import NLAlib.Matrix.FinitePrecision.GivensReplayBlocks
 
 /-!
 # The Schur steps of a worklist round as tracked similarities
@@ -16,9 +17,7 @@ range block of a matrix that is block upper triangular for the ranges, and both 
 couplings of the block with computed unitaries. This file shows that each step is a tracked
 unitary similarity of the whole matrix (`NLAlib.IsTrackedUnitarySimilar`) with explicit errors,
 and that the block structure (`NLAlib.ShiftedQR.SchurShape`) is kept: active blocks upper
-Hessenberg, finished blocks upper triangular, exact zeros below the diagonal blocks. The coupling
-errors of a step lie in two corners of the matrix with disjoint rows and columns, so their norm is
-the larger of the two (`NLAlib.specNorm_add_le_max_of_support`).
+Hessenberg, finished blocks upper triangular, exact zeros below the diagonal blocks.
 
 ## Main definitions
 
@@ -27,8 +26,6 @@ the larger of the two (`NLAlib.specNorm_add_le_max_of_support`).
 
 ## Main results
 
-* `NLAlib.specNorm_add_le_max_of_support`, `NLAlib.specNorm_couplingPart_le_max`: matrices
-  supported on disjoint rows and columns.
 * `NLAlib.ShiftedQR.decoupleUpdateMatrix_isPerturbedUnitarySimilarBy`: the decoupling update as
   a witnessed step.
 * `NLAlib.ShiftedQR.leafUpdate_isTrackedUnitarySimilar`: the leaf update as a tracked step.
@@ -43,397 +40,6 @@ namespace NLAlib
 
 open Ops
 open scoped Matrix
-
-section Support
-
-variable {𝕜 : Type*} [RCLike 𝕜] {m n : Type*} [Fintype m] [Fintype n]
-
-/-- Disjoint corners: if $\mathbf{X}$ is supported on the rows of `r` and the columns of
-`c`, and $\mathbf{Y}$ off both, then $\|\mathbf{X} + \mathbf{Y}\|_2 \le
-\max(\|\mathbf{X}\|_2, \|\mathbf{Y}\|_2)$. -/
-theorem specNorm_add_le_max_of_support {X Y : Matrix m n 𝕜} (r : m → Prop) (c : n → Prop)
-    (hX : ∀ i j, ¬(r i ∧ c j) → X i j = 0) (hY : ∀ i j, ¬(¬r i ∧ ¬c j) → Y i j = 0) :
-    specNorm (X + Y) ≤ max (specNorm X) (specNorm Y) := by
-  classical
-  set M := max (specNorm X) (specNorm Y)
-  have hM : 0 ≤ M := (specNorm_nonneg X).trans (le_max_left _ _)
-  refine (specNorm_le_iff hM).2 fun v => ?_
-  set v₁ : n → 𝕜 := fun j => if c j then v j else 0
-  set v₂ : n → 𝕜 := fun j => if c j then 0 else v j
-  have hX1 : X *ᵥ v = X *ᵥ v₁ := by
-    funext i; simp only [Matrix.mulVec, dotProduct, v₁]
-    refine Finset.sum_congr rfl fun j _ => ?_
-    by_cases hj : c j
-    · simp [hj]
-    · simp [hj, hX i j (fun h => hj h.2)]
-  have hY2 : Y *ᵥ v = Y *ᵥ v₂ := by
-    funext i; simp only [Matrix.mulVec, dotProduct, v₂]
-    refine Finset.sum_congr rfl fun j _ => ?_
-    by_cases hj : c j
-    · simp [hj, hY i j (fun h => h.2 hj)]
-    · simp [hj]
-  have hXr : ∀ i, ¬r i → (X *ᵥ v) i = 0 := fun i hi => by
-    simp [Matrix.mulVec, dotProduct, hX i _ (fun h => hi h.1)]
-  have hYr : ∀ i, r i → (Y *ᵥ v) i = 0 := fun i hi => by
-    simp [Matrix.mulVec, dotProduct, hY i _ (fun h => h.1 hi)]
-  have hsq : ‖WithLp.toLp 2 ((X + Y) *ᵥ v)‖ ^ 2 =
-      ‖WithLp.toLp 2 (X *ᵥ v₁)‖ ^ 2 + ‖WithLp.toLp 2 (Y *ᵥ v₂)‖ ^ 2 := by
-    rw [← hX1, ← hY2]
-    simp only [EuclideanSpace.norm_sq_eq, Matrix.add_mulVec, Pi.add_apply,
-      ← Finset.sum_add_distrib]
-    refine Finset.sum_congr rfl fun i _ => ?_
-    by_cases hi : r i
-    · simp [hYr i hi]
-    · simp [hXr i hi]
-  have hv : ‖WithLp.toLp 2 v₁‖ ^ 2 + ‖WithLp.toLp 2 v₂‖ ^ 2 = ‖WithLp.toLp 2 v‖ ^ 2 := by
-    simp only [EuclideanSpace.norm_sq_eq, ← Finset.sum_add_distrib, v₁, v₂]
-    refine Finset.sum_congr rfl fun j _ => ?_
-    by_cases hj : c j <;> simp [hj]
-  have h1 : ‖WithLp.toLp 2 (X *ᵥ v₁)‖ ≤ M * ‖WithLp.toLp 2 v₁‖ := (norm_toLp_mulVec_le X v₁).trans
-    (mul_le_mul_of_nonneg_right (le_max_left _ _) (norm_nonneg _))
-  have h2 : ‖WithLp.toLp 2 (Y *ᵥ v₂)‖ ≤ M * ‖WithLp.toLp 2 v₂‖ := (norm_toLp_mulVec_le Y v₂).trans
-    (mul_le_mul_of_nonneg_right (le_max_right _ _) (norm_nonneg _))
-  refine (sq_le_sq₀ (norm_nonneg _) (by positivity)).1 ?_
-  rw [hsq, mul_pow, ← hv, mul_add]
-  have h1' := pow_le_pow_left₀ (norm_nonneg _) h1 2
-  have h2' := pow_le_pow_left₀ (norm_nonneg _) h2 2
-  rw [mul_pow] at h1' h2'
-  linarith
-end Support
-
-
-section Embed
-variable {N lo d : ℕ}
-
-/-- The block embedding acts on the rows of the range only. -/
-theorem embedBlock_mul_apply_of_not_mem (V : Matrix (Fin d) (Fin d) ℂ)
-    (X : Matrix (Fin N) (Fin N) ℂ) {i : Fin N} (hi : ¬(lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d))
-    (j : Fin N) : (embedBlock (N := N) lo V * X) i j = X i j := by
-  rw [Matrix.mul_apply, Finset.sum_eq_single i]
-  · simp [embedBlock, hi]
-  · intro k _ hk; simp [embedBlock, hi, Ne.symm hk]
-  · simp
-
-/-- The block embedding acts on the columns of the range only. -/
-theorem mul_embedBlock_apply_of_not_mem (V : Matrix (Fin d) (Fin d) ℂ)
-    (X : Matrix (Fin N) (Fin N) ℂ) (i : Fin N) {j : Fin N}
-    (hj : ¬(lo ≤ (j : ℕ) ∧ (j : ℕ) < lo + d)) : (X * embedBlock (N := N) lo V) i j = X i j := by
-  rw [Matrix.mul_apply, Finset.sum_eq_single j]
-  · simp [embedBlock, hj]
-  · intro k _ hk
-    by_cases hk' : lo ≤ (k : ℕ) ∧ (k : ℕ) < lo + d
-    · simp [embedBlock, hk', hj]
-    · simp [embedBlock, hk', hk]
-  · simp
-
-/-- A row of the range of $\operatorname{diag}(\mathbf{I}, \mathbf{V}, \mathbf{I})\mathbf{X}$:
-the row of $\mathbf{V}$ times the rows of $\mathbf{X}$ on the range. -/
-theorem embedBlock_mul_apply_of_mem (hN : lo + d ≤ N) (V : Matrix (Fin d) (Fin d) ℂ)
-    (X : Matrix (Fin N) (Fin N) ℂ) {i : Fin N} (hi : lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d)
-    (j : Fin N) : (embedBlock (N := N) lo V * X) i j =
-      ∑ a : Fin d, V ⟨(i : ℕ) - lo, by omega⟩ a * X ⟨lo + a, by omega⟩ j := by
-  rw [Matrix.mul_apply]
-  symm
-  refine Fintype.sum_of_injective (fun a : Fin d => (⟨lo + a, by omega⟩ : Fin N))
-    (fun a b h => Fin.ext (by simpa using h)) _ _ (fun k hk => ?_) (fun a => ?_)
-  · have hk' : ¬(lo ≤ (k : ℕ) ∧ (k : ℕ) < lo + d) := fun h =>
-      hk ⟨⟨(k : ℕ) - lo, by omega⟩, Fin.ext (by simp; omega)⟩
-    simp [embedBlock, hk', hi]
-  · have ha := a.isLt
-    simp [embedBlock, hi]
-
-/-- A column of the range of $\mathbf{X}\operatorname{diag}(\mathbf{I}, \mathbf{V}, \mathbf{I})$:
-the columns of $\mathbf{X}$ on the range times the column of $\mathbf{V}$. -/
-theorem mul_embedBlock_apply_of_mem (hN : lo + d ≤ N) (V : Matrix (Fin d) (Fin d) ℂ)
-    (X : Matrix (Fin N) (Fin N) ℂ) (i : Fin N) {j : Fin N}
-    (hj : lo ≤ (j : ℕ) ∧ (j : ℕ) < lo + d) : (X * embedBlock (N := N) lo V) i j =
-      ∑ a : Fin d, X i ⟨lo + a, by omega⟩ * V a ⟨(j : ℕ) - lo, by omega⟩ := by
-  rw [Matrix.mul_apply]
-  symm
-  refine Fintype.sum_of_injective (fun a : Fin d => (⟨lo + a, by omega⟩ : Fin N))
-    (fun a b h => Fin.ext (by simpa using h)) _ _ (fun k hk => ?_) (fun a => ?_)
-  · have hk' : ¬(lo ≤ (k : ℕ) ∧ (k : ℕ) < lo + d) := fun h =>
-      hk ⟨⟨(k : ℕ) - lo, by omega⟩, Fin.ext (by simp; omega)⟩
-    have hkj : k ≠ j := fun h => hk' (h ▸ hj)
-    simp [embedBlock, hk', hkj]
-  · have ha := a.isLt
-    simp [embedBlock, hj]
-
-end Embed
-
-section Rect
-
-variable {N : ℕ}
-
-/-- A rectangular block placed in the zero matrix keeps its spectral norm bound. -/
-theorem specNorm_setRect_zero_le {m q : ℕ} {r0 c0 : ℕ} (hr : r0 + m ≤ N) (hc : c0 + q ≤ N)
-    (E : Matrix (Fin m) (Fin q) ℂ) :
-    specNorm (setRect (0 : Matrix (Fin N) (Fin N) ℂ) r0 c0 E) ≤ specNorm E := by
-  refine (specNorm_le_iff (specNorm_nonneg E)).2 fun v => ?_
-  set w : Fin q → ℂ := fun b => v ⟨c0 + b, by omega⟩
-  have hrow : ∀ i : Fin N, (setRect (0 : Matrix (Fin N) (Fin N) ℂ) r0 c0 E *ᵥ v) i =
-      if h : r0 ≤ (i : ℕ) ∧ (i : ℕ) < r0 + m then (E *ᵥ w) ⟨(i : ℕ) - r0, by omega⟩ else 0 := by
-    intro i
-    simp only [Matrix.mulVec, dotProduct]
-    split_ifs with h
-    · symm
-      refine Fintype.sum_of_injective (fun b : Fin q => (⟨c0 + b, by omega⟩ : Fin N))
-        (fun a b hab => Fin.ext (by simpa using hab)) _ _ (fun k hk => ?_) (fun b => ?_)
-      · have hk' : ¬(c0 ≤ (k : ℕ) ∧ (k : ℕ) < c0 + q) := fun h' =>
-          hk ⟨⟨(k : ℕ) - c0, by omega⟩, Fin.ext (by simp; omega)⟩
-        simp [setRect, hk']
-      · have hb := b.isLt
-        simp only [setRect, Matrix.of_apply, w]
-        rw [dif_pos ⟨h.1, h.2, by simp, by simp⟩]
-        congr 2; ext; simp
-    · refine Finset.sum_eq_zero fun k _ => ?_
-      simp only [setRect, Matrix.of_apply]
-      rw [dif_neg fun h' => h ⟨h'.1, h'.2.1⟩]; simp
-  have hsq : ‖WithLp.toLp 2 (setRect (0 : Matrix (Fin N) (Fin N) ℂ) r0 c0 E *ᵥ v)‖ ^ 2 =
-      ‖WithLp.toLp 2 (E *ᵥ w)‖ ^ 2 := by
-    simp only [EuclideanSpace.norm_sq_eq, hrow]
-    symm
-    refine Fintype.sum_of_injective (fun a : Fin m => (⟨r0 + a, by omega⟩ : Fin N))
-      (fun a b hab => Fin.ext (by simpa using hab)) _ _ (fun k hk => ?_) (fun a => ?_)
-    · have hk' : ¬(r0 ≤ (k : ℕ) ∧ (k : ℕ) < r0 + m) := fun h' =>
-        hk ⟨⟨(k : ℕ) - r0, by omega⟩, Fin.ext (by simp; omega)⟩
-      simp [hk']
-    · have ha := a.isLt
-      simp only
-      rw [dif_pos ⟨by simp, by simp⟩]
-      congr 3; ext; simp
-  have hw : ‖WithLp.toLp 2 w‖ ^ 2 ≤ ‖WithLp.toLp 2 v‖ ^ 2 := by
-    simp only [EuclideanSpace.norm_sq_eq, w]
-    have e : ∑ b : Fin q, ‖v ⟨c0 + b, by omega⟩‖ ^ 2 =
-        ∑ k ∈ Finset.univ.image (fun b : Fin q => (⟨c0 + b, by omega⟩ : Fin N)), ‖v k‖ ^ 2 :=
-      (Finset.sum_image (f := fun k => ‖v k‖ ^ 2)
-        fun a _ b _ hab => Fin.ext (by simpa using hab)).symm
-    rw [e]
-    exact Finset.sum_le_sum_of_subset_of_nonneg (Finset.subset_univ _) fun _ _ _ => by positivity
-  refine (sq_le_sq₀ (norm_nonneg _) (by positivity)).1 ?_
-  rw [hsq, mul_pow]
-  have h1 := pow_le_pow_left₀ (norm_nonneg _) (norm_toLp_mulVec_le E w) 2
-  rw [mul_pow] at h1
-  exact h1.trans (mul_le_mul_of_nonneg_left hw (by positivity))
-end Rect
-
-section Replay
-
-variable {M : Machine ℝ} {N : ℕ}
-
-/-- The entries of a matrix masked on the left by `NLAlib.colMask` (a row mask). -/
-theorem colMask_mul_apply (j0 nc : ℕ) (X : Matrix (Fin N) (Fin N) ℂ) (i j : Fin N) :
-    (colMask N j0 nc * X) i j = if j0 ≤ (i : ℕ) ∧ (i : ℕ) < j0 + nc then X i j else 0 := by
-  simp only [colMask, Matrix.diagonal_mul]; split_ifs <;> simp
-
-/-- The entries of a matrix masked on the right by `NLAlib.colMask`. -/
-theorem mul_colMask_apply (j0 nc : ℕ) (X : Matrix (Fin N) (Fin N) ℂ) (i j : Fin N) :
-    (X * colMask N j0 nc) i j = if j0 ≤ (j : ℕ) ∧ (j : ℕ) < j0 + nc then X i j else 0 := by
-  simp only [colMask, Matrix.mul_diagonal]; split_ifs <;> simp
-
-/-- A row replay keeps the rows outside its two planes. -/
-theorem replayRowStep_apply_row {lo j0 nc : ℕ} (X : Matrix (Fin N) (Fin N) ℂ) (e : GivensEntry)
-    (r t : Fin N) (hr : (r : ℕ) ≠ lo + e.1) (hr' : (r : ℕ) ≠ lo + e.1 + 1) :
-    replayRowStep M lo j0 nc X e r t = X r t := by
-  unfold replayRowStep
-  split_ifs
-  · simp only [machineRowRotationOn, machineRowRotation, Matrix.of_apply, Fin.ext_iff]
-    split_ifs <;> rfl
-  · rfl
-
-/-- A column replay keeps the columns outside its two planes. -/
-theorem replayColumnStep_apply_col {lo i0 nr : ℕ} (X : Matrix (Fin N) (Fin N) ℂ)
-    (e : GivensEntry) (r t : Fin N) (ht : (t : ℕ) ≠ lo + e.1) (ht' : (t : ℕ) ≠ lo + e.1 + 1) :
-    replayColumnStep M lo i0 nr X e r t = X r t := by
-  unfold replayColumnStep
-  split_ifs
-  · simp only [machineColRotationOn, machineColRotation, Matrix.of_apply, Fin.ext_iff]
-    split_ifs <;> rfl
-  · rfl
-
-/-- A column replay on a row range keeps the other rows. -/
-theorem replayColumnStep_apply_of_not_mem {lo i0 nr : ℕ} (X : Matrix (Fin N) (Fin N) ℂ)
-    (e : GivensEntry) (r t : Fin N) (hr : ¬(i0 ≤ (r : ℕ) ∧ (r : ℕ) < i0 + nr)) :
-    replayColumnStep M lo i0 nr X e r t = X r t := by
-  unfold replayColumnStep
-  split_ifs
-  · simp [machineColRotationOn, hr]
-  · rfl
-
-/-- The row replay of a log inside the range keeps the rows outside it. -/
-theorem foldl_replayRowStep_apply_row {lo d j0 nc : ℕ} (es : List GivensEntry)
-    (hes : ∀ e ∈ es, e.1 + 1 < d) (X : Matrix (Fin N) (Fin N) ℂ) (r t : Fin N)
-    (hr : ¬(lo ≤ (r : ℕ) ∧ (r : ℕ) < lo + d)) :
-    es.foldl (replayRowStep M lo j0 nc) X r t = X r t := by
-  induction es generalizing X with
-  | nil => rfl
-  | cons e es ih =>
-    have he := hes e List.mem_cons_self
-    rw [List.foldl_cons, ih (fun e' he' => hes e' (List.mem_cons_of_mem _ he')),
-      replayRowStep_apply_row _ _ _ _ (by omega) (by omega)]
-
-/-- The column replay of a log inside the range keeps the columns outside it. -/
-theorem foldl_replayColumnStep_apply_col {lo d i0 nr : ℕ} (es : List GivensEntry)
-    (hes : ∀ e ∈ es, e.1 + 1 < d) (X : Matrix (Fin N) (Fin N) ℂ) (r t : Fin N)
-    (ht : ¬(lo ≤ (t : ℕ) ∧ (t : ℕ) < lo + d)) :
-    es.foldl (replayColumnStep M lo i0 nr) X r t = X r t := by
-  induction es generalizing X with
-  | nil => rfl
-  | cons e es ih =>
-    have he := hes e List.mem_cons_self
-    rw [List.foldl_cons, ih (fun e' he' => hes e' (List.mem_cons_of_mem _ he')),
-      replayColumnStep_apply_col _ _ _ _ (by omega) (by omega)]
-
-/-- The column replay of a log on a row range keeps the other rows. -/
-theorem foldl_replayColumnStep_apply_of_not_mem {lo i0 nr : ℕ} (es : List GivensEntry)
-    (X : Matrix (Fin N) (Fin N) ℂ) (r t : Fin N) (hr : ¬(i0 ≤ (r : ℕ) ∧ (r : ℕ) < i0 + nr)) :
-    es.foldl (replayColumnStep M lo i0 nr) X r t = X r t := by
-  induction es generalizing X with
-  | nil => rfl
-  | cons e es ih => rw [List.foldl_cons, ih, replayColumnStep_apply_of_not_mem _ _ _ _ hr]
-
-/-- A column replay on a row range, masked to the range, is the replay over all rows of the
-masked matrix. -/
-theorem colMask_mul_replayColumnStep {u : ℝ} (hM : StdModel u id M) (lo i0 nr : ℕ)
-    (X : Matrix (Fin N) (Fin N) ℂ) (e : GivensEntry) :
-    colMask N i0 nr * replayColumnStep M lo i0 nr X e =
-      replayColumnStep M lo 0 N (colMask N i0 nr * X) e := by
-  ext r t
-  rw [colMask_mul_apply]
-  by_cases h : lo + e.1 + 1 < N
-  · simp only [replayColumnStep, dif_pos h, machineColRotationOn, Matrix.of_apply,
-      machineColRotation, colMask_mul_apply]
-    by_cases hr : i0 ≤ (r : ℕ) ∧ (r : ℕ) < i0 + nr
-    · simp [hr]
-    · simp only [hr, if_false, Nat.zero_le, zero_add, r.isLt, and_self, if_true]
-      split_ifs <;> simp [linearComplex_zero_zero hM]
-  · simp [replayColumnStep, h, colMask_mul_apply]
-
-/-- The masked column replay of a log is the full column replay of the masked matrix. -/
-theorem colMask_mul_foldl_replayColumnStep {u : ℝ} (hM : StdModel u id M) (lo i0 nr : ℕ)
-    (es : List GivensEntry) (X : Matrix (Fin N) (Fin N) ℂ) :
-    colMask N i0 nr * es.foldl (replayColumnStep M lo i0 nr) X =
-      es.foldl (replayColumnStep M lo 0 N) (colMask N i0 nr * X) := by
-  induction es generalizing X with
-  | nil => rfl
-  | cons e es ih => simp only [List.foldl_cons, ih, colMask_mul_replayColumnStep hM]
-
-end Replay
-
-section Coupling
-
-variable {N : ℕ}
-
-/-- The entries of a matrix masked on both sides by `NLAlib.colMask`. -/
-theorem colMask_mul_mul_colMask_apply (i0 nr j0 nc : ℕ) (X : Matrix (Fin N) (Fin N) ℂ)
-    (i j : Fin N) : (colMask N i0 nr * X * colMask N j0 nc) i j =
-      if (i0 ≤ (i : ℕ) ∧ (i : ℕ) < i0 + nr) ∧ (j0 ≤ (j : ℕ) ∧ (j : ℕ) < j0 + nc) then X i j
-      else 0 := by
-  rw [mul_colMask_apply, colMask_mul_apply]
-  split_ifs <;> tauto
-
-/-- The coupling part of a range step as two disjoint corners: if $\mathbf{D}$ vanishes on
-the left and bottom couplings of the range $[lo, lo + d)$ and agrees with $\mathbf{X}$ on the
-right coupling and with $\mathbf{Y}$ on the top coupling, its coupling part has spectral norm at
-most $\max(\|\mathbf{X}\|_2, \|\mathbf{Y}\|_2)$ (the two corners have disjoint rows and
-columns). -/
-theorem specNorm_couplingPart_le_max {lo d : ℕ} (hN : lo + d ≤ N)
-    {D X Y : Matrix (Fin N) (Fin N) ℂ}
-    (hR : ∀ i j : Fin N, lo ≤ (i : ℕ) → (i : ℕ) < lo + d → lo + d ≤ (j : ℕ) → D i j = X i j)
-    (hT : ∀ i j : Fin N, (i : ℕ) < lo → lo ≤ (j : ℕ) → (j : ℕ) < lo + d → D i j = Y i j)
-    (hL : ∀ i j : Fin N, lo ≤ (i : ℕ) → (i : ℕ) < lo + d → (j : ℕ) < lo → D i j = 0)
-    (hB : ∀ i j : Fin N, lo + d ≤ (i : ℕ) → lo ≤ (j : ℕ) → (j : ℕ) < lo + d → D i j = 0) :
-    specNorm (couplingPart lo d D) ≤ max (specNorm X) (specNorm Y) := by
-  set X' := colMask N lo d * X * colMask N (lo + d) (N - lo - d)
-  set Y' := colMask N 0 lo * Y * colMask N lo d
-  have e : couplingPart lo d D = X' + Y' := by
-    ext i j
-    have hi := i.isLt
-    have hj := j.isLt
-    simp only [couplingPart, Matrix.of_apply, Matrix.add_apply, X', Y',
-      colMask_mul_mul_colMask_apply]
-    by_cases hiR : lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d <;>
-      by_cases hjR : lo ≤ (j : ℕ) ∧ (j : ℕ) < lo + d
-    · rw [if_pos (iff_of_true hiR hjR), if_neg (by omega), if_neg (by omega), add_zero]
-    · rw [if_neg (by tauto)]
-      by_cases hjl : (j : ℕ) < lo
-      · rw [if_neg (by omega), if_neg (by omega), add_zero, hL i j hiR.1 hiR.2 hjl]
-      · rw [if_pos (by omega), if_neg (by omega), add_zero, hR i j hiR.1 hiR.2 (by omega)]
-    · rw [if_neg (by tauto)]
-      by_cases hil : (i : ℕ) < lo
-      · rw [if_neg (by omega), if_pos (by omega), zero_add, hT i j hil hjR.1 hjR.2]
-      · rw [if_neg (by omega), if_neg (by omega), add_zero, hB i j (by omega) hjR.1 hjR.2]
-    · rw [if_pos (iff_of_false hiR hjR), if_neg (by omega), if_neg (by omega), add_zero]
-  rw [e]
-  refine (specNorm_add_le_max_of_support (fun i : Fin N => lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d)
-    (fun j : Fin N => lo + d ≤ (j : ℕ)) (fun i j h => ?_) (fun i j h => ?_)).trans
-    (max_le_max ?_ ?_)
-  · simp only [X', colMask_mul_mul_colMask_apply]
-    rw [if_neg (by have := j.isLt; omega)]
-  · simp only [Y', colMask_mul_mul_colMask_apply]
-    rw [if_neg (by omega)]
-  · exact ((isStarProjection_colMask N (lo + d) (N - lo - d)).specNorm_mul_right_le _).trans
-      ((isStarProjection_colMask N lo d).specNorm_mul_le _)
-  · exact ((isStarProjection_colMask N lo d).specNorm_mul_right_le _).trans
-      ((isStarProjection_colMask N 0 lo).specNorm_mul_le _)
-
-end Coupling
-
-/-- The adjoint of the block embedding acts on the rows of the range only. -/
-theorem embedBlock_conjTranspose_mul_apply_of_not_mem {N lo d : ℕ} (V : Matrix (Fin d) (Fin d) ℂ)
-    (X : Matrix (Fin N) (Fin N) ℂ) {i : Fin N} (hi : ¬(lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d))
-    (j : Fin N) : ((embedBlock (N := N) lo V)ᴴ * X) i j = X i j := by
-  rw [embedBlock_conjTranspose, embedBlock_mul_apply_of_not_mem _ _ hi]
-
-/-- The entries of a range step $\widetilde{\mathbf{V}}^{\mathsf H}\mathbf{A}\widetilde{\mathbf{V}}$
-off the columns of the range are those of $\widetilde{\mathbf{V}}^{\mathsf H}\mathbf{A}$. -/
-theorem conjTranspose_mul_mul_embedBlock_apply_col {N lo d : ℕ} (V : Matrix (Fin d) (Fin d) ℂ)
-    (X : Matrix (Fin N) (Fin N) ℂ) (i : Fin N) {j : Fin N}
-    (hj : ¬(lo ≤ (j : ℕ) ∧ (j : ℕ) < lo + d)) :
-    ((embedBlock (N := N) lo V)ᴴ * X * embedBlock (N := N) lo V) i j =
-      ((embedBlock (N := N) lo V)ᴴ * X) i j :=
-  mul_embedBlock_apply_of_not_mem _ _ _ hj
-
-/-- The entries of a range step off the rows of the range are those of
-$\mathbf{A}\widetilde{\mathbf{V}}$. -/
-theorem conjTranspose_mul_mul_embedBlock_apply_row {N lo d : ℕ} (V : Matrix (Fin d) (Fin d) ℂ)
-    (X : Matrix (Fin N) (Fin N) ℂ) {i : Fin N} (hi : ¬(lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d))
-    (j : Fin N) :
-    ((embedBlock (N := N) lo V)ᴴ * X * embedBlock (N := N) lo V) i j =
-      (X * embedBlock (N := N) lo V) i j := by
-  rw [Matrix.mul_assoc, embedBlock_conjTranspose_mul_apply_of_not_mem _ _ hi]
-
-/-- A range step of a range block triangular matrix vanishes on the left coupling. -/
-theorem conjTranspose_mul_mul_embedBlock_left {N lo d : ℕ} (hN : lo + d ≤ N)
-    {A : Matrix (Fin N) (Fin N) ℂ} (hA : IsRangeBlockTriangular lo d A)
-    (V : Matrix (Fin d) (Fin d) ℂ) {i j : Fin N} (hi : lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d)
-    (hj : (j : ℕ) < lo) : ((embedBlock (N := N) lo V)ᴴ * A * embedBlock (N := N) lo V) i j = 0 := by
-  rw [conjTranspose_mul_mul_embedBlock_apply_col _ _ _ (by omega), embedBlock_conjTranspose,
-    embedBlock_mul_apply_of_mem hN _ _ hi]
-  exact Finset.sum_eq_zero fun a _ => by rw [hA _ _ (Or.inl ⟨hj, by simp⟩), mul_zero]
-
-/-- A range step of a range block triangular matrix vanishes on the bottom coupling. -/
-theorem conjTranspose_mul_mul_embedBlock_bottom {N lo d : ℕ} (hN : lo + d ≤ N)
-    {A : Matrix (Fin N) (Fin N) ℂ} (hA : IsRangeBlockTriangular lo d A)
-    (V : Matrix (Fin d) (Fin d) ℂ) {i j : Fin N} (hi : lo + d ≤ (i : ℕ))
-    (hj : lo ≤ (j : ℕ) ∧ (j : ℕ) < lo + d) :
-    ((embedBlock (N := N) lo V)ᴴ * A * embedBlock (N := N) lo V) i j = 0 := by
-  rw [conjTranspose_mul_mul_embedBlock_apply_row _ _ (by omega),
-    mul_embedBlock_apply_of_mem hN _ _ _ hj]
-  exact Finset.sum_eq_zero fun a _ => by
-    rw [hA _ _ (Or.inr ⟨by simp, hi⟩), zero_mul]
-
-/-- A rectangular block inside the matrix has spectral norm at most that of the matrix. -/
-theorem specNorm_subRect_le {N r0 c0 m q : ℕ} (hr : r0 + m ≤ N) (hc : c0 + q ≤ N)
-    (A : Matrix (Fin N) (Fin N) ℂ) : specNorm (subRect A r0 c0 m q) ≤ specNorm A := by
-  have e : subRect A r0 c0 m q = A.submatrix (fun i : Fin m => (⟨r0 + i, by omega⟩ : Fin N))
-      (fun j : Fin q => (⟨c0 + j, by omega⟩ : Fin N)) := by
-    ext i j
-    have := i.isLt; have := j.isLt
-    simp [subRect, show r0 + (i : ℕ) < N by omega, show c0 + (j : ℕ) < N by omega]
-  rw [e]
-  exact specNorm_submatrix_le A (fun a b h => Fin.ext (by simpa using h))
-    (fun a b h => Fin.ext (by simpa using h))
 
 namespace ShiftedQR
 
@@ -612,8 +218,7 @@ theorem decoupleUpdateMatrix_isPerturbedUnitarySimilarBy {Mch : Machine ℝ} {u 
     rw [decoupleReplay_apply_of_not_coupling (by simpa using hes) _ _ _ (by simp; omega),
       setSubBlock_apply, dif_pos (by simp; omega)]
     congr 1 <;> ext <;> simp
-  have h₁ := IsPerturbedUnitarySimilarBy.of_range_block hN hA
-    (decoupleReplay_isRangeBlockTriangular hA H' hes)
+  have h₁ := IsPerturbedUnitarySimilarBy.of_range_block hN
     (by rw [hblkT, ← subBlock_eq_submatrix_rangeEmb hN]; exact hblk)
     (fun i' j' hi hj => by
       rw [decoupleReplay_apply_of_not_coupling hes _ _ _ ⟨by omega, by omega⟩, setSubBlock_apply,
@@ -693,81 +298,6 @@ section Shape
 
 variable {n : ℕ}
 
-/-- A partition into ranges stays one under a permutation of the list. -/
-theorem _root_.NLAlib.IsRangePartition.perm {N : ℕ} {L L' : List (ℕ × ℕ)}
-    (h : IsRangePartition N L) (hp : L.Perm L') : IsRangePartition N L' :=
-  ⟨hp.nodup_iff.mp h.1, fun r hr => h.2.1 r (hp.mem_iff.mpr hr), fun i hi => by
-    obtain ⟨c, ⟨hc1, hc2, hc3⟩, hcu⟩ := h.2.2 i hi
-    exact ⟨c, ⟨hp.mem_iff.mp hc1, hc2, hc3⟩,
-      fun y hy => hcu y ⟨hp.mem_iff.mpr hy.1, hy.2.1, hy.2.2⟩⟩⟩
-
-/-- Splitting the first range of a partition into two consecutive ranges gives a partition. -/
-theorem _root_.NLAlib.IsRangePartition.split_cons {N lo d i : ℕ} {rest : List (ℕ × ℕ)}
-    (h : IsRangePartition N ((lo, d) :: rest)) (hi : i + 1 < d) :
-    IsRangePartition N ((lo, i + 1) :: (lo + i + 1, d - i - 1) :: rest) := by
-  obtain ⟨hnd, hval, huniq⟩ := h
-  have hlo := hval (lo, d) List.mem_cons_self
-  have hpar : ∀ r ∈ rest, ∀ k < N, r.1 ≤ k → k < r.1 + r.2 → ¬(lo ≤ k ∧ k < lo + d) := by
-    intro r hr k hk h₁ h₂ h₃
-    have := (huniq k hk).unique ⟨List.mem_cons_of_mem _ hr, h₁, h₂⟩ ⟨List.mem_cons_self, h₃⟩
-    exact (List.nodup_cons.mp hnd).1 (this ▸ hr)
-  simp only at hlo
-  refine ⟨?_, ?_, ?_⟩
-  · refine List.nodup_cons.mpr ⟨?_, List.nodup_cons.mpr ⟨?_, (List.nodup_cons.mp hnd).2⟩⟩
-    · simp only [List.mem_cons, Prod.mk.injEq, not_or]
-      exact ⟨by omega, fun hr => hpar _ hr lo (by omega) le_rfl (by simp) ⟨le_rfl, by omega⟩⟩
-    · exact fun hr => hpar _ hr (lo + i + 1) (by omega) le_rfl (by simp; omega)
-        ⟨by omega, by omega⟩
-  · intro r hr
-    simp only [List.mem_cons] at hr
-    rcases hr with rfl | rfl | hr
-    · simp; omega
-    · simp; omega
-    · exact hval r (List.mem_cons_of_mem _ hr)
-  · intro k hk
-    by_cases hkb : lo ≤ k ∧ k < lo + d
-    · by_cases hk' : k < lo + i + 1
-      · refine ⟨(lo, i + 1), ⟨List.mem_cons_self, by simp; omega⟩, ?_⟩
-        rintro r' ⟨hr', h₁, h₂⟩
-        simp only [List.mem_cons] at hr'
-        rcases hr' with rfl | rfl | hr'
-        · rfl
-        · simp at h₁; omega
-        · exact absurd hkb (hpar r' hr' k hk h₁ h₂)
-      · refine ⟨(lo + i + 1, d - i - 1), ⟨by simp, by simp; omega⟩, ?_⟩
-        rintro r' ⟨hr', h₁, h₂⟩
-        simp only [List.mem_cons] at hr'
-        rcases hr' with rfl | rfl | hr'
-        · simp at h₂; omega
-        · rfl
-        · exact absurd hkb (hpar r' hr' k hk h₁ h₂)
-    · obtain ⟨r₀, ⟨hr₀, h₁, h₂⟩, hu⟩ := huniq k hk
-      have hr₀' : r₀ ∈ rest := by
-        rcases List.mem_cons.mp hr₀ with rfl | h
-        · exact absurd ⟨h₁, h₂⟩ hkb
-        · exact h
-      refine ⟨r₀, ⟨by simp [hr₀'], h₁, h₂⟩, ?_⟩
-      rintro r' ⟨hr', h₁', h₂'⟩
-      simp only [List.mem_cons] at hr'
-      rcases hr' with rfl | rfl | hr'
-      · simp at h₁' h₂'; omega
-      · simp at h₁' h₂'; omega
-      · exact hu r' ⟨List.mem_cons_of_mem _ hr', h₁', h₂'⟩
-
-/-- Splitting a range in the middle of a partition into two consecutive ranges, the right one
-first, gives a partition. -/
-theorem _root_.NLAlib.IsRangePartition.split_append {N lo d i : ℕ} {rs done : List (ℕ × ℕ)}
-    (h : IsRangePartition N (rs ++ [(lo, d)] ++ done)) (hi : i + 1 < d) :
-    IsRangePartition N (rs ++ [(lo + i + 1, d - i - 1), (lo, i + 1)] ++ done) := by
-  have hp0 : (rs ++ [(lo, d)] ++ done).Perm ((lo, d) :: (rs ++ done)) := by
-    simp [List.perm_middle]
-  have hp1 : ((lo, i + 1) :: (lo + i + 1, d - i - 1) :: (rs ++ done)).Perm
-      (rs ++ [(lo + i + 1, d - i - 1), (lo, i + 1)] ++ done) := by
-    refine (List.Perm.swap _ _ _).trans ?_
-    simp only [List.append_assoc, List.cons_append, List.nil_append]
-    exact (List.perm_middle.trans (List.Perm.cons _ List.perm_middle)).symm
-  exact ((h.perm hp0).split_cons hi).perm hp1
-
 /-- **The shape of the matrix in the Schur-mode worklist**: the active and the finished ranges
 partition the indices, every nonzero entry below the diagonal lies in a diagonal block, the
 active blocks are upper Hessenberg and the finished blocks upper triangular. -/
@@ -809,15 +339,6 @@ theorem SchurShape.isRangeBlockTriangular {active done : List (ℕ × ℕ)}
     subst this; omega
   · have := key (r.1 + r.2 - 1) (by omega) (by omega) (by omega) (by omega) (by omega)
     subst this; omega
-
-/-- The block of a range of a partition is read without clamping. -/
-theorem _root_.NLAlib.IsRangePartition.subBlock_apply {L : List (ℕ × ℕ)}
-    (hL : IsRangePartition (n + 1) L) {r : ℕ × ℕ} (hr : r ∈ L)
-    (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (a b : Fin r.2) :
-    subBlock A r a b = A ⟨r.1 + a, by have := (hL.2.1 r hr).2; omega⟩
-      ⟨r.1 + b, by have := (hL.2.1 r hr).2; omega⟩ := by
-  simp only [subBlock, Matrix.submatrix_apply]
-  congr 1 <;> exact Fin.ext (hL.val_blockIndex hr _)
 
 /-- The block of a range of the shape is read without clamping. -/
 theorem SchurShape.subBlock_apply {active done : List (ℕ × ℕ)}
@@ -1027,9 +548,8 @@ theorem leafUpdate_isTrackedUnitarySimilar {Mch : Machine ℝ} {u : ℝ} (hM : S
   have hL : ∀ i j, _ → L i j = A₁ i j := fun i j h =>
     leafUpdateMatrix_apply_of_not_coupling Mch Ub A₁ i j h
   refine ⟨embedBlock lo Wb, ?_, ?_⟩
-  · refine IsPerturbedUnitarySimilarBy.of_range_block hN hA (fun i j h => ?_) ?_
+  · refine IsPerturbedUnitarySimilarBy.of_range_block hN ?_
       (fun i j hi hj => by rw [hL i j ⟨by omega, by omega⟩, hA₁ _ _ (by omega)]) ?_
-    · rw [hL i j ⟨by omega, by omega⟩, hA₁ _ _ (by omega), hA i j h]
     · have e : L.submatrix (rangeEmb hN) (rangeEmb hN) = Tb := by
         ext a b
         have ha := a.isLt
@@ -1049,30 +569,6 @@ end LeafStep
 section ShapeSteps
 
 variable {n : ℕ}
-
-/-- A matrix that agrees with $\mathbf{A}$ off the range $(lo, d)$ of a partition has the same
-blocks on the other ranges. -/
-theorem _root_.NLAlib.IsRangePartition.subBlock_eq_of_agree {L : List (ℕ × ℕ)}
-    (hL : IsRangePartition (n + 1) L) {lo d : ℕ} (hr : (lo, d) ∈ L) {q : ℕ × ℕ} (hq : q ∈ L)
-    (hne : q ≠ (lo, d)) {A A' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
-    (hag : ∀ i j : Fin (n + 1), ¬(lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d) →
-      ¬(lo ≤ (j : ℕ) ∧ (j : ℕ) < lo + d) → A' i j = A i j) :
-    subBlock A' q = subBlock A q := by
-  have hd := hL.disjoint hq hr hne
-  ext a b
-  have ha := a.isLt
-  have hb := b.isLt
-  simp only [subBlock, Matrix.submatrix_apply]
-  apply hag <;> rw [hL.val_blockIndex hq] <;> simp only at hd <;> omega
-
-/-- The block of the range $(lo, d)$ of a partition read from its entries. -/
-theorem _root_.NLAlib.IsRangePartition.subBlock_eq_of_block {L : List (ℕ × ℕ)}
-    (hL : IsRangePartition (n + 1) L) {lo d : ℕ} (hr : (lo, d) ∈ L)
-    {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {B : Matrix (Fin d) (Fin d) ℂ}
-    (hB : ∀ (a b : Fin d) (i j : Fin (n + 1)), (i : ℕ) = lo + a → (j : ℕ) = lo + b →
-      A i j = B a b) : subBlock A (lo, d) = B := by
-  ext a b
-  exact hB a b _ _ (hL.val_blockIndex hr a) (hL.val_blockIndex hr b)
 
 /-- The shape as a deflation invariant: a matrix of the shape that is a perturbed unitary
 similarity of $\mathbf{H}$ with error $\varepsilon$ meets `NLAlib.DeflationInv` with its

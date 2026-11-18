@@ -564,11 +564,11 @@ theorem mul_log_shqrEps_denom {B : ℝ} (hB : 0 < B) (q : ℕ) :
   field_simp
   ring
 
-/-- Exc's net width is at least one hundredth under (eqn:setk) (the lower bound behind
-Regularize's window, the hypothesis `hd` of
-`NLAlib.ShiftedQR.roundedDecouple_randomDecouplingContract`): for $B \ge 1$ and $k$ the degree of
-(eqn:setk), $\varepsilon \ge 1/100$ (numerically $\varepsilon \ge 0.039$; the denominator
-$(13B^4)^{1/k}\alpha^2\theta^2$ is at most $6$, and $k/(k - 1) \le 2$). -/
+/-- Exc's net width is at least one hundredth under (eqn:setk) (the lower bound behind Regularize's
+window, the hypothesis `hd` of
+`NLAlib.ShiftedQR.roundedDecoupleWith_randomDecouplingRoutineContract_at`): for $B \ge 1$ and $k$
+the degree of (eqn:setk), $\varepsilon \ge 1/100$ (numerically $\varepsilon \ge 0.039$; the
+denominator $(13B^4)^{1/k}\alpha^2\theta^2$ is at most $6$, and $k/(k - 1) \le 2$). -/
 theorem shqrEps_ge {B : ℝ} (hB : 1 ≤ B) : 1 / 100 ≤ shqrEps (shqrDegree B) B := by
   set q := shqrLogDegree B with hqdef
   have hB0 : 0 < B := by linarith

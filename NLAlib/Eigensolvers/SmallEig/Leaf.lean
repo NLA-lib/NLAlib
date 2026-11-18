@@ -59,13 +59,11 @@ def identityLeaf : Impl O Q := opsImpl% [d, np, T] (Bk, P) → (Bk, Ub) {
 }
 
 /-- `NLAlib.SmallEig.identityLeaf` on a scalar machine with the literal $0$ exact, and $1$ exact
-when $d > 0$, at any order $d$: with room for $2d^2$ words at `ub`, apart from the block, on
-every tape, it writes only those words and stores the identity of order $d$. -/
+when $d > 0$, at any order $d$: with room for $2d^2$ words at `ub`, on every tape, it writes only
+those words and stores the identity of order $d$. -/
 theorem identityLeaf_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (h0 : M.lit 0 = 0) {d : ℕ} (h1 : 0 < d → M.lit 1 = 1) {τ : Tape ℝ} {μ : Mem ℝ}
-    {w p ub : ℕ × ℕ} {ps : List ℝ} {T : ℕ} (hl : μ.Live [w, p, ub])
-    (hroom : ub.2 + 2 * (d * d) ≤ μ.store.len ub.1)
-    (hwu : Fp.Disj (Store.inBlock w.1 w.2 (2 * (d * d))) (Store.inBlock ub.1 ub.2 (2 * (d * d)))) :
+    {w p ub : ℕ × ℕ} {ps : List ℝ} {T : ℕ} (hroom : ub.2 + 2 * (d * d) ≤ μ.store.len ub.1) :
     Writes .total I τ (identityLeaf (O := O) (Q := Q)).body
         (Env.frame [d, ps.length, T] [w, p, w, ub])
       (Store.inBlock ub.1 ub.2 (2 * (d * d)))
@@ -159,7 +157,7 @@ theorem identityLeaf_randomSchurLeafContract {M : Machine ℝ} {I : Interp O Q �
   have hwu : Fp.Disj (Store.inBlock w.1 w.2 (2 * (d * d)))
       (Store.inBlock ub.1 ub.2 (2 * (d * d))) := by
     simpa using hap.disj_getD_of_lt (i := 0) (j := 2) (by omega) (by simp)
-  refine (identityLeaf_writes hS h0 (fun _ => h1) hl hroom hwu).mono le_sup_right
+  refine (identityLeaf_writes hS h0 (fun _ => h1) hroom).mono le_sup_right
     fun μ' hfr ⟨_, hU⟩ => ?_
   exact ⟨1, B, ⟨hB.of_eqOff hfr hwu.symm, hU⟩, fun i j hji => absurd hji (by omega),
     IsTrackedUnitarySimilar.refl 1 B⟩
@@ -170,7 +168,7 @@ theorem identityLeaf_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsS
     (h0 : M.lit 0 = 0) (h1 : M.lit 1 = 1) (ps : List ℝ) (T : ℕ) :
     TerminatingLeafRoutine 0 1 ps T (identityLeaf (O := O) (Q := Q)) I :=
   fun B _ hB _ hl hroom hwu _ =>
-    (identityLeaf_writes hS h0 (fun _ => h1) hl hroom hwu).mono le_sup_right fun _ hfr ⟨_, hU⟩ =>
+    (identityLeaf_writes hS h0 (fun _ => h1) hroom).mono le_sup_right fun _ hfr ⟨_, hU⟩ =>
       ⟨B, 1, 1, hB.of_eqOff hfr hwu.symm, hU, hasOrthonormalCols_one, by simp⟩
 
 end NLAlib.SmallEig

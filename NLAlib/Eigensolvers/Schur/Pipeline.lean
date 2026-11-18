@@ -40,7 +40,11 @@ output comes from the tracked relation (`NLAlib.IsTrackedUnitarySimilar`).
 * `NLAlib.Schur.schurPipelineWith_measureReal_not_schur_le`: the generic composition theorem.
 * `NLAlib.Schur.SchurOutput.exists_isEigenvalueListing`,
   `NLAlib.Schur.SchurOutput.exists_hasOrthonormalCols`: the eigenvalues and an exact unitary.
+* `NLAlib.Schur.schurPipelineWith_terminates`: termination and orthogonality on every tape.
 * `NLAlib.Schur.size_stmtCost_schurPipelineWith_le`: the static count is the sum of the stages'.
+
+The numerical pieces that do not mention the pipeline (the scaling loop, the residual of a scaled
+tracked run and its budget) are in `NLAlib.Eigensolvers.Schur.Residual`.
 -/
 
 @[expose] public section

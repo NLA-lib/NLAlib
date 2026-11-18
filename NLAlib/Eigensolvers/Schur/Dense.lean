@@ -819,7 +819,7 @@ Here $\boldsymbol{u}_0$ is `NLAlib.Schur.uDenseSchur`.
 relative form; there the eigenvalues are the output.
 
 Note: From the Schur form by `NLAlib.Schur.SchurOutput.exists_isEigenvalueListing`
-($\|\mathbf{E}\|_2 \le (\delta + 4 \cdot 58R\boldsymbol{u})\|\mathbf{A}\|_2$).
+($\|\mathbf{E}\|_2 \le (\delta + 4 \cdot 58R\boldsymbol{u}(1 + \delta))\|\mathbf{A}\|_2$).
 General form: `NLAlib.Schur.denseSchur_measureReal_not_schur_le`.
 Result: dense-schur-eigenvalues -/
 theorem denseSchur_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}

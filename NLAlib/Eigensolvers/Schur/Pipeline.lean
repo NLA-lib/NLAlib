@@ -813,6 +813,139 @@ theorem schurPipeline_core_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
     (by rw [hfr.2 f.1 f.2 (fun h => h3 _ _ h ⟨rfl, le_rfl, by omega⟩), hf0]) hT'
     (hU₂.of_eqOff hfr h2)
 
+variable [Has IdxTst Q] in
+/-- **The regularizer, the identity, the reducer, the core and the scaling back**: from a run
+memory holding a scaled $\mathbf{A}_1$ with $\|\mathbf{A}_1\|_2 \le 2/c_1$ and the norm estimate
+$x$, except with probability $\varphi_R + \varphi_C$ the run ends with the flag $0$, the
+accumulator $\mathbf{U}_2$ and the scaled $\mathbf{T}'$ of an upper triangular $\mathbf{T}$
+tracked from $(\mathbf{I}, \mathbf{A}_2)$, $\|\mathbf{A}_2 - \mathbf{A}_1\|_2 \le \delta_R$. The
+conclusion is passed as `hpost`, its outcomes measurable. -/
+theorem schurPipeline_reg_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (h1 : Mch.lit 1 = 1) (hI : I.IsMeasurable)
+    {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ}
+    {Reg Red Core : Impl O Q} {n k F T L : ℕ} {c₁ δR φR εHU εHT εCU εCT φC : ℝ}
+    {qR qC : List ℝ} {C C' : ∀ {m : ℕ}, Matrix (Fin (m + 1)) (Fin (m + 1)) ℂ → Prop}
+    (hReg : RandomRegularizerContract law δR φR C (n + 1) (2 / c₁) qR Reg I)
+    (hRed : HessenbergReducerContract εHU εHT (n + 1) Red I)
+    (hCore : RandomSchurCoreContract law εCU εCT φC C' k F T (n + 1) (4 / c₁) qC Core I)
+    (hCC' : ∀ (A H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ), C A →
+      IsPerturbedUnitarySimilarBy V A H (εHT * (2 / c₁ + δR)) → C' H)
+    (hc₁ : 0 < c₁) (hδR : δR ≤ 1 / c₁) (hεHT0 : 0 ≤ εHT) (hεHT : εHT ≤ 1 / 8)
+    (hεHU : 0 ≤ εHU) (hεCU : 0 ≤ εCU) (hφC : 0 ≤ φC)
+    {a p uo f : ℕ × ℕ} {m : Mem ℝ} (hm : SchurPipelineMem n (qR ++ qC) a p uo f L m)
+    {x : ℝ} (hx : m.store.get L 0 = some x) {A₁ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    (hA₁ : HoldsMatrix a A₁ m.store) (hA₁n : specNorm A₁ ≤ 2 / c₁) {Goal : Mem ℝ → Prop}
+    (hGoal : MeasurableSet {y : Mem ℝ × Mem ℝ |
+      y.1.store.EqOff (schurFp n a uo f) y.2.store ∧ Goal y.2})
+    (hpost : ∀ A₂ U₂ Tm T' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, specNorm (A₂ - A₁) ≤ δR →
+      Tm.IsUpperTriangular → IsTrackedUnitarySimilar ((1 + εHU) * (1 + εCU) - 1)
+        (εHT * specNorm A₂ + εCT) 1 A₂ U₂ Tm →
+      frobNorm (T' - (x : ℂ) • Tm) ≤ u * |x| * frobNorm Tm →
+      (∀ i j, Tm i j = 0 → T' i j = 0) → ∀ m' : Mem ℝ, m'.store.get f.1 f.2 = some 0 →
+      HoldsMatrix a T' m'.store → HoldsMatrix uo U₂ m'.store → Goal m') :
+    PWrites law I ((Stmt.frame [.var 0, .var 1] [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩]
+        Reg.body).seq ((Stmt.frame [.var 0] [⟨3, .var 9⟩]
+          (PairMatrix.identity (Op := O) (Tst := Q)).body).seq
+        ((Stmt.frame [.var 0] [⟨0, .var 6⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩] Red.body).seq
+          ((Stmt.frame [.var 0, .var 2, .var 3, .var 4, .var 5]
+            [⟨0, .var 6⟩, ⟨1, .var 7 + .var 1⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩,
+              ⟨4, .var 10⟩] Core.body).seq (.loop (.const 2 * (.var 0 * .var 0))
+            (.call (Has.inj ScalarOp.mul) [] [⟨0, .var 6 + .var 11⟩, ⟨5, .const 0⟩]
+              [⟨0, .var 6 + .var 11⟩]))))))
+      (schurPipelineEnv n qR.length qC.length k F T a p uo f L) (schurFp n a uo f) (· = m)
+      Goal (φR + φC) := by
+  obtain ⟨hlen, ha, hp, hu, hf, -, -, -, hap, hq⟩ := id hm
+  obtain ⟨h1', h2, -, -, -, -⟩ := apart_four hap
+  have hFa : Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ≤ schurFp n a uo f :=
+    fun _ _ h => Or.inl (Or.inl h)
+  have hFu : Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))) ≤ schurFp n a uo f :=
+    fun _ _ h => Or.inl (Or.inr h)
+  -- the regularizer
+  have hreg := ((hReg A₁ le_rfl hA₁n (a := a) (q := p)).in_frame
+    (ρ := schurPipelineEnv n qR.length qC.length k F T a p uo f L) (ds := [.var 0, .var 1])
+    (args := [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩]) rfl rfl
+    fun m' hm' z hz => hm'.2.2.1 z (by
+      simp only [List.mem_cons, List.mem_nil_iff] at hz ⊢; tauto)).mono_eqOff
+    (Pre' := (· = m)) (Post' := fun m' => SchurPipelineMem n (qR ++ qC) a p uo f L m' ∧
+      m'.store.get L 0 = some x ∧ ∃ A₂ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+        HoldsMatrix a A₂ m'.store ∧ specNorm (A₂ - A₁) ≤ δR ∧ C A₂)
+    (fun m' hm' => ?_) (fun m₀ m' hm₀ hfr ⟨E, hE, hEn, hCE⟩ => ?_)
+  rotate_left
+  · subst hm'
+    refine ⟨hA₁, Store.readBlock_append_left hq, hm.live_of_subset (by simp), h1'.mono le_rfl
+      (Fp.inBlock_le_inBlock le_rfl (by simp))⟩
+  · subst hm₀
+    refine ⟨hm.of_eqOff hfr (hm.disj_words.mono (fun _ _ h => Or.inl (Or.inl (hFa _ _ h)))
+      le_rfl), by rw [hfr.2 L 0 (fun h => by obtain ⟨h, -⟩ := h; omega), hx], A₁ + E, hE,
+      by simpa using hEn, hCE⟩
+  set Mid₁ : Mem ℝ → Prop := fun m' => SchurPipelineMem n (qR ++ qC) a p uo f L m' ∧
+    m'.store.get L 0 = some x ∧ ∃ A₂ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+      HoldsMatrix a A₂ m'.store ∧ specNorm (A₂ - A₁) ≤ δR ∧ C A₂ ∧
+        HoldsMatrix uo (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) m'.store with hMid₁
+  set Mid₃ : Mem ℝ → Prop := fun m' => SchurPipelineMem n (qR ++ qC) a p uo f L m' ∧
+    m'.store.get L 0 = some x ∧ ∃ A₂ U₁ H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+      specNorm (A₂ - A₁) ≤ δR ∧ C A₂ ∧ HoldsSchurPair a uo U₁ H m'.store ∧
+        IsUpperHessenberg H ∧ IsTrackedUnitarySimilar εHU (εHT * specNorm A₂) 1 A₂ U₁ H
+    with hMid₃
+  have hid : ∀ m' τ, (fun m' => SchurPipelineMem n (qR ++ qC) a p uo f L m' ∧
+      m'.store.get L 0 = some x ∧ ∃ A₂ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+        HoldsMatrix a A₂ m'.store ∧ specNorm (A₂ - A₁) ≤ δR ∧ C A₂) m' →
+      Writes .total I τ (Stmt.frame [.var 0] [⟨3, .var 9⟩]
+        (PairMatrix.identity (Op := O) (Tst := Q)).body)
+        (schurPipelineEnv n qR.length qC.length k F T a p uo f L)
+        (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) Mid₁ m' := by
+    rintro m' τ ⟨hm', hx', A₂, hA₂, hA₂n, hC⟩
+    exact (writes_identity_holdsMatrix_one (N := n + 1) hS hM h1 hm'.room_uo).in_frame rfl rfl
+      (hm'.live_of_subset (by simp)) |>.mono le_rfl fun m'' hfr hU => ⟨hm'.of_eqOff hfr
+        (hm'.disj_words.mono (fun _ _ h => Or.inl (Or.inl (hFu _ _ h))) le_rfl),
+        by rw [hfr.2 L 0 (fun h => by obtain ⟨h, -⟩ := h; omega), hx'], A₂,
+        hA₂.of_eqOff hfr h2.symm, hA₂n, hC, hU⟩
+  have hred : ∀ m' τ, Mid₁ m' →
+      Writes .total I τ (Stmt.frame [.var 0] [⟨0, .var 6⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩]
+        Red.body) (schurPipelineEnv n qR.length qC.length k F T a p uo f L)
+        (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+          Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) Mid₃ m' := by
+    rintro m' τ ⟨hm', hx', A₂, hA₂, hA₂n, hC, hU⟩
+    refine ((hRed A₂ 1 le_rfl ⟨hA₂, hU⟩ (hm'.live_of_subset (by simp)) h2).in_frame rfl rfl
+      (hm'.live_of_subset (by simp))).mono le_rfl fun m'' hfr ⟨U₁, H, hp₁, hH, htr⟩ => ?_
+    exact ⟨hm'.of_eqOff hfr (hm'.disj_words.mono (sup_le (fun _ _ h => Or.inl (Or.inl (hFa _ _ h)))
+      (fun _ _ h => Or.inl (Or.inl (hFu _ _ h)))) le_rfl),
+      by rw [hfr.2 L 0 (fun h => by rcases h with ⟨h, -⟩ | ⟨h, -⟩ <;> omega), hx'],
+      A₂, U₁, H, hA₂n, hC, hp₁, hH, htr⟩
+  have hcore : ∀ m', Mid₃ m' → PWrites law I ((Stmt.frame [.var 0, .var 2, .var 3, .var 4, .var 5]
+        [⟨0, .var 6⟩, ⟨1, .var 7 + .var 1⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩,
+          ⟨4, .var 10⟩] Core.body).seq (.loop (.const 2 * (.var 0 * .var 0))
+          (.call (Has.inj ScalarOp.mul) [] [⟨0, .var 6 + .var 11⟩, ⟨5, .const 0⟩]
+            [⟨0, .var 6 + .var 11⟩])))
+      (schurPipelineEnv n qR.length qC.length k F T a p uo f L) (schurFp n a uo f) (· = m')
+      Goal φC := by
+    rintro m' ⟨hm', hx', A₂, U₁, H, hA₂n, hC, hp₁, hH, htr⟩
+    have hA₂b : specNorm A₂ ≤ 2 / c₁ + δR := by
+      have := specNorm_add_le A₁ (A₂ - A₁); rw [add_sub_cancel] at this; linarith
+    obtain ⟨V, hV, -⟩ := id htr
+    have hn0 := specNorm_nonneg A₂
+    have hHn : specNorm H ≤ 4 / c₁ := by
+      have h₁ := hV.isPerturbedUnitarySimilar.specNorm_le
+      have h₂ : εHT * specNorm A₂ ≤ 1 / 8 * specNorm A₂ := mul_le_mul_of_nonneg_right hεHT hn0
+      have h₃ : specNorm A₂ ≤ 3 / c₁ := by
+        rw [show (3 : ℝ) / c₁ = 2 / c₁ + 1 / c₁ by ring]; linarith
+      have h₄ : 9 / 8 * (3 / c₁) ≤ 4 / c₁ := by
+        rw [show 9 / 8 * (3 / c₁) = 27 / 8 / c₁ by ring]
+        exact div_le_div_of_nonneg_right (by norm_num) hc₁.le
+      linarith
+    have hC'H : C' H := hCC' A₂ H V hC (hV.mono (mul_le_mul_of_nonneg_left hA₂b hεHT0))
+    exact schurPipeline_core_pwrites hS hM hI hloc hCore hm' hx' hp₁ hH hHn hC'H
+      fun U₂ Tm T' hTu htr' hTn hz m'' hf hT hU => hpost A₂ U₂ Tm T' hA₂n hTu
+        (IsTrackedUnitarySimilar.trans hεHU hεCU htr htr') hTn hz m'' hf hT hU
+  have hφ0 : (0 : ℝ) ≤ 0 + φC := by linarith
+  have hφ00 : (0 : ℝ) ≤ 0 + (0 + φC) := by linarith
+  refine (PWrites.seq hI hloc hφ00 hreg (PWrites.seq hI hloc hφ0
+    (PWrites.of_writes le_rfl fun m' τ hm' => hid m' τ hm')
+    (PWrites.seq hI hloc hφC (PWrites.of_writes le_rfl fun m' τ hm' => hred m' τ hm')
+      (PWrites.of_forall_eq hI hloc hcore hGoal)))).mono
+    (fun _ h => h) (sup_le hFa (sup_le hFu (sup_le (sup_le hFa hFu) le_rfl))) (fun _ h => h)
+    (by simp)
+
 end Steps
 
 /-- **The generic composition theorem**: for any norm estimate, regularizer (into `C`), reducer

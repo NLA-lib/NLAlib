@@ -294,6 +294,14 @@ theorem measurableSet_schurOutput {n : ℕ} (a uo f : ℕ × ℕ)
   · exact (measurableSet_le (hc₁.measurable.comp (hU.prodMk hT)) measurable_const).inter
       (measurableSet_le (hc₂.measurable.comp hU) measurable_const)
 
+/-- **The outcomes of a run ending in a Schur output form a measurable set**: the frame `F`
+and a Schur output after. -/
+theorem measurableSet_eqOff_schurOutput {n : ℕ} (F : Fp) (a uo f : ℕ × ℕ)
+    (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (eA eU : ℝ) :
+    MeasurableSet {y : Mem ℝ × Mem ℝ | y.1.store.EqOff F y.2.store ∧
+      SchurOutput a uo f A eA eU y.2} :=
+  (Mem.measurableSet_eqOff F).inter (measurable_snd (measurableSet_schurOutput a uo f A eA eU))
+
 /-! ### The error budget of the pipeline -/
 
 /-- The scalar budget of the pipeline residual: with $K = c_2x a$, the scaling, regularizer,
@@ -837,7 +845,8 @@ theorem schurPipeline_reg_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : 
     (hA₁ : HoldsMatrix a A₁ m.store) (hA₁n : specNorm A₁ ≤ 2 / c₁) {Goal : Mem ℝ → Prop}
     (hGoal : MeasurableSet {y : Mem ℝ × Mem ℝ |
       y.1.store.EqOff (schurFp n a uo f) y.2.store ∧ Goal y.2})
-    (hpost : ∀ A₂ U₂ Tm T' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, specNorm (A₂ - A₁) ≤ δR →
+    (hpost : ∀ A₂ U₂ Tm T' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, 0 ≤ εCT →
+      specNorm (A₂ - A₁) ≤ δR →
       Tm.IsUpperTriangular → IsTrackedUnitarySimilar ((1 + εHU) * (1 + εCU) - 1)
         (εHT * specNorm A₂ + εCT) 1 A₂ U₂ Tm →
       frobNorm (T' - (x : ℂ) • Tm) ≤ u * |x| * frobNorm Tm →
@@ -935,7 +944,8 @@ theorem schurPipeline_reg_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : 
       linarith
     have hC'H : C' H := hCC' A₂ H V hC (hV.mono (mul_le_mul_of_nonneg_left hA₂b hεHT0))
     exact schurPipeline_core_pwrites hS hM hI hloc hCore hm' hx' hp₁ hH hHn hC'H
-      fun U₂ Tm T' hTu htr' hTn hz m'' hf hT hU => hpost A₂ U₂ Tm T' hA₂n hTu
+      fun U₂ Tm T' hTu htr' hTn hz m'' hf hT hU => hpost A₂ U₂ Tm T'
+        (by obtain ⟨_, ⟨_, E, hE, _⟩, _⟩ := htr'; exact (specNorm_nonneg E).trans hE) hA₂n hTu
         (IsTrackedUnitarySimilar.trans hεHU hεCU htr htr') hTn hz m'' hf hT hU
   have hφ0 : (0 : ℝ) ≤ 0 + φC := by linarith
   have hφ00 : (0 : ℝ) ≤ 0 + (0 + φC) := by linarith
@@ -945,6 +955,124 @@ theorem schurPipeline_reg_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : 
       (PWrites.of_forall_eq hI hloc hcore hGoal)))).mono
     (fun _ h => h) (sup_le hFa (sup_le hFu (sup_le (sup_le hFa hFu) le_rfl))) (fun _ h => h)
     (by simp)
+
+/-- **The numbers of a pipeline run end in a Schur output**: the scaled, regularized and
+tracked matrices of a run with the budget's side conditions give the residual and the
+orthogonality of `NLAlib.Schur.schurPipelineWith_measureReal_not_schur_le`. -/
+theorem schurOutput_of_run {n : ℕ} {a uo f : ℕ × ℕ}
+    {A A₁ A₂ U₂ Tm T' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {m' : Mem ℝ}
+    {u x c₁ c₂ δR εHU εHT εCU εCT : ℝ} (hu0 : 0 ≤ u) (hu : 8 * ((n : ℝ) + 1) * u ≤ 1 / 4)
+    (hc₁ : 0 < c₁) (hx0 : 0 < x) (hxl : c₁ * frobNorm A ≤ x) (hxu : x ≤ c₂ * frobNorm A)
+    (hδR : δR ≤ 1 / c₁) (hεHT0 : 0 ≤ εHT) (hεHT : εHT ≤ 1 / 8) (hεHU : 0 ≤ εHU)
+    (hεCU : 0 ≤ εCU) (hεU : (1 + εHU) * (1 + εCU) - 1 ≤ 1 / 16) (hεCT : 0 ≤ εCT)
+    (hA₁ : specNorm ((x : ℂ) • A₁ - A) ≤ 3 * u * frobNorm A) (hA₂ : specNorm (A₂ - A₁) ≤ δR)
+    (hTu : Tm.IsUpperTriangular)
+    (htr : IsTrackedUnitarySimilar ((1 + εHU) * (1 + εCU) - 1) (εHT * specNorm A₂ + εCT) 1 A₂
+      U₂ Tm)
+    (hT' : frobNorm (T' - (x : ℂ) • Tm) ≤ u * |x| * frobNorm Tm)
+    (hz : ∀ i j, Tm i j = 0 → T' i j = 0) (hf : m'.store.get f.1 f.2 = some 0)
+    (hTs : HoldsMatrix a T' m'.store) (hUs : HoldsMatrix uo U₂ m'.store) :
+    SchurOutput a uo f A
+      (2 * c₂ * √((n : ℝ) + 1) * (δR + 3 * εHT / c₁ + εCT +
+        8 * ((1 + εHU) * (1 + εCU) - 1) / c₁) + 8 * (n + 1) * u)
+      (2 * ((1 + εHU) * (1 + εCU) - 1) + ((1 + εHU) * (1 + εCU) - 1) ^ 2) m' := by
+  set ε := (1 + εHU) * (1 + εCU) - 1 with hεdef
+  have hε0 : 0 ≤ ε := by nlinarith
+  have hδR0 : 0 ≤ δR := (specNorm_nonneg _).trans hA₂
+  have hres := specNorm_sub_mul_mul_conjTranspose_le_of_scaled hx0 hu0 hA₁ hA₂ htr hε0
+    (by linarith) (by rwa [abs_of_pos hx0] at hT')
+  have hn1 : (1 : ℝ) ≤ √((n : ℝ) + 1) := by
+    rw [Real.one_le_sqrt]; have := (Nat.cast_nonneg n : (0 : ℝ) ≤ n); linarith
+  have hsq : √((n : ℝ) + 1) * √((n : ℝ) + 1) = (n : ℝ) + 1 :=
+    Real.mul_self_sqrt (by positivity)
+  have hFa : frobNorm A ≤ √((n : ℝ) + 1) * specNorm A := by
+    have := frobNorm_le_sqrt_card_mul_specNorm A
+    simpa [Fintype.card_fin] using this
+  have hAF := specNorm_le_frobNorm A
+  have ht₁ : x * specNorm A₁ ≤ specNorm A + 3 * u * frobNorm A := by
+    have h := specNorm_add_le A ((x : ℂ) • A₁ - A)
+    rw [add_sub_cancel, specNorm_smul, Complex.norm_real, Real.norm_of_nonneg hx0.le] at h
+    linarith
+  have hb := schurPipeline_budget (t₁ := specNorm A₁) (t₂ := specNorm A₂) (specNorm_nonneg A)
+    (frobNorm_nonneg A) hFa hn1
+    (by rw [hsq]; linarith) hu0 hc₁ hx0 hxl hxu ht₁ (by linarith)
+    (by have := specNorm_add_le A₁ (A₂ - A₁); rw [add_sub_cancel] at this; linarith)
+    (specNorm_nonneg _) hδR0 hδR hεHT0 hεHT hεCT hε0 hεU
+  rw [hsq] at hb
+  have hN : √(((n + 1 : ℕ) : ℝ)) = √((n : ℝ) + 1) := by push_cast; rfl
+  rw [hN] at hres
+  refine ⟨hf, U₂, T', hTs, hUs, fun i j hij => hz i j (hTu hij), hres.trans hb, (htr.specNorm_sub_mul_mul_conjTranspose_le hε0 (by linarith)).2⟩
+
+variable [Has IdxTst Q] in
+/-- **The positive branch of the pipeline**: from a run memory holding $\mathbf{A}$ and a norm
+estimate $c_1\|\mathbf{A}\|_{\mathsf F} \le x \le c_2\|\mathbf{A}\|_{\mathsf F}$, $x > 0$, the run of
+the scaling, the four stages and the scaling back ends in a Schur output except with probability
+$\varphi_R + \varphi_C$. -/
+theorem schurPipeline_pos_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (h1 : Mch.lit 1 = 1) (hI : I.IsMeasurable)
+    {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ}
+    {Reg Red Core : Impl O Q} {n k F T L : ℕ} {c₁ c₂ δR φR εHU εHT εCU εCT φC : ℝ}
+    {qR qC : List ℝ} {C C' : ∀ {m : ℕ}, Matrix (Fin (m + 1)) (Fin (m + 1)) ℂ → Prop}
+    (hReg : RandomRegularizerContract law δR φR C (n + 1) (2 / c₁) qR Reg I)
+    (hRed : HessenbergReducerContract εHU εHT (n + 1) Red I)
+    (hCore : RandomSchurCoreContract law εCU εCT φC C' k F T (n + 1) (4 / c₁) qC Core I)
+    (hCC' : ∀ (A H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ), C A →
+      IsPerturbedUnitarySimilarBy V A H (εHT * (2 / c₁ + δR)) → C' H)
+    (hc₁ : 0 < c₁) (hu0 : 0 ≤ u) (hu : 8 * ((n : ℝ) + 1) * u ≤ 1 / 4) (hδR : δR ≤ 1 / c₁)
+    (hεHT0 : 0 ≤ εHT) (hεHT : εHT ≤ 1 / 8) (hεHU : 0 ≤ εHU) (hεCU : 0 ≤ εCU)
+    (hεU : (1 + εHU) * (1 + εCU) - 1 ≤ 1 / 16) (hφR : 0 ≤ φR) (hφC : 0 ≤ φC)
+    {a p uo f : ℕ × ℕ} {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {m : Mem ℝ}
+    (hm : SchurPipelineMem n (qR ++ qC) a p uo f L m) (hA : HoldsMatrix a A m.store) {x : ℝ}
+    (hx : m.store.get L 0 = some x) (hx0 : 0 < x) (hxl : c₁ * frobNorm A ≤ x)
+    (hxu : x ≤ c₂ * frobNorm A) :
+    PWrites law I ((Stmt.call (Has.inj (ScalarOp.lit 1)) [] [] [⟨6, .const 0⟩]).seq
+        ((Stmt.call (Has.inj ScalarOp.div) [] [⟨6, .const 0⟩, ⟨5, .const 0⟩] [⟨6, .const 0⟩]).seq
+          ((Stmt.loop (.const 2 * (.var 0 * .var 0)) (.call (Has.inj ScalarOp.mul) []
+            [⟨0, .var 6 + .var 11⟩, ⟨6, .const 0⟩] [⟨0, .var 6 + .var 11⟩])).seq
+          ((Stmt.frame [.var 0, .var 1] [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩] Reg.body).seq
+            ((Stmt.frame [.var 0] [⟨3, .var 9⟩]
+              (PairMatrix.identity (Op := O) (Tst := Q)).body).seq
+            ((Stmt.frame [.var 0] [⟨0, .var 6⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩]
+              Red.body).seq
+            ((Stmt.frame [.var 0, .var 2, .var 3, .var 4, .var 5]
+              [⟨0, .var 6⟩, ⟨1, .var 7 + .var 1⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩,
+                ⟨4, .var 10⟩] Core.body).seq (.loop (.const 2 * (.var 0 * .var 0))
+              (.call (Has.inj ScalarOp.mul) [] [⟨0, .var 6 + .var 11⟩, ⟨5, .const 0⟩]
+                [⟨0, .var 6 + .var 11⟩])))))))))
+      (schurPipelineEnv n qR.length qC.length k F T a p uo f L)
+      (schurFp n a uo f ⊔ Store.inBlock (L + 1) 0 1) (· = m)
+      (SchurOutput a uo f A
+        (2 * c₂ * √((n : ℝ) + 1) * (δR + 3 * εHT / c₁ + εCT +
+          8 * ((1 + εHU) * (1 + εCU) - 1) / c₁) + 8 * (n + 1) * u)
+        (2 * ((1 + εHU) * (1 + εCU) - 1) + ((1 + εHU) * (1 + εCU) - 1) ^ 2)) (φR + φC) := by
+  have hu1 : u ≤ 1 := by
+    have : (8 : ℝ) * 1 * u ≤ 8 * ((n : ℝ) + 1) * u :=
+      mul_le_mul_of_nonneg_right (by have := (Nat.cast_nonneg n : (0 : ℝ) ≤ n); linarith) hu0
+    linarith
+  refine PWrites.congr_eval (eval_seq_seq_seq_assoc _ _ _ _ _) ?_
+  refine (PWrites.seq hI hloc (φ₂ := φR + φC) (by linarith) (PWrites.of_writes le_rfl
+    fun m' τ hm' => by subst hm'; exact schurPipeline_scale_writes hS hM h1 hu1 hm hA hx hx0)
+    (PWrites.of_forall_eq hI hloc (fun m' hm' => ?_)
+      (measurableSet_eqOff_schurOutput _ a uo f A _ _))).mono (fun _ h => h)
+    (sup_le (sup_le le_sup_right (fun _ _ h => Or.inl (Or.inl (Or.inl h)))) le_sup_left)
+    (fun _ h => h) (by simp)
+  obtain ⟨hm', hx', A₁, hA₁, hA₁n⟩ := hm'
+  have hF0 := frobNorm_nonneg A
+  have hA₁b : specNorm A₁ ≤ 2 / c₁ := by
+    have h := specNorm_add_le A ((x : ℂ) • A₁ - A)
+    rw [add_sub_cancel, specNorm_smul, Complex.norm_real, Real.norm_of_nonneg hx0.le] at h
+    have hAF := specNorm_le_frobNorm A
+    have h3 : 3 * u * frobNorm A ≤ frobNorm A := by nlinarith
+    have hFx : frobNorm A ≤ x / c₁ := by rw [le_div_iff₀ hc₁]; linarith
+    have : x * specNorm A₁ ≤ x * (2 / c₁) := by
+      have : 2 * frobNorm A ≤ x * (2 / c₁) := by
+        rw [show x * (2 / c₁) = 2 * (x / c₁) by ring]; linarith
+      linarith
+    exact le_of_mul_le_mul_left this hx0
+  exact schurPipeline_reg_pwrites hS hM h1 hI hloc hReg hRed hCore hCC' hc₁ hδR hεHT0 hεHT hεHU
+    hεCU hφC hm' hx' hA₁ hA₁b (measurableSet_eqOff_schurOutput _ a uo f A _ _)
+    fun A₂ U₂ Tm T' hεCT hA₂ hTu htr hT' hz m'' hf hT hU => schurOutput_of_run hu0 hu hc₁ hx0
+      hxl hxu hδR hεHT0 hεHT hεHU hεCU hεU hεCT hA₁n hA₂ hTu htr hT' hz hf hT hU
 
 end Steps
 

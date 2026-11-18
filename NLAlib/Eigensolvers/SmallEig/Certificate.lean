@@ -233,16 +233,13 @@ noncomputable def SmallEigData.buffers {nmax : ℕ} {c₁ c₂ : PolyLogTail} {d
     List.replicate (2 * ((d 0 + 1) * (d 0 + 1))) none]
 
 /-- **The admitted sizes** on the machine `Mch`: the natural literals up to the order $n + 1$
-are exact, the order is at most $n_{\max}$, the sizes are those of some parameter reals, and the
-machine has the standard model at some $\boldsymbol{u} \le 1/100$. The last condition is the
-hypothesis of the termination of the rounded worklist
-(`NLAlib.ShiftedQR.solveRoundedWith_terminates`, which also bounds the accumulator); the run
-terminates on every tape at such a machine (`NLAlib.SmallEig.smallEigProgram_wp`). -/
+are exact, the order is at most $n_{\max}$, and the sizes are those of some parameter reals. No
+rounding model is assumed: the run terminates on every tape at such a machine
+(`NLAlib.SmallEig.smallEigProgram_wp`, from `NLAlib.SmallEig.smallEigProg_completes`). -/
 def SmallEigSizes (Mch : Machine ℝ) (nmax : ℕ) (c₁ c₂ : PolyLogTail) (d : Fin 3 → ℕ) : Prop :=
   IsExactNatLit id Mch (d 0 + 1) ∧ d 0 + 1 ≤ nmax ∧
-    (∃ S δ φ : ℝ, d 1 = (smallEigParams nmax S δ φ c₁ c₂).length ∧
-      d 2 = smallEigCap nmax S δ φ c₁ c₂) ∧
-    ∃ u : ℝ, StdModel u id Mch ∧ u ≤ 1 / 100
+    ∃ S δ φ : ℝ, d 1 = (smallEigParams nmax S δ φ c₁ c₂).length ∧
+      d 2 = smallEigCap nmax S δ φ c₁ c₂
 
 /-- **The problem** of the small-eigenvalue solver on the machine `Mch`, with the order bound
 $n_{\max}$ and the tail records $c_1, c_2$: the three raw buffers of
@@ -255,7 +252,7 @@ noncomputable def smallEigProblem (Mch : Machine ℝ) (nmax : ℕ) (c₁ c₂ : 
   admissible _ x buffers := buffers = x.buffers
   admitted := admitted
   supply d hd := by
-    obtain ⟨-, -, ⟨S, δ, φ, hw, hT⟩, -⟩ := hd
+    obtain ⟨-, -, S, δ, φ, hw, hT⟩ := hd
     exact ⟨⟨0, S, δ, φ, hw, hT⟩, _, rfl⟩
 
 variable {Mch : Machine ℝ} {nmax : ℕ} {c₁ c₂ : PolyLogTail}
@@ -379,7 +376,7 @@ theorem smallEigProgram_wp {sU sG : ℕ} {d : Fin 3 → ℕ} (hd : SmallEigSizes
     Wp .total I τ (smallEigProgram sG).body (Program.environment (b := 3) d)
       (SmallEigFrame d ((smallEigProblem Mch nmax c₁ c₂ admitted).initial d x))
       ((smallEigProblem Mch nmax c₁ c₂ admitted).initial d x) := by
-  obtain ⟨hNat, -, -, u, hM, hu1⟩ := hd
+  obtain ⟨hNat, -, -⟩ := hd
   obtain ⟨hS, hL, hC, hQ, hSmp, hDisk⟩ := smallEigModel_laws hI
   have hin := smallEigProblem_initial_input (admitted := admitted) d x
   obtain ⟨hW, hq, hl3, hroom, hwo, hqwo⟩ := hin
@@ -387,12 +384,12 @@ theorem smallEigProgram_wp {sU sG : ℕ} {d : Fin 3 → ℕ} (hd : SmallEigSizes
       [(0, 0), (1, 0), (0, 0), (2, 0)] := fun y hy => hl3 y (by
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hy
     rcases hy with rfl | rfl | rfl | rfl <;> simp)
-  have hT : TerminatingLeafRoutine _ (d 0 + 1) _ _ _ I := smallEigProg_terminates (O := SmallEigOp)
-    (Q := Tst) (sG := sG) hS hM hu1 hL hNat hC hQ hSmp hDisk
+  have hT : CompletingLeafRoutine (d 0 + 1) _ _ _ I := smallEigProg_completes (O := SmallEigOp)
+    (Q := Tst) (sG := sG) hS hL hNat hC hQ hSmp hDisk
     (smallEigCaps_smallEigParams nmax x.val.1.S x.val.1.δ x.val.1.φ c₁ c₂)
     (by simp [length_smallEigParams])
   refine wp_frame ?_ ?_ hl4 ((hT x.val.1.matrix le_rfl hW hq hl3 hroom hwo hqwo).mono le_rfl
-    fun μ' _ ⟨Tb, Ub, _, hTb, hUb, _⟩ => ⟨Ub, Tb, hTb, hUb⟩)
+    fun μ' _ ⟨Tb, Ub, hTb, hUb⟩ => ⟨Ub, Tb, hTb, hUb⟩)
   · simp [Program.environment, IExp.evalList, IExp.eval, x.val.1.words_eq, x.val.1.cap_eq,
       List.ofFn_succ]
   · simp [Program.environment, Operand.evalList, Operand.eval, IExp.eval, List.ofFn_succ]

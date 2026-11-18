@@ -404,13 +404,28 @@ theorem isPerturbedUnitarySimilar_iff_exists_by {A B : Matrix n n 𝕜} {ε : �
 
 /-- The identity carries every matrix to itself with backward error $0$. -/
 theorem IsPerturbedUnitarySimilarBy.refl (A : Matrix n n 𝕜) :
-    IsPerturbedUnitarySimilarBy 1 A A 0 := sorry
+    IsPerturbedUnitarySimilarBy 1 A A 0 :=
+  ⟨hasOrthonormalCols_one, 0, by rw [specNorm_zero], by simp⟩
 
 /-- Backward errors add and the unitaries multiply: $\mathbf{V}\mathbf{W}$ carries $\mathbf{A}$
 to $\mathbf{C}$. -/
 theorem IsPerturbedUnitarySimilarBy.trans {V W A B C : Matrix n n 𝕜} {ε₁ ε₂ : ℝ}
     (h₁ : IsPerturbedUnitarySimilarBy V A B ε₁) (h₂ : IsPerturbedUnitarySimilarBy W B C ε₂) :
-    IsPerturbedUnitarySimilarBy (V * W) A C (ε₁ + ε₂) := sorry
+    IsPerturbedUnitarySimilarBy (V * W) A C (ε₁ + ε₂) := by
+  obtain ⟨hV, E₁, hE₁, rfl⟩ := h₁
+  obtain ⟨hW, E₂, hE₂, rfl⟩ := h₂
+  refine ⟨?_, E₁ + V * E₂ * Vᴴ, ?_, ?_⟩
+  · rw [hasOrthonormalCols_iff, Matrix.conjTranspose_mul, Matrix.mul_assoc,
+      ← Matrix.mul_assoc Vᴴ, hV.conjTranspose_mul_self, Matrix.one_mul,
+      hW.conjTranspose_mul_self]
+  · refine (specNorm_add_le _ _).trans (add_le_add hE₁ ?_)
+    rwa [hV.specNorm_mul_conjTranspose_right, hV.specNorm_mul_left]
+  · have h1 : Vᴴ * V = 1 := hV.conjTranspose_mul_self
+    simp only [Matrix.conjTranspose_mul, Matrix.mul_add, Matrix.add_mul, Matrix.mul_assoc]
+    rw [← Matrix.mul_assoc Vᴴ V, h1, Matrix.one_mul, ← Matrix.mul_assoc Vᴴ V, h1,
+      Matrix.one_mul]
+    simp only [← Matrix.mul_assoc]
+    abel
 
 /-- A larger backward error is weaker. -/
 theorem IsPerturbedUnitarySimilarBy.mono {V A B : Matrix n n 𝕜} {ε ε' : ℝ}
@@ -418,6 +433,18 @@ theorem IsPerturbedUnitarySimilarBy.mono {V A B : Matrix n n 𝕜} {ε ε' : ℝ
     IsPerturbedUnitarySimilarBy V A B ε' := by
   obtain ⟨hV, E, hE, rfl⟩ := h
   exact ⟨hV, E, hE.trans hε, rfl⟩
+
+omit [DecidableEq m] [DecidableEq p] in
+/-- A matrix whose only nonzero block is the top right one has spectral norm at most that of
+the block. -/
+private theorem specNorm_fromBlocks_zero_zero_zero_le {r q : Type*} [Fintype r] [Fintype q]
+    (Y : Matrix m q 𝕜) :
+    specNorm (Matrix.fromBlocks (0 : Matrix m r 𝕜) Y (0 : Matrix p r 𝕜) 0) ≤ specNorm Y := by
+  rw [← Matrix.fromRows_fromCols_eq_fromBlocks, Matrix.fromCols_zero, specNorm_fromRows_zero]
+  have h := specNorm_fromCols_sq_le (0 : Matrix m r 𝕜) Y
+  rw [specNorm_zero] at h
+  exact (pow_le_pow_iff_left₀ (specNorm_nonneg _) (specNorm_nonneg _) two_ne_zero).1
+    (by linarith)
 
 /-- The witnessed lift to a leading diagonal block with a computed coupling block: a step
 by $\mathbf{V}$ on $\mathbf{A}_1$ and a computed coupling $\mathbf{X}'$ within $\rho$ of
@@ -428,7 +455,17 @@ theorem IsPerturbedUnitarySimilarBy.fromBlocks₁₁ {V A₁ B₁ : Matrix m m �
     (h : IsPerturbedUnitarySimilarBy V A₁ B₁ ε) {X X' : Matrix m p 𝕜} (A₂ : Matrix p p 𝕜)
     (hX : specNorm (X' - Vᴴ * X) ≤ ρ) :
     IsPerturbedUnitarySimilarBy (Matrix.fromBlocks V 0 0 1) (Matrix.fromBlocks A₁ X 0 A₂)
-      (Matrix.fromBlocks B₁ X' 0 A₂) (ε + ρ) := sorry
+      (Matrix.fromBlocks B₁ X' 0 A₂) (ε + ρ) := by
+  obtain ⟨hV, E, hE, rfl⟩ := h
+  refine ⟨hasOrthonormalCols_fromBlocks_one hV,
+    Matrix.fromBlocks E 0 0 0 + Matrix.fromBlocks 0 (V * (X' - Vᴴ * X)) 0 0, ?_, ?_⟩
+  · refine (specNorm_add_le _ _).trans (add_le_add ?_ ?_)
+    · rw [specNorm_fromBlocks_zero₁₂_zero₂₁, specNorm_zero]
+      exact max_le hE ((specNorm_nonneg E).trans hE)
+    · exact (specNorm_fromBlocks_zero_zero_zero_le _).trans (by rwa [hV.specNorm_mul_left])
+  · rw [Matrix.fromBlocks_add, Matrix.fromBlocks_add, Matrix.fromBlocks_conjTranspose,
+      Matrix.fromBlocks_multiply, Matrix.fromBlocks_multiply]
+    simp [Matrix.mul_add, ← Matrix.mul_assoc, hV.conjTranspose_mul_self]
 
 /-- The witnessed lift to a trailing diagonal block with a computed coupling block: a step
 by $\mathbf{V}$ on $\mathbf{A}_2$ and a computed coupling $\mathbf{X}'$ within $\rho$ of
@@ -439,7 +476,21 @@ theorem IsPerturbedUnitarySimilarBy.fromBlocks₂₂ {V A₂ B₂ : Matrix p p �
     (h : IsPerturbedUnitarySimilarBy V A₂ B₂ ε) (A₁ : Matrix m m 𝕜) {X X' : Matrix m p 𝕜}
     (hX : specNorm (X' - X * V) ≤ ρ) :
     IsPerturbedUnitarySimilarBy (Matrix.fromBlocks 1 0 0 V) (Matrix.fromBlocks A₁ X 0 A₂)
-      (Matrix.fromBlocks A₁ X' 0 B₂) (ε + ρ) := sorry
+      (Matrix.fromBlocks A₁ X' 0 B₂) (ε + ρ) := by
+  obtain ⟨hV, E, hE, rfl⟩ := h
+  have hW : HasOrthonormalCols (Matrix.fromBlocks (1 : Matrix m m 𝕜) 0 0 V) := by
+    rw [hasOrthonormalCols_iff, Matrix.fromBlocks_conjTranspose, Matrix.fromBlocks_multiply,
+      hV.conjTranspose_mul_self]
+    simp [Matrix.fromBlocks_one]
+  refine ⟨hW, Matrix.fromBlocks 0 0 0 E + Matrix.fromBlocks 0 ((X' - X * V) * Vᴴ) 0 0, ?_, ?_⟩
+  · refine (specNorm_add_le _ _).trans (add_le_add ?_ ?_)
+    · rw [specNorm_fromBlocks_zero₁₂_zero₂₁, specNorm_zero]
+      exact max_le ((specNorm_nonneg E).trans hE) hE
+    · exact (specNorm_fromBlocks_zero_zero_zero_le _).trans
+        (by rwa [hV.specNorm_mul_conjTranspose_right])
+  · rw [Matrix.fromBlocks_add, Matrix.fromBlocks_add, Matrix.fromBlocks_conjTranspose,
+      Matrix.fromBlocks_multiply, Matrix.fromBlocks_multiply]
+    simp [Matrix.add_mul, Matrix.mul_assoc, hV.conjTranspose_mul_self]
 
 /-! ### Range blocks of a matrix of order `N` -/
 
@@ -509,14 +560,30 @@ theorem IsTrackedUnitarySimilar.of_by {V A A' U : Matrix n n 𝕜} {εT : ℝ}
 
 /-- No step: errors $0$. -/
 theorem IsTrackedUnitarySimilar.refl (U A : Matrix n n 𝕜) :
-    IsTrackedUnitarySimilar 0 0 U A U A := sorry
+    IsTrackedUnitarySimilar 0 0 U A U A :=
+  ⟨1, IsPerturbedUnitarySimilarBy.refl A, by simp⟩
 
 /-- Tracked steps compose: the backward errors add, the relative accumulator errors compose
 as $(1 + \varepsilon_U)(1 + \varepsilon_U') - 1$. -/
 theorem IsTrackedUnitarySimilar.trans {εU εT εU' εT' : ℝ} {U A U' A' U'' A'' : Matrix n n 𝕜}
     (hεU : 0 ≤ εU) (hεU' : 0 ≤ εU') (h : IsTrackedUnitarySimilar εU εT U A U' A')
     (h' : IsTrackedUnitarySimilar εU' εT' U' A' U'' A'') :
-    IsTrackedUnitarySimilar ((1 + εU) * (1 + εU') - 1) (εT + εT') U A U'' A'' := sorry
+    IsTrackedUnitarySimilar ((1 + εU) * (1 + εU') - 1) (εT + εT') U A U'' A'' := by
+  obtain ⟨V, hV, hU'⟩ := h
+  obtain ⟨V', hV', hU''⟩ := h'
+  refine ⟨V * V', hV.trans hV', ?_⟩
+  have hU'n : specNorm U' ≤ (1 + εU) * specNorm U := by
+    have := specNorm_add_le (U' - U * V) (U * V)
+    rw [sub_add_cancel, hV.1.specNorm_mul_right] at this
+    linarith
+  have e : U'' - U * (V * V') = (U'' - U' * V') + (U' - U * V) * V' := by
+    rw [Matrix.sub_mul, ← Matrix.mul_assoc]
+    abel
+  rw [e]
+  refine (specNorm_add_le _ _).trans ?_
+  rw [hV'.1.specNorm_mul_right]
+  have := mul_le_mul_of_nonneg_left hU'n hεU'
+  nlinarith [specNorm_nonneg U]
 
 /-- Larger errors are weaker. -/
 theorem IsTrackedUnitarySimilar.mono {εU εT εU' εT' : ℝ} {U A U' A' : Matrix n n 𝕜}
@@ -524,6 +591,21 @@ theorem IsTrackedUnitarySimilar.mono {εU εT εU' εT' : ℝ} {U A U' A' : Matr
     IsTrackedUnitarySimilar εU' εT' U A U' A' := by
   obtain ⟨V, hV, hU'⟩ := h
   exact ⟨V, hV.mono hT, hU'.trans (mul_le_mul_of_nonneg_right hU (specNorm_nonneg U))⟩
+
+/-- The exact-unitary form of a tracked run from $(\mathbf{I}, \mathbf{A})$: an exact unitary
+$\mathbf{V}$ within $\varepsilon_U$ of $\widehat{\mathbf{U}}$ with $\mathbf{A} + \mathbf{E} =
+\mathbf{V}\widehat{\mathbf{T}}\mathbf{V}^{\mathsf H}$, $\|\mathbf{E}\|_2 \le \varepsilon_T$. -/
+theorem IsTrackedUnitarySimilar.exists_eq_mul_mul_conjTranspose {εU εT : ℝ}
+    {A U T : Matrix n n 𝕜} (h : IsTrackedUnitarySimilar εU εT 1 A U T) (hεU0 : 0 ≤ εU) :
+    ∃ V E : Matrix n n 𝕜, HasOrthonormalCols V ∧ specNorm (U - V) ≤ εU ∧
+      specNorm E ≤ εT ∧ A + E = V * T * Vᴴ := by
+  obtain ⟨V, ⟨hV, E, hE, rfl⟩, hUV⟩ := h
+  refine ⟨V, E, hV, ?_, hE, ?_⟩
+  · rw [Matrix.one_mul] at hUV
+    exact hUV.trans (mul_le_of_le_one_right hεU0 specNorm_one_le)
+  · have hVV : V * Vᴴ = 1 := hV.mul_conjTranspose_self
+    rw [← Matrix.mul_assoc, ← Matrix.mul_assoc, hVV, Matrix.one_mul, Matrix.mul_assoc, hVV,
+      Matrix.mul_one]
 
 /-- The computed Schur form from a tracked run started at $(\mathbf{I}, \mathbf{A})$: with
 $\varepsilon_U \le 1/8$, $\|\mathbf{A} - \widehat{\mathbf{U}}\widehat{\mathbf{T}}
@@ -534,15 +616,54 @@ theorem IsTrackedUnitarySimilar.specNorm_sub_mul_mul_conjTranspose_le {εU εT :
     {A U T : Matrix n n 𝕜} (h : IsTrackedUnitarySimilar εU εT 1 A U T) (hεU0 : 0 ≤ εU)
     (hεU : εU ≤ 1 / 8) :
     specNorm (A - U * T * Uᴴ) ≤ εT + (2 * εU + εU ^ 2) * (specNorm A + εT) ∧
-      specNorm (Uᴴ * U - 1) ≤ 2 * εU + εU ^ 2 := sorry
-
-/-- The exact-unitary form of a tracked run from $(\mathbf{I}, \mathbf{A})$: an exact unitary
-$\mathbf{V}$ within $\varepsilon_U$ of $\widehat{\mathbf{U}}$ with $\mathbf{A} + \mathbf{E} =
-\mathbf{V}\widehat{\mathbf{T}}\mathbf{V}^{\mathsf H}$, $\|\mathbf{E}\|_2 \le \varepsilon_T$. -/
-theorem IsTrackedUnitarySimilar.exists_eq_mul_mul_conjTranspose {εU εT : ℝ}
-    {A U T : Matrix n n 𝕜} (h : IsTrackedUnitarySimilar εU εT 1 A U T) (hεU0 : 0 ≤ εU) :
-    ∃ V E : Matrix n n 𝕜, HasOrthonormalCols V ∧ specNorm (U - V) ≤ εU ∧
-      specNorm E ≤ εT ∧ A + E = V * T * Vᴴ := sorry
+      specNorm (Uᴴ * U - 1) ≤ 2 * εU + εU ^ 2 := by
+  obtain ⟨V, E, hV, hΔ, hE, hAE⟩ := h.exists_eq_mul_mul_conjTranspose hεU0
+  obtain ⟨Δ, rfl⟩ : ∃ Δ, U = V + Δ := ⟨U - V, by abel⟩
+  rw [add_sub_cancel_left] at hΔ
+  have hd := specNorm_nonneg Δ
+  have hTn : specNorm T ≤ specNorm A + εT := by
+    rw [← hV.specNorm_mul_conjTranspose_right, ← hV.specNorm_mul_left, ← Matrix.mul_assoc,
+      ← hAE]
+    exact (specNorm_add_le _ _).trans (by linarith)
+  have hT0 := specNorm_nonneg T
+  constructor
+  · have e : A - (V + Δ) * T * (V + Δ)ᴴ =
+        -E - (Δ * T * Vᴴ + V * T * Δᴴ + Δ * T * Δᴴ) := by
+      rw [Matrix.conjTranspose_add]
+      simp only [Matrix.add_mul, Matrix.mul_add]
+      rw [← hAE]
+      abel
+    have h₁ : specNorm (Δ * T * Vᴴ) ≤ εU * specNorm T := by
+      rw [hV.specNorm_mul_conjTranspose_right]
+      exact (specNorm_mul_le _ _).trans (mul_le_mul_of_nonneg_right hΔ hT0)
+    have h₂ : specNorm (V * T * Δᴴ) ≤ specNorm T * εU := by
+      rw [Matrix.mul_assoc, hV.specNorm_mul_left]
+      refine (specNorm_mul_le _ _).trans (mul_le_mul_of_nonneg_left ?_ hT0)
+      rwa [specNorm_conjTranspose]
+    have h₃ : specNorm (Δ * T * Δᴴ) ≤ εU * specNorm T * εU := by
+      refine (specNorm_mul_le _ _).trans (mul_le_mul ((specNorm_mul_le _ _).trans
+        (mul_le_mul_of_nonneg_right hΔ hT0)) (by rwa [specNorm_conjTranspose])
+        (specNorm_nonneg _) (mul_nonneg hεU0 hT0))
+    rw [e]
+    refine (specNorm_sub_le _ _).trans ?_
+    rw [specNorm_neg]
+    have h₄ := (specNorm_add_le _ _).trans (add_le_add ((specNorm_add_le _ _).trans
+      (add_le_add h₁ h₂)) h₃)
+    have h₅ : (2 * εU + εU ^ 2) * specNorm T ≤ (2 * εU + εU ^ 2) * (specNorm A + εT) :=
+      mul_le_mul_of_nonneg_left hTn (by positivity)
+    nlinarith
+  · have e : (V + Δ)ᴴ * (V + Δ) - 1 = Vᴴ * Δ + Δᴴ * V + Δᴴ * Δ := by
+      rw [Matrix.conjTranspose_add]
+      simp only [Matrix.add_mul, Matrix.mul_add, hV.conjTranspose_mul_self]
+      abel
+    have h₁ : specNorm (Vᴴ * Δ) ≤ εU := (hV.specNorm_conjTranspose_mul_le Δ).trans hΔ
+    have h₂ : specNorm (Δᴴ * V) ≤ εU := by rwa [hV.specNorm_mul_right, specNorm_conjTranspose]
+    have h₃ : specNorm (Δᴴ * Δ) ≤ εU * εU := (specNorm_mul_le _ _).trans
+      (mul_le_mul (by rwa [specNorm_conjTranspose]) hΔ hd hεU0)
+    rw [e]
+    refine ((specNorm_add_le _ _).trans (add_le_add ((specNorm_add_le _ _).trans
+      (add_le_add h₁ h₂)) h₃)).trans (le_of_eq ?_)
+    ring
 
 /-- A leaf lift with a dense computed unitary: the leaf's tracked relation on the range block
 $[lo, lo + d)$ (from $(\mathbf{I}, \mathbf{B})$ to $(\mathbf{U}_b, \mathbf{T}_b)$), computed

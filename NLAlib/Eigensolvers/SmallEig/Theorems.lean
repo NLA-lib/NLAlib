@@ -907,28 +907,30 @@ theorem smallEig_measureReal_not_forward_le {Mch : Machine ℝ} {I : Interp O Q 
     hb₂ hn hMS hb0 hbS hφ hφ1 hu w q o).mono (fun _ h => h) le_rfl
     (fun _ h => smallEigSpectrum_forward hn hβ hβS hMS h) le_rfl).measureReal_not_writes_le hin hξ
 
+set_option maxRecDepth 100000 in
 /-- **The operation count of the small-eigenvalue program** ([BanksGarzaVargasSrivastava2025,
-Theorem 1.1], running time, on every tape): there is an absolute constant $c$ such that the static
-count (`NLAlib.Ops.stmtCost`) of `NLAlib.SmallEig.smallEigProg` at the order $n + 1$, $n_q$ words
-and the cap $T$ has at most $c(n + 1)^4(T + 1)^2$ operations and tests. The count holds on every
+Theorem 1.1], running time, on every tape): the instrumented static count
+(`NLAlib.Ops.stmtCost` of `NLAlib.Ops.Stmt.instrument`, every structural instruction counted) of
+`NLAlib.SmallEig.smallEigProg` at the order $n + 1$, $n_q$ words, the cap $T$ and the zero
+offsets of its four operands is at most $80390(n + 1)^4(T + 1)^2$. The count holds on every
 tape: the loops are capped by $T$ ($m, t, m_2 \le T$, $q \le m$). The paper's count has the factor
-$n$ in its last term (its erratum N5). The monomial bound of the tree
-(`NLAlib.Ops.size_stmtCost_le_stmtWorkMono`) gives $c = 4713$; the certificate's
-`NLAlib.SmallEig.smallEigWork` is larger because its instrumentation also counts the structural
-instructions. -/
-theorem smallEig_work_le (sG : ℕ) : ∃ c : ℕ, ∀ n nq T : ℕ,
-    Count.size (stmtCost (smallEigProg (O := O) (Q := Q) sG).body [n + 1, nq, T]) ≤
-      c * (n + 1) ^ 4 * (T + 1) ^ 2 := by
-  refine ⟨4713, fun n nq T => ?_⟩
-  have hw : stmtWorkMono (smallEigProg (O := O) (Q := Q) sG).body
-      [⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩] = ⟨4713, [4, 0, 2]⟩ := by
+$n$ in its last term (its erratum N5). The constant is the monomial bound of the instrumented
+tree (`NLAlib.Ops.size_stmtCost_le_stmtWorkMono`); the certificate's
+`NLAlib.SmallEig.smallEigWork` also counts the frame of the program. -/
+theorem smallEig_work_le (sG n nq T : ℕ) :
+    Count.size (stmtCost (smallEigProg (O := O) (Q := Q) sG).body.instrument
+      [n + 1, nq, T, 0, 0, 0, 0]) ≤ 80390 * (n + 1) ^ 4 * (T + 1) ^ 2 := by
+  have hw : stmtWorkMono (smallEigProg (O := O) (Q := Q) sG).body.instrument
+      ([⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩] ++ List.replicate 4 (WorkMono.const 0)) =
+        ⟨80390, [4, 0, 2]⟩ := by
     kernel_rfl
-  have hσ : SlotsLe [n + 1, nq + 1, T + 1] [n + 1, nq, T]
-      [⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩] := by
-    simp [SlotsLe, WorkMono.eval]
-  refine (size_stmtCost_le_stmtWorkMono (by simp) _ hσ).trans ?_
-  rw [hw]
-  simp [WorkMono.eval, mul_assoc]
+  have hσ : SlotsLe [n + 1, nq + 1, T + 1] [n + 1, nq, T, 0, 0, 0, 0]
+      ([⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩] ++ List.replicate 4 (WorkMono.const 0)) := by
+    simp [SlotsLe, WorkMono.eval, WorkMono.const]
+  have h := size_stmtCost_le_stmtWorkMono (by simp)
+    (smallEigProg (O := O) (Q := Q) sG).body.instrument hσ
+  rw [hw] at h
+  simpa [WorkMono.eval, mul_assoc] using h
 
 /-- **The cap of the small-eigenvalue program is polylogarithmic**: for tail records with
 $b_1, b_2 > 0$ there are constants $c$ and $p$ with

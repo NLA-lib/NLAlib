@@ -707,14 +707,33 @@ theorem logb_inv_uShQRSmallEig_le (c₁ c₂ : PolyLogTail) (hb₁ : 0 < c₁.b)
 set_option maxRecDepth 100000 in
 /-- **The operation count of the algorithm with the small-eigenvalue program**
 ([BanksGarzaVargasSrivastava2022, Theorem 6.3] and [BanksGarzaVargasSrivastava2025, Theorem 1.1],
-running times, on every tape): there is an absolute constant $c$ such that the static count of
-`NLAlib.ShiftedQR.roundedShQRSmallEig` at the order $n + 1$, the shift degree $k$, $n_p$ words,
-the iteration cap $F$ and the cap $T$ has at most
-$c(n + 1)^4(k + 1)^5(n_p + 1)(F + 1)(T + 1)^2$ operations and tests: the cost of `SmallEig` is
-now counted. -/
-theorem roundedShQRSmallEig_work_le (sG : ℕ) : ∃ c : ℕ, ∀ n k np F T : ℕ,
-    Count.size (stmtCost (roundedShQRSmallEig (O := O) (Q := Q) sG).body [n + 1, k, np, F, T]) ≤
-      c * (n + 1) ^ 4 * (k + 1) ^ 5 * (np + 1) * (F + 1) * (T + 1) ^ 2 := sorry
+running times, on every tape): the instrumented static count (`NLAlib.Ops.stmtCost` of
+`NLAlib.Ops.Stmt.instrument`) of `NLAlib.ShiftedQR.roundedShQRSmallEig` at the order $n + 1$, the
+shift degree $k$, $n_p$ words, the iteration cap $F$, the cap $T$, the log of $F(k + 1 + n_p)$
+slots of $k(n + 1)$ entries (`NLAlib.ShiftedQR.shqrSmallEigDims`) and the zero offsets of its seven
+operands is at most $369224(n + 1)^3(k + 1)^4(n_p + 1)(F + 1)(T + 1)^2$: the cost of `SmallEig`
+is counted. -/
+theorem roundedShQRSmallEig_work_le (sG n k np F T : ℕ) :
+    Count.size (stmtCost (roundedShQRSmallEig (O := O) (Q := Q) sG).body.instrument
+        [n + 1, k, np, F, T, F * (k + 1 + np), k * (n + 1), 0, 0, 0, 0, 0, 0, 0]) ≤
+      369224 * (n + 1) ^ 3 * (k + 1) ^ 4 * (np + 1) * (F + 1) * (T + 1) ^ 2 := by
+  have hw : stmtWorkMono (roundedShQRSmallEig (O := O) (Q := Q) sG).body.instrument
+      ([⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 0, 0, 1]⟩, ⟨1, [0, 0, 0, 0, 1]⟩,
+        ⟨1, [0, 1, 1, 1]⟩, ⟨1, [1, 1]⟩] ++ List.replicate 7 (WorkMono.const 0)) =
+        ⟨369224, [3, 4, 1, 1, 2]⟩ := by
+    kernel_rfl
+  have hσ : SlotsLe [n + 1, k + 1, np + 1, F + 1, T + 1]
+      [n + 1, k, np, F, T, F * (k + 1 + np), k * (n + 1), 0, 0, 0, 0, 0, 0, 0]
+      ([⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 0, 0, 1]⟩, ⟨1, [0, 0, 0, 0, 1]⟩,
+        ⟨1, [0, 1, 1, 1]⟩, ⟨1, [1, 1]⟩] ++ List.replicate 7 (WorkMono.const 0)) := by
+    simp [SlotsLe, WorkMono.eval, WorkMono.const]
+    have h1 : k + 1 + np ≤ (k + 1) * (np + 1) := by nlinarith
+    have h2 := Nat.mul_le_mul_left F h1
+    constructor <;> nlinarith
+  have h := size_stmtCost_le_stmtWorkMono (by simp)
+    (roundedShQRSmallEig (O := O) (Q := Q) sG).body.instrument hσ
+  rw [hw] at h
+  simpa [WorkMono.eval, mul_assoc] using h
 
 -- The kernel evaluates the bound of the whole instrumented tree; its recursion is deep.
 set_option maxRecDepth 100000 in

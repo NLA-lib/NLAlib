@@ -249,6 +249,27 @@ noncomputable def uShQRSchurReplay (n k np F RL : ℕ) (B Γ S δ : ℝ) : ℝ :
     (16 * ((n : ℝ) + 1) *
       (78 * shqrSchurLogSize n k np F + 8 * ((n : ℝ) + 1) * (k + 2) + 54 * RL) * S)
 
+/-- The leaf term costs the replay term at most a factor $1 + 54R_L$: the replay term at $R_L$
+leaf rotations is at least the replay term without the leaf over $1 + 54R_L$, for $B \ge 1$,
+$\Gamma > 0$, $\delta > 0$ and $\Sigma > 0$ (so $\log_2(1 + 54R_L)$ more bits). -/
+theorem uShQRSchurReplay_zero_div_le {n k np F RL : ℕ} {B Γ S δ : ℝ} (hB : 1 ≤ B) (hΓ : 0 < Γ)
+    (hδ : 0 < δ) (hS : 0 < S) :
+    uShQRSchurReplay n k np F 0 B Γ S δ / (1 + 54 * RL) ≤ uShQRSchurReplay n k np F RL B Γ S δ := by
+  have hb := shqrBudget_pos (n := n) hB hΓ hδ
+  unfold uShQRSchurReplay
+  set L : ℝ := (shqrSchurLogSize n k np F : ℝ)
+  set N : ℝ := (n : ℝ) + 1
+  have hN : 1 ≤ N := by have := n.cast_nonneg (α := ℝ); simp only [N]; linarith
+  have hL : 0 ≤ L := Nat.cast_nonneg _
+  have hR : (0 : ℝ) ≤ RL := Nat.cast_nonneg _
+  have hk : (0 : ℝ) ≤ k := Nat.cast_nonneg _
+  rw [div_div]
+  apply div_le_div_of_nonneg_left hb.le (by positivity)
+  push_cast
+  have h1 : 1 ≤ 78 * L + 8 * N * (k + 2) := by nlinarith
+  have h2 : 0 ≤ 16 * N * S * (54 * RL) := by positivity
+  nlinarith [mul_le_mul_of_nonneg_left h1 h2]
+
 /-- The rotation count of the accumulator of the Schur-mode algorithm with a leaf of $R_L$
 rotation-equivalents: $2(n + 1)$ rounds of at most $n_s w$ replayed rotations and the leaf
 products ($2k(k + 2)$), and $n + 1$ leaves. -/

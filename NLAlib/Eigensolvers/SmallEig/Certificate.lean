@@ -298,8 +298,8 @@ theorem stmtWorkMono_smallEigProgram (sG : ℕ) :
 /-- **The work (and span) polynomial** of the small-eigenvalue solver at the sizes
 $(n, n_q, T)$ = `d`: $517058\,(n + 1)^4(T + 1)^2$, the
 monomial bound of the instructions of the instrumented program, each of unit weight; it is larger
-than the constant $4713$ of `NLAlib.SmallEig.smallEig_work_le` because the instrumentation counts
-every structural instruction too. The parameter words (thresholds, scales and caps, real numbers
+than the constant $80390$ of `NLAlib.SmallEig.smallEig_work_le` because it also counts the frame
+of the program. The parameter words (thresholds, scales and caps, real numbers
 with logarithms and roots) are
 supplied in the input and their computation is not charged, as for the merged
 algorithm. The monomial is an envelope of the paper's count $n^4 + n^3\log^2$, not its shape: the

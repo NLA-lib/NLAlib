@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Eigensolvers.Schur.Dense
+public import NLAlib.Eigensolvers.Schur.Completion
 public import NLAlib.Eigensolvers.SmallEig.Certificate
 
 /-!
@@ -78,12 +78,10 @@ noncomputable def SchurData.buffers {words : ℕ → ℝ → ℝ → List ℝ}
     List.replicate (2 * ((d 0 + 1) * (d 0 + 1))) none, [none]]
 
 /-- **The admitted sizes** on the machine `Mch`: the natural literals up to the order $n + 1$ are
-exact, the machine has the standard model at some $\boldsymbol{u}$ with
-$400(n + 1)^2\boldsymbol{u} \le 1$ (the run terminates on every tape), and the sizes are those of
-some $0 < \delta \le 1$, $0 < \varphi \le 1$. -/
+exact and the sizes are those of some $0 < \delta \le 1$, $0 < \varphi \le 1$. No rounding model
+is needed: the run completes on any scalar machine (`NLAlib.Schur.denseSchur_completes`). -/
 def SchurSizes (Mch : Machine ℝ) (sizes : ℕ → ℝ → ℝ → Fin 6 → ℕ) (d : Fin 6 → ℕ) : Prop :=
   IsExactNatLit id Mch (d 0 + 1) ∧
-    (∃ u : ℝ, StdModel u id Mch ∧ 400 * ((d 0 : ℝ) + 1) ^ 2 * u ≤ 1) ∧
     ∃ δ φ : ℝ, 0 < δ ∧ δ ≤ 1 ∧ 0 < φ ∧ φ ≤ 1 ∧ sizes (d 0) δ φ = d
 
 /-- **The problem** of the dense Schur pipeline on the machine `Mch`: the four raw buffers of
@@ -97,7 +95,7 @@ noncomputable def schurPipelineProblem (Mch : Machine ℝ) (words : ℕ → ℝ 
   admissible _ x buffers := buffers = x.buffers
   admitted := admitted
   supply d hd := by
-    obtain ⟨-, -, δ, φ, -, -, -, -, hs⟩ := hd
+    obtain ⟨-, δ, φ, -, -, -, -, hs⟩ := hd
     exact ⟨⟨0, δ, φ, hs⟩, _, rfl⟩
 
 /-- **The work (and span) of the pipeline** from the stages' work bounds $W_\bullet$: their sum
@@ -294,7 +292,7 @@ theorem denseSchurProgram_wellTyped (sG : ℕ) {Mch : Machine ℝ}
 
 /-- The dense Schur program terminates on every admitted input, interpretation of the model and
 tape, and writes only the matrix, the accumulator and the flag
-(`NLAlib.Schur.denseSchur_terminates`). -/
+(`NLAlib.Schur.denseSchur_completes`, no rounding model). -/
 theorem denseSchurProgram_wp {Mch : Machine ℝ} {admitted : ∃ d, SchurSizes Mch denseSchurSizes d}
     {sU sG : ℕ} {d : Fin 6 → ℕ} (hd : SchurSizes Mch denseSchurSizes d)
     (x : (denseSchurProblem Mch admitted).Input d) {I : Interp SmallEigOp Tst ℝ}
@@ -304,7 +302,7 @@ theorem denseSchurProgram_wp {Mch : Machine ℝ} {admitted : ∃ d, SchurSizes M
       (fun m => ((denseSchurProblem Mch admitted).initial d x).store.EqOff
         (schurFp (d 0) (0, 0) (2, 0) (3, 0)) m.store)
       ((denseSchurProblem Mch admitted).initial d x) := by
-  obtain ⟨hNat, ⟨u, hM, hu⟩, -⟩ := hd
+  obtain ⟨hNat, -⟩ := hd
   obtain ⟨hS, hL, hC, hQ, hSmp, hDisk⟩ := smallEigModel_laws hI
   have hin := schurPipelineProblem_initial_input (admitted := admitted) d x
   have hl5 : ((denseSchurProblem Mch admitted).initial d x).Live
@@ -312,8 +310,8 @@ theorem denseSchurProgram_wp {Mch : Machine ℝ} {admitted : ∃ d, SchurSizes M
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hy
     rcases hy with rfl | rfl | rfl | rfl | rfl <;> simp)
   have hsz := x.val.1.sizes_eq
-  refine wp_frame ?_ ?_ hl5 (Wp.mono (denseSchur_writes_orth (O := SmallEigOp) (Q := Tst)
-    (sG := sG) hS hM hL hNat hQ hC hSmp hDisk hu hin τ) fun _ h => h.1)
+  refine wp_frame ?_ ?_ hl5 (Wp.mono (denseSchur_completes (O := SmallEigOp) (Q := Tst)
+    (sG := sG) hS hL hNat hQ hC hSmp hDisk hin τ) fun _ h => h.1)
   · have h := fun i => (congrFun hsz i).symm
     simp [Program.environment, IExp.evalList, IExp.eval, denseSchurDims, denseSchurDimsWith,
       List.ofFn_succ, h 1, h 2, h 3, h 4, h 5, denseSchurSizes]

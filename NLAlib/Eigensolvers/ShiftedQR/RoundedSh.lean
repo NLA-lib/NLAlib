@@ -333,7 +333,7 @@ theorem shTestStep_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS :
   refine (copyMatrix_writes (τ := τ) hS hA hrt (hW.symm.mono (by fp_sub) (by fp_sub))).frame_seq_le
     rfl rfl (by simp [Mem.Live, hal, htl]) (by fp_sub) ?_
   rintro m₁ hfr₁ ⟨hp₁, hT₁⟩
-  have hlog₁ := hfr₁.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+  have hlog₁ := hfr₁.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
     (Fp.disj_inBlock_of_ne hgt) hlog
   have hk₁ : ∀ {F : Fp}, F ≤ Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔
       Store.inBlock sr.1 sr.2 (2 * k) ⊔ Store.inBlock p0.1 p0.2 1 ⊔ Store.inBlock p1.1 p1.2 1 →
@@ -347,7 +347,7 @@ theorem shTestStep_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS :
   rintro m₂ hfr₂ ⟨hp₂, hSR₂⟩
   have hT₂ := hT₁.of_eqOff hfr₂ hts.symm
   have hL₂ : m₂.store.length = m.store.length := by rw [hfr₂.length_eq, hfr₁.length_eq]
-  have hlog₂ := hfr₂.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+  have hlog₂ := hfr₂.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
     (Fp.disj_inBlock_of_ne hgs) hlog₁
   have hst := stepComptau_writes (τ := τ) (m := m₂) (a := t) (s := sr) (p := p0) (lg := lg)
     (ss := List.replicate k r) hS hM hCmp hL hNat hH hH0 hV hHV hκ hC hd
@@ -377,7 +377,7 @@ theorem shTestStep_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS :
   refine (hth.in_frame rfl rfl (by simp [Mem.Live, hL₃, hal, hcl, hp1l])).mono (by fp_sub) ?_
   rintro m₄ hfr₄ ⟨hp₄, hP₄⟩
   refine ⟨hp₄.trans (hp₃.trans (hp₂.trans hp₁)), es, hesl, hesp,
-    hfr₄.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (Fp.disj_inBlock_of_ne hgp1) hlog₃,
+    hfr₄.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (Fp.disj_inBlock_of_ne hgp1) hlog₃,
     H', Rs, hch, hH', hT₃.of_eqOff hfr₄ (hp1.mono le_rfl le_sup_left),
     ⟨tc, hfr₄.keep (Store.readsOnly_get _ _ _) (hp1.mono le_rfl le_sup_right) htc, hb⟩, hP₄⟩
 

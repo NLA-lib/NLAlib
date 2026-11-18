@@ -89,7 +89,7 @@ theorem ShOutcome.of_below {u : ℝ} {k : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n
     (hBelow : Store.Below L s s') (ha : a.1 < L) (hf : f.1 < L) (hlg : lg.1 < L) :
     ShOutcome u k H γ tv ε a f lg ns w LL c ⟨s', p⟩ := by
   obtain ⟨hF, Ls, hLs, hpl, hlog, H', hsim, hH', hA, hdec⟩ := h
-  exact ⟨hBelow.get_of hf hF, Ls, hLs, hpl, hBelow.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+  exact ⟨hBelow.get_of hf hF, Ls, hLs, hpl, hBelow.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
     (fun b i g => by rw [g.1]; exact hlg) hlog, H', hsim, hH', hA.of_below hBelow ha, hdec⟩
 
 
@@ -234,7 +234,7 @@ theorem shPrefix_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : I
     (by simp [Mem.Live, hlen']; omega) (by fp_sub) ?_
   intro m₁ hfr₁ hm₁
   have hl₁ : m₁.store.length = L + 12 := by rw [hfr₁.length_eq, hlen']
-  have hlog₁ := hfr₁.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+  have hlog₁ := hfr₁.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
     (Fp.disj_inBlock_of_ne (by omega)) hlog
   have hk2' : ((k / 2 : ℕ) : ℝ) ≤ k := by exact_mod_cast Nat.div_le_self k 2
   refine (shFind_writes (τ := τ) hS hM hL hC hQ hNat hkq hkn hv hH hH0 hV hHV hκ hC0 hd hlen hs
@@ -242,7 +242,7 @@ theorem shPrefix_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : I
     (by simp [Mem.Live, hl₁]; omega) (by fp_sub) ?_
   intro m₂ hfr₂ hm₂
   have hl₂ : m₂.store.length = L + 12 := by rw [hfr₂.length_eq, hl₁]
-  have hlog₂ := hfr₂.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+  have hlog₂ := hfr₂.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
     (Fp.disj_inBlock_of_ne (by omega)) hlog₁
   rw [← hα] at hm₂
   exact ((shTest_writes (τ := τ) hS hM hC (by omega) hkn hv hH hH0 hV hHV hκ hC0 hd hs hdist hnu
@@ -473,7 +473,7 @@ theorem shStep_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
       hBelow.readBlock_of h2 hs, hBelow.get_of h3 hwg, hBelow.get_of h4 hwr, hBelow.get_of h5 hww,
       hBelow.get_of h6 hwp, hBelow.readBlock_of h7 hg, hBelow.get_of h8 hthr,
       by rw [(hBelow f.1 h9).1]; exact hrf, by simpa using hlen, ?_⟩,
-      hBelow.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+      hBelow.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
         (fun b i g => by rw [g.1]; exact hlg1) hlog⟩
     simpa using ⟨hl12 0 (by norm_num), hl12 1 (by norm_num), hl12 2 (by norm_num),
       hl12 3 (by norm_num), hl12 4 (by norm_num), hl12 5 (by norm_num), hl12 6 (by norm_num),

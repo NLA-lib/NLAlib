@@ -9,7 +9,7 @@ public import NLAlib.Eigensolvers.ShiftedQR.RoundedDecouple
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveTermination
 public import NLAlib.Eigensolvers.ShiftedQR.StableStepTermination
 public import NLAlib.Matrix.QRIteration.StableStepForward
-public import NLAlib.Matrix.FinitePrecision.GivensLogValidate
+public import NLAlib.Matrix.FinitePrecision.GivensLogSlots
 
 /-!
 # `Decouple`: decoupling the last eigenvalue by a repeated shift
@@ -546,7 +546,7 @@ private theorem decoupleLast_round_by {M : Machine ℝ} {I : Interp O Q ℝ} {u 
     planes_slotEntries_append_some (by omega) hpl hpl', ?_, hW₂.of_eqOff hf₃ hRH,
     by rw [givensLog_slotEntries_append_some]; exact hcb'⟩
   rw [← List.append_assoc]
-  exact hf₃.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+  exact hf₃.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
     (Fp.disj_inBlock_of_ne (by omega)) hlg₂
 
 omit [Has ScalarOp O] [Has IdxTst Q] in
@@ -569,7 +569,7 @@ private theorem decoupleLast_exit_by {M : Machine ℝ} {I : Interp O Q ℝ} {u t
     (fun h0 => hcap (by simpa using h0)) hhf hc.2.2.2.2.2.2.2.2.2.1).mono le_rfl ?_
   intro μ' hfr hpost
   exact ⟨hpost, i, hi, Ls, Rs, Hc, hLs, hpl,
-    hfr.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (Fp.disj_inBlock_of_ne hlgf) hlg,
+    hfr.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (Fp.disj_inBlock_of_ne hlgf) hlg,
     hWc.of_eqOff hfr hhf.symm, hcb⟩
 
 omit [Has IdxTst Q] in
@@ -606,7 +606,7 @@ private theorem decoupleLast_writes_scansBy {M : Machine ℝ} {I : Interp O Q �
       hcb⟩ => ⟨⟨ℓ, Hs, hℓ, hch, hfail, hHess, hW.of_below hBelow hh1,
         hF.imp (fun h' => ⟨hBelow.get_of hf1 h'.1, h'.2⟩)
           (fun h' => ⟨hBelow.get_of hf1 h'.1, h'.2⟩)⟩, k, hk, Ls, Rs, Hc, hLs, hpl,
-        hBelow.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+        hBelow.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
           (fun b i g => by rw [g.1]; exact hlg1) hlg, hWc.of_below hBelow hh1, hcb⟩) ?_
   intro s₁ hlen hlens hBelow
   set L := μ.store.length with hLdef
@@ -628,14 +628,14 @@ private theorem decoupleLast_writes_scansBy {M : Machine ℝ} {I : Interp O Q �
       Store.inBlock L 0 5 ⊔ Store.inBlock (L + 1) 0 2 := le_sup_right.trans le_sup_left
   have hH₁ := hHs.of_below hBelow hh1
   have hlog₁ : HoldsSlottedLog lg ns w LL [] s₁ :=
-    hBelow.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+    hBelow.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
       (fun b i g => by rw [g.1]; exact hlg1) hlog
   refine (bottomScan_writes_decoupleLastCtx (τ := τ) (μ := ⟨s₁, μ.pos⟩) hS hM hu hu1 hL hNat hC
     hc₁ hH₁).frame_seq_le rfl rfl (by simp [Mem.Live, hlen]; omega)
     (fun b i hb => Or.inr (hb.1 ▸ le_rfl)) ?_
   rintro μ₁ hfr₁ ⟨-, hs₁⟩
   have hlogμ₁ : HoldsSlottedLog lg ns w LL [] μ₁.store :=
-    hfr₁.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (Fp.disj_inBlock_of_ne (by omega)) hlog₁
+    hfr₁.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (Fp.disj_inBlock_of_ne (by omega)) hlog₁
   refine (writes_whileFuel (N := m₂) rfl (fun _ => G) (fun _ _ => le_rfl)
     (Store.inBlock f.1 f.2 1) Inv _ ⟨hc₁.of_eqOff hR3 hfr₁, ⟨fun _ => H,
       fun k hk => ⟨[], by obtain rfl : k = 0 := (by omega); exact .nil H⟩,
@@ -910,7 +910,7 @@ private theorem decoupleLast_round_terminates {M : Machine ℝ} {I : Interp O Q 
   refine ⟨hc₂.of_eqOff (le_sup_right.trans le_sup_left) hf₃, ⟨H'', hW₂.of_eqOff hf₃ hRH⟩, hs₃,
     Ls ++ [some es], by simp [hLs], planes_slotEntries_append_some (by omega) hpl hpl', ?_⟩
   rw [← List.append_assoc]
-  exact hf₃.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+  exact hf₃.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
     (Fp.disj_inBlock_of_ne (by omega)) hlg₂
 
 omit [Has IdxTst Q] in
@@ -947,7 +947,7 @@ theorem decoupleLast_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsS
   change Writes .total I τ (Stmt.allocs [.const 5, .const 2] _) _ _ _ μ
   refine writes_allocs_preserving_post (ns := [5, 2]) rfl
     (fun hBelow ⟨⟨H', hW⟩, x, hx, Ls, hLs, hpl, hlg⟩ => ⟨⟨H', hW.of_below hBelow hh1⟩, x,
-      hBelow.get_of hf1 hx, Ls, hLs, hpl, hBelow.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+      hBelow.get_of hf1 hx, Ls, hLs, hpl, hBelow.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
         (fun b i g => by rw [g.1]; exact hlg1) hlg⟩) ?_
   intro s₁ hlen hlens hBelow
   set L := μ.store.length with hLdef
@@ -969,14 +969,14 @@ theorem decoupleLast_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsS
   have hR3 : Store.inBlock L 0 5 ≤ Store.inBlock h.1 h.2 (2 * ((n + 2) * (n + 2))) ⊔
       Store.inBlock L 0 5 ⊔ Store.inBlock (L + 1) 0 2 := le_sup_right.trans le_sup_left
   have hlog₁ : HoldsSlottedLog lg ns w LL [] s₁ :=
-    hBelow.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+    hBelow.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
       (fun b i g => by rw [g.1]; exact hlg1) hlog
   refine (bottomScan_terminates_decoupleLastCtx (τ := τ) (μ := ⟨s₁, μ.pos⟩) hS hL hNat hC
     hc₁ (hHs.of_below hBelow hh1)).frame_seq_le rfl rfl (by simp [Mem.Live, hlen]; omega)
     (fun b i hb => Or.inr (hb.1 ▸ le_rfl)) ?_
   rintro μ₁ hfr₁ ⟨x₁, hx₁⟩
   have hlogμ₁ : HoldsSlottedLog lg ns w LL [] μ₁.store :=
-    hfr₁.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (Fp.disj_inBlock_of_ne (by omega)) hlog₁
+    hfr₁.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (Fp.disj_inBlock_of_ne (by omega)) hlog₁
   have hexit : ∀ i ≤ m₂, ∀ μ' : Mem ℝ, Inv i μ' → Writes .total I τ
       (roundedDecoupleExit (O := O) (Q := Q)).body (Env.frame [] [(L, 0), f])
       (Store.inBlock f.1 f.2 1)
@@ -990,7 +990,7 @@ theorem decoupleLast_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsS
     rintro μ'' hfr ⟨y, hy⟩
     exact ⟨⟨H', hW.of_eqOff hfr (hc'.2.2.2.2.2.2.2.2.2.2.mono le_rfl le_sup_right).symm⟩, y, hy,
       Ls, hLs ▸ hi, hpl,
-      hfr.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (Fp.disj_inBlock_of_ne hlgf) hlg⟩
+      hfr.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (Fp.disj_inBlock_of_ne hlgf) hlg⟩
   refine (writes_whileFuel (N := m₂) rfl (fun _ => G) (fun _ _ => le_rfl)
     (Store.inBlock f.1 f.2 1) Inv _ ⟨hc₁.of_eqOff hR3 hfr₁,
       ⟨H, (hHs.of_below hBelow hh1).of_eqOff hfr₁ hRH⟩, ⟨x₁, hx₁⟩, [], rfl, by simp [slotEntries],

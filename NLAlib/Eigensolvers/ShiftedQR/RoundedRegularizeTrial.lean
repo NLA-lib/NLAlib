@@ -11,7 +11,7 @@ public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolve
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveBackward
 public import NLAlib.Eigensolvers.ShiftedQR.PairBlocks
 public import NLAlib.Matrix.QRIteration.StableStepForward
-public import NLAlib.Matrix.FinitePrecision.GivensLogValidate
+public import NLAlib.Matrix.FinitePrecision.GivensLogSlots
 
 /-!
 # The trials of the rounded `Regularize`
@@ -162,50 +162,6 @@ theorem IsStableQRChain.exists_norm_subdiag_le_of_le_norm_inv_pow {x C B S d ω 
     (X i.succ i.castSucc)
   rw [hn] at this
   linarith
-
-/-! ### The slotted log -/
-
-/-- The accepted entries of two runs of slots are those of each in turn. -/
-theorem slotEntries_append (w : ℕ) (L L' : List (Option (List GivensEntry))) :
-    slotEntries w (L ++ L') = slotEntries w L ++ slotEntries w L' := by
-  simp [slotEntries]
-
-/-- Rejected slots have no accepted entries. -/
-theorem slotEntries_replicate_none (w j : ℕ) :
-    slotEntries w (List.replicate j (none : Option (List GivensEntry))) = [] := by
-  induction j with
-  | zero => rfl
-  | succ j ih =>
-    rw [List.replicate_succ, show (none :: List.replicate j none) =
-      [none] ++ List.replicate j (none : Option (List GivensEntry)) from rfl, slotEntries_append,
-      ih]
-    simp [slotEntries]
-
-/-- One accepted slot has its entries, padded. -/
-theorem slotEntries_singleton_some (w : ℕ) (es : List GivensEntry) :
-    slotEntries w [some es] = padEntries w es := by
-  simp [slotEntries]
-
-/-- The planes of a padded slot are those of its entries and the plane $0$ of the fill. -/
-theorem forall_mem_padEntries {N w : ℕ} {es : List GivensEntry} (hN : 1 < N)
-    (hes : ∀ e ∈ es, e.1 + 1 < N) : ∀ e ∈ padEntries w es, e.1 + 1 < N := by
-  intro e he
-  rcases List.mem_append.mp he with he | he
-  · exact hes e he
-  · rw [(List.mem_replicate.mp he).2]
-    simpa using hN
-
-/-- Rejecting $j$ pending slots in turn (`NLAlib.HoldsSlottedLog.reject`) closes them as `none`;
-nothing is written. -/
-theorem HoldsSlottedLog.reject_replicate {lg : ℕ × ℕ} {ns w : ℕ}
-    {L : List (Option (List GivensEntry))} {s : Ops.Store ℝ} (h : HoldsSlottedLog lg ns w L [] s)
-    {j : ℕ} (hj : L.length + j ≤ ns) :
-    HoldsSlottedLog lg ns w (L ++ List.replicate j none) [] s := by
-  induction j with
-  | zero => simpa using h
-  | succ j ih =>
-    rw [List.replicate_succ', ← List.append_assoc]
-    exact (ih (by omega)).reject (by simp; omega)
 
 end NLAlib
 
@@ -408,7 +364,7 @@ theorem trialStep_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : 
   refine (copyMatrix_writes (τ := τ) hS hA hrt (hW.symm.mono (by fp_sub) (by fp_sub))).frame_seq_le
     rfl rfl (by simp [Mem.Live, hal, htl]) (by fp_sub) ?_
   rintro m₁ hfr₁ ⟨-, hT₁⟩
-  have hlog₁ := hfr₁.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (hD t (by simp) _ _ _ _)
+  have hlog₁ := hfr₁.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (hD t (by simp) _ _ _ _)
     hlog
   have hs₁ := hfr₁.keep (Store.readsOnly_readBlock _ _ _ _) (hW.mono (by fp_sub) (by fp_sub)) hs
   have hthr₁ := hfr₁.keep (Store.readsOnly_get _ _ _) (hW.mono (by fp_sub) (by fp_sub)) hthr
@@ -417,7 +373,7 @@ theorem trialStep_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : 
   refine hrep.frame_seq_le rfl rfl (by simp [Mem.Live, hfr₁.length_eq, hsl, hsrl]) (by fp_sub) ?_
   rintro m₂ hfr₂ ⟨-, hSR₂⟩
   have hT₂ := hT₁.of_eqOff hfr₂ hts.symm
-  have hlog₂ := hfr₂.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+  have hlog₂ := hfr₂.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
     (hD sr (by simp) _ _ _ _) hlog₁
   have hthr₂ := hfr₂.keep (Store.readsOnly_get _ _ _) (hW.mono (by fp_sub) (by fp_sub)) hthr₁
   have hl₂ : ∀ b, m₂.store.len b = m.store.len b := fun b => by rw [hfr₂.len_eq, hfr₁.len_eq]
@@ -444,7 +400,7 @@ theorem trialStep_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : 
     (by rw [hfr₃.len_eq, hl₂]; exact hrrg) hrg (hW.mono (by fp_sub) (by fp_sub))
   refine (hb.in_frame rfl rfl (by simp [Mem.Live, hL₃, htl, hthl, hrgl])).mono (by fp_sub) ?_
   rintro m₄ hfr₄ ⟨-, hscan⟩
-  refine ⟨es, hes, hpl, hfr₄.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+  refine ⟨es, hes, hpl, hfr₄.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
     (hD rg (by simp) _ _ _ _) hlog₃, H', Rs, hch, hH', hT₃.of_eqOff hfr₄ hrg, ?_⟩
   rcases hscan with ⟨h1, i, hi, -, hle⟩ | h0
   · exact Or.inl ⟨h1, i, hi, hle⟩
@@ -492,9 +448,9 @@ theorem trialAccept_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS 
     (by rw [hfr₂.len_eq, hfr₁.len_eq]; exact hrf)).seq_le (by fp_sub) ?_
   rintro m₃ hfr₃ ⟨-, hF₃⟩
   have hlog₃ : HoldsSlottedLog lg ns w L P m₃.store :=
-    hfr₃.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (hD f (by simp) _ _ _ _)
-      (hfr₂.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (hD g (by simp) _ _ _ _)
-        (hfr₁.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (hD a (by simp) _ _ _ _) hlog))
+    hfr₃.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (hD f (by simp) _ _ _ _)
+      (hfr₂.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (hD g (by simp) _ _ _ _)
+        (hfr₁.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (hD a (by simp) _ _ _ _) hlog))
   have hL₃ : m₃.store.length = m.store.length := by
     rw [hfr₃.length_eq, hfr₂.length_eq, hfr₁.length_eq]
   refine ((slottedLogValidate_writes_of_exactNat (τ := τ) hL (hNat.mono le_rfl) hlog₃ hj).in_frame
@@ -780,7 +736,7 @@ theorem regularizeTrials_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
         nlinarith [hall i hik, pow_le_pow_left₀ (norm_nonneg _) hi 2, sq_nonneg (1 + u)]
       · refine Or.inr ⟨hg', hf', ⟨j, hj⟩, List.replicate j none ++ [some es], es, by simp, hpl,
           by rwa [← List.append_assoc], ?_, H', Rs, hc, hH', hA', hdec⟩
-        simp [slotEntries_append, slotEntries_replicate_none, slotEntries_singleton_some]
+        simp [slotEntries_append, slotEntries_replicate_none, slotEntries_some]
     · obtain ⟨hg0, hf1, j', Ls, es, hLs, hpl, hlogμ, hse, H', Rs, hc, hH', hA', hdec⟩ := hdone
       have htr := regularizeTrial_writes (τ := τ) (sp := (s.1, s.2 + 2 * j)) hS hM hu1 hL hNat hC
         hk0 hk hH' hnu hA' hsj hthrμ hg0 hf1 (by rw [hl]; exact hrt) (by rw [hl]; exact hrsr)
@@ -797,7 +753,7 @@ theorem regularizeTrials_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
       · exact absurd h0 (lt_irrefl 0)
   · rintro μ - (⟨-, -, -, hjs, -⟩ | ⟨-, hF, j, Ls, es, hLs, hpl, hlog', hse, hrest⟩)
     · exact absurd jstar.isLt (by omega)
-    · exact ⟨hF, j, Ls, es, hLs, hse ▸ forall_mem_padEntries (by omega) hpl, hlog', hse, hrest⟩
+    · exact ⟨hF, j, Ls, es, hLs, hse ▸ padEntries_planes (by omega) hpl, hlog', hse, hrest⟩
 
 omit [Has IdxTst Q] in
 /-- The decision of `Regularize` on a scalar machine with the standard model at
@@ -909,7 +865,7 @@ theorem regularizeDecide_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (by fp_sub) ?_
   rintro m₁ hfr₁ ⟨-, b, hb, hb01, hb1, hb0⟩
   have hA₁ := hA.of_eqOff hfr₁ (hGF.mono le_sup_left le_sup_right)
-  have hlog₁ := hfr₁.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (hD g (by simp) _ _ _ _)
+  have hlog₁ := hfr₁.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (hD g (by simp) _ _ _ _)
     hlog
   refine writes_ite rfl rfl (hC.test_isPos (d := []) (x := g) hb) ?_
   rcases hb01 with rfl | rfl
@@ -934,8 +890,8 @@ theorem regularizeDecide_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     have hthr₃ := hfr.keep (Store.readsOnly_get _ _ _) (hkeep.mono le_rfl le_sup_right) hthr
     have hA₃ := hA.of_eqOff hfr (hGF.mono (by fp_sub) le_sup_right)
     have hF₃ := hfr₃.keep (Store.readsOnly_get _ _ _) hgf hF₂
-    have hlog₃ := hfr₃.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (hD g (by simp) _ _ _ _)
-      (hfr₂.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (hD f (by simp) _ _ _ _) hlog₁)
+    have hlog₃ := hfr₃.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (hD g (by simp) _ _ _ _)
+      (hfr₂.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (hD f (by simp) _ _ _ _) hlog₁)
     have htr := regularizeTrials_writes (τ := τ) hS hM hu1 hL hNat hC hk0 hk hH hnu hA₃ hs₃
       hthr₃ (by rw [hG₃, h1]) hF₃ (by rw [hl]; exact hrt) (by rw [hl]; exact hrsr)
       (by rw [hl]; exact hrds) (by rw [hl]; exact hrrg) hW hts htd hsd hrg hGF hgf
@@ -956,7 +912,7 @@ theorem regularizeDecide_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
       (by rw [hfr₁.len_eq]; exact hrf)).mono (by fp_sub) ?_
     rintro m₂ hfr₂ ⟨-, hF₂⟩
     exact Or.inl ⟨by rw [hF₂, h0], hA₁.of_eqOff hfr₂ (hGF.mono le_sup_right le_sup_right),
-      hfr₂.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (hD f (by simp) _ _ _ _) hlog₁,
+      hfr₂.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (hD f (by simp) _ _ _ _) hlog₁,
       hb1 rfl⟩
 
 end Trials

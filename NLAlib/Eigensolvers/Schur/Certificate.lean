@@ -342,6 +342,26 @@ theorem denseSchur_algorithm_measureReal_not_accepts_le {Mch : Machine ℝ}
       fun _ m => ((denseSchurProblem Mch admitted).initial d x).store.EqOff
           (schurFp (d 0) (0, 0) (2, 0) (3, 0)) m.store ∧
         SchurOutput (0, 0) (2, 0) (3, 0) x.val.1.matrix x.val.1.δ
-          (58 * denseSchurRotations (d 0) x.val.1.δ x.val.1.φ * u) m} ≤ x.val.1.φ := sorry
+          (58 * denseSchurRotations (d 0) x.val.1.δ x.val.1.φ * u) m} ≤ x.val.1.φ := by
+  have := hξ.isProbabilityMeasure
+  obtain ⟨hS, hL, hC, hQ, hSmp, hDisk⟩ := smallEigModel_laws hI
+  have hin := schurPipelineProblem_initial_input (admitted := admitted) d x
+  have hT := denseSchur_measureReal_not_schur_le (O := SmallEigOp) (Q := Tst) (sG := sG) hS hM
+    hL hd.1 hQ hC hIm hloc hSmp hDisk hU hG hδ hδ1 hφ hφ1 hu hin hξ
+  refine (denseSchurAlgorithm Mch admitted sU sG).measureReal_not_accepts_le_of_wp hd x
+    I hI P ξ _ ?_
+  refine (measureReal_mono ?_).trans hT
+  intro ω hω hW
+  have hl3 := hin.1
+  have hl5 : ((denseSchurProblem Mch admitted).initial d x).Live
+      [(0, 0), (1, 0), (0, 0), (2, 0), (3, 0)] := fun y hy => hl3 y (by
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hy
+    rcases hy with rfl | rfl | rfl | rfl | rfl <;> simp)
+  have hsz := x.val.1.sizes_eq
+  refine hω (wp_frame ?_ ?_ hl5 hW)
+  · have h := fun i => (congrFun hsz i).symm
+    simp [Program.environment, IExp.evalList, IExp.eval, denseSchurDims, denseSchurDimsWith,
+      List.ofFn_succ, h 1, h 2, h 3, h 4, h 5, denseSchurSizes]
+  · simp [Program.environment, Operand.evalList, Operand.eval, IExp.eval, List.ofFn_succ]
 
 end NLAlib.Schur

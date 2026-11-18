@@ -470,6 +470,100 @@ theorem exists_isEigenvalueListing_norm_sub_le_of_forwardBackwardError {d kmax :
     (Real.rpow_le_rpow (specNorm_nonneg _) hE (by positivity)) (by positivity)
     (mul_nonneg (by positivity) (Real.rpow_nonneg (by linarith) _))
 
+/-- **A tracked Schur pair lists the spectrum within the forward accuracy**: if
+$\mathbf{T}_b$ is upper triangular and tracked from $(\mathbf{I}, \mathbf{M})$ with a backward
+error at most $\delta_b$ (`NLAlib.SmallEig.forwardBackwardError` $k_{\max}$ $\Sigma$ $\beta$),
+$\mathbf{M}$ of order $d \le k_{\max}$ with $\|\mathbf{M}\|_2 \le \Sigma$ and
+$0 < \beta \le \Sigma$, then the diagonal of $\mathbf{T}_b$ is within $\beta$ of a listing of the
+spectrum of $\mathbf{M}$. -/
+theorem exists_isEigenvalueListing_norm_sub_le_of_tracked {d kmax : ℕ} (hd : d ≤ kmax)
+    {S β εU εT : ℝ} (hβ : 0 < β) (hβS : β ≤ S) {M Ub Tb : Matrix (Fin d) (Fin d) ℂ}
+    (hMS : specNorm M ≤ S) (hεT : εT ≤ SmallEig.forwardBackwardError kmax S β)
+    (hT : Tb.IsUpperTriangular) (ht : IsTrackedUnitarySimilar εU εT 1 M Ub Tb) :
+    ∃ ev : Fin d → ℂ, IsEigenvalueListing M ev ∧ ∀ i, ‖Tb i i - ev i‖ ≤ β := by
+  obtain ⟨V, ⟨hV, E, hE, hTE⟩, -⟩ := ht
+  have hL : IsEigenvalueListing (M + E) fun i => Tb i i := by
+    have := hV.isEigenvalueListing_of_isUpperTriangular_conjTranspose_mul_mul (A := M + E)
+      (hTE ▸ hT)
+    simpa [← hTE] using this
+  exact exists_isEigenvalueListing_norm_sub_le_of_forwardBackwardError hd hβ hβS hMS
+    (hE.trans hεT) hL
+
+omit [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] in
+/-- The diagonal copy of `NLAlib.ShiftedQR.schurDiag`: from a memory holding $\mathbf{T}_b$ at
+the first scratch buffer `Lc` with room for $2d$ words at `o`, the loop writes the diagonal of
+$\mathbf{T}_b$ to `o`; a listing of a spectrum within $\beta$ of that diagonal carries over. -/
+theorem schurDiag_loop_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar Mch I)
+    {d T Lc : ℕ} {w q o : ℕ × ℕ} {B Tb : Matrix (Fin d) (Fin d) ℂ} {β : ℝ} {ev : Fin d → ℂ}
+    (hev : IsEigenvalueListing B ev) (hb : ∀ i, ‖Tb i i - ev i‖ ≤ β) {τ : Tape ℝ} {μ : Mem ℝ}
+    (hlen : μ.store.length = Lc + 2) (hroomo : o.2 + 2 * d ≤ μ.store.len o.1) (hoL : o.1 < Lc)
+    (hTb : HoldsMatrix (Lc, 0) Tb μ.store) :
+    Writes .total I τ (Stmt.loop (IExp.var 0)
+      ((Stmt.call (Has.inj ScalarOp.copy) []
+          [{ buf := 3, off := IExp.const 2 * (IExp.var 6 * IExp.var 0 + IExp.var 6) }]
+          [{ buf := 2, off := IExp.var 5 + IExp.const 2 * IExp.var 6 }]).seq
+        (Stmt.call (Has.inj ScalarOp.copy) []
+          [⟨3, IExp.const 2 * (IExp.var 6 * IExp.var 0 + IExp.var 6) + IExp.const 1⟩]
+          [{ buf := 2, off := IExp.var 5 + IExp.const 2 * IExp.var 6 + IExp.const 1 }])) :
+        Stmt O Q)
+      ⟨(Env.frame [d, 12, T] [w, q, o]).idx,
+        (Env.frame [d, 12, T] [w, q, o]).buf ++ (List.range 2).map (Lc + ·)⟩
+      (Store.inBlock o.1 o.2 (2 * d))
+      (fun μ' => ∃ roots ev : Fin d → ℂ, IsEigenvalueListing B ev ∧
+        (∀ i, ‖roots i - ev i‖ ≤ β) ∧ HoldsMatrix o (Matrix.of fun i (_ : Fin 1) => roots i)
+          μ'.store) μ := by
+  have hTo : Fp.Disj (Store.inBlock o.1 o.2 (2 * d)) (Store.inBlock (Lc, 0).1 (Lc, 0).2
+      (2 * (d * d))) := Fp.disj_inBlock_of_ne (by omega)
+  refine (writes_loop (N := d) (by simp [IExp.eval, Env.frame])
+    (fun _ => Store.inBlock o.1 o.2 (2 * d)) (fun _ _ => le_rfl)
+    (fun i m => m.store.length = Lc + 2 ∧ o.2 + 2 * d ≤ m.store.len o.1 ∧
+      HoldsMatrix (Lc, 0) Tb m.store ∧ ∀ j : Fin d, (j : ℕ) < i →
+        m.store.get o.1 (o.2 + 2 * j) = some (Tb j j).re ∧
+        m.store.get o.1 (o.2 + 2 * j + 1) = some (Tb j j).im)
+    ⟨hlen, hroomo, hTb, fun j hj => absurd hj (Nat.not_lt_zero _)⟩ ?_).mono le_rfl ?_
+  · intro i hi m _ ⟨h1, h2, h3, h4⟩
+    refine (writes_call_un (hS .copy) (x := (Lc, 2 * (i * d + i))) (z := (o.1, o.2 + 2 * i))
+      (by simp [Operand.evalList, Operand.eval, IExp.eval, Env.frame, Env.pushIdx])
+      (by simp [Operand.evalList, Operand.eval, IExp.eval, Env.frame, Env.pushIdx]) trivial
+      (by simpa using h3.get_re ⟨i, hi⟩ ⟨i, hi⟩) rfl (by dsimp only; omega)).seq_le
+      (Fp.inBlock_le_inBlock (by omega) (by omega)) ?_
+    rintro m₁ hfr₁' ⟨-, g₁⟩
+    refine (writes_call_un (hS .copy) (x := (Lc, 2 * (i * d + i) + 1))
+      (z := (o.1, o.2 + 2 * i + 1))
+      (by simp [Operand.evalList, Operand.eval, IExp.eval, Env.frame, Env.pushIdx])
+      (by simp [Operand.evalList, Operand.eval, IExp.eval, Env.frame, Env.pushIdx]) trivial
+      (by rw [hfr₁'.get_eq (fun h' => by have := h'.1; dsimp only at this; omega)]
+          simpa [Nat.add_assoc] using h3.get_im ⟨i, hi⟩ ⟨i, hi⟩) rfl
+      (by dsimp only; rw [hfr₁'.len_eq]; omega)).mono
+      (Fp.inBlock_le_inBlock (by omega) (by omega)) ?_
+    rintro m₂ hfr₂' ⟨-, g₂⟩
+    have hfr := hfr₁'.trans' hfr₂'
+    refine ⟨by rw [hfr.length_eq, h1], by rw [hfr.len_eq]; exact h2,
+      h3.of_eqOff hfr (Fp.disj_sup_left.mpr ⟨hTo.mono (Fp.inBlock_le_inBlock (by omega)
+        (by omega)) le_rfl, hTo.mono (Fp.inBlock_le_inBlock (by omega) (by omega)) le_rfl⟩),
+      fun j hj => ?_⟩
+    rcases Nat.lt_or_ge (j : ℕ) i with hji | hji
+    · obtain ⟨r1, r2⟩ := h4 j hji
+      refine ⟨?_, ?_⟩
+      · rw [hfr₂'.get_eq (fun h' => by have := h'.2; dsimp only at this; omega),
+          hfr₁'.get_eq (fun h' => by have := h'.2; dsimp only at this; omega)]
+        exact r1
+      · rw [hfr₂'.get_eq (fun h' => by have := h'.2; dsimp only at this; omega),
+          hfr₁'.get_eq (fun h' => by have := h'.2; dsimp only at this; omega)]
+        exact r2
+    · have hj' : (j : ℕ) = i := by omega
+      have hjF : j = ⟨i, hi⟩ := Fin.ext hj'
+      subst hjF
+      refine ⟨?_, g₂⟩
+      rw [hfr₂'.get_eq (fun h' => by have := h'.2; dsimp only at this; omega)]
+      exact g₁
+  · rintro m - ⟨-, -, -, h4⟩
+    refine ⟨fun i => Tb i i, ev, hev, hb, HoldsMatrix.of_get (fun i j => ?_) (fun i j => ?_)⟩
+    · have hj : (j : ℕ) = 0 := by have := j.2; omega
+      simpa [hj] using (h4 i i.2).1
+    · have hj : (j : ℕ) = 0 := by have := j.2; omega
+      simpa [hj] using (h4 i i.2).2
+
 omit [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] in
 /-- **The eigenvalue routine of a Schur leaf meets the small-eigenvalue contract**: on a scalar
 machine with a measurable interpretation reading the tape only in its windows, if the Schur leaf
@@ -554,68 +648,14 @@ theorem _root_.NLAlib.Schur.RandomSchurLeafContract.randomSmallEigContractAt_sch
         exact ⟨⟨Fp.disj_inBlock_of_ne (by omega), hWU⟩,
           Fp.disj_inBlock_of_ne (by omega)⟩⟩) ?_
     rintro μ μ' ⟨hlen, hL1, hB, hqs, ho, hqL, hoL⟩ hfr
-      ⟨Ub, Tb, ⟨hTb, -⟩, hT, Vb, ⟨hVb, E, hE, hTE⟩, -⟩
-    have hL : IsEigenvalueListing (B + E) fun i => Tb i i := by
-      have := hVb.isEigenvalueListing_of_isUpperTriangular_conjTranspose_mul_mul (A := B + E)
-        (hTE ▸ hT)
-      simpa [← hTE] using this
-    obtain ⟨ev, hev, hb⟩ := exists_isEigenvalueListing_norm_sub_le_of_forwardBackwardError hd hβ
-      hβN hBN (hE.trans hβL) hL
+      ⟨Ub, Tb, ⟨hTb, -⟩, hT, Vb, ⟨hVb, E, hE, hTE⟩, hUb⟩
+    obtain ⟨ev, hev, hb⟩ := exists_isEigenvalueListing_norm_sub_le_of_tracked hd hβ hβN hBN
+      hβL hT ⟨Vb, ⟨hVb, E, hE, hTE⟩, hUb⟩
     exact ⟨hfr.length_eq.trans hlen, by rw [hfr.len_eq]; exact ho, hoL, Tb, hTb, ev, hev,
       hb⟩
   · -- the copy of the diagonal to the output
     obtain ⟨hlen, hroomo, hoL, Tb, hTb, ev, hev, hb⟩ := h
-    have hTo : Fp.Disj (Store.inBlock o.1 o.2 (2 * d)) (Store.inBlock (Lc, 0).1 (Lc, 0).2
-        (2 * (d * d))) := Fp.disj_inBlock_of_ne (by omega)
-    refine (writes_loop (N := d) (by simp [IExp.eval, Env.frame])
-      (fun _ => Store.inBlock o.1 o.2 (2 * d)) (fun _ _ => le_rfl)
-      (fun i m => m.store.length = Lc + 2 ∧ o.2 + 2 * d ≤ m.store.len o.1 ∧
-        HoldsMatrix (Lc, 0) Tb m.store ∧ ∀ j : Fin d, (j : ℕ) < i →
-          m.store.get o.1 (o.2 + 2 * j) = some (Tb j j).re ∧
-          m.store.get o.1 (o.2 + 2 * j + 1) = some (Tb j j).im)
-      ⟨hlen, hroomo, hTb, fun j hj => absurd hj (Nat.not_lt_zero _)⟩ ?_).mono le_rfl ?_
-    · intro i hi m _ ⟨h1, h2, h3, h4⟩
-      refine (writes_call_un (hS .copy) (x := (Lc, 2 * (i * d + i))) (z := (o.1, o.2 + 2 * i))
-        (by simp [Operand.evalList, Operand.eval, IExp.eval, Env.frame, Env.pushIdx])
-        (by simp [Operand.evalList, Operand.eval, IExp.eval, Env.frame, Env.pushIdx]) trivial
-        (by simpa using h3.get_re ⟨i, hi⟩ ⟨i, hi⟩) rfl (by dsimp only; omega)).seq_le
-        (Fp.inBlock_le_inBlock (by omega) (by omega)) ?_
-      rintro m₁ hfr₁' ⟨-, g₁⟩
-      refine (writes_call_un (hS .copy) (x := (Lc, 2 * (i * d + i) + 1))
-        (z := (o.1, o.2 + 2 * i + 1))
-        (by simp [Operand.evalList, Operand.eval, IExp.eval, Env.frame, Env.pushIdx])
-        (by simp [Operand.evalList, Operand.eval, IExp.eval, Env.frame, Env.pushIdx]) trivial
-        (by rw [hfr₁'.get_eq (fun h' => by have := h'.1; dsimp only at this; omega)]
-            simpa [Nat.add_assoc] using h3.get_im ⟨i, hi⟩ ⟨i, hi⟩) rfl
-        (by dsimp only; rw [hfr₁'.len_eq]; omega)).mono
-        (Fp.inBlock_le_inBlock (by omega) (by omega)) ?_
-      rintro m₂ hfr₂' ⟨-, g₂⟩
-      have hfr := hfr₁'.trans' hfr₂'
-      refine ⟨by rw [hfr.length_eq, h1], by rw [hfr.len_eq]; exact h2,
-        h3.of_eqOff hfr (Fp.disj_sup_left.mpr ⟨hTo.mono (Fp.inBlock_le_inBlock (by omega)
-          (by omega)) le_rfl, hTo.mono (Fp.inBlock_le_inBlock (by omega) (by omega)) le_rfl⟩),
-        fun j hj => ?_⟩
-      rcases Nat.lt_or_ge (j : ℕ) i with hji | hji
-      · obtain ⟨r1, r2⟩ := h4 j hji
-        refine ⟨?_, ?_⟩
-        · rw [hfr₂'.get_eq (fun h' => by have := h'.2; dsimp only at this; omega),
-            hfr₁'.get_eq (fun h' => by have := h'.2; dsimp only at this; omega)]
-          exact r1
-        · rw [hfr₂'.get_eq (fun h' => by have := h'.2; dsimp only at this; omega),
-            hfr₁'.get_eq (fun h' => by have := h'.2; dsimp only at this; omega)]
-          exact r2
-      · have hj' : (j : ℕ) = i := by omega
-        have hjF : j = ⟨i, hi⟩ := Fin.ext hj'
-        subst hjF
-        refine ⟨?_, g₂⟩
-        rw [hfr₂'.get_eq (fun h' => by have := h'.2; dsimp only at this; omega)]
-        exact g₁
-    · rintro m - ⟨-, -, -, h4⟩
-      refine ⟨fun i => Tb i i, ev, hev, hb, HoldsMatrix.of_get (fun i j => ?_) (fun i j => ?_)⟩
-      · have hj : (j : ℕ) = 0 := by have := j.2; omega
-        simpa [hj] using (h4 i i.2).1
-      · have hj : (j : ℕ) = 0 := by have := j.2; omega
-        simpa [hj] using (h4 i i.2).2
+    exact schurDiag_loop_writes hS hev hb hlen hroomo hoL hTb
   · intro b i h
     rcases h with h | ((h | h) | h) <;>
       first | exact Or.inl h | exact Or.inr (h.1 ▸ le_rfl) |
@@ -650,28 +690,17 @@ theorem forwardBackwardError_shqrSmallEigAccuracy_le {n k : ℕ} {B Γ S δ : �
     _ = β / (4 * (2 * k + 1)) := by rw [hr]; field_simp
     _ ≤ β := div_le_self hacc0.le (by nlinarith)
 
-/-- **The error budget of the Schur-mode run**: for $B \ge 1$, $\Gamma > 0$,
-$0 < \delta \le \Sigma$, $k$ the degree of (eqn:setk) at $4B$,
-$0 \le \boldsymbol{u} \le \boldsymbol{u}_{\mathrm{ShQR}}$, $\boldsymbol{u}$ at most the replay term
-`NLAlib.ShiftedQR.uShQRSchurReplay` at $n_p$ words and $R_L$ leaf rotations, a leaf accumulator
-error $\varepsilon_L \le (1 + 24\boldsymbol{u})^{R_L} - 1$, a leaf backward error
-$0 \le \beta_L \le \delta_b$ (`NLAlib.SmallEig.forwardBackwardError` $k$ $4\Sigma$ at
-`NLAlib.ShiftedQR.shqrSmallEigAccuracy`), an order $n' + 1 \le n + 1$ and a log of
-$n_s w \le$ `NLAlib.ShiftedQR.shqrSchurLogSize` entries, the per-round error of the worklist at
-$N_0 = 2\Sigma$, over $2(n' + 1)$ rounds, is at most the budget
-$\min(\delta, \Gamma/(16(n + 1)B))$ (`NLAlib.ShiftedQR.shqrBudget`): the cut level and the
-decoupler a third each, the replays, the leaf products and the leaf accumulators a quarter. -/
-theorem shqrSchurError_le {n n' k np RL : ℕ} {B Γ S δ φ u εL βL : ℝ} (hB : 1 ≤ B)
-    (hΓ : 0 < Γ) (hδ : 0 < δ) (hδS : δ ≤ S) (hk : k = shqrDegree (4 * B)) (hu0 : 0 ≤ u)
-    (hu : u ≤ uShQR n k B Γ S δ φ)
-    (hur : u ≤ uShQRSchurReplay n k np (shqrCap n B Γ S δ) RL B Γ S δ)
-    (hεLR : εL ≤ (1 + 24 * u) ^ RL - 1) (hβL0 : 0 ≤ βL)
+/-- The head of the error budget of the Schur-mode run (`NLAlib.ShiftedQR.shqrSchurError_le`):
+under its hypotheses, over $2(n' + 1)$ rounds the cut level and the decoupler cost at most a third
+of the budget each and the leaf's backward error at most $1/193920$ of it. -/
+theorem shqrSchurHead_le {n n' k : ℕ} {B Γ S δ φ u βL : ℝ} (hB : 1 ≤ B) (hΓ : 0 < Γ)
+    (hδ : 0 < δ) (hδS : δ ≤ S) (hk : k = shqrDegree (4 * B)) (hu0 : 0 ≤ u)
+    (hu : u ≤ uShQR n k B Γ S δ φ) (hβL0 : 0 ≤ βL)
     (hβL : βL ≤ SmallEig.forwardBackwardError k (4 * S) (shqrSmallEigAccuracy n B Γ S δ))
-    (hn' : n' ≤ n) {ns w : ℕ} (hnsw : ns * w ≤ shqrSchurLogSize n k np (shqrCap n B Γ S δ)) :
+    (hn' : n' ≤ n) :
     2 * ((n' : ℝ) + 1) * (shqrCut n k B Γ S δ φ + shqrCap n B Γ S δ *
-      ((1 + shqrC k (4 * B)) * (4 * S) * ((1 + 300 * ((n : ℝ) + 1) ^ 2 * u) ^ k - 1)) + βL +
-      2 * εL * (2 * S) + 78 * u * ((ns : ℝ) * w) * (2 * S) +
-      8 * ((n' : ℝ) + 1) * (k + 2) * u * (2 * S)) ≤ shqrBudget n B Γ δ := by
+      ((1 + shqrC k (4 * B)) * (4 * S) * ((1 + 300 * ((n : ℝ) + 1) ^ 2 * u) ^ k - 1)) + βL) ≤
+      shqrBudget n B Γ δ * (2 / 3 + 1 / 193920) := by
   have hS : 0 < S := hδ.trans_le hδS
   have hk0 : 0 < k := by have := hk ▸ two_le_shqrDegree (by linarith : 1 ≤ 4 * B); omega
   set b := shqrBudget n B Γ δ with hbdef
@@ -705,7 +734,6 @@ theorem shqrSchurError_le {n n' k np RL : ℕ} {B Γ S δ φ u εL βL : ℝ} (h
   have hN1 : 1 ≤ N := by have := n.cast_nonneg (α := ℝ); linarith
   have hNN : N' ≤ N := by rw [hN, hN']; exact_mod_cast Nat.succ_le_succ hn'
   have hN'0 : 0 < N' := by positivity
-  -- the head: the cut level, the decoupler and the leaf's backward error
   have hhead : 2 * N' * (shqrCut n k B Γ S δ φ + E + βL) ≤ b / 3 + b / 3 + b / 193920 := by
     have h1 : 2 * N' * (shqrCut n k B Γ S δ φ + E + βL) ≤
         2 * N * (shqrCut n k B Γ S δ φ + E + βL) := by gcongr
@@ -720,6 +748,40 @@ theorem shqrSchurError_le {n n' k np RL : ℕ} {B Γ S δ φ u εL βL : ℝ} (h
       have := mul_le_mul_of_nonneg_left hβ (by positivity : (0 : ℝ) ≤ 2 * N)
       linarith
     linarith
+  linarith
+
+/-- **The error budget of the Schur-mode run**: for $B \ge 1$, $\Gamma > 0$,
+$0 < \delta \le \Sigma$, $k$ the degree of (eqn:setk) at $4B$,
+$0 \le \boldsymbol{u} \le \boldsymbol{u}_{\mathrm{ShQR}}$, $\boldsymbol{u}$ at most the replay term
+`NLAlib.ShiftedQR.uShQRSchurReplay` at $n_p$ words and $R_L$ leaf rotations, a leaf accumulator
+error $\varepsilon_L \le (1 + 24\boldsymbol{u})^{R_L} - 1$, a leaf backward error
+$0 \le \beta_L \le \delta_b$ (`NLAlib.SmallEig.forwardBackwardError` $k$ $4\Sigma$ at
+`NLAlib.ShiftedQR.shqrSmallEigAccuracy`), an order $n' + 1 \le n + 1$ and a log of
+$n_s w \le$ `NLAlib.ShiftedQR.shqrSchurLogSize` entries, the per-round error of the worklist at
+$N_0 = 2\Sigma$, over $2(n' + 1)$ rounds, is at most the budget
+$\min(\delta, \Gamma/(16(n + 1)B))$ (`NLAlib.ShiftedQR.shqrBudget`): the cut level and the
+decoupler a third each, the replays, the leaf products and the leaf accumulators a quarter. -/
+theorem shqrSchurError_le {n n' k np RL : ℕ} {B Γ S δ φ u εL βL : ℝ} (hB : 1 ≤ B)
+    (hΓ : 0 < Γ) (hδ : 0 < δ) (hδS : δ ≤ S) (hk : k = shqrDegree (4 * B)) (hu0 : 0 ≤ u)
+    (hu : u ≤ uShQR n k B Γ S δ φ)
+    (hur : u ≤ uShQRSchurReplay n k np (shqrCap n B Γ S δ) RL B Γ S δ)
+    (hεLR : εL ≤ (1 + 24 * u) ^ RL - 1) (hβL0 : 0 ≤ βL)
+    (hβL : βL ≤ SmallEig.forwardBackwardError k (4 * S) (shqrSmallEigAccuracy n B Γ S δ))
+    (hn' : n' ≤ n) {ns w : ℕ} (hnsw : ns * w ≤ shqrSchurLogSize n k np (shqrCap n B Γ S δ)) :
+    2 * ((n' : ℝ) + 1) * (shqrCut n k B Γ S δ φ + shqrCap n B Γ S δ *
+      ((1 + shqrC k (4 * B)) * (4 * S) * ((1 + 300 * ((n : ℝ) + 1) ^ 2 * u) ^ k - 1)) + βL +
+      2 * εL * (2 * S) + 78 * u * ((ns : ℝ) * w) * (2 * S) +
+      8 * ((n' : ℝ) + 1) * (k + 2) * u * (2 * S)) ≤ shqrBudget n B Γ δ := by
+  have hS : 0 < S := hδ.trans_le hδS
+  have hhead := shqrSchurHead_le (n' := n') (φ := φ) hB hΓ hδ hδS hk hu0 hu hβL0 hβL hn'
+  set b := shqrBudget n B Γ δ with hbdef
+  have hb := shqrBudget_pos (n := n) hB hΓ hδ
+  have hbS : b ≤ S := shqrBudget_le_left.trans hδS
+  set N : ℝ := (n : ℝ) + 1 with hN
+  set N' : ℝ := (n' : ℝ) + 1 with hN'
+  have hN1 : 1 ≤ N := by have := n.cast_nonneg (α := ℝ); linarith
+  have hNN : N' ≤ N := by rw [hN, hN']; exact_mod_cast Nat.succ_le_succ hn'
+  have hN'0 : 0 < N' := by positivity
   -- the tail: the replays, the leaf products and the leaf accumulators
   set Ls : ℝ := (shqrSchurLogSize n k np (shqrCap n B Γ S δ) : ℝ)
   set D : ℝ := 78 * Ls + 8 * N * (k + 2) + 54 * RL with hD
@@ -1018,10 +1080,10 @@ tape only in its windows, and a stream $s_U$ uniform on $[0, 1]$ with an exact p
 on it. Let $B \ge 1$, $\Gamma > 0$, $0 < \delta \le \Sigma$, $0 < \varphi \le 1$ and $k$ the degree
 of (eqn:setk) at $4B$. Let the leaf `L` be a randomized small-block Schur solver on the orders at
 most $\min(k, n + 1)$ and norms at most $4\Sigma$ with the cap $T$ and $12$ words `qs`, with
-accumulator error $0 \le \varepsilon_L \le (1 + 24\boldsymbol{u})^{R_L} - 1$, backward error $0 \le \beta_L \le
-\Sigma'(\beta/(4(2k + 1)\Sigma'))^k$ ($\beta$ = `shqrSmallEigAccuracy`, $\Sigma' = 4\Sigma$) and
-failure $0 \le \varphi_L \le$ `shqrSmallEigFailure`; let $\boldsymbol{u} \le
-\boldsymbol{u}_{\mathrm{ShQR}}$ and $\boldsymbol{u}$ at most the replay term at $R_L$. Then
+accumulator error $0 \le \varepsilon_L \le (1 + 24\boldsymbol{u})^{R_L} - 1$, backward error
+$0 \le \beta_L \le \Sigma'(\beta/(4(2k + 1)\Sigma'))^k$ ($\beta$ = `shqrSmallEigAccuracy`,
+$\Sigma' = 4\Sigma$) and failure $0 \le \varphi_L \le$ `shqrSmallEigFailure`; let
+$\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{ShQR}}$ and $\boldsymbol{u}$ at most the replay term at $R_L$. Then
 `roundedShQRSchurWith L` meets the Schur core contract on the orders at most $n + 1$, the class
 $(B, \Gamma)$ and norms at most $\Sigma$, with the words: the deflation threshold, `shqrParams`,
 `qs`. Except with probability $\varphi$ its flag is $0$, its matrix upper triangular, and the

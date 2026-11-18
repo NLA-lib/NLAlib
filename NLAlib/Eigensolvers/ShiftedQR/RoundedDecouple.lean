@@ -1066,8 +1066,7 @@ theorem roundedDecoupleWith_randomDecouplingRoutineContract_at {M : Machine ℝ}
       (fun _ => F * ((1 + C) * S * ((1 + 300 * (nmax + 1) ^ 2 * u) ^ k - 1)))
       (roundedDecoupleWith SE) I := by
   intro n N w p f lg H V d hkn hn hN hHess hnorm hV hHV hκ hgap
-  have hws' : k * n ≤ ws := (Nat.mul_le_mul_left k hn).trans hws
-  replace hn : n ≤ nmax := hn.trans hnc
+  have hws' : k * n ≤ ws := (Nat.mul_le_mul_left k hn).trans hws; replace hn := hn.trans hnc
   have hu := hM.roundoff_nonneg
   set E := (1 + C) * S * ((1 + 300 * (nmax + 1) ^ 2 * u) ^ k - 1) with hEdef
   have hnn : (n : ℝ) + 1 ≤ nmax + 1 := by exact_mod_cast Nat.succ_le_succ hn

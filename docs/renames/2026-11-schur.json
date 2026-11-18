@@ -1,6 +1,6 @@
 {
   "date": "2026-11-18",
-  "note": "SCHUR O7 (MV1, MV2): the stored-matrix layer (ShiftedQR/Storage, and storedMatrix from RoundedHeadline) moves to Matrix/FinitePrecision/StoredMatrix, and the Givens coefficient and rotation programs (ShiftedQR/Coefficients, Rotation, RotationLoops) to Matrix/FinitePrecision/GivensCoefficients, GivensRotation and GivensPrograms; the declarations leave the ShiftedQR namespace for NLAlib. Pure relocation: no statement or body changed. SCHUR skeleton (MG3): IsRoundedRowRotation and IsRoundedColRotation take rectangular matrices (rows Fin n, any column type; and the transpose); the square uses are the instance. SCHUR skeleton part 2 (Schur is the program, design note 14.6): the merged finite-precision shifted QR programs (step, Find's step, Regularize, Sh, the iteration, the decoupling loop, the worklist solveRoundedWith, roundedShQRWith/roundedShQRSmallEig), Part III's programs (rhess, decoupleLast, smallEigDecoupler, the leaf, smallEigCore, smallEigProg) and hessenbergReduceLast are rewritten in place: every committed rotation is recorded in a slotted Givens log and the backward statements name their unitary (givensLog); the worklist replays the logs on the coupling blocks and the accumulator U, writes exact zeros at the cuts and multiplies by the leaves' accumulators, so it outputs (U, T) with T upper triangular. The eigenvalue-only programs are removed (the oracle-leaf roundedShQR and its certificate, the eigenvalue leaf contracts and lifts, solveRounded, seLeaf, copyLeaf -> identityLeaf); the eigenvalue theorems are restated as corollaries in Schur form under their names. Certificate numerals: stmtWorkMono_smallEigProgram 373483 -> 514650, stmtWorkMono_shqrSmallEigProgram 675307 -> 960712 (smallEigWork, shqrSmallEigWork likewise; exponents unchanged). SCHUR skeleton part 3: roundedShQRWith runs its leaf on the last 12 words (leafOnTailWords), as the decoupler does; the roundedShQRWith theorems take the Schur leaf contract (RandomSchurLeafContract) in place of the eigenvalue-kernel contract (the _at variants are removed); ShQRSmallEigInput holds an accumulator and has room for it; the SmallEig-leaf headlines take u <= uShQRSchur (the replay term added). Certificate numeral: stmtWorkMono_shqrSmallEigProgram 960712 -> 960776.",
+  "note": "SCHUR O7 (MV1, MV2): the stored-matrix layer (ShiftedQR/Storage, and storedMatrix from RoundedHeadline) moves to Matrix/FinitePrecision/StoredMatrix, and the Givens coefficient and rotation programs (ShiftedQR/Coefficients, Rotation, RotationLoops) to Matrix/FinitePrecision/GivensCoefficients, GivensRotation and GivensPrograms; the declarations leave the ShiftedQR namespace for NLAlib. Pure relocation: no statement or body changed. SCHUR skeleton (MG3): IsRoundedRowRotation and IsRoundedColRotation take rectangular matrices (rows Fin n, any column type; and the transpose); the square uses are the instance. SCHUR skeleton part 2 (Schur is the program, design note 14.6): the merged finite-precision shifted QR programs (step, Find's step, Regularize, Sh, the iteration, the decoupling loop, the worklist solveRoundedWith, roundedShQRWith/roundedShQRSmallEig), Part III's programs (rhess, decoupleLast, smallEigDecoupler, the leaf, smallEigCore, smallEigProg) and hessenbergReduceLast are rewritten in place: every committed rotation is recorded in a slotted Givens log and the backward statements name their unitary (givensLog); the worklist replays the logs on the coupling blocks and the accumulator U, writes exact zeros at the cuts and multiplies by the leaves' accumulators, so it outputs (U, T) with T upper triangular. The eigenvalue-only programs are removed (the oracle-leaf roundedShQR and its certificate, the eigenvalue leaf contracts and lifts, solveRounded, seLeaf, copyLeaf -> identityLeaf); the eigenvalue theorems are restated as corollaries in Schur form under their names. Certificate numerals: stmtWorkMono_smallEigProgram 373483 -> 514650, stmtWorkMono_shqrSmallEigProgram 675307 -> 960712 (smallEigWork, shqrSmallEigWork likewise; exponents unchanged). SCHUR skeleton part 3: roundedShQRWith runs its leaf on the last 12 words (leafOnTailWords), as the decoupler does; the roundedShQRWith theorems take the Schur leaf contract (RandomSchurLeafContract) in place of the eigenvalue-kernel contract (the _at variants are removed); ShQRSmallEigInput holds an accumulator and has room for it; the SmallEig-leaf headlines take u <= uShQRSchur (the replay term added). Certificate numeral: stmtWorkMono_shqrSmallEigProgram 960712 -> 960776. SCHUR cleanup (final): the map is completed against origin/main by comparing every public declaration and its statement; entries for declarations that exist again (rewritten in Schur mode under the old name) moved from renames to statementChanged. Final certificate numerals: stmtWorkMono_smallEigProgram 373483 -> 517058 (smallEigWork likewise), stmtWorkMono_shqrSmallEigProgram 675307 -> 967736 (shqrSmallEigWork likewise); smallEig_work_le now states the constant 80390 (was an existential, witnessed by 3473, exponents (4, 2)), roundedShQRSmallEig_work_le states 369224 with exponents (3, 4, 1, 1, 2) (was an existential, witnessed by 15895, exponents (4, 5, 1, 1, 2)). Unused hypotheses removed (strengthenings): identityLeaf_writes, distSpec_writes_word, roundedDecoupleIteration_pwrites, roundedDecoupleLoop_pwrites, IsPerturbedUnitarySimilarBy.of_range_block, IsTrackedUnitarySimilar.trans, .lift_leaf_block, .specNorm_sub_mul_mul_conjTranspose_le, .round, schurPipelineWith_measureReal_not_schur_le, schurPipeline_reg_pwrites, specNorm_sub_mul_mul_conjTranspose_le_of_scaled, HoldsSlottedLog.slotEntries_read, slottedLogOpen_writes, slottedLogWrite_writes, slottedLogValidate_writes. length_flatMap_entryWords and slotEntries_append_replicate_none are no longer simp lemmas (length_entryWords is). The remaining oracle model of the removed roundedShQRAlgorithm (ShiftedQR/RoundedCertificate: ShQROp, shqrProblem, shqrModel, shqrResources, shqrWork, ...) had no certificate left and is deleted; polarDiskFn moves to ShiftedQR/RoundedKernels. Files split by topic (no declaration renamed): GivensLog -> GivensReplay (with GivensLogReplay merged in), RoundedSolveSteps -> Matrix/FinitePrecision/GivensReplayBlocks, and Schur/Dense, Pipeline, RoundedTheorems, RoundedSolveSchur, RoundedWorklistTermination, RoundedDecouple, RoundedIteration, RoundedShExc, StableStep, SmallEig/Theorems, SmallEig/Decouple, HessenbergReduction.",
   "renames": [
     {
       "old": "NLAlib.ShiftedQR.HoldsMatrix",
@@ -533,30 +533,6 @@
       "removed": true
     },
     {
-      "old": "NLAlib.ShiftedQR.roundedLarge_pwrites",
-      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
-      "rule": "N12",
-      "removed": true
-    },
-    {
-      "old": "NLAlib.ShiftedQR.roundedRange_pwrites",
-      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
-      "rule": "N12",
-      "removed": true
-    },
-    {
-      "old": "NLAlib.ShiftedQR.roundedWorklistRound_pwrites",
-      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
-      "rule": "N12",
-      "removed": true
-    },
-    {
-      "old": "NLAlib.ShiftedQR.roundedWorklist_pwrites",
-      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
-      "rule": "N12",
-      "removed": true
-    },
-    {
       "old": "NLAlib.ShiftedQR.solveRounded_pwrites",
       "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
       "rule": "N12",
@@ -637,12 +613,6 @@
     {
       "old": "NLAlib.ShiftedQR.IsEigenvalueKernels.backwardLeafContract",
       "new": "NLAlib.SmallEig.smallEigProg",
-      "rule": "N12",
-      "removed": true
-    },
-    {
-      "old": "NLAlib.ShiftedQR.roundedLargeRest",
-      "new": "NLAlib.ShiftedQR.roundedProcessLargeWith",
       "rule": "N12",
       "removed": true
     },
@@ -947,42 +917,6 @@
       "removed": true
     },
     {
-      "old": "NLAlib.ShiftedQR.roundedLargeRest_terminates",
-      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
-      "rule": "N12",
-      "removed": true
-    },
-    {
-      "old": "NLAlib.ShiftedQR.roundedLarge_terminates",
-      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
-      "rule": "N12",
-      "removed": true
-    },
-    {
-      "old": "NLAlib.ShiftedQR.roundedRange_terminates",
-      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
-      "rule": "N12",
-      "removed": true
-    },
-    {
-      "old": "NLAlib.ShiftedQR.roundedWorklistRound_terminates",
-      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
-      "rule": "N12",
-      "removed": true
-    },
-    {
-      "old": "NLAlib.ShiftedQR.roundedWorklistExit_terminates",
-      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
-      "rule": "N12",
-      "removed": true
-    },
-    {
-      "old": "NLAlib.ShiftedQR.roundedWorklist_terminates",
-      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
-      "rule": "N12",
-      "removed": true
-    },
-    {
       "old": "NLAlib.ShiftedQR.solveRoundedWith_terminates_storedIf",
       "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
       "rule": "N12",
@@ -1043,30 +977,6 @@
       "removed": true
     },
     {
-      "old": "NLAlib.SmallEig.smallEigDecoupler_oneEig_pwrites",
-      "new": "NLAlib.SmallEig.smallEigDecoupler_randomDecouplingRoutineContract",
-      "rule": "N12",
-      "removed": true
-    },
-    {
-      "old": "NLAlib.SmallEig.smallEigDecoupler_decouple_writes",
-      "new": "NLAlib.SmallEig.smallEigDecoupler_randomDecouplingRoutineContract",
-      "rule": "N12",
-      "removed": true
-    },
-    {
-      "old": "NLAlib.SmallEig.smallEigDecoupler_rhess_pwrites",
-      "new": "NLAlib.SmallEig.smallEigDecoupler_randomDecouplingRoutineContract",
-      "rule": "N12",
-      "removed": true
-    },
-    {
-      "old": "NLAlib.SmallEig.smallEigDecoupler_tail_pwrites",
-      "new": "NLAlib.SmallEig.smallEigDecoupler_randomDecouplingRoutineContract",
-      "rule": "N12",
-      "removed": true
-    },
-    {
       "old": "NLAlib.SmallEig.copyLeaf",
       "new": "NLAlib.SmallEig.identityLeaf",
       "rule": "N12",
@@ -1109,37 +1019,7 @@
       "removed": true
     },
     {
-      "old": "NLAlib.SmallEig.SmallEigCoreClass",
-      "new": "NLAlib.SmallEig.smallEigProg_pwrites",
-      "rule": "N12",
-      "removed": true
-    },
-    {
-      "old": "NLAlib.SmallEig.smallEigCoreClass_hessenbergReduceLastWord",
-      "new": "NLAlib.SmallEig.smallEigProg_pwrites",
-      "rule": "N12",
-      "removed": true
-    },
-    {
-      "old": "NLAlib.SmallEig.SmallEigScratch",
-      "new": "NLAlib.SmallEig.smallEigProg_pwrites",
-      "rule": "N12",
-      "removed": true
-    },
-    {
-      "old": "NLAlib.SmallEig.SmallEigScratch.of_eqOff",
-      "new": "NLAlib.SmallEig.smallEigProg_pwrites",
-      "rule": "N12",
-      "removed": true
-    },
-    {
       "old": "NLAlib.SmallEig.SmallEigScratch.live",
-      "new": "NLAlib.SmallEig.smallEigProg_pwrites",
-      "rule": "N12",
-      "removed": true
-    },
-    {
-      "old": "NLAlib.SmallEig.SmallEigScratch.of_alloc",
       "new": "NLAlib.SmallEig.smallEigProg_pwrites",
       "rule": "N12",
       "removed": true
@@ -1169,12 +1049,6 @@
       "removed": true
     },
     {
-      "old": "NLAlib.SmallEig.smallEigProg_core_pwrites",
-      "new": "NLAlib.SmallEig.smallEigProg_pwrites",
-      "rule": "N12",
-      "removed": true
-    },
-    {
       "old": "NLAlib.SmallEig.smallEigProg_randomSmallEigContract",
       "new": "NLAlib.SmallEig.smallEigProg_pwrites",
       "rule": "N12",
@@ -1197,12 +1071,231 @@
       "new": "NLAlib.ShiftedQR.roundedShQRWith_terminates",
       "rule": "N12",
       "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.isRoundedColRotation_machineColRotation",
+      "new": "NLAlib.isRoundedColRotation_machineColRotation",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.isRoundedRowRotation_machineRowRotation",
+      "new": "NLAlib.isRoundedRowRotation_machineRowRotation",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.linearComplex_zero_zero",
+      "new": "NLAlib.linearComplex_zero_zero",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.SmallEig.measurableSet_decoupleOutcome_of",
+      "new": "NLAlib.SmallEig.measurableSet_decoupleOutcomeBy",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.ShQRData",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.ShQRData.B",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.ShQRData.S",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.ShQRData.buffers",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.ShQRData.cap_eq",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.ShQRData.degree_eq",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.ShQRData.matrix",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.ShQRData.words_eq",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.ShQRData.Γ",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.ShQRData.δ",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.ShQRData.φ",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.ShQROp",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.ShQRSizes",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.polarDisk_meets",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.shqrBase",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.shqrContract",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.shqrDegrees",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.shqrFunctions",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.shqrInputWords",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.shqrInterp",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.shqrKernelCall",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.shqrKernelWeight",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.shqrModel",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.shqrModel_laws",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.shqrProblem",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.shqrProblem_initialBytes",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.shqrProblem_initial_input",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.shqrResources",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.shqrSignature",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.shqrSlots",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.shqrWork",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.windowedSmallEigFn",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.windowedSmallEig_meets",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
     }
   ],
   "statementChanged": [
     "NLAlib.IsRoundedColRotation",
     "NLAlib.IsRoundedRowRotation",
-    "NLAlib.OneEigFrame.distSpecAccurateOn_of",
+    "NLAlib.Ops.StdModel.norm_linearWords_sub_le",
     "NLAlib.ShiftedQR.DecoupleLoopMid",
     "NLAlib.ShiftedQR.DecoupleLoopState",
     "NLAlib.ShiftedQR.DecoupleLoopState.exists_iterate",
@@ -1212,6 +1305,7 @@
     "NLAlib.ShiftedQR.ShOutcome",
     "NLAlib.ShiftedQR.ShQRInput",
     "NLAlib.ShiftedQR.ShQRSmallEigData.buffers",
+    "NLAlib.ShiftedQR.ShQRSmallEigInput",
     "NLAlib.ShiftedQR.ShQRSpectrum",
     "NLAlib.ShiftedQR.ShState3",
     "NLAlib.ShiftedQR.ShState3.shExcPre",
@@ -1264,15 +1358,34 @@
     "NLAlib.ShiftedQR.roundedDecoupleWith_terminatingDecouplerRoutine",
     "NLAlib.ShiftedQR.roundedDecoupleWith_terminatingDecouplerRoutine_at",
     "NLAlib.ShiftedQR.roundedDecouple_pwrites_of_loop",
+    "NLAlib.ShiftedQR.roundedLargeRest",
+    "NLAlib.ShiftedQR.roundedLargeRest_terminates",
+    "NLAlib.ShiftedQR.roundedLarge_pwrites",
+    "NLAlib.ShiftedQR.roundedLarge_terminates",
     "NLAlib.ShiftedQR.roundedProcessLargeWith",
     "NLAlib.ShiftedQR.roundedProcessRangeWith",
+    "NLAlib.ShiftedQR.roundedRange_pwrites",
+    "NLAlib.ShiftedQR.roundedRange_terminates",
     "NLAlib.ShiftedQR.roundedShQRSmallEig_algorithm_measureReal_not_accepts_le",
     "NLAlib.ShiftedQR.roundedShQRSmallEig_algorithm_measureReal_not_accepts_le_unconditional",
+    "NLAlib.ShiftedQR.roundedShQRSmallEig_hermitian",
+    "NLAlib.ShiftedQR.roundedShQRSmallEig_hermitian_unconditional",
+    "NLAlib.ShiftedQR.roundedShQRSmallEig_measureReal_not_spectrum_le",
+    "NLAlib.ShiftedQR.roundedShQRSmallEig_measureReal_not_spectrum_le_unconditional",
+    "NLAlib.ShiftedQR.roundedShQRSmallEig_relative",
+    "NLAlib.ShiftedQR.roundedShQRSmallEig_relative_unconditional",
+    "NLAlib.ShiftedQR.roundedShQRSmallEig_terminates",
+    "NLAlib.ShiftedQR.roundedShQRSmallEig_work_le",
     "NLAlib.ShiftedQR.roundedShQRWith",
     "NLAlib.ShiftedQR.roundedShQRWith_measureReal_not_spectrum_le",
     "NLAlib.ShiftedQR.roundedShQRWith_terminates",
+    "NLAlib.ShiftedQR.roundedWorklistExit_terminates",
     "NLAlib.ShiftedQR.roundedWorklistRoundWith",
+    "NLAlib.ShiftedQR.roundedWorklistRound_pwrites",
+    "NLAlib.ShiftedQR.roundedWorklistRound_terminates",
     "NLAlib.ShiftedQR.roundedWorklistWith",
+    "NLAlib.ShiftedQR.roundedWorklist_pwrites",
+    "NLAlib.ShiftedQR.roundedWorklist_terminates",
     "NLAlib.ShiftedQR.shAccept_writes",
     "NLAlib.ShiftedQR.shDecide",
     "NLAlib.ShiftedQR.shDecide_pwrites",
@@ -1318,6 +1431,7 @@
     "NLAlib.ShiftedQR.shTrials_writes",
     "NLAlib.ShiftedQR.shqrFp",
     "NLAlib.ShiftedQR.shqrSmallEigDims",
+    "NLAlib.ShiftedQR.shqrSmallEigInputWords",
     "NLAlib.ShiftedQR.shqrSmallEigProgram",
     "NLAlib.ShiftedQR.shqrSmallEigWork",
     "NLAlib.ShiftedQR.solveRoundedWith",
@@ -1338,48 +1452,70 @@
     "NLAlib.ShiftedQR.trialStep",
     "NLAlib.ShiftedQR.trialStep_terminates",
     "NLAlib.ShiftedQR.trialStep_writes",
+    "NLAlib.SmallEig.RotInv",
+    "NLAlib.SmallEig.SmallEigCoreClass",
     "NLAlib.SmallEig.SmallEigData.buffers",
     "NLAlib.SmallEig.SmallEigFrame",
     "NLAlib.SmallEig.SmallEigInput",
+    "NLAlib.SmallEig.SmallEigRHessClass",
+    "NLAlib.SmallEig.SmallEigScratch",
+    "NLAlib.SmallEig.SmallEigScratch.of_alloc",
+    "NLAlib.SmallEig.SmallEigScratch.of_eqOff",
     "NLAlib.SmallEig.SmallEigSpectrum",
     "NLAlib.SmallEig.decoupleLast",
     "NLAlib.SmallEig.decoupleLast_spec",
     "NLAlib.SmallEig.decoupleLast_terminates",
     "NLAlib.SmallEig.decoupleLast_writes_scans",
     "NLAlib.SmallEig.decoupleLast_writes_word",
+    "NLAlib.SmallEig.distSpecAccurateOn_of",
     "NLAlib.SmallEig.distSpec_accuracy",
     "NLAlib.SmallEig.distSpec_terminates",
-    "NLAlib.SmallEig.distSpec_writes_word",
     "NLAlib.SmallEig.multiStepStable_writes_replicate_succ",
+    "NLAlib.SmallEig.oneEigPoint_writes",
+    "NLAlib.SmallEig.oneEigRound_writes",
+    "NLAlib.SmallEig.oneEigStart_writes",
+    "NLAlib.SmallEig.oneEig_pwrites",
+    "NLAlib.SmallEig.oneEig_pwrites_of_norm_le",
+    "NLAlib.SmallEig.oneEig_terminates",
+    "NLAlib.SmallEig.oneEig_writes_word",
     "NLAlib.SmallEig.rhess",
+    "NLAlib.SmallEig.rhess_isPerturbedUnitarySimilar",
     "NLAlib.SmallEig.rhess_pwrites",
     "NLAlib.SmallEig.rhess_terminates",
     "NLAlib.SmallEig.rhess_writes_word",
+    "NLAlib.SmallEig.rotInv_fold",
     "NLAlib.SmallEig.smallEigCore",
+    "NLAlib.SmallEig.smallEigCoreClass_hessenbergReduceLastWord",
     "NLAlib.SmallEig.smallEigDecoupler",
+    "NLAlib.SmallEig.smallEigDecoupler_decouple_writes",
+    "NLAlib.SmallEig.smallEigDecoupler_oneEig_pwrites",
     "NLAlib.SmallEig.smallEigDecoupler_randomDecouplingRoutineContract",
     "NLAlib.SmallEig.smallEigDecoupler_randomDecouplingRoutineContract_of_le",
+    "NLAlib.SmallEig.smallEigDecoupler_rhess_pwrites",
+    "NLAlib.SmallEig.smallEigDecoupler_tail_pwrites",
     "NLAlib.SmallEig.smallEigDecoupler_terminatingDecouplerRoutine",
+    "NLAlib.SmallEig.smallEigInputWords",
     "NLAlib.SmallEig.smallEigProg",
+    "NLAlib.SmallEig.smallEigProg_core_pwrites",
+    "NLAlib.SmallEig.smallEigProg_pwrites",
     "NLAlib.SmallEig.smallEigProg_terminates",
     "NLAlib.SmallEig.smallEigProgram",
     "NLAlib.SmallEig.smallEigSpectrum_forward",
     "NLAlib.SmallEig.smallEigWork",
     "NLAlib.SmallEig.smallEig_algorithm_measureReal_not_accepts_le",
     "NLAlib.SmallEig.smallEig_algorithm_measureReal_not_accepts_le_unconditional",
+    "NLAlib.SmallEig.smallEig_measureReal_not_forward_le",
+    "NLAlib.SmallEig.smallEig_measureReal_not_forward_le_unconditional",
+    "NLAlib.SmallEig.smallEig_measureReal_not_spectrum_le",
+    "NLAlib.SmallEig.smallEig_measureReal_not_spectrum_le_unconditional",
+    "NLAlib.SmallEig.smallEig_relative",
+    "NLAlib.SmallEig.smallEig_relative_unconditional",
+    "NLAlib.SmallEig.smallEig_work_le",
     "NLAlib.SmallEig.stmtWorkMono_smallEigProgram",
     "NLAlib.hessenbergReduceLast",
     "NLAlib.hessenbergReduceLast_terminates",
     "NLAlib.hessenbergReduceLast_writes_word",
     "NLAlib.reduceLastStep",
-    "NLAlib.reduceLastStep_writes_word",
-    "NLAlib.ShiftedQR.ShQRSmallEigInput",
-    "NLAlib.ShiftedQR.roundedShQRSmallEig_measureReal_not_spectrum_le",
-    "NLAlib.ShiftedQR.roundedShQRSmallEig_relative",
-    "NLAlib.ShiftedQR.roundedShQRSmallEig_hermitian",
-    "NLAlib.ShiftedQR.roundedShQRSmallEig_measureReal_not_spectrum_le_unconditional",
-    "NLAlib.ShiftedQR.roundedShQRSmallEig_relative_unconditional",
-    "NLAlib.ShiftedQR.roundedShQRSmallEig_hermitian_unconditional",
-    "NLAlib.ShiftedQR.shqrSmallEigProblem_initial_input"
+    "NLAlib.reduceLastStep_writes_word"
   ]
 }

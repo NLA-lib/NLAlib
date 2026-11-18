@@ -300,20 +300,21 @@ private theorem matMulEntry_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
     (hidx : ρ.idx = [m, p, q, ldx, ldy, ldz, c, x.2, y.2, z.2, j, i])
     (hbuf : ρ.buf = [x.1, y.1, z.1, Lc, Lc + 1, Lc + 2, Lc + 3, Lc + 4]) {τ : Tape ℝ} {μ : Mem ℝ}
     (hlen : μ.store.length = Lc + 5) (hlens : ∀ k < 5, μ.store.len (Lc + k) = 2)
-    (hxL : x.1 < Lc) (hyL : y.1 < Lc) (hzL : z.1 < Lc) {a b : ℕ → ℂ}
-    (ha : ∀ l < p, MatMulLeftWords M μ.store x c ldx i l (a l))
-    (hb : ∀ l < p, μ.store.readBlock y.1 (y.2 + 2 * (j * ldy + l)) 2 = some [(b l).re, (b l).im])
+    (hxL : x.1 < Lc) (hyL : y.1 < Lc) (hzL : z.1 < Lc) {a b : Fin p → ℂ}
+    (ha : ∀ l : Fin p, MatMulLeftWords M μ.store x c ldx i l (a l))
+    (hb : ∀ l : Fin p,
+      μ.store.readBlock y.1 (y.2 + 2 * (j * ldy + l)) 2 = some [(b l).re, (b l).im])
     (hone : μ.store.readBlock Lc 0 2 = some [M.lit 1, M.lit 0])
     (hz : z.2 + 2 * (j * ldz + i) + 2 ≤ μ.store.len z.1) :
     Writes .total I τ (matMulEntry (O := O) (Q := Q)) ρ
       (Store.inBlock z.1 (z.2 + 2 * (j * ldz + i)) 2 ⊔ (Store.inBlock (Lc + 1) 0 2 ⊔
         Store.inBlock (Lc + 2) 0 2 ⊔ Store.inBlock (Lc + 3) 0 2 ⊔ Store.inBlock (Lc + 4) 0 2))
       (fun μ' => μ'.pos = μ.pos ∧ μ'.store.readBlock z.1 (z.2 + 2 * (j * ldz + i)) 2 = some
-        [((List.range p).foldl (fun s l => linearComplex M (a l) ⟨M.lit 1, M.lit 0⟩ (b l) s)
+        [((List.finRange p).foldl (fun s l => linearComplex M (a l) ⟨M.lit 1, M.lit 0⟩ (b l) s)
             ⟨M.lit 0, M.lit 0⟩).re,
-          ((List.range p).foldl (fun s l => linearComplex M (a l) ⟨M.lit 1, M.lit 0⟩ (b l) s)
+          ((List.finRange p).foldl (fun s l => linearComplex M (a l) ⟨M.lit 1, M.lit 0⟩ (b l) s)
             ⟨M.lit 0, M.lit 0⟩).im]) μ := by
-  set v := fun l => (List.range l).foldl
+  set v := fun l => ((List.finRange p).take l).foldl
     (fun s l => linearComplex M (a l) ⟨M.lit 1, M.lit 0⟩ (b l) s) ⟨M.lit 0, M.lit 0⟩ with hv
   have hGx : ∀ k, ¬(Store.inBlock (Lc + 1) 0 2 ⊔ Store.inBlock (Lc + 2) 0 2 ⊔ Store.inBlock (Lc + 3) 0 2 ⊔
       Store.inBlock (Lc + 4) 0 2) x.1 k := fun k h => by
@@ -345,12 +346,15 @@ private theorem matMulEntry_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
       (c := c) (Lc := Lc) (j := j) (i := i) (l := l) (x := x) (y := y) (z := z)
       (by simp [Env.pushIdx, hidx]) (by simp [Env.pushIdx, hbuf])
       (by rw [hfr'.length_eq]; exact hlen) (fun k hk => by rw [hfr'.len_eq]; exact hlens k hk)
-      hxL hyL ((ha l hl).of_eqOff hfr' hGx)
-      (hfr'.keep (Store.readsOnly_readBlock _ _ _ _) (by disjoint) (hb l hl))
+      hxL hyL ((ha ⟨l, hl⟩).of_eqOff hfr' hGx)
+      (hfr'.keep (Store.readsOnly_readBlock _ _ _ _) (by disjoint) (hb ⟨l, hl⟩))
       (hfr'.keep (Store.readsOnly_readBlock _ _ _ _) (by disjoint) hone) hs').mono le_rfl ?_
     rintro μ'' - ⟨hp'', hs''⟩
     refine ⟨hp''.trans hp', ?_⟩
-    simpa [hv, List.range_succ, List.foldl_append] using hs''
+    have htake : (List.finRange p).take (l + 1) = (List.finRange p).take l ++ [⟨l, hl⟩] := by
+      rw [List.take_succ, List.getElem?_eq_getElem (by simpa using hl)]
+      simp
+    simpa [hv, htake, List.foldl_append] using hs''
   · rintro μ₃ hfr₃ ⟨hp₃, hs₃⟩
     have hfr₃' := hfr₁₂.trans hfr₃
     refine (writes_call_un (hS .copy) (x := (Lc + 2, 0)) (z := (z.1, z.2 + 2 * (j * ldz + i)))
@@ -364,6 +368,10 @@ private theorem matMulEntry_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
       (by simp [hfr₄.len_eq, hfr₃'.len_eq]; omega)).mono (by fp_sub)
       fun μ₅ hfr₅ ⟨hp₅, g₅⟩ => ?_
     have g₄' := hfr₅.keep (Store.readsOnly_get _ _ _) (by disjoint) g₄
+    have hv' : v p = (List.finRange p).foldl
+        (fun s l => linearComplex M (a l) ⟨M.lit 1, M.lit 0⟩ (b l) s) ⟨M.lit 0, M.lit 0⟩ := by
+      simp [hv, List.take_of_length_le]
+    rw [← hv']
     exact ⟨hp₅.trans (hp₄.trans hp₃),
       by simpa using Store.readBlock_succ_of (Store.readBlock_one_of_get g₄') g₅⟩
 

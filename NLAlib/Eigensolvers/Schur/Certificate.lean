@@ -145,7 +145,36 @@ theorem schurPipelineProblem_initialBytes
     (hwords : ∀ n δ φ, (words n δ φ).length = sizes n δ φ 1 + sizes n δ φ 2) (d : Fin 6 → ℕ)
     (x : (schurPipelineProblem Mch words sizes admitted).Input d) :
     (schurPipelineProblem Mch words sizes admitted).initialBytes d x =
-      schurPipelineInputWords d := sorry
+      schurPipelineInputWords d := by
+  unfold Problem.initialBytes
+  have hb : x.val.2 = x.val.1.buffers := x.property
+  rw [hb]
+  have hw : (words (d 0) x.val.1.δ x.val.1.φ).length = d 1 + d 2 := by
+    rw [hwords, x.val.1.sizes_eq]
+  simp [schurPipelineProblem, SchurData.buffers, List.ofFn_succ, schurPipelineInputWords, hw,
+    Nat.add_assoc]
+
+/-- The initial memory holds the input of the pipeline (`NLAlib.Schur.SchurPipelineInput`) at
+the four supplied buffers. -/
+theorem schurPipelineProblem_initial_input (d : Fin 6 → ℕ)
+    (x : (schurPipelineProblem Mch words sizes admitted).Input d) :
+    SchurPipelineInput (words (d 0) x.val.1.δ x.val.1.φ) (0, 0) (1, 0) (2, 0) (3, 0)
+      x.val.1.matrix ((schurPipelineProblem Mch words sizes admitted).initial d x) := by
+  have hb : x.val.2 = x.val.1.buffers := x.property
+  have hs : ((schurPipelineProblem Mch words sizes admitted).initial d x).store =
+      List.ofFn x.val.2 := rfl
+  have hA := Problem.initial_readBlock (P := schurPipelineProblem Mch words sizes admitted) d x
+    (0 : Fin 4) (xs := matrixWords x.val.1.matrix) (by rw [hb]; rfl)
+  have hP := Problem.initial_readBlock (P := schurPipelineProblem Mch words sizes admitted) d x
+    (1 : Fin 4) (xs := words (d 0) x.val.1.δ x.val.1.φ) (by rw [hb]; rfl)
+  refine ⟨?_, ?_, ?_, by simpa [HoldsMatrix] using hA, by simpa using hP⟩
+  · simp [Mem.Live, Problem.initial]
+  · simp [hs, hb, Mem.Room, Store.len, SchurData.buffers, List.ofFn_succ]
+  · simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
+      and_true]
+    exact ⟨⟨Fp.disj_inBlock_of_ne (by omega), Fp.disj_inBlock_of_ne (by omega),
+      Fp.disj_inBlock_of_ne (by omega)⟩, ⟨Fp.disj_inBlock_of_ne (by omega),
+      Fp.disj_inBlock_of_ne (by omega)⟩, Fp.disj_inBlock_of_ne (by omega)⟩
 
 /-- **The dense Schur pipeline as a canonical certificate, from component data**: the fixed
 program `NLAlib.Schur.schurPipelineProgram` of any four stages, over the model
@@ -213,12 +242,15 @@ noncomputable def denseSchurWork (sG : ℕ) (d : Fin 6 → ℕ) : ℕ :=
     (fun d => Count.size (stmtCost (roundedShQRSchur (O := SmallEigOp) (Q := Tst) sG).body
       [d 0 + 1, d 2, d 3, d 4, d 5])) d
 
+-- The kernel evaluates the discipline over the whole tree; its recursion is deep.
+set_option maxRecDepth 100000 in
 /-- The dense Schur program passes the storage discipline of the costs. -/
 theorem denseSchurProgram_wellTyped (sG : ℕ) {Mch : Machine ℝ}
     {admitted : ∃ d, SchurSizes Mch denseSchurSizes d} :
     (schurPipelineProgram frobNormStage (ginibrePerturb sG) hessenbergReduceQ
       (roundedShQRSchur sG)).wellTyped smallEigResources
-      (denseSchurProblem Mch admitted).formats = true := sorry
+      (denseSchurProblem Mch admitted).formats = true := by
+  kernel_rfl
 
 /-- The dense Schur program terminates on every admitted input, interpretation of the model and
 tape, and writes only the matrix, the accumulator and the flag

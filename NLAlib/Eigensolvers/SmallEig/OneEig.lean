@@ -745,7 +745,15 @@ theorem distSpecAccurateOn_of {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (
     (hm : distSpecDegree κ p ≤ m) (hnu : (n + 1 : ℝ) * u ≤ 1 / 2500)
     (hum : 30000 * ((m : ℝ) + 1) * u ≤ 1)
     (hxu : 300 * (n + 1) ^ 2 * u ≤ (8004 * κ)⁻¹ * (η₁ / (2 * specNorm H + 20 * S)) ^ m) :
-    DistSpecAccurateOn (O := O) (Q := Q) I H d m q {p | ‖p‖ ≤ 10 * S ∧ ∀ i, η₁ ≤ ‖d i - p‖} := sorry
+    DistSpecAccurateOn (O := O) (Q := Q) I H d m q {p | ‖p‖ ≤ 10 * S ∧ ∀ i, η₁ ≤ ‖d i - p‖} := by
+  intro τ μ h sp tau z ⟨hz, hzd⟩ hl hHs hsp htau hth hts
+  have hN : 0 < specNorm H :=
+    lt_of_le_of_ne (specNorm_nonneg H) (Ne.symm (mt specNorm_eq_zero_iff.mp hH0))
+  have e : (2 + 2 * (10 * S / specNorm H)) * specNorm H = 2 * specNorm H + 20 * S := by
+    field_simp; ring
+  exact distSpec_accuracy hS hL hM hCmp hH hH0 hV hHV hκ hp hw (C := 10 * S / specNorm H)
+    (by positivity) (by rwa [div_mul_cancel₀ _ hN.ne']) hη₁ hzd hmq hm hnu hum (by rwa [e]) hl
+    hHs hsp htau hth hts
 
 /-- The rounding of `OneEig` is small against the inner radius: from $480000\boldsymbol{u}\Sigma^2
 \le \eta_1^2$ (the precision of `DistSpec`), $0 < \eta_1 \le \Sigma/300$ and $\eta_1 L \le
@@ -814,7 +822,76 @@ theorem oneEig_pwrites_of_norm_le {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
       (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1) (OneEigInput H qs h qw lam f)
       (fun μ' => μ'.store.get f.1 f.2 = some 0 ∧ ∃ z : ℂ,
         μ'.store.readBlock lam.1 lam.2 2 = some [z.re, z.im] ∧
-        η₁ ≤ ⨅ i, ‖z - d i‖ ∧ ⨅ i, ‖z - d i‖ ≤ β') φ := sorry
+        η₁ ≤ ⨅ i, ‖z - d i‖ ∧ ⨅ i, ‖z - d i‖ ≤ β') φ := by
+  have hu0 : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
+  have h0 : M.lit 0 = 0 := by simpa using hNat 0 (by norm_num)
+  have h1 : M.lit 1 = 1 := by simpa using hNat 1 le_rfl
+  have hn1 : (1 : ℝ) ≤ n := by exact_mod_cast hn
+  have hu5 : u ≤ 1 / 5000 := by
+    have : 2 * u ≤ (n + 1) * u := mul_le_mul_of_nonneg_right (by linarith) hu0
+    linarith
+  have hS0 : 0 < S' := by linarith
+  have hT0 : 0 < S'' := by linarith
+  have hdS : ∀ i, ‖d i‖ ≤ S'' := fun i =>
+    (norm_le_specNorm_of_mul_eq_mul_diagonal hV hHV i).trans hHS
+  have hlast : (0 : Fin (n + 1)) ≠ Fin.last n := fun h => by
+    have := congrArg Fin.val h; simp at this; omega
+  have hH0 : H ≠ 0 := by
+    rintro rfl
+    have hd0 : ∀ i, d i = 0 := fun i => norm_eq_zero.mp (le_antisymm
+      ((norm_le_specNorm_of_mul_eq_mul_diagonal hV hHV i).trans (by simp)) (norm_nonneg _))
+    have := hgap 0 (Fin.last n) hlast
+    rw [hd0, hd0, sub_zero, norm_zero] at this
+    linarith
+  have hκ1 : 1 ≤ κ := (one_le_pseudoConditionNumber hV.ne_zero).trans hκ
+  have hp2 : p ≤ 1 / 2 := by
+    have hsum := sum_lastRowWeights hV
+    have := Finset.add_le_sum (f := lastRowWeights V) (fun i _ => lastRowWeights_nonneg V i)
+      (Finset.mem_univ 0) (Finset.mem_univ (Fin.last n)) hlast
+    linarith [hw 0, hw (Fin.last n)]
+  have hm2 : 2 ≤ m := two_le_of_distSpecDegree_le hκ1 hp hp2 hm
+  obtain ⟨hη₁0, -, hη₂S, -⟩ := oneEigRadii_spec hβ' hβ'S hg hφ hφ1
+  have hη₁6 := oneEigInnerRadius_le hβ' hβ'S hg hφ1
+  rw [← hη₁, ← hη₂] at hη₁6
+  rw [← hη₁] at hη₁0
+  rw [← hη₂] at hη₂S
+  have hη₂0 : 0 < η₂ := hη₂ ▸ lt_min (by positivity) (by positivity)
+  have hη₂β : η₂ ≤ β' / 40 := hη₂ ▸ min_le_left _ _
+  have hη₂g : η₂ ≤ g / 3 := hη₂ ▸ min_le_right _ _
+  have hprec := mul_sq_le_of_distSpec_precision hxu hκ1 hm2 hn (specNorm_nonneg H) hT0 hη₁0
+    (by linarith) hu0
+  have huS := (rounding_le_innerRadius (L := 0) hT0 hη₁0 (by linarith) hprec le_rfl
+    (by rw [mul_zero]; positivity)).1
+  have hηr : η₂ + 60 * u * S'' ≤ 0.027 * β' := by linarith
+  have hsep : ∀ i j, d i ≠ d j → 2 * (η₁ + 40 * u * S'' + η₂) ≤ ‖d i - d j‖ := fun i j hij =>
+    (by linarith : 2 * (η₁ + 40 * u * S'' + η₂) ≤ g).trans
+      (hgap i j fun h => hij (h ▸ rfl))
+  set L := Real.logb 2 (8 * S' / β') with hLd
+  have hL0 : 0 ≤ L := Real.logb_nonneg (by norm_num) (by rw [le_div_iff₀ hβ']; linarith)
+  have hLb : L * β' ≤ 16 * S' := by
+    have := logb_two_le_two_mul (y := 8 * S' / β') (by positivity)
+    rw [← hLd] at this
+    calc L * β' ≤ 2 * (8 * S' / β') * β' := by gcongr
+      _ = 16 * S' := by field_simp; norm_num
+  have hη₁L : η₁ * L ≤ 0.4 * S'' := by
+    have := mul_le_mul_of_nonneg_right (show η₁ ≤ β' / 40 by linarith) hL0
+    linarith
+  have hεL := (rounding_le_innerRadius hT0 hη₁0 (by linarith) hprec hL0 hη₁L).2
+  have hφt := oneEigRadii_add_sq_le (ε := 40 * u * S'') hβ' hβ'S hg hφ (by positivity)
+    (by rw [← hη₁]; exact hεL)
+  rw [← ht, ← hη₁, ← hη₂] at hφt
+  have hr := pow_oneEigRounds_le hβ' (show β' ≤ S' by linarith)
+  rw [← ht, le_div_iff₀ (by positivity)] at hr
+  have hr' : 2.3 * 0.66 ^ t * (2 * S'') ≤ 0.9 * β' := by
+    have := mul_le_mul_of_nonneg_left hS''1 (by positivity : (0 : ℝ) ≤ 0.66 ^ t)
+    linarith
+  have hDS := distSpecAccurateOn_of (O := O) (Q := Q) (I := I) hS hL hM hCmp hH hH0 hV hHV hκ hp hw
+    hT0.le hη₁0 hmq hm hnu hum hxu
+  have hη₂T : η₂ ≤ 0.02 * S'' := by linarith
+  have hη₁ε : 0 ≤ η₁ + 40 * u * S'' := by
+    have := mul_nonneg (mul_nonneg (by norm_num : (0:ℝ) ≤ 40) hu0) hT0.le; linarith
+  exact (oneEig_pwrites_of (S := S'') hS hM hu0 hu5 hL h0 h1 hCmp hI hloc hDisk hU hDS hdS hη₂0
+    hη₂T hβ' hηr hη₁ε hsep hr' hqs hq4 hq5).mono (fun _ h => h) le_rfl (fun _ h => h) hφt
 
 /-- **`OneEig` finds a point near the spectrum** ([BanksGarzaVargasSrivastava2025,
 Proposition 3.5], corrected: $\eta_2 = \min(\beta'/40, g/3)$ (P5), the round cap (P6), $\log_2$

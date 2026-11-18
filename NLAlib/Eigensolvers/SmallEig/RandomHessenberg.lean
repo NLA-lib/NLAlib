@@ -283,61 +283,6 @@ section Loop
 
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
 
-/-- A fold that appends one element satisfying `Q` per step: the list grows by the number of
-steps and keeps `Q`. -/
-private theorem foldl_append_spec {σ β : Type} (Q : β → Prop) (f : σ × List β → ℕ → σ × List β)
-    (hf : ∀ st i, ∃ b, Q b ∧ (f st i).2 = st.2 ++ [b]) (is : List ℕ) (st : σ × List β)
-    (hst : ∀ b ∈ st.2, Q b) :
-    (is.foldl f st).2.length = st.2.length + is.length ∧ ∀ b ∈ (is.foldl f st).2, Q b := by
-  induction is generalizing st with
-  | nil => exact ⟨by simp, hst⟩
-  | cons i is ih =>
-    obtain ⟨b, hb, he⟩ := hf st i
-    obtain ⟨h1, h2⟩ := ih (f st i) (by
-      rw [he]; intro x hx
-      rcases List.mem_append.mp hx with hx | hx
-      exacts [hst x hx, (List.mem_singleton.mp hx) ▸ hb])
-    refine ⟨?_, h2⟩
-    have hl : (f st i).2.length = st.2.length + 1 := by rw [he]; simp
-    rw [List.foldl_cons, h1, hl, List.length_cons]
-    omega
-
-/-- The slots of the bottom-up reduction: $N - 2$ of them, each entry with its plane in range
-or the zero entry. -/
-private theorem hessenbergReduceLastSlots_spec (M : Machine ℝ) {N : ℕ}
-    (A : Matrix (Fin N) (Fin N) ℂ) :
-    (hessenbergReduceLastSlots M A).length = N - 2 ∧
-      ∀ sl ∈ hessenbergReduceLastSlots M A, ∀ e ∈ sl, e.1 + 1 < N ∨ e = (0, 0, 0) := by
-  have hentry : ∀ r c (X : Matrix (Fin N) (Fin N) ℂ),
-      (reduceLastStepEntry M r c X).1 + 1 < N ∨ reduceLastStepEntry M r c X = (0, 0, 0) := by
-    intro r c X
-    unfold reduceLastStepEntry
-    split_ifs with h
-    · exact Or.inl h.1
-    · exact Or.inr rfl
-  unfold hessenbergReduceLastSlots
-  refine (foldl_append_spec (fun sl : List GivensEntry => ∀ e ∈ sl, e.1 + 1 < N ∨ e = (0, 0, 0))
-    _ ?_ (List.range (N - 2)) (A, []) (by simp)).imp (fun h => by simpa using h) id
-  intro st i
-  refine ⟨_, ?_, rfl⟩
-  refine (foldl_append_spec (fun e : GivensEntry => e.1 + 1 < N ∨ e = (0, 0, 0)) _ ?_ _ _
-    (by simp)).2
-  intro p c
-  exact ⟨_, hentry _ _ _, rfl⟩
-
-/-- The entries of an accepted slot list padded to `w`: entries of the slots or the zero entry. -/
-private theorem mem_slotEntries {w : ℕ} {Ls : List (Option (List GivensEntry))} {e : GivensEntry}
-    (he : e ∈ slotEntries w Ls) : e = (0, 0, 0) ∨ ∃ es, some es ∈ Ls ∧ e ∈ es := by
-  simp only [slotEntries, List.mem_flatMap] at he
-  obtain ⟨o, ho, he⟩ := he
-  cases o with
-  | none => simp at he
-  | some es =>
-    simp only [Option.map_some, Option.getD_some, padEntries, List.mem_append,
-      List.mem_replicate] at he
-    rcases he with he | ⟨-, rfl⟩
-    exacts [Or.inr ⟨es, ho, he⟩, Or.inl rfl]
-
 omit [Has IndexOp O] in
 /-- **The rotation of one step of `RHess`** after its words: from the four words in `Uv`, the
 rounded coefficients into `Cf`, then the rotation of the vector and of the matrix; the stored log
@@ -470,7 +415,7 @@ private theorem rhess_step_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
         m'.store.len (L + 1) = 4 ∧ m'.store.len (L + 2) = 4 ∧
         m'.store.len (L + 3) = 10 ∧ HoldsMatrix a (rotateToStepWord M j (B, v)).1 m'.store ∧
         HoldsMatrix (L, 0) (replicateCol (Fin 1) (rotateToStepWord M j (B, v)).2) m'.store ∧
-        ∃ e : GivensEntry, e.1 = j ∧ HoldsSlottedLog lg ns w LL (P ++ [e]) m'.store) m := by
+        HoldsSlottedLog lg ns w LL (P ++ [rotateToStepEntry M j (B, v)]) m'.store) m := by
   set R := Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)) with hRdef
   have hRA : ∀ {b o k : ℕ}, b ≠ lg.1 → Fp.Disj (Store.inBlock b o k) R :=
     fun hb => Fp.disj_inBlock_of_ne hb
@@ -515,7 +460,7 @@ private theorem rhess_step_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
     hlg₂).mono le_rfl ?_
   rintro μ₄ - ⟨hp₄, hl₄, hG₄, hCf₄, hUv₄, hTm₄, hB₄, hW₄, hlg₄⟩
   exact ⟨hp₄.trans (hp₂.trans hp₁), hl₄, hG₄, hCf₄, by rw [hUv₄, hf₂.len_eq, hf₁.len_eq, hUv],
-    hTm₄, hB₄, hW₄, _, rfl, hlg₄⟩
+    hTm₄, hB₄, hW₄, by rw [rotateToStepEntry, dif_pos hjN]; exact hlg₄⟩
 
 /-- **The loop, the validation and the reduction of `RHess`**: from $\mathbf{A}$ at `a`, the
 vector $\mathbf{g}$ of the words $x$ at `G` and a log with closed slots `LL`, the $N - 1$
@@ -572,8 +517,7 @@ private theorem rhess_loop_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
       (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)) ⊔
         Fp.above L)
       (fun m' => m'.pos = p ∧ HoldsMatrix a (rhessWord M A x) m'.store ∧
-        ∃ Ls : List (Option (List GivensEntry)), Ls.length = N - 1 ∧
-          (∀ e ∈ slotEntries w Ls, e.1 + 1 < N) ∧ HoldsSlottedLog lg ns w (LL ++ Ls) [] m'.store)
+        HoldsSlottedLog lg ns w (LL ++ (rhessSlots M A x).map some) [] m'.store)
       m := by
   set F := Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)) ⊔
     Fp.above L with hFdef
@@ -588,50 +532,40 @@ private theorem rhess_loop_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
     μ.store.len L = 2 * N ∧ μ.store.len (L + 1) = 4 ∧ μ.store.len (L + 2) = 4 ∧
     μ.store.len (L + 3) = 10 ∧ HoldsMatrix a (X k).1 μ.store ∧
     HoldsMatrix (L, 0) (replicateCol (Fin 1) (X k).2) μ.store ∧
-    ∃ P : List GivensEntry, P.length = k ∧ (∀ e ∈ P, e.1 + 1 < N) ∧
-      HoldsSlottedLog lg ns w LL P μ.store
+    HoldsSlottedLog lg ns w LL (rotateToEntries M A (pairVector x N) k) μ.store
+  have hPl : ∀ k, (rotateToEntries M A (pairVector x N) k).length = k := fun k => by
+    simp [rotateToEntries]
   refine (writes_loop (N := N - 1) hn (fun _ => F) (fun _ _ => le_rfl) Inv
-    ⟨hp, hlen, hG, hCf, hUv, hTm, hA, hV, [], rfl, by simp, hlog⟩ ?_).seq_le le_rfl ?_
-  · rintro j hj μ - ⟨hp', hl', hG', hCf', hUv', hTm', hB, hW, P, hPl, hPpl, hlg⟩
+    ⟨hp, hlen, hG, hCf, hUv, hTm, hA, hV, hlog⟩ ?_).seq_le le_rfl ?_
+  · rintro j hj μ - ⟨hp', hl', hG', hCf', hUv', hTm', hB, hW, hlg⟩
     have hjN : j + 1 < N := by omega
     refine (rhess_step_writes hS hC hL hNat hjN (by omega) (h₁ j) (h₁' j) (h₂ j) (h₂' j)
       (h₃ j) (h₃' j) (h₄ j) (h₄' j) (by rw [hdW j, hPl]) (haW j) (hd₅ j) (ha₅ j) (hd₆ j)
       (ha₆ j) (hd₇ j) (ha₇ j) (hd₈ j) (ha₈ j) haL hlgL hlga hl' hG' hCf' hUv' hTm' hB hW hlg
-      (by omega) (by omega)).mono le_rfl ?_
-    rintro μ' - ⟨hp₄, hl₄, hG₄, hCf₄, hUv₄, hTm₄, hB₄, hW₄, e, he1, hlg₄⟩
+      (by omega) (by rw [hPl]; omega)).mono le_rfl ?_
+    rintro μ' - ⟨hp₄, hl₄, hG₄, hCf₄, hUv₄, hTm₄, hB₄, hW₄, hlg₄⟩
     have hX : X (j + 1) = rotateToStepWord M j (X j) := by
       simp only [X, List.range_succ, List.foldl_append, List.foldl_cons, List.foldl_nil]
     refine ⟨hp₄.trans hp', hl₄, hG₄, hCf₄, hUv₄, hTm₄, by rw [hX]; exact hB₄,
-      by rw [hX]; exact hW₄, P ++ [e], by simp [hPl], fun e' he' => ?_, hlg₄⟩
-    rcases List.mem_append.mp he' with he' | he'
-    · exact hPpl e' he'
-    · rw [List.mem_singleton.mp he', he1]; exact hjN
-  · rintro μ - ⟨hp', hl', -, -, -, -, hB, -, P, hPl, hPpl, hlg⟩
+      by rw [hX]; exact hW₄, ?_⟩
+    rw [rotateToEntries_succ]
+    exact hlg₄
+  · rintro μ - ⟨hp', hl', -, -, -, -, hB, -, hlg⟩
     have hLn : LL.length < ns := by omega
     refine ((slottedLogValidate_writes_of_exactNat (O := O) (Q := Q) (τ := τ) hL
       (hNat.mono h1) hlg hLn).in_frame hdV haV
       (by simp only [Mem.live_cons, Mem.live_nil, and_true]; pomega)).seq_le hRF ?_
     rintro μ₁ hf₁ ⟨hp₁, hlg₁⟩
     have hB₁ := hB.of_eqOff hf₁ (hRA (Ne.symm hlga)).symm
-    obtain ⟨hsl, hspl⟩ := hessenbergReduceLastSlots_spec M (X (N - 1)).1
-    refine ((hessenbergReduceLast_writes_word (L := LL ++ [some P]) hS hC hL hNat h1 hN hlg₁
+    refine ((hessenbergReduceLast_writes_word
+      (L := LL ++ [some (rotateToEntries M A (pairVector x N) (N - 1))]) hS hC hL hNat h1 hN hlg₁
       (by simp; omega) (by omega)
       (by simp only [Mem.live_cons, Mem.live_nil, and_true, hf₁.length_eq]; constructor <;> pomega)
       hB₁ (hRA (Ne.symm hlga))).in_frame (by simpa using hdH) haH
       (by simp only [Mem.live_cons, Mem.live_nil, and_true, hf₁.length_eq]
           refine ⟨?_, ?_, ?_⟩ <;> pomega)).mono (sup_le hAF hRF) ?_
     rintro μ₂ - ⟨hp₂, hW₂, hlg₂⟩
-    refine ⟨hp₂.trans (hp₁.trans hp'), hW₂, some P :: (hessenbergReduceLastSlots M
-      (X (N - 1)).1).map some, by simp [hsl]; omega, fun e he => ?_, by simpa using hlg₂⟩
-    rcases mem_slotEntries he with rfl | ⟨es, hes, he⟩
-    · show 0 + 1 < N; omega
-    · rcases List.mem_cons.mp hes with h | h
-      · cases h; exact hPpl e he
-      · obtain ⟨sl, hsl', hse⟩ := List.mem_map.mp h
-        simp only [Option.some.injEq] at hse
-        subst hse
-        rcases hspl _ hsl' e he with h' | rfl
-        exacts [h', by show 0 + 1 < N; omega]
+    exact ⟨hp₂.trans (hp₁.trans hp'), hW₂, by simpa [rhessSlots] using hlg₂⟩
 
 end Loop
 
@@ -644,7 +578,8 @@ natural literals up to $n_{\max} \ge N - 1$ and draws that store the tape entry:
 $\mathbf{A}$ of order $2 \le N$ at `a` and a log with closed slots `LL` and room for $N - 1$ more,
 it writes only the matrix and the log, advances the position by $2N$, stores
 `NLAlib.SmallEig.rhessWord` of $\mathbf{A}$ and the $2N$ entries of the stream `sG` at the start
-position, and closes $N - 1$ accepted slots whose entries have planes below $N - 1$. -/
+position, and closes the $N - 1$ accepted slots `NLAlib.SmallEig.rhessSlots` of $\mathbf{A}$ and
+those entries. -/
 theorem rhess_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hC : IsCmp id I) (hSmp : IsSample I) {sG N : ℕ} {τ : Tape ℝ} {μ : Mem ℝ} {a : ℕ × ℕ}
     {A : Matrix (Fin N) (Fin N) ℂ} (hl : μ.Live [a]) (hA : HoldsMatrix a A μ.store)
@@ -658,16 +593,15 @@ theorem rhess_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar 
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun μ' => μ'.pos = μ.pos + 2 * N ∧
         HoldsMatrix a (rhessWord M A fun j => τ (μ.pos + j) sG) μ'.store ∧
-        ∃ Ls : List (Option (List GivensEntry)), Ls.length = N - 1 ∧
-          (∀ x ∈ slotEntries w Ls, x.1 + 1 < N) ∧ HoldsSlottedLog lg ns w (LL ++ Ls) [] μ'.store)
-              μ := by
+        HoldsSlottedLog lg ns w (LL ++ (rhessSlots M A fun j => τ (μ.pos + j) sG).map some) []
+          μ'.store) μ := by
   have hal : a.1 < μ.store.length := hl a (by simp)
   have hlgl' : lg.1 < μ.store.length := hlgl lg (by simp)
   unfold rhess
   change Writes .total I τ (Stmt.allocs [.const 2 * .var 0, .const 4, .const 4, .const 10] _)
     _ _ _ μ
   refine writes_allocs_preserving_post (ns := [2 * N, 4, 4, 10]) rfl
-    (fun hBelow ⟨hp, hW, Ls, hLs, hpl, hlog'⟩ => ⟨hp, hW.of_below hBelow hal, Ls, hLs, hpl,
+    (fun hBelow ⟨hp, hW, hlog'⟩ => ⟨hp, hW.of_below hBelow hal,
       hBelow.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
         (fun b i g => by rw [g.1]; exact hlgl') hlog'⟩) ?_
   intro s₁ hlen hlens hBelow
@@ -702,13 +636,13 @@ theorem rhess_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar 
     (by rw [hf₁.len_eq]; exact hCf) (by rw [hf₁.len_eq]; exact hUv)
     (by rw [hf₁.len_eq]; exact hTm) hA₁ hV₁ hp₁ hlog₁ hj hw
 
-/-- **`RHess` is a backward-stable unitary similarity to a random direction**
-([BanksGarzaVargasSrivastava2025, Proposition 5.3], deterministic part): on a machine with the
-standard model at the unit roundoff $\boldsymbol{u}$, $M.\mathrm{lit}(0) = 0$ and
+/-- **`RHess` is a backward-stable unitary similarity to a random direction, by the unitary of
+its log** ([BanksGarzaVargasSrivastava2025, Proposition 5.3], deterministic part): on a machine
+with the standard model at the unit roundoff $\boldsymbol{u}$, $M.\mathrm{lit}(0) = 0$ and
 $100(n + 1)^2\boldsymbol{u} \le 1$, for $\mathbf{A}$ of order $n + 1$ and words $x$ whose vector
 $\mathbf{g} = (x_{2i} + i x_{2i+1})_i$ is not zero, the stored $\widehat{\mathbf{H}}$
-(`NLAlib.SmallEig.rhessWord`) is upper Hessenberg and there are a unitary $\mathbf{Q}$ and
-$\lvert c\rvert = 1$ with
+(`NLAlib.SmallEig.rhessWord`) is upper Hessenberg, and the unitary $\mathbf{Q}$ of the recorded
+entries (`NLAlib.givensLog` of `NLAlib.SmallEig.rhessSlots`) has, for some $\lvert c\rvert = 1$,
 $$\|\mathbf{Q}\mathbf{e}_{n+1} - c\,\mathbf{g}/\|\mathbf{g}\|\| \le 60(n + 1)\boldsymbol{u},
   \qquad \|\widehat{\mathbf{H}} - \mathbf{Q}^{\mathsf{H}}\mathbf{A}\mathbf{Q}\|_2 \le
   200(n + 1)^2\boldsymbol{u}\,\|\mathbf{A}\|_2\,.$$ -/
@@ -716,11 +650,14 @@ theorem rhess_isPerturbedUnitarySimilar {M : Machine ℝ} {u : ℝ} (hM : StdMod
     (hzero : M.lit 0 = 0) {n : ℕ} (hnu : 100 * ((n : ℝ) + 1) ^ 2 * u ≤ 1)
     (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (x : ℕ → ℝ) (hg : pairVector x (n + 1) ≠ 0) :
     IsUpperHessenberg (rhessWord M A x) ∧
-      ∃ (Q : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (c : ℂ), HasOrthonormalCols Q ∧ ‖c‖ = 1 ∧
-        ‖WithLp.toLp 2 ((fun k => Q k (Fin.last n)) -
+      HasOrthonormalCols (givensLog (n + 1) (rhessSlots M A x).flatten) ∧
+      ∃ c : ℂ, ‖c‖ = 1 ∧
+        ‖WithLp.toLp 2 ((fun k => givensLog (n + 1) (rhessSlots M A x).flatten k (Fin.last n)) -
           (c * ((‖WithLp.toLp 2 (pairVector x (n + 1))‖⁻¹ : ℝ) : ℂ)) • pairVector x (n + 1))‖ ≤
           60 * ((n : ℝ) + 1) * u ∧
-        specNorm (rhessWord M A x - Qᴴ * A * Q) ≤ 200 * ((n : ℝ) + 1) ^ 2 * u * specNorm A := by
+        specNorm (rhessWord M A x - (givensLog (n + 1) (rhessSlots M A x).flatten)ᴴ * A *
+          givensLog (n + 1) (rhessSlots M A x).flatten) ≤
+          200 * ((n : ℝ) + 1) ^ 2 * u * specNorm A := by
   have hu : 0 ≤ u := (abs_nonneg _).trans (by simpa using hM.lit 1)
   set g := pairVector x (n + 1)
   set BV := (List.range n).foldl (fun Ag j => rotateToStepWord M j Ag) (A, g)
@@ -729,20 +666,31 @@ theorem rhess_isPerturbedUnitarySimilar {M : Machine ℝ} {u : ℝ} (hM : StdMod
   have hNu : ((n : ℝ) + 1) * u ≤ 1 / 100 := by
     nlinarith [mul_le_mul_of_nonneg_right (show (n : ℝ) + 1 ≤ ((n : ℝ) + 1) ^ 2 by nlinarith) hu]
   have hnu' : (n : ℝ) * u ≤ 1 / 100 := by nlinarith
-  obtain ⟨hH, Q', hQ', hlast, hE⟩ :=
-    hessenbergReduceLast_isPerturbedUnitarySimilar hM hzero hnu BV.1
-  obtain ⟨U, hU, hB, hv, hz⟩ := rotInv_fold (M := M) hM hu (fun h2 => by
+  obtain ⟨hH, hlast, hQ', E, hE₀, he⟩ :=
+    hessenbergReduceLast_isPerturbedUnitarySimilarBy hM hzero hnu BV.1
+  set Q' := givensLog (n + 1) (hessenbergReduceLastSlots M BV.1).flatten
+  have hE : specNorm (hessenbergReduceLastWord M BV.1 - Q'ᴴ * BV.1 * Q') ≤
+      50 * ((n : ℝ) + 1) ^ 2 * u * specNorm BV.1 := by
+    rw [he, Matrix.mul_add, Matrix.add_mul, add_sub_cancel_left,
+      hQ'.specNorm_conjTranspose_mul_mul]
+    exact hE₀
+  set U := (givensLog (n + 1) (rotateToEntries M A g n))ᴴ
+  obtain ⟨hU, hB, hv, hz⟩ := rotInv_fold (M := M) hM hu (fun h2 => by
     have : (2 : ℝ) ≤ (n : ℝ) + 1 := by exact_mod_cast h2
     nlinarith [mul_le_mul_of_nonneg_right (show (4 : ℝ) ≤ ((n : ℝ) + 1) ^ 2 by nlinarith) hu])
     A g n (by omega)
-  rw [hrw]
+  have hQ : givensLog (n + 1) (rhessSlots M A x).flatten = Uᴴ * Q' := by
+    simp only [U, Matrix.conjTranspose_conjTranspose, Q', rhessSlots, List.flatten_cons,
+      givensLog_append]
+    rfl
+  rw [hrw, hQ]
   obtain ⟨c, hc, hcv⟩ := rhess_phase hU hg hv hz hu hNu hnu'
-  refine ⟨hH, Uᴴ * Q', c, hasOrthonormalCols_iff.mpr
-    ((hU.conjTranspose.conjTranspose_mul_mul _ _).trans (hasOrthonormalCols_iff.mp hQ')), hc, ?_,
-    rhess_matrix_bound hU hQ' hB hE hu hNu⟩
+  refine ⟨hH, hasOrthonormalCols_iff.mpr
+    ((hU.conjTranspose.conjTranspose_mul_mul _ _).trans (hasOrthonormalCols_iff.mp hQ')), c, hc,
+    ?_, rhess_matrix_bound hU hQ' hB hE hu hNu⟩
   have hcol : (fun k => (Uᴴ * Q') k (Fin.last n)) = Uᴴ *ᵥ Pi.single (Fin.last n) 1 := by
     ext r
-    simp [Matrix.mul_apply, hlast, Matrix.mulVec, dotProduct, Pi.single_apply]
+    simp [Matrix.mul_apply, hlast, Q', Matrix.mulVec, dotProduct, Pi.single_apply]
   rw [hcol]
   exact hcv
 
@@ -759,8 +707,10 @@ $R \ge 2(\sqrt{n + 1} + 1) + \sqrt{2\log(1/\varphi')}$, and the precision condit
 $100(n + 1)^2\boldsymbol{u} \le 1$, $60(n + 1)\boldsymbol{u} \le s/(2R)$ and
 $200(n + 1)^2\boldsymbol{u}\Sigma \le \min(g/(32(n + 1)B), sg/(1024(n + 1)B^2R))$. Then from
 $\mathbf{A}$ at `a`, except with probability at most $(n + 1)s^2 + \varphi'$, the run writes only
-the matrix and stores an upper Hessenberg perturbed unitary similarity $\widehat{\mathbf{H}}$ of
-$\mathbf{A}$ with backward error $200(n + 1)^2\boldsymbol{u}\Sigma$ that has a diagonalization
+the matrix and the log, closes $n$ accepted slots of the log (planes below $n$), and stores an
+upper Hessenberg perturbed unitary similarity $\widehat{\mathbf{H}}$ of $\mathbf{A}$ **by the
+exact unitary of the slots' entries** (`NLAlib.givensLog`) with backward error
+$200(n + 1)^2\boldsymbol{u}\Sigma$ that has a diagonalization
 $\mathbf{V}'$, $\mathbf{d}'$ with $\|\mathbf{V}'\|_2\|\mathbf{V}'^{-1}\|_2 \le 2B$, eigenvalues
 separated by $g/2$, and every last-row weight at least $s^2/(64R^2B^2)$. -/
 theorem rhess_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
@@ -782,9 +732,12 @@ theorem rhess_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsS
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun μ => HoldsMatrix a A μ.store ∧ μ.Live [a] ∧
         HoldsSlottedLog lg ns w LL [] μ.store ∧ μ.Live [lg] ∧ lg.1 ≠ a.1)
-      (fun μ' => ∃ (H V' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (d' : Fin (n + 1) → ℂ),
-        HoldsMatrix a H μ'.store ∧ IsUpperHessenberg H ∧
-        IsPerturbedUnitarySimilar A H (200 * ((n : ℝ) + 1) ^ 2 * u * S) ∧ IsUnit V' ∧
+      (fun μ' => ∃ (H V' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (d' : Fin (n + 1) → ℂ)
+        (Ls : List (Option (List GivensEntry))),
+        HoldsMatrix a H μ'.store ∧ Ls.length = n ∧ (∀ e ∈ slotEntries w Ls, e.1 + 1 < n + 1) ∧
+        HoldsSlottedLog lg ns w (LL ++ Ls) [] μ'.store ∧ IsUpperHessenberg H ∧
+        IsPerturbedUnitarySimilarBy (givensLog (n + 1) (slotEntries w Ls)) A H
+          (200 * ((n : ℝ) + 1) ^ 2 * u * S) ∧ IsUnit V' ∧
         H * V' = V' * Matrix.diagonal d' ∧ pseudoConditionNumber V' ≤ 2 * B ∧
         (∀ i j, i ≠ j → g / 2 ≤ ‖d' i - d' j‖) ∧
         ∀ i, s ^ 2 / (64 * R ^ 2 * B ^ 2) ≤ lastRowWeights V' i)
@@ -798,7 +751,7 @@ theorem rhess_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsS
   rintro μ τ ⟨hAμ, hl, hlog, hlgl, hlga⟩ hgood
   refine (rhess_writes_word hS hC hSmp hl hAμ hL hNat (by omega) (by omega) (by omega) hlog
     (by simpa using hj) (by simpa using hw) hlgl hlga).mono le_rfl ?_
-  rintro μ' - ⟨-, hW', -⟩
+  rintro μ' - ⟨-, hW', hlg'⟩
   set x := Tape.windowFn τ sG μ.pos ((n + 1) * 2)
   set gv := pairVector (fun j => τ (μ.pos + j) sG) (n + 1)
   have hgv : winVec (n + 1) x = gv := winVec_windowFn (n + 1) τ sG μ.pos
@@ -825,7 +778,9 @@ theorem rhess_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsS
     nlinarith [norm_col_pos hV 0]
   have hgpos : 0 < ‖WithLp.toLp 2 gv‖ :=
     norm_pos_iff.mpr fun h => hg0 (by simpa using congrArg WithLp.ofLp h)
-  obtain ⟨hH, Qm, c, hQ, hc, hq, hE⟩ := rhess_isPerturbedUnitarySimilar hM hzero hnu A _ hg0
+  obtain ⟨hH, hQ, c, hc, hq, hE⟩ := rhess_isPerturbedUnitarySimilar hM hzero hnu A _ hg0
+  set Ls := rhessSlots M A fun j => τ (μ.pos + j) sG
+  set Qm := givensLog (n + 1) Ls.flatten
   have hqv : ∀ i, s / (2 * R) * ‖WithLp.toLp 2 (fun k => V k i)‖ ≤
       ‖star (fun k => Qm k (Fin.last n)) ⬝ᵥ (fun k => V k i)‖ := fun i =>
     le_norm_star_dotProduct_of_near hc hs.le hR0 hgpos hnorm.le (hgi i).le (hq.trans hus)
@@ -834,8 +789,12 @@ theorem rhess_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsS
     hE.trans (mul_le_mul_of_nonneg_left hAS (by positivity))
   obtain ⟨V', d', hV', hHV', hκ', hgap', hw'⟩ :=
     rhess_class hV hAV hκ hg hgap hs hR0 hQ hqv hEs huc
-  exact ⟨_, V', d', hW', hH, IsPerturbedUnitarySimilar.of_specNorm_sub_le hQ hEs, hV', hHV',
-    hκ', hgap', hw'⟩
+  obtain ⟨hLs, hpl⟩ := rhessSlots_spec M (show 2 ≤ n + 1 by omega) A
+    (fun j => τ (μ.pos + j) sG) w
+  refine ⟨_, V', d', Ls.map some, hW', by simpa using hLs, hpl, hlg', hH, ?_, hV', hHV', hκ',
+    hgap', hw'⟩
+  rw [givensLog_slotEntries_map_some]
+  exact IsPerturbedUnitarySimilarBy.of_specNorm_sub_le hQ hEs
 
 /-- `NLAlib.SmallEig.rhess` terminates on every tape and every stored matrix. -/
 theorem rhess_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
@@ -854,7 +813,8 @@ theorem rhess_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M
           (∀ x ∈ slotEntries w Ls, x.1 + 1 < N) ∧ HoldsSlottedLog lg ns w (LL ++ Ls) [] μ'.store)
               μ :=
   (rhess_writes_word hS hC hSmp hl hA hL hNat h1 h2 hN hlog hj hw hlgl hlga).mono le_rfl
-    fun _ _ h => ⟨_, h.2.1, h.2.2⟩
+    fun _ _ h => ⟨_, h.2.1, _, (rhessSlots_spec M h2 A _ w).1, (rhessSlots_spec M h2 A _ w).2,
+      h.2.2⟩
 
 end Theorems
 

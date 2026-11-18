@@ -280,7 +280,60 @@ theorem oneEigPoint_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar
         Store.inBlock (L + 6) 1 1)
       (fun μ' => μ'.pos = μ.pos ∧ (∃ v, μ'.store.get (L + 4) 2 = some v) ∧
         (μ'.store.get (L + 6) 1 = some 0 ∨
-          HoldsWords μ'.store [(L + 6, 1), (L + 4, 2), (L + 4, 1), (L + 4, 0)])) μ := sorry
+          HoldsWords μ'.store [(L + 6, 1), (L + 4, 2), (L + 4, 1), (L + 4, 0)])) μ := by
+  have hm : ∀ {c}, c ∈ oneEigCells L lam →
+      c ∈ (L + 1, 0) :: (L + 1, 1) :: oneEigCells L lam := fun hc =>
+    List.mem_cons_of_mem _ (List.mem_cons_of_mem _ hc)
+  obtain ⟨vT, hT⟩ := hw.get (b := L) (o := 0) (hm (by simp [oneEigCells]))
+  obtain ⟨vD₀, hD₀⟩ := hw.get (b := L + 5) (o := 2 * j) (hm (List.mem_append_right _
+    (List.mem_map.mpr ⟨2 * j, List.mem_range.mpr (by omega), rfl⟩)))
+  obtain ⟨vD₁, hD₁⟩ := hw.get (b := L + 5) (o := 2 * j + 1) (hm (List.mem_append_right _
+    (List.mem_map.mpr ⟨2 * j + 1, List.mem_range.mpr (by omega), rfl⟩)))
+  obtain ⟨vL₀, hL₀⟩ := hw.get (b := lam.1) (o := lam.2) (hm (by simp [oneEigCells]))
+  obtain ⟨vL₁, hL₁⟩ := hw.get (b := lam.1) (o := lam.2 + 1) (hm (by simp [oneEigCells]))
+  obtain ⟨vZ₀, hZ₀⟩ := hw.get (b := L + 1) (o := 0) (by simp)
+  obtain ⟨vZ₁, hZ₁⟩ := hw.get (b := L + 1) (o := 1) (by simp)
+  obtain ⟨vB, hB⟩ := hb2
+  have hD₀' : μ.store.get (L + 5) (0 + 2 * j) = some vD₀ := by rwa [Nat.zero_add]
+  have hD₁' : μ.store.get (L + 5) (0 + (2 * j + 1)) = some vD₁ := by rwa [Nat.zero_add]
+  unfold oneEigPoint
+  step (hS .mul) as μ₁ hfr₁ ⟨hp₁, a₁, ha₁, -⟩
+  step (hS .add) as μ₂ hfr₂ ⟨hp₂, a₂, ha₂, -⟩
+  step (hS .add) as μ₃ hfr₃ ⟨hp₃, a₃, ha₃, -⟩
+  step (hS .mul) as μ₄ hfr₄ ⟨hp₄, b₁, hb₁, -⟩
+  step (hS .add) as μ₅ hfr₅ ⟨hp₅, b₂, hb₂, -⟩
+  step (hS .add) as μ₆ hfr₆ ⟨hp₆, b₃, hb₃, -⟩
+  have hsp : μ₆.store.readBlock (L + 2) 0 2 = some [(⟨a₃, b₃⟩ : ℂ).re, (⟨a₃, b₃⟩ : ℂ).im] :=
+    Store.readBlock_add (n := 1) (k := 1) (Store.readBlock_one_of_get (by kept))
+      (Store.readBlock_one_of_get (by kept))
+  have hH₆ : HoldsMatrix h H μ₆.store := by unfold HoldsMatrix at hH ⊢; kept
+  refine (distSpec_terminates (τ := τ) (μ := μ₆) (h := h) (sp := (L + 2, 0))
+    (tau := (L + 3, 0)) (m := m) (q := q) hS hL hzero hCmp (by room) hH₆ hsp
+    (by room)).frame_seq_le rfl rfl (by room) (by fp_sub) ?_
+  rintro μ₇ hfr₇ ⟨hp₇, t₇, ht₇⟩
+  refine writes_ite (a := [(L + 3, 0), (L + 4, 2)]) rfl rfl (hCmp.test_le ht₇ (by kept)) ?_
+  split_ifs
+  · step (hS .copy) as μ₈ hfr₈ ⟨hp₈, c₁, hc₁, -⟩
+    step (hS .copy) as μ₉ hfr₉ ⟨hp₉, c₂, hc₂, -⟩
+    step (hS .copy) as μ₁₀ hfr₁₀ ⟨hp₁₀, c₃, hc₃, -⟩
+    refine (writes_indexLit hL rfl rfl (by room)).mono (by fp_sub) ?_
+    rintro μ₁₁ hfr₁₁ ⟨hp₁₁, hk₁₁⟩
+    refine ⟨by simp only [hp₁₁, hp₁₀, hp₉, hp₈, hp₇, hp₆, hp₅, hp₄, hp₃, hp₂, hp₁],
+      ⟨_, by kept⟩, Or.inr fun c hc => ?_⟩
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hc
+    rcases hc with rfl | rfl | rfl | rfl
+    exacts [⟨_, hk₁₁⟩, ⟨_, by kept⟩, ⟨_, by kept⟩, ⟨_, by kept⟩]
+  · refine (Writes.skip ⟨by simp only [hp₇, hp₆, hp₅, hp₄, hp₃, hp₂, hp₁],
+      ⟨_, by kept⟩, ?_⟩).mono bot_le fun _ _ h => h
+    rcases hK with hK | hK
+    · exact Or.inl (by kept)
+    · obtain ⟨x₀, hx₀⟩ := hK.get (b := L + 6) (o := 1) (by simp)
+      obtain ⟨x₁, hx₁⟩ := hK.get (b := L + 4) (o := 2) (by simp)
+      obtain ⟨x₂, hx₂⟩ := hK.get (b := L + 4) (o := 1) (by simp)
+      obtain ⟨x₃, hx₃⟩ := hK.get (b := L + 4) (o := 0) (by simp)
+      refine Or.inr fun c hc => ?_
+      simp only [List.mem_cons, List.not_mem_nil, or_false] at hc
+      rcases hc with rfl | rfl | rfl | rfl <;> exact ⟨_, by kept⟩
 
 omit [Has DiskSampleOp O] in
 /-- The end of a round (`NLAlib.SmallEig.oneEigMove`) with the scratch of
@@ -472,9 +525,37 @@ theorem oneEigStart_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar
     Writes .total I τ (oneEigStart (O := O) (Q := Q)).body
       (Env.frame [n + 1, m, q] [h, qw, lam, (L, 0), f, (L + 5, 0), (L + 6, 0)])
       (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1 ⊔ Fp.above L)
-      (fun μ' => HoldsWords μ'.store (oneEigCells L lam) ∧ OneEigFlag M f μ'.store) μ := sorry
--- (fifteen calls, twelve outputs read back)
+      (fun μ' => HoldsWords μ'.store (oneEigCells L lam) ∧ OneEigFlag M f μ'.store) μ := by
+  unfold oneEigStart
+  refine ((oneEigDirections_writes hS (L := L) (by omega) h5 h6).frame_seq_le rfl rfl
+    (by simp [Mem.Live]; omega) (sup_le (Fp.inBlock_le_sup_above (by omega))
+      (Fp.inBlock_le_sup_above (by omega))) ?_)
+  rintro μ₁ hfr₁ hD₁
+  refine (polar_writes_pair hDisk (rd := (qw.1, qw.2 + 4)) (z := lam) rfl rfl
+    ((hfr₁.get_eq (by simp only [fpNF]; omega)).trans hq4)
+    (by simp [Mem.Live, hfr₁.length_eq]; omega) (by rw [hfr₁.len_eq]; exact hroom)).seq_le
+    (le_sup_left.trans le_sup_left) ?_
+  rintro μ₂ hfr₂ ⟨z₀, hz₀⟩
+  have hfr₁₂ := hfr₁.trans' hfr₂
+  refine (distSpec_terminates (τ := τ) (μ := μ₂) (h := h) (sp := lam) (tau := (L, 0)) (m := m)
+    (q := q) hS hL hzero hCmp (by simp [Mem.Live, hfr₁₂.length_eq]; omega)
+    ((hH.of_eqOff hfr₁ fun _ _ h₁ h₂ => by simp only [fpNF] at h₁ h₂; omega).of_eqOff hfr₂ hlh)
+    hz₀ (by rw [hfr₁₂.len_eq, h0]; omega)).frame_seq_le rfl rfl
+    (by simp [Mem.Live, hfr₁₂.length_eq]; omega) (Fp.inBlock_le_sup_above le_rfl) ?_
+  rintro μ₃ hfr₃ ⟨-, t₃, ht₃⟩
+  refine (writes_indexLit (z := f) hL rfl rfl
+    (by rw [hfr₃.len_eq, hfr₁₂.len_eq]; exact hroomf)).mono
+    (le_sup_right.trans le_sup_left) ?_
+  rintro μ₄ hfr₄ ⟨-, hf₄⟩
+  refine ⟨(((hD₁.pair_of_eqOff le_rfl hfr₂ hz₀).cons_of_eqOff le_rfl hfr₃ ht₃).cons_of_eqOff
+      le_rfl hfr₄ hf₄).mono fun c hc => ?_, Or.inl (by simpa using hf₄)⟩
+  simp only [oneEigCells, List.cons_append, List.mem_cons, Prod.mk.eta] at hc ⊢
+  tauto
+
+-- The default heartbeat budget does not cover fifteen calls whose twelve outputs are read back
+-- across all later frames.
 set_option maxHeartbeats 400000 in
+-- (fifteen calls, twelve outputs read back)
 omit [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] in
 /-- `NLAlib.SmallEig.oneEigDirections` on a scalar machine stores its words: with room for twelve
 words at `d` and two at `k` in other buffers, it writes only those words, keeps the position and

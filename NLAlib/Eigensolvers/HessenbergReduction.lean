@@ -648,8 +648,11 @@ private theorem givensLog_append_reduceLastStepEntry (hM : StdModel u id M) {n :
   simp only [reduceLastStepEntry, dif_pos (show c + 1 < n + 1 ∧ r < n + 1 by omega), givensAt,
     dif_pos (show c + 1 < n + 1 by omega), hneg]
 
-/-- A unitary similarity within $\varepsilon$ of $\mathbf{B}$ is a witnessed perturbed one. -/
-private theorem isPerturbedUnitarySimilarBy_of_specNorm_sub_le {m : ℕ}
+/-- A unitary similarity within $\varepsilon$ of $\mathbf{B}$ is a perturbed one by its unitary:
+if $\mathbf{V}$ has orthonormal columns and
+$\|\mathbf{B} - \mathbf{V}^{\mathsf H}\mathbf{A}\mathbf{V}\|_2 \le \varepsilon$, then
+`NLAlib.IsPerturbedUnitarySimilarBy` $\mathbf{V}$ $\mathbf{A}$ $\mathbf{B}$ $\varepsilon$. -/
+theorem IsPerturbedUnitarySimilarBy.of_specNorm_sub_le {m : ℕ}
     {V A B : Matrix (Fin m) (Fin m) ℂ} (hV : HasOrthonormalCols V) {ε : ℝ}
     (h : specNorm (B - Vᴴ * A * V) ≤ ε) : IsPerturbedUnitarySimilarBy V A B ε := by
   have h1 : Vᴴ * V = 1 := hasOrthonormalCols_iff.mp hV
@@ -835,7 +838,7 @@ theorem hessenbergReduceLast_isPerturbedUnitarySimilarBy {M : Machine ℝ} {u : 
     have : (3 : ℝ) ≤ (n : ℝ) + 1 := by exact_mod_cast h3
     nlinarith
   obtain ⟨hQ, hlast, hE⟩ := hrBound_rows (M := M) hM hu hu' A (n + 1 - 2) le_rfl
-  refine ⟨hlast, isPerturbedUnitarySimilarBy_of_specNorm_sub_le hQ ?_⟩
+  refine ⟨hlast, IsPerturbedUnitarySimilarBy.of_specNorm_sub_le hQ ?_⟩
   have hW : hessenbergReduceLastWord M A = bottomUpMask (n - (n + 1 - 2)) 0
       ((List.range (n + 1 - 2)).foldl (hrOuter M) (A, [])).1 := by
     ext a b

@@ -255,6 +255,139 @@ section Routine
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q]
   [Has IdxTst Q] [Inhabited ℝ]
 
+omit [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q]
+  [Inhabited ℝ] in
+/-- Two more stored words: if the first $2i$ words at `o` are stored and the words $2i$ and
+$2i + 1$ are written one after the other, the first $2(i + 1)$ words are stored. -/
+private theorem isSome_two_writes {s s₁ s₂ : Store ℝ} {o : ℕ × ℕ} {i : ℕ} {v₁ v₂ : ℝ}
+    (h : ∀ j < 2 * i, (s.get o.1 (o.2 + j)).isSome)
+    (hfr₁ : s.EqOff (Store.inBlock o.1 (o.2 + 2 * i) 1) s₁)
+    (g₁ : s₁.get o.1 (o.2 + 2 * i) = some v₁)
+    (hfr₂ : s₁.EqOff (Store.inBlock o.1 (o.2 + 2 * i + 1) 1) s₂)
+    (g₂ : s₂.get o.1 (o.2 + 2 * i + 1) = some v₂) :
+    ∀ j < 2 * (i + 1), (s₂.get o.1 (o.2 + j)).isSome := by
+  intro j hj
+  rcases Nat.lt_or_ge j (2 * i) with hj' | hj'
+  · rw [hfr₂.get_eq (fun h' => by have := h'.2; omega),
+      hfr₁.get_eq (fun h' => by have := h'.2; omega)]
+    exact h j hj'
+  · rcases Nat.lt_or_ge j (2 * i + 1) with hj'' | hj''
+    · rw [show o.2 + j = o.2 + 2 * i by omega, hfr₂.get_eq (fun h' => by
+        have := h'.2; omega), g₁]; rfl
+    · rw [show o.2 + j = o.2 + 2 * i + 1 by omega, g₂]; rfl
+
+omit [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] [Inhabited ℝ] in
+/-- **The eigenvalue routine of a terminating Schur leaf terminates**: on a scalar machine, if
+the Schur leaf `L` terminates on orders at most $k_{\max}$ with the $12$ words `qs`
+(`NLAlib.ShiftedQR.TerminatingLeafRoutine`), then `NLAlib.ShiftedQR.schurDiag L` terminates as a
+small-eigenvalue routine (`NLAlib.ShiftedQR.TerminatingSmallEigAt`) on the same orders. -/
+theorem TerminatingLeafRoutine.terminatingSmallEigAt_schurDiag {Mch : Machine ℝ}
+    {I : Interp O Q ℝ} (hS : IsScalar Mch I) {εL : ℝ} {kmax T : ℕ} {qs : List ℝ}
+    {L : Impl O Q} (hLf : TerminatingLeafRoutine εL kmax qs T L I) (hq : qs.length = 12) :
+    TerminatingSmallEigAt kmax 12 T qs (schurDiag L) I := by
+  intro d w q o tape μ B hd hB hqs hl ho hwo hqo
+  have hwl : w.1 < μ.store.length := hl w (by simp)
+  have hql : q.1 < μ.store.length := hl q (by simp)
+  have hol : o.1 < μ.store.length := hl o (by simp)
+  unfold schurDiag
+  change Writes .total I tape (Stmt.allocs [IExp.const 2 * (IExp.var 0 * IExp.var 0),
+    IExp.const 2 * (IExp.var 0 * IExp.var 0)] _) _ _ _ μ
+  refine writes_allocs_preserving_post (ns := [2 * (d * d), 2 * (d * d)])
+    (by simp [IExp.evalList, IExp.eval, Env.frame])
+    (fun hBelow ⟨ys, hys⟩ => ⟨ys, (hBelow.readBlock hol _ _).trans hys⟩) ?_
+  intro s₁ hlen hlens hBelow
+  set Lc := μ.store.length with hLc
+  simp only [List.length_cons, List.length_nil] at hlen
+  have hL0 : s₁.len Lc = 2 * (d * d) := by simpa using hlens 0 (by simp)
+  have hL1 : s₁.len (Lc + 1) = 2 * (d * d) := by simpa using hlens 1 (by simp)
+  have hab : ∀ {X : Fp}, (∀ b i, X b i → Lc ≤ b) →
+      X ≤ Store.inBlock o.1 o.2 (2 * d) ⊔ Fp.above Lc :=
+    fun hX b i h => Or.inr (hX b i h)
+  refine (writes_unaryMap_of_disj_or_eq (hS .copy) (τ := tape) (m := ⟨s₁, μ.pos⟩) (x := w)
+    (y := (Lc, 0)) (n := 2 * (d * d)) (Or.inl (Fp.disj_inBlock_of_ne (by omega)))
+    (by rw [hBelow.readBlock hwl]; exact hB) (by simp [hL0])).frame_seq_le
+    (by simp [IExp.evalList, IExp.eval, Env.frame])
+    (by simp [Operand.evalList, Operand.eval, IExp.eval, Env.frame])
+    (fun v hv => by
+      simp only [List.mem_cons, List.not_mem_nil, or_false] at hv
+      rcases hv with h | h <;> rw [h] <;> first | omega | (dsimp only; omega))
+    (hab fun b i h => h.1 ▸ le_rfl) ?_
+  rintro μ₁ hfr₁ ⟨-, hW₁⟩
+  have hW₁' : HoldsMatrix (Lc, 0) B μ₁.store := by simpa [HoldsMatrix] using hW₁
+  have hlen₁ : μ₁.store.length = Lc + 2 := hfr₁.length_eq.trans hlen
+  have hqs₁ : μ₁.store.readBlock q.1 q.2 qs.length = some qs :=
+    hfr₁.keep (Store.readsOnly_readBlock _ _ _ _) (Fp.disj_inBlock_of_ne (by dsimp only; omega))
+      (by change s₁.readBlock q.1 q.2 qs.length = some qs; rw [hBelow.readBlock hql]; exact hqs)
+  have hl₁ : μ₁.Live [(Lc, 0), q, (Lc + 1, 0)] := fun v hv => by
+    rw [hlen₁]
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hv
+    rcases hv with h | h | h <;> rw [h] <;> first | omega | (dsimp only; omega)
+  refine (hLf (tape := tape) B hd hW₁' hqs₁ hl₁ (by dsimp only; rw [hfr₁.len_eq, hL1]; omega)
+    (Fp.disj_inBlock_of_ne (by omega)) (Fp.disj_sup_right.mpr
+      ⟨Fp.disj_inBlock_of_ne (by dsimp only; omega),
+        Fp.disj_inBlock_of_ne (by dsimp only; omega)⟩)).frame_seq_le
+    (by simp [IExp.evalList, IExp.eval, Env.frame, hq])
+    (by simp [Operand.evalList, Operand.eval, IExp.eval, Env.frame])
+    (fun v hv => hl₁ v (by simp only [List.mem_cons, List.not_mem_nil] at hv ⊢; tauto))
+    (hab fun b i h => by rcases h with h | h <;> (have := h.1; dsimp only at this; omega)) ?_
+  rintro μ₂ hfr₂ ⟨Tb, Ub, V, hTb, -, -, -⟩
+  have hlen₂ : μ₂.store.length = Lc + 2 := hfr₂.length_eq.trans hlen₁
+  have hroomo : o.2 + 2 * d ≤ μ₂.store.len o.1 := by
+    rw [hfr₂.len_eq, hfr₁.len_eq, (hBelow o.1 hol).1]; exact ho
+  refine (writes_loop (N := d) (by simp [IExp.eval, Env.frame])
+    (fun _ => Store.inBlock o.1 o.2 (2 * d)) (fun _ _ => le_rfl)
+    (fun i m => m.store.length = Lc + 2 ∧ o.2 + 2 * d ≤ m.store.len o.1 ∧
+      HoldsMatrix (Lc, 0) Tb m.store ∧ ∀ j < 2 * i, (m.store.get o.1 (o.2 + j)).isSome)
+    ⟨hlen₂, hroomo, hTb, fun j hj => by omega⟩ ?_).mono le_sup_left ?_
+  · intro i hi m _ ⟨h1, h2, h3, h4⟩
+    have hTo : Fp.Disj (Store.inBlock o.1 o.2 (2 * d)) (Store.inBlock (Lc, 0).1 (Lc, 0).2
+        (2 * (d * d))) := Fp.disj_inBlock_of_ne (by dsimp only; omega)
+    refine (writes_call_un (hS .copy) (x := (Lc, 2 * (i * d + i))) (z := (o.1, o.2 + 2 * i))
+      (by simp [Operand.evalList, Operand.eval, IExp.eval, Env.frame, Env.pushIdx])
+      (by simp [Operand.evalList, Operand.eval, IExp.eval, Env.frame, Env.pushIdx]) trivial
+      (by simpa using h3.get_re ⟨i, hi⟩ ⟨i, hi⟩) rfl (by dsimp only; omega)).seq_le
+      (Fp.inBlock_le_inBlock (by omega) (by omega)) ?_
+    rintro m₁ hfr₁' ⟨-, g₁⟩
+    refine (writes_call_un (hS .copy) (x := (Lc, 2 * (i * d + i) + 1))
+      (z := (o.1, o.2 + 2 * i + 1))
+      (by simp [Operand.evalList, Operand.eval, IExp.eval, Env.frame, Env.pushIdx])
+      (by simp [Operand.evalList, Operand.eval, IExp.eval, Env.frame, Env.pushIdx]) trivial
+      (by rw [hfr₁'.get_eq (fun h' => by have := h'.1; dsimp only at this; omega)]
+          simpa [Nat.add_assoc] using h3.get_im ⟨i, hi⟩ ⟨i, hi⟩) rfl
+      (by dsimp only; rw [hfr₁'.len_eq]; omega)).mono
+      (Fp.inBlock_le_inBlock (by omega) (by omega)) ?_
+    rintro m₂ hfr₂' ⟨-, g₂⟩
+    have hfr := hfr₁'.trans' hfr₂'
+    refine ⟨by rw [hfr.length_eq, h1], by rw [hfr.len_eq]; exact h2,
+      h3.of_eqOff hfr (Fp.disj_sup_left.mpr ⟨hTo.mono (Fp.inBlock_le_inBlock (by omega)
+        (by omega)) le_rfl, hTo.mono (Fp.inBlock_le_inBlock (by omega) (by omega)) le_rfl⟩),
+      isSome_two_writes h4 hfr₁' g₁ hfr₂' g₂⟩
+  · rintro m - ⟨-, -, -, h4⟩
+    exact Option.isSome_iff_exists.mp (Store.isSome_readBlock_iff.mpr h4)
+
+omit [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] [Inhabited ℝ] in
+/-- A terminating Schur leaf on its $12$ words `qs` terminates on the tail words of `ps ++ qs`:
+`NLAlib.ShiftedQR.leafOnTailWords L` is a terminating leaf routine with the words `ps ++ qs`. -/
+theorem TerminatingLeafRoutine.onTailWords {εL : ℝ} {kmax T : ℕ} {qs : List ℝ}
+    {L : Impl O Q} {I : Interp O Q ℝ} (hLf : TerminatingLeafRoutine εL kmax qs T L I)
+    (hq : qs.length = 12) (ps : List ℝ) :
+    TerminatingLeafRoutine εL kmax (ps ++ qs) T (leafOnTailWords L) I := by
+  intro d w p ub tape μ B hd hB hp hl hroom hwu hpd
+  have hq' : μ.store.readBlock p.1 (p.2 + ps.length) qs.length = some qs :=
+    Store.readBlock_append_right hp
+  have hsub : Store.inBlock p.1 (p.2 + ps.length) qs.length ≤
+      Store.inBlock p.1 p.2 (ps ++ qs).length :=
+    Fp.inBlock_le_inBlock (by omega) (by rw [List.length_append]; omega)
+  have hl' : μ.Live [w, (p.1, p.2 + ps.length), ub] := fun v hv => by
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hv
+    rcases hv with h | h | h <;> rw [h]
+    exacts [hl w (by simp), hl p (by simp), hl ub (by simp)]
+  unfold ShiftedQR.leafOnTailWords
+  exact (hLf (tape := tape) B hd hB hq' hl' hroom hwu (hpd.mono hsub le_rfl)).in_frame
+    (by simp [IExp.evalList, IExp.eval, Env.frame, hq])
+    (by simp [Operand.evalList, Operand.eval, IExp.eval, Env.frame, hq])
+    (fun v hv => hl' v (by simp only [List.mem_cons, List.not_mem_nil] at hv ⊢; tauto))
+
 -- The default heartbeat budget does not cover the elaboration of this statement.
 set_option maxHeartbeats 1000000 in
 -- The headline's hypotheses, with their long real constants, make elaboration heavy.
@@ -361,8 +494,24 @@ theorem roundedShQRWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
     Writes .total I τ (roundedShQRWith L).body
       (Env.frame [n + 1, k, (shqrParams n k B Γ S δ φ ++ qs).length, shqrCap n B Γ S δ, T,
         shqrCap n B Γ S δ * (k + 1 + (shqrParams n k B Γ S δ φ ++ qs).length), k * (n + 1)]
-        [a, t, p, out, a, out, f]) (shqrFp n a out f) (fun _ => True) μ :=
-  sorry
+        [a, t, p, out, a, out, f]) (shqrFp n a out f) (fun _ => True) μ := by
+  have hkq : k = 2 ^ Nat.log 2 k := by rw [hk, shqrDegree, Nat.log_pow (by norm_num)]
+  have hD : TerminatingDecouplerRoutine n k (shqrCap n B Γ S δ) T (shqrParams n k B Γ S δ φ ++ qs)
+      (shqrCap n B Γ S δ * (k + 1 + (shqrParams n k B Γ S δ φ ++ qs).length)) (k * (n + 1))
+      (roundedDecoupleWith (schurDiag L)) I := by
+    by_cases hkn : k ≤ n + 1
+    · rw [min_eq_left hkn] at hLeaf
+      exact roundedDecoupleWith_terminatingDecouplerRoutine_at (F := shqrCap n B Γ S δ) hS hL
+        hNat hC hQ hDisk hkq (shqrLoopThreshold n k B Γ S δ φ) (shqrRadius n B Γ S δ)
+        (shqrScanThreshold n k B Γ S δ φ) 0.2 (4 * B) (shqrAlpha k (4 * B)) (shqrEps k (4 * B))
+        (hLeaf.terminatingSmallEigAt_schurDiag hS hqs) (Or.inr hqs) rfl
+        (Nat.mul_le_mul_left _ (by
+          simp only [shqrParams, List.length_append, length_roundedDecoupleParams]; omega))
+        (Nat.mul_le_mul_left _ (by omega))
+    · intro n' w q f tape μ' H' hk' hn'
+      omega
+  exact (solveRoundedWith_terminates hS hM hu1 hL hNat hQ hC hεL _ hD _
+    (hLeaf.onTailWords hqs _) (tape := τ) hl hr ha hA hU₀ ht hp).mono le_rfl fun _ _ _ => trivial
 
 /-- **The rounded shifted QR algorithm with any small-block Schur solver is a Schur core**
 ([BanksGarzaVargasSrivastava2022, Theorem 6.3] in Schur form, with a small-block Schur oracle).
@@ -434,8 +583,86 @@ theorem roundedShQRSchurWith_terminatingSchurCore {Mch : Machine ℝ} {I : Inter
       ((1 + 24 * u) ^ shqrSchurRotations n k (shqrParams n k B Γ S δ φ ++ qs).length
         (shqrCap n B Γ S δ) RL - 1) k (shqrCap n B Γ S δ) T (n + 1)
       (shqrDeflationThreshold n k B Γ S δ φ :: (shqrParams n k B Γ S δ φ ++ qs))
-      (roundedShQRSchurWith L) I :=
-  sorry
+      (roundedShQRSchurWith L) I := by
+  intro n' a p uo f tape μ H U hn hHU hp hl hf ha
+  set ps := shqrParams n k B Γ S δ φ ++ qs with hps
+  set thr := shqrDeflationThreshold n k B Γ S δ φ
+  have hu0 : 0 ≤ u := (abs_nonneg _).trans (by simpa using hM.lit 1)
+  have hkq : k = 2 ^ Nat.log 2 k := by rw [hk, shqrDegree, Nat.log_pow (by norm_num)]
+  have hD : TerminatingDecouplerRoutine n' k (shqrCap n B Γ S δ) T ps
+      (shqrCap n B Γ S δ * (k + 1 + ps.length)) (k * (n' + 1))
+      (roundedDecoupleWith (schurDiag L)) I := by
+    by_cases hkn : k ≤ n' + 1
+    · exact roundedDecoupleWith_terminatingDecouplerRoutine_at (F := shqrCap n B Γ S δ) hS hL
+        (hNat.mono (by omega)) hC hQ hDisk hkq (shqrLoopThreshold n k B Γ S δ φ)
+        (shqrRadius n B Γ S δ) (shqrScanThreshold n k B Γ S δ φ) 0.2 (4 * B)
+        (shqrAlpha k (4 * B)) (shqrEps k (4 * B))
+        (TerminatingLeafRoutine.terminatingSmallEigAt_schurDiag hS
+          (hLeaf.mono_kmax (kmax' := k) (le_min le_rfl (by omega))) hqs)
+        (Or.inr hqs) rfl
+        (Nat.mul_le_mul_left _ (by
+          simp only [hps, shqrParams, List.length_append, length_roundedDecoupleParams]; omega))
+        (Nat.mul_le_mul_left _ (by omega))
+    · intro n'' w q f tape μ' H' hk' hn''
+      omega
+  have hp' : μ.store.readBlock p.1 (p.2 + 1) ps.length = some ps :=
+    Store.readBlock_append_right (xs := [thr]) hp
+  have ht : μ.store.get p.1 p.2 = some thr := by
+    simpa using Store.get_of_readBlock hp (j := 0) (by simp) 0
+  have hpl : p.2 + (1 + ps.length) ≤ μ.store.len p.1 := by
+    simpa [Nat.add_comm 1] using Store.le_len_of_readBlock hp (by simp)
+  simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, sup_bot_eq] at ha
+  have hsub1 : Store.inBlock p.1 p.2 1 ≤ Store.inBlock p.1 p.2 (thr :: ps).length :=
+    Fp.inBlock_le_inBlock le_rfl (by simp)
+  have hsub2 : Store.inBlock p.1 (p.2 + 1) ps.length ≤ Store.inBlock p.1 p.2 (thr :: ps).length :=
+    Fp.inBlock_le_inBlock (by omega) (by simp; omega)
+  have hw := solveRoundedWith_terminates (n := n') (D := roundedDecoupleWith (schurDiag L))
+    (L := leafOnTailWords L) (F := shqrCap n B Γ S δ) (T := T) (tape := tape)
+    (t := p) (p := (p.1, p.2 + 1)) hS hM hu1 hL (hNat.mono (by omega)) hQ hC hεL hD
+    (TerminatingLeafRoutine.onTailWords
+      (hLeaf.mono_kmax (kmax' := min k (n' + 1)) (min_le_min le_rfl (by omega))) hqs _)
+    (fun v hv => by
+      simp only [List.mem_cons, List.not_mem_nil, or_false] at hv
+      rcases hv with h | h | h | h | h <;> rw [h]
+      exacts [hl a (by simp), hl p (by simp), hl p (by simp), hl uo (by simp), hl f (by simp)])
+    ⟨Store.le_len_of_readBlock hHU.1 (by positivity), by omega, by dsimp only; omega,
+      Store.le_len_of_readBlock hHU.2 (by positivity), hf, trivial⟩
+    (by
+      simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, sup_bot_eq]
+      exact ⟨⟨ha.1.1.mono le_rfl hsub1, ha.1.1.mono le_rfl hsub2, ha.1.2.1, ha.1.2.2⟩,
+        ⟨Fp.disj_inBlock_of_le le_rfl, ha.2.1.1.mono hsub1 le_rfl, ha.2.1.2.mono hsub1 le_rfl⟩,
+        ⟨ha.2.1.1.mono hsub2 le_rfl, ha.2.1.2.mono hsub2 le_rfl⟩, ha.2.2.1,
+        fun _ _ _ h => h, trivial⟩)
+    hHU.1 hHU.2 ht hp'
+  unfold roundedShQRSchurWith
+  refine (hw.in_frame (by simp [IExp.evalList, IExp.eval, Env.frame])
+    (by simp [Operand.evalList, Operand.eval, IExp.eval, Env.frame])
+    (fun v hv => by
+      simp only [List.mem_cons, List.not_mem_nil, or_false] at hv
+      rcases hv with h | h | h | h | h | h | h <;> rw [h]
+      exacts [hl a (by simp), hl p (by simp), hl p (by simp), hl uo (by simp), hl a (by simp),
+        hl uo (by simp), hl f (by simp)])).mono le_rfl ?_
+  rintro μ' - ⟨U', Tm, V, hTm, hU', hV, hb⟩
+  refine ⟨U', Tm, V, ⟨hTm, hU'⟩, hV, hb.trans (mul_le_mul_of_nonneg_right ?_ (specNorm_nonneg _))⟩
+  have hX1 : (1 : ℝ) ≤ 1 + 24 * u := by linarith
+  have hY : (1 + εL) ^ (n' + 1) ≤ (1 + 24 * u) ^ (RL * (n' + 1)) := by
+    rw [pow_mul]; exact pow_le_pow_left₀ (by linarith) (by linarith) _
+  have hE : 2 * (n' + 1) * (shqrCap n B Γ S δ * (k + 1 + ps.length) * (k * (n' + 1)) +
+      2 * k * (k + 2)) + RL * (n' + 1) ≤
+      shqrSchurRotations n k ps.length (shqrCap n B Γ S δ) RL := by
+    unfold shqrSchurRotations shqrSchurLogSize
+    have h1 : n' + 1 ≤ n + 1 := by omega
+    have := Nat.mul_le_mul_left (shqrCap n B Γ S δ * (k + 1 + ps.length)) (Nat.mul_le_mul_left k h1)
+    have := Nat.mul_le_mul (Nat.mul_le_mul_left 2 h1)
+      (Nat.add_le_add_right this (2 * k * (k + 2)))
+    have := Nat.mul_le_mul_left RL h1
+    nlinarith
+  calc (1 + 24 * u) ^ (2 * (n' + 1) * (shqrCap n B Γ S δ * (k + 1 + ps.length) * (k * (n' + 1)) +
+          2 * k * (k + 2))) * (1 + εL) ^ (n' + 1) - 1
+      ≤ (1 + 24 * u) ^ (2 * (n' + 1) * (shqrCap n B Γ S δ * (k + 1 + ps.length) *
+          (k * (n' + 1)) + 2 * k * (k + 2))) * (1 + 24 * u) ^ (RL * (n' + 1)) - 1 := by
+        gcongr
+    _ ≤ _ := by rw [← pow_add]; gcongr
 
 end Routine
 

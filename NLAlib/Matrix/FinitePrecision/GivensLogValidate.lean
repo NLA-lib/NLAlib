@@ -7,6 +7,7 @@ module
 
 public import NLAlib.Matrix.FinitePrecision.GivensLog
 public import NLAlib.Ops.Logic.IndexLiteral
+public import NLAlib.Ops.Logic.Functional
 
 /-!
 # Validating a slot of a Givens log with an exact literal one
@@ -18,9 +19,11 @@ must be positive.
 
 ## Main results
 
+* `NLAlib.HoldsSlottedLog.readsOnly_region`: a stored log reads only its region.
 * `NLAlib.HoldsSlottedLog.validate_of_eqOff`: a positive valid word closes the pending slot.
 * `NLAlib.replicate_zero_flatMap_entryWords`: the words of the zero fill.
 * `NLAlib.slottedLogValidate_writes_of_exactNat`: the validation with an exact literal one.
+* `NLAlib.slottedLogWrite_pos`: writing an entry keeps the tape position.
 -/
 
 @[expose] public section
@@ -39,6 +42,35 @@ theorem replicate_zero_flatMap_entryWords (w : ℕ) :
     rw [List.replicate_succ, List.flatMap_cons, ih, show 5 * (w + 1) = 5 + 5 * w by ring,
       List.replicate_add]
     simp [entryWords]
+
+/-- A stored slotted log reads only the words of its region (so it is kept by writes elsewhere
+and by allocations). -/
+theorem HoldsSlottedLog.readsOnly_region (lg : ℕ × ℕ) (ns w : ℕ)
+    (L : List (Option (List GivensEntry))) (P : List GivensEntry) :
+    Store.ReadsOnly (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (HoldsSlottedLog lg ns w L P) := by
+  intro s s' hg ⟨hLn, hPw, hc, hp, hf⟩
+  have hend : ∀ j, j < ns → j * (1 + 5 * w) + 1 + 5 * w ≤ ns * (1 + 5 * w) := fun j hj => by
+    have := Nat.mul_le_mul_right (1 + 5 * w) (Nat.succ_le_of_lt hj)
+    rw [Nat.succ_mul] at this
+    omega
+  have hget (j : ℕ) (hj : j < ns) :
+      s'.get lg.1 (lg.2 + j * (1 + 5 * w)) = s.get lg.1 (lg.2 + j * (1 + 5 * w)) := by
+    have := hend j hj
+    exact hg _ _ ⟨rfl, by omega, by omega⟩
+  have hblk (j : ℕ) (hj : j < ns) :
+      s'.readBlock lg.1 (lg.2 + j * (1 + 5 * w) + 1) (5 * w) =
+        s.readBlock lg.1 (lg.2 + j * (1 + 5 * w) + 1) (5 * w) := by
+    have := hend j hj
+    exact Store.readBlock_congr fun t ht => hg _ _ ⟨rfl, by omega, by omega⟩
+  refine ⟨hLn, hPw, fun j hj => ?_, fun h => ?_, fun j hj hjn => ?_⟩
+  · obtain ⟨v, hv, hm⟩ := hc j hj
+    refine ⟨v, by rw [hget j (by omega)]; exact hv, ?_⟩
+    split at hm
+    · exact hm
+    · exact ⟨hm.1, hm.2.1, by rw [hblk j (by omega)]; exact hm.2.2⟩
+  · rw [hget _ h, hblk _ h]; exact hp h
+  · rw [hget _ hjn, hblk _ hjn]; exact hf j hj hjn
 
 /-- A positive valid word closes the pending slot: if the store moves only at the valid word
 of the pending slot $L.\mathrm{length} < n_s$ and that word becomes positive, the pending entries
@@ -119,5 +151,97 @@ theorem slottedLogValidate_writes_of_exactNat {Mch : Machine ℝ} {I : Interp O 
     hz).mono (Fp.inBlock_le_inBlock (by omega) (by omega)) ?_
   rintro μ' hfr ⟨hp, hg⟩
   exact ⟨hp, h.validate_of_eqOff hL' hfr (by rw [hg, h1]) one_pos⟩
+
+
+section Write
+
+variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O]
+
+/-- `NLAlib.slottedLogWrite` keeps the tape position and writes only the five words of its
+entry: from a stored log with room in the pending slot and the two pairs at `pw`, `qw` outside
+the log, on any machine with index literals. -/
+theorem slottedLogWrite_pos {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar Mch I)
+    (hL : IsIndexLit Mch I) {ns w r : ℕ} {lg pw qw : ℕ × ℕ}
+    {L : List (Option (List GivensEntry))} {P : List GivensEntry} {p q : ℂ} {τ : Tape ℝ}
+    {μ : Mem ℝ} (h : HoldsSlottedLog lg ns w L P μ.store) (hLn : L.length < ns)
+    (hP : P.length < w) (hp : μ.store.readBlock pw.1 pw.2 2 = some [p.re, p.im])
+    (hq : μ.store.readBlock qw.1 qw.2 2 = some [q.re, q.im])
+    (hd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (Store.inBlock pw.1 pw.2 2 ⊔ Store.inBlock qw.1 qw.2 2)) :
+    Writes .total I τ (slottedLogWrite (O := O) (Q := Q)).body
+      (Env.frame [w, L.length, P.length, r] [pw, qw, lg])
+      (Store.inBlock lg.1 (lg.2 + L.length * (1 + 5 * w) + 1 + 5 * P.length) 5)
+      (fun μ' => μ'.pos = μ.pos) μ := by
+  set o := lg.2 + L.length * (1 + 5 * w) with ho
+  have hblk := (h.2.2.2.1 hLn).2
+  have hroom : ∀ k, 1 ≤ k → k ≤ 5 → o + k + 5 * P.length < μ.store.len lg.1 := fun k hk hk' => by
+    have := Store.lt_len_of_get (Store.get_of_readBlock hblk (j := 5 * P.length + (k - 1))
+      (by omega) 0)
+    omega
+  have hend : L.length * (1 + 5 * w) + 1 + 5 * w ≤ ns * (1 + 5 * w) := by
+    have := Nat.mul_le_mul_right (1 + 5 * w) (Nat.succ_le_of_lt hLn)
+    rw [Nat.succ_mul] at this
+    omega
+  have hsub : ∀ k, 1 ≤ k → k ≤ 5 → Store.inBlock lg.1 (o + k + 5 * P.length) 1 ≤
+      Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)) :=
+    fun k hk hk' => Fp.inBlock_le_inBlock (by omega) (by omega)
+  have hloc : ∀ k, 1 ≤ k → k ≤ 5 → Store.inBlock lg.1 (o + k + 5 * P.length) 1 ≤
+      Store.inBlock lg.1 (o + 1 + 5 * P.length) 5 :=
+    fun k hk hk' => Fp.inBlock_le_inBlock (by omega) (by omega)
+  have hpw := hd.mono le_rfl le_sup_left
+  have hqw := hd.mono le_rfl le_sup_right
+  -- the four input words, kept by writes in the log
+  have K : ∀ {s s' : Store ℝ} {k : ℕ} {b i : ℕ} {v : ℝ}, 1 ≤ k → k ≤ 5 →
+      Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w))) (Store.inBlock b i 1) →
+      s.EqOff (Store.inBlock lg.1 (o + k + 5 * P.length) 1) s' → s.get b i = some v →
+      s'.get b i = some v :=
+    fun hk hk' hdj hf hv =>
+      hf.keep (Store.readsOnly_get _ _ _) (hdj.mono (hsub _ hk hk') le_rfl) hv
+  have gp0 := Store.get_of_readBlock hp (j := 0) (by norm_num) (0 : ℝ)
+  have gp1 := Store.get_of_readBlock hp (j := 1) (by norm_num) (0 : ℝ)
+  have gq0 := Store.get_of_readBlock hq (j := 0) (by norm_num) (0 : ℝ)
+  have gq1 := Store.get_of_readBlock hq (j := 1) (by norm_num) (0 : ℝ)
+  simp only [List.getD_cons_zero, List.getD_cons_succ, Nat.add_zero] at gp0 gp1 gq0 gq1
+  have dp0 : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w))) (Store.inBlock pw.1 pw.2 1) :=
+    hpw.mono le_rfl (Fp.inBlock_le_inBlock le_rfl (by omega))
+  have dp1 : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (Store.inBlock pw.1 (pw.2 + 1) 1) :=
+    hpw.mono le_rfl (Fp.inBlock_le_inBlock (by omega) (by omega))
+  have dq0 : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w))) (Store.inBlock qw.1 qw.2 1) :=
+    hqw.mono le_rfl (Fp.inBlock_le_inBlock le_rfl (by omega))
+  have dq1 : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (Store.inBlock qw.1 (qw.2 + 1) 1) :=
+    hqw.mono le_rfl (Fp.inBlock_le_inBlock (by omega) (by omega))
+  unfold slottedLogWrite
+  refine (writes_indexLit (n := r) (z := (lg.1, o + 1 + 5 * P.length)) hL rfl rfl
+    (hroom 1 le_rfl (by omega))).seq_le (hloc 1 le_rfl (by omega)) ?_
+  rintro μ₁ hf₁ ⟨hp₁, -⟩
+  refine (writes_call_un (hS .copy) (x := pw) (z := (lg.1, o + 2 + 5 * P.length)) rfl rfl trivial
+    (K (k := 1) le_rfl (by omega) dp0 hf₁ gp0) rfl
+    (by rw [hf₁.len_eq]; exact hroom 2 (by omega) (by omega))).seq_le
+    (hloc 2 (by omega) (by omega)) ?_
+  rintro μ₂ hf₂ ⟨hp₂, -⟩
+  refine (writes_call_un (hS .copy) (x := (pw.1, pw.2 + 1)) (z := (lg.1, o + 3 + 5 * P.length))
+    rfl rfl trivial
+    (K (k := 2) (by omega) (by omega) dp1 hf₂ (K (k := 1) le_rfl (by omega) dp1 hf₁ gp1)) rfl
+    (by rw [hf₂.len_eq, hf₁.len_eq]; exact hroom 3 (by omega) (by omega))).seq_le
+    (hloc 3 (by omega) (by omega)) ?_
+  rintro μ₃ hf₃ ⟨hp₃, -⟩
+  refine (writes_call_un (hS .copy) (x := qw) (z := (lg.1, o + 4 + 5 * P.length)) rfl rfl trivial
+    (K (k := 3) (by omega) (by omega) dq0 hf₃ (K (k := 2) (by omega) (by omega) dq0 hf₂
+      (K (k := 1) le_rfl (by omega) dq0 hf₁ gq0))) rfl
+    (by rw [hf₃.len_eq, hf₂.len_eq, hf₁.len_eq]; exact hroom 4 (by omega) (by omega))).seq_le
+    (hloc 4 (by omega) (by omega)) ?_
+  rintro μ₄ hf₄ ⟨hp₄, -⟩
+  refine (writes_call_un (hS .copy) (x := (qw.1, qw.2 + 1)) (z := (lg.1, o + 5 + 5 * P.length))
+    rfl rfl trivial
+    (K (k := 4) (by omega) (by omega) dq1 hf₄ (K (k := 3) (by omega) (by omega) dq1 hf₃
+      (K (k := 2) (by omega) (by omega) dq1 hf₂ (K (k := 1) le_rfl (by omega) dq1 hf₁ gq1)))) rfl
+    (by rw [hf₄.len_eq, hf₃.len_eq, hf₂.len_eq, hf₁.len_eq]; exact hroom 5 (by omega) le_rfl)).mono
+    (hloc 5 (by omega) le_rfl) ?_
+  rintro μ₅ - ⟨hp₅, -⟩
+  rw [hp₅, hp₄, hp₃, hp₂, hp₁]
+
+end Write
 
 end NLAlib

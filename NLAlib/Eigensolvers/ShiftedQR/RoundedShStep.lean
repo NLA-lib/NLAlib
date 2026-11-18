@@ -58,6 +58,41 @@ theorem shPrecision_forms {x B C d S : ℝ} {k : ℕ} {H : Matrix (Fin (n + 1)) 
   · exact mul_le_mul_of_nonneg_right (inv_anti₀ (by positivity) (by linarith)) (by positivity)
 
 
+/-- An outcome of `Sh` after a rejected slot is an outcome with that slot: the rejected slot adds
+no entry. -/
+theorem ShOutcome.append_none {u : ℝ} {k : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {γ tv ε : ℝ} {a f lg : ℕ × ℕ} {ns w c : ℕ} {LL : List (Option (List GivensEntry))}
+    {m' : Mem ℝ} (h : ShOutcome u k H γ tv ε a f lg ns w (LL ++ [none]) c m') :
+    ShOutcome u k H γ tv ε a f lg ns w LL (1 + c) m' := by
+  obtain ⟨hf, Ls, hLs, hpl, hlog, H', hsim, hH', hA, hdec⟩ := h
+  have e : slotEntries w (none :: Ls) = slotEntries w Ls := by simp [slotEntries]
+  refine ⟨hf, none :: Ls, by simp [hLs]; omega, by rwa [e], by simpa using hlog, H',
+    by rwa [e], hH', hA, hdec⟩
+
+/-- An outcome of `Sh` closing `c` slots closes $c' \ge c$ slots when the log has room: the extra
+slots are rejected. -/
+theorem ShOutcome.pad {u : ℝ} {k : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {γ tv ε : ℝ} {a f lg : ℕ × ℕ} {ns w c c' : ℕ} {LL : List (Option (List GivensEntry))}
+    {m' : Mem ℝ} (h : ShOutcome u k H γ tv ε a f lg ns w LL c m') (hc : c ≤ c')
+    (hns : LL.length + c' ≤ ns) : ShOutcome u k H γ tv ε a f lg ns w LL c' m' := by
+  obtain ⟨hf, Ls, hLs, hpl, hlog, H', hsim, hH', hA, hdec⟩ := h
+  have hlog' := hlog.rejects (c := c' - c) (by simp; omega)
+  rw [List.append_assoc] at hlog'
+  refine ⟨hf, Ls ++ List.replicate (c' - c) none, by simp; omega, by simpa using hpl, hlog', H',
+    by simpa using hsim, hH', hA, hdec⟩
+
+/-- An outcome of `Sh` survives the release of scratch buffers above the matrix, the flag and the
+log. -/
+theorem ShOutcome.of_below {u : ℝ} {k : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {γ tv ε : ℝ} {a f lg : ℕ × ℕ} {ns w c L : ℕ} {LL : List (Option (List GivensEntry))}
+    {s s' : Store ℝ} {p : ℕ} (h : ShOutcome u k H γ tv ε a f lg ns w LL c ⟨s, p⟩)
+    (hBelow : Store.Below L s s') (ha : a.1 < L) (hf : f.1 < L) (hlg : lg.1 < L) :
+    ShOutcome u k H γ tv ε a f lg ns w LL c ⟨s', p⟩ := by
+  obtain ⟨hF, Ls, hLs, hpl, hlog, H', hsim, hH', hA, hdec⟩ := h
+  exact ⟨hBelow.get_of hf hF, Ls, hLs, hpl, hBelow.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+    (fun b i g => by rw [g.1]; exact hlg) hlog, H', hsim, hH', hA.of_below hBelow ha, hdec⟩
+
+
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q]
   [Has IdxTst Q]
 
@@ -116,7 +151,46 @@ theorem shDecide_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
         a s wg wr ww wp g thr f lg ns w LL)
       (ShOutcome u k H γ tv ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a f lg
         ns w LL (1 + (excNet ε).length))
-      φ := sorry
+      φ := by
+  have hv' := hv
+  obtain ⟨⟨ha, hs, hwg, hwr, hww, hwp, hg, hthl, hfl⟩, -, -⟩ := hv'
+  have hψ0 : 0 < hessenbergPotential k H := lt_of_lt_of_le hω hψ
+  have hC0 : 0 ≤ C := by
+    have : 0 ≤ (2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) := by
+      have : 0 ≤ θ := by linarith
+      have : 0 ≤ α := by linarith
+      have : 0 ≤ B := le_trans zero_le_one ((one_le_pseudoConditionNumber hV.ne_zero).trans hκ)
+      positivity
+    linarith
+  have hlive : ∀ (l : List (ℕ × ℕ)), (∀ x ∈ l, x.1 < L + 12) → ∀ m,
+      ShCtx L k ε H ss ((1 - γ) ^ k) ((2 : ℝ) ^ ((k : ℝ)⁻¹) * (θ * α * B ^ ((k : ℝ)⁻¹)))
+        (ε / 2) (1.0015 * (1 - γ)) tv a s wg wr ww wp g thr f m → m.Live l :=
+    fun l hl m hm x hx => by rw [hm.2.2.2.2.2.2.2.2.2.1]; exact hl x hx
+  unfold shDecide
+  refine (PWrites.ite hI (φ₁ := 0) (φ₂ := φ) ?_ ?_ ?_).mono (fun _ h => h) le_rfl (fun _ h => h)
+    (by simp [hφ.le])
+  · rintro m ⟨-, r, -, -, -, -, -, -, H', Rs, -, -, -, ⟨tc, htc, -⟩, hthr⟩
+    exact ⟨_, by rw [Interp.testAt_eq rfl rfl, hC.test_lt htc hthr]⟩
+  · refine PWrites.of_writes (le_refl 0) fun m τ ⟨hm, ht⟩ => ?_
+    refine (((shAccept_writes (τ := τ) hS hM (hNat.mono (by omega)) hk hkn hku hv hH hH0 hV hHV
+      hκ hSH hC0 hd' hω hsC hdist hxu16 hbound hγ1.le hthrω hL (by omega) hlgL hlgv hm
+      fun tc htc => ?_).in_frame rfl rfl
+      (hlive _ (by simp; omega) m hm.1.1)).mono (by fp_sub) fun _ _ h => h.pad (by omega)
+        (by omega))
+    obtain ⟨-, r, -, -, -, -, -, -, H', Rs, -, -, -, -, hthr⟩ := hm
+    rw [Interp.testAt_eq rfl rfl, hC.test_lt htc hthr] at ht
+    simpa using ht
+  · refine ((shExc_pwrites hI hloc hS hM hu1 hL hNat hC hD hU hk hkn hkq hku hv hH hlen hV hHV hκ
+      hSH hopt (fun i s hs => hne s hs i) hsH hω hψ hγ hγ1 hθ hα1 hε hε2 hφ hφ1 hd hd' hC1 hexc1
+      hexc2 hnu hxu16 hbound hthrω rfl rfl rfl (LL := LL ++ [none]) (by simp; omega) hw hlgL
+      hlgv).in_frame (by simp) rfl fun m hm => hlive _ (by simp; omega) m hm.1.1).mono
+      (fun m ⟨hm, he⟩ => ⟨hm.shExcPre hM hk hkn hku hV hHV hne hγ1 hψ0 fun tc htc => ?_, ?_⟩)
+      le_rfl (fun _ h => h.append_none) le_rfl
+    · obtain ⟨-, r, -, -, -, -, -, -, H', Rs, -, -, -, -, hthr⟩ := hm
+      rw [Interp.testAt_eq rfl rfl, hC.test_lt htc hthr] at he
+      simpa using he
+    · obtain ⟨-, r, -, -, es, -, -, hlog, -⟩ := hm
+      exact hlog.reject (by omega)
 
 omit [Has DiskSampleOp O] in
 /-- The start of `Sh`: from the context `NLAlib.ShiftedQR.ShCtx`, the rounded potential,
@@ -149,7 +223,31 @@ theorem shPrefix_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : I
         (Store.inBlock (L + 5) 0 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 6) 0 (2 * k) ⊔
           Store.inBlock (L + 3) 0 1 ⊔ Store.inBlock (L + 4) 0 1) ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
-      (ShState3 M u L k ε H V e ss α cg cr cw cp tv a s wg wr ww wp g thr f lg ns w LL) m := sorry
+      (ShState3 M u L k ε H V e ss α cg cr cw cp tv a s wg wr ww wp g thr f lg ns w LL) m := by
+  have hv' := hv
+  obtain ⟨⟨ha, hs', hwg, hwr, hww, hwp, hg, hthl, hfl⟩, -, -⟩ := hv'
+  have hk2 : (2 : ℝ) ≤ k := by exact_mod_cast hk
+  have hu0 := hM.roundoff_nonneg
+  have hlen' := hm.2.2.2.2.2.2.2.2.2.1
+  unfold shPrefix
+  refine (shPotential_writes (τ := τ) hS hM hkq hkn (by nlinarith) hv hm).frame_seq_le rfl rfl
+    (by simp [Mem.Live, hlen']; omega) (by fp_sub) ?_
+  intro m₁ hfr₁ hm₁
+  have hl₁ : m₁.store.length = L + 12 := by rw [hfr₁.length_eq, hlen']
+  have hlog₁ := hfr₁.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+    (Fp.disj_inBlock_of_ne (by omega)) hlog
+  have hk2' : ((k / 2 : ℕ) : ℝ) ≤ k := by exact_mod_cast Nat.div_le_self k 2
+  refine (shFind_writes (τ := τ) hS hM hL hC hQ hNat hkq hkn hv hH hH0 hV hHV hκ hC0 hd hlen hs
+    hdist hnu (by nlinarith) hxuF hm₁).frame_seq_le rfl rfl
+    (by simp [Mem.Live, hl₁]; omega) (by fp_sub) ?_
+  intro m₂ hfr₂ hm₂
+  have hl₂ : m₂.store.length = L + 12 := by rw [hfr₂.length_eq, hl₁]
+  have hlog₂ := hfr₂.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+    (Fp.disj_inBlock_of_ne (by omega)) hlog₁
+  rw [← hα] at hm₂
+  exact ((shTest_writes (τ := τ) hS hM hC (by omega) hkn hv hH hH0 hV hHV hκ hC0 hd hs hdist hnu
+    (by nlinarith) hxuT hm₂ hL hNat hlog₂ hj hw hlgL hlgv).in_frame rfl rfl
+    (by simp [Mem.Live, hl₂]; omega)).mono (by fp_sub) fun _ _ h => h
 
 /-- `Sh` with scratch as a probabilistic block, on a scalar machine with the standard model, exact
 comparisons, index literals, index conversion and exact natural literals up to $n + 1$, a measurable
@@ -220,7 +318,48 @@ theorem shStepWithScratch_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
         HoldsSlottedLog lg ns w LL [] m.store)
       (ShOutcome u k H γ tv ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a f lg
         ns w LL (1 + (excNet ε).length))
-      φ := sorry
+      φ := by
+  have hv' := hv
+  obtain ⟨⟨ha, hs, hwg, hwr, hww, hwp, hg, hthl, hfl⟩, -, -⟩ := hv'
+  have hk0 : 0 < k := by omega
+  have hψ0 : 0 < hessenbergPotential k H := lt_of_lt_of_le hω hψ
+  have hHp : 0 < specNorm H := hψ0.trans_le (hessenbergPotential_le_specNorm hk0 hkn H)
+  have hH0 : H ≠ 0 := fun h0 => by rw [h0, specNorm_zero] at hHp; exact lt_irrefl 0 hHp
+  have hB1 : 1 ≤ B := (one_le_pseudoConditionNumber hV.ne_zero).trans hκ
+  have hα1 : 1 ≤ α := hα ▸ Real.one_le_rpow (by linarith) (by positivity)
+  have hC0 : (1.1 : ℝ) ≤ C := by
+    have : 0 ≤ (2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) := by
+      have : 0 ≤ θ := by linarith
+      have : 0 ≤ α := by linarith
+      positivity
+    linarith
+  have hsC : ∀ s ∈ ss, ‖s‖ ≤ C * specNorm H := fun s hs =>
+    (hsH s hs).trans (mul_le_mul_of_nonneg_right hC0 hHp.le)
+  have hne : ∀ r ∈ ss, ∀ i, e i ≠ r := fun r hr i he => by
+    have := hdist r hr i; rw [he, sub_self, norm_zero] at this; linarith
+  obtain ⟨s₁, hs₁⟩ : ∃ s₁, s₁ ∈ ss := List.exists_mem_of_length_pos (by omega)
+  have hdH : d ≤ (2 + 2 * C) * specNorm H := by
+    have h1 := hdist s₁ hs₁ 0
+    have h2 := norm_sub_le (e 0) s₁
+    have h3 := norm_le_specNorm_of_mul_eq_mul_diagonal hV hHV 0
+    nlinarith [hsC s₁ hs₁]
+  obtain ⟨hxuT, hxuF, hxu16⟩ := shPrecision_forms hHp hSH (by linarith) hd' (by linarith) hdH hxu
+  have hab : ∀ {b o l : ℕ}, L ≤ b → Store.inBlock b o l ≤
+      Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔ Fp.above L ⊔
+        Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)) :=
+    fun hb => (Fp.inBlock_le_sup_above hb).trans le_sup_left
+  unfold shStepWithScratch
+  refine (PWrites.seq hI hloc (φ₁ := 0) (φ₂ := φ) hφ.le (PWrites.of_writes le_rfl
+    fun m τ hm => (shPrefix_writes (τ := τ) hS hM hL hC hQ hNat hkq hk hkn hv hH hH0 hV hHV hκ
+      (by linarith) hd' hlen hsC hdist hα hnu hku hxuT hxuF hm.1 hm.2 (by omega) hw hlgL
+      hlgv).in_frame rfl rfl (by simp [Mem.Live, hm.1.2.2.2.2.2.2.2.2.2.1]; omega))
+    ((shDecide_pwrites hI hloc hS hM hu1 hL hNat hC hD hU hkq hk hkn hv hH hH0 hV hHV hκ hSH hω hψ
+      hlen hopt hθ hd' hdist hsH hsC hne hα1 hγ hγ1 hε hε2 hφ hφ1 hd hC1 hnu hku hxu16 hbound hexc1
+      hexc2 hthrω hj hw hlgL hlgv).in_frame rfl rfl fun m hm => by
+        simp [Mem.Live, hm.1.1.2.2.2.2.2.2.2.2.2.1]; omega)).mono (fun _ h => h)
+    (sup_le (sup_le (sup_le (sup_le (hab (by omega)) (hab le_rfl))
+      (sup_le (sup_le (sup_le (hab (by omega)) (hab (by omega))) (hab (by omega)))
+        (hab (by omega)))) le_sup_right) le_rfl) (fun _ h => h) (by simp)
 
 /-- **The rounded shifting strategy `Sh` as a probabilistic block**
 ([BanksGarzaVargasSrivastava2022, Lemma 5.4], corrected: the requirements add
@@ -308,7 +447,55 @@ theorem shStep_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
         HoldsSlottedLog lg ns w LL [] m.store ∧ m.Live [lg])
       (ShOutcome u k H γ tv ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a f lg
         ns w LL (1 + (excNet ε).length))
-      φ := sorry
+      φ := by
+  have e : (shStep (O := O) (Q := Q)).body = Stmt.allocs [.const 2, .const 1, .const 1,
+      .const 1, .const 1, .const 2 * (.var 0 * .var 0), .const 2 * .var 2, .const 2 * .var 2,
+      .const 5, .const 1, .const 2 * .var 3, .const 1]
+      (.frame [.var 0, .var 1, .var 2, .var 3, .var 4, .var 5] [⟨0, .var 6⟩, ⟨1, .var 7⟩,
+        ⟨2, .var 8⟩, ⟨3, .var 9⟩, ⟨4, .var 10⟩, ⟨5, .var 11⟩, ⟨6, .var 12⟩, ⟨7, .var 13⟩,
+        ⟨11, .const 0⟩, ⟨12, .const 0⟩, ⟨13, .const 0⟩, ⟨14, .const 0⟩, ⟨15, .const 0⟩,
+        ⟨16, .const 0⟩, ⟨17, .const 0⟩, ⟨18, .const 0⟩, ⟨19, .const 0⟩, ⟨20, .const 0⟩,
+        ⟨21, .const 0⟩, ⟨22, .const 0⟩, ⟨0, .var 6⟩, ⟨9, .var 15⟩, ⟨10, .var 16⟩]
+        (shStepWithScratch (O := O) (Q := Q)).body) := rfl
+  rw [e]
+  refine PWrites.allocs rfl (Pre₁ := fun L μ => (ShViews L n k ε a s wg wr ww wp g thr f ∧
+    lg.1 < L) ∧ ShCtx L k ε H ss ((1 - γ) ^ k) ((2 : ℝ) ^ ((k : ℝ)⁻¹) * (θ * α * B ^ ((k : ℝ)⁻¹)))
+      (ε / 2) (1.0015 * (1 - γ)) tv a s wg wr ww wp g thr f μ ∧
+    HoldsSlottedLog lg ns w LL [] μ.store) ?_ ?_ fun L => ?_
+  · rintro m s₁ ⟨hl, hA, hs, hwg, hwr, hww, hwp, hg, hthr, hrf, hlog, hlgl⟩ hlen hlens hBelow
+    obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9⟩ : a.1 < m.store.length ∧ s.1 < m.store.length ∧
+        wg.1 < m.store.length ∧ wr.1 < m.store.length ∧ ww.1 < m.store.length ∧
+        wp.1 < m.store.length ∧ g.1 < m.store.length ∧ thr.1 < m.store.length ∧
+        f.1 < m.store.length := by simpa [Mem.Live] using hl
+    have hlg1 : lg.1 < m.store.length := hlgl lg (by simp)
+    have hl12 := fun i (hi : i < 12) => hlens i (by simpa using hi)
+    refine ⟨⟨⟨⟨h1, h2, h3, h4, h5, h6, h7, h8, h9⟩, haf, hio⟩, hlg1⟩, ⟨hA.of_below hBelow h1,
+      hBelow.readBlock_of h2 hs, hBelow.get_of h3 hwg, hBelow.get_of h4 hwr, hBelow.get_of h5 hww,
+      hBelow.get_of h6 hwp, hBelow.readBlock_of h7 hg, hBelow.get_of h8 hthr,
+      by rw [(hBelow f.1 h9).1]; exact hrf, by simpa using hlen, ?_⟩,
+      hBelow.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+        (fun b i g => by rw [g.1]; exact hlg1) hlog⟩
+    simpa using ⟨hl12 0 (by norm_num), hl12 1 (by norm_num), hl12 2 (by norm_num),
+      hl12 3 (by norm_num), hl12 4 (by norm_num), hl12 5 (by norm_num), hl12 6 (by norm_num),
+      hl12 7 (by norm_num), hl12 8 (by norm_num), hl12 9 (by norm_num), hl12 10 (by norm_num),
+      hl12 11 (by norm_num)⟩
+  · rintro m ⟨hl, -, -, -, -, -, -, -, -, -, -, hlgl⟩ st st' p hBelow h
+    have hlv : a.1 < m.store.length ∧ f.1 < m.store.length := by
+      simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,
+        forall_eq] at hl
+      exact ⟨hl.1, hl.2.2.2.2.2.2.2.2⟩
+    exact h.of_below hBelow hlv.1 hlv.2 (hlgl lg (by simp))
+  · by_cases hvL : ShViews L n k ε a s wg wr ww wp g thr f ∧ lg.1 < L
+    · refine ((shStepWithScratch_pwrites hI hloc hS hM hu1 hL hNat hC hQ hD hU hkq hk hkn hvL.1 hH
+        hV hHV hκ hSH hω hψ hlen hopt hθ hd' hdist hsH hα hγ hγ1 hε hε2 hφ hφ1 hd hC1 hnu hku hxu
+        hbound hexc1 hexc2 hthrω hj hw hvL.2 hlgv).in_frame rfl rfl ?_).mono (fun _ h => h.2)
+        (by fp_sub) (fun _ h => h) le_rfl
+      rintro μ ⟨⟨-, -, -, -, -, -, -, -, -, hlen, -⟩, -⟩
+      obtain ⟨⟨⟨h1, h2, h3, h4, h5, h6, h7, h8, h9⟩, -⟩, hlgL⟩ := hvL
+      simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,
+        forall_eq, hlen]
+      omega
+    · exact PWrites.of_writes hφ.le fun _ _ h => absurd h.1 hvL
 
 end Assembly
 

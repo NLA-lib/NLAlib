@@ -7,6 +7,7 @@ module
 
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedShExc
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedFind
+public import NLAlib.Matrix.FinitePrecision.GivensLogSlots
 
 /-!
 # The rounded shifting strategy
@@ -317,7 +318,68 @@ theorem shTestStep_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS :
             |tc - ‖WithLp.toLp 2 ((Polynomial.aeval H
               (shiftPoly (List.replicate k r)))⁻¹ (Fin.last n))‖⁻¹| ≤ 0.001 * ‖WithLp.toLp 2
                 ((Polynomial.aeval H (shiftPoly (List.replicate k r)))⁻¹ (Fin.last n))‖⁻¹) ∧
-          m'.store.get p1.1 p1.2 = some (optimalThresholdWord M H k cv)) m := sorry
+          m'.store.get p1.1 p1.2 = some (optimalThresholdWord M H k cv)) m := by
+  have hal := Store.lt_length_of_get (hA.get_re 0 0)
+  have hzl := Store.lt_length_of_get (Store.get_of_readBlock hz (j := 0) (by norm_num) 0)
+  have hcl := Store.lt_length_of_get hcg
+  have htl := Store.lt_length_of_lt_len (show t.2 < m.store.len t.1 by nlinarith)
+  have hsl := Store.lt_length_of_lt_len (show sr.2 < m.store.len sr.1 by omega)
+  have hp0l := Store.lt_length_of_lt_len hrp0
+  have hp1l := Store.lt_length_of_lt_len hrp1
+  have hgl : lg.1 < m.store.length := hlgl lg (by simp)
+  simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at hlgb
+  obtain ⟨hga, -, hgc, hgt, hgs, hgp0, hgp1⟩ := hlgb
+  unfold shTestStep
+  refine (copyMatrix_writes (τ := τ) hS hA hrt (hW.symm.mono (by fp_sub) (by fp_sub))).frame_seq_le
+    rfl rfl (by simp [Mem.Live, hal, htl]) (by fp_sub) ?_
+  rintro m₁ hfr₁ ⟨hp₁, hT₁⟩
+  have hlog₁ := hfr₁.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+    (Fp.disj_inBlock_of_ne hgt) hlog
+  have hk₁ : ∀ {F : Fp}, F ≤ Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔
+      Store.inBlock sr.1 sr.2 (2 * k) ⊔ Store.inBlock p0.1 p0.2 1 ⊔ Store.inBlock p1.1 p1.2 1 →
+      Fp.Disj F (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock z.1 z.2 2 ⊔
+        Store.inBlock cg.1 cg.2 1) := fun h => hW.mono h le_rfl
+  have hz₁ := hfr₁.keep (Store.readsOnly_readBlock _ _ _ _) ((hk₁ (by fp_sub)).mono le_rfl
+    (by fp_sub)) hz
+  have hrep := replicatePair_writes (τ := τ) (sr := sr) (k := k) hS hz₁
+    (by rw [hfr₁.len_eq]; exact hrsr) ((hk₁ (by fp_sub)).symm.mono (by fp_sub) le_rfl)
+  refine hrep.frame_seq_le rfl rfl (by simp [Mem.Live, hfr₁.length_eq, hzl, hsl]) (by fp_sub) ?_
+  rintro m₂ hfr₂ ⟨hp₂, hSR₂⟩
+  have hT₂ := hT₁.of_eqOff hfr₂ hts.symm
+  have hL₂ : m₂.store.length = m.store.length := by rw [hfr₂.length_eq, hfr₁.length_eq]
+  have hlog₂ := hfr₂.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+    (Fp.disj_inBlock_of_ne hgs) hlog₁
+  have hst := stepComptau_writes (τ := τ) (m := m₂) (a := t) (s := sr) (p := p0) (lg := lg)
+    (ss := List.replicate k r) hS hM hCmp hL hNat hH hH0 hV hHV hκ hC hd
+    (fun s hs => by rw [List.eq_of_mem_replicate hs]; exact hr)
+    (fun s hs => by rw [List.eq_of_mem_replicate hs]; exact hdist) hnu
+    (by rw [List.length_replicate]; exact hu) (by rw [List.length_replicate]; exact hxu)
+    (Nat.le_succ n) hlog₂ hj (by rw [List.length_replicate]; exact hw)
+    (by simp [Mem.Live, hL₂, htl, hsl, hp0l, hgl]) hT₂ hSR₂
+    (by rw [hfr₂.len_eq, hfr₁.len_eq]; exact hrp0) (by simpa using hts) htp
+    (Fp.disj_sup_right.mpr ⟨Fp.disj_sup_right.mpr ⟨Fp.disj_inBlock_of_ne hgt.symm,
+      Fp.disj_inBlock_of_ne hgs.symm⟩, Fp.disj_inBlock_of_ne hgp0.symm⟩)
+  rw [List.length_replicate] at hst
+  refine hst.frame_seq_le rfl rfl (by simp [Mem.Live, hL₂, htl, hsl, hp0l, hgl]) (by fp_sub) ?_
+  rintro m₃ hfr₃ ⟨hp₃, es, hesl, hesp, hlog₃, H', Rs, hch, hH', hT₃, tc, htc, hb⟩
+  have hL₃ : m₃.store.length = m.store.length := by rw [hfr₃.length_eq, hL₂]
+  have hfr₁₃ : m.store.EqOff (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔
+      Store.inBlock sr.1 sr.2 (2 * k) ⊔ Store.inBlock p0.1 p0.2 1 ⊔
+      Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w))) m₃.store :=
+    ((hfr₁.mono (by fp_sub)).trans (hfr₂.mono (by fp_sub))).trans (hfr₃.mono (by fp_sub))
+  have hA₃ : HoldsMatrix a H m₃.store := hA.of_eqOff hfr₁₃
+    (Fp.disj_sup_left.mpr ⟨hW.mono (by fp_sub) (by fp_sub), Fp.disj_inBlock_of_ne hga.symm⟩)
+  have hcg₃ := hfr₁₃.keep (Store.readsOnly_get _ _ _)
+    (Fp.disj_sup_left.mpr ⟨hW.mono (by fp_sub) (by fp_sub), Fp.disj_inBlock_of_ne hgc.symm⟩) hcg
+  have hth := shThreshold_writes (τ := τ) (m := m₃) (a := a) (c := cg) (p := p1) (k := k) hS hk
+    hA₃ hcg₃ (by rw [hfr₃.len_eq, hfr₂.len_eq, hfr₁.len_eq]; exact hrp1)
+    (hW.symm.mono (by fp_sub) (by fp_sub)) (hW.symm.mono (by fp_sub) (by fp_sub))
+  refine (hth.in_frame rfl rfl (by simp [Mem.Live, hL₃, hal, hcl, hp1l])).mono (by fp_sub) ?_
+  rintro m₄ hfr₄ ⟨hp₄, hP₄⟩
+  refine ⟨hp₄.trans (hp₃.trans (hp₂.trans hp₁)), es, hesl, hesp,
+    hfr₄.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (Fp.disj_inBlock_of_ne hgp1) hlog₃,
+    H', Rs, hch, hH', hT₃.of_eqOff hfr₄ (hp1.mono le_rfl le_sup_left),
+    ⟨tc, hfr₄.keep (Store.readsOnly_get _ _ _) (hp1.mono le_rfl le_sup_right) htc, hb⟩, hP₄⟩
 
 end Test
 
@@ -518,7 +580,24 @@ theorem shTest_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsS
       (Store.inBlock (L + 5) 0 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 6) 0 (2 * k) ⊔
         Store.inBlock (L + 3) 0 1 ⊔ Store.inBlock (L + 4) 0 1 ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
-      (ShState3 M u L k ε H V e ss α cg cr cw cp tv a s wg wr ww wp g thr f lg ns w LL) m := sorry
+      (ShState3 M u L k ε H V e ss α cg cr cw cp tv a s wg wr ww wp g thr f lg ns w LL) m := by
+  obtain ⟨⟨ha, hs', hwg, hwr, hww, hwp, hg, hthl, hfl⟩, -, -⟩ := hv
+  obtain ⟨⟨hctx, p, hp, hP⟩, r, hZ, hr⟩ := hm
+  obtain ⟨hA, -, hcg, -, -, -, -, -, -, hlen, -, -, -, h3, h4, h5, h6, -⟩ := id hctx
+  simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at hlgv
+  obtain ⟨hga, hgs, hgwg, hgwr, hgww, hgwp, hgg, hgthr, hgf⟩ := hlgv
+  refine (shTestStep_writes (τ := τ) (z := (L, 0)) (cg := wg) (t := (L + 5, 0))
+    (sr := (L + 6, 0)) (p0 := (L + 3, 0)) (p1 := (L + 4, 0)) hS hM hC hH hH0 hV hHV hκ hC0 hd
+    (hs r hr.1) (hdist r hr.1) hk0 hkn hnu hu hxu hA hZ hcg (by simp [h5]) (by simp [h6])
+    (by simp [h3]) (by simp [h4]) (Fp.disj_sup_right.mpr ⟨by disjoint, by disjoint⟩)
+    (by disjoint) (by disjoint) (by disjoint) hL hNat hlog hj hw
+    (by simp [Mem.Live, hlen]; omega)
+    (by simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq]
+        omega)).mono le_rfl ?_
+  rintro m' hfr ⟨-, es, hesl, hesp, hlog', H', Rs, hch, hH', hT, htc, hthr⟩
+  exact ⟨⟨hctx.of_eqOff hfr (by disjoint), p, hp, hfr.keep (Store.readsOnly_get _ _ _)
+    (by disjoint) hP⟩, r, hfr.keep (Store.readsOnly_readBlock _ _ _ _) (by disjoint) hZ, hr, es,
+    hesl, hesp, hlog', H', Rs, hch, hH', hT, htc, hthr⟩
 
 omit [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] in
 /-- The accepted branch of `Sh`: from `NLAlib.ShiftedQR.ShState3` with the word
@@ -559,7 +638,27 @@ theorem shAccept_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : I
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (ShOutcome u k H γ tv ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a f lg
         ns w LL 1)
-      m := sorry
+      m := by
+  obtain ⟨⟨ha, hs', hwg, hwr, hww, hwp, hg, hthl, hfl⟩, haf, -⟩ := hv
+  obtain ⟨⟨⟨hA, -, -, -, -, -, -, -, hf, hlen, -, -, -, -, -, -, -, -, -, -, -, h11⟩, -⟩, r, -, hr,
+    es, -, hesp, hlog, H', Rs, hch, hH', hT, ⟨tc, htc, htcb⟩, -⟩ := hm
+  simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at hlgv
+  obtain ⟨hga, -, -, -, -, -, -, -, hgf⟩ := hlgv
+  have hu0 := hM.roundoff_nonneg
+  refine (trialAccept_writes (τ := τ) (t := (L + 5, 0)) (a := a) (g := (L + 11, 0)) (f := f) hS
+    hM hNat hT (Store.le_len_of_readBlock hA (by positivity)) (by simp [h11]) hf (by disjoint)
+    (Fp.disj_sup_left.mpr ⟨by disjoint, haf.symm⟩) (by disjoint) hL hlog hj
+    (by simp [Mem.Live, hlen]; omega)
+    (by simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq]
+        omega)).mono le_rfl ?_
+  rintro m' - ⟨hA', -, hF, hlog'⟩
+  have hsim := hch.isPerturbedUnitarySimilarBy (by positivity) (fun t ht => by
+    rw [List.eq_of_mem_replicate ht]; exact hs r hr.1)
+  rw [List.length_replicate] at hsim
+  refine ⟨hF, [some es], rfl, by simpa using padEntries_planes (by omega) hesp, hlog', H',
+    by simpa [givensLog_padEntries] using hsim, hH', hA',
+    shAccept_decoupled_or_contract hM hch.isStableQRChain hk hkn hku hC0 hd hω hH0 hH hV hHV hκ
+      hSH (hs r hr.1) (hdist r hr.1) hxu hbound hγ1 hthrω htcb (hlt tc htc)⟩
 
 /-- The rejected branch of `Sh` enters the exceptional branch: from
 `NLAlib.ShiftedQR.ShState3` with $c_g = (1 - \gamma)^k$, $\gamma < 1$,
@@ -577,7 +676,16 @@ theorem ShState3.shExcPre {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M) {m 
     (hγ1 : γ < 1) (hψ : 0 < hessenbergPotential k H)
     (hle : ∀ tc, m.store.get (L + 3) 0 = some tc →
       optimalThresholdWord M H k ((1 - γ) ^ k) ≤ tc) :
-    ShExcPre u L k ε H V e ss α γ ((1 - γ) ^ k) cr cw cp tv a s wg wr ww wp g thr f m := sorry
+    ShExcPre u L k ε H V e ss α γ ((1 - γ) ^ k) cr cw cp tv a s wg wr ww wp g thr f m := by
+  obtain ⟨⟨hctx, hp⟩, r, hZ, hr, -, -, -, -, H', Rs, -, -, -, ⟨tc, htc, htcb⟩, -⟩ := hm
+  have hN := norm_toLp_inv_aeval_replicate_last_pos hV hHV (fun i => hne r hr.1 i) k
+  have hthr := abs_optimalThresholdWord_sub_le hM (by omega) hkn
+    (by have : (2 : ℝ) ≤ k := by exact_mod_cast hk
+        nlinarith [hM.roundoff_nonneg]) (c := (1 - γ) ^ k)
+    (pow_nonneg (by linarith) k) H
+  refine ⟨hctx, ⟨r, hZ, hr, norm_inv_le_of_le_comptau hk hM.roundoff_nonneg hku hγ1 hψ hN htcb
+    ?_ (hle tc htc)⟩, hp⟩
+  simpa [mul_pow] using hthr
 
 end Steps
 

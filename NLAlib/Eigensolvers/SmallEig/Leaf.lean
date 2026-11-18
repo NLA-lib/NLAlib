@@ -155,8 +155,9 @@ theorem identityLeaf_randomSchurLeafContract {M : Machine ℝ} {I : Interp O Q �
     Schur.RandomSchurLeafContract law 0 0 0 1 Nmax ps T (identityLeaf (O := O) (Q := Q)) I := by
   intro d w p ub B hd _
   refine PWrites.of_writes le_rfl fun μ τ ⟨hB, _, hl, hroom, hap⟩ => ?_
-  have hwu : Fp.Disj (Store.inBlock w.1 w.2 (2 * (d * d))) (Store.inBlock ub.1 ub.2 (2 * (d * d))) :=
-    by simpa using hap.disj_getD_of_lt (i := 0) (j := 2) (by omega) (by simp)
+  have hwu : Fp.Disj (Store.inBlock w.1 w.2 (2 * (d * d)))
+      (Store.inBlock ub.1 ub.2 (2 * (d * d))) := by
+    simpa using hap.disj_getD_of_lt (i := 0) (j := 2) (by omega) (by simp)
   refine (identityLeaf_writes hS h0 h1 hl hroom hwu).mono le_sup_right fun μ' hfr ⟨_, hU⟩ => ?_
   exact ⟨1, B, ⟨hB.of_eqOff hfr hwu.symm, hU⟩, fun i j hji => absurd hji (by omega),
     IsTrackedUnitarySimilar.refl 1 B⟩

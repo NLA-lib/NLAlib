@@ -12,6 +12,7 @@ public import NLAlib.Eigensolvers.Schur.Dense
 public import NLAlib.Eigensolvers.Schur.NormEstimate
 public import NLAlib.Eigensolvers.Schur.Pipeline
 public import NLAlib.Eigensolvers.Schur.Regularizer
+public import NLAlib.Eigensolvers.Schur.Residual
 public import NLAlib.Eigensolvers.ShiftedQR.Acceptance
 public import NLAlib.Eigensolvers.ShiftedQR.Alg
 public import NLAlib.Eigensolvers.ShiftedQR.Backward

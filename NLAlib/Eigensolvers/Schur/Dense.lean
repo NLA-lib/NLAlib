@@ -607,7 +607,8 @@ theorem denseSchurWith_measureReal_not_schur_le {Mch : Machine ℝ} {I : Interp 
   have h := schurPipelineWith_measureReal_not_schur_le (c₁ := 1 / 2) (c₂ := 2) hS hM hL hNat hQ
     hC hI hloc hNm hReg hRed hCore hCC' (by norm_num) (by norm_num) hu0
     (by rw [le_div_iff₀ (by positivity)] at hu8; nlinarith) (by linarith) (by positivity)
-    (by rw [hN]; nlinarith) (by positivity) (by have := one_le_pow₀ (n := Rc) (by linarith : (1 : ℝ) ≤ 1 + 24 * u); linarith)
+    (by rw [hN]; nlinarith) (by positivity)
+    (by have := one_le_pow₀ (n := Rc) (by linarith : (1 : ℝ) ≤ 1 + 24 * u); linarith)
     (by rw [hN, show (1 : ℝ) + ((1 + 24 * u) ^ Rc - 1) = (1 + 24 * u) ^ Rc by ring]; exact hε16)
     (by positivity) (by positivity) hin hξ
   have e1 : (1 : ℝ) + ((1 + 24 * u) ^ Rc - 1) = (1 + 24 * u) ^ Rc := by ring

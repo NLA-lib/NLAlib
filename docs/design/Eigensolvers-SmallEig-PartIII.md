@@ -19,6 +19,20 @@ collaborator's, listed for the dependency graph). Revised after Fable's design r
 (`Review-Fable-SMALLEIG-Design.md`, verdict "revise, then approve for skeleton"): §12 lists every
 item and its fix.
 
+**Superseded in part by SCHUR** ([Eigensolvers-DenseSchur](Eigensolvers-DenseSchur.md) §14.6,
+§15–§17). The stage SCHUR rewrote the programs of this note in place in Schur mode: `smallEigProg`
+is a small-block Schur solver `[d, nq, T] (Bk, Qw) → (Bk, Ub)` (the eigenvalues are the diagonal
+of the triangular block, the accumulator is in `Ub`), `rhess`, `decoupleLast`, `smallEigDecoupler`
+and the core record their rotations in a slotted Givens log, and the headlines (a)–(c) are
+corollaries of the Schur theorems (`smallEigProg_pwrites_schur`,
+`smallEigProg_randomSchurLeafContract`, `ShiftedQR.roundedShQRSchur_measureReal_not_schur_le`).
+The eigenvalue-only programs and contracts named below are removed: the oracle-leaf `roundedShQR`
+and its certificate `roundedShQRAlgorithm`, `seLeaf`, `liftLeaf`, `solveRounded`,
+`RandomLeafContract`, `RandomLeafRoutineContract`, `BackwardLeaf(Routine)Contract`,
+`TerminatingLeaf`, and `copyLeaf` (now `identityLeaf`); the leaf contract is
+`Schur.RandomSchurLeafContract`. The constants of §14 are updated there; the rest of this note is
+the design record of SMALLEIG and is not rewritten.
+
 ## 0. Summary
 
 * **Three headlines (§1).** (a) Part III's Theorem 1.1 as a program theorem: `smallEigProg` on any
@@ -281,6 +295,7 @@ dimension:
   (`RoundedCertificate.lean`) states its work polynomial as numerals in a definition
   (`196017(n+1)^3(k+1)^3(n_p+1)(F+1) + 8b^4\bar w` before this stage); the wrapper's extra frame
   changed the static count, and with it the numeral, now `196218` (RF7, §14). T5's witness `2011` is inside a proof of `∃ c`.
+  (Removed by SCHUR: the oracle program, its certificate and T5 are deleted; see the banner.)
 
 ### 2.2 `IsRandomSmallEig`: bounded orders and norm, any number of streams
 
@@ -307,7 +322,9 @@ def TerminatingSmallEig (T : ℕ) (qs : List ℝ) (SE : Impl O Q) (I : Interp O 
 theorem IsRandomSmallEig.randomSmallEigContract (h : IsRandomSmallEig law s β φ I) :
     RandomSmallEigContract law β φ kmax T S qs smallEigKernel I
 
--- the leaf bridge (review S7 i), as `IsRandomSmallEig.randomLeafContract`:
+-- the leaf bridge (review S7 i), as `IsRandomSmallEig.randomLeafContract`
+-- (removed by SCHUR with `seLeaf` and `RandomLeafRoutineContract`; the leaf contract is now
+-- `Schur.RandomSchurLeafContract`):
 theorem RandomSmallEigContract.randomLeafRoutineContract (h : RandomSmallEigContract …) (hβ : 0 ≤ β) :
     RandomLeafRoutineContract law β φ kmax S ps T (seLeaf SE) I
 
@@ -921,23 +938,26 @@ the paper's errata (`Review-Fable-PartIII-Errata.md`) is unchanged by them.
   worklist keeps output words that are stored before it runs
   (`NLAlib.ShiftedQR.solveRoundedWith_terminates_stored`, used by
   `NLAlib.SmallEig.smallEigCore_terminates_stored`). This is what the zero-fill needs.
+  (Superseded by SCHUR: the output is the block and its accumulator, so `identityLeaf` stores
+  $\mathbf{U}_b = \mathbf{I}$ first in place of the zero-fill, and the `_stored` variants are
+  removed.)
 * **CO1's literal bound.** CO1 (`smallEigCore_pwrites`) and D3b
   (`smallEigDecoupler_randomDecouplingRoutineContract_of_le`) take exact natural literals up to the
   block order $n + 1$ only, not up to $n_{\max} + 1$.
 
-Current constants of the static counts (all kernel-checked by `kernel_rfl`):
+Current constants of the static counts (all kernel-checked by `kernel_rfl`), after SCHUR
+(Schur-mode programs; [Eigensolvers-DenseSchur](Eigensolvers-DenseSchur.md) §15):
 
-| statement | constant | before |
+| statement | constant (after SCHUR) | at the end of SMALLEIG |
 |---|---|---|
-| RF7, `stmtWorkMono_shqrProgram` (merged certificate) | $196218\,b_0^3b_1^3b_2b_3$ | 196017 on `main` |
-| TH5, `smallEig_work_le` | $3473\,(n+1)^4(T+1)^2$ | 3470 before the zero-fill |
-| HL5, `roundedShQRSmallEig_work_le` | $15895\,(n+1)^3(k+1)^4(n_p+1)(F+1)(T+1)^2$ | 15883 |
-| TH6, `smallEigWork` (certificate, instrumented) | $373483\,(n+1)^4(T+1)^2$ | — |
-| HL6, `shqrSmallEigWork` (certificate, instrumented) | $675307\,(n+1)^3(k+1)^4(n_p+1)(F+1)(T+1)^2$ | — |
+| RF7, `stmtWorkMono_shqrProgram` (merged certificate) | removed with the oracle program | $196218\,b_0^3b_1^3b_2b_3$ (196017 on `main` before) |
+| TH5, `smallEig_work_le` (instrumented, explicit) | $80390\,(n+1)^4(T+1)^2$ | $\exists c$, witness $3473$, uninstrumented |
+| HL5, `roundedShQRSmallEig_work_le` (instrumented, explicit, log dims $F(k+1+n_p)$, $k(n+1)$) | $369224\,(n+1)^3(k+1)^4(n_p+1)(F+1)(T+1)^2$ | $\exists c$, witness $15895$, uninstrumented |
+| TH6, `smallEigWork` (certificate, instrumented) | $517058\,(n+1)^4(T+1)^2$ | $373483$ |
+| HL6, `shqrSmallEigWork` (certificate, instrumented) | $967736\,(n+1)^3(k+1)^4(n_p+1)(F+1)(T+1)^2$ | $675307$ |
 
-The instrumented counts of TH6 and HL6 are larger than TH5 and HL5 because the instrumentation
-counts every structural instruction at unit weight. HL5's exponent of $k + 1$ is $4$, not the
-$5$ of the target row.
+The certificates' constants are larger than TH5 and HL5 because they also count the frame of the
+program. HL5's exponent of $k + 1$ is $4$, not the $5$ of the target row.
 
 The random-matrix tails (RM1, RM2) are proved (`NLAlib.boundsGinibreGap_ginibreGapTail`,
 `NLAlib.boundsGinibreCondition_ginibreConditionTail` at the records $(10000e, 5, 1/2, 2)$ and $(128e, 3, 2, 2)$), so
@@ -951,7 +971,9 @@ every headline has an `_unconditional` form without the tail hypotheses.
   `Tail`); the proved records are named `ginibreGapTail` and `ginibreConditionTail` and are
   registered in `docs/constants.toml`; every `_unconditional` corollary states them by name.
 * **B-2.** `ShiftedQR.TerminatingLeaf` keeps its merged meaning (no claim on the output), so the
-  merged `solveRounded_terminates` keeps its statement. The worklist's termination lemmas take a
+  merged `solveRounded_terminates` keeps its statement. (Removed by SCHUR: `TerminatingLeaf` and
+  `solveRounded` are deleted; the worklist's termination is `solveRoundedWith_terminates`, and
+  its completion with no rounding model `solveRoundedWith_completes`.) The worklist's termination lemmas take a
   leaf routine that keeps its output stored under the same condition as the output words
   (`TerminatingLeafRoutineIf rd`): at `rd = False` a merged leaf, at any `rd` a leaf that keeps its
   output (the small-eigenvalue program's leaves).

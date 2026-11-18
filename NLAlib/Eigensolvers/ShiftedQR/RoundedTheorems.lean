@@ -277,13 +277,13 @@ private theorem isSome_two_writes {s s₁ s₂ : Store ℝ} {o : ℕ × ℕ} {i 
     · rw [show o.2 + j = o.2 + 2 * i + 1 by omega, g₂]; rfl
 
 omit [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] [Inhabited ℝ] in
-/-- **The eigenvalue routine of a terminating Schur leaf terminates**: on a scalar machine, if
-the Schur leaf `L` terminates on orders at most $k_{\max}$ with the $12$ words `qs`
-(`NLAlib.ShiftedQR.TerminatingLeafRoutine`), then `NLAlib.ShiftedQR.schurDiag L` terminates as a
+/-- **The eigenvalue routine of a completing Schur leaf terminates**: on a scalar machine, if
+the Schur leaf `L` completes on orders at most $k_{\max}$ with the $12$ words `qs`
+(`NLAlib.ShiftedQR.CompletingLeafRoutine`), then `NLAlib.ShiftedQR.schurDiag L` terminates as a
 small-eigenvalue routine (`NLAlib.ShiftedQR.TerminatingSmallEigAt`) on the same orders. -/
-theorem TerminatingLeafRoutine.terminatingSmallEigAt_schurDiag {Mch : Machine ℝ}
-    {I : Interp O Q ℝ} (hS : IsScalar Mch I) {εL : ℝ} {kmax T : ℕ} {qs : List ℝ}
-    {L : Impl O Q} (hLf : TerminatingLeafRoutine εL kmax qs T L I) (hq : qs.length = 12) :
+theorem CompletingLeafRoutine.terminatingSmallEigAt_schurDiag {Mch : Machine ℝ}
+    {I : Interp O Q ℝ} (hS : IsScalar Mch I) {kmax T : ℕ} {qs : List ℝ}
+    {L : Impl O Q} (hLf : CompletingLeafRoutine kmax qs T L I) (hq : qs.length = 12) :
     TerminatingSmallEigAt kmax 12 T qs (schurDiag L) I := by
   intro d w q o tape μ B hd hB hqs hl ho hwo hqo
   have hwl : w.1 < μ.store.length := hl w (by simp)
@@ -330,7 +330,7 @@ theorem TerminatingLeafRoutine.terminatingSmallEigAt_schurDiag {Mch : Machine �
     (by simp [Operand.evalList, Operand.eval, IExp.eval, Env.frame])
     (fun v hv => hl₁ v (by simp only [List.mem_cons, List.not_mem_nil] at hv ⊢; tauto))
     (hab fun b i h => by rcases h with h | h <;> (have := h.1; dsimp only at this; omega)) ?_
-  rintro μ₂ hfr₂ ⟨Tb, Ub, V, hTb, -, -, -⟩
+  rintro μ₂ hfr₂ ⟨Tb, Ub, hTb, -⟩
   have hlen₂ : μ₂.store.length = Lc + 2 := hfr₂.length_eq.trans hlen₁
   have hroomo : o.2 + 2 * d ≤ μ₂.store.len o.1 := by
     rw [hfr₂.len_eq, hfr₁.len_eq, (hBelow o.1 hol).1]; exact ho
@@ -365,13 +365,15 @@ theorem TerminatingLeafRoutine.terminatingSmallEigAt_schurDiag {Mch : Machine �
   · rintro m - ⟨-, -, -, h4⟩
     exact Option.isSome_iff_exists.mp (Store.isSome_readBlock_iff.mpr h4)
 
-omit [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] [Inhabited ℝ] in
-/-- A terminating Schur leaf on its $12$ words `qs` terminates on the tail words of `ps ++ qs`:
-`NLAlib.ShiftedQR.leafOnTailWords L` is a terminating leaf routine with the words `ps ++ qs`. -/
-theorem TerminatingLeafRoutine.onTailWords {εL : ℝ} {kmax T : ℕ} {qs : List ℝ}
-    {L : Impl O Q} {I : Interp O Q ℝ} (hLf : TerminatingLeafRoutine εL kmax qs T L I)
+omit [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q]
+  [Inhabited ℝ] in
+/-- A Schur leaf on its $12$ words `qs` with its accumulator near a unitary if `P` has it on
+the tail words of `ps ++ qs`: `NLAlib.ShiftedQR.leafOnTailWords L` is such a leaf routine with
+the words `ps ++ qs`. -/
+theorem TerminatingLeafRoutineIf.onTailWords {P : Prop} {εL : ℝ} {kmax T : ℕ} {qs : List ℝ}
+    {L : Impl O Q} {I : Interp O Q ℝ} (hLf : TerminatingLeafRoutineIf P εL kmax qs T L I)
     (hq : qs.length = 12) (ps : List ℝ) :
-    TerminatingLeafRoutine εL kmax (ps ++ qs) T (leafOnTailWords L) I := by
+    TerminatingLeafRoutineIf P εL kmax (ps ++ qs) T (leafOnTailWords L) I := by
   intro d w p ub tape μ B hd hB hp hl hroom hwu hpd
   have hq' : μ.store.readBlock p.1 (p.2 + ps.length) qs.length = some qs :=
     Store.readBlock_append_right hp
@@ -387,6 +389,28 @@ theorem TerminatingLeafRoutine.onTailWords {εL : ℝ} {kmax T : ℕ} {qs : List
     (by simp [IExp.evalList, IExp.eval, Env.frame, hq])
     (by simp [Operand.evalList, Operand.eval, IExp.eval, Env.frame, hq])
     (fun v hv => hl' v (by simp only [List.mem_cons, List.not_mem_nil] at hv ⊢; tauto))
+
+omit [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q]
+  [Inhabited ℝ] in
+/-- A terminating Schur leaf on its $12$ words `qs` terminates on the tail words of `ps ++ qs`
+(`NLAlib.ShiftedQR.TerminatingLeafRoutineIf.onTailWords`). -/
+theorem TerminatingLeafRoutine.onTailWords {εL : ℝ} {kmax T : ℕ} {qs : List ℝ}
+    {L : Impl O Q} {I : Interp O Q ℝ} (hLf : TerminatingLeafRoutine εL kmax qs T L I)
+    (hq : qs.length = 12) (ps : List ℝ) :
+    TerminatingLeafRoutine εL kmax (ps ++ qs) T (leafOnTailWords L) I :=
+  TerminatingLeafRoutineIf.terminating
+    (TerminatingLeafRoutineIf.onTailWords (hLf.terminatingLeafRoutineIf True) hq ps) trivial
+
+omit [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q]
+  [Inhabited ℝ] in
+/-- A completing Schur leaf on its $12$ words `qs` completes on the tail words of `ps ++ qs`
+(`NLAlib.ShiftedQR.TerminatingLeafRoutineIf.onTailWords`). -/
+theorem CompletingLeafRoutine.onTailWords {kmax T : ℕ} {qs : List ℝ}
+    {L : Impl O Q} {I : Interp O Q ℝ} (hLf : CompletingLeafRoutine kmax qs T L I)
+    (hq : qs.length = 12) (ps : List ℝ) :
+    CompletingLeafRoutine kmax (ps ++ qs) T (leafOnTailWords L) I :=
+  TerminatingLeafRoutineIf.completing
+    (TerminatingLeafRoutineIf.onTailWords (hLf.terminatingLeafRoutineIf 0) hq ps)
 
 -- The default heartbeat budget does not cover the elaboration of this statement.
 set_option maxHeartbeats 1000000 in
@@ -462,24 +486,25 @@ theorem roundedShQRWith_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Int
         [a, t, p, out, a, out, f]) (shqrFp n a out f) (ShQRSpectrum a out f H δ) μ} ≤ φ :=
   sorry
 
-/-- **The rounded shifted QR algorithm with a terminating small-block Schur solver terminates on
-every tape**: on a scalar machine with the standard model at $\boldsymbol{u} \le 1/100$, index
-literals, exact natural literals up to $n + 1$, exact `toNat` and comparisons and an exact polar
-disk sampler, and a leaf `L` that terminates on orders at most $\min(k, n + 1)$ with the cap $T$
-and $12$ words `qs`, its accumulator within $\varepsilon_L \ge 0$ of a unitary
-(`NLAlib.ShiftedQR.TerminatingLeafRoutine`), for any $(n + 1) \times (n + 1)$ matrix
-$\mathbf{H}$, accumulator $\mathbf{U}_0$, any $B, \Gamma, \Sigma, \delta, \varphi$ and $k$ the
-degree of (eqn:setk) at $4B$, the run of `NLAlib.ShiftedQR.roundedShQRWith L` from a memory
-holding the input with the words `NLAlib.ShiftedQR.shqrParams` followed by `qs` succeeds on every
-tape and writes only the matrix, the accumulator and the failure word. -/
-theorem roundedShQRWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
-    {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu1 : u ≤ 1 / 100)
+omit [Inhabited ℝ] in
+/-- **The rounded shifted QR algorithm with a completing small-block Schur solver terminates on
+every tape**: on a scalar machine (no rounding model) with index literals, exact natural literals
+up to $n + 1$, exact `toNat` and comparisons and an exact polar disk sampler, and a leaf `L` that
+completes on orders at most $\min(k, n + 1)$ with the cap $T$ and $12$ words `qs`
+(`NLAlib.ShiftedQR.CompletingLeafRoutine`, no accumulator bound), for any
+$(n + 1) \times (n + 1)$ matrix $\mathbf{H}$, accumulator $\mathbf{U}_0$, any
+$B, \Gamma, \Sigma, \delta, \varphi$ and $k$ the degree of (eqn:setk) at $4B$, the run of
+`NLAlib.ShiftedQR.roundedShQRWith L` from a memory holding the input with the words
+`NLAlib.ShiftedQR.shqrParams` followed by `qs` succeeds on every tape and writes only the matrix,
+the accumulator and the failure word. -/
+theorem roundedShQRWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ}
+    {n : ℕ} (hS : IsScalar Mch I)
     (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
     (hC : IsCmp id I) {sU : ℕ} (hDisk : IsPolarDiskSampler sU I)
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {k : ℕ}
-    {B Γ S δ φ : ℝ} (hk : k = shqrDegree (4 * B)) {εL : ℝ} {T : ℕ} {qs : List ℝ} {L : Impl O Q}
-    (hLeaf : TerminatingLeafRoutine εL (min k (n + 1)) qs T L I) (hqs : qs.length = 12)
-    (hεL : 0 ≤ εL) {a t p out f : ℕ × ℕ} {μ : Mem ℝ}
+    {B Γ S δ φ : ℝ} (hk : k = shqrDegree (4 * B)) {T : ℕ} {qs : List ℝ} {L : Impl O Q}
+    (hLeaf : CompletingLeafRoutine (min k (n + 1)) qs T L I) (hqs : qs.length = 12)
+    {a t p out f : ℕ × ℕ} {μ : Mem ℝ}
     {U₀ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hl : μ.Live [a, t, p, out, f])
     (hr : μ.Room [a, t, p, out, f]
       [2 * ((n + 1) * (n + 1)), 1, (shqrParams n k B Γ S δ φ ++ qs).length,
@@ -510,7 +535,7 @@ theorem roundedShQRWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
         (Nat.mul_le_mul_left _ (by omega))
     · intro n' w q f tape μ' H' hk' hn'
       omega
-  exact (solveRoundedWith_terminates hS hM hu1 hL hNat hQ hC hεL _ hD _
+  exact (solveRoundedWith_completes hS hL hNat hQ hC _ hD _
     (hLeaf.onTailWords hqs _) (tape := τ) hl hr ha hA hU₀ ht hp).mono le_rfl fun _ _ _ => trivial
 
 /-- **The rounded shifted QR algorithm with any small-block Schur solver is a Schur core**
@@ -597,8 +622,9 @@ theorem roundedShQRSchurWith_terminatingSchurCore {Mch : Machine ℝ} {I : Inter
         (hNat.mono (by omega)) hC hQ hDisk hkq (shqrLoopThreshold n k B Γ S δ φ)
         (shqrRadius n B Γ S δ) (shqrScanThreshold n k B Γ S δ φ) 0.2 (4 * B)
         (shqrAlpha k (4 * B)) (shqrEps k (4 * B))
-        (TerminatingLeafRoutine.terminatingSmallEigAt_schurDiag hS
-          (hLeaf.mono_kmax (kmax' := k) (le_min le_rfl (by omega))) hqs)
+        (CompletingLeafRoutine.terminatingSmallEigAt_schurDiag hS
+          (CompletingLeafRoutine.mono_kmax hLeaf.completing (kmax' := k)
+            (le_min le_rfl (by omega))) hqs)
         (Or.inr hqs) rfl
         (Nat.mul_le_mul_left _ (by
           simp only [hps, shqrParams, List.length_append, length_roundedDecoupleParams]; omega))

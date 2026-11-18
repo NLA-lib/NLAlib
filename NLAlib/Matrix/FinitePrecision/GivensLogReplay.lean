@@ -20,6 +20,8 @@ forms behind `NLAlib.givensReplayRows_specNorm_sub_le` and
 
 * `NLAlib.givensReplayRows_writes_word`, `NLAlib.givensReplayColumns_writes_word`: the words of a
   replay on a range.
+* `NLAlib.givensReplayColumns_specNorm_sub_le_if`: the column replay on any machine, with its
+  error bound under the standard model.
 -/
 
 @[expose] public section
@@ -76,5 +78,35 @@ theorem givensReplayColumns_writes_word {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (fun hk hY hc hs hca hsa hta htc hts ht => by
       simpa only [dif_pos hk] using rotateColumnsOn_writes_word hS hk hi hY hc hs hca
         hsa hta htc hts ht) hrow hlog hlen hX hl hd
+
+omit [Has IndexOp O] in
+/-- The column replay on every tape, its bound under a condition: as
+`NLAlib.givensReplayColumns_specNorm_sub_le`, but on any scalar machine: the run is total, writes
+only the matrix and leaves a matrix stored, and if `C` (which gives the standard model at
+$\boldsymbol{u} \le 1/100$) the stored matrix is within
+$((1 + 24\boldsymbol{u})^{n_s w} - 1)\|\mathbf{X}\|_2$ of $\mathbf{X}\widetilde{\mathbf{V}}$. -/
+theorem givensReplayColumns_specNorm_sub_le_if {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar Mch I) {C : Prop} (hC' : C → StdModel u id Mch ∧ u ≤ 1 / 100)
+    (hQ : IsToNat id I) (hC : IsCmp id I) {N lo d ns w : ℕ} (hN : lo + d ≤ N)
+    {L : List (Option (List GivensEntry))} {P : List GivensEntry}
+    (hpl : ∀ e ∈ slotEntries w L, e.1 + 1 < d ∨ e = (0, 0, 0))
+    (hlo : slotEntries w L = [] ∨ lo + 1 < N) {lg x : ℕ × ℕ}
+    {X : Matrix (Fin N) (Fin N) ℂ} {τ : Tape ℝ} {μ : Mem ℝ}
+    (hlog : HoldsSlottedLog lg ns w L P μ.store) (hlen : L.length = ns)
+    (hX : HoldsMatrix x X μ.store) (hl : μ.Live [lg, x])
+    (hd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (Store.inBlock x.1 x.2 (2 * (N * N)))) :
+    Writes .total I τ (givensReplayColumns (O := O) (Q := Q)).body
+      (Env.frame [N, lo, 0, N, ns, w] [lg, x, x]) (Store.inBlock x.1 x.2 (2 * (N * N)))
+      (fun μ' => ∃ X' : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix x X' μ'.store ∧
+        (C → specNorm (X' - X * embedBlock lo (givensLog d (slotEntries w L))) ≤
+          ((1 + 24 * u) ^ (ns * w) - 1) * specNorm X)) μ := by
+  by_cases hc : C
+  · have hu0 : 0 ≤ u := (abs_nonneg _).trans (by simpa using (hC' hc).1.lit 1)
+    exact (givensReplayColumns_specNorm_sub_le hS (hC' hc).1 hu0 (hC' hc).2 hQ hC hN hpl hlo hlog
+      hlen hX hl hd).mono le_rfl fun _ _ ⟨X', hX', hb⟩ => ⟨X', hX', fun _ => hb⟩
+  · exact (givensReplayColumns_writes_word hS hQ hC (lo := lo) (i0 := 0) (nr := N) (by omega)
+      (fun e he => (slotEntries_planes hN hpl hlo e he).1) hlog hlen hX hl hd).mono le_rfl
+      fun _ _ ⟨_, hX'⟩ => ⟨_, hX', fun h => absurd h hc⟩
 
 end NLAlib

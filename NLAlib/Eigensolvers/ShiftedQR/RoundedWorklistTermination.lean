@@ -13,11 +13,13 @@ public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveUpdates
 # The rounded deflation worklist in Schur mode always terminates
 
 The termination-only counterpart of `NLAlib.ShiftedQR.solveRoundedWith_pwrites`: on every tape
-and from every stored matrix and accumulator, `NLAlib.ShiftedQR.solveRoundedWith` runs to
-completion when its decoupler and its Schur leaf do (`NLAlib.ShiftedQR.TerminatingDecouplerRoutine`,
-`NLAlib.ShiftedQR.TerminatingLeafRoutine`), and the stored accumulator stays near the input
-accumulator times a unitary. The proof follows the rounds with a value-free state: the views keep
-their geometry, every word read is stored, the stack holds nonempty ranges inside the order whose
+and from every stored matrix and accumulator, `NLAlib.ShiftedQR.solveRoundedWith` runs to completion
+when its decoupler and its Schur leaf do (`NLAlib.ShiftedQR.TerminatingDecouplerRoutine`,
+`NLAlib.ShiftedQR.CompletingLeafRoutine`), with no rounding model; under the standard model and with
+a leaf whose accumulator is near a unitary (`NLAlib.ShiftedQR.TerminatingLeafRoutine`), the stored
+accumulator stays near the input accumulator times a unitary. The proof follows the rounds with a
+value-free state: the views keep their geometry, every word read is stored, the stack holds nonempty
+ranges inside the order whose
 sizes plus the number of finished leaves sum to at most the order, and the accumulator is within
 a factor that grows by $(1 + 24\boldsymbol{u})^{n_s w}$ per decoupled block (the replay of its log,
 `NLAlib.specNorm_foldl_replayColumnStep_sub_le`) and by $(1 + 24\boldsymbol{u})^{2k(k+2)}(1 +
@@ -689,9 +691,11 @@ theorem accumFactor_leaf_le {u εL : ℝ} (hu0 : 0 ≤ u) (hεL : 0 ≤ εL) {d 
   have h3 : (0 : ℝ) ≤ 1 + εL := by linarith
   nlinarith
 
-/-- The leaf branch keeps the core: on a scalar machine with the standard model at
-$\boldsymbol{u} \le 1/100$ and a terminating Schur leaf (`NLAlib.ShiftedQR.TerminatingLeafRoutine`,
-accumulator within $\varepsilon_L \ge 0$ of a unitary, orders at most $\min(k, n + 1)$), from the
+omit [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
+/-- The leaf branch keeps the core: on a scalar machine, with the standard model at
+$\boldsymbol{u} \le 1/100$ if `P`, and a Schur leaf on orders at most $\min(k, n + 1)$ whose
+accumulator is within $\varepsilon_L \ge 0$ of a unitary if `P`
+(`NLAlib.ShiftedQR.TerminatingLeafRoutineIf`), from the
 geometry of the worklist in Schur mode with the parameter words stored, any failure word, a
 matrix $\mathbf{A}$ whose block on $(lo, d)$, $d \le k$, is in the work matrix, a stack whose
 ranges after $(lo, d)$ fit with a leaf count $\ell$, and the accumulator within its factor at
@@ -700,7 +704,7 @@ reach the core of round $j + 1$ with $\ell + 1$ leaves. -/
 theorem roundedLeafBranch_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) {P : Prop} (hP : P → StdModel u id Mch ∧ u ≤ 1 / 100) {n : ℕ}
     {k F T ns w m : ℕ} (hm : 2 * k * (k + 2) ≤ m) {ps : List ℝ} {εL : ℝ} (hεL : P → 0 ≤ εL)
-    (L : Impl O Q) (hLeaf : TerminatingLeafRoutine εL (min k (n + 1)) ps T L I) {tape : Tape ℝ}
+    (L : Impl O Q) (hLeaf : TerminatingLeafRoutineIf P εL (min k (n + 1)) ps T L I) {tape : Tape ℝ}
     {μ : Mem ℝ} {lo d j ℓ : ℕ} {a t p uo f st wk ub r : ℕ × ℕ} {rs : List (ℕ × ℕ)}
     {A U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {x : ℝ}
     (hG : SchurGeometry (n + 1) ps.length a t p uo f st wk ub r μ)
@@ -746,7 +750,7 @@ theorem roundedLeafBranch_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
     (by have := hG.room.2.2.2.2.2.2.2.1; dsimp only; omega) (hWU.mono hWd hUd)
     (Fp.disj_sup_right.mpr ⟨hPW.mono le_rfl hWd, hPU.mono le_rfl hUd⟩)).in_frame rfl rfl
     (hG.live_of_subset (by simp))).seq_le (by fp_sub [schurRoundFp]) ?_
-  rintro μ₁ hfr₁ ⟨Tb, Ub, V, hTb, hUb, hV, hUbV⟩
+  rintro μ₁ hfr₁ ⟨Tb, Ub, hTb, hUb, hUbV⟩
   have hWUd : ∀ i : Fin 9, i ≠ 6 → i ≠ 7 → Fp.Disj
       (Store.inBlock wk.1 wk.2 (2 * (d * d)) ⊔ Store.inBlock ub.1 ub.2 (2 * (d * d)))
       (schurBlock (n + 1) ps.length a t p uo f st wk ub r i) :=
@@ -794,10 +798,10 @@ theorem roundedLeafBranch_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
       ((hAU3 5 (by simp) (by simp)).mono le_rfl hst5), hfit.of_cons, by omega, ⟨_, hU₃⟩,
     fun hp => ?_⟩
   have hX1 : (1 : ℝ) ≤ 1 + 24 * u := by linarith [hu0 hp]
-  have hY1 : (1 : ℝ) ≤ 1 + εL := by linarith [hεL hp]
+  obtain ⟨V, hV, hUbV⟩ := hUbV hp
   refine AccumNear.step ((hacc' hp).of_eqOff hfr₂ (hAX 3 (by simp))) hU₂ hU₃
     (hasOrthonormalCols_embedBlock hfit0.2 hV)
-    (one_le_mul_of_one_le_of_one_le (one_le_pow₀ hX1) hY1)
+    (one_le_mul_of_one_le_of_one_le (one_le_pow₀ hX1) (by linarith [hεL hp]))
     (specNorm_setRect_matMulWord_sub_le (hP hp).1 (hu0 hp) (by linarith [(hP hp).2]) hfit0.2 U₁ hV
       (hεL hp) hUbV) ?_
   exact accumFactor_leaf_le (hu0 hp) (hεL hp) (le_trans (by
@@ -816,7 +820,7 @@ theorem roundedRange_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
     {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
     {k F T ns w m : ℕ} (hm1 : ns * w ≤ m) (hm2 : 2 * k * (k + 2) ≤ m) {ps : List ℝ} {εL : ℝ}
     (hεL : P → 0 ≤ εL) (D : Impl O Q) (hD : TerminatingDecouplerRoutine n k F T ps ns w D I)
-    (L : Impl O Q) (hLeaf : TerminatingLeafRoutine εL (min k (n + 1)) ps T L I)
+    (L : Impl O Q) (hLeaf : TerminatingLeafRoutineIf P εL (min k (n + 1)) ps T L I)
     {tape : Tape ℝ} {μ : Mem ℝ} {lo d j ℓ : ℕ} {a t p uo f st wk ub r : ℕ × ℕ}
     {rs : List (ℕ × ℕ)} {A U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr x : ℝ}
     (hG : SchurGeometry (n + 1) ps.length a t p uo f st wk ub r μ)
@@ -882,7 +886,7 @@ theorem roundedWorklistRound_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ}
     {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
     {k F T ns w m : ℕ} (hm1 : ns * w ≤ m) (hm2 : 2 * k * (k + 2) ≤ m) {ps : List ℝ} {εL : ℝ}
     (hεL : P → 0 ≤ εL) (D : Impl O Q) (hD : TerminatingDecouplerRoutine n k F T ps ns w D I)
-    (L : Impl O Q) (hLeaf : TerminatingLeafRoutine εL (min k (n + 1)) ps T L I)
+    (L : Impl O Q) (hLeaf : TerminatingLeafRoutineIf P εL (min k (n + 1)) ps T L I)
     {tape : Tape ℝ} {μ : Mem ℝ} {j cnt : ℕ} {a t p uo f st wk ub r : ℕ × ℕ}
     {U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     (h : SchurStoredState n P U u εL m ps a t p uo f st wk ub r j μ)
@@ -996,7 +1000,7 @@ theorem roundedWorklist_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
     {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
     {k F T ns w m : ℕ} (hm1 : ns * w ≤ m) (hm2 : 2 * k * (k + 2) ≤ m) {ps : List ℝ} {εL : ℝ}
     (hεL : P → 0 ≤ εL) (D : Impl O Q) (hD : TerminatingDecouplerRoutine n k F T ps ns w D I)
-    (L : Impl O Q) (hLeaf : TerminatingLeafRoutine εL (min k (n + 1)) ps T L I)
+    (L : Impl O Q) (hLeaf : TerminatingLeafRoutineIf P εL (min k (n + 1)) ps T L I)
     {tape : Tape ℝ} {μ : Mem ℝ} {a t p uo f st wk ub r : ℕ × ℕ}
     {H U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr : ℝ}
     (hG : SchurGeometry (n + 1) ps.length a t p uo f st wk ub r μ)
@@ -1067,7 +1071,7 @@ theorem solveRoundedWith_terminates_if {Mch : Machine ℝ} {I : Interp O Q ℝ} 
     (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
     (hC : IsCmp id I) {k F T ns w : ℕ} {ps : List ℝ} {εL : ℝ} (hεL : P → 0 ≤ εL) (D : Impl O Q)
     (hD : TerminatingDecouplerRoutine n k F T ps ns w D I) (L : Impl O Q)
-    (hLeaf : TerminatingLeafRoutine εL (min k (n + 1)) ps T L I)
+    (hLeaf : TerminatingLeafRoutineIf P εL (min k (n + 1)) ps T L I)
     {tape : Tape ℝ} {μ : Mem ℝ} {a t p uo f : ℕ × ℕ}
     {H U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr : ℝ}
     (hl : μ.Live [a, t, p, uo, f])
@@ -1113,16 +1117,17 @@ theorem solveRoundedWith_terminates_if {Mch : Machine ℝ} {I : Interp O Q ℝ} 
 /-- **The rounded worklist in Schur mode runs to completion on any machine**: on a scalar machine
 with natural literals up to $n + 1$ exact, exact `toNat` and comparisons (no rounding model), let
 the decoupling routine terminate with a closed log (`NLAlib.ShiftedQR.TerminatingDecouplerRoutine`)
-and the leaf routine terminate on orders at most $\min(k, n + 1)$
-(`NLAlib.ShiftedQR.TerminatingLeafRoutine`). Then for any matrix and accumulator, any threshold
-word and on every tape, `solveRoundedWith D L` runs to completion, writes only the matrix, the
-accumulator and the failure word, and leaves a matrix and an accumulator stored. The accumulator
+and the leaf routine complete on orders at most $\min(k, n + 1)$
+(`NLAlib.ShiftedQR.CompletingLeafRoutine`, no accumulator bound). Then for any matrix and
+accumulator, any threshold word and on every tape, `solveRoundedWith D L` runs to completion, writes
+only the matrix, the accumulator and the failure word, and leaves a matrix and an accumulator
+stored. The accumulator
 bound under the standard model is `NLAlib.ShiftedQR.solveRoundedWith_terminates`. -/
 theorem solveRoundedWith_completes {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
     (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1))
-    (hQ : IsToNat id I) (hC : IsCmp id I) {k F T ns w : ℕ} {ps : List ℝ} {εL : ℝ} (D : Impl O Q)
+    (hQ : IsToNat id I) (hC : IsCmp id I) {k F T ns w : ℕ} {ps : List ℝ} (D : Impl O Q)
     (hD : TerminatingDecouplerRoutine n k F T ps ns w D I) (L : Impl O Q)
-    (hLeaf : TerminatingLeafRoutine εL (min k (n + 1)) ps T L I)
+    (hLeaf : CompletingLeafRoutine (min k (n + 1)) ps T L I)
     {tape : Tape ℝ} {μ : Mem ℝ} {a t p uo f : ℕ × ℕ}
     {H U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr : ℝ}
     (hl : μ.Live [a, t, p, uo, f])
@@ -1139,7 +1144,7 @@ theorem solveRoundedWith_completes {Mch : Machine ℝ} {I : Interp O Q ℝ} {n :
       (fun μ' => ∃ Tm U' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
         HoldsMatrix a Tm μ'.store ∧ HoldsMatrix uo U' μ'.store) μ :=
   (solveRoundedWith_terminates_if (u := 0) hS (P := False) False.elim hL hNat hQ hC
-    False.elim D hD L hLeaf hl hr ha hA hU ht hp).mono le_rfl
+    False.elim D hD L (hLeaf.terminatingLeafRoutineIf 0) hl hr ha hA hU ht hp).mono le_rfl
     fun _ _ h => by
       obtain ⟨⟨Tm, hTm⟩, ⟨U', hU'⟩, -⟩ := h
       exact ⟨Tm, U', hTm, hU'⟩
@@ -1180,7 +1185,7 @@ theorem solveRoundedWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u 
           ((1 + 24 * u) ^ (2 * (n + 1) * (ns * w + 2 * k * (k + 2))) * (1 + εL) ^ (n + 1) - 1) *
             specNorm U) μ :=
   (solveRoundedWith_terminates_if hS (P := True) (fun _ => ⟨hM, hu1⟩) hL hNat hQ hC
-    (fun _ => hεL) D hD L hLeaf hl hr ha hA hU ht hp).mono le_rfl
+    (fun _ => hεL) D hD L (hLeaf.terminatingLeafRoutineIf True) hl hr ha hA hU ht hp).mono le_rfl
     fun _ _ h => by
       obtain ⟨⟨Tm, hTm⟩, -, hacc⟩ := h
       obtain ⟨U', V, hU', hV, hb⟩ := hacc trivial

@@ -398,8 +398,9 @@ draws that store the tape entry and an exact polar disk sampler, for any $(n + 1
 matrix $\mathbf{H}$ (no structure assumed), any $B, \Gamma, \Sigma, \delta, \varphi$, $k$ the
 degree of (eqn:setk) at $4B$ and any tail records, the run of
 `NLAlib.ShiftedQR.roundedShQRSmallEig` from `NLAlib.ShiftedQR.ShQRSmallEigInput` succeeds on every
-tape and writes only the matrix, the output and the failure word. No unit roundoff, class or
-random-matrix hypothesis is needed: the stored cap words are valid. -/
+tape and writes only the matrix, the output and the failure word. No rounding model, unit
+roundoff, class or random-matrix hypothesis is needed: the stored cap words are valid, and the
+small-eigenvalue program completes on every machine (`NLAlib.SmallEig.smallEigProg_completes`). -/
 theorem roundedShQRSmallEig_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
     (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1))
     (hQ : IsToNat id I) (hC : IsCmp id I) (hSmp : IsSample I) {sU sG : ℕ}
@@ -410,7 +411,15 @@ theorem roundedShQRSmallEig_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} 
     Writes .total I τ (roundedShQRSmallEig (O := O) (Q := Q) sG).body
       (Env.frame (shqrSmallEigDims n k B Γ S δ φ c₁ c₂) [a, t, p, out, a, out, f])
           (shqrFp n a out f)
-      (fun _ => True) μ := sorry
+      (fun _ => True) μ := by
+  obtain ⟨hl, hr, ha, ⟨U₀, hU₀⟩, hA, ht, hp⟩ := hin
+  have h12 := length_smallEigParams k (4 * S)
+    (forwardBackwardError k (4 * S) (shqrSmallEigAccuracy n B Γ S δ))
+    (shqrSmallEigFailure n B Γ S δ φ) c₁ c₂
+  exact roundedShQRWith_terminates (T := shqrSmallEigCap n k B Γ S δ φ c₁ c₂) hS hL hNat hQ hC
+    hDisk hk (smallEigProg_completes (kmax := min k (n + 1)) hS hL (hNat.mono (min_le_right _ _))
+      hC hQ hSmp hDisk (smallEigCaps_smallEigParams _ _ _ _ _ _) h12.ge) h12 hl hr ha hA hU₀ ht
+    hp τ
 
 /-- **The iteration cap is logarithmic**: there is an absolute constant $c$ with
 $F \le c\log_2 Y + c$, $Y = 4(n + 1)B\Sigma^2/(\delta\min(\Gamma, \Sigma)\varphi)$, for

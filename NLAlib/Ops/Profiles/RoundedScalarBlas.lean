@@ -132,6 +132,56 @@ theorem writes_nrm2_exact {Op : Type} [Has ScalarOp Op] {M : Machine ℝ}
       simpa [nrm2ExactRel] using hrel
     exact ⟨by simpa using hpos, hv ▸ hvalue⟩
 
+/-- $(1 + u)^n - 1 \le nu + (nu)^2$ for $u \ge 0$ and $nu \le 1$. -/
+private theorem one_add_pow_sub_one_le' {u : ℝ} (hu : 0 ≤ u) {n : ℕ} (hnu : n * u ≤ 1) :
+    (1 + u) ^ n - 1 ≤ n * u + (n * u) ^ 2 := by
+  have h1 : (1 + u) ^ n ≤ Real.exp (n * u) := by
+    rw [Real.exp_nat_mul]
+    exact pow_le_pow_left₀ (by linarith) (by linarith [Real.add_one_le_exp u]) n
+  have h2 := (abs_le.mp (Real.abs_exp_sub_one_sub_id_le (x := n * u)
+    (by rw [abs_of_nonneg (by positivity)]; exact hnu))).2
+  linarith
+
+/-- The numbers of the rounded norm: a sum of squares $\sigma$ within $E S$ of $S \ge 0$, with
+$E \le nu + (nu)^2$ when $S > 0$, and a square root $\nu$ within $u\sqrt{\sigma}$ of
+$\sqrt{\sigma}$ give $\lvert \nu - \sqrt S\rvert \le (n + 2)u\sqrt S$ when $(n + 2)u \le 1/2$:
+the square root halves the relative error of the sum, up to the factor $2/3$. -/
+private theorem nrm2_bounds {u S σ ν E : ℝ} {n : ℕ} (hu : 0 ≤ u) (hnu : ((n : ℝ) + 2) * u ≤ 1 / 2)
+    (hS : 0 ≤ S) (hE : 0 < S → E ≤ n * u + (n * u) ^ 2) (hσ : |σ - S| ≤ E * S)
+    (hν : 0 ≤ σ → |ν - √σ| ≤ u * √σ) :
+    (1 - ((n : ℝ) + 2) * u) * √S ≤ ν ∧ ν ≤ (1 + ((n : ℝ) + 2) * u) * √S := by
+  rcases hS.eq_or_lt with hS0 | hSp
+  · subst hS0
+    have hσ0 : σ = 0 := by simpa using hσ
+    subst hσ0
+    have := hν le_rfl
+    simp only [Real.sqrt_zero, mul_zero, sub_zero, abs_nonpos_iff] at this
+    simp [this]
+  have hx : (0 : ℝ) ≤ n * u := by positivity
+  have hx2 : (n : ℝ) * u ≤ 1 / 2 - 2 * u := by linarith
+  have hE' := hE hSp
+  have hE0 : 0 ≤ E := by
+    by_contra h; push Not at h; nlinarith [abs_nonneg (σ - S)]
+  have hE34 : E ≤ 3 / 4 := by nlinarith
+  obtain ⟨hσl, hσu⟩ := abs_le.mp hσ
+  have hσ4 : S / 4 ≤ σ := by nlinarith
+  have hσ0 : 0 ≤ σ := by linarith
+  set a := √S with ha
+  set b := √σ with hb
+  have ha2 : a ^ 2 = S := Real.sq_sqrt hS
+  have hb2 : b ^ 2 = σ := Real.sq_sqrt hσ0
+  have ha0 : 0 < a := Real.sqrt_pos.mpr hSp
+  have hb0 : 0 ≤ b := Real.sqrt_nonneg σ
+  have hba : a / 2 ≤ b := by nlinarith
+  have hdiff : |b - a| ≤ 2 / 3 * E * a := by
+    rw [abs_le]
+    constructor <;> nlinarith [mul_nonneg hE0 ha0.le]
+  obtain ⟨hνl, hνu⟩ := abs_le.mp (hν hσ0)
+  obtain ⟨hdl, hdu⟩ := abs_le.mp hdiff
+  have hkey : u + 2 / 3 * E * (1 + u) ≤ ((n : ℝ) + 2) * u := by
+    nlinarith [mul_nonneg hu hx, mul_nonneg (mul_nonneg hu hu) hx, mul_nonneg hu hE0]
+  constructor <;> nlinarith [mul_nonneg hu ha0.le, mul_nonneg (mul_nonneg hu hE0) ha0.le]
+
 /-- **The rounded scalar-lowered norm is two-sided accurate**: under the standard model at
 $\boldsymbol{u}$ with $(n + 2)\boldsymbol{u} \le 1/2$, the stored $x$ of the sequential norm of $n$
 real words $x_0, \dots, x_{n-1}$ satisfies
@@ -147,8 +197,42 @@ theorem writes_nrm2_stdModel {Op : Type} [Has ScalarOp Op] {M : Machine ℝ} {u 
     Writes .total I τ nrm2.body (Env.frame [n] [x, z]) (Store.inBlock z.1 z.2 1)
       (fun μ => μ.pos = m.pos ∧ ∃ v : ℝ, μ.store.get z.1 z.2 = some v ∧
         (1 - ((n : ℝ) + 2) * u) * Real.sqrt (∑ i ∈ Finset.range n, (vec xs i) ^ 2) ≤ v ∧
-        v ≤ (1 + ((n : ℝ) + 2) * u) * Real.sqrt (∑ i ∈ Finset.range n, (vec xs i) ^ 2)) m :=
-  sorry
+        v ≤ (1 + ((n : ℝ) + 2) * u) * Real.sqrt (∑ i ∈ Finset.range n, (vec xs i) ^ 2)) m := by
+  have hu0 : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
+  let rename : Table ScalarOp Op Tst := fun o => .inr (Has.inj o)
+  let J := I.link rename
+  have hJ : IsScalar M J := fun o => Interp.link_meets_kept rfl (hS o)
+  have hB := (laws hM hu0 hJ).2
+  have hw := writes_call_cell (τ := τ) (m := m) (I := J.link table) hB.nrm2
+    (ρ := Env.frame [n] [x, z]) (d := [n]) (a := [x]) (z := z) (k := 0)
+    (ds := [.var 0]) (ins := [⟨0, .var 1⟩]) (outs := [⟨1, .var 2⟩])
+    rfl rfl rfl rfl rfl rfl (by simpa [OutApart] using hxz)
+    (fun _ => ⟨hl, ⟨[xs], by simp [Mem.readBlocks, nrm2Rel, hx], trivial⟩, hz⟩)
+  have hread : m.readBlocks [x] [n] = some [xs] := by simp [Mem.readBlocks, hx]
+  have hw' := hw.mono (P' := fun μ => μ.pos = m.pos ∧ ∃ v : ℝ, μ.store.get z.1 z.2 = some v ∧
+    (1 - ((n : ℝ) + 2) * u) * Real.sqrt (∑ i ∈ Finset.range n, (vec xs i) ^ 2) ≤ v ∧
+    v ≤ (1 + ((n : ℝ) + 2) * u) * Real.sqrt (∑ i ∈ Finset.range n, (vec xs i) ^ 2))
+    le_rfl (fun μ _ hp => ?_)
+  · change Writes .total I τ _ _ _ _ m
+    simpa only [Writes, Wp, nrm2, run_link, J, rename] using hw'
+  · obtain ⟨hpos, vals, value, hvals, hvalue, hrel⟩ := hp
+    have he : vals = [xs] := Option.some.inj (hvals.symm.trans hread)
+    subst vals
+    obtain ⟨σ, hσ, hν⟩ : IsNrm2Err id ((Blas.seq.err u).dot n) (Blas.seq.err u).sqrt n (vec xs)
+        value := by
+      simpa [nrm2Rel] using hrel
+    refine ⟨by simpa using hpos, value, hvalue, nrm2_bounds (E := (Blas.seq.err u).dot n) hu0 hu
+      (Finset.sum_nonneg fun i _ => sq_nonneg _) ?_ ?_ hν⟩
+    · intro hSp
+      have hn : n ≠ 0 := by rintro rfl; simp at hSp
+      have hdot : (Blas.seq.err u).dot n = (1 + u) ^ n - 1 := by
+        simp only [Blas.seq.err, Blas.level1Err, Blas.seqSumErr]
+        obtain ⟨k, rfl⟩ := Nat.exists_eq_succ_of_ne_zero hn
+        simp only [Nat.succ_sub_one, pow_succ]
+        ring
+      rw [hdot]
+      exact one_add_pow_sub_one_le' hu0 (by nlinarith)
+    · simpa [IsDotErr, ← sq, abs_mul_self, sq_abs] using hσ
 
 /-- Unit-work scalar cells with no hidden primitive workspace. Canonical control, addressing,
 allocation and comparison costs remain the shared nonzero charges. -/

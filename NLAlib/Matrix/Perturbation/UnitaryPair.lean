@@ -162,6 +162,22 @@ steps composes through `NLAlib.Ops.BackwardStep` with
 `NLAlib.isBackwardErrorRel_isPerturbedUnitaryPair` at the scales $(0, 1)$. -/
 theorem isPerturbedUnitaryPair_zero_iff {X X' A B : Matrix n n 𝕜} {ε : ℝ} (hX : X * Xᴴ = 1) :
     IsPerturbedUnitaryPair 0 1 ε (Xᴴ, A) (X'ᴴ, B) ↔
-      IsPerturbedUnitarySimilarBy (Xᴴ * X') A B ε := sorry
+      IsPerturbedUnitarySimilarBy (Xᴴ * X') A B ε := by
+  have hX' : Xᴴ * X = 1 := mul_eq_one_comm.mp hX
+  constructor
+  · rintro ⟨U, E, F, hU, hE, hF, h1, h2⟩
+    have hE0 : E = 0 :=
+      specNorm_eq_zero_iff.mp (le_antisymm (by simpa using hE) (specNorm_nonneg E))
+    have hXU : X' = X * U := by
+      have h1' : X'ᴴ = Uᴴ * Xᴴ := by simpa [hE0] using h1
+      rw [← Matrix.conjTranspose_conjTranspose X', h1', Matrix.conjTranspose_mul,
+        Matrix.conjTranspose_conjTranspose, Matrix.conjTranspose_conjTranspose]
+    have hV : Xᴴ * X' = U := by rw [hXU, ← Matrix.mul_assoc, hX', Matrix.one_mul]
+    rw [hV]
+    exact ⟨hU, F, by simpa using hF, h2⟩
+  · rintro ⟨hV, E, hE, h⟩
+    refine ⟨Xᴴ * X', 0, E, hV, by simp, by simpa using hE, ?_, h⟩
+    simp only [add_zero, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose,
+      Matrix.mul_assoc, hX, Matrix.mul_one]
 
 end NLAlib

@@ -392,7 +392,17 @@ theorem specNorm_sub_mul_le_sum {m : Type*} [Fintype m] [DecidableEq m]
     {U P : ℕ → Matrix m m ℂ} (hU : ∀ j, HasOrthonormalCols (U j)) (hP0 : P 0 = 1)
     (hP : ∀ j, P (j + 1) = P j * U j) (X : ℕ → Matrix m m ℂ) (k : ℕ) :
     specNorm (X k - X 0 * P k) ≤
-      ∑ j ∈ Finset.range k, specNorm (X (j + 1) - X j * U j) := sorry
+      ∑ j ∈ Finset.range k, specNorm (X (j + 1) - X j * U j) := by
+  induction k with
+  | zero => simp [hP0]
+  | succ k ih =>
+    have he : X (k + 1) - X 0 * P (k + 1) =
+        (X (k + 1) - X k * U k) + (X k - X 0 * P k) * U k := by
+      rw [hP, Matrix.sub_mul, Matrix.mul_assoc]; abel
+    rw [he, Finset.sum_range_succ]
+    refine (specNorm_add_le _ _).trans ?_
+    rw [(hU k).specNorm_mul_right]
+    linarith
 
 /-- **One-sided chain, left multiplications**: the mirror of `NLAlib.specNorm_sub_mul_le_sum`,
 with $\mathbf{P}_{j+1} = \mathbf{U}_j\mathbf{P}_j$. -/
@@ -400,6 +410,18 @@ theorem specNorm_sub_mul_left_le_sum {m : Type*} [Fintype m] [DecidableEq m]
     {U P : ℕ → Matrix m m ℂ} (hU : ∀ j, HasOrthonormalCols (U j)ᴴ) (hP0 : P 0 = 1)
     (hP : ∀ j, P (j + 1) = U j * P j) (X : ℕ → Matrix m m ℂ) (k : ℕ) :
     specNorm (X k - P k * X 0) ≤
-      ∑ j ∈ Finset.range k, specNorm (X (j + 1) - U j * X j) := sorry
+      ∑ j ∈ Finset.range k, specNorm (X (j + 1) - U j * X j) := by
+  induction k with
+  | zero => simp [hP0]
+  | succ k ih =>
+    have he : X (k + 1) - P (k + 1) * X 0 =
+        (X (k + 1) - U k * X k) + U k * (X k - P k * X 0) := by
+      rw [hP, Matrix.mul_sub, Matrix.mul_assoc]; abel
+    rw [he, Finset.sum_range_succ]
+    refine (specNorm_add_le _ _).trans ?_
+    have hUk := (hU k).conjTranspose
+    rw [Matrix.conjTranspose_conjTranspose] at hUk
+    rw [hUk.specNorm_mul_left]
+    linarith
 
 end NLAlib

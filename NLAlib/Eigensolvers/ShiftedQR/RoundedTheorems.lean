@@ -1105,8 +1105,8 @@ accumulator error $0 \le \varepsilon_L \le (1 + 24\boldsymbol{u})^{R_L} - 1$, ba
 $0 \le \beta_L \le \Sigma'(\beta/(4(2k + 1)\Sigma'))^k$ ($\beta$ = `shqrSmallEigAccuracy`,
 $\Sigma' = 4\Sigma$) and failure $0 \le \varphi_L \le$ `shqrSmallEigFailure`; let
 $\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{ShQR}}$ and $\boldsymbol{u}$ at most the replay term at
-$R_L$. Then `roundedShQRSchurWith L` meets the Schur core contract on the orders at most $n + 1$, the class
-$(B, \Gamma)$ and norms at most $\Sigma$, with the words: the deflation threshold, `shqrParams`,
+$R_L$. Then `roundedShQRSchurWith L` meets the Schur core contract on the orders at most
+$n + 1$, the class $(B, \Gamma)$ and norms at most $\Sigma$, with the words: the deflation threshold, `shqrParams`,
 `qs`. Except with probability $\varphi$ its flag is $0$, its matrix upper triangular, and the
 pair is tracked from $(\mathbf{U}, \mathbf{H})$ with the backward error $\delta$ and the relative
 accumulator error $(1 + 24\boldsymbol{u})^{R} - 1$, $R$ = `NLAlib.ShiftedQR.shqrSchurRotations`

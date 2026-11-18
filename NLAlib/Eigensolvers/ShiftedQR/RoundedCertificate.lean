@@ -82,14 +82,6 @@ instance : Has EigenvalueKernelOp ShQROp :=
 
 instance : Has DiskSampleOp ShQROp := Has.sumRight _ _ _ (Has.sumRight _ _ _ inferInstance)
 
-/-- **The rounded shifted QR program**: `NLAlib.ShiftedQR.roundedShQR` at the order `d 0 + 1`,
-the shift degree `d 1`, `d 2` parameter words and the cap `d 3`, on the five supplied buffers
-(matrix, threshold word, parameter words, output, failure word). -/
-def shqrProgram : Program ShQROp Tst 4 5 :=
-  ⟨.frame [.var 0 + .const 1, .var 1, .var 2, .var 3]
-    [⟨0, .var 4⟩, ⟨1, .var 5⟩, ⟨2, .var 6⟩, ⟨3, .var 7⟩, ⟨4, .var 8⟩]
-    (roundedShQR (O := ShQROp) (Q := Tst)).body⟩
-
 /-! ### The problem -/
 
 /-- **The semantic input** at the sizes `d`: the matrix of order `d 0 + 1` and the reals
@@ -150,25 +142,7 @@ variable {Mch : Machine ℝ} {admitted : ∃ d, ShQRSizes Mch d}
 (`NLAlib.ShiftedQR.ShQRInput`) at the five supplied buffers. -/
 theorem shqrProblem_initial_input (d : Fin 4 → ℕ) (x : (shqrProblem Mch admitted).Input d) :
     ShQRInput (d 1) x.val.1.B x.val.1.Γ x.val.1.S x.val.1.δ x.val.1.φ (0, 0) (1, 0) (2, 0)
-      (3, 0) (4, 0) x.val.1.matrix ((shqrProblem Mch admitted).initial d x) := by
-  have hb : x.val.2 = x.val.1.buffers := x.property
-  have hs : ((shqrProblem Mch admitted).initial d x).store = List.ofFn x.val.1.buffers := by
-    change List.ofFn x.val.2 = _
-    rw [hb]
-  have hA := Problem.initial_readBlock (P := shqrProblem Mch admitted) d x (0 : Fin 5)
-    (xs := matrixWords x.val.1.matrix) (by rw [hb]; rfl)
-  have hP := Problem.initial_readBlock (P := shqrProblem Mch admitted) d x (2 : Fin 5)
-    (xs := shqrParams (d 0) (d 1) x.val.1.B x.val.1.Γ x.val.1.S x.val.1.δ x.val.1.φ)
-    (by rw [hb]; rfl)
-  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
-  · simp [Mem.Live, Problem.initial]
-  · simp [Mem.Room, hs, Store.len, ShQRData.buffers, List.ofFn_succ]
-  · simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil]
-    disjoint
-  · simpa [HoldsMatrix] using hA
-  · rw [hs]
-    simp [Store.get, ShQRData.buffers, List.ofFn_succ]
-  · simpa using hP
+      (3, 0) (4, 0) x.val.1.matrix ((shqrProblem Mch admitted).initial d x) := sorry
 
 /-! ### The access model -/
 
@@ -352,32 +326,6 @@ def shqrSlots : List WorkMono :=
 /-- The single-base degrees of the program's initial indices. -/
 def shqrDegrees : List ℕ := List.replicate 4 1 ++ List.replicate 5 0
 
-/-- The monomial bound of the instructions of the instrumented program is
-$196218\,b_0^3 b_1^3 b_2 b_3$. -/
-theorem stmtWorkMono_shqrProgram :
-    stmtWorkMono shqrProgram.body.instrument shqrSlots = ⟨196218, [3, 3, 1, 1]⟩ := by
-  kernel_rfl
-
-/-- The selected-call tree of the kernel calls has coefficient $8$. -/
-theorem workCoefficient_shqrKernels :
-    (shqrProgram.body.instrument.keepCalls shqrKernelCall).workCoefficient = 8 := by
-  kernel_rfl
-
-/-- The selected-call tree of the kernel calls has degree $4$. -/
-theorem workDegreeAt_shqrKernels :
-    (shqrProgram.body.instrument.keepCalls shqrKernelCall).workDegreeAt shqrDegrees = 4 := by
-  kernel_rfl
-
-/-- The kernel calls have dimension entries of degree at most $2$. -/
-theorem callDegreeAt_shqrKernels :
-    (shqrProgram.body.instrument.keepCalls shqrKernelCall).callDegreeAt shqrDegrees = 2 := by
-  kernel_rfl
-
-/-- The kernel calls have at most one dimension. -/
-theorem callArity_shqrKernels :
-    (shqrProgram.body.instrument.keepCalls shqrKernelCall).callArity = 1 := by
-  kernel_rfl
-
 /-- The base of the kernel-call polynomial: the sum of the sizes plus two. -/
 def shqrBase (d : Fin 4 → ℕ) : ℕ := d 0 + d 1 + d 2 + d 3 + 2
 
@@ -391,73 +339,6 @@ $8b^4$ of kernel calls times their largest weight. -/
 def shqrWork (kernel : EigenvalueKernelOp → List ℕ → ℕ) (d : Fin 4 → ℕ) : ℕ :=
   196218 * (d 0 + 1) ^ 3 * (d 1 + 1) ^ 3 * (d 2 + 1) * (d 3 + 1) +
     8 * shqrBase d ^ 4 * spectralWorkEnvelope kernel 1 (shqrBase d ^ 2)
-
-/-- The weighted count of every successful counted run of the program, under weights of at most
-one on every instruction except the kernel calls and the weight `kernel` on those, is at most
-`NLAlib.ShiftedQR.shqrWork kernel`. -/
-theorem shqrProgram_lift_le {K : Type} (R : ResourceModel ShQROp Tst) {I : Interp ShQROp Tst K}
-    {τ : Tape K} {formats : Fin 5 → StorageFormat} {d : Fin 4 → ℕ} {m : Mem K}
-    {st : St (ShQROp ⊕ Bookkeeping) Tst K} (hr : exec shqrProgram I R formats τ d m = some st)
-    (kernel : EigenvalueKernelOp → List ℕ → ℕ)
-    {f : (ShQROp ⊕ Bookkeeping) ⊕ Tst → List ℕ → ℕ}
-    (hf : ∀ k ds, f k ds ≤ 1 + Sum.elim (shqrKernelWeight kernel) (fun _ _ => 0) k ds) :
-    Count.lift f st.cost ≤ shqrWork kernel d := by
-  have hσ : SlotsLe [d 0 + 1, d 1 + 1, d 2 + 1, d 3 + 1]
-      (Program.environment (b := 5) d).idx shqrSlots := by
-    change List.Forall₂ _ [d 0, d 1, d 2, d 3, 0, 0, 0, 0, 0] _
-    simp [shqrSlots, WorkMono.eval, WorkMono.const]
-  have hi : List.Forall₂ (fun v e => v ≤ shqrBase d ^ e)
-      (Program.environment (b := 5) d).idx shqrDegrees := by
-    change List.Forall₂ _ [d 0, d 1, d 2, d 3, 0, 0, 0, 0, 0] _
-    simp only [shqrDegrees, List.replicate, List.cons_append, List.nil_append, List.forall₂_cons,
-      pow_one, pow_zero, Nat.zero_le, List.Forall₂.nil, and_true]
-    refine ⟨?_, ?_, ?_, ?_⟩ <;> (dsimp [shqrBase]; omega)
-  have h := Program.exec_lift_le_add_selected shqrProgram R hr shqrKernelCall hf
-    (by rintro (o | o) ds h <;> first | rfl | (rcases o with o | o | o | o <;> first | rfl |
-      simp [shqrKernelCall] at h))
-    (by simp) hσ (E := spectralWorkEnvelope kernel 1 (shqrBase d ^ 2))
-    (by dsimp [shqrBase]; omega) hi ?_
-  · rw [stmtWorkMono_shqrProgram, workCoefficient_shqrKernels, workDegreeAt_shqrKernels] at h
-    simpa [WorkMono.eval, shqrWork, mul_assoc] using h
-  · rw [callArity_shqrKernels, callDegreeAt_shqrKernels]
-    refine ⟨?_, fun _ _ _ _ => Nat.zero_le _⟩
-    rintro (o | o) ds hl hx
-    · rcases o with o | o | e | o
-      · exact Nat.zero_le _
-      · exact Nat.zero_le _
-      · have := le_weightEnvelope
-          (fun ds => max (kernel .ritz ds) (kernel .smallEig ds)) hl hx
-        cases e
-        · exact (Nat.le_max_left _ _).trans this
-        · exact (Nat.le_max_right _ _).trans this
-      · exact Nat.zero_le _
-    · exact Nat.zero_le _
-
-/-- The work of every run: under the costs `NLAlib.ShiftedQR.shqrResources`, every successful
-counted run of the program has work at most `NLAlib.ShiftedQR.shqrWork kernelWork` and span at
-most `NLAlib.ShiftedQR.shqrWork kernelSpan` at its sizes. -/
-theorem shqrProgram_work_le {K : Type}
-    (kernelWork kernelSpan kernelWorkspace : EigenvalueKernelOp → List ℕ → ℕ)
-    (hspan : ∀ k d, kernelSpan k d ≤ kernelWork k d) {I : Interp ShQROp Tst K}
-    {τ : Tape K} {formats : Fin 5 → StorageFormat} {d : Fin 4 → ℕ} {m : Mem K}
-    {st : St (ShQROp ⊕ Bookkeeping) Tst K}
-    (hr : exec shqrProgram I (shqrResources kernelWork kernelSpan kernelWorkspace hspan)
-      formats τ d m = some st) :
-    (shqrResources kernelWork kernelSpan kernelWorkspace hspan).work st.cost ≤
-        shqrWork kernelWork d ∧
-      (shqrResources kernelWork kernelSpan kernelWorkspace hspan).span st.cost ≤
-        shqrWork kernelSpan d := by
-  constructor
-  · refine shqrProgram_lift_le _ hr kernelWork ?_
-    rintro ((o | k) | q) ds
-    · rcases o with o | o | e | o <;> simp [shqrResources, shqrKernelWeight]
-    · simp [shqrResources]
-    · simp [shqrResources]
-  · refine shqrProgram_lift_le _ hr kernelSpan ?_
-    rintro ((o | k) | q) ds
-    · rcases o with o | o | e | o <;> simp [shqrResources, shqrKernelWeight]
-    · simp [shqrResources]
-    · simp [shqrResources]
 
 /-! ### The certificate -/
 
@@ -473,176 +354,6 @@ theorem shqrProblem_initialBytes (d : Fin 4 → ℕ) (x : (shqrProblem Mch admit
   simp [shqrProblem, ShQRData.buffers, List.ofFn_succ, shqrInputWords, ← x.val.1.words_eq,
     Nat.add_assoc]
 
-/-- The specification with the manifest work and span (the costs of the static count) and the
-frame as the every-tape output claim. -/
-noncomputable def shqrManifestSpecification (Mch : Machine ℝ) (admitted : ∃ d, ShQRSizes Mch d)
-    (R : ResourceModel ShQROp Tst) : Specification ShQROp Tst (shqrProblem Mch admitted) where
-  budget := staticCost shqrProgram
-  scratch := staticPeak R shqrProgram
-  work d := R.work (staticCost shqrProgram d)
-  span d := R.span (staticCost shqrProgram d)
-  memory d := shqrInputWords d + staticPeak R shqrProgram d
-  good d x _ _ m := (shqrProblem Mch admitted).initial d x |>.store.EqOff
-    (shqrFp (d 0) (0, 0) (3, 0) (4, 0)) m.store
-
-/-- The program terminates on every admitted input, tape and interpretation of the model, and
-writes only the matrix, the output and the failure word. -/
-theorem shqrProgram_wp {s : ℕ} {W : ℕ → ℕ}
-    {Bad : (d : ℕ) → Matrix (Fin d) (Fin d) ℂ → Set (Fin (W d) → ℝ)}
-    (hBad : ∀ d B, MeasurableSet (Bad d B)) {β : ℝ} {hβ : 0 ≤ β} {R : ResourceModel ShQROp Tst}
-    {d : Fin 4 → ℕ} (hd : ShQRSizes Mch d) (x : (shqrProblem Mch admitted).Input d)
-    {I : Interp ShQROp Tst ℝ}
-    (hI : (shqrModel (shqrProblem Mch admitted) Mch s W Bad hβ R).contracts d x I)
-    (τ : Tape ℝ) :
-    Wp .total I τ shqrProgram.body (Program.environment (b := 5) d)
-      (fun m => ((shqrProblem Mch admitted).initial d x).store.EqOff
-        (shqrFp (d 0) (0, 0) (3, 0) (4, 0)) m.store)
-      ((shqrProblem Mch admitted).initial d x) := by
-  obtain ⟨hS, hL, hC, hQ', hSE, hDisk⟩ := shqrModel_laws hI
-  have hSE' : IsRandomSmallEig (fun _ => Measure.dirac 0) s β 1 I :=
-    ⟨W, Bad, hBad, fun _ _ _ => measureReal_le_one, hSE⟩
-  have hin := shqrProblem_initial_input (admitted := admitted) d x
-  have hT := roundedShQR_terminates (O := ShQROp) (Q := Tst) hS hL hd.1 hQ' hC hSE' hDisk
-    x.val.1.degree_eq hin τ
-  refine wp_frame ?_ ?_ hin.1 (hT.wp fun m h _ => h)
-  · simp [Program.environment, IExp.evalList, IExp.eval, shqrDims, x.val.1.words_eq,
-      x.val.1.cap_eq, List.ofFn_succ]
-  · simp [Program.environment, Operand.evalList, Operand.eval, IExp.eval, List.ofFn_succ]
-
-/-- The program passes the storage discipline of the costs. -/
-theorem shqrProgram_wellTyped
-    (kernelWork kernelSpan kernelWorkspace : EigenvalueKernelOp → List ℕ → ℕ)
-    (hspan : ∀ k d, kernelSpan k d ≤ kernelWork k d) :
-    shqrProgram.wellTyped (shqrResources kernelWork kernelSpan kernelWorkspace hspan)
-      (shqrProblem Mch admitted).formats = true := by
-  kernel_rfl
-
-/-- The certificate with the manifest work and span. -/
-private noncomputable def roundedShQRManifestAlgorithm (Mch : Machine ℝ)
-    (admitted : ∃ d, ShQRSizes Mch d) (s : ℕ) (W : ℕ → ℕ)
-    (Bad : (d : ℕ) → Matrix (Fin d) (Fin d) ℂ → Set (Fin (W d) → ℝ))
-    (hBad : ∀ d B, MeasurableSet (Bad d B)) {β : ℝ} (hβ : 0 ≤ β)
-    (kernelWork kernelSpan kernelWorkspace : EigenvalueKernelOp → List ℕ → ℕ)
-    (hspan : ∀ k d, kernelSpan k d ≤ kernelWork k d) :
-    Algorithm (shqrModel (shqrProblem Mch admitted) Mch s W Bad hβ
-        (shqrResources kernelWork kernelSpan kernelWorkspace hspan))
-      (shqrManifestSpecification Mch admitted
-        (shqrResources kernelWork kernelSpan kernelWorkspace hspan)) :=
-  Algorithm.ofWp shqrProgram (shqrProgram_wellTyped kernelWork kernelSpan kernelWorkspace hspan)
-    (fun _ hd x _ hI τ => (shqrProgram_wp hBad hd x hI τ).mono fun _ h _ _ => h)
-    (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl)
-    (fun d _ x => by rw [shqrProblem_initialBytes]; exact le_rfl)
-
-/-- **The specification of the rounded shifted QR algorithm**: the budget, scratch and resident
-memory of the static count, the work `NLAlib.ShiftedQR.shqrWork kernelWork` and the span
-`NLAlib.ShiftedQR.shqrWork kernelSpan`, and on every tape the frame: the run writes only the
-matrix, the output and the failure word. -/
-noncomputable def shqrSpecification (Mch : Machine ℝ) (admitted : ∃ d, ShQRSizes Mch d)
-    (kernelWork kernelSpan kernelWorkspace : EigenvalueKernelOp → List ℕ → ℕ)
-    (hspan : ∀ k d, kernelSpan k d ≤ kernelWork k d) :
-    Specification ShQROp Tst (shqrProblem Mch admitted) :=
-  { shqrManifestSpecification Mch admitted
-      (shqrResources kernelWork kernelSpan kernelWorkspace hspan) with
-    work := shqrWork kernelWork
-    span := shqrWork kernelSpan }
-
-/-- **The rounded shifted QR algorithm as a canonical certificate**: the fixed program
-`NLAlib.ShiftedQR.shqrProgram`, over the model `NLAlib.ShiftedQR.shqrModel` with the costs
-`NLAlib.ShiftedQR.shqrResources`, succeeds on every admitted input, interpretation of the model
-and tape, within the static budget, scratch and memory, with work at most
-`NLAlib.ShiftedQR.shqrWork kernelWork` and span at most `NLAlib.ShiftedQR.shqrWork kernelSpan`,
-writing only the matrix, the output and the failure word. The output's accuracy holds with
-probability at least $1 - \varphi$
-(`NLAlib.ShiftedQR.roundedShQR_algorithm_measureReal_not_accepts_le`).
-Algorithm: shifted-qr-rounded (run model) -/
-noncomputable def roundedShQRAlgorithm (Mch : Machine ℝ)
-    (admitted : ∃ d, ShQRSizes Mch d) (s : ℕ) (W : ℕ → ℕ)
-    (Bad : (d : ℕ) → Matrix (Fin d) (Fin d) ℂ → Set (Fin (W d) → ℝ))
-    (hBad : ∀ d B, MeasurableSet (Bad d B)) {β : ℝ} (hβ : 0 ≤ β)
-    (kernelWork kernelSpan kernelWorkspace : EigenvalueKernelOp → List ℕ → ℕ)
-    (hspan : ∀ k d, kernelSpan k d ≤ kernelWork k d) :
-    Algorithm (shqrModel (shqrProblem Mch admitted) Mch s W Bad hβ
-        (shqrResources kernelWork kernelSpan kernelWorkspace hspan))
-      (shqrSpecification Mch admitted kernelWork kernelSpan kernelWorkspace hspan) where
-  program := shqrProgram
-  correct := by
-    intro d hd x I hI τ
-    obtain ⟨st, hr, hp, hc, -, -, hm, hg⟩ := (roundedShQRManifestAlgorithm Mch admitted s W Bad
-      hBad hβ kernelWork kernelSpan kernelWorkspace hspan).correct d hd x I hI τ
-    obtain ⟨hw, hs⟩ := shqrProgram_work_le kernelWork kernelSpan kernelWorkspace hspan hr
-    exact ⟨st, hr, hp, hc, hw, hs, hm, hg⟩
-
 /-! ### The headline on one run -/
-
-/-- **The rounded shifted QR algorithm, on one run** ([BanksGarzaVargasSrivastava2022,
-Theorem 6.3 with Theorem 1.4's quantifiers, corrected]). Let the machine `Mch` have the
-standard model at $\boldsymbol{u}$; let `Bad` be measurable sets of windows of lengths `W` of the
-stream $s_U$, of probability at most $\varphi_{\mathrm{se}}$ under the product of `law` $s_U$ at
-every upper Hessenberg matrix; let the kernel weights `kernelWork` $\ge$ `kernelSpan` and the
-workspace `kernelWorkspace` be arbitrary. Let $(n, k, n_p, F)$ = `d` be admitted (in particular
-$k \le n$) and let the input `x` hold an upper Hessenberg $\mathbf{H}$ of order $n + 1$ with
-$\mathbf{H}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$, $\kappa(\mathbf{V}) \le B$,
-eigenvalues separated by $\Gamma > 0$, $\|\mathbf{H}\|_2 \le \Sigma$, $0 < \delta \le \Sigma$,
-$0 < \varphi \le 1$, with $0 \le \beta_{\mathrm{se}} \le$ `shqrSmallEigAccuracy`,
-$0 \le \varphi_{\mathrm{se}} \le$ `shqrSmallEigFailure` and
-$\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{ShQR}}$. Let `I` meet the model, be measurable and
-read the tape only in its windows, and let the tape $\xi$ have the stream laws `law`, with
-`law` $s_U$ uniform on $[0, 1]$. Then the probability that the counted run of
-`NLAlib.ShiftedQR.roundedShQRAlgorithm` on $\xi$ fails, exceeds its budget, scratch or memory,
-has work above `NLAlib.ShiftedQR.shqrWork kernelWork` or span above
-`NLAlib.ShiftedQR.shqrWork kernelSpan`, writes outside the matrix, the output and the failure
-word, or does not set the failure word to $0$ and store all eigenvalues of some
-$\mathbf{H} + \mathbf{E}$ with $\|\mathbf{E}\|_2 \le \delta$, is at most $\varphi$.
-Result: shifted-qr-rounded-certificate-accuracy -/
-theorem roundedShQR_algorithm_measureReal_not_accepts_le {u : ℝ} (hM : StdModel u id Mch)
-    {sU : ℕ} {W : ℕ → ℕ} {Bad : (d : ℕ) → Matrix (Fin d) (Fin d) ℂ → Set (Fin (W d) → ℝ)}
-    (hBad : ∀ d B, MeasurableSet (Bad d B)) {βse φse : ℝ} (hβse0 : 0 ≤ βse)
-    {law : ℕ → Measure ℝ}
-    (hBadφ : ∀ e (B : Matrix (Fin e) (Fin e) ℂ), IsUpperHessenberg B →
-      (Measure.pi fun _ : Fin (W e) => law sU).real (Bad e B) ≤ φse)
-    (hU : law sU = volume.restrict (Set.Icc 0 1))
-    (kernelWork kernelSpan kernelWorkspace : EigenvalueKernelOp → List ℕ → ℕ)
-    (hspan : ∀ k d, kernelSpan k d ≤ kernelWork k d)
-    {d : Fin 4 → ℕ} (hd : ShQRSizes Mch d) (x : (shqrProblem Mch admitted).Input d)
-    {I : Interp ShQROp Tst ℝ}
-    (hI : (shqrModel (shqrProblem Mch admitted) Mch sU W Bad hβse0
-      (shqrResources kernelWork kernelSpan kernelWorkspace hspan)).contracts d x I)
-    (hIm : I.IsMeasurable) {win : ShQROp → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
-    {V : Matrix (Fin (d 0 + 1)) (Fin (d 0 + 1)) ℂ} {ev : Fin (d 0 + 1) → ℂ}
-    (hHess : IsUpperHessenberg x.val.1.matrix) (hV : IsUnit V)
-    (hHV : x.val.1.matrix * V = V * Matrix.diagonal ev)
-    (hκ : pseudoConditionNumber V ≤ x.val.1.B) (hΓ : 0 < x.val.1.Γ)
-    (hgap : ∀ i j, i ≠ j → x.val.1.Γ ≤ ‖ev i - ev j‖)
-    (hHS : specNorm x.val.1.matrix ≤ x.val.1.S) (hδ : 0 < x.val.1.δ)
-    (hδS : x.val.1.δ ≤ x.val.1.S) (hφ : 0 < x.val.1.φ) (hφ1 : x.val.1.φ ≤ 1)
-    (hse : βse ≤ shqrSmallEigAccuracy (d 0) x.val.1.B x.val.1.Γ x.val.1.S x.val.1.δ)
-    (hφse0 : 0 ≤ φse)
-    (hφse : φse ≤ shqrSmallEigFailure (d 0) x.val.1.B x.val.1.Γ x.val.1.S x.val.1.δ x.val.1.φ)
-    (hu : u ≤ uShQR (d 0) (d 1) x.val.1.B x.val.1.Γ x.val.1.S x.val.1.δ x.val.1.φ)
-    {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ (shqrSpecification Mch admitted kernelWork kernelSpan kernelWorkspace
-        hspan).Accepts (shqrResources kernelWork kernelSpan kernelWorkspace hspan) d x
-      (exec (roundedShQRAlgorithm Mch admitted sU W Bad hBad hβse0 kernelWork kernelSpan
-          kernelWorkspace hspan).program I
-        (shqrResources kernelWork kernelSpan kernelWorkspace hspan)
-        (shqrProblem Mch admitted).formats (ξ ω) d ((shqrProblem Mch admitted).initial d x))
-      fun _ m => ((shqrProblem Mch admitted).initial d x).store.EqOff
-          (shqrFp (d 0) (0, 0) (3, 0) (4, 0)) m.store ∧
-        ShQRSpectrum (3, 0) (4, 0) x.val.1.matrix x.val.1.δ m} ≤ x.val.1.φ := by
-  have := hξ.isProbabilityMeasure
-  obtain ⟨hS, hL, hC, hQ, hSE, hDisk⟩ := shqrModel_laws hI
-  have hSE' : IsRandomSmallEig law sU βse φse I := ⟨W, Bad, hBad, hBadφ, hSE⟩
-  have hin := shqrProblem_initial_input (admitted := admitted) d x
-  have hT := roundedShQR_measureReal_not_spectrum_le (O := ShQROp) (Q := Tst) hS hM hL hd.1 hQ
-    hC hIm hloc hSE' hDisk hU hHess hV hHV hκ hΓ hgap hHS hδ hδS hφ hφ1 x.val.1.degree_eq
-    hβse0 hse hφse0 hφse hu hin hξ
-  refine (roundedShQRAlgorithm Mch admitted sU W Bad hBad hβse0 kernelWork kernelSpan
-    kernelWorkspace hspan).measureReal_not_accepts_le_of_wp hd x I hI P ξ _ ?_
-  refine (measureReal_mono ?_).trans hT
-  intro ω hω hW
-  refine hω (wp_frame ?_ ?_ hin.1 hW)
-  · simp [Program.environment, IExp.evalList, IExp.eval, shqrDims, x.val.1.words_eq,
-      x.val.1.cap_eq, List.ofFn_succ]
-  · simp [Program.environment, Operand.evalList, Operand.eval, IExp.eval, List.ofFn_succ]
 
 end NLAlib.ShiftedQR

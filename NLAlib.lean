@@ -6,7 +6,10 @@ public import NLAlib.Eigensolvers.Deflation.Execution
 public import NLAlib.Eigensolvers.Deflation.Probability
 public import NLAlib.Eigensolvers.HessenbergReduction
 public import NLAlib.Eigensolvers.RandomizedDeflation
+public import NLAlib.Eigensolvers.Schur.Certificate
 public import NLAlib.Eigensolvers.Schur.Contracts
+public import NLAlib.Eigensolvers.Schur.Dense
+public import NLAlib.Eigensolvers.Schur.NormEstimate
 public import NLAlib.Eigensolvers.Schur.Pipeline
 public import NLAlib.Eigensolvers.Schur.Regularizer
 public import NLAlib.Eigensolvers.ShiftedQR.Acceptance

@@ -94,7 +94,7 @@ structure ShQRSmallEigData (c₁ c₂ : PolyLogTail) (d : Fin 5 → ℕ) where
   smallEigCap_eq : d 4 = shqrSmallEigCap (d 0) (d 1) B Γ S δ φ c₁ c₂
 
 /-- The five raw buffers of an input: the matrix words, the deflation threshold word, the
-parameter words, uninitialized room for the $2(n + 1)$ output words and the failure word. -/
+parameter words, the identity accumulator and the failure word. -/
 noncomputable def ShQRSmallEigData.buffers {c₁ c₂ : PolyLogTail} {d : Fin 5 → ℕ}
     (x : ShQRSmallEigData c₁ c₂ d) : Fin 5 → Buf ℝ :=
   ![(matrixWords x.matrix).map some,
@@ -145,7 +145,10 @@ theorem shqrSmallEigProblem_initial_input (d : Fin 5 → ℕ)
     (2 : Fin 5)
     (xs := shqrSmallEigParams (d 0) (d 1) x.val.1.B x.val.1.Γ x.val.1.S x.val.1.δ x.val.1.φ c₁ c₂)
     (by rw [hb]; rfl)
-  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
+  have hU := Problem.initial_readBlock (P := shqrSmallEigProblem Mch c₁ c₂ admitted) d x
+    (3 : Fin 5) (xs := matrixWords (1 : Matrix (Fin (d 0 + 1)) (Fin (d 0 + 1)) ℂ))
+    (by rw [hb]; rfl)
+  refine ⟨?_, ?_, ?_, ⟨1, by simpa [HoldsMatrix] using hU⟩, ?_, ?_, ?_⟩
   · simp [Mem.Live, Problem.initial]
   · simp [Mem.Room, hs, Store.len, ShQRSmallEigData.buffers, List.ofFn_succ]
   · simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil]
@@ -165,15 +168,15 @@ def shqrSmallEigSlots : List WorkMono :=
 -- The kernel evaluates the bound of the whole instrumented tree; its recursion is deep.
 set_option maxRecDepth 100000 in
 /-- The monomial bound of the instructions of the instrumented program is
-$960712\,b_0^3 b_1^4 b_2 b_3 b_4^2$ (`NLAlib.ShiftedQR.shqrSmallEigWork`). -/
+$960776\,b_0^3 b_1^4 b_2 b_3 b_4^2$ (`NLAlib.ShiftedQR.shqrSmallEigWork`). -/
 theorem stmtWorkMono_shqrSmallEigProgram (sG : ℕ) :
     stmtWorkMono (shqrSmallEigProgram sG).body.instrument shqrSmallEigSlots =
-      ⟨960712, [3, 4, 1, 1, 2]⟩ := by
+      ⟨960776, [3, 4, 1, 1, 2]⟩ := by
   kernel_rfl
 
 /-- **The work (and span) polynomial** of the rounded shifted QR algorithm with the
 small-eigenvalue program at the sizes $(n, k, n_p, F, T)$ = `d`:
-$960712\,(n + 1)^3(k + 1)^4(n_p + 1)(F + 1)(T + 1)^2$, the
+$960776\,(n + 1)^3(k + 1)^4(n_p + 1)(F + 1)(T + 1)^2$, the
 monomial bound of the instructions of the instrumented program, each of unit weight; the
 instructions of the small-eigenvalue program are among them (one bound over the whole tree). The
 parameter words (thresholds, scales and caps, real numbers with logarithms and roots) are
@@ -183,7 +186,7 @@ cap $T$ = `NLAlib.SmallEig.smallEigCap` is the largest loop count ($m$, $t$, $m_
 $n_{\max}\Sigma/(\delta\varphi)$ up to constants (bounded in the proof of
 `NLAlib.SmallEig.logb_inv_uSmallEig_le`). -/
 def shqrSmallEigWork (d : Fin 5 → ℕ) : ℕ :=
-  960712 * (d 0 + 1) ^ 3 * (d 1 + 1) ^ 4 * (d 2 + 1) * (d 3 + 1) * (d 4 + 1) ^ 2
+  960776 * (d 0 + 1) ^ 3 * (d 1 + 1) ^ 4 * (d 2 + 1) * (d 3 + 1) * (d 4 + 1) ^ 2
 
 /-- The number of instructions of the static count of the program is at most
 `NLAlib.ShiftedQR.shqrSmallEigWork`. -/
@@ -283,7 +286,7 @@ hold an upper Hessenberg $\mathbf{H}$ of order $n + 1$ with
 $\mathbf{H}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$, $\kappa(\mathbf{V}) \le B$,
 eigenvalues separated by $\Gamma > 0$, $\|\mathbf{H}\|_2 \le \Sigma$, $0 < \delta \le \Sigma$,
 $0 < \varphi \le 1$ and $\boldsymbol{u} \le \boldsymbol{u}_0$
-(`NLAlib.ShiftedQR.uShQRSmallEig`). Let `I` meet the model, be measurable and read the tape only
+(`NLAlib.ShiftedQR.uShQRSchur`). Let `I` meet the model, be measurable and read the tape only
 in its windows. Then
 $$\mathbb{P}\bigl[\mathsf{roundedShQRSmallEigAlgorithm}(\mathbf{H}) \text{ fails, exceeds its
   budget, scratch, memory, work or span, writes outside the matrix, the output and the failure
@@ -306,7 +309,7 @@ theorem roundedShQRSmallEig_algorithm_measureReal_not_accepts_le {u : ℝ}
     (hgap : ∀ i j, i ≠ j → x.val.1.Γ ≤ ‖ev i - ev j‖)
     (hHS : specNorm x.val.1.matrix ≤ x.val.1.S) (hδ : 0 < x.val.1.δ)
     (hδS : x.val.1.δ ≤ x.val.1.S) (hφ : 0 < x.val.1.φ) (hφ1 : x.val.1.φ ≤ 1)
-    (hu : u ≤ uShQRSmallEig (d 0) (d 1) x.val.1.B x.val.1.Γ x.val.1.S x.val.1.δ x.val.1.φ c₁ c₂)
+    (hu : u ≤ uShQRSchur (d 0) (d 1) x.val.1.B x.val.1.Γ x.val.1.S x.val.1.δ x.val.1.φ c₁ c₂)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
     P.real {ω | ¬ (shqrSmallEigSpecification Mch c₁ c₂ admitted sG).Accepts smallEigResources d x
       (exec (roundedShQRSmallEigAlgorithm Mch c₁ c₂ admitted sU sG).program I smallEigResources
@@ -346,7 +349,7 @@ theorem roundedShQRSmallEig_algorithm_measureReal_not_accepts_le_unconditional
     (hgap : ∀ i j, i ≠ j → x.val.1.Γ ≤ ‖ev i - ev j‖)
     (hHS : specNorm x.val.1.matrix ≤ x.val.1.S) (hδ : 0 < x.val.1.δ)
     (hδS : x.val.1.δ ≤ x.val.1.S) (hφ : 0 < x.val.1.φ) (hφ1 : x.val.1.φ ≤ 1)
-    (hu : u ≤ uShQRSmallEig (d 0) (d 1) x.val.1.B x.val.1.Γ x.val.1.S x.val.1.δ x.val.1.φ
+    (hu : u ≤ uShQRSchur (d 0) (d 1) x.val.1.B x.val.1.Γ x.val.1.S x.val.1.δ x.val.1.φ
       ginibreGapTail ginibreConditionTail)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
     P.real {ω | ¬ (shqrSmallEigSpecification Mch ginibreGapTail

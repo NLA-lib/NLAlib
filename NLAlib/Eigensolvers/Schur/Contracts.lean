@@ -43,11 +43,13 @@ def HoldsSchurPair {n : ℕ} (a uo : ℕ × ℕ) (U T : Matrix (Fin n) (Fin n) �
     Prop :=
   HoldsMatrix a T s ∧ HoldsMatrix uo U s
 
-/-- **A two-sided Frobenius norm estimate**, deterministic: `[N] (A) → (S)` stores $x$ with
-$c_1\|\mathbf{A}\|_{\mathsf F} \le x \le c_2\|\mathbf{A}\|_{\mathsf F}$. -/
-def FrobNormEstimateContract (c₁ c₂ : ℝ) (Nm : Impl O Q) (I : Interp O Q ℝ) : Prop :=
+/-- **A two-sided Frobenius norm estimate**, deterministic: for every order $N \le N_{\max}$,
+`[N] (A) → (S)` stores $x$ with
+$c_1\|\mathbf{A}\|_{\mathsf F} \le x \le c_2\|\mathbf{A}\|_{\mathsf F}$. A rounded estimate has
+constants that depend on the order, so the order is bounded outside the quantifier. -/
+def FrobNormEstimateContract (c₁ c₂ : ℝ) (nmax : ℕ) (Nm : Impl O Q) (I : Interp O Q ℝ) : Prop :=
   ∀ {N : ℕ} {a s : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ} (A : Matrix (Fin N) (Fin N) ℂ),
-    HoldsMatrix a A μ.store → μ.Live [a, s] → s.2 + 1 ≤ μ.store.len s.1 →
+    N ≤ nmax → HoldsMatrix a A μ.store → μ.Live [a, s] → s.2 + 1 ≤ μ.store.len s.1 →
     Fp.Disj (Store.inBlock a.1 a.2 (2 * (N * N))) (Store.inBlock s.1 s.2 1) →
     Writes .total I tape Nm.body (Env.frame [N] [a, s]) (Store.inBlock s.1 s.2 1)
       (fun μ' => ∃ x : ℝ, μ'.store.get s.1 s.2 = some x ∧ c₁ * frobNorm A ≤ x ∧
@@ -71,13 +73,15 @@ def RandomRegularizerContract (law : ℕ → Measure ℝ) (δ φ : ℝ)
       (fun μ' => ∃ E : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
         HoldsMatrix a (A + E) μ'.store ∧ specNorm E ≤ δ ∧ C (A + E)) φ
 
-/-- **A Hessenberg reducer with an accumulated unitary**, deterministic: `[N] (A, U) → (A, U)`
-stores an upper Hessenberg $\mathbf{H}$ and an accumulator, tracked from $(\mathbf{U},
-\mathbf{A})$ with the relative accumulator error $\varepsilon_U$ and the backward error
-$\varepsilon_T\|\mathbf{A}\|_2$. -/
-def HessenbergReducerContract (εU εT : ℝ) (Red : Impl O Q) (I : Interp O Q ℝ) : Prop :=
+/-- **A Hessenberg reducer with an accumulated unitary**, deterministic: for every order
+$N \le N_{\max}$, `[N] (A, U) → (A, U)` stores an upper Hessenberg $\mathbf{H}$ and an
+accumulator, tracked from $(\mathbf{U}, \mathbf{A})$ with the relative accumulator error
+$\varepsilon_U$ and the backward error $\varepsilon_T\|\mathbf{A}\|_2$. A rounded reducer has
+errors that grow with the order, so the order is bounded outside the quantifier. -/
+def HessenbergReducerContract (εU εT : ℝ) (nmax : ℕ) (Red : Impl O Q) (I : Interp O Q ℝ) :
+    Prop :=
   ∀ {N : ℕ} {a uo : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ} (A U : Matrix (Fin N) (Fin N) ℂ),
-    HoldsSchurPair a uo U A μ.store → μ.Live [a, uo] →
+    N ≤ nmax → HoldsSchurPair a uo U A μ.store → μ.Live [a, uo] →
     Fp.Disj (Store.inBlock a.1 a.2 (2 * (N * N))) (Store.inBlock uo.1 uo.2 (2 * (N * N))) →
     Writes .total I tape Red.body (Env.frame [N] [a, uo, a, uo])
       (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Store.inBlock uo.1 uo.2 (2 * (N * N)))
@@ -99,20 +103,21 @@ def RandomSchurCoreContract (law : ℕ → Measure ℝ) (εU εT φ : ℝ)
         Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
       (fun μ => HoldsSchurPair a uo U H μ.store ∧
         μ.store.readBlock p.1 p.2 ps.length = some ps ∧ μ.Live [a, p, uo, f] ∧
+        f.2 + 1 ≤ μ.store.len f.1 ∧
         Fp.Apart [a, p, uo, f] [2 * ((n + 1) * (n + 1)), ps.length, 2 * ((n + 1) * (n + 1)), 1])
       (fun μ' => μ'.store.get f.1 f.2 = some 0 ∧ ∃ U' Tm : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
         HoldsSchurPair a uo U' Tm μ'.store ∧ Tm.IsUpperTriangular ∧
         IsTrackedUnitarySimilar εU εT U H U' Tm) φ
 
-/-- **The all-tape companion of a core**: on every tape the core is total and the accumulator
-stays within $\varepsilon_U\|\mathbf{U}\|_2$ of $\mathbf{U}\mathbf{V}$ for an exact unitary
-$\mathbf{V}$, whatever the shifts. -/
-def TerminatingSchurCore (εU : ℝ) (k F T : ℕ) (ps : List ℝ) (Core : Impl O Q)
+/-- **The all-tape companion of a core**: for every order at most `nmax`, on every tape the core
+is total and the accumulator stays within $\varepsilon_U\|\mathbf{U}\|_2$ of $\mathbf{U}\mathbf{V}$
+for an exact unitary $\mathbf{V}$, whatever the shifts. -/
+def TerminatingSchurCore (εU : ℝ) (k F T nmax : ℕ) (ps : List ℝ) (Core : Impl O Q)
     (I : Interp O Q ℝ) : Prop :=
   ∀ {n : ℕ} {a p uo f : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ}
-    (H U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
+    (H U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ), n + 1 ≤ nmax →
     HoldsSchurPair a uo U H μ.store → μ.store.readBlock p.1 p.2 ps.length = some ps →
-    μ.Live [a, p, uo, f] →
+    μ.Live [a, p, uo, f] → f.2 + 1 ≤ μ.store.len f.1 →
     Fp.Apart [a, p, uo, f] [2 * ((n + 1) * (n + 1)), ps.length, 2 * ((n + 1) * (n + 1)), 1] →
     Writes .total I tape Core.body (Env.frame [n + 1, ps.length, k, F, T] [a, p, uo, a, uo, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔

@@ -126,9 +126,9 @@ theorem schurPipelineWith_measureReal_not_schur_le [Has ScalarOp O] [Has IndexOp
     {law : ℕ → Measure ℝ} {Nm Reg Red Core : Impl O Q} {k F T : ℕ}
     {c₁ c₂ δR φR εHU εHT εCU εCT φC : ℝ} {qR qC : List ℝ}
     {C C' : ∀ {m : ℕ}, Matrix (Fin (m + 1)) (Fin (m + 1)) ℂ → Prop}
-    (hNm : FrobNormEstimateContract c₁ c₂ Nm I)
+    (hNm : FrobNormEstimateContract c₁ c₂ (n + 1) Nm I)
     (hReg : RandomRegularizerContract law δR φR C (n + 1) (2 / c₁) qR Reg I)
-    (hRed : HessenbergReducerContract εHU εHT Red I)
+    (hRed : HessenbergReducerContract εHU εHT (n + 1) Red I)
     (hCore : RandomSchurCoreContract law εCU εCT φC C' k F T (n + 1) (4 / c₁) qC Core I)
     (hCC' : ∀ (A H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ), C A →
       IsPerturbedUnitarySimilarBy V A H (εHT * (2 / c₁ + δR)) → C' H)

@@ -13,6 +13,7 @@ public import NLAlib.Matrix.FinitePrecision.GivensRounded
 public import NLAlib.Matrix.Perturbation.UnitarySimilarity
 public import NLAlib.Ops.Logic.Functional
 public import NLAlib.Matrix.FinitePrecision.GivensLog
+public import NLAlib.Eigensolvers.Schur.Contracts
 
 /-!
 # Bottom-up reduction to Hessenberg form by rounded rotations
@@ -40,8 +41,11 @@ over rounded scalar arithmetic, and its backward error is proved. The exact top-
 
 * `NLAlib.reduceLastStep_writes_word`, `NLAlib.hessenbergReduceLast_writes_word`: the program
   stores the machine evaluation.
-* `NLAlib.hessenbergReduceLast_isPerturbedUnitarySimilar`: backward stability, with the last
-  coordinate vector fixed.
+* `NLAlib.hessenbergReduceLast_isPerturbedUnitarySimilarBy`: backward stability by the exact
+  unitary of the recorded rotations, which fixes the last coordinate vector;
+  `NLAlib.hessenbergReduceLast_isPerturbedUnitarySimilar`: the unitary unnamed.
+* `NLAlib.hessenbergReduceQ_hessenbergReducerContract`: the reduction with the accumulated
+  unitary is a Hessenberg reducer stage (`NLAlib.Schur.HessenbergReducerContract`).
 * `NLAlib.hessenbergReduceLast_terminates`: termination on every tape.
 -/
 
@@ -550,6 +554,25 @@ theorem hessenbergReduceLast_isPerturbedUnitarySimilar {M : Machine ℝ} {u : �
   have h2 : 2 * (hrSteps (n + 1) (n + 1 - 2)).length ≤ (n + 1) ^ 2 := by rw [sq]; omega
   exact_mod_cast h2
 
+/-- **The bottom-up Hessenberg reduction is backward stable by the unitary of its log**
+([BanksGarzaVargasSrivastava2025, Definition 5.1], proved for rounded rotations, with the unitary
+named): on a machine with the standard model at the unit roundoff $\boldsymbol{u}$,
+$M.\mathrm{lit}(0) = 0$ and $100(n + 1)^2\boldsymbol{u} \le 1$, the stored matrix
+$\widehat{\mathbf{H}}$ of a complex $\mathbf{A}$ of order $n + 1$ is upper Hessenberg, the exact
+unitary $\mathbf{Q}$ of the recorded rotations (`NLAlib.givensLog` of the entries
+`NLAlib.hessenbergReduceLastSlots`, the exact Givens rotations of the recorded pairs) fixes
+$\mathbf{e}_{n+1}$, and $\widehat{\mathbf{H}} = \mathbf{Q}^{\mathsf H}(\mathbf{A} +
+\mathbf{E})\mathbf{Q}$ with $\|\mathbf{E}\|_2 \le 50(n + 1)^2\boldsymbol{u}\|\mathbf{A}\|_2$. -/
+theorem hessenbergReduceLast_isPerturbedUnitarySimilarBy {M : Machine ℝ} {u : ℝ}
+    (hM : StdModel u id M) (hzero : M.lit 0 = 0) {n : ℕ} (hnu : 100 * ((n : ℝ) + 1) ^ 2 * u ≤ 1)
+    (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) :
+    IsUpperHessenberg (hessenbergReduceLastWord M A) ∧
+      (∀ i, givensLog (n + 1) (hessenbergReduceLastSlots M A).flatten i (Fin.last n) =
+        if i = Fin.last n then 1 else 0) ∧
+      IsPerturbedUnitarySimilarBy (givensLog (n + 1) (hessenbergReduceLastSlots M A).flatten) A
+        (hessenbergReduceLastWord M A) (50 * ((n : ℝ) + 1) ^ 2 * u * specNorm A) :=
+  sorry
+
 /-- `NLAlib.hessenbergReduceLast` terminates on every tape and every stored matrix: its loops are
 counted and every operation succeeds on stored operands; the log gains its $N - 2$ slots. -/
 theorem hessenbergReduceLast_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
@@ -588,6 +611,25 @@ def hessenbergReduceQ : Impl O Q := opsImpl% [N] (A, U) → (A, U) {
   run (hessenbergReduceLast (O := O) (Q := Q)).body [N, N - 1, 0] (A, A, Lg);
   run (givensReplayColumns (O := O) (Q := Q)).body [N, 0, 0, N, N, N - 1] (Lg, U, U)
 }
+
+variable [Inhabited ℝ]
+
+/-- **The reduction with the accumulated unitary is a Hessenberg reducer**: on a scalar machine
+with the standard model at $\boldsymbol{u}$, exact comparisons and `toNat`, index literals and
+exact natural literals up to $N_{\max} \ge 1$, with $200N_{\max}^2\boldsymbol{u} \le 1$,
+`NLAlib.hessenbergReduceQ` meets `NLAlib.Schur.HessenbergReducerContract` on the orders
+$N \le N_{\max}$ with the relative accumulator error $27N_{\max}^2\boldsymbol{u}$ (the replay of
+$N(N - 1)$ logged rotations, `NLAlib.givensReplayColumns_specNorm_sub_le` and
+`NLAlib.one_add_mul_pow_sub_one_le`) and the backward error
+$50N_{\max}^2\boldsymbol{u}\|\mathbf{A}\|_2$
+(`NLAlib.hessenbergReduceLast_isPerturbedUnitarySimilarBy`). -/
+theorem hessenbergReduceQ_hessenbergReducerContract {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar M I) (hM : StdModel u id M) (hC : IsCmp id I) (hQ : IsToNat id I)
+    (hL : IsIndexLit M I) {nmax : ℕ} (hNat : IsExactNatLit id M nmax) (h1 : 1 ≤ nmax)
+    (hnu : 200 * (nmax : ℝ) ^ 2 * u ≤ 1) :
+    Schur.HessenbergReducerContract (27 * (nmax : ℝ) ^ 2 * u) (50 * (nmax : ℝ) ^ 2 * u) nmax
+      (hessenbergReduceQ (O := O) (Q := Q)) I :=
+  sorry
 
 end Accumulate
 

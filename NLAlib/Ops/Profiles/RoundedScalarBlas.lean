@@ -23,6 +23,8 @@ The numerical contracts are inherited from the existing sequential BLAS certific
 * `NLAlib.Ops.RoundedScalarBlas.table_independent`: unused vector erasures do not affect it.
 * `NLAlib.Ops.RoundedScalarBlas.model`: unit-weight scalar arithmetic with exact comparisons.
 * `NLAlib.Ops.RoundedScalarBlas.contracts_link`: derive rounded vector contracts from scalars.
+* `NLAlib.Ops.RoundedScalarBlas.writes_nrm2_stdModel`: the rounded norm under the standard
+  model, two-sided.
 -/
 
 @[expose] public section
@@ -129,6 +131,24 @@ theorem writes_nrm2_exact {Op : Type} [Has ScalarOp Op] {M : Machine ℝ}
     have hv : value = Real.sqrt (∑ i ∈ Finset.range n, (vec xs i) ^ 2) := by
       simpa [nrm2ExactRel] using hrel
     exact ⟨by simpa using hpos, hv ▸ hvalue⟩
+
+/-- **The rounded scalar-lowered norm is two-sided accurate**: under the standard model at
+$\boldsymbol{u}$ with $(n + 2)\boldsymbol{u} \le 1/2$, the stored $x$ of the sequential norm of $n$
+real words $x_0, \dots, x_{n-1}$ satisfies
+$(1 - (n + 2)\boldsymbol{u})\sqrt{\sum_i x_i^2} \le x \le (1 + (n + 2)\boldsymbol{u})
+\sqrt{\sum_i x_i^2}$: the $n$ squares and the $n$ sequential additions of nonnegative terms
+([Higham2002, §3.1]) and the rounded square root. In particular $x = 0$ exactly when every word
+is $0$. -/
+theorem writes_nrm2_stdModel {Op : Type} [Has ScalarOp Op] {M : Machine ℝ} {u : ℝ}
+    {I : Interp Op Tst ℝ} (hS : IsScalar M I) (hM : StdModel u id M) {n : ℕ}
+    (hu : ((n : ℝ) + 2) * u ≤ 1 / 2) {τ : Tape ℝ} {m : Mem ℝ} {x z : ℕ × ℕ} {xs : List ℝ}
+    (hl : m.Live [x, z]) (hx : m.store.readBlock x.1 x.2 n = some xs)
+    (hz : z.2 < m.store.len z.1) (hxz : x.1 ≠ z.1) :
+    Writes .total I τ nrm2.body (Env.frame [n] [x, z]) (Store.inBlock z.1 z.2 1)
+      (fun μ => μ.pos = m.pos ∧ ∃ v : ℝ, μ.store.get z.1 z.2 = some v ∧
+        (1 - ((n : ℝ) + 2) * u) * Real.sqrt (∑ i ∈ Finset.range n, (vec xs i) ^ 2) ≤ v ∧
+        v ≤ (1 + ((n : ℝ) + 2) * u) * Real.sqrt (∑ i ∈ Finset.range n, (vec xs i) ^ 2)) m :=
+  sorry
 
 /-- Unit-work scalar cells with no hidden primitive workspace. Canonical control, addressing,
 allocation and comparison costs remain the shared nonzero charges. -/

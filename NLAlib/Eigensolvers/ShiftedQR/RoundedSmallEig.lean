@@ -85,18 +85,19 @@ noncomputable def uShQRSmallEig (n k : ℕ) (B Γ S δ φ : ℝ) (c₁ c₂ : Po
       (shqrSmallEigFailure n B Γ S δ φ) c₁ c₂)
 
 /-- **The memory holding the input** of the algorithm with the small-eigenvalue program: the
-views of the matrix, the threshold word, the parameter words, the output and the failure word are
-live, have room and are apart; the matrix $\mathbf{H}$, the deflation threshold word and the words
-`NLAlib.ShiftedQR.shqrSmallEigParams` are stored. -/
+views of the matrix, the threshold word, the parameter words, the accumulator and the failure word
+are live, have room and are apart; an accumulator, the matrix $\mathbf{H}$, the deflation
+threshold word and the words `NLAlib.ShiftedQR.shqrSmallEigParams` are stored. -/
 def ShQRSmallEigInput {n : ℕ} (k : ℕ) (B Γ S δ φ : ℝ) (c₁ c₂ : PolyLogTail)
     (a t p out f : ℕ × ℕ) (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (μ : Mem ℝ) : Prop :=
   μ.Live [a, t, p, out, f] ∧
     μ.Room [a, t, p, out, f]
       [2 * ((n + 1) * (n + 1)), 1, (shqrSmallEigParams n k B Γ S δ φ c₁ c₂).length,
-        2 * (n + 1), 1] ∧
+        2 * ((n + 1) * (n + 1)), 1] ∧
     Fp.Apart [a, t, p, out, f]
       [2 * ((n + 1) * (n + 1)), 1, (shqrSmallEigParams n k B Γ S δ φ c₁ c₂).length,
-        2 * (n + 1), 1] ∧
+        2 * ((n + 1) * (n + 1)), 1] ∧
+    (∃ U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix out U μ.store) ∧
     HoldsMatrix a H μ.store ∧ μ.store.get t.1 t.2 = some (shqrDeflationThreshold n k B Γ S δ φ) ∧
     μ.store.readBlock p.1 p.2 (shqrSmallEigParams n k B Γ S δ φ c₁ c₂).length =
       some (shqrSmallEigParams n k B Γ S δ φ c₁ c₂)
@@ -122,6 +123,36 @@ theorem uShQRSmallEig_pos {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ 
   refine ⟨lt_min (uShQR_pos (by omega) hB hΓ hδ hS hφ) ?_, length_smallEigParams _ _ _ _ _ _⟩
   exact (uSmallEig_spec hb₁ hb₂ (by omega) hδb hδbS hφse hφse1).1
 
+/-! ### The Schur core with the small-eigenvalue program -/
+
+/-- **The words of the Schur core with the small-eigenvalue program**: the deflation threshold
+word, then `NLAlib.ShiftedQR.shqrSmallEigParams` (the merged words followed by the twelve forward
+words of the leaf). -/
+noncomputable def shqrSchurParams (n k : ℕ) (B Γ S δ φ : ℝ) (c₁ c₂ : PolyLogTail) : List ℝ :=
+  shqrDeflationThreshold n k B Γ S δ φ :: shqrSmallEigParams n k B Γ S δ φ c₁ c₂
+
+/-- The rotation count of the accumulator of the Schur core with the small-eigenvalue program:
+`NLAlib.ShiftedQR.shqrSchurRotations` with the leaf's `NLAlib.SmallEig.smallEigLeafRotations` at
+the order bound $k$ and the cap `NLAlib.ShiftedQR.shqrSmallEigCap`. -/
+noncomputable def shqrSmallEigRotations (n k : ℕ) (B Γ S δ φ : ℝ) (c₁ c₂ : PolyLogTail) : ℕ :=
+  shqrSchurRotations n k (shqrSmallEigParams n k B Γ S δ φ c₁ c₂).length (shqrCap n B Γ S δ)
+    (smallEigLeafRotations k (shqrSmallEigCap n k B Γ S δ φ c₁ c₂))
+
+/-- **The precision threshold of the Schur core with the small-eigenvalue program**: the minimum
+of `NLAlib.ShiftedQR.uShQRSmallEig`, the replay term `NLAlib.ShiftedQR.uShQRSchurReplay` and
+$1/100$. -/
+noncomputable def uShQRSchur (n k : ℕ) (B Γ S δ φ : ℝ) (c₁ c₂ : PolyLogTail) : ℝ :=
+  min (uShQRSmallEig n k B Γ S δ φ c₁ c₂) <| min (1 / 100) <|
+    uShQRSchurReplay n k (shqrSmallEigParams n k B Γ S δ φ c₁ c₂).length (shqrCap n B Γ S δ)
+      B Γ S δ
+
+/-- **The precision threshold of the Schur core is positive**: for tail records with
+$b_1, b_2 > 0$, $B \ge 1$, $\Gamma > 0$, $0 < \delta \le \Sigma$, $0 < \varphi \le 1$ and $k$ the
+degree of (eqn:setk) at $4B$, `NLAlib.ShiftedQR.uShQRSchur` is positive. -/
+theorem uShQRSchur_pos {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) {n k : ℕ}
+    {B Γ S δ φ : ℝ} (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ)
+    (hφ1 : φ ≤ 1) (hk : k = shqrDegree (4 * B)) : 0 < uShQRSchur n k B Γ S δ φ c₁ c₂ := sorry
+
 section Program
 
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has SampleOp O]
@@ -136,12 +167,155 @@ Algorithm: shifted-qr-rounded -/
 def roundedShQRSmallEig (sG : ℕ) : Impl O Q :=
   roundedShQRWith (smallEigProg (O := O) (Q := Q) sG)
 
+/-- **The rounded shifted QR algorithm as the Schur core of the dense pipeline**
+([BanksGarzaVargasSrivastava2022, Theorem 6.3] with [BanksGarzaVargasSrivastava2025,
+Theorem 1.1], in Schur form): `NLAlib.ShiftedQR.roundedShQRSchurWith` with the small-eigenvalue
+program `NLAlib.SmallEig.smallEigProg` as the leaf. The interface is
+`[N, np, k, F, T] (A, P, U) → (A, U, Fl)`; the threshold is the first word.
+Algorithm: shifted-qr-rounded -/
+def roundedShQRSchur (sG : ℕ) : Impl O Q :=
+  roundedShQRSchurWith (smallEigProg (O := O) (Q := Q) sG)
+
 end Program
 
 section Theorems
 
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has SampleOp O]
   [Has CmpTst Q] [Has IdxTst Q]
+
+section SchurCore
+
+variable [Inhabited ℝ]
+
+/-- **The rounded shifted QR algorithm with the small-eigenvalue program is a Schur core**
+([BanksGarzaVargasSrivastava2022, Theorem 6.3] with [BanksGarzaVargasSrivastava2025,
+Theorem 1.1], in Schur form). Let the machine have the standard model at $\boldsymbol{u}$, index
+literals, exact natural literals up to $n + 1$, exact `toNat` and comparisons, a measurable
+interpretation reading the tape only in its windows whose draws store the tape entry, a stream
+$s_U$ uniform on $[0, 1]$ with an exact polar disk sampler on it and a stream $s_G$ with the
+standard real Gaussian law; let the eigenvalue gap and the eigenvector condition of a complex
+Ginibre perturbation have the tails $c_1$, $c_2$ with $b_1, b_2 > 0$. Let $B \ge 1$, $\Gamma > 0$,
+$0 < \delta \le \Sigma$, $0 < \varphi \le 1$, $k$ the degree of (eqn:setk) at $4B$ and
+$\boldsymbol{u} \le \boldsymbol{u}_0$. Then `roundedShQRSchur` with the words
+`shqrSchurParams`, the iteration cap $F$ and the leaf cap $T$ meets the Schur core contract on the
+orders at most $n + 1$, the class $(B, \Gamma)$ and norms at most $\Sigma$: except with probability
+$\varphi$ the flag is $0$, the stored matrix upper triangular and the pair tracked from the input
+pair with the backward error $\delta$ and the relative accumulator error
+$(1 + 24\boldsymbol{u})^R - 1$. Here $\boldsymbol{u}_0$ is `NLAlib.ShiftedQR.uShQRSchur`, $F$ is
+`NLAlib.ShiftedQR.shqrCap`, $T$ is `NLAlib.ShiftedQR.shqrSmallEigCap` and $R$ is
+`NLAlib.ShiftedQR.shqrSmallEigRotations`.
+[BanksGarzaVargasSrivastava2022, Theorem 6.3]; there only the eigenvalues are computed, with an
+oracle.
+
+Note: General form, any small-block Schur solver:
+`NLAlib.ShiftedQR.roundedShQRSchurWith_randomSchurCoreContract`, with the leaf contract of
+`NLAlib.SmallEig.smallEigProg_randomSchurLeafContract`.
+Result: shifted-qr-rounded-schur -/
+theorem roundedShQRSchur_randomSchurCoreContract {Mch : Machine ℝ} {I : Interp O Q ℝ}
+    {u : ℝ} {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
+    (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
+    (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
+    (hG : law sG = gaussianReal 0 1) {c₁ c₂ : PolyLogTail}
+    (hA : c₁.BoundsGinibreGap) (hB : c₂.BoundsGinibreCondition)
+    (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) {k : ℕ} {B Γ S δ φ : ℝ} (hB1 : 1 ≤ B) (hΓ : 0 < Γ)
+    (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hk : k = shqrDegree (4 * B))
+    (hu : u ≤ uShQRSchur n k B Γ S δ φ c₁ c₂) :
+    Schur.RandomSchurCoreContract law
+      ((1 + 24 * u) ^ shqrSmallEigRotations n k B Γ S δ φ c₁ c₂ - 1) δ φ
+      (fun H => IsConditionedDiagonalizable B Γ H) k (shqrCap n B Γ S δ)
+      (shqrSmallEigCap n k B Γ S δ φ c₁ c₂) (n + 1) S (shqrSchurParams n k B Γ S δ φ c₁ c₂)
+      (roundedShQRSchur (O := O) (Q := Q) sG) I := sorry
+
+/-- **The Schur core with the small-eigenvalue program terminates on every tape**: on a scalar
+machine with the standard model at $\boldsymbol{u} \le 1/100$, index literals, exact natural
+literals up to $n + 1$, exact `toNat` and comparisons, draws that store the tape entry and an
+exact polar disk sampler, for any $B, \Gamma, \Sigma, \delta, \varphi$, $k$ the degree of
+(eqn:setk) at $4B$ and any tail records, `roundedShQRSchur` with the words `shqrSchurParams` meets
+`NLAlib.Schur.TerminatingSchurCore` on the orders at most $n + 1$ with the relative accumulator
+error $(1 + 24\boldsymbol{u})^R - 1$, $R$ = `NLAlib.ShiftedQR.shqrSmallEigRotations`. -/
+theorem roundedShQRSchur_terminatingSchurCore {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu1 : u ≤ 1 / 100)
+    (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
+    (hC : IsCmp id I) (hSmp : IsSample I) {sU sG : ℕ} (hDisk : IsPolarDiskSampler sU I)
+    {c₁ c₂ : PolyLogTail} {k : ℕ} {B Γ S δ φ : ℝ} (hk : k = shqrDegree (4 * B)) :
+    Schur.TerminatingSchurCore ((1 + 24 * u) ^ shqrSmallEigRotations n k B Γ S δ φ c₁ c₂ - 1) k
+      (shqrCap n B Γ S δ) (shqrSmallEigCap n k B Γ S δ φ c₁ c₂) (n + 1)
+      (shqrSchurParams n k B Γ S δ φ c₁ c₂) (roundedShQRSchur (O := O) (Q := Q) sG) I := sorry
+
+/-- **The memory holding the input of the Schur core**: the views of the matrix, the parameter
+words, the accumulator and the failure word are live, have room and are apart; the pair
+$(\mathbf{U}, \mathbf{H})$ and the words `NLAlib.ShiftedQR.shqrSchurParams` are stored. -/
+def ShQRSchurInput {n : ℕ} (k : ℕ) (B Γ S δ φ : ℝ) (c₁ c₂ : PolyLogTail) (a p uo f : ℕ × ℕ)
+    (U H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (μ : Mem ℝ) : Prop :=
+  μ.Live [a, p, uo, f] ∧
+    μ.Room [a, p, uo, f] [2 * ((n + 1) * (n + 1)),
+      (shqrSchurParams n k B Γ S δ φ c₁ c₂).length, 2 * ((n + 1) * (n + 1)), 1] ∧
+    Fp.Apart [a, p, uo, f] [2 * ((n + 1) * (n + 1)),
+      (shqrSchurParams n k B Γ S δ φ c₁ c₂).length, 2 * ((n + 1) * (n + 1)), 1] ∧
+    Schur.HoldsSchurPair a uo U H μ.store ∧
+    μ.store.readBlock p.1 p.2 (shqrSchurParams n k B Γ S δ φ c₁ c₂).length =
+      some (shqrSchurParams n k B Γ S δ φ c₁ c₂)
+
+/-- **The rounded shifted QR algorithm computes a Schur form** ([BanksGarzaVargasSrivastava2022,
+Theorem 6.3] with the quantifiers of Theorem 1.4, corrected, in Schur form; `SmallEig` by
+[BanksGarzaVargasSrivastava2025, Theorem 1.1 and Corollary 1.3]). Let the machine have the
+standard model at $\boldsymbol{u} \le \boldsymbol{u}_0$, index literals, exact natural literals up
+to $n + 1$, exact `toNat` and comparisons, a measurable interpretation reading the tape only in
+its windows whose draws store the tape entry, a stream $s_U$ uniform on $[0, 1]$ with an exact
+polar disk sampler on it and a stream $s_G$ with the standard real Gaussian law; let the eigenvalue
+gap and the eigenvector condition of a complex Ginibre perturbation have the tails $c_1$, $c_2$
+with $b_1, b_2 > 0$. Let $\mathbf{H}$ of order $n + 1$ be upper Hessenberg,
+$\mathbf{H}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$ with
+$\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le B$ and eigenvalues separated by $\Gamma > 0$,
+$\|\mathbf{H}\|_2 \le \Sigma$, $0 < \delta \le \Sigma$, $0 < \varphi \le 1$, $B \ge 1$ and $k$ the
+degree of (eqn:setk) at $4B$. Then from a memory holding $\mathbf{H}$, an accumulator
+$\mathbf{U}_0$ and the words of `NLAlib.ShiftedQR.shqrSchurParams`, under a random tape with the
+stream laws,
+$$\mathbb{P}\bigl[\mathsf{roundedShQRSchur}(\mathbf{H}) \text{ fails, or writes outside the
+  matrix, the accumulator and the failure word, or stores no } (\widehat{\mathbf{U}},
+  \widehat{\mathbf{T}}),\ \widehat{\mathbf{T}} \text{ upper triangular},\
+  \widehat{\mathbf{T}} = \mathbf{W}^{\mathsf H}(\mathbf{H} + \mathbf{E})\mathbf{W},\
+  \|\mathbf{E}\|_2 \le \delta,\ \|\widehat{\mathbf{U}} - \mathbf{U}_0\mathbf{W}\|_2 \le
+  ((1 + 24\boldsymbol{u})^R - 1)\|\mathbf{U}_0\|_2\bigr] \le \varphi\,,$$
+for an exact unitary $\mathbf{W}$. Here $\boldsymbol{u}_0$ is `NLAlib.ShiftedQR.uShQRSchur` and
+$R$ is `NLAlib.ShiftedQR.shqrSmallEigRotations`.
+[BanksGarzaVargasSrivastava2022, Theorem 6.3]; there only the eigenvalues are computed, with an
+oracle.
+
+Note: The contract form is `NLAlib.ShiftedQR.roundedShQRSchur_randomSchurCoreContract`; the
+general form with any small-block Schur solver is
+`NLAlib.ShiftedQR.roundedShQRSchurWith_randomSchurCoreContract`.
+Result: shifted-qr-rounded-schur -/
+theorem roundedShQRSchur_measureReal_not_schur_le {Mch : Machine ℝ} {I : Interp O Q ℝ}
+    {u : ℝ} {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
+    (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
+    (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
+    (hG : law sG = gaussianReal 0 1) {c₁ c₂ : PolyLogTail}
+    (hA : c₁.BoundsGinibreGap) (hB : c₂.BoundsGinibreCondition)
+    (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b)
+    {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {k : ℕ}
+    {B Γ S δ φ : ℝ} (hHess : IsUpperHessenberg H) (hV : IsUnit V)
+    (hHV : H * V = V * Matrix.diagonal d) (hκ : pseudoConditionNumber V ≤ B) (hB1 : 1 ≤ B)
+    (hΓ : 0 < Γ) (hgap : ∀ i j, i ≠ j → Γ ≤ ‖d i - d j‖) (hHS : specNorm H ≤ S) (hδ : 0 < δ)
+    (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hk : k = shqrDegree (4 * B))
+    (hu : u ≤ uShQRSchur n k B Γ S δ φ c₁ c₂) {a p uo f : ℕ × ℕ} {μ : Mem ℝ}
+    {U₀ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    (hin : ShQRSchurInput k B Γ S δ φ c₁ c₂ a p uo f U₀ H μ)
+    {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
+    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSchur (O := O) (Q := Q) sG).body
+      (Env.frame [n + 1, (shqrSchurParams n k B Γ S δ φ c₁ c₂).length, k, shqrCap n B Γ S δ,
+        shqrSmallEigCap n k B Γ S δ φ c₁ c₂] [a, p, uo, a, uo, f]) (shqrFp n a uo f)
+      (fun μ' => μ'.store.get f.1 f.2 = some 0 ∧
+        ∃ U' Tm : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, Schur.HoldsSchurPair a uo U' Tm μ'.store ∧
+          Tm.IsUpperTriangular ∧
+          IsTrackedUnitarySimilar ((1 + 24 * u) ^ shqrSmallEigRotations n k B Γ S δ φ c₁ c₂ - 1)
+            δ U₀ H U' Tm) μ} ≤ φ := sorry
+
+end SchurCore
 
 /-- **The rounded shifted QR algorithm with no oracle** ([BanksGarzaVargasSrivastava2022,
 Theorem 6.3] with the quantifiers of Theorem 1.4, corrected; `SmallEig` by
@@ -160,7 +334,7 @@ words of `NLAlib.ShiftedQR.shqrSmallEigParams`, under a random tape with the str
 $$\mathbb{P}\bigl[\mathsf{roundedShQRSmallEig}(\mathbf{H}) \text{ fails, or writes outside the
   matrix, the output and the failure word, or lists no }
   \operatorname{spec}(\mathbf{H} + \mathbf{E}),\ \|\mathbf{E}\|_2 \le \delta\bigr] \le \varphi\,.$$
-Here $\boldsymbol{u}_0$ is `NLAlib.ShiftedQR.uShQRSmallEig`.
+Here $\boldsymbol{u}_0$ is `NLAlib.ShiftedQR.uShQRSchur`.
 [BanksGarzaVargasSrivastava2022, Theorem 6.3]; there `SmallEig` is an oracle.
 
 Note: The run terminates on every tape (`NLAlib.ShiftedQR.roundedShQRSmallEig_terminates`).
@@ -180,7 +354,7 @@ theorem roundedShQRSmallEig_measureReal_not_spectrum_le {Mch : Machine ℝ} {I :
     (hHV : H * V = V * Matrix.diagonal d) (hκ : pseudoConditionNumber V ≤ B) (hΓ : 0 < Γ)
     (hgap : ∀ i j, i ≠ j → Γ ≤ ‖d i - d j‖) (hHS : specNorm H ≤ S) (hδ : 0 < δ) (hδS : δ ≤ S)
     (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hk : k = shqrDegree (4 * B))
-    (hu : u ≤ uShQRSmallEig n k B Γ S δ φ c₁ c₂)
+    (hu : u ≤ uShQRSchur n k B Γ S δ φ c₁ c₂)
     {a t p out f : ℕ × ℕ} {μ : Mem ℝ}
     (hin : ShQRSmallEigInput k B Γ S δ φ c₁ c₂ a t p out f H μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
@@ -208,6 +382,16 @@ theorem roundedShQRSmallEig_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} 
       (Env.frame (shqrSmallEigDims n k B Γ S δ φ c₁ c₂) [a, t, p, out, a, out, f])
           (shqrFp n a out f)
       (fun _ => True) μ := sorry
+
+/-- **The iteration cap is logarithmic**: there is an absolute constant $c$ with
+$F \le c\log_2 Y + c$, $Y = 4(n + 1)B\Sigma^2/(\delta\min(\Gamma, \Sigma)\varphi)$, for
+$F$ = `NLAlib.ShiftedQR.shqrCap`, every order $n + 1$, $B \ge 1$, $\Gamma > 0$,
+$0 < \delta \le \Sigma$ and $0 < \varphi \le 1$: the cap is $\lceil\log(4\Sigma/\omega)/
+\log(1/0.8016)\rceil + 1$ and $4\Sigma/\omega \le 768Y^2$. -/
+theorem shqrCap_le_log : ∃ c : ℝ, ∀ {n : ℕ} {B Γ S δ φ : ℝ}, 1 ≤ B → 0 < Γ → 0 < δ → δ ≤ S →
+    0 < φ → φ ≤ 1 →
+    (shqrCap n B Γ S δ : ℝ) ≤ c * Real.logb 2 (4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)) + c :=
+  sorry
 
 open Real in
 /-- **The shift degree is $O(\log B\log\log B)$**: there is an absolute constant $c$ with
@@ -427,7 +611,7 @@ theorem roundedShQRSmallEig_relative {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
     (hgap : ∀ i j, i ≠ j → Γ ≤ ‖d i - d j‖) (hS0 : 0 < S) (hHS : specNorm H ≤ S)
     (hSc : S ≤ c * specNorm H) (hc : 1 ≤ c) (hδ : 0 < δ) (hδ1 : δ ≤ 1)
     (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hk : k = shqrDegree (4 * B))
-    (hu : u ≤ uShQRSmallEig n k B Γ S (δ * S / c) φ c₁ c₂)
+    (hu : u ≤ uShQRSchur n k B Γ S (δ * S / c) φ c₁ c₂)
     {a t p out f : ℕ × ℕ} {μ : Mem ℝ}
     (hin : ShQRSmallEigInput k B Γ S (δ * S / c) φ c₁ c₂ a t p out f H μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
@@ -456,7 +640,7 @@ theorem roundedShQRSmallEig_hermitian {Mch : Machine ℝ} {I : Interp O Q ℝ} {
     (hHess : IsUpperHessenberg H) (hH : H.IsHermitian) (hΓ : 0 < Γ)
     (hgap : ∀ i j, i ≠ j → Γ ≤ |hH.eigenvalues i - hH.eigenvalues j|) (hHS : specNorm H ≤ S)
     (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hk : k = shqrDegree 4)
-    (hu : u ≤ uShQRSmallEig n k 1 Γ S δ φ c₁ c₂)
+    (hu : u ≤ uShQRSchur n k 1 Γ S δ φ c₁ c₂)
     {a t p out f : ℕ × ℕ} {μ : Mem ℝ} (hin : ShQRSmallEigInput k 1 Γ S δ φ c₁ c₂ a t p out f H μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
     P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSmallEig (O := O) (Q := Q) sG).body
@@ -501,7 +685,7 @@ theorem roundedShQRSmallEig_measureReal_not_spectrum_le_unconditional {Mch : Mac
     (hHV : H * V = V * Matrix.diagonal d) (hκ : pseudoConditionNumber V ≤ B) (hΓ : 0 < Γ)
     (hgap : ∀ i j, i ≠ j → Γ ≤ ‖d i - d j‖) (hHS : specNorm H ≤ S) (hδ : 0 < δ) (hδS : δ ≤ S)
     (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hk : k = shqrDegree (4 * B))
-    (hu : u ≤ uShQRSmallEig n k B Γ S δ φ ginibreGapTail
+    (hu : u ≤ uShQRSchur n k B Γ S δ φ ginibreGapTail
       ginibreConditionTail)
     {a t p out f : ℕ × ℕ} {μ : Mem ℝ}
     (hin : ShQRSmallEigInput k B Γ S δ φ ginibreGapTail
@@ -536,7 +720,7 @@ theorem roundedShQRSmallEig_relative_unconditional {Mch : Machine ℝ} {I : Inte
     (hgap : ∀ i j, i ≠ j → Γ ≤ ‖d i - d j‖) (hS0 : 0 < S) (hHS : specNorm H ≤ S)
     (hSc : S ≤ c * specNorm H) (hc : 1 ≤ c) (hδ : 0 < δ) (hδ1 : δ ≤ 1)
     (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hk : k = shqrDegree (4 * B))
-    (hu : u ≤ uShQRSmallEig n k B Γ S (δ * S / c) φ ginibreGapTail
+    (hu : u ≤ uShQRSchur n k B Γ S (δ * S / c) φ ginibreGapTail
       ginibreConditionTail)
     {a t p out f : ℕ × ℕ} {μ : Mem ℝ}
     (hin : ShQRSmallEigInput k B Γ S (δ * S / c) φ ginibreGapTail
@@ -567,7 +751,7 @@ theorem roundedShQRSmallEig_hermitian_unconditional {Mch : Machine ℝ} {I : Int
     (hHess : IsUpperHessenberg H) (hH : H.IsHermitian) (hΓ : 0 < Γ)
     (hgap : ∀ i j, i ≠ j → Γ ≤ |hH.eigenvalues i - hH.eigenvalues j|) (hHS : specNorm H ≤ S)
     (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hk : k = shqrDegree 4)
-    (hu : u ≤ uShQRSmallEig n k 1 Γ S δ φ ginibreGapTail
+    (hu : u ≤ uShQRSchur n k 1 Γ S δ φ ginibreGapTail
       ginibreConditionTail)
     {a t p out f : ℕ × ℕ} {μ : Mem ℝ} (hin : ShQRSmallEigInput k 1 Γ S δ φ
       ginibreGapTail ginibreConditionTail a t p out f H μ)

@@ -1,6 +1,6 @@
 {
   "date": "2026-11-18",
-  "note": "SCHUR O7 (MV1, MV2): the stored-matrix layer (ShiftedQR/Storage, and storedMatrix from RoundedHeadline) moves to Matrix/FinitePrecision/StoredMatrix, and the Givens coefficient and rotation programs (ShiftedQR/Coefficients, Rotation, RotationLoops) to Matrix/FinitePrecision/GivensCoefficients, GivensRotation and GivensPrograms; the declarations leave the ShiftedQR namespace for NLAlib. Pure relocation: no statement or body changed. SCHUR skeleton (MG3): IsRoundedRowRotation and IsRoundedColRotation take rectangular matrices (rows Fin n, any column type; and the transpose); the square uses are the instance. SCHUR skeleton part 2 (Schur is the program, design note 14.6): the merged finite-precision shifted QR programs (step, Find's step, Regularize, Sh, the iteration, the decoupling loop, the worklist solveRoundedWith, roundedShQRWith/roundedShQRSmallEig), Part III's programs (rhess, decoupleLast, smallEigDecoupler, the leaf, smallEigCore, smallEigProg) and hessenbergReduceLast are rewritten in place: every committed rotation is recorded in a slotted Givens log and the backward statements name their unitary (givensLog); the worklist replays the logs on the coupling blocks and the accumulator U, writes exact zeros at the cuts and multiplies by the leaves' accumulators, so it outputs (U, T) with T upper triangular. The eigenvalue-only programs are removed (the oracle-leaf roundedShQR and its certificate, the eigenvalue leaf contracts and lifts, solveRounded, seLeaf, copyLeaf -> identityLeaf); the eigenvalue theorems are restated as corollaries in Schur form under their names. Certificate numerals: stmtWorkMono_smallEigProgram 373483 -> 514650, stmtWorkMono_shqrSmallEigProgram 675307 -> 960712 (smallEigWork, shqrSmallEigWork likewise; exponents unchanged).",
+  "note": "SCHUR O7 (MV1, MV2): the stored-matrix layer (ShiftedQR/Storage, and storedMatrix from RoundedHeadline) moves to Matrix/FinitePrecision/StoredMatrix, and the Givens coefficient and rotation programs (ShiftedQR/Coefficients, Rotation, RotationLoops) to Matrix/FinitePrecision/GivensCoefficients, GivensRotation and GivensPrograms; the declarations leave the ShiftedQR namespace for NLAlib. Pure relocation: no statement or body changed. SCHUR skeleton (MG3): IsRoundedRowRotation and IsRoundedColRotation take rectangular matrices (rows Fin n, any column type; and the transpose); the square uses are the instance. SCHUR skeleton part 2 (Schur is the program, design note 14.6): the merged finite-precision shifted QR programs (step, Find's step, Regularize, Sh, the iteration, the decoupling loop, the worklist solveRoundedWith, roundedShQRWith/roundedShQRSmallEig), Part III's programs (rhess, decoupleLast, smallEigDecoupler, the leaf, smallEigCore, smallEigProg) and hessenbergReduceLast are rewritten in place: every committed rotation is recorded in a slotted Givens log and the backward statements name their unitary (givensLog); the worklist replays the logs on the coupling blocks and the accumulator U, writes exact zeros at the cuts and multiplies by the leaves' accumulators, so it outputs (U, T) with T upper triangular. The eigenvalue-only programs are removed (the oracle-leaf roundedShQR and its certificate, the eigenvalue leaf contracts and lifts, solveRounded, seLeaf, copyLeaf -> identityLeaf); the eigenvalue theorems are restated as corollaries in Schur form under their names. Certificate numerals: stmtWorkMono_smallEigProgram 373483 -> 514650, stmtWorkMono_shqrSmallEigProgram 675307 -> 960712 (smallEigWork, shqrSmallEigWork likewise; exponents unchanged). SCHUR skeleton part 3: roundedShQRWith runs its leaf on the last 12 words (leafOnTailWords), as the decoupler does; the roundedShQRWith theorems take the Schur leaf contract (RandomSchurLeafContract) in place of the eigenvalue-kernel contract (the _at variants are removed); ShQRSmallEigInput holds an accumulator and has room for it; the SmallEig-leaf headlines take u <= uShQRSchur (the replay term added). Certificate numeral: stmtWorkMono_shqrSmallEigProgram 960712 -> 960776.",
   "renames": [
     {
       "old": "NLAlib.ShiftedQR.HoldsMatrix",
@@ -1185,6 +1185,18 @@
       "new": "NLAlib.SmallEig.smallEigProg_pwrites",
       "rule": "N12",
       "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedShQRWith_measureReal_not_spectrum_le_at",
+      "new": "NLAlib.ShiftedQR.roundedShQRWith_measureReal_not_spectrum_le",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedShQRWith_terminates_at",
+      "new": "NLAlib.ShiftedQR.roundedShQRWith_terminates",
+      "rule": "N12",
+      "removed": true
     }
   ],
   "statementChanged": [
@@ -1258,9 +1270,7 @@
     "NLAlib.ShiftedQR.roundedShQRSmallEig_algorithm_measureReal_not_accepts_le_unconditional",
     "NLAlib.ShiftedQR.roundedShQRWith",
     "NLAlib.ShiftedQR.roundedShQRWith_measureReal_not_spectrum_le",
-    "NLAlib.ShiftedQR.roundedShQRWith_measureReal_not_spectrum_le_at",
     "NLAlib.ShiftedQR.roundedShQRWith_terminates",
-    "NLAlib.ShiftedQR.roundedShQRWith_terminates_at",
     "NLAlib.ShiftedQR.roundedWorklistRoundWith",
     "NLAlib.ShiftedQR.roundedWorklistWith",
     "NLAlib.ShiftedQR.shAccept_writes",
@@ -1362,6 +1372,14 @@
     "NLAlib.hessenbergReduceLast_terminates",
     "NLAlib.hessenbergReduceLast_writes_word",
     "NLAlib.reduceLastStep",
-    "NLAlib.reduceLastStep_writes_word"
+    "NLAlib.reduceLastStep_writes_word",
+    "NLAlib.ShiftedQR.ShQRSmallEigInput",
+    "NLAlib.ShiftedQR.roundedShQRSmallEig_measureReal_not_spectrum_le",
+    "NLAlib.ShiftedQR.roundedShQRSmallEig_relative",
+    "NLAlib.ShiftedQR.roundedShQRSmallEig_hermitian",
+    "NLAlib.ShiftedQR.roundedShQRSmallEig_measureReal_not_spectrum_le_unconditional",
+    "NLAlib.ShiftedQR.roundedShQRSmallEig_relative_unconditional",
+    "NLAlib.ShiftedQR.roundedShQRSmallEig_hermitian_unconditional",
+    "NLAlib.ShiftedQR.shqrSmallEigProblem_initial_input"
   ]
 }

@@ -10,6 +10,7 @@ public import NLAlib.Matrix.Perturbation.EigenvalueMatching
 public import NLAlib.Ops.Confined
 public import NLAlib.Ops.MonomialWork
 public import NLAlib.Ops.Static
+public import NLAlib.Eigensolvers.SmallEig.Precision
 
 /-!
 # The small-eigenvalue solver: headline theorems
@@ -40,6 +41,10 @@ rounding after the draw is modelled), range safety, the paper's question of $O(n
 * `NLAlib.SmallEig.smallEigProg_pwrites`: Corollary 1.3 as a routine contract.
 * `NLAlib.SmallEig.smallEig_measureReal_not_forward_le`: Corollary 1.3 for one input.
 * `NLAlib.SmallEig.smallEig_work_le`: the operation count.
+* `NLAlib.SmallEig.smallEigProg_pwrites_schur`: Theorem 1.1 in Schur form, the computed
+  $(\widehat{\mathbf{U}}_b, \widehat{\mathbf{T}}_b)$ tracked from $(\mathbf{I}, \mathbf{M})$.
+* `NLAlib.SmallEig.smallEigProg_randomSchurLeafContract`: the program is a small-block Schur
+  solver (`NLAlib.Schur.RandomSchurLeafContract`) at the forward words.
 -/
 
 @[expose] public section
@@ -234,6 +239,93 @@ instructions. -/
 theorem smallEig_work_le (sG : ℕ) : ∃ c : ℕ, ∀ n nq T : ℕ,
     Count.size (stmtCost (smallEigProg (O := O) (Q := Q) sG).body [n + 1, nq, T]) ≤
       c * (n + 1) ^ 4 * (T + 1) ^ 2 := sorry
+
+/-- **The cap of the small-eigenvalue program is polylogarithmic**: for tail records with
+$b_1, b_2 > 0$ there are constants $c$ and $p$ with
+$T \le c(\log_2(4(n_{\max} + 1)\Sigma/(\delta\varphi)) + 1)^p$, $T$ = `NLAlib.SmallEig.smallEigCap`,
+for every $n_{\max} \ge 1$, $0 < \delta \le \Sigma$ and $0 < \varphi \le 1$ (the degree, round and
+step caps are logarithms of the condition, weight and accuracy thresholds, themselves polynomial in
+$n_{\max}\Sigma/(\delta\varphi)$). -/
+theorem smallEigCap_le_log (c₁ c₂ : PolyLogTail) (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) :
+    ∃ (c : ℝ) (p : ℕ), ∀ {nmax : ℕ} {S δ φ : ℝ}, 1 ≤ nmax → 0 < δ → δ ≤ S → 0 < φ → φ ≤ 1 →
+      (smallEigCap nmax S δ φ c₁ c₂ : ℝ) ≤
+        c * (Real.logb 2 (4 * (nmax + 1) * S / (δ * φ)) + 1) ^ p :=
+  sorry
+
+/-! ### The Schur form -/
+
+/-- The rotation count of the accumulator of `NLAlib.SmallEig.smallEigProg` on blocks of order at
+most $k_{\max}$ with the cap $T$: the $k_{\max}^2$ replayed rotations of the reduction and the
+replays of the core's $2(k_{\max} + 1)$ rounds at the bottom width $1$, each of a log of
+$(T + k_{\max})k_{\max}$ entries and the products of the order-one leaves ($6$). -/
+def smallEigLeafRotations (kmax T : ℕ) : ℕ :=
+  kmax * kmax + 2 * (kmax + 1) * ((T + kmax) * kmax + 6)
+
+/-- **The small-eigenvalue program in Schur form** ([BanksGarzaVargasSrivastava2025, Theorem 1.1],
+with the Schur form): let the machine have the standard model at
+$\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{SmallEig}}$ (`NLAlib.SmallEig.uSmallEig` at
+$n_{\max}$) and $\boldsymbol{u} \le 1/100$, index literals, exact natural literals up to
+$n + 1$, exact `toNat` and comparisons, a measurable interpretation reading the tape only in its
+windows, draws that store the tape entry, a stream $s_U$ uniform on $[0, 1]$ with an exact polar
+disk sampler on it, and a stream $s_G$ with the standard real Gaussian law; let the eigenvalue gap
+and the eigenvector condition of a complex Ginibre perturbation have the tails $c_1$, $c_2$ with
+$b_1, b_2 > 0$; let $n + 1 \le n_{\max}$, $\mathbf{M}$ of order $n + 1$ with
+$\|\mathbf{M}\|_2 \le \Sigma$, $0 < \delta \le \Sigma$ and $0 < \varphi \le 1$. Then from a
+memory holding $\mathbf{M}$ and the words (`NLAlib.SmallEig.SmallEigInput`), except with
+probability at most $\varphi$, the run writes only the block and the accumulator and stores an
+upper triangular $\widehat{\mathbf{T}}_b$ and $\widehat{\mathbf{U}}_b$ with
+$\|\widehat{\mathbf{U}}_b - \mathbf{V}\|_2 \le (1 + 24\boldsymbol{u})^{R} - 1$ and
+$\widehat{\mathbf{T}}_b = \mathbf{V}^{\mathsf H}(\mathbf{M} + \mathbf{E})\mathbf{V}$ for an exact
+unitary $\mathbf{V}$ and some $\|\mathbf{E}\|_2 \le \delta$, $R$ =
+`NLAlib.SmallEig.smallEigLeafRotations` at $n_{\max}$ and the cap. -/
+theorem smallEigProg_pwrites_schur {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu1 : u ≤ 1 / 100)
+    (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
+    (hC : IsCmp id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
+    (hloc : ∀ o, I.TapeLocal o (win o)) (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
+    (hG : law sG = gaussianReal 0 1) {c₁ c₂ : PolyLogTail}
+    (hA : c₁.BoundsGinibreGap) (hB : c₂.BoundsGinibreCondition)
+    (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) {nmax : ℕ} (hn : n + 1 ≤ nmax)
+    {M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {S δ φ : ℝ} (hMS : specNorm M ≤ S)
+    (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
+    (hu : u ≤ uSmallEig nmax S δ φ c₁ c₂) (w q o : ℕ × ℕ) :
+    PWrites law I (smallEigProg (O := O) (Q := Q) sG).body
+      (Env.frame (smallEigDims n nmax S δ φ c₁ c₂) [w, q, w, o])
+      (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock o.1 o.2 (2 * ((n + 1) * (n + 1)))) (SmallEigInput nmax S δ φ c₁ c₂ w q o M)
+      (fun μ' => ∃ Ub Tb : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+        Schur.HoldsSchurPair w o Ub Tb μ'.store ∧ Tb.IsUpperTriangular ∧
+        IsTrackedUnitarySimilar
+          ((1 + 24 * u) ^ smallEigLeafRotations nmax (smallEigCap nmax S δ φ c₁ c₂) - 1) δ 1 M
+          Ub Tb) φ := sorry
+
+/-- **The small-eigenvalue program is a small-block Schur solver**
+([BanksGarzaVargasSrivastava2025, Theorem 1.1 and Corollary 1.3], with the Schur form): on the
+machine and streams of `NLAlib.SmallEig.smallEigProg_pwrites_schur`, with exact natural literals
+up to $d_{\max} \le k_{\max}$, $0 < \beta \le \Sigma$, $0 < \varphi \le 1$ and
+$\boldsymbol{u} \le \boldsymbol{u}^{\mathrm{fwd}}_{\mathrm{SmallEig}}$
+(`NLAlib.SmallEig.uSmallEigForward`) and $\boldsymbol{u} \le 1/100$, the program with the forward
+words `NLAlib.SmallEig.smallEigForwardParams` and cap meets
+`NLAlib.Schur.RandomSchurLeafContract` on the orders at most $d_{\max}$ and norms at most
+$\Sigma$: the backward error is the backward accuracy
+$\delta_b$ = `NLAlib.SmallEig.forwardBackwardError` of $\beta$, the failure $\varphi$ and the
+accumulator error $(1 + 24\boldsymbol{u})^R - 1$, $R$ = `NLAlib.SmallEig.smallEigLeafRotations`
+at $k_{\max}$ and the cap. Orders $d \le 1$ are kept with the identity accumulator. -/
+theorem smallEigProg_randomSchurLeafContract {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu1 : u ≤ 1 / 100) (hL : IsIndexLit Mch I)
+    {dmax kmax : ℕ} (hdk : dmax ≤ kmax) (hNat : IsExactNatLit id Mch dmax) (hQ : IsToNat id I)
+    (hC : IsCmp id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
+    (hloc : ∀ o, I.TapeLocal o (win o)) (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
+    (hG : law sG = gaussianReal 0 1) {c₁ c₂ : PolyLogTail}
+    (hA : c₁.BoundsGinibreGap) (hB : c₂.BoundsGinibreCondition)
+    (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) {S β φ : ℝ} (hβ : 0 < β) (hβS : β ≤ S) (hφ : 0 < φ)
+    (hφ1 : φ ≤ 1) (hu : u ≤ uSmallEigForward kmax S β φ c₁ c₂) :
+    Schur.RandomSchurLeafContract law
+      ((1 + 24 * u) ^ smallEigLeafRotations kmax (smallEigForwardCap kmax S β φ c₁ c₂) - 1)
+      (forwardBackwardError kmax S β) φ dmax S (smallEigForwardParams kmax S β φ c₁ c₂)
+      (smallEigForwardCap kmax S β φ c₁ c₂) (smallEigProg (O := O) (Q := Q) sG) I := sorry
 
 /-! ### With the proved random-matrix tails -/
 

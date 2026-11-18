@@ -160,8 +160,21 @@ theorem stepWithDiagInPlace_terminates {M : Machine ℝ} {I : Interp Op Tst ℝ}
         HoldsMatrix a H' m'.store) ∧ (∃ z : ℂ, m'.store.readBlock dg.1 dg.2 2 = some [z.re, z.im]) ∧
         ∃ es : List GivensEntry, es.length = n ∧ (∀ e ∈ es, e.1 + 1 < n + 1) ∧
           HoldsSlottedLog lg ns w L (P ++ es) m'.store)
-      m :=
-  sorry
+      m := by
+  have hlen := Store.le_len_of_readBlock hA (by positivity)
+  have hstep := stepWithDiag_writes_of_inv (τ := τ) (Inv := fun _ _ _ _ => True) hS hzero hCmp
+    hL hNat hn hlog hj hw hl hA hs ht hd hat hst htd hlgd (fun _ _ _ _ _ _ => trivial) trivial
+  refine hstep.frame_seq_le rfl rfl hl
+    (sup_le (sup_le (le_sup_right.trans (le_sup_left.trans le_sup_left))
+      (le_sup_right.trans le_sup_left)) le_sup_right) ?_
+  rintro m₁ hfr ⟨hp, es, hes, hpl, hlog₁, W, Z, -, hT, hD⟩
+  have hcopy := copyMatrix_writes (τ := τ) hS hT (by rw [hfr.len_eq]; exact hlen) hat.symm
+  refine (hcopy.in_frame rfl rfl ((hl.congr hfr.length_eq).mono (by simp))).mono
+    (le_sup_left.trans (le_sup_left.trans le_sup_left)) ?_
+  intro m₂ hfr₂ ⟨hp₂, hA₂⟩
+  exact ⟨hp₂.trans hp, ⟨_, hA₂⟩, ⟨_, hfr₂.keep (Store.readsOnly_readBlock _ _ _ _) had hD⟩, es,
+    hes, hpl, hfr₂.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
+      (hlgd.mono le_rfl (le_sup_left.trans (le_sup_left.trans le_sup_left))).symm hlog₁⟩
 
 /-- The degree $k$ rounded step terminates on any matrix: on a scalar machine with exact
 comparisons and the literal $0$ exact, from any matrix of order $n + 1$ at `a` and any $2k$
@@ -192,8 +205,76 @@ theorem multiStepStable_terminates {M : Machine ℝ} {I : Interp Op Tst ℝ}
       (fun m' => m'.pos = m.pos ∧ (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
         HoldsMatrix a H' m'.store) ∧ (∃ ys, m'.store.readBlock ds.1 ds.2 (2 * k) = some ys) ∧
         ∃ es : List GivensEntry, es.length = k * n ∧ (∀ e ∈ es, e.1 + 1 < n + 1) ∧
-          HoldsSlottedLog lg ns w L es m'.store) m :=
-  sorry
+          HoldsSlottedLog lg ns w L es m'.store) m := by
+  have hlive : a.1 < m.store.length ∧ s.1 < m.store.length ∧ ds.1 < m.store.length ∧
+      lg.1 < m.store.length := by simpa [Mem.Live] using hl
+  change Writes .total I τ (Stmt.allocs [.const 2 * (.var 0 * .var 0)] _) _ _ _ m
+  refine writes_allocs_preserving_post rfl
+    (fun hBelow ⟨hp, ⟨H', hA'⟩, ⟨ys, hD'⟩, es, hes, hpl, hlog'⟩ => ⟨hp,
+      ⟨H', hA'.of_below hBelow hlive.1⟩, ⟨ys, hBelow.readBlock_of hlive.2.2.1 hD'⟩, es, hes, hpl,
+      hlog'.of_below hBelow hlive.2.2.2⟩) ?_
+  intro store hlen hlens hBelow
+  let t : ℕ × ℕ := (m.store.length, 0)
+  have ht : store.len t.1 = 2 * ((n + 1) * (n + 1)) := by simpa [t] using hlens 0 (by simp)
+  have hne : ∀ {b o k : ℕ} {b' o' k' : ℕ}, b ≠ b' →
+      Fp.Disj (Store.inBlock b o k) (Store.inBlock b' o' k') := fun h => Fp.disj_inBlock_of_ne h
+  have htd : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock ds.1 ds.2 (2 * k)) := hne (by dsimp [t]; omega)
+  set F := Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+    Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock ds.1 ds.2 (2 * k) ⊔
+      Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w))
+  have hFs : Fp.Disj F (Store.inBlock s.1 s.2 (2 * k)) :=
+    Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨has,
+      hne (by dsimp [t]; omega)⟩, hsd.symm⟩, hlgd.mono le_rfl (le_sup_right.trans le_sup_left)⟩
+  refine (writes_loop (m := ⟨store, m.pos⟩) (n := .var 1) (N := k) rfl (fun _ => F)
+    (fun _ _ => le_rfl)
+    (fun j μ => μ.pos = m.pos ∧ (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+      HoldsMatrix a H' μ.store) ∧ (∃ ys, μ.store.readBlock ds.1 ds.2 (2 * j) = some ys) ∧
+      ∃ es : List GivensEntry, es.length = j * n ∧ (∀ e ∈ es, e.1 + 1 < n + 1) ∧
+        HoldsSlottedLog lg ns w L es μ.store)
+    ⟨rfl, ⟨H, hA.of_below hBelow hlive.1⟩, ⟨[], by simp⟩, [], by simp, by simp,
+      hlog.of_below hBelow hlive.2.2.2⟩ ?_).mono
+    (sup_le (sup_le (sup_le (le_sup_left.trans (le_sup_left.trans le_sup_left))
+      (Fp.inBlock_le_sup_above le_rfl)) (le_sup_right.trans (le_sup_left.trans le_sup_left)))
+      (le_sup_right.trans le_sup_left)) fun _ _ h => h
+  intro j hjk μ hfr ⟨hp, ⟨Hj, hAj⟩, ⟨ys, hDj⟩, es, hes, hpl, hlogj⟩
+  have hsμ := hfr.keep (Store.readsOnly_readBlock _ _ _ _) hFs
+    ((hBelow.readBlock hlive.2.1 _ _).trans hs)
+  obtain ⟨z, hsj⟩ := Store.exists_readBlock_pair hsμ (o := 2 * j) (by omega)
+  have hdg : Store.inBlock ds.1 (ds.2 + 2 * j) 2 ≤ Store.inBlock ds.1 ds.2 (2 * k) :=
+    Fp.inBlock_le_inBlock (by omega) (by omega)
+  have hsg : Store.inBlock s.1 (s.2 + 2 * j) 2 ≤ Store.inBlock s.1 s.2 (2 * k) :=
+    Fp.inBlock_le_inBlock (by omega) (by omega)
+  have hpre : Store.inBlock ds.1 ds.2 (2 * j) ≤ Store.inBlock ds.1 ds.2 (2 * k) :=
+    Fp.inBlock_le_inBlock (by omega) (by omega)
+  have hlμ : μ.Live [a, (s.1, s.2 + 2 * j), t, a, (ds.1, ds.2 + 2 * j), lg] := by
+    simp [Mem.Live, hfr.length_eq, t, hlen]; omega
+  have hwj : es.length + n ≤ w := by rw [hes]; nlinarith [Nat.mul_le_mul_right n hjk]
+  have hstep := stepWithDiagInPlace_terminates (τ := τ) (m := μ) (t := t) (H := Hj)
+    (s := (s.1, s.2 + 2 * j)) (dg := (ds.1, ds.2 + 2 * j)) (P := es) hS hzero hCmp hL hNat hn
+    hlogj hj hwj (hlμ.mono (by simp)) hAj hsj
+    (by rw [hfr.len_eq]; dsimp [t]; simpa only [Nat.zero_add] using ht.ge)
+    (by dsimp only; rw [hfr.len_eq, (hBelow ds.1 hlive.2.2.1).1]; omega)
+    (hne (by dsimp [t]; omega)) (hne (by dsimp [t]; omega)) (htd.mono le_rfl hdg)
+    (had.mono le_rfl hdg)
+    (Fp.disj_sup_right.mpr ⟨Fp.disj_sup_right.mpr ⟨Fp.disj_sup_right.mpr
+      ⟨hlgd.mono le_rfl (le_sup_left.trans le_sup_left),
+        hlgd.mono le_rfl (hsg.trans (le_sup_right.trans le_sup_left))⟩,
+      hne (by dsimp [t]; omega)⟩, hlgd.mono le_rfl (hdg.trans le_sup_right)⟩)
+  refine (hstep.in_frame (by simp [IExp.evalList, IExp.eval, Env.frame, hes]) rfl hlμ).mono
+    (sup_le (sup_le (sup_le (le_sup_left.trans (le_sup_left.trans le_sup_left))
+      (le_sup_right.trans (le_sup_left.trans le_sup_left)))
+      ((hdg.trans le_sup_right).trans le_sup_left)) le_sup_right) ?_
+  intro μ' hfr' ⟨hp', hA', ⟨v, hD'⟩, es', hes', hpl', hlog'⟩
+  have hDj' := hfr'.keep (Store.readsOnly_readBlock _ _ _ _)
+    (Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨had.mono le_rfl hpre,
+      htd.mono le_rfl hpre⟩, (Fp.disj_inBlock_of_le le_rfl).symm⟩,
+      hlgd.mono le_rfl (hpre.trans le_sup_right)⟩) hDj
+  refine ⟨hp'.trans hp, hA', ⟨ys ++ [v.re, v.im], ?_⟩, es ++ es',
+    by rw [List.length_append, hes, hes']; ring,
+    fun e he => (List.mem_append.mp he).elim (hpl e) (hpl' e), hlog'⟩
+  rw [show 2 * (j + 1) = 2 * j + 2 by ring]
+  exact Store.readBlock_add hDj' hD'
 
 end Termination
 

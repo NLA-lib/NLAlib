@@ -95,51 +95,6 @@ def IsRandomSmallEig (law : ℕ → Measure ℝ) (s : ℕ) (β φ : ℝ) (I : In
     I.Meets .total (Has.inj EigenvalueKernelOp.smallEig)
       ((randomSmallEigRel s W Bad β).spec AnyOperands)
 
-/-- **A randomized small-eigenvalue kernel is a randomized leaf routine**: if the interpretation's
-`smallEig` is a randomized kernel with forward error $\beta \ge 0$ and failure probability
-$\varphi$ on the stream `s` (`NLAlib.ShiftedQR.IsRandomSmallEig`), the leaf routine that calls it
-meets `NLAlib.ShiftedQR.RandomLeafContract` with backward error $\beta$ and failure probability
-$\varphi$: from an upper Hessenberg $\mathbf{B}$ of order $d$, except with probability at most
-$\varphi$, it writes only its output and lists the eigenvalues of $\mathbf{B} + \mathbf{F}$,
-$\|\mathbf{F}\|_2 \le \beta$. [BanksGarzaVargasSrivastava2022, proof of Theorem 6.3]. -/
-theorem IsRandomSmallEig.randomLeafContract {law : ℕ → Measure ℝ} {s : ℕ} {β φ : ℝ}
-    {I : Interp O Q ℝ} (h : IsRandomSmallEig law s β φ I) (hβ : 0 ≤ β) :
-    RandomLeafContract law β φ (smallEigLeaf (O := O) (Q := Q)) I := by
-  obtain ⟨W, Bad, hBad, hφ, hI⟩ := h
-  intro d w o B hB
-  refine PWrites.of_window (s := s) (W := W d) (Bad := fun _ => Bad d B)
-    (measurable_snd (hBad d B)) (fun _ _ => hφ d B hB) ?_
-  rintro μ τ ⟨hH, hl, hroom, hdisj⟩ hgood
-  unfold smallEigLeaf
-  have hread : μ.readBlocks [w] [2 * (d * d)] = some [matrixWords B] := by
-    simp [Mem.readBlocks, show μ.store.readBlock w.1 w.2 (2 * (d * d)) =
-      some (matrixWords B) from hH]
-  refine (writes_call (R := randomSmallEigRel s W Bad β) hI (d := [d]) (a := [w]) (b := [o])
-    (k := W d) (ls := [2 * d]) rfl rfl rfl rfl rfl rfl trivial (by simp [Fp.Apart])
-    (fun _ => ⟨by simpa [Mem.Live] using hl, ⟨[matrixWords B], hread, trivial⟩,
-      by simpa [Mem.Room] using hroom⟩)).mono (by simp [Fp.blocks]) ?_
-  rintro μ' - ⟨-, xs, ys, hr, hys, hrel⟩
-  have hxs : xs = [matrixWords B] := Option.some.inj (hr.symm.trans hread)
-  have hwin : (fun j : Fin (W d) => (τ.window s μ.pos (W d)).getD j 0) =
-      Tape.windowFn τ s μ.pos (W d) := by
-    funext j
-    simp [Tape.window, Tape.windowFn, List.getD_eq_getElem?_getD]
-  obtain ⟨roots, ev, hev, hfw, rfl⟩ := hrel d (matrixWords B) rfl hxs
-    (by simpa using hB) (by
-      change (fun j : Fin (W d) => (τ.window s μ.pos (W d)).getD j 0) ∉ _
-      rw [hwin]
-      simpa using hgood)
-  rw [matrixOfWords_matrixWords] at hev
-  obtain ⟨L', hL', hL'ev⟩ := hev.exists_specNorm_sub_le hβ hfw
-  refine ⟨roots, L' - B, hL', by simpa using hL'ev, ?_⟩
-  have hys' : μ'.store.readBlock o.1 o.2 (2 * d) = some (matrixWords
-      (Matrix.of fun i (_ : Fin 1) => roots i)) := by
-    obtain ⟨y, hy, hyy⟩ := Option.bind_eq_some_iff.mp
-      (by simpa [Mem.readBlocks, randomSmallEigRel] using hys)
-    simp only [Option.some.injEq, List.cons.injEq, and_true] at hyy
-    exact hyy ▸ hy
-  simpa [HoldsMatrix] using hys'
-
 /-- **The forward contract of a randomized small-eigenvalue routine**
 ([BanksGarzaVargasSrivastava2025, Corollary 1.3]) with the stream laws `law`, the forward error
 `β`, the failure probability `φ`, the order bound `kmax`, the cap `T`, the norm bound `S` and the
@@ -324,14 +279,6 @@ section Routine
 
 variable {O Q : Type}
 
-/-- The leaf routine of a small-eigenvalue routine `SE`: `[d, np, T] (Bk, P) → (Ev)` runs `SE`
-with its parameter words read as the last $12$ words of `P`, the view `P[np - 12]`. The count $12$
-is a numeral of the program text (the length of `NLAlib.SmallEig.smallEigParams`): index
-expressions are numerals and dimensions, never Lean terms. -/
-def seLeaf (SE : Impl O Q) : Impl O Q := opsImpl% [d, np, T] (Bk, P) → (Ev) {
-  run SE.body [d, 12, T] (Bk, P[np - 12], Ev)
-}
-
 /-- The routine contract is monotone in the norm bound. -/
 theorem RandomSmallEigContractAt.mono_norm {law : ℕ → Measure ℝ} {β φ : ℝ} {kmax nq T : ℕ}
     {S S' : ℝ} {qs : List ℝ} {SE : Impl O Q} {I : Interp O Q ℝ}
@@ -350,43 +297,6 @@ theorem readBlock_tail_twelve {s : Store ℝ} {b off : ℕ}
   · have e : (ps₀ ++ qs).length - 12 = ps₀.length := by simp [hqs]
     rw [e]
     exact ⟨Store.readBlock_append_right h, by simp⟩
-
-/-- A small-eigenvalue routine is a leaf routine, with the word count $12$ apart from the
-words `qs` (none, or $12$; `NLAlib.ShiftedQR.RandomSmallEigContractAt`): its leaf routine
-`NLAlib.ShiftedQR.seLeaf` meets `NLAlib.ShiftedQR.RandomLeafRoutineContract` with backward error
-$\beta \ge 0$ on the same orders and norms, with any words `ps₀` before `qs`. -/
-theorem RandomSmallEigContractAt.randomLeafRoutineContract {law : ℕ → Measure ℝ} {β φ : ℝ}
-    {kmax T : ℕ} {S : ℝ} {qs ps₀ : List ℝ} {SE : Impl O Q} {I : Interp O Q ℝ}
-    (h : RandomSmallEigContractAt law β φ kmax 12 T S qs SE I) (hβ : 0 ≤ β)
-    (hq12 : qs = [] ∨ qs.length = 12) :
-    RandomLeafRoutineContract law β φ kmax S (ps₀ ++ qs) T (seLeaf SE) I := by
-  intro d w p o B hd hB hBn
-  have key := h (w := w) (q := (p.1, p.2 + ((ps₀ ++ qs).length - 12))) (o := o) B hd hB hBn
-  unfold seLeaf
-  refine (key.in_frame ?_ ?_ ?_).mono ?_ le_rfl ?_ le_rfl
-  · simp
-  · simp [Operand.evalList, Operand.eval]
-  · rintro μ ⟨-, -, hl, -⟩
-    simpa [Mem.Live] using hl
-  · rintro μ ⟨hH, hp, hl, hroom, hwo, hpo⟩
-    obtain ⟨hq, hsub⟩ := readBlock_tail_twelve hq12 hp
-    exact ⟨hH, hq, by simpa [Mem.Live] using hl, hroom, hwo,
-      hpo.mono (Fp.inBlock_le_inBlock (by omega) (by omega)) le_rfl⟩
-  · rintro μ' ⟨roots, ev, hev, hfw, hO⟩
-    obtain ⟨L', hL', hL'ev⟩ := hev.exists_specNorm_sub_le hβ hfw
-    exact ⟨roots, L' - B, hL', by simpa using hL'ev, hO⟩
-
-/-- **A small-eigenvalue routine is a leaf routine** ([BanksGarzaVargasSrivastava2025,
-Corollary 1.3] in the worklist of [BanksGarzaVargasSrivastava2022, Theorem 6.3]): if `SE` meets
-`NLAlib.ShiftedQR.RandomSmallEigContract` with forward error $\beta \ge 0$ and $12$ words `qs`,
-its leaf routine `NLAlib.ShiftedQR.seLeaf` meets `NLAlib.ShiftedQR.RandomLeafRoutineContract`
-with backward error $\beta$ on the same orders and norms, with any words `ps₀` before `qs`:
-forward error implies backward error (`NLAlib.IsEigenvalueListing.exists_specNorm_sub_le`). -/
-theorem RandomSmallEigContract.randomLeafRoutineContract {law : ℕ → Measure ℝ} {β φ : ℝ}
-    {kmax T : ℕ} {S : ℝ} {qs ps₀ : List ℝ} {SE : Impl O Q} {I : Interp O Q ℝ}
-    (h : RandomSmallEigContract law β φ kmax T S qs SE I) (hβ : 0 ≤ β) (hqs : qs.length = 12) :
-    RandomLeafRoutineContract law β φ kmax S (ps₀ ++ qs) T (seLeaf SE) I :=
-  RandomSmallEigContractAt.randomLeafRoutineContract (hqs ▸ h.at) hβ (Or.inr hqs)
 
 end Routine
 

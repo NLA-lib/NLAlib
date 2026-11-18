@@ -7,12 +7,14 @@ module
 
 public import NLAlib.Matrix.FinitePrecision.GivensPrograms
 public import NLAlib.Matrix.FinitePrecision.GivensCoefficients
+public import NLAlib.Matrix.FinitePrecision.GivensChain
 public import NLAlib.Matrix.Perturbation.UnitarySimilarity
 public import NLAlib.Ops.Catalog.Index
 public import NLAlib.Ops.Catalog.Compare
 public import NLAlib.Ops.RunMeasurable
 public import NLAlib.ForMathlib.MeasureTheory.Matrix
 public import Mathlib.MeasureTheory.Constructions.BorelSpace.Complex
+public import Mathlib.MeasureTheory.Function.Floor
 
 /-!
 # Slotted logs of Givens rotations and their replay
@@ -73,11 +75,25 @@ def slotEntries (w : ℕ) (L : List (Option (List GivensEntry))) : List GivensEn
   L.flatMap fun o => (o.map (padEntries w)).getD []
 
 /-- The padding entry is the identity rotation. -/
-@[simp] theorem givensAt_zero (n : ℕ) : givensAt n (0, 0, 0) = 1 := sorry
+@[simp] theorem givensAt_zero (n : ℕ) : givensAt n (0, 0, 0) = 1 := by
+  unfold givensAt
+  split_ifs <;> simp [givensCoeffs, givens]
 
 /-- Padding does not change the unitary of a log. -/
 theorem givensLog_padEntries (n w : ℕ) (es : List GivensEntry) :
-    givensLog n (padEntries w es) = givensLog n es := sorry
+    givensLog n (padEntries w es) = givensLog n es := by
+  simp [padEntries, givensLog_append, givensLog, List.map_replicate, List.prod_replicate]
+
+/-- The words of the zero fill: `w` zero entries are $5w$ zero words. -/
+theorem flatMap_entryWords_padEntries_nil (w : ℕ) :
+    (padEntries w []).flatMap entryWords = List.replicate (5 * w) 0 := by
+  induction w with
+  | zero => rfl
+  | succ w ih =>
+    simp only [padEntries, List.nil_append, List.length_nil, Nat.sub_zero,
+      List.replicate_succ, List.flatMap_cons] at ih ⊢
+    rw [ih, show 5 * (w + 1) = 5 + 5 * w by ring, List.replicate_add]
+    simp [entryWords]
 
 /-- **The stored slotted log**: the slots `L` (closed: `none` rejected, `some es` accepted with
 at most `w` entries) and the pending entries `P` of slot `L.length` are held at `lg`. A slot
@@ -103,7 +119,19 @@ def HoldsSlottedLog (lg : ℕ × ℕ) (ns w : ℕ) (L : List (Option (List Given
 already zero). -/
 theorem HoldsSlottedLog.reject {lg : ℕ × ℕ} {ns w : ℕ} {L : List (Option (List GivensEntry))}
     {P : List GivensEntry} {s : Store ℝ} (h : HoldsSlottedLog lg ns w L P s)
-    (hL : L.length < ns) : HoldsSlottedLog lg ns w (L ++ [none]) [] s := sorry
+    (hL : L.length < ns) : HoldsSlottedLog lg ns w (L ++ [none]) [] s := by
+  obtain ⟨-, -, hc, hp, hf⟩ := h
+  refine ⟨by simp; omega, by simp, fun j hj => ?_, fun hj => ?_, fun j hj hjn => ?_⟩
+  · simp only [List.length_append, List.length_singleton] at hj
+    rcases Nat.lt_succ_iff_lt_or_eq.mp hj with hj | rfl
+    · obtain ⟨v, hv, hm⟩ := hc j hj
+      exact ⟨v, hv, by rwa [List.getElem_append_left hj]⟩
+    · exact ⟨0, (hp hL).1, by simp⟩
+  · simp only [List.length_append, List.length_singleton] at hj ⊢
+    obtain ⟨h1, h2⟩ := hf (L.length + 1) (by omega) hj
+    exact ⟨h1, by rw [h2, flatMap_entryWords_padEntries_nil]⟩
+  · simp only [List.length_append, List.length_singleton] at hj
+    exact hf j (by omega) hjn
 
 /-- **The log read from a store**: the `ns` slots of `w` entries at `lg`, a slot accepted (`some`)
 iff its valid word is positive, each entry decoded from its five words (the plane by
@@ -119,16 +147,156 @@ noncomputable def slottedLogRead (lg : ℕ × ℕ) (ns w : ℕ) (s : Store ℝ) 
           ⟨x (1 + 5 * i + 3), x (1 + 5 * i + 4)⟩))
     else none
 
+/-- Padding twice is padding once. -/
+theorem padEntries_padEntries (w : ℕ) (es : List GivensEntry) :
+    padEntries w (padEntries w es) = padEntries w es := by
+  simp only [padEntries, List.length_append, List.length_replicate]
+  rw [show w - (es.length + (w - es.length)) = 0 by omega]
+  simp
+
+/-- Padding the accepted slots does not change the entries of a log. -/
+theorem slotEntries_map_padEntries (w : ℕ) (L : List (Option (List GivensEntry))) :
+    slotEntries w (L.map (Option.map (padEntries w))) = slotEntries w L := by
+  simp only [slotEntries, List.flatMap_map]
+  congr 1
+  funext o
+  cases o <;> simp [padEntries_padEntries]
+
+/-- Word $5i + k$ of the words of a list of entries is word $k$ of entry $i$. -/
+theorem getD_flatMap_entryWords (es : List GivensEntry) {i k : ℕ} (hi : i < es.length)
+    (hk : k < 5) : (es.flatMap entryWords).getD (5 * i + k) 0 = (entryWords es[i]).getD k 0 := by
+  induction es generalizing i with
+  | nil => simp at hi
+  | cons e es ih =>
+    cases i with
+    | zero =>
+      simp only [List.flatMap_cons, List.getD_eq_getElem?_getD, Nat.mul_zero, Nat.zero_add,
+        List.getElem_cons_zero]
+      rw [List.getElem?_append_left (by simp [entryWords]; omega)]
+    | succ i =>
+      simp only [List.length_cons] at hi
+      simp only [List.flatMap_cons, List.getD_eq_getElem?_getD, List.getElem_cons_succ] at ih ⊢
+      rw [List.getElem?_append_right (by simp [entryWords]; omega)]
+      have h5 : (entryWords e).length = 5 := rfl
+      rw [h5, show 5 * (i + 1) + k - 5 = 5 * i + k by omega]
+      exact ih (by omega)
+
+/-- The entries decoded from their stored words. -/
+private theorem decode_entries {s : Store ℝ} {b off w : ℕ} {es : List GivensEntry}
+    (hl : es.length = w) (h : s.readBlock b (off + 1) (5 * w) = some (es.flatMap entryWords)) :
+    ((List.range w).map fun i =>
+      (⌊(s.get b (off + (1 + 5 * i + 0))).getD 0⌋₊,
+        (⟨(s.get b (off + (1 + 5 * i + 1))).getD 0, (s.get b (off + (1 + 5 * i + 2))).getD 0⟩ : ℂ),
+        (⟨(s.get b (off + (1 + 5 * i + 3))).getD 0, (s.get b (off + (1 + 5 * i + 4))).getD 0⟩ :
+          ℂ))) = es := by
+  have hg (i k : ℕ) (hi : i < w) (hk : k < 5) :
+      (s.get b (off + (1 + 5 * i + k))).getD 0 = (entryWords es[i]).getD k 0 := by
+    rw [show off + (1 + 5 * i + k) = off + 1 + (5 * i + k) by ring,
+      Store.get_of_readBlock h (by omega) 0, Option.getD_some,
+      getD_flatMap_entryWords es (by omega) hk]
+  apply List.ext_getElem (by simp [hl])
+  intro i h1 h2
+  simp only [List.getElem_map, List.getElem_range]
+  simp only [List.length_map, List.length_range] at h1
+  rw [hg i 0 h1 (by omega), hg i 1 h1 (by omega), hg i 2 h1 (by omega), hg i 3 h1 (by omega),
+    hg i 4 h1 (by omega)]
+  simp [entryWords]
+
+/-- A stored closed log reads back as its slots, each accepted slot padded. -/
+theorem HoldsSlottedLog.slottedLogRead_eq {lg : ℕ × ℕ} {ns w : ℕ}
+    {L : List (Option (List GivensEntry))} {s : Store ℝ} (h : HoldsSlottedLog lg ns w L [] s)
+    (hL : L.length = ns) : slottedLogRead lg ns w s = L.map (Option.map (padEntries w)) := by
+  apply List.ext_getElem (by simp [slottedLogRead, hL])
+  intro j h1 h2
+  simp only [List.length_map] at h2
+  obtain ⟨v, hv, hm⟩ := h.2.2.1 j h2
+  simp only [slottedLogRead, List.getElem_map, List.getElem_range, Nat.add_zero, hv,
+    Option.getD_some]
+  split at hm
+  · next he => rw [he, if_neg (by linarith)]; rfl
+  · next es he =>
+    obtain ⟨hv0, hes, hb⟩ := hm
+    rw [he, if_pos hv0, Option.map_some]
+    congr 1
+    exact decode_entries (by simp [padEntries]; omega) hb
+
 /-- A stored closed log is read back up to padding: its valid entries are those of the read. -/
 theorem HoldsSlottedLog.slotEntries_read {lg : ℕ × ℕ} {ns w : ℕ}
     {L : List (Option (List GivensEntry))} {s : Store ℝ} (h : HoldsSlottedLog lg ns w L [] s)
     (hL : L.length = ns) (hpl : ∀ e ∈ slotEntries w L, (e.1 : ℝ) = e.1) :
-    slotEntries w L = slotEntries w (slottedLogRead lg ns w s) := sorry
+    slotEntries w L = slotEntries w (slottedLogRead lg ns w s) := by
+  rw [h.slottedLogRead_eq hL, slotEntries_map_padEntries]
+
+/-- The Givens coefficients are a measurable function of the pair. -/
+theorem measurable_givensCoeffs : Measurable fun z : ℂ × ℂ => givensCoeffs z.1 z.2 := by
+  unfold givensCoeffs
+  refine Measurable.ite (measurableSet_eq_fun (by fun_prop) measurable_const) measurable_const ?_
+  have hs : Measurable fun z : ℂ × ℂ => ((√(‖z.1‖ ^ 2 + ‖z.2‖ ^ 2) : ℝ) : ℂ) := by fun_prop
+  exact ((continuous_star.measurable.comp measurable_fst).div hs).prodMk
+    ((continuous_star.measurable.comp measurable_snd).div hs)
+
+/-- The rotation of an entry is a measurable function of the entry. -/
+theorem measurable_givensAt (n : ℕ) : Measurable (givensAt n) := by
+  refine measurable_from_prod_countable_right fun k => ?_
+  unfold givensAt
+  dsimp only
+  split_ifs
+  · have hg : Continuous fun cs : ℂ × ℂ =>
+        givens (⟨k, by omega⟩ : Fin n) ⟨k + 1, by omega⟩ cs.1 cs.2 := by
+      unfold givens; fun_prop
+    exact hg.measurable.comp measurable_givensCoeffs
+  · exact measurable_const
+
+/-- The unitary of a concatenation of logs is the product of their unitaries. -/
+theorem givensLog_flatMap {α : Type*} (n : ℕ) (f : α → List GivensEntry) (L : List α) :
+    givensLog n (L.flatMap f) = (L.map fun a => givensLog n (f a)).prod := by
+  induction L with
+  | nil => rfl
+  | cons a L ih => rw [List.flatMap_cons, givensLog_append, ih, List.map_cons, List.prod_cons]
+
+/-- A word of a memory, read as $0$ when unwritten, is measurable. -/
+theorem measurable_get_getD (b i : ℕ) :
+    Measurable fun m : Mem ℝ => (m.store.get b i).getD 0 :=
+  measurable_snd.comp (Mem.measurable_cell (b, i))
+
+/-- A finite product of measurable matrix-valued maps is measurable. -/
+private theorem measurable_list_prod {X : Type*} [MeasurableSpace X] {n : ℕ} {ι : Type*}
+    (l : List ι) {f : ι → X → Matrix (Fin n) (Fin n) ℂ} (hf : ∀ i ∈ l, Measurable (f i)) :
+    Measurable fun x => (l.map fun i => f i x).prod := by
+  induction l with
+  | nil => exact measurable_const
+  | cons a l ih =>
+    simp only [List.map_cons, List.prod_cons]
+    exact (hf a (by simp)).mul (ih fun i hi => hf i (by simp [hi]))
+
+/-- The unitary of a slot read under a measurable validity test is measurable. -/
+private theorem measurable_givensLog_slot {n w : ℕ} {p : Mem ℝ → Prop} [DecidablePred p]
+    (hp : MeasurableSet {m | p m}) {f : Mem ℝ → List GivensEntry}
+    (hf : Measurable fun m => givensLog n (padEntries w (f m))) :
+    Measurable fun m =>
+      givensLog n ((Option.map (padEntries w) (if p m then some (f m) else none)).getD []) := by
+  have e : (fun m => givensLog n ((Option.map (padEntries w)
+      (if p m then some (f m) else none)).getD [])) =
+      fun m => if p m then givensLog n (padEntries w (f m)) else 1 := by
+    funext m
+    split_ifs <;> rfl
+  rw [e]
+  exact Measurable.ite hp hf measurable_const
 
 /-- The unitary of the read log is a measurable function of the memory. -/
 theorem measurable_givensLog_slottedLogRead (lg : ℕ × ℕ) (ns w n : ℕ) :
-    Measurable fun m : Mem ℝ => givensLog n (slotEntries w (slottedLogRead lg ns w m.store)) :=
-  sorry
+    Measurable fun m : Mem ℝ => givensLog n (slotEntries w (slottedLogRead lg ns w m.store)) := by
+  simp only [slotEntries, slottedLogRead, List.flatMap_map, givensLog_flatMap]
+  refine measurable_list_prod _ fun j _ => ?_
+  have hx (t : ℕ) := measurable_get_getD lg.1 (lg.2 + j * (1 + 5 * w) + t)
+  refine measurable_givensLog_slot (measurableSet_lt measurable_const (hx 0)) ?_
+  simp only [padEntries, List.length_map, List.length_range,
+    Nat.sub_self, List.replicate_zero, List.append_nil, givensLog, List.map_map]
+  refine measurable_list_prod _ fun i _ => ?_
+  refine (continuous_star.measurable.comp (measurable_givensAt n)).comp ?_
+  refine (Measurable.nat_floor (hx _)).prodMk (Measurable.prodMk ?_ ?_)
+  · exact Complex.equivRealProdCLM.symm.continuous.measurable.comp ((hx _).prodMk (hx _))
+  · exact Complex.equivRealProdCLM.symm.continuous.measurable.comp ((hx _).prodMk (hx _))
 
 /-! ### The log programs -/
 
@@ -317,7 +485,10 @@ theorem givensReplayRows_specNorm_sub_le {Mch : Machine ℝ} {I : Interp O Q ℝ
 /-- **The accumulated product from the identity**: with $24R\boldsymbol{u} \le 1/8$,
 $(1 + 24\boldsymbol{u})^R - 1 \le 27R\boldsymbol{u}$. -/
 theorem one_add_mul_pow_sub_one_le {u : ℝ} {R : ℕ} (hu : 0 ≤ u) (hR : 24 * R * u ≤ 1 / 8) :
-    (1 + 24 * u) ^ R - 1 ≤ 27 * R * u := sorry
+    (1 + 24 * u) ^ R - 1 ≤ 27 * R * u := by
+  have h := one_add_pow_sub_one_le (x := 24 * u) (n := R) (by positivity) (by nlinarith)
+  have hR : 0 ≤ (R : ℝ) * (24 * u) := by positivity
+  nlinarith
 
 end ReplaySpecs
 

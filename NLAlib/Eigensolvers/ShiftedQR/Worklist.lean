@@ -144,6 +144,13 @@ theorem StackHolds.of_eqOff {b : ℕ × ℕ} {rs : List (ℕ × ℕ)} {st st' : 
   exact ⟨(hget _ (by omega)).trans h.1, fun t ht =>
     ⟨(hget _ (by omega)).trans (h.2 t ht).1, (hget _ (by omega)).trans (h.2 t ht).2⟩⟩
 
+/-- A range stack survives dropping scratch buffers above its buffer. -/
+theorem StackHolds.of_below {b : ℕ × ℕ} {rs : List (ℕ × ℕ)} {st st' : Store ℝ} {L : ℕ}
+    (h : StackHolds b rs st) (hBelow : Store.Below L st st') (hb : b.1 < L) :
+    StackHolds b rs st' :=
+  ⟨((hBelow b.1 hb).2 _).trans h.1, fun t ht =>
+    ⟨((hBelow b.1 hb).2 _).trans (h.2 t ht).1, ((hBelow b.1 hb).2 _).trans (h.2 t ht).2⟩⟩
+
 /-- The top pair is an actual contiguous two-word block. -/
 theorem StackHolds.read_top {b : ℕ × ℕ} {rs : List (ℕ × ℕ)} {r : ℕ × ℕ}
     {st : Store ℝ} (h : StackHolds b (rs ++ [r]) st) :

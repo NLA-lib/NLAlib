@@ -34,9 +34,12 @@ the inner dimension.
 
 ## Main results
 
+* `NLAlib.matMulOn_writes_view`, `NLAlib.matMulOn_conjTranspose_writes_view`: the program stores
+  `NLAlib.matMulWord` (strided views of stored matrices).
 * `NLAlib.matMulOn_writes_word`, `NLAlib.matMulOn_conjTranspose_writes_word`: the program stores
   `NLAlib.matMulWord` (contiguous views).
-* `NLAlib.Ops.StdModel.specNorm_matMulWord_sub_le`: the error of the stored product.
+* `NLAlib.Ops.StdModel.specNorm_matMulWord_sub_le`,
+  `NLAlib.Ops.StdModel.specNorm_matMulWord_sub_le_growth`: the error of the stored product.
 -/
 
 @[expose] public section
@@ -399,23 +402,30 @@ private def MatMulPrefix {m q : ℕ} (z : ℕ × ℕ) (W : Matrix (Fin m) (Fin q
     s.readBlock z.1 (z.2 + 2 * (j' * m + i')) 2 = some [(W i' j').re, (W i' j').im]
 
 /-- One entry step of the product program keeps its invariant: the program state, the inputs,
-and the entries written so far, now with the entry $(i, j)$. -/
+and the entries written so far, now with the entry $(i, j)$. The left factor is read from a
+stored `Xs` at `xs`, the right one from a stored `Ys` at `ys`, through strided views. -/
 private theorem matMulOn_entry_step {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
-    {τ : Tape ℝ} {m p q ldx c r₁ r₂ Lc j i pos : ℕ} {x y z : ℕ × ℕ}
-    {Xs : Matrix (Fin r₁) (Fin r₂) ℂ} {Y : Matrix (Fin p) (Fin q) ℂ} (lf : Fin m → Fin p → ℂ)
-    (hsrc : ∀ s, HoldsMatrix x Xs s → ∀ (i : Fin m) (l : Fin p),
+    {τ : Tape ℝ} {m p q ldx ldy c r₁ r₂ r₃ r₄ Lc j i pos : ℕ} {x y z xs ys : ℕ × ℕ}
+    {Xs : Matrix (Fin r₁) (Fin r₂) ℂ} {Ys : Matrix (Fin r₃) (Fin r₄) ℂ}
+    (lf : Fin m → Fin p → ℂ) (rf : Fin p → Fin q → ℂ)
+    (hsrc : ∀ s, HoldsMatrix xs Xs s → ∀ (i : Fin m) (l : Fin p),
       MatMulLeftWords M s x c ldx i l (lf i l))
-    (hxz : Fp.Disj (Store.inBlock x.1 x.2 (2 * (r₂ * r₁))) (Store.inBlock z.1 z.2 (2 * (m * q))))
-    (hyz : Fp.Disj (Store.inBlock y.1 y.2 (2 * (q * p))) (Store.inBlock z.1 z.2 (2 * (m * q))))
-    {ρ : Env} (hidx : ρ.idx = [m, p, q, ldx, p, m, c, x.2, y.2, z.2, j, i])
+    (hsrcY : ∀ s, HoldsMatrix ys Ys s → ∀ (l : Fin p) (j : Fin q),
+      s.readBlock y.1 (y.2 + 2 * (j * ldy + l)) 2 = some [(rf l j).re, (rf l j).im])
+    (hxz : Fp.Disj (Store.inBlock xs.1 xs.2 (2 * (r₂ * r₁)))
+      (Store.inBlock z.1 z.2 (2 * (m * q))))
+    (hyz : Fp.Disj (Store.inBlock ys.1 ys.2 (2 * (r₄ * r₃)))
+      (Store.inBlock z.1 z.2 (2 * (m * q))))
+    {ρ : Env} (hidx : ρ.idx = [m, p, q, ldx, ldy, m, c, x.2, y.2, z.2, j, i])
     (hbuf : ρ.buf = [x.1, y.1, z.1, Lc, Lc + 1, Lc + 2, Lc + 3, Lc + 4])
-    (hxL : x.1 < Lc) (hyL : y.1 < Lc) (hzL : z.1 < Lc) (hj : j < q) (hi : i < m) {μ' : Mem ℝ}
+    (hxL : x.1 < Lc) (hyL : y.1 < Lc) (hzL : z.1 < Lc) (hxsL : xs.1 < Lc) (hysL : ys.1 < Lc)
+    (hj : j < q) (hi : i < m) {μ' : Mem ℝ}
     (h1 : μ'.pos = pos) (h2 : μ'.store.length = Lc + 5)
     (h3 : ∀ k < 5, μ'.store.len (Lc + k) = 2)
-    (h4 : μ'.store.readBlock Lc 0 2 = some [M.lit 1, M.lit 0]) (h5 : HoldsMatrix x Xs μ'.store)
-    (h6 : HoldsMatrix y Y μ'.store)
+    (h4 : μ'.store.readBlock Lc 0 2 = some [M.lit 1, M.lit 0]) (h5 : HoldsMatrix xs Xs μ'.store)
+    (h6 : HoldsMatrix ys Ys μ'.store)
     (h7 : MatMulPrefix z (Matrix.of fun i j => (List.finRange p).foldl
-      (fun s l => linearComplex M (lf i l) ⟨M.lit 1, M.lit 0⟩ (Y l j) s) ⟨M.lit 0, M.lit 0⟩) j i
+      (fun s l => linearComplex M (lf i l) ⟨M.lit 1, M.lit 0⟩ (rf l j) s) ⟨M.lit 0, M.lit 0⟩) j i
         μ'.store)
     (h8 : z.2 + 2 * (m * q) ≤ μ'.store.len z.1) :
     Writes .total I τ (matMulEntry (O := O) (Q := Q)) ρ
@@ -423,16 +433,16 @@ private theorem matMulOn_entry_step {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
         Store.inBlock (Lc + 2) 0 2 ⊔ Store.inBlock (Lc + 3) 0 2 ⊔ Store.inBlock (Lc + 4) 0 2))
       (fun μ'' => μ''.pos = pos ∧ μ''.store.length = Lc + 5 ∧
         (∀ k < 5, μ''.store.len (Lc + k) = 2) ∧
-        μ''.store.readBlock Lc 0 2 = some [M.lit 1, M.lit 0] ∧ HoldsMatrix x Xs μ''.store ∧
-        HoldsMatrix y Y μ''.store ∧ MatMulPrefix z (Matrix.of fun i j => (List.finRange p).foldl
-          (fun s l => linearComplex M (lf i l) ⟨M.lit 1, M.lit 0⟩ (Y l j) s) ⟨M.lit 0, M.lit 0⟩)
+        μ''.store.readBlock Lc 0 2 = some [M.lit 1, M.lit 0] ∧ HoldsMatrix xs Xs μ''.store ∧
+        HoldsMatrix ys Ys μ''.store ∧ MatMulPrefix z (Matrix.of fun i j => (List.finRange p).foldl
+          (fun s l => linearComplex M (lf i l) ⟨M.lit 1, M.lit 0⟩ (rf l j) s) ⟨M.lit 0, M.lit 0⟩)
             j (i + 1) μ''.store ∧ z.2 + 2 * (m * q) ≤ μ''.store.len z.1) μ' := by
   have hk : j * m + i < q * m := Idx.add_lt_mul hj hi
   have hent : Store.inBlock z.1 (z.2 + 2 * (j * m + i)) 2 ≤ Store.inBlock z.1 z.2 (2 * (m * q)) :=
     Fp.inBlock_le_inBlock (by omega) (by rw [Nat.mul_comm m q]; omega)
-  refine (matMulEntry_writes hS (ldy := p) (ldz := m) hidx hbuf h2 h3 hxL hyL hzL
-    (a := lf ⟨i, hi⟩) (b := fun l => Y l ⟨j, hj⟩) (fun l => hsrc _ h5 ⟨i, hi⟩ l)
-    (fun l => h6.read_entry l ⟨j, hj⟩) h4 (by rw [Nat.mul_comm m q] at h8; omega)).mono
+  refine (matMulEntry_writes hS (ldy := ldy) (ldz := m) hidx hbuf h2 h3 hxL hyL hzL
+    (a := lf ⟨i, hi⟩) (b := fun l => rf l ⟨j, hj⟩) (fun l => hsrc _ h5 ⟨i, hi⟩ l)
+    (fun l => hsrcY _ h6 l ⟨j, hj⟩) h4 (by rw [Nat.mul_comm m q] at h8; omega)).mono
     (sup_le_sup_right hent _) ?_
   rintro μ'' hfr ⟨hp, hz⟩
   refine ⟨hp.trans h1, by rw [hfr.length_eq, h2], fun k hk => by rw [hfr.len_eq]; exact h3 k hk,
@@ -459,29 +469,39 @@ private theorem matMulOn_entry_step {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
       ⟨(Fp.disj_inBlock_of_le (by omega)).symm, by disjoint⟩)
       (h7 i' j' (by rcases h with h | ⟨h₁, h₂⟩ <;> omega))
 
-/-- The product program on contiguous views, with the left factor read by `MatMulLeftWords` from
-a stored matrix `Xs`: it stores the accumulations of the entries `lf i l` against `Y`. -/
+/-- The product program with the output contiguous, the left factor read by `MatMulLeftWords`
+from a stored `Xs` at `xs` and the right factor read through a strided view from a stored `Ys`
+at `ys`: it stores the accumulations of the entries `lf i l` against `rf l j`. -/
 private theorem matMulOn_writes_gen {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
-    {τ : Tape ℝ} {μ : Mem ℝ} {m p q ldx c r₁ r₂ : ℕ} {x y z : ℕ × ℕ}
-    {Xs : Matrix (Fin r₁) (Fin r₂) ℂ} {Y : Matrix (Fin p) (Fin q) ℂ} (lf : Fin m → Fin p → ℂ)
-    (hX : HoldsMatrix x Xs μ.store)
-    (hsrc : ∀ s, HoldsMatrix x Xs s → ∀ (i : Fin m) (l : Fin p),
+    {τ : Tape ℝ} {μ : Mem ℝ} {m p q ldx ldy c r₁ r₂ r₃ r₄ : ℕ} {x y z xs ys : ℕ × ℕ}
+    {Xs : Matrix (Fin r₁) (Fin r₂) ℂ} {Ys : Matrix (Fin r₃) (Fin r₄) ℂ}
+    (lf : Fin m → Fin p → ℂ) (rf : Fin p → Fin q → ℂ)
+    (hX : HoldsMatrix xs Xs μ.store)
+    (hsrc : ∀ s, HoldsMatrix xs Xs s → ∀ (i : Fin m) (l : Fin p),
       MatMulLeftWords M s x c ldx i l (lf i l))
-    (hY : HoldsMatrix y Y μ.store) (hl : μ.Live [x, y, z])
+    (hY : HoldsMatrix ys Ys μ.store)
+    (hsrcY : ∀ s, HoldsMatrix ys Ys s → ∀ (l : Fin p) (j : Fin q),
+      s.readBlock y.1 (y.2 + 2 * (j * ldy + l)) 2 = some [(rf l j).re, (rf l j).im])
+    (hl : μ.Live [x, y, z, xs, ys])
     (hz : z.2 + 2 * (m * q) ≤ μ.store.len z.1)
-    (hxz : Fp.Disj (Store.inBlock x.1 x.2 (2 * (r₂ * r₁))) (Store.inBlock z.1 z.2 (2 * (m * q))))
-    (hyz : Fp.Disj (Store.inBlock y.1 y.2 (2 * (q * p))) (Store.inBlock z.1 z.2 (2 * (m * q)))) :
+    (hxz : Fp.Disj (Store.inBlock xs.1 xs.2 (2 * (r₂ * r₁)))
+      (Store.inBlock z.1 z.2 (2 * (m * q))))
+    (hyz : Fp.Disj (Store.inBlock ys.1 ys.2 (2 * (r₄ * r₃)))
+      (Store.inBlock z.1 z.2 (2 * (m * q)))) :
     Writes .total I τ (matMulOn (O := O) (Q := Q)).body
-      (Env.frame [m, p, q, ldx, p, m, c] [x, y, z])
+      (Env.frame [m, p, q, ldx, ldy, m, c] [x, y, z])
       (Store.inBlock z.1 z.2 (2 * (m * q)))
       (fun μ' => μ'.pos = μ.pos ∧ HoldsMatrix z (Matrix.of fun i j => (List.finRange p).foldl
-        (fun s l => linearComplex M (lf i l) ⟨M.lit 1, M.lit 0⟩ (Y l j) s)
+        (fun s l => linearComplex M (lf i l) ⟨M.lit 1, M.lit 0⟩ (rf l j) s)
           ⟨M.lit 0, M.lit 0⟩) μ'.store) μ := by
   set W : Matrix (Fin m) (Fin q) ℂ := Matrix.of fun i j => (List.finRange p).foldl
-    (fun s l => linearComplex M (lf i l) ⟨M.lit 1, M.lit 0⟩ (Y l j) s) ⟨M.lit 0, M.lit 0⟩ with hW
+    (fun s l => linearComplex M (lf i l) ⟨M.lit 1, M.lit 0⟩ (rf l j) s) ⟨M.lit 0, M.lit 0⟩
+    with hW
   have hxl : x.1 < μ.store.length := hl x (by simp)
   have hyl : y.1 < μ.store.length := hl y (by simp)
   have hzl : z.1 < μ.store.length := hl z (by simp)
+  have hxsl : xs.1 < μ.store.length := hl xs (by simp)
+  have hysl : ys.1 < μ.store.length := hl ys (by simp)
   unfold matMulOn
   change Writes .total I τ (Stmt.allocs [.const 2, .const 2, .const 2, .const 2, .const 2] _) _ _
     _ μ
@@ -512,15 +532,14 @@ private theorem matMulOn_writes_gen {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
     (hfr₂.mono (show Store.inBlock Lc 1 1 ≤ Store.inBlock Lc 0 2 by fp_sub))
   set P : ℕ → ℕ → Mem ℝ → Prop := fun j i μ' => μ'.pos = μ.pos ∧
     μ'.store.length = Lc + 5 ∧ (∀ k < 5, μ'.store.len (Lc + k) = 2) ∧
-    μ'.store.readBlock Lc 0 2 = some [M.lit 1, M.lit 0] ∧ HoldsMatrix x Xs μ'.store ∧
-    HoldsMatrix y Y μ'.store ∧ MatMulPrefix z W j i μ'.store ∧
+    μ'.store.readBlock Lc 0 2 = some [M.lit 1, M.lit 0] ∧ HoldsMatrix xs Xs μ'.store ∧
+    HoldsMatrix ys Ys μ'.store ∧ MatMulPrefix z W j i μ'.store ∧
     z.2 + 2 * (m * q) ≤ μ'.store.len z.1 with hP
-  have hdis : Fp.Disj (Store.inBlock Lc 0 2) (Z ⊔ G) := by rw [hZ, hG]; disjoint
   have hstart : P 0 0 μ₂ := by
     refine ⟨hp₂.trans hp₁, by rw [hfr₂.length_eq, hfr₁.length_eq]; simpa using hlen,
       fun k hk => by rw [hfr₂.len_eq, hfr₁.len_eq]; exact hl5 k hk, hone,
-      hfr₁₂.keep (readsOnly_holdsMatrix _ _) (by disjoint) (hX.of_below hBelow hxl),
-      hfr₁₂.keep (readsOnly_holdsMatrix _ _) (by disjoint) (hY.of_below hBelow hyl),
+      hfr₁₂.keep (readsOnly_holdsMatrix _ _) (by disjoint) (hX.of_below hBelow hxsl),
+      hfr₁₂.keep (readsOnly_holdsMatrix _ _) (by disjoint) (hY.of_below hBelow hysl),
       fun _ _ h => by omega, ?_⟩
     rw [hfr₂.len_eq, hfr₁.len_eq, (hBelow z.1 hzl).1]; exact hz
   refine (writes_loop₂ (M := q) (N := m) (by simp [IExp.eval, Env.frame]) (fun _ => by
@@ -529,14 +548,81 @@ private theorem matMulOn_writes_gen {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
   · rintro j hj μ' ⟨h1, h2, h3, h4, h5, h6, h7, h8⟩
     exact ⟨h1, h2, h3, h4, h5, h6, fun i' j' h => h7 i' j' (by omega), h8⟩
   · intro j hj i hi μ' _ ⟨h1, h2, h3, h4, h5, h6, h7, h8⟩
-    exact matMulOn_entry_step hS lf hsrc hxz hyz (by simp [Env.pushIdx, Env.frame])
-      (by simp [Env.pushIdx, Env.frame, List.range_succ]) hxl hyl hzl hj hi h1 h2 h3 h4 h5 h6 h7 h8
+    exact matMulOn_entry_step hS lf rf hsrc hsrcY hxz hyz (by simp [Env.pushIdx, Env.frame])
+      (by simp [Env.pushIdx, Env.frame, List.range_succ]) hxl hyl hzl hxsl hysl hj hi h1 h2 h3
+      h4 h5 h6 h7 h8
   · rintro μ' - ⟨h1, -, -, -, -, -, h7, -⟩
     refine ⟨h1, HoldsMatrix.of_get (fun i j => ?_) (fun i j => ?_)⟩
     · simpa using Store.get_of_readBlock (h7 i j (Or.inl j.isLt)) (j := 0) (by omega) 0
     · simpa using Store.get_of_readBlock (h7 i j (Or.inl j.isLt)) (j := 1) (by omega) 0
 
 section Theorems
+
+/-- **`NLAlib.matMulOn` on strided views** with $c = 0$, on a scalar machine and every tape: if
+the left view `x` (leading dimension `ldx`) reads the entries of $\mathbf{X}$ ($m \times p$) from
+a matrix stored at `xs`, the right view `y` (leading dimension `ldy`) reads the entries of
+$\mathbf{Y}$ ($p \times q$) from a matrix stored at `ys`, and the contiguous output `z` has room
+and is apart from both stored matrices, then the program writes only the output and stores
+`NLAlib.matMulWord`. -/
+theorem matMulOn_writes_view {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    {τ : Tape ℝ} {μ : Mem ℝ} {m p q ldx ldy r₁ r₂ r₃ r₄ : ℕ} {x y z xs ys : ℕ × ℕ}
+    {Xs : Matrix (Fin r₁) (Fin r₂) ℂ} {Ys : Matrix (Fin r₃) (Fin r₄) ℂ}
+    (X : Matrix (Fin m) (Fin p) ℂ) (Y : Matrix (Fin p) (Fin q) ℂ)
+    (hX : HoldsMatrix xs Xs μ.store)
+    (hsrc : ∀ s, HoldsMatrix xs Xs s → ∀ (i : Fin m) (l : Fin p),
+      s.readBlock x.1 (x.2 + 2 * (l * ldx + i)) 2 = some [(X i l).re, (X i l).im])
+    (hY : HoldsMatrix ys Ys μ.store)
+    (hsrcY : ∀ s, HoldsMatrix ys Ys s → ∀ (l : Fin p) (j : Fin q),
+      s.readBlock y.1 (y.2 + 2 * (j * ldy + l)) 2 = some [(Y l j).re, (Y l j).im])
+    (hl : μ.Live [x, y, z, xs, ys]) (hz : z.2 + 2 * (m * q) ≤ μ.store.len z.1)
+    (hxz : Fp.Disj (Store.inBlock xs.1 xs.2 (2 * (r₂ * r₁)))
+      (Store.inBlock z.1 z.2 (2 * (m * q))))
+    (hyz : Fp.Disj (Store.inBlock ys.1 ys.2 (2 * (r₄ * r₃)))
+      (Store.inBlock z.1 z.2 (2 * (m * q)))) :
+    Writes .total I τ (matMulOn (O := O) (Q := Q)).body
+      (Env.frame [m, p, q, ldx, ldy, m, 0] [x, y, z]) (Store.inBlock z.1 z.2 (2 * (m * q)))
+      (fun μ' => μ'.pos = μ.pos ∧ HoldsMatrix z (matMulWord M X Y) μ'.store) μ := by
+  have g : ∀ {s : Store ℝ} {b o : ℕ} {u v : ℝ}, s.readBlock b o 2 = some [u, v] →
+      s.get b o = some u ∧ s.get b (o + 1) = some v := fun h =>
+    ⟨by simpa using Store.get_of_readBlock h (j := 0) (by omega) 0,
+      by simpa using Store.get_of_readBlock h (j := 1) (by omega) 0⟩
+  exact matMulOn_writes_gen hS (fun i l => X i l) (fun l j => Y l j) hX
+    (fun s hs i l => Or.inl ⟨rfl, (g (hsrc s hs i l)).1, (g (hsrc s hs i l)).2⟩) hY hsrcY hl hz
+    hxz hyz
+
+/-- **`NLAlib.matMulOn` with the left factor conjugate-transposed on strided views** ($c = 1$),
+under the standard model (negation is exact): if the left view `x` (leading dimension `ldx`)
+reads the entries of $\mathbf{X}$ ($p \times m$) from a matrix stored at `xs`, the right view
+`y` reads $\mathbf{Y}$ ($p \times q$) from a matrix stored at `ys`, and the contiguous output
+`z` has room apart from both, the program writes only the output and stores `NLAlib.matMulWord`
+of $\mathbf{X}^{\mathsf H}$ and $\mathbf{Y}$. -/
+theorem matMulOn_conjTranspose_writes_view {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar M I) (hM : Ops.StdModel u id M) {τ : Tape ℝ} {μ : Mem ℝ}
+    {m p q ldx ldy r₁ r₂ r₃ r₄ : ℕ} {x y z xs ys : ℕ × ℕ}
+    {Xs : Matrix (Fin r₁) (Fin r₂) ℂ} {Ys : Matrix (Fin r₃) (Fin r₄) ℂ}
+    (X : Matrix (Fin p) (Fin m) ℂ) (Y : Matrix (Fin p) (Fin q) ℂ)
+    (hX : HoldsMatrix xs Xs μ.store)
+    (hsrc : ∀ s, HoldsMatrix xs Xs s → ∀ (l : Fin p) (i : Fin m),
+      s.readBlock x.1 (x.2 + 2 * (i * ldx + l)) 2 = some [(X l i).re, (X l i).im])
+    (hY : HoldsMatrix ys Ys μ.store)
+    (hsrcY : ∀ s, HoldsMatrix ys Ys s → ∀ (l : Fin p) (j : Fin q),
+      s.readBlock y.1 (y.2 + 2 * (j * ldy + l)) 2 = some [(Y l j).re, (Y l j).im])
+    (hl : μ.Live [x, y, z, xs, ys]) (hz : z.2 + 2 * (m * q) ≤ μ.store.len z.1)
+    (hxz : Fp.Disj (Store.inBlock xs.1 xs.2 (2 * (r₂ * r₁)))
+      (Store.inBlock z.1 z.2 (2 * (m * q))))
+    (hyz : Fp.Disj (Store.inBlock ys.1 ys.2 (2 * (r₄ * r₃)))
+      (Store.inBlock z.1 z.2 (2 * (m * q)))) :
+    Writes .total I τ (matMulOn (O := O) (Q := Q)).body
+      (Env.frame [m, p, q, ldx, ldy, m, 1] [x, y, z]) (Store.inBlock z.1 z.2 (2 * (m * q)))
+      (fun μ' => μ'.pos = μ.pos ∧ HoldsMatrix z (matMulWord M Xᴴ Y) μ'.store) μ := by
+  have g : ∀ {s : Store ℝ} {b o : ℕ} {u v : ℝ}, s.readBlock b o 2 = some [u, v] →
+      s.get b o = some u ∧ s.get b (o + 1) = some v := fun h =>
+    ⟨by simpa using Store.get_of_readBlock h (j := 0) (by omega) 0,
+      by simpa using Store.get_of_readBlock h (j := 1) (by omega) 0⟩
+  exact matMulOn_writes_gen hS (fun i l => Xᴴ i l) (fun l j => Y l j) hX
+    (fun s hs i l => Or.inr ⟨rfl, by simpa using (g (hsrc s hs l i)).1,
+      (X l i).im, (g (hsrc s hs l i)).2, by simpa using hM.neg (X l i).im⟩) hY hsrcY hl hz
+    hxz hyz
 
 /-- `NLAlib.matMulOn` with $c = 0$ on contiguous views (leading dimensions the row counts), on a
 scalar machine and every tape: from $\mathbf{X}$ ($m \times p$) at `x` and $\mathbf{Y}$
@@ -551,8 +637,9 @@ theorem matMulOn_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScal
     Writes .total I τ (matMulOn (O := O) (Q := Q)).body (Env.frame [m, p, q, m, p, m, 0] [x, y, z])
       (Store.inBlock z.1 z.2 (2 * (m * q)))
       (fun μ' => μ'.pos = μ.pos ∧ HoldsMatrix z (matMulWord M X Y) μ'.store) μ :=
-  matMulOn_writes_gen hS (Xs := X) X hX
-    (fun s hs i l => Or.inl ⟨rfl, hs.get_re i l, hs.get_im i l⟩) hY hl hz
+  matMulOn_writes_view hS X Y hX (fun s hs i l => hs.read_entry i l) hY
+    (fun s hs l j => hs.read_entry l j)
+    (fun v hv => hl v (by simp only [List.mem_cons, List.not_mem_nil] at hv ⊢; tauto)) hz
     (by rw [Nat.mul_comm p m]; exact hxz) (by rw [Nat.mul_comm q p]; exact hyz)
 
 /-- `NLAlib.matMulOn` with $c = 1$ on contiguous views, under the standard model (negation is
@@ -568,9 +655,9 @@ theorem matMulOn_conjTranspose_writes_word {M : Machine ℝ} {I : Interp O Q ℝ
     Writes .total I τ (matMulOn (O := O) (Q := Q)).body (Env.frame [m, p, q, p, p, m, 1] [x, y, z])
       (Store.inBlock z.1 z.2 (2 * (m * q)))
       (fun μ' => μ'.pos = μ.pos ∧ HoldsMatrix z (matMulWord M Xᴴ Y) μ'.store) μ :=
-  matMulOn_writes_gen hS (Xs := X) Xᴴ hX
-    (fun s hs i l => Or.inr ⟨rfl, by simpa using hs.get_re l i,
-      (X l i).im, hs.get_im l i, by simpa using hM.neg (X l i).im⟩) hY hl hz
+  matMulOn_conjTranspose_writes_view hS hM X Y hX (fun s hs l i => hs.read_entry l i) hY
+    (fun s hs l j => hs.read_entry l j)
+    (fun v hv => hl v (by simp only [List.mem_cons, List.not_mem_nil] at hv ⊢; tauto)) hz
     (by rw [Nat.mul_comm m p]; exact hxz) (by rw [Nat.mul_comm q p]; exact hyz)
 
 end Theorems
@@ -687,20 +774,19 @@ theorem matMul_growth_le {u : ℝ} {p : ℕ} (hu0 : 0 ≤ u) (hu : 32 * ((p : �
   have hq : 0 ≤ 5 * u + p * (6 * u + 5 * u ^ 2) := by positivity
   nlinarith [mul_le_mul_of_nonneg_right hP2 hq]
 
-/-- **The error of a stored product** ([Higham2002, §3.5], complex, with the accumulation from a
-rounded zero and a rounded unit): under the standard model at $\boldsymbol{u}$ with
-$32(p + 1)\boldsymbol{u} \le 1$,
+/-- **The error of a stored product with its growth factor** ([Higham2002, §3.5], complex): under
+the standard model at $0 \le \boldsymbol{u} \le 1/8$, with $a = 6\boldsymbol{u} +
+5\boldsymbol{u}^2$ and $p$ the inner dimension,
 $\|\mathrm{fl}(\mathbf{X}\mathbf{Y}) - \mathbf{X}\mathbf{Y}\|_2 \le
-8(p + 1)\boldsymbol{u}\|\mathbf{X}\|_{\mathsf F}\|\mathbf{Y}\|_{\mathsf F}$, $p$ the inner
-dimension. Each multiply–add rounds the running sum four times (the product by the rounded unit,
-the subtraction of the exact zero product, the sum), so a term passes through at most $4p$
-roundings; the complex products contribute the factor $\sqrt 2$. -/
-theorem Ops.StdModel.specNorm_matMulWord_sub_le {M : Machine ℝ} {u : ℝ}
-    (hM : Ops.StdModel u id M) {m p q : ℕ} (hu : 32 * ((p : ℝ) + 1) * u ≤ 1)
+(1 + a)^p(5\boldsymbol{u} + pa)\|\mathbf{X}\|_{\mathsf F}\|\mathbf{Y}\|_{\mathsf F}$. No
+condition ties $p$ to $\boldsymbol{u}$. -/
+theorem Ops.StdModel.specNorm_matMulWord_sub_le_growth {M : Machine ℝ} {u : ℝ}
+    (hM : Ops.StdModel u id M) (hu0 : 0 ≤ u) (hu8 : u ≤ 1 / 8) {m p q : ℕ}
     (X : Matrix (Fin m) (Fin p) ℂ) (Y : Matrix (Fin p) (Fin q) ℂ) :
-    specNorm (matMulWord M X Y - X * Y) ≤ 8 * (p + 1) * u * (frobNorm X * frobNorm Y) := by
-  have hu0 : 0 ≤ u := (abs_nonneg _).trans (by simpa using hM.lit 1)
-  set c := 8 * ((p : ℝ) + 1) * u with hc
+    specNorm (matMulWord M X Y - X * Y) ≤
+      (1 + (6 * u + 5 * u ^ 2)) ^ p * (5 * u + p * (6 * u + 5 * u ^ 2)) *
+        (frobNorm X * frobNorm Y) := by
+  set c := (1 + (6 * u + 5 * u ^ 2)) ^ p * (5 * u + p * (6 * u + 5 * u ^ 2)) with hc
   have hc0 : 0 ≤ c := by positivity
   set Xa : Matrix (Fin m) (Fin p) ℂ := Matrix.of fun i l => ((‖X i l‖ : ℝ) : ℂ)
   set Ya : Matrix (Fin p) (Fin q) ℂ := Matrix.of fun l j => ((‖Y l j‖ : ℝ) : ℂ)
@@ -710,9 +796,6 @@ theorem Ops.StdModel.specNorm_matMulWord_sub_le {M : Machine ℝ} {u : ℝ}
   have hYa : frobNorm Ya = frobNorm Y := le_antisymm
     (frobNorm_le_of_norm_apply_le fun i l => by simp [Ya])
     (frobNorm_le_of_norm_apply_le fun i l => by simp [Ya])
-  have hu8 : u ≤ 1 / 8 := by
-    have : (1 : ℝ) ≤ (p : ℝ) + 1 := by linarith [(Nat.cast_nonneg p : (0 : ℝ) ≤ p)]
-    nlinarith
   have hent : ∀ i j, ‖(matMulWord M X Y - X * Y) i j‖ ≤ ‖((c : ℂ) • (Xa * Ya)) i j‖ := by
     intro i j
     set T := ∑ l, ‖X i l‖ * ‖Y l j‖ with hT
@@ -732,11 +815,31 @@ theorem Ops.StdModel.specNorm_matMulWord_sub_le {M : Machine ℝ} {u : ℝ}
           ((List.finRange p).map fun l => X i l * Y l j).sum := by
       simp [matMulWord, Matrix.mul_apply, Fin.sum_univ_def]
     rw [hE]
-    refine hF.trans ?_
-    have hk := matMul_growth_le hu0 hu
-    nlinarith [mul_le_mul_of_nonneg_right hk hT0]
+    refine hF.trans (le_of_eq ?_)
+    rw [hc]
+    ring
   refine (specNorm_le_frobNorm _).trans ((frobNorm_le_of_norm_apply_le hent).trans ?_)
   rw [frobNorm_smul, Complex.norm_real, Real.norm_of_nonneg hc0]
   exact mul_le_mul_of_nonneg_left ((frobNorm_mul_le Xa Ya).trans (by rw [hXa, hYa])) hc0
+
+/-- **The error of a stored product** ([Higham2002, §3.5], complex, with the accumulation from a
+rounded zero and a rounded unit): under the standard model at $\boldsymbol{u}$ with
+$32(p + 1)\boldsymbol{u} \le 1$,
+$\|\mathrm{fl}(\mathbf{X}\mathbf{Y}) - \mathbf{X}\mathbf{Y}\|_2 \le
+8(p + 1)\boldsymbol{u}\|\mathbf{X}\|_{\mathsf F}\|\mathbf{Y}\|_{\mathsf F}$, $p$ the inner
+dimension. Each multiply–add rounds the running sum four times (the product by the rounded unit,
+the subtraction of the exact zero product, the sum), so a term passes through at most $4p$
+roundings; the complex products contribute the factor $\sqrt 2$. -/
+theorem Ops.StdModel.specNorm_matMulWord_sub_le {M : Machine ℝ} {u : ℝ}
+    (hM : Ops.StdModel u id M) {m p q : ℕ} (hu : 32 * ((p : ℝ) + 1) * u ≤ 1)
+    (X : Matrix (Fin m) (Fin p) ℂ) (Y : Matrix (Fin p) (Fin q) ℂ) :
+    specNorm (matMulWord M X Y - X * Y) ≤ 8 * (p + 1) * u * (frobNorm X * frobNorm Y) := by
+  have hu0 : 0 ≤ u := (abs_nonneg _).trans (by simpa using hM.lit 1)
+  have hu8 : u ≤ 1 / 8 := by
+    have : (1 : ℝ) ≤ (p : ℝ) + 1 := by linarith [(Nat.cast_nonneg p : (0 : ℝ) ≤ p)]
+    nlinarith
+  refine (hM.specNorm_matMulWord_sub_le_growth hu0 hu8 X Y).trans ?_
+  exact mul_le_mul_of_nonneg_right (matMul_growth_le hu0 hu)
+    (mul_nonneg (frobNorm_nonneg _) (frobNorm_nonneg _))
 
 end NLAlib

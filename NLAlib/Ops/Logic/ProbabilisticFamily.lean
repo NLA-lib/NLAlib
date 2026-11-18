@@ -26,7 +26,8 @@ Also here: consequence through the frame (`NLAlib.Ops.PWrites.mono_eqOff`), the 
 * `NLAlib.Ops.PWrites.pstep_of_forall`: a family of probabilistic block specifications with a
   measurable relation is one probabilistic step specification.
 * `NLAlib.Ops.PWrites.mono_eqOff`, `NLAlib.Ops.PWrites.ifPos`.
-* `NLAlib.Ops.Mem.measurableSet_eqOff`, `NLAlib.Ops.Mem.measurableSet_get_eq`.
+* `NLAlib.Ops.Mem.measurableSet_eqOff`, `NLAlib.Ops.Mem.measurableSet_get_eq`,
+  `NLAlib.Ops.Mem.measurableSet_get_mem`, `NLAlib.Ops.Mem.measurableSet_readBlock_eq`.
 -/
 
 @[expose] public section
@@ -94,6 +95,39 @@ theorem Mem.measurableSet_get_eq (z : ℕ × ℕ) (v : K) :
     cases m.store.get z.1 z.2 <;> simp
   rw [e]
   exact Mem.measurable_cell z (measurableSet_singleton _)
+
+omit [MeasurableEq K] in
+/-- **A stored cell with a value in a measurable set** is a measurable set of memories. -/
+theorem Mem.measurableSet_get_mem (z : ℕ × ℕ) {A : Set K} (hA : MeasurableSet A) :
+    MeasurableSet {m : Mem K | ∃ v, m.store.get z.1 z.2 = some v ∧ v ∈ A} := by
+  have e : {m : Mem K | ∃ v, m.store.get z.1 z.2 = some v ∧ v ∈ A} =
+      (fun m : Mem K => ((m.store.get z.1 z.2).isSome, (m.store.get z.1 z.2).getD default)) ⁻¹'
+        ({true} ×ˢ A) := by
+    ext m
+    simp only [Set.mem_ofPred_eq, Set.mem_preimage, Set.mem_prod, Set.mem_singleton_iff]
+    cases m.store.get z.1 z.2 <;> simp
+  rw [e]
+  exact Mem.measurable_cell z ((measurableSet_singleton true).prod hA)
+
+/-- **A stored block with given values** is a measurable set of memories. -/
+theorem Mem.measurableSet_readBlock_eq (b i n : ℕ) (xs : List K) :
+    MeasurableSet {m : Mem K | m.store.readBlock b i n = some xs} := by
+  by_cases hl : xs.length = n
+  · have e : {m : Mem K | m.store.readBlock b i n = some xs} =
+        ⋂ j : Fin n, {m : Mem K | m.store.get b (i + j) = some (xs[(j : ℕ)]'(hl ▸ j.2))} := by
+      ext m
+      simp only [Set.mem_ofPred_eq, Set.mem_iInter, Store.readBlock_eq_some_iff, hl, true_and]
+      refine ⟨fun h j => by rw [h j j.2, List.getElem?_eq_getElem], fun h j hj => ?_⟩
+      rw [h ⟨j, hj⟩, List.getElem?_eq_getElem]
+    rw [e]
+    exact .iInter fun j => Mem.measurableSet_get_eq (b, i + j) _
+  · have e : {m : Mem K | m.store.readBlock b i n = some xs} = ∅ := by
+      ext m
+      simp only [Set.mem_ofPred_eq, Set.mem_empty_iff_false, iff_false,
+        Store.readBlock_eq_some_iff]
+      exact fun h => hl h.1
+    rw [e]
+    exact .empty
 
 end Measurable
 

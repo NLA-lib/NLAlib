@@ -340,8 +340,8 @@ theorem smallEigProg_reduce_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {u
       ⟨hpwu.mono le_rfl le_sup_right, hnew hpL le_rfl⟩, hnew huL le_rfl⟩
 
 /-- **The small-eigenvalue program in Schur mode terminates, with its accumulator near a unitary
-on every tape** ([BanksGarzaVargasSrivastava2025, Theorem 1.1], every loop capped): for blocks of order at most $k_{\max}$, the words `qs` with valid cap words for
-the cap $T$ (`NLAlib.SmallEig.SmallEigCaps`), on a scalar machine with the standard model, index
+on every tape** ([BanksGarzaVargasSrivastava2025, Theorem 1.1], every loop capped): for blocks
+of order at most $k_{\max}$, the words `qs` with valid cap words for the cap $T$ (`NLAlib.SmallEig.SmallEigCaps`), on a scalar machine with the standard model, index
 literals and exact natural literals up to $k_{\max} + 1$, exact comparisons and conversion, draws
 that store the tape entry and an exact polar sampler, `NLAlib.SmallEig.smallEigProg` is a
 terminating Schur leaf (`NLAlib.ShiftedQR.TerminatingLeafRoutine`) with the accumulator error

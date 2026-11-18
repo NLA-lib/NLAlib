@@ -1042,7 +1042,8 @@ theorem specNorm_foldl_replayColumnStep_sub_le {M : Machine ℝ} {u : ℝ} (hM :
 
 /-- The row replay of a log over all columns on the machine is within
 $((1 + 24\boldsymbol{u})^{R} - 1)\|\mathbf{X}\|_2$ of
-$\widetilde{\mathbf{V}}^{\mathsf H}\mathbf{X}$, under the conditions of `NLAlib.specNorm_foldl_replayColumnStep_sub_le`. -/
+$\widetilde{\mathbf{V}}^{\mathsf H}\mathbf{X}$, under the conditions of
+`NLAlib.specNorm_foldl_replayColumnStep_sub_le`. -/
 theorem specNorm_foldl_replayRowStep_sub_le {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M)
     (hu0 : 0 ≤ u) (hu : u ≤ 1 / 100) {N lo d : ℕ} (hN : lo + d ≤ N) (es : List GivensEntry)
     (hes : ∀ e ∈ es, lo + e.1 + 1 < N ∧ (e.1 + 1 < d ∨ e = (0, 0, 0)))

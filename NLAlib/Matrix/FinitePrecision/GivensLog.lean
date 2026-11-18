@@ -150,7 +150,7 @@ theorem embedBlock_conjTranspose (V : Matrix (Fin d) (Fin d) ℂ) :
   simp only [embedBlock, Matrix.conjTranspose_apply, Matrix.of_apply, Fin.ext_iff]
   split_ifs <;> first | rfl | (exfalso; omega) | simp | (simp; omega)
 
-/-- **Embedding is multiplicative** when the range fits: $\widetilde{\mathbf{A}\mathbf{B}} =
+/-- Embedding is multiplicative when the range fits: $\widetilde{\mathbf{A}\mathbf{B}} =
 \widetilde{\mathbf{A}}\widetilde{\mathbf{B}}$ for $lo + d \le N$. -/
 theorem embedBlock_mul (hN : lo + d ≤ N) (A B : Matrix (Fin d) (Fin d) ℂ) :
     embedBlock (N := N) lo (A * B) = embedBlock lo A * embedBlock lo B := by
@@ -313,6 +313,32 @@ theorem HoldsSlottedLog.of_below {lg : ℕ × ℕ} {ns w B : ℕ}
     HoldsSlottedLog lg ns w L P s' :=
   readsOnly_holdsSlottedLog lg ns w L P s s' (fun b i hb => by
     obtain ⟨rfl, -⟩ := hb; exact (hB lg.1 hlg).2 i) h
+
+/-- A stored log has at most `w` entries per closed slot. -/
+theorem HoldsSlottedLog.length_slotEntries_le {lg : ℕ × ℕ} {ns w : ℕ}
+    {L : List (Option (List GivensEntry))} {P : List GivensEntry} {s : Store ℝ}
+    (h : HoldsSlottedLog lg ns w L P s) : (slotEntries w L).length ≤ L.length * w := by
+  have hc : ∀ o ∈ L, ∀ es, o = some es → es.length ≤ w := by
+    intro o ho es hes
+    obtain ⟨j, hj, rfl⟩ := List.getElem_of_mem ho
+    obtain ⟨v, -, hm⟩ := h.2.2.1 j hj
+    rw [hes] at hm
+    exact hm.2.1
+  clear h
+  induction L with
+  | nil => simp [slotEntries]
+  | cons o L ih =>
+    rw [show o :: L = [o] ++ L from rfl, slotEntries_append]
+    simp only [List.length_append, List.length_singleton]
+    have h2 := ih fun o' ho' => hc o' (by simp [ho'])
+    have h1 : (slotEntries w [o]).length ≤ w := by
+      cases o with
+      | none => simp
+      | some es =>
+        have := hc _ (by simp) es rfl
+        simp [padEntries]; omega
+    rw [Nat.add_mul, one_mul]
+    omega
 
 /-- Rejecting the pending slot closes it as `none`; nothing is written (its valid word is
 already zero). -/
@@ -854,7 +880,7 @@ theorem hasOrthonormalCols_list_prod {n : ℕ} (l : List (Matrix (Fin n) (Fin n)
     rw [List.prod_cons]
     exact (h U (by simp)).mul (ih fun V hV => h V (by simp [hV]))
 
-/-- **Errors along right multiplications by unitaries add up relatively**: if each step $f$
+/-- Errors along right multiplications by unitaries add up relatively: if each step $f$
 moves $\mathbf{Y}$ to within $\eta\|\mathbf{Y}\|_2$ of $\mathbf{Y}\mathbf{U}_a$, $\mathbf{U}_a$
 unitary, then $k$ steps from $\mathbf{X}$ end within $((1 + \eta)^k - 1)\|\mathbf{X}\|_2$ of
 $\mathbf{X}\mathbf{U}_{a_1}\cdots\mathbf{U}_{a_k}$. -/
@@ -892,7 +918,7 @@ theorem specNorm_foldl_sub_mul_prod_le {α : Type*} {n : ℕ}
     rw [pow_succ]
     nlinarith [mul_le_mul_of_nonneg_left hY hη, specNorm_nonneg X]
 
-/-- **Errors along left multiplications by unitaries add up relatively**: the mirror of
+/-- Errors along left multiplications by unitaries add up relatively: the mirror of
 `NLAlib.specNorm_foldl_sub_mul_prod_le`, each step within $\eta\|\mathbf{Y}\|_2$ of
 $\mathbf{U}_a^{\mathsf H}\mathbf{Y}$. -/
 theorem specNorm_foldl_sub_prod_mul_le {α : Type*} {n : ℕ}
@@ -997,7 +1023,7 @@ theorem specNorm_replayRowStep_sub_le {M : Machine ℝ} {u : ℝ} (hM : StdModel
     (by positivity)
   linarith
 
-/-- **The column replay of a log** on the machine is within
+/-- The column replay of a log on the machine is within
 $((1 + 24\boldsymbol{u})^{R} - 1)\|\mathbf{X}\|_2$ of $\mathbf{X}\widetilde{\mathbf{V}}$, $R$ the
 number of entries and $\widetilde{\mathbf{V}}$ the log's unitary on $[lo, lo + d)$; every entry
 is inside the block or the zero fill, with its two columns in range. -/
@@ -1014,9 +1040,9 @@ theorem specNorm_foldl_replayColumnStep_sub_le {M : Machine ℝ} {u : ℝ} (hM :
   exact (hasOrthonormalCols_givens (Fin.ne_of_val_ne (by simp))
     (norm_givensCoeffs_fst_sq_add _ _)).conjTranspose
 
-/-- **The row replay of a log over all columns** on the machine is within
-$((1 + 24\boldsymbol{u})^{R} - 1)\|\mathbf{X}\|_2$ of $\widetilde{\mathbf{V}}^{\mathsf H}\mathbf{X}$,
-under the conditions of `NLAlib.specNorm_foldl_replayColumnStep_sub_le`. -/
+/-- The row replay of a log over all columns on the machine is within
+$((1 + 24\boldsymbol{u})^{R} - 1)\|\mathbf{X}\|_2$ of
+$\widetilde{\mathbf{V}}^{\mathsf H}\mathbf{X}$, under the conditions of `NLAlib.specNorm_foldl_replayColumnStep_sub_le`. -/
 theorem specNorm_foldl_replayRowStep_sub_le {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M)
     (hu0 : 0 ≤ u) (hu : u ≤ 1 / 100) {N lo d : ℕ} (hN : lo + d ≤ N) (es : List GivensEntry)
     (hes : ∀ e ∈ es, lo + e.1 + 1 < N ∧ (e.1 + 1 < d ∨ e = (0, 0, 0)))
@@ -1031,6 +1057,67 @@ theorem specNorm_foldl_replayRowStep_sub_le {M : Machine ℝ} {u : ℝ} (hM : St
   rw [embedBlock_givensAt_eq_givens hN (hes e he).1 (hes e he).2]
   exact (hasOrthonormalCols_givens (Fin.ne_of_val_ne (by simp))
     (norm_givensCoeffs_fst_sq_add _ _)).conjTranspose
+
+/-- The diagonal projection on the columns $j_0, \dots, j_0 + n_c - 1$. -/
+noncomputable def colMask (N j0 nc : ℕ) : Matrix (Fin N) (Fin N) ℂ :=
+  Matrix.diagonal fun t => if j0 ≤ (t : ℕ) ∧ (t : ℕ) < j0 + nc then 1 else 0
+
+/-- The column mask is an orthogonal projection. -/
+theorem isStarProjection_colMask (N j0 nc : ℕ) : IsStarProjection (colMask N j0 nc) := by
+  refine ⟨?_, ?_⟩
+  · rw [IsIdempotentElem, colMask, Matrix.diagonal_mul_diagonal]
+    congr 1; funext t
+    by_cases h : j0 ≤ (t : ℕ) ∧ (t : ℕ) < j0 + nc
+    · rw [if_pos h, mul_one]
+    · rw [if_neg h, mul_zero]
+  · rw [IsSelfAdjoint, colMask, Matrix.star_eq_conjTranspose, Matrix.diagonal_conjTranspose]
+    congr 1; funext t
+    by_cases h : j0 ≤ (t : ℕ) ∧ (t : ℕ) < j0 + nc
+    · simp only [Pi.star_apply, if_pos h, star_one]
+    · simp only [Pi.star_apply, if_neg h, star_zero]
+
+/-- A row replay on a column range, masked to the range, is the replay over all columns of the
+masked matrix: the machine rotation acts column by column and keeps zero columns. -/
+theorem replayRowStep_mul_colMask {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M) {N : ℕ}
+    (lo j0 nc : ℕ) (X : Matrix (Fin N) (Fin N) ℂ) (e : GivensEntry) :
+    replayRowStep M lo j0 nc X e * colMask N j0 nc =
+      replayRowStep M lo 0 N (X * colMask N j0 nc) e := by
+  ext a t
+  by_cases h : lo + e.1 + 1 < N
+  · simp only [replayRowStep, dif_pos h, colMask, Matrix.mul_diagonal, machineRowRotationOn,
+      Matrix.of_apply, machineRowRotation]
+    by_cases ht : j0 ≤ (t : ℕ) ∧ (t : ℕ) < j0 + nc
+    · simp [ht]
+    · simp only [ht, if_false, mul_zero, Nat.zero_le, zero_add, t.isLt, and_self, if_true]
+      split_ifs <;> simp [linearComplex_zero_zero hM]
+  · simp [replayRowStep, h]
+
+/-- A row replay on a column range keeps the other columns. -/
+theorem replayRowStep_apply_of_not_mem {M : Machine ℝ} {N : ℕ} {lo j0 nc : ℕ}
+    (X : Matrix (Fin N) (Fin N) ℂ) (e : GivensEntry) (i t : Fin N)
+    (ht : ¬(j0 ≤ (t : ℕ) ∧ (t : ℕ) < j0 + nc)) : replayRowStep M lo j0 nc X e i t = X i t := by
+  unfold replayRowStep
+  split_ifs
+  · simp [machineRowRotationOn, ht]
+  · rfl
+
+/-- The masked row replay of a log is the full row replay of the masked matrix. -/
+theorem foldl_replayRowStep_mul_colMask {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M) {N : ℕ}
+    (lo j0 nc : ℕ) (es : List GivensEntry) (X : Matrix (Fin N) (Fin N) ℂ) :
+    es.foldl (replayRowStep M lo j0 nc) X * colMask N j0 nc =
+      es.foldl (replayRowStep M lo 0 N) (X * colMask N j0 nc) := by
+  induction es generalizing X with
+  | nil => rfl
+  | cons e es ih => simp only [List.foldl_cons, ih, replayRowStep_mul_colMask hM]
+
+/-- The row replay of a log on a column range keeps the other columns. -/
+theorem foldl_replayRowStep_apply_of_not_mem {M : Machine ℝ} {N : ℕ} {lo j0 nc : ℕ}
+    (es : List GivensEntry) (X : Matrix (Fin N) (Fin N) ℂ) (i t : Fin N)
+    (ht : ¬(j0 ≤ (t : ℕ) ∧ (t : ℕ) < j0 + nc)) :
+    es.foldl (replayRowStep M lo j0 nc) X i t = X i t := by
+  induction es generalizing X with
+  | nil => rfl
+  | cons e es ih => rw [List.foldl_cons, ih, replayRowStep_apply_of_not_mem _ _ _ _ ht]
 
 end ReplayWords
 
@@ -1129,7 +1216,7 @@ private theorem replayEntryStmt_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
   rintro μ₂ - ⟨hp₂, hY₂⟩
   exact ⟨hp₂.trans hp₁, hY₂⟩
 
-/-- **A replay with any rotation routine stores the replayed word**: if `Rot` at the plane $k$
+/-- A replay with any rotation routine stores the replayed word: if `Rot` at the plane $k$
 stores `rotWord k c s` of the matrix for the coefficients $(c, s)$, the replay of a closed log
 whose entries have their two planes in range stores the left fold of `rotWord` over the valid
 entries, with the coefficients rounded from each entry. -/
@@ -1233,6 +1320,20 @@ theorem givensReplayWith_writes_word {Mch : Machine ℝ} {I : Interp O Q ℝ}
   · rintro μ' - ⟨hp, -, -, -, hW, -⟩
     exact ⟨hp, by simpa [List.take_of_length_le (le_of_eq hlen)] using hW⟩
 
+/-- The entries of a log inside a block, or the zero fill when the rows `lo, lo + 1` exist, have
+their two planes in range. -/
+theorem slotEntries_planes {N lo d w : ℕ} {L : List (Option (List GivensEntry))}
+    (hN : lo + d ≤ N) (hpl : ∀ e ∈ slotEntries w L, e.1 + 1 < d ∨ e = (0, 0, 0))
+    (hlo : slotEntries w L = [] ∨ lo + 1 < N) :
+    ∀ e ∈ slotEntries w L, lo + e.1 + 1 < N ∧ (e.1 + 1 < d ∨ e = (0, 0, 0)) := by
+  intro e he
+  refine ⟨?_, hpl e he⟩
+  rcases hpl e he with h | rfl
+  · omega
+  · rcases hlo with h | h
+    · rw [h] at he; simp at he
+    · simpa using h
+
 /-- **The column replay on every tape**: the stored matrix moves from $\mathbf{X}$ to within
 $((1 + 24\boldsymbol{u})^{m} - 1)\|\mathbf{X}\|_2$ of $\mathbf{X}\widetilde{\mathbf{V}}$, where
 $\widetilde{\mathbf{V}}$ acts by the log's unitary on the range $[lo, lo + d)$ and $m$ is the
@@ -1242,7 +1343,8 @@ theorem givensReplayColumns_specNorm_sub_le {Mch : Machine ℝ} {I : Interp O Q 
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu0 : 0 ≤ u) (hu : u ≤ 1 / 100)
     (hQ : IsToNat id I) (hC : IsCmp id I) {N lo d ns w : ℕ} (hN : lo + d ≤ N)
     {L : List (Option (List GivensEntry))} {P : List GivensEntry}
-    (hpl : ∀ e ∈ slotEntries w L, e.1 + 1 < d ∨ e = (0, 0, 0)) {lg x : ℕ × ℕ}
+    (hpl : ∀ e ∈ slotEntries w L, e.1 + 1 < d ∨ e = (0, 0, 0))
+    (hlo : slotEntries w L = [] ∨ lo + 1 < N) {lg x : ℕ × ℕ}
     {X : Matrix (Fin N) (Fin N) ℂ} {τ : Tape ℝ} {μ : Mem ℝ}
     (hlog : HoldsSlottedLog lg ns w L P μ.store) (hlen : L.length = ns)
     (hX : HoldsMatrix x X μ.store) (hl : μ.Live [lg, x])
@@ -1252,7 +1354,26 @@ theorem givensReplayColumns_specNorm_sub_le {Mch : Machine ℝ} {I : Interp O Q 
       (Env.frame [N, lo, 0, N, ns, w] [lg, x, x]) (Store.inBlock x.1 x.2 (2 * (N * N)))
       (fun μ' => ∃ X' : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix x X' μ'.store ∧
         specNorm (X' - X * embedBlock lo (givensLog d (slotEntries w L))) ≤
-          ((1 + 24 * u) ^ (ns * w) - 1) * specNorm X) μ := sorry
+          ((1 + 24 * u) ^ (ns * w) - 1) * specNorm X) μ := by
+  have hes := slotEntries_planes hN hpl hlo
+  refine (givensReplayWith_writes_word hS hQ hC (fun k cv sv Y => if h : k + 1 < N then
+      machineColRotationOn Mch ⟨k, by omega⟩ ⟨k + 1, h⟩ cv sv 0 N Y else Y)
+    (fun hk hY hc hs hca hsa hta htc hts ht => by
+      simpa only [dif_pos hk] using rotateColumnsOn_writes_word hS hk (by omega) hY hc hs hca
+        hsa hta htc hts ht) (fun e he => (hes e he).1) hlog hlen hX hl hd).mono le_rfl ?_
+  rintro μ' - ⟨-, hW⟩
+  refine ⟨_, hW, ?_⟩
+  have e : (fun (Y : Matrix (Fin N) (Fin N) ℂ) (e : GivensEntry) =>
+      (fun k cv sv Y => if h : k + 1 < N then
+        machineColRotationOn Mch ⟨k, by omega⟩ ⟨k + 1, h⟩ cv sv 0 N Y else Y)
+        (lo + e.1) (roundedGivensCoeffs Mch e.2.1 e.2.2).1 (roundedGivensCoeffs Mch e.2.1 e.2.2).2
+        Y) = replayColumnStep Mch lo 0 N := rfl
+  rw [e]
+  refine (specNorm_foldl_replayColumnStep_sub_le hM hu0 hu hN _ hes X).trans
+    (mul_le_mul_of_nonneg_right ?_ (specNorm_nonneg X))
+  gcongr
+  · linarith
+  · exact hlen ▸ hlog.length_slotEntries_le
 
 /-- **The row replay on a column range on every tape**: the columns outside
 $[j_0, j_0 + n_c)$ are kept and, on the range, the stored matrix is within
@@ -1262,7 +1383,8 @@ theorem givensReplayRows_specNorm_sub_le {Mch : Machine ℝ} {I : Interp O Q ℝ
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu0 : 0 ≤ u) (hu : u ≤ 1 / 100)
     (hQ : IsToNat id I) (hC : IsCmp id I) {N lo d j0 nc ns w : ℕ} (hN : lo + d ≤ N)
     (hj : j0 + nc ≤ N) {L : List (Option (List GivensEntry))} {P : List GivensEntry}
-    (hpl : ∀ e ∈ slotEntries w L, e.1 + 1 < d ∨ e = (0, 0, 0)) {lg x : ℕ × ℕ}
+    (hpl : ∀ e ∈ slotEntries w L, e.1 + 1 < d ∨ e = (0, 0, 0))
+    (hlo : slotEntries w L = [] ∨ lo + 1 < N) {lg x : ℕ × ℕ}
     {X : Matrix (Fin N) (Fin N) ℂ} {τ : Tape ℝ} {μ : Mem ℝ}
     (hlog : HoldsSlottedLog lg ns w L P μ.store) (hlen : L.length = ns)
     (hX : HoldsMatrix x X μ.store) (hl : μ.Live [lg, x])
@@ -1275,7 +1397,37 @@ theorem givensReplayRows_specNorm_sub_le {Mch : Machine ℝ} {I : Interp O Q ℝ
         specNorm (Matrix.of fun i j : Fin N => if j0 ≤ (j : ℕ) ∧ (j : ℕ) < j0 + nc then
           (X' - (embedBlock lo (givensLog d (slotEntries w L)))ᴴ * X :
             Matrix (Fin N) (Fin N) ℂ) i j else 0) ≤
-          ((1 + 24 * u) ^ (ns * w) - 1) * specNorm X) μ := sorry
+          ((1 + 24 * u) ^ (ns * w) - 1) * specNorm X) μ := by
+  have hes := slotEntries_planes hN hpl hlo
+  refine (givensReplayWith_writes_word hS hQ hC (fun k cv sv Y => if h : k + 1 < N then
+      machineRowRotationOn Mch ⟨k, by omega⟩ ⟨k + 1, h⟩ cv sv j0 nc Y else Y)
+    (fun hk hY hc hs hca hsa hta htc hts ht => by
+      simpa only [dif_pos hk] using rotateRowsOn_writes_word hS hk hj hY hc hs hca
+        hsa hta htc hts ht) (fun e he => (hes e he).1) hlog hlen hX hl hd).mono le_rfl ?_
+  rintro μ' - ⟨-, hW⟩
+  have e : (fun (Y : Matrix (Fin N) (Fin N) ℂ) (e : GivensEntry) =>
+      (fun k cv sv Y => if h : k + 1 < N then
+        machineRowRotationOn Mch ⟨k, by omega⟩ ⟨k + 1, h⟩ cv sv j0 nc Y else Y)
+        (lo + e.1) (roundedGivensCoeffs Mch e.2.1 e.2.2).1 (roundedGivensCoeffs Mch e.2.1 e.2.2).2
+        Y) = replayRowStep Mch lo j0 nc := rfl
+  rw [e] at hW
+  refine ⟨_, hW, fun i t ht => foldl_replayRowStep_apply_of_not_mem _ _ _ _ ht, ?_⟩
+  set V := embedBlock (N := N) lo (givensLog d (slotEntries w L))
+  have hD := isStarProjection_colMask N j0 nc
+  have hm : (Matrix.of fun i j : Fin N => if j0 ≤ (j : ℕ) ∧ (j : ℕ) < j0 + nc then
+      ((slotEntries w L).foldl (replayRowStep Mch lo j0 nc) X - Vᴴ * X) i j else 0) =
+      (slotEntries w L).foldl (replayRowStep Mch lo 0 N) (X * colMask N j0 nc) -
+        Vᴴ * (X * colMask N j0 nc) := by
+    rw [← foldl_replayRowStep_mul_colMask hM, ← Matrix.mul_assoc, ← Matrix.sub_mul]
+    ext i j
+    simp [colMask, Matrix.mul_diagonal]
+  rw [hm]
+  refine (specNorm_foldl_replayRowStep_sub_le hM hu0 hu hN _ hes _).trans ?_
+  have hpow : (1 + 24 * u) ^ (slotEntries w L).length ≤ (1 + 24 * u) ^ (ns * w) :=
+    pow_le_pow_right₀ (by linarith) (hlen ▸ hlog.length_slotEntries_le)
+  have h1 : (1 : ℝ) ≤ (1 + 24 * u) ^ (slotEntries w L).length := one_le_pow₀ (by linarith)
+  have hXD := hD.specNorm_mul_right_le X
+  nlinarith [specNorm_nonneg (X * colMask N j0 nc)]
 
 /-- **The accumulated product from the identity**: with $24R\boldsymbol{u} \le 1/8$,
 $(1 + 24\boldsymbol{u})^R - 1 \le 27R\boldsymbol{u}$. -/

@@ -25,7 +25,8 @@ discharged at the parameter choices (`NLAlib.ShiftedQR.shqrParams_spec`,
 
 ## Main results
 
-* `NLAlib.ShiftedQR.roundedDecouple_randomDecouplingContract_of_le_uShQR`: the contract.
+* `NLAlib.ShiftedQR.roundedDecoupleWith_randomDecouplingRoutineContract_of_le_uShQR_at`: the
+contract.
 * `NLAlib.ShiftedQR.shqrLoopError_le_shqrDecoupleError`: its backward error is at most
   `NLAlib.ShiftedQR.shqrDecoupleError`.
 -/

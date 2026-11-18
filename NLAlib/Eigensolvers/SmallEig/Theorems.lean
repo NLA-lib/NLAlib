@@ -26,7 +26,7 @@ which are hypotheses here and proved at the records
 `_unconditional` corollaries). The error is absolute: $\Sigma$ is an input, the paper's relative
 form is the corollary `NLAlib.SmallEig.smallEig_relative`. [BanksGarzaVargasSrivastava2025,
 Corollary 1.3] is the forward contract on blocks of order at most $k_{\max}$ and norm at most
-$\Sigma$ (`NLAlib.SmallEig.smallEigProg_randomSmallEigContract`), which the shifted QR algorithm
+$\Sigma$ (`NLAlib.SmallEig.smallEigProg_pwrites`), which the shifted QR algorithm
 consumes.
 
 What is not claimed: a rounded Gaussian or disk sampler (the draws are exact tape values; their
@@ -37,7 +37,7 @@ rounding after the draw is modelled), range safety, the paper's question of $O(n
 * `NLAlib.SmallEig.smallEigProg_pwrites`: Theorem 1.1 as a probabilistic block specification.
 * `NLAlib.SmallEig.smallEig_measureReal_not_spectrum_le`: Theorem 1.1.
 * `NLAlib.SmallEig.smallEig_relative`: the relative form.
-* `NLAlib.SmallEig.smallEigProg_randomSmallEigContract`: Corollary 1.3 as a routine contract.
+* `NLAlib.SmallEig.smallEigProg_pwrites`: Corollary 1.3 as a routine contract.
 * `NLAlib.SmallEig.smallEig_measureReal_not_forward_le`: Corollary 1.3 for one input.
 * `NLAlib.SmallEig.smallEig_work_le`: the operation count.
 -/
@@ -191,7 +191,7 @@ theorem smallEig_relative {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
 
 /-- **The forward error on one input** ([BanksGarzaVargasSrivastava2025, Corollary 1.3]): with the
 hypotheses on the machine, the streams and the tails written out in
-`NLAlib.SmallEig.smallEigProg_randomSmallEigContract` (standard model at
+`NLAlib.SmallEig.smallEigProg_pwrites` (standard model at
 $\boldsymbol{u} \le \boldsymbol{u}^{\mathrm{fwd}}_{\mathrm{SmallEig}}$, exact literals up to
 $k_{\max}$, a measurable tape-local interpretation, the uniform and Gaussian streams, the tails
 with $b_1, b_2 > 0$): for $\mathbf{M}$ of order $n + 1 \le k_{\max}$ with

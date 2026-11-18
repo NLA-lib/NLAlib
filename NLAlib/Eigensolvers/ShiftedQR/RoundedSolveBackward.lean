@@ -21,8 +21,8 @@ relation: a round is exact (a failure), a leaf ($\beta$), or a decoupling call a
 ## Main results
 
 * `NLAlib.ShiftedQR.bottomScan_writes`: the rounded bottom-$k$ scan (the decision of `Deflate`).
-* `NLAlib.ShiftedQR.roundedWorklistRound_backwardStep`: one round is a backward step.
-* `NLAlib.ShiftedQR.solveRounded_backward`: the backward error of the rounded worklist.
+* `NLAlib.ShiftedQR.solveRoundedWith_terminates`: one round is a backward step.
+* `NLAlib.ShiftedQR.solveRoundedWith_terminates`: the backward error of the rounded worklist.
 -/
 
 @[expose] public section

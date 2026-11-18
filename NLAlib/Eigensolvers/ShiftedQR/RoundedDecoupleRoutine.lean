@@ -215,8 +215,8 @@ theorem shIterationWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
       (ShIterationOutcomeBy u k H γ tv
           ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1))
         a lg ns w LL (k + 1 + (excNet ε).length)) (φse + φR / 2 + φ) := sorry
-set_option maxHeartbeats 4000000 in
 -- The hypotheses of the iteration make the elaboration of the statement heavy.
+set_option maxHeartbeats 4000000 in
 /-- **The rounded decoupling loop with a small-eigenvalue routine meets the randomized
 decoupling contract** ([BanksGarzaVargasSrivastava2022, Lemma 6.4] in floating point, corrected;
 the routine of [BanksGarzaVargasSrivastava2025, Corollary 1.3]): on a machine with the
@@ -338,7 +338,8 @@ theorem regularizeWith_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
         (∃ ys, m'.store.readBlock s.1 s.2 (2 * k) = some ys) ∧
         ∃ x, m'.store.get f.1 f.2 = some x ∧
         ∃ Ls : List (Option (List GivensEntry)), Ls.length = k ∧
-          (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 1) ∧ HoldsSlottedLog lg ns w (LL ++ Ls) [] m'.store) m :=
+          (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 1) ∧
+              HoldsSlottedLog lg ns w (LL ++ Ls) [] m'.store) m :=
   sorry
 
 /-- One iteration with a terminating small-eigenvalue routine terminates on any matrix: on a
@@ -385,7 +386,8 @@ theorem shIterationWith_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
       (fun m' => (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a H' m'.store) ∧
         ∃ x, m'.store.get f.1 f.2 = some x ∧
         ∃ Ls : List (Option (List GivensEntry)), Ls.length = (k + 1 + (excNet ε).length) ∧
-          (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 1) ∧ HoldsSlottedLog lg ns w (LL ++ Ls) [] m'.store) m :=
+          (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 1) ∧
+              HoldsSlottedLog lg ns w (LL ++ Ls) [] m'.store) m :=
   sorry
 
 /-- **The rounded decoupling loop with a terminating small-eigenvalue routine terminates on

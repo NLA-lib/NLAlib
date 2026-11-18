@@ -487,9 +487,9 @@ theorem shIterationWithScratchWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ
       (ShIterationOutcomeBy u k H γ tv
           ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1))
         a lg ns w LL (k + 1 + (excNet ε).length)) (φse + φR / 2 + φ) := sorry
-set_option maxHeartbeats 1000000 in
 -- The hypothesis lists of `Regularize` and `Sh` together, with their long real constants, make
 -- the elaboration of the composition heavy.
+set_option maxHeartbeats 1000000 in
 omit [Has EigenvalueKernelOp O] in
 /-- **One rounded iteration with a small-eigenvalue routine as a probabilistic block**, with the
 word count `nq` apart from the words `qs` (`NLAlib.ShiftedQR.RandomSmallEigContractAt`), the
@@ -607,9 +607,9 @@ theorem shIterationWith_pwrites_at {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
       (ShIterationOutcomeBy u k H γ tv
           ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1))
         a lg ns w LL (k + 1 + (excNet ε).length)) (φse + φR / 2 + φ) := sorry
-set_option maxHeartbeats 1000000 in
 -- The hypothesis lists of `Regularize` and `Sh` together, with their long real constants, make
 -- the elaboration of the composition heavy.
+set_option maxHeartbeats 1000000 in
 /-- **One rounded iteration of the decoupling loop as a probabilistic block**
 ([BanksGarzaVargasSrivastava2022, Lemma 6.4], one round, corrected: the dichotomy constant of
 Theorem 4.1 is $\tfrac12 k^{-1/(2k)}$ for the printed $(2k)^{-1/(2k)}$, and the test in the proof

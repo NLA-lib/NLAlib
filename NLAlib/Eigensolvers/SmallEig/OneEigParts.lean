@@ -473,8 +473,8 @@ theorem oneEigStart_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar
       (Env.frame [n + 1, m, q] [h, qw, lam, (L, 0), f, (L + 5, 0), (L + 6, 0)])
       (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1 ⊔ Fp.above L)
       (fun μ' => HoldsWords μ'.store (oneEigCells L lam) ∧ OneEigFlag M f μ'.store) μ := sorry
-set_option maxHeartbeats 400000 in
 -- (fifteen calls, twelve outputs read back)
+set_option maxHeartbeats 400000 in
 omit [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] in
 /-- `NLAlib.SmallEig.oneEigDirections` on a scalar machine stores its words: with room for twelve
 words at `d` and two at `k` in other buffers, it writes only those words, keeps the position and

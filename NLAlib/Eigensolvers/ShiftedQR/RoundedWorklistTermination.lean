@@ -26,8 +26,8 @@ of the loop makes the run finite.
 
 ## Main results
 
-* `NLAlib.ShiftedQR.roundedWorklistRound_terminates`: one round keeps the value-free state.
-* `NLAlib.ShiftedQR.solveRounded_terminates`: the rounded worklist terminates.
+* `NLAlib.ShiftedQR.solveRoundedWith_terminates`: one round keeps the value-free state.
+* `NLAlib.ShiftedQR.solveRoundedWith_terminates`: the rounded worklist terminates.
 -/
 
 @[expose] public section

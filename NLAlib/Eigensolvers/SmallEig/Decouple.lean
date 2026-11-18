@@ -351,7 +351,8 @@ theorem decoupleLast_writes_scans {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
           (μ'.store.get f.1 f.2 = some 1 ∧ ℓ = m₂ ∧ qs.getD 7 0 <
             (1 + u) ^ 2 * ‖Hs ℓ (Fin.last (n + 1)) (Fin.last n).castSucc‖ ^ 2)) ∧
         ∃ Ls : List (Option (List GivensEntry)), Ls.length ≤ m₂ ∧
-          (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 2) ∧ HoldsSlottedLog lg ns w (LL ++ Ls) [] μ'.store) μ :=
+          (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 2) ∧
+              HoldsSlottedLog lg ns w (LL ++ Ls) [] μ'.store) μ :=
   sorry
 
 omit [Has IdxTst Q] in
@@ -385,7 +386,8 @@ theorem decoupleLast_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
             (1 - u) ^ 2 * ‖H' (Fin.last (n + 1)) (Fin.last n).castSucc‖ ^ 2 ≤ qs.getD 7 0) ∨
           μ'.store.get f.1 f.2 = some 1) ∧
         ∃ Ls : List (Option (List GivensEntry)), Ls.length ≤ m₂ ∧
-          (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 2) ∧ HoldsSlottedLog lg ns w (LL ++ Ls) [] μ'.store) μ :=
+          (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 2) ∧
+              HoldsSlottedLog lg ns w (LL ++ Ls) [] μ'.store) μ :=
   sorry
 
 omit [Has IdxTst Q] in
@@ -457,7 +459,8 @@ theorem decoupleLast_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsS
       (fun μ' => (∃ H' : Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ, HoldsMatrix h H' μ'.store) ∧
         ∃ x, μ'.store.get f.1 f.2 = some x ∧
         ∃ Ls : List (Option (List GivensEntry)), Ls.length ≤ m₂ ∧
-          (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 2) ∧ HoldsSlottedLog lg ns w (LL ++ Ls) [] μ'.store) μ :=
+          (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 2) ∧
+              HoldsSlottedLog lg ns w (LL ++ Ls) [] μ'.store) μ :=
   sorry
 
 end Theorems

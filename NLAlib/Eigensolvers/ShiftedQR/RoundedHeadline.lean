@@ -44,13 +44,13 @@ decoupler that meets `NLAlib.ShiftedQR.RandomDecouplingContract` (Lemma 6.4's lo
 * `NLAlib.ShiftedQR.measurableSet_decoupleOutcome`, `NLAlib.ShiftedQR.measurableSet_leafOutcome`:
   the outcomes of the randomized calls that the worklist uses are measurable, so each call's
   family of good sets becomes one (`NLAlib.Ops.PWrites.pstep_of_forall`).
-* `NLAlib.ShiftedQR.roundedLeaf_pwrites`, `NLAlib.ShiftedQR.roundedDecouple_pwrites`,
+* `NLAlib.ShiftedQR.solveRoundedWith_pwrites`, `NLAlib.ShiftedQR.roundedDecouple_pwrites`,
   `NLAlib.ShiftedQR.roundedLarge_pwrites`, `NLAlib.ShiftedQR.roundedRange_pwrites`,
   `NLAlib.ShiftedQR.roundedWorklistRound_pwrites`, `NLAlib.ShiftedQR.roundedWorklist_pwrites`:
   the round of `NLAlib.ShiftedQR.roundedWorklistRound_backwardStep` and its loop on the good
   tapes.
-* `NLAlib.ShiftedQR.solveRounded_pwrites`: the worklist as a probabilistic block specification.
-* `NLAlib.ShiftedQR.solveRounded_measureReal_not_spectrum_le`: the probability that the run does
+* `NLAlib.ShiftedQR.solveRoundedWith_pwrites`: the worklist as a probabilistic block specification.
+* `NLAlib.ShiftedQR.solveRoundedWith_pwrites`: the probability that the run does
   not return the spectrum of a nearby matrix.
 -/
 
@@ -189,22 +189,23 @@ section Theorems
 
 variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q]
 
-/-- **The rounded worklist in Schur mode as a probabilistic block** ([BanksGarzaVargasSrivastava2022,
-Theorem 6.3] with the Schur form): on a scalar machine with the standard model, exact natural
-literals up to $n + 1$, exact `toNat` and comparisons, and a measurable tape-local interpretation,
-let the decoupler meet `NLAlib.ShiftedQR.RandomDecouplingRoutineContract` on the class
-$(2B, g/2)$ with error $\varepsilon(N_0)$, and the leaf meet the Schur leaf contract
+/-- **The rounded worklist in Schur mode as a probabilistic block**
+([BanksGarzaVargasSrivastava2022, Theorem 6.3] with the Schur form): on a scalar machine with the
+standard model, exact natural literals up to $n + 1$, exact `toNat` and comparisons, and a
+measurable tape-local interpretation, let the decoupler meet
+`NLAlib.ShiftedQR.RandomDecouplingRoutineContract` on the class $(2B, g/2)$ with error
+$\varepsilon(N_0)$, and the leaf meet the Schur leaf contract
 (`NLAlib.Schur.RandomSchurLeafContract`) with errors $(\varepsilon_L, \beta)$ on orders at most
 $\min(k, n + 1)$. From an upper Hessenberg $\mathbf{H}$, diagonalizable with condition at most $B$
 and eigenvalues separated by $g > 0$, and an accumulator $\mathbf{U}$, under the merged threshold
 and precision conditions with the replay and product errors $\rho = 78\boldsymbol{u}\,n_s w N_0$
-and $\rho_L = 8(n + 1)(k + 2)\boldsymbol{u}N_0$ in the budget, except with probability at most
-$2(n + 1)(\varphi_D + \varphi_L)$ the flag is $0$, the stored matrix $\widehat{\mathbf{T}}$ is
-upper triangular and $(\widehat{\mathbf{U}}, \widehat{\mathbf{T}})$ is tracked from
-$(\mathbf{U}, \mathbf{H})$ (`NLAlib.IsTrackedUnitarySimilar`) with the backward error
-$2(n + 1)(c + \varepsilon(N_0) + \beta + \rho + \rho_L)$ and the relative accumulator error
-$(1 + 24\boldsymbol{u})^{2(n+1)(n_s w + 2k(k+2))}(1 + \varepsilon_L)^{n+1} - 1$. The constants of
-$\rho$, $\rho_L$ and the accumulator error are design values (fixed when proved). -/
+and $\rho_L = 8(n + 1)(k + 2)\boldsymbol{u}N_0$ in the budget, except with probability at most $2(n
++ 1)(\varphi_D + \varphi_L)$ the flag is $0$, the stored matrix $\widehat{\mathbf{T}}$ is upper
+triangular and $(\widehat{\mathbf{U}}, \widehat{\mathbf{T}})$ is tracked from $(\mathbf{U},
+\mathbf{H})$ (`NLAlib.IsTrackedUnitarySimilar`) with the backward error $2(n + 1)(c +
+\varepsilon(N_0) + \beta + \rho + \rho_L)$ and the relative accumulator error $(1 +
+24\boldsymbol{u})^{2(n+1)(n_s w + 2k(k+2))}(1 + \varepsilon_L)^{n+1} - 1$. The constants of $\rho$,
+$\rho_L$ and the accumulator error are design values (fixed when proved). -/
 theorem solveRoundedWith_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : ℕ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu : 0 ≤ u) (hu1 : u < 1)
     (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)

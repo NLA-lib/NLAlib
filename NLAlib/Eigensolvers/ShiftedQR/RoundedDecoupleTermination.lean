@@ -21,7 +21,7 @@ well, the shifts may be arbitrary words.
 * `NLAlib.ShiftedQR.shIteration_terminates`: one iteration (`Regularize`, then
   $\mathrm{Sh}_{k,B}$).
 * `NLAlib.ShiftedQR.roundedDecoupleLoopWith_terminates`: the capped loop.
-* `NLAlib.ShiftedQR.roundedDecouple_terminatingDecoupler`: the decoupler is a
+* `NLAlib.ShiftedQR.roundedDecoupleWith_terminatingDecouplerRoutine_at`: the decoupler is a
   `NLAlib.ShiftedQR.TerminatingDecoupler`.
 -/
 
@@ -217,7 +217,7 @@ omit [Has EigenvalueKernelOp O] in
 /-- **The rounded decoupling loop with a terminating small-eigenvalue routine terminates**, with
 the parameter words `NLAlib.ShiftedQR.roundedDecoupleParams` followed by the routine's words `qs`
 (none, or $12$) and the routine meeting `NLAlib.ShiftedQR.TerminatingSmallEigAt` with the word
-count $12$: `NLAlib.ShiftedQR.roundedDecouple_terminatingDecoupler` for
+count $12$: `NLAlib.ShiftedQR.roundedDecoupleWith_terminatingDecouplerRoutine_at` for
 `NLAlib.ShiftedQR.roundedDecoupleWith`. The rounded decoupling loop terminates on every tape and
 every matrix
 ([BanksGarzaVargasSrivastava2022, Lemma 6.4], termination only): on a scalar machine with exact

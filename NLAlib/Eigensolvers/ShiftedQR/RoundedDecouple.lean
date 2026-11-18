@@ -520,8 +520,8 @@ theorem roundedDecouple_pwrites_of_loop {I : Interp O Q ℝ} (hI : I.IsMeasurabl
             IsUpperHessenberg H' ∧
         (∃ j : Fin n, n ≤ (j : ℕ) + k ∧ ‖H' j.succ j.castSucc‖ ≤ ωD) ∧
         HoldsMatrix w H' μ'.store) φ := sorry
-set_option maxHeartbeats 4000000 in
 -- The loop's program term and the hypotheses of the iteration make elaboration heavy.
+set_option maxHeartbeats 4000000 in
 omit [Has EigenvalueKernelOp O] in
 /-- **The rounded decoupling loop with a small-eigenvalue routine meets the randomized decoupling
 contract**, with the parameter words `NLAlib.ShiftedQR.roundedDecoupleParams` followed by the

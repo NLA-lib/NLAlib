@@ -1,6 +1,6 @@
 {
   "date": "2026-11-18",
-  "note": "SCHUR O7 (MV1, MV2): the stored-matrix layer (ShiftedQR/Storage, and storedMatrix from RoundedHeadline) moves to Matrix/FinitePrecision/StoredMatrix, and the Givens coefficient and rotation programs (ShiftedQR/Coefficients, Rotation, RotationLoops) to Matrix/FinitePrecision/GivensCoefficients, GivensRotation and GivensPrograms; the declarations leave the ShiftedQR namespace for NLAlib. Pure relocation: no statement or body changed. SCHUR skeleton (MG3): IsRoundedRowRotation and IsRoundedColRotation take rectangular matrices (rows Fin n, any column type; and the transpose); the square uses are the instance.",
+  "note": "SCHUR O7 (MV1, MV2): the stored-matrix layer (ShiftedQR/Storage, and storedMatrix from RoundedHeadline) moves to Matrix/FinitePrecision/StoredMatrix, and the Givens coefficient and rotation programs (ShiftedQR/Coefficients, Rotation, RotationLoops) to Matrix/FinitePrecision/GivensCoefficients, GivensRotation and GivensPrograms; the declarations leave the ShiftedQR namespace for NLAlib. Pure relocation: no statement or body changed. SCHUR skeleton (MG3): IsRoundedRowRotation and IsRoundedColRotation take rectangular matrices (rows Fin n, any column type; and the transpose); the square uses are the instance. SCHUR skeleton part 2 (Schur is the program, design note 14.6): the merged finite-precision shifted QR programs (step, Find's step, Regularize, Sh, the iteration, the decoupling loop, the worklist solveRoundedWith, roundedShQRWith/roundedShQRSmallEig), Part III's programs (rhess, decoupleLast, smallEigDecoupler, the leaf, smallEigCore, smallEigProg) and hessenbergReduceLast are rewritten in place: every committed rotation is recorded in a slotted Givens log and the backward statements name their unitary (givensLog); the worklist replays the logs on the coupling blocks and the accumulator U, writes exact zeros at the cuts and multiplies by the leaves' accumulators, so it outputs (U, T) with T upper triangular. The eigenvalue-only programs are removed (the oracle-leaf roundedShQR and its certificate, the eigenvalue leaf contracts and lifts, solveRounded, seLeaf, copyLeaf -> identityLeaf); the eigenvalue theorems are restated as corollaries in Schur form under their names. Certificate numerals: stmtWorkMono_smallEigProgram 373483 -> 514650, stmtWorkMono_shqrSmallEigProgram 675307 -> 960712 (smallEigWork, shqrSmallEigWork likewise; exponents unchanged).",
   "renames": [
     {
       "old": "NLAlib.ShiftedQR.HoldsMatrix",
@@ -351,10 +351,1017 @@
       "old": "NLAlib.ShiftedQR.writes_rotateRightWithScratch_word",
       "new": "NLAlib.writes_rotateRightWithScratch_word",
       "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.shqrProgram",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.stmtWorkMono_shqrProgram",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.workCoefficient_shqrKernels",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.workDegreeAt_shqrKernels",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.callDegreeAt_shqrKernels",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.callArity_shqrKernels",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.shqrProgram_lift_le",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.shqrProgram_work_le",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.shqrManifestSpecification",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.shqrProgram_wp",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.shqrProgram_wellTyped",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedShQRManifestAlgorithm",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.shqrSpecification",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedShQRAlgorithm",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedShQR_algorithm_measureReal_not_accepts_le",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedDecoupleLoop",
+      "new": "NLAlib.ShiftedQR.roundedDecoupleLoopWith",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedDecouple",
+      "new": "NLAlib.ShiftedQR.roundedDecoupleWith",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedDecouple_randomDecouplingContract",
+      "new": "NLAlib.ShiftedQR.roundedDecoupleWith_randomDecouplingRoutineContract_at",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedDecouple_randomDecouplingContract_of_le_uShQR",
+      "new": "NLAlib.ShiftedQR.roundedDecoupleWith_randomDecouplingRoutineContract_of_le_uShQR_at",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedDecoupleLoop_terminates",
+      "new": "NLAlib.ShiftedQR.roundedDecoupleLoopWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedDecouple_terminatingDecoupler",
+      "new": "NLAlib.ShiftedQR.roundedDecoupleWith_terminatingDecouplerRoutine_at",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RandomDecouplingContract",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RandomLeafContract",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RoundedReached",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RoundedCopied",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RandomLeafRoutineContract",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RandomLeafContract.randomLeafRoutineContract",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RandomDecouplingContract.randomDecouplingRoutineContract",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedLeaf_pwrites",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedDecouple_pwrites",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedLarge_pwrites",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedRange_pwrites",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedWorklistRound_pwrites",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedWorklist_pwrites",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.solveRounded_pwrites",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.solveRounded_measureReal_not_spectrum_le",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.IsRandomSmallEig.randomLeafContract",
+      "new": "NLAlib.Schur.RandomSchurLeafContract",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.seLeaf",
+      "new": "NLAlib.Schur.RandomSchurLeafContract",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RandomSmallEigContractAt.randomLeafRoutineContract",
+      "new": "NLAlib.Schur.RandomSchurLeafContract",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RandomSmallEigContract.randomLeafRoutineContract",
+      "new": "NLAlib.Schur.RandomSchurLeafContract",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RoundedDecouplingContract",
+      "new": "NLAlib.ShiftedQR.RoundedDecouplingRoutineContract",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.BackwardLeafContract",
+      "new": "NLAlib.Schur.RandomSchurLeafContract",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.liftLeaf",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.liftDecoupler",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.BackwardLeafRoutineContract",
+      "new": "NLAlib.Schur.RandomSchurLeafContract",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.BackwardLeafContract.backwardLeafRoutineContract",
+      "new": "NLAlib.Schur.RandomSchurLeafContract",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RoundedDecouplingContract.roundedDecouplingRoutineContract",
+      "new": "NLAlib.ShiftedQR.RoundedDecouplingRoutineContract",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.IsEigenvalueKernels.backwardLeafContract",
+      "new": "NLAlib.SmallEig.smallEigProg",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedLargeRest",
+      "new": "NLAlib.ShiftedQR.roundedProcessLargeWith",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.solveRounded",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedWorklistFp",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RoundedGeometry",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RoundedWorklistState",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RoundedCore",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RoundedPopped",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RoundedGeometry.of_eqOff",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RoundedGeometry.live_of_subset",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RoundedGeometry.disj",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RoundedGeometry.disj_round",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RoundedGeometry.disj_scratch",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RoundedGeometry.disj_params",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RoundedWorklistState.of_core",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RoundedPopped.of_eqOff_work",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RoundedPopped.specNorm_subBlock_le",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RoundedFinal",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RoundedWorklistState.count",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedGeometry_allocated",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedLeaf_core",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RoundedPopped.leaf_operands",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedLeaf_writes",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedCut_core",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedLargeRest_writes",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RoundedPopped.decouple_operands",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedLarge_writes",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RoundedPopped.writes_copyToWork",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedRange_writes",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RoundedWorklistState.writes_rangePop",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedWorklistRound_backwardStep",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedWorklist_writes",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.solveRoundedWith_backward",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.solveRounded_backward",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.TerminatingDecoupler",
+      "new": "NLAlib.ShiftedQR.TerminatingLeafRoutine",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.TerminatingLeaf",
+      "new": "NLAlib.ShiftedQR.TerminatingLeafRoutine",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.TerminatingDecoupler.terminatingDecouplerRoutine",
+      "new": "NLAlib.ShiftedQR.TerminatingLeafRoutine",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.TerminatingLeaf.terminatingLeafRoutineIf",
+      "new": "NLAlib.ShiftedQR.TerminatingLeafRoutine",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.TerminatingSmallEigAt.terminatingLeafRoutine",
+      "new": "NLAlib.ShiftedQR.TerminatingLeafRoutine",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.TerminatingSmallEig.terminatingLeafRoutine",
+      "new": "NLAlib.ShiftedQR.TerminatingLeafRoutine",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.IsRandomSmallEig.terminatingLeaf",
+      "new": "NLAlib.ShiftedQR.TerminatingLeafRoutine",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedShQR",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEig",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedShQR_measureReal_not_spectrum_le",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEig_measureReal_not_spectrum_le",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedShQR_terminates",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEig_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedShQR_relative",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEig_relative",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedShQR_hermitian",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEig_hermitian",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedShQR_work_le",
+      "new": "NLAlib.ShiftedQR.roundedShQRSmallEig_work_le",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RoundedStoredCore",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RoundedStoredState",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.RoundedStoredState.of_core",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.outStored_of_eqOff",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedAbort_writes_core",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedLargeRest_terminates",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedLarge_terminates",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedRange_terminates",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedWorklistRound_terminates",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedWorklistExit_terminates",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedWorklist_terminates",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.solveRoundedWith_terminates_storedIf",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.solveRoundedWith_terminates_stored",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.solveRounded_terminates",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.stepWithDiag_writes_of_sweep",
+      "new": "NLAlib.ShiftedQR.stepWithDiag_isStableQRStep",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.ShiftedQR.take_drop_flatMap_pair",
+      "new": "NLAlib.ShiftedQR.stepWithDiag_isStableQRStep",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.SmallEigCoreInput",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.smallEigCore_pwrites",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.smallEigCore_measureReal_not_spectrum_le",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.smallEigCore_terminates",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.smallEigCore_terminates_stored",
+      "new": "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.smallEigDecoupler_oneEig_pwrites",
+      "new": "NLAlib.SmallEig.smallEigDecoupler_randomDecouplingRoutineContract",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.smallEigDecoupler_decouple_writes",
+      "new": "NLAlib.SmallEig.smallEigDecoupler_randomDecouplingRoutineContract",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.smallEigDecoupler_rhess_pwrites",
+      "new": "NLAlib.SmallEig.smallEigDecoupler_randomDecouplingRoutineContract",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.smallEigDecoupler_tail_pwrites",
+      "new": "NLAlib.SmallEig.smallEigDecoupler_randomDecouplingRoutineContract",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.copyLeaf",
+      "new": "NLAlib.SmallEig.identityLeaf",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.copyLeaf_writes",
+      "new": "NLAlib.SmallEig.identityLeaf_writes",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.copyLeaf_randomLeafRoutineContract",
+      "new": "NLAlib.SmallEig.identityLeaf_randomSchurLeafContract",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.copyLeaf_terminates",
+      "new": "NLAlib.SmallEig.identityLeaf_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.smallEigCoreInput_of_scratch",
+      "new": "NLAlib.SmallEig.smallEigProg_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.smallEigProg_terminates_of_two_le",
+      "new": "NLAlib.SmallEig.smallEigProg_terminates",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.rhess_loop_writes",
+      "new": "NLAlib.SmallEig.rhess_writes_word",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.SmallEigCoreClass",
+      "new": "NLAlib.SmallEig.smallEigProg_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.smallEigCoreClass_hessenbergReduceLastWord",
+      "new": "NLAlib.SmallEig.smallEigProg_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.SmallEigScratch",
+      "new": "NLAlib.SmallEig.smallEigProg_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.SmallEigScratch.of_eqOff",
+      "new": "NLAlib.SmallEig.smallEigProg_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.SmallEigScratch.live",
+      "new": "NLAlib.SmallEig.smallEigProg_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.SmallEigScratch.of_alloc",
+      "new": "NLAlib.SmallEig.smallEigProg_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.smallEigProg_writes_of_le_one",
+      "new": "NLAlib.SmallEig.smallEigProg_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.smallEigProg_copy_pwrites",
+      "new": "NLAlib.SmallEig.smallEigProg_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.smallEigProg_perturb_pwrites",
+      "new": "NLAlib.SmallEig.smallEigProg_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.smallEigProg_reduce_pwrites",
+      "new": "NLAlib.SmallEig.smallEigProg_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.smallEigProg_core_pwrites",
+      "new": "NLAlib.SmallEig.smallEigProg_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.smallEigProg_randomSmallEigContract",
+      "new": "NLAlib.SmallEig.smallEigProg_pwrites",
+      "rule": "N12",
+      "removed": true
+    },
+    {
+      "old": "NLAlib.SmallEig.smallEigProg_randomSmallEigContract_unconditional",
+      "new": "NLAlib.SmallEig.smallEigProg_pwrites",
+      "rule": "N12",
+      "removed": true
     }
   ],
   "statementChanged": [
+    "NLAlib.IsRoundedColRotation",
     "NLAlib.IsRoundedRowRotation",
-    "NLAlib.IsRoundedColRotation"
+    "NLAlib.OneEigFrame.distSpecAccurateOn_of",
+    "NLAlib.ShiftedQR.DecoupleLoopMid",
+    "NLAlib.ShiftedQR.DecoupleLoopState",
+    "NLAlib.ShiftedQR.DecoupleLoopState.exists_iterate",
+    "NLAlib.ShiftedQR.RandomDecouplingRoutineContract",
+    "NLAlib.ShiftedQR.RegularizeOutcome",
+    "NLAlib.ShiftedQR.RoundedDecouplingRoutineContract",
+    "NLAlib.ShiftedQR.ShOutcome",
+    "NLAlib.ShiftedQR.ShQRInput",
+    "NLAlib.ShiftedQR.ShQRSmallEigData.buffers",
+    "NLAlib.ShiftedQR.ShQRSpectrum",
+    "NLAlib.ShiftedQR.ShState3",
+    "NLAlib.ShiftedQR.ShState3.shExcPre",
+    "NLAlib.ShiftedQR.ShTrialPost",
+    "NLAlib.ShiftedQR.TerminatingDecouplerRoutine",
+    "NLAlib.ShiftedQR.TerminatingLeafRoutine",
+    "NLAlib.ShiftedQR.TerminatingLeafRoutine.terminatingLeafRoutineIf",
+    "NLAlib.ShiftedQR.TerminatingLeafRoutineIf",
+    "NLAlib.ShiftedQR.TerminatingLeafRoutineIf.mono",
+    "NLAlib.ShiftedQR.TrialPost",
+    "NLAlib.ShiftedQR.comptauHalf",
+    "NLAlib.ShiftedQR.comptauHalf_isHalfTau",
+    "NLAlib.ShiftedQR.comptauHalf_terminates",
+    "NLAlib.ShiftedQR.comptauHalf_terminatingHalfTau",
+    "NLAlib.ShiftedQR.mem_iterationOutcome_of_shOutcome",
+    "NLAlib.ShiftedQR.multiStepStable",
+    "NLAlib.ShiftedQR.multiStepStable_isStableQRChain",
+    "NLAlib.ShiftedQR.multiStepStable_terminates",
+    "NLAlib.ShiftedQR.regularize",
+    "NLAlib.ShiftedQR.regularizeDecide",
+    "NLAlib.ShiftedQR.regularizeDecide_outcome",
+    "NLAlib.ShiftedQR.regularizeDecide_terminates",
+    "NLAlib.ShiftedQR.regularizeDecide_writes",
+    "NLAlib.ShiftedQR.regularizeTrial",
+    "NLAlib.ShiftedQR.regularizeTrial_terminates",
+    "NLAlib.ShiftedQR.regularizeTrial_writes",
+    "NLAlib.ShiftedQR.regularizeTrials",
+    "NLAlib.ShiftedQR.regularizeTrials_terminates",
+    "NLAlib.ShiftedQR.regularizeTrials_writes",
+    "NLAlib.ShiftedQR.regularizeWith",
+    "NLAlib.ShiftedQR.regularizeWithScratchWith",
+    "NLAlib.ShiftedQR.regularizeWithScratchWith_pwrites",
+    "NLAlib.ShiftedQR.regularizeWithScratchWith_terminates",
+    "NLAlib.ShiftedQR.regularizeWith_pwrites",
+    "NLAlib.ShiftedQR.regularizeWith_pwrites_at",
+    "NLAlib.ShiftedQR.regularizeWith_terminates",
+    "NLAlib.ShiftedQR.regularizeWith_terminates_at",
+    "NLAlib.ShiftedQR.regularize_pwrites",
+    "NLAlib.ShiftedQR.regularize_terminates",
+    "NLAlib.ShiftedQR.roundedDecoupleExit_writes",
+    "NLAlib.ShiftedQR.roundedDecoupleIteration_pwrites",
+    "NLAlib.ShiftedQR.roundedDecoupleLoopWith",
+    "NLAlib.ShiftedQR.roundedDecoupleLoopWith_terminates",
+    "NLAlib.ShiftedQR.roundedDecoupleLoop_pwrites",
+    "NLAlib.ShiftedQR.roundedDecoupleScan_writes",
+    "NLAlib.ShiftedQR.roundedDecoupleWith",
+    "NLAlib.ShiftedQR.roundedDecoupleWith_randomDecouplingRoutineContract",
+    "NLAlib.ShiftedQR.roundedDecoupleWith_randomDecouplingRoutineContract_at",
+    "NLAlib.ShiftedQR.roundedDecoupleWith_randomDecouplingRoutineContract_of_le_uShQR_at",
+    "NLAlib.ShiftedQR.roundedDecoupleWith_terminatingDecouplerRoutine",
+    "NLAlib.ShiftedQR.roundedDecoupleWith_terminatingDecouplerRoutine_at",
+    "NLAlib.ShiftedQR.roundedDecouple_pwrites_of_loop",
+    "NLAlib.ShiftedQR.roundedProcessLargeWith",
+    "NLAlib.ShiftedQR.roundedProcessRangeWith",
+    "NLAlib.ShiftedQR.roundedShQRSmallEig_algorithm_measureReal_not_accepts_le",
+    "NLAlib.ShiftedQR.roundedShQRSmallEig_algorithm_measureReal_not_accepts_le_unconditional",
+    "NLAlib.ShiftedQR.roundedShQRWith",
+    "NLAlib.ShiftedQR.roundedShQRWith_measureReal_not_spectrum_le",
+    "NLAlib.ShiftedQR.roundedShQRWith_measureReal_not_spectrum_le_at",
+    "NLAlib.ShiftedQR.roundedShQRWith_terminates",
+    "NLAlib.ShiftedQR.roundedShQRWith_terminates_at",
+    "NLAlib.ShiftedQR.roundedWorklistRoundWith",
+    "NLAlib.ShiftedQR.roundedWorklistWith",
+    "NLAlib.ShiftedQR.shAccept_writes",
+    "NLAlib.ShiftedQR.shDecide",
+    "NLAlib.ShiftedQR.shDecide_pwrites",
+    "NLAlib.ShiftedQR.shDecide_terminates",
+    "NLAlib.ShiftedQR.shExc",
+    "NLAlib.ShiftedQR.shExcTrials_writes",
+    "NLAlib.ShiftedQR.shExc_pwrites",
+    "NLAlib.ShiftedQR.shExc_terminates",
+    "NLAlib.ShiftedQR.shIteration",
+    "NLAlib.ShiftedQR.shIterationWith",
+    "NLAlib.ShiftedQR.shIterationWithScratchWith",
+    "NLAlib.ShiftedQR.shIterationWithScratchWith_pwrites",
+    "NLAlib.ShiftedQR.shIterationWith_pwrites",
+    "NLAlib.ShiftedQR.shIterationWith_pwrites_at",
+    "NLAlib.ShiftedQR.shIterationWith_terminates",
+    "NLAlib.ShiftedQR.shIterationWith_terminates_at",
+    "NLAlib.ShiftedQR.shIteration_pwrites",
+    "NLAlib.ShiftedQR.shIteration_regularize_pwrites",
+    "NLAlib.ShiftedQR.shIteration_terminates",
+    "NLAlib.ShiftedQR.shOutcome_of_accepted",
+    "NLAlib.ShiftedQR.shPotentialAccept",
+    "NLAlib.ShiftedQR.shPotentialAccept_terminates",
+    "NLAlib.ShiftedQR.shPotentialAccept_writes",
+    "NLAlib.ShiftedQR.shPrefix",
+    "NLAlib.ShiftedQR.shPrefix_terminates",
+    "NLAlib.ShiftedQR.shPrefix_writes",
+    "NLAlib.ShiftedQR.shStep",
+    "NLAlib.ShiftedQR.shStepWithScratch",
+    "NLAlib.ShiftedQR.shStepWithScratch_pwrites",
+    "NLAlib.ShiftedQR.shStepWithScratch_terminates",
+    "NLAlib.ShiftedQR.shStep_pwrites",
+    "NLAlib.ShiftedQR.shStep_pwrites_of_forall",
+    "NLAlib.ShiftedQR.shStep_terminates",
+    "NLAlib.ShiftedQR.shTestStep",
+    "NLAlib.ShiftedQR.shTestStep_terminates",
+    "NLAlib.ShiftedQR.shTestStep_writes",
+    "NLAlib.ShiftedQR.shTest_writes",
+    "NLAlib.ShiftedQR.shTrial",
+    "NLAlib.ShiftedQR.shTrial_terminates",
+    "NLAlib.ShiftedQR.shTrial_writes",
+    "NLAlib.ShiftedQR.shTrials",
+    "NLAlib.ShiftedQR.shTrials_terminates",
+    "NLAlib.ShiftedQR.shTrials_writes",
+    "NLAlib.ShiftedQR.shqrFp",
+    "NLAlib.ShiftedQR.shqrSmallEigDims",
+    "NLAlib.ShiftedQR.shqrSmallEigProgram",
+    "NLAlib.ShiftedQR.shqrSmallEigWork",
+    "NLAlib.ShiftedQR.solveRoundedWith",
+    "NLAlib.ShiftedQR.solveRoundedWith_pwrites",
+    "NLAlib.ShiftedQR.solveRoundedWith_terminates",
+    "NLAlib.ShiftedQR.stepComptau",
+    "NLAlib.ShiftedQR.stepComptau_terminates",
+    "NLAlib.ShiftedQR.stepComptau_writes",
+    "NLAlib.ShiftedQR.stepWithDiag",
+    "NLAlib.ShiftedQR.stepWithDiagInPlace",
+    "NLAlib.ShiftedQR.stepWithDiagInPlace_isStableQRStep",
+    "NLAlib.ShiftedQR.stepWithDiagInPlace_terminates",
+    "NLAlib.ShiftedQR.stepWithDiag_isStableQRStep",
+    "NLAlib.ShiftedQR.stmtWorkMono_shqrSmallEigProgram",
+    "NLAlib.ShiftedQR.trialAccept",
+    "NLAlib.ShiftedQR.trialAccept_terminates",
+    "NLAlib.ShiftedQR.trialAccept_writes",
+    "NLAlib.ShiftedQR.trialStep",
+    "NLAlib.ShiftedQR.trialStep_terminates",
+    "NLAlib.ShiftedQR.trialStep_writes",
+    "NLAlib.SmallEig.SmallEigData.buffers",
+    "NLAlib.SmallEig.SmallEigFrame",
+    "NLAlib.SmallEig.SmallEigInput",
+    "NLAlib.SmallEig.SmallEigSpectrum",
+    "NLAlib.SmallEig.decoupleLast",
+    "NLAlib.SmallEig.decoupleLast_spec",
+    "NLAlib.SmallEig.decoupleLast_terminates",
+    "NLAlib.SmallEig.decoupleLast_writes_scans",
+    "NLAlib.SmallEig.decoupleLast_writes_word",
+    "NLAlib.SmallEig.distSpec_accuracy",
+    "NLAlib.SmallEig.distSpec_terminates",
+    "NLAlib.SmallEig.distSpec_writes_word",
+    "NLAlib.SmallEig.multiStepStable_writes_replicate_succ",
+    "NLAlib.SmallEig.rhess",
+    "NLAlib.SmallEig.rhess_pwrites",
+    "NLAlib.SmallEig.rhess_terminates",
+    "NLAlib.SmallEig.rhess_writes_word",
+    "NLAlib.SmallEig.smallEigCore",
+    "NLAlib.SmallEig.smallEigDecoupler",
+    "NLAlib.SmallEig.smallEigDecoupler_randomDecouplingRoutineContract",
+    "NLAlib.SmallEig.smallEigDecoupler_randomDecouplingRoutineContract_of_le",
+    "NLAlib.SmallEig.smallEigDecoupler_terminatingDecouplerRoutine",
+    "NLAlib.SmallEig.smallEigProg",
+    "NLAlib.SmallEig.smallEigProg_terminates",
+    "NLAlib.SmallEig.smallEigProgram",
+    "NLAlib.SmallEig.smallEigSpectrum_forward",
+    "NLAlib.SmallEig.smallEigWork",
+    "NLAlib.SmallEig.smallEig_algorithm_measureReal_not_accepts_le",
+    "NLAlib.SmallEig.smallEig_algorithm_measureReal_not_accepts_le_unconditional",
+    "NLAlib.SmallEig.stmtWorkMono_smallEigProgram",
+    "NLAlib.hessenbergReduceLast",
+    "NLAlib.hessenbergReduceLast_terminates",
+    "NLAlib.hessenbergReduceLast_writes_word",
+    "NLAlib.reduceLastStep",
+    "NLAlib.reduceLastStep_writes_word"
   ]
 }

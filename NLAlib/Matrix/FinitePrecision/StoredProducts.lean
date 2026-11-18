@@ -10,8 +10,8 @@ public import NLAlib.Ops.Blas.Pair
 /-!
 # Products of stored complex matrices on strided views
 
-A product $\mathbf{Z} = \mathbf{X}\mathbf{Y}$, or $\mathbf{Z} = \mathbf{X}^{\mathsf H}\mathbf{Y}$, of
-complex matrices stored as word pairs in column-major order on strided views (leading dimensions
+A product $\mathbf{Z} = \mathbf{X}\mathbf{Y}$, or $\mathbf{Z} = \mathbf{X}^{\mathsf H}\mathbf{Y}$,
+of complex matrices stored as word pairs in column-major order on strided views (leading dimensions
 of their own), accumulated by rounded complex multiply–adds (`NLAlib.Ops.Pair.linearCombination`).
 The output is a separate view. The error bounds are not in this file.
 

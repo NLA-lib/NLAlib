@@ -45,7 +45,7 @@ predicate on the tape alone give accuracy for every interpretation of the model 
 at least $1 - \varphi$: the positions of the windows the program reads, and the matrices that
 define their bad sets, depend on the earlier draws and on the kernel's outputs. The spectrum
 claim is the postcondition of `NLAlib.Ops.Specification.Accepts` in
-`NLAlib.ShiftedQR.roundedShQR_algorithm_measureReal_not_accepts_le`, bounded through the
+`NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm`, bounded through the
 probabilistic program logic (`NLAlib.Ops.Algorithm.measureReal_not_accepts_le_of_wp`).
 
 ## Main definitions
@@ -54,12 +54,12 @@ probabilistic program logic (`NLAlib.Ops.Algorithm.measureReal_not_accepts_le_of
 * `NLAlib.ShiftedQR.shqrProblem`: the five raw buffers and the admitted sizes.
 * `NLAlib.ShiftedQR.shqrModel`, `NLAlib.ShiftedQR.shqrResources`: the access model and its costs.
 * `NLAlib.ShiftedQR.shqrWork`: the explicit work and span polynomial.
-* `NLAlib.ShiftedQR.roundedShQRAlgorithm`: the certificate.
+* `NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm`: the certificate.
 
 ## Main results
 
-* `NLAlib.ShiftedQR.shqrProgram_work_le`: the work of every run.
-* `NLAlib.ShiftedQR.roundedShQR_algorithm_measureReal_not_accepts_le`: the headline, on one run.
+* `NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm`: the work of every run.
+* `NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm`: the headline, on one run.
 -/
 
 @[expose] public section

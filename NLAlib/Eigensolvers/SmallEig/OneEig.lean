@@ -735,7 +735,8 @@ under its hypotheses on $\mathbf{H} \ne 0$, the precision condition at the dista
 and the shift reach $10\Sigma$, $\Sigma \ge 0$, `DistSpec` is accurate
 (`NLAlib.SmallEig.DistSpecAccurateOn`) on the points of modulus at most $10\Sigma$ at distance
 at least $\eta_1$ from the $d_i$. -/
-theorem distSpecAccurateOn_of {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I) (hL : IsIndexLit M I)
+theorem distSpecAccurateOn_of {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
+    (hL : IsIndexLit M I)
     (hM : StdModel u id M) (hCmp : IsCmp id I) {n m q : ℕ}
     {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {κ p S η₁ : ℝ}
     (hH : IsUpperHessenberg H) (hH0 : H ≠ 0) (hV : IsUnit V)

@@ -329,7 +329,8 @@ theorem rhess_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar 
       (fun μ' => μ'.pos = μ.pos + 2 * N ∧
         HoldsMatrix a (rhessWord M A fun j => τ (μ.pos + j) sG) μ'.store ∧
         ∃ Ls : List (Option (List GivensEntry)), Ls.length = N - 1 ∧
-          (∀ x ∈ slotEntries w Ls, x.1 + 2 < N) ∧ HoldsSlottedLog lg ns w (LL ++ Ls) [] μ'.store) μ :=
+          (∀ x ∈ slotEntries w Ls, x.1 + 2 < N) ∧ HoldsSlottedLog lg ns w (LL ++ Ls) [] μ'.store)
+              μ :=
   sorry
 
 /-- **`RHess` is a backward-stable unitary similarity to a random direction**
@@ -433,7 +434,8 @@ theorem rhess_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun μ' => ∃ H : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix a H μ'.store ∧
         ∃ Ls : List (Option (List GivensEntry)), Ls.length = N - 1 ∧
-          (∀ x ∈ slotEntries w Ls, x.1 + 2 < N) ∧ HoldsSlottedLog lg ns w (LL ++ Ls) [] μ'.store) μ :=
+          (∀ x ∈ slotEntries w Ls, x.1 + 2 < N) ∧ HoldsSlottedLog lg ns w (LL ++ Ls) [] μ'.store)
+              μ :=
   sorry
 
 end Theorems

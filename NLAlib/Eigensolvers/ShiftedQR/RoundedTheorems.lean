@@ -26,7 +26,7 @@ threshold is recomputed for the corrected constants of the blocks. The program i
 deflation worklist (`NLAlib.ShiftedQR.solveRoundedWith`) with the decoupling loop of Lemma 6.4
 (`NLAlib.ShiftedQR.roundedDecoupleWith`: `Regularize`, then
 $\mathrm{Sh}_{k,B}$, capped at $F$ rounds) and the leaf (`NLAlib.ShiftedQR.seLeaf`), both running
-a small-eigenvalue routine; `NLAlib.ShiftedQR.roundedShQR` runs the `SmallEig` kernel
+a small-eigenvalue routine; `NLAlib.ShiftedQR.roundedShQRSmallEig` runs the `SmallEig` kernel
 (`NLAlib.ShiftedQR.smallEigKernel`) with the cap $0$. It is run with the parameter words of
 `NLAlib.ShiftedQR.shqrParams` and the threshold word `NLAlib.ShiftedQR.shqrDeflationThreshold`
 on a machine with unit roundoff $\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{ShQR}}$
@@ -49,7 +49,7 @@ tape law); that one interpretation is measurable (`NLAlib.Ops.Interp.IsMeasurabl
 
 ## Main definitions
 
-* `NLAlib.ShiftedQR.roundedShQR`: the program.
+* `NLAlib.ShiftedQR.roundedShQRSmallEig`: the program.
 * `NLAlib.ShiftedQR.shqrParams`, `NLAlib.ShiftedQR.shqrDims`: its parameter words and
   dimensions.
 * `NLAlib.ShiftedQR.ShQRInput`, `NLAlib.ShiftedQR.ShQRSpectrum`: the memory holding the input,
@@ -57,12 +57,12 @@ tape law); that one interpretation is measurable (`NLAlib.Ops.Interp.IsMeasurabl
 
 ## Main results
 
-* `NLAlib.ShiftedQR.roundedShQR_measureReal_not_spectrum_le`: the headline.
-* `NLAlib.ShiftedQR.roundedShQR_terminates`: termination on every tape.
+* `NLAlib.ShiftedQR.roundedShQRSmallEig_measureReal_not_spectrum_le`: the headline.
+* `NLAlib.ShiftedQR.roundedShQRSmallEig_terminates`: termination on every tape.
 * `NLAlib.ShiftedQR.logb_inv_uShQR_le`: the bits of precision.
-* `NLAlib.ShiftedQR.roundedShQR_relative`: the relative backward error.
-* `NLAlib.ShiftedQR.roundedShQR_hermitian`: Hermitian inputs.
-* `NLAlib.ShiftedQR.roundedShQR_work_le`: the operation count.
+* `NLAlib.ShiftedQR.roundedShQRSmallEig_relative`: the relative backward error.
+* `NLAlib.ShiftedQR.roundedShQRSmallEig_hermitian`: Hermitian inputs.
+* `NLAlib.ShiftedQR.roundedShQRSmallEig_work_le`: the operation count.
 * `NLAlib.ShiftedQR.roundedShQRWith`,
   `NLAlib.ShiftedQR.roundedShQRWith_measureReal_not_spectrum_le`,
   `NLAlib.ShiftedQR.roundedShQRWith_terminates`: the algorithm with a small-eigenvalue routine in
@@ -175,7 +175,7 @@ set_option maxHeartbeats 1000000 in
 /-- The rounded shifted QR algorithm with a small-eigenvalue routine, with the word count $12$
 apart from the routine's words `qs` (none, or $12$; `NLAlib.ShiftedQR.RandomSmallEigContractAt`):
 the statement of `NLAlib.ShiftedQR.roundedShQRWith_measureReal_not_spectrum_le`, of which
-`NLAlib.ShiftedQR.roundedShQR_measureReal_not_spectrum_le` is the case of the kernel and no
+`NLAlib.ShiftedQR.roundedShQRSmallEig_measureReal_not_spectrum_le` is the case of the kernel and no
 words. -/
 theorem roundedShQRWith_measureReal_not_spectrum_le_at {Mch : Machine ℝ} {I : Interp O Q ℝ}
     {u : ℝ} {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
@@ -212,8 +212,8 @@ theorem roundedShQRWith_measureReal_not_spectrum_le_at {Mch : Machine ℝ} {I : 
 /-- The rounded shifted QR algorithm with a terminating small-eigenvalue routine terminates on
 every tape, with the word count $12$ apart from the routine's words `qs` (none, or $12$;
 `NLAlib.ShiftedQR.TerminatingSmallEigAt`): the statement of
-`NLAlib.ShiftedQR.roundedShQRWith_terminates`, of which `NLAlib.ShiftedQR.roundedShQR_terminates`
-is the case of the kernel and no words. -/
+`NLAlib.ShiftedQR.roundedShQRWith_terminates`, of which
+`NLAlib.ShiftedQR.roundedShQRSmallEig_terminates` is the case of the kernel and no words. -/
 theorem roundedShQRWith_terminates_at {Mch : Machine ℝ} {I : Interp O Q ℝ}
     {n : ℕ} (hS : IsScalar Mch I) (hL : IsIndexLit Mch I)
     (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I) {sU : ℕ}

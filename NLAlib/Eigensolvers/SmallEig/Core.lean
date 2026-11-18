@@ -26,7 +26,7 @@ with probability at most $\varphi/4$, all eigenvalues of a matrix within $\delta
 
 ## Main results
 
-* `NLAlib.SmallEig.smallEigCore_pwrites`,
+* `NLAlib.ShiftedQR.solveRoundedWith_pwrites`,
   `NLAlib.SmallEig.smallEigCore_measureReal_not_spectrum_le`,
   `NLAlib.SmallEig.smallEigCore_terminates`.
 -/

@@ -288,13 +288,13 @@ def smallEigSlots : List WorkMono :=
 -- The kernel evaluates the bound of the whole instrumented tree; its recursion is deep.
 set_option maxRecDepth 100000 in
 /-- The monomial bound of the instructions of the instrumented program is
-$514650\,b_0^4 b_2^2$ (`NLAlib.SmallEig.smallEigWork`). -/
+$517058\,b_0^4 b_2^2$ (`NLAlib.SmallEig.smallEigWork`). -/
 theorem stmtWorkMono_smallEigProgram (sG : ℕ) :
-    stmtWorkMono (smallEigProgram sG).body.instrument smallEigSlots = ⟨514650, [4, 0, 2]⟩ := by
+    stmtWorkMono (smallEigProgram sG).body.instrument smallEigSlots = ⟨517058, [4, 0, 2]⟩ := by
   kernel_rfl
 
 /-- **The work (and span) polynomial** of the small-eigenvalue solver at the sizes
-$(n, n_q, T)$ = `d`: $514650\,(n + 1)^4(T + 1)^2$, the
+$(n, n_q, T)$ = `d`: $517058\,(n + 1)^4(T + 1)^2$, the
 monomial bound of the instructions of the instrumented program, each of unit weight; it is larger
 than the constant $4629$ of `NLAlib.SmallEig.smallEig_work_le` because the instrumentation counts
 every structural instruction too. The parameter words (thresholds, scales and caps, real numbers
@@ -304,7 +304,7 @@ algorithm. The monomial is an envelope of the paper's count $n^4 + n^3\log^2$, n
 cap $T$ = `NLAlib.SmallEig.smallEigCap` is the largest loop count ($m$, $t$, $m_2$), a logarithm of
 $n_{\max}\Sigma/(\delta\varphi)$ up to constants (bounded in the proof of
 `NLAlib.SmallEig.logb_inv_uSmallEig_le`). -/
-def smallEigWork (d : Fin 3 → ℕ) : ℕ := 514650 * (d 0 + 1) ^ 4 * (d 2 + 1) ^ 2
+def smallEigWork (d : Fin 3 → ℕ) : ℕ := 517058 * (d 0 + 1) ^ 4 * (d 2 + 1) ^ 2
 
 /-- The number of instructions of the static count of the program is at most
 `NLAlib.SmallEig.smallEigWork`. -/

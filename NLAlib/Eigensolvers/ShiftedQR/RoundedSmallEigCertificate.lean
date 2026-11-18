@@ -168,15 +168,15 @@ def shqrSmallEigSlots : List WorkMono :=
 -- The kernel evaluates the bound of the whole instrumented tree; its recursion is deep.
 set_option maxRecDepth 100000 in
 /-- The monomial bound of the instructions of the instrumented program is
-$960776\,b_0^3 b_1^4 b_2 b_3 b_4^2$ (`NLAlib.ShiftedQR.shqrSmallEigWork`). -/
+$967736\,b_0^3 b_1^4 b_2 b_3 b_4^2$ (`NLAlib.ShiftedQR.shqrSmallEigWork`). -/
 theorem stmtWorkMono_shqrSmallEigProgram (sG : ℕ) :
     stmtWorkMono (shqrSmallEigProgram sG).body.instrument shqrSmallEigSlots =
-      ⟨960776, [3, 4, 1, 1, 2]⟩ := by
+      ⟨967736, [3, 4, 1, 1, 2]⟩ := by
   kernel_rfl
 
 /-- **The work (and span) polynomial** of the rounded shifted QR algorithm with the
 small-eigenvalue program at the sizes $(n, k, n_p, F, T)$ = `d`:
-$960776\,(n + 1)^3(k + 1)^4(n_p + 1)(F + 1)(T + 1)^2$, the
+$967736\,(n + 1)^3(k + 1)^4(n_p + 1)(F + 1)(T + 1)^2$, the
 monomial bound of the instructions of the instrumented program, each of unit weight; the
 instructions of the small-eigenvalue program are among them (one bound over the whole tree). The
 parameter words (thresholds, scales and caps, real numbers with logarithms and roots) are
@@ -186,7 +186,7 @@ cap $T$ = `NLAlib.SmallEig.smallEigCap` is the largest loop count ($m$, $t$, $m_
 $n_{\max}\Sigma/(\delta\varphi)$ up to constants (bounded in the proof of
 `NLAlib.SmallEig.logb_inv_uSmallEig_le`). -/
 def shqrSmallEigWork (d : Fin 5 → ℕ) : ℕ :=
-  960776 * (d 0 + 1) ^ 3 * (d 1 + 1) ^ 4 * (d 2 + 1) * (d 3 + 1) * (d 4 + 1) ^ 2
+  967736 * (d 0 + 1) ^ 3 * (d 1 + 1) ^ 4 * (d 2 + 1) * (d 3 + 1) * (d 4 + 1) ^ 2
 
 /-- The number of instructions of the static count of the program is at most
 `NLAlib.ShiftedQR.shqrSmallEigWork`. -/

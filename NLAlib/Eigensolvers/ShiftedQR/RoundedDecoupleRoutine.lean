@@ -118,7 +118,10 @@ theorem regularizeWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
       (RegularizeOutcome k H e u (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) *
         (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) (R * √(φ / (2 * k)) / 2) tv
         ((1 + 1.1) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a s f lg ns w LL)
-      (φse + φ / 2) := sorry
+      (φse + φ / 2) :=
+  regularizeWith_pwrites_at hI hloc hS hM hu1 hL hNat hC hβ0 hφse hD hU hk0 hk has haf hsf hio hH
+    hV hHV hκ hBk hω hψ hSH hgap hR hφ hφ1 hβ hdη hnu huo huo1 hxu hbound hthrω hSE.at hqw hj hw
+    hlgv
 
 /-- **One iteration of the decoupling loop with a small-eigenvalue routine**
 ([BanksGarzaVargasSrivastava2022, Lemma 6.4], the body of the loop; the routine of
@@ -214,7 +217,10 @@ theorem shIterationWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
         HoldsSlottedLog lg ns w LL [] m.store ∧ m.Live [lg])
       (ShIterationOutcomeBy u k H γ tv
           ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1))
-        a lg ns w LL (k + 1 + (excNet ε).length)) (φse + φR / 2 + φ) := sorry
+        a lg ns w LL (k + 1 + (excNet ε).length)) (φse + φR / 2 + φ) :=
+  shIterationWith_pwrites_at hI hloc hS hM hu1 hL hNat hC hQ hβ0 hφse hD hU hkq hk hkn haf hio hH
+    hV hHV hκ hBk hω hψ hSH hgap hR hφR hφR1 hβ hdη hnu huo huo1 hxuR hboundR hα hγ hγ1 hε hε2 hφ
+    hφ1 hd hC1 hxu hbound hexc1 hexc2 hthrω hSE.at hqw hj hw hlgv
 -- The hypotheses of the iteration make the elaboration of the statement heavy.
 set_option maxHeartbeats 4000000 in
 /-- **The rounded decoupling loop with a small-eigenvalue routine meets the randomized
@@ -292,7 +298,11 @@ theorem roundedDecoupleWith_randomDecouplingRoutineContract {M : Machine ℝ} {I
     RandomDecouplingRoutineContract law (2 * B) (g / 2) (F * (φse + φR / 2 + φ)) k F T nmax
       Nmax (roundedDecoupleParams tL R tv γ Bi α ε k q ++ qs) ns ws ωD
       (fun _ => F * ((1 + C) * S * ((1 + 300 * (nmax + 1) ^ 2 * u) ^ k - 1)))
-      (roundedDecoupleWith SE) I := sorry
+      (roundedDecoupleWith SE) I :=
+  roundedDecoupleWith_randomDecouplingRoutineContract_at hI hloc hS hM hu1 hL hNat hC hQ hβ0 hφse
+    hDisk hU hkq hk hg hBi hS0 hBk hω hgapS hR hφR hφR1 hβ hdη hnu huo huo1 hxuR hboundR hα hγ hγ1
+    hε hε2 hφ hφ1 hd hC1 hxu hbound hexc1 hexc2 hthrω hthr hcut hωD hfuel hSN hsmall
+    (hqs ▸ hSE.at) (Or.inr hqs) rfl hns hws
 
 omit [Has IdxTst Q] in
 /-- **`Regularize` with a terminating small-eigenvalue routine terminates on any matrix**
@@ -340,7 +350,8 @@ theorem regularizeWith_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
         ∃ Ls : List (Option (List GivensEntry)), Ls.length = k ∧
           (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 1) ∧
               HoldsSlottedLog lg ns w (LL ++ Ls) [] m'.store) m :=
-  sorry
+  regularizeWith_terminates_at hS hL hNat hC hD hk has haf hsf hio hl hA hrd hc hthr hrs hrf hSE.at
+    hlq hq hqw hlog hj hw hlgl hlgv
 
 /-- One iteration with a terminating small-eigenvalue routine terminates on any matrix: on a
 scalar machine with exact comparisons, index literals, index conversion and exact natural
@@ -388,7 +399,8 @@ theorem shIterationWith_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
         ∃ Ls : List (Option (List GivensEntry)), Ls.length = (k + 1 + (excNet ε).length) ∧
           (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 1) ∧
               HoldsSlottedLog lg ns w (LL ++ Ls) [] m'.store) m :=
-  sorry
+  shIterationWith_terminates_at hS hL hNat hC hQ hD hkq hkn haf hio hl hA hrd hc hthr hwg hwr hww
+    hwp hg hrf hSE.at hlq hq hqw hlog hj hw hlgl hlgv
 
 /-- **The rounded decoupling loop with a terminating small-eigenvalue routine terminates on
 every tape and every matrix** ([BanksGarzaVargasSrivastava2022, Lemma 6.4], termination only): on
@@ -405,7 +417,9 @@ theorem roundedDecoupleWith_terminatingDecouplerRoutine {M : Machine ℝ} {I : I
     {SE : Impl O Q} (hSE : TerminatingSmallEig k T qs SE I) (hqs : qs.length = 12) {ns ws : ℕ}
     (hns : F * (k + 1 + (excNet ε).length) ≤ ns) (hws : k * nmax ≤ ws) :
     TerminatingDecouplerRoutine nmax k F T (roundedDecoupleParams tL R tv γ B α ε k q ++ qs) ns ws
-      (roundedDecoupleWith SE) I := sorry
+      (roundedDecoupleWith SE) I :=
+  roundedDecoupleWith_terminatingDecouplerRoutine_at hS hL hNat hC hQ hD hkq tL R tv γ B α ε
+    (hqs ▸ hSE.at) (Or.inr hqs) rfl hns hws
 
 end Theorems
 

@@ -545,7 +545,8 @@ theorem shPrefix_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScala
   have hlog₁ := hfr₁.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
     (Fp.disj_inBlock_of_ne (by omega)) hlog
   refine (findRounded_terminates (τ := τ) (m := q) (z := (L, 0)) hS hL hC hQ
-    (comptauHalf_terminatingHalfTau hS hzero hC hL n k) (hNat.mono (by omega)) hkq hc₁.1
+    (comptauHalf_terminatingHalfTau hS hzero hC hL hNat (Nat.le_succ n) k) (hNat.mono (by omega))
+    hkq hc₁.1
     hc₁.2.1 (by simp [Mem.Live, hL₁]; omega) (by disjoint)
     (by rw [hfr₁.len_eq]; simp [h0])).frame_seq_le rfl rfl (by simp [Mem.Live, hL₁]; omega)
     (by fp_sub) ?_

@@ -733,6 +733,7 @@ theorem roundedLeafCall_pwrites {I : Interp O Q ℝ} (hI : I.IsMeasurable)
         Fp.disj_sup_right.mpr ⟨hWU.mono hWd hUd, fun _ _ _ h => h⟩⟩,
       Fp.disj_sup_right.mpr ⟨hPU.mono le_rfl hUd, fun _ _ _ h => h⟩, fun _ _ _ h => h, trivial⟩
 
+omit [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
 /-- The leaf branch of a round on the good tapes: from the copied state of round
 $j < 2(n + 1)$ on the range $(lo, d)$, $d \le k$, $d \le n + 1$, the leaf call
 (`NLAlib.ShiftedQR.roundedLeafCall_pwrites`) and the rest of the branch
@@ -917,7 +918,7 @@ theorem roundedDecoupleCall_pwrites {I : Interp O Q ℝ} (hI : I.IsMeasurable)
       · exact hG.live _ (by simp)
       · exact hG.live _ (by simp)
       · exact hG.live _ (by simp)
-      · show Lc < μ.store.length; omega
+      · change Lc < μ.store.length; omega
     · intro b hb; simp only [List.mem_cons, List.not_mem_nil, or_false] at hb
       rcases hb with h | h | h <;> rw [h] <;> simp only <;>
         [have := hv wk (by simp); have := hv p (by simp); have := hv f (by simp)] <;> omega
@@ -993,8 +994,7 @@ theorem roundedLarge_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
       fun v hv => hμ.1.live v hv
     exact hcore.of_below hBelow (hv a (by simp)) (hv uo (by simp)) (hv f (by simp))
       (hv st (by simp))
-  simp only [List.length_cons, List.length_nil, List.range_one, List.map_cons, List.map_nil,
-    add_zero]
+  simp only [List.length_cons, List.length_nil]
   set FD := Store.inBlock wk.1 wk.2 (2 * ((d + 1) * (d + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
     Store.inBlock Lc 0 (ns * (1 + 5 * w))
   have hDF : FD ≤ schurRoundFp (n + 1) a uo f st wk ub r ⊔ Fp.above Lc :=

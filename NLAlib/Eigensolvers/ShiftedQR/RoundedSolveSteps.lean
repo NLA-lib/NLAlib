@@ -48,10 +48,13 @@ section Support
 
 variable {𝕜 : Type*} [RCLike 𝕜] {m n : Type*} [Fintype m] [Fintype n]
 
+/-- Disjoint corners: if $\mathbf{X}$ is supported on the rows of `r` and the columns of
+`c`, and $\mathbf{Y}$ off both, then $\|\mathbf{X} + \mathbf{Y}\|_2 \le
+\max(\|\mathbf{X}\|_2, \|\mathbf{Y}\|_2)$. -/
 theorem specNorm_add_le_max_of_support {X Y : Matrix m n 𝕜} (r : m → Prop) (c : n → Prop)
-    [DecidablePred r] [DecidablePred c]
     (hX : ∀ i j, ¬(r i ∧ c j) → X i j = 0) (hY : ∀ i j, ¬(¬r i ∧ ¬c j) → Y i j = 0) :
     specNorm (X + Y) ≤ max (specNorm X) (specNorm Y) := by
+  classical
   set M := max (specNorm X) (specNorm Y)
   have hM : 0 ≤ M := (specNorm_nonneg X).trans (le_max_left _ _)
   refine (specNorm_le_iff hM).2 fun v => ?_
@@ -102,6 +105,7 @@ end Support
 section Embed
 variable {N lo d : ℕ}
 
+/-- The block embedding acts on the rows of the range only. -/
 theorem embedBlock_mul_apply_of_not_mem (V : Matrix (Fin d) (Fin d) ℂ)
     (X : Matrix (Fin N) (Fin N) ℂ) {i : Fin N} (hi : ¬(lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d))
     (j : Fin N) : (embedBlock (N := N) lo V * X) i j = X i j := by
@@ -110,6 +114,7 @@ theorem embedBlock_mul_apply_of_not_mem (V : Matrix (Fin d) (Fin d) ℂ)
   · intro k _ hk; simp [embedBlock, hi, Ne.symm hk]
   · simp
 
+/-- The block embedding acts on the columns of the range only. -/
 theorem mul_embedBlock_apply_of_not_mem (V : Matrix (Fin d) (Fin d) ℂ)
     (X : Matrix (Fin N) (Fin N) ℂ) (i : Fin N) {j : Fin N}
     (hj : ¬(lo ≤ (j : ℕ) ∧ (j : ℕ) < lo + d)) : (X * embedBlock (N := N) lo V) i j = X i j := by
@@ -121,6 +126,8 @@ theorem mul_embedBlock_apply_of_not_mem (V : Matrix (Fin d) (Fin d) ℂ)
     · simp [embedBlock, hk', hk]
   · simp
 
+/-- A row of the range of $\operatorname{diag}(\mathbf{I}, \mathbf{V}, \mathbf{I})\mathbf{X}$:
+the row of $\mathbf{V}$ times the rows of $\mathbf{X}$ on the range. -/
 theorem embedBlock_mul_apply_of_mem (hN : lo + d ≤ N) (V : Matrix (Fin d) (Fin d) ℂ)
     (X : Matrix (Fin N) (Fin N) ℂ) {i : Fin N} (hi : lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d)
     (j : Fin N) : (embedBlock (N := N) lo V * X) i j =
@@ -135,6 +142,8 @@ theorem embedBlock_mul_apply_of_mem (hN : lo + d ≤ N) (V : Matrix (Fin d) (Fin
   · have ha := a.isLt
     simp [embedBlock, hi]
 
+/-- A column of the range of $\mathbf{X}\operatorname{diag}(\mathbf{I}, \mathbf{V}, \mathbf{I})$:
+the columns of $\mathbf{X}$ on the range times the column of $\mathbf{V}$. -/
 theorem mul_embedBlock_apply_of_mem (hN : lo + d ≤ N) (V : Matrix (Fin d) (Fin d) ℂ)
     (X : Matrix (Fin N) (Fin N) ℂ) (i : Fin N) {j : Fin N}
     (hj : lo ≤ (j : ℕ) ∧ (j : ℕ) < lo + d) : (X * embedBlock (N := N) lo V) i j =
@@ -156,6 +165,7 @@ section Rect
 
 variable {N : ℕ}
 
+/-- A rectangular block placed in the zero matrix keeps its spectral norm bound. -/
 theorem specNorm_setRect_zero_le {m q : ℕ} {r0 c0 : ℕ} (hr : r0 + m ≤ N) (hc : c0 + q ≤ N)
     (E : Matrix (Fin m) (Fin q) ℂ) :
     specNorm (setRect (0 : Matrix (Fin N) (Fin N) ℂ) r0 c0 E) ≤ specNorm E := by
@@ -211,10 +221,12 @@ section Replay
 
 variable {M : Machine ℝ} {N : ℕ}
 
+/-- The entries of a matrix masked on the left by `NLAlib.colMask` (a row mask). -/
 theorem colMask_mul_apply (j0 nc : ℕ) (X : Matrix (Fin N) (Fin N) ℂ) (i j : Fin N) :
     (colMask N j0 nc * X) i j = if j0 ≤ (i : ℕ) ∧ (i : ℕ) < j0 + nc then X i j else 0 := by
   simp only [colMask, Matrix.diagonal_mul]; split_ifs <;> simp
 
+/-- The entries of a matrix masked on the right by `NLAlib.colMask`. -/
 theorem mul_colMask_apply (j0 nc : ℕ) (X : Matrix (Fin N) (Fin N) ℂ) (i j : Fin N) :
     (X * colMask N j0 nc) i j = if j0 ≤ (j : ℕ) ∧ (j : ℕ) < j0 + nc then X i j else 0 := by
   simp only [colMask, Matrix.mul_diagonal]; split_ifs <;> simp
@@ -248,6 +260,7 @@ theorem replayColumnStep_apply_of_not_mem {lo i0 nr : ℕ} (X : Matrix (Fin N) (
   · simp [machineColRotationOn, hr]
   · rfl
 
+/-- The row replay of a log inside the range keeps the rows outside it. -/
 theorem foldl_replayRowStep_apply_row {lo d j0 nc : ℕ} (es : List GivensEntry)
     (hes : ∀ e ∈ es, e.1 + 1 < d) (X : Matrix (Fin N) (Fin N) ℂ) (r t : Fin N)
     (hr : ¬(lo ≤ (r : ℕ) ∧ (r : ℕ) < lo + d)) :
@@ -259,6 +272,7 @@ theorem foldl_replayRowStep_apply_row {lo d j0 nc : ℕ} (es : List GivensEntry)
     rw [List.foldl_cons, ih (fun e' he' => hes e' (List.mem_cons_of_mem _ he')),
       replayRowStep_apply_row _ _ _ _ (by omega) (by omega)]
 
+/-- The column replay of a log inside the range keeps the columns outside it. -/
 theorem foldl_replayColumnStep_apply_col {lo d i0 nr : ℕ} (es : List GivensEntry)
     (hes : ∀ e ∈ es, e.1 + 1 < d) (X : Matrix (Fin N) (Fin N) ℂ) (r t : Fin N)
     (ht : ¬(lo ≤ (t : ℕ) ∧ (t : ℕ) < lo + d)) :
@@ -270,6 +284,7 @@ theorem foldl_replayColumnStep_apply_col {lo d i0 nr : ℕ} (es : List GivensEnt
     rw [List.foldl_cons, ih (fun e' he' => hes e' (List.mem_cons_of_mem _ he')),
       replayColumnStep_apply_col _ _ _ _ (by omega) (by omega)]
 
+/-- The column replay of a log on a row range keeps the other rows. -/
 theorem foldl_replayColumnStep_apply_of_not_mem {lo i0 nr : ℕ} (es : List GivensEntry)
     (X : Matrix (Fin N) (Fin N) ℂ) (r t : Fin N) (hr : ¬(i0 ≤ (r : ℕ) ∧ (r : ℕ) < i0 + nr)) :
     es.foldl (replayColumnStep M lo i0 nr) X r t = X r t := by
@@ -294,6 +309,7 @@ theorem colMask_mul_replayColumnStep {u : ℝ} (hM : StdModel u id M) (lo i0 nr 
       split_ifs <;> simp [linearComplex_zero_zero hM]
   · simp [replayColumnStep, h, colMask_mul_apply]
 
+/-- The masked column replay of a log is the full column replay of the masked matrix. -/
 theorem colMask_mul_foldl_replayColumnStep {u : ℝ} (hM : StdModel u id M) (lo i0 nr : ℕ)
     (es : List GivensEntry) (X : Matrix (Fin N) (Fin N) ℂ) :
     colMask N i0 nr * es.foldl (replayColumnStep M lo i0 nr) X =
@@ -449,6 +465,7 @@ noncomputable def decoupleReplay (M : Machine ℝ) {N : ℕ} (lo d : ℕ) (es : 
     (A : Matrix (Fin N) (Fin N) ℂ) : Matrix (Fin N) (Fin N) ℂ :=
   es.foldl (replayColumnStep M lo 0 lo) (es.foldl (replayRowStep M lo (lo + d) (N - lo - d)) A)
 
+/-- The decoupling update is the cut of the replays. -/
 theorem decoupleUpdateMatrix_eq (M : Machine ℝ) {N : ℕ} (lo d i : ℕ) (es : List GivensEntry)
     (A : Matrix (Fin N) (Fin N) ℂ) :
     decoupleUpdateMatrix M lo d i es A =
@@ -605,9 +622,11 @@ theorem decoupleUpdateMatrix_isPerturbedUnitarySimilarBy {Mch : Machine ℝ} {u 
   have hp : lo + (i : ℕ) + 1 < n + 1 := by omega
   have hT : T ⟨lo + i + 1, hp⟩ ⟨lo + i, by omega⟩ = H' i.succ i.castSucc := by
     simp only [T]
-    rw [decoupleReplay_apply_of_not_coupling hes _ _ _ ⟨by simp <;> omega, by simp <;> omega⟩,
-      setSubBlock_apply, dif_pos (by simp <;> omega)]
-    congr 1 <;> ext <;> simp <;> omega
+    rw [decoupleReplay_apply_of_not_coupling hes _ _ _ ⟨by simp, by simp; omega⟩,
+      setSubBlock_apply, dif_pos (by simp; omega)]
+    congr 1
+    · ext; simp; omega
+    · ext; simp
   have h₂ : IsPerturbedUnitarySimilarBy 1 T (cutEntry Mch (lo + i + 1) (lo + i) T) c := by
     refine IsPerturbedUnitarySimilarBy.of_specNorm_sub_le hasOrthonormalCols_one ?_
     have e : cutEntry Mch (lo + i + 1) (lo + i) T - 1ᴴ * T * 1 =
@@ -637,7 +656,7 @@ $\mathbf{X}$ with $d$ columns, $\|\mathrm{fl}(\mathbf{X}\mathbf{U}_b) - \mathbf{
 `NLAlib.Ops.StdModel.specNorm_matMulWord_sub_le_growth`. -/
 theorem specNorm_matMulWord_sub_mul_le {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M)
     (hu0 : 0 ≤ u) (hu8 : u ≤ 1 / 8) {m d : ℕ} (X : Matrix (Fin m) (Fin d) ℂ)
-    {Ub V : Matrix (Fin d) (Fin d) ℂ} (hV : HasOrthonormalCols V) {εL : ℝ} (hεL : 0 ≤ εL)
+    {Ub V : Matrix (Fin d) (Fin d) ℂ} (hV : HasOrthonormalCols V) {εL : ℝ}
     (hUb : specNorm (Ub - V) ≤ εL) :
     specNorm (matMulWord M X Ub - X * V) ≤
       ((1 + (6 * u + 5 * u ^ 2)) ^ d * (5 * u + d * (6 * u + 5 * u ^ 2)) * d * (1 + εL) + εL) *
@@ -741,7 +760,7 @@ theorem _root_.NLAlib.IsRangePartition.split_append {N lo d i : ℕ} {rs done : 
     (h : IsRangePartition N (rs ++ [(lo, d)] ++ done)) (hi : i + 1 < d) :
     IsRangePartition N (rs ++ [(lo + i + 1, d - i - 1), (lo, i + 1)] ++ done) := by
   have hp0 : (rs ++ [(lo, d)] ++ done).Perm ((lo, d) :: (rs ++ done)) := by
-    simpa using List.perm_middle
+    simp [List.perm_middle]
   have hp1 : ((lo, i + 1) :: (lo + i + 1, d - i - 1) :: (rs ++ done)).Perm
       (rs ++ [(lo + i + 1, d - i - 1), (lo, i + 1)] ++ done) := by
     refine (List.Perm.swap _ _ _).trans ?_
@@ -974,7 +993,7 @@ theorem leafUpdate_couplingPart_le {Mch : Machine ℝ} {u : ℝ} (hM : StdModel 
     exact mul_le_mul_of_nonneg_left (hR₁ ▸ specNorm_subRect_le (by omega) (by omega) A)
       (add_nonneg (mul_nonneg (by positivity) (by linarith)) hεL)
   · refine (specNorm_setRect_zero_le (by omega) (by omega) _).trans ?_
-    refine (specNorm_matMulWord_sub_mul_le hM hu0 hu8 T₁ hV hεL hUb).trans ?_
+    refine (specNorm_matMulWord_sub_mul_le hM hu0 hu8 T₁ hV hUb).trans ?_
     exact mul_le_mul_of_nonneg_left (hT₁ ▸ specNorm_subRect_le (by omega) (by omega) A)
       (add_nonneg (mul_nonneg (by positivity) (by linarith)) hεL)
 
@@ -1018,7 +1037,7 @@ theorem leafUpdate_isTrackedUnitarySimilar {Mch : Machine ℝ} {u : ℝ} (hM : S
         simp only [Matrix.submatrix_apply, rangeEmb]
         rw [hL _ _ ⟨by simp, by simp⟩]
         simp only [A₁, setSubBlock_apply]
-        rw [dif_pos (by simp <;> omega)]
+        rw [dif_pos (by simp)]
         congr 1 <;> ext <;> simp
       rw [e, ← subBlock_eq_submatrix_rangeEmb hN]
       exact hWb
@@ -1169,13 +1188,13 @@ theorem SchurShape.split {rs done : List (ℕ × ℕ)} {lo d : ℕ}
       ¬(lo ≤ (t : ℕ) ∧ (t : ℕ) < lo + (d + 1)) → D' r t = A r t := fun r t h1 h2 => by
     rw [hD r t (by omega) (by omega) (by omega), setSubBlock_apply, dif_neg (by omega)]
   have hmem : ∀ q ∈ rs ++ [(lo, d + 1)] ++ done, q ≠ (lo, d + 1) → q ∈ rs ++ [c1, c2] ++ done :=
-    fun q hq hne => by simp only [List.mem_append, List.mem_cons, List.mem_singleton,
+    fun q hq hne => by simp only [List.mem_append, List.mem_cons,
       List.not_mem_nil, or_false] at hq ⊢; tauto
   have hHz : ∀ (r t : Fin (n + 1)) (a b : Fin (d + 1)), (r : ℕ) = lo + a → (t : ℕ) = lo + b →
       ¬((r : ℕ) = lo + i + 1 ∧ (t : ℕ) = lo + i) → (b : ℕ) + 1 < a → D' r t = 0 :=
     fun r t a b hr' ht' hc hab => by
       rw [hD r t hc (by omega) (by omega), setSubBlock_apply, dif_pos (by omega)]
-      exact hH' _ _ (by simp only [Fin.mk_lt_mk] at *; omega)
+      exact hH' _ _ (by simp only at *; omega)
   refine ⟨hnew, fun r t htr hne => ?_, fun q hq => ?_, fun q hq => ?_⟩
   · by_cases hb : (lo ≤ (r : ℕ) ∧ (r : ℕ) < lo + (d + 1)) ∧
         (lo ≤ (t : ℕ) ∧ (t : ℕ) < lo + (d + 1))
@@ -1192,7 +1211,7 @@ theorem SchurShape.split {rs done : List (ℕ × ℕ)} {lo d : ℕ}
       obtain ⟨q, hq, h1, h2⟩ := h.2.1 r t htr hne'
       refine ⟨q, hmem q hq fun e => ?_, h1, h2⟩
       subst e; simp only at h1 h2; omega
-  · simp only [List.mem_append, List.mem_cons, List.mem_singleton, List.not_mem_nil,
+  · simp only [List.mem_append, List.mem_cons, List.not_mem_nil,
       or_false] at hq
     rcases hq with hq | rfl | rfl
     · have hq' : q ∈ rs ++ [(lo, d + 1)] ++ done := by simp [hq]

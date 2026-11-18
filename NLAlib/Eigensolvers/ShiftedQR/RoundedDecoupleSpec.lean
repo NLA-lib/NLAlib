@@ -102,5 +102,72 @@ theorem roundedDecoupleWith_randomDecouplingRoutineContract_of_le_uShQR_at {M : 
       (shqrDecoupled n k B Γ S δ φ)
       (fun _ => shqrCap n B Γ S δ *
         ((1 + shqrC k (4 * B)) * (4 * S) * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)))
-      (roundedDecoupleWith SE) I := sorry
+      (roundedDecoupleWith SE) I := by
+  have hu0 := hM.roundoff_nonneg
+  obtain ⟨SH, RG, SR, IT⟩ := shqrParams_spec hB hΓ hδ hδS hφ hφ1 hk hu0 hu hβ0 hβ
+  have hSp : 0 < S := hδ.trans_le hδS
+  have hk2 : 2 ≤ k := hk ▸ two_le_shqrDegree (by linarith)
+  have hkq : k = 2 ^ Nat.log 2 k := by
+    rw [hk, shqrDegree, Nat.log_pow (by norm_num)]
+  have hd := shqrEta_div_two_le (n := n) hB hΓ hδ hδS hφ hk
+  have hdist : shqrDist n k B Γ S δ φ = shqrEta n k B Γ S δ φ / 2 := min_eq_left hd
+  obtain ⟨hexc1, hexc2⟩ := shqrExc_of_le_uShQR (n := n) (k := k) (Γ := Γ) (φ := φ) hB hδ hδS hu
+  have hxu := SH.hxu
+  have hbound := SH.hbound
+  rw [hdist] at hxu hbound
+  obtain ⟨hthr, hcut⟩ := shqrLoopThreshold_spec hu0 hu
+  have hv1 : uShQR n k B Γ S δ φ ≤ 1 / 10 := uShQR_le_one_div_ten
+  have hω := shqrOmega_pos (n := n) hB hΓ hδ
+  have hωD : 0 ≤ shqrDecoupled n k B Γ S δ φ := by
+    unfold shqrDecoupled; exact div_nonneg (mul_nonneg (sq_nonneg _) hω.le) (sq_nonneg _)
+  -- the cap: $(1 + u)^2(0.8016^F \cdot 2\Sigma)^2 \le (1 + u)^2\omega^2 \le t \le t_L$
+  have htv0 : 0 ≤ shqrScanThreshold n k B Γ S δ φ := by unfold shqrScanThreshold; positivity
+  have htL : shqrScanThreshold n k B Γ S δ φ ≤ shqrLoopThreshold n k B Γ S δ φ := by
+    have h1 : shqrScanThreshold n k B Γ S δ φ ≤ (1 + u) ^ 2 * shqrScanThreshold n k B Γ S δ φ :=
+      le_mul_of_one_le_left htv0 (by nlinarith)
+    have hL0 : 0 ≤ shqrLoopThreshold n k B Γ S δ φ := by
+      unfold shqrLoopThreshold; positivity
+    have h2 : (1 - u) ^ 2 * shqrLoopThreshold n k B Γ S δ φ ≤ shqrLoopThreshold n k B Γ S δ φ :=
+      mul_le_of_le_one_left hL0 (by nlinarith)
+    linarith
+  have hfuel : (1 + u) ^ 2 * ((1.002 * (1 - 0.2)) ^ shqrCap n B Γ S δ * (2 * S)) ^ 2 ≤
+      shqrLoopThreshold n k B Γ S δ φ := by
+    have hcap := IT.hcap
+    unfold shqrContraction at hcap
+    have hx0 : 0 ≤ (1.002 * (1 - 0.2) : ℝ) ^ shqrCap n B Γ S δ * (2 * S) := by positivity
+    have hx : (1.002 * (1 - 0.2) : ℝ) ^ shqrCap n B Γ S δ * (2 * S) ≤ shqrOmega n B Γ δ := by
+      nlinarith
+    have := SH.hthrω
+    calc (1 + u) ^ 2 * ((1.002 * (1 - 0.2)) ^ shqrCap n B Γ S δ * (2 * S)) ^ 2
+        ≤ (1 + u) ^ 2 * shqrOmega n B Γ δ ^ 2 := by gcongr
+      _ ≤ _ := this.trans htL
+  have hEle := shqrLoopError_le_shqrDecoupleError (n := n) (k := k) (B := B) (Γ := Γ) (δ := δ)
+    hSp.le hu0
+  have hSN := IT.hnorm
+  have he := shqrDecoupleError_le (by omega) hB hSp hu0 hu
+  have hbΓ := shqrBudget_le_right (n := n) (B := B) (Γ := Γ) (δ := δ)
+  have hsmall : shqrCap n B Γ S δ *
+      ((1 + shqrC k (4 * B)) * (4 * S) * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) ≤
+      Γ / 2 / (16 * (n + 1) * (2 * B)) := by
+    have hn1 : (1 : ℝ) ≤ n + 1 := by have : (0 : ℝ) ≤ n := by positivity
+                                     linarith
+    have hG : 0 < Γ / (16 * (n + 1) * B) := by positivity
+    have e1 : Γ / 2 / (16 * (n + 1) * (2 * B)) = Γ / (16 * (n + 1) * B) / 4 := by
+      field_simp; ring
+    have e2 : shqrBudget n B Γ δ / (6 * (n + 1)) ≤ Γ / (16 * (n + 1) * B) / 6 := by
+      rw [div_le_div_iff₀ (by positivity) (by norm_num)]
+      have := shqrBudget_pos (n := n) hB hΓ hδ
+      nlinarith
+    rw [e1]; linarith
+  have hns' : shqrCap n B Γ S δ * (k + 1 + (excNet (shqrEps k (4 * B))).length) ≤ ns := by
+    refine le_trans (Nat.mul_le_mul_left _ ?_) hns
+    rw [hps, List.length_append, length_roundedDecoupleParams]
+    omega
+  intro n' N w q f lg H V d hkn hn hN hHess hnorm hV hHV hκ hgap
+  exact roundedDecoupleWith_randomDecouplingRoutineContract_at hI hloc hS hM SR.hu1 hL hNat hC hQ
+    hβ0 hφse hDisk hU hkq hk2 hΓ le_rfl (by positivity) RG.hBk RG.hω RG.hgap RG.hR RG.hφ RG.hφ1
+    RG.hβ RG.hdη RG.hnu RG.huo RG.huo1 RG.hxu RG.hbound (SH.hα _ hkq) SH.hγ SH.hγ1 SH.hε
+    SH.hε2 SH.hφ SH.hφ1 hd SH.hC1 hxu hbound hexc1 hexc2 SH.hthrω hthr hcut hωD hfuel
+    (by linarith) hsmall hSE hq12 hps hns' hws H V d hkn hn hN hHess hnorm hV hHV hκ hgap
+
 end NLAlib.ShiftedQR

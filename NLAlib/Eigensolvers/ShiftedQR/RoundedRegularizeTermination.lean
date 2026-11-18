@@ -100,7 +100,7 @@ theorem trialStep_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScal
   refine (copyMatrix_writes (τ := τ) hS hA hrt (hW.symm.mono (by fp_sub) (by fp_sub))).frame_seq_le
     rfl rfl (hl.mono (by simp)) (by fp_sub) ?_
   rintro m₁ hfr₁ ⟨-, hT₁⟩
-  have hlog₁ := hfr₁.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (hD t (by simp) _ _ _ _)
+  have hlog₁ := hfr₁.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (hD t (by simp) _ _ _ _)
     hlog
   have hs₁ := hfr₁.keep (Store.readsOnly_readBlock _ _ _ _) (hW.mono (by fp_sub) (by fp_sub)) hs
   have hthr₁ := hfr₁.keep (Store.readsOnly_get _ _ _) (hW.mono (by fp_sub) (by fp_sub)) hthr
@@ -110,7 +110,7 @@ theorem trialStep_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScal
   rintro m₂ hfr₂ ⟨-, hSR₂⟩
   rw [List.length_replicate] at hSR₂
   have hT₂ := hT₁.of_eqOff hfr₂ hts.symm
-  have hlog₂ := hfr₂.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+  have hlog₂ := hfr₂.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
     (hD sr (by simp) _ _ _ _) hlog₁
   have hthr₂ := hfr₂.keep (Store.readsOnly_get _ _ _) (hW.mono (by fp_sub) (by fp_sub)) hthr₁
   have hl₂ : ∀ b, m₂.store.len b = m.store.len b := fun b => by rw [hfr₂.len_eq, hfr₁.len_eq]
@@ -131,7 +131,7 @@ theorem trialStep_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScal
     (by rw [hfr₃.len_eq, hl₂]; exact hrrg) hrg (hW.mono (by fp_sub) (by fp_sub))
   refine (hb.in_frame rfl rfl ((hl.congr hL₃).mono (by simp))).mono (by fp_sub) ?_
   rintro m₄ hfr₄ ⟨-, hscan⟩
-  have hlog₄ := hfr₄.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+  have hlog₄ := hfr₄.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
     (hD rg (by simp) _ _ _ _) hlog₃
   refine ⟨⟨H', hT₃.of_eqOff hfr₄ hrg⟩, ?_⟩
   rcases hscan with ⟨h1, -⟩ | ⟨h0, -⟩
@@ -178,9 +178,9 @@ theorem trialAccept_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSc
     (by rw [hfr₂.len_eq, hfr₁.len_eq]; exact hrf)).seq_le (by fp_sub) ?_
   rintro m₃ hfr₃ ⟨-, hF₃⟩
   have hlog₃ : HoldsSlottedLog lg ns w LL P m₃.store :=
-    hfr₃.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (hD f (by simp) _ _ _ _)
-      (hfr₂.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (hD g (by simp) _ _ _ _)
-        (hfr₁.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (hD a (by simp) _ _ _ _) hlog))
+    hfr₃.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (hD f (by simp) _ _ _ _)
+      (hfr₂.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (hD g (by simp) _ _ _ _)
+        (hfr₁.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (hD a (by simp) _ _ _ _) hlog))
   have hL₃ : m₃.store.length = m.store.length := by
     rw [hfr₃.length_eq, hfr₂.length_eq, hfr₁.length_eq]
   refine ((slottedLogValidate_writes_of_exactNat (τ := τ) hL hNat hlog₃ hj).in_frame
@@ -290,7 +290,7 @@ theorem regularizeTrial_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
         (by fp_sub) ?_
       rintro m₂ - ⟨hA₂, hG₂, x, hF₂, hlog₂⟩
       exact ⟨⟨_, hA₂⟩, hG₂, x, hF₂, [some es], rfl,
-        slotEntries_singleton_some w es ▸ forall_mem_padEntries (by omega) hpl, hlog₂⟩
+        slotEntries_some w es ▸ padEntries_planes (by omega) hpl, hlog₂⟩
     · exact (Writes.skip ⟨⟨_, hA₁⟩, ⟨_, hg₁⟩, _, hf₁, [none], rfl, by simp [slotEntries],
         hlog₁.reject hj⟩).mono bot_le fun _ _ h => h
   · exact (Writes.skip ⟨⟨_, hA⟩, ⟨_, hg⟩, _, hf, [none], rfl, by simp [slotEntries], hrej⟩).mono
@@ -447,7 +447,7 @@ theorem regularizeDecide_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
   refine hopt.frame_seq_le rfl rfl (by simp [Mem.Live, hlen]; omega) (by fp_sub) ?_
   rintro m₁ hfr₁ ⟨-, hb⟩
   have hA₁ := hA.of_eqOff hfr₁ (Fp.disj_inBlock_of_ne (by omega))
-  have hlog₁ := hfr₁.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (hlgM (by omega)) hlog
+  have hlog₁ := hfr₁.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (hlgM (by omega)) hlog
   refine writes_ite rfl rfl (hC.test_isPos (d := []) (x := (L + 2, 0)) hb) ?_
   split_ifs
   · refine (writes_call_const (hS (.lit 0)) (z := f) rfl trivial
@@ -455,8 +455,8 @@ theorem regularizeDecide_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
     rintro m₂ hfr₂ ⟨-, hF₂⟩
     refine ⟨⟨_, hA₁.of_eqOff hfr₂ haf.symm⟩, _, hF₂, List.replicate k none, by simp,
       by simp [slotEntries_replicate_none], ?_⟩
-    exact (hfr₂.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
-      (Fp.disj_inBlock_of_ne (hlgv f (by simp))) hlog₁).reject_replicate hj
+    exact (hfr₂.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
+      (Fp.disj_inBlock_of_ne (hlgv f (by simp))) hlog₁).rejects hj
   refine (writes_call_const (hS (.lit 2)) (z := f) rfl trivial
     (by rw [hfr₁.len_eq]; exact hrf)).seq_le (by fp_sub) ?_
   rintro m₂ hfr₂ ⟨-, hF₂⟩
@@ -477,8 +477,8 @@ theorem regularizeDecide_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
     (hG htl (hio.mono (by fp_sub) (by fp_sub))) hthr
   have hA₃ := hA.of_eqOff hfr (hG ha haf.symm)
   have hF₃ := hfr₃.keep (Store.readsOnly_get _ _ _) (by disjoint) hF₂
-  have hlog₃ := hfr₃.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (hlgM (by omega))
-    (hfr₂.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+  have hlog₃ := hfr₃.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (hlgM (by omega))
+    (hfr₂.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
       (Fp.disj_inBlock_of_ne (hlgv f (by simp))) hlog₁)
   have hL₃ : m₃.store.length = L + 7 := by rw [hfr.length_eq, hlen]
   have htr := regularizeTrials_terminates (τ := τ) (a := a) (s := s) (thr := thr)
@@ -633,7 +633,7 @@ theorem regularizeWithScratchWith_terminates {M : Machine ℝ} {I : Interp O Q �
     ?_
   rintro m₁ hfr₁ ⟨-, hB⟩
   have hc₁ := hIn (by disjoint) hctx hfr₁
-  have hlog₁ := hfr₁.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (hlgM le_rfl) hlog
+  have hlog₁ := hfr₁.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (hlgM le_rfl) hlog
   have hL₁ : m₁.store.length = L + 7 := by rw [hfr₁.length_eq, hlen]
   have hq₁ := hfr₁.keep (Store.readsOnly_readBlock _ _ _ _)
     (Fp.disj_inBlock_of_ne (by omega)) hq
@@ -643,7 +643,7 @@ theorem regularizeWithScratchWith_terminates {M : Machine ℝ} {I : Interp O Q �
     rfl rfl (by simp [Mem.Live, hL₁]; omega) (by fp_sub) ?_
   rintro m₂ hfr₂ ⟨xs, hS₂⟩
   have hc₂ := hIn hsIn hc₁ hfr₂
-  have hlog₂ := hfr₂.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) hslg hlog₁
+  have hlog₂ := hfr₂.keep (readsOnly_holdsSlottedLog _ _ _ _ _) hslg hlog₁
   have hL₂ : m₂.store.length = L + 7 := by rw [hfr₂.length_eq, hL₁]
   obtain ⟨-, hrd₂, -⟩ := id hc₂
   obtain ⟨R', hR'⟩ : ∃ x, m₂.store.get rd.1 rd.2 = some x := ⟨_, hrd₂⟩
@@ -654,7 +654,7 @@ theorem regularizeWithScratchWith_terminates {M : Machine ℝ} {I : Interp O Q �
     (by fp_sub) ?_
   rintro m₃ hfr₃ ⟨ys, hS₃⟩
   have hc₃ := hIn (Fp.disj_sup_left.mpr ⟨hsIn, by disjoint⟩) hc₂ hfr₃
-  have hlog₃ := hfr₃.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+  have hlog₃ := hfr₃.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
     (Fp.disj_sup_left.mpr ⟨hslg, hlgM (by omega)⟩) hlog₂
   refine (regularizeDecide_terminates (τ := τ) hS hL hNat hC hk hv hc₃ hS₃ hlog₃ hj hw
     (hlgl.congr ((hfr₁.trans' hfr₂).trans' hfr₃).length_eq) hlgL
@@ -730,7 +730,7 @@ theorem regularizeWith_terminates_at {M : Machine ℝ} {I : Interp O Q ℝ} (hS 
     (fun hBelow ⟨⟨H', hA'⟩, ⟨ys, hS'⟩, ⟨x, hF', Ls, hLs, hpl, hlog'⟩⟩ =>
       ⟨⟨H', hA'.of_below hBelow h1⟩, ⟨ys, hBelow.readBlock_of h5 hS'⟩,
         ⟨x, hBelow.get_of h6 hF', Ls, hLs, hpl,
-          hBelow.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+          hBelow.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
             (fun b i g => by rw [g.1]; exact hlgl') hlog'⟩⟩) ?_
   intro s₁ hlen hlens hBelow
   have hl7 := fun i (hi : i < 7) => hlens i (by simpa using hi)
@@ -741,7 +741,7 @@ theorem regularizeWith_terminates_at {M : Machine ℝ} {I : Interp O Q ℝ} (hS 
     simpa using ⟨hl7 0 (by norm_num), hl7 1 (by norm_num), hl7 2 (by norm_num),
       hl7 3 (by norm_num), hl7 4 (by norm_num), hl7 5 (by norm_num), hl7 6 (by norm_num)⟩
   have hlog₁ : HoldsSlottedLog lg ns w LL [] s₁ :=
-    hBelow.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+    hBelow.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
       (fun b i g => by rw [g.1]; exact hlgl') hlog
   refine ((regularizeWithScratchWith_terminates hS hL hNat hC hD hk
     ⟨⟨h1, h2, h3, h4, h5, h6⟩, has, haf, hsf, hio⟩ hctx hSE hlq

@@ -1021,12 +1021,12 @@ theorem shExc_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hI : I.I
     rintro m' hfr ⟨-, hR, hP, hG, hF⟩
     exact ⟨⟨hctx.of_eqOff hfr hfo, ⟨r, hfr.keep (Store.readsOnly_readBlock _ _ _ _)
       (by disjoint) hZ, hr⟩, ⟨p, hp, hR, hP⟩, hG, hF⟩,
-      hfr.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (by disjoint) hlog⟩
+      hfr.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (by disjoint) hlog⟩
   · -- the exceptional shifts
     refine ((shExcShifts_pwrites hI hloc hS hM hD hU hk hkn hv hlen hV hHV hκ hSH hopt hd0 hsH hψ0
       hγ hγ1 hθ hα hε hε2 hφ hφ1 hd hd' hC1 hku hexc1 hexc2 hcr hcw).in_frame rfl rfl
       ?_).mono_eqOff (fun _ h => h.1) fun m m' h hfr h' =>
-        ⟨h', hfr.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+        ⟨h', hfr.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
           (Fp.disj_inBlock_of_ne (by omega)) h.2⟩
     rintro m ⟨⟨-, -, -, -, -, -, -, -, -, hlen', -⟩, -⟩
     simp [Mem.Live, hlen']

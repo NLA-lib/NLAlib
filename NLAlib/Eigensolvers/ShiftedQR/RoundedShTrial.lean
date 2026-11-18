@@ -308,7 +308,7 @@ theorem shPotentialAccept_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
   have hf₁ := hkeep (hp2.mono le_rfl (by fp_sub)) hf
   have hT₁ := hT.of_eqOff hfr₁ (hp2.mono le_rfl (by fp_sub))
   have hA₁ := hA.of_eqOff hfr₁ (hp2.mono le_rfl (by fp_sub))
-  have hlog₁ := hfr₁.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+  have hlog₁ := hfr₁.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
     (Fp.disj_inBlock_of_ne lgp) hlog
   refine writes_ite rfl rfl (hC.test_lt (d := []) hp hpt₁) ?_
   simp only [id_eq, decide_eq_true_eq]

@@ -927,7 +927,7 @@ theorem shIterationWith_pwrites_at {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
       hBelow.get_of h4 ht, hBelow.get_of h5 hwg,
       hBelow.get_of h6 hwr, hBelow.get_of h7 hww, hBelow.get_of h8 hwp,
       hBelow.readBlock_of h9 hg, by simpa using hl0.ge, by rw [(hBelow f.1 h10).1]; exact hf,
-      hBelow.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+      hBelow.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
         (fun b i g => by rw [g.1]; exact hlg1) hlog, by simp [Mem.Live, hlen]; omega⟩
     simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,
       forall_eq, hlen]
@@ -935,7 +935,7 @@ theorem shIterationWith_pwrites_at {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
   · rintro m ⟨hl, -, -, -, -, -, -, -, -, -, -, -, -, hlgl⟩ st st' p hBelow
       ⟨Ls, hLs, hpl, hlog, H', hsim, hH', hA, hdec⟩
     have h1 : a.1 < m.store.length := hl a (by simp)
-    exact ⟨Ls, hLs, hpl, hBelow.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+    exact ⟨Ls, hLs, hpl, hBelow.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
       (fun b i g => by rw [g.1]; exact hlgl lg (by simp)) hlog, H', hsim, hH',
       hA.of_below hBelow h1, hdec⟩
   · by_cases hvL : a.1 < L ∧ rd.1 < L ∧ c.1 < L ∧ thr.1 < L ∧ wg.1 < L ∧ wr.1 < L ∧

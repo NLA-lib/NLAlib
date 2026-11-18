@@ -691,7 +691,7 @@ theorem SmallEigDecouplerOpened.live {n : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n
 /-- The decoupler meets the randomized decoupling contract at a smaller order bound
 (`NLAlib.SmallEig.smallEigDecoupler_randomDecouplingRoutineContract` with the words still at
 $n_{\max}$): the contract holds at orders up to $k_b \le n_{\max}$ when the natural literals are
-exact up to $k_b + 1$ only. -/
+exact up to $k_b + 1$ only, and the log has $n_s \ge k_b + T$ slots of $w_s \ge k_b$ entries. -/
 theorem smallEigDecoupler_randomDecouplingRoutineContract_of_le {M : Machine ℝ}
     {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I) (hM : StdModel u id M) (hzero : M.lit 0 = 0)
     (hL : IsIndexLit M I) {nmax kb : ℕ} (hkb : kb ≤ nmax) (hNat : IsExactNatLit id M (kb + 1))
@@ -702,7 +702,7 @@ theorem smallEigDecoupler_randomDecouplingRoutineContract_of_le {M : Machine ℝ
     (hG : law sG = gaussianReal 0 1) {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b)
     (hn : 1 ≤ nmax) {S δ φ : ℝ} (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
     (hu : u ≤ uSmallEig nmax S δ φ c₁ c₂) (F : ℕ) {ns ws : ℕ}
-    (hns : nmax + smallEigCap nmax S δ φ c₁ c₂ ≤ ns) (hws : nmax ≤ ws) :
+    (hns : kb + smallEigCap nmax S δ φ c₁ c₂ ≤ ns) (hws : kb ≤ ws) :
     RandomDecouplingRoutineContract law (2 * smallEigCondition nmax S δ φ c₂)
       (smallEigSeparation nmax S δ φ c₁ / 2) (smallEigDecouplerFailure nmax φ) 1 F
       (smallEigCap nmax S δ φ c₁ c₂) kb (2 * S) (smallEigParams nmax S δ φ c₁ c₂) ns ws

@@ -552,6 +552,129 @@ end Chain
 
 end Bits
 
+/-! ### The cap and the replays of the core -/
+
+/-- **The cap is at most $27r^{m_2}$** (and $r \ge 2$), $r = 44\Sigma/\eta_1$ and $m_2$ the step cap of `Decouple`
+(`NLAlib.SmallEig.smallEigCap`): the step cap $m_2 \le 2^{m_2}$, the round cap
+$t \le 2\log_2(10.4\,\Sigma/\beta') + 1 \le r$ ($\eta_1 \le \beta'/240$), and the degree
+$2^q \le 2m_1 + 1 \le 24m_2 + 1$ (`NLAlib.SmallEig.distSpecDegree_le_decoupleSteps`), for tail
+records with $b_1, b_2 > 0$, $n_{\max} \ge 1$, $0 < \delta \le \Sigma$ and $0 < \varphi \le 1$. -/
+theorem smallEigCap_le_pow {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) {nmax : ℕ}
+    (hn : 1 ≤ nmax) {S δ φ : ℝ} (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1) :
+    2 ≤ 22 * (2 * S) / smallEigInnerRadius nmax S δ φ c₁ c₂ ∧
+      (smallEigCap nmax S δ φ c₁ c₂ : ℝ) ≤ 27 * (22 * (2 * S) /
+        smallEigInnerRadius nmax S δ φ c₁ c₂) ^ smallEigDecoupleSteps nmax S δ φ c₂ := by
+  have hS : 0 < S := hδ.trans_le hδS
+  obtain ⟨hβ, hβS⟩ := smallEigAccuracy_le hb₁ hb₂ hn hδ hδS hφ hφ1
+  have hη := smallEigInnerRadius_pos hb₁ hb₂ hn hδ hδS hφ hφ1
+  have hsep := smallEigSeparation_pos hb₁ hn hS.le hδ hφ hφ1
+  have hn1 : (1 : ℝ) ≤ nmax := by exact_mod_cast hn
+  have hD1 : smallEigDecouplerFailure nmax φ / 2 ≤ 1 := by
+    unfold smallEigDecouplerFailure
+    rw [div_div, div_le_one (by positivity)]; nlinarith
+  have hη6 := oneEigInnerRadius_le hβ hβS
+    (by positivity : 0 < smallEigSeparation nmax S δ φ c₁ / 4) hD1
+  have hη2 : smallEigOuterRadius nmax S δ φ c₁ c₂ ≤ smallEigAccuracy nmax S δ φ c₁ c₂ / 40 :=
+    min_le_left _ _
+  change smallEigInnerRadius nmax S δ φ c₁ c₂ ≤ smallEigOuterRadius nmax S δ φ c₁ c₂ / 6 at hη6
+  set β := smallEigAccuracy nmax S δ φ c₁ c₂
+  set η := smallEigInnerRadius nmax S δ φ c₁ c₂
+  set m := smallEigDecoupleSteps nmax S δ φ c₂
+  set r := 22 * (2 * S) / η with hr
+  have hηβ : η ≤ β / 240 := by linarith
+  have hrβ : 10560 * S / β ≤ r := by
+    rw [hr, div_le_div_iff₀ hβ hη]; nlinarith
+  have hSβ : 0.625 ≤ S / β := by rw [le_div_iff₀ hβ]; linarith
+  have hr2 : 2 ≤ r := by
+    have : 10560 * S / β = 10560 * (S / β) := by ring
+    linarith
+  have hm1 : 1 ≤ m := by
+    change 1 ≤ decoupleSteps _ _
+    unfold decoupleSteps; omega
+  have hrm : r ≤ r ^ m := le_self_pow₀ (by linarith) (by omega)
+  have h2m : (2 : ℝ) ^ m ≤ r ^ m := pow_le_pow_left₀ (by norm_num) hr2 m
+  have hm2 : (m : ℝ) + 1 ≤ 2 ^ m := by exact_mod_cast Nat.lt_two_pow_self
+  have ht : (smallEigRounds nmax S δ φ c₁ c₂ : ℝ) ≤ r := by
+    change (oneEigRounds (2 * S) β : ℝ) ≤ r
+    have hy : 1 ≤ 5.2 * (2 * S) / β := by rw [le_div_iff₀ hβ]; linarith
+    have hl := logb_two_le_two_mul (by linarith : (0 : ℝ) < 5.2 * (2 * S) / β)
+    have hl0 : 0 ≤ logb 2 (5.2 * (2 * S) / β) := logb_nonneg (by norm_num) hy
+    have h1 := natCeil_le_add_one (by positivity) (le_refl (2 * logb 2 (5.2 * (2 * S) / β)))
+    have : 5.2 * (2 * S) / β = 10.4 * (S / β) := by ring
+    have : 10560 * S / β = 10560 * (S / β) := by ring
+    unfold oneEigRounds
+    nlinarith
+  set κ := 8 * smallEigCondition nmax S δ φ c₂
+  set p := smallEigWeight nmax S δ φ c₂
+  have hκ : 0 < κ := by linarith [smallEigCondition_ge hb₂ hn hS.le hδ hφ hφ1]
+  have hp : 0 < p := (smallEigWeight_pos_le hb₂ hn hS.le hδ hφ hφ1).1
+  have hQ : 2 ^ smallEigDegreeLog nmax S δ φ c₂ ≤ 2 * distSpecDegree κ p + 1 := by
+    unfold smallEigDegreeLog
+    rcases Nat.lt_or_ge 1 (distSpecDegree κ p) with h | h
+    · have := Nat.pow_pred_clog_lt_self (b := 2) (by norm_num) h
+      have h0 : 0 < Nat.clog 2 (distSpecDegree κ p) := Nat.clog_pos (by norm_num) h
+      rw [← Nat.succ_pred_eq_of_pos h0, pow_succ]; omega
+    · rw [Nat.clog_of_right_le_one h]; omega
+  have hD : distSpecDegree κ p ≤ 12 * m := distSpecDegree_le_decoupleSteps hκ hp
+  have hQ' : ((2 ^ smallEigDegreeLog nmax S δ φ c₂ : ℕ) : ℝ) ≤ 24 * m + 1 := by
+    have : 2 ^ smallEigDegreeLog nmax S δ φ c₂ ≤ 24 * m + 1 := by omega
+    exact_mod_cast this
+  refine ⟨hr2, ?_⟩
+  push_cast at hQ'
+  unfold smallEigCap
+  push_cast
+  refine max_le (by nlinarith) (max_le (by nlinarith) (by nlinarith))
+
+/-- **The replays of the core are within $\omega$** (the precision of the Schur form): for tail
+records with $b_1, b_2 > 0$, $n_{\max} \ge 1$, $0 < \delta \le \Sigma$, $0 < \varphi \le 1$ and
+$0 \le \boldsymbol{u} \le \boldsymbol{u}_{\mathrm{SmallEig}}$, the replay and product errors of the
+rounded worklist at the norm $2\Sigma$, $78\boldsymbol{u}(T + n_{\max})n_{\max}\cdot 2\Sigma$ and
+$24n_{\max}\boldsymbol{u}\cdot 2\Sigma$ ($T$ = `NLAlib.SmallEig.smallEigCap`), add up to at most
+$\omega$ = `NLAlib.SmallEig.smallEigOmega`. The `Decouple` term of the threshold absorbs them
+(`NLAlib.SmallEig.smallEigCap_le_pow`); `NLAlib.SmallEig.uSmallEig` is unchanged. -/
+theorem smallEigReplay_le_omega {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b)
+    {nmax : ℕ} (hn : 1 ≤ nmax) {S δ φ u : ℝ} (hu0 : 0 ≤ u) (hδ : 0 < δ) (hδS : δ ≤ S)
+    (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hu : u ≤ uSmallEig nmax S δ φ c₁ c₂) :
+    (78 * (((smallEigCap nmax S δ φ c₁ c₂ : ℝ) + nmax) * nmax) + 24 * nmax) * u * (2 * S) ≤
+      smallEigOmega nmax S δ φ c₁ c₂ := by
+  have hS : 0 < S := hδ.trans_le hδS
+  have hn1 : (1 : ℝ) ≤ nmax := by exact_mod_cast hn
+  obtain ⟨-, -, -, -, -, h5⟩ := uSmallEig_spec hb₁ hb₂ hn hδ hδS hφ hφ1
+  obtain ⟨hr2, hT⟩ := smallEigCap_le_pow hb₁ hb₂ hn hδ hδS hφ hφ1
+  have hBc := smallEigCondition_ge hb₂ hn hS.le hδ hφ hφ1
+  have hsq : 1 ≤ √((nmax : ℝ) + 1) := by
+    rw [le_sqrt (by norm_num) (by positivity)]; linarith
+  set R := (22 * (2 * S) / smallEigInnerRadius nmax S δ φ c₁ c₂) ^
+    smallEigDecoupleSteps nmax S δ φ c₂ with hRdef
+  have hR : 1 ≤ R := one_le_pow₀ (by linarith)
+  set ω := smallEigOmega nmax S δ φ c₁ c₂
+  set B := smallEigCondition nmax S δ φ c₂
+  set T : ℝ := (smallEigCap nmax S δ φ c₁ c₂ : ℝ)
+  set N : ℝ := (nmax : ℝ)
+  have hdec : u ≤ ω / 2 / (86 * (8 * B) * (2 * S) * R * √(N + 1)) / (300 * (N + 1) ^ 2) := by
+    refine (hu.trans h5).trans (div_le_div_of_nonneg_right (min_le_right _ _) (by positivity))
+  rw [div_div, div_div, le_div_iff₀ (by positivity)] at hdec
+  have hX : 0 ≤ R * (N + 1) ^ 2 * (u * (2 * S)) := by positivity
+  have hus : 0 ≤ u * (2 * S) := by positivity
+  have h1 : (78 * ((T + N) * N) + 24 * N) ≤ 2208 * (R * (N + 1) ^ 2) := by
+    have hT0 : 0 ≤ T := Nat.cast_nonneg _
+    nlinarith [mul_le_mul_of_nonneg_right hT (by linarith : (0 : ℝ) ≤ N),
+      mul_le_mul_of_nonneg_left hR (by positivity : (0 : ℝ) ≤ N ^ 2 + 2 * N + 1)]
+  have h2 : 1651200 * (R * (N + 1) ^ 2 * (u * (2 * S))) ≤
+      u * (2 * (86 * (8 * B) * (2 * S) * R * √(N + 1) * (300 * (N + 1) ^ 2))) := by
+    have h3 : 1651200 * (R * (N + 1) ^ 2 * (u * (2 * S))) ≤
+        (u * (2 * S) * R * (N + 1) ^ 2) * (2 * 86 * 8 * 300 * B * √(N + 1)) := by
+      have : (4 : ℝ) * 1 ≤ B * √(N + 1) := mul_le_mul hBc hsq (by norm_num) (by linarith)
+      nlinarith
+    calc _ ≤ _ := h3
+      _ = _ := by ring
+  calc (78 * ((T + N) * N) + 24 * N) * u * (2 * S)
+      = (78 * ((T + N) * N) + 24 * N) * (u * (2 * S)) := by ring
+    _ ≤ 2208 * (R * (N + 1) ^ 2) * (u * (2 * S)) := mul_le_mul_of_nonneg_right h1 hus
+    _ ≤ 1651200 * (R * (N + 1) ^ 2 * (u * (2 * S))) := by nlinarith
+    _ ≤ _ := h2.trans hdec
+
+
 /-- **The bits of precision of the small-eigenvalue solver** ([BanksGarzaVargasSrivastava2025,
 Theorem 1.1], $O(\log^2)$ bits): for tail records with $b_1, b_2 > 0$ there are constants
 $e_1, e_2$ (depending on the records) such that for every $n_{\max} \ge 1$,
@@ -583,6 +706,49 @@ theorem logb_inv_uSmallEig_le (c₁ c₂ : PolyLogTail) (hb₁ : 0 < c₁.b) (hb
         have : 0 ≤ ((K₀ : ℝ) + 5 * K₁) * (L * (L - 1)) :=
           mul_nonneg (by positivity) (mul_nonneg (by linarith) (by linarith))
         nlinarith
+
+/-- **The cap is logarithmic** (`NLAlib.SmallEig.smallEigCap`): for tail records with
+$b_1, b_2 > 0$ there is a constant $c \ge 0$ such that $T \le c(\log_2 Y + 1)$,
+$Y = 4n_{\max}\Sigma/(\delta\varphi)$, for every $n_{\max} \ge 1$, $0 < \delta \le \Sigma$ and
+$0 < \varphi \le 1$: the degree and the step cap are $O(\log_2 Y)$, and so is the round cap
+$t \le 2\log_2(10.4\,\Sigma/\beta') + 1$ with $\beta'/\Sigma$ at least an inverse power of $Y$. -/
+theorem smallEigCap_le_logb (c₁ c₂ : PolyLogTail) (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) :
+    ∃ c : ℝ, 0 ≤ c ∧ ∀ {nmax : ℕ} {S δ φ : ℝ}, 1 ≤ nmax → 0 < δ → δ ≤ S → 0 < φ → φ ≤ 1 →
+      (smallEigCap nmax S δ φ c₁ c₂ : ℝ) ≤ c * (logb 2 (4 * nmax * S / (δ * φ)) + 1) := by
+  obtain ⟨c, hc, hM⟩ := degree_add_steps_le (c₂ := c₂) hb₂
+  obtain ⟨e, he⟩ := unifLo_accuracy hb₁ hb₂
+  refine ⟨c + 2 * e + 14, by positivity, fun {nmax S δ φ} hn hδ hδS hφ hφ1 => ?_⟩
+  have hi : Adm (nmax, S, δ, φ) := ⟨hn, hδ, hδS, hφ, hφ1⟩
+  have hL0 : 0 ≤ logb 2 (arg (nmax, S, δ, φ)) := logb_nonneg (by norm_num) (arg_one _ hi)
+  have hm := hM _ hi
+  have hb := (he _ hi).logb_inv_le
+  obtain ⟨hβ, -⟩ := smallEigAccuracy_le hb₁ hb₂ hn hδ hδS hφ hφ1
+  have hS : 0 < S := hδ.trans_le hδS
+  simp only [arg] at hm hb hL0 ⊢
+  set L := logb 2 (4 * nmax * S / (δ * φ))
+  set β := smallEigAccuracy nmax S δ φ c₁ c₂
+  have h104 : logb 2 (10.4 : ℝ) ≤ 4 := by
+    calc logb 2 (10.4 : ℝ) ≤ logb 2 ((2 : ℝ) ^ 4) :=
+          logb_le_logb_of_le (by norm_num) (by norm_num) (by norm_num)
+      _ = 4 := by rw [logb_pow, logb_self_eq_one (by norm_num)]; norm_num
+  have hy : 5.2 * (2 * S) / β = 10.4 * (β / S)⁻¹ := by field_simp; ring
+  have hy1 : 1 ≤ 5.2 * (2 * S) / β := by
+    rw [le_div_iff₀ hβ]; linarith [(smallEigAccuracy_le hb₁ hb₂ hn hδ hδS hφ hφ1).2]
+  have hlt : logb 2 (5.2 * (2 * S) / β) ≤ 4 + e * L := by
+    rw [hy, logb_mul (by norm_num) (by positivity)]; linarith
+  have ht : (smallEigRounds nmax S δ φ c₁ c₂ : ℝ) ≤ 9 + 2 * e * L := by
+    change (oneEigRounds (2 * S) β : ℝ) ≤ _
+    unfold oneEigRounds
+    have := natCeil_le_add_one (by have := logb_nonneg (b := 2) (by norm_num) hy1; positivity)
+      (le_refl (2 * logb 2 (5.2 * (2 * S) / β)))
+    linarith
+  push_cast at hm
+  have he0 : (0 : ℝ) ≤ e := e.cast_nonneg
+  unfold smallEigCap
+  push_cast
+  have hq0 : (0 : ℝ) ≤ 2 ^ smallEigDegreeLog nmax S δ φ c₂ := by positivity
+  have hm0 : (0 : ℝ) ≤ smallEigDecoupleSteps nmax S δ φ c₂ := Nat.cast_nonneg _
+  refine max_le (by nlinarith) (max_le (by nlinarith) (by nlinarith))
 
 /-! ### The forward form -/
 

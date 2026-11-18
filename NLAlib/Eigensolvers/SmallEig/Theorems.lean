@@ -11,6 +11,7 @@ public import NLAlib.Ops.Confined
 public import NLAlib.Ops.MonomialWork
 public import NLAlib.Ops.Static
 public import NLAlib.Eigensolvers.SmallEig.Precision
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveSchur
 
 /-!
 # The small-eigenvalue solver: headline theorems
@@ -462,7 +463,8 @@ theorem smallEigProg_core_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : 
       (by linarith) hL hNat hQ hC hI hloc _ hDn _ hLeaf hφD le_rfl le_rfl x.2.1.1
       x.2.1.2.1.choose_spec.choose_spec.1 x.2.1.2.1.choose_spec.choose_spec.2.1
       x.2.1.2.1.choose_spec.choose_spec.2.2.1 hsep x.2.1.2.1.choose_spec.choose_spec.2.2.2
-      hfind hcut (by positivity) le_rfl hε0 (by linarith [x.2.1.2.2]) (hK'.trans hX2)).in_frame
+      hfind hcut (by positivity) le_rfl hε0 (by positivity) (by linarith [x.2.1.2.2])
+      ((le_of_eq (by ring)).trans (hK'.trans hX2))).in_frame
       hd ha
       fun μ h y hy => h.1 y (by simp at hy ⊢; tauto)
   refine PStep.mono (PWrites.pstep_of_forall hI hloc (F := F)

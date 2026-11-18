@@ -631,20 +631,62 @@ private theorem bottomUpMask_pred {r C : ℕ} (hr : C + 1 = r) (X : Matrix (Fin 
   simp only [bottomUpMask, Matrix.of_apply]
   split_ifs <;> first | rfl | (exfalso; omega)
 
+/-- The unitary of the entries of the reduction gains, with the entry of a step, the exact
+rotation of the pair the step reads, which the clearing does not change. -/
+private theorem givensLog_append_reduceLastStepEntry (hM : StdModel u id M) {n : ℕ}
+    {X : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {r c : ℕ} (hc : c + 1 < r) (hr : r < n + 1)
+    (es : List GivensEntry) :
+    givensLog (n + 1) (es ++ [reduceLastStepEntry M r c X]) = givensLog (n + 1) es *
+      (givens (⟨c, by omega⟩ : Fin (n + 1)) ⟨c + 1, by omega⟩
+        (givensCoeffs (bottomUpMask r c X ⟨r, hr⟩ ⟨c + 1, by omega⟩)
+          (-bottomUpMask r c X ⟨r, hr⟩ ⟨c, by omega⟩)).1
+        (givensCoeffs (bottomUpMask r c X ⟨r, hr⟩ ⟨c + 1, by omega⟩)
+          (-bottomUpMask r c X ⟨r, hr⟩ ⟨c, by omega⟩)).2)ᴴ := by
+  have hn (x : ℝ) : M.neg x = -x := hM.neg x
+  have e1 : bottomUpMask r c X ⟨r, hr⟩ ⟨c + 1, by omega⟩ = X ⟨r, hr⟩ ⟨c + 1, by omega⟩ := by
+    simp only [bottomUpMask, Matrix.of_apply]; rw [if_neg (by omega)]
+  have e2 : bottomUpMask r c X ⟨r, hr⟩ ⟨c, by omega⟩ = X ⟨r, hr⟩ ⟨c, by omega⟩ := by
+    simp only [bottomUpMask, Matrix.of_apply]; rw [if_neg (by omega)]
+  have hneg : (⟨M.neg (X ⟨r, hr⟩ ⟨c, by omega⟩).re, M.neg (X ⟨r, hr⟩ ⟨c, by omega⟩).im⟩ : ℂ) =
+      -X ⟨r, hr⟩ ⟨c, by omega⟩ := by
+    apply Complex.ext <;> simp [hn]
+  rw [givensLog_append, e1, e2]
+  congr 1
+  simp only [givensLog, List.map_cons, List.map_nil, List.prod_cons, List.prod_nil, mul_one]
+  simp only [reduceLastStepEntry, dif_pos (show c + 1 < n + 1 ∧ r < n + 1 by omega), givensAt,
+    dif_pos (show c + 1 < n + 1 by omega), hneg]
+
+/-- A unitary similarity within $\varepsilon$ of $\mathbf{B}$ is a witnessed perturbed one. -/
+private theorem isPerturbedUnitarySimilarBy_of_specNorm_sub_le {m : ℕ}
+    {V A B : Matrix (Fin m) (Fin m) ℂ} (hV : HasOrthonormalCols V) {ε : ℝ}
+    (h : specNorm (B - Vᴴ * A * V) ≤ ε) : IsPerturbedUnitarySimilarBy V A B ε := by
+  have h1 : Vᴴ * V = 1 := hasOrthonormalCols_iff.mp hV
+  refine ⟨hV, V * (B - Vᴴ * A * V) * Vᴴ, ?_, ?_⟩
+  · rw [hV.specNorm_mul_conjTranspose_right, hV.specNorm_mul_left]; exact h
+  · have e : Vᴴ * (V * (B - Vᴴ * A * V) * Vᴴ) * V = B - Vᴴ * A * V := by
+      rw [← Matrix.mul_assoc, ← Matrix.mul_assoc, h1, Matrix.one_mul, Matrix.mul_assoc, h1,
+        Matrix.mul_one]
+    rw [Matrix.mul_add, Matrix.add_mul, e]
+    abel
+
 /-- The invariant of the reduction after $k$ steps: within $((1 + 61\boldsymbol{u})^k - 1)
-\|\mathbf{A}\|_2$ of a unitary similarity of $\mathbf{A}$ fixing $\mathbf{e}_{n+1}$. -/
+\|\mathbf{A}\|_2$ of the unitary similarity of $\mathbf{A}$ by $\mathbf{Q}$, which fixes
+$\mathbf{e}_{n+1}$. -/
 private def HRBound (u : ℝ) {n : ℕ} (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (k : ℕ)
-    (Y : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) : Prop :=
-  ∃ Q : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HasOrthonormalCols Q ∧
+    (Y Q : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) : Prop :=
+  HasOrthonormalCols Q ∧
     (∀ i, Q i (Fin.last n) = if i = Fin.last n then 1 else 0) ∧
     specNorm (Y - Qᴴ * A * Q) ≤ ((1 + 61 * u) ^ k - 1) * specNorm A
 
 /-- One step of the reduction keeps the invariant, with one more step. -/
 private theorem hrBound_step (hM : StdModel u id M) (hu : 0 ≤ u) (hu' : u ≤ 1 / 576) {n : ℕ}
     {A X : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {k r c : ℕ} (hc : c + 1 < r) (hr : r < n + 1)
-    (h : HRBound u A k (bottomUpMask r c X)) :
-    HRBound u A (k + 1) (bottomUpMask r (c + 1) (reduceLastStepWord M r c X)) := by
-  obtain ⟨Q, hQ, hlast, hE⟩ := h
+    {es : List GivensEntry} (h : HRBound u A k (bottomUpMask r c X) (givensLog (n + 1) es)) :
+    HRBound u A (k + 1) (bottomUpMask r (c + 1) (reduceLastStepWord M r c X))
+      (givensLog (n + 1) (es ++ [reduceLastStepEntry M r c X])) := by
+  obtain ⟨hQ, hlast, hE⟩ := h
+  set Q := givensLog (n + 1) es
+  rw [givensLog_append_reduceLastStepEntry hM hc hr]
   rw [bottomUpMask_reduceLastStepWord hM hc hr]
   set Z := bottomUpMask r c X
   set i : Fin (n + 1) := ⟨c, by omega⟩
@@ -684,10 +726,11 @@ private theorem hrBound_step (hM : StdModel u id M) (hu : 0 ≤ u) (hu' : u ≤ 
     have := specNorm_add_le (Z - Qᴴ * A * Q) (Qᴴ * A * Q)
     rw [← e, hQ.specNorm_conjTranspose_mul_mul] at this
     linarith
-  refine ⟨Q * Gᴴ, hasOrthonormalCols_iff.mpr ((hQ.conjTranspose_mul_mul _ _).trans
+  refine ⟨hasOrthonormalCols_iff.mpr ((hQ.conjTranspose_mul_mul _ _).trans
     hG.conjTranspose.conjTranspose_mul_self), fun a => ?_, ?_⟩
   · rw [conjTranspose_givens, mul_givens_apply_of_ne (Fin.ne_of_val_ne (by simp [i]; omega))
-      (Fin.ne_of_val_ne (by simp [j]; omega)), hlast]
+      (Fin.ne_of_val_ne (by simp [j]; omega))]
+    exact hlast a
   have e : Y - Matrix.single k' i (Y k' i) - (Q * Gᴴ)ᴴ * A * (Q * Gᴴ) =
       (Y - G * Z * Gᴴ) - Matrix.single k' i (Y k' i) + G * (Z - Qᴴ * A * Q) * Gᴴ := by
     simp only [Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose, Matrix.mul_sub,
@@ -705,16 +748,15 @@ private theorem hrBound_step (hM : StdModel u id M) (hu : 0 ≤ u) (hu' : u ≤ 
 /-- The steps of one row of the reduction keep the invariant. -/
 private theorem hrBound_row (hM : StdModel u id M) (hu : 0 ≤ u) (hu' : u ≤ 1 / 576) {n : ℕ}
     {A X : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {i k : ℕ} (hi : i < n + 1 - 2)
-    (h : HRBound u A k (bottomUpMask (n - i) 0 X)) :
-    ∀ C ≤ n + 1 - 2 - i, HRBound u A (k + C) (bottomUpMask (n - i) C
-      (((List.range C).map fun c => (i, c)).foldl
-        (fun X ic => reduceLastStepWord M (n + 1 - 1 - ic.1) ic.2 X) X))
-  | 0, _ => by simpa using h
+    {es : List GivensEntry} (h : HRBound u A k (bottomUpMask (n - i) 0 X) (givensLog (n + 1) es)) :
+    ∀ C ≤ n + 1 - 2 - i, HRBound u A (k + C) (bottomUpMask (n - i) C (hrRound M i X C).1)
+      (givensLog (n + 1) (es ++ (hrRound M i X C).2))
+  | 0, _ => by simpa [hrRound] using h
   | C + 1, hC => by
-    rw [List.range_succ, List.map_append, List.foldl_append]
+    rw [hrRound_succ]
     have := hrBound_step (M := M) hM hu hu' (c := C) (r := n - i) (by omega) (by omega)
       (hrBound_row hM hu hu' hi h C (by omega))
-    simpa [← add_assoc] using this
+    simpa [hrRoundStep, ← add_assoc] using this
 
 /-- The pairs (round, column) of the steps of the first $I$ rows of the reduction. -/
 private def hrSteps (N I : ℕ) : List (ℕ × ℕ) :=
@@ -738,9 +780,10 @@ private theorem two_mul_length_hrSteps (N : ℕ) :
 private theorem hrBound_rows {n : ℕ} (hM : StdModel u id M) (hu : 0 ≤ u)
     (hu' : 3 ≤ n + 1 → u ≤ 1 / 576) (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) :
     ∀ I ≤ n + 1 - 2, HRBound u A (hrSteps (n + 1) I).length (bottomUpMask (n - I) 0
-      ((hrSteps (n + 1) I).foldl (fun X ic => reduceLastStepWord M (n + 1 - 1 - ic.1) ic.2 X) A))
+      ((List.range I).foldl (hrOuter M) (A, [])).1)
+      (givensLog (n + 1) ((List.range I).foldl (hrOuter M) (A, [])).2.flatten)
   | 0, _ => by
-    refine ⟨1, hasOrthonormalCols_one, fun a => by simp [Matrix.one_apply], ?_⟩
+    refine ⟨hasOrthonormalCols_one, fun a => by simp [Matrix.one_apply], ?_⟩
     have : bottomUpMask n 0 A = A := by
       ext a b
       simp only [bottomUpMask, Matrix.of_apply]
@@ -751,7 +794,8 @@ private theorem hrBound_rows {n : ℕ} (hM : StdModel u id M) (hu : 0 ≤ u)
     have h := hrBound_row hM hu (hu' (by omega)) (i := I) (by omega) ih (n + 1 - 2 - I) le_rfl
     rw [bottomUpMask_pred (show n + 1 - 2 - I + 1 = n - I by omega),
       show n - I - 1 = n - (I + 1) by omega] at h
-    simpa [hrSteps, List.range_succ, List.flatMap_append, List.foldl_append, add_comm] using h
+    simpa [hrSteps, List.range_succ, List.flatMap_append, List.foldl_append, add_comm,
+      hrOuter] using h
 
 /-- $K$ steps of relative error $61\boldsymbol{u}$ grow to at most $50(n + 1)^2\boldsymbol{u}$
 when $2K \le (n + 1)^2$ and $100(n + 1)^2\boldsymbol{u} \le 1$. -/
@@ -775,45 +819,6 @@ private theorem hrGrowth_le {u : ℝ} {n K : ℕ} (hu : 0 ≤ u)
 
 end BackwardError
 
-/-- **The bottom-up Hessenberg reduction is backward stable and fixes $\mathbf{e}_N$**
-([BanksGarzaVargasSrivastava2025, Definition 5.1], proved for rounded rotations): on a machine
-with the standard model at the unit roundoff $\boldsymbol{u}$, $M.\mathrm{lit}(0) = 0$ and
-$100(n + 1)^2\boldsymbol{u} \le 1$, the stored matrix $\widehat{\mathbf{H}}$ of a complex
-$\mathbf{A}$ of order $n + 1$ is upper Hessenberg and there is a unitary $\mathbf{Q}$ with
-$\mathbf{Q}\mathbf{e}_{n+1} = \mathbf{e}_{n+1}$ and
-$$\|\widehat{\mathbf{H}} - \mathbf{Q}^{\mathsf{H}}\mathbf{A}\mathbf{Q}\|_2 \le
-  50(n + 1)^2\boldsymbol{u}\,\|\mathbf{A}\|_2\,.$$ -/
-theorem hessenbergReduceLast_isPerturbedUnitarySimilar {M : Machine ℝ} {u : ℝ}
-    (hM : StdModel u id M) (hzero : M.lit 0 = 0) {n : ℕ} (hnu : 100 * ((n : ℝ) + 1) ^ 2 * u ≤ 1)
-    (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) :
-    IsUpperHessenberg (hessenbergReduceLastWord M A) ∧
-      ∃ Q : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HasOrthonormalCols Q ∧
-        (∀ i, Q i (Fin.last n) = if i = Fin.last n then 1 else 0) ∧
-        specNorm (hessenbergReduceLastWord M A - Qᴴ * A * Q) ≤
-          50 * ((n : ℝ) + 1) ^ 2 * u * specNorm A := by
-  have hu : 0 ≤ u := (abs_nonneg _).trans (by simpa using hM.lit 1)
-  have hz : (⟨M.lit 0, M.lit 0⟩ : ℂ) = 0 := by rw [hzero]; rfl
-  refine ⟨fun a b hab => by simp [hessenbergReduceLastWord, hab, hz], ?_⟩
-  have hu' : 3 ≤ n + 1 → u ≤ 1 / 576 := fun h3 => by
-    have : (3 : ℝ) ≤ (n : ℝ) + 1 := by exact_mod_cast h3
-    nlinarith
-  obtain ⟨Q, hQ, hlast, hE⟩ := hrBound_rows (M := M) hM hu hu' A (n + 1 - 2) le_rfl
-  refine ⟨Q, hQ, hlast, ?_⟩
-  have hW : hessenbergReduceLastWord M A = bottomUpMask (n - (n + 1 - 2)) 0
-      ((hrSteps (n + 1) (n + 1 - 2)).foldl
-        (fun X ic => reduceLastStepWord M (n + 1 - 1 - ic.1) ic.2 X) A) := by
-    ext a b
-    simp only [hessenbergReduceLastWord, bottomUpMask, hrSteps, Matrix.of_apply, hz]
-    split_ifs <;> first | rfl | (exfalso; omega)
-  rw [hW]
-  refine hE.trans (mul_le_mul_of_nonneg_right (hrGrowth_le hu ?_ hnu) (specNorm_nonneg A))
-  have hl := two_mul_length_hrSteps (n + 1) (n + 1 - 2) le_rfl
-  rw [Nat.sub_self, zero_mul, add_zero] at hl
-  have : (n + 1 - 2) * (n + 1 - 2 + 1) ≤ (n + 1) * (n + 1) :=
-    Nat.mul_le_mul (by omega) (by omega)
-  have h2 : 2 * (hrSteps (n + 1) (n + 1 - 2)).length ≤ (n + 1) ^ 2 := by rw [sq]; omega
-  exact_mod_cast h2
-
 /-- **The bottom-up Hessenberg reduction is backward stable by the unitary of its log**
 ([BanksGarzaVargasSrivastava2025, Definition 5.1], proved for rounded rotations, with the unitary
 named): on a machine with the standard model at the unit roundoff $\boldsymbol{u}$,
@@ -830,8 +835,50 @@ theorem hessenbergReduceLast_isPerturbedUnitarySimilarBy {M : Machine ℝ} {u : 
       (∀ i, givensLog (n + 1) (hessenbergReduceLastSlots M A).flatten i (Fin.last n) =
         if i = Fin.last n then 1 else 0) ∧
       IsPerturbedUnitarySimilarBy (givensLog (n + 1) (hessenbergReduceLastSlots M A).flatten) A
-        (hessenbergReduceLastWord M A) (50 * ((n : ℝ) + 1) ^ 2 * u * specNorm A) :=
-  sorry
+        (hessenbergReduceLastWord M A) (50 * ((n : ℝ) + 1) ^ 2 * u * specNorm A) := by
+  have hu : 0 ≤ u := (abs_nonneg _).trans (by simpa using hM.lit 1)
+  have hz : (⟨M.lit 0, M.lit 0⟩ : ℂ) = 0 := by rw [hzero]; rfl
+  refine ⟨fun a b hab => by simp [hessenbergReduceLastWord, hab, hz], ?_⟩
+  have hu' : 3 ≤ n + 1 → u ≤ 1 / 576 := fun h3 => by
+    have : (3 : ℝ) ≤ (n : ℝ) + 1 := by exact_mod_cast h3
+    nlinarith
+  obtain ⟨hQ, hlast, hE⟩ := hrBound_rows (M := M) hM hu hu' A (n + 1 - 2) le_rfl
+  refine ⟨hlast, isPerturbedUnitarySimilarBy_of_specNorm_sub_le hQ ?_⟩
+  have hW : hessenbergReduceLastWord M A = bottomUpMask (n - (n + 1 - 2)) 0
+      ((List.range (n + 1 - 2)).foldl (hrOuter M) (A, [])).1 := by
+    ext a b
+    simp only [hessenbergReduceLastWord, bottomUpMask, hrOuter_fst, Matrix.of_apply, hz]
+    split_ifs <;> first | rfl | (exfalso; omega)
+  rw [hW]
+  refine hE.trans (mul_le_mul_of_nonneg_right (hrGrowth_le hu ?_ hnu) (specNorm_nonneg A))
+  have hl := two_mul_length_hrSteps (n + 1) (n + 1 - 2) le_rfl
+  rw [Nat.sub_self, zero_mul, add_zero] at hl
+  have : (n + 1 - 2) * (n + 1 - 2 + 1) ≤ (n + 1) * (n + 1) :=
+    Nat.mul_le_mul (by omega) (by omega)
+  have h2 : 2 * (hrSteps (n + 1) (n + 1 - 2)).length ≤ (n + 1) ^ 2 := by rw [sq]; omega
+  exact_mod_cast h2
+
+/-- **The bottom-up Hessenberg reduction is backward stable and fixes $\mathbf{e}_N$**
+([BanksGarzaVargasSrivastava2025, Definition 5.1], proved for rounded rotations): on a machine
+with the standard model at the unit roundoff $\boldsymbol{u}$, $M.\mathrm{lit}(0) = 0$ and
+$100(n + 1)^2\boldsymbol{u} \le 1$, the stored matrix $\widehat{\mathbf{H}}$ of a complex
+$\mathbf{A}$ of order $n + 1$ is upper Hessenberg and there is a unitary $\mathbf{Q}$ with
+$\mathbf{Q}\mathbf{e}_{n+1} = \mathbf{e}_{n+1}$ and
+$$\|\widehat{\mathbf{H}} - \mathbf{Q}^{\mathsf{H}}\mathbf{A}\mathbf{Q}\|_2 \le
+  50(n + 1)^2\boldsymbol{u}\,\|\mathbf{A}\|_2\,.$$ -/
+theorem hessenbergReduceLast_isPerturbedUnitarySimilar {M : Machine ℝ} {u : ℝ}
+    (hM : StdModel u id M) (hzero : M.lit 0 = 0) {n : ℕ} (hnu : 100 * ((n : ℝ) + 1) ^ 2 * u ≤ 1)
+    (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) :
+    IsUpperHessenberg (hessenbergReduceLastWord M A) ∧
+      ∃ Q : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HasOrthonormalCols Q ∧
+        (∀ i, Q i (Fin.last n) = if i = Fin.last n then 1 else 0) ∧
+        specNorm (hessenbergReduceLastWord M A - Qᴴ * A * Q) ≤
+          50 * ((n : ℝ) + 1) ^ 2 * u * specNorm A := by
+  obtain ⟨hH, hlast, hV, E, hE, he⟩ :=
+    hessenbergReduceLast_isPerturbedUnitarySimilarBy hM hzero hnu A
+  refine ⟨hH, _, hV, hlast, ?_⟩
+  rw [he, Matrix.mul_add, Matrix.add_mul, add_sub_cancel_left, hV.specNorm_conjTranspose_mul_mul]
+  exact hE
 
 /-- `NLAlib.hessenbergReduceLast` terminates on every tape and every stored matrix: its loops are
 counted and every operation succeeds on stored operands; the log gains its $N - 2$ slots. -/

@@ -40,13 +40,15 @@ error against the exact multishift step (Lemma 3.8) and the potential after a ro
 
 * `NLAlib.IsStableQRStep`: Definition 3.4 with an absolute error.
 * `NLAlib.IsStableQRChain`: a degree $m$ step as a chain of single steps.
+* `NLAlib.IsStableQRStepBy`, `NLAlib.IsStableQRChainBy`: the same with the unitaries named.
 
 ## Main results
 
 * `NLAlib.HasOrthonormalCols.isStableQRStep_upperHessenbergPart`: a stable step from a Hessenberg
   factorization and a nearby similarity.
 * `NLAlib.IsStableQRChain.snoc`: a chain extended by a step.
-* `NLAlib.IsStableQRChain.isPerturbedUnitarySimilar`: the backward error of the similarity.
+* `NLAlib.IsStableQRChain.isPerturbedUnitarySimilar`: the backward error of the similarity;
+  `NLAlib.IsStableQRChainBy.isPerturbedUnitarySimilarBy` with the unitary named.
 * `NLAlib.IsStableQRChain.exists_specNorm_aeval_sub_le`: the backward error of the factorization
   of the shift polynomial.
 * `NLAlib.IsStableQRChain.abs_prod_last_sub_le`: the last diagonal entry of the product of the
@@ -86,6 +88,45 @@ inductive IsStableQRChain (x : ℝ) :
       {Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)}
       (h : IsStableQRStep (x * (specNorm H + ‖s‖)) H s H₁ R)
       (t : IsStableQRChain x H₁ ss H' Rs) : IsStableQRChain x H (s :: ss) H' (R :: Rs)
+
+/-- A **backward-stable single-shift QR step by the named unitary** $\mathbf{Q}$:
+`NLAlib.IsStableQRStep` with its unitary given. A program that records its rotations names
+$\mathbf{Q}$ as the exact unitary of its log. -/
+def IsStableQRStepBy (Q : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (ε : ℝ)
+    (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (s : ℂ)
+    (H' R : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) : Prop :=
+  IsUpperHessenberg H' ∧ R.IsUpperTriangular ∧ HasOrthonormalCols Q ∧
+    specNorm (H' - Qᴴ * H * Q) ≤ ε ∧ specNorm (H - s • (1 : Matrix _ _ ℂ) - Q * R) ≤ ε
+
+/-- Forgetting the unitary of a step. -/
+theorem IsStableQRStepBy.isStableQRStep {Q : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ε : ℝ}
+    {H H' R : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {s : ℂ} (h : IsStableQRStepBy Q ε H s H' R) :
+    IsStableQRStep ε H s H' R :=
+  ⟨h.1, h.2.1, Q, h.2.2.1, h.2.2.2.1, h.2.2.2.2⟩
+
+/-- A **degree $m$ backward-stable QR step by the named unitary** $\mathbf{Q}$: the chain of
+`NLAlib.IsStableQRChain` with the unitary of each step given; $\mathbf{Q}$ is their product in
+the order of the steps. -/
+inductive IsStableQRChainBy (x : ℝ) :
+    Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ → List ℂ → Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ →
+      List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) → Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ → Prop
+  /-- No shift: no step, the identity. -/
+  | nil (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) : IsStableQRChainBy x H [] H [] 1
+  /-- One stable step by `Q₁`, then the rest of the chain by `Q`. -/
+  | cons {H H₁ H' R Q₁ Q : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {s : ℂ} {ss : List ℂ}
+      {Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)}
+      (h : IsStableQRStepBy Q₁ (x * (specNorm H + ‖s‖)) H s H₁ R)
+      (t : IsStableQRChainBy x H₁ ss H' Rs Q) :
+      IsStableQRChainBy x H (s :: ss) H' (R :: Rs) (Q₁ * Q)
+
+/-- Forgetting the unitaries of a chain. -/
+theorem IsStableQRChainBy.isStableQRChain {x : ℝ}
+    {H H' Q : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ss : List ℂ}
+    {Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)} (h : IsStableQRChainBy x H ss H' Rs Q) :
+    IsStableQRChain x H ss H' Rs := by
+  induction h with
+  | nil K => exact .nil K
+  | cons h₁ _ ih => exact .cons h₁.isStableQRStep ih
 
 /-- A stable step from a Hessenberg factorization and a nearby similarity: if $\mathbf{Q}$
 is unitary and upper Hessenberg, $\mathbf{R}$ upper triangular,
@@ -195,6 +236,17 @@ theorem IsStableQRChain.isPerturbedUnitarySimilar {x C : ℝ} {H H' : Matrix (Fi
       rw [List.length_cons, pow_succ]
       nlinarith [hxc]
   exact key ((1 + C) * specNorm H) H H' ss Rs (le_of_eq (by ring)) hs h
+
+/-- **Backward error of a degree $m$ step by its named unitary**: the similarity part of
+`NLAlib.IsStableQRChain.isPerturbedUnitarySimilar` with the product of the steps' unitaries as
+the witness, for shifts in $\mathbb{D}(0, C\|\mathbf{H}\|_2)$. -/
+theorem IsStableQRChainBy.isPerturbedUnitarySimilarBy {x C : ℝ}
+    {H H' Q : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ss : List ℂ}
+    {Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)}
+    (h : IsStableQRChainBy x H ss H' Rs Q) (hx : 0 ≤ x)
+    (hs : ∀ s ∈ ss, ‖s‖ ≤ C * specNorm H) :
+    IsPerturbedUnitarySimilarBy Q H H' ((1 + C) * specNorm H * ((1 + x) ^ ss.length - 1)) :=
+  sorry
 
 /-- The shift polynomial intertwines: $\mathbf{A}\mathbf{X} = \mathbf{X}\mathbf{B}$ gives
 $p(\mathbf{A})\mathbf{X} = \mathbf{X}p(\mathbf{B})$. -/

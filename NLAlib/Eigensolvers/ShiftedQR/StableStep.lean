@@ -10,6 +10,7 @@ public import NLAlib.Eigensolvers.ShiftedQR.MultiStep
 public import NLAlib.Eigensolvers.ShiftedQR.SweepOutput
 public import NLAlib.Eigensolvers.ShiftedQR.Backward
 public import NLAlib.Matrix.QRIteration.StableStep
+public import NLAlib.Matrix.FinitePrecision.GivensLog
 
 /-!
 # The rounded shifted QR step as a backward-stable step
@@ -35,16 +36,17 @@ $32n^{3/2}$.
 ## Main definitions
 
 * `NLAlib.ShiftedQR.stepWithDiag`, `NLAlib.ShiftedQR.stepWithDiagInPlace`,
-  `NLAlib.ShiftedQR.multiStepStable`: the programs.
+  `NLAlib.ShiftedQR.multiStepStable`: the programs. Each records its rotations, as the entries
+  $(r, p, q)$ of the coefficient inputs, in a slotted log (`NLAlib.HoldsSlottedLog`), so that the
+  step's unitary is the exact unitary of its log (`NLAlib.givensLog`).
 
 ## Main results
 
-* `NLAlib.ShiftedQR.stepWithDiag_writes_of_sweep`: the memory of the step, from any proved
-  sweep.
 * `NLAlib.ShiftedQR.stepWithDiag_isStableQRStep`,
   `NLAlib.ShiftedQR.stepWithDiagInPlace_isStableQRStep`: one rounded step is a backward-stable
-  step.
-* `NLAlib.ShiftedQR.multiStepStable_isStableQRChain`: the degree $k$ step is a stable chain.
+  step by the unitary of its log.
+* `NLAlib.ShiftedQR.multiStepStable_isStableQRChainBy`: the degree $k$ step is a stable chain by
+  the unitary of its log; `NLAlib.ShiftedQR.multiStepStable_isStableQRChain` without it.
 
 Termination on any matrix is in `NLAlib.Eigensolvers.ShiftedQR.StableStepTermination`.
 -/
@@ -56,35 +58,47 @@ namespace NLAlib.ShiftedQR
 open Ops
 open scoped Matrix
 
-variable {Op Tst : Type} [Has ScalarOp Op] [Has CmpTst Tst]
+variable {Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op] [Has CmpTst Tst]
 
-/-- **One shifted QR step with its last triangular diagonal entry and a Hessenberg output**:
-initialize a working copy $\mathbf{H} - s$ and the output $\mathbf{H}$, run the Givens sweep that
-also copies the last working diagonal entry to `Dg`, and zero the output below its subdiagonal.
-The interface is `[n] (A, S) → (Z, Dg)`; the working matrix and the four coefficient words are
-scoped. -/
-def stepWithDiag : Impl Op Tst := opsImpl% [n] (A, S) → (Z, Dg) {
+/-- **One shifted QR step with its last triangular diagonal entry and a Hessenberg output, recording
+its rotations**: initialize a working copy $\mathbf{H} - s$ and the output $\mathbf{H}$; for the
+rounds $r < n - 1$, record the entry $(r, \mathbf{W}_{r,r}, \mathbf{W}_{r+1,r})$ (the inputs of the
+round's coefficients) as entry $i_0 + r$ of slot $j$ of the slotted log `Lg` of slot width $w$
+(`NLAlib.slottedLogWrite`), then run the round (`NLAlib.ShiftedQR.round`: the coefficients, the
+rotation of the working rows, the conjugation of the output); copy the last working diagonal entry
+to `Dg`; zero the output below its subdiagonal. The interface is
+`[n, w, j, i0] (A, S) → (Z, Dg, Lg)`; the working matrix and the four coefficient words are
+scoped. The exact unitary of the recorded entries is the step's $\widehat{\mathbf{Q}}$. -/
+def stepWithDiag : Impl Op Tst := opsImpl% [n, w, j, i0] (A, S) → (Z, Dg, Lg) {
   let W ← alloc (2 * (n * n));
   let Cf ← alloc 4;
   run (initializeState (Op := Op) (Tst := Tst)).body [n] (A, S, W, Z);
-  run (sweepWithDiag (Op := Op) (Tst := Tst)).body [n] (W, Z, Cf, W, Z, Dg);
+  for r < n - 1 {
+    run (slottedLogWrite (O := Op) (Q := Tst)).body [w, j, i0 + r, r]
+      (W[2 * (r * n + r)], W[2 * (r * n + r + 1)], Lg);
+    run (round (Op := Op) (Tst := Tst)).body [n, r] (W, Z, Cf, W, Z)
+  };
+  run (copyLastDiagonal (Op := Op) (Tst := Tst)).body [n] (W, Dg);
   run (clearBelowSubdiagonal (Op := Op) (Tst := Tst)).body [n] (Z)
 }
 
 /-- The step in place: run `NLAlib.ShiftedQR.stepWithDiag` into the scratch matrix `T`, then copy
-it back to `A`. The interface is `[n] (A, S, T) → (A, Dg)`. -/
-def stepWithDiagInPlace : Impl Op Tst := opsImpl% [n] (A, S, T) → (A, Dg) {
-  run (stepWithDiag (Op := Op) (Tst := Tst)).body [n] (A, S, T, Dg);
+it back to `A`. The interface is `[n, w, j, i0] (A, S, T) → (A, Dg, Lg)`. -/
+def stepWithDiagInPlace : Impl Op Tst := opsImpl% [n, w, j, i0] (A, S, T) → (A, Dg, Lg) {
+  run (stepWithDiag (Op := Op) (Tst := Tst)).body [n, w, j, i0] (A, S, T, Dg, Lg);
   run (unaryMap (Has.inj ScalarOp.copy)).body [2 * (n * n)] (T, A)
 }
 
-/-- **The degree $k$ rounded step**: $k$ steps in place with the shifts `S[2j]`, the last
-triangular diagonal entry of step $j$ written to `Ds[2j]`. The interface is
-`[n, k] (A, S) → (A, Ds)`; the scratch matrix is scoped. -/
-def multiStepStable : Impl Op Tst := opsImpl% [n, k] (A, S) → (A, Ds) {
+/-- **The degree $k$ rounded step, recording its rotations**: $k$ steps in place with the shifts
+`S[2t]`, the last triangular diagonal entry of step $t$ written to `Ds[2t]`, the $n - 1$ rotations
+of step $t$ recorded as the entries $t(n - 1), \dots, t(n - 1) + n - 2$ of slot $j$ of the slotted
+log `Lg` of slot width $w \ge k(n - 1)$. The interface is `[n, k, w, j] (A, S) → (A, Ds, Lg)`; the
+scratch matrix is scoped. -/
+def multiStepStable : Impl Op Tst := opsImpl% [n, k, w, j] (A, S) → (A, Ds, Lg) {
   let T ← alloc (2 * (n * n));
-  for j < k {
-    run (stepWithDiagInPlace (Op := Op) (Tst := Tst)).body [n] (A, S[2 * j], T, A, Ds[2 * j])
+  for t < k {
+    run (stepWithDiagInPlace (Op := Op) (Tst := Tst)).body [n, w, j, t * (n - 1)]
+      (A, S[2 * t], T, A, Ds[2 * t], Lg)
   }
 }
 
@@ -447,6 +461,7 @@ private theorem RoundedSweepInv.exists_isStableQRStep {u : ℝ} (hu : 0 ≤ u)
 
 end SweepMath
 
+omit [Has IndexOp Op] in
 /-- **The rounded sweep keeps its invariant**: on a machine with the standard model at
 $\boldsymbol{u} \ge 0$ with $(n+1)\boldsymbol{u} \le 1/2500$, the $n$ rounds of the sweep from an
 upper Hessenberg working matrix $\mathbf{W}_0$ and an output $\mathbf{H}$ end in the invariant of
@@ -486,17 +501,28 @@ private theorem sweep_writes_roundedSweepInv {M : Machine ℝ} {I : Interp Op Ts
   intro m'' _ ⟨hp', hW'', hZ''⟩
   exact ⟨hp'.trans hp, _, _, roundedSweepInv_succ hM hu hnu hk rfl hinv, hW'', hZ''⟩
 
-/-- The memory of the step with its diagonal entry: initialization stores the machine shift
-(`NLAlib.ShiftedQR.machineShiftedPrefix`) in a fresh working matrix and the raw matrix in the
-output; if every run of the sweep from such a state ends with a working matrix and an output
-related by `P`, the step ends with such a pair, the output with its fill deleted
-(`NLAlib.upperHessenbergPart`) and the last working diagonal entry stored. The working matrix
-and the coefficient words are scoped; the output and the diagonal pair are given capacity. -/
-theorem stepWithDiag_writes_of_sweep {M : Machine ℝ} {I : Interp Op Tst ℝ}
-    (hS : IsScalar M I) (hzero : M.lit 0 = 0) {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ}
-    {a s z dg : ℕ × ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {shift : ℂ}
-    {P : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ → Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ → Prop}
-    (hl : m.Live [a, s, z, dg]) (hH : HoldsMatrix a H m.store)
+/-- **The rounded single shifted QR step is backward stable by its recorded unitary**
+([BanksGarzaVargasSrivastava2022, Lemma 3.5], with the error base $\|\mathbf{H}\|_2 + \lvert
+s\rvert$ for the paper's $\|\mathbf{H} - s\|_2$, which rounding does not meet, and the constant
+$300(n+1)^2$ for the paper's $32n^{3/2}$): on a machine with the standard model at the unit
+roundoff $\boldsymbol{u} \ge 0$ with $(n+1)\boldsymbol{u} \le 1/2500$, from an upper Hessenberg
+$\mathbf{H}$ of order $n + 1$ and a shift $s$, the program `stepWithDiag` appends $n$ entries
+$e_1, \dots, e_n$ (planes below $n$) to the pending slot of the log and stores an
+$\widehat{\mathbf{H}}'$ and the last diagonal entry of an $\widehat{\mathbf{R}}$ such that
+$(\widehat{\mathbf{H}}', \widehat{\mathbf{R}})$ is a backward-stable QR step of $(\mathbf{H}, s)$
+by the exact unitary `givensLog (n + 1) es` of the entries, with error
+$300(n+1)^2\boldsymbol{u}(\|\mathbf{H}\|_2 + \lvert s\rvert)$. The planes are written as exact
+naturals (`hNat` up to `nmax ≥ n`). The output matrix is disjoint from the input matrix, the shift
+and the diagonal pair; the log from all of them. -/
+theorem stepWithDiag_isStableQRStep {M : Machine ℝ} {I : Interp Op Tst ℝ} {u : ℝ}
+    (hS : IsScalar M I) (hM : StdModel u id M) (hu : 0 ≤ u) (hCmp : IsCmp id I)
+    (hL : IsIndexLit M I) {nmax : ℕ} (hNat : IsExactNatLit id M nmax)
+    {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {a s z dg lg : ℕ × ℕ}
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {shift : ℂ} (hH : IsUpperHessenberg H)
+    (hnu : (n + 1 : ℝ) * u ≤ 1 / 2500) (hn : n ≤ nmax)
+    {ns w : ℕ} {L : List (Option (List GivensEntry))} {P : List GivensEntry}
+    (hlog : HoldsSlottedLog lg ns w L P m.store) (hj : L.length < ns) (hw : P.length + n ≤ w)
+    (hl : m.Live [a, s, z, dg, lg]) (hA : HoldsMatrix a H m.store)
     (hs : m.store.readBlock s.1 s.2 2 = some [shift.re, shift.im])
     (hz : z.2 + 2 * ((n + 1) * (n + 1)) ≤ m.store.len z.1)
     (hd : dg.2 + 2 ≤ m.store.len dg.1)
@@ -506,148 +532,39 @@ theorem stepWithDiag_writes_of_sweep {M : Machine ℝ} {I : Interp Op Tst ℝ}
       (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1)))))
     (hzd : Fp.Disj (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))))
       (Store.inBlock dg.1 dg.2 2))
-    (hsweep : ∀ (m₁ : Mem ℝ) (w cf : ℕ × ℕ),
-      HoldsMatrix w (machineShiftedPrefix M H shift (n + 1)) m₁.store →
-      HoldsMatrix z H m₁.store → cf.2 + 4 ≤ m₁.store.len cf.1 →
-      Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))))
-        (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1)))) →
-      Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock cf.1 cf.2 4) →
-      Fp.Disj (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock cf.1 cf.2 4) →
-      m₁.Live [w, z, cf, w, z] →
-      Writes .total I τ sweep.body (Env.frame [n + 1] [w, z, cf, w, z])
-        (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
-          Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock cf.1 cf.2 4)
-        (fun m' => m'.pos = m₁.pos ∧ ∃ W Z, P W Z ∧
-          HoldsMatrix w W m'.store ∧ HoldsMatrix z Z m'.store) m₁) :
-    Writes .total I τ stepWithDiag.body (Env.frame [n + 1] [a, s, z, dg])
-      (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock dg.1 dg.2 2)
-      (fun m' => m'.pos = m.pos ∧ ∃ W Z, P W Z ∧
-        HoldsMatrix z (upperHessenbergPart Z) m'.store ∧
-        m'.store.readBlock dg.1 dg.2 2 =
-          some [(W (Fin.last n) (Fin.last n)).re, (W (Fin.last n) (Fin.last n)).im]) m := by
-  have hlive : a.1 < m.store.length ∧ s.1 < m.store.length ∧ z.1 < m.store.length ∧
-      dg.1 < m.store.length := by simpa [Mem.Live] using hl
-  change Writes .total I τ (Stmt.allocs [.const 2 * (.var 0 * .var 0), .const 4] _) _ _ _ m
-  refine writes_allocs_preserving_post (ns := [2 * ((n + 1) * (n + 1)), 4]) rfl
-    (fun hBelow ⟨hp, W, Z, hP, hZ, hD⟩ => ⟨hp, W, Z, hP, hZ.of_below hBelow hlive.2.2.1,
-      hBelow.readBlock_of hlive.2.2.2 hD⟩) ?_
-  intro store hlen hlens hBelow
-  let w : ℕ × ℕ := (m.store.length, 0)
-  let cf : ℕ × ℕ := (m.store.length + 1, 0)
-  have hw : store.len w.1 = 2 * ((n + 1) * (n + 1)) := by
-    simpa [w] using hlens 0 (by simp)
-  have hcf : store.len cf.1 = 4 := by
-    simpa [cf] using hlens 1 (by simp)
-  have haw : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
-      (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1)))) :=
-    Fp.disj_inBlock_of_ne (by dsimp [w]; omega)
-  have hsw : Fp.Disj (Store.inBlock s.1 s.2 2)
-      (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1)))) :=
-    Fp.disj_inBlock_of_ne (by dsimp [w]; omega)
-  have hwz : Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))))
-      (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1)))) :=
-    Fp.disj_inBlock_of_ne (by dsimp [w]; omega)
-  have hwc : Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))))
-      (Store.inBlock cf.1 cf.2 4) :=
-    Fp.disj_inBlock_of_ne (by dsimp [w, cf]; omega)
-  have hzc : Fp.Disj (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))))
-      (Store.inBlock cf.1 cf.2 4) :=
-    Fp.disj_inBlock_of_ne (by dsimp [cf]; omega)
-  have hfd : Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
-      Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock cf.1 cf.2 4)
-      (Store.inBlock dg.1 dg.2 2) :=
-    Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨Fp.disj_inBlock_of_ne (by dsimp [w]; omega), hzd⟩,
-      Fp.disj_inBlock_of_ne (by dsimp [cf]; omega)⟩
-  have hinit := initializeState_writes_word (τ := τ) (m := ⟨store, m.pos⟩)
-    (a := a) (s := s) (w := w) (z := z) hS
-    (by simp [Mem.Live, w, hlen]; omega) (hH.of_below hBelow hlive.1)
-    ((hBelow.readBlock hlive.2.1 _ _).trans hs)
-    (by dsimp [w]; simpa only [Nat.zero_add] using hw.ge)
-    (by rw [(hBelow z.1 hlive.2.2.1).1]; exact hz) haw haz hsw hsz hwz
-  refine hinit.frame_seq_le rfl rfl
-    (by simp [Mem.Live, w, hlen]; omega)
-    (sup_le (Fp.inBlock_le_sup_above le_rfl) (le_sup_left.trans le_sup_left)) ?_
-  intro m₁ hfr₁ ⟨hp₁, hW₁, hZ₁⟩
-  have hl₁ : m₁.Live [w, z, cf, w, z, dg] := by
-    simp [Mem.Live, w, cf, hfr₁.length_eq, hlen]; omega
-  have hsweep₁ := sweepWithDiag_writes_of_sweep (P := P) hS hl₁
-    (by rw [hfr₁.len_eq, (hBelow dg.1 hlive.2.2.2).1]; exact hd) hfd
-    (hsweep m₁ w cf hW₁ hZ₁
-      (by rw [hfr₁.len_eq]; dsimp [cf]; simpa only [Nat.zero_add] using hcf.ge)
-      hwz hwc hzc (hl₁.mono (by simp)))
-  refine hsweep₁.frame_seq_le rfl rfl hl₁
-    (sup_le (sup_le (sup_le (Fp.inBlock_le_sup_above le_rfl)
-      (le_sup_left.trans le_sup_left)) (Fp.inBlock_le_sup_above (by dsimp [cf]; omega)))
-      (le_sup_right.trans le_sup_left)) ?_
-  intro m₂ hfr₂ ⟨hp₂, W, Z, hP, _, hZ₂, hD₂⟩
-  have hclear := clearBelowSubdiagonal_writes (τ := τ) hS hzero (n := n + 1) (a := z)
-    (by simp [Mem.Live, hfr₂.length_eq, hfr₁.length_eq, hlen]; omega) hZ₂
-  refine (hclear.in_frame rfl rfl
-    (by simp [Mem.Live, hfr₂.length_eq, hfr₁.length_eq, hlen]; omega)).mono
-    (le_sup_left.trans le_sup_left) ?_
-  intro m₃ hfr₃ ⟨hp₃, hZ₃, _⟩
-  exact ⟨hp₃.trans (hp₂.trans hp₁), W, Z, hP, hZ₃,
-    hfr₃.keep (Store.readsOnly_readBlock _ _ _ _) hzd hD₂⟩
-
-/-- **The rounded single shifted QR step is backward stable**
-([BanksGarzaVargasSrivastava2022, Lemma 3.5], with the error base $\|\mathbf{H}\|_2 + \lvert
-s\rvert$ for the paper's $\|\mathbf{H} - s\|_2$, which rounding does not meet, and the constant
-$300(n+1)^2$ for the paper's $32n^{3/2}$): on a machine with the standard model at the unit
-roundoff $\boldsymbol{u} \ge 0$ with $(n+1)\boldsymbol{u} \le 1/2500$, from an upper Hessenberg
-$\mathbf{H}$ of order $n + 1$ and a shift $s$, the program `stepWithDiag` stores an
-$\widehat{\mathbf{H}}'$ and the last diagonal entry of an $\widehat{\mathbf{R}}$ such that
-$(\widehat{\mathbf{H}}', \widehat{\mathbf{R}})$ is a backward-stable QR step of $(\mathbf{H}, s)$
-with error $300(n+1)^2\boldsymbol{u}(\|\mathbf{H}\|_2 + \lvert s\rvert)$. The input, the shift and
-the outputs are given views; the output matrix is disjoint from the input matrix, the shift and
-the diagonal pair. -/
-theorem stepWithDiag_isStableQRStep {M : Machine ℝ} {I : Interp Op Tst ℝ} {u : ℝ}
-    (hS : IsScalar M I) (hM : StdModel u id M) (hu : 0 ≤ u) (hCmp : IsCmp id I)
-    {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {a s z dg : ℕ × ℕ}
-    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {shift : ℂ} (hH : IsUpperHessenberg H)
-    (hnu : (n + 1 : ℝ) * u ≤ 1 / 2500)
-    (hl : m.Live [a, s, z, dg]) (hA : HoldsMatrix a H m.store)
-    (hs : m.store.readBlock s.1 s.2 2 = some [shift.re, shift.im])
-    (hz : z.2 + 2 * ((n + 1) * (n + 1)) ≤ m.store.len z.1)
-    (hd : dg.2 + 2 ≤ m.store.len dg.1)
-    (haz : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
-      (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1)))))
-    (hsz : Fp.Disj (Store.inBlock s.1 s.2 2)
-      (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1)))))
-    (hzd : Fp.Disj (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))))
-      (Store.inBlock dg.1 dg.2 2)) :
-    Writes .total I τ stepWithDiag.body (Env.frame [n + 1] [a, s, z, dg])
-      (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock dg.1 dg.2 2)
-      (fun m' => m'.pos = m.pos ∧ ∃ H' R : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
-        IsStableQRStep (300 * (n + 1) ^ 2 * u * (specNorm H + ‖shift‖)) H shift H' R ∧
+    (hlgd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 2 ⊔
+        Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock dg.1 dg.2 2)) :
+    Writes .total I τ stepWithDiag.body
+      (Env.frame [n + 1, w, L.length, P.length] [a, s, z, dg, lg])
+      (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock dg.1 dg.2 2 ⊔
+        Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (fun m' => m'.pos = m.pos ∧ ∃ es : List GivensEntry, es.length = n ∧
+        (∀ e ∈ es, e.1 + 1 < n + 1) ∧ HoldsSlottedLog lg ns w L (P ++ es) m'.store ∧
+        ∃ H' R : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+          IsStableQRStepBy (givensLog (n + 1) es) (300 * (n + 1) ^ 2 * u * (specNorm H + ‖shift‖))
+            H shift H' R ∧
           HoldsMatrix z H' m'.store ∧
           m'.store.readBlock dg.1 dg.2 2 =
-            some [(R (Fin.last n) (Fin.last n)).re, (R (Fin.last n) (Fin.last n)).im]) m := by
-  have hzero : M.lit 0 = 0 := by simpa using hM.lit 0
-  refine (stepWithDiag_writes_of_sweep
-    (P := fun W Z => RoundedSweepInv u n H (machineShiftedPrefix M H shift (n + 1)) W Z)
-    hS hzero hl hA hs hz hd haz hsz hzd fun m₁ w cf hW hZ hc hwz hwc hzc hl₁ =>
-      sweep_writes_roundedSweepInv hS hM hu hCmp hnu
-        (isUpperHessenberg_machineShiftedPrefix hH shift _) hW hZ hc hwz hwc hzc hl₁).mono
-    le_rfl ?_
-  intro m' _ ⟨hp, W, Z, hinv, hZ', hD⟩
-  obtain ⟨R, hR, hRl⟩ := hinv.exists_isStableQRStep hu hnu
-    (specNorm_machineShiftedPrefix_sub_le hM hu H shift)
-  exact ⟨hp, upperHessenbergPart Z, R, hR, hZ', by rw [hRl]; exact hD⟩
+            some [(R (Fin.last n) (Fin.last n)).re, (R (Fin.last n) (Fin.last n)).im]) m :=
+  sorry
 
-/-- **The rounded single shifted QR step in place is backward stable**
+/-- **The rounded single shifted QR step in place is backward stable by its recorded unitary**
 ([BanksGarzaVargasSrivastava2022, Lemma 3.5], with the error base $\|\mathbf{H}\|_2 + \lvert
 s\rvert$ for the paper's $\|\mathbf{H} - s\|_2$ and the constant $300(n+1)^2$ for the paper's
-$32n^{3/2}$): on a machine with the standard model at $\boldsymbol{u} \ge 0$ with
-$(n+1)\boldsymbol{u} \le 1/2500$, `stepWithDiagInPlace` replaces an upper Hessenberg $\mathbf{H}$
-by a backward-stable step with error $300(n+1)^2\boldsymbol{u}(\|\mathbf{H}\|_2 + \lvert s\rvert)$
-and stores the last diagonal entry of its triangular factor. The scratch matrix is disjoint from
-the matrix, the shift and the diagonal pair; the matrix is disjoint from the diagonal pair. -/
+$32n^{3/2}$): `NLAlib.ShiftedQR.stepWithDiag_isStableQRStep` for `stepWithDiagInPlace`, which
+replaces an upper Hessenberg $\mathbf{H}$ by the step. The scratch matrix is disjoint from the
+matrix, the shift and the diagonal pair; the matrix is disjoint from the pair; the log from all of
+them. -/
 theorem stepWithDiagInPlace_isStableQRStep {M : Machine ℝ} {I : Interp Op Tst ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hu : 0 ≤ u) (hCmp : IsCmp id I)
-    {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {a s t dg : ℕ × ℕ}
+    (hL : IsIndexLit M I) {nmax : ℕ} (hNat : IsExactNatLit id M nmax)
+    {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {a s t dg lg : ℕ × ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {shift : ℂ} (hH : IsUpperHessenberg H)
-    (hnu : (n + 1 : ℝ) * u ≤ 1 / 2500)
-    (hl : m.Live [a, s, t, dg]) (hA : HoldsMatrix a H m.store)
+    (hnu : (n + 1 : ℝ) * u ≤ 1 / 2500) (hn : n ≤ nmax)
+    {ns w : ℕ} {L : List (Option (List GivensEntry))} {P : List GivensEntry}
+    (hlog : HoldsSlottedLog lg ns w L P m.store) (hj : L.length < ns) (hw : P.length + n ≤ w)
+    (hl : m.Live [a, s, t, dg, lg]) (hA : HoldsMatrix a H m.store)
     (hs : m.store.readBlock s.1 s.2 2 = some [shift.re, shift.im])
     (ht : t.2 + 2 * ((n + 1) * (n + 1)) ≤ m.store.len t.1)
     (hd : dg.2 + 2 ≤ m.store.len dg.1)
@@ -658,53 +575,45 @@ theorem stepWithDiagInPlace_isStableQRStep {M : Machine ℝ} {I : Interp Op Tst 
     (htd : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))
       (Store.inBlock dg.1 dg.2 2))
     (had : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
-      (Store.inBlock dg.1 dg.2 2)) :
-    Writes .total I τ stepWithDiagInPlace.body (Env.frame [n + 1] [a, s, t, a, dg])
+      (Store.inBlock dg.1 dg.2 2))
+    (hlgd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 2 ⊔
+        Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock dg.1 dg.2 2)) :
+    Writes .total I τ stepWithDiagInPlace.body
+      (Env.frame [n + 1, w, L.length, P.length] [a, s, t, a, dg, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
-        Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock dg.1 dg.2 2)
-      (fun m' => m'.pos = m.pos ∧ ∃ H' R : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
-        IsStableQRStep (300 * (n + 1) ^ 2 * u * (specNorm H + ‖shift‖)) H shift H' R ∧
+        Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock dg.1 dg.2 2 ⊔
+        Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (fun m' => m'.pos = m.pos ∧ ∃ es : List GivensEntry, es.length = n ∧
+        (∀ e ∈ es, e.1 + 1 < n + 1) ∧ HoldsSlottedLog lg ns w L (P ++ es) m'.store ∧
+        ∃ H' R : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+          IsStableQRStepBy (givensLog (n + 1) es) (300 * (n + 1) ^ 2 * u * (specNorm H + ‖shift‖))
+            H shift H' R ∧
           HoldsMatrix a H' m'.store ∧
           m'.store.readBlock dg.1 dg.2 2 =
-            some [(R (Fin.last n) (Fin.last n)).re, (R (Fin.last n) (Fin.last n)).im]) m := by
-  have hlen := Store.le_len_of_readBlock hA (by positivity)
-  have hstep := stepWithDiag_isStableQRStep (τ := τ) hS hM hu hCmp hH hnu hl hA hs ht hd hat hst
-    htd
-  refine hstep.frame_seq_le rfl rfl hl (sup_le (le_sup_right.trans le_sup_left) le_sup_right) ?_
-  intro m₁ hfr ⟨hp, H', R, hR, hT, hD⟩
-  have hcopy := copyMatrix_writes (τ := τ) hS hT (by rw [hfr.len_eq]; exact hlen) hat.symm
-  refine (hcopy.in_frame rfl rfl ((hl.congr hfr.length_eq).mono (by simp))).mono
-    (le_sup_left.trans le_sup_left) ?_
-  intro m₂ hfr₂ ⟨hp₂, hA₂⟩
-  exact ⟨hp₂.trans hp, H', R, hR, hA₂, hfr₂.keep (Store.readsOnly_readBlock _ _ _ _) had hD⟩
+            some [(R (Fin.last n) (Fin.last n)).re, (R (Fin.last n) (Fin.last n)).im]) m :=
+  sorry
 
-/-- The words of entry `j` of a list of complex numbers stored as interleaved pairs. -/
-private theorem take_drop_flatMap_pair (ss : List ℂ) {j : ℕ} (hj : j < ss.length) :
-    ((ss.flatMap fun z => [z.re, z.im]).drop (2 * j)).take 2 = [ss[j].re, ss[j].im] := by
-  induction ss generalizing j with
-  | nil => simp at hj
-  | cons z zs ih =>
-    cases j with
-    | zero => simp
-    | succ j =>
-      rw [List.flatMap_cons, show 2 * (j + 1) = 2 + 2 * j by ring, ← List.drop_drop]
-      simpa using ih (by simpa using hj)
-
-/-- **The degree $k$ rounded step is a stable chain** (the setting of
+/-- **The degree $k$ rounded step is a stable chain by its recorded unitary** (the setting of
 [BanksGarzaVargasSrivastava2022, Lemma 3.6]): on a machine with the standard model at
 $\boldsymbol{u} \ge 0$ with $(n+1)\boldsymbol{u} \le 1/2500$, from an upper Hessenberg
 $\mathbf{H}$ of order $n + 1$ and the shifts $s_1, \dots, s_k$ stored as $2k$ words, the program
-`multiStepStable` stores in place an $\widehat{\mathbf{H}}'$, and in `Ds` the last diagonal entries
-of triangular factors $\widehat{\mathbf{R}}_1, \dots, \widehat{\mathbf{R}}_k$, such that the steps
-form a backward-stable chain with relative error $x = 300(n+1)^2\boldsymbol{u}$ (step $\ell$ has
-error $x(\|\mathbf{H}_\ell\|_2 + \lvert s_\ell\rvert)$ at its own input). The matrix, the shifts
-and the diagonal outputs are pairwise disjoint views. -/
-theorem multiStepStable_isStableQRChain {M : Machine ℝ} {I : Interp Op Tst ℝ} {u : ℝ}
+`multiStepStable` appends $kn$ entries (planes below $n$) to the pending slot $j$ of the log
+(empty before, `P = []`), stores in place an $\widehat{\mathbf{H}}'$, and in `Ds` the last diagonal
+entries of triangular factors $\widehat{\mathbf{R}}_1, \dots, \widehat{\mathbf{R}}_k$, such that
+the steps form a backward-stable chain with relative error $x = 300(n+1)^2\boldsymbol{u}$ by the
+exact unitary `givensLog (n + 1) es` of the entries. The matrix, the shifts, the diagonal outputs
+and the log are pairwise disjoint views. -/
+theorem multiStepStable_isStableQRChainBy {M : Machine ℝ} {I : Interp Op Tst ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hu : 0 ≤ u) (hCmp : IsCmp id I)
-    {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {a s ds : ℕ × ℕ}
+    (hL : IsIndexLit M I) {nmax : ℕ} (hNat : IsExactNatLit id M nmax)
+    {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {a s ds lg : ℕ × ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ss : List ℂ} (hH : IsUpperHessenberg H)
-    (hnu : (n + 1 : ℝ) * u ≤ 1 / 2500)
-    (hl : m.Live [a, s, ds]) (hA : HoldsMatrix a H m.store)
+    (hnu : (n + 1 : ℝ) * u ≤ 1 / 2500) (hn : n ≤ nmax)
+    {ns w : ℕ} {L : List (Option (List GivensEntry))}
+    (hlog : HoldsSlottedLog lg ns w L [] m.store) (hj : L.length < ns)
+    (hw : ss.length * n ≤ w)
+    (hl : m.Live [a, s, ds, lg]) (hA : HoldsMatrix a H m.store)
     (hs : m.store.readBlock s.1 s.2 (2 * ss.length) =
       some (ss.flatMap fun z => [z.re, z.im]))
     (hd : ds.2 + 2 * ss.length ≤ m.store.len ds.1)
@@ -713,10 +622,54 @@ theorem multiStepStable_isStableQRChain {M : Machine ℝ} {I : Interp Op Tst ℝ
     (had : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
       (Store.inBlock ds.1 ds.2 (2 * ss.length)))
     (hsd : Fp.Disj (Store.inBlock s.1 s.2 (2 * ss.length))
-      (Store.inBlock ds.1 ds.2 (2 * ss.length))) :
-    Writes .total I τ multiStepStable.body (Env.frame [n + 1, ss.length] [a, s, a, ds])
+      (Store.inBlock ds.1 ds.2 (2 * ss.length)))
+    (hlgd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
-        Store.inBlock ds.1 ds.2 (2 * ss.length))
+        Store.inBlock s.1 s.2 (2 * ss.length) ⊔ Store.inBlock ds.1 ds.2 (2 * ss.length))) :
+    Writes .total I τ multiStepStable.body
+      (Env.frame [n + 1, ss.length, w, L.length] [a, s, a, ds, lg])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock ds.1 ds.2 (2 * ss.length) ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (fun m' => m'.pos = m.pos ∧ ∃ es : List GivensEntry, es.length = ss.length * n ∧
+        (∀ e ∈ es, e.1 + 1 < n + 1) ∧ HoldsSlottedLog lg ns w L es m'.store ∧
+        ∃ (H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+          (Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)),
+          IsStableQRChainBy (300 * (n + 1) ^ 2 * u) H ss H' Rs (givensLog (n + 1) es) ∧
+          IsUpperHessenberg H' ∧ HoldsMatrix a H' m'.store ∧
+          m'.store.readBlock ds.1 ds.2 (2 * ss.length) =
+            some (Rs.flatMap fun R =>
+              [(R (Fin.last n) (Fin.last n)).re, (R (Fin.last n) (Fin.last n)).im])) m :=
+  sorry
+
+/-- **The degree $k$ rounded step is a stable chain** (the setting of
+[BanksGarzaVargasSrivastava2022, Lemma 3.6]): `NLAlib.ShiftedQR.multiStepStable_isStableQRChainBy`
+without the unitary. -/
+theorem multiStepStable_isStableQRChain {M : Machine ℝ} {I : Interp Op Tst ℝ} {u : ℝ}
+    (hS : IsScalar M I) (hM : StdModel u id M) (hu : 0 ≤ u) (hCmp : IsCmp id I)
+    (hL : IsIndexLit M I) {nmax : ℕ} (hNat : IsExactNatLit id M nmax)
+    {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {a s ds lg : ℕ × ℕ}
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ss : List ℂ} (hH : IsUpperHessenberg H)
+    (hnu : (n + 1 : ℝ) * u ≤ 1 / 2500) (hn : n ≤ nmax)
+    {ns w : ℕ} {L : List (Option (List GivensEntry))}
+    (hlog : HoldsSlottedLog lg ns w L [] m.store) (hj : L.length < ns)
+    (hw : ss.length * n ≤ w)
+    (hl : m.Live [a, s, ds, lg]) (hA : HoldsMatrix a H m.store)
+    (hs : m.store.readBlock s.1 s.2 (2 * ss.length) =
+      some (ss.flatMap fun z => [z.re, z.im]))
+    (hd : ds.2 + 2 * ss.length ≤ m.store.len ds.1)
+    (has : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock s.1 s.2 (2 * ss.length)))
+    (had : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock ds.1 ds.2 (2 * ss.length)))
+    (hsd : Fp.Disj (Store.inBlock s.1 s.2 (2 * ss.length))
+      (Store.inBlock ds.1 ds.2 (2 * ss.length)))
+    (hlgd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock s.1 s.2 (2 * ss.length) ⊔ Store.inBlock ds.1 ds.2 (2 * ss.length))) :
+    Writes .total I τ multiStepStable.body
+      (Env.frame [n + 1, ss.length, w, L.length] [a, s, a, ds, lg])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock ds.1 ds.2 (2 * ss.length) ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun m' => m'.pos = m.pos ∧ ∃ (H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
         (Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)),
         IsStableQRChain (300 * (n + 1) ^ 2 * u) H ss H' Rs ∧ IsUpperHessenberg H' ∧
@@ -724,77 +677,9 @@ theorem multiStepStable_isStableQRChain {M : Machine ℝ} {I : Interp Op Tst ℝ
           m'.store.readBlock ds.1 ds.2 (2 * ss.length) =
             some (Rs.flatMap fun R =>
               [(R (Fin.last n) (Fin.last n)).re, (R (Fin.last n) (Fin.last n)).im])) m := by
-  have hlive : a.1 < m.store.length ∧ s.1 < m.store.length ∧ ds.1 < m.store.length := by
-    simpa [Mem.Live] using hl
-  -- the post of the loop is kept by the release of the scratch matrix
-  change Writes .total I τ (Stmt.allocs [.const 2 * (.var 0 * .var 0)] _) _ _ _ m
-  refine writes_allocs_preserving_post rfl
-    (fun hBelow ⟨hp, H', Rs, hc, hH', hA', hD'⟩ => ⟨hp, H', Rs, hc, hH',
-      hA'.of_below hBelow hlive.1, hBelow.readBlock_of hlive.2.2 hD'⟩) ?_
-  intro store hlen hlens hBelow
-  let t : ℕ × ℕ := (m.store.length, 0)
-  have ht : store.len t.1 = 2 * ((n + 1) * (n + 1)) := by
-    simpa [t] using hlens 0 (by simp)
-  have hta : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))
-      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) :=
-    Fp.disj_inBlock_of_ne (by dsimp [t]; omega)
-  have hts : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))
-      (Store.inBlock s.1 s.2 (2 * ss.length)) :=
-    Fp.disj_inBlock_of_ne (by dsimp [t]; omega)
-  have htd : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))
-      (Store.inBlock ds.1 ds.2 (2 * ss.length)) :=
-    Fp.disj_inBlock_of_ne (by dsimp [t]; omega)
-  set F := Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
-    Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock ds.1 ds.2 (2 * ss.length)
-  have hFs : Fp.Disj F (Store.inBlock s.1 s.2 (2 * ss.length)) :=
-    Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨has, hts⟩, hsd.symm⟩
-  have hl₀ : (⟨store, m.pos⟩ : Mem ℝ).Live [a, s, a, ds, t] := by
-    simp [Mem.Live, t, hlen]; omega
-  refine (writes_loop (m := ⟨store, m.pos⟩) (n := .var 1) (N := ss.length) rfl (fun _ => F)
-    (fun _ _ => le_rfl)
-    (fun j μ => μ.pos = m.pos ∧ ∃ (H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
-      (Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)),
-      IsStableQRChain (300 * (n + 1) ^ 2 * u) H (ss.take j) H' Rs ∧ IsUpperHessenberg H' ∧
-        HoldsMatrix a H' μ.store ∧
-        μ.store.readBlock ds.1 ds.2 (2 * j) = some (Rs.flatMap fun R =>
-          [(R (Fin.last n) (Fin.last n)).re, (R (Fin.last n) (Fin.last n)).im]))
-    ⟨rfl, H, [], by simpa using IsStableQRChain.nil (x := 300 * (n + 1) ^ 2 * u) H, hH,
-      hA.of_below hBelow hlive.1, by simp⟩ ?_).mono
-    (sup_le (sup_le (le_sup_left.trans le_sup_left) (Fp.inBlock_le_sup_above le_rfl))
-      (le_sup_right.trans le_sup_left)) ?_
-  · intro j hj μ hfr ⟨hp, Hj, Rs, hc, hHj, hAj, hDj⟩
-    have hsμ := hfr.keep (Store.readsOnly_readBlock _ _ _ _) hFs
-      ((hBelow.readBlock hlive.2.1 _ _).trans hs)
-    have hsj : μ.store.readBlock s.1 (s.2 + 2 * j) 2 = some [ss[j].re, ss[j].im] := by
-      rw [Store.readBlock_sub hsμ (by omega), take_drop_flatMap_pair ss hj]
-    have hdlen : ds.2 + 2 * ss.length ≤ μ.store.len ds.1 := by
-      rw [hfr.len_eq, (hBelow ds.1 hlive.2.2).1]; exact hd
-    have hdg : Store.inBlock ds.1 (ds.2 + 2 * j) 2 ≤ Store.inBlock ds.1 ds.2 (2 * ss.length) :=
-      fun b i hi => ⟨hi.1, by have := hi.2.1; omega, by have := hi.2.2; omega⟩
-    have hpre : Store.inBlock ds.1 ds.2 (2 * j) ≤ Store.inBlock ds.1 ds.2 (2 * ss.length) :=
-      fun b i hi => ⟨hi.1, hi.2.1, by have := hi.2.2; omega⟩
-    have hlμ : μ.Live [a, (s.1, s.2 + 2 * j), t, a, (ds.1, ds.2 + 2 * j)] := by
-      simp [Mem.Live, hfr.length_eq, t, hlen]; omega
-    have hstep := stepWithDiagInPlace_isStableQRStep (τ := τ) (m := μ) (t := t)
-      (s := (s.1, s.2 + 2 * j)) (dg := (ds.1, ds.2 + 2 * j)) hS hM hu hCmp hHj hnu
-      (hlμ.mono (by simp)) hAj hsj
-      (by rw [hfr.len_eq]; dsimp [t]; simpa only [Nat.zero_add] using ht.ge)
-      (by dsimp only; omega)
-      hta.symm (Fp.disj_inBlock_of_ne (by dsimp [t]; omega))
-      (htd.mono le_rfl hdg) (had.mono le_rfl hdg)
-    refine (hstep.in_frame rfl rfl hlμ).mono
-      (sup_le (sup_le (le_sup_left.trans le_sup_left) (le_sup_right.trans le_sup_left))
-        (hdg.trans le_sup_right)) ?_
-    intro μ' hfr' ⟨hp', H', R, hR, hA', hD'⟩
-    have hDj' := hfr'.keep (Store.readsOnly_readBlock _ _ _ _)
-      (Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨had.mono le_rfl hpre,
-        htd.mono le_rfl hpre⟩, (Fp.disj_inBlock_of_le le_rfl).symm⟩) hDj
-    refine ⟨hp'.trans hp, H', Rs ++ [R], ?_, hR.1, hA', ?_⟩
-    · rw [List.take_add_one, List.getElem?_eq_getElem hj, Option.toList_some]
-      exact hc.snoc hR
-    · rw [show 2 * (j + 1) = 2 * j + 2 by ring, List.flatMap_append]
-      exact Store.readBlock_add hDj' hD'
-  · intro μ _ ⟨hp, H', Rs, hc, hH', hA', hD'⟩
-    exact ⟨hp, H', Rs, by simpa using hc, hH', hA', hD'⟩
+  refine (multiStepStable_isStableQRChainBy hS hM hu hCmp hL hNat hH hnu hn hlog hj hw hl hA hs hd
+    has had hsd hlgd).mono le_rfl ?_
+  rintro m' - ⟨hp, es, -, -, -, H', Rs, hc, hH', hA', hD⟩
+  exact ⟨hp, H', Rs, hc.isStableQRChain, hH', hA', hD⟩
 
 end NLAlib.ShiftedQR

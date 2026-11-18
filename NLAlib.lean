@@ -100,6 +100,7 @@ public import NLAlib.Eigensolvers.ShiftedQR.RoundedSmallEig
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSmallEigCertificate
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolve
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveBackward
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveSchur
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveTermination
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedTheorems
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedTheoremsBits

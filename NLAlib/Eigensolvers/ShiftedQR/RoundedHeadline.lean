@@ -44,14 +44,8 @@ decoupler that meets `NLAlib.ShiftedQR.RandomDecouplingContract` (Lemma 6.4's lo
 * `NLAlib.ShiftedQR.measurableSet_decoupleOutcome`, `NLAlib.ShiftedQR.measurableSet_leafOutcome`:
   the outcomes of the randomized calls that the worklist uses are measurable, so each call's
   family of good sets becomes one (`NLAlib.Ops.PWrites.pstep_of_forall`).
-* `NLAlib.ShiftedQR.solveRoundedWith_pwrites`, `NLAlib.ShiftedQR.roundedDecouple_pwrites`,
-  `NLAlib.ShiftedQR.roundedLarge_pwrites`, `NLAlib.ShiftedQR.roundedRange_pwrites`,
-  `NLAlib.ShiftedQR.roundedWorklistRound_pwrites`, `NLAlib.ShiftedQR.roundedWorklist_pwrites`:
-  the round of `NLAlib.ShiftedQR.roundedWorklistRound_backwardStep` and its loop on the good
-  tapes.
-* `NLAlib.ShiftedQR.solveRoundedWith_pwrites`: the worklist as a probabilistic block specification.
-* `NLAlib.ShiftedQR.solveRoundedWith_pwrites`: the probability that the run does
-  not return the spectrum of a nearby matrix.
+The worklist in Schur mode with these routines on the good tapes is
+`NLAlib.ShiftedQR.solveRoundedWith_pwrites` (`NLAlib.Eigensolvers.ShiftedQR.RoundedSolveSchur`).
 -/
 
 @[expose] public section
@@ -187,67 +181,5 @@ def RandomDecouplingRoutineContract (law : ℕ → Measure ℝ) (B g φ : ℝ) (
           IsUpperHessenberg H' ∧ (∃ i : Fin n, n ≤ (i : ℕ) + k ∧ ‖H' i.succ i.castSucc‖ ≤ ω) ∧
           HoldsMatrix w₀ H' μ'.store) φ
 
-section Theorems
-
-variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q]
-
-/-- **The rounded worklist in Schur mode as a probabilistic block**
-([BanksGarzaVargasSrivastava2022, Theorem 6.3] with the Schur form): on a scalar machine with the
-standard model, exact natural literals up to $n + 1$, exact `toNat` and comparisons, and a
-measurable tape-local interpretation, let the decoupler meet
-`NLAlib.ShiftedQR.RandomDecouplingRoutineContract` on the class $(2B, g/2)$ with error
-$\varepsilon(N_0)$, and the leaf meet the Schur leaf contract
-(`NLAlib.Schur.RandomSchurLeafContract`) with errors $(\varepsilon_L, \beta)$ on orders at most
-$\min(k, n + 1)$. From an upper Hessenberg $\mathbf{H}$, diagonalizable with condition at most $B$
-and eigenvalues separated by $g > 0$, and an accumulator $\mathbf{U}$, under the merged threshold
-and precision conditions with the replay and product errors $\rho = 78\boldsymbol{u}\,n_s w N_0$
-and $\rho_L = 8(n + 1)(k + 2)\boldsymbol{u}N_0$ in the budget, except with probability at most $2(n
-+ 1)(\varphi_D + \varphi_L)$ the flag is $0$, the stored matrix $\widehat{\mathbf{T}}$ is upper
-triangular and $(\widehat{\mathbf{U}}, \widehat{\mathbf{T}})$ is tracked from $(\mathbf{U},
-\mathbf{H})$ (`NLAlib.IsTrackedUnitarySimilar`) with the backward error $2(n + 1)(c +
-\varepsilon(N_0) + \beta + \rho + \rho_L)$ and the relative accumulator error $(1 +
-24\boldsymbol{u})^{2(n+1)(n_s w + 2k(k+2))}(1 + \varepsilon_L)^{n+1} - 1$. The constants of $\rho$,
-$\rho_L$ and the accumulator error are design values (fixed when proved). -/
-theorem solveRoundedWith_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : ℕ}
-    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu : 0 ≤ u) (hu1 : u < 1)
-    (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
-    (hC : IsCmp id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
-    (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ} {B g φD εL β φL : ℝ}
-    {k F T ns w : ℕ} {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} (D : Impl O Q) {N₀ : ℝ}
-    (hD : RandomDecouplingRoutineContract law (2 * B) (g / 2) φD k F T n N₀ ps ns w ω ε D I)
-    (L : Impl O Q)
-    (hLeaf : Schur.RandomSchurLeafContract law εL β φL (min k (n + 1)) N₀ ps T L I)
-    (hφD : 0 ≤ φD) (hφL : 0 ≤ φL) (hεL : 0 ≤ εL) {a t p uo f : ℕ × ℕ}
-    {H U V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {thr c : ℝ}
-    (hHess : IsUpperHessenberg H) (hV : IsUnit V) (hHV : H * V = V * Matrix.diagonal d)
-    (hκ : pseudoConditionNumber V ≤ B) (hg : 0 < g) (hgap : ∀ i j, i ≠ j → g ≤ ‖d i - d j‖)
-    (hfind : (1 + u) ^ 2 * ω ^ 2 ≤ thr) (hcut : thr ≤ (1 - u) ^ 2 * c ^ 2) (hc : 0 ≤ c)
-    (hβ : 0 ≤ β) (hε0 : 0 ≤ ε N₀)
-    (hN₀ : specNorm H + 2 * (n + 1) * (c + ε N₀ + β + 78 * u * (ns * w) * N₀ +
-      8 * (n + 1) * (k + 2) * u * N₀) ≤ N₀)
-    (hsmall : 2 * (n + 1) * (c + ε N₀ + β + 78 * u * (ns * w) * N₀ +
-      8 * (n + 1) * (k + 2) * u * N₀) ≤ g / (16 * (n + 1) * B)) :
-    PWrites law I (solveRoundedWith D L).body
-      (Env.frame [n + 1, k, ps.length, F, T, ns, w] [a, t, p, uo, a, uo, f])
-      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
-        Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
-      (fun μ => μ.Live [a, t, p, uo, f] ∧
-        μ.Room [a, t, p, uo, f]
-          [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * ((n + 1) * (n + 1)), 1] ∧
-        Fp.Apart [a, t, p, uo, f]
-          [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * ((n + 1) * (n + 1)), 1] ∧
-        HoldsMatrix a H μ.store ∧ HoldsMatrix uo U μ.store ∧ μ.store.get t.1 t.2 = some thr ∧
-        μ.store.readBlock p.1 p.2 ps.length = some ps)
-      (fun μ' => μ'.store.get f.1 f.2 = some 0 ∧
-        ∃ U' Tm : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
-          HoldsMatrix a Tm μ'.store ∧ HoldsMatrix uo U' μ'.store ∧ Tm.IsUpperTriangular ∧
-          IsTrackedUnitarySimilar
-            ((1 + 24 * u) ^ (2 * (n + 1) * (ns * w + 2 * k * (k + 2))) * (1 + εL) ^ (n + 1) - 1)
-            (2 * (n + 1) * (c + ε N₀ + β + 78 * u * (ns * w) * N₀ +
-              8 * (n + 1) * (k + 2) * u * N₀)) U H U' Tm)
-      (2 * (n + 1) * (φD + φL)) :=
-  sorry
-
-end Theorems
 
 end NLAlib.ShiftedQR

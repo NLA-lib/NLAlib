@@ -77,9 +77,12 @@ noncomputable def SchurData.buffers {words : ℕ → ℝ → ℝ → List ℝ}
     List.replicate (2 * ((d 0 + 1) * (d 0 + 1))) none, [none]]
 
 /-- **The admitted sizes** on the machine `Mch`: the natural literals up to the order $n + 1$ are
-exact, and the sizes are those of some $0 < \delta \le 1$, $0 < \varphi \le 1$. -/
+exact, the machine has the standard model at some $\boldsymbol{u}$ with
+$400(n + 1)^2\boldsymbol{u} \le 1$ (the run terminates on every tape), and the sizes are those of
+some $0 < \delta \le 1$, $0 < \varphi \le 1$. -/
 def SchurSizes (Mch : Machine ℝ) (sizes : ℕ → ℝ → ℝ → Fin 6 → ℕ) (d : Fin 6 → ℕ) : Prop :=
   IsExactNatLit id Mch (d 0 + 1) ∧
+    (∃ u : ℝ, StdModel u id Mch ∧ 400 * ((d 0 : ℝ) + 1) ^ 2 * u ≤ 1) ∧
     ∃ δ φ : ℝ, 0 < δ ∧ δ ≤ 1 ∧ 0 < φ ∧ φ ≤ 1 ∧ sizes (d 0) δ φ = d
 
 /-- **The problem** of the dense Schur pipeline on the machine `Mch`: the four raw buffers of
@@ -93,7 +96,7 @@ noncomputable def schurPipelineProblem (Mch : Machine ℝ) (words : ℕ → ℝ 
   admissible _ x buffers := buffers = x.buffers
   admitted := admitted
   supply d hd := by
-    obtain ⟨-, δ, φ, -, -, -, -, hs⟩ := hd
+    obtain ⟨-, -, δ, φ, -, -, -, -, hs⟩ := hd
     exact ⟨⟨0, δ, φ, hs⟩, _, rfl⟩
 
 /-- **The work (and span) of the pipeline** from the stages' work bounds $W_\bullet$: their sum

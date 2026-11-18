@@ -697,6 +697,75 @@ theorem denseSchur_measureReal_not_schur_le {Mch : Machine ℝ} {I : Interp O Q 
     hδ1 hφ hφ1 hLeaf (SmallEig.length_smallEigParams _ _ _ _ _ _) hR0 le_rfl hb0.le le_rfl
     hφL.le le_rfl (hu.trans (min_le_left _ _)) hin hξ
 
+/-- **The dense Schur solver terminates on every tape**, at any $\delta$ and $\varphi$, on a
+scalar machine with the standard model at $\boldsymbol{u}$, $400(n + 1)^2\boldsymbol{u} \le 1$,
+index literals, exact natural literals up to $n + 1$, exact `toNat` and comparisons, draws that
+store the tape entry and an exact polar disk sampler: the run of `denseSchur` from a memory
+holding $\mathbf{A}$ and the words of `denseSchurParams` writes only $\mathbf{A}$,
+$\widehat{\mathbf{U}}$ and the flag, and stores $\widehat{\mathbf{U}}$ with
+$\|\widehat{\mathbf{U}}^{\mathsf H}\widehat{\mathbf{U}} - \mathbf{I}\|_2 \le 2\varepsilon +
+\varepsilon^2$, $\varepsilon = (1 + 27(n + 1)^2\boldsymbol{u})(1 + 24\boldsymbol{u})^{R_c} - 1$,
+$R_c$ the rotation count of the core. -/
+theorem denseSchur_writes_orth {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : ℕ}
+    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
+    (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
+    (hSmp : IsSample I) {sU sG : ℕ} (hDisk : IsPolarDiskSampler sU I)
+    {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {δ φ : ℝ}
+    (hu : 400 * ((n : ℝ) + 1) ^ 2 * u ≤ 1) {a p uo f : ℕ × ℕ} {μ : Mem ℝ}
+    (hin : SchurPipelineInput (denseSchurParams n δ φ) a p uo f A μ) (τ : Tape ℝ) :
+    Writes .total I τ (denseSchur (O := O) (Q := Q) sG).body
+      (Env.frame (denseSchurDims n δ φ) [a, p, a, uo, f]) (schurFp n a uo f)
+      (SchurOrth (n := n) uo
+        (2 * ((1 + 27 * ((n : ℝ) + 1) ^ 2 * u) * (1 + 24 * u) ^ shqrSchurRotations n
+          (denseSchurDegree n δ φ) (denseSchurShQRParams n δ φ ++ denseSchurLeafParams n δ φ).length
+          (denseSchurCap n δ φ) (smallEigLeafRotations (denseSchurDegree n δ φ)
+            (denseSchurLeafCap n δ φ)) - 1) +
+         ((1 + 27 * ((n : ℝ) + 1) ^ 2 * u) * (1 + 24 * u) ^ shqrSchurRotations n
+          (denseSchurDegree n δ φ) (denseSchurShQRParams n δ φ ++ denseSchurLeafParams n δ φ).length
+          (denseSchurCap n δ φ) (smallEigLeafRotations (denseSchurDegree n δ φ)
+            (denseSchurLeafCap n δ φ)) - 1) ^ 2)) μ := by
+  have hu0 : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
+  set Rc := shqrSchurRotations n (denseSchurDegree n δ φ)
+    (denseSchurShQRParams n δ φ ++ denseSchurLeafParams n δ φ).length (denseSchurCap n δ φ)
+    (smallEigLeafRotations (denseSchurDegree n δ φ) (denseSchurLeafCap n δ φ))
+  have hN : (((n + 1 : ℕ)) : ℝ) = (n : ℝ) + 1 := by push_cast; ring
+  have hN2 : ((n : ℝ) + 1) ^ 2 * u ≤ 1 / 400 := by linarith
+  have hn1 : (1 : ℝ) ≤ ((n : ℝ) + 1) ^ 2 := by
+    have := (Nat.cast_nonneg n : (0 : ℝ) ≤ n); nlinarith
+  have hNm : FrobNormEstimateContract (1 / 2) 2 (n + 1) (frobNormStage (O := O) (Q := Q)) I :=
+    frobNormStage_frobNormEstimateContract_half hS hM (by rw [hN]; nlinarith)
+  have hRed : HessenbergReducerContract (27 * (((n + 1 : ℕ)) : ℝ) ^ 2 * u)
+      (50 * (((n + 1 : ℕ)) : ℝ) ^ 2 * u) (n + 1) (hessenbergReduceQ (O := O) (Q := Q)) I :=
+    hessenbergReduceQ_hessenbergReducerContract hS hM hC hQ hL hNat (by omega)
+      (by rw [hN]; nlinarith)
+  have hCore : TerminatingSchurCore ((1 + 24 * u) ^ Rc - 1) (denseSchurDegree n δ φ)
+      (denseSchurCap n δ φ) (denseSchurLeafCap n δ φ) (n + 1)
+      (denseSchurThreshold n δ φ :: (denseSchurShQRParams n δ φ ++ denseSchurLeafParams n δ φ))
+      (roundedShQRSchur (O := O) (Q := Q) sG) I := by
+    rw [← shqrSchurParams_eq, show Rc = _ from (shqrSmallEigRotations_eq n δ φ).symm]
+    exact roundedShQRSchur_terminatingSchurCore hS hM (by nlinarith) hL hNat hQ hC hSmp hDisk rfl
+  have hReg : ∀ {τ : Tape ℝ} {μ : Mem ℝ} {a q : ℕ × ℕ}
+      (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ), HoldsMatrix a A μ.store →
+      μ.store.readBlock q.1 q.2 (denseSchurRegParams n δ φ).length =
+        some (denseSchurRegParams n δ φ) → μ.Live [a, q] →
+      Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
+        (Store.inBlock q.1 q.2 (denseSchurRegParams n δ φ).length) →
+      Writes .total I τ (ginibrePerturb (O := O) (Q := Q) sG).body
+        (Env.frame [n + 1, (denseSchurRegParams n δ φ).length] [a, q, a])
+        (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
+        (fun μ' => ∃ A' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A' μ'.store) μ :=
+    fun A hA hq hl _ => (SmallEig.ginibrePerturb_writes_word hS hL hSmp hl hA
+      (Store.get_of_readBlock hq (j := 0) (by simp [denseSchurRegParams,
+        SmallEig.length_smallEigParams]) 0)).mono le_rfl fun _ _ h => ⟨_, h.2⟩
+  have hw := schurPipelineWith_terminates (c₁ := 1 / 2) (c₂ := 2) (Nm := frobNormStage)
+    (Reg := ginibrePerturb (O := O) (Q := Q) sG) (Red := hessenbergReduceQ)
+    (Core := roundedShQRSchur (O := O) (Q := Q) sG) hS hM hL hNat hC
+    (by nlinarith) hNm hReg hRed hCore (by norm_num) (by positivity)
+    (by have := one_le_pow₀ (M₀ := ℝ) (n := Rc) (by linarith : (1 : ℝ) ≤ 1 + 24 * u); linarith)
+    hin τ
+  rw [hN, show (1 : ℝ) + ((1 + 24 * u) ^ Rc - 1) = (1 + 24 * u) ^ Rc by ring] at hw
+  exact hw
+
 /-- **The dense Schur solver terminates, with a near-orthonormal accumulator, on every tape**: on
 a scalar machine with the standard model at $\boldsymbol{u} \le \boldsymbol{u}_0$, index
 literals, exact natural literals up to $n + 1$, exact `toNat` and comparisons, draws that store
@@ -718,55 +787,18 @@ theorem denseSchur_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     Writes .total I τ (denseSchur (O := O) (Q := Q) sG).body
       (Env.frame (denseSchurDims n δ φ) [a, p, a, uo, f]) (schurFp n a uo f)
       (SchurOrth (n := n) uo (58 * denseSchurRotations n δ φ * u)) μ := by
-  obtain ⟨hu1, hu2, -, -, hu5, -, -, hu8⟩ := le_of_le_uDenseSchurWith (hu.trans (min_le_left _ _))
+  obtain ⟨-, hu2, -, -, -, -, -, hu8⟩ := le_of_le_uDenseSchurWith (hu.trans (min_le_left _ _))
   obtain ⟨-, -, hR⟩ := mul_denseSchurRotationsWith_le hδ hδ1 (hu.trans (min_le_left _ _))
   have hu0 : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
   have hd1 : denseSchurDelta n δ ≤ 1 / 16 := by
     have hs1 : (1 : ℝ) ≤ √((n : ℝ) + 1) := by
       rw [Real.one_le_sqrt]; have := (Nat.cast_nonneg n : (0 : ℝ) ≤ n); linarith
     unfold denseSchurDelta; rw [div_le_iff₀ (by positivity)]; nlinarith
-  set Rc := shqrSchurRotations n (denseSchurDegree n δ φ)
-    (denseSchurShQRParams n δ φ ++ denseSchurLeafParams n δ φ).length (denseSchurCap n δ φ)
-    (smallEigLeafRotations (denseSchurDegree n δ φ) (denseSchurLeafCap n δ φ))
-  obtain ⟨-, -, hεU, -⟩ := denseSchur_errors_le (Rc := Rc) hδ hu0 hR hu2 hu8 hδ1
-  have hN : (((n + 1 : ℕ) : ℝ)) = (n : ℝ) + 1 := by push_cast; ring
-  have hN2 : ((n : ℝ) + 1) ^ 2 * u ≤ 1 / 51200 := by
-    rw [le_div_iff₀ (by positivity)] at hu2
-    nlinarith
-  have hNm : FrobNormEstimateContract (1 / 2) 2 (n + 1) (frobNormStage (O := O) (Q := Q)) I :=
-    frobNormStage_frobNormEstimateContract_half hS hM (by rw [hN]; nlinarith)
-  have hRed : HessenbergReducerContract (27 * (((n + 1 : ℕ)) : ℝ) ^ 2 * u)
-      (50 * (((n + 1 : ℕ)) : ℝ) ^ 2 * u) (n + 1) (hessenbergReduceQ (O := O) (Q := Q)) I :=
-    hessenbergReduceQ_hessenbergReducerContract hS hM hC hQ hL hNat (by omega)
-      (by rw [hN]; nlinarith)
-  have hCore : TerminatingSchurCore ((1 + 24 * u) ^ Rc - 1) (denseSchurDegree n δ φ)
-      (denseSchurCap n δ φ) (denseSchurLeafCap n δ φ) (n + 1)
-      (denseSchurThreshold n δ φ :: (denseSchurShQRParams n δ φ ++ denseSchurLeafParams n δ φ))
-      (roundedShQRSchur (O := O) (Q := Q) sG) I := by
-    rw [← shqrSchurParams_eq, show Rc = _ from (shqrSmallEigRotations_eq n δ φ).symm]
-    exact roundedShQRSchur_terminatingSchurCore hS hM (by linarith) hL hNat hQ hC hSmp hDisk rfl
-  have hReg : ∀ {τ : Tape ℝ} {μ : Mem ℝ} {a q : ℕ × ℕ}
-      (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ), HoldsMatrix a A μ.store →
-      μ.store.readBlock q.1 q.2 (denseSchurRegParams n δ φ).length =
-        some (denseSchurRegParams n δ φ) → μ.Live [a, q] →
-      Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
-        (Store.inBlock q.1 q.2 (denseSchurRegParams n δ φ).length) →
-      Writes .total I τ (ginibrePerturb (O := O) (Q := Q) sG).body
-        (Env.frame [n + 1, (denseSchurRegParams n δ φ).length] [a, q, a])
-        (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
-        (fun μ' => ∃ A' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A' μ'.store) μ :=
-    fun A hA hq hl _ => (SmallEig.ginibrePerturb_writes_word hS hL hSmp hl hA
-      (Store.get_of_readBlock hq (j := 0) (by simp [denseSchurRegParams,
-        SmallEig.length_smallEigParams]) 0)).mono le_rfl fun _ _ h => ⟨_, h.2⟩
-  have hw := schurPipelineWith_terminates (c₁ := 1 / 2) (c₂ := 2) (Nm := frobNormStage)
-    (Reg := ginibrePerturb (O := O) (Q := Q) sG) (Red := hessenbergReduceQ)
-    (Core := roundedShQRSchur (O := O) (Q := Q) sG) hS hM hL hNat hC
-    (by linarith) hNm hReg hRed hCore (by norm_num) (by positivity)
-    (by have := one_le_pow₀ (M₀ := ℝ) (n := Rc) (by linarith : (1 : ℝ) ≤ 1 + 24 * u); linarith)
-    hin τ
-  refine hw.mono le_rfl fun μ' _ ⟨U, hU, ho⟩ => ⟨U, hU, ho.trans ?_⟩
-  rw [hN, show (1 : ℝ) + ((1 + 24 * u) ^ Rc - 1) = (1 + 24 * u) ^ Rc by ring]
-  exact hεU
+  obtain ⟨-, -, hεU, -⟩ := denseSchur_errors_le hδ hu0 hR hu2 hu8 hδ1
+  have h400 : 400 * ((n : ℝ) + 1) ^ 2 * u ≤ 1 := by
+    rw [le_div_iff₀ (by positivity)] at hu2; nlinarith
+  exact (denseSchur_writes_orth hS hM hL hNat hQ hC hSmp hDisk h400 hin τ).mono le_rfl
+    fun μ' _ ⟨U, hU, ho⟩ => ⟨U, hU, ho.trans hεU⟩
 
 /-- **The dense Schur solver lists the eigenvalues of a nearby matrix.** On the machine and
 streams of `NLAlib.Schur.denseSchur_measureReal_not_schur_le` (the standard model at

@@ -6,12 +6,14 @@ public import NLAlib.Eigensolvers.Deflation.Execution
 public import NLAlib.Eigensolvers.Deflation.Probability
 public import NLAlib.Eigensolvers.HessenbergReduction
 public import NLAlib.Eigensolvers.RandomizedDeflation
+public import NLAlib.Eigensolvers.Schur.Contracts
+public import NLAlib.Eigensolvers.Schur.Pipeline
+public import NLAlib.Eigensolvers.Schur.Regularizer
 public import NLAlib.Eigensolvers.ShiftedQR.Acceptance
 public import NLAlib.Eigensolvers.ShiftedQR.Alg
 public import NLAlib.Eigensolvers.ShiftedQR.Backward
 public import NLAlib.Eigensolvers.ShiftedQR.BlockCopy
 public import NLAlib.Eigensolvers.ShiftedQR.Certification
-public import NLAlib.Matrix.FinitePrecision.GivensCoefficients
 public import NLAlib.Eigensolvers.ShiftedQR.CompleteSearch
 public import NLAlib.Eigensolvers.ShiftedQR.Constants
 public import NLAlib.Eigensolvers.ShiftedQR.Cost
@@ -61,8 +63,6 @@ public import NLAlib.Eigensolvers.ShiftedQR.RangeFinish
 public import NLAlib.Eigensolvers.ShiftedQR.RangeLarge
 public import NLAlib.Eigensolvers.ShiftedQR.RangeProcess
 public import NLAlib.Eigensolvers.ShiftedQR.RangeSplit
-public import NLAlib.Matrix.FinitePrecision.GivensRotation
-public import NLAlib.Matrix.FinitePrecision.GivensPrograms
 public import NLAlib.Eigensolvers.ShiftedQR.Round
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedCertificate
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedDecouple
@@ -127,7 +127,6 @@ public import NLAlib.Eigensolvers.ShiftedQR.StableStep
 public import NLAlib.Eigensolvers.ShiftedQR.StableStepTermination
 public import NLAlib.Eigensolvers.ShiftedQR.Step
 public import NLAlib.Eigensolvers.ShiftedQR.StepProgram
-public import NLAlib.Matrix.FinitePrecision.StoredMatrix
 public import NLAlib.Eigensolvers.ShiftedQR.StorageNorm
 public import NLAlib.Eigensolvers.ShiftedQR.Sweep
 public import NLAlib.Eigensolvers.ShiftedQR.SweepOutput
@@ -872,6 +871,10 @@ public import NLAlib.Matrix.FinitePrecision.EntrywiseRounding
 public import NLAlib.Matrix.FinitePrecision.FixedPoint
 public import NLAlib.Matrix.FinitePrecision.Float
 public import NLAlib.Matrix.FinitePrecision.GivensChain
+public import NLAlib.Matrix.FinitePrecision.GivensCoefficients
+public import NLAlib.Matrix.FinitePrecision.GivensLog
+public import NLAlib.Matrix.FinitePrecision.GivensPrograms
+public import NLAlib.Matrix.FinitePrecision.GivensRotation
 public import NLAlib.Matrix.FinitePrecision.GivensRounded
 public import NLAlib.Matrix.FinitePrecision.GridMachine
 public import NLAlib.Matrix.FinitePrecision.HessenbergRowPoly
@@ -911,6 +914,7 @@ public import NLAlib.Matrix.FinitePrecision.SpectralBisection.Slots
 public import NLAlib.Matrix.FinitePrecision.SpectralBisection.Split
 public import NLAlib.Matrix.FinitePrecision.SpectralBisection.Tree
 public import NLAlib.Matrix.FinitePrecision.StoredDense
+public import NLAlib.Matrix.FinitePrecision.StoredMatrix
 public import NLAlib.Matrix.FinitePrecision.TapeRounding
 public import NLAlib.Matrix.FinitePrecision.Traces
 public import NLAlib.Matrix.FinitePrecision.VectorErrors

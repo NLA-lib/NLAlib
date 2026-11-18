@@ -153,7 +153,7 @@ noncomputable def uDenseSchurWith (n : ℕ) (δ φ : ℝ) (np RL : ℕ) : ℝ :=
   min (uShQR n (denseSchurDegree n δ φ) (2 * denseSchurB n δ φ) (denseSchurΓ n δ φ / 2) 8
     (denseSchurDelta n δ) (φ / 2)) <|
   min (1 / 100) <|
-  min (uShQRSchurReplay n (denseSchurDegree n δ φ) np (denseSchurCap n δ φ)
+  min (uShQRSchurReplay n (denseSchurDegree n δ φ) np (denseSchurCap n δ φ) RL
     (2 * denseSchurB n δ φ) (denseSchurΓ n δ φ / 2) 8 (denseSchurDelta n δ)) <|
   min (δ / (4096 * ((n : ℝ) + 1) * denseSchurRotationsWith n δ φ np RL))
     (δ / (64 * ((n : ℝ) + 1)))
@@ -235,7 +235,7 @@ theorem le_of_le_uDenseSchurWith {n : ℕ} {δ φ u : ℝ} {np RL : ℕ}
       u ≤ uShQR n (denseSchurDegree n δ φ) (2 * denseSchurB n δ φ) (denseSchurΓ n δ φ / 2) 8
         (denseSchurDelta n δ) (φ / 2) ∧
       u ≤ 1 / 100 ∧
-      u ≤ uShQRSchurReplay n (denseSchurDegree n δ φ) np (denseSchurCap n δ φ)
+      u ≤ uShQRSchurReplay n (denseSchurDegree n δ φ) np (denseSchurCap n δ φ) RL
         (2 * denseSchurB n δ φ) (denseSchurΓ n δ φ / 2) 8 (denseSchurDelta n δ) ∧
       u ≤ δ / (4096 * ((n : ℝ) + 1) * denseSchurRotationsWith n δ φ np RL) ∧
       u ≤ δ / (64 * ((n : ℝ) + 1)) := by
@@ -255,7 +255,7 @@ theorem uDenseSchurWith_pos {n : ℕ} {δ φ : ℝ} (np RL : ℕ) (hδ : 0 < δ)
       ginibreConditionTail := by unfold uSmallEigReduce; positivity
   have h4 := uShQR_pos (n := n) hk (by linarith : (1 : ℝ) ≤ 2 * denseSchurB n δ φ)
     (half_pos hΓ) hd0 (by norm_num : (0 : ℝ) < 8) (half_pos hφ)
-  have h6 : 0 < uShQRSchurReplay n (denseSchurDegree n δ φ) np (denseSchurCap n δ φ)
+  have h6 : 0 < uShQRSchurReplay n (denseSchurDegree n δ φ) np (denseSchurCap n δ φ) RL
       (2 * denseSchurB n δ φ) (denseSchurΓ n δ φ / 2) 8 (denseSchurDelta n δ) := by
     have := shqrBudget_pos (n := n) (by linarith : (1 : ℝ) ≤ 2 * denseSchurB n δ φ)
       (half_pos hΓ) hd0

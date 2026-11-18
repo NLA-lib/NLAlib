@@ -403,15 +403,14 @@ theorem denseSchur_np_bounds {n : ℕ} {δ φ : ℝ} (hδ : 0 < δ) (hδ1 : δ �
   push_cast
   exact ⟨by linarith [(denseSchurShQRParams n δ φ).length.cast_nonneg (α := ℝ)], by linarith⟩
 
-/-- The replay term of the precision threshold has $O(L)$ bits: there is a constant $c$ such
-that for $0 < \delta \le 1$ and $0 < \varphi \le 1$ the replay term
-`NLAlib.ShiftedQR.uShQRSchurReplay` of the core has at most $cL$ bits,
-$L = \log_2(4(n + 1)/(\delta\varphi))$. -/
-theorem denseSchur_replay_bits : ∃ c : ℝ, ∀ {n : ℕ} {δ φ : ℝ}, 0 < δ → δ ≤ 1 → 0 < φ → φ ≤ 1 →
-    logb 2 (uShQRSchurReplay n (denseSchurDegree n δ φ)
-      (denseSchurShQRParams n δ φ ++ denseSchurLeafParams n δ φ).length (denseSchurCap n δ φ)
-      (2 * denseSchurB n δ φ) (denseSchurΓ n δ φ / 2) 8 (denseSchurDelta n δ))⁻¹ ≤
-        c * logb 2 (4 * ((n : ℝ) + 1) / (δ * φ)) := by
+/-- The replay term of the precision threshold without the leaf term is polynomially small:
+`NLAlib.ShiftedQR.uShQRSchurReplay` at $R_L = 0$ is at least $Y^{-e}$,
+$Y = 4(n + 1)/(\delta\varphi)$. -/
+private theorem denseSchur_replay_zero_loBd : ∃ e : ℕ, ∀ {n : ℕ} {δ φ : ℝ}, 0 < δ → δ ≤ 1 →
+    0 < φ → φ ≤ 1 → LoBd (4 * ((n : ℝ) + 1) / (δ * φ)) e
+      (uShQRSchurReplay n (denseSchurDegree n δ φ)
+        (denseSchurShQRParams n δ φ ++ denseSchurLeafParams n δ φ).length (denseSchurCap n δ φ) 0
+        (2 * denseSchurB n δ φ) (denseSchurΓ n δ φ / 2) 8 (denseSchurDelta n δ)) := by
   obtain ⟨E, hE⟩ := denseSchur_arg_bounds
   refine ⟨E * 70, fun {n δ φ} hδ hδ1 hφ hφ1 => ?_⟩
   obtain ⟨hY4, hYc, -, -, -, -, -, -⟩ := hE (n := n) hδ hδ1 hφ hφ1
@@ -440,15 +439,14 @@ theorem denseSchur_replay_bits : ∃ c : ℝ, ∀ {n : ℕ} {δ φ : ℝ}, 0 < �
     (((HiBd.const hYc4 (by norm_num : (0 : ℝ) < 8) (by norm_num : (8 : ℝ) ≤ 4 ^ 2)).mul hNY).mul
       (hkY.add' hY2 (HiBd.const hYc4 (by norm_num : (0 : ℝ) < 2)
         (by norm_num : (2 : ℝ) ≤ 4 ^ 1)))))
-  have hrep : LoBd Yc 70 (uShQRSchurReplay n k np F (2 * denseSchurB n δ φ)
+  have hrep : LoBd Yc 70 (uShQRSchurReplay n k np F 0 (2 * denseSchurB n δ φ)
       (denseSchurΓ n δ φ / 2) 8 (denseSchurDelta n δ)) := by
     refine (hbs.div hden).of_le (le_of_eq ?_)
     unfold uShQRSchurReplay shqrSchurLogSize
     push_cast
+    rw [mul_zero, add_zero]
     field_simp
-  have h := (hrep.of_hiBd hYc1 hYc).logb_inv_le
-  push_cast at h
-  exact h
+  exact hrep.of_hiBd hYc1 hYc
 
 /-- The rotation count is polynomial: there is an exponent $P$ such that for
 $0 < \delta \le 1$ and $0 < \varphi \le 1$ the rotation count $R$ =
@@ -532,6 +530,43 @@ theorem denseSchurRotations_hiBd : ∃ P : ℕ, ∀ {n : ℕ} {δ φ : ℝ}, 0 <
       _ ≤ Y ^ 3 * (Y ^ a) ^ 5 * (Y ^ m) ^ 5 := by gcongr
       _ = Y ^ (3 + 5 * a + 5 * m) := by ring
   exact hRY
+
+/-- The replay term of the precision threshold has $O(L)$ bits: there is a constant $c$ such
+that for $0 < \delta \le 1$ and $0 < \varphi \le 1$ the replay term
+`NLAlib.ShiftedQR.uShQRSchurReplay` of the core with the `SmallEig` leaf's $R_L$ rotations has at
+most $cL$ bits, $L = \log_2(4(n + 1)/(\delta\varphi))$: the leaf term costs a factor
+$1 + 54R_L$ (`NLAlib.ShiftedQR.uShQRSchurReplay_zero_div_le`) with $R_L \le R$ =
+`NLAlib.Schur.denseSchurRotations` polynomial (`NLAlib.Schur.denseSchurRotations_hiBd`). -/
+theorem denseSchur_replay_bits : ∃ c : ℝ, ∀ {n : ℕ} {δ φ : ℝ}, 0 < δ → δ ≤ 1 → 0 < φ → φ ≤ 1 →
+    logb 2 (uShQRSchurReplay n (denseSchurDegree n δ φ)
+      (denseSchurShQRParams n δ φ ++ denseSchurLeafParams n δ φ).length (denseSchurCap n δ φ)
+      (smallEigLeafRotations (denseSchurDegree n δ φ) (denseSchurLeafCap n δ φ))
+      (2 * denseSchurB n δ φ) (denseSchurΓ n δ φ / 2) 8 (denseSchurDelta n δ))⁻¹ ≤
+        c * logb 2 (4 * ((n : ℝ) + 1) / (δ * φ)) := by
+  obtain ⟨E, hE⟩ := denseSchur_arg_bounds
+  obtain ⟨e, he⟩ := denseSchur_replay_zero_loBd
+  obtain ⟨P, hP⟩ := denseSchurRotations_hiBd
+  refine ⟨((e + (3 + P) : ℕ) : ℝ), fun {n δ φ} hδ hδ1 hφ hφ1 => ?_⟩
+  have hY4 := (hE (n := n) hδ hδ1 hφ hφ1).1
+  have h0 := he (n := n) hδ hδ1 hφ hφ1
+  have hR := hP (n := n) hδ hδ1 hφ hφ1
+  obtain ⟨hd0, -, -, -, -, hB, hΓ⟩ := denseSchur_params_basic (n := n) hδ hδ1 hφ hφ1
+  clear hE he hP
+  set RL := smallEigLeafRotations (denseSchurDegree n δ φ) (denseSchurLeafCap n δ φ)
+  have hRL : RL ≤ denseSchurRotations n δ φ := by
+    unfold denseSchurRotations denseSchurRotationsWith shqrSchurRotations
+    exact le_add_left (le_add_left (Nat.le_mul_of_pos_left _ (Nat.succ_pos n)))
+  have hR1 : (1 : ℝ) ≤ denseSchurRotations n δ φ := by
+    exact_mod_cast Nat.one_le_iff_ne_zero.mpr (by exact_mod_cast hR.1.ne')
+  have hRLR : (RL : ℝ) ≤ denseSchurRotations n δ φ := by exact_mod_cast hRL
+  have hRLY : HiBd (4 * ((n : ℝ) + 1) / (δ * φ)) (3 + P) (1 + 54 * (RL : ℝ)) :=
+    ((HiBd.const hY4 (by norm_num : (0 : ℝ) < 55) (by norm_num : (55 : ℝ) ≤ 4 ^ 3)).mul hR).of_le
+      (by positivity) (by linarith)
+  have hle := uShQRSchurReplay_zero_div_le (n := n) (k := denseSchurDegree n δ φ)
+    (np := (denseSchurShQRParams n δ φ ++ denseSchurLeafParams n δ φ).length)
+    (F := denseSchurCap n δ φ) (RL := RL) (by linarith : (1 : ℝ) ≤ 2 * denseSchurB n δ φ)
+    (half_pos hΓ) hd0 (by norm_num : (0 : ℝ) < 8)
+  exact ((h0.div hRLY).of_le hle).logb_inv_le
 
 /-- The accumulator term of the precision threshold has $O(L)$ bits: there is a constant $c$
 such that for $0 < \delta \le 1$ and $0 < \varphi \le 1$ the term $\delta/(4096(n + 1)R)$,

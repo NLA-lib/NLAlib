@@ -280,14 +280,14 @@ private theorem matMulLBody_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
   have hl₃ : ∀ k < 5, μ₃.store.len (Lc + k) = 2 := fun k hk => by
     rw [hfr₃.len_eq]; exact hl₂ k hk
   refine (writes_call_un (hS .copy) (x := (Lc + 4, 0)) (z := (Lc + 2, 0))
-    (by simp [Operand.evalList, Operand.eval, hidx, hbuf, IExp.eval])
-    (by simp [Operand.evalList, Operand.eval, hidx, hbuf, IExp.eval]) trivial
+    (by simp [Operand.evalList, Operand.eval, hbuf, IExp.eval])
+    (by simp [Operand.evalList, Operand.eval, hbuf, IExp.eval]) trivial
     (g hR₃).1 rfl
     (by simp [hl₃ 2 (by omega)])).seq_le (by fp_sub) fun μ₄ hfr₄ ⟨hp₄, g₄⟩ => ?_
   have hR₄ := hfr₄.keep (Store.readsOnly_readBlock _ _ _ _) (by disjoint) hR₃
   refine (writes_call_un (hS .copy) (x := (Lc + 4, 1)) (z := (Lc + 2, 1))
-    (by simp [Operand.evalList, Operand.eval, hidx, hbuf, IExp.eval])
-    (by simp [Operand.evalList, Operand.eval, hidx, hbuf, IExp.eval]) trivial
+    (by simp [Operand.evalList, Operand.eval, hbuf, IExp.eval])
+    (by simp [Operand.evalList, Operand.eval, hbuf, IExp.eval]) trivial
     (g hR₄).2 rfl
     (by simp [hfr₄.len_eq, hl₃ 2 (by omega)])).mono (by fp_sub) fun μ₅ hfr₅ ⟨hp₅, g₅⟩ => ?_
   have g₄' := hfr₅.keep (Store.readsOnly_get _ _ _) (by disjoint) g₄
@@ -339,10 +339,10 @@ private theorem matMulEntry_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
       by simpa using Store.get_of_readBlock h (j := 1) (by omega) 0⟩
   unfold matMulEntry
   refine (writes_call_const (hS (.lit 0)) (z := (Lc + 2, 0))
-    (by simp [Operand.eval, hidx, hbuf, IExp.eval]) trivial (by simp [hlens 2 (by omega)])).seq_le
+    (by simp [Operand.eval, hbuf, IExp.eval]) trivial (by simp [hlens 2 (by omega)])).seq_le
     (by fp_sub) fun μ₁ hfr₁ ⟨hp₁, g₁⟩ => ?_
   refine (writes_call_const (hS (.lit 0)) (z := (Lc + 2, 1))
-    (by simp [Operand.eval, hidx, hbuf, IExp.eval]) trivial
+    (by simp [Operand.eval, hbuf, IExp.eval]) trivial
     (by simp [hfr₁.len_eq, hlens 2 (by omega)])).seq_le (by fp_sub) fun μ₂ hfr₂ ⟨hp₂, g₂⟩ => ?_
   have g₁' := hfr₂.keep (Store.readsOnly_get _ _ _) (by disjoint) g₁
   have hfr₁₂ : μ.store.EqOff (Store.inBlock (Lc + 1) 0 2 ⊔ Store.inBlock (Lc + 2) 0 2 ⊔
@@ -368,18 +368,18 @@ private theorem matMulEntry_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
     rintro μ'' - ⟨hp'', hs''⟩
     refine ⟨hp''.trans hp', ?_⟩
     have htake : (List.finRange p).take (l + 1) = (List.finRange p).take l ++ [⟨l, hl⟩] := by
-      rw [List.take_succ, List.getElem?_eq_getElem (by simpa using hl)]
+      rw [List.take_add_one, List.getElem?_eq_getElem (by simpa using hl)]
       simp
     simpa [hv, htake, List.foldl_append] using hs''
   · rintro μ₃ hfr₃ ⟨hp₃, hs₃⟩
     have hfr₃' := hfr₁₂.trans hfr₃
     refine (writes_call_un (hS .copy) (x := (Lc + 2, 0)) (z := (z.1, z.2 + 2 * (j * ldz + i)))
-      (by simp [Operand.evalList, Operand.eval, hidx, hbuf, IExp.eval])
+      (by simp [Operand.evalList, Operand.eval, hbuf, IExp.eval])
       (by simp [Operand.evalList, Operand.eval, hidx, hbuf, IExp.eval]) trivial (g hs₃).1 rfl
       (by simp [hfr₃'.len_eq]; omega)).seq_le (by fp_sub) fun μ₄ hfr₄ ⟨hp₄, g₄⟩ => ?_
     have hs₄ := hfr₄.keep (Store.readsOnly_readBlock _ _ _ _) (by disjoint) hs₃
     refine (writes_call_un (hS .copy) (x := (Lc + 2, 1)) (z := (z.1, z.2 + 2 * (j * ldz + i) + 1))
-      (by simp [Operand.evalList, Operand.eval, hidx, hbuf, IExp.eval])
+      (by simp [Operand.evalList, Operand.eval, hbuf, IExp.eval])
       (by simp [Operand.evalList, Operand.eval, hidx, hbuf, IExp.eval]) trivial (g hs₄).2 rfl
       (by simp [hfr₄.len_eq, hfr₃'.len_eq]; omega)).mono (by fp_sub)
       fun μ₅ hfr₅ ⟨hp₅, g₅⟩ => ?_
@@ -538,8 +538,6 @@ private theorem matMulOn_writes_gen {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
 
 section Theorems
 
-variable [Inhabited ℝ]
-
 /-- `NLAlib.matMulOn` with $c = 0$ on contiguous views (leading dimensions the row counts), on a
 scalar machine and every tape: from $\mathbf{X}$ ($m \times p$) at `x` and $\mathbf{Y}$
 ($p \times q$) at `y`, with room for the output at `z` apart from both, it writes only the output
@@ -642,10 +640,11 @@ theorem Ops.StdModel.norm_foldl_linearComplex_sub_le {M : Machine ℝ} {u : ℝ}
       ⟨M.lit 0, M.lit 0⟩
     set t := (ls.map fun l => x l * y l).sum
     set T := (ls.map fun l => ‖x l‖ * ‖y l‖).sum
-    have hT0 : 0 ≤ T := List.sum_nonneg (by simp; intro _ _; positivity)
+    have hT0 : 0 ≤ T := List.sum_nonneg fun t ht => by
+      obtain ⟨l, -, rfl⟩ := List.mem_map.mp ht; positivity
     have ht : ‖t‖ ≤ T := by
       refine (norm_list_sum_map_le _ ls).trans (le_of_eq ?_)
-      simp [T, norm_mul]
+      simp [T]
     have hS0 : 0 ≤ S := by linarith
     have hstep := hM.norm_linearComplex_one_sub_le hu0 hu (x l) (y l) s
     have hs : ‖s‖ ≤ ‖t‖ + ‖s - t‖ := by

@@ -148,7 +148,7 @@ theorem embedBlock_conjTranspose (V : Matrix (Fin d) (Fin d) ℂ) :
     (embedBlock (N := N) lo V)ᴴ = embedBlock lo Vᴴ := by
   ext i j
   simp only [embedBlock, Matrix.conjTranspose_apply, Matrix.of_apply, Fin.ext_iff]
-  split_ifs <;> first | rfl | (exfalso; omega) | simp | (simp; omega)
+  split_ifs <;> first | rfl | (exfalso; omega) | simp
 
 /-- Embedding is multiplicative when the range fits: $\widetilde{\mathbf{A}\mathbf{B}} =
 \widetilde{\mathbf{A}}\widetilde{\mathbf{B}}$ for $lo + d \le N$. -/
@@ -183,7 +183,7 @@ theorem embedBlock_givensAt (hN : lo + d ≤ N) {e : ℕ × ℂ × ℂ} (he : e.
     Fin.ne_of_val_ne (by simp)
   ext a b
   simp only [embedBlock, givensAt, dif_pos he, dif_pos (show lo + e.1 + 1 < N by omega),
-    Matrix.of_apply, givens_apply hij, givens_apply hij', Fin.ext_iff, Fin.val_mk]
+    Matrix.of_apply, givens_apply hij, givens_apply hij', Fin.ext_iff]
   split_ifs <;> first | rfl | (exfalso; omega)
 
 /-- The block of the whole range is the matrix itself. -/
@@ -234,7 +234,7 @@ def slotEntries (w : ℕ) (L : List (Option (List GivensEntry))) : List GivensEn
 /-- Padding does not change the unitary of a log. -/
 theorem givensLog_padEntries (n w : ℕ) (es : List GivensEntry) :
     givensLog n (padEntries w es) = givensLog n es := by
-  simp [padEntries, givensLog_append, givensLog, List.map_replicate, List.prod_replicate]
+  simp [padEntries, givensLog, List.map_replicate, List.prod_replicate]
 
 /-- The words of the zero fill: `w` zero entries are $5w$ zero words. -/
 theorem flatMap_entryWords_padEntries_nil (w : ℕ) :
@@ -596,7 +596,7 @@ theorem HoldsSlottedLog.slottedLogRead_eq {lg : ℕ × ℕ} {ns w : ℕ}
 /-- A stored closed log is read back up to padding: its valid entries are those of the read. -/
 theorem HoldsSlottedLog.slotEntries_read {lg : ℕ × ℕ} {ns w : ℕ}
     {L : List (Option (List GivensEntry))} {s : Store ℝ} (h : HoldsSlottedLog lg ns w L [] s)
-    (hL : L.length = ns) (hpl : ∀ e ∈ slotEntries w L, (e.1 : ℝ) = e.1) :
+    (hL : L.length = ns) (_hpl : ∀ e ∈ slotEntries w L, (e.1 : ℝ) = e.1) :
     slotEntries w L = slotEntries w (slottedLogRead lg ns w s) := by
   rw [h.slottedLogRead_eq hL, slotEntries_map_padEntries]
 
@@ -706,6 +706,7 @@ section Specs
 
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Inhabited ℝ]
 
+omit [Inhabited ℝ] in
 /-- A zero-filled log region holds the empty log. -/
 theorem holdsSlottedLog_nil_of_readBlock {lg : ℕ × ℕ} {ns w : ℕ} {s : Store ℝ}
     (h : s.readBlock lg.1 lg.2 (ns * (1 + 5 * w)) = some (List.replicate (ns * (1 + 5 * w)) 0)) :
@@ -730,11 +731,11 @@ theorem holdsSlottedLog_nil_of_readBlock {lg : ℕ × ℕ} {ns w : ℕ} {s : Sto
   obtain ⟨h1, h2⟩ := hslot j hj
   exact ⟨h1, by rw [h2, flatMap_entryWords_padEntries_nil]⟩
 
-omit [Has IndexOp O] in
+omit [Has IndexOp O] [Inhabited ℝ] in
 /-- Opening a log stores the empty log. -/
 theorem slottedLogOpen_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) {ns w : ℕ} {lg : ℕ × ℕ} {τ : Tape ℝ}
-    {μ : Mem ℝ} (hl : μ.Live [lg]) (hroom : lg.2 + ns * (1 + 5 * w) ≤ μ.store.len lg.1) :
+    {μ : Mem ℝ} (_hl : μ.Live [lg]) (hroom : lg.2 + ns * (1 + 5 * w) ≤ μ.store.len lg.1) :
     Writes .total I τ (slottedLogOpen (O := O) (Q := Q)).body (Env.frame [ns, w] [lg])
       (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun μ' => μ'.pos = μ.pos ∧ HoldsSlottedLog lg ns w [] [] μ'.store) μ := by
@@ -750,6 +751,7 @@ theorem slottedLogOpen_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     rw [Store.holdsVec_iff_readBlock.mp hv]
     simp
 
+omit [Inhabited ℝ] in
 /-- Writing an entry appends it to the pending slot. The plane is an exact natural below
 `nmax` (`hNat`); this hypothesis belongs to the log, not to the producer. -/
 theorem slottedLogWrite_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar Mch I)
@@ -758,7 +760,7 @@ theorem slottedLogWrite_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : Is
     {P : List GivensEntry} {p q : ℂ} {τ : Tape ℝ} {μ : Mem ℝ}
     (h : HoldsSlottedLog lg ns w L P μ.store) (hL : L.length < ns) (hP : P.length < w)
     (hp : μ.store.readBlock pw.1 pw.2 2 = some [p.re, p.im])
-    (hq : μ.store.readBlock qw.1 qw.2 2 = some [q.re, q.im]) (hl : μ.Live [pw, qw, lg])
+    (hq : μ.store.readBlock qw.1 qw.2 2 = some [q.re, q.im]) (_hl : μ.Live [pw, qw, lg])
     (hd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (Store.inBlock pw.1 pw.2 2 ⊔ Store.inBlock qw.1 qw.2 2)) :
     Writes .total I τ (slottedLogWrite (O := O) (Q := Q)).body
@@ -838,6 +840,7 @@ theorem slottedLogWrite_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : Is
   refine W.mono (Fp.inBlock_le_inBlock (by omega) (by omega)) fun μ' hfr hr => ?_
   exact ⟨hr.1, h.of_write_entry hL hP hfr hr.2⟩
 
+omit [Has ScalarOp O] [Inhabited ℝ] in
 /-- Validating the pending slot closes it as accepted, on a machine whose literal one is
 positive. -/
 theorem slottedLogValidate_writes_of_pos {Mch : Machine ℝ} {I : Interp O Q ℝ}
@@ -854,11 +857,12 @@ theorem slottedLogValidate_writes_of_pos {Mch : Machine ℝ} {I : Interp O Q ℝ
     (Fp.inBlock_le_inBlock (by omega) (by omega)) fun μ' hfr ⟨hp, hg⟩ => ?_
   exact ⟨hp, h.of_validate hL' hfr hg (by simpa using h1)⟩
 
+omit [Has ScalarOp O] [Inhabited ℝ] in
 /-- Validating the pending slot closes it as accepted. -/
 theorem slottedLogValidate_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hL : IsIndexLit Mch I) (hM : StdModel u id Mch) (hu : u < 1) {ns w : ℕ} {lg : ℕ × ℕ}
     {L : List (Option (List GivensEntry))} {P : List GivensEntry} {τ : Tape ℝ} {μ : Mem ℝ}
-    (h : HoldsSlottedLog lg ns w L P μ.store) (hL' : L.length < ns) (hl : μ.Live [lg]) :
+    (h : HoldsSlottedLog lg ns w L P μ.store) (hL' : L.length < ns) (_hl : μ.Live [lg]) :
     Writes .total I τ (slottedLogValidate (O := O) (Q := Q)).body
       (Env.frame [w, L.length] [lg]) (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun μ' => μ'.pos = μ.pos ∧ HoldsSlottedLog lg ns w (L ++ [some P]) [] μ'.store) μ := by
@@ -1256,6 +1260,7 @@ private theorem replayEntryStmt_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
   rintro μ₂ - ⟨hp₂, hY₂⟩
   exact ⟨hp₂.trans hp₁, hY₂⟩
 
+omit [Has IndexOp O] [Inhabited ℝ] in
 /-- A replay with any rotation routine stores the replayed word: if `Rot` at the plane $k$
 stores `rotWord k c s` of the matrix for the coefficients $(c, s)$, the replay of a closed log
 whose entries have their two planes in range stores the left fold of `rotWord` over the valid
@@ -1319,7 +1324,7 @@ theorem givensReplayWith_writes_word {Mch : Machine ℝ} {I : Interp O Q ℝ}
   · intro k hk μ' _ ⟨hp, hlen', hL0, hL1, hW, hlog'⟩
     obtain ⟨v, hv, hm⟩ := hlog'.2.2.1 k (by omega)
     have htake : L.take (k + 1) = L.take k ++ [L[k]'(by omega)] := by
-      rw [List.take_succ, List.getElem?_eq_getElem (by omega)]; rfl
+      rw [List.take_add_one, List.getElem?_eq_getElem (by omega)]; rfl
     refine writes_ite (a := [(lg.1, lg.2 + k * (1 + 5 * w))]) rfl
       (by simp [Operand.evalList, Operand.eval, Env.pushIdx, Env.frame, IExp.eval])
       (hC.test_isPos (x := (lg.1, lg.2 + k * (1 + 5 * w))) hv) ?_
@@ -1349,7 +1354,8 @@ theorem givensReplayWith_writes_word {Mch : Machine ℝ} {I : Interp O Q ℝ}
         refine ⟨hp₃.trans hp'', by rw [hfr₃.length_eq, hlen''], by rw [hfr₃.len_eq, hL0''],
           by rw [hfr₃.len_eq, hL1''], ?_, hfr₃.keep (readsOnly_holdsSlottedLog _ _ _ _ _) hGL
           hlog''⟩
-        rw [List.take_succ, List.getElem?_eq_getElem hi', ← List.append_assoc, List.foldl_append]
+        rw [List.take_add_one, List.getElem?_eq_getElem hi', ← List.append_assoc,
+          List.foldl_append]
         exact hW₃
       · rintro μ₃ - ⟨hp₃, hlen₃, hL0₃, hL1₃, hW₃, hlog₃⟩
         refine ⟨hp₃, hlen₃, hL0₃, hL1₃, ?_, hlog₃⟩
@@ -1360,6 +1366,7 @@ theorem givensReplayWith_writes_word {Mch : Machine ℝ} {I : Interp O Q ℝ}
   · rintro μ' - ⟨hp, -, -, -, hW, -⟩
     exact ⟨hp, by simpa [List.take_of_length_le (le_of_eq hlen)] using hW⟩
 
+omit [Inhabited ℝ] in
 /-- The entries of a log inside a block, or the zero fill when the rows `lo, lo + 1` exist, have
 their two planes in range. -/
 theorem slotEntries_planes {N lo d w : ℕ} {L : List (Option (List GivensEntry))}
@@ -1374,6 +1381,7 @@ theorem slotEntries_planes {N lo d w : ℕ} {L : List (Option (List GivensEntry)
     · rw [h] at he; simp at he
     · simpa using h
 
+omit [Has IndexOp O] [Inhabited ℝ] in
 /-- **The column replay on every tape**: the stored matrix moves from $\mathbf{X}$ to within
 $((1 + 24\boldsymbol{u})^{m} - 1)\|\mathbf{X}\|_2$ of $\mathbf{X}\widetilde{\mathbf{V}}$, where
 $\widetilde{\mathbf{V}}$ acts by the log's unitary on the range $[lo, lo + d)$ and $m$ is the
@@ -1415,6 +1423,7 @@ theorem givensReplayColumns_specNorm_sub_le {Mch : Machine ℝ} {I : Interp O Q 
   · linarith
   · exact hlen ▸ hlog.length_slotEntries_le
 
+omit [Has IndexOp O] [Inhabited ℝ] in
 /-- **The row replay on a column range on every tape**: the columns outside
 $[j_0, j_0 + n_c)$ are kept and, on the range, the stored matrix is within
 $((1 + 24\boldsymbol{u})^{ns\,w} - 1)\|\mathbf{X}\|_2$ of $\widetilde{\mathbf{V}}^{\mathsf H}
@@ -1469,6 +1478,7 @@ theorem givensReplayRows_specNorm_sub_le {Mch : Machine ℝ} {I : Interp O Q ℝ
   have hXD := hD.specNorm_mul_right_le X
   nlinarith [specNorm_nonneg (X * colMask N j0 nc)]
 
+omit [Inhabited ℝ] in
 /-- **The accumulated product from the identity**: with $24R\boldsymbol{u} \le 1/8$,
 $(1 + 24\boldsymbol{u})^R - 1 \le 27R\boldsymbol{u}$. -/
 theorem one_add_mul_pow_sub_one_le {u : ℝ} {R : ℕ} (hu : 0 ≤ u) (hR : 24 * R * u ≤ 1 / 8) :

@@ -165,7 +165,7 @@ private theorem reduceLastStep_rotate {M : Machine ℝ} {I : Interp O Q ℝ} (hS
     (hu₁ : m.store.get uv.1 (uv.2 + 1) = some (A ⟨r, hr⟩ ⟨c + 1, hc⟩).im)
     (hv₀ : m.store.get uv.1 (uv.2 + 2) = some (M.neg (A ⟨r, hr⟩ ⟨c, by omega⟩).re))
     (hv₁ : m.store.get uv.1 (uv.2 + 3) = some (M.neg (A ⟨r, hr⟩ ⟨c, by omega⟩).im))
-    (hcf : cf.2 + 4 ≤ m.store.len cf.1) (huv : uv.2 + 4 ≤ m.store.len uv.1)
+    (hcf : cf.2 + 4 ≤ m.store.len cf.1)
     (hac : a.1 ≠ cf.1) (hl : m.Live [a, cf, uv]) :
     Writes .total I τ ((Stmt.frame []
         [⟨3, .var 9⟩, ⟨3, .var 9 + .const 2⟩, ⟨2, .var 8⟩, ⟨2, .var 8 + .const 2⟩]
@@ -300,7 +300,7 @@ theorem reduceLastStep_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
       (Fp.inBlock_le_inBlock (by omega) (by omega))) h
   refine ((reduceLastStep_rotate hS hC hc hr (hA₄.of_eqOff hfr₅ hla.symm)
     (kg 0 (by omega) hu₀') (kg 1 (by omega) hu₁') (kg 2 (by omega) hv₀') (kg 3 (by omega) hv₁)
-    (by rw [hfr₅.len_eq, hlen]; exact hcf) (by rw [hfr₅.len_eq, hlen]; exact huv) hac
+    (by rw [hfr₅.len_eq, hlen]; exact hcf) hac
     (by have := hfr₅.length_eq; simp [Mem.Live]; omega)).mono
     (sup_le (le_sup_left.trans (le_sup_left.trans le_sup_left))
       (le_sup_right.trans (le_sup_left.trans le_sup_left))) ?_)
@@ -955,7 +955,7 @@ private theorem hessenbergReduceQ_tracked {M : Machine ℝ} {u : ℝ} (hM : StdM
     at h
   cases N with
   | zero =>
-    refine ⟨fun i => i.elim0, 1, ⟨hasOrthonormalCols_one, 0, by simp; positivity,
+    refine ⟨fun i => i.elim0, 1, ⟨hasOrthonormalCols_one, 0, by rw [specNorm_zero]; positivity,
       Subsingleton.elim _ _⟩, ?_⟩
     rw [Subsingleton.elim (U' - U * 1) 0, specNorm_zero]
     positivity
@@ -988,8 +988,6 @@ def hessenbergReduceQ : Impl O Q := opsImpl% [N] (A, U) → (A, U) {
   run (hessenbergReduceLast (O := O) (Q := Q)).body [N, N - 1, 0] (A, A, Lg);
   run (givensReplayColumns (O := O) (Q := Q)).body [N, 0, 0, N, N, N - 1] (Lg, U, U)
 }
-
-variable [Inhabited ℝ]
 
 /-- **The reduction with the accumulated unitary is a Hessenberg reducer**: on a scalar machine
 with the standard model at $\boldsymbol{u}$, exact comparisons and `toNat`, index literals and
@@ -1063,7 +1061,7 @@ theorem hessenbergReduceQ_hessenbergReducerContract {M : Machine ℝ} {I : Inter
       have : Sl = [] := List.eq_nil_of_length_eq_zero (by
         rw [length_hessenbergReduceLastSlots]; omega)
       rw [this]
-      simpa [slotEntries] using slotEntries_append_replicate_none (N - 1) N []
+      simp [slotEntries]
   refine ((givensReplayColumns_specNorm_sub_le (τ := τ) (μ := μ₂) (lo := 0) (d := N) hS hM hu0
     hu hQ hC (by omega) hpl hlo hlog₃ (by simp [Sl, length_hessenbergReduceLastSlots]) hU₂
     (by simp [Mem.Live, hfr₂.length_eq, hfr₁.length_eq]; omega) (hdl hul).symm).in_frame rfl rfl

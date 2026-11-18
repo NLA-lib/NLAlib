@@ -12,6 +12,8 @@ public import NLAlib.Matrix.Perturbation.UnitarySimilarity
 public import NLAlib.Ops.Catalog.Index
 public import NLAlib.Ops.Catalog.Compare
 public import NLAlib.Ops.RunMeasurable
+public import NLAlib.Ops.Logic.Functional
+public import NLAlib.Ops.Logic.IndexLiteral
 public import NLAlib.ForMathlib.MeasureTheory.Matrix
 public import Mathlib.MeasureTheory.Constructions.BorelSpace.Complex
 public import Mathlib.MeasureTheory.Function.Floor
@@ -95,6 +97,27 @@ theorem flatMap_entryWords_padEntries_nil (w : ℕ) :
     rw [ih, show 5 * (w + 1) = 5 + 5 * w by ring, List.replicate_add]
     simp [entryWords]
 
+/-- The words of a list of entries: five per entry. -/
+@[simp] theorem length_flatMap_entryWords (es : List GivensEntry) :
+    (es.flatMap entryWords).length = 5 * es.length := by
+  induction es with
+  | nil => rfl
+  | cons e es ih => simp [ih, entryWords]; ring
+
+/-- The words of a padded slot: the words of its entries, then zeros. -/
+theorem flatMap_entryWords_padEntries {w : ℕ} {P : List GivensEntry} :
+    (padEntries w P).flatMap entryWords =
+      P.flatMap entryWords ++ List.replicate (5 * (w - P.length)) 0 := by
+  have h := flatMap_entryWords_padEntries_nil (w - P.length)
+  simp only [padEntries, List.nil_append, List.length_nil, Nat.sub_zero] at h
+  rw [padEntries, List.flatMap_append, h]
+
+/-- The end of slot `j` is at most the start of slot `k > j`. -/
+theorem slot_end_le {w j k : ℕ} (hj : j < k) : j * (1 + 5 * w) + 1 + 5 * w ≤ k * (1 + 5 * w) := by
+  have := Nat.mul_le_mul_right (1 + 5 * w) (show j + 1 ≤ k by omega)
+  rw [Nat.add_mul, one_mul] at this
+  omega
+
 /-- **The stored slotted log**: the slots `L` (closed: `none` rejected, `some es` accepted with
 at most `w` entries) and the pending entries `P` of slot `L.length` are held at `lg`. A slot
 occupies $1 + 5w$ words: the valid word (positive iff accepted) and $w$ entries; a rejected slot
@@ -132,6 +155,95 @@ theorem HoldsSlottedLog.reject {lg : ℕ × ℕ} {ns w : ℕ} {L : List (Option 
     exact ⟨h1, by rw [h2, flatMap_entryWords_padEntries_nil]⟩
   · simp only [List.length_append, List.length_singleton] at hj
     exact hf j (by omega) hjn
+
+/-- Writing an entry: a store that agrees with a stored log off the five words of entry
+`P.length` of the pending slot, and holds the words of `e` there, holds the log with `e` appended
+to the pending entries. -/
+theorem HoldsSlottedLog.of_write_entry {lg : ℕ × ℕ} {ns w : ℕ}
+    {L : List (Option (List GivensEntry))} {P : List GivensEntry} {s s' : Store ℝ}
+    {e : GivensEntry} (h : HoldsSlottedLog lg ns w L P s) (hL : L.length < ns)
+    (hP : P.length < w)
+    (hfr : s.EqOff (Store.inBlock lg.1 (lg.2 + L.length * (1 + 5 * w) + 1 + 5 * P.length) 5) s')
+    (hr : s'.readBlock lg.1 (lg.2 + L.length * (1 + 5 * w) + 1 + 5 * P.length) 5 =
+      some (entryWords e)) :
+    HoldsSlottedLog lg ns w L (P ++ [e]) s' := by
+  obtain ⟨hLn, -, hc, hp, hf⟩ := h
+  refine ⟨hLn, by simp; omega, fun j hj => ?_, fun _ => ?_, fun j hj hjn => ?_⟩
+  · have he := slot_end_le (w := w) hj
+    obtain ⟨v, hv, hm⟩ := hc j hj
+    refine ⟨v, by rw [hfr.get_eq (fun hin => by obtain ⟨-, h1, -⟩ := hin; omega)]; exact hv, ?_⟩
+    split at hm
+    · exact hm
+    · exact ⟨hm.1, hm.2.1, hfr.readBlock_of hm.2.2 fun t ht hin => by
+        obtain ⟨-, h1, -⟩ := hin; omega⟩
+  · obtain ⟨hv, hb⟩ := hp hL
+    refine ⟨by rw [hfr.get_eq (fun hin => by obtain ⟨-, h1, -⟩ := hin; omega)]; exact hv, ?_⟩
+    rw [flatMap_entryWords_padEntries] at hb
+    rw [flatMap_entryWords_padEntries, List.flatMap_append, List.flatMap_singleton]
+    have h1 := Store.readBlock_sub hb (o := 0) (n := 5 * P.length) (by omega)
+    have h3 := Store.readBlock_sub hb (o := 5 * P.length + 5) (n := 5 * (w - P.length) - 5)
+      (by omega)
+    simp only [Nat.add_zero, List.drop_zero] at h1
+    rw [List.take_left' (by rw [length_flatMap_entryWords])] at h1
+    have e3 : List.take (5 * (w - P.length) - 5) (List.drop (5 * P.length + 5)
+        (P.flatMap entryWords ++ List.replicate (5 * (w - P.length)) 0)) =
+        List.replicate (5 * (w - P.length) - 5) 0 := by
+      rw [List.drop_append, List.drop_eq_nil_of_le (by rw [length_flatMap_entryWords]; omega),
+        List.nil_append, length_flatMap_entryWords, List.drop_replicate, List.take_replicate]
+      congr 1
+      omega
+    rw [e3] at h3
+    have h1' := hfr.readBlock_of h1 fun t ht hin => by obtain ⟨-, h5, -⟩ := hin; omega
+    have h3' := hfr.readBlock_of h3 fun t ht hin => by obtain ⟨-, -, h6⟩ := hin; omega
+    rw [← Nat.add_assoc] at h3'
+    have h4 := Store.readBlock_add (Store.readBlock_add h1' hr) h3'
+    rw [show 5 * P.length + 5 + (5 * (w - P.length) - 5) = 5 * w by omega] at h4
+    rw [h4]
+    congr 3
+    simp only [List.length_append, List.length_singleton]
+    omega
+  · have he := slot_end_le (w := w) (show L.length < j by omega)
+    obtain ⟨h1, h2⟩ := hf j (by omega) hjn
+    exact ⟨by rw [hfr.get_eq (fun hin => by obtain ⟨-, -, h2⟩ := hin; omega)]; exact h1,
+      hfr.readBlock_of h2 fun t ht hin => by obtain ⟨-, -, h2⟩ := hin; omega⟩
+
+/-- Validating the pending slot: a store that agrees with a stored log off the valid word of
+the pending slot, and holds a positive word there, holds the log with the pending slot accepted. -/
+theorem HoldsSlottedLog.of_validate {lg : ℕ × ℕ} {ns w : ℕ}
+    {L : List (Option (List GivensEntry))} {P : List GivensEntry} {s s' : Store ℝ} {v : ℝ}
+    (h : HoldsSlottedLog lg ns w L P s) (hL : L.length < ns)
+    (hfr : s.EqOff (Store.inBlock lg.1 (lg.2 + L.length * (1 + 5 * w)) 1) s')
+    (hv : s'.get lg.1 (lg.2 + L.length * (1 + 5 * w)) = some v) (hv0 : 0 < v) :
+    HoldsSlottedLog lg ns w (L ++ [some P]) [] s' := by
+  obtain ⟨-, hPw, hc, hp, hf⟩ := h
+  refine ⟨by simp; omega, Nat.zero_le _, fun j hj => ?_, fun hj => ?_, fun j hj hjn => ?_⟩
+  · simp only [List.length_append, List.length_singleton] at hj
+    rcases Nat.lt_succ_iff_lt_or_eq.mp hj with hj | rfl
+    · have he := slot_end_le (w := w) hj
+      obtain ⟨u, hu, hm⟩ := hc j hj
+      refine ⟨u, by rw [hfr.get_eq (fun hin => by obtain ⟨-, h1, -⟩ := hin; omega)]; exact hu,
+        ?_⟩
+      rw [List.getElem_append_left hj]
+      split at hm
+      · exact hm
+      · exact ⟨hm.1, hm.2.1, hfr.readBlock_of hm.2.2 fun t ht hin => by
+          obtain ⟨-, h1, -⟩ := hin; omega⟩
+    · refine ⟨v, hv, ?_⟩
+      simp only [List.getElem_append_right (Nat.le_refl _), Nat.sub_self,
+        List.getElem_cons_zero]
+      exact ⟨hv0, hPw, hfr.readBlock_of (hp hL).2 fun t ht hin => by
+        obtain ⟨-, -, h2⟩ := hin; omega⟩
+  · simp only [List.length_append, List.length_singleton] at hj ⊢
+    have he := slot_end_le (w := w) (show L.length < L.length + 1 by omega)
+    obtain ⟨h1, h2⟩ := hf (L.length + 1) (by omega) hj
+    refine ⟨by rw [hfr.get_eq (fun hin => by obtain ⟨-, -, h2⟩ := hin; omega)]; exact h1, ?_⟩
+    rw [flatMap_entryWords_padEntries_nil]
+    exact hfr.readBlock_of h2 fun t ht hin => by obtain ⟨-, -, h2⟩ := hin; omega
+  · simp only [List.length_append, List.length_singleton] at hj
+    have he := slot_end_le (w := w) (show L.length < j by omega)
+    obtain ⟨h1, h2⟩ := hf j (by omega) hjn
+    exact ⟨by rw [hfr.get_eq (fun hin => by obtain ⟨-, -, h2⟩ := hin; omega)]; exact h1,
+      hfr.readBlock_of h2 fun t ht hin => by obtain ⟨-, -, h2⟩ := hin; omega⟩
 
 /-- **The log read from a store**: the `ns` slots of `w` entries at `lg`, a slot accepted (`some`)
 iff its valid word is positive, each entry decoded from its five words (the plane by
@@ -333,13 +445,49 @@ section Specs
 
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Inhabited ℝ]
 
+/-- A zero-filled log region holds the empty log. -/
+theorem holdsSlottedLog_nil_of_readBlock {lg : ℕ × ℕ} {ns w : ℕ} {s : Store ℝ}
+    (h : s.readBlock lg.1 lg.2 (ns * (1 + 5 * w)) = some (List.replicate (ns * (1 + 5 * w)) 0)) :
+    HoldsSlottedLog lg ns w [] [] s := by
+  have hslot (j : ℕ) (hj : j < ns) : s.get lg.1 (lg.2 + j * (1 + 5 * w)) = some 0 ∧
+      s.readBlock lg.1 (lg.2 + j * (1 + 5 * w) + 1) (5 * w) =
+        some ((padEntries w []).flatMap entryWords) := by
+    have hle : j * (1 + 5 * w) + 1 + 5 * w ≤ ns * (1 + 5 * w) := by
+      have := Nat.mul_le_mul_right (1 + 5 * w) (show j + 1 ≤ ns by omega)
+      rw [Nat.add_mul, one_mul] at this
+      omega
+    refine ⟨?_, ?_⟩
+    · rw [Store.get_of_readBlock h (j := j * (1 + 5 * w)) (by omega) 0]
+      simp
+    · rw [flatMap_entryWords_padEntries_nil, add_assoc lg.2,
+        Store.readBlock_sub h (o := j * (1 + 5 * w) + 1) (n := 5 * w) (by omega)]
+      simp only [List.drop_replicate, List.take_replicate]
+      congr 2
+      omega
+  refine ⟨Nat.zero_le _, Nat.zero_le _, fun j hj => absurd hj (Nat.not_lt_zero _),
+    fun hn => hslot 0 hn, fun j _ hj => ?_⟩
+  obtain ⟨h1, h2⟩ := hslot j hj
+  exact ⟨h1, by rw [h2, flatMap_entryWords_padEntries_nil]⟩
+
+omit [Has IndexOp O] in
 /-- Opening a log stores the empty log. -/
 theorem slottedLogOpen_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) {ns w : ℕ} {lg : ℕ × ℕ} {τ : Tape ℝ}
     {μ : Mem ℝ} (hl : μ.Live [lg]) (hroom : lg.2 + ns * (1 + 5 * w) ≤ μ.store.len lg.1) :
     Writes .total I τ (slottedLogOpen (O := O) (Q := Q)).body (Env.frame [ns, w] [lg])
       (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
-      (fun μ' => HoldsSlottedLog lg ns w [] [] μ'.store) μ := sorry
+      (fun μ' => HoldsSlottedLog lg ns w [] [] μ'.store) μ := by
+  have h0 : Mch.lit 0 = 0 := by simpa using hM.lit 0
+  unfold slottedLogOpen
+  refine (writes_fill (v := fun _ => (0 : ℝ)) (pos := fun _ => μ.pos) rfl rfl
+    fun i hi m' hfr _ hp => ?_).mono le_rfl ?_
+  · refine (writes_call_const (hS (.lit 0)) rfl trivial ?_).mono le_rfl ?_
+    · dsimp only; rw [hfr.len_eq]; omega
+    · exact fun m'' _ ⟨hp', hg⟩ => ⟨by simpa [h0] using hg, hp'.trans hp⟩
+  · rintro μ' - ⟨hv, -⟩
+    refine holdsSlottedLog_nil_of_readBlock ?_
+    rw [Store.holdsVec_iff_readBlock.mp hv]
+    simp
 
 /-- Writing an entry appends it to the pending slot. The plane is an exact natural below
 `nmax` (`hNat`); this hypothesis belongs to the log, not to the producer. -/
@@ -355,7 +503,78 @@ theorem slottedLogWrite_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : Is
     Writes .total I τ (slottedLogWrite (O := O) (Q := Q)).body
       (Env.frame [w, L.length, P.length, r] [pw, qw, lg])
       (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
-      (fun μ' => HoldsSlottedLog lg ns w L (P ++ [(r, p, q)]) μ'.store) μ := sorry
+      (fun μ' => HoldsSlottedLog lg ns w L (P ++ [(r, p, q)]) μ'.store) μ := by
+  set o := lg.2 + L.length * (1 + 5 * w) + 1 + 5 * P.length with ho
+  have hout (k : ℕ) (e : IExp) (he : e.eval [w, L.length, P.length, r, pw.2, qw.2, lg.2] =
+      some (o + k)) :
+      Operand.evalList (Env.frame [w, L.length, P.length, r] [pw, qw, lg]) [⟨2, e⟩] =
+        some [(lg.1, o + k)] := by
+    simp [Operand.evalList, Operand.eval, Env.frame, he]
+  have hend := slot_end_le (w := w) hL
+  have hlen : o + 5 ≤ μ.store.len lg.1 := by
+    have := Store.le_len_of_readBlock (h.2.2.2.1 hL).2 (by omega)
+    omega
+  have hsub (k : ℕ) (hk : k < 5) : Store.inBlock lg.1 (o + k) 1 ≤ Store.inBlock lg.1 o 5 :=
+    Fp.inBlock_le_inBlock (by omega) (by omega)
+  have hdk (k : ℕ) (hk : k < 5) : Fp.Disj (Store.inBlock lg.1 (o + k) 1)
+      (Store.inBlock pw.1 pw.2 2 ⊔ Store.inBlock qw.1 qw.2 2) :=
+    hd.mono (Fp.inBlock_le_inBlock (by omega) (by omega)) le_rfl
+  have hRO := (Store.readsOnly_readBlock pw.1 pw.2 2 [p.re, p.im]).and
+    (Store.readsOnly_readBlock qw.1 qw.2 2 [q.re, q.im])
+  have hcell (k k' : ℕ) (hk : k < k') : Fp.Disj (Store.inBlock lg.1 (o + k') 1)
+      (Store.inBlock lg.1 (o + k) 1) := Fp.disj_inBlock_of_le (by omega) |>.symm
+  have hgp (s : Store ℝ) (h : s.readBlock pw.1 pw.2 2 = some [p.re, p.im] ∧
+      s.readBlock qw.1 qw.2 2 = some [q.re, q.im]) :
+      s.get pw.1 pw.2 = some p.re ∧ s.get pw.1 (pw.2 + 1) = some p.im ∧
+      s.get qw.1 qw.2 = some q.re ∧ s.get qw.1 (qw.2 + 1) = some q.im :=
+    ⟨by simpa using Store.get_of_readBlock h.1 (j := 0) (by omega) 0,
+      by simpa using Store.get_of_readBlock h.1 (j := 1) (by omega) 0,
+      by simpa using Store.get_of_readBlock h.2 (j := 0) (by omega) 0,
+      by simpa using Store.get_of_readBlock h.2 (j := 1) (by omega) 0⟩
+  have W : Writes .total I τ (slottedLogWrite (O := O) (Q := Q)).body
+      (Env.frame [w, L.length, P.length, r] [pw, qw, lg]) (Store.inBlock lg.1 o 5)
+      (fun μ' => μ'.store.readBlock lg.1 o 5 = some (entryWords (r, p, q))) μ := by
+    unfold slottedLogWrite
+    refine (writes_indexLit (M := Mch) (by assumption) (n := r) (z := (lg.1, o + 0)) rfl
+      (by simp [Operand.eval, Env.frame, ho]) (by dsimp only; omega)).seq_le (hsub 0 (by omega))
+      fun m₁ hf₁ ⟨_, g₀⟩ => ?_
+    have i₁ := hf₁.keep hRO (hdk 0 (by omega)) ⟨hp, hq⟩
+    refine (writes_call_un (hS .copy) rfl (hout 1 _ (by simp [IExp.eval, ho]; omega)) trivial
+      (hgp _ i₁).1 rfl (by dsimp only; rw [hf₁.len_eq]; omega)).seq_le (hsub 1 (by omega))
+      fun m₂ hf₂ ⟨_, g₁⟩ => ?_
+    have i₂ := hf₂.keep hRO (hdk 1 (by omega)) i₁
+    refine (writes_call_un (hS .copy) rfl (hout 2 _ (by simp [IExp.eval, ho]; omega)) trivial
+      (hgp _ i₂).2.1 rfl (by dsimp only; rw [hf₂.len_eq, hf₁.len_eq]; omega)).seq_le
+      (hsub 2 (by omega)) fun m₃ hf₃ ⟨_, g₂⟩ => ?_
+    have i₃ := hf₃.keep hRO (hdk 2 (by omega)) i₂
+    refine (writes_call_un (hS .copy) rfl (hout 3 _ (by simp [IExp.eval, ho]; omega)) trivial
+      (hgp _ i₃).2.2.1 rfl (by dsimp only; rw [hf₃.len_eq, hf₂.len_eq, hf₁.len_eq]; omega)).seq_le
+      (hsub 3 (by omega)) fun m₄ hf₄ ⟨_, g₃⟩ => ?_
+    have i₄ := hf₄.keep hRO (hdk 3 (by omega)) i₃
+    refine (writes_call_un (hS .copy) rfl (hout 4 _ (by simp [IExp.eval, ho]; omega)) trivial
+      (hgp _ i₄).2.2.2 rfl
+      (by dsimp only; rw [hf₄.len_eq, hf₃.len_eq, hf₂.len_eq, hf₁.len_eq]; omega)).mono
+      (hsub 4 (by omega)) fun m₅ hf₅ ⟨_, g₄⟩ => ?_
+    have k₀ := hf₅.keep (Store.readsOnly_get _ _ _) (hcell 0 4 (by omega)) <|
+      hf₄.keep (Store.readsOnly_get _ _ _) (hcell 0 3 (by omega)) <|
+      hf₃.keep (Store.readsOnly_get _ _ _) (hcell 0 2 (by omega)) <|
+      hf₂.keep (Store.readsOnly_get _ _ _) (hcell 0 1 (by omega)) g₀
+    have k₁ := hf₅.keep (Store.readsOnly_get _ _ _) (hcell 1 4 (by omega)) <|
+      hf₄.keep (Store.readsOnly_get _ _ _) (hcell 1 3 (by omega)) <|
+      hf₃.keep (Store.readsOnly_get _ _ _) (hcell 1 2 (by omega)) g₁
+    have k₂ := hf₅.keep (Store.readsOnly_get _ _ _) (hcell 2 4 (by omega)) <|
+      hf₄.keep (Store.readsOnly_get _ _ _) (hcell 2 3 (by omega)) g₂
+    have k₃ := hf₅.keep (Store.readsOnly_get _ _ _) (hcell 3 4 (by omega)) g₃
+    have hr' : (Mch.lit (r : ℚ)) = (r : ℝ) := hNat r hr
+    refine Store.readBlock_eq_some_iff.mpr ⟨rfl, fun t ht => ?_⟩
+    interval_cases t
+    · simpa [entryWords, hr'] using k₀
+    · simpa [entryWords] using k₁
+    · simpa [entryWords] using k₂
+    · simpa [entryWords] using k₃
+    · simpa [entryWords] using g₄
+  refine W.mono (Fp.inBlock_le_inBlock (by omega) (by omega)) fun μ' hfr hr => ?_
+  exact h.of_write_entry hL hP hfr hr
 
 /-- Validating the pending slot closes it as accepted. -/
 theorem slottedLogValidate_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
@@ -364,7 +583,17 @@ theorem slottedLogValidate_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : 
     (h : HoldsSlottedLog lg ns w L P μ.store) (hL' : L.length < ns) (hl : μ.Live [lg]) :
     Writes .total I τ (slottedLogValidate (O := O) (Q := Q)).body
       (Env.frame [w, L.length] [lg]) (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
-      (fun μ' => HoldsSlottedLog lg ns w (L ++ [some P]) [] μ'.store) μ := sorry
+      (fun μ' => HoldsSlottedLog lg ns w (L ++ [some P]) [] μ'.store) μ := by
+  have h1 : 0 < Mch.lit 1 := by
+    have := abs_le.mp (hM.lit 1)
+    simp only [id, Rat.cast_one, abs_one, mul_one] at this
+    linarith [this.1]
+  have hle := slot_end_le (w := w) hL'
+  unfold slottedLogValidate
+  refine (writes_indexLit hL (n := 1) (z := (lg.1, lg.2 + L.length * (1 + 5 * w))) rfl rfl
+    (Store.lt_len_of_get (h.2.2.2.1 hL').1)).mono
+    (Fp.inBlock_le_inBlock (by omega) (by omega)) fun μ' hfr ⟨_, hg⟩ => ?_
+  exact h.of_validate hL' hfr hg (by simpa using h1)
 
 end Specs
 

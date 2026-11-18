@@ -76,7 +76,8 @@ $0 < \delta \le \Sigma$, $0 < \varphi \le 1$ and $k$ the degree of (eqn:setk) at
 `NLAlib.ShiftedQR.roundedDecouple` with the words of `NLAlib.ShiftedQR.roundedDecoupleParams` at
 the parameter choices of `NLAlib.Eigensolvers.ShiftedQR.RoundedParameters` meets
 `NLAlib.ShiftedQR.RandomDecouplingContract` on the class (condition $2B$, separation $\Gamma/2$)
-for orders up to $n + 1$ and norms up to $2\Sigma$, with the cap $F$, failure probability
+for orders up to $n_c + 1$, any $n_c \le n$ with a log width $w \ge kn_c$, and norms up to
+$2\Sigma$, with the cap $F$, failure probability
 $F(\varphi_{\mathrm{se}} + \varphi_R/2 + \varphi_1)$ ($\varphi_1 = \varphi/(12F(n + 1))$,
 $\varphi_R = 2\varphi_1$), the level $\omega_D$ and the backward error $F(1 + C) \cdot 4\Sigma((1 +
 300(n + 1)^2\boldsymbol{u})^k - 1)$. No printed source. -/
@@ -95,10 +96,11 @@ theorem roundedDecoupleWith_randomDecouplingRoutineContract_of_le_uShQR_at {M : 
     (hps : ps = roundedDecoupleParams (shqrLoopThreshold n k B Γ S δ φ) (shqrRadius n B Γ S δ)
         (shqrScanThreshold n k B Γ S δ φ) 0.2 (4 * B) (shqrAlpha k (4 * B)) (shqrEps k (4 * B)) k
         (Nat.log 2 k) ++ qs) {ns ws : ℕ}
-    (hns : shqrCap n B Γ S δ * (k + 1 + ps.length) ≤ ns) (hws : k * n ≤ ws) :
+    (hns : shqrCap n B Γ S δ * (k + 1 + ps.length) ≤ ns) {nc : ℕ} (hnc : nc ≤ n)
+    (hws : k * nc ≤ ws) :
     RandomDecouplingRoutineContract law (2 * B) (Γ / 2)
       (shqrCap n B Γ S δ * (φse + shqrRegularizeFailure n B Γ S δ φ / 2 +
-        shqrSmallEigFailure n B Γ S δ φ)) k (shqrCap n B Γ S δ) T n (2 * S) ps ns ws
+        shqrSmallEigFailure n B Γ S δ φ)) k (shqrCap n B Γ S δ) T nc (2 * S) ps ns ws
       (shqrDecoupled n k B Γ S δ φ)
       (fun _ => shqrCap n B Γ S δ *
         ((1 + shqrC k (4 * B)) * (4 * S) * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)))
@@ -168,6 +170,6 @@ theorem roundedDecoupleWith_randomDecouplingRoutineContract_of_le_uShQR_at {M : 
     hβ0 hφse hDisk hU hkq hk2 hΓ le_rfl (by positivity) RG.hBk RG.hω RG.hgap RG.hR RG.hφ RG.hφ1
     RG.hβ RG.hdη RG.hnu RG.huo RG.huo1 RG.hxu RG.hbound (SH.hα _ hkq) SH.hγ SH.hγ1 SH.hε
     SH.hε2 SH.hφ SH.hφ1 hd SH.hC1 hxu hbound hexc1 hexc2 SH.hthrω hthr hcut hωD hfuel
-    (by linarith) hsmall hSE hq12 hps hns' hws H V d hkn hn hN hHess hnorm hV hHV hκ hgap
+    (by linarith) hsmall hSE hq12 hps hns' hnc hws H V d hkn hn hN hHess hnorm hV hHV hκ hgap
 
 end NLAlib.ShiftedQR

@@ -302,7 +302,7 @@ theorem roundedDecoupleWith_randomDecouplingRoutineContract {M : Machine ℝ} {I
   roundedDecoupleWith_randomDecouplingRoutineContract_at hI hloc hS hM hu1 hL hNat hC hQ hβ0 hφse
     hDisk hU hkq hk hg hBi hS0 hBk hω hgapS hR hφR hφR1 hβ hdη hnu huo huo1 hxuR hboundR hα hγ hγ1
     hε hε2 hφ hφ1 hd hC1 hxu hbound hexc1 hexc2 hthrω hthr hcut hωD hfuel hSN hsmall
-    (hqs ▸ hSE.at) (Or.inr hqs) rfl hns hws
+    (hqs ▸ hSE.at) (Or.inr hqs) rfl hns le_rfl hws
 
 omit [Has IdxTst Q] in
 /-- **`Regularize` with a terminating small-eigenvalue routine terminates on any matrix**

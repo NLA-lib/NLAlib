@@ -139,12 +139,14 @@ noncomputable def shqrSmallEigRotations (n k : ℕ) (B Γ S δ φ : ℝ) (c₁ c
     (smallEigLeafRotations k (shqrSmallEigCap n k B Γ S δ φ c₁ c₂))
 
 /-- **The precision threshold of the Schur core with the small-eigenvalue program**: the minimum
-of `NLAlib.ShiftedQR.uShQRSmallEig`, the replay term `NLAlib.ShiftedQR.uShQRSchurReplay` and
-$1/100$. -/
+of `NLAlib.ShiftedQR.uShQRSmallEig`, $1/100$ and the replay term
+`NLAlib.ShiftedQR.uShQRSchurReplay` at the leaf's rotation count
+`NLAlib.SmallEig.smallEigLeafRotations` (order bound $k$, the cap
+`NLAlib.ShiftedQR.shqrSmallEigCap`). -/
 noncomputable def uShQRSchur (n k : ℕ) (B Γ S δ φ : ℝ) (c₁ c₂ : PolyLogTail) : ℝ :=
   min (uShQRSmallEig n k B Γ S δ φ c₁ c₂) <| min (1 / 100) <|
     uShQRSchurReplay n k (shqrSmallEigParams n k B Γ S δ φ c₁ c₂).length (shqrCap n B Γ S δ)
-      B Γ S δ
+      (smallEigLeafRotations k (shqrSmallEigCap n k B Γ S δ φ c₁ c₂)) B Γ S δ
 
 /-- **The precision threshold of the Schur core is positive**: for tail records with
 $b_1, b_2 > 0$, $B \ge 1$, $\Gamma > 0$, $0 < \delta \le \Sigma$, $0 < \varphi \le 1$ and $k$ the
@@ -190,8 +192,6 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has
 
 section SchurCore
 
-variable [Inhabited ℝ]
-
 /-- **The rounded shifted QR algorithm with the small-eigenvalue program is a Schur core**
 ([BanksGarzaVargasSrivastava2022, Theorem 6.3] with [BanksGarzaVargasSrivastava2025,
 Theorem 1.1], in Schur form). Let the machine have the standard model at $\boldsymbol{u}$, index
@@ -231,7 +231,28 @@ theorem roundedShQRSchur_randomSchurCoreContract {Mch : Machine ℝ} {I : Interp
       ((1 + 24 * u) ^ shqrSmallEigRotations n k B Γ S δ φ c₁ c₂ - 1) δ φ
       (fun H => IsConditionedDiagonalizable B Γ H) k (shqrCap n B Γ S δ)
       (shqrSmallEigCap n k B Γ S δ φ c₁ c₂) (n + 1) S (shqrSchurParams n k B Γ S δ φ c₁ c₂)
-      (roundedShQRSchur (O := O) (Q := Q) sG) I := sorry
+      (roundedShQRSchur (O := O) (Q := Q) sG) I := by
+  have hS0 : 0 < S := hδ.trans_le hδS
+  have hacc0 := shqrSmallEigAccuracy_pos (n := n) hB1 hΓ hδ hS0
+  have haccS := shqrSmallEigAccuracy_le (n := n) hB1 hΓ hδ hδS
+  have hφse := shqrSmallEigFailure_pos (n := n) (B := B) (Γ := Γ) (S := S) (δ := δ) hφ
+  have hφse1 := (shqrSmallEigFailure_le (n := n) (B := B) (Γ := Γ) (S := S) (δ := δ)
+    hφ.le).trans hφ1
+  have h12 := length_smallEigParams k (4 * S)
+    (forwardBackwardError k (4 * S) (shqrSmallEigAccuracy n B Γ S δ))
+    (shqrSmallEigFailure n B Γ S δ φ) c₁ c₂
+  have hu0 : 0 ≤ u := hM.roundoff_nonneg
+  simp only [uShQRSchur, uShQRSmallEig, le_min_iff] at hu
+  obtain ⟨⟨hu1, hu2⟩, -, hu3⟩ := hu
+  have hX1 : (1 : ℝ) ≤ 1 + 24 * u := by linarith
+  unfold shqrSmallEigRotations shqrSchurParams shqrSmallEigParams roundedShQRSchur
+  intro n' a p uo f H U hn hHess hHS hCD
+  exact roundedShQRSchurWith_randomSchurCoreContract hS hM hL hNat hQ hC hI hloc hDisk hU hB1 hΓ
+    hδ hδS hφ hφ1 hk (smallEigProg_randomSchurLeafContract hS hM hL (min_le_left k (n + 1))
+      (hNat.mono (min_le_right _ _)) hQ hC hI hloc hSmp hDisk hU hG hA hB hb₁ hb₂ hacc0 haccS
+      hφse hφse1 hu2) h12 (sub_nonneg.mpr (one_le_pow₀ hX1)) le_rfl
+    (forwardBackwardError_spec (kmax := k) hacc0 haccS).1.le le_rfl hφse.le le_rfl hu1 hu3
+    H U hn hHess hHS hCD
 
 /-- **The Schur core with the small-eigenvalue program terminates on every tape**: on a scalar
 machine with the standard model at $\boldsymbol{u} \le 1/100$, index literals, exact natural
@@ -342,7 +363,11 @@ theorem roundedShQRSchur_measureReal_not_schur_le {Mch : Machine ℝ} {I : Inter
         ∃ U' Tm : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, Schur.HoldsSchurPair a uo U' Tm μ'.store ∧
           Tm.IsUpperTriangular ∧
           IsTrackedUnitarySimilar ((1 + 24 * u) ^ shqrSmallEigRotations n k B Γ S δ φ c₁ c₂ - 1)
-            δ U₀ H U' Tm) μ} ≤ φ := sorry
+            δ U₀ H U' Tm) μ} ≤ φ := by
+  obtain ⟨hl, hr, ha, hP, hp⟩ := hin
+  exact (roundedShQRSchur_randomSchurCoreContract hS hM hL hNat hQ hC hI hloc hSmp hDisk hU hG
+    hA hB hb₁ hb₂ hB1 hΓ hδ hδS hφ hφ1 hk hu H U₀ le_rfl hHess hHS
+    ⟨V, d, hV, hHV, hκ, hgap⟩).measureReal_not_writes_le ⟨hP, hp, hl, hr.2.2.2.1, ha⟩ hξ
 
 end SchurCore
 
@@ -390,7 +415,27 @@ theorem roundedShQRSmallEig_measureReal_not_spectrum_le {Mch : Machine ℝ} {I :
     P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSmallEig (O := O) (Q := Q) sG).body
       (Env.frame (shqrSmallEigDims n k B Γ S δ φ c₁ c₂) [a, t, p, out, a, out, f])
           (shqrFp n a out f)
-      (ShQRSpectrum a out f H δ) μ} ≤ φ := sorry
+      (ShQRSpectrum a out f H δ) μ} ≤ φ := by
+  obtain ⟨hl, hr, ha, ⟨U₀, hU₀⟩, hAm, ht, hp⟩ := hin
+  have hB1 : 1 ≤ B := (one_le_pseudoConditionNumber hV.ne_zero).trans hκ
+  have hS0 : 0 < S := hδ.trans_le hδS
+  have hacc0 := shqrSmallEigAccuracy_pos (n := n) hB1 hΓ hδ hS0
+  have haccS := shqrSmallEigAccuracy_le (n := n) hB1 hΓ hδ hδS
+  have hφse := shqrSmallEigFailure_pos (n := n) (B := B) (Γ := Γ) (S := S) (δ := δ) hφ
+  have hφse1 := (shqrSmallEigFailure_le (n := n) (B := B) (Γ := Γ) (S := S) (δ := δ)
+    hφ.le).trans hφ1
+  have h12 := length_smallEigParams k (4 * S)
+    (forwardBackwardError k (4 * S) (shqrSmallEigAccuracy n B Γ S δ))
+    (shqrSmallEigFailure n B Γ S δ φ) c₁ c₂
+  simp only [uShQRSchur, uShQRSmallEig, le_min_iff] at hu
+  obtain ⟨⟨hu1, hu2⟩, -, hu3⟩ := hu
+  have hX1 : (1 : ℝ) ≤ 1 + 24 * u := by linarith [hM.roundoff_nonneg]
+  exact roundedShQRWith_measureReal_not_spectrum_le hS hM hL hNat hQ hC hI hloc hDisk hU hHess hV
+    hHV hκ hΓ hgap hHS hδ hδS hφ hφ1 hk (smallEigProg_randomSchurLeafContract hS hM hL
+      (min_le_left k (n + 1)) (hNat.mono (min_le_right _ _)) hQ hC hI hloc hSmp hDisk hU hG hA hB
+      hb₁ hb₂ hacc0 haccS hφse hφse1 hu2) h12 (sub_nonneg.mpr (one_le_pow₀ hX1)) le_rfl
+    (forwardBackwardError_spec (kmax := k) hacc0 haccS).1.le le_rfl hφse.le le_rfl hu1 hu3 hl hr
+    ha hAm hU₀ ht hp hξ
 
 /-- **The algorithm with the small-eigenvalue program terminates on every tape**: on a scalar
 machine with index literals, exact natural literals up to $n + 1$, exact `toNat` and comparisons,
@@ -421,15 +466,57 @@ theorem roundedShQRSmallEig_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} 
       hC hQ hSmp hDisk (smallEigCaps_smallEigParams _ _ _ _ _ _) h12.ge) h12 hl hr ha hA hU₀ ht
     hp τ
 
+open Real in
 /-- **The iteration cap is logarithmic**: there is an absolute constant $c$ with
 $F \le c\log_2 Y + c$, $Y = 4(n + 1)B\Sigma^2/(\delta\min(\Gamma, \Sigma)\varphi)$, for
 $F$ = `NLAlib.ShiftedQR.shqrCap`, every order $n + 1$, $B \ge 1$, $\Gamma > 0$,
 $0 < \delta \le \Sigma$ and $0 < \varphi \le 1$: the cap is $\lceil\log(4\Sigma/\omega)/
-\log(1/0.8016)\rceil + 1$ and $4\Sigma/\omega \le 768Y^2$. -/
+\log(1/0.8016)\rceil + 1$ and $4\Sigma/\omega \le 4Y^8$ (`NLAlib.ShiftedQR.shqrArg_facts`); $c = 36$
+suffices. -/
 theorem shqrCap_le_log : ∃ c : ℝ, ∀ {n : ℕ} {B Γ S δ φ : ℝ}, 1 ≤ B → 0 < Γ → 0 < δ → δ ≤ S →
     0 < φ → φ ≤ 1 →
-    (shqrCap n B Γ S δ : ℝ) ≤ c * Real.logb 2 (4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)) + c :=
-  sorry
+    (shqrCap n B Γ S δ : ℝ) ≤
+      c * Real.logb 2 (4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)) + c := by
+  refine ⟨36, fun {n B Γ S δ φ} hB hΓ hδ hδS hφ hφ1 => ?_⟩
+  obtain ⟨hY4, -, -, -, hrr, -, -⟩ := shqrArg_facts (n := n) (k := shqrDegree (4 * B)) hB hΓ hδ
+    hδS hφ hφ1 rfl
+  set Y := 4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)
+  have hS : 0 < S := hδ.trans_le hδS
+  have hω0 := shqrOmega_pos (n := n) hB hΓ hδ
+  have hωS := shqrOmega_le_normBound (n := n) hB hΓ hδ hδS
+  set ω := shqrOmega n B Γ δ
+  have hSω : S ≤ ω * Y ^ 8 := by
+    have h := hrr.2
+    rw [div_mul_eq_mul_div, le_div_iff₀ hS] at h
+    linarith
+  have h4 : 1 ≤ 4 * S / ω := by rw [le_div_iff₀ hω0]; linarith
+  have hq : 4 * S / ω ≤ 4 * Y ^ 8 := by rw [div_le_iff₀ hω0]; nlinarith
+  have hc : 0.1984 ≤ log (1 / shqrContraction) := by
+    have := one_sub_inv_le_log_of_pos (x := 1 / shqrContraction)
+      (by unfold shqrContraction; norm_num)
+    unfold shqrContraction at this ⊢; norm_num at this ⊢; linarith
+  have hl0 : 0 ≤ log (4 * S / ω) := log_nonneg h4
+  have hlog : log (4 * S / ω) ≤ 2 * log 2 + 8 * log Y := by
+    calc log (4 * S / ω) ≤ log (4 * Y ^ 8) := log_le_log (by linarith) hq
+      _ = 2 * log 2 + 8 * log Y := by
+          rw [log_mul (by norm_num) (by positivity), log_pow,
+            show (4 : ℝ) = 2 ^ 2 by norm_num, log_pow]
+          push_cast; ring
+  have hl2 := Real.log_two_lt_d9
+  have hl2' : 0 < log 2 := log_pos (by norm_num)
+  have hL : 0 ≤ logb 2 Y := logb_nonneg (by norm_num) (by linarith)
+  have hlY : log Y = logb 2 Y * log 2 := by rw [logb, div_mul_cancel₀ _ hl2'.ne']
+  have hx : log (4 * S / ω) / log (1 / shqrContraction) ≤ (2 * log 2 + 8 * log Y) / 0.1984 :=
+    (div_le_div_of_nonneg_left hl0 (by norm_num) hc).trans (by gcongr)
+  have hx0 : 0 ≤ log (4 * S / ω) / log (1 / shqrContraction) := div_nonneg hl0 (by linarith)
+  have hcap : (shqrCap n B Γ S δ : ℝ) ≤ log (4 * S / ω) / log (1 / shqrContraction) + 2 := by
+    rw [shqrCap, Nat.cast_add, Nat.cast_one]
+    have := Nat.ceil_lt_add_one hx0
+    linarith
+  have hY : (2 * log 2 + 8 * log Y) / 0.1984 ≤ 34 * logb 2 Y + 34 := by
+    rw [hlY, div_le_iff₀ (by norm_num)]
+    nlinarith
+  linarith
 
 open Real in
 /-- **The shift degree is $O(\log B\log\log B)$**: there is an absolute constant $c$ with
@@ -655,7 +742,18 @@ theorem roundedShQRSmallEig_relative {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
     P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSmallEig (O := O) (Q := Q) sG).body
       (Env.frame (shqrSmallEigDims n k B Γ S (δ * S / c) φ c₁ c₂) [a, t, p, out, a, out, f])
-      (shqrFp n a out f) (ShQRSpectrum a out f H (δ * specNorm H)) μ} ≤ φ := sorry
+      (shqrFp n a out f) (ShQRSpectrum a out f H (δ * specNorm H)) μ} ≤ φ := by
+  have hc0 : 0 < c := by linarith
+  have h1 : 0 < δ * S / c := by positivity
+  have h2 : δ * S / c ≤ S := by rw [div_le_iff₀ hc0]; nlinarith
+  have h3 : δ * S / c ≤ δ * specNorm H := by rw [div_le_iff₀ hc0]; nlinarith
+  have hT := roundedShQRSmallEig_measureReal_not_spectrum_le hS hM hL hNat hQ hC hI hloc hSmp
+    hDisk hU hG hA hB hb₁ hb₂ hHess hV hHV hκ hΓ hgap hHS h1 h2 hφ hφ1 hk hu hin hξ
+  have := hξ.isProbabilityMeasure
+  refine le_trans ?_ hT
+  refine measureReal_mono fun ω' hω' hW => hω' ?_
+  exact hW.mono le_rfl fun μ' _ ⟨hf, Tm, U, E, hTm, hU, hT, hE, hR⟩ =>
+    ⟨hf, Tm, U, E, hTm, hU, hT, hE.trans h3, hR⟩
 
 /-- **The algorithm with no oracle on Hermitian inputs** ([BanksGarzaVargasSrivastava2022,
 Theorem 6.3], at the condition $1$): with the machine, streams and tails written out in the

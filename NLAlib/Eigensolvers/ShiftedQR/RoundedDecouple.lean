@@ -990,8 +990,9 @@ standard model at $\boldsymbol{u} < 1$, exact natural literals up to $n_{\max} +
 interpretation reading the tape only in its windows, a `SmallEig` kernel and an exact polar disk
 sampler, `NLAlib.ShiftedQR.roundedDecouple` with the parameter words
 `NLAlib.ShiftedQR.roundedDecoupleParams` meets `NLAlib.ShiftedQR.RandomDecouplingContract` on the
-class (condition $2B$, separation $g/2$) for orders up to $n_{\max} + 1$ and norms up to
-$N_{\max}$, with failure probability $F(\varphi_{\mathrm{se}} + \varphi_R/2 + \varphi)$, the level
+class (condition $2B$, separation $g/2$) for orders up to $n_c + 1$ and norms up to
+$N_{\max}$, for any $n_c \le n_{\max}$ and a log width $w \ge kn_c$, with failure probability
+$F(\varphi_{\mathrm{se}} + \varphi_R/2 + \varphi)$, the level
 $\omega_D$ and the backward error $FE$, $E = (1 + C)S((1 + 300(n_{\max}+1)^2\boldsymbol{u})^k - 1)$.
 The hypotheses are those of `NLAlib.ShiftedQR.shIteration_pwrites` at the order $n_{\max} + 1$,
 the class constant $B_i \ge 4B$ and the iterate norm $S$, and the loop's: the scan thresholds
@@ -1058,12 +1059,15 @@ theorem roundedDecoupleWith_randomDecouplingRoutineContract_at {M : Machine ℝ}
     (hSE : RandomSmallEigContractAt law β φse k 12 T S qs SE I)
     (hq12 : qs = [] ∨ qs.length = 12) {ps : List ℝ}
     (hps : ps = roundedDecoupleParams tL R tv γ Bi α ε k q ++ qs) {ns ws : ℕ}
-    (hns : F * (k + 1 + (excNet ε).length) ≤ ns) (hws : k * nmax ≤ ws) :
-    RandomDecouplingRoutineContract law (2 * B) (g / 2) (F * (φse + φR / 2 + φ)) k F T nmax Nmax
+    (hns : F * (k + 1 + (excNet ε).length) ≤ ns) {nc : ℕ} (hnc : nc ≤ nmax)
+    (hws : k * nc ≤ ws) :
+    RandomDecouplingRoutineContract law (2 * B) (g / 2) (F * (φse + φR / 2 + φ)) k F T nc Nmax
       ps ns ws ωD
       (fun _ => F * ((1 + C) * S * ((1 + 300 * (nmax + 1) ^ 2 * u) ^ k - 1)))
       (roundedDecoupleWith SE) I := by
   intro n N w p f lg H V d hkn hn hN hHess hnorm hV hHV hκ hgap
+  have hws' : k * n ≤ ws := (Nat.mul_le_mul_left k hn).trans hws
+  replace hn : n ≤ nmax := hn.trans hnc
   have hu := hM.roundoff_nonneg
   set E := (1 + C) * S * ((1 + 300 * (nmax + 1) ^ 2 * u) ^ k - 1) with hEdef
   have hnn : (n : ℝ) + 1 ≤ nmax + 1 := by exact_mod_cast Nat.succ_le_succ hn
@@ -1127,7 +1131,6 @@ theorem roundedDecoupleWith_randomDecouplingRoutineContract_at {M : Machine ℝ}
     ((hessenbergPotential_le_specNorm (by omega) hkn H).trans hnorm).trans hN
   have hiE : ∀ i < F, (i : ℝ) * E ≤ F * E := fun i hi =>
     mul_le_mul_of_nonneg_right (by exact_mod_cast hi.le) hE0
-  have hws' : k * n ≤ ws := (Nat.mul_le_mul_left k hn).trans hws
   refine (roundedDecouple_pwrites_of_loop (lg := lg) (ns := ns) (ws := ws) hI hloc hS hM hQ
     (by rw [hkq]; exact Nat.lt_two_pow_self.le) hps (by positivity) fun L hlgL hlgv => ?_).mono
     (fun μ ⟨hW, hp, hl, hv, hrw, hrf, hrl, hap, hpd⟩ => ?_) le_rfl

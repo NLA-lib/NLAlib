@@ -177,14 +177,16 @@ def shExcInit : Impl O Q := opsImpl% [] (Cr, Cp, Rt) → (Rt, Pt, Gw, Fl) {
 /-- The exceptional branch of `Sh`: its start (`NLAlib.ShiftedQR.shExcInit`), the exceptional
 shifts around the centre `Z` (`NLAlib.ShiftedQR.excShifts`, with the radius `Rt`, the
 translate factor `Cw` and the net `G`) into `Ss`, and the trials (`NLAlib.ShiftedQR.shTrials`).
-The interface is
-`[N, k, q, n0] (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, T, SR, Ds, Rg, P2, Ss) → (A, Gw, Fl)`. -/
+Trial $t$ records its rotations in slot $j_0 + t$ of the log `Lg` of slot width $w$. The
+interface is
+`[N, k, q, n0, w, j0] (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, T, SR, Ds, Rg, P2, Ss) → (A, Gw, Fl, Lg)`.
+-/
 def shExc : Impl O Q :=
-  opsImpl% [N, k, q, n0] (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, T, SR, Ds, Rg, P2, Ss) →
-      (A, Gw, Fl) {
+  opsImpl% [N, k, q, n0, w, j0] (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, T, SR, Ds, Rg, P2, Ss) →
+      (A, Gw, Fl, Lg) {
     run shExcInit.body [] (Cr, Cp, Rt, Rt, Pt, Gw, Fl);
     run (excShifts (O := O) (Q := Q)).body [n0] (Z, Rt, Cw, G, Ss);
-    run shTrials.body [N, k, q, n0] (A, Ss, Thr, Pt, T, SR, Ds, Rg, P2, A, Gw, Fl)
+    run shTrials.body [N, k, q, n0, w, j0] (A, Ss, Thr, Pt, T, SR, Ds, Rg, P2, A, Gw, Fl, Lg)
   }
 
 end Program
@@ -727,9 +729,13 @@ similarity $\widehat{\mathbf{H}}$ of $\mathbf{H}$ with error $\varepsilon$ that 
 the bottom (one of its last $k$ subdiagonal entries passes the scan) or has
 $\psi_k(\widehat{\mathbf{H}}) \le 1.002(1 - \gamma)\psi_k(\mathbf{H})$. -/
 def ShOutcome (u : ℝ) (k : ℕ) (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (γ tv ε : ℝ)
-    (a f : ℕ × ℕ) (m' : Mem ℝ) : Prop :=
-  m'.store.get f.1 f.2 = some 1 ∧ ∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
-    IsPerturbedUnitarySimilar H H' ε ∧ IsUpperHessenberg H' ∧ HoldsMatrix a H' m'.store ∧
+    (a f lg : ℕ × ℕ) (ns w : ℕ) (LL : List (Option (List GivensEntry))) (c : ℕ) (m' : Mem ℝ) :
+    Prop :=
+  m'.store.get f.1 f.2 = some 1 ∧ ∃ Ls : List (Option (List GivensEntry)), Ls.length = c ∧
+    (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 1) ∧ HoldsSlottedLog lg ns w (LL ++ Ls) [] m'.store ∧
+  ∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+    IsPerturbedUnitarySimilarBy (givensLog (n + 1) (slotEntries w Ls)) H H' ε ∧
+      IsUpperHessenberg H' ∧ HoldsMatrix a H' m'.store ∧
     ((∃ i : Fin n, n ≤ (i : ℕ) + k ∧ (1 - u) ^ 2 * ‖H' i.succ i.castSucc‖ ^ 2 ≤ tv) ∨
       hessenbergPotential k H' ≤ 1.002 * (1 - γ) * hessenbergPotential k H)
 
@@ -737,25 +743,22 @@ def ShOutcome (u : ℝ) (k : ℕ) (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (
 $\lvert s\rvert \le C\|\mathbf{H}\|_2$, accepted against the potential threshold
 $\mathrm{fl}(1.0015(1 - \gamma)p_H)$, $p_H$ within $20\boldsymbol{u}$, relatively, of
 $\psi_k(\mathbf{H})$, $\gamma \le 1$, $2 \cdot 10^5\boldsymbol{u} \le 1$, with the error
-$(1 + C)\|\mathbf{H}\|_2((1 + x)^k - 1)$. -/
+$(1 + C)\|\mathbf{H}\|_2((1 + x)^k - 1)$, by the exact unitary of the closed slots `Ls`. -/
 theorem shOutcome_of_accepted {M : Machine ℝ} {u x C γ tv pH : ℝ} (hM : StdModel u id M)
     (hu : 200000 * u ≤ 1) (hx : 0 ≤ x) (hγ1 : γ ≤ 1) {k : ℕ}
     {H H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {s : ℂ}
-    {Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)} {a f : ℕ × ℕ} {m' : Mem ℝ}
+    {Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)} {a f lg : ℕ × ℕ} {m' : Mem ℝ}
+    {ns w : ℕ} {LL Ls : List (Option (List GivensEntry))}
+    (hlog : HoldsSlottedLog lg ns w (LL ++ Ls) [] m'.store)
+    (hpl : ∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 1)
     (hpH : |pH - hessenbergPotential k H| ≤ 20 * u * hessenbergPotential k H)
-    (hs : ‖s‖ ≤ C * specNorm H) (hch : IsStableQRChain x H (List.replicate k s) H' Rs)
+    (hs : ‖s‖ ≤ C * specNorm H) (hch : IsStableQRChainBy x H (List.replicate k s) H' Rs
+      (givensLog (n + 1) (slotEntries w Ls)))
     (hH' : IsUpperHessenberg H') (hA : HoldsMatrix a H' m'.store)
     (hf : m'.store.get f.1 f.2 = some 1)
     (hacc : ShAccepted u k tv (M.mul (1.0015 * (1 - γ)) pH) H') :
-    ShOutcome u k H γ tv ((1 + C) * specNorm H * ((1 + x) ^ k - 1)) a f m' := by
-  have hsim := hch.isPerturbedUnitarySimilar hx (fun t ht => by
-    rw [List.eq_of_mem_replicate ht]; exact hs)
-  rw [List.length_replicate] at hsim
-  refine ⟨hf, H', hsim, hH', hA, ?_⟩
-  rcases hacc with h | ⟨p, hp, hlt⟩
-  · exact Or.inl h
-  · exact Or.inr (potential_contract_of_lt hM.roundoff_nonneg hu hγ1
-      (hessenbergPotential_nonneg k H) hp hpH (hM.mul _ _) hlt)
+    ShOutcome u k H γ tv ((1 + C) * specNorm H * ((1 + x) ^ k - 1)) a f lg ns w LL Ls.length m' :=
+  sorry
 
 end NLAlib.ShiftedQR
 
@@ -795,46 +798,23 @@ theorem shExcTrials_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS 
     (hbound : (66 + 2 * C) * B * S * ((2 + 2 * C) * S / d) ^ k * √(n + 1) *
       (300 * (n + 1) ^ 2 * u) ≤ 0.001 * ω)
     (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) (hcp : cp = 1.0015 * (1 - γ))
-    (hm : ShExcMid2 M u L k ε H e ss γ cg cr cw cp tv d C a s wg wr ww wp g thr f m) :
+    (hm : ShExcMid2 M u L k ε H e ss γ cg cr cw cp tv d C a s wg wr ww wp g thr f m)
+    {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
+    (hlog : HoldsSlottedLog lg ns w LL [] m.store) (hj : LL.length + (excNet ε).length ≤ ns)
+    (hw : k * n ≤ w) (hlgL : lg.1 < L) (hlgv : ∀ b ∈ [a, s, wg, wr, ww, wp, g, thr, f],
+      b.1 ≠ lg.1) :
     Writes .total I τ (shTrials (O := O) (Q := Q)).body
-      (Env.frame [n + 1, k, q, (excNet ε).length] [a, (L + 10, 0), thr, (L + 2, 0), (L + 5, 0),
-        (L + 6, 0), (L + 7, 0), (L + 8, 0), (L + 9, 0), a, (L + 11, 0), f])
+      (Env.frame [n + 1, k, q, (excNet ε).length, w, LL.length] [a, (L + 10, 0), thr, (L + 2, 0),
+        (L + 5, 0),
+        (L + 6, 0), (L + 7, 0), (L + 8, 0), (L + 9, 0), a, (L + 11, 0), f, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 11) 0 1 ⊔
         Store.inBlock f.1 f.2 1 ⊔ (Store.inBlock (L + 5) 0 (2 * ((n + 1) * (n + 1))) ⊔
           Store.inBlock (L + 6) 0 (2 * k) ⊔ Store.inBlock (L + 7) 0 (2 * k) ⊔
-          Store.inBlock (L + 8) 0 5 ⊔ Store.inBlock (L + 9) 0 1))
-      (ShOutcome u k H γ tv ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a f)
-      m := by
-  obtain ⟨⟨ha, hs, hwg, hwr, hww, hwp, hg, hthl, hfl⟩, haf, hio⟩ := hv
-  obtain ⟨⟨hA, -, -, -, -, -, -, hthr, -, -, -, -, h2, -, -, h5, h6, h7, h8, h9, -, -⟩,
-    ⟨zs, hzs, ⟨j, hj⟩, hdist, hnear⟩, ⟨p, hp, hPt⟩, hGw, hF⟩ := hm
-  subst hcp
-  have hu0 := hM.roundoff_nonneg
-  have hk0 : 0 < k := by omega
-  have hk1 : (2 : ℝ) ≤ k := by exact_mod_cast hk2
-  have hψ0 : 0 < hessenbergPotential k H := lt_of_lt_of_le hω hψ
-  have hH0 : H ≠ 0 := fun h0 => by
-    have h1 : specNorm H = 0 := by rw [h0, specNorm_zero]
-    linarith [hessenbergPotential_le_specNorm hk0 hkn H]
-  have hthrA : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
-      Store.inBlock f.1 f.2 1) (Store.inBlock thr.1 thr.2 1) := hio.mono le_rfl (by fp_sub)
-  refine (shTrials_writes (τ := τ) (s := (L + 10, 0)) (pt := (L + 2, 0)) (t := (L + 5, 0))
-    (sr := (L + 6, 0)) (ds := (L + 7, 0)) (rg := (L + 8, 0)) (p2 := (L + 9, 0))
-    (g := (L + 11, 0)) hS hM hu1 hL hNat hC hk0 hkn hkq (by nlinarith) hH hnu hA
-    (fun j => by simpa using hzs j) hthr hPt hGw hF (by simp [h5]) (by simp [h6])
-    (by simp [h7]) (by simp [h8]) (by simp [h9]) (by disjoint) (by disjoint) (by disjoint)
-    (by disjoint) (by disjoint)
-    (Fp.disj_sup_left.mpr ⟨by disjoint, Fp.disj_sup_right.mpr ⟨by disjoint, haf.symm⟩⟩)
-    (by disjoint)
-    (Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨Fp.disj_sup_right.mpr ⟨by disjoint,
-      hthrA.mono le_sup_left le_rfl⟩, by disjoint⟩, Fp.disj_sup_right.mpr ⟨by disjoint,
-        hthrA.mono le_sup_right le_rfl⟩⟩)
-    (by disjoint) (by disjoint) j
-    (shTrial_good hM (by nlinarith) hC0 hd hω hk0 hkn hH0 hH hV hHV hκ hSH (hnear j)
-      (fun i => hdist j i) hxu hbound hγ1 hψ0 hp hj) hthrω).mono le_rfl ?_
-  rintro m' - ⟨hf1, j', H', Rs, hch, hH', hA', hacc⟩
-  exact shOutcome_of_accepted hM (by nlinarith) (by positivity) hγ1.le hp (hnear j') hch hH'
-    hA' hf1 hacc
+          Store.inBlock (L + 8) 0 5 ⊔ Store.inBlock (L + 9) 0 1) ⊔
+        Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (ShOutcome u k H γ tv ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a f lg
+        ns w LL (excNet ε).length)
+      m := sorry
 
 end Trials
 
@@ -920,82 +900,22 @@ theorem shExc_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hI : I.I
       (300 * (n + 1) ^ 2 * u) ≤ 0.001 * ω)
     (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv)
     (hcr : cr = (2 : ℝ) ^ ((k : ℝ)⁻¹) * (θ * α * B ^ ((k : ℝ)⁻¹))) (hcw : cw = ε / 2)
-    (hcp : cp = 1.0015 * (1 - γ)) :
+    (hcp : cp = 1.0015 * (1 - γ))
+    {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))} (hj : LL.length + (excNet
+      ε).length ≤ ns) (hw : k * n ≤ w)
+    (hlgL : lg.1 < L) (hlgv : ∀ b ∈ [a, s, wg, wr, ww, wp, g, thr, f], b.1 ≠ lg.1) :
     PWrites law I (shExc (O := O) (Q := Q)).body
-      (Env.frame [n + 1, k, q, (excNet ε).length] [a, (L, 0), wr, ww, wp, g, thr, (L + 1, 0),
+      (Env.frame [n + 1, k, q, (excNet ε).length, w, LL.length] [a, (L, 0), wr, ww, wp, g, thr,
+        (L + 1, 0),
         (L + 2, 0), (L + 5, 0), (L + 6, 0), (L + 7, 0), (L + 8, 0), (L + 9, 0), (L + 10, 0), a,
-        (L + 11, 0), f])
-      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔ Fp.above L)
-      (ShExcPre u L k ε H V e ss α γ cg cr cw cp tv a s wg wr ww wp g thr f)
-      (ShOutcome u k H γ tv ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a f)
-      φ := by
-  have hv' := hv
-  obtain ⟨⟨ha, hs, hwg, hwr, hww, hwp, hg, hthl, hfl⟩, haf, hio⟩ := hv'
-  have hψ0 : 0 < hessenbergPotential k H := lt_of_lt_of_le hω hψ
-  have hB0 : 0 ≤ B := le_trans zero_le_one ((one_le_pseudoConditionNumber hV.ne_zero).trans hκ)
-  have hX : 0 ≤ (2.002 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) := by
-    have : 0 ≤ θ := by linarith
-    have : 0 ≤ α := by linarith
-    positivity
-  have hC0 : 0 ≤ C := by linarith
-  have hfI : Fp.Disj (Store.inBlock f.1 f.2 1)
-      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔
-        Store.inBlock wg.1 wg.2 1 ⊔ Store.inBlock wr.1 wr.2 1 ⊔ Store.inBlock ww.1 ww.2 1 ⊔
-        Store.inBlock wp.1 wp.2 1 ⊔ Store.inBlock g.1 g.2 (2 * (excNet ε).length) ⊔
-        Store.inBlock thr.1 thr.2 1) :=
-    (Fp.disj_sup_right.mpr ⟨haf.symm, hio.mono le_sup_right le_rfl⟩).mono le_rfl (by fp_sub)
-  unfold shExc
-  refine (PWrites.seq hI hloc (φ₁ := 0) (φ₂ := φ + 0)
-    (F₁ := Store.inBlock (L + 1) 0 1 ⊔ Store.inBlock (L + 2) 0 1 ⊔ Store.inBlock (L + 11) 0 1 ⊔
-      Store.inBlock f.1 f.2 1)
-    (F₂ := Store.inBlock (L + 10) 0 (2 * (excNet ε).length) ⊔
-      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 11) 0 1 ⊔
-        Store.inBlock f.1 f.2 1 ⊔ (Store.inBlock (L + 5) 0 (2 * ((n + 1) * (n + 1))) ⊔
-          Store.inBlock (L + 6) 0 (2 * k) ⊔ Store.inBlock (L + 7) 0 (2 * k) ⊔
-          Store.inBlock (L + 8) 0 5 ⊔ Store.inBlock (L + 9) 0 1)))
-    (Mid := ShExcMid1 M u L k ε H V e ss α γ cg cr cw cp tv a s wg wr ww wp g thr f) (by positivity)
-    ?_ (PWrites.seq hI hloc (φ₁ := φ) (φ₂ := 0)
-      (F₁ := Store.inBlock (L + 10) 0 (2 * (excNet ε).length))
-      (F₂ := Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 11) 0 1 ⊔
-        Store.inBlock f.1 f.2 1 ⊔ (Store.inBlock (L + 5) 0 (2 * ((n + 1) * (n + 1))) ⊔
-          Store.inBlock (L + 6) 0 (2 * k) ⊔ Store.inBlock (L + 7) 0 (2 * k) ⊔
-          Store.inBlock (L + 8) 0 5 ⊔ Store.inBlock (L + 9) 0 1))
-      (Mid := ShExcMid2 M u L k ε H e ss γ cg cr cw cp tv d C a s wg wr ww wp g thr f) le_rfl ?_
-      ?_)).mono (fun _ h => h) ?_ (fun _ h => h) (by simp)
-  · -- the start of the branch
-    refine PWrites.of_writes le_rfl fun m τ ⟨hctx, ⟨r, hZ, hr⟩, ⟨p, hp, hRt⟩⟩ => ?_
-    obtain ⟨-, -, -, hcr', -, hcp', -, -, hf', hlen', -, h1, h2, -, -, -, -, -, -, -, -, h11⟩ :=
-      id hctx
-    have hfo : Fp.Disj (Store.inBlock (L + 1) 0 1 ⊔ Store.inBlock (L + 2) 0 1 ⊔
-        Store.inBlock (L + 11) 0 1 ⊔ Store.inBlock f.1 f.2 1)
-        (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔
-          Store.inBlock wg.1 wg.2 1 ⊔ Store.inBlock wr.1 wr.2 1 ⊔ Store.inBlock ww.1 ww.2 1 ⊔
-          Store.inBlock wp.1 wp.2 1 ⊔ Store.inBlock g.1 g.2 (2 * (excNet ε).length) ⊔
-          Store.inBlock thr.1 thr.2 1) :=
-      Fp.disj_sup_left.mpr ⟨by disjoint, hfI⟩
-    refine ((shExcInit_writes (τ := τ) (rt := (L + 1, 0)) (pt := (L + 2, 0))
-      (gw := (L + 11, 0)) (f := f) hS (hNat.mono (by omega)) hcr' hcp' hRt (by simp [h2])
-      (by simp [h11]) hf' (Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr
-        ⟨Fp.disj_sup_right.mpr ⟨hfI.mono le_rfl (by fp_sub), by disjoint⟩, by disjoint⟩,
-          by disjoint⟩) (by disjoint) (by disjoint)).in_frame rfl rfl
-      (by simp [Mem.Live, hlen']; omega)).mono (by fp_sub) ?_
-    rintro m' hfr ⟨-, hR, hP, hG, hF⟩
-    exact ⟨hctx.of_eqOff hfr hfo, ⟨r, hfr.keep (Store.readsOnly_readBlock _ _ _ _)
-      (by disjoint) hZ, hr⟩, ⟨p, hp, hR, hP⟩, hG, hF⟩
-  · -- the exceptional shifts
-    refine (shExcShifts_pwrites hI hloc hS hM hD hU hk hkn hv hlen hV hHV hκ hSH hopt hd0 hsH hψ0
-      hγ hγ1 hθ hα hε hε2 hφ hφ1 hd hd' hC1 hku hexc1 hexc2 hcr hcw).in_frame rfl rfl ?_
-    rintro m ⟨⟨-, -, -, -, -, -, -, -, -, hlen', -⟩, -⟩
-    simp [Mem.Live, hlen']
-    omega
-  · -- the trials
-    refine PWrites.of_writes le_rfl fun m τ hm => ?_
-    refine (shExcTrials_writes hS hM hu1 hL hNat hC hk hkn hkq hku hv hH hV hHV hκ hSH hnu hC0 hd'
-      hω hψ hγ1 hxu hbound hthrω hcp hm).in_frame rfl rfl ?_
-    obtain ⟨⟨-, -, -, -, -, -, -, -, -, hlen', -⟩, -⟩ := hm
-    simp [Mem.Live, hlen']
-    omega
-  · fp_sub
+        (L + 11, 0), f, lg])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔ Fp.above L ⊔
+        Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (fun m => ShExcPre u L k ε H V e ss α γ cg cr cw cp tv a s wg wr ww wp g thr f m ∧
+        HoldsSlottedLog lg ns w LL [] m.store)
+      (ShOutcome u k H γ tv ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a f lg
+        ns w LL (excNet ε).length)
+      φ := sorry
 
 end Branch
 

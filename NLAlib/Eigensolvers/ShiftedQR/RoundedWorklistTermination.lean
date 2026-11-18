@@ -259,7 +259,8 @@ def SchurStoredState (n : ℕ) (P : Prop) (U : Matrix (Fin (n + 1)) (Fin (n + 1)
 
 /-- From the geometry with the threshold and parameter words stored at `μ`, a write inside the
 round footprint to `μ'` keeps them, so the core at `μ'` gives the state at `μ'`. -/
-theorem SchurStoredState.of_core {n : ℕ} {U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {u εL : ℝ}
+theorem SchurStoredState.of_core {n : ℕ} {P : Prop} {U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {u εL : ℝ}
     {m : ℕ} {ps : List ℝ} {a t p uo f st w ub r : ℕ × ℕ} {j : ℕ} {μ μ' : Mem ℝ} {F : Fp}
     (h : SchurGeometry (n + 1) ps.length a t p uo f st w ub r μ)
     (ht : ∃ x, μ.store.get t.1 t.2 = some x)
@@ -283,7 +284,7 @@ $\ell \le n + 1$ and the accumulator within its factor, `roundedAbort` writes th
 the stack count and leaves the core `NLAlib.ShiftedQR.SchurStoredCore` (an empty stack). -/
 theorem roundedAbort_writes_schurCore {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hL : IsIndexLit Mch I) {n : ℕ} (hN : IsExactNatLit id Mch (n + 1)) {np : ℕ} {τ : Tape ℝ}
-    {μ : Mem ℝ} {U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {u εL : ℝ} {m j ℓ : ℕ}
+    {μ : Mem ℝ} {P : Prop} {U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {u εL : ℝ} {m j ℓ : ℕ}
     {a t p uo f st w ub r : ℕ × ℕ} (hG : SchurGeometry (n + 1) np a t p uo f st w ub r μ)
     (hA : ∃ A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A μ.store) (hℓ : ℓ ≤ n + 1)
     (hacc : AccumIf P U ((1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ) uo μ) :
@@ -549,7 +550,8 @@ theorem roundedLargeRest_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u 
       (hG₂.live_of_subset (by simp))).mono (by fp_sub [schurRoundFp]) fun _ _ h => h
 
 /-- The core survives dropping scratch buffers above its views. -/
-theorem SchurStoredCore.of_below {n : ℕ} {U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {u εL : ℝ}
+theorem SchurStoredCore.of_below {n : ℕ} {P : Prop} {U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {u εL : ℝ}
     {m j L : ℕ} {a uo f st : ℕ × ℕ} {s s' : Store ℝ} {pos : ℕ}
     (h : SchurStoredCore n P U u εL m a uo f st j ⟨s, pos⟩) (hBelow : Store.Below L s s')
     (ha : a.1 < L) (hu : uo.1 < L) (hf : f.1 < L) (hs : st.1 < L) :

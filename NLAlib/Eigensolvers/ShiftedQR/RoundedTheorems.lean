@@ -1101,14 +1101,14 @@ tape only in its windows, and a stream $s_U$ uniform on $[0, 1]$ with an exact p
 on it. Let $B \ge 1$, $\Gamma > 0$, $0 < \delta \le \Sigma$, $0 < \varphi \le 1$ and $k$ the degree
 of (eqn:setk) at $4B$. Let the leaf `L` be a randomized small-block Schur solver on the orders at
 most $\min(k, n + 1)$ and norms at most $4\Sigma$ with the cap $T$ and $12$ words `qs`, with
-accumulator error $0 \le \varepsilon_L \le (1 + 24\boldsymbol{u})^{R_L} - 1$, backward error
-$0 \le \beta_L \le \Sigma'(\beta/(4(2k + 1)\Sigma'))^k$ ($\beta$ = `shqrSmallEigAccuracy`,
-$\Sigma' = 4\Sigma$) and failure $0 \le \varphi_L \le$ `shqrSmallEigFailure`; let
-$\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{ShQR}}$ and $\boldsymbol{u}$ at most the replay term at
-$R_L$. Then `roundedShQRSchurWith L` meets the Schur core contract on the orders at most
-$n + 1$, the class $(B, \Gamma)$ and norms at most $\Sigma$, with the words: the deflation
-threshold, `shqrParams`, `qs`. Except with probability $\varphi$ its flag is $0$, its matrix upper triangular, and the
-pair is tracked from $(\mathbf{U}, \mathbf{H})$ with the backward error $\delta$ and the relative
+accumulator error $0 \le \varepsilon_L \le (1 + 24\boldsymbol{u})^{R_L} - 1$, backward error $0 \le
+\beta_L \le \Sigma'(\beta/(4(2k + 1)\Sigma'))^k$ ($\beta$ = `shqrSmallEigAccuracy`, $\Sigma' =
+4\Sigma$) and failure $0 \le \varphi_L \le$ `shqrSmallEigFailure`; let $\boldsymbol{u} \le
+\boldsymbol{u}_{\mathrm{ShQR}}$ and $\boldsymbol{u}$ at most the replay term at $R_L$. Then
+`roundedShQRSchurWith L` meets the Schur core contract on the orders at most $n + 1$, the class $(B,
+\Gamma)$ and norms at most $\Sigma$, with the words: the deflation threshold, `shqrParams`, `qs`.
+Except with probability $\varphi$ its flag is $0$, its matrix upper triangular, and the pair is
+tracked from $(\mathbf{U}, \mathbf{H})$ with the backward error $\delta$ and the relative
 accumulator error $(1 + 24\boldsymbol{u})^{R} - 1$, $R$ = `NLAlib.ShiftedQR.shqrSchurRotations`
 ($2(n + 1)(n_s w + 2k(k + 2)) + (n + 1)R_L$).
 [BanksGarzaVargasSrivastava2022, Theorem 6.3]; there only the eigenvalues are computed, with an

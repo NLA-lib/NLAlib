@@ -122,7 +122,7 @@ section Termination
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has SampleOp O] [Has DiskSampleOp O]
   [Has CmpTst Q] [Has IdxTst Q]
 
-/-- **Two near-unitary updates of the accumulator compose**: if $\mathbf{X}'$ is within $e_1$ of
+/-- Two near-unitary updates of the accumulator compose: if $\mathbf{X}'$ is within $e_1$ of
 a unitary $\mathbf{V}_1$ and $\mathbf{U}'$ within $e_2\|\mathbf{X}'\|_2$ of $\mathbf{X}'\mathbf{V}$
 for a unitary $\mathbf{V}$, $e_2 \ge 0$, then $\mathbf{U}'$ is within $(1 + e_1)(1 + e_2) - 1$ of
 the unitary $\mathbf{V}_1\mathbf{V}$. -/
@@ -142,8 +142,205 @@ theorem specNorm_sub_mul_le_of_near {N : ℕ} {X' V₁ U' V : Matrix (Fin N) (Fi
   rw [hV.specNorm_mul_right]
   nlinarith [mul_le_mul_of_nonneg_left hX he₂]
 
+/-- The accumulator bound of `NLAlib.SmallEig.smallEigProg`: the replay of the reduction (within
+$(1 + 24\boldsymbol{u})^{(n+1)^2} - 1$ of a unitary) and the core (relative error
+$(1 + 24\boldsymbol{u})^{R_c} - 1$) leave the accumulator within
+$(1 + 24\boldsymbol{u})^{R} - 1$ of a unitary, $R$ = `NLAlib.SmallEig.smallEigLeafRotations`-type
+count at $k_{\max} \ge n + 1$. -/
+theorem smallEigProg_accumulator_le {u : ℝ} (hu0 : 0 ≤ u) {n kmax T : ℕ} (hdk : n + 1 ≤ kmax)
+    {X' V₁ U' V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hV₁ : HasOrthonormalCols V₁)
+    (hV : HasOrthonormalCols V)
+    (h₁ : specNorm (X' - 1 * V₁) ≤ ((1 + 24 * u) ^ ((n + 1) * (n + 1)) - 1) *
+      specNorm (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ))
+    (h₂ : specNorm (U' - X' * V) ≤ ((1 + 24 * u) ^ (2 * (n + 1) * ((T + (n + 1)) * (n + 1) +
+      2 * 1 * (1 + 2))) * (1 + 0) ^ (n + 1) - 1) * specNorm X') :
+    specNorm (U' - V₁ * V) ≤
+      (1 + 24 * u) ^ (kmax * kmax + 2 * (kmax + 1) * ((T + kmax) * kmax + 6)) - 1 := by
+  have h1u : (1 : ℝ) ≤ 1 + 24 * u := by linarith
+  have he₁ : specNorm (X' - V₁) ≤ (1 + 24 * u) ^ ((n + 1) * (n + 1)) - 1 := by
+    rw [Matrix.one_mul] at h₁
+    have := one_le_pow₀ (M₀ := ℝ) (n := (n + 1) * (n + 1)) h1u
+    exact h₁.trans (mul_le_of_le_one_right (by linarith) specNorm_one_le)
+  have hb := specNorm_sub_mul_le_of_near hV₁ hV (e₂ := (1 + 24 * u) ^ (2 * (n + 1) *
+    ((T + (n + 1)) * (n + 1) + 2 * 1 * (1 + 2))) - 1) (by
+      have := one_le_pow₀ (M₀ := ℝ) (n := 2 * (n + 1) * ((T + (n + 1)) * (n + 1) + 2 * 1 * (1 + 2)))
+        h1u
+      linarith) he₁ (by simpa using h₂)
+  refine hb.trans ?_
+  rw [add_sub_cancel, add_sub_cancel, ← pow_add]
+  have h2' : (T + (n + 1)) * (n + 1) ≤ (T + kmax) * kmax := Nat.mul_le_mul (by omega) hdk
+  have h3' : 2 * (n + 1) * ((T + (n + 1)) * (n + 1) + 2 * 1 * (1 + 2)) ≤
+      2 * (kmax + 1) * ((T + kmax) * kmax + 6) := Nat.mul_le_mul (by omega) (by omega)
+  have := pow_le_pow_right₀ h1u (Nat.add_le_add (Nat.mul_le_mul hdk hdk) h3')
+  linarith
+
+/-- The planes of the closed log of the reduction (`NLAlib.hessenbergReduceLastSlots` padded with
+rejected slots) are in the order or the zero fill. -/
+theorem hessenbergReduceLastSlots_closed_planes (M : Machine ℝ) {N : ℕ}
+    (A : Matrix (Fin N) (Fin N) ℂ) (w : ℕ) :
+    ∀ e ∈ slotEntries w ([] ++ (hessenbergReduceLastSlots M A).map some ++
+      List.replicate (N - ([] ++ (hessenbergReduceLastSlots M A).map some).length) none),
+      e.1 + 1 < N ∨ e = (0, 0, 0) := by
+  intro e he
+  rw [List.nil_append, slotEntries_append_replicate_none] at he
+  simp only [slotEntries, List.mem_flatMap, List.mem_map] at he
+  obtain ⟨_, ⟨es, hes, rfl⟩, he⟩ := he
+  simp only [Option.map_some, Option.getD_some, padEntries, List.mem_append,
+    List.mem_replicate] at he
+  rcases he with he | ⟨-, rfl⟩
+  · exact hessenbergReduceLastSlots_plane M A es hes e he
+  · exact Or.inr rfl
+
+/-- The core call of `NLAlib.SmallEig.smallEigProg` (`NLAlib.ShiftedQR.solveRoundedWith_terminates`
+with the decoupler and the order-one leaf terminating) from an accumulator $\mathbf{X}'$ within
+$(1 + 24\boldsymbol{u})^{(n+1)^2} - 1$ of the unitary $\mathbf{V}_1$: the run is total and leaves
+the accumulator near a unitary (`NLAlib.SmallEig.smallEigProg_accumulator_le`). The frame is given
+by its evaluations. -/
+theorem smallEigProg_core_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar M I) (hM : StdModel u id M) (hu : u ≤ 1 / 100) (hL : IsIndexLit M I)
+    {n kmax : ℕ} (hdk : n + 1 ≤ kmax) (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I)
+    (hQ : IsToNat id I) (hSmp : IsSample I) {sU sG : ℕ} (hDisk : IsPolarDiskSampler sU I)
+    {T : ℕ} {qs : List ℝ} (hqs : SmallEigCaps T qs) (hlen : 12 ≤ qs.length) {ρ : Env}
+    {ds : List IExp} {args : List Operand} {a t p uo f : ℕ × ℕ}
+    (hd : IExp.evalList ρ.idx ds = some [n + 1, 1, qs.length, T, T, T + (n + 1), n + 1])
+    (ha : Operand.evalList ρ args = some [a, t, p, uo, a, uo, f]) {tape : Tape ℝ} {μ : Mem ℝ}
+    {H X' V₁ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr : ℝ} (hl : μ.Live [a, t, p, uo, f])
+    (hr : μ.Room [a, t, p, uo, f]
+      [2 * ((n + 1) * (n + 1)), 1, qs.length, 2 * ((n + 1) * (n + 1)), 1])
+    (hap : Fp.Apart [a, t, p, uo, f]
+      [2 * ((n + 1) * (n + 1)), 1, qs.length, 2 * ((n + 1) * (n + 1)), 1])
+    (hA : HoldsMatrix a H μ.store) (hX : HoldsMatrix uo X' μ.store)
+    (ht : μ.store.get t.1 t.2 = some thr) (hp : μ.store.readBlock p.1 p.2 qs.length = some qs)
+    (hV₁ : HasOrthonormalCols V₁)
+    (hX'b : specNorm (X' - 1 * V₁) ≤ ((1 + 24 * u) ^ ((n + 1) * (n + 1)) - 1) *
+      specNorm (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) :
+    Writes .total I tape (.frame ds args (smallEigCore (O := O) (Q := Q) sG).body) ρ
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
+      (fun μ' => ∃ Tb Ub V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a Tb μ'.store ∧
+        HoldsMatrix uo Ub μ'.store ∧ HasOrthonormalCols V ∧
+        specNorm (Ub - V) ≤
+          (1 + 24 * u) ^ (kmax * kmax + 2 * (kmax + 1) * ((T + kmax) * kmax + 6)) - 1) μ := by
+  have hu0 : 0 ≤ u := (abs_nonneg _).trans (by simpa using hM.lit 1)
+  have h0 : M.lit 0 = 0 := by simpa using hNat 0 (by omega)
+  have h1 : M.lit 1 = 1 := by simpa using hNat 1 (by omega)
+  have hD : TerminatingDecouplerRoutine n 1 T T qs (T + (n + 1)) (n + 1)
+      (smallEigDecoupler (O := O) (Q := Q) sG) I :=
+    smallEigDecoupler_terminatingDecouplerRoutine (O := O) (Q := Q) (sG := sG) (F := T)
+      hS hL (nmax := n) hNat hC hQ hSmp hDisk hqs hlen (by omega) (by omega)
+  have hLeaf : TerminatingLeafRoutine 0 (min 1 (n + 1)) qs T (identityLeaf (O := O) (Q := Q)) I :=
+    by rw [show min 1 (n + 1) = 1 by omega]; exact identityLeaf_terminates hS h0 h1 qs T
+  refine ((solveRoundedWith_terminates (n := n) (k := 1) (F := T) (T := T) (ns := T + (n + 1))
+    (w := n + 1) (εL := 0) hS hM hu hL hNat hQ hC le_rfl _ hD _ hLeaf (tape := tape)
+    (H := H) (U := X') hl hr hap hA hX ht hp).in_frame hd ha
+    (fun x hx => hl x (by simp at hx ⊢; tauto))).mono le_rfl ?_
+  rintro μ' - ⟨U', Tm, V, hTm, hU', hV, hb⟩
+  exact ⟨Tm, U', _ * V, hTm, hU', hasOrthonormalCols_iff.mpr
+    ((hV₁.conjTranspose_mul_mul V V).trans (hasOrthonormalCols_iff.mp hV)),
+    smallEigProg_accumulator_le hu0 hdk hV₁ hV hX'b hb⟩
+
+/-- The order-$(n + 1) \ge 2$ branch of `NLAlib.SmallEig.smallEigProg` after the perturbation:
+open the scoped log at `(L + 2, 0)`, reduce the block recording the rotations, replay them on the
+identity accumulator, and run the core: the run is total, writes only the block, the accumulator
+and the scratch above `L`, and leaves the accumulator near a unitary. The frames are given by
+their evaluations. -/
+theorem smallEigProg_reduce_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar M I) (hM : StdModel u id M) (hu : u ≤ 1 / 100) (hL : IsIndexLit M I)
+    {n kmax : ℕ} (hn1 : 1 ≤ n) (hdk : n + 1 ≤ kmax) (hNat : IsExactNatLit id M (n + 1))
+    (hC : IsCmp id I) (hQ : IsToNat id I) (hSmp : IsSample I) {sU sG : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) {T : ℕ} {qs : List ℝ} (hqs : SmallEigCaps T qs)
+    (hlen : 12 ≤ qs.length) {ρ : Env} {ds₁ ds₂ ds₃ ds₄ : List IExp}
+    {as₁ as₂ as₃ as₄ : List Operand} {w p ub : ℕ × ℕ} {L : ℕ}
+    (hd₁ : IExp.evalList ρ.idx ds₁ = some [n + 1, n + 1])
+    (ha₁ : Operand.evalList ρ as₁ = some [(L + 2, 0)])
+    (hd₂ : IExp.evalList ρ.idx ds₂ = some [n + 1, n + 1, 0])
+    (ha₂ : Operand.evalList ρ as₂ = some [w, w, (L + 2, 0)])
+    (hd₃ : IExp.evalList ρ.idx ds₃ = some [n + 1, 0, 0, n + 1, n + 1, n + 1])
+    (ha₃ : Operand.evalList ρ as₃ = some [(L + 2, 0), ub, ub])
+    (hd₄ : IExp.evalList ρ.idx ds₄ = some [n + 1, 1, qs.length, T, T, T + (n + 1), n + 1])
+    (ha₄ : Operand.evalList ρ as₄ = some [w, (L + 1, 0), p, ub, w, ub, (L, 0)])
+    {tape : Tape ℝ} {μ : Mem ℝ} {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    (hwL : w.1 < L) (hpL : p.1 < L) (huL : ub.1 < L) (hlen₂ : μ.store.length = L + 3)
+    (hFl : μ.store.len L = 1) (hTh : μ.store.len (L + 1) = 1)
+    (hLg : μ.store.len (L + 2) = (n + 1) * (1 + 5 * (n + 1)))
+    (hB : HoldsMatrix w A μ.store)
+    (hU : HoldsMatrix ub (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) μ.store)
+    (hp : μ.store.readBlock p.1 p.2 qs.length = some qs)
+    (hThv : μ.store.get (L + 1) 0 = some (qs.getD 6 0))
+    (hwu : Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock ub.1 ub.2 (2 * ((n + 1) * (n + 1)))))
+    (hpwu : Fp.Disj (Store.inBlock p.1 p.2 qs.length)
+      (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock ub.1 ub.2 (2 * ((n + 1) * (n + 1))))) :
+    Writes .total I tape
+      (.seq (.frame ds₁ as₁ (slottedLogOpen (O := O) (Q := Q)).body)
+        (.seq (.frame ds₂ as₂ (hessenbergReduceLast (O := O) (Q := Q)).body)
+          (.seq (.frame ds₃ as₃ (givensReplayColumns (O := O) (Q := Q)).body)
+            (.frame ds₄ as₄ (smallEigCore (O := O) (Q := Q) sG).body)))) ρ
+      (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock ub.1 ub.2 (2 * ((n + 1) * (n + 1))) ⊔ Fp.above L)
+      (fun μ' => ∃ Tb Ub V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix w Tb μ'.store ∧
+        HoldsMatrix ub Ub μ'.store ∧ HasOrthonormalCols V ∧
+        specNorm (Ub - V) ≤
+          (1 + 24 * u) ^ (kmax * kmax + 2 * (kmax + 1) * ((T + kmax) * kmax + 6)) - 1) μ := by
+  have hu0 : 0 ≤ u := (abs_nonneg _).trans (by simpa using hM.lit 1)
+  have hab : ∀ b o' k, L ≤ b → Store.inBlock b o' k ≤ Store.inBlock w.1 w.2
+      (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock ub.1 ub.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Fp.above L := fun b o' k hb _ _ hi => Or.inr (hi.1 ▸ hb)
+  have hnew : ∀ {b o k b' o' k' : ℕ}, b < L → L ≤ b' →
+      Fp.Disj (Store.inBlock b o k) (Store.inBlock b' o' k') :=
+    fun hb hb' => Fp.disj_inBlock_of_ne (by omega)
+  refine (slottedLogOpen_writes (τ := tape) (μ := μ) (ns := n + 1) (w := n + 1)
+    (lg := (L + 2, 0)) hS hM (by simp [Mem.Live, hlen₂]) (by simp [hLg])).frame_seq_le hd₁ ha₁
+    (by simp [Mem.Live, hlen₂]) (hab _ _ _ (by omega)) ?_
+  rintro μ₃ hfr₃ ⟨-, hlog₃⟩
+  have hlen₃ : μ₃.store.length = L + 3 := by rw [hfr₃.length_eq]; exact hlen₂
+  refine (hessenbergReduceLast_writes_word (τ := tape) (m := μ₃) (L := []) hS hC hL hNat
+    (by omega) (by omega) hlog₃ (by simp; omega) (by omega) (by simp [Mem.Live, hlen₃]; omega)
+    (hB.of_eqOff hfr₃ (hnew hwL (by omega)).symm) (hnew hwL (by omega))).frame_seq_le hd₂ ha₂
+    (by simp [Mem.Live, hlen₃]; omega)
+    (sup_le (le_sup_left.trans le_sup_left) (hab _ _ _ (by omega))) ?_
+  rintro μ₄ hfr₄ ⟨-, hH₄, hlog₄⟩
+  have hU₄ := (hU.of_eqOff hfr₃ (hnew huL (by omega)).symm).of_eqOff hfr₄
+    (Fp.disj_sup_left.mpr ⟨hwu, (hnew huL (by omega)).symm⟩)
+  have hlen₄ : μ₄.store.length = L + 3 := by rw [hfr₄.length_eq]; exact hlen₃
+  refine (givensReplayColumns_specNorm_sub_le (τ := tape) (μ := μ₄) (lo := 0) (d := n + 1) hS hM
+    hu0 hu hQ hC (by omega) (hessenbergReduceLastSlots_closed_planes M A (n + 1))
+    (Or.inr (by omega)) hlog₄.close
+    (by simp [length_hessenbergReduceLastSlots]; omega) hU₄ (by simp [Mem.Live, hlen₄]; omega)
+    (hnew huL (show L ≤ L + 2 by omega)).symm).frame_seq_le hd₃ ha₃
+    (by simp [Mem.Live, hlen₄]; omega) (le_sup_right.trans le_sup_left) ?_
+  rintro μ₅ hfr₅ ⟨X', hX', hX'b⟩
+  have hlen₅ : μ₅.store.length = L + 3 := by rw [hfr₅.length_eq]; exact hlen₄
+  have hlenB : ∀ b, μ₅.store.len b = μ.store.len b := fun b => by
+    rw [hfr₅.len_eq, hfr₄.len_eq, hfr₃.len_eq]
+  have hdwp := (hpwu.mono le_rfl le_sup_left).symm
+  have hp₅ := hfr₅.keep (Store.readsOnly_readBlock _ _ _ _) (hpwu.mono le_rfl le_sup_right).symm
+    (hfr₄.keep (Store.readsOnly_readBlock _ _ _ _)
+      (Fp.disj_sup_left.mpr ⟨hdwp, (hnew hpL (by omega)).symm⟩)
+      (hfr₃.keep (Store.readsOnly_readBlock _ _ _ _) (hnew hpL (by omega)).symm hp))
+  have hTh₅ := hfr₅.keep (Store.readsOnly_get _ _ _) (hnew huL (by omega))
+    (hfr₄.keep (Store.readsOnly_get _ _ _)
+      (Fp.disj_sup_left.mpr ⟨hnew hwL (by omega), Fp.disj_inBlock_of_ne (by omega)⟩)
+      (hfr₃.keep (Store.readsOnly_get _ _ _) (Fp.disj_inBlock_of_ne (by omega)) hThv))
+  have hH₅ := hH₄.of_eqOff hfr₅ hwu.symm
+  refine (smallEigProg_core_terminates hS hM hu hL hdk hNat hC hQ hSmp hDisk hqs hlen hd₄ ha₄
+    (by simp [Mem.Live, hlen₅]; omega) ?_ ?_ hH₅ hX' hTh₅ hp₅ (by
+      rw [embedBlock_zero_self]; exact hasOrthonormalCols_givensLog _ _) hX'b).mono
+    (sup_le (sup_le (le_sup_left.trans le_sup_left) (le_sup_right.trans le_sup_left))
+      (hab _ _ _ le_rfl)) fun _ _ h => h
+  · simp only [Mem.Room]
+    refine ⟨Store.le_len_of_readBlock hH₅ (by positivity), by simp [hlenB, hTh],
+      Store.le_len_of_readBlock hp₅ (by omega), Store.le_len_of_readBlock hX' (by positivity),
+      by simp [hlenB, hFl], trivial⟩
+  · simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
+      and_true]
+    exact ⟨⟨hnew hwL (by omega), hdwp, hwu, hnew hwL le_rfl⟩,
+      ⟨(hnew hpL (by omega)).symm, (hnew huL (by omega)).symm, Fp.disj_inBlock_of_ne (by omega)⟩,
+      ⟨hpwu.mono le_rfl le_sup_right, hnew hpL le_rfl⟩, hnew huL le_rfl⟩
+
 /-- **The small-eigenvalue program in Schur mode terminates, with its accumulator near a unitary
-on every tape**: for blocks of order at most $k_{\max}$, the words `qs` with valid cap words for
+on every tape** ([BanksGarzaVargasSrivastava2025, Theorem 1.1], every loop capped): for blocks of order at most $k_{\max}$, the words `qs` with valid cap words for
 the cap $T$ (`NLAlib.SmallEig.SmallEigCaps`), on a scalar machine with the standard model, index
 literals and exact natural literals up to $k_{\max} + 1$, exact comparisons and conversion, draws
 that store the tape entry and an exact polar sampler, `NLAlib.SmallEig.smallEigProg` is a
@@ -231,115 +428,10 @@ theorem smallEigProg_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
   have hTh₃ : μ₂.store.get (L + 1) 0 = some (qs.getD 6 0) :=
     hfr₂.keep (Store.readsOnly_get _ _ _) (hnew hwL (by omega)) hTh₁
   have hlen₂ : μ₂.store.length = L + 3 := by rw [hfr₂.length_eq]; exact hlen₁'
-  -- the log
-  refine (slottedLogOpen_writes (τ := tape) (μ := μ₂) (ns := n + 1) (w := n + 1)
-    (lg := (L + 2, 0)) hS hM (by simp [Mem.Live, hlen₂]) (by simp [hfr₂.len_eq,
-      hfr₁.len_eq, hLg])).frame_seq_le rfl rfl (by simp [Mem.Live, hlen₂])
-    (hab _ _ _ (by omega)) ?_
-  rintro μ₃ hfr₃ ⟨-, hlog₃⟩
-  have hB₄ := hB₃.of_eqOff hfr₃ (hnew hwL (by omega)).symm
-  have hU₄ := hU₃.of_eqOff hfr₃ (hnew huL (by omega)).symm
-  have hp₄ := hfr₃.keep (Store.readsOnly_readBlock _ _ _ _) (hnew hpL (by omega)).symm hp₃
-  have hTh₄ := hfr₃.keep (Store.readsOnly_get _ _ _) (Fp.disj_inBlock_of_ne (by omega)) hTh₃
-  have hlen₃ : μ₃.store.length = L + 3 := by rw [hfr₃.length_eq]; exact hlen₂
-  -- the reduction, recording its rotations
-  refine (hessenbergReduceLast_writes_word (τ := tape) (m := μ₃) (L := []) hS hC hL hNat
-    (by omega) (by omega) hlog₃ (by simp; omega) (by omega) (by simp [Mem.Live, hlen₃]; omega) hB₄
-    (hnew hwL (by omega))).frame_seq_le rfl rfl (by simp [Mem.Live, hlen₃]; omega)
-    (sup_le (le_sup_left.trans le_sup_left) (hab _ _ _ (by omega))) ?_
-  rintro μ₄ hfr₄ ⟨-, hH₄, hlog₄⟩
-  set A' := M.perturbWords (qs.getD 0 0) B fun j => tape (μ₁.pos + j) sG
-  set Sl := hessenbergReduceLastSlots M A'
-  have hlog₅ := hlog₄.close
-  have hU₅ := hU₄.of_eqOff hfr₄ (Fp.disj_sup_left.mpr ⟨hdwu, (hnew huL (by omega)).symm⟩)
-  have hp₅ := hfr₄.keep (Store.readsOnly_readBlock _ _ _ _)
-    (Fp.disj_sup_left.mpr ⟨hdwp, (hnew hpL (by omega)).symm⟩) hp₄
-  have hTh₅ := hfr₄.keep (Store.readsOnly_get _ _ _)
-    (Fp.disj_sup_left.mpr ⟨hnew hwL (by omega), Fp.disj_inBlock_of_ne (by omega)⟩) hTh₄
-  have hlen₄ : μ₄.store.length = L + 3 := by rw [hfr₄.length_eq]; exact hlen₃
-  have hpl : ∀ e ∈ slotEntries (n + 1) ([] ++ Sl.map some ++
-      List.replicate (n + 1 - ([] ++ Sl.map some).length) none),
-      e.1 + 1 < n + 1 ∨ e = (0, 0, 0) := by
-    intro e he
-    rw [List.nil_append, slotEntries_append_replicate_none] at he
-    simp only [slotEntries, List.mem_flatMap, List.mem_map] at he
-    obtain ⟨_, ⟨es, hes, rfl⟩, he⟩ := he
-    simp only [Option.map_some, Option.getD_some, padEntries, List.mem_append,
-      List.mem_replicate] at he
-    rcases he with he | ⟨-, rfl⟩
-    · exact hessenbergReduceLastSlots_plane M A' es hes e he
-    · exact Or.inr rfl
-  -- the replay on the accumulator
-  refine (givensReplayColumns_specNorm_sub_le (τ := tape) (μ := μ₄) (lo := 0) (d := n + 1) hS hM
-    hu0 hu hQ hC (by omega) hpl (Or.inr (by omega)) hlog₅
-    (by simp [Sl, length_hessenbergReduceLastSlots]; omega) hU₅ (by simp [Mem.Live, hlen₄]; omega)
-    (hnew huL (show L ≤ L + 2 by omega)).symm).frame_seq_le rfl rfl (by simp [Mem.Live, hlen₄]; omega)
-    (le_sup_right.trans le_sup_left) ?_
-  rintro μ₅ hfr₅ ⟨X', hX', hX'b⟩
-  have hH₅ := hH₄.of_eqOff hfr₅ hdwu.symm
-  have hp₆ := hfr₅.keep (Store.readsOnly_readBlock _ _ _ _) (hpwu.mono le_rfl le_sup_right).symm hp₅
-  have hTh₆ := hfr₅.keep (Store.readsOnly_get _ _ _) (hnew huL (by omega)) hTh₅
-  have hlen₅ : μ₅.store.length = L + 3 := by rw [hfr₅.length_eq]; exact hlen₄
-  have hlenB : ∀ b, μ₅.store.len b = s₁.len b := fun b => by
-    rw [hfr₅.len_eq, hfr₄.len_eq, hfr₃.len_eq, hfr₂.len_eq, hfr₁.len_eq]
-  -- the core in Schur mode
-  have hD : TerminatingDecouplerRoutine n 1 T T qs (T + (n + 1)) (n + 1)
-      (smallEigDecoupler (O := O) (Q := Q) sG) I :=
-    smallEigDecoupler_terminatingDecouplerRoutine (O := O) (Q := Q) (sG := sG) (F := T)
-      hS hL (nmax := n) (hNat.mono (by omega)) hC hQ hSmp hDisk hqs hlen
-      (ns := T + (n + 1)) (ws := n + 1) (by omega) (by omega)
-  have hLeaf : TerminatingLeafRoutine 0 (min 1 (n + 1)) qs T (identityLeaf (O := O) (Q := Q)) I :=
-    by rw [show min 1 (n + 1) = 1 by omega]; exact identityLeaf_terminates hS h0 h1 qs T
-  refine ((solveRoundedWith_terminates (n := n) (k := 1) (F := T) (T := T) (ns := T + (n + 1))
-    (w := n + 1) (εL := 0) hS hM hu hL (hNat.mono (by omega)) hQ hC le_rfl _ hD _ hLeaf
-    (tape := tape) (μ := μ₅) (a := w) (t := (L + 1, 0)) (p := p) (uo := ub) (f := (L, 0))
-    (H := hessenbergReduceLastWord M A') (U := X') (thr := qs.getD 6 0)
-    (by simp [Mem.Live, hlen₅]; omega) ?_ ?_ hH₅ hX' hTh₆ hp₆).in_frame rfl rfl
-    (by simp [Mem.Live, hlen₅]; omega)).mono
-    (sup_le (sup_le (le_sup_left.trans le_sup_left) (le_sup_right.trans le_sup_left))
-      (hab _ _ _ le_rfl)) ?_
-  · simp only [Mem.Room]
-    refine ⟨Store.le_len_of_readBlock hH₅ (by positivity), by simp [hlenB, hTh],
-      Store.le_len_of_readBlock hp₆ (by omega), Store.le_len_of_readBlock hX' (by positivity),
-      by simp [hlenB, hFl], trivial⟩
-  · simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
-      and_true]
-    exact ⟨⟨hnew hwL (by omega), (hpwu.mono le_rfl le_sup_left).symm, hwu, hnew hwL le_rfl⟩,
-      ⟨(hnew hpL (by omega)).symm, (hnew huL (by omega)).symm, Fp.disj_inBlock_of_ne (by omega)⟩,
-      ⟨hpwu.mono le_rfl le_sup_right, hnew hpL le_rfl⟩, hnew huL le_rfl⟩
-  rintro μ₆ - ⟨U', Tm, V, hTm, hU', hV, hb⟩
-  have hV₁ : HasOrthonormalCols (embedBlock (N := n + 1) 0 (givensLog (n + 1) (slotEntries (n + 1)
-      ([] ++ Sl.map some ++ List.replicate (n + 1 - ([] ++ Sl.map some).length) none)))) := by
-    rw [embedBlock_zero_self]; exact hasOrthonormalCols_givensLog _ _
-  refine ⟨Tm, U', _ * V, hTm, hU', hasOrthonormalCols_iff.mpr
-    ((hV₁.conjTranspose_mul_mul V V).trans (hasOrthonormalCols_iff.mp hV)), ?_⟩
-  have he₁ : specNorm (X' - embedBlock (N := n + 1) 0 (givensLog (n + 1) (slotEntries (n + 1)
-      ([] ++ Sl.map some ++ List.replicate (n + 1 - ([] ++ Sl.map some).length) none)))) ≤
-      (1 + 24 * u) ^ ((n + 1) * (n + 1)) - 1 := by
-    have h := hX'b
-    rw [Matrix.one_mul] at h
-    have h1' : (0 : ℝ) ≤ (1 + 24 * u) ^ ((n + 1) * (n + 1)) - 1 := by
-      have := one_le_pow₀ (M₀ := ℝ) (n := (n + 1) * (n + 1)) (by linarith : (1 : ℝ) ≤ 1 + 24 * u)
-      linarith
-    exact h.trans (mul_le_of_le_one_right h1' specNorm_one_le)
-  have hb' := specNorm_sub_mul_le_of_near hV₁ hV (e₂ := (1 + 24 * u) ^ (2 * (n + 1) *
-    ((T + (n + 1)) * (n + 1) + 2 * 1 * (1 + 2))) - 1) (by
-      have := one_le_pow₀ (M₀ := ℝ) (n := 2 * (n + 1) * ((T + (n + 1)) * (n + 1) + 2 * 1 * (1 + 2)))
-        (by linarith : (1 : ℝ) ≤ 1 + 24 * u)
-      linarith) he₁ (by simpa using hb)
-  refine hb'.trans ?_
-  rw [show 1 + ((1 + 24 * u) ^ ((n + 1) * (n + 1)) - 1) = (1 + 24 * u) ^ ((n + 1) * (n + 1)) by
-    ring, show 1 + ((1 + 24 * u) ^ (2 * (n + 1) * ((T + (n + 1)) * (n + 1) + 2 * 1 * (1 + 2))) - 1)
-      = (1 + 24 * u) ^ (2 * (n + 1) * ((T + (n + 1)) * (n + 1) + 2 * 1 * (1 + 2))) by ring,
-    ← pow_add]
-  have h1' : (n + 1) * (n + 1) ≤ kmax * kmax := Nat.mul_le_mul hdk hdk
-  have h2' : (T + (n + 1)) * (n + 1) ≤ (T + kmax) * kmax := Nat.mul_le_mul (by omega) hdk
-  have h3' : 2 * (n + 1) * ((T + (n + 1)) * (n + 1) + 2 * 1 * (1 + 2)) ≤
-      2 * (kmax + 1) * ((T + kmax) * kmax + 6) := Nat.mul_le_mul (by omega) (by omega)
-  have := pow_le_pow_right₀ (by linarith : (1 : ℝ) ≤ 1 + 24 * u) (show (n + 1) * (n + 1) +
-    2 * (n + 1) * ((T + (n + 1)) * (n + 1) + 2 * 1 * (1 + 2)) ≤ R by omega)
-  linarith
-
+  exact smallEigProg_reduce_terminates hS hM hu hL hn1 hdk (hNat.mono (by omega)) hC hQ hSmp
+    hDisk hqs hlen rfl rfl rfl rfl rfl rfl rfl rfl hwL hpL huL hlen₂ (by simp [hfr₂.len_eq,
+      hfr₁.len_eq, hFl]) (by simp [hfr₂.len_eq, hfr₁.len_eq, hTh])
+    (by simp [hfr₂.len_eq, hfr₁.len_eq, hLg]) hB₃ hU₃ hp₃ hTh₃ hwu hpwu
 end Termination
 
 end NLAlib.SmallEig

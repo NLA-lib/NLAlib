@@ -63,7 +63,8 @@ when $d > 0$, at any order $d$: with room for $2d^2$ words at `ub`, apart from t
 every tape, it writes only those words and stores the identity of order $d$. -/
 theorem identityLeaf_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (h0 : M.lit 0 = 0) {d : ℕ} (h1 : 0 < d → M.lit 1 = 1) {τ : Tape ℝ} {μ : Mem ℝ}
-    {w p ub : ℕ × ℕ} {ps : List ℝ} {T : ℕ} (hl : μ.Live [w, p, ub]) (hroom : ub.2 + 2 * (d * d) ≤ μ.store.len ub.1)
+    {w p ub : ℕ × ℕ} {ps : List ℝ} {T : ℕ} (hl : μ.Live [w, p, ub])
+    (hroom : ub.2 + 2 * (d * d) ≤ μ.store.len ub.1)
     (hwu : Fp.Disj (Store.inBlock w.1 w.2 (2 * (d * d))) (Store.inBlock ub.1 ub.2 (2 * (d * d)))) :
     Writes .total I τ (identityLeaf (O := O) (Q := Q)).body
         (Env.frame [d, ps.length, T] [w, p, w, ub])

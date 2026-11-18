@@ -214,7 +214,8 @@ private theorem sqrt_norm_sq_add_le_norm_toLp {N : ℕ} {i k : Fin N} (hik : i �
 
 /-- The invariant of the rotations of `RHess` after $k$ steps from $(\mathbf{A}, \mathbf{g})$
 with the unitary $\mathbf{U}$: $\mathbf{B}$ within
-$((1 + 50\boldsymbol{u})^k - 1)\|\mathbf{A}\|_2$ of $\mathbf{U}\mathbf{A}\mathbf{U}^{\mathsf{H}}$, $\mathbf{v}$ within
+$((1 + 50\boldsymbol{u})^k - 1)\|\mathbf{A}\|_2$ of $\mathbf{U}\mathbf{A}\mathbf{U}^{\mathsf{H}}$,
+$\mathbf{v}$ within
 $((1 + 12\boldsymbol{u})^k - 1)\|\mathbf{g}\|$ of $\mathbf{U}\mathbf{g}$, and the first $k$ entries
 of $\mathbf{v}$ at most $12\boldsymbol{u}(1 + 12\boldsymbol{u})^k\|\mathbf{g}\|$. -/
 def RotInv (u : ℝ) {N : ℕ} (A : Matrix (Fin N) (Fin N) ℂ) (g : Fin N → ℂ) (k : ℕ)

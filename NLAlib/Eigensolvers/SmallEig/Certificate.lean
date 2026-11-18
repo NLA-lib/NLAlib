@@ -447,7 +447,12 @@ theorem smallEig_algorithm_measureReal_not_accepts_le {u : ℝ} (hM : StdModel u
     I hI P ξ _ ?_
   refine (measureReal_mono ?_).trans hT
   intro ω hω hW
-  refine hω (wp_frame ?_ ?_ (fun y hy => hin.2.2.1 y (by simp at hy ⊢; tauto)) hW)
+  have hl3 := hin.2.2.1
+  have hl4 : ((smallEigProblem Mch nmax c₁ c₂ admitted).initial d x).Live
+      [(0, 0), (1, 0), (0, 0), (2, 0)] := fun y hy => hl3 y (by
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hy
+    rcases hy with rfl | rfl | rfl | rfl <;> simp)
+  refine hω (wp_frame ?_ ?_ hl4 hW)
   · simp [Program.environment, IExp.evalList, IExp.eval, smallEigDims, x.val.1.words_eq,
       x.val.1.cap_eq, List.ofFn_succ]
   · simp [Program.environment, Operand.evalList, Operand.eval, IExp.eval, List.ofFn_succ]

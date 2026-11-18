@@ -80,7 +80,7 @@ section Theorems
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has SampleOp O] [Has DiskSampleOp O]
   [Has CmpTst Q] [Has IdxTst Q]
 
-/-- **The outcomes of a decoupling call by the unitary of its log** on a fixed block
+/-- The outcomes of a decoupling call by the unitary of its log on a fixed block
 $\mathbf{H}$, as pairs of a memory before and after: the frame `F`, the flag $0$, an initialised
 work matrix whose value after is an upper Hessenberg perturbed unitary similarity of $\mathbf{H}$
 by the unitary of the log read after (`NLAlib.slottedLogRead`) with error $\varepsilon$ and last
@@ -155,7 +155,8 @@ theorem OneEigInput.of_eqOff {n : ℕ} {H H' : Matrix (Fin (n + 1)) (Fin (n + 1)
 /-- The matrix and the words of `NLAlib.SmallEig.OneEigInput` are apart. -/
 theorem OneEigInput.disj_words {n : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {qs : List ℝ} {h qw lam f : ℕ × ℕ} {μ : Mem ℝ} (hin : OneEigInput H qs h qw lam f μ) :
-    Fp.Disj (Store.inBlock h.1 h.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock qw.1 qw.2 qs.length) := by
+    Fp.Disj (Store.inBlock h.1 h.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock qw.1 qw.2 qs.length) := by
   have hA := hin.2.2.1
   simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
     and_true] at hA
@@ -188,7 +189,8 @@ theorem OneEigInput.decoupleInput_of_eqOff {n : ℕ} {H : Matrix (Fin (n + 1)) (
 omit [Has SampleOp O] [Has IdxTst Q] in
 /-- **`OneEig` inside the decoupler** ([BanksGarzaVargasSrivastava2025, Proposition 3.5] at the
 parameters of `NLAlib.SmallEig.smallEigParams`): on a block of order $n + 1$,
-$1 \le n \le n_{\max}$ with exact natural literals up to $n$, after `RHess` (upper Hessenberg, condition at most $4B_c$, separation
+$1 \le n \le n_{\max}$ with exact natural literals up to $n$, after `RHess` (upper Hessenberg,
+condition at most $4B_c$, separation
 $g_c/4$, last-row weights at least $p$, norm at most
 $2\Sigma(1 + 200(n_{\max} + 1)^2\boldsymbol{u})$), `OneEig` with the cap words $m = 2^q$, $q$,
 $t$ sets the flag to $0$ and stores a point at distance between $\eta_1$ and
@@ -590,6 +592,102 @@ theorem OneEigInput.of_alloc {n : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) �
       and_true]
     exact ⟨⟨hqw, (hD hlw).symm, hwf⟩, ⟨(hD hlq).symm, hqf⟩, hD hlf⟩
 
+/-- The memory of `NLAlib.SmallEig.smallEigDecoupler` after the allocation of the pair at
+`(L, 0)`: the input of `OneEig`, and the log live, with room for its `ns` slots of `ws` entries
+and in a buffer of its own. -/
+def SmallEigDecouplerAlloc {n : ℕ} (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (qs : List ℝ)
+    (w q f lg : ℕ × ℕ) (ns ws L : ℕ) (μ : Mem ℝ) : Prop :=
+  OneEigInput H qs w q (L, 0) f μ ∧ μ.Live [lg] ∧ lg.2 + ns * (1 + 5 * ws) ≤ μ.store.len lg.1 ∧
+    ∀ b ∈ [w, (L, 0), q, f], b.1 ≠ lg.1
+
+omit [Has IndexOp O] [Has SampleOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] in
+/-- The memory of the decoupling contract after the allocation of the pair: from the memory of
+`NLAlib.ShiftedQR.RandomDecouplingRoutineContract` and a store with one fresh buffer of two
+words at the handle $L$ = the old buffer count, `NLAlib.SmallEig.SmallEigDecouplerAlloc` holds. -/
+theorem SmallEigDecouplerAlloc.of_alloc {n : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {qs : List ℝ} (hqs : 0 < qs.length) {w q f lg : ℕ × ℕ} {ns ws : ℕ} {μ : Mem ℝ}
+    {s₁ : Store ℝ} (hW : HoldsMatrix w H μ.store)
+    (hq : μ.store.readBlock q.1 q.2 qs.length = some qs) (hl : μ.Live [w, q, w, f, lg])
+    (hlgb : ∀ b ∈ [w, q, f], b.1 ≠ lg.1) (hwr : w.2 + 2 * ((n + 1) * (n + 1)) ≤ μ.store.len w.1)
+    (hfr : f.2 + 1 ≤ μ.store.len f.1) (hlgr : lg.2 + ns * (1 + 5 * ws) ≤ μ.store.len lg.1)
+    (hA : Fp.Apart [w, f, lg] [2 * ((n + 1) * (n + 1)), 1, ns * (1 + 5 * ws)])
+    (hqd : Fp.Disj (Store.inBlock q.1 q.2 qs.length)
+      (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
+        Store.inBlock lg.1 lg.2 (ns * (1 + 5 * ws))))
+    (hlen : s₁.length = μ.store.length + 1) (hL2 : s₁.len μ.store.length = 2)
+    (hBelow : Store.Below μ.store.length μ.store s₁) :
+    SmallEigDecouplerAlloc H qs w q f lg ns ws μ.store.length ⟨s₁, μ.pos⟩ := by
+  simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
+    and_true] at hA
+  have hl' : μ.Live [w, q, w, f] := fun x hx => hl x (by
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hx ⊢; tauto)
+  have hlg1 : lg.1 < μ.store.length := hl lg (by simp)
+  refine ⟨OneEigInput.of_alloc hqs hW hq hl' hwr hfr hA.1.1
+    (hqd.mono le_rfl (sup_le (le_sup_left.trans le_sup_left) (le_sup_right.trans le_sup_left)))
+    hlen hL2 hBelow, fun x hx => ?_, ?_, fun b hb => ?_⟩
+  · rw [List.mem_singleton.mp hx]
+    change lg.1 < s₁.length
+    omega
+  · change lg.2 + ns * (1 + 5 * ws) ≤ s₁.len lg.1
+    rw [(hBelow lg.1 hlg1).1]; exact hlgr
+  · simp only [List.mem_cons, List.not_mem_nil, or_false] at hb
+    rcases hb with rfl | rfl | rfl | rfl
+    · exact hlgb _ (by simp)
+    · exact (Nat.ne_of_lt hlg1).symm
+    · exact hlgb _ (by simp)
+    · exact hlgb _ (by simp)
+
+/-- The memory of `NLAlib.SmallEig.smallEigDecoupler` after the log is opened: the block at `w`
+and the empty log, live and in buffers of their own, and the input of `OneEig` with the pair at
+`(L, 0)`. -/
+def SmallEigDecouplerOpened {n : ℕ} (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (qs : List ℝ)
+    (w q f lg : ℕ × ℕ) (ns ws L : ℕ) (μ : Mem ℝ) : Prop :=
+  HoldsMatrix w H μ.store ∧ μ.Live [w] ∧ HoldsSlottedLog lg ns ws [] [] μ.store ∧ μ.Live [lg] ∧
+    lg.1 ≠ w.1 ∧ OneEigInput H qs w q (L, 0) f μ ∧ ∀ b ∈ [w, (L, 0), q, f], b.1 ≠ lg.1
+
+omit [Has IndexOp O] [Has SampleOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] in
+/-- Opening the log of the decoupler: from `NLAlib.SmallEig.SmallEigDecouplerAlloc`, the frame of
+`NLAlib.slottedLogOpen` given by its evaluations writes only the log and reaches
+`NLAlib.SmallEig.SmallEigDecouplerOpened`. -/
+theorem smallEigDecoupler_open_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar M I) (hM : StdModel u id M) {n : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {qs : List ℝ} {w q f lg : ℕ × ℕ} {ns ws L : ℕ} {ρ : Env} {ds : List IExp}
+    {args : List Operand} (hd : IExp.evalList ρ.idx ds = some [ns, ws])
+    (ha : Operand.evalList ρ args = some [lg]) {τ : Tape ℝ} {μ : Mem ℝ}
+    (hμ : SmallEigDecouplerAlloc H qs w q f lg ns ws L μ) :
+    Writes .total I τ (.frame ds args (slottedLogOpen (O := O) (Q := Q)).body) ρ
+      (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * ws)))
+      (SmallEigDecouplerOpened H qs w q f lg ns ws L) μ := by
+  obtain ⟨hin, hlgl, hlgr, hne⟩ := hμ
+  refine ((slottedLogOpen_writes hS hM hlgl hlgr).in_frame hd ha hlgl).mono le_rfl ?_
+  rintro μ' hfr ⟨-, hlog⟩
+  have hin' := hin.of_eqOff hfr (Fp.disj_inBlock_of_ne (hne q (by simp)).symm)
+    (hin.2.2.2.1.of_eqOff hfr (Fp.disj_inBlock_of_ne (hne w (by simp)).symm))
+  exact ⟨hin'.2.2.2.1, fun x hx => hin'.1 x (by simp at hx ⊢; tauto), hlog,
+    fun x hx => hfr.length_eq ▸ hlgl x hx, (hne w (by simp)).symm, hin', hne⟩
+
+/-- After `RHess` (a run writing only the block and the log, storing $\mathbf{H}_1$ and the closed
+slots `Ls`), the opened memory of the decoupler is the input of its tail
+(`NLAlib.SmallEig.SmallEigTailInput`). -/
+theorem SmallEigDecouplerOpened.tailInput {n : ℕ} {H H₁ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {qs : List ℝ} {w q f lg : ℕ × ℕ} {ns ws L : ℕ} {Ls : List (Option (List GivensEntry))}
+    {μ μ' : Mem ℝ} (hμ : SmallEigDecouplerOpened H qs w q f lg ns ws L μ)
+    (hfr : μ.store.EqOff (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
+      Store.inBlock lg.1 lg.2 (ns * (1 + 5 * ws))) μ'.store)
+    (hW₁ : HoldsMatrix w H₁ μ'.store) (hlog : HoldsSlottedLog lg ns ws Ls [] μ'.store) :
+    SmallEigTailInput H₁ qs w q f lg L ns ws Ls μ' :=
+  ⟨hμ.2.2.2.2.2.1.of_eqOff hfr (Fp.disj_sup_left.mpr ⟨hμ.2.2.2.2.2.1.disj_words,
+    Fp.disj_inBlock_of_ne (hμ.2.2.2.2.2.2 q (by simp)).symm⟩) hW₁, hlog,
+    fun x hx => hfr.length_eq ▸ hμ.2.2.2.1 x hx, hμ.2.2.2.2.2.2⟩
+
+/-- The opened memory of the decoupler has the views of `RHess` live. -/
+theorem SmallEigDecouplerOpened.live {n : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {qs : List ℝ} {w q f lg : ℕ × ℕ} {ns ws L : ℕ} {μ : Mem ℝ}
+    (hμ : SmallEigDecouplerOpened H qs w q f lg ns ws L μ) : μ.Live [w, w, lg] := fun x hx => by
+  simp only [List.mem_cons, List.not_mem_nil, or_false] at hx
+  rcases hx with rfl | rfl | rfl
+  exacts [hμ.2.1 _ (by simp), hμ.2.1 _ (by simp), hμ.2.2.2.1 _ (by simp)]
+
 /-- The decoupler meets the randomized decoupling contract at a smaller order bound
 (`NLAlib.SmallEig.smallEigDecoupler_randomDecouplingRoutineContract` with the words still at
 $n_{\max}$): the contract holds at orders up to $k_b \le n_{\max}$ when the natural literals are
@@ -636,30 +734,11 @@ theorem smallEigDecoupler_randomDecouplingRoutineContract_of_le {M : Machine ℝ
       (by simp [smallEigParams])) hφD.le ?_
   change PWrites law I (Stmt.allocs [.const 2] _) _ _ _ _ _
   refine PWrites.allocs (ns := [2]) rfl
-    (Pre₁ := fun L μ => OneEigInput H (smallEigParams nmax S δ φ c₁ c₂) w q (L, 0) f μ ∧
-      μ.Live [lg] ∧ lg.2 + ns * (1 + 5 * ws) ≤ μ.store.len lg.1 ∧
-      ∀ b ∈ [w, (L, 0), q, f], b.1 ≠ lg.1)
-    (fun μ s₁ ⟨hW, hq, hl, hlgb, hwr, hfr, hlgr, hA, hqd⟩ hlen hlens hBelow => ?_) ?_ fun L => ?_
-  · simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
-      and_true] at hA
-    have hl' : μ.Live [w, q, w, f] := fun x hx => hl x (by
-      simp only [List.mem_cons, List.not_mem_nil, or_false] at hx ⊢; tauto)
-    have hlg1 : lg.1 < μ.store.length := hl lg (by simp)
-    refine ⟨OneEigInput.of_alloc (by simp [smallEigParams]) hW hq hl' hwr hfr hA.1.1
-      (hqd.mono le_rfl (sup_le (le_sup_left.trans le_sup_left) (le_sup_right.trans le_sup_left)))
-      (by simpa using hlen) (by simpa using hlens 0 (by simp)) hBelow, ?_, ?_, ?_⟩
-    · simp only [List.length_cons, List.length_nil] at hlen
-      simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq]
-      omega
-    · show lg.2 + ns * (1 + 5 * ws) ≤ s₁.len lg.1
-      rw [(hBelow lg.1 hlg1).1]; exact hlgr
-    · intro b hb
-      simp only [List.mem_cons, List.not_mem_nil, or_false] at hb
-      rcases hb with rfl | rfl | rfl | rfl
-      · exact hlgb _ (by simp)
-      · exact (Nat.ne_of_lt hlg1).symm
-      · exact hlgb _ (by simp)
-      · exact hlgb _ (by simp)
+    (Pre₁ := fun L μ => SmallEigDecouplerAlloc H (smallEigParams nmax S δ φ c₁ c₂) w q f lg ns ws
+      L μ)
+    (fun μ s₁ ⟨hW, hq, hl, hlgb, hwr, hfr, hlgr, hA, hqd⟩ hlen hlens hBelow =>
+      SmallEigDecouplerAlloc.of_alloc (by simp [smallEigParams]) hW hq hl hlgb hwr hfr hlgr hA hqd
+        (by simpa using hlen) (by simpa using hlens 0 (by simp)) hBelow) ?_ fun L => ?_
   · rintro μ ⟨-, -, hl, -⟩ s s' p hBelow ⟨hf0, H', L', hL', hpl, hlog, hby, h2, h3, hW'⟩
     simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,
       forall_eq] at hl
@@ -671,37 +750,22 @@ theorem smallEigDecoupler_randomDecouplingRoutineContract_of_le {M : Machine ℝ
     p.2.length = k + 1 ∧ (∀ e ∈ slotEntries ws p.2, e.1 + 1 < k + 1 + 1) ∧
     SmallEigRHessClass nmax S δ φ c₁ c₂ H (200 * (((k + 1 : ℕ) : ℝ) + 1) ^ 2 * u * N)
       (givensLog (k + 1 + 1) (slotEntries ws p.2)) p.1}
-  refine (PWrites.seq (Mid := fun μ => HoldsMatrix w H μ.store ∧ μ.Live [w] ∧
-      HoldsSlottedLog lg ns ws [] [] μ.store ∧ μ.Live [lg] ∧ lg.1 ≠ w.1 ∧
-      OneEigInput H (smallEigParams nmax S δ φ c₁ c₂) w q (L, 0) f μ ∧
-      ∀ b ∈ [w, (L, 0), q, f], b.1 ≠ lg.1) (φ₂ := smallEigDecouplerFailure nmax φ / 2 +
-        smallEigDecouplerFailure nmax φ / 2) hI hloc (by positivity)
-      (PWrites.of_writes (F := Store.inBlock lg.1 lg.2 (ns * (1 + 5 * ws))) le_rfl
-        fun μ τ hμ => ?_)
+  refine (PWrites.seq (Mid := SmallEigDecouplerOpened H (smallEigParams nmax S δ φ c₁ c₂) w q f lg
+      ns ws L) (φ₂ := smallEigDecouplerFailure nmax φ / 2 + smallEigDecouplerFailure nmax φ / 2)
+      hI hloc (by positivity) (PWrites.of_writes (F := Store.inBlock lg.1 lg.2 (ns * (1 + 5 * ws)))
+        le_rfl fun μ τ hμ => smallEigDecoupler_open_writes hS hM rfl rfl hμ)
     (PWrites.seq (Mid := fun μ => ∃ x : ι, SmallEigTailInput x.1.1
-      (smallEigParams nmax S δ φ c₁ c₂) w q f lg L ns ws x.1.2 μ) (F₂ := (Store.inBlock L 0 2 ⊔ Store.inBlock f.1 f.2 1 ⊔
+      (smallEigParams nmax S δ φ c₁ c₂) w q f lg L ns ws x.1.2 μ)
+      (F₂ := (Store.inBlock L 0 2 ⊔ Store.inBlock f.1 f.2 1 ⊔
       (Store.inBlock w.1 w.2 (2 * ((k + 1 + 1) * (k + 1 + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * ws)))))
       (φ₂ := smallEigDecouplerFailure nmax φ / 2) hI hloc (by positivity) ((hRH.mono_eqOff
         (fun μ hμ => ⟨hμ.1, hμ.2.1, hμ.2.2.1, hμ.2.2.2.1, hμ.2.2.2.2.1⟩)
-        (fun μ μ' hμ hfr ⟨H₁, Ls, hW₁, hLs, hpl, hlog, hx⟩ => ⟨⟨(H₁, Ls), hLs, hpl, hx⟩,
-          hμ.2.2.2.2.2.1.of_eqOff hfr (Fp.disj_sup_left.mpr
-            ⟨hμ.2.2.2.2.2.1.disj_words,
-              Fp.disj_inBlock_of_ne (hμ.2.2.2.2.2.2 q (by simp)).symm⟩) hW₁, hlog,
-          fun x hx => hfr.length_eq ▸ hμ.2.2.2.1 x hx, hμ.2.2.2.2.2.2⟩)).in_frame rfl rfl
-        (fun μ hμ x hx => by
-          simp only [List.mem_cons, List.not_mem_nil, or_false] at hx
-          rcases hx with rfl | rfl | rfl
-          exacts [hμ.2.1 _ (by simp), hμ.2.1 _ (by simp), hμ.2.2.2.1 _ (by simp)])) ?_)).mono
-    (fun _ h => h) (by fp_sub) (fun _ h => h) (by linarith)
-  · obtain ⟨hin, hlgl, hlgr, hne⟩ := hμ
-    refine ((slottedLogOpen_writes hS hM hlgl hlgr).in_frame rfl rfl hlgl).mono le_rfl ?_
-    rintro μ' hfr ⟨-, hlog⟩
-    have hin' := hin.of_eqOff hfr (Fp.disj_inBlock_of_ne (hne q (by simp)).symm)
-      (hin.2.2.2.1.of_eqOff hfr (Fp.disj_inBlock_of_ne (hne w (by simp)).symm))
-    exact ⟨hin'.2.2.2.1, fun x hx => hin'.1 x (by simp at hx ⊢; tauto), hlog,
-      fun x hx => hfr.length_eq ▸ hlgl x hx, (hne w (by simp)).symm, hin', hne⟩
-  refine PStep.mono (PWrites.pstep_of_forall hI hloc (F := (Store.inBlock L 0 2 ⊔ Store.inBlock f.1 f.2 1 ⊔
+        (fun μ μ' hμ hfr ⟨H₁, Ls, hW₁, hLs, hpl, hlog, hx⟩ =>
+          ⟨⟨(H₁, Ls), hLs, hpl, hx⟩, hμ.tailInput hfr hW₁ hlog⟩)).in_frame rfl rfl
+        (fun μ hμ => hμ.live)) ?_)).mono (fun _ h => h) (by fp_sub) (fun _ h => h) (by linarith)
+  refine PStep.mono (PWrites.pstep_of_forall hI hloc
+    (F := (Store.inBlock L 0 2 ⊔ Store.inBlock f.1 f.2 1 ⊔
       (Store.inBlock w.1 w.2 (2 * ((k + 1 + 1) * (k + 1 + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * ws)))))
     (P := fun (x : ι) μ => SmallEigTailInput x.1.1 (smallEigParams nmax S δ φ c₁ c₂) w q f lg L
@@ -796,10 +860,6 @@ theorem smallEigDecoupler_terminatingDecouplerRoutine {M : Machine ℝ} {I : Int
   obtain ⟨n', rfl⟩ : ∃ n', n = n' + 1 := ⟨n - 1, by omega⟩
   have hget : ∀ i < qs.length, μ.store.get q.1 (q.2 + i) = some (qs.getD i 0) :=
     fun i hi => Store.get_of_readBlock hq hi 0
-  simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
-    and_true] at hA
-  have hl' : μ.Live [w, q, w, f] := fun x hx => hl x (by
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hx ⊢; tauto)
   have hlg1 : lg.1 < μ.store.length := hl lg (by simp)
   have hf1 : f.1 < μ.store.length := hl f (by simp)
   have hw1 : w.1 < μ.store.length := hl w (by simp)
@@ -816,25 +876,10 @@ theorem smallEigDecoupler_terminatingDecouplerRoutine {M : Machine ℝ} {I : Int
       hBelow.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
         (fun b i g => by rw [g.1]; exact hlg1) hlog⟩) ?_
   intro s₁ hlen₁ hlens hBelow
+  obtain ⟨hin₀, hlgl₀, hlgr₀, hne'⟩ := SmallEigDecouplerAlloc.of_alloc (by omega) hW hq hl hne hwr
+    hfr hlgr hA hqd (by simpa using hlen₁) (by simpa using hlens 0 (by simp)) hBelow
   set L := μ.store.length with hLdef
-  have hin₀ : OneEigInput H qs w q (L, 0) f ⟨s₁, μ.pos⟩ :=
-    OneEigInput.of_alloc (by omega) hW hq hl' hwr hfr hA.1.1
-      (hqd.mono le_rfl (sup_le (le_sup_left.trans le_sup_left) (le_sup_right.trans le_sup_left)))
-      (by simpa using hlen₁) (by simpa using hlens 0 (by simp)) hBelow
   simp only [List.length_cons, List.length_nil] at hlen₁
-  have hne' : ∀ b ∈ [w, (L, 0), q, f], b.1 ≠ lg.1 := by
-    intro b hb
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hb
-    rcases hb with rfl | rfl | rfl | rfl
-    · exact hne _ (by simp)
-    · exact (Nat.ne_of_lt hlg1).symm
-    · exact hne _ (by simp)
-    · exact hne _ (by simp)
-  have hlgr₀ : lg.2 + ns * (1 + 5 * ws) ≤ s₁.len lg.1 := by rw [(hBelow lg.1 hlg1).1]; exact hlgr
-  have hlgl₀ : (⟨s₁, μ.pos⟩ : Mem ℝ).Live [lg] := fun x hx => by
-    rw [List.mem_singleton.mp hx]
-    change lg.1 < s₁.length
-    omega
   refine (slottedLogOpen_writes_of_zero (τ := tape) (μ := ⟨s₁, μ.pos⟩) hS hzero
     hlgr₀).frame_seq_le rfl rfl hlgl₀
     (fun b i hb => Or.inl (Or.inr hb)) ?_

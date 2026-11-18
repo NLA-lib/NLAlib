@@ -120,7 +120,8 @@ six words, on every tape, it writes only the pair `lam` and the flag `f`, and st
 flag $0$ or $1$. -/
 theorem oneEig_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hzero : M.lit 0 = 0) (hL : IsIndexLit M I) (hCmp : IsCmp id I) {sU : ℕ}
-    (hDisk : IsPolarDiskSampler sU I) {n m q t : ℕ} (hNat : IsExactNatLit id M n) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    (hDisk : IsPolarDiskSampler sU I) {n m q t : ℕ} (hNat : IsExactNatLit id M n)
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {qs : List ℝ} (hqs : 6 ≤ qs.length) {τ : Tape ℝ} {μ : Mem ℝ} {h qw lam f : ℕ × ℕ}
     (hin : OneEigInput H qs h qw lam f μ) :
     Writes .total I τ (oneEig (O := O) (Q := Q)).body (Env.frame [n + 1, m, q, t] [h, qw, lam, f])
@@ -885,7 +886,8 @@ theorem oneEig_pwrites_of_norm_le {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
   have hr' : 2.3 * 0.66 ^ t * (2 * S'') ≤ 0.9 * β' := by
     have := mul_le_mul_of_nonneg_left hS''1 (by positivity : (0 : ℝ) ≤ 0.66 ^ t)
     linarith
-  have hDS := distSpecAccurateOn_of (O := O) (Q := Q) (I := I) hS hL hM hCmp hNat hH hH0 hV hHV hκ hp hw
+  have hDS := distSpecAccurateOn_of (O := O) (Q := Q) (I := I) hS hL hM hCmp hNat hH hH0 hV hHV hκ
+    hp hw
     hT0.le hη₁0 hmq hm hnu hum hxu
   have hη₂T : η₂ ≤ 0.02 * S'' := by linarith
   have hη₁ε : 0 ≤ η₁ + 40 * u * S'' := by

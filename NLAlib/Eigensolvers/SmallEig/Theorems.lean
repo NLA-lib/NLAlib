@@ -67,7 +67,7 @@ theorem isEigenvalueListing_diag_of_le_one {d : ℕ} (hd : d ≤ 1) (B : Matrix 
   have hT : B.IsUpperTriangular := fun i j hji => absurd hji (by omega)
   simpa using hT.isEigenvalueListing_diag
 
-/-- **A tracked Schur pair lists a nearby spectrum** (PP3 at the leaf): if the stored pair
+/-- A tracked Schur pair lists a nearby spectrum (PP3 at the leaf): if the stored pair
 $(\widehat{\mathbf{U}}_b, \widehat{\mathbf{T}}_b)$ at `(o, w)` has $\widehat{\mathbf{T}}_b$ upper
 triangular and is tracked from $(\mathbf{I}, \mathbf{M})$ with the backward error $\delta$, then
 the diagonal of $\widehat{\mathbf{T}}_b$ lists the spectrum of $\mathbf{M} + \mathbf{E}$ for some

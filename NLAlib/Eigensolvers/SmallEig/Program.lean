@@ -171,7 +171,7 @@ theorem smallEigProg_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     have := one_le_pow₀ (M₀ := ℝ) (n := R) (by linarith : (1 : ℝ) ≤ 1 + 24 * u); linarith
   unfold smallEigProg
   have hl4 : μ.Live [w, p, w, ub] := fun x hx => hl x (by simp at hx ⊢; tauto)
-  refine (identityLeaf_writes (O := O) (Q := Q) (τ := tape) hS h0 h1 hl hroom
+  refine (identityLeaf_writes (O := O) (Q := Q) (τ := tape) hS h0 (fun _ => h1) hl hroom
     hwu).frame_seq_le rfl rfl hl4 le_sup_right ?_
   rintro μ₀ hfr₀ ⟨-, hU₀⟩
   have hB₀ : HoldsMatrix w B μ₀.store := hB.of_eqOff hfr₀ hwu.symm
@@ -244,7 +244,7 @@ theorem smallEigProg_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
   have hlen₃ : μ₃.store.length = L + 3 := by rw [hfr₃.length_eq]; exact hlen₂
   -- the reduction, recording its rotations
   refine (hessenbergReduceLast_writes_word (τ := tape) (m := μ₃) (L := []) hS hC hL hNat
-    (by omega) (by omega) hlog₃ (by simp <;> omega) (by omega) (by simp [Mem.Live, hlen₃]; omega) hB₄
+    (by omega) (by omega) hlog₃ (by simp; omega) (by omega) (by simp [Mem.Live, hlen₃]; omega) hB₄
     (hnew hwL (by omega))).frame_seq_le rfl rfl (by simp [Mem.Live, hlen₃]; omega)
     (sup_le (le_sup_left.trans le_sup_left) (hab _ _ _ (by omega))) ?_
   rintro μ₄ hfr₄ ⟨-, hH₄, hlog₄⟩
@@ -272,7 +272,7 @@ theorem smallEigProg_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
   -- the replay on the accumulator
   refine (givensReplayColumns_specNorm_sub_le (τ := tape) (μ := μ₄) (lo := 0) (d := n + 1) hS hM
     hu0 hu hQ hC (by omega) hpl (Or.inr (by omega)) hlog₅
-    (by simp [Sl, length_hessenbergReduceLastSlots] <;> omega) hU₅ (by simp [Mem.Live, hlen₄]; omega)
+    (by simp [Sl, length_hessenbergReduceLastSlots]; omega) hU₅ (by simp [Mem.Live, hlen₄]; omega)
     (hnew huL (show L ≤ L + 2 by omega)).symm).frame_seq_le rfl rfl (by simp [Mem.Live, hlen₄]; omega)
     (le_sup_right.trans le_sup_left) ?_
   rintro μ₅ hfr₅ ⟨X', hX', hX'b⟩

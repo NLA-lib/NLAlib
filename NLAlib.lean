@@ -9,6 +9,7 @@ public import NLAlib.Eigensolvers.RandomizedDeflation
 public import NLAlib.Eigensolvers.Schur.Certificate
 public import NLAlib.Eigensolvers.Schur.Contracts
 public import NLAlib.Eigensolvers.Schur.Dense
+public import NLAlib.Eigensolvers.Schur.DenseBits
 public import NLAlib.Eigensolvers.Schur.NormEstimate
 public import NLAlib.Eigensolvers.Schur.Pipeline
 public import NLAlib.Eigensolvers.Schur.Regularizer

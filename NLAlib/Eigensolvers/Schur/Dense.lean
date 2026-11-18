@@ -57,9 +57,8 @@ and the failure $\varphi/2$. The norm estimate is taken with the constants $(1/2
 * `NLAlib.Schur.denseSchur_terminates`: termination and orthogonality on every tape.
 * `NLAlib.Schur.denseSchur_measureReal_not_spectrum_le`,
   `NLAlib.Schur.denseSchur_measureReal_not_exact_schur_le`: the eigenvalues, and an exact unitary.
-* `NLAlib.Schur.logb_inv_uDenseSchur_le`: the bits of precision.
-* `NLAlib.Schur.denseSchur_work_le`, `NLAlib.Schur.denseSchur_work_le_polylog`: the operation
-  count.
+* `NLAlib.Schur.denseSchur_work_le`: the operation count; its polylogarithmic form and the bits
+  of precision are in `NLAlib.Eigensolvers.Schur.DenseBits`.
 -/
 
 @[expose] public section
@@ -897,19 +896,6 @@ theorem denseSchur_measureReal_not_exact_schur_le {Mch : Machine ℝ} {I : Inter
   exact ⟨hout.1, U, T, V, E, hT, hUs, hout.isUpperTriangular_of_holdsMatrix hT, hV, hUV,
     hEn.trans (mul_le_mul_of_nonneg_right hE (specNorm_nonneg A)), hAE⟩
 
-/-- **The bits of precision of the dense Schur solver**: there are absolute constants $c_1, c_2$
-such that for every order $n + 1$, $0 < \delta \le 1$ and $0 < \varphi \le 1$,
-$$\log_2\frac{1}{\boldsymbol{u}_0} \le c_1L^4(\log_2 L + 1)^2 + c_2, \qquad
-  L = \log_2\frac{4(n + 1)}{\delta\varphi}\,,$$
-$\boldsymbol{u}_0$ = `NLAlib.Schur.uDenseSchur`: $O(\log^4(n/(\delta\varphi)))$ bits up to
-$(\log\log)^2$, the shift degree being $\Theta(L\log L)$.
-[BanksGarzaVargasSrivastava2022, Theorem 1.4] with [BanksGarzaVargasSrivastava2025, Theorem 1.1]
-(the bits of the eigenvalue solver); the Schur form costs no more bits. -/
-theorem logb_inv_uDenseSchur_le : ∃ c₁ c₂ : ℝ, ∀ {n : ℕ} {δ φ : ℝ}, 0 < δ → δ ≤ 1 → 0 < φ →
-    φ ≤ 1 → Real.logb 2 (uDenseSchur n δ φ)⁻¹ ≤
-      c₁ * Real.logb 2 (4 * (n + 1) / (δ * φ)) ^ 4 *
-        (Real.logb 2 (Real.logb 2 (4 * (n + 1) / (δ * φ))) + 1) ^ 2 + c₂ :=
-  sorry
 
 omit [Has SampleOp O] [Has DiskSampleOp O] in
 /-- The instructions of the reducer: the instrumented static count of
@@ -936,8 +922,8 @@ test and structural instruction counted, is at most
 $384547(n + 1)^3(k + 1)^4(n_r + n_q + 1)(F + 1)(T + 1)^2$: the core's $380748$
 (`NLAlib.ShiftedQR.size_stmtCost_roundedShQRSchur_le`), the reducer's $2998$, the norm's $120$,
 the regularizer's $201$ and the glue's $4 \cdot 120$
-(`NLAlib.Schur.size_stmtCost_schurPipelineWith_le`). The power of $k$ is that of the eigenvalue solver: the replays on the couplings and on the
-accumulator cost no more than a step. -/
+(`NLAlib.Schur.size_stmtCost_schurPipelineWith_le`). The power of $k$ is that of the eigenvalue
+solver: the replays on the couplings and on the accumulator cost no more than a step. -/
 theorem denseSchur_work_le (sG n nr nq k F T : ℕ) :
     Count.size (stmtCost (denseSchur (O := O) (Q := Q) sG).body.instrument
         [n + 1, nr, nq, k, F, T, 0, 0, 0, 0, 0]) ≤
@@ -962,20 +948,6 @@ theorem denseSchur_work_le (sG n nr nq k F T : ℕ) :
   rw [e]
   unfold roundedShQRSchur at h4
   omega
-
-/-- **The operation count of the dense Schur solver is $n^3$ times a polylogarithm**: there are
-constants $C$ and $p$ such that for every order $n + 1$, $0 < \delta \le 1$ and
-$0 < \varphi \le 1$, the instrumented static count at `NLAlib.Schur.denseSchurDims` and zero
-offsets is at most
-$C(n + 1)^3L^p$, $L = \log_2(4(n + 1)/(\delta\varphi))$. The exponent found by the proof is about
-$12$; [BanksGarzaVargasSrivastava2022, Theorem 1.4]'s is $2$ for the eigenvalues alone, with a
-run-time count over the deflation tree. -/
-theorem denseSchur_work_le_polylog (sG : ℕ) : ∃ (C : ℝ) (p : ℕ), ∀ {n : ℕ} {δ φ : ℝ}, 0 < δ →
-    δ ≤ 1 → 0 < φ → φ ≤ 1 →
-    (Count.size (stmtCost (denseSchur (O := O) (Q := Q) sG).body.instrument
-      (denseSchurDims n δ φ ++ [0, 0, 0, 0, 0])) : ℝ) ≤
-      C * ((n : ℝ) + 1) ^ 3 * Real.logb 2 (4 * (n + 1) / (δ * φ)) ^ p :=
-  sorry
 
 end Theorems
 

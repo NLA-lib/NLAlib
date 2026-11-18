@@ -421,15 +421,63 @@ theorem roundedShQRSmallEig_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} 
       hC hQ hSmp hDisk (smallEigCaps_smallEigParams _ _ _ _ _ _) h12.ge) h12 hl hr ha hA hU₀ ht
     hp τ
 
+open Real in
 /-- **The iteration cap is logarithmic**: there is an absolute constant $c$ with
 $F \le c\log_2 Y + c$, $Y = 4(n + 1)B\Sigma^2/(\delta\min(\Gamma, \Sigma)\varphi)$, for
 $F$ = `NLAlib.ShiftedQR.shqrCap`, every order $n + 1$, $B \ge 1$, $\Gamma > 0$,
 $0 < \delta \le \Sigma$ and $0 < \varphi \le 1$: the cap is $\lceil\log(4\Sigma/\omega)/
-\log(1/0.8016)\rceil + 1$ and $4\Sigma/\omega \le 768Y^2$. -/
+\log(1/0.8016)\rceil + 1$ and $4\Sigma/\omega \le 4Y^8$ (`NLAlib.ShiftedQR.shqrArg_facts`), so
+$c = 30$. -/
 theorem shqrCap_le_log : ∃ c : ℝ, ∀ {n : ℕ} {B Γ S δ φ : ℝ}, 1 ≤ B → 0 < Γ → 0 < δ → δ ≤ S →
     0 < φ → φ ≤ 1 →
-    (shqrCap n B Γ S δ : ℝ) ≤ c * Real.logb 2 (4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)) + c :=
-  sorry
+    (shqrCap n B Γ S δ : ℝ) ≤
+      c * Real.logb 2 (4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)) + c := by
+  refine ⟨30, fun {n B Γ S δ φ} hB hΓ hδ hδS hφ hφ1 => ?_⟩
+  have hS : 0 < S := hδ.trans_le hδS
+  obtain ⟨hY4, -, -, -, hrr, -, -⟩ :=
+    shqrArg_facts (n := n) (k := shqrDegree (4 * B)) hB hΓ hδ hδS hφ hφ1 rfl
+  set Y := 4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)
+  set ω := shqrOmega n B Γ δ
+  have hω0 : 0 < ω := shqrOmega_pos hB hΓ hδ
+  have hωS : ω ≤ S := shqrOmega_le_normBound hB hΓ hδ hδS
+  have h4 : 1 ≤ 4 * S / ω := by rw [le_div_iff₀ hω0]; linarith
+  have hc : 0.1984 ≤ log (1 / shqrContraction) := by
+    have := one_sub_inv_le_log_of_pos (x := 1 / shqrContraction)
+      (by unfold shqrContraction; norm_num)
+    unfold shqrContraction at this ⊢; norm_num at this ⊢; linarith
+  have hl0 : 0 ≤ log (4 * S / ω) := log_nonneg h4
+  have hx0 : 0 ≤ log (4 * S / ω) / log (1 / shqrContraction) := div_nonneg hl0 (by linarith)
+  have hcap : (shqrCap n B Γ S δ : ℝ) ≤ log (4 * S / ω) / log (1 / shqrContraction) + 2 := by
+    have := Nat.ceil_lt_add_one hx0
+    rw [shqrCap, Nat.cast_add, Nat.cast_one]
+    linarith
+  have hdiv : log (4 * S / ω) / log (1 / shqrContraction) ≤ log (4 * S / ω) / 0.1984 :=
+    div_le_div_of_nonneg_left hl0 (by norm_num) hc
+  have hYω : 4 * S / ω ≤ 4 * Y ^ 8 := by
+    have h := hrr.2
+    rw [div_le_iff₀ hω0]
+    have e : ω / S * Y ^ 8 * S = ω * Y ^ 8 := by field_simp
+    nlinarith
+  have hY0 : 0 < Y := by linarith
+  have hlog : log (4 * S / ω) ≤ log 4 + 8 * log Y := by
+    calc log (4 * S / ω) ≤ log (4 * Y ^ 8) := log_le_log (by positivity) hYω
+      _ = log 4 + 8 * log Y := by rw [log_mul (by norm_num) (by positivity), log_pow]; norm_num
+  have h4l : log (4 : ℝ) = 2 * log 2 := by
+    rw [show (4 : ℝ) = 2 ^ 2 by norm_num, log_pow]; norm_num
+  have hL : log Y = logb 2 Y * log 2 := by rw [logb, div_mul_cancel₀ _ (log_pos one_lt_two).ne']
+  have hL0 : 0 ≤ logb 2 Y := logb_nonneg one_lt_two (by linarith)
+  have hl2 := Real.log_two_lt_d9
+  have hl2' := Real.log_two_gt_d9
+  have hm : logb 2 Y * log 2 ≤ logb 2 Y * 0.6931471808 :=
+    mul_le_mul_of_nonneg_left hl2.le hL0
+  rw [hL] at hlog
+  have : log (4 * S / ω) / 0.1984 ≤
+      (2 * 0.6931471808 + 8 * (logb 2 Y * 0.6931471808)) / 0.1984 := by
+    gcongr; linarith
+  have h2 : (2 * 0.6931471808 + 8 * (logb 2 Y * 0.6931471808)) / 0.1984 ≤
+      28 * logb 2 Y + 7 := by
+    rw [div_le_iff₀ (by norm_num)]; nlinarith
+  linarith
 
 open Real in
 /-- **The shift degree is $O(\log B\log\log B)$**: there is an absolute constant $c$ with

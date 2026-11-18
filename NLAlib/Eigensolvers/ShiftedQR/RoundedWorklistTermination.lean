@@ -13,12 +13,13 @@ public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveUpdates
 # The rounded deflation worklist in Schur mode always terminates
 
 The termination-only counterpart of `NLAlib.ShiftedQR.solveRoundedWith_pwrites`: on every tape
-and from every stored matrix and accumulator, `NLAlib.ShiftedQR.solveRoundedWith` runs to
-completion when its decoupler and its Schur leaf do
-(`NLAlib.ShiftedQR.TerminatingDecouplerRoutine`, `NLAlib.ShiftedQR.CompletingLeafRoutine`), with no rounding model; under the standard model and
-with a leaf whose accumulator is near a unitary (`NLAlib.ShiftedQR.TerminatingLeafRoutine`), the
-stored accumulator stays near the input accumulator times a unitary. The proof follows the rounds with a value-free state: the views keep
-their geometry, every word read is stored, the stack holds nonempty ranges inside the order whose
+and from every stored matrix and accumulator, `NLAlib.ShiftedQR.solveRoundedWith` runs to completion
+when its decoupler and its Schur leaf do (`NLAlib.ShiftedQR.TerminatingDecouplerRoutine`,
+`NLAlib.ShiftedQR.CompletingLeafRoutine`), with no rounding model; under the standard model and with
+a leaf whose accumulator is near a unitary (`NLAlib.ShiftedQR.TerminatingLeafRoutine`), the stored
+accumulator stays near the input accumulator times a unitary. The proof follows the rounds with a
+value-free state: the views keep their geometry, every word read is stored, the stack holds nonempty
+ranges inside the order whose
 sizes plus the number of finished leaves sum to at most the order, and the accumulator is within
 a factor that grows by $(1 + 24\boldsymbol{u})^{n_s w}$ per decoupled block (the replay of its log,
 `NLAlib.specNorm_foldl_replayColumnStep_sub_le`) and by $(1 + 24\boldsymbol{u})^{2k(k+2)}(1 +
@@ -690,6 +691,7 @@ theorem accumFactor_leaf_le {u εL : ℝ} (hu0 : 0 ≤ u) (hεL : 0 ≤ εL) {d 
   have h3 : (0 : ℝ) ≤ 1 + εL := by linarith
   nlinarith
 
+omit [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
 /-- The leaf branch keeps the core: on a scalar machine, with the standard model at
 $\boldsymbol{u} \le 1/100$ if `P`, and a Schur leaf on orders at most $\min(k, n + 1)$ whose
 accumulator is within $\varepsilon_L \ge 0$ of a unitary if `P`
@@ -796,11 +798,10 @@ theorem roundedLeafBranch_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
       ((hAU3 5 (by simp) (by simp)).mono le_rfl hst5), hfit.of_cons, by omega, ⟨_, hU₃⟩,
     fun hp => ?_⟩
   have hX1 : (1 : ℝ) ≤ 1 + 24 * u := by linarith [hu0 hp]
-  have hY1 : (1 : ℝ) ≤ 1 + εL := by linarith [hεL hp]
   obtain ⟨V, hV, hUbV⟩ := hUbV hp
   refine AccumNear.step ((hacc' hp).of_eqOff hfr₂ (hAX 3 (by simp))) hU₂ hU₃
     (hasOrthonormalCols_embedBlock hfit0.2 hV)
-    (one_le_mul_of_one_le_of_one_le (one_le_pow₀ hX1) hY1)
+    (one_le_mul_of_one_le_of_one_le (one_le_pow₀ hX1) (by linarith [hεL hp]))
     (specNorm_setRect_matMulWord_sub_le (hP hp).1 (hu0 hp) (by linarith [(hP hp).2]) hfit0.2 U₁ hV
       (hεL hp) hUbV) ?_
   exact accumFactor_leaf_le (hu0 hp) (hεL hp) (le_trans (by
@@ -1118,8 +1119,9 @@ with natural literals up to $n + 1$ exact, exact `toNat` and comparisons (no rou
 the decoupling routine terminate with a closed log (`NLAlib.ShiftedQR.TerminatingDecouplerRoutine`)
 and the leaf routine complete on orders at most $\min(k, n + 1)$
 (`NLAlib.ShiftedQR.CompletingLeafRoutine`, no accumulator bound). Then for any matrix and
-accumulator, any threshold word and on every tape, `solveRoundedWith D L` runs to completion, writes only the matrix, the
-accumulator and the failure word, and leaves a matrix and an accumulator stored. The accumulator
+accumulator, any threshold word and on every tape, `solveRoundedWith D L` runs to completion, writes
+only the matrix, the accumulator and the failure word, and leaves a matrix and an accumulator
+stored. The accumulator
 bound under the standard model is `NLAlib.ShiftedQR.solveRoundedWith_terminates`. -/
 theorem solveRoundedWith_completes {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
     (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1))

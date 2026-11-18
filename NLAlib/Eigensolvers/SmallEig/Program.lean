@@ -323,40 +323,12 @@ theorem smallEigProg_reduce_writes_if {M : Machine ℝ} {I : Interp O Q ℝ} {u 
   have hU₄ := (hU.of_eqOff hfr₃ (hnew huL (by omega)).symm).of_eqOff hfr₄
     (Fp.disj_sup_left.mpr ⟨hwu, (hnew huL (by omega)).symm⟩)
   have hlen₄ : μ₄.store.length = L + 3 := by rw [hfr₄.length_eq]; exact hlen₃
-  have hpl := hessenbergReduceLastSlots_closed_planes M A (n + 1)
-  have hlo : slotEntries (n + 1) ([] ++ (hessenbergReduceLastSlots M A).map some ++
-      List.replicate (n + 1 - ([] ++ (hessenbergReduceLastSlots M A).map some).length) none) = [] ∨
-      0 + 1 < n + 1 :=
-    Or.inr (by omega)
-  have hlenL : ([] ++ (hessenbergReduceLastSlots M A).map some ++
-      List.replicate (n + 1 - ([] ++ (hessenbergReduceLastSlots M A).map some).length)
-        none).length = n + 1 := by
-    simp [length_hessenbergReduceLastSlots]; omega
-  have hlU : μ₄.Live [(L + 2, 0), ub] := by simp [Mem.Live, hlen₄]; omega
-  have hdU : Fp.Disj (Store.inBlock (L + 2) 0 ((n + 1) * (1 + 5 * (n + 1))))
-      (Store.inBlock ub.1 ub.2 (2 * ((n + 1) * (n + 1)))) :=
-    (hnew huL (show L ≤ L + 2 by omega)).symm
-  -- the replay, with its bound under `P`
-  have hrep : Writes .total I tape (givensReplayColumns (O := O) (Q := Q)).body
-      (Env.frame [n + 1, 0, 0, n + 1, n + 1, n + 1] [(L + 2, 0), ub, ub])
-      (Store.inBlock ub.1 ub.2 (2 * ((n + 1) * (n + 1))))
-      (fun μ' => ∃ X' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix ub X' μ'.store ∧
-        (P → specNorm (X' - 1 * embedBlock 0 (givensLog (n + 1) (slotEntries (n + 1)
-          ([] ++ (hessenbergReduceLastSlots M A).map some ++ List.replicate
-            (n + 1 - ([] ++ (hessenbergReduceLastSlots M A).map some).length) none)))) ≤
-          ((1 + 24 * u) ^ ((n + 1) * (n + 1)) - 1) * specNorm
-            (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ))) μ₄ := by
-    by_cases hp : P
-    · have hu0 : 0 ≤ u := (abs_nonneg _).trans (by simpa using (hP hp).1.lit 1)
-      exact (givensReplayColumns_specNorm_sub_le (τ := tape) (μ := μ₄) (lo := 0) (d := n + 1) hS
-        (hP hp).1 hu0 (hP hp).2 hQ hC (by omega) hpl hlo hlog₄.close hlenL hU₄ hlU hdU).mono
-        le_rfl fun _ _ ⟨X', hX', hb⟩ => ⟨X', hX', fun _ => hb⟩
-    · exact (givensReplayColumns_writes_word (τ := tape) (μ := μ₄) (lo := 0) (i0 := 0)
-        (nr := n + 1) hS hQ hC (by omega) (fun e he => (slotEntries_planes (d := n + 1)
-          (by omega) hpl hlo e he).1) hlog₄.close hlenL hU₄ hlU hdU).mono le_rfl
-        fun _ _ ⟨_, hX'⟩ => ⟨_, hX', fun h => absurd h hp⟩
-  refine (hrep.in_frame hd₃ ha₃ (by simp [Mem.Live, hlen₄]; omega)).mono
-    (le_sup_right.trans le_sup_left) ?_
+  refine ((givensReplayColumns_specNorm_sub_le_if (τ := tape) (μ := μ₄) (lo := 0) (d := n + 1)
+    hS hP hQ hC (by omega) (hessenbergReduceLastSlots_closed_planes M A (n + 1))
+    (Or.inr (by omega)) hlog₄.close
+    (by simp [length_hessenbergReduceLastSlots]; omega) hU₄ (by simp [Mem.Live, hlen₄]; omega)
+    (hnew huL (show L ≤ L + 2 by omega)).symm).in_frame hd₃ ha₃
+    (by simp [Mem.Live, hlen₄]; omega)).mono (le_sup_right.trans le_sup_left) ?_
   rintro μ₅ hfr₅ ⟨X', hX', hX'b⟩
   have hlen₅ : μ₅.store.length = L + 3 := by rw [hfr₅.length_eq]; exact hlen₄
   have hlenB : ∀ b, μ₅.store.len b = μ.store.len b := fun b => by

@@ -495,7 +495,8 @@ completes on orders at most $\min(k, n + 1)$ with the cap $T$ and $12$ words `qs
 $(n + 1) \times (n + 1)$ matrix $\mathbf{H}$, accumulator $\mathbf{U}_0$, any
 $B, \Gamma, \Sigma, \delta, \varphi$ and $k$ the degree of (eqn:setk) at $4B$, the run of
 `NLAlib.ShiftedQR.roundedShQRWith L` from a memory holding the input with the words
-`NLAlib.ShiftedQR.shqrParams` followed by `qs` succeeds on every tape and writes only the matrix, the accumulator and the failure word. -/
+`NLAlib.ShiftedQR.shqrParams` followed by `qs` succeeds on every tape and writes only the matrix,
+the accumulator and the failure word. -/
 theorem roundedShQRWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ}
     {n : ℕ} (hS : IsScalar Mch I)
     (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)

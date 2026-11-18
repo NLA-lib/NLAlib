@@ -174,7 +174,8 @@ theorem distSpec_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScal
 
 /-- **`DistSpec` is within $10\%$ of the distance to the spectrum**
 ([BanksGarzaVargasSrivastava2025, Proposition 3.1 and Observation 3.3]): on a scalar machine
-with the standard model at $\boldsymbol{u}$ and exact comparisons, let
+with the standard model at $\boldsymbol{u}$, exact comparisons and natural literals up to
+$n$ exact (the planes of the scratch log of `NLAlib.ShiftedQR.comptauHalf`), let
 $\mathbf{H} \ne 0$ of order $n + 1$ be upper Hessenberg,
 $\mathbf{H}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$ with
 $\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le \kappa$ and every last-row weight at least $p > 0$, the
@@ -187,7 +188,8 @@ writes only that word, keeps the tape position, and stores $\hat\tau$ with
 $0.9\,D \le \hat\tau \le 1.1\,D$, $D = \min_i\lvert s - d_i\rvert$. -/
 theorem distSpec_accuracy {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hL : IsIndexLit M I)
-    (hM : StdModel u id M) (hCmp : IsCmp id I) {n m q : ℕ}
+    (hM : StdModel u id M) (hCmp : IsCmp id I) {nmax : ℕ} (hNat : IsExactNatLit id M nmax)
+    {n m q : ℕ} (hn : n ≤ nmax)
     {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {s : ℂ} {κ p C η₁ : ℝ}
     (hH : IsUpperHessenberg H) (hH0 : H ≠ 0) (hV : IsUnit V)
     (hHV : H * V = V * Matrix.diagonal d) (hκ : pseudoConditionNumber V ≤ κ) (hp : 0 < p)
@@ -210,7 +212,8 @@ theorem distSpec_accuracy {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS :
   have hκ1 : 1 ≤ κ := (one_le_pseudoConditionNumber hV.ne_zero).trans hκ
   have hp1 : p ≤ 1 := (hw 0).trans ((Finset.single_le_sum (fun j _ => lastRowWeights_nonneg V j)
     (Finset.mem_univ 0)).trans_eq (sum_lastRowWeights hV))
-  have hT := comptauHalf_isHalfTau (shifts := List.replicate (2 * m) s) hS hM hCmp hL hH hH0 hV
+  have hT := comptauHalf_isHalfTau (shifts := List.replicate (2 * m) s) hS hM hCmp hL hNat hn
+    hH hH0 hV
     hHV hκ hC hη₁ (fun z hz => (List.eq_of_mem_replicate hz) ▸ hs)
     (fun z hz => (List.eq_of_mem_replicate hz) ▸ hdist) hnu
     (by rwa [List.length_replicate, Nat.mul_div_cancel_left _ two_pos])
@@ -255,14 +258,15 @@ theorem distSpec_accuracy {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS :
       _ ≤ κ * R * (⨅ i, ‖s - d i‖) ^ m := by gcongr
       _ = κ * (⨅ i, ‖s - d i‖) ^ m * R := by ring
 
-/-- `DistSpec` terminates on every tape: on a scalar machine with exact comparisons and the
-literal $0$ exact, from any matrix of order $n + 1$ at `h`, any shift pair and room for the word
+/-- `DistSpec` terminates on every tape: on a scalar machine with exact comparisons, the
+literal $0$ and natural literals up to $n$ exact, from any matrix of order $n + 1$ at `h`, any shift pair and room for the word
 `tau`, for every degree $m$ (zero included) and $q$,
 `NLAlib.SmallEig.distSpec` writes only that word, keeps the tape position and stores a word
 there. -/
 theorem distSpec_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hL : IsIndexLit M I)
-    (hzero : M.lit 0 = 0) (hCmp : IsCmp id I) {n m q : ℕ}
+    (hzero : M.lit 0 = 0) (hCmp : IsCmp id I) {nmax : ℕ} (hNat : IsExactNatLit id M nmax)
+    {n m q : ℕ} (hn : n ≤ nmax)
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {s : ℂ}
     {τ : Tape ℝ} {μ : Mem ℝ} {h sp tau : ℕ × ℕ} (hl : μ.Live [h, sp, tau])
     (hHs : HoldsMatrix h H μ.store) (hsp : μ.store.readBlock sp.1 sp.2 2 = some [s.re, s.im])
@@ -271,7 +275,7 @@ theorem distSpec_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScala
       (Store.inBlock tau.1 tau.2 1)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ t : ℝ, μ'.store.get tau.1 tau.2 = some t) μ := by
   unfold distSpec
-  refine (comptauHalf_terminates (h := 1) (e := m) hS hzero hCmp hL hl hHs
+  refine (comptauHalf_terminates (h := 1) (e := m) hS hzero hCmp hL hNat hn hl hHs
     (by simpa using hsp) htau).frame_seq_le rfl rfl hl le_rfl ?_
   rintro μ₁ - ⟨hp₁, t, ht⟩
   refine ((squareRoots_writes_word (τ := τ) (k := q) hS ht).in_frame rfl rfl

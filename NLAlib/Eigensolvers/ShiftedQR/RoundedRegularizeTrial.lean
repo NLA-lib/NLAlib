@@ -165,11 +165,6 @@ theorem IsStableQRChain.exists_norm_subdiag_le_of_le_norm_inv_pow {x C B S d ω 
 
 /-! ### The slotted log -/
 
-/-- The accepted entries of two runs of slots are those of each in turn. -/
-theorem slotEntries_append (w : ℕ) (L L' : List (Option (List GivensEntry))) :
-    slotEntries w (L ++ L') = slotEntries w L ++ slotEntries w L' := by
-  simp [slotEntries]
-
 /-- Rejected slots have no accepted entries. -/
 theorem slotEntries_replicate_none (w j : ℕ) :
     slotEntries w (List.replicate j (none : Option (List GivensEntry))) = [] := by
@@ -780,7 +775,7 @@ theorem regularizeTrials_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
         nlinarith [hall i hik, pow_le_pow_left₀ (norm_nonneg _) hi 2, sq_nonneg (1 + u)]
       · refine Or.inr ⟨hg', hf', ⟨j, hj⟩, List.replicate j none ++ [some es], es, by simp, hpl,
           by rwa [← List.append_assoc], ?_, H', Rs, hc, hH', hA', hdec⟩
-        simp [slotEntries_append, slotEntries_replicate_none, slotEntries_singleton_some]
+        simp [slotEntries_append, slotEntries_replicate_none]
     · obtain ⟨hg0, hf1, j', Ls, es, hLs, hpl, hlogμ, hse, H', Rs, hc, hH', hA', hdec⟩ := hdone
       have htr := regularizeTrial_writes (τ := τ) (sp := (s.1, s.2 + 2 * j)) hS hM hu1 hL hNat hC
         hk0 hk hH' hnu hA' hsj hthrμ hg0 hf1 (by rw [hl]; exact hrt) (by rw [hl]; exact hrsr)

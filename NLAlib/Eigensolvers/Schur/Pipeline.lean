@@ -202,7 +202,7 @@ product with $r$ under the standard model at $\boldsymbol{u}$, the block holds a
 $\mathbf{A}'$ with $\|\mathbf{A}' - r\mathbf{A}\|_{\mathsf F} \le
 \boldsymbol{u}|r|\,\|\mathbf{A}\|_{\mathsf F}$ whose zero entries are those of $\mathbf{A}$ at
 least. -/
-theorem StdModel.exists_holdsMatrix_mul {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M)
+theorem _root_.NLAlib.Ops.StdModel.exists_holdsMatrix_mul {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M)
     {N : ℕ} {b : ℕ × ℕ} {A : Matrix (Fin N) (Fin N) ℂ} {s s' : Store ℝ} {r : ℝ}
     (hA : HoldsMatrix b A s)
     (h : ∀ t < 2 * (N * N), ∀ w, s.get b.1 (b.2 + t) = some w →
@@ -495,6 +495,213 @@ theorem specNorm_sub_mul_mul_conjTranspose_le_of_scaled {N : ℕ}
           c * (specNorm A₂ + εT) := by ring
   rw [eR]
   linarith
+
+/-! ### The memory of a pipeline run -/
+
+/-- The four apart blocks of a pipeline input, pairwise. -/
+theorem apart_four {a p uo f : ℕ × ℕ} {la lp lu lf : ℕ}
+    (h : Fp.Apart [a, p, uo, f] [la, lp, lu, lf]) :
+    Fp.Disj (Store.inBlock a.1 a.2 la) (Store.inBlock p.1 p.2 lp) ∧
+      Fp.Disj (Store.inBlock a.1 a.2 la) (Store.inBlock uo.1 uo.2 lu) ∧
+      Fp.Disj (Store.inBlock a.1 a.2 la) (Store.inBlock f.1 f.2 lf) ∧
+      Fp.Disj (Store.inBlock p.1 p.2 lp) (Store.inBlock uo.1 uo.2 lu) ∧
+      Fp.Disj (Store.inBlock p.1 p.2 lp) (Store.inBlock f.1 f.2 lf) ∧
+      Fp.Disj (Store.inBlock uo.1 uo.2 lu) (Store.inBlock f.1 f.2 lf) := by
+  simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
+    and_true] at h
+  exact ⟨h.1.1, h.1.2.1, h.1.2.2, h.2.1.1, h.2.1.2, h.2.2⟩
+
+/-- **The memory of a pipeline run** after its two scratch cells $S = (L, 0)$ and
+$R = (L + 1, 0)$: the input blocks below $L$, with room, apart, and the words `qs` stored. -/
+def SchurPipelineMem (n : ℕ) (qs : List ℝ) (a p uo f : ℕ × ℕ) (L : ℕ) (m : Mem ℝ) : Prop :=
+  m.store.length = L + 2 ∧ a.1 < L ∧ p.1 < L ∧ uo.1 < L ∧ f.1 < L ∧
+    m.Room [a, p, uo, f] [2 * ((n + 1) * (n + 1)), qs.length, 2 * ((n + 1) * (n + 1)), 1] ∧
+    m.store.len L = 1 ∧ m.store.len (L + 1) = 1 ∧
+    Fp.Apart [a, p, uo, f] [2 * ((n + 1) * (n + 1)), qs.length, 2 * ((n + 1) * (n + 1)), 1] ∧
+    m.store.readBlock p.1 p.2 qs.length = some qs
+
+namespace SchurPipelineMem
+
+variable {n : ℕ} {qs : List ℝ} {a p uo f : ℕ × ℕ} {L : ℕ} {m m' : Mem ℝ}
+
+/-- The memory survives a run that writes away from the words. -/
+theorem of_eqOff (h : SchurPipelineMem n qs a p uo f L m) {F : Fp}
+    (hfr : m.store.EqOff F m'.store) (hF : Fp.Disj F (Store.inBlock p.1 p.2 qs.length)) :
+    SchurPipelineMem n qs a p uo f L m' := by
+  obtain ⟨hlen, ha, hp, hu, hf, hr, hL, hL', hap, hq⟩ := h
+  refine ⟨hfr.length_eq ▸ hlen, ha, hp, hu, hf, ?_, by rw [hfr.len_eq, hL],
+    by rw [hfr.len_eq, hL'], hap, hfr.keep (Store.readsOnly_readBlock _ _ _ _) hF hq⟩
+  simpa only [Mem.Room, hfr.len_eq] using hr
+
+/-- Every block of the run is live. -/
+theorem live (h : SchurPipelineMem n qs a p uo f L m) :
+    m.Live [a, p, uo, f, (L, 0), (L + 1, 0), a, uo] := by
+  obtain ⟨hlen, ha, hp, hu, hf, -⟩ := h
+  intro x hx
+  simp only [List.mem_cons, List.mem_nil_iff, or_false] at hx
+  rcases hx with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;> simp only [hlen] <;> omega
+
+/-- A sublist of the live blocks is live. -/
+theorem live_of_subset (h : SchurPipelineMem n qs a p uo f L m) {zs : List (ℕ × ℕ)}
+    (hz : zs ⊆ [a, p, uo, f, (L, 0), (L + 1, 0), a, uo]) : m.Live zs :=
+  fun x hx => h.live x (hz hx)
+
+/-- The footprint of the run misses the words. -/
+theorem disj_words (h : SchurPipelineMem n qs a p uo f L m) :
+    Fp.Disj (schurFp n a uo f ⊔ Store.inBlock L 0 1 ⊔ Store.inBlock (L + 1) 0 1)
+      (Store.inBlock p.1 p.2 qs.length) := by
+  obtain ⟨-, -, hp, -, -, -, -, -, hap, -⟩ := h
+  obtain ⟨h1, -, -, h4, h5, -⟩ := apart_four hap
+  simp only [schurFp, Fp.disj_sup_left]
+  exact ⟨⟨⟨⟨h1, h4.symm⟩, h5.symm⟩, Fp.disj_inBlock_of_ne (by omega)⟩,
+    Fp.disj_inBlock_of_ne (by omega)⟩
+
+/-- The room of the matrix block. -/
+theorem room_a (h : SchurPipelineMem n qs a p uo f L m) :
+    a.2 + 2 * ((n + 1) * (n + 1)) ≤ m.store.len a.1 := h.2.2.2.2.2.1.1
+
+/-- The room of the accumulator block. -/
+theorem room_uo (h : SchurPipelineMem n qs a p uo f L m) :
+    uo.2 + 2 * ((n + 1) * (n + 1)) ≤ m.store.len uo.1 := h.2.2.2.2.2.1.2.2.1
+
+/-- The room of the flag. -/
+theorem room_f (h : SchurPipelineMem n qs a p uo f L m) : f.2 + 1 ≤ m.store.len f.1 :=
+  h.2.2.2.2.2.1.2.2.2.1
+
+end SchurPipelineMem
+
+/-- The environment of the pipeline body after its two scratch allocations. -/
+def schurPipelineEnv (n nr nq k F T : ℕ) (a p uo f : ℕ × ℕ) (L : ℕ) : Env :=
+  ⟨[n + 1, nr, nq, k, F, T, a.2, p.2, a.2, uo.2, f.2], [a.1, p.1, a.1, uo.1, f.1, L, L + 1]⟩
+
+section Steps
+
+variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
+
+/-- The identity program stores the identity when the literals $0$ and $1$ are exact. -/
+theorem writes_identity_holdsMatrix_one {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (h1 : Mch.lit 1 = 1) {τ : Tape ℝ}
+    {m : Mem ℝ} {N : ℕ} {b : ℕ × ℕ} (hroom : b.2 + 2 * (N * N) ≤ m.store.len b.1) :
+    Writes .total I τ (PairMatrix.identity (Op := O) (Tst := Q)).body (Env.frame [N] [b])
+      (Store.inBlock b.1 b.2 (2 * (N * N)))
+      (fun m' => HoldsMatrix b (1 : Matrix (Fin N) (Fin N) ℂ) m'.store) m := by
+  have h0 : Mch.lit 0 = 0 := hM.dec_lit_zero
+  refine (PairMatrix.writes_identity hS hroom).mono le_rfl fun m' _ hv => ?_
+  refine holdsMatrix_one_of_holdsVec fun i hi => ?_
+  rw [hv.1 i hi, h0, h1]
+
+/-- **The zero branch of the pipeline**: from the memory of a run holding $\mathbf{A} = 0$, the
+identity and the flag $0$ make a Schur output. -/
+theorem schurPipeline_zero_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I) (h1 : Mch.lit 1 = 1)
+    {n nr nq k F T L : ℕ} {qs : List ℝ} {a p uo f : ℕ × ℕ} {τ : Tape ℝ} {m : Mem ℝ}
+    (hm : SchurPipelineMem n qs a p uo f L m)
+    (hA : HoldsMatrix a (0 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) m.store) {eA eU : ℝ}
+    (heU : 0 ≤ eU) :
+    Writes .total I τ (.seq (.frame [.var 0] [⟨3, .var 9⟩]
+        (PairMatrix.identity (Op := O) (Tst := Q)).body)
+        (.call (Has.inj IndexOp.lit) [.const 0] [] [⟨4, .var 10⟩]))
+      (schurPipelineEnv n nr nq k F T a p uo f L) (schurFp n a uo f)
+      (SchurOutput a uo f (0 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) eA eU) m := by
+  obtain ⟨-, -, -, -, -, -, -, -, hap, -⟩ := id hm
+  obtain ⟨-, h2, -, -, -, h6⟩ := apart_four hap
+  refine (writes_identity_holdsMatrix_one (N := n + 1) hS hM h1 hm.room_uo).frame_seq_le rfl rfl
+    (hm.live_of_subset (by simp)) (by simp only [schurFp]; fp_sub) fun m' hfr hU => ?_
+  have hf : f.2 < m'.store.len f.1 := by have := hm.room_f; rw [hfr.len_eq]; omega
+  refine (writes_indexLit hL (n := 0) rfl rfl hf).mono (by simp only [schurFp]; fp_sub)
+    fun m'' hfr' hg => ?_
+  have hz : Mch.lit ((0 : ℕ) : ℚ) = 0 := by simpa using hM.dec_lit_zero
+  refine ⟨by rw [hg.2, hz], 1, 0, ?_, hU.of_eqOff hfr' h6.symm, ?_, ?_, ?_⟩
+  · obtain ⟨-, -, h3, -, -, -⟩ := apart_four hap
+    exact (hA.of_eqOff hfr h2.symm).of_eqOff hfr' h3.symm
+  · intro i j _; rfl
+  · simp
+  · simpa using heU
+
+/-- **The scaling of the pipeline**: from a run memory holding $\mathbf{A}$ and the norm estimate
+$x > 0$ in $S$, the literal $1$, the division $r = \mathrm{fl}(1/x)$ and the scaling of the words
+by $r$ store an $\mathbf{A}_1$ with $\|x\mathbf{A}_1 - \mathbf{A}\|_2 \le
+3\boldsymbol{u}\|\mathbf{A}\|_{\mathsf F}$. -/
+theorem schurPipeline_scale_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (h1 : Mch.lit 1 = 1) (hu1 : u ≤ 1)
+    {n nr nq k F T L : ℕ} {qs : List ℝ} {a p uo f : ℕ × ℕ} {τ : Tape ℝ} {m : Mem ℝ}
+    (hm : SchurPipelineMem n qs a p uo f L m) {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    (hA : HoldsMatrix a A m.store) {x : ℝ} (hx : m.store.get L 0 = some x) (hx0 : 0 < x) :
+    Writes .total I τ
+      ((Stmt.call (Has.inj (ScalarOp.lit 1)) [] [] [⟨6, .const 0⟩]).seq
+        ((Stmt.call (Has.inj ScalarOp.div) [] [⟨6, .const 0⟩, ⟨5, .const 0⟩] [⟨6, .const 0⟩]).seq
+          (.loop (.const 2 * (.var 0 * .var 0)) (.call (Has.inj ScalarOp.mul) []
+            [⟨0, .var 6 + .var 11⟩, ⟨6, .const 0⟩] [⟨0, .var 6 + .var 11⟩]))))
+      (schurPipelineEnv n nr nq k F T a p uo f L)
+      (Store.inBlock (L + 1) 0 1 ⊔ Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
+      (fun m' => SchurPipelineMem n qs a p uo f L m' ∧ m'.store.get L 0 = some x ∧
+        ∃ A₁ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A₁ m'.store ∧
+          specNorm ((x : ℂ) • A₁ - A) ≤ 3 * u * frobNorm A) m := by
+  obtain ⟨hlen, ha, -, -, -, -, hL, hL', -⟩ := id hm
+  have hu : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
+  have hRroom : (0 : ℕ) < m.store.len (L + 1) := by omega
+  refine (writes_call_const (hS (.lit 1)) (z := (L + 1, 0)) rfl trivial hRroom).seq_le
+    le_sup_left fun m₁ hfr₁ hR₁ => ?_
+  have hx₁ : m₁.store.get L 0 = some x := by
+    rw [hfr₁.2 L 0 (by simp [Store.inBlock]), hx]
+  have hlive₁ : m₁.Live [(L + 1, 0), (L, 0), (L + 1, 0)] := by
+    have := hm.live.congr hfr₁.length_eq
+    exact fun z hz => this z (by simp at hz ⊢; tauto)
+  refine (writes_call_bin (hS .div) (x := (L + 1, 0)) (y := (L, 0)) (z := (L + 1, 0)) rfl rfl
+    trivial hR₁.2 hx₁ rfl fun _ => ⟨hlive₁, by rw [hfr₁.len_eq]; omega⟩).seq_le le_sup_left
+    fun m₂ hfr₂ hR₂ => ?_
+  have hfr₁₂ := hfr₁.trans hfr₂
+  have hA₂ : HoldsMatrix a A m₂.store := hA.of_eqOff hfr₁₂ (Fp.disj_inBlock_of_ne (by omega))
+  have hx₂ : m₂.store.get L 0 = some x := by
+    rw [hfr₂.2 L 0 (by simp [Store.inBlock]), hx₁]
+  set r := Mch.div (Mch.lit 1) x
+  refine (writes_loop_mul_cell hS (N := 2 * ((n + 1) * (n + 1))) (b := a.1) (o := a.2)
+    (y := (L + 1, 0)) (r := r) rfl (fun t _ => rfl) (fun t _ => rfl) ?_
+    (fun t ht => ⟨_, Store.get_of_readBlock hA₂ ht 0⟩) hR₂.2 ?_).mono le_sup_right ?_
+  · have := hm.live.congr hfr₁₂.length_eq
+    exact fun z hz => this z (by simp at hz ⊢; tauto)
+  · rintro ⟨h, -⟩; omega
+  rintro m₃ hfr₃ ⟨-, hmul⟩
+  have hfr : m.store.EqOff (Store.inBlock (L + 1) 0 1 ⊔
+      Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) m₃.store :=
+    (hfr₁₂.mono fun _ _ h => Or.inl h).trans (hfr₃.mono fun _ _ h => Or.inr h)
+  obtain ⟨A₁, hA₁, hA₁n, -⟩ := hM.exists_holdsMatrix_mul hA₂ hmul
+  refine ⟨hm.of_eqOff hfr (hm.disj_words.mono (by simp only [schurFp]; fp_sub) le_rfl),
+    by rw [hfr₃.2 L 0 (by simp [Store.inBlock]; omega), hx₂], A₁, hA₁, ?_⟩
+  -- the numbers
+  have hr : |r - 1 / x| ≤ u * |1 / x| := by
+    have := hM.div (Mch.lit 1) x hx0.ne'
+    simpa [r, h1] using this
+  have hxr : |x * r - 1| ≤ u := by
+    have e : x * r - 1 = x * (r - 1 / x) := by field_simp
+    rw [e, abs_mul, abs_of_pos hx0]
+    calc x * |r - 1 / x| ≤ x * (u * |1 / x|) := mul_le_mul_of_nonneg_left hr hx0.le
+      _ = u := by rw [abs_of_pos (by positivity)]; field_simp
+  have hxr' : x * |r| ≤ 1 + u := by
+    have : |x * r| ≤ 1 + u := by
+      have := abs_sub_abs_le_abs_sub (x * r) 1; rw [abs_one] at this; linarith
+    rwa [abs_mul, abs_of_pos hx0] at this
+  have e : (x : ℂ) • A₁ - A = (x : ℂ) • (A₁ - (r : ℂ) • A) + (((x * r - 1 : ℝ)) : ℂ) • A := by
+    rw [smul_sub, smul_smul]
+    push_cast
+    rw [sub_smul, one_smul]; abel
+  rw [e]
+  refine (specNorm_add_le _ _).trans ?_
+  rw [specNorm_smul, specNorm_smul, Complex.norm_real, Complex.norm_real, Real.norm_of_nonneg hx0.le,
+    Real.norm_eq_abs]
+  have hF := frobNorm_nonneg A
+  have h₁ : x * specNorm (A₁ - (r : ℂ) • A) ≤ x * (u * |r| * frobNorm A) :=
+    mul_le_mul_of_nonneg_left ((specNorm_le_frobNorm _).trans hA₁n) hx0.le
+  have h₂ : |x * r - 1| * specNorm A ≤ u * frobNorm A :=
+    mul_le_mul hxr (specNorm_le_frobNorm A) (specNorm_nonneg _) hu
+  have h₃ : x * (u * |r| * frobNorm A) ≤ (1 + u) * u * frobNorm A := by
+    have := mul_le_mul_of_nonneg_right hxr' (mul_nonneg hu hF)
+    linarith [show x * (u * |r| * frobNorm A) = x * |r| * (u * frobNorm A) by ring]
+  have h₄ : (1 + u) * u * frobNorm A ≤ 2 * u * frobNorm A := by
+    have := mul_le_mul_of_nonneg_right hu1 (mul_nonneg hu hF); nlinarith
+  linarith
+
+end Steps
 
 /-- **The generic composition theorem**: for any norm estimate, regularizer (into `C`), reducer
 and Schur core (from `C'`) meeting their contracts, with the class transfer `hCC'` through the

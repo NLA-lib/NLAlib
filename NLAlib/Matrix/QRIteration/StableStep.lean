@@ -98,6 +98,20 @@ def IsStableQRStepBy (Q : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (ε : ℝ)
   IsUpperHessenberg H' ∧ R.IsUpperTriangular ∧ HasOrthonormalCols Q ∧
     specNorm (H' - Qᴴ * H * Q) ≤ ε ∧ specNorm (H - s • (1 : Matrix _ _ ℂ) - Q * R) ≤ ε
 
+/-- A backward-stable single step by $\mathbf{Q}$ is a perturbed unitary similarity by
+$\mathbf{Q}$ with the same error. -/
+theorem IsStableQRStepBy.isPerturbedUnitarySimilarBy {Q : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {ε : ℝ} {H H' R : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {s : ℂ}
+    (h : IsStableQRStepBy Q ε H s H' R) : IsPerturbedUnitarySimilarBy Q H H' ε := by
+  obtain ⟨-, -, hQ, hH', -⟩ := h
+  have hJ : Q * Qᴴ = 1 := hQ.mul_conjTranspose_self
+  have hI : Qᴴ * Q = 1 := hQ.conjTranspose_mul_self
+  refine ⟨hQ, Q * (H' - Qᴴ * H * Q) * Qᴴ, ?_, ?_⟩
+  · rwa [hQ.specNorm_mul_conjTranspose_right, hQ.specNorm_mul_left]
+  · simp only [Matrix.mul_add, Matrix.add_mul, ← Matrix.mul_assoc, hI, Matrix.one_mul]
+    simp only [Matrix.mul_assoc, hI, Matrix.mul_one]
+    abel
+
 /-- Forgetting the unitary of a step. -/
 theorem IsStableQRStepBy.isStableQRStep {Q : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ε : ℝ}
     {H H' R : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {s : ℂ} (h : IsStableQRStepBy Q ε H s H' R) :
@@ -245,8 +259,29 @@ theorem IsStableQRChainBy.isPerturbedUnitarySimilarBy {x C : ℝ}
     {Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)}
     (h : IsStableQRChainBy x H ss H' Rs Q) (hx : 0 ≤ x)
     (hs : ∀ s ∈ ss, ‖s‖ ≤ C * specNorm H) :
-    IsPerturbedUnitarySimilarBy Q H H' ((1 + C) * specNorm H * ((1 + x) ^ ss.length - 1)) :=
-  sorry
+    IsPerturbedUnitarySimilarBy Q H H' ((1 + C) * specNorm H * ((1 + x) ^ ss.length - 1)) := by
+  -- The invariant of `NLAlib.IsStableQRChain.isPerturbedUnitarySimilar`, with the unitaries.
+  have key : ∀ (c : ℝ) (K K' Q' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (ts : List ℂ)
+      (Ss : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)),
+      specNorm K + C * specNorm H ≤ c → (∀ s ∈ ts, ‖s‖ ≤ C * specNorm H) →
+      IsStableQRChainBy x K ts K' Ss Q' →
+        IsPerturbedUnitarySimilarBy Q' K K' (c * ((1 + x) ^ ts.length - 1)) := by
+    intro c K K' Q' ts Ss hK hs g
+    induction g generalizing c with
+    | nil K => simpa using IsPerturbedUnitarySimilarBy.refl K
+    | @cons K₀ K₁ K₂ R Q₁ Q₂ s ss Rs h t ih =>
+      have hsK : ‖s‖ ≤ C * specNorm H := hs s (List.mem_cons_self ..)
+      have hs' : ∀ s' ∈ ss, ‖s'‖ ≤ C * specNorm H :=
+        fun s' hm => hs s' (List.mem_cons_of_mem _ hm)
+      have hxc : x * (specNorm K₀ + ‖s‖) ≤ x * c :=
+        mul_le_mul_of_nonneg_left (by linarith) hx
+      have h1 := h.isPerturbedUnitarySimilarBy
+      have hH₁ := h1.isPerturbedUnitarySimilar.specNorm_le
+      have h2 := ih ((1 + x) * c) (by nlinarith) hs'
+      refine (h1.trans h2).mono ?_
+      rw [List.length_cons, pow_succ]
+      nlinarith [hxc]
+  exact key ((1 + C) * specNorm H) H H' Q ss Rs (le_of_eq (by ring)) hs h
 
 /-- The shift polynomial intertwines: $\mathbf{A}\mathbf{X} = \mathbf{X}\mathbf{B}$ gives
 $p(\mathbf{A})\mathbf{X} = \mathbf{X}p(\mathbf{B})$. -/

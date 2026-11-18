@@ -187,11 +187,82 @@ theorem roundedDecoupleExit_writes_lastScan {M : Machine ℝ} {I : Interp O Q �
     rintro μ' - ⟨-, hF⟩
     exact Or.inr ⟨by rw [hF, h1], hx, hb⟩
 
+/-- A chain by a named unitary extended by one step by $\mathbf{Q}_1$ is a chain by
+$\mathbf{Q}\mathbf{Q}_1$. -/
+private theorem chainBy_snoc {n : ℕ} {x : ℝ}
+    {H H' H'' U U₁ R : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {ss : List ℂ} {Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)} {s : ℂ}
+    (hc : IsStableQRChainBy x H ss H' Rs U)
+    (hs : IsStableQRStepBy U₁ (x * (specNorm H' + ‖s‖)) H' s H'' R) :
+    IsStableQRChainBy x H (ss ++ [s]) H'' (Rs ++ [R]) (U * U₁) := by
+  induction hc with
+  | nil K => simpa using IsStableQRChainBy.cons hs (.nil H'')
+  | cons h _ ih => simpa [Matrix.mul_assoc] using IsStableQRChainBy.cons h (ih hs)
+
+/-- A chain of one step by a named unitary is that step. -/
+private theorem stepBy_of_chainBy_singleton {n : ℕ} {x : ℝ}
+    {H H' G : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {s : ℂ}
+    {Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)} (h : IsStableQRChainBy x H [s] H' Rs G) :
+    ∃ R, IsStableQRStepBy G (x * (specNorm H + ‖s‖)) H s H' R := by
+  cases h with
+  | cons h t => cases t; exact ⟨_, by simpa using h⟩
+
+omit [Has IdxTst Q] in
+/-- One more rounded step with the shift $\lambda$ (`NLAlib.ShiftedQR.multiStepStable` at degree
+$1$, recording its rotations in the pending slot of the log), from the ends of a stable chain
+by a named unitary $\mathbf{Q}$: a chain of one more step by $\mathbf{Q}$ times the unitary of
+the recorded entries. -/
+private theorem multiStepStable_writes_by {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar M I) (hM : StdModel u id M) (hu : 0 ≤ u) (hC : IsCmp id I)
+    (hL : IsIndexLit M I) {n i : ℕ} (hNat : IsExactNatLit id M (n + 1))
+    (hnu : (n + 2 : ℝ) * u ≤ 1 / 2500) {H H' U : Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ} {ζ : ℂ}
+    {Rs : List (Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ)}
+    (hc : IsStableQRChainBy (300 * (n + 2) ^ 2 * u) H (List.replicate i ζ) H' Rs U)
+    (hH' : IsUpperHessenberg H') {τ : Tape ℝ} {μ : Mem ℝ} {a s ds : ℕ × ℕ}
+    (hl : μ.Live [a, s, ds]) (hA : HoldsMatrix a H' μ.store)
+    (hs : μ.store.readBlock s.1 s.2 2 = some [ζ.re, ζ.im]) (hd : ds.2 + 2 ≤ μ.store.len ds.1)
+    (has : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 2) * (n + 2)))) (Store.inBlock s.1 s.2 2))
+    (had : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 2) * (n + 2)))) (Store.inBlock ds.1 ds.2 2))
+    (hsd : Fp.Disj (Store.inBlock s.1 s.2 2) (Store.inBlock ds.1 ds.2 2))
+    {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
+    (hlog : HoldsSlottedLog lg ns w LL [] μ.store) (hj : LL.length < ns) (hw : n + 1 ≤ w)
+    (hlgl : μ.Live [lg]) (hlgb : ∀ b ∈ [a, s, ds], b.1 ≠ lg.1) :
+    Writes .total I τ (multiStepStable (Op := O) (Tst := Q)).body
+      (Env.frame [n + 2, 1, w, LL.length] [a, s, a, ds, lg])
+      (Store.inBlock a.1 a.2 (2 * ((n + 2) * (n + 2))) ⊔ Store.inBlock ds.1 ds.2 2 ⊔
+        Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (fun μ' => μ'.pos = μ.pos ∧ ∃ (H'' : Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ)
+        (Rs' : List (Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ)) (es : List GivensEntry),
+        es.length = n + 1 ∧ (∀ e ∈ es, e.1 + 1 < n + 2) ∧
+          HoldsSlottedLog lg ns w LL es μ'.store ∧
+        IsStableQRChainBy (300 * (n + 2) ^ 2 * u) H (List.replicate (i + 1) ζ) H'' Rs'
+          (U * givensLog (n + 2) es) ∧
+          IsUpperHessenberg H'' ∧ HoldsMatrix a H'' μ'.store) μ := by
+  have hlgd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (Store.inBlock a.1 a.2 (2 * ((n + 1 + 1) * (n + 1 + 1))) ⊔
+        Store.inBlock s.1 s.2 (2 * [ζ].length) ⊔ Store.inBlock ds.1 ds.2 (2 * [ζ].length)) :=
+    Fp.disj_sup_right.mpr ⟨Fp.disj_sup_right.mpr
+      ⟨Fp.disj_inBlock_of_ne (hlgb a (by simp)).symm, Fp.disj_inBlock_of_ne (hlgb s (by simp)).symm⟩,
+      Fp.disj_inBlock_of_ne (hlgb ds (by simp)).symm⟩
+  refine (multiStepStable_isStableQRChainBy (τ := τ) (ss := [ζ]) hS hM hu hC hL hNat hH'
+    (by push_cast; linarith) le_rfl hlog hj (by simpa using hw)
+    (by simp only [Mem.live_cons, Mem.live_nil, and_true] at hl hlgl ⊢
+        exact ⟨hl.1, hl.2.1, hl.2.2, hlgl⟩) hA (by simpa using hs) (by simpa using hd) has had
+    hsd hlgd).mono le_rfl ?_
+  rintro μ' - ⟨hp, es, hes, hpl, hlog', H'', Rs', hc', hH'', hA'', -⟩
+  have hx : (300 * (((n + 1 : ℕ) : ℝ) + 1) ^ 2 * u) = 300 * ((n : ℝ) + 2) ^ 2 * u := by
+    push_cast; ring
+  rw [hx] at hc'
+  obtain ⟨R, hst⟩ := stepBy_of_chainBy_singleton hc'
+  exact ⟨hp, H'', Rs ++ [R], es, by simpa using hes, hpl, hlog',
+    by rw [List.replicate_succ']; exact chainBy_snoc hc hst, hH'', hA''⟩
+
 omit [Has IdxTst Q] in
 /-- One more rounded step with the shift $\lambda$ (`NLAlib.ShiftedQR.multiStepStable` at degree
 $1$) extends a stable chain of $i$ steps with that shift to $i + 1$ steps. -/
 theorem multiStepStable_writes_replicate_succ {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
-    (hS : IsScalar M I) (hM : StdModel u id M) (hu : 0 ≤ u) (hC : IsCmp id I) {n i : ℕ}
+    (hS : IsScalar M I) (hM : StdModel u id M) (hu : 0 ≤ u) (hC : IsCmp id I)
+    (hL : IsIndexLit M I) {n i : ℕ} (hNat : IsExactNatLit id M (n + 1))
     (hnu : (n + 2 : ℝ) * u ≤ 1 / 2500) {H H' : Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ} {ζ : ℂ}
     {Rs : List (Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ)}
     (hc : IsStableQRChain (300 * (n + 2) ^ 2 * u) H (List.replicate i ζ) H' Rs)
@@ -212,8 +283,25 @@ theorem multiStepStable_writes_replicate_succ {M : Machine ℝ} {I : Interp O Q 
         (Rs' : List (Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ)),
         IsStableQRChain (300 * (n + 2) ^ 2 * u) H (List.replicate (i + 1) ζ) H'' Rs' ∧
           IsUpperHessenberg H'' ∧ HoldsMatrix a H'' μ'.store ∧
-        ∃ es : List GivensEntry, es.length = n + 1 ∧ HoldsSlottedLog lg ns w LL es μ'.store) μ :=
-  sorry
+        ∃ es : List GivensEntry, es.length = n + 1 ∧ HoldsSlottedLog lg ns w LL es μ'.store) μ := by
+  have hlgd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (Store.inBlock a.1 a.2 (2 * ((n + 1 + 1) * (n + 1 + 1))) ⊔
+        Store.inBlock s.1 s.2 (2 * [ζ].length) ⊔ Store.inBlock ds.1 ds.2 (2 * [ζ].length)) :=
+    Fp.disj_sup_right.mpr ⟨Fp.disj_sup_right.mpr
+      ⟨Fp.disj_inBlock_of_ne (hlgb a (by simp)).symm, Fp.disj_inBlock_of_ne (hlgb s (by simp)).symm⟩,
+      Fp.disj_inBlock_of_ne (hlgb ds (by simp)).symm⟩
+  refine (multiStepStable_isStableQRChainBy (τ := τ) (ss := [ζ]) hS hM hu hC hL hNat hH'
+    (by push_cast; linarith) le_rfl hlog hj (by simpa using hw)
+    (by simp only [Mem.live_cons, Mem.live_nil, and_true] at hl hlgl ⊢
+        exact ⟨hl.1, hl.2.1, hl.2.2, hlgl⟩) hA (by simpa using hs) (by simpa using hd) has had
+    hsd hlgd).mono le_rfl ?_
+  rintro μ' - ⟨-, es, hes, -, hlog', H'', Rs', hc', hH'', hA'', -⟩
+  have hx : (300 * (((n + 1 : ℕ) : ℝ) + 1) ^ 2 * u) = 300 * ((n : ℝ) + 2) ^ 2 * u := by
+    push_cast; ring
+  rw [hx] at hc'
+  obtain ⟨R, hst⟩ := stepBy_of_chainBy_singleton hc'
+  exact ⟨H'', Rs ++ [R], by rw [List.replicate_succ']; exact hc.snoc hst.isStableQRStep, hH'',
+    hA'', es, by simpa using hes, hlog'⟩
 
 omit [Has IdxTst Q] in
 /-- The scan of `NLAlib.SmallEig.decoupleLast` from the operands of its loop

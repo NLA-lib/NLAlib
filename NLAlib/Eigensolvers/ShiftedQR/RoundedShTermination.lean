@@ -69,11 +69,12 @@ omit [Has DiskSampleOp O] [Has IdxTst Q] in
 `NLAlib.ShiftedQR.ShViews` and the room `NLAlib.ShiftedQR.ShRoom`, from any step at `T`, any
 matrix at `A`, stored words at `Pt`, `Gw` and `Fl` and the pending entries `P` (planes below $n$)
 of slot `LL.length` of a log apart from the views and the scratch, $1 \le n$, $k \le n$, on a
-scalar machine with exact comparisons and index literals, `NLAlib.ShiftedQR.shPotentialAccept`
-leaves the matrix, `Gw` and `Fl` stored and closes the slot (accepted or rejected). -/
+scalar machine with exact comparisons, index literals and an exact literal one,
+`NLAlib.ShiftedQR.shPotentialAccept` leaves the matrix, `Gw` and `Fl` stored and closes the slot
+(accepted or rejected). -/
 theorem shPotentialAccept_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
-    (hC : IsCmp id I) (hL : IsIndexLit M I) {τ : Tape ℝ} {m : Mem ℝ} {L k q : ℕ} (hn : 0 < n)
-    (hkn : k ≤ n) {ε : ℝ}
+    (hC : IsCmp id I) (hL : IsIndexLit M I) (hNat : IsExactNatLit id M 1) {τ : Tape ℝ}
+    {m : Mem ℝ} {L k q : ℕ} (hn : 0 < n) (hkn : k ≤ n) {ε : ℝ}
     {a s wg wr ww wp g thr f : ℕ × ℕ} (hv : ShViews L n k ε a s wg wr ww wp g thr f)
     (hr : ShRoom L n k ε f m) {H H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {pv gv fv : ℝ}
     (hT : HoldsMatrix (L + 5, 0) H' m.store) (hA : HoldsMatrix a H m.store)
@@ -109,11 +110,11 @@ theorem shPotentialAccept_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS 
   have hf₁ := hfr₁.keep (Store.readsOnly_get _ _ _) (by disjoint) hf
   have hT₁ := hT.of_eqOff hfr₁ (by disjoint)
   have hA₁ := hA.of_eqOff hfr₁ (by disjoint)
-  have hlog₁ := hfr₁.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+  have hlog₁ := hfr₁.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
     (Fp.disj_inBlock_of_ne (by omega)) hlog
   refine writes_ite rfl rfl (hC.test_lt (d := []) hP₁ hpt₁) ?_
   split_ifs
-  · have hacc := trialAccept_terminates (τ := τ) (a := a) (g := (L + 11, 0)) (f := f) hS
+  · have hacc := trialAccept_terminates (τ := τ) (a := a) (g := (L + 11, 0)) (f := f) hS hNat
       (by simp [Mem.Live, hfr₁.length_eq, hlen]; omega) hT₁
       (by rw [hfr₁.len_eq]; exact Store.le_len_of_readBlock hA (by positivity))
       (by rw [hfr₁.len_eq]; simp [h11]) (by rw [hfr₁.len_eq]; exact hrf) (by disjoint)
@@ -125,7 +126,7 @@ theorem shPotentialAccept_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS 
       (by fp_sub) ?_
     rintro m₂ - ⟨hA₂, hG₂, x, hF₂, hlog₂⟩
     refine ⟨⟨_, hA₂⟩, hG₂, x, hF₂, [some P], rfl, ?_, hlog₂⟩
-    rw [slotEntries_singleton_some]
+    rw [slotEntries_some]
     exact padEntries_planes (by omega) hP
   · exact (Writes.skip ⟨⟨_, hA₁⟩, ⟨_, hg₁⟩, _, hf₁, [none], rfl, by simp,
       hlog₁.reject (by omega)⟩).mono bot_le fun _ _ h => h
@@ -192,6 +193,7 @@ theorem shTrial_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar
       hR) ?_
     split_ifs
     · have hacc := trialAccept_terminates (τ := τ) (a := a) (g := (L + 11, 0)) (f := f) hS
+        (hNat.mono (by omega))
         (by simp [Mem.Live, hfr₁.length_eq, hlen]; omega) hT₁
         (by rw [hfr₁.len_eq]; exact Store.le_len_of_readBlock hA (by positivity))
         (by rw [hfr₁.len_eq]; simp [h11]) (by rw [hfr₁.len_eq]; exact hrf) (by disjoint)
@@ -202,10 +204,10 @@ theorem shTrial_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar
         (by fp_sub) ?_
       rintro m₂ - ⟨hA₂, hG₂, y, hF₂, hlog₂⟩
       refine ⟨⟨_, hA₂⟩, hG₂, y, hF₂, [some es], rfl, ?_, hlog₂⟩
-      rw [slotEntries_singleton_some]
+      rw [slotEntries_some]
       exact padEntries_planes (by omega) hes
-    · exact ((shPotentialAccept_terminates (τ := τ) (q := q) hS hC hL hn hkn hv hr₁ hT₁ hA₁ hpt₁
-        hg₁ hf₁ hlog₁ hes hj hlgL hlgv).in_frame rfl rfl
+    · exact ((shPotentialAccept_terminates (τ := τ) (q := q) hS hC hL (hNat.mono (by omega)) hn
+        hkn hv hr₁ hT₁ hA₁ hpt₁ hg₁ hf₁ hlog₁ hes hj hlgL hlgv).in_frame rfl rfl
         (by simp [Mem.Live, hfr₁.length_eq, hlen]; omega)).mono (by fp_sub) fun _ _ h => h
   · exact (Writes.skip ⟨⟨_, hA⟩, ⟨_, hg⟩, _, hf, [none], rfl, by simp,
       hlog.reject (by omega)⟩).mono bot_le fun _ _ h => h
@@ -340,7 +342,7 @@ theorem shExc_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M
     Fp.disj_sup_left.mpr ⟨by disjoint, (Fp.disj_sup_right.mpr ⟨haf.symm, hfI⟩).mono le_rfl
       (by fp_sub)⟩
   have hc₁ := hctx.of_eqOff hfr₁ hfo
-  have hlog₁ := hfr₁.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (by disjoint) hlog
+  have hlog₁ := hfr₁.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (by disjoint) hlog
   have hZ₁ := hfr₁.keep (Store.readsOnly_readBlock _ _ _ _) (by disjoint) hZ
   have hzr := Store.get_of_readBlock hZ₁ (j := 0) (by norm_num) 0
   have hzi := Store.get_of_readBlock hZ₁ (j := 1) (by norm_num) 0
@@ -353,7 +355,7 @@ theorem shExc_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M
     (by fp_sub) ?_
   rintro m₂ hfr₂ ⟨-, hSs⟩
   have hc₂ := hc₁.of_eqOff hfr₂ (by disjoint)
-  have hlog₂ := hfr₂.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+  have hlog₂ := hfr₂.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
     (Fp.disj_inBlock_of_ne (by omega)) hlog₁
   have hL₂ : m₂.store.length = L + 12 := by rw [hfr₂.length_eq, hL₁]
   refine ((shTrials_terminates (τ := τ) (q := q) hS hL hNat hC (by omega) hkn hv hc₂.shRoom hc₂.1
@@ -407,7 +409,8 @@ theorem shDecide_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScala
   refine writes_ite rfl rfl (hC.test_lt (d := []) hP0 hP1) ?_
   split_ifs
   · refine ((trialAccept_terminates (τ := τ) (a := a) (g := (L + 11, 0)) (f := f) hS
-      (by simp [Mem.Live, hlen]; omega) hT (Store.le_len_of_readBlock hA (by positivity))
+      (hNat.mono (by omega)) (by simp [Mem.Live, hlen]; omega) hT
+      (Store.le_len_of_readBlock hA (by positivity))
       (by simp [h11]) hrf (by disjoint) (Fp.disj_sup_left.mpr ⟨by disjoint, haf.symm⟩)
       (by disjoint) hL hlog (by omega) hlgl
       (by simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq]
@@ -420,7 +423,7 @@ theorem shDecide_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScala
         by simp; omega, ?_, by simpa using hlog''⟩
       rw [show some P :: List.replicate (excNet ε).length none =
         [some P] ++ List.replicate (excNet ε).length none from rfl, slotEntries_append,
-        slotEntries_replicate_none, List.append_nil, slotEntries_singleton_some]
+        slotEntries_replicate_none, List.append_nil, slotEntries_some]
       exact padEntries_planes (by omega) hP
   · refine ((shExc_terminates (τ := τ) (q := q) hS hL hNat hC hD hk0 hkn hv hctx hZ hRt
       (hlog.reject (by omega)) (by simp; omega) hw hlgL hlgv).in_frame (by simp) rfl
@@ -473,7 +476,7 @@ theorem shTestStep_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSca
   refine hrep.frame_seq_le rfl rfl (by simp [Mem.Live, hfr₁.length_eq, hlen]) (by fp_sub) ?_
   rintro m₂ hfr₂ ⟨-, hSR⟩
   have hL₂ : m₂.store.length = L + 12 := by rw [hfr₂.length_eq, hfr₁.length_eq, hlen]
-  have hlog₂ := (hfr₁.trans' hfr₂).keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+  have hlog₂ := (hfr₁.trans' hfr₂).keep (readsOnly_holdsSlottedLog _ _ _ _ _)
     (by disjoint) hlog
   refine (stepComptau_terminates (τ := τ) (a := (L + 5, 0)) (s := (L + 6, 0))
     (p := (L + 3, 0)) hS hzero hC hL hNat (Nat.le_succ n) hlog₂ (by omega) hw
@@ -490,7 +493,7 @@ theorem shTestStep_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSca
   rintro m₄ hfr₄ ⟨-, hP₄⟩
   exact ⟨⟨H', hT₃.of_eqOff hfr₄ (by disjoint)⟩,
     ⟨x, hfr₄.keep (Store.readsOnly_get _ _ _) (by disjoint) hP₃⟩, _, hP₄, es, hes,
-    hfr₄.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (by disjoint) hlog₃⟩
+    hfr₄.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (by disjoint) hlog₃⟩
 
 omit [Has DiskSampleOp O] in
 /-- The start of `Sh` terminates on any matrix: from the context `NLAlib.ShiftedQR.ShCtx` (any
@@ -539,7 +542,7 @@ theorem shPrefix_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScala
   rintro m₁ hfr₁ ⟨-, hR₁⟩
   have hc₁ := hctx.of_eqOff hfr₁ (by disjoint)
   have hL₁ : m₁.store.length = L + 12 := by rw [hfr₁.length_eq, hlen]
-  have hlog₁ := hfr₁.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+  have hlog₁ := hfr₁.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
     (Fp.disj_inBlock_of_ne (by omega)) hlog
   refine (findRounded_terminates (τ := τ) (m := q) (z := (L, 0)) hS hL hC hQ
     (comptauHalf_terminatingHalfTau hS hzero hC hL n k) (hNat.mono (by omega)) hkq hc₁.1
@@ -549,7 +552,7 @@ theorem shPrefix_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScala
   rintro m₂ hfr₂ ⟨z, hZ₂⟩
   have hc₂ := hc₁.of_eqOff hfr₂ (by disjoint)
   have hL₂ : m₂.store.length = L + 12 := by rw [hfr₂.length_eq, hL₁]
-  have hlog₂ := hfr₂.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+  have hlog₂ := hfr₂.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
     (Fp.disj_inBlock_of_ne (by omega)) hlog₁
   refine (shTestStep_terminates (τ := τ) hS hzero hC hL hNat hkn hv hc₂.shRoom hc₂.1 hZ₂
     hc₂.2.2.1 hlog₂ hj hw hlgL hlgv).in_frame rfl rfl
@@ -664,7 +667,7 @@ theorem shStep_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar 
   refine writes_allocs_preserving_post rfl
     (fun hBelow ⟨⟨H', hA'⟩, x, hF', Ls, hLs, hpl, hlog'⟩ => ⟨⟨H', hA'.of_below hBelow h1⟩,
       x, hBelow.get_of h9 hF', Ls, hLs, hpl,
-      hBelow.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+      hBelow.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
         (fun b i g => by rw [g.1]; exact hlg1) hlog'⟩) ?_
   intro s₁ hlen hlens hBelow
   have hl12 := fun i (hi : i < 12) => hlens i (by simpa using hi)
@@ -679,7 +682,7 @@ theorem shStep_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar 
       hl12 7 (by norm_num), hl12 8 (by norm_num), hl12 9 (by norm_num), hl12 10 (by norm_num),
       hl12 11 (by norm_num)⟩
   have hlog₁ : HoldsSlottedLog lg ns w LL [] s₁ :=
-    hBelow.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+    hBelow.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
       (fun b i g => by rw [g.1]; exact hlg1) hlog
   refine ((shStepWithScratch_terminates (m := ⟨s₁, m.pos⟩) hS hL hNat hC hQ hD hkq hkn
     ⟨⟨h1, h2, h3, h4, h5, h6, h7, h8, h9⟩, haf, hio⟩ hctx hlog₁ hj hw hlg1 hlgv).in_frame rfl rfl

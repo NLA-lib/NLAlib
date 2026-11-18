@@ -267,7 +267,9 @@ def IsConditionedDiagonalizable {n : Type*} [Fintype n] [DecidableEq n] (B Γ : 
 /-- A matrix of the class is diagonalizable. -/
 theorem IsConditionedDiagonalizable.isDiagonalizable {n : Type*} [Fintype n] [DecidableEq n]
     {B Γ : ℝ} {A : Matrix n n ℂ} (h : IsConditionedDiagonalizable B Γ A) :
-    IsDiagonalizable A := sorry
+    IsDiagonalizable A := by
+  obtain ⟨V, d, hV, hAV, -, -⟩ := h
+  exact ⟨V, d, (Matrix.isUnit_iff_isUnit_det V).mp hV, hAV⟩
 
 /-- **The class through a perturbed unitary similarity**: a step by any unitary with backward
 error at most $\Gamma/(16(n+1)B)$ keeps the matrix in the class $(2B, \Gamma/2)$ (from
@@ -276,6 +278,9 @@ unitarily invariant). -/
 theorem IsConditionedDiagonalizable.of_isPerturbedUnitarySimilarBy {n : ℕ} {B Γ ε : ℝ}
     {A H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hA : IsConditionedDiagonalizable B Γ A)
     (hΓ : 0 < Γ) (h : IsPerturbedUnitarySimilarBy V A H ε) (hε : ε ≤ Γ / (16 * (n + 1) * B)) :
-    IsConditionedDiagonalizable (2 * B) (Γ / 2) H := sorry
+    IsConditionedDiagonalizable (2 * B) (Γ / 2) H := by
+  obtain ⟨W, d, hW, hAW, hB, hgap⟩ := hA
+  exact h.isPerturbedUnitarySimilar.exists_pseudoConditionNumber_le_and_le_norm_sub hW hAW hB hΓ
+    hgap hε
 
 end NLAlib

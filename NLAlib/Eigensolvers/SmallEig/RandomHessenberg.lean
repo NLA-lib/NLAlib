@@ -7,7 +7,7 @@ module
 
 public import NLAlib.Eigensolvers.SmallEig.RandomHessenbergWeights
 public import NLAlib.Eigensolvers.HessenbergReduction
-public import NLAlib.Matrix.FinitePrecision.GivensLogValidate
+public import NLAlib.Matrix.FinitePrecision.GivensLogSlots
 public import NLAlib.Eigensolvers.SmallEig.Draws
 public import NLAlib.Matrix.Perturbation.EigenvalueBackward
 public import NLAlib.Matrix.QRIteration.EigenvectorWeights
@@ -344,7 +344,7 @@ private theorem rhess_rotate_step {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
   have hW₃ := hW.of_eqOff hf₃ ((Fp.disj_inBlock_of_ne (b := L + 1) (b' := L) (by omega)).mono
     hcf le_rfl)
   have hlg₃ : HoldsSlottedLog lg ns w LL P m₃.store :=
-    hf₃.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+    hf₃.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
       ((Fp.disj_inBlock_of_ne (b := L + 1) (by omega)).mono hcf le_rfl) hlg
   refine (writes_rhessRotate hS hjN hd₆ ha₆ hd₇ ha₇ hd₈ ha₈ haL
     (hf₃.length_eq.trans hlen) (by rw [hf₃.len_eq, hG]) (by rw [hf₃.len_eq, hTm])
@@ -361,7 +361,7 @@ private theorem rhess_rotate_step {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
   refine ⟨hp₄.trans hp₃, hf₄.length_eq.trans (hf₃.length_eq.trans hlen),
     by rw [hf₄.len_eq, hf₃.len_eq, hG], by rw [hf₄.len_eq, hf₃.len_eq, hCf],
     by rw [hf₄.len_eq, hf₃.len_eq], by rw [hf₄.len_eq, hf₃.len_eq, hTm], ?_, ?_,
-    hf₄.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) hAbove hlg₃⟩
+    hf₄.keep (readsOnly_holdsSlottedLog _ _ _ _ _) hAbove hlg₃⟩
   · simpa only [rotateToStepWord, dif_pos hjN] using hB₄
   · simp only [rotateToStepWord, dif_pos hjN]
     exact hW₄
@@ -427,7 +427,7 @@ private theorem rhess_step_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
     (fun b i hi => Or.inr (show L ≤ b by have := hi.1; omega)) ?_
   intro μ₁ hf₁ hp₁ g₀ g₁ g₂ g₃
   have hl₁ : μ₁.store.length = L + 4 := hf₁.length_eq.trans hlen
-  have hlg₁ := hf₁.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (hRA (by omega)) hlg
+  have hlg₁ := hf₁.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (hRA (by omega)) hlg
   have hpb : μ₁.store.readBlock (L + 2) 0 2 = some [(⟨(v ⟨j + 1, hjN⟩).re,
       M.neg (v ⟨j + 1, hjN⟩).im⟩ : ℂ).re, (⟨(v ⟨j + 1, hjN⟩).re,
       M.neg (v ⟨j + 1, hjN⟩).im⟩ : ℂ).im] :=
@@ -602,7 +602,7 @@ theorem rhess_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar 
     _ _ _ μ
   refine writes_allocs_preserving_post (ns := [2 * N, 4, 4, 10]) rfl
     (fun hBelow ⟨hp, hW, hlog'⟩ => ⟨hp, hW.of_below hBelow hal,
-      hBelow.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+      hBelow.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
         (fun b i g => by rw [g.1]; exact hlgl') hlog'⟩) ?_
   intro s₁ hlen hlens hBelow
   set L := μ.store.length with hLdef
@@ -625,8 +625,8 @@ theorem rhess_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar 
   have hA₁ : HoldsMatrix a A m₁.store :=
     (hA.of_below hBelow hal).of_eqOff hf₁ (Fp.disj_inBlock_of_ne (by omega))
   have hlog₁ : HoldsSlottedLog lg ns w LL [] m₁.store :=
-    hf₁.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (Fp.disj_inBlock_of_ne (by omega))
-      (hBelow.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+    hf₁.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (Fp.disj_inBlock_of_ne (by omega))
+      (hBelow.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
         (fun b i g => by rw [g.1]; exact hlgl') hlog)
   exact rhess_loop_writes hS hC hL hNat h1 h2 hN rfl (fun _ => rfl) (fun _ => rfl)
     (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) (fun _ => rfl)

@@ -361,7 +361,7 @@ theorem regularizeDecide_outcome {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
   rintro m' hfr (⟨hF, hA', hlog', hopt⟩ |
     ⟨hF, j, Ls, es, hLs, hpl, hlog', hse, H', Rs, hch, hH', hA', hdec'⟩)
   · refine ⟨List.replicate k none, by simp, by simp [slotEntries_replicate_none],
-      hlog'.reject_replicate hj, Or.inl ⟨hF, hA', slotEntries_replicate_none w k, zs, ?_, hopt,
+      hlog'.rejects hj, Or.inl ⟨hF, hA', slotEntries_replicate_none w k, zs, ?_, hopt,
         fun j i => hdist j i, hz⟩⟩
     have := readBlock_flatMap_pair_of_forall (s := m'.store) (b := s.1) (o := s.2)
       (zs := List.ofFn zs) fun j hj => by
@@ -486,7 +486,7 @@ theorem regularizeWithScratchWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ}
       Store.inBlock rd.1 rd.2 1 ⊔ Store.inBlock c.1 c.2 1 ⊔ Store.inBlock thr.1 thr.2 1) →
       Fp.Disj F (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w))) →
       ∀ {m m'}, Ctx m → m.store.EqOff F m'.store → Ctx m' := fun hF hFl _ _ h hfr =>
-    ⟨h.1.of_eqOff hfr hF, hfr.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) hFl h.2⟩
+    ⟨h.1.of_eqOff hfr hF, hfr.keep (readsOnly_holdsSlottedLog _ _ _ _ _) hFl h.2⟩
   have hLlg : ∀ {i o m o' m'}, L ≤ i →
       Fp.Disj (Store.inBlock i o m) (Store.inBlock lg.1 o' m') :=
     fun hi => Fp.disj_inBlock_of_ne (by omega)
@@ -664,7 +664,7 @@ theorem regularizeWith_pwrites_at {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
       hBelow.get_of h2 hrd, hBelow.get_of h3 hc, hBelow.get_of h4 hthr,
       by rw [(hBelow s.1 h5).1]; exact hrs, by rw [(hBelow f.1 h6).1]; exact hrf,
       by simpa using hlen, ?_⟩, (hBelow.readBlock hq7 qw.2 qs.length).trans hq,
-      hBelow.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+      hBelow.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
         (fun b i g => by rw [g.1]; exact hlgl') hlog⟩
     simpa using ⟨hl7 0 (by norm_num), hl7 1 (by norm_num), hl7 2 (by norm_num),
       hl7 3 (by norm_num), hl7 4 (by norm_num), hl7 5 (by norm_num), hl7 6 (by norm_num)⟩
@@ -675,7 +675,7 @@ theorem regularizeWith_pwrites_at {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
       exact ⟨hl.1, hl.2.2.2.2.2.1, hl.2.2.2.2.2.2⟩
     have hlgl' : lg.1 < m.store.length := hlgl lg (by simp)
     obtain ⟨h1, h5, h6⟩ := hlv
-    refine ⟨Ls, hLs, hpl, hBelow.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+    refine ⟨Ls, hLs, hpl, hBelow.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
       (fun b i g => by rw [g.1]; exact hlgl') hlog, ?_⟩
     rcases hout with ⟨hF, hA, hse, zs, hzs, hrest⟩ | ⟨hF, H', hsim, hH', hA, hdec⟩
     · exact Or.inl ⟨hBelow.get_of h6 hF, hA.of_below hBelow h1, hse, zs,

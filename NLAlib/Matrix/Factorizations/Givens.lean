@@ -588,7 +588,17 @@ noncomputable def givensLog (n : ℕ) (L : List (ℕ × ℂ × ℂ)) : Matrix (F
 
 /-- The unitary of a log has orthonormal columns. -/
 theorem hasOrthonormalCols_givensLog (n : ℕ) (L : List (ℕ × ℂ × ℂ)) :
-    HasOrthonormalCols (givensLog n L) := sorry
+    HasOrthonormalCols (givensLog n L) := by
+  induction L with
+  | nil => exact hasOrthonormalCols_one
+  | cons e L ih =>
+    rw [givensLog, List.map_cons, List.prod_cons]
+    refine HasOrthonormalCols.mul (HasOrthonormalCols.conjTranspose ?_) ih
+    unfold givensAt
+    split_ifs with h
+    · exact hasOrthonormalCols_givens (by simp [Fin.ext_iff])
+        (norm_givensCoeffs_fst_sq_add _ _)
+    · exact hasOrthonormalCols_one
 
 /-- Logs compose: the unitary of a concatenation is the product. -/
 theorem givensLog_append (n : ℕ) (L L' : List (ℕ × ℂ × ℂ)) :

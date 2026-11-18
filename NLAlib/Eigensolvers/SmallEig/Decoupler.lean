@@ -523,7 +523,7 @@ theorem smallEigDecoupler_tail_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u
     hI hloc le_rfl ((hA.mono_eqOff (fun _ h => h.1)
       (fun μ μ' hμ hfr ⟨hf0, z, hz, hz1, hz2⟩ =>
         ⟨hf0, z, hμ.1.decoupleInput_of_eqOff hfr hz, hz1, hz2,
-          hfr.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+          hfr.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
             (Fp.disj_sup_left.mpr ⟨Fp.disj_inBlock_of_ne (hμ.2.2.2 _ (by simp)),
               Fp.disj_inBlock_of_ne (hμ.2.2.2 _ (by simp))⟩) hμ.2.1,
           fun x hx => hfr.length_eq ▸ hμ.2.2.1 x hx, hμ.2.2.2⟩)).in_frame hd₁ ha₁
@@ -664,7 +664,7 @@ theorem smallEigDecoupler_randomDecouplingRoutineContract_of_le {M : Machine ℝ
     simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,
       forall_eq] at hl
     exact ⟨hBelow.get_of hl.2.2.2.1 hf0, H', L', hL', hpl,
-      hBelow.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+      hBelow.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
         (fun b i g => by rw [g.1]; exact hl.2.2.2.2) hlog, hby, h2, h3, hW'.of_below hBelow hl.1⟩
   -- the body: open the log, `RHess`, then the tail
   let ι := {p : Matrix (Fin (k + 1 + 1)) (Fin (k + 1 + 1)) ℂ × List (Option (List GivensEntry)) //
@@ -813,7 +813,7 @@ theorem smallEigDecoupler_terminatingDecouplerRoutine {M : Machine ℝ} {I : Int
   change Writes .total I tape (Stmt.allocs [.const 2] _) _ _ _ μ
   refine writes_allocs_preserving_post (ns := [2]) rfl (fun hBelow ⟨⟨x, hx⟩, ⟨H', hH'⟩, Ls, hLs,
     hpl, hlog⟩ => ⟨⟨x, hBelow.get_of hf1 hx⟩, ⟨H', hH'.of_below hBelow hw1⟩, Ls, hLs, hpl,
-      hBelow.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+      hBelow.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
         (fun b i g => by rw [g.1]; exact hlg1) hlog⟩) ?_
   intro s₁ hlen₁ hlens hBelow
   set L := μ.store.length with hLdef
@@ -857,7 +857,7 @@ theorem smallEigDecoupler_terminatingDecouplerRoutine {M : Machine ℝ} {I : Int
   rintro μ₂ hfr₂ ⟨⟨z, hz⟩, x, hx⟩
   have hdin : DecoupleInput H₁ z qs w (L, 0) q f μ₂ := hin₁.decoupleInput_of_eqOff hfr₂ hz
   have hlog₂ : HoldsSlottedLog lg ns ws Ls₁ [] μ₂.store :=
-    hfr₂.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+    hfr₂.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
       (Fp.disj_sup_left.mpr ⟨Fp.disj_inBlock_of_ne (hne' (L, 0) (by simp)),
         Fp.disj_inBlock_of_ne (hne' f (by simp))⟩) hlog₁
   have hlgl₂ : μ₂.Live [lg] := by

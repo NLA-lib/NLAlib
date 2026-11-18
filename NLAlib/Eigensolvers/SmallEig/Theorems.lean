@@ -320,12 +320,22 @@ count (`NLAlib.Ops.stmtCost`) of `NLAlib.SmallEig.smallEigProg` at the order $n 
 and the cap $T$ has at most $c(n + 1)^4(T + 1)^2$ operations and tests. The count holds on every
 tape: the loops are capped by $T$ ($m, t, m_2 \le T$, $q \le m$). The paper's count has the factor
 $n$ in its last term (its erratum N5). The monomial bound of the tree
-(`NLAlib.Ops.size_stmtCost_le_stmtWorkMono`) gives $c = 3473$; the certificate's
+(`NLAlib.Ops.size_stmtCost_le_stmtWorkMono`) gives $c = 4629$; the certificate's
 `NLAlib.SmallEig.smallEigWork` is larger because its instrumentation also counts the structural
 instructions. -/
 theorem smallEig_work_le (sG : ℕ) : ∃ c : ℕ, ∀ n nq T : ℕ,
     Count.size (stmtCost (smallEigProg (O := O) (Q := Q) sG).body [n + 1, nq, T]) ≤
-      c * (n + 1) ^ 4 * (T + 1) ^ 2 := sorry
+      c * (n + 1) ^ 4 * (T + 1) ^ 2 := by
+  refine ⟨4629, fun n nq T => ?_⟩
+  have hw : stmtWorkMono (smallEigProg (O := O) (Q := Q) sG).body
+      [⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩] = ⟨4629, [4, 0, 2]⟩ := by
+    kernel_rfl
+  have hσ : SlotsLe [n + 1, nq + 1, T + 1] [n + 1, nq, T]
+      [⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩] := by
+    simp [SlotsLe, WorkMono.eval]
+  refine (size_stmtCost_le_stmtWorkMono (by simp) _ hσ).trans ?_
+  rw [hw]
+  simp [WorkMono.eval, mul_assoc]
 
 /-- **The cap of the small-eigenvalue program is polylogarithmic**: for tail records with
 $b_1, b_2 > 0$ there are constants $c$ and $p$ with

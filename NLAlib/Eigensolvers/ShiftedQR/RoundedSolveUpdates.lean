@@ -36,12 +36,14 @@ variable {O Q : Type}
 
 /-- The matrix after the leaf update of the block $[lo, lo + d)$ with the leaf accumulator
 $\mathbf{U}_b$ on the machine `M`: the right coupling (rows $[lo, lo + d)$, columns
-$[lo + d, N)$) becomes $\mathrm{fl}(\mathbf{U}_b^{\mathsf H}\,\cdot)$ of itself, then the top
+$[lo + d, N)$) becomes $\mathrm{fl}(\mathbf{U}_b^{\mathsf H}\,\cdot)$ of itself (with the
+conjugate transpose as the machine forms it, `NLAlib.machineConjTranspose`), then the top
 coupling (rows $[0, lo)$, columns $[lo, lo + d)$) becomes $\mathrm{fl}(\cdot\,\mathbf{U}_b)$ of
 itself (`NLAlib.matMulWord`). -/
 noncomputable def leafUpdateMatrix (M : Machine ℝ) {N d : ℕ} (lo : ℕ)
     (Ub : Matrix (Fin d) (Fin d) ℂ) (A : Matrix (Fin N) (Fin N) ℂ) : Matrix (Fin N) (Fin N) ℂ :=
-  let A₁ := setRect A lo (lo + d) (matMulWord M Ubᴴ (subRect A lo (lo + d) d (N - lo - d)))
+  let A₁ := setRect A lo (lo + d)
+    (matMulWord M (machineConjTranspose M Ub) (subRect A lo (lo + d) d (N - lo - d)))
   setRect A₁ 0 lo (matMulWord M (subRect A₁ 0 lo lo d) Ub)
 
 /-- The accumulator after the leaf update of the block $[lo, lo + d)$: its columns
@@ -211,13 +213,13 @@ private theorem leafUpdate_top {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSc
     fun b i h h' => by rw [Fp.above_apply] at h; have := h'.1; omega⟩), hU₆⟩
 
 omit [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
-/-- **The words of the leaf update**: on a scalar machine with the standard model and every tape,
+/-- **The words of the leaf update**: on a scalar machine and every tape,
 for the block $[lo, lo + d)$ of order-$N$ matrices $\mathbf{A}$ at `a` and $\mathbf{U}$ at `uo` and
 the leaf accumulator $\mathbf{U}_b$ at `ub` (three blocks apart), `roundedLeafUpdate` writes only
 the matrix and the accumulator, and stores `NLAlib.ShiftedQR.leafUpdateMatrix` and
 `NLAlib.ShiftedQR.leafUpdateAccumulator`. -/
-theorem roundedLeafUpdate_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
-    (hM : StdModel u id M) {τ : Tape ℝ} {μ : Mem ℝ} {N lo d : ℕ} (hN : lo + d ≤ N)
+theorem roundedLeafUpdate_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    {τ : Tape ℝ} {μ : Mem ℝ} {N lo d : ℕ} (hN : lo + d ≤ N)
     {ub a uo : ℕ × ℕ} {Ub : Matrix (Fin d) (Fin d) ℂ} {A U : Matrix (Fin N) (Fin N) ℂ}
     (hl : μ.Live [ub, a, uo]) (hUb : HoldsMatrix ub Ub μ.store) (hA : HoldsMatrix a A μ.store)
     (hU : HoldsMatrix uo U μ.store) (hra : a.2 + 2 * (N * N) ≤ μ.store.len a.1)
@@ -250,7 +252,7 @@ theorem roundedLeafUpdate_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
   have hCb : Fp.Disj (Store.inBlock Lc 0 (2 * (d * (N - lo - d))))
       (Store.inBlock ub.1 ub.2 (2 * (d * d))) := Fp.disj_inBlock_of_ne (by omega)
   have hA₀ := hA.of_below hBelow hal
-  refine (matMulOn_conjTranspose_writes_view (O := O) (Q := Q) (τ := τ) hS hM
+  refine (matMulOn_machineConjTranspose_writes_view (O := O) (Q := Q) (τ := τ) hS
     (x := ub) (y := (a.1, a.2 + 2 * ((lo + d) * N + lo))) (z := (Lc, 0)) (ldx := d) (ldy := N)
     Ub (subRect A lo (lo + d) d (N - lo - d)) (hUb.of_below hBelow hbl)
     (fun s hs l i => hs.read_entry l i) hA₀

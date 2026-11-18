@@ -35,7 +35,10 @@ a factor that grows by $(1 + 24\boldsymbol{u})^{n_s w}$ per decoupled block (the
 ## Main results
 
 * `NLAlib.ShiftedQR.roundedWorklistRound_terminates`: one round keeps the value-free state.
-* `NLAlib.ShiftedQR.solveRoundedWith_terminates`: the rounded worklist in Schur mode terminates.
+* `NLAlib.ShiftedQR.solveRoundedWith_completes`: the rounded worklist in Schur mode runs to
+  completion on any scalar machine (no rounding model).
+* `NLAlib.ShiftedQR.solveRoundedWith_terminates`: the same with the accumulator bound under the
+  standard model.
 -/
 
 @[expose] public section
@@ -208,6 +211,29 @@ theorem AccumNear.step {N : ℕ} {U U₁ U₂ W : Matrix (Fin N) (Fin N) ℂ} {c
   refine (specNorm_sub_mul_mul_le_of_near hb hV hW hb' h₂).trans ?_
   exact mul_le_mul_of_nonneg_right (by linarith) (specNorm_nonneg U)
 
+/-- A stored accumulator at `uo`, within $(c - 1)\|\mathbf{U}\|_2$ of $\mathbf{U}$ times a
+unitary if `P` holds (`P` carries the rounding model the bound needs). -/
+def AccumIf (P : Prop) {N : ℕ} (U : Matrix (Fin N) (Fin N) ℂ) (c : ℝ) (uo : ℕ × ℕ)
+    (μ : Mem ℝ) : Prop :=
+  (∃ U' : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix uo U' μ.store) ∧ (P → AccumNear U c uo μ)
+
+/-- A larger factor is weaker. -/
+theorem AccumIf.mono {P : Prop} {N : ℕ} {U : Matrix (Fin N) (Fin N) ℂ} {c c' : ℝ} {uo : ℕ × ℕ}
+    {μ : Mem ℝ} (h : AccumIf P U c uo μ) (hc : P → c ≤ c') : AccumIf P U c' uo μ :=
+  ⟨h.1, fun hp => (h.2 hp).mono (hc hp)⟩
+
+/-- A write apart from the accumulator keeps it. -/
+theorem AccumIf.of_eqOff {P : Prop} {N : ℕ} {U : Matrix (Fin N) (Fin N) ℂ} {c : ℝ}
+    {uo : ℕ × ℕ} {μ μ' : Mem ℝ} {F : Fp} (h : AccumIf P U c uo μ) (hfr : μ.store.EqOff F μ'.store)
+    (hd : Fp.Disj F (Store.inBlock uo.1 uo.2 (2 * (N * N)))) : AccumIf P U c uo μ' :=
+  ⟨h.1.imp fun _ hU => hU.of_eqOff hfr hd, fun hp => (h.2 hp).of_eqOff hfr hd⟩
+
+/-- The accumulator survives dropping scratch buffers above its buffer. -/
+theorem AccumIf.of_below {P : Prop} {N : ℕ} {U : Matrix (Fin N) (Fin N) ℂ} {c : ℝ}
+    {uo : ℕ × ℕ} {s s' : Store ℝ} {pos L : ℕ} (h : AccumIf P U c uo ⟨s, pos⟩)
+    (hBelow : Store.Below L s s') (hu : uo.1 < L) : AccumIf P U c uo ⟨s', pos⟩ :=
+  ⟨h.1.imp fun _ hU => hU.of_below hBelow hu, fun hp => (h.2 hp).of_below hBelow hu⟩
+
 /-- **The value-free core of the worklist in Schur mode before round `j`**, for the input
 accumulator $\mathbf{U}$, the per-round accumulator factor $(1 + 24\boldsymbol{u})^m$ and the
 per-leaf factor $1 + \varepsilon_L$: the failure word and some matrix are stored, the stack
@@ -215,20 +241,21 @@ holds ranges that fit in the order $n + 1$, a count $\ell$ of finished leaves wi
 sizes of the ranges at most $n + 1$, and the stored accumulator is within
 $((1 + 24\boldsymbol{u})^{jm}(1 + \varepsilon_L)^{\ell} - 1)\|\mathbf{U}\|_2$ of $\mathbf{U}$
 times a unitary. -/
-def SchurStoredCore (n : ℕ) (U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (u εL : ℝ) (m : ℕ)
+def SchurStoredCore (n : ℕ) (P : Prop) (U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (u εL : ℝ) (m : ℕ)
     (a uo f st : ℕ × ℕ) (j : ℕ) (μ : Mem ℝ) : Prop :=
   (∃ x, μ.store.get f.1 f.2 = some x) ∧
     (∃ A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A μ.store) ∧
     ∃ (rs : List (ℕ × ℕ)) (ℓ : ℕ), StackHolds st rs μ.store ∧ RangesFit (n + 1) rs ∧
       ℓ + (rs.map Prod.snd).sum ≤ n + 1 ∧
-      AccumNear U ((1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ) uo μ
+      AccumIf P U ((1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ) uo μ
 
 /-- **The value-free state of the worklist in Schur mode before round `j`**: the geometry, the
 threshold and parameter words stored, and the core `NLAlib.ShiftedQR.SchurStoredCore`. -/
-def SchurStoredState (n : ℕ) (U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (u εL : ℝ) (m : ℕ)
+def SchurStoredState (n : ℕ) (P : Prop) (U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (u εL : ℝ)
+    (m : ℕ)
     (ps : List ℝ) (a t p uo f st w ub r : ℕ × ℕ) (j : ℕ) (μ : Mem ℝ) : Prop :=
   SchurGeometry (n + 1) ps.length a t p uo f st w ub r μ ∧ (∃ x, μ.store.get t.1 t.2 = some x) ∧
-    μ.store.readBlock p.1 p.2 ps.length = some ps ∧ SchurStoredCore n U u εL m a uo f st j μ
+    μ.store.readBlock p.1 p.2 ps.length = some ps ∧ SchurStoredCore n P U u εL m a uo f st j μ
 
 /-- From the geometry with the threshold and parameter words stored at `μ`, a write inside the
 round footprint to `μ'` keeps them, so the core at `μ'` gives the state at `μ'`. -/
@@ -238,8 +265,8 @@ theorem SchurStoredState.of_core {n : ℕ} {U : Matrix (Fin (n + 1)) (Fin (n + 1
     (ht : ∃ x, μ.store.get t.1 t.2 = some x)
     (hp : μ.store.readBlock p.1 p.2 ps.length = some ps)
     (hfr : μ.store.EqOff F μ'.store) (hF : F ≤ schurRoundFp (n + 1) a uo f st w ub r)
-    (hcore : SchurStoredCore n U u εL m a uo f st j μ') :
-    SchurStoredState n U u εL m ps a t p uo f st w ub r j μ' := by
+    (hcore : SchurStoredCore n P U u εL m a uo f st j μ') :
+    SchurStoredState n P U u εL m ps a t p uo f st w ub r j μ' := by
   have hd := h.disj_params.mono hF le_rfl
   obtain ⟨x, hx⟩ := ht
   exact ⟨h.of_eqOff hfr, ⟨x, hfr.keep (Store.readsOnly_get _ _ _) (hd.mono le_rfl le_sup_left) hx⟩,
@@ -259,10 +286,10 @@ theorem roundedAbort_writes_schurCore {Mch : Machine ℝ} {I : Interp O Q ℝ}
     {μ : Mem ℝ} {U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {u εL : ℝ} {m j ℓ : ℕ}
     {a t p uo f st w ub r : ℕ × ℕ} (hG : SchurGeometry (n + 1) np a t p uo f st w ub r μ)
     (hA : ∃ A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A μ.store) (hℓ : ℓ ≤ n + 1)
-    (hacc : AccumNear U ((1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ) uo μ) :
+    (hacc : AccumIf P U ((1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ) uo μ) :
     Writes .total I τ (roundedAbort (O := O) (Q := Q)).body (Env.frame [] [st, f])
       (Store.inBlock f.1 f.2 1 ⊔ Store.inBlock st.1 st.2 1)
-      (SchurStoredCore n U u εL m a uo f st j) μ := by
+      (SchurStoredCore n P U u εL m a uo f st j) μ := by
   obtain ⟨A, hA⟩ := hA
   have hFA : Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) :=
     by simpa [schurBlock] using hG.disj' 4 0 (by simp)
@@ -328,17 +355,17 @@ at `(lgb, 0)` whose entries are inside the block, some matrix of order $d + 1$ i
 and the index $i < d$ of a cut, `writeAndSplit` and `roundedDecoupleUpdate` reach the core of
 round $j + 1$. -/
 theorem roundedSplitUpdate_core {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar Mch I)
-    (hM : StdModel u id Mch) (hu1 : u ≤ 1 / 100) (hL : IsIndexLit Mch I) {n : ℕ}
+    {P : Prop} (hP : P → StdModel u id Mch ∧ u ≤ 1 / 100) (hL : IsIndexLit Mch I) {n : ℕ}
     (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
     {k F T ns w m : ℕ} (hm : ns * w ≤ m) {np : ℕ} {tape : Tape ℝ} {μ : Mem ℝ}
     {lo d i j ℓ lgb : ℕ} {a t p uo f st wk ub r : ℕ × ℕ} {rs : List (ℕ × ℕ)}
     {A U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {H' : Matrix (Fin (d + 1)) (Fin (d + 1)) ℂ}
-    {x εL : ℝ} (hεL : 0 ≤ εL) {L : List (Option (List GivensEntry))}
+    {x εL : ℝ} (hεL : P → 0 ≤ εL) {L : List (Option (List GivensEntry))}
     (hG : SchurGeometry (n + 1) np a t p uo f st wk ub r μ) (hf : μ.store.get f.1 f.2 = some x)
     (hA : HoldsMatrix a A μ.store) (hW : HoldsMatrix wk H' μ.store)
     (hSt : StackHolds st rs μ.store) (hfit : RangesFit (n + 1) ((lo, d + 1) :: rs))
     (hℓ : ℓ + (d + 1) + (rs.map Prod.snd).sum ≤ n + 1) (hi : i < d)
-    (hacc : AccumNear U ((1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ) uo μ)
+    (hacc : AccumIf P U ((1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ) uo μ)
     (hlog : HoldsSlottedLog (lgb, 0) ns w L [] μ.store) (hlen : L.length = ns)
     (hpl : ∀ e ∈ slotEntries w L, e.1 + 1 < d + 1) (hlgb : lgb < μ.store.length)
     (hlgv : ∀ v ∈ [a, t, p, uo, f, st, wk, ub, r], v.1 < lgb) :
@@ -353,8 +380,8 @@ theorem roundedSplitUpdate_core {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
         (Env.frame [n + 1, k, np, F, T, ns, w, lo, d + 1] [a, t, p, st, uo, wk, r, f]).buf ++
           [lgb]⟩ : Env).pushIdx i)
       (schurRoundFp (n + 1) a uo f st wk ub r)
-      (SchurStoredCore n U u εL m a uo f st (j + 1)) μ := by
-  have hu0 : 0 ≤ u := (abs_nonneg _).trans (by simpa [schurBlock] using hM.lit 1)
+      (SchurStoredCore n P U u εL m a uo f st (j + 1)) μ := by
+  have hu0 : P → 0 ≤ u := fun hp => (abs_nonneg _).trans (by simpa using (hP hp).1.lit 1)
   have hfit0 := hfit.1 _ List.mem_cons_self
   have hlen' := hfit.length_add_le
   dsimp only at hfit0
@@ -387,7 +414,7 @@ theorem roundedSplitUpdate_core {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
     (hWA.mono hWw le_rfl) hAS
   refine (hsplit.in_frame rfl rfl hlASW).seq_le (by fp_sub [schurRoundFp]) ?_
   rintro μ₃ hfr₃ ⟨-, hA₃, hSt₃⟩
-  obtain ⟨U₁, V₁, hU₁, hV₁, hb₁⟩ := hacc
+  obtain ⟨⟨U₁, hU₁⟩, hacc'⟩ := hacc
   have hU₁' := hU₁.of_eqOff hfr₃ (Fp.disj_sup_left.mpr ⟨hAU, hSU⟩)
   have hne : ∀ v ∈ [a, t, p, uo, f, st, wk, ub, r], v.1 ≠ lgb := fun v hv => by
     have := hlgv v hv; omega
@@ -412,26 +439,26 @@ theorem roundedSplitUpdate_core {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
       (by simp only [List.length_append, List.length_cons, List.length_nil]; fp_sub)⟩)
   set es := slotEntries w L
   have hes : es.length ≤ ns * w := hlen ▸ hlog.length_slotEntries_le
-  have hX1 : (1 : ℝ) ≤ 1 + 24 * u := by linarith
-  have hbound : specNorm (es.foldl (replayColumnStep Mch lo 0 (n + 1)) U₁ -
-      U₁ * embedBlock lo (givensLog (d + 1) es)) ≤ ((1 + 24 * u) ^ (ns * w) - 1) * specNorm U₁ :=
-    (specNorm_foldl_replayColumnStep_sub_le hM hu0 hu1 hfit0.2 es
-      (fun e he => ⟨es_ok e he, Or.inl (hpl e he)⟩) U₁).trans
-      (mul_le_mul_of_nonneg_right (by linarith [pow_le_pow_right₀ hX1 hes]) (specNorm_nonneg _))
   refine ⟨⟨x, (hfr₃.trans' hfr₄).keep (Store.readsOnly_get _ _ _) (Fp.disj_sup_left.mpr
       ⟨Fp.disj_sup_left.mpr ⟨hFA.symm, hFS.symm⟩, Fp.disj_sup_left.mpr ⟨hFA.symm, hFU.symm⟩⟩) hf⟩,
-    ⟨_, hA₄⟩, _, ℓ, hSt₄, hfit.split (by omega), ?_,
-    AccumNear.step ⟨U₁, V₁, hU₁', hV₁, hb₁⟩ hU₁' hU₄
-      (hasOrthonormalCols_embedBlock hfit0.2 (hasOrthonormalCols_givensLog _ _))
-      (one_le_pow₀ hX1) hbound ?_⟩
+    ⟨_, hA₄⟩, _, ℓ, hSt₄, hfit.split (by omega), ?_, ⟨⟨_, hU₄⟩, fun hp => ?_⟩⟩
   · simp only [List.map_append, List.sum_append, List.map_cons, List.map_nil, List.sum_cons,
       List.sum_nil]
     omega
-  · rw [add_mul, one_mul, pow_add]
-    have h1 : (1 + 24 * u) ^ (ns * w) ≤ (1 + 24 * u) ^ m := pow_le_pow_right₀ hX1 hm
-    have h0 : 0 ≤ (1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ :=
-      mul_nonneg (pow_nonneg (by linarith) _) (pow_nonneg (by linarith) _)
-    nlinarith
+  have hX1 : (1 : ℝ) ≤ 1 + 24 * u := by linarith [hu0 hp]
+  have hbound : specNorm (es.foldl (replayColumnStep Mch lo 0 (n + 1)) U₁ -
+      U₁ * embedBlock lo (givensLog (d + 1) es)) ≤ ((1 + 24 * u) ^ (ns * w) - 1) * specNorm U₁ :=
+    (specNorm_foldl_replayColumnStep_sub_le (hP hp).1 (hu0 hp) (hP hp).2 hfit0.2 es
+      (fun e he => ⟨es_ok e he, Or.inl (hpl e he)⟩) U₁).trans
+      (mul_le_mul_of_nonneg_right (by linarith [pow_le_pow_right₀ hX1 hes]) (specNorm_nonneg _))
+  refine AccumNear.step ((hacc' hp).of_eqOff hfr₃ (Fp.disj_sup_left.mpr ⟨hAU, hSU⟩)) hU₁' hU₄
+    (hasOrthonormalCols_embedBlock hfit0.2 (hasOrthonormalCols_givensLog _ _))
+    (one_le_pow₀ hX1) hbound ?_
+  rw [add_mul, one_mul, pow_add]
+  have h1 : (1 + 24 * u) ^ (ns * w) ≤ (1 + 24 * u) ^ m := pow_le_pow_right₀ hX1 hm
+  have h0 : 0 ≤ (1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ :=
+    mul_nonneg (pow_nonneg (by linarith) _) (pow_nonneg (by linarith [hεL hp]) _)
+  nlinarith
 
 /-- The accumulator factor grows with the rounds. -/
 theorem accumFactor_le_succ {u εL : ℝ} (hu0 : 0 ≤ u) (hεL : 0 ≤ εL) (j m ℓ : ℕ) :
@@ -446,18 +473,19 @@ popped $(lo, d + 1)$ fit, the accumulator within its factor at round $j$, and a 
 `(lgb, 0)` (a fresh buffer) whose entries are inside the block, `NLAlib.ShiftedQR.roundedLargeRest`
 runs to completion and reaches the core of round $j + 1$. -/
 theorem roundedLargeRest_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
-    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu1 : u ≤ 1 / 100) (hL : IsIndexLit Mch I)
+    (hS : IsScalar Mch I)
+    {P : Prop} (hP : P → StdModel u id Mch ∧ u ≤ 1 / 100) (hL : IsIndexLit Mch I)
     {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
     {k F T ns w m : ℕ} (hm : ns * w ≤ m) {np : ℕ} {tape : Tape ℝ} {μ : Mem ℝ}
     {lo d j ℓ lgb : ℕ} {a t p uo f st wk ub r : ℕ × ℕ} {rs : List (ℕ × ℕ)}
     {A U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {H' : Matrix (Fin (d + 1)) (Fin (d + 1)) ℂ}
-    {x thr εL : ℝ} (hεL : 0 ≤ εL) {L : List (Option (List GivensEntry))}
+    {x thr εL : ℝ} (hεL : P → 0 ≤ εL) {L : List (Option (List GivensEntry))}
     (hG : SchurGeometry (n + 1) np a t p uo f st wk ub r μ)
     (ht : μ.store.get t.1 t.2 = some thr) (hf : μ.store.get f.1 f.2 = some x)
     (hA : HoldsMatrix a A μ.store) (hW : HoldsMatrix wk H' μ.store)
     (hSt : StackHolds st rs μ.store) (hfit : RangesFit (n + 1) ((lo, d + 1) :: rs))
     (hℓ : ℓ + (d + 1) + (rs.map Prod.snd).sum ≤ n + 1) (hk : k ≤ d)
-    (hacc : AccumNear U ((1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ) uo μ)
+    (hacc : AccumIf P U ((1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ) uo μ)
     (hlog : HoldsSlottedLog (lgb, 0) ns w L [] μ.store) (hlen : L.length = ns)
     (hpl : ∀ e ∈ slotEntries w L, e.1 + 1 < d + 1) (hlgb : lgb < μ.store.length)
     (hlgv : ∀ v ∈ [a, t, p, uo, f, st, wk, ub, r], v.1 < lgb) :
@@ -466,8 +494,8 @@ theorem roundedLargeRest_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u 
         (Env.frame [n + 1, k, np, F, T, ns, w, lo, d + 1] [a, t, p, st, uo, wk, r, f]).buf ++
           [lgb]⟩
       (schurRoundFp (n + 1) a uo f st wk ub r)
-      (SchurStoredCore n U u εL m a uo f st (j + 1)) μ := by
-  have hu0 : 0 ≤ u := (abs_nonneg _).trans (by simpa [schurBlock] using hM.lit 1)
+      (SchurStoredCore n P U u εL m a uo f st (j + 1)) μ := by
+  have hu0 : P → 0 ≤ u := fun hp => (abs_nonneg _).trans (by simpa using (hP hp).1.lit 1)
   have hlen' := hfit.length_add_le
   have hfit0 := hfit.1 _ List.mem_cons_self
   dsimp only at hfit0
@@ -475,7 +503,7 @@ theorem roundedLargeRest_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u 
   have hWw : Store.inBlock wk.1 wk.2 (2 * ((d + 1) * (d + 1))) ≤
       Store.inBlock wk.1 wk.2 (2 * ((n + 1) * (n + 1))) := by
     have := Nat.mul_le_mul hd hd; fp_sub
-  have hacc' := hacc.mono (accumFactor_le_succ hu0 hεL j m ℓ)
+  have hacc' := hacc.mono (fun hp => accumFactor_le_succ (hu0 hp) (hεL hp) j m ℓ)
   have hlSF : μ.Live [st, f] := hG.live_of_subset (by simp)
   unfold roundedLargeRest
   refine writes_ite rfl rfl (hC.test_isPos (d := []) (x := f) hf) ?_
@@ -511,21 +539,21 @@ theorem roundedLargeRest_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u 
     rw [if_pos (by simp)]
     have hi := i.isLt
     refine writes_bindIdx_of_decode_nat hQ rfl rfl hRi rfl (by omega) ?_
-    exact roundedSplitUpdate_core hS hM hu1 hL hNat hQ hC hm hεL hG₂ hf₂ hA₂
+    exact roundedSplitUpdate_core hS hP hL hNat hQ hC hm hεL hG₂ hf₂ hA₂
       (hW.of_eqOff hfr₂ (hRW.mono le_rfl hWw)) hSt₂ hfit hℓ hi hacc₂ hlog₂ hlen hpl
       (by rw [hfr₂.length_eq]; exact hlgb) hlgv
   · refine writes_ite rfl rfl (hC.test_isPos (d := []) (x := (r.1, r.2 + 3)) hR0) ?_
     rw [if_neg (by simp)]
     exact ((roundedAbort_writes_schurCore hL hNat hG₂ ⟨A, hA₂⟩ (by omega)
-      (hacc₂.mono (accumFactor_le_succ hu0 hεL j m ℓ))).in_frame rfl rfl
+      (hacc₂.mono (fun hp => accumFactor_le_succ (hu0 hp) (hεL hp) j m ℓ))).in_frame rfl rfl
       (hG₂.live_of_subset (by simp))).mono (by fp_sub [schurRoundFp]) fun _ _ h => h
 
 /-- The core survives dropping scratch buffers above its views. -/
 theorem SchurStoredCore.of_below {n : ℕ} {U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {u εL : ℝ}
     {m j L : ℕ} {a uo f st : ℕ × ℕ} {s s' : Store ℝ} {pos : ℕ}
-    (h : SchurStoredCore n U u εL m a uo f st j ⟨s, pos⟩) (hBelow : Store.Below L s s')
+    (h : SchurStoredCore n P U u εL m a uo f st j ⟨s, pos⟩) (hBelow : Store.Below L s s')
     (ha : a.1 < L) (hu : uo.1 < L) (hf : f.1 < L) (hs : st.1 < L) :
-    SchurStoredCore n U u εL m a uo f st j ⟨s', pos⟩ := by
+    SchurStoredCore n P U u εL m a uo f st j ⟨s', pos⟩ := by
   obtain ⟨⟨x, hx⟩, ⟨A, hA⟩, rs, ℓ, hSt, hfit, hℓ, hacc⟩ := h
   exact ⟨⟨x, ((hBelow f.1 hf).2 _).trans hx⟩, ⟨A, hA.of_below hBelow ha⟩, rs, ℓ,
     hSt.of_below hBelow hs, hfit, hℓ, hacc.of_below hBelow hu⟩
@@ -547,22 +575,23 @@ block on $(lo, d + 1)$ is in the work matrix, a stack whose ranges after $(lo, d
 accumulator within its factor at round $j$, `NLAlib.ShiftedQR.roundedProcessLargeWith` reaches
 the core of round $j + 1$. -/
 theorem roundedLarge_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
-    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu1 : u ≤ 1 / 100) (hL : IsIndexLit Mch I)
+    (hS : IsScalar Mch I)
+    {P : Prop} (hP : P → StdModel u id Mch ∧ u ≤ 1 / 100) (hL : IsIndexLit Mch I)
     {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
     {k F T ns w m : ℕ} (hm : ns * w ≤ m) {ps : List ℝ} (D : Impl O Q)
     (hD : TerminatingDecouplerRoutine n k F T ps ns w D I) {tape : Tape ℝ} {μ : Mem ℝ}
     {lo d j ℓ : ℕ} {a t p uo f st wk ub r : ℕ × ℕ} {rs : List (ℕ × ℕ)}
-    {A U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr εL : ℝ} (hεL : 0 ≤ εL)
+    {A U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr εL : ℝ} (hεL : P → 0 ≤ εL)
     (hG : SchurGeometry (n + 1) ps.length a t p uo f st wk ub r μ)
     (ht : μ.store.get t.1 t.2 = some thr) (hp : μ.store.readBlock p.1 p.2 ps.length = some ps)
     (hA : HoldsMatrix a A μ.store) (hW : HoldsMatrix wk (subBlock A (lo, d + 1)) μ.store)
     (hSt : StackHolds st rs μ.store) (hfit : RangesFit (n + 1) ((lo, d + 1) :: rs))
     (hℓ : ℓ + (d + 1) + (rs.map Prod.snd).sum ≤ n + 1) (hk : k ≤ d)
-    (hacc : AccumNear U ((1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ) uo μ) :
+    (hacc : AccumIf P U ((1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ) uo μ) :
     Writes .total I tape (roundedProcessLargeWith D).body
       (Env.frame [n + 1, k, ps.length, F, T, ns, w, lo, d + 1] [a, t, p, st, uo, wk, r, f])
       (schurRoundFp (n + 1) a uo f st wk ub r)
-      (SchurStoredCore n U u εL m a uo f st (j + 1)) μ := by
+      (SchurStoredCore n P U u εL m a uo f st (j + 1)) μ := by
   have hlen' := hfit.length_add_le
   have hfit0 := hfit.1 _ List.mem_cons_self
   dsimp only at hfit0
@@ -633,12 +662,12 @@ theorem roundedLarge_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
     hDX 3 (by simp) (by simp) (by simp)
   have hDs : Fp.Disj DF (Store.inBlock st.1 st.2 (1 + 2 * (n + 1))) :=
     hDX 5 (by simp) (by simp) (by simp)
-  exact (roundedLargeRest_terminates hS hM hu1 hL hNat hQ hC hm hεL (hG₁.of_eqOff hfr₂)
+  exact (roundedLargeRest_terminates hS hP hL hNat hQ hC hm hεL (hG₁.of_eqOff hfr₂)
     (hfr₂.keep (Store.readsOnly_get _ _ _) hDt (((hBelow t.1 (hv t (by simp))).2 _).trans ht))
     hf₂ (hfr₂.keep (readsOnly_holdsMatrix _ _) hDa (hA.of_below hBelow (hv a (by simp)))) hW₂
     ((StackHolds.of_below hSt hBelow (hv st (by simp))).of_eqOff hfr₂ (hDs.mono le_rfl
       (Fp.inBlock_le_inBlock le_rfl (by omega))))
-    hfit hℓ hk ((AccumNear.of_below (pos := μ.pos) hacc hBelow (hv uo (by simp))).of_eqOff hfr₂ hDu)
+    hfit hℓ hk ((AccumIf.of_below (pos := μ.pos) hacc hBelow (hv uo (by simp))).of_eqOff hfr₂ hDu)
     hlog hLlen hpl
     (by rw [hfr₂.length_eq]; change Lc < s₁.length; omega) hv).mono le_sup_left fun _ _ h => h
 
@@ -667,8 +696,8 @@ ranges after $(lo, d)$ fit with a leaf count $\ell$, and the accumulator within 
 round $j$ ($2k(k + 2) \le m$), the leaf, the copy back and `NLAlib.ShiftedQR.roundedLeafUpdate`
 reach the core of round $j + 1$ with $\ell + 1$ leaves. -/
 theorem roundedLeafBranch_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
-    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu1 : u ≤ 1 / 100) {n : ℕ}
-    {k F T ns w m : ℕ} (hm : 2 * k * (k + 2) ≤ m) {ps : List ℝ} {εL : ℝ} (hεL : 0 ≤ εL)
+    (hS : IsScalar Mch I) {P : Prop} (hP : P → StdModel u id Mch ∧ u ≤ 1 / 100) {n : ℕ}
+    {k F T ns w m : ℕ} (hm : 2 * k * (k + 2) ≤ m) {ps : List ℝ} {εL : ℝ} (hεL : P → 0 ≤ εL)
     (L : Impl O Q) (hLeaf : TerminatingLeafRoutine εL (min k (n + 1)) ps T L I) {tape : Tape ℝ}
     {μ : Mem ℝ} {lo d j ℓ : ℕ} {a t p uo f st wk ub r : ℕ × ℕ} {rs : List (ℕ × ℕ)}
     {A U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {x : ℝ}
@@ -677,7 +706,7 @@ theorem roundedLeafBranch_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
     (hA : HoldsMatrix a A μ.store) (hW : HoldsMatrix wk (subBlock A (lo, d)) μ.store)
     (hSt : StackHolds st rs μ.store) (hfit : RangesFit (n + 1) ((lo, d) :: rs))
     (hℓ : ℓ + d + (rs.map Prod.snd).sum ≤ n + 1) (hdk : d ≤ k)
-    (hacc : AccumNear U ((1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ) uo μ) :
+    (hacc : AccumIf P U ((1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ) uo μ) :
     Writes .total I tape
       ((Stmt.frame [IExp.var 8, IExp.var 2, IExp.var 4]
           [{ buf := 5, off := IExp.var 14 }, { buf := 2, off := IExp.var 11 },
@@ -690,8 +719,8 @@ theorem roundedLeafBranch_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
               { buf := 4, off := IExp.var 13 }] (roundedLeafUpdate (O := O) (Q := Q)).body)))
       (Env.frame [n + 1, k, ps.length, F, T, ns, w, lo, d] [a, t, p, st, uo, wk, ub, r, f])
       (schurRoundFp (n + 1) a uo f st wk ub r)
-      (SchurStoredCore n U u εL m a uo f st (j + 1)) μ := by
-  have hu0 : 0 ≤ u := (abs_nonneg _).trans (by simpa [schurBlock] using hM.lit 1)
+      (SchurStoredCore n P U u εL m a uo f st (j + 1)) μ := by
+  have hu0 : P → 0 ≤ u := fun hp => (abs_nonneg _).trans (by simpa using (hP hp).1.lit 1)
   have hfit0 := hfit.1 _ List.mem_cons_self
   dsimp only at hfit0
   have hd : d ≤ n + 1 := by omega
@@ -740,11 +769,11 @@ theorem roundedLeafBranch_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
       (schurBlock (n + 1) ps.length a t p uo f st wk ub r i) :=
     fun i h0 => (g 0 i (Ne.symm h0)).mono (blockFp_le a hfit0.2) le_rfl
   have hUb₂ := hUb.of_eqOff hfr₂ ((hAX 7 (by simp)).mono le_rfl hUd)
-  obtain ⟨U₁, V₁, hU₁, hV₁, hb₁⟩ := hacc₁
+  obtain ⟨⟨U₁, hU₁⟩, hacc'⟩ := hacc₁
   have hU₂ := hU₁.of_eqOff hfr₂ (hAX 3 (by simp))
   have hG₂ := hG₁.of_eqOff hfr₂
   have hlU : μ₂.Live [ub, a, uo] := hG₂.live_of_subset (by simp)
-  refine ((roundedLeafUpdate_writes (O := O) (Q := Q) (τ := tape) hS hM hfit0.2 hlU hUb₂ hA₂ hU₂
+  refine ((roundedLeafUpdate_writes (O := O) (Q := Q) (τ := tape) hS hfit0.2 hlU hUb₂ hA₂ hU₂
     hG₂.room.1 hG₂.room.2.2.2.1 ((g 7 0 (by simp)).mono hUd le_rfl)
     (by simpa [schurBlock] using g 0 3 (by simp))).in_frame rfl rfl hlU).mono
     (by fp_sub [schurRoundFp]) ?_
@@ -754,19 +783,22 @@ theorem roundedLeafBranch_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
         Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))))
       (schurBlock (n + 1) ps.length a t p uo f st wk ub r i) :=
     fun i h0 h3 => Fp.disj_sup_left.mpr ⟨g 0 i (Ne.symm h0), g 3 i (Ne.symm h3)⟩
-  have hX1 : (1 : ℝ) ≤ 1 + 24 * u := by linarith
-  have hY1 : (1 : ℝ) ≤ 1 + εL := by linarith
   have hst5 : Store.inBlock st.1 st.2 (1 + 2 * rs.length) ≤
       Store.inBlock st.1 st.2 (1 + 2 * (n + 1)) :=
     Fp.inBlock_le_inBlock le_rfl (by have := hfit.length_add_le; omega)
   refine ⟨⟨x, (hfr₂.trans' hfr₃).keep (Store.readsOnly_get _ _ _)
       (Fp.disj_sup_left.mpr ⟨hAX 4 (by simp), hAU3 4 (by simp) (by simp)⟩) hf₁⟩,
     ⟨_, hA₃⟩, rs, ℓ + 1, (hSt₁.of_eqOff hfr₂ ((hAX 5 (by simp)).mono le_rfl hst5)).of_eqOff hfr₃
-      ((hAU3 5 (by simp) (by simp)).mono le_rfl hst5), hfit.of_cons, by omega,
-    AccumNear.step ⟨U₁, V₁, hU₂, hV₁, hb₁⟩ hU₂ hU₃ (hasOrthonormalCols_embedBlock hfit0.2 hV)
-      (one_le_mul_of_one_le_of_one_le (one_le_pow₀ hX1) hY1)
-      (specNorm_setRect_matMulWord_sub_le hM hu0 (by linarith) hfit0.2 U₁ hV hεL hUbV) ?_⟩
-  exact accumFactor_leaf_le hu0 hεL (le_trans (by
+      ((hAU3 5 (by simp) (by simp)).mono le_rfl hst5), hfit.of_cons, by omega, ⟨_, hU₃⟩,
+    fun hp => ?_⟩
+  have hX1 : (1 : ℝ) ≤ 1 + 24 * u := by linarith [hu0 hp]
+  have hY1 : (1 : ℝ) ≤ 1 + εL := by linarith [hεL hp]
+  refine AccumNear.step ((hacc' hp).of_eqOff hfr₂ (hAX 3 (by simp))) hU₂ hU₃
+    (hasOrthonormalCols_embedBlock hfit0.2 hV)
+    (one_le_mul_of_one_le_of_one_le (one_le_pow₀ hX1) hY1)
+    (specNorm_setRect_matMulWord_sub_le (hP hp).1 (hu0 hp) (by linarith [(hP hp).2]) hfit0.2 U₁ hV
+      (hεL hp) hUbV) ?_
+  exact accumFactor_leaf_le (hu0 hp) (hεL hp) (le_trans (by
     have := Nat.mul_le_mul (Nat.mul_le_mul_left 2 hdk) (Nat.add_le_add_right hdk 2); linarith) hm)
 
 /-- Processing a popped range keeps the core: under the conditions of
@@ -777,10 +809,11 @@ ranges after the popped $(lo, d)$ fit with a leaf count $\ell$, and the accumula
 factor at round $j$, `NLAlib.ShiftedQR.roundedProcessRangeWith` reaches the core of round
 $j + 1$. -/
 theorem roundedRange_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
-    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu1 : u ≤ 1 / 100) (hL : IsIndexLit Mch I)
+    (hS : IsScalar Mch I)
+    {P : Prop} (hP : P → StdModel u id Mch ∧ u ≤ 1 / 100) (hL : IsIndexLit Mch I)
     {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
     {k F T ns w m : ℕ} (hm1 : ns * w ≤ m) (hm2 : 2 * k * (k + 2) ≤ m) {ps : List ℝ} {εL : ℝ}
-    (hεL : 0 ≤ εL) (D : Impl O Q) (hD : TerminatingDecouplerRoutine n k F T ps ns w D I)
+    (hεL : P → 0 ≤ εL) (D : Impl O Q) (hD : TerminatingDecouplerRoutine n k F T ps ns w D I)
     (L : Impl O Q) (hLeaf : TerminatingLeafRoutine εL (min k (n + 1)) ps T L I)
     {tape : Tape ℝ} {μ : Mem ℝ} {lo d j ℓ : ℕ} {a t p uo f st wk ub r : ℕ × ℕ}
     {rs : List (ℕ × ℕ)} {A U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr x : ℝ}
@@ -789,11 +822,11 @@ theorem roundedRange_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
     (hf : μ.store.get f.1 f.2 = some x) (hA : HoldsMatrix a A μ.store)
     (hSt : StackHolds st rs μ.store) (hfit : RangesFit (n + 1) ((lo, d) :: rs))
     (hℓ : ℓ + d + (rs.map Prod.snd).sum ≤ n + 1)
-    (hacc : AccumNear U ((1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ) uo μ) :
+    (hacc : AccumIf P U ((1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ) uo μ) :
     Writes .total I tape (roundedProcessRangeWith D L).body
       (Env.frame [n + 1, k, ps.length, F, T, ns, w, lo, d] [a, t, p, st, uo, wk, ub, r, f])
       (schurRoundFp (n + 1) a uo f st wk ub r)
-      (SchurStoredCore n U u εL m a uo f st (j + 1)) μ := by
+      (SchurStoredCore n P U u εL m a uo f st (j + 1)) μ := by
   have hfit0 := hfit.1 _ List.mem_cons_self
   dsimp only at hfit0
   have hd : d ≤ n + 1 := by omega
@@ -819,10 +852,10 @@ theorem roundedRange_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
   have ht₁ := hfr₁.keep (Store.readsOnly_get _ _ _) (by simpa [schurBlock] using g 1 (by simp)) ht
   have hacc₁ := hacc.of_eqOff hfr₁ (by simpa [schurBlock] using g 3 (by simp))
   by_cases hs : d ≤ k
-  · refine (writes_ifPos (P := SchurStoredCore n U u εL m a uo f st (j + 1)) (n := k + 1 - d)
+  · refine (writes_ifPos (P := SchurStoredCore n P U u εL m a uo f st (j + 1)) (n := k + 1 - d)
       rfl ?_).seq_le le_rfl ?_
     · rw [if_pos (by omega)]
-      exact roundedLeafBranch_terminates (F := F) (ns := ns) (w := w) hS hM hu1 hm2 hεL L hLeaf hG₁
+      exact roundedLeafBranch_terminates (F := F) (ns := ns) (w := w) hS hP hm2 hεL L hLeaf hG₁
         hp₁ hf₁ hA₁ hW₁ hSt₁ hfit hℓ hs hacc₁
     · intro μ₂ _ hpost
       refine writes_ifPos (n := d - k) rfl ?_
@@ -834,7 +867,7 @@ theorem roundedRange_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
     obtain ⟨d', rfl⟩ : ∃ d', d = d' + 1 := ⟨d - 1, by omega⟩
     refine writes_ifPos (n := d' + 1 - k) rfl ?_
     rw [if_pos (by omega)]
-    exact (roundedLarge_terminates hS hM hu1 hL hNat hQ hC hm1 D hD hεL hG₁ ht₁ hp₁ hA₁ hW₁ hSt₁
+    exact (roundedLarge_terminates hS hP hL hNat hQ hC hm1 D hD hεL hG₁ ht₁ hp₁ hA₁ hW₁ hSt₁
       hfit (by omega) (by omega) hacc₁).in_frame rfl rfl (hG₁.live_of_subset (by simp))
 
 /-- One round keeps the value-free state: under the conditions of
@@ -842,21 +875,22 @@ theorem roundedRange_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
 round $j$ with a positive stack count, `NLAlib.ShiftedQR.roundedWorklistRoundWith` reaches the
 state of round $j + 1$. -/
 theorem roundedWorklistRound_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
-    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu1 : u ≤ 1 / 100) (hL : IsIndexLit Mch I)
+    (hS : IsScalar Mch I)
+    {P : Prop} (hP : P → StdModel u id Mch ∧ u ≤ 1 / 100) (hL : IsIndexLit Mch I)
     {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
     {k F T ns w m : ℕ} (hm1 : ns * w ≤ m) (hm2 : 2 * k * (k + 2) ≤ m) {ps : List ℝ} {εL : ℝ}
-    (hεL : 0 ≤ εL) (D : Impl O Q) (hD : TerminatingDecouplerRoutine n k F T ps ns w D I)
+    (hεL : P → 0 ≤ εL) (D : Impl O Q) (hD : TerminatingDecouplerRoutine n k F T ps ns w D I)
     (L : Impl O Q) (hLeaf : TerminatingLeafRoutine εL (min k (n + 1)) ps T L I)
     {tape : Tape ℝ} {μ : Mem ℝ} {j cnt : ℕ} {a t p uo f st wk ub r : ℕ × ℕ}
     {U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
-    (h : SchurStoredState n U u εL m ps a t p uo f st wk ub r j μ)
+    (h : SchurStoredState n P U u εL m ps a t p uo f st wk ub r j μ)
     (hcount : μ.store.get st.1 st.2 = some (cnt : ℝ)) (hpos : 0 < cnt) :
     Writes .total I tape (roundedWorklistRoundWith D L).body
       (Env.frame [n + 1, k, ps.length, F, T, ns, w] [a, t, p, st, uo, wk, ub, r, f])
       (schurRoundFp (n + 1) a uo f st wk ub r)
-      (SchurStoredState n U u εL m ps a t p uo f st wk ub r (j + 1)) μ := by
+      (SchurStoredState n P U u εL m ps a t p uo f st wk ub r (j + 1)) μ := by
   obtain ⟨hG, ⟨thr, ht⟩, hp, ⟨x, hf⟩, ⟨A, hA⟩, rs, ℓ, hSt, hfit, hℓ, hacc⟩ := h
-  refine Writes.mono (P := SchurStoredCore n U u εL m a uo f st (j + 1)) ?_ le_rfl
+  refine Writes.mono (P := SchurStoredCore n P U u εL m a uo f st (j + 1)) ?_ le_rfl
     (fun μ' hfr hcore => SchurStoredState.of_core hG ⟨thr, ht⟩ hp hfr le_rfl hcore)
   obtain rfl | ⟨rs', ⟨lo, d⟩, rfl⟩ := List.eq_nil_or_concat rs
   · have hc0 : (cnt : ℝ) = 0 := Option.some.inj (hcount.symm.trans (by simpa using hSt.1))
@@ -896,7 +930,7 @@ theorem roundedWorklistRound_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ}
   refine writes_bindIdx_of_decode_nat hQ rfl rfl hLo rfl (by omega) ?_
   refine writes_bindIdx_of_decode_nat hQ rfl rfl hSize rfl (by omega) ?_
   have hG₁ := hG.of_eqOff hfr₁
-  exact (roundedRange_terminates hS hM hu1 hL hNat hQ hC hm1 hm2 hεL D hD L hLeaf hG₁
+  exact (roundedRange_terminates hS hP hL hNat hQ hC hm1 hm2 hεL D hD L hLeaf hG₁
     (hfr₁.keep (Store.readsOnly_get _ _ _) (hpd 1 (by simp) (by simp)) ht)
     (hfr₁.keep (Store.readsOnly_readBlock _ _ _ _) (hpd 2 (by simp) (by simp)) hp)
     (hfr₁.keep (Store.readsOnly_get _ _ _) (hpd 4 (by simp) (by simp)) hf)
@@ -921,16 +955,17 @@ the state `NLAlib.ShiftedQR.SchurStoredState` of round $i \le 2(n + 1)$, the exi
 completion. -/
 theorem roundedWorklistExit_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
     (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1)) (hC : IsCmp id I)
-    {k F T ns w m : ℕ} {ps : List ℝ} {tape : Tape ℝ} {μ : Mem ℝ} {u εL : ℝ} (hu0 : 0 ≤ u)
-    (hεL : 0 ≤ εL) {U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {a t p uo f st wk ub r : ℕ × ℕ}
-    {i : ℕ} (hi : i ≤ 2 * (n + 1)) (h : SchurStoredState n U u εL m ps a t p uo f st wk ub r i μ) :
+    {k F T ns w m : ℕ} {ps : List ℝ} {tape : Tape ℝ} {μ : Mem ℝ} {u εL : ℝ} {P : Prop}
+    (hu0 : P → 0 ≤ u) (hεL : P → 0 ≤ εL) {U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {a t p uo f st wk ub r : ℕ × ℕ} {i : ℕ} (hi : i ≤ 2 * (n + 1))
+    (h : SchurStoredState n P U u εL m ps a t p uo f st wk ub r i μ) :
     Writes .total I tape (Stmt.ite (Has.inj CmpTst.isPos) [] [{ buf := 4, off := IExp.var 11 }]
         (Stmt.frame [] [{ buf := 4, off := IExp.var 11 }, { buf := 8, off := IExp.var 15 }]
           (roundedAbort (O := O) (Q := Q)).body) Stmt.skip)
       ((Env.frame [n + 1, k, ps.length, F, T, ns, w] [a, t, p, uo, st, wk, ub, r, f]).pushIdx i)
       (schurRoundFp (n + 1) a uo f st wk ub r)
       (fun μ' => (∃ A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A μ'.store) ∧
-        AccumNear U ((1 + 24 * u) ^ (2 * (n + 1) * m) * (1 + εL) ^ (n + 1)) uo μ') μ := by
+        AccumIf P U ((1 + 24 * u) ^ (2 * (n + 1) * m) * (1 + εL) ^ (n + 1)) uo μ') μ := by
   obtain ⟨hG, -, -, -, hA, rs, ℓ, hSt, -, hℓ, hacc⟩ := h
   have hℓ' : ℓ ≤ n + 1 := by omega
   refine writes_ite rfl rfl (hC.test_isPos (d := []) (x := st) hSt.1) ?_
@@ -940,9 +975,10 @@ theorem roundedWorklistExit_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} 
       (hG.live_of_subset (by simp))).mono (by fp_sub [schurRoundFp])
       fun _ _ hc => by
         obtain ⟨-, hA', rs', ℓ', -, -, hℓ'', hacc'⟩ := hc
-        exact ⟨hA', hacc'.mono (accumFactor_le_final hu0 hεL m hi (by omega))⟩
+        exact ⟨hA', hacc'.mono (fun hp => accumFactor_le_final (hu0 hp) (hεL hp) m hi (by omega))⟩
   · rw [if_neg (by simpa [schurBlock] using hpos)]
-    exact (Writes.skip ⟨hA, hacc.mono (accumFactor_le_final hu0 hεL m hi hℓ')⟩).mono bot_le
+    exact (Writes.skip ⟨hA, hacc.mono (fun hp => accumFactor_le_final (hu0 hp) (hεL hp) m hi
+      hℓ')⟩).mono bot_le
       fun _ _ h => h
 
 /-- The capped loop of the worklist in Schur mode terminates: under the conditions of
@@ -953,10 +989,11 @@ leaves a matrix and an accumulator within
 $((1 + 24\boldsymbol{u})^{2(n+1)m}(1 + \varepsilon_L)^{n+1} - 1)\|\mathbf{U}\|_2$ of
 $\mathbf{U}$ times a unitary. -/
 theorem roundedWorklist_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
-    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu1 : u ≤ 1 / 100) (hL : IsIndexLit Mch I)
+    (hS : IsScalar Mch I)
+    {P : Prop} (hP : P → StdModel u id Mch ∧ u ≤ 1 / 100) (hL : IsIndexLit Mch I)
     {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
     {k F T ns w m : ℕ} (hm1 : ns * w ≤ m) (hm2 : 2 * k * (k + 2) ≤ m) {ps : List ℝ} {εL : ℝ}
-    (hεL : 0 ≤ εL) (D : Impl O Q) (hD : TerminatingDecouplerRoutine n k F T ps ns w D I)
+    (hεL : P → 0 ≤ εL) (D : Impl O Q) (hD : TerminatingDecouplerRoutine n k F T ps ns w D I)
     (L : Impl O Q) (hLeaf : TerminatingLeafRoutine εL (min k (n + 1)) ps T L I)
     {tape : Tape ℝ} {μ : Mem ℝ} {a t p uo f st wk ub r : ℕ × ℕ}
     {H U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr : ℝ}
@@ -967,8 +1004,8 @@ theorem roundedWorklist_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
       (Env.frame [n + 1, k, ps.length, F, T, ns, w] [a, t, p, uo, st, wk, ub, r, f])
       (schurRoundFp (n + 1) a uo f st wk ub r)
       (fun μ' => (∃ A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A μ'.store) ∧
-        AccumNear U ((1 + 24 * u) ^ (2 * (n + 1) * m) * (1 + εL) ^ (n + 1)) uo μ') μ := by
-  have hu0 : 0 ≤ u := (abs_nonneg _).trans (by simpa [schurBlock] using hM.lit 1)
+        AccumIf P U ((1 + 24 * u) ^ (2 * (n + 1) * m) * (1 + εL) ^ (n + 1)) uo μ') μ := by
+  have hu0 : P → 0 ≤ u := fun hp => (abs_nonneg _).trans (by simpa using (hP hp).1.lit 1)
   have g : ∀ i j : Fin 9, i ≠ j → _ := fun i j h => hG.disj' i j h
   have hFA : Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) :=
     by simpa [schurBlock] using g 4 0 (by simp)
@@ -994,17 +1031,18 @@ theorem roundedWorklist_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
   refine hw.frame_seq_le rfl rfl hlS (by fp_sub [schurRoundFp]) ?_
   rintro μ₂ hfr₂ ⟨-, hSt₂⟩
   have hfr₁₂ := hfr₁.trans' hfr₂
-  have hS0 : SchurStoredState n U u εL m ps a t p uo f st wk ub r 0 μ₂ :=
+  have hS0 : SchurStoredState n P U u εL m ps a t p uo f st wk ub r 0 μ₂ :=
     SchurStoredState.of_core hG ⟨thr, ht⟩ hp hfr₁₂ (by fp_sub [schurRoundFp])
       ⟨⟨_, hfr₂.keep (Store.readsOnly_get _ _ _) hFS.symm hF₁⟩,
         ⟨H, hA.of_eqOff hfr₁₂ (Fp.disj_sup_left.mpr ⟨hFA, hSA⟩)⟩, [(0, n + 1)], 0, hSt₂,
         by simp [RangesFit], by simp,
-        ⟨U, 1, hU.of_eqOff hfr₁₂ (Fp.disj_sup_left.mpr ⟨hFU, hSU⟩), hasOrthonormalCols_one,
-          by simp⟩⟩
+        ⟨⟨U, hU.of_eqOff hfr₁₂ (Fp.disj_sup_left.mpr ⟨hFU, hSU⟩)⟩, fun _ =>
+          ⟨U, 1, hU.of_eqOff hfr₁₂ (Fp.disj_sup_left.mpr ⟨hFU, hSU⟩), hasOrthonormalCols_one,
+            by simp⟩⟩⟩
   refine (writes_whileFuel (N := 2 * (n + 1)) rfl
     (fun _ => schurRoundFp (n + 1) a uo f st wk ub r) (fun _ _ => le_rfl)
     (schurRoundFp (n + 1) a uo f st wk ub r)
-    (fun i => SchurStoredState n U u εL m ps a t p uo f st wk ub r i) _ hS0 ?_
+    (fun i => SchurStoredState n P U u εL m ps a t p uo f st wk ub r i) _ hS0 ?_
     (fun _ _ hS' => roundedWorklistExit_terminates hL hNat hC hu0 hεL le_rfl hS')).mono
       (by simp) fun _ _ h => h
   intro i hi μ' _ hS'
@@ -1013,10 +1051,96 @@ theorem roundedWorklist_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
   refine Mode.holds_some ?_
   by_cases hpos : 0 < rs.length
   · rw [if_pos (by simpa [schurBlock] using hpos)]
-    exact (roundedWorklistRound_terminates hS hM hu1 hL hNat hQ hC hm1 hm2 hεL D hD L hLeaf hS'
+    exact (roundedWorklistRound_terminates hS hP hL hNat hQ hC hm1 hm2 hεL D hD L hLeaf hS'
       hSt.1 hpos).in_frame rfl rfl (hS'.1.live_of_subset (by simp))
   · rw [if_neg (by simpa [schurBlock] using hpos)]
     exact roundedWorklistExit_terminates hL hNat hC hu0 hεL (by omega) hS'
+
+/-- The rounded worklist in Schur mode runs to completion, with the accumulator bound if `P`: the
+common form of `NLAlib.ShiftedQR.solveRoundedWith_completes` (no rounding model, `P` false) and
+`NLAlib.ShiftedQR.solveRoundedWith_terminates` (`P` the standard model at
+$\boldsymbol{u} \le 1/100$ and $\varepsilon_L \ge 0$). -/
+theorem solveRoundedWith_terminates_if {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : ℕ}
+    (hS : IsScalar Mch I) {P : Prop} (hP : P → StdModel u id Mch ∧ u ≤ 1 / 100)
+    (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
+    (hC : IsCmp id I) {k F T ns w : ℕ} {ps : List ℝ} {εL : ℝ} (hεL : P → 0 ≤ εL) (D : Impl O Q)
+    (hD : TerminatingDecouplerRoutine n k F T ps ns w D I) (L : Impl O Q)
+    (hLeaf : TerminatingLeafRoutine εL (min k (n + 1)) ps T L I)
+    {tape : Tape ℝ} {μ : Mem ℝ} {a t p uo f : ℕ × ℕ}
+    {H U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr : ℝ}
+    (hl : μ.Live [a, t, p, uo, f])
+    (hr : μ.Room [a, t, p, uo, f]
+      [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * ((n + 1) * (n + 1)), 1])
+    (ha : Fp.Apart [a, t, p, uo, f]
+      [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * ((n + 1) * (n + 1)), 1])
+    (hA : HoldsMatrix a H μ.store) (hU : HoldsMatrix uo U μ.store)
+    (ht : μ.store.get t.1 t.2 = some thr) (hp : μ.store.readBlock p.1 p.2 ps.length = some ps) :
+    Writes .total I tape (solveRoundedWith D L).body
+      (Env.frame [n + 1, k, ps.length, F, T, ns, w] [a, t, p, uo, a, uo, f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
+      (fun μ' => (∃ Tm : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a Tm μ'.store) ∧
+        AccumIf P U ((1 + 24 * u) ^ (2 * (n + 1) * (ns * w + 2 * k * (k + 2))) * (1 + εL) ^ (n + 1))
+          uo μ') μ := by
+  unfold solveRoundedWith
+  change Writes .total I tape (Stmt.allocs [IExp.const 1 + IExp.const 2 * IExp.var 0,
+    IExp.const 2 * (IExp.var 0 * IExp.var 0), IExp.const 2 * (IExp.var 0 * IExp.var 0),
+    IExp.const 5] _) _ _ _ μ
+  refine writes_allocs_preserving_post
+    (ns := [1 + 2 * (n + 1), 2 * ((n + 1) * (n + 1)), 2 * ((n + 1) * (n + 1)), 5])
+    (by simp [IExp.evalList, IExp.eval, Env.frame])
+    (fun hBelow ⟨⟨Tm, hTm⟩, hacc⟩ => ⟨⟨Tm, hTm.of_below hBelow (hl a (by simp))⟩,
+      hacc.of_below hBelow (hl uo (by simp))⟩) ?_
+  intro s hs hlens hBelow
+  set Lc := μ.store.length
+  have hG := Geometry.allocated ⟨hl, hr, ha⟩ hs hlens hBelow
+  have hG' : SchurGeometry (n + 1) ps.length a t p uo f (Lc, 0) (Lc + 1, 0) (Lc + 2, 0)
+      (Lc + 3, 0) ⟨s, μ.pos⟩ := by
+    simpa [List.range_succ] using hG
+  have hw := roundedWorklist_terminates (F := F) (T := T) (tape := tape) hS hP hL hNat hQ hC
+    le_self_add le_add_self hεL D hD L hLeaf hG' (hA.of_below hBelow (hl a (by simp)))
+    (hU.of_below hBelow (hl uo (by simp))) (((hBelow t.1 (hl t (by simp))).2 _).trans ht)
+    ((hBelow.readBlock (hl p (by simp)) p.2 ps.length).trans hp)
+  refine (hw.in_frame (by simp [IExp.evalList, IExp.eval, Env.frame])
+    (by simp [Operand.evalList, Operand.eval, IExp.eval, Env.frame])
+    (hG'.live_of_subset (by simp))).mono ?_ fun _ _ h => h
+  intro b i h
+  simp only [schurRoundFp, Fp.blocks_cons, Fp.blocks_nil, fpNF] at h ⊢
+  omega
+
+/-- **The rounded worklist in Schur mode runs to completion on any machine**: on a scalar machine
+with natural literals up to $n + 1$ exact, exact `toNat` and comparisons (no rounding model), let
+the decoupling routine terminate with a closed log (`NLAlib.ShiftedQR.TerminatingDecouplerRoutine`)
+and the leaf routine terminate on orders at most $\min(k, n + 1)$
+(`NLAlib.ShiftedQR.TerminatingLeafRoutine`). Then for any matrix and accumulator, any threshold
+word and on every tape, `solveRoundedWith D L` runs to completion, writes only the matrix, the
+accumulator and the failure word, and leaves a matrix and an accumulator stored. The accumulator
+bound under the standard model is `NLAlib.ShiftedQR.solveRoundedWith_terminates`. -/
+theorem solveRoundedWith_completes {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
+    (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1))
+    (hQ : IsToNat id I) (hC : IsCmp id I) {k F T ns w : ℕ} {ps : List ℝ} {εL : ℝ} (D : Impl O Q)
+    (hD : TerminatingDecouplerRoutine n k F T ps ns w D I) (L : Impl O Q)
+    (hLeaf : TerminatingLeafRoutine εL (min k (n + 1)) ps T L I)
+    {tape : Tape ℝ} {μ : Mem ℝ} {a t p uo f : ℕ × ℕ}
+    {H U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr : ℝ}
+    (hl : μ.Live [a, t, p, uo, f])
+    (hr : μ.Room [a, t, p, uo, f]
+      [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * ((n + 1) * (n + 1)), 1])
+    (ha : Fp.Apart [a, t, p, uo, f]
+      [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * ((n + 1) * (n + 1)), 1])
+    (hA : HoldsMatrix a H μ.store) (hU : HoldsMatrix uo U μ.store)
+    (ht : μ.store.get t.1 t.2 = some thr) (hp : μ.store.readBlock p.1 p.2 ps.length = some ps) :
+    Writes .total I tape (solveRoundedWith D L).body
+      (Env.frame [n + 1, k, ps.length, F, T, ns, w] [a, t, p, uo, a, uo, f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
+      (fun μ' => ∃ Tm U' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+        HoldsMatrix a Tm μ'.store ∧ HoldsMatrix uo U' μ'.store) μ :=
+  (solveRoundedWith_terminates_if (u := 0) hS (P := False) False.elim hL hNat hQ hC
+    False.elim D hD L hLeaf hl hr ha hA hU ht hp).mono le_rfl
+    fun _ _ h => by
+      obtain ⟨⟨Tm, hTm⟩, ⟨U', hU'⟩, -⟩ := h
+      exact ⟨Tm, U', hTm, hU'⟩
 
 /-- **The rounded worklist in Schur mode terminates, and its accumulator stays near a unitary on
 every tape**: on a scalar machine with the standard model, natural literals up to $n + 1$ exact,
@@ -1052,35 +1176,13 @@ theorem solveRoundedWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u 
         HoldsMatrix a Tm μ'.store ∧ HoldsMatrix uo U' μ'.store ∧ HasOrthonormalCols V ∧
         specNorm (U' - U * V) ≤
           ((1 + 24 * u) ^ (2 * (n + 1) * (ns * w + 2 * k * (k + 2))) * (1 + εL) ^ (n + 1) - 1) *
-            specNorm U) μ := by
-  have hu0 : 0 ≤ u := (abs_nonneg _).trans (by simpa [schurBlock] using hM.lit 1)
-  unfold solveRoundedWith
-  change Writes .total I tape (Stmt.allocs [IExp.const 1 + IExp.const 2 * IExp.var 0,
-    IExp.const 2 * (IExp.var 0 * IExp.var 0), IExp.const 2 * (IExp.var 0 * IExp.var 0),
-    IExp.const 5] _) _ _ _ μ
-  refine writes_allocs_preserving_post
-    (ns := [1 + 2 * (n + 1), 2 * ((n + 1) * (n + 1)), 2 * ((n + 1) * (n + 1)), 5])
-    (by simp [IExp.evalList, IExp.eval, Env.frame])
-    (fun hBelow ⟨U', Tm, V, hTm, hU', hV, hb⟩ => ⟨U', Tm, V, hTm.of_below hBelow (hl a (by simp)),
-      hU'.of_below hBelow (hl uo (by simp)), hV, hb⟩) ?_
-  intro s hs hlens hBelow
-  set Lc := μ.store.length
-  have hG := Geometry.allocated ⟨hl, hr, ha⟩ hs hlens hBelow
-  have hG' : SchurGeometry (n + 1) ps.length a t p uo f (Lc, 0) (Lc + 1, 0) (Lc + 2, 0)
-      (Lc + 3, 0) ⟨s, μ.pos⟩ := by
-    simpa [List.range_succ] using hG
-  have hw := roundedWorklist_terminates (F := F) (T := T) (tape := tape) hS hM hu1 hL hNat hQ hC
-    le_self_add le_add_self hεL D hD L hLeaf hG' (hA.of_below hBelow (hl a (by simp)))
-    (hU.of_below hBelow (hl uo (by simp))) (((hBelow t.1 (hl t (by simp))).2 _).trans ht)
-    ((hBelow.readBlock (hl p (by simp)) p.2 ps.length).trans hp)
-  refine (hw.in_frame (by simp [IExp.evalList, IExp.eval, Env.frame])
-    (by simp [Operand.evalList, Operand.eval, IExp.eval, Env.frame])
-    (hG'.live_of_subset (by simp))).mono ?_ ?_
-  · intro b i h
-    simp only [schurRoundFp, Fp.blocks_cons, Fp.blocks_nil, fpNF] at h ⊢
-    omega
-  · rintro μ' - ⟨⟨A, hA'⟩, U', V, hU', hV, hb⟩
-    exact ⟨U', A, V, hA', hU', hV, hb⟩
+            specNorm U) μ :=
+  (solveRoundedWith_terminates_if hS (P := True) (fun _ => ⟨hM, hu1⟩) hL hNat hQ hC
+    (fun _ => hεL) D hD L hLeaf hl hr ha hA hU ht hp).mono le_rfl
+    fun _ _ h => by
+      obtain ⟨⟨Tm, hTm⟩, -, hacc⟩ := h
+      obtain ⟨U', V, hU', hV, hb⟩ := hacc trivial
+      exact ⟨U', Tm, V, hTm, hU', hV, hb⟩
 
 end Theorems
 

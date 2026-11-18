@@ -31,11 +31,13 @@ the inner dimension.
 
 * `NLAlib.matMulOn`: the strided product, with the left factor optionally conjugate-transposed.
 * `NLAlib.matMulWord`: the product the program stores on a machine.
+* `NLAlib.machineConjTranspose`: the conjugate transpose the program forms on a machine.
 
 ## Main results
 
-* `NLAlib.matMulOn_writes_view`, `NLAlib.matMulOn_conjTranspose_writes_view`: the program stores
-  `NLAlib.matMulWord` (strided views of stored matrices).
+* `NLAlib.matMulOn_writes_view`, `NLAlib.matMulOn_conjTranspose_writes_view`,
+  `NLAlib.matMulOn_machineConjTranspose_writes_view`: the program stores `NLAlib.matMulWord`
+  (strided views of stored matrices).
 * `NLAlib.matMulOn_writes_word`, `NLAlib.matMulOn_conjTranspose_writes_word`: the program stores
   `NLAlib.matMulWord` (contiguous views).
 * `NLAlib.Ops.StdModel.specNorm_matMulWord_sub_le`,
@@ -590,12 +592,60 @@ theorem matMulOn_writes_view {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScal
     (fun s hs i l => Or.inl ⟨rfl, (g (hsrc s hs i l)).1, (g (hsrc s hs i l)).2⟩) hY hsrcY hl hz
     hxz hyz
 
+/-- The conjugate transpose **as the machine forms it**: entry $(i, l)$ is the real part of
+$x_{li}$ and the machine negation of its imaginary part (`NLAlib.matMulOn` with $c = 1$). Under the
+standard model it is $\mathbf{X}^{\mathsf H}$ (`NLAlib.machineConjTranspose_eq`). -/
+def machineConjTranspose (M : Machine ℝ) {p m : ℕ} (X : Matrix (Fin p) (Fin m) ℂ) :
+    Matrix (Fin m) (Fin p) ℂ :=
+  Matrix.of fun i l => ⟨(X l i).re, M.neg (X l i).im⟩
+
+omit [Has ScalarOp O] in
+/-- Under the standard model negation is exact, so the machine conjugate transpose is the
+conjugate transpose. -/
+theorem machineConjTranspose_eq {M : Machine ℝ} {u : ℝ} (hM : Ops.StdModel u id M) {p m : ℕ}
+    (X : Matrix (Fin p) (Fin m) ℂ) : machineConjTranspose M X = Xᴴ := by
+  ext i l
+  apply Complex.ext <;> simp [machineConjTranspose]
+  simpa using hM.neg (X l i).im
+
 /-- **`NLAlib.matMulOn` with the left factor conjugate-transposed on strided views** ($c = 1$),
-under the standard model (negation is exact): if the left view `x` (leading dimension `ldx`)
-reads the entries of $\mathbf{X}$ ($p \times m$) from a matrix stored at `xs`, the right view
-`y` reads $\mathbf{Y}$ ($p \times q$) from a matrix stored at `ys`, and the contiguous output
-`z` has room apart from both, the program writes only the output and stores `NLAlib.matMulWord`
-of $\mathbf{X}^{\mathsf H}$ and $\mathbf{Y}$. -/
+on any scalar machine: if the left view `x` (leading dimension `ldx`) reads the entries of
+$\mathbf{X}$ ($p \times m$) from a matrix stored at `xs`, the right view `y` reads $\mathbf{Y}$
+($p \times q$) from a matrix stored at `ys`, and the contiguous output `z` has room apart from
+both, the program writes only the output and stores `NLAlib.matMulWord` of the machine conjugate
+transpose `NLAlib.machineConjTranspose` and $\mathbf{Y}$. -/
+theorem matMulOn_machineConjTranspose_writes_view {M : Machine ℝ} {I : Interp O Q ℝ}
+    (hS : IsScalar M I) {τ : Tape ℝ} {μ : Mem ℝ}
+    {m p q ldx ldy r₁ r₂ r₃ r₄ : ℕ} {x y z xs ys : ℕ × ℕ}
+    {Xs : Matrix (Fin r₁) (Fin r₂) ℂ} {Ys : Matrix (Fin r₃) (Fin r₄) ℂ}
+    (X : Matrix (Fin p) (Fin m) ℂ) (Y : Matrix (Fin p) (Fin q) ℂ)
+    (hX : HoldsMatrix xs Xs μ.store)
+    (hsrc : ∀ s, HoldsMatrix xs Xs s → ∀ (l : Fin p) (i : Fin m),
+      s.readBlock x.1 (x.2 + 2 * (i * ldx + l)) 2 = some [(X l i).re, (X l i).im])
+    (hY : HoldsMatrix ys Ys μ.store)
+    (hsrcY : ∀ s, HoldsMatrix ys Ys s → ∀ (l : Fin p) (j : Fin q),
+      s.readBlock y.1 (y.2 + 2 * (j * ldy + l)) 2 = some [(Y l j).re, (Y l j).im])
+    (hl : μ.Live [x, y, z, xs, ys]) (hz : z.2 + 2 * (m * q) ≤ μ.store.len z.1)
+    (hxz : Fp.Disj (Store.inBlock xs.1 xs.2 (2 * (r₂ * r₁)))
+      (Store.inBlock z.1 z.2 (2 * (m * q))))
+    (hyz : Fp.Disj (Store.inBlock ys.1 ys.2 (2 * (r₄ * r₃)))
+      (Store.inBlock z.1 z.2 (2 * (m * q)))) :
+    Writes .total I τ (matMulOn (O := O) (Q := Q)).body
+      (Env.frame [m, p, q, ldx, ldy, m, 1] [x, y, z]) (Store.inBlock z.1 z.2 (2 * (m * q)))
+      (fun μ' => μ'.pos = μ.pos ∧
+        HoldsMatrix z (matMulWord M (machineConjTranspose M X) Y) μ'.store) μ := by
+  have g : ∀ {s : Store ℝ} {b o : ℕ} {u v : ℝ}, s.readBlock b o 2 = some [u, v] →
+      s.get b o = some u ∧ s.get b (o + 1) = some v := fun h =>
+    ⟨by simpa using Store.get_of_readBlock h (j := 0) (by omega) 0,
+      by simpa using Store.get_of_readBlock h (j := 1) (by omega) 0⟩
+  exact matMulOn_writes_gen hS (fun i l => machineConjTranspose M X i l) (fun l j => Y l j) hX
+    (fun s hs i l => Or.inr ⟨rfl, by simpa [machineConjTranspose] using (g (hsrc s hs l i)).1,
+      (X l i).im, (g (hsrc s hs l i)).2, rfl⟩) hY hsrcY hl hz hxz hyz
+
+/-- **`NLAlib.matMulOn` with the left factor conjugate-transposed on strided views** ($c = 1$),
+under the standard model (negation is exact): as
+`NLAlib.matMulOn_machineConjTranspose_writes_view`, the program stores `NLAlib.matMulWord` of
+$\mathbf{X}^{\mathsf H}$ and $\mathbf{Y}$. -/
 theorem matMulOn_conjTranspose_writes_view {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : Ops.StdModel u id M) {τ : Tape ℝ} {μ : Mem ℝ}
     {m p q ldx ldy r₁ r₂ r₃ r₄ : ℕ} {x y z xs ys : ℕ × ℕ}
@@ -615,14 +665,8 @@ theorem matMulOn_conjTranspose_writes_view {M : Machine ℝ} {I : Interp O Q ℝ
     Writes .total I τ (matMulOn (O := O) (Q := Q)).body
       (Env.frame [m, p, q, ldx, ldy, m, 1] [x, y, z]) (Store.inBlock z.1 z.2 (2 * (m * q)))
       (fun μ' => μ'.pos = μ.pos ∧ HoldsMatrix z (matMulWord M Xᴴ Y) μ'.store) μ := by
-  have g : ∀ {s : Store ℝ} {b o : ℕ} {u v : ℝ}, s.readBlock b o 2 = some [u, v] →
-      s.get b o = some u ∧ s.get b (o + 1) = some v := fun h =>
-    ⟨by simpa using Store.get_of_readBlock h (j := 0) (by omega) 0,
-      by simpa using Store.get_of_readBlock h (j := 1) (by omega) 0⟩
-  exact matMulOn_writes_gen hS (fun i l => Xᴴ i l) (fun l j => Y l j) hX
-    (fun s hs i l => Or.inr ⟨rfl, by simpa using (g (hsrc s hs l i)).1,
-      (X l i).im, (g (hsrc s hs l i)).2, by simpa using hM.neg (X l i).im⟩) hY hsrcY hl hz
-    hxz hyz
+  rw [← machineConjTranspose_eq hM]
+  exact matMulOn_machineConjTranspose_writes_view hS X Y hX hsrc hY hsrcY hl hz hxz hyz
 
 /-- `NLAlib.matMulOn` with $c = 0$ on contiguous views (leading dimensions the row counts), on a
 scalar machine and every tape: from $\mathbf{X}$ ($m \times p$) at `x` and $\mathbf{Y}$

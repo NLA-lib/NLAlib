@@ -108,12 +108,13 @@ structure ShQRData (d : Fin 4 → ℕ) where
   cap_eq : d 3 = shqrCap (d 0) B Γ S δ
 
 /-- The five raw buffers of an input: the matrix words, the deflation threshold word, the
-parameter words, uninitialized room for the $2(n + 1)$ output words and the failure word. -/
+parameter words, the identity accumulator (the $2(n + 1)^2$ words of the output) and the failure
+word. -/
 noncomputable def ShQRData.buffers {d : Fin 4 → ℕ} (x : ShQRData d) : Fin 5 → Buf ℝ :=
   ![(matrixWords x.matrix).map some,
     [some (shqrDeflationThreshold (d 0) (d 1) x.B x.Γ x.S x.δ x.φ)],
     (shqrParams (d 0) (d 1) x.B x.Γ x.S x.δ x.φ).map some,
-    List.replicate (2 * (d 0 + 1)) none, [none]]
+    (matrixWords (1 : Matrix (Fin (d 0 + 1)) (Fin (d 0 + 1)) ℂ)).map some, [none]]
 
 /-- **The admitted sizes** on the machine `Mch`: the natural literals up to the order $n + 1$
 are exact, the shift degree is at most $n$, and the sizes are those of some parameter reals. -/
@@ -142,7 +143,28 @@ variable {Mch : Machine ℝ} {admitted : ∃ d, ShQRSizes Mch d}
 (`NLAlib.ShiftedQR.ShQRInput`) at the five supplied buffers. -/
 theorem shqrProblem_initial_input (d : Fin 4 → ℕ) (x : (shqrProblem Mch admitted).Input d) :
     ShQRInput (d 1) x.val.1.B x.val.1.Γ x.val.1.S x.val.1.δ x.val.1.φ (0, 0) (1, 0) (2, 0)
-      (3, 0) (4, 0) x.val.1.matrix ((shqrProblem Mch admitted).initial d x) := sorry
+      (3, 0) (4, 0) x.val.1.matrix ((shqrProblem Mch admitted).initial d x) := by
+  have hb : x.val.2 = x.val.1.buffers := x.property
+  have hs : ((shqrProblem Mch admitted).initial d x).store = List.ofFn x.val.1.buffers := by
+    change List.ofFn x.val.2 = _
+    rw [hb]
+  have hA := Problem.initial_readBlock (P := shqrProblem Mch admitted) d x
+    (0 : Fin 5) (xs := matrixWords x.val.1.matrix) (by rw [hb]; rfl)
+  have hP := Problem.initial_readBlock (P := shqrProblem Mch admitted) d x
+    (2 : Fin 5) (xs := shqrParams (d 0) (d 1) x.val.1.B x.val.1.Γ x.val.1.S x.val.1.δ x.val.1.φ)
+    (by rw [hb]; rfl)
+  have hU := Problem.initial_readBlock (P := shqrProblem Mch admitted) d x
+    (3 : Fin 5) (xs := matrixWords (1 : Matrix (Fin (d 0 + 1)) (Fin (d 0 + 1)) ℂ))
+    (by rw [hb]; rfl)
+  refine ⟨?_, ?_, ?_, ⟨1, by simpa [HoldsMatrix] using hU⟩, ?_, ?_, ?_⟩
+  · simp [Mem.Live, Problem.initial]
+  · simp [Mem.Room, hs, Store.len, ShQRData.buffers, List.ofFn_succ]
+  · simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil]
+    disjoint
+  · simpa [HoldsMatrix] using hA
+  · rw [hs]
+    simp [Store.get, ShQRData.buffers, List.ofFn_succ]
+  · simpa using hP
 
 /-! ### The access model -/
 
@@ -344,7 +366,7 @@ def shqrWork (kernel : EigenvalueKernelOp → List ℕ → ℕ) (d : Fin 4 → �
 
 /-- The payload words of the five supplied buffers. -/
 def shqrInputWords (d : Fin 4 → ℕ) : ℕ :=
-  2 * ((d 0 + 1) * (d 0 + 1)) + 1 + d 2 + 2 * (d 0 + 1) + 1
+  2 * ((d 0 + 1) * (d 0 + 1)) + 1 + d 2 + 2 * ((d 0 + 1) * (d 0 + 1)) + 1
 
 theorem shqrProblem_initialBytes (d : Fin 4 → ℕ) (x : (shqrProblem Mch admitted).Input d) :
     (shqrProblem Mch admitted).initialBytes d x = shqrInputWords d := by

@@ -158,6 +158,16 @@ theorem shqrSmallEigProblem_initial_input (d : Fin 5 → ℕ)
     simp [Store.get, ShQRSmallEigData.buffers, List.ofFn_succ]
   · simpa using hP
 
+/-- The seven operands of the program's frame are live in the initial memory. -/
+theorem shqrSmallEigProblem_initial_live (d : Fin 5 → ℕ)
+    (x : (shqrSmallEigProblem Mch c₁ c₂ admitted).Input d) :
+    ((shqrSmallEigProblem Mch c₁ c₂ admitted).initial d x).Live
+      [(0, 0), (1, 0), (2, 0), (3, 0), (0, 0), (3, 0), (4, 0)] := by
+  have hl := (shqrSmallEigProblem_initial_input (admitted := admitted) d x).1
+  intro y hy
+  simp only [List.mem_cons, List.not_mem_nil, or_false] at hy
+  rcases hy with rfl | rfl | rfl | rfl | rfl | rfl | rfl <;> exact hl _ (by simp)
+
 /-! ### The work and span polynomial -/
 
 /-- The slot bounds of the program's initial indices: the five sizes, then five zero offsets. -/
@@ -216,11 +226,16 @@ theorem shqrSmallEigProgram_work_le {K : Type} (sG : ℕ) {I : Interp SmallEigOp
 
 /-- The payload words of the five supplied buffers. -/
 def shqrSmallEigInputWords (d : Fin 5 → ℕ) : ℕ :=
-  2 * ((d 0 + 1) * (d 0 + 1)) + 1 + d 2 + 2 * (d 0 + 1) + 1
+  2 * ((d 0 + 1) * (d 0 + 1)) + 1 + d 2 + 2 * ((d 0 + 1) * (d 0 + 1)) + 1
 
 theorem shqrSmallEigProblem_initialBytes (d : Fin 5 → ℕ)
     (x : (shqrSmallEigProblem Mch c₁ c₂ admitted).Input d) :
-    (shqrSmallEigProblem Mch c₁ c₂ admitted).initialBytes d x = shqrSmallEigInputWords d := sorry
+    (shqrSmallEigProblem Mch c₁ c₂ admitted).initialBytes d x = shqrSmallEigInputWords d := by
+  unfold Problem.initialBytes
+  have hb : x.val.2 = x.val.1.buffers := x.property
+  rw [hb]
+  simp [shqrSmallEigProblem, ShQRSmallEigData.buffers, List.ofFn_succ, shqrSmallEigInputWords,
+    ← x.val.1.words_eq, Nat.add_assoc]
 
 /-- **The specification of the rounded shifted QR algorithm with the small-eigenvalue program**:
 the budget, scratch and resident memory of the static count, the work and the span
@@ -246,7 +261,15 @@ theorem shqrSmallEigProgram_wp {sU sG : ℕ} {d : Fin 5 → ℕ} (hd : ShQRSmall
     Wp .total I τ (shqrSmallEigProgram sG).body (Program.environment (b := 5) d)
       (fun m => ((shqrSmallEigProblem Mch c₁ c₂ admitted).initial d x).store.EqOff
         (shqrFp (d 0) (0, 0) (3, 0) (4, 0)) m.store)
-      ((shqrSmallEigProblem Mch c₁ c₂ admitted).initial d x) := sorry
+      ((shqrSmallEigProblem Mch c₁ c₂ admitted).initial d x) := by
+  obtain ⟨hS, hL, hC, hQ, hSmp, hDisk⟩ := smallEigModel_laws hI
+  have hin := shqrSmallEigProblem_initial_input (admitted := admitted) d x
+  have hW := roundedShQRSmallEig_terminates (O := SmallEigOp) (Q := Tst) (sG := sG) hS hL hd.1
+    hQ hC hSmp hDisk x.val.1.degree_eq hin τ
+  refine wp_frame ?_ ?_ (shqrSmallEigProblem_initial_live d x) (Wp.mono hW fun _ h => h.1)
+  · simp [Program.environment, IExp.evalList, IExp.eval, shqrSmallEigDims, x.val.1.words_eq,
+      x.val.1.cap_eq, x.val.1.smallEigCap_eq, List.ofFn_succ]
+  · simp [Program.environment, Operand.evalList, Operand.eval, IExp.eval, List.ofFn_succ]
 
 /-- The program passes the storage discipline of the costs. -/
 theorem shqrSmallEigProgram_wellTyped (sG : ℕ) :
@@ -317,7 +340,22 @@ theorem roundedShQRSmallEig_algorithm_measureReal_not_accepts_le {u : ℝ}
         ((shqrSmallEigProblem Mch c₁ c₂ admitted).initial d x))
       fun _ m => ((shqrSmallEigProblem Mch c₁ c₂ admitted).initial d x).store.EqOff
           (shqrFp (d 0) (0, 0) (3, 0) (4, 0)) m.store ∧
-        ShQRSpectrum (0, 0) (3, 0) (4, 0) x.val.1.matrix x.val.1.δ m} ≤ x.val.1.φ := sorry
+        ShQRSpectrum (0, 0) (3, 0) (4, 0) x.val.1.matrix x.val.1.δ m} ≤ x.val.1.φ := by
+  have := hξ.isProbabilityMeasure
+  obtain ⟨hS, hL, hC, hQ, hSmp, hDisk⟩ := smallEigModel_laws hI
+  have hin := shqrSmallEigProblem_initial_input (admitted := admitted) d x
+  -- the headline (`roundedShQRSmallEig_measureReal_not_spectrum_le`), applied as it is stated
+  have hT := roundedShQRSmallEig_measureReal_not_spectrum_le (O := SmallEigOp) (Q := Tst)
+    (sG := sG) hS hM hL hd.1 hQ hC hIm hloc hSmp hDisk hU hG hA hB hb₁ hb₂ hHess hV hHV hκ hΓ
+    hgap hHS hδ hδS hφ hφ1 x.val.1.degree_eq hu hin hξ
+  refine (roundedShQRSmallEigAlgorithm Mch c₁ c₂ admitted sU sG).measureReal_not_accepts_le_of_wp
+    hd x I hI P ξ _ ?_
+  refine (measureReal_mono ?_).trans hT
+  intro ω hω hW
+  refine hω (wp_frame ?_ ?_ (shqrSmallEigProblem_initial_live d x) hW)
+  · simp [Program.environment, IExp.evalList, IExp.eval, shqrSmallEigDims, x.val.1.words_eq,
+      x.val.1.cap_eq, x.val.1.smallEigCap_eq, List.ofFn_succ]
+  · simp [Program.environment, Operand.evalList, Operand.eval, IExp.eval, List.ofFn_succ]
 
 
 /-! ### With the proved random-matrix tails -/

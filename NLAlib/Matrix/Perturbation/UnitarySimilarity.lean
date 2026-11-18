@@ -520,6 +520,156 @@ def IsRangeBlockTriangular {N : ℕ} (lo d : ℕ) (T : Matrix (Fin N) (Fin N) �
   ∀ i j : Fin N, ((j : ℕ) < lo ∧ lo ≤ (i : ℕ)) ∨ ((j : ℕ) < lo + d ∧ lo + d ≤ (i : ℕ)) →
     T i j = 0
 
+variable (𝕜) in
+/-- The inclusion matrix of the range $[lo, lo + d)$: its column $a$ is the standard basis
+vector at $lo + a$. -/
+private def rangeIncl {N lo d : ℕ} (hN : lo + d ≤ N) : Matrix (Fin N) (Fin d) 𝕜 :=
+  (1 : Matrix (Fin N) (Fin N) 𝕜).submatrix id (rangeEmb hN)
+
+/-- The indicator of the range $[lo, lo + d)$, the diagonal of the projector onto it. -/
+private def rangeInd {N : ℕ} (lo d : ℕ) (i : Fin N) : 𝕜 :=
+  if lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d then 1 else 0
+
+private theorem rangeEmb_injective {N lo d : ℕ} (hN : lo + d ≤ N) :
+    Function.Injective (rangeEmb hN) := fun a b h => by
+  simpa [rangeEmb, Fin.ext_iff] using h
+
+private theorem rangeEmb_mem {N lo d : ℕ} (hN : lo + d ≤ N) (a : Fin d) :
+    lo ≤ (rangeEmb hN a : ℕ) ∧ (rangeEmb hN a : ℕ) < lo + d := by
+  simp [rangeEmb]
+
+private theorem exists_rangeEmb_eq {N lo d : ℕ} (hN : lo + d ≤ N) {i : Fin N}
+    (hi : lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d) : ∃ a, rangeEmb hN a = i :=
+  ⟨⟨i - lo, by omega⟩, Fin.ext (by simp only [rangeEmb]; omega)⟩
+
+omit [Fintype p] [DecidableEq p] in
+private theorem rangeIncl_mul_apply_rangeEmb {N lo d : ℕ} (hN : lo + d ≤ N)
+    (Z : Matrix (Fin d) p 𝕜) (a : Fin d) (j : p) :
+    (rangeIncl 𝕜 hN * Z : Matrix (Fin N) p 𝕜) (rangeEmb hN a) j = Z a j := by
+  simp [rangeIncl, Matrix.mul_apply, Matrix.one_apply, (rangeEmb_injective hN).eq_iff]
+
+omit [Fintype p] [DecidableEq p] in
+private theorem rangeIncl_mul_apply_of_not {N lo d : ℕ} (hN : lo + d ≤ N)
+    (Z : Matrix (Fin d) p 𝕜) {i : Fin N} (hi : ¬(lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d))
+    (j : p) : (rangeIncl 𝕜 hN * Z : Matrix (Fin N) p 𝕜) i j = 0 := by
+  have h : ∀ a, i ≠ rangeEmb hN a := fun a h => hi (h ▸ rangeEmb_mem hN a)
+  simp [rangeIncl, Matrix.mul_apply, h]
+
+omit [Fintype p] [DecidableEq p] in
+private theorem mul_conjTranspose_rangeIncl_apply_rangeEmb {N lo d : ℕ} (hN : lo + d ≤ N)
+    (Z : Matrix p (Fin d) 𝕜) (i : p) (b : Fin d) :
+    (Z * (rangeIncl 𝕜 hN)ᴴ : Matrix p (Fin N) 𝕜) i (rangeEmb hN b) = Z i b := by
+  simp [rangeIncl, Matrix.mul_apply, Matrix.one_apply, (rangeEmb_injective hN).eq_iff]
+
+omit [Fintype p] [DecidableEq p] in
+private theorem mul_conjTranspose_rangeIncl_apply_of_not {N lo d : ℕ} (hN : lo + d ≤ N)
+    (Z : Matrix p (Fin d) 𝕜) (i : p) {j : Fin N}
+    (hj : ¬(lo ≤ (j : ℕ) ∧ (j : ℕ) < lo + d)) :
+    (Z * (rangeIncl 𝕜 hN)ᴴ : Matrix p (Fin N) 𝕜) i j = 0 := by
+  have h : ∀ a, rangeEmb hN a ≠ j := fun a h => hj (h ▸ rangeEmb_mem hN a)
+  simp [rangeIncl, Matrix.mul_apply, h]
+
+private theorem rangeIncl_conjTranspose_mul_mul {N lo d : ℕ} (hN : lo + d ≤ N)
+    (X : Matrix (Fin N) (Fin N) 𝕜) :
+    (rangeIncl 𝕜 hN)ᴴ * X * rangeIncl 𝕜 hN = X.submatrix (rangeEmb hN) (rangeEmb hN) := by
+  ext a b
+  simp [rangeIncl, Matrix.mul_apply, Matrix.one_apply]
+
+private theorem hasOrthonormalCols_rangeIncl {N lo d : ℕ} (hN : lo + d ≤ N) :
+    HasOrthonormalCols (rangeIncl 𝕜 hN) := by
+  rw [hasOrthonormalCols_iff, ← Matrix.mul_one (rangeIncl 𝕜 hN)ᴴ, rangeIncl_conjTranspose_mul_mul,
+    Matrix.submatrix_one _ (rangeEmb_injective hN)]
+
+/-- `embedBlock` through the inclusion: $\operatorname{diag}(\mathbf{I}, \mathbf{V},
+\mathbf{I}) = \mathbf{I} + \mathbf{Q}(\mathbf{V} - \mathbf{I})\mathbf{Q}^{\mathsf H}$. -/
+private theorem embedBlock_eq {N lo d : ℕ} (hN : lo + d ≤ N) (V : Matrix (Fin d) (Fin d) 𝕜) :
+    (embedBlock lo V : Matrix (Fin N) (Fin N) 𝕜) =
+      1 + rangeIncl 𝕜 hN * (V - 1) * (rangeIncl 𝕜 hN)ᴴ := by
+  ext i j
+  by_cases hi : lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d
+  · obtain ⟨a, rfl⟩ := exists_rangeEmb_eq hN hi
+    by_cases hj : lo ≤ (j : ℕ) ∧ (j : ℕ) < lo + d
+    · obtain ⟨b, rfl⟩ := exists_rangeEmb_eq hN hj
+      rw [Matrix.add_apply, mul_conjTranspose_rangeIncl_apply_rangeEmb,
+        rangeIncl_mul_apply_rangeEmb]
+      simp [embedBlock, rangeEmb, Matrix.one_apply, Fin.ext_iff]
+    · have hne : rangeEmb hN a ≠ j := fun h => hj (h ▸ rangeEmb_mem hN a)
+      rw [Matrix.add_apply, mul_conjTranspose_rangeIncl_apply_of_not hN _ _ hj,
+        Matrix.one_apply_ne hne]
+      simp [embedBlock, rangeEmb_mem hN a, hj]
+  · rw [Matrix.add_apply, Matrix.mul_assoc, rangeIncl_mul_apply_of_not hN _ hi]
+    simp [embedBlock, hi, Matrix.one_apply]
+
+/-- `embedBlock` of a unitary is unitary. -/
+theorem hasOrthonormalCols_embedBlock {N lo d : ℕ} (hN : lo + d ≤ N)
+    {V : Matrix (Fin d) (Fin d) 𝕜} (hV : HasOrthonormalCols V) :
+    HasOrthonormalCols (embedBlock lo V : Matrix (Fin N) (Fin N) 𝕜) := by
+  rw [embedBlock_eq hN, hasOrthonormalCols_iff]
+  have hQ := hasOrthonormalCols_rangeIncl (𝕜 := 𝕜) hN
+  set Q : Matrix (Fin N) (Fin d) 𝕜 := rangeIncl 𝕜 hN
+  have hQQY : ∀ Y : Matrix (Fin d) (Fin N) 𝕜, Qᴴ * (Q * Y) = Y := fun Y => by
+    rw [← Matrix.mul_assoc, hQ.conjTranspose_mul_self, Matrix.one_mul]
+  have key : (Vᴴ - 1) + (V - 1) + (Vᴴ - 1) * (V - 1) = 0 := by
+    simp only [Matrix.sub_mul, Matrix.mul_sub, hV.conjTranspose_mul_self, Matrix.mul_one,
+      Matrix.one_mul]
+    abel
+  calc _ = 1 + Q * ((Vᴴ - 1) + (V - 1) + (Vᴴ - 1) * (V - 1)) * Qᴴ := by
+        simp only [Matrix.conjTranspose_add, Matrix.conjTranspose_mul, Matrix.conjTranspose_sub,
+          Matrix.conjTranspose_one, Matrix.conjTranspose_conjTranspose, Matrix.add_mul,
+          Matrix.mul_add, Matrix.mul_one, Matrix.one_mul, Matrix.mul_assoc, hQQY]
+        abel
+    _ = 1 := by rw [key]; simp
+
+/-- The projector onto the range is diagonal: $\mathbf{Q}\mathbf{Q}^{\mathsf H} =
+\operatorname{diag}(\mathbf{1}_{[lo, lo + d)})$. -/
+private theorem rangeIncl_mul_conjTranspose {N lo d : ℕ} (hN : lo + d ≤ N) :
+    (rangeIncl 𝕜 hN * (rangeIncl 𝕜 hN)ᴴ : Matrix (Fin N) (Fin N) 𝕜) =
+      Matrix.diagonal (rangeInd lo d) := by
+  ext i j
+  by_cases hi : lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d
+  · obtain ⟨a, rfl⟩ := exists_rangeEmb_eq hN hi
+    rw [rangeIncl_mul_apply_rangeEmb]
+    simp [rangeIncl, Matrix.diagonal_apply, rangeInd, rangeEmb_mem hN a, Matrix.one_apply,
+      eq_comm]
+  · rw [rangeIncl_mul_apply_of_not hN _ hi]
+    simp [Matrix.diagonal_apply, rangeInd, hi]
+
+/-- The coupling part through the diagonal projector $\mathbf{P}$ onto the range:
+$\mathbf{P}\mathbf{X}(\mathbf{I} - \mathbf{P}) + (\mathbf{I} - \mathbf{P})\mathbf{X}\mathbf{P}$. -/
+private theorem couplingPart_eq {N : ℕ} (lo d : ℕ) (X : Matrix (Fin N) (Fin N) 𝕜) :
+    couplingPart lo d X =
+      Matrix.diagonal (rangeInd lo d) * X * (1 - Matrix.diagonal (rangeInd lo d)) +
+        (1 - Matrix.diagonal (rangeInd lo d)) * X * Matrix.diagonal (rangeInd lo d) := by
+  rw [← Matrix.diagonal_one, Matrix.diagonal_sub]
+  ext i j
+  simp only [couplingPart, rangeInd, Matrix.of_apply, Matrix.add_apply, Matrix.mul_diagonal,
+    Matrix.diagonal_mul]
+  by_cases hi : lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d <;>
+    by_cases hj : lo ≤ (j : ℕ) ∧ (j : ℕ) < lo + d <;> simp [hi, hj]
+
+/-- The outer part through the diagonal projector: $(\mathbf{I} - \mathbf{P})\mathbf{X}
+(\mathbf{I} - \mathbf{P})$ keeps the entries with both indices off the range. -/
+private theorem one_sub_mul_mul_one_sub_apply {N : ℕ} (lo d : ℕ) (X : Matrix (Fin N) (Fin N) 𝕜)
+    (i j : Fin N) :
+    ((1 - Matrix.diagonal (rangeInd lo d)) * X * (1 - Matrix.diagonal (rangeInd lo d)) :
+      Matrix (Fin N) (Fin N) 𝕜) i j =
+      if (lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d) ∨ (lo ≤ (j : ℕ) ∧ (j : ℕ) < lo + d) then 0
+      else X i j := by
+  rw [← Matrix.diagonal_one, Matrix.diagonal_sub]
+  simp only [rangeInd, Matrix.mul_diagonal, Matrix.diagonal_mul]
+  by_cases hi : lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d <;>
+    by_cases hj : lo ≤ (j : ℕ) ∧ (j : ℕ) < lo + d <;> simp [hi, hj]
+
+private theorem specNorm_diagonal_rangeInd_le {N : ℕ} (lo d : ℕ) :
+    specNorm (Matrix.diagonal (rangeInd lo d) : Matrix (Fin N) (Fin N) 𝕜) ≤ 1 :=
+  specNorm_diagonal_le zero_le_one fun i => by unfold rangeInd; split_ifs <;> simp
+
+private theorem specNorm_one_sub_diagonal_rangeInd_le {N : ℕ} (lo d : ℕ) :
+    specNorm (1 - Matrix.diagonal (rangeInd lo d) : Matrix (Fin N) (Fin N) 𝕜) ≤ 1 := by
+  rw [← Matrix.diagonal_one, Matrix.diagonal_sub]
+  exact specNorm_diagonal_le zero_le_one fun i => by
+    simp only [rangeInd]; split_ifs <;> simp
+
 /-- A step on the range block $[lo, lo + d)$ of a block upper triangular matrix, with computed
 couplings (the range form of `NLAlib.IsPerturbedUnitarySimilarBy.fromBlocks₁₁` and
 `NLAlib.IsPerturbedUnitarySimilarBy.fromBlocks₂₂`): if the block of `T'` is a step by $\mathbf{V}$
@@ -530,13 +680,80 @@ $\widetilde{\mathbf{V}} = \operatorname{diag}(\mathbf{I}, \mathbf{V}, \mathbf{I}
 a step on `T` by $\widetilde{\mathbf{V}}$ with backward error $\varepsilon + \rho$. -/
 theorem IsPerturbedUnitarySimilarBy.of_range_block {N lo d : ℕ} (hN : lo + d ≤ N)
     {T T' : Matrix (Fin N) (Fin N) 𝕜} {V : Matrix (Fin d) (Fin d) 𝕜} {ε ρ : ℝ}
-    (hT : IsRangeBlockTriangular lo d T) (hT' : IsRangeBlockTriangular lo d T')
+    (_hT : IsRangeBlockTriangular lo d T) (_hT' : IsRangeBlockTriangular lo d T')
     (h : IsPerturbedUnitarySimilarBy V (T.submatrix (rangeEmb hN) (rangeEmb hN))
       (T'.submatrix (rangeEmb hN) (rangeEmb hN)) ε)
     (hout : ∀ i j : Fin N, ¬(lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d) →
       ¬(lo ≤ (j : ℕ) ∧ (j : ℕ) < lo + d) → T' i j = T i j)
     (hcpl : specNorm (couplingPart lo d (T' - (embedBlock lo V)ᴴ * T * embedBlock lo V)) ≤ ρ) :
-    IsPerturbedUnitarySimilarBy (embedBlock lo V) T T' (ε + ρ) := sorry
+    IsPerturbedUnitarySimilarBy (embedBlock lo V) T T' (ε + ρ) := by
+  obtain ⟨hV, E, hE, hblk⟩ := h
+  have hQ := hasOrthonormalCols_rangeIncl (𝕜 := 𝕜) hN
+  have hW := hasOrthonormalCols_embedBlock (N := N) hN hV
+  have hWeq := embedBlock_eq (𝕜 := 𝕜) (N := N) hN V
+  have hP := rangeIncl_mul_conjTranspose (𝕜 := 𝕜) hN
+  have hcp : ∀ X : Matrix (Fin N) (Fin N) 𝕜, couplingPart lo d X = _ := couplingPart_eq lo d
+  have hout' := one_sub_mul_mul_one_sub_apply (𝕜 := 𝕜) (N := N) lo d
+  have hsub := rangeIncl_conjTranspose_mul_mul (𝕜 := 𝕜) hN
+  set Q : Matrix (Fin N) (Fin d) 𝕜 := rangeIncl 𝕜 hN
+  set P : Matrix (Fin N) (Fin N) 𝕜 := Matrix.diagonal (rangeInd lo d)
+  set W : Matrix (Fin N) (Fin N) 𝕜 := embedBlock lo V
+  set D := T' - Wᴴ * T * W with hD
+  have hWQ : W * Q = Q * V := by
+    rw [hWeq]
+    simp only [Matrix.add_mul, Matrix.one_mul, Matrix.mul_assoc, hQ.conjTranspose_mul_self,
+      Matrix.mul_one, Matrix.mul_sub]
+    abel
+  have hQD : Qᴴ * D * Q = Vᴴ * E * V := by
+    have h1 : Qᴴ * (Wᴴ * T * W) * Q = Vᴴ * (Qᴴ * T * Q) * V := by
+      rw [show Qᴴ * (Wᴴ * T * W) * Q = (W * Q)ᴴ * T * (W * Q) by
+        simp only [Matrix.conjTranspose_mul, Matrix.mul_assoc], hWQ]
+      simp only [Matrix.conjTranspose_mul, Matrix.mul_assoc]
+    rw [hD, Matrix.mul_sub, Matrix.sub_mul, h1, hsub, hsub, hblk]
+    simp only [Matrix.mul_add, Matrix.add_mul]
+    abel
+  have h1P : (1 - P) * Q = 0 := by
+    rw [← hP, Matrix.sub_mul, Matrix.one_mul, Matrix.mul_assoc, hQ.conjTranspose_mul_self,
+      Matrix.mul_one, sub_self]
+  have hP1 : Qᴴ * (1 - P) = 0 := by
+    rw [← hP, Matrix.mul_sub, Matrix.mul_one, ← Matrix.mul_assoc, hQ.conjTranspose_mul_self,
+      Matrix.one_mul, sub_self]
+  have hPW : (1 - P) * Wᴴ = 1 - P := by
+    rw [hWeq]
+    simp only [Matrix.conjTranspose_add, Matrix.conjTranspose_one, Matrix.conjTranspose_mul,
+      Matrix.conjTranspose_conjTranspose, Matrix.mul_add, Matrix.mul_one, ← Matrix.mul_assoc,
+      h1P, Matrix.zero_mul, add_zero]
+  have hWP : W * (1 - P) = 1 - P := by
+    rw [hWeq]
+    simp only [Matrix.add_mul, Matrix.one_mul, Matrix.mul_assoc, hP1, Matrix.mul_zero, add_zero]
+  have hDout : (1 - P) * D * (1 - P) = 0 := by
+    have h1 : (1 - P) * (Wᴴ * T * W) * (1 - P) = (1 - P) * T * (1 - P) := by
+      rw [show (1 - P) * (Wᴴ * T * W) * (1 - P) = ((1 - P) * Wᴴ) * T * (W * (1 - P)) by
+        simp only [Matrix.mul_assoc], hPW, hWP]
+    rw [hD, show (1 - P) * (T' - Wᴴ * T * W) * (1 - P) =
+      (1 - P) * T' * (1 - P) - (1 - P) * (Wᴴ * T * W) * (1 - P) by noncomm_ring, h1, sub_eq_zero]
+    ext i j
+    rw [hout', hout']
+    split_ifs with hij
+    · rfl
+    · rw [not_or] at hij
+      exact hout i j hij.1 hij.2
+  have hDdec : D = Q * (Vᴴ * E * V) * Qᴴ + couplingPart lo d D := by
+    have e : D = P * D * P + (P * D * (1 - P) + (1 - P) * D * P) + (1 - P) * D * (1 - P) := by
+      noncomm_ring
+    rw [hcp, ← hQD, ← hP]
+    conv_lhs => rw [e, hDout, ← hP]
+    simp only [Matrix.mul_assoc, add_zero]
+  have hDn : specNorm D ≤ ε + ρ := by
+    rw [hDdec]
+    refine (specNorm_add_le _ _).trans (add_le_add ?_ hcpl)
+    rwa [hQ.specNorm_mul_conjTranspose_right, hQ.specNorm_mul_left,
+      hV.specNorm_conjTranspose_mul_mul]
+  refine ⟨hW, W * D * Wᴴ, ?_, ?_⟩
+  · rwa [hW.specNorm_mul_conjTranspose_right, hW.specNorm_mul_left]
+  · rw [Matrix.mul_add, Matrix.add_mul, show Wᴴ * (W * D * Wᴴ) * W = (Wᴴ * W) * D * (Wᴴ * W) by
+      simp only [Matrix.mul_assoc], hW.conjTranspose_mul_self, Matrix.one_mul, Matrix.mul_one, hD]
+    abel
 
 /-! ### The tracked relation: a stored accumulator and the exact unitary -/
 
@@ -566,7 +783,7 @@ theorem IsTrackedUnitarySimilar.refl (U A : Matrix n n 𝕜) :
 /-- Tracked steps compose: the backward errors add, the relative accumulator errors compose
 as $(1 + \varepsilon_U)(1 + \varepsilon_U') - 1$. -/
 theorem IsTrackedUnitarySimilar.trans {εU εT εU' εT' : ℝ} {U A U' A' U'' A'' : Matrix n n 𝕜}
-    (hεU : 0 ≤ εU) (hεU' : 0 ≤ εU') (h : IsTrackedUnitarySimilar εU εT U A U' A')
+    (_hεU : 0 ≤ εU) (hεU' : 0 ≤ εU') (h : IsTrackedUnitarySimilar εU εT U A U' A')
     (h' : IsTrackedUnitarySimilar εU' εT' U' A' U'' A'') :
     IsTrackedUnitarySimilar ((1 + εU) * (1 + εU') - 1) (εT + εT') U A U'' A'' := by
   obtain ⟨V, hV, hU'⟩ := h
@@ -614,7 +831,7 @@ $\varepsilon_U \le 1/8$, $\|\mathbf{A} - \widehat{\mathbf{U}}\widehat{\mathbf{T}
 \mathbf{I}\|_2 \le 2\varepsilon_U + \varepsilon_U^2$. -/
 theorem IsTrackedUnitarySimilar.specNorm_sub_mul_mul_conjTranspose_le {εU εT : ℝ}
     {A U T : Matrix n n 𝕜} (h : IsTrackedUnitarySimilar εU εT 1 A U T) (hεU0 : 0 ≤ εU)
-    (hεU : εU ≤ 1 / 8) :
+    (_hεU : εU ≤ 1 / 8) :
     specNorm (A - U * T * Uᴴ) ≤ εT + (2 * εU + εU ^ 2) * (specNorm A + εT) ∧
       specNorm (Uᴴ * U - 1) ≤ 2 * εU + εU ^ 2 := by
   obtain ⟨V, E, hV, hΔ, hE, hAE⟩ := h.exists_eq_mul_mul_conjTranspose hεU0
@@ -682,6 +899,59 @@ theorem IsTrackedUnitarySimilar.lift_leaf_block {N lo d : ℕ} (hN : lo + d ≤ 
       ¬(lo ≤ (j : ℕ) ∧ (j : ℕ) < lo + d) → T' i j = T i j)
     (hcpl : specNorm (couplingPart lo d (T' - (embedBlock lo Ub)ᴴ * T * embedBlock lo Ub)) ≤ ρ)
     (hU : specNorm (U' - U * embedBlock lo Ub) ≤ ρU * specNorm U) :
-    IsTrackedUnitarySimilar (εU + ρU) (εT + ρ + 2 * εU * specNorm T) U T U' T' := sorry
+    IsTrackedUnitarySimilar (εU + ρU) (εT + ρ + 2 * εU * specNorm T) U T U' T' := by
+  obtain ⟨Wb, hWb, hUb⟩ := hleaf
+  rw [← hblk] at hWb
+  have hd : specNorm (Ub - Wb) ≤ εU := by
+    rw [Matrix.one_mul] at hUb
+    exact hUb.trans (mul_le_of_le_one_right hεU0 specNorm_one_le)
+  have hQ := hasOrthonormalCols_rangeIncl (𝕜 := 𝕜) hN
+  have hP := rangeIncl_mul_conjTranspose (𝕜 := 𝕜) hN
+  have hEb := embedBlock_eq (𝕜 := 𝕜) (N := N) hN Ub
+  have hEw := embedBlock_eq (𝕜 := 𝕜) (N := N) hN Wb
+  have hcp : ∀ X : Matrix (Fin N) (Fin N) 𝕜, couplingPart lo d X = _ := couplingPart_eq lo d
+  have h1P := specNorm_one_sub_diagonal_rangeInd_le (𝕜 := 𝕜) (N := N) lo d
+  set Q : Matrix (Fin N) (Fin d) 𝕜 := rangeIncl 𝕜 hN
+  set P : Matrix (Fin N) (Fin N) 𝕜 := Matrix.diagonal (rangeInd lo d)
+  set Vb : Matrix (Fin N) (Fin N) 𝕜 := embedBlock lo Ub
+  set Vw : Matrix (Fin N) (Fin N) 𝕜 := embedBlock lo Wb
+  have hQQY : ∀ Y : Matrix (Fin d) (Fin N) 𝕜, Qᴴ * (Q * Y) = Y := fun Y => by
+    rw [← Matrix.mul_assoc, hQ.conjTranspose_mul_self, Matrix.one_mul]
+  have hΔ : Vb - Vw = Q * (Ub - Wb) * Qᴴ := by
+    rw [hEb, hEw]
+    simp only [Matrix.mul_sub, Matrix.sub_mul]
+    abel
+  have hΔn : specNorm (Vb - Vw) ≤ εU := by
+    rwa [hΔ, hQ.specNorm_mul_conjTranspose_right, hQ.specNorm_mul_left]
+  have hT0 := specNorm_nonneg T
+  refine ⟨Vw, ?_, ?_⟩
+  · rw [add_assoc]
+    refine IsPerturbedUnitarySimilarBy.of_range_block hN hT hT' hWb hout ?_
+    have e : couplingPart lo d (T' - Vwᴴ * T * Vw) = couplingPart lo d (T' - Vbᴴ * T * Vb) +
+        ((Vb - Vw)ᴴ * T * (1 - P) + (1 - P) * T * (Vb - Vw)) := by
+      rw [hcp, hcp, hΔ, ← hP, hEb, hEw]
+      simp only [Matrix.conjTranspose_add, Matrix.conjTranspose_one, Matrix.conjTranspose_mul,
+        Matrix.conjTranspose_sub, Matrix.conjTranspose_conjTranspose, Matrix.mul_add,
+        Matrix.add_mul, Matrix.mul_sub, Matrix.sub_mul, Matrix.mul_one, Matrix.one_mul,
+        Matrix.mul_assoc, hQQY]
+      abel
+    rw [e]
+    refine (specNorm_add_le _ _).trans (add_le_add hcpl ((specNorm_add_le _ _).trans ?_))
+    have h₁ : specNorm ((Vb - Vw)ᴴ * T * (1 - P)) ≤ εU * specNorm T * 1 :=
+      (specNorm_mul_le _ _).trans (mul_le_mul ((specNorm_mul_le _ _).trans
+        (mul_le_mul_of_nonneg_right (by rwa [specNorm_conjTranspose]) hT0)) h1P
+        (specNorm_nonneg _) (mul_nonneg hεU0 hT0))
+    have h₂ : specNorm ((1 - P) * T * (Vb - Vw)) ≤ 1 * specNorm T * εU :=
+      (specNorm_mul_le _ _).trans (mul_le_mul ((specNorm_mul_le _ _).trans
+        (mul_le_mul_of_nonneg_right h1P hT0)) hΔn (specNorm_nonneg _) (by positivity))
+    linarith
+  · have e : U' - U * Vw = (U' - U * Vb) + U * (Vb - Vw) := by
+      rw [Matrix.mul_sub]
+      abel
+    rw [e]
+    refine (specNorm_add_le _ _).trans ?_
+    have := (specNorm_mul_le U (Vb - Vw)).trans
+      (mul_le_mul_of_nonneg_left hΔn (specNorm_nonneg U))
+    linarith
 
 end NLAlib

@@ -252,4 +252,30 @@ theorem IsPerturbedUnitarySimilar.exists_isEigenvalueListing {n : ℕ}
   rw [isEigenvalueListing_iff] at hB ⊢
   rwa [charpoly_mul_mul_of_mul_eq_one hU.conjTranspose_mul_self] at hB
 
+/-! ### The conditioned diagonalizable class -/
+
+/-- **The class $(B, \Gamma)$**: $\mathbf{A}$ is diagonalizable by $\mathbf{V}$ with
+$\kappa(\mathbf{V}) \le B$ (`NLAlib.pseudoConditionNumber`) and eigenvalues at mutual distance at
+least $\Gamma$. The hypothesis of the shifted QR analysis
+[BanksGarzaVargasSrivastava2022, Theorem 1.2], named; a diagonalizable matrix in Mathlib's sense
+(`NLAlib.IsConditionedDiagonalizable.isDiagonalizable`). -/
+def IsConditionedDiagonalizable {n : Type*} [Fintype n] [DecidableEq n] (B Γ : ℝ)
+    (A : Matrix n n ℂ) : Prop :=
+  ∃ (V : Matrix n n ℂ) (d : n → ℂ), IsUnit V ∧ A * V = V * Matrix.diagonal d ∧
+    pseudoConditionNumber V ≤ B ∧ ∀ i j, i ≠ j → Γ ≤ ‖d i - d j‖
+
+/-- A matrix of the class is diagonalizable. -/
+theorem IsConditionedDiagonalizable.isDiagonalizable {n : Type*} [Fintype n] [DecidableEq n]
+    {B Γ : ℝ} {A : Matrix n n ℂ} (h : IsConditionedDiagonalizable B Γ A) :
+    IsDiagonalizable A := sorry
+
+/-- **The class through a perturbed unitary similarity**: a step by any unitary with backward
+error at most $\Gamma/(16(n+1)B)$ keeps the matrix in the class $(2B, \Gamma/2)$ (from
+`NLAlib.exists_pseudoConditionNumber_le_and_le_norm_sub`; the condition number and the gaps are
+unitarily invariant). -/
+theorem IsConditionedDiagonalizable.of_isPerturbedUnitarySimilarBy {n : ℕ} {B Γ ε : ℝ}
+    {A H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hA : IsConditionedDiagonalizable B Γ A)
+    (hΓ : 0 < Γ) (h : IsPerturbedUnitarySimilarBy V A H ε) (hε : ε ≤ Γ / (16 * (n + 1) * B)) :
+    IsConditionedDiagonalizable (2 * B) (Γ / 2) H := sorry
+
 end NLAlib

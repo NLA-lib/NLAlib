@@ -338,4 +338,18 @@ theorem exists_isScalar {u : ℝ} (hu : 0 ≤ u) :
   ⟨ℝ, id, exactMachine, Interp.ofFns exactMachine.fn, stdModel_exact hu,
     isScalar_ofFns _ _ fun _ => rfl⟩
 
+/-- The literal zero is exact under the standard model. -/
+theorem StdModel.dec_lit_zero {u : ℝ} {dec : K → ℝ} {M : Machine K} (h : StdModel u dec M) :
+    dec (M.lit 0) = 0 := by
+  have := h.lit 0
+  simp only [Rat.cast_zero, abs_zero, mul_zero, sub_zero] at this
+  exact abs_nonpos_iff.mp this
+
+/-- A rounded product with an exact zero factor is exactly zero under the standard model. -/
+theorem StdModel.dec_mul_of_eq_zero {u : ℝ} {dec : K → ℝ} {M : Machine K}
+    (h : StdModel u dec M) (a : K) {b : K} (hb : dec b = 0) : dec (M.mul a b) = 0 := by
+  have := h.mul a b
+  simp only [hb, MulZeroClass.mul_zero, abs_zero, sub_zero] at this
+  exact abs_nonpos_iff.mp this
+
 end NLAlib.Ops

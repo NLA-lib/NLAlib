@@ -155,4 +155,13 @@ theorem isBackwardErrorRel_isPerturbedUnitaryPair {a b : ℝ} (ha : 0 ≤ a) (hb
   ⟨IsPerturbedUnitaryPair.refl, IsPerturbedUnitaryPair.trans,
     IsPerturbedUnitaryPair.mono ha hb⟩
 
+/-- **The bridge to the witnessed relation**: at the first scale $0$ the pair relation leaves no
+error on the first component, so on $(\mathbf{X}^{\mathsf H}, \mathbf{A})$ with $\mathbf{X}$
+unitary it is the witnessed similarity by $\mathbf{X}^{\mathsf H}\mathbf{X}'$. A chain of witnessed
+steps composes through `NLAlib.Ops.BackwardStep` with
+`NLAlib.isBackwardErrorRel_isPerturbedUnitaryPair` at the scales $(0, 1)$. -/
+theorem isPerturbedUnitaryPair_zero_iff {X X' A B : Matrix n n 𝕜} {ε : ℝ} (hX : X * Xᴴ = 1) :
+    IsPerturbedUnitaryPair 0 1 ε (Xᴴ, A) (X'ᴴ, B) ↔
+      IsPerturbedUnitarySimilarBy (Xᴴ * X') A B ε := sorry
+
 end NLAlib

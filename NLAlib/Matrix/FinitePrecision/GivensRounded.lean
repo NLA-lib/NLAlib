@@ -415,13 +415,13 @@ theorem Ops.StdModel.norm_linearWords_sub_le {M : Machine ℝ} {u : ℝ} (hM : S
   exact norm_mk_sub_le (mul_nonneg (mul_nonneg (by norm_num) hu) hSn)
     (by rw [hzre]; exact hre') (by rw [hzim]; exact him') (two_sq_mul_le hE0 hEu _)
 
-variable {n : ℕ}
+variable {n : ℕ} {m : Type*}
 
 /-- `A'` is the rotation of the rows $i, j$ of `A` by the exact Givens rotation of the
 coefficients $(c, s)$, computed within the relative error $\eta$ per column: the rows other than
 $i, j$ are kept, and for every column $k$ the computed pair $(\mathbf{A}'_{ik}, \mathbf{A}'_{jk})$
 is within $\eta\,\|(\mathbf{A}_{ik}, \mathbf{A}_{jk})\|$ of the rotated pair. -/
-def IsRoundedRowRotation (η : ℝ) (i j : Fin n) (c s : ℂ) (A A' : Matrix (Fin n) (Fin n) ℂ) :
+def IsRoundedRowRotation (η : ℝ) (i j : Fin n) (c s : ℂ) (A A' : Matrix (Fin n) m ℂ) :
     Prop :=
   (∀ r k, r ≠ i → r ≠ j → A' r k = A r k) ∧
     ∀ k, Real.sqrt (‖A' i k - (givens i j c s * A) i k‖ ^ 2 +
@@ -429,7 +429,7 @@ def IsRoundedRowRotation (η : ℝ) (i j : Fin n) (c s : ℂ) (A A' : Matrix (Fi
 
 /-- `A'` is the rotation of the columns $i, j$ of `A` by the conjugate transpose of the exact
 Givens rotation of $(c, s)$, computed within the relative error $\eta$ per row. -/
-def IsRoundedColRotation (η : ℝ) (i j : Fin n) (c s : ℂ) (A A' : Matrix (Fin n) (Fin n) ℂ) :
+def IsRoundedColRotation (η : ℝ) (i j : Fin n) (c s : ℂ) (A A' : Matrix m (Fin n) ℂ) :
     Prop :=
   (∀ r k, k ≠ i → k ≠ j → A' r k = A r k) ∧
     ∀ r, Real.sqrt (‖A' r i - (A * (givens i j c s)ᴴ) r i‖ ^ 2 +

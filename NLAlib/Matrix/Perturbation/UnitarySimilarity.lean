@@ -49,6 +49,13 @@ $$\mathbf{U}_2^{\mathsf{H}}\bigl(\mathbf{U}_1^{\mathsf{H}}(\mathbf{A} + \mathbf{
 * `NLAlib.IsPerturbedUnitarySimilar.exists_fromBlocks₁₁`,
   `NLAlib.IsPerturbedUnitarySimilar.exists_fromBlocks₂₂`: a step on one diagonal block of a block
   upper triangular matrix is a step on the whole matrix.
+* `NLAlib.IsPerturbedUnitarySimilarBy`, `NLAlib.isPerturbedUnitarySimilar_iff_exists_by`,
+  `NLAlib.IsPerturbedUnitarySimilarBy.fromBlocks₁₁`,
+  `NLAlib.IsPerturbedUnitarySimilarBy.of_range_block`:
+  the relation with its unitary named, and its block lifts with computed couplings.
+* `NLAlib.IsTrackedUnitarySimilar`, `NLAlib.IsTrackedUnitarySimilar.trans`,
+  `NLAlib.IsTrackedUnitarySimilar.specNorm_sub_mul_mul_conjTranspose_le`: a stored accumulator
+  tracked with a relative error, and the computed Schur form.
 * `NLAlib.IsPerturbedUnitarySimilar.specNorm_le`: $\|\mathbf{B}\|_2 \le \|\mathbf{A}\|_2 +
   \varepsilon$.
 -/
@@ -368,5 +375,192 @@ theorem IsPerturbedUnitarySimilar.exists_fromBlocks₂₂ {A₂ B₂ : Matrix p 
   · rw [Matrix.fromBlocks_add, Matrix.fromBlocks_conjTranspose, Matrix.fromBlocks_multiply,
       Matrix.fromBlocks_multiply]
     simp
+
+/-! ### The witnessed relation: the unitary named -/
+
+/-- $\mathbf{B}$ is a perturbed unitary similarity of $\mathbf{A}$ by the named unitary
+$\mathbf{V}$ with backward error $\varepsilon$: $\mathbf{V}$ has orthonormal columns and
+$\mathbf{B} = \mathbf{V}^{\mathsf{H}}(\mathbf{A} + \mathbf{E})\mathbf{V}$ with
+$\|\mathbf{E}\|_2 \le \varepsilon$. It is `NLAlib.IsPerturbedUnitarySimilar` with its unitary
+exposed (`NLAlib.isPerturbedUnitarySimilar_iff_exists_by`), for consumers that need the unitary:
+computed Schur vectors, an accumulated product of rotations. -/
+def IsPerturbedUnitarySimilarBy (V A B : Matrix n n 𝕜) (ε : ℝ) : Prop :=
+  HasOrthonormalCols V ∧ ∃ E : Matrix n n 𝕜, specNorm E ≤ ε ∧ B = Vᴴ * (A + E) * V
+
+/-- Forgetting the unitary. -/
+theorem IsPerturbedUnitarySimilarBy.isPerturbedUnitarySimilar {V A B : Matrix n n 𝕜} {ε : ℝ}
+    (h : IsPerturbedUnitarySimilarBy V A B ε) : IsPerturbedUnitarySimilar A B ε := by
+  obtain ⟨hV, E, hE, rfl⟩ := h
+  exact ⟨V, E, hV, hE, rfl⟩
+
+/-- The hidden unitary of a perturbed unitary similarity can be named. -/
+theorem isPerturbedUnitarySimilar_iff_exists_by {A B : Matrix n n 𝕜} {ε : ℝ} :
+    IsPerturbedUnitarySimilar A B ε ↔ ∃ V, IsPerturbedUnitarySimilarBy V A B ε := by
+  constructor
+  · rintro ⟨V, E, hV, hE, rfl⟩
+    exact ⟨V, hV, E, hE, rfl⟩
+  · rintro ⟨V, h⟩
+    exact h.isPerturbedUnitarySimilar
+
+/-- The identity carries every matrix to itself with backward error $0$. -/
+theorem IsPerturbedUnitarySimilarBy.refl (A : Matrix n n 𝕜) :
+    IsPerturbedUnitarySimilarBy 1 A A 0 := sorry
+
+/-- Backward errors add and the unitaries multiply: $\mathbf{V}\mathbf{W}$ carries $\mathbf{A}$
+to $\mathbf{C}$. -/
+theorem IsPerturbedUnitarySimilarBy.trans {V W A B C : Matrix n n 𝕜} {ε₁ ε₂ : ℝ}
+    (h₁ : IsPerturbedUnitarySimilarBy V A B ε₁) (h₂ : IsPerturbedUnitarySimilarBy W B C ε₂) :
+    IsPerturbedUnitarySimilarBy (V * W) A C (ε₁ + ε₂) := sorry
+
+/-- A larger backward error is weaker. -/
+theorem IsPerturbedUnitarySimilarBy.mono {V A B : Matrix n n 𝕜} {ε ε' : ℝ}
+    (h : IsPerturbedUnitarySimilarBy V A B ε) (hε : ε ≤ ε') :
+    IsPerturbedUnitarySimilarBy V A B ε' := by
+  obtain ⟨hV, E, hE, rfl⟩ := h
+  exact ⟨hV, E, hE.trans hε, rfl⟩
+
+/-- The witnessed lift to a leading diagonal block with a computed coupling block: a step
+by $\mathbf{V}$ on $\mathbf{A}_1$ and a computed coupling $\mathbf{X}'$ within $\rho$ of
+$\mathbf{V}^{\mathsf H}\mathbf{X}$ give a step by $\operatorname{diag}(\mathbf{V}, \mathbf{I})$ on
+the block upper triangular matrix, with backward error $\varepsilon + \rho$. The witnessed form
+of `NLAlib.IsPerturbedUnitarySimilar.exists_fromBlocks₁₁`. -/
+theorem IsPerturbedUnitarySimilarBy.fromBlocks₁₁ {V A₁ B₁ : Matrix m m 𝕜} {ε ρ : ℝ}
+    (h : IsPerturbedUnitarySimilarBy V A₁ B₁ ε) {X X' : Matrix m p 𝕜} (A₂ : Matrix p p 𝕜)
+    (hX : specNorm (X' - Vᴴ * X) ≤ ρ) :
+    IsPerturbedUnitarySimilarBy (Matrix.fromBlocks V 0 0 1) (Matrix.fromBlocks A₁ X 0 A₂)
+      (Matrix.fromBlocks B₁ X' 0 A₂) (ε + ρ) := sorry
+
+/-- The witnessed lift to a trailing diagonal block with a computed coupling block: a step
+by $\mathbf{V}$ on $\mathbf{A}_2$ and a computed coupling $\mathbf{X}'$ within $\rho$ of
+$\mathbf{X}\mathbf{V}$ give a step by $\operatorname{diag}(\mathbf{I}, \mathbf{V})$, with
+backward error $\varepsilon + \rho$. The witnessed form of
+`NLAlib.IsPerturbedUnitarySimilar.exists_fromBlocks₂₂`. -/
+theorem IsPerturbedUnitarySimilarBy.fromBlocks₂₂ {V A₂ B₂ : Matrix p p 𝕜} {ε ρ : ℝ}
+    (h : IsPerturbedUnitarySimilarBy V A₂ B₂ ε) (A₁ : Matrix m m 𝕜) {X X' : Matrix m p 𝕜}
+    (hX : specNorm (X' - X * V) ≤ ρ) :
+    IsPerturbedUnitarySimilarBy (Matrix.fromBlocks 1 0 0 V) (Matrix.fromBlocks A₁ X 0 A₂)
+      (Matrix.fromBlocks A₁ X' 0 B₂) (ε + ρ) := sorry
+
+/-! ### Range blocks of a matrix of order `N` -/
+
+/-- The index $lo + i$ of the range $[lo, lo + d)$ of `Fin N`. -/
+def rangeEmb {N lo d : ℕ} (h : lo + d ≤ N) (i : Fin d) : Fin N :=
+  ⟨lo + i, by omega⟩
+
+/-- The square matrix acting by $\mathbf{V}$ on the range $[lo, lo + d)$ and by the identity
+off it: $\operatorname{diag}(\mathbf{I}_{lo}, \mathbf{V}, \mathbf{I})$. -/
+def embedBlock {N : ℕ} (lo : ℕ) {d : ℕ} (V : Matrix (Fin d) (Fin d) 𝕜) :
+    Matrix (Fin N) (Fin N) 𝕜 :=
+  Matrix.of fun i j =>
+    if hi : lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d then
+      if hj : lo ≤ (j : ℕ) ∧ (j : ℕ) < lo + d then V ⟨i - lo, by omega⟩ ⟨j - lo, by omega⟩
+      else 0
+    else if i = j then 1 else 0
+
+/-- The coupling part of `X` for the range $[lo, lo + d)$: the entries with exactly one index
+in the range, zero elsewhere. -/
+def couplingPart {N : ℕ} (lo d : ℕ) (X : Matrix (Fin N) (Fin N) 𝕜) : Matrix (Fin N) (Fin N) 𝕜 :=
+  Matrix.of fun i j =>
+    if (lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d) ↔ (lo ≤ (j : ℕ) ∧ (j : ℕ) < lo + d) then 0 else X i j
+
+/-- `T` is block upper triangular for the three ranges $[0, lo)$, $[lo, lo + d)$,
+$[lo + d, N)$: the entries below the diagonal blocks vanish. -/
+def IsRangeBlockTriangular {N : ℕ} (lo d : ℕ) (T : Matrix (Fin N) (Fin N) 𝕜) : Prop :=
+  ∀ i j : Fin N, ((j : ℕ) < lo ∧ lo ≤ (i : ℕ)) ∨ ((j : ℕ) < lo + d ∧ lo + d ≤ (i : ℕ)) →
+    T i j = 0
+
+/-- A step on the range block $[lo, lo + d)$ of a block upper triangular matrix, with computed
+couplings (the range form of `NLAlib.IsPerturbedUnitarySimilarBy.fromBlocks₁₁` and
+`NLAlib.IsPerturbedUnitarySimilarBy.fromBlocks₂₂`): if the block of `T'` is a step by $\mathbf{V}$
+on the block of `T` with backward error $\varepsilon$, `T'` agrees with `T` off the range, keeps
+the zero blocks, and its couplings are within $\rho$ of the exact
+$\widetilde{\mathbf{V}}^{\mathsf H}\mathbf{T}\widetilde{\mathbf{V}}$,
+$\widetilde{\mathbf{V}} = \operatorname{diag}(\mathbf{I}, \mathbf{V}, \mathbf{I})$, then `T'` is
+a step on `T` by $\widetilde{\mathbf{V}}$ with backward error $\varepsilon + \rho$. -/
+theorem IsPerturbedUnitarySimilarBy.of_range_block {N lo d : ℕ} (hN : lo + d ≤ N)
+    {T T' : Matrix (Fin N) (Fin N) 𝕜} {V : Matrix (Fin d) (Fin d) 𝕜} {ε ρ : ℝ}
+    (hT : IsRangeBlockTriangular lo d T) (hT' : IsRangeBlockTriangular lo d T')
+    (h : IsPerturbedUnitarySimilarBy V (T.submatrix (rangeEmb hN) (rangeEmb hN))
+      (T'.submatrix (rangeEmb hN) (rangeEmb hN)) ε)
+    (hout : ∀ i j : Fin N, ¬(lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d) →
+      ¬(lo ≤ (j : ℕ) ∧ (j : ℕ) < lo + d) → T' i j = T i j)
+    (hcpl : specNorm (couplingPart lo d (T' - (embedBlock lo V)ᴴ * T * embedBlock lo V)) ≤ ρ) :
+    IsPerturbedUnitarySimilarBy (embedBlock lo V) T T' (ε + ρ) := sorry
+
+/-! ### The tracked relation: a stored accumulator and the exact unitary -/
+
+/-- The tracked unitary similarity with errors $(\varepsilon_U, \varepsilon_T)$: an exact
+unitary $\mathbf{V}$ carries $\mathbf{A}$ to $\mathbf{A}'$ with backward error $\varepsilon_T$
+(`NLAlib.IsPerturbedUnitarySimilarBy`), and the stored accumulator moves from $\mathbf{U}$ to
+within $\varepsilon_U\|\mathbf{U}\|_2$ of $\mathbf{U}\mathbf{V}$ (a relative error, so that
+accumulations telescope as $(1 + a)(1 + b) - 1$). The state relation of a Schur pipeline: the
+two errors stay apart, $\varepsilon_U$ a deterministic rounding error, $\varepsilon_T$ the
+backward error. -/
+def IsTrackedUnitarySimilar (εU εT : ℝ) (U A U' A' : Matrix n n 𝕜) : Prop :=
+  ∃ V : Matrix n n 𝕜, IsPerturbedUnitarySimilarBy V A A' εT ∧
+    specNorm (U' - U * V) ≤ εU * specNorm U
+
+/-- A witnessed step with an exactly updated accumulator is a tracked step with $\varepsilon_U
+= 0$. -/
+theorem IsTrackedUnitarySimilar.of_by {V A A' U : Matrix n n 𝕜} {εT : ℝ}
+    (h : IsPerturbedUnitarySimilarBy V A A' εT) :
+    IsTrackedUnitarySimilar 0 εT U A (U * V) A' :=
+  ⟨V, h, by simp⟩
+
+/-- No step: errors $0$. -/
+theorem IsTrackedUnitarySimilar.refl (U A : Matrix n n 𝕜) :
+    IsTrackedUnitarySimilar 0 0 U A U A := sorry
+
+/-- Tracked steps compose: the backward errors add, the relative accumulator errors compose
+as $(1 + \varepsilon_U)(1 + \varepsilon_U') - 1$. -/
+theorem IsTrackedUnitarySimilar.trans {εU εT εU' εT' : ℝ} {U A U' A' U'' A'' : Matrix n n 𝕜}
+    (hεU : 0 ≤ εU) (hεU' : 0 ≤ εU') (h : IsTrackedUnitarySimilar εU εT U A U' A')
+    (h' : IsTrackedUnitarySimilar εU' εT' U' A' U'' A'') :
+    IsTrackedUnitarySimilar ((1 + εU) * (1 + εU') - 1) (εT + εT') U A U'' A'' := sorry
+
+/-- Larger errors are weaker. -/
+theorem IsTrackedUnitarySimilar.mono {εU εT εU' εT' : ℝ} {U A U' A' : Matrix n n 𝕜}
+    (h : IsTrackedUnitarySimilar εU εT U A U' A') (hU : εU ≤ εU') (hT : εT ≤ εT') :
+    IsTrackedUnitarySimilar εU' εT' U A U' A' := by
+  obtain ⟨V, hV, hU'⟩ := h
+  exact ⟨V, hV.mono hT, hU'.trans (mul_le_mul_of_nonneg_right hU (specNorm_nonneg U))⟩
+
+/-- The computed Schur form from a tracked run started at $(\mathbf{I}, \mathbf{A})$: with
+$\varepsilon_U \le 1/8$, $\|\mathbf{A} - \widehat{\mathbf{U}}\widehat{\mathbf{T}}
+\widehat{\mathbf{U}}^{\mathsf H}\|_2 \le \varepsilon_T + (2\varepsilon_U + \varepsilon_U^2)
+(\|\mathbf{A}\|_2 + \varepsilon_T)$ and $\|\widehat{\mathbf{U}}^{\mathsf H}\widehat{\mathbf{U}} -
+\mathbf{I}\|_2 \le 2\varepsilon_U + \varepsilon_U^2$. -/
+theorem IsTrackedUnitarySimilar.specNorm_sub_mul_mul_conjTranspose_le {εU εT : ℝ}
+    {A U T : Matrix n n 𝕜} (h : IsTrackedUnitarySimilar εU εT 1 A U T) (hεU0 : 0 ≤ εU)
+    (hεU : εU ≤ 1 / 8) :
+    specNorm (A - U * T * Uᴴ) ≤ εT + (2 * εU + εU ^ 2) * (specNorm A + εT) ∧
+      specNorm (Uᴴ * U - 1) ≤ 2 * εU + εU ^ 2 := sorry
+
+/-- The exact-unitary form of a tracked run from $(\mathbf{I}, \mathbf{A})$: an exact unitary
+$\mathbf{V}$ within $\varepsilon_U$ of $\widehat{\mathbf{U}}$ with $\mathbf{A} + \mathbf{E} =
+\mathbf{V}\widehat{\mathbf{T}}\mathbf{V}^{\mathsf H}$, $\|\mathbf{E}\|_2 \le \varepsilon_T$. -/
+theorem IsTrackedUnitarySimilar.exists_eq_mul_mul_conjTranspose {εU εT : ℝ}
+    {A U T : Matrix n n 𝕜} (h : IsTrackedUnitarySimilar εU εT 1 A U T) (hεU0 : 0 ≤ εU) :
+    ∃ V E : Matrix n n 𝕜, HasOrthonormalCols V ∧ specNorm (U - V) ≤ εU ∧
+      specNorm E ≤ εT ∧ A + E = V * T * Vᴴ := sorry
+
+/-- A leaf lift with a dense computed unitary: the leaf's tracked relation on the range block
+$[lo, lo + d)$ (from $(\mathbf{I}, \mathbf{B})$ to $(\mathbf{U}_b, \mathbf{T}_b)$), computed
+couplings within $\rho$ of those by $\operatorname{diag}(\mathbf{I}, \mathbf{U}_b, \mathbf{I})$,
+and a computed accumulator within $\rho_U\|\mathbf{U}\|_2$ of
+$\mathbf{U}\operatorname{diag}(\mathbf{I}, \mathbf{U}_b, \mathbf{I})$ give a tracked step on the
+whole matrix. The extra backward error $2\varepsilon_U\|\mathbf{T}\|_2$ is the coupling computed
+with $\mathbf{U}_b$ instead of the exact unitary. -/
+theorem IsTrackedUnitarySimilar.lift_leaf_block {N lo d : ℕ} (hN : lo + d ≤ N)
+    {T T' U U' : Matrix (Fin N) (Fin N) 𝕜} {Ub Tb : Matrix (Fin d) (Fin d) 𝕜}
+    {εU εT ρ ρU : ℝ} (hεU0 : 0 ≤ εU) (hT : IsRangeBlockTriangular lo d T)
+    (hT' : IsRangeBlockTriangular lo d T')
+    (hleaf : IsTrackedUnitarySimilar εU εT 1 (T.submatrix (rangeEmb hN) (rangeEmb hN)) Ub Tb)
+    (hblk : T'.submatrix (rangeEmb hN) (rangeEmb hN) = Tb)
+    (hout : ∀ i j : Fin N, ¬(lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d) →
+      ¬(lo ≤ (j : ℕ) ∧ (j : ℕ) < lo + d) → T' i j = T i j)
+    (hcpl : specNorm (couplingPart lo d (T' - (embedBlock lo Ub)ᴴ * T * embedBlock lo Ub)) ≤ ρ)
+    (hU : specNorm (U' - U * embedBlock lo Ub) ≤ ρU * specNorm U) :
+    IsTrackedUnitarySimilar (εU + ρU) (εT + ρ + 2 * εU * specNorm T) U T U' T' := sorry
 
 end NLAlib

@@ -23,7 +23,8 @@ scoped allocation; no numerical operation or new encoding is introduced.
 * `NLAlib.HoldsMatrix`: a finite complex matrix in a real-word block.
 * `NLAlib.HoldsMatrix.get_re`, `NLAlib.HoldsMatrix.get_im`: its actual words.
 * `NLAlib.HoldsMatrix.of_eqOff`: preservation under disjoint writes.
-* `NLAlib.storedMatrix`: the matrix read entrywise from a block (`NLAlib.HoldsMatrix.eq_storedMatrix`).
+* `NLAlib.storedMatrix`: the matrix read entrywise from a block
+  (`NLAlib.HoldsMatrix.eq_storedMatrix`).
 -/
 
 @[expose] public section

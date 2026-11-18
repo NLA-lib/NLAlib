@@ -1,6 +1,6 @@
 {
   "date": "2026-11-18",
-  "note": "SCHUR O7 (MV1, MV2): the stored-matrix layer (ShiftedQR/Storage, and storedMatrix from RoundedHeadline) moves to Matrix/FinitePrecision/StoredMatrix, and the Givens coefficient and rotation programs (ShiftedQR/Coefficients, Rotation, RotationLoops) to Matrix/FinitePrecision/GivensCoefficients, GivensRotation and GivensPrograms; the declarations leave the ShiftedQR namespace for NLAlib. Pure relocation: no statement or body changed.",
+  "note": "SCHUR O7 (MV1, MV2): the stored-matrix layer (ShiftedQR/Storage, and storedMatrix from RoundedHeadline) moves to Matrix/FinitePrecision/StoredMatrix, and the Givens coefficient and rotation programs (ShiftedQR/Coefficients, Rotation, RotationLoops) to Matrix/FinitePrecision/GivensCoefficients, GivensRotation and GivensPrograms; the declarations leave the ShiftedQR namespace for NLAlib. Pure relocation: no statement or body changed. SCHUR skeleton (MG3): IsRoundedRowRotation and IsRoundedColRotation take rectangular matrices (rows Fin n, any column type; and the transpose); the square uses are the instance.",
   "renames": [
     {
       "old": "NLAlib.ShiftedQR.HoldsMatrix",
@@ -353,5 +353,8 @@
       "rule": "N12"
     }
   ],
-  "statementChanged": []
+  "statementChanged": [
+    "NLAlib.IsRoundedRowRotation",
+    "NLAlib.IsRoundedColRotation"
+  ]
 }

@@ -385,4 +385,21 @@ theorem exists_hasOrthonormalCols_rotateTo {η : ℝ} (hη : 0 ≤ η) (hnη : n
   rw [Matrix.conjTranspose_conjTranspose]
   exact specNorm_sub_rotateTo_le hη hnη hU rfl (fun _ => rfl) hUj hA
 
+/-- **One-sided chain, right multiplications**: if $\mathbf{X}_{j+1}$ is within
+$e_j$ of $\mathbf{X}_j\mathbf{U}_j$ for unitaries $\mathbf{U}_j$, then $\mathbf{X}_k$ is within
+$\sum_j e_j$ of $\mathbf{X}_0\mathbf{P}_k$, $\mathbf{P}_k = \mathbf{U}_0\cdots\mathbf{U}_{k-1}$. -/
+theorem specNorm_sub_mul_le_sum {m : Type*} [Fintype m] [DecidableEq m]
+    {U P : ℕ → Matrix m m ℂ} (hU : ∀ j, HasOrthonormalCols (U j)) (hP0 : P 0 = 1)
+    (hP : ∀ j, P (j + 1) = P j * U j) (X : ℕ → Matrix m m ℂ) (k : ℕ) :
+    specNorm (X k - X 0 * P k) ≤
+      ∑ j ∈ Finset.range k, specNorm (X (j + 1) - X j * U j) := sorry
+
+/-- **One-sided chain, left multiplications**: the mirror of `NLAlib.specNorm_sub_mul_le_sum`,
+with $\mathbf{P}_{j+1} = \mathbf{U}_j\mathbf{P}_j$. -/
+theorem specNorm_sub_mul_left_le_sum {m : Type*} [Fintype m] [DecidableEq m]
+    {U P : ℕ → Matrix m m ℂ} (hU : ∀ j, HasOrthonormalCols (U j)ᴴ) (hP0 : P 0 = 1)
+    (hP : ∀ j, P (j + 1) = U j * P j) (X : ℕ → Matrix m m ℂ) (k : ℕ) :
+    specNorm (X k - P k * X 0) ≤
+      ∑ j ∈ Finset.range k, specNorm (X (j + 1) - U j * X j) := sorry
+
 end NLAlib

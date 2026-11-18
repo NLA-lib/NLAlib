@@ -45,7 +45,8 @@ error against the exact multishift step (Lemma 3.8) and the potential after a ro
 ## Main results
 
 * `NLAlib.HasOrthonormalCols.isStableQRStep_upperHessenbergPart`: a stable step from a Hessenberg
-  factorization and a nearby similarity.
+  factorization and a nearby similarity;
+  `NLAlib.HasOrthonormalCols.isStableQRStepBy_upperHessenbergPart` with the unitary named.
 * `NLAlib.IsStableQRChain.snoc`: a chain extended by a step.
 * `NLAlib.IsStableQRChain.isPerturbedUnitarySimilar`: the backward error of the similarity;
   `NLAlib.IsStableQRChainBy.isPerturbedUnitarySimilarBy` with the unitary named.
@@ -149,14 +150,14 @@ $\|\mathbf{Q}\mathbf{Z}\mathbf{Q}^{\mathsf H} - \mathbf{H}\|_2 \le e$, then $\ma
 entries below the subdiagonal deleted is a backward-stable step with error
 $d + \sqrt{n+1}\,(d + e)$ (and at least $d$): $\mathbf{R}\mathbf{Q} + s\mathbf{I}$ is upper
 Hessenberg and within $d$ of $\mathbf{Q}^{\mathsf H}\mathbf{H}\mathbf{Q}$, and the deletion costs
-at most a Frobenius norm. -/
-theorem HasOrthonormalCols.isStableQRStep_upperHessenbergPart
+at most a Frobenius norm. The step is by $\mathbf{Q}$. -/
+theorem HasOrthonormalCols.isStableQRStepBy_upperHessenbergPart
     {H Z Q R : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {s : ℂ} {d e ε : ℝ} (hQ : HasOrthonormalCols Q)
     (hQH : IsUpperHessenberg Q)
     (hR : R.IsUpperTriangular) (hd : specNorm (H - s • (1 : Matrix _ _ ℂ) - Q * R) ≤ d)
     (he : specNorm (Q * Z * Qᴴ - H) ≤ e) (hdε : d ≤ ε)
     (hε : d + √(n + 1 : ℝ) * (d + e) ≤ ε) :
-    IsStableQRStep ε H s (upperHessenbergPart Z) R := by
+    IsStableQRStepBy Q ε H s (upperHessenbergPart Z) R := by
   set D := H - s • (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) - Q * R with hD
   set K := R * Q + s • (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
   have hQQ : Qᴴ * Q = 1 := hQ.conjTranspose_mul_self
@@ -192,13 +193,23 @@ theorem HasOrthonormalCols.isStableQRStep_upperHessenbergPart
     refine (frobNorm_le_sqrt_card_mul_specNorm _).trans ?_
     rw [Fintype.card_fin, Nat.cast_add, Nat.cast_one]
     exact mul_le_mul_of_nonneg_left hKZ (Real.sqrt_nonneg _)
-  refine ⟨isUpperHessenberg_upperHessenbergPart Z, hR, Q, hQ, ?_, by rw [← hD]; exact hd.trans hdε⟩
+  refine ⟨isUpperHessenberg_upperHessenbergPart Z, hR, hQ, ?_, by rw [← hD]; exact hd.trans hdε⟩
   have e1 : upperHessenbergPart Z - Qᴴ * H * Q = -(K - upperHessenbergPart Z) - Qᴴ * D * Q := by
     rw [hHQ]; abel
   rw [e1]
   refine (specNorm_sub_le _ _).trans ?_
   rw [specNorm_neg, hnorm]
   linarith
+
+/-- `NLAlib.HasOrthonormalCols.isStableQRStepBy_upperHessenbergPart` without the unitary. -/
+theorem HasOrthonormalCols.isStableQRStep_upperHessenbergPart
+    {H Z Q R : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {s : ℂ} {d e ε : ℝ} (hQ : HasOrthonormalCols Q)
+    (hQH : IsUpperHessenberg Q)
+    (hR : R.IsUpperTriangular) (hd : specNorm (H - s • (1 : Matrix _ _ ℂ) - Q * R) ≤ d)
+    (he : specNorm (Q * Z * Qᴴ - H) ≤ e) (hdε : d ≤ ε)
+    (hε : d + √(n + 1 : ℝ) * (d + e) ≤ ε) :
+    IsStableQRStep ε H s (upperHessenbergPart Z) R :=
+  (hQ.isStableQRStepBy_upperHessenbergPart hQH hR hd he hdε hε).isStableQRStep
 
 /-- A chain extended by one more stable step at its end is a chain. -/
 theorem IsStableQRChain.snoc {x : ℝ} {H H' H'' R : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
@@ -208,6 +219,17 @@ theorem IsStableQRChain.snoc {x : ℝ} {H H' H'' R : Matrix (Fin (n + 1)) (Fin (
   induction h with
   | nil K => exact .cons hs (.nil _)
   | cons h₁ _ ih => exact .cons h₁ (ih hs)
+
+/-- A chain by $\mathbf{Q}$ extended by one more stable step by $\mathbf{Q}_1$ at its end is a
+chain by $\mathbf{Q}\mathbf{Q}_1$. -/
+theorem IsStableQRChainBy.snoc {x : ℝ} {H H' H'' R Q Q₁ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {ss : List ℂ} {Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)} {s : ℂ}
+    (h : IsStableQRChainBy x H ss H' Rs Q)
+    (hs : IsStableQRStepBy Q₁ (x * (specNorm H' + ‖s‖)) H' s H'' R) :
+    IsStableQRChainBy x H (ss ++ [s]) H'' (Rs ++ [R]) (Q * Q₁) := by
+  induction h with
+  | nil K => simpa using IsStableQRChainBy.cons hs (.nil _)
+  | cons h₁ _ ih => rw [Matrix.mul_assoc]; exact .cons h₁ (ih hs)
 
 /-- A backward-stable single step is a perturbed unitary similarity with the same error. -/
 theorem IsStableQRStep.isPerturbedUnitarySimilar {ε : ℝ} {H H' R : Matrix (Fin (n + 1))

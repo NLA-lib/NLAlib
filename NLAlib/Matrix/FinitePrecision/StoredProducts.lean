@@ -145,6 +145,99 @@ theorem MatMulLeftWords.of_eqOff {M : Machine ℝ} {s s' : Store ℝ} {x : ℕ �
   · exact Or.inr ⟨hc, by rw [hfr.get_eq (hd _)]; exact h0, v,
       by rw [hfr.get_eq (hd _)]; exact h1, hv⟩
 
+/-- The left entry of a multiply–add into `A`: the words of $a$ (conjugated for $c = 1$), then
+the rest of the step. -/
+private theorem matMulFillA {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    {ρ : Env} {m p q ldx ldy ldz c Lc j i l : ℕ} {x y z : ℕ × ℕ}
+    (hidx : ρ.idx = [m, p, q, ldx, ldy, ldz, c, x.2, y.2, z.2, j, i, l])
+    (hbuf : ρ.buf = [x.1, y.1, z.1, Lc, Lc + 1, Lc + 2, Lc + 3, Lc + 4]) {τ : Tape ℝ} {μ : Mem ℝ}
+    (hlA : 1 < μ.store.len (Lc + 1)) (hxL : x.1 < Lc) {a : ℂ}
+    (ha : MatMulLeftWords M μ.store x c ldx i l a)
+    (rest : Stmt O Q) (Gr : Fp) (Pr : Mem ℝ → Prop)
+    (hGr : Store.inBlock (Lc + 1) 0 2 ≤ Gr)
+    (hrest : ∀ μ₂ : Mem ℝ, μ.store.EqOff (Store.inBlock (Lc + 1) 0 2) μ₂.store → μ₂.pos = μ.pos →
+        μ₂.store.readBlock (Lc + 1) 0 2 = some [a.re, a.im] → Writes .total I τ rest ρ Gr Pr μ₂) :
+    Writes .total I τ ((Stmt.ifPos (IExp.var 6)
+        ((Stmt.call (Has.inj ScalarOp.copy) []
+            [{ buf := 0, off := IExp.var 7 +
+              IExp.const 2 * (IExp.var 11 * IExp.var 3 + IExp.var 12) }]
+            [{ buf := 4, off := IExp.const 0 }]).seq
+          (Stmt.call (Has.inj ScalarOp.neg) []
+            [{ buf := 0, off := IExp.var 7 +
+              IExp.const 2 * (IExp.var 11 * IExp.var 3 + IExp.var 12) +
+              IExp.const 1 }]
+            [{ buf := 4, off := IExp.const 1 }]))).seq
+      ((Stmt.ifPos (IExp.const 1 - IExp.var 6)
+        ((Stmt.call (Has.inj ScalarOp.copy) []
+            [{ buf := 0, off := IExp.var 7 +
+              IExp.const 2 * (IExp.var 12 * IExp.var 3 + IExp.var 11) }]
+            [{ buf := 4, off := IExp.const 0 }]).seq
+          (Stmt.call (Has.inj ScalarOp.copy) []
+            [{ buf := 0, off := IExp.var 7 +
+              IExp.const 2 * (IExp.var 12 * IExp.var 3 + IExp.var 11) +
+              IExp.const 1 }]
+            [{ buf := 4, off := IExp.const 1 }]))).seq rest)) ρ Gr Pr μ := by
+  have hA0 : Store.inBlock (Lc + 1) 0 1 ≤ Store.inBlock (Lc + 1) 0 2 :=
+    Fp.inBlock_le_inBlock le_rfl (by omega)
+  have hA1 : Store.inBlock (Lc + 1) 1 1 ≤ Store.inBlock (Lc + 1) 0 2 :=
+    Fp.inBlock_le_inBlock (by omega) (by omega)
+  have hxs : ∀ k, ¬Store.inBlock (Lc + 1) 0 2 x.1 k := fun k h => by have := h.1; omega
+  set Pa : Mem ℝ → Prop := fun μ₂ => μ₂.pos = μ.pos ∧
+    μ.store.EqOff (Store.inBlock (Lc + 1) 0 2) μ₂.store ∧
+      μ₂.store.readBlock (Lc + 1) 0 2 = some [a.re, a.im] with hPa
+  have two : ∀ {μ₀ μ₂ : Mem ℝ}, μ.store.EqOff (Store.inBlock (Lc + 1) 0 1) μ₀.store →
+      μ₀.store.EqOff (Store.inBlock (Lc + 1) 1 1) μ₂.store →
+      μ₀.store.get (Lc + 1) 0 = some a.re → μ₂.store.get (Lc + 1) 1 = some a.im →
+      μ.store.EqOff (Store.inBlock (Lc + 1) 0 2) μ₂.store ∧
+        μ₂.store.readBlock (Lc + 1) 0 2 = some [a.re, a.im] := by
+    intro μ₀ μ₂ h₀ h₂ g₀ g₂
+    refine ⟨(h₀.mono hA0).trans (h₂.mono hA1), ?_⟩
+    have g₀' := h₂.keep (Store.readsOnly_get _ _ _)
+      (Fp.disj_inBlock_of_le (b := Lc + 1) (o := 0) (n := 1) (o' := 1) (n' := 1) le_rfl).symm g₀
+    simpa using Store.readBlock_succ_of (Store.readBlock_one_of_get g₀') g₂
+  have hev : ∀ e : ℕ, (IExp.var 7 + IExp.const 2 * (IExp.var 12 * IExp.var 3 + IExp.var 11)).eval
+      (ρ.pushIdx e).idx = some (x.2 + 2 * (l * ldx + i)) := fun e => by
+    simp [IExp.eval, Env.pushIdx, hidx]
+  rcases ha with ⟨rfl, h0, h1⟩ | ⟨rfl, h0, v, h1, hv⟩
+  · refine (writes_ifPos (F := ⊥) (P := fun μ' => μ' = μ) (n := 0)
+      (by simp [IExp.eval, hidx]) (by simp)).seq_le bot_le ?_
+    rintro μ₁ - rfl
+    refine (writes_ifPos (n := 1) (P := Pa) (F := Store.inBlock (Lc + 1) 0 2)
+      (by simp [IExp.eval, hidx]) ?_).seq_le hGr (fun μ₂ _ ⟨hp, hfr, hr⟩ => hrest μ₂ hfr hp hr)
+    rw [if_pos one_pos]
+    refine (writes_call_un (hS .copy) (x := (x.1, x.2 + 2 * (l * ldx + i))) (z := (Lc + 1, 0))
+      (by simp [Operand.evalList, Operand.eval, Env.pushIdx, hidx, hbuf, IExp.eval])
+      (by simp [Operand.evalList, Operand.eval, Env.pushIdx, hidx, hbuf, IExp.eval]) trivial
+      h0 rfl (by simp; omega)).seq_le hA0 fun μ₀ h₀ ⟨p₀, g₀⟩ => ?_
+    refine (writes_call_un (hS .copy) (x := (x.1, x.2 + 2 * (l * ldx + i) + 1))
+      (z := (Lc + 1, 1)) (v := a.im)
+      (by simp [Operand.evalList, Operand.eval, Env.pushIdx, hidx, hbuf, IExp.eval])
+      (by simp [Operand.evalList, Operand.eval, Env.pushIdx, hidx, hbuf, IExp.eval]) trivial
+      (by rw [h₀.get_eq (fun h => by have := h.1; omega)]; exact h1) rfl
+      (by simp [h₀.len_eq]; omega)).mono hA1 fun μ₂ h₂ ⟨p₂, g₂⟩ => ?_
+    exact ⟨p₂.trans p₀, two h₀ h₂ g₀ g₂⟩
+  · refine (writes_ifPos (n := 1) (P := Pa) (F := Store.inBlock (Lc + 1) 0 2)
+      (by simp [IExp.eval, hidx]) ?_).seq_le hGr ?_
+    · rw [if_pos one_pos]
+      refine (writes_call_un (hS .copy) (x := (x.1, x.2 + 2 * (i * ldx + l)))
+        (z := (Lc + 1, 0))
+        (by simp [Operand.evalList, Operand.eval, Env.pushIdx, hidx, hbuf, IExp.eval])
+        (by simp [Operand.evalList, Operand.eval, Env.pushIdx, hidx, hbuf, IExp.eval]) trivial
+        h0 rfl (by simp; omega)).seq_le hA0 fun μ₀ h₀ ⟨p₀, g₀⟩ => ?_
+      refine (writes_call_un (hS .neg) (x := (x.1, x.2 + 2 * (i * ldx + l) + 1))
+        (z := (Lc + 1, 1)) (v := a.im)
+        (by simp [Operand.evalList, Operand.eval, Env.pushIdx, hidx, hbuf, IExp.eval])
+        (by simp [Operand.evalList, Operand.eval, Env.pushIdx, hidx, hbuf, IExp.eval]) trivial
+        (by rw [h₀.get_eq (fun h => by have := h.1; omega)]; exact h1) (by rw [hv])
+        (by simp [h₀.len_eq]; omega)).mono hA1 fun μ₂ h₂ ⟨p₂, g₂⟩ => ?_
+      exact ⟨p₂.trans p₀, two h₀ h₂ g₀ g₂⟩
+    · rintro μ₂ hfr ⟨hp, hfr', hr⟩
+      refine (writes_ifPos (F := ⊥) (P := fun μ' => μ' = μ₂) (n := 0)
+        (by simp [IExp.eval, hidx]) (by simp)).seq_le (bot_le.trans hGr) ?_
+      intro μ₃ _ h3
+      rw [h3]
+      exact (hrest μ₂ hfr' hp hr).mono le_rfl fun _ _ h => h
+
 /-- One multiply–add of the product program stores $\mathrm{fl}(ay + \hat 1 s)$ in `S`. -/
 private theorem matMulLBody_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     {ρ : Env} {m p q ldx ldy ldz c Lc j i l : ℕ} {x y z : ℕ × ℕ}
@@ -161,91 +254,10 @@ private theorem matMulLBody_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
       (fun μ' => μ'.pos = μ.pos ∧ μ'.store.readBlock (Lc + 2) 0 2 = some
         [(linearComplex M a ⟨M.lit 1, M.lit 0⟩ b sv).re,
           (linearComplex M a ⟨M.lit 1, M.lit 0⟩ b sv).im]) μ := by
-  have hA0 : Store.inBlock (Lc + 1) 0 1 ≤ Store.inBlock (Lc + 1) 0 2 :=
-    Fp.inBlock_le_inBlock le_rfl (by omega)
-  have hA1 : Store.inBlock (Lc + 1) 1 1 ≤ Store.inBlock (Lc + 1) 0 2 :=
-    Fp.inBlock_le_inBlock (by omega) (by omega)
   have hlA : 1 < μ.store.len (Lc + 1) := by rw [hlens 1 (by omega)]; omega
-  have hxs : ∀ k, ¬Store.inBlock (Lc + 1) 0 2 x.1 k := fun k h => by have := h.1; omega
-  -- the left entry into `A`
-  have fillA : ∀ (rest : Stmt O Q) (Gr : Fp) (Pr : Mem ℝ → Prop),
-      Store.inBlock (Lc + 1) 0 2 ≤ Gr →
-      (∀ μ₂ : Mem ℝ, μ.store.EqOff (Store.inBlock (Lc + 1) 0 2) μ₂.store → μ₂.pos = μ.pos →
-        μ₂.store.readBlock (Lc + 1) 0 2 = some [a.re, a.im] → Writes .total I τ rest ρ Gr Pr μ₂) →
-      Writes .total I τ ((Stmt.ifPos (IExp.var 6)
-        ((Stmt.call (Has.inj ScalarOp.copy) []
-            [{ buf := 0, off := IExp.var 7 + IExp.const 2 * (IExp.var 11 * IExp.var 3 + IExp.var 12) }]
-            [{ buf := 4, off := IExp.const 0 }]).seq
-          (Stmt.call (Has.inj ScalarOp.neg) []
-            [{ buf := 0, off := IExp.var 7 + IExp.const 2 * (IExp.var 11 * IExp.var 3 + IExp.var 12) +
-              IExp.const 1 }]
-            [{ buf := 4, off := IExp.const 1 }]))).seq
-      ((Stmt.ifPos (IExp.const 1 - IExp.var 6)
-        ((Stmt.call (Has.inj ScalarOp.copy) []
-            [{ buf := 0, off := IExp.var 7 + IExp.const 2 * (IExp.var 12 * IExp.var 3 + IExp.var 11) }]
-            [{ buf := 4, off := IExp.const 0 }]).seq
-          (Stmt.call (Has.inj ScalarOp.copy) []
-            [{ buf := 0, off := IExp.var 7 + IExp.const 2 * (IExp.var 12 * IExp.var 3 + IExp.var 11) +
-              IExp.const 1 }]
-            [{ buf := 4, off := IExp.const 1 }]))).seq rest)) ρ Gr Pr μ := by
-    intro rest Gr Pr hGr hrest
-    set Pa : Mem ℝ → Prop := fun μ₂ => μ₂.pos = μ.pos ∧
-      μ.store.EqOff (Store.inBlock (Lc + 1) 0 2) μ₂.store ∧
-        μ₂.store.readBlock (Lc + 1) 0 2 = some [a.re, a.im] with hPa
-    have two : ∀ {μ₀ μ₂ : Mem ℝ}, μ.store.EqOff (Store.inBlock (Lc + 1) 0 1) μ₀.store →
-        μ₀.store.EqOff (Store.inBlock (Lc + 1) 1 1) μ₂.store →
-        μ₀.store.get (Lc + 1) 0 = some a.re → μ₂.store.get (Lc + 1) 1 = some a.im →
-        μ.store.EqOff (Store.inBlock (Lc + 1) 0 2) μ₂.store ∧
-          μ₂.store.readBlock (Lc + 1) 0 2 = some [a.re, a.im] := by
-      intro μ₀ μ₂ h₀ h₂ g₀ g₂
-      refine ⟨(h₀.mono hA0).trans (h₂.mono hA1), ?_⟩
-      have g₀' := h₂.keep (Store.readsOnly_get _ _ _)
-        (Fp.disj_inBlock_of_le (b := Lc + 1) (o := 0) (n := 1) (o' := 1) (n' := 1) le_rfl).symm g₀
-      simpa using Store.readBlock_succ_of (Store.readBlock_one_of_get g₀') g₂
-    have hev : ∀ e : ℕ, (IExp.var 7 + IExp.const 2 * (IExp.var 12 * IExp.var 3 + IExp.var 11)).eval
-        (ρ.pushIdx e).idx = some (x.2 + 2 * (l * ldx + i)) := fun e => by
-      simp [IExp.eval, Env.pushIdx, hidx]
-    rcases ha with ⟨rfl, h0, h1⟩ | ⟨rfl, h0, v, h1, hv⟩
-    · refine (writes_ifPos (F := ⊥) (P := fun μ' => μ' = μ) (n := 0)
-        (by simp [IExp.eval, hidx]) (by simp)).seq_le bot_le ?_
-      rintro μ₁ - rfl
-      refine (writes_ifPos (n := 1) (P := Pa) (F := Store.inBlock (Lc + 1) 0 2)
-        (by simp [IExp.eval, hidx]) ?_).seq_le hGr (fun μ₂ _ ⟨hp, hfr, hr⟩ => hrest μ₂ hfr hp hr)
-      rw [if_pos one_pos]
-      refine (writes_call_un (hS .copy) (x := (x.1, x.2 + 2 * (l * ldx + i))) (z := (Lc + 1, 0))
-        (by simp [Operand.evalList, Operand.eval, Env.pushIdx, hidx, hbuf, IExp.eval])
-        (by simp [Operand.evalList, Operand.eval, Env.pushIdx, hidx, hbuf, IExp.eval]) trivial
-        h0 rfl (by simp; omega)).seq_le hA0 fun μ₀ h₀ ⟨p₀, g₀⟩ => ?_
-      refine (writes_call_un (hS .copy) (x := (x.1, x.2 + 2 * (l * ldx + i) + 1))
-        (z := (Lc + 1, 1)) (v := a.im)
-        (by simp [Operand.evalList, Operand.eval, Env.pushIdx, hidx, hbuf, IExp.eval])
-        (by simp [Operand.evalList, Operand.eval, Env.pushIdx, hidx, hbuf, IExp.eval]) trivial
-        (by rw [h₀.get_eq (fun h => by have := h.1; omega)]; exact h1) rfl
-        (by simp [h₀.len_eq]; omega)).mono hA1 fun μ₂ h₂ ⟨p₂, g₂⟩ => ?_
-      exact ⟨p₂.trans p₀, two h₀ h₂ g₀ g₂⟩
-    · refine (writes_ifPos (n := 1) (P := Pa) (F := Store.inBlock (Lc + 1) 0 2)
-        (by simp [IExp.eval, hidx]) ?_).seq_le hGr ?_
-      · rw [if_pos one_pos]
-        refine (writes_call_un (hS .copy) (x := (x.1, x.2 + 2 * (i * ldx + l)))
-          (z := (Lc + 1, 0))
-          (by simp [Operand.evalList, Operand.eval, Env.pushIdx, hidx, hbuf, IExp.eval])
-          (by simp [Operand.evalList, Operand.eval, Env.pushIdx, hidx, hbuf, IExp.eval]) trivial
-          h0 rfl (by simp; omega)).seq_le hA0 fun μ₀ h₀ ⟨p₀, g₀⟩ => ?_
-        refine (writes_call_un (hS .neg) (x := (x.1, x.2 + 2 * (i * ldx + l) + 1))
-          (z := (Lc + 1, 1)) (v := a.im)
-          (by simp [Operand.evalList, Operand.eval, Env.pushIdx, hidx, hbuf, IExp.eval])
-          (by simp [Operand.evalList, Operand.eval, Env.pushIdx, hidx, hbuf, IExp.eval]) trivial
-          (by rw [h₀.get_eq (fun h => by have := h.1; omega)]; exact h1) (by rw [hv])
-          (by simp [h₀.len_eq]; omega)).mono hA1 fun μ₂ h₂ ⟨p₂, g₂⟩ => ?_
-        exact ⟨p₂.trans p₀, two h₀ h₂ g₀ g₂⟩
-      · rintro μ₂ hfr ⟨hp, hfr', hr⟩
-        refine (writes_ifPos (F := ⊥) (P := fun μ' => μ' = μ₂) (n := 0)
-          (by simp [IExp.eval, hidx]) (by simp)).seq_le (bot_le.trans hGr) ?_
-        intro μ₃ _ h3
-        rw [h3]
-        exact (hrest μ₂ hfr' hp hr).mono le_rfl fun _ _ h => h
   unfold matMulLBody
-  refine fillA _ _ _ (le_sup_left.trans (le_sup_left.trans le_sup_left))
+  refine matMulFillA (ldy := ldy) (j := j) hS hidx hbuf hlA hxL ha _ _ _
+    (le_sup_left.trans (le_sup_left.trans le_sup_left))
     fun μ₂ hfr₂ hp₂ hA₂ => ?_
   have hone₂ := hfr₂.keep (Store.readsOnly_readBlock _ _ _ _) (by disjoint) hone
   have hb₂ := hfr₂.keep (Store.readsOnly_readBlock _ _ _ _) (by disjoint) hb
@@ -289,7 +301,8 @@ private def matMulEntry : Stmt O Q :=
   ((Stmt.call (Has.inj (ScalarOp.lit 0)) [] [] [{ buf := 5, off := IExp.const 1 }]).seq
   ((Stmt.loop (IExp.var 1) (matMulLBody (O := O) (Q := Q))).seq
   ((Stmt.call (Has.inj ScalarOp.copy) [] [{ buf := 5, off := IExp.const 0 }]
-      [{ buf := 2, off := IExp.var 9 + IExp.const 2 * (IExp.var 10 * IExp.var 5 + IExp.var 11) }]).seq
+      [{ buf := 2, off := IExp.var 9 +
+        IExp.const 2 * (IExp.var 10 * IExp.var 5 + IExp.var 11) }]).seq
     (Stmt.call (Has.inj ScalarOp.copy) [] [{ buf := 5, off := IExp.const 1 }]
       [{ buf := 2, off := IExp.var 9 + IExp.const 2 * (IExp.var 10 * IExp.var 5 + IExp.var 11) +
         IExp.const 1 }]))))
@@ -316,7 +329,8 @@ private theorem matMulEntry_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
             ⟨M.lit 0, M.lit 0⟩).im]) μ := by
   set v := fun l => ((List.finRange p).take l).foldl
     (fun s l => linearComplex M (a l) ⟨M.lit 1, M.lit 0⟩ (b l) s) ⟨M.lit 0, M.lit 0⟩ with hv
-  have hGx : ∀ k, ¬(Store.inBlock (Lc + 1) 0 2 ⊔ Store.inBlock (Lc + 2) 0 2 ⊔ Store.inBlock (Lc + 3) 0 2 ⊔
+  have hGx : ∀ k, ¬(Store.inBlock (Lc + 1) 0 2 ⊔ Store.inBlock (Lc + 2) 0 2 ⊔
+      Store.inBlock (Lc + 3) 0 2 ⊔
       Store.inBlock (Lc + 4) 0 2) x.1 k := fun k h => by
     simp only [fpNF, Pi.sup_apply, sup_Prop_eq, Store.inBlock] at h; omega
   have g : ∀ {s : Store ℝ} {b o : ℕ} {u v : ℝ}, s.readBlock b o 2 = some [u, v] →
@@ -331,11 +345,13 @@ private theorem matMulEntry_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
     (by simp [Operand.eval, hidx, hbuf, IExp.eval]) trivial
     (by simp [hfr₁.len_eq, hlens 2 (by omega)])).seq_le (by fp_sub) fun μ₂ hfr₂ ⟨hp₂, g₂⟩ => ?_
   have g₁' := hfr₂.keep (Store.readsOnly_get _ _ _) (by disjoint) g₁
-  have hfr₁₂ : μ.store.EqOff (Store.inBlock (Lc + 1) 0 2 ⊔ Store.inBlock (Lc + 2) 0 2 ⊔ Store.inBlock (Lc + 3) 0 2 ⊔
+  have hfr₁₂ : μ.store.EqOff (Store.inBlock (Lc + 1) 0 2 ⊔ Store.inBlock (Lc + 2) 0 2 ⊔
+      Store.inBlock (Lc + 3) 0 2 ⊔
       Store.inBlock (Lc + 4) 0 2) μ₂.store := (hfr₁.mono (by fp_sub)).trans (hfr₂.mono (by fp_sub))
   have hS₀ : μ₂.store.readBlock (Lc + 2) 0 2 = some [(v 0).re, (v 0).im] := by
     simpa [hv] using Store.readBlock_succ_of (Store.readBlock_one_of_get g₁') g₂
-  refine (writes_loop (N := p) (by simp [IExp.eval, hidx]) (fun _ => (Store.inBlock (Lc + 1) 0 2 ⊔ Store.inBlock (Lc + 2) 0 2 ⊔ Store.inBlock (Lc + 3) 0 2 ⊔
+  refine (writes_loop (N := p) (by simp [IExp.eval, hidx]) (fun _ =>
+      (Store.inBlock (Lc + 1) 0 2 ⊔ Store.inBlock (Lc + 2) 0 2 ⊔ Store.inBlock (Lc + 3) 0 2 ⊔
       Store.inBlock (Lc + 4) 0 2))
     (fun _ _ => le_rfl)
     (fun l μ' => μ'.pos = μ.pos ∧ μ'.store.readBlock (Lc + 2) 0 2 = some [(v l).re, (v l).im])
@@ -375,6 +391,151 @@ private theorem matMulEntry_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
     exact ⟨hp₅.trans (hp₄.trans hp₃),
       by simpa using Store.readBlock_succ_of (Store.readBlock_one_of_get g₄') g₅⟩
 
+/-- The entries of `NLAlib.matMulOn` before the entry $(i, j)$ in the order of the program
+(column by column) hold the words of `W`. -/
+private def MatMulPrefix {m q : ℕ} (z : ℕ × ℕ) (W : Matrix (Fin m) (Fin q) ℂ) (j i : ℕ)
+    (s : Store ℝ) : Prop :=
+  ∀ (i' : Fin m) (j' : Fin q), ((j' : ℕ) < j ∨ ((j' : ℕ) = j ∧ (i' : ℕ) < i)) →
+    s.readBlock z.1 (z.2 + 2 * (j' * m + i')) 2 = some [(W i' j').re, (W i' j').im]
+
+/-- One entry step of the product program keeps its invariant: the program state, the inputs,
+and the entries written so far, now with the entry $(i, j)$. -/
+private theorem matMulOn_entry_step {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    {τ : Tape ℝ} {m p q ldx c r₁ r₂ Lc j i pos : ℕ} {x y z : ℕ × ℕ}
+    {Xs : Matrix (Fin r₁) (Fin r₂) ℂ} {Y : Matrix (Fin p) (Fin q) ℂ} (lf : Fin m → Fin p → ℂ)
+    (hsrc : ∀ s, HoldsMatrix x Xs s → ∀ (i : Fin m) (l : Fin p),
+      MatMulLeftWords M s x c ldx i l (lf i l))
+    (hxz : Fp.Disj (Store.inBlock x.1 x.2 (2 * (r₂ * r₁))) (Store.inBlock z.1 z.2 (2 * (m * q))))
+    (hyz : Fp.Disj (Store.inBlock y.1 y.2 (2 * (q * p))) (Store.inBlock z.1 z.2 (2 * (m * q))))
+    {ρ : Env} (hidx : ρ.idx = [m, p, q, ldx, p, m, c, x.2, y.2, z.2, j, i])
+    (hbuf : ρ.buf = [x.1, y.1, z.1, Lc, Lc + 1, Lc + 2, Lc + 3, Lc + 4])
+    (hxL : x.1 < Lc) (hyL : y.1 < Lc) (hzL : z.1 < Lc) (hj : j < q) (hi : i < m) {μ' : Mem ℝ}
+    (h1 : μ'.pos = pos) (h2 : μ'.store.length = Lc + 5)
+    (h3 : ∀ k < 5, μ'.store.len (Lc + k) = 2)
+    (h4 : μ'.store.readBlock Lc 0 2 = some [M.lit 1, M.lit 0]) (h5 : HoldsMatrix x Xs μ'.store)
+    (h6 : HoldsMatrix y Y μ'.store)
+    (h7 : MatMulPrefix z (Matrix.of fun i j => (List.finRange p).foldl
+      (fun s l => linearComplex M (lf i l) ⟨M.lit 1, M.lit 0⟩ (Y l j) s) ⟨M.lit 0, M.lit 0⟩) j i
+        μ'.store)
+    (h8 : z.2 + 2 * (m * q) ≤ μ'.store.len z.1) :
+    Writes .total I τ (matMulEntry (O := O) (Q := Q)) ρ
+      (Store.inBlock z.1 z.2 (2 * (m * q)) ⊔ (Store.inBlock (Lc + 1) 0 2 ⊔
+        Store.inBlock (Lc + 2) 0 2 ⊔ Store.inBlock (Lc + 3) 0 2 ⊔ Store.inBlock (Lc + 4) 0 2))
+      (fun μ'' => μ''.pos = pos ∧ μ''.store.length = Lc + 5 ∧
+        (∀ k < 5, μ''.store.len (Lc + k) = 2) ∧
+        μ''.store.readBlock Lc 0 2 = some [M.lit 1, M.lit 0] ∧ HoldsMatrix x Xs μ''.store ∧
+        HoldsMatrix y Y μ''.store ∧ MatMulPrefix z (Matrix.of fun i j => (List.finRange p).foldl
+          (fun s l => linearComplex M (lf i l) ⟨M.lit 1, M.lit 0⟩ (Y l j) s) ⟨M.lit 0, M.lit 0⟩)
+            j (i + 1) μ''.store ∧ z.2 + 2 * (m * q) ≤ μ''.store.len z.1) μ' := by
+  have hk : j * m + i < q * m := Idx.add_lt_mul hj hi
+  have hent : Store.inBlock z.1 (z.2 + 2 * (j * m + i)) 2 ≤ Store.inBlock z.1 z.2 (2 * (m * q)) :=
+    Fp.inBlock_le_inBlock (by omega) (by rw [Nat.mul_comm m q]; omega)
+  refine (matMulEntry_writes hS (ldy := p) (ldz := m) hidx hbuf h2 h3 hxL hyL hzL
+    (a := lf ⟨i, hi⟩) (b := fun l => Y l ⟨j, hj⟩) (fun l => hsrc _ h5 ⟨i, hi⟩ l)
+    (fun l => h6.read_entry l ⟨j, hj⟩) h4 (by rw [Nat.mul_comm m q] at h8; omega)).mono
+    (sup_le_sup_right hent _) ?_
+  rintro μ'' hfr ⟨hp, hz⟩
+  refine ⟨hp.trans h1, by rw [hfr.length_eq, h2], fun k hk => by rw [hfr.len_eq]; exact h3 k hk,
+    hfr.keep (Store.readsOnly_readBlock _ _ _ _) (by disjoint) h4,
+    hfr.keep (readsOnly_holdsMatrix _ _)
+      (Fp.disj_sup_left.mpr ⟨(hxz.mono le_rfl hent).symm, by disjoint⟩) h5,
+    hfr.keep (readsOnly_holdsMatrix _ _)
+      (Fp.disj_sup_left.mpr ⟨(hyz.mono le_rfl hent).symm, by disjoint⟩) h6,
+    fun i' j' h => ?_, by rw [hfr.len_eq]; exact h8⟩
+  by_cases he : (j' : ℕ) = j ∧ (i' : ℕ) = i
+  · obtain ⟨h₁, h₂⟩ := he
+    have e1 : j' = ⟨j, hj⟩ := Fin.ext h₁
+    have e2 : i' = ⟨i, hi⟩ := Fin.ext h₂
+    subst e1 e2
+    simpa using hz
+  · have hlt : (j' : ℕ) * m + i' < j * m + i := by
+      rcases h with h | ⟨h₁, h₂⟩
+      · have := Nat.mul_le_mul_right m (show (j' : ℕ) + 1 ≤ j by omega)
+        rw [Nat.add_mul, one_mul] at this
+        have := i'.isLt
+        omega
+      · rw [h₁]; omega
+    refine hfr.keep (Store.readsOnly_readBlock _ _ _ _) (Fp.disj_sup_left.mpr
+      ⟨(Fp.disj_inBlock_of_le (by omega)).symm, by disjoint⟩)
+      (h7 i' j' (by rcases h with h | ⟨h₁, h₂⟩ <;> omega))
+
+/-- The product program on contiguous views, with the left factor read by `MatMulLeftWords` from
+a stored matrix `Xs`: it stores the accumulations of the entries `lf i l` against `Y`. -/
+private theorem matMulOn_writes_gen {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    {τ : Tape ℝ} {μ : Mem ℝ} {m p q ldx c r₁ r₂ : ℕ} {x y z : ℕ × ℕ}
+    {Xs : Matrix (Fin r₁) (Fin r₂) ℂ} {Y : Matrix (Fin p) (Fin q) ℂ} (lf : Fin m → Fin p → ℂ)
+    (hX : HoldsMatrix x Xs μ.store)
+    (hsrc : ∀ s, HoldsMatrix x Xs s → ∀ (i : Fin m) (l : Fin p),
+      MatMulLeftWords M s x c ldx i l (lf i l))
+    (hY : HoldsMatrix y Y μ.store) (hl : μ.Live [x, y, z])
+    (hz : z.2 + 2 * (m * q) ≤ μ.store.len z.1)
+    (hxz : Fp.Disj (Store.inBlock x.1 x.2 (2 * (r₂ * r₁))) (Store.inBlock z.1 z.2 (2 * (m * q))))
+    (hyz : Fp.Disj (Store.inBlock y.1 y.2 (2 * (q * p))) (Store.inBlock z.1 z.2 (2 * (m * q)))) :
+    Writes .total I τ (matMulOn (O := O) (Q := Q)).body
+      (Env.frame [m, p, q, ldx, p, m, c] [x, y, z])
+      (Store.inBlock z.1 z.2 (2 * (m * q)))
+      (fun μ' => μ'.pos = μ.pos ∧ HoldsMatrix z (Matrix.of fun i j => (List.finRange p).foldl
+        (fun s l => linearComplex M (lf i l) ⟨M.lit 1, M.lit 0⟩ (Y l j) s)
+          ⟨M.lit 0, M.lit 0⟩) μ'.store) μ := by
+  set W : Matrix (Fin m) (Fin q) ℂ := Matrix.of fun i j => (List.finRange p).foldl
+    (fun s l => linearComplex M (lf i l) ⟨M.lit 1, M.lit 0⟩ (Y l j) s) ⟨M.lit 0, M.lit 0⟩ with hW
+  have hxl : x.1 < μ.store.length := hl x (by simp)
+  have hyl : y.1 < μ.store.length := hl y (by simp)
+  have hzl : z.1 < μ.store.length := hl z (by simp)
+  unfold matMulOn
+  change Writes .total I τ (Stmt.allocs [.const 2, .const 2, .const 2, .const 2, .const 2] _) _ _
+    _ μ
+  refine writes_allocs_preserving_post (ns := [2, 2, 2, 2, 2]) rfl
+    (fun hBelow ⟨hp, hW'⟩ => ⟨hp, hW'.of_below hBelow hzl⟩) ?_
+  intro s₁ hlen hlens hBelow
+  set Lc := μ.store.length with hLc
+  simp only [List.length_cons, List.length_nil] at hlen
+  have hl5 : ∀ k < 5, s₁.len (Lc + k) = 2 := fun k hk => by
+    have := hlens k (by simpa using hk)
+    interval_cases k <;> simpa using this
+  have hL0 : s₁.len Lc = 2 := by simpa using hl5 0 (by omega)
+  set G := Store.inBlock (Lc + 1) 0 2 ⊔ Store.inBlock (Lc + 2) 0 2 ⊔ Store.inBlock (Lc + 3) 0 2 ⊔
+    Store.inBlock (Lc + 4) 0 2 with hG
+  set Z := Store.inBlock z.1 z.2 (2 * (m * q)) with hZ
+  refine (writes_call_const (hS (.lit 1)) (z := (Lc, 0))
+    (by simp [Operand.eval, Env.frame, IExp.eval]) trivial
+    (by simp [hL0])).seq_le
+    (fun b k h => Or.inr (show Lc ≤ b from h.1 ▸ le_rfl)) fun μ₁ hfr₁ ⟨hp₁, g₁⟩ => ?_
+  refine (writes_call_const (hS (.lit 0)) (z := (Lc, 1))
+    (by simp [Operand.eval, Env.frame, IExp.eval]) trivial
+    (by simp [hfr₁.len_eq, hL0])).seq_le
+    (fun b k h => Or.inr (show Lc ≤ b from h.1 ▸ le_rfl)) fun μ₂ hfr₂ ⟨hp₂, g₂⟩ => ?_
+  have g₁' := hfr₂.keep (Store.readsOnly_get _ _ _) (by disjoint) g₁
+  have hone : μ₂.store.readBlock Lc 0 2 = some [M.lit 1, M.lit 0] := by
+    simpa using Store.readBlock_succ_of (Store.readBlock_one_of_get g₁') g₂
+  have hfr₁₂ := (hfr₁.mono (show Store.inBlock Lc 0 1 ≤ Store.inBlock Lc 0 2 by fp_sub)).trans
+    (hfr₂.mono (show Store.inBlock Lc 1 1 ≤ Store.inBlock Lc 0 2 by fp_sub))
+  set P : ℕ → ℕ → Mem ℝ → Prop := fun j i μ' => μ'.pos = μ.pos ∧
+    μ'.store.length = Lc + 5 ∧ (∀ k < 5, μ'.store.len (Lc + k) = 2) ∧
+    μ'.store.readBlock Lc 0 2 = some [M.lit 1, M.lit 0] ∧ HoldsMatrix x Xs μ'.store ∧
+    HoldsMatrix y Y μ'.store ∧ MatMulPrefix z W j i μ'.store ∧
+    z.2 + 2 * (m * q) ≤ μ'.store.len z.1 with hP
+  have hdis : Fp.Disj (Store.inBlock Lc 0 2) (Z ⊔ G) := by rw [hZ, hG]; disjoint
+  have hstart : P 0 0 μ₂ := by
+    refine ⟨hp₂.trans hp₁, by rw [hfr₂.length_eq, hfr₁.length_eq]; simpa using hlen,
+      fun k hk => by rw [hfr₂.len_eq, hfr₁.len_eq]; exact hl5 k hk, hone,
+      hfr₁₂.keep (readsOnly_holdsMatrix _ _) (by disjoint) (hX.of_below hBelow hxl),
+      hfr₁₂.keep (readsOnly_holdsMatrix _ _) (by disjoint) (hY.of_below hBelow hyl),
+      fun _ _ h => by omega, ?_⟩
+    rw [hfr₂.len_eq, hfr₁.len_eq, (hBelow z.1 hzl).1]; exact hz
+  refine (writes_loop₂ (M := q) (N := m) (by simp [IExp.eval, Env.frame]) (fun _ => by
+      simp [IExp.eval, Env.frame, Env.pushIdx]) (fun _ _ => Z ⊔ G) (fun _ _ _ _ => le_rfl)
+    (fun _ _ => le_rfl) P hstart ?_ ?_).mono (by rw [hZ, hG]; fp_sub) ?_
+  · rintro j hj μ' ⟨h1, h2, h3, h4, h5, h6, h7, h8⟩
+    exact ⟨h1, h2, h3, h4, h5, h6, fun i' j' h => h7 i' j' (by omega), h8⟩
+  · intro j hj i hi μ' _ ⟨h1, h2, h3, h4, h5, h6, h7, h8⟩
+    exact matMulOn_entry_step hS lf hsrc hxz hyz (by simp [Env.pushIdx, Env.frame])
+      (by simp [Env.pushIdx, Env.frame, List.range_succ]) hxl hyl hzl hj hi h1 h2 h3 h4 h5 h6 h7 h8
+  · rintro μ' - ⟨h1, -, -, -, -, -, h7, -⟩
+    refine ⟨h1, HoldsMatrix.of_get (fun i j => ?_) (fun i j => ?_)⟩
+    · simpa using Store.get_of_readBlock (h7 i j (Or.inl j.isLt)) (j := 0) (by omega) 0
+    · simpa using Store.get_of_readBlock (h7 i j (Or.inl j.isLt)) (j := 1) (by omega) 0
+
 section Theorems
 
 variable [Inhabited ℝ]
@@ -392,9 +553,9 @@ theorem matMulOn_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScal
     Writes .total I τ (matMulOn (O := O) (Q := Q)).body (Env.frame [m, p, q, m, p, m, 0] [x, y, z])
       (Store.inBlock z.1 z.2 (2 * (m * q)))
       (fun μ' => μ'.pos = μ.pos ∧ HoldsMatrix z (matMulWord M X Y) μ'.store) μ :=
-  by
-  unfold matMulOn
-  sorry
+  matMulOn_writes_gen hS (Xs := X) X hX
+    (fun s hs i l => Or.inl ⟨rfl, hs.get_re i l, hs.get_im i l⟩) hY hl hz
+    (by rw [Nat.mul_comm p m]; exact hxz) (by rw [Nat.mul_comm q p]; exact hyz)
 
 /-- `NLAlib.matMulOn` with $c = 1$ on contiguous views, under the standard model (negation is
 exact): from $\mathbf{X}$ ($p \times m$) at `x` and $\mathbf{Y}$ ($p \times q$) at `y`, it writes
@@ -409,13 +570,16 @@ theorem matMulOn_conjTranspose_writes_word {M : Machine ℝ} {I : Interp O Q ℝ
     Writes .total I τ (matMulOn (O := O) (Q := Q)).body (Env.frame [m, p, q, p, p, m, 1] [x, y, z])
       (Store.inBlock z.1 z.2 (2 * (m * q)))
       (fun μ' => μ'.pos = μ.pos ∧ HoldsMatrix z (matMulWord M Xᴴ Y) μ'.store) μ :=
-  sorry
+  matMulOn_writes_gen hS (Xs := X) Xᴴ hX
+    (fun s hs i l => Or.inr ⟨rfl, by simpa using hs.get_re l i,
+      (X l i).im, hs.get_im l i, by simpa using hM.neg (X l i).im⟩) hY hl hz
+    (by rw [Nat.mul_comm m p]; exact hxz) (by rw [Nat.mul_comm q p]; exact hyz)
 
 end Theorems
 
 /-- One rounded multiply–add $s \mapsto \mathrm{fl}(xy + \hat 1 s)$, with $\hat 1$ the pair of the
-literals $1$ and $0$, is within $5\boldsymbol{u}|x||y| + (6\boldsymbol{u} +
-5\boldsymbol{u}^2)|s|$ of $xy + s$. -/
+literals $1$ and $0$, is within $5\boldsymbol{u}\lvert x\rvert\lvert y\rvert +
+(6\boldsymbol{u} + 5\boldsymbol{u}^2)\lvert s\rvert$ of $xy + s$. -/
 theorem Ops.StdModel.norm_linearComplex_one_sub_le {M : Machine ℝ} {u : ℝ}
     (hM : Ops.StdModel u id M) (hu0 : 0 ≤ u) (hu : u ≤ 1 / 8) (x y s : ℂ) :
     ‖linearComplex M x ⟨M.lit 1, M.lit 0⟩ y s - (x * y + s)‖ ≤
@@ -452,10 +616,10 @@ theorem norm_list_sum_map_le {ι : Type*} (f : ι → ℂ) (ls : List ι) :
     simp only [List.map_cons, List.sum_cons]
     exact (norm_add_le _ _).trans (by linarith)
 
-/-- **A rounded accumulation of products**: the multiply–adds of `NLAlib.matMulWord`, from the
+/-- A rounded accumulation of products: the multiply–adds of `NLAlib.matMulWord`, from the
 pair of the literal $0$, over a list of indices, are within
 $(1 + a)^k(5\boldsymbol{u}T + k a S)$ of the exact sum, $a = 6\boldsymbol{u} + 5\boldsymbol{u}^2$,
-$k$ the length, $T$ the sum of $|x_l||y_l|$ and $S \ge T$. -/
+$k$ the length, $T$ the sum of $\lvert x_l\rvert\lvert y_l\rvert$ and $S \ge T$. -/
 theorem Ops.StdModel.norm_foldl_linearComplex_sub_le {M : Machine ℝ} {u : ℝ}
     (hM : Ops.StdModel u id M) (hu0 : 0 ≤ u) (hu : u ≤ 1 / 8) {ι : Type*} (x y : ι → ℂ)
     (ls : List ι) {S : ℝ} (hS : (ls.map fun l => ‖x l‖ * ‖y l‖).sum ≤ S) :

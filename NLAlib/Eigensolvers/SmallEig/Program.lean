@@ -170,8 +170,9 @@ theorem smallEigProg_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
   have hR0 : 0 ≤ (1 + 24 * u) ^ R - 1 := by
     have := one_le_pow₀ (M₀ := ℝ) (n := R) (by linarith : (1 : ℝ) ≤ 1 + 24 * u); linarith
   unfold smallEigProg
-  refine ((identityLeaf_writes (O := O) (Q := Q) (τ := tape) hS h0 h1 hl hroom hwu).in_frame rfl
-    rfl hl).frame_seq_le rfl rfl hl le_sup_right ?_
+  have hl4 : μ.Live [w, p, w, ub] := fun x hx => hl x (by simp at hx ⊢; tauto)
+  refine (identityLeaf_writes (O := O) (Q := Q) (τ := tape) hS h0 h1 hl hroom
+    hwu).frame_seq_le rfl rfl hl4 le_sup_right ?_
   rintro μ₀ hfr₀ ⟨-, hU₀⟩
   have hB₀ : HoldsMatrix w B μ₀.store := hB.of_eqOff hfr₀ hwu.symm
   have hp₀ := hfr₀.keep (Store.readsOnly_readBlock _ _ _ _)
@@ -184,7 +185,8 @@ theorem smallEigProg_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
   have hn1 : 1 ≤ n := by omega
   have hdk : n + 1 ≤ kmax := hd
   have hl₀ : μ₀.Live [w, p, ub] := fun x hx => hfr₀.length_eq ▸ hl x hx
-  change Writes .total I tape (Stmt.allocs _ _) _ _ _ μ₀
+  change Writes .total I tape (Stmt.allocs [.const 1, .const 1,
+    .var 0 * (.const 1 + .const 5 * .var 0)] _) _ _ _ μ₀
   refine writes_allocs_preserving_post (ns := [1, 1, (n + 1) * (1 + 5 * (n + 1))]) rfl
     (fun hBelow ⟨Tb, Ub, V, h₁, h₂, h₃, h₄⟩ => ⟨Tb, Ub, V, h₁.of_below hBelow (hl₀ w (by simp)),
       h₂.of_below hBelow (hl₀ ub (by simp)), h₃, h₄⟩) ?_
@@ -212,7 +214,7 @@ theorem smallEigProg_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (Store.get_of_readBlock hp₁ (j := 6) (by omega) 0) rfl (by simp [hTh])).seq_le
     (hab _ _ _ (by omega)) ?_
   rintro μ₁ hfr₁ ⟨-, hTh₁⟩
-  have hlen₁' : μ₁.store.length = L + 3 := by rw [← hfr₁.length_eq]; exact hlen₁
+  have hlen₁' : μ₁.store.length = L + 3 := by rw [hfr₁.length_eq]; exact hlen₁
   have hB₂ := hB₁.of_eqOff hfr₁ (hnew hwL (by omega)).symm
   have hU₂ := hU₁.of_eqOff hfr₁ (hnew huL (by omega)).symm
   have hp₂ := hfr₁.keep (Store.readsOnly_readBlock _ _ _ _) (hnew hpL (by omega)).symm hp₁
@@ -228,21 +230,21 @@ theorem smallEigProg_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
   have hp₃ := hfr₂.keep (Store.readsOnly_readBlock _ _ _ _) hdwp hp₂
   have hTh₃ : μ₂.store.get (L + 1) 0 = some (qs.getD 6 0) :=
     hfr₂.keep (Store.readsOnly_get _ _ _) (hnew hwL (by omega)) hTh₁
-  have hlen₂ : μ₂.store.length = L + 3 := by rw [← hfr₂.length_eq]; exact hlen₁'
+  have hlen₂ : μ₂.store.length = L + 3 := by rw [hfr₂.length_eq]; exact hlen₁'
   -- the log
   refine (slottedLogOpen_writes (τ := tape) (μ := μ₂) (ns := n + 1) (w := n + 1)
-    (lg := (L + 2, 0)) hS hM (by simp [Mem.Live, hlen₂]) (by simp [← hfr₂.len_eq,
-      ← hfr₁.len_eq, hLg])).frame_seq_le rfl rfl (by simp [Mem.Live, hlen₂])
+    (lg := (L + 2, 0)) hS hM (by simp [Mem.Live, hlen₂]) (by simp [hfr₂.len_eq,
+      hfr₁.len_eq, hLg])).frame_seq_le rfl rfl (by simp [Mem.Live, hlen₂])
     (hab _ _ _ (by omega)) ?_
   rintro μ₃ hfr₃ ⟨-, hlog₃⟩
   have hB₄ := hB₃.of_eqOff hfr₃ (hnew hwL (by omega)).symm
   have hU₄ := hU₃.of_eqOff hfr₃ (hnew huL (by omega)).symm
   have hp₄ := hfr₃.keep (Store.readsOnly_readBlock _ _ _ _) (hnew hpL (by omega)).symm hp₃
   have hTh₄ := hfr₃.keep (Store.readsOnly_get _ _ _) (Fp.disj_inBlock_of_ne (by omega)) hTh₃
-  have hlen₃ : μ₃.store.length = L + 3 := by rw [← hfr₃.length_eq]; exact hlen₂
+  have hlen₃ : μ₃.store.length = L + 3 := by rw [hfr₃.length_eq]; exact hlen₂
   -- the reduction, recording its rotations
   refine (hessenbergReduceLast_writes_word (τ := tape) (m := μ₃) (L := []) hS hC hL hNat
-    (by omega) (by omega) hlog₃ (by simp) (by omega) (by simp [Mem.Live, hlen₃]; omega) hB₄
+    (by omega) (by omega) hlog₃ (by simp <;> omega) (by omega) (by simp [Mem.Live, hlen₃]; omega) hB₄
     (hnew hwL (by omega))).frame_seq_le rfl rfl (by simp [Mem.Live, hlen₃]; omega)
     (sup_le (le_sup_left.trans le_sup_left) (hab _ _ _ (by omega))) ?_
   rintro μ₄ hfr₄ ⟨-, hH₄, hlog₄⟩
@@ -254,7 +256,7 @@ theorem smallEigProg_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (Fp.disj_sup_left.mpr ⟨hdwp, (hnew hpL (by omega)).symm⟩) hp₄
   have hTh₅ := hfr₄.keep (Store.readsOnly_get _ _ _)
     (Fp.disj_sup_left.mpr ⟨hnew hwL (by omega), Fp.disj_inBlock_of_ne (by omega)⟩) hTh₄
-  have hlen₄ : μ₄.store.length = L + 3 := by rw [← hfr₄.length_eq]; exact hlen₃
+  have hlen₄ : μ₄.store.length = L + 3 := by rw [hfr₄.length_eq]; exact hlen₃
   have hpl : ∀ e ∈ slotEntries (n + 1) ([] ++ Sl.map some ++
       List.replicate (n + 1 - ([] ++ Sl.map some).length) none),
       e.1 + 1 < n + 1 ∨ e = (0, 0, 0) := by
@@ -270,22 +272,24 @@ theorem smallEigProg_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
   -- the replay on the accumulator
   refine (givensReplayColumns_specNorm_sub_le (τ := tape) (μ := μ₄) (lo := 0) (d := n + 1) hS hM
     hu0 hu hQ hC (by omega) hpl (Or.inr (by omega)) hlog₅
-    (by simp [Sl, length_hessenbergReduceLastSlots]) hU₅ (by simp [Mem.Live, hlen₄]; omega)
-    (hnew (by omega) huL).symm).frame_seq_le rfl rfl (by simp [Mem.Live, hlen₄]; omega)
+    (by simp [Sl, length_hessenbergReduceLastSlots] <;> omega) hU₅ (by simp [Mem.Live, hlen₄]; omega)
+    (hnew huL (show L ≤ L + 2 by omega)).symm).frame_seq_le rfl rfl (by simp [Mem.Live, hlen₄]; omega)
     (le_sup_right.trans le_sup_left) ?_
   rintro μ₅ hfr₅ ⟨X', hX', hX'b⟩
   have hH₅ := hH₄.of_eqOff hfr₅ hdwu.symm
   have hp₆ := hfr₅.keep (Store.readsOnly_readBlock _ _ _ _) (hpwu.mono le_rfl le_sup_right).symm hp₅
   have hTh₆ := hfr₅.keep (Store.readsOnly_get _ _ _) (hnew huL (by omega)) hTh₅
-  have hlen₅ : μ₅.store.length = L + 3 := by rw [← hfr₅.length_eq]; exact hlen₄
+  have hlen₅ : μ₅.store.length = L + 3 := by rw [hfr₅.length_eq]; exact hlen₄
   have hlenB : ∀ b, μ₅.store.len b = s₁.len b := fun b => by
-    rw [← hfr₅.len_eq, ← hfr₄.len_eq, ← hfr₃.len_eq, ← hfr₂.len_eq, ← hfr₁.len_eq]
+    rw [hfr₅.len_eq, hfr₄.len_eq, hfr₃.len_eq, hfr₂.len_eq, hfr₁.len_eq]
   -- the core in Schur mode
-  have hD := smallEigDecoupler_terminatingDecouplerRoutine (O := O) (Q := Q) (sG := sG) (F := T)
-    hS hL (nmax := n) (hNat.mono (by omega)) hC hQ hSmp hDisk hqs hlen
-    (ns := T + (n + 1)) (ws := n + 1) (by omega) (by omega)
+  have hD : TerminatingDecouplerRoutine n 1 T T qs (T + (n + 1)) (n + 1)
+      (smallEigDecoupler (O := O) (Q := Q) sG) I :=
+    smallEigDecoupler_terminatingDecouplerRoutine (O := O) (Q := Q) (sG := sG) (F := T)
+      hS hL (nmax := n) (hNat.mono (by omega)) hC hQ hSmp hDisk hqs hlen
+      (ns := T + (n + 1)) (ws := n + 1) (by omega) (by omega)
   have hLeaf : TerminatingLeafRoutine 0 (min 1 (n + 1)) qs T (identityLeaf (O := O) (Q := Q)) I :=
-    by simpa using identityLeaf_terminates (O := O) (Q := Q) hS h0 h1 qs T
+    by rw [show min 1 (n + 1) = 1 by omega]; exact identityLeaf_terminates hS h0 h1 qs T
   refine ((solveRoundedWith_terminates (n := n) (k := 1) (F := T) (T := T) (ns := T + (n + 1))
     (w := n + 1) (εL := 0) hS hM hu hL (hNat.mono (by omega)) hQ hC le_rfl _ hD _ hLeaf
     (tape := tape) (μ := μ₅) (a := w) (t := (L + 1, 0)) (p := p) (uo := ub) (f := (L, 0))

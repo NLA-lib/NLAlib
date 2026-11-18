@@ -545,7 +545,8 @@ theorem shFind_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsS
   obtain ⟨⟨hA, hss, -, -, -, -, -, -, -, hlen', h0, -⟩, -⟩ := id hm
   have hne : ∀ r ∈ ss, ∀ i, e i ≠ r := fun r hr i he => by
     have := hdist r hr i; rw [he, sub_self, norm_zero] at this; linarith
-  have hTau := comptauHalf_isHalfTau (I := I) hS hM hC hL hH hH0 hV hHV hκ hC0 hd hs hdist hnu
+  have hTau := comptauHalf_isHalfTau (I := I) hS hM hC hL hNat (by omega) hH hH0 hV hHV hκ hC0 hd hs
+    hdist hnu
     (by rw [hlen]; exact hu) (by rw [hlen]; exact hxu)
   refine (findRounded_writes (τ := τ) (b := a) (ss := s) (z := (L, 0)) hS hL hC hQ hV hHV hκ hne
     hTau (hNat.mono (by omega)) hkq hlen hA (by rw [hlen]; exact hss)

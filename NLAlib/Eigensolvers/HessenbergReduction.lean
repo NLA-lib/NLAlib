@@ -461,14 +461,6 @@ section BackwardError
 
 variable {M : Machine ℝ} {u : ℝ} {N : ℕ}
 
-/-- Under the standard model a rounded complex linear combination of two zeros is zero. -/
-theorem ShiftedQR.linearComplex_zero_zero (hM : StdModel u id M) (a b : ℂ) :
-    linearComplex M a b 0 0 = 0 := by
-  have hmul : ∀ x : ℝ, M.mul x 0 = 0 := fun x => by simpa using hM.mul x 0
-  have hadd : M.add 0 0 = 0 := by simpa using hM.add 0 0
-  have hsub : M.sub 0 0 = 0 := by simpa using hM.sub 0 0
-  apply Complex.ext <;> simp [linearComplex, Pair.linearWords, hmul, hadd, hsub]
-
 /-- Two entries of a row have joint Euclidean norm at most the spectral norm. -/
 theorem sqrt_norm_sq_add_norm_sq_le_specNorm {i j : Fin N} (hij : i ≠ j)
     (Z : Matrix (Fin N) (Fin N) ℂ) (r : Fin N) :
@@ -570,7 +562,7 @@ private theorem rowCol_apply_eq_zero (hM : StdModel u id M) {i j a b : Fin N} {c
   rw [machineRowRotation_apply_of_ne hai haj]
   by_cases hbij : b = i ∨ b = j
   · obtain ⟨h1, h2⟩ := hb hbij
-    simp only [machineColRotation, Matrix.of_apply, h1, h2, ShiftedQR.linearComplex_zero_zero hM]
+    simp only [machineColRotation, Matrix.of_apply, h1, h2, linearComplex_zero_zero hM]
     split_ifs <;> first | rfl | exact hab
   · rw [not_or] at hbij
     rw [machineColRotation_apply_of_ne hbij.1 hbij.2]

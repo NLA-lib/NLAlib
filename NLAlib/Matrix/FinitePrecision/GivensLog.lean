@@ -45,6 +45,9 @@ rotation moves its operand by at most $24\boldsymbol{u}$ times its norm from the
 
 * `NLAlib.slottedLogOpen_writes`, `NLAlib.slottedLogWrite_writes`,
   `NLAlib.slottedLogValidate_writes`: the log programs move the stored log.
+* `NLAlib.isRoundedRowRotation_machineRowRotation`,
+  `NLAlib.isRoundedColRotation_machineColRotation`: the rotations computed from rounded
+  coefficients are rounded Givens rotations.
 * `NLAlib.givensReplayColumns_specNorm_sub_le`, `NLAlib.givensReplayRows_specNorm_sub_le`: the
   replay is within $(1 + 24\boldsymbol{u})^{R} - 1$ of the exact product, on every tape.
 * `NLAlib.one_add_mul_pow_sub_one_le`: from the identity, within
@@ -57,6 +60,133 @@ namespace NLAlib
 
 open Ops
 open scoped Matrix
+
+/-! ### Machine rotations are rounded rotations -/
+
+section MachineRound
+
+variable {M : Machine ℝ} {u : ℝ} {n : ℕ} {i j : Fin n}
+
+/-- **The machine row rotation is a rounded rotation**: on a machine with the standard model at
+$0 \le \boldsymbol{u} \le 1/100$, rotating the rows $i \ne j$ of $\mathbf{Z}$ by the coefficients
+computed from $(p, q)$ is within $12\boldsymbol{u}$, per column pair, of the exact Givens rotation
+of $(p, q)$. [Higham2002, Lemma 19.8]. -/
+theorem isRoundedRowRotation_machineRowRotation (hM : StdModel u id M) (hu : 0 ≤ u)
+    (hu' : u ≤ 1 / 100) (hij : i ≠ j) (p q : ℂ) (Z : Matrix (Fin n) (Fin n) ℂ) :
+    IsRoundedRowRotation (12 * u) i j (givensCoeffs p q).1 (givensCoeffs p q).2 Z
+      (machineRowRotation M i j (roundedGivensCoeffs M p q).1 (roundedGivensCoeffs M p q).2 Z) := by
+  obtain ⟨h1, h2⟩ := hM.norm_roundedGivensCoeffs_sub_le hu hu' p q
+  refine ⟨fun r k hri hrj => machineRowRotation_apply_of_ne hri hrj k, fun k => ?_⟩
+  have hneg (r : ℝ) : M.neg r = -r := hM.neg r
+  set c := (roundedGivensCoeffs M p q).1
+  set s := (roundedGivensCoeffs M p q).2
+  have e1 : (⟨M.neg s.re, s.im⟩ : ℂ) = -star s := by apply Complex.ext <;> simp [hneg]
+  have e2 : (⟨c.re, M.neg c.im⟩ : ℂ) = star c := by apply Complex.ext <;> simp [hneg]
+  rw [machineRowRotation_apply_left, machineRowRotation_apply_right hij,
+    givens_mul_apply_left hij, givens_mul_apply_right hij, e1, e2]
+  exact hM.norm_linearWords_rotation_sub_le hu hu' (norm_givensCoeffs_fst_sq_add p q) h1 h2 _ _
+
+/-- **The machine column rotation is a rounded rotation**: on a machine with the standard model
+at $0 \le \boldsymbol{u} \le 1/100$, rotating the columns $i \ne j$ of $\mathbf{Z}$ by the
+adjoint of the rotation of the coefficients computed from $(p, q)$ is within $12\boldsymbol{u}$,
+per row pair, of the adjoint of the exact Givens rotation of $(p, q)$. [Higham2002, Lemma 19.8]. -/
+theorem isRoundedColRotation_machineColRotation (hM : StdModel u id M) (hu : 0 ≤ u)
+    (hu' : u ≤ 1 / 100) (hij : i ≠ j) (p q : ℂ) (Z : Matrix (Fin n) (Fin n) ℂ) :
+    IsRoundedColRotation (12 * u) i j (givensCoeffs p q).1 (givensCoeffs p q).2 Z
+      (machineColRotation M i j (roundedGivensCoeffs M p q).1 (roundedGivensCoeffs M p q).2 Z) := by
+  obtain ⟨h1, h2⟩ := hM.norm_roundedGivensCoeffs_sub_le hu hu' p q
+  refine ⟨fun r k hki hkj => machineColRotation_apply_of_ne hki hkj r, fun r => ?_⟩
+  have hneg (r : ℝ) : M.neg r = -r := hM.neg r
+  set c := (roundedGivensCoeffs M p q).1
+  set s := (roundedGivensCoeffs M p q).2
+  set c₀ := (givensCoeffs p q).1
+  set s₀ := (givensCoeffs p q).2
+  have e1 : (⟨c.re, M.neg c.im⟩ : ℂ) = star c := by apply Complex.ext <;> simp [hneg]
+  have e2 : (⟨s.re, M.neg s.im⟩ : ℂ) = star s := by apply Complex.ext <;> simp [hneg]
+  have e3 : (⟨M.neg s.re, M.neg s.im⟩ : ℂ) = -s := by apply Complex.ext <;> simp [hneg]
+  have g1 : (Z * (givens i j c₀ s₀)ᴴ) r i = star c₀ * Z r i + star s₀ * Z r j := by
+    rw [conjTranspose_givens, mul_givens_apply_left hij]
+    simp only [star_neg]
+    ring
+  have g2 : (Z * (givens i j c₀ s₀)ᴴ) r j = -s₀ * Z r i + c₀ * Z r j := by
+    rw [conjTranspose_givens, mul_givens_apply_right hij, star_star]
+    ring
+  rw [machineColRotation_apply_left, machineColRotation_apply_right hij, g1, g2, e1, e2, e3]
+  have h := hM.norm_linearWords_rotation_sub_le hu hu'
+    (a := star c) (b := star s) (α := star c₀) (β := star s₀)
+    (by rw [norm_star, norm_star]; exact norm_givensCoeffs_fst_sq_add p q)
+    (by rw [← star_sub, norm_star, norm_star]; exact h1)
+    (by rw [← star_sub, norm_star, norm_star]; exact h2) (Z r i) (Z r j)
+  simp only [star_star] at h
+  exact h
+
+/-- Under the standard model a rounded complex linear combination of two zeros is zero. -/
+theorem linearComplex_zero_zero (hM : StdModel u id M) (a b : ℂ) :
+    linearComplex M a b 0 0 = 0 := by
+  have hmul : ∀ x : ℝ, M.mul x 0 = 0 := fun x => by simpa using hM.mul x 0
+  have hadd : M.add 0 0 = 0 := by simpa using hM.add 0 0
+  have hsub : M.sub 0 0 = 0 := by simpa using hM.sub 0 0
+  apply Complex.ext <;> simp [linearComplex, Pair.linearWords, hmul, hadd, hsub]
+
+end MachineRound
+
+/-! ### Embedded blocks -/
+
+section EmbedBlock
+
+variable {N lo d : ℕ}
+
+/-- The embedded identity is the identity. -/
+@[simp] theorem embedBlock_one :
+    embedBlock (N := N) lo (1 : Matrix (Fin d) (Fin d) ℂ) = 1 := by
+  ext i j
+  simp only [embedBlock, Matrix.of_apply, Matrix.one_apply, Fin.ext_iff]
+  split_ifs <;> first | rfl | (exfalso; omega)
+
+/-- Embedding commutes with the adjoint. -/
+theorem embedBlock_conjTranspose (V : Matrix (Fin d) (Fin d) ℂ) :
+    (embedBlock (N := N) lo V)ᴴ = embedBlock lo Vᴴ := by
+  ext i j
+  simp only [embedBlock, Matrix.conjTranspose_apply, Matrix.of_apply, Fin.ext_iff]
+  split_ifs <;> first | rfl | (exfalso; omega) | simp | (simp; omega)
+
+/-- **Embedding is multiplicative** when the range fits: $\widetilde{\mathbf{A}\mathbf{B}} =
+\widetilde{\mathbf{A}}\widetilde{\mathbf{B}}$ for $lo + d \le N$. -/
+theorem embedBlock_mul (hN : lo + d ≤ N) (A B : Matrix (Fin d) (Fin d) ℂ) :
+    embedBlock (N := N) lo (A * B) = embedBlock lo A * embedBlock lo B := by
+  ext i k
+  rw [Matrix.mul_apply]
+  by_cases hi : lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d
+  · by_cases hk : lo ≤ (k : ℕ) ∧ (k : ℕ) < lo + d
+    · simp only [embedBlock, Matrix.of_apply, dif_pos hi, dif_pos hk, Matrix.mul_apply]
+      refine Fintype.sum_of_injective (fun j : Fin d => (⟨lo + j, by omega⟩ : Fin N))
+        (fun a b h => Fin.ext (by have := congrArg Fin.val h; simp at this; omega)) _ _
+        (fun j hj => ?_) (fun j => ?_)
+      · rw [dif_neg fun hj' => hj ⟨⟨(j : ℕ) - lo, by omega⟩, Fin.ext (by simp; omega)⟩,
+          zero_mul]
+      · simp only [dif_pos (show lo ≤ lo + (j : ℕ) ∧ lo + (j : ℕ) < lo + d by omega)]
+        congr 2 <;> exact Fin.ext (by simp)
+    · simp only [embedBlock, Matrix.of_apply, dif_pos hi, dif_neg hk]
+      refine (Finset.sum_eq_zero fun j _ => ?_).symm
+      by_cases hj : lo ≤ (j : ℕ) ∧ (j : ℕ) < lo + d
+      · rw [dif_pos hj, dif_pos hj, mul_zero]
+      · rw [dif_neg hj, zero_mul]
+  · simp only [embedBlock, Matrix.of_apply, dif_neg hi]
+    rw [Finset.sum_eq_single i (fun j _ hj => by rw [if_neg (Ne.symm hj), zero_mul])
+      (by simp), if_pos rfl, one_mul, dif_neg hi]
+
+/-- The rotation of an entry inside the block, embedded, is the rotation of the shifted entry. -/
+theorem embedBlock_givensAt (hN : lo + d ≤ N) {e : ℕ × ℂ × ℂ} (he : e.1 + 1 < d) :
+    embedBlock (N := N) lo (givensAt d e) = givensAt N (lo + e.1, e.2) := by
+  have hij : (⟨e.1, by omega⟩ : Fin d) ≠ ⟨e.1 + 1, he⟩ := Fin.ne_of_val_ne (by simp)
+  have hij' : (⟨lo + e.1, by omega⟩ : Fin N) ≠ ⟨lo + e.1 + 1, by omega⟩ :=
+    Fin.ne_of_val_ne (by simp)
+  ext a b
+  simp only [embedBlock, givensAt, dif_pos he, dif_pos (show lo + e.1 + 1 < N by omega),
+    Matrix.of_apply, givens_apply hij, givens_apply hij', Fin.ext_iff, Fin.val_mk]
+  split_ifs <;> first | rfl | (exfalso; omega)
+
+end EmbedBlock
 
 /-! ### The log -/
 
@@ -647,27 +777,6 @@ section Replay
 
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q]
 
-/-- Rotate rows `r, r + 1` of the leading-dimension-`ld` matrix over the columns
-`j0, …, j0 + nc - 1`: `[ld, r, j0, nc] (A, C, S, T) → (A)`. `NLAlib.rotateRowsWithScratch` is
-the full range `[n, k, 0, n]`. -/
-def rotateRowsOn : Impl O Q := opsImpl% [ld, r, j0, nc] (A, C, S, T) → (A) {
-  for j < nc {
-    run (rotateLeftWithScratch (Op := O) (Tst := Q)).body []
-      (C, S, A[2 * ((j0 + j) * ld + r)], A[2 * ((j0 + j) * ld + r + 1)], T,
-        A[2 * ((j0 + j) * ld + r)], A[2 * ((j0 + j) * ld + r + 1)])
-  }
-}
-
-/-- Rotate columns `c, c + 1` over the rows `i0, …, i0 + nr - 1`:
-`[ld, c, i0, nr] (A, C, S, T) → (A)`. -/
-def rotateColumnsOn : Impl O Q := opsImpl% [ld, c, i0, nr] (A, C, S, T) → (A) {
-  for i < nr {
-    run (rotateRightWithScratch (Op := O) (Tst := Q)).body []
-      (C, S, A[2 * (c * ld + i0 + i)], A[2 * ((c + 1) * ld + i0 + i)], T,
-        A[2 * (c * ld + i0 + i)], A[2 * ((c + 1) * ld + i0 + i)])
-  }
-}
-
 /-- **Replay a log on rows**: for the valid slots in order (`ns` slots of `w` entries), recompute
 each entry's coefficients and rotate the rows `lo + r, lo + r + 1` of `A` over the columns
 `j0, …, j0 + nc - 1`. The plane is read with the bound `ld`.
@@ -681,7 +790,7 @@ def givensReplayRows : Impl O Q := opsImpl% [ld, lo, j0, nc, ns, w] (Lg, A) → 
         let r ← index (Has.inj IdxTst.toNat) (Lg[s * (1 + 5 * w) + 1 + 5 * i]) ≤ ld;
         run (coefficients (Op := O) (Tst := Q)).body []
           (Lg[s * (1 + 5 * w) + 2 + 5 * i], Lg[s * (1 + 5 * w) + 4 + 5 * i], Cf, Cf[2]);
-        run (rotateRowsOn (O := O) (Q := Q)).body [ld, lo + r, j0, nc] (A, Cf, Cf[2], T, A)
+        run (rotateRowsOn (Op := O) (Tst := Q)).body [ld, lo + r, j0, nc] (A, Cf, Cf[2], T, A)
       }
     } else { skip }
   }
@@ -698,13 +807,206 @@ def givensReplayColumns : Impl O Q := opsImpl% [ld, lo, i0, nr, ns, w] (Lg, A) �
         let r ← index (Has.inj IdxTst.toNat) (Lg[s * (1 + 5 * w) + 1 + 5 * i]) ≤ ld;
         run (coefficients (Op := O) (Tst := Q)).body []
           (Lg[s * (1 + 5 * w) + 2 + 5 * i], Lg[s * (1 + 5 * w) + 4 + 5 * i], Cf, Cf[2]);
-        run (rotateColumnsOn (O := O) (Q := Q)).body [ld, lo + r, i0, nr] (A, Cf, Cf[2], T, A)
+        run (rotateColumnsOn (Op := O) (Tst := Q)).body [ld, lo + r, i0, nr] (A, Cf, Cf[2], T, A)
       }
     } else { skip }
   }
 }
 
 end Replay
+
+/-! ### The replayed words and their error -/
+
+section ReplayWords
+
+/-- A product of square matrices with orthonormal columns has orthonormal columns. -/
+theorem hasOrthonormalCols_list_prod {n : ℕ} (l : List (Matrix (Fin n) (Fin n) ℂ))
+    (h : ∀ U ∈ l, HasOrthonormalCols U) : HasOrthonormalCols l.prod := by
+  induction l with
+  | nil => exact hasOrthonormalCols_one
+  | cons U l ih =>
+    rw [List.prod_cons]
+    exact (h U (by simp)).mul (ih fun V hV => h V (by simp [hV]))
+
+/-- **Errors along right multiplications by unitaries add up relatively**: if each step $f$
+moves $\mathbf{Y}$ to within $\eta\|\mathbf{Y}\|_2$ of $\mathbf{Y}\mathbf{U}_a$, $\mathbf{U}_a$
+unitary, then $k$ steps from $\mathbf{X}$ end within $((1 + \eta)^k - 1)\|\mathbf{X}\|_2$ of
+$\mathbf{X}\mathbf{U}_{a_1}\cdots\mathbf{U}_{a_k}$. -/
+theorem specNorm_foldl_sub_mul_prod_le {α : Type*} {n : ℕ}
+    (f : Matrix (Fin n) (Fin n) ℂ → α → Matrix (Fin n) (Fin n) ℂ)
+    (U : α → Matrix (Fin n) (Fin n) ℂ) {η : ℝ} (hη : 0 ≤ η) (as : List α)
+    (hU : ∀ a ∈ as, HasOrthonormalCols (U a))
+    (hf : ∀ a ∈ as, ∀ Y, specNorm (f Y a - Y * U a) ≤ η * specNorm Y)
+    (X : Matrix (Fin n) (Fin n) ℂ) :
+    specNorm (as.foldl f X - X * (as.map U).prod) ≤ ((1 + η) ^ as.length - 1) * specNorm X := by
+  induction as using List.reverseRecOn with
+  | nil => simp
+  | append_singleton as a ih =>
+    have ih := ih (fun b hb => hU b (by simp [hb])) (fun b hb => hf b (by simp [hb]))
+    set Y := as.foldl f X
+    set P := (as.map U).prod
+    have ha := hf a (by simp) Y
+    have hY : specNorm Y ≤ specNorm X + ((1 + η) ^ as.length - 1) * specNorm X := by
+      have e : Y = (Y - X * P) + X * P := by abel
+      have := specNorm_add_le (Y - X * P) (X * P)
+      rw [← e] at this
+      have hP : HasOrthonormalCols P := hasOrthonormalCols_list_prod _ fun V hV => by
+        obtain ⟨b, hb, rfl⟩ := List.mem_map.mp hV
+        exact hU b (by simp [hb])
+      rw [hP.specNorm_mul_right] at this
+      linarith
+    have e : f Y a - X * (P * U a) = (f Y a - Y * U a) + (Y - X * P) * U a := by
+      rw [Matrix.sub_mul, Matrix.mul_assoc]; abel
+    simp only [List.foldl_append, List.foldl_cons, List.foldl_nil, List.map_append, List.map_cons,
+      List.map_nil, List.prod_append, List.prod_cons, List.prod_nil, Matrix.mul_one,
+      List.length_append, List.length_singleton]
+    rw [e]
+    refine (specNorm_add_le _ _).trans ?_
+    rw [(hU a (by simp)).specNorm_mul_right]
+    rw [pow_succ]
+    nlinarith [mul_le_mul_of_nonneg_left hY hη, specNorm_nonneg X]
+
+/-- **Errors along left multiplications by unitaries add up relatively**: the mirror of
+`NLAlib.specNorm_foldl_sub_mul_prod_le`, each step within $\eta\|\mathbf{Y}\|_2$ of
+$\mathbf{U}_a^{\mathsf H}\mathbf{Y}$. -/
+theorem specNorm_foldl_sub_prod_mul_le {α : Type*} {n : ℕ}
+    (f : Matrix (Fin n) (Fin n) ℂ → α → Matrix (Fin n) (Fin n) ℂ)
+    (U : α → Matrix (Fin n) (Fin n) ℂ) {η : ℝ} (hη : 0 ≤ η) (as : List α)
+    (hU : ∀ a ∈ as, HasOrthonormalCols (U a))
+    (hf : ∀ a ∈ as, ∀ Y, specNorm (f Y a - (U a)ᴴ * Y) ≤ η * specNorm Y)
+    (X : Matrix (Fin n) (Fin n) ℂ) :
+    specNorm (as.foldl f X - ((as.map U).prod)ᴴ * X) ≤
+      ((1 + η) ^ as.length - 1) * specNorm X := by
+  have hg := specNorm_foldl_sub_mul_prod_le (fun Y a => (f Yᴴ a)ᴴ) U hη as hU (fun a ha Y => by
+    have e : (f Yᴴ a)ᴴ - Y * U a = (f Yᴴ a - (U a)ᴴ * Yᴴ)ᴴ := by
+      rw [Matrix.conjTranspose_sub, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose,
+        Matrix.conjTranspose_conjTranspose]
+    rw [e, specNorm_conjTranspose, ← specNorm_conjTranspose Y]
+    exact hf a ha Yᴴ) Xᴴ
+  have hfold : ∀ (bs : List α) (Z : Matrix (Fin n) (Fin n) ℂ),
+      bs.foldl (fun Y a => (f Yᴴ a)ᴴ) Zᴴ = (bs.foldl f Z)ᴴ := by
+    intro bs
+    induction bs with
+    | nil => intro Z; rfl
+    | cons b bs ih => intro Z; simp only [List.foldl_cons, Matrix.conjTranspose_conjTranspose, ih]
+  rw [hfold, specNorm_conjTranspose] at hg
+  have e : (as.foldl f X)ᴴ - Xᴴ * (as.map U).prod = (as.foldl f X - ((as.map U).prod)ᴴ * X)ᴴ := by
+    rw [Matrix.conjTranspose_sub, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
+  rwa [e, specNorm_conjTranspose] at hg
+
+/-- One replayed entry on the columns, as the machine computes it: the coefficients rounded from
+$(p, q)$, then the machine rotation of the columns $lo + r, lo + r + 1$ over the rows
+$i_0, \dots, i_0 + n_r - 1$; nothing out of range. -/
+noncomputable def replayColumnStep (M : Machine ℝ) {N : ℕ} (lo i0 nr : ℕ)
+    (X : Matrix (Fin N) (Fin N) ℂ) (e : GivensEntry) : Matrix (Fin N) (Fin N) ℂ :=
+  if h : lo + e.1 + 1 < N then
+    machineColRotationOn M ⟨lo + e.1, by omega⟩ ⟨lo + e.1 + 1, h⟩
+      (roundedGivensCoeffs M e.2.1 e.2.2).1 (roundedGivensCoeffs M e.2.1 e.2.2).2 i0 nr X
+  else X
+
+/-- One replayed entry on the rows $lo + r, lo + r + 1$ over the columns
+$j_0, \dots, j_0 + n_c - 1$, as the machine computes it; nothing out of range. -/
+noncomputable def replayRowStep (M : Machine ℝ) {N : ℕ} (lo j0 nc : ℕ)
+    (X : Matrix (Fin N) (Fin N) ℂ) (e : GivensEntry) : Matrix (Fin N) (Fin N) ℂ :=
+  if h : lo + e.1 + 1 < N then
+    machineRowRotationOn M ⟨lo + e.1, by omega⟩ ⟨lo + e.1 + 1, h⟩
+      (roundedGivensCoeffs M e.2.1 e.2.2).1 (roundedGivensCoeffs M e.2.1 e.2.2).2 j0 nc X
+  else X
+
+/-- The embedded rotation of an entry inside the block, or of the zero fill, is the Givens
+rotation of the shifted plane. -/
+theorem embedBlock_givensAt_eq_givens {N lo d : ℕ} (hN : lo + d ≤ N) {e : GivensEntry}
+    (he : lo + e.1 + 1 < N) (he' : e.1 + 1 < d ∨ e = (0, 0, 0)) :
+    embedBlock (N := N) lo (givensAt d e) = givens (⟨lo + e.1, by omega⟩ : Fin N)
+      ⟨lo + e.1 + 1, he⟩ (givensCoeffs e.2.1 e.2.2).1 (givensCoeffs e.2.1 e.2.2).2 := by
+  rcases he' with he' | rfl
+  · rw [embedBlock_givensAt hN he']
+    simp only [givensAt, dif_pos (show lo + e.1 + 1 < N from he)]
+  · rw [givensAt_zero, embedBlock_one]
+    simp [givensCoeffs, givens]
+
+/-- The embedded unitary of a log is the product of the embedded adjoint rotations. -/
+theorem prod_map_embedBlock_givensAt {N lo d : ℕ} (hN : lo + d ≤ N) (es : List GivensEntry) :
+    (es.map fun e => (embedBlock (N := N) lo (givensAt d e))ᴴ).prod =
+      embedBlock lo (givensLog d es) := by
+  induction es with
+  | nil => simp
+  | cons e es ih =>
+    rw [List.map_cons, List.prod_cons, ih, embedBlock_conjTranspose, ← embedBlock_mul hN]
+    rfl
+
+/-- The column replay of one entry is within $24\boldsymbol{u}\|\mathbf{Y}\|_2$ of the product by
+the embedded exact adjoint rotation. [Higham2002, Lemma 19.8]. -/
+theorem specNorm_replayColumnStep_sub_le {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M)
+    (hu0 : 0 ≤ u) (hu : u ≤ 1 / 100) {N lo d : ℕ} (hN : lo + d ≤ N) {e : GivensEntry}
+    (he : lo + e.1 + 1 < N) (he' : e.1 + 1 < d ∨ e = (0, 0, 0)) (Y : Matrix (Fin N) (Fin N) ℂ) :
+    specNorm (replayColumnStep M lo 0 N Y e - Y * (embedBlock lo (givensAt d e))ᴴ) ≤
+      24 * u * specNorm Y := by
+  have hij : (⟨lo + e.1, by omega⟩ : Fin N) ≠ ⟨lo + e.1 + 1, he⟩ := Fin.ne_of_val_ne (by simp)
+  have hon : replayColumnStep M lo 0 N Y e = machineColRotation M (⟨lo + e.1, by omega⟩ : Fin N)
+      ⟨lo + e.1 + 1, he⟩
+      (roundedGivensCoeffs M e.2.1 e.2.2).1 (roundedGivensCoeffs M e.2.1 e.2.2).2 Y := by
+    ext r t
+    simp [replayColumnStep, he, machineColRotationOn]
+  rw [hon, embedBlock_givensAt_eq_givens hN he he']
+  have h := (isRoundedColRotation_machineColRotation hM hu0 hu hij e.2.1 e.2.2 Y).specNorm_sub_le
+    (by positivity)
+  linarith
+
+/-- The row replay of one entry over all columns is within $24\boldsymbol{u}\|\mathbf{Y}\|_2$ of
+the product by the embedded exact rotation. [Higham2002, Lemma 19.8]. -/
+theorem specNorm_replayRowStep_sub_le {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M)
+    (hu0 : 0 ≤ u) (hu : u ≤ 1 / 100) {N lo d : ℕ} (hN : lo + d ≤ N) {e : GivensEntry}
+    (he : lo + e.1 + 1 < N) (he' : e.1 + 1 < d ∨ e = (0, 0, 0)) (Y : Matrix (Fin N) (Fin N) ℂ) :
+    specNorm (replayRowStep M lo 0 N Y e - embedBlock lo (givensAt d e) * Y) ≤
+      24 * u * specNorm Y := by
+  have hij : (⟨lo + e.1, by omega⟩ : Fin N) ≠ ⟨lo + e.1 + 1, he⟩ := Fin.ne_of_val_ne (by simp)
+  have hon : replayRowStep M lo 0 N Y e = machineRowRotation M (⟨lo + e.1, by omega⟩ : Fin N)
+      ⟨lo + e.1 + 1, he⟩
+      (roundedGivensCoeffs M e.2.1 e.2.2).1 (roundedGivensCoeffs M e.2.1 e.2.2).2 Y := by
+    ext r t
+    simp [replayRowStep, he, machineRowRotationOn]
+  rw [hon, embedBlock_givensAt_eq_givens hN he he']
+  have h := (isRoundedRowRotation_machineRowRotation hM hu0 hu hij e.2.1 e.2.2 Y).specNorm_sub_le
+    (by positivity)
+  linarith
+
+/-- **The column replay of a log** on the machine is within
+$((1 + 24\boldsymbol{u})^{R} - 1)\|\mathbf{X}\|_2$ of $\mathbf{X}\widetilde{\mathbf{V}}$, $R$ the
+number of entries and $\widetilde{\mathbf{V}}$ the log's unitary on $[lo, lo + d)$; every entry
+is inside the block or the zero fill, with its two columns in range. -/
+theorem specNorm_foldl_replayColumnStep_sub_le {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M)
+    (hu0 : 0 ≤ u) (hu : u ≤ 1 / 100) {N lo d : ℕ} (hN : lo + d ≤ N) (es : List GivensEntry)
+    (hes : ∀ e ∈ es, lo + e.1 + 1 < N ∧ (e.1 + 1 < d ∨ e = (0, 0, 0)))
+    (X : Matrix (Fin N) (Fin N) ℂ) :
+    specNorm (es.foldl (replayColumnStep M lo 0 N) X - X * embedBlock lo (givensLog d es)) ≤
+      ((1 + 24 * u) ^ es.length - 1) * specNorm X := by
+  rw [← prod_map_embedBlock_givensAt hN]
+  refine specNorm_foldl_sub_mul_prod_le _ _ (by positivity) es (fun e he => ?_)
+    (fun e he Y => specNorm_replayColumnStep_sub_le hM hu0 hu hN (hes e he).1 (hes e he).2 Y) X
+  rw [embedBlock_givensAt_eq_givens hN (hes e he).1 (hes e he).2]
+  exact (hasOrthonormalCols_givens (Fin.ne_of_val_ne (by simp))
+    (norm_givensCoeffs_fst_sq_add _ _)).conjTranspose
+
+/-- **The row replay of a log over all columns** on the machine is within
+$((1 + 24\boldsymbol{u})^{R} - 1)\|\mathbf{X}\|_2$ of $\widetilde{\mathbf{V}}^{\mathsf H}\mathbf{X}$,
+under the conditions of `NLAlib.specNorm_foldl_replayColumnStep_sub_le`. -/
+theorem specNorm_foldl_replayRowStep_sub_le {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M)
+    (hu0 : 0 ≤ u) (hu : u ≤ 1 / 100) {N lo d : ℕ} (hN : lo + d ≤ N) (es : List GivensEntry)
+    (hes : ∀ e ∈ es, lo + e.1 + 1 < N ∧ (e.1 + 1 < d ∨ e = (0, 0, 0)))
+    (X : Matrix (Fin N) (Fin N) ℂ) :
+    specNorm (es.foldl (replayRowStep M lo 0 N) X - (embedBlock lo (givensLog d es))ᴴ * X) ≤
+      ((1 + 24 * u) ^ es.length - 1) * specNorm X := by
+  rw [← prod_map_embedBlock_givensAt hN]
+  refine specNorm_foldl_sub_prod_mul_le _ _ (by positivity) es (fun e he => ?_)
+    (fun e he Y => by
+      rw [Matrix.conjTranspose_conjTranspose]
+      exact specNorm_replayRowStep_sub_le hM hu0 hu hN (hes e he).1 (hes e he).2 Y) X
+  rw [embedBlock_givensAt_eq_givens hN (hes e he).1 (hes e he).2]
+  exact (hasOrthonormalCols_givens (Fin.ne_of_val_ne (by simp))
+    (norm_givensCoeffs_fst_sq_add _ _)).conjTranspose
+
+end ReplayWords
 
 section ReplaySpecs
 

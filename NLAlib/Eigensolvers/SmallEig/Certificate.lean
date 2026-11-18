@@ -421,7 +421,8 @@ $$\mathbb{P}\bigl[\mathsf{smallEigAlgorithm}(\mathbf{M}) \text{ fails, exceeds i
   scratch, memory, work or span, writes outside its output, or lists no }
   \operatorname{spec}(\mathbf{M} + \mathbf{E}),\ \|\mathbf{E}\|_2 \le \delta\bigr]
   \le \varphi\,,$$
-on one counted run, with the work and the span `NLAlib.SmallEig.smallEigWork`. -/
+on one counted run, with the work and the span `NLAlib.SmallEig.smallEigWork`.
+Result: small-eig-certificate-accuracy -/
 theorem smallEig_algorithm_measureReal_not_accepts_le {u : ℝ} (hM : StdModel u id Mch)
     {law : ℕ → Measure ℝ} {sU sG : ℕ} (hU : law sU = volume.restrict (Set.Icc 0 1))
     (hG : law sG = gaussianReal 0 1) (hA : c₁.BoundsGinibreGap)
@@ -459,11 +460,13 @@ theorem smallEig_algorithm_measureReal_not_accepts_le {u : ℝ} (hM : StdModel u
 
 /-! ### With the proved random-matrix tails -/
 
-/-- The unconditional form of `NLAlib.SmallEig.smallEig_algorithm_measureReal_not_accepts_le`
+/-- **The small-eigenvalue solver, on one run, unconditional**.
+The unconditional form of `NLAlib.SmallEig.smallEig_algorithm_measureReal_not_accepts_le`
 ([BanksGarzaVargasSrivastava2025, Theorem 1.1]): the eigenvalue-gap and eigenvector-condition tails
 of a complex Ginibre perturbation are proved, at the records
 `NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$ and
-`NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$. -/
+`NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$.
+Result: small-eig-certificate-accuracy -/
 theorem smallEig_algorithm_measureReal_not_accepts_le_unconditional
     {admitted : ∃ d, SmallEigSizes Mch nmax ginibreGapTail
       ginibreConditionTail d} {u : ℝ} (hM : StdModel u id Mch)

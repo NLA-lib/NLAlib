@@ -301,7 +301,8 @@ $$\mathbb{P}\bigl[\mathsf{roundedShQRSmallEigAlgorithm}(\mathbf{H}) \text{ fails
   budget, scratch, memory, work or span, writes outside the matrix, the output and the failure
   word, or lists no } \operatorname{spec}(\mathbf{H} + \mathbf{E}),\
   \|\mathbf{E}\|_2 \le \delta\bigr] \le \varphi\,,$$
-on one counted run, with the work and the span `NLAlib.ShiftedQR.shqrSmallEigWork`. -/
+on one counted run, with the work and the span `NLAlib.ShiftedQR.shqrSmallEigWork`.
+Result: shifted-qr-rounded-small-eig-certificate-accuracy -/
 theorem roundedShQRSmallEig_algorithm_measureReal_not_accepts_le {u : ℝ}
     (hM : StdModel u id Mch) {law : ℕ → Measure ℝ} {sU sG : ℕ}
     (hU : law sU = volume.restrict (Set.Icc 0 1)) (hG : law sG = gaussianReal 0 1)
@@ -345,12 +346,14 @@ theorem roundedShQRSmallEig_algorithm_measureReal_not_accepts_le {u : ℝ}
 
 /-! ### With the proved random-matrix tails -/
 
-/-- The unconditional form of
+/-- **The rounded shifted QR algorithm with no oracle, on one run, unconditional**.
+The unconditional form of
 `NLAlib.ShiftedQR.roundedShQRSmallEig_algorithm_measureReal_not_accepts_le`
 ([BanksGarzaVargasSrivastava2022, Theorem 6.3 with Theorem 1.4's quantifiers, corrected]): the
 eigenvalue-gap and eigenvector-condition tails of a complex Ginibre perturbation are proved, at
 the records `NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$ and
-`NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$. -/
+`NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$.
+Result: shifted-qr-rounded-small-eig-certificate-accuracy -/
 theorem roundedShQRSmallEig_algorithm_measureReal_not_accepts_le_unconditional
     {admitted : ∃ d, ShQRSmallEigSizes Mch ginibreGapTail
       ginibreConditionTail d} {u : ℝ}

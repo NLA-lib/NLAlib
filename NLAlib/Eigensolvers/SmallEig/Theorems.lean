@@ -593,7 +593,8 @@ Here $\boldsymbol{u}_{\mathrm{SmallEig}}$ is `NLAlib.SmallEig.uSmallEig` at $n_{
 N4) and the error is relative.
 
 Note: The run terminates on every tape (`NLAlib.SmallEig.smallEigProg_terminates`). The failure
-is split in four: the gap, the condition, the norm of the perturbation, and the worklist. -/
+is split in four: the gap, the condition, the norm of the perturbation, and the worklist.
+Result: small-eig-backward-error -/
 theorem smallEig_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
     (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
@@ -626,7 +627,8 @@ $$\mathbb{P}\bigl[\mathsf{smallEigProg}(\mathbf{M}) \text{ fails, or writes outs
   or lists no } \operatorname{spec}(\mathbf{M} + \mathbf{E}),\
   \|\mathbf{E}\|_2 \le \varepsilon\|\mathbf{M}\|_2\bigr] \le \varphi\,.$$
 [BanksGarzaVargasSrivastava2025, Theorem 1.1]; the bound $\Sigma$ of the norm is an input there
-too (its errata P9, N4). -/
+too (its errata P9, N4).
+Result: small-eig-backward-error -/
 theorem smallEig_relative {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
     (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
@@ -669,7 +671,8 @@ forward error $\beta$ and the failure probability $\varphi$ on orders at most $k
 at most $\Sigma$: one list of words, chosen at $k_{\max}$, serves every order. Here
 $\boldsymbol{u}^{\mathrm{fwd}}_{\mathrm{SmallEig}}$ is `NLAlib.SmallEig.uSmallEigForward`.
 [BanksGarzaVargasSrivastava2025, Corollary 1.3]; there the order is fixed and the words depend on
-it. -/
+it.
+Result: small-eig-forward-error -/
 theorem smallEigProg_randomSmallEigContract {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
     {kmax kmax' : ℕ} (hk' : kmax' ≤ kmax) (hNat : IsExactNatLit id Mch kmax') (hQ : IsToNat id I)
@@ -704,7 +707,8 @@ holding $\mathbf{M}$ and the words `NLAlib.SmallEig.smallEigForwardParams`,
 $$\mathbb{P}\bigl[\mathsf{smallEigProg}(\mathbf{M}) \text{ fails, or writes outside its output,
   or lists no } \boldsymbol{\mu} \text{ with } \lvert\mu_i - \lambda_i\rvert \le \beta\bigr]
   \le \varphi$$
-for a listing $\boldsymbol{\lambda}$ of the eigenvalues of $\mathbf{M}$. -/
+for a listing $\boldsymbol{\lambda}$ of the eigenvalues of $\mathbf{M}$.
+Result: small-eig-forward-error -/
 theorem smallEig_measureReal_not_forward_le {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
     {kmax : ℕ} (hNat : IsExactNatLit id Mch kmax) (hQ : IsToNat id I) (hC : IsCmp id I)
@@ -754,11 +758,13 @@ theorem smallEig_work_le (sG : ℕ) : ∃ c : ℕ, ∀ n nq T : ℕ,
 
 /-! ### With the proved random-matrix tails -/
 
-/-- The unconditional form of `NLAlib.SmallEig.smallEig_measureReal_not_spectrum_le`
+/-- **The small-eigenvalue solver, unconditional**.
+The unconditional form of `NLAlib.SmallEig.smallEig_measureReal_not_spectrum_le`
 ([BanksGarzaVargasSrivastava2025, Theorem 1.1]): the eigenvalue-gap and eigenvector-condition tails
 of a complex Ginibre perturbation are proved, at the records
 `NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$ and
-`NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$. -/
+`NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$.
+Result: small-eig-backward-error -/
 theorem smallEig_measureReal_not_spectrum_le_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
   : ℝ}
     {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
@@ -781,11 +787,13 @@ theorem smallEig_measureReal_not_spectrum_le_unconditional {Mch : Machine ℝ} {
     (hA := boundsGinibreGap_ginibreGapTail) (hB := boundsGinibreCondition_ginibreConditionTail)
     (hb₁ := ginibreGapTail_b_pos) (hb₂ := ginibreConditionTail_b_pos) <;> assumption
 
-/-- The unconditional form of `NLAlib.SmallEig.smallEig_relative` ([BanksGarzaVargasSrivastava2025,
+/-- **The small-eigenvalue solver, relative form, unconditional**.
+The unconditional form of `NLAlib.SmallEig.smallEig_relative` ([BanksGarzaVargasSrivastava2025,
 Theorem 1.1]): the eigenvalue-gap and eigenvector-condition tails of a complex Ginibre perturbation
 are proved, at the records `NLAlib.ginibreGapTail` <!-- value ginibreGapTail -->
 $(10000e, 5, 1/2, 2)$ and `NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail -->
-$(128e, 3, 2, 2)$. -/
+$(128e, 3, 2, 2)$.
+Result: small-eig-backward-error -/
 theorem smallEig_relative_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
     (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
@@ -808,11 +816,13 @@ theorem smallEig_relative_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hA := boundsGinibreGap_ginibreGapTail) (hB := boundsGinibreCondition_ginibreConditionTail)
     (hb₁ := ginibreGapTail_b_pos) (hb₂ := ginibreConditionTail_b_pos) <;> assumption
 
-/-- The unconditional form of `NLAlib.SmallEig.smallEigProg_randomSmallEigContract`
+/-- **The small-eigenvalue solver as a forward routine, unconditional**.
+The unconditional form of `NLAlib.SmallEig.smallEigProg_randomSmallEigContract`
 ([BanksGarzaVargasSrivastava2025, Corollary 1.3]): the eigenvalue-gap and eigenvector-condition
 tails of a complex Ginibre perturbation are proved, at the records
 `NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$ and
-`NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$. -/
+`NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$.
+Result: small-eig-forward-error -/
 theorem smallEigProg_randomSmallEigContract_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
   ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
@@ -831,11 +841,13 @@ theorem smallEigProg_randomSmallEigContract_unconditional {Mch : Machine ℝ} {I
     (hA := boundsGinibreGap_ginibreGapTail) (hB := boundsGinibreCondition_ginibreConditionTail)
     (hb₁ := ginibreGapTail_b_pos) (hb₂ := ginibreConditionTail_b_pos) <;> assumption
 
-/-- The unconditional form of `NLAlib.SmallEig.smallEig_measureReal_not_forward_le`
+/-- **The forward error on one input, unconditional**.
+The unconditional form of `NLAlib.SmallEig.smallEig_measureReal_not_forward_le`
 ([BanksGarzaVargasSrivastava2025, Corollary 1.3]): the eigenvalue-gap and eigenvector-condition
 tails of a complex Ginibre perturbation are proved, at the records
 `NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$ and
-`NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$. -/
+`NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$.
+Result: small-eig-forward-error -/
 theorem smallEig_measureReal_not_forward_le_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
   ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)

@@ -67,6 +67,29 @@ theorem isEigenvalueListing_diag_of_le_one {d : ℕ} (hd : d ≤ 1) (B : Matrix 
   have hT : B.IsUpperTriangular := fun i j hji => absurd hji (by omega)
   simpa using hT.isEigenvalueListing_diag
 
+/-- **A tracked Schur pair lists a nearby spectrum** (PP3 at the leaf): if the stored pair
+$(\widehat{\mathbf{U}}_b, \widehat{\mathbf{T}}_b)$ at `(o, w)` has $\widehat{\mathbf{T}}_b$ upper
+triangular and is tracked from $(\mathbf{I}, \mathbf{M})$ with the backward error $\delta$, then
+the diagonal of $\widehat{\mathbf{T}}_b$ lists the spectrum of $\mathbf{M} + \mathbf{E}$ for some
+$\|\mathbf{E}\|_2 \le \delta$ (`NLAlib.SmallEig.SmallEigSpectrum`). -/
+theorem smallEigSpectrum_of_tracked {n : ℕ} {w o : ℕ × ℕ}
+    {M Ub Tb : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {εU δ : ℝ} {μ' : Mem ℝ}
+    (hP : Schur.HoldsSchurPair w o Ub Tb μ'.store) (hT : Tb.IsUpperTriangular)
+    (ht : IsTrackedUnitarySimilar εU δ 1 M Ub Tb) : SmallEigSpectrum w o M δ μ' := by
+  obtain ⟨V, ⟨hV, E, hE, rfl⟩, -⟩ := ht
+  exact ⟨_, Ub, E, hP.1, hP.2, hT, hE,
+    hV.isEigenvalueListing_of_isUpperTriangular_conjTranspose_mul_mul hT⟩
+
+/-- The precision threshold is at most $1/100$: for tail records with $b_1, b_2 > 0$,
+$n_{\max} \ge 1$, $0 < \delta \le \Sigma$ and $0 < \varphi \le 1$,
+$\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{SmallEig}}$ gives $\boldsymbol{u} \le 1/100$. -/
+theorem le_one_div_hundred_of_le_uSmallEig {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b)
+    (hb₂ : 0 < c₂.b) {nmax : ℕ} (hn : 1 ≤ nmax) {S δ φ u : ℝ} (hδ : 0 < δ) (hδS : δ ≤ S)
+    (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hu : u ≤ uSmallEig nmax S δ φ c₁ c₂) : u ≤ 1 / 100 := by
+  obtain ⟨-, h1, -⟩ := uSmallEig_spec hb₁ hb₂ hn hδ hδS hφ hφ1
+  have : uSmallEigBasic nmax ≤ 1 / 20 := min_le_left _ _
+  linarith
+
 /-- **The small-eigenvalue program as a probabilistic block** ([BanksGarzaVargasSrivastava2025,
 Theorem 1.1]): let the machine have the standard model at
 $\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{SmallEig}}$ (`NLAlib.SmallEig.uSmallEig` at
@@ -101,7 +124,11 @@ theorem smallEigProg_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
       (Env.frame (smallEigDims n nmax S δ φ c₁ c₂) [w, q, w, o])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock o.1 o.2 (2 * ((n + 1) * (n + 1)))) (SmallEigInput nmax S δ φ c₁ c₂ w q o M)
-      (SmallEigSpectrum w o M δ) φ := sorry
+      (SmallEigSpectrum w o M δ) φ :=
+  (smallEigProg_pwrites_schur hS hM (le_one_div_hundred_of_le_uSmallEig hb₁ hb₂ (by omega) hδ hδS
+    hφ hφ1 hu) hL hNat hQ hC hI hloc hSmp hDisk hU hG hA hB hb₁ hb₂ hn hMS hδ hδS hφ hφ1 hu w q
+    o).mono (fun _ h => h) le_rfl (fun _ ⟨_, _, hP, hT, ht⟩ => smallEigSpectrum_of_tracked hP hT ht)
+    le_rfl
 
 /-- **The backward listing at $\delta_b$ is a forward one at $\beta$**
 ([BanksGarzaVargasSrivastava2025, Corollary 1.3], the matching): for $\mathbf{M}$ of order
@@ -192,7 +219,17 @@ theorem smallEig_relative {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
       (Env.frame (smallEigDims n nmax S (ε * S / c) φ c₁ c₂) [w, q, w, o])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock o.1 o.2 (2 * ((n + 1) * (n + 1))))
-            (SmallEigSpectrum w o M (ε * specNorm M)) μ} ≤ φ := sorry
+            (SmallEigSpectrum w o M (ε * specNorm M)) μ} ≤ φ := by
+  have hc0 : 0 < c := by linarith
+  have hδ : 0 < ε * S / c := by positivity
+  have hδS : ε * S / c ≤ S := by
+    rw [div_le_iff₀ hc0]; nlinarith
+  have hδM : ε * S / c ≤ ε * specNorm M := by
+    rw [div_le_iff₀ hc0]; nlinarith [mul_le_mul_of_nonneg_left hSM hε.le]
+  exact ((smallEigProg_pwrites hS hM hL hNat hQ hC hI hloc hSmp hDisk hU hG hA hB hb₁ hb₂ hn hMS
+    hδ hδS hφ hφ1 hu w q o).mono (fun _ h => h) le_rfl
+    (fun _ ⟨Tb, Ub, E, hT, hO, hTu, hE, hLst⟩ => ⟨Tb, Ub, E, hT, hO, hTu, hE.trans hδM, hLst⟩)
+    le_rfl).measureReal_not_writes_le hin hξ
 
 /-- **The forward error on one input** ([BanksGarzaVargasSrivastava2025, Corollary 1.3]): with the
 hypotheses on the machine, the streams and the tails written out in
@@ -325,7 +362,37 @@ theorem smallEigProg_randomSchurLeafContract {Mch : Machine ℝ} {I : Interp O Q
     Schur.RandomSchurLeafContract law
       ((1 + 24 * u) ^ smallEigLeafRotations kmax (smallEigForwardCap kmax S β φ c₁ c₂) - 1)
       (forwardBackwardError kmax S β) φ dmax S (smallEigForwardParams kmax S β φ c₁ c₂)
-      (smallEigForwardCap kmax S β φ c₁ c₂) (smallEigProg (O := O) (Q := Q) sG) I := sorry
+      (smallEigForwardCap kmax S β φ c₁ c₂) (smallEigProg (O := O) (Q := Q) sG) I := by
+  intro d w p ub B hd hBS
+  obtain ⟨hb0, hbS, -⟩ := forwardBackwardError_spec (kmax := kmax) hβ hβS
+  have hR0 : 0 ≤ (1 + 24 * u) ^ smallEigLeafRotations kmax
+      (smallEigForwardCap kmax S β φ c₁ c₂) - 1 := by
+    have hu0 : 0 ≤ u := (abs_nonneg _).trans (by simpa using hM.lit 1)
+    have := one_le_pow₀ (M₀ := ℝ) (n := smallEigLeafRotations kmax
+      (smallEigForwardCap kmax S β φ c₁ c₂)) (by linarith : (1 : ℝ) ≤ 1 + 24 * u)
+    linarith
+  rcases d with _ | n
+  · have h0 : Mch.lit 0 = 0 := by simpa using hM.lit 0
+    have h1 : Mch.lit 1 = 1 := by simpa using hM.lit 1
+    refine PWrites.of_writes hφ.le fun μ τ ⟨hW, _, hl, hroom, hap⟩ => ?_
+    have hwu : Fp.Disj (Store.inBlock w.1 w.2 (2 * (0 * 0)))
+        (Store.inBlock ub.1 ub.2 (2 * (0 * 0))) := by
+      simpa using hap.disj_getD_of_lt (i := 0) (j := 2) (by omega) (by simp)
+    unfold smallEigProg
+    refine ((identityLeaf_writes (O := O) (Q := Q) (τ := τ) hS h0 h1 hl hroom hwu).in_frame rfl
+      rfl hl).seq_le le_sup_right ?_
+    rintro μ' hfr ⟨-, hU⟩
+    refine writes_ifPos (n := 0) rfl ?_
+    rw [if_neg (lt_irrefl 0)]
+    refine ⟨1, B, ⟨hW.of_eqOff hfr hwu.symm, hU⟩, fun i => i.elim0,
+      (IsTrackedUnitarySimilar.refl 1 B).mono hR0 hb0.le⟩
+  · have hdk' : n + 1 ≤ kmax := hd.trans hdk
+    refine (smallEigProg_pwrites_schur hS hM hu1 hL (hNat.mono hd) hQ hC hI hloc hSmp hDisk hU hG
+      hA hB hb₁ hb₂ hdk' hBS hb0 hbS hφ hφ1 hu w p ub).mono ?_ le_rfl (fun _ h => h) le_rfl
+    rintro μ ⟨hW, hq, hl, hroom, hap⟩
+    simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
+      and_true] at hap
+    exact ⟨hW, hq, hl, hroom, hap.1.2, Fp.disj_sup_right.mpr ⟨hap.1.1.symm, hap.2⟩⟩
 
 /-! ### With the proved random-matrix tails -/
 

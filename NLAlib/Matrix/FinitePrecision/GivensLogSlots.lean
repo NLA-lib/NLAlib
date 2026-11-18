@@ -39,11 +39,6 @@ namespace NLAlib
 
 open Ops
 
-/-- The entries of appended slots are appended. -/
-@[simp] theorem slotEntries_append (w : ℕ) (L L' : List (Option (List GivensEntry))) :
-    slotEntries w (L ++ L') = slotEntries w L ++ slotEntries w L' := by
-  simp [slotEntries]
-
 /-- Rejected slots have no entries. -/
 @[simp] theorem slotEntries_replicate_none (w c : ℕ) :
     slotEntries w (List.replicate c none) = [] := by
@@ -172,16 +167,6 @@ theorem getElem?_flatMap_entryWords (L : List GivensEntry) (i t : ℕ) (ht : t <
       rw [List.getElem?_append_right (by omega), h5,
         show 5 * (i + 1) + t - 5 = 5 * i + t by omega, ih]
       simp
-
-/-- A list of entries has five words per entry. -/
-theorem length_flatMap_entryWords (L : List GivensEntry) :
-    (L.flatMap entryWords).length = 5 * L.length := by
-  induction L with
-  | nil => rfl
-  | cons e L ih =>
-    rw [List.flatMap_cons, List.length_append, ih, List.length_cons]
-    simp [entryWords]
-    ring
 
 /-- The plane words a block of entries may hold: the naturals $r$ with $r + 1 < N$. -/
 private theorem measurableSet_planeWords (N : ℕ) :

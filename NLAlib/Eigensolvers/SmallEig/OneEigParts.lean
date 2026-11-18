@@ -264,6 +264,7 @@ mark `K[1]` $0$ or the best point stored, it writes only `Pt`, `Tc`, `Bt` and `K
 tape position, and keeps the best estimate and the mark stored. -/
 theorem oneEigPoint_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hzero : M.lit 0 = 0) (hL : IsIndexLit M I) (hCmp : IsCmp id I) {n m q j L : ℕ}
+    (hNat : IsExactNatLit id M n)
     (hj : j < 6) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {τ : Tape ℝ} {μ : Mem ℝ}
     {h lam : ℕ × ℕ} (hh : h.1 < L) (hlam : lam.1 < L) (hlen : μ.store.length = L + 7)
     (h2 : μ.store.len (L + 2) = 2) (h3 : μ.store.len (L + 3) = 1)
@@ -435,7 +436,8 @@ matrix of order $n + 1$ at `h`, at least six words at `qw`, words at
 `f` and the scratch, and keeps the words and the flag. -/
 theorem oneEigRound_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hzero : M.lit 0 = 0) (hL : IsIndexLit M I) (hCmp : IsCmp id I) {sU : ℕ}
-    (hDisk : IsPolarDiskSampler sU I) {n m q L : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    (hDisk : IsPolarDiskSampler sU I) {n m q L : ℕ} (hNat : IsExactNatLit id M n)
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {qs : List ℝ} (hqs : 6 ≤ qs.length) {τ : Tape ℝ} {μ : Mem ℝ} {h qw lam f : ℕ × ℕ}
     (hh : h.1 < L) (hqw : qw.1 < L) (hlam : lam.1 < L) (hf : f.1 < L)
     (hlen : μ.store.length = L + 7) (h0 : μ.store.len L = 1) (h1 : μ.store.len (L + 1) = 2)
@@ -477,7 +479,7 @@ theorem oneEigRound_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar
     ⟨⟨b₂, (hfr₃.get_eq (by simp only [fpNF]; omega)).trans hb₂⟩,
       Or.inl (by rw [hk₃, Nat.cast_zero, hzero])⟩ ?_).seq_le (by fp_sub) ?_
   · rintro j hj μ' hfr' ⟨hb', hK'⟩
-    refine ((oneEigPoint_writes hS hzero hL hCmp (j := j) (L := L) hj hh hlam
+    refine ((oneEigPoint_writes hS hzero hL hCmp hNat (j := j) (L := L) hj hh hlam
       (by rw [hfr'.length_eq, hfrA.length_eq, hlen])
       (by rw [hfr'.len_eq, hfrA.len_eq, h2]) (by rw [hfr'.len_eq, hfrA.len_eq, h3])
       (by rw [hfr'.len_eq, hfrA.len_eq, h4]) (by rw [hfr'.len_eq, hfrA.len_eq, h6])
@@ -514,7 +516,8 @@ words at `qw`, it writes only `lam`, `f` and the scratch, and stores words at
 `NLAlib.SmallEig.oneEigCells` and the flag $0$. -/
 theorem oneEigStart_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hzero : M.lit 0 = 0) (hL : IsIndexLit M I) (hCmp : IsCmp id I) {sU : ℕ}
-    (hDisk : IsPolarDiskSampler sU I) {n m q L : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    (hDisk : IsPolarDiskSampler sU I) {n m q L : ℕ} (hNat : IsExactNatLit id M n)
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {τ : Tape ℝ} {μ : Mem ℝ} {h qw lam f : ℕ × ℕ} {r : ℝ}
     (hh : h.1 < L) (hqw : qw.1 < L) (hlam : lam.1 < L)
     (hlen : μ.store.length = L + 7) (h0 : μ.store.len L = 1) (h5 : μ.store.len (L + 5) = 12)

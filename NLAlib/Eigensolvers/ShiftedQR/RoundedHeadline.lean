@@ -154,7 +154,8 @@ routine cap `T`, the outer bounds `nmax`, `Nmax`, the words `ps`, the log shape 
 entries), the threshold `ω` and the error `ε`. For a decoupler with the interface
 `[n, k, np, F, T, ns, w] (W, P) → (W, Fl, Lg)`: from an upper Hessenberg $\mathbf{H}$ of order
 $n + 1$, $k \le n \le n_{\max}$, stored in place, of norm at most $N \le N_{\max}$,
-diagonalizable with condition at most $B$ and eigenvalues separated by $g$, except with
+diagonalizable with condition at most $B$ and eigenvalues separated by $g$, with the log in a
+buffer of its own (apart from those of the matrix, the words and the flag), except with
 probability at most $\varphi$ the run writes only the matrix, the flag and the log, sets the flag
 to $0$, closes the `ns` slots of the log (planes below $n$) and stores an upper Hessenberg
 perturbed similarity of $\mathbf{H}$ **by the exact unitary of the log's valid entries**, with
@@ -171,7 +172,8 @@ def RandomDecouplingRoutineContract (law : ℕ → Measure ℝ) (B g φ : ℝ) (
       (Store.inBlock w₀.1 w₀.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun μ => HoldsMatrix w₀ H μ.store ∧ μ.store.readBlock q.1 q.2 ps.length = some ps ∧
-        μ.Live [w₀, q, w₀, f, lg] ∧ w₀.2 + 2 * ((n + 1) * (n + 1)) ≤ μ.store.len w₀.1 ∧
+        μ.Live [w₀, q, w₀, f, lg] ∧ (∀ b ∈ [w₀, q, f], b.1 ≠ lg.1) ∧
+        w₀.2 + 2 * ((n + 1) * (n + 1)) ≤ μ.store.len w₀.1 ∧
         f.2 + 1 ≤ μ.store.len f.1 ∧ lg.2 + ns * (1 + 5 * w) ≤ μ.store.len lg.1 ∧
         Fp.Apart [w₀, f, lg] [2 * ((n + 1) * (n + 1)), 1, ns * (1 + 5 * w)] ∧
         Fp.Disj (Store.inBlock q.1 q.2 ps.length)

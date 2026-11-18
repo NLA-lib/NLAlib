@@ -42,7 +42,8 @@ variable {O Q : Type}
 
 /-- **A terminating decoupling routine with a cap dimension and a log**: for a decoupler with
 the interface `[n, k, np, F, T, ns, w] (W, P) → (W, Fl, Lg)`, from any matrix of order
-$n + 1 \ge k + 1$, $n \le n_{\max}$, stored in place and on every tape, the run is total, writes
+$n + 1 \ge k + 1$, $n \le n_{\max}$, stored in place, with the log in a buffer of its own, and on
+every tape, the run is total, writes
 only the matrix, the flag and the log, and leaves a stored matrix, a stored flag and the `ns`
 slots of the log closed with planes below $n$ (so that the log can be replayed). -/
 def TerminatingDecouplerRoutine (nmax k F T : ℕ) (ps : List ℝ) (ns w : ℕ) (D : Impl O Q)
@@ -53,6 +54,7 @@ def TerminatingDecouplerRoutine (nmax k F T : ℕ) (ps : List ℝ) (ns w : ℕ) 
     μ.store.readBlock q.1 q.2 ps.length = some ps → μ.Live [w₀, q, w₀, f, lg] →
     w₀.2 + 2 * ((n + 1) * (n + 1)) ≤ μ.store.len w₀.1 →
     f.2 + 1 ≤ μ.store.len f.1 → lg.2 + ns * (1 + 5 * w) ≤ μ.store.len lg.1 →
+    (∀ b ∈ [w₀, q, f], b.1 ≠ lg.1) →
     Fp.Apart [w₀, f, lg] [2 * ((n + 1) * (n + 1)), 1, ns * (1 + 5 * w)] →
     Fp.Disj (Store.inBlock q.1 q.2 ps.length)
       (Store.inBlock w₀.1 w₀.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔

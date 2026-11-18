@@ -8,6 +8,7 @@ module
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedModuli
 public import NLAlib.Eigensolvers.HessenbergReduction
 public import NLAlib.Eigensolvers.SmallEig.Draws
+public import NLAlib.Matrix.FinitePrecision.GivensLogSlots
 public import NLAlib.Matrix.Perturbation.EigenvalueBackward
 public import NLAlib.Matrix.QRIteration.EigenvectorWeights
 public import NLAlib.Ops.Logic.Probabilistic
@@ -212,8 +213,8 @@ private theorem sqrt_norm_sq_add_le_norm_toLp {N : ℕ} {i k : Fin N} (hik : i �
   simpa [Finset.sum_pair hik] using h
 
 /-- The invariant of the rotations of `RHess` after $k$ steps from $(\mathbf{A}, \mathbf{g})$
-with the unitary $\mathbf{U}$: $\mathbf{B}$ within $((1 + 50\boldsymbol{u})^k - 1)\|\mathbf{A}\|_2$ of
-$\mathbf{U}\mathbf{A}\mathbf{U}^{\mathsf{H}}$, $\mathbf{v}$ within
+with the unitary $\mathbf{U}$: $\mathbf{B}$ within
+$((1 + 50\boldsymbol{u})^k - 1)\|\mathbf{A}\|_2$ of $\mathbf{U}\mathbf{A}\mathbf{U}^{\mathsf{H}}$, $\mathbf{v}$ within
 $((1 + 12\boldsymbol{u})^k - 1)\|\mathbf{g}\|$ of $\mathbf{U}\mathbf{g}$, and the first $k$ entries
 of $\mathbf{v}$ at most $12\boldsymbol{u}(1 + 12\boldsymbol{u})^k\|\mathbf{g}\|$. -/
 def RotInv (u : ℝ) {N : ℕ} (A : Matrix (Fin N) (Fin N) ℂ) (g : Fin N → ℂ) (k : ℕ)
@@ -362,8 +363,9 @@ theorem rotInv_fold (hM : StdModel u id M) (hu : 0 ≤ u) {N : ℕ}
       ((List.range k).foldl (fun Ag j => rotateToStepWord M j Ag) (A, g))
       (givensLog N (rotateToEntries M A g k))ᴴ
   | 0, _ => by
-    refine ⟨?_, by simp, by simp, fun r hr => absurd hr (Nat.not_lt_zero _)⟩
-    simpa [rotateToEntries] using hasOrthonormalCols_one
+    have e : rotateToEntries M A g 0 = [] := rfl
+    simp only [e, givensLog_nil, Matrix.conjTranspose_one]
+    exact ⟨hasOrthonormalCols_one, by simp, by simp, fun r hr => absurd hr (Nat.not_lt_zero _)⟩
   | k + 1, hk => by
     have h := rotInv_step hM hu (hu' (by omega)) (by omega)
       (rotInv_fold hM hu hu' A g k (by omega))

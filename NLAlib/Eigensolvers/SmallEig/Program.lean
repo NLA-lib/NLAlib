@@ -122,6 +122,26 @@ section Termination
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has SampleOp O] [Has DiskSampleOp O]
   [Has CmpTst Q] [Has IdxTst Q]
 
+/-- **Two near-unitary updates of the accumulator compose**: if $\mathbf{X}'$ is within $e_1$ of
+a unitary $\mathbf{V}_1$ and $\mathbf{U}'$ within $e_2\|\mathbf{X}'\|_2$ of $\mathbf{X}'\mathbf{V}$
+for a unitary $\mathbf{V}$, $e_2 \ge 0$, then $\mathbf{U}'$ is within $(1 + e_1)(1 + e_2) - 1$ of
+the unitary $\mathbf{V}_1\mathbf{V}$. -/
+theorem specNorm_sub_mul_le_of_near {N : ℕ} {X' V₁ U' V : Matrix (Fin N) (Fin N) ℂ}
+    (hV₁ : HasOrthonormalCols V₁) (hV : HasOrthonormalCols V) {e₁ e₂ : ℝ} (he₂ : 0 ≤ e₂)
+    (h₁ : specNorm (X' - V₁) ≤ e₁) (h₂ : specNorm (U' - X' * V) ≤ e₂ * specNorm X') :
+    specNorm (U' - V₁ * V) ≤ (1 + e₁) * (1 + e₂) - 1 := by
+  have hX : specNorm X' ≤ 1 + e₁ := by
+    have e : X' = (X' - V₁) + V₁ := by abel
+    have := specNorm_add_le (X' - V₁) V₁
+    rw [← e] at this
+    linarith [hV₁.specNorm_le_one]
+  have e : U' - V₁ * V = (U' - X' * V) + (X' - V₁) * V := by
+    simp only [Matrix.sub_mul]; abel
+  rw [e]
+  refine (specNorm_add_le _ _).trans ?_
+  rw [hV.specNorm_mul_right]
+  nlinarith [mul_le_mul_of_nonneg_left hX he₂]
+
 /-- **The small-eigenvalue program in Schur mode terminates, with its accumulator near a unitary
 on every tape**: for blocks of order at most $k_{\max}$, the words `qs` with valid cap words for
 the cap $T$ (`NLAlib.SmallEig.SmallEigCaps`), on a scalar machine with the standard model, index
@@ -138,8 +158,183 @@ theorem smallEigProg_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hqs : SmallEigCaps T qs) (hlen : 12 ≤ qs.length) :
     TerminatingLeafRoutine
       ((1 + 24 * u) ^ (kmax * kmax + 2 * (kmax + 1) * ((T + kmax) * kmax + 6)) - 1) kmax qs T
-      (smallEigProg (O := O) (Q := Q) sG) I :=
-  sorry
+      (smallEigProg (O := O) (Q := Q) sG) I := by
+  intro d w p ub tape μ B hd hB hp hl hroom hwu hpwu
+  have hu0 : 0 ≤ u := (abs_nonneg _).trans (by simpa using hM.lit 1)
+  have h0 : M.lit 0 = 0 := by simpa using hNat 0 (by omega)
+  have h1 : M.lit 1 = 1 := by simpa using hNat 1 (by omega)
+  have hwl : w.1 < μ.store.length := hl w (by simp)
+  have hpl : p.1 < μ.store.length := hl p (by simp)
+  have hul : ub.1 < μ.store.length := hl ub (by simp)
+  set R := kmax * kmax + 2 * (kmax + 1) * ((T + kmax) * kmax + 6)
+  have hR0 : 0 ≤ (1 + 24 * u) ^ R - 1 := by
+    have := one_le_pow₀ (M₀ := ℝ) (n := R) (by linarith : (1 : ℝ) ≤ 1 + 24 * u); linarith
+  unfold smallEigProg
+  refine ((identityLeaf_writes (O := O) (Q := Q) (τ := tape) hS h0 h1 hl hroom hwu).in_frame rfl
+    rfl hl).frame_seq_le rfl rfl hl le_sup_right ?_
+  rintro μ₀ hfr₀ ⟨-, hU₀⟩
+  have hB₀ : HoldsMatrix w B μ₀.store := hB.of_eqOff hfr₀ hwu.symm
+  have hp₀ := hfr₀.keep (Store.readsOnly_readBlock _ _ _ _)
+    (hpwu.mono le_rfl le_sup_right).symm hp
+  refine writes_ifPos (n := d - 1) rfl ?_
+  split_ifs with hd1
+  swap
+  · exact ⟨B, 1, 1, hB₀, hU₀, hasOrthonormalCols_one, by simpa using hR0⟩
+  obtain ⟨n, rfl⟩ : ∃ n, d = n + 1 := ⟨d - 1, by omega⟩
+  have hn1 : 1 ≤ n := by omega
+  have hdk : n + 1 ≤ kmax := hd
+  have hl₀ : μ₀.Live [w, p, ub] := fun x hx => hfr₀.length_eq ▸ hl x hx
+  change Writes .total I tape (Stmt.allocs _ _) _ _ _ μ₀
+  refine writes_allocs_preserving_post (ns := [1, 1, (n + 1) * (1 + 5 * (n + 1))]) rfl
+    (fun hBelow ⟨Tb, Ub, V, h₁, h₂, h₃, h₄⟩ => ⟨Tb, Ub, V, h₁.of_below hBelow (hl₀ w (by simp)),
+      h₂.of_below hBelow (hl₀ ub (by simp)), h₃, h₄⟩) ?_
+  intro s₁ hlen₁ hlens hBelow
+  set L := μ₀.store.length with hLdef
+  simp only [List.length_cons, List.length_nil] at hlen₁
+  have hwL : w.1 < L := hl₀ w (by simp)
+  have hpL : p.1 < L := hl₀ p (by simp)
+  have huL : ub.1 < L := hl₀ ub (by simp)
+  have hFl : s₁.len L = 1 := by simpa using hlens 0 (by simp)
+  have hTh : s₁.len (L + 1) = 1 := by simpa using hlens 1 (by simp)
+  have hLg : s₁.len (L + 2) = (n + 1) * (1 + 5 * (n + 1)) := by simpa using hlens 2 (by simp)
+  set F := Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
+    Store.inBlock ub.1 ub.2 (2 * ((n + 1) * (n + 1)))
+  have hab : ∀ b o' k, L ≤ b → Store.inBlock b o' k ≤ F ⊔ Fp.above L :=
+    fun b o' k hb _ _ hi => Or.inr (hi.1 ▸ hb)
+  have hnew : ∀ {b o k b' o' k' : ℕ}, b < L → L ≤ b' →
+      Fp.Disj (Store.inBlock b o k) (Store.inBlock b' o' k') :=
+    fun hb hb' => Fp.disj_inBlock_of_ne (by omega)
+  have hp₁ := hBelow.readBlock_of hpL hp₀
+  have hB₁ := hB₀.of_below hBelow hwL
+  have hU₁ := hU₀.of_below hBelow huL
+  -- the threshold word
+  refine (writes_call_un (hS .copy) (x := (p.1, p.2 + 6)) (z := (L + 1, 0)) rfl rfl trivial
+    (Store.get_of_readBlock hp₁ (j := 6) (by omega) 0) rfl (by simp [hTh])).seq_le
+    (hab _ _ _ (by omega)) ?_
+  rintro μ₁ hfr₁ ⟨-, hTh₁⟩
+  have hlen₁' : μ₁.store.length = L + 3 := by rw [← hfr₁.length_eq]; exact hlen₁
+  have hB₂ := hB₁.of_eqOff hfr₁ (hnew hwL (by omega)).symm
+  have hU₂ := hU₁.of_eqOff hfr₁ (hnew huL (by omega)).symm
+  have hp₂ := hfr₁.keep (Store.readsOnly_readBlock _ _ _ _) (hnew hpL (by omega)).symm hp₁
+  -- the perturbation
+  refine (ginibrePerturb_writes_word hS hL hSmp (sG := sG) (nq := qs.length) (τ := tape)
+    (a := w) (q := p) (by simp [Mem.Live, hlen₁']; omega) hB₂
+    (by simpa using Store.get_of_readBlock hp₂ (j := 0) (by omega) 0)).frame_seq_le rfl rfl
+    (by simp [Mem.Live, hlen₁']; omega) (le_sup_left.trans le_sup_left) ?_
+  rintro μ₂ hfr₂ ⟨-, hB₃⟩
+  have hdwp := (hpwu.mono le_rfl le_sup_left).symm
+  have hdwu := hwu
+  have hU₃ := hU₂.of_eqOff hfr₂ hdwu
+  have hp₃ := hfr₂.keep (Store.readsOnly_readBlock _ _ _ _) hdwp hp₂
+  have hTh₃ : μ₂.store.get (L + 1) 0 = some (qs.getD 6 0) :=
+    hfr₂.keep (Store.readsOnly_get _ _ _) (hnew hwL (by omega)) hTh₁
+  have hlen₂ : μ₂.store.length = L + 3 := by rw [← hfr₂.length_eq]; exact hlen₁'
+  -- the log
+  refine (slottedLogOpen_writes (τ := tape) (μ := μ₂) (ns := n + 1) (w := n + 1)
+    (lg := (L + 2, 0)) hS hM (by simp [Mem.Live, hlen₂]) (by simp [← hfr₂.len_eq,
+      ← hfr₁.len_eq, hLg])).frame_seq_le rfl rfl (by simp [Mem.Live, hlen₂])
+    (hab _ _ _ (by omega)) ?_
+  rintro μ₃ hfr₃ ⟨-, hlog₃⟩
+  have hB₄ := hB₃.of_eqOff hfr₃ (hnew hwL (by omega)).symm
+  have hU₄ := hU₃.of_eqOff hfr₃ (hnew huL (by omega)).symm
+  have hp₄ := hfr₃.keep (Store.readsOnly_readBlock _ _ _ _) (hnew hpL (by omega)).symm hp₃
+  have hTh₄ := hfr₃.keep (Store.readsOnly_get _ _ _) (Fp.disj_inBlock_of_ne (by omega)) hTh₃
+  have hlen₃ : μ₃.store.length = L + 3 := by rw [← hfr₃.length_eq]; exact hlen₂
+  -- the reduction, recording its rotations
+  refine (hessenbergReduceLast_writes_word (τ := tape) (m := μ₃) (L := []) hS hC hL hNat
+    (by omega) (by omega) hlog₃ (by simp) (by omega) (by simp [Mem.Live, hlen₃]; omega) hB₄
+    (hnew hwL (by omega))).frame_seq_le rfl rfl (by simp [Mem.Live, hlen₃]; omega)
+    (sup_le (le_sup_left.trans le_sup_left) (hab _ _ _ (by omega))) ?_
+  rintro μ₄ hfr₄ ⟨-, hH₄, hlog₄⟩
+  set A' := M.perturbWords (qs.getD 0 0) B fun j => tape (μ₁.pos + j) sG
+  set Sl := hessenbergReduceLastSlots M A'
+  have hlog₅ := hlog₄.close
+  have hU₅ := hU₄.of_eqOff hfr₄ (Fp.disj_sup_left.mpr ⟨hdwu, (hnew huL (by omega)).symm⟩)
+  have hp₅ := hfr₄.keep (Store.readsOnly_readBlock _ _ _ _)
+    (Fp.disj_sup_left.mpr ⟨hdwp, (hnew hpL (by omega)).symm⟩) hp₄
+  have hTh₅ := hfr₄.keep (Store.readsOnly_get _ _ _)
+    (Fp.disj_sup_left.mpr ⟨hnew hwL (by omega), Fp.disj_inBlock_of_ne (by omega)⟩) hTh₄
+  have hlen₄ : μ₄.store.length = L + 3 := by rw [← hfr₄.length_eq]; exact hlen₃
+  have hpl : ∀ e ∈ slotEntries (n + 1) ([] ++ Sl.map some ++
+      List.replicate (n + 1 - ([] ++ Sl.map some).length) none),
+      e.1 + 1 < n + 1 ∨ e = (0, 0, 0) := by
+    intro e he
+    rw [List.nil_append, slotEntries_append_replicate_none] at he
+    simp only [slotEntries, List.mem_flatMap, List.mem_map] at he
+    obtain ⟨_, ⟨es, hes, rfl⟩, he⟩ := he
+    simp only [Option.map_some, Option.getD_some, padEntries, List.mem_append,
+      List.mem_replicate] at he
+    rcases he with he | ⟨-, rfl⟩
+    · exact hessenbergReduceLastSlots_plane M A' es hes e he
+    · exact Or.inr rfl
+  -- the replay on the accumulator
+  refine (givensReplayColumns_specNorm_sub_le (τ := tape) (μ := μ₄) (lo := 0) (d := n + 1) hS hM
+    hu0 hu hQ hC (by omega) hpl (Or.inr (by omega)) hlog₅
+    (by simp [Sl, length_hessenbergReduceLastSlots]) hU₅ (by simp [Mem.Live, hlen₄]; omega)
+    (hnew (by omega) huL).symm).frame_seq_le rfl rfl (by simp [Mem.Live, hlen₄]; omega)
+    (le_sup_right.trans le_sup_left) ?_
+  rintro μ₅ hfr₅ ⟨X', hX', hX'b⟩
+  have hH₅ := hH₄.of_eqOff hfr₅ hdwu.symm
+  have hp₆ := hfr₅.keep (Store.readsOnly_readBlock _ _ _ _) (hpwu.mono le_rfl le_sup_right).symm hp₅
+  have hTh₆ := hfr₅.keep (Store.readsOnly_get _ _ _) (hnew huL (by omega)) hTh₅
+  have hlen₅ : μ₅.store.length = L + 3 := by rw [← hfr₅.length_eq]; exact hlen₄
+  have hlenB : ∀ b, μ₅.store.len b = s₁.len b := fun b => by
+    rw [← hfr₅.len_eq, ← hfr₄.len_eq, ← hfr₃.len_eq, ← hfr₂.len_eq, ← hfr₁.len_eq]
+  -- the core in Schur mode
+  have hD := smallEigDecoupler_terminatingDecouplerRoutine (O := O) (Q := Q) (sG := sG) (F := T)
+    hS hL (nmax := n) (hNat.mono (by omega)) hC hQ hSmp hDisk hqs hlen
+    (ns := T + (n + 1)) (ws := n + 1) (by omega) (by omega)
+  have hLeaf : TerminatingLeafRoutine 0 (min 1 (n + 1)) qs T (identityLeaf (O := O) (Q := Q)) I :=
+    by simpa using identityLeaf_terminates (O := O) (Q := Q) hS h0 h1 qs T
+  refine ((solveRoundedWith_terminates (n := n) (k := 1) (F := T) (T := T) (ns := T + (n + 1))
+    (w := n + 1) (εL := 0) hS hM hu hL (hNat.mono (by omega)) hQ hC le_rfl _ hD _ hLeaf
+    (tape := tape) (μ := μ₅) (a := w) (t := (L + 1, 0)) (p := p) (uo := ub) (f := (L, 0))
+    (H := hessenbergReduceLastWord M A') (U := X') (thr := qs.getD 6 0)
+    (by simp [Mem.Live, hlen₅]; omega) ?_ ?_ hH₅ hX' hTh₆ hp₆).in_frame rfl rfl
+    (by simp [Mem.Live, hlen₅]; omega)).mono
+    (sup_le (sup_le (le_sup_left.trans le_sup_left) (le_sup_right.trans le_sup_left))
+      (hab _ _ _ le_rfl)) ?_
+  · simp only [Mem.Room]
+    refine ⟨Store.le_len_of_readBlock hH₅ (by positivity), by simp [hlenB, hTh],
+      Store.le_len_of_readBlock hp₆ (by omega), Store.le_len_of_readBlock hX' (by positivity),
+      by simp [hlenB, hFl], trivial⟩
+  · simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
+      and_true]
+    exact ⟨⟨hnew hwL (by omega), (hpwu.mono le_rfl le_sup_left).symm, hwu, hnew hwL le_rfl⟩,
+      ⟨(hnew hpL (by omega)).symm, (hnew huL (by omega)).symm, Fp.disj_inBlock_of_ne (by omega)⟩,
+      ⟨hpwu.mono le_rfl le_sup_right, hnew hpL le_rfl⟩, hnew huL le_rfl⟩
+  rintro μ₆ - ⟨U', Tm, V, hTm, hU', hV, hb⟩
+  have hV₁ : HasOrthonormalCols (embedBlock (N := n + 1) 0 (givensLog (n + 1) (slotEntries (n + 1)
+      ([] ++ Sl.map some ++ List.replicate (n + 1 - ([] ++ Sl.map some).length) none)))) := by
+    rw [embedBlock_zero_self]; exact hasOrthonormalCols_givensLog _ _
+  refine ⟨Tm, U', _ * V, hTm, hU', hasOrthonormalCols_iff.mpr
+    ((hV₁.conjTranspose_mul_mul V V).trans (hasOrthonormalCols_iff.mp hV)), ?_⟩
+  have he₁ : specNorm (X' - embedBlock (N := n + 1) 0 (givensLog (n + 1) (slotEntries (n + 1)
+      ([] ++ Sl.map some ++ List.replicate (n + 1 - ([] ++ Sl.map some).length) none)))) ≤
+      (1 + 24 * u) ^ ((n + 1) * (n + 1)) - 1 := by
+    have h := hX'b
+    rw [Matrix.one_mul] at h
+    have h1' : (0 : ℝ) ≤ (1 + 24 * u) ^ ((n + 1) * (n + 1)) - 1 := by
+      have := one_le_pow₀ (M₀ := ℝ) (n := (n + 1) * (n + 1)) (by linarith : (1 : ℝ) ≤ 1 + 24 * u)
+      linarith
+    exact h.trans (mul_le_of_le_one_right h1' specNorm_one_le)
+  have hb' := specNorm_sub_mul_le_of_near hV₁ hV (e₂ := (1 + 24 * u) ^ (2 * (n + 1) *
+    ((T + (n + 1)) * (n + 1) + 2 * 1 * (1 + 2))) - 1) (by
+      have := one_le_pow₀ (M₀ := ℝ) (n := 2 * (n + 1) * ((T + (n + 1)) * (n + 1) + 2 * 1 * (1 + 2)))
+        (by linarith : (1 : ℝ) ≤ 1 + 24 * u)
+      linarith) he₁ (by simpa using hb)
+  refine hb'.trans ?_
+  rw [show 1 + ((1 + 24 * u) ^ ((n + 1) * (n + 1)) - 1) = (1 + 24 * u) ^ ((n + 1) * (n + 1)) by
+    ring, show 1 + ((1 + 24 * u) ^ (2 * (n + 1) * ((T + (n + 1)) * (n + 1) + 2 * 1 * (1 + 2))) - 1)
+      = (1 + 24 * u) ^ (2 * (n + 1) * ((T + (n + 1)) * (n + 1) + 2 * 1 * (1 + 2))) by ring,
+    ← pow_add]
+  have h1' : (n + 1) * (n + 1) ≤ kmax * kmax := Nat.mul_le_mul hdk hdk
+  have h2' : (T + (n + 1)) * (n + 1) ≤ (T + kmax) * kmax := Nat.mul_le_mul (by omega) hdk
+  have h3' : 2 * (n + 1) * ((T + (n + 1)) * (n + 1) + 2 * 1 * (1 + 2)) ≤
+      2 * (kmax + 1) * ((T + kmax) * kmax + 6) := Nat.mul_le_mul (by omega) (by omega)
+  have := pow_le_pow_right₀ (by linarith : (1 : ℝ) ≤ 1 + 24 * u) (show (n + 1) * (n + 1) +
+    2 * (n + 1) * ((T + (n + 1)) * (n + 1) + 2 * 1 * (1 + 2)) ≤ R by omega)
+  linarith
 
 end Termination
 

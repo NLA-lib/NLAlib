@@ -443,7 +443,7 @@ private theorem rhess_step_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
   refine ((slottedLogWrite_writes hS hL hNat (r := j) hjn hlg₁ hLn hPw hpb hqb hlive
     hdUv).and (slottedLogWrite_pos hS hL (r := j) hlg₁ hLn hPw hpb hqb hdUv)).frame_seq_le
     hdW haW hlive (le_sup_right.trans le_sup_left) ?_
-  rintro μ₂ hf₂ ⟨hlg₂, hp₂⟩
+  rintro μ₂ hf₂ ⟨⟨-, hlg₂⟩, hp₂⟩
   have K₂ : ∀ {i : ℕ} {x : ℝ}, μ₁.store.get (L + 2) i = some x →
       μ₂.store.get (L + 2) i = some x := fun hv =>
     hf₂.keep (Store.readsOnly_get _ _ _) (hRA (by omega)).symm hv
@@ -813,8 +813,8 @@ theorem rhess_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M
           (∀ x ∈ slotEntries w Ls, x.1 + 1 < N) ∧ HoldsSlottedLog lg ns w (LL ++ Ls) [] μ'.store)
               μ :=
   (rhess_writes_word hS hC hSmp hl hA hL hNat h1 h2 hN hlog hj hw hlgl hlga).mono le_rfl
-    fun _ _ h => ⟨_, h.2.1, _, (rhessSlots_spec M h2 A _ w).1, (rhessSlots_spec M h2 A _ w).2,
-      h.2.2⟩
+    fun _ _ h => ⟨_, h.2.1, _, by simpa using (rhessSlots_spec M h2 A _ w).1,
+      (rhessSlots_spec M h2 A _ w).2, h.2.2⟩
 
 end Theorems
 

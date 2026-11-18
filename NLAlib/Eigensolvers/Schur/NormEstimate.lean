@@ -25,7 +25,8 @@ with the constants $1 \mp (2N_{\max}^2 + 2)\boldsymbol{u}$.
 
 * `NLAlib.Schur.frobNormStage_frobNormEstimateContract`: the stage meets
   `NLAlib.Schur.FrobNormEstimateContract`.
-* `NLAlib.Schur.FrobNormEstimateContract.mono`: wider constants.
+* `NLAlib.Schur.FrobNormEstimateContract.mono`: wider constants;
+  `NLAlib.Schur.frobNormStage_frobNormEstimateContract_half`: the constants $(1/2, 2)$.
 -/
 
 @[expose] public section
@@ -64,5 +65,14 @@ theorem frobNormStage_frobNormEstimateContract {M : Machine ℝ} {I : Interp O Q
     FrobNormEstimateContract (1 - (2 * (nmax : ℝ) ^ 2 + 2) * u)
       (1 + (2 * (nmax : ℝ) ^ 2 + 2) * u) nmax (frobNormStage (O := O) (Q := Q)) I :=
   sorry
+
+/-- **The rounded Frobenius norm is a norm estimate with the constants $(1/2, 2)$** when
+$(2N_{\max}^2 + 2)\boldsymbol{u} \le 1/2$. -/
+theorem frobNormStage_frobNormEstimateContract_half {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar M I) (hM : StdModel u id M) {nmax : ℕ}
+    (hu : (2 * (nmax : ℝ) ^ 2 + 2) * u ≤ 1 / 2) :
+    FrobNormEstimateContract (1 / 2) 2 nmax (frobNormStage (O := O) (Q := Q)) I :=
+  FrobNormEstimateContract.mono (frobNormStage_frobNormEstimateContract hS hM hu) (by linarith)
+    (by linarith)
 
 end NLAlib.Schur

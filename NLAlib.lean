@@ -878,6 +878,7 @@ public import NLAlib.Matrix.FinitePrecision.GivensCoefficients
 public import NLAlib.Matrix.FinitePrecision.GivensLog
 public import NLAlib.Matrix.FinitePrecision.GivensLogRead
 public import NLAlib.Matrix.FinitePrecision.GivensLogValidate
+public import NLAlib.Matrix.FinitePrecision.GivensLogSlots
 public import NLAlib.Matrix.FinitePrecision.GivensPrograms
 public import NLAlib.Matrix.FinitePrecision.GivensRotation
 public import NLAlib.Matrix.FinitePrecision.GivensRounded

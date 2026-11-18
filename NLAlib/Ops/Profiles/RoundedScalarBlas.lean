@@ -132,16 +132,6 @@ theorem writes_nrm2_exact {Op : Type} [Has ScalarOp Op] {M : Machine ℝ}
       simpa [nrm2ExactRel] using hrel
     exact ⟨by simpa using hpos, hv ▸ hvalue⟩
 
-/-- $(1 + u)^n - 1 \le nu + (nu)^2$ for $u \ge 0$ and $nu \le 1$. -/
-private theorem one_add_pow_sub_one_le' {u : ℝ} (hu : 0 ≤ u) {n : ℕ} (hnu : n * u ≤ 1) :
-    (1 + u) ^ n - 1 ≤ n * u + (n * u) ^ 2 := by
-  have h1 : (1 + u) ^ n ≤ Real.exp (n * u) := by
-    rw [Real.exp_nat_mul]
-    exact pow_le_pow_left₀ (by linarith) (by linarith [Real.add_one_le_exp u]) n
-  have h2 := (abs_le.mp (Real.abs_exp_sub_one_sub_id_le (x := n * u)
-    (by rw [abs_of_nonneg (by positivity)]; exact hnu))).2
-  linarith
-
 /-- The numbers of the rounded norm: a sum of squares $\sigma$ within $E S$ of $S \ge 0$, with
 $E \le nu + (nu)^2$ when $S > 0$, and a square root $\nu$ within $u\sqrt{\sigma}$ of
 $\sqrt{\sigma}$ give $\lvert \nu - \sqrt S\rvert \le (n + 2)u\sqrt S$ when $(n + 2)u \le 1/2$:
@@ -231,7 +221,7 @@ theorem writes_nrm2_stdModel {Op : Type} [Has ScalarOp Op] {M : Machine ℝ} {u 
         simp only [Nat.succ_sub_one, pow_succ]
         ring
       rw [hdot]
-      exact one_add_pow_sub_one_le' hu0 (by nlinarith)
+      exact one_add_pow_sub_one_le hu0 (by nlinarith)
     · simpa [IsDotErr, ← sq, abs_mul_self, sq_abs] using hσ
 
 /-- Unit-work scalar cells with no hidden primitive workspace. Canonical control, addressing,

@@ -338,13 +338,6 @@ theorem exists_isScalar {u : ℝ} (hu : 0 ≤ u) :
   ⟨ℝ, id, exactMachine, Interp.ofFns exactMachine.fn, stdModel_exact hu,
     isScalar_ofFns _ _ fun _ => rfl⟩
 
-/-- The literal zero is exact under the standard model. -/
-theorem StdModel.dec_lit_zero {u : ℝ} {dec : K → ℝ} {M : Machine K} (h : StdModel u dec M) :
-    dec (M.lit 0) = 0 := by
-  have := h.lit 0
-  simp only [Rat.cast_zero, abs_zero, mul_zero, sub_zero] at this
-  exact abs_nonpos_iff.mp this
-
 /-- A rounded product with an exact zero factor is exactly zero under the standard model. -/
 theorem StdModel.dec_mul_of_eq_zero {u : ℝ} {dec : K → ℝ} {M : Machine K}
     (h : StdModel u dec M) (a : K) {b : K} (hb : dec b = 0) : dec (M.mul a b) = 0 := by
@@ -363,5 +356,15 @@ theorem stdModel_one_zero {K : Type} (M : Machine K) :
   div _ _ h := absurd rfl h
   neg _ := by simp
   sqrt _ _ := by simp
+
+/-- $(1 + x)^n - 1 \le nx + (nx)^2$ for $x \ge 0$ and $nx \le 1$. -/
+theorem one_add_pow_sub_one_le {x : ℝ} (hx : 0 ≤ x) {n : ℕ} (hnx : n * x ≤ 1) :
+    (1 + x) ^ n - 1 ≤ n * x + (n * x) ^ 2 := by
+  have h1 : (1 + x) ^ n ≤ Real.exp (n * x) := by
+    rw [Real.exp_nat_mul]
+    exact pow_le_pow_left₀ (by linarith) (by linarith [Real.add_one_le_exp x]) n
+  have h2 := (abs_le.mp (Real.abs_exp_sub_one_sub_id_le (x := n * x)
+    (by rw [abs_of_nonneg (by positivity)]; exact hnx))).2
+  linarith
 
 end NLAlib.Ops

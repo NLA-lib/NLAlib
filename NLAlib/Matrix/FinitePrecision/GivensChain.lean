@@ -37,16 +37,6 @@ open Ops
 
 variable {n : ℕ}
 
-/-- $(1 + x)^n - 1 \le nx + (nx)^2$ for $x \ge 0$ and $nx \le 1$. -/
-theorem one_add_pow_sub_one_le {x : ℝ} (hx : 0 ≤ x) {n : ℕ} (hnx : n * x ≤ 1) :
-    (1 + x) ^ n - 1 ≤ n * x + (n * x) ^ 2 := by
-  have h1 : (1 + x) ^ n ≤ Real.exp (n * x) := by
-    rw [Real.exp_nat_mul]
-    exact pow_le_pow_left₀ (by linarith) (by linarith [Real.add_one_le_exp x]) n
-  have h2 := (abs_le.mp (Real.abs_exp_sub_one_sub_id_le (x := n * x)
-    (by rw [abs_of_nonneg (by positivity)]; exact hnx))).2
-  linarith
-
 /-- The geometric accumulation: $\sum_{j < n} x(1 + x)^j = (1 + x)^n - 1$. -/
 theorem sum_mul_one_add_pow (x : ℝ) (n : ℕ) :
     ∑ j ∈ Finset.range n, x * (1 + x) ^ j = (1 + x) ^ n - 1 := by

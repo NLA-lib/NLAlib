@@ -280,7 +280,7 @@ theorem writes_identity_holdsMatrix_one {Mch : Machine ℝ} {I : Interp O Q ℝ}
     Writes .total I τ (PairMatrix.identity (Op := O) (Tst := Q)).body (Env.frame [N] [b])
       (Store.inBlock b.1 b.2 (2 * (N * N)))
       (fun m' => HoldsMatrix b (1 : Matrix (Fin N) (Fin N) ℂ) m'.store) m := by
-  have h0 : Mch.lit 0 = 0 := hM.dec_lit_zero
+  have h0 : Mch.lit 0 = 0 := hM.zero
   refine (PairMatrix.writes_identity hS hroom).mono le_rfl fun m' _ hv => ?_
   refine holdsMatrix_one_of_holdsVec fun i hi => ?_
   rw [hv.1 i hi, h0, h1]
@@ -306,7 +306,7 @@ theorem schurPipeline_zero_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : 
   have hf : f.2 < m'.store.len f.1 := by have := hm.room_f; rw [hfr.len_eq]; omega
   refine (writes_indexLit hL (n := 0) rfl rfl hf).mono (by simp only [schurFp]; fp_sub)
     fun m'' hfr' hg => ?_
-  have hz : Mch.lit ((0 : ℕ) : ℚ) = 0 := by simpa using hM.dec_lit_zero
+  have hz : Mch.lit ((0 : ℕ) : ℚ) = 0 := by simpa using hM.zero
   refine ⟨by rw [hg.2, hz], 1, 0, ?_, hU.of_eqOff hfr' h6.symm, ?_, ?_, ?_⟩
   · obtain ⟨-, -, h3, -, -, -⟩ := apart_four hap
     exact (hA.of_eqOff hfr h2.symm).of_eqOff hfr' h3.symm

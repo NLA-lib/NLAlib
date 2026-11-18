@@ -18,8 +18,8 @@ block, with the same accumulated perturbation bound.
 ## Main results
 
 * `NLAlib.IsRangePartition.disjoint`: distinct partition ranges do not overlap.
-* `NLAlib.IsRangePartition.perm`, `NLAlib.IsRangePartition.split_cons`,
-  `NLAlib.IsRangePartition.split_append`: permuting and splitting the ranges of a partition.
+* `NLAlib.IsRangePartition.perm`, `NLAlib.IsRangePartition.split_append`: permuting and
+  splitting the ranges of a partition.
 * `NLAlib.IsRangePartition.subBlock_apply`, `NLAlib.IsRangePartition.subBlock_eq_of_agree`,
   `NLAlib.IsRangePartition.subBlock_eq_of_block`: the blocks of a partition.
 * `NLAlib.subVec_setSubVec_self`: reading a written range returns its new values.
@@ -215,59 +215,6 @@ theorem IsRangePartition.perm {N : ℕ} {L L' : List (ℕ × ℕ)}
     obtain ⟨c, ⟨hc1, hc2, hc3⟩, hcu⟩ := h.2.2 i hi
     exact ⟨c, ⟨hp.mem_iff.mp hc1, hc2, hc3⟩,
       fun y hy => hcu y ⟨hp.mem_iff.mpr hy.1, hy.2.1, hy.2.2⟩⟩⟩
-
-/-- Splitting the first range of a partition into two consecutive ranges gives a partition. -/
-theorem IsRangePartition.split_cons {N lo d i : ℕ} {rest : List (ℕ × ℕ)}
-    (h : IsRangePartition N ((lo, d) :: rest)) (hi : i + 1 < d) :
-    IsRangePartition N ((lo, i + 1) :: (lo + i + 1, d - i - 1) :: rest) := by
-  obtain ⟨hnd, hval, huniq⟩ := h
-  have hlo := hval (lo, d) List.mem_cons_self
-  have hpar : ∀ r ∈ rest, ∀ k < N, r.1 ≤ k → k < r.1 + r.2 → ¬(lo ≤ k ∧ k < lo + d) := by
-    intro r hr k hk h₁ h₂ h₃
-    have := (huniq k hk).unique ⟨List.mem_cons_of_mem _ hr, h₁, h₂⟩ ⟨List.mem_cons_self, h₃⟩
-    exact (List.nodup_cons.mp hnd).1 (this ▸ hr)
-  simp only at hlo
-  refine ⟨?_, ?_, ?_⟩
-  · refine List.nodup_cons.mpr ⟨?_, List.nodup_cons.mpr ⟨?_, (List.nodup_cons.mp hnd).2⟩⟩
-    · simp only [List.mem_cons, Prod.mk.injEq, not_or]
-      exact ⟨by omega, fun hr => hpar _ hr lo (by omega) le_rfl (by simp) ⟨le_rfl, by omega⟩⟩
-    · exact fun hr => hpar _ hr (lo + i + 1) (by omega) le_rfl (by simp; omega)
-        ⟨by omega, by omega⟩
-  · intro r hr
-    simp only [List.mem_cons] at hr
-    rcases hr with rfl | rfl | hr
-    · simp; omega
-    · simp; omega
-    · exact hval r (List.mem_cons_of_mem _ hr)
-  · intro k hk
-    by_cases hkb : lo ≤ k ∧ k < lo + d
-    · by_cases hk' : k < lo + i + 1
-      · refine ⟨(lo, i + 1), ⟨List.mem_cons_self, by simp; omega⟩, ?_⟩
-        rintro r' ⟨hr', h₁, h₂⟩
-        simp only [List.mem_cons] at hr'
-        rcases hr' with rfl | rfl | hr'
-        · rfl
-        · simp at h₁; omega
-        · exact absurd hkb (hpar r' hr' k hk h₁ h₂)
-      · refine ⟨(lo + i + 1, d - i - 1), ⟨by simp, by simp; omega⟩, ?_⟩
-        rintro r' ⟨hr', h₁, h₂⟩
-        simp only [List.mem_cons] at hr'
-        rcases hr' with rfl | rfl | hr'
-        · simp at h₂; omega
-        · rfl
-        · exact absurd hkb (hpar r' hr' k hk h₁ h₂)
-    · obtain ⟨r₀, ⟨hr₀, h₁, h₂⟩, hu⟩ := huniq k hk
-      have hr₀' : r₀ ∈ rest := by
-        rcases List.mem_cons.mp hr₀ with rfl | h
-        · exact absurd ⟨h₁, h₂⟩ hkb
-        · exact h
-      refine ⟨r₀, ⟨by simp [hr₀'], h₁, h₂⟩, ?_⟩
-      rintro r' ⟨hr', h₁', h₂'⟩
-      simp only [List.mem_cons] at hr'
-      rcases hr' with rfl | rfl | hr'
-      · simp at h₁' h₂'; omega
-      · simp at h₁' h₂'; omega
-      · exact hu r' ⟨List.mem_cons_of_mem _ hr', h₁', h₂'⟩
 
 /-- Splitting a range in the middle of a partition into two consecutive ranges, the right one
 first, gives a partition. -/

@@ -151,7 +151,12 @@ $b_1, b_2 > 0$, $B \ge 1$, $\Gamma > 0$, $0 < \delta \le \Sigma$, $0 < \varphi \
 degree of (eqn:setk) at $4B$, `NLAlib.ShiftedQR.uShQRSchur` is positive. -/
 theorem uShQRSchur_pos {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) {n k : ℕ}
     {B Γ S δ φ : ℝ} (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ)
-    (hφ1 : φ ≤ 1) (hk : k = shqrDegree (4 * B)) : 0 < uShQRSchur n k B Γ S δ φ c₁ c₂ := sorry
+    (hφ1 : φ ≤ 1) (hk : k = shqrDegree (4 * B)) : 0 < uShQRSchur n k B Γ S δ φ c₁ c₂ := by
+  have hS : 0 < S := hδ.trans_le hδS
+  have hb := shqrBudget_pos (n := n) hB hΓ hδ
+  refine lt_min (uShQRSmallEig_pos hb₁ hb₂ hB hΓ hδ hδS hφ hφ1 hk).1 (lt_min (by norm_num) ?_)
+  unfold uShQRSchurReplay
+  positivity
 
 section Program
 
@@ -242,7 +247,31 @@ theorem roundedShQRSchur_terminatingSchurCore {Mch : Machine ℝ} {I : Interp O 
     {c₁ c₂ : PolyLogTail} {k : ℕ} {B Γ S δ φ : ℝ} (hk : k = shqrDegree (4 * B)) :
     Schur.TerminatingSchurCore ((1 + 24 * u) ^ shqrSmallEigRotations n k B Γ S δ φ c₁ c₂ - 1) k
       (shqrCap n B Γ S δ) (shqrSmallEigCap n k B Γ S δ φ c₁ c₂) (n + 1)
-      (shqrSchurParams n k B Γ S δ φ c₁ c₂) (roundedShQRSchur (O := O) (Q := Q) sG) I := sorry
+      (shqrSchurParams n k B Γ S δ φ c₁ c₂) (roundedShQRSchur (O := O) (Q := Q) sG) I := by
+  have h12 := length_smallEigParams k (4 * S)
+    (forwardBackwardError k (4 * S) (shqrSmallEigAccuracy n B Γ S δ))
+    (shqrSmallEigFailure n B Γ S δ φ) c₁ c₂
+  have hu0 : 0 ≤ u := (abs_nonneg _).trans (by simpa using hM.lit 1)
+  have hX1 : (1 : ℝ) ≤ 1 + 24 * u := by linarith
+  set m := min k (n + 1)
+  have hR : m * m + 2 * (m + 1) * ((shqrSmallEigCap n k B Γ S δ φ c₁ c₂ + m) * m + 6) ≤
+      smallEigLeafRotations k (shqrSmallEigCap n k B Γ S δ φ c₁ c₂) := by
+    have hm : m ≤ k := min_le_left _ _
+    unfold smallEigLeafRotations
+    have := Nat.mul_le_mul hm hm
+    have := Nat.mul_le_mul (Nat.mul_le_mul_left 2 (Nat.add_le_add_right hm 1))
+      (Nat.add_le_add_right (Nat.mul_le_mul
+        (Nat.add_le_add_left hm (shqrSmallEigCap n k B Γ S δ φ c₁ c₂)) hm) 6)
+    omega
+  unfold shqrSmallEigRotations shqrSchurParams shqrSmallEigParams roundedShQRSchur
+  intro n' a p uo f tape μ H U hn hHU hp hl hf ha
+  exact roundedShQRSchurWith_terminatingSchurCore (Γ := Γ) (S := S) (δ := δ) (φ := φ)
+    (RL := smallEigLeafRotations k (shqrSmallEigCap n k B Γ S δ φ c₁ c₂)) hS hM hu1 hL hNat hQ hC
+    hDisk hk (smallEigProg_terminates (kmax := m) hS hM hu1 hL (hNat.mono (min_le_right _ _)) hC hQ
+      hSmp
+      hDisk (smallEigCaps_smallEigParams _ _ _ _ _ _) h12.ge) h12
+    (sub_nonneg.mpr (one_le_pow₀ hX1))
+    (sub_le_sub_right (pow_le_pow_right₀ hX1 hR) 1) H U hn hHU hp hl hf ha
 
 /-- **The memory holding the input of the Schur core**: the views of the matrix, the parameter
 words, the accumulator and the failure word are live, have room and are apart; the pair

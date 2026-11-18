@@ -85,6 +85,12 @@ def TerminatingLeafRoutine (εL : ℝ) (kmax : ℕ) (ps : List ℝ) (T : ℕ) (L
       (fun μ' => ∃ Tb Ub V : Matrix (Fin d) (Fin d) ℂ, HoldsMatrix w Tb μ'.store ∧
         HoldsMatrix ub Ub μ'.store ∧ HasOrthonormalCols V ∧ specNorm (Ub - V) ≤ εL) μ
 
+/-- A terminating leaf routine on orders at most $k_{\max}$ terminates on smaller orders. -/
+theorem TerminatingLeafRoutine.mono_kmax {εL : ℝ} {kmax kmax' : ℕ} {ps : List ℝ} {T : ℕ}
+    {L : Impl O Q} {I : Interp O Q ℝ} (h : TerminatingLeafRoutine εL kmax ps T L I)
+    (hk : kmax' ≤ kmax) : TerminatingLeafRoutine εL kmax' ps T L I :=
+  fun B hd hB hp hl hroom hwo hpo => h B (hd.trans hk) hB hp hl hroom hwo hpo
+
 /-- **A terminating Schur leaf routine that keeps its output if `P`**: as
 `NLAlib.ShiftedQR.TerminatingLeafRoutine`, but the outputs are stored after the run only when the
 proposition `P` holds. -/

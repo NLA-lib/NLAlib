@@ -878,6 +878,7 @@ public import NLAlib.Matrix.FinitePrecision.GivensChain
 public import NLAlib.Matrix.FinitePrecision.GivensCoefficients
 public import NLAlib.Matrix.FinitePrecision.GivensLog
 public import NLAlib.Matrix.FinitePrecision.GivensLogClose
+public import NLAlib.Matrix.FinitePrecision.GivensLogReplay
 public import NLAlib.Matrix.FinitePrecision.GivensLogSlots
 public import NLAlib.Matrix.FinitePrecision.GivensPrograms
 public import NLAlib.Matrix.FinitePrecision.GivensRotation
@@ -919,6 +920,7 @@ public import NLAlib.Matrix.FinitePrecision.SpectralBisection.Projectors
 public import NLAlib.Matrix.FinitePrecision.SpectralBisection.Slots
 public import NLAlib.Matrix.FinitePrecision.SpectralBisection.Split
 public import NLAlib.Matrix.FinitePrecision.SpectralBisection.Tree
+public import NLAlib.Matrix.FinitePrecision.StoredBlocks
 public import NLAlib.Matrix.FinitePrecision.StoredDense
 public import NLAlib.Matrix.FinitePrecision.StoredMatrix
 public import NLAlib.Matrix.FinitePrecision.StoredProducts

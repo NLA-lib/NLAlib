@@ -25,6 +25,7 @@ with the constants $1 \mp (2N_{\max}^2 + 2)\boldsymbol{u}$.
 
 * `NLAlib.Schur.frobNormStage_frobNormEstimateContract`: the stage meets
   `NLAlib.Schur.FrobNormEstimateContract`.
+* `NLAlib.Schur.FrobNormEstimateContract.mono`: wider constants.
 -/
 
 @[expose] public section
@@ -40,6 +41,16 @@ interface is `[N] (A) → (S)`, that of a norm-estimate stage. -/
 def frobNormStage : Impl O Q := opsImpl% [N] (A) → (S) {
   run (ShiftedQR.matrixNorm (Op := O) (Tst := Q)).body [N, N] (A, S)
 }
+
+/-- **A wider two-sided estimate**: a norm estimate with constants $c_1 \le c_1'$ and
+$c_2' \le c_2$ is one with $(c_1, c_2)$. -/
+theorem FrobNormEstimateContract.mono {c₁ c₂ c₁' c₂' : ℝ} {nmax : ℕ} {Nm : Impl O Q}
+    {I : Interp O Q ℝ} (h : FrobNormEstimateContract c₁' c₂' nmax Nm I) (h₁ : c₁ ≤ c₁')
+    (h₂ : c₂' ≤ c₂) : FrobNormEstimateContract c₁ c₂ nmax Nm I := by
+  intro N a s τ μ A hN hA hl hs has
+  refine (h A hN hA hl hs has).mono le_rfl fun _ _ ⟨x, hx, hlo, hhi⟩ => ⟨x, hx, ?_, ?_⟩
+  · exact (mul_le_mul_of_nonneg_right h₁ (frobNorm_nonneg A)).trans hlo
+  · exact hhi.trans (mul_le_mul_of_nonneg_right h₂ (frobNorm_nonneg A))
 
 /-- **The rounded Frobenius norm is a two-sided norm estimate**: on a scalar machine with the
 standard model at $\boldsymbol{u}$ and $(2N_{\max}^2 + 2)\boldsymbol{u} \le 1/2$,

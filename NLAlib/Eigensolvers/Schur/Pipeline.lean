@@ -150,6 +150,21 @@ def SchurOutput {n : ℕ} (a uo f : ℕ × ℕ) (A : Matrix (Fin (n + 1)) (Fin (
     HoldsMatrix a T μ'.store ∧ HoldsMatrix uo U μ'.store ∧ T.IsUpperTriangular ∧
     specNorm (A - U * T * Uᴴ) ≤ eA * specNorm A ∧ specNorm (Uᴴ * U - 1) ≤ eU
 
+/-- Larger errors are weaker. -/
+theorem SchurOutput.mono {n : ℕ} {a uo f : ℕ × ℕ} {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {eA eU eA' eU' : ℝ} {μ' : Mem ℝ} (h : SchurOutput a uo f A eA eU μ') (hA : eA ≤ eA')
+    (hU : eU ≤ eU') : SchurOutput a uo f A eA' eU' μ' := by
+  obtain ⟨hf, U, T, hT, hUs, hTu, hr, ho⟩ := h
+  exact ⟨hf, U, T, hT, hUs, hTu, hr.trans (mul_le_mul_of_nonneg_right hA (specNorm_nonneg A)),
+    ho.trans hU⟩
+
+/-- The matrix stored by a Schur output is upper triangular. -/
+theorem SchurOutput.isUpperTriangular_of_holdsMatrix {n : ℕ} {a uo f : ℕ × ℕ}
+    {A T : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {eA eU : ℝ} {μ' : Mem ℝ}
+    (h : SchurOutput a uo f A eA eU μ') (hT : HoldsMatrix a T μ'.store) : T.IsUpperTriangular := by
+  obtain ⟨-, U, T', hT', -, hTu, -⟩ := h
+  rwa [hT.eq_storedMatrix, ← hT'.eq_storedMatrix]
+
 /-- The all-tape output: the stored accumulator is within $e_U$ of orthonormal. -/
 def SchurOrth {n : ℕ} (uo : ℕ × ℕ) (eU : ℝ) (μ' : Mem ℝ) : Prop :=
   ∃ U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix uo U μ'.store ∧
@@ -588,6 +603,29 @@ def schurPipelineEnv (n nr nq k F T : ℕ) (a p uo f : ℕ × ℕ) (L : ℕ) : E
   ⟨[n + 1, nr, nq, k, F, T, a.2, p.2, a.2, uo.2, f.2], [a.1, p.1, a.1, uo.1, f.1, L, L + 1]⟩
 
 section Steps
+
+/-- **Near a unitary, nearly orthonormal**: if $\|\mathbf{U} - \mathbf{W}\|_2 \le \varepsilon$
+for $\mathbf{W}$ with orthonormal columns, then
+$\|\mathbf{U}^{\mathsf H}\mathbf{U} - \mathbf{I}\|_2 \le 2\varepsilon + \varepsilon^2$. -/
+theorem specNorm_conjTranspose_mul_self_sub_one_le_of_specNorm_sub_le {m : ℕ}
+    {U W : Matrix (Fin m) (Fin m) ℂ} (hW : HasOrthonormalCols W) {ε : ℝ}
+    (h : specNorm (U - W) ≤ ε) : specNorm (Uᴴ * U - 1) ≤ 2 * ε + ε ^ 2 := by
+  obtain ⟨Δ, rfl⟩ : ∃ Δ, U = W + Δ := ⟨U - W, by abel⟩
+  rw [add_sub_cancel_left] at h
+  have hd := specNorm_nonneg Δ
+  have e : (W + Δ)ᴴ * (W + Δ) - 1 = Wᴴ * Δ + Δᴴ * W + Δᴴ * Δ := by
+    rw [Matrix.conjTranspose_add]
+    simp only [Matrix.add_mul, Matrix.mul_add, hW.conjTranspose_mul_self]
+    abel
+  have h₁ : specNorm (Wᴴ * Δ) ≤ ε := (hW.specNorm_conjTranspose_mul_le Δ).trans h
+  have h₂ : specNorm (Δᴴ * W) ≤ ε := by rwa [hW.specNorm_mul_right, specNorm_conjTranspose]
+  have h₃ : specNorm (Δᴴ * Δ) ≤ ε * ε := (specNorm_mul_le _ _).trans
+    (mul_le_mul (by rwa [specNorm_conjTranspose]) h hd (hd.trans h))
+  rw [e]
+  refine ((specNorm_add_le _ _).trans (add_le_add ((specNorm_add_le _ _).trans
+    (add_le_add h₁ h₂)) h₃)).trans (le_of_eq ?_)
+  ring
+
 /-- **Probabilistic blocks with the same runs** have the same specifications. -/
 theorem _root_.NLAlib.Ops.PWrites.congr_eval {Op Tst : Type} {I : Interp Op Tst ℝ}
     {law : ℕ → Measure ℝ} {c c' : Stmt Op Tst} {ρ : Env} {F : Fp} {Pre Post : Mem ℝ → Prop}
@@ -1073,6 +1111,210 @@ theorem schurPipeline_pos_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : 
     hεCU hφC hm' hx' hA₁ hA₁b (measurableSet_eqOff_schurOutput _ a uo f A _ _)
     fun A₂ U₂ Tm T' hεCT hA₂ hTu htr hT' hz m'' hf hT hU => schurOutput_of_run hu0 hu hc₁ hx0
       hxl hxu hδR hεHT0 hεHT hεHU hεCU hεU hεCT hA₁n hA₂ hTu htr hT' hz hf hT hU
+
+/-- The pipeline's accumulator error on every tape: a reducer accumulator within $\varepsilon_H$
+of a unitary $\mathbf{V}_1$ and a core accumulator within $\varepsilon_C\|\mathbf{U}_1\|_2$ of
+$\mathbf{U}_1\mathbf{V}$ give $\|\mathbf{U}_2^{\mathsf H}\mathbf{U}_2 - \mathbf{I}\|_2 \le
+2\varepsilon + \varepsilon^2$, $\varepsilon = (1 + \varepsilon_H)(1 + \varepsilon_C) - 1$. -/
+theorem specNorm_conjTranspose_mul_self_sub_one_le_of_tracked {m : ℕ}
+    {U₁ U₂ V₁ V : Matrix (Fin m) (Fin m) ℂ} {εH εC : ℝ} (hεC : 0 ≤ εC)
+    (hV₁ : HasOrthonormalCols V₁) (hV : HasOrthonormalCols V)
+    (h₁ : specNorm (U₁ - V₁) ≤ εH) (h₂ : specNorm (U₂ - U₁ * V) ≤ εC * specNorm U₁) :
+    specNorm (U₂ᴴ * U₂ - 1) ≤
+      2 * ((1 + εH) * (1 + εC) - 1) + ((1 + εH) * (1 + εC) - 1) ^ 2 := by
+  have hW : HasOrthonormalCols (V₁ * V) := by
+    rw [hasOrthonormalCols_iff, Matrix.conjTranspose_mul, Matrix.mul_assoc,
+      ← Matrix.mul_assoc V₁ᴴ, hV₁.conjTranspose_mul_self, Matrix.one_mul,
+      hV.conjTranspose_mul_self]
+  refine specNorm_conjTranspose_mul_self_sub_one_le_of_specNorm_sub_le hW ?_
+  have hU₁ : specNorm U₁ ≤ 1 + εH := by
+    have := specNorm_add_le V₁ (U₁ - V₁); rw [add_sub_cancel] at this
+    linarith [hV₁.specNorm_le_one]
+  have e : U₂ - V₁ * V = (U₂ - U₁ * V) + (U₁ - V₁) * V := by
+    rw [Matrix.sub_mul]; abel
+  rw [e]
+  refine (specNorm_add_le _ _).trans ?_
+  rw [hV.specNorm_mul_right]
+  nlinarith [mul_le_mul_of_nonneg_left hU₁ hεC]
+
+/-- Blocks with the same runs have the same deterministic specifications. -/
+theorem _root_.NLAlib.Ops.Writes.congr_eval {Op Tst : Type} {I : Interp Op Tst ℝ} {τ : Tape ℝ}
+    {c c' : Stmt Op Tst} {ρ : Env} {F : Fp} {P : Mem ℝ → Prop} {m : Mem ℝ}
+    (he : eval I τ c ρ m = eval I τ c' ρ m) (h : Writes .total I τ c ρ F P m) :
+    Writes .total I τ c' ρ F P m := by
+  simpa only [Writes, Wp, he] using h
+
+variable [Has IdxTst Q] in
+/-- **The positive branch on every tape**: with a regularizer that terminates storing some matrix,
+a reducer and a terminating core, the positive branch of the pipeline terminates and stores an
+accumulator with $\|\mathbf{U}^{\mathsf H}\mathbf{U} - \mathbf{I}\|_2 \le 2\varepsilon +
+\varepsilon^2$. -/
+theorem schurPipeline_pos_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (h1 : Mch.lit 1 = 1) (hu1 : u ≤ 1)
+    {Reg Red Core : Impl O Q} {n k F T L : ℕ} {εHU εHT εCU : ℝ} {qR qC : List ℝ}
+    (hReg : ∀ {τ : Tape ℝ} {μ : Mem ℝ} {a q : ℕ × ℕ} (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
+      HoldsMatrix a A μ.store → μ.store.readBlock q.1 q.2 qR.length = some qR → μ.Live [a, q] →
+      Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock q.1 q.2 qR.length) →
+      Writes .total I τ Reg.body (Env.frame [n + 1, qR.length] [a, q, a])
+        (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
+        (fun μ' => ∃ A' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A' μ'.store) μ)
+    (hRed : HessenbergReducerContract εHU εHT (n + 1) Red I)
+    (hCore : TerminatingSchurCore εCU k F T (n + 1) qC Core I) (hεHU : 0 ≤ εHU)
+    (hεCU : 0 ≤ εCU) {a p uo f : ℕ × ℕ} {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {m : Mem ℝ} (hm : SchurPipelineMem n (qR ++ qC) a p uo f L m)
+    (hA : HoldsMatrix a A m.store) {x : ℝ} (hx : m.store.get L 0 = some x) (hx0 : 0 < x)
+    (τ : Tape ℝ) :
+    Writes .total I τ ((Stmt.call (Has.inj (ScalarOp.lit 1)) [] [] [⟨6, .const 0⟩]).seq
+        ((Stmt.call (Has.inj ScalarOp.div) [] [⟨6, .const 0⟩, ⟨5, .const 0⟩] [⟨6, .const 0⟩]).seq
+          ((Stmt.loop (.const 2 * (.var 0 * .var 0)) (.call (Has.inj ScalarOp.mul) []
+            [⟨0, .var 6 + .var 11⟩, ⟨6, .const 0⟩] [⟨0, .var 6 + .var 11⟩])).seq
+          ((Stmt.frame [.var 0, .var 1] [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩] Reg.body).seq
+            ((Stmt.frame [.var 0] [⟨3, .var 9⟩]
+              (PairMatrix.identity (Op := O) (Tst := Q)).body).seq
+            ((Stmt.frame [.var 0] [⟨0, .var 6⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩]
+              Red.body).seq
+            ((Stmt.frame [.var 0, .var 2, .var 3, .var 4, .var 5]
+              [⟨0, .var 6⟩, ⟨1, .var 7 + .var 1⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩,
+                ⟨4, .var 10⟩] Core.body).seq (.loop (.const 2 * (.var 0 * .var 0))
+              (.call (Has.inj ScalarOp.mul) [] [⟨0, .var 6 + .var 11⟩, ⟨5, .const 0⟩]
+                [⟨0, .var 6 + .var 11⟩])))))))))
+      (schurPipelineEnv n qR.length qC.length k F T a p uo f L)
+      (schurFp n a uo f ⊔ Store.inBlock (L + 1) 0 1)
+      (SchurOrth (n := n) uo (2 * ((1 + εHU) * (1 + εCU) - 1) + ((1 + εHU) * (1 + εCU) - 1) ^ 2))
+      m := by
+  obtain ⟨hlen, ha, hp, hu, hf, -, -, -, hap, hq⟩ := id hm
+  obtain ⟨h1', h2, h3, -, -, h6⟩ := apart_four hap
+  set G := schurFp n a uo f ⊔ Store.inBlock (L + 1) 0 1
+  have hFa : Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ≤ G :=
+    fun _ _ h => Or.inl (Or.inl (Or.inl h))
+  have hFu : Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))) ≤ G :=
+    fun _ _ h => Or.inl (Or.inl (Or.inr h))
+  have hdG : Fp.Disj G (Store.inBlock p.1 p.2 (qR ++ qC).length) :=
+    hm.disj_words.mono (sup_le (fun _ _ h => Or.inl (Or.inl h)) (fun _ _ h => Or.inr h)) le_rfl
+  have hdw : ∀ {m' : Mem ℝ} {F' : Fp}, F' ≤ G → m.store.EqOff F' m'.store →
+      SchurPipelineMem n (qR ++ qC) a p uo f L m' := fun hF hfr =>
+    hm.of_eqOff hfr ((hdG.mono hF le_rfl))
+  refine Writes.congr_eval (eval_seq_seq_seq_assoc _ _ _ _ _ _ _) ?_
+  refine (schurPipeline_scale_writes hS hM h1 hu1 hm hA hx hx0).seq_le
+    (sup_le (fun _ _ h => Or.inr h) hFa) fun m₁ hfr₁ h₁ => ?_
+  obtain ⟨hm₁, hx₁, A₁, hA₁, -⟩ := h₁
+  refine (hReg A₁ hA₁ (Store.readBlock_append_left hm₁.2.2.2.2.2.2.2.2.2)
+    (hm₁.live_of_subset (by simp)) (h1'.mono le_rfl (Fp.inBlock_le_inBlock le_rfl
+      (by simp)))).frame_seq_le rfl rfl (hm₁.live_of_subset (by simp)) hFa
+    fun m₂ hfr₂ h₂ => ?_
+  obtain ⟨A₂, hA₂⟩ := h₂
+  have hm₂ := hm₁.of_eqOff hfr₂ (hdG.mono hFa le_rfl)
+  refine (writes_identity_holdsMatrix_one (N := n + 1) hS hM h1 hm₂.room_uo).frame_seq_le
+    rfl rfl (hm₂.live_of_subset (by simp)) hFu fun m₃ hfr₃ hU => ?_
+  have hm₃ := hm₂.of_eqOff hfr₃ (hdG.mono hFu le_rfl)
+  refine (hRed A₂ 1 le_rfl ⟨hA₂.of_eqOff hfr₃ h2.symm, hU⟩ (hm₃.live_of_subset (by simp))
+    h2).frame_seq_le rfl rfl (hm₃.live_of_subset (by simp)) (sup_le hFa hFu)
+    fun m₄ hfr₄ h₄ => ?_
+  obtain ⟨U₁, H, hp₄, -, V₁, ⟨hV₁, -⟩, hU₁⟩ := h₄
+  have hm₄ := hm₃.of_eqOff hfr₄ (hdG.mono (sup_le hFa hFu) le_rfl)
+  obtain ⟨hlen₄, -, -, -, -, -, -, -, -, hq₄⟩ := id hm₄
+  refine (hCore H U₁ le_rfl hp₄ (Store.readBlock_append_right hq₄) (fun z hz => ?_)
+    (by have := hm₄.room_f; omega) (apart_tail hap)).frame_seq_le rfl rfl
+    (fun z hz => ?_) (fun _ _ h => Or.inl h) fun m₅ hfr₅ h₅ => ?_
+  · simp only [List.mem_cons, List.mem_nil_iff, or_false] at hz
+    rcases hz with rfl | rfl | rfl | rfl <;> simp only [hlen₄] <;> omega
+  · simp only [List.mem_cons, List.mem_nil_iff, or_false] at hz
+    rcases hz with rfl | rfl | rfl | rfl | rfl | rfl <;> simp only [hlen₄] <;> omega
+  obtain ⟨U₂, Tm, V, ⟨hT₅, hU₅⟩, hV, hU₂⟩ := h₅
+  have hm₅ := hm₄.of_eqOff hfr₅ (hdG.mono (fun _ _ h => Or.inl h) le_rfl)
+  have hx₅ : m₅.store.get L 0 = some x := by
+    rw [hfr₅.2 L 0 (not_schurFp_of_le ha hu hf le_rfl), hfr₄.2 L 0 (fun h => by
+      rcases h with ⟨h, -⟩ | ⟨h, -⟩ <;> omega), hfr₃.2 L 0 (fun h => by obtain ⟨h, -⟩ := h; omega),
+      hfr₂.2 L 0 (fun h => by obtain ⟨h, -⟩ := h; omega), hx₁]
+  refine (writes_loop_mul_cell hS (N := 2 * ((n + 1) * (n + 1))) (b := a.1) (o := a.2)
+    (y := (L, 0)) (r := x) rfl (fun t _ => rfl) (fun t _ => rfl)
+    (hm₅.live_of_subset (by simp)) (fun t ht => ⟨_, Store.get_of_readBlock hT₅ ht 0⟩) hx₅
+    (by rintro ⟨h, -⟩; omega)).mono hFa ?_
+  rintro m₆ hfr₆ -
+  have h1n : specNorm (U₁ - V₁) ≤ εHU := by
+    have := hU₁; rw [Matrix.one_mul] at this
+    exact this.trans (mul_le_of_le_one_right hεHU specNorm_one_le)
+  exact ⟨U₂, hU₅.of_eqOff hfr₆ h2,
+    specNorm_conjTranspose_mul_self_sub_one_le_of_tracked hεCU hV₁ hV h1n hU₂⟩
+
+/-- The memory of a run after the two scratch cells of the pipeline, from its input. -/
+theorem SchurPipelineInput.mem_of_alloc {n : ℕ} {qs : List ℝ} {a p uo f : ℕ × ℕ}
+    {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {μ : Mem ℝ}
+    (hin : SchurPipelineInput qs a p uo f A μ) {s₁ : Store ℝ} {q : ℕ}
+    (hlen : s₁.length = μ.store.length + [1, 1].length)
+    (hlens : ∀ i (hi : i < [1, 1].length), s₁.len (μ.store.length + i) = [1, 1][i])
+    (hBelow : Store.Below μ.store.length μ.store s₁) :
+    SchurPipelineMem n qs a p uo f μ.store.length ⟨s₁, q⟩ ∧ HoldsMatrix a A s₁ := by
+  obtain ⟨hl, hroom, hap, hA, hP⟩ := hin
+  have hlt : ∀ z ∈ [a, p, uo, f], z.1 < μ.store.length := hl
+  have ha := hlt a (by simp)
+  have hp := hlt p (by simp)
+  refine ⟨⟨by simpa using hlen, ha, hp, hlt uo (by simp), hlt f (by simp), ?_,
+    by simpa using hlens 0 (by simp), by simpa using hlens 1 (by simp), hap, ?_⟩,
+    hA.of_below hBelow ha⟩
+  · rw [Mem.room_eq_of_below (μ := μ) (μ' := ⟨s₁, q⟩) hBelow (by simpa using hlt)]
+    exact hroom
+  · exact hBelow.keep (Store.readsOnly_readBlock _ _ _ _) (fun _ _ h => h.1 ▸ hp) hP
+
+variable [Has IdxTst Q] in
+/-- **The pipeline terminates on every tape** with a regularizer that terminates storing some
+matrix, a reducer and a terminating core, and stores an accumulator with
+$\|\widehat{\mathbf{U}}^{\mathsf H}\widehat{\mathbf{U}} - \mathbf{I}\|_2 \le 2\varepsilon +
+\varepsilon^2$, $\varepsilon = (1 + \varepsilon_{H,U})(1 + \varepsilon_{C,U}) - 1$. -/
+theorem schurPipelineWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : ℕ}
+    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
+    (hNat : IsExactNatLit id Mch (n + 1)) (hC : IsCmp id I) (hu1 : u ≤ 1)
+    {Nm Reg Red Core : Impl O Q} {k F T : ℕ} {c₁ c₂ εHU εHT εCU : ℝ} {qR qC : List ℝ}
+    (hNm : FrobNormEstimateContract c₁ c₂ (n + 1) Nm I)
+    (hReg : ∀ {τ : Tape ℝ} {μ : Mem ℝ} {a q : ℕ × ℕ} (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
+      HoldsMatrix a A μ.store → μ.store.readBlock q.1 q.2 qR.length = some qR → μ.Live [a, q] →
+      Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock q.1 q.2 qR.length) →
+      Writes .total I τ Reg.body (Env.frame [n + 1, qR.length] [a, q, a])
+        (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
+        (fun μ' => ∃ A' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A' μ'.store) μ)
+    (hRed : HessenbergReducerContract εHU εHT (n + 1) Red I)
+    (hCore : TerminatingSchurCore εCU k F T (n + 1) qC Core I) (hc₁ : 0 < c₁)
+    (hεHU : 0 ≤ εHU) (hεCU : 0 ≤ εCU) {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {a p uo f : ℕ × ℕ} {μ : Mem ℝ} (hin : SchurPipelineInput (qR ++ qC) a p uo f A μ)
+    (τ : Tape ℝ) :
+    Writes .total I τ (schurPipelineWith Nm Reg Red Core).body
+      (Env.frame [n + 1, qR.length, qC.length, k, F, T] [a, p, a, uo, f]) (schurFp n a uo f)
+      (SchurOrth (n := n) uo
+        (2 * ((1 + εHU) * (1 + εCU) - 1) + ((1 + εHU) * (1 + εCU) - 1) ^ 2)) μ := by
+  have h1 : Mch.lit 1 = 1 := by simpa using hNat 1 (by omega)
+  have heU : 0 ≤ 2 * ((1 + εHU) * (1 + εCU) - 1) + ((1 + εHU) * (1 + εCU) - 1) ^ 2 := by
+    have : 0 ≤ (1 + εHU) * (1 + εCU) - 1 := by nlinarith
+    positivity
+  have hlt : ∀ z ∈ [a, p, uo, f], z.1 < μ.store.length := hin.1
+  change Writes .total I τ (Stmt.allocs [.const 1, .const 1] _) _ _ _ μ
+  refine writes_allocs_preserving_post (ns := [1, 1]) rfl
+    (fun hBelow ⟨U, hU, ho⟩ => ⟨U, hU.of_below hBelow (hlt uo (by simp)), ho⟩) ?_
+  intro s₁ hlen hlens hBelow
+  obtain ⟨hm, hA⟩ := hin.mem_of_alloc (q := μ.pos) hlen hlens hBelow
+  set L := μ.store.length
+  show Writes .total I τ _ (schurPipelineEnv n qR.length qC.length k F T a p uo f L) _ _ _
+  obtain ⟨-, ha, hp, hu, hf, -, hLl, -⟩ := id hm
+  have hlive : (⟨s₁, μ.pos⟩ : Mem ℝ).Live [a, (L, 0)] := hm.live_of_subset (by simp)
+  have hFL : Store.inBlock L 0 1 ≤ schurFp n a uo f ⊔ Fp.above L :=
+    fun _ _ h => Or.inr (h.1 ▸ le_rfl)
+  refine (hNm A le_rfl hA hlive (show 0 + 1 ≤ s₁.len L by simp at hLl ⊢; omega)
+    (show a.1 ≠ L by omega)).frame_seq_le rfl rfl hlive hFL fun m hfr ⟨x, hx, hxl, hxu⟩ => ?_
+  have hm' := hm.of_eqOff hfr (Fp.disj_inBlock_of_ne (by omega))
+  have hA' := hA.of_eqOff hfr (Fp.disj_inBlock_of_ne (by omega))
+  refine writes_ite rfl rfl (hC.test_isPos (x := (L, 0)) (d := []) hx) ?_
+  by_cases hx0 : 0 < x
+  · simp only [id, hx0, decide_true, if_true]
+    exact (schurPipeline_pos_terminates hS hM h1 hu1 hReg hRed hCore hεHU hεCU hm' hA' hx hx0
+      τ).mono (sup_le le_sup_left (fun b _ h => Or.inr (show L ≤ b by rw [h.1]; omega)))
+      fun _ _ h => h
+  · simp only [id, hx0, decide_false, Bool.false_eq_true, if_false]
+    have hF : frobNorm A = 0 :=
+      le_antisymm (by nlinarith [frobNorm_nonneg A]) (frobNorm_nonneg A)
+    obtain rfl := frobNorm_eq_zero_iff.mp hF
+    refine (schurPipeline_zero_writes (nr := qR.length) (nq := qC.length) (k := k) (F := F)
+      (T := T) (eA := 0) hS hM hL h1 hm' hA' heU).mono le_sup_left ?_
+    rintro m' - ⟨-, U, -, -, hU, -, -, ho⟩
+    exact ⟨U, hU, ho⟩
 
 end Steps
 

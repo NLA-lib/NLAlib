@@ -8,7 +8,7 @@ module
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedHeadline
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedIteration
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveBackward
-public import NLAlib.Matrix.FinitePrecision.GivensLogRead
+public import NLAlib.Matrix.FinitePrecision.GivensLogClose
 
 /-!
 # The rounded decoupling loop with randomized iterations
@@ -335,16 +335,16 @@ theorem roundedDecoupleScan_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
         mul_lt_mul_of_pos_left h1 hu0]
     · exact hψ
 
-/-- **The outcomes of a round of the decoupling loop form a measurable set**: the pairs of a
+/-- The outcomes of a round of the decoupling loop form a measurable set: the pairs of a
 memory before and after with the frame `F`, an initialised matrix at `w` after, and the matrix
 read after an upper Hessenberg perturbed unitary similarity of the loop's input $\mathbf{H}$ with
 error $\varepsilon$ by the unitary of the log read after, decoupled at the bottom (a bottom
 subdiagonal entry with $(1 - \boldsymbol{u})^2\lvert h\rvert^2 \le t$) or with potential at most
-$c\,\psi_k(\mathbf{H})$, and the first `j` slots of the log read after holding there as a closed
-log with planes below $n$ (`NLAlib.HoldsReadLog`). -/
+$c\,\psi_k(\mathbf{H})$, and the log after holding `j` closed slots with planes below $n$
+(`NLAlib.measurableSet_exists_holdsSlottedLog_append`). -/
 theorem measurableSet_decoupleRoundOutcome (u : ℝ) (k : ℕ)
-    (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (tv c ε : ℝ) (w lg : ℕ × ℕ) {ns : ℕ} (ws : ℕ)
-    {j : ℕ} (hj : j ≤ ns) (F : Fp) :
+    (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (tv c ε : ℝ) (w lg : ℕ × ℕ) (ns ws j : ℕ)
+    (F : Fp) :
     MeasurableSet {x : Mem ℝ × Mem ℝ | x.1.store.EqOff F x.2.store ∧
       (∀ j < 2 * ((n + 1) * (n + 1)), (x.2.store.get w.1 (w.2 + j)).isSome) ∧
       IsPerturbedUnitarySimilarBy
@@ -355,7 +355,9 @@ theorem measurableSet_decoupleRoundOutcome (u : ℝ) (k : ℕ)
           (1 - u) ^ 2 * ‖storedMatrix w (n + 1) (n + 1) x.2.store i.succ i.castSucc‖ ^ 2 ≤ tv) ∨
         hessenbergPotential k (storedMatrix w (n + 1) (n + 1) x.2.store) ≤
           c * hessenbergPotential k H) ∧
-      HoldsReadLog lg ns ws j (n + 1) x.2.store} := by
+      ∃ Ls : List (Option (List GivensEntry)), Ls.length = j ∧
+        (∀ e ∈ slotEntries ws Ls, e.1 + 1 < n + 1) ∧
+        HoldsSlottedLog lg ns ws ([] ++ Ls) [] x.2.store} := by
   have hm := measurable_storedMatrix w (n + 1) (n + 1)
   have h2 : Measurable fun x : Mem ℝ × Mem ℝ => storedMatrix w (n + 1) (n + 1) x.2.store :=
     hm.comp measurable_snd
@@ -373,7 +375,8 @@ theorem measurableSet_decoupleRoundOutcome (u : ℝ) (k : ℕ)
       (hV.prodMk (measurable_const.prodMk h2))).inter
       ((?_ : MeasurableSet _).inter (((?_ : MeasurableSet _).union
         (measurableSet_le (hpot.comp h2) measurable_const)).inter
-          (measurable_snd (measurableSet_holdsReadLog lg ws (n + 1) hj))))))
+          (measurable_snd
+            (measurableSet_exists_holdsSlottedLog_append lg ns ws (n + 1) j []))))))
   · simp only [IsUpperHessenberg, Set.ofPred_forall]
     refine .iInter fun i => .iInter fun j => ?_
     by_cases hij : (j : ℕ) + 1 < i
@@ -382,6 +385,91 @@ theorem measurableSet_decoupleRoundOutcome (u : ℝ) (k : ℕ)
   · simp only [Set.ofPred_exists, Set.ofPred_and]
     exact .iUnion fun i => (MeasurableSet.const _).inter
       (measurableSet_le (((hent _ _).norm.pow_const 2).const_mul _) measurable_const)
+
+/-- The constants of an iteration of the decoupling loop are nonnegative: $1 + C \ge 0$ and
+$(1 + 300(n + 1)^2\boldsymbol{u})^k - 1 \ge 0$. -/
+theorem decoupleIteration_consts {u B Bi α C : ℝ} {k q : ℕ}
+    {V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hu : 0 ≤ u) (hV : IsUnit V)
+    (hκ : pseudoConditionNumber V ≤ 2 * B) (hBi : 4 * B ≤ Bi)
+    (hα : α = (1.01 * Bi) ^ ((4 * q : ℝ) / 2 ^ q))
+    (hC1 : 1.1 + 2.1 * ((2.002 : ℝ) ^ ((k : ℝ)⁻¹) *
+      (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * Bi ^ 4) ^ ((2 * k : ℝ)⁻¹)) * α *
+        Bi ^ ((k : ℝ)⁻¹)) ≤ C) :
+    0 ≤ 1 + C ∧ 0 ≤ (1 + 300 * (n + 1) ^ 2 * u) ^ k - 1 := by
+  have hB0 : 1 / 2 ≤ B := by
+    have := (one_le_pseudoConditionNumber hV.ne_zero).trans hκ
+    linarith
+  have hBi0 : 0 ≤ Bi := by linarith
+  have hα0 : 0 ≤ α := hα ▸ Real.rpow_nonneg (by positivity) _
+  refine ⟨?_, ?_⟩
+  · have : 0 ≤ 2.1 * ((2.002 : ℝ) ^ ((k : ℝ)⁻¹) *
+        (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * Bi ^ 4) ^ ((2 * k : ℝ)⁻¹)) * α *
+          Bi ^ ((k : ℝ)⁻¹)) := by positivity
+    linarith
+  · have : 1 ≤ (1 + 300 * ((n : ℝ) + 1) ^ 2 * u) ^ k := one_le_pow₀ (by nlinarith)
+    linarith
+
+/-- The views of an iteration in the parameter words of the decoupling loop are apart from the
+matrix and the flag. -/
+theorem decoupleIteration_views {w p f : ℕ × ℕ} {ps qs : List ℝ} {ε : ℝ}
+    (hPWF : Fp.Disj (Store.inBlock p.1 p.2 ps.length)
+      (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1))
+    (hlen : ps.length = 10 + 2 * (excNet ε).length + qs.length)
+    (hq12 : qs = [] ∨ qs.length = 12) :
+    Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
+      (Store.inBlock p.1 (p.2 + (ps.length - 12)) qs.length) ∧
+    Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
+      (Store.inBlock (p.1, p.2 + 1).1 (p.1, p.2 + 1).2 1 ⊔
+        Store.inBlock (p.1, p.2 + 2).1 (p.1, p.2 + 2).2 1 ⊔
+        Store.inBlock (p.1, p.2 + 3).1 (p.1, p.2 + 3).2 1 ⊔
+        Store.inBlock (p.1, p.2 + 4).1 (p.1, p.2 + 4).2 1 ⊔
+        Store.inBlock (p.1, p.2 + 5).1 (p.1, p.2 + 5).2 1 ⊔
+        Store.inBlock (p.1, p.2 + 6).1 (p.1, p.2 + 6).2 1 ⊔
+        Store.inBlock (p.1, p.2 + 7).1 (p.1, p.2 + 7).2 1 ⊔
+        Store.inBlock (p.1, p.2 + 10).1 (p.1, p.2 + 10).2 (2 * (excNet ε).length)) := by
+  refine ⟨?_, hPWF.symm.mono le_rfl (by rw [hlen]; fp_sub)⟩
+  rcases hq12 with rfl | h
+  · exact fun _ _ _ h => by obtain ⟨-, h1, h2⟩ := h; simp at h2; omega
+  · exact hPWF.symm.mono le_rfl (Fp.inBlock_le_inBlock (by omega) (by omega))
+
+/-- An outcome of the iteration of round $i$, from the state of the loop before it (the log `LL`
+of $is$ slots, the iterate $\mathbf{H}_1$ by its unitary from $\mathbf{H}$ with error $iE$ and
+potential at most $c^i\psi_k(\mathbf{H})$, $c = 1.002(1 - \gamma)$), is an outcome of the round in
+the measurable form of `NLAlib.ShiftedQR.measurableSet_decoupleRoundOutcome`. -/
+theorem mem_decoupleRoundOutcome {u : ℝ} {k : ℕ} {H H₁ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {γ tv E E' : ℝ} {w lg : ℕ × ℕ} {ns ws i s : ℕ} {LL : List (Option (List GivensEntry))}
+    {F : Fp} {m m' : Mem ℝ} (hLL : LL.length = i * s)
+    (hby : IsPerturbedUnitarySimilarBy (givensLog (n + 1) (slotEntries ws LL)) H H₁ (i * E))
+    (hpl : ∀ e ∈ slotEntries ws LL, e.1 + 1 < n + 1)
+    (hψ : hessenbergPotential k H₁ ≤ (1.002 * (1 - γ)) ^ i * hessenbergPotential k H)
+    (hc0 : 0 ≤ 1.002 * (1 - γ)) (hE' : E' ≤ E) (hfr : m.store.EqOff F m'.store)
+    (hO : ShIterationOutcomeBy u k H₁ γ tv E' w lg ns ws LL s m') :
+    m.store.EqOff F m'.store ∧
+      (∀ j < 2 * ((n + 1) * (n + 1)), (m'.store.get w.1 (w.2 + j)).isSome) ∧
+      IsPerturbedUnitarySimilarBy
+        (givensLog (n + 1) (slotEntries ws (slottedLogRead lg ns ws m'.store))) H
+        (storedMatrix w (n + 1) (n + 1) m'.store) ((i + 1) * E) ∧
+      IsUpperHessenberg (storedMatrix w (n + 1) (n + 1) m'.store) ∧
+      ((∃ j : Fin n, n ≤ (j : ℕ) + k ∧
+          (1 - u) ^ 2 * ‖storedMatrix w (n + 1) (n + 1) m'.store j.succ j.castSucc‖ ^ 2 ≤ tv) ∨
+        hessenbergPotential k (storedMatrix w (n + 1) (n + 1) m'.store) ≤
+          (1.002 * (1 - γ)) ^ (i + 1) * hessenbergPotential k H) ∧
+      ∃ Ls : List (Option (List GivensEntry)), Ls.length = (i + 1) * s ∧
+        (∀ e ∈ slotEntries ws Ls, e.1 + 1 < n + 1) ∧
+        HoldsSlottedLog lg ns ws ([] ++ Ls) [] m'.store := by
+  obtain ⟨Ls, hLs, hplLs, hlog', H'', hby', hHess'', hW'', hdec''⟩ := hO
+  rw [← hW''.eq_storedMatrix]
+  refine ⟨hfr, fun j hj => by rw [Store.get_of_readBlock hW'' hj 0]; rfl, ?_, hHess'',
+    hdec''.imp id fun h => ?_, LL ++ Ls, by rw [List.length_append, hLL, hLs, ← Nat.succ_mul],
+    fun e he => ?_, by rwa [List.nil_append]⟩
+  · rw [hlog'.slotEntries_slottedLogRead, slotEntries_append, givensLog_append]
+    exact (hby.trans hby').mono (by push_cast; linarith)
+  · calc hessenbergPotential k H'' ≤ 1.002 * (1 - γ) * hessenbergPotential k H₁ := h
+      _ ≤ 1.002 * (1 - γ) * ((1.002 * (1 - γ)) ^ i * hessenbergPotential k H) :=
+        mul_le_mul_of_nonneg_left hψ hc0
+      _ = (1.002 * (1 - γ)) ^ (i + 1) * hessenbergPotential k H := by ring
+  · rw [slotEntries_append, List.mem_append] at he
+    exact he.elim (hpl e) (hplLs e)
 
 /-- An outcome of an iteration is in the measurable form of
 `NLAlib.ShiftedQR.measurableSet_iterationOutcome` with any larger error. -/
@@ -554,7 +642,6 @@ theorem roundedDecoupleIteration_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} 
       (fun μ' => DecoupleLoopCtx n L w p f ps μ' ∧
         DecoupleLoopMid u k H tv (1.002 * (1 - γ)) E w (i + 1) lg ns ws
             (k + 1 + (excNet ε).length) μ') (φse + φR / 2 + φ) := by
-  have hu := hM.roundoff_nonneg
   have hφ0 : 0 ≤ φse + φR / 2 + φ := by positivity
   by_cases hD : Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))))
       (Store.inBlock f.1 f.2 1) ∧ Fp.Disj (Store.inBlock p.1 p.2 ps.length)
@@ -563,45 +650,18 @@ theorem roundedDecoupleIteration_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} 
   · exact PWrites.of_writes hφ0 fun μ _ h => absurd ⟨h.1.2.2.2.2.2.2.2.2.1,
       h.1.2.2.2.2.2.2.2.2.2⟩ hD
   obtain ⟨haf, hPWF⟩ := hD
-  have hlen : ps.length = 10 + 2 * (excNet ε).length + qs.length := by
-    rw [hps, List.length_append, length_roundedDecoupleParams]
-  have hqw : Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
-      (Store.inBlock p.1 (p.2 + (ps.length - 12)) qs.length) := by
-    rcases hq12 with rfl | h
-    · exact fun _ _ _ h => by obtain ⟨-, h1, h2⟩ := h; simp at h2; omega
-    · exact hPWF.symm.mono le_rfl (Fp.inBlock_le_inBlock (by omega) (by omega))
-  have hio : Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
-      (Store.inBlock (p.1, p.2 + 1).1 (p.1, p.2 + 1).2 1 ⊔
-        Store.inBlock (p.1, p.2 + 2).1 (p.1, p.2 + 2).2 1 ⊔
-        Store.inBlock (p.1, p.2 + 3).1 (p.1, p.2 + 3).2 1 ⊔
-        Store.inBlock (p.1, p.2 + 4).1 (p.1, p.2 + 4).2 1 ⊔
-        Store.inBlock (p.1, p.2 + 5).1 (p.1, p.2 + 5).2 1 ⊔
-        Store.inBlock (p.1, p.2 + 6).1 (p.1, p.2 + 6).2 1 ⊔
-        Store.inBlock (p.1, p.2 + 7).1 (p.1, p.2 + 7).2 1 ⊔
-        Store.inBlock (p.1, p.2 + 10).1 (p.1, p.2 + 10).2 (2 * (excNet ε).length)) :=
-    hPWF.symm.mono le_rfl (by rw [hlen]; fp_sub)
-  have hB0 : 1 / 2 ≤ B := by
-    have := (one_le_pseudoConditionNumber hV.ne_zero).trans hκ
-    linarith
-  have hBi0 : 0 ≤ Bi := by linarith
-  have hα0 : 0 ≤ α := hα ▸ Real.rpow_nonneg (by positivity) _
-  have hC0 : 0 ≤ 1 + C := by
-    have : 0 ≤ 2.1 * ((2.002 : ℝ) ^ ((k : ℝ)⁻¹) *
-        (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * Bi ^ 4) ^ ((2 * k : ℝ)⁻¹)) * α *
-          Bi ^ ((k : ℝ)⁻¹)) := by positivity
-    linarith
-  have hcu : 0 ≤ (1 + 300 * (n + 1) ^ 2 * u) ^ k - 1 := by
-    have : 1 ≤ (1 + 300 * ((n : ℝ) + 1) ^ 2 * u) ^ k := one_le_pow₀ (by nlinarith)
-    linarith
+  obtain ⟨hqw, hio⟩ := decoupleIteration_views hPWF
+    (by rw [hps, List.length_append, length_roundedDecoupleParams]) hq12
+  obtain ⟨hC0, hcu⟩ := decoupleIteration_consts (n := n) (k := k) hM.roundoff_nonneg hV hκ hBi hα
+    hC1
   have hc0 : 0 ≤ 1.002 * (1 - γ) := by nlinarith
   have hpl : p.1 ≠ lg.1 := hlgv p (by simp)
   have hlgv' : ∀ b ∈ [w, (p.1, p.2 + 1), (p.1, p.2 + 2), (p.1, p.2 + 3), (p.1, p.2 + 4),
       (p.1, p.2 + 5), (p.1, p.2 + 6), (p.1, p.2 + 7), (p.1, p.2 + 10),
       (p.1, p.2 + (ps.length - 12)), f], b.1 ≠ lg.1 := by
-    simp only [List.mem_cons, List.not_mem_nil, or_false]
-    rintro b (rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl) <;>
+    intro b hb; simp only [List.mem_cons, List.not_mem_nil, or_false] at hb
+    rcases hb with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
       first | exact hpl | exact hlgv _ (by simp)
-  -- the iterates and their logs
   let ι := {x : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ × List (Option (List GivensEntry)) //
     IsUpperHessenberg x.1 ∧ specNorm x.1 ≤ S ∧ ω ≤ hessenbergPotential k x.1 ∧
     (∃ (Vx : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (dx : Fin (n + 1) → ℂ), IsUnit Vx ∧
@@ -611,15 +671,17 @@ theorem roundedDecoupleIteration_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} 
     IsPerturbedUnitarySimilarBy (givensLog (n + 1) (slotEntries ws x.2)) H x.1 (i * E) ∧
     (∀ e ∈ slotEntries ws x.2, e.1 + 1 < n + 1) ∧
     hessenbergPotential k x.1 ≤ (1.002 * (1 - γ)) ^ i * hessenbergPotential k H}
-  have hst := PWrites.pstep_of_forall hI hloc (fun x : ι =>
+  have hst := PWrites.pstep_of_forall hI hloc (fun x : ι => by
     have hx := x.2.2.2.2.1.choose_spec.choose_spec
-    shIterationWith_pwrites_at hI hloc hS hM hu1.le hL hNat hC hQ hβ0 hφse hDisk hU hkq hk hkn
-      haf hio x.2.1 hx.1 hx.2.1 hx.2.2.1 hBk hω x.2.2.2.1 x.2.2.1 hx.2.2.2 hR hφR hφR1 hβ hdη
-      hnu huo huo1 hxuR hboundR hα hγ hγ1 hε hε2 hφ hφ1 hd hC1 hxu hbound hexc1 hexc2 hthrω hSE
+    have h := shIterationWith_pwrites_at hI hloc hS hM hu1.le hL hNat hC hQ hβ0 hφse hDisk hU hkq
+      hk hkn haf hio x.2.1 hx.1 hx.2.1 hx.2.2.1 hBk hω x.2.2.2.1 x.2.2.1 hx.2.2.2 hR hφR hφR1 hβ
+      hdη hnu huo huo1 hxuR hboundR hα hγ hγ1 hε hε2 hφ hφ1 hd hC1 hxu hbound hexc1 hexc2 hthrω hSE
       (qw := (p.1, p.2 + (ps.length - 12))) hqw (LL := x.1.2) (lg := lg) (ns := ns)
-      (by rw [x.2.2.2.2.2.1, ← Nat.succ_mul]; exact hj) hw hlgv')
+      (by rw [x.2.2.2.2.2.1, ← Nat.succ_mul]; exact hj) hw hlgv'
+    rw [x.2.2.2.2.2.1] at h
+    exact h)
     (measurableSet_decoupleRoundOutcome (n := n) u k H tv ((1.002 * (1 - γ)) ^ (i + 1))
-      ((i + 1) * E) w lg ws (j := (i + 1) * (k + 1 + (excNet ε).length)) hj
+      ((i + 1) * E) w lg ns ws ((i + 1) * (k + 1 + (excNet ε).length))
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * ws))))
     (fun x m m' hP hfr hO => ?_)
@@ -648,39 +710,17 @@ theorem roundedDecoupleIteration_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} 
       have hpl' : p.1 < μ.store.length := hctx.2.2.2.1 p (by simp)
       simp only [Mem.live_cons] at hl ⊢
       tauto
-    · obtain ⟨hfr, hsome, hby, hHess, hdec, hread⟩ := hT
-      have hjn : (i + 1) * (k + 1 + (excNet ε).length) ≤ ns := hj
+    · obtain ⟨hfr, hsome, hby, hHess, hdec, Ls, hLs, hplLs, hlog⟩ := hT
+      rw [List.nil_append] at hlog
       refine ⟨hfr, hctx.of_eqOff_log hpl (sup_le (le_sup_left.trans le_sup_left)
-        le_sup_right) hfr, (slottedLogRead lg ns ws μ'.store).take
-          ((i + 1) * (k + 1 + (excNet ε).length)),
-        length_take_slottedLogRead hjn _, hread.2, hread.1, storedMatrix w (n + 1) (n + 1) μ'.store,
+        le_sup_right) hfr, Ls, hLs, hplLs, hlog, storedMatrix w (n + 1) (n + 1) μ'.store,
         ?_, hHess, holdsMatrix_storedMatrix hsome, hdec⟩
-      rw [← hread.1.slotEntries_slottedLogRead]
+      rw [← hlog.slotEntries_slottedLogRead]
       exact hby.mono (le_of_eq (by push_cast; ring))
-  -- the outcome of an iteration is a round's outcome
-  obtain ⟨Ls, hLs, hplLs, hlog', H'', hby', hHess'', hW'', hdec''⟩ := hO
-  obtain ⟨-, hW, -, -, -, -, -, -, -, -, -, -, -, -⟩ := hP
-  have hm : storedMatrix w (n + 1) (n + 1) m.store = x.1.1 := hW.eq_storedMatrix.symm
-  refine ⟨hfr, fun j hj => by rw [Store.get_of_readBlock hW'' hj 0]; rfl, ?_, ?_, ?_, ?_⟩
-  · rw [hlog'.slotEntries_slottedLogRead, slotEntries_append, givensLog_append,
-      ← hW''.eq_storedMatrix]
-    refine (x.2.2.2.2.2.2.1.trans hby').mono ?_
-    have := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left x.2.2.1 hC0) hcu
-    push_cast
-    nlinarith
-  · rw [← hW''.eq_storedMatrix]; exact hHess''
-  · rw [← hW''.eq_storedMatrix]
-    refine hdec''.imp id fun h => ?_
-    calc hessenbergPotential k H'' ≤ 1.002 * (1 - γ) * hessenbergPotential k x.1.1 := h
-      _ ≤ 1.002 * (1 - γ) * ((1.002 * (1 - γ)) ^ i * hessenbergPotential k H) :=
-        mul_le_mul_of_nonneg_left x.2.2.2.2.2.2.2.2 hc0
-      _ = (1.002 * (1 - γ)) ^ (i + 1) * hessenbergPotential k H := by ring
-  · have h := hlog'.holdsReadLog (N := n + 1) (by
-      rw [slotEntries_append]
-      intro e he
-      rcases List.mem_append.mp he with he | he
-      exacts [x.2.2.2.2.2.2.2.1 e he, hplLs e he])
-    rwa [List.length_append, x.2.2.2.2.2.1, hLs, ← Nat.succ_mul] at h
+  exact mem_decoupleRoundOutcome x.2.2.2.2.2.1 x.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.1
+    x.2.2.2.2.2.2.2.2 hc0 (by
+      have := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left x.2.2.1 hC0) hcu
+      linarith) hfr hO
 
 omit [Has EigenvalueKernelOp O] in
 /-- The rounds of the decoupling loop on the good tapes: if each iteration from the state
@@ -702,7 +742,7 @@ theorem roundedDecoupleLoop_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : 
     (hψH : hessenbergPotential k H ≤ Nmax) (hthr : (1 + u) ^ 2 * tv ≤ (1 - u) ^ 2 * tL)
     (hcut : tL ≤ (1 - u) ^ 2 * ωD ^ 2) (hωD : 0 ≤ ωD) (hc0 : 0 ≤ c) (hE0 : 0 ≤ E)
     (hφ : 0 ≤ φ) (hfuel : (1 + u) ^ 2 * (c ^ F * Nmax) ^ 2 ≤ tL)
-    (hj : F * (k + 1 + n0) ≤ ns) (hw : k * n ≤ ws) (hlgv : ∀ b ∈ [w, p, f], b.1 ≠ lg.1)
+    (hj : F * (k + 1 + n0) ≤ ns) (_hw : k * n ≤ ws) (hlgv : ∀ b ∈ [w, p, f], b.1 ≠ lg.1)
     (hlgL : lg.1 < L)
     (hit : ∀ i < F, PWrites law I (shIterationWith SE).body
       (Env.frame [n + 1, q, k, n0, 12, T, ws, i * (k + 1 + n0)]
@@ -816,7 +856,8 @@ index reads of $m$ and $n_0$ from the parameter words (`NLAlib.Ops.PWrites.alloc
 `NLAlib.ShiftedQR.RandomDecouplingRoutineContract`. -/
 theorem roundedDecouple_pwrites_of_loop {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
-    (hS : IsScalar M I) (hM : StdModel u id M) (hQ : IsToNat id I) {law : ℕ → Measure ℝ} {k q F T : ℕ} {SE : Impl O Q} (hqk : q ≤ k)
+    (hS : IsScalar M I) (hM : StdModel u id M) (hQ : IsToNat id I) {law : ℕ → Measure ℝ}
+    {k q F T : ℕ} {SE : Impl O Q} (hqk : q ≤ k)
     {w p f lg : ℕ × ℕ} {ns ws : ℕ} {ps qs : List ℝ} {tL R tv γ Bi α ε : ℝ}
     (hps : ps = roundedDecoupleParams tL R tv γ Bi α ε k q ++ qs)
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {e ωD φ : ℝ} (hφ : 0 ≤ φ)
@@ -864,19 +905,14 @@ theorem roundedDecouple_pwrites_of_loop {M : Machine ℝ} {I : Interp O Q ℝ} {
       lg.1 < L ∧ (∀ b ∈ [w, p, f], b.1 ≠ lg.1) ∧ μ.Live [lg] ∧
       lg.2 + ns * (1 + 5 * ws) ≤ μ.store.len lg.1) ?_ ?_ fun L => ?_
   · rintro μ s₁ ⟨hlgl, hroom, hv, hW, hp, hl, hrw, hrf, hWF, hPWF⟩ hlen' hlens hBelow
-    have h1 : w.1 < μ.store.length := hl w (by simp)
-    have h2 : p.1 < μ.store.length := hl p (by simp)
-    have h3 : f.1 < μ.store.length := hl f (by simp)
-    have h4 : lg.1 < μ.store.length := hlgl lg (by simp)
-    have hl0 := hlens 0 (by simp)
+    obtain ⟨h1, h2, h3, h4⟩ : w.1 < μ.store.length ∧ p.1 < μ.store.length ∧
+        f.1 < μ.store.length ∧ lg.1 < μ.store.length :=
+      ⟨hl w (by simp), hl p (by simp), hl f (by simp), hlgl lg (by simp)⟩
     simp only [List.length_cons, List.length_nil] at hlen'
-    refine ⟨⟨h1, h2, h3, ?_, hBelow.readBlock_of h2 hp, by rw [(hBelow w.1 h1).1]; exact hrw,
-      by rw [(hBelow f.1 h3).1]; exact hrf, by simpa using hl0.ge, hWF, hPWF⟩,
-      hW.of_below hBelow h1, h4, hv, by simp [Mem.Live, hlen']; omega,
-      by rw [(hBelow lg.1 h4).1]; exact hroom⟩
-    simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,
-      forall_eq, hlen']
-    omega
+    refine ⟨⟨h1, h2, h3, by simp [Mem.Live, hlen']; omega, hBelow.readBlock_of h2 hp,
+      by rw [(hBelow w.1 h1).1]; exact hrw, by rw [(hBelow f.1 h3).1]; exact hrf,
+      by simpa using (hlens 0 (by simp)).ge, hWF, hPWF⟩, hW.of_below hBelow h1, h4, hv,
+      by simp [Mem.Live, hlen']; omega, by rw [(hBelow lg.1 h4).1]; exact hroom⟩
   · rintro μ ⟨hlgl, -, -, -, -, hl, -⟩ st st' pos hBelow ⟨hf0, Ls, H', h0, h1, h2, h3, h4, h5,
       hW'⟩
     exact ⟨hBelow.get_of (hl f (by simp)) hf0, Ls, H', h0, h1,
@@ -1096,8 +1132,7 @@ theorem roundedDecoupleWith_randomDecouplingRoutineContract_at {M : Machine ℝ}
   refine (roundedDecouple_pwrites_of_loop (lg := lg) (ns := ns) (ws := ws) hI hloc hS hM hQ
     (by rw [hkq]; exact Nat.lt_two_pow_self.le) hps (by positivity) fun L hlgL hlgv => ?_).mono
     (fun μ ⟨hW, hp, hl, hv, hrw, hrf, hrl, hap, hpd⟩ => ?_) le_rfl
-    (fun μ' ⟨hf0, Ls, H', h1, h2, h3, h4, h5, h6, h7⟩ => ⟨hf0, H', Ls, h1, h2, h3, h4, h5, h6, h7⟩)
-    le_rfl
+    (fun _ ⟨a, Ls, H', h⟩ => ⟨a, H', Ls, h⟩) le_rfl
   · exact roundedDecoupleLoop_pwrites hI hloc hS hM hu1 hL hNat' hC (by omega) hkn
       (by rw [hps]; rfl) (by rw [hlen]; omega) hHess hψH hthr hcut hωD hc0 hE0 (by positivity)
       hfuel hns hws' hlgv hlgL fun i hi =>
@@ -1106,8 +1141,7 @@ theorem roundedDecoupleWith_randomDecouplingRoutineContract_at {M : Machine ℝ}
         (by linarith [hiE i hi]) hEn hps hBi hBk hω hωL hgapS hR hφR hφR1 hβ hdη hnu' huo' huo1'
         hxuR' hboundR' hα hγ hγ1 hε hε2 hφ hφ1 hd' hC1 hxu' hbound' hexc1 hexc2' hthrω
         ((Nat.mul_le_mul_right _ hi).trans hns) hws' hlgv hlgL hSE hq12
-  · simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
-      and_true] at hap
+  · simp only [Fp.Apart, Fp.blocks_cons, Fp.disj_sup_right] at hap
     refine ⟨hl.mono (by simp), hrl, hv, hW, hp, hl.mono (by simp), hrw, hrf, hap.1.1,
       hpd.mono le_rfl le_sup_left⟩
 

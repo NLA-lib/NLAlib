@@ -21,7 +21,7 @@ unitary of a run by a measurable function of the memory.
 
 ## Main results
 
-* `NLAlib.slotEntries_append`, `NLAlib.slotEntries_replicate_none`: entries of closed slots.
+* `NLAlib.slotEntries_replicate_none`: entries of rejected slots.
 * `NLAlib.eq_replicate_none_of_slotEntries_eq_nil`: closed slots without entries are rejected.
 * `NLAlib.HoldsSlottedLog.rejects`: reject `c` empty slots.
 * `NLAlib.HoldsSlottedLog.drop`: the log after a prefix of its slots.
@@ -38,11 +38,6 @@ unitary of a run by a measurable function of the memory.
 namespace NLAlib
 
 open Ops
-
-/-- The entries of appended slots are appended. -/
-@[simp] theorem slotEntries_append (w : ℕ) (L L' : List (Option (List GivensEntry))) :
-    slotEntries w (L ++ L') = slotEntries w L ++ slotEntries w L' := by
-  simp [slotEntries]
 
 /-- Rejected slots have no entries. -/
 @[simp] theorem slotEntries_replicate_none (w c : ℕ) :
@@ -172,16 +167,6 @@ theorem getElem?_flatMap_entryWords (L : List GivensEntry) (i t : ℕ) (ht : t <
       rw [List.getElem?_append_right (by omega), h5,
         show 5 * (i + 1) + t - 5 = 5 * i + t by omega, ih]
       simp
-
-/-- A list of entries has five words per entry. -/
-theorem length_flatMap_entryWords (L : List GivensEntry) :
-    (L.flatMap entryWords).length = 5 * L.length := by
-  induction L with
-  | nil => rfl
-  | cons e L ih =>
-    rw [List.flatMap_cons, List.length_append, ih, List.length_cons]
-    simp [entryWords]
-    ring
 
 /-- The plane words a block of entries may hold: the naturals $r$ with $r + 1 < N$. -/
 private theorem measurableSet_planeWords (N : ℕ) :

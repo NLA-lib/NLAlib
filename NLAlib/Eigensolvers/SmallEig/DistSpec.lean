@@ -259,7 +259,8 @@ theorem distSpec_accuracy {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS :
       _ = κ * (⨅ i, ‖s - d i‖) ^ m * R := by ring
 
 /-- `DistSpec` terminates on every tape: on a scalar machine with exact comparisons, the
-literal $0$ and natural literals up to $n$ exact, from any matrix of order $n + 1$ at `h`, any shift pair and room for the word
+literal $0$ and natural literals up to $n$ exact, from any matrix of order $n + 1$ at `h`, any
+shift pair and room for the word
 `tau`, for every degree $m$ (zero included) and $q$,
 `NLAlib.SmallEig.distSpec` writes only that word, keeps the tape position and stores a word
 there. -/

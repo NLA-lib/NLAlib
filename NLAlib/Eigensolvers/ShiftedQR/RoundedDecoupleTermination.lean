@@ -6,7 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedShTermination
-public import NLAlib.Matrix.FinitePrecision.GivensLogRead
+public import NLAlib.Matrix.FinitePrecision.GivensLogClose
 
 /-!
 # Termination of the rounded decoupling loop
@@ -112,26 +112,19 @@ theorem shIterationWith_terminates_at {M : Machine ℝ} {I : Interp O Q ℝ} (hS
   have hAI : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) _ :=
     hio.mono le_sup_left le_rfl
   refine Writes.in_frame (Writes.mono (F := Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
-    Store.inBlock L 0 (2 * k) ⊔ Store.inBlock f.1 f.2 1 ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+    Store.inBlock L 0 (2 * k) ⊔ Store.inBlock f.1 f.2 1 ⊔
+      Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
     ?_ (by fp_sub) fun _ _ h => h) rfl rfl
     (by simp [Mem.Live, hLs]; omega)
   unfold shIterationWithScratchWith
   have hqw' : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
       Store.inBlock (L, 0).1 (L, 0).2 (2 * k) ⊔ Store.inBlock f.1 f.2 1)
         (Store.inBlock qw.1 qw.2 qs.length) := by
-    have := hS0 hlq (l := qs.length)
-    simp only [Fp.disj_sup_left] at hqw ⊢
-    exact ⟨⟨hqw.1, this⟩, hqw.2⟩
-  have hlgb : ∀ b ∈ [a, rd, c, thr, qw, (L, 0), f], b.1 ≠ lg.1 := by
-    simp only [List.mem_cons, List.not_mem_nil, or_false]
-    rintro b (rfl | rfl | rfl | rfl | rfl | rfl | rfl)
-    · exact hlgv _ (by simp)
-    · exact hlgv _ (by simp)
-    · exact hlgv _ (by simp)
-    · exact hlgv _ (by simp)
-    · exact hlgv _ (by simp)
-    · exact fun h => by simp only at h; omega
-    · exact hlgv _ (by simp)
+    simp only [Fp.disj_sup_left] at hqw ⊢; exact ⟨⟨hqw.1, hS0 hlq⟩, hqw.2⟩
+  have hlgb : ∀ b ∈ [a, rd, c, thr, qw, (L, 0), f], b.1 ≠ lg.1 := fun b hb => by
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hb
+    rcases hb with rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
+      first | (simp only; omega) | exact hlgv _ (by simp)
   refine (regularizeWith_terminates_at (τ := τ) (s := (L, 0)) hS hL hNat hC hD hkn
     (hS0 h1).symm haf (hS0 h10)
     (Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨hAI.mono le_rfl (by fp_sub),
@@ -152,8 +145,8 @@ theorem shIterationWith_terminates_at {M : Machine ℝ} {I : Interp O Q ℝ} (hS
       ⟨Fp.disj_sup_left.mpr ⟨ha, hS0 hz⟩, hf⟩, hG0 hzl⟩) (hBelow.get_of hz hv)
   refine writes_ite rfl rfl (hC.test_isZero (d := []) (x := f) hF₁) ?_
   split_ifs
-  · have hsh := shStep_terminates (τ := τ) (s := (L, 0)) (LL := LL ++ Ls₁) hS hL hNat hC hQ hD
-      hkq hkn haf
+  · have hsh := shStep_terminates (τ := τ) (s := (L, 0)) (LL := LL ++ Ls₁) hS hL hNat hC hQ hD hkq
+      hkn haf
       (Fp.disj_sup_right.mpr ⟨Fp.disj_sup_left.mpr ⟨(hS0 h1).symm, (hS0 h10).symm⟩, hio⟩ |>.mono
         le_rfl (by fp_sub))
       (by simp [Mem.Live, hfr₁.length_eq, hLs]; omega) hA₁ hS₁
@@ -168,40 +161,22 @@ theorem shIterationWith_terminates_at {M : Machine ℝ} {I : Interp O Q ℝ} (hS
       (hk h4 (hlgv _ (by simp)) (hfI.mono le_rfl (by fp_sub)) (hAI.mono le_rfl (by fp_sub)) hthr)
       (by rw [hfr₁.len_eq, (hBelow f.1 h10).1]; exact hrf) hlog₁
       (by simp only [List.length_append, hLs₁]; omega) hw
-      (by simp [Mem.Live, hfr₁.length_eq, hLs]; omega)
+      (by simp [Mem.Live, hfr₁.length_eq, hLs]; omega) fun b hb => by
+        simp only [List.mem_cons, List.not_mem_nil, or_false] at hb
+        rcases hb with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
+          first | (simp only; omega) | exact hlgv _ (by simp)
     rw [List.length_append, hLs₁] at hsh
     refine (hsh.in_frame rfl rfl (by simp [Mem.Live, hfr₁.length_eq, hLs]; omega)).mono
       (by fp_sub) ?_
-    rintro m₂ - ⟨hA₂, x₂, hF₂, Ls₂, P₂, hLs₂, hpl₂, hlog₂⟩
+    rintro m₂ - ⟨hA₂, x₂, hF₂, Ls₂, hLs₂, hpl₂, hlog₂⟩
     rw [List.append_assoc] at hlog₂
-    -- close the slots `Sh` left open
-    obtain ⟨Ls₃, hLs₃, hse₃, hlog₃⟩ : ∃ Ls₃ : List (Option (List GivensEntry)),
-        Ls₃.length = 1 + (excNet ε).length ∧ slotEntries w Ls₃ = slotEntries w Ls₂ ∧
-        HoldsSlottedLog lg ns w (LL ++ (Ls₁ ++ Ls₃)) [] m₂.store := by
-      rcases Nat.lt_or_eq_of_le hLs₂ with hlt | heq
-      · refine ⟨Ls₂ ++ List.replicate (1 + (excNet ε).length - Ls₂.length - 1 + 1) none,
-          by simp; omega, by simp, ?_⟩
-        have := hlog₂.reject_pending (k := 1 + (excNet ε).length - Ls₂.length - 1)
-          (by simp only [List.length_append]; omega)
-        simpa only [List.append_assoc] using this
-      · refine ⟨Ls₂, heq, rfl, ?_⟩
-        rcases Nat.lt_or_eq_of_le (show (LL ++ (Ls₁ ++ Ls₂)).length ≤ ns from hlog₂.1) with
-          hlt | heq'
-        · -- blocked: `NLAlib.ShiftedQR.shStep_terminates` does not say that the pending slot
-          -- after its `1 + n₀` closed slots is empty
-          sorry
-        · exact hlog₂.of_length_eq heq'
-    refine ⟨hA₂, x₂, hF₂, Ls₁ ++ Ls₃, by simp only [List.length_append]; omega, ?_, hlog₃⟩
-    intro e he
-    simp only [slotEntries_append, List.mem_append, hse₃] at he
-    rcases he with he | he
-    · exact hpl₁ e he
-    · exact hpl₂ e (List.mem_append_left _ he)
+    exact ⟨hA₂, x₂, hF₂, Ls₁ ++ Ls₂, by simp only [List.length_append]; omega, fun e he => by
+      rw [slotEntries_append, List.mem_append] at he; exact he.elim (hpl₁ e) (hpl₂ e), hlog₂⟩
   · refine (Writes.skip ⟨⟨_, hA₁⟩, ⟨_, hF₁, Ls₁ ++ List.replicate (1 + (excNet ε).length) none,
       by simp only [List.length_append, List.length_replicate]; omega,
       by simpa using hpl₁, ?_⟩⟩).mono bot_le fun _ _ h => h
     rw [← List.append_assoc]
-    exact hlog₁.reject_replicate (by simp only [List.length_append]; omega)
+    exact hlog₁.rejects (by simp only [List.length_append]; omega)
 
 /-- One iteration terminates on any matrix: on a scalar machine with exact comparisons,
 index literals, index conversion and exact natural literals up to $n + 1$, a `SmallEig` kernel
@@ -305,6 +280,44 @@ theorem roundedDecoupleExit_terminates {M : Machine ℝ} {I : Interp O Q ℝ}
     rintro μ' hfr ⟨-, hF⟩
     exact ⟨⟨_, hF⟩, H, hW.of_eqOff hfr hWF.symm⟩
 
+/-- The words of the routine sit at the tail of the parameter words of the loop. -/
+private theorem routine_words_of_layout {ε : ℝ} {ps qs : List ℝ}
+    (hq12 : qs = [] ∨ qs.length = 12)
+    (hlen : ps.length = 10 + 2 * (excNet ε).length + qs.length)
+    (hnet : ps.drop 10 = ((excNet ε).flatMap fun z => [z.re, z.im]) ++ qs) :
+    ps.length - 12 + qs.length ≤ ps.length ∧ (ps.drop (ps.length - 12)).take qs.length = qs := by
+  have hfl : ((excNet ε).flatMap fun z => [z.re, z.im]).length = 2 * (excNet ε).length := by
+    simp [List.length_flatMap, mul_comm]
+  rcases hq12 with rfl | h
+  · simp
+  · have e : ps.length - 12 = 10 + 2 * (excNet ε).length := by rw [hlen, h]; omega
+    refine ⟨by rw [hlen, h]; omega, ?_⟩
+    rw [e, ← List.drop_drop, hnet, List.drop_append_of_le_length (by omega), ← hfl,
+      List.drop_length, List.nil_append, List.take_length]
+
+omit [Has ScalarOp O] [Has EigenvalueKernelOp O] [Has DiskSampleOp O] [Has IdxTst Q] in
+/-- The exit of the decoupling loop on any scan flag keeps a closed log of at most `ns` slots
+in a buffer apart from the flag. -/
+private theorem roundedDecoupleExit_terminates_log {M : Machine ℝ} {I : Interp O Q ℝ}
+    (hL : IsIndexLit M I) (hC : IsCmp id I) {τ : Tape ℝ} {μ : Mem ℝ} {L : ℕ} {w p f lg : ℕ × ℕ}
+    {ps : List ℝ} {ns ws : ℕ} {Ls : List (Option (List GivensEntry))}
+    (hctx : DecoupleLoopCtx n L w p f ps μ)
+    (hW : ∃ H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix w H μ.store)
+    (hx : ∃ x, μ.store.get L 3 = some x) (hlog : HoldsSlottedLog lg ns ws Ls [] μ.store)
+    (hpl : ∀ x ∈ slotEntries ws Ls, x.1 + 1 < n + 1) (hLs : Ls.length ≤ ns) (hfl : f.1 ≠ lg.1) :
+    Writes .total I τ (roundedDecoupleExit (O := O) (Q := Q)).body (Env.frame [] [(L, 0), f])
+      (Store.inBlock f.1 f.2 1)
+      (fun μ' => (∃ x, μ'.store.get f.1 f.2 = some x) ∧
+        ∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix w H' μ'.store ∧
+        ∃ (Ls : List (Option (List GivensEntry))) (P' : List GivensEntry), Ls.length ≤ ns ∧
+          (∀ x ∈ slotEntries ws Ls ++ P', x.1 + 1 < n + 1) ∧
+          HoldsSlottedLog lg ns ws Ls P' μ'.store) μ := by
+  obtain ⟨x, hx⟩ := hx
+  refine (roundedDecoupleExit_terminates hL hC hctx hW hx).mono le_rfl ?_
+  rintro μ' hfr ⟨hF, H', hW'⟩
+  exact ⟨hF, H', hW', Ls, [], hLs, by simpa using hpl,
+    hfr.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (Fp.disj_inBlock_of_ne hfl.symm) hlog⟩
+
 omit [Has EigenvalueKernelOp O] in
 /-- The decoupling loop terminates on any matrix: on a scalar machine with exact comparisons,
 index literals, index conversion and exact natural literals up to $n + 1$, a `SmallEig` kernel
@@ -348,33 +361,7 @@ theorem roundedDecoupleLoopWith_terminates {M : Machine ℝ} {I : Interp O Q ℝ
     (∃ x, μ'.store.get L 3 = some x) ∧ μ'.Live [lg] ∧
     ∃ Ls : List (Option (List GivensEntry)), Ls.length = i * s ∧
       (∀ x ∈ slotEntries ws Ls, x.1 + 1 < n + 1) ∧ HoldsSlottedLog lg ns ws Ls [] μ'.store
-  have hfl : ((excNet ε).flatMap fun z => [z.re, z.im]).length = 2 * (excNet ε).length := by
-    simp [List.length_flatMap, mul_comm]
-  have hsub : ps.length - 12 + qs.length ≤ ps.length := by
-    rcases hq12 with rfl | h
-    · simp
-    · rw [hlen, h]; omega
-  have hqs : (ps.drop (ps.length - 12)).take qs.length = qs := by
-    rcases hq12 with rfl | h
-    · simp
-    · have e : ps.length - 12 = 10 + 2 * (excNet ε).length := by rw [hlen, h]; omega
-      rw [e, ← List.drop_drop, hnet, List.drop_append_of_le_length (by omega), ← hfl,
-        List.drop_length, List.nil_append, List.take_length]
-  have hexit : ∀ i ≤ F, ∀ μ', Inv i μ' →
-      Writes .total I τ (roundedDecoupleExit (O := O) (Q := Q)).body (Env.frame [] [(L, 0), f])
-        (Store.inBlock f.1 f.2 1)
-        (fun μ' => (∃ x, μ'.store.get f.1 f.2 = some x) ∧
-          ∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix w H' μ'.store ∧
-          ∃ (Ls : List (Option (List GivensEntry))) (P' : List GivensEntry), Ls.length ≤ ns ∧
-            (∀ x ∈ slotEntries ws Ls ++ P', x.1 + 1 < n + 1) ∧
-            HoldsSlottedLog lg ns ws Ls P' μ'.store) μ' := by
-    rintro i hi μ' ⟨hc, hW', ⟨x, hx⟩, -, Ls, hLs, hplLs, hlog'⟩
-    refine (roundedDecoupleExit_terminates hL hC hc hW' hx).mono le_rfl ?_
-    rintro μ'' hfr ⟨hF, H', hW''⟩
-    exact ⟨hF, H', hW'', Ls, [], by rw [hLs]; exact (Nat.mul_le_mul_right _ hi).trans hj,
-      by simpa using hplLs,
-      hfr.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
-        (Fp.disj_inBlock_of_ne (hlgv f (by simp)).symm) hlog'⟩
+  obtain ⟨hsub, hqs⟩ := routine_words_of_layout hq12 hlen hnet
   unfold roundedDecoupleLoopWith
   refine (roundedDecoupleScan_terminates (τ := τ) hS hL hNat hC hkn hps0 hctx ⟨H, hW⟩).frame_seq_le
     rfl rfl (hctx.2.2.2.1.mono (by simp)) (by fp_sub) ?_
@@ -432,12 +419,16 @@ theorem roundedDecoupleLoopWith_terminates {M : Machine ℝ} {I : Interp O Q ℝ
       intro e he
       rw [slotEntries_append, List.mem_append] at he
       exact he.elim (hplLs e) (hpl₂ e)
-    · exact (hexit i hi.le μ' ⟨hc, hW', ⟨x, hx⟩, hlgl', Ls, hLs, hplLs, hlog'⟩).in_frame rfl rfl
+    · exact (roundedDecoupleExit_terminates_log (τ := τ) hL hC hc hW' ⟨x, hx⟩ hlog' hplLs
+        (by rw [hLs]; exact (Nat.mul_le_mul_right _ hi.le).trans hj) (hlgv f (by simp))).in_frame
+        rfl rfl
         (by have := hc.2.2.2.1; simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false,
           forall_eq_or_imp, forall_eq] at this ⊢; tauto)
   · rintro μ' - hinv
-    exact (hexit F le_rfl μ' hinv).in_frame rfl rfl
-      (by have := hinv.1.2.2.2.1; simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false,
+    obtain ⟨hc, hW', hx, -, Ls, hLs, hplLs, hlog'⟩ := hinv
+    exact (roundedDecoupleExit_terminates_log (τ := τ) hL hC hc hW' hx hlog' hplLs
+      (by rw [hLs]; exact hj) (hlgv f (by simp))).in_frame rfl rfl
+      (by have := hc.2.2.2.1; simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false,
         forall_eq_or_imp, forall_eq] at this ⊢; tauto)
 
 omit [Has EigenvalueKernelOp O] in

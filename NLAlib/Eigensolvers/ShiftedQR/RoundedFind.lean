@@ -367,7 +367,8 @@ theorem comptauHalf_isHalfTau {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
           Fp.disj_inBlock_of_ne (by dsimp [lg]; omega)⟩)
   rw [hLlen] at hst
   refine (hst.in_frame rfl rfl
-    (by simp [Mem.Live, hfr₂.length_eq, hfr₁.length_eq, hfr₀.length_eq, w, sb, lg, hlen]; omega)).mono
+    (by simp [Mem.Live, hfr₂.length_eq, hfr₁.length_eq, hfr₀.length_eq, w, sb, lg, hlen]
+        omega)).mono
     (sup_le (sup_le (hab le_rfl) le_sup_left) (hab (by dsimp [lg]; omega))) ?_
   intro μ₃ _ ⟨hp₃, _, _, _, _, _, _, _, _, _, t, ht, hb⟩
   rw [hL_def, shiftPoly_flatten_replicate, map_pow, ← Matrix.inv_pow'] at hb

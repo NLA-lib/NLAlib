@@ -11,7 +11,7 @@ public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolve
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveBackward
 public import NLAlib.Eigensolvers.ShiftedQR.PairBlocks
 public import NLAlib.Matrix.QRIteration.StableStepForward
-public import NLAlib.Matrix.FinitePrecision.GivensLogValidate
+public import NLAlib.Matrix.FinitePrecision.GivensLogSlots
 
 /-!
 # The trials of the rounded `Regularize`
@@ -164,22 +164,6 @@ theorem IsStableQRChain.exists_norm_subdiag_le_of_le_norm_inv_pow {x C B S d ω 
   linarith
 
 /-! ### The slotted log -/
-
-/-- Rejected slots have no accepted entries. -/
-theorem slotEntries_replicate_none (w j : ℕ) :
-    slotEntries w (List.replicate j (none : Option (List GivensEntry))) = [] := by
-  induction j with
-  | zero => rfl
-  | succ j ih =>
-    rw [List.replicate_succ, show (none :: List.replicate j none) =
-      [none] ++ List.replicate j (none : Option (List GivensEntry)) from rfl, slotEntries_append,
-      ih]
-    simp [slotEntries]
-
-/-- One accepted slot has its entries, padded. -/
-theorem slotEntries_singleton_some (w : ℕ) (es : List GivensEntry) :
-    slotEntries w [some es] = padEntries w es := by
-  simp [slotEntries]
 
 /-- The planes of a padded slot are those of its entries and the plane $0$ of the fill. -/
 theorem forall_mem_padEntries {N w : ℕ} {es : List GivensEntry} (hN : 1 < N)

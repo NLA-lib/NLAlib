@@ -7,6 +7,7 @@ module
 
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedFind
 public import NLAlib.Eigensolvers.ShiftedQR.StableStepTermination
+public import NLAlib.Matrix.FinitePrecision.GivensLogClose
 
 /-!
 # Termination of `Find` in floating point
@@ -40,25 +41,6 @@ open Ops
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q]
 
 /-! ### Termination on any matrix -/
-
-omit [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
-/-- TEMP: moved to GivensLog at the end. -/
-theorem slottedLogOpen_writes_of_lit_zero {Mch : Machine ℝ} {I : Interp O Q ℝ}
-    (hS : IsScalar Mch I) (h0 : Mch.lit 0 = 0) {ns w : ℕ} {lg : ℕ × ℕ} {τ : Tape ℝ}
-    {μ : Mem ℝ} (hroom : lg.2 + ns * (1 + 5 * w) ≤ μ.store.len lg.1) :
-    Writes .total I τ (slottedLogOpen (O := O) (Q := Q)).body (Env.frame [ns, w] [lg])
-      (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
-      (fun μ' => μ'.pos = μ.pos ∧ HoldsSlottedLog lg ns w [] [] μ'.store) μ := by
-  unfold slottedLogOpen
-  refine (writes_fill (v := fun _ => (0 : ℝ)) (pos := fun _ => μ.pos) rfl rfl
-    fun i hi m' hfr _ hp => ?_).mono le_rfl ?_
-  · refine (writes_call_const (hS (.lit 0)) rfl trivial ?_).mono le_rfl ?_
-    · dsimp only; rw [hfr.len_eq]; omega
-    · exact fun m'' _ ⟨hp', hg⟩ => ⟨by simpa [h0] using hg, hp'.trans hp⟩
-  · rintro μ' - ⟨hv, hp⟩
-    refine ⟨hp, holdsSlottedLog_nil_of_readBlock ?_⟩
-    rw [Store.holdsVec_iff_readBlock.mp hv]
-    simp
 
 section Termination
 
@@ -219,7 +201,8 @@ theorem comptauHalf_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSc
           Fp.disj_inBlock_of_ne (by dsimp [sb, lg]; omega)⟩,
           Fp.disj_inBlock_of_ne (by dsimp [lg]; omega)⟩)
   refine (hst.in_frame rfl rfl
-    (by simp [Mem.Live, hfr₂.length_eq, hfr₁.length_eq, hfr₀.length_eq, w, sb, lg, hlen]; omega)).mono
+    (by simp [Mem.Live, hfr₂.length_eq, hfr₁.length_eq, hfr₀.length_eq, w, sb, lg, hlen]
+        omega)).mono
     (sup_le (sup_le (hab le_rfl) le_sup_left) (hab (by dsimp [lg]; omega))) ?_
   rintro μ₃ _ ⟨hp₃, -, ⟨t, ht⟩, -⟩
   exact ⟨hp₃.trans (hp₂.trans (hp₁.trans hp₀)), t, ht⟩

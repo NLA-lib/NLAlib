@@ -12,6 +12,7 @@ public import NLAlib.Ops.Catalog.Compare
 public import NLAlib.Ops.OperationCount
 public import NLAlib.Ops.Confined
 public import NLAlib.Ops.Static
+public import NLAlib.Ops.MonomialWork
 public import NLAlib.Matrix.Spectral.Schur
 public import NLAlib.Matrix.FinitePrecision.Deflation
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedHeadline
@@ -1039,6 +1040,18 @@ theorem size_stmtCost_schurPipelineWith_le [Has ScalarOp O] [Has IndexOp O] [Has
     Count.size (stmtCost (schurPipelineWith Nm Reg Red Core).body [N, nr, nq, k, F, T]) ≤
       Count.size (stmtCost Nm.body [N]) + Count.size (stmtCost Reg.body [N, nr]) +
         Count.size (stmtCost Red.body [N]) + Count.size (stmtCost Core.body [N, nq, k, F, T]) +
-        64 * (N + 1) ^ 2 := sorry
+        64 * (N + 1) ^ 2 := by
+  have hsup : ∀ x y : Count O Q, Count.size (x ⊔ y) ≤ Count.size x + Count.size y := fun x y =>
+    (size_mono (sup_le (le_add_of_nonneg_right (zero_le (a := y)))
+      (le_add_of_nonneg_left (zero_le (a := x))))).trans_eq (map_add _ x y)
+  simp only [schurPipelineWith, Stmt.alloc, stmtCost, useCost, testCost, IExp.evalList,
+    IExp.eval, List.map_cons, List.map_nil, List.getElem?_cons_succ, List.getElem?_cons_zero,
+    List.getElem?_nil, Option.map_some, Option.getD_some, Finset.sum_const, Finset.card_range,
+    Operand.off, zero_add]
+  refine le_trans ?_ (Nat.le_add_left _ _)
+  rw [map_add]
+  refine (Nat.add_le_add_left (hsup _ _) _).trans ?_
+  simp only [map_add, map_nsmul, Count.one, Count.test, size_single, smul_eq_mul]
+  nlinarith
 
 end NLAlib.Schur

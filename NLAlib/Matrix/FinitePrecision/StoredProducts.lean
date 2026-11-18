@@ -282,6 +282,91 @@ private theorem matMulLBody_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
   refine ⟨hp₅.trans (hp₄.trans (hp₃.trans hp₂)), ?_⟩
   simpa [linearComplex] using Store.readBlock_succ_of (Store.readBlock_one_of_get g₄') g₅
 
+/-- One entry of `NLAlib.matMulOn`, as it appears in its two outer loops: `S` from the pair of
+the literal $0$, the multiply–adds, `S` copied to the entry of `Z`. -/
+private def matMulEntry : Stmt O Q :=
+  (Stmt.call (Has.inj (ScalarOp.lit 0)) [] [] [{ buf := 5, off := IExp.const 0 }]).seq
+  ((Stmt.call (Has.inj (ScalarOp.lit 0)) [] [] [{ buf := 5, off := IExp.const 1 }]).seq
+  ((Stmt.loop (IExp.var 1) (matMulLBody (O := O) (Q := Q))).seq
+  ((Stmt.call (Has.inj ScalarOp.copy) [] [{ buf := 5, off := IExp.const 0 }]
+      [{ buf := 2, off := IExp.var 9 + IExp.const 2 * (IExp.var 10 * IExp.var 5 + IExp.var 11) }]).seq
+    (Stmt.call (Has.inj ScalarOp.copy) [] [{ buf := 5, off := IExp.const 1 }]
+      [{ buf := 2, off := IExp.var 9 + IExp.const 2 * (IExp.var 10 * IExp.var 5 + IExp.var 11) +
+        IExp.const 1 }]))))
+
+/-- One entry of the product program stores the rounded accumulation of its products. -/
+private theorem matMulEntry_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    {ρ : Env} {m p q ldx ldy ldz c Lc j i : ℕ} {x y z : ℕ × ℕ}
+    (hidx : ρ.idx = [m, p, q, ldx, ldy, ldz, c, x.2, y.2, z.2, j, i])
+    (hbuf : ρ.buf = [x.1, y.1, z.1, Lc, Lc + 1, Lc + 2, Lc + 3, Lc + 4]) {τ : Tape ℝ} {μ : Mem ℝ}
+    (hlen : μ.store.length = Lc + 5) (hlens : ∀ k < 5, μ.store.len (Lc + k) = 2)
+    (hxL : x.1 < Lc) (hyL : y.1 < Lc) (hzL : z.1 < Lc) {a b : ℕ → ℂ}
+    (ha : ∀ l < p, MatMulLeftWords M μ.store x c ldx i l (a l))
+    (hb : ∀ l < p, μ.store.readBlock y.1 (y.2 + 2 * (j * ldy + l)) 2 = some [(b l).re, (b l).im])
+    (hone : μ.store.readBlock Lc 0 2 = some [M.lit 1, M.lit 0])
+    (hz : z.2 + 2 * (j * ldz + i) + 2 ≤ μ.store.len z.1) :
+    Writes .total I τ (matMulEntry (O := O) (Q := Q)) ρ
+      (Store.inBlock z.1 (z.2 + 2 * (j * ldz + i)) 2 ⊔ (Store.inBlock (Lc + 1) 0 2 ⊔
+        Store.inBlock (Lc + 2) 0 2 ⊔ Store.inBlock (Lc + 3) 0 2 ⊔ Store.inBlock (Lc + 4) 0 2))
+      (fun μ' => μ'.pos = μ.pos ∧ μ'.store.readBlock z.1 (z.2 + 2 * (j * ldz + i)) 2 = some
+        [((List.range p).foldl (fun s l => linearComplex M (a l) ⟨M.lit 1, M.lit 0⟩ (b l) s)
+            ⟨M.lit 0, M.lit 0⟩).re,
+          ((List.range p).foldl (fun s l => linearComplex M (a l) ⟨M.lit 1, M.lit 0⟩ (b l) s)
+            ⟨M.lit 0, M.lit 0⟩).im]) μ := by
+  set v := fun l => (List.range l).foldl
+    (fun s l => linearComplex M (a l) ⟨M.lit 1, M.lit 0⟩ (b l) s) ⟨M.lit 0, M.lit 0⟩ with hv
+  have hGx : ∀ k, ¬(Store.inBlock (Lc + 1) 0 2 ⊔ Store.inBlock (Lc + 2) 0 2 ⊔ Store.inBlock (Lc + 3) 0 2 ⊔
+      Store.inBlock (Lc + 4) 0 2) x.1 k := fun k h => by
+    simp only [fpNF, Pi.sup_apply, sup_Prop_eq, Store.inBlock] at h; omega
+  have g : ∀ {s : Store ℝ} {b o : ℕ} {u v : ℝ}, s.readBlock b o 2 = some [u, v] →
+      s.get b o = some u ∧ s.get b (o + 1) = some v := fun h =>
+    ⟨by simpa using Store.get_of_readBlock h (j := 0) (by omega) 0,
+      by simpa using Store.get_of_readBlock h (j := 1) (by omega) 0⟩
+  unfold matMulEntry
+  refine (writes_call_const (hS (.lit 0)) (z := (Lc + 2, 0))
+    (by simp [Operand.eval, hidx, hbuf, IExp.eval]) trivial (by simp [hlens 2 (by omega)])).seq_le
+    (by fp_sub) fun μ₁ hfr₁ ⟨hp₁, g₁⟩ => ?_
+  refine (writes_call_const (hS (.lit 0)) (z := (Lc + 2, 1))
+    (by simp [Operand.eval, hidx, hbuf, IExp.eval]) trivial
+    (by simp [hfr₁.len_eq, hlens 2 (by omega)])).seq_le (by fp_sub) fun μ₂ hfr₂ ⟨hp₂, g₂⟩ => ?_
+  have g₁' := hfr₂.keep (Store.readsOnly_get _ _ _) (by disjoint) g₁
+  have hfr₁₂ : μ.store.EqOff (Store.inBlock (Lc + 1) 0 2 ⊔ Store.inBlock (Lc + 2) 0 2 ⊔ Store.inBlock (Lc + 3) 0 2 ⊔
+      Store.inBlock (Lc + 4) 0 2) μ₂.store := (hfr₁.mono (by fp_sub)).trans (hfr₂.mono (by fp_sub))
+  have hS₀ : μ₂.store.readBlock (Lc + 2) 0 2 = some [(v 0).re, (v 0).im] := by
+    simpa [hv] using Store.readBlock_succ_of (Store.readBlock_one_of_get g₁') g₂
+  refine (writes_loop (N := p) (by simp [IExp.eval, hidx]) (fun _ => (Store.inBlock (Lc + 1) 0 2 ⊔ Store.inBlock (Lc + 2) 0 2 ⊔ Store.inBlock (Lc + 3) 0 2 ⊔
+      Store.inBlock (Lc + 4) 0 2))
+    (fun _ _ => le_rfl)
+    (fun l μ' => μ'.pos = μ.pos ∧ μ'.store.readBlock (Lc + 2) 0 2 = some [(v l).re, (v l).im])
+    ⟨hp₂.trans hp₁, hS₀⟩ ?_).seq_le (by fp_sub) ?_
+  · intro l hl μ' hfr ⟨hp', hs'⟩
+    have hfr' := hfr₁₂.trans hfr
+    refine (matMulLBody_writes hS (m := m) (p := p) (q := q) (ldx := ldx) (ldy := ldy) (ldz := ldz)
+      (c := c) (Lc := Lc) (j := j) (i := i) (l := l) (x := x) (y := y) (z := z)
+      (by simp [Env.pushIdx, hidx]) (by simp [Env.pushIdx, hbuf])
+      (by rw [hfr'.length_eq]; exact hlen) (fun k hk => by rw [hfr'.len_eq]; exact hlens k hk)
+      hxL hyL ((ha l hl).of_eqOff hfr' hGx)
+      (hfr'.keep (Store.readsOnly_readBlock _ _ _ _) (by disjoint) (hb l hl))
+      (hfr'.keep (Store.readsOnly_readBlock _ _ _ _) (by disjoint) hone) hs').mono le_rfl ?_
+    rintro μ'' - ⟨hp'', hs''⟩
+    refine ⟨hp''.trans hp', ?_⟩
+    simpa [hv, List.range_succ, List.foldl_append] using hs''
+  · rintro μ₃ hfr₃ ⟨hp₃, hs₃⟩
+    have hfr₃' := hfr₁₂.trans hfr₃
+    refine (writes_call_un (hS .copy) (x := (Lc + 2, 0)) (z := (z.1, z.2 + 2 * (j * ldz + i)))
+      (by simp [Operand.evalList, Operand.eval, hidx, hbuf, IExp.eval])
+      (by simp [Operand.evalList, Operand.eval, hidx, hbuf, IExp.eval]) trivial (g hs₃).1 rfl
+      (by simp [hfr₃'.len_eq]; omega)).seq_le (by fp_sub) fun μ₄ hfr₄ ⟨hp₄, g₄⟩ => ?_
+    have hs₄ := hfr₄.keep (Store.readsOnly_readBlock _ _ _ _) (by disjoint) hs₃
+    refine (writes_call_un (hS .copy) (x := (Lc + 2, 1)) (z := (z.1, z.2 + 2 * (j * ldz + i) + 1))
+      (by simp [Operand.evalList, Operand.eval, hidx, hbuf, IExp.eval])
+      (by simp [Operand.evalList, Operand.eval, hidx, hbuf, IExp.eval]) trivial (g hs₄).2 rfl
+      (by simp [hfr₄.len_eq, hfr₃'.len_eq]; omega)).mono (by fp_sub)
+      fun μ₅ hfr₅ ⟨hp₅, g₅⟩ => ?_
+    have g₄' := hfr₅.keep (Store.readsOnly_get _ _ _) (by disjoint) g₄
+    exact ⟨hp₅.trans (hp₄.trans hp₃),
+      by simpa using Store.readBlock_succ_of (Store.readBlock_one_of_get g₄') g₅⟩
+
 section Theorems
 
 variable [Inhabited ℝ]

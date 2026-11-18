@@ -24,44 +24,39 @@ statements of §1, §2 and the new program interfaces were elaborated in a scrat
 
 ## 0. Summary
 
+Revised after the design review (Fable, `Review-Fable-SCHUR-Design.md`, "revise, then approve
+for skeleton") and the maintainer's decisions; §14 lists every change and the reasons.
+
 * **Headline (§1).** For every $\mathbf{A} \in \mathbb{C}^{(n+1)\times(n+1)}$, $0 < \delta \le 1$
   and $0 < \varphi \le 1$, at a precision $\boldsymbol{u} \le \boldsymbol{u}_0(n,\delta,\varphi)$
-  with $\log_2(1/\boldsymbol{u}_0) = O(\log^4((n+1)/(\delta\varphi)))$, the program `denseSchur`
-  stores, except with probability at most $\varphi$, a failure word $0$ and words
-  $\widehat{\mathbf{U}}$, $\widehat{\mathbf{T}}$ such that $\widehat{\mathbf{T}}$ is upper
-  triangular,
-  $\|\mathbf{A} - \widehat{\mathbf{U}}\widehat{\mathbf{T}}\widehat{\mathbf{U}}^{\mathsf H}\|_2
-  \le \delta\|\mathbf{A}\|_2$ and $\|\widehat{\mathbf{U}}^{\mathsf H}\widehat{\mathbf{U}} -
-  \mathbf{I}\|_2 \le \varepsilon_U$. Here $\varepsilon_U = 64R\boldsymbol{u} \le \delta$, with
-  $R(n,\delta,\varphi)$ an explicit bound on the number of rotations accumulated on
-  $\widehat{\mathbf{U}}$. There is no hypothesis on $\mathbf{A}$. The run terminates on every
-  tape, and its static count is $c(n+1)^3(k+1)^5(n_p+1)(F+1)(T+1)^2$, which is
-  $O(n^3\,\mathrm{polylog}(n/(\delta\varphi)))$. Corollaries: $\operatorname{diag}\widehat{\mathbf{T}}$
-  lists the spectrum of a matrix $\mathbf{A} + \mathbf{E}$; and an exact unitary $\mathbf{V}$
-  within $\varepsilon_U$ of $\widehat{\mathbf{U}}$ gives $\mathbf{A} + \mathbf{E} =
-  \mathbf{V}\widehat{\mathbf{T}}\mathbf{V}^{\mathsf H}$.
-* **Modular (§2).** Five stages are routine parameters, each with a named contract: the norm
-  estimate, the regularizer, the Hessenberg reducer, the Schur core and, inside the core, the
-  small-block Schur solver. The generic pipeline `schurPipelineWith Nm Reg Red Core` has one
-  composition theorem: for any components that meet the contracts, the errors add, the failure
-  probabilities add, and the static count is the sum of the components' counts plus $O(n^2)$.
-  The headline is the instance at the current components.
-* **Main finding (§4.1).** The cheap route fails. That route keeps the merged probabilistic
-  proofs untouched and adds Q-accumulation as non-interfering "ghost" code. A Schur form needs
-  the backward error with the unitary named, not only "some unitary exists". The named error of
-  the rounded step contains the cleared below-subdiagonal garbage, which is
-  $O(\boldsymbol{u}(\|\mathbf{H}\| + |s|))$. The shift modulus $|s|$ is bounded only on the good
-  event of the merged probabilistic analysis, so the witness must travel through that analysis.
-  This is decision S4 as approved: the decoupler chain is generalized to programs that write a
-  rotation log, and the merged programs become wrappers.
-* **Size (§9).** 61 planned targets (S 20, M 28, L 13), plus 2 optional: L1 matrix library 10
-  (S 6, M 4); L2 Ops and programs 9 (S 1, M 7, L 1); L3 the refactor of the decoupler chain 12
-  (S 2, M 4, L 6); L4 the Schur worklist and the stages 17 (S 6, M 7, L 4); L5 composition,
-  instance and certificate 13 (S 5, M 6, L 2). Twelve waves, 0 to 11.
-* **Open decisions (§11):** O1 the witness predicate, O2 the leaf interface (dense $\mathbf{U}_b$
-  or a log), O3 the log capacity, O4 the worklist as a sibling program rather than a wrapper,
-  O5 the spectrum-only core variant, O6 the error constants, O7 the placement of the rotation
-  programs.
+  with $\log_2(1/\boldsymbol{u}_0) = O(L^4\log^2 L)$, $L = \log_2(4(n+1)/(\delta\varphi))$, the
+  program `denseSchur` stores, except with probability at most $\varphi$, a failure word $0$ and
+  words $\widehat{\mathbf{U}}$, $\widehat{\mathbf{T}}$ with $\widehat{\mathbf{T}}$ exactly upper
+  triangular and $\|\mathbf{A} - \widehat{\mathbf{U}}\widehat{\mathbf{T}}\widehat{\mathbf{U}}^{\mathsf H}\|_2
+  \le \delta\|\mathbf{A}\|_2$. **On every tape**, $\|\widehat{\mathbf{U}}^{\mathsf H}\widehat{\mathbf{U}} -
+  \mathbf{I}\|_2 \le 58R\boldsymbol{u} \le \delta$, with $R(n,\delta,\varphi)$ an explicit static
+  bound on the rotations (and rotation-equivalents) accumulated on $\widehat{\mathbf{U}}$. There is
+  no hypothesis on $\mathbf{A}$; exact naturals are needed only up to $n + 1$. Static count
+  $c(n+1)^3(k+1)^5(n_q+1)(F+1)(T+1)^2 = O(n^3L^p)$, $p \approx 12$.
+* **Modular (§2, §14).** Four pipeline stages (norm estimate, regularizer, Hessenberg reducer,
+  Schur core), each a routine parameter with a contract, one generic composition theorem
+  (errors, failures and static counts add). Inside the core, one **generic deflation worklist**
+  with three routine parameters (decoupler, leaf, **hook**); the merged eigenvalue programs are
+  its skip-hook instance and keep their statements, costs and precision; the Schur core is the
+  tracking-hook instance. Rotations go through a reusable **Givens sink** layer (skip sink: no
+  log, zero cost; slot sink: a self-describing slotted static log).
+* **Why the merged chain changes (§4.1, §14.2).** A Schur form needs the backward error with the
+  unitary *named*; the only probability bounds for it are inside the merged chain (the shift
+  bounds are hypotheses of the deterministic lemmas, established only within event sets). So the
+  committed chain is refactored **in place** to take a sink and to state its witness; the merged
+  names are the skip instances.
+* **Size (§9).** 70 targets (S 21, M 35, L 13, XL 1), waves 0–11: L1 matrix library 14, L2 log
+  layer and stage programs 10, L3 the in-place refactor of the decoupler chain 13, L4 the generic
+  worklist, hooks, leaves and the core 21, L5 composition, instance and certificates 12. The
+  merged worklist, Part III and Part II headline theorems are re-derived as skip instances
+  (GW6, SL6, SQ5).
+* **Decisions (§11):** all resolved by the maintainer; B5 (merged certificate numerals change) is
+  approved and listed in §14.4.
 
 ## 1. The headlines, in Lean
 
@@ -93,81 +88,81 @@ theorem denseSchur_measureReal_not_schur_le {Mch : Machine ℝ} {I : Interp O Q 
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
     P.real {ω | ¬ Writes .total I (ξ ω) (denseSchur (O := O) (Q := Q) sG).body
       (Env.frame (denseSchurDims n δ φ) [a, p, a, uo, f]) (schurFp n a uo f)
-      (SchurOutput a uo f A δ δ) μ} ≤ φ
+      (SchurOutput a uo f A δ (58 * denseSchurRotations n δ φ * u)) μ} ≤ φ
 ```
 
-Companions (same hypotheses):
+Companions (same hypotheses unless said):
 
-* **HD2** `denseSchur_measureReal_not_orth_le`: the same event with
-  `SchurOutput a uo f A δ (64 * denseSchurRotations n δ φ * u)`, so
-  $\varepsilon_U(n,\delta,\varphi,\boldsymbol{u}) = 64R\boldsymbol{u}$.
-* **HD3** the corollaries, stated once for any `SchurOutput` (PP3) and instantiated:
-  `SchurOutput.exists_isEigenvalueListing`, giving $\|\mathbf{E}\|_2 \le (e_A + 4e_U)\|\mathbf{A}\|_2$
-  with `IsEigenvalueListing (A + E) fun i => T i i` (from
-  `HasOrthonormalCols.isEigenvalueListing_of_isUpperTriangular_conjTranspose_mul_mul`, merged);
-  and `SchurOutput.exists_hasOrthonormalCols`, giving a unitary $\mathbf{V}$ with
-  $\|\widehat{\mathbf{U}} - \mathbf{V}\|_2 \le e_U$ and $\mathbf{A} + \mathbf{E} =
-  \mathbf{V}\widehat{\mathbf{T}}\mathbf{V}^{\mathsf H}$. The second is cheap: the pair relation
-  (§4.2) carries the exact $\mathbf{V}$ (`IsPerturbedUnitaryPair.exists_witness`, merged).
-* **HD4** `denseSchur_terminates`: `Writes .total … (fun _ => True)` on every tape and every
-  input, with no precision hypothesis.
-* **HD5** `logb_inv_uDenseSchur_le`: $\log_2(1/\boldsymbol{u}_0) \le c_1\log_2^4 Y + c_2$ with
-  $Y = 4(n+1)/(\delta\varphi)$. This is HL4's $O(k^2\log^2 Y)$ at the class of §5, which is
-  polynomial in $Y$, plus $\log_2(64R/\delta)$.
-* **HD6** `denseSchur_work_le`: the static count is at most
-  $c(n+1)^3(k+1)^5(n_p+1)(F+1)(T+1)^2$ (`kernel_rfl`). **HD7** `denseSchur_work_le_polylog`
-  states it at `denseSchurDims n δ φ` as $\le C(n+1)^3\log_2^{p}Y$. The exponent is fixed at
-  proof time; it is about $12$, from $k = O(L\log L)$, $F = O(L)$ and $T = O(L^2\log L)$ with
-  $L = \log Y$.
-* **CT2** the certificate `denseSchurAlgorithm` and
-  `denseSchur_algorithm_measureReal_not_accepts_le`, in the shape of the merged
-  `roundedShQRSmallEig_algorithm_measureReal_not_accepts_le`: one counted run, failure at most
-  $\varphi$ on Accepts plus `SchurOutput`. The work is `schurPipelineWork` (§2.3), the sum of
-  the components' work polynomials.
+* **HD4** `denseSchur_terminates`: on every tape and every input, with only
+  `IsExactNatLit id Mch (n + 1)`, the run is total and `SchurOrth uo (58 * denseSchurRotations n δ φ * u)`:
+  $\|\widehat{\mathbf{U}}^{\mathsf H}\widehat{\mathbf{U}} - \mathbf{I}\| \le 58R\boldsymbol{u}$ whatever
+  the tape (review B2: the orthogonality is shift-free).
+* **PP3** corollaries for any `SchurOutput` (eigenvalue listing of $\mathbf{A} + \mathbf{E}$ by
+  `HasOrthonormalCols.isEigenvalueListing_of_isUpperTriangular_conjTranspose_mul_mul`; an exact
+  unitary $\mathbf{V}$ within $e_U$ of $\widehat{\mathbf{U}}$ with $\mathbf{A} + \mathbf{E} =
+  \mathbf{V}\widehat{\mathbf{T}}\mathbf{V}^{\mathsf H}$, from `IsTrackedUnitarySimilar.exists_eq_mul_mul_conjTranspose`).
+* **HD5** `logb_inv_uDenseSchur_le`: $\log_2(1/\boldsymbol{u}_0) \le c_1L^4(\log_2L + 1)^2 + c_2$
+  (review B3: $k = \Theta(L\log L)$ in the merged $e_1kL + e_2k^2L^2 + e_3$).
+* **HD6** `denseSchur_work_le`: static count $\le c(n+1)^3(k+1)^5(n_q+1)(F+1)(T+1)^2$
+  (`kernel_rfl`); **HD7** the polylog form at `denseSchurDims`, $C(n+1)^3L^p$ with $p$ about $12$
+  (the paper's is $2$), said in the docstring.
+* **CT2** `denseSchurAlgorithm`, `denseSchur_algorithm_measureReal_not_accepts_le`: one counted
+  run, work `schurPipelineWork`, the sum of the components' work polynomials.
 
-**The precision threshold**, `uDenseSchur n δ φ`, is the minimum of five terms. Write
-$\delta' = \delta/(32\sqrt{n+1})$ and $(B, \Gamma) = (2/t_2, t_1/2)$, with $t_1, t_2$ =
-`smallEigGap/Cond (n+1) 2 δ' (φ/2)` at the proved tails (§5).
+**The precision threshold**, `uDenseSchur n δ φ`, is the minimum of six terms. Write
+$\delta' = \delta/(32\sqrt{n+1})$ and $(B, \Gamma) = (2/t_2, t_1/2)$, $t_1, t_2$ =
+`smallEigGap/Cond (n+1) 2 δ' (φ/2)` at the proved tails (§5):
 
-1. `uSmallEigReduce (n+1) 2 δ' (φ/2) ginibreGapTail ginibreConditionTail`, for the regularizer;
-2. $1/(100(n+1)^2)$ and $\delta'/(64\cdot 50(n+1)^2)$, for the reducer;
-3. `uShQRSchur n k (2B) (Γ/2) 4 δ' (φ/2)`, the core's threshold: the merged
-   `uShQRSmallEig` at that class, together with the replay term of §4.3;
-4. $\delta/(64R)$, for the orthogonality;
-5. $1/(8(n+1))$, for the norm estimate and the scaling.
+1. `uSmallEigReduce (n+1) 2 δ' (φ/2) ginibreGapTail ginibreConditionTail` (the regularizer);
+2. $1/(100(n+1)^2)$ and $\delta'/(64\cdot 50(n+1)^2)$ (the reducer's $\varepsilon_T$);
+3. **the class term (review B1)**: $3\cdot 50(n+1)^2\boldsymbol{u}\cdot 3 \le \Gamma/(16(n+1)B)$,
+   i.e. $\boldsymbol{u} \le t_1t_2/(7200(n+1)^3)$, so that the reducer's error keeps the class;
+4. `uShQRSchur n k (2B) (Γ/2) 4 δ' (φ/2)`: the merged `uShQRSmallEig` and the replay term;
+5. $\delta/(192R)$ (the orthogonality; it also gives $24R\boldsymbol{u} \le 1/8$);
+6. $1/(32(n+1))$ (the norm estimate, scaling, PP2's glue $8(n+1)\boldsymbol{u} \le 1/4$).
 
-**$\varepsilon_U$.** It equals $64R\boldsymbol{u}$, where $R$ = `denseSchurRotations n δ φ`
-$= (n+1)^2 + 2(n+1)\bigl(G_{\mathrm{dec}}(n+1) + 4k^2\bigr)$ and
-$G_{\mathrm{dec}}(d) = F(k + n_p + 2)k\,d$ is the log capacity of a decoupler call (§4.4). The
-term $4k^2$ is the dense leaf update, counted as rotation-equivalents. Under item 4 the bound is
-at most $\delta$, so HD1 states both bounds with $\delta$ and HD2 gives the sharp form.
+**$\varepsilon_U$.** Each replayed rotation moves $\widehat{\mathbf{U}}$ by at most
+$24\boldsymbol{u}\|\widehat{\mathbf{U}}\|$ from its exact product (the merged one-sided bound inside
+`specNorm_machineRowRotation_machineColRotation_sub_le`, recomputed coefficients included). Over
+$R$ rotations, $\|\widehat{\mathbf{U}} - \mathbf{V}\| \le (1 + 24\boldsymbol{u})^R - 1 \le
+24R\boldsymbol{u} + (24R\boldsymbol{u})^2 \le 27R\boldsymbol{u}$ (merged `one_add_pow_sub_one_le`,
+$24R\boldsymbol{u} \le 1/8$), so $\|\widehat{\mathbf{U}}^{\mathsf H}\widehat{\mathbf{U}} - \mathbf{I}\|
+\le 2\cdot27R\boldsymbol{u} + (27R\boldsymbol{u})^2 \le 58R\boldsymbol{u}$, and under term 5 this is
+$\le 58\delta/192 < \delta$. $R$ = `denseSchurRotations n δ φ` $= (n+1)^2 + 2(n+1)\bigl(F(k+n_q+2)k(n+1)
++ R_{\mathrm{leaf}}(k, T) + 2k(k+2)\bigr)$; the last term counts the leaf's dense products as
+rotation-equivalents (MR1), $R_{\mathrm{leaf}}$ the leaf's own replays.
 
 ## 2. Modularity: stages, contracts, the generic pipeline
 
 The maintainer's requirement is "make stuff modular so we can swap in other stuff as we need".
 Each pipeline stage is a routine parameter `… : Impl O Q`, as SMALLEIG's `SE` (decision D2), and
-has a contract named in the stage-neutral library style. All contracts state the stored
-accumulator through **one relation**, the merged `IsPerturbedUnitaryPair a b ε` on the pair
-$(\widehat{\mathbf{U}}^{\mathsf H}, \mathbf{T})$. Its first component is the conjugate transpose
-of the computed accumulator, at scale $a = 1$; its second is the matrix, at scale $b$. Stages then
-compose by `IsPerturbedUnitaryPair.trans` (merged, B2), and the computed-form conclusion is one
-lemma at the end (MW4).
+has a contract named in the stage-neutral library style. There are **four pipeline stages** (norm
+estimate, regularizer, Hessenberg reducer, Schur core) and, inside the shifted QR core, **three
+worklist routines** (decoupler, leaf, hook, §3.2). The contracts state the stored accumulator
+through one relation, the tracked similarity `IsTrackedUnitarySimilar εU εT` (MW6, two errors,
+review B2): stages compose by its `trans`, which adds both errors, and the computed-form
+conclusion is one lemma at the end (MW4). The single-ε pair relation of the first draft is
+dropped from the contracts: it forced $e_U \approx \delta$.
 
 ### 2.1 The contracts (Lean, elaborated)
 
 The files are under `Eigensolvers/Schur/` (new folder). The contracts mention no shifted QR.
 
 ```lean
-/-- SC1 (stage e): a norm estimate, deterministic. `[N] (A) → (S)`. -/
-def FrobNormEstimateContract (ρ : ℝ) (Nm : Impl O Q) (I : Interp O Q ℝ) : Prop :=
+/-- SC1 (stage e, review S2: two-sided): a norm estimate `c₁‖A‖_F ≤ x ≤ c₂‖A‖_F`,
+deterministic. `[N] (A) → (S)`. -/
+def FrobNormEstimateContract (c₁ c₂ : ℝ) (Nm : Impl O Q) (I : Interp O Q ℝ) : Prop :=
   ∀ {N : ℕ} {a s : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ} (A : Matrix (Fin N) (Fin N) ℂ),
     HoldsMatrix a A μ.store → μ.Live [a, s] → s.2 + 1 ≤ μ.store.len s.1 →
     Fp.Disj (Store.inBlock a.1 a.2 (2 * (N * N))) (Store.inBlock s.1 s.2 1) →
     Writes .total I tape Nm.body (Env.frame [N] [a, s]) (Store.inBlock s.1 s.2 1)
-      (fun μ' => ∃ x : ℝ, μ'.store.get s.1 s.2 = some x ∧ |x - frobNorm A| ≤ ρ * frobNorm A) μ
+      (fun μ' => ∃ x : ℝ, μ'.store.get s.1 s.2 = some x ∧ c₁ * frobNorm A ≤ x ∧
+        x ≤ c₂ * frobNorm A) μ
 
-/-- SC2 (stage a): a randomized regularizer into the class `(B, Γ)`. `[N, np] (A, P) → (A)`. -/
-def RandomRegularizerContract (law : ℕ → Measure ℝ) (δ φ B Γ : ℝ) (nmax : ℕ) (S : ℝ)
+/-- SC2 (stage a): a randomized regularizer into the class `C` (review S2: any class
+predicate). `[N, np] (A, P) → (A)`. -/
+def RandomRegularizerContract (law : ℕ → Measure ℝ) (δ φ : ℝ)
+    (C : ∀ {n : ℕ}, Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ → Prop) (nmax : ℕ) (S : ℝ)
     (ps : List ℝ) (Reg : Impl O Q) (I : Interp O Q ℝ) : Prop :=
   ∀ {n : ℕ} {a q : ℕ × ℕ} (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ), n + 1 ≤ nmax →
     specNorm A ≤ S →
@@ -177,31 +172,35 @@ def RandomRegularizerContract (law : ℕ → Measure ℝ) (δ φ B Γ : ℝ) (nm
         μ.Live [a, q] ∧
         Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
           (Store.inBlock q.1 q.2 ps.length))
-      (fun μ' => ∃ (E V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (d : Fin (n + 1) → ℂ),
-        HoldsMatrix a (A + E) μ'.store ∧ specNorm E ≤ δ ∧ IsUnit V ∧
-        (A + E) * V = V * Matrix.diagonal d ∧ pseudoConditionNumber V ≤ B ∧
-        ∀ i j, i ≠ j → Γ ≤ ‖d i - d j‖) φ
+      (fun μ' => ∃ E : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+        HoldsMatrix a (A + E) μ'.store ∧ specNorm E ≤ δ ∧ C (A + E)) φ
 
-/-- SC3 (stage b): a Hessenberg reducer with an accumulated unitary, deterministic.
-`[N] (A, U) → (A, U)`. -/
-def HessenbergReducerContract (ε : ℝ) (Red : Impl O Q) (I : Interp O Q ℝ) : Prop :=
+/-- The stored pair `(Û, T)` at `(a, uo)`. -/
+def HoldsSchurPair {n : ℕ} (a uo : ℕ × ℕ) (U T : Matrix (Fin n) (Fin n) ℂ) (s : Store ℝ) :
+    Prop :=
+  HoldsMatrix a T s ∧ HoldsMatrix uo U s
+
+/-- SC3 (stage b, review B2: two errors): a Hessenberg reducer with an accumulated unitary,
+errors `εU` (absolute, for `‖U‖ ≤ 2`) and `εT ‖A‖`; deterministic. `[N] (A, U) → (A, U)`. -/
+def HessenbergReducerContract (εU εT : ℝ) (Red : Impl O Q) (I : Interp O Q ℝ) : Prop :=
   ∀ {N : ℕ} {a uo : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ} (A U : Matrix (Fin N) (Fin N) ℂ),
-    HoldsSchurPair a uo U A μ.store → μ.Live [a, uo] →
+    specNorm U ≤ 2 → HoldsSchurPair a uo U A μ.store → μ.Live [a, uo] →
     Fp.Disj (Store.inBlock a.1 a.2 (2 * (N * N))) (Store.inBlock uo.1 uo.2 (2 * (N * N))) →
     Writes .total I tape Red.body (Env.frame [N] [a, uo, a, uo])
       (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Store.inBlock uo.1 uo.2 (2 * (N * N)))
       (fun μ' => ∃ U' H : Matrix (Fin N) (Fin N) ℂ, HoldsSchurPair a uo U' H μ'.store ∧
-        IsUpperHessenberg H ∧ IsPerturbedUnitaryPair 1 (specNorm A) ε (Uᴴ, A) (U'ᴴ, H)) μ
+        IsUpperHessenberg H ∧ IsTrackedUnitarySimilar εU (εT * specNorm A) U A U' H) μ
 
-/-- SC4 (stage c): a randomized Schur core on Hessenberg input in the class `(B, Γ)`.
-`[N, k, np, F, T] (A, P, U) → (A, U, Fl)`. -/
-def RandomSchurCoreContract (law : ℕ → Measure ℝ) (ε φ B Γ : ℝ) (k F T nmax : ℕ) (S : ℝ)
-    (ps : List ℝ) (Core : Impl O Q) (I : Interp O Q ℝ) : Prop :=
-  ∀ {n : ℕ} {a p uo f : ℕ × ℕ} (H U V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
-    (d : Fin (n + 1) → ℂ), n + 1 ≤ nmax → IsUpperHessenberg H → specNorm H ≤ S →
-    specNorm U ≤ 2 → IsUnit V → H * V = V * Matrix.diagonal d → pseudoConditionNumber V ≤ B →
-    (∀ i j, i ≠ j → Γ ≤ ‖d i - d j‖) →
-    PWrites law I Core.body (Env.frame [n + 1, k, ps.length, F, T] [a, p, uo, a, uo, f])
+/-- SC4 (stage c, review S2: opaque dims `cd`, class `C'`): a randomized Schur core on upper
+Hessenberg input: except with probability `φ`, the flag is `0`, the matrix is upper triangular
+and tracked with `(εU, εT)`. `(n+1) :: np :: cd` dims, `(A, P, U) → (A, U, Fl)`; any
+threshold is in the core's own words. -/
+def RandomSchurCoreContract (law : ℕ → Measure ℝ) (εU εT φ : ℝ)
+    (C' : ∀ {n : ℕ}, Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ → Prop) (cd : List ℕ) (nmax : ℕ)
+    (S : ℝ) (ps : List ℝ) (Core : Impl O Q) (I : Interp O Q ℝ) : Prop :=
+  ∀ {n : ℕ} {a p uo f : ℕ × ℕ} (H U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
+    n + 1 ≤ nmax → IsUpperHessenberg H → specNorm H ≤ S → specNorm U ≤ 2 → C' H →
+    PWrites law I Core.body (Env.frame ((n + 1) :: ps.length :: cd) [a, p, uo, a, uo, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
       (fun μ => HoldsSchurPair a uo U H μ.store ∧
@@ -209,26 +208,31 @@ def RandomSchurCoreContract (law : ℕ → Measure ℝ) (ε φ B Γ : ℝ) (k F 
         Fp.Apart [a, p, uo, f] [2 * ((n + 1) * (n + 1)), ps.length, 2 * ((n + 1) * (n + 1)), 1])
       (fun μ' => μ'.store.get f.1 f.2 = some 0 ∧ ∃ U' Tm : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
         HoldsSchurPair a uo U' Tm μ'.store ∧ Tm.IsUpperTriangular ∧
-        IsPerturbedUnitaryPair 1 1 ε (Uᴴ, H) (U'ᴴ, Tm)) φ
+        IsTrackedUnitarySimilar εU εT U H U' Tm) φ
 
-/-- SC5 (stage d): a randomized small-block Schur solver, any block of order `≤ kmax`.
-`[d, np, T] (Bk, P) → (Bk, Ub)`. -/
-def RandomSchurLeafContract (law : ℕ → Measure ℝ) (β φ : ℝ) (kmax : ℕ) (Nmax : ℝ)
-    (ps : List ℝ) (T : ℕ) (L : Impl O Q) (I : Interp O Q ℝ) : Prop :=
-  ∀ {d : ℕ} {w p ub : ℕ × ℕ} (B : Matrix (Fin d) (Fin d) ℂ), d ≤ kmax → specNorm B ≤ Nmax →
-    PWrites law I L.body (Env.frame [d, ps.length, T] [w, p, w, ub])
-      (Store.inBlock w.1 w.2 (2 * (d * d)) ⊔ Store.inBlock ub.1 ub.2 (2 * (d * d)))
-      (fun μ => HoldsMatrix w B μ.store ∧ μ.store.readBlock p.1 p.2 ps.length = some ps ∧
-        μ.Live [w, p, ub] ∧ ub.2 + 2 * (d * d) ≤ μ.store.len ub.1 ∧
-        Fp.Apart [w, p, ub] [2 * (d * d), ps.length, 2 * (d * d)])
-      (fun μ' => ∃ Ub Tb : Matrix (Fin d) (Fin d) ℂ, HoldsSchurPair w ub Ub Tb μ'.store ∧
-        Tb.IsUpperTriangular ∧ IsPerturbedUnitaryPair 1 1 β (1, B) (Ubᴴ, Tb)) φ
+/-- SC6 (review B2): the all-tape companion of a core: total, and the accumulator stays within
+`εU` of `U V` for an exact unitary `V`, whatever the tape. -/
+def TerminatingSchurCore (εU : ℝ) (cd : List ℕ) (ps : List ℝ) (Core : Impl O Q)
+    (I : Interp O Q ℝ) : Prop :=
+  ∀ {n : ℕ} {a p uo f : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ}
+    (H U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ), specNorm U ≤ 2 →
+    HoldsSchurPair a uo U H μ.store → μ.store.readBlock p.1 p.2 ps.length = some ps →
+    μ.Live [a, p, uo, f] →
+    Fp.Apart [a, p, uo, f] [2 * ((n + 1) * (n + 1)), ps.length, 2 * ((n + 1) * (n + 1)), 1] →
+    Writes .total I tape Core.body (Env.frame ((n + 1) :: ps.length :: cd) [a, p, uo, a, uo, f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
+      (fun μ' => ∃ U' Tm V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+        HoldsSchurPair a uo U' Tm μ'.store ∧ HasOrthonormalCols V ∧
+        specNorm (U' - U * V) ≤ εU) μ
 ```
 
-`HoldsSchurPair a uo U T s := HoldsMatrix a T s ∧ HoldsMatrix uo U s`. Termination companions,
-each a `Writes .total … (fun _ => True)` on every tape, are `TerminatingRegularizer`,
-`TerminatingSchurCore` and `TerminatingSchurLeaf` (SC6). The core's termination statement also
-keeps $\widehat{\mathbf{U}}$ stored. The quantifier lessons of Part II apply. Outer bounds
+The tracked relation (MW6, review B2) carries two errors: `IsTrackedUnitarySimilar εU εT U A U' A'`
+is `∃ V, IsPerturbedUnitarySimilarBy V A A' εT ∧ specNorm (U' - U * V) ≤ εU`; it composes by
+adding both. The class is a predicate `C`/`C'` (review S2); the instance is
+`IsConditionedDiagonalizable B Γ` (MC1). The core's dims are opaque (`(n+1) :: np :: cd`); a
+threshold word lives among its own words. The leaf (SC5) and the decoupler (DC1) are not
+pipeline stages but worklist routines (§3.2). The quantifier lessons of Part II apply. Outer bounds
 `nmax`, `S` and `Nmax`, the words, the caps, $\varepsilon$ and $\varphi$ are fixed outside every
 `∀` (C1, P11p). A leaf contract covers orders at most `kmax`, never every order (RF1).
 
@@ -250,47 +254,58 @@ the class $(B, \Gamma)$ is produced. The core consumes the class; a core for str
 8. $\mathbf{A} := \mathrm{fl}(s\mathbf{A})$.
 
 ```lean
+/-- PP2 (revised after review B1, B2, S2, S4): **the generic composition theorem**. For ANY
+norm estimate, regularizer (into `C`), reducer and Schur core (from `C'`) meeting their
+contracts, with the class transfer `hCC'` through the reducer's similarity, the pipeline outputs
+a Schur pair with the summed errors, except with probability `φR + φC`. -/
 theorem schurPipelineWith_measureReal_not_schur_le {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
     (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
-    {law : ℕ → Measure ℝ} {Nm Reg Red Core : Impl O Q} {ρ δR φR B Γ εH εC φC : ℝ}
-    {k F T : ℕ} {qR qC : List ℝ} (thr : ℝ)
-    (hNm : FrobNormEstimateContract ρ Nm I)
-    (hReg : RandomRegularizerContract law δR φR B Γ (n + 1) 2 qR Reg I)
-    (hRed : HessenbergReducerContract εH Red I)
-    (hCore : RandomSchurCoreContract law εC φC (2 * B) (Γ / 2) k F T (n + 1) 4 qC Core I)
-    (hρ : ρ ≤ 1 / 4) (hu : 8 * ((n : ℝ) + 1) * u ≤ ρ)
-    (hclass : δR + 3 * εH ≤ Γ / (16 * (n + 1) * B)) (hδR : δR ≤ 1 / 2) (hεH : εH ≤ 1 / 8)
-    (hεC : εC ≤ 1 / 8)
+    {law : ℕ → Measure ℝ} {c : ℕ} {Nm Reg Red Core : Impl O Q}
+    {c₁ c₂ δR φR εHU εHT εCU εCT φC : ℝ} {cd : List ℕ} (hcd : cd.length = c)
+    {qR qC : List ℝ}
+    {C C' : ∀ {m : ℕ}, Matrix (Fin (m + 1)) (Fin (m + 1)) ℂ → Prop}
+    (hNm : FrobNormEstimateContract c₁ c₂ Nm I)
+    (hReg : RandomRegularizerContract law δR φR C (n + 1) (2 / c₁) qR Reg I)
+    (hRed : HessenbergReducerContract εHU εHT Red I)
+    (hCore : RandomSchurCoreContract law εCU εCT φC C' cd (n + 1) (4 / c₁) qC Core I)
+    (hCC' : ∀ (A H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ), C A →
+      IsPerturbedUnitarySimilarBy V A H (εHT * (2 / c₁ + δR)) → C' H)
+    (hc₁ : 0 < c₁) (hc₁₂ : c₁ ≤ c₂) (hu : 8 * ((n : ℝ) + 1) * u ≤ 1 / 4)
+    (hδR : δR ≤ 1 / c₁) (hεHT : εHT ≤ 1 / 8) (hεU : εHU + εCU ≤ 1 / 16)
     {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {a p uo f : ℕ × ℕ} {μ : Mem ℝ}
-    (hin : SchurPipelineInput (qR ++ thr :: qC) a p uo f A μ)
+    (hin : SchurPipelineInput (qR ++ qC) a p uo f A μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (schurPipelineWith Nm Reg Red Core).body
-      (Env.frame [n + 1, k, (qR ++ thr :: qC).length, F, T] [a, p, a, uo, f]) (schurFp n a uo f)
-      (SchurOutput a uo f A (4 * √((n : ℝ) + 1) * (δR + 2 * εH + 2 * εC) + 8 * (n + 1) * u)
-        (3 * (εH + εC) + 8 * (n + 1) * u)) μ} ≤ φR + φC
+    P.real {ω | ¬ Writes .total I (ξ ω) (schurPipelineWith c Nm Reg Red Core).body
+      (Env.frame ((n + 1) :: qR.length :: qC.length :: cd) [a, p, a, uo, f]) (schurFp n a uo f)
+      (SchurOutput a uo f A
+        (2 * c₂ * √((n : ℝ) + 1) * (δR + 3 * εHT / c₁ + εCT + 8 * (εHU + εCU) / c₁)
+          + 8 * (n + 1) * u)
+        (2 * (εHU + εCU) + (εHU + εCU) ^ 2)) μ} ≤ φR + φC := sorry
 ```
 
-The proof is composition only. `PWrites.seq` adds the failures. The pair relations of `Red` and
+The proof is composition only. `PWrites.seq` adds the failures. The tracked relations of `Red` and
 `Core` compose by `trans`, and the regularizer's perturbation enters the pair as a second-component
-error (the first is $\mathbf{I}$). The class step from `Reg` to `Core` is the merged
-`exists_pseudoConditionNumber_le_and_le_norm_sub`, applied to the exact unitary of `Red`'s pair:
-a unitary similarity keeps $\kappa_V$ and the gap, and `hclass` absorbs the perturbation. The
+error (the first is $\mathbf{I}$). The class step from `Reg` to `Core` is the hypothesis `hCC'` (a class transfer through the
+reducer's witnessed similarity); at the instance it is MC1, and only the reducer's error enters
+(review B1: the regularizer's perturbation is already inside `C (A + E)`). The
 scaling to and from $s \approx \|\mathbf{A}\|_{\mathsf F} \le \sqrt{n+1}\|\mathbf{A}\|_2$ gives
 the factor $4\sqrt{n+1}$. The constants are as elaborated and are fixed when proved (O6).
-`specNorm U ≤ 2` in SC4 holds because $\widehat{\mathbf{U}} = \mathbf{I}$ after step 5 and `Red`
+`specNorm U ≤ 2` in SC3/SC4 holds because $\widehat{\mathbf{U}} = \mathbf{I}$ after step 5 and `Red`
 moves it by $\varepsilon_H \le 1/8$.
 
 ### 2.3 Work and the certificate (PP4, CT1)
 
 ```lean
-theorem size_stmtCost_schurPipelineWith_le (Nm Reg Red Core : Impl O Q) (ds : List ℕ)
-    {N : ℕ} (hN : ds.head? = some N) :
-    Count.size (stmtCost (schurPipelineWith Nm Reg Red Core).body ds) ≤
-      Count.size (stmtCost Nm.body [N]) + Count.size (stmtCost Reg.body (ds.take 1 ++ [ds.length])) +
-        Count.size (stmtCost Red.body [N]) + Count.size (stmtCost Core.body ds) +
-        64 * (N + 1) ^ 2
+/-- PP4 (review S2: dims fixed): the static count of the pipeline is the sum of the components'
+counts plus `64 (N + 1)²`. -/
+theorem size_stmtCost_schurPipelineWith_le (c : ℕ) (Nm Reg Red Core : Impl O Q)
+    (N nr nq : ℕ) (cd : List ℕ) :
+    Count.size (stmtCost (schurPipelineWith c Nm Reg Red Core).body (N :: nr :: nq :: cd)) ≤
+      Count.size (stmtCost Nm.body [N]) + Count.size (stmtCost Reg.body [N, nr]) +
+        Count.size (stmtCost Red.body [N]) + Count.size (stmtCost Core.body (N :: nq :: cd)) +
+        64 * (N + 1) ^ 2 := sorry
 ```
 
 The static count of a `seq` is the sum of its parts, and the glue (scaling, identity, branch) is
@@ -308,11 +323,11 @@ follow the merged `…RoutineContract` style instead, because they are probabili
 
 | contract | now (this stage) | existing, almost | later candidates |
 |---|---|---|---|
-| SC1 norm | `frobNormRounded` (scalar, NM1) | `Ops.nrm2Sum` (needs `Blas1Op`, not in `SmallEigOp`) | any $\rho$-accurate estimate, e.g. $\max_{ij}\lvert a_{ij}\rvert$ with $\rho = \sqrt{n}$ |
+| SC1 norm | merged `ShiftedQR.matrixNorm` (NM1: its `StdModel` bounds) | `Ops.nrm2Sum` (needs `Blas1Op`) | any two-sided estimate, e.g. $\max_{ij}\lvert a_{ij}\rvert$ ($c_1 = 1/(n+1)$, $c_2 = 1$) |
 | SC2 regularizer | `ginibreRegularizer` = merged `ginibrePerturb` (RG1) | `ginibrePerturb_pwrites` is this contract at the `smallEigParams` words | real Ginibre, sparse perturbations, the trivial one on Hermitian input |
 | SC3 reducer | `hessenbergReduceQ` (rounded Givens + log replay, PR4) | merged `hessenbergReduceLast` (no $\mathbf{Q}$; its backward lemma has $\mathbf{Q}$ existential) | Householder reduction (`Factorizations/Householder`, exact only today), blocked Householder |
 | SC4 Schur core | `roundedShQRSchur` (full-mode Part II, SQ2) | merged `roundedShQRSmallEig` meets the spectrum-only variant (O5) | other shifting strategies, spectral bisection (`Eigensolvers/SpectralBisection`) with Schur vectors, Hermitian Jacobi |
-| SC5 leaf | `smallSchurProg` (Part III with $\mathbf{U}$, SL4) | merged `smallEigProg` meets the eigenvalue leaf contract only | the full-mode core itself at $k = 1$, a dense $O(k^3)$ QR, any exact small solver as a kernel |
+| SC5 leaf (worklist routine) | `smallEigProgWith trackingHook` (SL4) | merged `smallEigProg` = the skip instance, eigenvalue output only | the full-mode core itself at $k = 1$, a dense $O(k^3)$ QR, any exact small solver as a kernel |
 
 ## 3. The pipeline as programs
 
@@ -320,7 +335,7 @@ Buffers are word pairs in column-major order (`HoldsMatrix`). $N = n + 1$.
 
 | step | program | buffers (words) | notes |
 |---|---|---|---|
-| norm | `frobNormRounded [N] (A) → (S)` | $S$: 1; scratch 3 | `normSq` per entry, rounded sum, `sqrt` |
+| norm | merged `ShiftedQR.matrixNorm [N, N] (A) → (S)` | $S$: 1 | `RoundedScalarBlas.nrm2` (NM1: its `StdModel` bounds) |
 | scale | `scaleBy [2N^2] (A, R) → (A)` | in place | $R = \mathrm{fl}(1/s)$; `ScalarOp.mul`; exact zeros stay zero |
 | regularize | `ginibrePerturb sG [N, 12] (A, P[0]) → (A)` | scratch $2N^2 + 3$ | merged, word 0 = $\gamma$ |
 | reduce | `hessenbergReduceQ [N] (A, U) → (A, U)` | log $1 + 5N^2$ (scoped) | `hessenbergReduceLastLog`, then replay on $\mathbf{U}$'s columns |
@@ -330,113 +345,109 @@ Buffers are word pairs in column-major order (`HoldsMatrix`). $N = n + 1$.
 All of these programs, and the matrix-level rotation programs of PR1–PR2, elaborated with real
 `opsImpl%` bodies where noted in §12.
 
-### 3.1 Rotations on views, logs and replay (PR1–PR4)
+### 3.1 The Givens log layer (GL1, GL2, PR1–PR4)
 
-* **PR1** `rotateRowsOn [ld, r, j0, nc] (A, C, S, T) → (A)` rotates rows $r, r+1$ of a matrix of
-  leading dimension `ld` over the columns $j_0, \dots, j_0 + n_c - 1$. `rotateColumnsOn` is the
-  column analogue over rows $i_0, \dots$. The merged `rotateRowsWithScratch` and
-  `rotateColumnsWithScratch` become wrappers at `[n, k, 0, n]`, with their `_writes_word`
-  lemmas as corollaries (S4 pattern). Both new programs elaborated.
-* **The log.** A rotation is stored as five words $(r, p_{\mathrm{re}}, p_{\mathrm{im}},
-  q_{\mathrm{re}}, q_{\mathrm{im}})$: the two **input entries** of `coefficients`, not the
-  coefficient words. The exact unitary of an entry is then `givens r (r+1) (givensCoeffs p q)`.
-  This is exactly the exact rotation of the merged
-  `specNorm_machineRowRotation_machineColRotation_sub_le`, $49\boldsymbol{u}$, and of G3–G5, so
-  those lemmas apply verbatim. A replay recomputes the coefficients with `coefficients`, which on
-  a deterministic machine gives the same words, `roundedGivensCoeffs M p q`. A log is the count
-  word, then the entries (`logWords`, `HoldsGivensLog lg L s`).
-* **PR2** `givensReplayRows [ld, lo, j0, nc, cnt] (Lg, A) → (A)` and `givensReplayColumns`
-  replay the first `cnt` entries, shifted by `lo`. Both elaborated.
-* **PR3** `hessenbergReduceLastLog [N] (A) → (A, Lg)`: the merged reduction, writing $(c, p, q)$
-  before each step. The merged `hessenbergReduceLast` becomes the wrapper with a scratch log.
-* **PR4** `hessenbergReduceQ [N] (A, U) → (A, U)`: PR3 with a scoped log, then
-  `givensReplayColumns [N, 0, 0, N, c]` on $\mathbf{U}$. This is stage (b). Elaborated.
+A reusable layer, in `Matrix/FinitePrecision/GivensLog.lean` after the O7 move:
 
-### 3.2 The full-mode core
+* **Entries** `GivensEntry = ℕ × ℂ × ℂ`: the plane $r$ (rows/columns $r, r+1$) and the two
+  **inputs** $(p, q)$ of `coefficients`. The exact unitary of an entry is
+  `givens r (r+1) (givensCoeffs p q)`, exactly the rotation of the merged
+  `specNorm_machineRowRotation_machineColRotation_sub_le` and G3–G5; `givensLog n L` (MG1) is the
+  product. A replay recomputes the coefficients (`coefficients`, the same words on a
+  deterministic machine).
+* **Storage** `HoldsSlottedLog lg w L`: slots of $1 + 5w$ words, a valid word, then $w$
+  self-describing entries $(r, p_{\mathrm{re}}, p_{\mathrm{im}}, q_{\mathrm{re}}, q_{\mathrm{im}})$; the
+  log is the valid slots in order (`slotEntries`). **No count word** (review B4): the layout is
+  static, the plane word is an exact natural $\le n+1$ (`hNat`), and the validity test is `isPos`.
+* **Sinks** (GL2): a producer of rotations calls a sink routine `Wr` for each committed rotation
+  (`[ld, j, i] (E, Lg) → (Lg)`: entry $i$ of slot $j$) and `Vd` when a slot is accepted.
+  `IsGivensSink Inv Fp Wr I` says the sink moves `Inv L` to `Inv (L ++ [x])` inside `Fp`. Two
+  instances: **`skipSink`** (`Inv = True`, empty footprint, zero work) and **`slotSink`**
+  (`Inv = HoldsSlottedLog`). Producers are generic in the sink, so an eigenvalue-only run pays
+  nothing and a Schur run records.
+* **Replay** (PR2) `givensReplayRows/Columns [ld, lo, j0, n, ns, w] (Lg, A) → (A)`: valid slots in
+  order, plane by `bindIdx ≤ ld`, rotation by PR1 `rotateRowsOn`/`rotateColumnsOn` on a strided
+  view (the merged `rotateRowsWithScratch` becomes the instance `[n, k, 0, n]`). MG4: each
+  replayed rotation moves its operand by $\le 24\boldsymbol{u}\|\cdot\|$ from the exact product, on
+  every tape.
+* **PR3** `hessenbergReduceLastWith Wr`: the merged reduction, in place, with a sink;
+  `hessenbergReduceLast` is the skip instance, and its merged theorem a corollary of the witnessed
+  one (`Q = givensLog` of its entries, keeping $\mathbf{Q}\mathbf{e}_N = \mathbf{e}_N$; review §2 item 4:
+  checked first against `hrBound_rows`). **PR4** `hessenbergReduceQ`: reduce with a slot sink, then
+  replay on $\mathbf{U}$'s columns; meets SC3 with $(\varepsilon_U, \varepsilon_T) = (27N^2\boldsymbol{u}, 50N^2\boldsymbol{u})$.
 
-`roundedShQRSchur SE SL := solveSchurWith (roundedDecoupleWithLog SE) (seSchurLeaf SL)`. The
-Regularize routine stays the eigenvalue program `SE = smallEigProg` (its Ritz values need no
-Schur form). The leaf is `SL = smallSchurProg`.
+All of these elaborated (§12).
 
-**`solveSchurWith D L : [N, k, np, F, T] (A, Thr, P, U) → (A, U, Fl)`** (SW1). It reuses the
-merged stack and helpers: `stackInit`, `rangePop`, `copyToWork`, `bottomScan`, `splitPush`,
-`copyToGlobal` and `roundedAbort`. A round pops $(lo, d)$ and copies the block to $\mathbf{W}$.
+### 3.2 One generic deflation worklist with a hook (maintainer O4(b))
 
-* **Large block** ($d > k$):
-  1. `D` on $\mathbf{W}$, writing the log `Lg` (capacity $G_{\mathrm{dec}}(d)$, O3).
-  2. On failure, abort as merged.
-  3. Otherwise `bottomScan`, then `copyToGlobal` of $\mathbf{W}$.
-  4. Bind $c$ := the count, with bound $G_{\mathrm{dec}}(N)$.
-  5. `givensReplayRows [N, lo, lo+d, N-lo-d, c]` on $\mathbf{A}$ (right coupling).
-  6. `givensReplayColumns [N, lo, 0, lo, c]` on $\mathbf{A}$ (top coupling).
-  7. `givensReplayColumns [N, lo, 0, N, c]` on $\mathbf{U}$.
-  8. Write the **exact zero** `lit 0` at the cut entry $(lo+i+1, lo+i)$.
-  9. `splitPush`.
-* **Leaf** ($d \le k$, inside the guard `ifPos k + 1 - d`, which narrows $d \le k$ for the
-  static count):
-  1. `L` on $\mathbf{W}$ in place, with $\mathbf{U}_b$ ($2k^2$ words, scratch).
-  2. `copyToGlobal`.
-  3. Three strided complex products, `matMulOn` (MR1): $\mathbf{A}_{0:lo,R} \leftarrow
-     \mathbf{A}_{0:lo,R}\mathbf{U}_b$, $\mathbf{A}_{R,lo+d:} \leftarrow
-     \mathbf{U}_b^{\mathsf H}\mathbf{A}_{R,lo+d:}$, $\mathbf{U}_{:,R} \leftarrow
-     \mathbf{U}_{:,R}\mathbf{U}_b$, each through a scratch copy of the operand.
+`solveDeflationWith D L Hk : [N, k, np, F, T] (A, Thr, P, X) → (A, X, Out, Fl)` (GW1) is the merged
+worklist with three routine parameters:
 
-The regions rows $R$ × columns $<lo$ and rows $\ge lo+d$ × columns $R$ are never written. They
-hold exact zeros from the reduction and from earlier cuts.
+* **decoupler** `D : [d, k, np, F, T] (W, P) → (W, Fl, Lg)`, generic in its sink; contract DC1:
+  the merged decoupler contract plus `∃ L, Inv L ∧ IsPerturbedUnitarySimilarBy (givensLog L) H H' ε`
+  (with the skip sink, `Inv = True` and the merged `∃ U` form is the corollary);
+* **leaf** `L : [d, np, T] (Bk, P) → (Bk, Ev, Ub)` with one generic contract
+  `RandomLeafRoutineContractWith Post` (GW7): `Ev` lists the spectrum of $\mathbf{B} + \mathbf{F}$, and
+  `Post` adds what the leaf promises; the merged eigenvalue leaf contract is the instance with
+  `Post = True` (Bk, Ub untouched), the Schur leaf contract the instance with
+  `Tb` upper triangular, `Ev = diag Tb`, `IsTrackedUnitarySimilar εU εT 1 B Ub Tb`;
+* **hook** `Hk`, run after each successful decoupler call (`[N, lo, d, …] (Lg, A, X) → (A, X)`) and
+  after each leaf (`[N, lo, d] (W, Ub, A, X) → (A, X)`). Its contract (GW2, `DeflationHook`) is an
+  invariant `Inv H₀ e μ` and per-round extra errors `ρ` (decoupler, as a function of the log size
+  and the norm), `ρL` (leaf), plus its static work. **`skipHook`**: `Inv = True`, `ρ = ρL = 0`, zero
+  work.
 
-**Exactly triangular $\widehat{\mathbf{T}}$.** The invariant (SW2) says that $\mathbf{A}$ is
-block upper triangular for the partition `done ++ active`, with exact zero words below the blocks.
-Active blocks are upper Hessenberg with exact zeros: from the reduction's zero fill and the
-step's `clearBelowSubdiagonal`. Done blocks are upper triangular: by SC5. At the cap, all ranges
-are done (or the flag is $1$), so the stored $\mathbf{A}$ is upper triangular (SW6). Unscaling
-keeps zeros, because $\mathrm{fl}(s\cdot 0) = 0$ in `StdModel` (MS1:
-`StdModel.lit_zero`, `StdModel.mul_zero`).
+**The generic theorem** GW4 `solveDeflationWith_pwrites` (elaborated) concludes the **merged**
+conclusion (eigenvalues of $\mathbf{H} + \mathbf{E}$, $\|\mathbf{E}\| \le 2(n+1)(c + \varepsilon(N_0) + \beta)$)
+**and** `hk.Inv H (2(n+1)(c + ε N₀ + β + ρ + ρL))`, with failure $2(n+1)(\varphi_D + \varphi_L)$
+and the merged precision hypotheses only (the hook's precision needs live in its own `ρ`). At
+the skip hook and skip sinks it is the merged `solveRoundedWith_pwrites`, with its current
+statement, cost and precision (GW6); the merged program `solveRoundedWith D L` is the instance
+`solveDeflationWith D L skipHook` (wrapper).
 
-**The leaf `smallSchurProg sG : [d, nq, T] (Bk, Qw) → (Bk, Ub)`** (SL1) runs as follows. For
-$d \le 1$, write $\mathbf{U}_b = \mathbf{I}$ and leave the block. Otherwise:
+**The tracking hook** `trackingHook` (SH1, SH2), `X` = $\widehat{\mathbf{U}}$:
 
-1. Copy to scratch.
-2. `ginibrePerturb`.
-3. `hessenbergReduceQ` with $\mathbf{U}_b := \mathbf{I}$.
-4. `solveSchurWith (smallEigDecouplerLog sG) trivialSchurLeaf` at $k = 1$, with $\mathbf{U}_b$
-   as its $\mathbf{U}$.
-5. Copy back.
+* after a decoupler: `givensReplayRows [N, lo, lo+d, N-lo-d, …]` (right coupling),
+  `givensReplayColumns [N, lo, 0, lo, …]` (top coupling) and `[N, lo, 0, N, …]` ($\widehat{\mathbf{U}}$),
+  then the **exact zero** `lit 0` at the cut entry;
+* after a leaf: the three strided products with $\mathbf{U}_b$ (MR1) under the guard $d \le k$.
 
-It is the merged `smallEigProg` with the eigenvalue worklist replaced by the Schur worklist. The
-same `solveSchurWith` is used twice. `trivialSchurLeaf` handles $d \le 1$ with
-$\mathbf{U}_b = \mathbf{I}$, $\beta = \varphi = 0$ (SL2).
+Its invariant: the tracked relation from $(\mathbf{U}_0, \mathbf{H}_0)$; $\mathbf{A}$ block upper
+triangular for `done ++ active` with exact zero words below; active blocks Hessenberg; done blocks
+upper triangular. Hence the final $\widehat{\mathbf{T}}$ is exactly upper triangular (zeros never
+written; `StdModel.lit_zero`, `mul_zero`). $\rho = 78\boldsymbol{u}\,m\,N_0$ for a log of $m$ entries.
 
-### 3.3 Which merged programs are generalized (S4)
+**The leaf, generic too** (SL1): Part III's program becomes `smallEigProgWith Hk` (copy,
+`ginibrePerturb`, `hessenbergReduceLastWith`, `solveDeflationWith (smallEigDecouplerWith) copyLeaf Hk`
+at $k = 1$); the merged `smallEigProg` is the skip instance (its theorems re-derived, SL6), and the
+Schur leaf `smallSchurProg = smallEigProgWith trackingHook` with the slot sink, writing `Bk`,
+`Ub` and `Ev`.
 
-Only the **committed** steps need a log. Trial steps on copies that are discarded do not:
-`comptauHalf` and `findRounded` keep the eigenvalue programs. Each row below is a new `…Log`
-program writing the extra operand(s) `Lg` (count and entries) and, for trials, a trial log `LgT`
-of one degree-$k$ step ($k(N-1)$ entries). The merged name becomes the wrapper that allocates a
-scratch log and runs the `…Log` program. Its merged theorem becomes a corollary by one frame
-lemma (`PWrites.in_frame`/`Writes.in_frame` through the allocation, RF-pattern of SMALLEIG).
+**The core** (SQ1): `roundedShQRWith SE L Hk := solveDeflationWith (roundedDecoupleWith SE) (seLeaf L) Hk`;
+merged `roundedShQRWith SE` is the skip instance; `roundedShQRSchur` the tracking instance with the
+Schur leaf. Regularize keeps the eigenvalue program `SE` (Ritz values need no Schur form).
 
-| merged program (file) | generalization |
+### 3.3 The in-place refactor of the decoupler chain
+
+Only committed rotations need recording, but the cleanest structure (maintainer: best final
+proofs) gives every rotation-producing program a sink parameter and states every backward
+conclusion with its witness; the merged name is the skip-sink instance, the merged theorem a
+one-line corollary through `isPerturbedUnitarySimilar_iff_exists_by`. Find's trial steps use
+the skip sink. Trials write directly into their own slot and acceptance validates it (no trial
+log buffer, no copy). The slot layout per decoupler call: $F$ iterations × $(k + n_q + 2)$ trial
+sites × $k\,n$ entries (O3); the reduction: $N$ slots of $N - 1$ entries.
+
+| merged program (file) | change |
 |---|---|
-| `stepWithDiag`, `stepWithDiagInPlace`, `multiStepStable` (StableStep) | each round also copies $(k, p, q)$ to `Lg` |
-| `stepComptau` (RoundedFind) | through `multiStepStableLog` |
-| `trialStep`, `trialAccept`, `regularizeTrial(s)`, `regularizeDecide` (RoundedRegularizeTrial) | trial log `LgT`; `trialAcceptLog` appends `LgT` at the count (bound read by `bindIdx`) |
-| `regularizeWithScratchWith`, `regularizeWith` (RoundedRegularize) | thread `Lg`, `LgT` |
-| `shTestStep`, `shPrefix`, `shPotentialAccept`, `shTrial(s)`, `shExc`, `shDecide`, `shStepWithScratch`, `shStep` (RoundedSh, RoundedShTrial, RoundedShExc) | thread |
-| `shIterationWithScratchWith`, `shIterationWith` (RoundedIteration) | thread |
-| `roundedDecoupleLoopWith`, `roundedDecoupleWith` (RoundedDecouple) | interface `[N, k, np, F, T] (W, P) → (W, Fl, Lg)` |
-| `hessenbergReduceLast` (HessenbergReduction) | PR3 |
-| `rhess`, `decoupleLast`, `smallEigDecoupler` (SmallEig) | log |
-| `rotateRowsWithScratch`, `rotateColumnsWithScratch` (RotationLoops) | PR1 |
-
-**Not generalized; siblings** (O4):
-
-* `solveRoundedWith` and `solveSchurWith`. The eigenvalue worklist's leaves are eigenvalue
-  routines (the kernel among them), which cannot produce a Schur block. Its invariant
-  (`DeflationInv`, roots) differs from the Schur invariant.
-* `smallEigProg` and `smallSchurProg`, for the same reason.
-
-The merged worklist and SmallEig theorems are unchanged. The eigenvalue corollary of the Schur
-pipeline (HD3) reproves "spectrum of a nearby matrix" for dense input anyway.
+| `stepWithDiag`, `stepWithDiagInPlace`, `multiStepStable` (StableStep) | sink parameter; chain lemma names its $\mathbf{Q}$s |
+| `stepComptau` (RoundedFind) | sink |
+| `trialStep`, `trialAccept`, `regularizeTrial(s)`, `regularizeDecide` (RoundedRegularizeTrial) | trial writes its slot, accept validates |
+| `regularizeWithScratchWith`, `regularizeWith` (+ termination) | thread the sink |
+| `shTestStep`, `shPrefix`, `shPotentialAccept`, `shTrial(s)`, `shExc`, `shDecide`, `shStep` (+ termination) | thread |
+| `shIterationWith`, `roundedDecoupleLoopWith`, `roundedDecoupleWith` (+ routine, termination) | thread; outcome with the witness |
+| `hessenbergReduceLast`, `rhess`, `decoupleLast`, `smallEigDecoupler` | sink |
+| `solveRoundedWith`, `smallEigProg`, `roundedShQRWith` | instances of the generic programs (skip hook) |
+| `rotateRowsWithScratch`, `rotateColumnsWithScratch` | instances of PR1 |
 
 ## 4. Numerical analysis
 
@@ -469,15 +480,14 @@ every place that composes by `IsPerturbedUnitarySimilar.trans` composes by the w
   (L.map fun e => (givensAt n e)ᴴ).prod`, so that conjugating by the entries in order is
   $\mathbf{Z} \mapsto \mathbf{V}^{\mathsf H}\mathbf{Z}\mathbf{V}$. Also
   `hasOrthonormalCols_givensLog` and `givensLog_append`. Elaborated.
-* **The global state** is the pair $(\widehat{\mathbf{U}}^{\mathsf H}, \mathbf{T})$ under
-  `IsPerturbedUnitaryPair 1 b ε`. From $(\mathbf{I}, \mathbf{A}_1)$: $\widehat{\mathbf{U}}^{\mathsf H} =
-  \mathbf{V}^{\mathsf H}(\mathbf{I} + \mathbf{E})$ and $\widehat{\mathbf{T}} =
-  \mathbf{V}^{\mathsf H}(\mathbf{A}_1 + \mathbf{F})\mathbf{V}$, so $\|\widehat{\mathbf{U}} -
-  \mathbf{V}\| \le \varepsilon$, $\|\widehat{\mathbf{U}}^{\mathsf H}\widehat{\mathbf{U}} -
-  \mathbf{I}\| \le 2\varepsilon + \varepsilon^2$, and $\|\mathbf{A}_1 -
-  \widehat{\mathbf{U}}\widehat{\mathbf{T}}\widehat{\mathbf{U}}^{\mathsf H}\| \le \|\mathbf{F}\| +
-  (2\varepsilon + \varepsilon^2)\|\mathbf{A}_1 + \mathbf{F}\|$ (**MW4**, elaborated with
-  constants $4\varepsilon$, $3\varepsilon$ at $\varepsilon \le 1/4$).
+* **The global state** is the tracked relation (MW6) `IsTrackedUnitarySimilar εU εT 1 A₁ Û T̂`:
+  an exact unitary $\mathbf{V}$ with $\widehat{\mathbf{T}} = \mathbf{V}^{\mathsf H}(\mathbf{A}_1 + \mathbf{F})\mathbf{V}$,
+  $\|\mathbf{F}\| \le \varepsilon_T$, and $\|\widehat{\mathbf{U}} - \mathbf{V}\| \le \varepsilon_U$. Then
+  $\|\widehat{\mathbf{U}}^{\mathsf H}\widehat{\mathbf{U}} - \mathbf{I}\| \le 2\varepsilon_U + \varepsilon_U^2$ and
+  $\|\mathbf{A}_1 - \widehat{\mathbf{U}}\widehat{\mathbf{T}}\widehat{\mathbf{U}}^{\mathsf H}\| \le \varepsilon_T +
+  (2\varepsilon_U + \varepsilon_U^2)(\|\mathbf{A}_1\| + \varepsilon_T)$ (**MW4**, elaborated). The two errors
+  stay apart: $\varepsilon_U$ is a deterministic $O(R\boldsymbol{u})$, $\varepsilon_T$ the probabilistic
+  backward error (review B2).
 
 ### 4.3 The full-mode step on a block-triangular matrix (the lift)
 
@@ -504,11 +514,10 @@ In Lean this is **MW2**: `IsPerturbedUnitarySimilarBy.fromBlocks₁₁`/`fromBlo
 witnessed analogues of the merged `exists_fromBlocks₁₁/₂₂` with a computed coupling block
 (elaborated), applied twice. **MW3** is the range form on `Fin N` with $[lo, lo+d)$, via
 `finSumFinEquiv` and the merged `submatrix_equiv`. The $\widehat{\mathbf{U}}$ replay is the first
-component of the pair: $\widehat{\mathbf{U}}' = (\widehat{\mathbf{U}} +
-\mathbf{E}_U^{\mathsf H})\widetilde{\mathbf{V}}$ with $\|\mathbf{E}_U\| \le
-26\boldsymbol{u}|L|\,\|\widehat{\mathbf{U}}\|$. For a leaf (dense $\mathbf{U}_b$, MW5), the
+$\varepsilon_U$ part of the tracked relation: $\|\widehat{\mathbf{U}}' - \widehat{\mathbf{U}}\widetilde{\mathbf{V}}\| \le
+24\boldsymbol{u}|L|(1+24\boldsymbol{u})^{|L|}\|\widehat{\mathbf{U}}\|$ (MG4). For a leaf (dense $\mathbf{U}_b$, MW5), the
 coupling uses the computed $\mathbf{U}_b = (\mathbf{I} + \mathbf{E}^{\mathsf H})\mathbf{V}_b$
-from SC5's pair. Its extra error is $\|\mathbf{T}\|\,\|\mathbf{E}\| + $ the product rounding
+from SC5's tracked relation. Its extra error is $\|\mathbf{T}\|\,\|\mathbf{E}\| + $ the product rounding
 (MR1, $(2k + 4)\boldsymbol{u}\|\cdot\|_{\mathsf F}$ terms).
 
 The cut writes $0$ over an entry of modulus at most $c$: an error $c$ by the merged `sub_single`.
@@ -523,22 +532,15 @@ factor as the per-level maximum of T6.3.
 
 ### 4.4 Forward error of the accumulated product
 
-The library has the vector chain (`norm_toLp_sub_mulVec_le_sum`) and the similarity chain
-(`specNorm_sub_mul_mul_conjTranspose_le_sum`), both in `GivensChain`. It lacks the one-sided
-matrix chain **MG2** `specNorm_sub_mul_le_sum` (elaborated). **MG4**, in `Eigensolvers/GivensLog`,
-is the replay statement: a replay of $L$ on $\mathbf{X}$ is within $26\boldsymbol{u}|L|(1 +
-26\boldsymbol{u})^{|L|}\|\mathbf{X}\|$ of $\mathbf{X}\mathbf{V}$ (columns) or
-$\mathbf{V}^{\mathsf H}\mathbf{X}$ (rows). Under $26\boldsymbol{u}|L| \le 1/2$ the bound is
-$\le 52\boldsymbol{u}|L|\,\|\mathbf{X}\|$, from G4/G5 ($24\boldsymbol{u}$ per rotation, plus
-$\le 2\boldsymbol{u}$ for the recomputed coefficients). On $\mathbf{X} = \mathbf{I}$:
-$\|\widehat{\mathbf{U}} - \mathbf{V}\| \le 52\boldsymbol{u}|L|$. The total rotation count on
-$\widehat{\mathbf{U}}$ is at most $R$ (§1), whence $\varepsilon_U = 64R\boldsymbol{u}$ after the
-leaf products.
-
-Log capacity per decoupler call (O3): at most one acceptance per trial site and at most $k + n_0
-+ 2$ trial sites per iteration (Regularize's $k$ trials, Sh's test step, the Exc trials). With
-$F$ iterations, $G_{\mathrm{dec}}(d) = F(k + n_p + 2)k\,d$. This bound needs no flag reasoning:
-`BackwardStep.ite` takes the larger branch.
+The library has the vector and similarity chains in `GivensChain`; MG2 adds the one-sided matrix
+chain. MG4: each replayed rotation is within $24\boldsymbol{u}\|\mathbf{X}\|$ of the exact one (the
+merged one-sided bound, coefficients recomputed), so a replay of $R$ rotations on $\mathbf{I}$ is
+within $(1+24\boldsymbol{u})^R - 1 \le 27R\boldsymbol{u}$ of the exact product (for $24R\boldsymbol{u} \le 1/8$)
+and $\|\widehat{\mathbf{U}}^{\mathsf H}\widehat{\mathbf{U}} - \mathbf{I}\| \le 58R\boldsymbol{u}$, **on every tape**
+(the bound does not depend on the angles, hence not on the shifts). Leaves contribute through their
+$\varepsilon_U$ and the product rounding, counted in $R$ (§1). The log capacity per decoupler call
+is $F(k + n_q + 2)k\,d$ (slots per trial site; `BackwardStep.ite` takes the larger branch, no flag
+reasoning).
 
 ### 4.5 Error budget
 
@@ -548,15 +550,15 @@ The absolute accuracy in scaled units is $\delta' = \delta/(32\sqrt{n+1})$; the 
   multiplication back;
 * $\delta_{\mathrm{reg}} = \delta'/2$, by the merged `ginibrePerturb_pwrites` at its $\delta =
   \delta'$;
-* $\delta_{\mathrm{hess}} = 50(n+1)^2\boldsymbol{u}\cdot 2 + 52(n+1)^2\boldsymbol{u}$, the
-  reduction plus the $\widehat{\mathbf{U}}$ replay;
+* $\delta_{\mathrm{hess}} = 50(n+1)^2\boldsymbol{u}\cdot 2$ (the reduction; its $\widehat{\mathbf{U}}$ replay
+  goes to $\varepsilon_U$, not to the residual budget);
 * $\delta_{\mathrm{qr}} = \delta'$, Part II's absolute error at $\Sigma = 4$, the worklist sum of
   §4.3;
 * $\delta_{\mathrm{leaf}} \le \beta_{\mathrm{se}}$ per leaf, inside $\delta_{\mathrm{qr}}$ (the
   forward words give backward error $\le \beta_{\mathrm{se}}$);
 * $\delta_{\mathrm{rep}}$, the replay terms, inside the precision.
 
-PP2 converts the sum to $\le \delta\|\mathbf{A}\|_2$ through $s \le (1 + 2(n+1)\boldsymbol{u})
+With B1 fixed the sum is about $0.33\delta$ (review S4). PP2 converts it to $\le \delta\|\mathbf{A}\|_2$ through $s \le (1 + 2(n+1)\boldsymbol{u})
 \|\mathbf{A}\|_{\mathsf F} \le 2\sqrt{n+1}\|\mathbf{A}\|_2$.
 
 ## 5. Probability and parameters
@@ -570,10 +572,10 @@ normalization makes $\|\mathbf{A}'\|_2 \le 1 + 3\boldsymbol{u} \le 2$):
   norm $\varphi/8$ (RM4–RM6 inside the merged lemma).
 * The class: $(B, \Gamma) = (2/t_2, t_1/2)$, $t_1$ = `smallEigGap (n+1) 2 δ' (φ/2)
   ginibreGapTail`, $t_2$ = `smallEigCond …` (the merged `ginibreClass_spec`). After the reducer,
-  $(2B, \Gamma/2)$: PP2's `hclass` holds because $\delta_{\mathrm{reg}} + 3\varepsilon_H \le
-  \Gamma/(16(n+1)B)$ for these choices. This is the same inequality as Part III's
-  `smallEigCoreClass_hessenbergReduceLastWord`, with $\delta' \le t_1/4$ from
-  `smallEigScale_mul_noiseLevel`.
+  $(2B, \Gamma/2)$ by MC1, which needs only the reducer's error: $3\varepsilon_{H,T} \le
+  \Gamma/(16(n+1)B)$, guaranteed by threshold term 3. The regularizer's perturbation is not in it
+  (review B1: it is always larger than the gap it creates, $\Gamma \le \delta'/48$; it is
+  already inside `C (A + E)`). This matches Part III's `smallEigCoreClass_hessenbergReduceLastWord`.
 * The core at $(2B, \Gamma/2)$, $\Sigma = 4$, $\delta_{\mathrm{qr}} = \delta'$,
   $\varphi_{\mathrm{qr}} = \varphi/2$, with $k$ = `shqrDegree (4 * (2 * B))`, words
   `shqrSmallEigParams n k (2B) (Γ/2) 4 δ' (φ/2) ginibreGapTail ginibreConditionTail`, $F$ =
@@ -582,9 +584,8 @@ normalization makes $\|\mathbf{A}'\|_2 \le 1 + 3\boldsymbol{u} \le 2$):
   the forward words (SL4), so $\varphi_L$ is the merged `shqrSmallEigFailure`.
 * Total: $3\varphi/8 + \varphi/2 \le \varphi$.
 
-Reuse of T1c and HL2: the core theorem SQ2 is HL2's proof. `roundedDecouple_pwrites` and
-`roundedLeaf_pwrites` become their log versions (RF6, and SW3 with SC5), and `solveRoundedWith_pwrites`
-becomes `solveSchurWith_pwrites` (SW4). The parameter side conditions are the merged
+Reuse of T1c and HL2: SQ2 is HL2's proof at the generic worklist (GW4) with the tracking hook;
+T1c and HL2 themselves are the skip instances (SQ5). The parameter side conditions are the merged
 `shqrParams_spec`/`hiBd_smallEigForwardArg`, plus the replay term.
 
 ## 6. Cost
@@ -624,10 +625,10 @@ not planned.
 * **Zeros.** `M.lit 0 = 0` and $\mathrm{fl}(s\cdot 0) = 0$ follow from `StdModel` (MS1). The
   merged `hessenbergReduceLast_isPerturbedUnitarySimilar` takes `hzero` as a hypothesis, but it is
   derivable, as its own proof shows (`simpa using hM.lit 0`).
-* **Log junk.** The count word is read by `bindIdx` with bound $G$. A junk count fails the run,
-  so termination (HD4, SW5) is claimed for the program's own logs. The invariant keeps the count
-  $\le G$. Entries with $r + 1 \ge n$ give the identity in `givensAt` and are skipped by the replay
-  (no out-of-range write: the row index is bounded by `ld`).
+* **Log words.** No count word (B4). Plane words are exact naturals $\le n$ written by the
+  producer (`IsIndexLit`, `hNat` at $n+1$ suffice); an invalid slot (valid word $\le 0$, from the
+  zero fill) is skipped. Entries with $r + 1 \ge n$ give the identity in `givensAt` and are never
+  produced.
 * **Shift-dependence** (§4.1): every chain lemma keeps `IsUpperHessenberg` (Q4's lesson).
 * **Positivity**: `uDenseSchur_pos` (elaborated) is needed, else the headline is vacuous
   [PAR1p].
@@ -642,33 +643,25 @@ not planned.
 
 | file | content |
 |---|---|
-| `Matrix/Perturbation/UnitarySimilarity.lean` | MW1, MW2, MW3 (beside `exists_fromBlocks₁₁/₂₂`) |
-| `Matrix/Perturbation/UnitaryPair.lean` | MW4, MW5 |
-| `Matrix/Factorizations/Givens.lean` | MG1 (`givensAt`, `givensLog`) |
-| `Matrix/FinitePrecision/GivensChain.lean` | MG2 |
-| `Matrix/FinitePrecision/GivensRounded.lean` | MG3 (rectangular generalization of `IsRoundedRowRotation`/`ColRotation`, merged statements unchanged) |
-| `Ops/Catalog/Scalar.lean` | MS1 (`StdModel.lit_zero`, `StdModel.mul_zero`) |
-| `Eigensolvers/ShiftedQR/RotationLoops.lean` | PR1 |
-| `Eigensolvers/GivensLog.lean` (new) | OL1, PR2, MG4 |
+| `Matrix/FinitePrecision/StoredDense.lean`, `Matrix/FinitePrecision/GivensPrograms.lean` | MV1, MV2 (O7 moves, first) |
+| `Matrix/Perturbation/UnitarySimilarity.lean` | MW1, MW2, MW3, MW4, MW5, MW6 |
+| `Matrix/Spectral/Diagonalizable.lean` | MC1 |
+| `Matrix/Factorizations/Givens.lean` | MG1 |
+| `Matrix/FinitePrecision/GivensChain.lean`, `GivensRounded.lean` | MG2, MG3 |
+| `Matrix/FinitePrecision/GivensLog.lean` (new) | GL1, GL2, PR2, MG4 |
+| `Matrix/FinitePrecision/GivensPrograms.lean` | PR1 |
+| `Matrix/FinitePrecision/StoredProducts.lean` (new) | MR1 |
+| `Ops/Catalog/Scalar.lean` | MS1 |
+| `Ops/Logic/Backward.lean` | OB1 |
+| `Ops/Profiles/RoundedScalarBlas.lean` | NM1 (`nrm2` StdModel bounds) |
 | `Eigensolvers/HessenbergReduction.lean` | PR3, PR4 |
-| `Eigensolvers/ShiftedQR/{StableStep, RoundedFind, RoundedRegularize*, RoundedSh*, RoundedIteration, RoundedDecouple*}.lean`, `Eigensolvers/SmallEig/{RandomHessenberg, Decouple, Decoupler, DecouplerPrecision}.lean` | RF1–RF10 |
-| `Eigensolvers/ShiftedQR/SchurWorklist.lean` (new) | DC1, SW1–SW6 |
-| `Eigensolvers/ShiftedQR/RoundedSchur.lean` (new) | SQ1–SQ4 |
-| `Eigensolvers/SmallEig/Schur.lean` (new) | SL1–SL5 |
-| `Eigensolvers/Schur/Contracts.lean` (new folder) | SC1–SC6 |
-| `Eigensolvers/Schur/Pipeline.lean` | PP1–PP4 |
-| `Eigensolvers/Schur/Certificate.lean` | CT1, CT2 |
-| `Eigensolvers/Schur/Norm.lean` | NM1 |
-| `Eigensolvers/Schur/BlockUpdate.lean` | MR1 |
-| `Eigensolvers/Schur/Regularizer.lean` | RG1 |
-| `Eigensolvers/Schur/Dense.lean` | HD0–HD7 |
+| `Eigensolvers/ShiftedQR/{StableStep, RoundedFind, RoundedRegularize*, RoundedSh*, RoundedIteration, RoundedDecouple*}.lean`, `Eigensolvers/SmallEig/{RandomHessenberg, Decouple, Decoupler, DecouplerPrecision}.lean` | RF1–RF10 (in place) |
+| `Eigensolvers/ShiftedQR/{RoundedSolve, RoundedHeadline, RoundedWorklistTermination}.lean` | GW1–GW7, DC1 (in place) |
+| `Eigensolvers/SmallEig/{Program, Theorems}.lean` | SL1–SL6 (in place) |
+| `Eigensolvers/ShiftedQR/RoundedSmallEig.lean`, `RoundedCertificate.lean`, `RoundedSmallEigCertificate.lean`, `SmallEig/Certificate.lean` | SQ1–SQ5, RF11 |
+| `Eigensolvers/Schur/{Contracts, TrackingHook, Pipeline, Regularizer, Dense, Certificate}.lean` (new folder) | SC, SC6, SH1, SH2, PP1–PP4, RG1, HD0–HD7, CT1, CT2 |
 
-**Placement flags.** `HoldsMatrix` (in `ShiftedQR/Storage`) and the rotation programs (in
-`ShiftedQR/RotationLoops`) are general stored-matrix and Givens tools that live in the shifted QR
-folder. Every new program that needs them (PR1–PR2, NM1, MR1) must therefore sit in
-`Eigensolvers`. The intended homes are `Ops/Blas` (NM1, MR1) and `Matrix/FinitePrecision`
-(PR1–PR2, MG4), after a move of `HoldsMatrix` and the rotation loops that is not this stage's
-(O7).
+No placement flags remain after MV1/MV2 (review O7: move first).
 
 ### 8.2 Vocabulary rows
 
@@ -676,8 +669,11 @@ folder. Every new program that needs them (PR1–PR2, NM1, MR1) must therefore s
 |---|---|---|
 | `IsPerturbedUnitarySimilarBy V A B ε` | perturbed similarity by the named unitary | `isPerturbedUnitarySimilar_iff_exists_by`; `isPerturbedUnitaryPair_zero_iff` (no Mathlib notion; searched) |
 | `givensAt`, `givensLog` | exact unitary of a rotation log | Mathlib `List.prod`; `givens` |
-| `logWords`, `HoldsGivensLog` | stored log | as `HoldsMatrix` |
-| `FrobNormEstimateContract`, `RandomRegularizerContract`, `HessenbergReducerContract`, `RandomSchurCoreContract`, `RandomSchurLeafContract`, `RandomLogDecouplingRoutineContract` | stage contracts | `Writes`/`PWrites` |
+| `IsTrackedUnitarySimilar εU εT U A U' A'` | the two-error stage relation | via `IsPerturbedUnitarySimilarBy` |
+| `IsConditionedDiagonalizable B Γ A` | the class (κ_V ≤ B, gap ≥ Γ) | `IsDiagonalizable` (merged) |
+| `GivensEntry`, `slotEntries`, `HoldsSlottedLog`, `IsGivensSink`, `skipSink`, `slotSink` | the log layer | as `HoldsMatrix` |
+| `DeflationHook`, `skipHook`, `trackingHook`, `RandomLeafRoutineContractWith` | worklist routines | `PWrites` |
+| `FrobNormEstimateContract`, `RandomRegularizerContract`, `HessenbergReducerContract`, `RandomSchurCoreContract`, `RandomLogDecouplingRoutineContract` | contracts | `Writes`/`PWrites` |
 | `SchurOutput`, `SchurPipelineInput`, `HoldsSchurPair` | input/output memories | as `ShQRSpectrum` |
 
 No Mathlib deviation: the witnessed predicate is a new NLAlib notion next to a NLAlib notion.
@@ -686,147 +682,133 @@ No Mathlib deviation: the witnessed predicate is a new NLAlib notion next to a N
 
 | repeated argument | handled by | status |
 |---|---|---|
-| merged name kept, program generalized | wrapper + one frame lemma per program (`in_frame`) | SMALLEIG pattern |
+| merged name kept, program generalized | instance (skip sink / skip hook) + one frame lemma (`in_frame`) | SMALLEIG pattern |
+| one producer, record or not | the sink layer (GL2) | new |
 | witnessed composition through `BackwardStep` | `isPerturbedUnitaryPair_zero_iff` + merged B6 | new (MW1) |
 | a block step lifted with computed coupling | MW2/MW3, used by both worklist uses (top, leaf) and the reducer | new |
 | replay error | MG2 + MG3 + MG4, used for coupling, $\widehat{\mathbf{U}}$, the reducer | new |
-| one worklist, two uses | `solveSchurWith D L` with log/leaf contracts | new (SW) |
-| stages composed | the pair relation + PP2; one theorem for every swap | new |
+| one worklist, every mode | `solveDeflationWith D L Hk`, GW4 parameterized by the hook | new (GW) |
+| stages composed | the tracked relation (MW6) + PP2; one theorem for every swap | new |
 | class through a unitary stage | merged `exists_pseudoConditionNumber_le_and_le_norm_sub` | merged |
 | static count of a composition | PP4 (seq adds) + `stmtWorkMono` + `kernel_rfl` | merged + new |
 | `BackwardStep` through frames and allocation | the rule candidates of Part II §7.4 (`BackwardStep.in_frame`, an allocation rule) | **planned first** (OB1), since RF1–RF6 use them about 25 times |
 
 ## 9. Target table
 
-The ids, statements and dependencies are in `~/nlalib-harness/pilot/schur-targets.json`. Sizes
-are S/M/L/XL; "w" is the wave.
+The ids, statements, dependencies and waves are in `~/nlalib-harness/pilot/schur-targets.json` (waves by longest dependency path). Sizes S/M/L/XL; "w" the wave.
 
-**L1: matrix library (10).**
+**L1: matrix library and the O7 moves (14: S 8, M 6).**
 
-* MW1 (S, w0): `IsPerturbedUnitarySimilarBy` and its API.
-* MW2 (S, w1): the witnessed `fromBlocks₁₁/₂₂`.
-* MW3 (M, w2): the range form.
-* MW4 (S, w1): the computed form and the exact-unitary form from the pair.
-* MW5 (M, w3): the leaf lift with a dense $\mathbf{U}_b$.
-* MG1 (S, w0): `givensAt`, `givensLog`, unitarity, append.
-* MG2 (S, w0): the one-sided chain.
-* MG3 (M, w0): rectangular rounded rotations.
-* MS1 (S, w0): the zero lemmas.
-* MR1 (M, w0): the strided complex product and its error.
+* MV1 (M, w0): `HoldsMatrix` …. O7: move the stored-matrix layer (ShiftedQR/Storage: HoldsMatrix, matrixWords, storedMatrix and lemmas) to its topic home; names kept via deprecated aliases; importers updated.
+* MV2 (M, w1): `ShiftedQR.coefficients` …. O7: move Coefficients, Rotation, RotationLoops (programs + word lemmas) to Matrix/FinitePrecision; rename to the NLAlib namespace with deprecated aliases.
+* MW1 (S, w0): `IsPerturbedUnitarySimilarBy` …. Named-unitary perturbed similarity and its API; bridge to the pair at scale 0 for BackwardStep (merged B6).
+* MW2 (S, w1): `IsPerturbedUnitarySimilarBy.fromBlocks₁₁` …. Witnessed lifts with a computed coupling block (error ε+ρ).
+* MW3 (M, w2): `IsPerturbedUnitarySimilarBy.of_range_block`. Range form on Fin N, block [lo, lo+d), lo+d ≤ N, computed top/right coupling, via finSumFinEquiv + submatrix_equiv.
+* MW6 (S, w1): `IsTrackedUnitarySimilar` …. Review B2: two errors: ∃ V, By V A A' εT ∧ ‖U' − U V‖ ≤ εU; trans adds both errors.
+* MW4 (S, w2): `IsTrackedUnitarySimilar.specNorm_sub_mul_mul_conjTranspose_le` …. From (1, A): ‖A − ÛT̂Ûᴴ‖ ≤ εT + (2εU+εU²)(‖A‖+εT), ‖ÛᴴÛ−1‖ ≤ 2εU+εU²; exact-unitary form.
+* MW5 (M, w3): `IsTrackedUnitarySimilar.lift_leaf_block`. Leaf lift with a dense Ub from the leaf's tracked relation and the rounded products.
+* MC1 (S, w1): `IsConditionedDiagonalizable` …. Review S2: the (κ_V ≤ B, gap ≥ Γ) class as a named predicate (repeated raw in the merged statements); transfer through a witnessed similarity of error ≤ Γ/(16(n+1)B) from the merged exists_pseudoConditionNumber_le_and_le_norm_sub.
+* MG1 (S, w0): `givensAt` …. Exact unitary of a Givens log.
+* MG2 (S, w0): `specNorm_sub_mul_le_sum` …. One-sided chains.
+* MG3 (M, w0): `IsRoundedRowRotation` …. Generalize to rectangular blocks; merged square statements are instances.
+* MS1 (S, w0): `Ops.StdModel.lit_zero` …. Zeros are exact.
+* MR1 (M, w1): `matMulOn` …. Strided complex products (left factor optionally conjugate-transposed) with error (2d+4)u‖X‖_F‖Y‖_F.
 
-**L2: Ops and programs (9).**
+**L2: the log layer and the stage programs (10: S 2, M 8).**
 
-* OL1 (S, w1): the log words.
-* OB1 (M, w0): `BackwardStep.in_frame` and the allocation rule.
-* PR1 (M, w1): rotations on views, the merged programs as wrappers.
-* PR2 (M, w2): replay programs, `_writes_word` and termination.
-* MG4 (M, w3): the replay forward error.
-* PR3 (M, w2): the reduction with a log, witnessed.
-* PR4 (M, w4): `hessenbergReduceQ` meets SC3.
-* NM1 (M, w2): `frobNormRounded` meets SC1.
-* RG1 (L, w2): `ginibreRegularizer` meets SC2. L because the merged lemma is stated at the fixed
-  `smallEigParams` list; it is generalized to any words with word 0 equal to $\gamma$.
+* GL1 (S, w1): `GivensEntry` …. Self-describing slotted static log: slots of 1+5w words, a valid word, entries (r, p, q); no count word (review B4).
+* GL2 (M, w2): `IsGivensSink` …. The reusable logged-program layer: a producer calls a sink routine per committed rotation and per accepted slot; skip sink (Inv = True, empty footprint, zero work) and slot sink (HoldsSlottedLog).
+* OB1 (M, w0): `Ops.BackwardStep.in_frame` …. Part II §7.4 rule candidates; used ~25 times.
+* PR1 (M, w2): `rotateRowsOn` …. Rotations on strided views; rotateRows/ColumnsWithScratch become instances at [n,k,0,n].
+* PR2 (M, w3): `givensReplayRows` …. Replay the valid slots (plane by bindIdx ≤ ld).
+* MG4 (M, w4): `specNorm_givensReplayWord_sub_le` …. Each replayed rotation is within 24u‖X‖ (merged one-sided bound); a replay of R rotations is within (1+24u)^R − 1 ≤ 27Ru (24Ru ≤ 1/8) of the exact product; on every tape.
+* PR3 (M, w3): `hessenbergReduceLastWith` …. In place: the reduction takes a sink; witnessed backward with Q = givensLog of the entries (check hrBound_rows first) keeping Q e_N = e_N; merged name = skip-sink instance, merged statement a corollary.
+* PR4 (M, w5): `hessenbergReduceQ` …. Stage (b): (εU, εT) = (27N²u, 50N²u).
+* NM1 (M, w3): `Ops.RoundedScalarBlas.nrm2_stdModel_bounds` …. Review S3: reuse merged ShiftedQR.matrixNorm; prove the StdModel bounds of nrm2 (two-sided, (1 ∓ (2N²+2)u)) and the contract instance.
+* RG1 (S, w3): `Schur.ginibreRegularizer` …. Review S3: at qR = smallEigParams the merged ginibrePerturb_pwrites is the contract (class (2/t₂, t₁/2) through MC1).
 
-**L3: the refactor of the decoupler chain (12).**
+**L3: the in-place refactor of the decoupler chain (13: S 1, M 5, L 6, XL 1).**
 
-* DC1 (S, w2): `RandomLogDecouplingRoutineContract` and the forgetful bridge to the merged
-  contract.
-* RF1 (L, w2): StableStep log programs and the witnessed chain.
-* RF2 (M, w3): `stepComptau`.
-* RF3 (L, w3): Regularize trials.
-* RF4 (M, w4): Regularize.
-* RF5 (L, w4): Sh, Sh trials and Exc.
-* RF6 (L, w5): iteration.
-* RF7 (L, w6): the decouple loop meets DC1.
-* RF8 (M, w3): `rhess`.
-* RF9 (M, w3): `decoupleLast`.
-* RF10 (L, w4): the SmallEig decoupler meets DC1.
-* RF11 (S, w7): the merged certificates' work numerals re-checked; merged statements unchanged.
+* DC1 (S, w3): `ShiftedQR.RandomLogDecouplingRoutineContract` …. The decoupler contract with the sink invariant and the witnessed similarity By (givensLog (slotEntries L)); the merged contract is the skip-sink corollary.
+* RF1 (L, w3): `ShiftedQR.stepWithDiagWith` …. In place: the step takes the sink; the chain lemma names its Q's (givensLog of the step's entries); merged names = skip instances, merged statements corollaries.
+* RF2 (M, w4): `ShiftedQR.stepComptauWith`. The committed comptau step; Find's trials use the skip sink.
+* RF3 (L, w4): `ShiftedQR.trialStepWith` …. Trials write their slot directly; accept validates it (no LgT).
+* RF4 (L, w5): `ShiftedQR.regularizeWith (sink)` …. RoundedRegularize + RoundedRegularizeTermination (1368 lines), review S1: L.
+* RF5 (XL, w5): `ShiftedQR.shStepWith` …. RoundedSh, RoundedShTrial, RoundedShExc, RoundedShTermination (2739 lines), review S1: XL.
+* RF6 (L, w6): `ShiftedQR.shIterationWith (sink)` …. Outcome with the named witness; measurability with the log read.
+* RF7 (L, w7): `ShiftedQR.roundedDecoupleWith (sink)` …. RoundedDecouple + RoundedDecoupleRoutine; meets DC1 at sites = k + np + 2.
+* RF7b (M, w7): `ShiftedQR.roundedDecoupleWith_terminates (sink)`. Review S1: termination half split out.
+* RF8 (M, w4): `SmallEig.rhessWith`. Random Hessenberg form with a sink; deterministic witnessed backward.
+* RF9 (M, w4): `SmallEig.decoupleLastWith`. Decouple steps through the sink.
+* RF10 (L, w5): `SmallEig.smallEigDecouplerWith` …. D3b with the sink (Decoupler, DecouplerPrecision); merged D3b a corollary.
+* RF11 (M, w10): `ShiftedQR.stmtWorkMono_shqrProgram` …. B5 (approved): the merged numerals change (list in note §14.4); recompute by kernel_rfl and restate; exponents expected unchanged.
 
-**L4: the Schur worklist and the stages (17).**
+**L4: generic worklist, hooks, leaves, the core (21: S 6, M 10, L 5).**
 
-* SC1–SC5 (S, w1, one target): contract definitions.
-* SC6 (S, w2): termination contracts and the forgetful bridges.
-* SW1 (M, w3): `solveSchurWith`.
-* SW2 (M, w4): invariant and measurability.
-* SW3 (L, w5): the round lemmas.
-* SW4 (L, w6): `solveSchurWith_pwrites`.
-* SW5 (M, w5): termination.
-* SW6 (S, w5): exact triangularity.
-* SL1 (M, w5): `smallSchurProg`.
-* SL2 (S, w2): the trivial leaf.
-* SL3 (L, w7): Part III's Theorem 1.1 in Schur form.
-* SL4 (M, w8): SL meets SC5 at the forward words.
-* SL5 (M, w6): termination.
-* SQ1 (S, w6): `roundedShQRSchur`.
-* SQ2 (L, w9): it meets SC4.
-* SQ3 (M, w7): the core's parameters.
-* SQ4 (S, w10): the Hessenberg-class Schur headline (analogue of HL2).
+* SC (S, w2): `Schur.FrobNormEstimateContract` …. Pipeline-stage contracts: two-sided norm estimate, regularizer into a class predicate C, reducer and core with the tracked relation (εU, εT), core dims opaque.
+* SC6 (S, w3): `Schur.TerminatingRegularizer` …. All-tape companions; the core's states ‖U' − UV‖ ≤ εU on every tape (review B2).
+* GW7 (S, w2): `ShiftedQR.RandomLeafRoutineContractWith` …. One generic leaf interface [d, np, T] (Bk, P) → (Bk, Ev, Ub) with an output predicate; the merged eigenvalue leaf contract and the Schur leaf contract (Ev = diag Tb, tracked (1,B)→(Ub,Tb)) are instances.
+* GW2 (S, w1): `ShiftedQR.DeflationHook` …. Hook contract: invariant + per-round extra error ρ, ρL and work; the skip hook: Inv = True, ρ = ρL = 0, zero work.
+* GW1 (M, w4): `ShiftedQR.solveDeflationWith` …. One generic worklist with decoupler, leaf and hook routines; the merged solveRoundedWith becomes the skip-hook instance (wrapper).
+* GW3 (L, w5): `ShiftedQR.DeflationWorklistState` …. The merged RoundedWorklistState/round lemmas generalized: merged invariant ∧ hook invariant; RoundedSolveBackward + RoundedHeadline round lemmas moved to the generic program.
+* GW4 (L, w6): `ShiftedQR.solveDeflationWith_pwrites`. Generic theorem: the merged conclusion with the merged error, and the hook invariant at 2(n+1)(c+ε+β+ρ+ρL).
+* GW5 (M, w5): `ShiftedQR.solveDeflationWith_terminates`. Generic termination (merged RoundedWorklistTermination generalized).
+* GW6 (M, w7): `ShiftedQR.solveRoundedWith_pwrites` …. Merged worklist theorems re-derived as skip-hook instances, statements, costs and precision unchanged.
+* SH1 (M, w4): `Schur.trackingHook`. The U-tracking hook: after a decoupler, replay on the right/top coupling and on U, exact zero at the cut; after a leaf, the three products with Ub.
+* SH2 (L, w5): `Schur.trackingHook_deflationHook`. Invariant: tracked (U,A) from (U₀,H₀), block structure with exact zeros, done blocks triangular; ρ = 78u·m·N₀, ρL from MR1; triangular at the end.
+* SL1 (M, w6): `SmallEig.smallEigProgWith` …. The Part III program generic in the hook (and the leaf output); merged smallEigProg = skip instance; the Schur leaf = tracking instance writing Bk, Ub, Ev.
+* SL3 (L, w7): `SmallEig.smallEigProgWith_pwrites`. Generic Theorem 1.1 with the hook's invariant; merged composition proof generalized.
+* SL4 (M, w8): `SmallEig.smallSchurProg_randomSchurLeafContract`. The tracking instance meets the Schur leaf contract at the forward words.
+* SL5 (M, w7): `SmallEig.smallEigProgWith_terminates`. Generic termination; merged a corollary.
+* SL6 (M, w8): `SmallEig.smallEig_measureReal_not_spectrum_le` …. Merged TH1–TH4 (and the _unconditional forms) as skip instances; statements unchanged.
+* SQ1 (S, w7): `ShiftedQR.roundedShQRWith (hook)` …. roundedShQRWith SE L Hk; merged = skip; Schur = tracking hook with the Schur leaf; threshold among the core's words.
+* SQ3 (M, w8): `ShiftedQR.shqrSchurParams` …. Merged words + threshold word; uShQRSchur = min(uShQRSmallEig, replay term).
+* SQ2 (L, w9): `ShiftedQR.roundedShQRSchur_randomSchurCoreContract`. Stage (c) at the class IsConditionedDiagonalizable B Γ, 0 < Γ (review S4).
+* SQ5 (M, w9): `ShiftedQR.roundedShQR_measureReal_not_spectrum_le` …. Merged T1c, HL2 (+ relative, Hermitian, unconditional) as skip instances; statements, costs, precision unchanged.
+* SQ4 (S, w10): `ShiftedQR.roundedShQRSchur_measureReal_not_schur_le`. Hessenberg-class Schur headline.
 
-**L5: composition, instance and certificate (13).**
+**L5: composition, instance and certificates (12: S 4, M 6, L 2).**
 
-* PP1 (M, w2): `schurPipelineWith`.
-* PP2 (L, w3): the generic composition.
-* PP3 (S, w2): the corollaries.
-* PP4 (S, w3): the static count sum.
-* CT1 (M, w4): `schurPipelineAlgorithm`.
-* HD0 (L, w9): the instance's parameters and side conditions.
-* HD1 (S, w10): the dense Schur theorem.
-* HD2 (S, w11): the explicit $\varepsilon_U$.
-* HD4 (S, w10): termination.
-* HD5 (M, w10): the bits.
-* HD6 (M, w10): the static count.
-* HD7 (M, w11): the polylog work, with `shqrCap_le_log` and `smallEigCap_le_log`.
-* CT2 (M, w11): the instance certificate.
+* PP1 (M, w3): `Schur.schurPipelineWith` …. Pipeline at c core dims (numeral), interface [N, nr, nq, d₁…d_c] (A, P) → (A, U, Fl).
+* PP2 (L, w4): `Schur.schurPipelineWith_measureReal_not_schur_le`. Generic composition, class predicates C, C' with a transfer hypothesis (review S2, B1: no δR), two errors (B2), hu : 8(n+1)u ≤ 1/4 (S4).
+* PP3 (S, w3): `Schur.SchurOutput.exists_isEigenvalueListing` …. Corollaries.
+* PP4 (S, w4): `Schur.size_stmtCost_schurPipelineWith_le` …. Static count sum (dims fixed, review S2).
+* CT1 (M, w5): `Schur.schurPipelineAlgorithm` …. Certificate from component data; work = Σ component work + glue.
+* HD0 (L, w9): `Schur.denseSchur` …. Parameters, the six-term threshold (class term for B1, δ/(192R)), side conditions of PP2.
+* HD1 (S, w10): `Schur.denseSchur_measureReal_not_schur_le`. SchurOutput A δ (58Ru) w.p.
+* HD4 (S, w10): `Schur.denseSchur_terminates`. Every tape: total and ‖ÛᴴÛ − 1‖ ≤ 58Ru; only IsExactNatLit (n+1).
+* HD5 (M, w10): `Schur.logb_inv_uDenseSchur_le`. Review B3: ≤ c₁ L⁴ (log₂ L + 1)² + c₂, L = log₂(4(n+1)/(δφ)).
+* HD6 (M, w10): `Schur.denseSchur_work_le`. c(n+1)³(k+1)⁵(nq+1)(F+1)(T+1)², kernel_rfl.
+* HD7 (M, w11): `Schur.denseSchur_work_le_polylog` …. ≤ C(n+1)³ L^p, p fixed when proved (about 12; the paper's is 2); said in the docstring.
+* CT2 (M, w11): `Schur.denseSchurAlgorithm` …. Instance certificate.
 
-**Optional (2).** OPT1 (M): the spectrum-only core contract and the pipeline variant, with the
-merged `roundedShQRSmallEig` as a degenerate core. OPT2 (XL, rejected, §4.1): the instrumentation
-("ghost") rule.
-
-Totals: 61 planned (S 20, M 28, L 13, XL 0) plus the 2 optional (M 1, XL 1). The generic part
-(matrix library, log and replay, contracts, worklist, pipeline, DC1) is 29 of the 61. A stage swap later touches only its own contract proof and the
-instance.
+Totals: 70 targets (S 21, M 35, L 13, XL 1), waves 0–11. Besides L3, fifteen targets refactor or re-derive merged material in place: MV1, MV2, PR1, PR3, GW1, GW3, GW4, GW5, GW6, SL1, SL3, SL5, SL6, SQ5, RF11. OPT1 (spectrum-only core) is deferred (O5); the instrumentation rule is rejected (§4.1) and not a target.
 
 ## 10. Risks
 
-* The refactor (L3) is the bulk of the work: about 17k merged lines on the path, with the
-  statements changed in their backward conjunct. OB1 first; without it the frame proofs repeat
-  about 25 times.
-* `measurableSet_iterationOutcome` and its siblings gain the log read. The log is a finite read
-  of words, and `givensLog` is continuous in them, but this needs checking at RF6.
-* The kernel cost of `kernel_rfl` on the larger tree for HD6. HL5's tree already passes; the
-  replay adds three loops per round.
-* The constants in PP2 and the replay constants are design estimates (O6). The statements are
-  loose on purpose, as in Part II's D7.
-* The merged `hessenbergReduceLast` proof builds $\mathbf{Q}$ in `hrBound_rows`. PR3 assumes that
-  $\mathbf{Q}$ is the product of `givens (givensCoeffs p q)` of the logged pairs; this is to be
-  checked first.
+* The in-place refactor (L3, GW, SL) is the bulk: about 17k merged lines on the decoupler path
+  plus 2.5k of the worklist; every `Writes` lemma gains the sink's `Live`/`Disj` hypotheses. OB1
+  and GL2 first; land PR3/PR4, the contracts, PP2 and the generic worklist against DC1 as a
+  hypothesis before the chain (review §2 item 3).
+* Measurability of the outcome sets with the log read (RF6).
+* `kernel_rfl` on the larger trees (HD6, RF11).
+* PR3's assumption about `hrBound_rows`' $\mathbf{Q}$ (checked first).
+* Constants of PP2 and the replay are design values (O6); the known-wrong ones are fixed (§14).
 
-## 11. Open decisions (recommendation in bold)
+## 11. Decisions (resolved by the maintainer after the review)
 
-1. **O1, the witness.** **(a) the new predicate `IsPerturbedUnitarySimilarBy`, bridged to the
-   pair at scale 0**; or (b) state everything with `IsPerturbedUnitaryPair 0 1`. The ghost route
-   is rejected: it needs a deterministic shift bound that does not hold on every tape (§4.1). It
-   would become possible only with an all-tape bound on every committed shift, about ten
-   shift-producing programs.
-2. **O2, the leaf interface.** **(a) a dense $\mathbf{U}_b$** (solver-neutral, needed for
-   modularity; cost $O(Nk^2)$ per leaf); or (b) a log (uniform with decouplers, but it ties
-   leaves to Givens).
-3. **O3, the log capacity.** **(a) $F(k + n_p + 2)k\,d$** (per trial site, no flag reasoning);
-   or (b) $Fk\,d$ (at most one acceptance per iteration, which needs the search word in the
-   invariant).
-4. **O4, worklist and leaf as siblings.** **(a) siblings `solveSchurWith`, `smallSchurProg`
-   beside the merged ones**; or (b) a hook-generalized worklist with the merged one as the
-   `skip`-hook wrapper (re-proves the merged worklist theorems; no gain, because eigenvalue
-   leaves cannot be Schur leaves).
-5. **O5, spectrum-only core.** **Optional OPT1**: a contract `RandomSpectrumCoreContract` that
-   the merged `roundedShQRSmallEig` meets, with a pipeline variant concluding HD3's eigenvalue
-   statement. It is cheap, but no consumer needs it now.
-6. **O6, constants.** **State PP2 with the elaborated constants and allow them to move at proof
-   time (a one-line amendment)**, as Part II's D7.
-7. **O7, placement.** **Keep the new rotation and log programs in `Eigensolvers` with flags**;
-   moving `HoldsMatrix` and `RotationLoops` to `Ops/Blas` and `Matrix/FinitePrecision` is a
-   separate cleanup PR.
+1. **O1** (a) `IsPerturbedUnitarySimilarBy`, with the two-error tracked relation (MW6) in the
+   contracts and the worklist invariant. Ghost route rejected.
+2. **O2** (a) dense $\mathbf{U}_b$ at the leaf.
+3. **O3** the slotted static log, self-describing entries, behind the sink layer (§14.2 gives the
+   reasons for keeping it).
+4. **O4** (b) one generic deflation worklist with a hook; the merged eigenvalue programs and
+   theorems are the skip instances, with their statements, costs and precision unchanged.
+5. **O5** deferred (the spectrum-only core; no consumer).
+6. **O6** constants allowed to move at proof time; the known-wrong ones fixed now (`hclass`,
+   `64` → `58`, HD5).
+7. **O7** move `HoldsMatrix` and the rotation programs first (MV1, MV2).
+8. **B5** approved: the merged certificate numerals change; list in §14.4.
 
 ## 12. Elaboration (scratch, not in the repo)
 
@@ -835,23 +817,27 @@ File `/home/ubuntu/.claude/jobs/59127b8e/tmp/schur-elab/SchurStatements.lean`, c
 Programs with real `opsImpl%` bodies:
 
 * `rotateRowsOn` and `rotateColumnsOn`;
-* `givensReplayRows` and `givensReplayColumns` (a `bindIdx` inside a counted loop, offsets
-  `1 + 5 * e`);
+* `givensReplayRows` and `givensReplayColumns` (valid-slot test, a `bindIdx` for the plane word
+  inside counted loops, offsets `s * (1 + 5 * w) + 1 + 5 * i`);
 * `hessenbergReduceQ`.
 
-The other programs are stubs: `hessenbergReduceLastLog`, `schurPipelineWith`, the instance
-components. Elaborated:
+The other programs are stubs: `hessenbergReduceLastLog` (named `hessenbergReduceLastWith` in the
+skeleton), `schurPipelineWith`, `solveDeflationWith`, `skipHook`, the instance components.
+Elaborated after the review (second pass, no errors):
 
-* MW1 (with `trans` and the pair bridge), MW2, MW4;
-* MG1 (`givensAt`, `givensLog` with real bodies), MG2;
-* `logWords`, `HoldsGivensLog`;
-* SC1–SC5 and DC1, with real bodies;
-* PP2 and PP3 (both corollaries), PP4;
-* HD1, HD2, HD4, HD5, HD6 and `uDenseSchur_pos`.
+* MW1 (with `trans` and the pair bridge), MW2, MW6 (with `trans`), MW4 (revised, and the
+  exact-unitary form), MC1 (with the transfer);
+* MG1, MG2; GL1 (`GivensEntry`, `slotEntries`, `HoldsSlottedLog`), GL2 (`IsGivensSink`);
+* SC1–SC4 (two-sided norm, class predicates, tracked relation, opaque core dims), SC6 (core),
+  SC5 (leaf, tracked), DC1 (slotted log, `IsConditionedDiagonalizable`);
+* GW2 (`DeflationHook` shape) and GW4 `solveDeflationWith_pwrites` (generic, merged conclusion
+  plus the hook invariant);
+* PP2 (revised), PP3, PP4 (revised dims);
+* HD1 (58), HD4 (all-tape orthogonality), HD5 (revised), HD6, `uDenseSchur_pos`,
+  `mul_denseSchurRotations_le`.
 
-Fixes from elaboration: the pair relation needed `Matrix.Perturbation.UnitaryPair` imported
-explicitly. The scalar `nrm2Sum` needs `Blas1Op`, which `SmallEigOp` lacks, so NM1 is a
-scalar-only program.
+The first pass's file is kept as `SchurStatements.v1.lean`. Fixes from elaboration: the pair
+relation needed `Matrix.Perturbation.UnitaryPair` imported explicitly.
 
 ## 13. Material
 
@@ -860,3 +846,100 @@ The Part I intro (`src1/intro.tex:18, 176`), Part II and III LaTeX, the two pred
 the step, which drives §4.1), `Sizing-SQR-FP-n3.md` (static $n^3$, guard narrowing), the merged
 Lean listed in §3.3, `Computation-CertifiedRoutines.md` (routine-certificate precedent), Higham
 2002 Ch. 19 (Givens error, accumulation), Watkins 2008 (Schur vectors by accumulation).
+
+## 14. Changes after review
+
+Fable's design review (`Review-Fable-SCHUR-Design.md`, "revise, then approve for skeleton") and
+three maintainer messages (decisions O1–O7, B5 approved, "the best final structure, not the least
+invasive diff", O4(b)). Every change below is applied in the sections above.
+
+### 14.1 Blockers
+
+* **B1, `hclass`.** It was `δR + 3εH ≤ Γ/(16(n+1)B)`, unsatisfiable at the instance
+  ($\Gamma \le \delta'/48 < \delta'/2 = \delta_R$). Now the class is a predicate pair `C`, `C'` with
+  a transfer hypothesis through the **reducer's** witnessed similarity only; at the instance it is
+  MC1 with $3\varepsilon_{H,T} \le \Gamma/(16(n+1)B)$, guaranteed by the new threshold term 3
+  ($\boldsymbol{u} \le t_1t_2/(7200(n+1)^3)$). The wrong justification in §5 is corrected.
+* **B2, two errors.** The contracts and the worklist invariant use `IsTrackedUnitarySimilar εU εT`
+  (MW6), not the single-ε pair. PP2 gives $e_U = 2\varepsilon_U + \varepsilon_U^2$ with
+  $\varepsilon_U = \varepsilon_{H,U} + \varepsilon_{C,U}$ (no $\delta$), and HD1 is its instance. The
+  constant is derived (§1): $24\boldsymbol{u}$ per replayed rotation (merged one-sided bound),
+  $(1 + 24\boldsymbol{u})^R - 1 \le 27R\boldsymbol{u}$ under $24R\boldsymbol{u} \le 1/8$, so
+  $\|\widehat{\mathbf{U}}^{\mathsf H}\widehat{\mathbf{U}} - \mathbf{I}\| \le 58R\boldsymbol{u}$; threshold term 5 is
+  $\delta/(192R)$. The orthogonality holds **on every tape** (HD4, SC6). HD2 is merged into HD1.
+* **B3, bits.** HD5 now reads $\log_2(1/\boldsymbol{u}_0) \le c_1L^4(\log_2 L + 1)^2 + c_2$
+  ($k = \Theta(L\log L)$). §0 and §1 corrected.
+* **B4, exact naturals.** The count word is gone (slotted static log, self-describing entries):
+  the largest natural written is a plane index $\le n$, so `IsExactNatLit id Mch (n + 1)` suffices
+  for HD1 and HD4.
+* **B5, merged certificate numerals.** Approved by the maintainer; listed in §14.4.
+
+### 14.2 Structure: the best final design, with reasons
+
+* **Witness (O1 a).** The merged chain is refactored **in place**: every rotation-producing
+  program takes a sink and every backward conclusion names its unitary
+  (`IsPerturbedUnitarySimilarBy (givensLog L)`); the merged `∃ U` statements are one-line
+  corollaries. Reason: the witness is the strongest true statement of each lemma, a consumer
+  that needs the unitary (Schur vectors, eigenvectors later) gets it without a second proof, and
+  there is one program per algorithm (rule 4) instead of `…Log` twins.
+* **Log (O3).** A reusable **Givens log layer** (GL1, GL2) rather than a shifted-QR-specific log:
+  self-describing entries (plane, $p$, $q$), slotted static storage with validity words, and sink
+  routines (`skipSink`, `slotSink`). The slotted static layout is kept because it is also the
+  cleanest: no count (no exact naturals beyond $n + 1$, B4), static cost that the `stmtWorkMono`
+  analysis sees directly, trials write their own slot and acceptance only validates it (no trial
+  buffer, no copy). The entries carry their plane (one word more than Fable's slotted layout) so
+  that the replay is producer-agnostic: the reducer, the sweep, `rhess` and any later Givens
+  algorithm share one replay and one error lemma. The sink makes the eigenvalue-only run pay
+  nothing (`skipSink`: empty footprint, zero work) instead of writing a scratch log.
+* **Worklist (O4 b).** One generic `solveDeflationWith D L Hk`; its theorem (GW4) is parameterized
+  by the hook's contract, so error, work and precision terms come from the hook; the skip hook
+  contributes zero. The merged `solveRoundedWith`, `roundedShQRWith`, `smallEigProg` are the
+  skip-hook instances and their theorems (worklist, T1c, HL2, TH1–TH4, the `_unconditional`,
+  relative and Hermitian forms) are re-derived with their current statements, costs and
+  precision (GW6, SQ5, SL6). The leaf has one generic contract (GW7) with the eigenvalue and the
+  Schur leaves as instances.
+* **Modularity (S2).** Core dims opaque (`(n+1) :: np :: cd`), class predicates, the threshold
+  among the core's words, the pipeline's `nr` a dim; SC1 two-sided. Four pipeline stages and
+  three worklist routines.
+* **Library first (S3, O7).** NM1 is the `StdModel` bound of the merged `matrixNorm`
+  (`RoundedScalarBlas.nrm2`), not a new program. RG1 is S: at `qR = smallEigParams …` the merged
+  `ginibrePerturb_pwrites` is the contract. `HoldsMatrix` and the rotation programs move first
+  (MV1, MV2), so the log layer, the strided rotations and the products land in
+  `Matrix/FinitePrecision`.
+* **Sizes (S1).** RF5 XL; RF4 L; RF7 split (RF7b termination M); RF11 M.
+* **S4.** PP2's glue condition is `8(n+1)u ≤ 1/4`; SQ2 states `0 < Γ`.
+* **Nits.** "four stages"; $e_A$ relative, $e_U$ absolute (docstring of `SchurOutput`). The base
+  is still `cleanup/smalleig`; rebase on `main` before the skeleton.
+
+### 14.3 Targets
+
+70 targets (S 21, M 35, L 13, XL 1), waves 0–11 (§9). Removed: SW1–SW6, SL2, HD2, OL1, OPT1,
+OPT2. Added: MV1, MV2, MW6, MC1, GL1, GL2, GW1–GW7, SH1, SH2, SL6, SQ5, RF7b.
+
+### 14.4 Merged statements and numerals that change (B5, approved; rename map)
+
+The skip-sink and skip-hook instances add frame instructions to the merged trees, so the
+following `kernel_rfl` equalities and public work definitions change. The new numerals are fixed
+by `kernel_rfl` at RF11; the exponents are expected to stay.
+
+| merged declaration | file | old | new |
+|---|---|---|---|
+| `ShiftedQR.stmtWorkMono_shqrProgram` (statement) | RoundedCertificate | `⟨196218, [3, 3, 1, 1]⟩` | `⟨c₁, [3, 3, 1, 1]⟩`, c₁ by `kernel_rfl` |
+| `ShiftedQR.shqrWork` (definition) | RoundedCertificate | `196218 * …` | `c₁ * …` |
+| `ShiftedQR.stmtWorkMono_shqrSmallEigProgram` (statement) | RoundedSmallEigCertificate | `⟨675307, [3, 4, 1, 1, 2]⟩` | `⟨c₂, [3, 4, 1, 1, 2]⟩` |
+| `ShiftedQR.shqrSmallEigWork` (definition) | RoundedSmallEigCertificate | `675307 * …` | `c₂ * …` |
+| `SmallEig.stmtWorkMono_smallEigProgram` (statement) | SmallEig/Certificate | `⟨373483, [4, 0, 2]⟩` | `⟨c₃, [4, 0, 2]⟩` |
+| `SmallEig.smallEigWork` (definition) | SmallEig/Certificate | `373483 * …` | `c₃ * …` |
+| `ShiftedQR.roundedShQR_work_le` (proof witness only; statement `∃ c` unchanged) | RoundedTheorems | `2011` | by `kernel_rfl` |
+| `ShiftedQR.roundedShQRSmallEig_work_le` (witness only) | RoundedSmallEig | `15895` | by `kernel_rfl` |
+| `SmallEig.smallEig_work_le` (witness only) | SmallEig/Theorems | `3473` | by `kernel_rfl` |
+| `ShiftedQR.exactWorkCoefficient`, `exactWorkDegree` (computed definitions; PR1 makes `rotateRowsWithScratch` an instance) | ShiftedQR/Cost | computed | computed (value changes, no numeral in a statement) |
+
+Renames (no statement weakened): `solveRoundedWith`, `roundedShQRWith`, `smallEigProg`,
+`multiStepStable`, `stepWithDiag`, `hessenbergReduceLast`, `rhess`, `decoupleLast`,
+`smallEigDecoupler`, `regularizeWith`, `shStep`, `shIterationWith`, `roundedDecoupleWith` keep
+their names as the skip instances; the generic programs are `solveDeflationWith`,
+`smallEigProgWith`, and `…With` forms taking a sink (`multiStepStableWith`,
+`hessenbergReduceLastWith`, …). MV1/MV2 move `HoldsMatrix` and the rotation programs with
+deprecated aliases. The merged eigenvalue statements are strengthened only where a witness is
+added, never weakened.

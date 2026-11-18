@@ -11,7 +11,7 @@ public import NLAlib.Ops.Logic.Allocation
 public import NLAlib.Matrix.FinitePrecision.Machine
 
 /-!
-# Interleaved complex storage for shifted QR
+# Interleaved complex matrix storage
 
 The representation is the existing pair entry codec, with real and imaginary components in
 adjacent words and matrix columns stored consecutively. The predicates below abbreviate the
@@ -20,14 +20,15 @@ scoped allocation; no numerical operation or new encoding is introduced.
 
 ## Main results
 
-* `NLAlib.ShiftedQR.HoldsMatrix`: a finite complex matrix in a real-word block.
-* `NLAlib.ShiftedQR.HoldsMatrix.get_re`, `NLAlib.ShiftedQR.HoldsMatrix.get_im`: its actual words.
-* `NLAlib.ShiftedQR.HoldsMatrix.of_eqOff`: preservation under disjoint writes.
+* `NLAlib.HoldsMatrix`: a finite complex matrix in a real-word block.
+* `NLAlib.HoldsMatrix.get_re`, `NLAlib.HoldsMatrix.get_im`: its actual words.
+* `NLAlib.HoldsMatrix.of_eqOff`: preservation under disjoint writes.
+* `NLAlib.storedMatrix`: the matrix read entrywise from a block (`NLAlib.HoldsMatrix.eq_storedMatrix`).
 -/
 
 @[expose] public section
 
-namespace NLAlib.ShiftedQR
+namespace NLAlib
 
 open Ops
 
@@ -212,4 +213,41 @@ theorem HoldsMatrix.of_below {rows cols L : ℕ} {b : ℕ × ℕ}
     HoldsMatrix b A s' :=
   hBelow.keep (readsOnly_holdsMatrix b A) (fun _ _ hi => hi.1 ▸ hb) h
 
-end NLAlib.ShiftedQR
+/-- The complex matrix read entrywise from the pair-codec block at `b` (column-major, real and
+imaginary parts in adjacent words), with an uninitialised word read as $0$. -/
+def storedMatrix (b : ℕ × ℕ) (rows cols : ℕ) (s : Store ℝ) : Matrix (Fin rows) (Fin cols) ℂ :=
+  Matrix.of fun i j => ⟨(s.get b.1 (b.2 + 2 * (j * rows + i))).getD 0,
+    (s.get b.1 (b.2 + 2 * (j * rows + i) + 1)).getD 0⟩
+
+/-- A stored matrix is the matrix read from its block. -/
+theorem HoldsMatrix.eq_storedMatrix {rows cols : ℕ} {b : ℕ × ℕ}
+    {A : Matrix (Fin rows) (Fin cols) ℂ} {s : Store ℝ} (h : HoldsMatrix b A s) :
+    A = storedMatrix b rows cols s := by
+  ext i j
+  apply Complex.ext <;> simp [storedMatrix, h.get_re i j, h.get_im i j]
+
+/-- A block whose words are all initialised holds the matrix read from it. -/
+theorem holdsMatrix_storedMatrix {rows cols : ℕ} {b : ℕ × ℕ} {s : Store ℝ}
+    (h : ∀ j < 2 * (cols * rows), (s.get b.1 (b.2 + j)).isSome) :
+    HoldsMatrix b (storedMatrix b rows cols s) s := by
+  let xs := List.ofFn fun j : Fin (2 * (cols * rows)) => (s.get b.1 (b.2 + j)).getD 0
+  have hr : s.readBlock b.1 b.2 (2 * (cols * rows)) = some xs := by
+    refine Store.readBlock_eq_some_iff.mpr ⟨by simp [xs], fun j hj => ?_⟩
+    obtain ⟨v, hv⟩ := Option.isSome_iff_exists.mp (h j hj)
+    simp [xs, hv, hj]
+  let A₀ : Matrix (Fin rows) (Fin cols) ℂ :=
+    decodeMatrix id ((EntryCodec.pair ℝ).matrix rows cols xs)
+  have hw : matrixWords A₀ = xs := by
+    have hcomponents : (A₀.map fun z => (z.re, z.im)) = (EntryCodec.pair ℝ).matrix rows cols xs :=
+      by ext i j <;> rfl
+    unfold matrixWords
+    rw [hcomponents]
+    exact (EntryCodec.pair ℝ).packFinMatrix_matrix rows cols xs (by
+      simp only [xs, List.length_ofFn]
+      ring)
+  have hA₀ : HoldsMatrix b A₀ s := by
+    rw [HoldsMatrix, hw]
+    exact hr
+  rwa [← hA₀.eq_storedMatrix]
+
+end NLAlib

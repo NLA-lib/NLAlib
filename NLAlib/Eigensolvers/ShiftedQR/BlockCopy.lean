@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Eigensolvers.ShiftedQR.Storage
+public import NLAlib.Matrix.FinitePrecision.StoredMatrix
 public import NLAlib.Ops.Blas.BlockCopy
 public import NLAlib.Matrix.QRIteration.HessenbergDeflation
 
@@ -61,7 +61,7 @@ theorem blockFp_le {N lo d : ℕ} (b : ℕ × ℕ) (hr : lo + d ≤ N) :
   · omega
 
 /-- A packed global matrix supplies the exact component words of any bounded diagonal view. -/
-private theorem HoldsMatrix.block_entries {n lo d : ℕ} {b : ℕ × ℕ}
+private theorem _root_.NLAlib.HoldsMatrix.block_entries {n lo d : ℕ} {b : ℕ × ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {st : Store ℝ}
     (hH : HoldsMatrix b H st) (hr : lo + d ≤ n + 1) :
     st.HoldsEntries (EntryCodec.pair ℝ)
@@ -111,7 +111,7 @@ theorem copyToWork_writes {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS : IsScal
 
 /-- Writing one bounded diagonal view replaces exactly that mathematical submatrix.
 The ordinary entry-region frame retains every global matrix entry outside the view. -/
-private theorem HoldsMatrix.of_block_write {n lo d : ℕ} {a : ℕ × ℕ}
+private theorem _root_.NLAlib.HoldsMatrix.of_block_write {n lo d : ℕ} {a : ℕ × ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {B : Matrix (Fin d) (Fin d) ℂ}
     {st st' : Store ℝ} (hH : HoldsMatrix a H st) (hr : lo + d ≤ n + 1)
     (hfr : st.EqOff ((EntryCodec.pair ℝ).regionFp a.1

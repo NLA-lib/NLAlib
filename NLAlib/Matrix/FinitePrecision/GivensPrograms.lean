@@ -5,10 +5,10 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Eigensolvers.ShiftedQR.Rotation
+public import NLAlib.Matrix.FinitePrecision.GivensRotation
 public import NLAlib.Ops.Logic.IndependentLoop
 public import NLAlib.Ops.Logic.Allocation
-public import NLAlib.Eigensolvers.ShiftedQR.Storage
+public import NLAlib.Matrix.FinitePrecision.StoredMatrix
 
 /-!
 # Scalar Givens row and column loops
@@ -18,20 +18,20 @@ scratch block is reused by every entry-pair rotation in a row or column loop.
 
 ## Main results
 
-* `NLAlib.ShiftedQR.rotateRowsWithScratch`: a scalar loop on two adjacent rows.
-* `NLAlib.ShiftedQR.rotateColumnsWithScratch`: a scalar loop on two adjacent columns.
-* `NLAlib.ShiftedQR.machineRowRotation`, `NLAlib.ShiftedQR.machineColRotation`: the rotations
+* `NLAlib.rotateRowsWithScratch`: a scalar loop on two adjacent rows.
+* `NLAlib.rotateColumnsWithScratch`: a scalar loop on two adjacent columns.
+* `NLAlib.machineRowRotation`, `NLAlib.machineColRotation`: the rotations
   the loops compute on any machine; in exact arithmetic the Givens products
-  (`NLAlib.ShiftedQR.machineRowRotation_eq`, `NLAlib.ShiftedQR.machineColRotation_eq`).
-* `NLAlib.ShiftedQR.rotateRows_writes_word`, `NLAlib.ShiftedQR.rotateColumns_writes_word`: the
+  (`NLAlib.machineRowRotation_eq`, `NLAlib.machineColRotation_eq`).
+* `NLAlib.rotateRows_writes_word`, `NLAlib.rotateColumns_writes_word`: the
   loops on any machine; the exact theorems are their corollaries.
-* `NLAlib.ShiftedQR.rotateRows_writes`: the exact left Givens product with scoped scratch.
-* `NLAlib.ShiftedQR.rotateColumns_writes`: the exact right adjoint product with scoped scratch.
+* `NLAlib.rotateRows_writes`: the exact left Givens product with scoped scratch.
+* `NLAlib.rotateColumns_writes`: the exact right adjoint product with scoped scratch.
 -/
 
 @[expose] public section
 
-namespace NLAlib.ShiftedQR
+namespace NLAlib
 
 open Ops
 open scoped Matrix
@@ -73,7 +73,7 @@ def rotateColumns : Impl Op Tst := opsImpl% [n, k] (A, C, S) → (A) {
 /-- The rows $i, j$ of $\mathbf{H}$ rotated pairwise by the coefficient words $(c, s)$ on the
 machine `M`, as the scalar row rotation computes them: row $i$ is the computed
 $c\mathbf{H}_{i\cdot} + s\mathbf{H}_{j\cdot}$, row $j$ the computed
-$-\bar s\mathbf{H}_{i\cdot} + \bar c\mathbf{H}_{j\cdot}$ (`NLAlib.ShiftedQR.linearComplex`,
+$-\bar s\mathbf{H}_{i\cdot} + \bar c\mathbf{H}_{j\cdot}$ (`NLAlib.linearComplex`,
 conjugation by negation of the words), the other rows are kept. -/
 def machineRowRotation {n : ℕ} (M : Machine ℝ) (i j : Fin n) (c s : ℂ)
     (H : Matrix (Fin n) (Fin n) ℂ) : Matrix (Fin n) (Fin n) ℂ :=
@@ -426,7 +426,7 @@ theorem machineColRotation_eq {n : ℕ} {M : Machine ℝ} {i j : Fin n} {c s : �
   exact (mul_givens_apply_of_ne hti htj (star c) (-s) H r).symm
 
 /-- Scalar pair rotations on any machine store the machine row rotation
-(`NLAlib.ShiftedQR.machineRowRotation`) of the rows $k, k + 1$. The matrix and coefficients are
+(`NLAlib.machineRowRotation`) of the rows $k, k + 1$. The matrix and coefficients are
 disjoint, and a separate ten-word buffer is reused for all columns. The two coefficient views may
 overlap each other. [GolubVanLoan2013, §5.1.8]. -/
 theorem rotateRowsWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
@@ -499,7 +499,7 @@ theorem rotateRowsWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
   rwa [machineRowRotation_eq hE (Fin.ne_of_val_ne (Nat.succ_ne_self k).symm)] at hm
 
 /-- Scalar pair rotations on any machine store the machine column rotation
-(`NLAlib.ShiftedQR.machineColRotation`) of the columns $k, k + 1$. The matrix and coefficients
+(`NLAlib.machineColRotation`) of the columns $k, k + 1$. The matrix and coefficients
 are disjoint, and a separate ten-word buffer is reused for all rows. The two coefficient views
 may overlap each other. [GolubVanLoan2013, §5.1.8]. -/
 theorem rotateColumnsWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
@@ -572,7 +572,7 @@ theorem rotateColumnsWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ
   rwa [machineColRotation_eq hE (Fin.ne_of_val_ne (Nat.succ_ne_self k).symm)] at hm
 
 /-- A scoped row rotation on any machine stores the machine row rotation
-(`NLAlib.ShiftedQR.machineRowRotation`) and releases its scratch. The matrix and each coefficient
+(`NLAlib.machineRowRotation`) and releases its scratch. The matrix and each coefficient
 view are spatially disjoint; the coefficient views may overlap. [GolubVanLoan2013, §5.1.8]. -/
 theorem rotateRows_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
@@ -639,7 +639,7 @@ theorem rotateRows_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
   rwa [machineRowRotation_eq hE (Fin.ne_of_val_ne (Nat.succ_ne_self k).symm)] at hm
 
 /-- A scoped column rotation on any machine stores the machine column rotation
-(`NLAlib.ShiftedQR.machineColRotation`) and releases its scratch. The matrix and each
+(`NLAlib.machineColRotation`) and releases its scratch. The matrix and each
 coefficient view are spatially disjoint; the coefficient views may overlap.
 [GolubVanLoan2013, §5.1.8]. -/
 theorem rotateColumns_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
@@ -707,4 +707,4 @@ theorem rotateColumns_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     fun _ _ ⟨hp, hm⟩ => ⟨hp, ?_⟩
   rwa [machineColRotation_eq hE (Fin.ne_of_val_ne (Nat.succ_ne_self k).symm)] at hm
 
-end NLAlib.ShiftedQR
+end NLAlib

@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Eigensolvers.ShiftedQR.Rotation
+public import NLAlib.Matrix.FinitePrecision.GivensRotation
 
 /-!
 # Complex row-vector Givens rotation

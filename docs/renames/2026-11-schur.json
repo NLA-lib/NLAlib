@@ -1,0 +1,357 @@
+{
+  "date": "2026-11-18",
+  "note": "SCHUR O7 (MV1, MV2): the stored-matrix layer (ShiftedQR/Storage, and storedMatrix from RoundedHeadline) moves to Matrix/FinitePrecision/StoredMatrix, and the Givens coefficient and rotation programs (ShiftedQR/Coefficients, Rotation, RotationLoops) to Matrix/FinitePrecision/GivensCoefficients, GivensRotation and GivensPrograms; the declarations leave the ShiftedQR namespace for NLAlib. Pure relocation: no statement or body changed.",
+  "renames": [
+    {
+      "old": "NLAlib.ShiftedQR.HoldsMatrix",
+      "new": "NLAlib.HoldsMatrix",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.HoldsMatrix.eq_storedMatrix",
+      "new": "NLAlib.HoldsMatrix.eq_storedMatrix",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.HoldsMatrix.get_im",
+      "new": "NLAlib.HoldsMatrix.get_im",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.HoldsMatrix.get_re",
+      "new": "NLAlib.HoldsMatrix.get_re",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.HoldsMatrix.of_below",
+      "new": "NLAlib.HoldsMatrix.of_below",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.HoldsMatrix.of_entry_write",
+      "new": "NLAlib.HoldsMatrix.of_entry_write",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.HoldsMatrix.of_eqOff",
+      "new": "NLAlib.HoldsMatrix.of_eqOff",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.HoldsMatrix.of_get",
+      "new": "NLAlib.HoldsMatrix.of_get",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.HoldsMatrix.read_entry",
+      "new": "NLAlib.HoldsMatrix.read_entry",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.HoldsMatrix.shiftColumn",
+      "new": "NLAlib.HoldsMatrix.shiftColumn",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.coefficientDivide",
+      "new": "NLAlib.coefficientDivide",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.coefficientPrefix",
+      "new": "NLAlib.coefficientPrefix",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.coefficientRadius",
+      "new": "NLAlib.coefficientRadius",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.coefficientRadius_eq",
+      "new": "NLAlib.coefficientRadius_eq",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.coefficientZero",
+      "new": "NLAlib.coefficientZero",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.coefficient_radius_eq",
+      "new": "NLAlib.coefficient_radius_eq",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.coefficients",
+      "new": "NLAlib.coefficients",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.coefficientsWithScratch",
+      "new": "NLAlib.coefficientsWithScratch",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.coefficientsWithScratch_writes",
+      "new": "NLAlib.coefficientsWithScratch_writes",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.coefficientsWithScratch_writes_word",
+      "new": "NLAlib.coefficientsWithScratch_writes_word",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.coefficients_writes",
+      "new": "NLAlib.coefficients_writes",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.coefficients_writes_word",
+      "new": "NLAlib.coefficients_writes_word",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.decode_linearWords",
+      "new": "NLAlib.decode_linearWords",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.holdsMatrix_storedMatrix",
+      "new": "NLAlib.holdsMatrix_storedMatrix",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.leftInstructions",
+      "new": "NLAlib.leftInstructions",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.length_matrixWords",
+      "new": "NLAlib.length_matrixWords",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.linearComplex",
+      "new": "NLAlib.linearComplex",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.linearComplex_eq",
+      "new": "NLAlib.linearComplex_eq",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.listColumn",
+      "new": "NLAlib.listColumn",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.listColumn_length",
+      "new": "NLAlib.listColumn_length",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.machineColRotation",
+      "new": "NLAlib.machineColRotation",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.machineColRotation_apply_left",
+      "new": "NLAlib.machineColRotation_apply_left",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.machineColRotation_apply_of_ne",
+      "new": "NLAlib.machineColRotation_apply_of_ne",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.machineColRotation_apply_right",
+      "new": "NLAlib.machineColRotation_apply_right",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.machineColRotation_eq",
+      "new": "NLAlib.machineColRotation_eq",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.machineRowRotation",
+      "new": "NLAlib.machineRowRotation",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.machineRowRotation_apply_left",
+      "new": "NLAlib.machineRowRotation_apply_left",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.machineRowRotation_apply_of_ne",
+      "new": "NLAlib.machineRowRotation_apply_of_ne",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.machineRowRotation_apply_right",
+      "new": "NLAlib.machineRowRotation_apply_right",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.machineRowRotation_eq",
+      "new": "NLAlib.machineRowRotation_eq",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.matrixOfWords",
+      "new": "NLAlib.matrixOfWords",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.matrixOfWords_matrixWords",
+      "new": "NLAlib.matrixOfWords_matrixWords",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.matrixWords",
+      "new": "NLAlib.matrixWords",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.matrixWords_matrixOfWords",
+      "new": "NLAlib.matrixWords_matrixOfWords",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.readsOnly_holdsMatrix",
+      "new": "NLAlib.readsOnly_holdsMatrix",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.rightInstructions",
+      "new": "NLAlib.rightInstructions",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.rotateColumns",
+      "new": "NLAlib.rotateColumns",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.rotateColumnsWithScratch",
+      "new": "NLAlib.rotateColumnsWithScratch",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.rotateColumnsWithScratch_writes",
+      "new": "NLAlib.rotateColumnsWithScratch_writes",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.rotateColumnsWithScratch_writes_word",
+      "new": "NLAlib.rotateColumnsWithScratch_writes_word",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.rotateColumns_writes",
+      "new": "NLAlib.rotateColumns_writes",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.rotateColumns_writes_word",
+      "new": "NLAlib.rotateColumns_writes_word",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.rotateLeftWithScratch",
+      "new": "NLAlib.rotateLeftWithScratch",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.rotateRightWithScratch",
+      "new": "NLAlib.rotateRightWithScratch",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.rotateRows",
+      "new": "NLAlib.rotateRows",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.rotateRowsWithScratch",
+      "new": "NLAlib.rotateRowsWithScratch",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.rotateRowsWithScratch_writes",
+      "new": "NLAlib.rotateRowsWithScratch_writes",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.rotateRowsWithScratch_writes_word",
+      "new": "NLAlib.rotateRowsWithScratch_writes_word",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.rotateRows_writes",
+      "new": "NLAlib.rotateRows_writes",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.rotateRows_writes_word",
+      "new": "NLAlib.rotateRows_writes_word",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.rotationEntry",
+      "new": "NLAlib.rotationEntry",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedGivensCoeffs_eq_givensCoeffs",
+      "new": "NLAlib.roundedGivensCoeffs_eq_givensCoeffs",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.roundedGivensCoeffs_eq_ite",
+      "new": "NLAlib.roundedGivensCoeffs_eq_ite",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.scratchWord",
+      "new": "NLAlib.scratchWord",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.shiftColumn",
+      "new": "NLAlib.shiftColumn",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.storedMatrix",
+      "new": "NLAlib.storedMatrix",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.writes_rotateLeftWithScratch",
+      "new": "NLAlib.writes_rotateLeftWithScratch",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.writes_rotateLeftWithScratch_word",
+      "new": "NLAlib.writes_rotateLeftWithScratch_word",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.writes_rotateRightWithScratch",
+      "new": "NLAlib.writes_rotateRightWithScratch",
+      "rule": "N12"
+    },
+    {
+      "old": "NLAlib.ShiftedQR.writes_rotateRightWithScratch_word",
+      "new": "NLAlib.writes_rotateRightWithScratch_word",
+      "rule": "N12"
+    }
+  ],
+  "statementChanged": []
+}

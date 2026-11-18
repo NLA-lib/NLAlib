@@ -6,9 +6,9 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Eigensolvers.ShiftedQR.Backward
-public import NLAlib.Eigensolvers.ShiftedQR.Coefficients
+public import NLAlib.Matrix.FinitePrecision.GivensCoefficients
 public import NLAlib.Eigensolvers.ShiftedQR.Hessenberg
-public import NLAlib.Eigensolvers.ShiftedQR.RotationLoops
+public import NLAlib.Matrix.FinitePrecision.GivensPrograms
 public import NLAlib.Matrix.FinitePrecision.GivensRounded
 public import NLAlib.Matrix.Perturbation.UnitarySimilarity
 public import NLAlib.Ops.Logic.Functional
@@ -55,7 +55,7 @@ variable {O Q : Type} [Has ScalarOp O] [Has CmpTst Q]
 
 /-- **One step of the bottom-up reduction** at the row $r$ and the columns $c, c + 1$: the pair
 $(\mathbf{A}_{r, c+1}, -\mathbf{A}_{r, c})$ into `Uv`, its rounded Givens coefficients into
-`Cf` (`NLAlib.ShiftedQR.coefficients`), then the rotation of the columns $c, c + 1$ and of the
+`Cf` (`NLAlib.coefficients`), then the rotation of the columns $c, c + 1$ and of the
 rows $c, c + 1$ of `A` in place. The interface is `[N, r, c] (A) → (A, Cf, Uv)`.
 Algorithm: hessenberg-reduction -/
 def reduceLastStep : Impl O Q := opsImpl% [N, r, c] (A) → (A, Cf, Uv) {

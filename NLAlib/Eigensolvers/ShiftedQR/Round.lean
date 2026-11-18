@@ -32,8 +32,8 @@ variable {Op Tst : Type} [Has ScalarOp Op] [Has CmpTst Tst]
 
 /-- One round on any machine computes the coefficient words `(cv, sv)` of the actual working
 column (`NLAlib.roundedGivensCoeffs`), rotates the rows $k, k + 1$ of the working matrix
-and conjugates the output by them (`NLAlib.ShiftedQR.machineRowRotation`,
-`NLAlib.ShiftedQR.machineColRotation`). The two matrices and four coefficient words are
+and conjugates the output by them (`NLAlib.machineRowRotation`,
+`NLAlib.machineColRotation`). The two matrices and four coefficient words are
 separated views; output aliases are exact. -/
 theorem round_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hCmp : IsCmp id I)

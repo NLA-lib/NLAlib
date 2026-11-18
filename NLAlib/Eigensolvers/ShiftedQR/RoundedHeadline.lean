@@ -33,8 +33,8 @@ decoupler that meets `NLAlib.ShiftedQR.RandomDecouplingContract` (Lemma 6.4's lo
 ## Main definitions
 
 * `NLAlib.ShiftedQR.RandomDecouplingContract`, `NLAlib.ShiftedQR.RandomLeafContract`.
-* `NLAlib.ShiftedQR.storedMatrix`: the matrix read from a block, a measurable function of the
-  memory.
+* `NLAlib.ShiftedQR.measurable_storedMatrix`: the matrix read from a block
+  (`NLAlib.storedMatrix`) is a measurable function of the memory.
 * `NLAlib.ShiftedQR.RoundedReached`, `NLAlib.ShiftedQR.RoundedCopied`: the states of a round on
   the good tapes.
 
@@ -112,43 +112,6 @@ def RandomLeafContract (law : ℕ → Measure ℝ) (β φ : ℝ) (L : Impl O Q) 
         HoldsMatrix o (Matrix.of fun i (_ : Fin 1) => roots i) μ'.store) φ
 
 /-! ### Measurable outcomes of the randomized calls -/
-
-/-- The complex matrix read entrywise from the pair-codec block at `b` (column-major, real and
-imaginary parts in adjacent words), with an uninitialised word read as $0$. -/
-def storedMatrix (b : ℕ × ℕ) (rows cols : ℕ) (s : Store ℝ) : Matrix (Fin rows) (Fin cols) ℂ :=
-  Matrix.of fun i j => ⟨(s.get b.1 (b.2 + 2 * (j * rows + i))).getD 0,
-    (s.get b.1 (b.2 + 2 * (j * rows + i) + 1)).getD 0⟩
-
-/-- A stored matrix is the matrix read from its block. -/
-theorem HoldsMatrix.eq_storedMatrix {rows cols : ℕ} {b : ℕ × ℕ}
-    {A : Matrix (Fin rows) (Fin cols) ℂ} {s : Store ℝ} (h : HoldsMatrix b A s) :
-    A = storedMatrix b rows cols s := by
-  ext i j
-  apply Complex.ext <;> simp [storedMatrix, h.get_re i j, h.get_im i j]
-
-/-- A block whose words are all initialised holds the matrix read from it. -/
-theorem holdsMatrix_storedMatrix {rows cols : ℕ} {b : ℕ × ℕ} {s : Store ℝ}
-    (h : ∀ j < 2 * (cols * rows), (s.get b.1 (b.2 + j)).isSome) :
-    HoldsMatrix b (storedMatrix b rows cols s) s := by
-  let xs := List.ofFn fun j : Fin (2 * (cols * rows)) => (s.get b.1 (b.2 + j)).getD 0
-  have hr : s.readBlock b.1 b.2 (2 * (cols * rows)) = some xs := by
-    refine Store.readBlock_eq_some_iff.mpr ⟨by simp [xs], fun j hj => ?_⟩
-    obtain ⟨v, hv⟩ := Option.isSome_iff_exists.mp (h j hj)
-    simp [xs, hv, hj]
-  let A₀ : Matrix (Fin rows) (Fin cols) ℂ :=
-    decodeMatrix id ((EntryCodec.pair ℝ).matrix rows cols xs)
-  have hw : matrixWords A₀ = xs := by
-    have hcomponents : (A₀.map fun z => (z.re, z.im)) = (EntryCodec.pair ℝ).matrix rows cols xs :=
-      by ext i j <;> rfl
-    unfold matrixWords
-    rw [hcomponents]
-    exact (EntryCodec.pair ℝ).packFinMatrix_matrix rows cols xs (by
-      simp only [xs, List.length_ofFn]
-      ring)
-  have hA₀ : HoldsMatrix b A₀ s := by
-    rw [HoldsMatrix, hw]
-    exact hr
-  rwa [← hA₀.eq_storedMatrix]
 
 /-- The matrix read from a block is a measurable function of the memory. -/
 theorem measurable_storedMatrix (b : ℕ × ℕ) (rows cols : ℕ) :

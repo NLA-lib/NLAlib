@@ -289,7 +289,7 @@ theorem measurableSet_excOutcome {n : ℕ} (H : Matrix (Fin (n + 1)) (Fin (n + 1
     exact MeasurableSet.iInter fun j => measurableSet_le (hcol j).norm measurable_const
 
 /-- A column of complex words stored as interleaved pairs is read back entrywise by
-`NLAlib.ShiftedQR.storedMatrix`. -/
+`NLAlib.storedMatrix`. -/
 theorem storedMatrix_col_of_readBlock {s : Store ℝ} {b : ℕ × ℕ} {zs : List ℂ}
     (h : s.readBlock b.1 b.2 (2 * zs.length) = some (zs.flatMap fun z => [z.re, z.im]))
     (j : Fin zs.length) : storedMatrix b zs.length 1 s j 0 = zs[j] := by

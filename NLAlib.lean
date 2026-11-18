@@ -11,7 +11,7 @@ public import NLAlib.Eigensolvers.ShiftedQR.Alg
 public import NLAlib.Eigensolvers.ShiftedQR.Backward
 public import NLAlib.Eigensolvers.ShiftedQR.BlockCopy
 public import NLAlib.Eigensolvers.ShiftedQR.Certification
-public import NLAlib.Eigensolvers.ShiftedQR.Coefficients
+public import NLAlib.Matrix.FinitePrecision.GivensCoefficients
 public import NLAlib.Eigensolvers.ShiftedQR.CompleteSearch
 public import NLAlib.Eigensolvers.ShiftedQR.Constants
 public import NLAlib.Eigensolvers.ShiftedQR.Cost
@@ -61,8 +61,8 @@ public import NLAlib.Eigensolvers.ShiftedQR.RangeFinish
 public import NLAlib.Eigensolvers.ShiftedQR.RangeLarge
 public import NLAlib.Eigensolvers.ShiftedQR.RangeProcess
 public import NLAlib.Eigensolvers.ShiftedQR.RangeSplit
-public import NLAlib.Eigensolvers.ShiftedQR.Rotation
-public import NLAlib.Eigensolvers.ShiftedQR.RotationLoops
+public import NLAlib.Matrix.FinitePrecision.GivensRotation
+public import NLAlib.Matrix.FinitePrecision.GivensPrograms
 public import NLAlib.Eigensolvers.ShiftedQR.Round
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedCertificate
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedDecouple
@@ -127,7 +127,7 @@ public import NLAlib.Eigensolvers.ShiftedQR.StableStep
 public import NLAlib.Eigensolvers.ShiftedQR.StableStepTermination
 public import NLAlib.Eigensolvers.ShiftedQR.Step
 public import NLAlib.Eigensolvers.ShiftedQR.StepProgram
-public import NLAlib.Eigensolvers.ShiftedQR.Storage
+public import NLAlib.Matrix.FinitePrecision.StoredMatrix
 public import NLAlib.Eigensolvers.ShiftedQR.StorageNorm
 public import NLAlib.Eigensolvers.ShiftedQR.Sweep
 public import NLAlib.Eigensolvers.ShiftedQR.SweepOutput

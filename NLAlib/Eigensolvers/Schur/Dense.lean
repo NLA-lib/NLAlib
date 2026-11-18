@@ -878,6 +878,8 @@ theorem logb_inv_uDenseSchur_le : ∃ c₁ c₂ : ℝ, ∀ {n : ℕ} {δ φ : �
         (Real.logb 2 (Real.logb 2 (4 * (n + 1) / (δ * φ))) + 1) ^ 2 + c₂ :=
   sorry
 
+-- The kernel evaluates the bound of the whole tree; its recursion is deep.
+set_option maxRecDepth 100000 in
 /-- **The operation count of the dense Schur solver** (on every tape): there is an absolute
 constant $c$ such that the static count of `NLAlib.Schur.denseSchur` at the order $n + 1$, $n_r$
 regularizer words, $n_q$ core words, the shift degree $k$, the iteration cap $F$ and the leaf cap
@@ -886,8 +888,27 @@ power of $k$ above the eigenvalue solver's, from the replays on the couplings an
 accumulator. -/
 theorem denseSchur_work_le (sG : ℕ) : ∃ c : ℕ, ∀ n nr nq k F T : ℕ,
     Count.size (stmtCost (denseSchur (O := O) (Q := Q) sG).body [n + 1, nr, nq, k, F, T]) ≤
-      c * (n + 1) ^ 3 * (k + 1) ^ 5 * (nr + nq + 1) * (F + 1) * (T + 1) ^ 2 :=
-  sorry
+      c * (n + 1) ^ 3 * (k + 1) ^ 5 * (nr + nq + 1) * (F + 1) * (T + 1) ^ 2 := by
+  refine ⟨22514, fun n nr nq k F T => ?_⟩
+  have hw : stmtWorkMono (denseSchur (O := O) (Q := Q) sG).body
+      [⟨1, [1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 0, 1]⟩,
+        ⟨1, [0, 0, 0, 0, 1]⟩] = ⟨22514, [3, 4, 1, 1, 2]⟩ := by
+    kernel_rfl
+  have hσ : SlotsLe [n + 1, k + 1, nr + nq + 1, F + 1, T + 1] [n + 1, nr, nq, k, F, T]
+      [⟨1, [1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 0, 1]⟩,
+        ⟨1, [0, 0, 0, 0, 1]⟩] := by
+    simp [SlotsLe, WorkMono.eval]; omega
+  refine (size_stmtCost_le_stmtWorkMono (by simp) _ hσ).trans ?_
+  rw [hw]
+  simp only [WorkMono.eval, powProd_cons_cons, powProd_nil_right]
+  have h5 : (k + 1) ^ 4 ≤ (k + 1) ^ 5 := Nat.pow_le_pow_right (by omega) (by omega)
+  have := Nat.mul_le_mul_left (22514 * (n + 1) ^ 3) (Nat.mul_le_mul_right
+    ((nr + nq + 1) ^ 1 * ((F + 1) ^ 1 * ((T + 1) ^ 2 * 1))) h5)
+  calc _ = 22514 * (n + 1) ^ 3 * ((k + 1) ^ 4 * ((nr + nq + 1) ^ 1 * ((F + 1) ^ 1 *
+        ((T + 1) ^ 2 * 1)))) := by ring
+    _ ≤ 22514 * (n + 1) ^ 3 * ((k + 1) ^ 5 * ((nr + nq + 1) ^ 1 * ((F + 1) ^ 1 *
+        ((T + 1) ^ 2 * 1)))) := this
+    _ = _ := by ring
 
 /-- **The operation count of the dense Schur solver is $n^3$ times a polylogarithm**: there are
 constants $C$ and $p$ such that for every order $n + 1$, $0 < \delta \le 1$ and

@@ -154,11 +154,72 @@ section Theorems
 
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
 
+omit [Has IndexOp O] in
+/-- The rotation part of a step of the reduction: from the pair $(u, v)$ stored at `uv`, the
+rounded coefficients into `cf`, then the rounded rotation of the columns and of the rows
+$c, c + 1$ of the matrix at `a`. -/
+private theorem reduceLastStep_rotate {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {N r c w j i : ℕ} (hc : c + 1 < N) (hr : r < N)
+    {a cf uv lg : ℕ × ℕ} {A : Matrix (Fin N) (Fin N) ℂ} (hA : HoldsMatrix a A m.store)
+    (hu₀ : m.store.get uv.1 uv.2 = some (A ⟨r, hr⟩ ⟨c + 1, hc⟩).re)
+    (hu₁ : m.store.get uv.1 (uv.2 + 1) = some (A ⟨r, hr⟩ ⟨c + 1, hc⟩).im)
+    (hv₀ : m.store.get uv.1 (uv.2 + 2) = some (M.neg (A ⟨r, hr⟩ ⟨c, by omega⟩).re))
+    (hv₁ : m.store.get uv.1 (uv.2 + 3) = some (M.neg (A ⟨r, hr⟩ ⟨c, by omega⟩).im))
+    (hcf : cf.2 + 4 ≤ m.store.len cf.1) (huv : uv.2 + 4 ≤ m.store.len uv.1)
+    (hac : a.1 ≠ cf.1) (hl : m.Live [a, cf, uv]) :
+    Writes .total I τ ((Stmt.frame []
+        [⟨3, .var 9⟩, ⟨3, .var 9 + .const 2⟩, ⟨2, .var 8⟩, ⟨2, .var 8 + .const 2⟩]
+        (coefficients (Op := O) (Tst := Q)).body).seq
+      ((Stmt.frame [.var 0, .var 2] [⟨0, .var 6⟩, ⟨2, .var 8⟩, ⟨2, .var 8 + .const 2⟩, ⟨0, .var 6⟩]
+        (rotateColumns (Op := O) (Tst := Q)).body).seq
+        (Stmt.frame [.var 0, .var 2] [⟨0, .var 6⟩, ⟨2, .var 8⟩, ⟨2, .var 8 + .const 2⟩, ⟨0, .var 6⟩]
+          (rotateRows (Op := O) (Tst := Q)).body)))
+      (Env.frame [N, r, c, w, j, i] [a, a, cf, uv, lg])
+      (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Store.inBlock cf.1 cf.2 4)
+      (fun m' => m'.pos = m.pos ∧ HoldsMatrix a (reduceLastStepWord M r c A) m'.store) m := by
+  let s : ℕ × ℕ := (cf.1, cf.2 + 2)
+  have hcsub : Store.inBlock cf.1 cf.2 2 ≤ Store.inBlock cf.1 cf.2 4 :=
+    Fp.inBlock_le_inBlock le_rfl (by omega)
+  have hssub : Store.inBlock s.1 s.2 2 ≤ Store.inBlock cf.1 cf.2 4 :=
+    Fp.inBlock_le_inBlock (by dsimp [s]; omega) (by dsimp [s]; omega)
+  have hcf4 : Fp.blocks [cf, s] [2, 2] ≤ Store.inBlock cf.1 cf.2 4 := by
+    simpa only [Fp.blocks, sup_bot_eq] using sup_le hcsub hssub
+  have hla : a.1 < m.store.length := hl a (by simp)
+  have hlc : cf.1 < m.store.length := hl cf (by simp)
+  have hlu : uv.1 < m.store.length := hl uv (by simp)
+  refine (coefficients_writes_word (τ := τ) (m := m) (a := uv) (b := (uv.1, uv.2 + 2))
+    (c := cf) (s := s) (u := A ⟨r, hr⟩ ⟨c + 1, hc⟩)
+    (v := ⟨M.neg (A ⟨r, hr⟩ ⟨c, by omega⟩).re, M.neg (A ⟨r, hr⟩ ⟨c, by omega⟩).im⟩) hS hC
+    (Fp.disj_inBlock_of_le le_rfl) hu₀ hu₁ hv₀ hv₁ (by omega)
+    (by dsimp [s]; omega)).frame_seq_le rfl rfl (by simp [Mem.Live, s, hlc, hlu])
+    (hcf4.trans le_sup_right) ?_
+  rintro m₅ hfr₅ ⟨hp₅, hcs₅⟩
+  have hc₅ := (Mem.readBlocks_cons_iff.mp hcs₅).1
+  have hs₅ := (Mem.readBlocks_cons_iff.mp (Mem.readBlocks_cons_iff.mp hcs₅).2).1
+  have hAC : Fp.Disj (Store.inBlock a.1 a.2 (2 * (N * N))) (Store.inBlock cf.1 cf.2 4) :=
+    Fp.disj_inBlock_of_ne hac
+  have hA₅ := hA.of_eqOff hfr₅ (hAC.symm.mono hcf4 le_rfl)
+  refine (rotateColumns_writes_word (τ := τ) (k := c) hS hc hA₅ hc₅ hs₅ (hAC.mono le_rfl hcsub)
+    (hAC.mono le_rfl hssub)).frame_seq_le rfl rfl
+    (by have := hfr₅.length_eq; simp [Mem.Live, s]; omega) le_sup_left ?_
+  rintro m₆ hfr₆ ⟨hp₆, hA₆⟩
+  have hc₆ := hfr₆.keep (Store.readsOnly_readBlock _ _ _ _) (hAC.mono le_rfl hcsub) hc₅
+  have hs₆ := hfr₆.keep (Store.readsOnly_readBlock _ _ _ _) (hAC.mono le_rfl hssub) hs₅
+  refine ((rotateRows_writes_word (τ := τ) (k := c) hS hc hA₆ hc₆ hs₆ (hAC.mono le_rfl hcsub)
+    (hAC.mono le_rfl hssub)).in_frame rfl rfl
+    (by have := hfr₅.length_eq; have := hfr₆.length_eq; simp [Mem.Live, s]; omega)).mono
+    le_sup_left ?_
+  rintro m₇ - ⟨hp₇, hA₇⟩
+  refine ⟨hp₇.trans (hp₆.trans hp₅), ?_⟩
+  unfold reduceLastStepWord
+  rw [dif_pos ⟨hc, hr⟩]
+  exact hA₇
+
 /-- One step of the reduction (`NLAlib.reduceLastStep`) on any scalar machine with exact
 comparisons stores the machine step `NLAlib.reduceLastStepWord` in place, for $c + 1 < N$ and
 $r < N$, appends its entry `NLAlib.reduceLastStepEntry` to the pending slot of the log, and writes
-only the matrix, its two scratch blocks and the log, in buffers of their own. The plane is an
-exact natural (`hNat` up to `nmax ≥ c`). -/
+only the matrix, its two scratch blocks (in buffers of their own) and the log (apart from the
+matrix). The plane is an exact natural (`hNat` up to $n_{\max} \ge c$). -/
 theorem reduceLastStep_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hC : IsCmp id I) (hL : IsIndexLit M I) {nmax : ℕ} (hNat : IsExactNatLit id M nmax)
     {τ : Tape ℝ} {m : Mem ℝ} {N r c : ℕ} (hc : c + 1 < N) (hr : r < N) (hcn : c ≤ nmax)
@@ -167,14 +228,144 @@ theorem reduceLastStep_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
     (hlog : HoldsSlottedLog lg ns w L P m.store) (hj : L.length < ns) (hw : P.length < w)
     (hcf : cf.2 + 4 ≤ m.store.len cf.1) (huv : uv.2 + 4 ≤ m.store.len uv.1)
     (hac : a.1 ≠ cf.1) (hau : a.1 ≠ uv.1) (hlu : lg.1 ≠ uv.1) (hlc : lg.1 ≠ cf.1)
-    (hla : lg.1 ≠ a.1) (hl : m.Live [lg]) :
+    (hla : Fp.Disj (Store.inBlock a.1 a.2 (2 * (N * N)))
+      (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))) (hl : m.Live [lg]) :
     Writes .total I τ (reduceLastStep (O := O) (Q := Q)).body
       (Env.frame [N, r, c, w, L.length, P.length] [a, a, cf, uv, lg])
       (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Store.inBlock cf.1 cf.2 4 ⊔
         Store.inBlock uv.1 uv.2 4 ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix a (reduceLastStepWord M r c A) m'.store ∧
-        HoldsSlottedLog lg ns w L (P ++ [reduceLastStepEntry M r c A]) m'.store) m :=
-  sorry
+        HoldsSlottedLog lg ns w L (P ++ [reduceLastStepEntry M r c A]) m'.store) m := by
+  let i : Fin N := ⟨c, by omega⟩
+  let j : Fin N := ⟨c + 1, hc⟩
+  let k : Fin N := ⟨r, hr⟩
+  have hal : a.1 < m.store.length := Store.lt_length_of_get (hA.get_re k i)
+  have hcl : cf.1 < m.store.length := Store.lt_length_of_lt_len (by omega : cf.2 < _)
+  have hul : uv.1 < m.store.length := Store.lt_length_of_lt_len (by omega : uv.2 < _)
+  have hgl : lg.1 < m.store.length := hl lg (by simp)
+  have hU : ∀ t, Fp.Disj (Store.inBlock uv.1 (uv.2 + t) 1)
+      (Store.inBlock a.1 a.2 (2 * (N * N))) := fun _ => Fp.disj_inBlock_of_ne hau.symm
+  have hUle : ∀ t < 4, Store.inBlock uv.1 (uv.2 + t) 1 ≤ Store.inBlock a.1 a.2 (2 * (N * N)) ⊔
+      Store.inBlock cf.1 cf.2 4 ⊔ Store.inBlock uv.1 uv.2 4 ⊔
+        Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)) := fun t ht =>
+    (Fp.inBlock_le_inBlock (by omega) (by omega)).trans (le_sup_right.trans le_sup_left)
+  have hUL : ∀ t, Fp.Disj (Store.inBlock uv.1 (uv.2 + t) 1)
+      (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w))) := fun _ => Fp.disj_inBlock_of_ne hlu.symm
+  have hRL := readsOnly_holdsSlottedLog lg ns w L P
+  unfold reduceLastStep
+  refine (writes_call_un (hS .copy) rfl rfl trivial (hA.get_re k j) rfl
+    (by omega)).seq_le (hUle 0 (by omega)) ?_
+  rintro m₁ hfr₁ ⟨hp₁, hu₀⟩
+  have hA₁ := hA.of_eqOff hfr₁ (hU 0)
+  refine (writes_call_un (hS .copy) rfl rfl trivial (hA₁.get_im k j) rfl
+    (by dsimp only; rw [hfr₁.len_eq]; omega)).seq_le (hUle 1 (by omega)) ?_
+  rintro m₂ hfr₂ ⟨hp₂, hu₁⟩
+  have hA₂ := hA₁.of_eqOff hfr₂ (hU 1)
+  refine (writes_call_un (hS .neg) rfl rfl trivial (hA₂.get_re k i) rfl
+    (by dsimp only; rw [hfr₂.len_eq, hfr₁.len_eq]; omega)).seq_le (hUle 2 (by omega)) ?_
+  rintro m₃ hfr₃ ⟨hp₃, hv₀⟩
+  have hA₃ := hA₂.of_eqOff hfr₃ (hU 2)
+  refine (writes_call_un (hS .neg) rfl rfl trivial (hA₃.get_im k i) rfl
+    (by dsimp only; rw [hfr₃.len_eq, hfr₂.len_eq, hfr₁.len_eq]; omega)).seq_le
+    (hUle 3 (by omega)) ?_
+  rintro m₄ hfr₄ ⟨hp₄, hv₁⟩
+  have hUU : ∀ {t t' : ℕ}, t < t' → Fp.Disj (Store.inBlock uv.1 (uv.2 + t) 1)
+      (Store.inBlock uv.1 (uv.2 + t') 1) := fun h => Fp.disj_inBlock_of_le (by omega)
+  have hu₀' := hfr₄.keep (Store.readsOnly_get _ _ _) (hUU (t := 0) (by omega)).symm
+    (hfr₃.keep (Store.readsOnly_get _ _ _) (hUU (t := 0) (by omega)).symm
+      (hfr₂.keep (Store.readsOnly_get _ _ _) (hUU (t := 0) (by omega)).symm hu₀))
+  have hu₁' := hfr₄.keep (Store.readsOnly_get _ _ _) (hUU (t := 1) (by omega)).symm
+    (hfr₃.keep (Store.readsOnly_get _ _ _) (hUU (t := 1) (by omega)).symm hu₁)
+  have hv₀' := hfr₄.keep (Store.readsOnly_get _ _ _) (hUU (t := 2) (by omega)).symm hv₀
+  have hA₄ := hA₃.of_eqOff hfr₄ (hU 3)
+  have hlog₄ := hfr₄.keep hRL (hUL 3) (hfr₃.keep hRL (hUL 2)
+    (hfr₂.keep hRL (hUL 1) (hfr₁.keep hRL (hUL 0) hlog)))
+  have hlen₄ : m₄.store.length = m.store.length := by
+    have := hfr₁.length_eq; have := hfr₂.length_eq; have := hfr₃.length_eq
+    have := hfr₄.length_eq; omega
+  have hlen (b : ℕ) : m₄.store.len b = m.store.len b := by
+    rw [hfr₄.len_eq, hfr₃.len_eq, hfr₂.len_eq, hfr₁.len_eq]
+  refine (slottedLogWrite_writes (τ := τ) (μ := m₄) (pw := uv) (qw := (uv.1, uv.2 + 2))
+    (p := A k j) (q := ⟨M.neg (A k i).re, M.neg (A k i).im⟩) hS hL hNat hcn hlog₄ hj hw
+    (by simpa using Store.readBlock_succ_of (Store.readBlock_one_of_get hu₀') hu₁')
+    (by simpa using Store.readBlock_succ_of (Store.readBlock_one_of_get hv₀') hv₁)
+    (by simp [Mem.Live, hlen₄, hul, hgl])
+    (Fp.disj_sup_right.mpr ⟨Fp.disj_inBlock_of_ne hlu, Fp.disj_inBlock_of_ne hlu⟩)).frame_seq_le
+    rfl rfl (by simp [Mem.Live, hlen₄, hul, hgl]) le_sup_right ?_
+  rintro m₅ hfr₅ ⟨hp₅, hlog₅⟩
+  have hLU : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w))) (Store.inBlock uv.1 uv.2 4) :=
+    Fp.disj_inBlock_of_ne hlu
+  have kg := fun t (ht : t < 4) {x : ℝ} (h : m₄.store.get uv.1 (uv.2 + t) = some x) =>
+    hfr₅.keep (Store.readsOnly_get _ _ _) (hLU.mono le_rfl
+      (Fp.inBlock_le_inBlock (by omega) (by omega))) h
+  refine ((reduceLastStep_rotate hS hC hc hr (hA₄.of_eqOff hfr₅ hla.symm)
+    (kg 0 (by omega) hu₀') (kg 1 (by omega) hu₁') (kg 2 (by omega) hv₀') (kg 3 (by omega) hv₁)
+    (by rw [hfr₅.len_eq, hlen]; exact hcf) (by rw [hfr₅.len_eq, hlen]; exact huv) hac
+    (by have := hfr₅.length_eq; simp [Mem.Live]; omega)).mono
+    (sup_le (le_sup_left.trans (le_sup_left.trans le_sup_left))
+      (le_sup_right.trans (le_sup_left.trans le_sup_left))) ?_)
+  rintro m₇ hfr₇ ⟨hp₇, hA₇⟩
+  refine ⟨hp₇.trans (hp₅.trans (hp₄.trans (hp₃.trans (hp₂.trans hp₁)))), hA₇, ?_⟩
+  have hd : Fp.Disj (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Store.inBlock cf.1 cf.2 4)
+      (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w))) :=
+    Fp.disj_sup_left.mpr ⟨hla, Fp.disj_inBlock_of_ne hlc.symm⟩
+  simpa [reduceLastStepEntry, hc, hr] using hfr₇.keep (readsOnly_holdsSlottedLog _ _ _ _ _) hd
+    hlog₅
+
+/-- One step of round `i` of the reduction on the pair (matrix, entries of the round). -/
+private noncomputable def hrRoundStep (M : Machine ℝ) {N : ℕ} (i : ℕ)
+    (p : Matrix (Fin N) (Fin N) ℂ × List GivensEntry) (c : ℕ) :
+    Matrix (Fin N) (Fin N) ℂ × List GivensEntry :=
+  (reduceLastStepWord M (N - 1 - i) c p.1, p.2 ++ [reduceLastStepEntry M (N - 1 - i) c p.1])
+
+/-- The first `C` steps of round `i` from the matrix `X`. -/
+private noncomputable def hrRound (M : Machine ℝ) {N : ℕ} (i : ℕ) (X : Matrix (Fin N) (Fin N) ℂ)
+    (C : ℕ) : Matrix (Fin N) (Fin N) ℂ × List GivensEntry :=
+  (List.range C).foldl (hrRoundStep M i) (X, [])
+
+/-- One round of the reduction on the pair (matrix, slots). -/
+private noncomputable def hrOuter (M : Machine ℝ) {N : ℕ}
+    (st : Matrix (Fin N) (Fin N) ℂ × List (List GivensEntry)) (i : ℕ) :
+    Matrix (Fin N) (Fin N) ℂ × List (List GivensEntry) :=
+  ((hrRound M i st.1 (N - 2 - i)).1, st.2 ++ [(hrRound M i st.1 (N - 2 - i)).2])
+
+private theorem hrRound_succ (M : Machine ℝ) {N : ℕ} (i : ℕ) (X : Matrix (Fin N) (Fin N) ℂ)
+    (C : ℕ) : hrRound M i X (C + 1) = hrRoundStep M i (hrRound M i X C) C := by
+  simp [hrRound, List.range_succ, List.foldl_append]
+
+private theorem hrRound_fst (M : Machine ℝ) {N : ℕ} (i : ℕ) (X : Matrix (Fin N) (Fin N) ℂ) :
+    ∀ C, (hrRound M i X C).1 = ((List.range C).map fun c => (i, c)).foldl
+      (fun X ic => reduceLastStepWord M (N - 1 - ic.1) ic.2 X) X
+  | 0 => rfl
+  | C + 1 => by
+    rw [hrRound_succ, List.range_succ, List.map_append, List.foldl_append, ← hrRound_fst M i X C]
+    rfl
+
+private theorem hrRound_length (M : Machine ℝ) {N : ℕ} (i : ℕ) (X : Matrix (Fin N) (Fin N) ℂ) :
+    ∀ C, (hrRound M i X C).2.length = C
+  | 0 => rfl
+  | C + 1 => by rw [hrRound_succ]; simp [hrRoundStep, hrRound_length M i X C]
+
+private theorem hrOuter_fst (M : Machine ℝ) {N : ℕ} (A : Matrix (Fin N) (Fin N) ℂ) :
+    ∀ I, ((List.range I).foldl (hrOuter M) (A, [])).1 = ((List.range I).flatMap fun i =>
+      (List.range (N - 2 - i)).map fun c => (i, c)).foldl
+        (fun X ic => reduceLastStepWord M (N - 1 - ic.1) ic.2 X) A
+  | 0 => rfl
+  | I + 1 => by
+    rw [List.range_succ, List.foldl_append, List.flatMap_append, List.foldl_append,
+      ← hrOuter_fst M A I]
+    simp [hrOuter, hrRound_fst]
+
+private theorem hrOuter_length (M : Machine ℝ) {N : ℕ} (A : Matrix (Fin N) (Fin N) ℂ) :
+    ∀ I, ((List.range I).foldl (hrOuter M) (A, [])).2.length = I
+  | 0 => rfl
+  | I + 1 => by
+    rw [List.range_succ, List.foldl_append]
+    simp [hrOuter, hrOuter_length M A I]
+
+private theorem hessenbergReduceLastSlots_eq (M : Machine ℝ) {N : ℕ}
+    (A : Matrix (Fin N) (Fin N) ℂ) :
+    hessenbergReduceLastSlots M A = ((List.range (N - 2)).foldl (hrOuter M) (A, [])).2 := rfl
 
 /-- `NLAlib.hessenbergReduceLast` on any scalar machine with exact comparisons stores the machine
 evaluation `NLAlib.hessenbergReduceLastWord` of the matrix in place, closes the $N - 2$ slots
@@ -194,8 +385,77 @@ theorem hessenbergReduceLast_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} 
       (Env.frame [N, w, L.length] [a, a, lg])
       (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix a (hessenbergReduceLastWord M A) m'.store ∧
-        HoldsSlottedLog lg ns w (L ++ (hessenbergReduceLastSlots M A).map some) [] m'.store) m :=
-  sorry
+        HoldsSlottedLog lg ns w (L ++ (hessenbergReduceLastSlots M A).map some) [] m'.store) m := by
+  have hal : a.1 < m.store.length := hl a (by simp)
+  have hgl : lg.1 < m.store.length := hl lg (by simp)
+  have hlit1 : 0 < M.lit 1 := by
+    have := hNat 1 h1
+    simp only [id, Nat.cast_one] at this
+    rw [this]; exact one_pos
+  unfold hessenbergReduceLast
+  change Writes .total I τ (Stmt.allocs [.const 4, .const 4] _) _ _ _ m
+  refine writes_allocs_preserving_post (ns := [4, 4]) rfl
+    (fun hBelow ⟨hp, hW, hG⟩ => ⟨hp, hW.of_below hBelow hal, hG.of_below hBelow hgl⟩) ?_
+  intro s₁ hlen hlens hBelow
+  set Lc := m.store.length with hLdef
+  simp only [List.length_cons, List.length_nil] at hlen
+  set G := Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Store.inBlock Lc 0 4 ⊔
+    Store.inBlock (Lc + 1) 0 4 ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)) with hG
+  set St : Matrix (Fin N) (Fin N) ℂ → List (Option (List GivensEntry)) → List GivensEntry →
+      Mem ℝ → Prop := fun X Lg P μ => μ.pos = m.pos ∧
+    μ.store.length = Lc + 2 ∧ μ.store.len Lc = 4 ∧ μ.store.len (Lc + 1) = 4 ∧
+    HoldsMatrix a X μ.store ∧ HoldsSlottedLog lg ns w Lg P μ.store with hSt
+  set Ou := fun i => (List.range i).foldl (hrOuter M) (A, []) with hOu
+  have hstart : St A L [] ⟨s₁, m.pos⟩ :=
+    ⟨rfl, by omega, by simpa using hlens 0 (by simp), by simpa using hlens 1 (by simp),
+      hA.of_below hBelow hal, hlog.of_below hBelow hgl⟩
+  have hGle : G ≤ (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔
+      Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w))) ⊔ Fp.above Lc := by
+    rintro b x (((h | h) | h) | h)
+    · exact Or.inl (Or.inl h)
+    · exact Or.inr (h.1 ▸ le_rfl)
+    · exact Or.inr (h.1 ▸ Nat.le_succ Lc)
+    · exact Or.inl (Or.inr h)
+  refine (writes_loop (N := N - 2) rfl (fun _ => G) (fun _ _ => le_rfl)
+    (fun i μ => St (Ou i).1 (L ++ (Ou i).2.map some) [] μ) (by simpa [Ou] using hstart)
+    ?_).seq_le hGle ?_
+  · intro i hi μ _ hμ
+    refine (writes_loop (N := N - 2 - i) rfl (fun _ => G) (fun _ _ => le_rfl)
+      (fun c μ' => St (hrRound M i (Ou i).1 c).1 (L ++ (Ou i).2.map some)
+        (hrRound M i (Ou i).1 c).2 μ') (by simpa [hrRound] using hμ) ?_).seq_le le_rfl ?_
+    · intro c hc μ' _ ⟨hp, hlen', hL0, hL1, hW, hLg⟩
+      refine ((reduceLastStep_writes_word (N := N) (r := N - 1 - i) (c := c) (cf := (Lc, 0))
+        (uv := (Lc + 1, 0)) hS hC hL hNat
+        (by omega) (by omega) (by omega) hW hLg (by simp [Ou, hrOuter_length]; omega)
+        (by rw [hrRound_length]; omega) (by simp [hL0]) (by simp [hL1]) (by simp; omega)
+        (by simp; omega) (by simp; omega) (by simp; omega) hd
+        (by simp [Mem.Live, hlen']; omega)).in_frame ?_ rfl
+        (by simp [Mem.Live, hlen']; omega)).mono le_rfl ?_
+      · simp [IExp.evalList, IExp.eval, Env.frame, Env.pushIdx, Ou, hrOuter_length, hrRound_length]
+      · rintro μ'' hfr ⟨hp', hW', hLg'⟩
+        refine ⟨hp'.trans hp, by rw [hfr.length_eq, hlen'], by rw [hfr.len_eq, hL0],
+          by rw [hfr.len_eq, hL1], ?_, ?_⟩
+        · rw [hrRound_succ]; exact hW'
+        · rw [hrRound_succ]; exact hLg'
+    · intro μ' _ ⟨hp, hlen', hL0, hL1, hW, hLg⟩
+      refine ((slottedLogValidate_writes_of_pos hL hlit1 hLg
+        (by simp [Ou, hrOuter_length]; omega)).in_frame ?_ rfl
+        (by simp [Mem.Live, hlen']; omega)).mono le_sup_right ?_
+      · simp [IExp.evalList, IExp.eval, Env.frame, Env.pushIdx, Ou, hrOuter_length]
+      · rintro μ'' hfr ⟨hp', hLg'⟩
+        refine ⟨hp'.trans hp, by rw [hfr.length_eq, hlen'], by rw [hfr.len_eq, hL0],
+          by rw [hfr.len_eq, hL1], ?_, ?_⟩
+        · simpa [Ou, List.range_succ, List.foldl_append, hrOuter] using hW.of_eqOff hfr hd.symm
+        · simpa [Ou, List.range_succ, List.foldl_append, hrOuter] using hLg'
+  · rintro μ hfr ⟨hp, hlen', -, -, hW, hLg⟩
+    refine ((clearBelowSubdiagonal_writes_word (τ := τ) hS (by simp [Mem.Live, hlen']; omega)
+      hW).in_frame rfl rfl (by simp [Mem.Live, hlen']; omega)).mono
+      (le_sup_left.trans le_sup_left) ?_
+    rintro μ' hfr' ⟨hp', hW'⟩
+    refine ⟨hp'.trans hp, ?_, ?_⟩
+    · simpa [hessenbergReduceLastWord, Ou, hrOuter_fst] using hW'
+    · rw [hessenbergReduceLastSlots_eq]
+      exact hfr'.keep (readsOnly_holdsSlottedLog _ _ _ _ _) hd hLg
 
 section BackwardError
 

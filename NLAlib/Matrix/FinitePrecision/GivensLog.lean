@@ -138,6 +138,38 @@ def HoldsSlottedLog (lg : ℕ × ℕ) (ns w : ℕ) (L : List (Option (List Given
     s.readBlock lg.1 (lg.2 + j * (1 + 5 * w) + 1) (5 * w) =
       some (List.replicate (5 * w) 0))
 
+/-- A stored log reads only the words of its region. -/
+theorem readsOnly_holdsSlottedLog (lg : ℕ × ℕ) (ns w : ℕ)
+    (L : List (Option (List GivensEntry))) (P : List GivensEntry) :
+    Store.ReadsOnly (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (HoldsSlottedLog lg ns w L P) := by
+  intro s s' hg ⟨hLn, hPw, hc, hp, hf⟩
+  have hget (j : ℕ) (hj : j < ns) :
+      s'.get lg.1 (lg.2 + j * (1 + 5 * w)) = s.get lg.1 (lg.2 + j * (1 + 5 * w)) := by
+    have := slot_end_le (w := w) hj
+    exact hg _ _ ⟨rfl, by omega, by omega⟩
+  have hblk (j : ℕ) (hj : j < ns) :
+      s'.readBlock lg.1 (lg.2 + j * (1 + 5 * w) + 1) (5 * w) =
+        s.readBlock lg.1 (lg.2 + j * (1 + 5 * w) + 1) (5 * w) := by
+    have := slot_end_le (w := w) hj
+    exact Store.readBlock_congr fun t ht => hg _ _ ⟨rfl, by omega, by omega⟩
+  refine ⟨hLn, hPw, fun j hj => ?_, fun h => ?_, fun j hj hjn => ?_⟩
+  · obtain ⟨v, hv, hm⟩ := hc j hj
+    refine ⟨v, by rw [hget j (by omega)]; exact hv, ?_⟩
+    split at hm
+    · exact hm
+    · exact ⟨hm.1, hm.2.1, by rw [hblk j (by omega)]; exact hm.2.2⟩
+  · rw [hget _ h, hblk _ h]; exact hp h
+  · rw [hget _ hjn, hblk _ hjn]; exact hf j hj hjn
+
+/-- A stored log is kept by a store that agrees below a boundary above its buffer. -/
+theorem HoldsSlottedLog.of_below {lg : ℕ × ℕ} {ns w B : ℕ}
+    {L : List (Option (List GivensEntry))} {P : List GivensEntry} {s s' : Store ℝ}
+    (h : HoldsSlottedLog lg ns w L P s) (hB : Store.Below B s s') (hlg : lg.1 < B) :
+    HoldsSlottedLog lg ns w L P s' :=
+  readsOnly_holdsSlottedLog lg ns w L P s s' (fun b i hb => by
+    obtain ⟨rfl, -⟩ := hb; exact (hB lg.1 hlg).2 i) h
+
 /-- Rejecting the pending slot closes it as `none`; nothing is written (its valid word is
 already zero). -/
 theorem HoldsSlottedLog.reject {lg : ℕ × ℕ} {ns w : ℕ} {L : List (Option (List GivensEntry))}
@@ -476,7 +508,7 @@ theorem slottedLogOpen_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     {μ : Mem ℝ} (hl : μ.Live [lg]) (hroom : lg.2 + ns * (1 + 5 * w) ≤ μ.store.len lg.1) :
     Writes .total I τ (slottedLogOpen (O := O) (Q := Q)).body (Env.frame [ns, w] [lg])
       (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
-      (fun μ' => HoldsSlottedLog lg ns w [] [] μ'.store) μ := by
+      (fun μ' => μ'.pos = μ.pos ∧ HoldsSlottedLog lg ns w [] [] μ'.store) μ := by
   have h0 : Mch.lit 0 = 0 := by simpa using hM.lit 0
   unfold slottedLogOpen
   refine (writes_fill (v := fun _ => (0 : ℝ)) (pos := fun _ => μ.pos) rfl rfl
@@ -484,8 +516,8 @@ theorem slottedLogOpen_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
   · refine (writes_call_const (hS (.lit 0)) rfl trivial ?_).mono le_rfl ?_
     · dsimp only; rw [hfr.len_eq]; omega
     · exact fun m'' _ ⟨hp', hg⟩ => ⟨by simpa [h0] using hg, hp'.trans hp⟩
-  · rintro μ' - ⟨hv, -⟩
-    refine holdsSlottedLog_nil_of_readBlock ?_
+  · rintro μ' - ⟨hv, hp⟩
+    refine ⟨hp, holdsSlottedLog_nil_of_readBlock ?_⟩
     rw [Store.holdsVec_iff_readBlock.mp hv]
     simp
 
@@ -503,7 +535,7 @@ theorem slottedLogWrite_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : Is
     Writes .total I τ (slottedLogWrite (O := O) (Q := Q)).body
       (Env.frame [w, L.length, P.length, r] [pw, qw, lg])
       (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
-      (fun μ' => HoldsSlottedLog lg ns w L (P ++ [(r, p, q)]) μ'.store) μ := by
+      (fun μ' => μ'.pos = μ.pos ∧ HoldsSlottedLog lg ns w L (P ++ [(r, p, q)]) μ'.store) μ := by
   set o := lg.2 + L.length * (1 + 5 * w) + 1 + 5 * P.length with ho
   have hout (k : ℕ) (e : IExp) (he : e.eval [w, L.length, P.length, r, pw.2, qw.2, lg.2] =
       some (o + k)) :
@@ -533,28 +565,28 @@ theorem slottedLogWrite_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : Is
       by simpa using Store.get_of_readBlock h.2 (j := 1) (by omega) 0⟩
   have W : Writes .total I τ (slottedLogWrite (O := O) (Q := Q)).body
       (Env.frame [w, L.length, P.length, r] [pw, qw, lg]) (Store.inBlock lg.1 o 5)
-      (fun μ' => μ'.store.readBlock lg.1 o 5 = some (entryWords (r, p, q))) μ := by
+      (fun μ' => μ'.pos = μ.pos ∧ μ'.store.readBlock lg.1 o 5 = some (entryWords (r, p, q))) μ := by
     unfold slottedLogWrite
     refine (writes_indexLit (M := Mch) (by assumption) (n := r) (z := (lg.1, o + 0)) rfl
       (by simp [Operand.eval, Env.frame, ho]) (by dsimp only; omega)).seq_le (hsub 0 (by omega))
-      fun m₁ hf₁ ⟨_, g₀⟩ => ?_
+      fun m₁ hf₁ ⟨p₁, g₀⟩ => ?_
     have i₁ := hf₁.keep hRO (hdk 0 (by omega)) ⟨hp, hq⟩
     refine (writes_call_un (hS .copy) rfl (hout 1 _ (by simp [IExp.eval, ho]; omega)) trivial
       (hgp _ i₁).1 rfl (by dsimp only; rw [hf₁.len_eq]; omega)).seq_le (hsub 1 (by omega))
-      fun m₂ hf₂ ⟨_, g₁⟩ => ?_
+      fun m₂ hf₂ ⟨p₂, g₁⟩ => ?_
     have i₂ := hf₂.keep hRO (hdk 1 (by omega)) i₁
     refine (writes_call_un (hS .copy) rfl (hout 2 _ (by simp [IExp.eval, ho]; omega)) trivial
       (hgp _ i₂).2.1 rfl (by dsimp only; rw [hf₂.len_eq, hf₁.len_eq]; omega)).seq_le
-      (hsub 2 (by omega)) fun m₃ hf₃ ⟨_, g₂⟩ => ?_
+      (hsub 2 (by omega)) fun m₃ hf₃ ⟨p₃, g₂⟩ => ?_
     have i₃ := hf₃.keep hRO (hdk 2 (by omega)) i₂
     refine (writes_call_un (hS .copy) rfl (hout 3 _ (by simp [IExp.eval, ho]; omega)) trivial
       (hgp _ i₃).2.2.1 rfl (by dsimp only; rw [hf₃.len_eq, hf₂.len_eq, hf₁.len_eq]; omega)).seq_le
-      (hsub 3 (by omega)) fun m₄ hf₄ ⟨_, g₃⟩ => ?_
+      (hsub 3 (by omega)) fun m₄ hf₄ ⟨p₄, g₃⟩ => ?_
     have i₄ := hf₄.keep hRO (hdk 3 (by omega)) i₃
     refine (writes_call_un (hS .copy) rfl (hout 4 _ (by simp [IExp.eval, ho]; omega)) trivial
       (hgp _ i₄).2.2.2 rfl
       (by dsimp only; rw [hf₄.len_eq, hf₃.len_eq, hf₂.len_eq, hf₁.len_eq]; omega)).mono
-      (hsub 4 (by omega)) fun m₅ hf₅ ⟨_, g₄⟩ => ?_
+      (hsub 4 (by omega)) fun m₅ hf₅ ⟨p₅, g₄⟩ => ?_
     have k₀ := hf₅.keep (Store.readsOnly_get _ _ _) (hcell 0 4 (by omega)) <|
       hf₄.keep (Store.readsOnly_get _ _ _) (hcell 0 3 (by omega)) <|
       hf₃.keep (Store.readsOnly_get _ _ _) (hcell 0 2 (by omega)) <|
@@ -566,7 +598,8 @@ theorem slottedLogWrite_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : Is
       hf₄.keep (Store.readsOnly_get _ _ _) (hcell 2 3 (by omega)) g₂
     have k₃ := hf₅.keep (Store.readsOnly_get _ _ _) (hcell 3 4 (by omega)) g₃
     have hr' : (Mch.lit (r : ℚ)) = (r : ℝ) := hNat r hr
-    refine Store.readBlock_eq_some_iff.mpr ⟨rfl, fun t ht => ?_⟩
+    refine ⟨p₅.trans (p₄.trans (p₃.trans (p₂.trans p₁))),
+      Store.readBlock_eq_some_iff.mpr ⟨rfl, fun t ht => ?_⟩⟩
     interval_cases t
     · simpa [entryWords, hr'] using k₀
     · simpa [entryWords] using k₁
@@ -574,7 +607,23 @@ theorem slottedLogWrite_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : Is
     · simpa [entryWords] using k₃
     · simpa [entryWords] using g₄
   refine W.mono (Fp.inBlock_le_inBlock (by omega) (by omega)) fun μ' hfr hr => ?_
-  exact h.of_write_entry hL hP hfr hr
+  exact ⟨hr.1, h.of_write_entry hL hP hfr hr.2⟩
+
+/-- Validating the pending slot closes it as accepted, on a machine whose literal one is
+positive. -/
+theorem slottedLogValidate_writes_of_pos {Mch : Machine ℝ} {I : Interp O Q ℝ}
+    (hL : IsIndexLit Mch I) (h1 : 0 < Mch.lit 1) {ns w : ℕ} {lg : ℕ × ℕ}
+    {L : List (Option (List GivensEntry))} {P : List GivensEntry} {τ : Tape ℝ} {μ : Mem ℝ}
+    (h : HoldsSlottedLog lg ns w L P μ.store) (hL' : L.length < ns) :
+    Writes .total I τ (slottedLogValidate (O := O) (Q := Q)).body
+      (Env.frame [w, L.length] [lg]) (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (fun μ' => μ'.pos = μ.pos ∧ HoldsSlottedLog lg ns w (L ++ [some P]) [] μ'.store) μ := by
+  have hle := slot_end_le (w := w) hL'
+  unfold slottedLogValidate
+  refine (writes_indexLit hL (n := 1) (z := (lg.1, lg.2 + L.length * (1 + 5 * w))) rfl rfl
+    (Store.lt_len_of_get (h.2.2.2.1 hL').1)).mono
+    (Fp.inBlock_le_inBlock (by omega) (by omega)) fun μ' hfr ⟨hp, hg⟩ => ?_
+  exact ⟨hp, h.of_validate hL' hfr hg (by simpa using h1)⟩
 
 /-- Validating the pending slot closes it as accepted. -/
 theorem slottedLogValidate_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
@@ -583,17 +632,12 @@ theorem slottedLogValidate_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : 
     (h : HoldsSlottedLog lg ns w L P μ.store) (hL' : L.length < ns) (hl : μ.Live [lg]) :
     Writes .total I τ (slottedLogValidate (O := O) (Q := Q)).body
       (Env.frame [w, L.length] [lg]) (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
-      (fun μ' => HoldsSlottedLog lg ns w (L ++ [some P]) [] μ'.store) μ := by
+      (fun μ' => μ'.pos = μ.pos ∧ HoldsSlottedLog lg ns w (L ++ [some P]) [] μ'.store) μ := by
   have h1 : 0 < Mch.lit 1 := by
     have := abs_le.mp (hM.lit 1)
     simp only [id, Rat.cast_one, abs_one, mul_one] at this
     linarith [this.1]
-  have hle := slot_end_le (w := w) hL'
-  unfold slottedLogValidate
-  refine (writes_indexLit hL (n := 1) (z := (lg.1, lg.2 + L.length * (1 + 5 * w))) rfl rfl
-    (Store.lt_len_of_get (h.2.2.2.1 hL').1)).mono
-    (Fp.inBlock_le_inBlock (by omega) (by omega)) fun μ' hfr ⟨_, hg⟩ => ?_
-  exact h.of_validate hL' hfr hg (by simpa using h1)
+  exact slottedLogValidate_writes_of_pos hL h1 h hL'
 
 end Specs
 

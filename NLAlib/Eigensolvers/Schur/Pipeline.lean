@@ -14,6 +14,8 @@ public import NLAlib.Ops.Confined
 public import NLAlib.Ops.Static
 public import NLAlib.Matrix.Spectral.Schur
 public import NLAlib.Matrix.FinitePrecision.Deflation
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedHeadline
+public import NLAlib.Probability.Measurability.Matrix
 
 /-!
 # The generic dense Schur pipeline
@@ -158,6 +160,140 @@ def schurFp (n : ℕ) (a uo f : ℕ × ℕ) : Fp :=
   Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
     Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1
 
+/-! ### Stored identities, scaled words and measurable outputs -/
+
+/-- **The stored identity**: words that are $1$ at the real parts of the diagonal entries and $0$
+elsewhere (the output of `NLAlib.Ops.PairMatrix.identity` with exact literals) hold the identity
+matrix. -/
+theorem holdsMatrix_one_of_holdsVec {N : ℕ} {s : Store ℝ} {b : ℕ × ℕ}
+    (h : s.HoldsVec b.1 b.2 (2 * (N * N))
+      (fun q => if ∃ j < N, q = 2 * (j * N + j) then (1 : ℝ) else 0)) :
+    HoldsMatrix b (1 : Matrix (Fin N) (Fin N) ℂ) s := by
+  have key : ∀ (i j : Fin N), (∃ j' < N, j * N + i = j' * N + j') ↔ i = j := by
+    intro i j
+    constructor
+    · rintro ⟨j', hj', e⟩
+      have h1 := congrArg (· / N) e
+      have h2 := congrArg (· % N) e
+      simp only [Nat.add_comm (j.val * N), Nat.add_comm (j' * N), Nat.add_mul_div_right _ _
+        (Nat.pos_of_ne_zero (by omega : N ≠ 0)), Nat.div_eq_of_lt i.isLt,
+        Nat.div_eq_of_lt hj', Nat.add_mul_mod_self_right, Nat.mod_eq_of_lt i.isLt,
+        Nat.mod_eq_of_lt hj'] at h1 h2
+      exact Fin.ext (by omega)
+    · rintro rfl
+      exact ⟨i, i.isLt, rfl⟩
+  have hlt : ∀ (i j : Fin N), 2 * (j * N + i) + 1 < 2 * (N * N) := fun i j => by
+    have := Idx.add_lt_mul j.isLt i.isLt; omega
+  refine HoldsMatrix.of_get (fun i j => ?_) (fun i j => ?_)
+  · rw [h _ (by have := hlt i j; omega)]
+    by_cases hij : i = j
+    · subst hij; dsimp only; rw [if_pos ⟨i, i.isLt, rfl⟩]; simp
+    · have hne : ¬ ∃ j' < N, 2 * (j * N + i) = 2 * (j' * N + j') := fun ⟨j', hj', e⟩ =>
+        hij ((key i j).mp ⟨j', hj', by omega⟩)
+      dsimp only; rw [if_neg hne]; simp [Matrix.one_apply_ne hij]
+  · rw [Nat.add_assoc, h _ (hlt i j)]
+    have hne : ¬ ∃ j' < N, 2 * (j * N + i) + 1 = 2 * (j' * N + j') := fun ⟨j', _, e⟩ => by omega
+    by_cases hij : i = j
+    · subst hij; simp [hne]
+    · simp [hne, Matrix.one_apply_ne hij]
+
+/-- **A scaled stored matrix**: if every word of a stored $\mathbf{A}$ is replaced by its rounded
+product with $r$ under the standard model at $\boldsymbol{u}$, the block holds an
+$\mathbf{A}'$ with $\|\mathbf{A}' - r\mathbf{A}\|_{\mathsf F} \le
+\boldsymbol{u}|r|\,\|\mathbf{A}\|_{\mathsf F}$ whose zero entries are those of $\mathbf{A}$ at
+least. -/
+theorem StdModel.exists_holdsMatrix_mul {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M)
+    {N : ℕ} {b : ℕ × ℕ} {A : Matrix (Fin N) (Fin N) ℂ} {s s' : Store ℝ} {r : ℝ}
+    (hA : HoldsMatrix b A s)
+    (h : ∀ t < 2 * (N * N), ∀ w, s.get b.1 (b.2 + t) = some w →
+      s'.get b.1 (b.2 + t) = some (M.mul w r)) :
+    ∃ A' : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix b A' s' ∧
+      frobNorm (A' - (r : ℂ) • A) ≤ u * |r| * frobNorm A ∧ ∀ i j, A i j = 0 → A' i j = 0 := by
+  have hu : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
+  have hlt : ∀ (i j : Fin N), 2 * (j * N + i) + 1 < 2 * (N * N) := fun i j => by
+    have := Idx.add_lt_mul j.isLt i.isLt; omega
+  refine ⟨Matrix.of fun i j => ⟨M.mul (A i j).re r, M.mul (A i j).im r⟩, ?_, ?_, ?_⟩
+  · refine HoldsMatrix.of_get (fun i j => ?_) (fun i j => ?_)
+    · exact h _ (by have := hlt i j; omega) _ (hA.get_re i j)
+    · rw [Nat.add_assoc]; exact h _ (hlt i j) _ (by rw [← Nat.add_assoc]; exact hA.get_im i j)
+  · rw [show u * |r| * frobNorm A = ‖((u * |r| : ℝ) : ℂ)‖ * frobNorm A by
+      rw [Complex.norm_real, Real.norm_of_nonneg (by positivity)], ← frobNorm_smul]
+    refine frobNorm_le_of_norm_apply_le fun i j => ?_
+    have h1 := hM.mul (A i j).re r
+    have h2 := hM.mul (A i j).im r
+    simp only [id] at h1 h2
+    set z := A i j
+    have e1 : (Matrix.of (fun i j => (⟨M.mul (A i j).re r, M.mul (A i j).im r⟩ : ℂ)) -
+        (r : ℂ) • A) i j = ⟨M.mul z.re r - z.re * r, M.mul z.im r - z.im * r⟩ := by
+      apply Complex.ext <;> simp [z, mul_comm]
+    have e2 : (((u * |r| : ℝ) : ℂ) • A) i j = ((u * |r| : ℝ) : ℂ) * z := rfl
+    rw [e1, e2, norm_mul, Complex.norm_real, Real.norm_of_nonneg (by positivity)]
+    refine (sq_le_sq₀ (norm_nonneg _) (by positivity)).mp ?_
+    rw [Complex.sq_norm, Complex.normSq_mk, mul_pow, Complex.sq_norm, Complex.normSq_apply]
+    rw [abs_mul] at h1 h2
+    have h1' := sq_le_sq' (abs_le.mp h1).1 (abs_le.mp h1).2
+    have h2' := sq_le_sq' (abs_le.mp h2).1 (abs_le.mp h2).2
+    have hr2 : |r| ^ 2 = r ^ 2 := sq_abs r
+    have hz1 : |z.re| ^ 2 = z.re ^ 2 := sq_abs _
+    have hz2 : |z.im| ^ 2 = z.im ^ 2 := sq_abs _
+    nlinarith
+  · intro i j hz
+    have h0 := hM.mul (A i j).re r
+    apply Complex.ext
+    · simp only [Matrix.of_apply, Complex.zero_re]
+      have : (A i j).re = 0 := by rw [hz]; rfl
+      rw [this] at h0 ⊢; simpa using h0
+    · simp only [Matrix.of_apply, Complex.zero_im]
+      have h0' := hM.mul (A i j).im r
+      have : (A i j).im = 0 := by rw [hz]; rfl
+      rw [this] at h0' ⊢; simpa using h0'
+
+/-- **The memories holding a Schur output form a measurable set.** -/
+theorem measurableSet_schurOutput {n : ℕ} (a uo f : ℕ × ℕ)
+    (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (eA eU : ℝ) :
+    MeasurableSet {μ' : Mem ℝ | SchurOutput a uo f A eA eU μ'} := by
+  set T := fun μ' : Mem ℝ => storedMatrix a (n + 1) (n + 1) μ'.store
+  set U := fun μ' : Mem ℝ => storedMatrix uo (n + 1) (n + 1) μ'.store
+  have e : {μ' : Mem ℝ | SchurOutput a uo f A eA eU μ'} =
+      {μ' | μ'.store.get f.1 f.2 = some 0} ∩
+        ({μ' | ∀ j < 2 * ((n + 1) * (n + 1)), (μ'.store.get a.1 (a.2 + j)).isSome} ∩
+        ({μ' | ∀ j < 2 * ((n + 1) * (n + 1)), (μ'.store.get uo.1 (uo.2 + j)).isSome} ∩
+        ({μ' | ∀ i j : Fin (n + 1), j < i → T μ' i j = 0} ∩
+        ({μ' | specNorm (A - U μ' * T μ' * (U μ')ᴴ) ≤ eA * specNorm A} ∩
+          {μ' | specNorm ((U μ')ᴴ * U μ' - 1) ≤ eU})))) := by
+    ext μ'
+    simp only [Set.mem_ofPred_eq, Set.mem_inter_iff, SchurOutput]
+    constructor
+    · rintro ⟨hf, U', T', hT, hU, hTu, hr, ho⟩
+      obtain rfl := hT.eq_storedMatrix
+      obtain rfl := hU.eq_storedMatrix
+      refine ⟨hf, fun j hj => ?_, fun j hj => ?_, fun i j hij => hTu hij, hr, ho⟩
+      · rw [Store.get_of_readBlock hT hj 0]; rfl
+      · rw [Store.get_of_readBlock hU hj 0]; rfl
+    · rintro ⟨hf, ha, hu, hTu, hr, ho⟩
+      exact ⟨hf, U μ', T μ', holdsMatrix_storedMatrix ha, holdsMatrix_storedMatrix hu,
+        fun i j hij => hTu i j hij, hr, ho⟩
+  rw [e]
+  have hT : Measurable T := ShiftedQR.measurable_storedMatrix a (n + 1) (n + 1)
+  have hU : Measurable U := ShiftedQR.measurable_storedMatrix uo (n + 1) (n + 1)
+  have hc₁ : Continuous fun p : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ ×
+      Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ => specNorm (A - p.1 * p.2 * p.1ᴴ) :=
+    continuous_specNorm.comp (continuous_const.sub ((continuous_fst.matrix_mul
+      continuous_snd).matrix_mul continuous_fst.matrix_conjTranspose))
+  have hc₂ : Continuous fun V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ => specNorm (Vᴴ * V - 1) :=
+    continuous_specNorm.comp ((continuous_id.matrix_conjTranspose.matrix_mul continuous_id).sub
+      continuous_const)
+  refine (Mem.measurableSet_get_eq f 0).inter ((ShiftedQR.measurableSet_forall_isSome a _).inter
+    ((ShiftedQR.measurableSet_forall_isSome uo _).inter ((?_ : MeasurableSet _).inter ?_)))
+  · simp only [Set.ofPred_forall]
+    refine .iInter fun i => .iInter fun j => ?_
+    by_cases hij : j < i
+    · simpa [hij] using measurableSet_eq_fun ((Matrix.measurable_apply i j).comp hT)
+        measurable_const
+    · simp [hij]
+  · exact (measurableSet_le (hc₁.measurable.comp (hU.prodMk hT)) measurable_const).inter
+      (measurableSet_le (hc₂.measurable.comp hU) measurable_const)
+
 /-! ### The error budget of the pipeline -/
 
 /-- The scalar budget of the pipeline residual: with $K = c_2x a$, the scaling, regularizer,
@@ -291,6 +427,73 @@ theorem schurPipeline_budget {a F s c₁ c₂ x u δR εHT εCT ε t₁ t₂ : �
   have p₃ : 0 ≤ ε * K / c₁ := by positivity
   have p₄ : 0 ≤ 3 * εHT * K / c₁ := by positivity
   have p₅ : 0 ≤ x * x * u * a := by positivity
+  linarith
+
+/-- **The residual of the pipeline in matrix form**: the input $\mathbf{A}$ scaled by $1/s$ to
+$\mathbf{A}_1$ ($\|s\mathbf{A}_1 - \mathbf{A}\|_2 \le 3\boldsymbol{u}\|\mathbf{A}\|_{\mathsf F}$),
+regularized to $\mathbf{A}_2$ within $\delta_R$, carried by a tracked run from
+$(\mathbf{I}, \mathbf{A}_2)$ to $(\mathbf{U}, \mathbf{T})$ and scaled back to $\mathbf{T}'$
+($\|\mathbf{T}' - s\mathbf{T}\|_{\mathsf F} \le \boldsymbol{u}s\|\mathbf{T}\|_{\mathsf F}$) has
+$\|\mathbf{A} - \mathbf{U}\mathbf{T}'\mathbf{U}^{\mathsf H}\|_2$ at most the sum of the scaled
+errors. -/
+theorem specNorm_sub_mul_mul_conjTranspose_le_of_scaled {N : ℕ}
+    {A A₁ A₂ U T T' : Matrix (Fin N) (Fin N) ℂ} {s u δR εT ε : ℝ} (hs : 0 < s) (hu : 0 ≤ u)
+    (hA₁ : specNorm ((s : ℂ) • A₁ - A) ≤ 3 * u * frobNorm A) (hA₂ : specNorm (A₂ - A₁) ≤ δR)
+    (hT : IsTrackedUnitarySimilar ε εT 1 A₂ U T) (hε0 : 0 ≤ ε) (hε : ε ≤ 1 / 8)
+    (hT' : frobNorm (T' - (s : ℂ) • T) ≤ u * s * frobNorm T) :
+    specNorm (A - U * T' * Uᴴ) ≤
+      s * (δR + εT + (2 * ε + ε ^ 2) * (specNorm A₂ + εT)) + 3 * u * frobNorm A +
+        (1 + ε) ^ 2 * u * s * √(N : ℝ) * (specNorm A₂ + εT) := by
+  obtain ⟨V, E, hV, hUV, hE, hAE⟩ := hT.exists_eq_mul_mul_conjTranspose hε0
+  have hres := (hT.specNorm_sub_mul_mul_conjTranspose_le hε0 hε).1
+  have hTn : specNorm T ≤ specNorm A₂ + εT := by
+    rw [← hV.specNorm_mul_conjTranspose_right, ← hV.specNorm_mul_left, ← Matrix.mul_assoc, ← hAE]
+    exact (specNorm_add_le _ _).trans (by linarith)
+  have hUn : specNorm U ≤ 1 + ε := by
+    have := specNorm_add_le V (U - V)
+    rw [add_sub_cancel] at this
+    linarith [hV.specNorm_le_one]
+  have hD : specNorm (U * (T' - (s : ℂ) • T) * Uᴴ) ≤
+      (1 + ε) ^ 2 * (u * s * (√(N : ℝ) * specNorm T)) := by
+    have h1 : specNorm (T' - (s : ℂ) • T) ≤ u * s * (√(N : ℝ) * specNorm T) :=
+      (specNorm_le_frobNorm _).trans (hT'.trans (mul_le_mul_of_nonneg_left
+        (by have := frobNorm_le_sqrt_card_mul_specNorm T; rwa [Fintype.card_fin] at this)
+        (by positivity)))
+    have h0 := specNorm_nonneg (T' - (s : ℂ) • T)
+    calc _ ≤ specNorm U * specNorm (T' - (s : ℂ) • T) * specNorm Uᴴ :=
+          (specNorm_mul_le _ _).trans (mul_le_mul_of_nonneg_right (specNorm_mul_le _ _)
+            (specNorm_nonneg _))
+      _ ≤ (1 + ε) * (u * s * (√(N : ℝ) * specNorm T)) * (1 + ε) := by
+          rw [specNorm_conjTranspose]
+          have hU0 := specNorm_nonneg U
+          exact mul_le_mul (mul_le_mul hUn h1 h0 (by linarith)) hUn hU0 (by positivity)
+      _ = _ := by ring
+  have e : A - U * T' * Uᴴ = -((s : ℂ) • A₁ - A) - (s : ℂ) • (A₂ - A₁) +
+      (s : ℂ) • (A₂ - U * T * Uᴴ) - U * (T' - (s : ℂ) • T) * Uᴴ := by
+    simp only [smul_sub, Matrix.mul_sub, Matrix.sub_mul, Matrix.mul_smul, Matrix.smul_mul]
+    abel
+  have hsn : ∀ X : Matrix (Fin N) (Fin N) ℂ, specNorm ((s : ℂ) • X) = s * specNorm X := fun X => by
+    rw [specNorm_smul, Complex.norm_real, Real.norm_of_nonneg hs.le]
+  rw [e]
+  have t₁ := specNorm_sub_le (-((s : ℂ) • A₁ - A) - (s : ℂ) • (A₂ - A₁) +
+    (s : ℂ) • (A₂ - U * T * Uᴴ)) (U * (T' - (s : ℂ) • T) * Uᴴ)
+  have t₂ := specNorm_add_le (-((s : ℂ) • A₁ - A) - (s : ℂ) • (A₂ - A₁))
+    ((s : ℂ) • (A₂ - U * T * Uᴴ))
+  have t₃ := specNorm_sub_le (-((s : ℂ) • A₁ - A)) ((s : ℂ) • (A₂ - A₁))
+  rw [specNorm_neg, hsn] at t₃
+  rw [hsn] at t₂
+  set c := (1 + ε) ^ 2 * u * s * √(N : ℝ)
+  have hTn' : c * specNorm T ≤ c * (specNorm A₂ + εT) :=
+    mul_le_mul_of_nonneg_left hTn (by positivity)
+  have hD' : specNorm (U * (T' - (s : ℂ) • T) * Uᴴ) ≤ c * specNorm T := by
+    refine hD.trans (le_of_eq ?_); ring
+  have h₂ := mul_le_mul_of_nonneg_left hA₂ hs.le
+  have h₃ := mul_le_mul_of_nonneg_left hres hs.le
+  have eR : s * (δR + εT + (2 * ε + ε ^ 2) * (specNorm A₂ + εT)) + 3 * u * frobNorm A +
+      (1 + ε) ^ 2 * u * s * √(N : ℝ) * (specNorm A₂ + εT) = s * δR +
+        s * (εT + (2 * ε + ε ^ 2) * (specNorm A₂ + εT)) + 3 * u * frobNorm A +
+          c * (specNorm A₂ + εT) := by ring
+  rw [eR]
   linarith
 
 /-- **The generic composition theorem**: for any norm estimate, regularizer (into `C`), reducer

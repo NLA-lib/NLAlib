@@ -49,30 +49,33 @@ section Program
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has SampleOp O] [Has DiskSampleOp O]
   [Has CmpTst Q] [Has IdxTst Q]
 
-/-- **The small-eigenvalue program** ([BanksGarzaVargasSrivastava2025, Theorem 1.1], `Eig`, with
-the base case of order at most $1$ and every loop capped): for $d \le 1$ copy the entry
-(`NLAlib.SmallEig.copyLeaf`); otherwise set the $2d$ output words to zero (`NLAlib.Ops.fillMap`:
-they stay stored if the core stops early), copy the threshold word `Q[6]` to scratch `Th` (the
-core's views are apart) and the block to scratch `W`, perturb it
-(`NLAlib.SmallEig.ginibrePerturb` with the Gaussian stream `sG` and the scale word `Q[0]`), reduce
-it to Hessenberg form, and run the core at the bottom width $1$ with the threshold word `Th`, the
-$n_q$ words `Q` and the cap $T$, into `Ev` and a scratch failure word. The interface is
-`[d, nq, T] (Bk, Q) → (Ev)`.
+/-- **The small-eigenvalue program in Schur mode** ([BanksGarzaVargasSrivastava2025, Theorem 1.1],
+`Eig`, with the base case of order at most $1$, every loop capped, and the Schur form): for
+$d \le 1$ keep the block and write the identity accumulator (`NLAlib.SmallEig.identityLeaf`);
+otherwise write the identity accumulator, copy the threshold word `Q[6]` to scratch `Th`, perturb
+the block in place (`NLAlib.SmallEig.ginibrePerturb` with the Gaussian stream `sG` and the scale
+word `Q[0]`), reduce it to Hessenberg form recording the rotations
+(`NLAlib.hessenbergReduceLast` into a scoped log of $d$ slots of $d$ entries), replay them on the
+accumulator (`NLAlib.givensReplayColumns`), and run the core in Schur mode at the bottom width
+$1$ with the threshold word `Th`, the $n_q$ words `Q`, the cap $T$ and the log shape
+$(T + d, d)$, into the block, the accumulator and a scratch failure word. The output is the
+triangular block $\widehat{\mathbf{T}}_b$ in `Bk` and its accumulator $\widehat{\mathbf{U}}_b$ in
+`Ub`; the eigenvalues are the diagonal of $\widehat{\mathbf{T}}_b$. The interface is
+`[d, nq, T] (Bk, Q) → (Bk, Ub)`, that of a Schur leaf (`NLAlib.Schur.RandomSchurLeafContract`).
 Algorithm: small-eig -/
-def smallEigProg (sG : ℕ) : Impl O Q := opsImpl% [d, nq, T] (Bk, Qw) → (Ev) {
-  ifPos 2 - d {
-    run (copyLeaf (O := O) (Q := Q)).body [d, nq, T] (Bk, Qw, Ev)
-  };
+def smallEigProg (sG : ℕ) : Impl O Q := opsImpl% [d, nq, T] (Bk, Qw) → (Bk, Ub) {
+  run (identityLeaf (O := O) (Q := Q)).body [d, nq, T] (Bk, Qw, Bk, Ub);
   ifPos d - 1 {
-    let W ← alloc (2 * (d * d));
     let Fl ← alloc 1;
     let Th ← alloc 1;
-    run (fillMap (Tst := Q) (Has.inj (ScalarOp.lit 0) : O)).body [2 * d] (Ev);
+    let Lg ← alloc (d * (1 + 5 * d));
     call (Has.inj ScalarOp.copy) [] (Qw[6]) → (Th);
-    run (unaryMap (Tst := Q) (Has.inj ScalarOp.copy)).body [2 * (d * d)] (Bk, W);
-    run (ginibrePerturb (O := O) (Q := Q) sG).body [d, nq] (W, Qw, W);
-    run (hessenbergReduceLast (O := O) (Q := Q)).body [d] (W, W);
-    run (smallEigCore (O := O) (Q := Q) sG).body [d, 1, nq, T, T] (W, Th, Qw, Ev, Fl)
+    run (ginibrePerturb (O := O) (Q := Q) sG).body [d, nq] (Bk, Qw, Bk);
+    run (slottedLogOpen (O := O) (Q := Q)).body [d, d] (Lg);
+    run (hessenbergReduceLast (O := O) (Q := Q)).body [d, d, 0] (Bk, Bk, Lg);
+    run (givensReplayColumns (O := O) (Q := Q)).body [d, 0, 0, d, d, d] (Lg, Ub, Ub);
+    run (smallEigCore (O := O) (Q := Q) sG).body [d, 1, nq, T, T, T + d, d]
+      (Bk, Th, Qw, Ub, Bk, Ub, Fl)
   }
 }
 

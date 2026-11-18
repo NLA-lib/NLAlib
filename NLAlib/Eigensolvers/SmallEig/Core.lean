@@ -47,11 +47,12 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has SampleOp O] [Has Dis
 
 /-- **The core of the small-eigenvalue solver** ([BanksGarzaVargasSrivastava2025, Theorem 6.1]):
 the rounded worklist `NLAlib.ShiftedQR.solveRoundedWith` with the decoupler
-`NLAlib.SmallEig.smallEigDecoupler` and the leaf `NLAlib.SmallEig.copyLeaf`. Run at the bottom
-width $k = 1$. The interface is `[N, k, np, F, T] (A, Thr, P) → (Out, Fl)`.
+`NLAlib.SmallEig.smallEigDecoupler` and the order-one Schur leaf `NLAlib.SmallEig.identityLeaf`,
+in Schur mode. Run at the bottom width $k = 1$. The interface is
+`[N, k, np, F, T, ns, w] (A, Thr, P, U) → (A, U, Fl)`.
 Algorithm: small-eig -/
 def smallEigCore (sG : ℕ) : Impl O Q :=
-  solveRoundedWith (smallEigDecoupler (O := O) (Q := Q) sG) (copyLeaf (O := O) (Q := Q))
+  solveRoundedWith (smallEigDecoupler (O := O) (Q := Q) sG) (identityLeaf (O := O) (Q := Q))
 
 end Program
 

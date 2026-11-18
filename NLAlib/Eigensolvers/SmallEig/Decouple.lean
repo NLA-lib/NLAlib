@@ -50,15 +50,17 @@ subdiagonal entry of the order-$N$ matrix `H` with the threshold $t_L$ = `Q[7]`
 (`NLAlib.ShiftedQR.bottomScan` at $k = 1$); while it does not pass, for at most $m_2$ rounds, one
 rounded QR step with the shift `Lam` (`NLAlib.ShiftedQR.multiStepStable` at degree $1$) and a scan;
 then the flag $0$ if the last scan passed, $1$ otherwise (`NLAlib.ShiftedQR.roundedDecoupleExit`).
-The interface is
-`[N, m2] (H, Lam, Q) → (H, Fl)`; the registers are scoped.
+Round $t$'s step records its rotations in slot $j_0 + t$ of the slotted log `Lg` (slot width
+$w \ge N - 1$), validated at once (the step is committed). The interface is
+`[N, m2, w, j0] (H, Lam, Q) → (H, Fl, Lg)`; the registers are scoped.
 Algorithm: small-eig -/
-def decoupleLast : Impl O Q := opsImpl% [N, m2] (H, Lam, Qw) → (H, Fl) {
+def decoupleLast : Impl O Q := opsImpl% [N, m2, w, j0] (H, Lam, Qw) → (H, Fl, Lg) {
   let R ← alloc 5;
   let Ds ← alloc 2;
   run (bottomScan (O := O) (Q := Q)).body [N, 1] (H, Qw[7], R);
   while j < m2, (Has.inj CmpTst.isZero) [] (R[3]) {
-    run (multiStepStable (Op := O) (Tst := Q)).body [N, 1] (H, Lam, H, Ds);
+    run (multiStepStable (Op := O) (Tst := Q)).body [N, 1, w, j0 + j] (H, Lam, H, Ds, Lg);
+    run (slottedLogValidate (O := O) (Q := Q)).body [w, j0 + j] (Lg);
     run (bottomScan (O := O) (Q := Q)).body [N, 1] (H, Qw[7], R)
   } then {
     run (roundedDecoupleExit (O := O) (Q := Q)).body [] (R, Fl)

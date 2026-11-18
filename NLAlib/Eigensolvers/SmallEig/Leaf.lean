@@ -36,14 +36,21 @@ open Ops ShiftedQR
 
 variable {O Q : Type} [Has ScalarOp O]
 
-/-- **The order-one leaf**: copy the $d$ diagonal entries of the order-$d$ block `Bk` to `Ev`
-(pairs). The interface is `[d, np, T] (Bk, P) → (Ev)`, that of the leaf routine of
-`NLAlib.ShiftedQR.solveRoundedWith`; the words and the cap are not read.
+/-- **The order-one Schur leaf**: a block of order $d \le 1$ is already upper triangular, so it is
+kept and its accumulator `Ub` is the identity of order $d$ (column-major pairs). The interface is
+`[d, np, T] (Bk, P) → (Bk, Ub)`, that of the Schur leaf routine of
+`NLAlib.ShiftedQR.solveRoundedWith`; the block, the words and the cap are not read. At any order
+it writes the identity.
 Algorithm: small-eig -/
-def copyLeaf : Impl O Q := opsImpl% [d, np, T] (Bk, P) → (Ev) {
+def identityLeaf : Impl O Q := opsImpl% [d, np, T] (Bk, P) → (Bk, Ub) {
+  for j < d {
+    for i < d {
+      call (Has.inj (ScalarOp.lit 0)) [] () → (Ub[2 * (j * d + i)]);
+      call (Has.inj (ScalarOp.lit 0)) [] () → (Ub[2 * (j * d + i) + 1])
+    }
+  };
   for i < d {
-    call (Has.inj ScalarOp.copy) [] (Bk[2 * (i * d + i)]) → (Ev[2 * i]);
-    call (Has.inj ScalarOp.copy) [] (Bk[2 * (i * d + i) + 1]) → (Ev[2 * i + 1])
+    call (Has.inj (ScalarOp.lit 1)) [] () → (Ub[2 * (i * d + i)])
   }
 }
 

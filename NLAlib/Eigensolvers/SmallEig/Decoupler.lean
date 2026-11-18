@@ -51,20 +51,24 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has SampleOp O] [Has Dis
 node): read the cap words $m$ (bound $T$), $q$ (bound $m$), $t$ and $m_2$ (bound $T$) from
 `P[8..11]`; `NLAlib.SmallEig.rhess` on the block `W` in place; `NLAlib.SmallEig.oneEig` with the
 words `P` into the shift `Lam` and the flag; if the flag is $0$,
-`NLAlib.SmallEig.decoupleLast` with the shift. The interface is
-`[N, k, np, F, T] (W, P) → (W, Fl)`, that of the decoupling routine of
-`NLAlib.ShiftedQR.solveRoundedWith`; the bottom width and the iteration cap are not read.
+`NLAlib.SmallEig.decoupleLast` with the shift. The rotations are recorded in the slotted log `Lg`
+of `ns` slots of `w` entries, zero-filled first: `rhess` in the slots $0, \dots, N - 2$, the
+steps of `decoupleLast` from the slot $N - 1$ on (so $N - 1 + m_2 \le n_s$ and $N - 1 \le w$).
+The interface is `[N, k, np, F, T, ns, w] (W, P) → (W, Fl, Lg)`, that of the decoupling routine
+of `NLAlib.ShiftedQR.solveRoundedWith`; the bottom width and the iteration cap are not read.
 Algorithm: small-eig -/
-def smallEigDecoupler (sG : ℕ) : Impl O Q := opsImpl% [N, k, np, F, T] (W, P) → (W, Fl) {
+def smallEigDecoupler (sG : ℕ) : Impl O Q :=
+  opsImpl% [N, k, np, F, T, ns, w] (W, P) → (W, Fl, Lg) {
   let m ← index (Has.inj IdxTst.toNat) (P[8]) ≤ T;
   let q ← index (Has.inj IdxTst.toNat) (P[9]) ≤ m;
   let t ← index (Has.inj IdxTst.toNat) (P[10]) ≤ T;
   let m2 ← index (Has.inj IdxTst.toNat) (P[11]) ≤ T;
   let Lam ← alloc 2;
-  run (rhess (O := O) (Q := Q) sG).body [N] (W, W);
+  run (slottedLogOpen (O := O) (Q := Q)).body [ns, w] (Lg);
+  run (rhess (O := O) (Q := Q) sG).body [N, w, 0] (W, W, Lg);
   run (oneEig (O := O) (Q := Q)).body [N, m, q, t] (W, P, Lam, Fl);
   if (Has.inj CmpTst.isZero) [] (Fl) {
-    run (decoupleLast (O := O) (Q := Q)).body [N, m2] (W, Lam, P, W, Fl)
+    run (decoupleLast (O := O) (Q := Q)).body [N, m2, w, N - 1] (W, Lam, P, W, Fl, Lg)
   } else { skip }
 }
 

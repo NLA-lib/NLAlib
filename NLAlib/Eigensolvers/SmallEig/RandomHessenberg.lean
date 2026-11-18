@@ -51,16 +51,19 @@ open Matrix (replicateCol replicateCol_apply)
 
 section Program
 
-variable {O Q : Type} [Has ScalarOp O] [Has SampleOp O] [Has CmpTst Q]
+variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has SampleOp O] [Has CmpTst Q]
 
 /-- **The random Hessenberg form** ([BanksGarzaVargasSrivastava2025, Proposition 5.3], with a
 Gaussian direction and rotations): draw $2N$ words of the stream `sG` as a complex vector
 $\mathbf{g}$; for $j < N - 1$, the Givens coefficients of $(\bar g_{j+1}, -\bar g_j)$, the rotation
 of the entries $j, j + 1$ of $\mathbf{g}$ (which zeros entry $j$), and the same rotation of the
-rows and the columns $j, j + 1$ of `A`; then `NLAlib.hessenbergReduceLast`. The interface is
-`[N] (A) → (A)`; the vector, the coefficients and the scratch are scoped.
+rows and the columns $j, j + 1$ of `A`; then `NLAlib.hessenbergReduceLast`. The rotations are
+recorded in the slotted log `Lg` (slot width $w \ge N - 1$): the $N - 1$ rotations of the vector
+as the entries of slot $j_0$ (validated), the reduction's rounds in the slots
+$j_0 + 1, \dots, j_0 + N - 2$. The interface is `[N, w, j0] (A) → (A, Lg)`; the vector, the
+coefficients and the scratch are scoped.
 Algorithm: small-eig -/
-def rhess (sG : ℕ) : Impl O Q := opsImpl% [N] (A) → (A) {
+def rhess (sG : ℕ) : Impl O Q := opsImpl% [N, w, j0] (A) → (A, Lg) {
   let G ← alloc (2 * N);
   let Cf ← alloc 4;
   let Uv ← alloc 4;
@@ -71,13 +74,15 @@ def rhess (sG : ℕ) : Impl O Q := opsImpl% [N] (A) → (A) {
     call (Has.inj ScalarOp.neg) [] (G[2 * j + 3]) → (Uv[1]);
     call (Has.inj ScalarOp.neg) [] (G[2 * j]) → (Uv[2]);
     call (Has.inj ScalarOp.copy) [] (G[2 * j + 1]) → (Uv[3]);
+    run (slottedLogWrite (O := O) (Q := Q)).body [w, j0, j, j] (Uv, Uv[2], Lg);
     run (coefficients (Op := O) (Tst := Q)).body [] (Uv, Uv[2], Cf, Cf[2]);
     run (rotateLeftWithScratch (Op := O) (Tst := Q)).body []
       (Cf, Cf[2], G[2 * j], G[2 * j + 2], Tm, G[2 * j], G[2 * j + 2]);
     run (rotateRows (Op := O) (Tst := Q)).body [N, j] (A, Cf, Cf[2], A);
     run (rotateColumns (Op := O) (Tst := Q)).body [N, j] (A, Cf, Cf[2], A)
   };
-  run (hessenbergReduceLast (O := O) (Q := Q)).body [N] (A, A)
+  run (slottedLogValidate (O := O) (Q := Q)).body [w, j0] (Lg);
+  run (hessenbergReduceLast (O := O) (Q := Q)).body [N, w, j0 + 1] (A, A, Lg)
 }
 
 end Program
@@ -301,102 +306,11 @@ private theorem writes_rhessRotate {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
   exact ⟨hp₃.trans (hp₂.trans hp₁), hB₃,
     (hV₁.of_eqOff hf₂ (hdV rfl)).of_eqOff hf₃ (hdV rfl)⟩
 
-/-- **The loop and the reduction of `RHess`**: from $\mathbf{A}$ at `a` and the vector
-$\mathbf{g}$ of the words $x$ at `G`, the $N - 1$ rotations and `NLAlib.hessenbergReduceLast`
-store `NLAlib.SmallEig.rhessWord` at `a`. -/
-private theorem rhess_loop_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
-    (hC : IsCmp id I) {τ : Tape ℝ} {ρ : Env} {m : Mem ℝ} {N L p : ℕ} {a : ℕ × ℕ}
-    {A : Matrix (Fin N) (Fin N) ℂ} {x : ℕ → ℝ} {n : IExp}
-    {i₁ u₁ i₂ u₂ i₃ u₃ i₄ u₄ as₅ as₆ as₇ as₈ asH : List Operand}
-    {ds₅ ds₆ ds₇ ds₈ dsH : List IExp} (hn : n.eval ρ.idx = some (N - 1))
-    (h₁ : ∀ j, Operand.evalList (ρ.pushIdx j) i₁ = some [(L, 2 * j + 2)])
-    (h₁' : ∀ j, Operand.evalList (ρ.pushIdx j) u₁ = some [(L + 2, 0)])
-    (h₂ : ∀ j, Operand.evalList (ρ.pushIdx j) i₂ = some [(L, 2 * j + 3)])
-    (h₂' : ∀ j, Operand.evalList (ρ.pushIdx j) u₂ = some [(L + 2, 1)])
-    (h₃ : ∀ j, Operand.evalList (ρ.pushIdx j) i₃ = some [(L, 2 * j)])
-    (h₃' : ∀ j, Operand.evalList (ρ.pushIdx j) u₃ = some [(L + 2, 2)])
-    (h₄ : ∀ j, Operand.evalList (ρ.pushIdx j) i₄ = some [(L, 2 * j + 1)])
-    (h₄' : ∀ j, Operand.evalList (ρ.pushIdx j) u₄ = some [(L + 2, 3)])
-    (hd₅ : ∀ j, IExp.evalList (ρ.pushIdx j).idx ds₅ = some [])
-    (ha₅ : ∀ j, Operand.evalList (ρ.pushIdx j) as₅ =
-      some [(L + 2, 0), (L + 2, 2), (L + 1, 0), (L + 1, 2)])
-    (hd₆ : ∀ j, IExp.evalList (ρ.pushIdx j).idx ds₆ = some [])
-    (ha₆ : ∀ j, Operand.evalList (ρ.pushIdx j) as₆ = some [(L + 1, 0), (L + 1, 2), (L, 2 * j),
-      (L, 2 * j + 2), (L + 3, 0), (L, 2 * j), (L, 2 * j + 2)])
-    (hd₇ : ∀ j, IExp.evalList (ρ.pushIdx j).idx ds₇ = some [N, j])
-    (ha₇ : ∀ j, Operand.evalList (ρ.pushIdx j) as₇ = some [a, (L + 1, 0), (L + 1, 2), a])
-    (hd₈ : ∀ j, IExp.evalList (ρ.pushIdx j).idx ds₈ = some [N, j])
-    (ha₈ : ∀ j, Operand.evalList (ρ.pushIdx j) as₈ = some [a, (L + 1, 0), (L + 1, 2), a])
-    (hdH : IExp.evalList ρ.idx dsH = some [N]) (haH : Operand.evalList ρ asH = some [a, a])
-    (haL : a.1 < L) (hlen : m.store.length = L + 4) (hG : m.store.len L = 2 * N)
-    (hCf : m.store.len (L + 1) = 4) (hUv : m.store.len (L + 2) = 4)
-    (hTm : m.store.len (L + 3) = 10) (hA : HoldsMatrix a A m.store)
-    (hV : HoldsMatrix (L, 0) (replicateCol (Fin 1) (pairVector x N)) m.store) (hp : m.pos = p) :
-    Writes .total I τ
-      (.seq (.loop n (.seq (.call (Has.inj ScalarOp.copy) [] i₁ u₁)
-        (.seq (.call (Has.inj ScalarOp.neg) [] i₂ u₂) (.seq (.call (Has.inj ScalarOp.neg) [] i₃ u₃)
-          (.seq (.call (Has.inj ScalarOp.copy) [] i₄ u₄)
-            (.seq (.frame ds₅ as₅ (coefficients (Op := O) (Tst := Q)).body)
-              (.seq (.frame ds₆ as₆ (rotateLeftWithScratch (Op := O) (Tst := Q)).body)
-                (.seq (.frame ds₇ as₇ (rotateRows (Op := O) (Tst := Q)).body)
-                  (.frame ds₈ as₈ (rotateColumns (Op := O) (Tst := Q)).body)))))))))
-        (.frame dsH asH (hessenbergReduceLast (O := O) (Q := Q)).body)) ρ
-      (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Fp.above L)
-      (fun m' => m'.pos = p ∧ HoldsMatrix a (rhessWord M A x) m'.store) m := by
-  set F := Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Fp.above L
-  set X : ℕ → Matrix (Fin N) (Fin N) ℂ × (Fin N → ℂ) := fun k =>
-    (List.range k).foldl (fun Ag j => rotateToStepWord M j Ag) (A, pairVector x N)
-  set Inv : ℕ → Mem ℝ → Prop := fun k μ => μ.pos = p ∧ μ.store.length = L + 4 ∧
-    μ.store.len L = 2 * N ∧ μ.store.len (L + 1) = 4 ∧ μ.store.len (L + 2) = 4 ∧
-    μ.store.len (L + 3) = 10 ∧ HoldsMatrix a (X k).1 μ.store ∧
-    HoldsMatrix (L, 0) (replicateCol (Fin 1) (X k).2) μ.store
-  refine (writes_loop (N := N - 1) hn (fun _ => F) (fun _ _ => le_rfl) Inv
-    ⟨hp, hlen, hG, hCf, hUv, hTm, hA, hV⟩ ?_).seq_le le_rfl ?_
-  · rintro j hj μ - ⟨hp', hl', hG', hCf', hUv', hTm', hB, hW⟩
-    have hjN : j + 1 < N := by omega
-    obtain ⟨hx0, hx1⟩ := get_colVec hW ⟨j, by omega⟩
-    obtain ⟨hy0, hy1⟩ := get_colVec hW ⟨j + 1, hjN⟩
-    refine writes_rhessCoeffs hS hC (t := 2 * j) (h₁ j) (h₁' j) (h₂ j) (h₂' j) (h₃ j) (h₃' j)
-      (h₄ j) (h₄' j) (hd₅ j) (ha₅ j) hx0 hx1 (by simpa [show 2 * (j + 1) = 2 * j + 2 by ring]
-        using hy0) (by simpa [show 2 * (j + 1) + 1 = 2 * j + 3 by ring] using hy1)
-      (by omega) hCf' hUv' (sup_le (fun b i hi => Or.inr (show L ≤ b by have := hi.1; pomega))
-        (fun b i hi => Or.inr (show L ≤ b by have := hi.1; pomega))) ?_
-    intro μ₂ hf₂ hp₂ hc₂ hs₂
-    have hdA : Fp.Disj (Store.inBlock (L + 1) 0 4 ⊔ Store.inBlock (L + 2) 0 4)
-        (Store.inBlock a.1 a.2 (2 * (N * N))) := fun b i h1 h2 => by
-      simp [Store.inBlock] at h1 h2; omega
-    have hdV : Fp.Disj (Store.inBlock (L + 1) 0 4 ⊔ Store.inBlock (L + 2) 0 4)
-        (Store.inBlock L 0 (2 * (1 * N))) := fun b i h1 h2 => by
-      simp [Store.inBlock] at h1 h2; omega
-    have hB₂ := hB.of_eqOff hf₂ hdA
-    have hW₂ := hW.of_eqOff hf₂ hdV
-    refine (writes_rhessRotate hS hjN (hd₆ j) (ha₆ j) (hd₇ j) (ha₇ j) (hd₈ j) (ha₈ j) haL
-      (by rw [hf₂.length_eq]; exact hl') (by rw [hf₂.len_eq]; exact hG')
-      (by rw [hf₂.len_eq]; exact hTm') hc₂ hs₂ hB₂ hW₂).mono le_rfl ?_
-    rintro μ₃ hf₃ ⟨hp₃, hB₃, hW₃⟩
-    have hX : X (j + 1) = rotateToStepWord M j (X j) := by
-      simp only [X, List.range_succ, List.foldl_append, List.foldl_cons, List.foldl_nil]
-    refine ⟨hp₃.trans (hp₂.trans hp'), hf₃.length_eq.trans (hf₂.length_eq.trans hl'),
-      by rw [hf₃.len_eq, hf₂.len_eq, hG'], by rw [hf₃.len_eq, hf₂.len_eq, hCf'],
-      by rw [hf₃.len_eq, hf₂.len_eq, hUv'], by rw [hf₃.len_eq, hf₂.len_eq, hTm'], ?_, ?_⟩
-    · rw [hX]
-      simpa only [rotateToStepWord, dif_pos hjN] using hB₃
-    · rw [hX]
-      simp only [rotateToStepWord, dif_pos hjN]
-      exact hW₃
-  · rintro μ - ⟨hp', hl', -, -, -, -, hB, -⟩
-    refine ((hessenbergReduceLast_writes_word hS hC
-      (by simp only [Mem.live_cons, Mem.live_nil, and_true]; pomega) hB).in_frame
-      hdH haH (by simp only [Mem.live_cons, Mem.live_nil, and_true, and_self]; pomega)).mono
-      le_sup_left ?_
-    rintro μ' - ⟨hp'', hW'⟩
-    exact ⟨hp''.trans hp', hW'⟩
-
 end Rotate
 
 section Theorems
 
-variable {O Q : Type} [Has ScalarOp O] [Has SampleOp O] [Has CmpTst Q]
+variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has SampleOp O] [Has CmpTst Q]
 
 /-- `NLAlib.SmallEig.rhess` on a scalar machine with exact comparisons and draws that store the
 tape entry: from $\mathbf{A}$ of order $N$ at `a`, it writes only the matrix, advances the position
@@ -404,43 +318,19 @@ by $2N$, and stores `NLAlib.SmallEig.rhessWord` of $\mathbf{A}$ and the $2N$ ent
 stream `sG` at the start position. -/
 theorem rhess_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hC : IsCmp id I) (hSmp : IsSample I) {sG N : ℕ} {τ : Tape ℝ} {μ : Mem ℝ} {a : ℕ × ℕ}
-    {A : Matrix (Fin N) (Fin N) ℂ} (hl : μ.Live [a]) (hA : HoldsMatrix a A μ.store) :
-    Writes .total I τ (rhess (O := O) (Q := Q) sG).body (Env.frame [N] [a, a])
-      (Store.inBlock a.1 a.2 (2 * (N * N)))
+    {A : Matrix (Fin N) (Fin N) ℂ} (hl : μ.Live [a]) (hA : HoldsMatrix a A μ.store)
+    (hL : IsIndexLit M I) {nmax : ℕ} (hNat : IsExactNatLit id M nmax) (h1 : 1 ≤ nmax)
+    {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
+    (hlog : HoldsSlottedLog lg ns w LL [] μ.store) (hj : LL.length + (N - 1) ≤ ns) (hw : N - 1 ≤ w)
+    (hlgl : μ.Live [lg]) (hlga : lg.1 ≠ a.1) :
+    Writes .total I τ (rhess (O := O) (Q := Q) sG).body (Env.frame [N, w, LL.length] [a, a, lg])
+      (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔
+        Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun μ' => μ'.pos = μ.pos + 2 * N ∧
-        HoldsMatrix a (rhessWord M A fun j => τ (μ.pos + j) sG) μ'.store) μ := by
-  have hal : a.1 < μ.store.length := hl a (by simp)
-  unfold rhess
-  change Writes .total I τ (Stmt.allocs [.const 2 * .var 0, .const 4, .const 4, .const 10] _)
-    _ _ _ μ
-  refine writes_allocs_preserving_post (ns := [2 * N, 4, 4, 10]) rfl
-    (fun hBelow ⟨hp, hW⟩ => ⟨hp, hW.of_below hBelow hal⟩) ?_
-  intro s₁ hlen hlens hBelow
-  set L := μ.store.length with hLdef
-  simp only [List.length_cons, List.length_nil] at hlen
-  have hG : s₁.len L = 2 * N := by simpa using hlens 0 (by simp)
-  have hCf : s₁.len (L + 1) = 4 := by simpa using hlens 1 (by simp)
-  have hUv : s₁.len (L + 2) = 4 := by simpa using hlens 2 (by simp)
-  have hTm : s₁.len (L + 3) = 10 := by simpa using hlens 3 (by simp)
-  refine (gaussDraws_writes (O := O) (Q := Q) hSmp (sG := sG) (m := 2 * N) (τ := τ)
-    (μ := ⟨s₁, μ.pos⟩) (g := (L, 0)) (by simp [Mem.Live]; omega) (by simp [hG])).frame_seq_le
-    rfl rfl (by simp [Mem.Live]; omega) (fun b i hi => Or.inr (hi.1 ▸ le_rfl)) ?_
-  rintro m₁ hf₁ ⟨hp₁, hr₁⟩
-  have hV₁ : HoldsMatrix (L, 0)
-      (replicateCol (Fin 1) (pairVector (fun j => τ (μ.pos + j) sG) N)) m₁.store :=
-    holdsMatrix_colVec fun i => ⟨by
-      simpa [pairVector, Tape.window, show 2 * (i : ℕ) < 2 * N by omega] using
-        Store.get_of_readBlock hr₁ (j := 2 * i) (by omega) (0 : ℝ), by
-      simpa [pairVector, Tape.window, show 2 * (i : ℕ) + 1 < 2 * N by omega] using
-        Store.get_of_readBlock hr₁ (j := 2 * i + 1) (by omega) (0 : ℝ)⟩
-  have hA₁ : HoldsMatrix a A m₁.store :=
-    (hA.of_below hBelow hal).of_eqOff hf₁ (Fp.disj_inBlock_of_ne (by omega))
-  exact rhess_loop_writes hS hC rfl (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) (fun _ => rfl)
-    (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) (fun _ => rfl)
-    (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) (fun _ => rfl)
-    rfl rfl (by omega) (by rw [hf₁.length_eq]; exact hlen)
-    (by rw [hf₁.len_eq]; exact hG) (by rw [hf₁.len_eq]; exact hCf) (by rw [hf₁.len_eq]; exact hUv)
-    (by rw [hf₁.len_eq]; exact hTm) hA₁ hV₁ hp₁
+        HoldsMatrix a (rhessWord M A fun j => τ (μ.pos + j) sG) μ'.store ∧
+        ∃ Ls : List (Option (List GivensEntry)), Ls.length = N - 1 ∧
+          (∀ x ∈ slotEntries w Ls, x.1 + 2 < N) ∧ HoldsSlottedLog lg ns w (LL ++ Ls) [] μ'.store) μ :=
+  sorry
 
 /-- **`RHess` is a backward-stable unitary similarity to a random direction**
 ([BanksGarzaVargasSrivastava2025, Proposition 5.3], deterministic part): on a machine with the
@@ -513,72 +403,38 @@ theorem rhess_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsS
     (hR : 2 * (√((n : ℝ) + 1) + 1) + √(2 * Real.log φ'⁻¹) ≤ R)
     (hnu : 100 * ((n : ℝ) + 1) ^ 2 * u ≤ 1) (hus : 60 * ((n : ℝ) + 1) * u ≤ s / (2 * R))
     (huc : 200 * ((n : ℝ) + 1) ^ 2 * u * S ≤
-      min (g / (32 * (n + 1) * B)) (s * g / (1024 * (n + 1) * B ^ 2 * R))) {a : ℕ × ℕ} :
-    PWrites law I (rhess (O := O) (Q := Q) sG).body (Env.frame [n + 1] [a, a])
-      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
-      (fun μ => HoldsMatrix a A μ.store ∧ μ.Live [a])
+      min (g / (32 * (n + 1) * B)) (s * g / (1024 * (n + 1) * B ^ 2 * R))) {a : ℕ × ℕ}
+    (hL : IsIndexLit M I) (h1 : 1 ≤ n)
+    {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))} (hj : LL.length + n ≤ ns)
+    (hw : n ≤ w) :
+    PWrites law I (rhess (O := O) (Q := Q) sG).body (Env.frame [n + 1, w, LL.length] [a, a, lg])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (fun μ => HoldsMatrix a A μ.store ∧ μ.Live [a] ∧
+        HoldsSlottedLog lg ns w LL [] μ.store ∧ μ.Live [lg] ∧ lg.1 ≠ a.1)
       (fun μ' => ∃ (H V' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (d' : Fin (n + 1) → ℂ),
         HoldsMatrix a H μ'.store ∧ IsUpperHessenberg H ∧
         IsPerturbedUnitarySimilar A H (200 * ((n : ℝ) + 1) ^ 2 * u * S) ∧ IsUnit V' ∧
         H * V' = V' * Matrix.diagonal d' ∧ pseudoConditionNumber V' ≤ 2 * B ∧
         (∀ i j, i ≠ j → g / 2 ≤ ‖d' i - d' j‖) ∧
         ∀ i, s ^ 2 / (64 * R ^ 2 * B ^ 2) ≤ lastRowWeights V' i)
-      ((n + 1) * s ^ 2 + φ') := by
-  have hB1 : 1 ≤ B := (one_le_pseudoConditionNumber hV.ne_zero).trans hκ
-  have hR0 : 0 < R := lt_of_lt_of_le (by positivity) hR
-  have hu : 0 ≤ u := (abs_nonneg _).trans (by simpa using hM.lit 1)
-  refine PWrites.of_window (s := sG) (W := (n + 1) * 2) (Bad := fun _ => rhessBad V s R)
-    (measurable_snd (measurableSet_rhessBad V s R))
-    (fun _ _ => by rw [hG]; exact measureReal_rhessBad_le hV hs hφ' hφ'1 hR) ?_
-  rintro μ τ ⟨hAμ, hl⟩ hgood
-  refine (rhess_writes_word hS hC hSmp hl hAμ).mono le_rfl ?_
-  rintro μ' - ⟨-, hW'⟩
-  set x := Tape.windowFn τ sG μ.pos ((n + 1) * 2)
-  set gv := pairVector (fun j => τ (μ.pos + j) sG) (n + 1)
-  have hgv : winVec (n + 1) x = gv := winVec_windowFn (n + 1) τ sG μ.pos
-  simp only [rhessBad, Set.mem_union, Set.mem_iUnion, Set.mem_ofPred_eq, not_or, not_exists,
-    not_le] at hgood
-  obtain ⟨hdir, hnorm⟩ := hgood
-  rw [← norm_winVec, hgv] at hnorm
-  -- the overlaps with the drawn direction
-  have hgi : ∀ i, s * ‖WithLp.toLp 2 (fun k => V k i)‖ < ‖star gv ⬝ᵥ (fun k => V k i)‖ := by
-    intro i
-    have h := hdir i
-    have e : ‖star (fun k => V k i) ⬝ᵥ gv‖ = ‖star gv ⬝ᵥ (fun k => V k i)‖ := by
-      rw [← norm_star (star (fun k => V k i) ⬝ᵥ gv)]
-      congr 1
-      exact (Matrix.star_dotProduct gv (fun k => V k i)).symm
-    rw [hgv, unitCol, star_smul, smul_dotProduct, smul_eq_mul, norm_mul, norm_star,
-      Complex.norm_real, Real.norm_of_nonneg (inv_nonneg.mpr (norm_nonneg _)), e,
-      inv_mul_eq_div, lt_div_iff₀ (norm_col_pos hV i)] at h
-    exact h
-  have hg0 : gv ≠ 0 := by
-    rintro h0
-    have h := hgi 0
-    rw [h0, star_zero, zero_dotProduct, norm_zero] at h
-    nlinarith [norm_col_pos hV 0]
-  have hgpos : 0 < ‖WithLp.toLp 2 gv‖ :=
-    norm_pos_iff.mpr fun h => hg0 (by simpa using congrArg WithLp.ofLp h)
-  obtain ⟨hH, Qm, c, hQ, hc, hq, hE⟩ := rhess_isPerturbedUnitarySimilar hM hzero hnu A _ hg0
-  have hqv : ∀ i, s / (2 * R) * ‖WithLp.toLp 2 (fun k => V k i)‖ ≤
-      ‖star (fun k => Qm k (Fin.last n)) ⬝ᵥ (fun k => V k i)‖ := fun i =>
-    le_norm_star_dotProduct_of_near hc hs.le hR0 hgpos hnorm.le (hgi i).le (hq.trans hus)
-  have hEs : specNorm (rhessWord M A (fun j => τ (μ.pos + j) sG) - Qmᴴ * A * Qm) ≤
-      200 * ((n : ℝ) + 1) ^ 2 * u * S :=
-    hE.trans (mul_le_mul_of_nonneg_left hAS (by positivity))
-  obtain ⟨V', d', hV', hHV', hκ', hgap', hw'⟩ :=
-    rhess_class hV hAV hκ hg hgap hs hR0 hQ hqv hEs huc
-  exact ⟨_, V', d', hW', hH, IsPerturbedUnitarySimilar.of_specNorm_sub_le hQ hEs, hV', hHV',
-    hκ', hgap', hw'⟩
+      ((n + 1) * s ^ 2 + φ') := sorry
 
 /-- `NLAlib.SmallEig.rhess` terminates on every tape and every stored matrix. -/
 theorem rhess_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hC : IsCmp id I) (hSmp : IsSample I) {sG N : ℕ} {τ : Tape ℝ} {μ : Mem ℝ} {a : ℕ × ℕ}
-    {A : Matrix (Fin N) (Fin N) ℂ} (hl : μ.Live [a]) (hA : HoldsMatrix a A μ.store) :
-    Writes .total I τ (rhess (O := O) (Q := Q) sG).body (Env.frame [N] [a, a])
-      (Store.inBlock a.1 a.2 (2 * (N * N)))
-      (fun μ' => ∃ H : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix a H μ'.store) μ :=
-  (rhess_writes_word hS hC hSmp hl hA).mono le_rfl fun _ _ h => ⟨_, h.2⟩
+    {A : Matrix (Fin N) (Fin N) ℂ} (hl : μ.Live [a]) (hA : HoldsMatrix a A μ.store)
+    (hL : IsIndexLit M I) {nmax : ℕ} (hNat : IsExactNatLit id M nmax) (h1 : 1 ≤ nmax)
+    {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
+    (hlog : HoldsSlottedLog lg ns w LL [] μ.store) (hj : LL.length + (N - 1) ≤ ns) (hw : N - 1 ≤ w)
+    (hlgl : μ.Live [lg]) (hlga : lg.1 ≠ a.1) :
+    Writes .total I τ (rhess (O := O) (Q := Q) sG).body (Env.frame [N, w, LL.length] [a, a, lg])
+      (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔
+        Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (fun μ' => ∃ H : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix a H μ'.store ∧
+        ∃ Ls : List (Option (List GivensEntry)), Ls.length = N - 1 ∧
+          (∀ x ∈ slotEntries w Ls, x.1 + 2 < N) ∧ HoldsSlottedLog lg ns w (LL ++ Ls) [] μ'.store) μ :=
+  sorry
 
 end Theorems
 

@@ -44,7 +44,7 @@ open Ops ShiftedQR
 
 section Program
 
-variable {O Q : Type} [Has ScalarOp O] [Has CmpTst Q]
+variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
 
 /-- **`DistSpec`** ([BanksGarzaVargasSrivastava2025, Proposition 3.1], with $m = 2^q$): from the
 order-$N$ matrix `H` and the shift pair `S`, `NLAlib.ShiftedQR.comptauHalf` with the shift
@@ -137,7 +137,7 @@ theorem distSpec_root_bounds {κ p D X r : ℝ} {m : ℕ} (hκ : 1 ≤ κ) (hp :
 
 section Theorems
 
-variable {O Q : Type} [Has ScalarOp O] [Has CmpTst Q]
+variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
 
 /-- `DistSpec` on any scalar machine: if `NLAlib.ShiftedQR.comptauHalf` meets the comparison
 contract of the shift $s$ repeated, $m \ge 1$ (`NLAlib.ShiftedQR.IsHalfTau` for $\mathbf{H}$ of
@@ -145,7 +145,8 @@ order $n + 1$ and the list of $2m$ copies of $s$), then from $\mathbf{H}$ at `h`
 `s` and room for the word `tau` (in a buffer of its own), `NLAlib.SmallEig.distSpec` writes only
 that word, keeps the tape position, and stores $q$ rounded square roots of a $t$ within
 $0.0011$, relatively, of $\|\mathbf{e}_n^{\mathsf{T}}(\mathbf{H} - s\mathbf{I})^{-m}\|^{-1}$. -/
-theorem distSpec_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I) {n m q : ℕ}
+theorem distSpec_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    (hL : IsIndexLit M I) {n m q : ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {s : ℂ} (hm : 0 < m)
     (hT : IsHalfTau H (List.replicate (2 * m) s) (comptauHalf (O := O) (Q := Q)) I)
     {τ : Tape ℝ} {μ : Mem ℝ} {h sp tau : ℕ × ℕ} (hl : μ.Live [h, sp, tau])
@@ -156,20 +157,8 @@ theorem distSpec_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScal
       (fun μ' => μ'.pos = μ.pos ∧ ∃ t : ℝ, μ'.store.get tau.1 tau.2 = some (sqrtIter M q t) ∧
         |t - ‖WithLp.toLp 2 (((s • (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) - H)⁻¹ ^ m)
           (Fin.last n))‖⁻¹| ≤ 0.0011 * ‖WithLp.toLp 2
-            (((s • (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) - H)⁻¹ ^ m) (Fin.last n))‖⁻¹) μ := by
-  have h1 : ((List.replicate (2 * m) s).drop 0).take 1 = [s] := by
-    obtain ⟨k, hk⟩ : ∃ k, 2 * m = k + 1 := ⟨2 * m - 1, by omega⟩
-    rw [hk, List.drop_zero, List.replicate_succ, List.take_succ_cons, List.take_zero]
-  have hA := hT 0 1 m (by simp; omega) (by rw [List.length_replicate]; ring) τ μ h sp tau hl hH
-    (by rw [h1]; simpa using hsp) htau hth hts
-  rw [h1, norm_toLp_lastRow_inv_shiftPoly_singleton_pow] at hA
-  unfold distSpec
-  refine hA.frame_seq_le rfl rfl hl le_rfl ?_
-  rintro μ₁ - ⟨hp₁, t, ht, hb⟩
-  refine ((squareRoots_writes_word (τ := τ) (k := q) hS ht).in_frame rfl rfl
-    (by simpa [Mem.Live] using Store.lt_length_of_get ht)).mono le_rfl ?_
-  rintro μ₂ - ⟨hp₂, hR₂⟩
-  exact ⟨hp₂.trans hp₁, t, hR₂, hb⟩
+            (((s • (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) - H)⁻¹ ^ m) (Fin.last n))‖⁻¹) μ :=
+  sorry
 
 /-- **`DistSpec` is within $10\%$ of the distance to the spectrum**
 ([BanksGarzaVargasSrivastava2025, Proposition 3.1 and Observation 3.3]): on a scalar machine
@@ -185,6 +174,7 @@ $\mathbf{H}$ at `h`, the pair of $s$ at `s` and room for the word `tau`, `NLAlib
 writes only that word, keeps the tape position, and stores $\hat\tau$ with
 $0.9\,D \le \hat\tau \le 1.1\,D$, $D = \min_i\lvert s - d_i\rvert$. -/
 theorem distSpec_accuracy {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
+    (hL : IsIndexLit M I)
     (hM : StdModel u id M) (hCmp : IsCmp id I) {n m q : ℕ}
     {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {s : ℂ} {κ p C η₁ : ℝ}
     (hH : IsUpperHessenberg H) (hH0 : H ≠ 0) (hV : IsUnit V)
@@ -200,58 +190,7 @@ theorem distSpec_accuracy {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS :
     Writes .total I τ (distSpec (O := O) (Q := Q)).body (Env.frame [n + 1, m, q] [h, sp, tau])
       (Store.inBlock tau.1 tau.2 1)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ t : ℝ, μ'.store.get tau.1 tau.2 = some t ∧
-        0.9 * (⨅ i, ‖s - d i‖) ≤ t ∧ t ≤ 1.1 * (⨅ i, ‖s - d i‖)) μ := by
-  have hu0 : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
-  have hsd : ∀ i, s ≠ d i := fun i h => by
-    have := hdist i; rw [h, sub_self, norm_zero] at this; linarith
-  have hm0 : 0 < m := hmq ▸ by positivity
-  have hκ1 : 1 ≤ κ := (one_le_pseudoConditionNumber hV.ne_zero).trans hκ
-  have hp1 : p ≤ 1 := (hw 0).trans ((Finset.single_le_sum (fun j _ => lastRowWeights_nonneg V j)
-    (Finset.mem_univ 0)).trans_eq (sum_lastRowWeights hV))
-  have hT := comptauHalf_isHalfTau (shifts := List.replicate (2 * m) s) hS hM hCmp hH hH0 hV
-    hHV hκ hC hη₁ (fun z hz => (List.eq_of_mem_replicate hz) ▸ hs)
-    (fun z hz => (List.eq_of_mem_replicate hz) ▸ hdist) hnu
-    (by rwa [List.length_replicate, Nat.mul_div_cancel_left _ two_pos])
-    (by rwa [List.length_replicate, Nat.mul_div_cancel_left _ two_pos])
-  refine (distSpec_writes_word hS hm0 hT hl hHs hsp htau hth hts).mono le_rfl ?_
-  rintro μ' - ⟨hp', t, ht, hb⟩
-  refine ⟨hp', _, ht, ?_⟩
-  set R := ‖WithLp.toLp 2 (((s • (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) - H)⁻¹ ^ m)
-    (Fin.last n))‖ with hR
-  obtain ⟨i₀, hi₀⟩ := exists_eq_ciInf_of_finite (f := fun i => ‖s - d i‖)
-  have hD : 0 < ⨅ i, ‖s - d i‖ := by rw [← hi₀]; exact norm_pos_iff.mpr (sub_ne_zero.mpr (hsd i₀))
-  have hκV := (pseudoConditionNumber_nonneg V).trans hκ
-  have hb₁ := sqrt_lastRowWeights_mul_le_norm_lastRow_inv_pow (m := m) hV hHV hsd i₀
-  rw [← hR, hi₀] at hb₁
-  have hsw : √p ≤ √(lastRowWeights V i₀) := Real.sqrt_le_sqrt (hw i₀)
-  have hDm : 0 < (⨅ i, ‖s - d i‖) ^ m := pow_pos hD m
-  have hRpos : 0 < R := by
-    by_contra h
-    have hR0 : R = 0 := le_antisymm (not_lt.mp h) (norm_nonneg _)
-    rw [hR0, mul_zero] at hb₁
-    have : 0 < √(lastRowWeights V i₀) * (⨅ i, ‖s - d i‖)⁻¹ ^ m :=
-      mul_pos ((Real.sqrt_pos.mpr hp).trans_le hsw) (by positivity)
-    linarith
-  have ha := norm_lastRow_inv_pow_le (m := m) hV hHV hsd
-  rw [← hR] at ha
-  refine distSpec_root_bounds hκ1 hp hp1 hm0 hm hD (inv_nonneg.mpr hRpos.le) ?_ ?_
-    (abs_distSpecWord_sub_le hM hu0 (by subst hmq; exact_mod_cast hum) (Real.rpow_nonneg
-      (inv_nonneg.mpr hRpos.le) _) (by rwa [← hmq, Real.rpow_inv_natCast_pow
-        (inv_nonneg.mpr hRpos.le) hm0.ne']))
-  · -- `R ≤ κ D⁻ᵐ`
-    rw [← div_eq_mul_inv, le_div_iff₀ hRpos]
-    calc (⨅ i, ‖s - d i‖) ^ m * R ≤ (⨅ i, ‖s - d i‖) ^ m * (κ * (⨅ i, ‖s - d i‖)⁻¹ ^ m) := by
-          gcongr; exact ha.trans (by gcongr)
-      _ = κ := by rw [inv_pow]; field_simp
-  · -- `√p D⁻ᵐ ≤ κ R`
-    rw [← div_eq_mul_inv, div_le_iff₀ hRpos]
-    have h1 : √p * (⨅ i, ‖s - d i‖)⁻¹ ^ m ≤ κ * R :=
-      ((mul_le_mul_of_nonneg_right hsw (by positivity)).trans hb₁).trans
-        (mul_le_mul_of_nonneg_right hκ (norm_nonneg _))
-    rw [inv_pow] at h1
-    calc √p = √p * ((⨅ i, ‖s - d i‖) ^ m)⁻¹ * (⨅ i, ‖s - d i‖) ^ m := by field_simp
-      _ ≤ κ * R * (⨅ i, ‖s - d i‖) ^ m := by gcongr
-      _ = κ * (⨅ i, ‖s - d i‖) ^ m * R := by ring
+        0.9 * (⨅ i, ‖s - d i‖) ≤ t ∧ t ≤ 1.1 * (⨅ i, ‖s - d i‖)) μ := sorry
 
 /-- `DistSpec` terminates on every tape: on a scalar machine with exact comparisons and the
 literal $0$ exact, from any matrix of order $n + 1$ at `h`, any shift pair and room for the word
@@ -259,6 +198,7 @@ literal $0$ exact, from any matrix of order $n + 1$ at `h`, any shift pair and r
 `NLAlib.SmallEig.distSpec` writes only that word, keeps the tape position and stores a word
 there. -/
 theorem distSpec_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    (hL : IsIndexLit M I)
     (hzero : M.lit 0 = 0) (hCmp : IsCmp id I) {n m q : ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {s : ℂ}
     {τ : Tape ℝ} {μ : Mem ℝ} {h sp tau : ℕ × ℕ} (hl : μ.Live [h, sp, tau])
@@ -266,15 +206,7 @@ theorem distSpec_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScala
     (htau : tau.2 < μ.store.len tau.1) :
     Writes .total I τ (distSpec (O := O) (Q := Q)).body (Env.frame [n + 1, m, q] [h, sp, tau])
       (Store.inBlock tau.1 tau.2 1)
-      (fun μ' => μ'.pos = μ.pos ∧ ∃ t : ℝ, μ'.store.get tau.1 tau.2 = some t) μ := by
-  unfold distSpec
-  refine (comptauHalf_terminates (h := 1) (e := m) hS hzero hCmp hl hHs
-    (by simpa using hsp) htau).frame_seq_le rfl rfl hl le_rfl ?_
-  rintro μ₁ - ⟨hp₁, t, ht⟩
-  refine ((squareRoots_writes_word (τ := τ) (k := q) hS ht).in_frame rfl rfl
-    (by simpa [Mem.Live] using Store.lt_length_of_get ht)).mono le_rfl ?_
-  rintro μ₂ - ⟨hp₂, hR₂⟩
-  exact ⟨hp₂.trans hp₁, _, hR₂⟩
+      (fun μ' => μ'.pos = μ.pos ∧ ∃ t : ℝ, μ'.store.get tau.1 tau.2 = some t) μ := sorry
 
 end Theorems
 

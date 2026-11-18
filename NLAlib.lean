@@ -915,6 +915,7 @@ public import NLAlib.Matrix.FinitePrecision.SpectralBisection.Split
 public import NLAlib.Matrix.FinitePrecision.SpectralBisection.Tree
 public import NLAlib.Matrix.FinitePrecision.StoredDense
 public import NLAlib.Matrix.FinitePrecision.StoredMatrix
+public import NLAlib.Matrix.FinitePrecision.StoredProducts
 public import NLAlib.Matrix.FinitePrecision.TapeRounding
 public import NLAlib.Matrix.FinitePrecision.Traces
 public import NLAlib.Matrix.FinitePrecision.VectorErrors

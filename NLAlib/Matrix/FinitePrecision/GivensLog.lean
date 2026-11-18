@@ -206,6 +206,20 @@ def padEntries (w : ℕ) (es : List GivensEntry) : List GivensEntry :=
 def slotEntries (w : ℕ) (L : List (Option (List GivensEntry))) : List GivensEntry :=
   L.flatMap fun o => (o.map (padEntries w)).getD []
 
+/-- The entries of a concatenation of slots. -/
+@[simp] theorem slotEntries_append (w : ℕ) (L L' : List (Option (List GivensEntry))) :
+    slotEntries w (L ++ L') = slotEntries w L ++ slotEntries w L' := by
+  simp [slotEntries]
+
+/-- The entries of one accepted slot are its padded entries. -/
+@[simp] theorem slotEntries_some (w : ℕ) (es : List GivensEntry) :
+    slotEntries w [some es] = padEntries w es := by
+  simp [slotEntries]
+
+/-- A rejected slot has no entries. -/
+@[simp] theorem slotEntries_none (w : ℕ) : slotEntries w [none] = [] := by
+  simp [slotEntries]
+
 /-- The padding entry is the identity rotation. -/
 @[simp] theorem givensAt_zero (n : ℕ) : givensAt n (0, 0, 0) = 1 := by
   unfold givensAt
@@ -454,6 +468,26 @@ theorem getD_flatMap_entryWords (es : List GivensEntry) {i k : ℕ} (hi : i < es
       have h5 : (entryWords e).length = 5 := rfl
       rw [h5, show 5 * (i + 1) + k - 5 = 5 * i + k by omega]
       exact ih (by omega)
+
+/-- The five words of entry `i` of an accepted slot `j` of a stored log. -/
+theorem HoldsSlottedLog.readBlock_entry {lg : ℕ × ℕ} {ns w : ℕ}
+    {L : List (Option (List GivensEntry))} {P : List GivensEntry} {s : Store ℝ}
+    (h : HoldsSlottedLog lg ns w L P s) {j : ℕ} (hj : j < L.length) {es : List GivensEntry}
+    (hes : L[j] = some es) {i : ℕ} (hi : i < w) :
+    ∃ hi' : i < (padEntries w es).length,
+      s.readBlock lg.1 (lg.2 + j * (1 + 5 * w) + 1 + 5 * i) 5 =
+        some (entryWords ((padEntries w es)[i]'hi')) := by
+  obtain ⟨v, -, hm⟩ := h.2.2.1 j hj
+  rw [hes] at hm
+  obtain ⟨-, hl, hb⟩ := hm
+  have hpl : (padEntries w es).length = w := by simp [padEntries]; omega
+  refine ⟨by omega, Store.readBlock_eq_some_iff.mpr ⟨rfl, fun t ht => ?_⟩⟩
+  have := Store.get_of_readBlock hb (j := 5 * i + t) (by omega) 0
+  rw [show lg.2 + j * (1 + 5 * w) + 1 + (5 * i + t) = lg.2 + j * (1 + 5 * w) + 1 + 5 * i + t by
+    ring, getD_flatMap_entryWords _ (by omega) ht] at this
+  rw [this, List.getElem?_eq_getElem (by simp [entryWords]; omega)]
+  simp [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem (show t < (entryWords _).length by
+    simp [entryWords]; omega)]
 
 /-- The entries decoded from their stored words. -/
 private theorem decode_entries {s : Store ℝ} {b off w : ℕ} {es : List GivensEntry}
@@ -777,11 +811,12 @@ section Replay
 
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q]
 
-/-- **Replay a log on rows**: for the valid slots in order (`ns` slots of `w` entries), recompute
-each entry's coefficients and rotate the rows `lo + r, lo + r + 1` of `A` over the columns
-`j0, …, j0 + nc - 1`. The plane is read with the bound `ld`.
-`[ld, lo, j0, nc, ns, w] (Lg, A) → (A)`. -/
-def givensReplayRows : Impl O Q := opsImpl% [ld, lo, j0, nc, ns, w] (Lg, A) → (A) {
+/-- **Replay a log with a rotation routine** `Rot` of interface `[ld, k, j0, nc] (A, C, S, T) → (A)`
+(planes $k, k + 1$, a range $j_0, \dots, j_0 + n_c - 1$): for the valid slots in order (`ns`
+slots of `w` entries), recompute each entry's coefficients and call `Rot` at the plane
+`lo + r`. The plane is read with the bound `ld`. `[ld, lo, j0, nc, ns, w] (Lg, A) → (A)`. -/
+def givensReplayWith (Rot : Impl O Q) : Impl O Q :=
+    opsImpl% [ld, lo, j0, nc, ns, w] (Lg, A) → (A) {
   let Cf ← alloc 4;
   let T ← alloc 10;
   for s < ns {
@@ -790,28 +825,19 @@ def givensReplayRows : Impl O Q := opsImpl% [ld, lo, j0, nc, ns, w] (Lg, A) → 
         let r ← index (Has.inj IdxTst.toNat) (Lg[s * (1 + 5 * w) + 1 + 5 * i]) ≤ ld;
         run (coefficients (Op := O) (Tst := Q)).body []
           (Lg[s * (1 + 5 * w) + 2 + 5 * i], Lg[s * (1 + 5 * w) + 4 + 5 * i], Cf, Cf[2]);
-        run (rotateRowsOn (Op := O) (Tst := Q)).body [ld, lo + r, j0, nc] (A, Cf, Cf[2], T, A)
+        run Rot.body [ld, lo + r, j0, nc] (A, Cf, Cf[2], T, A)
       }
     } else { skip }
   }
 }
 
+/-- **Replay a log on rows**: rotate the rows `lo + r, lo + r + 1` of `A` over the columns
+`j0, …, j0 + nc - 1` (`NLAlib.rotateRowsOn`). `[ld, lo, j0, nc, ns, w] (Lg, A) → (A)`. -/
+def givensReplayRows : Impl O Q := givensReplayWith (rotateRowsOn (Op := O) (Tst := Q))
+
 /-- **Replay a log on columns** (right multiplication by the computed adjoint rotations) over the
-rows `i0, …, i0 + nr - 1`. `[ld, lo, i0, nr, ns, w] (Lg, A) → (A)`. -/
-def givensReplayColumns : Impl O Q := opsImpl% [ld, lo, i0, nr, ns, w] (Lg, A) → (A) {
-  let Cf ← alloc 4;
-  let T ← alloc 10;
-  for s < ns {
-    if (Has.inj CmpTst.isPos) [] (Lg[s * (1 + 5 * w)]) {
-      for i < w {
-        let r ← index (Has.inj IdxTst.toNat) (Lg[s * (1 + 5 * w) + 1 + 5 * i]) ≤ ld;
-        run (coefficients (Op := O) (Tst := Q)).body []
-          (Lg[s * (1 + 5 * w) + 2 + 5 * i], Lg[s * (1 + 5 * w) + 4 + 5 * i], Cf, Cf[2]);
-        run (rotateColumnsOn (Op := O) (Tst := Q)).body [ld, lo + r, i0, nr] (A, Cf, Cf[2], T, A)
-      }
-    } else { skip }
-  }
-}
+rows `i0, …, i0 + nr - 1` (`NLAlib.rotateColumnsOn`). `[ld, lo, i0, nr, ns, w] (Lg, A) → (A)`. -/
+def givensReplayColumns : Impl O Q := givensReplayWith (rotateColumnsOn (Op := O) (Tst := Q))
 
 end Replay
 
@@ -1012,6 +1038,200 @@ section ReplaySpecs
 
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q]
   [Inhabited ℝ]
+
+/-- The replay of one entry, as it appears in `NLAlib.givensReplayWith`: the plane read with the
+bound `ld`, the coefficients, the rotation. -/
+private def replayEntryStmt (Rot : Impl O Q) : Stmt O Q :=
+  Stmt.bindIdx (Has.inj IdxTst.toNat)
+    [{ buf := 0, off := IExp.var 6 + IExp.var 9 * (IExp.const 1 + IExp.const 5 * IExp.var 5) +
+      IExp.const 1 + IExp.const 5 * IExp.var 10 }]
+    (IExp.var 0)
+    ((Stmt.frame []
+        [{ buf := 0, off := IExp.var 6 + IExp.var 9 * (IExp.const 1 + IExp.const 5 * IExp.var 5) +
+            IExp.const 2 + IExp.const 5 * IExp.var 10 },
+          { buf := 0, off := IExp.var 6 + IExp.var 9 * (IExp.const 1 + IExp.const 5 * IExp.var 5) +
+            IExp.const 4 + IExp.const 5 * IExp.var 10 },
+          { buf := 3, off := IExp.const 0 }, { buf := 3, off := IExp.const 2 }]
+        (coefficients (Op := O) (Tst := Q)).body).seq
+      (Stmt.frame [IExp.var 0, IExp.var 1 + IExp.var 11, IExp.var 2, IExp.var 3]
+        [{ buf := 1, off := IExp.var 7 }, { buf := 3, off := IExp.const 0 },
+          { buf := 3, off := IExp.const 2 }, { buf := 4, off := IExp.const 0 },
+          { buf := 1, off := IExp.var 7 }]
+        Rot.body))
+
+omit [Has IndexOp O] [Inhabited ℝ] in
+/-- The replay of one entry whose two planes are in range stores the rotation word of the
+coefficients rounded from the entry. -/
+private theorem replayEntryStmt_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
+    (hS : IsScalar Mch I) (hQ : IsToNat id I) (hC : IsCmp id I) {Rot : Impl O Q}
+    {N lo j0 nc ns w : ℕ} {lg x : ℕ × ℕ}
+    {rotWord : ℕ → ℂ → ℂ → Matrix (Fin N) (Fin N) ℂ → Matrix (Fin N) (Fin N) ℂ}
+    (hRot : ∀ {τ : Tape ℝ} {μ : Mem ℝ} {k : ℕ} {c s t : ℕ × ℕ} {Y : Matrix (Fin N) (Fin N) ℂ}
+      {cv sv : ℂ}, k + 1 < N → HoldsMatrix x Y μ.store →
+      μ.store.readBlock c.1 c.2 2 = some [cv.re, cv.im] →
+      μ.store.readBlock s.1 s.2 2 = some [sv.re, sv.im] →
+      Fp.Disj (Store.inBlock x.1 x.2 (2 * (N * N))) (Store.inBlock c.1 c.2 2) →
+      Fp.Disj (Store.inBlock x.1 x.2 (2 * (N * N))) (Store.inBlock s.1 s.2 2) →
+      t.1 ≠ x.1 → t.1 ≠ c.1 → t.1 ≠ s.1 → t.2 + 10 ≤ μ.store.len t.1 →
+      Writes .total I τ Rot.body (Env.frame [N, k, j0, nc] [x, c, s, t, x])
+        (Store.inBlock x.1 x.2 (2 * (N * N)) ⊔ Store.inBlock t.1 t.2 10)
+        (fun μ' => μ'.pos = μ.pos ∧ HoldsMatrix x (rotWord k cv sv Y) μ'.store) μ)
+    {ρ : Env} {sl i Lc : ℕ} (hidx : ρ.idx = [N, lo, j0, nc, ns, w, lg.2, x.2, x.2, sl, i])
+    (hbuf : ρ.buf = [lg.1, x.1, x.1, Lc, Lc + 1]) {e : GivensEntry} (he : lo + e.1 + 1 < N)
+    {τ : Tape ℝ} {μ : Mem ℝ}
+    (hw : μ.store.readBlock lg.1 (lg.2 + sl * (1 + 5 * w) + 1 + 5 * i) 5 = some (entryWords e))
+    {Y : Matrix (Fin N) (Fin N) ℂ} (hY : HoldsMatrix x Y μ.store) (hlen : μ.store.length = Lc + 2)
+    (hL0 : μ.store.len Lc = 4) (hL1 : μ.store.len (Lc + 1) = 10) (hxL : x.1 < Lc) :
+    Writes .total I τ (replayEntryStmt Rot) ρ
+      (Store.inBlock x.1 x.2 (2 * (N * N)) ⊔ Store.inBlock Lc 0 4 ⊔ Store.inBlock (Lc + 1) 0 10)
+      (fun μ' => μ'.pos = μ.pos ∧ HoldsMatrix x (rotWord (lo + e.1)
+        (roundedGivensCoeffs Mch e.2.1 e.2.2).1 (roundedGivensCoeffs Mch e.2.1 e.2.2).2 Y)
+          μ'.store) μ := by
+  set o := lg.2 + sl * (1 + 5 * w) + 1 + 5 * i with ho
+  have hg (k : ℕ) (hk : k < 5) : μ.store.get lg.1 (o + k) = some ((entryWords e).getD k 0) :=
+    Store.get_of_readBlock hw hk 0
+  have hXC : Fp.Disj (Store.inBlock x.1 x.2 (2 * (N * N))) (Store.inBlock Lc 0 4) :=
+    Fp.disj_inBlock_of_ne (by omega)
+  have hcs : Fp.Disj (Store.inBlock Lc 0 2) (Store.inBlock Lc 2 2) := Fp.disj_inBlock_of_le le_rfl
+  have h1 : Store.inBlock Lc 0 2 ≤ Store.inBlock Lc 0 4 := Fp.inBlock_le_inBlock le_rfl (by omega)
+  have h2 : Store.inBlock Lc 2 2 ≤ Store.inBlock Lc 0 4 :=
+    Fp.inBlock_le_inBlock (by omega) (by omega)
+  have hc4 : Fp.blocks [(Lc, 0), (Lc, 2)] [2, 2] ≤ Store.inBlock Lc 0 4 := by
+    simpa only [Fp.blocks, sup_bot_eq] using sup_le h1 h2
+  have hgl : lg.1 < Lc + 2 := hlen ▸ Store.lt_length_of_get (hg 0 (by omega))
+  unfold replayEntryStmt
+  refine writes_bindIdx_of_decode_nat hQ (x := (lg.1, o + 0)) (w := (e.1 : ℝ)) (B := N)
+    (by simp [Operand.eval, hidx, hbuf, IExp.eval, ho]) (by simp [IExp.eval, hidx])
+    (by simpa [entryWords] using hg 0 (by omega)) rfl (by omega) ?_
+  refine (coefficients_writes_word (τ := τ) (a := (lg.1, o + 1)) (b := (lg.1, o + 3))
+    (c := (Lc, 0)) (s := (Lc, 2)) (u := e.2.1) (v := e.2.2) hS hC hcs
+    (by simpa [entryWords] using hg 1 (by omega)) (by simpa [entryWords] using hg 2 (by omega))
+    (by simpa [entryWords] using hg 3 (by omega)) (by simpa [entryWords] using hg 4 (by omega))
+    (by simp [hL0]) (by simp [hL0])).frame_seq_le rfl
+    (by simp [Operand.evalList, Operand.eval, Env.pushIdx, hidx, hbuf, IExp.eval, ho]; omega)
+    (by intro z hz; simp only [List.mem_cons, List.not_mem_nil, or_false] at hz
+        rcases hz with rfl | rfl | rfl | rfl <;> simp only [hlen] <;> omega)
+    (hc4.trans (le_sup_right.trans le_sup_left)) ?_
+  rintro μ₁ hfr₁ ⟨hp₁, hcs₁⟩
+  have hc₁ := (Mem.readBlocks_cons_iff.mp hcs₁).1
+  have hs₁ := (Mem.readBlocks_cons_iff.mp (Mem.readBlocks_cons_iff.mp hcs₁).2).1
+  refine ((hRot (τ := τ) (k := lo + e.1) (t := (Lc + 1, 0)) he
+    (hY.of_eqOff hfr₁ (hXC.symm.mono hc4 le_rfl)) hc₁ hs₁
+    (hXC.mono le_rfl (Fp.inBlock_le_inBlock le_rfl (by omega)))
+    (hXC.mono le_rfl (Fp.inBlock_le_inBlock (by omega) (by omega))) (by simp; omega)
+    (by simp) (by simp) (by simp [hfr₁.len_eq, hL1])).in_frame
+    (by simp [IExp.evalList, IExp.eval, Env.pushIdx, hidx])
+    (by simp [Operand.evalList, Operand.eval, Env.pushIdx, hidx, hbuf, IExp.eval])
+    (by intro z hz; simp only [List.mem_cons, List.not_mem_nil, or_false] at hz
+        rcases hz with rfl | rfl | rfl | rfl | rfl <;> simp only [hfr₁.length_eq, hlen] <;>
+          omega)).mono
+    (sup_le (le_sup_left.trans le_sup_left) le_sup_right) ?_
+  rintro μ₂ - ⟨hp₂, hY₂⟩
+  exact ⟨hp₂.trans hp₁, hY₂⟩
+
+/-- **A replay with any rotation routine stores the replayed word**: if `Rot` at the plane $k$
+stores `rotWord k c s` of the matrix for the coefficients $(c, s)$, the replay of a closed log
+whose entries have their two planes in range stores the left fold of `rotWord` over the valid
+entries, with the coefficients rounded from each entry. -/
+theorem givensReplayWith_writes_word {Mch : Machine ℝ} {I : Interp O Q ℝ}
+    (hS : IsScalar Mch I) (hQ : IsToNat id I) (hC : IsCmp id I) {Rot : Impl O Q}
+    {N lo j0 nc ns w : ℕ} {lg x : ℕ × ℕ}
+    (rotWord : ℕ → ℂ → ℂ → Matrix (Fin N) (Fin N) ℂ → Matrix (Fin N) (Fin N) ℂ)
+    (hRot : ∀ {τ : Tape ℝ} {μ : Mem ℝ} {k : ℕ} {c s t : ℕ × ℕ} {Y : Matrix (Fin N) (Fin N) ℂ}
+      {cv sv : ℂ}, k + 1 < N → HoldsMatrix x Y μ.store →
+      μ.store.readBlock c.1 c.2 2 = some [cv.re, cv.im] →
+      μ.store.readBlock s.1 s.2 2 = some [sv.re, sv.im] →
+      Fp.Disj (Store.inBlock x.1 x.2 (2 * (N * N))) (Store.inBlock c.1 c.2 2) →
+      Fp.Disj (Store.inBlock x.1 x.2 (2 * (N * N))) (Store.inBlock s.1 s.2 2) →
+      t.1 ≠ x.1 → t.1 ≠ c.1 → t.1 ≠ s.1 → t.2 + 10 ≤ μ.store.len t.1 →
+      Writes .total I τ Rot.body (Env.frame [N, k, j0, nc] [x, c, s, t, x])
+        (Store.inBlock x.1 x.2 (2 * (N * N)) ⊔ Store.inBlock t.1 t.2 10)
+        (fun μ' => μ'.pos = μ.pos ∧ HoldsMatrix x (rotWord k cv sv Y) μ'.store) μ)
+    {L : List (Option (List GivensEntry))} {P : List GivensEntry}
+    (hrow : ∀ e ∈ slotEntries w L, lo + e.1 + 1 < N) {X : Matrix (Fin N) (Fin N) ℂ}
+    {τ : Tape ℝ} {μ : Mem ℝ}
+    (hlog : HoldsSlottedLog lg ns w L P μ.store) (hlen : L.length = ns)
+    (hX : HoldsMatrix x X μ.store) (hl : μ.Live [lg, x])
+    (hd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (Store.inBlock x.1 x.2 (2 * (N * N)))) :
+    Writes .total I τ (givensReplayWith Rot).body
+      (Env.frame [N, lo, j0, nc, ns, w] [lg, x, x]) (Store.inBlock x.1 x.2 (2 * (N * N)))
+      (fun μ' => μ'.pos = μ.pos ∧ HoldsMatrix x ((slotEntries w L).foldl (fun Y e =>
+        rotWord (lo + e.1) (roundedGivensCoeffs Mch e.2.1 e.2.2).1
+          (roundedGivensCoeffs Mch e.2.1 e.2.2).2 Y) X) μ'.store) μ := by
+  set F := fun (Y : Matrix (Fin N) (Fin N) ℂ) (e : GivensEntry) => rotWord (lo + e.1)
+    (roundedGivensCoeffs Mch e.2.1 e.2.2).1 (roundedGivensCoeffs Mch e.2.1 e.2.2).2 Y with hF
+  have hxl : x.1 < μ.store.length := hl x (by simp)
+  have hgl : lg.1 < μ.store.length := hl lg (by simp)
+  unfold givensReplayWith
+  change Writes .total I τ (Stmt.allocs [.const 4, .const 10] _) _ _ _ μ
+  refine writes_allocs_preserving_post (ns := [4, 10]) rfl
+    (fun hBelow ⟨hp, hW⟩ => ⟨hp, hW.of_below hBelow hxl⟩) ?_
+  intro s₁ hlen₁ hlens hBelow
+  set Lc := μ.store.length with hLc
+  simp only [List.length_cons, List.length_nil] at hlen₁
+  set G := Store.inBlock x.1 x.2 (2 * (N * N)) ⊔ Store.inBlock Lc 0 4 ⊔
+    Store.inBlock (Lc + 1) 0 10 with hG
+  set St : List GivensEntry → Mem ℝ → Prop := fun es μ' => μ'.pos = μ.pos ∧
+    μ'.store.length = Lc + 2 ∧ μ'.store.len Lc = 4 ∧ μ'.store.len (Lc + 1) = 10 ∧
+    HoldsMatrix x (es.foldl F X) μ'.store ∧ HoldsSlottedLog lg ns w L P μ'.store with hSt
+  have hGL : Fp.Disj G (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w))) :=
+    Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨hd.symm, Fp.disj_inBlock_of_ne (by omega)⟩,
+      Fp.disj_inBlock_of_ne (by omega)⟩
+  have hstart : St [] ⟨s₁, μ.pos⟩ :=
+    ⟨rfl, by omega, by simpa using hlens 0 (by simp), by simpa using hlens 1 (by simp),
+      hX.of_below hBelow hxl, hlog.of_below hBelow hgl⟩
+  have hGle : G ≤ Store.inBlock x.1 x.2 (2 * (N * N)) ⊔ Fp.above Lc := by
+    rintro b z ((h | h) | h)
+    · exact Or.inl h
+    · exact Or.inr (h.1 ▸ le_rfl)
+    · exact Or.inr (h.1 ▸ Nat.le_succ Lc)
+  refine (writes_loop (N := ns) rfl (fun _ => G) (fun _ _ => le_rfl)
+    (fun k μ' => St (slotEntries w (L.take k)) μ') (by simpa [slotEntries] using hstart)
+    ?_).mono hGle ?_
+  · intro k hk μ' _ ⟨hp, hlen', hL0, hL1, hW, hlog'⟩
+    obtain ⟨v, hv, hm⟩ := hlog'.2.2.1 k (by omega)
+    have htake : L.take (k + 1) = L.take k ++ [L[k]'(by omega)] := by
+      rw [List.take_succ, List.getElem?_eq_getElem (by omega)]; rfl
+    refine writes_ite (a := [(lg.1, lg.2 + k * (1 + 5 * w))]) rfl
+      (by simp [Operand.evalList, Operand.eval, Env.pushIdx, Env.frame, IExp.eval])
+      (hC.test_isPos (x := (lg.1, lg.2 + k * (1 + 5 * w))) hv) ?_
+    split at hm
+    · next hn =>
+      rw [if_neg (by simpa using hm)]
+      have hW' : HoldsMatrix x ((slotEntries w (L.take (k + 1))).foldl F X) μ'.store := by
+        rwa [htake, slotEntries_append, hn, slotEntries_none, List.append_nil]
+      exact (Writes.skip (P := fun μ'' => St (slotEntries w (L.take (k + 1))) μ'')
+        ⟨hp, hlen', hL0, hL1, hW', hlog'⟩).mono bot_le fun _ _ h => h
+    · next es hn =>
+      rw [if_pos (by simpa using hm.1)]
+      refine (writes_loop (N := w) rfl (fun _ => G) (fun _ _ => le_rfl)
+        (fun i μ'' => St (slotEntries w (L.take k) ++ (padEntries w es).take i) μ'')
+        (by simpa using (⟨hp, hlen', hL0, hL1, hW, hlog'⟩ : St _ μ')) ?_).mono le_rfl ?_
+      · intro i hi μ'' _ ⟨hp'', hlen'', hL0'', hL1'', hW'', hlog''⟩
+        obtain ⟨hi', hwd⟩ := hlog''.readBlock_entry (j := k) (by omega) hn hi
+        have he : lo + ((padEntries w es)[i]'hi').1 + 1 < N := hrow _ (by
+          rw [slotEntries, List.mem_flatMap]
+          exact ⟨some es, hn ▸ List.getElem_mem (by omega), by simp [List.getElem_mem]⟩)
+        refine (replayEntryStmt_writes hS hQ hC hRot (N := N) (lo := lo) (j0 := j0) (nc := nc)
+          (ns := ns) (w := w) (lg := lg) (x := x) (sl := k) (i := i) (Lc := Lc)
+          (by simp [Env.pushIdx, Env.frame]) (by simp [Env.pushIdx, Env.frame, List.range_succ])
+          he hwd hW''
+          hlen'' hL0'' hL1'' hxl).mono le_rfl ?_
+        rintro μ₃ hfr₃ ⟨hp₃, hW₃⟩
+        refine ⟨hp₃.trans hp'', by rw [hfr₃.length_eq, hlen''], by rw [hfr₃.len_eq, hL0''],
+          by rw [hfr₃.len_eq, hL1''], ?_, hfr₃.keep (readsOnly_holdsSlottedLog _ _ _ _ _) hGL
+          hlog''⟩
+        rw [List.take_succ, List.getElem?_eq_getElem hi', ← List.append_assoc, List.foldl_append]
+        exact hW₃
+      · rintro μ₃ - ⟨hp₃, hlen₃, hL0₃, hL1₃, hW₃, hlog₃⟩
+        refine ⟨hp₃, hlen₃, hL0₃, hL1₃, ?_, hlog₃⟩
+        have hpl : (padEntries w es).length = w := by
+          have := hm.2.1; simp [padEntries]; omega
+        rw [htake, slotEntries_append, hn, slotEntries_some, List.foldl_append]
+        simpa [List.take_of_length_le (le_of_eq hpl)] using hW₃
+  · rintro μ' - ⟨hp, -, -, -, hW, -⟩
+    exact ⟨hp, by simpa [List.take_of_length_le (le_of_eq hlen)] using hW⟩
 
 /-- **The column replay on every tape**: the stored matrix moves from $\mathbf{X}$ to within
 $((1 + 24\boldsymbol{u})^{m} - 1)\|\mathbf{X}\|_2$ of $\mathbf{X}\widetilde{\mathbf{V}}$, where

@@ -309,7 +309,7 @@ theorem oneEigPoint_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar
       (Store.readBlock_one_of_get (by kept))
   have hH₆ : HoldsMatrix h H μ₆.store := by unfold HoldsMatrix at hH ⊢; kept
   refine (distSpec_terminates (τ := τ) (μ := μ₆) (h := h) (sp := (L + 2, 0))
-    (tau := (L + 3, 0)) (m := m) (q := q) hS hL hzero hCmp (by room) hH₆ hsp
+    (tau := (L + 3, 0)) (m := m) (q := q) hS hL hzero hCmp hNat le_rfl (by room) hH₆ hsp
     (by room)).frame_seq_le rfl rfl (by room) (by fp_sub) ?_
   rintro μ₇ hfr₇ ⟨hp₇, t₇, ht₇⟩
   refine writes_ite (a := [(L + 3, 0), (L + 4, 2)]) rfl rfl (hCmp.test_le ht₇ (by kept)) ?_
@@ -541,7 +541,7 @@ theorem oneEigStart_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar
   rintro μ₂ hfr₂ ⟨z₀, hz₀⟩
   have hfr₁₂ := hfr₁.trans' hfr₂
   refine (distSpec_terminates (τ := τ) (μ := μ₂) (h := h) (sp := lam) (tau := (L, 0)) (m := m)
-    (q := q) hS hL hzero hCmp (by simp [Mem.Live, hfr₁₂.length_eq]; omega)
+    (q := q) hS hL hzero hCmp hNat le_rfl (by simp [Mem.Live, hfr₁₂.length_eq]; omega)
     ((hH.of_eqOff hfr₁ fun _ _ h₁ h₂ => by simp only [fpNF] at h₁ h₂; omega).of_eqOff hfr₂ hlh)
     hz₀ (by rw [hfr₁₂.len_eq, h0]; omega)).frame_seq_le rfl rfl
     (by simp [Mem.Live, hfr₁₂.length_eq]; omega) (Fp.inBlock_le_sup_above le_rfl) ?_

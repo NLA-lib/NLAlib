@@ -554,7 +554,8 @@ end Bits
 
 /-! ### The cap and the replays of the core -/
 
-/-- **The cap is at most $27r^{m_2}$** (and $r \ge 2$), $r = 44\Sigma/\eta_1$ and $m_2$ the step cap of `Decouple`
+/-- **The cap is at most $27r^{m_2}$** (and $r \ge 2$), $r = 44\Sigma/\eta_1$ and $m_2$ the step
+cap of `Decouple`
 (`NLAlib.SmallEig.smallEigCap`): the step cap $m_2 \le 2^{m_2}$, the round cap
 $t \le 2\log_2(10.4\,\Sigma/\beta') + 1 \le r$ ($\eta_1 \le \beta'/240$), and the degree
 $2^q \le 2m_1 + 1 \le 24m_2 + 1$ (`NLAlib.SmallEig.distSpecDegree_le_decoupleSteps`), for tail

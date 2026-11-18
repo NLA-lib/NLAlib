@@ -249,6 +249,7 @@ def SmallEigCoreReady {n : ℕ} (qs : List ℝ) (w p ub : ℕ × ℕ) (L : ℕ)
     HoldsMatrix w H μ.store ∧ HoldsMatrix ub X μ.store ∧
     μ.store.get (L + 1) 0 = some (qs.getD 6 0) ∧ μ.store.readBlock p.1 p.2 qs.length = some qs
 
+omit [Has SampleOp O] [Has DiskSampleOp O] in
 /-- The order-$(n + 1) \ge 2$ branch of `NLAlib.SmallEig.smallEigProg` after the perturbation,
 up to the core: open the scoped log at `(L + 2, 0)`, reduce the block recording the rotations
 and replay them on the identity accumulator. On every tape the run writes only the block, the
@@ -408,7 +409,7 @@ theorem smallEigProg_reduce_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {u
 on every tape** ([BanksGarzaVargasSrivastava2025, Theorem 1.1], every loop capped): for blocks
 of order at most $k_{\max}$, the words `qs` with valid cap words for the cap $T$
 (`NLAlib.SmallEig.SmallEigCaps`), on a scalar machine with the standard model, index
-literals and exact natural literals up to $k_{\max} + 1$, exact comparisons and conversion, draws
+literals and exact natural literals up to $k_{\max}$, exact comparisons and conversion, draws
 that store the tape entry and an exact polar sampler, `NLAlib.SmallEig.smallEigProg` is a
 terminating Schur leaf (`NLAlib.ShiftedQR.TerminatingLeafRoutine`) with the accumulator error
 $(1 + 24\boldsymbol{u})^{k^2 + 2(k+1)((T + k)k + 6)} - 1$ at $k = k_{\max}$: the replay of the
@@ -416,7 +417,7 @@ reduction and the replays of the core's rounds (`NLAlib.ShiftedQR.solveRoundedWi
 at the bottom width $1$, whose leaf is exact). -/
 theorem smallEigProg_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hu : u ≤ 1 / 100) (hL : IsIndexLit M I) {kmax : ℕ}
-    (hNat : IsExactNatLit id M (kmax + 1)) (hC : IsCmp id I) (hQ : IsToNat id I)
+    (hNat : IsExactNatLit id M kmax) (hC : IsCmp id I) (hQ : IsToNat id I)
     (hSmp : IsSample I) {sU sG : ℕ} (hDisk : IsPolarDiskSampler sU I) {T : ℕ} {qs : List ℝ}
     (hqs : SmallEigCaps T qs) (hlen : 12 ≤ qs.length) :
     TerminatingLeafRoutine
@@ -425,7 +426,7 @@ theorem smallEigProg_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
   intro d w p ub tape μ B hd hB hp hl hroom hwu hpwu
   have hu0 : 0 ≤ u := (abs_nonneg _).trans (by simpa using hM.lit 1)
   have h0 : M.lit 0 = 0 := by simpa using hNat 0 (by omega)
-  have h1 : M.lit 1 = 1 := by simpa using hNat 1 (by omega)
+  have h1 : 0 < d → M.lit 1 = 1 := fun hd0 => by simpa using hNat 1 (by omega)
   have hwl : w.1 < μ.store.length := hl w (by simp)
   have hpl : p.1 < μ.store.length := hl p (by simp)
   have hul : ub.1 < μ.store.length := hl ub (by simp)
@@ -434,7 +435,7 @@ theorem smallEigProg_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     have := one_le_pow₀ (M₀ := ℝ) (n := R) (by linarith : (1 : ℝ) ≤ 1 + 24 * u); linarith
   unfold smallEigProg
   have hl4 : μ.Live [w, p, w, ub] := fun x hx => hl x (by simp at hx ⊢; tauto)
-  refine (identityLeaf_writes (O := O) (Q := Q) (τ := tape) hS h0 (fun _ => h1) hl hroom
+  refine (identityLeaf_writes (O := O) (Q := Q) (τ := tape) hS h0 h1 hl hroom
     hwu).frame_seq_le rfl rfl hl4 le_sup_right ?_
   rintro μ₀ hfr₀ ⟨-, hU₀⟩
   have hB₀ : HoldsMatrix w B μ₀.store := hB.of_eqOff hfr₀ hwu.symm

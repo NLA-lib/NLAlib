@@ -223,30 +223,24 @@ theorem measurableSet_smallEigOutcome {n : ℕ} (εU δ : ℝ)
         (storedMatrix w (n + 1) (n + 1) x.2.store)} := by
   have hm : ∀ b, Measurable fun x : Mem ℝ × Mem ℝ => storedMatrix b (n + 1) (n + 1) x.2.store :=
     fun b => (measurable_storedMatrix b (n + 1) (n + 1)).comp measurable_snd
-  simp only [Set.ofPred_and]
-  refine (Mem.measurableSet_eqOff F).inter ((measurable_snd (measurableSet_forall_isSome w _)).inter
-    ((measurable_snd (measurableSet_forall_isSome ub _)).inter ((?_ : MeasurableSet _).inter
-      ((isClosed_setOf_isTrackedUnitarySimilar εU δ).measurableSet.preimage
-        (measurable_const.prodMk ((hm ub).prodMk (hm w)))))))
-  simp only [Matrix.IsUpperTriangular, Matrix.BlockTriangular, Set.ofPred_forall]
-  refine .iInter fun i => .iInter fun j => ?_
-  by_cases hij : j < i
-  · simpa [hij] using measurableSet_eq_fun ((Matrix.measurable_apply i j).comp (hm w))
-      measurable_const
-  · simp [hij]
-
-omit [Has ScalarOp O] [Has IndexOp O] [Has SampleOp O] [Has DiskSampleOp O] [Has CmpTst Q]
-  [Has IdxTst Q] in
-/-- Reassociate three blocks of a probabilistic block specification. -/
-theorem PWrites.seq_assoc_iff' {law : ℕ → Measure ℝ} {I : Interp O Q ℝ} {ρ : Env}
-    {a b c : Stmt O Q} {F : Fp} {Pre Post : Mem ℝ → Prop} {φ : ℝ} :
-    PWrites law I (.seq (.seq a b) c) ρ F Pre Post φ ↔
-      PWrites law I (.seq a (.seq b c)) ρ F Pre Post φ := by
-  constructor <;> rintro ⟨G, hGm, hGd, hG⟩ <;>
-    exact ⟨G, hGm, hGd, fun m hm => ⟨fun τ hτ => by
-      first
-      | exact Writes.seq_assoc_iff.mp ((hG m hm).1 τ hτ)
-      | exact Writes.seq_assoc_iff.mpr ((hG m hm).1 τ hτ), (hG m hm).2⟩⟩
+  have hut : MeasurableSet {x : Mem ℝ × Mem ℝ |
+      (storedMatrix w (n + 1) (n + 1) x.2.store).IsUpperTriangular} := by
+    have e : {x : Mem ℝ × Mem ℝ | (storedMatrix w (n + 1) (n + 1) x.2.store).IsUpperTriangular} =
+        ⋂ i, ⋂ j, {x | j < i → storedMatrix w (n + 1) (n + 1) x.2.store i j = 0} := by
+      ext x
+      simp [Matrix.IsUpperTriangular, Matrix.BlockTriangular]
+    rw [e]
+    exact .iInter fun i => .iInter fun j => (MeasurableSet.const (j < i)).imp
+      (measurableSet_eq_fun ((Matrix.measurable_apply i j).comp (hm w)) measurable_const)
+  have htr : MeasurableSet {x : Mem ℝ × Mem ℝ | IsTrackedUnitarySimilar εU δ 1 M
+      (storedMatrix ub (n + 1) (n + 1) x.2.store) (storedMatrix w (n + 1) (n + 1) x.2.store)} := by
+    have hf : Measurable fun x : Mem ℝ × Mem ℝ =>
+        (((1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ), M),
+          (storedMatrix ub (n + 1) (n + 1) x.2.store, storedMatrix w (n + 1) (n + 1) x.2.store)) :=
+      measurable_const.prodMk ((hm ub).prodMk (hm w))
+    exact hf (isClosed_setOf_isTrackedUnitarySimilar εU δ).measurableSet
+  exact (Mem.measurableSet_eqOff F).inter ((measurable_snd (measurableSet_forall_isSome w _)).inter
+    ((measurable_snd (measurableSet_forall_isSome ub _)).inter (hut.inter htr)))
 
 /-- **The scratch memory of `NLAlib.SmallEig.smallEigProg`** on a block of order $n + 1 \ge 2$,
 after its three scratch buffers are allocated on top of $L$ buffers: the failure word at
@@ -273,6 +267,103 @@ theorem SmallEigScratch.of_eqOff {n L : ℕ} {qs : List ℝ} {w q ub : ℕ × �
   exact ⟨by rw [hfr.length_eq]; exact hlen, by rw [hfr.len_eq]; exact h0,
     by rw [hfr.len_eq]; exact h1, by rw [hfr.len_eq]; exact h2, hw, hqL, huL,
     hU.of_eqOff hfr hu, hfr.keep (Store.readsOnly_readBlock _ _ _ _) hq hp, hwu, hpwu⟩
+
+/-- **The outcome of the core call**: if $(\mathbf{X}, \mathbf{H})$ is tracked from
+$(\mathbf{I}, \mathbf{M})$ with errors $((1 + 24\boldsymbol{u})^{(n+1)^2} - 1, 5\delta/8)$ and the
+stored pair $(\widehat{\mathbf{U}}_b, \widehat{\mathbf{T}}_b)$ is tracked from
+$(\mathbf{X}, \mathbf{H})$ with the accumulator error of the core and a backward error $K$ with
+$5\delta/8 + K \le \delta$, $\widehat{\mathbf{T}}_b$ upper triangular, then the words of both are
+stored and the pair read from the store is upper triangular and tracked from
+$(\mathbf{I}, \mathbf{M})$ with errors $((1 + 24\boldsymbol{u})^R - 1, \delta)$
+(`NLAlib.SmallEig.smallEigLeaf_accumulator_le`). -/
+theorem smallEigCore_outcome {u δ K : ℝ} (hu0 : 0 ≤ u) {n nmax T : ℕ} (hn : n + 1 ≤ nmax)
+    (hK : 5 * δ / 8 + K ≤ δ) {M X H U' Tm : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {s : Store ℝ} {w ub : ℕ × ℕ}
+    (hx : IsTrackedUnitarySimilar ((1 + 24 * u) ^ ((n + 1) * (n + 1)) - 1) (5 * δ / 8) 1 M X H)
+    (htr : IsTrackedUnitarySimilar
+      ((1 + 24 * u) ^ (2 * (n + 1) * ((T + (n + 1)) * (n + 1) + 2 * 1 * (1 + 2))) *
+        (1 + 0) ^ (n + 1) - 1) K X H U' Tm)
+    (hTm : HoldsMatrix w Tm s) (hU' : HoldsMatrix ub U' s) (hup : Tm.IsUpperTriangular) :
+    (∀ j < 2 * ((n + 1) * (n + 1)), (s.get w.1 (w.2 + j)).isSome) ∧
+      (∀ j < 2 * ((n + 1) * (n + 1)), (s.get ub.1 (ub.2 + j)).isSome) ∧
+      (storedMatrix w (n + 1) (n + 1) s).IsUpperTriangular ∧
+      IsTrackedUnitarySimilar ((1 + 24 * u) ^ smallEigLeafRotations nmax T - 1) δ 1 M
+        (storedMatrix ub (n + 1) (n + 1) s) (storedMatrix w (n + 1) (n + 1) s) := by
+  have h₁ : 0 ≤ (1 + 24 * u) ^ ((n + 1) * (n + 1)) - 1 := by
+    have := one_le_pow₀ (M₀ := ℝ) (n := (n + 1) * (n + 1)) (by linarith : (1 : ℝ) ≤ 1 + 24 * u)
+    linarith
+  have h₂ : 0 ≤ (1 + 24 * u) ^ (2 * (n + 1) * ((T + (n + 1)) * (n + 1) + 2 * 1 * (1 + 2))) *
+      (1 + 0) ^ (n + 1) - 1 := by
+    have := one_le_pow₀ (M₀ := ℝ) (n := 2 * (n + 1) * ((T + (n + 1)) * (n + 1) + 2 * 1 * (1 + 2)))
+      (by linarith : (1 : ℝ) ≤ 1 + 24 * u)
+    rw [add_zero, one_pow, mul_one]; linarith
+  have htr' := (hx.trans h₁ h₂ htr).mono (εT' := δ) (smallEigLeaf_accumulator_le hu0 hn) hK
+  have hw : ∀ j < 2 * ((n + 1) * (n + 1)), (s.get w.1 (w.2 + j)).isSome := fun j hj => by
+    rw [Store.get_of_readBlock hTm hj 0]; rfl
+  have hub : ∀ j < 2 * ((n + 1) * (n + 1)), (s.get ub.1 (ub.2 + j)).isSome :=
+    fun j hj => by rw [Store.get_of_readBlock hU' hj 0]; rfl
+  have e1 := hTm.eq_storedMatrix
+  have e2 := hU'.eq_storedMatrix
+  subst e1 e2
+  exact ⟨hw, hub, hup, htr'⟩
+
+/-- The $2(n + 1)$ rounds of the worklist fail with probability at most $\varphi/4$: for
+$n + 1 \le n_{\max}$ and $\varphi \ge 0$, $2(n + 1)\varphi_D \le \varphi/4$,
+$\varphi_D$ = `NLAlib.SmallEig.smallEigDecouplerFailure`. -/
+theorem two_mul_smallEigDecouplerFailure_le {n nmax : ℕ} (hn : n + 1 ≤ nmax) {φ : ℝ}
+    (hφ : 0 ≤ φ) : 2 * ((n : ℝ) + 1) * (smallEigDecouplerFailure nmax φ + 0) ≤ φ / 4 := by
+  have hnn : ((n : ℝ) + 1) ≤ nmax := by exact_mod_cast hn
+  have hN : (0 : ℝ) < nmax := by linarith
+  have e : 2 * (nmax : ℝ) * (φ / (16 * nmax)) = φ / 8 := by field_simp; ring
+  have h := mul_le_mul_of_nonneg_right (by linarith : 2 * ((n : ℝ) + 1) ≤ 2 * nmax)
+    (by positivity : 0 ≤ φ / (16 * nmax))
+  unfold smallEigDecouplerFailure
+  rw [add_zero]
+  linarith
+
+/-- **The backward error of the core is within its budget** (the precision of the Schur form):
+for tail records with $b_1, b_2 > 0$, $n + 1 \le n_{\max}$, $0 < \delta \le \Sigma$,
+$0 < \varphi \le 1$ and $0 \le \boldsymbol{u} \le \boldsymbol{u}_{\mathrm{SmallEig}}$, the backward
+error of `NLAlib.ShiftedQR.solveRoundedWith_pwrites` at the cut level $2.25\,\omega$, the decoupler
+error at $2\Sigma$, the replays of the log of $(T + n + 1)$ slots of $n + 1$ entries and the
+products of the order-one leaves is at most $\min(\delta/4, g_c/(16n_{\max}B_c))$
+(`NLAlib.SmallEig.smallEigReplay_le_omega`, `NLAlib.SmallEig.smallEigDecoupleError_le_omega`). -/
+theorem smallEigCore_backwardError_le {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b)
+    {nmax n : ℕ} (hn : n + 1 ≤ nmax) {S δ φ u : ℝ} (hu0 : 0 ≤ u) (hδ : 0 < δ) (hδS : δ ≤ S)
+    (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hu : u ≤ uSmallEig nmax S δ φ c₁ c₂) :
+    2 * ((n : ℝ) + 1) * (2.25 * smallEigOmega nmax S δ φ c₁ c₂ +
+      smallEigDecoupleError nmax S δ φ c₂ u (2 * S) + 0 +
+      78 * u * (((smallEigCap nmax S δ φ c₁ c₂ + (n + 1) : ℕ) : ℝ) * ((n + 1 : ℕ) : ℝ)) * (2 * S) +
+      8 * ((n : ℝ) + 1) * (((1 : ℕ) : ℝ) + 2) * u * (2 * S)) ≤
+      min (δ / 4) (smallEigSeparation nmax S δ φ c₁ /
+        (16 * nmax * smallEigCondition nmax S δ φ c₂)) := by
+  have hS0 : 0 < S := hδ.trans_le hδS
+  have hn1 : 1 ≤ nmax := by omega
+  have hnn : ((n : ℝ) + 1) ≤ nmax := by exact_mod_cast hn
+  obtain ⟨-, hε⟩ := smallEigDecoupleError_le_omega hb₁ hb₂ hn1 hu0 hδ hδS hφ hφ1 hu
+  have hRp := smallEigReplay_le_omega hb₁ hb₂ hn1 hu0 hδ hδS hφ hφ1 hu
+  have hΩ := two_mul_mul_smallEigOmega (c₁ := c₁) (c₂ := c₂) hn1 S δ φ
+  have hω := smallEigOmega_pos hb₁ hb₂ hn1 hS0.le hδ hφ hφ1
+  push_cast
+  set T : ℝ := (smallEigCap nmax S δ φ c₁ c₂ : ℝ)
+  set ω := smallEigOmega nmax S δ φ c₁ c₂
+  set X := min (δ / 4) (smallEigSeparation nmax S δ φ c₁ /
+    (16 * nmax * smallEigCondition nmax S δ φ c₂))
+  have hT0 : (0 : ℝ) ≤ T := Nat.cast_nonneg _
+  have hr1 : (T + ((n : ℝ) + 1)) * ((n : ℝ) + 1) ≤ (T + nmax) * nmax := by gcongr
+  have hus : 0 ≤ u * (2 * S) := by positivity
+  have hr2 : 78 * u * ((T + ((n : ℝ) + 1)) * ((n : ℝ) + 1)) * (2 * S) +
+      8 * ((n : ℝ) + 1) * (1 + 2) * u * (2 * S) ≤ ω := by
+    refine le_trans ?_ hRp
+    nlinarith [mul_le_mul_of_nonneg_right hr1 hus, mul_le_mul_of_nonneg_right hnn hus]
+  have hb : 2.25 * ω + smallEigDecoupleError nmax S δ φ c₂ u (2 * S) + 0 +
+      78 * u * ((T + ((n : ℝ) + 1)) * ((n : ℝ) + 1)) * (2 * S) +
+      8 * ((n : ℝ) + 1) * (1 + 2) * u * (2 * S) ≤ 3.26 * ω := by linarith
+  calc _ ≤ 2 * (nmax : ℝ) * (3.26 * ω) := by
+        have := mul_le_mul hb (by linarith : 2 * ((n : ℝ) + 1) ≤ 2 * nmax)
+          (by linarith [hω.le]) (by positivity)
+        linarith
+    _ ≤ X := by nlinarith
 
 /-- **The core call of `NLAlib.SmallEig.smallEigProg`** ([BanksGarzaVargasSrivastava2025,
 Theorem 6.1], in Schur form): on the machine and streams of
@@ -320,8 +411,6 @@ theorem smallEigProg_core_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : 
   have hnn : ((n : ℝ) + 1) ≤ nmax := by exact_mod_cast hn
   have hu1 := le_one_div_hundred_of_le_uSmallEig hb₁ hb₂ hn1 hδ hδS hφ hφ1 hu
   obtain ⟨hε0, hε⟩ := smallEigDecoupleError_le_omega hb₁ hb₂ hn1 hu0 hδ hδS hφ hφ1 hu
-  have hRp := smallEigReplay_le_omega hb₁ hb₂ hn1 hu0 hδ hδS hφ hφ1 hu
-  have hΩ := two_mul_mul_smallEigOmega (c₁ := c₁) (c₂ := c₂) hn1 S δ φ
   have hBc := smallEigCondition_ge hb₂ hn1 hS0.le hδ hφ hφ1
   have hsep := smallEigSeparation_pos hb₁ hn1 hS0.le hδ hφ hφ1
   have hω := smallEigOmega_pos hb₁ hb₂ hn1 hS0.le hδ hφ hφ1
@@ -335,23 +424,6 @@ theorem smallEigProg_core_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : 
   have hX2 : X ≤
       smallEigSeparation nmax S δ φ c₁ / (16 * (n + 1) * smallEigCondition nmax S δ φ c₂) :=
     (min_le_right _ _).trans (div_le_div_of_nonneg_left hsep.le (by positivity) (by gcongr))
-  -- the worklist's backward error is within `X`
-  have hK : 2 * ((n : ℝ) + 1) * (2.25 * ω + ε + 0 + 78 * u * (((T : ℝ) + ((n : ℝ) + 1)) *
-      ((n : ℝ) + 1)) * (2 * S) + 8 * ((n : ℝ) + 1) * (1 + 2) * u * (2 * S)) ≤ X := by
-    have hT0 : (0 : ℝ) ≤ T := Nat.cast_nonneg _
-    have hr1 : ((T : ℝ) + ((n : ℝ) + 1)) * ((n : ℝ) + 1) ≤ ((T : ℝ) + nmax) * nmax := by gcongr
-    have hus : 0 ≤ u * (2 * S) := by positivity
-    have hr2 : 78 * u * (((T : ℝ) + ((n : ℝ) + 1)) * ((n : ℝ) + 1)) * (2 * S) +
-        8 * ((n : ℝ) + 1) * (1 + 2) * u * (2 * S) ≤ ω := by
-      refine le_trans ?_ hRp
-      nlinarith [mul_le_mul_of_nonneg_right hr1 hus, mul_le_mul_of_nonneg_right hnn hus]
-    have hb : 2.25 * ω + ε + 0 + 78 * u * (((T : ℝ) + ((n : ℝ) + 1)) * ((n : ℝ) + 1)) * (2 * S) +
-        8 * ((n : ℝ) + 1) * (1 + 2) * u * (2 * S) ≤ 3.26 * ω := by linarith
-    calc _ ≤ 2 * (nmax : ℝ) * (3.26 * ω) := by
-          have := mul_le_mul hb (by linarith : 2 * ((n : ℝ) + 1) ≤ 2 * nmax)
-            (by linarith [hω.le]) (by positivity)
-          linarith
-      _ ≤ X := by nlinarith
   -- the decoupler and the leaf
   have hDn : RandomDecouplingRoutineContract law (2 * smallEigCondition nmax S δ φ c₂)
       (smallEigSeparation nmax S δ φ c₁ / 2) (smallEigDecouplerFailure nmax φ) 1 T T n (2 * S) qs
@@ -376,42 +448,152 @@ theorem smallEigProg_core_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : 
   let ι := {x : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ × Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ //
     SmallEigCoreClass nmax S δ φ c₁ c₂ x.1 ∧
       IsTrackedUnitarySimilar ((1 + 24 * u) ^ ((n + 1) * (n + 1)) - 1) (5 * δ / 8) 1 M x.2 x.1}
+  have hfind : (1 + u) ^ 2 * (1.5 * ω) ^ 2 ≤ qs.getD 6 0 := by
+    rw [h6]; exact mul_le_mul_of_nonneg_right hsqu (sq_nonneg _)
+  have hcut : qs.getD 6 0 ≤ (1 - u) ^ 2 * (2.25 * ω) ^ 2 := by
+    have e1 : 2 * (1.5 * ω) ^ 2 = 4.5 * ω ^ 2 := by ring
+    have e2 : 0.98 * (2.25 * ω) ^ 2 = 4.96125 * ω ^ 2 := by ring
+    have := mul_le_mul_of_nonneg_right hsqd (sq_nonneg (2.25 * ω))
+    have := sq_nonneg ω
+    rw [h6]; linarith
+  have hK' := smallEigCore_backwardError_le hb₁ hb₂ hn hu0 hδ hδS hφ hφ1 hu
+  have hfam := fun x : ι => (solveRoundedWith_pwrites (c := 2.25 * ω) (thr := qs.getD 6 0)
+      (a := w) (t := (L + 1, 0)) (p := p) (uo := ub) (f := (L, 0)) (U := x.1.2) hS hM hu0
+      (by linarith) hL hNat hQ hC hI hloc _ hDn _ hLeaf hφD le_rfl le_rfl x.2.1.1
+      x.2.1.2.1.choose_spec.choose_spec.1 x.2.1.2.1.choose_spec.choose_spec.2.1
+      x.2.1.2.1.choose_spec.choose_spec.2.2.1 hsep x.2.1.2.1.choose_spec.choose_spec.2.2.2
+      hfind hcut (by positivity) le_rfl hε0 (by linarith [x.2.1.2.2]) (hK'.trans hX2)).in_frame
+      hd ha
+      fun μ h y hy => h.1 y (by simp at hy ⊢; tauto)
   refine PStep.mono (PWrites.pstep_of_forall hI hloc (F := F)
-    (P := fun (x : ι) μ => SmallEigCoreReady qs w p ub L x.1.1 x.1.2 μ) (fun x => ?_)
+    (P := fun (x : ι) μ => SmallEigCoreReady qs w p ub L x.1.1 x.1.2 μ) hfam
     (measurableSet_smallEigOutcome εU δ M w ub F) ?_)
     (fun μ ⟨H, X', hc, ht, hr⟩ => ⟨⟨(H, X'), hc, ht⟩, hr⟩) ?_ ?_
-  · obtain ⟨hHess, ⟨V, d, hV, hHV, hκ, hgap⟩, hHS⟩ := x.2.1
-    exact (solveRoundedWith_pwrites (c := 2.25 * ω) (thr := qs.getD 6 0) (a := w)
-      (t := (L + 1, 0)) (p := p) (uo := ub) (f := (L, 0)) (U := x.1.2) hS hM hu0 (by linarith)
-      hL hNat hQ hC hI hloc _ hDn _ hLeaf hφD le_rfl le_rfl hHess hV hHV hκ hsep hgap
-      (by rw [h6]; nlinarith [sq_nonneg (1.5 * ω)]) (by rw [h6]; nlinarith [sq_nonneg ω])
-      (by positivity) le_rfl hε0 (by push_cast; linarith) (by push_cast; linarith)).in_frame hd
-      ha fun μ h => h.1
   · rintro x μ μ' - hfr ⟨-, U', Tm, hTm, hU', hup, htr⟩
-    have h₁ : 0 ≤ (1 + 24 * u) ^ ((n + 1) * (n + 1)) - 1 := by
-      have := one_le_pow₀ (M₀ := ℝ) (n := (n + 1) * (n + 1)) (by linarith : (1 : ℝ) ≤ 1 + 24 * u)
-      linarith
-    have h₂ : 0 ≤ (1 + 24 * u) ^ (2 * (n + 1) * ((T + (n + 1)) * (n + 1) + 2 * 1 * (1 + 2))) *
-        (1 + 0) ^ (n + 1) - 1 := by
-      have := one_le_pow₀ (M₀ := ℝ) (n := 2 * (n + 1) * ((T + (n + 1)) * (n + 1) + 2 * 1 * (1 + 2)))
-        (by linarith : (1 : ℝ) ≤ 1 + 24 * u)
-      simp only [add_zero, one_pow, mul_one]; linarith
-    have htr' := (x.2.2.trans h₁ h₂ htr).mono (smallEigLeaf_accumulator_le hu0 hn)
-      (by push_cast; linarith)
-    rw [hTm.eq_storedMatrix, hU'.eq_storedMatrix] at htr'
-    rw [hTm.eq_storedMatrix] at hup
-    exact ⟨hfr, fun j hj => by rw [Store.get_of_readBlock hTm hj 0]; rfl,
-      fun j hj => by rw [Store.get_of_readBlock hU' hj 0]; rfl, hup, htr'⟩
+    exact ⟨hfr, smallEigCore_outcome hu0 hn (by linarith [hK', hX1]) x.2.2 htr hTm hU' hup⟩
   · rintro μ μ' - ⟨hfr, hw, hub, hup, htr⟩
     exact ⟨hfr, _, _, ⟨holdsMatrix_storedMatrix hw, holdsMatrix_storedMatrix hub⟩, hup, htr⟩
-  · unfold smallEigDecouplerFailure
-    rw [add_zero, mul_div_assoc', div_le_div_iff₀ (by positivity) (by norm_num)]
-    nlinarith
+  · exact two_mul_smallEigDecouplerFailure_le hn hφ.le
+
+omit [Has IndexOp O] [Has SampleOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] in
+/-- **The identity accumulator of `NLAlib.SmallEig.smallEigProg`**: from the memory of the input
+(`NLAlib.SmallEig.SmallEigInput`), on a scalar machine with the literals $0$ and $1$ exact,
+`NLAlib.SmallEig.identityLeaf` writes only the output block, stores the identity there and keeps
+the input. -/
+theorem SmallEigInput.identity_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
+    (hS : IsScalar Mch I) (h0 : Mch.lit 0 = 0) (h1 : Mch.lit 1 = 1) {nmax n T : ℕ}
+    {S δ φ : ℝ} {c₁ c₂ : PolyLogTail} {w q o : ℕ × ℕ} {M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {μ : Mem ℝ} {τ : Tape ℝ} (hin : SmallEigInput nmax S δ φ c₁ c₂ w q o M μ) :
+    Writes .total I τ (identityLeaf (O := O) (Q := Q)).body
+      (Env.frame [n + 1, (smallEigParams nmax S δ φ c₁ c₂).length, T] [w, q, w, o])
+      (Store.inBlock o.1 o.2 (2 * ((n + 1) * (n + 1))))
+      (fun μ' => SmallEigInput nmax S δ φ c₁ c₂ w q o M μ' ∧
+        HoldsMatrix o (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) μ'.store) μ := by
+  obtain ⟨hW, hq, hl, hroom, hwo, hqwo⟩ := hin
+  refine (identityLeaf_writes hS h0 (fun _ => h1) hl hroom hwo).mono le_rfl ?_
+  rintro μ' hfr ⟨-, hU⟩
+  exact ⟨⟨hW.of_eqOff hfr hwo.symm,
+    hfr.keep (Store.readsOnly_readBlock _ _ _ _) (hqwo.mono le_rfl le_sup_right).symm hq,
+    fun x hx => hfr.length_eq ▸ hl x hx, by rw [hfr.len_eq]; exact hroom, hwo, hqwo⟩, hU⟩
+
+/-- The scratch memory after the three allocations of `NLAlib.SmallEig.smallEigProg` on top of
+a memory holding the input and the identity accumulator. -/
+theorem SmallEigScratch.of_alloc {nmax n : ℕ} {S δ φ : ℝ} {c₁ c₂ : PolyLogTail}
+    {w q o : ℕ × ℕ} {M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {μ : Mem ℝ} {s₁ : Store ℝ}
+    (hin : SmallEigInput nmax S δ φ c₁ c₂ w q o M μ)
+    (hU : HoldsMatrix o (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) μ.store)
+    (hlen₁ : s₁.length = μ.store.length + 3)
+    (hlens : ∀ i (hi : i < [1, 1, (n + 1) * (1 + 5 * (n + 1))].length),
+      s₁.len (μ.store.length + i) = [1, 1, (n + 1) * (1 + 5 * (n + 1))][i])
+    (hBelow : Store.Below μ.store.length μ.store s₁) :
+    SmallEigScratch n μ.store.length (smallEigParams nmax S δ φ c₁ c₂) w q o ⟨s₁, μ.pos⟩ ∧
+      HoldsMatrix w M s₁ := by
+  obtain ⟨hW, hq, hl, -, hwo, hqwo⟩ := hin
+  have hwL : w.1 < μ.store.length := hl w (by simp)
+  have hqL : q.1 < μ.store.length := hl q (by simp)
+  have hoL : o.1 < μ.store.length := hl o (by simp)
+  exact ⟨⟨hlen₁, by simpa using hlens 0 (by simp), by simpa using hlens 1 (by simp),
+    by simpa using hlens 2 (by simp), hwL, hqL, hoL, hU.of_below hBelow hoL,
+    hBelow.readBlock_of hqL hq, hwo, hqwo⟩, hW.of_below hBelow hwL⟩
+
+/-- **The tail of `NLAlib.SmallEig.smallEigProg`**: after the perturbation, the reduction, the
+replay (`NLAlib.SmallEig.smallEigProg_reduce_writes`, on every tape) and the core
+(`NLAlib.SmallEig.smallEigProg_core_pwrites`, $\varphi/4$) store, from a perturbed block in the
+class of `NLAlib.SmallEig.ginibrePerturb_pwrites`, an upper triangular
+$\widehat{\mathbf{T}}_b$ and $\widehat{\mathbf{U}}_b$ tracked from $(\mathbf{I}, \mathbf{M})$:
+the reduction keeps the class (`NLAlib.SmallEig.smallEigCoreClass_hessenbergReduceLastWord`) and
+the replay is within $(1 + 24\boldsymbol{u})^{(n+1)^2} - 1$ of its unitary. The frames are given
+by their evaluations. -/
+theorem smallEigProg_tail_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I) {n : ℕ} (hn0' : 1 ≤ n)
+    (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
+    (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
+    (hG : law sG = gaussianReal 0 1) {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b)
+    {nmax : ℕ} (hn : n + 1 ≤ nmax) {M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {S δ φ : ℝ}
+    (hMS : specNorm M ≤ S) (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
+    (hu : u ≤ uSmallEig nmax S δ φ c₁ c₂) {w q o : ℕ × ℕ} {L : ℕ} {ρ : Env}
+    {ds₁ ds₂ ds₃ ds₄ : List IExp} {as₁ as₂ as₃ as₄ : List Operand}
+    (hd₁ : IExp.evalList ρ.idx ds₁ = some [n + 1, n + 1])
+    (ha₁ : Operand.evalList ρ as₁ = some [(L + 2, 0)])
+    (hd₂ : IExp.evalList ρ.idx ds₂ = some [n + 1, n + 1, 0])
+    (ha₂ : Operand.evalList ρ as₂ = some [w, w, (L + 2, 0)])
+    (hd₃ : IExp.evalList ρ.idx ds₃ = some [n + 1, 0, 0, n + 1, n + 1, n + 1])
+    (ha₃ : Operand.evalList ρ as₃ = some [(L + 2, 0), o, o])
+    (hd₄ : IExp.evalList ρ.idx ds₄ = some [n + 1, 1, (smallEigParams nmax S δ φ c₁ c₂).length,
+      smallEigCap nmax S δ φ c₁ c₂, smallEigCap nmax S δ φ c₁ c₂,
+      smallEigCap nmax S δ φ c₁ c₂ + (n + 1), n + 1])
+    (ha₄ : Operand.evalList ρ as₄ = some [w, (L + 1, 0), q, o, w, o, (L, 0)]) :
+    PWrites law I
+      (.seq (.frame ds₁ as₁ (slottedLogOpen (O := O) (Q := Q)).body)
+        (.seq (.frame ds₂ as₂ (hessenbergReduceLast (O := O) (Q := Q)).body)
+          (.seq (.frame ds₃ as₃ (givensReplayColumns (O := O) (Q := Q)).body)
+            (.frame ds₄ as₄ (smallEigCore (O := O) (Q := Q) sG).body)))) ρ
+      (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock o.1 o.2 (2 * ((n + 1) * (n + 1))) ⊔ Fp.above L)
+      (fun μ => SmallEigScratch n L (smallEigParams nmax S δ φ c₁ c₂) w q o μ ∧
+        μ.store.get (L + 1) 0 = some ((smallEigParams nmax S δ φ c₁ c₂).getD 6 0) ∧
+        ∃ (E V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (d : Fin (n + 1) → ℂ),
+          HoldsMatrix w (M + E) μ.store ∧ specNorm E ≤ δ / 2 ∧ IsUnit V ∧
+          (M + E) * V = V * Matrix.diagonal d ∧
+          pseudoConditionNumber V ≤ 2 / smallEigCond nmax S δ φ c₂ ∧
+          ∀ i j, i ≠ j → smallEigGap nmax S δ φ c₁ / 2 ≤ ‖d i - d j‖)
+      (fun μ' => ∃ Ub Tb : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+        Schur.HoldsSchurPair w o Ub Tb μ'.store ∧ Tb.IsUpperTriangular ∧
+        IsTrackedUnitarySimilar
+          ((1 + 24 * u) ^ smallEigLeafRotations nmax (smallEigCap nmax S δ φ c₁ c₂) - 1) δ 1 M
+          Ub Tb) (φ / 4) := by
+  have h0 : Mch.lit 0 = 0 := by simpa using hNat 0 (by omega)
+  have hn1 : 1 ≤ nmax := by omega
+  set qs := smallEigParams nmax S δ φ c₁ c₂
+  set Bw := Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1)))
+  set Bo := Store.inBlock o.1 o.2 (2 * ((n + 1) * (n + 1)))
+  rw [← PWrites.seq_assoc_iff, ← PWrites.seq_assoc_iff]
+  refine (PWrites.seq (F₁ := Bw ⊔ Bo ⊔ Fp.above L) (φ₁ := 0)
+    (Mid := fun μ => ∃ H X : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+      SmallEigCoreClass nmax S δ φ c₁ c₂ H ∧
+      IsTrackedUnitarySimilar ((1 + 24 * u) ^ ((n + 1) * (n + 1)) - 1) (5 * δ / 8) 1 M X H ∧
+      SmallEigCoreReady qs w q o L H X μ) hI hloc (by positivity) ?_
+    (smallEigProg_core_pwrites hS hM hL hNat hQ hC hI hloc hSmp hDisk hU hG hb₁ hb₂ hn hδ hδS
+      hφ hφ1 hu hd₄ ha₄)).mono (fun _ h => h) (by simp only [Bw, Bo]; fp_sub) (fun _ h => h)
+      (by simp)
+  refine PWrites.of_writes le_rfl fun μ τ ⟨hsc, hThv, E, V, d, hW, hE, hV, hAV, hκ, hgap⟩ => ?_
+  obtain ⟨hlen₂, hFl, hTh, hLg, hwL, hqL, hoL, hU₁, hq, hwu, hpwu⟩ := hsc
+  obtain ⟨hcl, hby⟩ := smallEigCoreClass_hessenbergReduceLastWord hM h0 hb₁ hb₂ hn hδ hδS hφ hφ1
+    hu hMS hE hV hAV hκ hgap
+  refine (Writes.seq_assoc_iff.mpr (smallEigProg_reduce_writes hS hM
+    (le_one_div_hundred_of_le_uSmallEig hb₁ hb₂ hn1 hδ hδS hφ hφ1 hu) hL hn0' hNat hC hQ
+    (length_smallEigParams _ _ _ _ _ _).ge hd₁ ha₁ hd₂ ha₂ hd₃ ha₃ hwL hqL hoL hlen₂ hFl hTh hLg
+    hW hU₁ hq hThv hwu
+    hpwu)).mono le_rfl fun μ' _ ⟨X, hready, hX⟩ => ⟨_, X, hcl, ⟨_, hby, ?_⟩, hready⟩
+  rw [Matrix.one_mul, specNorm_one, mul_one]
+  exact hX
 
 /-- **The small-eigenvalue program in Schur form** ([BanksGarzaVargasSrivastava2025, Theorem 1.1],
 with the Schur form): let the machine have the standard model at
 $\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{SmallEig}}$ (`NLAlib.SmallEig.uSmallEig` at
-$n_{\max}$) and $\boldsymbol{u} \le 1/100$, index literals, exact natural literals up to
+$n_{\max}$), index literals, exact natural literals up to
 $n + 1$, exact `toNat` and comparisons, a measurable interpretation reading the tape only in its
 windows, draws that store the tape entry, a stream $s_U$ uniform on $[0, 1]$ with an exact polar
 disk sampler on it, and a stream $s_G$ with the standard real Gaussian law; let the eigenvalue gap
@@ -426,7 +608,7 @@ $\widehat{\mathbf{T}}_b = \mathbf{V}^{\mathsf H}(\mathbf{M} + \mathbf{E})\mathbf
 unitary $\mathbf{V}$ and some $\|\mathbf{E}\|_2 \le \delta$, $R$ =
 `NLAlib.SmallEig.smallEigLeafRotations` at $n_{\max}$ and the cap. -/
 theorem smallEigProg_pwrites_schur {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
-    {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu1 : u ≤ 1 / 100)
+    {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch)
     (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
     (hC : IsCmp id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
     (hloc : ∀ o, I.TapeLocal o (win o)) (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
@@ -449,11 +631,9 @@ theorem smallEigProg_pwrites_schur {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
   have hu0 : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
   have h0 : Mch.lit 0 = 0 := by simpa using hNat 0 (by omega)
   have h1 : Mch.lit 1 = 1 := by simpa using hNat 1 (by omega)
-  have hn1 : 1 ≤ nmax := by omega
-  obtain ⟨-, -, hred, -⟩ := uSmallEig_spec hb₁ hb₂ hn1 hδ hδS hφ hφ1
+  obtain ⟨-, -, hred, -⟩ := uSmallEig_spec (nmax := nmax) hb₁ hb₂ (by omega) hδ hδS hφ hφ1
   set qs := smallEigParams nmax S δ φ c₁ c₂ with hqs
   set T := smallEigCap nmax S δ φ c₁ c₂ with hT
-  have hlen : qs.length = 12 := length_smallEigParams _ _ _ _ _ _
   have hR0 : 0 ≤ (1 + 24 * u) ^ smallEigLeafRotations nmax T - 1 := by
     have := one_le_pow₀ (M₀ := ℝ) (n := smallEigLeafRotations nmax T)
       (by linarith : (1 : ℝ) ≤ 1 + 24 * u)
@@ -465,14 +645,8 @@ theorem smallEigProg_pwrites_schur {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
     HoldsMatrix o (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) μ.store) (φ₁ := 0) hI hloc hφ.le
     ?_ ?_).mono (fun _ h => h) (sup_le le_sup_right le_rfl) (fun _ h => h) (by simp)
   · -- the identity accumulator
-    refine PWrites.of_writes le_rfl fun μ τ hin => ?_
-    obtain ⟨hW, hq, hl, hroom, hwo, hqwo⟩ := hin
-    refine ((identityLeaf_writes (O := O) (Q := Q) (ps := qs) (T := T) (τ := τ) hS h0
-      (fun _ => h1) (fun x hx => hl x (by simp at hx ⊢; tauto)) hroom hwo).in_frame rfl rfl
-      (fun x hx => hl x (by simp at hx ⊢; tauto))).mono le_rfl fun μ' hfr ⟨-, hU⟩ => ?_
-    refine ⟨⟨hW.of_eqOff hfr hwo.symm,
-      hfr.keep (Store.readsOnly_readBlock _ _ _ _) (hqwo.mono le_rfl le_sup_right).symm hq,
-      fun x hx => hfr.length_eq ▸ hl x hx, by rw [hfr.len_eq]; exact hroom, hwo, hqwo⟩, hU⟩
+    exact PWrites.of_writes le_rfl fun μ τ hin => (hin.identity_writes hS h0 h1).in_frame rfl
+      rfl fun x hx => hin.2.2.1 x (by simp at hx ⊢; tauto)
   refine PWrites.ifPos (n := n + 1 - 1) rfl hφ.le (fun hn0 => ?_) (fun hn0 μ ⟨⟨hW, _⟩, hU⟩ => ?_)
   swap
   · -- the order one
@@ -485,24 +659,19 @@ theorem smallEigProg_pwrites_schur {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
   refine PWrites.allocs (ns := [1, 1, (n + 1) * (1 + 5 * (n + 1))]) rfl
     (Pre₁ := fun L μ => SmallEigScratch n L qs w q o μ ∧ HoldsMatrix w M μ.store) ?_ ?_
     fun L => ?_
-  · rintro μ s₁ ⟨⟨hW, hq, hl, -, hwo, hqwo⟩, hU⟩ hlen₁ hlens hBelow
-    simp only [List.length_cons, List.length_nil] at hlen₁
-    have hwL : w.1 < μ.store.length := hl w (by simp)
-    have hqL : q.1 < μ.store.length := hl q (by simp)
-    have hoL : o.1 < μ.store.length := hl o (by simp)
-    exact ⟨⟨hlen₁, by simpa using hlens 0 (by simp), by simpa using hlens 1 (by simp),
-      by simpa using hlens 2 (by simp), hwL, hqL, hoL, hU.of_below hBelow hoL,
-      hBelow.readBlock_of hqL hq, hwo, hqwo⟩, hW.of_below hBelow hwL⟩
+  · rintro μ s₁ ⟨hin, hU⟩ hlen₁ hlens hBelow
+    exact SmallEigScratch.of_alloc hin hU (by simpa using hlen₁) hlens hBelow
   · rintro μ ⟨⟨-, -, hl, -⟩, -⟩ s s' p hBelow ⟨Ub, Tb, ⟨hTb, hUb⟩, hT, htr⟩
     exact ⟨Ub, Tb, ⟨hTb.of_below hBelow (hl w (by simp)), hUb.of_below hBelow (hl o (by simp))⟩,
       hT, htr⟩
   have hnew : ∀ {b o k b' o' k' : ℕ}, b < L → L ≤ b' →
       Fp.Disj (Store.inBlock b o k) (Store.inBlock b' o' k') :=
     fun hb hb' => Fp.disj_inBlock_of_ne (by omega)
-  refine (PWrites.seq (F₁ := Store.inBlock (L + 1) 0 1) (φ₁ := 0)
+  refine (PWrites.seq (F₁ := Store.inBlock (L + 1) 0 1) (F₂ := Bw ⊔ (Bw ⊔ Bo ⊔ Fp.above L))
+    (φ₁ := 0)
     (Mid := fun μ => SmallEigScratch n L qs w q o μ ∧ HoldsMatrix w M μ.store ∧
       μ.store.get (L + 1) 0 = some (qs.getD 6 0)) hI hloc (by positivity) ?_
-    (PWrites.seq (F₁ := Bw) (φ₁ := 3 * φ / 4) (φ₂ := φ / 4)
+    (PWrites.seq (F₁ := Bw) (F₂ := Bw ⊔ Bo ⊔ Fp.above L) (φ₁ := 3 * φ / 4) (φ₂ := φ / 4)
       (Mid := fun μ => SmallEigScratch n L qs w q o μ ∧
         μ.store.get (L + 1) 0 = some (qs.getD 6 0) ∧
         ∃ (E V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (d : Fin (n + 1) → ℂ),
@@ -513,11 +682,13 @@ theorem smallEigProg_pwrites_schur {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
       ?_ ?_)).mono (fun _ h => h) ?_ (fun _ h => h) (by linarith)
   · -- the threshold word
     refine PWrites.of_writes le_rfl fun μ τ ⟨hsc, hW⟩ => ?_
-    obtain ⟨hlen₁, -, hTh, -, hwL, hqL, hoL, -, hq, -, -⟩ := hsc
+    obtain ⟨hlen₁, -, hTh, -, hwL, hqL, hoL, -, hq, -, -⟩ := id hsc
     refine (writes_call_un (hS .copy) (x := (q.1, q.2 + 6)) (z := (L + 1, 0)) rfl rfl trivial
-      (Store.get_of_readBlock hq (j := 6) (by omega) 0) rfl (by simp [hTh])).mono le_rfl ?_
+      (Store.get_of_readBlock hq (j := 6) (by simp [qs, smallEigParams]) 0) rfl
+      (by simp [hTh])).mono le_rfl ?_
     rintro μ₁ hfr ⟨-, hTh₁⟩
-    exact ⟨hsc.of_eqOff hfr (hnew hoL (by omega)).symm (hnew hqL (by omega)).symm, hW.of_eqOff hfr (hnew hwL (by omega)).symm, hTh₁⟩
+    exact ⟨hsc.of_eqOff hfr (hnew hoL (by omega)).symm (hnew hqL (by omega)).symm,
+      hW.of_eqOff hfr (hnew hwL (by omega)).symm, hTh₁⟩
   · -- the perturbation
     refine ((ginibrePerturb_pwrites (O := O) (Q := Q) hS hM hL hSmp hG hA hB hb₁ hb₂ hδ hδS hφ hφ1
       (hu.trans hred) hn hMS (a := w) (q := q)).mono_eqOff
@@ -528,30 +699,13 @@ theorem smallEigProg_pwrites_schur {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
       exact ⟨hW, hq, by simp [Mem.Live, hlen₁]; omega,
         (hpwu.mono le_rfl le_sup_left).symm⟩
     · rintro μ μ' ⟨hsc, -, hTh⟩ hfr hpost
-      obtain ⟨-, -, -, -, hwL, -, -, -, -, hwu, hpwu⟩ := hsc
+      obtain ⟨-, -, -, -, hwL, -, -, -, -, hwu, hpwu⟩ := id hsc
       exact ⟨hsc.of_eqOff hfr hwu (hpwu.mono le_rfl le_sup_left).symm,
         hfr.keep (Store.readsOnly_get _ _ _) (hnew hwL (by omega)) hTh, hpost⟩
     · rintro μ ⟨⟨hlen₁, -, -, -, hwL, hqL, -⟩, -⟩
       simp [Mem.Live, hlen₁]; omega
-  · -- the reduction, the replay and the core
-    rw [← PWrites.seq_assoc_iff', ← PWrites.seq_assoc_iff']
-    refine (PWrites.seq (F₁ := Bw ⊔ Bo ⊔ Fp.above L) (φ₁ := 0)
-      (Mid := fun μ => ∃ H X : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
-        SmallEigCoreClass nmax S δ φ c₁ c₂ H ∧
-        IsTrackedUnitarySimilar ((1 + 24 * u) ^ ((n + 1) * (n + 1)) - 1) (5 * δ / 8) 1 M X H ∧
-        SmallEigCoreReady qs w q o L H X μ) hI hloc (by positivity) ?_
-      (smallEigProg_core_pwrites hS hM hL hNat hQ hC hI hloc hSmp hDisk hU hG hb₁ hb₂ hn hδ hδS
-        hφ hφ1 hu rfl rfl)).mono (fun _ h => h) le_rfl (fun _ h => h) (by simp)
-    refine PWrites.of_writes le_rfl fun μ τ ⟨hsc, hThv, E, V, d, hW, hE, hV, hAV, hκ, hgap⟩ => ?_
-    obtain ⟨hlen₂, hFl, hTh, hLg, hwL, hqL, hoL, hU₁, hq, hwu, hpwu⟩ := hsc
-    obtain ⟨hcl, hby⟩ := smallEigCoreClass_hessenbergReduceLastWord hM h0 hb₁ hb₂ hn hδ hδS hφ hφ1
-      hu hMS hE hV hAV hκ hgap
-    refine (Writes.seq_assoc_iff.mpr (smallEigProg_reduce_writes hS hM
-      (le_one_div_hundred_of_le_uSmallEig hb₁ hb₂ hn1 hδ hδS hφ hφ1 hu) hL hn0' hNat hC hQ
-      (by omega) rfl rfl rfl rfl rfl rfl hwL hqL hoL hlen₂ hFl hTh hLg hW hU₁ hq hThv hwu
-      hpwu)).mono le_rfl fun μ' _ ⟨X, hready, hX⟩ => ⟨_, X, hcl, ⟨_, hby, ?_⟩, hready⟩
-    rw [Matrix.one_mul, specNorm_one, mul_one]
-    exact hX
+  · exact smallEigProg_tail_pwrites hS hM hL hn0' hNat hQ hC hI hloc hSmp hDisk hU hG hb₁ hb₂ hn
+      hMS hδ hδS hφ hφ1 hu rfl rfl rfl rfl rfl rfl rfl rfl
   · simp only [Bw, Bo]
     fp_sub
 
@@ -590,17 +744,18 @@ theorem smallEigProg_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock o.1 o.2 (2 * ((n + 1) * (n + 1)))) (SmallEigInput nmax S δ φ c₁ c₂ w q o M)
       (SmallEigSpectrum w o M δ) φ :=
-  (smallEigProg_pwrites_schur hS hM (le_one_div_hundred_of_le_uSmallEig hb₁ hb₂ (by omega) hδ hδS
-    hφ hφ1 hu) hL hNat hQ hC hI hloc hSmp hDisk hU hG hA hB hb₁ hb₂ hn hMS hδ hδS hφ hφ1 hu w q
+  (smallEigProg_pwrites_schur hS hM hL hNat hQ hC hI hloc hSmp hDisk hU hG hA hB hb₁ hb₂ hn hMS hδ
+    hδS hφ hφ1 hu w q
     o).mono (fun _ h => h) le_rfl (fun _ ⟨_, _, hP, hT, ht⟩ => smallEigSpectrum_of_tracked hP hT ht)
     le_rfl
 
 /-- **The backward listing at $\delta_b$ is a forward one at $\beta$**
 ([BanksGarzaVargasSrivastava2025, Corollary 1.3], the matching): for $\mathbf{M}$ of order
-$n + 1 \le k_{\max}$ with $\|\mathbf{M}\|_2 \le \Sigma$ and $0 < \beta \le \Sigma$, an output
-listing the spectrum of $\mathbf{M} + \mathbf{E}$ for some $\|\mathbf{E}\|_2 \le \delta_b$
-(`NLAlib.SmallEig.forwardBackwardError`) is within $\beta$ of a listing of the spectrum of
-$\mathbf{M}$, by the Ostrowski–Elsner matching
+$n + 1 \le k_{\max}$ with $\|\mathbf{M}\|_2 \le \Sigma$ and $0 < \beta \le \Sigma$, if the
+stored block $\widehat{\mathbf{T}}_b$ at `w` lists on its diagonal the spectrum of
+$\mathbf{M} + \mathbf{E}$ for some $\|\mathbf{E}\|_2 \le \delta_b$
+(`NLAlib.SmallEig.forwardBackwardError`), that diagonal is within $\beta$ of a listing of the
+spectrum of $\mathbf{M}$, by the Ostrowski–Elsner matching
 (`NLAlib.exists_isEigenvalueListing_norm_sub_le_rpow`) and
 `NLAlib.SmallEig.forwardBackwardError_spec`. -/
 theorem smallEigSpectrum_forward {kmax n : ℕ} (hn : n + 1 ≤ kmax) {S β : ℝ} (hβ : 0 < β)
@@ -743,7 +898,8 @@ theorem smallEig_measureReal_not_forward_le {Mch : Machine ℝ} {I : Interp O Q 
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock o.1 o.2 (2 * ((n + 1) * (n + 1))))
       (fun μ' => ∃ (Tb : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (ev : Fin (n + 1) → ℂ),
-        HoldsMatrix w Tb μ'.store ∧ IsEigenvalueListing M ev ∧ ∀ i, ‖Tb i i - ev i‖ ≤ β) μ} ≤ φ := by
+        HoldsMatrix w Tb μ'.store ∧ IsEigenvalueListing M ev ∧
+          ∀ i, ‖Tb i i - ev i‖ ≤ β) μ} ≤ φ := by
   obtain ⟨hb0, hbS, -⟩ := forwardBackwardError_spec (kmax := kmax) hβ hβS
   exact ((smallEigProg_pwrites hS hM hL (hNat.mono hn) hQ hC hI hloc hSmp hDisk hU hG hA hB hb₁
     hb₂ hn hMS hb0 hbS hφ hφ1 hu w q o).mono (fun _ h => h) le_rfl
@@ -755,15 +911,15 @@ count (`NLAlib.Ops.stmtCost`) of `NLAlib.SmallEig.smallEigProg` at the order $n 
 and the cap $T$ has at most $c(n + 1)^4(T + 1)^2$ operations and tests. The count holds on every
 tape: the loops are capped by $T$ ($m, t, m_2 \le T$, $q \le m$). The paper's count has the factor
 $n$ in its last term (its erratum N5). The monomial bound of the tree
-(`NLAlib.Ops.size_stmtCost_le_stmtWorkMono`) gives $c = 4629$; the certificate's
+(`NLAlib.Ops.size_stmtCost_le_stmtWorkMono`) gives $c = 4713$; the certificate's
 `NLAlib.SmallEig.smallEigWork` is larger because its instrumentation also counts the structural
 instructions. -/
 theorem smallEig_work_le (sG : ℕ) : ∃ c : ℕ, ∀ n nq T : ℕ,
     Count.size (stmtCost (smallEigProg (O := O) (Q := Q) sG).body [n + 1, nq, T]) ≤
       c * (n + 1) ^ 4 * (T + 1) ^ 2 := by
-  refine ⟨4629, fun n nq T => ?_⟩
+  refine ⟨4713, fun n nq T => ?_⟩
   have hw : stmtWorkMono (smallEigProg (O := O) (Q := Q) sG).body
-      [⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩] = ⟨4629, [4, 0, 2]⟩ := by
+      [⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩] = ⟨4713, [4, 0, 2]⟩ := by
     kernel_rfl
   have hσ : SlotsLe [n + 1, nq + 1, T + 1] [n + 1, nq, T]
       [⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩] := by
@@ -787,15 +943,16 @@ theorem smallEigCap_le_log (c₁ c₂ : PolyLogTail) (hb₁ : 0 < c₁.b) (hb₂
   have hn' : (1 : ℝ) ≤ nmax := by exact_mod_cast hn
   have hS : 0 < S := hδ.trans_le hδS
   rw [pow_one]
-  gcongr
-  · exact Real.logb_le_logb_of_le (by norm_num) (by positivity) (by gcongr; linarith)
+  have : Real.logb 2 (4 * nmax * S / (δ * φ)) ≤ Real.logb 2 (4 * (nmax + 1) * S / (δ * φ)) :=
+    Real.logb_le_logb_of_le one_lt_two (by positivity) (by gcongr; linarith)
+  exact mul_le_mul_of_nonneg_left (by linarith) hc
 
 /-- **The small-eigenvalue program is a small-block Schur solver**
 ([BanksGarzaVargasSrivastava2025, Theorem 1.1 and Corollary 1.3], with the Schur form): on the
 machine and streams of `NLAlib.SmallEig.smallEigProg_pwrites_schur`, with exact natural literals
 up to $d_{\max} \le k_{\max}$, $0 < \beta \le \Sigma$, $0 < \varphi \le 1$ and
 $\boldsymbol{u} \le \boldsymbol{u}^{\mathrm{fwd}}_{\mathrm{SmallEig}}$
-(`NLAlib.SmallEig.uSmallEigForward`) and $\boldsymbol{u} \le 1/100$, the program with the forward
+(`NLAlib.SmallEig.uSmallEigForward`), the program with the forward
 words `NLAlib.SmallEig.smallEigForwardParams` and cap meets
 `NLAlib.Schur.RandomSchurLeafContract` on the orders at most $d_{\max}$ and norms at most
 $\Sigma$: the backward error is the backward accuracy
@@ -803,7 +960,7 @@ $\delta_b$ = `NLAlib.SmallEig.forwardBackwardError` of $\beta$, the failure $\va
 accumulator error $(1 + 24\boldsymbol{u})^R - 1$, $R$ = `NLAlib.SmallEig.smallEigLeafRotations`
 at $k_{\max}$ and the cap. Orders $d \le 1$ are kept with the identity accumulator. -/
 theorem smallEigProg_randomSchurLeafContract {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
-    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu1 : u ≤ 1 / 100) (hL : IsIndexLit Mch I)
+    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
     {dmax kmax : ℕ} (hdk : dmax ≤ kmax) (hNat : IsExactNatLit id Mch dmax) (hQ : IsToNat id I)
     (hC : IsCmp id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
     (hloc : ∀ o, I.TapeLocal o (win o)) (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
@@ -840,7 +997,7 @@ theorem smallEigProg_randomSchurLeafContract {Mch : Machine ℝ} {I : Interp O Q
     refine ⟨1, B, ⟨hW.of_eqOff hfr hwu.symm, hU⟩, fun i => i.elim0,
       (IsTrackedUnitarySimilar.refl 1 B).mono hR0 hb0.le⟩
   · have hdk' : n + 1 ≤ kmax := hd.trans hdk
-    refine (smallEigProg_pwrites_schur hS hM hu1 hL (hNat.mono hd) hQ hC hI hloc hSmp hDisk hU hG
+    refine (smallEigProg_pwrites_schur hS hM hL (hNat.mono hd) hQ hC hI hloc hSmp hDisk hU hG
       hA hB hb₁ hb₂ hdk' hBS hb0 hbS hφ hφ1 hu w p ub).mono ?_ le_rfl (fun _ h => h) le_rfl
     rintro μ ⟨hW, hq, hl, hroom, hap⟩
     simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
@@ -937,7 +1094,8 @@ theorem smallEig_measureReal_not_forward_le_unconditional {Mch : Machine ℝ} {I
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock o.1 o.2 (2 * ((n + 1) * (n + 1))))
       (fun μ' => ∃ (Tb : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (ev : Fin (n + 1) → ℂ),
-        HoldsMatrix w Tb μ'.store ∧ IsEigenvalueListing M ev ∧ ∀ i, ‖Tb i i - ev i‖ ≤ β) μ} ≤ φ := by
+        HoldsMatrix w Tb μ'.store ∧ IsEigenvalueListing M ev ∧
+          ∀ i, ‖Tb i i - ev i‖ ≤ β) μ} ≤ φ := by
   apply smallEig_measureReal_not_forward_le
     (hA := boundsGinibreGap_ginibreGapTail) (hB := boundsGinibreCondition_ginibreConditionTail)
     (hb₁ := ginibreGapTail_b_pos) (hb₂ := ginibreConditionTail_b_pos) <;> assumption

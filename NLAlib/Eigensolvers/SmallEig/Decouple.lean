@@ -9,6 +9,7 @@ public import NLAlib.Eigensolvers.ShiftedQR.RoundedDecouple
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveTermination
 public import NLAlib.Eigensolvers.ShiftedQR.StableStepTermination
 public import NLAlib.Matrix.QRIteration.StableStepForward
+public import NLAlib.Matrix.FinitePrecision.GivensLogValidate
 
 /-!
 # `Decouple`: decoupling the last eigenvalue by a repeated shift
@@ -187,11 +188,83 @@ theorem roundedDecoupleExit_writes_lastScan {M : Machine ℝ} {I : Interp O Q �
     rintro μ' - ⟨-, hF⟩
     exact Or.inr ⟨by rw [hF, h1], hx, hb⟩
 
+/-- A chain by a named unitary extended by one step by $\mathbf{Q}_1$ is a chain by
+$\mathbf{Q}\mathbf{Q}_1$. -/
+private theorem chainBy_snoc {n : ℕ} {x : ℝ}
+    {H H' H'' U U₁ R : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {ss : List ℂ} {Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)} {s : ℂ}
+    (hc : IsStableQRChainBy x H ss H' Rs U)
+    (hs : IsStableQRStepBy U₁ (x * (specNorm H' + ‖s‖)) H' s H'' R) :
+    IsStableQRChainBy x H (ss ++ [s]) H'' (Rs ++ [R]) (U * U₁) := by
+  induction hc with
+  | nil K => simpa using IsStableQRChainBy.cons hs (.nil H'')
+  | cons h _ ih => simpa [Matrix.mul_assoc] using IsStableQRChainBy.cons h (ih hs)
+
+/-- A chain of one step by a named unitary is that step. -/
+private theorem stepBy_of_chainBy_singleton {n : ℕ} {x : ℝ}
+    {H H' G : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {s : ℂ}
+    {Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)} (h : IsStableQRChainBy x H [s] H' Rs G) :
+    ∃ R, IsStableQRStepBy G (x * (specNorm H + ‖s‖)) H s H' R := by
+  cases h with
+  | cons h t => cases t; exact ⟨_, by simpa using h⟩
+
+omit [Has IdxTst Q] in
+/-- One more rounded step with the shift $\lambda$ (`NLAlib.ShiftedQR.multiStepStable` at degree
+$1$, recording its rotations in the pending slot of the log), from the ends of a stable chain
+by a named unitary $\mathbf{Q}$: a chain of one more step by $\mathbf{Q}$ times the unitary of
+the recorded entries. -/
+private theorem multiStepStable_writes_by {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar M I) (hM : StdModel u id M) (hu : 0 ≤ u) (hC : IsCmp id I)
+    (hL : IsIndexLit M I) {n i : ℕ} (hNat : IsExactNatLit id M (n + 1))
+    (hnu : (n + 2 : ℝ) * u ≤ 1 / 2500) {H H' U : Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ} {ζ : ℂ}
+    {Rs : List (Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ)}
+    (hc : IsStableQRChainBy (300 * (n + 2) ^ 2 * u) H (List.replicate i ζ) H' Rs U)
+    (hH' : IsUpperHessenberg H') {τ : Tape ℝ} {μ : Mem ℝ} {a s ds : ℕ × ℕ}
+    (hl : μ.Live [a, s, ds]) (hA : HoldsMatrix a H' μ.store)
+    (hs : μ.store.readBlock s.1 s.2 2 = some [ζ.re, ζ.im]) (hd : ds.2 + 2 ≤ μ.store.len ds.1)
+    (has : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 2) * (n + 2)))) (Store.inBlock s.1 s.2 2))
+    (had : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 2) * (n + 2)))) (Store.inBlock ds.1 ds.2 2))
+    (hsd : Fp.Disj (Store.inBlock s.1 s.2 2) (Store.inBlock ds.1 ds.2 2))
+    {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
+    (hlog : HoldsSlottedLog lg ns w LL [] μ.store) (hj : LL.length < ns) (hw : n + 1 ≤ w)
+    (hlgl : μ.Live [lg]) (hlgb : ∀ b ∈ [a, s, ds], b.1 ≠ lg.1) :
+    Writes .total I τ (multiStepStable (Op := O) (Tst := Q)).body
+      (Env.frame [n + 2, 1, w, LL.length] [a, s, a, ds, lg])
+      (Store.inBlock a.1 a.2 (2 * ((n + 2) * (n + 2))) ⊔ Store.inBlock ds.1 ds.2 2 ⊔
+        Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (fun μ' => μ'.pos = μ.pos ∧ ∃ (H'' : Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ)
+        (Rs' : List (Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ)) (es : List GivensEntry),
+        es.length = n + 1 ∧ (∀ e ∈ es, e.1 + 1 < n + 2) ∧
+          HoldsSlottedLog lg ns w LL es μ'.store ∧
+        IsStableQRChainBy (300 * (n + 2) ^ 2 * u) H (List.replicate (i + 1) ζ) H'' Rs'
+          (U * givensLog (n + 2) es) ∧
+          IsUpperHessenberg H'' ∧ HoldsMatrix a H'' μ'.store) μ := by
+  have hlgd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (Store.inBlock a.1 a.2 (2 * ((n + 1 + 1) * (n + 1 + 1))) ⊔
+        Store.inBlock s.1 s.2 (2 * [ζ].length) ⊔ Store.inBlock ds.1 ds.2 (2 * [ζ].length)) :=
+    Fp.disj_sup_right.mpr ⟨Fp.disj_sup_right.mpr
+      ⟨Fp.disj_inBlock_of_ne (hlgb a (by simp)).symm,
+        Fp.disj_inBlock_of_ne (hlgb s (by simp)).symm⟩,
+      Fp.disj_inBlock_of_ne (hlgb ds (by simp)).symm⟩
+  refine (multiStepStable_isStableQRChainBy (τ := τ) (ss := [ζ]) hS hM hu hC hL hNat hH'
+    (by push_cast; linarith) le_rfl hlog hj (by simpa using hw)
+    (by simp only [Mem.live_cons, Mem.live_nil, and_true] at hl hlgl ⊢
+        exact ⟨hl.1, hl.2.1, hl.2.2, hlgl⟩) hA (by simpa using hs) (by simpa using hd) has had
+    hsd hlgd).mono le_rfl ?_
+  rintro μ' - ⟨hp, es, hes, hpl, hlog', H'', Rs', hc', hH'', hA'', -⟩
+  have hx : (300 * (((n + 1 : ℕ) : ℝ) + 1) ^ 2 * u) = 300 * ((n : ℝ) + 2) ^ 2 * u := by
+    push_cast; ring
+  rw [hx] at hc'
+  obtain ⟨R, hst⟩ := stepBy_of_chainBy_singleton hc'
+  exact ⟨hp, H'', Rs ++ [R], es, by simpa using hes, hpl, hlog',
+    by rw [List.replicate_succ']; exact chainBy_snoc hc hst, hH'', hA''⟩
+
 omit [Has IdxTst Q] in
 /-- One more rounded step with the shift $\lambda$ (`NLAlib.ShiftedQR.multiStepStable` at degree
 $1$) extends a stable chain of $i$ steps with that shift to $i + 1$ steps. -/
 theorem multiStepStable_writes_replicate_succ {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
-    (hS : IsScalar M I) (hM : StdModel u id M) (hu : 0 ≤ u) (hC : IsCmp id I) {n i : ℕ}
+    (hS : IsScalar M I) (hM : StdModel u id M) (hu : 0 ≤ u) (hC : IsCmp id I)
+    (hL : IsIndexLit M I) {n i : ℕ} (hNat : IsExactNatLit id M (n + 1))
     (hnu : (n + 2 : ℝ) * u ≤ 1 / 2500) {H H' : Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ} {ζ : ℂ}
     {Rs : List (Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ)}
     (hc : IsStableQRChain (300 * (n + 2) ^ 2 * u) H (List.replicate i ζ) H' Rs)
@@ -212,8 +285,26 @@ theorem multiStepStable_writes_replicate_succ {M : Machine ℝ} {I : Interp O Q 
         (Rs' : List (Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ)),
         IsStableQRChain (300 * (n + 2) ^ 2 * u) H (List.replicate (i + 1) ζ) H'' Rs' ∧
           IsUpperHessenberg H'' ∧ HoldsMatrix a H'' μ'.store ∧
-        ∃ es : List GivensEntry, es.length = n + 1 ∧ HoldsSlottedLog lg ns w LL es μ'.store) μ :=
-  sorry
+        ∃ es : List GivensEntry, es.length = n + 1 ∧ HoldsSlottedLog lg ns w LL es μ'.store) μ := by
+  have hlgd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (Store.inBlock a.1 a.2 (2 * ((n + 1 + 1) * (n + 1 + 1))) ⊔
+        Store.inBlock s.1 s.2 (2 * [ζ].length) ⊔ Store.inBlock ds.1 ds.2 (2 * [ζ].length)) :=
+    Fp.disj_sup_right.mpr ⟨Fp.disj_sup_right.mpr
+      ⟨Fp.disj_inBlock_of_ne (hlgb a (by simp)).symm,
+        Fp.disj_inBlock_of_ne (hlgb s (by simp)).symm⟩,
+      Fp.disj_inBlock_of_ne (hlgb ds (by simp)).symm⟩
+  refine (multiStepStable_isStableQRChainBy (τ := τ) (ss := [ζ]) hS hM hu hC hL hNat hH'
+    (by push_cast; linarith) le_rfl hlog hj (by simpa using hw)
+    (by simp only [Mem.live_cons, Mem.live_nil, and_true] at hl hlgl ⊢
+        exact ⟨hl.1, hl.2.1, hl.2.2, hlgl⟩) hA (by simpa using hs) (by simpa using hd) has had
+    hsd hlgd).mono le_rfl ?_
+  rintro μ' - ⟨-, es, hes, -, hlog', H'', Rs', hc', hH'', hA'', -⟩
+  have hx : (300 * (((n + 1 : ℕ) : ℝ) + 1) ^ 2 * u) = 300 * ((n : ℝ) + 2) ^ 2 * u := by
+    push_cast; ring
+  rw [hx] at hc'
+  obtain ⟨R, hst⟩ := stepBy_of_chainBy_singleton hc'
+  exact ⟨H'', Rs ++ [R], by rw [List.replicate_succ']; exact hc.snoc hst.isStableQRStep, hH'',
+    hA'', es, by simpa using hes, hlog'⟩
 
 omit [Has IdxTst Q] in
 /-- The scan of `NLAlib.SmallEig.decoupleLast` from the operands of its loop
@@ -316,6 +407,263 @@ theorem bottomScan_terminates_decoupleLastCtx {M : Machine ℝ} {I : Interp O Q 
   rintro μ' - ⟨-, ⟨h1, -⟩ | ⟨h0, -⟩⟩
   exacts [⟨_, by simpa using h1⟩, ⟨_, by simpa using h0⟩]
 
+/-- The operands of the loop survive writes away from the shift pair and the threshold word. -/
+private theorem DecoupleLastCtx.of_eqOff' {n L : ℕ} {h lam qw f : ℕ × ℕ} {ζ : ℂ} {t : ℝ}
+    {s s' : Store ℝ} (hc : DecoupleLastCtx n L h lam qw f ζ t s) {F : Fp}
+    (hd : Fp.Disj F (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock qw.1 (qw.2 + 7) 1))
+    (hfr : s.EqOff F s') : DecoupleLastCtx n L h lam qw f ζ t s' := by
+  obtain ⟨hlen, hh, hl, hq, hf, hlam, ht, hL, hL1, hfr', hd'⟩ := hc
+  exact ⟨by have := hfr.length_eq; omega, hh, hl, hq, hf,
+    hfr.keep (Store.readsOnly_readBlock _ _ _ _) (hd.mono le_rfl le_sup_left) hlam,
+    hfr.keep (Store.readsOnly_get _ _ _) (hd.mono le_rfl le_sup_right) ht,
+    by rw [hfr.len_eq]; exact hL, by rw [hfr.len_eq]; exact hL1, by rw [hfr.len_eq]; exact hfr',
+    hd'⟩
+
+/-- The log of `NLAlib.SmallEig.decoupleLast` after $i$ rounds, with the unitary of its entries:
+$i$ accepted slots `Ls` after the closed slots `LL`, planes below $n + 1$, and the matrix
+$\mathbf{H}_c$ at `h` the end of a stable chain of $i$ steps with the shift $\lambda$ by the
+unitary `NLAlib.givensLog` of the entries. -/
+private def DecoupleLogBy (x : ℝ) {n : ℕ} (H : Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ) (ζ : ℂ)
+    (h lg : ℕ × ℕ) (ns w : ℕ) (LL : List (Option (List GivensEntry))) (i : ℕ) (s : Store ℝ) :
+    Prop :=
+  ∃ (Ls : List (Option (List GivensEntry))) (Rs : List (Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ))
+    (Hc : Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ), Ls.length = i ∧
+    (∀ e ∈ slotEntries w Ls, e.1 + 1 < n + 2) ∧ HoldsSlottedLog lg ns w (LL ++ Ls) [] s ∧
+    HoldsMatrix h Hc s ∧
+    IsStableQRChainBy x H (List.replicate i ζ) Hc Rs (givensLog (n + 2) (slotEntries w Ls))
+
+/-- The outcome of `NLAlib.SmallEig.decoupleLast` (the postcondition of
+`NLAlib.SmallEig.decoupleLast_writes_scans` without the log). -/
+private def DecoupleLastScansPost (u t : ℝ) {n : ℕ} (H : Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ)
+    (ζ : ℂ) (h f : ℕ × ℕ) (m₂ : ℕ) (s : Store ℝ) : Prop :=
+  ∃ (ℓ : ℕ) (Hs : ℕ → Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ), ℓ ≤ m₂ ∧
+    (∀ k ≤ ℓ, ∃ Rs, IsStableQRChain (300 * (n + 2) ^ 2 * u) H (List.replicate k ζ) (Hs k) Rs) ∧
+    (∀ k < ℓ, t < (1 + u) ^ 2 * ‖Hs k (Fin.last (n + 1)) (Fin.last n).castSucc‖ ^ 2) ∧
+    IsUpperHessenberg (Hs ℓ) ∧ HoldsMatrix h (Hs ℓ) s ∧
+    ((s.get f.1 f.2 = some 0 ∧
+        (1 - u) ^ 2 * ‖Hs ℓ (Fin.last (n + 1)) (Fin.last n).castSucc‖ ^ 2 ≤ t) ∨
+      (s.get f.1 f.2 = some 1 ∧ ℓ = m₂ ∧
+        t < (1 + u) ^ 2 * ‖Hs ℓ (Fin.last (n + 1)) (Fin.last n).castSucc‖ ^ 2))
+
+/-- The unitary of a log with one more accepted slot. -/
+private theorem givensLog_slotEntries_append_some (N w : ℕ) (Ls : List (Option (List GivensEntry)))
+    (es : List GivensEntry) :
+    givensLog N (slotEntries w (Ls ++ [some es])) =
+      givensLog N (slotEntries w Ls) * givensLog N es := by
+  rw [show slotEntries w (Ls ++ [some es]) = slotEntries w Ls ++ padEntries w es by
+    simp [slotEntries], givensLog_append, givensLog_padEntries]
+
+/-- The planes of a log with one more accepted slot. -/
+private theorem planes_slotEntries_append_some {N w : ℕ} {Ls : List (Option (List GivensEntry))}
+    {es : List GivensEntry} (hN : 1 < N) (hLs : ∀ e ∈ slotEntries w Ls, e.1 + 1 < N)
+    (hes : ∀ e ∈ es, e.1 + 1 < N) : ∀ e ∈ slotEntries w (Ls ++ [some es]), e.1 + 1 < N := by
+  intro e he
+  simp only [slotEntries, List.flatMap_append, List.mem_append, List.flatMap_cons,
+    List.flatMap_nil, List.append_nil, Option.map_some, Option.getD_some, padEntries,
+    List.mem_replicate] at he
+  rcases he with he | he | ⟨-, rfl⟩
+  exacts [hLs e he, hes e he, by show 0 + 1 < N; omega]
+
+omit [Has IdxTst Q] in
+/-- **One round of `NLAlib.SmallEig.decoupleLast` with its log**: after a failed scan, one rounded
+step (recorded in the pending slot), the validation of the slot and a scan extend the history
+`NLAlib.SmallEig.DecoupleScans` and the log `NLAlib.SmallEig.DecoupleLogBy` by a round. -/
+private theorem decoupleLast_round_by {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar M I) (hM : StdModel u id M) (hu : 0 ≤ u) (hu1 : u ≤ 1) (hL : IsIndexLit M I)
+    (hC : IsCmp id I) {n : ℕ} (hNat : IsExactNatLit id M (n + 2))
+    (hnu : (n + 2 : ℝ) * u ≤ 1 / 2500) {H : Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ} {ζ : ℂ}
+    {τ : Tape ℝ} {ρ : Env} {μ : Mem ℝ} {L i : ℕ} {h lam qw f lg : ℕ × ℕ} {t : ℝ} {ns w : ℕ}
+    {LL : List (Option (List GivensEntry))} {dsM dsV dsS : List IExp}
+    {asM asV asS : List Operand}
+    (hdM : IExp.evalList ρ.idx dsM = some [n + 2, 1, w, LL.length + i])
+    (haM : Operand.evalList ρ asM = some [h, lam, h, (L + 1, 0), lg])
+    (hdV : IExp.evalList ρ.idx dsV = some [w, LL.length + i])
+    (haV : Operand.evalList ρ asV = some [lg])
+    (hdS : IExp.evalList ρ.idx dsS = some [n + 2, 1])
+    (haS : Operand.evalList ρ asS = some [h, (qw.1, qw.2 + 7), (L, 0)])
+    (hlgL : lg.1 < L) (hlgb : ∀ b ∈ [h, lam, qw, f], b.1 ≠ lg.1)
+    (hc : DecoupleLastCtx n L h lam qw f ζ t μ.store)
+    (hs : DecoupleScans u t H ζ h (L, 0) i μ.store)
+    (hlog : DecoupleLogBy (300 * (n + 2) ^ 2 * u) H ζ h lg ns w LL i μ.store)
+    (h0 : μ.store.get L 3 = some 0) (hj : LL.length + i < ns) (hw : n + 1 ≤ w) :
+    Writes .total I τ
+      (.seq (.frame dsM asM (multiStepStable (Op := O) (Tst := Q)).body)
+        (.seq (.frame dsV asV (slottedLogValidate (O := O) (Q := Q)).body)
+          (.frame dsS asS (bottomScan (O := O) (Q := Q)).body))) ρ
+      (Store.inBlock h.1 h.2 (2 * ((n + 2) * (n + 2))) ⊔ Store.inBlock L 0 5 ⊔
+        Store.inBlock (L + 1) 0 2 ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (fun μ' => DecoupleLastCtx n L h lam qw f ζ t μ'.store ∧
+        DecoupleScans u t H ζ h (L, 0) (i + 1) μ'.store ∧
+        DecoupleLogBy (300 * (n + 2) ^ 2 * u) H ζ h lg ns w LL (i + 1) μ'.store) μ := by
+  obtain ⟨Hs, hch, hfail, hHess, hW, hsc⟩ := hs
+  obtain ⟨Ls, Rs, Hc, hLs, hpl, hlg, hWc, hcb⟩ := hlog
+  obtain rfl : Hc = Hs i := hWc.eq_storedMatrix.trans hW.eq_storedMatrix.symm
+  have hfi := hsc.lt_of_get (by simpa using h0)
+  have hlen := hc.1
+  have hhL : h.1 < L := hc.2.1
+  have hlamL : lam.1 < L := hc.2.2.1
+  have hqL : qw.1 < L := hc.2.2.2.1
+  have hgh : h.1 ≠ lg.1 := hlgb h (by simp)
+  have hgl : lam.1 ≠ lg.1 := hlgb lam (by simp)
+  have hgq : qw.1 ≠ lg.1 := hlgb qw (by simp)
+  have hdc := hc.2.2.2.2.2.2.2.2.2.2
+  have hRH : ∀ {o k : ℕ}, Fp.Disj (Store.inBlock L o k)
+      (Store.inBlock h.1 h.2 (2 * ((n + 2) * (n + 2)))) := Fp.disj_inBlock_of_ne (by omega)
+  have hlgh : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (Store.inBlock h.1 h.2 (2 * ((n + 2) * (n + 2)))) :=
+    Fp.disj_inBlock_of_ne (hlgb h (by simp)).symm
+  have hDL : ∀ {b o k : ℕ}, b ≠ lam.1 → b ≠ qw.1 →
+      Fp.Disj (Store.inBlock b o k)
+        (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock qw.1 (qw.2 + 7) 1) :=
+    fun h1 h2 => Fp.disj_sup_right.mpr ⟨Fp.disj_inBlock_of_ne h1, Fp.disj_inBlock_of_ne h2⟩
+  have hlgD := hDL (b := lg.1) (o := lg.2) (k := ns * (1 + 5 * w)) (hlgb lam (by simp)).symm
+    (hlgb qw (by simp)).symm
+  refine (multiStepStable_writes_by hS hM hu hC hL (hNat.mono (by omega)) hnu hcb hHess
+    (by simp [Mem.Live, hlen]; omega) hW hc.2.2.2.2.2.1 (by simp [hc.2.2.2.2.2.2.2.2.1])
+    (hdc.mono le_rfl (le_sup_left.trans le_sup_left)) (Fp.disj_inBlock_of_ne (by omega))
+    (Fp.disj_inBlock_of_ne (by omega)) hlg (by simp; omega) hw
+    (by simp [Mem.Live, hlen]; omega) (by simp; omega)).frame_seq_le
+    (by rw [List.length_append, hLs]; exact hdM) haM (by simp [Mem.Live, hlen]; omega)
+    (sup_le (sup_le (le_sup_left.trans (le_sup_left.trans le_sup_left))
+      (le_sup_right.trans le_sup_left)) le_sup_right) ?_
+  rintro μ₁ hf₁ ⟨-, H'', Rs', es, hes, hpl', hlg₁, hcb', hH'', hW''⟩
+  have hc₁ := hc.of_eqOff' (Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr
+    ⟨hdc.mono le_rfl le_sup_left, hDL (by omega) (by omega)⟩, hlgD⟩) hf₁
+  refine ((slottedLogValidate_writes_of_exactNat hL (hNat.mono (by omega)) hlg₁
+    (by simp; omega)).in_frame (by rw [List.length_append, hLs]; exact hdV) haV
+    (by simp [Mem.Live, hc₁.1]; omega)).seq_le le_sup_right ?_
+  rintro μ₂ hf₂ ⟨-, hlg₂⟩
+  have hc₂ := hc₁.of_eqOff' hlgD hf₂
+  have hW₂ := hW''.of_eqOff hf₂ hlgh
+  refine ((bottomScan_writes_decoupleLastCtx hS hM hu hu1 hL hNat hC hc₂ hW₂).in_frame hdS haS
+    (by simp [Mem.Live, hc₂.1]; omega)).mono
+    ((le_sup_right.trans le_sup_left).trans le_sup_left) ?_
+  rintro μ₃ hf₃ ⟨-, hs₃⟩
+  refine ⟨hc₂.of_eqOff (le_sup_right.trans le_sup_left) hf₃,
+    DecoupleScans.succ hch (fun k hk => (Nat.lt_or_eq_of_le hk).elim (hfail k)
+      fun h' => h' ▸ hfi) hcb'.isStableQRChain hH'' (hW₂.of_eqOff hf₃ hRH) hs₃,
+    Ls ++ [some es], Rs', H'', by simp [hLs],
+    planes_slotEntries_append_some (by omega) hpl hpl', ?_, hW₂.of_eqOff hf₃ hRH,
+    by rw [givensLog_slotEntries_append_some]; exact hcb'⟩
+  rw [← List.append_assoc]
+  exact hf₃.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+    (Fp.disj_inBlock_of_ne (by omega)) hlg₂
+
+omit [Has ScalarOp O] [Has IdxTst Q] in
+/-- The exit of `NLAlib.SmallEig.decoupleLast` after $i \le m_2$ rounds keeps the log. -/
+private theorem decoupleLast_exit_by {M : Machine ℝ} {I : Interp O Q ℝ} {u t : ℝ}
+    (hL : IsIndexLit M I) (hC : IsCmp id I) {n : ℕ} (hNat : IsExactNatLit id M (n + 2))
+    {i m₂ : ℕ} (hi : i ≤ m₂) {H : Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ} {ζ : ℂ} {τ : Tape ℝ}
+    {μ : Mem ℝ} {L : ℕ} {h lam qw f lg : ℕ × ℕ} {ns w : ℕ} {LL : List (Option (List GivensEntry))}
+    (hc : DecoupleLastCtx n L h lam qw f ζ t μ.store)
+    (hs : DecoupleScans u t H ζ h (L, 0) i μ.store)
+    (hlog : DecoupleLogBy (300 * (n + 2) ^ 2 * u) H ζ h lg ns w LL i μ.store)
+    (hcap : μ.store.get L 3 = some 0 → i = m₂) (hlgf : f.1 ≠ lg.1) :
+    Writes .total I τ (roundedDecoupleExit (O := O) (Q := Q)).body (Env.frame [] [(L, 0), f])
+      (Store.inBlock f.1 f.2 1)
+      (fun μ' => DecoupleLastScansPost u t H ζ h f m₂ μ'.store ∧
+        ∃ k ≤ m₂, DecoupleLogBy (300 * (n + 2) ^ 2 * u) H ζ h lg ns w LL k μ'.store) μ := by
+  have hhf := hc.2.2.2.2.2.2.2.2.2.2.mono le_rfl le_sup_right
+  obtain ⟨Ls, Rs, Hc, hLs, hpl, hlg, hWc, hcb⟩ := hlog
+  refine (roundedDecoupleExit_writes_decoupleScans hL hC hNat hi hs
+    (fun h0 => hcap (by simpa using h0)) hhf hc.2.2.2.2.2.2.2.2.2.1).mono le_rfl ?_
+  intro μ' hfr hpost
+  exact ⟨hpost, i, hi, Ls, Rs, Hc, hLs, hpl,
+    hfr.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (Fp.disj_inBlock_of_ne hlgf) hlg,
+    hWc.of_eqOff hfr hhf.symm, hcb⟩
+
+omit [Has IdxTst Q] in
+/-- `NLAlib.SmallEig.decoupleLast_writes_scans` with the log and the unitary of its entries
+(`NLAlib.SmallEig.DecoupleLogBy`). -/
+private theorem decoupleLast_writes_scansBy {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar M I) (hM : StdModel u id M) (hu : 0 ≤ u) (hL : IsIndexLit M I)
+    (hC : IsCmp id I) {n m₂ : ℕ} (hNat : IsExactNatLit id M (n + 2))
+    (hnu : (n + 2 : ℝ) * u ≤ 1 / 2500) {H : Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ} {ζ : ℂ}
+    {qs : List ℝ} (hqs : 8 ≤ qs.length) (hH : IsUpperHessenberg H) {τ : Tape ℝ} {μ : Mem ℝ}
+    {h lam qw f : ℕ × ℕ} (hin : DecoupleInput H ζ qs h lam qw f μ)
+    {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
+    (hlog : HoldsSlottedLog lg ns w LL [] μ.store) (hj : LL.length + m₂ ≤ ns) (hw : n + 1 ≤ w)
+    (hlgl : μ.Live [lg]) (hlgb : ∀ b ∈ [h, lam, qw, f], b.1 ≠ lg.1) :
+    Writes .total I τ (decoupleLast (O := O) (Q := Q)).body
+      (Env.frame [n + 2, m₂, w, LL.length] [h, lam, qw, h, f, lg])
+      (Store.inBlock h.1 h.2 (2 * ((n + 2) * (n + 2))) ⊔ Store.inBlock f.1 f.2 1 ⊔
+        Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (fun μ' => DecoupleLastScansPost u (qs.getD 7 0) H ζ h f m₂ μ'.store ∧
+        ∃ k ≤ m₂, DecoupleLogBy (300 * (n + 2) ^ 2 * u) H ζ h lg ns w LL k μ'.store) μ := by
+  obtain ⟨hl, ⟨hhr, -, -, hfr, -⟩, ⟨dH, -, -, -⟩, hHs, hlam, hqw⟩ := hin
+  simp only [Fp.blocks_cons, Fp.blocks_nil] at dH
+  have hu1 : u ≤ 1 := by nlinarith
+  have hh1 : h.1 < μ.store.length := hl h (by simp)
+  have hl1 : lam.1 < μ.store.length := hl lam (by simp)
+  have hq1 : qw.1 < μ.store.length := hl qw (by simp)
+  have hf1 : f.1 < μ.store.length := hl f (by simp)
+  have hlg1 : lg.1 < μ.store.length := hlgl lg (by simp)
+  have hlgf : f.1 ≠ lg.1 := hlgb f (by simp)
+  unfold decoupleLast
+  change Writes .total I τ (Stmt.allocs [.const 5, .const 2] _) _ _ _ μ
+  refine writes_allocs_preserving_post (ns := [5, 2]) rfl
+    (fun hBelow ⟨⟨ℓ, Hs, hℓ, hch, hfail, hHess, hW, hF⟩, k, hk, Ls, Rs, Hc, hLs, hpl, hlg, hWc,
+      hcb⟩ => ⟨⟨ℓ, Hs, hℓ, hch, hfail, hHess, hW.of_below hBelow hh1,
+        hF.imp (fun h' => ⟨hBelow.get_of hf1 h'.1, h'.2⟩)
+          (fun h' => ⟨hBelow.get_of hf1 h'.1, h'.2⟩)⟩, k, hk, Ls, Rs, Hc, hLs, hpl,
+        hBelow.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+          (fun b i g => by rw [g.1]; exact hlg1) hlg, hWc.of_below hBelow hh1, hcb⟩) ?_
+  intro s₁ hlen hlens hBelow
+  set L := μ.store.length with hLdef
+  simp only [List.length_cons, List.length_nil] at hlen
+  set G := Store.inBlock h.1 h.2 (2 * ((n + 2) * (n + 2))) ⊔ Store.inBlock L 0 5 ⊔
+    Store.inBlock (L + 1) 0 2 ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)) with hG
+  have hc₁ : DecoupleLastCtx n L h lam qw f ζ (qs.getD 7 0) s₁ :=
+    ⟨by omega, hh1, hl1, hq1, hf1, hBelow.readBlock_of hl1 hlam,
+      hBelow.get_of hq1 (Store.get_of_readBlock hqw (by omega) 0),
+      by simpa using hlens 0 (by simp), by simpa using hlens 1 (by simp),
+      by rw [(hBelow f.1 hf1).1]; omega, dH.mono le_rfl (by fp_sub)⟩
+  have hRH : ∀ {o k : ℕ}, Fp.Disj (Store.inBlock L o k)
+      (Store.inBlock h.1 h.2 (2 * ((n + 2) * (n + 2)))) := Fp.disj_inBlock_of_ne (by omega)
+  set Inv : ℕ → Mem ℝ → Prop := fun i μ' =>
+    DecoupleLastCtx n L h lam qw f ζ (qs.getD 7 0) μ'.store ∧
+      DecoupleScans u (qs.getD 7 0) H ζ h (L, 0) i μ'.store ∧
+      DecoupleLogBy (300 * (n + 2) ^ 2 * u) H ζ h lg ns w LL i μ'.store with hInv
+  have hR3 : Store.inBlock L 0 5 ≤ Store.inBlock h.1 h.2 (2 * ((n + 2) * (n + 2))) ⊔
+      Store.inBlock L 0 5 ⊔ Store.inBlock (L + 1) 0 2 := le_sup_right.trans le_sup_left
+  have hH₁ := hHs.of_below hBelow hh1
+  have hlog₁ : HoldsSlottedLog lg ns w LL [] s₁ :=
+    hBelow.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+      (fun b i g => by rw [g.1]; exact hlg1) hlog
+  refine (bottomScan_writes_decoupleLastCtx (τ := τ) (μ := ⟨s₁, μ.pos⟩) hS hM hu hu1 hL hNat hC
+    hc₁ hH₁).frame_seq_le rfl rfl (by simp [Mem.Live, hlen]; omega)
+    (fun b i hb => Or.inr (hb.1 ▸ le_rfl)) ?_
+  rintro μ₁ hfr₁ ⟨-, hs₁⟩
+  have hlogμ₁ : HoldsSlottedLog lg ns w LL [] μ₁.store :=
+    hfr₁.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (Fp.disj_inBlock_of_ne (by omega)) hlog₁
+  refine (writes_whileFuel (N := m₂) rfl (fun _ => G) (fun _ _ => le_rfl)
+    (Store.inBlock f.1 f.2 1) Inv _ ⟨hc₁.of_eqOff hR3 hfr₁, ⟨fun _ => H,
+      fun k hk => ⟨[], by obtain rfl : k = 0 := (by omega); exact .nil H⟩,
+      fun k hk => absurd hk (Nat.not_lt_zero _), hH, hH₁.of_eqOff hfr₁ hRH, hs₁⟩,
+      [], [], H, rfl, by simp [slotEntries],
+      by rw [List.append_nil]; exact hlogμ₁, hH₁.of_eqOff hfr₁ hRH, .nil H⟩ ?_ ?_).mono ?_
+    (fun _ _ h => h)
+  · rintro i hi μ' - ⟨hc', hs', hlog'⟩
+    obtain ⟨v, hv⟩ : ∃ v, μ'.store.get L 3 = some v := by
+      obtain ⟨Hs', -, -, -, -, hsc⟩ := hs'
+      rcases hsc with ⟨h1, -⟩ | ⟨h0, -⟩
+      exacts [⟨_, by simpa using h1⟩, ⟨_, by simpa using h0⟩]
+    refine ⟨_, (Interp.testAt_eq (a := [(L, 3)]) rfl rfl).trans (hC.test_isZero hv), ?_⟩
+    dsimp only
+    split_ifs with hz
+    · have hv0 : v = 0 := by simpa using hz
+      exact decoupleLast_round_by hS hM hu hu1 hL hC hNat hnu rfl rfl rfl rfl rfl rfl hlg1 hlgb
+        hc' hs' hlog' (by rw [hv, hv0]) (by omega) hw
+    · exact (decoupleLast_exit_by hL hC hNat hi.le hc' hs' hlog'
+        (fun h0 => absurd (Option.some.inj (hv.symm.trans h0)) (by simpa using hz)) hlgf).in_frame
+        rfl rfl (by simp [Mem.Live, hc'.1]; omega)
+  · rintro μ' - ⟨hc', hs', hlog'⟩
+    exact (decoupleLast_exit_by hL hC hNat le_rfl hc' hs' hlog' (fun _ => rfl) hlgf).in_frame
+      rfl rfl (by simp [Mem.Live, hc'.1]; omega)
+  · exact sup_le (sup_le (sup_le (sup_le (le_sup_left.trans (le_sup_left.trans le_sup_left))
+      (fun b i hb => Or.inr (hb.1 ▸ le_rfl))) (fun b i hb => Or.inr (hb.1 ▸ Nat.le_succ L)))
+      (le_sup_right.trans le_sup_left)) (le_sup_right.trans (le_sup_left.trans le_sup_left))
+
 omit [Has IdxTst Q] in
 /-- `NLAlib.SmallEig.decoupleLast` with its scan history, on a scalar machine with the standard
 model at $0 \le \boldsymbol{u}$, $(n + 2)\boldsymbol{u} \le 1/2500$, index literals, exact
@@ -353,7 +701,9 @@ theorem decoupleLast_writes_scans {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
         ∃ Ls : List (Option (List GivensEntry)), Ls.length ≤ m₂ ∧
           (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 2) ∧
               HoldsSlottedLog lg ns w (LL ++ Ls) [] μ'.store) μ :=
-  sorry
+  (decoupleLast_writes_scansBy hS hM hu hL hC hNat hnu hqs hH hin hlog hj hw hlgl hlgb).mono le_rfl
+    fun _ _ ⟨⟨ℓ, Hs, hℓ, hch, hfail, hHess, hW, hF⟩, _, hk, Ls, _, _, hLs, hpl, hlg, _, _⟩ =>
+      ⟨ℓ, Hs, hℓ, hch, hfail, hHess, hW, hF, Ls, hLs ▸ hk, hpl, hlg⟩
 
 omit [Has IdxTst Q] in
 /-- `NLAlib.SmallEig.decoupleLast` on a scalar machine with the standard model at
@@ -388,7 +738,10 @@ theorem decoupleLast_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
         ∃ Ls : List (Option (List GivensEntry)), Ls.length ≤ m₂ ∧
           (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 2) ∧
               HoldsSlottedLog lg ns w (LL ++ Ls) [] μ'.store) μ :=
-  sorry
+  (decoupleLast_writes_scans hS hM hu hL hC hNat hnu hqs hH hin hlog hj hw hlgl hlgb).mono le_rfl
+    fun _ _ ⟨ℓ, Hs, hℓ, hch, _, hHess, hW, hF, hLs⟩ =>
+      let ⟨Rs, hc⟩ := hch ℓ le_rfl
+      ⟨ℓ, Hs ℓ, Rs, hℓ, hc, hHess, hW, hF.imp id fun h' => h'.1, hLs⟩
 
 omit [Has IdxTst Q] in
 /-- **`Decouple` decouples the last eigenvalue** ([BanksGarzaVargasSrivastava2025,
@@ -437,7 +790,128 @@ theorem decoupleLast_spec {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS :
         IsPerturbedUnitarySimilarBy (givensLog (n + 2) (slotEntries w Ls)) H H'
           ((1 + C) * specNorm H * ((1 + 300 * ((n : ℝ) + 2) ^ 2 * u) ^ m₂ - 1)) ∧
         IsUpperHessenberg H' ∧ HoldsMatrix h H' μ'.store ∧
-        (1 - u) * ‖H' (Fin.last (n + 1)) (Fin.last n).castSucc‖ ≤ √(qs.getD 7 0)) μ := sorry
+        (1 - u) * ‖H' (Fin.last (n + 1)) (Fin.last n).castSucc‖ ≤ √(qs.getD 7 0)) μ := by
+  have hu0 : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
+  have hx0 : 0 ≤ 300 * ((n : ℝ) + 2) ^ 2 * u := by positivity
+  have hB1 : 1 ≤ B := (one_le_pseudoConditionNumber hV.ne_zero).trans hκ
+  have hnu : (n + 2 : ℝ) * u ≤ 1 / 2500 := by
+    have h0 := hxu 0 (Nat.zero_le _)
+    rw [pow_zero, mul_one] at h0
+    have h16 : (16 * B)⁻¹ ≤ 1 / 16 := by
+      rw [one_div]; exact inv_anti₀ (by norm_num) (by linarith)
+    have hn2 : (2 : ℝ) ≤ n + 2 := by linarith [(Nat.cast_nonneg n : (0 : ℝ) ≤ n)]
+    nlinarith [mul_le_mul_of_nonneg_right hn2 (mul_nonneg (by linarith : (0:ℝ) ≤ n + 2) hu0)]
+  refine (decoupleLast_writes_scansBy hS hM hu0 hL hC hNat hnu hqs hH hin hlog hj hw hlgl
+    hlgb).mono le_rfl ?_
+  rintro μ' - ⟨⟨ℓ, Hs, hℓ, hch, hfail, hHess, hW, hF⟩, k, hk, Ls, Rs, Hc, hLs, hpl, hlg, hWc, hcb⟩
+  rcases hF with ⟨hF, hb⟩ | ⟨-, rfl, hb⟩
+  · obtain rfl : Hc = Hs ℓ := hWc.eq_storedMatrix.trans hW.eq_storedMatrix.symm
+    have hsh : ∀ s ∈ List.replicate k ζ, ‖s‖ ≤ C * specNorm H := fun s hs => by
+      rw [List.eq_of_mem_replicate hs]; exact hζ
+    refine ⟨hF, Ls, Hs ℓ, hLs ▸ hk, hpl, hlg,
+      (hcb.isPerturbedUnitarySimilarBy (C := C) hx0 hsh).mono ?_, hHess, hW, ?_⟩
+    · rw [List.length_replicate]
+      have hpow := pow_le_pow_right₀ (show (1 : ℝ) ≤ 1 + 300 * ((n : ℝ) + 2) ^ 2 * u by linarith)
+        hk
+      exact mul_le_mul_of_nonneg_left (by linarith)
+        (mul_nonneg (by linarith) (specNorm_nonneg H))
+    · have hh := norm_nonneg (Hs ℓ (Fin.last (n + 1)) (Fin.last n).castSucc)
+      rw [← Real.sqrt_sq (by nlinarith :
+        0 ≤ (1 - u) * ‖Hs ℓ (Fin.last (n + 1)) (Fin.last n).castSucc‖)]
+      exact Real.sqrt_le_sqrt (by rw [mul_pow]; exact hb)
+  · exfalso
+    obtain ⟨k, hk, hkω⟩ := IsStableQRChain.exists_norm_subdiag_le_of_dist (Hs := Hs)
+      (fun k hk => hch k hk) hx0 hC0 hH hH0 hV hHV hκ hζ hη₁ hdist hi hp hpi hω hm₂ hm₂B
+      (by exact_mod_cast hxu) (by exact_mod_cast hfwd)
+    obtain ⟨-, hkm⟩ := Finset.mem_Icc.mp hk
+    have hlt : qs.getD 7 0 <
+        (1 + u) ^ 2 * ‖Hs k (Fin.last (n + 1)) (Fin.last n).castSucc‖ ^ 2 := by
+      rcases Nat.lt_or_eq_of_le hkm with hk' | rfl
+      exacts [hfail k hk', hb]
+    have : (1 + u) ^ 2 * ‖Hs k (Fin.last (n + 1)) (Fin.last n).castSucc‖ ^ 2 ≤
+        (1 + u) ^ 2 * ω ^ 2 := by
+      gcongr
+    linarith
+
+omit [Has IdxTst Q] in
+/-- One round of `NLAlib.SmallEig.decoupleLast` on any matrix: a step recorded in the pending slot,
+the validation of the slot and a scan keep the operands and close one more slot. -/
+private theorem decoupleLast_round_terminates {M : Machine ℝ} {I : Interp O Q ℝ}
+    (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp id I) {n : ℕ}
+    (hNat : IsExactNatLit id M (n + 2)) {ζ : ℂ} {τ : Tape ℝ} {ρ : Env} {μ : Mem ℝ} {L i : ℕ}
+    {h lam qw f lg : ℕ × ℕ} {t : ℝ} {ns w : ℕ} {LL Ls : List (Option (List GivensEntry))}
+    {dsM dsV dsS : List IExp} {asM asV asS : List Operand}
+    (hdM : IExp.evalList ρ.idx dsM = some [n + 2, 1, w, LL.length + i])
+    (haM : Operand.evalList ρ asM = some [h, lam, h, (L + 1, 0), lg])
+    (hdV : IExp.evalList ρ.idx dsV = some [w, LL.length + i])
+    (haV : Operand.evalList ρ asV = some [lg])
+    (hdS : IExp.evalList ρ.idx dsS = some [n + 2, 1])
+    (haS : Operand.evalList ρ asS = some [h, (qw.1, qw.2 + 7), (L, 0)])
+    (hlgL : lg.1 < L) (hlgb : ∀ b ∈ [h, lam, qw, f], b.1 ≠ lg.1)
+    (hc : DecoupleLastCtx n L h lam qw f ζ t μ.store) {H' : Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ}
+    (hW : HoldsMatrix h H' μ.store) (hLs : Ls.length = i)
+    (hpl : ∀ e ∈ slotEntries w Ls, e.1 + 1 < n + 2)
+    (hlg : HoldsSlottedLog lg ns w (LL ++ Ls) [] μ.store) (hj : LL.length + i < ns)
+    (hw : n + 1 ≤ w) :
+    Writes .total I τ
+      (.seq (.frame dsM asM (multiStepStable (Op := O) (Tst := Q)).body)
+        (.seq (.frame dsV asV (slottedLogValidate (O := O) (Q := Q)).body)
+          (.frame dsS asS (bottomScan (O := O) (Q := Q)).body))) ρ
+      (Store.inBlock h.1 h.2 (2 * ((n + 2) * (n + 2))) ⊔ Store.inBlock L 0 5 ⊔
+        Store.inBlock (L + 1) 0 2 ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (fun μ' => DecoupleLastCtx n L h lam qw f ζ t μ'.store ∧
+        (∃ H'' : Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ, HoldsMatrix h H'' μ'.store) ∧
+        (∃ x, μ'.store.get L 3 = some x) ∧
+        ∃ Ls' : List (Option (List GivensEntry)), Ls'.length = i + 1 ∧
+          (∀ e ∈ slotEntries w Ls', e.1 + 1 < n + 2) ∧
+          HoldsSlottedLog lg ns w (LL ++ Ls') [] μ'.store) μ := by
+  have hzero : M.lit 0 = 0 := by simpa using hNat 0 (by omega)
+  have hlen := hc.1
+  have hhL : h.1 < L := hc.2.1
+  have hlamL : lam.1 < L := hc.2.2.1
+  have hqL : qw.1 < L := hc.2.2.2.1
+  have hgh : h.1 ≠ lg.1 := hlgb h (by simp)
+  have hgl : lam.1 ≠ lg.1 := hlgb lam (by simp)
+  have hgq : qw.1 ≠ lg.1 := hlgb qw (by simp)
+  have hdc := hc.2.2.2.2.2.2.2.2.2.2
+  have hRH : ∀ {o k : ℕ}, Fp.Disj (Store.inBlock L o k)
+      (Store.inBlock h.1 h.2 (2 * ((n + 2) * (n + 2)))) := Fp.disj_inBlock_of_ne (by omega)
+  have hDL : ∀ {b o k : ℕ}, b ≠ lam.1 → b ≠ qw.1 →
+      Fp.Disj (Store.inBlock b o k)
+        (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock qw.1 (qw.2 + 7) 1) :=
+    fun h1 h2 => Fp.disj_sup_right.mpr ⟨Fp.disj_inBlock_of_ne h1, Fp.disj_inBlock_of_ne h2⟩
+  have hlgD := hDL (b := lg.1) (o := lg.2) (k := ns * (1 + 5 * w)) (Ne.symm hgl) (Ne.symm hgq)
+  have hlgd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (Store.inBlock h.1 h.2 (2 * ((n + 1 + 1) * (n + 1 + 1))) ⊔
+        Store.inBlock lam.1 lam.2 (2 * 1) ⊔ Store.inBlock (L + 1) 0 (2 * 1)) :=
+    Fp.disj_sup_right.mpr ⟨Fp.disj_sup_right.mpr ⟨Fp.disj_inBlock_of_ne (Ne.symm hgh),
+      Fp.disj_inBlock_of_ne (Ne.symm hgl)⟩, Fp.disj_inBlock_of_ne (by omega)⟩
+  refine (multiStepStable_terminates (k := 1) (τ := τ) (a := h) (s := lam) (ds := (L + 1, 0))
+    (n := n + 1) hS hzero hC hL hNat (by omega) hlg (by simp; omega) (by omega)
+    (by simp [Mem.Live, hlen]; omega) hW (by simpa using hc.2.2.2.2.2.1)
+    (by simp [hc.2.2.2.2.2.2.2.2.1]) (hdc.mono le_rfl (le_sup_left.trans le_sup_left))
+    (Fp.disj_inBlock_of_ne (by omega)) (Fp.disj_inBlock_of_ne (by omega)) hlgd).frame_seq_le
+    (by rw [List.length_append, hLs]; exact hdM) haM (by simp [Mem.Live, hlen]; omega)
+    (sup_le (sup_le (le_sup_left.trans (le_sup_left.trans le_sup_left))
+      (le_sup_right.trans le_sup_left)) le_sup_right) ?_
+  rintro μ₁ hf₁ ⟨-, ⟨H'', hW''⟩, -, es, hes, hpl', hlg₁⟩
+  have hc₁ := hc.of_eqOff' (Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr
+    ⟨hdc.mono le_rfl le_sup_left, hDL (by omega) (by omega)⟩, hlgD⟩) hf₁
+  refine ((slottedLogValidate_writes_of_exactNat hL (hNat.mono (by omega)) hlg₁
+    (by simp; omega)).in_frame (by rw [List.length_append, hLs]; exact hdV) haV
+    (by simp [Mem.Live, hc₁.1]; omega)).seq_le le_sup_right ?_
+  rintro μ₂ hf₂ ⟨-, hlg₂⟩
+  have hc₂ := hc₁.of_eqOff' hlgD hf₂
+  have hW₂ := hW''.of_eqOff hf₂ (Fp.disj_inBlock_of_ne (Ne.symm hgh))
+  refine ((bottomScan_terminates_decoupleLastCtx hS hL hNat hC hc₂ hW₂).in_frame hdS haS
+    (by simp [Mem.Live, hc₂.1]; omega)).mono
+    ((le_sup_right.trans le_sup_left).trans le_sup_left) ?_
+  rintro μ₃ hf₃ hs₃
+  refine ⟨hc₂.of_eqOff (le_sup_right.trans le_sup_left) hf₃, ⟨H'', hW₂.of_eqOff hf₃ hRH⟩, hs₃,
+    Ls ++ [some es], by simp [hLs], planes_slotEntries_append_some (by omega) hpl hpl', ?_⟩
+  rw [← List.append_assoc]
+  exact hf₃.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+    (Fp.disj_inBlock_of_ne (by omega)) hlg₂
 
 omit [Has IdxTst Q] in
 /-- `NLAlib.SmallEig.decoupleLast` terminates on every tape: from `NLAlib.SmallEig.DecoupleInput`
@@ -460,8 +934,80 @@ theorem decoupleLast_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsS
         ∃ x, μ'.store.get f.1 f.2 = some x ∧
         ∃ Ls : List (Option (List GivensEntry)), Ls.length ≤ m₂ ∧
           (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 2) ∧
-              HoldsSlottedLog lg ns w (LL ++ Ls) [] μ'.store) μ :=
-  sorry
+              HoldsSlottedLog lg ns w (LL ++ Ls) [] μ'.store) μ := by
+  obtain ⟨hl, ⟨hhr, -, -, hfr, -⟩, ⟨dH, -, -, -⟩, hHs, hlam, hqw⟩ := hin
+  simp only [Fp.blocks_cons, Fp.blocks_nil] at dH
+  have hh1 : h.1 < μ.store.length := hl h (by simp)
+  have hl1 : lam.1 < μ.store.length := hl lam (by simp)
+  have hq1 : qw.1 < μ.store.length := hl qw (by simp)
+  have hf1 : f.1 < μ.store.length := hl f (by simp)
+  have hlg1 : lg.1 < μ.store.length := hlgl lg (by simp)
+  have hlgf : f.1 ≠ lg.1 := hlgb f (by simp)
+  unfold decoupleLast
+  change Writes .total I τ (Stmt.allocs [.const 5, .const 2] _) _ _ _ μ
+  refine writes_allocs_preserving_post (ns := [5, 2]) rfl
+    (fun hBelow ⟨⟨H', hW⟩, x, hx, Ls, hLs, hpl, hlg⟩ => ⟨⟨H', hW.of_below hBelow hh1⟩, x,
+      hBelow.get_of hf1 hx, Ls, hLs, hpl, hBelow.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+        (fun b i g => by rw [g.1]; exact hlg1) hlg⟩) ?_
+  intro s₁ hlen hlens hBelow
+  set L := μ.store.length with hLdef
+  simp only [List.length_cons, List.length_nil] at hlen
+  set G := Store.inBlock h.1 h.2 (2 * ((n + 2) * (n + 2))) ⊔ Store.inBlock L 0 5 ⊔
+    Store.inBlock (L + 1) 0 2 ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)) with hG
+  have hc₁ : DecoupleLastCtx n L h lam qw f ζ (qs.getD 7 0) s₁ :=
+    ⟨by omega, hh1, hl1, hq1, hf1, hBelow.readBlock_of hl1 hlam,
+      hBelow.get_of hq1 (Store.get_of_readBlock hqw (by omega) 0),
+      by simpa using hlens 0 (by simp), by simpa using hlens 1 (by simp),
+      by rw [(hBelow f.1 hf1).1]; omega, dH.mono le_rfl (by fp_sub)⟩
+  have hRH : ∀ {o k : ℕ}, Fp.Disj (Store.inBlock L o k)
+      (Store.inBlock h.1 h.2 (2 * ((n + 2) * (n + 2)))) := Fp.disj_inBlock_of_ne (by omega)
+  set Inv : ℕ → Mem ℝ → Prop := fun i μ' => DecoupleLastCtx n L h lam qw f ζ (qs.getD 7 0)
+    μ'.store ∧ (∃ H' : Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ, HoldsMatrix h H' μ'.store) ∧
+      (∃ x, μ'.store.get L 3 = some x) ∧ ∃ Ls : List (Option (List GivensEntry)),
+        Ls.length = i ∧ (∀ e ∈ slotEntries w Ls, e.1 + 1 < n + 2) ∧
+        HoldsSlottedLog lg ns w (LL ++ Ls) [] μ'.store with hInv
+  have hR3 : Store.inBlock L 0 5 ≤ Store.inBlock h.1 h.2 (2 * ((n + 2) * (n + 2))) ⊔
+      Store.inBlock L 0 5 ⊔ Store.inBlock (L + 1) 0 2 := le_sup_right.trans le_sup_left
+  have hlog₁ : HoldsSlottedLog lg ns w LL [] s₁ :=
+    hBelow.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _)
+      (fun b i g => by rw [g.1]; exact hlg1) hlog
+  refine (bottomScan_terminates_decoupleLastCtx (τ := τ) (μ := ⟨s₁, μ.pos⟩) hS hL hNat hC
+    hc₁ (hHs.of_below hBelow hh1)).frame_seq_le rfl rfl (by simp [Mem.Live, hlen]; omega)
+    (fun b i hb => Or.inr (hb.1 ▸ le_rfl)) ?_
+  rintro μ₁ hfr₁ ⟨x₁, hx₁⟩
+  have hlogμ₁ : HoldsSlottedLog lg ns w LL [] μ₁.store :=
+    hfr₁.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (Fp.disj_inBlock_of_ne (by omega)) hlog₁
+  have hexit : ∀ i ≤ m₂, ∀ μ' : Mem ℝ, Inv i μ' → Writes .total I τ
+      (roundedDecoupleExit (O := O) (Q := Q)).body (Env.frame [] [(L, 0), f])
+      (Store.inBlock f.1 f.2 1)
+      (fun μ'' => (∃ H' : Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ, HoldsMatrix h H' μ''.store) ∧
+        ∃ x, μ''.store.get f.1 f.2 = some x ∧ ∃ Ls : List (Option (List GivensEntry)),
+          Ls.length ≤ m₂ ∧ (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 2) ∧
+          HoldsSlottedLog lg ns w (LL ++ Ls) [] μ''.store) μ' := by
+    rintro i hi μ' ⟨hc', ⟨H', hW⟩, ⟨x, hx⟩, Ls, hLs, hpl, hlg⟩
+    refine (roundedDecoupleExit_writes_word (r := (L, 0)) hL hC (by simpa using hx)
+      hc'.2.2.2.2.2.2.2.2.2.1).mono le_rfl ?_
+    rintro μ'' hfr ⟨y, hy⟩
+    exact ⟨⟨H', hW.of_eqOff hfr (hc'.2.2.2.2.2.2.2.2.2.2.mono le_rfl le_sup_right).symm⟩, y, hy,
+      Ls, hLs ▸ hi, hpl,
+      hfr.keep (HoldsSlottedLog.readsOnly_region _ _ _ _ _) (Fp.disj_inBlock_of_ne hlgf) hlg⟩
+  refine (writes_whileFuel (N := m₂) rfl (fun _ => G) (fun _ _ => le_rfl)
+    (Store.inBlock f.1 f.2 1) Inv _ ⟨hc₁.of_eqOff hR3 hfr₁,
+      ⟨H, (hHs.of_below hBelow hh1).of_eqOff hfr₁ hRH⟩, ⟨x₁, hx₁⟩, [], rfl, by simp [slotEntries],
+      by rw [List.append_nil]; exact hlogμ₁⟩ ?_ ?_).mono ?_ (fun _ _ h => h)
+  · rintro i hi μ' - ⟨hc', ⟨H', hW⟩, ⟨v, hv⟩, Ls, hLs, hpl, hlg⟩
+    refine ⟨_, (Interp.testAt_eq (a := [(L, 3)]) rfl rfl).trans (hC.test_isZero hv), ?_⟩
+    dsimp only
+    split_ifs with hz
+    · exact decoupleLast_round_terminates hS hL hC hNat rfl rfl rfl rfl rfl rfl hlg1 hlgb hc' hW
+        hLs hpl hlg (by omega) hw
+    · exact (hexit i hi.le μ' ⟨hc', ⟨H', hW⟩, ⟨v, hv⟩, Ls, hLs, hpl, hlg⟩).in_frame rfl rfl
+        (by simp [Mem.Live, hc'.1]; omega)
+  · rintro μ' - hI
+    exact (hexit m₂ le_rfl μ' hI).in_frame rfl rfl (by simp [Mem.Live, hI.1.1]; omega)
+  · exact sup_le (sup_le (sup_le (sup_le (le_sup_left.trans (le_sup_left.trans le_sup_left))
+      (fun b i hb => Or.inr (hb.1 ▸ le_rfl))) (fun b i hb => Or.inr (hb.1 ▸ Nat.le_succ L)))
+      (le_sup_right.trans le_sup_left)) (le_sup_right.trans (le_sup_left.trans le_sup_left))
 
 end Theorems
 

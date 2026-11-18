@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Eigensolvers.Schur.Dense
+public import NLAlib.Eigensolvers.Schur.Completion
 public import NLAlib.Eigensolvers.SmallEig.Certificate
 
 /-!
@@ -15,12 +15,13 @@ The dense Schur pipeline over the model of the small-eigenvalue solver
 (`NLAlib.SmallEig.smallEigModel`: scalar arithmetic of a machine `Mch`, exact dimension literals,
 comparisons and index conversion, draws of the tape streams and the exact polar disk sampler, unit
 costs) is a canonical certificate (`NLAlib.Ops.Algorithm`) built from component data: the four
-stage programs, the termination of the pipeline, and a static work bound of each stage. Its work
-and span are the sum of the stages' bounds and the glue $64(N + 1)^2$
-(`NLAlib.Schur.schurPipelineWork`), so a swapped stage swaps its cost term
-(`NLAlib.Schur.size_stmtCost_schurPipelineWith_le`). The every-tape output claim is the frame:
-the run writes only the matrix, the accumulator and the flag. The Schur form is the postcondition
-of `NLAlib.Ops.Specification.Accepts` in
+stage programs, the termination of the pipeline, and a bound on the instrumented static count of
+each stage at the offsets the pipeline passes to it. Its work and span are the sum of the stages'
+bounds and the glue $128(N + 1)^2$, $N$ the order (`NLAlib.Schur.schurPipelineWork`), so a
+swapped stage swaps its cost term (`NLAlib.Schur.size_stmtCost_schurPipelineWith_le`). Every
+primitive, test and structural instruction is counted, the stages' included. The every-tape
+output claim is the frame: the run writes only the matrix, the accumulator and the flag. The
+Schur form is the postcondition of `NLAlib.Ops.Specification.Accepts` in
 `NLAlib.Schur.denseSchur_algorithm_measureReal_not_accepts_le`.
 
 ## Main definitions
@@ -77,12 +78,10 @@ noncomputable def SchurData.buffers {words : ℕ → ℝ → ℝ → List ℝ}
     List.replicate (2 * ((d 0 + 1) * (d 0 + 1))) none, [none]]
 
 /-- **The admitted sizes** on the machine `Mch`: the natural literals up to the order $n + 1$ are
-exact, the machine has the standard model at some $\boldsymbol{u}$ with
-$400(n + 1)^2\boldsymbol{u} \le 1$ (the run terminates on every tape), and the sizes are those of
-some $0 < \delta \le 1$, $0 < \varphi \le 1$. -/
+exact and the sizes are those of some $0 < \delta \le 1$, $0 < \varphi \le 1$. No rounding model
+is needed: the run completes on any scalar machine (`NLAlib.Schur.denseSchur_completes`). -/
 def SchurSizes (Mch : Machine ℝ) (sizes : ℕ → ℝ → ℝ → Fin 6 → ℕ) (d : Fin 6 → ℕ) : Prop :=
   IsExactNatLit id Mch (d 0 + 1) ∧
-    (∃ u : ℝ, StdModel u id Mch ∧ 400 * ((d 0 : ℝ) + 1) ^ 2 * u ≤ 1) ∧
     ∃ δ φ : ℝ, 0 < δ ∧ δ ≤ 1 ∧ 0 < φ ∧ φ ≤ 1 ∧ sizes (d 0) δ φ = d
 
 /-- **The problem** of the dense Schur pipeline on the machine `Mch`: the four raw buffers of
@@ -96,13 +95,14 @@ noncomputable def schurPipelineProblem (Mch : Machine ℝ) (words : ℕ → ℝ 
   admissible _ x buffers := buffers = x.buffers
   admitted := admitted
   supply d hd := by
-    obtain ⟨-, -, δ, φ, -, -, -, -, hs⟩ := hd
+    obtain ⟨-, δ, φ, -, -, -, -, hs⟩ := hd
     exact ⟨⟨0, δ, φ, hs⟩, _, rfl⟩
 
 /-- **The work (and span) of the pipeline** from the stages' work bounds $W_\bullet$: their sum
-and the glue $64(N + 1)^2$, $N$ = `d 0 + 1`. -/
+and the glue $128(N + 1)^2$, $N$ = `d 0 + 1` (the scaling loops, the identity, the branch and the
+frames, `NLAlib.Schur.size_stmtCost_schurPipelineWith_le`). -/
 def schurPipelineWork (WNm WReg WRed WCore : (Fin 6 → ℕ) → ℕ) (d : Fin 6 → ℕ) : ℕ :=
-  WNm d + WReg d + WRed d + WCore d + 64 * (d 0 + 2) ^ 2
+  WNm d + WReg d + WRed d + WCore d + 128 * (d 0 + 2) ^ 2
 
 /-- The payload words of the four supplied buffers. -/
 def schurPipelineInputWords (d : Fin 6 → ℕ) : ℕ :=
@@ -129,18 +129,37 @@ section Generic
 variable {Mch : Machine ℝ} {words : ℕ → ℝ → ℝ → List ℝ} {sizes : ℕ → ℝ → ℝ → Fin 6 → ℕ}
   {admitted : ∃ d, SchurSizes Mch sizes d}
 
-/-- The static count of the pipeline program is at most the work
-`NLAlib.Schur.schurPipelineWork` of the stages' static work bounds
+/-- The static count of the pipeline program, its structural instructions included, is at most
+the work `NLAlib.Schur.schurPipelineWork` of bounds on the stages' instrumented static counts at
+the offsets the pipeline passes to them: zero, and $n_r$ = `d 1` for the core's parameter words
 (`NLAlib.Schur.size_stmtCost_schurPipelineWith_le`). -/
 theorem size_staticCost_schurPipelineProgram_le {Nm Reg Red Core : Impl SmallEigOp Tst}
     {WNm WReg WRed WCore : (Fin 6 → ℕ) → ℕ}
-    (hNm : ∀ d, Count.size (stmtCost Nm.body [d 0 + 1]) ≤ WNm d)
-    (hReg : ∀ d, Count.size (stmtCost Reg.body [d 0 + 1, d 1]) ≤ WReg d)
-    (hRed : ∀ d, Count.size (stmtCost Red.body [d 0 + 1]) ≤ WRed d)
-    (hCore : ∀ d, Count.size (stmtCost Core.body [d 0 + 1, d 2, d 3, d 4, d 5]) ≤ WCore d)
+    (hNm : ∀ d, Count.size (stmtCost Nm.body.instrument [d 0 + 1, 0, 0]) ≤ WNm d)
+    (hReg : ∀ d, Count.size (stmtCost Reg.body.instrument [d 0 + 1, d 1, 0, 0, 0]) ≤ WReg d)
+    (hRed : ∀ d, Count.size (stmtCost Red.body.instrument [d 0 + 1, 0, 0, 0, 0]) ≤ WRed d)
+    (hCore : ∀ d, Count.size (stmtCost Core.body.instrument
+      [d 0 + 1, d 2, d 3, d 4, d 5, 0, d 1, 0, 0, 0, 0]) ≤ WCore d)
     (d : Fin 6 → ℕ) :
     Count.size (staticCost (schurPipelineProgram Nm Reg Red Core) d) ≤
-      schurPipelineWork WNm WReg WRed WCore d := sorry
+      schurPipelineWork WNm WReg WRed WCore d := by
+  have he : (Program.environment (b := 4) d).idx = [d 0, d 1, d 2, d 3, d 4, d 5, 0, 0, 0, 0] :=
+    rfl
+  have h := size_stmtCost_schurPipelineWith_le Nm Reg Red Core (d 0 + 1) (d 1) (d 2) (d 3) (d 4)
+    (d 5)
+  have h1 := hNm d
+  have h2 := hReg d
+  have h3 := hRed d
+  have h4 := hCore d
+  simp only [staticCost, schurPipelineProgram, he, Stmt.instrument, stmtCost, tally,
+    indexBookkeeping, operandBookkeeping, IExp.bookkeeping, List.flatMap_cons, List.flatMap_nil,
+    List.cons_append, List.nil_append, List.append_nil, useCost, IExp.evalList, IExp.eval,
+    List.map_cons, List.map_nil, List.getElem?_cons_succ, List.getElem?_cons_zero,
+    Option.map_some, Option.getD_some, map_add, map_zero, Count.one, size_single]
+  unfold schurPipelineWork
+  have hsq : 2 ^ 2 ≤ (d 0 + 2) ^ 2 := Nat.pow_le_pow_left (by omega) 2
+  have hsq' : (d 0 + 1 + 1) ^ 2 = (d 0 + 2) ^ 2 := by ring
+  omega
 
 /-- The initial payload of an input is `NLAlib.Schur.schurPipelineInputWords` when the words
 have the sizes' count. -/
@@ -183,16 +202,17 @@ theorem schurPipelineProblem_initial_input (d : Fin 6 → ℕ)
 program `NLAlib.Schur.schurPipelineProgram` of any four stages, over the model
 `NLAlib.SmallEig.smallEigModel` with the unit costs, given that it passes the storage discipline
 (`ht`), terminates on every admitted input, interpretation of the model and tape writing only the
-matrix, the accumulator and the flag (`hwp`), and the stages' static counts are at most
-$W_\bullet$, succeeds within the static budget, scratch and memory, with work and span at most
-`NLAlib.Schur.schurPipelineWork` of the $W_\bullet$.
+matrix, the accumulator and the flag (`hwp`), and the stages' instrumented static counts at the
+pipeline's offsets are at most $W_\bullet$, succeeds within the static budget, scratch and
+memory, with work and span at most `NLAlib.Schur.schurPipelineWork` of the $W_\bullet$.
 Algorithm: dense-schur (run model) -/
 noncomputable def schurPipelineAlgorithm (sU : ℕ) (Nm Reg Red Core : Impl SmallEigOp Tst)
     (WNm WReg WRed WCore : (Fin 6 → ℕ) → ℕ)
-    (hNm : ∀ d, Count.size (stmtCost Nm.body [d 0 + 1]) ≤ WNm d)
-    (hReg : ∀ d, Count.size (stmtCost Reg.body [d 0 + 1, d 1]) ≤ WReg d)
-    (hRed : ∀ d, Count.size (stmtCost Red.body [d 0 + 1]) ≤ WRed d)
-    (hCore : ∀ d, Count.size (stmtCost Core.body [d 0 + 1, d 2, d 3, d 4, d 5]) ≤ WCore d)
+    (hNm : ∀ d, Count.size (stmtCost Nm.body.instrument [d 0 + 1, 0, 0]) ≤ WNm d)
+    (hReg : ∀ d, Count.size (stmtCost Reg.body.instrument [d 0 + 1, d 1, 0, 0, 0]) ≤ WReg d)
+    (hRed : ∀ d, Count.size (stmtCost Red.body.instrument [d 0 + 1, 0, 0, 0, 0]) ≤ WRed d)
+    (hCore : ∀ d, Count.size (stmtCost Core.body.instrument
+      [d 0 + 1, d 2, d 3, d 4, d 5, 0, d 1, 0, 0, 0, 0]) ≤ WCore d)
     (hwords : ∀ n δ φ, (words n δ φ).length = sizes n δ φ 1 + sizes n δ φ 2)
     (ht : (schurPipelineProgram Nm Reg Red Core).wellTyped smallEigResources
       (schurPipelineProblem Mch words sizes admitted).formats = true)
@@ -232,18 +252,33 @@ noncomputable def denseSchurProblem (Mch : Machine ℝ)
     (admitted : ∃ d, SchurSizes Mch denseSchurSizes d) : Problem ℝ 6 4 :=
   schurPipelineProblem Mch denseSchurParams denseSchurSizes admitted
 
-/-- **The work (and span) of the dense Schur solver**: `NLAlib.Schur.schurPipelineWork` of the
-static counts of its four stages (the Frobenius norm, the Ginibre regularizer, the reduction with
-its accumulated unitary, the rounded shifted QR core with the `SmallEig` leaf) at their
-dimensions, each at most a polynomial of its sizes (`NLAlib.Schur.denseSchur_work_le`). -/
-noncomputable def denseSchurWork (sG : ℕ) (d : Fin 6 → ℕ) : ℕ :=
-  schurPipelineWork
-    (fun d => Count.size (stmtCost (frobNormStage (O := SmallEigOp) (Q := Tst)).body [d 0 + 1]))
-    (fun d => Count.size (stmtCost (ginibrePerturb (O := SmallEigOp) (Q := Tst) sG).body
-      [d 0 + 1, d 1]))
-    (fun d => Count.size (stmtCost (hessenbergReduceQ (O := SmallEigOp) (Q := Tst)).body [d 0 + 1]))
-    (fun d => Count.size (stmtCost (roundedShQRSchur (O := SmallEigOp) (Q := Tst) sG).body
-      [d 0 + 1, d 2, d 3, d 4, d 5])) d
+/-- **The work (and span) of the dense Schur solver** at the sizes
+$(n, n_r, n_q, k, F, T)$ = `d`: `NLAlib.Schur.schurPipelineWork` of the monomial bounds of the
+instrumented static counts of its four stages, $120(n + 1)^2$ for the Frobenius norm
+(`NLAlib.Schur.size_stmtCost_frobNormStage_le`), $201(n + 1)^2$ for the Ginibre regularizer
+(`NLAlib.Schur.size_stmtCost_ginibrePerturb_le`), $2998(n + 1)^3$ for the reduction with its
+accumulated unitary (`NLAlib.Schur.size_stmtCost_hessenbergReduceQ_le`) and
+$380748(n + 1)^3(k + 1)^4(n_r + n_q + 1)(F + 1)(T + 1)^2$ for the rounded shifted QR core with the
+`SmallEig` leaf (`NLAlib.ShiftedQR.size_stmtCost_roundedShQRSchur_le`), and the glue
+$128(n + 2)^2$. Every primitive, test and structural instruction is counted at unit cost; the
+parameter words are supplied in the input and their computation is not charged. -/
+def denseSchurWork (d : Fin 6 → ℕ) : ℕ :=
+  schurPipelineWork (fun d => 120 * (d 0 + 1) ^ 2) (fun d => 201 * (d 0 + 1) ^ 2)
+    (fun d => 2998 * (d 0 + 1) ^ 3)
+    (fun d => 380748 * (d 0 + 1) ^ 3 * (d 3 + 1) ^ 4 * (d 1 + d 2 + 1) * (d 4 + 1) *
+      (d 5 + 1) ^ 2) d
+
+/-- **The specification of the dense Schur solver** on the machine `Mch`:
+`NLAlib.Schur.schurPipelineSpecification` of its four stages, with the work and span
+`NLAlib.Schur.denseSchurWork`. -/
+noncomputable def denseSchurSpecification (Mch : Machine ℝ)
+    (admitted : ∃ d, SchurSizes Mch denseSchurSizes d) (sG : ℕ) :
+    Specification SmallEigOp Tst (denseSchurProblem Mch admitted) :=
+  schurPipelineSpecification Mch denseSchurParams denseSchurSizes admitted frobNormStage
+    (ginibrePerturb sG) hessenbergReduceQ (roundedShQRSchur sG) (fun d => 120 * (d 0 + 1) ^ 2)
+    (fun d => 201 * (d 0 + 1) ^ 2) (fun d => 2998 * (d 0 + 1) ^ 3)
+    (fun d => 380748 * (d 0 + 1) ^ 3 * (d 3 + 1) ^ 4 * (d 1 + d 2 + 1) * (d 4 + 1) *
+      (d 5 + 1) ^ 2)
 
 -- The kernel evaluates the discipline over the whole tree; its recursion is deep.
 set_option maxRecDepth 100000 in
@@ -257,7 +292,7 @@ theorem denseSchurProgram_wellTyped (sG : ℕ) {Mch : Machine ℝ}
 
 /-- The dense Schur program terminates on every admitted input, interpretation of the model and
 tape, and writes only the matrix, the accumulator and the flag
-(`NLAlib.Schur.denseSchur_terminates`). -/
+(`NLAlib.Schur.denseSchur_completes`, no rounding model). -/
 theorem denseSchurProgram_wp {Mch : Machine ℝ} {admitted : ∃ d, SchurSizes Mch denseSchurSizes d}
     {sU sG : ℕ} {d : Fin 6 → ℕ} (hd : SchurSizes Mch denseSchurSizes d)
     (x : (denseSchurProblem Mch admitted).Input d) {I : Interp SmallEigOp Tst ℝ}
@@ -267,7 +302,7 @@ theorem denseSchurProgram_wp {Mch : Machine ℝ} {admitted : ∃ d, SchurSizes M
       (fun m => ((denseSchurProblem Mch admitted).initial d x).store.EqOff
         (schurFp (d 0) (0, 0) (2, 0) (3, 0)) m.store)
       ((denseSchurProblem Mch admitted).initial d x) := by
-  obtain ⟨hNat, ⟨u, hM, hu⟩, -⟩ := hd
+  obtain ⟨hNat, -⟩ := hd
   obtain ⟨hS, hL, hC, hQ, hSmp, hDisk⟩ := smallEigModel_laws hI
   have hin := schurPipelineProblem_initial_input (admitted := admitted) d x
   have hl5 : ((denseSchurProblem Mch admitted).initial d x).Live
@@ -275,8 +310,8 @@ theorem denseSchurProgram_wp {Mch : Machine ℝ} {admitted : ∃ d, SchurSizes M
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hy
     rcases hy with rfl | rfl | rfl | rfl | rfl <;> simp)
   have hsz := x.val.1.sizes_eq
-  refine wp_frame ?_ ?_ hl5 (Wp.mono (denseSchur_writes_orth (O := SmallEigOp) (Q := Tst)
-    (sG := sG) hS hM hL hNat hQ hC hSmp hDisk hu hin τ) fun _ h => h.1)
+  refine wp_frame ?_ ?_ hl5 (Wp.mono (denseSchur_completes (O := SmallEigOp) (Q := Tst)
+    (sG := sG) hS hL hNat hQ hC hSmp hDisk hin τ) fun _ h => h.1)
   · have h := fun i => (congrFun hsz i).symm
     simp [Program.environment, IExp.evalList, IExp.eval, denseSchurDims, denseSchurDimsWith,
       List.ofFn_succ, h 1, h 2, h 3, h 4, h 5, denseSchurSizes]
@@ -298,18 +333,12 @@ Algorithm: dense-schur (run model) -/
 noncomputable def denseSchurAlgorithm (Mch : Machine ℝ)
     (admitted : ∃ d, SchurSizes Mch denseSchurSizes d) (sU sG : ℕ) :
     Algorithm (smallEigModel (denseSchurProblem Mch admitted) Mch sU)
-      (schurPipelineSpecification Mch denseSchurParams denseSchurSizes admitted frobNormStage
-        (ginibrePerturb sG) hessenbergReduceQ (roundedShQRSchur sG)
-        (fun d => Count.size (stmtCost (frobNormStage (O := SmallEigOp) (Q := Tst)).body
-          [d 0 + 1]))
-        (fun d => Count.size (stmtCost (ginibrePerturb (O := SmallEigOp) (Q := Tst) sG).body
-          [d 0 + 1, d 1]))
-        (fun d => Count.size (stmtCost (hessenbergReduceQ (O := SmallEigOp) (Q := Tst)).body
-          [d 0 + 1]))
-        (fun d => Count.size (stmtCost (roundedShQRSchur (O := SmallEigOp) (Q := Tst) sG).body
-          [d 0 + 1, d 2, d 3, d 4, d 5]))) :=
-  schurPipelineAlgorithm sU _ _ _ _ _ _ _ _ (fun _ => le_rfl) (fun _ => le_rfl) (fun _ => le_rfl)
-    (fun _ => le_rfl) length_denseSchurParams (denseSchurProgram_wellTyped sG)
+      (denseSchurSpecification Mch admitted sG) :=
+  schurPipelineAlgorithm sU _ _ _ _ _ _ _ _ (fun d => size_stmtCost_frobNormStage_le (d 0))
+    (fun d => size_stmtCost_ginibrePerturb_le sG (d 0) (d 1))
+    (fun d => size_stmtCost_hessenbergReduceQ_le (d 0))
+    (fun d => size_stmtCost_roundedShQRSchur_le sG (d 0) (d 2) (d 3) (d 4) (d 5) (d 1))
+    length_denseSchurParams (denseSchurProgram_wellTyped sG)
     (fun _ hd x _ hI τ => denseSchurProgram_wp hd x hI τ)
 
 /-- **The dense Schur solver, on one run.** Let the machine `Mch` have the standard model at
@@ -343,16 +372,7 @@ theorem denseSchur_algorithm_measureReal_not_accepts_le {Mch : Machine ℝ}
     (hδ : 0 < x.val.1.δ) (hδ1 : x.val.1.δ ≤ 1) (hφ : 0 < x.val.1.φ) (hφ1 : x.val.1.φ ≤ 1)
     (hu : u ≤ uDenseSchur (d 0) x.val.1.δ x.val.1.φ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ (schurPipelineSpecification Mch denseSchurParams denseSchurSizes admitted
-        frobNormStage (ginibrePerturb sG) hessenbergReduceQ (roundedShQRSchur sG)
-        (fun d => Count.size (stmtCost (frobNormStage (O := SmallEigOp) (Q := Tst)).body
-          [d 0 + 1]))
-        (fun d => Count.size (stmtCost (ginibrePerturb (O := SmallEigOp) (Q := Tst) sG).body
-          [d 0 + 1, d 1]))
-        (fun d => Count.size (stmtCost (hessenbergReduceQ (O := SmallEigOp) (Q := Tst)).body
-          [d 0 + 1]))
-        (fun d => Count.size (stmtCost (roundedShQRSchur (O := SmallEigOp) (Q := Tst) sG).body
-          [d 0 + 1, d 2, d 3, d 4, d 5]))).Accepts smallEigResources d x
+    P.real {ω | ¬ (denseSchurSpecification Mch admitted sG).Accepts smallEigResources d x
       (exec (denseSchurAlgorithm Mch admitted sU sG).program I smallEigResources
         (denseSchurProblem Mch admitted).formats (ξ ω) d
         ((denseSchurProblem Mch admitted).initial d x))

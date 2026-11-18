@@ -471,51 +471,57 @@ open Real in
 $F \le c\log_2 Y + c$, $Y = 4(n + 1)B\Sigma^2/(\delta\min(\Gamma, \Sigma)\varphi)$, for
 $F$ = `NLAlib.ShiftedQR.shqrCap`, every order $n + 1$, $B \ge 1$, $\Gamma > 0$,
 $0 < \delta \le \Sigma$ and $0 < \varphi \le 1$: the cap is $\lceil\log(4\Sigma/\omega)/
-\log(1/0.8016)\rceil + 1$ and $4\Sigma/\omega \le 4Y^8$ (`NLAlib.ShiftedQR.shqrArg_facts`); $c = 36$
-suffices. -/
+\log(1/0.8016)\rceil + 1$ and $4\Sigma/\omega \le 4Y^8$ (`NLAlib.ShiftedQR.shqrArg_facts`), so
+$c = 30$. -/
 theorem shqrCap_le_log : ∃ c : ℝ, ∀ {n : ℕ} {B Γ S δ φ : ℝ}, 1 ≤ B → 0 < Γ → 0 < δ → δ ≤ S →
     0 < φ → φ ≤ 1 →
     (shqrCap n B Γ S δ : ℝ) ≤
       c * Real.logb 2 (4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)) + c := by
-  refine ⟨36, fun {n B Γ S δ φ} hB hΓ hδ hδS hφ hφ1 => ?_⟩
-  obtain ⟨hY4, -, -, -, hrr, -, -⟩ := shqrArg_facts (n := n) (k := shqrDegree (4 * B)) hB hΓ hδ
-    hδS hφ hφ1 rfl
-  set Y := 4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)
+  refine ⟨30, fun {n B Γ S δ φ} hB hΓ hδ hδS hφ hφ1 => ?_⟩
   have hS : 0 < S := hδ.trans_le hδS
-  have hω0 := shqrOmega_pos (n := n) hB hΓ hδ
-  have hωS := shqrOmega_le_normBound (n := n) hB hΓ hδ hδS
+  obtain ⟨hY4, -, -, -, hrr, -, -⟩ :=
+    shqrArg_facts (n := n) (k := shqrDegree (4 * B)) hB hΓ hδ hδS hφ hφ1 rfl
+  set Y := 4 * (n + 1) * B * S ^ 2 / (δ * min Γ S * φ)
   set ω := shqrOmega n B Γ δ
-  have hSω : S ≤ ω * Y ^ 8 := by
-    have h := hrr.2
-    rw [div_mul_eq_mul_div, le_div_iff₀ hS] at h
-    linarith
+  have hω0 : 0 < ω := shqrOmega_pos hB hΓ hδ
+  have hωS : ω ≤ S := shqrOmega_le_normBound hB hΓ hδ hδS
   have h4 : 1 ≤ 4 * S / ω := by rw [le_div_iff₀ hω0]; linarith
-  have hq : 4 * S / ω ≤ 4 * Y ^ 8 := by rw [div_le_iff₀ hω0]; nlinarith
   have hc : 0.1984 ≤ log (1 / shqrContraction) := by
     have := one_sub_inv_le_log_of_pos (x := 1 / shqrContraction)
       (by unfold shqrContraction; norm_num)
     unfold shqrContraction at this ⊢; norm_num at this ⊢; linarith
   have hl0 : 0 ≤ log (4 * S / ω) := log_nonneg h4
-  have hlog : log (4 * S / ω) ≤ 2 * log 2 + 8 * log Y := by
-    calc log (4 * S / ω) ≤ log (4 * Y ^ 8) := log_le_log (by linarith) hq
-      _ = 2 * log 2 + 8 * log Y := by
-          rw [log_mul (by norm_num) (by positivity), log_pow,
-            show (4 : ℝ) = 2 ^ 2 by norm_num, log_pow]
-          push_cast; ring
-  have hl2 := Real.log_two_lt_d9
-  have hl2' : 0 < log 2 := log_pos (by norm_num)
-  have hL : 0 ≤ logb 2 Y := logb_nonneg (by norm_num) (by linarith)
-  have hlY : log Y = logb 2 Y * log 2 := by rw [logb, div_mul_cancel₀ _ hl2'.ne']
-  have hx : log (4 * S / ω) / log (1 / shqrContraction) ≤ (2 * log 2 + 8 * log Y) / 0.1984 :=
-    (div_le_div_of_nonneg_left hl0 (by norm_num) hc).trans (by gcongr)
   have hx0 : 0 ≤ log (4 * S / ω) / log (1 / shqrContraction) := div_nonneg hl0 (by linarith)
   have hcap : (shqrCap n B Γ S δ : ℝ) ≤ log (4 * S / ω) / log (1 / shqrContraction) + 2 := by
-    rw [shqrCap, Nat.cast_add, Nat.cast_one]
     have := Nat.ceil_lt_add_one hx0
+    rw [shqrCap, Nat.cast_add, Nat.cast_one]
     linarith
-  have hY : (2 * log 2 + 8 * log Y) / 0.1984 ≤ 34 * logb 2 Y + 34 := by
-    rw [hlY, div_le_iff₀ (by norm_num)]
+  have hdiv : log (4 * S / ω) / log (1 / shqrContraction) ≤ log (4 * S / ω) / 0.1984 :=
+    div_le_div_of_nonneg_left hl0 (by norm_num) hc
+  have hYω : 4 * S / ω ≤ 4 * Y ^ 8 := by
+    have h := hrr.2
+    rw [div_le_iff₀ hω0]
+    have e : ω / S * Y ^ 8 * S = ω * Y ^ 8 := by field_simp
     nlinarith
+  have hY0 : 0 < Y := by linarith
+  have hlog : log (4 * S / ω) ≤ log 4 + 8 * log Y := by
+    calc log (4 * S / ω) ≤ log (4 * Y ^ 8) := log_le_log (by positivity) hYω
+      _ = log 4 + 8 * log Y := by rw [log_mul (by norm_num) (by positivity), log_pow]; norm_num
+  have h4l : log (4 : ℝ) = 2 * log 2 := by
+    rw [show (4 : ℝ) = 2 ^ 2 by norm_num, log_pow]; norm_num
+  have hL : log Y = logb 2 Y * log 2 := by rw [logb, div_mul_cancel₀ _ (log_pos one_lt_two).ne']
+  have hL0 : 0 ≤ logb 2 Y := logb_nonneg one_lt_two (by linarith)
+  have hl2 := Real.log_two_lt_d9
+  have hl2' := Real.log_two_gt_d9
+  have hm : logb 2 Y * log 2 ≤ logb 2 Y * 0.6931471808 :=
+    mul_le_mul_of_nonneg_left hl2.le hL0
+  rw [hL] at hlog
+  have : log (4 * S / ω) / 0.1984 ≤
+      (2 * 0.6931471808 + 8 * (logb 2 Y * 0.6931471808)) / 0.1984 := by
+    gcongr; linarith
+  have h2 : (2 * 0.6931471808 + 8 * (logb 2 Y * 0.6931471808)) / 0.1984 ≤
+      28 * logb 2 Y + 7 := by
+    rw [div_le_iff₀ (by norm_num)]; nlinarith
   linarith
 
 open Real in
@@ -709,6 +715,32 @@ now counted. -/
 theorem roundedShQRSmallEig_work_le (sG : ℕ) : ∃ c : ℕ, ∀ n k np F T : ℕ,
     Count.size (stmtCost (roundedShQRSmallEig (O := O) (Q := Q) sG).body [n + 1, k, np, F, T]) ≤
       c * (n + 1) ^ 4 * (k + 1) ^ 5 * (np + 1) * (F + 1) * (T + 1) ^ 2 := sorry
+
+-- The kernel evaluates the bound of the whole instrumented tree; its recursion is deep.
+set_option maxRecDepth 100000 in
+/-- The instructions of the Schur core: the instrumented static count of
+`NLAlib.ShiftedQR.roundedShQRSchur` at the order $n + 1$, $n_q$ words, the shift degree $k$, the
+iteration cap $F$, the leaf cap $T$, the parameter words at the offset $p$ and the other operands
+at offset zero is at most $380748(n + 1)^3(k + 1)^4(p + n_q + 1)(F + 1)(T + 1)^2$ (the monomial
+bound, by `kernel_rfl`), the cost of `SmallEig` and of the structural instructions included. -/
+theorem size_stmtCost_roundedShQRSchur_le (sG n nq k F T p : ℕ) :
+    Count.size (stmtCost (roundedShQRSchur (O := O) (Q := Q) sG).body.instrument
+        [n + 1, nq, k, F, T, 0, p, 0, 0, 0, 0]) ≤
+      380748 * (n + 1) ^ 3 * (k + 1) ^ 4 * (p + nq + 1) * (F + 1) * (T + 1) ^ 2 := by
+  have hw : stmtWorkMono (roundedShQRSchur (O := O) (Q := Q) sG).body.instrument
+      ([⟨1, [1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 0, 1]⟩, ⟨1, [0, 0, 0, 0, 1]⟩,
+        WorkMono.const 0, ⟨1, [0, 0, 1]⟩] ++ List.replicate 4 (WorkMono.const 0)) =
+        ⟨380748, [3, 4, 1, 1, 2]⟩ := by
+    kernel_rfl
+  have hσ : SlotsLe [n + 1, k + 1, p + nq + 1, F + 1, T + 1]
+      [n + 1, nq, k, F, T, 0, p, 0, 0, 0, 0]
+      ([⟨1, [1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 0, 1]⟩, ⟨1, [0, 0, 0, 0, 1]⟩,
+        WorkMono.const 0, ⟨1, [0, 0, 1]⟩] ++ List.replicate 4 (WorkMono.const 0)) := by
+    simp [SlotsLe, WorkMono.eval, WorkMono.const]; omega
+  have h := size_stmtCost_le_stmtWorkMono (by simp)
+    (roundedShQRSchur (O := O) (Q := Q) sG).body.instrument hσ
+  rw [hw] at h
+  simpa [WorkMono.eval, mul_assoc] using h
 
 /-- **The algorithm with no oracle, relative form** ([BanksGarzaVargasSrivastava2022,
 Theorem 6.3], the error relative to $\|\mathbf{H}\|_2$): with the machine, streams and tails of

@@ -41,7 +41,8 @@ output comes from the tracked relation (`NLAlib.IsTrackedUnitarySimilar`).
 * `NLAlib.Schur.SchurOutput.exists_isEigenvalueListing`,
   `NLAlib.Schur.SchurOutput.exists_hasOrthonormalCols`: the eigenvalues and an exact unitary.
 * `NLAlib.Schur.schurPipelineWith_terminates`: termination and orthogonality on every tape.
-* `NLAlib.Schur.size_stmtCost_schurPipelineWith_le`: the static count is the sum of the stages'.
+* `NLAlib.Schur.size_stmtCost_schurPipelineWith_le`: the instrumented static count is at most the
+  sum of the stages' and the glue.
 
 The numerical pieces that do not mention the pipeline (the scaling loop, the residual of a scaled
 tracked run and its budget) are in `NLAlib.Eigensolvers.Schur.Residual`.
@@ -276,6 +277,7 @@ section Steps
 
 variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
 
+omit [Has IndexOp O] [Has CmpTst Q] in
 /-- The identity program stores the identity when the literals $0$ and $1$ are exact. -/
 theorem writes_identity_holdsMatrix_one {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (h1 : Mch.lit 1 = 1) {τ : Tape ℝ}
@@ -288,6 +290,7 @@ theorem writes_identity_holdsMatrix_one {Mch : Machine ℝ} {I : Interp O Q ℝ}
   refine holdsMatrix_one_of_holdsVec fun i hi => ?_
   rw [hv.1 i hi, h0, h1]
 
+omit [Has CmpTst Q] in
 /-- **The zero branch of the pipeline**: from the memory of a run holding $\mathbf{A} = 0$, the
 identity and the flag $0$ make a Schur output. -/
 theorem schurPipeline_zero_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
@@ -316,6 +319,7 @@ theorem schurPipeline_zero_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : 
   · simp
   · simpa using heU
 
+omit [Has IndexOp O] [Has CmpTst Q] in
 /-- **The scaling of the pipeline**: from a run memory holding $\mathbf{A}$ and the norm estimate
 $x > 0$ in $S$, the literal $1$, the division $r = \mathrm{fl}(1/x)$ and the scaling of the words
 by $r$ store an $\mathbf{A}_1$ with $\|x\mathbf{A}_1 - \mathbf{A}\|_2 \le
@@ -412,7 +416,7 @@ theorem apart_tail {a p uo f : ℕ × ℕ} {la lu lf : ℕ} {qR qC : List ℝ}
     and_true]
   exact ⟨⟨h1.mono le_rfl hs, h2, h3⟩, ⟨h4.mono hs le_rfl, h5.mono hs le_rfl⟩, h6⟩
 
-variable [Has IdxTst Q] in
+omit [Has IndexOp O] [Has CmpTst Q] in
 /-- **The core and the scaling back**: from a run memory holding the pair $(\mathbf{U}_1,
 \mathbf{H})$ ($\mathbf{H}$ upper Hessenberg of the core's class, $\|\mathbf{H}\|_2 \le 4/c_1$) and
 the norm estimate $x$, the core and the scaling of the words by $x$ end, except with probability
@@ -477,7 +481,7 @@ theorem schurPipeline_core_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
     (by rw [hfr.2 f.1 f.2 (fun h => h3 _ _ h ⟨rfl, le_rfl, by omega⟩), hf0]) hT'
     (hU₂.of_eqOff hfr h2)
 
-variable [Has IdxTst Q] in
+omit [Has IndexOp O] [Has CmpTst Q] in
 /-- **The regularizer, the identity, the reducer, the core and the scaling back**: from a run
 memory holding a scaled $\mathbf{A}_1$ with $\|\mathbf{A}_1\|_2 \le 2/c_1$ and the norm estimate
 $x$, except with probability $\varphi_R + \varphi_C$ the run ends with the flag $0$, the
@@ -648,7 +652,7 @@ theorem schurOutput_of_run {n : ℕ} {a uo f : ℕ × ℕ}
   refine ⟨hf, U₂, T', hTs, hUs, fun i j hij => hz i j (hTu hij), hres.trans hb,
     (htr.specNorm_sub_mul_mul_conjTranspose_le hε0 (by linarith)).2⟩
 
-variable [Has IdxTst Q] in
+omit [Has IndexOp O] [Has CmpTst Q] in
 /-- **The positive branch of the pipeline**: from a run memory holding $\mathbf{A}$ and a norm
 estimate $c_1\|\mathbf{A}\|_{\mathsf F} \le x \le c_2\|\mathbf{A}\|_{\mathsf F}$, $x > 0$, the run
 of
@@ -720,7 +724,7 @@ theorem schurPipeline_pos_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : 
     fun A₂ U₂ Tm T' hεCT hA₂ hTu htr hT' hz m'' hf hT hU => schurOutput_of_run hu0 hu hc₁ hx0
       hxl hxu hδR hεHT0 hεHT hεHU hεCU hεU hεCT hA₁n hA₂ hTu htr hT' hz hf hT hU
 
-variable [Has IdxTst Q] in
+omit [Has IndexOp O] [Has CmpTst Q] in
 /-- **The positive branch on every tape**: with a regularizer that terminates storing some matrix,
 a reducer and a terminating core, the positive branch of the pipeline terminates and stores an
 accumulator with $\|\mathbf{U}^{\mathsf H}\mathbf{U} - \mathbf{I}\|_2 \le 2\varepsilon +
@@ -832,7 +836,6 @@ theorem SchurPipelineInput.mem_of_alloc {n : ℕ} {qs : List ℝ} {a p uo f : �
     exact hroom
   · exact hBelow.keep (Store.readsOnly_readBlock _ _ _ _) (fun _ _ h => h.1 ▸ hp) hP
 
-variable [Has IdxTst Q] in
 /-- **The pipeline terminates on every tape** with a regularizer that terminates storing some
 matrix, a reducer and a terminating core, and stores an accumulator with
 $\|\widehat{\mathbf{U}}^{\mathsf H}\widehat{\mathbf{U}} - \mathbf{I}\|_2 \le 2\varepsilon +
@@ -868,7 +871,7 @@ theorem schurPipelineWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
   intro s₁ hlen hlens hBelow
   obtain ⟨hm, hA⟩ := hin.mem_of_alloc (q := μ.pos) hlen hlens hBelow
   set L := μ.store.length
-  show Writes .total I τ _ (schurPipelineEnv n qR.length qC.length k F T a p uo f L) _ _ _
+  change Writes .total I τ _ (schurPipelineEnv n qR.length qC.length k F T a p uo f L) _ _ _
   obtain ⟨-, ha, hp, hu, hf, -, hLl, -⟩ := id hm
   have hlive : (⟨s₁, μ.pos⟩ : Mem ℝ).Live [a, (L, 0)] := hm.live_of_subset (by simp)
   have hFL : Store.inBlock L 0 1 ≤ schurFp n a uo f ⊔ Fp.above L :=
@@ -904,7 +907,7 @@ core's errors, scaled by $s \le c_2\|\mathbf{A}\|_{\mathsf F} \le c_2\sqrt{n+1}\
 theorem schurPipelineWith_measureReal_not_schur_le [Has ScalarOp O] [Has IndexOp O]
     [Has CmpTst Q] [Has IdxTst Q] {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
-    (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
+    (hNat : IsExactNatLit id Mch (n + 1)) (_hQ : IsToNat id I) (hC : IsCmp id I)
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     {law : ℕ → Measure ℝ} {Nm Reg Red Core : Impl O Q} {k F T : ℕ}
     {c₁ c₂ δR φR εHU εHT εCU εCT φC : ℝ} {qR qC : List ℝ}
@@ -915,7 +918,7 @@ theorem schurPipelineWith_measureReal_not_schur_le [Has ScalarOp O] [Has IndexOp
     (hCore : RandomSchurCoreContract law εCU εCT φC C' k F T (n + 1) (4 / c₁) qC Core I)
     (hCC' : ∀ (A H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ), C A →
       IsPerturbedUnitarySimilarBy V A H (εHT * (2 / c₁ + δR)) → C' H)
-    (hc₁ : 0 < c₁) (hc₁₂ : c₁ ≤ c₂) (hu0 : 0 ≤ u) (hu : 8 * ((n : ℝ) + 1) * u ≤ 1 / 4)
+    (hc₁ : 0 < c₁) (_hc₁₂ : c₁ ≤ c₂) (hu0 : 0 ≤ u) (hu : 8 * ((n : ℝ) + 1) * u ≤ 1 / 4)
     (hδR : δR ≤ 1 / c₁) (hεHT0 : 0 ≤ εHT) (hεHT : εHT ≤ 1 / 8) (hεHU : 0 ≤ εHU)
     (hεCU : 0 ≤ εCU) (hεU : (1 + εHU) * (1 + εCU) - 1 ≤ 1 / 16) (hφR : 0 ≤ φR) (hφC : 0 ≤ φC)
     {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {a p uo f : ℕ × ℕ} {μ : Mem ℝ}
@@ -951,7 +954,7 @@ theorem schurPipelineWith_measureReal_not_schur_le [Has ScalarOp O] [Has IndexOp
     obtain ⟨hf0, U, T', hT, hU, hTu, hr, ho⟩ := hout
     exact ⟨by rw [← hf0]; exact (hBelow f.1 hf).2 f.2, U, T', hT.of_below hBelow ha,
       hU.of_below hBelow hu, hTu, hr, ho⟩
-  show PWrites law I _ (schurPipelineEnv n qR.length qC.length k F T a p uo f L) _ _ _ _
+  change PWrites law I _ (schurPipelineEnv n qR.length qC.length k F T a p uo f L) _ _ _ _
   have hFL : Store.inBlock L 0 1 ≤ schurFp n a uo f ⊔ Fp.above L :=
     fun _ _ h => Or.inr (h.1 ▸ le_rfl)
   have hFL' : Store.inBlock (L + 1) 0 1 ≤ schurFp n a uo f ⊔ Fp.above L :=
@@ -1037,25 +1040,43 @@ theorem SchurOutput.exists_hasOrthonormalCols {n : ℕ} {a uo f : ℕ × ℕ}
     exists_hasOrthonormalCols_add_eq_mul_mul_conjTranspose hA hU heU
   exact ⟨U, T, V, E, hT, hUs, hV, hUV, hE, hAE⟩
 
-/-- **The static count of the pipeline** is the sum of the stages' counts plus
-$64(N + 1)^2$ for the glue (scaling, identity, branch). -/
+/-- The instructions of a supremum of counts and of their infimum add up to those of the two
+counts. -/
+theorem size_sup_add_size_inf {Op Tst : Type} (x y : Count Op Tst) :
+    Count.size (x ⊔ y) + Count.size (x ⊓ y) = Count.size x + Count.size y := by
+  rw [← map_add, ← map_add]
+  congr 1
+  ext a
+  simp [Finsupp.sup_apply, Finsupp.inf_apply, max_add_min]
+
+/-- **The static count of the pipeline** with its structural instructions, at zero offsets of
+the matrix, the parameter words, the accumulator and the flag, is at most the sum of the stages'
+instrumented counts, each at the offsets the pipeline passes to it (zero, and $n_r$ for the core's
+parameter words), plus $120(N + 1)^2$ for the glue (the scaling loops, the identity, the branch
+and the frames). -/
 theorem size_stmtCost_schurPipelineWith_le [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
     (Nm Reg Red Core : Impl O Q) (N nr nq k F T : ℕ) :
-    Count.size (stmtCost (schurPipelineWith Nm Reg Red Core).body [N, nr, nq, k, F, T]) ≤
-      Count.size (stmtCost Nm.body [N]) + Count.size (stmtCost Reg.body [N, nr]) +
-        Count.size (stmtCost Red.body [N]) + Count.size (stmtCost Core.body [N, nq, k, F, T]) +
-        64 * (N + 1) ^ 2 := by
-  have hsup : ∀ x y : Count O Q, Count.size (x ⊔ y) ≤ Count.size x + Count.size y := fun x y =>
-    (size_mono (sup_le (le_add_of_nonneg_right (zero_le (a := y)))
-      (le_add_of_nonneg_left (zero_le (a := x))))).trans_eq (map_add _ x y)
-  simp only [schurPipelineWith, Stmt.alloc, stmtCost, useCost, testCost, IExp.evalList,
-    IExp.eval, List.map_cons, List.map_nil, List.getElem?_cons_succ, List.getElem?_cons_zero,
-    List.getElem?_nil, Option.map_some, Option.getD_some, Finset.sum_const, Finset.card_range,
-    Operand.off, zero_add]
-  refine le_trans ?_ (Nat.le_add_left _ _)
-  rw [map_add]
-  refine (Nat.add_le_add_left (hsup _ _) _).trans ?_
-  simp only [map_add, map_nsmul, Count.one, Count.test, size_single, smul_eq_mul]
-  nlinarith
+    Count.size (stmtCost (schurPipelineWith Nm Reg Red Core).body.instrument
+        [N, nr, nq, k, F, T, 0, 0, 0, 0, 0]) ≤
+      Count.size (stmtCost Nm.body.instrument [N, 0, 0]) +
+        Count.size (stmtCost Reg.body.instrument [N, nr, 0, 0, 0]) +
+        Count.size (stmtCost Red.body.instrument [N, 0, 0, 0, 0]) +
+        Count.size (stmtCost Core.body.instrument [N, nq, k, F, T, 0, nr, 0, 0, 0, 0]) +
+        120 * (N + 1) ^ 2 := by
+  have hsup : ∀ x y : Count (O ⊕ Bookkeeping) Q,
+      Count.size (x ⊔ y) = Count.size x + Count.size y - Count.size (x ⊓ y) := fun x y => by
+    rw [← size_sup_add_size_inf]; omega
+  simp only [schurPipelineWith, Stmt.alloc, Stmt.instrument, PairMatrix.identity, tally,
+    indexBookkeeping, operandBookkeeping, IExp.bookkeeping, List.flatMap_cons, List.flatMap_nil,
+    List.cons_append, List.nil_append, List.append_nil, stmtCost, useCost, testCost,
+    IExp.evalList, IExp.eval, List.map_cons, List.map_nil, List.getElem?_cons_succ,
+    List.getElem?_cons_zero, Option.map_some, Option.getD_some, Finset.sum_const,
+    Finset.card_range, zero_add, add_zero, map_add, map_nsmul, hsup, Count.one, Count.test,
+    size_single, smul_eq_mul]
+  have hsq : (N + 1) ^ 2 = N * N + 2 * N + 1 := by ring
+  rw [hsq]
+  generalize N * N = M
+  simp only [Nat.reduceAdd]
+  omega
 
 end NLAlib.Schur

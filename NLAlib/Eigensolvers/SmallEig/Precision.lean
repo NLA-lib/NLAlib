@@ -503,6 +503,29 @@ private theorem loBd_uSmallEig (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) : ∃ K
     (hD.min' hY1 hDec)))).mono hY1 ?_
   nlinarith [Nat.zero_le (x * Q), Nat.zero_le (x * m)]
 
+/-- **The thresholds of the regularizer are polynomial**: for tail records with $b_1, b_2 > 0$
+there is an exponent $e$ such that for every $n_{\max} \ge 1$, $0 < \delta \le \Sigma$ and
+$0 < \varphi \le 1$, with $Y = 4n_{\max}\Sigma/(\delta\varphi)$, the condition threshold $t_2$,
+the gap threshold $t_1/\Sigma$ and the precision term `NLAlib.SmallEig.uSmallEigReduce` are at
+least $Y^{-e}$. -/
+theorem exists_loBd_smallEigCond_gap_reduce (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) :
+    ∃ e : ℕ, ∀ {nmax : ℕ} {S δ φ : ℝ}, 1 ≤ nmax → 0 < δ → δ ≤ S → 0 < φ → φ ≤ 1 →
+      LoBd (4 * nmax * S / (δ * φ)) e (smallEigCond nmax S δ φ c₂) ∧
+      LoBd (4 * nmax * S / (δ * φ)) e (smallEigGap nmax S δ φ c₁ / S) ∧
+      LoBd (4 * nmax * S / (δ * φ)) e (uSmallEigReduce nmax S δ φ c₁ c₂) := by
+  obtain ⟨a1, h1⟩ := (unifLo_cond hb₂).1
+  obtain ⟨a2, h2⟩ := unifLo_sep hb₁
+  obtain ⟨a3, h3⟩ := unifLo_reduce hb₁ hb₂
+  refine ⟨a1 + a2 + a3, fun {nmax S δ φ} hn hδ hδS hφ hφ1 => ?_⟩
+  have hi : Adm (nmax, S, δ, φ) := ⟨hn, hδ, hδS, hφ, hφ1⟩
+  have hY1 := arg_one _ hi
+  have hS : 0 < S := hδ.trans_le hδS
+  refine ⟨((h1 _ hi).mono hY1 (by omega) : _), ?_, ((h3 _ hi).mono hY1 (by omega) : _)⟩
+  have h := ((h2 _ hi).mono hY1 (by omega : a2 ≤ a1 + a2 + a3) :)
+  simp only [arg, smallEigSeparation] at h ⊢
+  have := (smallEigGap_pos_le hb₁ hn hS.le hδ hφ hφ1).1
+  exact h.of_le (div_le_div_of_nonneg_right (by linarith) hS.le)
+
 private theorem natCeil_le_add_one {y z : ℝ} (hz : 0 ≤ z) (h : y ≤ z) : (⌈y⌉₊ : ℝ) ≤ z + 1 :=
   (Nat.cast_le.mpr (Nat.ceil_mono h)).trans (Nat.ceil_lt_add_one hz).le
 

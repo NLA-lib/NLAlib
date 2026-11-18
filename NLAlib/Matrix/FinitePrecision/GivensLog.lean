@@ -186,6 +186,12 @@ theorem embedBlock_givensAt (hN : lo + d ≤ N) {e : ℕ × ℂ × ℂ} (he : e.
     Matrix.of_apply, givens_apply hij, givens_apply hij', Fin.ext_iff, Fin.val_mk]
   split_ifs <;> first | rfl | (exfalso; omega)
 
+/-- The block of the whole range is the matrix itself. -/
+@[simp] theorem embedBlock_zero_self (V : Matrix (Fin N) (Fin N) ℂ) :
+    embedBlock (N := N) 0 V = V := by
+  ext i j
+  simp [embedBlock]
+
 end EmbedBlock
 
 /-! ### The log -/
@@ -446,6 +452,39 @@ theorem HoldsSlottedLog.of_validate {lg : ℕ × ℕ} {ns w : ℕ}
     obtain ⟨h1, h2⟩ := hf j (by omega) hjn
     exact ⟨by rw [hfr.get_eq (fun hin => by obtain ⟨-, -, h2⟩ := hin; omega)]; exact h1,
       hfr.readBlock_of h2 fun t ht hin => by obtain ⟨-, -, h2⟩ := hin; omega⟩
+
+/-- Rejecting every slot still open closes the log. -/
+theorem HoldsSlottedLog.close {lg : ℕ × ℕ} {ns w : ℕ} {L : List (Option (List GivensEntry))}
+    {s : Store ℝ} (h : HoldsSlottedLog lg ns w L [] s) :
+    HoldsSlottedLog lg ns w (L ++ List.replicate (ns - L.length) none) [] s := by
+  obtain ⟨k, hk⟩ : ∃ k, ns - L.length = k := ⟨_, rfl⟩
+  rw [hk]
+  induction k generalizing L with
+  | zero => simpa using h
+  | succ k ih =>
+    have hlt : L.length < ns := by omega
+    have := ih (h.reject hlt) (by simp; omega)
+    rwa [List.append_assoc, List.singleton_append, ← List.replicate_succ] at this
+
+/-- Rejected slots have no entries. -/
+@[simp] theorem slotEntries_append_replicate_none (w k : ℕ)
+    (L : List (Option (List GivensEntry))) :
+    slotEntries w (L ++ List.replicate k none) = slotEntries w L := by
+  induction k with
+  | zero => simp
+  | succ k ih =>
+    rw [List.replicate_succ', ← List.append_assoc, slotEntries_append, ih, slotEntries_none,
+      List.append_nil]
+
+/-- The unitary of a log of accepted slots is the unitary of their entries, padding aside. -/
+theorem givensLog_slotEntries_map_some (n w : ℕ) (Ls : List (List GivensEntry)) :
+    givensLog n (slotEntries w (Ls.map some)) = givensLog n Ls.flatten := by
+  induction Ls with
+  | nil => rfl
+  | cons es Ls ih =>
+    rw [List.map_cons, show some es :: Ls.map some = [some es] ++ Ls.map some from rfl,
+      slotEntries_append, slotEntries_some, givensLog_append, ih, givensLog_padEntries,
+      List.flatten_cons, givensLog_append]
 
 /-- **The log read from a store**: the `ns` slots of `w` entries at `lg`, a slot accepted (`some`)
 iff its valid word is positive, each entry decoded from its five words (the plane by

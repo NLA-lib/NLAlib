@@ -240,7 +240,7 @@ end Program
 section Theorems
 
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has SampleOp O] [Has DiskSampleOp O]
-  [Has CmpTst Q] [Has IdxTst Q] [Inhabited ℝ]
+  [Has CmpTst Q] [Has IdxTst Q]
 
 /-- **The dense Schur theorem with any small-block Schur solver.** Let the machine have the
 standard model at $\boldsymbol{u}$, index literals, exact natural literals up to $n + 1$, exact

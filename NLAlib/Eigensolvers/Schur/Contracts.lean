@@ -44,13 +44,13 @@ def HoldsSchurPair {n : ℕ} (a uo : ℕ × ℕ) (U T : Matrix (Fin n) (Fin n) �
   HoldsMatrix a T s ∧ HoldsMatrix uo U s
 
 /-- **A two-sided Frobenius norm estimate**, deterministic: for every order $N \le N_{\max}$,
-`[N] (A) → (S)` stores $x$ with
+`[N] (A) → (S)`, the output in another buffer, stores $x$ with
 $c_1\|\mathbf{A}\|_{\mathsf F} \le x \le c_2\|\mathbf{A}\|_{\mathsf F}$. A rounded estimate has
 constants that depend on the order, so the order is bounded outside the quantifier. -/
 def FrobNormEstimateContract (c₁ c₂ : ℝ) (nmax : ℕ) (Nm : Impl O Q) (I : Interp O Q ℝ) : Prop :=
   ∀ {N : ℕ} {a s : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ} (A : Matrix (Fin N) (Fin N) ℂ),
     N ≤ nmax → HoldsMatrix a A μ.store → μ.Live [a, s] → s.2 + 1 ≤ μ.store.len s.1 →
-    Fp.Disj (Store.inBlock a.1 a.2 (2 * (N * N))) (Store.inBlock s.1 s.2 1) →
+    a.1 ≠ s.1 →
     Writes .total I tape Nm.body (Env.frame [N] [a, s]) (Store.inBlock s.1 s.2 1)
       (fun μ' => ∃ x : ℝ, μ'.store.get s.1 s.2 = some x ∧ c₁ * frobNorm A ≤ x ∧
         x ≤ c₂ * frobNorm A) μ

@@ -41,8 +41,6 @@ def frobNormStage : Impl O Q := opsImpl% [N] (A) → (S) {
   run (ShiftedQR.matrixNorm (Op := O) (Tst := Q)).body [N, N] (A, S)
 }
 
-variable [Inhabited ℝ]
-
 /-- **The rounded Frobenius norm is a two-sided norm estimate**: on a scalar machine with the
 standard model at $\boldsymbol{u}$ and $(2N_{\max}^2 + 2)\boldsymbol{u} \le 1/2$,
 `NLAlib.Schur.frobNormStage` meets `NLAlib.Schur.FrobNormEstimateContract` on the orders

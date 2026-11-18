@@ -28,7 +28,7 @@ namespace NLAlib.Schur
 
 open Ops MeasureTheory ProbabilityTheory SmallEig
 
-variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has SampleOp O] [Inhabited ℝ]
+variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has SampleOp O]
 
 /-- **The Ginibre perturbation meets the regularizer contract**: with the error $\delta/2$, the
 failure probability $3\varphi/4$ and the class `NLAlib.IsConditionedDiagonalizable` at
@@ -44,6 +44,9 @@ theorem ginibrePerturb_randomRegularizerContract {M : Machine ℝ} {I : Interp O
     RandomRegularizerContract law (δ / 2) (3 * φ / 4)
       (fun A => IsConditionedDiagonalizable (2 / smallEigCond nmax S δ φ c₂)
         (smallEigGap nmax S δ φ c₁ / 2) A) nmax S (smallEigParams nmax S δ φ c₁ c₂)
-      (ginibrePerturb (O := O) (Q := Q) sG) I := sorry
+      (ginibrePerturb (O := O) (Q := Q) sG) I := fun A hn hAS =>
+  (ginibrePerturb_pwrites hS hM hL hSmp hG hA hB hb₁ hb₂ hδ hδS hφ hφ1 hu hn hAS).mono
+    (fun _ h => h) le_rfl
+    (fun _ ⟨E, V, d, hE, hEn, hV, hAV, hc, hg⟩ => ⟨E, hE, hEn, V, d, hV, hAV, hc, hg⟩) le_rfl
 
 end NLAlib.Schur

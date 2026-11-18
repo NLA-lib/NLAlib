@@ -91,8 +91,10 @@ private theorem abs_norm_mulVec_sub_norm_mulVec_le {p q : Type*} [Fintype p] [Fi
     rw [← WithLp.toLp_sub, ← Matrix.sub_mulVec]; exact norm_toLp_mulVec_le _ _
 
 open scoped MatrixOrder in
-/-- A square matrix that is an $a$-near isometry, $a < 1$, is within $a$ of its polar factor. -/
-private theorem exists_hasOrthonormalCols_specNorm_sub_le_of_abs_norm_mulVec_sub_le
+/-- **A near isometry is near a unitary**: a square matrix $\mathbf{B}$ with
+$\lvert\|\mathbf{B}\mathbf{x}\| - \|\mathbf{x}\|\rvert \le a\|\mathbf{x}\|$ for every
+$\mathbf{x}$, $0 \le a < 1$, is within $a$ of a unitary (its polar factor). -/
+theorem exists_hasOrthonormalCols_specNorm_sub_le_of_abs_norm_mulVec_sub_le
     {B : Matrix r r 𝕜} {a : ℝ} (ha0 : 0 ≤ a) (ha : a < 1)
     (hB : ∀ x, |‖WithLp.toLp 2 (B *ᵥ x)‖ - ‖WithLp.toLp 2 x‖| ≤ a * ‖WithLp.toLp 2 x‖) :
     ∃ W : Matrix r r 𝕜, HasOrthonormalCols W ∧ specNorm (W - B) ≤ a := by
@@ -137,6 +139,26 @@ private theorem exists_hasOrthonormalCols_specNorm_sub_le_of_abs_norm_mulVec_sub
       rw [specNorm_neg]
       exact mul_le_mul hW.specNorm_le_one hH (specNorm_nonneg _) zero_le_one
     _ = a := one_mul a
+
+/-- **A nearly orthonormal square matrix is near a unitary**: if
+$\|\mathbf{B}^{\mathsf H}\mathbf{B} - \mathbf{I}\|_2 \le e$ with $0 \le e < 1$, there is a
+unitary $\mathbf{W}$ with $\|\mathbf{W} - \mathbf{B}\|_2 \le e$ (its polar factor). -/
+theorem exists_hasOrthonormalCols_specNorm_sub_le_of_specNorm_conjTranspose_mul_self_sub_one_le
+    {B : Matrix r r 𝕜} {e : ℝ} (he0 : 0 ≤ e) (he : e < 1) (hB : specNorm (Bᴴ * B - 1) ≤ e) :
+    ∃ W : Matrix r r 𝕜, HasOrthonormalCols W ∧ specNorm (W - B) ≤ e := by
+  refine exists_hasOrthonormalCols_specNorm_sub_le_of_abs_norm_mulVec_sub_le he0 he fun x => ?_
+  set p := ‖WithLp.toLp 2 (B *ᵥ x)‖
+  set q := ‖WithLp.toLp 2 x‖
+  have hp : 0 ≤ p := norm_nonneg _
+  have hq : 0 ≤ q := norm_nonneg _
+  have hre : RCLike.re (quadForm (Bᴴ * B - 1) x) = p ^ 2 - q ^ 2 := by
+    rw [quadForm_sub_left, quadForm_conjTranspose_mul_self, quadForm_one, map_sub,
+      RCLike.ofReal_re, RCLike.ofReal_re]
+  have h := (abs_re_quadForm_le (Bᴴ * B - 1) x).trans
+    (mul_le_mul_of_nonneg_right hB (sq_nonneg q))
+  rw [hre, abs_le] at h
+  rw [abs_le]
+  constructor <;> nlinarith [mul_nonneg hp hq, mul_nonneg he0 hq]
 
 /-- **A near-basis close to a frame up to a change of basis is close to a rotation of it**: let
 $\mathbf{U}, \mathbf{Q}' \in \Bbbk^{m \times r}$ have orthonormal columns, and

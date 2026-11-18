@@ -1087,8 +1087,7 @@ theorem roundedDecoupleWith_randomDecouplingRoutineContract_at {M : Machine ℝ}
     positivity
   have hEn : (1 + C) * S * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1) ≤ E := by
     rw [hEdef]; gcongr
-  have hgB : g / 2 / (16 * (nmax + 1) * (2 * B)) ≤ g / 2 / (16 * (n + 1) * (2 * B)) := by
-    gcongr
+  have hgB : g / 2 / (16 * (nmax + 1) * (2 * B)) ≤ g / 2 / (16 * (n + 1) * (2 * B)) := by gcongr
   have hc0 : 0 ≤ 1.002 * (1 - γ) := by nlinarith
   have htv0 : 0 ≤ tv := le_trans (by positivity) hthrω
   have hp1 : 0 < (1 - u) ^ 2 := by nlinarith

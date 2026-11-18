@@ -88,11 +88,10 @@ theorem shIterationWith_terminates_at {M : Machine ℝ} {I : Interp O Q ℝ} (hS
         ∃ Ls : List (Option (List GivensEntry)), Ls.length = k + 1 + (excNet ε).length ∧
           (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 1) ∧
           HoldsSlottedLog lg ns w (LL ++ Ls) [] m'.store) m := by
-  obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h10⟩ : a.1 < m.store.length ∧
-      rd.1 < m.store.length ∧ c.1 < m.store.length ∧ thr.1 < m.store.length ∧
-      wg.1 < m.store.length ∧ wr.1 < m.store.length ∧ ww.1 < m.store.length ∧
-      wp.1 < m.store.length ∧ g.1 < m.store.length ∧ f.1 < m.store.length := by
-    simpa [Mem.Live] using hl
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h10⟩ : a.1 < m.store.length ∧ rd.1 < m.store.length ∧
+      c.1 < m.store.length ∧ thr.1 < m.store.length ∧ wg.1 < m.store.length ∧
+      wr.1 < m.store.length ∧ ww.1 < m.store.length ∧ wp.1 < m.store.length ∧
+      g.1 < m.store.length ∧ f.1 < m.store.length := by simpa [Mem.Live] using hl
   have hlg : lg.1 < m.store.length := hlgl lg (by simp)
   change Writes .total I τ (Stmt.allocs [.const 2 * .var 2] _) _ _ _ m
   refine writes_allocs_preserving_post (ns := [2 * k]) rfl
@@ -105,12 +104,6 @@ theorem shIterationWith_terminates_at {M : Machine ℝ} {I : Interp O Q ℝ} (hS
   have hS0 : ∀ {z : ℕ × ℕ} {l : ℕ}, z.1 < L →
       Fp.Disj (Store.inBlock L 0 (2 * k)) (Store.inBlock z.1 z.2 l) :=
     fun hz => Fp.disj_inBlock_of_ne (by omega)
-  have hG0 : ∀ {z : ℕ × ℕ} {l : ℕ}, z.1 ≠ lg.1 →
-      Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w))) (Store.inBlock z.1 z.2 l) :=
-    fun hz => Fp.disj_inBlock_of_ne (Ne.symm hz)
-  have hfI : Fp.Disj (Store.inBlock f.1 f.2 1) _ := hio.mono le_sup_right le_rfl
-  have hAI : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) _ :=
-    hio.mono le_sup_left le_rfl
   refine Writes.in_frame (Writes.mono (F := Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
     Store.inBlock L 0 (2 * k) ⊔ Store.inBlock f.1 f.2 1 ⊔
       Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
@@ -127,9 +120,9 @@ theorem shIterationWith_terminates_at {M : Machine ℝ} {I : Interp O Q ℝ} (hS
       first | (simp only; omega) | exact hlgv _ (by simp)
   refine (regularizeWith_terminates_at (τ := τ) (s := (L, 0)) hS hL hNat hC hD hkn
     (hS0 h1).symm haf (hS0 h10)
-    (Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨hAI.mono le_rfl (by fp_sub),
+    (Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨hio.mono le_sup_left (by fp_sub),
       Fp.disj_sup_right.mpr ⟨Fp.disj_sup_right.mpr ⟨hS0 h2, hS0 h3⟩, hS0 h4⟩⟩,
-      hfI.mono le_rfl (by fp_sub)⟩)
+      hio.mono le_sup_right (by fp_sub)⟩)
     (by simp [Mem.Live, hLs]; omega) (hA.of_below hBelow h1) (hBelow.get_of h2 hrd)
     (hBelow.get_of h3 hc) (hBelow.get_of h4 hthr) (by simp [hsl])
     (by rw [(hBelow f.1 h10).1]; exact hrf) hSE (by simp [hLs]; omega)
@@ -137,12 +130,12 @@ theorem shIterationWith_terminates_at {M : Machine ℝ} {I : Interp O Q ℝ} (hS
     (by omega) hw (by simp [Mem.Live, hLs]; omega) hlgb).frame_seq_le rfl rfl
     (by simp [Mem.Live, hLs]; omega) (by fp_sub) ?_
   rintro m₁ hfr₁ ⟨⟨H₁, hA₁⟩, ⟨xs, hS₁⟩, ⟨x, hF₁, Ls₁, hLs₁, hpl₁, hlog₁⟩⟩
-  have hk : ∀ {z : ℕ × ℕ} {v : ℝ}, z.1 < L → z.1 ≠ lg.1 → Fp.Disj (Store.inBlock f.1 f.2 1)
-      (Store.inBlock z.1 z.2 1) → Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
-      (Store.inBlock z.1 z.2 1) → m.store.get z.1 z.2 = some v →
-      m₁.store.get z.1 z.2 = some v := fun hz hzl hf ha hv =>
+  have hk : ∀ {z : ℕ × ℕ} {v : ℝ}, z.1 < L → z.1 ≠ lg.1 → Fp.Disj (Store.inBlock a.1 a.2
+      (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1) (Store.inBlock z.1 z.2 1) →
+      m.store.get z.1 z.2 = some v → m₁.store.get z.1 z.2 = some v := fun hz hzl hd hv =>
     hfr₁.keep (Store.readsOnly_get _ _ _) (Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr
-      ⟨Fp.disj_sup_left.mpr ⟨ha, hS0 hz⟩, hf⟩, hG0 hzl⟩) (hBelow.get_of hz hv)
+      ⟨Fp.disj_sup_left.mpr ⟨hd.mono le_sup_left le_rfl, hS0 hz⟩, hd.mono le_sup_right le_rfl⟩,
+        Fp.disj_inBlock_of_ne hzl.symm⟩) (hBelow.get_of hz hv)
   refine writes_ite rfl rfl (hC.test_isZero (d := []) (x := f) hF₁) ?_
   split_ifs
   · have hsh := shStep_terminates (τ := τ) (s := (L, 0)) (LL := LL ++ Ls₁) hS hL hNat hC hQ hD hkq
@@ -150,15 +143,15 @@ theorem shIterationWith_terminates_at {M : Machine ℝ} {I : Interp O Q ℝ} (hS
       (Fp.disj_sup_right.mpr ⟨Fp.disj_sup_left.mpr ⟨(hS0 h1).symm, (hS0 h10).symm⟩, hio⟩ |>.mono
         le_rfl (by fp_sub))
       (by simp [Mem.Live, hfr₁.length_eq, hLs]; omega) hA₁ hS₁
-      (hk h5 (hlgv _ (by simp)) (hfI.mono le_rfl (by fp_sub)) (hAI.mono le_rfl (by fp_sub)) hwg)
-      (hk h6 (hlgv _ (by simp)) (hfI.mono le_rfl (by fp_sub)) (hAI.mono le_rfl (by fp_sub)) hwr)
-      (hk h7 (hlgv _ (by simp)) (hfI.mono le_rfl (by fp_sub)) (hAI.mono le_rfl (by fp_sub)) hww)
-      (hk h8 (hlgv _ (by simp)) (hfI.mono le_rfl (by fp_sub)) (hAI.mono le_rfl (by fp_sub)) hwp)
+      (hk h5 (hlgv _ (by simp)) (hio.mono le_rfl (by fp_sub)) hwg)
+      (hk h6 (hlgv _ (by simp)) (hio.mono le_rfl (by fp_sub)) hwr)
+      (hk h7 (hlgv _ (by simp)) (hio.mono le_rfl (by fp_sub)) hww)
+      (hk h8 (hlgv _ (by simp)) (hio.mono le_rfl (by fp_sub)) hwp)
       (hfr₁.keep (Store.readsOnly_readBlock _ _ _ _) (Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr
-        ⟨Fp.disj_sup_left.mpr ⟨hAI.mono le_rfl (by fp_sub), hS0 h9⟩,
-          hfI.mono le_rfl (by fp_sub)⟩, hG0 (hlgv _ (by simp))⟩)
+        ⟨Fp.disj_sup_left.mpr ⟨hio.mono le_sup_left (by fp_sub), hS0 h9⟩,
+          hio.mono le_sup_right (by fp_sub)⟩, Fp.disj_inBlock_of_ne (hlgv _ (by simp)).symm⟩)
         (hBelow.readBlock_of h9 hg))
-      (hk h4 (hlgv _ (by simp)) (hfI.mono le_rfl (by fp_sub)) (hAI.mono le_rfl (by fp_sub)) hthr)
+      (hk h4 (hlgv _ (by simp)) (hio.mono le_rfl (by fp_sub)) hthr)
       (by rw [hfr₁.len_eq, (hBelow f.1 h10).1]; exact hrf) hlog₁
       (by simp only [List.length_append, hLs₁]; omega) hw
       (by simp [Mem.Live, hfr₁.length_eq, hLs]; omega) fun b hb => by
@@ -173,10 +166,8 @@ theorem shIterationWith_terminates_at {M : Machine ℝ} {I : Interp O Q ℝ} (hS
     exact ⟨hA₂, x₂, hF₂, Ls₁ ++ Ls₂, by simp only [List.length_append]; omega, fun e he => by
       rw [slotEntries_append, List.mem_append] at he; exact he.elim (hpl₁ e) (hpl₂ e), hlog₂⟩
   · refine (Writes.skip ⟨⟨_, hA₁⟩, ⟨_, hF₁, Ls₁ ++ List.replicate (1 + (excNet ε).length) none,
-      by simp only [List.length_append, List.length_replicate]; omega,
-      by simpa using hpl₁, ?_⟩⟩).mono bot_le fun _ _ h => h
-    rw [← List.append_assoc]
-    exact hlog₁.rejects (by simp only [List.length_append]; omega)
+      by simp; omega, by simpa using hpl₁, by
+        rw [← List.append_assoc]; exact hlog₁.rejects (by simp; omega)⟩⟩).mono bot_le fun _ _ h => h
 
 /-- One iteration terminates on any matrix: on a scalar machine with exact comparisons,
 index literals, index conversion and exact natural literals up to $n + 1$, a `SmallEig` kernel
@@ -316,7 +307,7 @@ private theorem roundedDecoupleExit_terminates_log {M : Machine ℝ} {I : Interp
   refine (roundedDecoupleExit_terminates hL hC hctx hW hx).mono le_rfl ?_
   rintro μ' hfr ⟨hF, H', hW'⟩
   exact ⟨hF, H', hW', Ls, [], hLs, by simpa using hpl,
-    hfr.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (Fp.disj_inBlock_of_ne hfl.symm) hlog⟩
+    hfr.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (Fp.disj_inBlock_of_ne hfl) hlog⟩
 
 omit [Has EigenvalueKernelOp O] in
 /-- The decoupling loop terminates on any matrix: on a scalar machine with exact comparisons,
@@ -370,7 +361,7 @@ theorem roundedDecoupleLoopWith_terminates {M : Machine ℝ} {I : Interp O Q ℝ
     ⊔ Store.inBlock f.1 f.2 1 ⊔ Store.inBlock L 0 5 ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * ws)))
     (fun _ _ => le_rfl) (Store.inBlock f.1 f.2 1) Inv _
       ⟨hc₁, hW₁, hx₁, hlgl.congr hfr₁.length_eq, [], by simp, by simp [slotEntries],
-        hfr₁.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (Fp.disj_inBlock_of_ne hlgL') hlog⟩
+        hfr₁.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (Fp.disj_inBlock_of_ne hlgL'.symm) hlog⟩
       ?_ ?_).mono (by fp_sub) fun _ _ h => h
   · rintro i hi μ' - ⟨hc, hW', ⟨x, hx⟩, hlgl', Ls, hLs, hplLs, hlog'⟩
     refine ⟨_, (Interp.testAt_eq (a := [(L, 3)]) rfl rfl).trans (hC.test_isZero hx), ?_⟩
@@ -380,6 +371,8 @@ theorem roundedDecoupleLoopWith_terminates {M : Machine ℝ} {I : Interp O Q ℝ
       obtain ⟨H', hW'⟩ := hW'
       have hget : ∀ j < 10, μ'.store.get p.1 (p.2 + j) = some (ps.getD j 0) :=
         fun j hj => Store.get_of_readBlock hp (by omega) 0
+      have hfl : ((excNet ε).flatMap fun z => [z.re, z.im]).length = 2 * (excNet ε).length := by
+        simp [List.length_flatMap, mul_comm]
       have hnet' : μ'.store.readBlock p.1 (p.2 + 10) (2 * (excNet ε).length) =
           some ((excNet ε).flatMap fun z => [z.re, z.im]) := by
         rw [Store.readBlock_sub hp (by omega), hnet, List.take_append_of_le_length (by omega),
@@ -408,14 +401,14 @@ theorem roundedDecoupleLoopWith_terminates {M : Machine ℝ} {I : Interp O Q ℝ
       refine hit.frame_seq_le rfl rfl (by
         have := hl; have := hlgl'; simp only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false,
           forall_eq_or_imp, forall_eq] at * ; tauto) (by fp_sub) ?_
-      rintro μ₂ hfr₂ ⟨hW₂, -, Ls₂, hLs₂, hpl₂, hlog₂⟩
+      rintro μ₂ hfr₂ ⟨hW₂, -, -, Ls₂, hLs₂, hpl₂, hlog₂⟩
       have hc₂ := hc.of_eqOff_log hpl (by fp_sub) hfr₂
       refine ((roundedDecoupleScan_terminates (τ := τ) hS hL hNat hC hkn hps0 hc₂
         hW₂).in_frame rfl rfl (hc₂.2.2.2.1.mono (by simp))).mono (by fp_sub) ?_
       rintro μ₃ hfr₃ ⟨hc₃, hW₃, hx₃⟩
       refine ⟨hc₃, hW₃, hx₃, (hlgl'.congr hfr₂.length_eq).congr hfr₃.length_eq, Ls ++ Ls₂,
         by simp only [List.length_append, hLs, hLs₂]; ring, ?_,
-        hfr₃.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (Fp.disj_inBlock_of_ne hlgL') hlog₂⟩
+        hfr₃.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (Fp.disj_inBlock_of_ne hlgL'.symm) hlog₂⟩
       intro e he
       rw [slotEntries_append, List.mem_append] at he
       exact he.elim (hplLs e) (hpl₂ e)

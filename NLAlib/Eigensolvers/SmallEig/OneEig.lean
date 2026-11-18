@@ -752,7 +752,8 @@ theorem distSpecAccurateOn_of {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (
     lt_of_le_of_ne (specNorm_nonneg H) (Ne.symm (mt specNorm_eq_zero_iff.mp hH0))
   have e : (2 + 2 * (10 * S / specNorm H)) * specNorm H = 2 * specNorm H + 20 * S := by
     field_simp; ring
-  exact distSpec_accuracy hS hL hM hCmp hH hH0 hV hHV hκ hp hw (C := 10 * S / specNorm H)
+  exact distSpec_accuracy hS hL hM hCmp hNat le_rfl hH hH0 hV hHV hκ hp hw
+    (C := 10 * S / specNorm H)
     (by positivity) (by rwa [div_mul_cancel₀ _ hN.ne']) hη₁ hzd hmq hm hnu hum (by rwa [e]) hl
     hHs hsp htau hth hts
 

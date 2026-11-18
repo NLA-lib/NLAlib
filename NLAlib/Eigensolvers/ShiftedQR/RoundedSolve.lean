@@ -103,6 +103,17 @@ def RoundedDecouplingRoutineContract (fails : Prop) (k F T : ℕ) (ps : List ℝ
             IsUpperHessenberg H' ∧ (∃ i : Fin n, n ≤ (i : ℕ) + k ∧ ‖H' i.succ i.castSucc‖ ≤ ω) ∧
             HoldsMatrix w₀ H' μ'.store)) μ
 
+section Leaf
+
+variable [Has EigenvalueKernelOp O]
+
+/-- The exact small-eigenvalue kernel as a routine: `[d] (Bk) → (Ev)`. -/
+def smallEigLeaf : Impl O Q := opsImpl% [d] (Bk) → (Ev) {
+  call (Has.inj EigenvalueKernelOp.smallEig) [d] (Bk) → (Ev)
+}
+
+end Leaf
+
 section Program
 
 variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q]

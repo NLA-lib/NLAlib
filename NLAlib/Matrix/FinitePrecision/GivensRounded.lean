@@ -315,8 +315,8 @@ private lemma stdModel_sub_combine {u : ℝ} {M : Machine ℝ} (hM : StdModel u 
   nlinarith
 
 /-- The coefficient of the two rounded levels, $(1 + u)^3 - 1 = 3u + 3u^2 + u^3$, lies in
-$[0, 7u/2]$ for $0 \le u \le 1/100$. -/
-private lemma linearWords_coeff_bounds {u : ℝ} (hu : 0 ≤ u) (hu' : u ≤ 1 / 100) :
+$[0, 7u/2]$ for $0 \le u \le 1/8$. -/
+private lemma linearWords_coeff_bounds {u : ℝ} (hu : 0 ≤ u) (hu' : u ≤ 1 / 8) :
     0 ≤ (1 + u) * (1 + ((1 + u) * (1 + u) - 1)) - 1 ∧
       (1 + u) * (1 + ((1 + u) * (1 + u) - 1)) - 1 ≤ 7 / 2 * u := by
   have hE : (1 + u) * (1 + ((1 + u) * (1 + u) - 1)) - 1 = 3 * u + 3 * u ^ 2 + u ^ 3 := by ring
@@ -360,10 +360,10 @@ private lemma abs_mul_add_abs_mul_le (p q r s : ℝ) :
 
 /-- **Rounded complex linear combination**: the pair computed by `NLAlib.Ops.Pair.linearWords`
 from the pairs of $a, b, x, y$ is within $5\boldsymbol{u}(\lvert a\rvert\lvert x\rvert +
-\lvert b\rvert\lvert y\rvert)$ of $a x + b y$, for $0 \le \boldsymbol{u} \le 1/100$
+\lvert b\rvert\lvert y\rvert)$ of $a x + b y$, for $0 \le \boldsymbol{u} \le 1/8$
 (each real component carries at most three roundings). [Higham2002, Lemma 3.5]. -/
 theorem Ops.StdModel.norm_linearWords_sub_le {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M)
-    (hu : 0 ≤ u) (hu' : u ≤ 1 / 100) (a b x y : ℂ) :
+    (hu : 0 ≤ u) (hu' : u ≤ 1 / 8) (a b x y : ℂ) :
     ‖(⟨(Pair.linearWords M (a.re, a.im) (b.re, b.im) (x.re, x.im) (y.re, y.im)).1,
         (Pair.linearWords M (a.re, a.im) (b.re, b.im) (x.re, x.im) (y.re, y.im)).2⟩ : ℂ) -
         (a * x + b * y)‖ ≤ 5 * u * (‖a‖ * ‖x‖ + ‖b‖ * ‖y‖) := by
@@ -532,7 +532,7 @@ theorem Ops.StdModel.norm_rotatePair_sub_le {M : Machine ℝ} {u : ℝ} (hM : St
         ((givensCoeffs p q).1 * x + (givensCoeffs p q).2 * y)‖ ≤
       12 * u * Real.sqrt (‖x‖ ^ 2 + ‖y‖ ^ 2) := by
   obtain ⟨hc1, hc2⟩ := norm_roundedGivensCoeffs_sub_le hM hu hu' p q
-  have hL := norm_linearWords_sub_le hM hu hu' (roundedGivensCoeffs M p q).1
+  have hL := norm_linearWords_sub_le hM hu (hu'.trans (by norm_num)) (roundedGivensCoeffs M p q).1
     (roundedGivensCoeffs M p q).2 x y
   have hU := norm_givensCoeffs_fst_sq_add p q
   set a := (roundedGivensCoeffs M p q).1
@@ -658,8 +658,8 @@ theorem Ops.StdModel.norm_linearWords_rotation_sub_le {M : Machine ℝ} {u : ℝ
           (Pair.linearWords M ((-star b).re, (-star b).im) ((star a).re, (star a).im)
             (x.re, x.im) (y.re, y.im)).2⟩ : ℂ) - (-star β * x + star α * y)‖ ^ 2) ≤
       12 * u * Real.sqrt (‖x‖ ^ 2 + ‖y‖ ^ 2) := by
-  have he₁ := hM.norm_linearWords_sub_le hu hu' a b x y
-  have he₂ := hM.norm_linearWords_sub_le hu hu' (-star b) (star a) x y
+  have he₁ := hM.norm_linearWords_sub_le hu (hu'.trans (by norm_num)) a b x y
+  have he₂ := hM.norm_linearWords_sub_le hu (hu'.trans (by norm_num)) (-star b) (star a) x y
   rw [norm_neg, norm_star, norm_star] at he₂
   generalize (⟨(Pair.linearWords M (a.re, a.im) (b.re, b.im) (x.re, x.im) (y.re, y.im)).1,
     (Pair.linearWords M (a.re, a.im) (b.re, b.im) (x.re, x.im) (y.re, y.im)).2⟩ : ℂ) = L₁ at he₁ ⊢

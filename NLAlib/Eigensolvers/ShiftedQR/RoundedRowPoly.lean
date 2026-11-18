@@ -86,7 +86,7 @@ theorem norm_rowEntryWord_sub_le {M : Machine ℝ} {u : ℝ} (hM : StdModel u id
     set A := ∑ j ∈ Finset.range l, ‖a j‖ * ‖x j‖
     have hA : 0 ≤ A := Finset.sum_nonneg fun _ _ => by positivity
     have hSA : ‖S‖ ≤ A := (norm_sum_le _ _).trans (by simp only [norm_mul]; exact le_rfl)
-    have hG := hM.norm_linearWords_sub_le hu hu' (a l) 1 (x l) c
+    have hG := hM.norm_linearWords_sub_le hu (hu'.trans (by norm_num)) (a l) 1 (x l) c
     have hpair : ((c.re, c.im) : ℝ × ℝ) = rowEntryWord M (1, 0) (0, 0) a x l := rfl
     have hone : (((1 : ℂ).re, (1 : ℂ).im) : ℝ × ℝ) = (1, 0) := by simp
     rw [hpair, hone, norm_one, one_mul, one_mul] at hG

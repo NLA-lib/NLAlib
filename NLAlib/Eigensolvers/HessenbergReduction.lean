@@ -12,6 +12,7 @@ public import NLAlib.Matrix.FinitePrecision.GivensPrograms
 public import NLAlib.Matrix.FinitePrecision.GivensRounded
 public import NLAlib.Matrix.Perturbation.UnitarySimilarity
 public import NLAlib.Ops.Logic.Functional
+public import NLAlib.Matrix.FinitePrecision.GivensLog
 
 /-!
 # Bottom-up reduction to Hessenberg form by rounded rotations
@@ -29,7 +30,10 @@ over rounded scalar arithmetic, and its backward error is proved. The exact top-
 ## Main definitions
 
 * `NLAlib.reduceLastStep`, `NLAlib.hessenbergReduceLast`: one step and the program
-  `[N] (A) → (A)`.
+  `[N, w, j0] (A) → (A, Lg)`, which records its rotations in a slotted log
+  (`NLAlib.HoldsSlottedLog`), one slot per round.
+* `NLAlib.reduceLastStepEntry`, `NLAlib.hessenbergReduceLastSlots`: the entries it records.
+* `NLAlib.hessenbergReduceQ`: the reduction with the accumulated unitary, `[N] (A, U) → (A, U)`.
 * `NLAlib.hessenbergReduceLastWord`: the matrix it stores on a machine.
 
 ## Main results
@@ -51,38 +55,46 @@ open Ops ShiftedQR
 
 section Program
 
-variable {O Q : Type} [Has ScalarOp O] [Has CmpTst Q]
+variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
 
-/-- **One step of the bottom-up reduction** at the row $r$ and the columns $c, c + 1$: the pair
-$(\mathbf{A}_{r, c+1}, -\mathbf{A}_{r, c})$ into `Uv`, its rounded Givens coefficients into
-`Cf` (`NLAlib.coefficients`), then the rotation of the columns $c, c + 1$ and of the
-rows $c, c + 1$ of `A` in place. The interface is `[N, r, c] (A) → (A, Cf, Uv)`.
+/-- **One step of the bottom-up reduction** at the row $r$ and the columns $c, c + 1$, recording
+its rotation: the pair $(\mathbf{A}_{r, c+1}, -\mathbf{A}_{r, c})$ into `Uv`, the entry
+$(c, \mathbf{A}_{r,c+1}, -\mathbf{A}_{r,c})$ as entry $i$ of slot $j$ of the slotted log `Lg` of
+slot width $w$ (`NLAlib.slottedLogWrite`), its rounded Givens coefficients into `Cf`
+(`NLAlib.coefficients`), then the rotation of the columns $c, c + 1$ and of the rows $c, c + 1$ of
+`A` in place. The interface is `[N, r, c, w, j, i] (A) → (A, Cf, Uv, Lg)`.
 Algorithm: hessenberg-reduction -/
-def reduceLastStep : Impl O Q := opsImpl% [N, r, c] (A) → (A, Cf, Uv) {
+def reduceLastStep : Impl O Q := opsImpl% [N, r, c, w, j, i] (A) → (A, Cf, Uv, Lg) {
   call (Has.inj ScalarOp.copy) [] (A[2 * ((c + 1) * N + r)]) → (Uv);
   call (Has.inj ScalarOp.copy) [] (A[2 * ((c + 1) * N + r) + 1]) → (Uv[1]);
   call (Has.inj ScalarOp.neg) [] (A[2 * (c * N + r)]) → (Uv[2]);
   call (Has.inj ScalarOp.neg) [] (A[2 * (c * N + r) + 1]) → (Uv[3]);
+  run (slottedLogWrite (O := O) (Q := Q)).body [w, j, i, c] (Uv, Uv[2], Lg);
   run (coefficients (Op := O) (Tst := Q)).body [] (Uv, Uv[2], Cf, Cf[2]);
   run (rotateColumns (Op := O) (Tst := Q)).body [N, c] (A, Cf, Cf[2], A);
   run (rotateRows (Op := O) (Tst := Q)).body [N, c] (A, Cf, Cf[2], A)
 }
 
-/-- **The bottom-up Hessenberg reduction** ([BanksGarzaVargasSrivastava2025, Definition 5.1],
-as a program): for the rows $r = N - 1, \dots, 2$ (round $i$ has $r = N - 1 - i$) and the columns
-$c = 0, \dots, r - 2$, the step `NLAlib.reduceLastStep`: the Givens coefficients of the pair
-$(\mathbf{A}_{r, c+1}, -\mathbf{A}_{r, c})$, then the rotation of the columns $c, c + 1$ (which
-zeros $\mathbf{A}_{r,c}$) and of the rows $c, c + 1$; finally the entries below the subdiagonal
-are written as zeros. The interface is `[N] (A) → (A)`; the coefficients and the pair are
-scoped scratch.
+/-- **The bottom-up Hessenberg reduction, recording its rotations**
+([BanksGarzaVargasSrivastava2025, Definition 5.1], as a program): for the rows
+$r = N - 1, \dots, 2$ (round $i$ has $r = N - 1 - i$) and the columns $c = 0, \dots, r - 2$, the
+step `NLAlib.reduceLastStep`: the Givens coefficients of the pair
+$(\mathbf{A}_{r, c+1}, -\mathbf{A}_{r, c})$, recorded as entry $c$ of slot $j_0 + i$ of the
+slotted log `Lg` of slot width $w \ge N - 2$, then the rotation of the columns $c, c + 1$ (which
+zeros $\mathbf{A}_{r,c}$) and of the rows $c, c + 1$; each round's slot is validated at its end;
+finally the entries below the subdiagonal are written as zeros. The $N - 2$ slots
+$j_0, \dots, j_0 + N - 3$ are written; the log is not opened here. The interface is
+`[N, w, j0] (A) → (A, Lg)`; the coefficients and the pair are scoped scratch.
 Algorithm: hessenberg-reduction -/
-def hessenbergReduceLast : Impl O Q := opsImpl% [N] (A) → (A) {
+def hessenbergReduceLast : Impl O Q := opsImpl% [N, w, j0] (A) → (A, Lg) {
   let Cf ← alloc 4;
   let Uv ← alloc 4;
   for i < N - 2 {
     for c < N - 2 - i {
-      run (reduceLastStep (O := O) (Q := Q)).body [N, N - 1 - i, c] (A, A, Cf, Uv)
-    }
+      run (reduceLastStep (O := O) (Q := Q)).body [N, N - 1 - i, c, w, j0 + i, c]
+        (A, A, Cf, Uv, Lg)
+    };
+    run (slottedLogValidate (O := O) (Q := Q)).body [w, j0 + i] (Lg)
   };
   run (clearBelowSubdiagonal (Op := O) (Tst := Q)).body [N] (A)
 }
@@ -112,163 +124,74 @@ noncomputable def hessenbergReduceLastWord (M : Machine ℝ) {N : ℕ}
     (fun X ic => reduceLastStepWord M (N - 1 - ic.1) ic.2 X) A
   Matrix.of fun i j => if (j : ℕ) + 1 < i then ⟨M.lit 0, M.lit 0⟩ else B i j
 
+/-- The log entry recorded by one step of the reduction on the machine `M`: the plane $c$ and the
+coefficient inputs $(\mathbf{A}_{r,c+1}, \mathrm{fl}(-\mathbf{A}_{r,c}))$; the zero entry when
+$c + 1$ or $r$ is out of range. -/
+noncomputable def reduceLastStepEntry (M : Machine ℝ) {N : ℕ} (r c : ℕ)
+    (A : Matrix (Fin N) (Fin N) ℂ) : GivensEntry :=
+  if h : c + 1 < N ∧ r < N then
+    (c, A ⟨r, h.2⟩ ⟨c + 1, h.1⟩,
+      ⟨M.neg (A ⟨r, h.2⟩ ⟨c, by omega⟩).re, M.neg (A ⟨r, h.2⟩ ⟨c, by omega⟩).im⟩)
+  else (0, 0, 0)
+
+/-- The slots recorded by `NLAlib.hessenbergReduceLast` on the machine `M`: slot $i$ holds the
+entries of the steps of round $i$, in the order of the program. -/
+noncomputable def hessenbergReduceLastSlots (M : Machine ℝ) {N : ℕ}
+    (A : Matrix (Fin N) (Fin N) ℂ) : List (List GivensEntry) :=
+  ((List.range (N - 2)).foldl
+    (fun (st : Matrix (Fin N) (Fin N) ℂ × List (List GivensEntry)) i =>
+      let r := (List.range (N - 2 - i)).foldl
+        (fun (p : Matrix (Fin N) (Fin N) ℂ × List GivensEntry) c =>
+          (reduceLastStepWord M (N - 1 - i) c p.1,
+            p.2 ++ [reduceLastStepEntry M (N - 1 - i) c p.1])) (st.1, [])
+      (r.1, st.2 ++ [r.2])) (A, [])).2
+
 section Theorems
 
-variable {O Q : Type} [Has ScalarOp O] [Has CmpTst Q]
+variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
 
 /-- One step of the reduction (`NLAlib.reduceLastStep`) on any scalar machine with exact
 comparisons stores the machine step `NLAlib.reduceLastStepWord` in place, for $c + 1 < N$ and
-$r < N$, and writes only the matrix and its two scratch blocks, in buffers of their own. -/
+$r < N$, appends its entry `NLAlib.reduceLastStepEntry` to the pending slot of the log, and writes
+only the matrix, its two scratch blocks and the log, in buffers of their own. The plane is an
+exact natural (`hNat` up to `nmax ≥ c`). -/
 theorem reduceLastStep_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
-    (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {N r c : ℕ} (hc : c + 1 < N) (hr : r < N)
-    {a cf uv : ℕ × ℕ} {A : Matrix (Fin N) (Fin N) ℂ} (hA : HoldsMatrix a A m.store)
+    (hC : IsCmp id I) (hL : IsIndexLit M I) {nmax : ℕ} (hNat : IsExactNatLit id M nmax)
+    {τ : Tape ℝ} {m : Mem ℝ} {N r c : ℕ} (hc : c + 1 < N) (hr : r < N) (hcn : c ≤ nmax)
+    {a cf uv lg : ℕ × ℕ} {A : Matrix (Fin N) (Fin N) ℂ} (hA : HoldsMatrix a A m.store)
+    {ns w : ℕ} {L : List (Option (List GivensEntry))} {P : List GivensEntry}
+    (hlog : HoldsSlottedLog lg ns w L P m.store) (hj : L.length < ns) (hw : P.length < w)
     (hcf : cf.2 + 4 ≤ m.store.len cf.1) (huv : uv.2 + 4 ≤ m.store.len uv.1)
-    (hac : a.1 ≠ cf.1) (hau : a.1 ≠ uv.1) :
-    Writes .total I τ (reduceLastStep (O := O) (Q := Q)).body (Env.frame [N, r, c] [a, a, cf, uv])
+    (hac : a.1 ≠ cf.1) (hau : a.1 ≠ uv.1) (hlu : lg.1 ≠ uv.1) (hlc : lg.1 ≠ cf.1)
+    (hla : lg.1 ≠ a.1) (hl : m.Live [lg]) :
+    Writes .total I τ (reduceLastStep (O := O) (Q := Q)).body
+      (Env.frame [N, r, c, w, L.length, P.length] [a, a, cf, uv, lg])
       (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Store.inBlock cf.1 cf.2 4 ⊔
-        Store.inBlock uv.1 uv.2 4)
-      (fun m' => m'.pos = m.pos ∧ HoldsMatrix a (reduceLastStepWord M r c A) m'.store) m := by
-  let i : Fin N := ⟨c, by omega⟩
-  let j : Fin N := ⟨c + 1, hc⟩
-  let k : Fin N := ⟨r, hr⟩
-  let s : ℕ × ℕ := (cf.1, cf.2 + 2)
-  have hal : a.1 < m.store.length := Store.lt_length_of_get (hA.get_re k i)
-  have hcl : cf.1 < m.store.length := Store.lt_length_of_lt_len (by omega : cf.2 < _)
-  have hul : uv.1 < m.store.length := Store.lt_length_of_lt_len (by omega : uv.2 < _)
-  have hU : ∀ t, Fp.Disj (Store.inBlock uv.1 (uv.2 + t) 1)
-      (Store.inBlock a.1 a.2 (2 * (N * N))) := fun _ => Fp.disj_inBlock_of_ne hau.symm
-  have hUle : ∀ t < 4, Store.inBlock uv.1 (uv.2 + t) 1 ≤ Store.inBlock a.1 a.2 (2 * (N * N)) ⊔
-      Store.inBlock cf.1 cf.2 4 ⊔ Store.inBlock uv.1 uv.2 4 := fun t ht =>
-    (Fp.inBlock_le_inBlock (by omega) (by omega)).trans le_sup_right
-  unfold reduceLastStep
-  refine (writes_call_un (hS .copy) rfl rfl trivial (hA.get_re k j) rfl
-    (by omega)).seq_le (hUle 0 (by omega)) ?_
-  rintro m₁ hfr₁ ⟨hp₁, hu₀⟩
-  have hA₁ := hA.of_eqOff hfr₁ (hU 0)
-  refine (writes_call_un (hS .copy) rfl rfl trivial (hA₁.get_im k j) rfl
-    (by dsimp only; rw [hfr₁.len_eq]; omega)).seq_le (hUle 1 (by omega)) ?_
-  rintro m₂ hfr₂ ⟨hp₂, hu₁⟩
-  have hA₂ := hA₁.of_eqOff hfr₂ (hU 1)
-  refine (writes_call_un (hS .neg) rfl rfl trivial (hA₂.get_re k i) rfl
-    (by dsimp only; rw [hfr₂.len_eq, hfr₁.len_eq]; omega)).seq_le (hUle 2 (by omega)) ?_
-  rintro m₃ hfr₃ ⟨hp₃, hv₀⟩
-  have hA₃ := hA₂.of_eqOff hfr₃ (hU 2)
-  refine (writes_call_un (hS .neg) rfl rfl trivial (hA₃.get_im k i) rfl
-    (by dsimp only; rw [hfr₃.len_eq, hfr₂.len_eq, hfr₁.len_eq]; omega)).seq_le
-    (hUle 3 (by omega)) ?_
-  rintro m₄ hfr₄ ⟨hp₄, hv₁⟩
-  have hUU : ∀ {t t' : ℕ}, t < t' → Fp.Disj (Store.inBlock uv.1 (uv.2 + t) 1)
-      (Store.inBlock uv.1 (uv.2 + t') 1) := fun h => Fp.disj_inBlock_of_le (by omega)
-  have hu₀' := hfr₄.keep (Store.readsOnly_get _ _ _) (hUU (t := 0) (by omega)).symm
-    (hfr₃.keep (Store.readsOnly_get _ _ _) (hUU (t := 0) (by omega)).symm
-      (hfr₂.keep (Store.readsOnly_get _ _ _) (hUU (t := 0) (by omega)).symm hu₀))
-  have hu₁' := hfr₄.keep (Store.readsOnly_get _ _ _) (hUU (t := 1) (by omega)).symm
-    (hfr₃.keep (Store.readsOnly_get _ _ _) (hUU (t := 1) (by omega)).symm hu₁)
-  have hv₀' := hfr₄.keep (Store.readsOnly_get _ _ _) (hUU (t := 2) (by omega)).symm hv₀
-  have hA₄ := hA₃.of_eqOff hfr₄ (hU 3)
-  have hlen₄ : m₄.store.length = m.store.length := by
-    have := hfr₁.length_eq; have := hfr₂.length_eq; have := hfr₃.length_eq
-    have := hfr₄.length_eq; omega
-  have hcf₄ : cf.2 + 4 ≤ m₄.store.len cf.1 := by
-    rw [hfr₄.len_eq, hfr₃.len_eq, hfr₂.len_eq, hfr₁.len_eq]; exact hcf
-  have hcsub : Store.inBlock cf.1 cf.2 2 ≤ Store.inBlock cf.1 cf.2 4 :=
-    Fp.inBlock_le_inBlock le_rfl (by omega)
-  have hssub : Store.inBlock s.1 s.2 2 ≤ Store.inBlock cf.1 cf.2 4 :=
-    Fp.inBlock_le_inBlock (by dsimp [s]; omega) (by dsimp [s]; omega)
-  have hcf4 : Fp.blocks [cf, s] [2, 2] ≤ Store.inBlock cf.1 cf.2 4 := by
-    simpa only [Fp.blocks, sup_bot_eq] using sup_le hcsub hssub
-  have hcfG : Fp.blocks [cf, s] [2, 2] ≤ Store.inBlock a.1 a.2 (2 * (N * N)) ⊔
-      Store.inBlock cf.1 cf.2 4 ⊔ Store.inBlock uv.1 uv.2 4 :=
-    hcf4.trans (le_sup_right.trans le_sup_left)
-  refine (coefficients_writes_word (τ := τ) (m := m₄) (a := uv) (b := (uv.1, uv.2 + 2))
-    (c := cf) (s := s) (u := A k j) (v := ⟨M.neg (A k i).re, M.neg (A k i).im⟩) hS hC
-    (Fp.disj_inBlock_of_le le_rfl) hu₀' hu₁' hv₀' hv₁ (by omega)
-    (by dsimp [s]; omega)).frame_seq_le rfl rfl (by simp [Mem.Live, hlen₄, s, hcl, hul]) hcfG ?_
-  rintro m₅ hfr₅ ⟨hp₅, hcs₅⟩
-  have hc₅ := (Mem.readBlocks_cons_iff.mp hcs₅).1
-  have hs₅ := (Mem.readBlocks_cons_iff.mp (Mem.readBlocks_cons_iff.mp hcs₅).2).1
-  have hAC : Fp.Disj (Store.inBlock a.1 a.2 (2 * (N * N))) (Store.inBlock cf.1 cf.2 4) :=
-    Fp.disj_inBlock_of_ne hac
-  have hA₅ := hA₄.of_eqOff hfr₅ (hAC.symm.mono hcf4 le_rfl)
-  refine (rotateColumns_writes_word (τ := τ) (k := c) hS hc hA₅ hc₅ hs₅ (hAC.mono le_rfl hcsub)
-    (hAC.mono le_rfl hssub)).frame_seq_le rfl rfl
-    (by have := hfr₅.length_eq; simp [Mem.Live, s]; omega) (le_sup_left.trans le_sup_left) ?_
-  rintro m₆ hfr₆ ⟨hp₆, hA₆⟩
-  have hc₆ := hfr₆.keep (Store.readsOnly_readBlock _ _ _ _) (hAC.mono le_rfl hcsub) hc₅
-  have hs₆ := hfr₆.keep (Store.readsOnly_readBlock _ _ _ _) (hAC.mono le_rfl hssub) hs₅
-  refine ((rotateRows_writes_word (τ := τ) (k := c) hS hc hA₆ hc₆ hs₆ (hAC.mono le_rfl hcsub)
-    (hAC.mono le_rfl hssub)).in_frame rfl rfl
-    (by have := hfr₅.length_eq; have := hfr₆.length_eq; simp [Mem.Live, s]; omega)).mono
-    (le_sup_left.trans le_sup_left) ?_
-  rintro m₇ - ⟨hp₇, hA₇⟩
-  refine ⟨hp₇.trans (hp₆.trans (hp₅.trans (hp₄.trans (hp₃.trans (hp₂.trans hp₁))))), ?_⟩
-  unfold reduceLastStepWord
-  rw [dif_pos ⟨hc, hr⟩]
-  exact hA₇
+        Store.inBlock uv.1 uv.2 4 ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (fun m' => m'.pos = m.pos ∧ HoldsMatrix a (reduceLastStepWord M r c A) m'.store ∧
+        HoldsSlottedLog lg ns w L (P ++ [reduceLastStepEntry M r c A]) m'.store) m :=
+  sorry
 
 /-- `NLAlib.hessenbergReduceLast` on any scalar machine with exact comparisons stores the machine
-evaluation `NLAlib.hessenbergReduceLastWord` of the matrix in place, writes only the matrix, and
-reads no tape. -/
+evaluation `NLAlib.hessenbergReduceLastWord` of the matrix in place, closes the $N - 2$ slots
+`NLAlib.hessenbergReduceLastSlots` (each accepted) of the log after its closed slots `L`, writes
+only the matrix and the log, and reads no tape. The planes and the valid words are exact
+naturals (`hNat` up to `nmax`, with $N \le n_{\max} + 1$ and $1 \le n_{\max}$). -/
 theorem hessenbergReduceLast_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
-    (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {N : ℕ} {a : ℕ × ℕ}
-    {A : Matrix (Fin N) (Fin N) ℂ} (hl : m.Live [a]) (hA : HoldsMatrix a A m.store) :
-    Writes .total I τ (hessenbergReduceLast (O := O) (Q := Q)).body (Env.frame [N] [a, a])
-      (Store.inBlock a.1 a.2 (2 * (N * N)))
-      (fun m' => m'.pos = m.pos ∧ HoldsMatrix a (hessenbergReduceLastWord M A) m'.store) m := by
-  have hal : a.1 < m.store.length := hl a (by simp)
-  set step : Matrix (Fin N) (Fin N) ℂ → ℕ × ℕ → Matrix (Fin N) (Fin N) ℂ :=
-    fun X ic => reduceLastStepWord M (N - 1 - ic.1) ic.2 X with hstep
-  unfold hessenbergReduceLast
-  change Writes .total I τ (Stmt.allocs [.const 4, .const 4] _) _ _ _ m
-  refine writes_allocs_preserving_post (ns := [4, 4]) rfl
-    (fun hBelow ⟨hp, hW⟩ => ⟨hp, hW.of_below hBelow hal⟩) ?_
-  intro s₁ hlen hlens hBelow
-  set L := m.store.length with hLdef
-  simp only [List.length_cons, List.length_nil] at hlen
-  set G := Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Store.inBlock L 0 4 ⊔
-    Store.inBlock (L + 1) 0 4 with hG
-  set St : List (ℕ × ℕ) → Mem ℝ → Prop := fun ps μ => μ.pos = m.pos ∧
-    μ.store.length = L + 2 ∧ μ.store.len L = 4 ∧ μ.store.len (L + 1) = 4 ∧
-    HoldsMatrix a (ps.foldl step A) μ.store with hSt
-  have hround : ∀ (ps : List (ℕ × ℕ)) (i c : ℕ), i < N - 2 → c < N - 2 - i → ∀ μ, St ps μ →
-      Writes .total I τ (reduceLastStep (O := O) (Q := Q)).body
-        (Env.frame [N, N - 1 - i, c] [a, a, (L, 0), (L + 1, 0)]) G
-        (St (ps ++ [(i, c)])) μ := by
-    rintro ps i c hi hc μ ⟨hp, hlen', hL0, hL1, hW⟩
-    refine (reduceLastStep_writes_word hS hC (by omega) (by omega) hW (by simp [hL0])
-      (by simp [hL1]) (by simp; omega) (by simp; omega)).mono le_rfl ?_
-    rintro μ' hfr ⟨hp', hW'⟩
-    refine ⟨hp'.trans hp, by have := hfr.length_eq; omega, by rw [hfr.len_eq, hL0],
-      by rw [hfr.len_eq, hL1], ?_⟩
-    rw [List.foldl_append]
-    exact hW'
-  have hlive : ∀ {μ : Mem ℝ}, μ.store.length = L + 2 → μ.Live [a, a, (L, 0), (L + 1, 0)] :=
-    fun h => by simp [Mem.Live, h]; omega
-  have hstart : St [] ⟨s₁, m.pos⟩ :=
-    ⟨rfl, by omega, by simpa using hlens 0 (by simp), by simpa using hlens 1 (by simp),
-      hA.of_below hBelow hal⟩
-  refine (writes_loop (N := N - 2) rfl (fun _ => G) (fun _ _ => le_rfl)
-    (fun i μ => St ((List.range i).flatMap fun i =>
-      (List.range (N - 2 - i)).map fun c => (i, c)) μ) (by simpa using hstart) ?_).seq_le
-    (sup_le (sup_le le_sup_left fun b x hb => Or.inr (hb.1 ▸ le_rfl))
-      fun b x hb => Or.inr (hb.1 ▸ Nat.le_succ L)) ?_
-  · intro i hi μ _ hμ
-    refine (writes_loop (N := N - 2 - i) rfl (fun _ => G) (fun _ _ => le_rfl)
-      (fun c μ' => St (((List.range i).flatMap fun i =>
-        (List.range (N - 2 - i)).map fun c => (i, c)) ++
-          (List.range c).map fun c => (i, c)) μ') (by simpa using hμ) ?_).mono le_rfl ?_
-    · intro c hc μ' _ hμ'
-      refine ((hround _ i c hi hc μ' hμ').in_frame rfl rfl (hlive hμ'.2.1)).mono le_rfl ?_
-      intro μ'' _ h
-      simpa [List.range_succ, List.map_append, List.append_assoc] using h
-    · intro μ' _ h
-      simpa [List.range_succ, List.flatMap_append] using h
-  · rintro μ _ ⟨hp, hlen', -, -, hW⟩
-    refine ((clearBelowSubdiagonal_writes_word (τ := τ) hS (by simp [Mem.Live, hlen']; omega)
-      hW).in_frame rfl rfl (by simp [Mem.Live, hlen']; omega)).mono
-      le_sup_left ?_
-    rintro μ' - ⟨hp', hW'⟩
-    exact ⟨hp'.trans hp, hW'⟩
+    (hC : IsCmp id I) (hL : IsIndexLit M I) {nmax : ℕ}
+    (hNat : IsExactNatLit id M nmax) (h1 : 1 ≤ nmax) {τ : Tape ℝ} {m : Mem ℝ} {N : ℕ} {a lg : ℕ × ℕ}
+    {A : Matrix (Fin N) (Fin N) ℂ} (hN : N ≤ nmax + 1) {ns w : ℕ}
+    {L : List (Option (List GivensEntry))} (hlog : HoldsSlottedLog lg ns w L [] m.store)
+    (hj : L.length + (N - 2) ≤ ns) (hw : N - 2 ≤ w) (hl : m.Live [a, lg])
+    (hA : HoldsMatrix a A m.store)
+    (hd : Fp.Disj (Store.inBlock a.1 a.2 (2 * (N * N)))
+      (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))) :
+    Writes .total I τ (hessenbergReduceLast (O := O) (Q := Q)).body
+      (Env.frame [N, w, L.length] [a, a, lg])
+      (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (fun m' => m'.pos = m.pos ∧ HoldsMatrix a (hessenbergReduceLastWord M A) m'.store ∧
+        HoldsSlottedLog lg ns w (L ++ (hessenbergReduceLastSlots M A).map some) [] m'.store) m :=
+  sorry
 
 section BackwardError
 
@@ -628,15 +551,44 @@ theorem hessenbergReduceLast_isPerturbedUnitarySimilar {M : Machine ℝ} {u : �
   exact_mod_cast h2
 
 /-- `NLAlib.hessenbergReduceLast` terminates on every tape and every stored matrix: its loops are
-counted and every operation succeeds on stored operands. -/
+counted and every operation succeeds on stored operands; the log gains its $N - 2$ slots. -/
 theorem hessenbergReduceLast_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
-    (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {N : ℕ} {a : ℕ × ℕ}
-    {A : Matrix (Fin N) (Fin N) ℂ} (hl : m.Live [a]) (hA : HoldsMatrix a A m.store) :
-    Writes .total I τ (hessenbergReduceLast (O := O) (Q := Q)).body (Env.frame [N] [a, a])
-      (Store.inBlock a.1 a.2 (2 * (N * N)))
-      (fun m' => ∃ A' : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix a A' m'.store) m :=
-  (hessenbergReduceLast_writes_word hS hC hl hA).mono le_rfl fun _ _ h => ⟨_, h.2⟩
+    (hC : IsCmp id I) (hL : IsIndexLit M I) {nmax : ℕ}
+    (hNat : IsExactNatLit id M nmax) (h1 : 1 ≤ nmax) {τ : Tape ℝ} {m : Mem ℝ} {N : ℕ} {a lg : ℕ × ℕ}
+    {A : Matrix (Fin N) (Fin N) ℂ} (hN : N ≤ nmax + 1) {ns w : ℕ}
+    {L : List (Option (List GivensEntry))} (hlog : HoldsSlottedLog lg ns w L [] m.store)
+    (hj : L.length + (N - 2) ≤ ns) (hw : N - 2 ≤ w) (hl : m.Live [a, lg])
+    (hA : HoldsMatrix a A m.store)
+    (hd : Fp.Disj (Store.inBlock a.1 a.2 (2 * (N * N)))
+      (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))) :
+    Writes .total I τ (hessenbergReduceLast (O := O) (Q := Q)).body
+      (Env.frame [N, w, L.length] [a, a, lg])
+      (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (fun m' => ∃ A' : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix a A' m'.store ∧
+        HoldsSlottedLog lg ns w (L ++ (hessenbergReduceLastSlots M A).map some) [] m'.store) m :=
+  (hessenbergReduceLast_writes_word hS hC hL hNat h1 hN hlog hj hw hl hA hd).mono le_rfl
+    fun _ _ h => ⟨_, h.2⟩
 
 end Theorems
+
+section Accumulate
+
+variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q]
+
+/-- **The bottom-up Hessenberg reduction with the accumulated unitary**: open a slotted log of $N$
+slots of $N - 1$ entries (`NLAlib.slottedLogOpen`), reduce `A` recording the rotations
+(`NLAlib.hessenbergReduceLast`), then replay them on the columns of `U`
+(`NLAlib.givensReplayColumns`), so that `U` becomes $\mathbf{U}\mathbf{V}$ up to rounding with
+$\mathbf{V}$ the unitary of the reduction. The interface is `[N] (A, U) → (A, U)`; the log is
+scoped.
+Algorithm: hessenberg-reduction -/
+def hessenbergReduceQ : Impl O Q := opsImpl% [N] (A, U) → (A, U) {
+  let Lg ← alloc (N * (1 + 5 * (N - 1)));
+  run (slottedLogOpen (O := O) (Q := Q)).body [N, N - 1] (Lg);
+  run (hessenbergReduceLast (O := O) (Q := Q)).body [N, N - 1, 0] (A, A, Lg);
+  run (givensReplayColumns (O := O) (Q := Q)).body [N, 0, 0, N, N, N - 1] (Lg, U, U)
+}
+
+end Accumulate
 
 end NLAlib

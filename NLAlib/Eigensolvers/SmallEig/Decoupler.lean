@@ -10,6 +10,7 @@ public import NLAlib.Eigensolvers.SmallEig.Decouple
 public import NLAlib.Eigensolvers.SmallEig.OneEig
 public import NLAlib.Eigensolvers.SmallEig.DecouplerPrecision
 public import NLAlib.Eigensolvers.SmallEig.RandomHessenberg
+public import NLAlib.Matrix.FinitePrecision.GivensLogClose
 public import NLAlib.Matrix.FinitePrecision.GivensLogSlots
 
 /-!
@@ -691,7 +692,7 @@ theorem SmallEigDecouplerOpened.live {n : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n
 /-- The decoupler meets the randomized decoupling contract at a smaller order bound
 (`NLAlib.SmallEig.smallEigDecoupler_randomDecouplingRoutineContract` with the words still at
 $n_{\max}$): the contract holds at orders up to $k_b \le n_{\max}$ when the natural literals are
-exact up to $k_b + 1$ only. -/
+exact up to $k_b + 1$ only, and the log has $n_s \ge k_b + T$ slots of $w_s \ge k_b$ entries. -/
 theorem smallEigDecoupler_randomDecouplingRoutineContract_of_le {M : Machine ℝ}
     {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I) (hM : StdModel u id M) (hzero : M.lit 0 = 0)
     (hL : IsIndexLit M I) {nmax kb : ℕ} (hkb : kb ≤ nmax) (hNat : IsExactNatLit id M (kb + 1))
@@ -702,7 +703,7 @@ theorem smallEigDecoupler_randomDecouplingRoutineContract_of_le {M : Machine ℝ
     (hG : law sG = gaussianReal 0 1) {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b)
     (hn : 1 ≤ nmax) {S δ φ : ℝ} (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
     (hu : u ≤ uSmallEig nmax S δ φ c₁ c₂) (F : ℕ) {ns ws : ℕ}
-    (hns : nmax + smallEigCap nmax S δ φ c₁ c₂ ≤ ns) (hws : nmax ≤ ws) :
+    (hns : kb + smallEigCap nmax S δ φ c₁ c₂ ≤ ns) (hws : kb ≤ ws) :
     RandomDecouplingRoutineContract law (2 * smallEigCondition nmax S δ φ c₂)
       (smallEigSeparation nmax S δ φ c₁ / 2) (smallEigDecouplerFailure nmax φ) 1 F
       (smallEigCap nmax S δ φ c₁ c₂) kb (2 * S) (smallEigParams nmax S δ φ c₁ c₂) ns ws
@@ -822,25 +823,6 @@ theorem smallEigDecoupler_randomDecouplingRoutineContract {M : Machine ℝ} {I :
   smallEigDecoupler_randomDecouplingRoutineContract_of_le hS hM hzero hL le_rfl hNat hC hQ hI hloc
     hSmp hDisk hU hG hb₁ hb₂ hn hδ hδS hφ hφ1 hu F hns hws
 
-omit [Has IndexOp O] [Has SampleOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] in
-/-- Opening a log stores the empty log, on any scalar machine whose literal $0$ is exact. -/
-private theorem slottedLogOpen_writes_of_zero {Mch : Machine ℝ} {I : Interp O Q ℝ}
-    (hS : IsScalar Mch I) (h0 : Mch.lit 0 = 0) {ns w : ℕ} {lg : ℕ × ℕ} {τ : Tape ℝ}
-    {μ : Mem ℝ} (hroom : lg.2 + ns * (1 + 5 * w) ≤ μ.store.len lg.1) :
-    Writes .total I τ (slottedLogOpen (O := O) (Q := Q)).body (Env.frame [ns, w] [lg])
-      (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
-      (fun μ' => μ'.pos = μ.pos ∧ HoldsSlottedLog lg ns w [] [] μ'.store) μ := by
-  unfold slottedLogOpen
-  refine (writes_fill (v := fun _ => (0 : ℝ)) (pos := fun _ => μ.pos) rfl rfl
-    fun i hi m' hfr _ hp => ?_).mono le_rfl ?_
-  · refine (writes_call_const (hS (.lit 0)) rfl trivial ?_).mono le_rfl ?_
-    · dsimp only; rw [hfr.len_eq]; omega
-    · exact fun m'' _ ⟨hp', hg⟩ => ⟨by simpa [h0] using hg, hp'.trans hp⟩
-  · rintro μ' - ⟨hv, hp⟩
-    refine ⟨hp, holdsSlottedLog_nil_of_readBlock ?_⟩
-    rw [Store.holdsVec_iff_readBlock.mp hv]
-    simp
-
 /-- The decoupler terminates: on a scalar machine with index literals, exact natural literals
 up to $n_{\max} + 1$, exact comparisons and conversion, draws that store the tape entry and an
 exact polar sampler, for words `qs` with valid cap words for the cap $T$
@@ -880,7 +862,7 @@ theorem smallEigDecoupler_terminatingDecouplerRoutine {M : Machine ℝ} {I : Int
     hfr hlgr hA hqd (by simpa using hlen₁) (by simpa using hlens 0 (by simp)) hBelow
   set L := μ.store.length with hLdef
   simp only [List.length_cons, List.length_nil] at hlen₁
-  refine (slottedLogOpen_writes_of_zero (τ := tape) (μ := ⟨s₁, μ.pos⟩) hS hzero
+  refine (slottedLogOpen_writes_of_lit_zero (τ := tape) (μ := ⟨s₁, μ.pos⟩) hS hzero
     hlgr₀).frame_seq_le rfl rfl hlgl₀
     (fun b i hb => Or.inl (Or.inr hb)) ?_
   rintro μ₀ hfr₀ ⟨-, hlog₀⟩

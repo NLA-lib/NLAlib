@@ -648,22 +648,6 @@ private theorem givensLog_append_reduceLastStepEntry (hM : StdModel u id M) {n :
   simp only [reduceLastStepEntry, dif_pos (show c + 1 < n + 1 ∧ r < n + 1 by omega), givensAt,
     dif_pos (show c + 1 < n + 1 by omega), hneg]
 
-/-- A unitary similarity within $\varepsilon$ of $\mathbf{B}$ is a perturbed one by its unitary:
-if $\mathbf{V}$ has orthonormal columns and
-$\|\mathbf{B} - \mathbf{V}^{\mathsf H}\mathbf{A}\mathbf{V}\|_2 \le \varepsilon$, then
-`NLAlib.IsPerturbedUnitarySimilarBy` $\mathbf{V}$ $\mathbf{A}$ $\mathbf{B}$ $\varepsilon$. -/
-theorem IsPerturbedUnitarySimilarBy.of_specNorm_sub_le {m : ℕ}
-    {V A B : Matrix (Fin m) (Fin m) ℂ} (hV : HasOrthonormalCols V) {ε : ℝ}
-    (h : specNorm (B - Vᴴ * A * V) ≤ ε) : IsPerturbedUnitarySimilarBy V A B ε := by
-  have h1 : Vᴴ * V = 1 := hasOrthonormalCols_iff.mp hV
-  refine ⟨hV, V * (B - Vᴴ * A * V) * Vᴴ, ?_, ?_⟩
-  · rw [hV.specNorm_mul_conjTranspose_right, hV.specNorm_mul_left]; exact h
-  · have e : Vᴴ * (V * (B - Vᴴ * A * V) * Vᴴ) * V = B - Vᴴ * A * V := by
-      rw [← Matrix.mul_assoc, ← Matrix.mul_assoc, h1, Matrix.one_mul, Matrix.mul_assoc, h1,
-        Matrix.mul_one]
-    rw [Matrix.mul_add, Matrix.add_mul, e]
-    abel
-
 /-- The invariant of the reduction after $k$ steps: within $((1 + 61\boldsymbol{u})^k - 1)
 \|\mathbf{A}\|_2$ of the unitary similarity of $\mathbf{A}$ by $\mathbf{Q}$, which fixes
 $\mathbf{e}_{n+1}$. -/

@@ -51,7 +51,8 @@ $$\mathbf{U}_2^{\mathsf{H}}\bigl(\mathbf{U}_1^{\mathsf{H}}(\mathbf{A} + \mathbf{
   upper triangular matrix is a step on the whole matrix.
 * `NLAlib.IsPerturbedUnitarySimilarBy`, `NLAlib.isPerturbedUnitarySimilar_iff_exists_by`,
   `NLAlib.IsPerturbedUnitarySimilarBy.fromBlocks₁₁`,
-  `NLAlib.IsPerturbedUnitarySimilarBy.of_range_block`:
+  `NLAlib.IsPerturbedUnitarySimilarBy.of_range_block`,
+  `NLAlib.IsPerturbedUnitarySimilarBy.of_specNorm_sub_le`:
   the relation with its unitary named, and its block lifts with computed couplings.
 * `NLAlib.IsTrackedUnitarySimilar`, `NLAlib.IsTrackedUnitarySimilar.trans`,
   `NLAlib.IsTrackedUnitarySimilar.specNorm_sub_mul_mul_conjTranspose_le`: a stored accumulator
@@ -433,6 +434,22 @@ theorem IsPerturbedUnitarySimilarBy.mono {V A B : Matrix n n 𝕜} {ε ε' : ℝ
     IsPerturbedUnitarySimilarBy V A B ε' := by
   obtain ⟨hV, E, hE, rfl⟩ := h
   exact ⟨hV, E, hE.trans hε, rfl⟩
+
+/-- A unitary similarity within $\varepsilon$ of $\mathbf{B}$ is a perturbed one by its unitary:
+if $\mathbf{V}$ has orthonormal columns and
+$\|\mathbf{B} - \mathbf{V}^{\mathsf H}\mathbf{A}\mathbf{V}\|_2 \le \varepsilon$, then
+`NLAlib.IsPerturbedUnitarySimilarBy` $\mathbf{V}$ $\mathbf{A}$ $\mathbf{B}$ $\varepsilon$. -/
+theorem IsPerturbedUnitarySimilarBy.of_specNorm_sub_le {V A B : Matrix n n 𝕜}
+    (hV : HasOrthonormalCols V) {ε : ℝ} (h : specNorm (B - Vᴴ * A * V) ≤ ε) :
+    IsPerturbedUnitarySimilarBy V A B ε := by
+  have h1 : Vᴴ * V = 1 := hasOrthonormalCols_iff.mp hV
+  refine ⟨hV, V * (B - Vᴴ * A * V) * Vᴴ, ?_, ?_⟩
+  · rw [hV.specNorm_mul_conjTranspose_right, hV.specNorm_mul_left]; exact h
+  · have e : Vᴴ * (V * (B - Vᴴ * A * V) * Vᴴ) * V = B - Vᴴ * A * V := by
+      rw [← Matrix.mul_assoc, ← Matrix.mul_assoc, h1, Matrix.one_mul, Matrix.mul_assoc, h1,
+        Matrix.mul_one]
+    rw [Matrix.mul_add, Matrix.add_mul, e]
+    abel
 
 omit [DecidableEq m] [DecidableEq p] in
 /-- A matrix whose only nonzero block is the top right one has spectral norm at most that of

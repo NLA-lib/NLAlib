@@ -233,11 +233,16 @@ noncomputable def SmallEigData.buffers {nmax : ℕ} {c₁ c₂ : PolyLogTail} {d
     List.replicate (2 * ((d 0 + 1) * (d 0 + 1))) none]
 
 /-- **The admitted sizes** on the machine `Mch`: the natural literals up to the order $n + 1$
-are exact, the order is at most $n_{\max}$, and the sizes are those of some parameter reals. -/
+are exact, the order is at most $n_{\max}$, the sizes are those of some parameter reals, and the
+machine has the standard model at some $\boldsymbol{u} \le 1/100$. The last condition is the
+hypothesis of the termination of the rounded worklist
+(`NLAlib.ShiftedQR.solveRoundedWith_terminates`, which also bounds the accumulator); the run
+terminates on every tape at such a machine (`NLAlib.SmallEig.smallEigProgram_wp`). -/
 def SmallEigSizes (Mch : Machine ℝ) (nmax : ℕ) (c₁ c₂ : PolyLogTail) (d : Fin 3 → ℕ) : Prop :=
   IsExactNatLit id Mch (d 0 + 1) ∧ d 0 + 1 ≤ nmax ∧
-    ∃ S δ φ : ℝ, d 1 = (smallEigParams nmax S δ φ c₁ c₂).length ∧
-      d 2 = smallEigCap nmax S δ φ c₁ c₂
+    (∃ S δ φ : ℝ, d 1 = (smallEigParams nmax S δ φ c₁ c₂).length ∧
+      d 2 = smallEigCap nmax S δ φ c₁ c₂) ∧
+    ∃ u : ℝ, StdModel u id Mch ∧ u ≤ 1 / 100
 
 /-- **The problem** of the small-eigenvalue solver on the machine `Mch`, with the order bound
 $n_{\max}$ and the tail records $c_1, c_2$: the three raw buffers of
@@ -250,7 +255,7 @@ noncomputable def smallEigProblem (Mch : Machine ℝ) (nmax : ℕ) (c₁ c₂ : 
   admissible _ x buffers := buffers = x.buffers
   admitted := admitted
   supply d hd := by
-    obtain ⟨-, -, S, δ, φ, hw, hT⟩ := hd
+    obtain ⟨-, -, ⟨S, δ, φ, hw, hT⟩, -⟩ := hd
     exact ⟨⟨0, S, δ, φ, hw, hT⟩, _, rfl⟩
 
 variable {Mch : Machine ℝ} {nmax : ℕ} {c₁ c₂ : PolyLogTail}
@@ -296,7 +301,7 @@ theorem stmtWorkMono_smallEigProgram (sG : ℕ) :
 /-- **The work (and span) polynomial** of the small-eigenvalue solver at the sizes
 $(n, n_q, T)$ = `d`: $517058\,(n + 1)^4(T + 1)^2$, the
 monomial bound of the instructions of the instrumented program, each of unit weight; it is larger
-than the constant $4629$ of `NLAlib.SmallEig.smallEig_work_le` because the instrumentation counts
+than the constant $4713$ of `NLAlib.SmallEig.smallEig_work_le` because the instrumentation counts
 every structural instruction too. The parameter words (thresholds, scales and caps, real numbers
 with logarithms and roots) are
 supplied in the input and their computation is not charged, as for the merged
@@ -344,12 +349,13 @@ theorem smallEigProblem_initialBytes (d : Fin 3 → ℕ)
   simp [smallEigProblem, SmallEigData.buffers, List.ofFn_succ, smallEigInputWords,
     ← x.val.1.words_eq, Nat.add_assoc]
 
-/-- The every-tape output claim: the run writes only the $2(n + 1)$ output words, and they are
-stored. -/
+/-- The every-tape output claim: the run writes only the block and the accumulator, and both
+are stored (a Schur pair, `NLAlib.Schur.HoldsSchurPair`, with no accuracy claim). -/
 def SmallEigFrame (d : Fin 3 → ℕ) (μ μ' : Mem ℝ) : Prop :=
   μ.store.EqOff (Store.inBlock 0 0 (2 * ((d 0 + 1) * (d 0 + 1))) ⊔
             Store.inBlock 2 0 (2 * ((d 0 + 1) * (d 0 + 1)))) μ'.store ∧
-    ∃ ys, μ'.store.readBlock 2 0 (2 * (d 0 + 1)) = some ys
+    ∃ U T : Matrix (Fin (d 0 + 1)) (Fin (d 0 + 1)) ℂ,
+      Schur.HoldsSchurPair (0, 0) (2, 0) U T μ'.store
 
 /-- **The specification of the small-eigenvalue solver**: the budget, scratch and resident
 memory of the static count, the work and the span `NLAlib.SmallEig.smallEigWork`, and on every
@@ -372,7 +378,24 @@ theorem smallEigProgram_wp {sU sG : ℕ} {d : Fin 3 → ℕ} (hd : SmallEigSizes
     (τ : Tape ℝ) :
     Wp .total I τ (smallEigProgram sG).body (Program.environment (b := 3) d)
       (SmallEigFrame d ((smallEigProblem Mch nmax c₁ c₂ admitted).initial d x))
-      ((smallEigProblem Mch nmax c₁ c₂ admitted).initial d x) := sorry
+      ((smallEigProblem Mch nmax c₁ c₂ admitted).initial d x) := by
+  obtain ⟨hNat, -, -, u, hM, hu1⟩ := hd
+  obtain ⟨hS, hL, hC, hQ, hSmp, hDisk⟩ := smallEigModel_laws hI
+  have hin := smallEigProblem_initial_input (admitted := admitted) d x
+  obtain ⟨hW, hq, hl3, hroom, hwo, hqwo⟩ := hin
+  have hl4 : ((smallEigProblem Mch nmax c₁ c₂ admitted).initial d x).Live
+      [(0, 0), (1, 0), (0, 0), (2, 0)] := fun y hy => hl3 y (by
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hy
+    rcases hy with rfl | rfl | rfl | rfl <;> simp)
+  have hT : TerminatingLeafRoutine _ (d 0 + 1) _ _ _ I := smallEigProg_terminates (O := SmallEigOp)
+    (Q := Tst) (sG := sG) hS hM hu1 hL hNat hC hQ hSmp hDisk
+    (smallEigCaps_smallEigParams nmax x.val.1.S x.val.1.δ x.val.1.φ c₁ c₂)
+    (by simp [length_smallEigParams])
+  refine wp_frame ?_ ?_ hl4 ((hT x.val.1.matrix le_rfl hW hq hl3 hroom hwo hqwo).mono le_rfl
+    fun μ' _ ⟨Tb, Ub, _, hTb, hUb, _⟩ => ⟨Ub, Tb, hTb, hUb⟩)
+  · simp [Program.environment, IExp.evalList, IExp.eval, x.val.1.words_eq, x.val.1.cap_eq,
+      List.ofFn_succ]
+  · simp [Program.environment, Operand.evalList, Operand.eval, IExp.eval, List.ofFn_succ]
 
 /-- The program passes the storage discipline of the costs. -/
 theorem smallEigProgram_wellTyped (sG : ℕ) :

@@ -802,13 +802,15 @@ Totals: 70 targets (S 21, M 35, L 13, XL 1), waves 0–11. Besides L3, fifteen t
 2. **O2** (a) dense $\mathbf{U}_b$ at the leaf.
 3. **O3** the slotted static log, self-describing entries, behind the sink layer (§14.2 gives the
    reasons for keeping it).
-4. **O4** (b) one generic deflation worklist with a hook; the merged eigenvalue programs and
-   theorems are the skip instances, with their statements, costs and precision unchanged.
+4. **O4** superseded (§14.6, "Schur is the program"): the Schur-mode programs replace the merged
+   eigenvalue-only programs in place; the merged eigenvalue theorems become corollaries, with
+   costs about 2–3 times larger and slightly stronger precision conditions.
 5. **O5** deferred (the spectrum-only core; no consumer).
 6. **O6** constants allowed to move at proof time; the known-wrong ones fixed now (`hclass`,
    `64` → `58`, HD5).
 7. **O7** move `HoldsMatrix` and the rotation programs first (MV1, MV2).
-8. **B5** approved: the merged certificate numerals change; list in §14.4.
+8. **B5** approved: the merged certificate numerals change; list in §14.4 and in the rename map.
+9. **Re-check** (§14.5) applied: εU relative, threshold term 3 at 28800, log details.
 
 ## 12. Elaboration (scratch, not in the repo)
 
@@ -943,3 +945,47 @@ their names as the skip instances; the generic programs are `solveDeflationWith`
 `hessenbergReduceLastWith`, …). MV1/MV2 move `HoldsMatrix` and the rotation programs with
 deprecated aliases. The merged eigenvalue statements are strengthened only where a witness is
 added, never weakened.
+
+### 14.5 Re-check (`Review-SCHUR-Design-2.md`)
+
+Applied in the skeleton:
+
+* **εU relative.** `IsTrackedUnitarySimilar εU εT U A U' A'` bounds `‖U' − U V‖ ≤ εU ‖U‖`;
+  `trans` composes as `(1 + εU)(1 + εU') − 1` (with `0 ≤ εU, εU'`), which telescopes from
+  `U₀ = I` to `(1 + 24u)^R − 1 ≤ 27Ru`. SC3, SC4, SC6 drop `‖U‖ ≤ 2`; PP2's `e_U` is
+  `2ε + ε²` with `ε = (1 + ε_{H,U})(1 + ε_{C,U}) − 1`. MW4 and the exact-unitary form take
+  `0 ≤ εU` (else, at an empty index type, the conclusion `≤ 2εU + εU²` is false).
+* **Threshold term 3** is `u ≤ t₁t₂/(28800(n+1)³)` (`Γ/B = t₁t₂/4`).
+* **The witness** is the Schur programs' own (`givensLog` of their log): with §14.6 there is no
+  hook and no arbitrary decoupler to quantify over.
+* **Skeleton details.** The log entry is written from views of words the producer holds, the plane
+  is a dimension (`slottedLogWrite [w, j, i, r] (Pw, Qw) → (Lg)`); `slottedLogOpen` zero-fills the
+  log (the padding `(0, 0, 0)` is the identity, `givensAt_zero`, and the capacity is counted);
+  the pending entries are state (`HoldsSlottedLog lg ns w L P`, with `reject`); `hNat` is a
+  hypothesis of `slottedLogWrite_writes`, not of the producers.
+
+### 14.6 Schur is the program (maintainer, after the re-check)
+
+Supersedes O4(b), the hook and the `Option` sink. The Schur-mode programs **replace** the merged
+eigenvalue-only programs in place: the shifted QR chain (step, Find, Regularize, Sh, Exc,
+iteration, decoupler, worklist, `roundedShQR…`) and Part III (`rhess`, `decoupleLast`,
+`smallEigDecoupler`, `smallEigProg`, the leaf) record their committed rotations in a slotted log,
+replay them on the coupling blocks and on `Û`, and output `(Û, T̂)`. The eigenvalue-only programs
+are deleted; there is no generic hooked worklist, no skip instance, no sink parameter. Every
+merged eigenvalue theorem (T1c, T1d, T2–T5, `roundedShQRAlgorithm` and its probability bound,
+HL2/HL7, `roundedShQRSmallEig…`, TH1–TH4, `smallEigAlgorithm`, …) becomes a corollary of the
+Schur theorem of its program through PP3 (`diag T̂` lists the spectrum of `A + E`), keeping its
+name where possible. Their costs grow by a constant factor (about 2–3) and their precision
+conditions get slightly stronger; this is accepted. Every changed statement or numeral is
+recorded in the rename map's `statementChanged`, every deleted program or lemma as `removed` with
+its replacement. The Givens log layer (`Matrix/FinitePrecision/GivensLog`) and the witnessed
+relation (MW1–MW6) stay, general.
+
+Targets: the generic worklist and hook targets (GW1, GW2, GW3 as a generic state, GW5, GW6, GW7's
+generic contract, SH1, SH2, SL1's generic program, SQ1's hook instance, GL2's sink abstraction)
+are dropped or folded into the in-place rewrite targets; OB1 is already on `main`
+(`BackwardStep.in_frame`, `BackwardStep.allocs` in `Ops/Logic/BackwardFrame`); corollary targets
+COR1–COR4 are added (§9 of the targets file). O7's move of `HoldsMatrix` goes to
+`Matrix/FinitePrecision/StoredMatrix` (Ops may import only Ops, and the storage layer uses
+`decodeMatrix` of `Matrix/FinitePrecision/Machine`), the rotation programs to
+`Matrix/FinitePrecision/GivensCoefficients`, `GivensRotation`, `GivensPrograms`.

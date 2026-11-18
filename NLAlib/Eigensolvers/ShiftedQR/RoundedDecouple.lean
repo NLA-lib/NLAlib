@@ -548,7 +548,7 @@ in the class (condition $4B$, separation $g/4$,
 a coupled matrix had its potential contracted, so after $F$ rounds the scan passes
 (`NLAlib.exists_norm_subdiag_le_hessenbergPotential`), and the failures of the rounds add
 (`NLAlib.Ops.PWrites.whileFuel`). -/
-theorem roundedDecoupleWith_randomDecouplingRoutineContract {M : Machine ℝ} {I : Interp O Q ℝ}
+theorem roundedDecoupleWith_randomDecouplingRoutineContract_at {M : Machine ℝ} {I : Interp O Q ℝ}
     {u : ℝ}
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u < 1) (hL : IsIndexLit M I) {nmax : ℕ}

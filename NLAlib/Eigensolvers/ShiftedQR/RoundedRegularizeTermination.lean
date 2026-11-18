@@ -89,7 +89,7 @@ theorem trialStep_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScal
         ∃ es : List GivensEntry, es.length = k * n ∧ (∀ x ∈ es, x.1 + 1 < n + 1) ∧
           HoldsSlottedLog lg ns w LL es m'.store) m := sorry
 
-omit [Has IndexOp O] [Has CmpTst Q] in
+omit [Has CmpTst Q] in
 /-- The acceptance of a trial terminates on any matrix: on a scalar machine,
 `NLAlib.ShiftedQR.trialAccept` copies any matrix at `T` to `A` and stores words in `G` and `Fl`,
 writing only these. -/
@@ -106,7 +106,8 @@ theorem trialAccept_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSc
     (hL : IsIndexLit M I) {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
     {P : List GivensEntry} (hlog : HoldsSlottedLog lg ns w LL P m.store) (hj : LL.length < ns)
     (hlgl : m.Live [lg]) (hlgb : ∀ b ∈ [t, a, g, f], b.1 ≠ lg.1) :
-    Writes .total I τ (trialAccept (O := O) (Q := Q)).body (Env.frame [n + 1, w, LL.length] [t, a, g, f, lg])
+    Writes .total I τ (trialAccept (O := O) (Q := Q)).body
+        (Env.frame [n + 1, w, LL.length] [t, a, g, f, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock g.1 g.2 1 ⊔
         Store.inBlock f.1 f.2 1 ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
@@ -161,7 +162,8 @@ theorem regularizeTrial_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
       (fun m' => (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a H' m'.store) ∧
         (∃ x, m'.store.get g.1 g.2 = some x) ∧ ∃ x, m'.store.get f.1 f.2 = some x ∧
         ∃ Ls : List (Option (List GivensEntry)), Ls.length = 1 ∧
-          (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 1) ∧ HoldsSlottedLog lg ns w (LL ++ Ls) [] m'.store) m :=
+          (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 1) ∧
+              HoldsSlottedLog lg ns w (LL ++ Ls) [] m'.store) m :=
   sorry
 
 /-- The trials of `Regularize` terminate on any matrix: on a scalar machine with exact
@@ -213,7 +215,8 @@ theorem regularizeTrials_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
       (fun m' => (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a H' m'.store) ∧
         (∃ x, m'.store.get g.1 g.2 = some x) ∧ ∃ x, m'.store.get f.1 f.2 = some x ∧
         ∃ Ls : List (Option (List GivensEntry)), Ls.length = k ∧
-          (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 1) ∧ HoldsSlottedLog lg ns w (LL ++ Ls) [] m'.store) m :=
+          (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 1) ∧
+              HoldsSlottedLog lg ns w (LL ++ Ls) [] m'.store) m :=
   sorry
 
 /-- The decision of `Regularize` terminates on any matrix: with the scratch of
@@ -231,7 +234,8 @@ theorem regularizeDecide_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
     (hlog : HoldsSlottedLog lg ns w LL [] m.store) (hj : LL.length + k ≤ ns) (hw : k * n ≤ w)
     (hlgl : m.Live [lg]) (hlgL : lg.1 < L) :
     Writes .total I τ (regularizeDecide (O := O) (Q := Q)).body
-      (Env.frame [n + 1, k, w, LL.length] [a, s, c, thr, (L + 3, 0), (L + 4, 0), (L + 5, 0), (L + 6, 0), a,
+      (Env.frame [n + 1, k, w, LL.length]
+          [a, s, c, thr, (L + 3, 0), (L + 4, 0), (L + 5, 0), (L + 6, 0), a,
         (L + 2, 0), f, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 2) 0 1 ⊔
         Store.inBlock f.1 f.2 1 ⊔ (Store.inBlock (L + 3) 0 (2 * ((n + 1) * (n + 1))) ⊔
@@ -241,7 +245,8 @@ theorem regularizeDecide_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
       (fun m' => (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a H' m'.store) ∧
         ∃ x, m'.store.get f.1 f.2 = some x ∧
         ∃ Ls : List (Option (List GivensEntry)), Ls.length = k ∧
-          (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 1) ∧ HoldsSlottedLog lg ns w (LL ++ Ls) [] m'.store) m :=
+          (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 1) ∧
+              HoldsSlottedLog lg ns w (LL ++ Ls) [] m'.store) m :=
   sorry
 
 end Trials
@@ -348,7 +353,8 @@ theorem regularizeWithScratchWith_terminates {M : Machine ℝ} {I : Interp O Q �
         (∃ ys, m'.store.readBlock s.1 s.2 (2 * k) = some ys) ∧
         ∃ x, m'.store.get f.1 f.2 = some x ∧
         ∃ Ls : List (Option (List GivensEntry)), Ls.length = k ∧
-          (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 1) ∧ HoldsSlottedLog lg ns w (LL ++ Ls) [] m'.store) m :=
+          (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 1) ∧
+              HoldsSlottedLog lg ns w (LL ++ Ls) [] m'.store) m :=
   sorry
 
 omit [Has EigenvalueKernelOp O] in
@@ -395,7 +401,8 @@ theorem regularizeWith_terminates_at {M : Machine ℝ} {I : Interp O Q ℝ} (hS 
         (∃ ys, m'.store.readBlock s.1 s.2 (2 * k) = some ys) ∧
         ∃ x, m'.store.get f.1 f.2 = some x ∧
         ∃ Ls : List (Option (List GivensEntry)), Ls.length = k ∧
-          (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 1) ∧ HoldsSlottedLog lg ns w (LL ++ Ls) [] m'.store) m :=
+          (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 1) ∧
+              HoldsSlottedLog lg ns w (LL ++ Ls) [] m'.store) m :=
   sorry
 
 /-- **`Regularize` terminates on any matrix** ([BanksGarzaVargasSrivastava2022, §4.2]): on a
@@ -434,7 +441,8 @@ theorem regularize_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSca
         (∃ ys, m'.store.readBlock s.1 s.2 (2 * k) = some ys) ∧
         ∃ x, m'.store.get f.1 f.2 = some x ∧
         ∃ Ls : List (Option (List GivensEntry)), Ls.length = k ∧
-          (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 1) ∧ HoldsSlottedLog lg ns w (LL ++ Ls) [] m'.store) m :=
+          (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 1) ∧
+              HoldsSlottedLog lg ns w (LL ++ Ls) [] m'.store) m :=
   sorry
 
 end Regularize

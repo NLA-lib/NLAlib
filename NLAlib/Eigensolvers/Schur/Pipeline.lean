@@ -41,7 +41,8 @@ output comes from the tracked relation (`NLAlib.IsTrackedUnitarySimilar`).
 * `NLAlib.Schur.SchurOutput.exists_isEigenvalueListing`,
   `NLAlib.Schur.SchurOutput.exists_hasOrthonormalCols`: the eigenvalues and an exact unitary.
 * `NLAlib.Schur.schurPipelineWith_terminates`: termination and orthogonality on every tape.
-* `NLAlib.Schur.size_stmtCost_schurPipelineWith_le`: the static count is the sum of the stages'.
+* `NLAlib.Schur.size_stmtCost_schurPipelineWith_le`: the instrumented static count is at most the
+  sum of the stages' and the glue.
 
 The numerical pieces that do not mention the pipeline (the scaling loop, the residual of a scaled
 tracked run and its budget) are in `NLAlib.Eigensolvers.Schur.Residual`.
@@ -1037,25 +1038,43 @@ theorem SchurOutput.exists_hasOrthonormalCols {n : ℕ} {a uo f : ℕ × ℕ}
     exists_hasOrthonormalCols_add_eq_mul_mul_conjTranspose hA hU heU
   exact ⟨U, T, V, E, hT, hUs, hV, hUV, hE, hAE⟩
 
-/-- **The static count of the pipeline** is the sum of the stages' counts plus
-$64(N + 1)^2$ for the glue (scaling, identity, branch). -/
+/-- The instructions of a supremum of counts and of their infimum add up to those of the two
+counts. -/
+theorem size_sup_add_size_inf {Op Tst : Type} (x y : Count Op Tst) :
+    Count.size (x ⊔ y) + Count.size (x ⊓ y) = Count.size x + Count.size y := by
+  rw [← map_add, ← map_add]
+  congr 1
+  ext a
+  simp [Finsupp.sup_apply, Finsupp.inf_apply, max_add_min]
+
+/-- **The static count of the pipeline** with its structural instructions, at zero offsets of
+the matrix, the parameter words, the accumulator and the flag, is at most the sum of the stages'
+instrumented counts, each at the offsets the pipeline passes to it (zero, and $n_r$ for the core's
+parameter words), plus $120(N + 1)^2$ for the glue (the scaling loops, the identity, the branch
+and the frames). -/
 theorem size_stmtCost_schurPipelineWith_le [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
     (Nm Reg Red Core : Impl O Q) (N nr nq k F T : ℕ) :
-    Count.size (stmtCost (schurPipelineWith Nm Reg Red Core).body [N, nr, nq, k, F, T]) ≤
-      Count.size (stmtCost Nm.body [N]) + Count.size (stmtCost Reg.body [N, nr]) +
-        Count.size (stmtCost Red.body [N]) + Count.size (stmtCost Core.body [N, nq, k, F, T]) +
-        64 * (N + 1) ^ 2 := by
-  have hsup : ∀ x y : Count O Q, Count.size (x ⊔ y) ≤ Count.size x + Count.size y := fun x y =>
-    (size_mono (sup_le (le_add_of_nonneg_right (zero_le (a := y)))
-      (le_add_of_nonneg_left (zero_le (a := x))))).trans_eq (map_add _ x y)
-  simp only [schurPipelineWith, Stmt.alloc, stmtCost, useCost, testCost, IExp.evalList,
-    IExp.eval, List.map_cons, List.map_nil, List.getElem?_cons_succ, List.getElem?_cons_zero,
-    List.getElem?_nil, Option.map_some, Option.getD_some, Finset.sum_const, Finset.card_range,
-    Operand.off, zero_add]
-  refine le_trans ?_ (Nat.le_add_left _ _)
-  rw [map_add]
-  refine (Nat.add_le_add_left (hsup _ _) _).trans ?_
-  simp only [map_add, map_nsmul, Count.one, Count.test, size_single, smul_eq_mul]
-  nlinarith
+    Count.size (stmtCost (schurPipelineWith Nm Reg Red Core).body.instrument
+        [N, nr, nq, k, F, T, 0, 0, 0, 0, 0]) ≤
+      Count.size (stmtCost Nm.body.instrument [N, 0, 0]) +
+        Count.size (stmtCost Reg.body.instrument [N, nr, 0, 0, 0]) +
+        Count.size (stmtCost Red.body.instrument [N, 0, 0, 0, 0]) +
+        Count.size (stmtCost Core.body.instrument [N, nq, k, F, T, 0, nr, 0, 0, 0, 0]) +
+        120 * (N + 1) ^ 2 := by
+  have hsup : ∀ x y : Count (O ⊕ Bookkeeping) Q,
+      Count.size (x ⊔ y) = Count.size x + Count.size y - Count.size (x ⊓ y) := fun x y => by
+    rw [← size_sup_add_size_inf]; omega
+  simp only [schurPipelineWith, Stmt.alloc, Stmt.instrument, PairMatrix.identity, tally,
+    indexBookkeeping, operandBookkeeping, IExp.bookkeeping, List.flatMap_cons, List.flatMap_nil,
+    List.cons_append, List.nil_append, List.append_nil, stmtCost, useCost, testCost,
+    IExp.evalList, IExp.eval, List.map_cons, List.map_nil, List.getElem?_cons_succ,
+    List.getElem?_cons_zero, Option.map_some, Option.getD_some, Finset.sum_const,
+    Finset.card_range, zero_add, add_zero, map_add, map_nsmul, hsup, Count.one, Count.test,
+    size_single, smul_eq_mul]
+  have hsq : (N + 1) ^ 2 = N * N + 2 * N + 1 := by ring
+  rw [hsq]
+  generalize N * N = M
+  simp only [Nat.reduceAdd]
+  omega
 
 end NLAlib.Schur

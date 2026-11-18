@@ -7,6 +7,7 @@ module
 
 public import NLAlib.Eigensolvers.Schur.Contracts
 public import NLAlib.Eigensolvers.ShiftedQR.StorageNorm
+public import NLAlib.Ops.MonomialWork
 
 /-!
 # The rounded Frobenius norm as a pipeline stage
@@ -90,5 +91,20 @@ theorem frobNormStage_frobNormEstimateContract_half {M : Machine ℝ} {I : Inter
     FrobNormEstimateContract (1 / 2) 2 nmax (frobNormStage (O := O) (Q := Q)) I :=
   FrobNormEstimateContract.mono (frobNormStage_frobNormEstimateContract hS hM hu) (by linarith)
     (by linarith)
+
+/-- The instructions of the Frobenius norm stage: its instrumented static count at the order
+$n + 1$ and zero offsets is at most $120(n + 1)^2$ (the monomial bound, by `kernel_rfl`). -/
+theorem size_stmtCost_frobNormStage_le (n : ℕ) :
+    Count.size (stmtCost (frobNormStage (O := O) (Q := Q)).body.instrument [n + 1, 0, 0]) ≤
+      120 * (n + 1) ^ 2 := by
+  have hw : stmtWorkMono (frobNormStage (O := O) (Q := Q)).body.instrument
+      (⟨1, [1]⟩ :: List.replicate 2 (WorkMono.const 0)) = ⟨120, [2]⟩ := by
+    kernel_rfl
+  have hσ : SlotsLe [n + 1] [n + 1, 0, 0] (⟨1, [1]⟩ :: List.replicate 2 (WorkMono.const 0)) := by
+    simp [SlotsLe, WorkMono.eval, WorkMono.const]
+  have h := size_stmtCost_le_stmtWorkMono (by simp)
+    (frobNormStage (O := O) (Q := Q)).body.instrument hσ
+  rw [hw] at h
+  simpa [WorkMono.eval, mul_assoc] using h
 
 end NLAlib.Schur

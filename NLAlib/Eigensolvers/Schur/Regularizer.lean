@@ -7,6 +7,7 @@ module
 
 public import NLAlib.Eigensolvers.Schur.Contracts
 public import NLAlib.Eigensolvers.SmallEig.Perturb
+public import NLAlib.Ops.MonomialWork
 
 /-!
 # The Ginibre regularizer as a pipeline stage
@@ -48,5 +49,23 @@ theorem ginibrePerturb_randomRegularizerContract {M : Machine ℝ} {I : Interp O
   (ginibrePerturb_pwrites hS hM hL hSmp hG hA hB hb₁ hb₂ hδ hδS hφ hφ1 hu hn hAS).mono
     (fun _ h => h) le_rfl
     (fun _ ⟨E, V, d, hE, hEn, hV, hAV, hc, hg⟩ => ⟨E, hE, hEn, V, d, hV, hAV, hc, hg⟩) le_rfl
+
+
+/-- The instructions of the Ginibre regularizer: its instrumented static count at the order
+$n + 1$, $p$ words and zero offsets is at most $201(n + 1)^2$ (the monomial bound, by
+`kernel_rfl`). -/
+theorem size_stmtCost_ginibrePerturb_le (sG n p : ℕ) :
+    Count.size (stmtCost (ginibrePerturb (O := O) (Q := Q) sG).body.instrument
+        [n + 1, p, 0, 0, 0]) ≤ 201 * (n + 1) ^ 2 := by
+  have hw : stmtWorkMono (ginibrePerturb (O := O) (Q := Q) sG).body.instrument
+      (⟨1, [1]⟩ :: ⟨1, [0, 1]⟩ :: List.replicate 3 (WorkMono.const 0)) = ⟨201, [2]⟩ := by
+    kernel_rfl
+  have hσ : SlotsLe [n + 1, p + 1] [n + 1, p, 0, 0, 0]
+      (⟨1, [1]⟩ :: ⟨1, [0, 1]⟩ :: List.replicate 3 (WorkMono.const 0)) := by
+    simp [SlotsLe, WorkMono.eval, WorkMono.const]
+  have h := size_stmtCost_le_stmtWorkMono (by simp)
+    (ginibrePerturb (O := O) (Q := Q) sG).body.instrument hσ
+  rw [hw] at h
+  simpa [WorkMono.eval, mul_assoc] using h
 
 end NLAlib.Schur

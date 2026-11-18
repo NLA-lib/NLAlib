@@ -623,6 +623,32 @@ theorem roundedShQRSmallEig_work_le (sG : ℕ) : ∃ c : ℕ, ∀ n k np F T : �
     Count.size (stmtCost (roundedShQRSmallEig (O := O) (Q := Q) sG).body [n + 1, k, np, F, T]) ≤
       c * (n + 1) ^ 4 * (k + 1) ^ 5 * (np + 1) * (F + 1) * (T + 1) ^ 2 := sorry
 
+-- The kernel evaluates the bound of the whole instrumented tree; its recursion is deep.
+set_option maxRecDepth 100000 in
+/-- The instructions of the Schur core: the instrumented static count of
+`NLAlib.ShiftedQR.roundedShQRSchur` at the order $n + 1$, $n_q$ words, the shift degree $k$, the
+iteration cap $F$, the leaf cap $T$, the parameter words at the offset $p$ and the other operands
+at offset zero is at most $380748(n + 1)^3(k + 1)^4(p + n_q + 1)(F + 1)(T + 1)^2$ (the monomial
+bound, by `kernel_rfl`), the cost of `SmallEig` and of the structural instructions included. -/
+theorem size_stmtCost_roundedShQRSchur_le (sG n nq k F T p : ℕ) :
+    Count.size (stmtCost (roundedShQRSchur (O := O) (Q := Q) sG).body.instrument
+        [n + 1, nq, k, F, T, 0, p, 0, 0, 0, 0]) ≤
+      380748 * (n + 1) ^ 3 * (k + 1) ^ 4 * (p + nq + 1) * (F + 1) * (T + 1) ^ 2 := by
+  have hw : stmtWorkMono (roundedShQRSchur (O := O) (Q := Q) sG).body.instrument
+      ([⟨1, [1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 0, 1]⟩, ⟨1, [0, 0, 0, 0, 1]⟩,
+        WorkMono.const 0, ⟨1, [0, 0, 1]⟩] ++ List.replicate 4 (WorkMono.const 0)) =
+        ⟨380748, [3, 4, 1, 1, 2]⟩ := by
+    kernel_rfl
+  have hσ : SlotsLe [n + 1, k + 1, p + nq + 1, F + 1, T + 1]
+      [n + 1, nq, k, F, T, 0, p, 0, 0, 0, 0]
+      ([⟨1, [1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 0, 1]⟩, ⟨1, [0, 0, 0, 0, 1]⟩,
+        WorkMono.const 0, ⟨1, [0, 0, 1]⟩] ++ List.replicate 4 (WorkMono.const 0)) := by
+    simp [SlotsLe, WorkMono.eval, WorkMono.const]; omega
+  have h := size_stmtCost_le_stmtWorkMono (by simp)
+    (roundedShQRSchur (O := O) (Q := Q) sG).body.instrument hσ
+  rw [hw] at h
+  simpa [WorkMono.eval, mul_assoc] using h
+
 /-- **The algorithm with no oracle, relative form** ([BanksGarzaVargasSrivastava2022,
 Theorem 6.3], the error relative to $\|\mathbf{H}\|_2$): with the machine, streams and tails of
 `NLAlib.ShiftedQR.roundedShQRSmallEig_measureReal_not_spectrum_le` written out in the signature:

@@ -911,47 +911,69 @@ theorem logb_inv_uDenseSchur_le : ∃ c₁ c₂ : ℝ, ∀ {n : ℕ} {δ φ : �
         (Real.logb 2 (Real.logb 2 (4 * (n + 1) / (δ * φ))) + 1) ^ 2 + c₂ :=
   sorry
 
--- The kernel evaluates the bound of the whole tree; its recursion is deep.
-set_option maxRecDepth 100000 in
-/-- **The operation count of the dense Schur solver** (on every tape): there is an absolute
-constant $c$ such that the static count of `NLAlib.Schur.denseSchur` at the order $n + 1$, $n_r$
-regularizer words, $n_q$ core words, the shift degree $k$, the iteration cap $F$ and the leaf cap
-$T$ has at most $c(n + 1)^3(k + 1)^5(n_r + n_q + 1)(F + 1)(T + 1)^2$ operations and tests: one
-power of $k$ above the eigenvalue solver's, from the replays on the couplings and on the
-accumulator. -/
-theorem denseSchur_work_le (sG : ℕ) : ∃ c : ℕ, ∀ n nr nq k F T : ℕ,
-    Count.size (stmtCost (denseSchur (O := O) (Q := Q) sG).body [n + 1, nr, nq, k, F, T]) ≤
-      c * (n + 1) ^ 3 * (k + 1) ^ 5 * (nr + nq + 1) * (F + 1) * (T + 1) ^ 2 := by
-  refine ⟨22514, fun n nr nq k F T => ?_⟩
-  have hw : stmtWorkMono (denseSchur (O := O) (Q := Q) sG).body
-      [⟨1, [1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 0, 1]⟩,
-        ⟨1, [0, 0, 0, 0, 1]⟩] = ⟨22514, [3, 4, 1, 1, 2]⟩ := by
+omit [Has SampleOp O] [Has DiskSampleOp O] in
+/-- The instructions of the reducer: the instrumented static count of
+`NLAlib.hessenbergReduceQ` at the order $n + 1$ and zero offsets is at most $2998(n + 1)^3$ (the
+monomial bound, by `kernel_rfl`). -/
+theorem size_stmtCost_hessenbergReduceQ_le (n : ℕ) :
+    Count.size (stmtCost (hessenbergReduceQ (O := O) (Q := Q)).body.instrument
+        [n + 1, 0, 0, 0, 0]) ≤ 2998 * (n + 1) ^ 3 := by
+  have hw : stmtWorkMono (hessenbergReduceQ (O := O) (Q := Q)).body.instrument
+      (⟨1, [1]⟩ :: List.replicate 4 (WorkMono.const 0)) = ⟨2998, [3]⟩ := by
     kernel_rfl
-  have hσ : SlotsLe [n + 1, k + 1, nr + nq + 1, F + 1, T + 1] [n + 1, nr, nq, k, F, T]
-      [⟨1, [1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 0, 1]⟩,
-        ⟨1, [0, 0, 0, 0, 1]⟩] := by
-    simp [SlotsLe, WorkMono.eval]; omega
-  refine (size_stmtCost_le_stmtWorkMono (by simp) _ hσ).trans ?_
-  rw [hw]
-  simp only [WorkMono.eval, powProd_cons_cons, powProd_nil_right]
-  have h5 : (k + 1) ^ 4 ≤ (k + 1) ^ 5 := Nat.pow_le_pow_right (by omega) (by omega)
-  have := Nat.mul_le_mul_left (22514 * (n + 1) ^ 3) (Nat.mul_le_mul_right
-    ((nr + nq + 1) ^ 1 * ((F + 1) ^ 1 * ((T + 1) ^ 2 * 1))) h5)
-  calc _ = 22514 * (n + 1) ^ 3 * ((k + 1) ^ 4 * ((nr + nq + 1) ^ 1 * ((F + 1) ^ 1 *
-        ((T + 1) ^ 2 * 1)))) := by ring
-    _ ≤ 22514 * (n + 1) ^ 3 * ((k + 1) ^ 5 * ((nr + nq + 1) ^ 1 * ((F + 1) ^ 1 *
-        ((T + 1) ^ 2 * 1)))) := this
-    _ = _ := by ring
+  have hσ : SlotsLe [n + 1] [n + 1, 0, 0, 0, 0]
+      (⟨1, [1]⟩ :: List.replicate 4 (WorkMono.const 0)) := by
+    simp [SlotsLe, WorkMono.eval, WorkMono.const]
+  have h := size_stmtCost_le_stmtWorkMono (by simp)
+    (hessenbergReduceQ (O := O) (Q := Q)).body.instrument hσ
+  rw [hw] at h
+  simpa [WorkMono.eval, mul_assoc] using h
+
+/-- **The operation count of the dense Schur solver** (on every tape): the instrumented static
+count of `NLAlib.Schur.denseSchur` at the order $n + 1$, $n_r$ regularizer words, $n_q$ core words,
+the shift degree $k$, the iteration cap $F$, the leaf cap $T$ and zero offsets, every primitive,
+test and structural instruction counted, is at most
+$384547(n + 1)^3(k + 1)^4(n_r + n_q + 1)(F + 1)(T + 1)^2$: the core's $380748$
+(`NLAlib.ShiftedQR.size_stmtCost_roundedShQRSchur_le`), the reducer's $2998$, the norm's $120$,
+the regularizer's $201$ and the glue's $4 \cdot 120$
+(`NLAlib.Schur.size_stmtCost_schurPipelineWith_le`). The power of $k$ is that of the eigenvalue solver: the replays on the couplings and on the
+accumulator cost no more than a step. -/
+theorem denseSchur_work_le (sG n nr nq k F T : ℕ) :
+    Count.size (stmtCost (denseSchur (O := O) (Q := Q) sG).body.instrument
+        [n + 1, nr, nq, k, F, T, 0, 0, 0, 0, 0]) ≤
+      384547 * (n + 1) ^ 3 * (k + 1) ^ 4 * (nr + nq + 1) * (F + 1) * (T + 1) ^ 2 := by
+  refine (size_stmtCost_schurPipelineWith_le _ _ _ _ _ _ _ _ _ _).trans ?_
+  have h1 := size_stmtCost_frobNormStage_le (O := O) (Q := Q) n
+  have h2 := size_stmtCost_ginibrePerturb_le (O := O) (Q := Q) sG n nr
+  have h3 := size_stmtCost_hessenbergReduceQ_le (O := O) (Q := Q) n
+  have h4 := size_stmtCost_roundedShQRSchur_le (O := O) (Q := Q) sG n nq k F T nr
+  set X := (k + 1) ^ 4 * (nr + nq + 1) * (F + 1) * (T + 1) ^ 2
+  have hX : 1 ≤ X := Nat.one_le_iff_ne_zero.mpr (by positivity)
+  have hN : (n + 1) ^ 2 ≤ (n + 1) ^ 3 := Nat.pow_le_pow_right (by omega) (by omega)
+  have hN2 : (n + 1 + 1) ^ 2 ≤ 4 * (n + 1) ^ 2 :=
+    calc (n + 1 + 1) ^ 2 ≤ (2 * (n + 1)) ^ 2 := Nat.pow_le_pow_left (by omega) 2
+      _ = 4 * (n + 1) ^ 2 := by ring
+  have hN3 : (n + 1) ^ 3 ≤ (n + 1) ^ 3 * X := Nat.le_mul_of_pos_right _ hX
+  have e4 : 380748 * (n + 1) ^ 3 * (k + 1) ^ 4 * (nr + nq + 1) * (F + 1) * (T + 1) ^ 2 =
+      380748 * ((n + 1) ^ 3 * X) := by simp only [X]; ring
+  have e : 384547 * (n + 1) ^ 3 * (k + 1) ^ 4 * (nr + nq + 1) * (F + 1) * (T + 1) ^ 2 =
+      384547 * ((n + 1) ^ 3 * X) := by simp only [X]; ring
+  rw [e4] at h4
+  rw [e]
+  unfold roundedShQRSchur at h4
+  omega
 
 /-- **The operation count of the dense Schur solver is $n^3$ times a polylogarithm**: there are
 constants $C$ and $p$ such that for every order $n + 1$, $0 < \delta \le 1$ and
-$0 < \varphi \le 1$, the static count at `NLAlib.Schur.denseSchurDims` is at most
+$0 < \varphi \le 1$, the instrumented static count at `NLAlib.Schur.denseSchurDims` and zero
+offsets is at most
 $C(n + 1)^3L^p$, $L = \log_2(4(n + 1)/(\delta\varphi))$. The exponent found by the proof is about
 $12$; [BanksGarzaVargasSrivastava2022, Theorem 1.4]'s is $2$ for the eigenvalues alone, with a
 run-time count over the deflation tree. -/
 theorem denseSchur_work_le_polylog (sG : ℕ) : ∃ (C : ℝ) (p : ℕ), ∀ {n : ℕ} {δ φ : ℝ}, 0 < δ →
     δ ≤ 1 → 0 < φ → φ ≤ 1 →
-    (Count.size (stmtCost (denseSchur (O := O) (Q := Q) sG).body (denseSchurDims n δ φ)) : ℝ) ≤
+    (Count.size (stmtCost (denseSchur (O := O) (Q := Q) sG).body.instrument
+      (denseSchurDims n δ φ ++ [0, 0, 0, 0, 0])) : ℝ) ≤
       C * ((n : ℝ) + 1) ^ 3 * Real.logb 2 (4 * (n + 1) / (δ * φ)) ^ p :=
   sorry
 

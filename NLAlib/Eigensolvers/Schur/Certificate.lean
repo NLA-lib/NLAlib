@@ -266,7 +266,21 @@ theorem denseSchurProgram_wp {Mch : Machine ℝ} {admitted : ∃ d, SchurSizes M
         (roundedShQRSchur sG)).body (Program.environment (b := 4) d)
       (fun m => ((denseSchurProblem Mch admitted).initial d x).store.EqOff
         (schurFp (d 0) (0, 0) (2, 0) (3, 0)) m.store)
-      ((denseSchurProblem Mch admitted).initial d x) := sorry
+      ((denseSchurProblem Mch admitted).initial d x) := by
+  obtain ⟨hNat, ⟨u, hM, hu⟩, -⟩ := hd
+  obtain ⟨hS, hL, hC, hQ, hSmp, hDisk⟩ := smallEigModel_laws hI
+  have hin := schurPipelineProblem_initial_input (admitted := admitted) d x
+  have hl5 : ((denseSchurProblem Mch admitted).initial d x).Live
+      [(0, 0), (1, 0), (0, 0), (2, 0), (3, 0)] := fun y hy => hin.1 y (by
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hy
+    rcases hy with rfl | rfl | rfl | rfl | rfl <;> simp)
+  have hsz := x.val.1.sizes_eq
+  refine wp_frame ?_ ?_ hl5 (Wp.mono (denseSchur_writes_orth (O := SmallEigOp) (Q := Tst)
+    (sG := sG) hS hM hL hNat hQ hC hSmp hDisk hu hin τ) fun _ h => h.1)
+  · have h := fun i => (congrFun hsz i).symm
+    simp [Program.environment, IExp.evalList, IExp.eval, denseSchurDims, denseSchurDimsWith,
+      List.ofFn_succ, h 1, h 2, h 3, h 4, h 5, denseSchurSizes]
+  · simp [Program.environment, Operand.evalList, Operand.eval, IExp.eval, List.ofFn_succ]
 
 /-- The parameter words have the sizes' count. -/
 theorem length_denseSchurParams (n : ℕ) (δ φ : ℝ) :

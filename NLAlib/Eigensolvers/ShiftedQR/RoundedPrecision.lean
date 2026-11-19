@@ -17,7 +17,7 @@ $\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{ShQR}}$ meet the parameter and preci
 the proved blocks, each listed as a structure in the form the block takes it: Sh
 (`NLAlib.ShiftedQR.shStep_pwrites`) and Regularize (`NLAlib.ShiftedQR.regularize_pwrites`) at
 condition $4B$, separation $\Gamma/4$ and iterate norm $4\Sigma$, the worklist
-(`NLAlib.ShiftedQR.solveRounded_measureReal_not_spectrum_le`) at block norm $2\Sigma$, and the
+(`NLAlib.ShiftedQR.solveRoundedWith_pwrites`) at block norm $2\Sigma$, and the
 iteration loop's needs (cap, iterate norm, failure split, scan).
 
 ## Main definitions
@@ -49,9 +49,9 @@ form the block takes them, so that a consumer passes the fields. Collected from:
 `NLAlib.ShiftedQR.shStep_pwrites` (`RoundedShStep.lean`; it discharges those of the blocks inside:
 the shifted chains, Find, Exc and comptau), `NLAlib.ShiftedQR.regularize_pwrites`
 (`RoundedRegularize.lean`; the chains, Optimal and `SmallEig`) and
-`NLAlib.ShiftedQR.solveRounded_measureReal_not_spectrum_le` (`RoundedHeadline.lean`; the
+`NLAlib.ShiftedQR.solveRoundedWith_pwrites` (`RoundedHeadline.lean`; the
 decoupler, the leaves and the deflation scan).
-`NLAlib.ShiftedQR.IsRandomSmallEig.randomLeafContract` needs only $\beta \ge 0$. -/
+`NLAlib.ShiftedQR.IsRandomSmallEig.randomSmallEigContract` needs only $\beta \ge 0$. -/
 
 /-- The parameter and precision hypotheses of `NLAlib.ShiftedQR.shStep_pwrites` other than
 the machine, the input matrix and the stored words, for the condition bound `B`, the norm bound
@@ -151,7 +151,7 @@ structure RegularizeHyps (u : ℝ) (n k : ℕ) (B S g ω R φ β tv : ℝ) : Pro
   hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv
 
 /-- The parameter and precision hypotheses of
-`NLAlib.ShiftedQR.solveRounded_measureReal_not_spectrum_le` (the worklist) for the condition
+`NLAlib.ShiftedQR.solveRoundedWith_pwrites` (the worklist) for the condition
 bound `B`, the separation `g`, a bound `S` on the input's norm, the target backward error `δ`,
 the deflation threshold word `thr`, the cut level `c`, the decoupler's level `ω`, the leaf's
 backward error `β`, the decoupler's backward error `e` on blocks of norm at most `N₀`, plus the
@@ -529,7 +529,7 @@ $B \ge 1$, $\Gamma > 0$, $0 < \delta \le \Sigma$, $k$ the degree of (eqn:setk) a
 $0 \le \boldsymbol{u} \le \boldsymbol{u}_{\mathrm{ShQR}}$ (any $\varphi$) and a leaf error
 $0 \le \beta \le$ `shqrSmallEigAccuracy`, the deflation threshold word, the cut level, the
 decoupler's level $\omega_D$ and its backward error `shqrDecoupleError` satisfy every parameter
-and precision hypothesis of `NLAlib.ShiftedQR.solveRounded_measureReal_not_spectrum_le`, and the
+and precision hypothesis of `NLAlib.ShiftedQR.solveRoundedWith_pwrites`, and the
 total backward error $2(n + 1)(c + e + \beta)$ is at most $\delta$. -/
 theorem solveRoundedHyps_of_le_uShQR (hB : 1 ≤ B) (hΓ : 0 < Γ) (hδ : 0 < δ) (hδS : δ ≤ S)
     (hk : k = shqrDegree (4 * B)) (hu0 : 0 ≤ u) (hu : u ≤ uShQR n k B Γ S δ φ) {β : ℝ}

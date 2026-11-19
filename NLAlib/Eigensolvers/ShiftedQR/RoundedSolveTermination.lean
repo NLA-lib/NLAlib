@@ -9,19 +9,18 @@ public import NLAlib.Eigensolvers.ShiftedQR.RoundedKernels
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveBackward
 
 /-!
-# Termination of the rounded deflation worklist
+# Termination contracts of the routines of the rounded deflation worklist
 
-The termination-only counterpart of `NLAlib.ShiftedQR.solveRounded_backward`: on every tape
-and from every stored matrix, the rounded worklist runs to completion when its decoupler and its
-leaf do. Nothing numerical is assumed: no unit roundoff, no Hessenberg input, no spectrum. What
-makes the run succeed is index safety (every bounded index read is within its bound, because
-every index word is an exact natural literal), the room of the stack (the active ranges have
-positive sizes summing to at most the order), and the total scalar operations.
+The termination-only side of the worklist's routines: a decoupler and a Schur leaf that terminate
+from every stored matrix, with no unit roundoff, no Hessenberg input and no spectrum assumed. What
+makes a run succeed is index safety (every bounded index read is within its bound, because every
+index word is an exact natural literal), the room of the buffers and the total scalar operations.
+The worklist's termination is `NLAlib.ShiftedQR.solveRoundedWith_terminates`.
 
 ## Main definitions
 
-* `NLAlib.ShiftedQR.TerminatingDecoupler`: a decoupler that terminates from every stored
-  matrix, writes only the matrix and the flag, and leaves both stored.
+* `NLAlib.ShiftedQR.TerminatingDecouplerRoutine`: a decoupler that terminates from every stored
+  matrix, writes only the matrix, the flag and its log, and leaves them stored.
 * `NLAlib.ShiftedQR.CompletingLeafRoutine`: a Schur leaf that terminates from every stored
   matrix, writes only its block and accumulator, and leaves both stored (no rounding model).
 * `NLAlib.ShiftedQR.TerminatingLeafRoutine`: the same with the accumulator near a unitary.
@@ -29,7 +28,6 @@ positive sizes summing to at most the order), and the total scalar operations.
 ## Main results
 
 * `NLAlib.ShiftedQR.bottomScan_terminates`: the bottom-$k$ scan on any matrix.
-* `NLAlib.ShiftedQR.IsRandomSmallEig.terminatingLeaf`: the `SmallEig` leaf terminates.
 -/
 
 @[expose] public section

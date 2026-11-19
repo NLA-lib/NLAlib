@@ -8,21 +8,17 @@ module
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolve
 
 /-!
-# Backward error of the rounded deflation worklist
+# The pieces of a round of the rounded deflation worklist
 
-The program `NLAlib.ShiftedQR.solveRounded` of `NLAlib.Eigensolvers.ShiftedQR.RoundedSolve`, a
-worklist of active ranges with a decoupling implementation for large blocks and a leaf routine for
-small ones, is total and capped, and on its success word stores the spectrum of a matrix within
-the composed backward error of the input. The rounds are composed by
-`NLAlib.Ops.BackwardStep.whileFuel` with the perturbed unitary similarity as backward-error
-relation: a round is exact (a failure), a leaf ($\beta$), or a decoupling call and a cut
-($\varepsilon(N_0) + c$) [BanksGarzaVargasSrivastava2022, §6].
+The deterministic pieces of a round of `NLAlib.ShiftedQR.solveRoundedWith`: the rounded bottom-$k$
+scan (the decision of `Deflate` [BanksGarzaVargasSrivastava2022, §6]), the abort that writes the
+failure word, and the write-back and split of a block.
 
 ## Main results
 
-* `NLAlib.ShiftedQR.bottomScan_writes`: the rounded bottom-$k$ scan (the decision of `Deflate`).
-* `NLAlib.ShiftedQR.solveRoundedWith_terminates`: one round is a backward step.
-* `NLAlib.ShiftedQR.solveRoundedWith_terminates`: the backward error of the rounded worklist.
+* `NLAlib.ShiftedQR.bottomScan_writes`: the rounded bottom-$k$ scan.
+* `NLAlib.ShiftedQR.roundedAbort_writes`, `NLAlib.ShiftedQR.writeAndSplit_writes_mem`: the abort
+  and the split.
 -/
 
 @[expose] public section

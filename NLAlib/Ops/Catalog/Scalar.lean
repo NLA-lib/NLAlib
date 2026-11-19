@@ -37,8 +37,7 @@ and so does the machine that inflates every result by the factor `1 + u`
 
 * `NLAlib.Ops.exists_isScalar`: the contracts of scalar arithmetic can be met.
 * `NLAlib.Ops.MixedModel.abs_add_mul_sub_le`: guarded multiply-add with absolute error.
-* `NLAlib.Ops.StdModel.abs_le`, `NLAlib.Ops.StdModel.abs_add_mul_sub_le`: one and two rounded
-  operations.
+* `NLAlib.Ops.StdModel.abs_add_mul_sub_le`: two rounded operations.
 -/
 
 @[expose] public section

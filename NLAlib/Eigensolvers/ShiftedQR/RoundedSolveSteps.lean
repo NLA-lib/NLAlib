@@ -401,7 +401,7 @@ theorem leafUpdateMatrix_apply_top (M : Machine ℝ) {N lo d : ℕ}
   simp only [subRect, Matrix.of_apply]
   split_ifs <;> first | rfl | omega
 
-/-- The left form of `NLAlib.specNorm_matMulWord_sub_mul_le`: with
+/-- The left form of `NLAlib.ShiftedQR.specNorm_matMulWord_sub_mul_le`: with
 $\|\mathbf{U}_b - \mathbf{V}\|_2 \le \varepsilon_L$, $\mathbf{V}$ unitary of order $d$, and
 $\mathbf{Y}$ with $d$ rows, $\|\mathrm{fl}(\mathbf{U}_b^{\mathsf H}\mathbf{Y}) -
 \mathbf{V}^{\mathsf H}\mathbf{Y}\|_2 \le (g d(1 + \varepsilon_L) +

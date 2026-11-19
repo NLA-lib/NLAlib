@@ -16,12 +16,15 @@ The small-eigenvalue routine `SmallEig` of [BanksGarzaVargasSrivastava2022, Defi
 randomized kernel: on an upper Hessenberg matrix of order $d$ it reads a window of $W(d)$ entries
 of one stream of the tape and, unless the window lies in a bad set of probability at most
 $\varphi$, returns every eigenvalue, with multiplicity, within the forward error $\beta$. The
-call always succeeds and writes only its output block. Forward error implies backward error
-(`NLAlib.IsEigenvalueListing.exists_specNorm_sub_le`), so the leaf routine that calls the kernel
-meets `NLAlib.ShiftedQR.RandomLeafContract` with the backward error $\beta$.
+call always succeeds and writes only its output block.
 
 The window has a fixed length at each order, read at the call position; a routine that draws an
-adaptive number of samples does not fit this model.
+adaptive number of samples does not fit this model. Such a program in the kernel's place
+([BanksGarzaVargasSrivastava2025]) reads parameter words; its contract is a routine contract
+(`NLAlib.ShiftedQR.RandomSmallEigContract`, `NLAlib.ShiftedQR.TerminatingSmallEig`) on bounded
+orders and norms, with the interface `[d, nq, T] (Bk, Q) → (Ev)`, which the kernel meets as a
+routine (`NLAlib.ShiftedQR.smallEigKernel`). `Regularize` calls such a routine for its Ritz
+values; the worklist's leaves are Schur leaves (`NLAlib.Schur.RandomSchurLeafContract`).
 
 The disk sampler of the random shifts reads a radius word $R$ and a window of two entries
 $x_0, x_1$ of one stream, and writes the pair of the polar sample
@@ -33,23 +36,13 @@ paper; a rounded sampler is not modelled.
 
 * `NLAlib.ShiftedQR.randomSmallEigRel`: the kernel's contract in operand form.
 * `NLAlib.ShiftedQR.IsRandomSmallEig`: the interpretation's `smallEig` is such a kernel.
-* `NLAlib.ShiftedQR.DiskSampleOp`, `NLAlib.ShiftedQR.polarDiskRel`,
+* `NLAlib.ShiftedQR.DiskSampleOp`, `NLAlib.ShiftedQR.polarDiskRel`, `NLAlib.ShiftedQR.polarDiskFn`,
   `NLAlib.ShiftedQR.IsPolarDiskSampler`: the exact polar disk sampler.
 
 ## Main results
 
-* `NLAlib.ShiftedQR.IsRandomSmallEig.randomLeafContract`: the leaf routine that calls the kernel
-  meets `NLAlib.ShiftedQR.RandomLeafContract`.
-
-## Small-eigenvalue routines
-
-A program in the kernel's place reads parameter words and draws an adaptive number of samples
-([BanksGarzaVargasSrivastava2025]). Its contract is a routine contract
-(`NLAlib.ShiftedQR.RandomSmallEigContract`, `NLAlib.ShiftedQR.TerminatingSmallEig`) on bounded
-orders and norms, with the interface `[d, nq, T] (Bk, Q) → (Ev)`; the kernel meets it as a routine
-(`NLAlib.ShiftedQR.smallEigKernel`, `NLAlib.ShiftedQR.IsRandomSmallEig.randomSmallEigContract`),
-and a routine gives a leaf routine of the worklist (`NLAlib.ShiftedQR.seLeaf`,
-`NLAlib.ShiftedQR.RandomSmallEigContract.randomLeafRoutineContract`).
+* `NLAlib.ShiftedQR.IsRandomSmallEig.randomSmallEigContract`,
+  `NLAlib.ShiftedQR.IsRandomSmallEig.terminatingSmallEig`: the kernel meets the routine contracts.
 -/
 
 @[expose] public section

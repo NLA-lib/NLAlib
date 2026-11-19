@@ -712,7 +712,7 @@ $0 < \varphi \le 1$. Then from a memory holding $\mathbf{M}$ and the words
 $\mathbf{M} + \mathbf{E}$ for some $\|\mathbf{E}\|_2 \le \delta$
 (`NLAlib.SmallEig.SmallEigSpectrum`). The order $1$ is copied; otherwise the perturbation
 (`NLAlib.SmallEig.ginibrePerturb_pwrites`, $3\varphi/4$), the reduction
-(`NLAlib.SmallEig.smallEigProg_reduce_pwrites`) and the core
+(`NLAlib.SmallEig.smallEigProg_reduce_writes`) and the core
 (`NLAlib.SmallEig.smallEigProg_core_pwrites`, $\varphi/4$) compose by `NLAlib.Ops.PWrites.seq`;
 the backward errors $\delta/2 + \delta/8 + \delta/4$ add. -/
 theorem smallEigProg_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}

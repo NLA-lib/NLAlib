@@ -17,7 +17,7 @@ merged algorithm assumes (`NLAlib.ShiftedQR.IsRandomSmallEig`) is replaced by th
 [BanksGarzaVargasSrivastava2025, Theorem 1.1] (`NLAlib.SmallEig.smallEigProg`), run as a routine
 (`NLAlib.ShiftedQR.roundedShQRWith`). Its words follow those of the merged algorithm, its cap is a
 dimension, and its forward contract on the trailing blocks of order $k$ and norm at most
-$4\Sigma$ (`NLAlib.SmallEig.smallEigProg_randomSmallEigContract`) gives the merged accuracy and
+$4\Sigma$ (`NLAlib.SmallEig.smallEigProg_randomSchurLeafContract`) gives the merged accuracy and
 failure. The headline is conditional only on the two random-matrix theorems (the hypotheses
 `NLAlib.PolyLogTail.BoundsGinibreGap`, `NLAlib.PolyLogTail.BoundsGinibreCondition`), which are
 proved at the records `NLAlib.ginibreGapTail` <!-- value ginibreGapTail -->

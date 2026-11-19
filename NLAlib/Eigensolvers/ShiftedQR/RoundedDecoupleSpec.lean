@@ -66,22 +66,22 @@ omit [Has EigenvalueKernelOp O] in
 contract at the headline's parameters**, with the routine's words `qs` (none, or $12$) after the
 words of `NLAlib.ShiftedQR.roundedDecoupleParams` and the routine meeting
 `NLAlib.ShiftedQR.RandomSmallEigContractAt` on orders at most $k$ and norms at most $4\Sigma$ (the
-iterate norm): the merged statement is the case of the kernel. The rounded decoupling loop meets
-the randomized decoupling contract at the headline's parameters ([BanksGarzaVargasSrivastava2022,
-Lemma 6.4] in floating point, corrected): on a machine with the standard model at $\boldsymbol{u}
-\le \boldsymbol{u}_{\mathrm{ShQR}}$, exact natural literals up to $n + 1$, a measurable
-interpretation reading the tape only in its windows, a `SmallEig` kernel on a stream uniform on
-$[0, 1]$ with forward error $0 \le \beta \le$ `shqrSmallEigAccuracy` and failure
-$\varphi_{\mathrm{se}} \ge 0$, and an exact polar disk sampler on it, for $B \ge 1$, $\Gamma > 0$,
-$0 < \delta \le \Sigma$, $0 < \varphi \le 1$ and $k$ the degree of (eqn:setk) at $4B$, the loop
+iterate norm): the merged statement is the case of the kernel. The rounded decoupling loop meets the
+randomized decoupling contract at the headline's parameters ([BanksGarzaVargasSrivastava2022, Lemma
+6.4] in floating point, corrected): on a machine with the standard model at $\boldsymbol{u} \le
+\boldsymbol{u}_{\mathrm{ShQR}}$, exact natural literals up to $n + 1$, a measurable interpretation
+reading the tape only in its windows, a `SmallEig` kernel on a stream uniform on $[0, 1]$ with
+forward error $0 \le \beta \le$ `shqrSmallEigAccuracy` and failure $\varphi_{\mathrm{se}} \ge 0$,
+and an exact polar disk sampler on it, for $B \ge 1$, $\Gamma > 0$, $0 < \delta \le \Sigma$, $0 <
+\varphi \le 1$ and $k$ the degree of (eqn:setk) at $4B$, the loop
 `NLAlib.ShiftedQR.roundedDecoupleWith` with the words of `NLAlib.ShiftedQR.roundedDecoupleParams` at
 the parameter choices of `NLAlib.Eigensolvers.ShiftedQR.RoundedParameters` meets
-`NLAlib.ShiftedQR.RandomDecouplingContract` on the class (condition $2B$, separation $\Gamma/2$)
-for orders up to $n_c + 1$, any $n_c \le n$ with a log width $w \ge kn_c$, and norms up to
-$2\Sigma$, with the cap $F$, failure probability
-$F(\varphi_{\mathrm{se}} + \varphi_R/2 + \varphi_1)$ ($\varphi_1 = \varphi/(12F(n + 1))$,
-$\varphi_R = 2\varphi_1$), the level $\omega_D$ and the backward error $F(1 + C) \cdot 4\Sigma((1 +
-300(n + 1)^2\boldsymbol{u})^k - 1)$. No printed source. -/
+`NLAlib.ShiftedQR.RandomDecouplingRoutineContract` on the class (condition $2B$, separation
+$\Gamma/2$) for orders up to $n_c + 1$, any $n_c \le n$ with a log width $w \ge kn_c$, and norms up
+to $2\Sigma$, with the cap $F$, failure probability $F(\varphi_{\mathrm{se}} + \varphi_R/2 +
+\varphi_1)$ ($\varphi_1 = \varphi/(12F(n + 1))$, $\varphi_R = 2\varphi_1$), the level $\omega_D$ and
+the backward error $F(1 + C) \cdot 4\Sigma((1 + 300(n + 1)^2\boldsymbol{u})^k - 1)$. No printed
+source. -/
 theorem roundedDecoupleWith_randomDecouplingRoutineContract_of_le_uShQR_at {M : Machine ℝ}
     {I : Interp O Q ℝ} {u : ℝ} (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
     (hloc : ∀ o, I.TapeLocal o (win o)) (hS : IsScalar M I) (hM : StdModel u id M)

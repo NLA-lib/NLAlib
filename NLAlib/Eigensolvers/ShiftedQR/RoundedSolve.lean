@@ -16,49 +16,42 @@ public import NLAlib.Matrix.FinitePrecision.StoredProducts
 public import NLAlib.Matrix.FinitePrecision.GivensReplay
 
 /-!
-# The rounded deflation worklist
+# The rounded deflation worklist in Schur mode
 
 The deflation tree of [BanksGarzaVargasSrivastava2022, §6] (`ShiftedQR`, `Deflate`, Theorem 6.3)
-in floating point, as a worklist of active ranges. A small block goes to a leaf routine; a larger
-block goes to a decoupling implementation, which either fails, writing a failure word, or returns
-a perturbed unitary similarity of the block that is upper Hessenberg and has one of its **bottom
-$k$** subdiagonal entries of modulus at most $\omega$. The worklist then scans the bottom $k$
-subdiagonal entries of the returned block with a rounded squared-modulus test against a threshold
-word, cuts the last one that passes, and pushes the two children. The paper's `Deflate` cuts "the
-bottom $k - 1$ entries smaller than $\omega$" while its loop exits at "$\le \omega$" among the
-bottom $k$: with that rule a block can recurse forever on the same loop. Here the scan covers
-exactly the bottom $k$ and its threshold is chosen so that an entry of modulus at most $\omega$
-always passes.
+in floating point and in Schur form, as a worklist of active ranges. A small block goes to a Schur
+leaf routine; a larger block goes to a decoupling routine, which either fails, writing a failure
+word, or returns a perturbed unitary similarity of the block by the unitary of its slotted Givens
+log that is upper Hessenberg and has one of its **bottom $k$** subdiagonal entries of modulus at
+most $\omega$. The worklist then scans the bottom $k$ subdiagonal entries of the returned block
+with a rounded squared-modulus test against a threshold word, cuts the last one that passes,
+replays the log on the couplings of the block and on the accumulator, writes an exact zero at the
+cut and pushes the two children. The paper's `Deflate` cuts "the bottom $k - 1$ entries smaller
+than $\omega$" while its loop exits at "$\le \omega$" among the bottom $k$: with that rule a block
+can recurse forever on the same loop. Here the scan covers exactly the bottom $k$ and its
+threshold is chosen so that an entry of modulus at most $\omega$ always passes.
 
 The program uses the stack of the exact-arithmetic worklist (`rangePop`, `stackInit`), its block
-copies, the split (`NLAlib.ShiftedQR.writeAndSplit`) and the scan visit
-(`NLAlib.ShiftedQR.scanRound`). The run is
-**total and capped**: the loop has the fuel $2(n+1)$ of the exact worklist; a failure of the
-decoupler, a scan that finds nothing, or work left at the cap writes the failure word $1$ and
-empties the stack. The backward error is composed round by round
-(`NLAlib.Ops.BackwardStep.whileFuel` with the perturbed unitary similarity as backward-error
-relation): a round is exact (a failure), a leaf ($\beta$), or a decoupling call and a cut
-($\varepsilon(N_0) + c$).
+copies, the split (`NLAlib.ShiftedQR.writeAndSplit`) and the scan. The run is **total and
+capped**: the loop has the fuel $2(n+1)$ of the exact worklist; a failure of the decoupler, a scan
+that finds nothing, or work left at the cap writes the failure word $1$ and empties the stack.
 
 ## Main definitions
 
-* `NLAlib.ShiftedQR.RoundedDecouplingContract`: the decoupler's contract with a failure word.
-* `NLAlib.ShiftedQR.BackwardLeafContract`: a leaf routine with backward error $\beta$.
-* `NLAlib.ShiftedQR.bottomScan`, `NLAlib.ShiftedQR.solveRounded`: the programs.
-* `NLAlib.ShiftedQR.solveRoundedWith`, `NLAlib.ShiftedQR.liftLeaf`,
-  `NLAlib.ShiftedQR.liftDecoupler`: the worklist with routines that read parameter words and a cap
-  dimension [BanksGarzaVargasSrivastava2025].
-* `NLAlib.ShiftedQR.RoundedWorklistState`: the state between two rounds.
+* `NLAlib.ShiftedQR.RoundedDecouplingRoutineContract`: the decoupler's contract with a failure
+  word.
+* `NLAlib.ShiftedQR.bottomScan`, `NLAlib.ShiftedQR.roundedDecoupleUpdate`,
+  `NLAlib.ShiftedQR.roundedLeafUpdate`: the scan and the Schur updates of a round.
+* `NLAlib.ShiftedQR.solveRoundedWith`: the worklist with a decoupling routine and a Schur leaf.
 
 ## Main results
 
-* `NLAlib.ShiftedQR.IsEigenvalueKernels.backwardLeafContract`: the exact kernel is a leaf
-  routine with error $0$.
-* `NLAlib.ShiftedQR.RoundedGeometry.disj_round`, `NLAlib.ShiftedQR.roundedGeometry_allocated`:
-  the layout of the worklist's buffers.
+* `NLAlib.DeflationInv.exists_isPerturbedUnitarySimilar_finish`,
+  `NLAlib.DeflationInv.exists_isPerturbedUnitarySimilar_split`: a leaf and a cut as one perturbed
+  similarity.
 
-The program proofs and the backward error are in
-`NLAlib.Eigensolvers.ShiftedQR.RoundedSolveBackward`.
+The worklist's specification on the good tapes is `NLAlib.ShiftedQR.solveRoundedWith_pwrites`
+and its termination `NLAlib.ShiftedQR.solveRoundedWith_terminates`.
 -/
 
 @[expose] public section

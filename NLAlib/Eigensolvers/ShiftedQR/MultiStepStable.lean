@@ -13,7 +13,7 @@ public import NLAlib.Eigensolvers.ShiftedQR.StableStep
 The degree $k$ rounded step `NLAlib.ShiftedQR.multiStepStable` repeats the rounded single-shift step
 `NLAlib.ShiftedQR.stepWithDiagInPlace` in place with the $k$ shifts of a stored list, all its
 rotations recorded in one slot of the log. By the single steps it is a chain of backward-stable
-steps (`NLAlib.ShiftedQR.IsStableQRChainBy`) by the unitary of its log.
+steps (`NLAlib.IsStableQRChainBy`) by the unitary of its log.
 
 ## Main results
 

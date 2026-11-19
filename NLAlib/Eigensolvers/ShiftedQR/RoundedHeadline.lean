@@ -14,38 +14,27 @@ public import NLAlib.Ops.Logic.ProbabilisticFamily
 public import NLAlib.Eigensolvers.Schur.Contracts
 
 /-!
-# The rounded deflation worklist with randomized routines
+# Randomized routines of the rounded deflation worklist
 
 [BanksGarzaVargasSrivastava2022, Theorem 6.3] in floating point, at the level of the worklist:
-the decoupler and the small-eigenvalue routine are randomized, each meeting its guarantee on a
-good set of tapes (`NLAlib.Ops.PWrites`). The decoupler is guaranteed only on well-conditioned
-blocks: upper Hessenberg, norm at most $N$, diagonalizable with condition at most $B$ and
-eigenvalues separated by $g$. The worklist keeps every block it hands to the decoupler in that
-class (norm at most $N_0$, condition at most $2B$, separation $g/2$) as long as the accumulated
-backward error stays below $g/(16(n + 1)B)$, and the failure probabilities of the at most
-$2(n + 1)$ rounds add (`NLAlib.Ops.PWrites.whileFuel`).
-
-The deterministic backward error of the same program on every tape is
-`NLAlib.ShiftedQR.solveRounded_backward`; this file adds the probability of success. The
-decoupler that meets `NLAlib.ShiftedQR.RandomDecouplingContract` (Lemma 6.4's loop of
-`Regularize` and $\mathrm{Sh}_{k,B}$) and the leaf that meets
-`NLAlib.ShiftedQR.RandomLeafContract` (`SmallEig`, Definition 1.2) are separate.
+the decoupler and the Schur leaf are randomized, each meeting its guarantee on a good set of tapes
+(`NLAlib.Ops.PWrites`). The decoupler is guaranteed only on well-conditioned blocks: upper
+Hessenberg, norm at most $N$, diagonalizable with condition at most $B$ and eigenvalues separated
+by $g$. This file states the decoupler's randomized contract with its slotted log and shows that
+the outcomes of the randomized calls are measurable, so each call's family of good sets becomes
+one (`NLAlib.Ops.PWrites.pstep_of_forall`). The worklist in Schur mode with these routines on the
+good tapes is `NLAlib.ShiftedQR.solveRoundedWith_pwrites`.
 
 ## Main definitions
 
-* `NLAlib.ShiftedQR.RandomDecouplingContract`, `NLAlib.ShiftedQR.RandomLeafContract`.
-* `NLAlib.ShiftedQR.measurable_storedMatrix`: the matrix read from a block
-  (`NLAlib.storedMatrix`) is a measurable function of the memory.
-* `NLAlib.ShiftedQR.RoundedReached`, `NLAlib.ShiftedQR.RoundedCopied`: the states of a round on
-  the good tapes.
+* `NLAlib.ShiftedQR.RandomDecouplingRoutineContract`: the decoupler's contract.
 
 ## Main results
 
+* `NLAlib.ShiftedQR.measurable_storedMatrix`: the matrix read from a block
+  (`NLAlib.storedMatrix`) is a measurable function of the memory.
 * `NLAlib.ShiftedQR.measurableSet_decoupleOutcome`, `NLAlib.ShiftedQR.measurableSet_leafOutcome`:
-  the outcomes of the randomized calls that the worklist uses are measurable, so each call's
-  family of good sets becomes one (`NLAlib.Ops.PWrites.pstep_of_forall`).
-The worklist in Schur mode with these routines on the good tapes is
-`NLAlib.ShiftedQR.solveRoundedWith_pwrites` (`NLAlib.Eigensolvers.ShiftedQR.RoundedSolveSchur`).
+  the outcomes of the randomized calls are measurable.
 -/
 
 @[expose] public section

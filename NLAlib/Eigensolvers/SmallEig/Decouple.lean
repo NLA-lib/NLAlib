@@ -448,7 +448,7 @@ private def DecoupleLastScansPost (u t : ℝ) {n : ℕ} (H : Matrix (Fin (n + 2)
 omit [Has IdxTst Q] in
 /-- **One round of `NLAlib.SmallEig.decoupleLast` with its log**: after a failed scan, one rounded
 step (recorded in the pending slot), the validation of the slot and a scan extend the history
-`NLAlib.SmallEig.DecoupleScans` and the log `NLAlib.SmallEig.DecoupleLogBy` by a round. -/
+`NLAlib.SmallEig.DecoupleScans` and its log by a round. -/
 private theorem decoupleLast_round_by {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hu : 0 ≤ u) (hu1 : u ≤ 1) (hL : IsIndexLit M I)
     (hC : IsCmp id I) {n : ℕ} (hNat : IsExactNatLit id M (n + 2))
@@ -555,7 +555,7 @@ private theorem decoupleLast_exit_by {M : Machine ℝ} {I : Interp O Q ℝ} {u t
 
 omit [Has IdxTst Q] in
 /-- `NLAlib.SmallEig.decoupleLast_writes_scans` with the log and the unitary of its entries
-(`NLAlib.SmallEig.DecoupleLogBy`). -/
+(the log of the rounds). -/
 private theorem decoupleLast_writes_scansBy {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hu : 0 ≤ u) (hL : IsIndexLit M I)
     (hC : IsCmp id I) {n m₂ : ℕ} (hNat : IsExactNatLit id M (n + 2))

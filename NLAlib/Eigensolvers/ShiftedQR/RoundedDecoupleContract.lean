@@ -180,9 +180,9 @@ point, corrected): on a machine with the standard model at $\boldsymbol{u} < 1$,
 literals up to $n_{\max} + 1$, a measurable interpretation reading the tape only in its windows, a
 `SmallEig` kernel and an exact polar disk sampler, `NLAlib.ShiftedQR.roundedDecoupleWith` with the
 parameter words `NLAlib.ShiftedQR.roundedDecoupleParams` meets
-`NLAlib.ShiftedQR.RandomDecouplingContract` on the class (condition $2B$, separation $g/2$) for
-orders up to $n_c + 1$ and norms up to $N_{\max}$, for any $n_c \le n_{\max}$ and a log width $w \ge
-kn_c$, with failure probability $F(\varphi_{\mathrm{se}} + \varphi_R/2 + \varphi)$, the level
+`NLAlib.ShiftedQR.RandomDecouplingRoutineContract` on the class (condition $2B$, separation $g/2$)
+for orders up to $n_c + 1$ and norms up to $N_{\max}$, for any $n_c \le n_{\max}$ and a log width $w
+\ge kn_c$, with failure probability $F(\varphi_{\mathrm{se}} + \varphi_R/2 + \varphi)$, the level
 $\omega_D$ and the backward error $FE$, $E = (1 + C)S((1 + 300(n_{\max}+1)^2\boldsymbol{u})^k - 1)$.
 The hypotheses are those of `NLAlib.ShiftedQR.shIteration_pwrites` at the order $n_{\max} + 1$, the
 class constant $B_i \ge 4B$ and the iterate norm $S$, and the loop's: the scan thresholds $(1 +

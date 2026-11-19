@@ -23,7 +23,7 @@ well, the shifts may be arbitrary words.
   $\mathrm{Sh}_{k,B}$).
 * `NLAlib.ShiftedQR.roundedDecoupleLoopWith_terminates`: the capped loop.
 * `NLAlib.ShiftedQR.roundedDecoupleWith_terminatingDecouplerRoutine_at`: the decoupler is a
-  `NLAlib.ShiftedQR.TerminatingDecoupler`.
+  `NLAlib.ShiftedQR.TerminatingDecouplerRoutine`.
 -/
 
 @[expose] public section
@@ -425,19 +425,19 @@ theorem roundedDecoupleLoopWith_terminates {M : Machine ℝ} {I : Interp O Q ℝ
         forall_eq_or_imp, forall_eq] at this ⊢; tauto)
 
 omit [Has EigenvalueKernelOp O] in
-/-- **The rounded decoupling loop with a terminating small-eigenvalue routine terminates**, with
-the parameter words `NLAlib.ShiftedQR.roundedDecoupleParams` followed by the routine's words `qs`
-(none, or $12$) and the routine meeting `NLAlib.ShiftedQR.TerminatingSmallEigAt` with the word
-count $12$: `NLAlib.ShiftedQR.roundedDecoupleWith_terminatingDecouplerRoutine_at` for
+/-- **The rounded decoupling loop with a terminating small-eigenvalue routine terminates**, with the
+parameter words `NLAlib.ShiftedQR.roundedDecoupleParams` followed by the routine's words `qs` (none,
+or $12$) and the routine meeting `NLAlib.ShiftedQR.TerminatingSmallEigAt` with the word count $12$:
+`NLAlib.ShiftedQR.roundedDecoupleWith_terminatingDecouplerRoutine_at` for
 `NLAlib.ShiftedQR.roundedDecoupleWith`. The rounded decoupling loop terminates on every tape and
-every matrix
-([BanksGarzaVargasSrivastava2022, Lemma 6.4], termination only): on a scalar machine with exact
-comparisons, index literals, index conversion and exact natural literals up to $n_{\max} + 1$, a
-`SmallEig` kernel meeting `NLAlib.ShiftedQR.IsRandomSmallEig` and an exact polar sampler,
+every matrix ([BanksGarzaVargasSrivastava2022, Lemma 6.4], termination only): on a scalar machine
+with exact comparisons, index literals, index conversion and exact natural literals up to
+$n_{\max} + 1$, a `SmallEig` kernel meeting `NLAlib.ShiftedQR.IsRandomSmallEig` and an exact polar
+sampler,
 `NLAlib.ShiftedQR.roundedDecoupleWith` with the parameter words
 `NLAlib.ShiftedQR.roundedDecoupleParams` and $k = 2^q$ is a
-`NLAlib.ShiftedQR.TerminatingDecoupler` for orders up to $n_{\max} + 1$, with any iteration cap
-$F$. No numerical hypothesis is needed: the loop is capped, every operation succeeds on stored
+`NLAlib.ShiftedQR.TerminatingDecouplerRoutine` for orders up to $n_{\max} + 1$, with any iteration
+cap $F$. No numerical hypothesis is needed: the loop is capped, every operation succeeds on stored
 operands, and the two index words $q \le k$ and $\lvert\mathrm{net}\rvert \le n_p$ are exact. -/
 theorem roundedDecoupleWith_terminatingDecouplerRoutine_at {M : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar M I) (hL : IsIndexLit M I) {nmax : ℕ} (hNat : IsExactNatLit id M (nmax + 1))

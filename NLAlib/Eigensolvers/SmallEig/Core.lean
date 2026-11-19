@@ -13,23 +13,20 @@ public import NLAlib.Eigensolvers.ShiftedQR.RoundedDecoupleContract
 /-!
 # The core of the small-eigenvalue solver
 
-The deflation of [BanksGarzaVargasSrivastava2025, §6] is the merged rounded worklist
+The deflation of [BanksGarzaVargasSrivastava2025, §6] is the rounded worklist in Schur mode
 (`NLAlib.ShiftedQR.solveRoundedWith`) at the bottom width $k = 1$, with the decoupler
-`NLAlib.SmallEig.smallEigDecoupler` and the order-one leaf `NLAlib.SmallEig.copyLeaf`. On an upper
-Hessenberg matrix in the class of the core (condition $B_c$, separation $g_c$) it stores, except
-with probability at most $\varphi/4$, all eigenvalues of a matrix within $\delta/4$
-(Theorem 6.1 in class form: no shattering vocabulary).
+`NLAlib.SmallEig.smallEigDecoupler` and the order-one leaf `NLAlib.SmallEig.identityLeaf`. Its
+specification is that of the worklist (`NLAlib.ShiftedQR.solveRoundedWith_pwrites`), used by
+`NLAlib.SmallEig.smallEigProg_pwrites_schur`.
 
 ## Main definitions
 
-* `NLAlib.SmallEig.smallEigCore`: the program `[N, k, np, F, T] (A, Thr, P) → (Out, Fl)`.
-* `NLAlib.SmallEig.SmallEigCoreInput`: the memory of a call.
+* `NLAlib.SmallEig.smallEigCore`: the program.
 
 ## Main results
 
-* `NLAlib.ShiftedQR.solveRoundedWith_pwrites`,
-  `NLAlib.SmallEig.smallEigCore_measureReal_not_spectrum_le`,
-  `NLAlib.SmallEig.smallEigCore_terminates`.
+* `NLAlib.SmallEig.smallEigDecoupleError_le_omega`: the decoupler's error fits the scan
+  threshold.
 -/
 
 @[expose] public section

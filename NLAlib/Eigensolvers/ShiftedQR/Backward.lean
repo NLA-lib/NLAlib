@@ -96,7 +96,7 @@ def BackwardDecouplingContract (θ : ℝ) (ε : ℝ → ℝ) (D : Impl O Q) (I :
           HoldsMatrix w H' μ'.store ∧ ScanHolds H' (τ ^ 2) n r μ'.store) μ
 
 /-- An exact iteration contract is a backward iteration contract with backward error $0$
-(`NLAlib.ShiftedQR.shqrAcceptStep` is a unitary similarity of its input). -/
+(`NLAlib.shqrAcceptStep` is a unitary similarity of its input). -/
 theorem IterationContract.backward {θ : ℝ} {Iter : Impl O Q} {I : Interp O Q ℝ}
     (h : IterationContract θ Iter I) : BackwardIterationContract θ 0 Iter I := by
   intro n m M τ B α γ N w p c tape μ H hH _ hk hτ hB hM hM0 hW hP hC hl hw hd

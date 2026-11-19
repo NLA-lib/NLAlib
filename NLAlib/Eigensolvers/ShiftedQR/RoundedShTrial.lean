@@ -24,7 +24,7 @@ the bottom $k$ subdiagonal entries, where the paper takes all $n - 1$).
 ## Main definitions
 
 * `NLAlib.ShiftedQR.shTrial`, `NLAlib.ShiftedQR.shTrials`: the programs.
-* `NLAlib.ShiftedQR.ShTrialDone`: an accepted trial.
+* `NLAlib.ShiftedQR.ShTrialPost`: an accepted trial.
 
 ## Main results
 

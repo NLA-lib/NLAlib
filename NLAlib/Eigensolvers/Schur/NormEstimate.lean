@@ -99,7 +99,7 @@ theorem size_stmtCost_frobNormStage_le (n : ℕ) :
       120 * (n + 1) ^ 2 := by
   have hw : stmtWorkMono (frobNormStage (O := O) (Q := Q)).body.instrument
       (⟨1, [1]⟩ :: List.replicate 2 (WorkMono.const 0)) = ⟨120, [2]⟩ := by
-    kernel_rfl
+    rw [stmtWorkMono_instrument]; kernel_rfl
   have hσ : SlotsLe [n + 1] [n + 1, 0, 0] (⟨1, [1]⟩ :: List.replicate 2 (WorkMono.const 0)) := by
     simp [SlotsLe, WorkMono.eval, WorkMono.const]
   have h := size_stmtCost_le_stmtWorkMono (by simp)

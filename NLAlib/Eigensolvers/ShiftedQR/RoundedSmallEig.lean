@@ -719,7 +719,7 @@ theorem stmtWorkMono_roundedShQRSmallEig (sG : ℕ) :
         ⟨1, [0, 1, 1, 1]⟩, ⟨1, [1, 1]⟩, WorkMono.const 0, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 0, 1]⟩] ++
         List.replicate 4 (WorkMono.const 0)) =
       ⟨369224, [3, 4, 1, 1, 2]⟩ := by
-  kernel_rfl
+  rw [stmtWorkMono_instrument]; kernel_rfl
 
 /-- **The operation count of the algorithm with the small-eigenvalue program**
 ([BanksGarzaVargasSrivastava2022, Theorem 6.3] and [BanksGarzaVargasSrivastava2025, Theorem 1.1],

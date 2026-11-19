@@ -59,7 +59,7 @@ theorem size_stmtCost_ginibrePerturb_le (sG n p : ℕ) :
         [n + 1, p, 0, 0, 0]) ≤ 201 * (n + 1) ^ 2 := by
   have hw : stmtWorkMono (ginibrePerturb (O := O) (Q := Q) sG).body.instrument
       (⟨1, [1]⟩ :: ⟨1, [0, 1]⟩ :: List.replicate 3 (WorkMono.const 0)) = ⟨201, [2]⟩ := by
-    kernel_rfl
+    rw [stmtWorkMono_instrument]; kernel_rfl
   have hσ : SlotsLe [n + 1, p + 1] [n + 1, p, 0, 0, 0]
       (⟨1, [1]⟩ :: ⟨1, [0, 1]⟩ :: List.replicate 3 (WorkMono.const 0)) := by
     simp [SlotsLe, WorkMono.eval, WorkMono.const]

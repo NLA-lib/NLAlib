@@ -517,7 +517,7 @@ theorem size_stmtCost_hessenbergReduceQ_le (n : ℕ) :
         [n + 1, 0, 0, 0, 0]) ≤ 2998 * (n + 1) ^ 3 := by
   have hw : stmtWorkMono (hessenbergReduceQ (O := O) (Q := Q)).body.instrument
       (⟨1, [1]⟩ :: List.replicate 4 (WorkMono.const 0)) = ⟨2998, [3]⟩ := by
-    kernel_rfl
+    rw [stmtWorkMono_instrument]; kernel_rfl
   have hσ : SlotsLe [n + 1] [n + 1, 0, 0, 0, 0]
       (⟨1, [1]⟩ :: List.replicate 4 (WorkMono.const 0)) := by
     simp [SlotsLe, WorkMono.eval, WorkMono.const]

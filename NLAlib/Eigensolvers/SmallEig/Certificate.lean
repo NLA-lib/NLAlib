@@ -297,7 +297,7 @@ set_option maxRecDepth 100000 in
 $517058\,b_0^4 b_2^2$ (`NLAlib.SmallEig.smallEigWork`). -/
 theorem stmtWorkMono_smallEigProgram (sG : ℕ) :
     stmtWorkMono (smallEigProgram sG).body.instrument smallEigSlots = ⟨517058, [4, 0, 2]⟩ := by
-  kernel_rfl
+  rw [stmtWorkMono_instrument]; kernel_rfl
 
 /-- **The work (and span) polynomial** of the small-eigenvalue solver at the sizes
 $(n, n_q, T)$ = `d`: $517058\,(n + 1)^4(T + 1)^2$, the

@@ -182,7 +182,7 @@ $967736\,b_0^3 b_1^4 b_2 b_3 b_4^2$ (`NLAlib.ShiftedQR.shqrSmallEigWork`). -/
 theorem stmtWorkMono_shqrSmallEigProgram (sG : ℕ) :
     stmtWorkMono (shqrSmallEigProgram sG).body.instrument shqrSmallEigSlots =
       ⟨967736, [3, 4, 1, 1, 2]⟩ := by
-  kernel_rfl
+  rw [stmtWorkMono_instrument]; kernel_rfl
 
 /-- **The work (and span) polynomial** of the rounded shifted QR algorithm with the
 small-eigenvalue program at the sizes $(n, k, n_p, F, T)$ = `d`:

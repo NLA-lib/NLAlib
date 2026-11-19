@@ -223,7 +223,7 @@ theorem smallEig_work_le (sG n nq T : ℕ) :
   have hw : stmtWorkMono (smallEigProg (O := O) (Q := Q) sG).body.instrument
       ([⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩] ++ List.replicate 4 (WorkMono.const 0)) =
         ⟨80390, [4, 0, 2]⟩ := by
-    kernel_rfl
+    rw [stmtWorkMono_instrument]; kernel_rfl
   have hσ : SlotsLe [n + 1, nq + 1, T + 1] [n + 1, nq, T, 0, 0, 0, 0]
       ([⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩] ++ List.replicate 4 (WorkMono.const 0)) := by
     simp [SlotsLe, WorkMono.eval, WorkMono.const]

@@ -46,7 +46,7 @@ lake build --no-build --rehash $libs > "$tmp/fresh.log" 2>&1 || \
   { tail -30 "$tmp/fresh.log"; echo "stale .olean files: the replay would check old builds"; exit 1; }
 echo "freshness: $(tail -1 "$tmp/fresh.log")"
 # the same roots (every lean_lib) and strictness (NLAlib and what it imports) as CI
-LEAN_NUM_THREADS=1 lake env lean -M 8000 scripts/Replay.lean > "$tmp/replay.log" 2>&1 || \
+LEAN_NUM_THREADS=1 lake env lean -M 12000 scripts/Replay.lean > "$tmp/replay.log" 2>&1 || \
   { cat "$tmp/replay.log"; exit 1; }
 echo "$(sed -n '/^replay:/,$p' "$tmp/replay.log" | tr -s ' \n' ' ')"
 bash scripts/replay_fixtures.sh > "$tmp/replay-fixtures.log" 2>&1 || \

@@ -10,6 +10,8 @@ public import NLAlib.Eigensolvers.ShiftedQR.DeflationProgram
 public import NLAlib.Eigensolvers.ShiftedQR.Step
 public import NLAlib.Matrix.FinitePrecision.OpsUnitarySimilarity
 public import NLAlib.Matrix.FinitePrecision.GivensRounded
+public import NLAlib.Matrix.FinitePrecision.GivensLog
+public import NLAlib.Matrix.FinitePrecision.GivensReplay
 
 /-!
 # Backward-error contracts of shifted QR
@@ -34,9 +36,6 @@ of the exact-arithmetic program takes a decoupler that never fails.
 
 * `NLAlib.ShiftedQR.IterationContract.backward`, `NLAlib.ShiftedQR.DecouplingContract.backward`:
   exact contracts are backward contracts with error $0$.
-* `NLAlib.ShiftedQR.isRoundedRowRotation_machineRowRotation`,
-  `NLAlib.ShiftedQR.isRoundedColRotation_machineColRotation`: the rotations the program computes
-  from rounded coefficients are rounded Givens rotations.
 * `NLAlib.ShiftedQR.specNorm_machineColRotation_sub_le`,
   `NLAlib.ShiftedQR.isPerturbedUnitarySimilar_machineColRotation`: one rounded round is within
   $49\boldsymbol{u}\|\mathbf{Z}\|_2$ of the exact conjugation, a perturbed unitary similarity.
@@ -97,7 +96,7 @@ def BackwardDecouplingContract (θ : ℝ) (ε : ℝ → ℝ) (D : Impl O Q) (I :
           HoldsMatrix w H' μ'.store ∧ ScanHolds H' (τ ^ 2) n r μ'.store) μ
 
 /-- An exact iteration contract is a backward iteration contract with backward error $0$
-(`NLAlib.ShiftedQR.shqrAcceptStep` is a unitary similarity of its input). -/
+(`NLAlib.shqrAcceptStep` is a unitary similarity of its input). -/
 theorem IterationContract.backward {θ : ℝ} {Iter : Impl O Q} {I : Interp O Q ℝ}
     (h : IterationContract θ Iter I) : BackwardIterationContract θ 0 Iter I := by
   intro n m M τ B α γ N w p c tape μ H hH _ hk hτ hB hM hM0 hW hP hC hl hw hd
@@ -120,59 +119,6 @@ theorem DecouplingContract.backward {θ : ℝ} {D : Impl O Q} {I : Interp O Q �
 section MachineRound
 
 variable {M : Machine ℝ} {u : ℝ} {n : ℕ} {i j : Fin n}
-
-/-- **The machine row rotation is a rounded rotation**: on a machine with the standard model at
-$0 \le \boldsymbol{u} \le 1/100$, rotating the rows $i \ne j$ of $\mathbf{Z}$ by the coefficients
-computed from $(p, q)$ is within $12\boldsymbol{u}$, per column pair, of the exact Givens rotation
-of $(p, q)$. [Higham2002, Lemma 19.8]. -/
-theorem isRoundedRowRotation_machineRowRotation (hM : StdModel u id M) (hu : 0 ≤ u)
-    (hu' : u ≤ 1 / 100) (hij : i ≠ j) (p q : ℂ) (Z : Matrix (Fin n) (Fin n) ℂ) :
-    IsRoundedRowRotation (12 * u) i j (givensCoeffs p q).1 (givensCoeffs p q).2 Z
-      (machineRowRotation M i j (roundedGivensCoeffs M p q).1 (roundedGivensCoeffs M p q).2 Z) := by
-  obtain ⟨h1, h2⟩ := hM.norm_roundedGivensCoeffs_sub_le hu hu' p q
-  refine ⟨fun r k hri hrj => machineRowRotation_apply_of_ne hri hrj k, fun k => ?_⟩
-  have hneg (r : ℝ) : M.neg r = -r := hM.neg r
-  set c := (roundedGivensCoeffs M p q).1
-  set s := (roundedGivensCoeffs M p q).2
-  have e1 : (⟨M.neg s.re, s.im⟩ : ℂ) = -star s := by apply Complex.ext <;> simp [hneg]
-  have e2 : (⟨c.re, M.neg c.im⟩ : ℂ) = star c := by apply Complex.ext <;> simp [hneg]
-  rw [machineRowRotation_apply_left, machineRowRotation_apply_right hij,
-    givens_mul_apply_left hij, givens_mul_apply_right hij, e1, e2]
-  exact hM.norm_linearWords_rotation_sub_le hu hu' (norm_givensCoeffs_fst_sq_add p q) h1 h2 _ _
-
-/-- **The machine column rotation is a rounded rotation**: on a machine with the standard model
-at $0 \le \boldsymbol{u} \le 1/100$, rotating the columns $i \ne j$ of $\mathbf{Z}$ by the
-adjoint of the rotation of the coefficients computed from $(p, q)$ is within $12\boldsymbol{u}$,
-per row pair, of the adjoint of the exact Givens rotation of $(p, q)$. [Higham2002, Lemma 19.8]. -/
-theorem isRoundedColRotation_machineColRotation (hM : StdModel u id M) (hu : 0 ≤ u)
-    (hu' : u ≤ 1 / 100) (hij : i ≠ j) (p q : ℂ) (Z : Matrix (Fin n) (Fin n) ℂ) :
-    IsRoundedColRotation (12 * u) i j (givensCoeffs p q).1 (givensCoeffs p q).2 Z
-      (machineColRotation M i j (roundedGivensCoeffs M p q).1 (roundedGivensCoeffs M p q).2 Z) := by
-  obtain ⟨h1, h2⟩ := hM.norm_roundedGivensCoeffs_sub_le hu hu' p q
-  refine ⟨fun r k hki hkj => machineColRotation_apply_of_ne hki hkj r, fun r => ?_⟩
-  have hneg (r : ℝ) : M.neg r = -r := hM.neg r
-  set c := (roundedGivensCoeffs M p q).1
-  set s := (roundedGivensCoeffs M p q).2
-  set c₀ := (givensCoeffs p q).1
-  set s₀ := (givensCoeffs p q).2
-  have e1 : (⟨c.re, M.neg c.im⟩ : ℂ) = star c := by apply Complex.ext <;> simp [hneg]
-  have e2 : (⟨s.re, M.neg s.im⟩ : ℂ) = star s := by apply Complex.ext <;> simp [hneg]
-  have e3 : (⟨M.neg s.re, M.neg s.im⟩ : ℂ) = -s := by apply Complex.ext <;> simp [hneg]
-  have g1 : (Z * (givens i j c₀ s₀)ᴴ) r i = star c₀ * Z r i + star s₀ * Z r j := by
-    rw [conjTranspose_givens, mul_givens_apply_left hij]
-    simp only [star_neg]
-    ring
-  have g2 : (Z * (givens i j c₀ s₀)ᴴ) r j = -s₀ * Z r i + c₀ * Z r j := by
-    rw [conjTranspose_givens, mul_givens_apply_right hij, star_star]
-    ring
-  rw [machineColRotation_apply_left, machineColRotation_apply_right hij, g1, g2, e1, e2, e3]
-  have h := hM.norm_linearWords_rotation_sub_le hu hu'
-    (a := star c) (b := star s) (α := star c₀) (β := star s₀)
-    (by rw [norm_star, norm_star]; exact norm_givensCoeffs_fst_sq_add p q)
-    (by rw [← star_sub, norm_star, norm_star]; exact h1)
-    (by rw [← star_sub, norm_star, norm_star]; exact h2) (Z r i) (Z r j)
-  simp only [star_star] at h
-  exact h
 
 /-- **One rounded round of the shifted QR sweep is close to the exact conjugation**: on a
 machine with the standard model at $0 \le \boldsymbol{u} \le 1/576$, rotating the rows $i \ne j$

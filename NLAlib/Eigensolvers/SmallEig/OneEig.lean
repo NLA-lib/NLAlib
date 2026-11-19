@@ -120,7 +120,8 @@ six words, on every tape, it writes only the pair `lam` and the flag `f`, and st
 flag $0$ or $1$. -/
 theorem oneEig_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hzero : M.lit 0 = 0) (hL : IsIndexLit M I) (hCmp : IsCmp id I) {sU : ℕ}
-    (hDisk : IsPolarDiskSampler sU I) {n m q t : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    (hDisk : IsPolarDiskSampler sU I) {n m q t : ℕ} (hNat : IsExactNatLit id M n)
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {qs : List ℝ} (hqs : 6 ≤ qs.length) {τ : Tape ℝ} {μ : Mem ℝ} {h qw lam f : ℕ × ℕ}
     (hin : OneEigInput H qs h qw lam f μ) :
     Writes .total I τ (oneEig (O := O) (Q := Q)).body (Env.frame [n + 1, m, q, t] [h, qw, lam, f])
@@ -147,7 +148,7 @@ theorem oneEig_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar
   have hGq : Fp.Disj (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1 ⊔ Fp.above L)
       (Store.inBlock qw.1 qw.2 qs.length) :=
     Fp.disj_sup_left.mpr ⟨hdq, disj_above_inBlock_of_lt hlive.2.1⟩
-  refine (oneEigStart_writes (μ := ⟨s₁, μ.pos⟩) (m := m) (q := q) hS hzero hL hCmp hDisk
+  refine (oneEigStart_writes (μ := ⟨s₁, μ.pos⟩) (m := m) (q := q) hS hzero hL hCmp hDisk hNat
     hlive.1 hlive.2.1 hlive.2.2.1 hlen (by simpa using hlens 0 (by simp))
     (by simpa using hlens 5 (by simp)) (by simpa using hlens 6 (by simp))
     (by rw [(hBelow lam.1 hlive.2.2.1).1]; exact hrl)
@@ -177,7 +178,7 @@ theorem oneEig_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar
       (hCmp.test_lt ha hb), ?_⟩
     dsimp only
     split_ifs
-    · refine (oneEigRound_writes hS hzero hL hCmp hDisk hqs hlive.1 hlive.2.1 hlive.2.2.1
+    · refine (oneEigRound_writes hS hzero hL hCmp hDisk hNat hqs hlive.1 hlive.2.1 hlive.2.2.1
         hlive.2.2.2 (by rw [hfrC.length_eq]; exact hlen)
         (by rw [hfrC.len_eq]; simpa using hlens 0 (by simp))
         (by rw [hfrC.len_eq]; simpa using hlens 1 (by simp))
@@ -730,14 +731,15 @@ theorem oneEig_pwrites_of {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS :
       · exact hP.1.le_of_testAt hCmp hqs hq5 (by rfl) (by rfl) hc v hv
     · obtain ⟨a, b, c, e, hlen⟩ := hP.1.1.lt_length; simp [Mem.Live, hlen]; omega
 
-omit [Has IndexOp O] [Has DiskSampleOp O] in
+omit [Has DiskSampleOp O] in
 /-- `DistSpec` is accurate on the reach of `OneEig` (`NLAlib.SmallEig.distSpec_accuracy`):
 under its hypotheses on $\mathbf{H} \ne 0$, the precision condition at the distance $\eta_1$
 and the shift reach $10\Sigma$, $\Sigma \ge 0$, `DistSpec` is accurate
 (`NLAlib.SmallEig.DistSpecAccurateOn`) on the points of modulus at most $10\Sigma$ at distance
 at least $\eta_1$ from the $d_i$. -/
 theorem distSpecAccurateOn_of {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
-    (hM : StdModel u id M) (hCmp : IsCmp id I) {n m q : ℕ}
+    (hL : IsIndexLit M I)
+    (hM : StdModel u id M) (hCmp : IsCmp id I) {n m q : ℕ} (hNat : IsExactNatLit id M n)
     {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {κ p S η₁ : ℝ}
     (hH : IsUpperHessenberg H) (hH0 : H ≠ 0) (hV : IsUnit V)
     (hHV : H * V = V * Matrix.diagonal d) (hκ : pseudoConditionNumber V ≤ κ) (hp : 0 < p)
@@ -751,7 +753,8 @@ theorem distSpecAccurateOn_of {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (
     lt_of_le_of_ne (specNorm_nonneg H) (Ne.symm (mt specNorm_eq_zero_iff.mp hH0))
   have e : (2 + 2 * (10 * S / specNorm H)) * specNorm H = 2 * specNorm H + 20 * S := by
     field_simp; ring
-  exact distSpec_accuracy hS hM hCmp hH hH0 hV hHV hκ hp hw (C := 10 * S / specNorm H)
+  exact distSpec_accuracy hS hL hM hCmp hNat le_rfl hH hH0 hV hHV hκ hp hw
+    (C := 10 * S / specNorm H)
     (by positivity) (by rwa [div_mul_cancel₀ _ hN.ne']) hη₁ hzd hmq hm hnu hum (by rwa [e]) hl
     hHs hsp htau hth hts
 
@@ -802,11 +805,11 @@ from `NLAlib.SmallEig.OneEigInput`, except with probability at most $\varphi$, t
 the pair and the flag, sets the flag to $0$ and stores a point $z$ with $\eta_1 \le \min_i\lvert z -
 d_i\rvert \le \beta'$. -/
 theorem oneEig_pwrites_of_norm_le {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
-    (hM : StdModel u id M) (hL : IsIndexLit M I) (hNat : IsExactNatLit id M 1)
+    (hM : StdModel u id M) (hL : IsIndexLit M I) {n : ℕ} (hNat : IsExactNatLit id M n)
     (hCmp : IsCmp id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
     (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ} {sU : ℕ}
     (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
-    {n m q t : ℕ} (hn : 1 ≤ n) {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ}
+    {m q t : ℕ} (hn : 1 ≤ n) {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ}
     {κ p g S' S'' β' φ η₁ η₂ : ℝ} (hH : IsUpperHessenberg H) (hV : IsUnit V)
     (hHV : H * V = V * Matrix.diagonal d) (hκ : pseudoConditionNumber V ≤ κ) (hp : 0 < p)
     (hw : ∀ i, p ≤ lastRowWeights V i) (hg : 0 < g) (hgap : ∀ i j, i ≠ j → g ≤ ‖d i - d j‖)
@@ -825,7 +828,7 @@ theorem oneEig_pwrites_of_norm_le {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
         η₁ ≤ ⨅ i, ‖z - d i‖ ∧ ⨅ i, ‖z - d i‖ ≤ β') φ := by
   have hu0 : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
   have h0 : M.lit 0 = 0 := by simpa using hNat 0 (by norm_num)
-  have h1 : M.lit 1 = 1 := by simpa using hNat 1 le_rfl
+  have h1 : M.lit 1 = 1 := by simpa using hNat 1 hn
   have hn1 : (1 : ℝ) ≤ n := by exact_mod_cast hn
   have hu5 : u ≤ 1 / 5000 := by
     have : 2 * u ≤ (n + 1) * u := mul_le_mul_of_nonneg_right (by linarith) hu0
@@ -885,7 +888,8 @@ theorem oneEig_pwrites_of_norm_le {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
   have hr' : 2.3 * 0.66 ^ t * (2 * S'') ≤ 0.9 * β' := by
     have := mul_le_mul_of_nonneg_left hS''1 (by positivity : (0 : ℝ) ≤ 0.66 ^ t)
     linarith
-  have hDS := distSpecAccurateOn_of (O := O) (Q := Q) (I := I) hS hM hCmp hH hH0 hV hHV hκ hp hw
+  have hDS := distSpecAccurateOn_of (O := O) (Q := Q) (I := I) hS hL hM hCmp hNat hH hH0 hV hHV hκ
+    hp hw
     hT0.le hη₁0 hmq hm hnu hum hxu
   have hη₂T : η₂ ≤ 0.02 * S'' := by linarith
   have hη₁ε : 0 ≤ η₁ + 40 * u * S'' := by
@@ -913,11 +917,11 @@ from `NLAlib.SmallEig.OneEigInput`, except with probability at most $\varphi$, t
 the pair and the flag, sets the flag to $0$ and stores a point $z$ with
 $\eta_1 \le \min_i\lvert z - d_i\rvert \le \beta'$. -/
 theorem oneEig_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
-    (hM : StdModel u id M) (hL : IsIndexLit M I) (hNat : IsExactNatLit id M 1)
+    (hM : StdModel u id M) (hL : IsIndexLit M I) {n : ℕ} (hNat : IsExactNatLit id M n)
     (hCmp : IsCmp id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
     (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ} {sU : ℕ}
     (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
-    {n m q t : ℕ} (hn : 1 ≤ n) {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ}
+    {m q t : ℕ} (hn : 1 ≤ n) {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ}
     {κ p g S' β' φ η₁ η₂ : ℝ} (hH : IsUpperHessenberg H) (hV : IsUnit V)
     (hHV : H * V = V * Matrix.diagonal d) (hκ : pseudoConditionNumber V ≤ κ) (hp : 0 < p)
     (hw : ∀ i, p ≤ lastRowWeights V i) (hg : 0 < g) (hgap : ∀ i j, i ≠ j → g ≤ ‖d i - d j‖)
@@ -944,13 +948,14 @@ the flag and stores both. -/
 theorem oneEig_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hzero : M.lit 0 = 0) (hL : IsIndexLit M I) (hCmp : IsCmp id I) {sU : ℕ}
     (hDisk : IsPolarDiskSampler sU I)
-    {n m q t : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {qs : List ℝ} (hqs : 6 ≤ qs.length)
+    {n m q t : ℕ} (hNat : IsExactNatLit id M n) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {qs : List ℝ} (hqs : 6 ≤ qs.length)
     {τ : Tape ℝ} {μ : Mem ℝ} {h qw lam f : ℕ × ℕ} (hin : OneEigInput H qs h qw lam f μ) :
     Writes .total I τ (oneEig (O := O) (Q := Q)).body (Env.frame [n + 1, m, q, t] [h, qw, lam, f])
       (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1)
       (fun μ' => (∃ z : ℂ, μ'.store.readBlock lam.1 lam.2 2 = some [z.re, z.im]) ∧
         ∃ x, μ'.store.get f.1 f.2 = some x) μ :=
-  (oneEig_writes_word hS hzero hL hCmp hDisk hqs hin).mono le_rfl fun _ _ ⟨hz, hF⟩ =>
+  (oneEig_writes_word hS hzero hL hCmp hDisk hNat hqs hin).mono le_rfl fun _ _ ⟨hz, hF⟩ =>
     ⟨hz, hF.elim (fun h => ⟨_, h⟩) fun h => ⟨_, h⟩⟩
 
 end Theorems

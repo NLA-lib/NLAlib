@@ -1,0 +1,745 @@
+/-
+Copyright (c) 2026 NLAlib contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: NLAlib contributors
+-/
+module
+
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveUpdates
+public import NLAlib.Matrix.FinitePrecision.GivensReplayBlocks
+
+/-!
+# The Schur steps of a worklist round as tracked similarities
+
+A round of the rounded deflation worklist in Schur mode (`NLAlib.ShiftedQR.solveRoundedWith`)
+either finishes a block with a Schur leaf or decouples it and cuts it. Both steps act on one
+range block of a matrix that is block upper triangular for the ranges, and both update the
+couplings of the block with computed unitaries. This file shows that each step is a tracked
+unitary similarity of the whole matrix (`NLAlib.IsTrackedUnitarySimilar`) with explicit errors,
+and that the block structure (`NLAlib.ShiftedQR.SchurShape`) is kept: active blocks upper
+Hessenberg, finished blocks upper triangular, exact zeros below the diagonal blocks.
+
+## Main definitions
+
+* `NLAlib.ShiftedQR.decoupleReplay`: the replays of a decoupling update before the cut.
+* `NLAlib.ShiftedQR.SchurShape`: the shape of the matrix between rounds.
+
+## Main results
+
+* `NLAlib.ShiftedQR.decoupleUpdateMatrix_isPerturbedUnitarySimilarBy`: the decoupling update as
+  a witnessed step.
+* `NLAlib.ShiftedQR.leafUpdate_isTrackedUnitarySimilar`: the leaf update as a tracked step.
+* `NLAlib.ShiftedQR.SchurShape.leaf`, `NLAlib.ShiftedQR.SchurShape.split`,
+  `NLAlib.ShiftedQR.SchurShape.isUpperTriangular`, `NLAlib.ShiftedQR.SchurShape.deflationInv`:
+  the shape through the rounds and at the end.
+-/
+
+@[expose] public section
+
+namespace NLAlib
+
+open Ops
+open scoped Matrix
+
+namespace ShiftedQR
+
+section DecoupleStep
+
+variable {n : ℕ}
+
+/-- The block of a range inside the matrix is the submatrix on the range embedding. -/
+theorem subBlock_eq_submatrix_rangeEmb {lo d : ℕ} (hN : lo + d ≤ n + 1)
+    (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) :
+    subBlock A (lo, d) = A.submatrix (rangeEmb hN) (rangeEmb hN) := by
+  ext a b
+  have ha := a.isLt
+  have hb := b.isLt
+  simp only [subBlock, blockIndex, Matrix.submatrix_apply, rangeEmb]
+  congr 1 <;> ext <;> simp <;> omega
+
+/-- The entries of `NLAlib.setSubBlock`: the block inside the range, the matrix outside. -/
+theorem setSubBlock_apply {lo d : ℕ} (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+    (B : Matrix (Fin d) (Fin d) ℂ) (i j : Fin (n + 1)) :
+    setSubBlock A (lo, d) B i j =
+      if h : lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d ∧ lo ≤ (j : ℕ) ∧ (j : ℕ) < lo + d then
+        B ⟨i - lo, by omega⟩ ⟨j - lo, by omega⟩ else A i j := rfl
+
+/-- The matrix after the replays of a decoupling update and before the cut: the log replayed on
+the rows of the right coupling of the range $[lo, lo + d)$, then on the columns of its top
+coupling. -/
+noncomputable def decoupleReplay (M : Machine ℝ) {N : ℕ} (lo d : ℕ) (es : List GivensEntry)
+    (A : Matrix (Fin N) (Fin N) ℂ) : Matrix (Fin N) (Fin N) ℂ :=
+  es.foldl (replayColumnStep M lo 0 lo) (es.foldl (replayRowStep M lo (lo + d) (N - lo - d)) A)
+
+/-- The decoupling update is the cut of the replays. -/
+theorem decoupleUpdateMatrix_eq (M : Machine ℝ) {N : ℕ} (lo d i : ℕ) (es : List GivensEntry)
+    (A : Matrix (Fin N) (Fin N) ℂ) :
+    decoupleUpdateMatrix M lo d i es A =
+      cutEntry M (lo + i + 1) (lo + i) (decoupleReplay M lo d es A) :=
+  rfl
+
+/-- The replays keep the rows from `lo` on that their column fold does not reach. -/
+theorem decoupleReplay_apply_of_le {M : Machine ℝ} {N lo d : ℕ} (es : List GivensEntry)
+    (A : Matrix (Fin N) (Fin N) ℂ) {r : Fin N} (hr : lo ≤ (r : ℕ)) (t : Fin N) :
+    decoupleReplay M lo d es A r t = es.foldl (replayRowStep M lo (lo + d) (N - lo - d)) A r t :=
+  foldl_replayColumnStep_apply_of_not_mem _ _ _ _ (by omega)
+
+/-- The replays keep the columns outside the range. -/
+theorem decoupleReplay_apply_col {M : Machine ℝ} {N lo d : ℕ} {es : List GivensEntry}
+    (hes : ∀ e ∈ es, e.1 + 1 < d) (A : Matrix (Fin N) (Fin N) ℂ) (r : Fin N) {t : Fin N}
+    (ht : ¬(lo ≤ (t : ℕ) ∧ (t : ℕ) < lo + d)) :
+    decoupleReplay M lo d es A r t = es.foldl (replayRowStep M lo (lo + d) (N - lo - d)) A r t :=
+  foldl_replayColumnStep_apply_col es hes _ _ _ ht
+
+/-- The row fold keeps the rows outside the range and the columns left of its coupling. -/
+theorem foldl_replayRowStep_coupling_apply {M : Machine ℝ} {N lo d : ℕ} {es : List GivensEntry}
+    (hes : ∀ e ∈ es, e.1 + 1 < d) (A : Matrix (Fin N) (Fin N) ℂ) (r t : Fin N)
+    (h : ¬(lo ≤ (r : ℕ) ∧ (r : ℕ) < lo + d) ∨ (t : ℕ) < lo + d) :
+    es.foldl (replayRowStep M lo (lo + d) (N - lo - d)) A r t = A r t := by
+  rcases h with h | h
+  · exact foldl_replayRowStep_apply_row es hes A r t h
+  · exact foldl_replayRowStep_apply_of_not_mem es A r t (by omega)
+
+/-- The replays keep every entry outside the right and top couplings of the range. -/
+theorem decoupleReplay_apply_of_not_coupling {M : Machine ℝ} {N lo d : ℕ} {es : List GivensEntry}
+    (hes : ∀ e ∈ es, e.1 + 1 < d) (A : Matrix (Fin N) (Fin N) ℂ) (r t : Fin N)
+    (h : ¬((lo ≤ (r : ℕ) ∧ (r : ℕ) < lo + d) ∧ lo + d ≤ (t : ℕ)) ∧
+      ¬((r : ℕ) < lo ∧ lo ≤ (t : ℕ) ∧ (t : ℕ) < lo + d)) :
+    decoupleReplay M lo d es A r t = A r t := by
+  by_cases hr : lo ≤ (r : ℕ)
+  · rw [decoupleReplay_apply_of_le es A hr, foldl_replayRowStep_coupling_apply hes]
+    by_cases ht : lo + d ≤ (t : ℕ)
+    · exact Or.inl fun h' => h.1 ⟨h', ht⟩
+    · exact Or.inr (by omega)
+  · have ht : ¬(lo ≤ (t : ℕ) ∧ (t : ℕ) < lo + d) := fun h' => h.2 ⟨by omega, h'⟩
+    rw [decoupleReplay_apply_col hes A r ht, foldl_replayRowStep_coupling_apply hes]
+    exact Or.inl (by omega)
+
+/-- The replays of the decoupling update of the range $[lo, lo + d)$ on a range block
+triangular $\mathbf{A}$ with a new block $\mathbf{H}'$: the coupling part of the difference with
+the exact step by $\widetilde{\mathbf{V}} =
+\operatorname{diag}(\mathbf{I}, \mathbf{V}, \mathbf{I})$,
+$\mathbf{V}$ the log's unitary, is at most $((1 + 24\boldsymbol{u})^{R} - 1)\|\mathbf{A}\|_2$,
+$R$ the number of entries. -/
+theorem specNorm_couplingPart_decoupleReplay_le {Mch : Machine ℝ} {u : ℝ}
+    (hM : StdModel u id Mch) (hu0 : 0 ≤ u) (hu : u ≤ 1 / 100) {lo d : ℕ} (hN : lo + d ≤ n + 1)
+    {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hA : IsRangeBlockTriangular lo d A)
+    (H' : Matrix (Fin d) (Fin d) ℂ) {es : List GivensEntry} (hes : ∀ e ∈ es, e.1 + 1 < d) :
+    specNorm (couplingPart lo d (decoupleReplay Mch lo d es (setSubBlock A (lo, d) H') -
+      (embedBlock lo (givensLog d es))ᴴ * A * embedBlock lo (givensLog d es))) ≤
+        ((1 + 24 * u) ^ es.length - 1) * specNorm A := by
+  set A₁ := setSubBlock A (lo, d) H'
+  set W : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ := embedBlock lo (givensLog d es)
+  set X₁ := es.foldl (replayRowStep Mch lo (lo + d) (n + 1 - lo - d)) A₁
+  set Cr := colMask (n + 1) (lo + d) (n + 1 - lo - d)
+  set Ct := colMask (n + 1) 0 lo
+  have hes' : ∀ e ∈ es, lo + e.1 + 1 < n + 1 ∧ (e.1 + 1 < d ∨ e = (0, 0, 0)) :=
+    fun e he => ⟨by have := hes e he; omega, Or.inl (hes e he)⟩
+  have hA₁ : ∀ i j : Fin (n + 1), ¬((lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d) ∧
+      (lo ≤ (j : ℕ) ∧ (j : ℕ) < lo + d)) → A₁ i j = A i j := fun i j h => by
+    simp only [A₁, setSubBlock_apply]; rw [dif_neg (by tauto)]
+  have hX₁ : ∀ i j : Fin (n + 1), (i : ℕ) < lo → X₁ i j = A i j := fun i j hi => by
+    simp only [X₁]
+    rw [foldl_replayRowStep_coupling_apply hes _ _ _ (Or.inl (by omega)), hA₁ _ _ (by omega)]
+  have hCr : A₁ * Cr = A * Cr := by
+    ext i j; simp only [Cr, mul_colMask_apply]
+    split_ifs with h
+    · exact hA₁ _ _ (by omega)
+    · rfl
+  have hCt : Ct * X₁ = Ct * A := by
+    ext i j; simp only [Ct, colMask_mul_apply]
+    split_ifs with h
+    · exact hX₁ _ _ (by omega)
+    · rfl
+  refine (specNorm_couplingPart_le_max hN
+    (X := es.foldl (replayRowStep Mch lo 0 (n + 1)) (A₁ * Cr) - Wᴴ * (A₁ * Cr))
+    (Y := es.foldl (replayColumnStep Mch lo 0 (n + 1)) (Ct * X₁) - (Ct * X₁) * W)
+    (fun i j hi1 hi2 hj => ?_) (fun i j hi hj1 hj2 => ?_) (fun i j hi1 hi2 hj => ?_)
+    (fun i j hi hj1 hj2 => ?_)).trans (max_le ?_ ?_)
+  · rw [Matrix.sub_apply, Matrix.sub_apply, decoupleReplay_apply_of_le es _ hi1,
+      ← foldl_replayRowStep_mul_colMask hM, mul_colMask_apply, if_pos (by omega),
+      conjTranspose_mul_mul_embedBlock_apply_col _ _ _ (by omega), hCr, ← Matrix.mul_assoc,
+      mul_colMask_apply, if_pos (by omega)]
+  · have e : decoupleReplay Mch lo d es A₁ i j = (Ct * decoupleReplay Mch lo d es A₁) i j := by
+      rw [colMask_mul_apply, if_pos (by omega)]
+    rw [Matrix.sub_apply, Matrix.sub_apply, e, decoupleReplay,
+      colMask_mul_foldl_replayColumnStep hM, conjTranspose_mul_mul_embedBlock_apply_row _ _
+      (by omega), hCt, Matrix.mul_assoc, colMask_mul_apply, if_pos (by omega)]
+  · rw [Matrix.sub_apply, conjTranspose_mul_mul_embedBlock_left hN hA _ ⟨hi1, hi2⟩ hj,
+      decoupleReplay_apply_of_not_coupling hes _ _ _ ⟨by omega, by omega⟩, hA₁ _ _ (by omega),
+      hA _ _ (Or.inl ⟨hj, hi1⟩), sub_zero]
+  · rw [Matrix.sub_apply, conjTranspose_mul_mul_embedBlock_bottom hN hA _ hi ⟨hj1, hj2⟩,
+      decoupleReplay_apply_of_not_coupling hes _ _ _ ⟨by omega, by omega⟩, hA₁ _ _ (by omega),
+      hA _ _ (Or.inr ⟨hj2, hi⟩), sub_zero]
+  · refine (specNorm_foldl_replayRowStep_sub_le hM hu0 hu hN es hes' _).trans ?_
+    rw [hCr]
+    exact mul_le_mul_of_nonneg_left ((isStarProjection_colMask _ _ _).specNorm_mul_right_le A)
+      (by linarith [one_le_pow₀ (n := es.length) (show (1 : ℝ) ≤ 1 + 24 * u by linarith)])
+  · refine (specNorm_foldl_replayColumnStep_sub_le hM hu0 hu hN es hes' _).trans ?_
+    rw [hCt]
+    exact mul_le_mul_of_nonneg_left ((isStarProjection_colMask _ _ _).specNorm_mul_le A)
+      (by linarith [one_le_pow₀ (n := es.length) (show (1 : ℝ) ≤ 1 + 24 * u by linarith)])
+
+/-- The replays keep a range block triangular matrix with a new block range block triangular,
+and read back the new block. -/
+theorem decoupleReplay_isRangeBlockTriangular {Mch : Machine ℝ} {lo d : ℕ}
+    {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hA : IsRangeBlockTriangular lo d A)
+    (H' : Matrix (Fin d) (Fin d) ℂ) {es : List GivensEntry} (hes : ∀ e ∈ es, e.1 + 1 < d) :
+    IsRangeBlockTriangular lo d (decoupleReplay Mch lo d es (setSubBlock A (lo, d) H')) := by
+  intro i j h
+  rw [decoupleReplay_apply_of_not_coupling hes _ _ _ ⟨by omega, by omega⟩, setSubBlock_apply,
+    dif_neg (by omega), hA i j h]
+
+/-- The decoupling update as a witnessed step: on a machine with the standard model at
+$0 \le \boldsymbol{u} \le 1/100$ and the exact literal $0$, let $\mathbf{A}$ of order $n + 1$
+be block upper triangular for the three ranges around $[lo, lo + d + 1)$ and let the new block
+$\mathbf{H}'$ be a perturbed unitary similarity of the block of $\mathbf{A}$ with error
+$\varepsilon$ by the unitary $\mathbf{V}$ of a log `es` of rotations inside the block. The
+decoupling update with the cut after the block row $i < d$ with $|h'_{i+1,i}| \le c$ is a
+perturbed unitary similarity of $\mathbf{A}$ by $\operatorname{diag}(\mathbf{I}, \mathbf{V},
+\mathbf{I})$ with error $\varepsilon + ((1 + 24\boldsymbol{u})^{R} - 1)\|\mathbf{A}\|_2 + c$,
+$R$ the number of entries. -/
+theorem decoupleUpdateMatrix_isPerturbedUnitarySimilarBy {Mch : Machine ℝ} {u : ℝ}
+    (hM : StdModel u id Mch) (hu0 : 0 ≤ u) (hu : u ≤ 1 / 100) (hz : Mch.lit 0 = 0)
+    {lo d : ℕ} (hN : lo + (d + 1) ≤ n + 1) {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    (hA : IsRangeBlockTriangular lo (d + 1) A) {H' : Matrix (Fin (d + 1)) (Fin (d + 1)) ℂ}
+    {es : List GivensEntry} (hes : ∀ e ∈ es, e.1 + 1 < d + 1) {ε c : ℝ}
+    (hblk : IsPerturbedUnitarySimilarBy (givensLog (d + 1) es) (subBlock A (lo, d + 1)) H' ε)
+    (i : Fin d) (hc : ‖H' i.succ i.castSucc‖ ≤ c) :
+    IsPerturbedUnitarySimilarBy (embedBlock lo (givensLog (d + 1) es)) A
+      (decoupleUpdateMatrix Mch lo (d + 1) i es (setSubBlock A (lo, d + 1) H'))
+      (ε + ((1 + 24 * u) ^ es.length - 1) * specNorm A + c) := by
+  set T := decoupleReplay Mch lo (d + 1) es (setSubBlock A (lo, d + 1) H')
+  have hblkT : T.submatrix (rangeEmb hN) (rangeEmb hN) = H' := by
+    ext a b
+    have ha := a.isLt
+    have hb := b.isLt
+    simp only [T, Matrix.submatrix_apply, rangeEmb]
+    rw [decoupleReplay_apply_of_not_coupling (by simpa using hes) _ _ _ (by simp; omega),
+      setSubBlock_apply, dif_pos (by simp; omega)]
+    congr 1 <;> ext <;> simp
+  have h₁ := IsPerturbedUnitarySimilarBy.of_range_block hN
+    (by rw [hblkT, ← subBlock_eq_submatrix_rangeEmb hN]; exact hblk)
+    (fun i' j' hi hj => by
+      rw [decoupleReplay_apply_of_not_coupling hes _ _ _ ⟨by omega, by omega⟩, setSubBlock_apply,
+        dif_neg (by omega)])
+    (specNorm_couplingPart_decoupleReplay_le hM hu0 hu hN hA H' hes)
+  have hp : lo + (i : ℕ) + 1 < n + 1 := by omega
+  have hT : T ⟨lo + i + 1, hp⟩ ⟨lo + i, by omega⟩ = H' i.succ i.castSucc := by
+    simp only [T]
+    rw [decoupleReplay_apply_of_not_coupling hes _ _ _ ⟨by simp, by simp; omega⟩,
+      setSubBlock_apply, dif_pos (by simp; omega)]
+    congr 1
+    · ext; simp; omega
+    · ext; simp
+  have h₂ : IsPerturbedUnitarySimilarBy 1 T (cutEntry Mch (lo + i + 1) (lo + i) T) c := by
+    refine IsPerturbedUnitarySimilarBy.of_specNorm_sub_le hasOrthonormalCols_one ?_
+    have e : cutEntry Mch (lo + i + 1) (lo + i) T - 1ᴴ * T * 1 =
+        Matrix.single ⟨lo + i + 1, hp⟩ ⟨lo + i, by omega⟩
+          (-T ⟨lo + i + 1, hp⟩ ⟨lo + i, by omega⟩) := by
+      ext r t
+      simp only [cutEntry, hz, Matrix.of_apply, Matrix.conjTranspose_one, Matrix.one_mul,
+        Matrix.mul_one, Matrix.sub_apply, Matrix.single_apply, Fin.ext_iff]
+      split_ifs with h1 h2 h2
+      · have e1 : r = ⟨lo + i + 1, hp⟩ := Fin.ext h1.1
+        have e2 : t = ⟨lo + i, by omega⟩ := Fin.ext h1.2
+        rw [e1, e2]; simp; rfl
+      · exfalso; omega
+      · exfalso; omega
+      · simp
+    rw [e]
+    exact (specNorm_single_le _ _ _).trans (by rw [norm_neg, hT]; exact hc)
+  have := h₁.trans h₂
+  rwa [Matrix.mul_one] at this
+
+end DecoupleStep
+
+/-- The error of a stored product with a near-unitary leaf accumulator: with
+$\|\mathbf{U}_b - \mathbf{V}\|_2 \le \varepsilon_L$, $\mathbf{V}$ unitary of order $d$, and
+$\mathbf{X}$ with $d$ columns, $\|\mathrm{fl}(\mathbf{X}\mathbf{U}_b) - \mathbf{X}\mathbf{V}\|_2
+\le (g d(1 + \varepsilon_L) + \varepsilon_L)\|\mathbf{X}\|_2$, $g$ the growth of
+`NLAlib.Ops.StdModel.specNorm_matMulWord_sub_le_growth`. -/
+theorem specNorm_matMulWord_sub_mul_le {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M)
+    (hu0 : 0 ≤ u) (hu8 : u ≤ 1 / 8) {m d : ℕ} (X : Matrix (Fin m) (Fin d) ℂ)
+    {Ub V : Matrix (Fin d) (Fin d) ℂ} (hV : HasOrthonormalCols V) {εL : ℝ}
+    (hUb : specNorm (Ub - V) ≤ εL) :
+    specNorm (matMulWord M X Ub - X * V) ≤
+      ((1 + (6 * u + 5 * u ^ 2)) ^ d * (5 * u + d * (6 * u + 5 * u ^ 2)) * d * (1 + εL) + εL) *
+        specNorm X := by
+  set g := (1 + (6 * u + 5 * u ^ 2)) ^ d * (5 * u + d * (6 * u + 5 * u ^ 2))
+  have hg0 : 0 ≤ g := by positivity
+  have hUbn : specNorm Ub ≤ 1 + εL := by
+    have := specNorm_add_le (Ub - V) V
+    rw [sub_add_cancel] at this
+    linarith [hV.specNorm_le_one]
+  have hq : (0 : ℝ) ≤ √(d : ℝ) := Real.sqrt_nonneg _
+  have hqq : √(d : ℝ) * √(d : ℝ) = d := Real.mul_self_sqrt (Nat.cast_nonneg d)
+  have hXF : frobNorm X ≤ √(d : ℝ) * specNorm X := by
+    simpa using frobNorm_le_sqrt_card_mul_specNorm X
+  have hUbF : frobNorm Ub ≤ √(d : ℝ) * (1 + εL) :=
+    (by simpa using frobNorm_le_sqrt_card_mul_specNorm Ub :
+      frobNorm Ub ≤ √(d : ℝ) * specNorm Ub).trans
+      (mul_le_mul_of_nonneg_left hUbn hq)
+  have e : matMulWord M X Ub - X * V = (matMulWord M X Ub - X * Ub) + X * (Ub - V) := by
+    rw [Matrix.mul_sub]; abel
+  rw [e]
+  refine (specNorm_add_le _ _).trans ?_
+  have h1 := (hM.specNorm_matMulWord_sub_le_growth hu0 hu8 X Ub).trans
+    (mul_le_mul_of_nonneg_left (mul_le_mul hXF hUbF (frobNorm_nonneg _) (by positivity)) hg0)
+  have h2 : specNorm (X * (Ub - V)) ≤ specNorm X * εL :=
+    (specNorm_mul_le _ _).trans (mul_le_mul_of_nonneg_left hUb (specNorm_nonneg _))
+  have e2 : g * (√(d : ℝ) * specNorm X * (√(d : ℝ) * (1 + εL))) =
+      g * (√(d : ℝ) * √(d : ℝ)) * (1 + εL) * specNorm X := by ring
+  rw [e2, hqq] at h1
+  nlinarith [specNorm_nonneg X]
+
+
+section Shape
+
+variable {n : ℕ}
+
+/-- **The shape of the matrix in the Schur-mode worklist**: the active and the finished ranges
+partition the indices, every nonzero entry below the diagonal lies in a diagonal block, the
+active blocks are upper Hessenberg and the finished blocks upper triangular. -/
+def SchurShape (n : ℕ) (active done : List (ℕ × ℕ)) (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) :
+    Prop :=
+  IsRangePartition (n + 1) (active ++ done) ∧
+    (∀ i j : Fin (n + 1), (j : ℕ) < i → A i j ≠ 0 →
+      ∃ r ∈ active ++ done, r.1 ≤ (j : ℕ) ∧ (i : ℕ) < r.1 + r.2) ∧
+    (∀ r ∈ active, IsUpperHessenberg (subBlock A r)) ∧
+    ∀ r ∈ done, (subBlock A r).IsUpperTriangular
+
+/-- The start: an upper Hessenberg matrix is one active range. -/
+theorem SchurShape.init {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hH : IsUpperHessenberg H) :
+    SchurShape n [(0, n + 1)] [] H := by
+  refine ⟨?_, fun i j _ _ => ⟨(0, n + 1), by simp, by simp, by have := i.isLt; omega⟩, ?_,
+    by simp⟩
+  · refine ⟨by simp, fun r hr => ?_, fun i hi => ⟨(0, n + 1), ⟨by simp, by simp, by omega⟩, ?_⟩⟩
+    · simp only [List.append_nil, List.mem_singleton] at hr; subst hr; simp
+    · rintro q ⟨hq, -, -⟩; simpa using hq
+  · intro r hr
+    simp only [List.mem_singleton] at hr
+    subst hr
+    exact hH.subBlock (by simp)
+
+/-- A range of the shape: the matrix is block upper triangular for the three ranges around it. -/
+theorem SchurShape.isRangeBlockTriangular {active done : List (ℕ × ℕ)}
+    {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (h : SchurShape n active done A) {r : ℕ × ℕ}
+    (hr : r ∈ active ++ done) : IsRangeBlockTriangular r.1 r.2 A := by
+  intro i j hij
+  by_contra hne
+  obtain ⟨q, hq, hq1, hq2⟩ := h.2.1 i j (by omega) hne
+  have hr' := h.1.2.1 r hr
+  have key : ∀ k, k < n + 1 → r.1 ≤ k → k < r.1 + r.2 → q.1 ≤ k → k < q.1 + q.2 → q = r :=
+    fun k hk h1 h2 h3 h4 => by
+      obtain ⟨c, -, hc⟩ := h.1.2.2 k hk
+      exact (hc q ⟨hq, h3, h4⟩).trans (hc r ⟨hr, h1, h2⟩).symm
+  rcases hij with hij | hij
+  · have := key r.1 (by omega) le_rfl (by omega) (by omega) (by omega)
+    subst this; omega
+  · have := key (r.1 + r.2 - 1) (by omega) (by omega) (by omega) (by omega) (by omega)
+    subst this; omega
+
+/-- The block of a range of the shape is read without clamping. -/
+theorem SchurShape.subBlock_apply {active done : List (ℕ × ℕ)}
+    {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (h : SchurShape n active done A) {r : ℕ × ℕ}
+    (hr : r ∈ active ++ done) (a b : Fin r.2) :
+    subBlock A r a b = A ⟨r.1 + a, by have := (h.1.2.1 r hr).2; omega⟩
+      ⟨r.1 + b, by have := (h.1.2.1 r hr).2; omega⟩ :=
+  h.1.subBlock_apply hr A a b
+
+/-- The end of the worklist: with no active range left, the matrix is upper triangular. -/
+theorem SchurShape.isUpperTriangular {done : List (ℕ × ℕ)}
+    {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (h : SchurShape n [] done A) :
+    A.IsUpperTriangular := by
+  intro i j hij
+  change j < i at hij
+  by_contra hne
+  obtain ⟨r, hr, h1, h2⟩ := h.2.1 i j hij hne
+  have hr' : r ∈ done := by simpa using hr
+  have hb := h.2.2.2 r hr' (show (⟨(j : ℕ) - r.1, by omega⟩ : Fin r.2) < ⟨(i : ℕ) - r.1, by omega⟩
+    from by simp only [Fin.mk_lt_mk]; omega)
+  rw [h.subBlock_apply hr] at hb
+  exact hne (by convert hb using 2 <;> ext <;> simp <;> omega)
+
+end Shape
+
+section LeafStep
+
+variable {n : ℕ}
+
+/-- The leaf update keeps every entry outside the right and top couplings of the range. -/
+theorem leafUpdateMatrix_apply_of_not_coupling (M : Machine ℝ) {N lo d : ℕ}
+    (Ub : Matrix (Fin d) (Fin d) ℂ) (A : Matrix (Fin N) (Fin N) ℂ) (r t : Fin N)
+    (h : ¬((lo ≤ (r : ℕ) ∧ (r : ℕ) < lo + d) ∧ lo + d ≤ (t : ℕ)) ∧
+      ¬((r : ℕ) < lo ∧ lo ≤ (t : ℕ) ∧ (t : ℕ) < lo + d)) :
+    leafUpdateMatrix M lo Ub A r t = A r t := by
+  simp only [leafUpdateMatrix, setRect, Matrix.of_apply]
+  rw [dif_neg (by omega), dif_neg (by omega)]
+
+/-- The right coupling after the leaf update. -/
+theorem leafUpdateMatrix_apply_right (M : Machine ℝ) {N lo d : ℕ}
+    (Ub : Matrix (Fin d) (Fin d) ℂ) (A : Matrix (Fin N) (Fin N) ℂ) {r t : Fin N}
+    (hr : lo ≤ (r : ℕ) ∧ (r : ℕ) < lo + d) (ht : lo + d ≤ (t : ℕ)) :
+    leafUpdateMatrix M lo Ub A r t = matMulWord M (machineConjTranspose M Ub)
+      (subRect A lo (lo + d) d (N - lo - d)) ⟨(r : ℕ) - lo, by omega⟩
+        ⟨(t : ℕ) - (lo + d), by have := t.isLt; omega⟩ := by
+  simp only [leafUpdateMatrix, setRect, Matrix.of_apply]
+  rw [dif_neg (by omega), dif_pos (by have := t.isLt; omega)]
+
+/-- The top coupling after the leaf update. -/
+theorem leafUpdateMatrix_apply_top (M : Machine ℝ) {N lo d : ℕ}
+    (Ub : Matrix (Fin d) (Fin d) ℂ) (A : Matrix (Fin N) (Fin N) ℂ) {r t : Fin N}
+    (hr : (r : ℕ) < lo) (ht : lo ≤ (t : ℕ) ∧ (t : ℕ) < lo + d) :
+    leafUpdateMatrix M lo Ub A r t = matMulWord M (subRect A 0 lo lo d) Ub ⟨r, hr⟩
+      ⟨(t : ℕ) - lo, by omega⟩ := by
+  simp only [leafUpdateMatrix, setRect, Matrix.of_apply]
+  rw [dif_pos (by omega)]
+  congr 1
+  ext i j
+  have := i.isLt; have := j.isLt
+  simp only [subRect, Matrix.of_apply]
+  split_ifs <;> first | rfl | omega
+
+/-- The left form of `NLAlib.ShiftedQR.specNorm_matMulWord_sub_mul_le`: with
+$\|\mathbf{U}_b - \mathbf{V}\|_2 \le \varepsilon_L$, $\mathbf{V}$ unitary of order $d$, and
+$\mathbf{Y}$ with $d$ rows, $\|\mathrm{fl}(\mathbf{U}_b^{\mathsf H}\mathbf{Y}) -
+\mathbf{V}^{\mathsf H}\mathbf{Y}\|_2 \le (g d(1 + \varepsilon_L) +
+\varepsilon_L)\|\mathbf{Y}\|_2$. -/
+theorem specNorm_matMulWord_conjTranspose_sub_le {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M)
+    (hu0 : 0 ≤ u) (hu8 : u ≤ 1 / 8) {m d : ℕ} (Y : Matrix (Fin d) (Fin m) ℂ)
+    {Ub V : Matrix (Fin d) (Fin d) ℂ} (hV : HasOrthonormalCols V) {εL : ℝ} (hεL : 0 ≤ εL)
+    (hUb : specNorm (Ub - V) ≤ εL) :
+    specNorm (matMulWord M Ubᴴ Y - Vᴴ * Y) ≤
+      ((1 + (6 * u + 5 * u ^ 2)) ^ d * (5 * u + d * (6 * u + 5 * u ^ 2)) * d * (1 + εL) + εL) *
+        specNorm Y := by
+  set g := (1 + (6 * u + 5 * u ^ 2)) ^ d * (5 * u + d * (6 * u + 5 * u ^ 2))
+  have hg0 : 0 ≤ g := by positivity
+  have hUbn : specNorm Ub ≤ 1 + εL := by
+    have := specNorm_add_le (Ub - V) V
+    rw [sub_add_cancel] at this
+    linarith [hV.specNorm_le_one]
+  have hq : (0 : ℝ) ≤ √(d : ℝ) := Real.sqrt_nonneg _
+  have hqq : √(d : ℝ) * √(d : ℝ) = d := Real.mul_self_sqrt (Nat.cast_nonneg d)
+  have hYF : frobNorm Y ≤ √(d : ℝ) * specNorm Y := by
+    rw [← frobNorm_conjTranspose, ← specNorm_conjTranspose Y]
+    simpa using frobNorm_le_sqrt_card_mul_specNorm Yᴴ
+  have hUbF : frobNorm Ubᴴ ≤ √(d : ℝ) * (1 + εL) := by
+    rw [frobNorm_conjTranspose]
+    exact (by simpa using frobNorm_le_sqrt_card_mul_specNorm Ub :
+      frobNorm Ub ≤ √(d : ℝ) * specNorm Ub).trans (mul_le_mul_of_nonneg_left hUbn hq)
+  have e : matMulWord M Ubᴴ Y - Vᴴ * Y = (matMulWord M Ubᴴ Y - Ubᴴ * Y) + (Ub - V)ᴴ * Y := by
+    rw [Matrix.conjTranspose_sub, Matrix.sub_mul]; abel
+  rw [e]
+  refine (specNorm_add_le _ _).trans ?_
+  have h1 := (hM.specNorm_matMulWord_sub_le_growth hu0 hu8 Ubᴴ Y).trans
+    (mul_le_mul_of_nonneg_left (mul_le_mul hUbF hYF (frobNorm_nonneg _) (by positivity)) hg0)
+  have h2 : specNorm ((Ub - V)ᴴ * Y) ≤ εL * specNorm Y :=
+    (specNorm_mul_le _ _).trans (mul_le_mul_of_nonneg_right (by rwa [specNorm_conjTranspose])
+      (specNorm_nonneg _))
+  have e2 : g * (√(d : ℝ) * (1 + εL) * (√(d : ℝ) * specNorm Y)) =
+      g * (√(d : ℝ) * √(d : ℝ)) * (1 + εL) * specNorm Y := by ring
+  rw [e2, hqq] at h1
+  nlinarith [specNorm_nonneg Y]
+
+/-- The coupling part of the leaf update: on a range block triangular $\mathbf{A}$, with
+$\|\mathbf{U}_b - \mathbf{V}\|_2 \le \varepsilon_L$ and $\mathbf{V}$ unitary, the couplings
+computed with $\mathbf{U}_b$ are within $(g d(1 + \varepsilon_L) + \varepsilon_L)
+\|\mathbf{A}\|_2$ of those of the exact step by $\operatorname{diag}(\mathbf{I}, \mathbf{V},
+\mathbf{I})$. -/
+theorem leafUpdate_couplingPart_le {Mch : Machine ℝ} {u : ℝ} (hM : StdModel u id Mch)
+    (hu0 : 0 ≤ u) (hu8 : u ≤ 1 / 8) {lo d : ℕ} (hN : lo + d ≤ n + 1)
+    {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hA : IsRangeBlockTriangular lo d A)
+    {Ub V Tb : Matrix (Fin d) (Fin d) ℂ} (hV : HasOrthonormalCols V) {εL : ℝ} (hεL : 0 ≤ εL)
+    (hUb : specNorm (Ub - V) ≤ εL) :
+    specNorm (couplingPart lo d (leafUpdateMatrix Mch lo Ub (setSubBlock A (lo, d) Tb) -
+      (embedBlock lo V)ᴴ * A * embedBlock lo V)) ≤
+      ((1 + (6 * u + 5 * u ^ 2)) ^ d * (5 * u + d * (6 * u + 5 * u ^ 2)) * d * (1 + εL) + εL) *
+        specNorm A := by
+  set A₁ := setSubBlock A (lo, d) Tb
+  set R₁ := subRect A₁ lo (lo + d) d (n + 1 - lo - d)
+  set T₁ := subRect A₁ 0 lo lo d
+  have hA₁ : ∀ i j : Fin (n + 1), ¬((lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d) ∧
+      (lo ≤ (j : ℕ) ∧ (j : ℕ) < lo + d)) → A₁ i j = A i j := fun i j h => by
+    simp only [A₁, setSubBlock_apply]; rw [dif_neg (by tauto)]
+  have hR₁ : R₁ = subRect A lo (lo + d) d (n + 1 - lo - d) := by
+    ext a b; have := a.isLt; have := b.isLt
+    simp only [R₁, subRect, Matrix.of_apply]
+    split_ifs
+    · exact hA₁ _ _ (by simp)
+    · rfl
+  have hT₁ : T₁ = subRect A 0 lo lo d := by
+    ext a b; have := a.isLt; have := b.isLt
+    simp only [T₁, subRect, Matrix.of_apply]
+    split_ifs
+    · exact hA₁ _ _ (by simp)
+    · rfl
+  refine (specNorm_couplingPart_le_max hN
+    (X := setRect 0 lo (lo + d) (matMulWord Mch Ubᴴ R₁ - Vᴴ * R₁))
+    (Y := setRect 0 0 lo (matMulWord Mch T₁ Ub - T₁ * V))
+    (fun i j hi1 hi2 hj => ?_) (fun i j hi hj1 hj2 => ?_) (fun i j hi1 hi2 hj => ?_)
+    (fun i j hi hj1 hj2 => ?_)).trans (max_le ?_ ?_)
+  · rw [Matrix.sub_apply, leafUpdateMatrix_apply_right _ _ _ ⟨hi1, hi2⟩ hj,
+      conjTranspose_mul_mul_embedBlock_apply_col _ _ _ (by omega), embedBlock_conjTranspose,
+      embedBlock_mul_apply_of_mem hN _ _ ⟨hi1, hi2⟩, machineConjTranspose_eq hM]
+    simp only [setRect, Matrix.of_apply, Matrix.zero_apply]
+    rw [dif_pos (by have := j.isLt; omega), Matrix.sub_apply, Matrix.mul_apply]
+    congr 1
+    refine Finset.sum_congr rfl fun a _ => ?_
+    have := a.isLt; have := j.isLt
+    rw [hR₁]
+    simp only [subRect, Matrix.of_apply]
+    rw [dif_pos (by omega)]
+    congr 2; ext; simp; omega
+  · rw [Matrix.sub_apply, leafUpdateMatrix_apply_top _ _ _ hi ⟨hj1, hj2⟩,
+      conjTranspose_mul_mul_embedBlock_apply_row _ _ (by omega),
+      mul_embedBlock_apply_of_mem hN _ _ _ ⟨hj1, hj2⟩]
+    simp only [setRect, Matrix.of_apply, Matrix.zero_apply]
+    rw [dif_pos (by omega), Matrix.sub_apply, Matrix.mul_apply]
+    congr 1
+    refine Finset.sum_congr rfl fun a _ => ?_
+    have := a.isLt
+    rw [hT₁]
+    simp only [subRect, Matrix.of_apply]
+    rw [dif_pos (by omega)]
+    congr 2; ext; simp
+  · rw [Matrix.sub_apply, conjTranspose_mul_mul_embedBlock_left hN hA _ ⟨hi1, hi2⟩ hj,
+      leafUpdateMatrix_apply_of_not_coupling _ _ _ _ _ ⟨by omega, by omega⟩, hA₁ _ _ (by omega),
+      hA _ _ (Or.inl ⟨hj, hi1⟩), sub_zero]
+  · rw [Matrix.sub_apply, conjTranspose_mul_mul_embedBlock_bottom hN hA _ hi ⟨hj1, hj2⟩,
+      leafUpdateMatrix_apply_of_not_coupling _ _ _ _ _ ⟨by omega, by omega⟩, hA₁ _ _ (by omega),
+      hA _ _ (Or.inr ⟨hj2, hi⟩), sub_zero]
+  · refine (specNorm_setRect_zero_le (by omega) (by omega) _).trans ?_
+    refine (specNorm_matMulWord_conjTranspose_sub_le hM hu0 hu8 R₁ hV hεL hUb).trans ?_
+    exact mul_le_mul_of_nonneg_left (hR₁ ▸ specNorm_subRect_le (by omega) (by omega) A)
+      (add_nonneg (mul_nonneg (by positivity) (by linarith)) hεL)
+  · refine (specNorm_setRect_zero_le (by omega) (by omega) _).trans ?_
+    refine (specNorm_matMulWord_sub_mul_le hM hu0 hu8 T₁ hV hUb).trans ?_
+    exact mul_le_mul_of_nonneg_left (hT₁ ▸ specNorm_subRect_le (by omega) (by omega) A)
+      (add_nonneg (mul_nonneg (by positivity) (by linarith)) hεL)
+
+/-- The leaf update as a tracked step: on a machine with the standard model at
+$0 \le \boldsymbol{u} \le 1/8$, let $\mathbf{A}$ of order $n + 1$ be block upper triangular for
+the three ranges around $[lo, lo + d)$ and let the leaf output $(\mathbf{U}_b, \mathbf{T}_b)$ be
+tracked from $(\mathbf{I}, \mathbf{A}_{lo:lo+d})$ with errors $(\varepsilon_L, \beta)$,
+$\varepsilon_L \ge 0$. Writing $\mathbf{T}_b$ into the block and updating the couplings and the
+accumulator $\mathbf{U}$ with $\mathbf{U}_b$ is tracked from $(\mathbf{U}, \mathbf{A})$ with the
+relative accumulator error $(1 + 24\boldsymbol{u})^{2d(d+2)}(1 + \varepsilon_L) - 1$ and the
+backward error $\beta + (g d(1 + \varepsilon_L) + \varepsilon_L)\|\mathbf{A}\|_2$, $g$ the
+growth of a stored product of inner dimension $d$. -/
+theorem leafUpdate_isTrackedUnitarySimilar {Mch : Machine ℝ} {u : ℝ} (hM : StdModel u id Mch)
+    (hu0 : 0 ≤ u) (hu8 : u ≤ 1 / 8) {lo d : ℕ} (hN : lo + d ≤ n + 1)
+    {A U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hA : IsRangeBlockTriangular lo d A)
+    {Ub Tb : Matrix (Fin d) (Fin d) ℂ} {εL β : ℝ} (hεL : 0 ≤ εL)
+    (hleaf : IsTrackedUnitarySimilar εL β 1 (subBlock A (lo, d)) Ub Tb) :
+    IsTrackedUnitarySimilar ((1 + 24 * u) ^ (2 * d * (d + 2)) * (1 + εL) - 1)
+      (β + ((1 + (6 * u + 5 * u ^ 2)) ^ d * (5 * u + d * (6 * u + 5 * u ^ 2)) * d * (1 + εL) +
+        εL) * specNorm A) U A (leafUpdateAccumulator Mch lo Ub U)
+      (leafUpdateMatrix Mch lo Ub (setSubBlock A (lo, d) Tb)) := by
+  obtain ⟨Wb, hWb, hUbW⟩ := hleaf
+  have hUb : specNorm (Ub - Wb) ≤ εL := by
+    rw [Matrix.one_mul] at hUbW
+    exact hUbW.trans (mul_le_of_le_one_right hεL specNorm_one_le)
+  set A₁ := setSubBlock A (lo, d) Tb
+  set L := leafUpdateMatrix Mch lo Ub A₁
+  have hA₁ : ∀ i j : Fin (n + 1), ¬((lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d) ∧
+      (lo ≤ (j : ℕ) ∧ (j : ℕ) < lo + d)) → A₁ i j = A i j := fun i j h => by
+    simp only [A₁, setSubBlock_apply]; rw [dif_neg (by tauto)]
+  have hL : ∀ i j, _ → L i j = A₁ i j := fun i j h =>
+    leafUpdateMatrix_apply_of_not_coupling Mch Ub A₁ i j h
+  refine ⟨embedBlock lo Wb, ?_, ?_⟩
+  · refine IsPerturbedUnitarySimilarBy.of_range_block hN ?_
+      (fun i j hi hj => by rw [hL i j ⟨by omega, by omega⟩, hA₁ _ _ (by omega)]) ?_
+    · have e : L.submatrix (rangeEmb hN) (rangeEmb hN) = Tb := by
+        ext a b
+        have ha := a.isLt
+        have hb := b.isLt
+        simp only [Matrix.submatrix_apply, rangeEmb]
+        rw [hL _ _ ⟨by simp, by simp⟩]
+        simp only [A₁, setSubBlock_apply]
+        rw [dif_pos (by simp)]
+        congr 1 <;> ext <;> simp
+      rw [e, ← subBlock_eq_submatrix_rangeEmb hN]
+      exact hWb
+    · exact leafUpdate_couplingPart_le hM hu0 hu8 hN hA hWb.1 hεL hUb
+  · exact specNorm_setRect_matMulWord_sub_le hM hu0 hu8 hN U hWb.1 hεL hUb
+
+end LeafStep
+
+section ShapeSteps
+
+variable {n : ℕ}
+
+/-- The shape as a deflation invariant: a matrix of the shape that is a perturbed unitary
+similarity of $\mathbf{H}$ with error $\varepsilon$ meets `NLAlib.DeflationInv` with its
+diagonal as the output. -/
+theorem SchurShape.deflationInv {active done : List (ℕ × ℕ)}
+    {H A V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ε : ℝ} (h : SchurShape n active done A)
+    (hV : IsPerturbedUnitarySimilarBy V H A ε) :
+    DeflationInv H ε active done A fun i => A i i := by
+  obtain ⟨hVo, E, hE, hA⟩ := hV
+  refine ⟨A, V, E, hasOrthonormalCols_iff.mp hVo, hE, hA, h.1, fun i j hij => ?_,
+    fun r hr => ⟨rfl, h.2.2.1 r hr⟩, fun r hr => ?_⟩
+  · by_contra hne
+    obtain ⟨ri, hri, hi⟩ := (h.1.2.2 i i.isLt).exists
+    obtain ⟨rj, hrj, hj⟩ := (h.1.2.2 j j.isLt).exists
+    rw [h.1.rangeLabel_eq hri hi.1 hi.2, h.1.rangeLabel_eq hrj hj.1 hj.2] at hij
+    by_cases hji : (j : ℕ) < i
+    · obtain ⟨q, hq, hq1, hq2⟩ := h.2.1 i j hji hne
+      obtain ⟨c, -, hc⟩ := h.1.2.2 i i.isLt
+      obtain ⟨c', -, hc'⟩ := h.1.2.2 j j.isLt
+      have e1 := (hc q ⟨hq, by omega, hq2⟩).trans (hc ri ⟨hri, hi.1, hi.2⟩).symm
+      have e2 := (hc' q ⟨hq, hq1, by omega⟩).trans (hc' rj ⟨hrj, hj.1, hj.2⟩).symm
+      rw [← e1, ← e2] at hij
+      exact lt_irrefl _ hij
+    · have hne' : rj ≠ ri := fun e => by rw [e] at hij; exact lt_irrefl _ hij
+      rcases h.1.disjoint hrj hri hne' with hd | hd <;> omega
+  · have hr' : r ∈ active ++ done := List.mem_append_right _ hr
+    rw [Matrix.charpoly_of_isUpperTriangular _ (h.2.2.2 r hr)]
+    have e : (∏ a : Fin r.2, (Polynomial.X - Polynomial.C (subBlock A r a a))) =
+        ((Finset.univ.val.map fun a => subBlock A r a a).map
+          fun x => Polynomial.X - Polynomial.C x).prod := by
+      rw [Multiset.map_map]; rfl
+    rw [e, Polynomial.roots_multiset_prod_X_sub_C, Fin.univ_val_map]
+    rfl
+
+/-- A leaf finishes its range: writing an upper triangular block on the popped range and
+updating its couplings moves the range from active to finished. -/
+theorem SchurShape.leaf {rs done : List (ℕ × ℕ)} {lo d : ℕ}
+    {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (h : SchurShape n (rs ++ [(lo, d)]) done A)
+    (M : Machine ℝ) (Ub : Matrix (Fin d) (Fin d) ℂ) {Tb : Matrix (Fin d) (Fin d) ℂ}
+    (hTb : Tb.IsUpperTriangular) :
+    SchurShape n rs ((lo, d) :: done) (leafUpdateMatrix M lo Ub (setSubBlock A (lo, d) Tb)) := by
+  have hL : rs ++ [(lo, d)] ++ done = rs ++ (lo, d) :: done := by simp
+  have hp := h.1
+  rw [hL] at hp
+  have hr : (lo, d) ∈ rs ++ (lo, d) :: done := by simp
+  have hrd := hp.2.1 _ hr
+  simp only at hrd
+  have hLe : ∀ i j : Fin (n + 1), (j : ℕ) < i →
+      leafUpdateMatrix M lo Ub (setSubBlock A (lo, d) Tb) i j = setSubBlock A (lo, d) Tb i j :=
+    fun i j hji => leafUpdateMatrix_apply_of_not_coupling M Ub _ i j ⟨by omega, by omega⟩
+  have hag : ∀ i j : Fin (n + 1), ¬(lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d) →
+      ¬(lo ≤ (j : ℕ) ∧ (j : ℕ) < lo + d) →
+      leafUpdateMatrix M lo Ub (setSubBlock A (lo, d) Tb) i j = A i j := fun i j hi hj => by
+    rw [leafUpdateMatrix_apply_of_not_coupling M Ub _ i j ⟨by omega, by omega⟩, setSubBlock_apply,
+      dif_neg (by omega)]
+  refine ⟨hp, fun i j hji hij => ?_, fun r hr' => ?_, fun r hr' => ?_⟩
+  · rw [hLe i j hji, setSubBlock_apply] at hij
+    split_ifs at hij with hb
+    · exact ⟨(lo, d), hr, by simp; omega, by simp; omega⟩
+    · obtain ⟨q, hq, h1, h2⟩ := h.2.1 i j hji hij
+      exact ⟨q, by rw [hL] at hq; exact hq, h1, h2⟩
+  · have hq : r ∈ rs ++ (lo, d) :: done := by simp [hr']
+    have hne' : r ≠ (lo, d) := fun e => by
+      have hnd := hp.1
+      rw [List.nodup_append] at hnd
+      exact hnd.2.2 r hr' (lo, d) (by simp) e
+    rw [hp.subBlock_eq_of_agree hr hq hne' hag]
+    exact h.2.2.1 r (by simp [hr'])
+  · rcases List.mem_cons.mp hr' with rfl | hr'
+    · rw [hp.subBlock_eq_of_block hr (B := Tb) fun a b i j hi hj => by
+        rw [leafUpdateMatrix_apply_of_not_coupling M Ub _ i j ⟨by omega, by omega⟩,
+          setSubBlock_apply, dif_pos (by omega)]
+        congr 1 <;> ext <;> simp <;> omega]
+      exact hTb
+    · have hq : r ∈ rs ++ (lo, d) :: done := by simp [hr']
+      have hne' : r ≠ (lo, d) := fun e => by
+        have hnd := hp.1
+        rw [List.nodup_append] at hnd
+        exact (List.nodup_cons.mp hnd.2.1).1 (e ▸ hr')
+      rw [hp.subBlock_eq_of_agree hr hq hne' hag]
+      exact h.2.2.2 r hr'
+
+/-- A cut splits its range: writing an upper Hessenberg block on the popped range
+$(lo, d + 1)$, replaying its log on the couplings and cutting the entry $(lo + i + 1, lo + i)$
+to the exact zero replaces the range by its two children, the right one pushed first. -/
+theorem SchurShape.split {rs done : List (ℕ × ℕ)} {lo d : ℕ}
+    {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (h : SchurShape n (rs ++ [(lo, d + 1)]) done A)
+    {M : Machine ℝ} (hz : M.lit 0 = 0) {H' : Matrix (Fin (d + 1)) (Fin (d + 1)) ℂ}
+    (hH' : IsUpperHessenberg H') {es : List GivensEntry} (hes : ∀ e ∈ es, e.1 + 1 < d + 1)
+    (i : Fin d) :
+    SchurShape n (rs ++ [(lo + i + 1, d + 1 - i - 1), (lo, i + 1)]) done
+      (decoupleUpdateMatrix M lo (d + 1) i es (setSubBlock A (lo, d + 1) H')) := by
+  have hi := i.isLt
+  set c1 : ℕ × ℕ := (lo + i + 1, d + 1 - i - 1)
+  set c2 : ℕ × ℕ := (lo, (i : ℕ) + 1)
+  have hold := h.1
+  have hnew : IsRangePartition (n + 1) (rs ++ [c1, c2] ++ done) := hold.split_append (by omega)
+  have hr : (lo, d + 1) ∈ rs ++ [(lo, d + 1)] ++ done := by simp
+  have hrd := hold.2.1 _ hr
+  simp only at hrd
+  set D' := decoupleUpdateMatrix M lo (d + 1) i es (setSubBlock A (lo, d + 1) H')
+  have hD : ∀ r t : Fin (n + 1), ¬((r : ℕ) = lo + i + 1 ∧ (t : ℕ) = lo + i) →
+      ¬((lo ≤ (r : ℕ) ∧ (r : ℕ) < lo + (d + 1)) ∧ lo + (d + 1) ≤ (t : ℕ)) →
+      ¬((r : ℕ) < lo ∧ lo ≤ (t : ℕ) ∧ (t : ℕ) < lo + (d + 1)) →
+      D' r t = setSubBlock A (lo, d + 1) H' r t := fun r t hc h1 h2 => by
+    simp only [D', decoupleUpdateMatrix_eq, cutEntry, Matrix.of_apply]
+    rw [if_neg hc, decoupleReplay_apply_of_not_coupling hes _ _ _ ⟨h1, h2⟩]
+  have hcut : ∀ r t : Fin (n + 1), (r : ℕ) = lo + i + 1 → (t : ℕ) = lo + i → D' r t = 0 :=
+    fun r t h1 h2 => by
+      simp only [D', decoupleUpdateMatrix_eq, cutEntry, Matrix.of_apply]
+      rw [if_pos ⟨h1, h2⟩, hz]; rfl
+  have hag : ∀ r t : Fin (n + 1), ¬(lo ≤ (r : ℕ) ∧ (r : ℕ) < lo + (d + 1)) →
+      ¬(lo ≤ (t : ℕ) ∧ (t : ℕ) < lo + (d + 1)) → D' r t = A r t := fun r t h1 h2 => by
+    rw [hD r t (by omega) (by omega) (by omega), setSubBlock_apply, dif_neg (by omega)]
+  have hmem : ∀ q ∈ rs ++ [(lo, d + 1)] ++ done, q ≠ (lo, d + 1) → q ∈ rs ++ [c1, c2] ++ done :=
+    fun q hq hne => by simp only [List.mem_append, List.mem_cons,
+      List.not_mem_nil, or_false] at hq ⊢; tauto
+  have hHz : ∀ (r t : Fin (n + 1)) (a b : Fin (d + 1)), (r : ℕ) = lo + a → (t : ℕ) = lo + b →
+      ¬((r : ℕ) = lo + i + 1 ∧ (t : ℕ) = lo + i) → (b : ℕ) + 1 < a → D' r t = 0 :=
+    fun r t a b hr' ht' hc hab => by
+      rw [hD r t hc (by omega) (by omega), setSubBlock_apply, dif_pos (by omega)]
+      exact hH' _ _ (by simp only at *; omega)
+  refine ⟨hnew, fun r t htr hne => ?_, fun q hq => ?_, fun q hq => ?_⟩
+  · by_cases hb : (lo ≤ (r : ℕ) ∧ (r : ℕ) < lo + (d + 1)) ∧
+        (lo ≤ (t : ℕ) ∧ (t : ℕ) < lo + (d + 1))
+    · have hc : ¬((r : ℕ) = lo + i + 1 ∧ (t : ℕ) = lo + i) := fun hc => hne (hcut r t hc.1 hc.2)
+      have hrt : (r : ℕ) = t + 1 := by
+        by_contra hrt
+        exact hne (hHz r t ⟨r - lo, by omega⟩ ⟨t - lo, by omega⟩ (by simp; omega)
+          (by simp; omega) hc (by simp; omega))
+      by_cases ht : (t : ℕ) < lo + i
+      · exact ⟨c2, by simp [c2], by simp [c2]; omega, by simp [c2]; omega⟩
+      · exact ⟨c1, by simp [c1], by simp [c1]; omega, by simp [c1]; omega⟩
+    · have hne' := hne
+      rw [hD r t (by omega) (by omega) (by omega), setSubBlock_apply, dif_neg (by tauto)] at hne'
+      obtain ⟨q, hq, h1, h2⟩ := h.2.1 r t htr hne'
+      refine ⟨q, hmem q hq fun e => ?_, h1, h2⟩
+      subst e; simp only at h1 h2; omega
+  · simp only [List.mem_append, List.mem_cons, List.not_mem_nil,
+      or_false] at hq
+    rcases hq with hq | rfl | rfl
+    · have hq' : q ∈ rs ++ [(lo, d + 1)] ++ done := by simp [hq]
+      have hne : q ≠ (lo, d + 1) := fun e => by
+        have hnd := hold.1
+        simp only [List.append_assoc, List.singleton_append] at hnd
+        rw [List.nodup_append] at hnd
+        exact hnd.2.2 q hq (lo, d + 1) (by simp) e
+      rw [hold.subBlock_eq_of_agree hr hq' hne hag]
+      exact h.2.2.1 q (by simp [hq])
+    · intro a b hab
+      rw [hnew.subBlock_apply (by simp [c1]) D' a b]
+      have ha := a.isLt; have hb := b.isLt
+      simp only [c1] at ha hb
+      exact hHz _ _ ⟨i + 1 + a, by omega⟩ ⟨i + 1 + b, by omega⟩ (by simp [c1]; omega)
+        (by simp [c1]; omega) (by simp [c1]; omega) (by simp; omega)
+    · intro a b hab
+      rw [hnew.subBlock_apply (by simp [c2]) D' a b]
+      have ha := a.isLt; have hb := b.isLt
+      simp only [c2] at ha hb
+      exact hHz _ _ ⟨a, by omega⟩ ⟨b, by omega⟩ (by simp [c2]) (by simp [c2])
+        (by simp [c2]; omega) (by simpa using hab)
+  · have hq' : q ∈ rs ++ [(lo, d + 1)] ++ done := by simp [hq]
+    have hne : q ≠ (lo, d + 1) := fun e => by
+      have hnd := hold.1
+      rw [List.nodup_append] at hnd
+      exact hnd.2.2 (lo, d + 1) (by simp) q hq e.symm
+    rw [hold.subBlock_eq_of_agree hr hq' hne hag]
+    exact h.2.2.2 q hq
+
+end ShapeSteps
+
+end ShiftedQR
+
+end NLAlib

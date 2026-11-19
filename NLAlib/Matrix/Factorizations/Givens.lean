@@ -565,4 +565,44 @@ theorem givensHessenbergState_apply_of_lt (H : Matrix (Fin m) (Fin p) 𝕜) (v :
 
 end QR
 
+/-! ### The exact unitary of a log of rotations -/
+
+/-- The exact Givens rotation of a log entry $(r, p, q)$: rows and columns $r, r + 1$ with the
+coefficients `NLAlib.givensCoeffs p q`; the identity when $r + 1 \ge n$. The padding entry
+$(0, 0, 0)$ is the identity (`givensCoeffs 0 0` rotates by nothing). -/
+noncomputable def givensAt (n : ℕ) (e : ℕ × ℂ × ℂ) : Matrix (Fin n) (Fin n) ℂ :=
+  if h : e.1 + 1 < n then
+    givens (⟨e.1, by omega⟩ : Fin n) ⟨e.1 + 1, h⟩ (givensCoeffs e.2.1 e.2.2).1
+      (givensCoeffs e.2.1 e.2.2).2
+  else 1
+
+/-- **The exact unitary of a log of rotations**, $\mathbf{V} = \mathbf{G}_1^{\mathsf H}
+\mathbf{G}_2^{\mathsf H}\cdots$, so that applying the entries in order, $\mathbf{Z} \mapsto
+\mathbf{G}\mathbf{Z}\mathbf{G}^{\mathsf H}$, is $\mathbf{Z} \mapsto \mathbf{V}^{\mathsf H}
+\mathbf{Z}\mathbf{V}$. -/
+noncomputable def givensLog (n : ℕ) (L : List (ℕ × ℂ × ℂ)) : Matrix (Fin n) (Fin n) ℂ :=
+  (L.map fun e => (givensAt n e)ᴴ).prod
+
+/-- The empty log is the identity. -/
+@[simp] theorem givensLog_nil (n : ℕ) : givensLog n [] = 1 := rfl
+
+/-- The unitary of a log has orthonormal columns. -/
+theorem hasOrthonormalCols_givensLog (n : ℕ) (L : List (ℕ × ℂ × ℂ)) :
+    HasOrthonormalCols (givensLog n L) := by
+  induction L with
+  | nil => exact hasOrthonormalCols_one
+  | cons e L ih =>
+    rw [givensLog, List.map_cons, List.prod_cons]
+    refine HasOrthonormalCols.mul (HasOrthonormalCols.conjTranspose ?_) ih
+    unfold givensAt
+    split_ifs with h
+    · exact hasOrthonormalCols_givens (by simp [Fin.ext_iff])
+        (norm_givensCoeffs_fst_sq_add _ _)
+    · exact hasOrthonormalCols_one
+
+/-- Logs compose: the unitary of a concatenation is the product. -/
+theorem givensLog_append (n : ℕ) (L L' : List (ℕ × ℂ × ℂ)) :
+    givensLog n (L ++ L') = givensLog n L * givensLog n L' := by
+  simp [givensLog, List.map_append, List.prod_append]
+
 end NLAlib

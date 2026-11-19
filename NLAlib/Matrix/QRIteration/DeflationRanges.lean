@@ -18,6 +18,10 @@ block, with the same accumulated perturbation bound.
 ## Main results
 
 * `NLAlib.IsRangePartition.disjoint`: distinct partition ranges do not overlap.
+* `NLAlib.IsRangePartition.perm`, `NLAlib.IsRangePartition.split_append`: permuting and
+  splitting the ranges of a partition.
+* `NLAlib.IsRangePartition.subBlock_apply`, `NLAlib.IsRangePartition.subBlock_eq_of_agree`,
+  `NLAlib.IsRangePartition.subBlock_eq_of_block`: the blocks of a partition.
 * `NLAlib.subVec_setSubVec_self`: reading a written range returns its new values.
 * `NLAlib.DeflationInv.rapidDecouplingHyps`: raw global assumptions imply block assumptions.
 * `NLAlib.DeflationInv.conj_split`: one block similarity followed by a split.
@@ -203,5 +207,60 @@ theorem DeflationInv.conj_split {n n' lo : ℕ} {H A : Matrix (Fin (n + 1)) (Fin
   exact hconj.split (i := i) (τ := τ) (by omega) (by
     rw [subBlock_setSubBlock_self A (lo, n' + 1) H' hr]; exact hτ)
 
+
+/-- A partition into ranges stays one under a permutation of the list. -/
+theorem IsRangePartition.perm {N : ℕ} {L L' : List (ℕ × ℕ)}
+    (h : IsRangePartition N L) (hp : L.Perm L') : IsRangePartition N L' :=
+  ⟨hp.nodup_iff.mp h.1, fun r hr => h.2.1 r (hp.mem_iff.mpr hr), fun i hi => by
+    obtain ⟨c, ⟨hc1, hc2, hc3⟩, hcu⟩ := h.2.2 i hi
+    exact ⟨c, ⟨hp.mem_iff.mp hc1, hc2, hc3⟩,
+      fun y hy => hcu y ⟨hp.mem_iff.mpr hy.1, hy.2.1, hy.2.2⟩⟩⟩
+
+/-- Splitting a range in the middle of a partition into two consecutive ranges, the right one
+first, gives a partition. -/
+theorem IsRangePartition.split_append {N lo d i : ℕ} {rs done : List (ℕ × ℕ)}
+    (h : IsRangePartition N (rs ++ [(lo, d)] ++ done)) (hi : i + 1 < d) :
+    IsRangePartition N (rs ++ [(lo + i + 1, d - i - 1), (lo, i + 1)] ++ done) := by
+  have hp0 : (rs ++ [(lo, d)] ++ done).Perm ((lo, d) :: (rs ++ done)) := by
+    simp [List.perm_middle]
+  have hp1 : ((lo, i + 1) :: (lo + i + 1, d - i - 1) :: (rs ++ done)).Perm
+      (rs ++ [(lo + i + 1, d - i - 1), (lo, i + 1)] ++ done) := by
+    refine (List.Perm.swap _ _ _).trans ?_
+    simp only [List.append_assoc, List.cons_append, List.nil_append]
+    exact (List.perm_middle.trans (List.Perm.cons _ List.perm_middle)).symm
+  exact ((h.perm hp0).split_cons hi).perm hp1
+
+/-- The block of a range of a partition is read without clamping. -/
+theorem IsRangePartition.subBlock_apply {n : ℕ} {L : List (ℕ × ℕ)}
+    (hL : IsRangePartition (n + 1) L) {r : ℕ × ℕ} (hr : r ∈ L)
+    (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (a b : Fin r.2) :
+    subBlock A r a b = A ⟨r.1 + a, by have := (hL.2.1 r hr).2; omega⟩
+      ⟨r.1 + b, by have := (hL.2.1 r hr).2; omega⟩ := by
+  simp only [subBlock, Matrix.submatrix_apply]
+  congr 1 <;> exact Fin.ext (hL.val_blockIndex hr _)
+
+/-- A matrix that agrees with $\mathbf{A}$ off the range $(lo, d)$ of a partition has the same
+blocks on the other ranges. -/
+theorem IsRangePartition.subBlock_eq_of_agree {n : ℕ} {L : List (ℕ × ℕ)}
+    (hL : IsRangePartition (n + 1) L) {lo d : ℕ} (hr : (lo, d) ∈ L) {q : ℕ × ℕ} (hq : q ∈ L)
+    (hne : q ≠ (lo, d)) {A A' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    (hag : ∀ i j : Fin (n + 1), ¬(lo ≤ (i : ℕ) ∧ (i : ℕ) < lo + d) →
+      ¬(lo ≤ (j : ℕ) ∧ (j : ℕ) < lo + d) → A' i j = A i j) :
+    subBlock A' q = subBlock A q := by
+  have hd := hL.disjoint hq hr hne
+  ext a b
+  have ha := a.isLt
+  have hb := b.isLt
+  simp only [subBlock, Matrix.submatrix_apply]
+  apply hag <;> rw [hL.val_blockIndex hq] <;> simp only at hd <;> omega
+
+/-- The block of the range $(lo, d)$ of a partition read from its entries. -/
+theorem IsRangePartition.subBlock_eq_of_block {n : ℕ} {L : List (ℕ × ℕ)}
+    (hL : IsRangePartition (n + 1) L) {lo d : ℕ} (hr : (lo, d) ∈ L)
+    {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {B : Matrix (Fin d) (Fin d) ℂ}
+    (hB : ∀ (a b : Fin d) (i j : Fin (n + 1)), (i : ℕ) = lo + a → (j : ℕ) = lo + b →
+      A i j = B a b) : subBlock A (lo, d) = B := by
+  ext a b
+  exact hB a b _ _ (hL.val_blockIndex hr a) (hL.val_blockIndex hr b)
 
 end NLAlib

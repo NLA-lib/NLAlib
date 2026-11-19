@@ -23,7 +23,9 @@ the result of a randomized computation by a measurable event.
 
 * `NLAlib.isClosed_setOf_exists_mem_of_isCompact`: the projection of a closed set along a compact
   set is closed.
-* `NLAlib.isClosed_setOf_isPerturbedUnitarySimilar`.
+* `NLAlib.isClosed_setOf_isPerturbedUnitarySimilar`,
+  `NLAlib.isClosed_setOf_isPerturbedUnitarySimilarBy`,
+  `NLAlib.isClosed_setOf_isTrackedUnitarySimilar`.
 * `NLAlib.isClosed_setOf_exists_specNorm_le_isEigenvalueListing`.
 -/
 
@@ -78,6 +80,79 @@ theorem isClosed_setOf_isPerturbedUnitarySimilar (ε : ℝ) :
     rw [add_sub_cancel]
     simp only [← Matrix.mul_assoc, hU', Matrix.one_mul]
     rw [Matrix.mul_assoc, hU', Matrix.mul_one]
+
+/-- Perturbed unitary similarity by a named unitary is a closed relation: for every
+$\varepsilon$ the triples $(\mathbf{V}, \mathbf{A}, \mathbf{B})$ of square matrices with
+$\mathbf{V}$ with orthonormal columns and
+$\mathbf{B} = \mathbf{V}^{\mathsf{H}}(\mathbf{A} + \mathbf{E})\mathbf{V}$ for some
+$\|\mathbf{E}\|_2 \le \varepsilon$ form a closed set. -/
+theorem isClosed_setOf_isPerturbedUnitarySimilarBy (ε : ℝ) :
+    IsClosed {p : Matrix n n 𝕜 × Matrix n n 𝕜 × Matrix n n 𝕜 |
+      IsPerturbedUnitarySimilarBy p.1 p.2.1 p.2.2 ε} := by
+  have h₁ : IsClosed {p : Matrix n n 𝕜 × Matrix n n 𝕜 × Matrix n n 𝕜 | HasOrthonormalCols p.1} :=
+    isClosed_eq (continuous_fst.matrix_conjTranspose.matrix_mul continuous_fst) continuous_const
+  have h₂ : IsClosed {p : Matrix n n 𝕜 × Matrix n n 𝕜 × Matrix n n 𝕜 |
+      specNorm (p.1 * p.2.2 * p.1ᴴ - p.2.1) ≤ ε} :=
+    isClosed_le (continuous_specNorm.comp (((continuous_fst.matrix_mul
+      (continuous_snd.comp continuous_snd)).matrix_mul continuous_fst.matrix_conjTranspose).sub
+      (continuous_fst.comp continuous_snd))) continuous_const
+  convert h₁.inter h₂ using 1
+  ext ⟨V, A, B⟩
+  simp only [Set.mem_ofPred_eq, Set.mem_inter_iff]
+  constructor
+  · rintro ⟨hV, E, hE, rfl⟩
+    have hV' : V * Vᴴ = 1 := hV.mul_conjTranspose_self
+    refine ⟨hV, ?_⟩
+    have : V * (Vᴴ * (A + E) * V) * Vᴴ = A + E := by
+      simp only [← Matrix.mul_assoc, hV', Matrix.one_mul]
+      rw [Matrix.mul_assoc, hV', Matrix.mul_one]
+    simpa [this] using hE
+  · rintro ⟨hV, hE⟩
+    have hV' : Vᴴ * V = 1 := hV
+    refine ⟨hV, V * B * Vᴴ - A, hE, ?_⟩
+    rw [add_sub_cancel]
+    simp only [← Matrix.mul_assoc, hV', Matrix.one_mul]
+    rw [Matrix.mul_assoc, hV', Matrix.mul_one]
+
+/-- The tracked unitary similarity is a closed relation: for every $(\varepsilon_U,
+\varepsilon_T)$ the quadruples $((\mathbf{U}, \mathbf{A}), (\mathbf{U}', \mathbf{A}'))$ with
+`NLAlib.IsTrackedUnitarySimilar` $\varepsilon_U$ $\varepsilon_T$ $\mathbf{U}$ $\mathbf{A}$
+$\mathbf{U}'$ $\mathbf{A}'$ form a closed set: the projection along the compact set of the
+unitaries $\mathbf{V}$ of the closed conditions
+$\|\mathbf{V}\mathbf{A}'\mathbf{V}^{\mathsf H} - \mathbf{A}\|_2 \le \varepsilon_T$ and
+$\|\mathbf{U}' - \mathbf{U}\mathbf{V}\|_2 \le \varepsilon_U\|\mathbf{U}\|_2$. -/
+theorem isClosed_setOf_isTrackedUnitarySimilar (εU εT : ℝ) :
+    IsClosed {p : (Matrix n n 𝕜 × Matrix n n 𝕜) × (Matrix n n 𝕜 × Matrix n n 𝕜) |
+      IsTrackedUnitarySimilar εU εT p.1.1 p.1.2 p.2.1 p.2.2} := by
+  have hC : IsClosed {q : ((Matrix n n 𝕜 × Matrix n n 𝕜) × (Matrix n n 𝕜 × Matrix n n 𝕜)) ×
+      Matrix n n 𝕜 | specNorm (q.2 * q.1.2.2 * q.2ᴴ - q.1.1.2) ≤ εT ∧
+        specNorm (q.1.2.1 - q.1.1.1 * q.2) ≤ εU * specNorm q.1.1.1} := by
+    refine (isClosed_le (continuous_specNorm.comp (((continuous_snd.matrix_mul
+      (continuous_snd.comp (continuous_snd.comp continuous_fst))).matrix_mul
+        continuous_snd.matrix_conjTranspose).sub
+      (continuous_snd.comp (continuous_fst.comp continuous_fst)))) continuous_const).inter
+      (isClosed_le (continuous_specNorm.comp ((continuous_fst.comp
+        (continuous_snd.comp continuous_fst)).sub ((continuous_fst.comp
+          (continuous_fst.comp continuous_fst)).matrix_mul continuous_snd)))
+        (continuous_const.mul (continuous_specNorm.comp
+          (continuous_fst.comp (continuous_fst.comp continuous_fst)))))
+  convert isClosed_setOf_exists_mem_of_isCompact isCompact_setOf_hasOrthonormalCols hC using 1
+  ext ⟨⟨U, A⟩, U', A'⟩
+  simp only [Set.mem_ofPred_eq]
+  constructor
+  · rintro ⟨V, ⟨hV, E, hE, rfl⟩, hU⟩
+    have hV' : V * Vᴴ = 1 := hV.mul_conjTranspose_self
+    refine ⟨V, hV, ?_, hU⟩
+    have : V * (Vᴴ * (A + E) * V) * Vᴴ = A + E := by
+      simp only [← Matrix.mul_assoc, hV', Matrix.one_mul]
+      rw [Matrix.mul_assoc, hV', Matrix.mul_one]
+    simpa [this] using hE
+  · rintro ⟨V, hV, hE, hU⟩
+    have hV' : Vᴴ * V = 1 := hV
+    refine ⟨V, ⟨hV, V * A' * Vᴴ - A, hE, ?_⟩, hU⟩
+    rw [add_sub_cancel]
+    simp only [← Matrix.mul_assoc, hV', Matrix.one_mul]
+    rw [Matrix.mul_assoc, hV', Matrix.mul_one]
 
 variable {ι : Type*} [Fintype ι]
 

@@ -7,6 +7,8 @@ module
 
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedShExc
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedFind
+public import NLAlib.Matrix.FinitePrecision.GivensLogSlots
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedShExcTrials
 
 /-!
 # The rounded shifting strategy
@@ -136,52 +138,56 @@ def shThreshold : Impl O Q := opsImpl% [n, k] (A, C) → (P) {
 
 /-- The computation of the `comptau` test of `Sh`: the rounded degree $k$ step with the shift
 `Z` repeated on a copy `T` of the order-$N$ matrix `A` (`SR` the repeated shifts), its `comptau`
-into `P0`, and the threshold with the word `Cg` into `P1`. The interface is
-`[N, k] (A, Z, Cg) → (T, SR, P0, P1)`. -/
-def shTestStep : Impl O Q := opsImpl% [N, k] (A, Z, Cg) → (T, SR, P0, P1) {
+into `P0`, and the threshold with the word `Cg` into `P1`; the step records its rotations in slot
+$j$ of the log `Lg` of slot width $w$. The interface is
+`[N, k, w, j] (A, Z, Cg) → (T, SR, P0, P1, Lg)`. -/
+def shTestStep : Impl O Q := opsImpl% [N, k, w, j] (A, Z, Cg) → (T, SR, P0, P1, Lg) {
   run (unaryMap (Has.inj ScalarOp.copy)).body [2 * (N * N)] (A, T);
   run replicatePair.body [k] (Z, SR);
-  run (stepComptau (O := O) (Q := Q)).body [N, k] (T, SR, T, P0);
+  run (stepComptau (O := O) (Q := Q)).body [N, k, w, j] (T, SR, T, P0, Lg);
   run shThreshold.body [N, k] (A, Cg, P1)
 }
 
 /-- The deterministic start of `Sh`: the rounded potential $\tilde\psi$ of the order-$N$ matrix
 `A` into `Rt`, `Find` (`NLAlib.ShiftedQR.findRounded` with `NLAlib.ShiftedQR.comptauHalf`) over
 the $k = 2^m$ shifts `SS` into `Z`, and the computation of the `comptau` test
-(`NLAlib.ShiftedQR.shTestStep`, word `Cg`) into `P0`, `P1`. The interface is
-`[N, m, k] (A, SS, Cg) → (Z, Rt, P0, P1, T, SR)`. -/
-def shPrefix : Impl O Q := opsImpl% [N, m, k] (A, SS, Cg) → (Z, Rt, P0, P1, T, SR) {
+(`NLAlib.ShiftedQR.shTestStep`, word `Cg`, at slot $j$ of the log) into `P0`, `P1`. The
+interface is `[N, m, k, w, j] (A, SS, Cg) → (Z, Rt, P0, P1, T, SR, Lg)`. -/
+def shPrefix : Impl O Q := opsImpl% [N, m, k, w, j] (A, SS, Cg) → (Z, Rt, P0, P1, T, SR, Lg) {
   run roundedPotential.body [N, k, m] (A, Rt);
   run (findRounded (comptauHalf (O := O) (Q := Q))).body [N, m, k] (A, SS, Z);
-  run shTestStep.body [N, k] (A, Z, Cg, T, SR, P0, P1)
+  run shTestStep.body [N, k, w, j] (A, Z, Cg, T, SR, P0, P1, Lg)
 }
 
 /-- The decision of `Sh`: below the threshold (`P0 < P1`) the step `T` is accepted
 (`NLAlib.ShiftedQR.trialAccept`, flag $1$), otherwise the exceptional branch runs
 (`NLAlib.ShiftedQR.shExc`). The interface is
-`[N, k, q, n0] (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, P0, P1, T, SR, Ds, Rg, P2, Ss) → (A, Gw, Fl)`.
+`[N, k, q, n0, w, j] (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, P0, P1, T, SR, Ds, Rg, P2, Ss) →
+(A, Gw, Fl, Lg)`; acceptance validates the test step's slot $j$, the exceptional trials use the
+slots $j + 1, \dots, j + n_0$.
 -/
 def shDecide : Impl O Q :=
-  opsImpl% [N, k, q, n0] (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, P0, P1, T, SR, Ds, Rg, P2, Ss) →
-      (A, Gw, Fl) {
+  opsImpl% [N, k, q, n0, w, j]
+      (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, P0, P1, T, SR, Ds, Rg, P2, Ss) → (A, Gw, Fl, Lg) {
     if (Has.inj CmpTst.lt) [] (P0, P1) {
-      run trialAccept.body [N] (T, A, Gw, Fl)
+      run trialAccept.body [N, w, j] (T, A, Gw, Fl, Lg)
     } else {
-      run shExc.body [N, k, q, n0]
-        (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, T, SR, Ds, Rg, P2, Ss, A, Gw, Fl)
+      run shExc.body [N, k, q, n0, w, j + 1]
+        (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, T, SR, Ds, Rg, P2, Ss, A, Gw, Fl, Lg)
     }
   }
 
 /-- `Sh` with caller-owned scratch: the start (`NLAlib.ShiftedQR.shPrefix`) and the decision
 (`NLAlib.ShiftedQR.shDecide`). The interface is
-`[N, m, k, n0] (A, SS, Cg, Cr, Cw, Cp, G, Thr, Z, Rt, Pt, P0, P1, T, SR, Ds, Rg, P2, Ss, Gw) →
-(A, Fl)`. -/
+`[N, m, k, n0, w, j0] (A, SS, Cg, Cr, Cw, Cp, G, Thr, Z, Rt, Pt, P0, P1, T, SR, Ds, Rg, P2, Ss,
+Gw) → (A, Fl, Lg)`. -/
 def shStepWithScratch : Impl O Q :=
-  opsImpl% [N, m, k, n0]
-      (A, SS, Cg, Cr, Cw, Cp, G, Thr, Z, Rt, Pt, P0, P1, T, SR, Ds, Rg, P2, Ss, Gw) → (A, Fl) {
-    run shPrefix.body [N, m, k] (A, SS, Cg, Z, Rt, P0, P1, T, SR);
-    run shDecide.body [N, k, m, n0]
-      (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, P0, P1, T, SR, Ds, Rg, P2, Ss, A, Gw, Fl)
+  opsImpl% [N, m, k, n0, w, j0]
+      (A, SS, Cg, Cr, Cw, Cp, G, Thr, Z, Rt, Pt, P0, P1, T, SR, Ds, Rg, P2, Ss, Gw) →
+      (A, Fl, Lg) {
+    run shPrefix.body [N, m, k, w, j0] (A, SS, Cg, Z, Rt, P0, P1, T, SR, Lg);
+    run shDecide.body [N, k, m, n0, w, j0]
+      (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, P0, P1, T, SR, Ds, Rg, P2, Ss, A, Gw, Fl, Lg)
   }
 
 /-- **The shifting strategy `Sh`** ([BanksGarzaVargasSrivastava2022, Lemma 5.4], with a failure flag
@@ -190,8 +196,11 @@ for the case, which the paper does not treat, that no shift is accepted): from t
 factor $2^{1/k}\theta\alpha B^{1/k}$), `Cw` ($\varepsilon/2$), `Cp` ($1.0015(1 - \gamma)$), the net
 `G` of $n_0$ points and the scan threshold `Thr`, store a step at `A` and set the flag `Fl` to $1$,
 or set it to $2$ if no trial succeeded. All scratch is scoped. The interface is
-`[N, m, k, n0] (A, SS, Cg, Cr, Cw, Cp, G, Thr) → (A, Fl)`. -/
-def shStep : Impl O Q := opsImpl% [N, m, k, n0] (A, SS, Cg, Cr, Cw, Cp, G, Thr) → (A, Fl) {
+`[N, m, k, n0, w, j0] (A, SS, Cg, Cr, Cw, Cp, G, Thr) → (A, Fl, Lg)`: the test step records its
+rotations in slot $j_0$ of the log `Lg` of slot width $w$, the exceptional trials in the slots
+$j_0 + 1, \dots, j_0 + n_0$; the accepted slot is validated. -/
+def shStep : Impl O Q :=
+  opsImpl% [N, m, k, n0, w, j0] (A, SS, Cg, Cr, Cw, Cp, G, Thr) → (A, Fl, Lg) {
   let Z ← alloc 2;
   let Rt ← alloc 1;
   let Pt ← alloc 1;
@@ -204,8 +213,8 @@ def shStep : Impl O Q := opsImpl% [N, m, k, n0] (A, SS, Cg, Cr, Cw, Cp, G, Thr) 
   let P2 ← alloc 1;
   let Ss ← alloc (2 * n0);
   let Gw ← alloc 1;
-  run shStepWithScratch.body [N, m, k, n0]
-    (A, SS, Cg, Cr, Cw, Cp, G, Thr, Z, Rt, Pt, P0, P1, T, SR, Ds, Rg, P2, Ss, Gw, A, Fl)
+  run shStepWithScratch.body [N, m, k, n0, w, j0]
+    (A, SS, Cg, Cr, Cw, Cp, G, Thr, Z, Rt, Pt, P0, P1, T, SR, Ds, Rg, P2, Ss, Gw, A, Fl, Lg)
 }
 
 end Program
@@ -252,7 +261,7 @@ theorem shThreshold_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar
   intro m₃ _ ⟨hp₃, hT₃⟩
   exact ⟨hp₃.trans (hp₂.trans hp₁), hT₃⟩
 
-omit [Has IndexOp O] [Has DiskSampleOp O] [Has IdxTst Q] in
+omit [Has DiskSampleOp O] [Has IdxTst Q] in
 /-- The computation of the `comptau` test on a scalar machine with the standard model at
 $(n + 1)\boldsymbol{u} \le 1/2500$ and $30000(k + 1)\boldsymbol{u} \le 1$, with exact
 comparisons: let $\mathbf{H} \ne 0$ of order $n + 1$ be upper Hessenberg at `A`,
@@ -289,14 +298,22 @@ theorem shTestStep_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS :
     (htp : Fp.Disj (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))
       (Store.inBlock p0.1 p0.2 1))
     (hp1 : Fp.Disj (Store.inBlock p1.1 p1.2 1)
-      (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock p0.1 p0.2 1)) :
+      (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock p0.1 p0.2 1))
+    (hL : IsIndexLit M I) (hNat : IsExactNatLit id M (n + 1))
+    {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
+    (hlog : HoldsSlottedLog lg ns w LL [] m.store) (hj : LL.length < ns) (hw : k * n ≤ w)
+    (hlgl : m.Live [lg]) (hlgb : ∀ b ∈ [a, z, cg, t, sr, p0, p1], b.1 ≠ lg.1) :
     Writes .total I τ (shTestStep (O := O) (Q := Q)).body
-      (Env.frame [n + 1, k] [a, z, cg, t, sr, p0, p1])
+      (Env.frame [n + 1, k, w, LL.length] [a, z, cg, t, sr, p0, p1, lg])
       (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock sr.1 sr.2 (2 * k) ⊔
-        Store.inBlock p0.1 p0.2 1 ⊔ Store.inBlock p1.1 p1.2 1)
-      (fun m' => m'.pos = m.pos ∧ ∃ (H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+        Store.inBlock p0.1 p0.2 1 ⊔ Store.inBlock p1.1 p1.2 1 ⊔
+        Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (fun m' => m'.pos = m.pos ∧ ∃ es : List GivensEntry, es.length = k * n ∧
+        (∀ x ∈ es, x.1 + 1 < n + 1) ∧ HoldsSlottedLog lg ns w LL es m'.store ∧
+        ∃ (H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
         (Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)),
-        IsStableQRChain (300 * (n + 1) ^ 2 * u) H (List.replicate k r) H' Rs ∧
+        IsStableQRChainBy (300 * (n + 1) ^ 2 * u) H (List.replicate k r) H' Rs
+          (givensLog (n + 1) es) ∧
           IsUpperHessenberg H' ∧ HoldsMatrix t H' m'.store ∧
           (∃ tc : ℝ, m'.store.get p0.1 p0.2 = some tc ∧
             |tc - ‖WithLp.toLp 2 ((Polynomial.aeval H
@@ -310,10 +327,15 @@ theorem shTestStep_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS :
   have hsl := Store.lt_length_of_lt_len (show sr.2 < m.store.len sr.1 by omega)
   have hp0l := Store.lt_length_of_lt_len hrp0
   have hp1l := Store.lt_length_of_lt_len hrp1
+  have hgl : lg.1 < m.store.length := hlgl lg (by simp)
+  simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at hlgb
+  obtain ⟨hga, -, hgc, hgt, hgs, hgp0, hgp1⟩ := hlgb
   unfold shTestStep
   refine (copyMatrix_writes (τ := τ) hS hA hrt (hW.symm.mono (by fp_sub) (by fp_sub))).frame_seq_le
     rfl rfl (by simp [Mem.Live, hal, htl]) (by fp_sub) ?_
   rintro m₁ hfr₁ ⟨hp₁, hT₁⟩
+  have hlog₁ := hfr₁.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
+    (Fp.disj_inBlock_of_ne hgt) hlog
   have hk₁ : ∀ {F : Fp}, F ≤ Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔
       Store.inBlock sr.1 sr.2 (2 * k) ⊔ Store.inBlock p0.1 p0.2 1 ⊔ Store.inBlock p1.1 p1.2 1 →
       Fp.Disj F (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock z.1 z.2 2 ⊔
@@ -326,37 +348,39 @@ theorem shTestStep_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS :
   rintro m₂ hfr₂ ⟨hp₂, hSR₂⟩
   have hT₂ := hT₁.of_eqOff hfr₂ hts.symm
   have hL₂ : m₂.store.length = m.store.length := by rw [hfr₂.length_eq, hfr₁.length_eq]
-  have hst := stepComptau_writes (τ := τ) (m := m₂) (a := t) (s := sr) (p := p0)
-    (ss := List.replicate k r) hS hM hCmp hH hH0 hV hHV hκ hC hd
+  have hlog₂ := hfr₂.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
+    (Fp.disj_inBlock_of_ne hgs) hlog₁
+  have hst := stepComptau_writes (τ := τ) (m := m₂) (a := t) (s := sr) (p := p0) (lg := lg)
+    (ss := List.replicate k r) hS hM hCmp hL hNat hH hH0 hV hHV hκ hC hd
     (fun s hs => by rw [List.eq_of_mem_replicate hs]; exact hr)
     (fun s hs => by rw [List.eq_of_mem_replicate hs]; exact hdist) hnu
     (by rw [List.length_replicate]; exact hu) (by rw [List.length_replicate]; exact hxu)
-    (by simp [Mem.Live, hL₂, htl, hsl, hp0l]) hT₂ hSR₂
+    (Nat.le_succ n) hlog₂ hj (by rw [List.length_replicate]; exact hw)
+    (by simp [Mem.Live, hL₂, htl, hsl, hp0l, hgl]) hT₂ hSR₂
     (by rw [hfr₂.len_eq, hfr₁.len_eq]; exact hrp0) (by simpa using hts) htp
+    (Fp.disj_sup_right.mpr ⟨Fp.disj_sup_right.mpr ⟨Fp.disj_inBlock_of_ne hgt.symm,
+      Fp.disj_inBlock_of_ne hgs.symm⟩, Fp.disj_inBlock_of_ne hgp0.symm⟩)
   rw [List.length_replicate] at hst
-  refine hst.frame_seq_le rfl rfl (by simp [Mem.Live, hL₂, htl, hsl, hp0l]) (by fp_sub) ?_
-  rintro m₃ hfr₃ ⟨hp₃, H', Rs, hch, hH', hT₃, tc, htc, hb⟩
+  refine hst.frame_seq_le rfl rfl (by simp [Mem.Live, hL₂, htl, hsl, hp0l, hgl]) (by fp_sub) ?_
+  rintro m₃ hfr₃ ⟨hp₃, es, hesl, hesp, hlog₃, H', Rs, hch, hH', hT₃, tc, htc, hb⟩
   have hL₃ : m₃.store.length = m.store.length := by rw [hfr₃.length_eq, hL₂]
-  have hkeep : ∀ {F : Fp}, F ≤ Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔
-      Store.inBlock sr.1 sr.2 (2 * k) ⊔ Store.inBlock p0.1 p0.2 1 → ∀ {b : ℕ × ℕ} {l : ℕ}
-      {xs : List ℝ}, Store.inBlock b.1 b.2 l ≤ Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
-        Store.inBlock z.1 z.2 2 ⊔ Store.inBlock cg.1 cg.2 1 →
-      m.store.readBlock b.1 b.2 l = some xs → ∀ μ : Mem ℝ, m.store.EqOff F μ.store →
-        μ.store.readBlock b.1 b.2 l = some xs := fun hF _ _ _ hb hx μ hfr =>
-    hfr.keep (Store.readsOnly_readBlock _ _ _ _) (hW.mono (hF.trans le_sup_left) hb) hx
   have hfr₁₃ : m.store.EqOff (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔
-      Store.inBlock sr.1 sr.2 (2 * k) ⊔ Store.inBlock p0.1 p0.2 1) m₃.store :=
+      Store.inBlock sr.1 sr.2 (2 * k) ⊔ Store.inBlock p0.1 p0.2 1 ⊔
+      Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w))) m₃.store :=
     ((hfr₁.mono (by fp_sub)).trans (hfr₂.mono (by fp_sub))).trans (hfr₃.mono (by fp_sub))
-  have hA₃ : HoldsMatrix a H m₃.store := hkeep le_rfl (by fp_sub) hA m₃ hfr₁₃
-  have hcg₃ := hfr₁₃.keep (Store.readsOnly_get _ _ _) (hW.mono le_sup_left (by fp_sub)) hcg
+  have hA₃ : HoldsMatrix a H m₃.store := hA.of_eqOff hfr₁₃
+    (Fp.disj_sup_left.mpr ⟨hW.mono (by fp_sub) (by fp_sub), Fp.disj_inBlock_of_ne hga.symm⟩)
+  have hcg₃ := hfr₁₃.keep (Store.readsOnly_get _ _ _)
+    (Fp.disj_sup_left.mpr ⟨hW.mono (by fp_sub) (by fp_sub), Fp.disj_inBlock_of_ne hgc.symm⟩) hcg
   have hth := shThreshold_writes (τ := τ) (m := m₃) (a := a) (c := cg) (p := p1) (k := k) hS hk
     hA₃ hcg₃ (by rw [hfr₃.len_eq, hfr₂.len_eq, hfr₁.len_eq]; exact hrp1)
     (hW.symm.mono (by fp_sub) (by fp_sub)) (hW.symm.mono (by fp_sub) (by fp_sub))
   refine (hth.in_frame rfl rfl (by simp [Mem.Live, hL₃, hal, hcl, hp1l])).mono (by fp_sub) ?_
   rintro m₄ hfr₄ ⟨hp₄, hP₄⟩
-  refine ⟨hp₄.trans (hp₃.trans (hp₂.trans hp₁)), H', Rs, hch, hH', hT₃.of_eqOff hfr₄
-    (hp1.mono le_rfl le_sup_left), ⟨tc, hfr₄.keep (Store.readsOnly_get _ _ _)
-      (hp1.mono le_rfl le_sup_right) htc, hb⟩, hP₄⟩
+  refine ⟨hp₄.trans (hp₃.trans (hp₂.trans hp₁)), es, hesl, hesp,
+    hfr₄.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (Fp.disj_inBlock_of_ne hgp1) hlog₃,
+    H', Rs, hch, hH', hT₃.of_eqOff hfr₄ (hp1.mono le_rfl le_sup_left),
+    ⟨tc, hfr₄.keep (Store.readsOnly_get _ _ _) (hp1.mono le_rfl le_sup_right) htc, hb⟩, hP₄⟩
 
 end Test
 
@@ -444,16 +468,21 @@ def ShState2 (u : ℝ) (L k : ℕ) (ε : ℝ) (H V : Matrix (Fin (n + 1)) (Fin (
 
 /-- The state of `Sh` after the computation of the `comptau` test: `NLAlib.ShiftedQR.ShState1`,
 an $\alpha$-promising shift $r$ at `L`, at `L + 5` a backward-stable degree $k$ step with $r$
-repeated, at `L + 3` a value within $0.001$, relatively, of
-$\|\mathbf{e}_n^{\mathsf T}(\mathbf{H} - r)^{-k}\|^{-1}$, and at `L + 4` the rounded threshold. -/
+repeated by the exact unitary of its entries (pending in the log after `LL`), at `L + 3` a value
+within $0.001$, relatively, of $\|\mathbf{e}_n^{\mathsf T}(\mathbf{H} - r)^{-k}\|^{-1}$, and at `L
++ 4` the rounded threshold. -/
 def ShState3 (M : Machine ℝ) (u : ℝ) (L k : ℕ) (ε : ℝ)
     (H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (e : Fin (n + 1) → ℂ) (ss : List ℂ)
-    (α cg cr cw cp tv : ℝ) (a s wg wr ww wp g thr f : ℕ × ℕ) (m : Mem ℝ) : Prop :=
+    (α cg cr cw cp tv : ℝ) (a s wg wr ww wp g thr f lg : ℕ × ℕ) (ns w : ℕ)
+    (LL : List (Option (List GivensEntry))) (m : Mem ℝ) : Prop :=
   ShState1 u L k ε H ss cg cr cw cp tv a s wg wr ww wp g thr f m ∧
     ∃ r : ℂ, m.store.readBlock L 0 2 = some [r.re, r.im] ∧ IsPromisingRitzValue α V e ss r ∧
+      ∃ es : List GivensEntry, es.length = k * n ∧ (∀ x ∈ es, x.1 + 1 < n + 1) ∧
+        HoldsSlottedLog lg ns w LL es m.store ∧
       ∃ (H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
         (Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)),
-        IsStableQRChain (300 * (n + 1) ^ 2 * u) H (List.replicate k r) H' Rs ∧
+        IsStableQRChainBy (300 * (n + 1) ^ 2 * u) H (List.replicate k r) H' Rs
+          (givensLog (n + 1) es) ∧
           IsUpperHessenberg H' ∧ HoldsMatrix (L + 5, 0) H' m.store ∧
           (∃ tc : ℝ, m.store.get (L + 3) 0 = some tc ∧
             |tc - ‖WithLp.toLp 2 ((Polynomial.aeval H
@@ -517,7 +546,8 @@ theorem shFind_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsS
   obtain ⟨⟨hA, hss, -, -, -, -, -, -, -, hlen', h0, -⟩, -⟩ := id hm
   have hne : ∀ r ∈ ss, ∀ i, e i ≠ r := fun r hr i he => by
     have := hdist r hr i; rw [he, sub_self, norm_zero] at this; linarith
-  have hTau := comptauHalf_isHalfTau (I := I) hS hM hC hH hH0 hV hHV hκ hC0 hd hs hdist hnu
+  have hTau := comptauHalf_isHalfTau (I := I) hS hM hC hL hNat (by omega) hH hH0 hV hHV hκ hC0 hd hs
+    hdist hnu
     (by rw [hlen]; exact hu) (by rw [hlen]; exact hxu)
   refine (findRounded_writes (τ := τ) (b := a) (ss := s) (z := (L, 0)) hS hL hC hQ hV hHV hκ hne
     hTau (hNat.mono (by omega)) hkq hlen hA (by rw [hlen]; exact hss)
@@ -527,7 +557,7 @@ theorem shFind_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsS
   exact ⟨⟨hctx.of_eqOff hfr (by disjoint), p, hp, hfr.keep (Store.readsOnly_get _ _ _)
     (by disjoint) hP⟩, c, hc, hpr⟩
 
-omit [Has IndexOp O] [Has DiskSampleOp O] [Has IdxTst Q] in
+omit [Has DiskSampleOp O] [Has IdxTst Q] in
 /-- The computation of the `comptau` test of `Sh` (`NLAlib.ShiftedQR.shTestStep_writes`) reaches
 `NLAlib.ShiftedQR.ShState3` from `NLAlib.ShiftedQR.ShState2`, for $1 \le k \le n$ and shifts at
 distance at least $d > 0$ from the spectrum and in $\mathbb{D}(0, C\|\mathbf{H}\|_2)$. -/
@@ -541,26 +571,37 @@ theorem shTest_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsS
     (hs : ∀ s ∈ ss, ‖s‖ ≤ C * specNorm H) (hdist : ∀ s ∈ ss, ∀ i, d ≤ ‖e i - s‖)
     (hnu : (n + 1 : ℝ) * u ≤ 1 / 2500) (hu : 30000 * (k + 1) * u ≤ 1)
     (hxu : 300 * (n + 1) ^ 2 * u ≤ (8004 * B)⁻¹ * (d / ((2 + 2 * C) * specNorm H)) ^ k)
-    (hm : ShState2 u L k ε H V e ss α cg cr cw cp tv a s wg wr ww wp g thr f m) :
+    (hm : ShState2 u L k ε H V e ss α cg cr cw cp tv a s wg wr ww wp g thr f m)
+    (hL : IsIndexLit M I) (hNat : IsExactNatLit id M (n + 1))
+    {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
+    (hlog : HoldsSlottedLog lg ns w LL [] m.store) (hj : LL.length < ns) (hw : k * n ≤ w)
+    (hlgL : lg.1 < L) (hlgv : ∀ b ∈ [a, s, wg, wr, ww, wp, g, thr, f], b.1 ≠ lg.1) :
     Writes .total I τ (shTestStep (O := O) (Q := Q)).body
-      (Env.frame [n + 1, k] [a, (L, 0), wg, (L + 5, 0), (L + 6, 0), (L + 3, 0), (L + 4, 0)])
+      (Env.frame [n + 1, k, w, LL.length] [a, (L, 0), wg, (L + 5, 0), (L + 6, 0), (L + 3, 0),
+        (L + 4, 0), lg])
       (Store.inBlock (L + 5) 0 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 6) 0 (2 * k) ⊔
-        Store.inBlock (L + 3) 0 1 ⊔ Store.inBlock (L + 4) 0 1)
-      (ShState3 M u L k ε H V e ss α cg cr cw cp tv a s wg wr ww wp g thr f) m := by
+        Store.inBlock (L + 3) 0 1 ⊔ Store.inBlock (L + 4) 0 1 ⊔
+        Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (ShState3 M u L k ε H V e ss α cg cr cw cp tv a s wg wr ww wp g thr f lg ns w LL) m := by
   obtain ⟨⟨ha, hs', hwg, hwr, hww, hwp, hg, hthl, hfl⟩, -, -⟩ := hv
   obtain ⟨⟨hctx, p, hp, hP⟩, r, hZ, hr⟩ := hm
-  obtain ⟨hA, -, hcg, -, -, -, -, -, -, -, -, -, -, h3, h4, h5, h6, -⟩ := id hctx
+  obtain ⟨hA, -, hcg, -, -, -, -, -, -, hlen, -, -, -, h3, h4, h5, h6, -⟩ := id hctx
+  simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at hlgv
+  obtain ⟨hga, hgs, hgwg, hgwr, hgww, hgwp, hgg, hgthr, hgf⟩ := hlgv
   refine (shTestStep_writes (τ := τ) (z := (L, 0)) (cg := wg) (t := (L + 5, 0))
     (sr := (L + 6, 0)) (p0 := (L + 3, 0)) (p1 := (L + 4, 0)) hS hM hC hH hH0 hV hHV hκ hC0 hd
     (hs r hr.1) (hdist r hr.1) hk0 hkn hnu hu hxu hA hZ hcg (by simp [h5]) (by simp [h6])
     (by simp [h3]) (by simp [h4]) (Fp.disj_sup_right.mpr ⟨by disjoint, by disjoint⟩)
-    (by disjoint) (by disjoint) (by disjoint)).mono le_rfl ?_
-  rintro m' hfr ⟨-, H', Rs, hch, hH', hT, htc, hthr⟩
+    (by disjoint) (by disjoint) (by disjoint) hL hNat hlog hj hw
+    (by simp [Mem.Live, hlen]; omega)
+    (by simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq]
+        omega)).mono le_rfl ?_
+  rintro m' hfr ⟨-, es, hesl, hesp, hlog', H', Rs, hch, hH', hT, htc, hthr⟩
   exact ⟨⟨hctx.of_eqOff hfr (by disjoint), p, hp, hfr.keep (Store.readsOnly_get _ _ _)
-    (by disjoint) hP⟩, r, hfr.keep (Store.readsOnly_readBlock _ _ _ _) (by disjoint) hZ, hr, H',
-    Rs, hch, hH', hT, htc, hthr⟩
+    (by disjoint) hP⟩, r, hfr.keep (Store.readsOnly_readBlock _ _ _ _) (by disjoint) hZ, hr, es,
+    hesl, hesp, hlog', H', Rs, hch, hH', hT, htc, hthr⟩
 
-omit [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] in
+omit [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] in
 /-- The accepted branch of `Sh`: from `NLAlib.ShiftedQR.ShState3` with the word
 $c_g = (1 - \gamma)^k$ and the computed $t_c$ below the threshold, the acceptance
 (`NLAlib.ShiftedQR.trialAccept`) ends in `NLAlib.ShiftedQR.ShOutcome`. Here $\mathbf{H} \ne 0$ of
@@ -584,28 +625,42 @@ theorem shAccept_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : I
     (hxu : 300 * (n + 1) ^ 2 * u ≤ (16 * B)⁻¹ * (d / ((2 + 2 * C) * S)) ^ k)
     (hbound : (66 + 2 * C) * B * S * ((2 + 2 * C) * S / d) ^ k * √(n + 1) *
       (300 * (n + 1) ^ 2 * u) ≤ 0.001 * ω) (hγ1 : γ ≤ 1) (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv)
-    (hm : ShState3 M u L k ε H V e ss α ((1 - γ) ^ k) cr cw cp tv a s wg wr ww wp g thr f m)
+    (hL : IsIndexLit M I)
+    {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))} (hj : LL.length < ns) (hlgL :
+      lg.1 < L)
+    (hlgv : ∀ b ∈ [a, s, wg, wr, ww, wp, g, thr, f], b.1 ≠ lg.1)
+    (hm : ShState3 M u L k ε H V e ss α ((1 - γ) ^ k) cr cw cp tv a s wg wr ww wp g thr f lg ns w LL
+      m)
     (hlt : ∀ tc, m.store.get (L + 3) 0 = some tc →
       tc < optimalThresholdWord M H k ((1 - γ) ^ k)) :
     Writes .total I τ (trialAccept (O := O) (Q := Q)).body
-      (Env.frame [n + 1] [(L + 5, 0), a, (L + 11, 0), f])
+      (Env.frame [n + 1, w, LL.length] [(L + 5, 0), a, (L + 11, 0), f, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 11) 0 1 ⊔
-        Store.inBlock f.1 f.2 1)
-      (ShOutcome u k H γ tv ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a f)
+        Store.inBlock f.1 f.2 1 ⊔
+        Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (ShOutcome u k H γ tv ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a f lg
+        ns w LL 1)
       m := by
   obtain ⟨⟨ha, hs', hwg, hwr, hww, hwp, hg, hthl, hfl⟩, haf, -⟩ := hv
-  obtain ⟨⟨⟨hA, -, -, -, -, -, -, -, hf, -, -, -, -, -, -, -, -, -, -, -, -, h11⟩, -⟩, r, -, hr, H',
-    Rs, hch, hH', hT, ⟨tc, htc, htcb⟩, -⟩ := hm
+  obtain ⟨⟨⟨hA, -, -, -, -, -, -, -, hf, hlen, -, -, -, -, -, -, -, -, -, -, -, h11⟩, -⟩, r, -, hr,
+    es, -, hesp, hlog, H', Rs, hch, hH', hT, ⟨tc, htc, htcb⟩, -⟩ := hm
+  simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at hlgv
+  obtain ⟨hga, -, -, -, -, -, -, -, hgf⟩ := hlgv
   have hu0 := hM.roundoff_nonneg
   refine (trialAccept_writes (τ := τ) (t := (L + 5, 0)) (a := a) (g := (L + 11, 0)) (f := f) hS
     hM hNat hT (Store.le_len_of_readBlock hA (by positivity)) (by simp [h11]) hf (by disjoint)
-    (Fp.disj_sup_left.mpr ⟨by disjoint, haf.symm⟩) (by disjoint)).mono le_rfl ?_
-  rintro m' - ⟨hA', -, hF⟩
-  have hsim := hch.isPerturbedUnitarySimilar (by positivity) (fun t ht => by
+    (Fp.disj_sup_left.mpr ⟨by disjoint, haf.symm⟩) (by disjoint) hL hlog hj
+    (by simp [Mem.Live, hlen]; omega)
+    (by simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq]
+        omega)).mono le_rfl ?_
+  rintro m' - ⟨hA', -, hF, hlog'⟩
+  have hsim := hch.isPerturbedUnitarySimilarBy (by positivity) (fun t ht => by
     rw [List.eq_of_mem_replicate ht]; exact hs r hr.1)
   rw [List.length_replicate] at hsim
-  exact ⟨hF, H', hsim, hH', hA', shAccept_decoupled_or_contract hM hch hk hkn hku hC0 hd hω hH0 hH
-    hV hHV hκ hSH (hs r hr.1) (hdist r hr.1) hxu hbound hγ1 hthrω htcb (hlt tc htc)⟩
+  refine ⟨hF, [some es], rfl, by simpa using padEntries_planes (by omega) hesp, hlog', H',
+    by simpa [givensLog_padEntries] using hsim, hH', hA',
+    shAccept_decoupled_or_contract hM hch.isStableQRChain hk hkn hku hC0 hd hω hH0 hH hV hHV hκ
+      hSH (hs r hr.1) (hdist r hr.1) hxu hbound hγ1 hthrω htcb (hlt tc htc)⟩
 
 /-- The rejected branch of `Sh` enters the exceptional branch: from
 `NLAlib.ShiftedQR.ShState3` with $c_g = (1 - \gamma)^k$, $\gamma < 1$,
@@ -616,13 +671,15 @@ theorem ShState3.shExcPre {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M) {m 
     (hk : 2 ≤ k) (hkn : k ≤ n) (hku : 100000 * k * u ≤ 1) {ε : ℝ}
     {a s wg wr ww wp g thr f : ℕ × ℕ} {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {e : Fin (n + 1) → ℂ} {ss : List ℂ} {γ α cr cw cp tv : ℝ}
-    (hm : ShState3 M u L k ε H V e ss α ((1 - γ) ^ k) cr cw cp tv a s wg wr ww wp g thr f m)
+    {lg : ℕ × ℕ} {ns w : ℕ} {LL : List (Option (List GivensEntry))}
+    (hm : ShState3 M u L k ε H V e ss α ((1 - γ) ^ k) cr cw cp tv a s wg wr ww wp g thr f lg ns w LL
+      m)
     (hV : IsUnit V) (hHV : H * V = V * Matrix.diagonal e) (hne : ∀ r ∈ ss, ∀ i, e i ≠ r)
     (hγ1 : γ < 1) (hψ : 0 < hessenbergPotential k H)
     (hle : ∀ tc, m.store.get (L + 3) 0 = some tc →
       optimalThresholdWord M H k ((1 - γ) ^ k) ≤ tc) :
     ShExcPre u L k ε H V e ss α γ ((1 - γ) ^ k) cr cw cp tv a s wg wr ww wp g thr f m := by
-  obtain ⟨⟨hctx, hp⟩, r, hZ, hr, H', Rs, -, -, -, ⟨tc, htc, htcb⟩, -⟩ := hm
+  obtain ⟨⟨hctx, hp⟩, r, hZ, hr, -, -, -, -, H', Rs, -, -, -, ⟨tc, htc, htcb⟩, -⟩ := hm
   have hN := norm_toLp_inv_aeval_replicate_last_pos hV hHV (fun i => hne r hr.1 i) k
   have hthr := abs_optimalThresholdWord_sub_le hM (by omega) hkn
     (by have : (2 : ℝ) ≤ k := by exact_mod_cast hk

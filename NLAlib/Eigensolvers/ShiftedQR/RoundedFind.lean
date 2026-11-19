@@ -10,6 +10,7 @@ public import NLAlib.Matrix.QRIteration.RoundedStrategy
 public import NLAlib.Eigensolvers.ShiftedQR.PairBlocks
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedRitz
 public import NLAlib.Eigensolvers.ShiftedQR.StableStep
+public import NLAlib.Eigensolvers.ShiftedQR.MultiStepStable
 
 /-!
 # `Find` in floating point
@@ -138,15 +139,15 @@ theorem flatMap_flatten_replicate (l : List ℂ) (e : ℕ) :
   | succ e ih => rw [List.replicate_succ, List.replicate_succ, List.flatten_cons,
       List.flatten_cons, List.flatMap_append, ih]
 
-variable [Has CmpTst Q]
+variable [Has IndexOp O] [Has CmpTst Q]
 
 /-- **`comptau` of a degree $k$ rounded step**: run `NLAlib.ShiftedQR.multiStepStable` with the
-$k$ shifts at `S` on the matrix at `A`, in place, and store in `P` the
-`NLAlib.ShiftedQR.comptau` of the $k$ last triangular diagonal entries (scoped). The interface is
-`[d, k] (A, S) → (A, P)`. -/
-def stepComptau : Impl O Q := opsImpl% [d, k] (A, S) → (A, P) {
+$k$ shifts at `S` on the matrix at `A`, in place, recording its rotations in slot $j$ of the slotted
+log `Lg` of slot width $w$, and store in `P` the `NLAlib.ShiftedQR.comptau` of the $k$ last
+triangular diagonal entries (scoped). The interface is `[d, k, w, j] (A, S) → (A, P, Lg)`. -/
+def stepComptau : Impl O Q := opsImpl% [d, k, w, j] (A, S) → (A, P, Lg) {
   let Ds ← alloc (2 * k);
-  run (multiStepStable (Op := O) (Tst := Q)).body [d, k] (A, S, A, Ds);
+  run (multiStepStable (Op := O) (Tst := Q)).body [d, k, w, j] (A, S, A, Ds, Lg);
   run (comptau (Op := O) (Tst := Q)).body [k] (Ds, P)
 }
 
@@ -162,79 +163,108 @@ $\mathbb{D}(0, C\|\mathbf{H}\|_2)$ ($C \ge 0$) at distance at least $d > 0$ from
 $(n + 1)\boldsymbol{u} \le 1/2500$, $30000(k + 1)\boldsymbol{u} \le 1$ and
 $x = 300(n + 1)^2\boldsymbol{u} \le (8004\kappa)^{-1}(d/((2 + 2C)\|\mathbf{H}\|_2))^k$. Then
 `stepComptau` (the chain of `NLAlib.ShiftedQR.multiStepStable`, then
-`NLAlib.ShiftedQR.comptau`) stores in place the rounded step's output
-$\widehat{\mathbf{H}}'$ (upper Hessenberg, the end of a stable chain from $\mathbf{H}$ with the
-shifts $s_1, \dots, s_k$), and in `P` a $t$ with $\lvert t - \tau\rvert \le 0.001\,\tau$,
+`NLAlib.ShiftedQR.comptau`) fills the pending slot $j$ of the log with $kn$ entries, stores in
+place the rounded step's output $\widehat{\mathbf{H}}'$ (upper Hessenberg, the end of a stable
+chain from $\mathbf{H}$ with the shifts $s_1, \dots, s_k$ by the exact unitary of the entries),
+and in `P` a $t$ with $\lvert t - \tau\rvert \le 0.001\,\tau$,
 $\tau = \|\mathbf{e}_n^{\mathsf T}p(\mathbf{H})^{-1}\|_2^{-1}$.
-It writes only the matrix and `P`; matrix, shifts and `P` are disjoint views. -/
+It writes only the matrix, `P` and the log; matrix, shifts, `P` and the log are disjoint views. -/
 theorem stepComptau_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
-    (hS : IsScalar M I) (hM : StdModel u id M) (hCmp : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ}
+    (hS : IsScalar M I) (hM : StdModel u id M) (hCmp : IsCmp id I) (hL : IsIndexLit M I)
+    {nmax : ℕ} (hNat : IsExactNatLit id M nmax) {τ : Tape ℝ} {m : Mem ℝ}
     {n : ℕ} {C κ d : ℝ} {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ev : Fin (n + 1) → ℂ}
-    {ss : List ℂ} {a s p : ℕ × ℕ} (hH : IsUpperHessenberg H) (hH0 : H ≠ 0) (hV : IsUnit V)
+    {ss : List ℂ} {a s p lg : ℕ × ℕ} (hH : IsUpperHessenberg H) (hH0 : H ≠ 0) (hV : IsUnit V)
     (hHV : H * V = V * Matrix.diagonal ev) (hκ : pseudoConditionNumber V ≤ κ) (hC : 0 ≤ C)
     (hd : 0 < d) (hs : ∀ s ∈ ss, ‖s‖ ≤ C * specNorm H) (hdist : ∀ s ∈ ss, ∀ i, d ≤ ‖ev i - s‖)
     (hnu : (n + 1 : ℝ) * u ≤ 1 / 2500) (hu : 30000 * (ss.length + 1) * u ≤ 1)
     (hxu : 300 * (n + 1) ^ 2 * u ≤ (8004 * κ)⁻¹ * (d / ((2 + 2 * C) * specNorm H)) ^ ss.length)
-    (hl : m.Live [a, s, p]) (hA : HoldsMatrix a H m.store)
+    (hn : n ≤ nmax) {ns w : ℕ} {L : List (Option (List GivensEntry))}
+    (hlog : HoldsSlottedLog lg ns w L [] m.store) (hj : L.length < ns) (hw : ss.length * n ≤ w)
+    (hl : m.Live [a, s, p, lg]) (hA : HoldsMatrix a H m.store)
     (hss : m.store.readBlock s.1 s.2 (2 * ss.length) = some (ss.flatMap fun z => [z.re, z.im]))
     (hp : p.2 < m.store.len p.1)
     (has : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
       (Store.inBlock s.1 s.2 (2 * ss.length)))
-    (hap : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock p.1 p.2 1)) :
-    Writes .total I τ stepComptau.body (Env.frame [n + 1, ss.length] [a, s, a, p])
-      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock p.1 p.2 1)
-      (fun m' => m'.pos = m.pos ∧ ∃ (H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
-        (Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)),
-        IsStableQRChain (300 * (n + 1) ^ 2 * u) H ss H' Rs ∧ IsUpperHessenberg H' ∧
+    (hap : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock p.1 p.2 1))
+    (hlgd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
+        Store.inBlock s.1 s.2 (2 * ss.length) ⊔ Store.inBlock p.1 p.2 1)) :
+    Writes .total I τ stepComptau.body
+      (Env.frame [n + 1, ss.length, w, L.length] [a, s, a, p, lg])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock p.1 p.2 1 ⊔
+        Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+      (fun m' => m'.pos = m.pos ∧ ∃ es : List GivensEntry, es.length = ss.length * n ∧
+        (∀ e ∈ es, e.1 + 1 < n + 1) ∧ HoldsSlottedLog lg ns w L es m'.store ∧
+        ∃ (H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+          (Rs : List (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)),
+          IsStableQRChainBy (300 * (n + 1) ^ 2 * u) H ss H' Rs (givensLog (n + 1) es) ∧
+          IsUpperHessenberg H' ∧
           HoldsMatrix a H' m'.store ∧ ∃ t : ℝ, m'.store.get p.1 p.2 = some t ∧
           |t - ‖WithLp.toLp 2 ((Polynomial.aeval H (shiftPoly ss))⁻¹ (Fin.last n))‖⁻¹| ≤
             0.001 * ‖WithLp.toLp 2 ((Polynomial.aeval H (shiftPoly ss))⁻¹ (Fin.last n))‖⁻¹) m := by
-  have hlive : a.1 < m.store.length ∧ s.1 < m.store.length ∧ p.1 < m.store.length := by
+  have hlive : a.1 < m.store.length ∧ s.1 < m.store.length ∧ p.1 < m.store.length ∧
+      lg.1 < m.store.length := by
     simpa [Mem.Live] using hl
+  obtain ⟨hlga, hlgs, hlgp⟩ : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+        (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) ∧
+      Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
+        (Store.inBlock s.1 s.2 (2 * ss.length)) ∧
+      Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w))) (Store.inBlock p.1 p.2 1) := by
+    simpa [Fp.disj_sup_right, and_assoc] using hlgd
   change Writes .total I τ (Stmt.allocs [.const 2 * .var 1] _) _ _ _ m
   refine writes_allocs_preserving_post (ns := [2 * ss.length]) rfl
-    (fun hBelow ⟨hp', H', Rs, hc, hH', hA', t, ht, hb⟩ => ⟨hp', H', Rs, hc, hH',
-      hA'.of_below hBelow hlive.1, t, ((hBelow p.1 hlive.2.2).2 p.2).trans ht, hb⟩) ?_
+    (fun hBelow ⟨hp', es, hes, hpl, hlog', H', Rs, hc, hH', hA', t, ht, hb⟩ =>
+      ⟨hp', es, hes, hpl, hlog'.of_below hBelow hlive.2.2.2, H', Rs, hc, hH',
+        hA'.of_below hBelow hlive.1, t, ((hBelow p.1 hlive.2.2.1).2 p.2).trans ht, hb⟩) ?_
   intro store hlen hlens hBelow
   let db : ℕ × ℕ := (m.store.length, 0)
   have hdb : store.len db.1 = 2 * ss.length := by simpa [db] using hlens 0 (by simp)
-  have hms := multiStepStable_isStableQRChain (τ := τ) (m := ⟨store, m.pos⟩) (a := a) (s := s)
-    (ds := db) (ss := ss) hS hM hM.roundoff_nonneg hCmp hH hnu
+  have hms := multiStepStable_isStableQRChainBy (τ := τ) (m := ⟨store, m.pos⟩) (a := a) (s := s)
+    (ds := db) (ss := ss) hS hM hM.roundoff_nonneg hCmp hL hNat hH hnu hn
+    (hlog.of_below hBelow hlive.2.2.2) hj hw
     (by simp [Mem.Live, db, hlen]; omega) (hA.of_below hBelow hlive.1)
     (hBelow.readBlock_of hlive.2.1 hss) (by simp [hdb, db])
     has (Fp.disj_inBlock_of_ne (by dsimp [db]; omega))
     (Fp.disj_inBlock_of_ne (by dsimp [db]; omega))
+    (Fp.disj_sup_right.mpr ⟨Fp.disj_sup_right.mpr ⟨hlga, hlgs⟩,
+      Fp.disj_inBlock_of_ne (by dsimp [db]; omega)⟩)
   refine hms.frame_seq_le rfl rfl (by simp [Mem.Live, db, hlen]; omega)
-    (sup_le (le_sup_left.trans le_sup_left) (Fp.inBlock_le_sup_above le_rfl)) ?_
-  intro μ₁ hfr₁ ⟨hp₁, H', Rs, hc, hH', hA₁, hD₁⟩
+    (sup_le (sup_le (le_sup_left.trans (le_sup_left.trans le_sup_left))
+      (Fp.inBlock_le_sup_above le_rfl)) (le_sup_right.trans le_sup_left)) ?_
+  intro μ₁ hfr₁ ⟨hp₁, es, hes, hpl, hlog₁, H', Rs, hc, hH', hA₁, hD₁⟩
   have hRs : Rs.length = ss.length := by
     have := Store.length_of_readBlock hD₁
     simp at this
     omega
   have hp₀ : p.2 < μ₁.store.len p.1 := by
-    rw [hfr₁.len_eq, (hBelow p.1 hlive.2.2).1]; exact hp
-  have hct := comptau_writes (τ := τ) (μ := μ₁) (ds := db) (p := p) hS hM hc
+    rw [hfr₁.len_eq, (hBelow p.1 hlive.2.2.1).1]; exact hp
+  have hct := comptau_writes (τ := τ) (μ := μ₁) (ds := db) (p := p) hS hM
+    hc.isStableQRChain
     (by positivity [hM.roundoff_nonneg]) hC hd hH0 hV hHV hκ hs hdist hxu hu hRs hD₁
     (by simp [Mem.Live, hfr₁.length_eq, db, hlen]; omega) hp₀
     (Fp.disj_inBlock_of_ne (by dsimp [db]; omega))
   refine (hct.in_frame rfl rfl (by simp [Mem.Live, hfr₁.length_eq, db, hlen]; omega)).mono
-    (le_sup_right.trans le_sup_left) ?_
+    (le_sup_right.trans (le_sup_left.trans le_sup_left)) ?_
   intro μ₂ hfr₂ ⟨hp₂, t, ht, hb⟩
-  exact ⟨hp₂.trans hp₁, H', Rs, hc, hH',
+  exact ⟨hp₂.trans hp₁, es, hes, hpl,
+    hfr₂.keep (readsOnly_holdsSlottedLog _ _ _ _ _) hlgp.symm hlog₁, H', Rs, hc, hH',
     hfr₂.keep (Store.readsOnly_readBlock _ _ _ _) hap.symm hA₁, t, ht, hb⟩
 
 /-- **The comparison routine of `Find`** ([BanksGarzaVargasSrivastava2022, Lemmas 3.9 and 5.1]):
 copy $\mathbf{H}$ from `A`, and the $h$ shifts $l$ from `S` repeated $e$ times
 (`NLAlib.ShiftedQR.repeatBlock`), to scratch, and run `NLAlib.ShiftedQR.stepComptau` with the
 shifts $l^e$ on the copy, storing in `P` the rounded product of the moduli of the $he$ last
-triangular diagonal entries. The interface is `[d, h, e] (A, S) → (P)`; the copy and the shift
-list are scoped. -/
+triangular diagonal entries. The step's rotations are not committed: they go to a scoped scratch
+log of one slot, zero-filled first (`NLAlib.slottedLogOpen`) and never read. The interface is
+`[d, h, e] (A, S) → (P)`; the copy, the shift list and the scratch log are scoped. -/
 def comptauHalf : Impl O Q := opsImpl% [d, h, e] (A, S) → (P) {
   let W ← alloc (2 * (d * d));
   let SS ← alloc (2 * (h * e));
+  let Lg ← alloc (1 + 5 * (h * e * (d - 1)));
+  run (slottedLogOpen (O := O) (Q := Q)).body [1, h * e * (d - 1)] (Lg);
   run (unaryMap (Has.inj ScalarOp.copy)).body [2 * (d * d)] (A, W);
   run (repeatBlock (O := O) (Q := Q)).body [2 * h, e] (S, SS);
-  run (stepComptau (O := O) (Q := Q)).body [d, h * e] (W, SS, W, P)
+  run (stepComptau (O := O) (Q := Q)).body [d, h * e, h * e * (d - 1), 0] (W, SS, W, P, Lg)
 }
 
 /-- **`comptauHalf` meets the contract of `Find`'s comparison values**
@@ -249,9 +279,11 @@ Then for every half $l$ of $h$ shifts and exponent $e$ with $2he = k$, `comptauH
 within $0.0011$ (indeed $0.001$), relatively, of
 $\|\mathbf{e}_n^{\mathsf T}p_l(\mathbf{H})^{-e}\|^{-1}$: `NLAlib.ShiftedQR.stepComptau_writes`
 with the $he$ shifts $l^e$, and $p_{l^e} = p_l^{\,e}$ (`NLAlib.shiftPoly_flatten_replicate`).
+The planes of the scratch log are natural literals below $n$, exact on the machine (`hNat`).
 For odd $k$ the contract is empty; $k/2$ is the natural quotient. -/
 theorem comptauHalf_isHalfTau {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
-    (hS : IsScalar M I) (hM : StdModel u id M) (hCmp : IsCmp id I) {n : ℕ} {C κ d : ℝ}
+    (hS : IsScalar M I) (hM : StdModel u id M) (hCmp : IsCmp id I) (hL : IsIndexLit M I)
+    {nmax : ℕ} (hNat : IsExactNatLit id M nmax) {n : ℕ} (hn : n ≤ nmax) {C κ d : ℝ}
     {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ev : Fin (n + 1) → ℂ} {shifts : List ℂ}
     (hH : IsUpperHessenberg H) (hH0 : H ≠ 0) (hV : IsUnit V)
     (hHV : H * V = V * Matrix.diagonal ev) (hκ : pseudoConditionNumber V ≤ κ) (hC : 0 ≤ C)
@@ -275,51 +307,72 @@ theorem comptauHalf_isHalfTau {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     exact List.mem_of_mem_drop (List.mem_of_mem_take hsl)
   have hlive : A.1 < μ.store.length ∧ S.1 < μ.store.length ∧ P.1 < μ.store.length := by
     simpa [Mem.Live] using hl
-  change Writes .total I τ (Stmt.allocs [.const 2 * (.var 0 * .var 0),
-    .const 2 * (.var 1 * .var 2)] _) _ _ _ μ
-  refine writes_allocs_preserving_post (ns := [2 * ((n + 1) * (n + 1)), 2 * (h * e)]) rfl
+  unfold comptauHalf
+  change Writes .total I τ (Stmt.allocs [_, _, _] _) _ _ _ μ
+  refine writes_allocs_preserving_post
+    (ns := [2 * ((n + 1) * (n + 1)), 2 * (h * e), 1 + 5 * (h * e * n)]) rfl
     (fun hBelow ⟨hp, t, ht, hb⟩ => ⟨hp, t, ((hBelow P.1 hlive.2.2).2 P.2).trans ht, hb⟩) ?_
   intro store hlen hlens hBelow
   let w : ℕ × ℕ := (μ.store.length, 0)
   let sb : ℕ × ℕ := (μ.store.length + 1, 0)
+  let lg : ℕ × ℕ := (μ.store.length + 2, 0)
   have hw : store.len w.1 = 2 * ((n + 1) * (n + 1)) := by simpa [w] using hlens 0 (by simp)
   have hsb : store.len sb.1 = 2 * (h * e) := by simpa [sb] using hlens 1 (by simp)
-  have hwF : Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ≤
-      Store.inBlock P.1 P.2 1 ⊔ Fp.above μ.store.length := Fp.inBlock_le_sup_above le_rfl
-  have hl₀ : (⟨store, μ.pos⟩ : Mem ℝ).Live [A, S, P, w, sb] := by
-    simp [Mem.Live, w, sb, hlen]; omega
+  have hlg : store.len lg.1 = 1 + 5 * (h * e * n) := by simpa [lg] using hlens 2 (by simp)
+  have hab : ∀ {b o k}, μ.store.length ≤ b → Store.inBlock b o k ≤
+      Store.inBlock P.1 P.2 1 ⊔ Fp.above μ.store.length := fun hb =>
+    Fp.inBlock_le_sup_above hb
+  have hl₀ : (⟨store, μ.pos⟩ : Mem ℝ).Live [A, S, P, w, sb, lg] := by
+    simp [Mem.Live, w, sb, lg, hlen]; omega
+  refine (slottedLogOpen_writes (τ := τ) (μ := ⟨store, μ.pos⟩) (ns := 1) (w := h * e * n)
+    (lg := lg) hS hM (by simp [hlg, lg])).frame_seq_le rfl rfl
+    (hl₀.mono (by simp)) (hab (by dsimp [lg]; omega)) ?_
+  rintro μ₀ hfr₀ ⟨hp₀, hlog₀⟩
   -- the copy of the matrix
-  refine (copyMatrix_writes (τ := τ) (b := w) hS (hA.of_below hBelow hlive.1)
-    (by rw [hw]; simp [w]) (Fp.disj_inBlock_of_ne (by dsimp [w]; omega))).frame_seq_le rfl rfl
-    (hl₀.mono (by simp)) hwF ?_
+  refine (copyMatrix_writes (τ := τ) (b := w) hS
+    ((hA.of_below hBelow hlive.1).of_eqOff hfr₀ (Fp.disj_inBlock_of_ne (by dsimp [lg]; omega)))
+    (by rw [hfr₀.len_eq, hw]; simp [w]) (Fp.disj_inBlock_of_ne (by dsimp [w]; omega))).frame_seq_le
+    rfl rfl (by simp [Mem.Live, hfr₀.length_eq, w, hlen]; omega) (hab le_rfl) ?_
   intro μ₁ hfr₁ ⟨hp₁, hW₁⟩
   -- the repeated shifts
   have hrep := repeatBlock_writes (τ := τ) (m := μ₁) (s := S) (t := sb) (e := e) hS
-    (by simp [Mem.Live, hfr₁.length_eq, sb, hlen]; omega) (by dsimp [sb]; omega)
+    (by simp [Mem.Live, hfr₁.length_eq, hfr₀.length_eq, sb, hlen]; omega) (by dsimp [sb]; omega)
     (hfr₁.keep (Store.readsOnly_readBlock _ _ _ _) (Fp.disj_inBlock_of_ne (by dsimp [w]; omega))
-      (hBelow.readBlock_of hlive.2.1 hSh))
-    (by rw [hfr₁.len_eq, hsb]; dsimp [sb]; rw [Nat.mul_assoc]; omega)
+      (hfr₀.keep (Store.readsOnly_readBlock _ _ _ _)
+        (Fp.disj_inBlock_of_ne (by dsimp [lg]; omega)) (hBelow.readBlock_of hlive.2.1 hSh)))
+    (by rw [hfr₁.len_eq, hfr₀.len_eq, hsb]; dsimp [sb]; rw [Nat.mul_assoc]; omega)
   rw [Nat.mul_assoc, ← flatMap_flatten_replicate, ← hLlen] at hrep
-  refine hrep.frame_seq_le rfl rfl (by simp [Mem.Live, hfr₁.length_eq, sb, hlen]; omega)
-    (by rw [hLlen]; exact Fp.inBlock_le_sup_above (by dsimp [sb]; omega)) ?_
+  refine hrep.frame_seq_le rfl rfl
+    (by simp [Mem.Live, hfr₁.length_eq, hfr₀.length_eq, sb, hlen]; omega)
+    (by rw [hLlen]; exact hab (by dsimp [sb]; omega)) ?_
   intro μ₂ hfr₂ ⟨hp₂, hSS₂⟩
+  have hlog₂ : HoldsSlottedLog lg 1 (h * e * n) [] [] μ₂.store :=
+    hfr₂.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
+      (Fp.disj_inBlock_of_ne (by dsimp [lg, sb]; omega))
+      (hfr₁.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
+        (Fp.disj_inBlock_of_ne (by dsimp [lg, w]; omega)) hlog₀)
   -- the rounded steps and `comptau`
-  have hst := stepComptau_writes (τ := τ) (m := μ₂) (a := w) (s := sb) (p := P) (ss := L) hS hM
-    hCmp hH hH0 hV hHV hκ hC hd (fun s hs' => hs s (hmem s hs'))
+  have hst := stepComptau_writes (τ := τ) (m := μ₂) (a := w) (s := sb) (p := P) (lg := lg)
+    (ss := L) hS hM hCmp hL hNat hH hH0 hV hHV hκ hC hd (fun s hs' => hs s (hmem s hs'))
     (fun s hs' => hdist s (hmem s hs')) hnu (by rw [hhalf]; exact hu)
-    (by rw [hhalf]; exact hxu)
-    (by simp [Mem.Live, hfr₂.length_eq, hfr₁.length_eq, w, sb, hlen]; omega)
+    (by rw [hhalf]; exact hxu) hn hlog₂ (by simp) (by rw [hLlen])
+    (by simp [Mem.Live, hfr₂.length_eq, hfr₁.length_eq, hfr₀.length_eq, w, sb, lg, hlen]; omega)
     (hfr₂.keep (Store.readsOnly_readBlock _ _ _ _)
       (Fp.disj_inBlock_of_ne (by dsimp [w, sb]; omega)) hW₁) hSS₂
-    (by rw [hfr₂.len_eq, hfr₁.len_eq, (hBelow P.1 hlive.2.2).1]; exact hP)
+    (by rw [hfr₂.len_eq, hfr₁.len_eq, hfr₀.len_eq, (hBelow P.1 hlive.2.2).1]; exact hP)
     (Fp.disj_inBlock_of_ne (by dsimp [w, sb]; omega)) (Fp.disj_inBlock_of_ne (by dsimp [w]; omega))
+    (by simp only [Fp.disj_sup_right]
+        exact ⟨⟨Fp.disj_inBlock_of_ne (by dsimp [w, lg]; omega),
+          Fp.disj_inBlock_of_ne (by dsimp [sb, lg]; omega)⟩,
+          Fp.disj_inBlock_of_ne (by dsimp [lg]; omega)⟩)
   rw [hLlen] at hst
   refine (hst.in_frame rfl rfl
-    (by simp [Mem.Live, hfr₂.length_eq, hfr₁.length_eq, w, sb, hlen]; omega)).mono
-    (sup_le hwF le_sup_left) ?_
-  intro μ₃ _ ⟨hp₃, _, _, _, _, _, t, ht, hb⟩
+    (by simp [Mem.Live, hfr₂.length_eq, hfr₁.length_eq, hfr₀.length_eq, w, sb, lg, hlen]
+        omega)).mono
+    (sup_le (sup_le (hab le_rfl) le_sup_left) (hab (by dsimp [lg]; omega))) ?_
+  intro μ₃ _ ⟨hp₃, _, _, _, _, _, _, _, _, _, t, ht, hb⟩
   rw [hL_def, shiftPoly_flatten_replicate, map_pow, ← Matrix.inv_pow'] at hb
-  refine ⟨hp₃.trans (hp₂.trans hp₁), t, ht, hb.trans ?_⟩
+  refine ⟨hp₃.trans (hp₂.trans (hp₁.trans hp₀)), t, ht, hb.trans ?_⟩
   exact mul_le_mul_of_nonneg_right (by norm_num) (inv_nonneg.mpr (norm_nonneg _))
 
 end HalfTau

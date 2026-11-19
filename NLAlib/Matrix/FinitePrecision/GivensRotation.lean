@@ -18,18 +18,18 @@ real scalar call. Input/output aliasing is exactly the in-place pair update.
 
 ## Main results
 
-* `NLAlib.ShiftedQR.decode_linearWords`: exact real arithmetic gives complex linear algebra.
-* `NLAlib.ShiftedQR.linearComplex`: the computed complex linear combination on any machine.
-* `NLAlib.ShiftedQR.writes_rotateLeftWithScratch_word`,
-  `NLAlib.ShiftedQR.writes_rotateRightWithScratch_word`: the pair updates on any machine; the
+* `NLAlib.decode_linearWords`: exact real arithmetic gives complex linear algebra.
+* `NLAlib.linearComplex`: the computed complex linear combination on any machine.
+* `NLAlib.writes_rotateLeftWithScratch_word`,
+  `NLAlib.writes_rotateRightWithScratch_word`: the pair updates on any machine; the
   exact theorems are their corollaries.
-* `NLAlib.ShiftedQR.rotateLeftWithScratch`: the left Givens pair update.
-* `NLAlib.ShiftedQR.rotateRightWithScratch`: the right adjoint Givens pair update.
+* `NLAlib.rotateLeftWithScratch`: the left Givens pair update.
+* `NLAlib.rotateRightWithScratch`: the right adjoint Givens pair update.
 -/
 
 @[expose] public section
 
-namespace NLAlib.ShiftedQR
+namespace NLAlib
 
 open Ops
 
@@ -388,4 +388,4 @@ theorem writes_rotateRightWithScratch {M : Machine ℝ} {I : Interp Op Tst ℝ}
   rw [hr]
   simp only [mul_comm, mul_neg]
 
-end NLAlib.ShiftedQR
+end NLAlib

@@ -36,6 +36,8 @@ per size of the program; a monomial lists its exponents, missing ones being $0$.
 
 * `NLAlib.Ops.size_stmtCost_le_stmtWorkMono`: the number of instructions of the static count is
   at most the monomial bound.
+* `NLAlib.Ops.stmtWorkMono_instrument`: the bound of an instrumented tree is computed on the tree
+  (`NLAlib.Ops.instrWorkMono`), without building the instrumented tree.
 * `kernel_rfl`: an equation closed by reflexivity, checked by the kernel only.
 -/
 
@@ -214,6 +216,83 @@ def stmtWorkMono : Stmt Op Tst → List WorkMono → WorkMono
   | .loop n body, σ => (n.workMono σ).mul (stmtWorkMono body (loopSlots σ n))
   | .frame ds args body, σ =>
       stmtWorkMono body (ds.map (IExp.workMono σ) ++ (args.map Operand.off).map (IExp.workMono σ))
+
+/-! ### The bound of an instrumented tree, without the instrumented tree -/
+
+/-- The monomial bound of a list of structural instructions (`NLAlib.Ops.tally`): one per
+instruction, at any slot bounds. -/
+def tallyWorkMono : List Bookkeeping → WorkMono
+  | [] => WorkMono.const 0
+  | _ :: ks => (WorkMono.const 1).add (tallyWorkMono ks)
+
+/-- **The monomial bound of the instrumented tree**, computed on the tree itself: the recursion of
+`NLAlib.Ops.stmtWorkMono` on `NLAlib.Ops.Stmt.instrument` of `s`, with the structural instructions
+of each node added as `NLAlib.Ops.tallyWorkMono`. It equals the bound of the instrumented tree
+(`NLAlib.Ops.stmtWorkMono_instrument`) and is cheaper to evaluate, since the instrumented tree is
+never built. -/
+def instrWorkMono : Stmt Op Tst → List WorkMono → WorkMono
+  | .skip, _ => tallyWorkMono [.skip]
+  | .abort, _ => WorkMono.const 0
+  | .seq s t, σ => (tallyWorkMono [.sequence]).add ((instrWorkMono s σ).add (instrWorkMono t σ))
+  | .call _ ds ins outs, σ =>
+      (tallyWorkMono (indexBookkeeping ds ++ operandBookkeeping (ins ++ outs))).add
+        (boxWorkMono σ ds)
+  | .ite _ ds ins t e, σ =>
+      (tallyWorkMono (indexBookkeeping ds ++ operandBookkeeping ins ++ [.branch])).add
+        ((boxWorkMono σ ds).add ((instrWorkMono t σ).add (instrWorkMono e σ)))
+  | .whileFuel fuel _ ds ins body k, σ =>
+      (tallyWorkMono (fuel.bookkeeping ++ [.loop])).add
+        (((fuel.workMono σ).mul ((boxWorkMono (σ ++ [fuel.workMono σ]) ds).add
+          ((tallyWorkMono (indexBookkeeping ds ++ operandBookkeeping ins ++ [.round])).add
+            (instrWorkMono body (σ ++ [fuel.workMono σ]))))).add
+          ((tallyWorkMono (indexBookkeeping ds ++ operandBookkeeping ins ++ [.exit])).add
+            (instrWorkMono k (σ ++ [fuel.workMono σ]))))
+  | .bindIdx _ ins bound body, σ =>
+      (tallyWorkMono (operandBookkeeping ins ++ bound.bookkeeping ++ [.bindIdx])).add
+        ((WorkMono.const 1).add (instrWorkMono body (σ ++ [bound.workMono σ])))
+  | .allocAs fmt len body, σ =>
+      (tallyWorkMono len.bookkeeping).add ((boxWorkMono σ [.const fmt.bytes, len]).add
+        ((instrWorkMono body σ).add (boxWorkMono σ [.const fmt.bytes, len])))
+  | .loop n body, σ =>
+      (tallyWorkMono (n.bookkeeping ++ [.loop])).add
+        ((n.workMono σ).mul ((tallyWorkMono [.round]).add (instrWorkMono body (loopSlots σ n))))
+  | .frame ds args body, σ =>
+      (tallyWorkMono (indexBookkeeping ds ++ operandBookkeeping args ++ [.frame])).add
+        (instrWorkMono body
+          (ds.map (IExp.workMono σ) ++ (args.map Operand.off).map (IExp.workMono σ)))
+
+/-- The monomial bound of `NLAlib.Ops.tally` does not depend on the slot bounds. -/
+theorem stmtWorkMono_tally (ks : List Bookkeeping) (σ : List WorkMono) :
+    stmtWorkMono (tally (Op := Op) (Tst := Tst) ks) σ = tallyWorkMono ks := by
+  induction ks with
+  | nil => rfl
+  | cons k ks ih => simp only [tally, stmtWorkMono, boxWorkMono, tallyWorkMono, ih]
+
+/-- **The bound of an instrumented tree is computed on the tree**: `NLAlib.Ops.stmtWorkMono` of
+`NLAlib.Ops.Stmt.instrument` of `s` is `NLAlib.Ops.instrWorkMono` of `s`, at every list of slot
+bounds. A work bound of a fixed program is evaluated by rewriting with this equation and
+`kernel_rfl` on the right side, which needs a fraction of the kernel memory of the left. -/
+theorem stmtWorkMono_instrument (s : Stmt Op Tst) (σ : List WorkMono) :
+    stmtWorkMono s.instrument σ = instrWorkMono s σ := by
+  induction s generalizing σ with
+  | skip => exact stmtWorkMono_tally _ _
+  | abort => rfl
+  | seq s t ihs iht => simp only [Stmt.instrument, stmtWorkMono, stmtWorkMono_tally, instrWorkMono,
+      ihs, iht]
+  | call o ds ins outs => simp only [Stmt.instrument, stmtWorkMono, stmtWorkMono_tally,
+      instrWorkMono]
+  | ite q ds ins t e iht ihe => simp only [Stmt.instrument, stmtWorkMono, stmtWorkMono_tally,
+      instrWorkMono, iht, ihe]
+  | whileFuel fuel q ds ins body k ihb ihk => simp only [Stmt.instrument, stmtWorkMono,
+      stmtWorkMono_tally, instrWorkMono, ihb, ihk]
+  | bindIdx q ins bound body ih => simp only [Stmt.instrument, stmtWorkMono, stmtWorkMono_tally,
+      instrWorkMono, ih]
+  | allocAs fmt len body ih => simp only [Stmt.instrument, stmtWorkMono, stmtWorkMono_tally,
+      instrWorkMono, ih, boxWorkMono]
+  | loop n body ih => simp only [Stmt.instrument, stmtWorkMono, stmtWorkMono_tally,
+      instrWorkMono, ih]
+  | frame ds args body ih => simp only [Stmt.instrument, stmtWorkMono, stmtWorkMono_tally,
+      instrWorkMono, ih]
 
 /-! ### Soundness -/
 
@@ -517,5 +596,14 @@ elab (name := kernelRfl) "kernel_rfl" : tactic => withMainContext do
   let some (_, a, _) := t.eq? | throwError "kernel_rfl: not an equation"
   g.assign (← mkEqRefl a)
   replaceMainGoal []
+
+/-- The instructions of a supremum of counts and of their infimum add up to those of the two
+counts. -/
+theorem size_sup_add_size_inf {Op Tst : Type} (x y : Count Op Tst) :
+    Count.size (x ⊔ y) + Count.size (x ⊓ y) = Count.size x + Count.size y := by
+  rw [← map_add, ← map_add]
+  congr 1
+  ext a
+  simp [Finsupp.sup_apply, Finsupp.inf_apply, max_add_min]
 
 end NLAlib.Ops

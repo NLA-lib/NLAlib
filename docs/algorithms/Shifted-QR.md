@@ -40,8 +40,8 @@ The input hypotheses ensure that capped decoupling finds a split when a block re
 A split logically discards its small coupling; the physical matrix words retain that entry.
 The backward-error witness accounts for these discarded couplings.
 
-[Givens coefficients](../../NLAlib/Eigensolvers/ShiftedQR/Coefficients.lean) and
-[row/column rotations](../../NLAlib/Eigensolvers/ShiftedQR/RotationLoops.lean) expand into scalar
+[Givens coefficients](../../NLAlib/Matrix/FinitePrecision/GivensCoefficients.lean) and
+[row/column rotations](../../NLAlib/Matrix/FinitePrecision/GivensPrograms.lean) expand into scalar
 operations. A zero input pair produces the identity rotation before any division occurs.
 [RowSolve](../../NLAlib/Eigensolvers/ShiftedQR/RowSolve.lean) tests pivots and returns either
 an exact inverse-row product or a flag certifying singularity.

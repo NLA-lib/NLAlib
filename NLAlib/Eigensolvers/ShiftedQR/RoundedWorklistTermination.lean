@@ -7,27 +7,30 @@ module
 
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveTermination
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveBackward
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedSolveUpdates
 
 /-!
-# The rounded deflation worklist always terminates
+# The value-free state of the Schur-mode worklist
 
-The termination-only counterpart of `NLAlib.ShiftedQR.solveRounded_backward`: on every tape and
-from every stored matrix, `NLAlib.ShiftedQR.solveRounded` runs to completion when its decoupler
-and its leaf do (`NLAlib.ShiftedQR.TerminatingDecoupler`, `NLAlib.ShiftedQR.TerminatingLeaf`).
-The proof follows the backward-error proof round by round with a value-free state: the views keep
-their geometry, every word read is stored, and the stack holds nonempty ranges inside the order
-whose sizes sum to at most the order, which leaves room for the two pushes of a split. The fuel
-of the loop makes the run finite.
+The state that the termination proof of the rounded deflation worklist in Schur mode
+(`NLAlib.ShiftedQR.solveRoundedWith_terminates`) follows from round to round, with no values:
+the views keep their geometry, every word read is stored, the stack holds nonempty ranges inside
+the order whose sizes plus the number of finished leaves sum to at most the order, and the stored
+accumulator is near the input accumulator times a unitary, within a factor that grows with the
+replays and the leaves. The large-block steps of a round keep it.
 
 ## Main definitions
 
 * `NLAlib.ShiftedQR.RangesFit`: nonempty ranges inside the order, of total size at most it.
-* `NLAlib.ShiftedQR.RoundedStoredState`: the value-free state between two rounds.
+* `NLAlib.ShiftedQR.SchurGeometry`, `NLAlib.ShiftedQR.schurRoundFp`: the views and the writes of
+  a round.
+* `NLAlib.ShiftedQR.AccumNear`: a stored accumulator near $\mathbf{U}$ times a unitary.
+* `NLAlib.ShiftedQR.SchurStoredState`: the value-free state between two rounds.
 
 ## Main results
 
-* `NLAlib.ShiftedQR.roundedWorklistRound_terminates`: one round keeps the value-free state.
-* `NLAlib.ShiftedQR.solveRounded_terminates`: the rounded worklist terminates.
+* `NLAlib.ShiftedQR.roundedSplitUpdate_core`, `NLAlib.ShiftedQR.roundedLargeRest_terminates`,
+  `NLAlib.ShiftedQR.roundedLarge_terminates`: the large-block steps keep the state.
 -/
 
 @[expose] public section
@@ -91,548 +94,576 @@ theorem RangesFit.split {N lo d i : ℕ} {rs : List (ℕ × ℕ)} (h : RangesFit
       List.sum_nil] at hs ⊢
     omega
 
-/-- The part of `NLAlib.ShiftedQR.RoundedStoredState` that a round changes: if `rd` holds the
-$2(n + 1)$ output words at `out` are stored, the failure word is stored, some matrix of order
-$n + 1$ is stored at `a`, and the stack at `st` holds ranges that fit in the order $n + 1$
-(`NLAlib.ShiftedQR.RangesFit`). -/
-def RoundedStoredCore (n : ℕ) (rd : Prop) (a st out f : ℕ × ℕ) (μ : Mem ℝ) : Prop :=
-  (rd → ∃ ys, μ.store.readBlock out.1 out.2 (2 * (n + 1)) = some ys) ∧
-    (∃ x, μ.store.get f.1 f.2 = some x) ∧
-    (∃ A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A μ.store) ∧
-    ∃ rs, StackHolds st rs μ.store ∧ RangesFit (n + 1) rs
+/-- The regions a round of the rounded worklist in Schur mode may write: the matrix, the
+accumulator, the failure word, the stack, the work matrix, the leaf accumulator and the scan
+registers. -/
+def schurRoundFp (N : ℕ) (a uo f st w ub r : ℕ × ℕ) : Fp :=
+  Fp.blocks [a, uo, f, st, w, ub, r]
+    [2 * (N * N), 2 * (N * N), 1, 1 + 2 * N, 2 * (N * N), 2 * (N * N), 5]
 
-/-- **The value-free state of the rounded worklist** of order $n + 1$ with the parameter words
-`ps`: the eight views keep the geometry of `NLAlib.ShiftedQR.RoundedGeometry`, the threshold word
-is stored, the parameter words are `ps`, the output words are stored if `rd` holds, the failure
-word is stored, some matrix is stored at `a`, and the stack holds ranges that fit in the order
-(`NLAlib.ShiftedQR.RangesFit`). -/
-def RoundedStoredState (n : ℕ) (rd : Prop) (ps : List ℝ) (a t p st out w r f : ℕ × ℕ)
+/-- The nine views of the rounded worklist in Schur mode (matrix, threshold, parameters,
+accumulator, failure word, stack, work matrix, leaf accumulator, scan registers) are live, have
+room and are pairwise apart (`NLAlib.Ops.Geometry`). -/
+abbrev SchurGeometry (N np : ℕ) (a t p uo f st w ub r : ℕ × ℕ) (μ : Mem ℝ) : Prop :=
+  Geometry [a, t, p, uo, f, st, w, ub, r]
+    [2 * (N * N), 1, np, 2 * (N * N), 1, 1 + 2 * N, 2 * (N * N), 2 * (N * N), 5] μ
+
+/-- The block of the view `i` of the worklist in Schur mode (in the order of
+`NLAlib.ShiftedQR.SchurGeometry`). -/
+abbrev schurBlock (N np : ℕ) (a t p uo f st w ub r : ℕ × ℕ) (i : ℕ) : Fp :=
+  Store.inBlock (([a, t, p, uo, f, st, w, ub, r] : List (ℕ × ℕ)).getD i (0, 0)).1
+    (([a, t, p, uo, f, st, w, ub, r] : List (ℕ × ℕ)).getD i (0, 0)).2
+    (([2 * (N * N), 1, np, 2 * (N * N), 1, 1 + 2 * N, 2 * (N * N), 2 * (N * N), 5] :
+      List ℕ).getD i 0)
+
+/-- Two distinct views of the worklist in Schur mode have disjoint words. -/
+theorem SchurGeometry.disj' {N np : ℕ} {a t p uo f st w ub r : ℕ × ℕ} {μ : Mem ℝ}
+    (h : SchurGeometry N np a t p uo f st w ub r μ) (i j : Fin 9) (hne : i ≠ j) :
+    Fp.Disj
+      (Store.inBlock (([a, t, p, uo, f, st, w, ub, r] : List (ℕ × ℕ)).getD i (0, 0)).1
+        (([a, t, p, uo, f, st, w, ub, r] : List (ℕ × ℕ)).getD i (0, 0)).2
+        (([2 * (N * N), 1, np, 2 * (N * N), 1, 1 + 2 * N, 2 * (N * N), 2 * (N * N), 5] :
+          List ℕ).getD i 0))
+      (Store.inBlock (([a, t, p, uo, f, st, w, ub, r] : List (ℕ × ℕ)).getD j (0, 0)).1
+        (([a, t, p, uo, f, st, w, ub, r] : List (ℕ × ℕ)).getD j (0, 0)).2
+        (([2 * (N * N), 1, np, 2 * (N * N), 1, 1 + 2 * N, 2 * (N * N), 2 * (N * N), 5] :
+          List ℕ).getD j 0)) :=
+  h.apart.disj_getD (by simp) (by simp) (fun he => hne (Fin.ext he))
+
+/-- The writes of a round leave the threshold and the parameter words alone. -/
+theorem SchurGeometry.disj_params {N np : ℕ} {a t p uo f st w ub r : ℕ × ℕ} {μ : Mem ℝ}
+    (h : SchurGeometry N np a t p uo f st w ub r μ) :
+    Fp.Disj (schurRoundFp N a uo f st w ub r)
+      (Store.inBlock t.1 t.2 1 ⊔ Store.inBlock p.1 p.2 np) := by
+  simpa only [schurRoundFp, List.map_cons, List.map_nil, List.getD_cons_zero,
+    List.getD_cons_succ, Fp.blocks_cons, Fp.blocks_nil, sup_bot_eq] using
+    h.apart.disj_select [0, 3, 4, 5, 6, 7, 8] [1, 2] (by simp) (by simp) (by simp)
+
+/-- The accumulator stays near $\mathbf{U}$ times a unitary: if $\|\mathbf{U}_1 -
+\mathbf{U}\mathbf{V}_1\|_2 \le (a - 1)\|\mathbf{U}\|_2$ and $\|\mathbf{U}_2 -
+\mathbf{U}_1\mathbf{W}\|_2 \le (b - 1)\|\mathbf{U}_1\|_2$ with $\mathbf{V}_1$, $\mathbf{W}$ unitary
+and $1 \le b$, then $\|\mathbf{U}_2 - \mathbf{U}\mathbf{V}_1\mathbf{W}\|_2 \le
+(ab - 1)\|\mathbf{U}\|_2$. -/
+theorem specNorm_sub_mul_mul_le_of_near {N : ℕ} {U U₁ U₂ V₁ W : Matrix (Fin N) (Fin N) ℂ}
+    {a b : ℝ} (hb : 1 ≤ b) (hV₁ : HasOrthonormalCols V₁) (hW : HasOrthonormalCols W)
+    (h₁ : specNorm (U₁ - U * V₁) ≤ (a - 1) * specNorm U)
+    (h₂ : specNorm (U₂ - U₁ * W) ≤ (b - 1) * specNorm U₁) :
+    specNorm (U₂ - U * (V₁ * W)) ≤ (a * b - 1) * specNorm U := by
+  have hU₁ : specNorm U₁ ≤ a * specNorm U := by
+    have := specNorm_add_le (U₁ - U * V₁) (U * V₁)
+    rw [sub_add_cancel, hV₁.specNorm_mul_right] at this
+    linarith
+  have e : U₂ - U * (V₁ * W) = (U₂ - U₁ * W) + (U₁ - U * V₁) * W := by
+    rw [Matrix.sub_mul, ← Matrix.mul_assoc]; abel
+  rw [e]
+  refine (specNorm_add_le _ _).trans ?_
+  rw [hW.specNorm_mul_right]
+  have := mul_le_mul_of_nonneg_left hU₁ (show (0 : ℝ) ≤ b - 1 by linarith)
+  nlinarith [specNorm_nonneg U]
+
+/-- The stored accumulator at `uo` is within $(c - 1)\|\mathbf{U}\|_2$ of $\mathbf{U}$ times a
+unitary. -/
+def AccumNear {N : ℕ} (U : Matrix (Fin N) (Fin N) ℂ) (c : ℝ) (uo : ℕ × ℕ) (μ : Mem ℝ) : Prop :=
+  ∃ U' V : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix uo U' μ.store ∧ HasOrthonormalCols V ∧
+    specNorm (U' - U * V) ≤ (c - 1) * specNorm U
+
+/-- A larger factor is weaker. -/
+theorem AccumNear.mono {N : ℕ} {U : Matrix (Fin N) (Fin N) ℂ} {c c' : ℝ} {uo : ℕ × ℕ}
+    {μ : Mem ℝ} (h : AccumNear U c uo μ) (hc : c ≤ c') : AccumNear U c' uo μ := by
+  obtain ⟨U', V, hU', hV, hb⟩ := h
+  exact ⟨U', V, hU', hV, hb.trans (mul_le_mul_of_nonneg_right (by linarith) (specNorm_nonneg U))⟩
+
+/-- A write apart from the accumulator keeps it. -/
+theorem AccumNear.of_eqOff {N : ℕ} {U : Matrix (Fin N) (Fin N) ℂ} {c : ℝ} {uo : ℕ × ℕ}
+    {μ μ' : Mem ℝ} {F : Fp} (h : AccumNear U c uo μ) (hfr : μ.store.EqOff F μ'.store)
+    (hd : Fp.Disj F (Store.inBlock uo.1 uo.2 (2 * (N * N)))) : AccumNear U c uo μ' := by
+  obtain ⟨U', V, hU', hV, hb⟩ := h
+  exact ⟨U', V, hU'.of_eqOff hfr hd, hV, hb⟩
+
+/-- The accumulator survives dropping scratch buffers above its buffer. -/
+theorem AccumNear.of_below {N : ℕ} {U : Matrix (Fin N) (Fin N) ℂ} {c : ℝ} {uo : ℕ × ℕ}
+    {s s' : Store ℝ} {pos L : ℕ} (h : AccumNear U c uo ⟨s, pos⟩) (hBelow : Store.Below L s s')
+    (hu : uo.1 < L) : AccumNear U c uo ⟨s', pos⟩ := by
+  obtain ⟨U', V, hU', hV, hb⟩ := h
+  exact ⟨U', V, hU'.of_below hBelow hu, hV, hb⟩
+
+/-- A near-unitary update of the stored accumulator: if it was within factor $c$ with the
+matrix $\mathbf{U}_1$ and is now $\mathbf{U}_2$ within $(b - 1)\|\mathbf{U}_1\|_2$ of
+$\mathbf{U}_1\mathbf{W}$, $\mathbf{W}$ unitary, $b \ge 1$ and $cb \le c'$, then it is within
+factor $c'$. -/
+theorem AccumNear.step {N : ℕ} {U U₁ U₂ W : Matrix (Fin N) (Fin N) ℂ} {c b c' : ℝ} {uo : ℕ × ℕ}
+    {μ μ' : Mem ℝ} (h : AccumNear U c uo μ) (hU₁ : HoldsMatrix uo U₁ μ.store)
+    (hU₂ : HoldsMatrix uo U₂ μ'.store) (hW : HasOrthonormalCols W) (hb : 1 ≤ b)
+    (h₂ : specNorm (U₂ - U₁ * W) ≤ (b - 1) * specNorm U₁) (hc : c * b ≤ c') :
+    AccumNear U c' uo μ' := by
+  obtain ⟨U', V, hU', hV, hb'⟩ := h
+  have e : U' = U₁ := by rw [hU'.eq_storedMatrix, hU₁.eq_storedMatrix]
+  subst e
+  refine ⟨U₂, V * W, hU₂, hV.mul hW, ?_⟩
+  refine (specNorm_sub_mul_mul_le_of_near hb hV hW hb' h₂).trans ?_
+  exact mul_le_mul_of_nonneg_right (by linarith) (specNorm_nonneg U)
+
+/-- A stored accumulator at `uo`, within $(c - 1)\|\mathbf{U}\|_2$ of $\mathbf{U}$ times a
+unitary if `P` holds (`P` carries the rounding model the bound needs). -/
+def AccumIf (P : Prop) {N : ℕ} (U : Matrix (Fin N) (Fin N) ℂ) (c : ℝ) (uo : ℕ × ℕ)
     (μ : Mem ℝ) : Prop :=
-  RoundedGeometry (n + 1) ps.length a t p st out w r f μ ∧ (∃ x, μ.store.get t.1 t.2 = some x) ∧
-    μ.store.readBlock p.1 p.2 ps.length = some ps ∧ RoundedStoredCore n rd a st out f μ
+  (∃ U' : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix uo U' μ.store) ∧ (P → AccumNear U c uo μ)
 
-/-- From the geometry of the rounded worklist with the threshold and parameter words stored at
-`μ`, a write inside the round footprint to `μ'` keeps them, so the core
-`NLAlib.ShiftedQR.RoundedStoredCore` at `μ'` gives the full value-free state at `μ'`. -/
-theorem RoundedStoredState.of_core {n : ℕ} {rd : Prop} {ps : List ℝ}
-    {a t p st out w r f : ℕ × ℕ} {μ μ' : Mem ℝ} {F : Fp}
-    (h : RoundedGeometry (n + 1) ps.length a t p st out w r f μ)
+/-- A larger factor is weaker. -/
+theorem AccumIf.mono {P : Prop} {N : ℕ} {U : Matrix (Fin N) (Fin N) ℂ} {c c' : ℝ} {uo : ℕ × ℕ}
+    {μ : Mem ℝ} (h : AccumIf P U c uo μ) (hc : P → c ≤ c') : AccumIf P U c' uo μ :=
+  ⟨h.1, fun hp => (h.2 hp).mono (hc hp)⟩
+
+/-- A write apart from the accumulator keeps it. -/
+theorem AccumIf.of_eqOff {P : Prop} {N : ℕ} {U : Matrix (Fin N) (Fin N) ℂ} {c : ℝ}
+    {uo : ℕ × ℕ} {μ μ' : Mem ℝ} {F : Fp} (h : AccumIf P U c uo μ) (hfr : μ.store.EqOff F μ'.store)
+    (hd : Fp.Disj F (Store.inBlock uo.1 uo.2 (2 * (N * N)))) : AccumIf P U c uo μ' :=
+  ⟨h.1.imp fun _ hU => hU.of_eqOff hfr hd, fun hp => (h.2 hp).of_eqOff hfr hd⟩
+
+/-- The accumulator survives dropping scratch buffers above its buffer. -/
+theorem AccumIf.of_below {P : Prop} {N : ℕ} {U : Matrix (Fin N) (Fin N) ℂ} {c : ℝ}
+    {uo : ℕ × ℕ} {s s' : Store ℝ} {pos L : ℕ} (h : AccumIf P U c uo ⟨s, pos⟩)
+    (hBelow : Store.Below L s s') (hu : uo.1 < L) : AccumIf P U c uo ⟨s', pos⟩ :=
+  ⟨h.1.imp fun _ hU => hU.of_below hBelow hu, fun hp => (h.2 hp).of_below hBelow hu⟩
+
+/-- **The value-free core of the worklist in Schur mode before round `j`**, for the input
+accumulator $\mathbf{U}$, the per-round accumulator factor $(1 + 24\boldsymbol{u})^m$ and the
+per-leaf factor $1 + \varepsilon_L$: the failure word and some matrix are stored, the stack
+holds ranges that fit in the order $n + 1$, a count $\ell$ of finished leaves with $\ell$ plus the
+sizes of the ranges at most $n + 1$, and the stored accumulator is within
+$((1 + 24\boldsymbol{u})^{jm}(1 + \varepsilon_L)^{\ell} - 1)\|\mathbf{U}\|_2$ of $\mathbf{U}$
+times a unitary. -/
+def SchurStoredCore (n : ℕ) (P : Prop) (U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (u εL : ℝ) (m : ℕ)
+    (a uo f st : ℕ × ℕ) (j : ℕ) (μ : Mem ℝ) : Prop :=
+  (∃ x, μ.store.get f.1 f.2 = some x) ∧
+    (∃ A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A μ.store) ∧
+    ∃ (rs : List (ℕ × ℕ)) (ℓ : ℕ), StackHolds st rs μ.store ∧ RangesFit (n + 1) rs ∧
+      ℓ + (rs.map Prod.snd).sum ≤ n + 1 ∧
+      AccumIf P U ((1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ) uo μ
+
+/-- **The value-free state of the worklist in Schur mode before round `j`**: the geometry, the
+threshold and parameter words stored, and the core `NLAlib.ShiftedQR.SchurStoredCore`. -/
+def SchurStoredState (n : ℕ) (P : Prop) (U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (u εL : ℝ)
+    (m : ℕ)
+    (ps : List ℝ) (a t p uo f st w ub r : ℕ × ℕ) (j : ℕ) (μ : Mem ℝ) : Prop :=
+  SchurGeometry (n + 1) ps.length a t p uo f st w ub r μ ∧ (∃ x, μ.store.get t.1 t.2 = some x) ∧
+    μ.store.readBlock p.1 p.2 ps.length = some ps ∧ SchurStoredCore n P U u εL m a uo f st j μ
+
+/-- From the geometry with the threshold and parameter words stored at `μ`, a write inside the
+round footprint to `μ'` keeps them, so the core at `μ'` gives the state at `μ'`. -/
+theorem SchurStoredState.of_core {n : ℕ} {P : Prop} {U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {u εL : ℝ}
+    {m : ℕ} {ps : List ℝ} {a t p uo f st w ub r : ℕ × ℕ} {j : ℕ} {μ μ' : Mem ℝ} {F : Fp}
+    (h : SchurGeometry (n + 1) ps.length a t p uo f st w ub r μ)
     (ht : ∃ x, μ.store.get t.1 t.2 = some x)
     (hp : μ.store.readBlock p.1 p.2 ps.length = some ps)
-    (hfr : μ.store.EqOff F μ'.store) (hF : F ≤ roundedWorklistFp (n + 1) a st out w r f)
-    (hcore : RoundedStoredCore n rd a st out f μ') :
-    RoundedStoredState n rd ps a t p st out w r f μ' := by
+    (hfr : μ.store.EqOff F μ'.store) (hF : F ≤ schurRoundFp (n + 1) a uo f st w ub r)
+    (hcore : SchurStoredCore n P U u εL m a uo f st j μ') :
+    SchurStoredState n P U u εL m ps a t p uo f st w ub r j μ' := by
   have hd := h.disj_params.mono hF le_rfl
   obtain ⟨x, hx⟩ := ht
   exact ⟨h.of_eqOff hfr, ⟨x, hfr.keep (Store.readsOnly_get _ _ _) (hd.mono le_rfl le_sup_left) hx⟩,
     hfr.keep (Store.readsOnly_readBlock _ _ _ _) (hd.mono le_rfl le_sup_right) hp, hcore⟩
-
-/-- Stored output words of order $n + 1$ (if `rd` holds) stay stored after a write apart
-from them. -/
-theorem outStored_of_eqOff {n : ℕ} {rd : Prop} {out : ℕ × ℕ} {F : Fp} {μ μ' : Mem ℝ}
-    (hfr : μ.store.EqOff F μ'.store) (hD : Fp.Disj F (Store.inBlock out.1 out.2 (2 * (n + 1))))
-    (h : rd → ∃ ys, μ.store.readBlock out.1 out.2 (2 * (n + 1)) = some ys) :
-    rd → ∃ ys, μ'.store.readBlock out.1 out.2 (2 * (n + 1)) = some ys :=
-  fun hr => (h hr).imp fun _ hy => hfr.keep (Store.readsOnly_readBlock _ _ _ _) hD hy
 
 section Theorems
 
 variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q]
 
 omit [Has ScalarOp O] [Has CmpTst Q] [Has IdxTst Q] in
-/-- The abort keeps the value-free core: on a machine whose natural literals up to $n + 1$
-are exact, from the geometry of the rounded worklist of order $n + 1$ with some matrix stored at
-`a` (and the output words stored if `rd` holds), `roundedAbort` writes the failure word and the
-stack count and leaves the core `NLAlib.ShiftedQR.RoundedStoredCore` (an empty stack). -/
-theorem roundedAbort_writes_core {M : Machine ℝ} {I : Interp O Q ℝ} (hL : IsIndexLit M I) {n : ℕ}
-    (hN : IsExactNatLit id M (n + 1)) {np : ℕ} {τ : Tape ℝ} {m : Mem ℝ} {rd : Prop}
-    {a t p st out w r f : ℕ × ℕ} (hG : RoundedGeometry (n + 1) np a t p st out w r f m)
-    (hA : ∃ A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A m.store)
-    (hO : rd → ∃ ys, m.store.readBlock out.1 out.2 (2 * (n + 1)) = some ys) :
+/-- The abort keeps the value-free core: on a machine whose natural literals up to $n + 1$ are
+exact, from the geometry of the worklist in Schur mode with some matrix stored, a count
+$\ell \le n + 1$ and the accumulator within its factor, `roundedAbort` writes the failure word and
+the stack count and leaves the core `NLAlib.ShiftedQR.SchurStoredCore` (an empty stack). -/
+theorem roundedAbort_writes_schurCore {Mch : Machine ℝ} {I : Interp O Q ℝ}
+    (hL : IsIndexLit Mch I) {n : ℕ} (hN : IsExactNatLit id Mch (n + 1)) {np : ℕ} {τ : Tape ℝ}
+    {μ : Mem ℝ} {P : Prop} {U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {u εL : ℝ} {m j ℓ : ℕ}
+    {a t p uo f st w ub r : ℕ × ℕ} (hG : SchurGeometry (n + 1) np a t p uo f st w ub r μ)
+    (hA : ∃ A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A μ.store) (hℓ : ℓ ≤ n + 1)
+    (hacc : AccumIf P U ((1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ) uo μ) :
     Writes .total I τ (roundedAbort (O := O) (Q := Q)).body (Env.frame [] [st, f])
-      (Store.inBlock f.1 f.2 1 ⊔ Store.inBlock st.1 st.2 1) (RoundedStoredCore n rd a st out f)
-      m := by
+      (Store.inBlock f.1 f.2 1 ⊔ Store.inBlock st.1 st.2 1)
+      (SchurStoredCore n P U u εL m a uo f st j) μ := by
   obtain ⟨A, hA⟩ := hA
-  obtain ⟨-, -, -, -, -, -, -, -, -, -, -, -, hFA, hFS, hFO, -, hAS, -, hSO, -⟩ := hG.disj_round
-  refine (roundedAbort_writes hL hN (by omega) (by have := hG.room.2.2.2.1; omega)
-    (by have := hG.room.2.2.2.2.2.2.2.1; omega) (hFS.mono le_rfl (by fp_sub))).mono le_rfl ?_
+  have hFA : Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) :=
+    by simpa [schurBlock] using hG.disj' 4 0 (by simp)
+  have hFU : Fp.Disj (Store.inBlock f.1 f.2 1)
+      (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) :=
+        by simpa [schurBlock] using hG.disj' 4 3 (by simp)
+  have hSA : Fp.Disj (Store.inBlock st.1 st.2 (1 + 2 * (n + 1)))
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) :=
+        by simpa [schurBlock] using hG.disj' 5 0 (by simp)
+  have hSU : Fp.Disj (Store.inBlock st.1 st.2 (1 + 2 * (n + 1)))
+      (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) :=
+        by simpa [schurBlock] using hG.disj' 5 3 (by simp)
+  have hFS : Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock st.1 st.2 (1 + 2 * (n + 1))) := by
+    simpa using hG.disj' 4 5 (by simp)
+  refine (roundedAbort_writes hL hN (by omega) (by have := hG.room.2.2.2.2.2.1; omega)
+    (by have := hG.room.2.2.2.2.1; omega) (hFS.mono le_rfl (by fp_sub))).mono le_rfl ?_
   rintro m' hfr ⟨h1, h0⟩
-  exact ⟨outStored_of_eqOff hfr (Fp.disj_sup_left.mpr ⟨hFO, hSO.mono (by fp_sub) le_rfl⟩) hO,
-    ⟨1, h1⟩, ⟨A, hA.of_eqOff hfr
-      (Fp.disj_sup_left.mpr ⟨hFA, hAS.symm.mono (by fp_sub) le_rfl⟩)⟩,
-    [], ⟨by simpa using h0, fun _ h => absurd h (by simp)⟩, by simp [RangesFit]⟩
+  have hd : ∀ {X : Fp}, Fp.Disj (Store.inBlock f.1 f.2 1) X →
+      Fp.Disj (Store.inBlock st.1 st.2 (1 + 2 * (n + 1))) X →
+      Fp.Disj (Store.inBlock f.1 f.2 1 ⊔ Store.inBlock st.1 st.2 1) X := fun h₁ h₂ =>
+    Fp.disj_sup_left.mpr ⟨h₁, h₂.mono (by fp_sub) le_rfl⟩
+  exact ⟨⟨1, h1⟩, ⟨A, hA.of_eqOff hfr (hd hFA hSA)⟩, [], ℓ,
+    ⟨by simpa using h0, fun _ h => absurd h (by simp)⟩, by simp [RangesFit],
+    by simpa using hℓ,
+    hacc.of_eqOff hfr (hd hFU hSU)⟩
 
-/-- The large branch after the decoupling call terminates: on a scalar machine whose natural
-literals up to $n + 1$ are exact, with exact `toNat` and comparisons, from the geometry of the
-rounded worklist of order $n + 1$ with a threshold word, any failure word $x$, a matrix stored at
-`a`, any matrix $\mathbf{H}'$ of order $d + 1 \ge k + 1$ in the work matrix, and a stack whose
-ranges after the popped $(lo, d + 1)$ fit in the order (`NLAlib.ShiftedQR.RangesFit`), the rest of
-`NLAlib.ShiftedQR.roundedProcessLargeWith` (abort, or scan and split or abort) runs to completion
-and leaves the core `NLAlib.ShiftedQR.RoundedStoredCore`, with the output words stored if they
-were. -/
-theorem roundedLargeRest_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar Mch I)
-    (hL : IsIndexLit Mch I) {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
-    (hC : IsCmp id I) {k F T : ℕ} {ps : List ℝ} (D : Impl O Q) {tape : Tape ℝ} {μ₁ : Mem ℝ}
-    {lo d : ℕ} {a t p st out w r f : ℕ × ℕ} {rs : List (ℕ × ℕ)}
-    {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {H' : Matrix (Fin (d + 1)) (Fin (d + 1)) ℂ}
-    {x thr : ℝ} (hG : RoundedGeometry (n + 1) ps.length a t p st out w r f μ₁)
-    (ht : μ₁.store.get t.1 t.2 = some thr) (hf : μ₁.store.get f.1 f.2 = some x)
-    (hA : HoldsMatrix a A μ₁.store) (hW : HoldsMatrix w H' μ₁.store)
-    (hSt : StackHolds st rs μ₁.store) (hfit : RangesFit (n + 1) ((lo, d + 1) :: rs))
-    (hk : k ≤ d) {rd : Prop}
-    (hO : rd → ∃ ys, μ₁.store.readBlock out.1 out.2 (2 * (n + 1)) = some ys) :
-    Writes .total I tape (roundedLargeRest D)
-      (Env.frame [n + 1, k, ps.length, F, T, lo, d + 1] [a, t, p, st, out, w, r, f])
-      (roundedWorklistFp (n + 1) a st out w r f) (RoundedStoredCore n rd a st out f) μ₁ := by
+/-- The part of `NLAlib.ShiftedQR.roundedProcessLargeWith` after the decoupling call: abort on a
+failure, else scan the bottom couplings and split and update, or abort. -/
+def roundedLargeRest : Stmt O Q :=
+  Stmt.ite (Has.inj CmpTst.isPos) [] [{ buf := 7, off := IExp.var 16 }]
+    (Stmt.frame [] [{ buf := 3, off := IExp.var 12 }, { buf := 7, off := IExp.var 16 }]
+      (roundedAbort (O := O) (Q := Q)).body)
+    ((Stmt.frame [IExp.var 8, IExp.var 1]
+        [{ buf := 5, off := IExp.var 14 }, { buf := 1, off := IExp.var 10 },
+          { buf := 6, off := IExp.var 15 }] (bottomScan (O := O) (Q := Q)).body).seq
+      (Stmt.ite (Has.inj CmpTst.isPos) [] [{ buf := 6, off := IExp.var 15 + IExp.const 3 }]
+        (Stmt.bindIdx (Has.inj IdxTst.toNat) [{ buf := 6, off := IExp.var 15 + IExp.const 4 }]
+          (IExp.var 8)
+          ((Stmt.frame [IExp.var 0, IExp.var 7, IExp.var 8, IExp.var 17]
+              [{ buf := 0, off := IExp.var 9 }, { buf := 3, off := IExp.var 12 },
+                { buf := 5, off := IExp.var 14 }] (writeAndSplit (O := O) (Q := Q)).body).seq
+            (Stmt.frame [IExp.var 0, IExp.var 7, IExp.var 8, IExp.var 17, IExp.var 5, IExp.var 6]
+              [{ buf := 8, off := IExp.const 0 }, { buf := 0, off := IExp.var 9 },
+                { buf := 4, off := IExp.var 13 }] (roundedDecoupleUpdate (O := O) (Q := Q)).body)))
+        (Stmt.frame [] [{ buf := 3, off := IExp.var 12 }, { buf := 7, off := IExp.var 16 }]
+          (roundedAbort (O := O) (Q := Q)).body)))
+
+/-- The large branch is a scoped log, the decoupling call and
+`NLAlib.ShiftedQR.roundedLargeRest`. -/
+theorem roundedProcessLargeWith_body (D : Impl O Q) :
+    (roundedProcessLargeWith D).body =
+      Stmt.alloc (IExp.var 5 * (IExp.const 1 + IExp.const 5 * IExp.var 6))
+        ((Stmt.frame [IExp.var 8, IExp.var 1, IExp.var 2, IExp.var 3, IExp.var 4, IExp.var 5,
+            IExp.var 6]
+          [{ buf := 5, off := IExp.var 14 }, { buf := 2, off := IExp.var 11 },
+            { buf := 5, off := IExp.var 14 }, { buf := 7, off := IExp.var 16 },
+            { buf := 8, off := IExp.const 0 }] D.body).seq roundedLargeRest) := rfl
+
+/-- The split after a decoupled block and its update keep the core: on a scalar machine with
+the standard model at $\boldsymbol{u} \le 1/100$, exact natural literals up to $n + 1$ and exact
+`toNat` and comparisons, with the stack holding `rs` after the popped $(lo, d + 1)$, a closed log
+at `(lgb, 0)` whose entries are inside the block, some matrix of order $d + 1$ in the work matrix
+and the index $i < d$ of a cut, `writeAndSplit` and `roundedDecoupleUpdate` reach the core of
+round $j + 1$. -/
+theorem roundedSplitUpdate_core {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar Mch I)
+    {P : Prop} (hP : P → StdModel u id Mch ∧ u ≤ 1 / 100) (hL : IsIndexLit Mch I) {n : ℕ}
+    (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
+    {k F T ns w m : ℕ} (hm : ns * w ≤ m) {np : ℕ} {tape : Tape ℝ} {μ : Mem ℝ}
+    {lo d i j ℓ lgb : ℕ} {a t p uo f st wk ub r : ℕ × ℕ} {rs : List (ℕ × ℕ)}
+    {A U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {H' : Matrix (Fin (d + 1)) (Fin (d + 1)) ℂ}
+    {x εL : ℝ} (hεL : P → 0 ≤ εL) {L : List (Option (List GivensEntry))}
+    (hG : SchurGeometry (n + 1) np a t p uo f st wk ub r μ) (hf : μ.store.get f.1 f.2 = some x)
+    (hA : HoldsMatrix a A μ.store) (hW : HoldsMatrix wk H' μ.store)
+    (hSt : StackHolds st rs μ.store) (hfit : RangesFit (n + 1) ((lo, d + 1) :: rs))
+    (hℓ : ℓ + (d + 1) + (rs.map Prod.snd).sum ≤ n + 1) (hi : i < d)
+    (hacc : AccumIf P U ((1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ) uo μ)
+    (hlog : HoldsSlottedLog (lgb, 0) ns w L [] μ.store) (hlen : L.length = ns)
+    (hpl : ∀ e ∈ slotEntries w L, e.1 + 1 < d + 1) (hlgb : lgb < μ.store.length)
+    (hlgv : ∀ v ∈ [a, t, p, uo, f, st, wk, ub, r], v.1 < lgb) :
+    Writes .total I tape
+      ((Stmt.frame [IExp.var 0, IExp.var 7, IExp.var 8, IExp.var 17]
+          [{ buf := 0, off := IExp.var 9 }, { buf := 3, off := IExp.var 12 },
+            { buf := 5, off := IExp.var 14 }] (writeAndSplit (O := O) (Q := Q)).body).seq
+        (Stmt.frame [IExp.var 0, IExp.var 7, IExp.var 8, IExp.var 17, IExp.var 5, IExp.var 6]
+          [{ buf := 8, off := IExp.const 0 }, { buf := 0, off := IExp.var 9 },
+            { buf := 4, off := IExp.var 13 }] (roundedDecoupleUpdate (O := O) (Q := Q)).body))
+      ((⟨(Env.frame [n + 1, k, np, F, T, ns, w, lo, d + 1] [a, t, p, st, uo, wk, r, f]).idx,
+        (Env.frame [n + 1, k, np, F, T, ns, w, lo, d + 1] [a, t, p, st, uo, wk, r, f]).buf ++
+          [lgb]⟩ : Env).pushIdx i)
+      (schurRoundFp (n + 1) a uo f st wk ub r)
+      (SchurStoredCore n P U u εL m a uo f st (j + 1)) μ := by
+  have hu0 : P → 0 ≤ u := fun hp => (abs_nonneg _).trans (by simpa using (hP hp).1.lit 1)
   have hfit0 := hfit.1 _ List.mem_cons_self
-  have hlen := hfit.length_add_le
+  have hlen' := hfit.length_add_le
   dsimp only at hfit0
   have hd : d + 1 ≤ n + 1 := by omega
-  have hsq := Nat.mul_le_mul hd hd
-  have hWw : Store.inBlock w.1 w.2 (2 * ((d + 1) * (d + 1))) ≤
-      Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) := by fp_sub
-  obtain ⟨hWA, -, -, -, -, -, hRA, hRT, hRS, hRO, hRF, hRW, hFA, hFS, -, -, hAS, hAO, hSO, -⟩ :=
-    hG.disj_round
-  have hlSF : μ₁.Live [st, f] := hG.live_of_subset (by simp)
+  have hWw : Store.inBlock wk.1 wk.2 (2 * ((d + 1) * (d + 1))) ≤
+      Store.inBlock wk.1 wk.2 (2 * ((n + 1) * (n + 1))) := by
+    have := Nat.mul_le_mul hd hd; fp_sub
+  have hWA : Fp.Disj (Store.inBlock wk.1 wk.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) :=
+        by simpa [schurBlock] using hG.disj' 6 0 (by simp)
+  have hAS : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock st.1 st.2 (1 + 2 * (n + 1))) :=
+        by simpa [schurBlock] using hG.disj' 0 5 (by simp)
+  have hAU : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) :=
+        by simpa [schurBlock] using hG.disj' 0 3 (by simp)
+  have hSU : Fp.Disj (Store.inBlock st.1 st.2 (1 + 2 * (n + 1)))
+      (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) :=
+        by simpa [schurBlock] using hG.disj' 5 3 (by simp)
+  have hFA : Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) :=
+    by simpa [schurBlock] using hG.disj' 4 0 (by simp)
+  have hFS : Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock st.1 st.2 (1 + 2 * (n + 1))) := by
+    simpa using hG.disj' 4 5 (by simp)
+  have hFU : Fp.Disj (Store.inBlock f.1 f.2 1)
+      (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) :=
+        by simpa [schurBlock] using hG.disj' 4 3 (by simp)
+  have hlASW : μ.Live [a, st, wk] := hG.live_of_subset (by simp)
+  have hsplit := writeAndSplit_writes_mem (O := O) (Q := Q) (τ := tape) (i := i) hS hL hQ hNat
+    hlASW hA hW hSt hfit0.2 (by omega) (by omega) hG.room.1 hG.room.2.2.2.2.2.1
+    (hWA.mono hWw le_rfl) hAS
+  refine (hsplit.in_frame rfl rfl hlASW).seq_le (by fp_sub [schurRoundFp]) ?_
+  rintro μ₃ hfr₃ ⟨-, hA₃, hSt₃⟩
+  obtain ⟨⟨U₁, hU₁⟩, hacc'⟩ := hacc
+  have hU₁' := hU₁.of_eqOff hfr₃ (Fp.disj_sup_left.mpr ⟨hAU, hSU⟩)
+  have hne : ∀ v ∈ [a, t, p, uo, f, st, wk, ub, r], v.1 ≠ lgb := fun v hv => by
+    have := hlgv v hv; omega
+  have hlog₃ := hfr₃.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
+    (Fp.disj_sup_left.mpr ⟨Fp.disj_inBlock_of_ne (hne a (by simp)),
+      Fp.disj_inBlock_of_ne (hne st (by simp))⟩) hlog
+  have es_ok : ∀ e ∈ slotEntries w L, lo + e.1 + 1 < n + 1 := fun e he => by
+    have := hpl e he; omega
+  have hl₃ : μ₃.Live [(lgb, 0), a, uo] := fun v hv => by
+    rw [hfr₃.length_eq]
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hv
+    rcases hv with h | h | h <;> rw [h]
+    exacts [hlgb, hG.live a (by simp), hG.live uo (by simp)]
+  refine ((roundedDecoupleUpdate_writes (O := O) (Q := Q) (τ := tape) (M := Mch) hS hQ hC
+    (hfit0.2) (show i + 1 < d + 1 by omega) es_ok (lg := (lgb, 0)) hl₃ hlog₃ hlen hA₃ hU₁'
+    (by rw [hfr₃.len_eq]; exact hG.room.1)
+    (Fp.disj_inBlock_of_ne (hne a (by simp)).symm) (Fp.disj_inBlock_of_ne (hne uo (by simp)).symm)
+    hAU).in_frame rfl rfl hl₃).mono (by fp_sub [schurRoundFp]) ?_
+  rintro μ₄ hfr₄ ⟨-, hA₄, hU₄⟩
+  have hSt₄ := hSt₃.of_eqOff hfr₄ (Fp.disj_sup_left.mpr ⟨hAS.mono le_rfl (by
+    simp only [List.length_append, List.length_cons, List.length_nil]; fp_sub), hSU.symm.mono le_rfl
+      (by simp only [List.length_append, List.length_cons, List.length_nil]; fp_sub)⟩)
+  set es := slotEntries w L
+  have hes : es.length ≤ ns * w := hlen ▸ hlog.length_slotEntries_le
+  refine ⟨⟨x, (hfr₃.trans' hfr₄).keep (Store.readsOnly_get _ _ _) (Fp.disj_sup_left.mpr
+      ⟨Fp.disj_sup_left.mpr ⟨hFA.symm, hFS.symm⟩, Fp.disj_sup_left.mpr ⟨hFA.symm, hFU.symm⟩⟩) hf⟩,
+    ⟨_, hA₄⟩, _, ℓ, hSt₄, hfit.split (by omega), ?_, ⟨⟨_, hU₄⟩, fun hp => ?_⟩⟩
+  · simp only [List.map_append, List.sum_append, List.map_cons, List.map_nil, List.sum_cons,
+      List.sum_nil]
+    omega
+  have hX1 : (1 : ℝ) ≤ 1 + 24 * u := by linarith [hu0 hp]
+  have hbound : specNorm (es.foldl (replayColumnStep Mch lo 0 (n + 1)) U₁ -
+      U₁ * embedBlock lo (givensLog (d + 1) es)) ≤ ((1 + 24 * u) ^ (ns * w) - 1) * specNorm U₁ :=
+    (specNorm_foldl_replayColumnStep_sub_le (hP hp).1 (hu0 hp) (hP hp).2 hfit0.2 es
+      (fun e he => ⟨es_ok e he, Or.inl (hpl e he)⟩) U₁).trans
+      (mul_le_mul_of_nonneg_right (by linarith [pow_le_pow_right₀ hX1 hes]) (specNorm_nonneg _))
+  refine AccumNear.step ((hacc' hp).of_eqOff hfr₃ (Fp.disj_sup_left.mpr ⟨hAU, hSU⟩)) hU₁' hU₄
+    (hasOrthonormalCols_embedBlock hfit0.2 (hasOrthonormalCols_givensLog _ _))
+    (one_le_pow₀ hX1) hbound ?_
+  rw [add_mul, one_mul, pow_add]
+  have h1 : (1 + 24 * u) ^ (ns * w) ≤ (1 + 24 * u) ^ m := pow_le_pow_right₀ hX1 hm
+  have h0 : 0 ≤ (1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ :=
+    mul_nonneg (pow_nonneg (by linarith) _) (pow_nonneg (by linarith [hεL hp]) _)
+  nlinarith
+
+/-- The accumulator factor grows with the rounds. -/
+theorem accumFactor_le_succ {u εL : ℝ} (hu0 : 0 ≤ u) (hεL : 0 ≤ εL) (j m ℓ : ℕ) :
+    (1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ ≤ (1 + 24 * u) ^ ((j + 1) * m) * (1 + εL) ^ ℓ :=
+  mul_le_mul_of_nonneg_right (pow_le_pow_right₀ (by linarith) (Nat.mul_le_mul_right m j.le_succ))
+    (pow_nonneg (by linarith) _)
+
+/-- The rest of the large branch after the decoupling call keeps the core: from the geometry of
+the worklist in Schur mode, the threshold word, any failure word, some matrix stored, any matrix
+$\mathbf{H}'$ of order $d + 1 \ge k + 1$ in the work matrix, a stack whose ranges after the
+popped $(lo, d + 1)$ fit, the accumulator within its factor at round $j$, and a closed log at
+`(lgb, 0)` (a fresh buffer) whose entries are inside the block, `NLAlib.ShiftedQR.roundedLargeRest`
+runs to completion and reaches the core of round $j + 1$. -/
+theorem roundedLargeRest_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar Mch I)
+    {P : Prop} (hP : P → StdModel u id Mch ∧ u ≤ 1 / 100) (hL : IsIndexLit Mch I)
+    {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
+    {k F T ns w m : ℕ} (hm : ns * w ≤ m) {np : ℕ} {tape : Tape ℝ} {μ : Mem ℝ}
+    {lo d j ℓ lgb : ℕ} {a t p uo f st wk ub r : ℕ × ℕ} {rs : List (ℕ × ℕ)}
+    {A U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {H' : Matrix (Fin (d + 1)) (Fin (d + 1)) ℂ}
+    {x thr εL : ℝ} (hεL : P → 0 ≤ εL) {L : List (Option (List GivensEntry))}
+    (hG : SchurGeometry (n + 1) np a t p uo f st wk ub r μ)
+    (ht : μ.store.get t.1 t.2 = some thr) (hf : μ.store.get f.1 f.2 = some x)
+    (hA : HoldsMatrix a A μ.store) (hW : HoldsMatrix wk H' μ.store)
+    (hSt : StackHolds st rs μ.store) (hfit : RangesFit (n + 1) ((lo, d + 1) :: rs))
+    (hℓ : ℓ + (d + 1) + (rs.map Prod.snd).sum ≤ n + 1) (hk : k ≤ d)
+    (hacc : AccumIf P U ((1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ) uo μ)
+    (hlog : HoldsSlottedLog (lgb, 0) ns w L [] μ.store) (hlen : L.length = ns)
+    (hpl : ∀ e ∈ slotEntries w L, e.1 + 1 < d + 1) (hlgb : lgb < μ.store.length)
+    (hlgv : ∀ v ∈ [a, t, p, uo, f, st, wk, ub, r], v.1 < lgb) :
+    Writes .total I tape (roundedLargeRest (O := O) (Q := Q))
+      ⟨(Env.frame [n + 1, k, np, F, T, ns, w, lo, d + 1] [a, t, p, st, uo, wk, r, f]).idx,
+        (Env.frame [n + 1, k, np, F, T, ns, w, lo, d + 1] [a, t, p, st, uo, wk, r, f]).buf ++
+          [lgb]⟩
+      (schurRoundFp (n + 1) a uo f st wk ub r)
+      (SchurStoredCore n P U u εL m a uo f st (j + 1)) μ := by
+  have hu0 : P → 0 ≤ u := fun hp => (abs_nonneg _).trans (by simpa using (hP hp).1.lit 1)
+  have hlen' := hfit.length_add_le
+  have hfit0 := hfit.1 _ List.mem_cons_self
+  dsimp only at hfit0
+  have hd : d + 1 ≤ n + 1 := by omega
+  have hWw : Store.inBlock wk.1 wk.2 (2 * ((d + 1) * (d + 1))) ≤
+      Store.inBlock wk.1 wk.2 (2 * ((n + 1) * (n + 1))) := by
+    have := Nat.mul_le_mul hd hd; fp_sub
+  have hacc' := hacc.mono (fun hp => accumFactor_le_succ (hu0 hp) (hεL hp) j m ℓ)
+  have hlSF : μ.Live [st, f] := hG.live_of_subset (by simp)
+  unfold roundedLargeRest
   refine writes_ite rfl rfl (hC.test_isPos (d := []) (x := f) hf) ?_
   by_cases hx : 0 < x
-  · rw [if_pos (by simpa using hx)]
-    exact ((roundedAbort_writes_core hL hNat hG ⟨A, hA⟩ hO).in_frame rfl rfl hlSF).mono
-      (by fp_sub [roundedWorklistFp]) fun _ _ h => h
-  rw [if_neg (by simpa using hx)]
-  have hlS : μ₁.Live [w, t, r] := hG.live_of_subset (by simp)
+  · rw [if_pos (by simpa [schurBlock] using hx)]
+    exact ((roundedAbort_writes_schurCore hL hNat hG ⟨A, hA⟩ (by omega) hacc').in_frame rfl rfl
+      hlSF).mono (by fp_sub [schurRoundFp]) fun _ _ h => h
+  rw [if_neg (by simpa [schurBlock] using hx)]
+  have hRW : Fp.Disj (Store.inBlock r.1 r.2 5)
+      (Store.inBlock wk.1 wk.2 (2 * ((n + 1) * (n + 1)))) :=
+    by simpa [schurBlock] using hG.disj' 8 6 (by simp)
+  have hRT : Fp.Disj (Store.inBlock r.1 r.2 5) (Store.inBlock t.1 t.2 1) := by
+    simpa using hG.disj' 8 1 (by simp)
+  have hRX : ∀ i : Fin 9, i ≠ 8 → Fp.Disj (Store.inBlock r.1 r.2 5)
+      (schurBlock (n + 1) np a t p uo f st wk ub r i) :=
+    fun i hi => hG.disj' 8 i (Ne.symm hi)
+  have hlS : μ.Live [wk, t, r] := hG.live_of_subset (by simp)
   have hb := bottomScan_terminates (τ := tape) (n := d) (k := k) hS hL (hNat.mono (by omega)) hC
-    hk hW ht hlS hG.room.2.2.2.2.2.2.1 (hRW.mono le_rfl hWw) hRT
-  refine (hb.in_frame rfl rfl hlS).seq_le (by fp_sub [roundedWorklistFp]) ?_
+    hk hW ht hlS hG.room.2.2.2.2.2.2.2.2.1 (hRW.mono le_rfl hWw) hRT
+  refine (hb.in_frame rfl rfl hlS).seq_le (by fp_sub [schurRoundFp]) ?_
   rintro μ₂ hfr₂ ⟨-, hscan⟩
   have hG₂ := hG.of_eqOff hfr₂
-  have hA₂ := hA.of_eqOff hfr₂ hRA
-  have hO₂ := outStored_of_eqOff hfr₂ hRO hO
+  have hA₂ := hA.of_eqOff hfr₂ (by simpa [schurBlock] using hRX 0 (by simp))
+  have hf₂ := hfr₂.keep (Store.readsOnly_get _ _ _) (by simpa [schurBlock] using hRX 4 (by simp)) hf
+  have hSt₂ := hSt.of_eqOff hfr₂ ((by simpa [schurBlock] using hRX 5 (by simp) :
+    Fp.Disj (Store.inBlock r.1 r.2 5) (Store.inBlock st.1 st.2 (1 + 2 * (n + 1)))).mono le_rfl
+      (by have := hlen'; fp_sub))
+  have hacc₂ := hacc.of_eqOff hfr₂ (by simpa [schurBlock] using hRX 3 (by simp))
+  have hlog₂ := hfr₂.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
+    (Fp.disj_inBlock_of_ne (by have := hlgv r (by simp); omega)) hlog
   rcases hscan with ⟨hR1, i, hRi⟩ | ⟨hR0, -⟩
   · refine writes_ite rfl rfl (hC.test_isPos (d := []) (x := (r.1, r.2 + 3)) hR1) ?_
     rw [if_pos (by simp)]
     have hi := i.isLt
     refine writes_bindIdx_of_decode_nat hQ rfl rfl hRi rfl (by omega) ?_
-    have hlASW : μ₂.Live [a, st, w] := hG₂.live_of_subset (by simp)
-    have hsplit := writeAndSplit_writes_mem (O := O) (Q := Q) (τ := tape) (i := (i : ℕ)) hS hL
-      hQ hNat hlASW hA₂ (hW.of_eqOff hfr₂ (hRW.mono le_rfl hWw))
-      (hSt.of_eqOff hfr₂ (hRS.mono le_rfl (by fp_sub))) hfit0.2 (by omega) (by omega)
-      hG₂.room.1 hG₂.room.2.2.2.1 (hWA.mono hWw le_rfl) hAS
-    refine (hsplit.in_frame rfl rfl hlASW).mono (by fp_sub [roundedWorklistFp]) ?_
-    rintro μ₃ hfr₃ ⟨-, hA₃, hSt₃⟩
-    exact ⟨outStored_of_eqOff hfr₃ (Fp.disj_sup_left.mpr ⟨hAO, hSO⟩) hO₂,
-      ⟨x, (hfr₂.trans' hfr₃).keep (Store.readsOnly_get _ _ _)
-      (Fp.disj_sup_left.mpr ⟨hRF, Fp.disj_sup_left.mpr ⟨hFA.symm, hFS.symm⟩⟩) hf⟩, ⟨_, hA₃⟩,
-      _, hSt₃, hfit.split (by omega)⟩
+    exact roundedSplitUpdate_core hS hP hL hNat hQ hC hm hεL hG₂ hf₂ hA₂
+      (hW.of_eqOff hfr₂ (hRW.mono le_rfl hWw)) hSt₂ hfit hℓ hi hacc₂ hlog₂ hlen hpl
+      (by rw [hfr₂.length_eq]; exact hlgb) hlgv
   · refine writes_ite rfl rfl (hC.test_isPos (d := []) (x := (r.1, r.2 + 3)) hR0) ?_
     rw [if_neg (by simp)]
-    exact ((roundedAbort_writes_core hL hNat hG₂ ⟨A, hA₂⟩ hO₂).in_frame rfl rfl
-      (hG₂.live_of_subset (by simp))).mono (by fp_sub [roundedWorklistFp]) fun _ _ h => h
+    exact ((roundedAbort_writes_schurCore hL hNat hG₂ ⟨A, hA₂⟩ (by omega)
+      (hacc₂.mono (fun hp => accumFactor_le_succ (hu0 hp) (hεL hp) j m ℓ))).in_frame rfl rfl
+      (hG₂.live_of_subset (by simp))).mono (by fp_sub [schurRoundFp]) fun _ _ h => h
 
-/-- The large branch terminates: on a scalar machine whose natural literals up to $n + 1$
-are exact, with exact `toNat` and comparisons and a terminating decoupling routine
-(`NLAlib.ShiftedQR.TerminatingDecouplerRoutine`) of bottom width $k \le d$, from the geometry of the
-rounded worklist of order $n + 1$ with the threshold and parameter words stored, any failure
-word, a matrix $\mathbf{A}$ stored at `a` whose block on $(lo, d + 1)$ is in the work matrix, and
-a stack whose ranges after $(lo, d + 1)$ fit in the order,
-`NLAlib.ShiftedQR.roundedProcessLargeWith` runs to completion and leaves the core
-`NLAlib.ShiftedQR.RoundedStoredCore`, with the output words stored if they were. -/
-theorem roundedLarge_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar Mch I)
-    (hL : IsIndexLit Mch I) {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
-    (hC : IsCmp id I) {k F T : ℕ} {ps : List ℝ} (D : Impl O Q)
-    (hD : TerminatingDecouplerRoutine n k F T ps D I) {tape : Tape ℝ} {μ : Mem ℝ}
-    {lo d : ℕ} {a t p st out w r f : ℕ × ℕ} {rs : List (ℕ × ℕ)}
-    {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr : ℝ}
-    (hG : RoundedGeometry (n + 1) ps.length a t p st out w r f μ)
+/-- The core survives dropping scratch buffers above its views. -/
+theorem SchurStoredCore.of_below {n : ℕ} {P : Prop} {U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {u εL : ℝ}
+    {m j L : ℕ} {a uo f st : ℕ × ℕ} {s s' : Store ℝ} {pos : ℕ}
+    (h : SchurStoredCore n P U u εL m a uo f st j ⟨s, pos⟩) (hBelow : Store.Below L s s')
+    (ha : a.1 < L) (hu : uo.1 < L) (hf : f.1 < L) (hs : st.1 < L) :
+    SchurStoredCore n P U u εL m a uo f st j ⟨s', pos⟩ := by
+  obtain ⟨⟨x, hx⟩, ⟨A, hA⟩, rs, ℓ, hSt, hfit, hℓ, hacc⟩ := h
+  exact ⟨⟨x, ((hBelow f.1 hf).2 _).trans hx⟩, ⟨A, hA.of_below hBelow ha⟩, rs, ℓ,
+    hSt.of_below hBelow hs, hfit, hℓ, hacc.of_below hBelow hu⟩
+
+/-- The geometry survives an allocation on top of the views. -/
+theorem SchurGeometry.of_below {N np : ℕ} {a t p uo f st w ub r : ℕ × ℕ} {μ : Mem ℝ}
+    {s : Store ℝ} (h : SchurGeometry N np a t p uo f st w ub r μ)
+    (hlen : μ.store.length ≤ s.length) (hBelow : Store.Below μ.store.length μ.store s) :
+    SchurGeometry N np a t p uo f st w ub r ⟨s, μ.pos⟩ :=
+  ⟨fun z hz => (h.live z hz).trans_le hlen,
+    by rw [Mem.room_eq_of_below hBelow (fun z hz => h.live z hz)]; exact h.room, h.apart⟩
+
+/-- The large branch keeps the core: on a scalar machine with the standard model at
+$\boldsymbol{u} \le 1/100$, exact natural literals up to $n + 1$, exact `toNat` and comparisons,
+and a terminating decoupling routine (`NLAlib.ShiftedQR.TerminatingDecouplerRoutine`) of bottom
+width $k \le d$ and log shape (`ns` slots of `w` entries, $n_s w \le m$), from the geometry of the
+worklist in Schur mode with the threshold and parameter words stored, a matrix $\mathbf{A}$ whose
+block on $(lo, d + 1)$ is in the work matrix, a stack whose ranges after $(lo, d + 1)$ fit, and the
+accumulator within its factor at round $j$, `NLAlib.ShiftedQR.roundedProcessLargeWith` reaches
+the core of round $j + 1$. -/
+theorem roundedLarge_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar Mch I)
+    {P : Prop} (hP : P → StdModel u id Mch ∧ u ≤ 1 / 100) (hL : IsIndexLit Mch I)
+    {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
+    {k F T ns w m : ℕ} (hm : ns * w ≤ m) {ps : List ℝ} (D : Impl O Q)
+    (hD : TerminatingDecouplerRoutine n k F T ps ns w D I) {tape : Tape ℝ} {μ : Mem ℝ}
+    {lo d j ℓ : ℕ} {a t p uo f st wk ub r : ℕ × ℕ} {rs : List (ℕ × ℕ)}
+    {A U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr εL : ℝ} (hεL : P → 0 ≤ εL)
+    (hG : SchurGeometry (n + 1) ps.length a t p uo f st wk ub r μ)
     (ht : μ.store.get t.1 t.2 = some thr) (hp : μ.store.readBlock p.1 p.2 ps.length = some ps)
-    (hA : HoldsMatrix a A μ.store) (hW : HoldsMatrix w (subBlock A (lo, d + 1)) μ.store)
+    (hA : HoldsMatrix a A μ.store) (hW : HoldsMatrix wk (subBlock A (lo, d + 1)) μ.store)
     (hSt : StackHolds st rs μ.store) (hfit : RangesFit (n + 1) ((lo, d + 1) :: rs))
-    (hk : k ≤ d) {rd : Prop}
-    (hO : rd → ∃ ys, μ.store.readBlock out.1 out.2 (2 * (n + 1)) = some ys) :
+    (hℓ : ℓ + (d + 1) + (rs.map Prod.snd).sum ≤ n + 1) (hk : k ≤ d)
+    (hacc : AccumIf P U ((1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ) uo μ) :
     Writes .total I tape (roundedProcessLargeWith D).body
-      (Env.frame [n + 1, k, ps.length, F, T, lo, d + 1] [a, t, p, st, out, w, r, f])
-      (roundedWorklistFp (n + 1) a st out w r f) (RoundedStoredCore n rd a st out f) μ := by
+      (Env.frame [n + 1, k, ps.length, F, T, ns, w, lo, d + 1] [a, t, p, st, uo, wk, r, f])
+      (schurRoundFp (n + 1) a uo f st wk ub r)
+      (SchurStoredCore n P U u εL m a uo f st (j + 1)) μ := by
+  have hlen' := hfit.length_add_le
   have hfit0 := hfit.1 _ List.mem_cons_self
-  have hlen := hfit.length_add_le
   dsimp only at hfit0
   have hd : d + 1 ≤ n + 1 := by omega
-  have hsq := Nat.mul_le_mul hd hd
-  have hWw : Store.inBlock w.1 w.2 (2 * ((d + 1) * (d + 1))) ≤
-      Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) := by fp_sub
-  obtain ⟨hWA, hWT, hWP, hWS, hWO, hWF, -, -, -, -, -, -, hFA, hFS, hFO, hFT, -, -, -, hPF⟩ :=
-    hG.disj_round
-  have hlD : μ.Live [w, p, w, f] := hG.live_of_subset (by simp)
-  have hw := hD (tape := tape) (subBlock A (lo, d + 1)) hk (by omega) hW hp hlD
-    (by have := hG.room.2.2.2.2.2.1; omega) hG.room.2.2.2.2.2.2.2.1 (hWF.mono hWw le_rfl)
-    (Fp.disj_sup_right.mpr ⟨hWP.symm.mono le_rfl hWw, hPF⟩)
-  unfold roundedProcessLargeWith
-  refine hw.frame_seq_le rfl rfl hlD (by fp_sub [roundedWorklistFp]) ?_
-  rintro μ₁ hfr₁ ⟨⟨x, hf₁⟩, H', hW₁⟩
-  have hDfp : Store.inBlock w.1 w.2 (2 * ((d + 1) * (d + 1))) ⊔ Store.inBlock f.1 f.2 1 ≤
-      Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 :=
-    sup_le_sup_right hWw _
-  exact roundedLargeRest_terminates hS hL hNat hQ hC D (hG.of_eqOff hfr₁)
-    (hfr₁.keep (Store.readsOnly_get _ _ _)
-      ((Fp.disj_sup_left.mpr ⟨hWT, hFT⟩).mono hDfp le_rfl) ht) hf₁
-    (hA.of_eqOff hfr₁ ((Fp.disj_sup_left.mpr ⟨hWA, hFA⟩).mono hDfp le_rfl)) hW₁
-    (hSt.of_eqOff hfr₁ ((Fp.disj_sup_left.mpr ⟨hWS, hFS⟩).mono hDfp (by fp_sub))) hfit hk
-    (outStored_of_eqOff hfr₁ ((Fp.disj_sup_left.mpr ⟨hWO, hFO⟩).mono hDfp le_rfl) hO)
-
-/-- Processing a popped range terminates: on a scalar machine whose natural literals up to
-$n + 1$ are exact, with exact `toNat` and comparisons, a terminating decoupler
-(`NLAlib.ShiftedQR.TerminatingDecouplerRoutine`) of bottom width $k$ and a terminating leaf
-(`NLAlib.ShiftedQR.TerminatingLeafRoutineIf`, keeping its output if `rd`), from the geometry of
-the rounded worklist of order $n + 1$ with the threshold and parameter words and the failure word
-stored, a matrix $\mathbf{A}$ stored at `a`, and a stack whose ranges after the popped $(lo, d)$
-fit in the order, `NLAlib.ShiftedQR.roundedProcessRangeWith` runs to completion and leaves the core
-`NLAlib.ShiftedQR.RoundedStoredCore`, with the output words stored if they were. -/
-theorem roundedRange_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar Mch I)
-    (hL : IsIndexLit Mch I) {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
-    (hC : IsCmp id I) {k F T : ℕ} {ps : List ℝ} (D : Impl O Q)
-    (hD : TerminatingDecouplerRoutine n k F T ps D I) (L : Impl O Q) {rd : Prop}
-    (hLeaf : TerminatingLeafRoutineIf rd (min k (n + 1)) ps T L I)
-    {tape : Tape ℝ} {μ : Mem ℝ} {lo d : ℕ} {a t p st out w r f : ℕ × ℕ} {rs : List (ℕ × ℕ)}
-    {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr x : ℝ}
-    (hG : RoundedGeometry (n + 1) ps.length a t p st out w r f μ)
-    (ht : μ.store.get t.1 t.2 = some thr) (hp : μ.store.readBlock p.1 p.2 ps.length = some ps)
-    (hf : μ.store.get f.1 f.2 = some x) (hA : HoldsMatrix a A μ.store)
-    (hSt : StackHolds st rs μ.store) (hfit : RangesFit (n + 1) ((lo, d) :: rs))
-    (hO : rd → ∃ ys, μ.store.readBlock out.1 out.2 (2 * (n + 1)) = some ys) :
-    Writes .total I tape (roundedProcessRangeWith D L).body
-      (Env.frame [n + 1, k, ps.length, F, T, lo, d] [a, t, p, st, out, w, r, f])
-      (roundedWorklistFp (n + 1) a st out w r f) (RoundedStoredCore n rd a st out f) μ := by
-  have hfit0 := hfit.1 _ List.mem_cons_self
-  have hlen := hfit.length_add_le
-  dsimp only at hfit0
-  have hd : d ≤ n + 1 := by omega
-  have hsq := Nat.mul_le_mul hd hd
-  have hWfp : Store.inBlock w.1 w.2 (2 * (d * d)) ≤
-      Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) := by fp_sub
-  obtain ⟨hWA, hWT, hWP, hWS, hWO, hWF, -, -, -, -, -, -, -, -, hFO, -, -, hAO, hSO, -⟩ :=
-    hG.disj_round
-  have hlAW : μ.Live [a, w] := hG.live_of_subset (by simp)
-  unfold roundedProcessRangeWith
-  refine (copyToWork_writes (τ := tape) (lo := lo) (d := d) hS hlAW hA hfit0.2
-    (by have := hG.room.2.2.2.2.2.1; omega) (hWA.symm.mono le_rfl hWfp)).frame_seq_le rfl rfl
-    hlAW (by fp_sub [roundedWorklistFp]) ?_
-  rintro μ₁ hfr₁ ⟨-, hW₁⟩
-  have hG₁ := hG.of_eqOff hfr₁
-  have hf₁ := hfr₁.keep (Store.readsOnly_get _ _ _) (hWF.mono hWfp le_rfl) hf
-  have hA₁ := hA.of_eqOff hfr₁ (hWA.mono hWfp le_rfl)
-  have hSt₁ := hSt.of_eqOff hfr₁ (hWS.mono hWfp (by fp_sub))
-  have hp₁ := hfr₁.keep (Store.readsOnly_readBlock _ _ _ _) (hWP.mono hWfp le_rfl) hp
-  have hO₁ := outStored_of_eqOff hfr₁ (hWO.mono hWfp le_rfl) hO
-  by_cases hs : d ≤ k
-  · refine (writes_ifPos (P := RoundedStoredCore n rd a st out f) (n := k + 1 - d) rfl ?_).seq_le
-      le_rfl ?_
-    · rw [if_pos (by omega)]
-      have hl : μ₁.Live [w, p, (out.1, out.2 + 2 * lo)] := by
-        simpa [Mem.Live] using ⟨hG₁.live w (by simp), hG₁.live p (by simp),
-          hG₁.live out (by simp)⟩
-      have hOfp : Store.inBlock out.1 (out.2 + 2 * lo) (2 * d) ≤
-          Store.inBlock out.1 out.2 (2 * (n + 1)) := by fp_sub
-      have hPO : Fp.Disj (Store.inBlock p.1 p.2 ps.length)
-          (Store.inBlock out.1 out.2 (2 * (n + 1))) := by simpa using hG.disj 2 4 (by simp)
-      refine ((hLeaf (subBlock A (lo, d)) (le_min hs hd) hW₁ hp₁ hl
-        (by dsimp only; have := hG₁.room.2.2.2.2.1; omega)
-        (hWO.mono hWfp hOfp) (hPO.mono le_rfl hOfp)).in_frame rfl rfl hl).mono
-        (by fp_sub [roundedWorklistFp]) ?_
-      rintro μ₂ hfr₂ hys
-      exact ⟨fun hr => hfr₂.readBlock_of_inBlock (hO₁ hr) (hys hr),
-        ⟨x, hfr₂.keep (Store.readsOnly_get _ _ _) (hFO.symm.mono hOfp le_rfl) hf₁⟩,
-        ⟨A, hA₁.of_eqOff hfr₂ (hAO.symm.mono hOfp le_rfl)⟩, rs,
-        hSt₁.of_eqOff hfr₂ (hSO.symm.mono hOfp (by fp_sub)), hfit.of_cons⟩
-    · intro μ₂ _ hpost
-      refine writes_ifPos (n := d - k) rfl ?_
-      rw [if_neg (by omega)]
-      exact hpost
-  · refine (writes_ifPos (F := ⊥) (P := fun μ₂ => μ₂ = μ₁) (n := k + 1 - d) rfl
-      (by rw [if_neg (by omega)])).seq_le bot_le ?_
-    rintro μ₂ - rfl
-    obtain ⟨d', rfl⟩ : ∃ d', d = d' + 1 := ⟨d - 1, by omega⟩
-    refine writes_ifPos (n := d' + 1 - k) rfl ?_
-    rw [if_pos (by omega)]
-    exact (roundedLarge_terminates hS hL hNat hQ hC D hD hG₁
-      (hfr₁.keep (Store.readsOnly_get _ _ _) (hWT.mono hWfp le_rfl) ht)
-      hp₁ hA₁ hW₁ hSt₁
-      hfit (by omega) hO₁).in_frame rfl rfl hG₁.live
-
-/-- One round keeps the value-free state: on a scalar machine whose natural literals up to
-$n + 1$ are exact, with exact `toNat` and comparisons, a terminating decoupler
-(`NLAlib.ShiftedQR.TerminatingDecouplerRoutine`) and a terminating leaf
-(`NLAlib.ShiftedQR.TerminatingLeafRoutine`), from the value-free state
-`NLAlib.ShiftedQR.RoundedStoredState` of order $n + 1$ with a positive stack count, the round
-`NLAlib.ShiftedQR.roundedWorklistRoundWith` runs to completion and reaches the value-free state. -/
-theorem roundedWorklistRound_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
-    (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1))
-    (hQ : IsToNat id I) (hC : IsCmp id I) {k F T : ℕ} {ps : List ℝ} (D : Impl O Q)
-    (hD : TerminatingDecouplerRoutine n k F T ps D I) (L : Impl O Q) {rd : Prop}
-    (hLeaf : TerminatingLeafRoutineIf rd (min k (n + 1)) ps T L I)
-    {tape : Tape ℝ} {μ : Mem ℝ} {a t p st out w r f : ℕ × ℕ} {cnt : ℕ}
-    (h : RoundedStoredState n rd ps a t p st out w r f μ)
-    (hcount : μ.store.get st.1 st.2 = some (cnt : ℝ)) (hpos : 0 < cnt) :
-    Writes .total I tape (roundedWorklistRoundWith D L).body
-      (Env.frame [n + 1, k, ps.length, F, T] [a, t, p, st, out, w, r, f])
-      (roundedWorklistFp (n + 1) a st out w r f)
-      (RoundedStoredState n rd ps a t p st out w r f) μ := by
-  obtain ⟨hG, ⟨thr, ht⟩, hp, hO, ⟨x, hf⟩, ⟨A, hA⟩, rs, hSt, hfit⟩ := h
-  refine Writes.mono (P := RoundedStoredCore n rd a st out f) ?_ le_rfl
-    (fun μ' hfr hcore => RoundedStoredState.of_core hG ⟨thr, ht⟩ hp hfr le_rfl hcore)
-  obtain rfl | ⟨rs', ⟨lo, d⟩, rfl⟩ := List.eq_nil_or_concat rs
-  · have hc0 : (cnt : ℝ) = 0 := Option.some.inj (hcount.symm.trans (by simpa using hSt.1))
-    exact absurd (by exact_mod_cast hc0 : cnt = 0) (by omega)
-  rw [List.concat_eq_append] at hfit hSt
-  have hfit' := hfit.cons_of_concat
-  have hfit0 := hfit'.1 _ List.mem_cons_self
-  have hlen := hfit'.length_add_le
-  dsimp only at hfit0
-  have hRS : Fp.Disj (Store.inBlock r.1 r.2 2) (Store.inBlock st.1 st.2 (1 + 2 * (n + 1))) :=
-    (by simpa using hG.disj 6 3 (by simp) : Fp.Disj (Store.inBlock r.1 r.2 5)
-      (Store.inBlock st.1 st.2 (1 + 2 * (n + 1)))).mono (by fp_sub) le_rfl
-  have hlSR : μ.Live [st, r] := hG.live_of_subset (by simp)
-  unfold roundedWorklistRoundWith
-  refine (rangePop_writes_of_isExactNatLit (τ := tape) hS hL hQ hNat hSt (by omega)
-    (by simpa only [Nat.add_assoc] using hG.room.2.2.2.1)
-    (by have := hG.room.2.2.2.2.2.2.1; omega) hlSR hRS).frame_seq_le rfl rfl hlSR
-    (by fp_sub [roundedWorklistFp]) ?_
-  rintro μ₁ hfr₁ ⟨-, hSt₁, hRange⟩
-  have hpop : Store.inBlock st.1 st.2 1 ⊔ Store.inBlock r.1 r.2 2 ≤
-      roundedWorklistFp (n + 1) a st out w r f := by fp_sub [roundedWorklistFp]
-  have hpar := hG.disj_params.mono hpop le_rfl
-  have hpd {X : Fp} (h1 : Fp.Disj (Store.inBlock st.1 st.2 (1 + 2 * (n + 1))) X)
-      (h2 : Fp.Disj (Store.inBlock r.1 r.2 5) X) :
-      Fp.Disj (Store.inBlock st.1 st.2 1 ⊔ Store.inBlock r.1 r.2 2) X :=
-    Fp.disj_sup_left.mpr ⟨h1.mono (by fp_sub) le_rfl, h2.mono (by fp_sub) le_rfl⟩
-  have hLo : μ₁.store.get r.1 r.2 = some (lo : ℝ) := by
-    simpa [vec] using Store.get_of_readBlock hRange (j := 0) (by omega) (0 : ℝ)
-  have hSize : μ₁.store.get r.1 (r.2 + 1) = some (d : ℝ) := by
-    simpa [vec] using Store.get_of_readBlock hRange (j := 1) (by omega) (0 : ℝ)
-  refine writes_bindIdx_of_decode_nat hQ rfl rfl hLo rfl (by omega) ?_
-  refine writes_bindIdx_of_decode_nat hQ rfl rfl hSize rfl (by omega) ?_
-  have hG₁ := hG.of_eqOff hfr₁
-  exact (roundedRange_terminates hS hL hNat hQ hC D hD L hLeaf hG₁
-    (hfr₁.keep (Store.readsOnly_get _ _ _) (hpar.mono le_rfl le_sup_left) ht)
-    (hfr₁.keep (Store.readsOnly_readBlock _ _ _ _) (hpar.mono le_rfl le_sup_right) hp)
-    (hfr₁.keep (Store.readsOnly_get _ _ _) (hpd (by simpa using hG.disj 3 7 (by simp))
-      (by simpa using hG.disj 6 7 (by simp))) hf)
-    (hA.of_eqOff hfr₁ (hpd (by simpa using hG.disj 3 0 (by simp))
-      (by simpa using hG.disj 6 0 (by simp)))) hSt₁ hfit'
-    (outStored_of_eqOff hfr₁ (hpd (by simpa using hG.disj 3 4 (by simp))
-      (by simpa using hG.disj 6 4 (by simp))) hO)).in_frame rfl rfl hG₁.live
-
-omit [Has ScalarOp O] [Has IdxTst Q] in
-/-- The exit of the capped loop terminates: on a machine whose natural literals up to
-$n + 1$ are exact, with exact comparisons, from the value-free state
-`NLAlib.ShiftedQR.RoundedStoredState` of order $n + 1$, the exit of
-`NLAlib.ShiftedQR.roundedWorklistWith` (abort on a positive stack count, else skip) runs to
-completion, at any round `i`, and keeps the output words stored if they were. -/
-theorem roundedWorklistExit_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
-    (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1)) (hC : IsCmp id I)
-    {k F T : ℕ} {ps : List ℝ} {tape : Tape ℝ} {μ : Mem ℝ} {rd : Prop}
-    {a t p st out w r f : ℕ × ℕ} (i : ℕ) (h : RoundedStoredState n rd ps a t p st out w r f μ) :
-    Writes .total I tape (Stmt.ite (Has.inj CmpTst.isPos) [] [{ buf := 3, off := IExp.var 8 }]
-        (Stmt.frame [] [{ buf := 3, off := IExp.var 8 }, { buf := 7, off := IExp.var 12 }]
-          (roundedAbort (O := O) (Q := Q)).body) Stmt.skip)
-      ((Env.frame [n + 1, k, ps.length, F, T] [a, t, p, st, out, w, r, f]).pushIdx i)
-      (roundedWorklistFp (n + 1) a st out w r f)
-      (fun μ' => rd → ∃ ys, μ'.store.readBlock out.1 out.2 (2 * (n + 1)) = some ys) μ := by
-  obtain ⟨hG, -, -, hO, -, hA, rs, hSt, -⟩ := h
-  refine writes_ite rfl rfl (hC.test_isPos (d := []) (x := st) hSt.1) ?_
-  by_cases hpos : 0 < rs.length
-  · rw [if_pos (by simpa using hpos)]
-    exact ((roundedAbort_writes_core hL hNat hG hA hO).in_frame rfl rfl
-      (hG.live_of_subset (by simp))).mono (by fp_sub [roundedWorklistFp]) fun _ _ h => h.1
-  · rw [if_neg (by simpa using hpos)]
-    exact (Writes.skip hO).mono bot_le fun _ _ h => h
-
-/-- The capped loop of the rounded worklist terminates: on a scalar machine whose natural
-literals up to $n + 1$ are exact, with exact `toNat` and comparisons, a terminating decoupler
-(`NLAlib.ShiftedQR.TerminatingDecouplerRoutine`) and a terminating leaf
-(`NLAlib.ShiftedQR.TerminatingLeafRoutine`), from the geometry of the rounded worklist of order $n
-+ 1$ (`NLAlib.ShiftedQR.RoundedGeometry`) with any matrix $\mathbf{H}$ stored at `a`, the threshold
-word stored and the parameter words `ps`, `NLAlib.ShiftedQR.roundedWorklistWith` runs to completion
-within the round footprint, and keeps the output words stored if they were. -/
-theorem roundedWorklist_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
-    (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1))
-    (hQ : IsToNat id I) (hC : IsCmp id I) {k F T : ℕ} {ps : List ℝ} (D : Impl O Q)
-    (hD : TerminatingDecouplerRoutine n k F T ps D I) (L : Impl O Q) {rd : Prop}
-    (hLeaf : TerminatingLeafRoutineIf rd (min k (n + 1)) ps T L I)
-    {tape : Tape ℝ} {μ : Mem ℝ} {a t p st out w r f : ℕ × ℕ}
-    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr : ℝ}
-    (hG : RoundedGeometry (n + 1) ps.length a t p st out w r f μ)
-    (hA : HoldsMatrix a H μ.store) (ht : μ.store.get t.1 t.2 = some thr)
-    (hp : μ.store.readBlock p.1 p.2 ps.length = some ps)
-    (hO : rd → ∃ ys, μ.store.readBlock out.1 out.2 (2 * (n + 1)) = some ys) :
-    Writes .total I tape (roundedWorklistWith D L).body
-      (Env.frame [n + 1, k, ps.length, F, T] [a, t, p, st, out, w, r, f])
-      (roundedWorklistFp (n + 1) a st out w r f)
-      (fun μ' => rd → ∃ ys, μ'.store.readBlock out.1 out.2 (2 * (n + 1)) = some ys) μ := by
-  obtain ⟨hFA, hFS⟩ : Fp.Disj (Store.inBlock f.1 f.2 1)
-      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) ∧ Fp.Disj (Store.inBlock f.1 f.2 1)
-      (Store.inBlock st.1 st.2 (1 + 2 * (n + 1))) :=
-    ⟨by simpa using hG.disj 7 0 (by simp), by simpa using hG.disj 7 3 (by simp)⟩
-  have hSA : Fp.Disj (Store.inBlock st.1 st.2 (1 + 2 * (n + 1)))
-      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) := by simpa using hG.disj 3 0 (by simp)
-  unfold roundedWorklistWith
-  refine (writes_indexLit hL rfl rfl (by have := hG.room.2.2.2.2.2.2.2.1; dsimp only; omega)).seq_le
-    (by fp_sub [roundedWorklistFp]) ?_
-  rintro μ₁ hfr₁ ⟨-, hF₁⟩
-  have hlS : μ₁.Live [st] := (hG.of_eqOff hfr₁).live_of_subset (by simp)
-  have hw := stackInit_writes_of_isExactNatLit (Op := O) (Tst := Q) (τ := tape) hL hQ hNat
-    (lo := 0) (size := n + 1) (by omega) le_rfl le_rfl (Nat.succ_pos n)
-    (by simpa only [Nat.add_assoc] using (hG.of_eqOff hfr₁).room.2.2.2.1)
-  refine hw.frame_seq_le rfl rfl hlS (by fp_sub [roundedWorklistFp]) ?_
-  rintro μ₂ hfr₂ ⟨-, hSt₂⟩
-  have hfr₁₂ := hfr₁.trans' hfr₂
-  have h01 : Store.inBlock f.1 f.2 1 ⊔ Store.inBlock st.1 st.2 (1 + 2 * (n + 1)) ≤
-      roundedWorklistFp (n + 1) a st out w r f := by fp_sub [roundedWorklistFp]
-  have hS0 : RoundedStoredState n rd ps a t p st out w r f μ₂ :=
-    RoundedStoredState.of_core hG ⟨thr, ht⟩ hp hfr₁₂ h01
-      ⟨outStored_of_eqOff hfr₁₂ (Fp.disj_sup_left.mpr ⟨by simpa using hG.disj 7 4 (by simp),
-        by simpa using hG.disj 3 4 (by simp)⟩) hO,
-        ⟨_, hfr₂.keep (Store.readsOnly_get _ _ _) hFS.symm hF₁⟩,
-        ⟨H, hA.of_eqOff hfr₁₂ (Fp.disj_sup_left.mpr ⟨hFA, hSA⟩)⟩, [(0, n + 1)], hSt₂,
-        by simp [RangesFit]⟩
-  refine (writes_whileFuel (N := 2 * (n + 1)) rfl
-    (fun _ => roundedWorklistFp (n + 1) a st out w r f) (fun _ _ => le_rfl)
-    (roundedWorklistFp (n + 1) a st out w r f)
-    (fun _ => RoundedStoredState n rd ps a t p st out w r f)
-    (fun μ' => rd → ∃ ys, μ'.store.readBlock out.1 out.2 (2 * (n + 1)) = some ys) hS0 ?_
-    (fun _ _ hS' => roundedWorklistExit_terminates hL hNat hC _ hS')).mono (by simp)
-    fun _ _ h => h
-  intro i _ μ' _ hS'
-  obtain ⟨rs, hSt, -⟩ := hS'.2.2.2.2.2.2
-  rw [Interp.testAt_eq rfl rfl, hC.test_isPos hSt.1]
-  refine Mode.holds_some ?_
-  by_cases hpos : 0 < rs.length
-  · rw [if_pos (by simpa using hpos)]
-    exact (roundedWorklistRound_terminates hS hL hNat hQ hC D hD L hLeaf hS' hSt.1
-      hpos).in_frame rfl rfl hS'.1.live
-  · rw [if_neg (by simpa using hpos)]
-    exact roundedWorklistExit_terminates hL hNat hC i hS'
-
-/-- `NLAlib.ShiftedQR.solveRoundedWith_terminates` with a leaf that keeps its output if `P`
-(`NLAlib.ShiftedQR.TerminatingLeafRoutineIf`): the run of `solveRoundedWith D L` is total,
-writes only the matrix, the output and the failure word, and, if `P` holds, keeps the output
-words stored if they were (also when it stops early). -/
-theorem solveRoundedWith_terminates_storedIf {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
-    (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1))
-    (hQ : IsToNat id I) (hC : IsCmp id I) {k F T : ℕ} {ps : List ℝ} (D : Impl O Q)
-    (hD : TerminatingDecouplerRoutine n k F T ps D I) (L : Impl O Q)
-    {P : Prop} (hLeaf : TerminatingLeafRoutineIf P (min k (n + 1)) ps T L I)
-    {tape : Tape ℝ} {μ : Mem ℝ} {a t p out f : ℕ × ℕ}
-    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr : ℝ}
-    (hl : μ.Live [a, t, p, out, f])
-    (hr : μ.Room [a, t, p, out, f] [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * (n + 1), 1])
-    (ha : Fp.Apart [a, t, p, out, f] [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * (n + 1), 1])
-    (hA : HoldsMatrix a H μ.store)
-    (ht : μ.store.get t.1 t.2 = some thr) (hp : μ.store.readBlock p.1 p.2 ps.length = some ps) :
-    Writes .total I tape (solveRoundedWith D L).body
-      (Env.frame [n + 1, k, ps.length, F, T] [a, t, p, out, f])
-      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
-        Store.inBlock out.1 out.2 (2 * (n + 1)) ⊔ Store.inBlock f.1 f.2 1)
-      (fun μ' => P → (∃ ys, μ.store.readBlock out.1 out.2 (2 * (n + 1)) = some ys) →
-        ∃ ys, μ'.store.readBlock out.1 out.2 (2 * (n + 1)) = some ys) μ := by
-  have hlo : out.1 < μ.store.length := hl out (by simp)
-  unfold solveRoundedWith
-  refine writes_allocs_preserving_post
-    (lens := [.const 1 + .const 2 * .var 0, .const 2 * (.var 0 * .var 0), .const 5])
-    (ns := [1 + 2 * (n + 1), 2 * ((n + 1) * (n + 1)), 5]) rfl
-    (fun hBelow h hP hrd => (h hP hrd).imp fun _ hy =>
-      (hBelow.readBlock hlo _ _).trans hy) ?_
-  intro s hs hlens hBelow
-  have hG := roundedGeometry_allocated (np := ps.length) hl hr ha hs hlens hBelow
-  have hw := roundedWorklist_terminates hS hL hNat hQ hC D hD L
-    (hLeaf.mono fun h => h.1) (tape := tape) hG
-    (hA.of_below hBelow (hl a (by simp))) (hBelow.get_of (hl t (by simp)) ht)
-    ((hBelow.readBlock (hl p (by simp)) p.2 ps.length).trans hp)
-    (rd := P ∧ ∃ ys, μ.store.readBlock out.1 out.2 (2 * (n + 1)) = some ys)
-    fun hrd => hrd.2.imp fun _ hy => (hBelow.readBlock hlo _ _).trans hy
-  exact (hw.in_frame rfl rfl hG.live).mono (by fp_sub [roundedWorklistFp])
-    fun _ _ h hP hrd => h ⟨hP, hrd⟩
-
-/-- `NLAlib.ShiftedQR.solveRoundedWith_terminates` with the output words: the run of
-`solveRoundedWith D L` is total, writes only the matrix, the output and the failure word, and
-keeps the output words stored if they were (also when it stops early). -/
-theorem solveRoundedWith_terminates_stored {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
-    (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1))
-    (hQ : IsToNat id I) (hC : IsCmp id I) {k F T : ℕ} {ps : List ℝ} (D : Impl O Q)
-    (hD : TerminatingDecouplerRoutine n k F T ps D I) (L : Impl O Q)
-    (hLeaf : TerminatingLeafRoutine (min k (n + 1)) ps T L I)
-    {tape : Tape ℝ} {μ : Mem ℝ} {a t p out f : ℕ × ℕ}
-    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr : ℝ}
-    (hl : μ.Live [a, t, p, out, f])
-    (hr : μ.Room [a, t, p, out, f] [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * (n + 1), 1])
-    (ha : Fp.Apart [a, t, p, out, f] [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * (n + 1), 1])
-    (hA : HoldsMatrix a H μ.store)
-    (ht : μ.store.get t.1 t.2 = some thr) (hp : μ.store.readBlock p.1 p.2 ps.length = some ps) :
-    Writes .total I tape (solveRoundedWith D L).body
-      (Env.frame [n + 1, k, ps.length, F, T] [a, t, p, out, f])
-      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
-        Store.inBlock out.1 out.2 (2 * (n + 1)) ⊔ Store.inBlock f.1 f.2 1)
-      (fun μ' => (∃ ys, μ.store.readBlock out.1 out.2 (2 * (n + 1)) = some ys) →
-        ∃ ys, μ'.store.readBlock out.1 out.2 (2 * (n + 1)) = some ys) μ :=
-  (solveRoundedWith_terminates_storedIf hS hL hNat hQ hC D hD L
-    (hLeaf.terminatingLeafRoutineIf True) hl hr ha hA ht hp).mono le_rfl fun _ _ h => h trivial
-
-/-- **The rounded worklist with routines terminates**: `NLAlib.ShiftedQR.solveRounded_terminates`
-for `NLAlib.ShiftedQR.solveRoundedWith`. On a scalar machine whose natural literals up to $n + 1$
-are exact, with exact `toNat` and comparisons, let the decoupling routine terminate
-(`NLAlib.ShiftedQR.TerminatingDecouplerRoutine`) and the leaf routine terminate on orders at most
-$\min(k, n + 1)$ (`NLAlib.ShiftedQR.TerminatingLeafRoutine`). Then for any matrix $\mathbf{H}$ of
-order $n + 1$
-stored at `a`, any threshold word and on every tape, `solveRoundedWith D L` runs to completion
-and writes only the matrix, the output and the failure word. -/
-theorem solveRoundedWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
-    (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1))
-    (hQ : IsToNat id I) (hC : IsCmp id I) {k F T : ℕ} {ps : List ℝ} (D : Impl O Q)
-    (hD : TerminatingDecouplerRoutine n k F T ps D I) (L : Impl O Q)
-    (hLeaf : TerminatingLeafRoutine (min k (n + 1)) ps T L I)
-    {tape : Tape ℝ} {μ : Mem ℝ} {a t p out f : ℕ × ℕ}
-    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr : ℝ}
-    (hl : μ.Live [a, t, p, out, f])
-    (hr : μ.Room [a, t, p, out, f] [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * (n + 1), 1])
-    (ha : Fp.Apart [a, t, p, out, f] [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * (n + 1), 1])
-    (hA : HoldsMatrix a H μ.store)
-    (ht : μ.store.get t.1 t.2 = some thr) (hp : μ.store.readBlock p.1 p.2 ps.length = some ps) :
-    Writes .total I tape (solveRoundedWith D L).body
-      (Env.frame [n + 1, k, ps.length, F, T] [a, t, p, out, f])
-      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
-        Store.inBlock out.1 out.2 (2 * (n + 1)) ⊔ Store.inBlock f.1 f.2 1)
-      (fun _ => True) μ :=
-  (solveRoundedWith_terminates_stored hS hL hNat hQ hC D hD L hLeaf hl hr ha hA ht hp).mono
-    le_rfl fun _ _ _ => trivial
-
-/-- The rounded deflation worklist terminates: on a scalar machine whose natural literals up
-to $n + 1$ are exact (the stack, the flags and the indices are such literals), with exact `toNat`
-and comparisons, let the decoupler `D` terminate with the bottom width $k$, the iteration cap $F$
-and the parameter words `ps` (`NLAlib.ShiftedQR.TerminatingDecoupler`) and the leaf routine `L`
-terminate (`NLAlib.ShiftedQR.TerminatingLeaf`). Then for any matrix $\mathbf{H}$ of order
-$n + 1$ stored at `a` (no structure assumed), any threshold word and on every tape,
-`solveRounded D L` runs to completion and writes only the matrix, the output and the failure
-word. The views are live, have room and are pairwise apart. Nothing numerical is assumed. -/
-theorem solveRounded_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
-    (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1))
-    (hQ : IsToNat id I) (hC : IsCmp id I) {k F : ℕ} {ps : List ℝ} (D : Impl O Q)
-    (hD : TerminatingDecoupler n k F ps D I) (L : Impl O Q) (hLeaf : TerminatingLeaf L I)
-    {tape : Tape ℝ} {μ : Mem ℝ} {a t p out f : ℕ × ℕ}
-    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr : ℝ}
-    (hl : μ.Live [a, t, p, out, f])
-    (hr : μ.Room [a, t, p, out, f] [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * (n + 1), 1])
-    (ha : Fp.Apart [a, t, p, out, f] [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * (n + 1), 1])
-    (hA : HoldsMatrix a H μ.store)
-    (ht : μ.store.get t.1 t.2 = some thr) (hp : μ.store.readBlock p.1 p.2 ps.length = some ps) :
-    Writes .total I tape (solveRounded D L).body
-      (Env.frame [n + 1, k, ps.length, F] [a, t, p, out, f])
-      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
-        Store.inBlock out.1 out.2 (2 * (n + 1)) ⊔ Store.inBlock f.1 f.2 1)
-      (fun _ => True) μ := by
-  unfold solveRounded
-  exact ((solveRoundedWith_terminates_storedIf hS hL hNat hQ hC (liftDecoupler D)
-    (hD.terminatingDecouplerRoutine 0) (liftLeaf L)
-    (hLeaf.terminatingLeafRoutineIf (min k (n + 1)) ps 0) hl hr ha hA ht hp).in_frame (by simp)
-    (by simp [Operand.evalList, Operand.eval]) hl).mono le_rfl fun _ _ _ => trivial
+  have hWw : Store.inBlock wk.1 wk.2 (2 * ((d + 1) * (d + 1))) ≤
+      Store.inBlock wk.1 wk.2 (2 * ((n + 1) * (n + 1))) := by
+    have := Nat.mul_le_mul hd hd; fp_sub
+  have hW' : ∀ i : Fin 9, i ≠ 6 → Fp.Disj (Store.inBlock wk.1 wk.2 (2 * ((n + 1) * (n + 1))))
+      (schurBlock (n + 1) ps.length a t p uo f st wk ub r i) :=
+    fun i hi => hG.disj' 6 i (Ne.symm hi)
+  rw [roundedProcessLargeWith_body]
+  change Writes .total I tape
+    (Stmt.allocs [IExp.var 5 * (IExp.const 1 + IExp.const 5 * IExp.var 6)] _) _ _ _ μ
+  set Lc := μ.store.length with hLc
+  have hv : ∀ v ∈ [a, t, p, uo, f, st, wk, ub, r], v.1 < Lc := fun v hv => hG.live v hv
+  refine writes_allocs_preserving_post (ns := [ns * (1 + 5 * w)])
+    (by simp [IExp.evalList, IExp.eval, Env.frame])
+    (fun hBelow h => h.of_below hBelow (hv a (by simp)) (hv uo (by simp)) (hv f (by simp))
+      (hv st (by simp))) ?_
+  intro s₁ hlen hlens hBelow
+  simp only [List.length_cons, List.length_nil] at hlen
+  have hL0 : s₁.len Lc = ns * (1 + 5 * w) := by simpa [schurBlock] using hlens 0 (by simp)
+  have hG₁ := hG.of_below (s := s₁) (by omega) hBelow
+  set μ₁ : Mem ℝ := ⟨s₁, μ.pos⟩
+  have hLW : Fp.Disj (Store.inBlock Lc 0 (ns * (1 + 5 * w))) (Store.inBlock wk.1 wk.2
+      (2 * ((d + 1) * (d + 1)))) := Fp.disj_inBlock_of_ne (by have := hv wk (by simp); omega)
+  have hLF : Fp.Disj (Store.inBlock Lc 0 (ns * (1 + 5 * w))) (Store.inBlock f.1 f.2 1) :=
+    Fp.disj_inBlock_of_ne (by have := hv f (by simp); omega)
+  have hlD : μ₁.Live [wk, p, wk, f, (Lc, 0)] := fun z hz => by
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hz
+    rcases hz with h | h | h | h | h <;> rw [h] <;>
+      first | (change Lc < s₁.length; omega) | exact hG₁.live _ (by simp)
+  have hw := hD (tape := tape) (lg := (Lc, 0)) (subBlock A (lo, d + 1)) hk (by omega)
+    (hW.of_below hBelow (hv wk (by simp)))
+    ((hBelow.readBlock (hv p (by simp)) p.2 ps.length).trans hp) hlD
+    (by have := hG₁.room.2.2.2.2.2.2.1; have := Nat.mul_le_mul hd hd; omega)
+    hG₁.room.2.2.2.2.1 (by simp [μ₁, hL0])
+    (by intro b hb; simp only [List.mem_cons, List.not_mem_nil, or_false] at hb
+        rcases hb with h | h | h <;> rw [h] <;> simp only <;>
+          [have := hv wk (by simp); have := hv p (by simp); have := hv f (by simp)] <;> omega)
+    ⟨Fp.disj_sup_right.mpr ⟨(hW' 4 (by simp)).mono hWw (by simp [schurBlock]),
+      Fp.disj_sup_right.mpr ⟨hLW.symm, fun _ _ _ h => h⟩⟩,
+      Fp.disj_sup_right.mpr ⟨hLF.symm, fun _ _ _ h => h⟩, fun _ _ _ h => h, trivial⟩
+    (Fp.disj_sup_right.mpr ⟨Fp.disj_sup_right.mpr ⟨((hW' 2 (by simp)).mono hWw le_rfl).symm,
+      (by simpa [schurBlock] using hG.disj' 2 4 (by simp))⟩,
+      Fp.disj_inBlock_of_ne (by have := hv p (by simp); omega)⟩)
+  have hDF : Store.inBlock wk.1 wk.2 (2 * ((d + 1) * (d + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
+      Store.inBlock Lc 0 (ns * (1 + 5 * w)) ≤
+        schurRoundFp (n + 1) a uo f st wk ub r ⊔ Fp.above Lc :=
+    sup_le (sup_le (hWw.trans (by fp_sub [schurRoundFp])) (by fp_sub [schurRoundFp]))
+      (fun b z h => Or.inr (show Lc ≤ b from h.1 ▸ le_rfl))
+  refine hw.frame_seq_le (by simp [IExp.evalList, IExp.eval, Env.frame]) rfl hlD hDF ?_
+  rintro μ₂ hfr₂ ⟨⟨x, hf₂⟩, ⟨H', hW₂⟩, L, hLlen, hpl, hlog⟩
+  have hDX : ∀ (i : Fin 9), i ≠ 6 → i ≠ 4 →
+      ([a, t, p, uo, f, st, wk, ub, r] : List (ℕ × ℕ)).getD i (0, 0) ∈
+        [a, t, p, uo, f, st, wk, ub, r] →
+      Fp.Disj (Store.inBlock wk.1 wk.2 (2 * ((d + 1) * (d + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
+        Store.inBlock Lc 0 (ns * (1 + 5 * w)))
+      (schurBlock (n + 1) ps.length a t p uo f st wk ub r i) :=
+    fun i h6 h4 hm => Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨(hW' i h6).mono hWw le_rfl,
+      hG.disj' 4 i (Ne.symm h4)⟩, Fp.disj_inBlock_of_ne (by have := hv _ hm; omega)⟩
+  set DF := Store.inBlock wk.1 wk.2 (2 * ((d + 1) * (d + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
+    Store.inBlock Lc 0 (ns * (1 + 5 * w))
+  have hDa : Fp.Disj DF (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) :=
+    hDX 0 (by simp) (by simp) (by simp)
+  have hDt : Fp.Disj DF (Store.inBlock t.1 t.2 1) := hDX 1 (by simp) (by simp) (by simp)
+  have hDu : Fp.Disj DF (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) :=
+    hDX 3 (by simp) (by simp) (by simp)
+  have hDs : Fp.Disj DF (Store.inBlock st.1 st.2 (1 + 2 * (n + 1))) :=
+    hDX 5 (by simp) (by simp) (by simp)
+  exact (roundedLargeRest_terminates hS hP hL hNat hQ hC hm hεL (hG₁.of_eqOff hfr₂)
+    (hfr₂.keep (Store.readsOnly_get _ _ _) hDt (((hBelow t.1 (hv t (by simp))).2 _).trans ht))
+    hf₂ (hfr₂.keep (readsOnly_holdsMatrix _ _) hDa (hA.of_below hBelow (hv a (by simp)))) hW₂
+    ((StackHolds.of_below hSt hBelow (hv st (by simp))).of_eqOff hfr₂ (hDs.mono le_rfl
+      (Fp.inBlock_le_inBlock le_rfl (by omega))))
+    hfit hℓ hk ((AccumIf.of_below (pos := μ.pos) hacc hBelow (hv uo (by simp))).of_eqOff hfr₂ hDu)
+    hlog hLlen hpl
+    (by rw [hfr₂.length_eq]; change Lc < s₁.length; omega) hv).mono le_sup_left fun _ _ h => h
 
 end Theorems
-
 end NLAlib.ShiftedQR

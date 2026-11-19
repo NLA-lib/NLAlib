@@ -5,7 +5,11 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Eigensolvers.ShiftedQR.RoundedCertificate
+public import NLAlib.Eigensolvers.ShiftedQR.Cost
+public import NLAlib.Ops.Probability
+public import NLAlib.Ops.Profiles.Confined
+public import NLAlib.Ops.SelectedWork
+public import NLAlib.Eigensolvers.ShiftedQR.RoundedParameterChoices
 public import NLAlib.Eigensolvers.SmallEig.Theorems
 
 /-!
@@ -205,7 +209,7 @@ theorem smallEigModel_laws {r b : ℕ} {P : Problem ℝ r b} {Mch : Machine ℝ}
 `sG` at the order `d 0 + 1`, `d 1` parameter words and the cap `d 2`, on the three supplied
 buffers (matrix, parameter words, output). -/
 def smallEigProgram (sG : ℕ) : Program SmallEigOp Tst 3 3 :=
-  ⟨.frame [.var 0 + .const 1, .var 1, .var 2] [⟨0, .var 3⟩, ⟨1, .var 4⟩, ⟨2, .var 5⟩]
+  ⟨.frame [.var 0 + .const 1, .var 1, .var 2] [⟨0, .var 3⟩, ⟨1, .var 4⟩, ⟨0, .var 3⟩, ⟨2, .var 5⟩]
     (smallEigProg (O := SmallEigOp) (Q := Tst) sG).body⟩
 
 /-- **The semantic input** at the sizes `d`, for the order bound $n_{\max}$ and the tail records
@@ -225,15 +229,17 @@ structure SmallEigData (nmax : ℕ) (c₁ c₂ : PolyLogTail) (d : Fin 3 → ℕ
   /-- The cap. -/
   cap_eq : d 2 = smallEigCap nmax S δ φ c₁ c₂
 
-/-- The three raw buffers of an input: the matrix words, the parameter words and uninitialized
-room for the $2(n + 1)$ output words. -/
+/-- The three raw buffers of an input: the matrix words (overwritten by the triangular block), the
+parameter words and uninitialized room for the $2(n + 1)^2$ words of the accumulator. -/
 noncomputable def SmallEigData.buffers {nmax : ℕ} {c₁ c₂ : PolyLogTail} {d : Fin 3 → ℕ}
     (x : SmallEigData nmax c₁ c₂ d) : Fin 3 → Buf ℝ :=
   ![(matrixWords x.matrix).map some, (smallEigParams nmax x.S x.δ x.φ c₁ c₂).map some,
-    List.replicate (2 * (d 0 + 1)) none]
+    List.replicate (2 * ((d 0 + 1) * (d 0 + 1))) none]
 
 /-- **The admitted sizes** on the machine `Mch`: the natural literals up to the order $n + 1$
-are exact, the order is at most $n_{\max}$, and the sizes are those of some parameter reals. -/
+are exact, the order is at most $n_{\max}$, and the sizes are those of some parameter reals. No
+rounding model is assumed: the run terminates on every tape at such a machine
+(`NLAlib.SmallEig.smallEigProgram_wp`, from `NLAlib.SmallEig.smallEigProg_completes`). -/
 def SmallEigSizes (Mch : Machine ℝ) (nmax : ℕ) (c₁ c₂ : PolyLogTail) (d : Fin 3 → ℕ) : Prop :=
   IsExactNatLit id Mch (d 0 + 1) ∧ d 0 + 1 ≤ nmax ∧
     ∃ S δ φ : ℝ, d 1 = (smallEigParams nmax S δ φ c₁ c₂).length ∧
@@ -273,7 +279,8 @@ theorem smallEigProblem_initial_input (d : Fin 3 → ℕ)
     (1 : Fin 3) (xs := smallEigParams nmax x.val.1.S x.val.1.δ x.val.1.φ c₁ c₂)
     (by rw [hb]; rfl)
   refine ⟨by simpa [HoldsMatrix] using hA, by simpa using hP, ?_, ?_,
-    Fp.disj_inBlock_of_ne (by omega), Fp.disj_inBlock_of_ne (by omega)⟩
+    Fp.disj_inBlock_of_ne (by omega),
+    Fp.disj_sup_right.mpr ⟨Fp.disj_inBlock_of_ne (by omega), Fp.disj_inBlock_of_ne (by omega)⟩⟩
   · simp [Mem.Live, Problem.initial]
   · simp [hs, Store.len, SmallEigData.buffers, List.ofFn_succ]
 
@@ -287,23 +294,23 @@ def smallEigSlots : List WorkMono :=
 -- The kernel evaluates the bound of the whole instrumented tree; its recursion is deep.
 set_option maxRecDepth 100000 in
 /-- The monomial bound of the instructions of the instrumented program is
-$373483\,b_0^4 b_2^2$ (`NLAlib.SmallEig.smallEigWork`). -/
+$517058\,b_0^4 b_2^2$ (`NLAlib.SmallEig.smallEigWork`). -/
 theorem stmtWorkMono_smallEigProgram (sG : ℕ) :
-    stmtWorkMono (smallEigProgram sG).body.instrument smallEigSlots = ⟨373483, [4, 0, 2]⟩ := by
-  kernel_rfl
+    stmtWorkMono (smallEigProgram sG).body.instrument smallEigSlots = ⟨517058, [4, 0, 2]⟩ := by
+  rw [stmtWorkMono_instrument]; kernel_rfl
 
 /-- **The work (and span) polynomial** of the small-eigenvalue solver at the sizes
-$(n, n_q, T)$ = `d`: $373483\,(n + 1)^4(T + 1)^2$, the
+$(n, n_q, T)$ = `d`: $517058\,(n + 1)^4(T + 1)^2$, the
 monomial bound of the instructions of the instrumented program, each of unit weight; it is larger
-than the constant $3473$ of `NLAlib.SmallEig.smallEig_work_le` because the instrumentation counts
-every structural instruction too. The parameter words (thresholds, scales and caps, real numbers
+than the constant $80390$ of `NLAlib.SmallEig.smallEig_work_le` because it also counts the frame
+of the program. The parameter words (thresholds, scales and caps, real numbers
 with logarithms and roots) are
 supplied in the input and their computation is not charged, as for the merged
 algorithm. The monomial is an envelope of the paper's count $n^4 + n^3\log^2$, not its shape: the
 cap $T$ = `NLAlib.SmallEig.smallEigCap` is the largest loop count ($m$, $t$, $m_2$), a logarithm of
 $n_{\max}\Sigma/(\delta\varphi)$ up to constants (bounded in the proof of
 `NLAlib.SmallEig.logb_inv_uSmallEig_le`). -/
-def smallEigWork (d : Fin 3 → ℕ) : ℕ := 373483 * (d 0 + 1) ^ 4 * (d 2 + 1) ^ 2
+def smallEigWork (d : Fin 3 → ℕ) : ℕ := 517058 * (d 0 + 1) ^ 4 * (d 2 + 1) ^ 2
 
 /-- The number of instructions of the static count of the program is at most
 `NLAlib.SmallEig.smallEigWork`. -/
@@ -331,7 +338,8 @@ theorem smallEigProgram_work_le {K : Type} (sG : ℕ) {I : Interp SmallEigOp Tst
 /-! ### The certificate -/
 
 /-- The payload words of the three supplied buffers. -/
-def smallEigInputWords (d : Fin 3 → ℕ) : ℕ := 2 * ((d 0 + 1) * (d 0 + 1)) + d 1 + 2 * (d 0 + 1)
+def smallEigInputWords (d : Fin 3 → ℕ) : ℕ :=
+  2 * ((d 0 + 1) * (d 0 + 1)) + d 1 + 2 * ((d 0 + 1) * (d 0 + 1))
 
 theorem smallEigProblem_initialBytes (d : Fin 3 → ℕ)
     (x : (smallEigProblem Mch nmax c₁ c₂ admitted).Input d) :
@@ -342,11 +350,13 @@ theorem smallEigProblem_initialBytes (d : Fin 3 → ℕ)
   simp [smallEigProblem, SmallEigData.buffers, List.ofFn_succ, smallEigInputWords,
     ← x.val.1.words_eq, Nat.add_assoc]
 
-/-- The every-tape output claim: the run writes only the $2(n + 1)$ output words, and they are
-stored. -/
+/-- The every-tape output claim: the run writes only the block and the accumulator, and both
+are stored (a Schur pair, `NLAlib.Schur.HoldsSchurPair`, with no accuracy claim). -/
 def SmallEigFrame (d : Fin 3 → ℕ) (μ μ' : Mem ℝ) : Prop :=
-  μ.store.EqOff (Store.inBlock 2 0 (2 * (d 0 + 1))) μ'.store ∧
-    ∃ ys, μ'.store.readBlock 2 0 (2 * (d 0 + 1)) = some ys
+  μ.store.EqOff (Store.inBlock 0 0 (2 * ((d 0 + 1) * (d 0 + 1))) ⊔
+            Store.inBlock 2 0 (2 * ((d 0 + 1) * (d 0 + 1)))) μ'.store ∧
+    ∃ U T : Matrix (Fin (d 0 + 1)) (Fin (d 0 + 1)) ℂ,
+      Schur.HoldsSchurPair (0, 0) (2, 0) U T μ'.store
 
 /-- **The specification of the small-eigenvalue solver**: the budget, scratch and resident
 memory of the static count, the work and the span `NLAlib.SmallEig.smallEigWork`, and on every
@@ -370,12 +380,20 @@ theorem smallEigProgram_wp {sU sG : ℕ} {d : Fin 3 → ℕ} (hd : SmallEigSizes
     Wp .total I τ (smallEigProgram sG).body (Program.environment (b := 3) d)
       (SmallEigFrame d ((smallEigProblem Mch nmax c₁ c₂ admitted).initial d x))
       ((smallEigProblem Mch nmax c₁ c₂ admitted).initial d x) := by
+  obtain ⟨hNat, -, -⟩ := hd
   obtain ⟨hS, hL, hC, hQ, hSmp, hDisk⟩ := smallEigModel_laws hI
-  obtain ⟨hA, hq, hl, hroom, hwo, hqo⟩ := smallEigProblem_initial_input (admitted := admitted) d x
-  have hT := smallEigProg_terminates (O := SmallEigOp) (Q := Tst) (sG := sG) hS hL hQ hC hSmp
-    hDisk (smallEigCaps_smallEigParams _ _ _ _ _ _) (length_smallEigParams _ _ _ _ _ _).ge hd.1
-    τ _ _ le_rfl hA hq hl hroom hwo hqo
-  refine wp_frame ?_ ?_ hl (hT.wp fun m h hs => ⟨h, hs⟩)
+  have hin := smallEigProblem_initial_input (admitted := admitted) d x
+  obtain ⟨hW, hq, hl3, hroom, hwo, hqwo⟩ := hin
+  have hl4 : ((smallEigProblem Mch nmax c₁ c₂ admitted).initial d x).Live
+      [(0, 0), (1, 0), (0, 0), (2, 0)] := fun y hy => hl3 y (by
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hy
+    rcases hy with rfl | rfl | rfl | rfl <;> simp)
+  have hT : CompletingLeafRoutine (d 0 + 1) _ _ _ I := smallEigProg_completes (O := SmallEigOp)
+    (Q := Tst) (sG := sG) hS hL hNat hC hQ hSmp hDisk
+    (smallEigCaps_smallEigParams nmax x.val.1.S x.val.1.δ x.val.1.φ c₁ c₂)
+    (by simp [length_smallEigParams])
+  refine wp_frame ?_ ?_ hl4 ((hT x.val.1.matrix le_rfl hW hq hl3 hroom hwo hqwo).mono le_rfl
+    fun μ' _ ⟨Tb, Ub, hTb, hUb⟩ => ⟨Ub, Tb, hTb, hUb⟩)
   · simp [Program.environment, IExp.evalList, IExp.eval, x.val.1.words_eq, x.val.1.cap_eq,
       List.ofFn_succ]
   · simp [Program.environment, Operand.evalList, Operand.eval, IExp.eval, List.ofFn_succ]
@@ -440,8 +458,9 @@ theorem smallEig_algorithm_measureReal_not_accepts_le {u : ℝ} (hM : StdModel u
         (smallEigProblem Mch nmax c₁ c₂ admitted).formats (ξ ω) d
         ((smallEigProblem Mch nmax c₁ c₂ admitted).initial d x))
       fun _ m => ((smallEigProblem Mch nmax c₁ c₂ admitted).initial d x).store.EqOff
-          (Store.inBlock 2 0 (2 * (d 0 + 1))) m.store ∧
-        SmallEigSpectrum (2, 0) x.val.1.matrix x.val.1.δ m} ≤ x.val.1.φ := by
+          (Store.inBlock 0 0 (2 * ((d 0 + 1) * (d 0 + 1))) ⊔
+            Store.inBlock 2 0 (2 * ((d 0 + 1) * (d 0 + 1)))) m.store ∧
+        SmallEigSpectrum (0, 0) (2, 0) x.val.1.matrix x.val.1.δ m} ≤ x.val.1.φ := by
   have := hξ.isProbabilityMeasure
   obtain ⟨hS, hL, hC, hQ, hSmp, hDisk⟩ := smallEigModel_laws hI
   have hin := smallEigProblem_initial_input (admitted := admitted) d x
@@ -452,7 +471,12 @@ theorem smallEig_algorithm_measureReal_not_accepts_le {u : ℝ} (hM : StdModel u
     I hI P ξ _ ?_
   refine (measureReal_mono ?_).trans hT
   intro ω hω hW
-  refine hω (wp_frame ?_ ?_ hin.2.2.1 hW)
+  have hl3 := hin.2.2.1
+  have hl4 : ((smallEigProblem Mch nmax c₁ c₂ admitted).initial d x).Live
+      [(0, 0), (1, 0), (0, 0), (2, 0)] := fun y hy => hl3 y (by
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hy
+    rcases hy with rfl | rfl | rfl | rfl <;> simp)
+  refine hω (wp_frame ?_ ?_ hl4 hW)
   · simp [Program.environment, IExp.evalList, IExp.eval, smallEigDims, x.val.1.words_eq,
       x.val.1.cap_eq, List.ofFn_succ]
   · simp [Program.environment, Operand.evalList, Operand.eval, IExp.eval, List.ofFn_succ]
@@ -493,8 +517,9 @@ theorem smallEig_algorithm_measureReal_not_accepts_le_unconditional
           admitted).initial d x))
       fun _ m => ((smallEigProblem Mch nmax ginibreGapTail
         ginibreConditionTail admitted).initial d x).store.EqOff
-          (Store.inBlock 2 0 (2 * (d 0 + 1))) m.store ∧
-        SmallEigSpectrum (2, 0) x.val.1.matrix x.val.1.δ m} ≤ x.val.1.φ := by
+          (Store.inBlock 0 0 (2 * ((d 0 + 1) * (d 0 + 1))) ⊔
+            Store.inBlock 2 0 (2 * ((d 0 + 1) * (d 0 + 1)))) m.store ∧
+        SmallEigSpectrum (0, 0) (2, 0) x.val.1.matrix x.val.1.δ m} ≤ x.val.1.φ := by
   apply smallEig_algorithm_measureReal_not_accepts_le
     (hA := boundsGinibreGap_ginibreGapTail) (hB := boundsGinibreCondition_ginibreConditionTail)
     (hb₁ := ginibreGapTail_b_pos) (hb₂ := ginibreConditionTail_b_pos) <;> assumption

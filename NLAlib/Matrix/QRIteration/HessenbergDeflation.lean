@@ -342,8 +342,8 @@ theorem DeflationInv.conj {H A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ε : �
     rw [hother r' (List.mem_append_right _ hr') hne]
     exact hdone r' hr'
 
-/-- Splitting a range of a partition into two consecutive ranges gives a partition. -/
-private theorem isRangePartition_split {N lo d i : ℕ} {rest : List (ℕ × ℕ)}
+/-- Splitting the first range of a partition into two consecutive ranges gives a partition. -/
+theorem IsRangePartition.split_cons {N lo d i : ℕ} {rest : List (ℕ × ℕ)}
     (h : IsRangePartition N ((lo, d) :: rest)) (hi : i + 1 < d) :
     IsRangePartition N ((lo, i + 1) :: (lo + i + 1, d - i - 1) :: rest) := by
   obtain ⟨hnd, hval, huniq⟩ := h
@@ -423,7 +423,7 @@ private theorem blockTriangular_sub_single_split {lo d i : ℕ} {rest : List (�
     (hp : (p : ℕ) = lo + i + 1) (hq : (q : ℕ) = lo + i) :
     (M - Matrix.single p q (M p q)).BlockTriangular
       (rangeLabel ((lo, i + 1) :: (lo + i + 1, d - i - 1) :: rest)) := by
-  have hpart' := isRangePartition_split hpart hi
+  have hpart' := hpart.split_cons hi
   have hlo := (hpart.2.1 (lo, d) List.mem_cons_self).2
   simp only at hlo
   have hpar : ∀ r ∈ rest, ∀ k : Fin (n + 1), r.1 ≤ k → (k : ℕ) < r.1 + r.2 →
@@ -491,7 +491,7 @@ theorem DeflationInv.split {H A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ε τ
   simp only at hlo
   have hpart' : IsRangePartition (n + 1)
       ((lo, i + 1) :: (lo + i + 1, d - i - 1) :: rest ++ done) :=
-    isRangePartition_split (rest := rest ++ done) hpart hi
+    IsRangePartition.split_cons (rest := rest ++ done) hpart hi
   set p : Fin (n + 1) := ⟨lo + i + 1, by omega⟩
   set q : Fin (n + 1) := ⟨lo + i, by omega⟩
   set S := Matrix.single p q (M p q) with hS

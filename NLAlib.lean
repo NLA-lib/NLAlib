@@ -18,6 +18,10 @@ public import NLAlib.Eigensolvers.Schur.NormEstimate
 public import NLAlib.Eigensolvers.Schur.Pipeline
 public import NLAlib.Eigensolvers.Schur.Regularizer
 public import NLAlib.Eigensolvers.Schur.Residual
+public import NLAlib.Eigensolvers.Schur.ResidualCheck
+public import NLAlib.Eigensolvers.Schur.Verified
+public import NLAlib.Eigensolvers.Schur.VerifiedCertificate
+public import NLAlib.Eigensolvers.Schur.VerifiedDense
 public import NLAlib.Eigensolvers.ShiftedQR.Acceptance
 public import NLAlib.Eigensolvers.ShiftedQR.Alg
 public import NLAlib.Eigensolvers.ShiftedQR.Backward

@@ -506,6 +506,65 @@ theorem verifiedSchurWith_measureReal_not_flag_le {M : Machine ℝ} {I : Interp 
     · exact Or.inl (Or.inl (Or.inl h))
     · exact Or.inl (Or.inr h)
 
+/-! ### Work -/
+
+omit [Has IndexOp O] [Has CmpTst Q] in
+/-- The instructions of the copy of a square matrix: the instrumented static count of
+`NLAlib.Ops.PairMatrix.copy` at the order $n + 1$ and zero offsets is at most $32(n + 1)^2$. -/
+theorem size_stmtCost_copy_le (n : ℕ) :
+    Count.size (stmtCost (PairMatrix.copy (Op := O) (Tst := Q)).body.instrument
+      [n + 1, n + 1, 0, 0]) ≤ 32 * (n + 1) ^ 2 := by
+  have hw : stmtWorkMono (PairMatrix.copy (Op := O) (Tst := Q)).body.instrument
+      [⟨1, [1]⟩, ⟨1, [1]⟩, WorkMono.const 0, WorkMono.const 0] = ⟨32, [2]⟩ := by
+    rw [stmtWorkMono_instrument]; kernel_rfl
+  have hσ : SlotsLe [n + 1] [n + 1, n + 1, 0, 0]
+      [⟨1, [1]⟩, ⟨1, [1]⟩, WorkMono.const 0, WorkMono.const 0] := by
+    simp [SlotsLe, WorkMono.eval, WorkMono.const]
+  have h := size_stmtCost_le_stmtWorkMono (by simp)
+    (PairMatrix.copy (Op := O) (Tst := Q)).body.instrument hσ
+  rw [hw] at h
+  simpa [WorkMono.eval] using h
+
+/-- **The instructions of the residual check**: the instrumented static count of
+`NLAlib.Schur.schurResidualCheck` at the order $n + 1$, the words at the offset $q$ and the other
+offsets zero is at most $1619(n + 1)^3$ (the monomial bound, by `kernel_rfl`); the two products
+dominate. -/
+theorem size_stmtCost_schurResidualCheck_le (n q : ℕ) :
+    Count.size (stmtCost (schurResidualCheck (O := O) (Q := Q)).body.instrument
+      [n + 1, 0, 0, 0, q, 0, 0]) ≤ 1619 * (n + 1) ^ 3 := by
+  have hw : stmtWorkMono (schurResidualCheck (O := O) (Q := Q)).body.instrument
+      [⟨1, [1]⟩, WorkMono.const 0, WorkMono.const 0, WorkMono.const 0, ⟨1, [0, 1]⟩,
+        WorkMono.const 0, WorkMono.const 0] = ⟨1619, [3]⟩ := by
+    rw [stmtWorkMono_instrument]; kernel_rfl
+  have hσ : SlotsLe [n + 1, q + 1] [n + 1, 0, 0, 0, q, 0, 0]
+      [⟨1, [1]⟩, WorkMono.const 0, WorkMono.const 0, WorkMono.const 0, ⟨1, [0, 1]⟩,
+        WorkMono.const 0, WorkMono.const 0] := by
+    simp [SlotsLe, WorkMono.eval, WorkMono.const]
+  have h := size_stmtCost_le_stmtWorkMono (by simp)
+    (schurResidualCheck (O := O) (Q := Q)).body.instrument hσ
+  rw [hw] at h
+  simpa [WorkMono.eval] using h
+
+/-- **The instructions of the verified solver** (on every tape): the instrumented static count of
+`NLAlib.Schur.verifiedSchurWith Solve` at the order $n + 1$, the dimensions
+$(n_r, n_q, k, F, T)$ and zero offsets is at most the solver's count at the same arguments, plus
+$1619(n + 1)^3$ for the check, $32(n + 1)^2$ for the copy and $64$ for the frames: the
+verification costs $O(n^3)$ on top of the solver. -/
+theorem size_stmtCost_verifiedSchurWith_le (Solve : Impl O Q) (n nr nq k F T : ℕ) :
+    Count.size (stmtCost (verifiedSchurWith Solve).body.instrument
+        [n + 1, nr, nq, k, F, T, 0, 0, 0, 0, 0]) ≤
+      Count.size (stmtCost Solve.body.instrument [n + 1, nr, nq, k, F, T, 0, 0, 0, 0, 0]) +
+        1619 * (n + 1) ^ 3 + 32 * (n + 1) ^ 2 + 64 := by
+  have h1 := size_stmtCost_copy_le (O := O) (Q := Q) n
+  have h2 := size_stmtCost_schurResidualCheck_le (O := O) (Q := Q) n (nr + nq)
+  simp only [verifiedSchurWith, Stmt.alloc, Stmt.instrument, tally,
+    indexBookkeeping, operandBookkeeping, IExp.bookkeeping, List.flatMap_cons, List.flatMap_nil,
+    List.cons_append, List.nil_append, List.append_nil, stmtCost, useCost,
+    IExp.evalList, IExp.eval, List.map_cons, List.map_nil, List.getElem?_cons_succ,
+    List.getElem?_cons_zero, Option.map_some, Option.getD_some, zero_add, add_zero, map_add,
+    Count.one, size_single]
+  linarith
+
 end Theorems
 
 end NLAlib.Schur

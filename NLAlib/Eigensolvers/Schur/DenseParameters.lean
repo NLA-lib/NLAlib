@@ -552,6 +552,108 @@ theorem uDenseSchurAtWith_self (n : ℕ) (δ φ : ℝ) (np RL : ℕ) :
 /-- The threshold at equal tolerances is the one-tolerance threshold. -/
 theorem uDenseSchurAt_self (n : ℕ) (δ φ : ℝ) : uDenseSchurAt n δ δ φ = uDenseSchur n δ φ := rfl
 
+/-- **The terms of the precision threshold at two tolerances**: below
+`NLAlib.Schur.uDenseSchurAtWith`, $\boldsymbol{u}$ is below each of its eight terms. -/
+theorem le_of_le_uDenseSchurAtWith {n : ℕ} {δR δC φ u : ℝ} {np RL : ℕ}
+    (hu : u ≤ uDenseSchurAtWith n δR δC φ np RL) :
+    u ≤ uSmallEigReduce (n + 1) 4 (denseSchurDelta n δR) (φ / 2) ginibreGapTail
+        ginibreConditionTail ∧
+      u ≤ denseSchurDelta n δC / (3200 * ((n : ℝ) + 1) ^ 2) ∧
+      u ≤ smallEigGap (n + 1) 4 (denseSchurDelta n δR) (φ / 2) ginibreGapTail *
+        smallEigCond (n + 1) 4 (denseSchurDelta n δR) (φ / 2) ginibreConditionTail /
+          (28800 * ((n : ℝ) + 1) ^ 3) ∧
+      u ≤ uShQR n (denseSchurDegree n δR φ) (2 * denseSchurB n δR φ) (denseSchurΓ n δR φ / 2) 8
+        (denseSchurDelta n δC) (φ / 2) ∧
+      u ≤ 1 / 100 ∧
+      u ≤ uShQRSchurReplay n (denseSchurDegree n δR φ) np (denseSchurCapAt n δR δC φ) RL
+        (2 * denseSchurB n δR φ) (denseSchurΓ n δR φ / 2) 8 (denseSchurDelta n δC) ∧
+      u ≤ δC / (4096 * ((n : ℝ) + 1) * denseSchurRotationsAtWith n δR δC φ np RL) ∧
+      u ≤ δC / (64 * ((n : ℝ) + 1)) := by
+  unfold uDenseSchurAtWith at hu
+  simp only [le_min_iff] at hu
+  exact hu
+
+/-- **The precision threshold at two tolerances with a leaf is positive** for
+$0 < \delta_R, \delta_C \le 1$ and $0 < \varphi \le 1$. -/
+theorem uDenseSchurAtWith_pos {n : ℕ} {δR δC φ : ℝ} (np RL : ℕ) (hδR : 0 < δR) (hδR1 : δR ≤ 1)
+    (hδC : 0 < δC) (hδC1 : δC ≤ 1) (hφ : 0 < φ) (hφ1 : φ ≤ 1) :
+    0 < uDenseSchurAtWith n δR δC φ np RL := by
+  obtain ⟨-, -, hg, hc, -, hB, hΓ⟩ := denseSchur_params_basic (n := n) hδR hδR1 hφ hφ1
+  obtain ⟨hd0, -⟩ := denseSchur_params_basic (n := n) hδC hδC1 hφ hφ1
+  obtain ⟨hdR, -⟩ := denseSchur_params_basic (n := n) hδR hδR1 hφ hφ1
+  have hk := denseSchurDegree_pos n δR φ
+  have hR : 0 < (denseSchurRotationsAtWith n δR δC φ np RL : ℝ) := by
+    unfold denseSchurRotationsAtWith; positivity
+  have h1 : 0 < uSmallEigReduce (n + 1) 4 (denseSchurDelta n δR) (φ / 2) ginibreGapTail
+      ginibreConditionTail := by unfold uSmallEigReduce; positivity
+  have h4 := uShQR_pos (n := n) hk (by linarith : (1 : ℝ) ≤ 2 * denseSchurB n δR φ)
+    (half_pos hΓ) hd0 (by norm_num : (0 : ℝ) < 8) (half_pos hφ)
+  have h6 : 0 < uShQRSchurReplay n (denseSchurDegree n δR φ) np (denseSchurCapAt n δR δC φ) RL
+      (2 * denseSchurB n δR φ) (denseSchurΓ n δR φ / 2) 8 (denseSchurDelta n δC) := by
+    have := shqrBudget_pos (n := n) (by linarith : (1 : ℝ) ≤ 2 * denseSchurB n δR φ)
+      (half_pos hΓ) hd0
+    unfold uShQRSchurReplay; positivity
+  unfold uDenseSchurAtWith
+  simp only [lt_min_iff]
+  exact ⟨h1, by positivity, by positivity, h4, by norm_num, h6, by positivity, by positivity⟩
+
+/-- **The orthogonality bound at two tolerances is at most $\delta_C$**: below the threshold of
+a leaf, $58R\boldsymbol{u} \le \delta_C$ and $4096(n + 1)R\boldsymbol{u} \le \delta_C$, $R$ =
+`NLAlib.Schur.denseSchurRotationsAtWith`. -/
+theorem mul_denseSchurRotationsAtWith_le {n : ℕ} {δR δC φ u : ℝ} {np RL : ℕ} (hδC : 0 < δC)
+    (hu : u ≤ uDenseSchurAtWith n δR δC φ np RL) :
+    58 * (denseSchurRotationsAtWith n δR δC φ np RL : ℝ) * u ≤ δC ∧
+      4096 * ((n : ℝ) + 1) * (denseSchurRotationsAtWith n δR δC φ np RL : ℝ) * u ≤ δC := by
+  have h7 := (le_of_le_uDenseSchurAtWith hu).2.2.2.2.2.2.1
+  have hR : 0 < (denseSchurRotationsAtWith n δR δC φ np RL : ℝ) := by
+    unfold denseSchurRotationsAtWith; positivity
+  have hn : (1 : ℝ) ≤ (n : ℝ) + 1 := by have := (Nat.cast_nonneg n : (0 : ℝ) ≤ n); linarith
+  have hK : 0 < 4096 * ((n : ℝ) + 1) * (denseSchurRotationsAtWith n δR δC φ np RL : ℝ) := by
+    positivity
+  have hRu : 4096 * ((n : ℝ) + 1) * (denseSchurRotationsAtWith n δR δC φ np RL : ℝ) * u ≤ δC := by
+    have := mul_le_mul_of_nonneg_left h7 hK.le
+    rwa [mul_div_cancel₀ _ hK.ne'] at this
+  refine ⟨?_, hRu⟩
+  by_cases hu0 : u ≤ 0
+  · nlinarith
+  · push Not at hu0
+    have := mul_le_mul_of_nonneg_right hn (by positivity :
+      (0 : ℝ) ≤ 4096 * ((denseSchurRotationsAtWith n δR δC φ np RL : ℝ) * u))
+    nlinarith
+
+/-- The leaf cap at two tolerances is the cap of the forward form at the norm bound $32$. -/
+theorem denseSchurLeafCapAt_eq (n : ℕ) (δR δC φ : ℝ) : denseSchurLeafCapAt n δR δC φ =
+    smallEigForwardCap (denseSchurDegree n δR φ) 32
+      (shqrSmallEigAccuracy n (2 * denseSchurB n δR φ) (denseSchurΓ n δR φ / 2) 8
+        (denseSchurDelta n δC)) (denseSchurLeafFailureAt n δR δC φ) ginibreGapTail
+      ginibreConditionTail := by
+  unfold denseSchurLeafCapAt shqrSmallEigCap denseSchurLeafFailureAt
+  rw [show (4 : ℝ) * 8 = 32 by norm_num]
+
+/-- The core's words at two tolerances are those of the Schur core with the small-eigenvalue
+program. -/
+theorem shqrSchurParamsAt_eq (n : ℕ) (δR δC φ : ℝ) :
+    shqrSchurParams n (denseSchurDegree n δR φ) (2 * denseSchurB n δR φ) (denseSchurΓ n δR φ / 2)
+      8 (denseSchurDelta n δC) (φ / 2) ginibreGapTail ginibreConditionTail =
+    denseSchurThresholdAt n δR δC φ ::
+      (denseSchurShQRParamsAt n δR δC φ ++ denseSchurLeafParamsAt n δR δC φ) := by
+  unfold shqrSchurParams shqrSmallEigParams denseSchurThresholdAt denseSchurShQRParamsAt
+    denseSchurLeafParamsAt denseSchurLeafFailureAt
+  rw [show (4 : ℝ) * 8 = 32 by norm_num]
+
+/-- The core's rotation count at two tolerances with the small-eigenvalue program. -/
+theorem shqrSmallEigRotationsAt_eq (n : ℕ) (δR δC φ : ℝ) :
+    shqrSmallEigRotations n (denseSchurDegree n δR φ) (2 * denseSchurB n δR φ)
+      (denseSchurΓ n δR φ / 2) 8 (denseSchurDelta n δC) (φ / 2) ginibreGapTail
+      ginibreConditionTail =
+    shqrSchurRotations n (denseSchurDegree n δR φ)
+      (denseSchurShQRParamsAt n δR δC φ ++ denseSchurLeafParamsAt n δR δC φ).length
+      (denseSchurCapAt n δR δC φ)
+      (smallEigLeafRotations (denseSchurDegree n δR φ) (denseSchurLeafCapAt n δR δC φ)) := by
+  unfold shqrSmallEigRotations shqrSmallEigParams denseSchurShQRParamsAt denseSchurLeafParamsAt
+    denseSchurCapAt denseSchurLeafCapAt denseSchurLeafFailureAt
+  rw [show (4 : ℝ) * 8 = 32 by norm_num]
+
 /-! ### Closed forms of the class -/
 
 /-- **The condition bound in closed form**: for $0 < \delta \le 1$ and $0 < \varphi \le 1$,

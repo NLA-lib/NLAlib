@@ -12,10 +12,12 @@ public import Mathlib.Tactic.Linarith
 public import Mathlib.Tactic.Positivity
 public import Mathlib.Tactic.Ring
 public import NLAlib.ForMathlib.Analysis.Convex.SupportingLine
+public import NLAlib.ForMathlib.RingTheory.Polynomial.Chebyshev
 import Mathlib.Analysis.Calculus.Deriv.Polynomial
 import Mathlib.Analysis.SpecialFunctions.Log.Deriv
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Chebyshev.RootsExtrema
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Series
+import Mathlib.Tactic.ComputeDegree
 import NLAlib.ForMathlib.Analysis.SpecialFunctions.Log.Deriv
 
 /-!
@@ -38,6 +40,8 @@ These are upstream candidates in `Polynomial.Chebyshev`.
   is bounded by one on $[0, s]$.
 * `Polynomial.Chebyshev.exp_mul_sqrt_div_two_le_eval_T_real`: the gap form of Chebyshev growth,
   $\tfrac12 e^{2q\sqrt{r}} \le T_q((1 + r)/(1 - r))$.
+* `Polynomial.Chebyshev.exp_mul_sqrt_div_two_le_abs_eval_T_comp`: the shifted filter
+  $T_d(2x/\tau^2 - 1)$ is at least $\tfrac12 e^{4d\sqrt{(s - \tau)/(s + \tau)}}$ on $[s^2, \infty)$.
 * `Polynomial.Chebyshev.exists_degree_lt_div_sq_le_exp_of_le`: a filter of degree at most $d$ that
   is large on $[s^2, \infty)$ and small on $[0, \tau^2]$, with ratio
   $4e^{-8d\sqrt{(s - \tau)/(s + \tau)}}$.
@@ -165,6 +169,46 @@ theorem exp_mul_sqrt_div_two_le_eval_T_real (q : ℕ) {r : ℝ} (h₀ : 0 ≤ r)
   gcongr
   exact exp_two_mul_le_one_add_div_one_sub (Real.sqrt_nonneg r) hs₁
 
+/-- **The shifted Chebyshev filter above a level**: for $0 < \tau \le s$, a degree $d$ and
+$x \ge s^2$,
+$$\tfrac12 e^{4d\sqrt{(s - \tau)/(s + \tau)}} \le \lvert T_d(2x/\tau^2 - 1) \rvert\,,$$
+since $T_d(2y^2 - 1) = T_{2d}(y)$ at $y = \sqrt{x}/\tau \ge s/\tau$. The constant is
+`Polynomial.C`, written out because `Polynomial.Chebyshev.C` shadows it here. Upstream
+candidate. -/
+theorem exp_mul_sqrt_div_two_le_abs_eval_T_comp (d : ℕ) {s τ x : ℝ} (hτ : 0 < τ) (hτs : τ ≤ s)
+    (hx : s ^ 2 ≤ x) :
+    exp (4 * d * √((s - τ) / (s + τ))) / 2 ≤
+      |((T ℝ d).comp (Polynomial.C (2 / τ ^ 2) * X - 1)).eval x| := by
+  set γ := (s - τ) / (s + τ) with hγ
+  have hγ0 : 0 ≤ γ := div_nonneg (by linarith) (by linarith)
+  have hγ1 : γ < 1 := by rw [hγ, div_lt_one (by linarith)]; linarith
+  have hratio : (1 + γ) / (1 - γ) = s / τ := by
+    rw [hγ, one_add_div (by linarith), one_sub_div (by linarith), div_div_div_cancel_right₀
+      (by linarith)]
+    rw [div_eq_div_iff (by linarith) hτ.ne']
+    ring
+  have hx0 : 0 ≤ x := (sq_nonneg s).trans hx
+  have hy : s ≤ √x := Real.le_sqrt_of_sq_le hx
+  have h1 : 1 ≤ s / τ := by rw [le_div_iff₀ hτ]; linarith
+  have hsy : s / τ ≤ √x / τ := div_le_div_of_nonneg_right hy hτ.le
+  have hmono := monotoneOn_eval_T_real (2 * d) h1 (h1.trans hsy) hsy
+  have hgrowth := exp_mul_sqrt_div_two_le_eval_T_real (2 * d) hγ0 hγ1
+  rw [hratio] at hgrowth
+  have hT : (T ℝ ((2 * d : ℕ) : ℤ)).eval (√x / τ) = (T ℝ (d : ℤ)).eval (2 * (√x / τ) ^ 2 - 1) := by
+    rw [← eval_T_two_mul]
+    push_cast
+    rfl
+  have hxy : 2 / τ ^ 2 * x - 1 = 2 * (√x / τ) ^ 2 - 1 := by
+    rw [div_pow, Real.sq_sqrt hx0]
+    ring
+  have hexp : exp (2 * ((2 * d : ℕ) : ℝ) * √γ) = exp (4 * d * √γ) := by
+    push_cast
+    ring_nf
+  rw [hexp] at hgrowth
+  simp only [eval_comp, eval_sub, eval_mul, eval_C, eval_X, eval_one]
+  rw [hxy, ← hT]
+  exact (hgrowth.trans hmono).trans (le_abs_self _)
+
 /-- **A Chebyshev filter between two levels**: for real $0 \le \tau \le s$ with $s > 0$ and a
 degree $d$, there are a real polynomial $f$ of degree at most $d$ and constants $c > 0$ and $a$
 with $\lvert f(x) \rvert \ge c$ for every $x \ge s^2$, $\lvert f(x) \rvert \le a$ for every
@@ -181,7 +225,33 @@ theorem exists_degree_lt_div_sq_le_exp_of_le {s τ : ℝ} (hτ : 0 ≤ τ) (hτs
     ∃ f : ℝ[X], f.degree < (d + 1 : ℕ) ∧ ∃ c a : ℝ, 0 < c ∧
       (∀ x, s ^ 2 ≤ x → c ≤ |f.eval x|) ∧
       (∀ x ∈ Set.Icc 0 (τ ^ 2), |f.eval x| ≤ a) ∧
-      (a / c) ^ 2 ≤ 4 * Real.exp (-8 * (d : ℝ) * Real.sqrt ((s - τ) / (s + τ))) := sorry
+      (a / c) ^ 2 ≤ 4 * Real.exp (-8 * (d : ℝ) * Real.sqrt ((s - τ) / (s + τ))) := by
+  rcases hτ.eq_or_lt with rfl | hτ'
+  · -- $\tau = 0$: the power $x^d$ vanishes at $0$ for $d \ge 1$.
+    refine ⟨X ^ d, by rw [degree_X_pow]; exact_mod_cast Nat.lt_succ_self d, (s ^ 2) ^ d,
+      (0 : ℝ) ^ d, by positivity, fun x hx => ?_, fun x hx => ?_, ?_⟩
+    · rw [eval_pow, eval_X, abs_of_nonneg (pow_nonneg ((sq_nonneg s).trans hx) d)]
+      exact pow_le_pow_left₀ (sq_nonneg s) hx d
+    · have hx0 : x = 0 := le_antisymm (by simpa using hx.2) hx.1
+      simp [hx0]
+    · rcases Nat.eq_zero_or_pos d with rfl | hd
+      · norm_num
+      · rw [zero_pow hd.ne', zero_div, zero_pow two_ne_zero]
+        positivity
+  set γ := (s - τ) / (s + τ)
+  refine ⟨(T ℝ (d : ℤ)).comp (Polynomial.C (2 / τ ^ 2) * X - 1), ?_, exp (4 * d * √γ) / 2, 1,
+    by positivity, fun x hx => exp_mul_sqrt_div_two_le_abs_eval_T_comp d hτ' hτs hx,
+    fun x hx => abs_eval_T_comp_C_mul_X_sub_one_le _ (by positivity) hx, ?_⟩
+  · refine degree_le_natDegree.trans_lt ?_
+    have h := natDegree_T_comp_le (d : ℤ) (p := Polynomial.C (2 / τ ^ 2) * X - 1)
+      (by compute_degree)
+    rw [Int.natAbs_natCast] at h
+    exact_mod_cast h.trans_lt (by omega)
+  · refine le_of_eq ?_
+    rw [div_div_eq_mul_div, one_mul, div_pow, show -8 * (d : ℝ) * √γ =
+      -(4 * (d : ℝ) * √γ) + -(4 * (d : ℝ) * √γ) by ring, exp_add, exp_neg]
+    field_simp
+    ring
 
 /-- **Inverting Chebyshev growth**: for $q > 0$ and $x \ge 1$, if $T_q(x) \le y$ then
 $$x \le \exp\Bigl(\frac{1}{2}\Bigl(\frac{\log(2y)}{q}\Bigr)^2\Bigr)\,.$$

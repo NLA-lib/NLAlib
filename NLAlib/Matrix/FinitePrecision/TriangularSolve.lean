@@ -9,6 +9,7 @@ public import NLAlib.Matrix.FinitePrecision.StoredProducts
 public import NLAlib.Matrix.Perturbation.ComponentwiseBackward
 public import NLAlib.Ops.Catalog.Index
 public import NLAlib.Ops.Catalog.Compare
+public import NLAlib.Eigensolvers.ShiftedQR.Division
 
 /-!
 # Rounded shifted back substitution with a pivot floor
@@ -389,15 +390,17 @@ private theorem row_le_of_pivot {u γ A ε σ smin : ℝ} {d m m' s R q : ℂ}
 $64(N + 1)\boldsymbol{u} \le 1$, $s_{\min} > 0$ and $i < j < N$, the computed entries $\hat x$ of
 column $j$ satisfy, at row $i$ with $r = j - 1 - i$,
 $\lvert(t_{ii} - t_{jj})\hat x_i + t_{ij} + \sum_{i < k < j}t_{ik}\hat x_k\rvert \le
-16(N + 1)\boldsymbol{u}(\lvert t_{ii} - t_{jj}\rvert\lvert\hat x_i\rvert + \lvert t_{ij}\rvert +
+\varepsilon(\lvert t_{ii} - t_{jj}\rvert\lvert\hat x_i\rvert + \lvert t_{ij}\rvert +
 \sum_{i < k < j}\lvert t_{ik}\rvert\lvert\hat x_k\rvert) + \sigma\lvert\hat x_i\rvert$, with
-$\sigma = 3s_{\min}$ if a pivot was floored and $0$ otherwise. -/
-private theorem shiftedTriSolveWord_row_le {u : ℝ} (hM : StdModel u id M)
-    (hu : 64 * ((N : ℝ) + 1) * u ≤ 1) (hsmin : 0 < smin) {i : ℕ} (hij : i < j) (hj : j < N) :
+$\sigma = 3s_{\min}$ if a pivot was floored and $0$ otherwise, for any
+$\varepsilon \ge (14N + 10)\boldsymbol{u}$. -/
+private theorem shiftedTriSolveWord_row_le {u ε : ℝ} (hM : StdModel u id M)
+    (hu : 64 * ((N : ℝ) + 1) * u ≤ 1) (hε : (14 * (N : ℝ) + 10) * u ≤ ε) (hsmin : 0 < smin)
+    {i : ℕ} (hij : i < j) (hj : j < N) :
     ‖(entryAt T i i - entryAt T j j) * (shiftedTriSolveWord M T smin j j).1 i +
         (entryAt T i j + ∑ l ∈ Finset.range (j - 1 - i),
           entryAt T i (i + 1 + l) * (shiftedTriSolveWord M T smin j j).1 (i + 1 + l))‖ ≤
-      16 * ((N : ℝ) + 1) * u *
+      ε *
           (‖entryAt T i i - entryAt T j j‖ * ‖(shiftedTriSolveWord M T smin j j).1 i‖ +
             (‖entryAt T i j‖ + ∑ l ∈ Finset.range (j - 1 - i),
               ‖entryAt T i (i + 1 + l)‖ * ‖(shiftedTriSolveWord M T smin j j).1 (i + 1 + l)‖)) +
@@ -466,8 +469,8 @@ private theorem shiftedTriSolveWord_row_le {u : ℝ} (hM : StdModel u id M)
   have hrN : (r : ℝ) ≤ N := by exact_mod_cast (show r ≤ N by omega)
   have hγ : γ ≤ 14 * N * u := (one_add_seven_pow_sub_one_le hu0 (by nlinarith)).trans
     (by nlinarith)
-  have hcoef : 8 * u * (1 + γ) + γ ≤ 16 * ((N : ℝ) + 1) * u := by nlinarith
-  have hcoefu : u ≤ 16 * ((N : ℝ) + 1) * u := by nlinarith
+  have hcoef : 8 * u * (1 + γ) + γ ≤ ε := by nlinarith
+  have hcoefu : u ≤ ε := by nlinarith
   have hdm : ‖d - m‖ ≤ u * ‖d‖ := by
     rw [norm_sub_rev]; exact hM.norm_sub_pair_sub_le hu0 _ _
   have hσ : 0 ≤ (if (shiftedTriSolveWord M T smin j j).2 then 3 * smin else 0) := by
@@ -537,18 +540,20 @@ end Column
 
 /-! ### The theorems -/
 
-/-- **The computed column is a componentwise backward solution**: under the standard model at
+/-- **The computed column is a componentwise backward solution, with any relative
+perturbation** $\varepsilon \ge (14N + 10)\boldsymbol{u}$: under the standard model at
 $\boldsymbol{u}$ with $64(N + 1)\boldsymbol{u} \le 1$, for an upper triangular $\mathbf{T}$ of
-order $N$, $s_{\min} \ge 0$ and $j < N$, the column $(\hat{\mathbf{x}}; 1; \mathbf{0})$ is a
+order $N$, $s_{\min} > 0$ and $j < N$, the column $(\hat{\mathbf{x}}; 1; \mathbf{0})$ is a
 componentwise backward solution of $(\mathbf{T} - t_{jj}\mathbf{I})\mathbf{y} = \mathbf{0}$ with
-the relative perturbation $16(N + 1)\boldsymbol{u}$ and the diagonal floor $3s_{\min}$ if a pivot
-was floored, $0$ otherwise (the per-row residual of the chain, the shift and the division, then
+$\varepsilon$ and the diagonal floor $3s_{\min}$ if a pivot was floored, $0$ otherwise (the
+per-row residual of the chain, the shift and the division, then
 `NLAlib.isComponentwiseBackwardSolution_of_norm_sub_le`). [Higham2002, Theorem 8.5] -/
-theorem shiftedTriSolve_isComponentwiseBackwardSolution {M : Machine ℝ} {u : ℝ}
+theorem shiftedTriSolve_isComponentwiseBackwardSolution_of_le {M : Machine ℝ} {u ε : ℝ}
     (hM : StdModel u id M) {N : ℕ} (hu : 64 * ((N : ℝ) + 1) * u ≤ 1)
+    (hε : (14 * (N : ℝ) + 10) * u ≤ ε)
     {T : Matrix (Fin N) (Fin N) ℂ} (hT : T.IsUpperTriangular) {smin : ℝ} (hsmin : 0 < smin)
     (j : Fin N) :
-    IsComponentwiseBackwardSolution (16 * ((N : ℝ) + 1) * u)
+    IsComponentwiseBackwardSolution ε
       (if shiftedTriSolveFlag M T smin j then 3 * smin else 0) (T - T j j • 1) 0
       (shiftedTriSolveColumn M T smin j) := by
   have hu0 : 0 ≤ u := by
@@ -557,7 +562,8 @@ theorem shiftedTriSolve_isComponentwiseBackwardSolution {M : Machine ℝ} {u : �
     exact (abs_nonneg _).trans this
   set σ := if shiftedTriSolveFlag M T smin j then 3 * smin else 0 with hσdef
   have hσ : 0 ≤ σ := by simp only [σ]; split_ifs <;> linarith
-  refine isComponentwiseBackwardSolution_of_norm_sub_le (by positivity) hσ fun i => ?_
+  have hN : (0 : ℝ) ≤ N := Nat.cast_nonneg N
+  refine isComponentwiseBackwardSolution_of_norm_sub_le (by nlinarith) hσ fun i => ?_
   rw [sub_zero]
   set w := (shiftedTriSolveWord M T smin j j).1
   set yN : ℕ → ℂ := fun k => if k < j then w k else if k = j then 1 else 0
@@ -614,7 +620,7 @@ theorem shiftedTriSolve_isComponentwiseBackwardSolution {M : Machine ℝ} {u : �
       Finset.sum_congr rfl fun l hl => by rw [(hmid l hl).1, (hmid l hl).2]
     rw [sum_range_split _ hij j.isLt, sum_range_split _ hij j.isLt, h1, h2, h3, h4, h5, h6,
       hci, hyi', hcj, hyj]
-    have hrow := shiftedTriSolveWord_row_le (T := T) hM hu hsmin hij j.isLt
+    have hrow := shiftedTriSolveWord_row_le (T := T) hM hu hε hsmin hij j.isLt
     have e1 : (0 : ℂ) + ((entryAt T i i - entryAt T j j) * w i +
         (∑ l ∈ Finset.range (j - 1 - i), entryAt T i (i + 1 + l) * w (i + 1 + l) +
           (entryAt T i j * 1 + 0))) = (entryAt T i i - entryAt T j j) * w i +
@@ -642,6 +648,25 @@ theorem shiftedTriSolve_isComponentwiseBackwardSolution {M : Machine ℝ} {u : �
           mul_zero]
     rw [Finset.sum_eq_zero hzero, norm_zero]
     positivity
+
+/-- **The computed column is a componentwise backward solution**: under the standard model at
+$\boldsymbol{u}$ with $64(N + 1)\boldsymbol{u} \le 1$, for an upper triangular $\mathbf{T}$ of
+order $N$, $s_{\min} > 0$ and $j < N$, the column $(\hat{\mathbf{x}}; 1; \mathbf{0})$ is a
+componentwise backward solution of $(\mathbf{T} - t_{jj}\mathbf{I})\mathbf{y} = \mathbf{0}$ with
+the relative perturbation $16(N + 1)\boldsymbol{u}$ and the diagonal floor $3s_{\min}$ if a pivot
+was floored, $0$ otherwise. [Higham2002, Theorem 8.5] -/
+theorem shiftedTriSolve_isComponentwiseBackwardSolution {M : Machine ℝ} {u : ℝ}
+    (hM : StdModel u id M) {N : ℕ} (hu : 64 * ((N : ℝ) + 1) * u ≤ 1)
+    {T : Matrix (Fin N) (Fin N) ℂ} (hT : T.IsUpperTriangular) {smin : ℝ} (hsmin : 0 < smin)
+    (j : Fin N) :
+    IsComponentwiseBackwardSolution (16 * ((N : ℝ) + 1) * u)
+      (if shiftedTriSolveFlag M T smin j then 3 * smin else 0) (T - T j j • 1) 0
+      (shiftedTriSolveColumn M T smin j) := by
+  have hu0 : 0 ≤ u := by
+    have := hM.lit 1
+    simp only [Rat.cast_one, abs_one, mul_one, id] at this
+    exact (abs_nonneg _).trans this
+  exact shiftedTriSolve_isComponentwiseBackwardSolution_of_le hM hu (by nlinarith) hT hsmin j
 
 /-- **No pivot is floored when the diagonal is separated**: under the standard model at
 $\boldsymbol{u} \le 1/32$, if $\lvert t_{ii} - t_{jj}\rvert > 2s_{\min}$ for every $i < j$,
@@ -709,7 +734,7 @@ $\lvert t_{ii} - t_{jj}\rvert > 2s_{\min}$ for $i < j$. -/
 theorem shiftedTriSolve_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hL : IsIndexLit M I) (hC : IsCmp id I) {N : ℕ}
     (hu : 64 * ((N : ℝ) + 1) * u ≤ 1) {t sm y g : ℕ × ℕ} {T : Matrix (Fin N) (Fin N) ℂ}
-    (hTu : T.IsUpperTriangular) {smin : ℝ} (hsmin : 0 ≤ smin) (j : Fin N) {τ : Tape ℝ}
+    (hTu : T.IsUpperTriangular) {smin : ℝ} (hsmin : 0 < smin) (j : Fin N) {τ : Tape ℝ}
     {μ : Mem ℝ} (hT : HoldsMatrix t T μ.store) (hsm : μ.store.get sm.1 sm.2 = some smin)
     (hl : μ.Live [t, sm, y, g]) (hroom : μ.Room [y, g] [2 * (N * N), 1])
     (hap : Fp.Apart [t, sm, y, g] [2 * (N * N), 1, 2 * (N * N), 1]) :
@@ -725,7 +750,20 @@ theorem shiftedTriSolve_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} 
         (fl = true → μ'.store.get g.1 g.2 = some (M.lit 1)) ∧
         (fl = false → μ'.store.get g.1 g.2 = μ.store.get g.1 g.2) ∧
         ((∀ i : Fin N, i < j → 2 * smin < ‖T i i - T j j‖) → fl = false)) μ := by
-  sorry
+  have hu32 : u ≤ 1 / 32 := by
+    have hN : (0 : ℝ) ≤ N := Nat.cast_nonneg N
+    have hu0 : 0 ≤ u := by
+      have := hM.lit 1
+      simp only [Rat.cast_one, abs_one, mul_one, id] at this
+      exact (abs_nonneg _).trans this
+    nlinarith
+  refine (shiftedTriSolve_writes_word hS hL hC j.isLt hT hsm hl hroom hap).mono le_rfl
+    fun μ' _ ⟨hy, h1, h0⟩ => ⟨shiftedTriSolveColumn M T smin j, shiftedTriSolveFlag M T smin j,
+      fun i hi => by simpa only [shiftedTriSolveColumn, hi, if_true] using hy i hi,
+      by simp [shiftedTriSolveColumn],
+      fun i hi => by simp [shiftedTriSolveColumn, not_lt.mpr hi.le, (Fin.val_ne_of_ne hi.ne')],
+      shiftedTriSolve_isComponentwiseBackwardSolution hM hu hTu hsmin j, h1, h0,
+      fun hgap => shiftedTriSolve_flag hM hu32 hsmin.le j hgap⟩
 
 end Writes
 

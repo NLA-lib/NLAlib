@@ -47,7 +47,24 @@ the wide block in place of $j + 1$. -/
 theorem mul_singularValues_rpow_le_schattenNorm_sub_truncatedSVD_rpow {p : ℝ≥0∞} (hp0 : p ≠ 0)
     (hp : p ≠ ⊤) (A : Matrix m n 𝕜) (k j : ℕ) :
     ((j : ℝ) + 1) * singularValues A (k + j) ^ p.toReal ≤
-      schattenNorm p (A - truncatedSVD A k) ^ p.toReal := sorry
+      schattenNorm p (A - truncatedSVD A k) ^ p.toReal := by
+  set E := A - truncatedSVD A k
+  have hp' : 0 < p.toReal := ENNReal.toReal_pos hp0 hp
+  have hN : E.rank ≤ j + 1 + Fintype.card n := by
+    have := E.rank_le_card_width
+    omega
+  rw [schattenNorm_rpow hp0 hp E hN]
+  calc ((j : ℝ) + 1) * singularValues A (k + j) ^ p.toReal
+        = ∑ _i ∈ Finset.range (j + 1), singularValues A (k + j) ^ p.toReal := by
+          rw [Finset.sum_const, Finset.card_range, nsmul_eq_mul, Nat.cast_add, Nat.cast_one]
+    _ ≤ ∑ i ∈ Finset.range (j + 1), singularValues E i ^ p.toReal :=
+        Finset.sum_le_sum fun i hi => by
+          rw [singularValues_sub_truncatedSVD]
+          exact Real.rpow_le_rpow (singularValues_nonneg _ _)
+            (singularValues_antitone A (by simp only [Finset.mem_range] at hi; omega)) hp'.le
+    _ ≤ ∑ i ∈ Finset.range (j + 1 + Fintype.card n), singularValues E i ^ p.toReal :=
+        Finset.sum_le_sum_of_subset_of_nonneg (Finset.range_subset_range.2 (by omega))
+          fun i _ _ => Real.rpow_nonneg (singularValues_nonneg _ _) _
 
 omit [DecidableEq m] [DecidableEq n] in
 /-- The Frobenius tail against the Schatten tail: for $1 \le p \le 2$ and every $k$,
@@ -58,7 +75,24 @@ $p < 2$ the power $\sigma_k^{p-2}$ is $0$ in Lean and the inequality holds. -/
 theorem singularValues_rpow_mul_frobNorm_sub_truncatedSVD_sq_le {p : ℝ≥0∞} (hp1 : 1 ≤ p)
     (hp2 : p ≤ 2) (A : Matrix m n 𝕜) (k : ℕ) :
     singularValues A k ^ (p.toReal - 2) * frobNorm (A - truncatedSVD A k) ^ 2 ≤
-      schattenNorm p (A - truncatedSVD A k) ^ p.toReal := sorry
+      schattenNorm p (A - truncatedSVD A k) ^ p.toReal := by
+  set E := A - truncatedSVD A k
+  have hpt : p ≠ ⊤ := ne_top_of_le_ne_top (by simp) hp2
+  have hp0 : p ≠ 0 := (lt_of_lt_of_le zero_lt_one hp1).ne'
+  have hp2' : p.toReal ≤ 2 := by simpa using ENNReal.toReal_mono (by simp) hp2
+  have hterm (i : ℕ) : singularValues A k ^ (p.toReal - 2) * singularValues E i ^ 2 ≤
+      singularValues E i ^ p.toReal := by
+    rw [singularValues_sub_truncatedSVD]
+    rcases (singularValues_nonneg A (k + i)).eq_or_lt with h | h
+    · rw [← h, zero_pow two_ne_zero, mul_zero]
+      exact Real.rpow_nonneg le_rfl _
+    · calc _ ≤ singularValues A (k + i) ^ (p.toReal - 2) * singularValues A (k + i) ^ 2 :=
+            mul_le_mul_of_nonneg_right (Real.rpow_le_rpow_of_nonpos h
+              (singularValues_antitone A (Nat.le_add_right k i)) (by linarith)) (sq_nonneg _)
+        _ = _ := by rw [← Real.rpow_natCast, ← Real.rpow_add h]; norm_num
+  rw [frobNorm_sq_eq_sum_range_singularValues_sq E E.rank_le_card_width,
+    schattenNorm_rpow hp0 hpt E E.rank_le_card_width, Finset.mul_sum]
+  exact Finset.sum_le_sum fun i _ => hterm i
 
 omit [DecidableEq m] [DecidableEq n] in
 /-- **A head index with a gap**: for every matrix $\mathbf{A}$, every $k$ and real $p \ge 1$

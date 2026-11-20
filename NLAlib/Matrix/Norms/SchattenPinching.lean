@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Matrix.Norms.SchattenPowers
+public import NLAlib.Matrix.Functions.AbsoluteValue
 public import NLAlib.Matrix.Norms.UnitarilyInvariant
 
 /-!
@@ -44,6 +44,19 @@ namespace NLAlib
 variable {𝕜 : Type*} [RCLike 𝕜] {m n : Type*} [Fintype m] [Fintype n] [DecidableEq m]
   [DecidableEq n]
 
+-- TODO(move): NLAlib/Matrix/Basic/Projector.lean
+/-- The reflection $2\mathbf{P} - \mathbf{I}$ through the range of an orthogonal projector is
+unitary. -/
+theorem _root_.IsStarProjection.hasOrthonormalCols_two_smul_sub_one {P : Matrix m m 𝕜}
+    (hP : IsStarProjection P) : HasOrthonormalCols ((2 : 𝕜) • P - 1) := by
+  have h : ((2 : 𝕜) • P - 1)ᴴ = (2 : 𝕜) • P - 1 := by
+    rw [Matrix.conjTranspose_sub, Matrix.conjTranspose_smul, hP.conjTranspose_eq,
+      Matrix.conjTranspose_one, star_ofNat]
+  rw [HasOrthonormalCols, h, sub_mul, mul_sub, mul_sub, smul_mul_smul_comm, hP.mul_self,
+    mul_one, one_mul, one_mul]
+  rw [show (2 : 𝕜) * 2 = 2 + 2 by norm_num, add_smul]
+  abel
+
 /-- **Pinching by a pair of projectors**: for orthogonal projectors $\mathbf{P}$ ($m \times m$)
 and $\mathbf{Q}$ ($n \times n$), an $m \times n$ matrix $\mathbf{A}$ and every unitarily
 invariant norm $\|\cdot\|_{\Phi}$,
@@ -58,7 +71,21 @@ and projectors of any ranks. -/
 theorem SymmetricGauge.matrixNorm_mul_mul_add_one_sub_mul_mul_one_sub_le (Φ : SymmetricGauge)
     {P : Matrix m m 𝕜} {Q : Matrix n n 𝕜} (hP : IsStarProjection P) (hQ : IsStarProjection Q)
     (A : Matrix m n 𝕜) :
-    Φ.matrixNorm (P * A * Q + (1 - P) * A * (1 - Q)) ≤ Φ.matrixNorm A := sorry
+    Φ.matrixNorm (P * A * Q + (1 - P) * A * (1 - Q)) ≤ Φ.matrixNorm A := by
+  have hV : ((2 : 𝕜) • Q - 1)ᴴ = (2 : 𝕜) • Q - 1 := by
+    rw [Matrix.conjTranspose_sub, Matrix.conjTranspose_smul, hQ.conjTranspose_eq,
+      Matrix.conjTranspose_one, star_ofNat]
+  have key : (2 : 𝕜) • (P * A * Q + (1 - P) * A * (1 - Q)) =
+      A + ((2 : 𝕜) • P - 1) * A * ((2 : 𝕜) • Q - 1)ᴴ := by
+    rw [hV]
+    simp only [two_smul, Matrix.sub_mul, Matrix.mul_sub, Matrix.add_mul, Matrix.mul_add,
+      Matrix.one_mul, Matrix.mul_one]
+    abel
+  have h2 := Φ.matrixNorm_add_le A (((2 : 𝕜) • P - 1) * A * ((2 : 𝕜) • Q - 1)ᴴ)
+  rw [Φ.isUnitarilyInvariant_matrixNorm _ hP.hasOrthonormalCols_two_smul_sub_one _
+    hQ.hasOrthonormalCols_two_smul_sub_one, ← key, Φ.matrixNorm_smul] at h2
+  norm_num at h2
+  linarith
 
 omit [DecidableEq m] [DecidableEq n] in
 /-- **Schatten powers add on an orthogonal sum**: for $0 < p < \infty$ and $m \times n$ matrices
@@ -90,6 +117,7 @@ theorem _root_.IsStarProjection.schattenNorm_mul_mul_rpow_add_le {p : ℝ≥0∞
     schattenNorm p (P * A * Q) ^ p.toReal + schattenNorm p ((1 - P) * A * (1 - Q)) ^ p.toReal ≤
       schattenNorm p A ^ p.toReal := sorry
 
+open scoped ComplexOrder in
 omit [DecidableEq n] in
 /-- **Schatten norms under one projector**: for $2 \le p < \infty$, an orthogonal projector
 $\mathbf{P}$ ($m \times m$) and an $m \times n$ matrix $\mathbf{A}$,
@@ -105,6 +133,23 @@ $(\mathbf{I} - \mathbf{P})\mathbf{A}$ of one matrix. -/
 theorem _root_.IsStarProjection.schattenNorm_mul_rpow_add_le {p : ℝ≥0∞} (hp2 : 2 ≤ p)
     (hp : p ≠ ⊤) {P : Matrix m m 𝕜} (hP : IsStarProjection P) (A : Matrix m n 𝕜) :
     schattenNorm p (P * A) ^ p.toReal + schattenNorm p ((1 - P) * A) ^ p.toReal ≤
-      schattenNorm p A ^ p.toReal := sorry
+      schattenNorm p A ^ p.toReal := by
+  classical
+  obtain ⟨q, hq, rfl⟩ : ∃ q : ℝ, 0 ≤ q ∧ p = ENNReal.ofReal q :=
+    ⟨p.toReal, ENNReal.toReal_nonneg, (ENNReal.ofReal_toReal hp).symm⟩
+  have hq2 : 2 ≤ q := by
+    simpa [ENNReal.toReal_ofReal hq] using ENNReal.toReal_mono ENNReal.ofReal_ne_top hp2
+  have hgram {R : Matrix m m 𝕜} (hR : IsStarProjection R) :
+      (R * A)ᴴ * (R * A) = Aᴴ * R * A := by
+    rw [Matrix.conjTranspose_mul, hR.conjTranspose_eq, Matrix.mul_assoc, ← Matrix.mul_assoc R R A,
+      hR.mul_self, Matrix.mul_assoc]
+  have hsum : (P * A)ᴴ * (P * A) + ((1 - P) * A)ᴴ * ((1 - P) * A) = Aᴴ * A := by
+    rw [hgram hP, hgram hP.one_sub, Matrix.mul_assoc, Matrix.mul_assoc, ← Matrix.mul_add,
+      ← Matrix.add_mul, add_sub_cancel, Matrix.one_mul]
+  rw [ENNReal.toReal_ofReal hq, schattenNorm_rpow_eq_re_trace_rpow _ (by linarith),
+    schattenNorm_rpow_eq_re_trace_rpow _ (by linarith),
+    schattenNorm_rpow_eq_re_trace_rpow _ (by linarith), ← hsum]
+  exact (Matrix.posSemidef_conjTranspose_mul_self _).re_trace_rpow_add_le
+    (Matrix.posSemidef_conjTranspose_mul_self _) (by linarith)
 
 end NLAlib

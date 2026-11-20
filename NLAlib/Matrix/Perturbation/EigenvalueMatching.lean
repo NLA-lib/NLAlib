@@ -421,6 +421,28 @@ theorem IsConditionedDiagonalizable.le_norm_sub_diag_of_add_eq {n : ℕ} {B Γ :
     (hΓ : 0 < Γ) (hW : HasOrthonormalCols W) (hT : T.IsUpperTriangular)
     (hXE : X + E = W * T * Wᴴ) (hE : specNorm E ≤ Γ / (16 * (n + 1) * B)) :
     ∀ i j, i ≠ j → 7 / 8 * Γ ≤ ‖T i i - T j j‖ := by
-  sorry
+  obtain ⟨V, d, hV, hXV, hB, hgap⟩ := hX
+  have hB1 : 1 ≤ B := (one_le_pseudoConditionNumber hV.ne_zero).trans hB
+  obtain ⟨V', d', hV', hXV', -, hsep⟩ :=
+    exists_pseudoConditionNumber_le_and_le_norm_sub hV hXV hB hΓ hgap hE
+  have hBE : 2 * B * specNorm E ≤ Γ / 8 := by
+    calc 2 * B * specNorm E ≤ 2 * B * (Γ / (16 * (n + 1) * B)) := by gcongr
+      _ = Γ / (8 * (n + 1)) := by field_simp; ring
+      _ ≤ Γ / 8 := by gcongr; linarith [(n.cast_nonneg : (0 : ℝ) ≤ n)]
+  have hT' : Wᴴ * (X + E) * W = T := by
+    rw [hXE, ← Matrix.mul_assoc, ← Matrix.mul_assoc, hW.conjTranspose_mul_self, Matrix.one_mul,
+      Matrix.mul_assoc, hW.conjTranspose_mul_self, Matrix.mul_one]
+  have hdiag : IsEigenvalueListing (X + E) fun i => T i i := by
+    have := hW.isEigenvalueListing_of_isUpperTriangular_conjTranspose_mul_mul (A := X + E)
+      (by rw [hT']; exact hT)
+    simpa only [hT'] using this
+  have hd' : IsEigenvalueListing (X + E) d' :=
+    isEigenvalueListing_of_mul_eq_mul_diagonal ((Matrix.isUnit_iff_isUnit_det V').mp hV') hXV'
+  obtain ⟨π, hπ⟩ := hdiag.exists_equiv_eq hd'
+  intro i j hij
+  have hi : T i i = d' (π i) := congrFun hπ i
+  have hj : T j j = d' (π j) := congrFun hπ j
+  rw [hi, hj]
+  linarith [hsep (π i) (π j) (π.injective.ne hij)]
 
 end NLAlib

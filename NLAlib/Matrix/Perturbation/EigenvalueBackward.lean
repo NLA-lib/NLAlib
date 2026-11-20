@@ -276,7 +276,11 @@ the class $(B, \lvert c\rvert\Gamma)$ (the same eigenvectors, the eigenvalues sc
 theorem IsConditionedDiagonalizable.smul {n : Type*} [Fintype n] [DecidableEq n] {B Γ : ℝ}
     {A : Matrix n n ℂ} (h : IsConditionedDiagonalizable B Γ A) (c : ℂ) :
     IsConditionedDiagonalizable B (‖c‖ * Γ) (c • A) := by
-  sorry
+  obtain ⟨V, d, hV, hAV, hB, hgap⟩ := h
+  refine ⟨V, c • d, hV, ?_, hB, fun i j hij => ?_⟩
+  · rw [Matrix.smul_mul, hAV, ← Matrix.mul_smul, ← Matrix.diagonal_smul]
+  · rw [Pi.smul_apply, Pi.smul_apply, smul_eq_mul, smul_eq_mul, ← mul_sub, norm_mul]
+    exact mul_le_mul_of_nonneg_left (hgap i j hij) (norm_nonneg c)
 
 /-- **The class through a perturbed unitary similarity**: a step by any unitary with backward
 error at most $\Gamma/(16(n+1)B)$ keeps the matrix in the class $(2B, \Gamma/2)$ (from

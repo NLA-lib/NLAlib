@@ -47,6 +47,12 @@ companions are law-free, in `NLAlib.LowRank.Random.RangeFinder`.
 
 * `NLAlib.ae_rsvd_eq_self_of_hasLaw_gaussianMatrix`: exact recovery at
   $\operatorname{rank}\mathbf{A} \le \ell$.
+* `NLAlib.integrable_frobNorm_sub_mul_mul_pinv_sq_of_hasLaw_gaussianMatrix`,
+  `NLAlib.integral_frobNorm_sub_mul_mul_pinv_sq_of_hasLaw_gaussianMatrix`,
+  `NLAlib.measureReal_frobNorm_sub_mul_mul_pinv_sq_gt_le_of_hasLaw_gaussianMatrix`: the sketch
+  residual $(\mathbf{A} - \mathbf{A}\mathbf{Z}\mathbf{Z}^{\mathsf{H}})\mathbf{X}
+  (\mathbf{Z}^{\mathsf{H}}\mathbf{X})^{+}$ against a frame $\mathbf{Z}$: integrable, its second
+  moment, and its Markov tail.
 * the Gram form, every quadratic unitarily invariant norm, in the `NLAlib.SymmetricGauge`
   namespace:
   `integral_matrixNorm_conjTranspose_mul_self_sub_rsvd_le_of_hasLaw_gaussianMatrix`.
@@ -118,6 +124,60 @@ private theorem ae_sub_rsvd_eq_zero_of_card_lt (A : Matrix m n ℝ)
   refine ⟨by rw [truncatedSVD_of_rank_le A hr, sub_self], ?_⟩
   filter_upwards [ae_rsvd_eq_self_of_hasLaw_gaussianMatrix A hX (hr.trans hkl)] with ω hω
   rw [hω, sub_self]
+
+/-! ### The sketch residual against a frame -/
+
+/-- The sketch residual of a Gaussian block against a frame is square integrable: for a real
+matrix $\mathbf{A}$, a standard Gaussian $n \times \ell$ test matrix $\mathbf{X}$ (independent
+standard normal entries) and a frame $\mathbf{Z}$ of $\lvert s \rvert$ orthonormal columns with
+$\lvert s \rvert + 2 \le \ell$, the squared Frobenius norm of the residual
+$(\mathbf{A} - \mathbf{A}\mathbf{Z}\mathbf{Z}^{\mathsf{H}})\mathbf{X}
+(\mathbf{Z}^{\mathsf{H}}\mathbf{X})^{+}$ is integrable. The frame need not consist of singular
+vectors. -/
+theorem integrable_frobNorm_sub_mul_mul_pinv_sq_of_hasLaw_gaussianMatrix {s : Type*} [Fintype s]
+    [DecidableEq s] (A : Matrix m n ℝ) (hX : HasLaw X (gaussianMatrix n l) μ) {Z : Matrix n s ℝ}
+    (hZ : HasOrthonormalCols Z) (hs : Fintype.card s + 2 ≤ Fintype.card l) :
+    Integrable (fun ω => frobNorm ((A - A * Z * Zᴴ) * X ω * pinv (Zᴴ * X ω)) ^ 2) μ := sorry
+
+/-- **The second moment of the sketch residual of a Gaussian block against a frame**: for a real
+matrix $\mathbf{A}$, a standard Gaussian $n \times \ell$ test matrix $\mathbf{X}$ (independent
+standard normal entries) and a frame $\mathbf{Z}$ of $\lvert s \rvert$ orthonormal columns with
+$\lvert s \rvert + 2 \le \ell$,
+$$\mathbb{E}\|(\mathbf{A} - \mathbf{A}\mathbf{Z}\mathbf{Z}^{\mathsf{H}})\mathbf{X}
+(\mathbf{Z}^{\mathsf{H}}\mathbf{X})^{+}\|_{\mathsf{F}}^2 =
+\frac{\lvert s \rvert}{\ell - \lvert s \rvert - 1}\,
+\|\mathbf{A} - \mathbf{A}\mathbf{Z}\mathbf{Z}^{\mathsf{H}}\|_{\mathsf{F}}^2\,.$$
+The blocks $\mathbf{Z}^{\mathsf{H}}\mathbf{X}$ and
+$(\mathbf{I} - \mathbf{Z}\mathbf{Z}^{\mathsf{H}})\mathbf{X}$ are independent; this is the
+residual that the structural bounds for a sketch carry, stated through a frame and with no
+completion of the frame in the statement.
+[HalkoMartinssonTropp2011, Theorem 10.5]; the computation in the proof there, for the frame of
+the top $k$ right singular vectors, here for any frame. -/
+theorem integral_frobNorm_sub_mul_mul_pinv_sq_of_hasLaw_gaussianMatrix {s : Type*} [Fintype s]
+    [DecidableEq s] (A : Matrix m n ℝ) (hX : HasLaw X (gaussianMatrix n l) μ) {Z : Matrix n s ℝ}
+    (hZ : HasOrthonormalCols Z) (hs : Fintype.card s + 2 ≤ Fintype.card l) :
+    ∫ ω, frobNorm ((A - A * Z * Zᴴ) * X ω * pinv (Zᴴ * X ω)) ^ 2 ∂μ =
+      frobNorm (A - A * Z * Zᴴ) ^ 2 * Fintype.card s /
+        ((Fintype.card l : ℝ) - Fintype.card s - 1) := sorry
+
+/-- The Markov tail of the sketch residual of a Gaussian block against a frame: for a real matrix
+$\mathbf{A}$, a standard Gaussian $n \times \ell$ test matrix $\mathbf{X}$ (independent standard
+normal entries), a frame $\mathbf{Z}$ of $\lvert s \rvert$ orthonormal columns with
+$\lvert s \rvert + 2 \le \ell$, and $\tau > 0$,
+$$\mathbb{P}\Bigl[\|(\mathbf{A} - \mathbf{A}\mathbf{Z}\mathbf{Z}^{\mathsf{H}})\mathbf{X}
+(\mathbf{Z}^{\mathsf{H}}\mathbf{X})^{+}\|_{\mathsf{F}}^2 >
+\tau\,\frac{\lvert s \rvert}{\ell - \lvert s \rvert - 1}\,
+\|\mathbf{A} - \mathbf{A}\mathbf{Z}\mathbf{Z}^{\mathsf{H}}\|_{\mathsf{F}}^2\Bigr] \le
+\frac{1}{\tau}\,.$$
+Markov's inequality for
+`NLAlib.integral_frobNorm_sub_mul_mul_pinv_sq_of_hasLaw_gaussianMatrix`. -/
+theorem measureReal_frobNorm_sub_mul_mul_pinv_sq_gt_le_of_hasLaw_gaussianMatrix {s : Type*}
+    [Fintype s] [DecidableEq s] (A : Matrix m n ℝ) (hX : HasLaw X (gaussianMatrix n l) μ)
+    {Z : Matrix n s ℝ} (hZ : HasOrthonormalCols Z) (hs : Fintype.card s + 2 ≤ Fintype.card l)
+    {τ : ℝ} (hτ : 0 < τ) :
+    μ.real {ω | τ * (frobNorm (A - A * Z * Zᴴ) ^ 2 * Fintype.card s /
+        ((Fintype.card l : ℝ) - Fintype.card s - 1)) <
+      frobNorm ((A - A * Z * Zᴴ) * X ω * pinv (Zᴴ * X ω)) ^ 2} ≤ τ⁻¹ := sorry
 
 /-! ### The Gram form and its corollaries -/
 

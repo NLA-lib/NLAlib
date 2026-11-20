@@ -24,6 +24,8 @@ $\mathbf{\Omega}$. Matrices carry the product σ-algebra `Matrix.instMeasurableS
   is measurable.
 * `NLAlib.measurable_krylovMatrix`: $\mathbf{b} \mapsto \mathbf{K}_q(\mathbf{A}, \mathbf{b})$
   is measurable.
+* `NLAlib.measurable_fromCols_blockKrylovMatrix`: two block Krylov matrices side by side are a
+  measurable function of the pair of starting blocks.
 -/
 
 @[expose] public section
@@ -42,6 +44,15 @@ theorem measurable_blockKrylovMatrix (A : Matrix n n 𝕜) (q : ℕ) :
   refine Matrix.measurable_iff.2 fun i jc => ?_
   change Measurable fun B : Matrix n p 𝕜 => (A ^ (jc.1 : ℕ) * B) i jc.2
   exact (Matrix.measurable_apply i jc.2).comp (measurable_const.matrix_mul measurable_id)
+
+/-- Two block Krylov matrices side by side,
+$(\mathbf{B}_1, \mathbf{B}_2) \mapsto \begin{bmatrix} \mathbf{K}_{q_1}(\mathbf{A}, \mathbf{B}_1) &
+\mathbf{K}_{q_2}(\mathbf{A}, \mathbf{B}_2)\end{bmatrix}$, are a measurable function of the pair
+of starting blocks. With `NLAlib.measurable_rsvd` this is the measurability that the randomized
+SVD at a test matrix built from two random blocks needs. -/
+theorem measurable_fromCols_blockKrylovMatrix {p' : Type*} (A : Matrix n n 𝕜) (q₁ q₂ : ℕ) :
+    Measurable fun B : Matrix n p 𝕜 × Matrix n p' 𝕜 =>
+      Matrix.fromCols (blockKrylovMatrix A B.1 q₁) (blockKrylovMatrix A B.2 q₂) := sorry
 
 /-- The Krylov matrix $\mathbf{b} \mapsto \mathbf{K}_q(\mathbf{A}, \mathbf{b})$ is a measurable
 function of the starting vector: it is linear in it. -/

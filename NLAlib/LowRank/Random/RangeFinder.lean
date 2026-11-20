@@ -47,6 +47,8 @@ Borel measurable (`NLAlib.measurable_truncatedSVD`), with
   `NLAlib.integrable_specNorm_sub_rsvd_sq`, `NLAlib.integrable_specNorm_sub_rsvd`: integrability of
   the error for any measurable test matrix.
 * `NLAlib.integrable_frobNorm_sub_truncatedSVD_rsvd_sq`: the late-truncated output, Frobenius.
+* `NLAlib.integrable_schattenNorm_sub_mul_rangeProjector_rsvd_rpow`: the two-sided output of the
+  late-truncated randomized SVD, $p$-th power of the Schatten $p$-norm.
 * `NLAlib.integrable_frobNorm_sub_earlyTruncatedRSVD_sq`: the early-truncated output;
   `NLAlib.aestronglyMeasurable_frobNorm_sub_earlyTruncatedGeneralizedNystrom_sq`, the
   measurability of its generalized Nyström completion for any pair of test matrices.
@@ -229,6 +231,20 @@ theorem integrable_frobNorm_sub_truncatedSVD_rsvd_sq [IsFiniteMeasure μ] (A : M
   have h3 := pow_le_pow_left₀ (frobNorm_nonneg _) h1 2
   have h4 := pow_le_pow_left₀ (frobNorm_nonneg _) h2 2
   linarith
+
+/-- The $p$-th power of the Schatten error of the two-sided output of the late-truncated
+randomized SVD is integrable: for a real matrix $\mathbf{A}$, every almost everywhere measurable
+random test matrix $\mathbf{Y}$, every finite measure, every $p$ and $k$, with
+$\mathbf{B} = \llbracket\mathsf{rsvd}(\mathbf{A}, \mathbf{Y})\rrbracket_k$ and
+$\mathbf{P}_{\mathbf{B}^{\mathsf{H}}}$ the projector onto its row space,
+$\|\mathbf{A} - \mathbf{A}\mathbf{P}_{\mathbf{B}^{\mathsf{H}}}\|_{S_p}^p$ is integrable. It is
+a measurable function of the test matrix (`NLAlib.measurable_truncatedSVD`,
+`NLAlib.measurable_rangeProjector`) and is bounded by $\|\mathbf{A}\|_{S_p}^p$. The
+integrability companion of the expectation bounds for this output. -/
+theorem integrable_schattenNorm_sub_mul_rangeProjector_rsvd_rpow [IsFiniteMeasure μ]
+    (p : ℝ≥0∞) (A : Matrix m n ℝ) {Y : Ω → Matrix n l ℝ} (hY : AEMeasurable Y μ) (k : ℕ) :
+    Integrable (fun ω => schattenNorm p (A - A * rangeProjector
+      (truncatedSVD (rsvd A (Y ω)) k)ᴴ) ^ p.toReal) μ := sorry
 
 /-- For a measurable choice $\mathbf{Y}$ of best rank-$k$ approximations of the randomized SVD,
 $\mathbf{Y}(\omega)$ a best approximation of $\mathbf{P}_{\mathbf{A}\mathbf{X}(\omega)}\mathbf{A}$

@@ -38,6 +38,9 @@ These are upstream candidates in `Polynomial.Chebyshev`.
   is bounded by one on $[0, s]$.
 * `Polynomial.Chebyshev.exp_mul_sqrt_div_two_le_eval_T_real`: the gap form of Chebyshev growth,
   $\tfrac12 e^{2q\sqrt{r}} \le T_q((1 + r)/(1 - r))$.
+* `Polynomial.Chebyshev.exists_degree_lt_div_sq_le_exp_of_le`: a filter of degree at most $d$ that
+  is large on $[s^2, \infty)$ and small on $[0, \tau^2]$, with ratio
+  $4e^{-8d\sqrt{(s - \tau)/(s + \tau)}}$.
 * `Polynomial.Chebyshev.le_exp_of_eval_T_real_le`: an inverse of Chebyshev growth,
   $T_q(x) \le y \Rightarrow x \le \exp((\log(2y)/q)^2/2)$.
 * `Polynomial.Chebyshev.eval_iterate_derivative_T_real_nonneg`,
@@ -161,6 +164,24 @@ theorem exp_mul_sqrt_div_two_le_eval_T_real (q : ℕ) {r : ℝ} (h₀ : 0 ≤ r)
   rw [show 2 * (q : ℝ) * √r = q * (2 * √r) by ring, Real.exp_nat_mul]
   gcongr
   exact exp_two_mul_le_one_add_div_one_sub (Real.sqrt_nonneg r) hs₁
+
+/-- **A Chebyshev filter between two levels**: for real $0 \le \tau \le s$ with $s > 0$ and a
+degree $d$, there are a real polynomial $f$ of degree at most $d$ and constants $c > 0$ and $a$
+with $\lvert f(x) \rvert \ge c$ for every $x \ge s^2$, $\lvert f(x) \rvert \le a$ for every
+$x \in [0, \tau^2]$, and
+$$\Bigl(\frac{a}{c}\Bigr)^2 \le 4\exp\Bigl(-8d\sqrt{\frac{s - \tau}{s + \tau}}\Bigr)\,.$$
+For $\tau > 0$ the filter is $f(x) = T_d(2x/\tau^2 - 1)$ with $a = 1$ and
+$c = \tfrac12 e^{4d\sqrt{(s - \tau)/(s + \tau)}}$; for $\tau = 0$ it is $x^d$.
+[MuscoMusco2015, Lemma 5]; there a polynomial normalized at the level $(1 + \gamma)\alpha$ and
+bounded by $\alpha/2^{q\sqrt{\gamma} - 1}$ on $[0, \alpha]$, here the ratio $(a/c)^2$ for any two
+levels, at the rate of `Polynomial.Chebyshev.exp_mul_sqrt_div_two_le_eval_T_real`. Upstream
+candidate. -/
+theorem exists_degree_lt_div_sq_le_exp_of_le {s τ : ℝ} (hτ : 0 ≤ τ) (hτs : τ ≤ s) (hs : 0 < s)
+    (d : ℕ) :
+    ∃ f : ℝ[X], f.degree < (d + 1 : ℕ) ∧ ∃ c a : ℝ, 0 < c ∧
+      (∀ x, s ^ 2 ≤ x → c ≤ |f.eval x|) ∧
+      (∀ x ∈ Set.Icc 0 (τ ^ 2), |f.eval x| ≤ a) ∧
+      (a / c) ^ 2 ≤ 4 * Real.exp (-8 * (d : ℝ) * Real.sqrt ((s - τ) / (s + τ))) := sorry
 
 /-- **Inverting Chebyshev growth**: for $q > 0$ and $x \ge 1$, if $T_q(x) \le y$ then
 $$x \le \exp\Bigl(\frac{1}{2}\Bigl(\frac{\log(2y)}{q}\Bigr)^2\Bigr)\,.$$

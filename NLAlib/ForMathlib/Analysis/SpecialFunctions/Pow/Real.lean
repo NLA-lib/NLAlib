@@ -15,7 +15,8 @@ For $0 < a$, $x, y \in [a, a']$, $t \ge 0$ and real $\alpha$, the ratio of
 $z^\alpha / (z + t)$ at $x$ and $y$ is at most $(a'/a)^{\max(\alpha, 1 - \alpha)}$: the kernel
 inequality behind the near-optimality of Krylov methods for $\mathbf{A}^\alpha$. The base
 $e^s / (1 + s)^{1+s}$ of the Chernoff tails, raised to a real power, in exponential form. The
-power threshold $R^{1/(2p+1)} \le 1 + \varepsilon$ of subspace iteration. Upstream candidates for
+power threshold $R^{1/(2p+1)} \le 1 + \varepsilon$ of subspace iteration. A difference of real
+powers against the difference of the bases. Upstream candidates for
 `Mathlib.Analysis.SpecialFunctions.Pow.Real`.
 
 ## Main results
@@ -26,6 +27,8 @@ power threshold $R^{1/(2p+1)} \le 1 + \varepsilon$ of subspace iteration. Upstre
   $\bigl(e^s / (1 + s)^{1+s}\bigr)^a = e^{(s - (1 + s) \log(1 + s)) a}$.
 * `Real.rpow_one_div_two_mul_add_one_le_one_add`: $R^{1/(2p+1)} \le 1 + \varepsilon$ for
   $p \ge 2\log(N + 1)/\varepsilon$ and $1 \le R \le 1 + N^2$.
+* `Real.rpow_sub_rpow_le_max_mul`: $a^r - b^r \le \max(1, r)\,a^{r-1}(a - b)$ for
+  $0 \le b \le a$ and $r > 0$.
 -/
 
 @[expose] public section
@@ -118,5 +121,12 @@ theorem rpow_one_div_two_mul_add_one_le_one_add {N R ε : ℝ} {p : ℕ} (hN : 0
   calc Real.exp (Real.log R * (1 / (2 * (p : ℝ) + 1))) ≤ Real.exp (Real.log (1 + ε)) :=
         Real.exp_le_exp.2 hratio
     _ = 1 + ε := Real.exp_log (by linarith)
+
+/-- A difference of real powers against the difference of the bases: for $0 \le b \le a$ and
+$r > 0$, $$a^r - b^r \le \max(1, r)\,a^{r-1}(a - b)\,.$$ For $r \ge 1$ this is Bernoulli's
+inequality $(1 + s)^r \ge 1 + rs$ at $s = b/a - 1$; for $r < 1$ it is $b^r \ge b\,a^{r-1}$. The
+constant $\max(1, r)$ cannot be replaced by $r$ when $r < 1$. Upstream candidate. -/
+theorem rpow_sub_rpow_le_max_mul {a b r : ℝ} (hb : 0 ≤ b) (hab : b ≤ a) (hr : 0 < r) :
+    a ^ r - b ^ r ≤ max 1 r * a ^ (r - 1) * (a - b) := sorry
 
 end Real

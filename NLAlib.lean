@@ -775,6 +775,7 @@ public import NLAlib.LowRank.BlockKrylov.Probability
 public import NLAlib.LowRank.BlockKrylov.Samples
 public import NLAlib.LowRank.Gaussian.BlockKrylov
 public import NLAlib.LowRank.Gaussian.BlockKrylovGapless
+public import NLAlib.LowRank.Gaussian.BlockKrylovSum
 public import NLAlib.LowRank.Gaussian.EarlyTruncation
 public import NLAlib.LowRank.Gaussian.EarlyTruncationHaar
 public import NLAlib.LowRank.Gaussian.EarlyTruncationRSVD
@@ -808,9 +809,12 @@ public import NLAlib.LowRank.Oblivious.WithoutReplacement
 public import NLAlib.LowRank.Random.Nystrom
 public import NLAlib.LowRank.Random.RangeFinder
 public import NLAlib.LowRank.Structural.BlockKrylov
+public import NLAlib.LowRank.Structural.BlockKrylovSum
 public import NLAlib.LowRank.Structural.EarlyTruncation
 public import NLAlib.LowRank.Structural.Filter
 public import NLAlib.LowRank.Structural.RangeFinder
+public import NLAlib.LowRank.Structural.RitzValues
+public import NLAlib.LowRank.Structural.SingularValueDeficit
 public import NLAlib.LowRank.Structural.SmallBlock
 public import NLAlib.LowRank.Structural.Truncation
 public import NLAlib.LowerBounds.Eigensolvers.Precision
@@ -1021,6 +1025,7 @@ public import NLAlib.Matrix.Norms.Projector
 public import NLAlib.Matrix.Norms.Schatten
 public import NLAlib.Matrix.Norms.SchattenHolder
 public import NLAlib.Matrix.Norms.SchattenInterpolation
+public import NLAlib.Matrix.Norms.SchattenPinching
 public import NLAlib.Matrix.Norms.SchattenPowers
 public import NLAlib.Matrix.Norms.SchattenSmoothness
 public import NLAlib.Matrix.Norms.Spectral
@@ -1091,6 +1096,7 @@ public import NLAlib.Matrix.QRIteration.StableStep
 public import NLAlib.Matrix.QRIteration.StableStepForward
 public import NLAlib.Matrix.QRIteration.Strategy
 public import NLAlib.Matrix.Spectral.BestRankApprox
+public import NLAlib.Matrix.Spectral.CompressionSingularValues
 public import NLAlib.Matrix.Spectral.Congruence
 public import NLAlib.Matrix.Spectral.CourantFischer
 public import NLAlib.Matrix.Spectral.Diagonalizable
@@ -1121,6 +1127,7 @@ public import NLAlib.Matrix.Spectral.SVD
 public import NLAlib.Matrix.Spectral.Schur
 public import NLAlib.Matrix.Spectral.SimpleSpectrum
 public import NLAlib.Matrix.Spectral.Simultaneous
+public import NLAlib.Matrix.Spectral.SingularValueDecay
 public import NLAlib.Matrix.Spectral.SingularValueInequalities
 public import NLAlib.Matrix.Spectral.SingularValues
 public import NLAlib.Matrix.Spectral.SpectralMeasure

@@ -271,6 +271,13 @@ theorem IsConditionedDiagonalizable.isDiagonalizable {n : Type*} [Fintype n] [De
   obtain ⟨V, d, hV, hAV, -, -⟩ := h
   exact ⟨V, d, (Matrix.isUnit_iff_isUnit_det V).mp hV, hAV⟩
 
+/-- **The class is scaled**: if $\mathbf{A}$ is of the class $(B, \Gamma)$, then $c\mathbf{A}$ is of
+the class $(B, \lvert c\rvert\Gamma)$ (the same eigenvectors, the eigenvalues scaled). -/
+theorem IsConditionedDiagonalizable.smul {n : Type*} [Fintype n] [DecidableEq n] {B Γ : ℝ}
+    {A : Matrix n n ℂ} (h : IsConditionedDiagonalizable B Γ A) (c : ℂ) :
+    IsConditionedDiagonalizable B (‖c‖ * Γ) (c • A) := by
+  sorry
+
 /-- **The class through a perturbed unitary similarity**: a step by any unitary with backward
 error at most $\Gamma/(16(n+1)B)$ keeps the matrix in the class $(2B, \Gamma/2)$ (from
 `NLAlib.exists_pseudoConditionNumber_le_and_le_norm_sub`; the condition number and the gaps are

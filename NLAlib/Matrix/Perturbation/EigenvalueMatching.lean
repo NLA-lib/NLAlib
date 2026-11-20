@@ -35,6 +35,8 @@ leaves the class. [BanksGarzaVargasSrivastava2025]
 * `NLAlib.exists_isEigenvalueListing_norm_sub_le_rpow`: the Ostrowski–Elsner matching.
 * `NLAlib.exists_isEigenvalueListing_norm_sub_le_of_class`: the matching through a
   diagonalizable matrix.
+* `NLAlib.IsConditionedDiagonalizable.le_norm_sub_diag_of_add_eq`: the Schur diagonal of a
+  perturbed matrix of the class is separated.
 -/
 
 @[expose] public section
@@ -405,5 +407,20 @@ theorem exists_isEigenvalueListing_norm_sub_le_of_class {n : ℕ}
   calc ‖d' (π i) - ev' (π i)‖ ≤ ‖d' (π i) - d (π i)‖ + ‖d (π i) - ev' (π i)‖ :=
         norm_sub_le_norm_sub_add_norm_sub _ _ _
     _ ≤ _ := add_le_add (hlin (π i)) h2
+
+/-- **The Schur diagonal of a perturbed matrix of the class is separated**: let $\mathbf{X}$ be of
+the class $(B, \Gamma)$ with $\Gamma > 0$ and order $n + 1$, $\mathbf{W}$ unitary and $\mathbf{T}$
+upper triangular with $\mathbf{X} + \mathbf{E} = \mathbf{W}\mathbf{T}\mathbf{W}^{\mathsf H}$ and
+$\|\mathbf{E}\|_2 \le \Gamma/(16(n + 1)B)$. Then
+$\lvert t_{ii} - t_{jj}\rvert \ge \tfrac78\Gamma$ for $i \ne j$: the diagonal lists the eigenvalues
+of $\mathbf{X} + \mathbf{E}$, each within
+$B\|\mathbf{E}\|_2 \le \Gamma/16$ of its own eigenvalue of $\mathbf{X}$
+(`NLAlib.exists_isEigenvalueListing_norm_sub_le_of_class` with $\mathbf{E}_1 = \mathbf{0}$). -/
+theorem IsConditionedDiagonalizable.le_norm_sub_diag_of_add_eq {n : ℕ} {B Γ : ℝ}
+    {X E W T : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hX : IsConditionedDiagonalizable B Γ X)
+    (hΓ : 0 < Γ) (hW : HasOrthonormalCols W) (hT : T.IsUpperTriangular)
+    (hXE : X + E = W * T * Wᴴ) (hE : specNorm E ≤ Γ / (16 * (n + 1) * B)) :
+    ∀ i j, i ≠ j → 7 / 8 * Γ ≤ ‖T i i - T j j‖ := by
+  sorry
 
 end NLAlib

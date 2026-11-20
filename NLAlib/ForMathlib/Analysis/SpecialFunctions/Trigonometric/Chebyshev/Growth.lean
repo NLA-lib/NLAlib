@@ -169,7 +169,7 @@ theorem exp_mul_sqrt_div_two_le_eval_T_real (q : ℕ) {r : ℝ} (h₀ : 0 ≤ r)
   gcongr
   exact exp_two_mul_le_one_add_div_one_sub (Real.sqrt_nonneg r) hs₁
 
-/-- **The shifted Chebyshev filter above a level**: for $0 < \tau \le s$, a degree $d$ and
+/-- The shifted Chebyshev filter above a level: for $0 < \tau \le s$, a degree $d$ and
 $x \ge s^2$,
 $$\tfrac12 e^{4d\sqrt{(s - \tau)/(s + \tau)}} \le \lvert T_d(2x/\tau^2 - 1) \rvert\,,$$
 since $T_d(2y^2 - 1) = T_{2d}(y)$ at $y = \sqrt{x}/\tau \ge s/\tau$. The constant is

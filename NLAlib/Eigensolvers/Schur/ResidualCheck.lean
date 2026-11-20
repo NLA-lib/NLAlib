@@ -10,6 +10,7 @@ public import NLAlib.Matrix.FinitePrecision.StoredProducts
 public import NLAlib.Ops.Blas.MatrixCorrect
 public import NLAlib.Ops.Catalog.Index
 public import NLAlib.Ops.Catalog.Compare
+public import NLAlib.Ops.Logic.IndexLiteral
 
 /-!
 # A posteriori check of a Schur form
@@ -63,23 +64,22 @@ def residualWords : Impl O Q := opsImpl% [N] (A0, U, T) → (D) {
   for t < 2 * (N * N) { call (Has.inj ScalarOp.sub) [] (A0[t], D[t]) → (D[t]) }
 }
 
-/-- **The residual check of a Schur form**: zero the strict lower triangle of $\mathbf{T}$, form
-the stored residual $\mathbf{D}$ of $\mathbf{A}_0 - \mathbf{U}\mathbf{T}\mathbf{U}^{\mathsf H}$
-(`NLAlib.Schur.residualWords`), the rounded Frobenius norms $\hat r$ of $\mathbf{D}$, $\hat a$
-of $\mathbf{A}_0$, $\hat w$ of $\mathbf{U}$ and $\hat t$ of $\mathbf{T}$, the guard
-$\hat g = \mathrm{fl}(\mathrm{fl}(\hat w^2)\hat t\kappa)$ for the rounding of the products, and
-write the flag $0$ if $\mathrm{fl}(\hat r + \hat g) \le \mathrm{fl}(\theta\hat a)$ and $1$
-otherwise. The words are `P[0]` $= \theta$ and `P[1]` $= \kappa$. The interface is
-`[N] (A0, U, T, P) → (T, Fl)`. -/
-def schurResidualCheck : Impl O Q := opsImpl% [N] (A0, U, T, P) → (T, Fl) {
-  let D ← alloc (2 * (N * N));
-  let S ← alloc 4;
-  run (zeroStrictLower (O := O) (Q := Q)).body [N] (T, T);
-  run (residualWords (O := O) (Q := Q)).body [N] (A0, U, T, D);
+/-- **The four norms of the check**: the rounded Frobenius norms (`NLAlib.Schur.frobNormStage`)
+of $\mathbf{D}$, $\mathbf{A}_0$, $\mathbf{U}$ and $\mathbf{T}$ into `S[0]`, …, `S[3]`. The
+interface is `[N] (A0, U, T, D) → (S)`. -/
+def checkNorms : Impl O Q := opsImpl% [N] (A0, U, T, D) → (S) {
   run (frobNormStage (O := O) (Q := Q)).body [N] (D, S);
   run (frobNormStage (O := O) (Q := Q)).body [N] (A0, S[1]);
   run (frobNormStage (O := O) (Q := Q)).body [N] (U, S[2]);
-  run (frobNormStage (O := O) (Q := Q)).body [N] (T, S[3]);
+  run (frobNormStage (O := O) (Q := Q)).body [N] (T, S[3])
+}
+
+/-- **The decision of the check**: from the norms $\hat r, \hat a, \hat w, \hat t$ in `S` and the
+words $\theta, \kappa$ in `P`, the guard $\hat g = \mathrm{fl}(\mathrm{fl}(\mathrm{fl}(\hat w\hat
+w)\hat t)\kappa)$ into `S[2]`, $\mathrm{fl}(\hat r + \hat g)$ into `S[0]`,
+$\mathrm{fl}(\hat a\theta)$ into `S[1]`, and the flag: the literal $0$ if `S[0] ≤ S[1]` (an exact
+comparison), the literal $1$ otherwise. The interface is `[] (S, P) → (S, Fl)`. -/
+def checkDecide : Impl O Q := opsImpl% [] (S, P) → (S, Fl) {
   call (Has.inj ScalarOp.mul) [] (S[2], S[2]) → (S[2]);
   call (Has.inj ScalarOp.mul) [] (S[2], S[3]) → (S[2]);
   call (Has.inj ScalarOp.mul) [] (S[2], P[1]) → (S[2]);
@@ -92,7 +92,29 @@ def schurResidualCheck : Impl O Q := opsImpl% [N] (A0, U, T, P) → (T, Fl) {
   }
 }
 
+/-- **The residual check of a Schur form**: zero the strict lower triangle of $\mathbf{T}$
+(`NLAlib.Schur.zeroStrictLower`), form the stored residual $\mathbf{D}$ of
+$\mathbf{A}_0 - \mathbf{U}\mathbf{T}\mathbf{U}^{\mathsf H}$ (`NLAlib.Schur.residualWords`), the
+rounded Frobenius norms $\hat r$ of $\mathbf{D}$, $\hat a$ of $\mathbf{A}_0$, $\hat w$ of
+$\mathbf{U}$ and $\hat t$ of $\mathbf{T}$ (`NLAlib.Schur.checkNorms`), and write the flag $0$ if
+$\mathrm{fl}(\hat r + \hat g) \le \mathrm{fl}(\theta\hat a)$ for the guard $\hat g =
+\mathrm{fl}(\mathrm{fl}(\hat w^2)\hat t\kappa)$ of the rounding of the products, and $1$ otherwise
+(`NLAlib.Schur.checkDecide`). The words are `P[0]` $= \theta$ and `P[1]` $= \kappa$. The
+interface is `[N] (A0, U, T, P) → (T, Fl)`. -/
+def schurResidualCheck : Impl O Q := opsImpl% [N] (A0, U, T, P) → (T, Fl) {
+  let D ← alloc (2 * (N * N));
+  let S ← alloc 4;
+  run (zeroStrictLower (O := O) (Q := Q)).body [N] (T, T);
+  run (residualWords (O := O) (Q := Q)).body [N] (A0, U, T, D);
+  run (checkNorms (O := O) (Q := Q)).body [N] (A0, U, T, D, S);
+  run (checkDecide (O := O) (Q := Q)).body [] (S, P, S, Fl)
+}
+
 end Program
+
+/-- The guard of the check: $\mathrm{fl}(\mathrm{fl}(\mathrm{fl}(w w)t)\kappa)$. -/
+noncomputable def checkGuard (M : Machine ℝ) (w t κ : ℝ) : ℝ :=
+  M.mul (M.mul (M.mul w w) t) κ
 
 section Steps
 
@@ -287,6 +309,159 @@ theorem writes_loop_sub_cells {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSca
     rw [hw] at hw''
     cases hv'; cases hw''; rfl
 
+omit [Has IndexOp O] [Has CmpTst Q] in
+/-- **The four norms of the check**, on every tape, with any two-sided norm estimate for the
+order $N$ in place of `NLAlib.Schur.frobNormStage`'s contract: the run writes only the four
+words of `S` and stores there estimates of $\|\mathbf{D}\|_{\mathsf F}$,
+$\|\mathbf{A}_0\|_{\mathsf F}$, $\|\mathbf{U}\|_{\mathsf F}$ and $\|\mathbf{T}\|_{\mathsf F}$
+within the factors $c_1$, $c_2$. -/
+theorem checkNorms_writes {I : Interp O Q ℝ} {c₁ c₂ : ℝ} {N : ℕ}
+    (hNm : FrobNormEstimateContract c₁ c₂ N (frobNormStage (O := O) (Q := Q)) I) {τ : Tape ℝ}
+    {μ : Mem ℝ} {a0 uo t d s : ℕ × ℕ} {A₀ U T D : Matrix (Fin N) (Fin N) ℂ}
+    (hA : HoldsMatrix a0 A₀ μ.store) (hU : HoldsMatrix uo U μ.store)
+    (hT : HoldsMatrix t T μ.store) (hD : HoldsMatrix d D μ.store)
+    (hl : μ.Live [a0, uo, t, d, s]) (hs : s.2 + 4 ≤ μ.store.len s.1) (ha : a0.1 ≠ s.1)
+    (hu : uo.1 ≠ s.1) (ht : t.1 ≠ s.1) (hd : d.1 ≠ s.1) :
+    Writes .total I τ (checkNorms (O := O) (Q := Q)).body (Env.frame [N] [a0, uo, t, d, s])
+      (Store.inBlock s.1 s.2 4)
+      (fun μ' => ∃ r a w x : ℝ, μ'.store.get s.1 s.2 = some r ∧
+        μ'.store.get s.1 (s.2 + 1) = some a ∧ μ'.store.get s.1 (s.2 + 2) = some w ∧
+        μ'.store.get s.1 (s.2 + 3) = some x ∧
+        c₁ * frobNorm D ≤ r ∧ r ≤ c₂ * frobNorm D ∧ c₁ * frobNorm A₀ ≤ a ∧
+        a ≤ c₂ * frobNorm A₀ ∧ c₁ * frobNorm U ≤ w ∧ w ≤ c₂ * frobNorm U ∧
+        c₁ * frobNorm T ≤ x ∧ x ≤ c₂ * frobNorm T) μ := by
+  have hlv : ∀ (m : Mem ℝ), m.store.length = μ.store.length → ∀ zs : List (ℕ × ℕ),
+      (∀ z ∈ zs, z.1 = a0.1 ∨ z.1 = uo.1 ∨ z.1 = t.1 ∨ z.1 = d.1 ∨ z.1 = s.1) → m.Live zs := by
+    intro m hm zs hzs z hz
+    change z.1 < m.store.length
+    rw [hm]
+    rcases hzs z hz with h | h | h | h | h <;> rw [h]
+    exacts [hl a0 (by simp), hl uo (by simp), hl t (by simp), hl d (by simp), hl s (by simp)]
+  have hk : ∀ k, k < 4 → Store.inBlock s.1 (s.2 + k) 1 ≤ Store.inBlock s.1 s.2 4 :=
+    fun k hk => Fp.inBlock_le_inBlock (by omega) (by omega)
+  have hkeep : ∀ {b : ℕ × ℕ} {X : Matrix (Fin N) (Fin N) ℂ} {m m' : Mem ℝ} {k : ℕ},
+      b.1 ≠ s.1 → HoldsMatrix b X m.store →
+      m.store.EqOff (Store.inBlock s.1 (s.2 + k) 1) m'.store → HoldsMatrix b X m'.store :=
+    fun hb hX hfr => hX.of_eqOff hfr (Fp.disj_inBlock_of_ne (Ne.symm hb))
+  have hget : ∀ {m m' : Mem ℝ} {k j : ℕ}, k ≠ j →
+      m.store.EqOff (Store.inBlock s.1 (s.2 + k) 1) m'.store →
+      m'.store.get s.1 (s.2 + j) = m.store.get s.1 (s.2 + j) :=
+    fun hkj hfr => hfr.get_eq fun h => hkj (by obtain ⟨-, h1, h2⟩ := h; omega)
+  refine (hNm D le_rfl hD (hlv μ rfl _ (by simp)) (by simpa using (by omega : s.2 + 1 ≤
+    μ.store.len s.1)) hd).frame_seq_le rfl rfl (hlv μ rfl _ (by simp))
+    (hk 0 (by omega) |> fun h => by simpa using h) fun m₁ hfr₁ ⟨r, hr, hr1, hr2⟩ => ?_
+  have hl₁ := fun zs h => hlv m₁ hfr₁.length_eq zs h
+  refine (hNm (s := (s.1, s.2 + 1)) A₀ le_rfl (hkeep (k := 0) ha hA (by simpa using hfr₁)) (hl₁ _ (by simp))
+    (by simp only; rw [hfr₁.len_eq]; omega) ha).frame_seq_le rfl rfl (hl₁ _ (by simp)) (hk 1 (by omega))
+    fun m₂ hfr₂ ⟨a, ha', ha1, ha2⟩ => ?_
+  have hl₂ := fun zs h => hlv m₂ (hfr₂.length_eq.trans hfr₁.length_eq) zs h
+  have hU₂ := hkeep hu (hkeep (k := 0) hu hU (by simpa using hfr₁)) hfr₂
+  refine (hNm (s := (s.1, s.2 + 2)) U le_rfl hU₂ (hl₂ _ (by simp)) (by simp only; rw [hfr₂.len_eq, hfr₁.len_eq]; omega)
+    hu).frame_seq_le rfl rfl (hl₂ _ (by simp)) (hk 2 (by omega))
+    fun m₃ hfr₃ ⟨w, hw, hw1, hw2⟩ => ?_
+  have hl₃ := fun zs h => hlv m₃
+    (hfr₃.length_eq.trans (hfr₂.length_eq.trans hfr₁.length_eq)) zs h
+  have hT₃ := hkeep ht (hkeep ht (hkeep (k := 0) ht hT (by simpa using hfr₁)) hfr₂) hfr₃
+  refine (hNm (s := (s.1, s.2 + 3)) T le_rfl hT₃ (hl₃ _ (by simp))
+    (by simp only; rw [hfr₃.len_eq, hfr₂.len_eq, hfr₁.len_eq]; omega) ht).in_frame rfl rfl
+    (hl₃ _ (by simp)) |>.mono (hk 3 (by omega)) fun m₄ hfr₄ ⟨x, hx, hx1, hx2⟩ => ?_
+  refine ⟨r, a, w, x, ?_, ?_, ?_, hx, hr1, hr2, ha1, ha2, hw1, hw2, hx1, hx2⟩
+  · have h := (hget (k := 3) (j := 0) (by omega) hfr₄).trans
+      ((hget (k := 2) (j := 0) (by omega) hfr₃).trans (hget (k := 1) (j := 0) (by omega) hfr₂))
+    simp only [add_zero] at h
+    rw [h, hr]
+  · rw [hget (k := 3) (j := 1) (by omega) hfr₄, hget (k := 2) (j := 1) (by omega) hfr₃]
+    exact ha'
+  · rw [hget (k := 3) (j := 2) (by omega) hfr₄]
+    exact hw
+
+omit [Has IndexOp O] in
+/-- **The decision of the check**, on every tape: from the norms $\hat r, \hat a, \hat w, \hat t$
+in the four cells of `S` and the words $\theta, \kappa$ in `P` (another buffer), the run writes
+only `S` and the flag (another buffer), and stores the literal $0$ in the flag if
+$\mathrm{fl}(\hat r + \hat g) \le \mathrm{fl}(\hat a\theta)$, the literal $1$ otherwise. -/
+theorem checkDecide_writes [Has IndexOp O] {M : Machine ℝ} {I : Interp O Q ℝ}
+    (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp id I) {τ : Tape ℝ} {μ : Mem ℝ}
+    {s p f : ℕ × ℕ} {r a w x θ κ : ℝ} (hr : μ.store.get s.1 s.2 = some r)
+    (ha : μ.store.get s.1 (s.2 + 1) = some a) (hw : μ.store.get s.1 (s.2 + 2) = some w)
+    (hx : μ.store.get s.1 (s.2 + 3) = some x) (hθ : μ.store.get p.1 p.2 = some θ)
+    (hκ : μ.store.get p.1 (p.2 + 1) = some κ) (hs : s.2 + 4 ≤ μ.store.len s.1)
+    (hf : f.2 < μ.store.len f.1) (hsp : s.1 ≠ p.1) (hsf : s.1 ≠ f.1)
+    (hl : μ.Live [s, p, f]) :
+    Writes .total I τ (checkDecide (O := O) (Q := Q)).body (Env.frame [] [s, p, s, f])
+      (Store.inBlock s.1 s.2 4 ⊔ Store.inBlock f.1 f.2 1)
+      (fun μ' => μ'.store.get f.1 f.2 =
+        some (if M.add r (checkGuard M w x κ) ≤ M.mul a θ then M.lit 0 else M.lit 1)) μ := by
+  have hlv : ∀ (m : Mem ℝ), m.store.length = μ.store.length → ∀ zs : List (ℕ × ℕ),
+      (∀ z ∈ zs, z.1 = s.1 ∨ z.1 = p.1 ∨ z.1 = f.1) → m.Live zs := by
+    intro m hm zs hzs z hz
+    change z.1 < m.store.length
+    rw [hm]
+    rcases hzs z hz with h | h | h <;> rw [h]
+    exacts [hl s (by simp), hl p (by simp), hl f (by simp)]
+  have hk : ∀ k, k < 4 → Store.inBlock s.1 (s.2 + k) 1 ≤
+      Store.inBlock s.1 s.2 4 ⊔ Store.inBlock f.1 f.2 1 :=
+    fun k hk _ _ h => Or.inl (Fp.inBlock_le_inBlock (by omega) (by omega) _ _ h)
+  -- cells other than the one written are kept
+  have hget : ∀ {m m' : Mem ℝ} {b o : ℕ}, m.store.EqOff (Store.inBlock s.1 (s.2 + 2) 1) m'.store →
+      (b ≠ s.1 ∨ o ≠ s.2 + 2) → m'.store.get b o = m.store.get b o :=
+    fun hfr h => hfr.get_eq fun hi => by obtain ⟨h1, h2, h3⟩ := hi; omega
+  unfold checkDecide
+  -- the guard
+  refine (writes_call_bin (hS .mul) (x := (s.1, s.2 + 2)) (y := (s.1, s.2 + 2))
+    (z := (s.1, s.2 + 2)) rfl rfl trivial hw hw rfl fun _ =>
+      ⟨hlv μ rfl _ (by simp), by simp only; omega⟩).seq_le (hk 2 (by omega))
+    fun m₁ hfr₁ ⟨_, h₁⟩ => ?_
+  have hl₁ := hlv m₁ hfr₁.length_eq
+  refine (writes_call_bin (hS .mul) (x := (s.1, s.2 + 2)) (y := (s.1, s.2 + 3))
+    (z := (s.1, s.2 + 2)) (v := x) rfl rfl trivial h₁ (by rw [hget hfr₁ (by omega), hx]) rfl fun _ =>
+      ⟨hl₁ _ (by simp), by simp only; rw [hfr₁.len_eq]; omega⟩).seq_le (hk 2 (by omega))
+    fun m₂ hfr₂ ⟨_, h₂⟩ => ?_
+  have hl₂ := hlv m₂ (hfr₂.length_eq.trans hfr₁.length_eq)
+  have hget₂ : ∀ {b o : ℕ}, (b ≠ s.1 ∨ o ≠ s.2 + 2) → m₂.store.get b o = μ.store.get b o :=
+    fun h => (hget hfr₂ h).trans (hget hfr₁ h)
+  refine (writes_call_bin (hS .mul) (x := (s.1, s.2 + 2)) (y := (p.1, p.2 + 1))
+    (z := (s.1, s.2 + 2)) (v := κ) rfl rfl trivial h₂ (by rw [hget₂ (by omega), hκ]) rfl fun _ =>
+      ⟨hl₂ _ (by simp), by simp only; rw [hfr₂.len_eq, hfr₁.len_eq]; omega⟩).seq_le
+    (hk 2 (by omega)) fun m₃ hfr₃ ⟨_, h₃⟩ => ?_
+  have hl₃ := hlv m₃ (hfr₃.length_eq.trans (hfr₂.length_eq.trans hfr₁.length_eq))
+  have hget₃ : ∀ {b o : ℕ}, (b ≠ s.1 ∨ o ≠ s.2 + 2) → m₃.store.get b o = μ.store.get b o :=
+    fun h => (hget hfr₃ h).trans (hget₂ h)
+  have hlen₃ : ∀ b, m₃.store.len b = μ.store.len b := fun b => by
+    rw [hfr₃.len_eq, hfr₂.len_eq, hfr₁.len_eq]
+  -- the sum and the threshold
+  refine (writes_call_bin (hS .add) (x := (s.1, s.2)) (y := (s.1, s.2 + 2))
+    (z := (s.1, s.2)) (u := r) rfl rfl trivial (by rw [hget₃ (by omega)]; exact hr) h₃ rfl fun _ =>
+      ⟨hl₃ _ (by simp), by simp only; rw [hlen₃]; omega⟩).seq_le
+    (by simpa using hk 0 (by omega)) fun m₄ hfr₄ ⟨_, h₄⟩ => ?_
+  have hl₄ := hlv m₄ (hfr₄.length_eq.trans (hfr₃.length_eq.trans (hfr₂.length_eq.trans
+    hfr₁.length_eq)))
+  have hget₄ : ∀ {b o : ℕ}, (b ≠ s.1 ∨ (o ≠ s.2 + 2 ∧ o ≠ s.2)) →
+      m₄.store.get b o = μ.store.get b o := fun h => by
+    rw [hfr₄.get_eq fun hi => by obtain ⟨h1, h2, h3⟩ := hi; omega]
+    exact hget₃ (by omega)
+  refine (writes_call_bin (hS .mul) (x := (s.1, s.2 + 1)) (y := (p.1, p.2))
+    (z := (s.1, s.2 + 1)) (u := a) (v := θ) rfl rfl trivial (by rw [hget₄ (by omega)]; exact ha)
+    (by rw [hget₄ (by omega)]; exact hθ) rfl fun _ =>
+      ⟨hl₄ _ (by simp), by simp only; rw [hfr₄.len_eq, hlen₃]; omega⟩).seq_le
+    (hk 1 (by omega)) fun m₅ hfr₅ ⟨_, h₅⟩ => ?_
+  have h₄' : m₅.store.get s.1 s.2 = some (M.add r (checkGuard M w x κ)) := by
+    rw [hfr₅.get_eq fun hi => by obtain ⟨-, h2, -⟩ := hi; simp only at h2; omega]
+    exact h₄
+  have hl₅ := hlv m₅ (hfr₅.length_eq.trans (hfr₄.length_eq.trans (hfr₃.length_eq.trans
+    (hfr₂.length_eq.trans hfr₁.length_eq))))
+  have hlen₅ : f.2 < m₅.store.len f.1 := by rw [hfr₅.len_eq, hfr₄.len_eq, hlen₃]; exact hf
+  refine writes_ite rfl rfl (hC.test_le (x := (s.1, s.2)) (y := (s.1, s.2 + 1)) h₄' h₅) ?_
+  by_cases hc : M.add r (checkGuard M w x κ) ≤ M.mul a θ
+  · simp only [id, hc, decide_true, if_true]
+    refine (writes_indexLit hL (n := 0) rfl rfl hlen₅).mono (fun _ _ h => Or.inr h)
+      fun m' _ h => ?_
+    simpa using h.2
+  · simp only [id, hc, decide_false, Bool.false_eq_true, if_false]
+    refine (writes_indexLit hL (n := 1) rfl rfl hlen₅).mono (fun _ _ h => Or.inr h)
+      fun m' _ h => ?_
+    simpa using h.2
+
 /-- **The entrywise machine difference** of two complex matrices: the machine subtraction of the
 real and of the imaginary words, as the subtraction loop of `NLAlib.Schur.residualWords` stores
 it. -/
@@ -420,5 +595,391 @@ theorem residualWords_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (h
     exact h
 
 end Steps
+
+/-! ### The numbers of the check -/
+
+section Numbers
+
+/-- **The rounding of the reconstructed product**: under the standard model at $\boldsymbol{u}$
+with $64(N + 1)^3\boldsymbol{u} \le 1$, the stored
+$\mathrm{fl}(\mathrm{fl}(\mathbf{U}\mathbf{T})\mathbf{U}^{\mathsf H})$ of square matrices of order
+$N$ is within $24(N + 1)^2\boldsymbol{u}\|\mathbf{U}\|_{\mathsf F}^2\|\mathbf{T}\|_{\mathsf F}$ of
+$\mathbf{U}\mathbf{T}\mathbf{U}^{\mathsf H}$ in the Frobenius norm. -/
+theorem _root_.NLAlib.Ops.StdModel.frobNorm_matMulWord_conjTranspose_sub_le {M : Machine ℝ}
+    {u : ℝ} (hM : StdModel u id M) {N : ℕ} (hu : 64 * ((N : ℝ) + 1) ^ 3 * u ≤ 1)
+    (U T : Matrix (Fin N) (Fin N) ℂ) :
+    frobNorm (matMulWord M (matMulWord M U T) Uᴴ - U * T * Uᴴ) ≤
+      24 * ((N : ℝ) + 1) ^ 2 * u * (frobNorm U ^ 2 * frobNorm T) := by
+  have hu0 : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
+  have hN0 : (0 : ℝ) ≤ N := Nat.cast_nonneg N
+  have hN1 : (1 : ℝ) ≤ (N : ℝ) + 1 := by linarith
+  have hsq : √(N : ℝ) ≤ (N : ℝ) + 1 := by
+    rw [Real.sqrt_le_left (by positivity)]; nlinarith
+  have hu32 : 32 * ((N : ℝ) + 1) * u ≤ 1 := by
+    have : 32 * ((N : ℝ) + 1) * u ≤ 64 * ((N : ℝ) + 1) ^ 3 * u := by
+      have h2 : ((N : ℝ) + 1) ≤ ((N : ℝ) + 1) ^ 2 := by nlinarith
+      have : ((N : ℝ) + 1) ≤ ((N : ℝ) + 1) ^ 3 := by nlinarith
+      nlinarith
+    linarith
+  have hc : √(N : ℝ) * (8 * ((N : ℝ) + 1) * u) ≤ 8 * ((N : ℝ) + 1) ^ 2 * u := by
+    have := mul_le_mul_of_nonneg_right hsq (by positivity : (0 : ℝ) ≤ 8 * ((N : ℝ) + 1) * u)
+    nlinarith
+  have hc8 : 8 * ((N : ℝ) + 1) ^ 2 * u ≤ 1 / 8 := by
+    have : ((N : ℝ) + 1) ^ 2 ≤ ((N : ℝ) + 1) ^ 3 := by nlinarith
+    nlinarith
+  set W := matMulWord M U T
+  have hFr : ∀ X : Matrix (Fin N) (Fin N) ℂ, frobNorm X ≤ √(N : ℝ) * specNorm X := fun X => by
+    simpa using frobNorm_le_sqrt_card_mul_specNorm X
+  have hW : frobNorm (W - U * T) ≤ 8 * ((N : ℝ) + 1) ^ 2 * u * (frobNorm U * frobNorm T) := by
+    refine (hFr _).trans ?_
+    have := hM.specNorm_matMulWord_sub_le (p := N) hu32 U T
+    have := mul_le_mul_of_nonneg_left this (Real.sqrt_nonneg (N : ℝ))
+    nlinarith [mul_nonneg (frobNorm_nonneg U) (frobNorm_nonneg T)]
+  have hM2 : frobNorm (matMulWord M W Uᴴ - W * Uᴴ) ≤
+      8 * ((N : ℝ) + 1) ^ 2 * u * (frobNorm W * frobNorm U) := by
+    refine (hFr _).trans ?_
+    have := hM.specNorm_matMulWord_sub_le (p := N) hu32 W Uᴴ
+    rw [frobNorm_conjTranspose] at this
+    have := mul_le_mul_of_nonneg_left this (Real.sqrt_nonneg (N : ℝ))
+    nlinarith [mul_nonneg (frobNorm_nonneg W) (frobNorm_nonneg U)]
+  have hWn : frobNorm W ≤ 2 * (frobNorm U * frobNorm T) := by
+    have h1 : frobNorm W ≤ frobNorm (U * T) + frobNorm (W - U * T) := by
+      have := frobNorm_add_le (U * T) (W - U * T); rwa [add_sub_cancel] at this
+    have h2 := frobNorm_mul_le U T
+    nlinarith [mul_nonneg (frobNorm_nonneg U) (frobNorm_nonneg T)]
+  have e : matMulWord M W Uᴴ - U * T * Uᴴ = (matMulWord M W Uᴴ - W * Uᴴ) + (W - U * T) * Uᴴ := by
+    rw [Matrix.sub_mul]; abel
+  rw [e]
+  refine (frobNorm_add_le _ _).trans ?_
+  have h3 : frobNorm ((W - U * T) * Uᴴ) ≤ frobNorm (W - U * T) * frobNorm U := by
+    have := frobNorm_mul_le (W - U * T) Uᴴ; rwa [frobNorm_conjTranspose] at this
+  have hP : 0 ≤ frobNorm U * frobNorm T := mul_nonneg (frobNorm_nonneg U) (frobNorm_nonneg T)
+  have hU0 := frobNorm_nonneg U
+  have hk : 0 ≤ 8 * ((N : ℝ) + 1) ^ 2 * u := by positivity
+  have h4 : 8 * ((N : ℝ) + 1) ^ 2 * u * (frobNorm W * frobNorm U) ≤
+      8 * ((N : ℝ) + 1) ^ 2 * u * (2 * (frobNorm U * frobNorm T) * frobNorm U) :=
+    mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_right hWn hU0) hk
+  have h5 : frobNorm (W - U * T) * frobNorm U ≤
+      8 * ((N : ℝ) + 1) ^ 2 * u * (frobNorm U * frobNorm T) * frobNorm U :=
+    mul_le_mul_of_nonneg_right hW hU0
+  nlinarith
+
+/-- A rounded product of nonnegative numbers is at least $(1 - \boldsymbol{u})$ times the exact
+one and at most $(1 + \boldsymbol{u})$ times it. -/
+theorem _root_.NLAlib.Ops.StdModel.mul_bounds {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M)
+    {a b : ℝ} (ha : 0 ≤ a) (hb : 0 ≤ b) :
+    (1 - u) * (a * b) ≤ M.mul a b ∧ M.mul a b ≤ (1 + u) * (a * b) := by
+  have h := hM.mul a b
+  simp only [id, abs_of_nonneg (mul_nonneg ha hb)] at h
+  constructor <;> linarith [abs_le.mp h]
+
+/-- A rounded sum of nonnegative numbers is at least $(1 - \boldsymbol{u})$ times the exact one
+and at most $(1 + \boldsymbol{u})$ times it. -/
+theorem _root_.NLAlib.Ops.StdModel.add_bounds {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M)
+    {a b : ℝ} (ha : 0 ≤ a) (hb : 0 ≤ b) :
+    (1 - u) * (a + b) ≤ M.add a b ∧ M.add a b ≤ (1 + u) * (a + b) := by
+  have h := hM.add a b
+  simp only [id, abs_of_nonneg (add_nonneg ha hb)] at h
+  constructor <;> linarith [abs_le.mp h]
+
+theorem checkGuard_bounds {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M) (hu1 : u ≤ 1)
+    {w t κ : ℝ} (hw : 0 ≤ w) (ht : 0 ≤ t) (hκ : 0 ≤ κ) :
+    (1 - u) ^ 3 * (w * w * t * κ) ≤ checkGuard M w t κ ∧
+      checkGuard M w t κ ≤ (1 + u) ^ 3 * (w * w * t * κ) := by
+  have hu0 : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
+  obtain ⟨a1, a2⟩ := hM.mul_bounds hw hw
+  have hww : 0 ≤ M.mul w w := le_trans (by nlinarith) a1
+  obtain ⟨b1, b2⟩ := hM.mul_bounds hww ht
+  have hwt : 0 ≤ M.mul (M.mul w w) t := le_trans (by nlinarith [mul_nonneg hww ht]) b1
+  obtain ⟨c1, c2⟩ := hM.mul_bounds hwt hκ
+  have h1u : 0 ≤ 1 - u := by linarith
+  unfold checkGuard
+  constructor
+  · have e1 : (1 - u) * (w * w) * t ≤ M.mul w w * t := mul_le_mul_of_nonneg_right a1 ht
+    have e2 : (1 - u) * ((1 - u) * (w * w) * t) ≤ M.mul (M.mul w w) t :=
+      le_trans (mul_le_mul_of_nonneg_left e1 h1u) b1
+    have e3 : (1 - u) * ((1 - u) * (w * w) * t) * κ ≤ M.mul (M.mul w w) t * κ :=
+      mul_le_mul_of_nonneg_right e2 hκ
+    have e4 := mul_le_mul_of_nonneg_left e3 h1u
+    have e5 : (1 - u) ^ 3 * (w * w * t * κ) = (1 - u) * ((1 - u) * ((1 - u) * (w * w) * t) * κ) :=
+      by ring
+    linarith
+  · have e1 : M.mul w w * t ≤ (1 + u) * (w * w) * t := mul_le_mul_of_nonneg_right a2 ht
+    have e2 : M.mul (M.mul w w) t ≤ (1 + u) * ((1 + u) * (w * w) * t) :=
+      b2.trans (mul_le_mul_of_nonneg_left e1 (by linarith))
+    have e3 : M.mul (M.mul w w) t * κ ≤ (1 + u) * ((1 + u) * (w * w) * t) * κ :=
+      mul_le_mul_of_nonneg_right e2 hκ
+    nlinarith [mul_le_mul_of_nonneg_left e3 (by linarith : (0 : ℝ) ≤ 1 + u)]
+
+/-- **The check is sound**: under the standard model at $\boldsymbol{u}$ with
+$64(N + 1)^3\boldsymbol{u} \le 1$, $\kappa \ge 32(N + 1)^2\boldsymbol{u}$ and $\theta \ge 0$, let
+$\hat r, \hat w, \hat t$ be at least $15/16$ times the Frobenius norms of the stored residual
+$\mathrm{fl}(\mathbf{A}_0 - \mathrm{fl}(\mathrm{fl}(\mathbf{U}\mathbf{T})\mathbf{U}^{\mathsf H}))$,
+of $\mathbf{U}$ and of $\mathbf{T}$, and $0 \le \hat a \le (17/16)\|\mathbf{A}_0\|_{\mathsf F}$.
+If $\mathrm{fl}(\hat r + \hat g) \le \mathrm{fl}(\hat a\theta)$ for the guard $\hat g$ of
+$(\hat w, \hat t, \kappa)$, then
+$\|\mathbf{A}_0 - \mathbf{U}\mathbf{T}\mathbf{U}^{\mathsf H}\|_{\mathsf F} \le
+2\theta\|\mathbf{A}_0\|_{\mathsf F}$, exactly. No hypothesis on $\mathbf{U}$, $\mathbf{T}$. -/
+theorem frobNorm_sub_mul_mul_le_of_check {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M)
+    {N : ℕ} (hu : 64 * ((N : ℝ) + 1) ^ 3 * u ≤ 1) {κ θ : ℝ}
+    (hκ : 32 * ((N : ℝ) + 1) ^ 2 * u ≤ κ) (hθ : 0 ≤ θ) {A₀ U T : Matrix (Fin N) (Fin N) ℂ}
+    {r a w t : ℝ}
+    (hr : 15 / 16 * frobNorm (subWord M A₀ (matMulWord M (matMulWord M U T) Uᴴ)) ≤ r)
+    (ha0 : 0 ≤ a) (ha : a ≤ 17 / 16 * frobNorm A₀) (hw : 15 / 16 * frobNorm U ≤ w)
+    (ht : 15 / 16 * frobNorm T ≤ t) (hpass : M.add r (checkGuard M w t κ) ≤ M.mul a θ) :
+    frobNorm (A₀ - U * T * Uᴴ) ≤ 2 * θ * frobNorm A₀ := by
+  have hu0 : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
+  have hN1 : (1 : ℝ) ≤ (N : ℝ) + 1 := by linarith [(Nat.cast_nonneg N : (0 : ℝ) ≤ N)]
+  have hu64 : u ≤ 1 / 64 := by
+    have : (1 : ℝ) ≤ ((N : ℝ) + 1) ^ 3 := one_le_pow₀ hN1
+    nlinarith
+  set Mh := matMulWord M (matMulWord M U T) Uᴴ
+  set D := subWord M A₀ Mh
+  set x := frobNorm (A₀ - Mh)
+  set E := frobNorm (Mh - U * T * Uᴴ)
+  set P := ((N : ℝ) + 1) ^ 2 * u * (frobNorm U ^ 2 * frobNorm T)
+  have hP : 0 ≤ P := by positivity
+  have hE : E ≤ 24 * P := by
+    have := hM.frobNorm_matMulWord_conjTranspose_sub_le hu U T
+    simp only [P, E, Mh]; linarith
+  have hx : (1 - u) * x ≤ frobNorm D := by
+    have h1 : x ≤ frobNorm D + frobNorm (D - (A₀ - Mh)) := by
+      have := frobNorm_sub_le D (D - (A₀ - Mh)); rwa [sub_sub_cancel] at this
+    have h2 := hM.frobNorm_subWord_sub_le A₀ Mh
+    simp only [D] at h1 ⊢; nlinarith
+  have hU0 := frobNorm_nonneg U
+  have hT0 := frobNorm_nonneg T
+  have hw0 : 0 ≤ w := le_trans (by positivity) hw
+  have ht0 : 0 ≤ t := le_trans (by positivity) ht
+  have hκ0 : 0 ≤ κ := le_trans (by positivity) hκ
+  have hr0 : 0 ≤ r := le_trans (by positivity) hr
+  obtain ⟨hg, -⟩ := checkGuard_bounds hM (by linarith) hw0 ht0 hκ0
+  set g := checkGuard M w t κ
+  -- the guard covers the product error
+  have hww : 15 / 16 * frobNorm U * (15 / 16 * frobNorm U) ≤ w * w :=
+    mul_le_mul hw hw (by positivity) hw0
+  have hwwt : 15 / 16 * frobNorm U * (15 / 16 * frobNorm U) * (15 / 16 * frobNorm T) ≤
+      w * w * t := mul_le_mul hww ht (by positivity) (mul_nonneg hw0 hw0)
+  have hwwtk : 15 / 16 * frobNorm U * (15 / 16 * frobNorm U) * (15 / 16 * frobNorm T) *
+      (32 * ((N : ℝ) + 1) ^ 2 * u) ≤ w * w * t * κ :=
+    mul_le_mul hwwt hκ (by positivity) (by positivity)
+  have hu3 : 61 / 64 ≤ (1 - u) ^ 3 := by
+    nlinarith [mul_nonneg (sq_nonneg u) (by linarith : (0 : ℝ) ≤ 3 - u)]
+  have hgE : E ≤ g := by
+    have : 24 * P ≤ (1 - u) ^ 3 * (w * w * t * κ) := by
+      have e : 15 / 16 * frobNorm U * (15 / 16 * frobNorm U) * (15 / 16 * frobNorm T) *
+          (32 * ((N : ℝ) + 1) ^ 2 * u) = 3375 / 128 * P := by simp only [P]; ring
+      rw [e] at hwwtk
+      have h0 : 0 ≤ w * w * t * κ := by positivity
+      nlinarith
+    linarith
+  -- the pass
+  have hg0 : 0 ≤ g := le_trans (frobNorm_nonneg _) hgE
+  obtain ⟨hs, -⟩ := hM.add_bounds hr0 hg0
+  obtain ⟨-, hth⟩ := hM.mul_bounds ha0 hθ
+  have hA0 := frobNorm_nonneg A₀
+  have hrx : 15 / 16 * ((1 - u) * x) ≤ r := le_trans (by nlinarith [frobNorm_nonneg D]) hr
+  have hR : frobNorm (A₀ - U * T * Uᴴ) ≤ x + E := by
+    have := frobNorm_add_le (A₀ - Mh) (Mh - U * T * Uᴴ)
+    rwa [sub_add_sub_cancel] at this
+  have hsum : (1 - u) * (r + g) ≤ (1 + u) * (a * θ) := hs.trans (hpass.trans hth)
+  have haθ : a * θ ≤ 17 / 16 * frobNorm A₀ * θ := mul_le_mul_of_nonneg_right ha hθ
+  have hx0 : 0 ≤ x := frobNorm_nonneg _
+  nlinarith [mul_nonneg hu0 (mul_nonneg hA0 hθ), mul_nonneg hu0 hx0, mul_nonneg hu0 hg0,
+    mul_nonneg hu0 hr0]
+
+/-- **A near-orthonormal square factor bounds the middle factor**: if
+$\|\mathbf{U}^{\mathsf H}\mathbf{U} - \mathbf{I}\|_2 \le e \le 1$ then
+$(1 - e)^2\|\mathbf{T}\|_{\mathsf F} \le (1 + e)\|\mathbf{U}\mathbf{T}\mathbf{U}^{\mathsf H}\|_{\mathsf F}$. -/
+theorem frobNorm_le_of_specNorm_conjTranspose_mul_self_sub_one_le {N : ℕ}
+    {U T : Matrix (Fin N) (Fin N) ℂ} {e : ℝ} (he : specNorm (Uᴴ * U - 1) ≤ e) (he1 : e ≤ 1) :
+    (1 - e) ^ 2 * frobNorm T ≤ (1 + e) * frobNorm (U * T * Uᴴ) := by
+  set G := Uᴴ * U
+  have hG : specNorm G ≤ 1 + e := by
+    have := specNorm_add_le (G - 1) 1
+    rw [sub_add_cancel] at this
+    linarith [specNorm_one_le (n := Fin N) (𝕜 := ℂ)]
+  have hU2 : specNorm U ^ 2 ≤ 1 + e := by rw [← specNorm_conjTranspose_mul_self]; exact hG
+  have he0 : 0 ≤ e := (specNorm_nonneg _).trans he
+  have hl : ∀ X : Matrix (Fin N) (Fin N) ℂ, (1 - e) * frobNorm X ≤ frobNorm (G * X) := by
+    intro X
+    have h1 : frobNorm X ≤ frobNorm (G * X) + frobNorm ((G - 1) * X) := by
+      have := frobNorm_sub_le (G * X) ((G - 1) * X)
+      rwa [show G * X - (G - 1) * X = X by rw [Matrix.sub_mul, Matrix.one_mul]; abel] at this
+    have h2 := frobNorm_mul_le_specNorm_mul_frobNorm (G - 1) X
+    nlinarith [frobNorm_nonneg X]
+  have hr : ∀ X : Matrix (Fin N) (Fin N) ℂ, (1 - e) * frobNorm X ≤ frobNorm (X * G) := by
+    intro X
+    have h1 : frobNorm X ≤ frobNorm (X * G) + frobNorm (X * (G - 1)) := by
+      have := frobNorm_sub_le (X * G) (X * (G - 1))
+      rwa [show X * G - X * (G - 1) = X by rw [Matrix.mul_sub, Matrix.mul_one]; abel] at this
+    have h2 := frobNorm_mul_le_frobNorm_mul_specNorm X (G - 1)
+    nlinarith [frobNorm_nonneg X]
+  have hGTG : frobNorm (G * T * G) ≤ (1 + e) * frobNorm (U * T * Uᴴ) := by
+    have e1 : G * T * G = Uᴴ * (U * T * Uᴴ) * U := by simp only [G, Matrix.mul_assoc]
+    rw [e1]
+    have h1 := frobNorm_mul_le_frobNorm_mul_specNorm (Uᴴ * (U * T * Uᴴ)) U
+    have h2 := frobNorm_mul_le_specNorm_mul_frobNorm Uᴴ (U * T * Uᴴ)
+    rw [specNorm_conjTranspose] at h2
+    have hU0 := specNorm_nonneg U
+    calc _ ≤ frobNorm (Uᴴ * (U * T * Uᴴ)) * specNorm U := h1
+      _ ≤ specNorm U * frobNorm (U * T * Uᴴ) * specNorm U :=
+          mul_le_mul_of_nonneg_right h2 hU0
+      _ = specNorm U ^ 2 * frobNorm (U * T * Uᴴ) := by ring
+      _ ≤ _ := mul_le_mul_of_nonneg_right hU2 (frobNorm_nonneg _)
+  have h1 := hl T
+  have h2 := hr (G * T)
+  have h3 : (1 - e) * ((1 - e) * frobNorm T) ≤ (1 - e) * frobNorm (G * T) :=
+    mul_le_mul_of_nonneg_left h1 (by linarith)
+  nlinarith
+
+/-- The factors of an accurate Schur form with a near-orthonormal $\mathbf{U}$: if
+$\|\mathbf{U}^{\mathsf H}\mathbf{U} - \mathbf{I}\|_2 \le 1/2$ and
+$\|\mathbf{A}_0 - \mathbf{U}\mathbf{T}\mathbf{U}^{\mathsf H}\|_{\mathsf F} \le
+(\theta/8)\|\mathbf{A}_0\|_{\mathsf F}$ with $\theta \le 1$, then
+$\|\mathbf{U}\|_{\mathsf F}^2 \le (3/2)(N + 1)$ and
+$\|\mathbf{T}\|_{\mathsf F} \le (27/4)\|\mathbf{A}_0\|_{\mathsf F}$. -/
+theorem frobNorm_factors_le_of_frobNorm_sub_mul_mul_le {N : ℕ} {θ : ℝ} (hθ1 : θ ≤ 1)
+    {A₀ U T : Matrix (Fin N) (Fin N) ℂ} (hUU : specNorm (Uᴴ * U - 1) ≤ 1 / 2)
+    (hR : frobNorm (A₀ - U * T * Uᴴ) ≤ θ / 8 * frobNorm A₀) :
+    frobNorm U ^ 2 ≤ 3 / 2 * ((N : ℝ) + 1) ∧ frobNorm T ≤ 27 / 4 * frobNorm A₀ := by
+  have hF0 := frobNorm_nonneg A₀
+  constructor
+  · have h1 := frobNorm_sq_le_card_mul_specNorm_sq U
+    have h2 : specNorm U ^ 2 ≤ 3 / 2 := by
+      rw [← specNorm_conjTranspose_mul_self]
+      have := specNorm_add_le (Uᴴ * U - 1) 1
+      rw [sub_add_cancel] at this
+      linarith [specNorm_one_le (n := Fin N) (𝕜 := ℂ)]
+    simp only [Fintype.card_fin] at h1
+    nlinarith [sq_nonneg (specNorm U), (Nat.cast_nonneg N : (0 : ℝ) ≤ N)]
+  · have hUTU : frobNorm (U * T * Uᴴ) ≤ 9 / 8 * frobNorm A₀ := by
+      have := frobNorm_sub_le A₀ (A₀ - U * T * Uᴴ)
+      rw [sub_sub_cancel] at this
+      nlinarith
+    have := frobNorm_le_of_specNorm_conjTranspose_mul_self_sub_one_le (T := T) hUU (by norm_num)
+    nlinarith
+
+/-- The two terms of the check at an accurate Schur form: with the hypotheses of
+`NLAlib.Schur.check_le_of_frobNorm_sub_mul_mul_le`, $\hat r + \hat g \le
+(2/5)\theta\|\mathbf{A}_0\|_{\mathsf F}$. -/
+theorem add_checkGuard_le_of_frobNorm_sub_mul_mul_le {M : Machine ℝ} {u : ℝ}
+    (hM : StdModel u id M) {N : ℕ} (hu : 64 * ((N : ℝ) + 1) ^ 3 * u ≤ 1) {κ θ : ℝ}
+    (hκ0 : 0 ≤ κ) (hκ : κ ≤ 64 * ((N : ℝ) + 1) ^ 2 * u) (hθ1 : θ ≤ 1)
+    (huθ : 4096 * ((N : ℝ) + 1) ^ 3 * u ≤ θ) {A₀ U T : Matrix (Fin N) (Fin N) ℂ}
+    (hUU : specNorm (Uᴴ * U - 1) ≤ 1 / 2)
+    (hR : frobNorm (A₀ - U * T * Uᴴ) ≤ θ / 8 * frobNorm A₀) {r w t : ℝ}
+    (hr : r ≤ 17 / 16 * frobNorm (subWord M A₀ (matMulWord M (matMulWord M U T) Uᴴ)))
+    (hw0 : 0 ≤ w) (hw : w ≤ 17 / 16 * frobNorm U) (ht0 : 0 ≤ t)
+    (ht : t ≤ 17 / 16 * frobNorm T) :
+    r + checkGuard M w t κ ≤ 2 / 5 * (θ * frobNorm A₀) := by
+  have hu0 : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
+  have hN1 : (1 : ℝ) ≤ (N : ℝ) + 1 := by linarith [(Nat.cast_nonneg N : (0 : ℝ) ≤ N)]
+  have hu64 : u ≤ 1 / 64 := by
+    have : (1 : ℝ) ≤ ((N : ℝ) + 1) ^ 3 := one_le_pow₀ hN1
+    nlinarith
+  obtain ⟨hU2, hT⟩ := frobNorm_factors_le_of_frobNorm_sub_mul_mul_le hθ1 hUU hR
+  set F := frobNorm A₀
+  have hF0 : 0 ≤ F := frobNorm_nonneg _
+  set X := ((N : ℝ) + 1) ^ 3 * u * F
+  have hX : 4096 * X ≤ θ * F := by simp only [X]; nlinarith
+  have hX0 : 0 ≤ X := by positivity
+  have hU0 := frobNorm_nonneg U
+  have hT0 := frobNorm_nonneg T
+  have hUT : frobNorm U ^ 2 * frobNorm T ≤ 3 / 2 * ((N : ℝ) + 1) * (27 / 4 * F) :=
+    mul_le_mul hU2 hT hT0 (by positivity)
+  have hk : 0 ≤ ((N : ℝ) + 1) ^ 2 * u := by positivity
+  have e3 : ((N : ℝ) + 1) ^ 2 * u * (3 / 2 * ((N : ℝ) + 1) * (27 / 4 * F)) = 81 / 8 * X := by
+    simp only [X]; ring
+  have hPX : ((N : ℝ) + 1) ^ 2 * u * (frobNorm U ^ 2 * frobNorm T) ≤ 81 / 8 * X := by
+    rw [← e3]; exact mul_le_mul_of_nonneg_left hUT hk
+  -- the residual
+  set Mh := matMulWord M (matMulWord M U T) Uᴴ
+  have hE := hM.frobNorm_matMulWord_conjTranspose_sub_le hu U T
+  have hx : frobNorm (A₀ - Mh) ≤ θ / 8 * F + 243 * X := by
+    have := frobNorm_add_le (A₀ - U * T * Uᴴ) (U * T * Uᴴ - Mh)
+    rw [sub_add_sub_cancel, frobNorm_sub_comm (U * T * Uᴴ)] at this
+    linarith only [this, hR, hE, hPX]
+  have hD : frobNorm (subWord M A₀ Mh) ≤ (1 + u) * frobNorm (A₀ - Mh) := by
+    have h1 := frobNorm_add_le (subWord M A₀ Mh - (A₀ - Mh)) (A₀ - Mh)
+    rw [sub_add_cancel] at h1
+    have h2 := hM.frobNorm_subWord_sub_le A₀ Mh
+    linarith only [h1, h2]
+  have hr' : r ≤ 17 / 16 * (65 / 64 * (θ / 8 * F + 243 * X)) := by
+    refine hr.trans (mul_le_mul_of_nonneg_left (hD.trans ?_) (by norm_num))
+    exact mul_le_mul (by linarith only [hu64]) hx (frobNorm_nonneg _) (by norm_num)
+  -- the guard
+  obtain ⟨-, hg⟩ := checkGuard_bounds hM (by linarith only [hu64]) hw0 ht0 hκ0
+  have hww : w * w ≤ 17 / 16 * frobNorm U * (17 / 16 * frobNorm U) :=
+    mul_le_mul hw hw hw0 (by positivity)
+  have hwwt : w * w * t ≤ 17 / 16 * frobNorm U * (17 / 16 * frobNorm U) * (17 / 16 * frobNorm T) :=
+    mul_le_mul hww ht ht0 (by positivity)
+  have hwwtk : w * w * t * κ ≤
+      17 / 16 * frobNorm U * (17 / 16 * frobNorm U) * (17 / 16 * frobNorm T) *
+        (64 * ((N : ℝ) + 1) ^ 2 * u) := mul_le_mul hwwt hκ hκ0 (by positivity)
+  have e2 : 17 / 16 * frobNorm U * (17 / 16 * frobNorm U) * (17 / 16 * frobNorm T) *
+      (64 * ((N : ℝ) + 1) ^ 2 * u) =
+        4913 / 64 * (((N : ℝ) + 1) ^ 2 * u * (frobNorm U ^ 2 * frobNorm T)) := by ring
+  have hu3 : (1 + u) ^ 3 ≤ 21 / 20 := by
+    nlinarith [mul_nonneg (sq_nonneg u) hu0]
+  have h0 : 0 ≤ w * w * t * κ := by positivity
+  have h1 : w * w * t * κ ≤ 4913 / 64 * (81 / 8 * X) := by
+    linarith only [hwwtk, e2, hPX]
+  have hg' : checkGuard M w t κ ≤ 21 / 20 * (4913 / 64 * (81 / 8 * X)) :=
+    calc checkGuard M w t κ ≤ (1 + u) ^ 3 * (w * w * t * κ) := hg
+      _ ≤ 21 / 20 * (w * w * t * κ) := mul_le_mul_of_nonneg_right hu3 h0
+      _ ≤ _ := mul_le_mul_of_nonneg_left h1 (by norm_num)
+  have hθF : 0 ≤ θ * F := le_trans (by positivity) hX
+  calc r + checkGuard M w t κ ≤ 17 / 16 * (65 / 64 * (θ / 8 * F + 243 * X)) +
+        21 / 20 * (4913 / 64 * (81 / 8 * X)) := add_le_add hr' hg'
+    _ = 1105 / 8192 * (θ * F) + 11042163 / 10240 * X := by ring
+    _ ≤ 2 / 5 * (θ * F) := by linarith only [hX, hθF]
+
+/-- **The check accepts an accurate Schur form**: under the standard model at $\boldsymbol{u}$
+with $64(N + 1)^3\boldsymbol{u} \le 1$, $0 \le \kappa \le 64(N + 1)^2\boldsymbol{u}$,
+$\theta \le 1$ and $4096(N + 1)^3\boldsymbol{u} \le \theta$, let
+$\|\mathbf{U}^{\mathsf H}\mathbf{U} - \mathbf{I}\|_2 \le 1/2$ and
+$\|\mathbf{A}_0 - \mathbf{U}\mathbf{T}\mathbf{U}^{\mathsf H}\|_{\mathsf F} \le
+(\theta/8)\|\mathbf{A}_0\|_{\mathsf F}$; let $\hat r, \hat w, \hat t \ge 0$ be at most $17/16$
+times the Frobenius norms of the stored residual, of $\mathbf{U}$ and of $\mathbf{T}$ and
+$\hat a \ge (15/16)\|\mathbf{A}_0\|_{\mathsf F}$. Then $\mathrm{fl}(\hat r + \hat g) \le
+\mathrm{fl}(\hat a\theta)$. -/
+theorem check_le_of_frobNorm_sub_mul_mul_le {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M)
+    {N : ℕ} (hu : 64 * ((N : ℝ) + 1) ^ 3 * u ≤ 1) {κ θ : ℝ} (hκ0 : 0 ≤ κ)
+    (hκ : κ ≤ 64 * ((N : ℝ) + 1) ^ 2 * u) (hθ1 : θ ≤ 1) (huθ : 4096 * ((N : ℝ) + 1) ^ 3 * u ≤ θ)
+    {A₀ U T : Matrix (Fin N) (Fin N) ℂ} (hUU : specNorm (Uᴴ * U - 1) ≤ 1 / 2)
+    (hR : frobNorm (A₀ - U * T * Uᴴ) ≤ θ / 8 * frobNorm A₀) {r a w t : ℝ} (hr0 : 0 ≤ r)
+    (hr : r ≤ 17 / 16 * frobNorm (subWord M A₀ (matMulWord M (matMulWord M U T) Uᴴ)))
+    (ha : 15 / 16 * frobNorm A₀ ≤ a) (hw0 : 0 ≤ w) (hw : w ≤ 17 / 16 * frobNorm U) (ht0 : 0 ≤ t)
+    (ht : t ≤ 17 / 16 * frobNorm T) :
+    M.add r (checkGuard M w t κ) ≤ M.mul a θ := by
+  have hu0 : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
+  have hN1 : (1 : ℝ) ≤ (N : ℝ) + 1 := by linarith [(Nat.cast_nonneg N : (0 : ℝ) ≤ N)]
+  have hu64 : u ≤ 1 / 64 := by
+    have : (1 : ℝ) ≤ ((N : ℝ) + 1) ^ 3 := one_le_pow₀ hN1
+    nlinarith
+  have hθ0 : 0 ≤ θ := le_trans (by positivity) huθ
+  have hF0 := frobNorm_nonneg A₀
+  have hθF : 0 ≤ θ * frobNorm A₀ := mul_nonneg hθ0 hF0
+  have hsum := add_checkGuard_le_of_frobNorm_sub_mul_mul_le hM hu hκ0 hκ hθ1 huθ hUU hR hr hw0
+    hw ht0 ht
+  have hg0 : 0 ≤ checkGuard M w t κ := by
+    obtain ⟨h, -⟩ := checkGuard_bounds hM (by linarith only [hu64]) hw0 ht0 hκ0
+    exact (mul_nonneg (pow_nonneg (by linarith only [hu64]) 3) (by positivity)).trans h
+  obtain ⟨-, hs⟩ := hM.add_bounds hr0 hg0
+  have ha0 : 0 ≤ a := le_trans (by positivity) ha
+  obtain ⟨hth, -⟩ := hM.mul_bounds ha0 hθ0
+  have hlhs : (1 + u) * (r + checkGuard M w t κ) ≤ 65 / 64 * (2 / 5 * (θ * frobNorm A₀)) :=
+    mul_le_mul (by linarith only [hu64]) hsum (add_nonneg hr0 hg0) (by norm_num)
+  have haθ : 15 / 16 * (θ * frobNorm A₀) ≤ a * θ := by
+    have := mul_le_mul_of_nonneg_right ha hθ0
+    linarith only [this, show 15 / 16 * frobNorm A₀ * θ = 15 / 16 * (θ * frobNorm A₀) by ring]
+  have hrhs : 63 / 64 * (15 / 16 * (θ * frobNorm A₀)) ≤ (1 - u) * (a * θ) :=
+    mul_le_mul (by linarith only [hu64]) haθ (by linarith only [hθF])
+      (by linarith only [hu64])
+  refine hs.trans (le_trans ?_ hth)
+  linarith only [hlhs, hrhs, hθF]
+
+end Numbers
 
 end NLAlib.Schur

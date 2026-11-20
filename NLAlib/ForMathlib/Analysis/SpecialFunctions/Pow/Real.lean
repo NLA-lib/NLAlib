@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import Mathlib.Analysis.Convex.SpecificFunctions.Basic
 public import Mathlib.Analysis.SpecialFunctions.Pow.Real
 public import NLAlib.ForMathlib.Analysis.SpecialFunctions.Log.Basic
 
@@ -127,6 +128,25 @@ $r > 0$, $$a^r - b^r \le \max(1, r)\,a^{r-1}(a - b)\,.$$ For $r \ge 1$ this is B
 inequality $(1 + s)^r \ge 1 + rs$ at $s = b/a - 1$; for $r < 1$ it is $b^r \ge b\,a^{r-1}$. The
 constant $\max(1, r)$ cannot be replaced by $r$ when $r < 1$. Upstream candidate. -/
 theorem rpow_sub_rpow_le_max_mul {a b r : ℝ} (hb : 0 ≤ b) (hab : b ≤ a) (hr : 0 < r) :
-    a ^ r - b ^ r ≤ max 1 r * a ^ (r - 1) * (a - b) := sorry
+    a ^ r - b ^ r ≤ max 1 r * a ^ (r - 1) * (a - b) := by
+  rcases (hb.trans hab).eq_or_lt with rfl | ha
+  · obtain rfl : b = 0 := le_antisymm hab hb
+    simp
+  have hsub : a ^ (r - 1) * a = a ^ r := by rw [rpow_sub_one ha.ne', div_mul_cancel₀ _ ha.ne']
+  rcases le_or_gt 1 r with hr1 | hr1
+  · rw [max_eq_right hr1]
+    have h := one_add_mul_self_le_rpow_one_add (s := b / a - 1)
+      (by linarith [div_nonneg hb ha.le]) hr1
+    rw [add_sub_cancel, div_rpow hb ha.le, le_div_iff₀ (rpow_pos_of_pos ha r)] at h
+    have hba : b / a * a ^ r = b * a ^ (r - 1) := by
+      rw [← hsub]; field_simp
+    linear_combination h - r * hba - r * hsub
+  · rw [max_eq_left hr1.le, one_mul]
+    rcases hb.eq_or_lt with rfl | hb'
+    · rw [zero_rpow hr.ne', sub_zero, sub_zero, hsub]
+    · have h1 : a ^ (r - 1) ≤ b ^ (r - 1) := rpow_le_rpow_of_nonpos hb' hab (by linarith)
+      have h2 : b ^ (r - 1) * b = b ^ r := by
+        rw [rpow_sub_one hb'.ne', div_mul_cancel₀ _ hb'.ne']
+      nlinarith
 
 end Real

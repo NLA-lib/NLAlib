@@ -189,14 +189,6 @@ theorem Apart.disj_select {zs : List (ℕ × ℕ)} {ls : List ℕ} (h : Apart zs
     List.getElem?_eq_getElem hi', List.getElem?_eq_getElem hj',
     Option.map_some, Option.getD_some] using hd.symm
 
-/-- **A selection from an apart collection is apart**: the blocks at any list of distinct indices
-in range, in any order, are pairwise disjoint. This projects an apart operand collection onto any
-sub-collection, so that a stage's own apart operands follow from its caller's. -/
-theorem Apart.select {zs : List (ℕ × ℕ)} {ls : List ℕ} (h : Apart zs ls) (sel : List ℕ)
-    (hsel : ∀ i ∈ sel, i < min zs.length ls.length) (hnd : sel.Nodup) :
-    Apart (sel.map fun i => zs.getD i (0, 0)) (sel.map fun i => ls.getD i 0) := by
-  sorry
-
 /-- A standard apart-block collection can be constructed from its indexed pairwise spatial
 facts. Combined with indexed projection, this supports reshaping buffer collections and
 refining arena blocks into scalar or matrix subviews without bespoke list inductions. -/
@@ -219,6 +211,22 @@ theorem Apart.of_disj_getD {zs : List (ℕ × ℕ)} {ls : List ℕ}
       · exact ih fun i hi j hj hne => by
           simpa only [List.getD_cons_succ] using
             h (i + 1) (by simpa using hi) (j + 1) (by simpa using hj) (by omega)
+
+/-- **A selection from an apart collection is apart**: the blocks at any list of distinct indices
+in range, in any order, are pairwise disjoint. This projects an apart operand collection onto any
+sub-collection, so that a stage's own apart operands follow from its caller's. -/
+theorem Apart.select {zs : List (ℕ × ℕ)} {ls : List ℕ} (h : Apart zs ls) (sel : List ℕ)
+    (hsel : ∀ i ∈ sel, i < min zs.length ls.length) (hnd : sel.Nodup) :
+    Apart (sel.map fun i => zs.getD i (0, 0)) (sel.map fun i => ls.getD i 0) := by
+  apply Apart.of_disj_getD
+  intro i hi j hj hne
+  simp only [List.length_map, min_self] at hi hj
+  have hsi := List.getElem_mem hi
+  have hsj := List.getElem_mem hj
+  have hd := h.disj_getD (hsel _ hsi) (hsel _ hsj)
+    (fun he => hne ((List.Nodup.getElem_inj_iff hnd).mp he))
+  simpa only [List.getD_eq_getElem?_getD, List.getElem?_map, List.getElem?_eq_getElem hi,
+    List.getElem?_eq_getElem hj, Option.map_some, Option.getD_some] using hd
 
 /-- Cells in disjoint footprints differ in buffer or offset. This is the preservation
 condition for a scalar read across a write, including disjoint regions of one buffer. -/

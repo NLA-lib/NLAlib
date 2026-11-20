@@ -127,6 +127,28 @@ private theorem ae_sub_rsvd_eq_zero_of_card_lt (A : Matrix m n ℝ)
 
 /-! ### The sketch residual against a frame -/
 
+omit [Fintype m] in
+/-- An arbitrary frame $\mathbf{Z}$ completed by $\mathbf{V}$: the residual
+$\mathbf{E} = \mathbf{A} - \mathbf{A}\mathbf{Z}\mathbf{Z}^{\mathsf{H}}$ lives on the completion,
+$\mathbf{E}\mathbf{V}\mathbf{V}^{\mathsf{H}} = \mathbf{E}$. -/
+private theorem exists_completion_sub_mul_mul_conjTranspose {s : Type*} [Fintype s]
+    [DecidableEq s] (A : Matrix m n ℝ) {Z : Matrix n s ℝ} (hZ : HasOrthonormalCols Z) :
+    ∃ V : Matrix n (Fin (Fintype.card n - Fintype.card s)) ℝ, HasOrthonormalCols V ∧
+      Zᴴ * V = 0 ∧ (A - A * Z * Zᴴ) * V * Vᴴ = A - A * Z * Zᴴ := by
+  classical
+  have hpq : Fintype.card s + Fintype.card (Fin (Fintype.card n - Fintype.card s)) =
+      Fintype.card n := by rw [Fintype.card_fin]; have := hZ.card_le; omega
+  obtain ⟨V, hZV⟩ := hZ.exists_fromCols hpq
+  obtain ⟨-, hV, h0⟩ := hasOrthonormalCols_fromCols_iff.mp hZV
+  refine ⟨V, hV, h0, ?_⟩
+  have hV' : V * Vᴴ = 1 - Z * Zᴴ :=
+    eq_sub_of_add_eq' (hZV.mul_conjTranspose_add_mul_conjTranspose hpq)
+  have hP : A * Z * Zᴴ * (Z * Zᴴ) = A * (Z * Zᴴ) := by
+    rw [Matrix.mul_assoc A Z Zᴴ, Matrix.mul_assoc A, Matrix.mul_assoc Z Zᴴ,
+      ← Matrix.mul_assoc Zᴴ Z Zᴴ, hZ.conjTranspose_mul_self, Matrix.one_mul]
+  rw [Matrix.mul_assoc, hV', Matrix.mul_sub, Matrix.mul_one, Matrix.sub_mul A (A * Z * Zᴴ), hP,
+    Matrix.mul_assoc A Z Zᴴ, sub_self, sub_zero]
+
 /-- The sketch residual of a Gaussian block against a frame is square integrable: for a real
 matrix $\mathbf{A}$, a standard Gaussian $n \times \ell$ test matrix $\mathbf{X}$ (independent
 standard normal entries) and a frame $\mathbf{Z}$ of $\lvert s \rvert$ orthonormal columns with
@@ -137,7 +159,10 @@ vectors. -/
 theorem integrable_frobNorm_sub_mul_mul_pinv_sq_of_hasLaw_gaussianMatrix {s : Type*} [Fintype s]
     [DecidableEq s] (A : Matrix m n ℝ) (hX : HasLaw X (gaussianMatrix n l) μ) {Z : Matrix n s ℝ}
     (hZ : HasOrthonormalCols Z) (hs : Fintype.card s + 2 ≤ Fintype.card l) :
-    Integrable (fun ω => frobNorm ((A - A * Z * Zᴴ) * X ω * pinv (Zᴴ * X ω)) ^ 2) μ := sorry
+    Integrable (fun ω => frobNorm ((A - A * Z * Zᴴ) * X ω * pinv (Zᴴ * X ω)) ^ 2) μ := by
+  obtain ⟨V, hV, hZV, hEV⟩ := exists_completion_sub_mul_mul_conjTranspose A hZ
+  simp only [sub_mul_mul_pinv_eq_block hEV]
+  exact integrable_frobNorm_mul_mul_pinv_sq_of_hasLaw_gaussianMatrix hX hZ hV hZV hs _
 
 /-- **The second moment of the sketch residual of a Gaussian block against a frame**: for a real
 matrix $\mathbf{A}$, a standard Gaussian $n \times \ell$ test matrix $\mathbf{X}$ (independent
@@ -158,7 +183,12 @@ theorem integral_frobNorm_sub_mul_mul_pinv_sq_of_hasLaw_gaussianMatrix {s : Type
     (hZ : HasOrthonormalCols Z) (hs : Fintype.card s + 2 ≤ Fintype.card l) :
     ∫ ω, frobNorm ((A - A * Z * Zᴴ) * X ω * pinv (Zᴴ * X ω)) ^ 2 ∂μ =
       frobNorm (A - A * Z * Zᴴ) ^ 2 * Fintype.card s /
-        ((Fintype.card l : ℝ) - Fintype.card s - 1) := sorry
+        ((Fintype.card l : ℝ) - Fintype.card s - 1) := by
+  obtain ⟨V, hV, hZV, hEV⟩ := exists_completion_sub_mul_mul_conjTranspose A hZ
+  simp only [sub_mul_mul_pinv_eq_block hEV]
+  rw [integral_frobNorm_mul_mul_pinv_sq_of_hasLaw_gaussianMatrix hX hZ hV hZV hs,
+    ← lpGauge_two_matrixNorm, (lpGauge 2).matrixNorm_mul_of_mul_mul_conjTranspose_eq hV hEV,
+    lpGauge_two_matrixNorm]
 
 /-- The Markov tail of the sketch residual of a Gaussian block against a frame: for a real matrix
 $\mathbf{A}$, a standard Gaussian $n \times \ell$ test matrix $\mathbf{X}$ (independent standard

@@ -130,6 +130,35 @@ theorem SchurPipelineInput.head {n : ℕ} {θ κ : ℝ} {qs : List ℝ} {a p uo 
       and_true]
     exact ⟨⟨h1.mono le_rfl hsub, h2, h3⟩, ⟨h4.mono hsub le_rfl, h5.mono hsub le_rfl⟩, h6⟩
 
+/-- The blocks of the check inside a verified run: the copy of $\mathbf{A}$ in the scratch buffer
+`L` above the input buffers, the accumulator, the matrix, the words $\theta, \kappa$ after the
+solver's $n_r + n_q$ words, and the flag are pairwise apart. -/
+theorem apart_verifiedCheck {n nr nq L : ℕ} {qs : List ℝ} {θ κ : ℝ} {a p uo f : ℕ × ℕ}
+    (hap : Fp.Apart [a, p, uo, f]
+      [2 * ((n + 1) * (n + 1)), (qs ++ [θ, κ]).length, 2 * ((n + 1) * (n + 1)), 1])
+    (hq : qs.length = nr + nq) (hlt : ∀ z ∈ [a, p, uo, f], z.1 < L) :
+    Fp.Apart [(L, 0), uo, a, (p.1, p.2 + nr + nq), f]
+      [2 * ((n + 1) * (n + 1)), 2 * ((n + 1) * (n + 1)), 2 * ((n + 1) * (n + 1)), 2, 1] := by
+  obtain ⟨h1, h2, h3, h4, h5, h6⟩ := apart_four hap
+  have hp2 : Store.inBlock p.1 (p.2 + nr + nq) 2 ≤
+      Store.inBlock p.1 p.2 (qs ++ [θ, κ]).length :=
+    Fp.inBlock_le_inBlock (by omega) (by simp; omega)
+  have hL : ∀ z ∈ [a, p, uo, f], L ≠ z.1 := fun z hz => by have := hlt z hz; omega
+  simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
+    and_true]
+  exact ⟨⟨Fp.disj_inBlock_of_ne (hL uo (by simp)), Fp.disj_inBlock_of_ne (hL a (by simp)),
+    Fp.disj_inBlock_of_ne (hL p (by simp)), Fp.disj_inBlock_of_ne (hL f (by simp))⟩,
+    ⟨h2.symm, h4.symm.mono le_rfl hp2, h6⟩, ⟨h1.mono le_rfl hp2, h3⟩, h5.mono hp2 le_rfl⟩
+
+/-- The footprint of the solver misses the words. -/
+theorem disj_schurFp_words {n : ℕ} {ps : List ℝ} {a p uo f : ℕ × ℕ}
+    (hap : Fp.Apart [a, p, uo, f]
+      [2 * ((n + 1) * (n + 1)), ps.length, 2 * ((n + 1) * (n + 1)), 1]) :
+    Fp.Disj (schurFp n a uo f) (Store.inBlock p.1 p.2 ps.length) := by
+  obtain ⟨h1, -, -, h4, h5, -⟩ := apart_four hap
+  simp only [schurFp, Fp.disj_sup_left]
+  exact ⟨⟨h1, h4.symm⟩, h5.symm⟩
+
 section Program
 
 variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
@@ -262,25 +291,14 @@ theorem verifiedSchurWith_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
     simp only [schurFp, Fp.disj_sup_left]
     exact ⟨⟨hne (by simp; omega), hne (by simp; omega)⟩, hne (by simp; omega)⟩)
   have hl₂ := hlv m₂ (hfr₂.length_eq.trans hfr₁.length_eq)
-  have hdp : Fp.Disj (schurFp n a uo f) (Store.inBlock p.1 p.2 (qs ++ [θ, κ]).length) := by
-    simp only [schurFp, Fp.disj_sup_left]
-    exact ⟨⟨h1, h4.symm⟩, h5.symm⟩
+  have hdp := disj_schurFp_words hap
   have hp₂ : m₂.store.readBlock p.1 (p.2 + nr + nq) [θ, κ].length = some [θ, κ] := by
     rw [Nat.add_assoc, ← hq]
     exact Store.readBlock_append_right (hfr₂.keep (Store.readsOnly_readBlock _ _ _ _) hdp
       hin₂.2.2.2.2)
   have hroom₂ : f.2 < m₂.store.len f.1 := by
     have := hin₂.2.1.2.2.2.1; rw [hfr₂.len_eq]; omega
-  have hp2 : Store.inBlock p.1 (p.2 + nr + nq) 2 ≤
-      Store.inBlock p.1 p.2 (qs ++ [θ, κ]).length :=
-    Fp.inBlock_le_inBlock (by omega) (by simp; omega)
-  have hap' : Fp.Apart [(L, 0), uo, a, (p.1, p.2 + nr + nq), f]
-      [2 * ((n + 1) * (n + 1)), 2 * ((n + 1) * (n + 1)), 2 * ((n + 1) * (n + 1)), 2, 1] := by
-    simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
-      and_true]
-    exact ⟨⟨hne (by simp; omega), hne (by simp; omega), hne (by simp; omega),
-      hne (by simp; omega)⟩, ⟨h2.symm, h4.symm.mono le_rfl hp2, h6⟩, ⟨h1.mono le_rfl hp2, h3⟩,
-      h5.mono hp2 le_rfl⟩
+  have hap' := apart_verifiedCheck hap hq hlt
   -- the check
   refine ((schurResidualCheck_writes hS hM hL hC hNm (a0 := (L, 0)) (uo := uo) (t := a)
     (p := (p.1, p.2 + nr + nq)) (f := f) hA0₂ hU hT hp₂ (hl₂ _ (by simp)) hroom₂
@@ -433,9 +451,6 @@ theorem verifiedSchurWith_measureReal_not_flag_le {M : Machine ℝ} {I : Interp 
   have hne : ∀ {b o n b' o' n' : ℕ}, b ≠ b' →
       Fp.Disj (Store.inBlock b o n) (Store.inBlock b' o' n') := fun h => Fp.disj_inBlock_of_ne h
   obtain ⟨h1, h2, h3, h4, h5, h6⟩ := apart_four hap
-  have hp2 : Store.inBlock p.1 (p.2 + nr + nq) 2 ≤
-      Store.inBlock p.1 p.2 (qs ++ [θ, κ]).length :=
-    Fp.inBlock_le_inBlock (by omega) (by simp; omega)
   have hliv : ∀ (m : Mem ℝ) (zs : List (ℕ × ℕ)), L = μ.store.length →
       m.store.length = L + 1 →
       (∀ z ∈ zs, z.1 = a.1 ∨ z.1 = p.1 ∨ z.1 = uo.1 ∨ z.1 = f.1 ∨ z.1 = L) → m.Live zs := by
@@ -469,16 +484,8 @@ theorem verifiedSchurWith_measureReal_not_flag_le {M : Machine ℝ} {I : Interp 
       (Pre := fun m => SchurPipelineInput qs a p uo f A m)
       (fun m hm => PWrites.of_measureReal_le hI hloc hPm (hSolve m hm)) hPm) rfl rfl
       fun m hm => ?_) (fun m hm => hm.2.2.1.head) fun m m' ⟨hL, hlen, hin', hA0⟩ hfr hpost => ?_
-    · obtain ⟨hl', -⟩ := hm
-      have hl'' : ∀ z ∈ [a, p, uo, f], z.1 < m.store.length := hl'
-      intro z hz
-      simp only [List.mem_cons, List.not_mem_nil, or_false] at hz
-      rcases hz with rfl | rfl | rfl | rfl | rfl
-      exacts [hl'' _ (by simp), hl'' _ (by simp), hl'' _ (by simp), hl'' _ (by simp),
-        hl'' _ (by simp)]
-    · have hdp : Fp.Disj (schurFp n a uo f) (Store.inBlock p.1 p.2 (qs ++ [θ, κ]).length) := by
-        simp only [schurFp, Fp.disj_sup_left]
-        exact ⟨⟨h1, h4.symm⟩, h5.symm⟩
+    · exact fun z hz => hm.1 z (by simp only [List.mem_cons, List.not_mem_nil] at hz ⊢; tauto)
+    · have hdp := disj_schurFp_words hap
       refine ⟨hpost, hL, by rw [hfr.length_eq, hlen], hA0.of_eqOff hfr (by
         simp only [schurFp, Fp.disj_sup_left]
         exact ⟨⟨hne (by simp; omega), hne (by simp; omega)⟩, hne (by simp; omega)⟩),
@@ -488,13 +495,7 @@ theorem verifiedSchurWith_measureReal_not_flag_le {M : Machine ℝ} {I : Interp 
   -- the check
   · refine PWrites.of_writes le_rfl fun m τ ⟨hpost, hLμ, hlen, hA0, hpw, hfm⟩ => ?_
     have hl' := hliv m [(L, 0), uo, a, (p.1, p.2 + nr + nq), f] hLμ hlen (by simp)
-    have hap' : Fp.Apart [(L, 0), uo, a, (p.1, p.2 + nr + nq), f]
-        [2 * ((n + 1) * (n + 1)), 2 * ((n + 1) * (n + 1)), 2 * ((n + 1) * (n + 1)), 2, 1] := by
-      simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
-        and_true]
-      exact ⟨⟨hne (by simp; omega), hne (by simp; omega), hne (by simp; omega),
-        hne (by simp; omega)⟩, ⟨h2.symm, h4.symm.mono le_rfl hp2, h6⟩, ⟨h1.mono le_rfl hp2, h3⟩,
-        h5.mono hp2 le_rfl⟩
+    have hap' := apart_verifiedCheck (L := L) hap hq (fun z hz => by have := hlt z hz; omega)
     refine ((schurResidualCheck_writes_of_schurOutput hS hM hL hC hu hκ0 hκ hθ1 huθ heU hδ'
       (hPS m hpost) hA0 hpw hl' hfm hap').in_frame rfl rfl
       (hliv m _ hLμ hlen (by simp))).mono le_rfl

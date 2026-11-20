@@ -1,0 +1,271 @@
+/-
+Copyright (c) 2026 NLAlib contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: NLAlib contributors
+-/
+module
+
+public import NLAlib.Eigensolvers.Schur.ResidualCheck
+public import NLAlib.Eigensolvers.Schur.Pipeline
+
+/-!
+# A verified Schur solver
+
+`NLAlib.Schur.verifiedSchurWith Solve` runs any Schur solver `Solve` (the interface of the
+pipeline, `[N, nr, nq, k, F, T] (A, P) → (A, U, Fl)`) on the matrix, keeping a copy
+$\mathbf{A}_0$, and then the residual check `NLAlib.Schur.schurResidualCheck` on
+$(\mathbf{A}_0, \widehat{\mathbf{U}}, \widehat{\mathbf{T}})$ with the words $\theta, \kappa$, which
+writes the flag. The flag is then a certificate: **on every tape**, flag $0$ implies that
+$\widehat{\mathbf{T}}$ is upper triangular and
+$\|\mathbf{A} - \widehat{\mathbf{U}}\widehat{\mathbf{T}}\widehat{\mathbf{U}}^{\mathsf H}\|_2 \le
+\delta\|\mathbf{A}\|_2$, whatever the solver did. Only the chance of a nonzero flag depends on the
+solver's probabilistic contract.
+
+## Main definitions
+
+* `NLAlib.Schur.TerminatingSchurSolver`: a solver that terminates on every tape.
+* `NLAlib.Schur.verifiedSchurWith`: the verified program.
+* `NLAlib.Schur.VerifiedSchurOutput`: its every-tape output.
+
+## Main results
+
+* `NLAlib.Schur.verifiedSchurWith_writes`: termination and the flag-conditional Schur output on
+  every tape.
+-/
+
+@[expose] public section
+
+namespace NLAlib.Schur
+
+open Ops MeasureTheory
+open scoped Matrix
+
+variable {O Q : Type}
+
+/-- **A Schur solver that terminates on every tape** at the order $n + 1$, the dimensions `d` and
+the words `qs`: from every input of the pipeline (`NLAlib.Schur.SchurPipelineInput`) and on every
+tape, the run writes only the matrix, the accumulator and the flag, and stores a matrix and an
+accumulator $\widehat{\mathbf{U}}$ with $\|\widehat{\mathbf{U}}^{\mathsf H}\widehat{\mathbf{U}} -
+\mathbf{I}\|_2 \le e_U$ (`NLAlib.Schur.SchurOrth`). -/
+def TerminatingSchurSolver (eU : ℝ) (n : ℕ) (d : List ℕ) (qs : List ℝ) (Solve : Impl O Q)
+    (I : Interp O Q ℝ) : Prop :=
+  ∀ {τ : Tape ℝ} {μ : Mem ℝ} {a p uo f : ℕ × ℕ} (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
+    SchurPipelineInput qs a p uo f A μ →
+    Writes .total I τ Solve.body (Env.frame d [a, p, a, uo, f]) (schurFp n a uo f)
+      (SchurOrth (n := n) a uo eU) μ
+
+/-- **The output of a verified Schur solver** on every tape: the stored matrix and accumulator
+of `NLAlib.Schur.SchurOrth`, the flag the literal $0$ or the literal $1$, and, if the flag is
+$0$, a Schur output (`NLAlib.Schur.SchurOutput`) of $\mathbf{A}$ with the errors $\delta$ and
+$e_U$. -/
+def VerifiedSchurOutput (M : Machine ℝ) {n : ℕ} (a uo f : ℕ × ℕ)
+    (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (δ eU : ℝ) (μ' : Mem ℝ) : Prop :=
+  SchurOrth (n := n) a uo eU μ' ∧
+    (μ'.store.get f.1 f.2 = some 0 ∨ μ'.store.get f.1 f.2 = some (M.lit 1)) ∧
+    (μ'.store.get f.1 f.2 = some 0 → SchurOutput a uo f A δ eU μ')
+
+/-! ### The memory of a verified run -/
+
+/-- The input of the pipeline is kept by any memory agreeing with it below a bound on its
+buffers. -/
+theorem SchurPipelineInput.of_below {n : ℕ} {qs : List ℝ} {a p uo f : ℕ × ℕ}
+    {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {μ μ' : Mem ℝ}
+    (h : SchurPipelineInput qs a p uo f A μ) {L : ℕ} (hB : Store.Below L μ.store μ'.store)
+    (hlt : ∀ z ∈ [a, p, uo, f], z.1 < L) (hlen : L ≤ μ'.store.length) :
+    SchurPipelineInput qs a p uo f A μ' := by
+  obtain ⟨hl, hroom, hap, hA, hP⟩ := h
+  refine ⟨fun z hz => lt_of_lt_of_le (hlt z hz) hlen, ?_, hap,
+    hA.of_below hB (hlt a (by simp)), by rw [hB.readBlock (hlt p (by simp))]; exact hP⟩
+  rw [Mem.room_eq_of_below hB hlt]
+  exact hroom
+
+/-- The input of the verified solver, with the words $\theta, \kappa$ first, holds the input of the
+solver at the words from `P[2]` on. -/
+theorem SchurPipelineInput.tail {n : ℕ} {θ κ : ℝ} {qs : List ℝ} {a p uo f : ℕ × ℕ}
+    {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {μ : Mem ℝ}
+    (h : SchurPipelineInput (θ :: κ :: qs) a p uo f A μ) :
+    SchurPipelineInput qs a (p.1, p.2 + 2) uo f A μ := by
+  obtain ⟨hl, hroom, hap, hA, hP⟩ := h
+  refine ⟨fun z hz => ?_, ?_, apart_tail (qR := [θ, κ]) hap, hA,
+    Store.readBlock_append_right (xs := [θ, κ]) hP⟩
+  · have hl' : ∀ z ∈ [a, p, uo, f], z.1 < μ.store.length := hl
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hz
+    change z.1 < μ.store.length
+    rcases hz with rfl | rfl | rfl | rfl
+    exacts [hl' _ (by simp), hl' p (by simp), hl' _ (by simp), hl' _ (by simp)]
+  · simp only [Mem.Room, List.length_cons] at hroom ⊢
+    exact ⟨hroom.1, by omega, hroom.2.2⟩
+
+section Program
+
+variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
+
+/-- **The verified Schur solver** with a Schur solver `Solve`: copy $\mathbf{A}$ into scratch,
+run `Solve` on the words `P[2]`, …, then the residual check
+`NLAlib.Schur.schurResidualCheck` on the copy, the accumulator and the matrix with the words
+`P[0]` $= \theta$, `P[1]` $= \kappa$; the check writes the flag. The interface is
+`[N, nr, nq, k, F, T] (A, P) → (A, U, Fl)`.
+Algorithm: verified-schur -/
+def verifiedSchurWith (Solve : Impl O Q) : Impl O Q :=
+  opsImpl% [N, nr, nq, k, F, T] (A, P) → (A, U, Fl) {
+    let A0 ← alloc (2 * (N * N));
+    run (PairMatrix.copy (Op := O) (Tst := Q)).body [N, N] (A, A0);
+    run Solve.body [N, nr, nq, k, F, T] (A, P[2], A, U, Fl);
+    run (schurResidualCheck (O := O) (Q := Q)).body [N] (A0, U, A, P, A, Fl)
+  }
+
+end Program
+
+/-! ### Every tape -/
+
+section Theorems
+
+variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
+
+/-- The size condition of the check at the order $n + 1$: $64(n + 2)^3\boldsymbol{u} \le 1$
+gives $(2(n + 1)^2 + 2)\boldsymbol{u} \le 1/16$. -/
+theorem norm_check_size_le {u : ℝ} (hu0 : 0 ≤ u) {n : ℕ} (hu : 64 * ((n : ℝ) + 2) ^ 3 * u ≤ 1) :
+    (2 * (((n + 1 : ℕ)) : ℝ) ^ 2 + 2) * u ≤ 1 / 16 := by
+  have hn : (0 : ℝ) ≤ n := Nat.cast_nonneg n
+  push_cast
+  have : 2 * ((n : ℝ) + 1) ^ 2 + 2 ≤ 4 * ((n : ℝ) + 2) ^ 3 := by nlinarith
+  nlinarith
+
+omit [Has IndexOp O] [Has CmpTst Q] in
+/-- The rounded Frobenius norm is a two-sided estimate with the factors $(15/16, 17/16)$ at the
+order $n + 1$ when $64(n + 2)^3\boldsymbol{u} \le 1$. -/
+theorem frobNormStage_frobNormEstimateContract_check {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar M I) (hM : StdModel u id M) (hu0 : 0 ≤ u) {n : ℕ}
+    (hu : 64 * ((n : ℝ) + 2) ^ 3 * u ≤ 1) :
+    FrobNormEstimateContract (15 / 16) (17 / 16) (n + 1) (frobNormStage (O := O) (Q := Q)) I :=
+  FrobNormEstimateContract.mono (frobNormStage_frobNormEstimateContract hS hM
+    (by linarith [norm_check_size_le hu0 hu])) (by linarith [norm_check_size_le hu0 hu])
+    (by linarith [norm_check_size_le hu0 hu])
+
+/-- The words of a stored Schur form: if the matrix block holds the same matrix in two stores,
+the two stores agree on the block. -/
+theorem HoldsMatrix.get_eq {rows cols : ℕ} {b : ℕ × ℕ} {X : Matrix (Fin rows) (Fin cols) ℂ}
+    {s s' : Store ℝ} (h : HoldsMatrix b X s) (h' : HoldsMatrix b X s') {i : ℕ}
+    (hi : b.2 ≤ i ∧ i < b.2 + 2 * (cols * rows)) : s'.get b.1 i = s.get b.1 i := by
+  have e1 := Store.get_of_readBlock h (j := i - b.2) (by omega) 0
+  have e2 := Store.get_of_readBlock h' (j := i - b.2) (by omega) 0
+  rw [show b.2 + (i - b.2) = i by omega] at e1 e2
+  rw [e1, e2]
+
+/-- **The verified Schur solver on every tape**: on a scalar machine with the standard model at
+$\boldsymbol{u}$, index literals and exact comparisons, with $64(n + 2)^3\boldsymbol{u} \le 1$,
+$\kappa \ge 32(n + 2)^2\boldsymbol{u}$, $\theta \ge 0$ and $2\theta\sqrt{n + 1} \le \delta$, let
+`Solve` be a Schur solver that terminates on every tape at the order $n + 1$, the dimensions
+$(n + 1, n_r, n_q, k, F, T)$ and the words `qs`, with the accumulator within $e_U$ of
+orthonormal (`NLAlib.Schur.TerminatingSchurSolver`). Then from a memory holding a complex
+$\mathbf{A}$ of order $n + 1$ and the words $\theta, \kappa$, `qs`
+(`NLAlib.Schur.SchurPipelineInput`),
+on every tape, `NLAlib.Schur.verifiedSchurWith` terminates, writes only $\mathbf{A}$,
+$\widehat{\mathbf{U}}$ and the flag, stores the flag $0$ or $1$, and if the flag is $0$:
+$\widehat{\mathbf{T}}$ is upper triangular,
+$\|\mathbf{A} - \widehat{\mathbf{U}}\widehat{\mathbf{T}}\widehat{\mathbf{U}}^{\mathsf H}\|_2 \le
+\delta\|\mathbf{A}\|_2$ and $\|\widehat{\mathbf{U}}^{\mathsf H}\widehat{\mathbf{U}} -
+\mathbf{I}\|_2 \le e_U$. No probability and no hypothesis on $\mathbf{A}$. No printed source. -/
+theorem verifiedSchurWith_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar M I) (hM : StdModel u id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
+    {n nr nq k F T : ℕ} {qs : List ℝ} {Solve : Impl O Q} {eU δ θ κ : ℝ}
+    (hSolve : TerminatingSchurSolver eU n [n + 1, nr, nq, k, F, T] qs Solve I)
+    (hu : 64 * ((n : ℝ) + 2) ^ 3 * u ≤ 1) (hκ : 32 * ((n : ℝ) + 2) ^ 2 * u ≤ κ) (hθ0 : 0 ≤ θ)
+    (hθ : 2 * θ * √((n : ℝ) + 1) ≤ δ) {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {a p uo f : ℕ × ℕ} {μ : Mem ℝ} (hin : SchurPipelineInput (θ :: κ :: qs) a p uo f A μ)
+    (τ : Tape ℝ) :
+    Writes .total I τ (verifiedSchurWith Solve).body
+      (Env.frame [n + 1, nr, nq, k, F, T] [a, p, a, uo, f]) (schurFp n a uo f)
+      (VerifiedSchurOutput M a uo f A δ eU) μ := by
+  have hu0 : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
+  have hNm : FrobNormEstimateContract (15 / 16) (17 / 16) (n + 1)
+      (frobNormStage (O := O) (Q := Q)) I :=
+    frobNormStage_frobNormEstimateContract_check hS hM hu0 hu
+  have hcast : (((n + 1 : ℕ)) : ℝ) + 1 = (n : ℝ) + 2 := by push_cast; ring
+  obtain ⟨hl, hroom, hap, hA, hP⟩ := id hin
+  have hlt : ∀ z ∈ [a, p, uo, f], z.1 < μ.store.length := hl
+  obtain ⟨ha, hp, huo, hf⟩ : a.1 < μ.store.length ∧ p.1 < μ.store.length ∧
+      uo.1 < μ.store.length ∧ f.1 < μ.store.length :=
+    ⟨hlt a (by simp), hlt p (by simp), hlt uo (by simp), hlt f (by simp)⟩
+  obtain ⟨h1, h2, h3, h4, h5, h6⟩ := apart_four hap
+  unfold verifiedSchurWith
+  change Writes .total I τ (Stmt.allocs [.const 2 * (.var 0 * .var 0)] _) _ _ _ μ
+  refine writes_allocs_preserving_post (ns := [2 * ((n + 1) * (n + 1))]) rfl
+    (fun hBelow h => ?keep) ?_
+  case keep =>
+    obtain ⟨⟨⟨T, hT⟩, U, hU, ho⟩, hfl, hout⟩ := h
+    have hg := (hBelow f.1 hf).2 f.2
+    refine ⟨⟨⟨T, hT.of_below hBelow ha⟩, U, hU.of_below hBelow huo, ho⟩, by rw [hg]; exact hfl,
+      fun h0 => ?_⟩
+    obtain ⟨-, U', T', hT', hU', hTu, hr, ho'⟩ := hout (by rw [← hg]; exact h0)
+    exact ⟨h0, U', T', hT'.of_below hBelow ha, hU'.of_below hBelow huo, hTu, hr, ho'⟩
+  intro s₁ hlen hlens hBelow
+  set L := μ.store.length with hLdef
+  simp only [List.length_cons, List.length_nil] at hlen
+  have hL0 : s₁.len L = 2 * ((n + 1) * (n + 1)) := by simpa using hlens 0 (by simp)
+  have hin₁ := hin.of_below (μ' := ⟨s₁, μ.pos⟩) hBelow hlt (by simp only; omega)
+  have hlv : ∀ (m : Mem ℝ), m.store.length = s₁.length → ∀ zs : List (ℕ × ℕ),
+      (∀ z ∈ zs, z.1 = a.1 ∨ z.1 = p.1 ∨ z.1 = uo.1 ∨ z.1 = f.1 ∨ z.1 = L) → m.Live zs := by
+    intro m hm zs hzs z hz
+    rw [hm, hlen]
+    rcases hzs z hz with h | h | h | h | h <;> rw [h] <;> omega
+  have hne : ∀ {b o n b' o' n' : ℕ}, b ≠ b' →
+      Fp.Disj (Store.inBlock b o n) (Store.inBlock b' o' n') := fun h => Fp.disj_inBlock_of_ne h
+  -- the copy
+  refine (PairMatrix.writes_copy (K := ℝ) (Op := O) (Tst := Q) hS (md := .total) (τ := τ)
+    (m := ⟨s₁, μ.pos⟩) (rows := n + 1) (cols := n + 1) (x := a) (y := (L, 0))
+    (hlv _ rfl _ (by simp)) (Or.inl (hne (by simp; omega))) hin₁.2.2.2.1
+    (by simp only [hL0]; omega)).frame_seq_le rfl rfl (hlv _ rfl _ (by simp))
+    (fun _ _ h => Or.inr (h.1 ▸ le_rfl)) fun m₁ hfr₁ ⟨_, hA0⟩ => ?_
+  have hB₁ : Store.Below L s₁ m₁.store := hfr₁.below_of_above fun b i h => h.1 ▸ le_rfl
+  have hin₂ := hin₁.of_below (μ' := m₁) hB₁ hlt (by rw [hfr₁.length_eq]; simp only; omega)
+  have hA0' : HoldsMatrix (L, 0) A m₁.store := hA0
+  -- the solver
+  refine (hSolve A hin₂.tail).frame_seq_le rfl rfl (hlv _ hfr₁.length_eq _ (by simp))
+    (fun _ _ h => Or.inl h) fun m₂ hfr₂ ⟨⟨T, hT⟩, U, hU, ho⟩ => ?_
+  have hA0₂ : HoldsMatrix (L, 0) A m₂.store := hA0'.of_eqOff hfr₂ (by
+    simp only [schurFp, Fp.disj_sup_left]
+    exact ⟨⟨hne (by simp; omega), hne (by simp; omega)⟩, hne (by simp; omega)⟩)
+  have hl₂ := hlv m₂ (hfr₂.length_eq.trans hfr₁.length_eq)
+  have hdp : Fp.Disj (schurFp n a uo f) (Store.inBlock p.1 p.2 (θ :: κ :: qs).length) := by
+    simp only [schurFp, Fp.disj_sup_left]
+    exact ⟨⟨h1, h4.symm⟩, h5.symm⟩
+  have hp₂ : m₂.store.readBlock p.1 p.2 [θ, κ].length = some [θ, κ] :=
+    Store.readBlock_append_left (ys := qs) (hfr₂.keep (Store.readsOnly_readBlock _ _ _ _) hdp
+      hin₂.2.2.2.2)
+  have hroom₂ : f.2 < m₂.store.len f.1 := by
+    have := hin₂.2.1.2.2.2.1; rw [hfr₂.len_eq]; omega
+  have hp2 : Store.inBlock p.1 p.2 2 ≤ Store.inBlock p.1 p.2 (θ :: κ :: qs).length :=
+    Fp.inBlock_le_inBlock le_rfl (by simp)
+  have hap' : Fp.Apart [(L, 0), uo, a, p, f]
+      [2 * ((n + 1) * (n + 1)), 2 * ((n + 1) * (n + 1)), 2 * ((n + 1) * (n + 1)), 2, 1] := by
+    simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
+      and_true]
+    exact ⟨⟨hne (by simp; omega), hne (by simp; omega), hne (by simp; omega),
+      hne (by simp; omega)⟩, ⟨h2.symm, h4.symm.mono le_rfl hp2, h6⟩, ⟨h1.mono le_rfl hp2, h3⟩,
+      h5.mono hp2 le_rfl⟩
+  -- the check
+  refine ((schurResidualCheck_writes hS hM hL hC hNm (a0 := (L, 0)) (uo := uo) (t := a) (p := p)
+    (f := f) hA0₂ hU hT hp₂ (hl₂ _ (by simp)) hroom₂ hap').in_frame rfl rfl
+    (hl₂ _ (by simp))).mono (sup_le (fun _ _ h => Or.inl (Or.inl (Or.inl h)))
+      (fun _ _ h => Or.inl (Or.inr h))) fun m₃ hfr₃ hout => ?_
+  have hU₃ : HoldsMatrix uo U m₃.store := hU.of_eqOff hfr₃ (by
+    simp only [Fp.disj_sup_left]; exact ⟨h2, h6.symm⟩)
+  have hz : M.lit 0 = 0 := hM.zero
+  refine ⟨⟨⟨upperPart T, hout.1⟩, U, hU₃, ho⟩, by rw [← hz]; exact hout.flag_cases,
+    fun h0 => ⟨h0, U, upperPart T, hout.1, hU₃, upperPart_isUpperTriangular T, ?_, ho⟩⟩
+  have hF := hout.frobNorm_sub_le hM (by rw [hcast]; exact hu) (by rw [hcast]; exact hκ) hθ0 h0
+  have hFA := frobNorm_le_sqrt_card_mul_specNorm A
+  simp only [Fintype.card_fin, Nat.cast_add, Nat.cast_one] at hFA
+  have hsA := specNorm_nonneg A
+  calc specNorm (A - U * upperPart T * Uᴴ) ≤ frobNorm (A - U * upperPart T * Uᴴ) :=
+        specNorm_le_frobNorm _
+    _ ≤ 2 * θ * frobNorm A := hF
+    _ ≤ 2 * θ * (√((n : ℝ) + 1) * specNorm A) :=
+        mul_le_mul_of_nonneg_left hFA (by positivity)
+    _ = 2 * θ * √((n : ℝ) + 1) * specNorm A := by ring
+    _ ≤ δ * specNorm A := mul_le_mul_of_nonneg_right hθ hsA
+
+end Theorems
+
+end NLAlib.Schur

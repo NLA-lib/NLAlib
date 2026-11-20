@@ -123,7 +123,14 @@ one-sided output $\mathbf{P}\mathbf{A}$ to the two-sided output $\mathbf{A}\math
 theorem _root_.IsStarProjection.matrixNorm_sub_mul_le_matrixNorm_sub_mul (Φ : SymmetricGauge)
     {P : Matrix m m 𝕜} {Q : Matrix n n 𝕜} (hQ : IsStarProjection Q) {A : Matrix m n 𝕜}
     (hPAQ : P * A * Q = P * A) :
-    Φ.matrixNorm (A - A * Q) ≤ Φ.matrixNorm (A - P * A) := sorry
+    Φ.matrixNorm (A - A * Q) ≤ Φ.matrixNorm (A - P * A) := by
+  classical
+  have h : A - A * Q = (A - P * A) * (1 - Q) := by
+    rw [Matrix.mul_sub, Matrix.sub_mul, Matrix.sub_mul, Matrix.mul_one, Matrix.mul_one, hPAQ]
+    abel
+  rw [h]
+  exact (Φ.matrixNorm_mul_le_mul_specNorm _ _).trans
+    (mul_le_of_le_one_right (Φ.matrixNorm_nonneg _) hQ.one_sub.specNorm_le_one)
 
 /-! ### Tail-count forms, $1 \le p \le 2$ and Frobenius -/
 

@@ -87,6 +87,7 @@ theorem SymmetricGauge.matrixNorm_mul_mul_add_one_sub_mul_mul_one_sub_le (Φ : S
   norm_num at h2
   linarith
 
+open scoped ComplexOrder MatrixOrder in
 omit [DecidableEq m] [DecidableEq n] in
 /-- **Schatten powers add on an orthogonal sum**: for $0 < p < \infty$ and $m \times n$ matrices
 with $\mathbf{X}^{\mathsf{H}}\mathbf{Y} = \mathbf{0}$ and
@@ -101,7 +102,36 @@ theorem schattenNorm_add_rpow_of_conjTranspose_mul_eq_zero_of_mul_conjTranspose_
     {p : ℝ≥0∞} (hp0 : p ≠ 0) (hp : p ≠ ⊤) {X Y : Matrix m n 𝕜} (h₁ : Xᴴ * Y = 0)
     (h₂ : X * Yᴴ = 0) :
     schattenNorm p (X + Y) ^ p.toReal =
-      schattenNorm p X ^ p.toReal + schattenNorm p Y ^ p.toReal := sorry
+      schattenNorm p X ^ p.toReal + schattenNorm p Y ^ p.toReal := by
+  classical
+  obtain ⟨q, hq, rfl⟩ : ∃ q : ℝ, 0 < q ∧ p = ENNReal.ofReal q :=
+    ⟨p.toReal, ENNReal.toReal_pos hp0 hp, (ENNReal.ofReal_toReal hp).symm⟩
+  rw [ENNReal.toReal_ofReal hq.le]
+  set G := Matrix.fromCols X Y
+  have h₁' : Yᴴ * X = 0 := by
+    rw [← Matrix.conjTranspose_conjTranspose X, ← Matrix.conjTranspose_mul, h₁,
+      Matrix.conjTranspose_zero]
+  have h₂' : Y * Xᴴ = 0 := by
+    rw [← Matrix.conjTranspose_conjTranspose Y, ← Matrix.conjTranspose_mul, h₂,
+      Matrix.conjTranspose_zero]
+  have hG₁ : (X + Y)ᴴᴴ * (X + Y)ᴴ = Gᴴᴴ * Gᴴ := by
+    rw [Matrix.conjTranspose_conjTranspose, Matrix.conjTranspose_conjTranspose,
+      Matrix.conjTranspose_fromCols_eq_fromRows_conjTranspose, Matrix.fromCols_mul_fromRows,
+      Matrix.conjTranspose_add, Matrix.add_mul, Matrix.mul_add, Matrix.mul_add, h₂, h₂',
+      add_zero, zero_add]
+  have hG₂ : Gᴴ * G = Matrix.fromBlocks (Xᴴ * X) 0 0 (Yᴴ * Y) := by
+    rw [Matrix.conjTranspose_fromCols_eq_fromRows_conjTranspose, Matrix.fromRows_mul_fromCols,
+      h₁, h₁']
+  have hX := Matrix.posSemidef_conjTranspose_mul_self X
+  have hY := Matrix.posSemidef_conjTranspose_mul_self Y
+  have hB : (Matrix.fromBlocks (Xᴴ * X) 0 0 (Yᴴ * Y)).PosSemidef :=
+    hG₂ ▸ Matrix.posSemidef_conjTranspose_mul_self G
+  rw [← schattenNorm_conjTranspose (A := X + Y), schattenNorm_rpow_eq_re_trace_rpow _ hq, hG₁,
+    ← schattenNorm_rpow_eq_re_trace_rpow _ hq, schattenNorm_conjTranspose (A := G),
+    schattenNorm_rpow_eq_re_trace_rpow _ hq, schattenNorm_rpow_eq_re_trace_rpow _ hq,
+    schattenNorm_rpow_eq_re_trace_rpow _ hq, hG₂, CFC.rpow_eq_cfc_real hB.nonneg,
+    CFC.rpow_eq_cfc_real hX.nonneg, CFC.rpow_eq_cfc_real hY.nonneg,
+    hX.isHermitian.cfc_fromBlocks_zero₁₂_zero₂₁ hY.isHermitian, Matrix.trace_fromBlocks, map_add]
 
 /-- **Schatten norms under a pair of projectors**: for $1 \le p < \infty$, orthogonal projectors
 $\mathbf{P}$ ($m \times m$) and $\mathbf{Q}$ ($n \times n$) and an $m \times n$ matrix

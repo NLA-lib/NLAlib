@@ -48,6 +48,18 @@ theorem IsTriangularEigenbasisApprox.norm_mulVec_col_le {ε σ η : ℝ} {T Y : 
     (h : IsTriangularEigenbasisApprox ε σ η T Y) (hε : 0 ≤ ε) (hσ : 0 ≤ σ) (j : n) :
     ‖WithLp.toLp 2 ((T - T j j • 1) *ᵥ Y.col j)‖ ≤
       (ε * (1 + √(Fintype.card n : ℝ)) * frobNorm T + σ) * ‖WithLp.toLp 2 (Y.col j)‖ := by
-  sorry
+  have h1 := ((h j).2.norm_mulVec_sub_le hε hσ)
+  rw [sub_zero] at h1
+  refine h1.trans (mul_le_mul_of_nonneg_right ?_ (norm_nonneg _))
+  have hone : frobNorm (1 : Matrix n n 𝕜) = √(Fintype.card n : ℝ) := by
+    rw [← frobNorm_one_sq (𝕜 := 𝕜) (n := n), Real.sqrt_sq (frobNorm_nonneg _)]
+  have hF : frobNorm (T - T j j • 1) ≤ (1 + √(Fintype.card n : ℝ)) * frobNorm T := by
+    calc frobNorm (T - T j j • 1) ≤ frobNorm T + ‖T j j‖ * √(Fintype.card n : ℝ) := by
+          rw [← hone, ← frobNorm_smul]; exact frobNorm_sub_le _ _
+      _ ≤ frobNorm T + frobNorm T * √(Fintype.card n : ℝ) := by
+          gcongr; exact norm_apply_le_frobNorm T j j
+      _ = _ := by ring
+  rw [mul_assoc]
+  gcongr
 
 end NLAlib

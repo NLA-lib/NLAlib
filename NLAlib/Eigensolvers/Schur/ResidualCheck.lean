@@ -77,8 +77,10 @@ def checkNorms : Impl O Q := opsImpl% [N] (A0, U, T, D) → (S) {
 /-- **The decision of the check**: from the norms $\hat r, \hat a, \hat w, \hat t$ in `S` and the
 words $\theta, \kappa$ in `P`, the guard $\hat g = \mathrm{fl}(\mathrm{fl}(\mathrm{fl}(\hat w\hat
 w)\hat t)\kappa)$ into `S[2]`, $\mathrm{fl}(\hat r + \hat g)$ into `S[0]`,
-$\mathrm{fl}(\hat a\theta)$ into `S[1]`, and the flag: the literal $0$ if `S[0] ≤ S[1]` (an exact
-comparison), the literal $1$ otherwise. The interface is `[] (S, P) → (S, Fl)`. -/
+$\mathrm{fl}(\hat a\theta)$ into `S[1]`, and the flag: the literal $0$ if the first is at most
+the second (an exact
+comparison of the two cells), the literal $1$ otherwise. The interface is
+`[] (S, P) → (S, Fl)`. -/
 def checkDecide : Impl O Q := opsImpl% [] (S, P) → (S, Fl) {
   call (Has.inj ScalarOp.mul) [] (S[2], S[2]) → (S[2]);
   call (Has.inj ScalarOp.mul) [] (S[2], S[3]) → (S[2]);
@@ -539,8 +541,7 @@ theorem residualWords_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (h
   simp only [List.length_cons, List.length_nil] at hlen
   have hW : s₁.len L = 2 * (N * N) := by simpa using hlens 0 (by simp)
   have hV : s₁.len (L + 1) = 2 * (N * N) := by simpa using hlens 1 (by simp)
-  have hA₁ := hA.of_below hBelow ha0
-  have hU₁ := hU.of_below hBelow huo
+  have hA₁ := hA.of_below hBelow ha0; have hU₁ := hU.of_below hBelow huo
   have hT₁ := hT.of_below hBelow ht
   have hd₁ : d.2 + 2 * (N * N) ≤ s₁.len d.1 := by
     rw [(hBelow d.1 hd1).1]; exact hd
@@ -640,11 +641,9 @@ theorem schurResidualCheck_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
     and_true] at hap
   obtain ⟨⟨hau, hat, hapw, haf⟩, ⟨hut, hup, huf⟩, ⟨htp, htf⟩, hpf⟩ := hap
   have hlt : ∀ z ∈ [a0, uo, t, p, f], z.1 < μ.store.length := hl
-  have ha0 := hlt a0 (by simp)
-  have huo := hlt uo (by simp)
-  have ht := hlt t (by simp)
-  have hp1 := hlt p (by simp)
-  have hf1 := hlt f (by simp)
+  obtain ⟨ha0, huo, ht, hp1, hf1⟩ : a0.1 < μ.store.length ∧ uo.1 < μ.store.length ∧
+      t.1 < μ.store.length ∧ p.1 < μ.store.length ∧ f.1 < μ.store.length :=
+    ⟨hlt a0 (by simp), hlt uo (by simp), hlt t (by simp), hlt p (by simp), hlt f (by simp)⟩
   unfold schurResidualCheck
   change Writes .total I τ (Stmt.allocs [.const 2 * (.var 0 * .var 0), .const 4] _) _ _ _ μ
   refine writes_allocs_preserving_post (ns := [2 * (N * N), 4]) rfl
@@ -671,8 +670,7 @@ theorem schurResidualCheck_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
   set G := Store.inBlock t.1 t.2 (2 * (N * N)) ⊔ Store.inBlock f.1 f.2 1 ⊔ Fp.above L
   have hGt : Store.inBlock t.1 t.2 (2 * (N * N)) ≤ G := fun _ _ h => Or.inl (Or.inl h)
   have hGL : ∀ b o n, L ≤ b → Store.inBlock b o n ≤ G := fun b o n hb _ _ hi => Or.inr (hi.1 ▸ hb)
-  have hA₁ := hA.of_below hBelow ha0
-  have hU₁ := hU.of_below hBelow huo
+  have hA₁ := hA.of_below hBelow ha0; have hU₁ := hU.of_below hBelow huo
   have hT₁ := hT.of_below hBelow ht
   have hθ₁ : s₁.get p.1 p.2 = some θ := by
     rw [(hBelow p.1 hp1).2]; simpa using Store.get_of_readBlock hp (j := 0) (by omega) 0
@@ -681,8 +679,7 @@ theorem schurResidualCheck_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
   -- the upper part
   refine (zeroStrictLower_writes (O := O) (Q := Q) (μ := ⟨s₁, μ.pos⟩) hS hM.zero hT₁).frame_seq_le
     rfl rfl (hall _ rfl _ (by simp) _) hGt fun m₁ hfr₁ ⟨_, hT₂⟩ => ?_
-  have hA₂ := hA₁.of_eqOff hfr₁ hat.symm
-  have hU₂ := hU₁.of_eqOff hfr₁ hut.symm
+  have hA₂ := hA₁.of_eqOff hfr₁ hat.symm; have hU₂ := hU₁.of_eqOff hfr₁ hut.symm
   have hl₁ := hall _ hfr₁.length_eq
   -- the residual
   refine (residualWords_writes (O := O) (Q := Q) (d := (L, 0)) hS hM hA₂ hU₂ hT₂
@@ -692,9 +689,6 @@ theorem schurResidualCheck_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
   have hl₂ := hall _ (hfr₂.length_eq.trans hfr₁.length_eq)
   have hkL : ∀ {b : ℕ × ℕ} {X : Matrix (Fin N) (Fin N) ℂ} {m m' : Mem ℝ} {o n : ℕ},
       b.1 < L → HoldsMatrix b X m.store → m.store.EqOff (Store.inBlock L o n) m'.store →
-      HoldsMatrix b X m'.store := fun hb hX hfr => hX.of_eqOff hfr (hne (by omega))
-  have hkL1 : ∀ {b : ℕ × ℕ} {X : Matrix (Fin N) (Fin N) ℂ} {m m' : Mem ℝ} {o n : ℕ},
-      b.1 < L → HoldsMatrix b X m.store → m.store.EqOff (Store.inBlock (L + 1) o n) m'.store →
       HoldsMatrix b X m'.store := fun hb hX hfr => hX.of_eqOff hfr (hne (by omega))
   -- the norms
   refine (checkNorms_writes (O := O) (Q := Q) (s := (L + 1, 0)) hNm
@@ -990,9 +984,15 @@ theorem frobNorm_factors_le_of_frobNorm_sub_mul_mul_le {N : ℕ} {θ : ℝ} (hθ
     have := frobNorm_le_of_specNorm_conjTranspose_mul_self_sub_one_le (T := T) hUU (by norm_num)
     nlinarith
 
-/-- The two terms of the check at an accurate Schur form: with the hypotheses of
-`NLAlib.Schur.check_le_of_frobNorm_sub_mul_mul_le`, $\hat r + \hat g \le
-(2/5)\theta\|\mathbf{A}_0\|_{\mathsf F}$. -/
+/-- The two terms of the check at an accurate Schur form: under the standard model at
+$\boldsymbol{u}$ with $64(N + 1)^3\boldsymbol{u} \le 1$, $0 \le \kappa \le
+64(N + 1)^2\boldsymbol{u}$, $\theta \le 1$, $4096(N + 1)^3\boldsymbol{u} \le \theta$,
+$\|\mathbf{U}^{\mathsf H}\mathbf{U} - \mathbf{I}\|_2 \le 1/2$,
+$\|\mathbf{A}_0 - \mathbf{U}\mathbf{T}\mathbf{U}^{\mathsf H}\|_{\mathsf F} \le
+(\theta/8)\|\mathbf{A}_0\|_{\mathsf F}$ and $\hat r, \hat w, \hat t$ at most $17/16$ times the
+Frobenius norms of the stored residual, of $\mathbf{U}$ and of $\mathbf{T}$ ($\hat w, \hat t \ge
+0$), the sum $\hat r + \hat g$ with the guard is at most
+$(2/5)\theta\|\mathbf{A}_0\|_{\mathsf F}$. -/
 theorem add_checkGuard_le_of_frobNorm_sub_mul_mul_le {M : Machine ℝ} {u : ℝ}
     (hM : StdModel u id M) {N : ℕ} (hu : 64 * ((N : ℝ) + 1) ^ 3 * u ≤ 1) {κ θ : ℝ}
     (hκ0 : 0 ≤ κ) (hκ : κ ≤ 64 * ((N : ℝ) + 1) ^ 2 * u) (hθ1 : θ ≤ 1)

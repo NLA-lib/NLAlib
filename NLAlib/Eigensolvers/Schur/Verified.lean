@@ -64,6 +64,40 @@ def VerifiedSchurOutput (M : Machine ℝ) {n : ℕ} (a uo f : ℕ × ℕ)
     (μ'.store.get f.1 f.2 = some 0 ∨ μ'.store.get f.1 f.2 = some (M.lit 1)) ∧
     (μ'.store.get f.1 f.2 = some 0 → SchurOutput a uo f A δ eU μ')
 
+/-- **A probabilistic block from its failure bound at one memory**: under a measurable
+interpretation whose operations read the tape only in their windows, if the run of `c` from `m`
+misses its frame or `Post` with probability at most $\varphi$ under every tape with the stream
+laws, and the outcomes (the frame and `Post`) form a measurable set, then the block meets
+`NLAlib.Ops.PWrites` from `m`, with the good set "the run succeeds". -/
+theorem _root_.NLAlib.Ops.PWrites.of_measureReal_le {Op Tst : Type} {I : Interp Op Tst ℝ}
+    (hI : I.IsMeasurable) {win : Op → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    {law : ℕ → Measure ℝ} {c : Stmt Op Tst} {ρ : Env} {F : Fp} {Post : Mem ℝ → Prop} {φ : ℝ}
+    {m : Mem ℝ}
+    (hT : MeasurableSet {x : Mem ℝ × Mem ℝ | x.1.store.EqOff F x.2.store ∧ Post x.2})
+    (h : ∀ {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ},
+      IsTapeLaw law P ξ → P.real {ω | ¬ Writes .total I (ξ ω) c ρ F Post m} ≤ φ) :
+    PWrites law I c ρ F (· = m) Post φ := by
+  have hev := hI.measurable_eval c ρ
+  have hsw : Measurable fun x : Mem ℝ × Tape ℝ => (x.2, x.1) :=
+    measurable_snd.prodMk measurable_fst
+  refine ⟨fun m' => {τ | Writes .total I τ c ρ F Post m'}, ?_, fun m' τ τ' hττ' => ?_,
+    fun m' hm' => ?_⟩
+  · have e : {x : Mem ℝ × Tape ℝ | x.2 ∈ {τ | Writes .total I τ c ρ F Post x.1}} =
+        {x | (eval I x.2 c ρ x.1).isSome = true} ∩
+          {x | (x.1, (eval I x.2 c ρ x.1).getD x.1) ∈
+            {y : Mem ℝ × Mem ℝ | y.1.store.EqOff F y.2.store ∧ Post y.2}} := by
+      ext x
+      simp only [Set.mem_ofPred_eq, Set.mem_inter_iff, Writes, Wp, Mode.Holds]
+      cases eval I x.2 c ρ x.1 <;> simp
+    rw [e]
+    exact ((hev.1.comp hsw) (measurableSet_singleton true)).inter
+      ((measurable_fst.prodMk (hev.2.comp hsw)) hT)
+  · have := Follows.eq_of_agree (f := fun τ m => eval I τ c ρ m)
+      (fun τ τ' => run_follows hloc τ τ' c ρ) (m := m') hττ'
+    simp only [Set.mem_ofPred_eq, Writes, Wp, this]
+  · subst hm'
+    exact ⟨fun τ hτ => hτ, fun P ξ hξ => h hξ⟩
+
 /-! ### The memory of a verified run -/
 
 /-- The input of the pipeline is kept by any memory agreeing with it below a bound on its
@@ -265,6 +299,71 @@ theorem verifiedSchurWith_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
         mul_le_mul_of_nonneg_left hFA (by positivity)
     _ = 2 * θ * √((n : ℝ) + 1) * specNorm A := by ring
     _ ≤ δ * specNorm A := mul_le_mul_of_nonneg_right hθ hsA
+
+omit [Has IndexOp O] [Has CmpTst Q] in
+/-- The norm of a residual in the Frobenius norm from the spectral one: at order $n + 1$,
+$\|\mathbf{A} - \mathbf{U}\mathbf{T}\mathbf{U}^{\mathsf H}\|_2 \le \delta'\|\mathbf{A}\|_2$ with
+$\sqrt{n + 1}\,\delta' \le \theta/8$ gives the Frobenius residual at most
+$(\theta/8)\|\mathbf{A}\|_{\mathsf F}$. -/
+theorem frobNorm_sub_le_of_specNorm_sub_le {n : ℕ} {A U T : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {δ' θ : ℝ} (h : specNorm (A - U * T * Uᴴ) ≤ δ' * specNorm A) (hθ : 0 ≤ θ)
+    (hδ' : √((n : ℝ) + 1) * δ' ≤ θ / 8) :
+    frobNorm (A - U * T * Uᴴ) ≤ θ / 8 * frobNorm A := by
+  have h1 := frobNorm_le_sqrt_card_mul_specNorm (A - U * T * Uᴴ)
+  simp only [Fintype.card_fin, Nat.cast_add, Nat.cast_one] at h1
+  have hs := Real.sqrt_nonneg ((n : ℝ) + 1)
+  have hA := specNorm_le_frobNorm A
+  have hA0 := specNorm_nonneg A
+  have hδ0 : 0 ≤ δ' * specNorm A := le_trans (specNorm_nonneg _) h
+  calc frobNorm (A - U * T * Uᴴ) ≤ √((n : ℝ) + 1) * (δ' * specNorm A) :=
+        h1.trans (mul_le_mul_of_nonneg_left h hs)
+    _ = √((n : ℝ) + 1) * δ' * specNorm A := by ring
+    _ ≤ θ / 8 * specNorm A := by
+        rcases le_or_gt 0 (√((n : ℝ) + 1) * δ') with h0 | h0
+        · exact mul_le_mul_of_nonneg_right hδ' hA0
+        · nlinarith
+    _ ≤ θ / 8 * frobNorm A := mul_le_mul_of_nonneg_left hA (by linarith)
+
+/-- **The check passes on an accurate Schur output**: on a scalar machine with the standard model
+at $\boldsymbol{u}$, index literals and exact comparisons, with $64(n + 2)^3\boldsymbol{u} \le 1$,
+$0 \le \kappa \le 64(n + 2)^2\boldsymbol{u}$, $\theta \le 1$,
+$4096(n + 2)^3\boldsymbol{u} \le \theta$, $e_U \le 1/2$ and $\sqrt{n + 1}\,\delta' \le \theta/8$,
+from a memory holding a Schur output of $\mathbf{A}$ with the errors $\delta', e_U$, a copy of
+$\mathbf{A}$ at `a0`, the words $\theta, \kappa$ at `p` and room for the flag, pairwise apart, the
+check writes the flag $0$ and changes no other cell. -/
+theorem schurResidualCheck_writes_of_schurOutput {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar M I) (hM : StdModel u id M) (hL : IsIndexLit M I) (hC : IsCmp id I) {n : ℕ}
+    {θ κ δ' eU : ℝ} (hu : 64 * ((n : ℝ) + 2) ^ 3 * u ≤ 1) (hκ0 : 0 ≤ κ)
+    (hκ : κ ≤ 64 * ((n : ℝ) + 2) ^ 2 * u) (hθ1 : θ ≤ 1) (huθ : 4096 * ((n : ℝ) + 2) ^ 3 * u ≤ θ)
+    (heU : eU ≤ 1 / 2) (hδ' : √((n : ℝ) + 1) * δ' ≤ θ / 8) {τ : Tape ℝ} {μ : Mem ℝ}
+    {a0 uo a p f : ℕ × ℕ} {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    (hout : SchurOutput a uo f A δ' eU μ) (hA : HoldsMatrix a0 A μ.store)
+    (hp : μ.store.readBlock p.1 p.2 2 = some [θ, κ]) (hl : μ.Live [a0, uo, a, p, f])
+    (hf : f.2 < μ.store.len f.1)
+    (hap : Fp.Apart [a0, uo, a, p, f]
+      [2 * ((n + 1) * (n + 1)), 2 * ((n + 1) * (n + 1)), 2 * ((n + 1) * (n + 1)), 2, 1]) :
+    Writes .total I τ (schurResidualCheck (O := O) (Q := Q)).body
+      (Env.frame [n + 1] [a0, uo, a, p, a, f])
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
+      (fun μ' => μ'.store.get f.1 f.2 = some 0 ∧ μ.store.EqOff (Store.inBlock f.1 f.2 1) μ'.store)
+      μ := by
+  have hu0 : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
+  have hcast : (((n + 1 : ℕ)) : ℝ) + 1 = (n : ℝ) + 2 := by push_cast; ring
+  obtain ⟨-, U, T, hT, hU, hTu, hr, ho⟩ := hout
+  refine (schurResidualCheck_writes hS hM hL hC
+    (frobNormStage_frobNormEstimateContract_check hS hM hu0 hu) hA hU hT hp hl hf hap).mono
+    le_rfl fun μ' hfr hc => ⟨?_, ?_⟩
+  · refine hc.flag_eq_zero hM (by rw [hcast]; exact hu) hκ0 (by rw [hcast]; exact hκ) hθ1
+      (by rw [hcast]; exact huθ) (ho.trans heU) ?_
+    rw [upperPart_eq_self hTu]
+    exact frobNorm_sub_le_of_specNorm_sub_le hr (le_trans (by positivity) huθ) hδ'
+  · have hT' := hc.1
+    rw [upperPart_eq_self hTu] at hT'
+    refine ⟨hfr.1, fun b i hi => ?_⟩
+    by_cases ha : Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) b i
+    · obtain ⟨rfl, h1, h2⟩ := ha
+      exact HoldsMatrix.get_eq hT hT' ⟨h1, h2⟩
+    · exact hfr.get_eq fun h => h.elim ha hi
 
 end Theorems
 

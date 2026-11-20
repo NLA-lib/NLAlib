@@ -113,39 +113,39 @@ theorem SchurPipelineInput.of_below {n : ℕ} {qs : List ℝ} {a p uo f : ℕ ×
   rw [Mem.room_eq_of_below hB hlt]
   exact hroom
 
-/-- The input of the verified solver, with the words $\theta, \kappa$ first, holds the input of the
-solver at the words from `P[2]` on. -/
-theorem SchurPipelineInput.tail {n : ℕ} {θ κ : ℝ} {qs : List ℝ} {a p uo f : ℕ × ℕ}
+/-- The input of the verified solver, with the words $\theta, \kappa$ after the solver's words
+`qs`, holds the input of the solver. -/
+theorem SchurPipelineInput.head {n : ℕ} {θ κ : ℝ} {qs : List ℝ} {a p uo f : ℕ × ℕ}
     {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {μ : Mem ℝ}
-    (h : SchurPipelineInput (θ :: κ :: qs) a p uo f A μ) :
-    SchurPipelineInput qs a (p.1, p.2 + 2) uo f A μ := by
+    (h : SchurPipelineInput (qs ++ [θ, κ]) a p uo f A μ) :
+    SchurPipelineInput qs a p uo f A μ := by
   obtain ⟨hl, hroom, hap, hA, hP⟩ := h
-  refine ⟨fun z hz => ?_, ?_, apart_tail (qR := [θ, κ]) hap, hA,
-    Store.readBlock_append_right (xs := [θ, κ]) hP⟩
-  · have hl' : ∀ z ∈ [a, p, uo, f], z.1 < μ.store.length := hl
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hz
-    change z.1 < μ.store.length
-    rcases hz with rfl | rfl | rfl | rfl
-    exacts [hl' _ (by simp), hl' p (by simp), hl' _ (by simp), hl' _ (by simp)]
-  · simp only [Mem.Room, List.length_cons] at hroom ⊢
-    exact ⟨hroom.1, by omega, hroom.2.2⟩
+  have hsub : Store.inBlock p.1 p.2 qs.length ≤ Store.inBlock p.1 p.2 (qs ++ [θ, κ]).length :=
+    Fp.inBlock_le_inBlock le_rfl (by simp)
+  obtain ⟨h1, h2, h3, h4, h5, h6⟩ := apart_four hap
+  refine ⟨hl, ?_, ?_, hA, Store.readBlock_append_left hP⟩
+  · simp only [Mem.Room, List.length_append] at hroom ⊢
+    exact ⟨hroom.1, by simp at hroom; omega, hroom.2.2⟩
+  · simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
+      and_true]
+    exact ⟨⟨h1.mono le_rfl hsub, h2, h3⟩, ⟨h4.mono hsub le_rfl, h5.mono hsub le_rfl⟩, h6⟩
 
 section Program
 
 variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
 
 /-- **The verified Schur solver** with a Schur solver `Solve`: copy $\mathbf{A}$ into scratch,
-run `Solve` on the words `P[2]`, …, then the residual check
+run `Solve` on its $n_r + n_q$ words `P[0]`, …, then the residual check
 `NLAlib.Schur.schurResidualCheck` on the copy, the accumulator and the matrix with the words
-`P[0]` $= \theta$, `P[1]` $= \kappa$; the check writes the flag. The interface is
+$\theta$, $\kappa$ after the solver's; the check writes the flag. The interface is
 `[N, nr, nq, k, F, T] (A, P) → (A, U, Fl)`.
 Algorithm: verified-schur -/
 def verifiedSchurWith (Solve : Impl O Q) : Impl O Q :=
   opsImpl% [N, nr, nq, k, F, T] (A, P) → (A, U, Fl) {
     let A0 ← alloc (2 * (N * N));
     run (PairMatrix.copy (Op := O) (Tst := Q)).body [N, N] (A, A0);
-    run Solve.body [N, nr, nq, k, F, T] (A, P[2], A, U, Fl);
-    run (schurResidualCheck (O := O) (Q := Q)).body [N] (A0, U, A, P, A, Fl)
+    run Solve.body [N, nr, nq, k, F, T] (A, P, A, U, Fl);
+    run (schurResidualCheck (O := O) (Q := Q)).body [N] (A0, U, A, P[nr + nq], A, Fl)
   }
 
 end Program
@@ -206,7 +206,8 @@ theorem verifiedSchurWith_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
     (hSolve : TerminatingSchurSolver eU n [n + 1, nr, nq, k, F, T] qs Solve I)
     (hu : 64 * ((n : ℝ) + 2) ^ 3 * u ≤ 1) (hκ : 32 * ((n : ℝ) + 2) ^ 2 * u ≤ κ) (hθ0 : 0 ≤ θ)
     (hθ : 2 * θ * √((n : ℝ) + 1) ≤ δ) {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
-    {a p uo f : ℕ × ℕ} {μ : Mem ℝ} (hin : SchurPipelineInput (θ :: κ :: qs) a p uo f A μ)
+    {a p uo f : ℕ × ℕ} {μ : Mem ℝ} (hq : qs.length = nr + nq)
+    (hin : SchurPipelineInput (qs ++ [θ, κ]) a p uo f A μ)
     (τ : Tape ℝ) :
     Writes .total I τ (verifiedSchurWith Solve).body
       (Env.frame [n + 1, nr, nq, k, F, T] [a, p, a, uo, f]) (schurFp n a uo f)
@@ -255,23 +256,25 @@ theorem verifiedSchurWith_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
   have hin₂ := hin₁.of_below (μ' := m₁) hB₁ hlt (by rw [hfr₁.length_eq]; simp only; omega)
   have hA0' : HoldsMatrix (L, 0) A m₁.store := hA0
   -- the solver
-  refine (hSolve A hin₂.tail).frame_seq_le rfl rfl (hlv _ hfr₁.length_eq _ (by simp))
+  refine (hSolve A hin₂.head).frame_seq_le rfl rfl (hlv _ hfr₁.length_eq _ (by simp))
     (fun _ _ h => Or.inl h) fun m₂ hfr₂ ⟨⟨T, hT⟩, U, hU, ho⟩ => ?_
   have hA0₂ : HoldsMatrix (L, 0) A m₂.store := hA0'.of_eqOff hfr₂ (by
     simp only [schurFp, Fp.disj_sup_left]
     exact ⟨⟨hne (by simp; omega), hne (by simp; omega)⟩, hne (by simp; omega)⟩)
   have hl₂ := hlv m₂ (hfr₂.length_eq.trans hfr₁.length_eq)
-  have hdp : Fp.Disj (schurFp n a uo f) (Store.inBlock p.1 p.2 (θ :: κ :: qs).length) := by
+  have hdp : Fp.Disj (schurFp n a uo f) (Store.inBlock p.1 p.2 (qs ++ [θ, κ]).length) := by
     simp only [schurFp, Fp.disj_sup_left]
     exact ⟨⟨h1, h4.symm⟩, h5.symm⟩
-  have hp₂ : m₂.store.readBlock p.1 p.2 [θ, κ].length = some [θ, κ] :=
-    Store.readBlock_append_left (ys := qs) (hfr₂.keep (Store.readsOnly_readBlock _ _ _ _) hdp
+  have hp₂ : m₂.store.readBlock p.1 (p.2 + nr + nq) [θ, κ].length = some [θ, κ] := by
+    rw [Nat.add_assoc, ← hq]
+    exact Store.readBlock_append_right (hfr₂.keep (Store.readsOnly_readBlock _ _ _ _) hdp
       hin₂.2.2.2.2)
   have hroom₂ : f.2 < m₂.store.len f.1 := by
     have := hin₂.2.1.2.2.2.1; rw [hfr₂.len_eq]; omega
-  have hp2 : Store.inBlock p.1 p.2 2 ≤ Store.inBlock p.1 p.2 (θ :: κ :: qs).length :=
-    Fp.inBlock_le_inBlock le_rfl (by simp)
-  have hap' : Fp.Apart [(L, 0), uo, a, p, f]
+  have hp2 : Store.inBlock p.1 (p.2 + nr + nq) 2 ≤
+      Store.inBlock p.1 p.2 (qs ++ [θ, κ]).length :=
+    Fp.inBlock_le_inBlock (by omega) (by simp; omega)
+  have hap' : Fp.Apart [(L, 0), uo, a, (p.1, p.2 + nr + nq), f]
       [2 * ((n + 1) * (n + 1)), 2 * ((n + 1) * (n + 1)), 2 * ((n + 1) * (n + 1)), 2, 1] := by
     simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
       and_true]
@@ -279,8 +282,9 @@ theorem verifiedSchurWith_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
       hne (by simp; omega)⟩, ⟨h2.symm, h4.symm.mono le_rfl hp2, h6⟩, ⟨h1.mono le_rfl hp2, h3⟩,
       h5.mono hp2 le_rfl⟩
   -- the check
-  refine ((schurResidualCheck_writes hS hM hL hC hNm (a0 := (L, 0)) (uo := uo) (t := a) (p := p)
-    (f := f) hA0₂ hU hT hp₂ (hl₂ _ (by simp)) hroom₂ hap').in_frame rfl rfl
+  refine ((schurResidualCheck_writes hS hM hL hC hNm (a0 := (L, 0)) (uo := uo) (t := a)
+    (p := (p.1, p.2 + nr + nq)) (f := f) hA0₂ hU hT hp₂ (hl₂ _ (by simp)) hroom₂
+    hap').in_frame rfl rfl
     (hl₂ _ (by simp))).mono (sup_le (fun _ _ h => Or.inl (Or.inl (Or.inl h)))
       (fun _ _ h => Or.inl (Or.inr h))) fun m₃ hfr₃ hout => ?_
   have hU₃ : HoldsMatrix uo U m₃.store := hU.of_eqOff hfr₃ (by
@@ -386,10 +390,10 @@ theorem verifiedSchurWith_measureReal_not_flag_le {M : Machine ℝ} {I : Interp 
     {law : ℕ → Measure ℝ} {n nr nq k F T : ℕ} {qs : List ℝ} {Solve : Impl O Q}
     {δ' eU θ κ φ : ℝ} {Post : Mem ℝ → Prop} {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {a p uo f : ℕ × ℕ} {μ : Mem ℝ}
-    (hSolve : ∀ μ', SchurPipelineInput qs a (p.1, p.2 + 2) uo f A μ' →
+    (hSolve : ∀ μ', SchurPipelineInput qs a p uo f A μ' →
       ∀ {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ}, IsTapeLaw law P ξ →
         P.real {ω | ¬ Writes .total I (ξ ω) Solve.body
-          (Env.frame [n + 1, nr, nq, k, F, T] [a, (p.1, p.2 + 2), a, uo, f]) (schurFp n a uo f)
+          (Env.frame [n + 1, nr, nq, k, F, T] [a, p, a, uo, f]) (schurFp n a uo f)
           Post μ'} ≤ φ)
     (hPm : MeasurableSet {x : Mem ℝ × Mem ℝ | x.1.store.EqOff (schurFp n a uo f) x.2.store ∧
       Post x.2})
@@ -401,13 +405,13 @@ theorem verifiedSchurWith_measureReal_not_flag_le {M : Machine ℝ} {I : Interp 
     (hu : 64 * ((n : ℝ) + 2) ^ 3 * u ≤ 1) (hκ0 : 0 ≤ κ) (hκ : κ ≤ 64 * ((n : ℝ) + 2) ^ 2 * u)
     (hθ1 : θ ≤ 1) (huθ : 4096 * ((n : ℝ) + 2) ^ 3 * u ≤ θ) (heU : eU ≤ 1 / 2)
     (hδ' : √((n : ℝ) + 1) * δ' ≤ θ / 8)
-    (hin : SchurPipelineInput (θ :: κ :: qs) a p uo f A μ)
+    (hq : qs.length = nr + nq) (hin : SchurPipelineInput (qs ++ [θ, κ]) a p uo f A μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
     P.real {ω | ¬ Writes .total I (ξ ω) (verifiedSchurWith Solve).body
       (Env.frame [n + 1, nr, nq, k, F, T] [a, p, a, uo, f]) (schurFp n a uo f)
       (fun μ' => μ'.store.get f.1 f.2 = some 0 ∧ Post μ') μ} ≤ φ := by
   have := hξ.isProbabilityMeasure
-  have hφ : 0 ≤ φ := measureReal_nonneg.trans (hSolve μ hin.tail hξ)
+  have hφ : 0 ≤ φ := measureReal_nonneg.trans (hSolve μ hin.head hξ)
   obtain ⟨hl, hroom, hap, hA, hP⟩ := id hin
   have hlt : ∀ z ∈ [a, p, uo, f], z.1 < μ.store.length := hl
   obtain ⟨ha, hp, huo, hf⟩ : a.1 < μ.store.length ∧ p.1 < μ.store.length ∧
@@ -418,7 +422,7 @@ theorem verifiedSchurWith_measureReal_not_flag_le {M : Machine ℝ} {I : Interp 
   change PWrites law I (Stmt.allocs [.const 2 * (.var 0 * .var 0)] _) _ _ _ _ _
   refine PWrites.allocs (ns := [2 * ((n + 1) * (n + 1))]) rfl
     (Pre₁ := fun L m => L = μ.store.length ∧ m.store.length = L + 1 ∧
-      m.store.len L = 2 * ((n + 1) * (n + 1)) ∧ SchurPipelineInput (θ :: κ :: qs) a p uo f A m)
+      m.store.len L = 2 * ((n + 1) * (n + 1)) ∧ SchurPipelineInput (qs ++ [θ, κ]) a p uo f A m)
     (fun m s₁ hm hlen hlens hBelow => ?_) (fun m hm s s' q hBelow hout => ?_) fun L => ?_
   · subst hm
     simp only [List.length_cons, List.length_nil] at hlen
@@ -429,8 +433,9 @@ theorem verifiedSchurWith_measureReal_not_flag_le {M : Machine ℝ} {I : Interp 
   have hne : ∀ {b o n b' o' n' : ℕ}, b ≠ b' →
       Fp.Disj (Store.inBlock b o n) (Store.inBlock b' o' n') := fun h => Fp.disj_inBlock_of_ne h
   obtain ⟨h1, h2, h3, h4, h5, h6⟩ := apart_four hap
-  have hp2 : Store.inBlock p.1 p.2 2 ≤ Store.inBlock p.1 p.2 (θ :: κ :: qs).length :=
-    Fp.inBlock_le_inBlock le_rfl (by simp)
+  have hp2 : Store.inBlock p.1 (p.2 + nr + nq) 2 ≤
+      Store.inBlock p.1 p.2 (qs ++ [θ, κ]).length :=
+    Fp.inBlock_le_inBlock (by omega) (by simp; omega)
   have hliv : ∀ (m : Mem ℝ) (zs : List (ℕ × ℕ)), L = μ.store.length →
       m.store.length = L + 1 →
       (∀ z ∈ zs, z.1 = a.1 ∨ z.1 = p.1 ∨ z.1 = uo.1 ∨ z.1 = f.1 ∨ z.1 = L) → m.Live zs := by
@@ -442,12 +447,13 @@ theorem verifiedSchurWith_measureReal_not_flag_le {M : Machine ℝ} {I : Interp 
     (F₂ := schurFp n a uo f ⊔ (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
       Store.inBlock f.1 f.2 1))
     (Mid := fun m => L = μ.store.length ∧ m.store.length = L + 1 ∧
-      SchurPipelineInput (θ :: κ :: qs) a p uo f A m ∧ HoldsMatrix (L, 0) A m.store) ?_
+      SchurPipelineInput (qs ++ [θ, κ]) a p uo f A m ∧ HoldsMatrix (L, 0) A m.store) ?_
     (PWrites.seq hI hloc le_rfl (F₁ := schurFp n a uo f)
       (F₂ := Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
       (Mid := fun m => Post m ∧ L = μ.store.length ∧
       m.store.length = L + 1 ∧ HoldsMatrix (L, 0) A m.store ∧
-      m.store.readBlock p.1 p.2 [θ, κ].length = some [θ, κ] ∧ f.2 < m.store.len f.1) ?_ ?_)).mono
+      m.store.readBlock p.1 (p.2 + nr + nq) [θ, κ].length = some [θ, κ] ∧
+        f.2 < m.store.len f.1) ?_ ?_)).mono
     (fun _ h => h) ?_ (fun _ h => h) (by linarith)
   -- the copy
   · refine PWrites.of_writes le_rfl fun m τ ⟨hL, hlen, hlenL, hin'⟩ => ?_
@@ -460,28 +466,29 @@ theorem verifiedSchurWith_measureReal_not_flag_le {M : Machine ℝ} {I : Interp 
           (fun z hz => by have := hlt z hz; omega) (by rw [hfr₁.length_eq]; omega), hA0⟩
   -- the solver
   · refine PWrites.mono_eqOff (PWrites.in_frame (PWrites.of_forall_eq hI hloc
-      (Pre := fun m => SchurPipelineInput qs a (p.1, p.2 + 2) uo f A m)
+      (Pre := fun m => SchurPipelineInput qs a p uo f A m)
       (fun m hm => PWrites.of_measureReal_le hI hloc hPm (hSolve m hm)) hPm) rfl rfl
-      fun m hm => ?_) (fun m hm => hm.2.2.1.tail) fun m m' ⟨hL, hlen, hin', hA0⟩ hfr hpost => ?_
+      fun m hm => ?_) (fun m hm => hm.2.2.1.head) fun m m' ⟨hL, hlen, hin', hA0⟩ hfr hpost => ?_
     · obtain ⟨hl', -⟩ := hm
-      have hl'' : ∀ z ∈ [a, (p.1, p.2 + 2), uo, f], z.1 < m.store.length := hl'
+      have hl'' : ∀ z ∈ [a, p, uo, f], z.1 < m.store.length := hl'
       intro z hz
       simp only [List.mem_cons, List.not_mem_nil, or_false] at hz
       rcases hz with rfl | rfl | rfl | rfl | rfl
       exacts [hl'' _ (by simp), hl'' _ (by simp), hl'' _ (by simp), hl'' _ (by simp),
         hl'' _ (by simp)]
-    · have hdp : Fp.Disj (schurFp n a uo f) (Store.inBlock p.1 p.2 (θ :: κ :: qs).length) := by
+    · have hdp : Fp.Disj (schurFp n a uo f) (Store.inBlock p.1 p.2 (qs ++ [θ, κ]).length) := by
         simp only [schurFp, Fp.disj_sup_left]
         exact ⟨⟨h1, h4.symm⟩, h5.symm⟩
       refine ⟨hpost, hL, by rw [hfr.length_eq, hlen], hA0.of_eqOff hfr (by
         simp only [schurFp, Fp.disj_sup_left]
         exact ⟨⟨hne (by simp; omega), hne (by simp; omega)⟩, hne (by simp; omega)⟩),
-        Store.readBlock_append_left (ys := qs) (hfr.keep (Store.readsOnly_readBlock _ _ _ _) hdp
-          hin'.2.2.2.2), by have := hin'.2.1.2.2.2.1; rw [hfr.len_eq]; omega⟩
+        by rw [Nat.add_assoc, ← hq]; exact Store.readBlock_append_right (hfr.keep
+          (Store.readsOnly_readBlock _ _ _ _) hdp hin'.2.2.2.2),
+        by have := hin'.2.1.2.2.2.1; rw [hfr.len_eq]; omega⟩
   -- the check
   · refine PWrites.of_writes le_rfl fun m τ ⟨hpost, hLμ, hlen, hA0, hpw, hfm⟩ => ?_
-    have hl' := hliv m [(L, 0), uo, a, p, f] hLμ hlen (by simp)
-    have hap' : Fp.Apart [(L, 0), uo, a, p, f]
+    have hl' := hliv m [(L, 0), uo, a, (p.1, p.2 + nr + nq), f] hLμ hlen (by simp)
+    have hap' : Fp.Apart [(L, 0), uo, a, (p.1, p.2 + nr + nq), f]
         [2 * ((n + 1) * (n + 1)), 2 * ((n + 1) * (n + 1)), 2 * ((n + 1) * (n + 1)), 2, 1] := by
       simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
         and_true]

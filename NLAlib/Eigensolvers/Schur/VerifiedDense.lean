@@ -41,12 +41,12 @@ noncomputable def verifiedSchurDelta (n : ℕ) (δ : ℝ) : ℝ := δ / (16 * ((
 /-- The tolerance word $\theta = \delta/(2\sqrt{n + 1})$ of the check. -/
 noncomputable def verifiedSchurTheta (n : ℕ) (δ : ℝ) : ℝ := δ / (2 * √((n : ℝ) + 1))
 
-/-- **The words of the verified dense Schur solver**: $\theta$, $\kappa = 32(n + 2)^2\boldsymbol{u}$
-at the unit roundoff $\boldsymbol{u}$ of the machine, then the words of the dense solver at the
-internal backward error. -/
+/-- **The words of the verified dense Schur solver**: the words of the dense solver at the
+internal backward error, then $\theta$ and $\kappa = 32(n + 2)^2\boldsymbol{u}$ at the unit
+roundoff $\boldsymbol{u}$ of the machine. -/
 noncomputable def verifiedSchurParams (u : ℝ) (n : ℕ) (δ φ : ℝ) : List ℝ :=
-  verifiedSchurTheta n δ :: 32 * ((n : ℝ) + 2) ^ 2 * u ::
-    denseSchurParams n (verifiedSchurDelta n δ) φ
+  denseSchurParams n (verifiedSchurDelta n δ) φ ++
+    [verifiedSchurTheta n δ, 32 * ((n : ℝ) + 2) ^ 2 * u]
 
 /-- **The unit roundoff threshold** of the verified dense Schur solver: that of the dense solver
 at the internal backward error, and $\theta/(4096(n + 2)^3)$ for the check. -/
@@ -139,7 +139,7 @@ theorem verifiedSchur_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} 
   have hud : u ≤ uDenseSchur n (verifiedSchurDelta n δ) φ := hu.trans (min_le_left _ _)
   exact verifiedSchurWith_writes hS hM hL hC
     (fun A' hin' => denseSchur_terminates hS hM hL hNat hQ hC hSmp hDisk hd0 hd1 hud hin' _)
-    hu64 le_rfl hθ0 hθ hin τ
+    hu64 le_rfl hθ0 hθ (by simp [denseSchurParams, denseSchurParamsWith]) hin τ
 
 /-- **The verified dense Schur solver** (Las Vegas, the probability half): on the machine and
 streams of `NLAlib.Schur.denseSchur_measureReal_not_schur_le` (the standard model at
@@ -195,7 +195,8 @@ theorem verifiedSchur_measureReal_not_schur_le {Mch : Machine ℝ} {I : Interp O
     (fun μ' hin' {Ω} _ {P} {ξ} hξ' => denseSchur_measureReal_not_schur_le hS hM hL hNat hQ hC
       hI hloc hSmp hDisk hU hG hd0 hd1 hφ hφ1 hud hin' hξ')
     (measurableSet_eqOff_schurOutput _ a uo f A _ _) (fun _ h => h) ?_ ?_ hu64 (by positivity)
-    hκ hθ1 huθ (h58.trans (by linarith)) hδ' hin hξ
+    hκ hθ1 huθ (h58.trans (by linarith)) hδ' (by simp [denseSchurParams, denseSchurParamsWith])
+    hin hξ
   · refine (measureReal_mono ?_).trans h
     intro ω hω hw
     exact hω (hw.mono le_rfl fun _ _ h => h.2)

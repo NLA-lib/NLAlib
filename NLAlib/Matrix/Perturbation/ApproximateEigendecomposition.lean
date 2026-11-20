@@ -61,7 +61,38 @@ theorem norm_mulVec_sub_smul_le_of_schur (Z U T : Matrix n n ℂ) (y v : n → �
           specNorm U * specNorm T * specNorm (Uᴴ * U - 1)) * ‖WithLp.toLp 2 y‖ +
         specNorm U * ‖WithLp.toLp 2 ((T - μ • 1) *ᵥ y)‖ +
         (specNorm Z + ‖μ‖) * ‖WithLp.toLp 2 (v - U *ᵥ y)‖ := by
-  sorry
+  have key : (Z - μ • 1) *ᵥ v = (Z - U * T * Uᴴ) *ᵥ (U *ᵥ y) + (U * T) *ᵥ ((Uᴴ * U - 1) *ᵥ y) +
+      U *ᵥ ((T - μ • 1) *ᵥ y) + (Z - μ • 1) *ᵥ (v - U *ᵥ y) := by
+    simp only [Matrix.sub_mulVec, Matrix.mulVec_sub, Matrix.mulVec_mulVec, Matrix.smul_mulVec,
+      Matrix.one_mulVec, Matrix.mulVec_smul, Matrix.mul_assoc, Matrix.mul_one, Matrix.sub_mul,
+      Matrix.mul_sub, Matrix.smul_mul, Matrix.one_mul]
+    abel
+  have hZμ : specNorm (Z - μ • 1) ≤ specNorm Z + ‖μ‖ := by
+    refine (specNorm_sub_le _ _).trans ?_
+    rw [specNorm_smul]
+    gcongr
+    exact (mul_le_of_le_one_right (norm_nonneg _) specNorm_one_le)
+  have h1 : ‖WithLp.toLp 2 ((Z - U * T * Uᴴ) *ᵥ (U *ᵥ y))‖ ≤
+      specNorm (Z - U * T * Uᴴ) * specNorm U * ‖WithLp.toLp 2 y‖ := by
+    refine (norm_toLp_mulVec_le _ _).trans ?_
+    rw [mul_assoc (specNorm (Z - U * T * Uᴴ))]
+    exact mul_le_mul_of_nonneg_left (norm_toLp_mulVec_le _ _) (specNorm_nonneg _)
+  have h2 : ‖WithLp.toLp 2 ((U * T) *ᵥ ((Uᴴ * U - 1) *ᵥ y))‖ ≤
+      specNorm U * specNorm T * specNorm (Uᴴ * U - 1) * ‖WithLp.toLp 2 y‖ := by
+    refine (norm_toLp_mulVec_le _ _).trans ?_
+    calc specNorm (U * T) * ‖WithLp.toLp 2 ((Uᴴ * U - 1) *ᵥ y)‖
+        ≤ (specNorm U * specNorm T) * (specNorm (Uᴴ * U - 1) * ‖WithLp.toLp 2 y‖) :=
+          mul_le_mul (specNorm_mul_le _ _) (norm_toLp_mulVec_le _ _) (norm_nonneg _)
+            (by positivity)
+      _ = _ := by ring
+  have h3 := norm_toLp_mulVec_le U ((T - μ • 1) *ᵥ y)
+  have h4 : ‖WithLp.toLp 2 ((Z - μ • 1) *ᵥ (v - U *ᵥ y))‖ ≤
+      (specNorm Z + ‖μ‖) * ‖WithLp.toLp 2 (v - U *ᵥ y)‖ :=
+    (norm_toLp_mulVec_le _ _).trans (mul_le_mul_of_nonneg_right hZμ (norm_nonneg _))
+  rw [key, WithLp.toLp_add, WithLp.toLp_add, WithLp.toLp_add]
+  refine (norm_add_le _ _).trans (add_le_add ((norm_add_le _ _).trans
+    (add_le_add ((norm_add_le _ _).trans (add_le_add h1 h2)) h3)) h4) |>.trans (le_of_eq ?_)
+  ring
 
 /-- **The matrix residual from a Schur form**: for any $\mathbf{Z}$, $\mathbf{U}$, $\mathbf{T}$,
 $\mathbf{Y}$, $\mathbf{V}$ and $\mathbf{D} = \operatorname{diag}(\mathbf{d})$,
@@ -76,7 +107,33 @@ theorem specNorm_mul_sub_mul_diagonal_le_of_schur (Z U T Y V : Matrix n n ℂ) (
           specNorm U * specNorm T * specNorm (Uᴴ * U - 1)) * specNorm Y +
         specNorm U * specNorm (T * Y - Y * Matrix.diagonal d) +
         (specNorm Z + specNorm (Matrix.diagonal d)) * specNorm (V - U * Y) := by
-  sorry
+  have key : Z * V - V * Matrix.diagonal d = (Z - U * T * Uᴴ) * (U * Y) +
+      (U * T) * ((Uᴴ * U - 1) * Y) + U * (T * Y - Y * Matrix.diagonal d) + Z * (V - U * Y) -
+      (V - U * Y) * Matrix.diagonal d := by
+    simp only [Matrix.mul_sub, Matrix.sub_mul, Matrix.mul_assoc, Matrix.one_mul]
+    abel
+  have h1 : specNorm ((Z - U * T * Uᴴ) * (U * Y)) ≤
+      specNorm (Z - U * T * Uᴴ) * specNorm U * specNorm Y := by
+    refine (specNorm_mul_le _ _).trans ?_
+    rw [mul_assoc (specNorm (Z - U * T * Uᴴ))]
+    exact mul_le_mul_of_nonneg_left (specNorm_mul_le U Y) (specNorm_nonneg _)
+  have h2 : specNorm ((U * T) * ((Uᴴ * U - 1) * Y)) ≤
+      specNorm U * specNorm T * specNorm (Uᴴ * U - 1) * specNorm Y := by
+    refine (specNorm_mul_le _ _).trans ?_
+    calc specNorm (U * T) * specNorm ((Uᴴ * U - 1) * Y)
+        ≤ (specNorm U * specNorm T) * (specNorm (Uᴴ * U - 1) * specNorm Y) :=
+          mul_le_mul (specNorm_mul_le _ _) (specNorm_mul_le _ _) (specNorm_nonneg _)
+            (by positivity)
+      _ = _ := by ring
+  have h3 := specNorm_mul_le U (T * Y - Y * Matrix.diagonal d)
+  have h4 := specNorm_mul_le Z (V - U * Y)
+  have h5 := specNorm_mul_le (V - U * Y) (Matrix.diagonal d)
+  rw [key]
+  refine (specNorm_sub_le _ _).trans ?_
+  refine (add_le_add ((specNorm_add_le _ _).trans (add_le_add ((specNorm_add_le _ _).trans
+    (add_le_add ((specNorm_add_le _ _).trans (add_le_add h1 h2)) h3)) h4)) h5).trans
+    (le_of_eq ?_)
+  ring
 
 /-- **A near-orthonormal matrix is bounded below**: if
 $\|\mathbf{U}^{\mathsf H}\mathbf{U} - \mathbf{I}\|_2 \le e \le 1$, then
@@ -84,7 +141,20 @@ $\|\mathbf{U}\mathbf{x}\| \ge \sqrt{1 - e}\,\|\mathbf{x}\|$ for every $\mathbf{x
 theorem sqrt_one_sub_mul_norm_le_norm_mulVec {m : Type*} [Fintype m] {U : Matrix m n ℂ} {e : ℝ}
     (hU : specNorm (Uᴴ * U - 1) ≤ e) (he : e ≤ 1) (x : n → ℂ) :
     √(1 - e) * ‖WithLp.toLp 2 x‖ ≤ ‖WithLp.toLp 2 (U *ᵥ x)‖ := by
-  sorry
+  have he0 : 0 ≤ 1 - e := by linarith
+  have hsq : (1 - e) * ‖WithLp.toLp 2 x‖ ^ 2 ≤ ‖WithLp.toLp 2 (U *ᵥ x)‖ ^ 2 := by
+    have hid : star (U *ᵥ x) ⬝ᵥ (U *ᵥ x) = star x ⬝ᵥ x + star x ⬝ᵥ ((Uᴴ * U - 1) *ᵥ x) := by
+      rw [Matrix.star_mulVec, ← Matrix.dotProduct_mulVec, ← dotProduct_add, Matrix.sub_mulVec,
+        Matrix.one_mulVec, Matrix.mulVec_mulVec, add_sub_cancel]
+    rw [EuclideanSpace.norm_toLp_sq_eq_re_star_dotProduct,
+      EuclideanSpace.norm_toLp_sq_eq_re_star_dotProduct, hid, map_add,
+      ← EuclideanSpace.norm_toLp_sq_eq_re_star_dotProduct]
+    have h1 := norm_star_dotProduct_mulVec_le (Uᴴ * U - 1) x x
+    have h2 := (abs_le.mp (RCLike.abs_re_le_norm (star x ⬝ᵥ ((Uᴴ * U - 1) *ᵥ x)))).1
+    nlinarith [mul_le_mul_of_nonneg_right hU (sq_nonneg ‖WithLp.toLp 2 x‖)]
+  refine (sq_le_sq₀ (by positivity) (norm_nonneg _)).1 ?_
+  rw [mul_pow, Real.sq_sqrt he0]
+  exact hsq
 
 /-- **The backward form of an eigendecomposition**: for an invertible $\mathbf{V}$, any
 $\mathbf{Z}$ and $\mathbf{D} = \operatorname{diag}(\mathbf{d})$,
@@ -93,7 +163,11 @@ $\|\mathbf{V}\mathbf{D}\mathbf{V}^{-1} - \mathbf{Z}\|_2 \le
 theorem specNorm_mul_diagonal_mul_inv_sub_le {Z V : Matrix n n ℂ} {d : n → ℂ} (hV : IsUnit V) :
     specNorm (V * Matrix.diagonal d * V⁻¹ - Z) ≤
       specNorm (Z * V - V * Matrix.diagonal d) * specNorm V⁻¹ := by
-  sorry
+  have hdet := (Matrix.isUnit_iff_isUnit_det V).mp hV
+  have h : V * Matrix.diagonal d * V⁻¹ - Z = (V * Matrix.diagonal d - Z * V) * V⁻¹ := by
+    rw [Matrix.sub_mul, Matrix.mul_assoc Z, Matrix.mul_nonsing_inv _ hdet, Matrix.mul_one]
+  rw [h, specNorm_sub_comm]
+  exact specNorm_mul_le _ _
 
 end General
 

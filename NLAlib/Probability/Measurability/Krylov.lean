@@ -52,7 +52,13 @@ of starting blocks. With `NLAlib.measurable_rsvd` this is the measurability that
 SVD at a test matrix built from two random blocks needs. -/
 theorem measurable_fromCols_blockKrylovMatrix {p' : Type*} (A : Matrix n n 𝕜) (q₁ q₂ : ℕ) :
     Measurable fun B : Matrix n p 𝕜 × Matrix n p' 𝕜 =>
-      Matrix.fromCols (blockKrylovMatrix A B.1 q₁) (blockKrylovMatrix A B.2 q₂) := sorry
+      Matrix.fromCols (blockKrylovMatrix A B.1 q₁) (blockKrylovMatrix A B.2 q₂) := by
+  refine Matrix.measurable_iff.2 fun i j => ?_
+  rcases j with j | j
+  · exact (Matrix.measurable_apply i j).comp
+      ((measurable_blockKrylovMatrix A q₁).comp measurable_fst)
+  · exact (Matrix.measurable_apply i j).comp
+      ((measurable_blockKrylovMatrix A q₂).comp measurable_snd)
 
 /-- The Krylov matrix $\mathbf{b} \mapsto \mathbf{K}_q(\mathbf{A}, \mathbf{b})$ is a measurable
 function of the starting vector: it is linear in it. -/

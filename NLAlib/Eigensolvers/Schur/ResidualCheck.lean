@@ -333,7 +333,6 @@ theorem checkNorms_writes {I : Interp O Q ℝ} {c₁ c₂ : ℝ} {N : ℕ}
   have hlv : ∀ (m : Mem ℝ), m.store.length = μ.store.length → ∀ zs : List (ℕ × ℕ),
       (∀ z ∈ zs, z.1 = a0.1 ∨ z.1 = uo.1 ∨ z.1 = t.1 ∨ z.1 = d.1 ∨ z.1 = s.1) → m.Live zs := by
     intro m hm zs hzs z hz
-    change z.1 < m.store.length
     rw [hm]
     rcases hzs z hz with h | h | h | h | h <;> rw [h]
     exacts [hl a0 (by simp), hl uo (by simp), hl t (by simp), hl d (by simp), hl s (by simp)]
@@ -351,12 +350,14 @@ theorem checkNorms_writes {I : Interp O Q ℝ} {c₁ c₂ : ℝ} {N : ℕ}
     μ.store.len s.1)) hd).frame_seq_le rfl rfl (hlv μ rfl _ (by simp))
     (hk 0 (by omega) |> fun h => by simpa using h) fun m₁ hfr₁ ⟨r, hr, hr1, hr2⟩ => ?_
   have hl₁ := fun zs h => hlv m₁ hfr₁.length_eq zs h
-  refine (hNm (s := (s.1, s.2 + 1)) A₀ le_rfl (hkeep (k := 0) ha hA (by simpa using hfr₁)) (hl₁ _ (by simp))
-    (by simp only; rw [hfr₁.len_eq]; omega) ha).frame_seq_le rfl rfl (hl₁ _ (by simp)) (hk 1 (by omega))
+  refine (hNm (s := (s.1, s.2 + 1)) A₀ le_rfl (hkeep (k := 0) ha hA (by simpa using hfr₁))
+    (hl₁ _ (by simp)) (by simp only; rw [hfr₁.len_eq]; omega) ha).frame_seq_le rfl rfl
+    (hl₁ _ (by simp)) (hk 1 (by omega))
     fun m₂ hfr₂ ⟨a, ha', ha1, ha2⟩ => ?_
   have hl₂ := fun zs h => hlv m₂ (hfr₂.length_eq.trans hfr₁.length_eq) zs h
   have hU₂ := hkeep hu (hkeep (k := 0) hu hU (by simpa using hfr₁)) hfr₂
-  refine (hNm (s := (s.1, s.2 + 2)) U le_rfl hU₂ (hl₂ _ (by simp)) (by simp only; rw [hfr₂.len_eq, hfr₁.len_eq]; omega)
+  refine (hNm (s := (s.1, s.2 + 2)) U le_rfl hU₂ (hl₂ _ (by simp))
+    (by simp only; rw [hfr₂.len_eq, hfr₁.len_eq]; omega)
     hu).frame_seq_le rfl rfl (hl₂ _ (by simp)) (hk 2 (by omega))
     fun m₃ hfr₃ ⟨w, hw, hw1, hw2⟩ => ?_
   have hl₃ := fun zs h => hlv m₃
@@ -395,7 +396,6 @@ theorem checkDecide_writes [Has IndexOp O] {M : Machine ℝ} {I : Interp O Q ℝ
   have hlv : ∀ (m : Mem ℝ), m.store.length = μ.store.length → ∀ zs : List (ℕ × ℕ),
       (∀ z ∈ zs, z.1 = s.1 ∨ z.1 = p.1 ∨ z.1 = f.1) → m.Live zs := by
     intro m hm zs hzs z hz
-    change z.1 < m.store.length
     rw [hm]
     rcases hzs z hz with h | h | h <;> rw [h]
     exacts [hl s (by simp), hl p (by simp), hl f (by simp)]
@@ -414,7 +414,8 @@ theorem checkDecide_writes [Has IndexOp O] {M : Machine ℝ} {I : Interp O Q ℝ
     fun m₁ hfr₁ ⟨_, h₁⟩ => ?_
   have hl₁ := hlv m₁ hfr₁.length_eq
   refine (writes_call_bin (hS .mul) (x := (s.1, s.2 + 2)) (y := (s.1, s.2 + 3))
-    (z := (s.1, s.2 + 2)) (v := x) rfl rfl trivial h₁ (by rw [hget hfr₁ (by omega), hx]) rfl fun _ =>
+    (z := (s.1, s.2 + 2)) (v := x) rfl rfl trivial h₁ (by rw [hget hfr₁ (by omega), hx]) rfl
+    fun _ =>
       ⟨hl₁ _ (by simp), by simp only; rw [hfr₁.len_eq]; omega⟩).seq_le (hk 2 (by omega))
     fun m₂ hfr₂ ⟨_, h₂⟩ => ?_
   have hl₂ := hlv m₂ (hfr₂.length_eq.trans hfr₁.length_eq)
@@ -470,7 +471,8 @@ def subWord (M : Machine ℝ) {m q : ℕ} (A B : Matrix (Fin m) (Fin q) ℂ) :
   Matrix.of fun i j => ⟨M.sub (A i j).re (B i j).re, M.sub (A i j).im (B i j).im⟩
 
 /-- **The error of an entrywise rounded difference**: under the standard model at
-$\boldsymbol{u} \ge 0$, $\|\mathrm{fl}(\mathbf{A} - \mathbf{B}) - (\mathbf{A} - \mathbf{B})\|_{\mathsf F}
+$\boldsymbol{u} \ge 0$,
+$\|\mathrm{fl}(\mathbf{A} - \mathbf{B}) - (\mathbf{A} - \mathbf{B})\|_{\mathsf F}
 \le \boldsymbol{u}\|\mathbf{A} - \mathbf{B}\|_{\mathsf F}$. -/
 theorem _root_.NLAlib.Ops.StdModel.frobNorm_subWord_sub_le {M : Machine ℝ} {u : ℝ}
     (hM : StdModel u id M) {m q : ℕ} (A B : Matrix (Fin m) (Fin q) ℂ) :
@@ -595,6 +597,133 @@ theorem residualWords_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (h
     exact h
 
 end Steps
+
+/-- **The outcome of the residual check** of $(\mathbf{A}_0, \mathbf{U}, \mathbf{T})$ at the words
+$\theta, \kappa$, with norm estimates within the factors $c_1, c_2$: the block `t` holds the upper
+part $\mathbf{T}'$ of $\mathbf{T}$, and there are estimates $\hat r, \hat a, \hat w, \hat t$ of the
+Frobenius norms of the stored residual of $(\mathbf{A}_0, \mathbf{U}, \mathbf{T}')$, of
+$\mathbf{A}_0$, $\mathbf{U}$ and $\mathbf{T}'$ with the flag the literal $0$ if
+$\mathrm{fl}(\hat r + \hat g) \le \mathrm{fl}(\hat a\theta)$ and the literal $1$ otherwise. -/
+def ResidualCheckOutcome (M : Machine ℝ) (c₁ c₂ θ κ : ℝ) {N : ℕ}
+    (A₀ U T : Matrix (Fin N) (Fin N) ℂ) (t f : ℕ × ℕ) (μ' : Mem ℝ) : Prop :=
+  HoldsMatrix t (upperPart T) μ'.store ∧ ∃ r a w x : ℝ,
+    c₁ * frobNorm (subWord M A₀ (matMulWord M (matMulWord M U (upperPart T)) Uᴴ)) ≤ r ∧
+    r ≤ c₂ * frobNorm (subWord M A₀ (matMulWord M (matMulWord M U (upperPart T)) Uᴴ)) ∧
+    c₁ * frobNorm A₀ ≤ a ∧ a ≤ c₂ * frobNorm A₀ ∧ c₁ * frobNorm U ≤ w ∧ w ≤ c₂ * frobNorm U ∧
+    c₁ * frobNorm (upperPart T) ≤ x ∧ x ≤ c₂ * frobNorm (upperPart T) ∧
+    μ'.store.get f.1 f.2 =
+      some (if M.add r (checkGuard M w x κ) ≤ M.mul a θ then M.lit 0 else M.lit 1)
+
+section Check
+
+variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
+
+/-- **The residual check on every tape**: on a scalar machine with the standard model, index
+literals and exact comparisons, with a two-sided norm estimate for the order $N$ (the contract of
+`NLAlib.Schur.frobNormStage` with the factors $c_1, c_2$), from stored $\mathbf{A}_0$,
+$\mathbf{U}$, $\mathbf{T}$, the words $\theta, \kappa$ and room for the flag, pairwise apart,
+`NLAlib.Schur.schurResidualCheck` writes only $\mathbf{T}$ and the flag and ends in
+`NLAlib.Schur.ResidualCheckOutcome`. No hypothesis on the matrices. -/
+theorem schurResidualCheck_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar M I) (hM : StdModel u id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
+    {c₁ c₂ : ℝ} {N : ℕ} (hNm : FrobNormEstimateContract c₁ c₂ N (frobNormStage (O := O) (Q := Q)) I)
+    {τ : Tape ℝ} {μ : Mem ℝ} {a0 uo t p f : ℕ × ℕ} {A₀ U T : Matrix (Fin N) (Fin N) ℂ}
+    {θ κ : ℝ} (hA : HoldsMatrix a0 A₀ μ.store) (hU : HoldsMatrix uo U μ.store)
+    (hT : HoldsMatrix t T μ.store) (hp : μ.store.readBlock p.1 p.2 2 = some [θ, κ])
+    (hl : μ.Live [a0, uo, t, p, f]) (hf : f.2 < μ.store.len f.1)
+    (hap : Fp.Apart [a0, uo, t, p, f] [2 * (N * N), 2 * (N * N), 2 * (N * N), 2, 1]) :
+    Writes .total I τ (schurResidualCheck (O := O) (Q := Q)).body
+      (Env.frame [N] [a0, uo, t, p, t, f])
+      (Store.inBlock t.1 t.2 (2 * (N * N)) ⊔ Store.inBlock f.1 f.2 1)
+      (ResidualCheckOutcome M c₁ c₂ θ κ A₀ U T t f) μ := by
+  simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
+    and_true] at hap
+  obtain ⟨⟨hau, hat, hapw, haf⟩, ⟨hut, hup, huf⟩, ⟨htp, htf⟩, hpf⟩ := hap
+  have hlt : ∀ z ∈ [a0, uo, t, p, f], z.1 < μ.store.length := hl
+  have ha0 := hlt a0 (by simp)
+  have huo := hlt uo (by simp)
+  have ht := hlt t (by simp)
+  have hp1 := hlt p (by simp)
+  have hf1 := hlt f (by simp)
+  unfold schurResidualCheck
+  change Writes .total I τ (Stmt.allocs [.const 2 * (.var 0 * .var 0), .const 4] _) _ _ _ μ
+  refine writes_allocs_preserving_post (ns := [2 * (N * N), 4]) rfl
+    (fun hBelow h => ?keep) ?_
+  case keep =>
+    obtain ⟨hT', r, a, w, x, h1, h2, h3, h4, h5, h6, h7, h8, h9⟩ := h
+    exact ⟨hT'.of_below hBelow ht, r, a, w, x, h1, h2, h3, h4, h5, h6, h7, h8,
+      ((hBelow f.1 hf1).2 f.2).trans h9⟩
+  intro s₁ hlen hlens hBelow
+  set L := μ.store.length with hLdef
+  simp only [List.length_cons, List.length_nil] at hlen
+  have hD : s₁.len L = 2 * (N * N) := by simpa using hlens 0 (by simp)
+  have hSl : s₁.len (L + 1) = 4 := by simpa using hlens 1 (by simp)
+  have hall : ∀ (s : Store ℝ), s.length = s₁.length → ∀ zs : List (ℕ × ℕ),
+      zs ⊆ [a0, uo, t, p, f, (L, 0), (L + 1, 0)] → ∀ q : ℕ, (⟨s, q⟩ : Mem ℝ).Live zs := by
+    intro s hs zs hzs q z hz
+    have := hzs hz
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at this
+    change z.1 < s.length
+    rw [hs, hlen]
+    rcases this with rfl | rfl | rfl | rfl | rfl | rfl | rfl <;> simp <;> omega
+  have hne : ∀ {b o n b' o' n' : ℕ}, b ≠ b' →
+      Fp.Disj (Store.inBlock b o n) (Store.inBlock b' o' n') := fun h => Fp.disj_inBlock_of_ne h
+  set G := Store.inBlock t.1 t.2 (2 * (N * N)) ⊔ Store.inBlock f.1 f.2 1 ⊔ Fp.above L
+  have hGt : Store.inBlock t.1 t.2 (2 * (N * N)) ≤ G := fun _ _ h => Or.inl (Or.inl h)
+  have hGL : ∀ b o n, L ≤ b → Store.inBlock b o n ≤ G := fun b o n hb _ _ hi => Or.inr (hi.1 ▸ hb)
+  have hA₁ := hA.of_below hBelow ha0
+  have hU₁ := hU.of_below hBelow huo
+  have hT₁ := hT.of_below hBelow ht
+  have hθ₁ : s₁.get p.1 p.2 = some θ := by
+    rw [(hBelow p.1 hp1).2]; simpa using Store.get_of_readBlock hp (j := 0) (by omega) 0
+  have hκ₁ : s₁.get p.1 (p.2 + 1) = some κ := by
+    rw [(hBelow p.1 hp1).2]; simpa using Store.get_of_readBlock hp (j := 1) (by omega) 0
+  -- the upper part
+  refine (zeroStrictLower_writes (O := O) (Q := Q) (μ := ⟨s₁, μ.pos⟩) hS hM.zero hT₁).frame_seq_le
+    rfl rfl (hall _ rfl _ (by simp) _) hGt fun m₁ hfr₁ ⟨_, hT₂⟩ => ?_
+  have hA₂ := hA₁.of_eqOff hfr₁ hat.symm
+  have hU₂ := hU₁.of_eqOff hfr₁ hut.symm
+  have hl₁ := hall _ hfr₁.length_eq
+  -- the residual
+  refine (residualWords_writes (O := O) (Q := Q) (d := (L, 0)) hS hM hA₂ hU₂ hT₂
+    (hl₁ _ (by simp) _) (by rw [hfr₁.len_eq]; simp [hD]) (hne (by simp; omega))
+    (hne (by simp; omega)) (hne (by simp; omega))).frame_seq_le rfl rfl
+    (hl₁ _ (by simp) _) (hGL _ _ _ le_rfl) fun m₂ hfr₂ ⟨_, hD₂⟩ => ?_
+  have hl₂ := hall _ (hfr₂.length_eq.trans hfr₁.length_eq)
+  have hkL : ∀ {b : ℕ × ℕ} {X : Matrix (Fin N) (Fin N) ℂ} {m m' : Mem ℝ} {o n : ℕ},
+      b.1 < L → HoldsMatrix b X m.store → m.store.EqOff (Store.inBlock L o n) m'.store →
+      HoldsMatrix b X m'.store := fun hb hX hfr => hX.of_eqOff hfr (hne (by omega))
+  have hkL1 : ∀ {b : ℕ × ℕ} {X : Matrix (Fin N) (Fin N) ℂ} {m m' : Mem ℝ} {o n : ℕ},
+      b.1 < L → HoldsMatrix b X m.store → m.store.EqOff (Store.inBlock (L + 1) o n) m'.store →
+      HoldsMatrix b X m'.store := fun hb hX hfr => hX.of_eqOff hfr (hne (by omega))
+  -- the norms
+  refine (checkNorms_writes (O := O) (Q := Q) (s := (L + 1, 0)) hNm
+    (hkL ha0 hA₂ hfr₂) (hkL huo hU₂ hfr₂) (hkL ht hT₂ hfr₂) hD₂ (hl₂ _ (by simp) _)
+    (by rw [hfr₂.len_eq, hfr₁.len_eq]; simp [hSl]) (by simp; omega) (by simp; omega)
+    (by simp; omega) (by simp)).frame_seq_le rfl rfl (hl₂ _ (by simp) _)
+    (hGL _ _ _ (by omega)) fun m₃ hfr₃ ⟨r, a, w, x, hr, ha, hw, hx, h1, h2, h3, h4, h5, h6, h7,
+      h8⟩ => ?_
+  have hl₃ := hall _ (hfr₃.length_eq.trans (hfr₂.length_eq.trans hfr₁.length_eq))
+  have hgetp : ∀ o, o < p.2 + 2 → p.2 ≤ o → m₃.store.get p.1 o = s₁.get p.1 o := by
+    intro o ho ho'
+    rw [hfr₃.get_eq fun h => by obtain ⟨h, -⟩ := h; simp at h; omega,
+      hfr₂.get_eq fun h => by obtain ⟨h, -⟩ := h; simp at h; omega,
+      hfr₁.get_eq fun h => htp _ _ h ⟨rfl, by omega, by omega⟩]
+  -- the decision
+  refine (checkDecide_writes (O := O) (Q := Q) (s := (L + 1, 0)) (p := p) (f := f) hS hL hC hr
+    ha hw hx (by rw [hgetp _ (by omega) le_rfl]; exact hθ₁)
+    (by rw [hgetp _ (by omega) (by omega)]; exact hκ₁)
+    (by rw [hfr₃.len_eq, hfr₂.len_eq, hfr₁.len_eq]; simp [hSl])
+    (by rw [hfr₃.len_eq, hfr₂.len_eq, hfr₁.len_eq, (hBelow f.1 hf1).1]; exact hf)
+    (by simp; omega) (by simp; omega) (hl₃ _ (by simp) _)).in_frame rfl rfl
+    (hl₃ _ (by simp) _) |>.mono (sup_le (hGL _ _ _ (by omega))
+      (fun _ _ h => Or.inl (Or.inr h))) fun m₄ hfr₄ hflag => ?_
+  have hT₄ : HoldsMatrix t (upperPart T) m₄.store :=
+    ((hkL ht hT₂ hfr₂).of_eqOff hfr₃ (hne (by simp; omega))).of_eqOff hfr₄
+      (Fp.disj_sup_left.mpr ⟨hne (by simp; omega), htf.symm⟩)
+  exact ⟨hT₄, r, a, w, x, h1, h2, h3, h4, h5, h6, h7, h8, hflag⟩
+
+end Check
 
 /-! ### The numbers of the check -/
 
@@ -790,7 +919,8 @@ theorem frobNorm_sub_mul_mul_le_of_check {M : Machine ℝ} {u : ℝ} (hM : StdMo
 
 /-- **A near-orthonormal square factor bounds the middle factor**: if
 $\|\mathbf{U}^{\mathsf H}\mathbf{U} - \mathbf{I}\|_2 \le e \le 1$ then
-$(1 - e)^2\|\mathbf{T}\|_{\mathsf F} \le (1 + e)\|\mathbf{U}\mathbf{T}\mathbf{U}^{\mathsf H}\|_{\mathsf F}$. -/
+$(1 - e)^2\|\mathbf{T}\|_{\mathsf F} \le
+(1 + e)\|\mathbf{U}\mathbf{T}\mathbf{U}^{\mathsf H}\|_{\mathsf F}$. -/
 theorem frobNorm_le_of_specNorm_conjTranspose_mul_self_sub_one_le {N : ℕ}
     {U T : Matrix (Fin N) (Fin N) ℂ} {e : ℝ} (he : specNorm (Uᴴ * U - 1) ≤ e) (he1 : e ≤ 1) :
     (1 - e) ^ 2 * frobNorm T ≤ (1 + e) * frobNorm (U * T * Uᴴ) := by
@@ -981,5 +1111,65 @@ theorem check_le_of_frobNorm_sub_mul_mul_le {M : Machine ℝ} {u : ℝ} (hM : St
   linarith only [hlhs, hrhs, hθF]
 
 end Numbers
+
+/-! ### Soundness and completeness of the outcome -/
+
+section Outcome
+
+variable {M : Machine ℝ} {u θ κ : ℝ} {N : ℕ} {A₀ U T : Matrix (Fin N) (Fin N) ℂ} {t f : ℕ × ℕ}
+  {μ' : Mem ℝ}
+
+/-- The flag of a check is the literal $0$ or the literal $1$, and the latter is positive under
+the standard model at $\boldsymbol{u} < 1$. -/
+theorem ResidualCheckOutcome.flag_cases {c₁ c₂ : ℝ}
+    (h : ResidualCheckOutcome M c₁ c₂ θ κ A₀ U T t f μ') :
+    μ'.store.get f.1 f.2 = some (M.lit 0) ∨ μ'.store.get f.1 f.2 = some (M.lit 1) := by
+  obtain ⟨-, r, a, w, x, -, -, -, -, -, -, -, -, hf⟩ := h
+  split_ifs at hf
+  exacts [Or.inl hf, Or.inr hf]
+
+/-- **A passed check is sound** (on every tape): with the norm factors $(15/16, 17/16)$, under
+the standard model at $\boldsymbol{u}$ with $64(N + 1)^3\boldsymbol{u} \le 1$,
+$\kappa \ge 32(N + 1)^2\boldsymbol{u}$ and $\theta \ge 0$, a flag $0$ implies
+$\|\mathbf{A}_0 - \mathbf{U}\mathbf{T}'\mathbf{U}^{\mathsf H}\|_{\mathsf F} \le
+2\theta\|\mathbf{A}_0\|_{\mathsf F}$ for the stored upper part $\mathbf{T}'$. -/
+theorem ResidualCheckOutcome.frobNorm_sub_le (hM : StdModel u id M)
+    (h : ResidualCheckOutcome M (15 / 16) (17 / 16) θ κ A₀ U T t f μ')
+    (hu : 64 * ((N : ℝ) + 1) ^ 3 * u ≤ 1) (hκ : 32 * ((N : ℝ) + 1) ^ 2 * u ≤ κ) (hθ : 0 ≤ θ)
+    (h0 : μ'.store.get f.1 f.2 = some 0) :
+    frobNorm (A₀ - U * upperPart T * Uᴴ) ≤ 2 * θ * frobNorm A₀ := by
+  obtain ⟨-, r, a, w, x, h1, -, h3, h4, h5, -, h7, -, hf⟩ := h
+  have hu0 : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
+  have hu1 : u < 1 := by
+    have : (1 : ℝ) ≤ ((N : ℝ) + 1) ^ 3 :=
+      one_le_pow₀ (by linarith [(Nat.cast_nonneg N : (0 : ℝ) ≤ N)])
+    nlinarith
+  have hl1 : M.lit 1 ≠ 0 := by
+    intro he; have := hM.lit 1; rw [he] at this; norm_num at this; linarith
+  split_ifs at hf with hc
+  · exact frobNorm_sub_mul_mul_le_of_check hM hu hκ hθ h1
+      (le_trans (by positivity) h3) h4 h5 h7 hc
+  · rw [h0] at hf; exact absurd (Option.some.inj hf).symm hl1
+
+/-- **An accurate Schur form passes** the check: with the norm factors $(15/16, 17/16)$, under
+the standard model at $\boldsymbol{u}$ with $64(N + 1)^3\boldsymbol{u} \le 1$,
+$0 \le \kappa \le 64(N + 1)^2\boldsymbol{u}$, $\theta \le 1$ and
+$4096(N + 1)^3\boldsymbol{u} \le \theta$, if $\|\mathbf{U}^{\mathsf H}\mathbf{U} -
+\mathbf{I}\|_2 \le 1/2$ and $\|\mathbf{A}_0 - \mathbf{U}\mathbf{T}'\mathbf{U}^{\mathsf H}\|_{\mathsf
+F} \le (\theta/8)\|\mathbf{A}_0\|_{\mathsf F}$ for the upper part $\mathbf{T}'$, the flag is $0$. -/
+theorem ResidualCheckOutcome.flag_eq_zero (hM : StdModel u id M)
+    (h : ResidualCheckOutcome M (15 / 16) (17 / 16) θ κ A₀ U T t f μ')
+    (hu : 64 * ((N : ℝ) + 1) ^ 3 * u ≤ 1) (hκ0 : 0 ≤ κ) (hκ : κ ≤ 64 * ((N : ℝ) + 1) ^ 2 * u)
+    (hθ1 : θ ≤ 1) (huθ : 4096 * ((N : ℝ) + 1) ^ 3 * u ≤ θ) (hUU : specNorm (Uᴴ * U - 1) ≤ 1 / 2)
+    (hR : frobNorm (A₀ - U * upperPart T * Uᴴ) ≤ θ / 8 * frobNorm A₀) :
+    μ'.store.get f.1 f.2 = some 0 := by
+  obtain ⟨-, r, a, w, x, h1, h2, h3, h4, h5, h6, h7, h8, hf⟩ := h
+  have hc := check_le_of_frobNorm_sub_mul_mul_le hM hu hκ0 hκ hθ1 huθ hUU hR
+    (le_trans (by positivity) h1) h2 h3 (le_trans (by positivity) h5) h6
+    (le_trans (by positivity) h7) h8
+  rw [hf, if_pos hc]
+  exact congrArg some hM.zero
+
+end Outcome
 
 end NLAlib.Schur

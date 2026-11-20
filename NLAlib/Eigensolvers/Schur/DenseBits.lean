@@ -19,6 +19,8 @@ and the static count is $O((n + 1)^3L^9\log^6 L)$.
 ## Main results
 
 * `NLAlib.Schur.logb_inv_uDenseSchur_le`: the bits of precision.
+* `NLAlib.Schur.uDenseSchurAt_pos`, `NLAlib.Schur.logb_inv_uDenseSchurAt_le`: the threshold at
+  two tolerances is positive, with the same bits.
 * `NLAlib.Schur.denseSchur_work_le_polylog`: the operation count is $O(n^3L^9\log^6 L)$.
 * `NLAlib.Schur.denseSchur_work_le_pow`: its cruder form $O(n^3L^{15})$.
 -/
@@ -737,6 +739,25 @@ section Count
 
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has SampleOp O] [Has DiskSampleOp O]
   [Has CmpTst Q] [Has IdxTst Q]
+
+/-- **The precision threshold at two tolerances is positive** for $0 < \delta_R, \delta_C \le 1$
+and $0 < \varphi \le 1$. -/
+theorem uDenseSchurAt_pos {n : ℕ} {δR δC φ : ℝ} (hδR : 0 < δR) (hδR1 : δR ≤ 1) (hδC : 0 < δC)
+    (hδC1 : δC ≤ 1) (hφ : 0 < φ) (hφ1 : φ ≤ 1) : 0 < uDenseSchurAt n δR δC φ := by
+  sorry
+
+/-- **The bits of precision of the dense Schur solver at two tolerances**: there are constants
+$c_1, c_2$ such that for every order $n + 1$, $0 < \delta_R, \delta_C \le 1$ and
+$0 < \varphi \le 1$, $\log_2(1/\boldsymbol{u}_0) \le c_1L^4(\log_2L + 1)^2 + c_2$ with
+$\boldsymbol{u}_0$ = `NLAlib.Schur.uDenseSchurAt` and
+$L = \log_2(4(n + 1)/(\min(\delta_R, \delta_C)\varphi))$.
+[BanksGarzaVargasSrivastava2022, Theorem 1.4] with [BanksGarzaVargasSrivastava2025, Theorem 1.1]
+(the bits of the eigenvalue solver); the second tolerance costs no more bits. -/
+theorem logb_inv_uDenseSchurAt_le : ∃ c₁ c₂ : ℝ, ∀ {n : ℕ} {δR δC φ : ℝ}, 0 < δR → δR ≤ 1 →
+    0 < δC → δC ≤ 1 → 0 < φ → φ ≤ 1 → Real.logb 2 (uDenseSchurAt n δR δC φ)⁻¹ ≤
+      c₁ * Real.logb 2 (4 * (n + 1) / (min δR δC * φ)) ^ 4 *
+        (Real.logb 2 (Real.logb 2 (4 * (n + 1) / (min δR δC * φ))) + 1) ^ 2 + c₂ := by
+  sorry
 
 /-- **The operation count of the dense Schur solver is $n^3$ times a polylogarithm**: there is a
 constant $C$ such that for every order $n + 1$, $0 < \delta \le 1$ and $0 < \varphi \le 1$, the

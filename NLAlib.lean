@@ -13,7 +13,10 @@ public import NLAlib.Eigensolvers.Schur.Composition
 public import NLAlib.Eigensolvers.Schur.Contracts
 public import NLAlib.Eigensolvers.Schur.Dense
 public import NLAlib.Eigensolvers.Schur.DenseBits
+public import NLAlib.Eigensolvers.Schur.DenseEig
 public import NLAlib.Eigensolvers.Schur.DenseParameters
+public import NLAlib.Eigensolvers.Schur.EigSolver
+public import NLAlib.Eigensolvers.Schur.Eigenvectors
 public import NLAlib.Eigensolvers.Schur.NormEstimate
 public import NLAlib.Eigensolvers.Schur.Pipeline
 public import NLAlib.Eigensolvers.Schur.Regularizer
@@ -947,6 +950,7 @@ public import NLAlib.Matrix.FinitePrecision.StoredMatrix
 public import NLAlib.Matrix.FinitePrecision.StoredProducts
 public import NLAlib.Matrix.FinitePrecision.TapeRounding
 public import NLAlib.Matrix.FinitePrecision.Traces
+public import NLAlib.Matrix.FinitePrecision.TriangularSolve
 public import NLAlib.Matrix.FinitePrecision.VectorErrors
 public import NLAlib.Matrix.FinitePrecision.WordRepresentation
 public import NLAlib.Matrix.Functions.AbsoluteValue

@@ -9,6 +9,7 @@ public import NLAlib.Eigensolvers.Schur.Completion
 public import NLAlib.Eigensolvers.SmallEig.Certificate
 public import NLAlib.Eigensolvers.HessenbergAccumulate
 public import NLAlib.Eigensolvers.Schur.Composition
+public import NLAlib.Eigensolvers.Schur.DenseEig
 
 /-!
 # The dense Schur solver as a canonical certificate
@@ -33,11 +34,18 @@ Schur form is the postcondition of `NLAlib.Ops.Specification.Accepts` in
   `NLAlib.Schur.schurPipelineAlgorithm`: the generic certificate from component data.
 * `NLAlib.Schur.denseSchurProblem`, `NLAlib.Schur.denseSchurWork`,
   `NLAlib.Schur.denseSchurAlgorithm`: the instance.
+* `NLAlib.Schur.eigSolverProgram`, `NLAlib.Schur.eigSolverProblem`, `NLAlib.Schur.eigSolverWork`,
+  `NLAlib.Schur.eigSolverSpecification`, `NLAlib.Schur.eigSolverAlgorithm`: the eigensolver's
+  generic certificate.
+* `NLAlib.Schur.denseEigProblem`, `NLAlib.Schur.denseEigWork`, `NLAlib.Schur.denseEigAlgorithm`:
+  the dense eigensolver's.
 
 ## Main results
 
 * `NLAlib.Schur.denseSchur_algorithm_measureReal_not_accepts_le`: the dense Schur theorem on one
   counted run.
+* `NLAlib.Schur.denseEig_algorithm_measureReal_not_accepts_le`: the dense eigendecomposition
+  theorem on one counted run.
 -/
 
 @[expose] public section
@@ -402,5 +410,285 @@ theorem denseSchur_algorithm_measureReal_not_accepts_le {Mch : Machine ℝ}
     simp [Program.environment, IExp.evalList, IExp.eval, denseSchurDims, denseSchurDimsWith,
       List.ofFn_succ, h 1, h 2, h 3, h 4, h 5, denseSchurSizes]
   · simp [Program.environment, Operand.evalList, Operand.eval, IExp.eval, List.ofFn_succ]
+
+/-! ### The eigensolver -/
+
+/-- **The eigensolver program** of a Schur solver `Solve` and an eigenvector stage `Ev` at the
+order `d 0 + 1`, the solver's dimensions `d 1`, …, `d 5` and `d 6` stage words, on the six
+supplied buffers (matrix, solver words, stage words, accumulator, eigenvectors, flag). -/
+def eigSolverProgram (Solve Ev : Impl SmallEigOp Tst) : Program SmallEigOp Tst 7 6 :=
+  ⟨.frame [.var 0 + .const 1, .var 1, .var 2, .var 3, .var 4, .var 5, .var 6]
+    [⟨0, .var 7⟩, ⟨1, .var 8⟩, ⟨2, .var 9⟩, ⟨0, .var 7⟩, ⟨3, .var 10⟩, ⟨4, .var 11⟩,
+      ⟨5, .var 12⟩]
+    (eigSolverWith Solve Ev).body⟩
+
+/-- **The semantic input of the eigensolver** at the sizes `d`, for the word functions `words`
+(solver) and `ewords` (stage) and the size function `sizes` of $(n, \delta, \varphi)$: the matrix
+of order `d 0 + 1` and the reals $\delta, \varphi$, with the sizes the ones they determine. -/
+structure EigData (sizes : ℕ → ℝ → ℝ → Fin 7 → ℕ) (d : Fin 7 → ℕ) where
+  /-- The matrix. -/
+  matrix : Matrix (Fin (d 0 + 1)) (Fin (d 0 + 1)) ℂ
+  /-- The backward error. -/
+  δ : ℝ
+  /-- The failure probability. -/
+  φ : ℝ
+  /-- The sizes are those of $(n, \delta, \varphi)$. -/
+  sizes_eq : sizes (d 0) δ φ = d
+
+/-- The six raw buffers of an input: the matrix words, the solver's and the stage's words, and
+uninitialized room for the accumulator, the eigenvectors and the flag. -/
+noncomputable def EigData.buffers {sizes : ℕ → ℝ → ℝ → Fin 7 → ℕ} {d : Fin 7 → ℕ}
+    (words ewords : ℕ → ℝ → ℝ → List ℝ) (x : EigData sizes d) : Fin 6 → Buf ℝ :=
+  ![(matrixWords x.matrix).map some, (words (d 0) x.δ x.φ).map some,
+    (ewords (d 0) x.δ x.φ).map some, List.replicate (2 * ((d 0 + 1) * (d 0 + 1))) none,
+    List.replicate (2 * ((d 0 + 1) * (d 0 + 1))) none, [none]]
+
+/-- **The admitted sizes of the eigensolver** on the machine `Mch`: the natural literals up to the
+order $n + 1$ are exact and the sizes are those of some $0 < \delta \le 1$, $0 < \varphi \le 1$. -/
+def EigSizes (Mch : Machine ℝ) (sizes : ℕ → ℝ → ℝ → Fin 7 → ℕ) (d : Fin 7 → ℕ) : Prop :=
+  IsExactNatLit id Mch (d 0 + 1) ∧
+    ∃ δ φ : ℝ, 0 < δ ∧ δ ≤ 1 ∧ 0 < φ ∧ φ ≤ 1 ∧ sizes (d 0) δ φ = d
+
+/-- **The problem of the eigensolver** on the machine `Mch`: the six raw buffers of
+`NLAlib.Schur.EigData.buffers` at the admitted sizes `NLAlib.Schur.EigSizes`. -/
+noncomputable def eigSolverProblem (Mch : Machine ℝ) (words ewords : ℕ → ℝ → ℝ → List ℝ)
+    (sizes : ℕ → ℝ → ℝ → Fin 7 → ℕ) (admitted : ∃ d, EigSizes Mch sizes d) :
+    Problem ℝ 7 6 where
+  formats _ := .cell
+  valid := EigSizes Mch sizes
+  Data := EigData sizes
+  admissible _ x buffers := buffers = x.buffers words ewords
+  admitted := admitted
+  supply d hd := by
+    obtain ⟨-, δ, φ, -, -, -, -, hs⟩ := hd
+    exact ⟨⟨0, δ, φ, hs⟩, _, rfl⟩
+
+/-- **The work (and span) of the eigensolver** from the solver's and the stage's work bounds:
+their sum and the glue $128$. -/
+def eigSolverWork (WSolve WEv : (Fin 7 → ℕ) → ℕ) (d : Fin 7 → ℕ) : ℕ :=
+  WSolve d + WEv d + 128
+
+/-- The payload words of the six supplied buffers. -/
+def eigSolverInputWords (d : Fin 7 → ℕ) : ℕ :=
+  2 * ((d 0 + 1) * (d 0 + 1)) + (d 1 + d 2) + d 6 + 2 * ((d 0 + 1) * (d 0 + 1)) +
+    2 * ((d 0 + 1) * (d 0 + 1)) + 1
+
+/-- **The specification of the eigensolver**: the budget, scratch and resident memory of the
+static count, the work and the span `NLAlib.Schur.eigSolverWork`, and on every tape the frame:
+the run writes only the matrix, the accumulator, the eigenvectors and the flag. -/
+noncomputable def eigSolverSpecification (Mch : Machine ℝ) (words ewords : ℕ → ℝ → ℝ → List ℝ)
+    (sizes : ℕ → ℝ → ℝ → Fin 7 → ℕ) (admitted : ∃ d, EigSizes Mch sizes d)
+    (Solve Ev : Impl SmallEigOp Tst) (WSolve WEv : (Fin 7 → ℕ) → ℕ) :
+    Specification SmallEigOp Tst (eigSolverProblem Mch words ewords sizes admitted) where
+  budget := staticCost (eigSolverProgram Solve Ev)
+  scratch := staticPeak smallEigResources (eigSolverProgram Solve Ev)
+  work := eigSolverWork WSolve WEv
+  span := eigSolverWork WSolve WEv
+  memory d := eigSolverInputWords d + staticPeak smallEigResources (eigSolverProgram Solve Ev) d
+  good d x _ _ m := (eigSolverProblem Mch words ewords sizes admitted).initial d x |>.store.EqOff
+    (eigFp (d 0) (0, 0) (3, 0) (4, 0) (5, 0)) m.store
+
+section EigGeneric
+
+variable {Mch : Machine ℝ} {words ewords : ℕ → ℝ → ℝ → List ℝ}
+  {sizes : ℕ → ℝ → ℝ → Fin 7 → ℕ} {admitted : ∃ d, EigSizes Mch sizes d}
+
+/-- The static count of the eigensolver program is at most the work
+`NLAlib.Schur.eigSolverWork` of bounds on the solver's and the stage's instrumented static counts
+at the offsets the eigensolver passes to them
+(`NLAlib.Schur.size_stmtCost_eigSolverWith_le`). -/
+theorem size_staticCost_eigSolverProgram_le {Solve Ev : Impl SmallEigOp Tst}
+    {WSolve WEv : (Fin 7 → ℕ) → ℕ}
+    (hSolve : ∀ d, Count.size (stmtCost Solve.body.instrument
+      [d 0 + 1, d 1, d 2, d 3, d 4, d 5, 0, 0, 0, 0, 0]) ≤ WSolve d)
+    (hEv : ∀ d, Count.size (stmtCost Ev.body.instrument [d 0 + 1, d 6, 0, 0, 0, 0, 0]) ≤ WEv d)
+    (d : Fin 7 → ℕ) :
+    Count.size (staticCost (eigSolverProgram Solve Ev) d) ≤ eigSolverWork WSolve WEv d := by
+  sorry
+
+/-- The initial payload of an input is `NLAlib.Schur.eigSolverInputWords` when the words have
+the sizes' counts. -/
+theorem eigSolverProblem_initialBytes
+    (hwords : ∀ n δ φ, (words n δ φ).length = sizes n δ φ 1 + sizes n δ φ 2)
+    (hewords : ∀ n δ φ, (ewords n δ φ).length = sizes n δ φ 6) (d : Fin 7 → ℕ)
+    (x : (eigSolverProblem Mch words ewords sizes admitted).Input d) :
+    (eigSolverProblem Mch words ewords sizes admitted).initialBytes d x =
+      eigSolverInputWords d := by
+  sorry
+
+/-- The initial memory holds the input of the eigensolver (`NLAlib.Schur.EigSolverInput`) at the
+six supplied buffers. -/
+theorem eigSolverProblem_initial_input (d : Fin 7 → ℕ)
+    (x : (eigSolverProblem Mch words ewords sizes admitted).Input d) :
+    EigSolverInput (words (d 0) x.val.1.δ x.val.1.φ) (ewords (d 0) x.val.1.δ x.val.1.φ) (0, 0)
+      (1, 0) (2, 0) (3, 0) (4, 0) (5, 0) x.val.1.matrix
+      ((eigSolverProblem Mch words ewords sizes admitted).initial d x) := by
+  sorry
+
+/-- **The eigensolver as a canonical certificate, from component data**: the fixed program
+`NLAlib.Schur.eigSolverProgram` of a Schur solver and an eigenvector stage, over the model
+`NLAlib.SmallEig.smallEigModel` with the unit costs, given that it passes the storage discipline
+(`ht`), terminates on every admitted input, interpretation of the model and tape writing only the
+matrix, the accumulator, the eigenvectors and the flag (`hwp`), and the components' instrumented
+static counts are at most $W_\bullet$, succeeds within the static budget, scratch and memory, with
+work and span at most `NLAlib.Schur.eigSolverWork` of the $W_\bullet$.
+Algorithm: dense-eigendecomposition (run model) -/
+noncomputable def eigSolverAlgorithm (sU : ℕ) (Solve Ev : Impl SmallEigOp Tst)
+    (WSolve WEv : (Fin 7 → ℕ) → ℕ)
+    (hSolve : ∀ d, Count.size (stmtCost Solve.body.instrument
+      [d 0 + 1, d 1, d 2, d 3, d 4, d 5, 0, 0, 0, 0, 0]) ≤ WSolve d)
+    (hEv : ∀ d, Count.size (stmtCost Ev.body.instrument [d 0 + 1, d 6, 0, 0, 0, 0, 0]) ≤ WEv d)
+    (hwords : ∀ n δ φ, (words n δ φ).length = sizes n δ φ 1 + sizes n δ φ 2)
+    (hewords : ∀ n δ φ, (ewords n δ φ).length = sizes n δ φ 6)
+    (ht : (eigSolverProgram Solve Ev).wellTyped smallEigResources
+      (eigSolverProblem Mch words ewords sizes admitted).formats = true)
+    (hwp : ∀ d, EigSizes Mch sizes d →
+      ∀ (x : (eigSolverProblem Mch words ewords sizes admitted).Input d)
+        (I : Interp SmallEigOp Tst ℝ),
+      (smallEigModel (eigSolverProblem Mch words ewords sizes admitted) Mch sU).contracts d x I →
+      ∀ τ, Wp .total I τ (eigSolverProgram Solve Ev).body (Program.environment (b := 6) d)
+        (fun m => ((eigSolverProblem Mch words ewords sizes admitted).initial d x).store.EqOff
+          (eigFp (d 0) (0, 0) (3, 0) (4, 0) (5, 0)) m.store)
+        ((eigSolverProblem Mch words ewords sizes admitted).initial d x)) :
+    Algorithm (smallEigModel (eigSolverProblem Mch words ewords sizes admitted) Mch sU)
+      (eigSolverSpecification Mch words ewords sizes admitted Solve Ev WSolve WEv) :=
+  Algorithm.ofWp (eigSolverProgram Solve Ev) ht
+    (fun d hd x I hI τ => (hwp d hd x I hI τ).mono fun _ h _ _ => h)
+    (fun _ _ => le_rfl) (fun _ _ => le_rfl)
+    (fun d _ => (smallEigResources_work _).trans_le
+      (size_staticCost_eigSolverProgram_le hSolve hEv d))
+    (fun d _ => (smallEigResources_span _).trans_le
+      (size_staticCost_eigSolverProgram_le hSolve hEv d))
+    (fun d _ x => by rw [eigSolverProblem_initialBytes hwords hewords]; exact le_rfl)
+
+end EigGeneric
+
+/-- The sizes of a run of the dense eigensolver at $(n, \delta, \varphi)$: those of the dense
+Schur solver at $(\delta, \delta_C)$ and the one stage word. -/
+noncomputable def denseEigSizes (n : ℕ) (δ φ : ℝ) : Fin 7 → ℕ :=
+  ![n, (denseSchurRegParams n δ φ).length,
+    (denseSchurThresholdAt n δ (denseEigCoreDelta n δ φ) φ ::
+      (denseSchurShQRParamsAt n δ (denseEigCoreDelta n δ φ) φ ++
+        denseSchurLeafParamsAt n δ (denseEigCoreDelta n δ φ) φ)).length,
+    denseSchurDegree n δ φ, denseSchurCapAt n δ (denseEigCoreDelta n δ φ) φ,
+    denseSchurLeafCapAt n δ (denseEigCoreDelta n δ φ) φ, 1]
+
+/-- The stage word of the dense eigensolver: the floor parameter. -/
+noncomputable def denseEigStageParams (n : ℕ) (δ φ : ℝ) : List ℝ := [denseEigFloor n δ φ]
+
+/-- **The problem of the dense eigensolver** on the machine `Mch`. -/
+noncomputable def denseEigProblem (Mch : Machine ℝ)
+    (admitted : ∃ d, EigSizes Mch denseEigSizes d) : Problem ℝ 7 6 :=
+  eigSolverProblem Mch denseEigSchurParams denseEigStageParams denseEigSizes admitted
+
+/-- **The work (and span) of the dense eigensolver** at the sizes
+$(n, n_r, n_q, k, F, T, n_e)$ = `d`: `NLAlib.Schur.eigSolverWork` of the dense Schur solver's
+$384547(n + 1)^3(k + 1)^4(n_r + n_q + 1)(F + 1)(T + 1)^2$ (`NLAlib.Schur.denseSchur_work_le`) and
+the stage's $10^4(n + 1)^3$ (`NLAlib.Schur.size_stmtCost_triEigvecStage_le`). Every primitive,
+test and structural instruction is counted at unit cost; the parameter words are supplied in the
+input. -/
+def denseEigWork (d : Fin 7 → ℕ) : ℕ :=
+  eigSolverWork (fun d => 384547 * (d 0 + 1) ^ 3 * (d 3 + 1) ^ 4 * (d 1 + d 2 + 1) *
+    (d 4 + 1) * (d 5 + 1) ^ 2) (fun d => 10000 * (d 0 + 1) ^ 3) d
+
+/-- **The specification of the dense eigensolver** on the machine `Mch`. -/
+noncomputable def denseEigSpecification (Mch : Machine ℝ)
+    (admitted : ∃ d, EigSizes Mch denseEigSizes d) (sG : ℕ) :
+    Specification SmallEigOp Tst (denseEigProblem Mch admitted) :=
+  eigSolverSpecification Mch denseEigSchurParams denseEigStageParams denseEigSizes admitted
+    (denseSchur sG) triEigvecStage
+    (fun d => 384547 * (d 0 + 1) ^ 3 * (d 3 + 1) ^ 4 * (d 1 + d 2 + 1) * (d 4 + 1) *
+      (d 5 + 1) ^ 2) (fun d => 10000 * (d 0 + 1) ^ 3)
+
+/-- The dense eigensolver program passes the storage discipline of the costs. -/
+theorem denseEigProgram_wellTyped (sG : ℕ) {Mch : Machine ℝ}
+    {admitted : ∃ d, EigSizes Mch denseEigSizes d} :
+    (eigSolverProgram (denseSchur sG) triEigvecStage).wellTyped smallEigResources
+      (denseEigProblem Mch admitted).formats = true := by
+  sorry
+
+/-- The dense eigensolver program terminates on every admitted input, interpretation of the model
+and tape, and writes only the matrix, the accumulator, the eigenvectors and the flag
+(`NLAlib.Schur.eigSolverWith_terminates` with `NLAlib.Schur.triEigvecStage_completes`; no rounding
+model). -/
+theorem denseEigProgram_wp {Mch : Machine ℝ} {admitted : ∃ d, EigSizes Mch denseEigSizes d}
+    {sU sG : ℕ} {d : Fin 7 → ℕ} (hd : EigSizes Mch denseEigSizes d)
+    (x : (denseEigProblem Mch admitted).Input d) {I : Interp SmallEigOp Tst ℝ}
+    (hI : (smallEigModel (denseEigProblem Mch admitted) Mch sU).contracts d x I) (τ : Tape ℝ) :
+    Wp .total I τ (eigSolverProgram (denseSchur sG) triEigvecStage).body
+      (Program.environment (b := 6) d)
+      (fun m => ((denseEigProblem Mch admitted).initial d x).store.EqOff
+        (eigFp (d 0) (0, 0) (3, 0) (4, 0) (5, 0)) m.store)
+      ((denseEigProblem Mch admitted).initial d x) := by
+  sorry
+
+/-- The solver words have the sizes' count. -/
+theorem length_denseEigSchurParams (n : ℕ) (δ φ : ℝ) :
+    (denseEigSchurParams n δ φ).length = denseEigSizes n δ φ 1 + denseEigSizes n δ φ 2 := by
+  sorry
+
+/-- The stage words have the sizes' count. -/
+theorem length_denseEigStageParams (n : ℕ) (δ φ : ℝ) :
+    (denseEigStageParams n δ φ).length = denseEigSizes n δ φ 6 := by
+  sorry
+
+/-- **The dense eigensolver as a canonical certificate**: `NLAlib.Schur.eigSolverAlgorithm` with
+the dense Schur solver and the eigenvector stage and their static counts, over the model
+`NLAlib.SmallEig.smallEigModel` (no oracle) with the unit costs: it succeeds on every admitted
+input, interpretation of the model and tape, within the static budget, scratch and memory, with
+work and span at most `NLAlib.Schur.denseEigWork`, writing only the matrix, the accumulator, the
+eigenvectors and the flag. The eigendecomposition holds with probability at least $1 - \varphi$
+(`NLAlib.Schur.denseEig_algorithm_measureReal_not_accepts_le`).
+Algorithm: dense-eigendecomposition (run model) -/
+noncomputable def denseEigAlgorithm (Mch : Machine ℝ)
+    (admitted : ∃ d, EigSizes Mch denseEigSizes d) (sU sG : ℕ) :
+    Algorithm (smallEigModel (denseEigProblem Mch admitted) Mch sU)
+      (denseEigSpecification Mch admitted sG) :=
+  eigSolverAlgorithm sU _ _ _ _
+    (fun d => denseSchur_work_le sG (d 0) (d 1) (d 2) (d 3) (d 4) (d 5))
+    (fun d => size_stmtCost_triEigvecStage_le (d 0) (d 6))
+    length_denseEigSchurParams length_denseEigStageParams (denseEigProgram_wellTyped sG)
+    (fun _ hd x _ hI τ => denseEigProgram_wp hd x hI τ)
+
+/-- **The dense eigensolver, on one run.** Let the machine `Mch` have the standard model at
+$\boldsymbol{u}$; let the tape $\xi$ have the stream laws `law`, with `law` $s_U$ uniform on
+$[0, 1]$ and `law` $s_G$ the standard real Gaussian law. Let $(n, n_r, n_q, k, F, T, n_e)$ = `d`
+be admitted and let the input `x` hold a complex $\mathbf{A}$ of order $n + 1$,
+$0 < \delta \le 1$, $0 < \varphi \le 1$ and $\boldsymbol{u} \le \boldsymbol{u}_E$. Let `I` meet the
+model, be measurable and read the tape only in its windows. Then
+$$\mathbb{P}\bigl[\mathsf{denseEigAlgorithm}(\mathbf{A}) \text{ fails, exceeds its budget,
+  scratch, memory, work or span, writes outside } \mathbf{A}, \widehat{\mathbf{U}},
+  \widehat{\mathbf{V}} \text{ and the flag, or stores no Schur output and eigendecomposition
+  output of } \mathsf{denseEig}\bigr] \le \varphi\,,$$
+on one counted run, with the work and the span `NLAlib.Schur.denseEigWork`, the outputs those of
+`NLAlib.Schur.denseEig_measureReal_not_eig_le`. Here $\boldsymbol{u}_E$ is
+`NLAlib.Schur.uDenseEig`. No printed source: [BanksGarzaVargasSrivastava2022, Theorem 1.4]
+computes eigenvalues only.
+
+Note: General form, any program meeting the model: `NLAlib.Ops.Algorithm`; the statement on the
+program is `NLAlib.Schur.denseEig_measureReal_not_eig_le`.
+Result: dense-eigendecomposition-certificate -/
+theorem denseEig_algorithm_measureReal_not_accepts_le {Mch : Machine ℝ}
+    {admitted : ∃ d, EigSizes Mch denseEigSizes d} {u : ℝ} (hM : StdModel u id Mch)
+    {law : ℕ → Measure ℝ} {sU sG : ℕ} (hU : law sU = volume.restrict (Set.Icc 0 1))
+    (hG : law sG = gaussianReal 0 1) {d : Fin 7 → ℕ} (hd : EigSizes Mch denseEigSizes d)
+    (x : (denseEigProblem Mch admitted).Input d) {I : Interp SmallEigOp Tst ℝ}
+    (hI : (smallEigModel (denseEigProblem Mch admitted) Mch sU).contracts d x I)
+    (hIm : I.IsMeasurable) {win : SmallEigOp → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    (hδ : 0 < x.val.1.δ) (hδ1 : x.val.1.δ ≤ 1) (hφ : 0 < x.val.1.φ) (hφ1 : x.val.1.φ ≤ 1)
+    (hu : u ≤ uDenseEig (d 0) x.val.1.δ x.val.1.φ)
+    {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
+    P.real {ω | ¬ (denseEigSpecification Mch admitted sG).Accepts smallEigResources d x
+      (exec (denseEigAlgorithm Mch admitted sU sG).program I smallEigResources
+        (denseEigProblem Mch admitted).formats (ξ ω) d
+        ((denseEigProblem Mch admitted).initial d x))
+      fun _ m => ((denseEigProblem Mch admitted).initial d x).store.EqOff
+          (eigFp (d 0) (0, 0) (3, 0) (4, 0) (5, 0)) m.store ∧
+        SchurOutput (0, 0) (3, 0) (5, 0) x.val.1.matrix x.val.1.δ
+          (58 * denseEigRotations (d 0) x.val.1.δ x.val.1.φ * u) m ∧
+        EigOutput (0, 0) (4, 0) (5, 0) x.val.1.matrix x.val.1.δ x.val.1.δ (1 / 8) x.val.1.δ
+          (2 * √((d 0 : ℝ) + 1) * denseSchurB (d 0) x.val.1.δ x.val.1.φ)
+          (denseSchurΓ (d 0) x.val.1.δ x.val.1.φ / 4) m} ≤ x.val.1.φ := by
+  sorry
 
 end NLAlib.Schur

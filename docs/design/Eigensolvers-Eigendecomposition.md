@@ -901,3 +901,26 @@ Every statement and definition above was elaborated with `sorry` proofs (`lake e
   $\mathbf{A} = 0$: EM4 excludes it (`hA`), EP3 and the headline go through the contract's clause
   $\mathbf{T} = 0$; all residuals are $0$. `uDenseEig`, $B$ and $\Gamma$ are positive, so the headline
   is not vacuous.
+
+### 13.1 At the skeleton (step 2)
+
+* **Placement.** T3a, T3b and the $\sqrt{1-e}$ lemma are in
+  `Matrix/Perturbation/ApproximateEigendecomposition.lean` (not `Matrix/Spectral/Schur.lean`, which
+  has no spectral norm); T3c is in `EigenvalueMatching.lean` (it uses the matching, which imports
+  `EigenvalueBackward`). The eigensolver certificate is in `Certificate.lean`, which now imports
+  `DenseEig`.
+* **EF0.** The list projection is `Fp.Apart.select` (distinct indices in range, any order). The
+  strided dot bound is left to proof time (only if `norm_rowEntryWord_sub_le` does not cover it).
+* **EF1.** `divisionInstructions` and `complexDivideWithScratch` moved to `Ops.Pair` with
+  deprecated aliases in `ShiftedQR`; `RowSolveSubst` and `Division` use the new names. The words
+  are `Ops.Pair.divideWords`; $c_d = 8$ under $\boldsymbol{u} \le 1/32$.
+* **EF2/EF3.** `shiftedTriSolve` is the eigenvector solve (shift $t_{jj}$, right-hand side column
+  $j$), stated through the word functions `shiftedTriSolveWord`/`Column`/`Flag`; backward error
+  $16(N+1)\boldsymbol{u}$, floor $3s_{\min}$. The normalized column has floor $\tfrac72s_{\min}$
+  (so that $\tfrac72s_{\min} \le 4\rho\|\mathbf{T}\|_{\mathsf F}$ with the rounded norm), norm
+  tolerance $4(N+2)\boldsymbol{u}$.
+* **EF4.** The instance needs $64(N_{\max}+1)^2\boldsymbol{u} \le 1$ (the Frobenius norm stage is
+  quadratic in the order) and exact literals $0, 1$; $c_E = 10^4$.
+* **EP2.** The `…At` family is new definitions with `rfl` lemmas `…At_self` to the merged names;
+  the merged definitions and their proofs are untouched. No separate `denseSchurAt` program: the
+  tolerances are words, so the program is `denseSchur`.

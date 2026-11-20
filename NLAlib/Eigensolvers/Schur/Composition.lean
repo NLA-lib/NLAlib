@@ -19,6 +19,9 @@ back by the norm estimate. Its static count is at most the sum of the stages' co
 ## Main results
 
 * `NLAlib.Schur.schurPipelineWith_measureReal_not_schur_le`: the generic composition theorem.
+* `NLAlib.Schur.schurPipelineWith_pwrites_regularizedSchur`,
+  `NLAlib.Schur.schurPipelineWith_measureReal_not_regularizedSchur_le`: the same with the
+  regularized matrix exposed.
 * `NLAlib.Schur.SchurOutput.exists_isEigenvalueListing`,
   `NLAlib.Schur.SchurOutput.exists_hasOrthonormalCols`: the eigenvalues and an exact unitary.
 * `NLAlib.Schur.size_stmtCost_schurPipelineWith_le`: the instrumented static count is at most the
@@ -140,6 +143,94 @@ theorem schurPipelineWith_measureReal_not_schur_le [Has ScalarOp O] [Has IndexOp
     (PWrites.of_writes le_rfl fun m τ hm => hnm m τ hm)
     (PWrites.ite hI htest hthen helse)).mono (fun _ h => h) (sup_le hFL le_rfl) (fun _ h => h)
     (by rw [max_eq_left (by linarith)]; linarith)
+
+/-- **The generic composition theorem with the regularized matrix exposed**, in the form of a
+probabilistic step (`NLAlib.Ops.PWrites`): on a scalar machine with the standard model at
+$\boldsymbol{u}$, $8(n + 1)\boldsymbol{u} \le 1/4$, index literals, exact natural literals up to
+$n + 1$ and exact comparisons, a measurable interpretation reading the tape only in its windows,
+let the norm estimate have the constants $(c_1, c_2)$, $c_1 > 0$, the regularizer map into the class
+`C` with the error $\delta_R \le 1/c_1$ and the failure $\varphi_R \ge 0$, the reducer have the
+errors $(\varepsilon_{H,U}, \varepsilon_{H,T})$, $0 \le \varepsilon_{H,T} \le 1/8$, the core from
+the class `C'` the errors $(\varepsilon_{C,U}, \varepsilon_{C,T})$ and the failure
+$\varphi_C \ge 0$, with $(1 + \varepsilon_{H,U})(1 + \varepsilon_{C,U}) - 1 \le 1/16$, and the
+reducer carry `C` into `C'`. Then from every input of the pipeline the run stores, except with
+probability
+$\varphi_R + \varphi_C$, a Schur output with its regularized matrix $\mathbf{X}$
+(`NLAlib.Schur.RegularizedSchurOutput`): $\|\mathbf{A} - \mathbf{X}\|_2 \le (c_2\sqrt{n + 1}\,
+\delta_R + 3\sqrt{n + 1}\,\boldsymbol{u})\|\mathbf{A}\|_2$, the error against $\mathbf{X}$
+`NLAlib.Schur.schurPipelineEX` at $\varepsilon = (1 + \varepsilon_{H,U})(1 + \varepsilon_{C,U}) -
+1$, $e_U = 2\varepsilon + \varepsilon^2$, and $s^{-1}\mathbf{X}$ in `C` for the norm estimate $s$
+unless $\mathbf{A} = 0$. No printed source. -/
+theorem schurPipelineWith_pwrites_regularizedSchur [Has ScalarOp O] [Has IndexOp O]
+    [Has CmpTst Q] {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
+    (hNat : IsExactNatLit id Mch (n + 1)) (hC : IsCmp id I)
+    (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    {law : ℕ → Measure ℝ} {Nm Reg Red Core : Impl O Q} {k F T : ℕ}
+    {c₁ c₂ δR φR εHU εHT εCU εCT φC : ℝ} {qR qC : List ℝ}
+    {C C' : ∀ {m : ℕ}, Matrix (Fin (m + 1)) (Fin (m + 1)) ℂ → Prop}
+    (hNm : FrobNormEstimateContract c₁ c₂ (n + 1) Nm I)
+    (hReg : RandomRegularizerContract law δR φR C (n + 1) (2 / c₁) qR Reg I)
+    (hRed : HessenbergReducerContract εHU εHT (n + 1) Red I)
+    (hCore : RandomSchurCoreContract law εCU εCT φC C' k F T (n + 1) (4 / c₁) qC Core I)
+    (hCC' : ∀ (A H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ), C A →
+      IsPerturbedUnitarySimilarBy V A H (εHT * (2 / c₁ + δR)) → C' H)
+    (hc₁ : 0 < c₁) (hu0 : 0 ≤ u) (hu : 8 * ((n : ℝ) + 1) * u ≤ 1 / 4)
+    (hδR : δR ≤ 1 / c₁) (hεHT0 : 0 ≤ εHT) (hεHT : εHT ≤ 1 / 8) (hεHU : 0 ≤ εHU)
+    (hεCU : 0 ≤ εCU) (hεU : (1 + εHU) * (1 + εCU) - 1 ≤ 1 / 16) (hφR : 0 ≤ φR) (hφC : 0 ≤ φC)
+    {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {a p uo f : ℕ × ℕ} :
+    PWrites law I (schurPipelineWith Nm Reg Red Core).body
+      (Env.frame [n + 1, qR.length, qC.length, k, F, T] [a, p, a, uo, f]) (schurFp n a uo f)
+      (SchurPipelineInput (qR ++ qC) a p uo f A)
+      (RegularizedSchurOutput C a uo f A c₁ c₂
+        (c₂ * √((n : ℝ) + 1) * δR + 3 * √((n : ℝ) + 1) * u)
+        (schurPipelineEX n c₁ c₂ u εHT εCT ((1 + εHU) * (1 + εCU) - 1))
+        (2 * ((1 + εHU) * (1 + εCU) - 1) + ((1 + εHU) * (1 + εCU) - 1) ^ 2)) (φR + φC) := by
+  sorry
+
+/-- **The generic composition theorem with the regularized matrix exposed**: on a scalar machine
+with the standard model at $\boldsymbol{u}$, $8(n + 1)\boldsymbol{u} \le 1/4$, index literals,
+exact natural literals up to $n + 1$ and exact comparisons, a measurable interpretation reading the
+tape only in its windows, let the norm estimate have the constants $(c_1, c_2)$, $c_1 > 0$, the
+regularizer map into `C` with the error $\delta_R \le 1/c_1$ and the failure $\varphi_R \ge 0$,
+the reducer have the errors $(\varepsilon_{H,U}, \varepsilon_{H,T})$,
+$0 \le \varepsilon_{H,T} \le 1/8$, the core from `C'` the errors
+$(\varepsilon_{C,U}, \varepsilon_{C,T})$ and the failure $\varphi_C \ge 0$, with
+$(1 + \varepsilon_{H,U})(1 + \varepsilon_{C,U}) - 1 \le 1/16$, and the reducer carry `C` into
+`C'`. Then from a memory holding the input of the pipeline, under a random tape with the
+stream laws,
+$$\mathbb{P}\bigl[\mathsf{schurPipelineWith}(\mathbf{A}) \text{ fails, writes outside }
+  \mathbf{A}, \widehat{\mathbf{U}} \text{ and the flag, or stores no Schur output with a
+  regularized } \mathbf{X}\bigr] \le \varphi_R + \varphi_C\,,$$
+the errors those of `NLAlib.Schur.schurPipelineWith_pwrites_regularizedSchur`. No printed
+source. -/
+theorem schurPipelineWith_measureReal_not_regularizedSchur_le [Has ScalarOp O] [Has IndexOp O]
+    [Has CmpTst Q] {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
+    (hNat : IsExactNatLit id Mch (n + 1)) (hC : IsCmp id I)
+    (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    {law : ℕ → Measure ℝ} {Nm Reg Red Core : Impl O Q} {k F T : ℕ}
+    {c₁ c₂ δR φR εHU εHT εCU εCT φC : ℝ} {qR qC : List ℝ}
+    {C C' : ∀ {m : ℕ}, Matrix (Fin (m + 1)) (Fin (m + 1)) ℂ → Prop}
+    (hNm : FrobNormEstimateContract c₁ c₂ (n + 1) Nm I)
+    (hReg : RandomRegularizerContract law δR φR C (n + 1) (2 / c₁) qR Reg I)
+    (hRed : HessenbergReducerContract εHU εHT (n + 1) Red I)
+    (hCore : RandomSchurCoreContract law εCU εCT φC C' k F T (n + 1) (4 / c₁) qC Core I)
+    (hCC' : ∀ (A H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ), C A →
+      IsPerturbedUnitarySimilarBy V A H (εHT * (2 / c₁ + δR)) → C' H)
+    (hc₁ : 0 < c₁) (hu0 : 0 ≤ u) (hu : 8 * ((n : ℝ) + 1) * u ≤ 1 / 4)
+    (hδR : δR ≤ 1 / c₁) (hεHT0 : 0 ≤ εHT) (hεHT : εHT ≤ 1 / 8) (hεHU : 0 ≤ εHU)
+    (hεCU : 0 ≤ εCU) (hεU : (1 + εHU) * (1 + εCU) - 1 ≤ 1 / 16) (hφR : 0 ≤ φR) (hφC : 0 ≤ φC)
+    {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {a p uo f : ℕ × ℕ} {μ : Mem ℝ}
+    (hin : SchurPipelineInput (qR ++ qC) a p uo f A μ)
+    {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
+    P.real {ω | ¬ Writes .total I (ξ ω) (schurPipelineWith Nm Reg Red Core).body
+      (Env.frame [n + 1, qR.length, qC.length, k, F, T] [a, p, a, uo, f]) (schurFp n a uo f)
+      (RegularizedSchurOutput C a uo f A c₁ c₂
+        (c₂ * √((n : ℝ) + 1) * δR + 3 * √((n : ℝ) + 1) * u)
+        (schurPipelineEX n c₁ c₂ u εHT εCT ((1 + εHU) * (1 + εCU) - 1))
+        (2 * ((1 + εHU) * (1 + εCU) - 1) + ((1 + εHU) * (1 + εCU) - 1) ^ 2)) μ} ≤ φR + φC := by
+  sorry
 
 /-- **The eigenvalue corollary of a Schur output**: with $e_U \le 1/8$, the diagonal of
 $\widehat{\mathbf{T}}$ lists the eigenvalues of $\mathbf{A} + \mathbf{E}$ with

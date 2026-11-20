@@ -34,7 +34,7 @@ variable {Op Tst : Type} [Has ScalarOp Op]
 /-- Solve one triangular column once its nonzero pivot has been established. -/
 def substituteColumn : Impl Op Tst := opsImpl% [n, j] (R, V, Acc, T) → (V) {
   run columnResidual.body [n, j] (R, V, Acc, T, Acc);
-  run complexDivideWithScratch.body [] (Acc, R[2 * (j * n + j)], T, V[2 * j])
+  run Pair.complexDivideWithScratch.body [] (Acc, R[2 * (j * n + j)], T, V[2 * j])
 }
 
 /-- A nonzero triangular pivot makes the actual residual and scalar divisions compute the

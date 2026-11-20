@@ -23,6 +23,8 @@ the actual updated memory and supports disjoint source and destination regions o
 * `NLAlib.Ops.Pair.linearCombination`: actual scalar computation of two complex products and a sum.
 * `NLAlib.Ops.Pair.writes_linearCombination`: the rounded word pair and its spatial write frame.
 * `NLAlib.Ops.Pair.readBlocks_updCells_pairs`: recovery of two in-place output pairs after scratch.
+* `NLAlib.Ops.Pair.complexDivideWithScratch`: complex division by eleven scalar instructions.
+* `NLAlib.Ops.StdModel.norm_complexDivide_sub_le`: the rounded quotient is relatively accurate.
 -/
 
 @[expose] public section
@@ -321,5 +323,48 @@ theorem readBlocks_updCells_pairs {m : Mem K} {prior : List ((ℕ × ℕ) × K)}
   simp only [Mem.readBlocks_cons, Mem.readBlocks_nil]
   simp [Store.readBlock_succ, Store.readBlock_zero, hrx, hix, hry, hiy]
 
+/-- The actual eleven scalar instructions for complex division. -/
+def divisionInstructions : List (ScalarIns ScalarOp) :=
+  [⟨.mul, [⟨1, .var 1⟩, ⟨1, .var 1⟩], ⟨2, .var 2⟩⟩,
+   ⟨.mul, [⟨1, .var 1 + .const 1⟩, ⟨1, .var 1 + .const 1⟩],
+     ⟨2, .var 2 + .const 3⟩⟩,
+   ⟨.add, [⟨2, .var 2⟩, ⟨2, .var 2 + .const 3⟩], ⟨2, .var 2⟩⟩,
+   ⟨.mul, [⟨0, .var 0⟩, ⟨1, .var 1⟩], ⟨2, .var 2 + .const 1⟩⟩,
+   ⟨.mul, [⟨0, .var 0 + .const 1⟩, ⟨1, .var 1 + .const 1⟩],
+     ⟨2, .var 2 + .const 3⟩⟩,
+   ⟨.add, [⟨2, .var 2 + .const 1⟩, ⟨2, .var 2 + .const 3⟩],
+     ⟨2, .var 2 + .const 1⟩⟩,
+   ⟨.mul, [⟨0, .var 0 + .const 1⟩, ⟨1, .var 1⟩], ⟨2, .var 2 + .const 2⟩⟩,
+   ⟨.mul, [⟨0, .var 0⟩, ⟨1, .var 1 + .const 1⟩], ⟨2, .var 2 + .const 3⟩⟩,
+   ⟨.sub, [⟨2, .var 2 + .const 2⟩, ⟨2, .var 2 + .const 3⟩],
+     ⟨2, .var 2 + .const 2⟩⟩,
+   ⟨.div, [⟨2, .var 2 + .const 1⟩, ⟨2, .var 2⟩], ⟨3, .var 3⟩⟩,
+   ⟨.div, [⟨2, .var 2 + .const 2⟩, ⟨2, .var 2⟩], ⟨3, .var 3 + .const 1⟩⟩]
+
+/-- **Complex division with four caller-owned scratch words**: `[] (x, y, t) → (z)` stores in `z`
+the pair of $(x\bar y)/\lvert y\rvert^2$, the denominator the sum of two real squares; both
+numerators are computed before either output word is written, so `z` may alias an input pair. -/
+def complexDivideWithScratch : Impl Op Tst :=
+  ⟨0, 3, 1, .scalarBlock (divisionInstructions.map ScalarIns.lift)⟩
+
+/-- The two words stored by `NLAlib.Ops.Pair.complexDivideWithScratch` on the machine `M` from the
+pairs `x` and `y`: $\mathrm{fl}(\mathrm{fl}(x_0y_0 + x_1y_1)/d)$ and
+$\mathrm{fl}(\mathrm{fl}(x_1y_0 - x_0y_1)/d)$, $d = \mathrm{fl}(y_0^2 + y_1^2)$. -/
+def divideWords (M : Machine K) (x y : K × K) : K × K :=
+  let d := M.add (M.mul y.1 y.1) (M.mul y.2 y.2)
+  (M.div (M.add (M.mul x.1 y.1) (M.mul x.2 y.2)) d,
+    M.div (M.sub (M.mul x.2 y.1) (M.mul x.1 y.2)) d)
 
 end NLAlib.Ops.Pair
+
+/-- **The rounded complex quotient is relatively accurate**: under the standard model at
+$\boldsymbol{u} \le 1/32$, for $y \ne 0$ the words of `NLAlib.Ops.Pair.divideWords` are within
+$8\boldsymbol{u}\lvert x\rvert/\lvert y\rvert$ of $x/y$ (cancellation in the numerators is allowed:
+their
+errors are relative to $\lvert x\rvert\lvert y\rvert$). [Higham2002, §3.6] -/
+theorem NLAlib.Ops.StdModel.norm_complexDivide_sub_le {M : NLAlib.Ops.Machine ℝ} {u : ℝ}
+    (hM : NLAlib.Ops.StdModel u id M) (hu : u ≤ 1 / 32) {x y : ℂ} (hy : y ≠ 0) :
+    ‖(⟨(NLAlib.Ops.Pair.divideWords M (x.re, x.im) (y.re, y.im)).1,
+        (NLAlib.Ops.Pair.divideWords M (x.re, x.im) (y.re, y.im)).2⟩ : ℂ) - x / y‖ ≤
+      8 * u * (‖x‖ / ‖y‖) := by
+  sorry

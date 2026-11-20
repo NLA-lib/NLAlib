@@ -17,7 +17,8 @@ complex denominator is the mathematical hypothesis ensuring the real divisions a
 
 ## Main results
 
-* `NLAlib.ShiftedQR.complexDivideWithScratch`: eleven scalar instructions and four scratch words.
+* `NLAlib.Ops.Pair.complexDivideWithScratch` (in `NLAlib.Ops.Blas.Pair`): eleven scalar
+  instructions and four scratch words.
 * `NLAlib.ShiftedQR.complexDivideWithScratch_writes`: exact quotient under the exact scalar model.
 -/
 
@@ -27,29 +28,16 @@ namespace NLAlib.ShiftedQR
 
 open Ops
 
-/-- The actual eleven scalar instructions for complex division. -/
-def divisionInstructions : List (ScalarIns ScalarOp) :=
-  [⟨.mul, [⟨1, .var 1⟩, ⟨1, .var 1⟩], ⟨2, .var 2⟩⟩,
-   ⟨.mul, [⟨1, .var 1 + .const 1⟩, ⟨1, .var 1 + .const 1⟩],
-     ⟨2, .var 2 + .const 3⟩⟩,
-   ⟨.add, [⟨2, .var 2⟩, ⟨2, .var 2 + .const 3⟩], ⟨2, .var 2⟩⟩,
-   ⟨.mul, [⟨0, .var 0⟩, ⟨1, .var 1⟩], ⟨2, .var 2 + .const 1⟩⟩,
-   ⟨.mul, [⟨0, .var 0 + .const 1⟩, ⟨1, .var 1 + .const 1⟩],
-     ⟨2, .var 2 + .const 3⟩⟩,
-   ⟨.add, [⟨2, .var 2 + .const 1⟩, ⟨2, .var 2 + .const 3⟩],
-     ⟨2, .var 2 + .const 1⟩⟩,
-   ⟨.mul, [⟨0, .var 0 + .const 1⟩, ⟨1, .var 1⟩], ⟨2, .var 2 + .const 2⟩⟩,
-   ⟨.mul, [⟨0, .var 0⟩, ⟨1, .var 1 + .const 1⟩], ⟨2, .var 2 + .const 3⟩⟩,
-   ⟨.sub, [⟨2, .var 2 + .const 2⟩, ⟨2, .var 2 + .const 3⟩],
-     ⟨2, .var 2 + .const 2⟩⟩,
-   ⟨.div, [⟨2, .var 2 + .const 1⟩, ⟨2, .var 2⟩], ⟨3, .var 3⟩⟩,
-   ⟨.div, [⟨2, .var 2 + .const 2⟩, ⟨2, .var 2⟩], ⟨3, .var 3 + .const 1⟩⟩]
-
 variable {Op Tst : Type} [Has ScalarOp Op]
 
-/-- Compute a complex quotient with four caller-owned scratch words. -/
-def complexDivideWithScratch : Impl Op Tst :=
-  ⟨0, 3, 1, .scalarBlock (divisionInstructions.map ScalarIns.lift)⟩
+/-- The eleven scalar instructions for complex division, moved to
+`NLAlib.Ops.Pair.divisionInstructions`. -/
+@[deprecated Ops.Pair.divisionInstructions (since := "2026-11-20")]
+abbrev divisionInstructions : List (ScalarIns ScalarOp) := Ops.Pair.divisionInstructions
+
+/-- The complex quotient program, moved to `NLAlib.Ops.Pair.complexDivideWithScratch`. -/
+@[deprecated Ops.Pair.complexDivideWithScratch (since := "2026-11-20")]
+abbrev complexDivideWithScratch : Impl Op Tst := Ops.Pair.complexDivideWithScratch
 
 private def divisionPrefix (M : Machine ℝ) (t : ℕ × ℕ) (x y : ℝ × ℝ) :=
   let d₀ := M.mul y.1 y.1
@@ -77,7 +65,7 @@ private theorem eval_division {M : Machine ℝ} {m : Mem ℝ} {x y t z : ℕ × 
     (hx1 : m.store.get x.1 (x.2 + 1) = some xv.2)
     (hy0 : m.store.get y.1 y.2 = some yv.1)
     (hy1 : m.store.get y.1 (y.2 + 1) = some yv.2) :
-    ScalarIns.evalBlock M.eval (Env.frame [] [x, y, t, z]) divisionInstructions
+    ScalarIns.evalBlock M.eval (Env.frame [] [x, y, t, z]) Pair.divisionInstructions
       m.store.cellFn = some (divisionTrace M t z xv yv) := by
   have hxt := Ne.symm htx
   have hyt := Ne.symm hty
@@ -89,7 +77,7 @@ private theorem eval_division {M : Machine ℝ} {m : Mem ℝ} {x y t z : ℕ × 
   have hupd (g : ℕ × ℕ → Option ℝ) (u w : ℕ × ℕ) (v : Option ℝ) :
       Function.update g u v w = if w = u then v else g w := Function.update_apply ..
   have hpair := @Prod.mk.injEq ℕ ℕ
-  dsimp only [divisionInstructions, divisionTrace, divisionPrefix, divisionWords,
+  dsimp only [Pair.divisionInstructions, divisionTrace, divisionPrefix, divisionWords,
     Env.frame, Store.cellFn]
   repeat' first
   | rw [ScalarIns.evalBlock.eq_def]
@@ -132,7 +120,7 @@ theorem complexDivideWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ
     (hy0 : m.store.get y.1 y.2 = some yv.re)
     (hy1 : m.store.get y.1 (y.2 + 1) = some yv.im)
     (ht : t.2 + 4 ≤ m.store.len t.1) (hz : z.2 + 2 ≤ m.store.len z.1) :
-    Writes .total I τ complexDivideWithScratch.body (Env.frame [] [x, y, t, z])
+    Writes .total I τ Pair.complexDivideWithScratch.body (Env.frame [] [x, y, t, z])
       (Fp.blocks [t, z] [4, 2])
       (fun μ => μ.pos = m.pos ∧ μ.store.readBlock z.1 z.2 2 =
         some [(xv / yv).re, (xv / yv).im]) m := by
@@ -146,7 +134,7 @@ theorem complexDivideWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ
     rcases hw with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
       dsimp <;> omega
   have hwrite := writes_machineScalarBlock (τ := τ) hI hev hroom
-  change Writes .total I τ complexDivideWithScratch.body _ _ _ m at hwrite
+  change Writes .total I τ Pair.complexDivideWithScratch.body _ _ _ m at hwrite
   refine hwrite.mono ?_ ?_
   · intro b i hi
     simp only [divisionTrace, divisionPrefix, List.map_append, List.map_cons, List.map_nil,

@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.Ops.Randomized
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSmallEig
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedSmallEigRoutine
 public import NLAlib.Eigensolvers.SmallEig.Certification
@@ -512,6 +513,57 @@ theorem roundedShQRSmallEig_algorithm_measureReal_not_accepts_le_unconditional
   apply roundedShQRSmallEig_algorithm_measureReal_not_accepts_le
     (hA := boundsGinibreGap_ginibreGapTail) (hB := boundsGinibreCondition_ginibreConditionTail)
     (hb₁ := ginibreGapTail_b_pos) (hb₂ := ginibreConditionTail_b_pos) <;> assumption
+
+/-! ### The randomized claim -/
+
+/-- **The randomized claim of the certificate of rounded shifted QR with the small-eigenvalue
+leaf** ([BanksGarzaVargasSrivastava2022, Theorem 6.3], corrected). The entries of the tape are
+independent, uniform on $[0, 1]$ on the stream $s_U$ and standard Gaussian on the stream $s_G$.
+For an upper Hessenberg input $\mathbf{H}$ that is diagonalized by some $\mathbf{V}$ with
+$\kappa(\mathbf{V}) \le B$ and eigenvalues separated by $\Gamma > 0$, with
+$\|\mathbf{H}\|_2 \le \Sigma$, $0 < \delta \le \Sigma$, $0 < \varphi \le 1$ and
+$\boldsymbol{u} \le \boldsymbol{u}_0$ (`NLAlib.ShiftedQR.uShQRSchur`), and an interpretation
+that is measurable and reads the tape only in its windows, the counted run writes only the
+matrix, the output and the failure word and lists the spectrum of a matrix within $\delta$ of
+the input, except with probability at most $\varphi$. The Ginibre tails $c_1$, $c_2$ are
+hypotheses; `NLAlib.ShiftedQR.shqrSmallEigGinibreClaim` has them proved. -/
+noncomputable def shqrSmallEigClaim (admitted : ∃ d, ShQRSmallEigSizes Mch c₁ c₂ d)
+    (sU sG : ℕ) {u : ℝ} (hM : StdModel u id Mch) (hA : c₁.BoundsGinibreGap)
+    (hB : c₂.BoundsGinibreCondition) (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) :
+    RandomizedClaim (shqrSmallEigAlgorithm Mch c₁ c₂ admitted sU sG) where
+  law _ _ := TapeModel.streams [(sU, volume.restrict (Set.Icc 0 1)), (sG, gaussianReal 0 1)]
+  admits d x := IsUpperHessenberg x.val.1.matrix ∧
+    (∃ (V : Matrix (Fin (d 0 + 1)) (Fin (d 0 + 1)) ℂ) (ev : Fin (d 0 + 1) → ℂ), IsUnit V ∧
+      x.val.1.matrix * V = V * Matrix.diagonal ev ∧ pseudoConditionNumber V ≤ x.val.1.B ∧
+        ∀ i j, i ≠ j → x.val.1.Γ ≤ ‖ev i - ev j‖) ∧
+    0 < x.val.1.Γ ∧ specNorm x.val.1.matrix ≤ x.val.1.S ∧ 0 < x.val.1.δ ∧
+    x.val.1.δ ≤ x.val.1.S ∧ 0 < x.val.1.φ ∧ x.val.1.φ ≤ 1 ∧
+    u ≤ uShQRSchur (d 0) (d 1) x.val.1.B x.val.1.Γ x.val.1.S x.val.1.δ x.val.1.φ c₁ c₂
+  interprets _ _ I := I.IsMeasurable ∧
+    ∃ win : SmallEigOp → List ℕ → ℕ, ∀ o, I.TapeLocal o (win o)
+  event d x _ _ m := ((shqrSmallEigProblem Mch c₁ c₂ admitted).initial d x).store.EqOff
+      (shqrFp (d 0) (0, 0) (3, 0) (4, 0)) m.store ∧
+    ShQRSpectrum (0, 0) (3, 0) (4, 0) x.val.1.matrix x.val.1.δ m
+  bound _ x := x.val.1.φ
+  holds := fun d hd x hx I hI hint Ω _ μ _ tape hlaw => by
+    obtain ⟨law, hfix, hξ⟩ := hlaw
+    obtain ⟨hIm, win, hloc⟩ := hint
+    obtain ⟨hHess, ⟨V, ev, hV, hHV, hκ, hgap⟩, hΓ, hHS, hδ, hδS, hφ, hφ1, hu⟩ := hx
+    exact roundedShQRSmallEig_algorithm_measureReal_not_accepts_le hM
+      (hfix _ (List.Mem.head _)) (hfix _ (List.Mem.tail _ (List.Mem.head _))) hA hB hb₁ hb₂ hd
+      x hI hIm hloc hHess hV hHV hκ hΓ hgap hHS hδ hδS hφ hφ1 hu hξ
+
+/-- The randomized claim of rounded shifted QR with the small-eigenvalue leaf, with the proved
+Ginibre tails, at the records `NLAlib.ginibreGapTail` <!-- value ginibreGapTail -->
+$(10000e, 5, 1/2, 2)$ and `NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail -->
+$(128e, 3, 2, 2)$. -/
+noncomputable def shqrSmallEigGinibreClaim
+    (admitted : ∃ d, ShQRSmallEigSizes Mch ginibreGapTail ginibreConditionTail d) (sU sG : ℕ)
+    {u : ℝ} (hM : StdModel u id Mch) :
+    RandomizedClaim (shqrSmallEigAlgorithm Mch ginibreGapTail ginibreConditionTail admitted
+      sU sG) :=
+  shqrSmallEigClaim admitted sU sG hM boundsGinibreGap_ginibreGapTail
+    boundsGinibreCondition_ginibreConditionTail ginibreGapTail_b_pos ginibreConditionTail_b_pos
 
 /-- What the certificate states: at every admitted size, for every admitted input, every
 interpretation satisfying the contracts of the model and every tape, the run of the fixed program

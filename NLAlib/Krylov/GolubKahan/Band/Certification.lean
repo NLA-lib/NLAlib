@@ -679,6 +679,18 @@ theorem certifies (work workspace : Operation → List ℕ → ℕ) (stream : �
     (solveProgram stream).Certifies (model work workspace) (specification work workspace stream) :=
   (algorithm work workspace stream).correct
 
+/-- What the certificate states: at every admitted size, for every admitted input, every
+interpretation satisfying the contracts of the model and every tape, the run of the fixed program
+from the supplied buffers succeeds within the scratch, the budget, the work and the span of the
+specification, and its final memory satisfies the output condition
+(`NLAlib.Ops.Routine.Domain.Checked`). The matrix is not in memory: it is reached only
+through the two products of the model (`NLAlib.Krylov.GolubKahan.Band.Certification.oracles`),
+and the work is counted in those products and the vector operations. The accuracy of the stored
+product for a Gaussian start block is `NLAlib.BlockKrylov.gaussianClaim`. -/
+theorem algorithm_checked (work workspace : Operation → List ℕ → ℕ) (stream : ℕ) :
+    (inputs.cast (solveRoutine stream) rfl rfl).Checked (algorithm work workspace stream) :=
+  (inputs.cast (solveRoutine stream) rfl rfl).checked_all _
+
 end Certification
 
 end NLAlib.Krylov.GolubKahan.Band

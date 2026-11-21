@@ -204,4 +204,27 @@ noncomputable def exactReferenceAlgorithm (domain : (Fin 2 → ℕ) → Prop)
   · intro d hd x
     simp [exactReferenceModel, Standard.referenceModel, Standard.Model.ofKernels]
 
+/-- What the certificate states: at every admitted size, for every admitted input, every
+interpretation satisfying the contracts of the model and every tape, the run of the fixed program
+from the supplied buffers succeeds within the scratch, the budget, the work and the span of the
+specification, and its final memory satisfies the output condition
+(`NLAlib.Ops.Routine.Domain.Checked`). The matrix is not in memory:
+it is reached only through the products of the model, and the work is counted in those
+products and the vector operations. -/
+theorem algorithm_checked
+    (model : Standard.Model (problem (K := K) domain admitted) (fun d => d 0))
+    (cost : Standard.Costing) (matvecWork matvecScratch : List ℕ → ℕ)
+    (hresources : model.resources =
+      Standard.resources model.scheme cost matvecWork matvecScratch)
+    (em E : (Fin 2 → ℕ) → ℝ)
+    (hok : ∀ d, domain d → model.scheme.admits (d 0))
+    (haccuracy : ∀ d, domain d → Standard.Accuracy (em d)
+      (model.scheme.roundoff model.unit) (E d) (model.scheme.errors model.unit) (d 0))
+    (hbudget : ∀ d, domain d → ∀ x, model.scheme.roundoff (model.matvecAllowance d x) ≤
+      em d * specNorm (model.matrix d x))
+    (hAT : ∀ d, domain d → ∀ x, (model.matrix d x)ᵀ = model.matrix d x) :
+    (inputs (K := K) domain admitted).Checked
+      (algorithm model cost matvecWork matvecScratch hresources em E hok haccuracy hbudget hAT) :=
+  (inputs (K := K) domain admitted).checked_all _
+
 end NLAlib.Krylov.Lanczos.Certification

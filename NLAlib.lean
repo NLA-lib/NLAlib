@@ -1349,6 +1349,7 @@ public import NLAlib.Ops.Profiles.StoredDense
 public import NLAlib.Ops.Profiles.StoredDenseRounded
 public import NLAlib.Ops.Profiles.StoredRoutine
 public import NLAlib.Ops.Profiles.StoredScalar
+public import NLAlib.Ops.Randomized
 public import NLAlib.Ops.Routine
 public import NLAlib.Ops.RoutineData
 public import NLAlib.Ops.RoutineInterface

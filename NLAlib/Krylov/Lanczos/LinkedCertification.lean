@@ -150,4 +150,29 @@ noncomputable def exactReferenceAlgorithm (domain : (Fin 2 → ℕ) → Prop)
     simp [Lanczos.Certification.exactReferenceModel, Standard.referenceModel,
         Standard.Model.ofKernels]
 
+/-- What the certificate states: at every admitted size, for every admitted input, every
+interpretation satisfying the contracts of the model and every tape, the run of the fixed program
+from the supplied buffers succeeds within the scratch, the budget, the work and the span of the
+specification, and its final memory satisfies the output condition
+(`NLAlib.Ops.Routine.Domain.Checked`). The matrix is not in memory:
+it is reached only through the products of the model, and the work is counted in those
+products and the vector operations. -/
+theorem algorithm_checked
+    (model : Standard.Model (Lanczos.Certification.problem (K := K) domain admitted) (fun d => d 0))
+    (cost : Standard.Costing) (matvecWork matvecScratch : List ℕ → ℕ)
+    (hresources : model.resources =
+      Standard.resources model.scheme cost matvecWork matvecScratch)
+    (em E : (Fin 2 → ℕ) → ℝ)
+    (haccuracy : ∀ d, domain d → Standard.Accuracy (em d)
+      (model.scheme.roundoff model.unit) (E d)
+      (Blas.seq.err (model.scheme.roundoff model.unit)) (d 0))
+    (hbudget : ∀ d, domain d → ∀ x, model.scheme.roundoff (model.matvecAllowance d x) ≤
+      em d * specNorm (model.matrix d x))
+    (hAT : ∀ d, domain d → ∀ x, (model.matrix d x)ᵀ = model.matrix d x) :
+    ((Lanczos.Certification.inputs (K := K) domain admitted).cast Rounded.seqSolveRoutine
+      rfl rfl).Checked
+      (algorithm model cost matvecWork matvecScratch hresources em E haccuracy hbudget hAT) :=
+  ((Lanczos.Certification.inputs (K := K) domain admitted).cast Rounded.seqSolveRoutine
+      rfl rfl).checked_all _
+
 end NLAlib.Krylov.Lanczos.Linked.Certification

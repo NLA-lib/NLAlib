@@ -133,4 +133,21 @@ noncomputable def algorithm
     rw [initialBytes_problem]
     exact le_rfl
 
+/-- What the certificate states: at every admitted size, for every admitted input, every
+interpretation satisfying the contracts of the model and every tape, the run of the fixed program
+from the supplied buffers succeeds within the scratch, the budget, the work and the span of the
+specification, and its final memory satisfies the output condition
+(`NLAlib.Ops.Routine.Domain.Checked`). The matrix is not in memory:
+it is reached only through the products of the model, and the work is counted in those
+products and the vector operations. -/
+theorem algorithm_checked
+    (model : Standard.Model (problem (K := K) domain admitted) (fun d => d 0))
+    (hExact : model.scheme = .exact) (cost : Standard.Costing)
+    (work scratch : List ℕ → ℕ)
+    (hresources : model.resources = Standard.resources model.scheme cost work scratch)
+    (hPos : ∀ d, domain d → ∀ x, (model.matrix d x).PosDef) :
+    (inputs (K := K) domain admitted).Checked
+      (algorithm model hExact cost work scratch hresources hPos) :=
+  (inputs (K := K) domain admitted).checked_all _
+
 end NLAlib.Krylov.CG.HSCG.Carried.Certification

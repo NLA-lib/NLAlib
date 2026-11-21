@@ -26,7 +26,8 @@ and its theorems T1c, T1d, T3, T4, T5 (`roundedShQR_measureReal_not_spectrum_le`
 (LB1). The headline without an oracle is `roundedShQRSmallEig_measureReal_not_spectrum_le` (and
 its relative, Hermitian and `_unconditional` forms), now a corollary of the Schur form
 `roundedShQRSchur_measureReal_not_schur_le`, at $\boldsymbol{u} \le$ `uShQRSchur`; its certificate
-is `shqrSmallEigAlgorithm` with `roundedShQRSmallEig_algorithm_measureReal_not_accepts_le`.
+is `shqrSmallEigAlgorithm` with `roundedShQRSmallEig_algorithm_measureReal_not_accepts_le`,
+packaged as the randomized claim `shqrSmallEigClaim`.
 The rest of this note is the design record of SQR-FP and is not rewritten.
 
 ## 0. Summary

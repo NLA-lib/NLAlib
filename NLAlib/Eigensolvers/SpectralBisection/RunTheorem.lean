@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.Ops.Randomized
 public import NLAlib.Eigensolvers.SpectralBisection.OperationCount
 public import NLAlib.Eigensolvers.SpectralBisection.Probability
 public import NLAlib.Eigensolvers.SpectralBisection.ProbabilityTransfer
@@ -151,5 +152,74 @@ theorem measureReal_not_accepts_countedSpecification_le
   intro omega hbad hacc
   obtain ⟨st, hr, hp, hc, hw, hs, hm, -, hq⟩ := hacc
   exact hbad ⟨st, hr, hp, hc, hw, hs, hm, hq⟩
+
+/-! ### The randomized claim -/
+
+/-- **The randomized claim of the counted spectral bisection certificate** ([Shah2024,
+Theorem 4.2], for the rounded reference computation). The tape is the rounding to machine words,
+by `roundUnif` and `roundGaussian`, of a tape with independent entries whose stream of each
+distribution has that distribution's law (uniform and standard Gaussian). For a Hermitian input
+within its stated radius, a tolerance, a parameter $\beta$ and a failure probability $\theta$
+satisfying the stated size, precision, underflow and range conditions, the counted run stores a
+matrix and a real vector that diagonalize the input to within $2 \varepsilon R$, with the
+matrix within $\varepsilon / 3$ of unitary, except with probability at most $\theta$. -/
+noncomputable def countedBisectionClaim (M : Machine K) (dec : K → ℝ)
+    (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
+    (matrixWork matrixWorkspace : MatrixOp → List ℕ → ℕ) (T : ℕ → ℕ)
+    (hLit : ∀ d, domain d → IsExactNatLit dec M (max (d 0) 4))
+    (hN : ∀ d, domain d → 2 ≤ d 0) (hT : Monotone T)
+    (hadd : ∀ i j, T i + T j ≤ T (i + j))
+    (hMatrix : ∀ o ds, matrixWork o ds ≤ T (ds.foldr max 0))
+    (roundUnif roundGaussian : ℝ → K)
+    {u floor bound cN : ℝ} {muM muQ : ℕ → ℝ}
+    (hAcc : FloatMachine.IsAccurate (M.toFloatMachine dec mm qr (M.uniformSample roundUnif)
+      (M.normalSample roundGaussian)) dec u floor bound muM muQ cN)
+    (hUnif : Measurable roundUnif) (hGaussian : Measurable roundGaussian)
+    (hUnifRange : (Set.range roundUnif).Countable)
+    (hGaussianRange : (Set.range roundGaussian).Countable)
+    (hMuM : Monotone muM) (hMuQ : Monotone muQ)
+    (hMuM0 : 0 ≤ muM 0) (hMuQ0 : 0 ≤ muQ 0) (hCN : 0 ≤ cN) (hFloorNonneg : 0 ≤ floor)
+    {theta : ℝ} (hTheta : 0 < theta) (hThetaMax : theta ≤ 1) :
+    RandomizedClaim (countedBisectionAlgorithm M dec mm qr domain admitted matrixWork
+      matrixWorkspace T hLit hN hT hadd hMatrix) where
+  law _ _ := fun Ω _ μ ξ => ∃ (law : ℕ → Measure ℝ) (ideal : Ω → Tape ℝ),
+    IsTapeLaw law μ ideal ∧
+      (∀ dist : Computation.Dist, law (distributionStream dist) = dist.law) ∧
+        ξ = fun ω => roundTape roundUnif roundGaussian (ideal ω)
+  admits d x := (decodeMatrix dec (inputMatrix d x)).IsHermitian ∧
+    specNorm (decodeMatrix dec (inputMatrix d x)) ≤ inputRadius dec x ∧
+    0 < inputRadius dec x ∧ 0 < inputTolerance dec x ∧ inputTolerance dec x ≤ 2⁻¹ ^ 15 ∧
+    bisectionDepth (inputTolerance dec x) ≤ d 1 ∧ 0 < inputBeta dec x ∧
+    inputBeta dec x ≤ ((d 1 : ℝ) - 1) ^ 2 * inputTolerance dec x * √theta /
+      (52 * (d 1 : ℝ) ^ 2 * (2 * d 1 - 1) *
+        √(d 0 * min (d 0 : ℝ) (d 1 + 1) * min (d 0 : ℝ) (Real.exp 1)) *
+        (2 * √2 * √(d 0 : ℝ) + √(Real.log (96 * d 0 * min (d 0 : ℝ) (d 1 + 1) / theta)))) ∧
+    146 * d 0 * d 1 * (d 1 + 1) * (4 * muM (d 0) + 10 + 10 * √(d 0 : ℝ)) * u ≤
+      theta * inputBeta dec x ∧
+    2048 * (d 0 + newtonSchulzSteps (theta / (12 * d 0 * d 1 * (d 1 + 1)))
+        (inputBeta dec x / (16 * d 0)) + 1) * (4 * muM (d 0) + 10 + 10 * √(d 0 : ℝ)) * u ≤
+      inputBeta dec x ∧
+    16 * (4 * muQ (d 0) + 4 * √(d 0 : ℝ) * (cN + 1) + 2 * muM (d 0) + 1) * u ≤
+      inputBeta dec x ∧
+    newtonSchulzSteps (theta / (12 * d 0 * d 1 * (d 1 + 1)))
+      (inputBeta dec x / (16 * d 0)) ≤ d 2 ∧
+    floor * (100 * d 0 * √(d 0 : ℝ)) ≤
+      min (√(theta / (8 * d 0 * min (d 0 : ℝ) (d 1 + 1))))
+        (inputTolerance dec x * min (inputRadius dec x) 1) ∧
+    16 * (2 * inputRadius dec x + d 0 + 2 * d 1 + 2 * √2 * √(d 0 : ℝ) +
+      √(Real.log (96 * d 0 * min (d 0 : ℝ) (d 1 + 1) / theta))) ≤ bound
+  interprets _ _ _ := True
+  event d x _ _ m := StoresApproxDiagonalization dec (inputMatrix d x)
+    (2 * inputTolerance dec x * inputRadius dec x) (inputTolerance dec x / 3) (2, 0) (3, 0) m
+  bound _ _ := theta
+  holds := fun d hd x hx I hI _ Ω _ μ _ tape hlaw => by
+    obtain ⟨law, ideal, hTape, hStream, rfl⟩ := hlaw
+    obtain ⟨hA, hRadius, hRadiusPos, hEps, hEpsMax, hDepth, hBeta, hBetaMax, hSign, hStop,
+      hDeflate, hFuel, hFloor, hBound⟩ := hx
+    exact measureReal_not_accepts_countedSpecification_le M dec mm qr matrixWork matrixWorkspace
+      T hLit hN hT hadd hMatrix roundUnif roundGaussian hAcc hUnif hGaussian hUnifRange
+      hGaussianRange hMuM hMuQ hMuM0 hMuQ0 hCN hd x hA hRadius hRadiusPos hEps hEpsMax hTheta
+      hThetaMax hDepth hBeta hBetaMax rfl hSign hStop hDeflate hFuel hFloorNonneg hFloor hBound
+      I hI hTape hStream
 
 end NLAlib.SpectralBisection

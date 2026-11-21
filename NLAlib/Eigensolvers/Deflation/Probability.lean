@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.Ops.Randomized
 public import NLAlib.Eigensolvers.Deflation.Certification
 public import NLAlib.Eigensolvers.RandomizedDeflation
 public import NLAlib.Ops.Probability
@@ -161,5 +162,48 @@ theorem measureReal_not_accepts_packedGaussianTape_le_of_hasLaw_complexGaussianM
     (deflateAlgorithm M dec F.mm F.qr domain admitted matrixWork matrixWorkspace hRank)
     hd input I hI P (fun omega => packedGaussianTape F.normal (G omega)) G
     (fun omega => sampleMatrix_packedGaussianTape F.normal (G omega)) U _ hReference
+
+/-! ### The randomized claim -/
+
+/-- **The randomized claim of the randomized deflation certificate** ([Shah2024, Theorem 3.3]).
+The tape is the packing, by the numerical normal sampler, of a standard complex Gaussian matrix
+of the order of the input. At each size the target factors are `U d`, `S d`, `V d`: for
+orthonormal `U d`, `V d` and invertible `S d` whose product is within `beta` of the decoded
+input, under the conditioning, precision, underflow and range conditions, the counted run
+satisfies the word specification and stores a basis within the stated error of `U d` up to an
+orthonormal factor, except with probability at most $2 e^{-t^2/2} + r^2 \mathrm{cut}^2$. -/
+noncomputable def deflateClaim (M : Machine K) (domain : (Fin 2 → ℕ) → Prop)
+    (admitted : ∃ d, domain d) (hRank : ∀ d, domain d → d 1 ≤ d 0)
+    {u floor range cN beta t cut : ℝ} {muM muQ : ℕ → ℝ}
+    (hArith : F.IsArithAccurate dec u floor range muM)
+    (hQR : IsQRErr (decodeComplex dec) u floor range muQ F.qr)
+    (hNormal : IsNormalSampler (decodeComplex dec) u cN floor range F.normal)
+    (hBetaMax : beta ≤ 1) (ht : 0 ≤ t) (hCut : 0 < cut)
+    (U V : (d : Fin 2 → ℕ) → Matrix (Fin (d 0)) (Fin (d 1)) ℂ)
+    (S : (d : Fin 2 → ℕ) → Matrix (Fin (d 1)) (Fin (d 1)) ℂ) :
+    RandomizedClaim (deflateAlgorithm M dec F.mm F.qr domain admitted matrixWork
+      matrixWorkspace hRank) where
+  law d _ := TapeModel.packed (complexGaussianMatrix (Fin (d 0)) (Fin (d 0)))
+    (packedGaussianTape F.normal)
+  admits d x := HasOrthonormalCols (U d) ∧ HasOrthonormalCols (V d) ∧ IsUnit (S d) ∧
+    specNorm (U d * S d * (V d)ᴴ - decodeMatrix dec (inputMatrix d x)) ≤ beta ∧
+    (specNorm (S d) + 2) * specNorm (S d)⁻¹ * (√2 * (2 * √(d 0 : ℝ) + t)) / cut * beta ≤
+      1 / 5 ∧
+    (4 * muQ (d 0) + 4 * √(d 0 : ℝ) * cN + 2 * muM (d 0)) * u ≤ beta ∧
+    floor ≤ specNorm (S d) * cut ∧ floor * √(d 0 : ℝ) ≤ cut ∧
+    2 * (specNorm (S d) + 1) * (√2 * (2 * √(d 0 : ℝ) + t)) ≤ range
+  interprets _ _ _ := True
+  event d x τ c m := (wordSpecification F.mm F.qr domain admitted matrixWork
+      matrixWorkspace).good d x τ c m ∧
+    StoresApproxBasis dec (U d)
+      (6 * ((specNorm (S d) + 2) * specNorm (S d)⁻¹ * (√2 * (2 * √(d 0 : ℝ) + t)) / cut) *
+        beta) (1, 0) m
+  bound d _ := 2 * Real.exp (-t ^ 2 / 2) + (d 1) ^ 2 * cut ^ 2
+  holds := fun d hd x hx I hI _ Ω _ μ _ tape hlaw => by
+    obtain ⟨G, hG, rfl⟩ := hlaw
+    obtain ⟨hU, hV, hS, hBeta, hCondition, hPrecision, hFloor, hFloorN, hRange⟩ := hx
+    exact measureReal_not_accepts_packedGaussianTape_le_of_hasLaw_complexGaussianMatrix F dec
+      matrixWork matrixWorkspace M domain admitted hRank hd x I hI hArith hQR hNormal hU hV hS
+      rfl hBeta hBetaMax ht hCut hCondition hPrecision hFloor hFloorN hRange μ G hG
 
 end NLAlib.Deflation

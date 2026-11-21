@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.Ops.Randomized
 public import NLAlib.Ops.RoutineProblem
 public import NLAlib.Eigensolvers.Schur.Completion
 public import NLAlib.Eigensolvers.SmallEig.Certification
@@ -541,5 +542,53 @@ theorem denseSchur_algorithm_measureReal_not_accepts_le {Mch : Machine ℝ}
     simp [Program.environment, IExp.evalList, IExp.eval, denseSchurDims, denseSchurDimsWith,
       List.ofFn_succ, h 1, h 2, h 3, h 4, h 5, denseSchurSizes]
   · simp [Program.environment, Operand.evalList, Operand.eval, IExp.eval, List.ofFn_succ]
+
+/-- What the certificate states: at every admitted size, for every admitted input, every
+interpretation satisfying the contracts of the model and every tape, the run of the fixed program
+from the supplied buffers succeeds within the scratch, the budget, the work and the span of the
+specification, and its final memory satisfies the output condition
+(`NLAlib.Ops.Routine.Domain.Checked`). The deterministic claim is termination within the
+footprint only; the accuracy of the stored Schur form holds with probability over the draws:
+`NLAlib.Schur.denseSchurClaim`. -/
+theorem denseSchur_checked (Mch : Machine ℝ)
+    (admitted : ∃ d, SchurSizes Mch denseSchurSizes d) (sU sG : ℕ) :
+    ((schurPipelineInputs Mch denseSchurParams denseSchurSizes admitted).cast
+      (schurPipelineRoutine frobNormStage (ginibrePerturb sG) hessenbergReduceQ
+        (roundedShQRSchur sG)) rfl rfl).Checked (denseSchurAlgorithm Mch admitted sU sG) :=
+  ((schurPipelineInputs Mch denseSchurParams denseSchurSizes admitted).cast
+    (schurPipelineRoutine frobNormStage (ginibrePerturb sG) hessenbergReduceQ
+      (roundedShQRSchur sG)) rfl rfl).checked_all _
+
+/-! ### The randomized claim -/
+
+/-- **The randomized claim of the dense Schur certificate**
+([BanksGarzaVargasSrivastava2022, Theorem 1.4] with [BanksGarzaVargasSrivastava2025,
+Theorem 1.1]). The entries of the tape are independent, uniform on $[0, 1]$ on the stream $s_U$
+and standard Gaussian on the stream $s_G$. For $0 < \delta \le 1$, $0 < \varphi \le 1$ and
+$\boldsymbol{u} \le \boldsymbol{u}_0$ (`NLAlib.Schur.uDenseSchur`), and an interpretation that
+is measurable and reads the tape only in its windows, the counted run writes only the matrix,
+the accumulator and the flag, and stores the flag $0$ with an upper triangular
+$\widehat{\mathbf{T}}$ and a $\widehat{\mathbf{U}}$ within $58 R \boldsymbol{u}$ of unitary
+whose product is within $\delta \|\mathbf{A}\|_2$ of $\mathbf{A}$, except with probability at
+most $\varphi$. -/
+noncomputable def denseSchurClaim (Mch : Machine ℝ)
+    (admitted : ∃ d, SchurSizes Mch denseSchurSizes d) (sU sG : ℕ) {u : ℝ}
+    (hM : StdModel u id Mch) : RandomizedClaim (denseSchurAlgorithm Mch admitted sU sG) where
+  law _ _ := TapeModel.streams [(sU, volume.restrict (Set.Icc 0 1)), (sG, gaussianReal 0 1)]
+  admits d x := 0 < x.val.1.δ ∧ x.val.1.δ ≤ 1 ∧ 0 < x.val.1.φ ∧ x.val.1.φ ≤ 1 ∧
+    u ≤ uDenseSchur (d 0) x.val.1.δ x.val.1.φ
+  interprets _ _ I := I.IsMeasurable ∧
+    ∃ win : SmallEigOp → List ℕ → ℕ, ∀ o, I.TapeLocal o (win o)
+  event d x _ _ m := ((denseSchurProblem Mch admitted).initial d x).store.EqOff
+      (schurFp (d 0) (0, 0) (2, 0) (3, 0)) m.store ∧
+    SchurOutput (0, 0) (2, 0) (3, 0) x.val.1.matrix x.val.1.δ
+      (58 * denseSchurRotations (d 0) x.val.1.δ x.val.1.φ * u) m
+  bound _ x := x.val.1.φ
+  holds := fun d hd x hx I hI hint Ω _ μ _ tape hlaw => by
+    obtain ⟨law, hfix, hξ⟩ := hlaw
+    obtain ⟨hIm, win, hloc⟩ := hint
+    obtain ⟨hδ, hδ1, hφ, hφ1, hu⟩ := hx
+    exact denseSchur_algorithm_measureReal_not_accepts_le hM (hfix _ (List.Mem.head _))
+      (hfix _ (List.Mem.tail _ (List.Mem.head _))) hd x hI hIm hloc hδ hδ1 hφ hφ1 hu hξ
 
 end NLAlib.Schur

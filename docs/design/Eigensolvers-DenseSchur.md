@@ -125,7 +125,8 @@ Companions, all in the `NLAlib.Schur` namespace:
   eigenvalues alone, with a run-time count over the deflation tree).
 * **CT2** `denseSchurAlgorithm`, `denseSchur_algorithm_measureReal_not_accepts_le` (Result:
   dense-schur-certificate-accuracy): one counted run over `SmallEig.smallEigModel`, work and span
-  `denseSchurWork` (§6), the Schur output with probability $\ge 1 - \varphi$.
+  `denseSchurWork` (§6), the Schur output with probability $\ge 1 - \varphi$. The randomized claim of
+  the certificate is `denseSchurClaim`.
 
 **The parameters** depend on $(n, \delta, \varphi)$ only. $\delta' =$ `denseSchurDelta n δ`
 $= \delta/(16\sqrt{n+1})$. The regularizer runs at the words `smallEigParams (n+1) 4 δ' (φ/2)`

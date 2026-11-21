@@ -132,4 +132,19 @@ theorem certifies_manifest (M : Machine K) (dec : K → ℝ)
       (manifestSpecification M dec mm qr domain admitted matrixWork matrixWorkspace) :=
   (bisectionAlgorithm M dec mm qr domain admitted matrixWork matrixWorkspace hLit).correct
 
+/-- What the certificate states: at every admitted size, for every admitted input, every
+interpretation satisfying the contracts of the model and every tape, the run of the fixed program
+from the supplied buffers succeeds within the scratch, the budget, the work and the span of the
+specification, and its final memory satisfies the output condition
+(`NLAlib.Ops.Routine.Domain.Checked`). The accuracy of the stored diagonalization holds with
+probability over the draws: `NLAlib.SpectralBisection.countedBisectionClaim`. -/
+theorem bisection_checked (M : Machine K) (dec : K → ℝ)
+    (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
+    (domain : (Fin 3 → ℕ) → Prop) (admitted : ∃ d, domain d)
+    (matrixWork matrixWorkspace : MatrixOp → List ℕ → ℕ)
+    (hLit : ∀ d, domain d → IsExactNatLit dec M (max (d 0) 4)) :
+    (inputs (K := K) domain admitted).Checked
+      (bisectionAlgorithm M dec mm qr domain admitted matrixWork matrixWorkspace hLit) :=
+  (inputs (K := K) domain admitted).checked_all _
+
 end NLAlib.SpectralBisection

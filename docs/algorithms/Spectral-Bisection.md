@@ -16,7 +16,9 @@ bound and its [transfer to the counted execution](../../NLAlib/Eigensolvers/Spec
 ## Headline statement: cost and accuracy on one event
 
 The strongest statement proved about the spectral bisection program, as one theorem:
-[`measureReal_not_accepts_countedSpecification_le`](../../NLAlib/Eigensolvers/SpectralBisection/RunTheorem.lean).
+[`measureReal_not_accepts_countedSpecification_le`](../../NLAlib/Eigensolvers/SpectralBisection/RunTheorem.lean),
+packaged with its tape law, hypotheses, event and bound as the randomized claim
+`SpectralBisection.countedBisectionClaim` of the counted certificate.
 
 **Theorem.** Let A be a Hermitian n × n complex matrix with ‖A‖₂ ≤ R, n ≥ 2, stored as n²
 pairs of words, together with three parameter words: the radius R > 0, a tolerance

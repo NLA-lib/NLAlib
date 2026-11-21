@@ -173,4 +173,22 @@ noncomputable def scalarAlgorithm (M : Machine ℝ) (u : ℝ)
     rw [initialBytes_problem]
     exact le_rfl
 
+/-- What the certificate states: at every admitted size, for every admitted input, every
+interpretation satisfying the contracts of the model and every tape, the run of the fixed program
+from the supplied buffers succeeds within the scratch, the budget, the work and the span of the
+specification, and its final memory satisfies the output condition
+(`NLAlib.Ops.Routine.Domain.Checked`). -/
+theorem algorithm_checked (M : Machine ℝ) (u : ℝ) (hM : StdModel u id M) (hu : 0 ≤ u)
+    (cost : Standard.Costing) (em E : (Fin 2 → ℕ) → ℝ)
+    (hMatvec : ∀ d, domain d → ScalarProducts.roundoff u (d 0) * Real.sqrt (d 0) ≤ em d)
+    (hAccuracy : ∀ d, domain d → Standard.Accuracy (em d) u (E d) (Blas.seq.err u) (d 0))
+    (ha : ∀ d, domain d → 0 < lower d)
+    (hprec : ∀ d, domain d → 3 * E d * upper d ≤ lower d)
+    (hwindow : ∀ d, domain d → (d 1 : ℝ) ^ 2 * Real.sqrt (d 1) * E d *
+      (upper d / lower d) ^ 2 ≤ 1 / 10 ^ 5) :
+    (inputs lower upper domain admitted supply).Checked
+      (algorithm lower upper domain admitted supply M u hM hu cost em E hMatvec hAccuracy ha
+        hprec hwindow) :=
+  (inputs lower upper domain admitted supply).checked_all _
+
 end NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification

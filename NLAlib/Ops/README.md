@@ -485,6 +485,58 @@ itself, the layer under routine judgments (`Examples/Dot.lean`, `MatMul.lean`, `
 Operation meanings and primitive costs, the declared input representation, and the relevance of
 the specified postcondition remain properties of the chosen problem and operation model.
 
+## Randomized claims
+
+A certificate (`Algorithm`) states what every run does, on every tape. The accuracy of a
+randomized algorithm is a statement about the law of the tape; it is a separate theorem, and for
+some solvers the certificate itself claims only termination (`Routine.Spec.terminates`). A
+`RandomizedClaim A` (`Randomized.lean`) is the object that ties the accuracy to the certificate
+`A`, so that a reader who has the certificate finds the guarantee and its assumptions. It holds:
+
+* `law`: the law of the tape, as a `TapeModel` — the sample spaces, measures and random tapes
+  the claim covers. Two forms are named. `TapeModel.streams [(s, ν), …]` says the entries of the
+  tape are independent and an entry of the stream `s` has the law `ν` (`IsTapeLaw`).
+  `TapeModel.packed ν pack` says the tape is the packing `pack` of a random object with the law
+  `ν`. A claim may also state its law directly, as Hutch++ does for two independent Gaussian
+  matrices and spectral bisection for a rounded tape;
+* `admits`: the hypotheses on the size and the input beyond admission to the problem (norm
+  bounds, gaps, precision conditions), written on the typed input;
+* `interprets`: the hypotheses on the interpretation beyond the contracts of the model
+  (measurability, reading the tape only in its windows), where the proof needs them;
+* `event`: the accuracy event, a property of the tape, the count and the final memory of the run;
+* `bound`: the failure probability, a function of the size and the input;
+* `holds`: the statement `Algorithm.FailsAtMost`: for every admitted size and input satisfying
+  `admits`, every interpretation satisfying the contracts and `interprets`, and every finite
+  measure and tape with the law, the probability that the counted run of the program of `A`
+  fails, exceeds a resource bound of the specification, or ends outside `event` is at most
+  `bound`. The run is that of the certificate: the same program from the initial memory of the
+  problem, so success and every resource bound are part of the event.
+
+`RandomizedClaim.ofReference` and `RandomizedClaim.ofWp` build a claim from the two transfers of
+`Probability.lean`: from a reference event of the sample space, and from the probabilistic
+program logic (`PWrites`, which bounds the probability that the tree misses a total
+postcondition). `PWrites` is a statement about a tree; a randomized claim is the statement about
+a certificate that a reader checks.
+
+The claims of the library:
+
+| Certificate | Claim | Law of the tape |
+|---|---|---|
+| `HutchPlusPlus.Certification.algorithm` | `HutchPlusPlus.Certification.claim` | packing of two independent Gaussian matrices |
+| `Deflation.deflateAlgorithm` | `Deflation.deflateClaim` | packing of a complex Gaussian matrix |
+| any certificate of block Golub–Kahan | `BlockKrylov.gaussianClaim` | packing of a Gaussian start block |
+| `SpectralBisection.countedBisectionAlgorithm` | `SpectralBisection.countedBisectionClaim` | rounding of independent uniform and Gaussian streams |
+| `SmallEig.smallEigAlgorithm` | `SmallEig.smallEigClaim`, `smallEigGinibreClaim` | independent uniform and Gaussian streams |
+| `ShiftedQR.shqrSmallEigAlgorithm` | `ShiftedQR.shqrSmallEigClaim`, `shqrSmallEigGinibreClaim` | independent uniform and Gaussian streams |
+| `Schur.denseSchurAlgorithm` | `Schur.denseSchurClaim` | independent uniform and Gaussian streams |
+
+**Every termination-only certificate has a claim.** `NLAlibTools/RandomizedClaims.lean` checks
+this when the tools are built: it finds the certificates whose definition or proofs use
+`Routine.Spec.terminates`, finds the declarations whose type is `RandomizedClaim A` with `A` an
+application of that certificate, and fails if a termination-only certificate has none and is not
+listed there with its reason. The type of a claim names its certificate, so a report can pair
+them without any annotation.
+
 ## Notes: names that a tree carries
 
 A tree has one constructor that does nothing: `Stmt.note n s` is the tree `s` with the metadata
@@ -602,6 +654,7 @@ source guard never becomes an omitted runtime operation. See the
 | `Logic/KernelRfl.lean` | `kernel_rfl`: closed computations (instruction polynomials) checked by the kernel |
 | `Certification.lean` | Adapters for certificates: reading supplied buffers, counts without structural instructions |
 | `RoutineLink.lean` | A routine as the implementation of an operation contract; specifications read off a contract |
+| `Randomized.lean` | Randomized claims about a certificate: the law of the tape (`TapeModel`), the accuracy event, the failure bound and the proof on the counted run |
 | `RoutineProblem.lean` | The problem of a routine: codecs of operands, slots, `Routine.Domain`, coverage, the certificate on the derived problem and its evaluator-level statement |
 | `RoutineData.lean` | A routine on stored data (`Routine.withData`), its specification (`Spec.onData`) and judgment (`Meets.withData`) |
 | `Link.lean`, `Transfer.lean` | Fixed implementation tables, count projections and explicit weights |

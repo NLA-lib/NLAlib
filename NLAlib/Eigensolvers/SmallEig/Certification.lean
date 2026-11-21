@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.Ops.Randomized
 public import NLAlib.Ops.RoutineProblem
 public import NLAlib.Matrix.FinitePrecision.ComplexCodec
 public import NLAlib.Eigensolvers.ShiftedQR.Cost
@@ -600,6 +601,51 @@ theorem smallEig_algorithm_measureReal_not_accepts_le_unconditional
   apply smallEig_algorithm_measureReal_not_accepts_le
     (hA := boundsGinibreGap_ginibreGapTail) (hB := boundsGinibreCondition_ginibreConditionTail)
     (hb₁ := ginibreGapTail_b_pos) (hb₂ := ginibreConditionTail_b_pos) <;> assumption
+
+/-! ### The randomized claim -/
+
+/-- **The randomized claim of the small-eigenvalue certificate**
+([BanksGarzaVargasSrivastava2025, Theorem 1.1], corrected). The entries of the tape are
+independent, uniform on $[0, 1]$ on the stream $s_U$ and standard Gaussian on the stream $s_G$.
+For an input matrix with $\|\mathbf{M}\|_2 \le \Sigma$, $0 < \delta \le \Sigma$,
+$0 < \varphi \le 1$ and $\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{SmallEig}}$, and an
+interpretation that is measurable and reads the tape only in its windows, the counted run writes
+only the matrix and the output and lists the spectrum of a matrix within $\delta$ of the input,
+except with probability at most $\varphi$. The tails $c_1$, $c_2$ of a complex Ginibre
+perturbation are hypotheses; `NLAlib.SmallEig.smallEigGinibreClaim` has them proved. -/
+noncomputable def smallEigClaim (admitted : ∃ d, SmallEigSizes Mch nmax c₁ c₂ d) (sU sG : ℕ)
+    {u : ℝ} (hM : StdModel u id Mch) (hA : c₁.BoundsGinibreGap)
+    (hB : c₂.BoundsGinibreCondition) (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) :
+    RandomizedClaim (smallEigAlgorithm Mch nmax c₁ c₂ admitted sU sG) where
+  law _ _ := TapeModel.streams [(sU, volume.restrict (Set.Icc 0 1)), (sG, gaussianReal 0 1)]
+  admits _ x := specNorm x.val.1.matrix ≤ x.val.1.S ∧ 0 < x.val.1.δ ∧ x.val.1.δ ≤ x.val.1.S ∧
+    0 < x.val.1.φ ∧ x.val.1.φ ≤ 1 ∧ u ≤ uSmallEig nmax x.val.1.S x.val.1.δ x.val.1.φ c₁ c₂
+  interprets _ _ I := I.IsMeasurable ∧
+    ∃ win : SmallEigOp → List ℕ → ℕ, ∀ o, I.TapeLocal o (win o)
+  event d x _ _ m := ((smallEigProblem Mch nmax c₁ c₂ admitted).initial d x).store.EqOff
+      (Store.inBlock 0 0 (2 * ((d 0 + 1) * (d 0 + 1))) ⊔
+        Store.inBlock 2 0 (2 * ((d 0 + 1) * (d 0 + 1)))) m.store ∧
+    SmallEigSpectrum (0, 0) (2, 0) x.val.1.matrix x.val.1.δ m
+  bound _ x := x.val.1.φ
+  holds := fun d hd x hx I hI hint Ω _ μ _ tape hlaw => by
+    obtain ⟨law, hfix, hξ⟩ := hlaw
+    obtain ⟨hIm, win, hloc⟩ := hint
+    obtain ⟨hMS, hδ, hδS, hφ, hφ1, hu⟩ := hx
+    exact smallEig_algorithm_measureReal_not_accepts_le hM (hfix _ (List.Mem.head _))
+      (hfix _ (List.Mem.tail _ (List.Mem.head _))) hA hB hb₁ hb₂ hd x hI hIm hloc hMS hδ hδS
+      hφ hφ1 hu hξ
+
+/-- The randomized claim of the small-eigenvalue certificate with the proved Ginibre tails, at
+the records `NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$ and
+`NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$:
+`NLAlib.SmallEig.smallEigClaim` with no hypothesis on a random matrix. -/
+noncomputable def smallEigGinibreClaim
+    (admitted : ∃ d, SmallEigSizes Mch nmax ginibreGapTail ginibreConditionTail d) (sU sG : ℕ)
+    {u : ℝ} (hM : StdModel u id Mch) :
+    RandomizedClaim (smallEigAlgorithm Mch nmax ginibreGapTail ginibreConditionTail admitted
+      sU sG) :=
+  smallEigClaim admitted sU sG hM boundsGinibreGap_ginibreGapTail
+    boundsGinibreCondition_ginibreConditionTail ginibreGapTail_b_pos ginibreConditionTail_b_pos
 
 /-- What the certificate states: at every admitted size, for every admitted input, every
 interpretation satisfying the contracts of the model and every tape, the run of the fixed program

@@ -172,6 +172,15 @@ is not an infinite independent tape law. Probability transfers must include exec
 all resource failures and the claimed output failure on the same counted run. Use the shared
 `NLAlib/Ops/Probability.lean` transfer rather than an assumption that execution succeeds.
 
+State the result as a `Ops.RandomizedClaim` of the certificate (`NLAlib/Ops/Randomized.lean`),
+named for the certificate with the suffix `Claim` (`claim` in a `Certification` namespace). Its
+fields are what a reader checks: the law of the tape (`Ops.TapeModel.streams` for independent
+entries with stated stream laws, `Ops.TapeModel.packed` for a packed random object, or the law
+written out), the hypotheses on the input and on the interpretation, the accuracy event and the
+failure bound. A certificate whose routine has the specification `Ops.Routine.Spec.terminates`
+must have a claim; the build of `NLAlibTools/RandomizedClaims.lean` fails otherwise. The
+headline theorem may stay as the statement the claim's proof applies.
+
 ## Names of routines, files and certificates
 
 One name for each thing, in every family:

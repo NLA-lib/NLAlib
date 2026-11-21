@@ -240,7 +240,8 @@ Gaussian X:
 - the small-block gapped tail bound, for every block size `b ≥ 1` and depth `q ≥ t`, under a
   relative gap among the top t singular values
   (`BlockKrylov.measureReal_not_accepts_le_of_hasLaw_gaussianMatrix`, from the
-  [small-block theory](../../NLAlib/LowRank/Gaussian/SmallBlock.lean));
+  [small-block theory](../../NLAlib/LowRank/Gaussian/SmallBlock.lean)), packaged with its tape
+  law, hypotheses, event and bound as the randomized claim `BlockKrylov.gaussianClaim`;
 - the large-block gapped bound in expectation, for `t + 2 ≤ b`
   (`BlockKrylov.integral_specNorm_sub_storedOutput_sq_le_singularGapRatio_of_hasLaw_gaussianMatrix`,
   from the [block Krylov bounds](../../NLAlib/LowRank/Gaussian/BlockKrylov.lean)).

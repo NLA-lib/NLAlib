@@ -88,8 +88,8 @@ theorem roundedShQRWith_pwrites_of_le {Mch : Machine ℝ} {I : Interp O Q ℝ}
       (fun μ => μ.Live [a, t, p, uo, f] ∧
         μ.Room [a, t, p, uo, f] [2 * ((n' + 1) * (n' + 1)), 1,
           (shqrParams n k B Γ S δ φ ++ qs).length, 2 * ((n' + 1) * (n' + 1)), 1] ∧
-        Fp.Apart [a, t, p, uo, f] [2 * ((n' + 1) * (n' + 1)), 1,
-          (shqrParams n k B Γ S δ φ ++ qs).length, 2 * ((n' + 1) * (n' + 1)), 1] ∧
+        ShQRViewsApart (n' + 1) (shqrParams n k B Γ S δ φ ++ qs).length
+          a t p uo f ∧
         HoldsMatrix a H μ.store ∧ HoldsMatrix uo U μ.store ∧
         μ.store.get t.1 t.2 = some (shqrDeflationThreshold n k B Γ S δ φ) ∧
         μ.store.readBlock p.1 p.2 (shqrParams n k B Γ S δ φ ++ qs).length =
@@ -219,9 +219,8 @@ theorem roundedShQRWith_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Int
     (hr : μ.Room [a, t, p, out, f]
       [2 * ((n + 1) * (n + 1)), 1, (shqrParams n k B Γ S δ φ ++ qs).length,
         2 * ((n + 1) * (n + 1)), 1])
-    (ha : Fp.Apart [a, t, p, out, f]
-      [2 * ((n + 1) * (n + 1)), 1, (shqrParams n k B Γ S δ φ ++ qs).length,
-        2 * ((n + 1) * (n + 1)), 1])
+    (ha : ShQRViewsApart (n + 1) (shqrParams n k B Γ S δ φ ++ qs).length
+          a t p out f)
     (hA : HoldsMatrix a H μ.store) (hU₀ : HoldsMatrix out U₀ μ.store)
     (ht : μ.store.get t.1 t.2 = some (shqrDeflationThreshold n k B Γ S δ φ))
     (hp : μ.store.readBlock p.1 p.2 (shqrParams n k B Γ S δ φ ++ qs).length =
@@ -265,9 +264,8 @@ theorem roundedShQRWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hr : μ.Room [a, t, p, out, f]
       [2 * ((n + 1) * (n + 1)), 1, (shqrParams n k B Γ S δ φ ++ qs).length,
         2 * ((n + 1) * (n + 1)), 1])
-    (ha : Fp.Apart [a, t, p, out, f]
-      [2 * ((n + 1) * (n + 1)), 1, (shqrParams n k B Γ S δ φ ++ qs).length,
-        2 * ((n + 1) * (n + 1)), 1])
+    (ha : ShQRViewsApart (n + 1) (shqrParams n k B Γ S δ φ ++ qs).length
+          a t p out f)
     (hA : HoldsMatrix a H μ.store) (hU₀ : HoldsMatrix out U₀ μ.store) {thr : ℝ}
     (ht : μ.store.get t.1 t.2 = some thr)
     (hp : μ.store.readBlock p.1 p.2 (shqrParams n k B Γ S δ φ ++ qs).length =
@@ -380,7 +378,8 @@ theorem roundedShQRSchurWith_randomSchurCoreContract {Mch : Machine ℝ} {I : In
     · simp only [List.mem_cons, List.not_mem_nil, or_false] at hv
       rcases hv with h | h | h | h | h <;> rw [h]
       exacts [hl a (by simp), hl p (by simp), hl p (by simp), hl uo (by simp), hl f (by simp)]
-    · simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, sup_bot_eq]
+    · refine ShQRViewsApart.of_apart ?_
+      simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, sup_bot_eq]
       exact ⟨⟨ha.1.1.mono le_rfl hsub1, ha.1.1.mono le_rfl hsub2, ha.1.2.1, ha.1.2.2⟩,
         ⟨Fp.disj_inBlock_of_le le_rfl, ha.2.1.1.mono hsub1 le_rfl, ha.2.1.2.mono hsub1 le_rfl⟩,
         ⟨ha.2.1.1.mono hsub2 le_rfl, ha.2.1.2.mono hsub2 le_rfl⟩, ha.2.2.1,
@@ -473,12 +472,12 @@ theorem roundedShQRSchurWith_terminatingSchurCore {Mch : Machine ℝ} {I : Inter
       exacts [hl a (by simp), hl p (by simp), hl p (by simp), hl uo (by simp), hl f (by simp)])
     ⟨Store.le_len_of_readBlock hHU.1 (by positivity), by omega, by dsimp only; omega,
       Store.le_len_of_readBlock hHU.2 (by positivity), hf, trivial⟩
-    (by
+    (ShQRViewsApart.of_apart (by
       simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, sup_bot_eq]
       exact ⟨⟨ha.1.1.mono le_rfl hsub1, ha.1.1.mono le_rfl hsub2, ha.1.2.1, ha.1.2.2⟩,
         ⟨Fp.disj_inBlock_of_le le_rfl, ha.2.1.1.mono hsub1 le_rfl, ha.2.1.2.mono hsub1 le_rfl⟩,
         ⟨ha.2.1.1.mono hsub2 le_rfl, ha.2.1.2.mono hsub2 le_rfl⟩, ha.2.2.1,
-        fun _ _ _ h => h, trivial⟩)
+        fun _ _ _ h => h, trivial⟩))
     hHU.1 hHU.2 ht hp'
   unfold roundedShQRSchurWith
   refine (hw.in_frame (by simp [IExp.evalList, IExp.eval, Env.frame])

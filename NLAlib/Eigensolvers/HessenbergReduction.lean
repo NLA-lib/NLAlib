@@ -369,7 +369,17 @@ private theorem hessenbergReduceLastSlots_eq (M : Machine ℝ) {N : ℕ}
 evaluation `NLAlib.hessenbergReduceLastWord` of the matrix in place, closes the $N - 2$ slots
 `NLAlib.hessenbergReduceLastSlots` (each accepted) of the log after its closed slots `L`, writes
 only the matrix and the log, and reads no tape. The planes and the valid words are exact
-naturals (`hNat` up to `nmax`, with $N \le n_{\max} + 1$ and $1 \le n_{\max}$). -/
+naturals (`hNat` up to `nmax`, with $N \le n_{\max} + 1$ and $1 \le n_{\max}$).
+
+This operand form is the primary statement of the tree, which has no judgment, for two reasons.
+The log operand `Lg` is the base of a slotted log of `ns` slots, and `ns` is not a dimension of
+the tree `[N, w, j0]`: the run writes the slots $j_0, \dots, j_0 + N - 3$ at an offset from the
+operand, and its hypothesis and conclusion are the invariant `NLAlib.HoldsSlottedLog` of
+the whole log of `ns` slots, whose length an interface over `[N, w, j0]` cannot declare. And
+the statement holds for a matrix block at any offset, while a judgment requires every written
+operand to lie within its buffer, which a stored matrix does not give when the block is empty
+($N = 0$). Its callers state their invariants on the matrix and the log (`HoldsMatrix`,
+`HoldsSlottedLog`) and use it inside deterministic steps of probabilistic proofs. -/
 theorem hessenbergReduceLast_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hC : IsCmp id I) (hL : IsIndexLit M I) {nmax : ℕ}
     (hNat : IsExactNatLit id M nmax) (h1 : 1 ≤ nmax) {τ : Tape ℝ} {m : Mem ℝ} {N : ℕ} {a lg : ℕ × ℕ}

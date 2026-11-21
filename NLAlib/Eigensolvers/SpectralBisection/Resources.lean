@@ -5,7 +5,8 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Eigensolvers.SpectralBisection.Alg
+public import NLAlib.Eigensolvers.SpectralBisection.Solve
+public import NLAlib.Ops.RoutineProblem
 public import NLAlib.Ops.Profiles.Dense
 public import NLAlib.Ops.Certification
 
@@ -34,37 +35,45 @@ open Ops
 
 variable {K : Type} [Inhabited K]
 
-/-- Raw matrix words, three stored parameters, and empty output slots for a basis and values.
-The size domain is explicit and inhabited. The matrix is an interleaved square block; the
-parameters are radius, tolerance and sign accuracy, in that order. -/
-def problem (domain : (Fin 3 → ℕ) → Prop) (admitted : ∃ d, domain d) : Problem K 3 4 where
-  formats _ := .cell
+/-- The admitted inputs of spectral bisection: at the sizes of `domain`, every square matrix of
+complex pairs and every triple of parameters (radius, tolerance, sign accuracy, in that order).
+The first operand holds the packed matrix, the second the three parameter words; the basis and
+the values are blank. -/
+def inputs (domain : (Fin 3 → ℕ) → Prop) (admitted : ∃ d, domain d) :
+    (bisectionRoutine (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).Domain K 3 4 where
   valid := domain
-  Data _ := List K × List K
-  admissible d data buffers :=
-    buffers = ![data.1.map some, data.2.map some,
-      List.replicate (2 * (d 0 * d 0)) none, List.replicate (d 0) none] ∧
-      data.1.length = 2 * (d 0 * d 0) ∧ data.2.length = 3
+  In d := Matrix (Fin (d 0)) (Fin (d 0)) (K × K) × (Fin 3 → K)
+  accepts _ _ := True
+  slot d := ![.stored (Codec.matrix (EntryCodec.pair K) (d 0) (d 0)) Prod.fst,
+    .stored (Codec.vector 3) Prod.snd, .blank (2 * (d 0 * d 0)), .blank (d 0)]
+  fits := by
+    intro d i p hp
+    fin_cases i <;> (
+      have hport := Option.some.inj hp
+      subst hport
+      constructor <;>
+        simp [Slot.len, Slot.held, Access.readable, Codec.matrix, Codec.vector,
+          EntryCodec.pair, List.ofFn_succ, Nat.mul_comm])
+  faithful d x y _ h := by
+    have h0 := h 0
+    have h1 := h 1
+    simp only [Slot.input, Matrix.cons_val_zero, Matrix.cons_val_one, Option.some.injEq]
+      at h0 h1
+    exact Prod.ext ((Codec.matrix (EntryCodec.pair K) (d 0) (d 0)).encode_injective h0)
+      ((Codec.vector 3).encode_injective h1)
   admitted := admitted
-  supply d _ := ⟨(List.replicate (2 * (d 0 * d 0)) default, List.replicate 3 default),
-    ![(List.replicate (2 * (d 0 * d 0)) default).map some,
-      (List.replicate 3 default).map some, List.replicate (2 * (d 0 * d 0)) none,
-      List.replicate (d 0) none], rfl, List.length_replicate .., List.length_replicate ..⟩
+  inhabited _ _ := ⟨(fun _ _ => default, fun _ => default), trivial⟩
+
+/-- A packed square matrix, three stored parameters, and empty output slots for a basis and
+values: the problem of spectral bisection. -/
+abbrev problem (domain : (Fin 3 → ℕ) → Prop) (admitted : ∃ d, domain d) : Problem K 3 4 :=
+  (inputs (K := K) domain admitted).problem
 
 variable {domain : (Fin 3 → ℕ) → Prop} {admitted : ∃ d, domain d}
 
-/-- Admissibility fixes the actual supplied raw buffers; no encoded output is computed here. -/
-theorem input_buffers (d : Fin 3 → ℕ) (x : (problem (K := K) domain admitted).Input d) :
-    x.val.2 = ![x.val.1.1.map some, x.val.1.2.map some,
-      List.replicate (2 * (d 0 * d 0)) none, List.replicate (d 0) none] := x.property.1
-
-/-- The supplied matrix block has exactly two scalar words per square entry. -/
-theorem length_input_matrix (d : Fin 3 → ℕ) (x : (problem (K := K) domain admitted).Input d) :
-    x.val.1.1.length = 2 * (d 0 * d 0) := x.property.2.1
-
-/-- The supplied parameter block has exactly its three declared words. -/
-theorem length_input_parameters (d : Fin 3 → ℕ)
-    (x : (problem (K := K) domain admitted).Input d) : x.val.1.2.length = 3 := x.property.2.2
+/-- The matrix of an input of the problem. -/
+abbrev inputMatrix (d : Fin 3 → ℕ) (x : (problem (K := K) domain admitted).Input d) :
+    Matrix (Fin (d 0)) (Fin (d 0)) (K × K) := x.val.1.1
 
 /-- Resident capacity includes both the supplied matrix and output basis, the output values,
 and all three supplied scalar parameters, including every initially empty output slot. -/
@@ -72,51 +81,46 @@ theorem initialBytes_problem (d : Fin 3 → ℕ)
     (x : (problem (K := K) domain admitted).Input d) :
     (problem (K := K) domain admitted).initialBytes d x =
       4 * (d 0 * d 0) + d 0 + 3 := by
-  rw [Problem.initialBytes, input_buffers]
-  simp [problem, List.ofFn_succ, length_input_matrix, length_input_parameters]
-  omega
+  refine ((inputs (K := K) domain admitted).initialBytes_eq x).trans ?_
+  simp [inputs, Slot.len, Codec.matrix, Codec.vector, EntryCodec.pair, List.ofFn_succ]
+  ring
 
-/-- The supplied matrix reads as its original raw list of words. -/
-theorem initial_readBlock_matrix (d : Fin 3 → ℕ)
-    (x : (problem (K := K) domain admitted).Input d) :
+/-- The blocks the routine reads at an input: the packed matrix and the three parameters. -/
+theorem blocks_inputs (d : Fin 3 → ℕ) (x : (problem (K := K) domain admitted).Input d) :
+    (inputs (K := K) domain admitted).blocks d x.val.1 =
+      [(EntryCodec.pair K).packFinMatrix (inputMatrix d x),
+        [x.val.1.2 0, x.val.1.2 1, x.val.1.2 2]] := by
+  simp [Routine.Domain.blocks, inputs, bisectionRoutine, Routine.sel, Access.readable,
+    Slot.words, Codec.matrix, Codec.vector, List.ofFn_succ, routineNF]
+
+/-- The two supplied input buffers read as the packed matrix and the three parameters. -/
+theorem initial_reads (d : Fin 3 → ℕ) (x : (problem (K := K) domain admitted).Input d) :
     ((problem (K := K) domain admitted).initial d x).store.readBlock 0 0 (2 * (d 0 * d 0)) =
-      some x.val.1.1 := by
-  have h := Problem.initial_readBlock (P := problem (K := K) domain admitted) d x (0 : Fin 4)
-    (show x.val.2 0 = x.val.1.1.map some by rw [input_buffers]; rfl)
-  rwa [length_input_matrix d x] at h
+        some ((EntryCodec.pair K).packFinMatrix (inputMatrix d x)) ∧
+      ((problem (K := K) domain admitted).initial d x).store.readBlock 1 0 3 =
+        some [x.val.1.2 0, x.val.1.2 1, x.val.1.2 2] := by
+  have h : ((problem (K := K) domain admitted).initial d x).readBlocks [(0, 0), (1, 0)]
+      [2 * (d 0 * d 0), 3] = some [(EntryCodec.pair K).packFinMatrix (inputMatrix d x),
+        [x.val.1.2 0, x.val.1.2 1, x.val.1.2 2]] := by
+    have h := (inputs (K := K) domain admitted).readBlocks_initial x
+    rw [blocks_inputs] at h
+    exact h
+  obtain ⟨a, b, as, bs, hab, ha, hb, hx⟩ := Mem.readBlocks_two h
+  obtain ⟨rfl, rfl⟩ : (0, 0) = a ∧ (1, 0) = b := by simpa using hab
+  obtain ⟨rfl, rfl⟩ : _ = as ∧ _ = bs := by simpa using hx
+  exact ⟨ha, hb⟩
 
-/-- The supplied scalar parameters read as their original raw list of words. -/
-theorem initial_readBlock_parameters (d : Fin 3 → ℕ)
-    (x : (problem (K := K) domain admitted).Input d) :
-    ((problem (K := K) domain admitted).initial d x).store.readBlock 1 0 3 = some x.val.1.2 := by
-  have h := Problem.initial_readBlock (P := problem (K := K) domain admitted) d x (1 : Fin 4)
-    (show x.val.2 1 = x.val.1.2.map some by rw [input_buffers]; rfl)
-  rwa [length_input_parameters d x] at h
-
-/-- The finite word matrix represented by the supplied raw interleaved input block. This is
-a mathematical decoder for the specification; it is not executed as input preprocessing. -/
-def inputMatrix (d : Fin 3 → ℕ) (x : (problem (K := K) domain admitted).Input d) :
-    Matrix (Fin (d 0)) (Fin (d 0)) (K × K) :=
-  (EntryCodec.pair K).matrix (d 0) (d 0) x.val.1.1
-
-/-- Every raw supplied matrix is exactly the packed finite word matrix in the specification.
-The codec's inverse law prevents a hidden representability or padding condition. -/
+/-- The supplied matrix reads as the packing of the input matrix. -/
 theorem initial_readBlock_inputMatrix (d : Fin 3 → ℕ)
     (x : (problem (K := K) domain admitted).Input d) :
     ((problem (K := K) domain admitted).initial d x).store.readBlock 0 0 (2 * (d 0 * d 0)) =
-      some ((EntryCodec.pair K).packFinMatrix (inputMatrix d x)) := by
-  have hlen : x.val.1.1.length = d 0 * d 0 * (EntryCodec.pair K).width := by
-    simpa only [EntryCodec.pair, Nat.mul_comm] using length_input_matrix d x
-  rw [inputMatrix, (EntryCodec.pair K).packFinMatrix_matrix _ _ _ hlen]
-  exact initial_readBlock_matrix d x
+      some ((EntryCodec.pair K).packFinMatrix (inputMatrix d x)) := (initial_reads d x).1
 
-/-- Each supplied scalar parameter is readable at its declared position in the parameter
-buffer. No algorithm-dependent scalar is supplied through this interface. -/
-theorem initial_get_parameter (d : Fin 3 → ℕ)
-    (x : (problem (K := K) domain admitted).Input d) (i : Fin 3) :
-    ((problem (K := K) domain admitted).initial d x).store.get 1 i = some (vec x.val.1.2 i) := by
-  simpa only [Nat.zero_add] using
-    Store.get_of_readBlock (initial_readBlock_parameters d x) i.isLt default
+/-- The supplied parameter buffer holds the three parameters of the input. -/
+theorem initial_parameter_words (d : Fin 3 → ℕ)
+    (x : (problem (K := K) domain admitted).Input d) :
+    ((problem (K := K) domain admitted).initial d x).store.readBlock 1 0 3 =
+      some [x.val.1.2 0, x.val.1.2 1, x.val.1.2 2] := (initial_reads d x).2
 
 /-- The full budget is computed from the fixed instrumented tree before any input executes.
 It contains all scalar/matrix/sample calls, queries and core addressing/control instructions. -/

@@ -38,15 +38,15 @@ variable {K : Type} [Inhabited K] [MeasurableSpace K] [MeasurableSingletonClass 
 
 /-- The radius of an input: the decoded first parameter word, a bound of the spectral norm. -/
 abbrev inputRadius (dec : K → ℝ) {d : Fin 3 → ℕ}
-    (x : (problem (K := K) domain admitted).Input d) : ℝ := dec (vec x.val.1.2 0)
+    (x : (problem (K := K) domain admitted).Input d) : ℝ := dec (x.val.1.2 0)
 
 /-- The tolerance of an input: the decoded second parameter word. -/
 abbrev inputTolerance (dec : K → ℝ) {d : Fin 3 → ℕ}
-    (x : (problem (K := K) domain admitted).Input d) : ℝ := dec (vec x.val.1.2 1)
+    (x : (problem (K := K) domain admitted).Input d) : ℝ := dec (x.val.1.2 1)
 
 /-- The sign-iteration parameter of an input: the decoded third parameter word. -/
 abbrev inputBeta (dec : K → ℝ) {d : Fin 3 → ℕ}
-    (x : (problem (K := K) domain admitted).Input d) : ℝ := dec (vec x.val.1.2 2)
+    (x : (problem (K := K) domain admitted).Input d) : ℝ := dec (x.val.1.2 2)
 
 /-- **Spectral bisection on a random tape: operation count and accuracy on one event.** Let
 $\mathbf{A} \in \mathbb{C}^{n \times n}$ be Hermitian with $\|\mathbf{A}\|_2 \le R$, stored as
@@ -140,7 +140,7 @@ theorem measureReal_not_accepts_countedSpecification_le
   have hn : 1 ≤ d 0 := (hN d hd).trans' (by norm_num)
   have hRef := measureReal_not_isApproxDiagonalization_tapeMachine_le M dec mm qr roundUnif
     roundGaussian hAcc hUnif hGaussian hUnifRange hGaussianRange hMuM hMuQ hMuM0 hMuQ0 hCN hn
-    (inputMatrix d x) hA (vec x.val.1.2 0) (vec x.val.1.2 1) (vec x.val.1.2 2) hRadius
+    (inputMatrix d x) hA (x.val.1.2 0) (x.val.1.2 1) (x.val.1.2 2) hRadius
     hRadiusPos hEps hEpsMax hTheta hThetaMax (d 1) hDepth hBeta hBetaMax hSteps hSign hStop
     hDeflate (d 2) hFuel hFloorNonneg hFloor hBound hTape hStream 0
   have hRun := measureReal_not_accepts_le_of_wordSpecification M dec mm qr _ _ _ _ _

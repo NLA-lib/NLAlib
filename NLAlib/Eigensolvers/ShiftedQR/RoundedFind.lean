@@ -170,7 +170,10 @@ place the rounded step's output $\widehat{\mathbf{H}}'$ (upper Hessenberg, the e
 chain from $\mathbf{H}$ with the shifts $s_1, \dots, s_k$ by the exact unitary of the entries),
 and in `P` a $t$ with $\lvert t - \tau\rvert \le 0.001\,\tau$,
 $\tau = \|\mathbf{e}_n^{\mathsf T}p(\mathbf{H})^{-1}\|_2^{-1}$.
-It writes only the matrix, `P` and the log; matrix, shifts, `P` and the log are disjoint views. -/
+It writes only the matrix, `P` and the log; matrix, shifts, `P` and the log are disjoint views.
+
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`,
+on their scratch. -/
 theorem stepComptau_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hCmp : IsCmp id I) (hL : IsIndexLit M I)
     {nmax : ℕ} (hNat : IsExactNatLit id M nmax) {τ : Tape ℝ} {m : Mem ℝ}

@@ -178,9 +178,11 @@ lemma:
   the memory (the state of a recurrence held in the operands). The judgment of the body, read on
   that invariant, is a corollary used by the loop rule and by nothing else
   (`Carried.Rounded.step_writes`, `HSPCG.Rounded.step_writes_function`, `MGS.sweep_writes`).
-- **An empty block past the end of a buffer.** A judgment requires room for every written
-  block; a statement that must also hold for a block of length zero placed anywhere stays in
-  operand form (`hessenbergReduceLast_writes_word`).
+- **An empty block past the end of a buffer, or a block whose length is not a dimension.** A
+  judgment requires room for every written block, of a length its interface computes from the
+  dimensions; a statement that must also hold for a block of length zero placed anywhere, or
+  whose invariant is on a log of a slot count the tree does not take, stays in operand form
+  (`hessenbergReduceLast_writes_word`).
 
 A routine may have several judgments, for several specifications. A leaf whose result is a
 definite list of words states it once, for any machine, as an exact-output judgment

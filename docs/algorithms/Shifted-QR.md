@@ -72,7 +72,7 @@ bound and a positive eigenvalue-separation promise. Its quantitative hypotheses 
 positive tolerance, admissible Ritz depth and factors, contraction parameter, iteration cap
 and grid size. The precise inequalities are
 [`ShiftedQRHyps`](../../NLAlib/Matrix/QRIteration/DeflationHypotheses.lean) and
-`DeflationAdmissible`. The program computes `tau` itself from the raw tolerance and matrix.
+the admission of `deflationInputs`. The program computes `tau` itself from the raw tolerance and matrix.
 
 Under these mathematical input assumptions, execution is total and all output slots are
 initialized. No premise assumes a successful run, an accepted candidate or an already

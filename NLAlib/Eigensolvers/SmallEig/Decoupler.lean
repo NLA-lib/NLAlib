@@ -278,7 +278,10 @@ with the closed slots `LL` and room for $m_2$ more, sets the flag to $0$, closes
 slots `Ls` (planes below $k + 1$), and stores an upper Hessenberg perturbed unitary similarity of
 $\mathbf{H}$ by $\mathbf{Q}_1$ times the unitary of `Ls` with the error
 `NLAlib.SmallEig.smallEigDecoupleError` at $N$ whose last subdiagonal entry is at most
-$1.5\,\omega$. -/
+$1.5\,\omega$.
+
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem smallEigDecoupler_decouple_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
     {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) {nmax : ℕ} (hn1 : 1 ≤ nmax)
@@ -387,7 +390,10 @@ $n + 1$, $1 \le n \le n_{\max}$, with exact natural literals up to $n_l \ge n$, 
 $N \le 2\Sigma$ in the class $(2B_c, g_c/2)$, and an empty log with room for $n$ slots of at least
 $n$ entries, `RHess` closes $n$ slots `Ls` (planes below $n$) and stores a block in
 `NLAlib.SmallEig.SmallEigRHessClass` by the unitary of `Ls` with the error
-$200(n + 1)^2\boldsymbol{u}N$, except with probability at most $\varphi_D/2$. -/
+$200(n + 1)^2\boldsymbol{u}N$, except with probability at most $\varphi_D/2$.
+
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem smallEigDecoupler_rhess_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hzero : M.lit 0 = 0) (hC : IsCmp id I)
     (hL : IsIndexLit M I) (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sG : ℕ}

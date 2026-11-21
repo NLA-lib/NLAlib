@@ -59,20 +59,20 @@ theorem accepts_signProgram_of_isArithAccurate
     (hf : floor * (2 * d 0) ≤ 1) (hOmega : 9 * (d 0 + 1) ≤ Omega)
     (hA : (decodeMatrix dec (inputMatrix d x)).IsHermitian) {a : ℝ} (ha : 0 < a)
     (hspec : ∀ y ∈ spectrum ℝ (decodeMatrix dec (inputMatrix d x)), a ≤ |y|)
-    (hb : specNorm (decodeMatrix dec (inputMatrix d x)) ≤ dec (vec x.val.1.2 1))
-    (heps : 0 < dec (vec x.val.1.2 0)) (heps1 : dec (vec x.val.1.2 0) ≤ 1 / 2)
+    (hb : specNorm (decodeMatrix dec (inputMatrix d x)) ≤ dec (scale d x))
+    (heps : 0 < dec (tolerance d x)) (heps1 : dec (tolerance d x) ≤ 1 / 2)
     (hu : 640 * d 0 * Real.sqrt (d 0 : ℝ) * (8 + mu (d 0)) *
-      (newtonSchulzSteps (a / (2 * dec (vec x.val.1.2 1)))
-        (dec (vec x.val.1.2 0) / (16 * d 0)) + 1) * u ≤
-      a / dec (vec x.val.1.2 1) * dec (vec x.val.1.2 0))
-    (hcap : newtonSchulzSteps (a / (2 * dec (vec x.val.1.2 1)))
-      (dec (vec x.val.1.2 0) / (16 * d 0)) ≤ d 1) :
+      (newtonSchulzSteps (a / (2 * dec (scale d x)))
+        (dec (tolerance d x) / (16 * d 0)) + 1) * u ≤
+      a / dec (scale d x) * dec (tolerance d x))
+    (hcap : newtonSchulzSteps (a / (2 * dec (scale d x)))
+      (dec (tolerance d x) / (16 * d 0)) ≤ d 1) :
     (wordSpecification M dec mm qr unif normal domain admitted matrixWork matrixWorkspace).Accepts
       (Dense.resources matrixWork matrixWorkspace) d x
       (exec signProgram I (Dense.resources matrixWork matrixWorkspace)
         (problem (K := K) domain admitted).formats tape d
         ((problem (K := K) domain admitted).initial d x))
-      (fun _ m => StoresApproximation dec (inputMatrix d x) (dec (vec x.val.1.2 0)) m) := by
+      (fun _ m => StoresApproximation dec (inputMatrix d x) (dec (tolerance d x)) m) := by
   obtain ⟨st, hr, hp, hc, hw, hs, hm, hg⟩ :=
     (signAlgorithm M dec mm qr unif normal domain admitted matrixWork matrixWorkspace
       h01).correct d hd x I hI tape

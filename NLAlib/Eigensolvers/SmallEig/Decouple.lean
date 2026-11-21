@@ -666,7 +666,10 @@ backward-stable chains (relative error $300(n + 2)^2\boldsymbol{u}$) of $k$ step
 $\lambda$ whose scans failed for $k < \ell$, $t_L < (1 + \boldsymbol{u})^2\lvert h_k\rvert^2$
 ($t_L$ = `qs[7]`, $h_k$ the last subdiagonal entry); and the flag $0$ with
 $(1 - \boldsymbol{u})^2\lvert h_\ell\rvert^2 \le t_L$, or the flag $1$ at $\ell = m_2$ with
-$t_L < (1 + \boldsymbol{u})^2\lvert h_\ell\rvert^2$. -/
+$t_L < (1 + \boldsymbol{u})^2\lvert h_\ell\rvert^2$.
+
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem decoupleLast_writes_scans {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hu : 0 ≤ u) (hL : IsIndexLit M I) (hC : IsCmp id I)
     {n m₂ : ℕ} (hNat : IsExactNatLit id M (n + 2))

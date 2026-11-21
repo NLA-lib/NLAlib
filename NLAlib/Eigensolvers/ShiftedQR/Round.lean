@@ -34,7 +34,10 @@ variable {Op Tst : Type} [Has ScalarOp Op] [Has CmpTst Tst]
 column (`NLAlib.roundedGivensCoeffs`), rotates the rows $k, k + 1$ of the working matrix
 and conjugates the output by them (`NLAlib.machineRowRotation`,
 `NLAlib.machineColRotation`). The two matrices and four coefficient words are
-separated views; output aliases are exact. -/
+separated views; output aliases are exact.
+
+Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.ShiftedQR.shiftedStepRoutine`,
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem round_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k : ℕ} {w z cf : ℕ × ℕ}

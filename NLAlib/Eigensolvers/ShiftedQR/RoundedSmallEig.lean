@@ -95,9 +95,8 @@ def ShQRSmallEigInput {n : ℕ} (k : ℕ) (B Γ S δ φ : ℝ) (c₁ c₂ : Poly
     μ.Room [a, t, p, out, f]
       [2 * ((n + 1) * (n + 1)), 1, (shqrSmallEigParams n k B Γ S δ φ c₁ c₂).length,
         2 * ((n + 1) * (n + 1)), 1] ∧
-    Fp.Apart [a, t, p, out, f]
-      [2 * ((n + 1) * (n + 1)), 1, (shqrSmallEigParams n k B Γ S δ φ c₁ c₂).length,
-        2 * ((n + 1) * (n + 1)), 1] ∧
+    ShQRViewsApart (n + 1) (shqrSmallEigParams n k B Γ S δ φ c₁ c₂).length
+          a t p out f ∧
     (∃ U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix out U μ.store) ∧
     HoldsMatrix a H μ.store ∧ μ.store.get t.1 t.2 = some (shqrDeflationThreshold n k B Γ S δ φ) ∧
     μ.store.readBlock p.1 p.2 (shqrSmallEigParams n k B Γ S δ φ c₁ c₂).length =

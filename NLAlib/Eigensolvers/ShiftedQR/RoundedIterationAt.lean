@@ -108,7 +108,9 @@ the matrix and the flag and, except with probability at most
 $\varphi_{\mathrm{se}} + \varphi_R/2 + \varphi$, ends in `NLAlib.ShiftedQR.ShIterationOutcome`: an
 upper Hessenberg perturbed unitary similarity of $\mathbf{H}$ with error
 $(1 + C)\|\mathbf{H}\|_2((1 + x)^k - 1)$, $x = 300(n+1)^2\boldsymbol{u}$, decoupled at the bottom
-or with $\psi_k \le 1.002(1 - \gamma)\psi_k(\mathbf{H})$. -/
+or with $\psi_k \le 1.002(1 - \gamma)\psi_k(\mathbf{H})$.
+
+Shared by the tree of `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on its scratch. -/
 theorem shIterationWith_pwrites_at {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I)

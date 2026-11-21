@@ -132,7 +132,7 @@ theorem bisectionProgram_kernelWeight_le_of_exec
   obtain ⟨raw, hraw, _, hcost⟩ := exec_original_count hr
   obtain ⟨hl, _, _, _, _⟩ := initial_problem_geometry d x
   have h := solve_kernelWeight_le_of_exec M dec mm qr
-    (vec x.val.1.2 0) (vec x.val.1.2 1) (vec x.val.1.2 2) (inputMatrix d x)
+    (x.val.1.2 0) (x.val.1.2 1) (x.val.1.2 2) (inputMatrix d x)
     hS hL hC hMM hQR hQ hSample (τ := τ) (L := d 1) (fuel := d 2)
     (input := (0, 0)) (par := (1, 0)) (u := (2, 0)) (dv := (3, 0)) hLit hl
     (initial_readBlock_inputMatrix d x) (initial_parameter_words d x)

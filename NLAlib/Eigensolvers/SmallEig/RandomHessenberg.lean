@@ -580,7 +580,10 @@ $\mathbf{A}$ of order $2 \le N$ at `a` and a log with closed slots `LL` and room
 it writes only the matrix and the log, advances the position by $2N$, stores
 `NLAlib.SmallEig.rhessWord` of $\mathbf{A}$ and the $2N$ entries of the stream `sG` at the start
 position, and closes the $N - 1$ accepted slots `NLAlib.SmallEig.rhessSlots` of $\mathbf{A}$ and
-those entries. -/
+those entries.
+
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem rhess_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hC : IsCmp id I) (hSmp : IsSample I) {sG N : ℕ} {τ : Tape ℝ} {μ : Mem ℝ} {a : ℕ × ℕ}
     {A : Matrix (Fin N) (Fin N) ℂ} (hl : μ.Live [a]) (hA : HoldsMatrix a A μ.store)

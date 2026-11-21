@@ -38,9 +38,9 @@ noncomputable def inputResult (M : Machine K) (dec : K → ℝ)
     {domain : (Fin 3 → ℕ) → Prop} {admitted : ∃ d, domain d}
     (d : Fin 3 → ℕ) (x : (problem (K := K) domain admitted).Input d) (tape : Tape K) :=
   let A := inputMatrix d x
-  let R0 := vec x.val.1.2 0
-  let eps := vec x.val.1.2 1
-  let beta := vec x.val.1.2 2
+  let R0 := x.val.1.2 0
+  let eps := x.val.1.2 1
+  let beta := x.val.1.2 2
   let F := tapeMachine M dec mm qr (d 0) 0 tape
   eigh F (d 2) (d 1) A R0 eps beta
     (eighSlotTree F (d 0) (d 2) R0 beta 0 0 ⟨d 0, A, R0, eps, d 1⟩)
@@ -81,7 +81,7 @@ theorem measureReal_not_accepts_le_of_wordSpecification
     (hReference : P.real {omega | ¬ IsApproxDiagonalization (decodeMatrix dec (inputMatrix d x))
       (decodeMatrix dec (inputResult M dec mm qr d x (tape omega)).1)
       (fun i => dec ((inputResult M dec mm qr d x (tape omega)).2 i))
-      (2 * dec (vec x.val.1.2 1) * dec (vec x.val.1.2 0)) (dec (vec x.val.1.2 1) / 3)} ≤ theta) :
+      (2 * dec (x.val.1.2 1) * dec (x.val.1.2 0)) (dec (x.val.1.2 1) / 3)} ≤ theta) :
     P.real {omega | ¬ (wordSpecification M dec mm qr domain admitted
       budget scratch work span memory).Accepts model.resources d x
         (exec algorithm.program I model.resources (problem (K := K) domain admitted).formats
@@ -89,7 +89,7 @@ theorem measureReal_not_accepts_le_of_wordSpecification
         (fun c m => (wordSpecification M dec mm qr domain admitted
             budget scratch work span memory).good d x (tape omega) c m ∧
           StoresApproxDiagonalization dec (inputMatrix d x)
-            (2 * dec (vec x.val.1.2 1) * dec (vec x.val.1.2 0)) (dec (vec x.val.1.2 1) / 3)
+            (2 * dec (x.val.1.2 1) * dec (x.val.1.2 0)) (dec (x.val.1.2 1) / 3)
             (2, 0) (3, 0) m)} ≤ theta := by
   refine algorithm.measureReal_failure_le hd x I hI tape _ _ ?_ P hReference
   intro omega count m hgood hreference

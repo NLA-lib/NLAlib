@@ -208,6 +208,7 @@ theorem roundedShQRSchurWith_completing [Has ScalarOp O] [Has IndexOp O] [Has Di
     ⟨Store.le_len_of_readBlock hHU.1 (by positivity), by omega, by dsimp only; omega,
       Store.le_len_of_readBlock hHU.2 (by positivity), hf, trivial⟩
     (by
+      refine ShiftedQR.ShQRViewsApart.of_apart ?_
       simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, sup_bot_eq]
       exact ⟨⟨ha.1.1.mono le_rfl hsub1, ha.1.1.mono le_rfl hsub2, ha.1.2.1, ha.1.2.2⟩,
         ⟨Fp.disj_inBlock_of_le le_rfl, ha.2.1.1.mono hsub1 le_rfl, ha.2.1.2.mono hsub1 le_rfl⟩,

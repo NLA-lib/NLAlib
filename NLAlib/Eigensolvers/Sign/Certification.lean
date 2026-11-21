@@ -49,7 +49,7 @@ noncomputable def wordSpecification (M : Machine K) (dec : K → ℝ)
     m.store.readBlock 2 0 (2 * (d 0 * d 0)) =
       some ((EntryCodec.pair K).packFinMatrix
         (newtonSchulzSign (M.toFloatMachine dec mm qr unif normal)
-          (vec x.val.1.2 0) (vec x.val.1.2 1) (d 1) (inputMatrix d x))) ∧
+          (tolerance d x) (scale d x) (d 1) (inputMatrix d x))) ∧
       m.pos = 0 ∧ m.store.length = 3
 
 /-- Functional scalar, index, matrix and comparison contracts suffice for total execution
@@ -66,34 +66,28 @@ noncomputable def signAlgorithm (M : Machine K) (dec : K → ℝ)
       (Dense.functionalModel (problem (K := K) domain admitted) M dec (EntryCodec.pair K) mm qr
         (Dense.resources matrixWork matrixWorkspace))
       (wordSpecification M dec mm qr unif normal domain admitted matrixWork matrixWorkspace) := by
-  refine Routine.algorithm (r := 2) (b := 3) (signRoutine (Has.inj MatrixOp.mul))
-    (fun _ _ => signSpec M dec mm qr unif normal)
-    (fun d x => [(EntryCodec.pair K).packFinMatrix (inputMatrix d x),
-      [vec x.val.1.2 0, vec x.val.1.2 1]]) (ht := wellTyped_signProgram matrixWork matrixWorkspace)
-    ?_ ?_ ?_ (hmemory := ?_)
+  refine (inputs (K := K) domain admitted).algorithm
+    (fun _ _ => signSpec M dec mm qr unif normal) ?_ ?_ ?_ (hmemory := ?_)
+    (ht := wellTyped_signProgram matrixWork matrixWorkspace)
   · intro d hd x I hI
     rcases Dense.laws_functionalModel M dec (EntryCodec.pair K) mm qr
       (Dense.resources matrixWork matrixWorkspace) d x I hI with
       ⟨hS, hL, hMM, _, _, hC, _⟩
     exact signRoutine_meets dec mm qr unif normal hS hC hMM hL h01
-  · intro d hd x
-    rcases initial_geometry d x with ⟨-, -, hRoom, -⟩
-    exact ⟨Mem.readBlocks_of_cons (initial_matrix d x)
-        (Mem.readBlocks_of_cons (initial_parameters d x) rfl), fun _ => trivial, hRoom⟩
+  · intro d hd x _ _
+    trivial
   · intro d hd x τ m' hfr hpos ys hys hrel c _
-    rcases initial_geometry d x with ⟨-, -, -, hLength⟩
     read_outputs hys as (zs)
     have hval : zs = (EntryCodec.pair K).packFinMatrix
         (newtonSchulzSign (M.toFloatMachine dec mm qr unif normal)
-          (vec x.val.1.2 0) (vec x.val.1.2 1) (d 1) (inputMatrix d x)) := by
+          (tolerance d x) (scale d x) (d 1) (inputMatrix d x)) := by
       have h : zs = (EntryCodec.pair K).packFinMatrix
           (newtonSchulzSign (M.toFloatMachine dec mm qr unif normal)
-            (vec [vec x.val.1.2 0, vec x.val.1.2 1] 0) (vec [vec x.val.1.2 0, vec x.val.1.2 1] 1)
-            (d 1) ((EntryCodec.pair K).matrix (d 0) (d 0)
+            (tolerance d x) (scale d x) (d 1) ((EntryCodec.pair K).matrix (d 0) (d 0)
               ((EntryCodec.pair K).packFinMatrix (inputMatrix d x)))) := hrel
       rw [EntryCodec.matrix_packFinMatrix] at h
       exact h
-    refine ⟨?_, hpos, hfr.length_eq.trans hLength⟩
+    refine ⟨?_, hpos, by simpa [Problem.initial] using hfr.length_eq⟩
     rw [← hval]
     exact hzs
   · intro d hd x

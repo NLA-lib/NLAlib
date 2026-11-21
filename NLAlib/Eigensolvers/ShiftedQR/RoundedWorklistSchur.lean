@@ -109,20 +109,21 @@ theorem roundedLeafCall_pwrites {I : Interp O Q ℝ} (hI : I.IsMeasurable)
     have : (j : ℝ) * e ≤ 2 * (n + 1) * e :=
       mul_le_mul_of_nonneg_right (by exact_mod_cast hj.le) he0
     have hsq := Nat.mul_le_mul hdn hdn
-    have g : ∀ i j : Fin 9, i ≠ j → _ := fun i j h => hG.disj' i j h
+    have g : ∀ i j : Fin 9, i ≠ j → ¬(i = 1 ∧ j = 2) ∧ ¬(i = 2 ∧ j = 1) → _ :=
+      fun i j h h' => hG.disj' i j h h'
     have hWd : Store.inBlock wk.1 wk.2 (2 * (d * d)) ≤
         Store.inBlock wk.1 wk.2 (2 * ((n + 1) * (n + 1))) := by fp_sub
     have hUd : Store.inBlock ub.1 ub.2 (2 * (d * d)) ≤
         Store.inBlock ub.1 ub.2 (2 * ((n + 1) * (n + 1))) := by fp_sub
     have hWU : Fp.Disj (Store.inBlock wk.1 wk.2 (2 * ((n + 1) * (n + 1))))
         (Store.inBlock ub.1 ub.2 (2 * ((n + 1) * (n + 1)))) := by
-      simpa [schurBlock] using g 6 7 (by simp)
+      simpa [schurBlock] using g 6 7 (by simp) (by decide)
     have hPW : Fp.Disj (Store.inBlock p.1 p.2 ps.length)
         (Store.inBlock wk.1 wk.2 (2 * ((n + 1) * (n + 1)))) := by
-      simpa [schurBlock] using g 2 6 (by simp)
+      simpa [schurBlock] using g 2 6 (by simp) (by decide)
     have hPU : Fp.Disj (Store.inBlock p.1 p.2 ps.length)
         (Store.inBlock ub.1 ub.2 (2 * ((n + 1) * (n + 1)))) := by
-      simpa [schurBlock] using g 2 7 (by simp)
+      simpa [schurBlock] using g 2 7 (by simp) (by decide)
     refine ⟨⟨subBlock A (lo, d), by linarith⟩, ⟨hG, ht, hp, hf, rs, done, A, U', hSt, hA, hU', hW,
       hsh, hcnt, htr⟩, hW rfl, hp, hG.live_of_subset (by simp),
       by have := hG.room.2.2.2.2.2.2.2.1; omega, ?_⟩
@@ -159,7 +160,8 @@ theorem roundedLeafBranch_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : 
     (fun _ h => h) (by simp)
   obtain ⟨μ, ⟨hG, ht, hp, hf, rs, done, A, U', hSt, hA, hU', hW, hsh, hcnt, htr⟩, hfr, hiW, hiU,
     hup, htrL⟩ := hμ₁
-  have g : ∀ i j : Fin 9, i ≠ j → _ := fun i j h => hG.disj' i j h
+  have g : ∀ i j : Fin 9, i ≠ j → ¬(i = 1 ∧ j = 2) ∧ ¬(i = 2 ∧ j = 1) → _ :=
+    fun i j h h' => hG.disj' i j h h'
   have hWd : Store.inBlock wk.1 wk.2 (2 * (d * d)) ≤
       Store.inBlock wk.1 wk.2 (2 * ((n + 1) * (n + 1))) := by fp_sub
   have hUd : Store.inBlock ub.1 ub.2 (2 * (d * d)) ≤
@@ -167,8 +169,8 @@ theorem roundedLeafBranch_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : 
   have hX : ∀ i : Fin 9, i ≠ 6 → i ≠ 7 → Fp.Disj
       (Store.inBlock wk.1 wk.2 (2 * (d * d)) ⊔ Store.inBlock ub.1 ub.2 (2 * (d * d)))
       (schurBlock (n + 1) ps.length a t p uo f st wk ub r i) :=
-    fun i h6 h7 => Fp.disj_sup_left.mpr ⟨(g 6 i (Ne.symm h6)).mono hWd le_rfl,
-      (g 7 i (Ne.symm h7)).mono hUd le_rfl⟩
+    fun i h6 h7 => Fp.disj_sup_left.mpr ⟨(g 6 i (Ne.symm h6) SchurGeometry.side).mono hWd le_rfl,
+      (g 7 i (Ne.symm h7) SchurGeometry.side).mono hUd le_rfl⟩
   have hlen0 := (hsh.deflationInv (H := A) (V := 1) (ε := 0)
     (by simpa using IsPerturbedUnitarySimilarBy.refl A)).length_le
   simp only [List.length_append, List.length_cons, List.length_nil] at hlen0
@@ -341,7 +343,10 @@ theorem SchurReachedCore.of_below {n : ℕ} {H U : Matrix (Fin (n + 1)) (Fin (n 
 $j < 2(n + 1)$ on the range $(lo, d + 1)$, $k \le d$, the scoped log, the decoupling call
 (`NLAlib.ShiftedQR.roundedDecoupleCall_pwrites`) and the rest of the branch
 (`NLAlib.ShiftedQR.roundedLargeRest_reached`) reach the state before round $j + 1$, except with
-probability at most $\varphi_D$. -/
+probability at most $\varphi_D$.
+
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`,
+on their scratch. -/
 theorem roundedLarge_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu0 : 0 ≤ u) (hu : u ≤ 1 / 100)
     (hL : IsIndexLit Mch I) {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
@@ -434,7 +439,10 @@ theorem roundedLarge_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
 /-- Processing a popped range on the good tapes: from the popped state of round
 $j < 2(n + 1)$ on the range $(lo, d)$, $lo + d \le n + 1$, the copy of its block, then the leaf
 branch (order at most $k$) or the large branch reach the state before round $j + 1$, except with
-probability at most $\varphi_L + \varphi_D$. -/
+probability at most $\varphi_L + \varphi_D$.
+
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`,
+on their scratch. -/
 theorem roundedRange_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu0 : 0 ≤ u) (hu : u ≤ 1 / 100)
     (hL : IsIndexLit Mch I) {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
@@ -518,7 +526,10 @@ theorem roundedRange_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
 /-- One round on the good tapes: from the state before round $j < 2(n + 1)$ with a positive
 stack count, the pop, the two bounded index reads and the processing of the popped range
 (`NLAlib.ShiftedQR.roundedRange_pwrites`) reach the state before round $j + 1$, except with
-probability at most $\varphi_L + \varphi_D$. -/
+probability at most $\varphi_L + \varphi_D$.
+
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`,
+on their scratch. -/
 theorem roundedWorklistRound_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu0 : 0 ≤ u) (hu : u ≤ 1 / 100)
     (hL : IsIndexLit Mch I) {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
@@ -564,9 +575,10 @@ theorem roundedWorklistRound_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
     have hlen0 := (hsh.deflationInv (H := A) (V := 1) (ε := 0)
       (by simpa using IsPerturbedUnitarySimilarBy.refl A)).length_le
     simp only [List.length_append, List.length_cons, List.length_nil] at hlen0 hcnt
-    have g : ∀ i j : Fin 9, i ≠ j → _ := fun i j h => hG.disj' i j h
+    have g : ∀ i j : Fin 9, i ≠ j → ¬(i = 1 ∧ j = 2) ∧ ¬(i = 2 ∧ j = 1) → _ :=
+      fun i j h h' => hG.disj' i j h h'
     have hRS : Fp.Disj (Store.inBlock r.1 r.2 2) (Store.inBlock st.1 st.2 (1 + 2 * (n + 1))) :=
-      (by simpa [schurBlock] using g 8 5 (by simp) : Fp.Disj (Store.inBlock r.1 r.2 5)
+      (by simpa [schurBlock] using g 8 5 (by simp) (by decide) : Fp.Disj (Store.inBlock r.1 r.2 5)
         (Store.inBlock st.1 st.2 (1 + 2 * (n + 1)))).mono (by fp_sub) le_rfl
     have hlSR : μ.Live [st, r] := hG.live_of_subset (by simp)
     refine ((rangePop_writes_of_isExactNatLit (τ := τ) hS hL hQ hNat hSt (by omega)
@@ -578,9 +590,10 @@ theorem roundedWorklistRound_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
         (Store.inBlock st.1 st.2 1 ⊔ Store.inBlock r.1 r.2 2)
         (schurBlock (n + 1) ps.length a t p uo f st wk ub r i) :=
       fun i h5 h8 => Fp.disj_sup_left.mpr
-        ⟨(show Fp.Disj (Store.inBlock st.1 st.2 (1 + 2 * (n + 1))) _ from g 5 i (Ne.symm h5)).mono
+        ⟨(show Fp.Disj (Store.inBlock st.1 st.2 (1 + 2 * (n + 1))) _ from
+            g 5 i (Ne.symm h5) SchurGeometry.side).mono
           (Fp.inBlock_le_inBlock le_rfl (by omega)) le_rfl,
-        (show Fp.Disj (Store.inBlock r.1 r.2 5) _ from g 8 i (Ne.symm h8)).mono
+        (show Fp.Disj (Store.inBlock r.1 r.2 5) _ from g 8 i (Ne.symm h8) SchurGeometry.side).mono
           (Fp.inBlock_le_inBlock le_rfl (by omega)) le_rfl⟩
     refine ⟨lo, d, ⟨hG.of_eqOff hfr₁,
       hfr₁.keep (Store.readsOnly_get _ _ _) (hpd 1 (by simp) (by simp)) ht,
@@ -670,7 +683,10 @@ parameter words, with the decoupler and the Schur leaf as in
 the $2(n + 1)$ capped rounds reach, except with probability at most
 $2(n + 1)(\varphi_L + \varphi_D)$, the failure word $0$, an upper triangular stored matrix and an
 accumulator tracked from $(\mathbf{U}, \mathbf{H})$ with the errors
-$((1 + 24\boldsymbol{u})^{2(n+1)m}(1 + \varepsilon_L)^{n+1} - 1, 2(n + 1)e)$. -/
+$((1 + 24\boldsymbol{u})^{2(n+1)m}(1 + \varepsilon_L)^{n+1} - 1, 2(n + 1)e)$.
+
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`,
+on their scratch. -/
 theorem roundedWorklist_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu0 : 0 ≤ u) (hu : u ≤ 1 / 100)
     (hL : IsIndexLit Mch I) {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
@@ -730,21 +746,22 @@ theorem roundedWorklist_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
     exact ⟨μ, hpre, hfr, by simpa only [h0] using hF⟩
   · have hG₁ := hG.of_eqOff hfr₁
     have hlS : μ₁.Live [st] := hG₁.live_of_subset (by simp)
-    have g : ∀ i j : Fin 9, i ≠ j → _ := fun i j h => hG.disj' i j h
+    have g : ∀ i j : Fin 9, i ≠ j → ¬(i = 1 ∧ j = 2) ∧ ¬(i = 2 ∧ j = 1) → _ :=
+      fun i j h h' => hG.disj' i j h h'
     have hFA : Fp.Disj (Store.inBlock f.1 f.2 1)
         (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) := by
-      simpa [schurBlock] using g 4 0 (by simp)
+      simpa [schurBlock] using g 4 0 (by simp) (by decide)
     have hFU : Fp.Disj (Store.inBlock f.1 f.2 1)
         (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) := by
-      simpa [schurBlock] using g 4 3 (by simp)
+      simpa [schurBlock] using g 4 3 (by simp) (by decide)
     have hFS : Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock st.1 st.2 (1 + 2 * (n + 1))) := by
-      simpa using g 4 5 (by simp)
+      simpa using g 4 5 (by simp) (by decide)
     have hSA : Fp.Disj (Store.inBlock st.1 st.2 (1 + 2 * (n + 1)))
         (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) := by
-      simpa [schurBlock] using g 5 0 (by simp)
+      simpa [schurBlock] using g 5 0 (by simp) (by decide)
     have hSU : Fp.Disj (Store.inBlock st.1 st.2 (1 + 2 * (n + 1)))
         (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) := by
-      simpa [schurBlock] using g 5 3 (by simp)
+      simpa [schurBlock] using g 5 3 (by simp) (by decide)
     refine ((stackInit_writes_of_isExactNatLit (Op := O) (Tst := Q) (τ := τ) hL hQ hNat
       (lo := 0) (size := n + 1) (by omega) le_rfl le_rfl (Nat.succ_pos n)
       (by simpa only [Nat.add_assoc] using hG₁.room.2.2.2.2.2.1)).in_frame rfl rfl hlS).mono
@@ -792,7 +809,10 @@ probability at most $2(n + 1)(\varphi_D + \varphi_L)$ the flag is $0$, the store
 $\widehat{\mathbf{T}}$ is upper triangular and $(\widehat{\mathbf{U}}, \widehat{\mathbf{T}})$ is
 tracked from $(\mathbf{U}, \mathbf{H})$ (`NLAlib.IsTrackedUnitarySimilar`) with the backward error
 $2(n + 1)e$ and the relative accumulator error
-$(1 + 24\boldsymbol{u})^{2(n+1)(n_s w + 2k(k+2))}(1 + \varepsilon_L)^{n+1} - 1$. -/
+$(1 + 24\boldsymbol{u})^{2(n+1)(n_s w + 2k(k+2))}(1 + \varepsilon_L)^{n+1} - 1$.
+
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`,
+on their scratch. -/
 theorem solveRoundedWith_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : ℕ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu : 0 ≤ u) (hu1 : u ≤ 1 / 100)
     (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
@@ -819,8 +839,7 @@ theorem solveRoundedWith_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
       (fun μ => μ.Live [a, t, p, uo, f] ∧
         μ.Room [a, t, p, uo, f]
           [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * ((n + 1) * (n + 1)), 1] ∧
-        Fp.Apart [a, t, p, uo, f]
-          [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * ((n + 1) * (n + 1)), 1] ∧
+        ShQRViewsApart (n + 1) ps.length a t p uo f ∧
         HoldsMatrix a H μ.store ∧ HoldsMatrix uo U μ.store ∧ μ.store.get t.1 t.2 = some thr ∧
         μ.store.readBlock p.1 p.2 ps.length = some ps)
       (fun μ' => μ'.store.get f.1 f.2 = some 0 ∧
@@ -851,8 +870,7 @@ theorem solveRoundedWith_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
       μ.store.get t.1 t.2 = some thr ∧ μ.store.readBlock p.1 p.2 ps.length = some ps) ?_ ?_
     fun b₀ => ?_
   · rintro μ s₁ ⟨hl, hr, ha, hA, hU, ht, hp⟩ hs hlens hBelow
-    have hG := Geometry.allocated ⟨hl, hr, ha⟩ hs hlens hBelow
-    exact ⟨by simpa [List.range_succ] using hG, hA.of_below hBelow (hl a (by simp)),
+    exact ⟨SchurGeometry.allocated hl hr ha hs hlens hBelow, hA.of_below hBelow (hl a (by simp)),
       hU.of_below hBelow (hl uo (by simp)), ((hBelow t.1 (hl t (by simp))).2 _).trans ht,
       (hBelow.readBlock (hl p (by simp)) p.2 ps.length).trans hp⟩
   · rintro μ ⟨hl, -⟩ s s' pos hBelow ⟨hf, U', Tm, hTm, hU', hrest⟩

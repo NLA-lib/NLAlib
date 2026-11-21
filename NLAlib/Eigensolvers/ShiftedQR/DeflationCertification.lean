@@ -50,37 +50,9 @@ noncomputable def deflationSpecification (D : Stmt Op Tst)
     ∃ (roots : Fin (d 0 + 1) → ℂ)
       (E : Matrix (Fin (d 0 + 1)) (Fin (d 0 + 1)) ℂ),
       HoldsMatrix (2, 0) (Matrix.of fun i (_ : Fin 1) => roots i) μ.store ∧
-      specNorm E ≤ (d 0 : ℝ) * (vec x.val.1.parameterWords 4 * frobNorm (x.val.1.matrix d)) ∧
-      (x.val.1.matrix d + E).charpoly.roots = (List.ofFn roots : Multiset ℂ)
-
-/-- Length five identifies the raw parameter list with its five decoded words. -/
-theorem deflation_parameters_eq {p : List ℝ} (hp : p.length = 5) :
-    p = [vec p 0, vec p 1, vec p 2, vec p 3, vec p 4] := by
-  apply List.ext_getElem
-  · simpa using hp
-  · intro i hi hj
-    have hi5 : i < 5 := by omega
-    interval_cases i <;>
-      simp only [List.getElem_cons_zero, List.getElem_cons_succ, vec] <;>
-      exact (List.getD_eq_getElem p default hi).symm
-
-/-- Initial capacity and separation follow from the raw problem's three supplied buffers. -/
-theorem initial_deflation_geometry (d : Fin 5 → ℕ)
-    (x : deflationProblem.Input d) :
-    let μ := deflationProblem.initial d x
-    μ.Live [(0, 0), (1, 0), (2, 0)] ∧
-      μ.Room [(0, 0), (1, 0), (2, 0)]
-        [2 * ((d 0 + 1) * (d 0 + 1)), 5, 2 * (d 0 + 1)] ∧
-      μ.store.length = 3 := by
-  have hs : (deflationProblem.initial d x).store =
-      [x.val.1.matrixWords.map some, x.val.1.parameterWords.map some,
-        List.replicate (2 * (d 0 + 1)) none] := by
-    change List.ofFn x.val.2 = _
-    rw [deflation_input_buffers]
-    rfl
-  refine ⟨?_, ?_, by simp [Problem.initial]⟩
-  · simp [Mem.Live, Problem.initial]
-  · simp [Mem.Room, hs, Store.len, x.property.1.1, x.property.1.2.1]
+      specNorm E ≤ (d 0 : ℝ) *
+        (deflationInputParams d x 4 * frobNorm (deflationInputMatrix d x)) ∧
+      (deflationInputMatrix d x + E).charpoly.roots = (List.ofFn roots : Multiset ℂ)
 
 /-- Certify one fixed decoupling implementation using only local standard exact operation
 contracts. The model exposes scalar arithmetic, index operations, comparisons, bounded index
@@ -95,43 +67,36 @@ noncomputable def deflationAlgorithm (D : Stmt Op Tst)
       IsEigenvalueKernels (exactRoutinesFor θ hθ) I → DecouplingContract θ D I) :
     Algorithm (model deflationProblem exactRoutines (resources kernelWork kernelWorkspace))
       (deflationSpecification D kernelWork kernelWorkspace) := by
-  refine (deflationRoutine D).algorithm (r := 5) (b := 3) (P := deflationProblem)
-    (fun d x => deflationSpec (x.val.1.matrix d) (vec x.val.1.parameterWords 0)
-      (vec x.val.1.parameterWords 1) (vec x.val.1.parameterWords 2)
-      (vec x.val.1.parameterWords 3) (vec x.val.1.parameterWords 4) x.val.1.gap)
-    (fun d x => [matrixWords (x.val.1.matrix d), x.val.1.parameterWords]) (ht := hTyped)
-    ?_ ?_ ?_ (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) ?_
+  refine (deflationInputs.cast (deflationRoutine D) rfl rfl).algorithmAt
+    (fun d x => deflationSpec (deflationInputMatrix d x) (deflationInputParams d x 0)
+      (deflationInputParams d x 1) (deflationInputParams d x 2) (deflationInputParams d x 3)
+      (deflationInputParams d x 4) (deflationInputs.accepts_data x).2.2.1.choose)
+    (ht := hTyped) ?_ ?_ ?_ (hmemory := ?_)
   · intro d _ x I hI
     obtain ⟨hS, hL, hK, hC, hQ⟩ := laws_model exactRoutines _ d x I hI
-    have hθ := x.property.1.2.2.2.2.1.2.2.2.1
+    have hθ := (deflationInputs.accepts_data x).2.2.1.choose_spec.2.2.2.1
     have hKθ := hK.exactRoutinesFor _ hθ
     exact deflationRoutine_meets hS exactModel_exactMachine hL hQ hC hKθ D
       (hD _ hθ I hS hL hC hQ hKθ)
-  · intro d _ x
-    rcases x.property.1 with ⟨_, hp, hk, hHess, hGlobal, hM⟩
-    obtain ⟨hl, hr, -⟩ := initial_deflation_geometry d x
-    simp only [Mem.room_cons, Mem.room_nil, and_true] at hr
-    refine ⟨Mem.readBlocks_of_cons (initial_deflation_matrix d x)
-        (Mem.readBlocks_of_cons (initial_deflation_parameters d x) rfl),
-      fun _ => ⟨rfl, hk, hHess, congrArg (fun q => [_, q]) (deflation_parameters_eq hp),
-        hGlobal, hM⟩, ?_⟩
-    change Mem.Room _ [(0, 0), (2, 0)] [2 * ((d 0 + 1) * (d 0 + 1)), 2 * (d 0 + 1)]
-    simp only [Mem.room_cons, Mem.room_nil, and_true]
-    exact ⟨hr.1, hr.2.2⟩
+  · intro d _ x _
+    obtain ⟨hk, hHess, -, hM⟩ := deflationInputs.accepts_data x
+    exact ⟨rfl, hk, hHess, by
+      simp [Routine.Domain.blocks, Routine.Domain.cast, deflationInputs, Routine.sel,
+        deflationRoutine, Slot.words, Codec.complexMatrix, Codec.vector, List.ofFn_succ,
+        Access.readable],
+      (deflationInputs.accepts_data x).2.2.1.choose_spec, hM⟩
   · intro d _ x τ m' hfr hpos ys hys hpost c _
     obtain ⟨roots, E, rfl, hNorm, hRoots⟩ := hpost
-    obtain ⟨-, -, hlength⟩ := initial_deflation_geometry d x
     change m'.readBlocks [(2, 0)] [2 * (d 0 + 1)] = some _ at hys
     obtain ⟨z, zs, hz, hread, heq⟩ := Mem.readBlocks_one hys
     obtain rfl : (2, 0) = z := by simpa using hz
     obtain rfl : zs = matrixWords (Matrix.of fun i (_ : Fin 1) => roots i) := by
       simpa using heq.symm
-    refine ⟨hpos.trans (Nat.zero_add 0), hfr.length_eq.trans hlength, roots, E, ?_, hNorm,
-      hRoots⟩
+    refine ⟨hpos.trans (Nat.zero_add 0), by simpa [Problem.initial] using hfr.length_eq,
+      roots, E, ?_, hNorm, hRoots⟩
     change m'.store.readBlock 2 0 (2 * (1 * (d 0 + 1))) = some _
     rwa [Nat.one_mul]
   · intro d _ x
-    rw [initialBytes_deflationProblem]
-    exact le_rfl
+    exact Nat.add_le_add_right (initialBytes_deflationProblem d x).le _
 
 end NLAlib.ShiftedQR

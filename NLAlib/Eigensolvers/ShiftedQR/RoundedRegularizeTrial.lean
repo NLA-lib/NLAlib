@@ -412,7 +412,9 @@ theorem trialStep_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : 
 omit [Has CmpTst Q] [Has IdxTst Q] in
 /-- The acceptance of a trial on a scalar machine with the standard model and exact natural
 literals up to $1$: `NLAlib.ShiftedQR.trialAccept` copies the matrix at `T` to `A`, stores $0$
-in `G` and $1$ in `Fl`, closes the pending slot of the log as accepted, and writes only these. -/
+in `G` and $1$ in `Fl`, closes the pending slot of the log as accepted, and writes only these.
+
+Shared by the tree of `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on its scratch. -/
 theorem trialAccept_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hNat : IsExactNatLit id M 1) {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ}
     {t a g f : ℕ × ℕ} {H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
@@ -495,7 +497,9 @@ omit [Has IdxTst Q] in
 /-- One trial of `Regularize` on a scalar machine with the standard model at
 $(n + 1)\boldsymbol{u} \le 1/2500$, exact comparisons, index literals and exact natural literals
 up to $n + 1$: `NLAlib.ShiftedQR.regularizeTrial` writes only the matrix `A`, the words `G`,
-`Fl`, its scratch and the log, and ends in `NLAlib.ShiftedQR.TrialPost`. -/
+`Fl`, its scratch and the log, and ends in `NLAlib.ShiftedQR.TrialPost`.
+
+Shared by the tree of `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on its scratch. -/
 theorem regularizeTrial_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I) {n : ℕ}
     (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {k : ℕ}
@@ -622,7 +626,9 @@ $\omega$, $(1 + \boldsymbol{u})^2\omega^2 \le t$, `NLAlib.ShiftedQR.regularizeTr
 flag to $1$ and stores at `A` an accepted step: a backward-stable degree $k$ step with some
 shift $z_j$ repeated, upper Hessenberg, with a bottom entry passing the scan; the trials close the
 slots $j_0, \dots, j_0 + k - 1$ of the log, the accepted one valid, and the step is by the exact
-unitary of its entries. -/
+unitary of its entries.
+
+Shared by the tree of `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on its scratch. -/
 theorem regularizeTrials_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I) {n : ℕ}
     (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {k : ℕ}
@@ -773,7 +779,9 @@ at `A` an accepted step (`NLAlib.ShiftedQR.regularizeTrials_writes`), given that
 are not $0.998^{1/k}\theta$-optimal, some shift decouples every backward-stable step with it. The
 trials use the slots $j_0, \dots, j_0 + k - 1$ of the log: on acceptance they are closed, the
 accepted one valid, and the step is by the exact unitary of its entries; when optimal the log is
-untouched. -/
+untouched.
+
+Shared by the tree of `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on its scratch. -/
 theorem regularizeDecide_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I) {n : ℕ}
     (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {k : ℕ}

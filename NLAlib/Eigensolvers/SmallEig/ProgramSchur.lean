@@ -714,7 +714,10 @@ $\mathbf{M} + \mathbf{E}$ for some $\|\mathbf{E}\|_2 \le \delta$
 (`NLAlib.SmallEig.ginibrePerturb_pwrites`, $3\varphi/4$), the reduction
 (`NLAlib.SmallEig.smallEigProg_reduce_writes`) and the core
 (`NLAlib.SmallEig.smallEigProg_core_pwrites`, $\varphi/4$) compose by `NLAlib.Ops.PWrites.seq`;
-the backward errors $\delta/2 + \delta/8 + \delta/4$ add. -/
+the backward errors $\delta/2 + \delta/8 + \delta/4$ add.
+
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem smallEigProg_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
     (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)

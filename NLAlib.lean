@@ -887,6 +887,7 @@ public import NLAlib.Matrix.FinitePrecision.BinaryFloatCarrier
 public import NLAlib.Matrix.FinitePrecision.BinaryFloatMachine
 public import NLAlib.Matrix.FinitePrecision.ClassicalGramSchmidt
 public import NLAlib.Matrix.FinitePrecision.ClassicalGramSchmidtRoundingError
+public import NLAlib.Matrix.FinitePrecision.ComplexCodec
 public import NLAlib.Matrix.FinitePrecision.Deflation
 public import NLAlib.Matrix.FinitePrecision.EntrywiseRounding
 public import NLAlib.Matrix.FinitePrecision.FixedPoint
@@ -1301,6 +1302,7 @@ public import NLAlib.Ops.Logic.RCLikeBlasReal
 public import NLAlib.Ops.Logic.ReadTuple
 public import NLAlib.Ops.Logic.RoutineIntro
 public import NLAlib.Ops.Logic.Scalar
+public import NLAlib.Ops.Logic.ScalarLoop
 public import NLAlib.Ops.Logic.ScalarOutput
 public import NLAlib.Ops.Logic.SpatialScalar
 public import NLAlib.Ops.Logic.Step

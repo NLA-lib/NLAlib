@@ -12,7 +12,7 @@ imaginary words in column-major order. The raw buffers contain H, the five param
 The dimensions are `[N-1,m,k,F,M]`. The program computes `tau = delta*frobNorm H` before
 changing H. The spectral gap g is a mathematical promise; it supplies no computed data.
 
-[DeflationAdmissible](../../NLAlib/Eigensolvers/ShiftedQR/DeflationInput.lean) and
+The admission of [deflationInputs](../../NLAlib/Eigensolvers/ShiftedQR/DeflationInput.lean) and
 [ShiftedQRHyps](../../NLAlib/Matrix/QRIteration/DeflationHypotheses.lean) state the domain:
 
 | Hypothesis | Exact condition | Purpose |

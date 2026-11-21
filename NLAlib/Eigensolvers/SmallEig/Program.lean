@@ -208,8 +208,7 @@ theorem smallEigProg_core_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {u :
     {H X' V₁ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr : ℝ} (hl : μ.Live [a, t, p, uo, f])
     (hr : μ.Room [a, t, p, uo, f]
       [2 * ((n + 1) * (n + 1)), 1, qs.length, 2 * ((n + 1) * (n + 1)), 1])
-    (hap : Fp.Apart [a, t, p, uo, f]
-      [2 * ((n + 1) * (n + 1)), 1, qs.length, 2 * ((n + 1) * (n + 1)), 1])
+    (hap : ShQRViewsApart (n + 1) qs.length a t p uo f)
     (hA : HoldsMatrix a H μ.store) (hX : HoldsMatrix uo X' μ.store)
     (ht : μ.store.get t.1 t.2 = some thr) (hp : μ.store.readBlock p.1 p.2 qs.length = some qs)
     (hV₁ : HasOrthonormalCols V₁)
@@ -254,8 +253,7 @@ def SmallEigCoreReady {n : ℕ} (qs : List ℝ) (w p ub : ℕ × ℕ) (L : ℕ)
   μ.Live [w, (L + 1, 0), p, ub, (L, 0)] ∧
     μ.Room [w, (L + 1, 0), p, ub, (L, 0)]
       [2 * ((n + 1) * (n + 1)), 1, qs.length, 2 * ((n + 1) * (n + 1)), 1] ∧
-    Fp.Apart [w, (L + 1, 0), p, ub, (L, 0)]
-      [2 * ((n + 1) * (n + 1)), 1, qs.length, 2 * ((n + 1) * (n + 1)), 1] ∧
+    ShQRViewsApart (n + 1) qs.length w (L + 1, 0) p ub (L, 0) ∧
     HoldsMatrix w H μ.store ∧ HoldsMatrix ub X μ.store ∧
     μ.store.get (L + 1) 0 = some (qs.getD 6 0) ∧ μ.store.readBlock p.1 p.2 qs.length = some qs
 
@@ -349,7 +347,8 @@ theorem smallEigProg_reduce_writes_if {M : Machine ℝ} {I : Interp O Q ℝ} {u 
     refine ⟨Store.le_len_of_readBlock hH₅ (by positivity), by simp [hlenB, hTh],
       Store.le_len_of_readBlock hp₅ (by omega), Store.le_len_of_readBlock hX' (by positivity),
       by simp [hlenB, hFl], trivial⟩
-  · simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
+  · refine ShQRViewsApart.of_apart ?_
+    simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
       and_true]
     exact ⟨⟨hnew hwL (by omega), hdwp, hwu, hnew hwL le_rfl⟩,
       ⟨(hnew hpL (by omega)).symm, (hnew huL (by omega)).symm, Fp.disj_inBlock_of_ne (by omega)⟩,

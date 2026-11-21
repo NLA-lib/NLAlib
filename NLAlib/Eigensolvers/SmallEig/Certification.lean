@@ -5,6 +5,8 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.Ops.RoutineProblem
+public import NLAlib.Matrix.FinitePrecision.ComplexCodec
 public import NLAlib.Eigensolvers.ShiftedQR.Cost
 public import NLAlib.Ops.Probability
 public import NLAlib.Ops.Profiles.Confined
@@ -212,10 +214,9 @@ buffers (matrix, parameter words, output). -/
 def smallEigProgram (sG : ℕ) : Program SmallEigOp Tst 3 3 :=
   (smallEigRoutine (O := SmallEigOp) (Q := Tst) sG).close 3 3
 
-/-- **The semantic input** at the sizes `d`, for the order bound $n_{\max}$ and the tail records
-$c_1, c_2$: the matrix of order `d 0 + 1` and the reals $\Sigma, \delta, \varphi$ of the parameter
-words, with the number of words and the cap the ones they determine. -/
-structure SmallEigData (nmax : ℕ) (c₁ c₂ : PolyLogTail) (d : Fin 3 → ℕ) where
+/-- **The inputs** at the sizes `d`: the matrix of order `d 0 + 1` and the reals
+$\Sigma, \delta, \varphi$. -/
+structure SmallEigData (d : Fin 3 → ℕ) where
   /-- The matrix. -/
   matrix : Matrix (Fin (d 0 + 1)) (Fin (d 0 + 1)) ℂ
   /-- The norm bound. -/
@@ -224,17 +225,6 @@ structure SmallEigData (nmax : ℕ) (c₁ c₂ : PolyLogTail) (d : Fin 3 → ℕ
   δ : ℝ
   /-- The failure probability. -/
   φ : ℝ
-  /-- The number of parameter words. -/
-  words_eq : d 1 = (smallEigParams nmax S δ φ c₁ c₂).length
-  /-- The cap. -/
-  cap_eq : d 2 = smallEigCap nmax S δ φ c₁ c₂
-
-/-- The three raw buffers of an input: the matrix words (overwritten by the triangular block), the
-parameter words and uninitialized room for the $2(n + 1)^2$ words of the accumulator. -/
-noncomputable def SmallEigData.buffers {nmax : ℕ} {c₁ c₂ : PolyLogTail} {d : Fin 3 → ℕ}
-    (x : SmallEigData nmax c₁ c₂ d) : Fin 3 → Buf ℝ :=
-  ![(matrixWords x.matrix).map some, (smallEigParams nmax x.S x.δ x.φ c₁ c₂).map some,
-    List.replicate (2 * ((d 0 + 1) * (d 0 + 1))) none]
 
 /-- **The admitted sizes** on the machine `Mch`: the natural literals up to the order $n + 1$
 are exact, the order is at most $n_{\max}$, and the sizes are those of some parameter reals. No
@@ -245,22 +235,83 @@ def SmallEigSizes (Mch : Machine ℝ) (nmax : ℕ) (c₁ c₂ : PolyLogTail) (d 
     ∃ S δ φ : ℝ, d 1 = (smallEigParams nmax S δ φ c₁ c₂).length ∧
       d 2 = smallEigCap nmax S δ φ c₁ c₂
 
-/-- **The problem** of the small-eigenvalue solver on the machine `Mch`, with the order bound
-$n_{\max}$ and the tail records $c_1, c_2$: the three raw buffers of
-`NLAlib.SmallEig.SmallEigData.buffers` at the admitted sizes `NLAlib.SmallEig.SmallEigSizes`. -/
-noncomputable def smallEigProblem (Mch : Machine ℝ) (nmax : ℕ) (c₁ c₂ : PolyLogTail)
-    (admitted : ∃ d, SmallEigSizes Mch nmax c₁ c₂ d) : Problem ℝ 3 3 where
-  formats _ := .cell
+/-- **The admitted inputs** of the small-eigenvalue solver on the machine `Mch`, with the order
+bound $n_{\max}$ and the tail records $c_1, c_2$, at the sizes
+`NLAlib.SmallEig.SmallEigSizes`: every matrix of order `d 0 + 1` and all reals
+$\Sigma, \delta, \varphi$ whose number of parameter words and cap are the sizes `d 1`, `d 2`.
+The first operand holds the words of the matrix (overwritten by the triangular block); the
+second holds the parameter words `NLAlib.SmallEig.smallEigParams`, computed from the reals, which
+are in no buffer; the accumulator is blank. -/
+noncomputable def smallEigInputs (Mch : Machine ℝ) (nmax : ℕ) (c₁ c₂ : PolyLogTail)
+    (admitted : ∃ d, SmallEigSizes Mch nmax c₁ c₂ d) :
+    (smallEigRoutine (O := SmallEigOp) (Q := Tst) 0).Domain ℝ 3 3 where
   valid := SmallEigSizes Mch nmax c₁ c₂
-  Data := SmallEigData nmax c₁ c₂
-  admissible _ x buffers := buffers = x.buffers
+  In := SmallEigData
+  accepts d x := d 1 = (smallEigParams nmax x.S x.δ x.φ c₁ c₂).length ∧
+    d 2 = smallEigCap nmax x.S x.δ x.φ c₁ c₂
+  slot d := ![.stored (Codec.complexMatrix (d 0 + 1)) SmallEigData.matrix,
+    .derivedOfLength (d 1) (fun x => smallEigParams nmax x.S x.δ x.φ c₁ c₂),
+    .blank (2 * ((d 0 + 1) * (d 0 + 1)))]
+  fits := by
+    intro d i p hp
+    fin_cases i <;> (
+      have hport := Option.some.inj hp
+      subst hport
+      constructor <;>
+        simp [Slot.len, Slot.held, Slot.derivedOfLength, Access.readable, Codec.complexMatrix,
+          List.ofFn_succ])
+  Unstored _ := ℝ × ℝ × ℝ
+  unstored _ x := (x.S, x.δ, x.φ)
+  faithful d x y hu h := by
+    have h0 := h 0
+    simp only [Slot.input, Matrix.cons_val_zero, Option.some.injEq] at h0
+    have hm := (Codec.complexMatrix (d 0 + 1)).encode_injective h0
+    obtain ⟨_, _, _, _⟩ := x
+    obtain ⟨_, _, _, _⟩ := y
+    simp only [Prod.mk.injEq] at hu
+    obtain ⟨rfl, rfl, rfl⟩ := hu
+    obtain rfl : _ = _ := hm
+    rfl
   admitted := admitted
-  supply d hd := by
+  inhabited d hd := by
     obtain ⟨-, -, S, δ, φ, hw, hT⟩ := hd
-    exact ⟨⟨0, S, δ, φ, hw, hT⟩, _, rfl⟩
+    exact ⟨⟨0, S, δ, φ⟩, hw, hT⟩
+
+/-- **The problem** of the small-eigenvalue solver on the machine `Mch`, with the order bound
+$n_{\max}$ and the tail records $c_1, c_2$: the problem of the admitted inputs
+`NLAlib.SmallEig.smallEigInputs`. -/
+noncomputable abbrev smallEigProblem (Mch : Machine ℝ) (nmax : ℕ) (c₁ c₂ : PolyLogTail)
+    (admitted : ∃ d, SmallEigSizes Mch nmax c₁ c₂ d) : Problem ℝ 3 3 :=
+  (smallEigInputs Mch nmax c₁ c₂ admitted).problem
 
 variable {Mch : Machine ℝ} {nmax : ℕ} {c₁ c₂ : PolyLogTail}
   {admitted : ∃ d, SmallEigSizes Mch nmax c₁ c₂ d}
+
+/-- The number of parameter words of an input of the problem. -/
+theorem smallEigProblem_words_eq (d : Fin 3 → ℕ)
+    (x : (smallEigProblem Mch nmax c₁ c₂ admitted).Input d) :
+    d 1 = (smallEigParams nmax x.val.1.S x.val.1.δ x.val.1.φ c₁ c₂).length :=
+  ((smallEigInputs Mch nmax c₁ c₂ admitted).accepts_data x).1
+
+/-- The cap of an input of the problem. -/
+theorem smallEigProblem_cap_eq (d : Fin 3 → ℕ)
+    (x : (smallEigProblem Mch nmax c₁ c₂ admitted).Input d) :
+    d 2 = smallEigCap nmax x.val.1.S x.val.1.δ x.val.1.φ c₁ c₂ :=
+  ((smallEigInputs Mch nmax c₁ c₂ admitted).accepts_data x).2
+
+/-- The three supplied buffers of an input: the matrix words, the parameter words and
+uninitialized room for the $2(n + 1)^2$ words of the accumulator. -/
+theorem smallEigProblem_buffers (d : Fin 3 → ℕ)
+    (x : (smallEigProblem Mch nmax c₁ c₂ admitted).Input d) :
+    x.val.2 = ![(matrixWords x.val.1.matrix).map some,
+      (smallEigParams nmax x.val.1.S x.val.1.δ x.val.1.φ c₁ c₂).map some,
+      List.replicate (2 * ((d 0 + 1) * (d 0 + 1))) none] := by
+  rw [(smallEigInputs Mch nmax c₁ c₂ admitted).buffers_eq x]
+  funext i
+  fin_cases i
+  · rfl
+  · exact Slot.buffer_derivedOfLength (smallEigProblem_words_eq d x).symm
+  · rfl
 
 /-- The initial memory holds the input of the small-eigenvalue program
 (`NLAlib.SmallEig.SmallEigInput`) at the three supplied buffers. -/
@@ -268,9 +319,11 @@ theorem smallEigProblem_initial_input (d : Fin 3 → ℕ)
     (x : (smallEigProblem Mch nmax c₁ c₂ admitted).Input d) :
     SmallEigInput nmax x.val.1.S x.val.1.δ x.val.1.φ c₁ c₂ (0, 0) (1, 0) (2, 0) x.val.1.matrix
       ((smallEigProblem Mch nmax c₁ c₂ admitted).initial d x) := by
-  have hb : x.val.2 = x.val.1.buffers := x.property
+  have hb := smallEigProblem_buffers d x
   have hs : ((smallEigProblem Mch nmax c₁ c₂ admitted).initial d x).store =
-      List.ofFn x.val.1.buffers := by
+      List.ofFn ![(matrixWords x.val.1.matrix).map some,
+        (smallEigParams nmax x.val.1.S x.val.1.δ x.val.1.φ c₁ c₂).map some,
+        List.replicate (2 * ((d 0 + 1) * (d 0 + 1))) none] := by
     change List.ofFn x.val.2 = _
     rw [hb]
   have hA := Problem.initial_readBlock (P := smallEigProblem Mch nmax c₁ c₂ admitted) d x
@@ -282,7 +335,7 @@ theorem smallEigProblem_initial_input (d : Fin 3 → ℕ)
     Fp.disj_inBlock_of_ne (by omega),
     Fp.disj_sup_right.mpr ⟨Fp.disj_inBlock_of_ne (by omega), Fp.disj_inBlock_of_ne (by omega)⟩⟩
   · simp [Mem.Live, Problem.initial]
-  · simp [hs, Store.len, SmallEigData.buffers, List.ofFn_succ]
+  · simp [hs, Store.len, List.ofFn_succ]
 
 /-! ### The work and span polynomial -/
 
@@ -344,11 +397,9 @@ def smallEigInputWords (d : Fin 3 → ℕ) : ℕ :=
 theorem smallEigProblem_initialBytes (d : Fin 3 → ℕ)
     (x : (smallEigProblem Mch nmax c₁ c₂ admitted).Input d) :
     (smallEigProblem Mch nmax c₁ c₂ admitted).initialBytes d x = smallEigInputWords d := by
-  unfold Problem.initialBytes
-  have hb : x.val.2 = x.val.1.buffers := x.property
-  rw [hb]
-  simp [smallEigProblem, SmallEigData.buffers, List.ofFn_succ, smallEigInputWords,
-    ← x.val.1.words_eq, Nat.add_assoc]
+  refine ((smallEigInputs Mch nmax c₁ c₂ admitted).initialBytes_eq x).trans ?_
+  simp [smallEigInputs, Slot.len, Slot.derivedOfLength, Codec.complexMatrix, List.ofFn_succ,
+    smallEigInputWords, Nat.add_assoc]
 
 /-- The every-tape output claim: the run writes only the block and the accumulator, and both
 are stored (a Schur pair, `NLAlib.Schur.HoldsSchurPair`, with no accuracy claim). -/
@@ -394,8 +445,8 @@ theorem smallEigProgram_wp {sU sG : ℕ} {d : Fin 3 → ℕ} (hd : SmallEigSizes
     (by simp [length_smallEigParams])
   refine wp_frame ?_ ?_ hl4 ((hT x.val.1.matrix le_rfl hW hq hl3 hroom hwo hqwo).mono le_rfl
     fun μ' _ ⟨Tb, Ub, hTb, hUb⟩ => ⟨Ub, Tb, hTb, hUb⟩)
-  · simp [Program.environment, IExp.evalList, IExp.eval, x.val.1.words_eq, x.val.1.cap_eq,
-      List.ofFn_succ]
+  · simp [Program.environment, IExp.evalList, IExp.eval, smallEigProblem_words_eq d x,
+      smallEigProblem_cap_eq d x, List.ofFn_succ]
   · simp [Program.environment, Operand.evalList, Operand.eval, IExp.eval, List.ofFn_succ]
 
 /-- The program passes the storage discipline of the costs. -/
@@ -416,27 +467,23 @@ noncomputable def smallEigAlgorithm (Mch : Machine ℝ) (nmax : ℕ) (c₁ c₂ 
     (admitted : ∃ d, SmallEigSizes Mch nmax c₁ c₂ d) (sU sG : ℕ) :
     Algorithm (smallEigModel (smallEigProblem Mch nmax c₁ c₂ admitted) Mch sU)
       (smallEigSpecification Mch nmax c₁ c₂ admitted sG) :=
-  (smallEigRoutine sG).algorithm (r := 3) (b := 3)
-    (P := smallEigProblem Mch nmax c₁ c₂ admitted) (fun _ _ => smallEigSpec Mch)
-    (fun _ x => [matrixWords x.val.1.matrix,
-      smallEigParams nmax x.val.1.S x.val.1.δ x.val.1.φ c₁ c₂])
-    (ht := smallEigProgram_wellTyped sG)
+  ((smallEigInputs Mch nmax c₁ c₂ admitted).cast (smallEigRoutine sG) rfl rfl).algorithm
+    (fun _ _ => smallEigSpec Mch)
     (fun _ _ _ _ hI => by
       obtain ⟨hS, hL, hC, hQ, hSmp, hDisk⟩ := smallEigModel_laws hI
       exact smallEigRoutine_meets hS hL hQ hC hSmp hDisk)
-    (fun d hd x => by
-      obtain ⟨hA, hq, hl, hroom, -, -⟩ :=
-        smallEigProblem_initial_input (admitted := admitted) d x
-      rw [← x.val.1.words_eq] at hq
-      refine ⟨Mem.readBlocks_of_cons hA (Mem.readBlocks_of_cons hq rfl), fun _ => ?_, ?_⟩
-      · have hcap : SmallEigCaps (d 2) (smallEigParams nmax x.val.1.S x.val.1.δ x.val.1.φ c₁ c₂) :=
-          x.val.1.cap_eq ▸ smallEigCaps_smallEigParams _ _ _ _ _ _
-        exact ⟨hd.1, _, hcap,
-          (length_smallEigParams _ _ _ _ _ _).ge, x.val.1.words_eq.symm, _, rfl⟩
-      · change Mem.Room _ [(0, 0), (2, 0)]
-          [2 * ((d 0 + 1) * (d 0 + 1)), 2 * ((d 0 + 1) * (d 0 + 1))]
-        simp only [Mem.room_cons, Mem.room_nil, and_true]
-        exact ⟨Store.le_len_of_readBlock hA (by positivity), hroom⟩)
+    (fun d hd x hx _ => by
+      have hw : (Slot.derivedOfLength (d 1) fun x : SmallEigData d =>
+          smallEigParams nmax x.S x.δ x.φ c₁ c₂).words x =
+            smallEigParams nmax x.S x.δ x.φ c₁ c₂ := Slot.words_derivedOfLength hx.1.symm
+      have hcap : SmallEigCaps (d 2) (smallEigParams nmax x.S x.δ x.φ c₁ c₂) :=
+        hx.2 ▸ smallEigCaps_smallEigParams _ _ _ _ _ _
+      refine ⟨hd.1, smallEigParams nmax x.S x.δ x.φ c₁ c₂, hcap,
+        (length_smallEigParams _ _ _ _ _ _).ge, hx.1.symm, x.matrix, ?_⟩
+      change [matrixWords x.matrix, (Slot.derivedOfLength (d 1) fun x : SmallEigData d =>
+        smallEigParams nmax x.S x.δ x.φ c₁ c₂).words x] = _
+      rw [hw]
+      rfl)
     (fun d _ x τ m' hfr _ ys hys hpost c _ => by
       change Store.EqOff (Fp.blocks [(0, 0), (2, 0)]
         [2 * ((d 0 + 1) * (d 0 + 1)), 2 * ((d 0 + 1) * (d 0 + 1))]) _ _ at hfr
@@ -447,7 +494,9 @@ noncomputable def smallEigAlgorithm (Mch : Machine ℝ) (nmax : ℕ) (c₁ c₂ 
     (fun _ _ => le_rfl) (fun _ _ => le_rfl)
     (fun d _ => (smallEigResources_work _).trans_le (size_staticCost_smallEigProgram_le sG d))
     (fun d _ => (smallEigResources_span _).trans_le (size_staticCost_smallEigProgram_le sG d))
-    (fun d _ x => by rw [smallEigProblem_initialBytes]; exact le_rfl)
+    (fun d _ x =>
+      Nat.add_le_add_right (smallEigProblem_initialBytes (admitted := admitted) d x).le _)
+    (ht := smallEigProgram_wellTyped (admitted := admitted) sG)
 
 /-! ### The headline on one run -/
 
@@ -502,9 +551,11 @@ theorem smallEig_algorithm_measureReal_not_accepts_le {u : ℝ} (hM : StdModel u
       [(0, 0), (1, 0), (0, 0), (2, 0)] := fun y hy => hl3 y (by
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hy
     rcases hy with rfl | rfl | rfl | rfl <;> simp)
-  refine hω (wp_frame ?_ ?_ hl4 hW)
-  · simp [Program.environment, IExp.evalList, IExp.eval, smallEigDims, x.val.1.words_eq,
-      x.val.1.cap_eq, List.ofFn_succ]
+  refine hω ?_
+  change Wp .total I (ξ ω) (smallEigProgram sG).body _ _ _
+  refine wp_frame ?_ ?_ hl4 hW
+  · simp [Program.environment, IExp.evalList, IExp.eval, smallEigDims, smallEigProblem_words_eq d x,
+      smallEigProblem_cap_eq d x, List.ofFn_succ]
   · simp [Program.environment, Operand.evalList, Operand.eval, IExp.eval, List.ofFn_succ]
 
 

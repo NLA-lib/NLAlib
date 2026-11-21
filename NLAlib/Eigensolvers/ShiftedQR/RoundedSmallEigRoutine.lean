@@ -44,12 +44,12 @@ is one less than the order, so that every dimension is the order of a nonempty m
 shape `F (k + 1 + np)`, `k (n + 1)` of the program is computed from the dimensions. The number
 of draws depends on the data, so the routine declares none. The written operands are unreported:
 the termination theorem (`NLAlib.ShiftedQR.roundedShQRSmallEig_terminates`) states the footprint
-of the run, not the contents left. The parameter words are `isolated` because the input
-condition `NLAlib.ShiftedQR.ShQRSmallEigInput`, in which the accuracy theorems are stated, takes
-the threshold word and the parameter words apart. The tree has one variable for each of the
-matrix and the accumulator, named in both positions of the call. -/
+of the run, not the contents left. The threshold word and the parameter words are read only and
+may overlap: the input condition `NLAlib.ShiftedQR.ShQRSmallEigInput` takes each of them apart
+from the written operands, not from the other. The tree has one variable for each of the matrix
+and the accumulator, named in both positions of the call. -/
 def shqrSmallEigRoutine (sG : ℕ) : Routine O Q :=
-  routine% [n, k, np, F, T] (unreported A : 2 * ((n + 1) * (n + 1)), t : 1, isolated p : np,
+  routine% [n, k, np, F, T] (unreported A : 2 * ((n + 1) * (n + 1)), t : 1, p : np,
       unreported U : 2 * ((n + 1) * (n + 1))) → (A, U, unreported f : 1)
     draws unspecified one variable {
     run (roundedShQRSmallEig (O := O) (Q := Q) sG)
@@ -90,10 +90,12 @@ theorem shqrSmallEigRoutine_meets {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS :
   have hpos : 0 < (shqrSmallEigParams n k B Γ S δ φ c₁ c₂).length := by
     simp [shqrSmallEigParams, shqrParams, roundedDecoupleParams]
   have hin : ShQRSmallEigInput k B Γ S δ φ c₁ c₂ a t p out f H m := by
-    refine ⟨by room, ?_, by disjoint, ⟨U₀, hus⟩, hws, ?_, hps⟩
+    refine ⟨by room, ?_, ?_, ⟨U₀, hus⟩, hws, ?_, hps⟩
     · simp only [Mem.room_cons, Mem.room_nil, and_true]
       exact ⟨hroom.1, Store.le_len_of_readBlock hts Nat.one_pos,
         Store.le_len_of_readBlock hps hpos, hroom.2.1, hroom.2.2⟩
+    · unfold ShQRViewsApart
+      exact ⟨by disjoint, by disjoint⟩
     · simpa [vec] using Store.get_of_readBlock hts (j := 0) Nat.one_pos default
   have hT := roundedShQRSmallEig_terminates (O := O) (Q := Q) (sG := sG) hS hL hNat hQ hC hSmp
     hDisk hk hin τ

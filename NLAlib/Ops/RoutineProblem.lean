@@ -221,6 +221,25 @@ theorem buffer_of_held {s : Slot K In} (h : s.held = true) (x : In) :
     s.buffer x = (s.words x).map some := by
   cases s <;> first | rfl | exact absurd h (by simp [held])
 
+/-- A derived slot of `len` cells for the words `f` of the inputs, when it is the admission and
+not the type of the inputs that equates the number of words with `len` (a dimension): the words
+are cut or padded to `len`, and are `f x` at every input with `(f x).length = len`
+(`NLAlib.Ops.Slot.words_derivedOfLength`). -/
+def derivedOfLength [Inhabited K] (len : ℕ) (f : In → List K) : Slot K In :=
+  .derived len (fun x => (f x).take len ++ List.replicate (len - (f x).length) default)
+    (fun x => by simp only [List.length_append, List.length_take, List.length_replicate]; omega)
+
+/-- At an input whose words have the length of the slot, the slot holds those words. -/
+theorem words_derivedOfLength [Inhabited K] {len : ℕ} {f : In → List K} {x : In}
+    (h : (f x).length = len) : (derivedOfLength len f).words x = f x := by
+  simp [derivedOfLength, words, ← h]
+
+/-- At an input whose words have the length of the slot, the buffer holds those words. -/
+theorem buffer_derivedOfLength [Inhabited K] {len : ℕ} {f : In → List K} {x : In}
+    (h : (f x).length = len) : (derivedOfLength len f).buffer x = (f x).map some := by
+  rw [show (derivedOfLength len f).buffer x = ((derivedOfLength len f).words x).map some from rfl,
+    words_derivedOfLength h]
+
 end Slot
 
 /-- Decoding the encoding of a vector of words decodes its entries. -/

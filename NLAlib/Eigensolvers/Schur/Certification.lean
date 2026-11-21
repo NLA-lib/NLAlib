@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.Ops.RoutineProblem
 public import NLAlib.Eigensolvers.Schur.Completion
 public import NLAlib.Eigensolvers.SmallEig.Certification
 public import NLAlib.Eigensolvers.HessenbergAccumulate
@@ -86,27 +87,15 @@ theorem schurPipelineProgram_eq (Nm Reg Red Core : Stmt SmallEigOp Tst) :
         [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩, ⟨2, .var 8⟩, ⟨3, .var 9⟩]
         (schurPipelineWith Nm Reg Red Core)⟩ := rfl
 
-/-- **The semantic input** at the sizes `d`, for the word function `words` and the size function
-`sizes` of $(n, \delta, \varphi)$: the matrix of order `d 0 + 1` and the reals $\delta, \varphi$,
-with the sizes the ones they determine. -/
-structure SchurData (words : ℕ → ℝ → ℝ → List ℝ) (sizes : ℕ → ℝ → ℝ → Fin 6 → ℕ)
-    (d : Fin 6 → ℕ) where
+/-- **The inputs** at the sizes `d`: the matrix of order `d 0 + 1` and the reals
+$\delta, \varphi$. -/
+structure SchurData (d : Fin 6 → ℕ) where
   /-- The matrix. -/
   matrix : Matrix (Fin (d 0 + 1)) (Fin (d 0 + 1)) ℂ
   /-- The backward error. -/
   δ : ℝ
   /-- The failure probability. -/
   φ : ℝ
-  /-- The sizes are those of $(n, \delta, \varphi)$. -/
-  sizes_eq : sizes (d 0) δ φ = d
-
-/-- The four raw buffers of an input: the matrix words, the parameter words, uninitialized room for
-the accumulator and the flag. -/
-noncomputable def SchurData.buffers {words : ℕ → ℝ → ℝ → List ℝ}
-    {sizes : ℕ → ℝ → ℝ → Fin 6 → ℕ} {d : Fin 6 → ℕ} (x : SchurData words sizes d) :
-    Fin 4 → Buf ℝ :=
-  ![(matrixWords x.matrix).map some, (words (d 0) x.δ x.φ).map some,
-    List.replicate (2 * ((d 0 + 1) * (d 0 + 1))) none, [none]]
 
 /-- **The admitted sizes** on the machine `Mch`: the natural literals up to the order $n + 1$ are
 exact and the sizes are those of some $0 < \delta \le 1$, $0 < \varphi \le 1$. No rounding model
@@ -115,19 +104,52 @@ def SchurSizes (Mch : Machine ℝ) (sizes : ℕ → ℝ → ℝ → Fin 6 → �
   IsExactNatLit id Mch (d 0 + 1) ∧
     ∃ δ φ : ℝ, 0 < δ ∧ δ ≤ 1 ∧ 0 < φ ∧ φ ≤ 1 ∧ sizes (d 0) δ φ = d
 
-/-- **The problem** of the dense Schur pipeline on the machine `Mch`: the four raw buffers of
-`NLAlib.Schur.SchurData.buffers` at the admitted sizes `NLAlib.Schur.SchurSizes`. -/
-noncomputable def schurPipelineProblem (Mch : Machine ℝ) (words : ℕ → ℝ → ℝ → List ℝ)
+/-- **The admitted inputs** of the dense Schur pipeline on the machine `Mch`, for the word
+function `words` and the size function `sizes` of $(n, \delta, \varphi)$, at the sizes
+`NLAlib.Schur.SchurSizes`: every matrix of order `d 0 + 1` and all reals $\delta, \varphi$
+whose sizes are `d`. The first operand holds the words of the matrix. The reals are in no
+buffer: the second operand holds the parameter words `words`, computed from them, at the
+`d 1 + d 2` cells of its port. The accumulator and the flag are blank. -/
+noncomputable def schurPipelineInputs (Mch : Machine ℝ) (words : ℕ → ℝ → ℝ → List ℝ)
     (sizes : ℕ → ℝ → ℝ → Fin 6 → ℕ) (admitted : ∃ d, SchurSizes Mch sizes d) :
-    Problem ℝ 6 4 where
-  formats _ := .cell
+    (schurPipelineRoutine .skip .skip .skip .skip).Domain ℝ 6 4 where
   valid := SchurSizes Mch sizes
-  Data := SchurData words sizes
-  admissible _ x buffers := buffers = x.buffers
+  In := SchurData
+  accepts d x := sizes (d 0) x.δ x.φ = d
+  slot d := ![.stored (Codec.complexMatrix (d 0 + 1)) SchurData.matrix,
+    .derivedOfLength (d 1 + d 2) (fun x => words (d 0) x.δ x.φ),
+    .blank (2 * ((d 0 + 1) * (d 0 + 1))), .blank 1]
+  fits := by
+    intro d i p hp
+    fin_cases i <;> (
+      have hport := Option.some.inj hp
+      subst hport
+      constructor <;>
+        simp [Slot.len, Slot.held, Slot.derivedOfLength, Access.readable, Codec.complexMatrix,
+          List.ofFn_succ])
+  Unstored _ := ℝ × ℝ
+  unstored _ x := (x.δ, x.φ)
+  faithful d x y hu h := by
+    have h0 := h 0
+    simp only [Slot.input, Matrix.cons_val_zero, Option.some.injEq] at h0
+    have hm := (Codec.complexMatrix (d 0 + 1)).encode_injective h0
+    obtain ⟨_, _, _⟩ := x
+    obtain ⟨_, _, _⟩ := y
+    simp only [Prod.mk.injEq] at hu
+    obtain ⟨rfl, rfl⟩ := hu
+    obtain rfl : _ = _ := hm
+    rfl
   admitted := admitted
-  supply d hd := by
+  inhabited d hd := by
     obtain ⟨-, δ, φ, -, -, -, -, hs⟩ := hd
-    exact ⟨⟨0, δ, φ, hs⟩, _, rfl⟩
+    exact ⟨⟨0, δ, φ⟩, hs⟩
+
+/-- **The problem** of the dense Schur pipeline on the machine `Mch`: the problem of the admitted
+inputs `NLAlib.Schur.schurPipelineInputs`. -/
+noncomputable abbrev schurPipelineProblem (Mch : Machine ℝ) (words : ℕ → ℝ → ℝ → List ℝ)
+    (sizes : ℕ → ℝ → ℝ → Fin 6 → ℕ) (admitted : ∃ d, SchurSizes Mch sizes d) :
+    Problem ℝ 6 4 :=
+  (schurPipelineInputs Mch words sizes admitted).problem
 
 /-- **The work (and span) of the pipeline** from the stages' work bounds $W_\bullet$: their sum
 and the glue $128(N + 1)^2$, $N$ = `d 0 + 1` (the scaling loops, the identity, the branch and the
@@ -192,28 +214,47 @@ theorem size_staticCost_schurPipelineProgram_le {Nm Reg Red Core : Stmt SmallEig
   have hsq' : (d 0 + 1 + 1) ^ 2 = (d 0 + 2) ^ 2 := by ring
   omega
 
-/-- The initial payload of an input is `NLAlib.Schur.schurPipelineInputWords` when the words
-have the sizes' count. -/
-theorem schurPipelineProblem_initialBytes
+/-- The sizes of an input of the problem are those of its reals. -/
+theorem schurPipelineProblem_sizes_eq (d : Fin 6 → ℕ)
+    (x : (schurPipelineProblem Mch words sizes admitted).Input d) :
+    sizes (d 0) x.val.1.δ x.val.1.φ = d :=
+  (schurPipelineInputs Mch words sizes admitted).accepts_data x
+
+/-- The four supplied buffers of an input, when the words have the sizes' count: the matrix
+words, the parameter words, uninitialized room for the accumulator and the flag. -/
+theorem schurPipelineProblem_buffers
     (hwords : ∀ n δ φ, (words n δ φ).length = sizes n δ φ 1 + sizes n δ φ 2) (d : Fin 6 → ℕ)
+    (x : (schurPipelineProblem Mch words sizes admitted).Input d) :
+    x.val.2 = ![(matrixWords x.val.1.matrix).map some,
+      (words (d 0) x.val.1.δ x.val.1.φ).map some,
+      List.replicate (2 * ((d 0 + 1) * (d 0 + 1))) none, [none]] := by
+  rw [(schurPipelineInputs Mch words sizes admitted).buffers_eq x]
+  funext i
+  fin_cases i
+  · rfl
+  · refine Slot.buffer_derivedOfLength ?_
+    rw [hwords, schurPipelineProblem_sizes_eq d x]
+  · rfl
+  · rfl
+
+/-- The initial payload of an input is `NLAlib.Schur.schurPipelineInputWords`. -/
+theorem schurPipelineProblem_initialBytes (d : Fin 6 → ℕ)
     (x : (schurPipelineProblem Mch words sizes admitted).Input d) :
     (schurPipelineProblem Mch words sizes admitted).initialBytes d x =
       schurPipelineInputWords d := by
-  unfold Problem.initialBytes
-  have hb : x.val.2 = x.val.1.buffers := x.property
-  rw [hb]
-  have hw : (words (d 0) x.val.1.δ x.val.1.φ).length = d 1 + d 2 := by
-    rw [hwords, x.val.1.sizes_eq]
-  simp [schurPipelineProblem, SchurData.buffers, List.ofFn_succ, schurPipelineInputWords, hw,
-    Nat.add_assoc]
+  refine ((schurPipelineInputs Mch words sizes admitted).initialBytes_eq x).trans ?_
+  simp [schurPipelineInputs, Slot.len, Slot.derivedOfLength, Codec.complexMatrix, List.ofFn_succ,
+    schurPipelineInputWords, Nat.add_assoc]
 
 /-- The initial memory holds the input of the pipeline (`NLAlib.Schur.SchurPipelineInput`) at
-the four supplied buffers. -/
-theorem schurPipelineProblem_initial_input (d : Fin 6 → ℕ)
+the four supplied buffers, when the words have the sizes' count (the parameter operand has
+`d 1 + d 2` cells). -/
+theorem schurPipelineProblem_initial_input
+    (hwords : ∀ n δ φ, (words n δ φ).length = sizes n δ φ 1 + sizes n δ φ 2) (d : Fin 6 → ℕ)
     (x : (schurPipelineProblem Mch words sizes admitted).Input d) :
     SchurPipelineInput (words (d 0) x.val.1.δ x.val.1.φ) (0, 0) (1, 0) (2, 0) (3, 0)
       x.val.1.matrix ((schurPipelineProblem Mch words sizes admitted).initial d x) := by
-  have hb : x.val.2 = x.val.1.buffers := x.property
+  have hb := schurPipelineProblem_buffers hwords d x
   have hs : ((schurPipelineProblem Mch words sizes admitted).initial d x).store =
       List.ofFn x.val.2 := rfl
   have hA := Problem.initial_readBlock (P := schurPipelineProblem Mch words sizes admitted) d x
@@ -222,7 +263,7 @@ theorem schurPipelineProblem_initial_input (d : Fin 6 → ℕ)
     (1 : Fin 4) (xs := words (d 0) x.val.1.δ x.val.1.φ) (by rw [hb]; rfl)
   refine ⟨?_, ?_, ?_, by simpa [HoldsMatrix] using hA, by simpa using hP⟩
   · simp [Mem.Live, Problem.initial]
-  · simp [hs, hb, Mem.Room, Store.len, SchurData.buffers, List.ofFn_succ]
+  · simp [hs, hb, Mem.Room, Store.len, List.ofFn_succ]
   · simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
       and_true]
     exact ⟨⟨Fp.disj_inBlock_of_ne (by omega), Fp.disj_inBlock_of_ne (by omega),
@@ -255,23 +296,20 @@ noncomputable def schurPipelineAlgorithm (sU : ℕ) (Nm Reg Red Core : Stmt Smal
         (schurPipelineSpec (words (d 0) x.val.1.δ x.val.1.φ) (List.ofFn d))) :
     Algorithm (smallEigModel (schurPipelineProblem Mch words sizes admitted) Mch sU)
       (schurPipelineSpecification Mch words sizes admitted Nm Reg Red Core WNm WReg WRed WCore) :=
-  (schurPipelineRoutine Nm Reg Red Core).algorithm (r := 6) (b := 4)
-    (P := schurPipelineProblem Mch words sizes admitted)
-    (fun d x => schurPipelineSpec (words (d 0) x.val.1.δ x.val.1.φ) (List.ofFn d))
-    (fun d x => [matrixWords x.val.1.matrix, words (d 0) x.val.1.δ x.val.1.φ])
-    (ht := ht) hmeets
-    (fun d _ x => by
-      obtain ⟨-, hr, -, hA, hP⟩ := schurPipelineProblem_initial_input (admitted := admitted) d x
-      have hlen : (words (d 0) x.val.1.δ x.val.1.φ).length = d 1 + d 2 := by
-        rw [hwords, x.val.1.sizes_eq]
-      rw [hlen] at hP hr
-      simp only [Mem.room_cons, Mem.room_nil, and_true] at hr
-      refine ⟨Mem.readBlocks_of_cons hA (Mem.readBlocks_of_cons hP rfl),
-        fun _ => ⟨rfl, _, rfl⟩, ?_⟩
-      change Mem.Room _ [(0, 0), (2, 0), (3, 0)]
-        [2 * ((d 0 + 1) * (d 0 + 1)), 2 * ((d 0 + 1) * (d 0 + 1)), 1]
-      simp only [Mem.room_cons, Mem.room_nil, and_true]
-      exact ⟨hr.1, hr.2.2.1, hr.2.2.2⟩)
+  ((schurPipelineInputs Mch words sizes admitted).cast (schurPipelineRoutine Nm Reg Red Core)
+      rfl rfl).algorithm
+    (fun d x => schurPipelineSpec (words (d 0) x.δ x.φ) (List.ofFn d)) hmeets
+    (fun d _ x hx _ => by
+      have hw : (Slot.derivedOfLength (d 1 + d 2) fun x : SchurData d =>
+          words (d 0) x.δ x.φ).words x = words (d 0) x.δ x.φ :=
+        Slot.words_derivedOfLength (by
+          have hx' : sizes (d 0) x.δ x.φ = d := hx
+          rw [hwords, hx'])
+      refine ⟨rfl, x.matrix, ?_⟩
+      change [matrixWords x.matrix, (Slot.derivedOfLength (d 1 + d 2) fun x : SchurData d =>
+        words (d 0) x.δ x.φ).words x] = _
+      rw [hw]
+      rfl)
     (fun d _ x τ m' hfr _ ys _ _ c _ => by
       change Store.EqOff (Fp.blocks [(0, 0), (2, 0), (3, 0)]
         [2 * ((d 0 + 1) * (d 0 + 1)), 2 * ((d 0 + 1) * (d 0 + 1)), 1]) _ _ at hfr
@@ -283,7 +321,9 @@ noncomputable def schurPipelineAlgorithm (sU : ℕ) (Nm Reg Red Core : Stmt Smal
       (size_staticCost_schurPipelineProgram_le hNm hReg hRed hCore d))
     (fun d _ => (smallEigResources_span _).trans_le
       (size_staticCost_schurPipelineProgram_le hNm hReg hRed hCore d))
-    (fun d _ x => by rw [schurPipelineProblem_initialBytes hwords]; exact le_rfl)
+    (fun d _ x =>
+      Nat.add_le_add_right (schurPipelineProblem_initialBytes (admitted := admitted) d x).le _)
+    (ht := ht)
 
 end Generic
 
@@ -296,6 +336,11 @@ noncomputable def denseSchurSizes (n : ℕ) (δ φ : ℝ) : Fin 6 → ℕ :=
     (denseSchurThreshold n δ φ ::
       (denseSchurShQRParams n δ φ ++ denseSchurLeafParams n δ φ)).length,
     denseSchurDegree n δ φ, denseSchurCap n δ φ, denseSchurLeafCap n δ φ]
+
+/-- The parameter words have the sizes' count. -/
+theorem length_denseSchurParams (n : ℕ) (δ φ : ℝ) :
+    (denseSchurParams n δ φ).length = denseSchurSizes n δ φ 1 + denseSchurSizes n δ φ 2 := by
+  simp [denseSchurParams, denseSchurParamsWith, denseSchurSizes]
 
 /-- **The problem** of the dense Schur solver on the machine `Mch`. -/
 noncomputable def denseSchurProblem (Mch : Machine ℝ)
@@ -354,12 +399,13 @@ theorem denseSchurProgram_wp {Mch : Machine ℝ} {admitted : ∃ d, SchurSizes M
       ((denseSchurProblem Mch admitted).initial d x) := by
   obtain ⟨hNat, -⟩ := hd
   obtain ⟨hS, hL, hC, hQ, hSmp, hDisk⟩ := smallEigModel_laws hI
-  have hin := schurPipelineProblem_initial_input (admitted := admitted) d x
+  have hin := schurPipelineProblem_initial_input (admitted := admitted)
+    length_denseSchurParams d x
   have hl5 : ((denseSchurProblem Mch admitted).initial d x).Live
       [(0, 0), (1, 0), (0, 0), (2, 0), (3, 0)] := fun y hy => hin.1 y (by
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hy
     rcases hy with rfl | rfl | rfl | rfl | rfl <;> simp)
-  have hsz := x.val.1.sizes_eq
+  have hsz := schurPipelineProblem_sizes_eq d x
   refine wp_frame ?_ ?_ hl5 (Wp.mono (denseSchur_completes (O := SmallEigOp) (Q := Tst)
     (sG := sG) hS hL hNat hQ hC hSmp hDisk hin τ) fun _ h => h.1)
   · have h := fun i => (congrFun hsz i).symm
@@ -407,11 +453,6 @@ theorem denseSchurRoutine_meets {Mch : Machine ℝ} {I : Interp SmallEigOp Tst �
   · rintro m' - -
     exact ⟨trivial, [], rfl, trivial⟩
 
-/-- The parameter words have the sizes' count. -/
-theorem length_denseSchurParams (n : ℕ) (δ φ : ℝ) :
-    (denseSchurParams n δ φ).length = denseSchurSizes n δ φ 1 + denseSchurSizes n δ φ 2 := by
-  simp [denseSchurParams, denseSchurParamsWith, denseSchurSizes]
-
 /-- **The dense Schur solver as a canonical certificate**: `NLAlib.Schur.schurPipelineAlgorithm`
 with the four stages of `NLAlib.Schur.denseSchur` and their static counts, over the model
 `NLAlib.SmallEig.smallEigModel` (no oracle) with the unit costs: it succeeds on every admitted
@@ -433,7 +474,7 @@ noncomputable def denseSchurAlgorithm (Mch : Machine ℝ)
       obtain ⟨hS, hL, hC, hQ, hSmp, hDisk⟩ := smallEigModel_laws hI
       have h := denseSchurRoutine_meets (sG := sG) (n := d 0) (δ := x.val.1.δ) (φ := x.val.1.φ)
         hS hL hd.1 hQ hC hSmp hDisk
-      have hsz := fun i => congrFun x.val.1.sizes_eq i
+      have hsz := fun i => congrFun (schurPipelineProblem_sizes_eq d x) i
       have hdims : d 0 :: (denseSchurDims (d 0) x.val.1.δ x.val.1.φ).tail = List.ofFn d := by
         simp [denseSchurDims, denseSchurDimsWith, List.ofFn_succ, ← hsz 1, ← hsz 2, ← hsz 3,
           ← hsz 4, ← hsz 5, denseSchurSizes]
@@ -481,7 +522,8 @@ theorem denseSchur_algorithm_measureReal_not_accepts_le {Mch : Machine ℝ}
           (58 * denseSchurRotations (d 0) x.val.1.δ x.val.1.φ * u) m} ≤ x.val.1.φ := by
   have := hξ.isProbabilityMeasure
   obtain ⟨hS, hL, hC, hQ, hSmp, hDisk⟩ := smallEigModel_laws hI
-  have hin := schurPipelineProblem_initial_input (admitted := admitted) d x
+  have hin := schurPipelineProblem_initial_input (admitted := admitted)
+    length_denseSchurParams d x
   have hT := denseSchur_measureReal_not_schur_le (O := SmallEigOp) (Q := Tst) (sG := sG) hS hM
     hL hd.1 hQ hC hIm hloc hSmp hDisk hU hG hδ hδ1 hφ hφ1 hu hin hξ
   refine (denseSchurAlgorithm Mch admitted sU sG).measureReal_not_accepts_le_of_wp hd x
@@ -493,7 +535,7 @@ theorem denseSchur_algorithm_measureReal_not_accepts_le {Mch : Machine ℝ}
       [(0, 0), (1, 0), (0, 0), (2, 0), (3, 0)] := fun y hy => hl3 y (by
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hy
     rcases hy with rfl | rfl | rfl | rfl | rfl <;> simp)
-  have hsz := x.val.1.sizes_eq
+  have hsz := schurPipelineProblem_sizes_eq d x
   refine hω (wp_frame ?_ ?_ hl5 hW)
   · have h := fun i => (congrFun hsz i).symm
     simp [Program.environment, IExp.evalList, IExp.eval, denseSchurDims, denseSchurDimsWith,

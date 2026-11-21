@@ -6,7 +6,8 @@
     {"old": "NLAlib.Schur.writes_identity_holdsMatrix_one", "new": "NLAlib.Schur.identity_writes_holdsMatrix_one", "rule": "N12; operand-form statement of a tree"},
     {"old": "NLAlib.SmallEig.writes_rhessUv", "new": "NLAlib.SmallEig.rhessUv_writes", "rule": "N12; operand-form statement of a tree"},
     {"old": "NLAlib.Ops.RoundedScalarBlas.writes_nrm2_stdModel", "new": "NLAlib.Ops.RoundedScalarBlas.nrm2_writes_stdModel", "rule": "N12; operand-form statement of a tree"},
-    {"old": "NLAlib.Ops.RoundedScalarBlas.writes_nrm2", "new": "NLAlib.Ops.RoundedScalarBlas.nrm2_writes", "rule": "N12; operand-form statement of a tree"}
+    {"old": "NLAlib.Ops.RoundedScalarBlas.writes_nrm2", "new": "NLAlib.Ops.RoundedScalarBlas.nrm2_writes", "rule": "N12; operand-form statement of a tree"},
+    {"old": "NLAlib.Schur.writes_loop_mul_cell", "new": "NLAlib.Ops.writes_loop_mul_cell", "rule": "a general rule of the program logic, moved to NLAlib/Ops/Logic/ScalarLoop.lean"}
   ],
   "statementChanged": [
     "NLAlib.Schur.schurPipelineAlgorithm",

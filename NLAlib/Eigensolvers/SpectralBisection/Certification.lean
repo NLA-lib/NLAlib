@@ -17,7 +17,6 @@ capacity. Primitive contracts and independent dimension-only resource bounds are
 
 ## Main results
 
-* `NLAlib.SpectralBisection.initial_parameter_words`: the three supplied scalar words.
 * `NLAlib.SpectralBisection.initial_problem_geometry`: actual initial capacities and separation.
 * `NLAlib.SpectralBisection.boundedBisectionAlgorithm`: independent output and resource claims.
 * `NLAlib.SpectralBisection.bisectionAlgorithm`: full syntactic manifest certification.
@@ -31,28 +30,8 @@ open Ops
 
 variable {K : Type} [Inhabited K] {domain : (Fin 3 → ℕ) → Prop} {admitted : ∃ d, domain d}
 
-private theorem vecList_three {xs : List K} (hlen : xs.length = 3) :
-    xs = [vec xs 0, vec xs 1, vec xs 2] := by
-  rcases xs with _ | ⟨a, xs⟩
-  · simp at hlen
-  rcases xs with _ | ⟨b, xs⟩
-  · simp at hlen
-  rcases xs with _ | ⟨c, xs⟩
-  · simp at hlen
-  have hz : xs = [] := List.length_eq_zero_iff.mp (by simpa using hlen)
-  subst xs
-  rfl
-
-/-- The initial parameter buffer contains precisely its three supplied radius, tolerance and
-accuracy words. The equality merely identifies the raw list using its declared length. -/
-theorem initial_parameter_words (d : Fin 3 → ℕ)
-    (x : (problem (K := K) domain admitted).Input d) :
-    ((problem (K := K) domain admitted).initial d x).store.readBlock 1 0 3 =
-      some [vec x.val.1.2 0, vec x.val.1.2 1, vec x.val.1.2 2] := by
-  rw [initial_readBlock_parameters, ← vecList_three (length_input_parameters d x)]
-
 /-- The four supplied buffers are live and separated, and both uninitialized output blocks
-have their declared capacities. Every fact follows from the explicit raw-buffer interface. -/
+have their declared capacities. Every fact follows from the construction of the problem. -/
 theorem initial_problem_geometry (d : Fin 3 → ℕ)
     (x : (problem (K := K) domain admitted).Input d) :
     let μ := (problem (K := K) domain admitted).initial d x
@@ -62,16 +41,11 @@ theorem initial_problem_geometry (d : Fin 3 → ℕ)
       μ.Room [(2, 0), (3, 0)] [2 * (d 0 * d 0), d 0] ∧
       μ.store.length = 4 ∧ μ.pos = 0 := by
   dsimp only
-  have hs : ((problem (K := K) domain admitted).initial d x).store =
-      [x.val.1.1.map some, x.val.1.2.map some,
-        List.replicate (2 * (d 0 * d 0)) none, List.replicate (d 0) none] := by
-    change List.ofFn x.val.2 = _
-    rw [input_buffers]
-    rfl
-  refine ⟨?_, ?_, ?_, by simp, rfl⟩
-  · simp [Mem.Live]
+  refine ⟨?_, ?_, (inputs (K := K) domain admitted).room_initial x, ?_, rfl⟩
+  · exact
+      Problem.live_slots (P := problem (K := K) domain admitted) d x
   · disjoint
-  · simp [Mem.Room, hs, Store.len]
+  · simp [Problem.initial]
 
 /-- Transparent full-tree count, scratch, work, span and resident-capacity declarations for
 the fixed dense program. Matrix operation costs and workspace come from the supplied profile. -/
@@ -106,12 +80,8 @@ noncomputable def boundedBisectionAlgorithm (M : Machine K) (dec : K → ℝ)
       (Dense.functionalModel (problem (K := K) domain admitted) M dec (EntryCodec.pair K) mm qr
         (Dense.resources matrixWork matrixWorkspace))
       (wordSpecification M dec mm qr domain admitted budget scratch work span memory) := by
-  refine (bisectionRoutine (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).algorithm (r := 3)
-    (b := 4) (P := problem (K := K) domain admitted)
-    (fun d x => bisectionSpec M dec mm qr (vec x.val.1.2 0) (vec x.val.1.2 1) (vec x.val.1.2 2)
-      (inputMatrix d x))
-    (fun d x => [(EntryCodec.pair K).packFinMatrix (inputMatrix d x),
-      [vec x.val.1.2 0, vec x.val.1.2 1, vec x.val.1.2 2]])
+  refine (inputs (K := K) domain admitted).algorithm
+    (fun d x => bisectionSpec M dec mm qr (x.2 0) (x.2 1) (x.2 2) x.1)
     (ht := wellTyped_bisectionProgram matrixWork matrixWorkspace) ?_ ?_ ?_ hCost hScratch hWork
     hSpan ?_
   · intro d hd x I hI
@@ -119,11 +89,8 @@ noncomputable def boundedBisectionAlgorithm (M : Machine K) (dec : K → ℝ)
       (Dense.resources matrixWork matrixWorkspace) d x I hI with
       ⟨hS, hL, hMM, hQR, hSample, hC, hQ⟩
     exact bisectionRoutine_meets M dec mm qr _ _ _ _ hS hL hC hMM hQR hQ hSample
-  · intro d hd x
-    rcases initial_problem_geometry d x with ⟨-, -, hRoom, -, -⟩
-    exact ⟨Mem.readBlocks_of_cons (initial_readBlock_inputMatrix d x)
-        (Mem.readBlocks_of_cons (initial_parameter_words d x) rfl),
-      fun _ => ⟨rfl, hLit d hd, rfl, rfl⟩, hRoom⟩
+  · intro d hd x _ τ
+    exact ⟨rfl, hLit d hd, rfl, rfl⟩
   · intro d hd x τ ν hfr hpos ys hys hpost c _
     rcases initial_problem_geometry d x with ⟨-, -, -, hLength, -⟩
     have hFinalLength : ν.store.length = 4 := hfr.length_eq.trans hLength

@@ -755,7 +755,11 @@ theorem rotateColumnsOn_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
 
 /-- A scoped row rotation on any machine stores the machine row rotation
 (`NLAlib.machineRowRotation`) and releases its scratch. The matrix and each coefficient
-view are spatially disjoint; the coefficient views may overlap. [GolubVanLoan2013, §5.1.8]. -/
+view are spatially disjoint; the coefficient views may overlap. [GolubVanLoan2013, §5.1.8].
+
+Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergReduceLast`,
+`NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shiftedStepRoutine`,
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem rotateRows_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {n k : ℕ} {a c s : ℕ × ℕ} {H : Matrix (Fin n) (Fin n) ℂ} {cv sv : ℂ}

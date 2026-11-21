@@ -66,10 +66,9 @@ output, failure word). -/
 def shqrSmallEigProgram (sG : ℕ) : Program SmallEigOp Tst 5 5 :=
   (shqrSmallEigRoutine (O := SmallEigOp) (Q := Tst) sG).close 5 5
 
-/-- **The semantic input** at the sizes `d`, for the tail records $c_1, c_2$: the matrix of
-order `d 0 + 1` and the reals $B, \Gamma, \Sigma, \delta, \varphi$ of the parameter words, with
-the shift degree, the number of words and the two caps the ones they determine. -/
-structure ShQRSmallEigData (c₁ c₂ : PolyLogTail) (d : Fin 5 → ℕ) where
+/-- **The inputs** at the sizes `d`: the matrix of order `d 0 + 1` and the reals
+$B, \Gamma, \Sigma, \delta, \varphi$. -/
+structure ShQRSmallEigData (d : Fin 5 → ℕ) where
   /-- The matrix. -/
   matrix : Matrix (Fin (d 0 + 1)) (Fin (d 0 + 1)) ℂ
   /-- The condition bound. -/
@@ -82,23 +81,6 @@ structure ShQRSmallEigData (c₁ c₂ : PolyLogTail) (d : Fin 5 → ℕ) where
   δ : ℝ
   /-- The failure probability. -/
   φ : ℝ
-  /-- The shift degree is the degree of (eqn:setk) at $4B$. -/
-  degree_eq : d 1 = shqrDegree (4 * B)
-  /-- The number of parameter words. -/
-  words_eq : d 2 = (shqrSmallEigParams (d 0) (d 1) B Γ S δ φ c₁ c₂).length
-  /-- The iteration cap. -/
-  cap_eq : d 3 = shqrCap (d 0) B Γ S δ
-  /-- The cap of the small-eigenvalue program. -/
-  smallEigCap_eq : d 4 = shqrSmallEigCap (d 0) (d 1) B Γ S δ φ c₁ c₂
-
-/-- The five raw buffers of an input: the matrix words, the deflation threshold word, the
-parameter words, the identity accumulator and the failure word. -/
-noncomputable def ShQRSmallEigData.buffers {c₁ c₂ : PolyLogTail} {d : Fin 5 → ℕ}
-    (x : ShQRSmallEigData c₁ c₂ d) : Fin 5 → Buf ℝ :=
-  ![(matrixWords x.matrix).map some,
-    [some (shqrDeflationThreshold (d 0) (d 1) x.B x.Γ x.S x.δ x.φ)],
-    (shqrSmallEigParams (d 0) (d 1) x.B x.Γ x.S x.δ x.φ c₁ c₂).map some,
-    (matrixWords (1 : Matrix (Fin (d 0 + 1)) (Fin (d 0 + 1)) ℂ)).map some, [none]]
 
 /-- **The admitted sizes** on the machine `Mch`: the natural literals up to the order $n + 1$
 are exact, and the sizes are those of some parameter reals. -/
@@ -108,22 +90,108 @@ def ShQRSmallEigSizes (Mch : Machine ℝ) (c₁ c₂ : PolyLogTail) (d : Fin 5 �
       d 2 = (shqrSmallEigParams (d 0) (d 1) B Γ S δ φ c₁ c₂).length ∧
       d 3 = shqrCap (d 0) B Γ S δ ∧ d 4 = shqrSmallEigCap (d 0) (d 1) B Γ S δ φ c₁ c₂
 
-/-- **The problem** of the rounded shifted QR algorithm with the small-eigenvalue program on the
-machine `Mch`, with the tail records $c_1, c_2$: the five raw buffers of
-`NLAlib.ShiftedQR.ShQRSmallEigData.buffers` at the admitted sizes
-`NLAlib.ShiftedQR.ShQRSmallEigSizes`. -/
-noncomputable def shqrSmallEigProblem (Mch : Machine ℝ) (c₁ c₂ : PolyLogTail)
-    (admitted : ∃ d, ShQRSmallEigSizes Mch c₁ c₂ d) : Problem ℝ 5 5 where
-  formats _ := .cell
+/-- **The admitted inputs** of the rounded shifted QR algorithm with the small-eigenvalue
+program on the machine `Mch`, with the tail records $c_1, c_2$, at the sizes
+`NLAlib.ShiftedQR.ShQRSmallEigSizes`: every matrix of order `d 0 + 1` and all reals
+$B, \Gamma, \Sigma, \delta, \varphi$ whose shift degree, number of parameter words and two caps
+are the sizes `d 1`, `d 2`, `d 3`, `d 4`. The first operand holds the words of the matrix. The
+reals are in no buffer: the second operand holds the deflation threshold word and the third
+the parameter words, both computed from them. The accumulator holds the identity, which the
+algorithm requires of it, and the failure word is blank. -/
+noncomputable def shqrSmallEigInputs (Mch : Machine ℝ) (c₁ c₂ : PolyLogTail)
+    (admitted : ∃ d, ShQRSmallEigSizes Mch c₁ c₂ d) :
+    (shqrSmallEigRoutine (O := SmallEigOp) (Q := Tst) 0).Domain ℝ 5 5 where
   valid := ShQRSmallEigSizes Mch c₁ c₂
-  Data := ShQRSmallEigData c₁ c₂
-  admissible _ x buffers := buffers = x.buffers
+  In := ShQRSmallEigData
+  accepts d x := d 1 = shqrDegree (4 * x.B) ∧
+    d 2 = (shqrSmallEigParams (d 0) (d 1) x.B x.Γ x.S x.δ x.φ c₁ c₂).length ∧
+    d 3 = shqrCap (d 0) x.B x.Γ x.S x.δ ∧
+    d 4 = shqrSmallEigCap (d 0) (d 1) x.B x.Γ x.S x.δ x.φ c₁ c₂
+  slot d := ![.stored (Codec.complexMatrix (d 0 + 1)) ShQRSmallEigData.matrix,
+    .derived 1 (fun x => [shqrDeflationThreshold (d 0) (d 1) x.B x.Γ x.S x.δ x.φ]) (fun _ => rfl),
+    .derivedOfLength (d 2) (fun x => shqrSmallEigParams (d 0) (d 1) x.B x.Γ x.S x.δ x.φ c₁ c₂),
+    .derived (2 * ((d 0 + 1) * (d 0 + 1)))
+      (fun _ => matrixWords (1 : Matrix (Fin (d 0 + 1)) (Fin (d 0 + 1)) ℂ))
+      (fun _ => length_matrixWords _),
+    .blank 1]
+  fits := by
+    intro d i p hp
+    fin_cases i <;> (
+      have hport := Option.some.inj hp
+      subst hport
+      constructor <;>
+        simp [Slot.len, Slot.held, Slot.derivedOfLength, Access.readable, Codec.complexMatrix,
+          List.ofFn_succ])
+  Unstored _ := ℝ × ℝ × ℝ × ℝ × ℝ
+  unstored _ x := (x.B, x.Γ, x.S, x.δ, x.φ)
+  faithful d x y hu h := by
+    have h0 := h 0
+    simp only [Slot.input, Matrix.cons_val_zero, Option.some.injEq] at h0
+    have hm := (Codec.complexMatrix (d 0 + 1)).encode_injective h0
+    obtain ⟨_, _, _, _, _, _⟩ := x
+    obtain ⟨_, _, _, _, _, _⟩ := y
+    simp only [Prod.mk.injEq] at hu
+    obtain ⟨rfl, rfl, rfl, rfl, rfl⟩ := hu
+    obtain rfl : _ = _ := hm
+    rfl
   admitted := admitted
-  supply d hd := by
+  inhabited d hd := by
     obtain ⟨-, B, Γ, S, δ, φ, hk, hp, hF, hT⟩ := hd
-    exact ⟨⟨0, B, Γ, S, δ, φ, hk, hp, hF, hT⟩, _, rfl⟩
+    exact ⟨⟨0, B, Γ, S, δ, φ⟩, hk, hp, hF, hT⟩
+
+/-- **The problem** of the rounded shifted QR algorithm with the small-eigenvalue program on the
+machine `Mch`, with the tail records $c_1, c_2$: the problem of the admitted inputs
+`NLAlib.ShiftedQR.shqrSmallEigInputs`. -/
+noncomputable abbrev shqrSmallEigProblem (Mch : Machine ℝ) (c₁ c₂ : PolyLogTail)
+    (admitted : ∃ d, ShQRSmallEigSizes Mch c₁ c₂ d) : Problem ℝ 5 5 :=
+  (shqrSmallEigInputs Mch c₁ c₂ admitted).problem
 
 variable {Mch : Machine ℝ} {c₁ c₂ : PolyLogTail} {admitted : ∃ d, ShQRSmallEigSizes Mch c₁ c₂ d}
+
+/-- The shift degree of an input of the problem is the degree of (eqn:setk) at $4B$. -/
+theorem shqrSmallEigProblem_degree_eq (d : Fin 5 → ℕ)
+    (x : (shqrSmallEigProblem Mch c₁ c₂ admitted).Input d) :
+    d 1 = shqrDegree (4 * x.val.1.B) :=
+  ((shqrSmallEigInputs Mch c₁ c₂ admitted).accepts_data x).1
+
+/-- The number of parameter words of an input of the problem. -/
+theorem shqrSmallEigProblem_words_eq (d : Fin 5 → ℕ)
+    (x : (shqrSmallEigProblem Mch c₁ c₂ admitted).Input d) :
+    d 2 = (shqrSmallEigParams (d 0) (d 1) x.val.1.B x.val.1.Γ x.val.1.S x.val.1.δ x.val.1.φ c₁
+      c₂).length :=
+  ((shqrSmallEigInputs Mch c₁ c₂ admitted).accepts_data x).2.1
+
+/-- The iteration cap of an input of the problem. -/
+theorem shqrSmallEigProblem_cap_eq (d : Fin 5 → ℕ)
+    (x : (shqrSmallEigProblem Mch c₁ c₂ admitted).Input d) :
+    d 3 = shqrCap (d 0) x.val.1.B x.val.1.Γ x.val.1.S x.val.1.δ :=
+  ((shqrSmallEigInputs Mch c₁ c₂ admitted).accepts_data x).2.2.1
+
+/-- The cap of the small-eigenvalue program of an input of the problem. -/
+theorem shqrSmallEigProblem_smallEigCap_eq (d : Fin 5 → ℕ)
+    (x : (shqrSmallEigProblem Mch c₁ c₂ admitted).Input d) :
+    d 4 = shqrSmallEigCap (d 0) (d 1) x.val.1.B x.val.1.Γ x.val.1.S x.val.1.δ x.val.1.φ
+      c₁ c₂ :=
+  ((shqrSmallEigInputs Mch c₁ c₂ admitted).accepts_data x).2.2.2
+
+/-- The five supplied buffers of an input: the matrix words, the deflation threshold word, the
+parameter words, the identity accumulator and the failure word. -/
+theorem shqrSmallEigProblem_buffers (d : Fin 5 → ℕ)
+    (x : (shqrSmallEigProblem Mch c₁ c₂ admitted).Input d) :
+    x.val.2 = ![(matrixWords x.val.1.matrix).map some,
+      [some (shqrDeflationThreshold (d 0) (d 1) x.val.1.B x.val.1.Γ x.val.1.S x.val.1.δ
+        x.val.1.φ)],
+      (shqrSmallEigParams (d 0) (d 1) x.val.1.B x.val.1.Γ x.val.1.S x.val.1.δ x.val.1.φ c₁
+        c₂).map some,
+      (matrixWords (1 : Matrix (Fin (d 0 + 1)) (Fin (d 0 + 1)) ℂ)).map some, [none]] := by
+  rw [(shqrSmallEigInputs Mch c₁ c₂ admitted).buffers_eq x]
+  funext i
+  fin_cases i
+  · rfl
+  · rfl
+  · exact Slot.buffer_derivedOfLength (shqrSmallEigProblem_words_eq d x).symm
+  · rfl
+  · rfl
 
 /-- The initial memory holds the input of the algorithm (`NLAlib.ShiftedQR.ShQRSmallEigInput`)
 at the five supplied buffers. -/
@@ -132,9 +200,14 @@ theorem shqrSmallEigProblem_initial_input (d : Fin 5 → ℕ)
     ShQRSmallEigInput (d 1) x.val.1.B x.val.1.Γ x.val.1.S x.val.1.δ x.val.1.φ c₁ c₂ (0, 0)
       (1, 0) (2, 0) (3, 0) (4, 0) x.val.1.matrix
       ((shqrSmallEigProblem Mch c₁ c₂ admitted).initial d x) := by
-  have hb : x.val.2 = x.val.1.buffers := x.property
+  have hb := shqrSmallEigProblem_buffers d x
   have hs : ((shqrSmallEigProblem Mch c₁ c₂ admitted).initial d x).store =
-      List.ofFn x.val.1.buffers := by
+      List.ofFn ![(matrixWords x.val.1.matrix).map some,
+        [some (shqrDeflationThreshold (d 0) (d 1) x.val.1.B x.val.1.Γ x.val.1.S x.val.1.δ
+        x.val.1.φ)],
+        (shqrSmallEigParams (d 0) (d 1) x.val.1.B x.val.1.Γ x.val.1.S x.val.1.δ x.val.1.φ c₁
+        c₂).map some,
+        (matrixWords (1 : Matrix (Fin (d 0 + 1)) (Fin (d 0 + 1)) ℂ)).map some, [none]] := by
     change List.ofFn x.val.2 = _
     rw [hb]
   have hA := Problem.initial_readBlock (P := shqrSmallEigProblem Mch c₁ c₂ admitted) d x
@@ -148,12 +221,13 @@ theorem shqrSmallEigProblem_initial_input (d : Fin 5 → ℕ)
     (by rw [hb]; rfl)
   refine ⟨?_, ?_, ?_, ⟨1, by simpa [HoldsMatrix] using hU⟩, ?_, ?_, ?_⟩
   · simp [Mem.Live, Problem.initial]
-  · simp [Mem.Room, hs, Store.len, ShQRSmallEigData.buffers, List.ofFn_succ]
-  · simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil]
+  · simp [Mem.Room, hs, Store.len, List.ofFn_succ]
+  · refine ShQRViewsApart.of_apart ?_
+    simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil]
     disjoint
   · simpa [HoldsMatrix] using hA
   · rw [hs]
-    simp [Store.get, ShQRSmallEigData.buffers, List.ofFn_succ]
+    simp [Store.get, List.ofFn_succ]
   · simpa using hP
 
 /-- The accumulator buffer holds the identity. -/
@@ -162,7 +236,7 @@ theorem shqrSmallEigProblem_initial_accumulator (d : Fin 5 → ℕ)
     ((shqrSmallEigProblem Mch c₁ c₂ admitted).initial d x).store.readBlock 3 0
         (2 * ((d 0 + 1) * (d 0 + 1))) =
       some (matrixWords (1 : Matrix (Fin (d 0 + 1)) (Fin (d 0 + 1)) ℂ)) := by
-  have hb : x.val.2 = x.val.1.buffers := x.property
+  have hb := shqrSmallEigProblem_buffers d x
   have hU := Problem.initial_readBlock (P := shqrSmallEigProblem Mch c₁ c₂ admitted) d x
     (3 : Fin 5) (xs := matrixWords (1 : Matrix (Fin (d 0 + 1)) (Fin (d 0 + 1)) ℂ))
     (by rw [hb]; rfl)
@@ -241,11 +315,9 @@ def shqrSmallEigInputWords (d : Fin 5 → ℕ) : ℕ :=
 theorem shqrSmallEigProblem_initialBytes (d : Fin 5 → ℕ)
     (x : (shqrSmallEigProblem Mch c₁ c₂ admitted).Input d) :
     (shqrSmallEigProblem Mch c₁ c₂ admitted).initialBytes d x = shqrSmallEigInputWords d := by
-  unfold Problem.initialBytes
-  have hb : x.val.2 = x.val.1.buffers := x.property
-  rw [hb]
-  simp [shqrSmallEigProblem, ShQRSmallEigData.buffers, List.ofFn_succ, shqrSmallEigInputWords,
-    ← x.val.1.words_eq, Nat.add_assoc]
+  refine ((shqrSmallEigInputs Mch c₁ c₂ admitted).initialBytes_eq x).trans ?_
+  simp [shqrSmallEigInputs, Slot.len, Slot.derivedOfLength, Codec.complexMatrix, List.ofFn_succ,
+    shqrSmallEigInputWords, Nat.add_assoc]
 
 /-- **The specification of the rounded shifted QR algorithm with the small-eigenvalue program**:
 the budget, scratch and resident memory of the static count, the work and the span
@@ -275,10 +347,11 @@ theorem shqrSmallEigProgram_wp {sU sG : ℕ} {d : Fin 5 → ℕ} (hd : ShQRSmall
   obtain ⟨hS, hL, hC, hQ, hSmp, hDisk⟩ := smallEigModel_laws hI
   have hin := shqrSmallEigProblem_initial_input (admitted := admitted) d x
   have hW := roundedShQRSmallEig_terminates (O := SmallEigOp) (Q := Tst) (sG := sG) hS hL hd.1
-    hQ hC hSmp hDisk x.val.1.degree_eq hin τ
+    hQ hC hSmp hDisk (shqrSmallEigProblem_degree_eq d x) hin τ
   refine wp_frame ?_ ?_ (shqrSmallEigProblem_initial_live d x) (Wp.mono hW fun _ h => h.1)
-  · simp [Program.environment, IExp.evalList, IExp.eval, shqrSmallEigDims, x.val.1.words_eq,
-      x.val.1.cap_eq, x.val.1.smallEigCap_eq, List.ofFn_succ]
+  · simp [Program.environment, IExp.evalList, IExp.eval, shqrSmallEigDims,
+      shqrSmallEigProblem_words_eq d x, shqrSmallEigProblem_cap_eq d x,
+      shqrSmallEigProblem_smallEigCap_eq d x, List.ofFn_succ]
   · simp [Program.environment, Operand.evalList, Operand.eval, IExp.eval, List.ofFn_succ]
 
 /-- The program passes the storage discipline of the costs. -/
@@ -299,32 +372,23 @@ noncomputable def shqrSmallEigAlgorithm (Mch : Machine ℝ) (c₁ c₂ : PolyLog
     (admitted : ∃ d, ShQRSmallEigSizes Mch c₁ c₂ d) (sU sG : ℕ) :
     Algorithm (smallEigModel (shqrSmallEigProblem Mch c₁ c₂ admitted) Mch sU)
       (shqrSmallEigSpecification Mch c₁ c₂ admitted sG) :=
-  (shqrSmallEigRoutine sG).algorithm (r := 5) (b := 5)
-    (P := shqrSmallEigProblem Mch c₁ c₂ admitted)
-    (fun _ x => shqrSmallEigSpec Mch x.val.1.B x.val.1.Γ x.val.1.S x.val.1.δ
-      x.val.1.φ c₁ c₂)
-    (fun d x => [matrixWords x.val.1.matrix,
-      [shqrDeflationThreshold (d 0) (d 1) x.val.1.B x.val.1.Γ x.val.1.S x.val.1.δ x.val.1.φ],
-      shqrSmallEigParams (d 0) (d 1) x.val.1.B x.val.1.Γ x.val.1.S x.val.1.δ x.val.1.φ c₁ c₂,
-      matrixWords (1 : Matrix (Fin (d 0 + 1)) (Fin (d 0 + 1)) ℂ)])
-    (ht := shqrSmallEigProgram_wellTyped sG)
+  ((shqrSmallEigInputs Mch c₁ c₂ admitted).cast (shqrSmallEigRoutine sG) rfl rfl).algorithm
+    (fun _ x => shqrSmallEigSpec Mch x.B x.Γ x.S x.δ x.φ c₁ c₂)
     (fun _ _ _ _ hI => by
       obtain ⟨hS, hL, hC, hQ, hSmp, hDisk⟩ := smallEigModel_laws hI
       exact shqrSmallEigRoutine_meets hS hL hQ hC hSmp hDisk)
-    (fun d hd x => by
-      obtain ⟨-, hr, -, -, hA, ht, hP⟩ :=
-        shqrSmallEigProblem_initial_input (admitted := admitted) d x
-      have hU := shqrSmallEigProblem_initial_accumulator (admitted := admitted) d x
-      rw [← x.val.1.words_eq] at hP hr
-      simp only [Mem.room_cons, Mem.room_nil, and_true] at hr
-      refine ⟨Mem.readBlocks_of_cons hA (Mem.readBlocks_of_cons (Store.readBlock_one_of_get ht)
-          (Mem.readBlocks_of_cons hP (Mem.readBlocks_of_cons hU rfl))),
-        fun _ => ⟨hd.1, x.val.1.degree_eq, x.val.1.words_eq, x.val.1.cap_eq,
-          x.val.1.smallEigCap_eq, _, _, rfl⟩, ?_⟩
-      change Mem.Room _ [(0, 0), (3, 0), (4, 0)]
-        [2 * ((d 0 + 1) * (d 0 + 1)), 2 * ((d 0 + 1) * (d 0 + 1)), 1]
-      simp only [Mem.room_cons, Mem.room_nil, and_true]
-      exact ⟨hr.1, hr.2.2.2.1, hr.2.2.2.2⟩)
+    (fun d hd x hx _ => by
+      have hw : (Slot.derivedOfLength (d 2) fun x : ShQRSmallEigData d =>
+          shqrSmallEigParams (d 0) (d 1) x.B x.Γ x.S x.δ x.φ c₁ c₂).words x =
+            shqrSmallEigParams (d 0) (d 1) x.B x.Γ x.S x.δ x.φ c₁ c₂ :=
+        Slot.words_derivedOfLength hx.2.1.symm
+      refine ⟨hd.1, hx.1, hx.2.1, hx.2.2.1, hx.2.2.2, x.matrix, 1, ?_⟩
+      change [matrixWords x.matrix, [shqrDeflationThreshold (d 0) (d 1) x.B x.Γ x.S x.δ x.φ],
+        (Slot.derivedOfLength (d 2) fun x : ShQRSmallEigData d =>
+          shqrSmallEigParams (d 0) (d 1) x.B x.Γ x.S x.δ x.φ c₁ c₂).words x,
+        matrixWords (1 : Matrix (Fin (d 0 + 1)) (Fin (d 0 + 1)) ℂ)] = _
+      rw [hw]
+      rfl)
     (fun d _ x τ m' hfr _ ys _ _ c _ => by
       change Store.EqOff (Fp.blocks [(0, 0), (3, 0), (4, 0)]
         [2 * ((d 0 + 1) * (d 0 + 1)), 2 * ((d 0 + 1) * (d 0 + 1)), 1]) _ _ at hfr
@@ -334,7 +398,9 @@ noncomputable def shqrSmallEigAlgorithm (Mch : Machine ℝ) (c₁ c₂ : PolyLog
     (fun _ _ => le_rfl) (fun _ _ => le_rfl)
     (fun d _ => (smallEigResources_work _).trans_le (size_staticCost_shqrSmallEigProgram_le sG d))
     (fun d _ => (smallEigResources_span _).trans_le (size_staticCost_shqrSmallEigProgram_le sG d))
-    (fun d _ x => by rw [shqrSmallEigProblem_initialBytes]; exact le_rfl)
+    (fun d _ x =>
+      Nat.add_le_add_right (shqrSmallEigProblem_initialBytes (admitted := admitted) d x).le _)
+    (ht := shqrSmallEigProgram_wellTyped (admitted := admitted) sG)
 
 /-! ### The headline on one run -/
 
@@ -387,14 +453,15 @@ theorem roundedShQRSmallEig_algorithm_measureReal_not_accepts_le {u : ℝ}
   -- the headline (`roundedShQRSmallEig_measureReal_not_spectrum_le`), applied as it is stated
   have hT := roundedShQRSmallEig_measureReal_not_spectrum_le (O := SmallEigOp) (Q := Tst)
     (sG := sG) hS hM hL hd.1 hQ hC hIm hloc hSmp hDisk hU hG hA hB hb₁ hb₂ hHess hV hHV hκ hΓ
-    hgap hHS hδ hδS hφ hφ1 x.val.1.degree_eq hu hin hξ
+    hgap hHS hδ hδS hφ hφ1 (shqrSmallEigProblem_degree_eq d x) hu hin hξ
   refine (shqrSmallEigAlgorithm Mch c₁ c₂ admitted sU sG).measureReal_not_accepts_le_of_wp
     hd x I hI P ξ _ ?_
   refine (measureReal_mono ?_).trans hT
   intro ω hω hW
   refine hω (wp_frame ?_ ?_ (shqrSmallEigProblem_initial_live d x) hW)
-  · simp [Program.environment, IExp.evalList, IExp.eval, shqrSmallEigDims, x.val.1.words_eq,
-      x.val.1.cap_eq, x.val.1.smallEigCap_eq, List.ofFn_succ]
+  · simp [Program.environment, IExp.evalList, IExp.eval, shqrSmallEigDims,
+      shqrSmallEigProblem_words_eq d x, shqrSmallEigProblem_cap_eq d x,
+      shqrSmallEigProblem_smallEigCap_eq d x, List.ofFn_succ]
   · simp [Program.environment, Operand.evalList, Operand.eval, IExp.eval, List.ofFn_succ]
 
 

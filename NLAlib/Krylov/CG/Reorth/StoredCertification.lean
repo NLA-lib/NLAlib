@@ -6,7 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Krylov.CG.Reorth.StoredRoutine
-public import NLAlib.Krylov.CG.StoredProblem
+public import NLAlib.Ops.RoutineProblem
 public import NLAlib.Ops.Blas.Fill
 public import NLAlib.Ops.Profiles.ExactBlas
 
@@ -28,17 +28,36 @@ namespace NLAlib.Krylov.CG.Reorth.Stored.Certification
 
 open Ops
 
-/-- Positive definiteness concerns the actual raw matrix; RHS words are unrestricted. -/
-def accepts (d : Fin 2 → ℕ) (raw : List ℝ) (_ : List ℝ) : Prop :=
-  (StoredOperator.denseMatrix (d 0) (d 0) raw).PosDef
+/-- The admitted systems: a positive-definite matrix with any right-hand side. -/
+def accepts (d : Fin 2 → ℕ)
+    (x : Matrix (Fin (d 0)) (Fin (d 0)) ℝ × (Fin (d 0) → ℝ)) : Prop :=
+  x.1.PosDef
 
 variable (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d)
-  (supply : ∀ d, domain d → ∃ raw rhs : List ℝ,
-    raw.length = d 0 * d 0 ∧ rhs.length = d 0 ∧ accepts d raw rhs)
+  (supply : ∀ d, domain d →
+    ∃ x : Matrix (Fin (d 0)) (Fin (d 0)) ℝ × (Fin (d 0) → ℝ), accepts d x)
 
-/-- A declared dense matrix prefix, raw RHS and supplied uninitialized state capacities. -/
-abbrev problem : Problem ℝ 2 5 :=
-  StoredProblem.problem (fun d => ![0, d 0, d 0, d 0]) domain admitted accepts supply
+/-- The admitted inputs: at the sizes of `domain`, every positive-definite matrix, stored
+column by column, with every right-hand side; the iterate, the residual and the direction are
+blank. -/
+noncomputable def inputs : zeroStartRoutine.Domain ℝ 2 5 where
+  valid := domain
+  In d := Matrix (Fin (d 0)) (Fin (d 0)) ℝ × (Fin (d 0) → ℝ)
+  accepts := accepts
+  slot d := ![.stored (Codec.matrix (EntryCodec.scalar ℝ) (d 0) (d 0)) Prod.fst,
+    .stored (Codec.vector (d 0)) Prod.snd, .blank (d 0), .blank (d 0), .blank (d 0)]
+  fits := by domain_fits
+  faithful d x y h := by
+    have h0 := h 0
+    have h1 := h 1
+    simp only [Slot.input, Matrix.cons_val_zero, Matrix.cons_val_one, Option.some.injEq] at h0 h1
+    exact Prod.ext ((Codec.matrix (EntryCodec.scalar ℝ) (d 0) (d 0)).encode_injective h0)
+      ((Codec.vector (d 0)).encode_injective h1)
+  admitted := admitted
+  inhabited := supply
+
+/-- The stored matrix, the right-hand side and three blank state vectors. -/
+noncomputable abbrev problem : Problem ℝ 2 5 := (inputs domain admitted supply).problem
 
 /-- The fixed tree initializes the iterate and forwards the matrix to each scalar matvec. -/
 def program : Program RCLikeBlas.Operation CmpTst 2 5 := zeroStartRoutine.close 2 5
@@ -46,11 +65,9 @@ def program : Program RCLikeBlas.Operation CmpTst 2 5 := zeroStartRoutine.close 
 /-- Resident memory counts the matrix words, RHS and all supplied output capacity. -/
 theorem initialBytes_problem (d : Fin 2 → ℕ) (x : (problem domain admitted supply).Input d) :
     (problem domain admitted supply).initialBytes d x = d 0 * d 0 + (4 * d 0) := by
-  have h := Problem.withContext.initialBytes_eq d x
-  refine h.trans ?_
-  rw [RawProblem.initialBytes_eq]
-  simp [List.ofFn_succ]
-  omega
+  refine ((inputs domain admitted supply).initialBytes_eq x).trans ?_
+  simp [inputs, Slot.len, Codec.vector, Codec.matrix, List.ofFn_succ]
+  ring
 
 /-- Canonical resources and the exact converged-or-capped physical CG state. -/
 noncomputable def specification (cost : Standard.Costing) :
@@ -61,34 +78,35 @@ noncomputable def specification (cost : Standard.Costing) :
   span d := (ExactBlas.resources cost).span (staticCost program d)
   memory d := d 0 * d 0 + (4 * d 0) + staticPeak (ExactBlas.resources cost) program d
   good d x _ _ m := m.pos = 0 ∧ HSCG.StoresState id (d 0) (2, 0) (3, 0) (4, 0)
-    (cgState (StoredProblem.matrix x) (decv id (d 0) x.val.1.2) 0
-      (min (d 1) (krylovGrade (StoredProblem.matrix x) (decv id (d 0) x.val.1.2)))) m
+    (cgState x.val.1.1 x.val.1.2 0 (min (d 1) (krylovGrade x.val.1.1 x.val.1.2))) m
 
 /-- A jointly realized scalar/vector model certifies every admitted raw SPD matrix and RHS.
 There is no successful-run, oracle matrix or numerical-output callback in the assumptions. -/
 noncomputable def algorithm (cost : Standard.Costing) :
     Algorithm (ExactBlas.model (problem domain admitted supply) cost)
       (specification domain admitted supply cost) := by
-  refine Routine.algorithm (r := 2) (b := 5) (P := problem domain admitted supply) zeroStartRoutine
-    (fun d _ => zeroStartSpec (d 0)) (fun _ x => [x.val.1.1 0, x.val.1.2])
-    ?_ ?_ ?_
-    (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) ?_
+  refine (inputs domain admitted supply).algorithm (fun d _ => zeroStartSpec (d 0))
+    ?_ ?_ ?_ (hmemory := ?_)
   · intro d _ x I hI
     obtain ⟨hS, hB, hC⟩ := ExactBlas.laws hI
     exact zeroStartRoutine_meets hS hB hC
-  · intro d _ x
-    let μ := (problem domain admitted supply).initial d x
-    have hlen (i : Fin 4) := StoredProblem.initial_len d x i
-    refine ⟨Mem.readBlocks_of_cons (StoredProblem.initial_matrix d x)
-        (Mem.readBlocks_of_cons (StoredProblem.initial_rhs d x) rfl),
-      fun _ => ⟨rfl, Problem.withContext.extra_input x⟩, ?_⟩
-    change μ.Room [(2, 0), (3, 0), (4, 0)] [d 0, d 0, d 0]
-    simp only [Mem.room_cons, Mem.room_nil, and_true, Nat.zero_add]
-    exact ⟨by simpa [μ] using (hlen 1).ge, by simpa [μ] using (hlen 2).ge,
-      by simpa [μ] using (hlen 3).ge⟩
+  · intro d _ x hx τ
+    refine ⟨rfl, ?_⟩
+    change (StoredOperator.denseMatrix (d 0) (d 0)
+        ((EntryCodec.scalar ℝ).packFinMatrix x.1)).PosDef
+    rw [StoredOperator.denseMatrix_packFinMatrix]
+    exact hx
   · intro d _ x τ m' _ hpos ys hys hrel c _
     read_outputs hys as (xs', rs, ps)
-    exact ⟨hpos, xs', rs, ps, hys, hrel⟩
+    have h : HSCG.decodedState id (d 0) xs' rs ps =
+        cgState (StoredOperator.denseMatrix (d 0) (d 0)
+          ((EntryCodec.scalar ℝ).packFinMatrix x.val.1.1))
+          (decv id (d 0) (List.ofFn x.val.1.2)) 0
+          (min (d 1) (krylovGrade (StoredOperator.denseMatrix (d 0) (d 0)
+            ((EntryCodec.scalar ℝ).packFinMatrix x.val.1.1))
+            (decv id (d 0) (List.ofFn x.val.1.2)))) := hrel
+    rw [StoredOperator.denseMatrix_packFinMatrix, decv_ofFn] at h
+    exact ⟨hpos, xs', rs, ps, hys, h⟩
   · intro d _ x
     rw [initialBytes_problem]
     exact le_rfl

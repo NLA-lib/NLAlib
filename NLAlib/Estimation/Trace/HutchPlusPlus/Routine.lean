@@ -46,14 +46,6 @@ variable {𝕜 Op Tst : Type} [RCLike 𝕜] [Has ScalarOp Op] [Has Blas1Op Op]
 /-- Zero supplies the default needed by the scalar matrix codec. -/
 local instance instInhabitedRoutine : Inhabited 𝕜 := ⟨0⟩
 
-/-- Hutch++: `[n, k, ell] (data : read) → (out : write 1)`, drawing `n * (k + ell)` tape
-positions. Operands are separated by block, so the output cell may be in the buffer of the
-operator data. -/
-def estimateRoutine (stream : ℕ) (dataLength : ℕ → ℕ → ℕ) : Routine Op Tst :=
-  routine% [n, k, ell] (data : ↑(dataLength n n)) → (out : 1)
-    draws n * (k + ell)
-    by blocks := estimate stream
-
 /-- At the dimensions `[n, k, ell]` the written cell is the Hutch++ value of the stored operator
 for the sketch in the first `n * k` words drawn from the stream and the probes in the next
 `n * ell`. -/

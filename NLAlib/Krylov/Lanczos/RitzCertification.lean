@@ -45,7 +45,7 @@ noncomputable def ritzSpecification
     good := fun d x _ _ m => m.pos = 0 ∧ ∃ vs cs,
       m.store.readBlock 1 0 ((d 1 + 1) * d 0) = some vs ∧
       m.store.readBlock 2 0 (2 * d 1 + 2) = some cs ∧
-      Rounded.RitzOutput model.decode (model.matrix d x) (decv model.decode (d 0) x.val.1)
+      Rounded.RitzOutput model.decode (model.matrix d x) (fun i => model.decode (x.val.1 i))
         (E d) (d 1) vs cs }
 
 /-- The same canonically certified Lanczos program also certifies physical rounded Ritz

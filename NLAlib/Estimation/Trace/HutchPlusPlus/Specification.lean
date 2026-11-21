@@ -9,7 +9,7 @@ public import NLAlib.Estimation.Trace.HutchPlusPlus.Resources
 public import NLAlib.Estimation.Trace.HutchPlusPlus.Samples
 public import NLAlib.Estimation.Trace.HutchPlusPlus.Math
 public import NLAlib.Ops.Profiles.ExactLinear
-public import NLAlib.Ops.Certification
+public import NLAlib.Ops.RoutineProblem
 
 /-!
 # Canonical raw-input Hutch++ specification
@@ -37,30 +37,34 @@ variable {𝕜 : Type} [RCLike 𝕜]
 /-- Zero supplies packed-entry defaults and an explicit raw-data witness. -/
 local instance instInhabitedSpecification : Inhabited 𝕜 := ⟨0⟩
 
-/-- The operator's raw words and one explicitly supplied uninitialized output cell.
-Positive probe count is admitted; sketch rank, row count and sketch width are unrestricted. -/
-def problem (dataLength : ℕ → ℕ → ℕ) : Problem 𝕜 3 2 where
-  formats _ := .cell
+/-- The admitted inputs of Hutch++: for a positive probe count, the operator's data, a block of
+`dataLength n n` words held by the first operand; the output cell is blank. The words are raw:
+how they represent a matrix is chosen by the model (`matrix`). The sketch rank, the row count and
+the sketch width are unrestricted. The domain does not depend on the stream. -/
+def inputs (dataLength : ℕ → ℕ → ℕ) :
+    (estimateRoutine (Op := ExactLinear.Operation) (Tst := CmpTst) 0 dataLength).Domain 𝕜 3 2
+    where
   valid d := 0 < d 2
-  Data _ := List 𝕜
-  admissible d words buffers := buffers = ![words.map some, [none]] ∧
-    words.length = dataLength (d 0) (d 0)
+  In d := { ws : List 𝕜 // ws.length = dataLength (d 0) (d 0) }
+  accepts _ _ := True
+  slot d := ![.stored (Codec.words (dataLength (d 0) (d 0))) id, .blank 1]
+  fits := by domain_fits
+  faithful d x y h := (Codec.words (dataLength (d 0) (d 0))).encode_injective (by
+    have h0 := h 0
+    simpa only [Slot.input, Matrix.cons_val_zero, Option.some.injEq, id] using h0)
   admitted := ⟨![0, 0, 1], Nat.zero_lt_one⟩
-  supply d _ := ⟨List.replicate (dataLength (d 0) (d 0)) 0,
-    ![(List.replicate (dataLength (d 0) (d 0)) 0).map some, [none]], rfl,
-    List.length_replicate ..⟩
+  inhabited d _ := ⟨⟨List.replicate (dataLength (d 0) (d 0)) 0, List.length_replicate ..⟩,
+    trivial⟩
+
+/-- The operator's words and one blank output cell: the problem of Hutch++. -/
+abbrev problem (dataLength : ℕ → ℕ → ℕ) : Problem 𝕜 3 2 := (inputs (𝕜 := 𝕜) dataLength).problem
 
 /-- All raw operator-data payload and the output capacity count as resident cells. -/
 theorem initialBytes_problem (dataLength : ℕ → ℕ → ℕ) (d : Fin 3 → ℕ)
     (x : (problem (𝕜 := 𝕜) dataLength).Input d) :
     (problem dataLength).initialBytes d x = dataLength (d 0) (d 0) + 1 := by
-  let words : List 𝕜 := x.val.1
-  have h0 : x.val.2 0 = words.map some := by rw [x.property.1]; rfl
-  have h1 : x.val.2 1 = [none] := by rw [x.property.1]; rfl
-  have hlen : words.length = dataLength (d 0) (d 0) := x.property.2
-  change 1 * (x.val.2 0).length + (1 * (x.val.2 1).length + 0) = _
-  rw [h0, h1, one_mul, one_mul, List.length_map, hlen]
-  rfl
+  refine ((inputs (𝕜 := 𝕜) dataLength).initialBytes_eq x).trans ?_
+  simp [inputs, Slot.len, Codec.words, List.ofFn_succ]
 
 /-- The canonical manifest retains original calls, comparisons and structural instructions. -/
 noncomputable def staticBudget (stream : ℕ) (d : Fin 3 → ℕ) :
@@ -95,7 +99,7 @@ noncomputable def specification (dataLength : ℕ → ℕ → ℕ)
   span d := (ExactLinear.resources work workspace).span (staticBudget stream d)
   memory d := dataLength (d 0) (d 0) + 1 + (2 * d 0 * (d 1 + d 2) + 2 + w)
   good d x tape _ m := m.pos = d 0 * (d 1 + d 2) ∧ m.store.length = 2 ∧
-    m.store.readBlock 1 0 1 = some [hutchpp (matrix (d 0) (d 0) x.val.1)
+    m.store.readBlock 1 0 1 = some [hutchpp (matrix (d 0) (d 0) x.val.1.val)
       (sampleMatrices stream (d 0) (d 1) (d 2) tape).1
       (sampleMatrices stream (d 0) (d 1) (d 2) tape).2]
 

@@ -101,8 +101,8 @@ theorem exec_scalarProgram_work_le_and_spectral (M : Machine ℝ) (u : ℝ)
           Real.sqrt (3 * ((d 1 : ℝ) + 1)) * (2 * (2 * c + 2 * (η + c) ^ 2 / thr + E d)) ≤ η →
           2 * (2 * c + 2 * (η + c) ^ 2 / thr + E d) + E d + 3 * c ≤ 1 / 100 →
           ∃ done ≤ d 1, ∃ z : Lanczos.Rounded.Values (d 0), ∃ nus : ℕ → ℝ,
-            Lanczos.Reorth.Rounded.History id (StoredProblem.matrix x)
-              (decv id (d 0) x.val.1.2) (ScalarProducts.roundoff u (d 0) * Real.sqrt (d 0)) u
+            Lanczos.Reorth.Rounded.History id x.val.1.1
+              x.val.1.2 (ScalarProducts.roundoff u (d 0) * Real.sqrt (d 0)) u
               (E d) (Blas.seq.err u) done z nus ∧
             Lanczos.Reorth.Rounded.PackedOutput id (d 1) done z nus vs cs ∧
             (done < d 1 → (if done = 0 then z.initialNorm else z.beta done) = 0) ∧
@@ -112,24 +112,23 @@ theorem exec_scalarProgram_work_le_and_spectral (M : Machine ℝ) (u : ℝ)
                 (specNorm ((Lanczos.basisMatrix id (d 0) vs r)ᵀ *
                     Lanczos.basisMatrix id (d 0) vs r - 1) ≤ η ∧
                   ∀ i < r,
-                    eigenvalue (StoredProblem.matrix x) (i + (d 0 - r)) -
+                    eigenvalue x.val.1.1 (i + (d 0 - r)) -
                         100 * ((r : ℝ) + 1) *
                           (2 * (2 * c + 2 * (η + c) ^ 2 / thr + E d) + E d + 3 * c) *
-                          specNorm (StoredProblem.matrix x) ≤
+                          specNorm x.val.1.1 ≤
                       eigenvalue (Lanczos.tridiagonalMatrix id (d 1) cs r) i ∧
                     eigenvalue (Lanczos.tridiagonalMatrix id (d 1) cs r) i ≤
-                      eigenvalue (StoredProblem.matrix x) i +
+                      eigenvalue x.val.1.1 i +
                         100 * ((r : ℝ) + 1) *
                           (2 * (2 * c + 2 * (η + c) ^ 2 / thr + E d) + E d + 3 * c) *
-                          specNorm (StoredProblem.matrix x))) := by
+                          specNorm x.val.1.1)) := by
   obtain ⟨st, hr, -, -, hw, -, -, hg⟩ :=
     (scalarCountedAlgorithm M u hM hu E hprec).correct d hd x I hI τ
   obtain ⟨-, -, vs, cs, hvs, hcs, hout⟩ := hg
   refine ⟨st, hr, hw, vs, cs, hvs, hcs, ?_⟩
   intro thr η c hthr hthr₁ hη₀ hη hc₀ hc hbudget hsmall hrec
-  have hA : (StoredProblem.matrix x)ᵀ = StoredProblem.matrix x := by
-    have h := (Problem.withContext.extra_input
-      (supply := StoredProblem.supply (fun cap => 3 * cap + 2) domain admitted true) x) rfl
+  have hA : x.val.1.1ᵀ = x.val.1.1 := by
+    have h : x.val.1.1.IsHermitian := x.property.1
     rwa [Matrix.IsHermitian, Matrix.conjTranspose_eq_transpose_of_trivial] at h
   obtain ⟨done, hdone, z, nus, hh, hpacked, hstop, r, hrd, hadm, hfail, hrun⟩ :=
     hout.exists_spectral_prefix hA (hprec d hd) hthr hthr₁ hη₀ hη hc₀ hc hbudget hsmall hrec

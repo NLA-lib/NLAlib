@@ -51,7 +51,7 @@ def sum2Domain : (sum2 (Op := ScalarOp) (Tst := CmpTst)).Domain ℝ 1 4 where
   inhabited _ _ := ⟨(fun _ => 0, fun _ => 0), trivial⟩
 
 /-- Two real vectors of length `d 0` and two uninitialized cells: the problem of `sum2`. -/
-def sum2Problem : Problem ℝ 1 4 := sum2Domain.problem
+abbrev sum2Problem : Problem ℝ 1 4 := sum2Domain.problem
 
 /-- The blocks read: the two supplied vectors. -/
 def sum2Input (d : Fin 1 → ℕ) (x : sum2Problem.Input d) : List (List ℝ) :=
@@ -85,20 +85,15 @@ theorem eval_countPoly_sum2Program (d : Fin 1 → ℕ) :
   ring
 
 /-- **The certificate of the composite routine**, over the scalar-only model with unit weights
-and the standard model of arithmetic at unit roundoff `u`. -/
+and the standard model of arithmetic at unit roundoff `u`: the counted certificate of the
+routine on its problem (`NLAlib.Ops.Routine.Domain.certify`). -/
 noncomputable def sum2Algorithm (M : Machine ℝ) (u : ℝ) (hM : StdModel u id M) (hu : 0 ≤ u) :
     Algorithm (sum2Model M)
-      ((sum2 (Tst := CmpTst)).specification (fun _ _ => sum2Spec id u) (sum2Model M).resources
-        sum2Input
-        (fun d => 2 * d 0 + 2) sum2Work) :=
-  Routine.certify sum2 (fun _ _ => sum2Spec id u) sum2Input (fun d => 2 * d 0 + 2) sum2Work
+      ((sum2 (Tst := CmpTst)).specification (P := sum2Problem) (fun _ _ => sum2Spec id u)
+        (sum2Model M).resources sum2Input sum2Domain.bytes sum2Work) :=
+  sum2Domain.certify (fun _ _ => sum2Spec id u) sum2Work
     (fun _ _ _ _ hI => sum2_meets (RoundedScalarBlas.model_laws hI).1 hM hu)
-    (fun d _ x => ⟨sum2Domain.readBlocks_initial x, fun _ => trivial,
-      sum2Domain.room_initial x⟩)
-    (fun d _ x => by
-      refine (sum2Domain.initialBytes_eq x).le.trans (le_of_eq ?_)
-      simp [sum2Domain, Slot.len, Codec.vector, List.ofFn_succ]
-      omega)
+    (fun _ _ _ _ _ => trivial)
     (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl)
     (fun d _ => (eval_countPoly_sum2Program d).le)
 
@@ -133,8 +128,9 @@ theorem sum2_checked (M : Machine ℝ) (u : ℝ) (hM : StdModel u id M) (hu : 0 
       ∃ v, st.mem.store.get 2 0 = some v ∧
         |v - (∑ i, x i + ∑ i, y i)| ≤
           ((1 + u) * (1 + u) ^ (d 0 - 1) - 1) * (∑ i, |x i| + ∑ i, |y i|) := by
-  obtain ⟨st, hr, -, -, hw, -, -, ys, hys, hpost⟩ :=
-    sum2Domain.checked (sum2Algorithm M u hM hu) d trivial (x, y) trivial I hI τ
+  obtain ⟨st, hr, hw, ys, hys, hpost⟩ :=
+    sum2Domain.checked_post (Sp := fun _ _ => sum2Spec id u) (work := sum2Work)
+      (sum2Algorithm M u hM hu) d trivial (x, y) trivial I hI τ
   refine ⟨st, hr, hw, ?_⟩
   read_outputs hys as (zs)
   obtain ⟨v, hv, rfl⟩ := Store.readBlock_one_eq_some.mp hzs

@@ -8,7 +8,7 @@ module
 public import NLAlib.Krylov.CG.HSPCG.Rounded.StoredRoutine
 public import NLAlib.Krylov.CG.HSPCG.Rounded.Alg
 public import NLAlib.Krylov.CG.HSPCG.Rounded.Prefix
-public import NLAlib.Krylov.CG.HSPCG.StoredProblem
+public import NLAlib.Ops.RoutineProblem
 public import NLAlib.Ops.Profiles.RoundedScalarBlas
 
 /-!
@@ -36,56 +36,69 @@ namespace NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification
 open Ops
 open scoped Matrix
 
-/-- Both actual raw matrices are symmetric and have their declared spectral windows.
+/-- The inputs of the solver: the system matrix, the inverse preconditioner and the right-hand
+side. -/
+abbrev Inputs (d : Fin 2 → ℕ) : Type :=
+  Matrix (Fin (d 0)) (Fin (d 0)) ℝ × Matrix (Fin (d 0)) (Fin (d 0)) ℝ × (Fin (d 0) → ℝ)
+
+/-- The admitted systems: both matrices are symmetric and have their declared spectral windows.
 The right-hand side is unrestricted, including zero. -/
 def accepts (lowerA upperA lowerP upperP : (Fin 2 → ℕ) → ℝ) (d : Fin 2 → ℕ)
-    (systemRaw preconditionerRaw _rhs : List ℝ) : Prop :=
-  let A := StoredOperator.denseMatrix (d 0) (d 0) systemRaw
-  let P := StoredOperator.denseMatrix (d 0) (d 0) preconditionerRaw
-  Aᵀ = A ∧ Pᵀ = P ∧ spectrum ℝ A ⊆ Set.Icc (lowerA d) (upperA d) ∧
-    spectrum ℝ P ⊆ Set.Icc (lowerP d) (upperP d)
+    (x : Inputs d) : Prop :=
+  x.1ᵀ = x.1 ∧ x.2.1ᵀ = x.2.1 ∧ spectrum ℝ x.1 ⊆ Set.Icc (lowerA d) (upperA d) ∧
+    spectrum ℝ x.2.1 ⊆ Set.Icc (lowerP d) (upperP d)
 
 variable (lowerA upperA lowerP upperP : (Fin 2 → ℕ) → ℝ)
   (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d)
-  (supply : ∀ d, domain d → ∃ rawA rawP rhs : List ℝ,
-    rawA.length = d 0 * d 0 ∧ rawP.length = d 0 * d 0 ∧ rhs.length = d 0 ∧
-      accepts lowerA upperA lowerP upperP d rawA rawP rhs)
+  (supply : ∀ d, domain d → ∃ x : Inputs d, accepts lowerA upperA lowerP upperP d x)
 
-include supply in
-/-- A joint raw mathematical witness supplies the two context blocks and the original
-right-hand side. It supplies neither preprocessing nor an execution witness. -/
-theorem context_supply (d : Fin 2 → ℕ) (hd : domain d) :
-    ∃ context : Fin 2 → List ℝ,
-      ∃ x : (CG.RawProblem.problem HSPCG.Stored.outputs domain admitted).Input d,
-      (∀ i, (context i).length = d 0 * d 0) ∧
-        accepts lowerA upperA lowerP upperP d (context 0) (context 1) x.val.1 := by
-  obtain ⟨rawA, rawP, rhs, ha, hp, hrhs, h⟩ := supply d hd
-  refine ⟨![rawA, rawP], ⟨⟨rhs, fun i => if i = 0 then rhs.map some
-    else List.replicate (HSPCG.Stored.outputs d i) none⟩, rfl, hrhs⟩, ?_, h⟩
-  intro i
-  fin_cases i
-  · exact ha
-  · exact hp
+/-- The admitted inputs: at the sizes of `domain`, the two matrices stored column by column and
+the right-hand side, satisfying `accepts`; the four state vectors are blank. -/
+noncomputable def inputs : zeroStartRoutine.Domain ℝ 2 7 where
+  valid := domain
+  In := Inputs
+  accepts := accepts lowerA upperA lowerP upperP
+  slot d := ![.stored (Codec.matrix (EntryCodec.scalar ℝ) (d 0) (d 0)) Prod.fst,
+    .stored (Codec.matrix (EntryCodec.scalar ℝ) (d 0) (d 0)) fun x => x.2.1,
+    .stored (Codec.vector (d 0)) fun x => x.2.2,
+    .blank (d 0), .blank (d 0), .blank (d 0), .blank (d 0)]
+  fits := by domain_fits
+  faithful d x y h := by
+    have h0 := h 0
+    have h1 := h 1
+    have h2 := h 2
+    simp only [Slot.input, Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_two,
+      Matrix.tail_cons, Matrix.head_cons, Option.some.injEq] at h0 h1 h2
+    exact Prod.ext ((Codec.matrix (EntryCodec.scalar ℝ) (d 0) (d 0)).encode_injective h0)
+      (Prod.ext ((Codec.matrix (EntryCodec.scalar ℝ) (d 0) (d 0)).encode_injective h1)
+        ((Codec.vector (d 0)).encode_injective h2))
+  admitted := admitted
+  inhabited := supply
 
-/-- The raw system and inverse-preconditioner words, original right-hand side and four
-uninitialized output capacities are declared through the shared context problem constructor. -/
-def problem : Problem ℝ 2 7 :=
-  (CG.RawProblem.problem HSPCG.Stored.outputs domain admitted).withContext 2
-    (fun d _ => d 0 * d 0)
-    (fun d c rhs => accepts lowerA upperA lowerP upperP d (c 0) (c 1) rhs)
-    (context_supply lowerA upperA lowerP upperP domain admitted supply)
+/-- The two stored matrices, the right-hand side and four blank state vectors. -/
+noncomputable abbrev problem : Problem ℝ 2 7 :=
+  (inputs lowerA upperA lowerP upperP domain admitted supply).problem
 
 variable {lowerA upperA lowerP upperP domain admitted supply}
 
-/-- The reference system matrix is decoded from the actual first context block. -/
-def matrix {d : Fin 2 → ℕ}
-    (x : (problem lowerA upperA lowerP upperP domain admitted supply).Input d) :=
-  StoredOperator.denseMatrix (d 0) (d 0) (x.val.1.1 0)
+/-- The reference system matrix of an input. -/
+abbrev matrix {d : Fin 2 → ℕ}
+    (x : (problem lowerA upperA lowerP upperP domain admitted supply).Input d) :
+    Matrix (Fin (d 0)) (Fin (d 0)) ℝ := x.val.1.1
 
-/-- The reference inverse preconditioner is decoded from the actual second context block. -/
-def preconditioner {d : Fin 2 → ℕ}
-    (x : (problem lowerA upperA lowerP upperP domain admitted supply).Input d) :=
-  StoredOperator.denseMatrix (d 0) (d 0) (x.val.1.1 1)
+/-- The reference inverse preconditioner of an input, as decoded from its stored words. It is
+the supplied matrix (`preconditioner_eq`); it is written through its words because the oracle of
+the stored scalar action is indexed by them. -/
+abbrev preconditioner {d : Fin 2 → ℕ}
+    (x : (problem lowerA upperA lowerP upperP domain admitted supply).Input d) :
+    Matrix (Fin (d 0)) (Fin (d 0)) ℝ :=
+  StoredOperator.denseMatrix (d 0) (d 0) ((EntryCodec.scalar ℝ).packFinMatrix x.val.1.2.1)
+
+/-- The decoded stored preconditioner is the supplied inverse preconditioner. -/
+theorem preconditioner_eq {d : Fin 2 → ℕ}
+    (x : (problem lowerA upperA lowerP upperP domain admitted supply).Input d) :
+    preconditioner x = x.val.1.2.1 :=
+  StoredOperator.denseMatrix_packFinMatrix _
 
 /-- The vector-level tree forwards both raw contexts and initializes the supplied iterate.
 Every operator call already consists of dense scalar rows; BLAS lowering follows separately. -/
@@ -105,10 +118,8 @@ theorem initialBytes_problem (d : Fin 2 → ℕ)
     (x : (problem lowerA upperA lowerP upperP domain admitted supply).Input d) :
     (problem lowerA upperA lowerP upperP domain admitted supply).initialBytes d x =
       2 * d 0 * d 0 + 5 * d 0 := by
-  have h := Problem.withContext.initialBytes_eq d x
-  rw [CG.RawProblem.initialBytes_eq] at h
-  refine h.trans ?_
-  simp [HSPCG.Stored.outputs, List.ofFn_succ]
+  refine ((inputs lowerA upperA lowerP upperP domain admitted supply).initialBytes_eq x).trans ?_
+  simp [inputs, Slot.len, Codec.vector, Codec.matrix, List.ofFn_succ]
   ring
 
 variable (lowerA upperA lowerP upperP domain admitted supply)
@@ -128,7 +139,8 @@ noncomputable def specification (M : Machine ℝ) (u : ℝ)
   good d x _ _ mem := mem.pos = 0 ∧ ∃ m ≤ d 1, ∃ s rho,
     StoresState id (d 0) (3, 0) (4, 0) (5, 0) (6, 0) s mem ∧
       RunPrefix (matrix x) (preconditioner x)
-        (StoredContext.oracle hM hu (d 0) (x.val.1.1 1)) (decv id (d 0) x.val.1.2)
+        (StoredContext.oracle hM hu (d 0) ((EntryCodec.scalar ℝ).packFinMatrix x.val.1.2.1))
+        x.val.1.2.2
         (E d) m s rho ∧ (m < d 1 → s.r = 0)
 
 /-- Raw spectral windows and explicit scalar/cap precision imply total rounded execution,
@@ -146,41 +158,35 @@ noncomputable def algorithm (M : Machine ℝ) (u : ℝ)
     Algorithm (RoundedScalarBlas.model
       (problem lowerA upperA lowerP upperP domain admitted supply) M)
       (specification lowerA upperA lowerP upperP domain admitted supply M u hM hu E) := by
-  refine Routine.algorithm (r := 2) (b := 7)
-    (P := problem lowerA upperA lowerP upperP domain admitted supply) zeroStartRoutine
+  refine (inputs lowerA upperA lowerP upperP domain admitted supply).algorithm
     (fun d _ => zeroStartSpec hM hu (d 0) (E d) (lowerA d) (upperA d) (lowerP d) (upperP d))
-    (fun _ x => [x.val.1.1 0, x.val.1.1 1, x.val.1.2])  ?_ ?_ ?_
-    (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) ?_
+    ?_ ?_ ?_ (hmemory := ?_)
   · intro d hd x I hI
     obtain ⟨hS, hCmp⟩ := RoundedScalarBlas.model_laws hI
     exact zeroStartRoutine_meets hS hCmp hM hu (hAccuracy d hd) (ha d hd) (hp d hd) (hAp d hd)
       (hPp d hd)
-  · intro d hd x
-    let μ := (problem lowerA upperA lowerP upperP domain admitted supply).initial d x
-    have hlen (i : Fin 5) : μ.store.len (2+i.val) =
-        if i = 0 then d 0 else HSPCG.Stored.outputs d i :=
-      (Problem.withContext.initial_len_original d x i).trans
-        (CG.RawProblem.initial_len d (Problem.withContext.originalInput x) i)
-    have hb := Problem.withContext.initial_readBlock_original d x (0 : Fin 5)
-      (show (Problem.withContext.originalInput x).val.2 0 = x.val.1.2.map some by
-        rw [CG.RawProblem.input_buffers]; simp [Problem.withContext.originalInput])
-    have hbl : x.val.1.2.length = d 0 :=
-      CG.RawProblem.length_input d (Problem.withContext.originalInput x)
-    rw [hbl] at hb
-    have hExtra := Problem.withContext.extra_input x
-    refine ⟨Mem.readBlocks_of_cons (Problem.withContext.initial_readBlock_context d x 0)
-        (Mem.readBlocks_of_cons (Problem.withContext.initial_readBlock_context d x 1)
-          (Mem.readBlocks_of_cons hb rfl)),
-      fun _ => ⟨rfl, hExtra.1, hExtra.2.1, hExtra.2.2.1, hExtra.2.2.2, hwindow d hd⟩, ?_⟩
-    change μ.Room [(3, 0), (4, 0), (5, 0), (6, 0)] [d 0, d 0, d 0, d 0]
-    simp only [Mem.room_cons, Mem.room_nil, and_true, Nat.zero_add]
-    exact ⟨by simpa [μ, HSPCG.Stored.outputs] using (hlen 1).ge,
-      by simpa [μ, HSPCG.Stored.outputs] using (hlen 2).ge,
-      by simpa [μ, HSPCG.Stored.outputs] using (hlen 3).ge,
-      by simpa [μ, HSPCG.Stored.outputs] using (hlen 4).ge⟩
+  · intro d hd x hx τ
+    have hA := StoredOperator.denseMatrix_packFinMatrix x.1
+    have hP := StoredOperator.denseMatrix_packFinMatrix x.2.1
+    obtain ⟨h1, h2, h3, h4⟩ := hx
+    exact ⟨rfl, hA.symm ▸ h1, hP.symm ▸ h2, hA.symm ▸ h3, hP.symm ▸ h4, hwindow d hd⟩
   · intro d _ x τ m' _ hpos ys hys hrel c _
     read_outputs hys as (xs, rs, zs, ps)
-    exact ⟨hpos, PrefixOutput.of_values hys hrel⟩
+    have hA := StoredOperator.denseMatrix_packFinMatrix x.val.1.1
+    have hb := decv_ofFn (n := d 0) x.val.1.2.2
+    have key : ∀ (A' : Matrix (Fin (d 0)) (Fin (d 0)) ℝ) (b' : Fin (d 0) → ℝ),
+        A' = x.val.1.1 → b' = x.val.1.2.2 →
+        (∃ m ≤ d 1, ∃ s rho, StoresState id (d 0) (3, 0) (4, 0) (5, 0) (6, 0) s m' ∧
+          RunPrefix A' (preconditioner x)
+            (StoredContext.oracle hM hu (d 0) ((EntryCodec.scalar ℝ).packFinMatrix x.val.1.2.1))
+            b' (E d) m s rho ∧ (m < d 1 → s.r = 0)) →
+        ∃ m ≤ d 1, ∃ s rho, StoresState id (d 0) (3, 0) (4, 0) (5, 0) (6, 0) s m' ∧
+          RunPrefix x.val.1.1 (preconditioner x)
+            (StoredContext.oracle hM hu (d 0) ((EntryCodec.scalar ℝ).packFinMatrix x.val.1.2.1))
+            x.val.1.2.2 (E d) m s rho ∧ (m < d 1 → s.r = 0) := by
+      rintro _ _ rfl rfl h
+      exact h
+    exact ⟨hpos, key _ _ hA hb (PrefixOutput.of_values hys hrel)⟩
   · intro d _ x
     rw [initialBytes_problem]
     exact le_rfl

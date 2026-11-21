@@ -57,9 +57,7 @@ theorem eval_countPoly_program (d : Fin 2 → ℕ) :
 
 variable (lowerA upperA lowerP upperP : (Fin 2 → ℕ) → ℝ)
   (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d)
-  (supply : ∀ d, domain d → ∃ rawA rawP rhs : List ℝ,
-    rawA.length = d 0 * d 0 ∧ rawP.length = d 0 * d 0 ∧ rhs.length = d 0 ∧
-      accepts lowerA upperA lowerP upperP d rawA rawP rhs)
+  (supply : ∀ d, domain d → ∃ x : Inputs d, accepts lowerA upperA lowerP upperP d x)
 
 /-- The scalar PCG specification with the explicit operation count as work and span. -/
 noncomputable def countedSpecification (M : Machine ℝ) (u : ℝ)

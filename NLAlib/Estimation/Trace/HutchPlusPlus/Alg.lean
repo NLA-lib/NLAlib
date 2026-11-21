@@ -11,6 +11,7 @@ public import NLAlib.Ops.Blas.Sampling
 public import NLAlib.Ops.Catalog.Index
 public import NLAlib.Ops.Catalog.Sampling
 public import NLAlib.Ops.Catalog.StoredOperator
+public import NLAlib.Ops.RoutineSyntax
 
 /-!
 # Hutch++ as one fixed program
@@ -107,6 +108,14 @@ def estimate (stream : ℕ) : Stmt Op Tst := ops% [n, k, ell] (data) → (out) {
   run (prepare stream) [n, k, ell] (data, B);
   run finish [n, k, ell] (data, B, out)
 }
+
+/-- Hutch++: `[n, k, ell] (data : read) → (out : write 1)`, drawing `n * (k + ell)` tape
+positions. Operands are separated by block, so the output cell may be in the buffer of the
+operator data. -/
+def estimateRoutine (stream : ℕ) (dataLength : ℕ → ℕ → ℕ) : Routine Op Tst :=
+  routine% [n, k, ell] (data : ↑(dataLength n n)) → (out : 1)
+    draws n * (k + ell)
+    by blocks := estimate stream
 
 /-- A fixed three-dimension program with declared operator-data and output buffers. -/
 def estimateProgram (stream : ℕ) : Program Op Tst 3 2 := ⟨(estimate stream)⟩

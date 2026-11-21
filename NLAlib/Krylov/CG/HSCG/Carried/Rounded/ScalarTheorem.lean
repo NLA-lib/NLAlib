@@ -31,18 +31,18 @@ open scoped Matrix
 
 variable {lower upper : (Fin 2 → ℕ) → ℝ}
 variable {domain : (Fin 2 → ℕ) → Prop} {admitted : ∃ d, domain d}
-  {supply : ∀ d, domain d → ∃ raw rhs : List ℝ,
-    raw.length = d 0 * d 0 ∧ rhs.length = d 0 ∧ accepts lower upper d raw rhs}
+  {supply : ∀ d, domain d →
+    ∃ x : Matrix (Fin (d 0)) (Fin (d 0)) ℝ × (Fin (d 0) → ℝ), accepts lower upper d x}
 
-/-- The matrix of an input: the `n × n` real matrix whose entries are the words of buffer `0`. -/
+/-- The matrix of an input, stored entry by entry in buffer `0`. -/
 abbrev inputMatrix {d : Fin 2 → ℕ} (x : (problem lower upper domain admitted supply).Input d) :
     Matrix (Fin (d 0)) (Fin (d 0)) ℝ :=
-  StoredProblem.matrix x
+  x.val.1.1
 
-/-- The right-hand side of an input: the vector whose entries are the words of buffer `1`. -/
+/-- The right-hand side of an input, stored in buffer `1`. -/
 abbrev inputRhs {d : Fin 2 → ℕ} (x : (problem lower upper domain admitted supply).Input d) :
     Fin (d 0) → ℝ :=
-  decv id (d 0) x.val.1.2
+  x.val.1.2
 
 /-- **Scalar conjugate gradient in rounded arithmetic: termination, operation count and
 energy-norm error.** Let $\mathbf{A} \in \mathbb{R}^{n \times n}$ be symmetric with spectrum in
@@ -122,10 +122,10 @@ theorem exec_scalarProgram_work_le_and_quadForm_le (M : Machine ℝ) (u : ℝ)
     · rcases hzero with h | h
       · omega
       · exact h
-    · have hsym : (inputMatrix x).IsHermitian := (Problem.withContext.extra_input x).1
+    · have hsym : (inputMatrix x).IsHermitian := x.property.1.1
       have hpd : (inputMatrix x).PosDef := hsym.posDef_iff_eigenvalue_pos.mpr fun i hi =>
         (ha d hd).trans_le
-          (hsym.spectrum_subset_iff.mp (Problem.withContext.extra_input x).2 i hi).1
+          (hsym.spectrum_subset_iff.mp x.property.1.2 i hi).1
       have hq : 0 ≤ quadForm (inputMatrix x) xs := hpd.posSemidef.quadForm_nonneg xs
       simp only [sub_zero, pow_zero, mul_one, Nat.cast_zero, ne_eq,
         OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow, mul_zero, zero_mul, zero_div, add_zero]

@@ -481,7 +481,6 @@ public import NLAlib.Krylov.Basic.Compression
 public import NLAlib.Krylov.Basic.Grade
 public import NLAlib.Krylov.Basic.KrylovVandermonde
 public import NLAlib.Krylov.Basic.Space
-public import NLAlib.Krylov.CG.BufferProblem
 public import NLAlib.Krylov.CG.HSCG.Alg
 public import NLAlib.Krylov.CG.HSCG.Bounds
 public import NLAlib.Krylov.CG.HSCG.Carried.Alg
@@ -554,10 +553,8 @@ public import NLAlib.Krylov.CG.HSPCG.Solve
 public import NLAlib.Krylov.CG.HSPCG.Spec
 public import NLAlib.Krylov.CG.HSPCG.StoredCertification
 public import NLAlib.Krylov.CG.HSPCG.StoredContext
-public import NLAlib.Krylov.CG.HSPCG.StoredProblem
 public import NLAlib.Krylov.CG.HSPCG.StoredRoutine
 public import NLAlib.Krylov.CG.HSPCG.ZeroStart
-public import NLAlib.Krylov.CG.HorizonProblem
 public import NLAlib.Krylov.CG.Math.Preconditioned
 public import NLAlib.Krylov.CG.Math.Recurrence
 public import NLAlib.Krylov.CG.Reorth.Advance
@@ -582,7 +579,6 @@ public import NLAlib.Krylov.CG.ResidualCache
 public import NLAlib.Krylov.CG.ResidualCacheFormats
 public import NLAlib.Krylov.CG.Spec
 public import NLAlib.Krylov.CG.Standard
-public import NLAlib.Krylov.CG.StoredProblem
 public import NLAlib.Krylov.Eigenvalues.PowerIteration
 public import NLAlib.Krylov.Eigenvalues.Ritz
 public import NLAlib.Krylov.FinitePrecision.Backward
@@ -644,7 +640,6 @@ public import NLAlib.Krylov.GolubKahan.Band.StoredExtension
 public import NLAlib.Krylov.Lanczos.Advance
 public import NLAlib.Krylov.Lanczos.Alg
 public import NLAlib.Krylov.Lanczos.Basis
-public import NLAlib.Krylov.Lanczos.BufferProblem
 public import NLAlib.Krylov.Lanczos.Certification
 public import NLAlib.Krylov.Lanczos.Cost
 public import NLAlib.Krylov.Lanczos.Exact
@@ -721,7 +716,6 @@ public import NLAlib.Krylov.Lanczos.Spec
 public import NLAlib.Krylov.Lanczos.State
 public import NLAlib.Krylov.Lanczos.Storage
 public import NLAlib.Krylov.Lanczos.StoredCertification
-public import NLAlib.Krylov.Lanczos.StoredProblem
 public import NLAlib.Krylov.Lanczos.StoredProgram
 public import NLAlib.Krylov.Lanczos.StoredRoutine
 public import NLAlib.Krylov.Lanczos.Update
@@ -1189,7 +1183,6 @@ public import NLAlib.Ops.Certification
 public import NLAlib.Ops.Confined
 public import NLAlib.Ops.Context
 public import NLAlib.Ops.ContextIteration
-public import NLAlib.Ops.ContextProblem
 public import NLAlib.Ops.ContextRun
 public import NLAlib.Ops.ContextSemantics
 public import NLAlib.Ops.ContextWork

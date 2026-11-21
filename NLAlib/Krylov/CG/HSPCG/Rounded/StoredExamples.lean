@@ -28,16 +28,19 @@ namespace NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.Examples
 
 open Ops
 open HSCG.Carried.Rounded.Stored.Certification.Examples (domain admitted)
+open scoped Matrix
 
-/-- The existing raw identity matrix and nonzero right-hand side supply both independently
-stored operators, with the two reference spectral windows equal to the singleton one. -/
+/-- The identity matrix, as system and as preconditioner, and a nonzero right-hand side: the
+two reference spectral windows are the singleton one. -/
 theorem supply (d : Fin 2 → ℕ) (hd : domain d) :
-    ∃ rawA rawP rhs : List ℝ,
-      rawA.length = d 0 * d 0 ∧ rawP.length = d 0 * d 0 ∧ rhs.length = d 0 ∧
-        Certification.accepts (fun _ => 1) (fun _ => 1) (fun _ => 1) (fun _ => 1) d rawA rawP rhs :=
-            by
-  obtain ⟨raw, rhs, hr, hb, h⟩ := HSCG.Carried.Rounded.Stored.Certification.Examples.supply d hd
-  exact ⟨raw, raw, rhs, hr, hr, hb, h.1, h.1, h.2, h.2⟩
+    ∃ x : Certification.Inputs d,
+      Certification.accepts (fun _ => 1) (fun _ => 1) (fun _ => 1) (fun _ => 1) d x := by
+  change d = ![1, 1] at hd
+  subst d
+  have h : (1 : Matrix (Fin 1) (Fin 1) ℝ)ᵀ = 1 ∧
+      spectrum ℝ (1 : Matrix (Fin 1) (Fin 1) ℝ) ⊆ Set.Icc 1 1 := by simp
+  exact ⟨((1 : Matrix (Fin 1) (Fin 1) ℝ), (1 : Matrix (Fin 1) (Fin 1) ℝ), fun _ => 1),
+    h.1, h.1, h.2, h.2⟩
 
 /-- Actual word multiplication is nonexact at the chosen strictly positive scalar roundoff. -/
 theorem mul_one_ne_one : (inflMachine (1 / 1000000000000)).mul 1 1 ≠ 1 := by

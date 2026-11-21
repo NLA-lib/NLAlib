@@ -100,9 +100,10 @@ noncomputable def algorithm
       em d * specNorm (model.matrix d x))
     (hAT : ∀ d, domain d → ∀ x, (model.matrix d x)ᵀ = model.matrix d x) :
     Algorithm model.access (specification model E) :=
-  Routine.algorithm (r := 2) (b := 3) Rounded.seqSolveRoutine
+  ((Lanczos.Certification.inputs (K := K) domain admitted).cast Rounded.seqSolveRoutine
+      rfl rfl).algorithmAt
     (fun d x => Rounded.solveSpec model.decode (model.matrix d x) (E d))
-    (fun _ x => [x.val.1]) (ht := by
+    (ht := by
         change program.wellTyped model.resources (fun _ => .cell) = true
         rw [hresources]; exact wellTyped_program ..)
     (fun d hd x I hI => by
@@ -115,19 +116,16 @@ noncomputable def algorithm
         (haccuracy d hd).scal
       exact Rounded.seqSolveRoutine_meets hS model.scalar hu (hA.mono (hbudget d hd x)) hCmp
         (hAT d hd x) hp)
-    (fun d _ x => ⟨Mem.readBlocks_of_cons (Lanczos.Certification.initial_readBlock d x) rfl, fun _
-        => rfl,
-      Lanczos.Certification.initial_room d x⟩)
+    (fun d _ x τ => rfl)
     (fun d _ x τ m' _ hpos ys hys hrel c _ => by
       read_outputs hys as (vs, cs)
-      exact ⟨hpos, vs, cs, hvs, hcs, hrel⟩)
-    (fun _ _ => le_rfl)
-    (fun _ _ => le_rfl)
-    (fun _ _ => le_rfl)
-    (fun _ _ => le_rfl)
-    (fun d _ x => by
-      rw [Lanczos.Certification.initialBytes_problem]
-      exact le_rfl)
+      have hb : decv model.decode (d 0) (List.ofFn x.val.1) =
+          fun i => model.decode (x.val.1 i) := decv_ofFn_apply _ _
+      exact ⟨hpos, vs, cs, hvs, hcs, hb ▸ hrel⟩)
+    (hmemory := fun d _ x => by
+      have h := Lanczos.Certification.initialBytes_problem (K := K) (domain := domain)
+        (admitted := admitted) d x
+      exact Nat.add_le_add_right h.le _)
 
 /-- The sequentially lowered canonical program has an explicit exact identity-operator
 instance for every admitted dimension, cap and supplied real right-hand side. -/

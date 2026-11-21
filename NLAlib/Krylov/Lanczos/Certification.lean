@@ -6,7 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Krylov.Lanczos.Rounded.Models
-public import NLAlib.Krylov.Lanczos.BufferProblem
+public import NLAlib.Ops.RoutineProblem
 public import NLAlib.Krylov.Lanczos.Rounded.Solve
 
 /-!
@@ -39,22 +39,28 @@ open scoped Matrix
 
 variable {K : Type} [Inhabited K]
 
-/-- The matrix-free Lanczos problem has an initialized right-hand side and explicitly supplied
-uninitialized basis/coefficient slots. The nonempty size-only domain can express reduction
-applicability and precision caps without imposing a restriction on the right-hand-side words. -/
-def problem (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d) : Problem K 2 3 :=
-  PackedProblem.problem (fun cap => 2 * cap + 2) domain admitted
+/-- The admitted inputs of Lanczos: at the sizes of `domain`, every right-hand side, a vector of
+`d 0` words held by the first operand; the basis and the coefficients are blank. The size-only
+domain can express reduction applicability and precision caps without a restriction on the
+right-hand side. The matrix is not stored: it is a parameter of the model. -/
+def inputs (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d) :
+    (solveRoutine (Op := Standard.Operation) (Tst := CmpTst)).Domain K 2 3 where
+  valid := domain
+  In d := Fin (d 0) → K
+  accepts _ _ := True
+  slot d := ![.stored (Codec.vector (d 0)) id, .blank ((d 1 + 1) * d 0), .blank (2 * d 1 + 2)]
+  fits := by domain_fits
+  faithful d x y h := (Codec.vector (d 0)).encode_injective (by
+    have h0 := h 0
+    simpa only [Slot.input, Matrix.cons_val_zero, Option.some.injEq, id] using h0)
+  admitted := admitted
+  inhabited _ _ := ⟨fun _ => default, trivial⟩
+
+/-- The right-hand side, and blank basis and coefficients: the problem of Lanczos. -/
+abbrev problem (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d) : Problem K 2 3 :=
+  (inputs (K := K) domain admitted).problem
 
 variable {domain : (Fin 2 → ℕ) → Prop} {admitted : ∃ d, domain d}
-
-/-- Admissibility identifies the three actual supplied buffers. -/
-theorem input_buffers (d : Fin 2 → ℕ) (x : (problem (K := K) domain admitted).Input d) :
-    x.val.2 = ![x.val.1.map some, List.replicate ((d 1 + 1) * d 0) none,
-      List.replicate (2 * d 1 + 2) none] := PackedProblem.input_buffers d x
-
-/-- Every supplied word list has the declared dimension. -/
-theorem length_input (d : Fin 2 → ℕ) (x : (problem (K := K) domain admitted).Input d) :
-    x.val.1.length = d 0 := PackedProblem.length_input d x
 
 /-- The input and all output capacity count toward resident modeled payload, regardless of
 whether early breakdown leaves some output slots zero. -/
@@ -62,20 +68,9 @@ theorem initialBytes_problem (d : Fin 2 → ℕ)
     (x : (problem (K := K) domain admitted).Input d) :
     (problem (K := K) domain admitted).initialBytes d x =
       d 0 + (d 1 + 1) * d 0 + (2 * d 1 + 2) := by
-  exact PackedProblem.initialBytes_problem d x
-
-/-- The supplied right-hand-side buffer reads back the declared raw word list. -/
-theorem initial_readBlock (d : Fin 2 → ℕ)
-    (x : (problem (K := K) domain admitted).Input d) :
-    ((problem (K := K) domain admitted).initial d x).store.readBlock 0 0 (d 0) = some x.val.1 := by
-  exact PackedProblem.initial_readBlock d x
-
-/-- The public output capacities are supplied before execution; they are not hidden scratch. -/
-theorem initial_room (d : Fin 2 → ℕ)
-    (x : (problem (K := K) domain admitted).Input d) :
-    ((problem (K := K) domain admitted).initial d x).Room [(1, 0), (2, 0)]
-      [(d 1 + 1) * d 0, 2 * d 1 + 2] := by
-  exact PackedProblem.initial_room d x
+  refine ((inputs (K := K) domain admitted).initialBytes_eq x).trans ?_
+  simp [inputs, Slot.len, Codec.vector, List.ofFn_succ]
+  ring
 
 /-- One fixed tree, with only its dimension and cap supplied by the canonical environment. -/
 def program : Program Standard.Operation CmpTst 2 3 := solveRoutine.close 2 3
@@ -130,7 +125,7 @@ noncomputable def specification
   good d x _ _ m := m.pos = 0 ∧ ∃ vs cs,
     m.store.readBlock 1 0 ((d 1 + 1) * d 0) = some vs ∧
     m.store.readBlock 2 0 (2 * d 1 + 2) = some cs ∧
-    Rounded.Output model.decode (model.matrix d x) (decv model.decode (d 0) x.val.1)
+    Rounded.Output model.decode (model.matrix d x) (fun i => model.decode (x.val.1 i))
       (E d) (d 1) vs cs
 
 /-- Declared primitive contracts and explicit spectral-free Lanczos precision assumptions
@@ -151,9 +146,9 @@ noncomputable def algorithm
       em d * specNorm (model.matrix d x))
     (hAT : ∀ d, domain d → ∀ x, (model.matrix d x)ᵀ = model.matrix d x) :
     Algorithm model.access (specification model E) :=
-  Routine.algorithm (r := 2) (b := 3) solveRoutine
+  (inputs (K := K) domain admitted).algorithmAt
     (fun d x => Rounded.solveSpec model.decode (model.matrix d x) (E d))
-    (fun _ x => [x.val.1]) (ht := by
+    (ht := by
         change program.wellTyped model.resources (fun _ => .cell) = true
         rw [hresources]; exact wellTyped_program ..)
     (fun d hd x I hI => by
@@ -164,11 +159,12 @@ noncomputable def algorithm
         hacc.matvec hacc.scalar hacc.dot hacc.axpy hacc.scal
       exact Rounded.solveRoutine_meets hS model.scalar hB (hok d hd) (hA.mono (hbudget d hd x)) hCmp
         (hAT d hd x) hp)
-    (fun d _ x => ⟨Mem.readBlocks_of_cons (initial_readBlock d x) rfl, fun _ => rfl,
-      initial_room d x⟩)
+    (fun d _ x τ => rfl)
     (fun d _ x τ m' _ hpos ys hys hrel c _ => by
       read_outputs hys as (vs, cs)
-      exact ⟨hpos, vs, cs, hvs, hcs, hrel⟩)
+      have hb : decv model.decode (d 0) (List.ofFn x.val.1) =
+          fun i => model.decode (x.val.1 i) := decv_ofFn_apply _ _
+      exact ⟨hpos, vs, cs, hvs, hcs, hb ▸ hrel⟩)
     (fun _ _ => le_rfl)
     (fun d _ => staticPeak_program_le model.resources d)
     (fun _ _ => le_rfl)

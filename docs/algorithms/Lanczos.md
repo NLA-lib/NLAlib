@@ -66,10 +66,10 @@ proof q is the number m of steps performed; the statement does not record that.
         33 * d 0 ^ 2 * d 1 + 153 * d 0 * d 1 + 302 * d 1 + 58 * d 0 + 179 ∧
       ∃ vs cs, st.mem.store.readBlock 2 0 ((d 1 + 1) * d 0) = some vs ∧
         st.mem.store.readBlock 3 0 (2 * d 1 + 2) = some cs ∧
-        Lanczos.Rounded.Output id (StoredProblem.matrix x) (decv id (d 0) x.val.1.2) (E d) (d 1)
+        Lanczos.Rounded.Output id x.val.1.1 x.val.1.2 (E d) (d 1)
           vs cs ∧
-        (0 < d 1 → decv id (d 0) x.val.1.2 ≠ 0 → (d 1 : ℝ) * E d ≤ 1 / 100 →
-          Lanczos.Rounded.RitzResidual id (StoredProblem.matrix x) (E d) (d 1) vs cs)
+        (0 < d 1 → x.val.1.2 ≠ 0 → (d 1 : ℝ) * E d ≤ 1 / 100 →
+          Lanczos.Rounded.RitzResidual id x.val.1.1 (E d) (d 1) vs cs)
 ```
 
 **Translation notes.**
@@ -77,8 +77,8 @@ proof q is the number m of steps performed; the statement does not record that.
 | In the theorem | In the Lean | Where |
 |---|---|---|
 | n, k | `d 0`, `d 1`; the covered sizes are the parameter `domain` | |
-| A, b | `StoredProblem.matrix x` (buffer 0), `decv id (d 0) x.val.1.2` (buffer 1) | [`StoredProblem.lean`](../../NLAlib/Krylov/Lanczos/StoredProblem.lean) |
-| A symmetric | part of being an input (`StoredProblem.extra true`) | same file |
+| A, b | `x.val.1.1` (stored column by column in buffer 0), `x.val.1.2` (buffer 1): the inputs of the problem | `inputs` in [`Rounded/StoredCertification.lean`](../../NLAlib/Krylov/Lanczos/Rounded/StoredCertification.lean) |
+| A symmetric | the acceptance predicate of the inputs (`accepts`: `x.1.IsHermitian`) | same file |
 | the conditions on E | `Lanczos.Rounded.Precision em u E e n` with `em = ScalarProducts.roundoff u n * √n` and `e = Blas.seq.err u`; it also asks `e.dot n + u * (1 + e.dot n) < 1` | [`Rounded/Precision.lean`](../../NLAlib/Krylov/Lanczos/Rounded/Precision.lean) |
 | the stored vectors and coefficients | `vs` is buffer 2, (k+1)·n words, vector j at offset (j−1)·n; `cs` is buffer 3, 2k+2 words: α at 0…k−1, β₀…β_k at k…2k, the norm of b at 2k+1 (`PackedOutput`) | [`Rounded/Output.lean`](../../NLAlib/Krylov/Lanczos/Rounded/Output.lean) |
 | item 2 | `Lanczos.Rounded.Output`: `∃ done ≤ cap, ∃ z, Outcome A rhs E done z ∧ PackedOutput … ∧ (done < cap → … = 0)`; `Outcome` holds the `LanczosRun` | [`Rounded/State.lean`](../../NLAlib/Krylov/Lanczos/Rounded/State.lean), [`LanczosRun.lean`](../../NLAlib/Krylov/FinitePrecision/LanczosRun.lean) |
@@ -141,8 +141,8 @@ and coefficient block `3 * d 1 + 2`), the conclusion is, verbatim:
           Real.sqrt (3 * ((d 1 : ℝ) + 1)) * (2 * (2 * c + 2 * (η + c) ^ 2 / thr + E d)) ≤ η →
           2 * (2 * c + 2 * (η + c) ^ 2 / thr + E d) + E d + 3 * c ≤ 1 / 100 →
           ∃ done ≤ d 1, ∃ z : Lanczos.Rounded.Values (d 0), ∃ nus : ℕ → ℝ,
-            Lanczos.Reorth.Rounded.History id (StoredProblem.matrix x)
-              (decv id (d 0) x.val.1.2) (ScalarProducts.roundoff u (d 0) * Real.sqrt (d 0)) u
+            Lanczos.Reorth.Rounded.History id x.val.1.1
+              x.val.1.2 (ScalarProducts.roundoff u (d 0) * Real.sqrt (d 0)) u
               (E d) (Blas.seq.err u) done z nus ∧
             Lanczos.Reorth.Rounded.PackedOutput id (d 1) done z nus vs cs ∧
             (done < d 1 → (if done = 0 then z.initialNorm else z.beta done) = 0) ∧
@@ -152,16 +152,16 @@ and coefficient block `3 * d 1 + 2`), the conclusion is, verbatim:
                 (specNorm ((Lanczos.basisMatrix id (d 0) vs r)ᵀ *
                     Lanczos.basisMatrix id (d 0) vs r - 1) ≤ η ∧
                   ∀ i < r,
-                    eigenvalue (StoredProblem.matrix x) (i + (d 0 - r)) -
+                    eigenvalue x.val.1.1 (i + (d 0 - r)) -
                         100 * ((r : ℝ) + 1) *
                           (2 * (2 * c + 2 * (η + c) ^ 2 / thr + E d) + E d + 3 * c) *
-                          specNorm (StoredProblem.matrix x) ≤
+                          specNorm x.val.1.1 ≤
                       eigenvalue (Lanczos.tridiagonalMatrix id (d 1) cs r) i ∧
                     eigenvalue (Lanczos.tridiagonalMatrix id (d 1) cs r) i ≤
-                      eigenvalue (StoredProblem.matrix x) i +
+                      eigenvalue x.val.1.1 i +
                         100 * ((r : ℝ) + 1) *
                           (2 * (2 * c + 2 * (η + c) ^ 2 / thr + E d) + E d + 3 * c) *
-                          specNorm (StoredProblem.matrix x)))
+                          specNorm x.val.1.1))
 ```
 
 **Translation notes.** As for the first theorem, and:

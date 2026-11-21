@@ -51,40 +51,26 @@ noncomputable def algorithm (dataLength : ℕ → ℕ → ℕ)
     (hW : ∀ o d, workspace o d ≤ w) (stream : ℕ) :
     Algorithm (ExactLinear.model (problem dataLength) dataLength matrix work workspace)
       (specification dataLength matrix work workspace w stream) := by
-  refine Routine.algorithm (r := 3) (b := 2) (estimateRoutine stream dataLength)
-    (fun _ _ => estimateSpec stream matrix) (fun _ x => [x.val.1])
+  refine ((inputs (𝕜 := 𝕜) dataLength).cast (estimateRoutine stream dataLength) rfl
+      rfl).algorithm (fun _ _ => estimateSpec stream matrix)
     (ht := wellTyped_estimateProgram work workspace stream) ?_ ?_ ?_
     (hspace := fun d _ => staticPeak_estimateProgram_le work workspace w hW stream d) (hmemory :=
         ?_)
   · intro d _ x I hI
     obtain ⟨hS, hB, hA, hSample, hLit, hC⟩ := ExactLinear.laws hI
     exact estimateRoutine_meets hS hB hC hA hSample hLit stream
-  · intro d _ x
-    let μ := (problem (𝕜 := 𝕜) dataLength).initial d x
-    have h0 : x.val.2 0 = x.val.1.map some := by rw [x.property.1]; rfl
-    have h1 : x.val.2 1 = [none] := by rw [x.property.1]; rfl
-    have hLength : x.val.1.length = dataLength (d 0) (d 0) := x.property.2
-    have hRead := Problem.initial_readBlock d x (0 : Fin 2) h0
-    rw [hLength] at hRead
-    have hCap : μ.store.len 1 = 1 := by
-      have hc := Problem.initial_len (P := problem (𝕜 := 𝕜) dataLength) d x (1 : Fin 2)
-      rw [h1] at hc
-      exact hc
-    refine ⟨Mem.readBlocks_of_cons hRead rfl, fun _ => trivial, ?_⟩
-    change μ.Room [(1, 0)] [1]
-    simp only [Mem.room_cons, Mem.room_nil, and_true, Nat.zero_add]
-    exact hCap.ge
+  · intro d _ x hx τ
+    trivial
   · intro d _ x τ m' hfr hpos ys hys hrel c _
     read_outputs hys as (zs)
     obtain ⟨v, hv, rfl⟩ := Store.readBlock_one_eq_some.mp hzs
     refine ⟨hpos.eq_of_start rfl, by simpa [Problem.initial] using hfr.length_eq, ?_⟩
-    have hval : v = hutchpp (matrix (d 0) (d 0) x.val.1)
+    have hval : v = hutchpp (matrix (d 0) (d 0) x.val.1.val)
         (sampleMatrices stream (d 0) (d 1) (d 2) τ).1
         (sampleMatrices stream (d 0) (d 1) (d 2) τ).2 := hrel
     exact hzs.trans (by rw [hval])
   · intro d _ x
-    rw [initialBytes_problem]
-    exact le_rfl
+    exact Nat.add_le_add_right (initialBytes_problem dataLength d x).le _
 
 /-! ### Explicit work -/
 
@@ -144,7 +130,7 @@ theorem estimate_checked (dataLength : ℕ → ℕ → ℕ)
         ((problem (𝕜 := 𝕜) dataLength).initial d x) = some st ∧
       (ExactLinear.resources (fun _ _ => 1) workspace).work st.cost ≤ operationCount d ∧
       st.mem.pos = d 0 * (d 1 + d 2) ∧
-      st.mem.store.get 1 0 = some (hutchpp (matrix (d 0) (d 0) x.val.1)
+      st.mem.store.get 1 0 = some (hutchpp (matrix (d 0) (d 0) x.val.1.val)
         ((EntryCodec.scalar 𝕜).matrix (d 0) (d 1) (τ.window stream 0 (d 0 * d 1)))
         ((EntryCodec.scalar 𝕜).matrix (d 0) (d 2)
           (τ.window stream (d 0 * d 1) (d 0 * d 2)))) := by

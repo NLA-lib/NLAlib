@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Krylov.Lanczos.StoredProblem
+public import NLAlib.Ops.RoutineProblem
 public import NLAlib.Krylov.Lanczos.Reorth.StoredRoutine
 public import NLAlib.Ops.Profiles.ExactBlas
 
@@ -29,9 +29,28 @@ namespace NLAlib.Krylov.Lanczos.Reorth.Stored.Certification
 
 open Ops
 
-/-- Full reorthogonalization admits supplied symmetric matrices and arbitrary right-hand sides. -/
-def problem (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d) : Problem ℝ 2 4 :=
-  StoredProblem.problem (fun cap => 3 * cap + 2) domain admitted true
+/-- The admitted inputs: at the sizes of `domain`, every symmetric matrix, stored column by
+column, with every right-hand side; the basis and the coefficients are blank. -/
+noncomputable def inputs (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d) :
+    solveRoutine.Domain ℝ 2 4 where
+  valid := domain
+  In d := Matrix (Fin (d 0)) (Fin (d 0)) ℝ × (Fin (d 0) → ℝ)
+  accepts _ x := x.1.IsHermitian
+  slot d := ![.stored (Codec.matrix (EntryCodec.scalar ℝ) (d 0) (d 0)) Prod.fst,
+    .stored (Codec.vector (d 0)) Prod.snd, .blank ((d 1 + 1) * d 0), .blank (3 * d 1 + 2)]
+  fits := by domain_fits
+  faithful d x y h := by
+    have h0 := h 0
+    have h1 := h 1
+    simp only [Slot.input, Matrix.cons_val_zero, Matrix.cons_val_one, Option.some.injEq] at h0 h1
+    exact Prod.ext ((Codec.matrix (EntryCodec.scalar ℝ) (d 0) (d 0)).encode_injective h0)
+      ((Codec.vector (d 0)).encode_injective h1)
+  admitted := admitted
+  inhabited _ _ := ⟨(0, fun _ => 0), Matrix.isHermitian_zero⟩
+
+/-- The stored symmetric matrix, the right-hand side, and blank basis and coefficients. -/
+noncomputable abbrev problem (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d) :
+    Problem ℝ 2 4 := (inputs domain admitted).problem
 
 variable {domain : (Fin 2 → ℕ) → Prop} {admitted : ∃ d, domain d}
 
@@ -39,7 +58,9 @@ variable {domain : (Fin 2 → ℕ) → Prop} {admitted : ∃ d, domain d}
 theorem initialBytes_problem (d : Fin 2 → ℕ) (x : (problem domain admitted).Input d) :
     (problem domain admitted).initialBytes d x =
       d 0 * d 0 + (d 0 + (d 1 + 1) * d 0 + (3 * d 1 + 2)) := by
-  exact StoredProblem.initialBytes_eq d x
+  refine ((inputs domain admitted).initialBytes_eq x).trans ?_
+  simp [inputs, Slot.len, Codec.vector, Codec.matrix, List.ofFn_succ]
+  ring
 
 /-- The target model has scalar/vector names only; the matrix lives in the declared input. -/
 noncomputable def model (cost : Standard.Costing) :
@@ -63,27 +84,32 @@ noncomputable def specification (cost : Standard.Costing) :
   good d x _ _ m := m.pos = 0 ∧ m.store.length = 4 ∧ ∃ vs cs,
     m.store.readBlock 2 0 ((d 1 + 1) * d 0) = some vs ∧
     m.store.readBlock 3 0 (3 * d 1 + 2) = some cs ∧
-    Lanczos.Reorth.Output id (StoredProblem.matrix x) (decv id (d 0) x.val.1.2) (d 1) vs cs
+    Lanczos.Reorth.Output id x.val.1.1 x.val.1.2 (d 1) vs cs
 
 /-- Every admitted raw dense matrix and right-hand side have a total canonical execution.
 No operator oracle, preprocessing, successful-run premise or output callback is required. -/
 noncomputable def algorithm (cost : Standard.Costing) :
     Algorithm (model (domain := domain) (admitted := admitted) cost) (specification cost) := by
-  refine Routine.algorithm (r := 2) (b := 4) (P := problem domain admitted) solveRoutine
-    (fun d _ => solveSpec (d 0)) (fun _ x => [x.val.1.1 0, x.val.1.2])  ?_ ?_ ?_
-    (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) ?_
+  refine (inputs domain admitted).algorithm
+    (fun d _ => solveSpec (d 0)) ?_ ?_ ?_ (hmemory := ?_)
   · intro d _ x I hI
     obtain ⟨hS, hB, hCmp⟩ := ExactBlas.laws hI
     exact solveRoutine_meets hS hB hCmp
-  · intro d _ x
-    exact ⟨Mem.readBlocks_of_cons (StoredProblem.initial_matrix d x)
-        (Mem.readBlocks_of_cons (StoredProblem.initial_rhs d x) rfl),
-      fun _ => ⟨⟨rfl, StoredProblem.matrix_isHermitian x⟩, rfl⟩, StoredProblem.initial_room d x⟩
+  · intro d _ x hx τ
+    refine ⟨⟨rfl, ?_⟩, rfl⟩
+    change (StoredOperator.denseMatrix (d 0) (d 0)
+      ((EntryCodec.scalar ℝ).packFinMatrix x.1)).IsHermitian
+    rw [StoredOperator.denseMatrix_packFinMatrix]
+    exact hx
   · intro d _ x τ m' hfr hpos ys hys hrel c _
     have hlen4 : ((problem domain admitted).initial d x).store.length = 4 := by
       simp [Problem.initial]
     read_outputs hys as (vs, cs)
-    exact ⟨hpos, hfr.length_eq.trans hlen4, vs, cs, hvs, hcs, hrel⟩
+    have hA := StoredOperator.denseMatrix_packFinMatrix x.val.1.1
+    have hb := decv_ofFn (n := d 0) x.val.1.2
+    refine ⟨hpos, hfr.length_eq.trans hlen4, vs, cs, hvs, hcs, ?_⟩
+    rw [← hA, ← hb]
+    exact hrel
   · intro d _ x
     rw [initialBytes_problem]
     exact le_rfl

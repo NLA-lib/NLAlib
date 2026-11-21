@@ -88,10 +88,10 @@ theorem exec_scalarProgram_work_le_and_ritzResidual (M : Machine ℝ) (u : ℝ)
         33 * d 0 ^ 2 * d 1 + 153 * d 0 * d 1 + 302 * d 1 + 58 * d 0 + 179 ∧
       ∃ vs cs, st.mem.store.readBlock 2 0 ((d 1 + 1) * d 0) = some vs ∧
         st.mem.store.readBlock 3 0 (2 * d 1 + 2) = some cs ∧
-        Lanczos.Rounded.Output id (StoredProblem.matrix x) (decv id (d 0) x.val.1.2) (E d) (d 1)
+        Lanczos.Rounded.Output id x.val.1.1 x.val.1.2 (E d) (d 1)
           vs cs ∧
-        (0 < d 1 → decv id (d 0) x.val.1.2 ≠ 0 → (d 1 : ℝ) * E d ≤ 1 / 100 →
-          Lanczos.Rounded.RitzResidual id (StoredProblem.matrix x) (E d) (d 1) vs cs) := by
+        (0 < d 1 → x.val.1.2 ≠ 0 → (d 1 : ℝ) * E d ≤ 1 / 100 →
+          Lanczos.Rounded.RitzResidual id x.val.1.1 (E d) (d 1) vs cs) := by
   obtain ⟨st, hr, -, -, hw, -, -, hg⟩ :=
     (scalarCountedAlgorithm M u hM hu E hprec).correct d hd x I hI τ
   obtain ⟨-, -, vs, cs, hvs, hcs, hout⟩ := hg

@@ -31,17 +31,6 @@ namespace NLAlib.Krylov.CG.HSCG.Stored.Certification
 
 open Ops
 
-/-- A matrix stored column by column, one word per entry, decodes to itself. -/
-theorem denseMatrix_packFinMatrix {n : ℕ} (A : Matrix (Fin n) (Fin n) ℝ) :
-    StoredOperator.denseMatrix n n ((EntryCodec.scalar ℝ).packFinMatrix A) = A := by
-  have h : StoredOperator.denseMatrix n n ((EntryCodec.scalar ℝ).packFinMatrix A) =
-      (EntryCodec.scalar ℝ).matrix n n ((EntryCodec.scalar ℝ).packFinMatrix A) := by
-    funext i j
-    simp only [StoredOperator.denseMatrix, EntryCodec.matrix, EntryCodec.scalar_entry, vec,
-      Matrix.of_apply]
-    rfl
-  rw [h, EntryCodec.matrix_packFinMatrix]
-
 /-- The admitted systems: a positive-definite matrix and a right-hand side whose Krylov grade
 is at least the horizon. -/
 def accepts (d : Fin 2 → ℕ)
@@ -111,7 +100,7 @@ noncomputable def algorithm (cost : Standard.Costing) :
         ((EntryCodec.scalar ℝ).packFinMatrix x.1)).PosDef ∧
       d 1 ≤ krylovGrade (StoredOperator.denseMatrix (d 0) (d 0)
         ((EntryCodec.scalar ℝ).packFinMatrix x.1)) (decv id (d 0) (List.ofFn x.2))
-    rw [denseMatrix_packFinMatrix, decv_ofFn]
+    rw [StoredOperator.denseMatrix_packFinMatrix, decv_ofFn]
     exact hx
   · intro d _ x τ m' _ hpos ys hys hrel c _
     read_outputs hys as (xs', rs, ps)
@@ -119,7 +108,7 @@ noncomputable def algorithm (cost : Standard.Costing) :
         cgState (StoredOperator.denseMatrix (d 0) (d 0)
           ((EntryCodec.scalar ℝ).packFinMatrix x.val.1.1))
           (decv id (d 0) (List.ofFn x.val.1.2)) 0 (d 1) := hrel
-    rw [denseMatrix_packFinMatrix, decv_ofFn] at h
+    rw [StoredOperator.denseMatrix_packFinMatrix, decv_ofFn] at h
     exact ⟨hpos, xs', rs, ps, hys, h⟩
   · intro d _ x
     rw [initialBytes_problem]

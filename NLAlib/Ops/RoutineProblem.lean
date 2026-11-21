@@ -8,6 +8,8 @@ module
 public import NLAlib.Ops.Routine
 public import NLAlib.Ops.Logic.EntryLayout
 public import NLAlib.Ops.Logic.Step
+public import NLAlib.Ops.Catalog.Operator
+public import NLAlib.Ops.Catalog.StoredOperator
 
 /-!
 # The problem of a routine
@@ -217,6 +219,22 @@ theorem buffer_of_held {s : Slot K In} (h : s.held = true) (x : In) :
   cases s <;> first | rfl | exact absurd h (by simp [held])
 
 end Slot
+
+/-- Decoding the encoding of a vector of words decodes its entries. -/
+theorem decv_ofFn_apply [Inhabited K] (dec : K → ℝ) {n : ℕ} (v : Fin n → K) :
+    decv dec n (List.ofFn v) = fun i => dec (v i) :=
+  funext fun i => by simp [decv, vec, List.getD_eq_getElem?_getD]
+
+/-- A real matrix stored column by column, one word per entry, decodes to itself. -/
+theorem StoredOperator.denseMatrix_packFinMatrix {m n : ℕ} (A : Matrix (Fin m) (Fin n) ℝ) :
+    StoredOperator.denseMatrix m n ((EntryCodec.scalar ℝ).packFinMatrix A) = A := by
+  have h : StoredOperator.denseMatrix m n ((EntryCodec.scalar ℝ).packFinMatrix A) =
+      (EntryCodec.scalar ℝ).matrix m n ((EntryCodec.scalar ℝ).packFinMatrix A) := by
+    funext i j
+    simp only [StoredOperator.denseMatrix, EntryCodec.matrix, EntryCodec.scalar_entry, vec,
+      Matrix.of_apply]
+    rfl
+  rw [h, EntryCodec.matrix_packFinMatrix]
 
 /-! ### Selections of the operands of an interface -/
 
@@ -462,6 +480,40 @@ def algorithm {M : AccessModel Op Tst D.problem} {S : Specification Op Tst D.pro
       D.room_initial X⟩)
     hgood hcost hspace hwork hspan hmemory D.shape ht hfit hflat hcontig
 
+/-- The certificate of a routine on its problem, when the specification depends on the input
+of the problem and not only on its data: a model may supply further data at an input (the
+matrix of a matrix-free solver). The same construction as
+`NLAlib.Ops.Routine.Domain.algorithm`. -/
+def algorithmAt {M : AccessModel Op Tst D.problem} {S : Specification Op Tst D.problem}
+    (Sp : (d : Fin r → ℕ) → D.problem.Input d → Routine.Spec K)
+    (hmeets : ∀ d, D.valid d → ∀ (X : D.problem.Input d) (I : Interp Op Tst K),
+      M.contracts d X I → R.Meets I (Sp d X))
+    (hpre : ∀ d, D.valid d → ∀ (X : D.problem.Input d) (τ : Tape K),
+      (Sp d X).pre (List.ofFn d) τ (D.blocks d X.val.1))
+    (hgood : ∀ d, D.valid d → ∀ (X : D.problem.Input d) (τ : Tape K) (m' : Mem K),
+      (D.problem.initial d X).store.EqOff
+        (Fp.blocks (R.writeArgs (slots b)) (R.writeLens (List.ofFn d))) m'.store →
+      R.Advances (List.ofFn d) 0 m'.pos → ∀ ys,
+      m'.readBlocks (R.outArgs (slots b)) (R.outLens (List.ofFn d)) = some ys →
+      (Sp d X).post (List.ofFn d) τ (D.blocks d X.val.1) ys →
+      ∀ c, c ≤ S.budget d → S.good d X τ c m')
+    (hcost : ∀ d, D.valid d → staticCost (R.close r b) d ≤ S.budget d := by
+      intro _ _; exact le_rfl)
+    (hspace : ∀ d, D.valid d → staticPeak M.resources (R.close r b) d ≤ S.scratch d := by
+      intro _ _; exact le_rfl)
+    (hwork : ∀ d, D.valid d → M.resources.work (S.budget d) ≤ S.work d := by
+      intro _ _; exact le_rfl)
+    (hspan : ∀ d, D.valid d → M.resources.span (S.budget d) ≤ S.span d := by
+      intro _ _; exact le_rfl)
+    (hmemory : ∀ d, D.valid d → ∀ X : D.problem.Input d,
+      D.problem.initialBytes d X + S.scratch d ≤ S.memory d)
+    (ht : (R.close r b).wellTyped M.resources D.problem.formats = true := by rfl)
+    (hfit : R.bindsFit b = true := by rfl) (hflat : R.flat = true := by rfl)
+    (hcontig : R.contiguous = true := by rfl) : Algorithm M S :=
+  R.algorithm (P := D.problem) Sp (fun d X => D.blocks d X.val.1) hmeets
+    (fun d hd X => ⟨D.readBlocks_initial X, fun τ => hpre d hd X τ, D.room_initial X⟩)
+    hgood hcost hspace hwork hspan hmemory D.shape ht hfit hflat hcontig
+
 /-- The resident payload of the problem: the cells of the slots, in their storage. -/
 theorem initialBytes_eq {d : Fin r → ℕ} (X : D.problem.Input d) :
     D.problem.initialBytes d X =
@@ -484,6 +536,69 @@ theorem checked {M : AccessModel Op Tst D.problem} {S : Specification Op Tst D.p
       S.good d (D.input d x hx) τ st.cost st.mem := by
   obtain ⟨st, hr, hp, hc, hw, hs, -, hg⟩ := A.correct d hd (D.input d x hx) I hI τ
   exact ⟨st, hr, hp, hc, hw, hs, hg⟩
+
+/-- The resident payload at the sizes: the cells of the slots, in their storage. -/
+def bytes (d : Fin r → ℕ) : ℕ := (List.ofFn fun i => (D.formats i).bytes * (D.slot d i).len).sum
+
+/-- **The counted certificate of a routine on its problem**: `NLAlib.Ops.Routine.certify` with
+the obligations about the initial memory and the payload proved from the slots. The author
+gives the judgment, the precondition at the admitted inputs, and a bound `work` of the
+instruction polynomial of the tree; every weight of the model is at most one. -/
+noncomputable def certify {M : AccessModel Op Tst D.problem}
+    (Sp : (d : Fin r → ℕ) → D.In d → Routine.Spec K) (work : (Fin r → ℕ) → ℕ)
+    (hmeets : ∀ d, D.valid d → ∀ (X : D.problem.Input d) (I : Interp Op Tst K),
+      M.contracts d X I → R.Meets I (Sp d X.val.1))
+    (hpre : ∀ d, D.valid d → ∀ x, D.accepts d x → ∀ τ : Tape K,
+      (Sp d x).pre (List.ofFn d) τ (D.blocks d x))
+    (hop : ∀ o d, M.resources.operationWork o d ≤ 1)
+    (hcore : ∀ k d, M.resources.coreWork k d ≤ 1) (hq : ∀ q d, M.resources.queryWork q d ≤ 1)
+    (hwork : ∀ d, D.valid d → CountPoly.eval (List.ofFn d) (R.close r b).countPoly ≤ work d)
+    (ht : (R.close r b).wellTyped M.resources D.problem.formats = true := by rfl)
+    (hfit : R.bindsFit b = true := by rfl) (hflat : R.flat = true := by rfl)
+    (hcontig : R.contiguous = true := by rfl) :
+    Algorithm M (R.specification (P := D.problem) (fun d X => Sp d X.val.1) M.resources
+      (fun d X => D.blocks d X.val.1) D.bytes work) :=
+  R.certify (P := D.problem) (fun d X => Sp d X.val.1) (fun d X => D.blocks d X.val.1) D.bytes
+    work hmeets
+    (fun d hd X => ⟨D.readBlocks_initial X, fun τ => hpre d hd _ (D.accepts_data X) τ,
+      D.room_initial X⟩)
+    (fun _ _ X => (D.initialBytes_eq X).le) hop hcore hq hwork D.shape ht hfit hflat hcontig
+
+/-- What a counted certificate states, for the admitted inputs: the run of the fixed program
+from the buffers of the slots succeeds, its work is at most `work`, and the reported operands
+hold blocks satisfying the postcondition of the routine at the blocks of the inputs. -/
+theorem checked_post {M : AccessModel Op Tst D.problem}
+    {Sp : (d : Fin r → ℕ) → D.In d → Routine.Spec K} {work : (Fin r → ℕ) → ℕ}
+    (A : Algorithm M (R.specification (P := D.problem) (fun d X => Sp d X.val.1) M.resources
+      (fun d X => D.blocks d X.val.1) D.bytes work))
+    (d : Fin r → ℕ) (hd : D.valid d) (x : D.In d) (hx : D.accepts d x)
+    (I : Interp Op Tst K) (hI : M.contracts d (D.input d x hx) I) (τ : Tape K) :
+    ∃ st, exec A.program I M.resources D.formats τ d (D.memory d x) = some st ∧
+      M.resources.work st.cost ≤ work d ∧ ∃ ys,
+        st.mem.readBlocks (R.outArgs (slots b)) (R.outLens (List.ofFn d)) = some ys ∧
+          (Sp d x).post (List.ofFn d) τ (D.blocks d x) ys := by
+  obtain ⟨st, hr, -, -, hw, -, -, ys, hys, hpost⟩ := D.checked A d hd x hx I hI τ
+  exact ⟨st, hr, hw, ys, hys, hpost⟩
+
+/-- A domain depends on its routine only through the interface: the admitted inputs of a
+routine are those of any routine with the same dimensions and operands (a routine with another
+tree, or with a parameter the problem does not mention). -/
+def cast (R' : Routine Op Tst) (hnd : R'.nd = R.nd) (hports : R'.ports = R.ports) :
+    R'.Domain K r b where
+  formats := D.formats
+  valid := D.valid
+  In := D.In
+  accepts := D.accepts
+  slot := D.slot
+  shape := ⟨hnd.trans D.shape.1, (congrArg List.length hports).trans D.shape.2⟩
+  fits d i p hp := D.fits d i p (hports ▸ hp)
+  faithful := D.faithful
+  admitted := D.admitted
+  inhabited := D.inhabited
+
+/-- The problem of a domain read at another routine with the same interface is the same. -/
+@[simp] theorem problem_cast (R' : Routine Op Tst) (hnd : R'.nd = R.nd)
+    (hports : R'.ports = R.ports) : (D.cast R' hnd hports).problem = D.problem := rfl
 
 end Routine.Domain
 

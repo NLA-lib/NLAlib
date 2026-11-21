@@ -29,9 +29,9 @@ accompany this work.
 ## Shared proof infrastructure
 
 `Ops/Certification.lean` supplies initial-buffer facts, total conditional-WP transfer, and
-projection from mandatory instrumented static counts. `Lanczos/BufferProblem.lean` supplies
-one explicit three-buffer layout parameterized by coefficient length. Ordinary and reorth
-certificates specialize it. Initialization suffix preservation and archive framing are shared;
+projection from mandatory instrumented static counts. Each of the ordinary and reorth
+certificates states its three-buffer layout as a `Routine.Domain`, with its own coefficient
+length. Initialization suffix preservation and archive framing are shared;
 no algorithm tree is patched to obtain success. Existing ordinary theorem statements remain
 available, and old pure mathematics is reused rather than old execution proofs.
 

@@ -358,8 +358,18 @@ The interface in detail:
   contracts and every tape, the run from the buffers of the slots (`D.memory`) succeeds within
   the resources of the specification and satisfies its output condition. Each family states
   its `_checked` theorem from it, with the inputs as vectors and matrices.
+  `D.algorithmAt` is the same certificate when the specification depends on the input of the
+  problem and not only on its data, as for a matrix-free solver whose matrix the model supplies.
+  `D.certify` is the counted certificate (`Routine.certify` on the derived problem), with the
+  payload `D.bytes` computed from the slots, and `D.checked_post` its evaluator-level statement:
+  the reported operands hold blocks satisfying the postcondition. A domain depends on its
+  routine only through the interface, so `D.cast` reads it at another routine with the same
+  dimensions and operands, and the problem is the same (`problem_cast`).
   `Examples/RoutineProblem.lean` shows every kind of slot. A problem written by hand with
-  `Routine.algorithm` remains possible; the families are being moved to `Routine.Domain`.
+  `Routine.algorithm` remains possible. Conjugate gradient, Lanczos, Hutch++, MGS and the
+  examples state their problems as domains. Golub–Kahan and the eigensolvers are still written
+  by hand: the matrix of Golub–Kahan is the datum of its problem and is in no buffer, which a
+  domain does not allow (`faithful`).
 
 A reviewer of a certified routine reads its `Routine.Spec`, the problem (`valid`, `accepts` and
 any `derived` operand of its `Routine.Domain`), the
@@ -541,8 +551,9 @@ satisfy `P`; `Routine.Meets.withData` gives its judgment from the judgment of th
 routine under the interpretation in which the operation reads the stored words, with no other
 proof about the tree. Underneath, `Logic/IsolatedLink.lean` transfers a word proof through the
 forwarding, the isolated buffers keeping their words (`Logic/Isolated.lean`).
-`ContextProblem.lean` prefixes supplied raw buffers and proves their reads, capacities and
-resident payload. Stored CG/PCG and Lanczos are built this way. The proof-side
+The problem of a stored solver is the problem of its `Routine.Domain`: the stored matrices
+are inputs like the others, held by the isolated operands. Stored CG/PCG and Lanczos are built
+this way. The proof-side
 source guard never becomes an omitted runtime operation. See the
 [current program guide](../../docs/contributing/programs.md) and
 [context design](../../docs/design/Ops-Context-Linking.md).

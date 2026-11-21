@@ -61,9 +61,9 @@ No program, targets, check scripts, or approval files are changed.
 
 ## Shared canonical packed-buffer problem
 
-`Lanczos/BufferProblem.lean` defines `Lanczos.PackedProblem.problem coefficientLength
-domain admitted : Problem K 2 3`, with raw right-hand-side words and explicitly supplied
-uninitialized basis and coefficient capacity. Ordinary Lanczos uses `2*cap+2` coefficients;
+Each certificate states its inputs as a `Routine.Domain` (`inputs domain admitted`), whose
+problem `Problem K 2 3` has the right-hand side as a vector of words and blank basis and
+coefficient capacity. Ordinary Lanczos uses `2*cap+2` coefficients;
 full reorthogonalization uses `3*cap+2`. The shared initial read/liveness/room/bytes lemmas
 are consumed by both canonical certificates. No input preprocessing is added.
 The object is a library-specific buffer representation; its bridge is the existing

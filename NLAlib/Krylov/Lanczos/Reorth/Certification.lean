@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Krylov.Lanczos.BufferProblem
+public import NLAlib.Ops.RoutineProblem
 public import NLAlib.Krylov.Lanczos.Reorth.Rounded.Models
 public import NLAlib.Krylov.Lanczos.Reorth.Rounded.Solve
 
@@ -36,9 +36,26 @@ open scoped Matrix
 
 variable {K : Type} [Inhabited K]
 
-/-- Full reorthogonalization supplies the ordinary coefficients and cap saved raw norms. -/
-def problem (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d) : Problem K 2 3 :=
-  PackedProblem.problem (fun cap => 3 * cap + 2) domain admitted
+/-- The admitted inputs of Lanczos with full reorthogonalization: at the sizes of `domain`,
+every right-hand side, a vector of `d 0` words held by the first operand; the basis and the
+coefficients (the ordinary ones and `cap` saved raw norms) are blank. The matrix is not stored:
+it is a parameter of the model. -/
+def inputs (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d) :
+    (solveRoutine (Op := Standard.Operation) (Tst := CmpTst)).Domain K 2 3 where
+  valid := domain
+  In d := Fin (d 0) → K
+  accepts _ _ := True
+  slot d := ![.stored (Codec.vector (d 0)) id, .blank ((d 1 + 1) * d 0), .blank (3 * d 1 + 2)]
+  fits := by domain_fits
+  faithful d x y h := (Codec.vector (d 0)).encode_injective (by
+    have h0 := h 0
+    simpa only [Slot.input, Matrix.cons_val_zero, Option.some.injEq, id] using h0)
+  admitted := admitted
+  inhabited _ _ := ⟨fun _ => default, trivial⟩
+
+/-- The right-hand side, and blank basis and coefficients: the problem of the solver. -/
+abbrev problem (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d) : Problem K 2 3 :=
+  (inputs (K := K) domain admitted).problem
 
 variable {domain : (Fin 2 → ℕ) → Prop} {admitted : ∃ d, domain d}
 
@@ -95,7 +112,7 @@ noncomputable def specification
   good d x _ _ m := m.pos = 0 ∧ ∃ vs cs,
     m.store.readBlock 1 0 ((d 1 + 1) * d 0) = some vs ∧
     m.store.readBlock 2 0 (3 * d 1 + 2) = some cs ∧
-    Rounded.Output model.decode (model.matrix d x) (decv model.decode (d 0) x.val.1)
+    Rounded.Output model.decode (model.matrix d x) (fun i => model.decode (x.val.1 i))
       (em d) (model.scheme.roundoff model.unit) (E d) (model.scheme.errors model.unit)
       (d 1) vs cs
 
@@ -116,10 +133,10 @@ noncomputable def algorithm
     (hbudget : ∀ d, domain d → ∀ x, model.scheme.roundoff (model.matvecAllowance d x) ≤
       em d * specNorm (model.matrix d x)) :
     Algorithm model.access (specification model em E) :=
-  Routine.algorithm (r := 2) (b := 3) solveRoutine
+  (inputs (K := K) domain admitted).algorithmAt
     (fun d x => Rounded.solveSpec model.decode (model.matrix d x) (em d)
       (model.scheme.roundoff model.unit) (E d) (model.scheme.errors model.unit))
-    (fun _ x => [x.val.1]) (ht := by
+    (ht := by
         change program.wellTyped model.resources (fun _ => .cell) = true
         rw [hresources]; exact wellTyped_program ..)
     (fun d hd x I hI => by
@@ -130,21 +147,25 @@ noncomputable def algorithm
         hacc.matvec hacc.scalar hacc.dot hacc.axpy hacc.scal
       exact Rounded.solveRoutine_meets hS model.scalar hB (hok d hd) (hA.mono (hbudget d hd x))
         hCmp hp)
-    (fun d _ x => ⟨Mem.readBlocks_of_cons (PackedProblem.initial_readBlock d x) rfl, fun _ => rfl,
-      PackedProblem.initial_room d x⟩)
+    (fun d _ x τ => rfl)
     (fun d _ x τ m' _ hpos ys hys hrel c _ => by
       change m'.readBlocks [(1, 0), (2, 0)] [(d 1 + 1) * d 0, 3 * d 1 + 2] =
         some ys at hys
       obtain ⟨v, c, vs, cs, hvc, hv, hc, rfl⟩ := Mem.readBlocks_two hys
       obtain ⟨rfl, rfl⟩ : (1, 0) = v ∧ (2, 0) = c := by simpa using hvc
-      exact ⟨hpos, vs, cs, hv, hc, hrel⟩)
+      have hb : decv model.decode (d 0) (List.ofFn x.val.1) =
+          fun i => model.decode (x.val.1 i) := decv_ofFn_apply _ _
+      exact ⟨hpos, vs, cs, hv, hc, hb ▸ hrel⟩)
     (fun _ _ => le_rfl)
     (fun d _ => staticPeak_program_le model.resources d)
     (fun _ _ => le_rfl)
     (fun _ _ => le_rfl)
     (fun d _ x => by
       have hbytes : (problem domain admitted).initialBytes d x =
-          d 0 + (d 1 + 1) * d 0 + (3 * d 1 + 2) := PackedProblem.initialBytes_problem d x
+          d 0 + (d 1 + 1) * d 0 + (3 * d 1 + 2) := by
+        refine ((inputs (K := K) domain admitted).initialBytes_eq x).trans ?_
+        simp [inputs, Slot.len, Codec.vector, List.ofFn_succ]
+        ring
       rw [hbytes]
       exact le_rfl)
 

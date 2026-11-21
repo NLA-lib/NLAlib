@@ -35,27 +35,16 @@ def domain (d : Fin 2 → ℕ) : Prop := d = ![1, 1]
 /-- The concrete size/cap pair belongs to the declared size domain. -/
 theorem admitted : ∃ d, domain d := ⟨![1, 1], rfl⟩
 
-/-- The actual one-word dense input is the identity matrix, without preprocessing. -/
-theorem denseMatrix_one : StoredOperator.denseMatrix 1 1 [1] = (1 : Matrix (Fin 1) (Fin 1) ℝ) := by
-  ext i j
-  have hi : i = 0 := Subsingleton.elim _ _
-  have hj : j = 0 := Subsingleton.elim _ _
-  subst i
-  subst j
-  norm_num [StoredOperator.denseMatrix]
-
-/-- Actual identity matrix words and a nonzero raw RHS witness the positive spectral problem.
+/-- The identity matrix and a nonzero right-hand side witness the positive spectral problem.
 This supplies data and capacity only, without assuming any execution or numerical output. -/
 theorem supply (d : Fin 2 → ℕ) (hd : domain d) :
-    ∃ raw rhs : List ℝ, raw.length = d 0 * d 0 ∧ rhs.length = d 0 ∧
-      Certification.accepts (fun _ => 1) (fun _ => 1) d raw rhs := by
+    ∃ x : Matrix (Fin (d 0)) (Fin (d 0)) ℝ × (Fin (d 0) → ℝ),
+      Certification.accepts (fun _ => 1) (fun _ => 1) d x := by
   change d = ![1, 1] at hd
   subst d
-  refine ⟨[1], [1], by norm_num, by norm_num, ?_⟩
-  change (StoredOperator.denseMatrix 1 1 ([1] : List ℝ))ᵀ =
-      StoredOperator.denseMatrix 1 1 ([1] : List ℝ) ∧
-    spectrum ℝ (StoredOperator.denseMatrix 1 1 ([1] : List ℝ)) ⊆ Set.Icc 1 1
-  rw [denseMatrix_one]
+  refine ⟨((1 : Matrix (Fin 1) (Fin 1) ℝ), fun _ => 1), ?_⟩
+  change (1 : Matrix (Fin 1) (Fin 1) ℝ)ᵀ = 1 ∧
+    spectrum ℝ (1 : Matrix (Fin 1) (Fin 1) ℝ) ⊆ Set.Icc 1 1
   simp
 
 /-- Multiplying actual word ones changes the result at the chosen positive roundoff.

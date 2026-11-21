@@ -57,8 +57,8 @@ theorem eval_countPoly_scalarProgram (d : Fin 2 → ℕ) :
 
 variable (lower upper : (Fin 2 → ℕ) → ℝ)
 variable (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d)
-  (supply : ∀ d, domain d → ∃ raw rhs : List ℝ,
-    raw.length = d 0 * d 0 ∧ rhs.length = d 0 ∧ accepts lower upper d raw rhs)
+  (supply : ∀ d, domain d →
+    ∃ x : Matrix (Fin (d 0)) (Fin (d 0)) ℝ × (Fin (d 0) → ℝ), accepts lower upper d x)
 
 /-- The scalar CG specification with the explicit operation count as work and span. -/
 noncomputable def scalarCountedSpecification (E : (Fin 2 → ℕ) → ℝ) :

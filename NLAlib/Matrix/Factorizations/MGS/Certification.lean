@@ -156,4 +156,13 @@ noncomputable def algorithm (cost : Standard.Costing) :
     rw [initialBytes_problem]
     exact le_rfl
 
+/-- What the certificate states: at every admitted size, for every admitted input, every
+interpretation satisfying the contracts of the model and every tape, the run of the fixed program
+from the supplied buffers succeeds within the scratch, the budget, the work and the span of the
+specification, and its final memory satisfies the output condition
+(`NLAlib.Ops.Routine.Domain.Checked`). Every matrix is admitted. -/
+theorem algorithm_checked (cost : Standard.Costing) :
+    (inputs (𝕜 := 𝕜)).Checked (algorithm (𝕜 := 𝕜) cost) :=
+  (inputs (𝕜 := 𝕜)).checked_all _
+
 end NLAlib.MGS.Certification

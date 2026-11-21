@@ -62,4 +62,13 @@ noncomputable def exactStepAlgorithm :
     Algorithm (RoundedScalarBlas.model stepProblem exactMachine) stepSpecification :=
   stepAlgorithm exactMachine exactModel_exactMachine
 
+/-- What the certificate states: at every admitted size, for every admitted input, every
+interpretation satisfying the contracts of the model and every tape, the run of the fixed program
+from the supplied buffers succeeds within the scratch, the budget, the work and the span of the
+specification, and its final memory satisfies the output condition
+(`NLAlib.Ops.Routine.Domain.Checked`). Every matrix and shift is admitted. -/
+theorem step_checked (M : Machine ℝ) (hE : ExactModel id M) :
+    stepInputs.Checked (stepAlgorithm M hE) :=
+  stepInputs.checked_all _
+
 end NLAlib.ShiftedQR

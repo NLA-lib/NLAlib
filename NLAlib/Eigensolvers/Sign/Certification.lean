@@ -108,4 +108,19 @@ theorem certifies_signProgram (M : Machine K) (dec : K → ℝ)
   (signAlgorithm M dec mm qr unif normal domain admitted matrixWork matrixWorkspace
     h01).correct
 
+/-- What the certificate states: at every admitted size, for every admitted input, every
+interpretation satisfying the contracts of the model and every tape, the run of the fixed program
+from the supplied buffers succeeds within the scratch, the budget, the work and the span of the
+specification, and its final memory satisfies the output condition
+(`NLAlib.Ops.Routine.Domain.Checked`). Every matrix and pair of parameters is admitted. -/
+theorem sign_checked (M : Machine K) (dec : K → ℝ)
+    (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
+    (unif : K → Su → K) (normal : Sg → K × K)
+    (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d)
+    (matrixWork matrixWorkspace : MatrixOp → List ℕ → ℕ)
+    (h01 : dec (M.lit 0) ≠ dec (M.lit 1)) :
+    (inputs (K := K) domain admitted).Checked
+      (signAlgorithm M dec mm qr unif normal domain admitted matrixWork matrixWorkspace h01) :=
+  (inputs (K := K) domain admitted).checked_all _
+
 end NLAlib.Sign

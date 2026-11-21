@@ -125,7 +125,7 @@ theorem sum2_checked (M : Machine ℝ) (u : ℝ) (hM : StdModel u id M) (hu : 0 
     ∃ st, exec sum2Program I (sum2Model M).resources sum2Domain.formats τ d
         (sum2Domain.memory d (x, y)) = some st ∧
       (sum2Model M).resources.work st.cost ≤ 24 * d 0 + 63 ∧
-      ∃ v, st.mem.store.get 2 0 = some v ∧
+      ∃ v, st.mem.Holds Codec.scalar 2 v ∧
         |v - (∑ i, x i + ∑ i, y i)| ≤
           ((1 + u) * (1 + u) ^ (d 0 - 1) - 1) * (∑ i, |x i| + ∑ i, |y i|) := by
   obtain ⟨st, hr, hw, ys, hys, hpost⟩ :=
@@ -134,7 +134,7 @@ theorem sum2_checked (M : Machine ℝ) (u : ℝ) (hM : StdModel u id M) (hu : 0 
   refine ⟨st, hr, hw, ?_⟩
   read_outputs hys as (zs)
   obtain ⟨v, hv, rfl⟩ := Store.readBlock_one_eq_some.mp hzs
-  refine ⟨v, hv, ?_⟩
+  refine ⟨v, hzs, ?_⟩
   have h : |v - (∑ k ∈ Finset.range (d 0), vec (List.ofFn x) k +
       ∑ k ∈ Finset.range (d 0), vec (List.ofFn y) k)| ≤
       ((1 + u) * (1 + u) ^ (d 0 - 1) - 1) *

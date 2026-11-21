@@ -160,7 +160,7 @@ whose Krylov grade is at least $k$, every interpretation of exact scalar arithme
 level-one vector operations, and every tape, the counted run of the fixed program from
 $\mathbf{A}$ stored column by column, $b$ and three blank vectors succeeds, executes at most
 $33 n^2 k + 23 n k + 156 k + 33 n^2 + 29 n + 125$ instructions (each vector operation counting
-one; products with the matrix are executed and counted), and leaves in the three vectors the
+one; products with the matrix are executed and counted), and the three vectors then hold the
 iterate, residual and direction of conjugate gradient after $k$ steps from the zero iterate.
 Every such system is admitted (`NLAlib.Ops.Routine.Domain.covers`). -/
 theorem stored_checked (d : Fin 2 → ℕ) (hd : domain d)
@@ -174,12 +174,16 @@ theorem stored_checked (d : Fin 2 → ℕ) (hd : domain d)
         ((inputs domain admitted supply).memory d (A, rhs)) = some st ∧
       (ExactBlas.model (problem domain admitted supply) .unit).resources.work st.cost ≤
         operationCount d ∧
-      ∃ xs rs ps, st.mem.readBlocks [(2, 0), (3, 0), (4, 0)] [d 0, d 0, d 0] =
-          some [xs, rs, ps] ∧
-        HSCG.decodedState id (d 0) xs rs ps = cgState A rhs 0 (d 1) := by
+      ∃ x r p : Fin (d 0) → ℝ, st.mem.Holds (Codec.vector (d 0)) 2 x ∧
+        st.mem.Holds (Codec.vector (d 0)) 3 r ∧ st.mem.Holds (Codec.vector (d 0)) 4 p ∧
+        cgState A rhs 0 (d 1) = ⟨x, r, p⟩ := by
   obtain ⟨st, hr, -, -, hw, -, -, xs, rs, ps, hys, hst⟩ :=
     (inputs domain admitted supply).checked (countedAlgorithm domain admitted supply)
       d hd (A, rhs) ⟨hA, hrhs⟩ I hI τ
-  exact ⟨st, hr, hw, xs, rs, ps, hys, hst⟩
+  obtain ⟨_, _, _, _, _, _, he, hx, hr', hp, hl⟩ := Mem.readBlocks_three hys
+  obtain ⟨rfl, rfl, rfl⟩ : _ = _ ∧ _ = _ ∧ _ = _ := by simpa using he
+  obtain ⟨rfl, rfl, rfl⟩ : _ = _ ∧ _ = _ ∧ _ = _ := by simpa using hl
+  exact ⟨st, hr, hw, _, _, _, Mem.holds_decode _ hx, Mem.holds_decode _ hr',
+    Mem.holds_decode _ hp, hst.symm⟩
 
 end NLAlib.Krylov.CG.HSCG.Stored.Certification

@@ -513,4 +513,16 @@ theorem roundedShQRSmallEig_algorithm_measureReal_not_accepts_le_unconditional
     (hA := boundsGinibreGap_ginibreGapTail) (hB := boundsGinibreCondition_ginibreConditionTail)
     (hb₁ := ginibreGapTail_b_pos) (hb₂ := ginibreConditionTail_b_pos) <;> assumption
 
+/-- What the certificate states: at every admitted size, for every admitted input, every
+interpretation satisfying the contracts of the model and every tape, the run of the fixed program
+from the supplied buffers succeeds within the scratch, the budget, the work and the span of the
+specification (`NLAlib.Ops.Routine.Domain.Checked`). The deterministic claim is termination
+within the footprint only; the accuracy of the computed Schur form holds with probability over
+the draws: `NLAlib.ShiftedQR.roundedShQRSmallEig_algorithm_measureReal_not_accepts_le`. -/
+theorem shqrSmallEig_checked (Mch : Machine ℝ) (c₁ c₂ : PolyLogTail)
+    (admitted : ∃ d, ShQRSmallEigSizes Mch c₁ c₂ d) (sU sG : ℕ) :
+    ((shqrSmallEigInputs Mch c₁ c₂ admitted).cast (shqrSmallEigRoutine sG) rfl rfl).Checked
+      (shqrSmallEigAlgorithm Mch c₁ c₂ admitted sU sG) :=
+  ((shqrSmallEigInputs Mch c₁ c₂ admitted).cast (shqrSmallEigRoutine sG) rfl rfl).checked_all _
+
 end NLAlib.ShiftedQR

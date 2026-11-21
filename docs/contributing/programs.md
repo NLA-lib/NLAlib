@@ -129,8 +129,12 @@ dense and coordinate representations require their own packing and validity cond
    so a reviewer reads the contracts and the costs of the declared operations, and the work
    of such a certificate is a count of calls of them.
    Derive the public certificate with `Ops.Routine.Domain.algorithm` against a
-   stated `Specification`, and state what it says with `Ops.Routine.Domain.checked`: a
-   `_checked` theorem whose inputs are vectors and matrices. A counted certificate, `countedAlgorithm`, is that certificate with
+   stated `Specification`, and state what it says in a `_checked` theorem: the proposition
+   `Ops.Routine.Domain.Checked` of the certificate (proved by `Ops.Routine.Domain.checked_all`),
+   or a form with the output on values (`Ops.Mem.Holds`: a buffer holds a value). Its docstring
+   says what a reader checks beyond it: the declared oracles, or the probability theorem that
+   carries the accuracy when the deterministic claim is termination. A counted certificate,
+   `countedAlgorithm`, is that certificate with
    the work as a bound on the instruction polynomial of the tree
    (`Ops.Algorithm.withCountPoly`), for models whose weights are at most one; check the closed
    form of that polynomial with the kernel reflexivity tactic of

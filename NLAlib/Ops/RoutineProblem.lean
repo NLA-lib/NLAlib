@@ -58,6 +58,10 @@ satisfies `accepts`.
 * `NLAlib.Ops.Routine.Domain.readBlocks_initial`, `NLAlib.Ops.Routine.Domain.room_initial`: the
   initial memory holds the blocks read and has room for the blocks written.
 * `NLAlib.Ops.Routine.Domain.checked`: what a certificate states, for the admitted inputs.
+* `NLAlib.Ops.Routine.Domain.Checked`, `NLAlib.Ops.Routine.Domain.checked_all`: the same as one
+  proposition, for a certificate's `_checked` theorem.
+* `NLAlib.Ops.Mem.Holds`, `NLAlib.Ops.Mem.holds_decode`: a buffer holds a value; a block read
+  from it is the encoding of its value.
 -/
 
 @[expose] public section
@@ -159,6 +163,30 @@ def map {α β : Type} (c : Codec K α) (e : α ≃ β) : Codec K β where
   encode_decode ws h := by simp [c.encode_decode ws h]
 
 end Codec
+
+/-! ### What a buffer holds, as a value -/
+
+/-- **The buffer `i` holds the value `a`**: its first `c.len` cells are the words of `a`. The
+readable statement of a certificate says which values the supplied buffers hold after the run,
+not which words can be read from them. -/
+def Mem.Holds {α : Type} (m : Mem K) (c : Codec K α) (i : ℕ) (a : α) : Prop :=
+  m.store.readBlock i 0 c.len = some (c.encode a)
+
+/-- A block read from a buffer is the encoding of its value. -/
+theorem Mem.holds_decode {α : Type} (c : Codec K α) {m : Mem K} {i : ℕ} {ws : List K}
+    (h : m.store.readBlock i 0 c.len = some ws) : m.Holds c i (c.decode ws) := by
+  unfold Mem.Holds
+  rw [c.encode_decode ws (Store.length_of_readBlock h)]
+  exact h
+
+/-- The value a buffer holds is determined. -/
+theorem Mem.Holds.unique {α : Type} {c : Codec K α} {m : Mem K} {i : ℕ} {a a' : α}
+    (h : m.Holds c i a) (h' : m.Holds c i a') : a = a' :=
+  c.encode_injective (Option.some.inj (h.symm.trans h'))
+
+/-- The value of a vector block, in the reals, is its decoded vector. -/
+theorem Codec.decode_vector_eq_decv {n : ℕ} (ws : List ℝ) :
+    (Codec.vector n).decode ws = decv id n ws := rfl
 
 /-! ### The buffer supplied for an operand -/
 
@@ -565,6 +593,27 @@ theorem checked {M : AccessModel Op Tst D.problem} {S : Specification Op Tst D.p
       S.good d (D.input d x hx) τ st.cost st.mem := by
   obtain ⟨st, hr, hp, hc, hw, hs, -, hg⟩ := A.correct d hd (D.input d x hx) I hI τ
   exact ⟨st, hr, hp, hc, hw, hs, hg⟩
+
+/-- **What a certificate states**, as one proposition: at every admitted size, for every tuple
+of inputs satisfying `accepts`, every interpretation satisfying the contracts of the model and
+every tape, the run of the fixed program from the buffers of the slots succeeds, within the
+scratch, the budget, the work and the span of the specification, and its final memory satisfies
+the output condition. Every certificate of a routine on its problem has this as a theorem
+(`NLAlib.Ops.Routine.Domain.checked_all`); a certificate's `_checked` theorem is this statement,
+or a form of it with the output condition written on values. -/
+def Checked {M : AccessModel Op Tst D.problem} {S : Specification Op Tst D.problem}
+    (A : Algorithm M S) : Prop :=
+  ∀ (d : Fin r → ℕ), D.valid d → ∀ (x : D.In d) (hx : D.accepts d x) (I : Interp Op Tst K),
+    M.contracts d (D.input d x hx) I → ∀ τ : Tape K,
+    ∃ st, exec A.program I M.resources D.formats τ d (D.memory d x) = some st ∧
+      st.peak ≤ S.scratch d ∧ st.cost ≤ S.budget d ∧
+      M.resources.work st.cost ≤ S.work d ∧ M.resources.span st.cost ≤ S.span d ∧
+      S.good d (D.input d x hx) τ st.cost st.mem
+
+/-- Every certificate of a routine on its problem states `NLAlib.Ops.Routine.Domain.Checked`. -/
+theorem checked_all {M : AccessModel Op Tst D.problem} {S : Specification Op Tst D.problem}
+    (A : Algorithm M S) : D.Checked A :=
+  fun d hd x hx I hI τ => D.checked A d hd x hx I hI τ
 
 /-- The resident payload at the sizes: the cells of the slots, in their storage. -/
 def bytes (d : Fin r → ℕ) : ℕ := (List.ofFn fun i => (D.formats i).bytes * (D.slot d i).len).sum

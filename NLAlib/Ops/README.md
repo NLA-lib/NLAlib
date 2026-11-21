@@ -361,9 +361,10 @@ The interface in detail:
   of the operations in `ops`; the work of such a certificate is counted in calls of them.
   Golub–Kahan declares its matrix as an unstored input reached through the two products
   (`GolubKahan.Band.Certification.oracles`); matrix-free conjugate gradient, with and without
-  a preconditioner, declares the products with its matrix parameters
-  (`HSCG.Certification.oracles`, `HSPCG.Certification.oracles`). A model with no declared
-  oracle is uniform (`Oracles.uniform`).
+  a preconditioner, takes its matrices as unstored inputs, with positive definiteness in
+  `accepts`, and declares their products (`HSCG.Certification.oracles`,
+  `HSPCG.Certification.oracles`). A model with no declared oracle is uniform
+  (`Oracles.uniform`).
 
   `D.problem` is the problem: exactly the buffers of the slots. An input of the problem is an
   admitted tuple of inputs and conversely (`Routine.Domain.inputEquiv`, `Routine.Domain.covers`):
@@ -373,8 +374,15 @@ The interface in detail:
   author. `D.checked` states what a certificate says for the admitted inputs, in terms of the
   evaluator: for every admitted size and tuple of inputs, every interpretation satisfying the
   contracts and every tape, the run from the buffers of the slots (`D.memory`) succeeds within
-  the resources of the specification and satisfies its output condition. Each family states
-  its `_checked` theorem from it, with the inputs as vectors and matrices.
+  the resources of the specification and satisfies its output condition. `D.Checked A` is
+  that statement as one proposition, and `D.checked_all` proves it of every certificate. A
+  family's `_checked` theorem is either that proposition (`algorithm_checked`, `sign_checked`,
+  `smallEig_checked`, …) or a form with the output written on values: `Mem.Holds c i a` says
+  the buffer `i` holds the value `a` through the codec `c`, and `Mem.holds_decode` turns a block
+  read from a buffer into the value it holds (`cg_checked`, `stored_checked`, `sum2_checked`).
+  The docstring of a `_checked` theorem says what a reader must check beyond it: for an oracle
+  certificate, which operations reach the unstored inputs; for a certificate whose
+  deterministic claim is termination, which probability theorem carries the accuracy.
   `D.algorithmAt` is the same certificate when the specification depends on the input of the
   problem and not only on its data, as for a matrix-free solver whose matrix the model supplies.
   `D.certify` is the counted certificate (`Routine.certify` on the derived problem), with the
@@ -382,13 +390,11 @@ The interface in detail:
   the reported operands hold blocks satisfying the postcondition. A domain depends on its
   routine only through the interface, so `D.cast` reads it at another routine with the same
   dimensions and operands, and the problem is the same (`problem_cast`).
-  `Examples/RoutineProblem.lean` shows every kind of slot. A problem written by hand with
-  `Routine.algorithm` remains possible. Conjugate gradient, Lanczos, Golub–Kahan, Hutch++,
-  MGS, the deflation and the examples state their problems as domains. The other eigensolvers
-  (sign, spectral bisection, shifted QR, SmallEig, the Schur pipeline) are still written by
-  hand and are to be moved. Three examples keep a hand-written problem on purpose
-  (`oracleProblem`, `capacityProblem`, `mixedProblem`): they show what a hand-written problem
-  can hide.
+  `Examples/RoutineProblem.lean` shows every kind of slot. Conjugate gradient, Lanczos,
+  Golub–Kahan, Hutch++, MGS, the eigensolvers and the examples state their problems as
+  domains. `Routine.algorithm` on a problem written by hand remains for a problem that is not
+  derived from a routine: three examples keep one on purpose (`oracleProblem`,
+  `capacityProblem`, `mixedProblem`), to show what a hand-written problem can hide.
 
 A reviewer of a certified routine reads its `Routine.Spec`, the problem (`valid`, `accepts` and
 any `derived` operand of its `Routine.Domain`), the

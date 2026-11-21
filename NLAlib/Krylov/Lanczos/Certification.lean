@@ -50,7 +50,7 @@ def inputs (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d) :
   accepts _ _ := True
   slot d := ![.stored (Codec.vector (d 0)) id, .blank ((d 1 + 1) * d 0), .blank (2 * d 1 + 2)]
   fits := by domain_fits
-  faithful d x y h := (Codec.vector (d 0)).encode_injective (by
+  faithful d x y _ h := (Codec.vector (d 0)).encode_injective (by
     have h0 := h 0
     simpa only [Slot.input, Matrix.cons_val_zero, Option.some.injEq, id] using h0)
   admitted := admitted

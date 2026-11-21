@@ -51,7 +51,7 @@ noncomputable def inputs : zeroStartRoutine.Domain ℝ 2 5 where
   slot d := ![.stored (Codec.matrix (EntryCodec.scalar ℝ) (d 0) (d 0)) Prod.fst,
     .stored (Codec.vector (d 0)) Prod.snd, .blank (d 0), .blank (d 0), .blank (d 0)]
   fits := by domain_fits
-  faithful d x y h := by
+  faithful d x y _ h := by
     have h0 := h 0
     have h1 := h 1
     simp only [Slot.input, Matrix.cons_val_zero, Matrix.cons_val_one, Option.some.injEq] at h0 h1

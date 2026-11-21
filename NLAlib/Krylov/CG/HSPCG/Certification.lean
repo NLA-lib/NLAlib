@@ -48,7 +48,7 @@ noncomputable def inputs : (zeroStartRoutine (Op := Signature) (Tst := Empty)).D
   slot d := ![.stored (Codec.vector (d 0)) id, .blank (d 0), .blank (d 0), .blank (d 0),
     .blank (d 0)]
   fits := by domain_fits
-  faithful d x y h := (Codec.vector (d 0)).encode_injective (by
+  faithful d x y _ h := (Codec.vector (d 0)).encode_injective (by
     have h0 := h 0
     simpa only [Slot.input, Matrix.cons_val_zero, Option.some.injEq, id] using h0)
   admitted := admitted
@@ -132,5 +132,24 @@ noncomputable def algorithm (cost : Standard.Costing) (aw ap sw sp : List ℕ �
   · intro d hd x
     rw [initialBytes_problem]
     exact le_rfl
+
+/-- **The oracles of the model.** The matrix `A d` and the preconditioner `B d` are in no
+buffer: they are parameters of the certificate, reached only through their two products. Scalar
+arithmetic and the vector operations have one contract at every size and input, and the
+contract of a product does not depend on the input of the problem. The cost of the certificate
+is counted in calls of the two products. -/
+noncomputable def oracles (cost : Standard.Costing) (aw ap sw sp : List ℕ → ℕ) :
+    (inputs A B domain admitted supply).Oracles
+      (Model.exactModel (problem A B domain admitted supply) (fun d => d 0)
+        (fun d _ => A d) (fun d _ => B d) (Model.resources cost aw ap sw sp)) where
+  ops := [.operator, .preconditioner]
+  operation o ho d x d' x' := by
+    cases o with
+    | scalar a => rfl
+    | blas a => rfl
+    | operator => exact absurd (by simp) ho
+    | preconditioner => exact absurd (by simp) ho
+  query _ _ _ _ q := nomatch q
+  through o _ d X Y _ := by cases o <;> rfl
 
 end NLAlib.Krylov.CG.HSPCG.Certification

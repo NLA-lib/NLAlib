@@ -52,7 +52,7 @@ def thresholdDomain : thresholdRoutine.Domain ℝ 1 5 where
     .derived 1 (fun x => [x.2.2.1 + x.2.2.2]) fun _ => rfl,
     .blank 1]
   fits := by domain_fits
-  faithful d x y h := by
+  faithful d x y _ h := by
     have h0 := h 0
     have h1 := h 1
     have h2 := h 2

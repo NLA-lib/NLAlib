@@ -342,11 +342,26 @@ The interface in detail:
 
   The slots follow the interface (`fits`, proved by `domain_fits`): an operand that is read is
   `stored` or `derived`, an operand that is only written is `blank`, and the lengths are those
-  of the ports. The inputs are determined by the stored buffers (`faithful`), so no input is in
-  no buffer; a quantity that is in no buffer belongs in `accepts`, as an existential, or is a
-  parameter of the certificate (the matrix of a matrix-free solver, which reaches the routine
-  only through the model). A buffer depends on the inputs in no other way than these, and
-  `Routine.Domain.derived` lists the operands whose buffer is computed from them.
+  of the ports. The inputs are determined by the stored buffers and the declared unstored part
+  (`faithful`), so no other input is in no buffer; a quantity that is in no buffer and is not an
+  input belongs in `accepts`, as an existential. A buffer depends on the inputs in no other way
+  than these, and `Routine.Domain.derived` lists the operands whose buffer is computed from
+  them.
+
+  **Unstored inputs and oracles.** Data that is in no buffer can affect a run only through an
+  operation whose contract mentions it. That is the oracle channel: a contract that mentions
+  the data can hide any amount of work behind one call. A domain therefore declares the part
+  of its inputs that is in no buffer (`Unstored`, `unstored`; none by default), and a
+  certificate whose model reaches data outside memory states `Routine.Domain.Oracles`: the
+  list `ops` of the operations that may depend on it, a proof that every other operation and
+  every query has one contract at all sizes and inputs, and a proof that a declared operation
+  sees the input only through its unstored part. A reviewer reads the contracts and the costs
+  of the operations in `ops`; the work of such a certificate is counted in calls of them.
+  Golub–Kahan declares its matrix as an unstored input reached through the two products
+  (`GolubKahan.Band.Certification.oracles`); matrix-free conjugate gradient, with and without
+  a preconditioner, declares the products with its matrix parameters
+  (`HSCG.Certification.oracles`, `HSPCG.Certification.oracles`). A model with no declared
+  oracle is uniform (`Oracles.uniform`).
 
   `D.problem` is the problem: exactly the buffers of the slots. An input of the problem is an
   admitted tuple of inputs and conversely (`Routine.Domain.inputEquiv`, `Routine.Domain.covers`):
@@ -366,10 +381,12 @@ The interface in detail:
   routine only through the interface, so `D.cast` reads it at another routine with the same
   dimensions and operands, and the problem is the same (`problem_cast`).
   `Examples/RoutineProblem.lean` shows every kind of slot. A problem written by hand with
-  `Routine.algorithm` remains possible. Conjugate gradient, Lanczos, Hutch++, MGS and the
-  examples state their problems as domains. Golub–Kahan and the eigensolvers are still written
-  by hand: the matrix of Golub–Kahan is the datum of its problem and is in no buffer, which a
-  domain does not allow (`faithful`).
+  `Routine.algorithm` remains possible. Conjugate gradient, Lanczos, Golub–Kahan, Hutch++,
+  MGS, the deflation and the examples state their problems as domains. The other eigensolvers
+  (sign, spectral bisection, shifted QR, SmallEig, the Schur pipeline) are still written by
+  hand and are to be moved. Three examples keep a hand-written problem on purpose
+  (`oracleProblem`, `capacityProblem`, `mixedProblem`): they show what a hand-written problem
+  can hide.
 
 A reviewer of a certified routine reads its `Routine.Spec`, the problem (`valid`, `accepts` and
 any `derived` operand of its `Routine.Domain`), the

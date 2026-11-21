@@ -11,6 +11,7 @@ public import NLAlib.Ops.AllocationFree
 public import NLAlib.Ops.Catalog.Functional
 public import NLAlib.Ops.Certification
 public import NLAlib.Ops.Profiles.Confined
+public import NLAlib.Ops.RoutineProblem
 public import NLAlib.Ops.Workspace
 
 /-!
@@ -356,16 +357,34 @@ lengths of `U`, `V`, `G`, `R`, `S`. -/
 def slots (d : Fin 4 → ℕ) : Fin 5 → Buf ℝ :=
   fun i => List.replicate ((outLens (d 0) (d 1) (d 2) (d 3)).getD i.val 0) none
 
-/-- The problem of the abstract driver. The sizes are $(m, n, b, q)$ and all of them are
-admitted; the datum is a real $m \times n$ matrix, reached through the two products only; the
-supplied buffers are the five uninitialized output blocks. -/
-def problem : Problem ℝ 4 5 where
-  formats _ := .cell
+/-- The admitted inputs of the abstract driver. The sizes are $(m, n, b, q)$ and all of them
+are admitted; the one input is a real $m \times n$ matrix, which is in no buffer: it is the
+declared unstored input, reached through the two products only
+(`NLAlib.Krylov.GolubKahan.Band.Certification.oracles`). The five operands are blank. -/
+def inputs : (solveRoutine (Op := Operation) (Tst := CmpTst) 0).Domain ℝ 4 5 where
   valid _ := True
-  Data d := Matrix (Fin (d 0)) (Fin (d 1)) ℝ
-  admissible d _ buffers := buffers = slots d
+  In d := Matrix (Fin (d 0)) (Fin (d 1)) ℝ
+  accepts _ _ := True
+  slot d i := .blank ((outLens (d 0) (d 1) (d 2) (d 3)).getD i.val 0)
+  fits := by
+    intro d i p hp
+    fin_cases i <;> (
+      have hport := Option.some.inj hp
+      subst hport
+      exact ⟨rfl, rfl⟩)
+  Unstored d := Matrix (Fin (d 0)) (Fin (d 1)) ℝ
+  unstored _ A := A
+  faithful _ _ _ h _ := h
   admitted := ⟨fun _ => 0, trivial⟩
-  supply d _ := ⟨0, slots d, rfl⟩
+  inhabited _ _ := ⟨0, trivial⟩
+
+/-- The problem of the abstract driver: every real $m \times n$ matrix, in no buffer, and the
+five uninitialized output blocks. -/
+abbrev problem : Problem ℝ 4 5 := inputs.problem
+
+/-- The supplied buffers of an input are the five uninitialized blocks. -/
+theorem buffers_input {d : Fin 4 → ℕ} (x : problem.Input d) : x.val.2 = slots d :=
+  inputs.buffers_eq x
 
 /-- The matrix $\mathbf{A}$ of an input of the problem, with its type as a real $m \times n$
 matrix. -/
@@ -379,7 +398,7 @@ def outputs : List (ℕ × ℕ) := [(0, 0), (1, 0), (2, 0), (3, 0), (4, 0)]
 theorem initial_len (d : Fin 4 → ℕ) (x : problem.Input d) (i : Fin 5) :
     (problem.initial d x).store.len i.val =
       (outLens (d 0) (d 1) (d 2) (d 3)).getD i.val 0 := by
-  have h : x.val.2 = slots d := x.property
+  have h : x.val.2 = slots d := buffers_input x
   rw [Problem.initial_len, h, slots, List.length_replicate]
 
 /-- The supplied buffers have room for the five output blocks. -/
@@ -393,11 +412,11 @@ theorem initial_room (d : Fin 4 → ℕ) (x : problem.Input d) :
 blocks. -/
 theorem initialBytes_problem (d : Fin 4 → ℕ) (x : problem.Input d) :
     problem.initialBytes d x = (outLens (d 0) (d 1) (d 2) (d 3)).sum := by
-  have h : x.val.2 = slots d := x.property
+  have h : x.val.2 = slots d := buffers_input x
   rw [Problem.initialBytes_of_lengths d x
     (fun i => (outLens (d 0) (d 1) (d 2) (d 3)).getD i.val 0)
     (fun i => by rw [h, slots, List.length_replicate])]
-  simp [problem, outLens, List.ofFn_succ]
+  simp [problem, inputs, Routine.Domain.problem, outLens, List.ofFn_succ]
 
 /-! ### The model -/
 
@@ -613,23 +632,40 @@ static count of the program (a manifest) and the scratch is the closed form
 `NLAlib.Krylov.GolubKahan.Band.solvePeak` plus the reservation of the queries. -/
 noncomputable def algorithm (work workspace : Operation → List ℕ → ℕ) (stream : ℕ) :
     Algorithm (model work workspace) (specification work workspace stream) := by
-  refine Routine.algorithm (r := 4) (b := 5) (solveRoutine stream)
-    (fun _ x => solveSpec stream id x.val.1) (fun _ _ => [])
-    (ht := wellTyped_solveProgram work workspace stream) ?_ ?_ ?_ (fun _ _ => le_rfl)
-    (fun d _ => staticPeak_solveProgram_le_solvePeak _ stream d)
-    (fun _ _ => le_rfl) (fun _ _ => le_rfl) ?_
+  refine (inputs.cast (solveRoutine stream) rfl rfl).algorithm
+    (fun _ A => solveSpec stream id A)
+    (ht := wellTyped_solveProgram work workspace stream) ?_ ?_ ?_
+    (hspace := fun d _ => staticPeak_solveProgram_le_solvePeak _ stream d) (hmemory := ?_)
   · intro d _ x I hI
     obtain ⟨hA, hO, hSample⟩ := laws hI
     exact solveRoutine_meets hA hO hSample stream
-  · intro d _ x
-    exact ⟨rfl, fun _ => ⟨rfl, rfl, trivial, fun _ _ => ⟨trivial, trivial⟩⟩, initial_room d x⟩
+  · intro d _ x _ τ
+    exact ⟨rfl, rfl, trivial, fun _ _ => ⟨trivial, trivial⟩⟩
   · intro d _ x τ μ' hfr hpos ys hys hpost c _
     read_outputs hys as (us, vs, gs, rs, ss)
     exact ⟨hpos.eq_of_start rfl, by simpa [Problem.initial] using hfr.length_eq,
       us, vs, gs, rs, ss, hys, hpost⟩
   · intro d _ x
-    rw [initialBytes_problem]
-    exact le_rfl
+    exact Nat.add_le_add_right (initialBytes_problem d x).le _
+
+/-- **The oracles of the model.** The matrix of the input is in no buffer. It is reached
+through the two products only: the contracts of the basis extension, of the draws and of the
+comparisons are the same at every size and input, and the contract of a product depends on the
+input through the matrix alone. The cost of the certificate is therefore counted in calls of
+the two products, with the weights of `NLAlib.Krylov.GolubKahan.Band.Certification.resources`. -/
+noncomputable def oracles (work workspace : Operation → List ℕ → ℕ) :
+    inputs.Oracles (model work workspace) where
+  ops := [.inr (.inl .matvec), .inr (.inl .rmatvec)]
+  operation o ho d x d' x' := by
+    match o, ho with
+    | .inl .extend, _ => rfl
+    | .inr (.inr (.draw _)), _ => rfl
+    | .inr (.inl .matvec), h => exact absurd (by simp) h
+    | .inr (.inl .rmatvec), h => exact absurd (by simp) h
+  query _ _ _ _ _ := rfl
+  through o _ d X Y h := by
+    change contract X.val.1 o = contract Y.val.1 o
+    rw [show X.val.1 = Y.val.1 from h]
 
 /-- The fixed program is certified in total mode. For all sizes $(m, n, b, q)$, every real
 $m \times n$ matrix $\mathbf{A}$, every interpretation whose products are the exact products with

@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.Ops.RoutineProblem
 public import NLAlib.Eigensolvers.Deflation.Routine
 public import NLAlib.Ops.Profiles.Dense
 public import NLAlib.Ops.Certification
@@ -32,19 +33,34 @@ open Ops
 
 variable {K : Type} [Inhabited K]
 
-/-- Raw projector words and uninitialized capacity for the requested basis columns. The
-admitted dimension/rank domain is explicit and inhabited. -/
-def problem (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d) : Problem K 2 2 where
-  formats _ := .cell
+/-- The admitted inputs of the deflation: at the sizes of `domain`, every square matrix of
+complex pairs, held by the first operand as its packed words; the block of the requested basis
+columns is blank. -/
+def inputs (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d) :
+    (deflateRoutine (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).Domain K 2 2 where
   valid := domain
-  Data _ := List K
-  admissible d xs buffers :=
-    buffers = ![xs.map some, List.replicate (2 * (d 0 * d 1)) none] ∧
-      xs.length = 2 * (d 0 * d 0)
+  In d := Matrix (Fin (d 0)) (Fin (d 0)) (K × K)
+  accepts _ _ := True
+  slot d := ![.stored (Codec.matrix (EntryCodec.pair K) (d 0) (d 0)) id,
+    .blank (2 * (d 0 * d 1))]
+  fits := by
+    intro d i p hp
+    fin_cases i <;> (
+      have hport := Option.some.inj hp
+      subst hport
+      constructor <;>
+        simp [Slot.len, Slot.held, Access.readable, Codec.matrix, EntryCodec.pair,
+          List.ofFn_succ, Nat.mul_comm])
+  faithful d x y _ h := (Codec.matrix (EntryCodec.pair K) (d 0) (d 0)).encode_injective (by
+    have h0 := h 0
+    simpa only [Slot.input, Matrix.cons_val_zero, Option.some.injEq, id] using h0)
   admitted := admitted
-  supply d _ := ⟨List.replicate (2 * (d 0 * d 0)) default,
-    ![(List.replicate (2 * (d 0 * d 0)) default).map some,
-      List.replicate (2 * (d 0 * d 1)) none], rfl, List.length_replicate ..⟩
+  inhabited _ _ := ⟨fun _ _ => default, trivial⟩
+
+/-- The projector, packed in the first buffer, and blank capacity for the requested basis
+columns: the problem of the deflation. -/
+abbrev problem (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d) : Problem K 2 2 :=
+  (inputs (K := K) domain admitted).problem
 
 /-- The entire sampled projection and QR implementation is one fixed dense program. -/
 def deflateProgram : Program DenseOp (CmpTst ⊕ IdxTst) 2 2 :=
@@ -52,44 +68,18 @@ def deflateProgram : Program DenseOp (CmpTst ⊕ IdxTst) 2 2 :=
 
 variable {domain : (Fin 2 → ℕ) → Prop} {admitted : ∃ d, domain d}
 
-/-- The input relation identifies the exact raw words and output capacity. -/
-theorem input_buffers (d : Fin 2 → ℕ) (x : (problem (K := K) domain admitted).Input d) :
-    x.val.2 = ![x.val.1.map some, List.replicate (2 * (d 0 * d 1)) none] := x.property.1
-
-/-- Decode the input only in the specification, without computing any initial word. -/
-def inputMatrix (d : Fin 2 → ℕ) (x : (problem (K := K) domain admitted).Input d) :
-    Matrix (Fin (d 0)) (Fin (d 0)) (K × K) :=
-  (EntryCodec.pair K).matrix (d 0) (d 0) x.val.1
-
-/-- Actual raw input reads, live handles and output room follow from the supplied buffers. -/
-theorem initial_geometry (d : Fin 2 → ℕ)
-    (x : (problem (K := K) domain admitted).Input d) :
-    let m := (problem (K := K) domain admitted).initial d x
-    m.Live [(0, 0), (1, 0)] ∧
-      m.store.readBlock 0 0 (2 * (d 0 * d 0)) =
-        some ((EntryCodec.pair K).packFinMatrix (inputMatrix d x)) ∧
-      m.Room [(1, 0)] [2 * (d 0 * d 1)] ∧ m.store.length = 2 := by
-  dsimp only
-  have hs : ((problem (K := K) domain admitted).initial d x).store =
-      [x.val.1.map some, List.replicate (2 * (d 0 * d 1)) none] := by
-    change List.ofFn x.val.2 = _
-    rw [input_buffers]
-    rfl
-  refine ⟨by simp [Mem.Live], ?_, by simp [Mem.Room, hs, Store.len], by simp⟩
-  have hread := Problem.initial_readBlock (P := problem (K := K) domain admitted) d x (0 : Fin 2)
-    (show x.val.2 0 = x.val.1.map some by rw [input_buffers]; rfl)
-  rw [x.property.2] at hread
-  have hlen : x.val.1.length = d 0 * d 0 * (EntryCodec.pair K).width := by
-    simpa only [EntryCodec.pair, Nat.mul_comm] using x.property.2
-  rwa [inputMatrix, (EntryCodec.pair K).packFinMatrix_matrix _ _ _ hlen]
+/-- The matrix of an input of the problem. -/
+abbrev inputMatrix (d : Fin 2 → ℕ) (x : (problem (K := K) domain admitted).Input d) :
+    Matrix (Fin (d 0)) (Fin (d 0)) (K × K) := x.val.1
 
 /-- Every supplied input and output slot contributes to resident payload. -/
 theorem initialBytes_problem (d : Fin 2 → ℕ)
     (x : (problem (K := K) domain admitted).Input d) :
     (problem (K := K) domain admitted).initialBytes d x =
       2 * (d 0 * d 0) + 2 * (d 0 * d 1) := by
-  rw [Problem.initialBytes, input_buffers]
-  simp [problem, List.ofFn_succ, x.property.2]
+  refine ((inputs (K := K) domain admitted).initialBytes_eq x).trans ?_
+  simp [inputs, Slot.len, Codec.matrix, EntryCodec.pair, List.ofFn_succ]
+  ring
 
 /-- The full static manifest includes all sampling, copying, kernels and core instructions. -/
 noncomputable def staticBudget (d : Fin 2 → ℕ) :
@@ -125,27 +115,23 @@ noncomputable def deflateAlgorithm (M : Machine K) (dec : K → ℝ)
       (Dense.functionalModel (problem (K := K) domain admitted) M dec (EntryCodec.pair K) mm qr
         (Dense.resources matrixWork matrixWorkspace))
       (wordSpecification mm qr domain admitted matrixWork matrixWorkspace) := by
-  refine Routine.algorithm (r := 2) (b := 2) deflateRoutine
-    (fun _ _ => deflateSpec mm qr)
-    (fun d x => [(EntryCodec.pair K).packFinMatrix (inputMatrix d x)])
+  refine (inputs (K := K) domain admitted).algorithm (fun _ _ => deflateSpec mm qr)
     ?_ ?_ ?_ (hmemory := ?_)
   · intro d hd x I hI
     rcases Dense.laws_functionalModel M dec (EntryCodec.pair K) mm qr
       (Dense.resources matrixWork matrixWorkspace) d x I hI with
       ⟨hS, _, hMM, hQR, hSample, _, _⟩
     exact deflateRoutine_meets hS hSample hMM hQR
-  · intro d hd x
-    rcases initial_geometry d x with ⟨-, hP, hRoom, -⟩
-    exact ⟨Mem.readBlocks_of_cons hP rfl, fun _ => hRank d hd, hRoom⟩
+  · intro d hd x _ _
+    exact hRank d hd
   · intro d hd x tape m' hfr hpos ys hys hrel c _
-    rcases initial_geometry d x with ⟨-, -, -, hLength⟩
     read_outputs hys as (zs)
     obtain ⟨hrank, hval⟩ : ∃ hrank : d 1 ≤ d 0, zs = (EntryCodec.pair K).packFinMatrix
         ((qr (mm ((EntryCodec.pair K).matrix (d 0) (d 0)
             ((EntryCodec.pair K).packFinMatrix (inputMatrix d x)))
           (sampleMatrix (d 0) 0 tape))).1.submatrix id (Fin.castLE hrank)) := hrel
     rw [EntryCodec.matrix_packFinMatrix] at hval
-    refine ⟨hrank, ?_, hpos.eq_of_start rfl, hfr.length_eq.trans hLength⟩
+    refine ⟨hrank, ?_, hpos.eq_of_start rfl, by simpa [Problem.initial] using hfr.length_eq⟩
     rw [← hval]
     exact hzs
   · intro d hd x

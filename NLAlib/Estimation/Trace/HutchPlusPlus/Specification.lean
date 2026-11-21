@@ -49,7 +49,7 @@ def inputs (dataLength : ℕ → ℕ → ℕ) :
   accepts _ _ := True
   slot d := ![.stored (Codec.words (dataLength (d 0) (d 0))) id, .blank 1]
   fits := by domain_fits
-  faithful d x y h := (Codec.words (dataLength (d 0) (d 0))).encode_injective (by
+  faithful d x y _ h := (Codec.words (dataLength (d 0) (d 0))).encode_injective (by
     have h0 := h 0
     simpa only [Slot.input, Matrix.cons_val_zero, Option.some.injEq, id] using h0)
   admitted := ⟨![0, 0, 1], Nat.zero_lt_one⟩

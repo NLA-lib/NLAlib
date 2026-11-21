@@ -121,6 +121,13 @@ dense and coordinate representations require their own packing and validity cond
    `(inputs …).problem`, so that the two are interchangeable in proofs). Every input satisfying
    the acceptance predicate is covered (`Ops.Routine.Domain.covers`); a restriction on the
    inputs belongs in that predicate, where the `_checked` theorem shows it as a hypothesis.
+   An input that is in no buffer (the matrix of a matrix-free solver) is declared as the
+   unstored part of the inputs, and the certificate states `Ops.Routine.Domain.Oracles` for
+   its model: the operations that may depend on that data, with proofs that every other
+   operation has one contract at all sizes and inputs and that a declared operation sees the
+   input only through its unstored part. Data outside memory can hide work behind one call,
+   so a reviewer reads the contracts and the costs of the declared operations, and the work
+   of such a certificate is a count of calls of them.
    Derive the public certificate with `Ops.Routine.Domain.algorithm` against a
    stated `Specification`, and state what it says with `Ops.Routine.Domain.checked`: a
    `_checked` theorem whose inputs are vectors and matrices. A counted certificate, `countedAlgorithm`, is that certificate with

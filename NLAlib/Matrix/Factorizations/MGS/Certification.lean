@@ -43,7 +43,7 @@ def inputs : (factorRoutine (Op := RCLikeBlas.Operation) (Tst := CmpTst)).Domain
   accepts _ _ := True
   slot d := ![.stored (Codec.matrix (EntryCodec.scalar 𝕜) (d 0) (d 1)) id]
   fits := by domain_fits
-  faithful d x y h := (Codec.matrix (EntryCodec.scalar 𝕜) (d 0) (d 1)).encode_injective (by
+  faithful d x y _ h := (Codec.matrix (EntryCodec.scalar 𝕜) (d 0) (d 1)).encode_injective (by
     have h0 := h 0
     simpa only [Slot.input, Matrix.cons_val_zero, Option.some.injEq, id] using h0)
   admitted := ⟨fun _ => 0, trivial⟩

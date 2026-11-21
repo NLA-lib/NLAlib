@@ -45,7 +45,7 @@ noncomputable def inputs (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, 
   slot d := ![.stored (Codec.matrix (EntryCodec.scalar ℝ) (d 0) (d 0)) Prod.fst,
     .stored (Codec.vector (d 0)) Prod.snd, .blank ((d 1 + 1) * d 0), .blank (2 * d 1 + 2)]
   fits := by domain_fits
-  faithful d x y h := by
+  faithful d x y _ h := by
     have h0 := h 0
     have h1 := h 1
     simp only [Slot.input, Matrix.cons_val_zero, Matrix.cons_val_one, Option.some.injEq] at h0 h1

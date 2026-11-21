@@ -86,7 +86,9 @@ theorem span_oneCall : unitResources.span oneCall = 1 := by
 /-! ### An answer oracle: the contract of a primitive depends on the input -/
 
 /-- A real number as semantic data. The only buffer is one uninitialised output cell: the
-number is stored nowhere. -/
+number is stored nowhere. This problem is written by hand on purpose: it shows what a
+hand-written `NLAlib.Ops.Problem` can hide (data in no buffer, reached through an undeclared
+oracle), which `NLAlib.Ops.Routine.Domain` forbids or makes a declaration. -/
 def oracleProblem : Problem ℝ 1 1 where
   formats _ := .cell
   valid _ := True

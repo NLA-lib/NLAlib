@@ -63,7 +63,7 @@ noncomputable def inputs : zeroStartRoutine.Domain ℝ 2 7 where
     .stored (Codec.vector (d 0)) fun x => x.2.2,
     .blank (d 0), .blank (d 0), .blank (d 0), .blank (d 0)]
   fits := by domain_fits
-  faithful d x y h := by
+  faithful d x y _ h := by
     have h0 := h 0
     have h1 := h 1
     have h2 := h 2

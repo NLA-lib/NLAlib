@@ -55,7 +55,8 @@ def memoryResources : ResourceModel Empty Empty where
     memoryResources.queryReserve c = 0 :=
   memoryResources.queryReserve_of_zero (fun q => nomatch q) c
 
-/-- No buffers are supplied; the single runtime size is the vector length. -/
+/-- No buffers are supplied; the single runtime size is the vector length. Written by hand on
+purpose: an example about resources, not the problem of a routine. -/
 def mixedProblem : Problem Unit 1 0 where
   formats := Fin.elim0
   valid _ := True
@@ -282,7 +283,8 @@ example : ∃ st, exec queryProgram queryInterp conversionResources (fun _ => .f
   refine ⟨⟨⟨[[some ()]], 0⟩, c, 0, 7⟩, ?_, rfl⟩
   simpa only [St.reserveQueries, hq, Nat.zero_add] using exec_of_evalCounted ht rfl hr
 
-/-- All supplied capacity counts, including uninitialized output slots. -/
+/-- All supplied capacity counts, including uninitialized output slots. Written by hand on
+purpose: its buffers have storage formats other than cells, to exercise the byte count. -/
 def capacityProblem : Problem Unit 0 2 where
   formats i := if i.val = 0 then .fp16 else .fp64
   valid _ := True

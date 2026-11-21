@@ -58,7 +58,7 @@ noncomputable def inputs :
   accepts := accepts A
   slot d := ![.stored (Codec.vector (d 0)) id, .blank (d 0), .blank (d 0), .blank (d 0)]
   fits := by domain_fits
-  faithful d x y h := (Codec.vector (d 0)).encode_injective (by
+  faithful d x y _ h := (Codec.vector (d 0)).encode_injective (by
     have h0 := h 0
     simpa only [Slot.input, Matrix.cons_val_zero, Option.some.injEq, id] using h0)
   admitted := admitted
@@ -139,6 +139,25 @@ noncomputable def algorithm (cost : Standard.Costing) (aw ap sw sp : List ℕ �
     exact le_rfl
 
 /-! ### Unit weights: a closed-form count -/
+
+/-- **The oracles of the model.** The matrix `A d` is in no buffer: it is a parameter of the
+certificate, reached only through the products with the matrix and with the preconditioner
+(which the tree never calls). Scalar arithmetic and the vector operations have one contract at
+every size and input, and the contract of a product does not depend on the input of the
+problem. The cost of the certificate is counted in calls of the product. -/
+noncomputable def oracles (cost : Standard.Costing) (aw ap sw sp : List ℕ → ℕ) :
+    (inputs A domain admitted supply).Oracles
+      (HSPCG.Model.exactModel (problem A domain admitted supply) (fun d => d 0)
+        (fun d _ => A d) (fun _ _ => 1) (HSPCG.Model.resources cost aw ap sw sp)) where
+  ops := [.operator, .preconditioner]
+  operation o ho d x d' x' := by
+    cases o with
+    | scalar a => rfl
+    | blas a => rfl
+    | operator => exact absurd (by simp) ho
+    | preconditioner => exact absurd (by simp) ho
+  query _ _ _ _ q := nomatch q
+  through o _ d X Y _ := by cases o <;> rfl
 
 /-- The weights under which every scalar operation, vector operation and product counts one. -/
 noncomputable abbrev unitResources : ResourceModel HSPCG.Signature Empty :=

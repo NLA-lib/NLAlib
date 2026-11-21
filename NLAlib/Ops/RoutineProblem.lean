@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Ops.Routine
+public import NLAlib.Ops.Confined
 public import NLAlib.Ops.Logic.EntryLayout
 public import NLAlib.Ops.Logic.Step
 public import NLAlib.Ops.Catalog.Operator
@@ -33,7 +34,9 @@ inputs at each size (`In`), the admitted inputs (`accepts`), and for every opera
 
 The slots agree with the interface (`fits`): an operand that is read is `stored` or `derived`, an
 operand that is only written is `blank`, and the lengths are those of the ports. The inputs are
-determined by the stored buffers (`faithful`): there is no input that is in no buffer.
+determined by the stored buffers and the declared unstored part (`faithful`): no other
+input is in no buffer. `NLAlib.Ops.Routine.Domain.Oracles` declares the operations of a model
+through which unstored data is reached.
 
 `NLAlib.Ops.Routine.Domain.problem` is the problem: the supplied buffers are exactly those of the
 slots, and nothing else is admitted. So an input of the problem is an admitted tuple of inputs
@@ -322,8 +325,15 @@ structure Routine.Domain (R : Routine Op Tst) (K : Type) (r b : ℕ) where
   holds words exactly when its operand is read. -/
   fits : ∀ (d : Fin r → ℕ) (i : Fin b) (p : Port), R.ports[i.val]? = some p →
     p.len (List.ofFn d) = (slot d i).len ∧ (slot d i).held = p.access.readable
-  /-- The inputs are determined by the buffers that hold them: no input is in no buffer. -/
-  faithful : ∀ (d : Fin r → ℕ) (x y : In d),
+  /-- The type of the part of the inputs that is in no buffer (an operator reached only through
+  operations of the model). Most routines have none. -/
+  Unstored : (Fin r → ℕ) → Type := fun _ => Unit
+  /-- The part of the inputs that is in no buffer. It can affect a run only through an operation
+  whose contract mentions it; `NLAlib.Ops.Routine.Domain.Oracles` declares which. -/
+  unstored : (d : Fin r → ℕ) → In d → Unstored d := by exact fun _ _ => ()
+  /-- The inputs are determined by the declared unstored part and the buffers that hold the
+  rest: no other input is in no buffer. -/
+  faithful : ∀ (d : Fin r → ℕ) (x y : In d), unstored d x = unstored d y →
     (∀ i, (slot d i).input x = (slot d i).input y) → x = y
   /-- Some size is admitted. -/
   admitted : ∃ d, valid d
@@ -592,6 +602,8 @@ def cast (R' : Routine Op Tst) (hnd : R'.nd = R.nd) (hports : R'.ports = R.ports
   slot := D.slot
   shape := ⟨hnd.trans D.shape.1, (congrArg List.length hports).trans D.shape.2⟩
   fits d i p hp := D.fits d i p (hports ▸ hp)
+  Unstored := D.Unstored
+  unstored := D.unstored
   faithful := D.faithful
   admitted := D.admitted
   inhabited := D.inhabited
@@ -599,6 +611,43 @@ def cast (R' : Routine Op Tst) (hnd : R'.nd = R.nd) (hports : R'.ports = R.ports
 /-- The problem of a domain read at another routine with the same interface is the same. -/
 @[simp] theorem problem_cast (R' : Routine Op Tst) (hnd : R'.nd = R.nd)
     (hports : R'.ports = R.ports) : (D.cast R' hnd hports).problem = D.problem := rfl
+
+end Routine.Domain
+
+namespace Routine.Domain
+
+variable {R : Routine Op Tst}
+
+/-- **The oracles of a model on the problem of a routine.** Data that is in no buffer can
+affect a run only through an operation whose contract mentions it. This declares those
+operations: every other operation and every query has one contract at all sizes and inputs
+(as for `NLAlib.Ops.AccessModel.Uniform`), and the contract of a declared operation depends on
+the input only through its declared unstored part. A reader of a certificate whose inputs are
+not all in memory checks the contracts and the costs of the operations in `ops`: the cost of
+the certificate is counted in calls of them. -/
+structure Oracles (D : R.Domain K r b) (M : AccessModel Op Tst D.problem) where
+  /-- The operations whose contract may depend on the unstored inputs or on the sizes. -/
+  ops : List Op
+  /-- Every other operation has the same contract at every size and input. -/
+  operation : ∀ o, o ∉ ops → ∀ d x d' x', M.operation d x o = M.operation d' x' o
+  /-- Every query has the same contract at every size and input. -/
+  query : ∀ d x d' x' q, M.query d x q = M.query d' x' q
+  /-- A declared operation sees the input only through its unstored part. -/
+  through : ∀ o, o ∈ ops → ∀ d (X Y : D.problem.Input d),
+    D.unstored d X.val.1 = D.unstored d Y.val.1 → M.operation d X o = M.operation d Y o
+
+/-- A model with no declared oracle is uniform. -/
+theorem Oracles.uniform {D : R.Domain K r b} {M : AccessModel Op Tst D.problem}
+    (O : D.Oracles M) (h : O.ops = []) : M.Uniform :=
+  ⟨fun d x d' x' o => O.operation o (by simp [h]) d x d' x', O.query⟩
+
+/-- A uniform model declares no oracle. -/
+def Oracles.ofUniform (D : R.Domain K r b) (M : AccessModel Op Tst D.problem) [hM : M.Uniform] :
+    D.Oracles M where
+  ops := []
+  operation o _ := fun d x d' x' => hM.operation d x d' x' o
+  query := hM.query
+  through o ho := absurd ho (by simp)
 
 end Routine.Domain
 

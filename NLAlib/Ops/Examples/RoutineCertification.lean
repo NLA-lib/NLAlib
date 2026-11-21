@@ -41,7 +41,7 @@ def sum2Domain : (sum2 (Op := ScalarOp) (Tst := CmpTst)).Domain ℝ 1 4 where
   slot d := ![.stored (Codec.vector (d 0)) Prod.fst, .stored (Codec.vector (d 0)) Prod.snd,
     .blank 1, .blank 1]
   fits := by domain_fits
-  faithful d x y h := by
+  faithful d x y _ h := by
     have h0 := h 0
     have h1 := h 1
     simp only [Slot.input, Matrix.cons_val_zero, Matrix.cons_val_one, Option.some.injEq] at h0 h1

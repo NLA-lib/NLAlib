@@ -124,7 +124,7 @@ theorem slottedLogValidate_writes_of_exactNat {Mch : Machine ℝ} {I : Interp O 
     (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch 1) {ns w : ℕ} {lg : ℕ × ℕ}
     {L : List (Option (List GivensEntry))} {P : List GivensEntry} {τ : Tape ℝ} {μ : Mem ℝ}
     (h : HoldsSlottedLog lg ns w L P μ.store) (hL' : L.length < ns) :
-    Writes .total I τ (slottedLogValidate (O := O) (Q := Q)).body
+    Writes .total I τ (slottedLogValidate (O := O) (Q := Q))
       (Env.frame [w, L.length] [lg]) (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun μ' => μ'.pos = μ.pos ∧ HoldsSlottedLog lg ns w (L ++ [some P]) [] μ'.store) μ := by
   have h1 : Mch.lit ((1 : ℕ) : ℚ) = (1 : ℝ) := by simpa using hNat 1 le_rfl
@@ -157,7 +157,7 @@ theorem slottedLogWrite_pos {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSca
     (hq : μ.store.readBlock qw.1 qw.2 2 = some [q.re, q.im])
     (hd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (Store.inBlock pw.1 pw.2 2 ⊔ Store.inBlock qw.1 qw.2 2)) :
-    Writes .total I τ (slottedLogWrite (O := O) (Q := Q)).body
+    Writes .total I τ (slottedLogWrite (O := O) (Q := Q))
       (Env.frame [w, L.length, P.length, r] [pw, qw, lg])
       (Store.inBlock lg.1 (lg.2 + L.length * (1 + 5 * w) + 1 + 5 * P.length) 5)
       (fun μ' => μ'.pos = μ.pos) μ := by

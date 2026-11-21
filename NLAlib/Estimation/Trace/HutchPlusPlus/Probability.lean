@@ -73,17 +73,17 @@ theorem measureReal_not_accepts_le_of_hasLaw_gaussianMatrix
           d ((problem (𝕜 := ℝ) dataLength).initial d input))
         (fun c m => (specification dataLength matrix work workspace w stream).good
             d input (packedSampleTape stream (S omega) (G omega)) c m ∧
-          StoresApproxTrace (matrix (d 0) (d 0) input.val.1) tolerance (1, 0) m)} ≤
+          StoresApproxTrace (matrix (d 0) (d 0) input.val.1.val) tolerance (1, 0) m)} ≤
       delta + 2 * Real.exp (-(hansonWrightConstant *
         min ((d 2 : ℝ) * tolerance ^ 2 / (subgaussianRangeFinderFactor 1 *
-          frobNorm (matrix (d 0) (d 0) input.val.1 -
-            truncatedSVD (matrix (d 0) (d 0) input.val.1) rank) ^ 2))
+          frobNorm (matrix (d 0) (d 0) input.val.1.val -
+            truncatedSVD (matrix (d 0) (d 0) input.val.1.val) rank) ^ 2))
           ((d 2 : ℝ) * tolerance / (√(subgaussianRangeFinderFactor 1) *
-            frobNorm (matrix (d 0) (d 0) input.val.1 -
-              truncatedSVD (matrix (d 0) (d 0) input.val.1) rank))))) := by
+            frobNorm (matrix (d 0) (d 0) input.val.1.val -
+              truncatedSVD (matrix (d 0) (d 0) input.val.1.val) rank))))) := by
   have : Nonempty (Fin (d 1)) := ⟨⟨0, hSketch⟩⟩
   have : IsProbabilityMeasure P := hS.isProbabilityMeasure
-  let A := matrix (d 0) (d 0) input.val.1
+  let A := matrix (d 0) (d 0) input.val.1.val
   have hTail := measureReal_abs_trace_sub_hutchpp_ge_le_of_hasLaw_gaussianMatrix A
     hS hG hSG hDelta (by simpa using hSize) hTolerance
   have hReference : P.real {omega | ¬ |A.trace - hutchpp A (S omega) (G omega)| < tolerance} ≤
@@ -130,14 +130,14 @@ theorem Certification.measureReal_not_accepts_le_of_hasLaw_gaussianMatrix
           d ((problem (𝕜 := ℝ) dataLength).initial d input))
         (fun c m => (specification dataLength matrix work workspace w stream).good
             d input (packedSampleTape stream (S omega) (G omega)) c m ∧
-          StoresApproxTrace (matrix (d 0) (d 0) input.val.1) tolerance (1, 0) m)} ≤
+          StoresApproxTrace (matrix (d 0) (d 0) input.val.1.val) tolerance (1, 0) m)} ≤
       delta + 2 * Real.exp (-(hansonWrightConstant *
         min ((d 2 : ℝ) * tolerance ^ 2 / (subgaussianRangeFinderFactor 1 *
-          frobNorm (matrix (d 0) (d 0) input.val.1 -
-            truncatedSVD (matrix (d 0) (d 0) input.val.1) rank) ^ 2))
+          frobNorm (matrix (d 0) (d 0) input.val.1.val -
+            truncatedSVD (matrix (d 0) (d 0) input.val.1.val) rank) ^ 2))
           ((d 2 : ℝ) * tolerance / (√(subgaussianRangeFinderFactor 1) *
-            frobNorm (matrix (d 0) (d 0) input.val.1 -
-              truncatedSVD (matrix (d 0) (d 0) input.val.1) rank))))) := by
+            frobNorm (matrix (d 0) (d 0) input.val.1.val -
+              truncatedSVD (matrix (d 0) (d 0) input.val.1.val) rank))))) := by
   exact HutchPlusPlus.measureReal_not_accepts_le_of_hasLaw_gaussianMatrix
     dataLength matrix work workspace w stream
     (Certification.algorithm dataLength matrix work workspace w hWorkspace stream)

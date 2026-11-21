@@ -9,6 +9,8 @@ public import NLAlib.Krylov.CG.HSPCG.Alg
 public import NLAlib.Krylov.CG.HSPCG.Spec
 public import NLAlib.Ops.Blas.Decoded
 public import NLAlib.Ops.Logic.Tactic
+public import NLAlib.Ops.Logic.RoutineIntro
+public import NLAlib.Ops.RoutineSyntax
 
 /-!
 # Exact preconditioned Hestenes–Stiefel rounds
@@ -19,8 +21,7 @@ matrix-vector contract as the system matrix, under a separately counted operatio
 
 ## Main results
 
-* `NLAlib.Krylov.CG.HSPCG.step_spec` certifies the exact state update.
-* `NLAlib.Krylov.CG.HSPCG.step_writes` composes a certified round as a stored-state update.
+* `NLAlib.Krylov.CG.HSPCG.stepRoutine_meets`: the round advances the exact state.
 -/
 
 @[expose] public section
@@ -38,26 +39,19 @@ variable {K Op Tst : Type} [Inhabited K]
 def decodedState (dec : K → ℝ) (n : ℕ) (xs rs zs ps : List K) : PCGState ℝ (Fin n) :=
   ⟨decv dec n xs, decv dec n rs, decv dec n zs, decv dec n ps⟩
 
-/-- The four state buffers are distinct and updated in place at the matrix dimension. -/
-@[admNF] def StepOperands (n : ℕ) :
-    List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop :=
-  fun d ins outs => d = [n] ∧ ∃ x r z p, ins = [x, r, z, p] ∧ outs = [x, r, z, p] ∧
-    x.1 ≠ r.1 ∧ x.1 ≠ z.1 ∧ x.1 ≠ p.1 ∧ r.1 ≠ z.1 ∧ r.1 ≠ p.1 ∧ z.1 ≠ p.1
+/-- At the dimension of the matrix, a nonbreaking state is advanced by one round of the
+preconditioned recurrence. -/
+noncomputable def stepSpec (dec : K → ℝ) {n : ℕ} (A M : Matrix (Fin n) (Fin n) ℝ) :
+    Routine.Spec K :=
+  spec% [m] (xs, rs, zs, ps) → (xs', rs', zs', ps')
+    requires m = n ∧ Nonbreakdown A (decodedState dec n xs rs zs ps)
+    ensures decodedState dec n xs' rs' zs' ps' = pcgStep A M (decodedState dec n xs rs zs ps)
 
-/-- The exact PCG state update, with both scalar divisors included in its domain. -/
-@[simps (attr := storeNF)]
-noncomputable def stepRel (dec : K → ℝ) {n : ℕ} (A M : Matrix (Fin n) (Fin n) ℝ) :
-    BlockRel K where
-  nd := 1
-  inLens d := [d.headD 0, d.headD 0, d.headD 0, d.headD 0]
-  outLens d := [d.headD 0, d.headD 0, d.headD 0, d.headD 0]
-  dom _ X _ := match X with
-    | [xs, rs, zs, ps] => Nonbreakdown A (decodedState dec n xs rs zs ps)
-    | _ => False
-  rel _ X _ Y := match X, Y with
-    | [xs, rs, zs, ps], [xs', rs', zs', ps'] =>
-        decodedState dec n xs' rs' zs' ps' = pcgStep A M (decodedState dec n xs rs zs ps)
-    | _, _ => False
+/-- The four buffers store a decoded mathematical PCG state. -/
+def StoresState (dec : K → ℝ) (n : ℕ) (x r z p : ℕ × ℕ) (s : PCGState ℝ (Fin n))
+    (μ : Mem K) : Prop :=
+  ∃ xs rs zs ps, μ.readBlocks [x, r, z, p] [n, n, n, n] = some [xs, rs, zs, ps] ∧
+    decodedState dec n xs rs zs ps = s
 
 private theorem decodedState_pcgStep {dec : K → ℝ} {n : ℕ}
     (A M : Matrix (Fin n) (Fin n) ℝ) (xs rs zs ps xs' rs' zs' ps' : List K) (a b : ℝ)
@@ -73,23 +67,22 @@ private theorem decodedState_pcgStep {dec : K → ℝ} {n : ℕ}
   dsimp only [decodedState]
   rw [← ha, ← hr, ← hz, ← hb, ← hx, ← hp]
 
-/-- Exact scalar, BLAS1, system and preconditioner contracts implement one nonbreaking PCG round. -/
-theorem step_spec {F : Machine K} {dec : K → ℝ} {n : ℕ}
+/-- One nonbreaking round of the preconditioned recurrence meets its specification under exact
+scalar, vector, system and preconditioner contracts. -/
+theorem stepRoutine_meets {F : Machine K} {dec : K → ℝ} {n : ℕ}
     {A M : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K}
     (hS : IsScalar F I) (hF : ExactModel dec F)
     (hB : IsExactBlas1 dec (fun _ => True) I) (hA : IsExactMatvec dec A I)
     (hM : IsExactPreconditioner dec M I) :
-    (stepImpl (Op := Op) (Tst := Tst)).Triple I .total
-      ((stepRel dec A M).spec (StepOperands n)) := by
-  cert_intro [m] (x, r, z, p) → (x', r', z', p') reads (xs, rs, zs, ps)
-  obtain ⟨hd, hx, hr, hz, hp, hxr, hxz, hxp, hrz, hrp, hzp⟩ := hadm
-  subst m x' r' z' p'
-  change Nonbreakdown A (decodedState dec n xs rs zs ps) at hdom
+    (stepRoutine (Op := Op) (Tst := Tst)).Meets I (stepSpec dec A M) := by
+  routine_intro [n'] (x, r, z, p) reads (xs, rs, zs, ps)
+  obtain ⟨hn, hdom⟩ := hpre
+  obtain rfl : n = n' := hn.symm
   refine writes_allocs (lens := [.var 0, .var 0, .const 4]) (ns := [n, n, 4]) rfl
     fun s₁ hs₁ hlen hB₁ => ?_
-  have hq : s₁.len μ.store.length = n := by simpa using hlen 0 (by simp)
-  have hu : s₁.len (μ.store.length + 1) = n := by simpa using hlen 1 (by simp)
-  have ht : s₁.len (μ.store.length + 2) = 4 := by simpa using hlen 2 (by simp)
+  have hq : s₁.len m.store.length = n := by simpa using hlen 0 (by simp)
+  have hu : s₁.len (m.store.length + 1) = n := by simpa using hlen 1 (by simp)
+  have ht : s₁.len (m.store.length + 2) = 4 := by simpa using hlen 2 (by simp)
   dsimp only [Env.frame, List.append, List.range_succ, List.range_zero, List.map,
     List.length_cons, List.length_nil, Nat.add_zero] at *
   step hB.dot as m₁ hfr₁ ⟨hpos₁, ρ, hρ, heρ⟩
@@ -105,7 +98,7 @@ theorem step_spec {F : Machine K} {dec : K → ℝ} {n : ℕ}
   have hr₉ : m₉.store.readBlock r.1 r.2 n = some rs' := by kept
   have hz₉ : m₉.store.readBlock z.1 z.2 n = some zs' := by kept
   have hp₉ : m₉.store.readBlock p.1 p.2 n = some ps := by kept
-  have hρ₉ : m₉.store.get (μ.store.length + 2) 0 = some ρ := by kept
+  have hρ₉ : m₉.store.get (m.store.length + 2) 0 = some ρ := by kept
   clear hfr₁ hfr₂ hfr₃ hfr₄ hfr₅ hfr₆ hfr₇ hfr₈
   step (hS .div) as m₁₀ hfr₁₀ ⟨hpos₁₀, b, hb, heb⟩
   step hB.copy as m₁₁ hfr₁₁ ⟨hpos₁₁, us, hus, hcopy₁⟩
@@ -129,41 +122,7 @@ theorem step_spec {F : Machine K} {dec : K → ℝ} {n : ℕ}
   have hstep := decodedState_pcgStep A M xs rs zs ps xs' rs' zs' ps'' (dec a) (dec b)
     had hbd (axpyExactRel_decoded hex) hrvec hez hpvec
   intro s₂ hs₂ hB₂
-  refine ⟨by simp [stepRel, hpos₁₃, hpos₁₂, hpos₁₁, hpos₁₀, hpos₉, hpos₈, hpos₇,
-    hpos₆, hpos₅, hpos₄, hpos₃, hpos₂, hpos₁], [xs', rs', zs', ps''], ?_, hstep⟩
-  exact Mem.readBlocks_of_cons (by kept) (Mem.readBlocks_of_cons (by kept)
-    (Mem.readBlocks_of_cons (by kept) (Mem.readBlocks_of_cons (by kept) rfl)))
-
-/-- The four buffers store a decoded mathematical PCG state. -/
-def StoresState (dec : K → ℝ) (n : ℕ) (x r z p : ℕ × ℕ) (s : PCGState ℝ (Fin n))
-    (μ : Mem K) : Prop :=
-  ∃ xs rs zs ps, μ.readBlocks [x, r, z, p] [n, n, n, n] = some [xs, rs, zs, ps] ∧
-    decodedState dec n xs rs zs ps = s
-
-/-- A certified round advances a stored PCG state without exposing its implementation. -/
-theorem step_writes {F : Machine K} {dec : K → ℝ} {n : ℕ}
-    {A M : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K}
-    (hS : IsScalar F I) (hF : ExactModel dec F)
-    (hB : IsExactBlas1 dec (fun _ => True) I) (hA : IsExactMatvec dec A I)
-    (hM : IsExactPreconditioner dec M I) {τ : Tape K} {μ : Mem K}
-    {x r z p : ℕ × ℕ} {s : PCGState ℝ (Fin n)}
-    (hxr : x.1 ≠ r.1) (hxz : x.1 ≠ z.1) (hxp : x.1 ≠ p.1)
-    (hrz : r.1 ≠ z.1) (hrp : r.1 ≠ p.1) (hzp : z.1 ≠ p.1)
-    (hl : μ.Live [x, r, z, p]) (hstate : StoresState dec n x r z p s μ)
-    (hdom : Nonbreakdown A s) (hz : μ.Room [x, r, z, p] [n, n, n, n]) :
-    Writes .total I τ step (Env.frame [n] [x, r, z, p, x, r, z, p])
-      (Fp.blocks [x, r, z, p] [n, n, n, n])
-      (fun μ' => μ'.pos = μ.pos ∧ StoresState dec n x r z p (pcgStep A M s) μ') μ := by
-  obtain ⟨xs, rs, zs, ps, hread, hstate⟩ := hstate
-  refine ((step_spec hS hF hB hA hM).writes_blocks rfl
-    ⟨rfl, x, r, z, p, rfl, rfl, hxr, hxz, hxp, hrz, hrp, hzp⟩
-    ((μ.live_append _ _).mpr ⟨hl, hl⟩) hread
-    (by change Nonbreakdown A (decodedState dec n xs rs zs ps); rwa [hstate])
-    hz (by disjoint)).mono le_rfl ?_
-  rintro μ' _ ⟨hpos, ys, hys, hrel⟩
-  obtain ⟨xs', rs', zs', ps', rfl⟩ := List.length_eq_four.mp
-    (by simpa [stepRel] using congrArg List.length (Mem.map_length_of_readBlocks hys))
-  exact ⟨by simpa [stepRel] using hpos, xs', rs', zs', ps', hys,
-    by simpa only [stepRel_rel, hstate] using hrel⟩
+  routine_exit
+  exact hstep
 
 end NLAlib.Krylov.CG.HSPCG

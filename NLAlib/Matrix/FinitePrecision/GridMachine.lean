@@ -22,11 +22,11 @@ $\bar s v$ to $[-\bar s, \bar s]$, the normal sampler rounds both parts, and the
 `NLAlib.gridMM t`, `NLAlib.gridQR t` compute the exact product (an exact QR factorization, chosen)
 of the decoded inputs and round each entry, real and imaginary parts separately, with the odd
 rounding `NLAlib.gridRoundOdd` (so that the rounded $\mathbf{A}\mathbf{A}^{\mathsf{H}}$ is exactly
-Hermitian: `Real.roundNearest` rounds ties upward and is not odd). It meets the contract
+Hermitian: `Real.roundNearest` rounds ties upward and is not odd). It satisfies the contract
 `NLAlib.FloatMachine.IsAccurate` at the decoding `Real.roundNearest t`, with $u = 2^{-t}$, floor
 $\tau = 0$, every range $\Omega$, $\mu_{\mathrm{MM}}(d) = \mu_{\mathrm{QR}}(d) = 2d$ and
 $c_{\mathrm N} = \sqrt2$, for $t \ge 1$: the companion, on the decoding of the grid semantics, of
-`NLAlib.binaryFloatMachine` (bounded exponent, floor $\tau > 0$), which cannot meet a contract
+`NLAlib.binaryFloatMachine` (bounded exponent, floor $\tau > 0$), which cannot satisfy a contract
 at floor $0$.
 
 The file also gives a part of a rounded witness on the grid: rounding the tape meets
@@ -140,7 +140,7 @@ private theorem abs_sub_gridRoundOdd_le_mul_max (t : ℕ) (x : ℝ) :
   rw [max_eq_left (abs_nonneg x)]
   exact abs_sub_gridRoundOdd_le t x
 
-/-- **The grid product meets the product contract**: for $t \ge 1$ and every range $\Omega$,
+/-- **The grid product satisfies the product contract**: for $t \ge 1$ and every range $\Omega$,
 `NLAlib.gridMM t` meets `NLAlib.IsMatMulErr` at the decoding `Real.roundNearest t`, with
 $u = 2^{-t}$, floor $0$ and $\mu(d) = 2d$, and computes a product with a conjugate transpose
 exactly Hermitian (the odd rounding commutes with conjugation). No printed source. -/
@@ -167,7 +167,7 @@ theorem isMatMulErr_gridMM {t : ℕ} (ht : 0 < t) (Ω : ℝ) :
     · simp only [Matrix.map_apply, Complex.star_def, Complex.conj_im, him, gridRoundOdd_neg,
         neg_neg]
 
-/-- **The grid QR factorization meets the QR contract**: for $t \ge 1$ and every range $\Omega$,
+/-- **The grid QR factorization satisfies the QR contract**: for $t \ge 1$ and every range $\Omega$,
 `NLAlib.gridQR t` meets `NLAlib.IsQRErr` at the decoding `Real.roundNearest t`, with $u = 2^{-t}$,
 floor $0$ and $\mu(d) = 2d$: the exact unitary factor is the $\mathbf{Q}'$ of the contract.
 No printed source. -/
@@ -236,7 +236,7 @@ private theorem isRoundingOf_roundNearest_roundNearest {t : ℕ} (ht : 0 < t) (�
   rw [Real.roundNearest_roundNearest ht]
   exact isRoundingOf_roundNearest t Ω a
 
-/-- The uniform sampler of the grid machine meets its contract, floor $0$. -/
+/-- The uniform sampler of the grid machine satisfies its contract, floor $0$. -/
 private theorem isUnifSampler_gridMachine {t : ℕ} (ht : 0 < t) :
     IsUnifSampler (Real.roundNearest t) (2⁻¹ ^ t) 0 (gridMachine t).unif := by
   intro s v hs hv
@@ -272,7 +272,7 @@ private theorem isUnifSampler_gridMachine {t : ℕ} (ht : 0 < t) :
     · rw [max_eq_left h', abs_of_nonneg (by linarith), abs_of_nonneg (by linarith)]
       linarith
 
-/-- The normal sampler of the grid machine meets its contract, constant $\sqrt2$, floor $0$. -/
+/-- The normal sampler of the grid machine satisfies its contract, constant $\sqrt2$, floor $0$. -/
 private theorem isNormalSampler_gridMachine {t : ℕ} (ht : 0 < t) (Ω : ℝ) :
     IsNormalSampler (decodeComplex (Real.roundNearest t)) (2⁻¹ ^ t) √2 0 Ω
       (gridMachine t).normal := by
@@ -297,8 +297,8 @@ private theorem isNormalSampler_gridMachine {t : ℕ} (ht : 0 < t) (Ω : ℝ) :
   have b2 : (2⁻¹ ^ t * |z.im|) ^ 2 ≤ (2⁻¹ ^ t * max ‖z‖ 0) ^ 2 := by gcongr
   nlinarith
 
-/-- **The grid machine meets the machine contract** (`NLAlib.FloatMachine.IsAccurate`): for
-$t \ge 1$ and every range $\Omega$, `NLAlib.gridMachine t` meets the contract at the decoding
+/-- **The grid machine satisfies the machine contract** (`NLAlib.FloatMachine.IsAccurate`): for
+$t \ge 1$ and every range $\Omega$, `NLAlib.gridMachine t` satisfies the contract at the decoding
 `Real.roundNearest t`, unit roundoff $u = 2^{-t}$, floor $0$, range $\Omega$,
 $\mu_{\mathrm{MM}}(d) = \mu_{\mathrm{QR}}(d) = 2d$ and $c_{\mathrm N} = \sqrt2$. A machine with
 $u > 0$ and floor $0$, on the decoding of `NLAlib.Computation.gridSem`. No printed source. -/

@@ -11,8 +11,8 @@ public import NLAlib.Ops.StoreSimp
 /-!
 # The call step
 
-`wp_call h` is one step of a program proof at a call: `h` says that the operation called meets
-its contract (`h : I.Meets md o (R.spec adm)`, or `h : I.IsFn .total o f adm` for a functional
+`wp_call h` is one step of a program proof at a call: `h` says that the operation called satisfies
+its contract (`h : I.Satisfies md o (R.spec adm)`, or `h : I.IsFn .total o f adm` for a functional
 operation). The tactic
 
 * applies the sequence rule if the call is followed by something;

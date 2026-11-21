@@ -9,6 +9,7 @@ public import NLAlib.Ops.Cert
 public import NLAlib.Ops.WeightedCost
 public import Mathlib.Algebra.BigOperators.Group.List.Basic
 public import Mathlib.Tactic.Ring
+public import NLAlib.Ops.Logic.KernelRfl
 
 /-!
 # An explicit polynomial for the number of instructions of a program
@@ -160,6 +161,20 @@ theorem monoEval_sortMono (x : List ℕ) (m : List ℕ) : monoEval x (sortMono m
 
 end CountPoly
 
+/-- **`poly_eval [f]`**: close `CountPoly.eval (List.ofFn d) p = f d` for a literal polynomial
+`p` (usually after `rw [countPoly_program]`) and a closed form `f` given by a definition, which
+is unfolded. The polynomial is evaluated at the sizes and the two sides are compared by `ring`. -/
+syntax "poly_eval" (" [" Lean.Parser.Tactic.simpLemma,* "]")? : tactic
+
+macro_rules
+  | `(tactic| poly_eval) => `(tactic| poly_eval [])
+  | `(tactic| poly_eval [$ts,*]) => `(tactic|
+      (simp only [CountPoly.eval, CountPoly.monoEval, List.ofFn_succ, List.ofFn_zero,
+         List.map_cons, List.map_nil, List.sum_cons, List.sum_nil, List.prod_cons, List.prod_nil,
+         List.getD_cons_zero, List.getD_cons_succ, Fin.succ_zero_eq_one, Fin.succ_one_eq_two,
+         $ts,*]
+       ring))
+
 /-- An upper bound of an index expression, as a polynomial in the sizes: each index variable is
 replaced by its bound in `env`, a truncated difference and a quotient by their first argument. -/
 def IExp.upper (env : List CountPoly) : IExp → CountPoly
@@ -253,6 +268,7 @@ def Stmt.countPoly : Stmt Op Tst → List CountPoly → CountPoly
   | .frame ds args s, env =>
       s.countPoly (ds.map (fun e => (e.upper env).normalize) ++
         args.map (fun a => (a.off.upper env).normalize))
+  | .note _ s, env => s.countPoly env
 
 private theorem boundedBy_push {x idx : List ℕ} {env : List CountPoly} (h : BoundedBy x idx env)
     {v : ℕ} {p : CountPoly} (hv : v ≤ CountPoly.eval x p) :
@@ -348,6 +364,7 @@ theorem stmtWeightedCost_le_countPoly {op : Op → List ℕ → ℕ} {query : Ts
     have h1 := boundedBy_normalize (IExp.evalList_le_upper h hd)
     have h2 := boundedBy_normalize (IExp.evalList_le_upper h ho)
     simpa only [List.map_map, Function.comp_def] using List.rel_append h1 h2
+  | note _ _ ih => exact ih h
 
 /-- The bounds of the index variables of a program at its start: each size is a variable, each
 initial offset is zero. -/

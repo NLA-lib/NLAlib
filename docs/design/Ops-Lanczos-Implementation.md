@@ -33,7 +33,7 @@ transfers to old finite-precision analyses will be listed individually, not clai
 
 ## Implemented exact guarantees
 
-`Exact.solve_spec` proves total success from the scalar exact model, exact BLAS and matvec
+`solveRoutine_meets` proves total success from the scalar exact model, exact BLAS and matvec
 contracts, decoded comparisons, and ordinary readable/roomy blocks. It places no restriction
 on the matrix or cap. The result equals the pure recurrence at every requested column; for
 Hermitian matrices, `Output.basisMatrix_succ_eq_arnoldiMatrix` identifies the canonical Krylov basis.
@@ -56,7 +56,7 @@ lowering is checked against the unlinked outputs for active and zero-input cases
 ## Rounded transfer boundary
 
 `Rounded.update_writes` derives both componentwise axpy bounds and the diagonal dot bound
-from the actual first-update/raw vectors and coefficient. `normalize_rounded_writes` exposes
+from the actual first-update/raw vectors and coefficient. `normalizeRoutine_meets_rounded` exposes
 actual output reads, norm and reciprocal-scaling contracts, and the zero-input result.
 `Rounded.advance_writes` composes those facts into a complete successful round, using an
 exact primitive matvec. Dot and square-root error parameters below one guard normalization.

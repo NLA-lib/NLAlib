@@ -86,7 +86,9 @@ theorem span_oneCall : unitResources.span oneCall = 1 := by
 /-! ### An answer oracle: the contract of a primitive depends on the input -/
 
 /-- A real number as semantic data. The only buffer is one uninitialised output cell: the
-number is stored nowhere. -/
+number is stored nowhere. This problem is written by hand on purpose: it shows what a
+hand-written `NLAlib.Ops.Problem` can hide (data in no buffer, reached through an undeclared
+oracle), which `NLAlib.Ops.Routine.Domain` forbids or makes a declaration. -/
 def oracleProblem : Problem ℝ 1 1 where
   formats _ := .cell
   valid _ := True
@@ -300,7 +302,7 @@ noncomputable def freeSpecification : Specification ScalarOp Empty repeatProblem
 and span zero for every `n`, under a budget that is the program's own static count. -/
 noncomputable def freeAlgorithm : Algorithm freeModel freeSpecification :=
   Algorithm.ofWp repeatProgram (by decide)
-    (fun d _ x I hI τ => (wp_repeat hI.1 d x τ).mono fun _ hg _ _ => hg)
+    (fun d _ x I hI τ => (repeat_wp hI.1 d x τ).mono fun _ hg _ _ => hg)
     (fun _ _ => le_rfl)
     (fun d _ => by
       rw [staticPeak]

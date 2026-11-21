@@ -143,7 +143,7 @@ theorem measureReal_not_accepts_packedGaussianTape_le_of_hasLaw_complexGaussianM
     (hG : HasLaw G (complexGaussianMatrix (Fin (d 0)) (Fin (d 0))) P) :
     P.real {omega | ¬ (wordSpecification F.mm F.qr domain admitted
       matrixWork matrixWorkspace).Accepts (Dense.resources matrixWork matrixWorkspace) d input
-        (exec (certifiedAlgorithm M dec F.mm F.qr domain admitted
+        (exec (deflateAlgorithm M dec F.mm F.qr domain admitted
             matrixWork matrixWorkspace hRank).program I (Dense.resources matrixWork matrixWorkspace)
           (problem (K := K) domain admitted).formats (packedGaussianTape F.normal (G omega))
           d ((problem (K := K) domain admitted).initial d input))
@@ -158,7 +158,7 @@ theorem measureReal_not_accepts_packedGaussianTape_le_of_hasLaw_complexGaussianM
       hQR hNormal (hRank d hd) hU hV hS hA hBeta hBetaMax ht hCut hCondition hPrecision
       hFloor hFloorN hRange hG
   exact measureReal_not_accepts_le_of_reference F dec matrixWork matrixWorkspace
-    (certifiedAlgorithm M dec F.mm F.qr domain admitted matrixWork matrixWorkspace hRank)
+    (deflateAlgorithm M dec F.mm F.qr domain admitted matrixWork matrixWorkspace hRank)
     hd input I hI P (fun omega => packedGaussianTape F.normal (G omega)) G
     (fun omega => sampleMatrix_packedGaussianTape F.normal (G omega)) U _ hReference
 

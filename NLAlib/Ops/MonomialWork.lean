@@ -7,6 +7,7 @@ module
 
 public import Mathlib.Tactic.Ring
 public import NLAlib.Ops.Confined
+public import NLAlib.Ops.Logic.KernelRfl
 public meta import Lean.Elab.Tactic.Basic
 
 /-!
@@ -22,10 +23,11 @@ site contributes one instruction for each list of dimensions its bounds allow, c
 static count takes a pointwise supremum over the branches of an `ite`, the values of a `bindIdx`
 and the exits of a `whileFuel`, so the bound needs one count that dominates them all, and one
 exists that depends only on the bounds of the slots. The bound of a fixed program is evaluated
-by `kernel_rfl`, an equation by reflexivity left to the kernel (which evaluates it with sharing,
-where the elaborator's `rfl` does not). It keeps each base with its own exponent, unlike the
-one-base estimate `NLAlib.Ops.stmtWeightedCost_le_coefficient_mul_pow`. The bases are a list, one
-per size of the program; a monomial lists its exponents, missing ones being $0$.
+by `kernel_rfl` (`NLAlib/Ops/Logic/KernelRfl.lean`), an equation by reflexivity left to the
+kernel (which evaluates it with sharing, where the elaborator's `rfl` does not). It keeps each
+base with its own exponent, unlike the one-base estimate
+`NLAlib.Ops.stmtWeightedCost_le_coefficient_mul_pow`. The bases are a list, one per size of the
+program; a monomial lists its exponents, missing ones being $0$.
 
 ## Main definitions
 
@@ -38,7 +40,6 @@ per size of the program; a monomial lists its exponents, missing ones being $0$.
   at most the monomial bound.
 * `NLAlib.Ops.stmtWorkMono_instrument`: the bound of an instrumented tree is computed on the tree
   (`NLAlib.Ops.instrWorkMono`), without building the instrumented tree.
-* `kernel_rfl`: an equation closed by reflexivity, checked by the kernel only.
 -/
 
 @[expose] public section
@@ -216,6 +217,7 @@ def stmtWorkMono : Stmt Op Tst → List WorkMono → WorkMono
   | .loop n body, σ => (n.workMono σ).mul (stmtWorkMono body (loopSlots σ n))
   | .frame ds args body, σ =>
       stmtWorkMono body (ds.map (IExp.workMono σ) ++ (args.map Operand.off).map (IExp.workMono σ))
+  | .note _ s, σ => stmtWorkMono s σ
 
 /-! ### The bound of an instrumented tree, without the instrumented tree -/
 
@@ -260,6 +262,7 @@ def instrWorkMono : Stmt Op Tst → List WorkMono → WorkMono
       (tallyWorkMono (indexBookkeeping ds ++ operandBookkeeping args ++ [.frame])).add
         (instrWorkMono body
           (ds.map (IExp.workMono σ) ++ (args.map Operand.off).map (IExp.workMono σ)))
+  | .note _ s, σ => instrWorkMono s σ
 
 /-- The monomial bound of `NLAlib.Ops.tally` does not depend on the slot bounds. -/
 theorem stmtWorkMono_tally (ks : List Bookkeeping) (σ : List WorkMono) :
@@ -293,6 +296,7 @@ theorem stmtWorkMono_instrument (s : Stmt Op Tst) (σ : List WorkMono) :
       instrWorkMono, ih]
   | frame ds args body ih => simp only [Stmt.instrument, stmtWorkMono, stmtWorkMono_tally,
       instrWorkMono, ih]
+  | note n s ih => simp only [Stmt.instrument, instrWorkMono, ih]
 
 /-! ### Soundness -/
 
@@ -573,6 +577,7 @@ theorem workMonoDominates (hb : ∀ b ∈ bs, 1 ≤ b) :
       exact hg _ (List.rel_append (IExp.evalList_le_workMono h hb ds hd)
         (IExp.evalList_le_workMono h hb _ ho))
     · exact zero_le
+  | .note _ s, σ => workMonoDominates hb s σ
 
 /-- The number of instructions of the static count is at most the monomial bound: at bases
 at least $1$ and slot values bounded by the monomials `σ`,
@@ -585,17 +590,6 @@ theorem size_stmtCost_le_stmtWorkMono (hb : ∀ b ∈ bs, 1 ≤ b)
 
 end Soundness
 
-open Lean Elab Tactic Meta in
-/-- **`kernel_rfl`**: close an equation `a = b` by `Eq.refl a` without the elaborator's
-definitional check; the kernel checks it when the declaration is added (and fails it there if
-`a` and `b` are not definitionally equal). For closed computations, such as the monomial bound
-of a fixed program, that the kernel evaluates with sharing. -/
-elab (name := kernelRfl) "kernel_rfl" : tactic => withMainContext do
-  let g ← getMainGoal
-  let t ← instantiateMVars (← g.getType)
-  let some (_, a, _) := t.eq? | throwError "kernel_rfl: not an equation"
-  g.assign (← mkEqRefl a)
-  replaceMainGoal []
 
 /-- The instructions of a supremum of counts and of their infimum add up to those of the two
 counts. -/

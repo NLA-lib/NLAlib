@@ -135,7 +135,7 @@ def Stmt.allOps (p : Op → Bool) : Stmt Op Tst → Bool
   | .skip | .abort => true
   | .call o _ _ _ => p o
   | .seq s t | .ite _ _ _ s t | .whileFuel _ _ _ _ s t => s.allOps p && t.allOps p
-  | .bindIdx _ _ _ s | .allocAs _ _ s | .loop _ s | .frame _ _ s => s.allOps p
+  | .bindIdx _ _ _ s | .allocAs _ _ s | .loop _ s | .frame _ _ s | .note _ s => s.allOps p
 
 /-- Queries never introduce primitive calls, including when their dimensions do not evaluate. -/
 @[simp] theorem callsSatisfy_testCost (q : Tst) (ds : List IExp) (idx : List ℕ)
@@ -177,5 +177,6 @@ theorem Stmt.allOps_callsSatisfy (p : Op → Bool) (P : Op → List ℕ → Prop
     simp only [stmtCost]
     cases IExp.evalList idx ds <;> cases IExp.evalList idx (args.map Operand.off) <;>
       first | exact Count.callsSatisfy_zero P | exact ih hs _
+  | note _ _ ih => exact ih hs idx
 
 end NLAlib.Ops

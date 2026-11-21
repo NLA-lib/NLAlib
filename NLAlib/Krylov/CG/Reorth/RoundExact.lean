@@ -29,7 +29,10 @@ open scoped Matrix
 variable {K Op Tst : Type} [Inhabited K]
 variable [Has ScalarOp Op] [Has Blas1Op Op] [Has OperatorOp Op]
 
-/-- One active round terminates and stores the exact reorthogonalized recurrence. -/
+/-- One active round terminates and stores the exact reorthogonalized recurrence.
+
+A fragment of `NLAlib.Krylov.CG.Reorth.solveRoutine`, not a routine: its basis is a prefix of
+the residual history that the solver allocates, at a length set by the loop of `rounds`. -/
 theorem round_writes {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
     (hS : IsScalar M I) (hM : ExactModel dec M) (hB : IsExactBlas1 dec (fun _ => True) I)
     {n k : ℕ} {A : Matrix (Fin n) (Fin n) ℝ} (hA : IsExactMatvec dec A I)
@@ -69,19 +72,9 @@ theorem round_writes {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
       (by simpa only [(hBelow r.1 hrL).1] using hz.2.1)
       (by kept) (by kept) (by kept) hdom)) (by fp_sub)
     fun μ₁ hfr₁ ⟨hpos₁, xs', raw, rr, hx₁, hr₁, hrr₁, hrrd, hxv, hrv⟩ => ?_
-  refine Writes.seq_le (writes_frame rfl rfl (by
-    simp only [Mem.live_cons, Mem.live_nil, and_true, hfr₁.length_eq]; omega)
-    (sweep_writes (qs := qs) (rs := raw) hS hM hB hQr (by
-      simp only [Mem.live_cons, Mem.live_nil, and_true, hfr₁.length_eq]; omega)
-      (by kept) hr₁ (by
-        simp only [Mem.room_cons, Mem.room_nil, and_true, hfr₁.len_eq]
-        simpa only [(hBelow r.1 hrL).1] using hz.2.1))) (by fp_sub)
-    fun μ₂ hfr₂ ⟨hpos₂, swept, hread₂, hsw⟩ => ?_
-  obtain ⟨z, vs, hzv, hrv₂, hvs⟩ := Mem.readBlocks_one hread₂
-  have hz_eq : z = r := (List.cons.inj hzv).1.symm
-  subst z
-  have hvs_eq : vs = swept := (List.cons.inj hvs).1.symm
-  subst vs
+  call (sweepRoutine_meets (Tst := Tst) hS hM hB) [n, k] (Q, r) as μ₂ hfr₂ hpos₂ (swept) hsw
+  have hsw : decv dec n swept = sweepVec (column dec n qs) (decv dec n raw) k := hsw
+  have hrv₂ := hswept
   refine (writes_frame rfl rfl (by
     simp only [Mem.live_cons, Mem.live_nil, and_true, hfr₂.length_eq, hfr₁.length_eq]
     omega)

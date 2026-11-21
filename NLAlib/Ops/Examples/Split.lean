@@ -6,7 +6,9 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Ops.Catalog.Compare
+public import NLAlib.Ops.RoutineSyntax
 public import NLAlib.Ops.Counted
+public import NLAlib.Ops.RoutineLink
 
 /-!
 # Fixture: a split whose sizes are read from the store, with weighted counts
@@ -53,8 +55,8 @@ def idleRel : BlockRel K where
   rel _ _ _ ys := ys = []
 
 /-- A call of an idle kernel. -/
-theorem wp_idle {J : Interp Op IdxTst K} {o : Op}
-    (hK : J.Meets .total o ((idleRel (K := K)).spec AnyOperands)) {τ : Tape K} {ρ : Env}
+theorem idle_wp {J : Interp Op IdxTst K} {o : Op}
+    (hK : J.Satisfies .total o ((idleRel (K := K)).spec AnyOperands)) {τ : Tape K} {ρ : Env}
     {e : IExp} {n : ℕ} (he : e.eval ρ.idx = some n) {m : Mem K} :
     Wp .total J τ (.call o [e] [] []) ρ (· = m) m := by
   refine wp_call_rel hK (d := [n]) (a := []) (b := []) (by simp [he]) rfl rfl rfl rfl rfl trivial
@@ -73,12 +75,12 @@ noncomputable def idleInterp (Op : Type) : Interp Op IdxTst ℝ where
 /-- **Witness**: the contract of an idle kernel and the contract of the conversion can be met
 together, for every signature and every kernel. -/
 theorem exists_isIdle_isToNat (o : Op) : ∃ (K : Type) (dec : K → ℝ) (J : Interp Op IdxTst K),
-    J.Meets .total o ((idleRel (K := K)).spec AnyOperands) ∧ IsToNat dec J := by
+    J.Satisfies .total o ((idleRel (K := K)).spec AnyOperands) ∧ IsToNat dec J := by
   have hfn : (idleInterp Op).IsFn .total o (BlockFn.mk 1 0 (fun _ => 0) (fun _ => [])
       (fun _ => []) fun _ _ _ => some []) AnyOperands :=
     Interp.ofFns_isFn (Tst := IdxTst) (fun _ : Op => BlockFn.mk 1 0 (fun _ => 0) (fun _ => [])
       (fun _ => []) fun _ _ _ => some []) .total o AnyOperands
-  refine ⟨ℝ, id, idleInterp Op, hfn.meets_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl)
+  refine ⟨ℝ, id, idleInterp Op, hfn.satisfies_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl)
     (fun _ => rfl) (fun _ => rfl) fun _ _ _ _ _ _ _ _ _ _ _ => ⟨[], rfl, rfl, rfl⟩,
     fun a m xs h => ?_⟩
   change ((m.readBlocks a (a.map fun _ => 1)).bind fun xs => toNatFn id xs.flatten) = _
@@ -88,16 +90,16 @@ theorem exists_isIdle_isToNat (o : Op) : ∃ (K : Type) (dec : K → ℝ) (J : I
 /-- **The exact counts of a split**, carried by the logic: one conversion, one call at the size
 read and one at the rest. -/
 theorem runsW_split {J : Interp Op IdxTst K} {o : Op} {dec : K → ℝ}
-    (hK : J.Meets .total o ((idleRel (K := K)).spec AnyOperands)) (hidx : IsToNat dec J)
+    (hK : J.Satisfies .total o ((idleRel (K := K)).spec AnyOperands)) (hidx : IsToNat dec J)
     (W : Op → List ℕ → ℕ) {τ : Tape K} {k : ℕ} {x : ℕ × ℕ} {m : Mem K} {w : K}
     (hx : m.store.get x.1 x.2 = some w) (h0 : 0 ≤ dec w) (hle : ⌊dec w⌋₊ ≤ k) :
     ConditionalRunsW J W τ (split o) ⟨[k, x.2], [x.1]⟩ m (max (W o [⌊dec w⌋₊]) (W o [k - ⌊dec w⌋₊]))
       fun c m' => m' = m ∧ c = Count.test .toNat [] +
         (Count.one o [⌊dec w⌋₊] + Count.one o [k - ⌊dec w⌋₊]) := by
   refine (RunsFromW.bindIdx (st := St.init m) rfl rfl (hidx.index_eq hx h0) hle
-    (RunsFromW.seq (RunsFromW.call rfl (wp_idle hK rfl)) fun st' c hc => ?_)).runsW
+    (RunsFromW.seq (RunsFromW.call rfl (idle_wp hK rfl)) fun st' c hc => ?_)).runsW
   obtain ⟨rfl, hm⟩ := hc
-  refine (RunsFromW.call rfl (wp_idle hK (m := st'.mem) rfl)).mono le_rfl ?_
+  refine (RunsFromW.call rfl (idle_wp hK (m := st'.mem) rfl)).mono le_rfl ?_
   rintro c' m' ⟨rfl, rfl⟩
   exact ⟨hm, rfl⟩
 
@@ -128,11 +130,12 @@ inductive LOp where
   | base
   deriving DecidableEq
 
-/-- `work [k] [x] []` by a split over `base`. -/
-def splitImpl : Impl LOp IdxTst := ⟨1, 1, 0, split .base⟩
+/-- The split as a routine: `[k] (x : read 1)`, no operand written. -/
+def splitRoutine : Routine LOp IdxTst :=
+  routine% [k] (x : 1) → ( ) := split .base
 
 /-- The table. -/
-def splitTable : Table SOp LOp IdxTst := fun _ => .inl splitImpl
+def splitTable : Table SOp LOp IdxTst := fun _ => .inl splitRoutine.impl
 
 /-- **The weighted accounting certificate of the split**, for every superadditive weight `T`:
 a run of the implementation of `work [k]` adds at most `T k` to the weight, whatever the split
@@ -165,32 +168,63 @@ def workRel (dec : K → ℝ) : BlockRel K where
   dom d X _ := ∃ w, X = [[w]] ∧ 0 ≤ dec w ∧ ⌊dec w⌋₊ ≤ d.headD 0
   rel _ _ _ ys := ys = []
 
-/-- The split meets the contract of `work`, over an idle lower kernel and an exact
-conversion. -/
-theorem splitImpl_spec {I : Interp LOp IdxTst K} {dec : K → ℝ}
-    (hK : I.Meets .total .base ((idleRel (K := K)).spec AnyOperands)) (hidx : IsToNat dec I) :
-    splitImpl.Triple I .total ((workRel dec).spec AnyOperands) := by
-  refine Impl.meets_rel fun d ins outs τ m X hnd _ hl hr hdom hz => ?_
+/-- The split meets the specification read off the contract of `work`, over an idle lower
+kernel and an exact conversion. -/
+theorem splitRoutine_meets {I : Interp LOp IdxTst K} {dec : K → ℝ}
+    (hK : I.Satisfies .total .base ((idleRel (K := K)).spec AnyOperands)) (hidx : IsToNat dec I) :
+    splitRoutine.Meets I (Routine.Spec.ofRel (workRel dec) fun _ => True) := by
+  refine Routine.meets_ofRel_of_post (fun _ => rfl) (fun _ _ => rfl)
+    fun d args τ m X hnd hlen hl _ hr _ hdom _ => ?_
   obtain ⟨k, rfl⟩ := List.length_eq_one_iff.mp hnd
+  obtain ⟨x, rfl⟩ := List.length_eq_one_iff.mp hlen
   obtain ⟨w, rfl, h0, hle⟩ := hdom
-  obtain ⟨x, hx, -⟩ : ∃ x, ins = [x] ∧ m.store.get x.1 x.2 = some w := by
-    obtain ⟨x, xs, rfl, hx, e⟩ := Mem.readBlocks_one hr
-    cases e
-    exact ⟨x, rfl, by simpa using Store.get_of_readBlock hx Nat.zero_lt_one w⟩
-  subst hx
-  obtain rfl : outs = [] := by
-    rcases outs with _ | ⟨z, outs⟩
-    · rfl
-    · exact hz.elim
+  change m.readBlocks [x] [1] = some [[w]] at hr
   have hxw : m.store.get x.1 x.2 = some w := by
     obtain ⟨x', xs, e, hx, e'⟩ := Mem.readBlocks_one hr
     cases e
     cases e'
     simpa using Store.get_of_readBlock hx Nat.zero_lt_one w
-  refine ⟨⟨rfl, rfl, rfl⟩, wp_bindIdx rfl rfl (hidx.index_eq hxw h0) hle
-    (wp_seq ((wp_idle hK rfl).mono ?_))⟩
+  refine wp_bindIdx rfl rfl (hidx.index_eq hxw h0) hle (wp_seq ((idle_wp hK rfl).mono ?_))
   rintro m' rfl
-  exact (wp_idle hK rfl).mono fun m' e => ⟨[], rfl, rfl, by rw [e]; rfl⟩
+  exact (idle_wp hK rfl).mono fun m' e => ⟨[], rfl, rfl, by rw [e]; rfl⟩
+
+/-- The routine of the split implements the contract of `work` at all operands: one cell
+read, nothing written. -/
+theorem splitRoutine_implements (dec : K → ℝ) :
+    splitRoutine.Implements (workRel dec) AnyOperands (fun ins outs => ins ++ outs) where
+  nd := rfl
+  draws _ := rfl
+  fits d ins outs h := ⟨h.2.2.1, h.2.2.2⟩
+  length d ins outs h := by
+    rw [List.length_append, h.2.2.1, h.2.2.2]
+    rfl
+  mem _ _ _ _ _ hz := hz
+  separated d ins outs h := by
+    obtain ⟨x, rfl⟩ := List.length_eq_one_iff.mp h.2.2.1
+    obtain rfl : outs = [] := List.length_eq_zero_iff.mp h.2.2.2
+    exact ⟨by simp [splitRoutine, Routine.sel, Access.writable],
+      by simp [splitRoutine, Routine.sel, Access.writable],
+      by simp [splitRoutine, Routine.sel, Access.isIsolated],
+      by simp [splitRoutine, Routine.sel, Access.isIsolated]⟩
+  env d ins outs h := by
+    obtain ⟨x, rfl⟩ := List.length_eq_one_iff.mp h.2.2.1
+    obtain rfl : outs = [] := List.length_eq_zero_iff.mp h.2.2.2
+    rfl
+  reads d ins outs h := by
+    obtain ⟨x, rfl⟩ := List.length_eq_one_iff.mp h.2.2.1
+    obtain rfl : outs = [] := List.length_eq_zero_iff.mp h.2.2.2
+    exact ⟨rfl, rfl⟩
+  writes d ins outs h := by
+    obtain ⟨x, rfl⟩ := List.length_eq_one_iff.mp h.2.2.1
+    obtain rfl : outs = [] := List.length_eq_zero_iff.mp h.2.2.2
+    exact ⟨rfl, rfl⟩
+
+/-- The split satisfies the contract of `work`, over an idle lower kernel and an exact
+conversion: a consequence of the judgment of its routine. -/
+theorem splitImpl_satisfies {I : Interp LOp IdxTst K} {dec : K → ℝ}
+    (hK : I.Satisfies .total .base ((idleRel (K := K)).spec AnyOperands)) (hidx : IsToNat dec I) :
+    splitRoutine.impl.Satisfies I .total ((workRel dec).spec AnyOperands) :=
+  (splitRoutine_meets hK hidx).satisfies_ofRel (splitRoutine_implements dec) fun _ _ _ _ => trivial
 
 /-- Two calls of `work` at the size `k`. Index variables: `k`, the offset of the cell. -/
 def twice : Stmt SOp IdxTst :=
@@ -200,14 +234,14 @@ def twice : Stmt SOp IdxTst :=
 for every superadditive `T` the weight of its counts of `base` is at most `2 T k`, whatever the
 split stored in the cell. The static count of the linked tree would charge every split. -/
 theorem runsW_twice_link {I : Interp LOp IdxTst K} {dec : K → ℝ}
-    (hK : I.Meets .total .base ((idleRel (K := K)).spec AnyOperands)) (hidx : IsToNat dec I)
+    (hK : I.Satisfies .total .base ((idleRel (K := K)).spec AnyOperands)) (hidx : IsToNat dec I)
     {T : ℕ → ℕ} (hT : ∀ a b, T a + T b ≤ T (a + b)) {τ : Tape K} {k : ℕ} {x : ℕ × ℕ}
     {m : Mem K} {w : K} (hx : m.store.get x.1 x.2 = some w) (h0 : 0 ≤ dec w)
     (hle : ⌊dec w⌋₊ ≤ k) :
     ConditionalRunsW I (fun _ _ => 0) τ (twice.link splitTable) ⟨[k, x.2], [x.1]⟩ m 0
       fun c m' => kernWeight T c ≤ 2 * T k ∧ m' = m := by
-  have hW : (I.link splitTable).Meets .total .work ((workRel dec).spec AnyOperands) :=
-    Interp.link_meets rfl (splitImpl_spec hK hidx)
+  have hW : (I.link splitTable).Satisfies .total .work ((workRel dec).spec AnyOperands) :=
+    Interp.link_satisfies rfl (splitImpl_satisfies hK hidx)
   have hcall : ∀ m₀ : Mem K, m₀ = m → Wp .total (I.link splitTable) τ
       (.call .work [.var 0] [⟨0, .var 1⟩] []) ⟨[k, x.2], [x.1]⟩ (· = m) m₀ := by
     rintro m₀ rfl

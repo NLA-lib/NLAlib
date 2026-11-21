@@ -29,13 +29,14 @@ open Ops
 variable {Op Tst : Type} [Has ScalarOp Op] [Has CmpTst Tst]
 
 /-- Evaluate and finish the half from an initialized row and clear report. -/
-def halfNormAfterInit : Impl Op Tst := opsImpl% [n, k, a, h, e] (H, SS, V, T, Flag) → (Norm, Flag) {
-  run halfRounds.body [n, k, a, h, e] (H, SS, V, Flag, V, Flag);
-  run finishHalfNorm.body [n] (V, T, Flag, Norm, Flag)
+def halfNormAfterInit : Stmt Op Tst := ops% [n, k, a, h, e] (H, SS, V, T, Flag) → (Norm, Flag) {
+  run halfRounds [n, k, a, h, e] (H, SS, V, Flag, V, Flag);
+  run finishHalfNorm [n] (V, T, Flag, Norm, Flag)
 }
 
 /-- The initialized inverse-row fold and actual final branch give the full half-norm result.
-[BanksGarzaVargasSrivastava2021, §4.3]. -/
+[BanksGarzaVargasSrivastava2021, §4.3]. A fragment: its tree runs only inside the tree of
+`NLAlib.ShiftedQR.halfNormAfterVector`. -/
 theorem halfNormAfterInit_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k a h e : ℕ} {b ss v t z f : ℕ × ℕ}
@@ -49,7 +50,7 @@ theorem halfNormAfterInit_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hzf : Fp.Disj (Store.inBlock z.1 z.2 1) (Store.inBlock f.1 f.2 1))
     (ht : t.2 + 3 ≤ m.store.len t.1) (hz : z.2 + 1 ≤ m.store.len z.1)
     (hf : f.2 + 1 ≤ m.store.len f.1) :
-    Writes .total I τ halfNormAfterInit.body
+    Writes .total I τ halfNormAfterInit
       (Env.frame [n + 1, k, a, h, e] [b, ss, v, t, f, z, f])
       (Fp.blocks [v, t, z, f] [2 * (n + 1), 3, 1, 1])
       (fun m' => m'.pos = m.pos ∧ HalfNormResult z f H (halfSegment shifts a h) e m'.store) m := by
@@ -74,13 +75,14 @@ theorem halfNormAfterInit_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (fun _ _ h => ⟨h.1.trans hp, h.2⟩)
 
 /-- Clear the report before evaluating an initialized basis row. -/
-def halfNormAfterVector : Impl Op Tst := opsImpl% [n, k, a, h, e] (H, SS, V, T) → (Norm, Flag) {
-  run clearRowSolveFlag.body [] (Flag, Flag);
-  run halfNormAfterInit.body [n, k, a, h, e] (H, SS, V, T, Flag, Norm, Flag)
+def halfNormAfterVector : Stmt Op Tst := ops% [n, k, a, h, e] (H, SS, V, T) → (Norm, Flag) {
+  run clearRowSolveFlag [] (Flag, Flag);
+  run halfNormAfterInit [n, k, a, h, e] (H, SS, V, T, Flag, Norm, Flag)
 }
 
 /-- The half-norm evaluator initializes its report and preserves the given last basis row.
-[BanksGarzaVargasSrivastava2021, §4.3]. -/
+[BanksGarzaVargasSrivastava2021, §4.3]. A fragment: its tree runs only inside the tree of
+`NLAlib.ShiftedQR.halfNormWithScratch`. -/
 theorem halfNormAfterVector_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k a h e : ℕ} {b ss v t z f : ℕ × ℕ}
@@ -94,7 +96,7 @@ theorem halfNormAfterVector_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hzf : Fp.Disj (Store.inBlock z.1 z.2 1) (Store.inBlock f.1 f.2 1))
     (ht : t.2 + 3 ≤ m.store.len t.1) (hz : z.2 + 1 ≤ m.store.len z.1)
     (hf : f.2 + 1 ≤ m.store.len f.1) :
-    Writes .total I τ halfNormAfterVector.body
+    Writes .total I τ halfNormAfterVector
       (Env.frame [n + 1, k, a, h, e] [b, ss, v, t, z, f])
       (Fp.blocks [v, t, z, f] [2 * (n + 1), 3, 1, 1])
       (fun m' => m'.pos = m.pos ∧ HalfNormResult z f H (halfSegment shifts a h) e m'.store) m := by
@@ -123,13 +125,14 @@ theorem halfNormAfterVector_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (fun _ _ h => ⟨h.1.trans hp, h.2⟩)
 
 /-- Initialize the last basis row from capacity, then evaluate the requested half. -/
-def halfNormWithScratch : Impl Op Tst := opsImpl% [n, k, a, h, e] (H, SS, V, T) → (Norm, Flag) {
-  run lastBasisVector.body [n] (V);
-  run halfNormAfterVector.body [n, k, a, h, e] (H, SS, V, T, Norm, Flag)
+def halfNormWithScratch : Stmt Op Tst := ops% [n, k, a, h, e] (H, SS, V, T) → (Norm, Flag) {
+  run lastBasisVector [n] (V);
+  run halfNormAfterVector [n, k, a, h, e] (H, SS, V, T, Norm, Flag)
 }
 
 /-- The caller-scratch half norm initializes every needed vector component and output word.
-[BanksGarzaVargasSrivastava2021, §4.3]. -/
+[BanksGarzaVargasSrivastava2021, §4.3]. Shared by the trees of `NLAlib.ShiftedQR.findRitzNorms` and
+`NLAlib.ShiftedQR.halfNorm`. -/
 theorem halfNormWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k a h e : ℕ} {b ss v t z f : ℕ × ℕ}
@@ -143,7 +146,7 @@ theorem halfNormWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hv : v.2 + 2 * (n + 1) ≤ m.store.len v.1)
     (ht : t.2 + 3 ≤ m.store.len t.1) (hz : z.2 + 1 ≤ m.store.len z.1)
     (hf : f.2 + 1 ≤ m.store.len f.1) :
-    Writes .total I τ halfNormWithScratch.body
+    Writes .total I τ halfNormWithScratch
       (Env.frame [n + 1, k, a, h, e] [b, ss, v, t, z, f])
       (Fp.blocks [v, t, z, f] [2 * (n + 1), 3, 1, 1])
       (fun m' => m'.pos = m.pos ∧ HalfNormResult z f H (halfSegment shifts a h) e m'.store) m := by
@@ -167,16 +170,17 @@ theorem halfNormWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
 
 /-- The half norm scopes its initialized vector and three scalar norm scratch words.
 Algorithm: shifted-qr (run model) -/
-def halfNorm : Impl Op Tst := opsImpl% [n, k, a, h, e] (H, SS) → (Norm, Flag) {
+def halfNorm : Stmt Op Tst := ops% [n, k, a, h, e] (H, SS) → (Norm, Flag) {
   let V ← alloc (2 * n);
   let T ← alloc 3;
-  run halfNormWithScratch.body [n, k, a, h, e] (H, SS, V, T, Norm, Flag)
+  run halfNormWithScratch [n, k, a, h, e] (H, SS, V, T, Norm, Flag)
 }
 
-/-- The scalar half-norm routine is total without any assumption excluding eigenvalue shifts.
-It returns the exact norm or an initialized zero placeholder and a genuine singularity witness.
-The selected segment lies inside both the stored block and the supplied mathematical list.
-[BanksGarzaVargasSrivastava2021, §4.3]. -/
+/-- The scalar half-norm routine is total without any assumption excluding eigenvalue shifts. It
+returns the exact norm or an initialized zero placeholder and a genuine singularity witness. The
+selected segment lies inside both the stored block and the supplied mathematical list.
+[BanksGarzaVargasSrivastava2021, §4.3]. A fragment: its tree runs only inside the tree of
+`NLAlib.ShiftedQR.findRitzNorms`. -/
 theorem halfNorm_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k a h e : ℕ} {b ss z f : ℕ × ℕ}
@@ -189,7 +193,7 @@ theorem halfNorm_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hfs : Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock ss.1 ss.2 (2 * k)))
     (hzf : Fp.Disj (Store.inBlock z.1 z.2 1) (Store.inBlock f.1 f.2 1))
     (hz : z.2 + 1 ≤ m.store.len z.1) (hf : f.2 + 1 ≤ m.store.len f.1) :
-    Writes .total I τ halfNorm.body (Env.frame [n + 1, k, a, h, e] [b, ss, z, f])
+    Writes .total I τ halfNorm (Env.frame [n + 1, k, a, h, e] [b, ss, z, f])
       (Store.inBlock z.1 z.2 1 ⊔ Store.inBlock f.1 f.2 1)
       (fun m' => m'.pos = m.pos ∧ HalfNormResult z f H (halfSegment shifts a h) e m'.store) m := by
   have hLive : b.1 < m.store.length ∧ ss.1 < m.store.length ∧

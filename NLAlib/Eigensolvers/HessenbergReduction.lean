@@ -10,6 +10,7 @@ public import NLAlib.Matrix.FinitePrecision.GivensCoefficients
 public import NLAlib.Eigensolvers.ShiftedQR.Hessenberg
 public import NLAlib.Matrix.FinitePrecision.GivensPrograms
 public import NLAlib.Matrix.FinitePrecision.GivensRounded
+public import NLAlib.Ops.RoutineSyntax
 public import NLAlib.Matrix.Perturbation.UnitarySimilarity
 public import NLAlib.Ops.Logic.Functional
 public import NLAlib.Matrix.FinitePrecision.GivensLog
@@ -66,15 +67,15 @@ slot width $w$ (`NLAlib.slottedLogWrite`), its rounded Givens coefficients into 
 (`NLAlib.coefficients`), then the rotation of the columns $c, c + 1$ and of the rows $c, c + 1$ of
 `A` in place. The interface is `[N, r, c, w, j, i] (A) → (A, Cf, Uv, Lg)`.
 Algorithm: hessenberg-reduction -/
-def reduceLastStep : Impl O Q := opsImpl% [N, r, c, w, j, i] (A) → (A, Cf, Uv, Lg) {
+def reduceLastStep : Stmt O Q := ops% [N, r, c, w, j, i] (A) → (A, Cf, Uv, Lg) {
   call (Has.inj ScalarOp.copy) [] (A[2 * ((c + 1) * N + r)]) → (Uv);
   call (Has.inj ScalarOp.copy) [] (A[2 * ((c + 1) * N + r) + 1]) → (Uv[1]);
   call (Has.inj ScalarOp.neg) [] (A[2 * (c * N + r)]) → (Uv[2]);
   call (Has.inj ScalarOp.neg) [] (A[2 * (c * N + r) + 1]) → (Uv[3]);
-  run (slottedLogWrite (O := O) (Q := Q)).body [w, j, i, c] (Uv, Uv[2], Lg);
-  run (coefficients (Op := O) (Tst := Q)).body [] (Uv, Uv[2], Cf, Cf[2]);
-  run (rotateColumns (Op := O) (Tst := Q)).body [N, c] (A, Cf, Cf[2], A);
-  run (rotateRows (Op := O) (Tst := Q)).body [N, c] (A, Cf, Cf[2], A)
+  run (slottedLogWrite (O := O) (Q := Q)) [w, j, i, c] (Uv, Uv[2], Lg);
+  run (coefficients (Op := O) (Tst := Q)) [] (Uv, Uv[2], Cf, Cf[2]);
+  run (rotateColumns (Op := O) (Tst := Q)) [N, c] (A, Cf, Cf[2], A);
+  run (rotateRows (Op := O) (Tst := Q)) [N, c] (A, Cf, Cf[2], A)
 }
 
 /-- **The bottom-up Hessenberg reduction, recording its rotations**
@@ -88,17 +89,17 @@ finally the entries below the subdiagonal are written as zeros. The $N - 2$ slot
 $j_0, \dots, j_0 + N - 3$ are written; the log is not opened here. The interface is
 `[N, w, j0] (A) → (A, Lg)`; the coefficients and the pair are scoped scratch.
 Algorithm: hessenberg-reduction -/
-def hessenbergReduceLast : Impl O Q := opsImpl% [N, w, j0] (A) → (A, Lg) {
+def hessenbergReduceLast : Stmt O Q := ops% [N, w, j0] (A) → (A, Lg) {
   let Cf ← alloc 4;
   let Uv ← alloc 4;
   for i < N - 2 {
     for c < N - 2 - i {
-      run (reduceLastStep (O := O) (Q := Q)).body [N, N - 1 - i, c, w, j0 + i, c]
+      run (reduceLastStep (O := O) (Q := Q)) [N, N - 1 - i, c, w, j0 + i, c]
         (A, A, Cf, Uv, Lg)
     };
-    run (slottedLogValidate (O := O) (Q := Q)).body [w, j0 + i] (Lg)
+    run (slottedLogValidate (O := O) (Q := Q)) [w, j0 + i] (Lg)
   };
-  run (clearBelowSubdiagonal (Op := O) (Tst := Q)).body [N] (A)
+  run (clearBelowSubdiagonal (Op := O) (Tst := Q)) [N] (A)
 }
 
 end Program
@@ -167,11 +168,11 @@ private theorem reduceLastStep_rotate {M : Machine ℝ} {I : Interp O Q ℝ} (hS
     (hac : a.1 ≠ cf.1) (hl : m.Live [a, cf, uv]) :
     Writes .total I τ ((Stmt.frame []
         [⟨3, .var 9⟩, ⟨3, .var 9 + .const 2⟩, ⟨2, .var 8⟩, ⟨2, .var 8 + .const 2⟩]
-        (coefficients (Op := O) (Tst := Q)).body).seq
+        (coefficients (Op := O) (Tst := Q))).seq
       ((Stmt.frame [.var 0, .var 2] [⟨0, .var 6⟩, ⟨2, .var 8⟩, ⟨2, .var 8 + .const 2⟩, ⟨0, .var 6⟩]
-        (rotateColumns (Op := O) (Tst := Q)).body).seq
+        (rotateColumns (Op := O) (Tst := Q))).seq
         (Stmt.frame [.var 0, .var 2] [⟨0, .var 6⟩, ⟨2, .var 8⟩, ⟨2, .var 8 + .const 2⟩, ⟨0, .var 6⟩]
-          (rotateRows (Op := O) (Tst := Q)).body)))
+          (rotateRows (Op := O) (Tst := Q)))))
       (Env.frame [N, r, c, w, j, i] [a, a, cf, uv, lg])
       (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Store.inBlock cf.1 cf.2 4)
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix a (reduceLastStepWord M r c A) m'.store) m := by
@@ -228,7 +229,7 @@ theorem reduceLastStep_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
     (hac : a.1 ≠ cf.1) (hau : a.1 ≠ uv.1) (hlu : lg.1 ≠ uv.1) (hlc : lg.1 ≠ cf.1)
     (hla : Fp.Disj (Store.inBlock a.1 a.2 (2 * (N * N)))
       (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))) (hl : m.Live [lg]) :
-    Writes .total I τ (reduceLastStep (O := O) (Q := Q)).body
+    Writes .total I τ (reduceLastStep (O := O) (Q := Q))
       (Env.frame [N, r, c, w, L.length, P.length] [a, a, cf, uv, lg])
       (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Store.inBlock cf.1 cf.2 4 ⊔
         Store.inBlock uv.1 uv.2 4 ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
@@ -378,7 +379,7 @@ theorem hessenbergReduceLast_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} 
     (hA : HoldsMatrix a A m.store)
     (hd : Fp.Disj (Store.inBlock a.1 a.2 (2 * (N * N)))
       (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))) :
-    Writes .total I τ (hessenbergReduceLast (O := O) (Q := Q)).body
+    Writes .total I τ (hessenbergReduceLast (O := O) (Q := Q))
       (Env.frame [N, w, L.length] [a, a, lg])
       (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix a (hessenbergReduceLastWord M A) m'.store ∧
@@ -867,7 +868,7 @@ theorem hessenbergReduceLast_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (
     (hA : HoldsMatrix a A m.store)
     (hd : Fp.Disj (Store.inBlock a.1 a.2 (2 * (N * N)))
       (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))) :
-    Writes .total I τ (hessenbergReduceLast (O := O) (Q := Q)).body
+    Writes .total I τ (hessenbergReduceLast (O := O) (Q := Q))
       (Env.frame [N, w, L.length] [a, a, lg])
       (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun m' => ∃ A' : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix a A' m'.store ∧

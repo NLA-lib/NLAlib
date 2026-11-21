@@ -20,8 +20,8 @@ some `f` that is addition modulo `2 ^ w` on values (`NLAlib.Ops.Examples.AddMod`
 * Abstract theorem (`NLAlib.Ops.Examples.runs_add3`): two additions compute the sum of three
   numbers modulo `2 ^ w`, with two calls at `[w]`.
 * The implementation (`NLAlib.Ops.Examples.rippleImpl`): a ripple-carry adder over the bit
-  operations `xor3` and `maj`, with a carry cell. Its exact certificate
-  (`NLAlib.Ops.Examples.ripple_cert`): the run is the block function of
+  operations `xor3` and `maj`, with a carry cell. Its exact satisfaction
+  (`NLAlib.Ops.Examples.ripple_satisfies`): the run is the block function of
   `NLAlib.Ops.Examples.rippleF`.
 * Mathematics (`NLAlib.Ops.Examples.addMod_ripple`): `rippleF` is addition modulo `2 ^ w`.
 * Corollary (`NLAlib.Ops.Examples.runs_add3_link`): the linked program, with its counts of bit
@@ -164,7 +164,7 @@ def add3 : Stmt WOp Empty :=
     (.call .wadd [.var 0] [⟨3, .var 4⟩, ⟨2, .var 3⟩] [⟨4, .var 5⟩])
 
 /-- **The abstract theorem of `add3`**, for every `f` that is addition modulo `2 ^ w` and every
-interpretation meeting the functional contract: two calls of `wadd` at `[w]`, and `r` holds the
+interpretation satisfying the functional contract: two calls of `wadd` at `[w]`, and `r` holds the
 sum of the three numbers modulo `2 ^ w`. -/
 theorem runs_add3 {f : ℕ → List Bool → List Bool → List Bool} (hf : AddMod f)
     {I : Interp WOp Empty Bool} (hI : IsWAdd f I) (W : WOp → List ℕ → ℕ) {τ : Tape Bool} {w : ℕ}
@@ -199,10 +199,12 @@ theorem runs_add3 {f : ℕ → List Bool → List Bool → List Bool} (hf : AddM
     (by simp [add3, stmtPeak]) fun m' h => ⟨_, _, h, ?_⟩
   rw [(hf w _ zs).2, (hf w xs ys).2, Nat.mod_add_mod]
 
-/-! ### The implementation over bit operations and its exact certificate -/
+/-! ### The implementation over bit operations and its exact satisfaction -/
 
 /-- **The ripple-carry adder**: a carry cell, cleared, then for each position the sum bit and the
-next carry. Index variables: `w`, the offsets of `x`, `y`, `z`, then the loop variable. -/
+next carry. Index variables: `w`, the offsets of `x`, `y`, `z`, then the loop variable. This
+example writes the table entry directly and proves its contract by computing its run as the
+block function of `wadd`, the linking layer on which routine judgments are built. -/
 def rippleImpl : Impl BitOp Empty where
   nd := 1
   nin := 2
@@ -221,7 +223,7 @@ theorem ripplePrefix_succ (a b : ℕ → Bool) (i : ℕ) :
   simp [ripplePrefix, List.range_succ]
 
 /-- One position of the adder: the sum bit is appended to the block, the carry cell is updated. -/
-theorem wp_ripple_step {I : Interp BitOp Empty Bool} (hI : IsBits I) {md : Mode} {τ : Tape Bool}
+theorem ripple_wp_step {I : Interp BitOp Empty Bool} (hI : IsBits I) {md : Mode} {τ : Tape Bool}
     {w i : ℕ} (hi : i < w) {x y z : ℕ × ℕ} {s : Store Bool} {p : ℕ} {xs ys : List Bool}
     (hxz : x.1 ≠ z.1) (hyz : y.1 ≠ z.1) (hx : s.readBlock x.1 x.2 w = some xs)
     (hy : s.readBlock y.1 y.2 w = some ys) (hz : z.2 + w ≤ s.len z.1) {Q : Mem Bool → Prop}
@@ -279,10 +281,10 @@ theorem wp_ripple_step {I : Interp BitOp Empty Bool} (hI : IsBits I) {md : Mode}
     rw [Store.upd_top (hL _).symm]
     exact hQ
 
-/-- **The exact certificate of the ripple-carry adder**: where the block function of `rippleF`
+/-- Exact satisfaction by the ripple-carry adder: where the block function of `rippleF`
 succeeds on inputs in other buffers than the output, the run of the adder is that block
 function. -/
-theorem ripple_cert {I : Interp BitOp Empty Bool} (hI : IsBits I) {d : List ℕ}
+theorem ripple_satisfies {I : Interp BitOp Empty Bool} (hI : IsBits I) {d : List ℕ}
     {ins outs : List (ℕ × ℕ)} {τ : Tape Bool} {m m' : Mem Bool}
     (hadm : DisjointBufs d ins outs) (h : (waddFn rippleF).apply d ins outs τ m = some m') :
     rippleImpl.Fits d.length ins.length outs.length ∧
@@ -305,7 +307,7 @@ theorem ripple_cert {I : Interp BitOp Empty Bool} (hI : IsBits I) {d : List ℕ}
     ⟨s.updBlock z.1 z.2 (ripplePrefix (vec xs) (vec ys) i) ++
       [[some (carry (vec xs) (vec ys) i)]], p⟩) rfl ?_ ?_
   · rintro i hi m' rfl
-    exact wp_ripple_step hI hi (hadm x (by simp) z (by simp)) (hadm y (by simp) z (by simp)) hx
+    exact ripple_wp_step hI hi (hadm x (by simp) z (by simp)) (hadm y (by simp) z (by simp)) hx
       hy hz rfl
   · rintro m' rfl
     simp [Mem.updBlock, rippleF, ripplePrefix]
@@ -321,7 +323,7 @@ noncomputable def wordCost : WOp → List ℕ → Count BitOp Empty
   | .wadd, [w] => Count.one .zero [] + w • (Count.one .xor3 [] + Count.one .maj [])
   | .wadd, _ => 0
 
-/-- The accounting certificate of the adder, by evaluating its static cost. -/
+/-- The static count of the adder, by evaluating its static cost. -/
 theorem word_accounts (I : Interp BitOp Empty Bool) :
     wordTable.Accounts I (fun _ _ => 0) wordCost fun _ _ => 1 := by
   refine Table.accounts_of_static ?_ (fun o o' hT => by cases o; cases hT) I
@@ -332,10 +334,10 @@ theorem word_accounts (I : Interp BitOp Empty Bool) :
   obtain ⟨a, b, c, rfl⟩ := List.length_eq_three.mp ho
   simp [rippleImpl, stmtCost, stmtPeak, useCost, wordCost]
 
-/-- The induced interpretation meets the functional contract of `wadd` with `f = rippleF`. -/
+/-- The induced interpretation satisfies the functional contract of `wadd` with `f = rippleF`. -/
 theorem isWAdd_link {I : Interp BitOp Empty Bool} (hI : IsBits I) :
     IsWAdd rippleF (I.link wordTable) :=
-  Interp.link_isFn rfl fun _ _ _ _ _ _ hadm h => ripple_cert hI hadm h
+  Interp.link_isFn rfl fun _ _ _ _ _ _ hadm h => ripple_satisfies hI hadm h
 
 /-- **The concrete corollary**: `add3` linked down to bit operations computes the sum of three
 `w`-bit numbers modulo `2 ^ w`, within the pushed-forward counts and one scratch cell. -/

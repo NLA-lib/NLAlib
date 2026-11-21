@@ -1,5 +1,10 @@
 # A program logic for runs: specifications that compose by fixed rules
 
+> **Earlier design.** This note records an earlier design of the operations core and keeps its
+> vocabulary (`Impl.Meets`, `Impl.Triple`, `Impl.program`, `opsImpl%`, `cert_intro`,
+> `Interp.Meets`), much of which has since been replaced. The current vocabulary is described in
+> `NLAlib/Ops/README.md`.
+
 2026-11-08. Design note; **status: reviewed, approve with changes (Fable,
 `reports/Review-Fable-ProgLogic-Design.md`; the COMPDYN session, owner of S2,
 `reports/Review-COMPDYN-ProgLogic.md`); the changes are applied in this revision (§12)**. Branch

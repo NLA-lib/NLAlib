@@ -18,7 +18,7 @@ allocated arena layout. No execution, success or numerical-accuracy premise is a
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_solveBody`: total refinement on caller-owned arenas.
+* `NLAlib.SpectralBisection.solveBody_writes`: total refinement on caller-owned arenas.
 -/
 
 @[expose] public section
@@ -43,8 +43,9 @@ local notation "RES" => eighAux F n fuel R0 beta (L + 1) A R0 eps L
 local notation "ARENA" => Fp.blocks (arenaOperands c ma ua qa ea sz kd kp lv su sg)
   (arenaLengths n L)
 
-/-- Initialization and the two actual traversals return exactly the mathematical solver. -/
-theorem writes_solveBody {I : Interp Op Tst K} (hS : IsScalar M I) (hL : IsIndexLit M I)
+/-- Initialization and the two actual traversals return exactly the mathematical solver.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
+theorem solveBody_writes {I : Interp Op Tst K} (hS : IsScalar M I) (hL : IsIndexLit M I)
     (hC : IsCmp dec I) (hMM : IsMatrixMul (EntryCodec.pair K) mm I)
     (hQR : IsMatrixQR (EntryCodec.pair K) qr I) (hQ : IsToNat dec I) (hSample : IsSample I)
     (hLit : IsExactNatLit dec M (max n 4)) (hPos : μ.pos = base)
@@ -55,7 +56,6 @@ theorem writes_solveBody {I : Interp Op Tst K} (hS : IsScalar M I) (hL : IsIndex
     (hRoom : μ.Room (arenaOperands c ma ua qa ea sz kd kp lv su sg) (arenaLengths n L))
     (hOutRoom : μ.Room [u, dv] [2 * (n * n), n])
     (hAP : Fp.Apart (arenaOperands c ma ua qa ea sz kd kp lv su sg) (arenaLengths n L))
-    (hSource : Fp.Disj (Store.inBlock a.1 a.2 (2 * (n * n))) (Store.inBlock par.1 par.2 3))
     (hOutput : Fp.Disj (Store.inBlock u.1 u.2 (2 * (n * n))) (Store.inBlock dv.1 dv.2 n))
     (hProtect : Fp.Disj ARENA (Fp.blocks [a, par, u, dv] [2 * (n * n), 3, 2 * (n * n), n])) :
     Writes .total I τ (solveBody (node (Op := Op) (Tst := Tst)))
@@ -70,14 +70,14 @@ theorem writes_solveBody {I : Interp Op Tst K} (hS : IsScalar M I) (hL : IsIndex
     hProtect.mono le_rfl (by fp_sub)
   have hOutputs : Fp.Disj ARENA (Fp.blocks [u, dv] [2 * (n * n), n]) :=
     hProtect.mono le_rfl (by fp_sub)
-  have hInit := writes_initializeArenas_stored (μ := μ) (τ := τ)
-    M F fuel R0 eps beta A hS hL (by room) hRoom hAP hSource hInputs hA hPar
+  have hInit := initializeArenas_writes_stored (μ := μ) (τ := τ)
+    M F fuel R0 eps beta A hS hL (by room) hRoom hAP hInputs hA hPar
   refine hInit.frame_seq_le rfl rfl (by room) le_sup_left ?_
   clear hInit
   intro μ₁ hfr₁ ⟨hp₁, hPar₁, hC₁, hLevel₁, hZero₁⟩
   have hParSep : Fp.Disj (Store.inBlock par.1 par.2 3) ARENA :=
     hInputs.symm.mono (by fp_sub) le_rfl
-  have hDown := writes_downwardPass_of_arenas (μ := μ₁) (τ := τ)
+  have hDown := downwardPass_writes_of_arenas (μ := μ₁) (τ := τ)
     (n := n) (L := L) (fuel := fuel) (base := base)
     M dec mm qr R0 eps beta A hS hL hC hMM hQR hQ hSample hLit (by room)
     (hp₁.trans hPos) hLevel₁ hPar₁ hC₁ hZero₁ (hRoom.congr hfr₁.len_eq) hAP hParSep
@@ -89,7 +89,7 @@ theorem writes_solveBody {I : Interp Op Tst K} (hS : IsScalar M I) (hL : IsIndex
   clear hDown
   intro μ₂ hfr₂ ⟨hp₂, _, hC₂, hLevels₂, hRecords₂⟩
   have hTwo₂ := Store.get_of_readBlock hC₂ (j := 1) (by simp) (M.lit 0)
-  have hReconstruct := writes_reconstructResult (μ := μ₂) (τ := τ)
+  have hReconstruct := reconstructResult_writes (μ := μ₂) (τ := τ)
     (n := n) (L := L) (fuel := fuel) (base := base)
     M dec mm qr R0 eps beta A hS hQ hMM hLit (by room [arenaOperands])
     (hRoom.congr fun buf => (hfr₂.len_eq buf).trans (hfr₁.len_eq buf))

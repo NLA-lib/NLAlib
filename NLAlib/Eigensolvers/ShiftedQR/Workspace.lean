@@ -31,10 +31,10 @@ variable {Op Tst : Type} [Has ScalarOp Op] [Has CmpTst Tst]
 
 /-- The seven coefficient scratch words are reused across every scalar branch. -/
 theorem coefficients_storedWorkspace_le (idx : List ℕ) :
-    stmtPeak (fun (_ : Op) _ => 0) (coefficients (Tst := Tst)).body idx ≤ 7 := by
+    stmtPeak (fun (_ : Op) _ => 0) (coefficients (Tst := Tst)) idx ≤ 7 := by
   change 7 + _ ≤ 7
   have h := stmtPeak_frame_le_uniform (W := fun (_ : Op) _ => 0)
-    (p := 0) (body := (coefficientsWithScratch (Tst := Tst)).body)
+    (p := 0) (body := (coefficientsWithScratch (Tst := Tst)))
     (fun i => (stmtPeak_zero_of_allocationFree (by rfl) i).le)
   change _ + _ ≤ _ + 0
   exact Nat.add_le_add_left (h _ _ idx) _
@@ -42,10 +42,10 @@ theorem coefficients_storedWorkspace_le (idx : List ℕ) :
 omit [Has CmpTst Tst] in
 /-- One row-rotation sweep reserves ten scalar scratch words, independently of its length. -/
 theorem rotateRows_storedWorkspace_le (idx : List ℕ) :
-    stmtPeak (fun (_ : Op) _ => 0) (rotateRows (Tst := Tst)).body idx ≤ 10 := by
+    stmtPeak (fun (_ : Op) _ => 0) (rotateRows (Tst := Tst)) idx ≤ 10 := by
   change 10 + _ ≤ 10
   have h := stmtPeak_frame_le_uniform (W := fun (_ : Op) _ => 0)
-    (p := 0) (body := (rotateRowsWithScratch (Tst := Tst)).body)
+    (p := 0) (body := (rotateRowsWithScratch (Tst := Tst)))
     (fun i => (stmtPeak_zero_of_allocationFree (by rfl) i).le)
   change _ + _ ≤ _ + 0
   exact Nat.add_le_add_left (h _ _ idx) _
@@ -53,17 +53,17 @@ theorem rotateRows_storedWorkspace_le (idx : List ℕ) :
 omit [Has CmpTst Tst] in
 /-- Column rotations use the same ten-word arena as row rotations. -/
 theorem rotateColumns_storedWorkspace_le (idx : List ℕ) :
-    stmtPeak (fun (_ : Op) _ => 0) (rotateColumns (Tst := Tst)).body idx ≤ 10 := by
+    stmtPeak (fun (_ : Op) _ => 0) (rotateColumns (Tst := Tst)) idx ≤ 10 := by
   change 10 + _ ≤ 10
   have h := stmtPeak_frame_le_uniform (W := fun (_ : Op) _ => 0)
-    (p := 0) (body := (rotateColumnsWithScratch (Tst := Tst)).body)
+    (p := 0) (body := (rotateColumnsWithScratch (Tst := Tst)))
     (fun i => (stmtPeak_zero_of_allocationFree (by rfl) i).le)
   change _ + _ ≤ _ + 0
   exact Nat.add_le_add_left (h _ _ idx) _
 
 /-- Coefficient formation and three matrix rotations share their arenas sequentially. -/
 theorem round_storedWorkspace_le (idx : List ℕ) :
-    stmtPeak (fun (_ : Op) _ => 0) (round (Tst := Tst)).body idx ≤ 10 := by
+    stmtPeak (fun (_ : Op) _ => 0) (round (Tst := Tst)) idx ≤ 10 := by
   change max _ (max _ (max _ _)) ≤ 10
   refine max_le ?_ (max_le ?_ (max_le ?_ ?_))
   · exact (stmtPeak_frame_le_uniform coefficients_storedWorkspace_le _ _ idx).trans
@@ -74,7 +74,7 @@ theorem round_storedWorkspace_le (idx : List ℕ) :
 
 /-- Reusing each round's arenas makes the bound independent of the number of rotations. -/
 theorem sweep_storedWorkspace_le (idx : List ℕ) :
-    stmtPeak (fun (_ : Op) _ => 0) (sweep (Tst := Tst)).body idx ≤ 10 := by
+    stmtPeak (fun (_ : Op) _ => 0) (sweep (Tst := Tst)) idx ≤ 10 := by
   apply Finset.sup_le
   intro i _
   exact stmtPeak_frame_le_uniform round_storedWorkspace_le _ _ (idx ++ [i])
@@ -82,13 +82,13 @@ theorem sweep_storedWorkspace_le (idx : List ℕ) :
 /-- One actual shifted QR step allocates one complex matrix and fourteen real words.
 The estimate includes the four retained coefficients and the largest ten-word rotation arena. -/
 theorem shiftedStep_storedWorkspace_le (n : ℕ) (offs : List ℕ) :
-    stmtPeak (fun (_ : Op) _ => 0) (shiftedStep (Tst := Tst)).body (n :: offs) ≤
+    stmtPeak (fun (_ : Op) _ => 0) (shiftedStep (Tst := Tst)) (n :: offs) ≤
       2 * (n * n) + 14 := by
   simp only [shiftedStep, stmtPeak_alloc, IExp.eval, List.getElem?_cons_zero,
     Option.getD_some]
   change 2 * (n * n) + (4 + max _ _) ≤ _
   have hi := stmtPeak_frame_le_uniform (W := fun (_ : Op) _ => 0)
-    (p := 0) (body := (initializeState (Tst := Tst)).body)
+    (p := 0) (body := (initializeState (Tst := Tst)))
     (fun i => (stmtPeak_zero_of_allocationFree (by rfl) i).le)
   have hs := stmtPeak_frame_le_uniform (sweep_storedWorkspace_le (Op := Op) (Tst := Tst))
   apply Nat.add_le_add_left
@@ -98,7 +98,7 @@ theorem shiftedStep_storedWorkspace_le (n : ℕ) (offs : List ℕ) :
 
 /-- The scalar copy-back does not require a second arena while one shifted step runs. -/
 theorem stepInPlaceWithScratch_storedWorkspace_le (n : ℕ) (offs : List ℕ) :
-    stmtPeak (fun (_ : Op) _ => 0) (stepInPlaceWithScratch (Tst := Tst)).body
+    stmtPeak (fun (_ : Op) _ => 0) (stepInPlaceWithScratch (Tst := Tst))
       (n :: offs) ≤ 2 * (n * n) + 14 := by
   change max _ _ ≤ _
   refine max_le ?_ ?_
@@ -109,7 +109,7 @@ theorem stepInPlaceWithScratch_storedWorkspace_le (n : ℕ) (offs : List ℕ) :
 
 /-- Repetition reuses the caller-owned temporary matrix regardless of the iteration count. -/
 theorem repeatedStepWithScratch_storedWorkspace_le (n k : ℕ) (offs : List ℕ) :
-    stmtPeak (fun (_ : Op) _ => 0) (repeatedStepWithScratch (Tst := Tst)).body
+    stmtPeak (fun (_ : Op) _ => 0) (repeatedStepWithScratch (Tst := Tst))
       (n :: k :: offs) ≤ 2 * (n * n) + 14 := by
   apply Finset.sup_le
   intro i _
@@ -119,7 +119,7 @@ theorem repeatedStepWithScratch_storedWorkspace_le (n k : ℕ) (offs : List ℕ)
 /-- The complete repeated-shift implementation uses two complex matrices plus fourteen words.
 The number of repeated steps does not appear in this bound. -/
 theorem repeatedStep_storedWorkspace_le (n k : ℕ) (offs : List ℕ) :
-    stmtPeak (fun (_ : Op) _ => 0) (repeatedStep (Tst := Tst)).body
+    stmtPeak (fun (_ : Op) _ => 0) (repeatedStep (Tst := Tst))
       (n :: k :: offs) ≤ 4 * (n * n) + 14 := by
   simp only [repeatedStep, stmtPeak_alloc, IExp.eval, List.getElem?_cons_zero,
     Option.getD_some]
@@ -131,7 +131,7 @@ theorem repeatedStep_storedWorkspace_le (n k : ℕ) (offs : List ℕ) :
 
 /-- Stored distinct shifts reuse the same matrix arena as repeated identical shifts. -/
 theorem multiStepWithScratch_storedWorkspace_le (n k : ℕ) (offs : List ℕ) :
-    stmtPeak (fun (_ : Op) _ => 0) (multiStepWithScratch (Tst := Tst)).body
+    stmtPeak (fun (_ : Op) _ => 0) (multiStepWithScratch (Tst := Tst))
       (n :: k :: offs) ≤ 2 * (n * n) + 14 := by
   apply Finset.sup_le
   intro i _
@@ -140,7 +140,7 @@ theorem multiStepWithScratch_storedWorkspace_le (n k : ℕ) (offs : List ℕ) :
 
 /-- Distinct shift lists also require two matrices and fourteen words, independent of length. -/
 theorem multiStep_storedWorkspace_le (n k : ℕ) (offs : List ℕ) :
-    stmtPeak (fun (_ : Op) _ => 0) (multiStep (Tst := Tst)).body
+    stmtPeak (fun (_ : Op) _ => 0) (multiStep (Tst := Tst))
       (n :: k :: offs) ≤ 4 * (n * n) + 14 := by
   simp only [multiStep, stmtPeak_alloc, IExp.eval, List.getElem?_cons_zero,
     Option.getD_some]

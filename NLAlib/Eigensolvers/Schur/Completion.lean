@@ -42,20 +42,20 @@ variable {O Q : Type}
 
 /-- **A norm stage that completes**: for every order $N \le N_{\max}$ and every stored matrix,
 `[N] (A) → (S)` succeeds on every tape, writes only the output cell and stores a word. -/
-def CompletingNormEstimate (nmax : ℕ) (Nm : Impl O Q) (I : Interp O Q ℝ) : Prop :=
+def CompletingNormEstimate (nmax : ℕ) (Nm : Stmt O Q) (I : Interp O Q ℝ) : Prop :=
   ∀ {N : ℕ} {a s : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ} (A : Matrix (Fin N) (Fin N) ℂ),
     N ≤ nmax → HoldsMatrix a A μ.store → μ.Live [a, s] → s.2 + 1 ≤ μ.store.len s.1 →
     a.1 ≠ s.1 →
-    Writes .total I tape Nm.body (Env.frame [N] [a, s]) (Store.inBlock s.1 s.2 1)
+    Writes .total I tape Nm (Env.frame [N] [a, s]) (Store.inBlock s.1 s.2 1)
       (fun μ' => ∃ x : ℝ, μ'.store.get s.1 s.2 = some x) μ
 
 /-- **A reducer that completes**: for every order $N \le N_{\max}$ and every stored pair,
 `[N] (A, U) → (A, U)` succeeds on every tape, writes only the pair and stores a pair. -/
-def CompletingReducer (nmax : ℕ) (Red : Impl O Q) (I : Interp O Q ℝ) : Prop :=
+def CompletingReducer (nmax : ℕ) (Red : Stmt O Q) (I : Interp O Q ℝ) : Prop :=
   ∀ {N : ℕ} {a uo : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ} (A U : Matrix (Fin N) (Fin N) ℂ),
     N ≤ nmax → HoldsSchurPair a uo U A μ.store → μ.Live [a, uo] →
     Fp.Disj (Store.inBlock a.1 a.2 (2 * (N * N))) (Store.inBlock uo.1 uo.2 (2 * (N * N))) →
-    Writes .total I tape Red.body (Env.frame [N] [a, uo, a, uo])
+    Writes .total I tape Red (Env.frame [N] [a, uo, a, uo])
       (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Store.inBlock uo.1 uo.2 (2 * (N * N)))
       (fun μ' => ∃ U' H : Matrix (Fin N) (Fin N) ℂ, HoldsSchurPair a uo U' H μ'.store) μ
 
@@ -64,7 +64,7 @@ theorem frobNormStage_completing [Has ScalarOp O] {M : Machine ℝ} {I : Interp 
     (hS : IsScalar M I) (nmax : ℕ) :
     CompletingNormEstimate nmax (frobNormStage (O := O) (Q := Q)) I := by
   intro N a s τ μ A _ hA hl hs has
-  have hn := RoundedScalarBlas.writes_nrm2 (τ := τ) (xs := matrixWords A)
+  have hn := RoundedScalarBlas.nrm2_writes (τ := τ) (xs := matrixWords A)
     (n := 2 * (N * N)) hS hl hA (by omega) has
   exact ((hn.in_frame rfl rfl hl).in_frame rfl rfl hl).mono le_rfl fun _ _ h => h
 
@@ -139,14 +139,14 @@ theorem hessenbergReduceQ_completing [Has ScalarOp O] [Has IndexOp O] [Has CmpTs
 /-- **A Schur core that completes**: for every order at most $N_{\max}$, every stored pair and the
 words `ps`, `[N, np, k, F, T] (A, P, U) → (A, U, Fl)` succeeds on every tape, writes only the
 pair and the flag and stores a pair. -/
-def CompletingSchurCore (k F T nmax : ℕ) (ps : List ℝ) (Core : Impl O Q) (I : Interp O Q ℝ) :
+def CompletingSchurCore (k F T nmax : ℕ) (ps : List ℝ) (Core : Stmt O Q) (I : Interp O Q ℝ) :
     Prop :=
   ∀ {n : ℕ} {a p uo f : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ}
     (H U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ), n + 1 ≤ nmax →
     HoldsSchurPair a uo U H μ.store → μ.store.readBlock p.1 p.2 ps.length = some ps →
     μ.Live [a, p, uo, f] → f.2 + 1 ≤ μ.store.len f.1 →
     Fp.Apart [a, p, uo, f] [2 * ((n + 1) * (n + 1)), ps.length, 2 * ((n + 1) * (n + 1)), 1] →
-    Writes .total I tape Core.body (Env.frame [n + 1, ps.length, k, F, T] [a, p, uo, a, uo, f])
+    Writes .total I tape Core (Env.frame [n + 1, ps.length, k, F, T] [a, p, uo, a, uo, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
       (fun μ' => ∃ U' Tm : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
@@ -160,7 +160,7 @@ theorem roundedShQRSchurWith_completing [Has ScalarOp O] [Has IndexOp O] [Has Di
     [Has CmpTst Q] [Has IdxTst Q] {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
     (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1))
     (hQ : IsToNat id I) (hC : IsCmp id I) {sU : ℕ} (hDisk : IsPolarDiskSampler sU I) {k : ℕ}
-    {B Γ S δ φ : ℝ} (hk : k = shqrDegree (4 * B)) {T : ℕ} {qs : List ℝ} {L : Impl O Q}
+    {B Γ S δ φ : ℝ} (hk : k = shqrDegree (4 * B)) {T : ℕ} {qs : List ℝ} {L : Stmt O Q}
     (hLeaf : CompletingLeafRoutine (min k (n + 1)) qs T L I) (hqs : qs.length = 12) :
     CompletingSchurCore k (shqrCap n B Γ S δ) T (n + 1)
       (shqrDeflationThreshold n k B Γ S δ φ :: (shqrParams n k B Γ S δ φ ++ qs))
@@ -245,13 +245,13 @@ variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
 
 omit [Has IndexOp O] [Has CmpTst Q] in
 /-- The identity program stores the identity when the literals $0$ and $1$ are exact. -/
-theorem writes_identity_holdsMatrix_one_of_lit {Mch : Machine ℝ} {I : Interp O Q ℝ}
+theorem identity_writes_holdsMatrix_one_of_lit {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar Mch I) (h0 : Mch.lit 0 = 0) (h1 : Mch.lit 1 = 1) {τ : Tape ℝ}
     {m : Mem ℝ} {N : ℕ} {b : ℕ × ℕ} (hroom : b.2 + 2 * (N * N) ≤ m.store.len b.1) :
-    Writes .total I τ (PairMatrix.identity (Op := O) (Tst := Q)).body (Env.frame [N] [b])
+    Writes .total I τ (PairMatrix.identity (Op := O) (Tst := Q)) (Env.frame [N] [b])
       (Store.inBlock b.1 b.2 (2 * (N * N)))
       (fun m' => HoldsMatrix b (1 : Matrix (Fin N) (Fin N) ℂ) m'.store) m := by
-  refine (PairMatrix.writes_identity hS hroom).mono le_rfl fun m' _ hv => ?_
+  refine (PairMatrix.identity_writes hS hroom).mono le_rfl fun m' _ hv => ?_
   refine holdsMatrix_one_of_holdsVec fun i hi => ?_
   rw [hv.1 i hi, h0, h1]
 
@@ -308,11 +308,11 @@ omit [Has IndexOp O] [Has CmpTst Q] in
 stages. -/
 theorem schurPipeline_pos_completes {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar Mch I) (h0 : Mch.lit 0 = 0) (h1 : Mch.lit 1 = 1)
-    {Reg Red Core : Impl O Q} {n k F T L : ℕ} {qR qC : List ℝ}
+    {Reg Red Core : Stmt O Q} {n k F T L : ℕ} {qR qC : List ℝ}
     (hReg : ∀ {τ : Tape ℝ} {μ : Mem ℝ} {a q : ℕ × ℕ} (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
       HoldsMatrix a A μ.store → μ.store.readBlock q.1 q.2 qR.length = some qR → μ.Live [a, q] →
       Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock q.1 q.2 qR.length) →
-      Writes .total I τ Reg.body (Env.frame [n + 1, qR.length] [a, q, a])
+      Writes .total I τ Reg (Env.frame [n + 1, qR.length] [a, q, a])
         (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
         (fun μ' => ∃ A' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A' μ'.store) μ)
     (hRed : CompletingReducer (n + 1) Red I) (hCore : CompletingSchurCore k F T (n + 1) qC Core I)
@@ -323,14 +323,14 @@ theorem schurPipeline_pos_completes {Mch : Machine ℝ} {I : Interp O Q ℝ}
         ((Stmt.call (Has.inj ScalarOp.div) [] [⟨6, .const 0⟩, ⟨5, .const 0⟩] [⟨6, .const 0⟩]).seq
           ((Stmt.loop (.const 2 * (.var 0 * .var 0)) (.call (Has.inj ScalarOp.mul) []
             [⟨0, .var 6 + .var 11⟩, ⟨6, .const 0⟩] [⟨0, .var 6 + .var 11⟩])).seq
-          ((Stmt.frame [.var 0, .var 1] [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩] Reg.body).seq
+          ((Stmt.frame [.var 0, .var 1] [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩] Reg).seq
             ((Stmt.frame [.var 0] [⟨3, .var 9⟩]
-              (PairMatrix.identity (Op := O) (Tst := Q)).body).seq
+              (PairMatrix.identity (Op := O) (Tst := Q))).seq
             ((Stmt.frame [.var 0] [⟨0, .var 6⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩]
-              Red.body).seq
+              Red).seq
             ((Stmt.frame [.var 0, .var 2, .var 3, .var 4, .var 5]
               [⟨0, .var 6⟩, ⟨1, .var 7 + .var 1⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩,
-                ⟨4, .var 10⟩] Core.body).seq (.loop (.const 2 * (.var 0 * .var 0))
+                ⟨4, .var 10⟩] Core).seq (.loop (.const 2 * (.var 0 * .var 0))
               (.call (Has.inj ScalarOp.mul) [] [⟨0, .var 6 + .var 11⟩, ⟨5, .const 0⟩]
                 [⟨0, .var 6 + .var 11⟩])))))))))
       (schurPipelineEnv n qR.length qC.length k F T a p uo f L)
@@ -354,7 +354,7 @@ theorem schurPipeline_pos_completes {Mch : Machine ℝ} {I : Interp O Q ℝ}
     fun m₂ hfr₂ h₂ => ?_
   obtain ⟨A₂, hA₂⟩ := h₂
   have hm₂ := hm₁.of_eqOff hfr₂ (hdG.mono hFa le_rfl)
-  refine (writes_identity_holdsMatrix_one_of_lit (N := n + 1) hS h0 h1 hm₂.room_uo).frame_seq_le
+  refine (identity_writes_holdsMatrix_one_of_lit (N := n + 1) hS h0 h1 hm₂.room_uo).frame_seq_le
     rfl rfl (hm₂.live_of_subset (by simp)) hFu fun m₃ hfr₃ hU => ?_
   have hm₃ := hm₂.of_eqOff hfr₃ (hdG.mono hFu le_rfl)
   refine (hRed A₂ 1 le_rfl ⟨hA₂.of_eqOff hfr₃ h2.symm, hU⟩ (hm₃.live_of_subset (by simp))
@@ -387,10 +387,10 @@ theorem schurPipeline_zero_completes {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) {n nr nq k F T L : ℕ} {qs : List ℝ}
     {a p uo f : ℕ × ℕ} {τ : Tape ℝ} {m : Mem ℝ} (hm : SchurPipelineMem n qs a p uo f L m) :
     Writes .total I τ (.seq (.frame [.var 0] [⟨3, .var 9⟩]
-        (PairMatrix.identity (Op := O) (Tst := Q)).body)
+        (PairMatrix.identity (Op := O) (Tst := Q)))
         (.call (Has.inj IndexOp.lit) [.const 0] [] [⟨4, .var 10⟩]))
       (schurPipelineEnv n nr nq k F T a p uo f L) (schurFp n a uo f) (fun _ => True) m := by
-  refine (PairMatrix.writes_identity (n := n + 1) hS hm.room_uo).frame_seq_le rfl rfl
+  refine (PairMatrix.identity_writes (n := n + 1) hS hm.room_uo).frame_seq_le rfl rfl
     (hm.live_of_subset (by simp)) (by simp only [schurFp]; fp_sub) fun m' hfr _ => ?_
   have hf : f.2 < m'.store.len f.1 := by have := hm.room_f; rw [hfr.len_eq]; omega
   exact (writes_indexLit hL (n := 0) rfl rfl hf).mono (by simp only [schurFp]; fp_sub)
@@ -401,18 +401,18 @@ $n + 1$, index literals and exact comparisons, given stages that complete: it wr
 matrix, the accumulator and the flag. No rounding model is needed. -/
 theorem schurPipelineWith_completes {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
     (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1))
-    (hC : IsCmp id I) {Nm Reg Red Core : Impl O Q} {k F T : ℕ} {qR qC : List ℝ}
+    (hC : IsCmp id I) {Nm Reg Red Core : Stmt O Q} {k F T : ℕ} {qR qC : List ℝ}
     (hNm : CompletingNormEstimate (n + 1) Nm I)
     (hReg : ∀ {τ : Tape ℝ} {μ : Mem ℝ} {a q : ℕ × ℕ} (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
       HoldsMatrix a A μ.store → μ.store.readBlock q.1 q.2 qR.length = some qR → μ.Live [a, q] →
       Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock q.1 q.2 qR.length) →
-      Writes .total I τ Reg.body (Env.frame [n + 1, qR.length] [a, q, a])
+      Writes .total I τ Reg (Env.frame [n + 1, qR.length] [a, q, a])
         (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
         (fun μ' => ∃ A' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A' μ'.store) μ)
     (hRed : CompletingReducer (n + 1) Red I) (hCore : CompletingSchurCore k F T (n + 1) qC Core I)
     {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {a p uo f : ℕ × ℕ} {μ : Mem ℝ}
     (hin : SchurPipelineInput (qR ++ qC) a p uo f A μ) (τ : Tape ℝ) :
-    Writes .total I τ (schurPipelineWith Nm Reg Red Core).body
+    Writes .total I τ (schurPipelineWith Nm Reg Red Core)
       (Env.frame [n + 1, qR.length, qC.length, k, F, T] [a, p, a, uo, f]) (schurFp n a uo f)
       (fun _ => True) μ := by
   have h1 : Mch.lit 1 = 1 := by simpa using hNat 1 (by omega)
@@ -459,7 +459,7 @@ theorem denseSchur_completes {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
     (hDisk : IsPolarDiskSampler sU I) {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {δ φ : ℝ}
     {a p uo f : ℕ × ℕ} {μ : Mem ℝ}
     (hin : SchurPipelineInput (denseSchurParams n δ φ) a p uo f A μ) (τ : Tape ℝ) :
-    Writes .total I τ (denseSchur (O := O) (Q := Q) sG).body
+    Writes .total I τ (denseSchur (O := O) (Q := Q) sG)
       (Env.frame (denseSchurDims n δ φ) [a, p, a, uo, f]) (schurFp n a uo f) (fun _ => True)
       μ := by
   have hReg : ∀ {τ : Tape ℝ} {μ : Mem ℝ} {a q : ℕ × ℕ}
@@ -468,7 +468,7 @@ theorem denseSchur_completes {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
         some (denseSchurRegParams n δ φ) → μ.Live [a, q] →
       Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
         (Store.inBlock q.1 q.2 (denseSchurRegParams n δ φ).length) →
-      Writes .total I τ (ginibrePerturb (O := O) (Q := Q) sG).body
+      Writes .total I τ (ginibrePerturb (O := O) (Q := Q) sG)
         (Env.frame [n + 1, (denseSchurRegParams n δ φ).length] [a, q, a])
         (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
         (fun μ' => ∃ A' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A' μ'.store) μ :=

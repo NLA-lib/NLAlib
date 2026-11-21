@@ -6,7 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Krylov.Lanczos.Update
-public import NLAlib.Krylov.Lanczos.NormalizationInterface
+public import NLAlib.Krylov.Lanczos.Normalization
 public import NLAlib.Krylov.Lanczos.State
 
 /-!
@@ -33,7 +33,10 @@ variable {K Op Tst : Type} [Inhabited K]
 variable [Has ScalarOp Op] [Has Blas1Op Op] [Has OperatorOp Op] [Has CmpTst Tst]
 
 /-- One complete round succeeds for readable inputs and initialized zero next outputs.
-Its actual readback exposes the raw residual, normalized direction, and squared-norm guard. -/
+Its actual readback exposes the raw residual, normalized direction, and squared-norm guard.
+
+A fragment of `NLAlib.Krylov.Lanczos.solveRoutine`: one round of its loop, on the scratch the
+solver allocates and the columns of `V` and `C` at the round index. -/
 theorem advance_writes {M : Machine K} {dec : K → ℝ} {n cap j L B V C bo vo co : ℕ}
     {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K} {ok : ℕ → Prop}
     (hS : IsScalar M I) (hM : ExactModel dec M) (hB : IsExactBlas1 dec ok I)
@@ -72,24 +75,31 @@ theorem advance_writes {M : Machine K} {dec : K → ℝ} {n cap j L B V C bo vo 
   step hB.dot as μ₂ hfr₂ ⟨hpos₂, σ, hσ, hdot⟩
   step hB.copy as μ₃ hfr₃ ⟨hpos₃, copied, hcopied, hcopy⟩
   subst copied
-  refine (writes_frame rfl rfl (by
-    simp only [Mem.live_cons, Mem.live_nil, and_true, hfr₃.length_eq,
-      hfr₂.length_eq, hfr₁.length_eq]; omega)
-    (normalize_writes hS hM hB hok hCmp (by omega) (by omega) (by omega) (by omega)
-      (by omega) hVC (by
-        simp only [Mem.live_cons, Mem.live_nil, and_true, hfr₃.length_eq,
-          hfr₂.length_eq, hfr₁.length_eq]; omega)
-      (by kept) (by kept) (by kept) (by kept) (dotExactRel_decoded hdot)
-      hnextzero hβzero (by
-        simp only [Mem.room_cons, Mem.room_nil, and_true, hfr₃.len_eq, hfr₂.len_eq, hfr₁.len_eq]
-        exact ⟨hnroom, by omega⟩))).mono (by fp_sub) ?_
-  rintro μ₄ hfr₄ ⟨hpos₄, ys, β', hys, hβ', hnormalized, hnormβ⟩
+  have hWV : L + 1 ≠ V := by omega
+  have hWC : L + 1 ≠ C := by omega
+  have hTV : L + 2 ≠ V := by omega
+  have hTC : L + 2 ≠ C := by omega
+  have hsrc : μ₃.store.readBlock (L + 1) 0 n = some raw := by kept
+  have hsig : μ₃.store.readBlock (L + 2) 0 1 = some [σ] :=
+    Store.readBlock_one_of_get (by kept)
+  have hnxt : μ₃.store.readBlock V (vo + (j + 1) * n) n = some next := by kept
+  have hcpl : μ₃.store.readBlock C (co + cap + j + 1) 1 = some [β₀] :=
+    Store.readBlock_one_of_get (by kept)
+  call (normalizeRoutine_meets (Op := Op) (Tst := Tst) hS hM hB hok hCmp) [n]
+    ((L + 1, 0), (L + 2, 0), (V, vo + (j + 1) * n), (C, co + cap + j + 1))
+    (pre := ⟨rfl, dotExactRel_decoded hdot, hnextzero, hβzero⟩)
+    as μ₄ hfr₄ hpos₄ (ys, cs) hpost
+  obtain ⟨β', hβ', rfl⟩ := Store.readBlock_one_eq_some.mp hcs
+  obtain ⟨hnormalized, hnormβ⟩ := hpost
   exact ⟨by simp [hpos₄, hpos₃, hpos₂, hpos₁], raw, ys, α, β', σ,
     by kept, hys, by kept, hβ', by kept, hαdec, hrawdec,
     hnormalized, hnormβ, dotExactRel_decoded hdot⟩
 
 /-- An initialized stored Lanczos state advances successfully, including a round whose raw
-residual vanishes. No spectral assumption or execution-success premise is required. -/
+residual vanishes. No spectral assumption or execution-success premise is required.
+
+The `advance` fragment read on the loop invariant `State`, the form in which the loop of `solve`
+uses it. -/
 theorem advance_state_writes {M : Machine K} {dec : K → ℝ} {n cap j L B V C bo vo co : ℕ}
     {A : Matrix (Fin n) (Fin n) ℝ} {b : Fin n → ℝ} {I : Interp Op Tst K} {ok : ℕ → Prop}
     (hS : IsScalar M I) (hM : ExactModel dec M) (hB : IsExactBlas1 dec ok I)

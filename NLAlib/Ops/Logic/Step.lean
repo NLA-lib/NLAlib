@@ -52,7 +52,7 @@ theorem Mem.readBlocks_nil' : m.readBlocks [] [] = some [] := rfl
 
 /-- The call rule with a footprint for one output cell, with the blocks read given. -/
 theorem writes_call_cell_of {o : Op} {R : BlockRel K}
-    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (hI : I.Meets md o (R.spec adm))
+    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (hI : I.Satisfies md o (R.spec adm))
     {ds : List IExp} {ins outs : List Operand} {d : List ℕ} {a : List (ℕ × ℕ)} {z : ℕ × ℕ}
     {k : ℕ} {xs : List (List K)} (hd : IExp.evalList ρ.idx ds = some d)
     (ha : Operand.evalList ρ ins = some a) (hb : Operand.evalList ρ outs = some [z])
@@ -69,7 +69,7 @@ theorem writes_call_cell_of {o : Op} {R : BlockRel K}
 
 /-- The call rule with a footprint for one output block, with the blocks read given. -/
 theorem writes_call1_of {o : Op} {R : BlockRel K}
-    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (hI : I.Meets md o (R.spec adm))
+    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (hI : I.Satisfies md o (R.spec adm))
     {ds : List IExp} {ins outs : List Operand} {d : List ℕ} {a : List (ℕ × ℕ)} {z : ℕ × ℕ}
     {k l : ℕ} {xs : List (List K)} (hd : IExp.evalList ρ.idx ds = some d)
     (ha : Operand.evalList ρ ins = some a) (hb : Operand.evalList ρ outs = some [z])
@@ -86,7 +86,7 @@ theorem writes_call1_of {o : Op} {R : BlockRel K}
 
 /-- The call rule with a footprint for two output blocks, apart, with the blocks read given. -/
 theorem writes_call2_of {o : Op} {R : BlockRel K}
-    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (hI : I.Meets md o (R.spec adm))
+    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (hI : I.Satisfies md o (R.spec adm))
     {ds : List IExp} {ins outs : List Operand} {d : List ℕ} {a : List (ℕ × ℕ)} {z₁ z₂ : ℕ × ℕ}
     {k l₁ l₂ : ℕ} {xs : List (List K)} (hd : IExp.evalList ρ.idx ds = some d)
     (ha : Operand.evalList ρ ins = some a) (hb : Operand.evalList ρ outs = some [z₁, z₂])
@@ -219,6 +219,23 @@ elab (name := tacticTupleRead) "tuple_read" : tactic => withMainContext do
   throwError "tuple_read: no matching block in a known input tuple"
 
 
+/-- A block disjoint from a footprint has no cell in it: the side condition of
+`NLAlib.Ops.Store.EqOff.readBlock_of` from a disjointness of footprints. -/
+theorem Fp.not_mem_of_disj_inBlock {F : Fp} {b off n : ℕ}
+    (hD : Fp.Disj F (Store.inBlock b off n)) : ∀ j < n, ¬ F b (off + j) :=
+  fun j hj hF => hD b (off + j) hF ⟨rfl, by omega, by omega⟩
+
+/-- **`disj_buffers`**: a disjointness of footprints made of blocks, each pair of blocks in
+different buffers by an inequality of the context (in either direction). Closes the goal or
+fails, without arithmetic; `disjoint` handles blocks of one buffer. -/
+macro (name := disjBuffers) "disj_buffers" : tactic => `(tactic|
+  ((try simp only [Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_left, Fp.disj_sup_right,
+      Fp.disj_bot_left, Fp.disj_bot_right, and_true, true_and])
+   (repeat' apply And.intro)
+   all_goals first
+     | exact Fp.disj_inBlock_of_ne (by assumption)
+     | exact Fp.disj_inBlock_of_ne (Ne.symm (by assumption))))
+
 /-- **`kept [facts]`**: a goal `s.readBlock b o n = some ?xs` or `s.get b i = some ?v`. Closes it
 from a hypothesis about `s`, or about an earlier store across a frame `s₀.EqOff F s` (the block is
 off `F`, by `disjoint`) or an agreement `Store.Below L s₀ s` (the buffer is below `L`, by `idx`),
@@ -236,7 +253,9 @@ macro_rules
       | (apply Store.EqOff.readBlock_of
          · assumption
          · kept [$ts,*]
-         · intro j hj hF; revert hF; disjoint [$ts,*])
+         · first
+           | (apply Fp.not_mem_of_disj_inBlock; disj_buffers)
+           | (intro j hj hF; revert hF; disjoint [$ts,*]))
       | (apply Eq.trans
          · apply Store.EqOff.get_eq
            · assumption
@@ -258,13 +277,17 @@ macro_rules
 
 
 open Lean Meta Elab Tactic in
-/-- **`reads`**: a goal `m.readBlocks as ns = some ?xs` (the blocks a call reads), with `as` and
+/-- **`reads`**: a goal `m.readBlocks as ns = some ?xs` (the blocks a call reads, also in the
+form `R.readAt m d ops = some ?xs` for a routine `R` of contiguous operands), with `as` and
 `ns` lists of known length: proves `m.store.readBlock a.1 a.2 n = some ?x` for each block by
 `kept`, and closes the goal with the list of the blocks found. -/
 elab "reads" : tactic => withMainContext do
   let g ← getMainGoal
   let t ← instantiateMVars (← g.getType)
   let some (_, lhs, _) := t.eq? | throwError "reads: not an equation"
+  -- the blocks read by a call of a routine are a read of blocks by computation
+  let lhs ← if lhs.isAppOf ``Mem.readBlocks then pure lhs else
+    (return (← whnfUntil lhs ``Mem.readBlocks).getD lhs)
   let (``Mem.readBlocks, #[_, m, as, ns]) := lhs.getAppFnArgs
     | throwError "reads: not a read of blocks"
   let as ← listElems 64 as
@@ -309,10 +332,30 @@ macro_rules
           try idx [$ts,*]
           done)))
 
+open Lean in
+/-- The expression with every outermost `NLAlib.Ops.Stmt.note n s` replaced by `s`. -/
+meta def stripNotesExpr (e : Expr) : Expr :=
+  e.replace fun t => if t.isAppOfArity ``Stmt.note 4 then some t.appArg! else none
+
+open Lean Meta Elab Tactic in
+/-- **`strip_notes`**: remove the notes (`NLAlib.Ops.Stmt.note`) from the trees of the goal. A
+note changes no run, so the new goal is the old one by definition (`NLAlib.Ops.eval_note`).
+`routine_intro`, `step`, `call` and `loop_inv` do this first; after unfolding a tree by hand,
+use it before applying a rule that matches the shape of the tree. Does nothing when the goal has
+no note. -/
+elab (name := stripNotes) "strip_notes" : tactic => withMainContext do
+  let goal ← getMainGoal
+  let target ← instantiateMVars (← goal.getType)
+  let mut stripped := target
+  -- each pass removes the outermost notes, so the passes end
+  while (stripped.find? (·.isAppOfArity ``Stmt.note 4)).isSome do
+    stripped := stripNotesExpr stripped
+  if stripped != target then replaceMainGoal [← goal.replaceTargetDefEq stripped]
+
 /-- **`step h [facts] as m₁ hfr₁ ⟨pat⟩`**: the call step in named form. The goal is a `Wp` or a
 `Writes` of a call, or of a call followed by more (`.seq (.call …) c`). `h` says that the
-operation meets its contract (`I.Meets md o (R.spec adm)`, or `I.IsFn` of a block function). The
-tactic applies the footprint rule for the shape of the outputs (one cell, one block, two blocks)
+operation satisfies its contract (`I.Satisfies md o (R.spec adm)`, or `I.IsFn` of a block function).
+The tactic applies the footprint rule for the shape of the outputs (one cell, one block, two blocks)
 and the sequence rule (`Writes.then_`; `Writes.seq_le` against the declared footprint inside a
 `Writes`; `Writes.mono` for a last call), proves the side goals (shapes by `wp_shape`, the
 admitted operands by `wp_adm`, live handles and room by `wp_side`, the blocks read by `reads`, the
@@ -328,7 +371,8 @@ macro_rules
   | `(tactic| step $h as $m $hfr $[$pat]?) => `(tactic| step $h [] as $m $hfr $[$pat]?)
   | `(tactic| step $h [$ts,*] as $m $hfr) => `(tactic| step $h [$ts,*] as $m $hfr _)
   | `(tactic| step $h [$ts,*] as $m $hfr $pat:rcasesPatMed) => `(tactic|
-      ((first
+      (strip_notes
+       (first
          | refine Writes.seq_le (writes_call_cell_of $h rfl rfl rfl rfl
              (k := ?_) (xs := ?_) ?hk rfl ?hadm ?hlive ?hr ?hdom ?hz) ?hle fun $m $hfr hpost => ?hQ
          | refine Writes.seq_le (writes_call1_of $h rfl rfl rfl rfl
@@ -383,5 +427,30 @@ macro_rules
            Option.some.injEq, List.cons.injEq, and_true] at hpost
          try dsimp only at $(⟨hfr.raw⟩):term
          rcases hpost with $pat))
+
+/-- A run that ends in the memory updated at one cell is a footprint statement on that cell,
+which is read back. -/
+theorem Writes.of_wp_upd_cell {md : Mode} {I : Interp Op Tst K} {τ : Tape K} {c : Stmt Op Tst}
+    {ρ : Env} {m : Mem K} {z : ℕ × ℕ} {P : K → Prop} (hz : z.2 < m.store.len z.1)
+    (h : Wp md I τ c ρ (fun m' => ∃ v, P v ∧ m' = m.upd z v) m) :
+    Writes md I τ c ρ (Fp.blocks [z] [1])
+      (fun m' => m'.pos = m.pos ∧ ∃ v, m'.readBlocks [z] [1] = some [[v]] ∧ P v) m := by
+  refine h.mono fun m' ⟨v, hv, e⟩ => ?_
+  subst e
+  exact ⟨(Store.EqOff.refl _ _).upd (by simp [Fp.blocks, Store.inBlock]) _, rfl, v,
+    Mem.readBlocks_of_cons (Store.readBlock_one_of_get (Store.get_upd_self hz _)) rfl, hv⟩
+
+/-- A run that ends in the memory updated at one block is a footprint statement on that block,
+which is read back. -/
+theorem Writes.of_wp_updBlock_one {md : Mode} {I : Interp Op Tst K} {τ : Tape K}
+    {c : Stmt Op Tst} {ρ : Env} {m : Mem K} {z : ℕ × ℕ} {ys : List K}
+    (hz : z.2 + ys.length ≤ m.store.len z.1)
+    (h : Wp md I τ c ρ (fun m' => m' = m.updBlock z ys) m) :
+    Writes md I τ c ρ (Fp.blocks [z] [ys.length])
+      (fun m' => m'.pos = m.pos ∧ m'.readBlocks [z] [ys.length] = some [ys]) m := by
+  refine h.mono fun m' e => ?_
+  subst e
+  exact ⟨(Store.EqOff.refl _ _).updBlock_of_le (by simp [Fp.blocks]), rfl,
+    Mem.readBlocks_of_cons (Store.readBlock_updBlock_self hz) rfl⟩
 
 end NLAlib.Ops

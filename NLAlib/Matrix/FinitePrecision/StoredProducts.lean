@@ -60,7 +60,7 @@ for $c \ge 1$, $\mathbf{Z} = \mathbf{X}^{\mathsf H}\mathbf{Y}$ with $\mathbf{X}$
 $p \times m$. Entry $(i, j)$ is accumulated from $0$ by $p$ rounded complex multiply–adds. The
 interface is `[m, p, q, ldx, ldy, ldz, c] (X, Y) → (Z)`; the output is apart from the inputs, and
 the four scratch pairs are scoped. -/
-def matMulOn : Impl O Q := opsImpl% [m, p, q, ldx, ldy, ldz, c] (X, Y) → (Z) {
+def matMulOn : Stmt O Q := ops% [m, p, q, ldx, ldy, ldz, c] (X, Y) → (Z) {
   let One ← alloc 2;
   let A ← alloc 2;
   let S ← alloc 2;
@@ -81,7 +81,7 @@ def matMulOn : Impl O Q := opsImpl% [m, p, q, ldx, ldy, ldz, c] (X, Y) → (Z) {
           call (Has.inj ScalarOp.copy) [] (X[2 * (l * ldx + i)]) → (A);
           call (Has.inj ScalarOp.copy) [] (X[2 * (l * ldx + i) + 1]) → (A[1])
         };
-        run Pair.linearCombination.body [] (A, One, Y[2 * (j * ldy + l)], S, T, R);
+        run Pair.linearCombination [] (A, One, Y[2 * (j * ldy + l)], S, T, R);
         call (Has.inj ScalarOp.copy) [] (R) → (S);
         call (Has.inj ScalarOp.copy) [] (R[1]) → (S[1])
       };
@@ -125,7 +125,7 @@ private def matMulLBody : Stmt O Q :=
         { buf := 1, off := IExp.var 8 + IExp.const 2 * (IExp.var 10 * IExp.var 4 + IExp.var 12) },
         { buf := 5, off := IExp.const 0 }, { buf := 6, off := IExp.const 0 },
         { buf := 7, off := IExp.const 0 }]
-      (Pair.linearCombination (Op := O) (Tst := Q)).body).seq
+      (Pair.linearCombination (Op := O) (Tst := Q))).seq
   ((Stmt.call (Has.inj ScalarOp.copy) [] [{ buf := 7, off := IExp.const 0 }]
       [{ buf := 5, off := IExp.const 0 }]).seq
     (Stmt.call (Has.inj ScalarOp.copy) [] [{ buf := 7, off := IExp.const 1 }]
@@ -273,7 +273,7 @@ private theorem matMulLBody_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
       by simpa using Store.get_of_readBlock h (j := 1) (by omega) 0⟩
   have hl₂ : ∀ k < 5, μ₂.store.len (Lc + k) = 2 := fun k hk => by rw [hfr₂.len_eq]; exact hlens k hk
   have hL₂ : μ₂.store.length = Lc + 5 := by rw [hfr₂.length_eq]; exact hlen
-  refine (Pair.writes_linearCombination (τ := τ) (m := μ₂) hS (a := (Lc + 1, 0)) (b := (Lc, 0))
+  refine (Pair.linearCombination_writes (τ := τ) (m := μ₂) hS (a := (Lc + 1, 0)) (b := (Lc, 0))
     (x := (y.1, y.2 + 2 * (j * ldy + l))) (y := (Lc + 2, 0)) (t := (Lc + 3, 0)) (z := (Lc + 4, 0))
     (av := (a.re, a.im)) (bv := (M.lit 1, M.lit 0)) (xv := (b.re, b.im)) (yv := (sv.re, sv.im))
     (by simp only [Fp.blocks]; disjoint) (by simp only [Fp.blocks]; disjoint) (by disjoint)
@@ -490,7 +490,7 @@ private theorem matMulOn_writes_gen {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
       (Store.inBlock z.1 z.2 (2 * (m * q))))
     (hyz : Fp.Disj (Store.inBlock ys.1 ys.2 (2 * (r₄ * r₃)))
       (Store.inBlock z.1 z.2 (2 * (m * q)))) :
-    Writes .total I τ (matMulOn (O := O) (Q := Q)).body
+    Writes .total I τ (matMulOn (O := O) (Q := Q))
       (Env.frame [m, p, q, ldx, ldy, m, c] [x, y, z])
       (Store.inBlock z.1 z.2 (2 * (m * q)))
       (fun μ' => μ'.pos = μ.pos ∧ HoldsMatrix z (Matrix.of fun i j => (List.finRange p).foldl
@@ -581,7 +581,7 @@ theorem matMulOn_writes_view {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScal
       (Store.inBlock z.1 z.2 (2 * (m * q))))
     (hyz : Fp.Disj (Store.inBlock ys.1 ys.2 (2 * (r₄ * r₃)))
       (Store.inBlock z.1 z.2 (2 * (m * q)))) :
-    Writes .total I τ (matMulOn (O := O) (Q := Q)).body
+    Writes .total I τ (matMulOn (O := O) (Q := Q))
       (Env.frame [m, p, q, ldx, ldy, m, 0] [x, y, z]) (Store.inBlock z.1 z.2 (2 * (m * q)))
       (fun μ' => μ'.pos = μ.pos ∧ HoldsMatrix z (matMulWord M X Y) μ'.store) μ := by
   have g : ∀ {s : Store ℝ} {b o : ℕ} {u v : ℝ}, s.readBlock b o 2 = some [u, v] →
@@ -630,7 +630,7 @@ theorem matMulOn_machineConjTranspose_writes_view {M : Machine ℝ} {I : Interp 
       (Store.inBlock z.1 z.2 (2 * (m * q))))
     (hyz : Fp.Disj (Store.inBlock ys.1 ys.2 (2 * (r₄ * r₃)))
       (Store.inBlock z.1 z.2 (2 * (m * q)))) :
-    Writes .total I τ (matMulOn (O := O) (Q := Q)).body
+    Writes .total I τ (matMulOn (O := O) (Q := Q))
       (Env.frame [m, p, q, ldx, ldy, m, 1] [x, y, z]) (Store.inBlock z.1 z.2 (2 * (m * q)))
       (fun μ' => μ'.pos = μ.pos ∧
         HoldsMatrix z (matMulWord M (machineConjTranspose M X) Y) μ'.store) μ := by
@@ -662,7 +662,7 @@ theorem matMulOn_conjTranspose_writes_view {M : Machine ℝ} {I : Interp O Q ℝ
       (Store.inBlock z.1 z.2 (2 * (m * q))))
     (hyz : Fp.Disj (Store.inBlock ys.1 ys.2 (2 * (r₄ * r₃)))
       (Store.inBlock z.1 z.2 (2 * (m * q)))) :
-    Writes .total I τ (matMulOn (O := O) (Q := Q)).body
+    Writes .total I τ (matMulOn (O := O) (Q := Q))
       (Env.frame [m, p, q, ldx, ldy, m, 1] [x, y, z]) (Store.inBlock z.1 z.2 (2 * (m * q)))
       (fun μ' => μ'.pos = μ.pos ∧ HoldsMatrix z (matMulWord M Xᴴ Y) μ'.store) μ := by
   rw [← machineConjTranspose_eq hM]
@@ -678,7 +678,7 @@ theorem matMulOn_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScal
     (hl : μ.Live [x, y, z]) (hz : z.2 + 2 * (m * q) ≤ μ.store.len z.1)
     (hxz : Fp.Disj (Store.inBlock x.1 x.2 (2 * (m * p))) (Store.inBlock z.1 z.2 (2 * (m * q))))
     (hyz : Fp.Disj (Store.inBlock y.1 y.2 (2 * (p * q))) (Store.inBlock z.1 z.2 (2 * (m * q)))) :
-    Writes .total I τ (matMulOn (O := O) (Q := Q)).body (Env.frame [m, p, q, m, p, m, 0] [x, y, z])
+    Writes .total I τ (matMulOn (O := O) (Q := Q)) (Env.frame [m, p, q, m, p, m, 0] [x, y, z])
       (Store.inBlock z.1 z.2 (2 * (m * q)))
       (fun μ' => μ'.pos = μ.pos ∧ HoldsMatrix z (matMulWord M X Y) μ'.store) μ :=
   matMulOn_writes_view hS X Y hX (fun s hs i l => hs.read_entry i l) hY
@@ -696,7 +696,7 @@ theorem matMulOn_conjTranspose_writes_word {M : Machine ℝ} {I : Interp O Q ℝ
     (hz : z.2 + 2 * (m * q) ≤ μ.store.len z.1)
     (hxz : Fp.Disj (Store.inBlock x.1 x.2 (2 * (p * m))) (Store.inBlock z.1 z.2 (2 * (m * q))))
     (hyz : Fp.Disj (Store.inBlock y.1 y.2 (2 * (p * q))) (Store.inBlock z.1 z.2 (2 * (m * q)))) :
-    Writes .total I τ (matMulOn (O := O) (Q := Q)).body (Env.frame [m, p, q, p, p, m, 1] [x, y, z])
+    Writes .total I τ (matMulOn (O := O) (Q := Q)) (Env.frame [m, p, q, p, p, m, 1] [x, y, z])
       (Store.inBlock z.1 z.2 (2 * (m * q)))
       (fun μ' => μ'.pos = μ.pos ∧ HoldsMatrix z (matMulWord M Xᴴ Y) μ'.store) μ :=
   matMulOn_conjTranspose_writes_view hS hM X Y hX (fun s hs l i => hs.read_entry l i) hY

@@ -209,5 +209,6 @@ def Stmt.linkContext {Op Lo Tst : Type} (count slot : ℕ) (T : ContextTable Op 
       .frame (ds.map (IExp.liftContext count slot))
         (contextOperands count slot ++ args.map (Operand.liftContext count slot))
         (body.linkContext count ds.length T)
+  | .note n s => .note n (s.linkContext count slot T)
 
 end NLAlib.Ops

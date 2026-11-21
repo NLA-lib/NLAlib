@@ -79,5 +79,6 @@ theorem stmtPeak_link_le_zero_add (T : Table Op Lo Tst) (w : ℕ)
     simp only [Stmt.link, stmtPeak]
     cases IExp.evalList idx ds <;> cases IExp.evalList idx (args.map Operand.off) <;>
       first | exact Nat.zero_le _ | exact ih _
+  | note _ _ ih => exact ih ..
 
 end NLAlib.Ops

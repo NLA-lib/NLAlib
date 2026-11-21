@@ -29,22 +29,22 @@ open Ops
 variable {Op Tst : Type} [Has ScalarOp Op] [Has CmpTst Tst]
 
 /-- Visit every candidate of the supplied half once. -/
-def halfRound : Impl Op Tst := opsImpl% [n, k, a, h] (H, SS, V, Flag) → (V, Flag) {
+def halfRound : Stmt Op Tst := ops% [n, k, a, h] (H, SS, V, Flag) → (V, Flag) {
   for i < h {
-    run halfSolveCandidate.body [n, k, a, i] (H, SS, V, Flag, V, Flag)
+    run halfSolveCandidate [n, k, a, i] (H, SS, V, Flag, V, Flag)
   }
 }
 
 /-- Repeat the half's candidate segment by the supplied exponent. -/
-def halfRounds : Impl Op Tst := opsImpl% [n, k, a, h, e] (H, SS, V, Flag) → (V, Flag) {
+def halfRounds : Stmt Op Tst := ops% [n, k, a, h, e] (H, SS, V, Flag) → (V, Flag) {
   for r < e {
-    run halfRound.body [n, k, a, h] (H, SS, V, Flag, V, Flag)
+    run halfRound [n, k, a, h] (H, SS, V, Flag, V, Flag)
   }
 }
 
-/-- One segment computes its inverse-row fold or retains a witnessed singular candidate.
-All source words are preserved and no unused shift is tested.
-[BanksGarzaVargasSrivastava2021, §4.3]. -/
+/-- One segment computes its inverse-row fold or retains a witnessed singular candidate. All source
+words are preserved and no unused shift is tested. [BanksGarzaVargasSrivastava2021, §4.3]. A
+fragment: its tree runs only inside the tree of `NLAlib.ShiftedQR.halfRounds`. -/
 theorem halfRound_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k a h : ℕ} {b ss v f : ℕ × ℕ}
@@ -54,7 +54,7 @@ theorem halfRound_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hal : a + h ≤ shifts.length) (hSep : HalfSolveSeparate (n + 1) k b ss v f)
     (hl : m.Live [b, ss, v, f, v, f]) (hf : f.2 + 1 ≤ m.store.len f.1)
     (hstate : HalfVectorState v f H (halfSegment shifts a h) w m.store) :
-    Writes .total I τ halfRound.body (Env.frame [n + 1, k, a, h] [b, ss, v, f, v, f])
+    Writes .total I τ halfRound (Env.frame [n + 1, k, a, h] [b, ss, v, f, v, f])
       (Store.inBlock v.1 v.2 (2 * (n + 1)) ⊔ Store.inBlock f.1 f.2 1)
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix b H m'.store ∧
         HoldsShifts (k := k) ss shifts m'.store ∧
@@ -95,9 +95,9 @@ theorem halfRound_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
       rw [hshift] at hV'
       simpa only [shiftSolvePrefix_succ H seg w hi'] using hV'
 
-/-- The exponent loop computes the inverse-polynomial row or certifies a singular candidate.
-An exponent of zero does not inspect any selected shift.
-[BanksGarzaVargasSrivastava2021, §4.3]. -/
+/-- The exponent loop computes the inverse-polynomial row or certifies a singular candidate. An
+exponent of zero does not inspect any selected shift. [BanksGarzaVargasSrivastava2021, §4.3]. A
+fragment: its tree runs only inside the tree of `NLAlib.ShiftedQR.halfNormAfterInit`. -/
 theorem halfRounds_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k a h e : ℕ} {b ss v f : ℕ × ℕ}
@@ -107,7 +107,7 @@ theorem halfRounds_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hal : a + h ≤ shifts.length) (hSep : HalfSolveSeparate (n + 1) k b ss v f)
     (hl : m.Live [b, ss, v, f, v, f]) (hf : f.2 + 1 ≤ m.store.len f.1)
     (hstate : HalfVectorState v f H (halfSegment shifts a h) (Pi.single (Fin.last n) 1) m.store) :
-    Writes .total I τ halfRounds.body (Env.frame [n + 1, k, a, h, e] [b, ss, v, f, v, f])
+    Writes .total I τ halfRounds (Env.frame [n + 1, k, a, h, e] [b, ss, v, f, v, f])
       (Store.inBlock v.1 v.2 (2 * (n + 1)) ⊔ Store.inBlock f.1 f.2 1)
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix b H m'.store ∧
         HoldsShifts (k := k) ss shifts m'.store ∧

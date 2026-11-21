@@ -14,7 +14,8 @@ public import NLAlib.Eigensolvers.SpectralBisection.ProbabilityTransfer
 
 Three results about the dense spectral bisection program are joined here into one statement
 about a run on a random tape: the total certificate with explicit work
-(`NLAlib.SpectralBisection.countedAlgorithm`), the transfer of a reference failure bound to the
+(`NLAlib.SpectralBisection.countedBisectionAlgorithm`), the transfer of a reference failure bound to
+the
 run (`NLAlib.SpectralBisection.measureReal_not_accepts_le_of_wordSpecification`), and the
 failure bound of the rounded reference computation
 (`NLAlib.SpectralBisection.measureReal_not_isApproxDiagonalization_tapeMachine_le`). The event
@@ -128,7 +129,7 @@ theorem measureReal_not_accepts_countedSpecification_le
     (hStream : ∀ dist : Computation.Dist, law (distributionStream dist) = dist.law) :
     P.real {omega | ¬ (countedSpecification M dec mm qr domain admitted matrixWorkspace T).Accepts
       (Dense.resources matrixWork matrixWorkspace) d x
-        (exec (program (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) I
+        (exec (bisectionProgram (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) I
           (Dense.resources matrixWork matrixWorkspace)
           (problem (K := K) domain admitted).formats
           (roundTape roundUnif roundGaussian (ideal omega)) d
@@ -143,7 +144,8 @@ theorem measureReal_not_accepts_countedSpecification_le
     hRadiusPos hEps hEpsMax hTheta hThetaMax (d 1) hDepth hBeta hBetaMax hSteps hSign hStop
     hDeflate (d 2) hFuel hFloorNonneg hFloor hBound hTape hStream 0
   have hRun := measureReal_not_accepts_le_of_wordSpecification M dec mm qr _ _ _ _ _
-    (countedAlgorithm M dec mm qr domain admitted matrixWork matrixWorkspace T hLit hN hT hadd
+    (countedBisectionAlgorithm M dec mm qr domain admitted matrixWork matrixWorkspace T hLit hN hT
+        hadd
       hMatrix) hd x I hI P (fun omega => roundTape roundUnif roundGaussian (ideal omega)) hRef
   refine (measureReal_mono ?_).trans hRun
   intro omega hbad hacc

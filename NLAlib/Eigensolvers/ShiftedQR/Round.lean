@@ -49,7 +49,7 @@ theorem round_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
       (Store.inBlock cf.1 cf.2 4))
     (hzc : Fp.Disj (Store.inBlock z.1 z.2 (2 * (n * n)))
       (Store.inBlock cf.1 cf.2 4)) :
-    Writes .total I τ round.body (Env.frame [n, k] [w, z, cf, w, z])
+    Writes .total I τ round (Env.frame [n, k] [w, z, cf, w, z])
       (Store.inBlock w.1 w.2 (2 * (n * n)) ⊔
         Store.inBlock z.1 z.2 (2 * (n * n)) ⊔ Store.inBlock cf.1 cf.2 4)
       (fun m' => m'.pos = m.pos ∧
@@ -120,7 +120,10 @@ theorem round_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
 
 /-- One exact round computes the mathematical Givens step from the actual working matrix,
 rotates that matrix on the left, and conjugates the output by the same rotation. The two
-matrices and four coefficient words are separated views; output aliases are exact. -/
+matrices and four coefficient words are separated views; output aliases are exact.
+Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`,
+`NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem round_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k : ℕ} {w z cf : ℕ × ℕ}
@@ -133,7 +136,7 @@ theorem round_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
       (Store.inBlock cf.1 cf.2 4))
     (hzc : Fp.Disj (Store.inBlock z.1 z.2 (2 * (n * n)))
       (Store.inBlock cf.1 cf.2 4)) :
-    Writes .total I τ round.body (Env.frame [n, k] [w, z, cf, w, z])
+    Writes .total I τ round (Env.frame [n, k] [w, z, cf, w, z])
       (Store.inBlock w.1 w.2 (2 * (n * n)) ⊔
         Store.inBlock z.1 z.2 (2 * (n * n)) ⊔ Store.inBlock cf.1 cf.2 4)
       (fun m' => m'.pos = m.pos ∧

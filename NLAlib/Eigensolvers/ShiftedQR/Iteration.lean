@@ -36,6 +36,6 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O
 
 /-- The fixed scalar strategy iteration, including actual promising-Ritz binary search and
 three-phase candidate selection. Its interface is `[n,m,k,D] (W,Params,Constants) -> W`. -/
-def iteration : Impl O Q := iterationWith findRitzSearch
+def iteration : Stmt O Q := iterationWith findRitzSearch
 
 end NLAlib.ShiftedQR

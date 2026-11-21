@@ -1,0 +1,92 @@
+{
+ "date": "2026-11-20",
+ "note": "\"Certificate\" names only an Algorithm (a program with the proof of its specification). Example theorems named *_cert that state Impl.Satisfies (a table entry satisfies the contract of its operation) are renamed *_satisfies. Removed as unused: Routine.separatedAt_of_buffers, Routine.SeparatedAt.separated, Routine.program_algorithm, Routine.Meets.link, RCLikeScalar.separatedBlocks_reduce1, RCLikeScalar.separatedBlocks_reduce2. kernel_rfl moved from Ops/MonomialWork to Ops/Logic/KernelRfl; lift_stmtCost_tally moved from Ops/Examples/Integrator to Ops/Certification. No statement changed; no compatibility aliases (before v0.1). The protected-buffer vocabulary of context linking is renamed to isolated, the operand mode it implements (modules Ops/Logic/Protected and ProtectedLink become Ops/Logic/Isolated and IsolatedLink).",
+ "renames": [
+  {
+   "old": "NLAlib.Ops.Examples.srAdd_cert",
+   "new": "NLAlib.Ops.Examples.srAdd_satisfies",
+   "rule": "N12; states Impl.Satisfies, which is not a certificate"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.mm_cert",
+   "new": "NLAlib.Ops.Examples.mm_satisfies",
+   "rule": "N12; states Impl.Satisfies, which is not a certificate"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.dot_cert",
+   "new": "NLAlib.Ops.Examples.dot_satisfies",
+   "rule": "N12; states Impl.Satisfies, which is not a certificate"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.ripple_cert",
+   "new": "NLAlib.Ops.Examples.ripple_satisfies",
+   "rule": "N12; states Impl.Satisfies, which is not a certificate"
+  },
+  {
+   "old": "NLAlib.Ops.Mem.Protected",
+   "new": "NLAlib.Ops.Mem.Isolated",
+   "rule": "N12; the buffers are those of isolated operands, named once for the operand mode"
+  },
+  {
+   "old": "NLAlib.Ops.Mem.Protected.refl",
+   "new": "NLAlib.Ops.Mem.Isolated.refl",
+   "rule": "N12; the buffers are those of isolated operands, named once for the operand mode"
+  },
+  {
+   "old": "NLAlib.Ops.Mem.Protected.push",
+   "new": "NLAlib.Ops.Mem.Isolated.push",
+   "rule": "N12; the buffers are those of isolated operands, named once for the operand mode"
+  },
+  {
+   "old": "NLAlib.Ops.Mem.Protected.pop",
+   "new": "NLAlib.Ops.Mem.Isolated.pop",
+   "rule": "N12; the buffers are those of isolated operands, named once for the operand mode"
+  },
+  {
+   "old": "NLAlib.Ops.Mem.Protected.live",
+   "new": "NLAlib.Ops.Mem.Isolated.live",
+   "rule": "N12; the buffers are those of isolated operands, named once for the operand mode"
+  },
+  {
+   "old": "NLAlib.Ops.BlockRel.protected_of_post",
+   "new": "NLAlib.Ops.BlockRel.isolated_of_post",
+   "rule": "N12; the buffers are those of isolated operands, named once for the operand mode"
+  },
+  {
+   "old": "NLAlib.Ops.Interp.guardProtected",
+   "new": "NLAlib.Ops.Interp.guardIsolated",
+   "rule": "N12; the buffers are those of isolated operands, named once for the operand mode"
+  },
+  {
+   "old": "NLAlib.Ops.Interp.callS_guardProtected",
+   "new": "NLAlib.Ops.Interp.callS_guardIsolated",
+   "rule": "N12; the buffers are those of isolated operands, named once for the operand mode"
+  },
+  {
+   "old": "NLAlib.Ops.Interp.callS_guardProtected_of_good",
+   "new": "NLAlib.Ops.Interp.callS_guardIsolated_of_good",
+   "rule": "N12; the buffers are those of isolated operands, named once for the operand mode"
+  },
+  {
+   "old": "NLAlib.Ops.Interp.satisfies_guardProtected",
+   "new": "NLAlib.Ops.Interp.satisfies_guardIsolated",
+   "rule": "N12; the buffers are those of isolated operands, named once for the operand mode"
+  },
+  {
+   "old": "NLAlib.Ops.eval_sim_of_protected",
+   "new": "NLAlib.Ops.eval_sim_of_isolated",
+   "rule": "N12; the buffers are those of isolated operands, named once for the operand mode"
+  },
+  {
+   "old": "NLAlib.Ops.eval_guardProtected",
+   "new": "NLAlib.Ops.eval_guardIsolated",
+   "rule": "N12; the buffers are those of isolated operands, named once for the operand mode"
+  },
+  {
+   "old": "NLAlib.Ops.Wp.linkContext_of_protected",
+   "new": "NLAlib.Ops.Wp.linkContext_of_isolated",
+   "rule": "N12; the buffers are those of isolated operands, named once for the operand mode"
+  }
+ ],
+ "statementChanged": []
+}

@@ -118,7 +118,7 @@ theorem smallEig_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Interp O Q
     (hu : u ≤ uSmallEig nmax S δ φ c₁ c₂)
     {w q o : ℕ × ℕ} {μ : Mem ℝ} (hin : SmallEigInput nmax S δ φ c₁ c₂ w q o M μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG)
       (Env.frame (smallEigDims n nmax S δ φ c₁ c₂) [w, q, w, o])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock o.1 o.2 (2 * ((n + 1) * (n + 1)))) (SmallEigSpectrum w o M δ) μ} ≤ φ :=
@@ -153,7 +153,7 @@ theorem smallEig_relative {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hφ1 : φ ≤ 1) (hu : u ≤ uSmallEig nmax S (ε * S / c) φ c₁ c₂)
     {w q o : ℕ × ℕ} {μ : Mem ℝ} (hin : SmallEigInput nmax S (ε * S / c) φ c₁ c₂ w q o M μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG)
       (Env.frame (smallEigDims n nmax S (ε * S / c) φ c₁ c₂) [w, q, w, o])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock o.1 o.2 (2 * ((n + 1) * (n + 1))))
@@ -195,7 +195,7 @@ theorem smallEig_measureReal_not_forward_le {Mch : Machine ℝ} {I : Interp O Q 
     {M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hMS : specNorm M ≤ S) {w q o : ℕ × ℕ}
     {μ : Mem ℝ} (hin : SmallEigInput kmax S (forwardBackwardError kmax S β) φ c₁ c₂ w q o M μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG)
       (Env.frame (smallEigDims n kmax S (forwardBackwardError kmax S β) φ c₁ c₂) [w, q, w, o])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock o.1 o.2 (2 * ((n + 1) * (n + 1))))
@@ -218,9 +218,9 @@ $n$ in its last term (its erratum N5). The constant is the monomial bound of the
 tree (`NLAlib.Ops.size_stmtCost_le_stmtWorkMono`); the certificate's
 `NLAlib.SmallEig.smallEigWork` also counts the frame of the program. -/
 theorem smallEig_work_le (sG n nq T : ℕ) :
-    Count.size (stmtCost (smallEigProg (O := O) (Q := Q) sG).body.instrument
+    Count.size (stmtCost (smallEigProg (O := O) (Q := Q) sG).instrument
       [n + 1, nq, T, 0, 0, 0, 0]) ≤ 80390 * (n + 1) ^ 4 * (T + 1) ^ 2 := by
-  have hw : stmtWorkMono (smallEigProg (O := O) (Q := Q) sG).body.instrument
+  have hw : stmtWorkMono (smallEigProg (O := O) (Q := Q) sG).instrument
       ([⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩] ++ List.replicate 4 (WorkMono.const 0)) =
         ⟨80390, [4, 0, 2]⟩ := by
     rw [stmtWorkMono_instrument]; kernel_rfl
@@ -228,7 +228,7 @@ theorem smallEig_work_le (sG n nq T : ℕ) :
       ([⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩] ++ List.replicate 4 (WorkMono.const 0)) := by
     simp [SlotsLe, WorkMono.eval, WorkMono.const]
   have h := size_stmtCost_le_stmtWorkMono (by simp)
-    (smallEigProg (O := O) (Q := Q) sG).body.instrument hσ
+    (smallEigProg (O := O) (Q := Q) sG).instrument hσ
   rw [hw] at h
   simpa [WorkMono.eval, mul_assoc] using h
 
@@ -331,7 +331,7 @@ theorem smallEig_measureReal_not_spectrum_le_unconditional {Mch : Machine ℝ} {
     {w q o : ℕ × ℕ} {μ : Mem ℝ} (hin : SmallEigInput nmax S δ φ ginibreGapTail
       ginibreConditionTail w q o M μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG)
       (Env.frame (smallEigDims n nmax S δ φ ginibreGapTail
         ginibreConditionTail) [w, q, w, o])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
@@ -361,7 +361,7 @@ theorem smallEig_relative_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ}
     {w q o : ℕ × ℕ} {μ : Mem ℝ} (hin : SmallEigInput nmax S (ε * S / c) φ
       ginibreGapTail ginibreConditionTail w q o M μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG)
       (Env.frame (smallEigDims n nmax S (ε * S / c) φ ginibreGapTail
         ginibreConditionTail) [w, q, w, o])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
@@ -392,7 +392,7 @@ theorem smallEig_measureReal_not_forward_le_unconditional {Mch : Machine ℝ} {I
     {μ : Mem ℝ} (hin : SmallEigInput kmax S (forwardBackwardError kmax S β) φ
       ginibreGapTail ginibreConditionTail w q o M μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG)
       (Env.frame (smallEigDims n kmax S (forwardBackwardError kmax S β) φ
         ginibreGapTail ginibreConditionTail) [w, q, w, o])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔

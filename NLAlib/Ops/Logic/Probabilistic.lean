@@ -110,8 +110,7 @@ theorem Interp.IsMeasurable.measurable_eval [Inhabited K] [MeasurableSpace K]
     {I : Interp Op Tst K} (hI : I.IsMeasurable) (c : Stmt Op Tst) (ρ : Env) :
     Measurable (fun x : Tape K × Mem K => (eval I x.1 c ρ x.2).isSome) ∧
       Measurable (fun x : Tape K × Mem K => (eval I x.1 c ρ x.2).getD x.2) := by
-  suffices h : ∀ ρ, MeasurableRun fun τ m => eval I τ c ρ m from h ρ
-  induction c with
+  suffices h : ∀ ρ, MeasurableRun fun τ m => eval I τ c ρ m from h ρ; induction c with
   | skip => exact fun _ => MeasurableRun.some_mem
   | abort => exact fun _ => MeasurableRun.none_mem
   | seq s t ihs iht => exact fun ρ => (ihs ρ).bind (iht ρ)
@@ -190,6 +189,7 @@ theorem Interp.IsMeasurable.measurable_eval [Inhabited K] [MeasurableSpace K]
       | some a =>
         exact MeasurableRun.ite (p := fun _ m => m.Live a)
           (measurable_snd (Mem.measurableSet_live a)) (ih _) MeasurableRun.none_mem
+  | note _ _ ih => exact ih
 
 /-- A set of tapes is **determined from the position** `p`: two tapes that agree at every position
 from `p` on are both in it or both not. -/
@@ -779,6 +779,10 @@ theorem allocs {lens : List IExp} {body : Stmt Op Tst} {ns : List ℕ}
     refine ⟨⟨Store.pop^[ns.length] m''.store, m''.pos⟩, by rw [eval_allocs hn, he]; rfl,
       hEq.iterate_pop, hkeep m hm (Store.below_iterate_pop _ ?_) hPost⟩
     rw [hEq.length_eq, Store.length_pushAll]
+
+/-- A note changes no probabilistic block specification. -/
+@[simp] theorem note_iff {n : Note} :
+    PWrites law I (.note n c) ρ F Pre Post φ ↔ PWrites law I c ρ F Pre Post φ := Iff.rfl
 
 /-- **A procedure instance** (PL3f-frame): the body in the environment of the frame, from
 memories in which the frame's operands are live. -/

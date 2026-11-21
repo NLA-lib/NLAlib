@@ -53,8 +53,8 @@ inputs. This is not a bit-complexity or accuracy-complexity statement and makes 
 claim. No kernel is silently assigned zero work.
 
 `exactAlgorithm_runs_with_work_le` returns the total run and the original stored backward
-output. `exactAlgorithmWithPolynomialWork` inherits `deflationForwardSpecification` and
-`exactForwardAlgorithm`, retaining both backward and HD9 directed forward-error guarantees.
+output. `countedDeflationAlgorithm` inherits `deflationForwardSpecification` and
+`forwardDeflationAlgorithm`, retaining both backward and HD9 directed forward-error guarantees.
 Its program, model, admission, full count budget, scratch and memory fields are unchanged.
 Functional uniqueness identifies its resource-bound run with the existing certificate's run.
 

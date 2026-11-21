@@ -1,11 +1,16 @@
 # Structural certification of operation programs
 
+> **Earlier design.** This note records an earlier design of the operations core and keeps its
+> vocabulary (`Impl.Meets`, `Impl.Triple`, `Impl.program`, `opsImpl%`, `cert_intro`,
+> `Interp.Meets`), much of which has since been replaced. The current vocabulary is described in
+> `NLAlib/Ops/README.md`.
+
 Requested by the maintainer in the 2026-11-11 adversarial-audit conversation.
 The general relational contracts remain unchanged. Lint is guidance, never evidence.
 
 ## Boundary
 
-`Stmt`, `Wp`, `ConditionalRuns`, `ConditionalRunsL`, and `Impl.Triple` are proof infrastructure. A published
+`Stmt`, `Wp`, `ConditionalRuns`, `ConditionalRunsL`, and `Impl.Satisfies` are proof infrastructure. A published
 algorithm is one fixed symbolic tree, certified for every admitted size and input.
 Its operation and query signatures, input layout, contracts, postcondition, and cost model
 are specified independently of the prover. Their mathematical relevance remains reviewed.
@@ -93,7 +98,7 @@ The 2026-11-11 follow-up replaces the additive prototype. There are no optional
   `ConditionalRuns`, `ConditionalRunsW`, and `ConditionalRunsL`.
 * `Cert.lean` owns `Algorithm`, constructors from total program logic, and fixed linking.
   Canonical `Impl.Meets R ins outs M S` certifies a fixed `Impl.program` frame with fixed
-  operand syntax. Conditional implementation contracts are named `Impl.Triple`.
+  operand syntax. Conditional implementation contracts are named `Impl.Satisfies`.
 * `Link.lean` owns `Impl.program` (preserves operand aliases) and fixed `Program.link`.
 * `Law.lean` owns `Algorithm.runsLaw`; the conditional law judgment is
   `ConditionalRunsLaw`, and observes the same successful execution.

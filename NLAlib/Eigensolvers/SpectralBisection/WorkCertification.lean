@@ -18,7 +18,7 @@ Nonmatrix instructions retain their conservative full static charges.
 
 ## Main results
 
-* `NLAlib.SpectralBisection.workCertifiedAlgorithm`: total output and resource certificate.
+* `NLAlib.SpectralBisection.matrixWorkBisectionAlgorithm`: total output and resource certificate.
 * `NLAlib.SpectralBisection.certifies_work`: certification of the explicit fixed program.
 -/
 
@@ -38,7 +38,7 @@ through `max n 4` decode exactly. Matrix costs are dominated by a monotone super
 largest-dimension function; scratch uses the independent polynomial plus finite workspace
 envelope. Scalar, sampling, literal, query and structural work retain their full static charges.
 The matrix-cost domination is global, including empty and all-zero dimension lists. -/
-noncomputable def workCertifiedAlgorithm
+noncomputable def matrixWorkBisectionAlgorithm
     (M : Machine K) (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
     (domain : (Fin 3 → ℕ) → Prop) (admitted : ∃ d, domain d)
     (matrixWork matrixWorkspace : MatrixOp → List ℕ → ℕ) (T : ℕ → ℕ)
@@ -50,14 +50,14 @@ noncomputable def workCertifiedAlgorithm
       (Dense.functionalModel (problem (K := K) domain admitted) M dec (EntryCodec.pair K) mm qr
         (Dense.resources matrixWork matrixWorkspace))
       (workSpecification M dec mm qr domain admitted matrixWorkspace T) := by
-  refine ⟨program (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst), ?_⟩
-  let original := manifestAlgorithm M dec mm qr domain admitted matrixWork matrixWorkspace hLit
+  refine ⟨bisectionProgram (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst), ?_⟩
+  let original := bisectionAlgorithm M dec mm qr domain admitted matrixWork matrixWorkspace hLit
   intro d hd x I hI τ
   obtain ⟨st, hr, _, hc, _, _, _, hgood⟩ := original.correct d hd x I hI τ
   rcases Dense.laws_functionalModel M dec (EntryCodec.pair K) mm qr
     (Dense.resources matrixWork matrixWorkspace) d x I hI with
     ⟨hS, hL, hMM, hQR, hSample, hC, hQ⟩
-  have hKernel := program_kernelWeight_le_of_exec M dec mm qr
+  have hKernel := bisectionProgram_kernelWeight_le_of_exec M dec mm qr
     hS hL hC hMM hQR hQ hSample d x (hLit d hd) T hT hadd
     (Dense.resources matrixWork matrixWorkspace) hr
   have hWork := Dense.work_le_of_kernelWeight_le matrixWork matrixWorkspace T hMatrix hc hKernel
@@ -87,11 +87,11 @@ theorem certifies_work
     (hN : ∀ d, domain d → 2 ≤ d 0) (hT : Monotone T)
     (hadd : ∀ i j, T i + T j ≤ T (i + j))
     (hMatrix : ∀ o ds, matrixWork o ds ≤ T (ds.foldr max 0)) :
-    (program (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).Certifies
+    (bisectionProgram (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).Certifies
       (Dense.functionalModel (problem (K := K) domain admitted) M dec (EntryCodec.pair K) mm qr
         (Dense.resources matrixWork matrixWorkspace))
       (workSpecification M dec mm qr domain admitted matrixWorkspace T) :=
-  (workCertifiedAlgorithm M dec mm qr domain admitted matrixWork matrixWorkspace T
+  (matrixWorkBisectionAlgorithm M dec mm qr domain admitted matrixWork matrixWorkspace T
     hLit hN hT hadd hMatrix).correct
 
 end

@@ -69,24 +69,24 @@ rotation of the working rows, the conjugation of the output); copy the last work
 to `Dg`; zero the output below its subdiagonal. The interface is
 `[n, w, j, i0] (A, S) → (Z, Dg, Lg)`; the working matrix and the four coefficient words are
 scoped. The exact unitary of the recorded entries is the step's $\widehat{\mathbf{Q}}$. -/
-def stepWithDiag : Impl Op Tst := opsImpl% [n, w, j, i0] (A, S) → (Z, Dg, Lg) {
+def stepWithDiag : Stmt Op Tst := ops% [n, w, j, i0] (A, S) → (Z, Dg, Lg) {
   let W ← alloc (2 * (n * n));
   let Cf ← alloc 4;
-  run (initializeState (Op := Op) (Tst := Tst)).body [n] (A, S, W, Z);
+  run (initializeState (Op := Op) (Tst := Tst)) [n] (A, S, W, Z);
   for r < n - 1 {
-    run (slottedLogWrite (O := Op) (Q := Tst)).body [w, j, i0 + r, r]
+    run (slottedLogWrite (O := Op) (Q := Tst)) [w, j, i0 + r, r]
       (W[2 * (r * n + r)], W[2 * (r * n + r + 1)], Lg);
-    run (round (Op := Op) (Tst := Tst)).body [n, r] (W, Z, Cf, W, Z)
+    run (round (Op := Op) (Tst := Tst)) [n, r] (W, Z, Cf, W, Z)
   };
-  run (copyLastDiagonal (Op := Op) (Tst := Tst)).body [n] (W, Dg);
-  run (clearBelowSubdiagonal (Op := Op) (Tst := Tst)).body [n] (Z)
+  run (copyLastDiagonal (Op := Op) (Tst := Tst)) [n] (W, Dg);
+  run (clearBelowSubdiagonal (Op := Op) (Tst := Tst)) [n] (Z)
 }
 
 /-- The step in place: run `NLAlib.ShiftedQR.stepWithDiag` into the scratch matrix `T`, then copy
 it back to `A`. The interface is `[n, w, j, i0] (A, S, T) → (A, Dg, Lg)`. -/
-def stepWithDiagInPlace : Impl Op Tst := opsImpl% [n, w, j, i0] (A, S, T) → (A, Dg, Lg) {
-  run (stepWithDiag (Op := Op) (Tst := Tst)).body [n, w, j, i0] (A, S, T, Dg, Lg);
-  run (unaryMap (Has.inj ScalarOp.copy)).body [2 * (n * n)] (T, A)
+def stepWithDiagInPlace : Stmt Op Tst := ops% [n, w, j, i0] (A, S, T) → (A, Dg, Lg) {
+  run (stepWithDiag (Op := Op) (Tst := Tst)) [n, w, j, i0] (A, S, T, Dg, Lg);
+  run (unaryMap (Has.inj ScalarOp.copy)) [2 * (n * n)] (T, A)
 }
 
 /-- **The degree $k$ rounded step, recording its rotations**: $k$ steps in place with the shifts
@@ -94,10 +94,10 @@ def stepWithDiagInPlace : Impl Op Tst := opsImpl% [n, w, j, i0] (A, S, T) → (A
 of step $t$ recorded as the entries $t(n - 1), \dots, t(n - 1) + n - 2$ of slot $j$ of the slotted
 log `Lg` of slot width $w \ge k(n - 1)$. The interface is `[n, k, w, j] (A, S) → (A, Ds, Lg)`; the
 scratch matrix is scoped. -/
-def multiStepStable : Impl Op Tst := opsImpl% [n, k, w, j] (A, S) → (A, Ds, Lg) {
+def multiStepStable : Stmt Op Tst := ops% [n, k, w, j] (A, S) → (A, Ds, Lg) {
   let T ← alloc (2 * (n * n));
   for t < k {
-    run (stepWithDiagInPlace (Op := Op) (Tst := Tst)).body [n, w, j, t * (n - 1)]
+    run (stepWithDiagInPlace (Op := Op) (Tst := Tst)) [n, w, j, t * (n - 1)]
       (A, S[2 * t], T, A, Ds[2 * t], Lg)
   }
 }
@@ -539,8 +539,8 @@ private theorem logRound_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
       Store.inBlock zv.1 zv.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock cf.1 cf.2 4)
       (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w))))
     (hl : m.Live [wv, zv, cf, lg]) (h : StepLoopInv Inv wv zv lg ns w L P r m.store) :
-    Writes .total I τ (.seq (.frame ds₁ as₁ (slottedLogWrite (O := Op) (Q := Tst)).body)
-        (.frame ds₂ as₂ (round (Op := Op) (Tst := Tst)).body)) ρ
+    Writes .total I τ (.seq (.frame ds₁ as₁ (slottedLogWrite (O := Op) (Q := Tst)))
+        (.frame ds₂ as₂ (round (Op := Op) (Tst := Tst)))) ρ
       (Store.inBlock wv.1 wv.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock zv.1 zv.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock cf.1 cf.2 4 ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
@@ -618,8 +618,8 @@ private theorem stepLoop_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
       Store.inBlock zv.1 zv.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock cf.1 cf.2 4)
       (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w))))
     (hl : m.Live [wv, zv, cf, lg]) (h0 : StepLoopInv Inv wv zv lg ns w L P 0 m.store) :
-    Writes .total I τ (.loop ne (.seq (.frame ds₁ as₁ (slottedLogWrite (O := Op) (Q := Tst)).body)
-        (.frame ds₂ as₂ (round (Op := Op) (Tst := Tst)).body))) ρ
+    Writes .total I τ (.loop ne (.seq (.frame ds₁ as₁ (slottedLogWrite (O := Op) (Q := Tst)))
+        (.frame ds₂ as₂ (round (Op := Op) (Tst := Tst))))) ρ
       (Store.inBlock wv.1 wv.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock zv.1 zv.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock cf.1 cf.2 4 ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
@@ -653,8 +653,8 @@ private theorem stepTail_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
       (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1)))))
     (hLd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w))) (Store.inBlock dg.1 dg.2 2))
     (h : StepLoopInv Inv wv z lg ns w L P n m.store) :
-    Writes .total I τ (.seq (.frame ds₁ as₁ (copyLastDiagonal (Op := Op) (Tst := Tst)).body)
-        (.frame ds₂ as₂ (clearBelowSubdiagonal (Op := Op) (Tst := Tst)).body)) ρ
+    Writes .total I τ (.seq (.frame ds₁ as₁ (copyLastDiagonal (Op := Op) (Tst := Tst)))
+        (.frame ds₂ as₂ (clearBelowSubdiagonal (Op := Op) (Tst := Tst)))) ρ
       (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock dg.1 dg.2 2)
       (fun m' => m'.pos = m.pos ∧ ∃ es : List GivensEntry, es.length = n ∧
         (∀ e ∈ es, e.1 + 1 < n + 1) ∧ HoldsSlottedLog lg ns w L (P ++ es) m'.store ∧
@@ -704,7 +704,7 @@ theorem stepWithDiag_writes_of_inv {M : Machine ℝ} {I : Interp Op Tst ℝ}
     {Inv : ℕ → List GivensEntry → Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ →
       Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ → Prop} (hInv : ∀ r, KeptByRound M Inv r)
     (h0 : Inv 0 [] (machineShiftedPrefix M H shift (n + 1)) H) :
-    Writes .total I τ stepWithDiag.body
+    Writes .total I τ stepWithDiag
       (Env.frame [n + 1, w, L.length, P.length] [a, s, z, dg, lg])
       (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock dg.1 dg.2 2 ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
@@ -819,7 +819,7 @@ theorem stepWithDiag_isStableQRStep {M : Machine ℝ} {I : Interp Op Tst ℝ} {u
     (hlgd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 2 ⊔
         Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock dg.1 dg.2 2)) :
-    Writes .total I τ stepWithDiag.body
+    Writes .total I τ stepWithDiag
       (Env.frame [n + 1, w, L.length, P.length] [a, s, z, dg, lg])
       (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock dg.1 dg.2 2 ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
@@ -876,7 +876,7 @@ theorem stepWithDiagInPlace_isStableQRStep {M : Machine ℝ} {I : Interp Op Tst 
     (hlgd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 2 ⊔
         Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock dg.1 dg.2 2)) :
-    Writes .total I τ stepWithDiagInPlace.body
+    Writes .total I τ stepWithDiagInPlace
       (Env.frame [n + 1, w, L.length, P.length] [a, s, t, a, dg, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock dg.1 dg.2 2 ⊔

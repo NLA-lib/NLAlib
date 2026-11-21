@@ -38,7 +38,8 @@ private theorem halfNormResult_exact {n : ℕ} {z f : ℕ × ℕ}
 variable {Op Tst : Type} [Has ScalarOp Op] [Has CmpTst Tst]
 
 /-- A total half-norm call gives its exact numeric branch under the caller's mathematical
-nonsingularity condition. It preserves the source blocks and three index words. -/
+nonsingularity condition. It preserves the source blocks and three index words.
+A step in the proof of `findRitzNorms_writes`. -/
 theorem halfNormAtRegister_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k a h e start size exponent j : ℕ} {b ss r : ℕ × ℕ}
@@ -50,7 +51,7 @@ theorem halfNormAtRegister_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hak : a + h ≤ k) (hal : a + h ≤ shifts.length) (hj : j = 3 ∨ j = 4)
     (hra : r.1 ≠ b.1) (hrs : r.1 ≠ ss.1) (hl : m.Live [b, ss, r, r])
     (hr : r.2 + 6 ≤ m.store.len r.1) :
-    Writes .total I τ halfNorm.body
+    Writes .total I τ halfNorm
       (Env.frame [n + 1, k, a, h, e] [b, ss, (r.1, r.2 + j), (r.1, r.2 + 5)])
       (Store.inBlock r.1 (r.2 + j) 1 ⊔ Store.inBlock r.1 (r.2 + 5) 1)
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix b H m'.store ∧
@@ -75,8 +76,9 @@ theorem halfNormAtRegister_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
         (Fp.disj_inBlock_of_le (by omega)).symm⟩) hwords,
     halfNormResult_exact hresult hdet⟩
 
-/-- Both actual half-norm calls retain the source blocks and search indices and store the
-same two squared norms compared by the mathematical search. -/
+/-- Both actual half-norm calls retain the source blocks and search indices and store the same two
+squared norms compared by the mathematical search. A fragment: its tree runs only inside the tree of
+`NLAlib.ShiftedQR.findRitzWindow`. -/
 theorem findRitzNorms_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k a h e : ℕ} {b ss r : ℕ × ℕ}
@@ -87,7 +89,7 @@ theorem findRitzNorms_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hak : a + 2 * h ≤ k) (hal : a + 2 * h ≤ shifts.length)
     (hra : r.1 ≠ b.1) (hrs : r.1 ≠ ss.1) (hl : m.Live [b, ss, r, r])
     (hr : r.2 + 6 ≤ m.store.len r.1) :
-    Writes .total I τ findRitzNorms.body (Env.frame [n + 1, k, a, h, e] [b, ss, r, r])
+    Writes .total I τ findRitzNorms (Env.frame [n + 1, k, a, h, e] [b, ss, r, r])
       (Store.inBlock r.1 r.2 6)
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix b H m'.store ∧
         HoldsShifts (k := k) ss shifts m'.store ∧ SearchWords r a h e m'.store ∧

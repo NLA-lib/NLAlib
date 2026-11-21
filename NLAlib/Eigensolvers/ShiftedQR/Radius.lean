@@ -34,19 +34,18 @@ open Ops
 variable {Op Tst : Type} [Has ScalarOp Op]
 
 /-- Apply the scalar square root `m` times to one exactly aliased input/output word. -/
-def squareRoots : Impl Op Tst where
-  nd := 1
-  nin := 1
-  nout := 1
-  body := .loop (.var 0) (.call (Has.inj ScalarOp.sqrt) []
+def squareRoots : Stmt Op Tst :=
+  .loop (.var 0) (.call (Has.inj ScalarOp.sqrt) []
     [⟨0, .var 1⟩] [⟨1, .var 2⟩])
 
 /-- The actual in-place scalar loop returns the iterated mathematical square root. Its initial
-word is nonnegative, so every executed root meets the exact model's numerical domain. -/
+word is nonnegative, so every executed root meets the exact model's numerical domain.
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem squareRoots_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {k : ℕ} {x : ℕ × ℕ} {v : ℝ} (hx : m.store.get x.1 x.2 = some v) (hv : 0 ≤ v) :
-    Writes .total I τ squareRoots.body (Env.frame [k] [x, x]) (Store.inBlock x.1 x.2 1)
+    Writes .total I τ squareRoots (Env.frame [k] [x, x]) (Store.inBlock x.1 x.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.get x.1 x.2 = some (Real.sqrt^[k] v)) m := by
   unfold squareRoots
   refine writes_loop rfl (fun _ => Store.inBlock x.1 x.2 1) (fun _ _ => le_rfl)
@@ -64,25 +63,27 @@ theorem squareRoots_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
   exact ⟨hp'.trans hp, by simpa only [he, Function.iterate_succ_apply'] using hSqrt⟩
 
 /-- Compute `sqrt^[m](2*B*sqrt P)*θ*α` with one caller-owned scratch word. -/
-def radiusWithScratch : Impl Op Tst := opsImpl% [m] (P, B, theta, alpha, T) → (R) {
+def radiusWithScratch : Stmt Op Tst := ops% [m] (P, B, theta, alpha, T) → (R) {
   call (Has.inj ScalarOp.sqrt) [] (P) → (R);
   call (Has.inj (ScalarOp.lit 2)) [] () → (T);
   call (Has.inj ScalarOp.mul) [] (T, B) → (T);
   call (Has.inj ScalarOp.mul) [] (T, R) → (R);
-  run squareRoots.body [m] (R, R);
+  run squareRoots [m] (R, R);
   call (Has.inj ScalarOp.mul) [] (R, theta) → (R);
   call (Has.inj ScalarOp.mul) [] (R, alpha) → (R)
 }
 
 /-- Scope one real scratch word around the exceptional-radius computation. -/
-def radius : Impl Op Tst := opsImpl% [m] (P, B, theta, alpha) → (R) {
+def radius : Stmt Op Tst := ops% [m] (P, B, theta, alpha) → (R) {
   let T ← alloc 1;
-  run radiusWithScratch.body [m] (P, B, theta, alpha, T, R)
+  run radiusWithScratch [m] (P, B, theta, alpha, T, R)
 }
 
 /-- Actual scalar radius calculation with one scratch word. The squared-product input and
 conditioning bound are nonnegative; all other operations are exact products. The scratch and
-result views are separated from each other and from the three still-needed input parameters. -/
+result views are separated from each other and from the three still-needed input parameters.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem radiusWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {k : ℕ} {p b theta alpha t r : ℕ × ℕ} {P B θ α : ℝ}
@@ -94,7 +95,7 @@ theorem radiusWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hsep : Fp.Disj (Store.inBlock t.1 t.2 1 ⊔ Store.inBlock r.1 r.2 1)
       (Store.inBlock b.1 b.2 1 ⊔ Store.inBlock theta.1 theta.2 1 ⊔
         Store.inBlock alpha.1 alpha.2 1)) :
-    Writes .total I τ radiusWithScratch.body (Env.frame [k] [p, b, theta, alpha, t, r])
+    Writes .total I τ radiusWithScratch (Env.frame [k] [p, b, theta, alpha, t, r])
       (Store.inBlock t.1 t.2 1 ⊔ Store.inBlock r.1 r.2 1)
       (fun m' => m'.pos = m.pos ∧
         m'.store.get r.1 r.2 = some (Real.sqrt^[k] (2 * B * Real.sqrt P) * θ * α)) m := by
@@ -150,7 +151,9 @@ theorem radiusWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     by simpa only [hmul] using hR₇⟩
 
 /-- The scoped exceptional-radius routine computes its exact real value and releases its
-single scratch word. The product input may alias the output because it is read first. -/
+single scratch word. The product input may alias the output because it is read first.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem radius_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {k : ℕ} {p b theta alpha r : ℕ × ℕ} {P B θ α : ℝ}
@@ -161,7 +164,7 @@ theorem radius_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hsep : Fp.Disj (Store.inBlock r.1 r.2 1)
       (Store.inBlock b.1 b.2 1 ⊔ Store.inBlock theta.1 theta.2 1 ⊔
         Store.inBlock alpha.1 alpha.2 1)) :
-    Writes .total I τ radius.body (Env.frame [k] [p, b, theta, alpha, r])
+    Writes .total I τ radius (Env.frame [k] [p, b, theta, alpha, r])
       (Store.inBlock r.1 r.2 1)
       (fun m' => m'.pos = m.pos ∧
         m'.store.get r.1 r.2 = some (Real.sqrt^[k] (2 * B * Real.sqrt P) * θ * α)) m := by

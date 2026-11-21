@@ -151,11 +151,13 @@ def branchOnPositive : Stmt CmpOp FlagTst :=
   .seq (.call (.cmp .isPos) [] [⟨0, .const 0⟩] [⟨0, .const 1⟩])
     (.ite .isSet [] [⟨0, .const 1⟩] .skip .abort)
 
--- A substituted comparison supplies the flag for the primitive test.
+-- A substituted comparison supplies the flag for the primitive test. The hypothesis is the
+-- contract of the comparison under the induced interpretation, however the table implements it
+-- (by a routine through `Routine.Meets.link`, or by a kept operation).
 example {K Lo : Type} {I : Interp Lo FlagTst K} {T : Table CmpOp Lo FlagTst}
-    {R : Impl Lo FlagTst} (hT : T (.cmp .isPos) = .inl R)
     {dec : K → ℝ} {readFlag : K → Bool}
-    (hcmp : R.Triple I .total ((cmpRel dec readFlag .isPos).spec AnyOperands))
+    (hcmp : (I.link T).Satisfies .total (.cmp .isPos)
+      ((cmpRel dec readFlag .isPos).spec AnyOperands))
     (hflag : IsFlagTest readFlag I) {τ : Tape K} {m : Mem K} {a : K}
     (hx : m.store.get 0 0 = some a) (hpos : 0 < dec a)
     (hl : m.Live [(0, 0), (0, 1)]) (hz : 1 < m.store.len 0) :
@@ -164,7 +166,7 @@ example {K Lo : Type} {I : Interp Lo FlagTst K} {T : Table CmpOp Lo FlagTst}
   have hrun : Wp .total (I.link T) τ branchOnPositive ⟨[], [0]⟩
       (fun m' => ∃ flag, m'.store.get 0 1 = some flag ∧ readFlag flag = true) m := by
     unfold branchOnPositive
-    refine wp_seq (wp_call_rel_cell (Interp.link_meets hT hcmp) rfl rfl rfl rfl rfl rfl trivial
+    refine wp_seq (wp_call_rel_cell hcmp rfl rfl rfl rfl rfl rfl trivial
       hl (BlockFn.readBlocks_cells_one.mpr ⟨a, hx, rfl⟩) trivial hz ?_)
     intro flag hf
     have hread : ((m.upd (0, 1) flag).advance 0).store.get 0 1 = some flag :=

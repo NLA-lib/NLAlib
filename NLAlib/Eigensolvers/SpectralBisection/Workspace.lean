@@ -44,7 +44,7 @@ theorem sum_arenaLengths (n L : ℕ) :
 /-- Deflation holds four square pair matrices simultaneously. Scalar scaling, multiplication,
 QR and the final copy allocate no additional stored cells inside this statement tree. -/
 theorem stmtPeak_deflate_zero (n k r lo side : ℕ) (offs : List ℕ) :
-    stmtPeak (fun (_ : Op) _ => 0) (deflate (Tst := Tst)).body
+    stmtPeak (fun (_ : Op) _ => 0) (deflate (Tst := Tst))
       ([n, k, r, lo, side] ++ offs) = 8 * (k * k) := by
   simp only [deflate, stmtPeak_alloc]
   rw [stmtPeak_zero_of_allocationFree (by rfl)]
@@ -54,7 +54,7 @@ theorem stmtPeak_deflate_zero (n k r lo side : ℕ) (offs : List ℕ) :
 /-- Compression holds two rectangular and two square pair matrices simultaneously. This
 counts the actual allocation syntax and excludes primitive multiplication workspace. -/
 theorem stmtPeak_compress_zero (k r : ℕ) (offs : List ℕ) :
-    stmtPeak (fun (_ : Op) _ => 0) (compress (Tst := Tst)).body
+    stmtPeak (fun (_ : Op) _ => 0) (compress (Tst := Tst))
       ([k, r] ++ offs) = 4 * (k * r) + 4 * (r * r) := by
   simp only [compress, stmtPeak_alloc]
   rw [stmtPeak_zero_of_allocationFree (by rfl)]
@@ -64,7 +64,7 @@ theorem stmtPeak_compress_zero (k r : ℕ) (offs : List ℕ) :
 /-- A compression to at most the input dimension needs no more stored scratch than the
 four square matrices reserved by deflation. This includes zero-size children. -/
 theorem stmtPeak_compress_zero_le (k r : ℕ) (offs : List ℕ) (hr : r ≤ k) :
-    stmtPeak (fun (_ : Op) _ => 0) (compress (Tst := Tst)).body
+    stmtPeak (fun (_ : Op) _ => 0) (compress (Tst := Tst))
       ([k, r] ++ offs) ≤ 8 * (k * k) := by
   rw [stmtPeak_compress_zero]
   have hkr := Nat.mul_le_mul_left k hr
@@ -76,7 +76,7 @@ omit [Has MatrixOp Op] in
 stopping loop nor its cap changes this allocation peak. Primitive workspace is excluded. -/
 theorem stmtPeak_sign_zero [Has IndexOp Op] [Has CmpTst Tst]
     (mm : Op) (n cap : ℕ) (offs : List ℕ) :
-    stmtPeak (fun (_ : Op) _ => 0) (Sign.program (Tst := Tst) mm).body
+    stmtPeak (fun (_ : Op) _ => 0) (Sign.program (Tst := Tst) mm)
       ([n, cap] ++ offs) = 4 * (n * n) + 5 := by
   simp only [Sign.program, stmtPeak_alloc]
   rw [stmtPeak_zero_of_allocationFree (by rfl)]

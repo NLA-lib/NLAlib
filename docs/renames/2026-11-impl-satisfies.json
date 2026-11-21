@@ -1,0 +1,217 @@
+{
+ "date": "2026-11-20",
+ "note": "An implementation of an operation (NLAlib.Ops.Impl, the entry of a linking table) satisfies the contract of that operation: Impl.Triple is renamed Impl.Satisfies, parallel to Interp.Satisfies, and every declaration named for that statement follows (triple -> satisfies in the same position; *_spec corollaries that state it are renamed *_satisfies). No statement changed; no compatibility aliases (before v0.1).",
+ "renames": [
+  {
+   "old": "NLAlib.Ops.Examples.Routines.sum_triple",
+   "new": "NLAlib.Ops.Examples.Routines.sum_satisfies",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.bilinear_spec",
+   "new": "NLAlib.Ops.Examples.bilinear_satisfies",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.cgs_spec",
+   "new": "NLAlib.Ops.Examples.cgs_satisfies",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.gemm_spec",
+   "new": "NLAlib.Ops.Examples.gemm_satisfies",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.hutch_spec",
+   "new": "NLAlib.Ops.Examples.hutch_satisfies",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.mgs_spec",
+   "new": "NLAlib.Ops.Examples.mgs_satisfies",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.nmvImpl_spec",
+   "new": "NLAlib.Ops.Examples.nmvImpl_satisfies",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.npow_spec",
+   "new": "NLAlib.Ops.Examples.npow_satisfies",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.splitImpl_spec",
+   "new": "NLAlib.Ops.Examples.splitImpl_satisfies",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.sumSeq_spec_at",
+   "new": "NLAlib.Ops.Examples.sumSeq_satisfies_at",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Impl.Triple",
+   "new": "NLAlib.Ops.Impl.Satisfies",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Impl.Triple.runs",
+   "new": "NLAlib.Ops.Impl.Satisfies.runs",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Impl.Triple.runsL",
+   "new": "NLAlib.Ops.Impl.Satisfies.runsL",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Impl.Triple.runsLaw",
+   "new": "NLAlib.Ops.Impl.Satisfies.runsLaw",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Impl.Triple.runs_rel",
+   "new": "NLAlib.Ops.Impl.Satisfies.runs_rel",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Impl.Triple.writes",
+   "new": "NLAlib.Ops.Impl.Satisfies.writes",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Impl.Triple.writes_blocks",
+   "new": "NLAlib.Ops.Impl.Satisfies.writes_blocks",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Impl.triple_fn_of_run",
+   "new": "NLAlib.Ops.Impl.satisfies_fn_of_run",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Impl.triple_liberal_abort",
+   "new": "NLAlib.Ops.Impl.satisfies_liberal_abort",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Impl.triple_of_writes",
+   "new": "NLAlib.Ops.Impl.satisfies_of_writes",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Impl.triple_rel",
+   "new": "NLAlib.Ops.Impl.satisfies_rel",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.RCLikeScalar.triple_axpy",
+   "new": "NLAlib.Ops.RCLikeScalar.satisfies_axpy",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.RCLikeScalar.triple_copy",
+   "new": "NLAlib.Ops.RCLikeScalar.satisfies_copy",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.RCLikeScalar.triple_dot",
+   "new": "NLAlib.Ops.RCLikeScalar.satisfies_dot",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.RCLikeScalar.triple_nrm2",
+   "new": "NLAlib.Ops.RCLikeScalar.satisfies_nrm2",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.RCLikeScalar.triple_scal",
+   "new": "NLAlib.Ops.RCLikeScalar.satisfies_scal",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.RCLikeScalar.triple_sum",
+   "new": "NLAlib.Ops.RCLikeScalar.satisfies_sum",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.RCLikeScalar.triple_table",
+   "new": "NLAlib.Ops.RCLikeScalar.satisfies_table",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Rand.gaussLoopImpl_spec",
+   "new": "NLAlib.Ops.Rand.gaussLoopRoutine_satisfies",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.RealStar.triple_impl",
+   "new": "NLAlib.Ops.RealStar.satisfies_impl",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Routine.Meets.triple",
+   "new": "NLAlib.Ops.Routine.Meets.satisfies",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Routine.Meets.triple_ofRel",
+   "new": "NLAlib.Ops.Routine.Meets.satisfies_ofRel",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.StoredCOO.triple_matvec",
+   "new": "NLAlib.Ops.StoredCOO.satisfies_matvec",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.StoredDense.triple_impl",
+   "new": "NLAlib.Ops.StoredDense.satisfies_impl",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.axpyLoop_spec",
+   "new": "NLAlib.Ops.axpyLoop_satisfies",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.copyLoop_spec",
+   "new": "NLAlib.Ops.copyLoop_satisfies",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.dotSum_spec",
+   "new": "NLAlib.Ops.dotSum_satisfies",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.nrm2Sum_spec",
+   "new": "NLAlib.Ops.nrm2Sum_satisfies",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.scalLoop_spec",
+   "new": "NLAlib.Ops.scalLoop_satisfies",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.sumPairwise_spec",
+   "new": "NLAlib.Ops.sumPairwise_satisfies",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.sumSeq_spec",
+   "new": "NLAlib.Ops.sumSeq_satisfies",
+   "rule": "N12; states Impl.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Rand.gaussLoopImpl",
+   "new": "NLAlib.Ops.Rand.gaussLoopTree",
+   "rule": "N12; the tree is a Stmt, the implementation is gaussLoopRoutine.impl"
+  }
+ ],
+ "statementChanged": []
+}

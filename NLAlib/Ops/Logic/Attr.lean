@@ -17,9 +17,12 @@ public import Mathlib.Tactic.Basic
 * `decodeNF`: stored blocks to the vectors and matrices of layer 1 (`vec` of a slice). Used by
   `decode`.
 
+* `routineNF`: the operands, lengths and layout of a routine at a call with named operands, to
+  list literals. Used by `routine_nf`, `routine_intro` and `call`.
+
 ## Main results
 
-The three simp attributes above.
+The four simp attributes above.
 -/
 
 @[expose] public section
@@ -32,3 +35,6 @@ register_simp_attr idxNF
 
 /-- Stored blocks to vectors and matrices, for `decode`. -/
 register_simp_attr decodeNF
+
+/-- The interface of a routine at named operands to list literals, for `routine_nf`. -/
+register_simp_attr routineNF

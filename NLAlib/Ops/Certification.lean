@@ -111,6 +111,18 @@ theorem original_stmtCost_tally (ks : List Bookkeeping) (idx : List ℕ) :
   | nil => simp [tally, stmtCost]
   | cons k ks ih => simp [tally, stmtCost, original_useCost_inr, ih]
 
+/-- Structural instructions weigh one each, so the bookkeeping list of a tree weighs its
+length. -/
+theorem lift_stmtCost_tally (f : Op → List ℕ → ℕ) (g : Tst → List ℕ → ℕ)
+    (ks : List Bookkeeping) (idx : List ℕ) :
+    Count.lift (Sum.elim (Sum.elim f fun _ _ => 1) g)
+      (stmtCost (tally (Op := Op) (Tst := Tst) ks) idx) = ks.length := by
+  induction ks with
+  | nil => simp [tally, stmtCost]
+  | cons k ks ih =>
+    simp [tally, stmtCost, useCost, ih, IExp.evalList]
+    omega
+
 /-- Structural instrumentation preserves the original operation/query static count exactly.
 The unprojected static count still contains all structural and address-evaluation work. -/
 theorem original_stmtCost_instrument (s : Stmt Op Tst) (idx : List ℕ) :
@@ -138,6 +150,7 @@ theorem original_stmtCost_instrument (s : Stmt Op Tst) (idx : List ℕ) :
   | frame ds args body ih =>
     simp only [Stmt.instrument, stmtCost, map_add, original_stmtCost_tally, zero_add]
     cases IExp.evalList idx ds <;> cases IExp.evalList idx (args.map Operand.off) <;> simp [ih]
+  | note _ _ ih => exact ih ..
 
 private def ProjectsOriginal (a : St (Op ⊕ Bookkeeping) Tst K) (b : St Op Tst K) : Prop :=
   a.mem = b.mem ∧ Count.original a.cost = b.cost
@@ -346,6 +359,7 @@ private theorem projectsOriginal_instrument {I : Interp Op Tst K}
     obtain ⟨b', hb', hp⟩ := ih _ _ _ _ h hab
     exact ⟨b', by simp only [evalCounted, hd, hxs, Option.bind_some, ← hab.1,
       if_pos hl, hb'], hp⟩
+  | note _ _ ih => intro ρ a a' b h hab; exact ih ρ a a' b h hab
 
 /-- Projecting an actual instrumented run recovers exactly the source run's memory and
 original operation/query counts. Structural counts remain present in the canonical run.

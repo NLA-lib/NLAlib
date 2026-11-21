@@ -54,9 +54,9 @@ def HalfVectorState {n : ℕ} (v f : ℕ × ℕ) (H : Matrix (Fin n) (Fin n) ℂ
 variable {Op Tst : Type} [Has ScalarOp Op] [Has CmpTst Tst]
 
 /-- Solve at the selected actual stored shift only while the singularity flag is clear. -/
-def halfSolveCandidate : Impl Op Tst := opsImpl% [n, k, a, i] (H, SS, V, Flag) → (V, Flag) {
+def halfSolveCandidate : Stmt Op Tst := ops% [n, k, a, i] (H, SS, V, Flag) → (V, Flag) {
   if (Has.inj CmpTst.isZero) [] (Flag) {
-    run shiftedRowSolve.body [n] (H, SS[2 * (a + i)], V, V, Flag)
+    run shiftedRowSolve [n] (H, SS[2 * (a + i)], V, V, Flag)
   } else {
     skip
   }
@@ -66,7 +66,7 @@ def halfSolveCandidate : Impl Op Tst := opsImpl% [n, k, a, i] (H, SS, V, Flag) �
 theorem halfSolveCandidate_singular {I : Interp Op Tst ℝ} (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k a i : ℕ} {b ss v f : ℕ × ℕ}
     (hf : m.store.get f.1 f.2 = some 1) :
-    Writes .total I τ halfSolveCandidate.body (Env.frame [n, k, a, i] [b, ss, v, f, v, f]) ⊥
+    Writes .total I τ halfSolveCandidate (Env.frame [n, k, a, i] [b, ss, v, f, v, f]) ⊥
       (fun m' => m' = m) m := by
   have ht := hCmp.test_isZero (d := []) (m := m) (x := f) hf
   simp only [id_eq, one_ne_zero, decide_false] at ht
@@ -82,7 +82,7 @@ theorem halfSolveCandidate_clear {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hSS : HoldsShifts (k := k) ss shifts m.store) (hV : HoldsVector v w m.store)
     (hi : a + i < k) (hSep : HalfSolveSeparate (n + 1) k b ss v f)
     (hf0 : m.store.get f.1 f.2 = some 0) (hf : f.2 + 1 ≤ m.store.len f.1) :
-    Writes .total I τ halfSolveCandidate.body
+    Writes .total I τ halfSolveCandidate
       (Env.frame [n + 1, k, a, i] [b, ss, v, f, v, f])
       (Store.inBlock v.1 v.2 (2 * (n + 1)) ⊔ Store.inBlock f.1 f.2 1)
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix b H m'.store ∧

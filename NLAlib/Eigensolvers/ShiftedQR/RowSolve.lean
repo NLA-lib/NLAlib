@@ -32,26 +32,28 @@ variable {Op Tst : Type} [Has ScalarOp Op] [Has CmpTst Tst]
 
 /-- Solve an upper Hessenberg row system using scoped scalar workspace and a singularity flag.
 Algorithm: shifted-qr (run model) -/
-def rowSolve : Impl Op Tst := opsImpl% [n] (D, V) → (V, Flag) {
+def rowSolve : Stmt Op Tst := ops% [n] (D, V) → (V, Flag) {
   let R ← alloc (2 * (n * n));
   let Cf ← alloc (4 * n);
   let Acc ← alloc 2;
   let T ← alloc 10;
-  run (unaryMap (Has.inj ScalarOp.copy)).body [2 * (n * n)] (D, R);
-  run rowSolveCore.body [n] (R, V, Cf, Acc, T, Flag, V, Flag)
+  run (unaryMap (Has.inj ScalarOp.copy)) [2 * (n * n)] (D, R);
+  run rowSolveCore [n] (R, V, Cf, Acc, T, Flag, V, Flag)
 }
 
 /-- The actual scalar solver is total on every upper Hessenberg matrix. Its report is one
 only with a proof that the matrix is singular; otherwise the vector is the exact inverse row.
 The vector and report use separate buffers, and the supplied report has one writable word.
-[GolubVanLoan2013, §5.2.5]. -/
+[GolubVanLoan2013, §5.2.5].
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem rowSolve_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {d v f : ℕ × ℕ}
     {D : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {w : Fin (n + 1) → ℂ}
     (hD : IsUpperHessenberg D) (hH : HoldsMatrix d D m.store) (hV : HoldsVector v w m.store)
     (hfv : f.1 ≠ v.1) (hf : f.2 + 1 ≤ m.store.len f.1) :
-    Writes .total I τ rowSolve.body (Env.frame [n + 1] [d, v, v, f])
+    Writes .total I τ rowSolve (Env.frame [n + 1] [d, v, v, f])
       (Store.inBlock v.1 v.2 (2 * (n + 1)) ⊔ Store.inBlock f.1 f.2 1)
       (fun m' => m'.pos = m.pos ∧ RowSolveResult v f D w m'.store) m := by
   have hdl := Store.lt_length_of_get (hH.get_re (0 : Fin (n + 1)) 0)

@@ -55,7 +55,7 @@ def BackwardStep md I τ c ρ F (R : ℝ → α → α → Prop) (S S' : α → 
 `S`/`S'` say which state the memory holds, together with everything a step needs and keeps
 (parameter words, live and separated views, a Hessenberg form, a position). A backward step is an
 ordinary `Writes` statement, so it is used by every existing rule (`Writes.seq`, `in_frame`,
-`Impl.meets_of_writes`, `Algorithm.ofWp`, `mapPost`), and implementations are still substituted
+`Impl.satisfies_of_writes`, `Algorithm.ofWp`, `mapPost`), and implementations are still substituted
 under fixed contracts by `Profile.Refines.runs`/`Algorithm.link`. Nothing in `Contract`,
 `Profile`, `Cert` is forked.
 

@@ -31,6 +31,7 @@ costs are separate implementation obligations.
 
 namespace NLAlib.Computation
 
+-- The reduction of the binary64 bit operations exceeds the default recursion depth.
 set_option maxRecDepth 8192 in
 /-- Squaring the smallest positive binary64 subnormal gives positive zero under the
 logical native multiplication. The identity is checked by reduction of the bit operations. -/

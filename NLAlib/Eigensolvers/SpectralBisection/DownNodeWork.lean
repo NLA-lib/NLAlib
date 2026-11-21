@@ -33,7 +33,7 @@ local notation "qz" => (fun (_ : CmpTst ⊕ IdxTst) (_ : List ℕ) => 0)
 /-- The large-node branch either terminates without matrix kernels or executes one node. -/
 theorem downLarge_matrixWork_le (n L cap d lo k : ℕ) (offs : List ℕ) :
     stmtWeightedCost mw qz
-      (downLargeImpl (node (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst))).body
+      (downLarge (node (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)))
       ([n, L, cap, d, lo, k] ++ offs) ≤ (2 * cap + 9) * T k := by
   calc
     _ ≤ 0 + (0 + max 0 ((2 * cap + 9) * T k)) := by
@@ -51,7 +51,7 @@ theorem downLarge_matrixWork_le (n L cap d lo k : ℕ) (offs : List ℕ) :
 matrix free, and the zero-or-one-trip guard does not multiply this bound by the node size. -/
 theorem downNode_matrixWork_le (n L cap d lo k : ℕ) (offs : List ℕ) :
     stmtWeightedCost mw qz
-      (downNodeImpl (node (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst))).body
+      (downNode (node (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)))
       ([n, L, cap, d, lo, k] ++ offs) ≤ (2 * cap + 9) * T k := by
   calc
     _ ≤ 0 + (2 * cap + 9) * T k := by

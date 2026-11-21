@@ -31,7 +31,9 @@ open scoped Matrix
 variable {Op Tst : Type} [Has ScalarOp Op] [Has CmpTst Tst]
 
 /-- The initialized scalar sweep computes the existing Givens state and conjugates the output
-by its accumulated unitary factor. This covers zero-size sweeps and zero coefficient pairs. -/
+by its accumulated unitary factor. This covers zero-size sweeps and zero coefficient pairs.
+Shared by the trees of `NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem sweep_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {w z cf : ℕ × ℕ}
@@ -45,7 +47,7 @@ theorem sweep_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hzc : Fp.Disj (Store.inBlock z.1 z.2 (2 * (n * n)))
       (Store.inBlock cf.1 cf.2 4))
     (hl : m.Live [w, z, cf, w, z]) :
-    Writes .total I τ sweep.body (Env.frame [n] [w, z, cf, w, z])
+    Writes .total I τ sweep (Env.frame [n] [w, z, cf, w, z])
       (Store.inBlock w.1 w.2 (2 * (n * n)) ⊔
         Store.inBlock z.1 z.2 (2 * (n * n)) ⊔ Store.inBlock cf.1 cf.2 4)
       (fun m' => m'.pos = m.pos ∧

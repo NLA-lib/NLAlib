@@ -32,7 +32,10 @@ variable {Op Tst : Type} [Has ScalarOp Op] [Has Blas1Op Op] [Has OperatorOp Op]
 variable [Has CmpTst Tst]
 
 /-- Save residual column `i`, execute the full sweep round, and refresh the guard norm.
-The surrounding solver supplies the history and guard buffers at indices 5 and 6. -/
+The surrounding solver supplies the history and guard buffers at indices 5 and 6. Written
+directly rather than with the builder: it is the body of the solver's loop, on the loop index
+and the buffers the solver allocates, and the builder's `run` would give it a frame of its
+own. -/
 def advance : Stmt Op Tst :=
   .seq (.call (Has.inj Blas1Op.copy) [.var 0] [⟨3, .var 5⟩]
     [⟨5, .var 7 * .var 0⟩])
@@ -41,11 +44,14 @@ def advance : Stmt Op Tst :=
         ⟨1, .var 3⟩, ⟨3, .var 5⟩, ⟨4, .var 6⟩] round)
       (.call (Has.inj Blas1Op.dot) [.var 0] [⟨3, .var 5⟩, ⟨3, .var 5⟩] [⟨6, .const 0⟩]))
 
-/-- Stop at a zero residual self-product or at the cap; the cap itself performs no test. -/
+/-- Stop at a zero residual self-product or at the cap; the cap itself performs no test. Written
+directly, like `advance`, because it runs on the solver's variables with no frame. -/
 def rounds : Stmt Op Tst :=
   .whileFuel (.var 1) (Has.inj CmpTst.isPos) [] [⟨6, .const 0⟩] advance .skip
 
-/-- Initialize the state, then run capped full-reorthogonalized CG with scoped history. -/
+/-- Initialize the state, then run capped full-reorthogonalized CG with scoped history. Written
+directly because its loop, `rounds`, runs on this tree's variables without a frame, which the
+builder does not express. -/
 def solve : Stmt Op Tst :=
   .alloc (.var 1 * .var 0) (.alloc (.const 1)
     (.seq (.frame [.var 0]
@@ -53,9 +59,6 @@ def solve : Stmt Op Tst :=
       HSCG.initializeState)
       (.seq (.call (Has.inj Blas1Op.dot) [.var 0]
         [⟨3, .var 5⟩, ⟨3, .var 5⟩] [⟨6, .const 0⟩]) rounds)))
-
-/-- Inputs are the right-hand side and initial iterate; outputs are the three CG state blocks. -/
-def solveImpl : Impl Op Tst := ⟨2, 2, 3, solve⟩
 
 /-- The cost of one basis projection, independent of the round index. -/
 noncomputable def projectionCount (n : ℕ) : Count Op Tst :=

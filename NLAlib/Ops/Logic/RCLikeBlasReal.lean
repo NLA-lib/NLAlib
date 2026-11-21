@@ -149,9 +149,9 @@ private theorem values_real (o : Blas1Op) (d : List ℕ) (w : List ℝ) (xs : Li
 
 variable {Op Tst : Type} [Has Blas1Op Op] {I : Interp Op Tst ℝ}
 
-private theorem meets_real (hI : IsExact I) (o : Blas1Op) :
-    I.Meets .total (Has.inj o) ((realRelation o).spec (realAdmission o)) := by
-  refine (hI o).meets_rel_of_pre ?_ (by cases o <;> rfl) (by cases o <;> rfl)
+private theorem satisfies_real (hI : IsExact I) (o : Blas1Op) :
+    I.Satisfies .total (Has.inj o) ((realRelation o).spec (realAdmission o)) := by
+  refine (hI o).satisfies_rel_of_pre ?_ (by cases o <;> rfl) (by cases o <;> rfl)
     (fun _ => by cases o <;> rfl) (fun _ => by cases o <;> rfl)
     (fun _ => by cases o <;> rfl) ?_
   · intro d ins outs m xs ha hr hz
@@ -167,7 +167,7 @@ private theorem meets_real (hI : IsExact I) (o : Blas1Op) :
 contracts. Reductions use separate output buffers; maps use their declared in-place operands.
 Input reads and output capacity provide the required operand shapes, including empty vectors. -/
 theorem IsExact.toExactBlas1 (hI : IsExact I) : IsExactBlas1 id (fun _ => True) I :=
-  ⟨meets_real hI .sum, meets_real hI .dot, meets_real hI .axpy,
-    meets_real hI .nrm2, meets_real hI .scal, meets_real hI .copy⟩
+  ⟨satisfies_real hI .sum, satisfies_real hI .dot, satisfies_real hI .axpy,
+    satisfies_real hI .nrm2, satisfies_real hI .scal, satisfies_real hI .copy⟩
 
 end NLAlib.Ops.RCLikeBlas

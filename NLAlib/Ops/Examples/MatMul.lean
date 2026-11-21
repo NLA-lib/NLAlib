@@ -18,10 +18,10 @@ The contract of `mm` is functional: the result is `f` of the two input blocks, f
 
 * Abstract theorem (`NLAlib.Ops.Examples.runs_sq2`): squaring a matrix twice, for every `f`:
   two calls at `[n, n, n]`, and the memory is given by `f`. Each call is one equation.
-* Exact certificate (`NLAlib.Ops.Examples.mm_cert`): the run of the triple loop
+* Exact satisfaction (`NLAlib.Ops.Examples.mm_satisfies`): the run of the triple loop
   `NLAlib.Ops.Examples.mmImpl` is the block function of `NLAlib.Ops.Examples.mmF`, the triple
   loop written as a function on lists through a machine. It reuses the accumulation loop of the
-  dot product (`NLAlib.Ops.Examples.wp_dotLoop`) for each entry.
+  dot product (`NLAlib.Ops.Examples.dotLoop_wp`) for each entry.
 * Mathematics (`NLAlib.Ops.Examples.abs_dec_mmF_sub_le`): each entry of `mmF` is a rounded dot
   product.
 * Corollary (`NLAlib.Ops.Examples.runs_sq2_link`): the linked program computes `mmF`, within
@@ -87,7 +87,7 @@ def sq2 : Stmt MOp Empty :=
     (.call .mm [.var 0, .var 0, .var 0] [⟨1, .var 2⟩, ⟨1, .var 2⟩] [⟨2, .var 3⟩])
 
 omit [Inhabited K] in
-/-- **The abstract theorem of `sq2`**, for every `f` and every interpretation meeting the
+/-- **The abstract theorem of `sq2`**, for every `f` and every interpretation satisfying the
 functional contract: two calls of `mm` at `[n, n, n]`, the workspace of one, and the memory is
 given by `f`. -/
 theorem runs_sq2 {f : ℕ → ℕ → ℕ → List K → List K → List K} {I : Interp MOp Empty K}
@@ -146,7 +146,9 @@ theorem length_mmPrefix (M : Machine K) (b c : ℕ) (As Bs : List K) (N : ℕ) :
     (mmPrefix M b c As Bs N).length = N := by simp [mmPrefix]
 
 /-- **The implementation of `mm`**: a scratch cell, and for each entry the accumulation loop.
-Index variables: `a`, `b`, `c`, the offsets of `A`, `B`, `C`, then `i`, `j`, `k`. -/
+Index variables: `a`, `b`, `c`, the offsets of `A`, `B`, `C`, then `i`, `j`, `k`. This example
+writes the table entry directly and proves its contract by computing its run as the block
+function of `mm`, the linking layer on which routine judgments are built. -/
 def mmImpl : Impl ScalarOp Empty where
   nd := 3
   nin := 2
@@ -156,7 +158,7 @@ def mmImpl : Impl ScalarOp Empty where
       ⟨2, .var 5 + .var 6 * .var 2 + .var 7⟩ ⟨3, .const 0⟩)))
 
 /-- One entry: the accumulation loop appends entry `i c + j` to the block written so far. -/
-theorem wp_mm_entry {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I) {md : Mode}
+theorem mm_wp_entry {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I) {md : Mode}
     {τ : Tape K}
     {a b c i j : ℕ} (hi : i < a) (hj : j < c) {A B C : ℕ × ℕ} {s : Store K} {p : ℕ}
     {As Bs : List K} {tb : Buf K} (hAC : A.1 ≠ C.1) (hBC : B.1 ≠ C.1)
@@ -176,7 +178,7 @@ theorem wp_mm_entry {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith 
     rw [Nat.add_comm, Nat.add_mul_div_right _ _ (by omega), Nat.div_eq_of_lt hj, Nat.zero_add]
   have hmod : (i * c + j) % c = j := by
     rw [Nat.add_comm, Nat.add_mul_mod_self_right, Nat.mod_eq_of_lt hj]
-  refine wp_dotLoop hI (s := s.updBlock C.1 C.2 (mmPrefix M b c As Bs (i * c + j)))
+  refine dotLoop_wp hI (s := s.updBlock C.1 C.2 (mmPrefix M b c As Bs (i * c + j)))
     (bz := C.1) (oz := C.2 + i * c + j) (fx := fun k => A.2 + i * b + k)
     (fy := fun k => B.2 + k * c + j) (a := fun k => vec As (i * b + k))
     (b := fun k => vec Bs (k * c + j)) rfl rfl (fun _ => rfl) (fun _ => rfl) (fun _ => rfl)
@@ -200,9 +202,9 @@ theorem wp_mm_entry {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith 
     rwa [mmPrefix_succ, Store.updBlock_concat, length_mmPrefix, mmEntry, hdiv, hmod,
       ← add_assoc] at this
 
-/-- **The exact certificate of the triple loop**: where the block function of `mmF` succeeds on
+/-- Exact satisfaction by the triple loop: where the block function of `mmF` succeeds on
 inputs in other buffers than the output, the run of `mmImpl` is that block function. -/
-theorem mm_cert {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I) {d : List ℕ}
+theorem mm_satisfies {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I) {d : List ℕ}
     {ins outs : List (ℕ × ℕ)} {τ : Tape K} {m m' : Mem K} (hadm : DisjointBufs d ins outs)
     (h : (mmFn (mmF M)).apply d ins outs τ m = some m') :
     mmImpl.Fits d.length ins.length outs.length ∧
@@ -219,7 +221,7 @@ theorem mm_cert {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I)
       m' = ⟨s.updBlock z.1 z.2 (mmPrefix M b c As Bs (i * c + j)) ++ [tb], p⟩) ⟨tb, htb, rfl⟩ ?_
       (fun m' ⟨tb', h1, h2⟩ => ⟨tb', h1, by rw [h2, Nat.succ_mul]⟩)
     rintro j hj m' ⟨tb, htb, rfl⟩
-    exact wp_mm_entry hI hi hj (hadm A (by simp) z (by simp)) (hadm B (by simp) z (by simp)) hA
+    exact mm_wp_entry hI hi hj (hadm A (by simp) z (by simp)) (hadm B (by simp) z (by simp)) hA
       hB hC htb
       fun tb' h => ⟨tb', h, rfl⟩
   · rintro m' ⟨tb, _, rfl⟩
@@ -261,7 +263,7 @@ noncomputable def mmCost : MOp → List ℕ → Count ScalarOp Empty
   | .mm, _ => 0
 
 omit [Inhabited K] in
-/-- The accounting certificate of the triple loop, by evaluating its static cost. -/
+/-- The static count of the triple loop, by evaluating its static cost. -/
 theorem mm_accounts (I : Interp ScalarOp Empty K) :
     mmTable.Accounts I (fun _ _ => 0) mmCost (fun _ _ => 1) := by
   refine Table.accounts_of_static ?_ (fun o o' hT => by cases o; cases hT) I
@@ -272,10 +274,10 @@ theorem mm_accounts (I : Interp ScalarOp Empty K) :
   obtain ⟨x, y, z, rfl⟩ := List.length_eq_three.mp ho
   simp [mmImpl, dotLoop, stmtCost, stmtPeak, useCost, mmCost, mul_smul]
 
-/-- The induced interpretation meets the functional contract of `mm` with `f = mmF M`. -/
+/-- The induced interpretation satisfies the functional contract of `mm` with `f = mmF M`. -/
 theorem isMM_link {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I) :
     IsMM (mmF M) (I.link mmTable) where
-  isFn := Interp.link_isFn rfl fun _ _ _ _ _ _ hadm h => mm_cert hI hadm h
+  isFn := Interp.link_isFn rfl fun _ _ _ _ _ _ hadm h => mm_satisfies hI hadm h
   length a b c As Bs := length_mmPrefix M b c As Bs (a * c)
 
 /-- **The concrete corollary**: `sq2` linked with the triple loop computes the rounded products

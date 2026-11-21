@@ -11,14 +11,14 @@ public import NLAlib.Krylov.CG.Math.Recurrence
 /-!
 # Composition of exact conjugate-gradient rounds
 
-The loop invokes the certified round through its block interface. Its invariant states that
-the buffers hold the iterated mathematical CG state. Nonbreakdown is required only at the
-rounds that the loop executes.
+Each round of the loop is a call of the routine of one round, used by its judgment. The
+invariant states that the buffers hold the iterated mathematical CG state. Nonbreakdown is
+required only at the rounds that the loop executes.
 
 ## Main results
 
-* `NLAlib.Krylov.CG.HSCG.roundsRel` specifies a block of active rounds.
-* `NLAlib.Krylov.CG.HSCG.rounds_spec` certifies their composition.
+* `NLAlib.Krylov.CG.HSCG.roundsSpec` specifies a block of active rounds.
+* `NLAlib.Krylov.CG.HSCG.roundsRoutine_meets` certifies their composition.
 -/
 
 @[expose] public section
@@ -30,90 +30,40 @@ open Ops
 variable {K Op Tst : Type} [Inhabited K]
 variable [Has ScalarOp Op] [Has Blas1Op Op] [Has OperatorOp Op]
 
-/-- The round loop updates the same three state buffers at the dimension of the matrix. -/
-@[admNF] def RoundsOperands (n : ℕ) :
-    List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop :=
-  fun d ins outs => StepOperands n [d.headD 0] ins outs
+/-- At the dimension of the matrix, a state whose first `k` iterates do not break down is
+advanced by `k` rounds. -/
+noncomputable def roundsSpec (dec : K → ℝ) {n : ℕ} (A : Matrix (Fin n) (Fin n) ℝ) :
+    Routine.Spec K :=
+  spec% [m, k] (xs, rs, ps) → (xs', rs', ps')
+    requires m = n ∧ ∀ j < k, Nonbreakdown A ((cgStep A)^[j] (decodedState dec n xs rs ps))
+    ensures decodedState dec n xs' rs' ps' = (cgStep A)^[k] (decodedState dec n xs rs ps)
 
-/-- The result is the iterated mathematical CG state, on a nonbreaking prefix. -/
-@[simps (attr := storeNF)]
-noncomputable def roundsRel (dec : K → ℝ) {n : ℕ} (A : Matrix (Fin n) (Fin n) ℝ) :
-    BlockRel K where
-  nd := 2
-  inLens d := [d.headD 0, d.headD 0, d.headD 0]
-  outLens d := [d.headD 0, d.headD 0, d.headD 0]
-  dom d X _ := match X with
-    | [xs, rs, ps] => ∀ j < d.getD 1 0,
-        Nonbreakdown A ((cgStep A)^[j] (decodedState dec n xs rs ps))
-    | _ => False
-  rel d X _ Y := match X, Y with
-    | [xs, rs, ps], [xs', rs', ps'] =>
-        decodedState dec n xs' rs' ps' = (cgStep A)^[d.getD 1 0] (decodedState dec n xs rs ps)
-    | _, _ => False
-
-/-- The round loop advances an already stored state by the requested nonbreaking prefix. -/
-theorem rounds_writes {M : Machine K} {dec : K → ℝ} {n : ℕ}
-    {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K}
-    (hS : IsScalar M I) (hM : ExactModel dec M)
-    (hB : IsExactBlas1 dec (fun _ => True) I) (hA : IsExactMatvec dec A I)
-    {τ : Tape K} {μ : Mem K} {k : ℕ} {x r p : ℕ × ℕ} {s : CGState ℝ (Fin n)}
-    (hxr : x.1 ≠ r.1) (hxp : x.1 ≠ p.1) (hrp : r.1 ≠ p.1)
-    (hl : μ.Live [x, r, p]) (hstate : StoresState dec n x r p s μ)
-    (hdom : ∀ j < k, Nonbreakdown A ((cgStep A)^[j] s))
-    (hz : μ.Room [x, r, p] [n, n, n]) :
-    Writes .total I τ rounds (Env.frame [n, k] [x, r, p, x, r, p])
-      (Fp.blocks [x, r, p] [n, n, n])
-      (fun μ' => μ'.pos = μ.pos ∧ StoresState dec n x r p ((cgStep A)^[k] s) μ') μ := by
-  refine writes_loop_frame_iterate (F := Fp.blocks [x, r, p] [n, n, n])
-    (StoresState dec n x r p) (cgStep A) (Nonbreakdown A) rfl rfl rfl
-    ((μ.live_append _ _).mpr ⟨hl, hl⟩) hstate hdom ?_
-  intro s' μ' hfr _ hs hnb
-  exact step_writes hS hM hB hA hxr hxp hrp (hl.congr hfr.length_eq) hs hnb
-    (hz.congr hfr.len_eq)
-
-/-- Certified rounds compose into a certified loop without unfolding the round program. -/
-theorem rounds_spec {M : Machine K} {dec : K → ℝ} {n : ℕ}
+/-- The round loop meets its specification: each iteration uses the judgment of the round. -/
+theorem roundsRoutine_meets {M : Machine K} {dec : K → ℝ} {n : ℕ}
     {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K}
     (hS : IsScalar M I) (hM : ExactModel dec M)
     (hB : IsExactBlas1 dec (fun _ => True) I) (hA : IsExactMatvec dec A I) :
-    (roundsImpl (Op := Op) (Tst := Tst)).Triple I .total
-      ((roundsRel dec A).spec (RoundsOperands n)) := by
-  cert_intro [m, k] (x, r, p) → (x', r', p') reads (xs, rs, ps)
-  obtain ⟨hd, hx, hr, hp, hxr, hxp, hrp⟩ := hadm
-  subst m x' r' p'
-  change ∀ j < k, Nonbreakdown A ((cgStep A)^[j] (decodedState dec n xs rs ps)) at hdom
-  have hl₀ : μ.Live [x, r, p] := by
-    simp only [Mem.live_cons, Mem.live_nil, and_true] at hl ⊢
-    exact ⟨hl.1, hl.2.1, hl.2.2.1⟩
-  have hz₀ : μ.Room [x, r, p] [n, n, n] := by
-    simpa only [Mem.room_cons, Mem.room_nil, and_true] using hz
-  refine (rounds_writes hS hM hB hA hxr hxp hrp hl₀
-    ⟨xs, rs, ps, hr_0, rfl⟩ hdom hz₀).mono le_rfl ?_
-  rintro μ' _ ⟨hpos, xs', rs', ps', hread, hstate⟩
-  exact ⟨by simpa using hpos, [xs', rs', ps'], hread, hstate⟩
-
-/-- A nonbreaking prefix terminates with the iterated exact state, at the per-round operation
-count and with scratch reused between rounds. -/
-theorem runs_rounds {M : Machine K} {dec : K → ℝ} {n : ℕ}
-    {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K}
-    (hS : IsScalar M I) (hM : ExactModel dec M)
-    (hB : IsExactBlas1 dec (fun _ => True) I) (hA : IsExactMatvec dec A I)
-    (W : Op → List ℕ → ℕ) {τ : Tape K} {μ : Mem K} {k : ℕ} {x r p : ℕ × ℕ}
-    {xs rs ps : List K} (hxr : x.1 ≠ r.1) (hxp : x.1 ≠ p.1) (hrp : r.1 ≠ p.1)
-    (hl : μ.Live [x, r, p]) (hx : μ.store.readBlock x.1 x.2 n = some xs)
-    (hr : μ.store.readBlock r.1 r.2 n = some rs)
-    (hp : μ.store.readBlock p.1 p.2 n = some ps)
-    (hdom : ∀ j < k, Nonbreakdown A ((cgStep A)^[j] (decodedState dec n xs rs ps)))
-    (hz : μ.Room [x, r, p] [n, n, n]) :
-    ConditionalRuns I W τ rounds (Env.frame [n, k] [x, r, p, x, r, p]) μ
-      (k • stepCount n) (stepPeak W n)
-      ((roundsRel dec A).Post [n, k] [xs, rs, ps] [x, r, p] [] μ) := by
-  refine ((rounds_spec hS hM hB hA).runs_rel W (d := [n, k]) (ins := [x, r, p])
-    (outs := [x, r, p]) (xs := [xs, rs, ps]) rfl
-    ⟨rfl, x, r, p, rfl, rfl, hxr, hxp, hrp⟩ ((μ.live_append _ _).mpr ⟨hl, hl⟩)
-    (Mem.readBlocks_of_cons hx (Mem.readBlocks_of_cons hr (Mem.readBlocks_of_cons hp rfl)))
-    hdom hz).mono (le_of_eq (staticCost_rounds ..)) (staticPeak_rounds_le ..) ?_
-  intro μ' hpost
-  exact hpost
+    (roundsRoutine (Op := Op) (Tst := Tst)).Meets I (roundsSpec dec A) := by
+  routine_intro [n', k] (x, r, p) reads (xs, rs, ps)
+  obtain ⟨hn, hdom⟩ := hpre
+  obtain rfl : n = n' := hn.symm
+  have hstep := stepRoutine_meets (Op := Op) (Tst := Tst) hS hM hB hA
+  refine (writes_loop_frame_iterate (F := Fp.blocks [x, r, p] [n, n, n])
+    (StoresState dec n x r p) (cgStep A) (Nonbreakdown A) rfl rfl rfl
+    (by simp only [Mem.live_cons, Mem.live_nil, and_true]; tauto) ⟨xs, rs, ps, hr, rfl⟩ hdom
+    ?_).mono le_rfl ?_
+  · rintro s' m' hfr hl' ⟨xs', rs', ps', hread, rfl⟩ hnb
+    refine (hstep [n] [x, r, p] τ m' _ rfl rfl ?_ (by routine_sep) hread ⟨rfl, hnb⟩ ?_).mono
+      le_rfl ?_
+    · exact fun z hz => hl' z (List.mem_append_left _ hz)
+    · change m'.Room [x, r, p] [n, n, n]
+      simp only [Mem.room_cons, Mem.room_nil, and_true, hfr.len_eq]
+      exact hroom
+    · rintro m'' - ⟨hpos, ys, hys, hrel⟩
+      routine_nf at hys
+      split_reads hys as (xs'', rs'', ps'')
+      exact ⟨hpos, xs'', rs'', ps'', hys, hrel⟩
+  · rintro m' - ⟨hpos, xs', rs', ps', hread, hstate⟩
+    exact ⟨hpos, [xs', rs', ps'], hread, hstate⟩
 
 end NLAlib.Krylov.CG.HSCG

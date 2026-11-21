@@ -7,7 +7,7 @@ The numerical bridge derives its error from `StdModel`; no successful-run assump
 ## Interfaces and consumers
 
 `StoredDense.rowWord M m n raw xs i` is the `ScalarProducts.sumWord` recurrence on the
-column-major row. `writes_apply_word` and `writes_impl_word` return the actual row words with
+column-major row. `apply_writes_word` and `impl_writes_word` return the actual row words with
 the existing footprint, tape position and one-cell workspace. Existing exact theorems are
 specializations, so the storage proof has one implementation.
 
@@ -81,7 +81,7 @@ archive-orthogonality proof does not provide those rounded estimates.
 
 ## Two rounded PCG operator capabilities
 
-`Krylov/CG/HSPCG/FinitePrecision/StoredContext.lean` uses the existing two-slot
+`Krylov/CG/HSPCG/Rounded/StoredContext.lean` uses the existing two-slot
 `HSPCG.StoredContext.table`: the system and inverse-preconditioner are separate actual raw
 inputs, and both compile to `ContextDense.impl`. Ordinary scalar and BLAS calls are retained
 for the subsequent `RoundedScalarBlas.table` lowering.
@@ -110,7 +110,7 @@ aliasing unsupported by the actual stored kernel. The proof-side fallback uses t
 word action; it is absent from the executed tree. Recomputed dot functionality uses the
 actual `dotSeqFn` contract under `OutApart`, obtained after scalar BLAS lowering.
 
-`HSPCG/FinitePrecision/StoredCertificate.lean` supplies the corresponding raw problem and
+`HSPCG/Rounded/StoredCertification.lean` supplies the corresponding raw problem and
 final scalar tree. The raw admission is symmetry plus independent spectral windows for the
 two actual decoded matrices. Precision and positive lower endpoints are theorem parameters,
 not hidden input preprocessing. `Problem.withContext` reuses the existing five-vector raw

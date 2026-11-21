@@ -74,7 +74,7 @@ reach the core of round $j + 1$ with $\ell + 1$ leaves. -/
 theorem roundedLeafBranch_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) {P : Prop} (hP : P → StdModel u id Mch ∧ u ≤ 1 / 100) {n : ℕ}
     {k F T ns w m : ℕ} (hm : 2 * k * (k + 2) ≤ m) {ps : List ℝ} {εL : ℝ} (hεL : P → 0 ≤ εL)
-    (L : Impl O Q) (hLeaf : TerminatingLeafRoutineIf P εL (min k (n + 1)) ps T L I) {tape : Tape ℝ}
+    (L : Stmt O Q) (hLeaf : TerminatingLeafRoutineIf P εL (min k (n + 1)) ps T L I) {tape : Tape ℝ}
     {μ : Mem ℝ} {lo d j ℓ : ℕ} {a t p uo f st wk ub r : ℕ × ℕ} {rs : List (ℕ × ℕ)}
     {A U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {x : ℝ}
     (hG : SchurGeometry (n + 1) ps.length a t p uo f st wk ub r μ)
@@ -86,13 +86,13 @@ theorem roundedLeafBranch_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
     Writes .total I tape
       ((Stmt.frame [IExp.var 8, IExp.var 2, IExp.var 4]
           [{ buf := 5, off := IExp.var 14 }, { buf := 2, off := IExp.var 11 },
-            { buf := 5, off := IExp.var 14 }, { buf := 6, off := IExp.var 15 }] L.body).seq
+            { buf := 5, off := IExp.var 14 }, { buf := 6, off := IExp.var 15 }] L).seq
         ((Stmt.frame [IExp.var 0, IExp.var 7, IExp.var 8]
             [{ buf := 5, off := IExp.var 14 }, { buf := 0, off := IExp.var 9 }]
-            (copyToGlobal (Op := O) (Tst := Q)).body).seq
+            (copyToGlobal (Op := O) (Tst := Q))).seq
           (Stmt.frame [IExp.var 0, IExp.var 7, IExp.var 8]
             [{ buf := 6, off := IExp.var 15 }, { buf := 0, off := IExp.var 9 },
-              { buf := 4, off := IExp.var 13 }] (roundedLeafUpdate (O := O) (Q := Q)).body)))
+              { buf := 4, off := IExp.var 13 }] (roundedLeafUpdate (O := O) (Q := Q)))))
       (Env.frame [n + 1, k, ps.length, F, T, ns, w, lo, d] [a, t, p, st, uo, wk, ub, r, f])
       (schurRoundFp (n + 1) a uo f st wk ub r)
       (SchurStoredCore n P U u εL m a uo f st (j + 1)) μ := by
@@ -189,8 +189,8 @@ theorem roundedRange_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
     {P : Prop} (hP : P → StdModel u id Mch ∧ u ≤ 1 / 100) (hL : IsIndexLit Mch I)
     {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
     {k F T ns w m : ℕ} (hm1 : ns * w ≤ m) (hm2 : 2 * k * (k + 2) ≤ m) {ps : List ℝ} {εL : ℝ}
-    (hεL : P → 0 ≤ εL) (D : Impl O Q) (hD : TerminatingDecouplerRoutine n k F T ps ns w D I)
-    (L : Impl O Q) (hLeaf : TerminatingLeafRoutineIf P εL (min k (n + 1)) ps T L I)
+    (hεL : P → 0 ≤ εL) (D : Stmt O Q) (hD : TerminatingDecouplerRoutine n k F T ps ns w D I)
+    (L : Stmt O Q) (hLeaf : TerminatingLeafRoutineIf P εL (min k (n + 1)) ps T L I)
     {tape : Tape ℝ} {μ : Mem ℝ} {lo d j ℓ : ℕ} {a t p uo f st wk ub r : ℕ × ℕ}
     {rs : List (ℕ × ℕ)} {A U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr x : ℝ}
     (hG : SchurGeometry (n + 1) ps.length a t p uo f st wk ub r μ)
@@ -199,7 +199,7 @@ theorem roundedRange_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
     (hSt : StackHolds st rs μ.store) (hfit : RangesFit (n + 1) ((lo, d) :: rs))
     (hℓ : ℓ + d + (rs.map Prod.snd).sum ≤ n + 1)
     (hacc : AccumIf P U ((1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ) uo μ) :
-    Writes .total I tape (roundedProcessRangeWith D L).body
+    Writes .total I tape (roundedProcessRangeWith D L)
       (Env.frame [n + 1, k, ps.length, F, T, ns, w, lo, d] [a, t, p, st, uo, wk, ub, r, f])
       (schurRoundFp (n + 1) a uo f st wk ub r)
       (SchurStoredCore n P U u εL m a uo f st (j + 1)) μ := by
@@ -255,13 +255,13 @@ theorem roundedWorklistRound_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ}
     {P : Prop} (hP : P → StdModel u id Mch ∧ u ≤ 1 / 100) (hL : IsIndexLit Mch I)
     {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
     {k F T ns w m : ℕ} (hm1 : ns * w ≤ m) (hm2 : 2 * k * (k + 2) ≤ m) {ps : List ℝ} {εL : ℝ}
-    (hεL : P → 0 ≤ εL) (D : Impl O Q) (hD : TerminatingDecouplerRoutine n k F T ps ns w D I)
-    (L : Impl O Q) (hLeaf : TerminatingLeafRoutineIf P εL (min k (n + 1)) ps T L I)
+    (hεL : P → 0 ≤ εL) (D : Stmt O Q) (hD : TerminatingDecouplerRoutine n k F T ps ns w D I)
+    (L : Stmt O Q) (hLeaf : TerminatingLeafRoutineIf P εL (min k (n + 1)) ps T L I)
     {tape : Tape ℝ} {μ : Mem ℝ} {j cnt : ℕ} {a t p uo f st wk ub r : ℕ × ℕ}
     {U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     (h : SchurStoredState n P U u εL m ps a t p uo f st wk ub r j μ)
     (hcount : μ.store.get st.1 st.2 = some (cnt : ℝ)) (hpos : 0 < cnt) :
-    Writes .total I tape (roundedWorklistRoundWith D L).body
+    Writes .total I tape (roundedWorklistRoundWith D L)
       (Env.frame [n + 1, k, ps.length, F, T, ns, w] [a, t, p, st, uo, wk, ub, r, f])
       (schurRoundFp (n + 1) a uo f st wk ub r)
       (SchurStoredState n P U u εL m ps a t p uo f st wk ub r (j + 1)) μ := by
@@ -337,7 +337,7 @@ theorem roundedWorklistExit_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} 
     (h : SchurStoredState n P U u εL m ps a t p uo f st wk ub r i μ) :
     Writes .total I tape (Stmt.ite (Has.inj CmpTst.isPos) [] [{ buf := 4, off := IExp.var 11 }]
         (Stmt.frame [] [{ buf := 4, off := IExp.var 11 }, { buf := 8, off := IExp.var 15 }]
-          (roundedAbort (O := O) (Q := Q)).body) Stmt.skip)
+          (roundedAbort (O := O) (Q := Q))) Stmt.skip)
       ((Env.frame [n + 1, k, ps.length, F, T, ns, w] [a, t, p, uo, st, wk, ub, r, f]).pushIdx i)
       (schurRoundFp (n + 1) a uo f st wk ub r)
       (fun μ' => (∃ A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A μ'.store) ∧
@@ -369,14 +369,14 @@ theorem roundedWorklist_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
     {P : Prop} (hP : P → StdModel u id Mch ∧ u ≤ 1 / 100) (hL : IsIndexLit Mch I)
     {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
     {k F T ns w m : ℕ} (hm1 : ns * w ≤ m) (hm2 : 2 * k * (k + 2) ≤ m) {ps : List ℝ} {εL : ℝ}
-    (hεL : P → 0 ≤ εL) (D : Impl O Q) (hD : TerminatingDecouplerRoutine n k F T ps ns w D I)
-    (L : Impl O Q) (hLeaf : TerminatingLeafRoutineIf P εL (min k (n + 1)) ps T L I)
+    (hεL : P → 0 ≤ εL) (D : Stmt O Q) (hD : TerminatingDecouplerRoutine n k F T ps ns w D I)
+    (L : Stmt O Q) (hLeaf : TerminatingLeafRoutineIf P εL (min k (n + 1)) ps T L I)
     {tape : Tape ℝ} {μ : Mem ℝ} {a t p uo f st wk ub r : ℕ × ℕ}
     {H U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr : ℝ}
     (hG : SchurGeometry (n + 1) ps.length a t p uo f st wk ub r μ)
     (hA : HoldsMatrix a H μ.store) (hU : HoldsMatrix uo U μ.store)
     (ht : μ.store.get t.1 t.2 = some thr) (hp : μ.store.readBlock p.1 p.2 ps.length = some ps) :
-    Writes .total I tape (roundedWorklistWith D L).body
+    Writes .total I tape (roundedWorklistWith D L)
       (Env.frame [n + 1, k, ps.length, F, T, ns, w] [a, t, p, uo, st, wk, ub, r, f])
       (schurRoundFp (n + 1) a uo f st wk ub r)
       (fun μ' => (∃ A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A μ'.store) ∧
@@ -439,8 +439,8 @@ $\boldsymbol{u} \le 1/100$ and $\varepsilon_L \ge 0$). -/
 theorem solveRoundedWith_terminates_if {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : ℕ}
     (hS : IsScalar Mch I) {P : Prop} (hP : P → StdModel u id Mch ∧ u ≤ 1 / 100)
     (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
-    (hC : IsCmp id I) {k F T ns w : ℕ} {ps : List ℝ} {εL : ℝ} (hεL : P → 0 ≤ εL) (D : Impl O Q)
-    (hD : TerminatingDecouplerRoutine n k F T ps ns w D I) (L : Impl O Q)
+    (hC : IsCmp id I) {k F T ns w : ℕ} {ps : List ℝ} {εL : ℝ} (hεL : P → 0 ≤ εL) (D : Stmt O Q)
+    (hD : TerminatingDecouplerRoutine n k F T ps ns w D I) (L : Stmt O Q)
     (hLeaf : TerminatingLeafRoutineIf P εL (min k (n + 1)) ps T L I)
     {tape : Tape ℝ} {μ : Mem ℝ} {a t p uo f : ℕ × ℕ}
     {H U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr : ℝ}
@@ -451,7 +451,7 @@ theorem solveRoundedWith_terminates_if {Mch : Machine ℝ} {I : Interp O Q ℝ} 
       [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * ((n + 1) * (n + 1)), 1])
     (hA : HoldsMatrix a H μ.store) (hU : HoldsMatrix uo U μ.store)
     (ht : μ.store.get t.1 t.2 = some thr) (hp : μ.store.readBlock p.1 p.2 ps.length = some ps) :
-    Writes .total I tape (solveRoundedWith D L).body
+    Writes .total I tape (solveRoundedWith D L)
       (Env.frame [n + 1, k, ps.length, F, T, ns, w] [a, t, p, uo, a, uo, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
@@ -495,8 +495,8 @@ stored. The accumulator
 bound under the standard model is `NLAlib.ShiftedQR.solveRoundedWith_terminates`. -/
 theorem solveRoundedWith_completes {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
     (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1))
-    (hQ : IsToNat id I) (hC : IsCmp id I) {k F T ns w : ℕ} {ps : List ℝ} (D : Impl O Q)
-    (hD : TerminatingDecouplerRoutine n k F T ps ns w D I) (L : Impl O Q)
+    (hQ : IsToNat id I) (hC : IsCmp id I) {k F T ns w : ℕ} {ps : List ℝ} (D : Stmt O Q)
+    (hD : TerminatingDecouplerRoutine n k F T ps ns w D I) (L : Stmt O Q)
     (hLeaf : CompletingLeafRoutine (min k (n + 1)) ps T L I)
     {tape : Tape ℝ} {μ : Mem ℝ} {a t p uo f : ℕ × ℕ}
     {H U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr : ℝ}
@@ -507,7 +507,7 @@ theorem solveRoundedWith_completes {Mch : Machine ℝ} {I : Interp O Q ℝ} {n :
       [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * ((n + 1) * (n + 1)), 1])
     (hA : HoldsMatrix a H μ.store) (hU : HoldsMatrix uo U μ.store)
     (ht : μ.store.get t.1 t.2 = some thr) (hp : μ.store.readBlock p.1 p.2 ps.length = some ps) :
-    Writes .total I tape (solveRoundedWith D L).body
+    Writes .total I tape (solveRoundedWith D L)
       (Env.frame [n + 1, k, ps.length, F, T, ns, w] [a, t, p, uo, a, uo, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
@@ -533,8 +533,8 @@ shifts (each replayed rotation and each leaf product is a near-unitary update). 
 theorem solveRoundedWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : ℕ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu1 : u ≤ 1 / 100) (hL : IsIndexLit Mch I)
     (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
-    {k F T ns w : ℕ} {ps : List ℝ} {εL : ℝ} (hεL : 0 ≤ εL) (D : Impl O Q)
-    (hD : TerminatingDecouplerRoutine n k F T ps ns w D I) (L : Impl O Q)
+    {k F T ns w : ℕ} {ps : List ℝ} {εL : ℝ} (hεL : 0 ≤ εL) (D : Stmt O Q)
+    (hD : TerminatingDecouplerRoutine n k F T ps ns w D I) (L : Stmt O Q)
     (hLeaf : TerminatingLeafRoutine εL (min k (n + 1)) ps T L I)
     {tape : Tape ℝ} {μ : Mem ℝ} {a t p uo f : ℕ × ℕ}
     {H U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr : ℝ}
@@ -545,7 +545,7 @@ theorem solveRoundedWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u 
       [2 * ((n + 1) * (n + 1)), 1, ps.length, 2 * ((n + 1) * (n + 1)), 1])
     (hA : HoldsMatrix a H μ.store) (hU : HoldsMatrix uo U μ.store)
     (ht : μ.store.get t.1 t.2 = some thr) (hp : μ.store.readBlock p.1 p.2 ps.length = some ps) :
-    Writes .total I tape (solveRoundedWith D L).body
+    Writes .total I tape (solveRoundedWith D L)
       (Env.frame [n + 1, k, ps.length, F, T, ns, w] [a, t, p, uo, a, uo, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)

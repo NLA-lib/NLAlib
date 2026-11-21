@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Krylov.Lanczos.Reorth.SweepInterface
+public import NLAlib.Krylov.Lanczos.Reorth.Sweep
 
 /-!
 # Two classical Gram–Schmidt passes as one total operation
@@ -17,7 +17,7 @@ existing reorthogonalized Lanczos algorithm.
 
 ## Main results
 
-* `NLAlib.Krylov.Lanczos.Reorth.cgs2_spec`: total two-pass execution with rounded witnesses.
+* `NLAlib.Krylov.Lanczos.Reorth.cgs2Routine_meets`: total two-pass execution with rounded witnesses.
 -/
 
 @[expose] public section
@@ -35,9 +35,6 @@ def cgs2 : Stmt Op Tst :=
       [⟨0, .var 2⟩, ⟨1, .var 3⟩, ⟨1, .var 3⟩, ⟨3, .const 0⟩] cgsPass)
     (.frame [.var 0, .var 1]
       [⟨0, .var 2⟩, ⟨1, .var 3⟩, ⟨1, .var 3⟩, ⟨3, .const 0⟩] cgsPass))
-
-/-- The two-pass operation reads the basis and vector, and updates the vector in place. -/
-def cgs2Impl : Impl Op Tst := ⟨2, 2, 1, cgs2⟩
 
 /-- Both classical passes are fully charged. -/
 noncomputable def cgs2Count (n k : ℕ) : Count Op Tst := 2 • cgsPassCount n k
@@ -88,53 +85,60 @@ theorem TwoPassOut.exists_abs_sub_le {dec : K → ℝ} {ed ea : ℝ} {n k : ℕ}
   rw [hid]
   exact (abs_add_le _ _).trans (add_le_add (hp₁.abs_sub_le ha i) (hp₂.abs_sub_le ha i))
 
-/-- The vector is updated in place in a buffer distinct from the read-only basis. -/
-@[admNF] def TwoPassOperands (ok : ℕ → Prop) :
-    List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop :=
-  fun d ins outs => ok (d.headD 0) ∧ ∃ Q w, ins = [Q, w] ∧ outs = [w] ∧ Q.1 ≠ w.1
+/-- The two-pass operation as a routine: the basis `Q` is read and the vector `w` updated in
+place. -/
+def cgs2Routine : Routine Op Tst :=
+  routine% [n, k] (Q : k * n, w : n) → (w) := cgs2
 
-/-- The two-pass local-error contract. -/
-@[simps (attr := storeNF)]
-def twoPassRel (dec : K → ℝ) (ed : ℕ → ℝ) (ea : ℝ) : BlockRel K where
-  nd := 2
-  inLens d := [d.getD 1 0 * d.headD 0, d.headD 0]
-  outLens d := [d.headD 0]
-  rel d X _ Y := match X, Y with
-    | [qs, ws], [ws'] => TwoPassOut dec (ed (d.headD 0)) ea (d.headD 0) (d.getD 1 0) qs ws ws'
-    | _, _ => False
+/-- The two-pass local-error specification, at admitted dimensions. -/
+def cgs2Spec (dec : K → ℝ) (ed : ℕ → ℝ) (ea : ℝ) (ok : ℕ → Prop) : Routine.Spec K :=
+  spec% [n, k] (qs, ws) → (ws') requires ok n ensures TwoPassOut dec (ed n) ea n k qs ws ws'
 
-/-- Two passes succeed at every admitted dimension and basis rank, with actual error witnesses. -/
-theorem cgs2_spec {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ} {ea : ℝ}
+/-- Two passes succeed at every admitted dimension and basis rank, with actual error witnesses.
+Each pass is a call of the classical pass on the shared coefficient scratch. -/
+theorem cgs2Routine_meets {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ} {ea : ℝ}
     {ok : ℕ → Prop} {I : Interp Op Tst K} (hS : IsScalar M I)
-    (hD : I.Meets .total (Has.inj Blas1Op.dot) ((dotRel dec ed).spec (OutApart ok)))
-    (hA : I.Meets .total (Has.inj Blas1Op.axpy) ((axpyRel dec ea).spec (InPlace ok)))
+    (hD : I.Satisfies .total (Has.inj Blas1Op.dot) ((dotRel dec ed).spec (OutApart ok)))
+    (hA : I.Satisfies .total (Has.inj Blas1Op.axpy) ((axpyRel dec ea).spec (InPlace ok)))
     (hneg : ∀ a, dec (M.neg a) = -dec a) :
-    (cgs2Impl (Op := Op) (Tst := Tst)).Triple I .total
-      ((twoPassRel dec ed ea).spec (TwoPassOperands ok)) := by
-  cert_intro [n, k] (Q, w) → (w') reads (qs, ws)
-  obtain ⟨hok, hw, hQw⟩ := hadm
-  subst w'
-  simp only [twoPassRel, List.headD_cons, List.getD_cons_zero, List.getD_cons_succ] at *
-  have hQL := hl.1
-  have hwL := hl.2.1
+    (cgs2Routine (Op := Op) (Tst := Tst)).Meets I (cgs2Spec dec ed ea ok) := by
+  routine_intro [n, k] (Q, w) reads (qs, ws)
+  have hok : ok n := hpre
+  have hpass := cgsPassRoutine_meets (Op := Op) (Tst := Tst) hS hD hA hneg (ok := ok)
+  have hQL : Q.1 ≠ m.store.length := by omega
+  have hwL : w.1 ≠ m.store.length := by omega
   refine writes_alloc rfl fun s₁ hs₁ hH hBelow => ?_
-  refine Writes.seq_le (writes_frame rfl rfl (by
-    simp only [Mem.live_cons, Mem.live_nil, and_true]; omega)
-    (cgsPass_writes (qs := qs) (ws := ws) hS hD hA hneg hok hQw (by omega) (by omega)
-      (by simp only [Mem.live_cons, Mem.live_nil, and_true]; omega)
-      (by kept) (by kept) (by
-        simp only [Mem.room_cons, Mem.room_nil, and_true, Nat.zero_add, hH]
-        exact ⟨by simpa only [(hBelow w.1 hwL).1] using hz, le_rfl⟩))) (by fp_sub)
-    fun μ₁ hfr₁ ⟨hpos₁, mid, hs₁', hmid, hh₁, hfirst⟩ => ?_
-  refine Writes.mono (writes_frame rfl rfl (by
-    simp only [Mem.live_cons, Mem.live_nil, and_true, hfr₁.length_eq]; omega)
-    (cgsPass_writes (qs := qs) (ws := mid) hS hD hA hneg hok hQw (by omega) (by omega)
-      (by simp only [Mem.live_cons, Mem.live_nil, and_true, hfr₁.length_eq]; omega)
-      (by kept) hmid (by
-        simp only [Mem.room_cons, Mem.room_nil, and_true, Nat.zero_add, hfr₁.len_eq, hH]
-        exact ⟨by simpa only [(hBelow w.1 hwL).1] using hz, le_rfl⟩))) (by fp_sub) ?_
-  rintro μ₂ hfr₂ ⟨hpos₂, ws', hs₂', hws', hh₂, hsecond⟩ s₂ hs₂ hBelow₂
+  call hpass [n, k] (Q, w, (m.store.length, 0)) (pre := hok) as μ₁ hfr₁ hpos₁ (mid, cs₁) hfirst
+  call hpass [n, k] (Q, w, (m.store.length, 0)) (pre := hok) as μ₂ hfr₂ hpos₂ (ws', cs₂) hsecond
+  intro s₂ hs₂ hBelow₂
   exact ⟨by simp [hpos₂, hpos₁], [ws'], Mem.readBlocks_of_cons (by kept) rfl,
-    mid, hs₁', hs₂', hfirst, hsecond⟩
+    show TwoPassOut dec (ed n) ea n k qs ws ws' from ⟨mid, cs₁, cs₂, hfirst, hsecond⟩⟩
+
+/-- Readable inputs and output room suffice for total execution and the declared budget: the
+counted form of `cgs2Routine_meets`. -/
+theorem runs_cgs2 {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ} {ea : ℝ}
+    {ok : ℕ → Prop} {I : Interp Op Tst K} (hS : IsScalar M I)
+    (hD : I.Satisfies .total (Has.inj Blas1Op.dot) ((dotRel dec ed).spec (OutApart ok)))
+    (hA : I.Satisfies .total (Has.inj Blas1Op.axpy) ((axpyRel dec ea).spec (InPlace ok)))
+    (hneg : ∀ a, dec (M.neg a) = -dec a)
+    (W : Op → List ℕ → ℕ) {n k : ℕ} {τ : Tape K} {μ : Mem K}
+    {Q w : ℕ × ℕ} {qs ws : List K} (hok : ok n) (hQw : Q.1 ≠ w.1)
+    (hl : μ.Live [Q, w]) (hqs : μ.store.readBlock Q.1 Q.2 (k * n) = some qs)
+    (hws : μ.store.readBlock w.1 w.2 n = some ws) (hz : μ.Room [w] [n]) :
+    ConditionalRuns I W τ cgs2 (Env.frame [n, k] [Q, w, w]) μ (cgs2Count n k) (cgs2Peak W n k)
+      (fun μ' => ∃ ws', ws'.length = n ∧ TwoPassOut dec (ed n) ea n k qs ws ws' ∧
+        μ' = μ.updBlocks [w] [ws']) := by
+  have hread : μ.readBlocks [Q, w] [k * n, n] = some [qs, ws] :=
+    Mem.readBlocks_of_cons hqs (Mem.readBlocks_of_cons hws rfl)
+  obtain ⟨μ', hrun, hfr, hpos, Y, hout, hrel⟩ :=
+    (cgs2Routine_meets hS hD hA hneg [n, k] [Q, w] τ μ _ rfl rfl hl (by routine_sep) hread hok
+      hz).wp (Q := fun m' => μ.store.EqOff (Fp.blocks [w] [n]) m'.store ∧ m'.pos = μ.pos ∧
+        ∃ Y, m'.readBlocks [w] [n] = some Y ∧
+          (cgs2Spec dec ed ea ok).post [n, k] (τ.shift μ.pos) [qs, ws] Y)
+      fun _ hfr h => ⟨hfr, h⟩
+  split_reads hout as (ws')
+  refine (ConditionalRuns.of_run hrun ⟨ws', Store.length_of_readBlock hws', hrel, ?_⟩ W).mono
+    (le_of_eq (stmtCost_cgs2 ..)) (stmtPeak_cgs2_le ..) (fun _ h => h)
+  exact Mem.eq_updBlocks_of_eqOff (m := μ) hfr (Mem.readBlocks_of_cons hws' rfl) hpos
 
 end NLAlib.Krylov.Lanczos.Reorth

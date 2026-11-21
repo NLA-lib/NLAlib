@@ -33,8 +33,6 @@ kernel. None of them silently leaves a side goal for the end of the proof.
   Leaves the initial invariant, round and continuation when they need proofs.
 * `keep`: after a step. Restates for the new memory every read fact of the context that is off
   the step's footprint.
-* `cert_intro [n, k] (Q, w) → (w', R) reads (qs, ws)`: goal `R.Triple I .total (B.spec adm)`.
-  Leaves the body as a `Writes`, with named dimensions, operands and inputs.
 * `decode`: layer-1 vectors and matrices of stored blocks. Leaves the mathematical goal.
 * `count_eval`: `stmtCost s idx = C`. Leaves nothing.
 
@@ -47,13 +45,13 @@ of the block is replaced by `hfr.trans' hfr₁`, the lengths `hlen : ∀ b, m₁
 restated, and `keep` restates the reads. A side goal it cannot discharge makes it fail, naming
 the goal (`step!` leaves it instead, under its name: `hadm`, `hpre`, `hap`).
 
-The allocation, counted-loop, call and certificate tactics use the proved footprint rules.
+The allocation, counted-loop and call tactics use the proved footprint rules.
 `decode` is provisional.
 
 ## Main results
 
-The tactics `step`, `frame`, `fp_sub`, `checkpoint`, `alloc`, `loop_inv`, `keep`, `cert_intro`,
-`decode` (and `fp_mem`, `disjoint`, `idx`, `count_eval` in their files).
+The tactics `step`, `frame`, `fp_sub`, `checkpoint`, `alloc`, `loop_inv`, `keep`, `decode`
+(and `fp_mem`, `disjoint`, `idx`, `count_eval` in their files).
 -/
 
 @[expose] public section
@@ -159,7 +157,8 @@ macro_rules
           Macro.throwError "loop_inv: expected five names for the round"
         `(tactic| intro $names*)
     `(tactic|
-      ((first
+      (strip_notes
+       (first
         | refine Writes.seq_le
             (writes_loop (N := ?_) (F := $F) (P := $P)
               ?bound ?mono ?initial ?round) ?footprint ?exit
@@ -258,28 +257,6 @@ elab_rules : tactic
         #[{ expr := memory, xName? := some name.getId }] hyps
       replaceMainGoal [goal]
 
-open Lean in
-/-- The lemma that splits a list of the given length into named elements. -/
-meta def certLenLemma (k : Nat) : MacroM (TSyntax `term) :=
-  match k with
-  | 0 => `(List.length_eq_zero_iff)
-  | 1 => `(List.length_eq_one_iff)
-  | 2 => `(List.length_eq_two)
-  | 3 => `(List.length_eq_three)
-  | 4 => `(List.length_eq_four)
-  | _ => Macro.throwError "cert_intro: at most four dimensions, inputs or outputs"
-
-open Lean in
-/-- The pattern `⟨x₁, …, xₖ, rfl⟩` (or `rfl` for no element). -/
-meta def certPat (xs : Array Lean.Ident) : MacroM (TSyntax ``Lean.Parser.Tactic.rcasesPatMed) := do
-  let mut ps : Array (TSyntax ``Lean.Parser.Tactic.rcasesPatLo) := #[]
-  for x in xs do
-    let p ← `(rcasesPat| $x:ident)
-    ps := ps.push (← `(Lean.Parser.Tactic.rcasesPatLo| $p:rcasesPat))
-  let r ← `(rcasesPat| $(mkIdent `rfl):ident)
-  ps := ps.push (← `(Lean.Parser.Tactic.rcasesPatLo| $r:rcasesPat))
-  `(Lean.Parser.Tactic.rcasesPatMed| ⟨$ps,*⟩)
-
 /-- The blocks read are as many as the lengths asked. -/
 theorem Mem.length_of_readBlocks {K : Type} {m : Mem K} {as : List (ℕ × ℕ)} {ns : List ℕ}
     {X : List (List K)} (h : m.readBlocks as ns = some X) : as.length = ns.length := by
@@ -292,75 +269,6 @@ theorem Mem.length_of_readBlocks {K : Type} {m : Mem K} {as : List (ℕ × ℕ)}
     | cons n ns =>
       obtain ⟨x, xs, -, h', -⟩ := Mem.readBlocks_cons_eq_some.mp h
       simp [ih h']
-
-/-- **`cert_intro [n, k] (Q, w) → (w', R) reads (qs, ws)`**: a goal
-`R.Triple I .total (B.spec adm)`. Applies `NLAlib.Ops.Impl.meets_of_writes`, names the tape `τ`
-and the memory `μ`, splits the dimensions and the operands by the header (the same header as the
-builder's), the input blocks read into `qs`, `ws`, … with their facts `hqs`, `hws`, …, and
-unfolds the admitted operands into `hadm`, the live handles into `hl` and the room for the
-outputs into `hz` (conjunctions, which the side-goal tactics use as they are). Leaves `Fits`
-proved and the body as a `Writes` goal. -/
-syntax "cert_intro " "[" ident,* "]" " (" ident,* ")" " → " "(" ident,* ")"
-  (&" reads " "(" ident,* ")")? : tactic
-
-open Lean in
-macro_rules
-  | `(tactic| cert_intro [$ds,*] ($ins,*) → ($outs,*) reads ($xs,*)) => do
-    let ds := ds.getElems; let ins := ins.getElems; let outs := outs.getElems
-    let xs := xs.getElems
-    unless xs.size == ins.size do Macro.throwError "cert_intro: one name per input block"
-    let μ := mkIdent `μ
-    let τ := mkIdent `τ
-    let hl := mkIdent `hl
-    let hz := mkIdent `hz
-    let hadm := mkIdent `hadm
-    let hdom := mkIdent `hdom
-    let mut tacs : Array (TSyntax `tactic) := #[]
-    tacs := tacs.push (← `(tactic|
-      refine Impl.meets_of_writes
-        fun d ins outs $τ $μ X hnd $hadm $hl $(mkIdent `hr_0) $hdom $hz => ?_))
-    let pd ← certPat ds
-    let pi ← certPat ins
-    let po ← certPat outs
-    tacs := tacs.push (← `(tactic| obtain $pd := $(← certLenLemma ds.size).mp hnd))
-    tacs := tacs.push (← `(tactic|
-      obtain $pi := $(← certLenLemma ins.size).mp
-        ((Mem.length_of_readBlocks $(mkIdent `hr_0)).trans rfl)))
-    tacs := tacs.push (← `(tactic|
-      obtain $po := $(← certLenLemma outs.size).mp ((Mem.Room.length_eq $hz).trans rfl)))
-    tacs := tacs.push (← `(tactic|
-      try simp only [storeNF, List.headD_cons, List.getD_cons_zero, List.getD_cons_succ]
-        at $(mkIdent `hr_0):ident $hz:ident))
-    tacs := tacs.push (← `(tactic|
-      try simp only [admNF, AnyOperands, List.headD_cons, List.getD_cons_zero, List.getD_cons_succ,
-        List.mem_cons,
-        List.mem_nil_iff, or_false, forall_eq_or_imp, forall_eq, List.cons.injEq, and_true,
-        and_assoc, exists_and_left, exists_eq_left', exists_eq_left, exists_eq_right,
-        exists_eq_right_right, ne_eq] at $hadm:ident))
-    tacs := tacs.push (← `(tactic|
-      try simp only [Mem.room_cons, Mem.room_nil, and_true] at $hz:ident))
-    tacs := tacs.push (← `(tactic|
-      try simp only [List.cons_append, List.nil_append, Mem.live_cons, Mem.live_nil, and_true]
-        at $hl:ident))
-    let mut i := 0
-    for x in xs do
-      let hx := mkIdent (x.getId.appendBefore "h")
-      let hri := mkIdent (Name.mkSimple s!"hr_{i}")
-      let hrj := mkIdent (Name.mkSimple s!"hr_{i+1}")
-      let Xj := mkIdent (Name.mkSimple s!"X_{i+1}")
-      tacs := tacs.push (← `(tactic|
-        obtain ⟨$x:ident, $Xj:ident, $hx:ident, $hrj:ident, $(mkIdent `rfl):ident⟩ :=
-          Mem.readBlocks_cons_eq_some.mp $hri:ident))
-      i := i + 1
-    let hrn := mkIdent (Name.mkSimple s!"hr_{i}")
-    tacs := tacs.push (← `(tactic| obtain $(mkIdent `rfl):ident := Option.some.inj $hrn:ident))
-    tacs := tacs.push (← `(tactic| refine ⟨⟨rfl, rfl, rfl⟩, ?_⟩))
-    let mut r := tacs[0]!
-    for t in tacs.extract 1 tacs.size do
-      r ← `(tactic| ($r:tactic; $t:tactic))
-    return r
-  | `(tactic| cert_intro [$_ds,*] ($_ins,*) → ($_outs,*)) => Macro.throwError
-      "cert_intro: name the input blocks with `reads (…)`"
 
 /-- **`decode`**: rewrite the stored blocks in a goal to the vectors and matrices of layer 1
 (`decodeNF`: `vec` of a slice, `decVec`, `decMat`), with the index side conditions by `idx`.

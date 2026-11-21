@@ -161,14 +161,14 @@ theorem shIterationWith_pwrites_at {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
         B ^ ((k : ℝ)⁻¹) * S)) ≤ ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) *
       (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) * α *
         B ^ ((k : ℝ)⁻¹) * ω) * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 8)
-    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) {nq T : ℕ} {qs : List ℝ} {SE : Impl O Q}
+    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) {nq T : ℕ} {qs : List ℝ} {SE : Stmt O Q}
     (hSE : RandomSmallEigContractAt law β φse k nq T S qs SE I) {qw : ℕ × ℕ}
     (hqw : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
       (Store.inBlock qw.1 qw.2 qs.length))
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
         (hj : LL.length + (k + 1 + (excNet ε).length) ≤ ns) (hw : k * n ≤ w)
     (hlgv : ∀ b ∈ [a, rd, c, thr, wg, wr, ww, wp, g, qw, f], b.1 ≠ lg.1) :
-    PWrites law I (shIterationWith SE).body
+    PWrites law I (shIterationWith SE)
       (Env.frame [n + 1, q, k, (excNet ε).length, nq, T, w, LL.length]
         [a, rd, c, thr, wg, wr, ww, wp, g, qw, a, f, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
@@ -189,12 +189,12 @@ theorem shIterationWith_pwrites_at {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
           ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1))
         a lg ns w LL (k + 1 + (excNet ε).length)) (φse + φR / 2 + φ) := by
   have hφ0 : 0 ≤ φse + φR / 2 + φ := by positivity
-  have e : (shIterationWith SE).body = Stmt.allocs [.const 2 * .var 2]
+  have e : (shIterationWith SE) = Stmt.allocs [.const 2 * .var 2]
       (.frame [.var 0, .var 1, .var 2, .var 3, .var 4, .var 5, .var 6, .var 7] [⟨0, .var 8⟩,
         ⟨1, .var 9⟩, ⟨2, .var 10⟩, ⟨3, .var 11⟩, ⟨4, .var 12⟩, ⟨5, .var 13⟩, ⟨6, .var 14⟩,
         ⟨7, .var 15⟩, ⟨8, .var 16⟩, ⟨9, .var 17⟩, ⟨13, .const 0⟩, ⟨0, .var 8⟩, ⟨11, .var 19⟩,
         ⟨12, .var 20⟩]
-        (shIterationWithScratchWith SE).body) :=
+        (shIterationWithScratchWith SE)) :=
     rfl
   rw [e]
   refine PWrites.allocs (ns := [2 * k]) ?_ (Pre₁ := fun L μ => (a.1 < L ∧ rd.1 < L ∧ c.1 < L ∧
@@ -360,7 +360,7 @@ theorem shIteration_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
         (hj : LL.length + (k + 1 + (excNet ε).length) ≤ ns) (hw : k * n ≤ w)
     (hlgv : ∀ b ∈ [a, rd, c, thr, wg, wr, ww, wp, g, f], b.1 ≠ lg.1) :
-    PWrites law I (shIteration (O := O) (Q := Q)).body
+    PWrites law I (shIteration (O := O) (Q := Q))
       (Env.frame [n + 1, q, k, (excNet ε).length, w, LL.length]
           [a, rd, c, thr, wg, wr, ww, wp, g, a, f, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔

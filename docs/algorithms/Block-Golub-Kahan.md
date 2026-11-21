@@ -28,13 +28,13 @@ return U, V, G, R, S
 
 Full reorthogonalization is the fact that every extension is against all stored columns of
 its side. The [driver](../../NLAlib/Krylov/GolubKahan/Band/Alg.lean) is
-`Krylov.GolubKahan.Band.solve`; `Krylov.GolubKahan.Band.program` fixes its four dimensions
+`Krylov.GolubKahan.Band.solve`; `Krylov.GolubKahan.Band.solveProgram` fixes its four dimensions
 `[m, n, b, q]` and five output buffers.
 
 The first scheme for `extend` is
 [column-wise two-pass classical Gram–Schmidt](../../NLAlib/Krylov/Orthogonalization/CGS2/Extend.lean)
 with a deflation threshold `tau`, a rational literal of the implementation
-(`CGS2.cgs2ExtendImpl tau`). The stored basis and the new columns already written form one
+(`CGS2.cgs2ExtendRoutine tau`). The stored basis and the new columns already written form one
 contiguous block.
 
 ```text
@@ -165,8 +165,8 @@ hypothesis is that the linked tree is well typed. In the counted-run form
 by a supplied bound on the cost of E at its dimensions.
 
 The exact CGS2 scheme meets the exact contract:
-[`CGS2.cgs2Extend_exact_spec`](../../NLAlib/Krylov/Orthogonalization/CGS2/ExtendExact.lean)
-proves it for `CGS2.cgs2ExtendImpl 0` under exact scalar arithmetic, exact level-one
+[`CGS2.cgs2ExtendRoutine_meets_exact`](../../NLAlib/Krylov/Orthogonalization/CGS2/ExtendExact.lean)
+proves it for `CGS2.cgs2ExtendRoutine 0` under exact scalar arithmetic, exact level-one
 operations and exact comparisons, for an arbitrary stored basis.
 
 ## The rounded run
@@ -174,7 +174,7 @@ operations and exact comparisons, for an arbitrary stored basis.
 Under the rounded contracts (products within normwise allowances, extension within
 `(eta0, mu, eps)` at the admitted dimensions) the same program runs in total mode and its
 stored blocks decode to a rounded run, the executed history
-(`Krylov.GolubKahan.Band.Rounded.solve_spec`; after linking,
+(`Krylov.GolubKahan.Band.Rounded.solveRoutine_meets`; after linking,
 `Krylov.GolubKahan.Band.Rounded.runs_linkedSolve` with counts and scratch). No orthogonality,
 rank or nonbreakdown hypothesis is made.
 
@@ -199,7 +199,7 @@ residual. `Krylov.GolubKahan.Band.Rounded.storedBounds_of_storedOut` states the 
 and forward bounds for the decoded output words.
 
 For the CGS2 scheme with threshold `tau > 0`,
-[`CGS2.cgs2Extend_spec`](../../NLAlib/Krylov/Orthogonalization/CGS2/ExtendRounded.lean) proves
+[`CGS2.cgs2ExtendRoutine_meets`](../../NLAlib/Krylov/Orthogonalization/CGS2/ExtendRounded.lean) proves
 the rounded contract under the standard model of rounded arithmetic, level-one error
 contracts and exact comparisons. With c the budget of one classical pass against all stored
 columns and E the relative accuracy of the computed norms and of the scaling, its parameters
@@ -255,7 +255,7 @@ certificate.
 
 The following are not stated in the library, so nothing here should be read as claiming them.
 
-- The concrete linked certificates: `linkedAlgorithm` instantiated at `CGS2.cgs2ExtendImpl`
+- The concrete linked certificates: `linkedSolveAlgorithm` instantiated at `CGS2.cgs2ExtendRoutine`
   over an exact or a rounded BLAS model. The generic linking theorem and both certificates of
   the scheme exist; the instantiation, with its well-typedness side condition and its
   recomputed costs, is not written.

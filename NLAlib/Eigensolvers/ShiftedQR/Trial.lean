@@ -31,16 +31,18 @@ variable {Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op] [Has CmpTst Tst]
 
 /-- Copy the input matrix, apply the same stored shift `k` times and test the resulting matrix.
 The input threshold is τ² and the input target is the precomputed product-contraction target. -/
-def trial : Impl Op Tst := opsImpl% [n, k] (A, S, Threshold, Target) → (Z, Flag) {
-  run (unaryMap (Has.inj ScalarOp.copy)).body [2 * (n * n)] (A, Z);
-  run repeatedStep.body [n, k] (Z, S, Z);
-  run acceptTrial.body [n, k] (Z, Threshold, Target, Flag)
+def trial : Stmt Op Tst := ops% [n, k] (A, S, Threshold, Target) → (Z, Flag) {
+  run (unaryMap (Has.inj ScalarOp.copy)) [2 * (n * n)] (A, Z);
+  run repeatedStep [n, k] (Z, S, Z);
+  run acceptTrial [n, k] (Z, Threshold, Target, Flag)
 }
 
 open Classical in
 /-- Every candidate trial returns its exact repeated-shift matrix and its zero/one acceptance
 classification. A candidate is allowed to fail the acceptance test; total execution does not
-require an invertible shifted matrix or a successful candidate. -/
+require an invertible shifted matrix or a successful candidate.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem trial_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
     {τp : Tape ℝ} {m : Mem ℝ} {n k : ℕ} {a s t target z f : ℕ × ℕ}
@@ -59,7 +61,7 @@ theorem trial_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock s.1 s.2 2 ⊔ Store.inBlock t.1 t.2 1 ⊔
         Store.inBlock target.1 target.2 1)) :
-    Writes .total I τp trial.body (Env.frame [n + 1, k] [a, s, t, target, z, f])
+    Writes .total I τp trial (Env.frame [n + 1, k] [a, s, t, target, z, f])
       (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
       (fun m' => m'.pos = m.pos ∧
         HoldsMatrix z (multiShiftedQRStep H (List.replicate k shift)) m'.store ∧

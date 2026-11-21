@@ -69,7 +69,7 @@ theorem roundedShQRWith_pwrites_of_le {Mch : Machine ℝ} {I : Interp O Q ℝ}
     {law : ℕ → Measure ℝ} {sU : ℕ} (hDisk : IsPolarDiskSampler sU I)
     (hU : law sU = volume.restrict (Set.Icc 0 1)) {k : ℕ} {B Γ S δ φ : ℝ} (hB : 1 ≤ B)
     (hΓ : 0 < Γ) (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
-    (hk : k = shqrDegree (4 * B)) {εL βL φL : ℝ} {T RL : ℕ} {qs : List ℝ} {L : Impl O Q}
+    (hk : k = shqrDegree (4 * B)) {εL βL φL : ℝ} {T RL : ℕ} {qs : List ℝ} {L : Stmt O Q}
     (hLeaf : Schur.RandomSchurLeafContract law εL βL φL (min k (n + 1)) (4 * S) qs T L I)
     (hqs : qs.length = 12) (hεL : 0 ≤ εL) (hεLR : εL ≤ (1 + 24 * u) ^ RL - 1) (hβL0 : 0 ≤ βL)
     (hβL : βL ≤ SmallEig.forwardBackwardError k (4 * S) (shqrSmallEigAccuracy n B Γ S δ))
@@ -81,7 +81,7 @@ theorem roundedShQRWith_pwrites_of_le {Mch : Machine ℝ} {I : Interp O Q ℝ}
     {d : Fin (n' + 1) → ℂ} (hHess : IsUpperHessenberg H) (hV : IsUnit V)
     (hHV : H * V = V * Matrix.diagonal d) (hκ : pseudoConditionNumber V ≤ B)
     (hgap : ∀ i j, i ≠ j → Γ ≤ ‖d i - d j‖) (hHS : specNorm H ≤ S) {a t p uo f : ℕ × ℕ} :
-    PWrites law I (roundedShQRWith L).body
+    PWrites law I (roundedShQRWith L)
       (Env.frame [n' + 1, k, (shqrParams n k B Γ S δ φ ++ qs).length, shqrCap n B Γ S δ, T,
         shqrCap n B Γ S δ * (k + 1 + (shqrParams n k B Γ S δ φ ++ qs).length), k * (n' + 1)]
         [a, t, p, uo, a, uo, f]) (shqrFp n' a uo f)
@@ -206,7 +206,7 @@ theorem roundedShQRWith_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Int
     (hHV : H * V = V * Matrix.diagonal d) (hκ : pseudoConditionNumber V ≤ B) (hΓ : 0 < Γ)
     (hgap : ∀ i j, i ≠ j → Γ ≤ ‖d i - d j‖) (hHS : specNorm H ≤ S) (hδ : 0 < δ) (hδS : δ ≤ S)
     (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hk : k = shqrDegree (4 * B)) {εL βL φL : ℝ} {T : ℕ}
-    {qs : List ℝ} {L : Impl O Q} {RL : ℕ}
+    {qs : List ℝ} {L : Stmt O Q} {RL : ℕ}
     (hLeaf : Schur.RandomSchurLeafContract law εL βL φL (min k (n + 1)) (4 * S) qs T L I)
     (hqs : qs.length = 12) (hεL : 0 ≤ εL) (hεLR : εL ≤ (1 + 24 * u) ^ RL - 1) (hβL0 : 0 ≤ βL)
     (hβL : βL ≤ SmallEig.forwardBackwardError k (4 * S) (shqrSmallEigAccuracy n B Γ S δ))
@@ -227,7 +227,7 @@ theorem roundedShQRWith_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Int
     (hp : μ.store.readBlock p.1 p.2 (shqrParams n k B Γ S δ φ ++ qs).length =
       some (shqrParams n k B Γ S δ φ ++ qs))
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRWith L).body
+    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRWith L)
       (Env.frame [n + 1, k, (shqrParams n k B Γ S δ φ ++ qs).length, shqrCap n B Γ S δ, T,
         shqrCap n B Γ S δ * (k + 1 + (shqrParams n k B Γ S δ φ ++ qs).length), k * (n + 1)]
         [a, t, p, out, a, out, f]) (shqrFp n a out f) (ShQRSpectrum a out f H δ) μ} ≤ φ := by
@@ -258,7 +258,7 @@ theorem roundedShQRWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
     (hC : IsCmp id I) {sU : ℕ} (hDisk : IsPolarDiskSampler sU I)
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {k : ℕ}
-    {B Γ S δ φ : ℝ} (hk : k = shqrDegree (4 * B)) {T : ℕ} {qs : List ℝ} {L : Impl O Q}
+    {B Γ S δ φ : ℝ} (hk : k = shqrDegree (4 * B)) {T : ℕ} {qs : List ℝ} {L : Stmt O Q}
     (hLeaf : CompletingLeafRoutine (min k (n + 1)) qs T L I) (hqs : qs.length = 12)
     {a t p out f : ℕ × ℕ} {μ : Mem ℝ}
     {U₀ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hl : μ.Live [a, t, p, out, f])
@@ -272,7 +272,7 @@ theorem roundedShQRWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (ht : μ.store.get t.1 t.2 = some thr)
     (hp : μ.store.readBlock p.1 p.2 (shqrParams n k B Γ S δ φ ++ qs).length =
       some (shqrParams n k B Γ S δ φ ++ qs)) (τ : Tape ℝ) :
-    Writes .total I τ (roundedShQRWith L).body
+    Writes .total I τ (roundedShQRWith L)
       (Env.frame [n + 1, k, (shqrParams n k B Γ S δ φ ++ qs).length, shqrCap n B Γ S δ, T,
         shqrCap n B Γ S δ * (k + 1 + (shqrParams n k B Γ S δ φ ++ qs).length), k * (n + 1)]
         [a, t, p, out, a, out, f]) (shqrFp n a out f) (fun _ => True) μ := by
@@ -331,7 +331,7 @@ theorem roundedShQRSchurWith_randomSchurCoreContract {Mch : Machine ℝ} {I : In
     {law : ℕ → Measure ℝ} {sU : ℕ} (hDisk : IsPolarDiskSampler sU I)
     (hU : law sU = volume.restrict (Set.Icc 0 1)) {k : ℕ} {B Γ S δ φ : ℝ} (hB : 1 ≤ B)
     (hΓ : 0 < Γ) (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
-    (hk : k = shqrDegree (4 * B)) {εL βL φL : ℝ} {T RL : ℕ} {qs : List ℝ} {L : Impl O Q}
+    (hk : k = shqrDegree (4 * B)) {εL βL φL : ℝ} {T RL : ℕ} {qs : List ℝ} {L : Stmt O Q}
     (hLeaf : Schur.RandomSchurLeafContract law εL βL φL (min k (n + 1)) (4 * S) qs T L I)
     (hqs : qs.length = 12) (hεL : 0 ≤ εL) (hεLR : εL ≤ (1 + 24 * u) ^ RL - 1) (hβL0 : 0 ≤ βL)
     (hβL : βL ≤ SmallEig.forwardBackwardError k (4 * S) (shqrSmallEigAccuracy n B Γ S δ))
@@ -421,7 +421,7 @@ theorem roundedShQRSchurWith_terminatingSchurCore {Mch : Machine ℝ} {I : Inter
     {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu1 : u ≤ 1 / 100)
     (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
     (hC : IsCmp id I) {sU : ℕ} (hDisk : IsPolarDiskSampler sU I) {k : ℕ} {B Γ S δ φ : ℝ}
-    (hk : k = shqrDegree (4 * B)) {εL : ℝ} {T RL : ℕ} {qs : List ℝ} {L : Impl O Q}
+    (hk : k = shqrDegree (4 * B)) {εL : ℝ} {T RL : ℕ} {qs : List ℝ} {L : Stmt O Q}
     (hLeaf : TerminatingLeafRoutine εL (min k (n + 1)) qs T L I) (hqs : qs.length = 12)
     (hεL : 0 ≤ εL) (hεLR : εL ≤ (1 + 24 * u) ^ RL - 1) :
     Schur.TerminatingSchurCore

@@ -35,6 +35,9 @@ The scalar decisions of the finite-precision shifting strategy
 The words are read with the loop rules of `NLAlib.Eigensolvers.ShiftedQR.RoundedModuli`
 and the row recurrence of `NLAlib.Eigensolvers.ShiftedQR.RoundedRowPoly`.
 
+The operand-form lemmas of this file are about trees shared by
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`.
+
 ## Main definitions
 
 * `NLAlib.ShiftedQR.roundedPotential`, `NLAlib.ShiftedQR.comptau`,
@@ -94,7 +97,9 @@ theorem prod_range_norm_subdiagEntry_sq {n k : ℕ} (hkn : k ≤ n)
 /-- The bottom product on any scalar machine: `NLAlib.ShiftedQR.subdiagProductWithScratch`
 stores the rounded product of the rounded literal $1$ and the machine squared moduli of the last
 $k \le n$ subdiagonal entries, for the matrix at `A`, three scratch words at `T` and the output
-`P`, pairwise disjoint; it writes only `P` and `T` and keeps the tape position. -/
+`P`, pairwise disjoint; it writes only `P` and `T` and keeps the tape position.
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem subdiagProductWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {n k : ℕ} {a t p : ℕ × ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
@@ -105,7 +110,7 @@ theorem subdiagProductWithScratch_writes_word {M : Machine ℝ} {I : Interp Op T
     (hap : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
       (Store.inBlock p.1 p.2 1))
     (htp : Fp.Disj (Store.inBlock t.1 t.2 3) (Store.inBlock p.1 p.2 1)) :
-    Writes .total I τ subdiagProductWithScratch.body (Env.frame [n + 1, k] [a, t, p])
+    Writes .total I τ subdiagProductWithScratch (Env.frame [n + 1, k] [a, t, p])
       (Store.inBlock p.1 p.2 1 ⊔ Store.inBlock t.1 t.2 3)
       (fun m' => m'.pos = m.pos ∧ m'.store.get p.1 p.2 = some (prodWords M
         (normSqFactors M (M.lit 1) fun j => subdiagEntry H (n - k + j)) k)) m := by
@@ -114,7 +119,7 @@ theorem subdiagProductWithScratch_writes_word {M : Machine ℝ} {I : Interp Op T
   intro m₁ hfr₁ ⟨hp₁, hOne⟩
   have hH₁ := hH.of_eqOff hfr₁ hap.symm
   let xs : ℕ → ℕ × ℕ := fun i => (a.1, a.2 + 2 * ((n - k + i) * (n + 1) + (n - k + i + 1)))
-  have hloop := writes_loop_normSqMulRound (τ := τ) (m := m₁) (N := k) hS
+  have hloop := loop_writes_normSqMulRound (τ := τ) (m := m₁) (N := k) hS
     (ρ := Env.frame [n + 1, k] [a, t, p]) (cnt := .var 1) rfl
     (xs := xs) (tl := t) (pl := p) (R := Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
     (z := fun j => subdiagEntry H (n - k + j)) (v := M.lit 1)
@@ -144,14 +149,16 @@ theorem subdiagProductWithScratch_writes_word {M : Machine ℝ} {I : Interp Op T
   exact hloop.mono le_rfl fun m' _ h => ⟨h.1.trans hp₁, h.2⟩
 
 /-- The scoped bottom product on any scalar machine (`NLAlib.ShiftedQR.subdiagProduct`): the
-word of `NLAlib.ShiftedQR.subdiagProductWithScratch_writes_word`, its scratch released. -/
+word of `NLAlib.ShiftedQR.subdiagProductWithScratch_writes_word`, its scratch released.
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem subdiagProduct_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {n k : ℕ} {a p : ℕ × ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     (hk : k ≤ n) (hH : HoldsMatrix a H m.store) (hp : p.2 < m.store.len p.1)
     (hap : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
       (Store.inBlock p.1 p.2 1)) :
-    Writes .total I τ subdiagProduct.body (Env.frame [n + 1, k] [a, p])
+    Writes .total I τ subdiagProduct (Env.frame [n + 1, k] [a, p])
       (Store.inBlock p.1 p.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.get p.1 p.2 = some (prodWords M
         (normSqFactors M (M.lit 1) fun j => subdiagEntry H (n - k + j)) k)) m := by
@@ -182,11 +189,13 @@ theorem sqrtIter_eq_iterate {K : Type} (M : Machine K) (m : ℕ) (a : K) :
   | succ m ih => exact ih (M.sqrt a)
 
 /-- The in-place square-root loop on any scalar machine stores $m$ machine square roots
-(`NLAlib.sqrtIter`) of its word. -/
+(`NLAlib.sqrtIter`) of its word.
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem squareRoots_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {k : ℕ} {x : ℕ × ℕ} {v : ℝ} (hx : m.store.get x.1 x.2 = some v) :
-    Writes .total I τ squareRoots.body (Env.frame [k] [x, x]) (Store.inBlock x.1 x.2 1)
+    Writes .total I τ squareRoots (Env.frame [k] [x, x]) (Store.inBlock x.1 x.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.get x.1 x.2 = some (sqrtIter M k v)) m := by
   unfold squareRoots
   refine writes_loop rfl (fun _ => Store.inBlock x.1 x.2 1) (fun _ _ => le_rfl)
@@ -201,9 +210,9 @@ theorem squareRoots_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
 /-- **The rounded potential** of the last $k = 2^q$ subdiagonal entries of an order-$n$ matrix
 `A` into the word `P`: the rounded bottom product of squared moduli, then $q + 1$ square roots
 in place. The interface is `[n, k, q] (A) → (P)`. -/
-def roundedPotential : Impl Op Tst := opsImpl% [n, k, q] (A) → (P) {
-  run subdiagProduct.body [n, k] (A, P);
-  run squareRoots.body [q + 1] (P, P)
+def roundedPotential : Stmt Op Tst := ops% [n, k, q] (A) → (P) {
+  run subdiagProduct [n, k] (A, P);
+  run squareRoots [q + 1] (P, P)
 }
 
 /-- The word the rounded potential stores: $q + 1$ machine square roots of the rounded bottom
@@ -221,7 +230,7 @@ theorem roundedPotential_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hk : k ≤ n) (hH : HoldsMatrix a H μ.store) (hp : p.2 < μ.store.len p.1)
     (hap : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
       (Store.inBlock p.1 p.2 1)) :
-    Writes .total I τ roundedPotential.body (Env.frame [n + 1, k, q] [a, p])
+    Writes .total I τ roundedPotential (Env.frame [n + 1, k, q] [a, p])
       (Store.inBlock p.1 p.2 1)
       (fun μ' => μ'.pos = μ.pos ∧
         μ'.store.get p.1 p.2 = some (roundedPotentialWord M H k q)) μ := by
@@ -314,7 +323,7 @@ theorem roundedPotential_writes {M : Machine ℝ} {I : Interp Op Tst ℝ} {u : �
     (hH : HoldsMatrix a H μ.store) (hp : p.2 < μ.store.len p.1)
     (hap : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
       (Store.inBlock p.1 p.2 1)) :
-    Writes .total I τ roundedPotential.body (Env.frame [n + 1, k, q] [a, p])
+    Writes .total I τ roundedPotential (Env.frame [n + 1, k, q] [a, p])
       (Store.inBlock p.1 p.2 1)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ ψ : ℝ, μ'.store.get p.1 p.2 = some ψ ∧
         |ψ - hessenbergPotential k H| ≤ 20 * u * hessenbergPotential k H) μ :=
@@ -335,10 +344,10 @@ theorem prod_range_getD_eq_prod_map (zs : List ℂ) (f : ℂ → ℝ) :
 /-- `comptau` with a caller-owned scratch view of three words: the rounded literal $1$, times
 the machine squared moduli of the $k$ pairs of `D`, then one square root. The interface is
 `[k] (D, T) → (P)`. -/
-def comptauWithScratch : Impl Op Tst := opsImpl% [k] (D, T) → (P) {
+def comptauWithScratch : Stmt Op Tst := ops% [k] (D, T) → (P) {
   call (Has.inj (ScalarOp.lit 1)) [] () → (P);
   for j < k {
-    run PairScalar.normSq.body [] (D[2 * j], T);
+    run PairScalar.normSq [] (D[2 * j], T);
     call (Has.inj ScalarOp.mul) [] (P, T[2]) → (P)
   };
   call (Has.inj ScalarOp.sqrt) [] (P) → (P)
@@ -348,9 +357,9 @@ def comptauWithScratch : Impl Op Tst := opsImpl% [k] (D, T) → (P) {
 $\prod_\ell\lvert d_\ell\rvert$ of the $k$ complex numbers stored as pairs in `D` (the last
 diagonal entries of the triangular factors of a degree $k$ step), with three scratch words.
 The interface is `[k] (D) → (P)`. -/
-def comptau : Impl Op Tst := opsImpl% [k] (D) → (P) {
+def comptau : Stmt Op Tst := ops% [k] (D) → (P) {
   let T ← alloc 3;
-  run comptauWithScratch.body [k] (D, T, P)
+  run comptauWithScratch [k] (D, T, P)
 }
 
 /-- The word `comptau` stores: the machine square root of the rounded product of the rounded
@@ -359,13 +368,15 @@ def comptauWord (M : Machine ℝ) (zs : List ℂ) : ℝ :=
   M.sqrt (prodWords M (normSqFactors M (M.lit 1) fun j => zs.getD j 0) zs.length)
 
 /-- `comptau` on any scalar machine stores `NLAlib.ShiftedQR.comptauWord` of the stored pairs
-and writes only its output word. The pairs and the output are disjoint views. -/
+and writes only its output word. The pairs and the output are disjoint views.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem comptau_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ} {zs : List ℂ} {d p : ℕ × ℕ}
     (hD : m.store.readBlock d.1 d.2 (2 * zs.length) = some (zs.flatMap fun z => [z.re, z.im]))
     (hl : m.Live [d, p]) (hp : p.2 < m.store.len p.1)
     (hdp : Fp.Disj (Store.inBlock d.1 d.2 (2 * zs.length)) (Store.inBlock p.1 p.2 1)) :
-    Writes .total I τ comptau.body (Env.frame [zs.length] [d, p]) (Store.inBlock p.1 p.2 1)
+    Writes .total I τ comptau (Env.frame [zs.length] [d, p]) (Store.inBlock p.1 p.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.get p.1 p.2 = some (comptauWord M zs)) m := by
   have hpl := Store.lt_length_of_lt_len hp
   have hdl : d.1 < m.store.length := hl d (by simp)
@@ -382,7 +393,7 @@ theorem comptau_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
   have hD' : store.readBlock d.1 d.2 (2 * zs.length) = some (zs.flatMap fun z => [z.re, z.im]) :=
     hBelow.readBlock_of hdl hD
   have hp' : p.2 < store.len p.1 := by rw [(hBelow p.1 hpl).1]; exact hp
-  have hbody : Writes .total I τ comptauWithScratch.body
+  have hbody : Writes .total I τ comptauWithScratch
       (Env.frame [zs.length] [d, t, p]) (Store.inBlock p.1 p.2 1 ⊔ Store.inBlock t.1 t.2 3)
       (fun m' => m'.pos = m.pos ∧ m'.store.get p.1 p.2 = some (comptauWord M zs))
       ⟨store, m.pos⟩ := by
@@ -390,7 +401,7 @@ theorem comptau_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     refine (writes_call_const (hS (.lit 1)) rfl trivial hp').seq_le le_sup_left ?_
     intro m₁ hfr₁ ⟨hp₁, hOne⟩
     have hD₁ := hfr₁.keep (Store.readsOnly_readBlock _ _ _ _) hdp.symm hD'
-    have hloop := writes_loop_normSqMulRound (τ := τ) (m := m₁) (N := zs.length) hS
+    have hloop := loop_writes_normSqMulRound (τ := τ) (m := m₁) (N := zs.length) hS
       (ρ := Env.frame [zs.length] [d, t, p]) (cnt := .var 0) rfl
       (xs := fun i => (d.1, d.2 + 2 * i)) (tl := t) (pl := p)
       (R := Store.inBlock d.1 d.2 (2 * zs.length)) (z := fun j => zs.getD j 0) (v := M.lit 1)
@@ -440,7 +451,9 @@ as pairs in `D`, and the machine the standard model with $30000(k + 1)\boldsymbo
 $$\lvert t - \tau\rvert \le 0.001\,\tau, \qquad
 \tau = \|\mathbf{e}_n^{\mathsf T}p(\mathbf{H})^{-1}\|_2^{-1},$$
 $p(z) = \prod_\ell (z - s_\ell)$: the $0.0006$ of the exact factors plus the rounded product and
-root. The pairs and the output are disjoint views. -/
+root. The pairs and the output are disjoint views.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem comptau_writes {M : Machine ℝ} {I : Interp Op Tst ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) {τ : Tape ℝ} {μ : Mem ℝ}
     {n : ℕ} {x C κ d : ℝ} {H H' V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
@@ -455,7 +468,7 @@ theorem comptau_writes {M : Machine ℝ} {I : Interp Op Tst ℝ} {u : ℝ}
       [(R (Fin.last n) (Fin.last n)).re, (R (Fin.last n) (Fin.last n)).im]))
     (hl : μ.Live [ds, p]) (hp : p.2 < μ.store.len p.1)
     (hdp : Fp.Disj (Store.inBlock ds.1 ds.2 (2 * ss.length)) (Store.inBlock p.1 p.2 1)) :
-    Writes .total I τ comptau.body (Env.frame [ss.length] [ds, p]) (Store.inBlock p.1 p.2 1)
+    Writes .total I τ comptau (Env.frame [ss.length] [ds, p]) (Store.inBlock p.1 p.2 1)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ t : ℝ, μ'.store.get p.1 p.2 = some t ∧
         |t - ‖WithLp.toLp 2 ((Polynomial.aeval H (shiftPoly ss))⁻¹ (Fin.last n))‖⁻¹| ≤
           0.001 * ‖WithLp.toLp 2 ((Polynomial.aeval H (shiftPoly ss))⁻¹ (Fin.last n))‖⁻¹) μ := by
@@ -495,9 +508,9 @@ words `U`, into `Q[0]`), the threshold $\mathrm{fl}(c\,\mathrm{fl}(\sqrt{\cdot})
 bottom product of the order-$n$ matrix `A` and the stored word `C` (into `Q[1]`), and the flag
 `F` set to the literal $1$ if $t$ is below the threshold, to $0$ otherwise. The interface is
 `[n, k] (A, C, V, U, Q) → (F)`. -/
-def optimalDecide : Impl Op Tst := opsImpl% [n, k] (A, C, V, U, Q) → (F) {
-  run pairVecNormWithScratch.body [n] (V, U, Q);
-  run subdiagProduct.body [n, k] (A, Q[1]);
+def optimalDecide : Stmt Op Tst := ops% [n, k] (A, C, V, U, Q) → (F) {
+  run pairVecNormWithScratch [n] (V, U, Q);
+  run subdiagProduct [n, k] (A, Q[1]);
   call (Has.inj ScalarOp.sqrt) [] (Q[1]) → (Q[1]);
   call (Has.inj ScalarOp.mul) [] (C, Q[1]) → (Q[1]);
   if (Has.inj CmpTst.lt) [] (Q, Q[1]) {
@@ -529,7 +542,7 @@ theorem optimalDecide_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock c.1 c.2 1 ⊔
         Store.inBlock v.1 v.2 (2 * (1 * (n + 1)))))
     (hwq : Fp.Disj (Store.inBlock w.1 w.2 3) (Store.inBlock q.1 q.2 2)) :
-    Writes .total I τ (optimalDecide (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (optimalDecide (Op := Op) (Tst := Tst))
       (Env.frame [n + 1, k] [a, c, v, w, q, f])
       (Store.inBlock w.1 w.2 3 ⊔ Store.inBlock q.1 q.2 2 ⊔ Store.inBlock f.1 f.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.get f.1 f.2 = some
@@ -590,11 +603,11 @@ variable [Has CmpTst Tst]
 (`NLAlib.ShiftedQR.rowInit`, `NLAlib.ShiftedQR.rowPolyLoop`) and the decision
 (`NLAlib.ShiftedQR.optimalDecide`). The interface is
 `[n, k] (A, S, C, V, Y, W, O, T, Z, U, Q) → (F)`. -/
-def optimalTestWithScratch : Impl Op Tst :=
-  opsImpl% [n, k] (A, S, C, V, Y, W, O, T, Z, U, Q) → (F) {
-    run rowInit.body [n] (V, O);
-    run rowPolyLoop.body [n, k] (V, A, S, O, W, T, Z, Y, V);
-    run optimalDecide.body [n, k] (A, C, V, U, Q, F)
+def optimalTestWithScratch : Stmt Op Tst :=
+  ops% [n, k] (A, S, C, V, Y, W, O, T, Z, U, Q) → (F) {
+    run rowInit [n] (V, O);
+    run rowPolyLoop [n, k] (V, A, S, O, W, T, Z, Y, V);
+    run optimalDecide [n, k] (A, C, V, U, Q, F)
   }
 
 /-- **`Optimal`** ([BanksGarzaVargasSrivastava2022, §4]): for the order-$n$ matrix `A`, the $k$
@@ -602,7 +615,7 @@ shifts stored as pairs at `S` and the threshold factor `C` (the word $0.999\thet
 `F` is the literal $1$ if the rounded $\|\mathrm{fl}(\mathbf{e}_n^{\mathsf T}p(\mathbf{A}))\|$
 is below the rounded $c\,\psi_k(\mathbf{A})^k$, and $0$ otherwise. All scratch is scoped. The
 interface is `[n, k] (A, S, C) → (F)`. -/
-def optimalTest : Impl Op Tst := opsImpl% [n, k] (A, S, C) → (F) {
+def optimalTest : Stmt Op Tst := ops% [n, k] (A, S, C) → (F) {
   let V ← alloc (2 * n);
   let Y ← alloc (2 * n);
   let W ← alloc (2 * (n * n));
@@ -611,7 +624,7 @@ def optimalTest : Impl Op Tst := opsImpl% [n, k] (A, S, C) → (F) {
   let Z ← alloc 2;
   let U ← alloc 3;
   let Q ← alloc 2;
-  run optimalTestWithScratch.body [n, k] (A, S, C, V, Y, W, O, T, Z, U, Q, F)
+  run optimalTestWithScratch [n, k] (A, S, C, V, Y, W, O, T, Z, U, Q, F)
 }
 
 /-- The flag word `Optimal` stores, on the machine `M`. -/
@@ -637,7 +650,7 @@ theorem optimalTestWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst 
     (hq : m.store.len (L + 7) = 2)
     (has : Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
       Store.inBlock s.1 s.2 (2 * ss.length) ⊔ Store.inBlock c.1 c.2 1)) :
-    Writes .total I τ (optimalTestWithScratch (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (optimalTestWithScratch (Op := Op) (Tst := Tst))
       (Env.frame [n + 1, ss.length] [a, s, c, (L, 0), (L + 1, 0), (L + 2, 0), (L + 3, 0),
         (L + 4, 0), (L + 5, 0), (L + 6, 0), (L + 7, 0), f])
       (Store.inBlock f.1 f.2 1 ⊔ Fp.above L)
@@ -690,7 +703,7 @@ theorem optimalTest_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hc : m.store.get c.1 c.2 = some cv) (hf : f.2 < m.store.len f.1) (hl : m.Live [a, s, c, f])
     (has : Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
       Store.inBlock s.1 s.2 (2 * ss.length) ⊔ Store.inBlock c.1 c.2 1)) :
-    Writes .total I τ (optimalTest (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (optimalTest (Op := Op) (Tst := Tst))
       (Env.frame [n + 1, ss.length] [a, s, c, f]) (Store.inBlock f.1 f.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.get f.1 f.2 = some (optimalTestWord M H ss cv)) m := by
   have hlive : a.1 < m.store.length ∧ s.1 < m.store.length ∧ c.1 < m.store.length ∧
@@ -958,7 +971,7 @@ theorem optimalTest_writes {M : Machine ℝ} {I : Interp Op Tst ℝ} {u : ℝ}
     (hl : μ.Live [a, s, c, f])
     (has : Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
       Store.inBlock s.1 s.2 (2 * ss.length) ⊔ Store.inBlock c.1 c.2 1)) :
-    Writes .total I τ (optimalTest (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (optimalTest (Op := Op) (Tst := Tst))
       (Env.frame [n + 1, ss.length] [a, s, c, f]) (Store.inBlock f.1 f.2 1)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ b : ℝ, μ'.store.get f.1 f.2 = some b ∧ (b = 0 ∨ b = 1) ∧
         (b = 1 → IsOptimalRitzValues θ H ss) ∧

@@ -29,13 +29,14 @@ open Ops
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O]
   [Has IdxTst Q]
 
-/-- The actual range processor copies the active diagonal block and advances the complete
-invariant through the size-selected branch. The only substituted proof concerns the fixed
-scalar decoupling implementation on one local matrix, under raw quantitative hypotheses. -/
+/-- The actual range processor copies the active diagonal block and advances the complete invariant
+through the size-selected branch. The only substituted proof concerns the fixed scalar decoupling
+implementation on one local matrix, under raw quantitative hypotheses. A fragment: its tree runs
+only inside the tree of `NLAlib.ShiftedQR.worklistRound`. -/
 theorem processRange_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar Mch I) (hE : ExactModel id Mch) (hL : IsIndexLit Mch I) (hQ : IsToNat id I)
     {θ : ℝ} {K : KernelRoutines θ} (hK : IsEigenvalueKernels K I)
-    (D : Impl O Q) (hD : DecouplingContract θ D I)
+    (D : Stmt O Q) (hD : DecouplingContract θ D I)
     {tape : Tape ℝ} {μ : Mem ℝ} {n d lo j m F M : ℕ} {a p stack out w r : ℕ × ℕ}
     {H A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {roots : Fin (n + 1) → ℂ}
     {τ ε B α γ δ g : ℝ} {rest done : List (ℕ × ℕ)}
@@ -48,7 +49,7 @@ theorem processRange_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hOut : FinishedHolds out done roots μ.store) (hSt : StackHolds stack rest.reverse μ.store)
     (hε : ε = (((((lo, d) :: rest) ++ done).length - 1 : ℕ) : ℝ) * τ)
     (hj : 2 * done.length + ((lo, d) :: rest).length = j + 1) :
-    Writes .total I tape (processRange D).body
+    Writes .total I tape (processRange D)
       (Env.frame [n + 1, m, 2 ^ m, F, M, lo, d] [a, p, stack, out, w, r])
       (worklistFp (n + 1) a stack out w r)
       (fun μ' => μ'.pos = μ.pos ∧ WorklistInv H τ a stack out (j + 1) μ') μ := by

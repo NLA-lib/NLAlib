@@ -56,7 +56,7 @@ theorem reconstructResult_kernelWeight_le_of_arenas
     (T : ℕ → ℕ) (hT : Monotone T) (hadd : ∀ i j, T i + T j ≤ T (i + j))
     (W : DenseOp → List ℕ → ℕ) {a b : St DenseOp (CmpTst ⊕ IdxTst) K}
     (hmem : a.mem = μ)
-    (hrun : evalCounted I W τ (reconstructResult (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body
+    (hrun : evalCounted I W τ (reconstructResult (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst))
       (Env.frame [n, L] [c, ua, qa, ea, sz, kd, kp, lv, u, dv]) a = some b) :
     Dense.kernelWeight T b.cost ≤ Dense.kernelWeight T a.cost + (L + 1) * (2 * T n) := by
   subst μ
@@ -70,7 +70,7 @@ theorem reconstructResult_kernelWeight_le_of_arenas
   obtain ⟨a₂, hUpRun, hCopyRun⟩ := Option.bind_eq_some_iff.mp hrun
   have hBottomRaw := evalCounted_frame_body (d := [n, L + 1])
     (as := [sz, ua, ea]) rfl rfl hBottomRun
-  have hBottom := writes_bottomLevel_stored (μ := a.mem) M dec mm qr R0 eps beta A
+  have hBottom := bottomLevel_writes_stored (μ := a.mem) M dec mm qr R0 eps beta A
     hS hQ hLit
     (D := L + 1) (by omega) (by room) (hLevels _ le_rfl) hAP hRoom
   obtain ⟨hfr, hp, hBottomResults⟩ := hBottom.post_of_evalCounted hBottomRaw

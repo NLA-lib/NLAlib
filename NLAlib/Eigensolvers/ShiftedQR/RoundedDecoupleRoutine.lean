@@ -12,11 +12,11 @@ public import NLAlib.Eigensolvers.ShiftedQR.RoundedDecoupleContract
 # The decoupling loop with a small-eigenvalue routine
 
 The decoupling loop of [BanksGarzaVargasSrivastava2022, Lemma 6.4] calls `SmallEig` once per
-iteration, in `Regularize`. Here the call runs a routine `SE : Impl O Q` with the interface
+iteration, in `Regularize`. Here the call runs a routine `SE : Stmt O Q` with the interface
 `[d, nq, T] (Bk, Q) → (Ev)`: its parameter words are the last $12$ words of the decoupler's
 parameter words (the view `P[np - 12]`), and its cap dimension $T$ is a dimension of the
-decoupler. Inside, `SE.body` is inlined, so every operation the proofs see is an operation of the
-routine; a randomized program such as the one of [BanksGarzaVargasSrivastava2025] meets the
+decoupler. Inside, `SE` is inlined, so every operation the proofs see is an operation of the
+routine; a randomized program such as the one of [BanksGarzaVargasSrivastava2025] satisfies the
 routine contract `NLAlib.ShiftedQR.RandomSmallEigContract`, and the kernel does as a routine
 (`NLAlib.ShiftedQR.IsRandomSmallEig.randomSmallEigContract`). The programs
 (`NLAlib.ShiftedQR.regularizeWith`, `NLAlib.ShiftedQR.shIterationWith`,
@@ -96,7 +96,7 @@ theorem regularizeWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
       (16 * B)⁻¹ * (R * √(φ / (2 * k)) / 2 / ((2 + 2 * 1.1) * S)) ^ k)
     (hbound : (66 + 2 * 1.1) * B * S * ((2 + 2 * 1.1) * S / (R * √(φ / (2 * k)) / 2)) ^ k *
       √(n + 1) * (300 * (n + 1) ^ 2 * u) ≤ ω / 2)
-    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) {T : ℕ} {qs : List ℝ} {SE : Impl O Q}
+    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) {T : ℕ} {qs : List ℝ} {SE : Stmt O Q}
     (hSE : RandomSmallEigContract law β φse k T S qs SE I) {qw : ℕ × ℕ}
     (hqw : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
       Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock f.1 f.2 1)
@@ -104,7 +104,7 @@ theorem regularizeWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))} (hj : LL.length + k ≤ ns)
     (hw : k * n ≤ w)
     (hlgv : ∀ b ∈ [a, rd, c, thr, qw, s, f], b.1 ≠ lg.1) :
-    PWrites law I (regularizeWith SE).body
+    PWrites law I (regularizeWith SE)
       (Env.frame [n + 1, k, qs.length, T, w, LL.length] [a, rd, c, thr, qw, a, s, f, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔
         Store.inBlock f.1 f.2 1 ⊔
@@ -191,7 +191,7 @@ theorem shIterationWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
         B ^ ((k : ℝ)⁻¹) * S)) ≤ ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) *
       (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) * α *
         B ^ ((k : ℝ)⁻¹) * ω) * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 8)
-    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) {T : ℕ} {qs : List ℝ} {SE : Impl O Q}
+    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) {T : ℕ} {qs : List ℝ} {SE : Stmt O Q}
     (hSE : RandomSmallEigContract law β φse k T S qs SE I) {qw : ℕ × ℕ}
     (hqw : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
       (Store.inBlock qw.1 qw.2 qs.length))
@@ -199,7 +199,7 @@ theorem shIterationWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
         (hj : LL.length + (k + 1 + (excNet ε).length) ≤ ns)
     (hw : k * n ≤ w)
     (hlgv : ∀ b ∈ [a, rd, c, thr, wg, wr, ww, wp, g, qw, f], b.1 ≠ lg.1) :
-    PWrites law I (shIterationWith SE).body
+    PWrites law I (shIterationWith SE)
       (Env.frame [n + 1, q, k, (excNet ε).length, qs.length, T, w, LL.length]
         [a, rd, c, thr, wg, wr, ww, wp, g, qw, a, f, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
@@ -294,7 +294,7 @@ theorem roundedDecoupleWith_randomDecouplingRoutineContract {M : Machine ℝ} {I
     (hfuel : (1 + u) ^ 2 * ((1.002 * (1 - γ)) ^ F * Nmax) ^ 2 ≤ tL)
     (hSN : Nmax + F * ((1 + C) * S * ((1 + 300 * (nmax + 1) ^ 2 * u) ^ k - 1)) ≤ S)
     (hsmall : F * ((1 + C) * S * ((1 + 300 * (nmax + 1) ^ 2 * u) ^ k - 1)) ≤
-      g / 2 / (16 * (nmax + 1) * (2 * B))) {T : ℕ} {qs : List ℝ} {SE : Impl O Q}
+      g / 2 / (16 * (nmax + 1) * (2 * B))) {T : ℕ} {qs : List ℝ} {SE : Stmt O Q}
     (hSE : RandomSmallEigContract law β φse k T S qs SE I) (hqs : qs.length = 12) {ns ws : ℕ}
     (hns : F * (k + 1 + (excNet ε).length) ≤ ns) (hws : k * nmax ≤ ws) :
     RandomDecouplingRoutineContract law (2 * B) (g / 2) (F * (φse + φR / 2 + φ)) k F T nmax
@@ -331,7 +331,7 @@ theorem regularizeWith_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
     (hl : m.Live [a, rd, c, thr, s, f]) (hA : HoldsMatrix a H m.store)
     (hrd : m.store.get rd.1 rd.2 = some R) (hc : m.store.get c.1 c.2 = some cw)
     (hthr : m.store.get thr.1 thr.2 = some tv) (hrs : s.2 + 2 * k ≤ m.store.len s.1)
-    (hrf : f.2 < m.store.len f.1) {T : ℕ} {qs : List ℝ} {SE : Impl O Q}
+    (hrf : f.2 < m.store.len f.1) {T : ℕ} {qs : List ℝ} {SE : Stmt O Q}
     (hSE : TerminatingSmallEig k T qs SE I) {qw : ℕ × ℕ} (hlq : qw.1 < m.store.length)
     (hq : m.store.readBlock qw.1 qw.2 qs.length = some qs)
     (hqw : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
@@ -341,7 +341,7 @@ theorem regularizeWith_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
     (hw : k * n ≤ w)
     (hlog : HoldsSlottedLog lg ns w LL [] m.store) (hlgl : m.Live [lg])
     (hlgv : ∀ b ∈ [a, rd, c, thr, qw, s, f], b.1 ≠ lg.1) :
-    Writes .total I τ (regularizeWith SE).body
+    Writes .total I τ (regularizeWith SE)
       (Env.frame [n + 1, k, qs.length, T, w, LL.length] [a, rd, c, thr, qw, a, s, f, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔
         Store.inBlock f.1 f.2 1 ⊔
@@ -381,7 +381,7 @@ theorem shIterationWith_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
     (hwp : m.store.get wp.1 wp.2 = some cp)
     (hg : m.store.readBlock g.1 g.2 (2 * (excNet ε).length) =
       some ((excNet ε).flatMap fun z => [z.re, z.im])) (hrf : f.2 < m.store.len f.1)
-    {T : ℕ} {qs : List ℝ} {SE : Impl O Q} (hSE : TerminatingSmallEig k T qs SE I)
+    {T : ℕ} {qs : List ℝ} {SE : Stmt O Q} (hSE : TerminatingSmallEig k T qs SE I)
     {qw : ℕ × ℕ} (hlq : qw.1 < m.store.length)
     (hq : m.store.readBlock qw.1 qw.2 qs.length = some qs)
     (hqw : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
@@ -391,7 +391,7 @@ theorem shIterationWith_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
     (hw : k * n ≤ w)
     (hlog : HoldsSlottedLog lg ns w LL [] m.store) (hlgl : m.Live [lg])
     (hlgv : ∀ b ∈ [a, rd, c, thr, wg, wr, ww, wp, g, qw, f], b.1 ≠ lg.1) :
-    Writes .total I τ (shIterationWith SE).body
+    Writes .total I τ (shIterationWith SE)
       (Env.frame [n + 1, q, k, (excNet ε).length, qs.length, T, w, LL.length]
         [a, rd, c, thr, wg, wr, ww, wp, g, qw, a, f, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
@@ -416,7 +416,7 @@ theorem roundedDecoupleWith_terminatingDecouplerRoutine {M : Machine ℝ} {I : I
     (hS : IsScalar M I) (hL : IsIndexLit M I) {nmax : ℕ} (hNat : IsExactNatLit id M (nmax + 1))
     (hC : IsCmp id I) (hQ : IsToNat id I) {s₀ : ℕ} (hD : IsPolarDiskSampler s₀ I)
     {k q F : ℕ} (hkq : k = 2 ^ q) (tL R tv γ B α ε : ℝ) {T : ℕ} {qs : List ℝ}
-    {SE : Impl O Q} (hSE : TerminatingSmallEig k T qs SE I) (hqs : qs.length = 12) {ns ws : ℕ}
+    {SE : Stmt O Q} (hSE : TerminatingSmallEig k T qs SE I) (hqs : qs.length = 12) {ns ws : ℕ}
     (hns : F * (k + 1 + (excNet ε).length) ≤ ns) (hws : k * nmax ≤ ws) :
     TerminatingDecouplerRoutine nmax k F T (roundedDecoupleParams tL R tv γ B α ε k q ++ qs) ns ws
       (roundedDecoupleWith SE) I :=

@@ -37,16 +37,16 @@ variable {Op Tst : Type} [Has ScalarOp Op]
 
 /-- Compute the raw matrix norm, form the absolute tolerance, and copy four retained parameters.
 Raw parameter words have order `[B,θ,α,γ,δ]`; output words have order `[τ,B,θ,α,γ]`. -/
-def initializeParametersWithScratch : Impl Op Tst := opsImpl% [n] (H, Raw, T) → (Params) {
-  run matrixNorm.body [n, n] (H, T);
+def initializeParametersWithScratch : Stmt Op Tst := ops% [n] (H, Raw, T) → (Params) {
+  run matrixNorm [n, n] (H, T);
   call (Has.inj ScalarOp.mul) [] (Raw[4], T) → (Params);
-  run (unaryMap (Has.inj ScalarOp.copy)).body [4] (Raw, Params[1])
+  run (unaryMap (Has.inj ScalarOp.copy)) [4] (Raw, Params[1])
 }
 
 /-- Compute persistent parameters with one scoped intermediate norm word. -/
-def initializeParameters : Impl Op Tst := opsImpl% [n] (H, Raw) → (Params) {
+def initializeParameters : Stmt Op Tst := ops% [n] (H, Raw) → (Params) {
   let T ← alloc 1;
-  run initializeParametersWithScratch.body [n] (H, Raw, T, Params)
+  run initializeParametersWithScratch [n] (H, Raw, T, Params)
 }
 
 /-- The three scalar calls before the sequential contraction power. -/
@@ -56,16 +56,17 @@ def iterationPrefix : List (ScalarIns ScalarOp) :=
    ⟨.sub, [⟨1, .var 2⟩, ⟨0, .var 1 + .const 4⟩], ⟨1, .var 2⟩⟩]
 
 /-- Compute squared tolerance and contraction power using one caller-owned base word. -/
-def iterationConstantsWithScratch : Impl Op Tst :=
-  ⟨1, 2, 2, .seq (.scalarBlock (iterationPrefix.map ScalarIns.lift))
-    (.frame [.const 2 * .var 0] [⟨1, .var 2⟩, ⟨3, .var 4⟩] scalarPower.body)⟩
+def iterationConstantsWithScratch : Stmt Op Tst :=
+  .seq (.scalarBlock (iterationPrefix.map ScalarIns.lift))
+    (.frame [.const 2 * .var 0] [⟨1, .var 2⟩, ⟨3, .var 4⟩] scalarPower)
 
 /-- Compute the two per-block constants with one scoped arithmetic scratch word. -/
-def iterationConstants : Impl Op Tst := opsImpl% [k] (Params) → (Threshold, Power) {
+def iterationConstants : Stmt Op Tst := ops% [k] (Params) → (Threshold, Power) {
   let T ← alloc 1;
-  run iterationConstantsWithScratch.body [k] (Params, T, Threshold, Power)
+  run iterationConstantsWithScratch [k] (Params, T, Threshold, Power)
 }
 
+/-- A step in the proof of `iterationConstantsWithScratch_writes`. -/
 private theorem iterationPrefix_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {k : ℕ} {p t a b : ℕ × ℕ} {tol gamma : ℝ}
@@ -120,7 +121,9 @@ private theorem iterationPrefix_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
       by simpa only [ws, hsub, List.cons_append, List.nil_append] using ht'⟩
 
 /-- Actual scalar arithmetic computes the squared absolute tolerance and the contraction
-factor to power twice the degree. The two output words may share an arena but are disjoint. -/
+factor to power twice the degree. The two output words may share an arena but are disjoint.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem iterationConstantsWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {k : ℕ} {p t a b : ℕ × ℕ} {tol B theta alpha gamma : ℝ}
@@ -131,7 +134,7 @@ theorem iterationConstantsWithScratch_writes {M : Machine ℝ} {I : Interp Op Ts
     (hab : Fp.Disj (Store.inBlock a.1 a.2 1) (Store.inBlock b.1 b.2 1))
     (ht : t.2 + 1 ≤ m.store.len t.1)
     (ha : a.2 + 1 ≤ m.store.len a.1) (hb : b.2 + 1 ≤ m.store.len b.1) :
-    Writes .total I τ iterationConstantsWithScratch.body (Env.frame [k] [p, t, a, b])
+    Writes .total I τ iterationConstantsWithScratch (Env.frame [k] [p, t, a, b])
       (Store.inBlock t.1 t.2 1 ⊔ Fp.blocks [a, b] [1, 1])
       (fun μ => μ.pos = m.pos ∧ μ.readBlocks [a, b] [1, 1] =
         some [[tol ^ 2], [(1 - gamma) ^ (2 * k)]]) m := by
@@ -150,7 +153,7 @@ theorem iterationConstantsWithScratch_writes {M : Machine ℝ} {I : Interp Op Ts
     (by omega) (by omega)
   refine hp.seq_le (by fp_sub) ?_
   intro μ hfr ⟨hpos, hThresh, hBase⟩
-  have hpow := (writes_scalarPower_exact (τ := τ) (n := 2 * k) hS hE hBase
+  have hpow := (scalarPower_writes_exact (τ := τ) (n := 2 * k) hS hE hBase
     (by rw [hfr.len_eq]; omega) (Fp.disj_inBlock_of_ne htb)).keep
     (Store.readsOnly_get a.1 a.2 (tol ^ 2)) hab.symm hThresh
   refine (hpow.in_frame rfl rfl (by simp [Mem.Live, hfr.length_eq]; omega)).mono
@@ -160,7 +163,9 @@ theorem iterationConstantsWithScratch_writes {M : Machine ℝ} {I : Interp Op Ts
   simp [Mem.readBlocks, Store.readBlock_succ, hPower, hThreshold]
 
 /-- Scoped per-block initialization releases its base word and retains only the two requested
-constants. The persistent parameter block is protected from both outputs. -/
+constants. The persistent parameter block is protected from both outputs.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem iterationConstants_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {k : ℕ} {p a b : ℕ × ℕ} {tol B theta alpha gamma : ℝ}
@@ -169,7 +174,7 @@ theorem iterationConstants_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
       (Store.inBlock a.1 a.2 1 ⊔ Store.inBlock b.1 b.2 1))
     (hab : Fp.Disj (Store.inBlock a.1 a.2 1) (Store.inBlock b.1 b.2 1))
     (ha : a.2 + 1 ≤ m.store.len a.1) (hb : b.2 + 1 ≤ m.store.len b.1) :
-    Writes .total I τ iterationConstants.body (Env.frame [k] [p, a, b])
+    Writes .total I τ iterationConstants (Env.frame [k] [p, a, b])
       (Fp.blocks [a, b] [1, 1])
       (fun μ => μ.pos = m.pos ∧ μ.readBlocks [a, b] [1, 1] =
         some [[tol ^ 2], [(1 - gamma) ^ (2 * k)]]) m := by
@@ -192,7 +197,8 @@ theorem iterationConstants_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
 
 
 /-- The actual matrix component norm supplies the absolute tolerance before the four retained
-raw parameters are copied. Persistent words are tolerance followed by those raw parameters. -/
+raw parameters are copied. Persistent words are tolerance followed by those raw parameters.
+A fragment of `NLAlib.ShiftedQR.deflationRoutine`. -/
 theorem initializeParametersWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {n : ℕ} {a raw t p : ℕ × ℕ} {H : Matrix (Fin n) (Fin n) ℂ}
@@ -202,7 +208,7 @@ theorem initializeParametersWithScratch_writes {M : Machine ℝ} {I : Interp Op 
     (hta : t.1 ≠ a.1) (htr : t.1 ≠ raw.1)
     (hRawP : Fp.Disj (Store.inBlock raw.1 raw.2 5) (Store.inBlock p.1 p.2 5))
     (ht : t.2 + 1 ≤ m.store.len t.1) (hP : p.2 + 5 ≤ m.store.len p.1) :
-    Writes .total I τ initializeParametersWithScratch.body (Env.frame [n] [a, raw, t, p])
+    Writes .total I τ initializeParametersWithScratch (Env.frame [n] [a, raw, t, p])
       (Store.inBlock t.1 t.2 1 ⊔ Store.inBlock p.1 p.2 5)
       (fun μ => μ.pos = m.pos ∧ μ.store.readBlock p.1 p.2 5 =
         some [delta * frobNorm H, B, theta, alpha, gamma]) m := by
@@ -237,7 +243,7 @@ theorem initializeParametersWithScratch_writes {M : Machine ℝ} {I : Interp Op 
     intro b i hhi hlo
     dsimp only [Store.inBlock] at hhi hlo
     omega
-  have hcopy := (writes_unaryMap_of_disj_or_eq (md := .total) (m := μ₁) (τ := τ)
+  have hcopy := (unaryMap_writes_of_disj_or_eq (md := .total) (m := μ₁) (τ := τ)
     (x := raw) (y := (p.1, p.2 + 1))
     (n := 4) (f := id) (hS .copy)
     (Or.inl hcopySep) hRaw₁ (by rw [hfr₁.len_eq, hfr.len_eq]; omega)).keep
@@ -251,7 +257,8 @@ theorem initializeParametersWithScratch_writes {M : Machine ℝ} {I : Interp Op 
   simp only [hm, List.map_id, Option.map_some]
 
 /-- Scoped initialization computes the absolute tolerance from the still-raw matrix and
-releases its intermediate norm word. Persistent output words have order `[τ,B,θ,α,γ]`. -/
+releases its intermediate norm word. Persistent output words have order `[τ,B,θ,α,γ]`.
+A fragment of `NLAlib.ShiftedQR.deflationRoutine`. -/
 theorem initializeParameters_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {n : ℕ} {a raw p : ℕ × ℕ} {H : Matrix (Fin n) (Fin n) ℂ}
@@ -260,7 +267,7 @@ theorem initializeParameters_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hRaw : m.store.readBlock raw.1 raw.2 5 = some [B, theta, alpha, gamma, delta])
     (hRawP : Fp.Disj (Store.inBlock raw.1 raw.2 5) (Store.inBlock p.1 p.2 5))
     (hP : p.2 + 5 ≤ m.store.len p.1) :
-    Writes .total I τ initializeParameters.body (Env.frame [n] [a, raw, p])
+    Writes .total I τ initializeParameters (Env.frame [n] [a, raw, p])
       (Store.inBlock p.1 p.2 5)
       (fun μ => μ.pos = m.pos ∧ μ.store.readBlock p.1 p.2 5 =
         some [delta * frobNorm H, B, theta, alpha, gamma]) m := by

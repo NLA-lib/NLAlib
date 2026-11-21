@@ -19,14 +19,14 @@ eigenvalue-only programs described here are **removed**: the oracle-leaf program
 and its theorems T1c, T1d, T3, T4, T5 (`roundedShQR_measureReal_not_spectrum_le`,
 `roundedShQR_terminates`, `roundedShQR_relative`, `roundedShQR_hermitian`,
 `roundedShQR_work_le`), its certificate (`shqrProgram`, `stmtWorkMono_shqrProgram` with the constant $196218$,
-`roundedShQRAlgorithm`,
+`shqrAlgorithm`,
 `roundedShQR_algorithm_measureReal_not_accepts_le`), the kernel-instance decoupler
 `roundedDecouple`, the worklist `solveRounded` and its theorems, and the leaf contracts
 `RandomLeafContract`, `BackwardLeafContract` with `IsEigenvalueKernels.backwardLeafContract`
 (LB1). The headline without an oracle is `roundedShQRSmallEig_measureReal_not_spectrum_le` (and
 its relative, Hermitian and `_unconditional` forms), now a corollary of the Schur form
 `roundedShQRSchur_measureReal_not_schur_le`, at $\boldsymbol{u} \le$ `uShQRSchur`; its certificate
-is `roundedShQRSmallEigAlgorithm` with `roundedShQRSmallEig_algorithm_measureReal_not_accepts_le`.
+is `shqrSmallEigAlgorithm` with `roundedShQRSmallEig_algorithm_measureReal_not_accepts_le`.
 The rest of this note is the design record of SQR-FP and is not rewritten.
 
 ## 0. Summary
@@ -286,7 +286,7 @@ $\beta$). The worklist's scalar arithmetic is exact in C4 and rounded in P3.
 | T2 | **precision theorem** (Thm 1.4): $\log_2(1/\boldsymbol{u}_{\mathrm{ShQR}}) \le c\,k\log_2(nB\Sigma/(\delta\Gamma\phi))$ with explicit $c$ | L | plan |
 | T3 | relative form ($\delta\|\mathbf{H}\|$, $\Sigma$ computed as $2\|\mathbf{H}\|_{\mathsf F}$) | M | plan |
 | T4 | Hermitian corollary (Remark 1.7, $k = 2$, $B = 1$; optional) | L | plan |
-| T5 | work bound of `roundedAlgorithm` (as `exactAlgorithmWithPolynomialWork`, `Ops-PolynomialWork`) | M | plan |
+| T5 | work bound of `roundedAlgorithm` (as `countedDeflationAlgorithm`, `Ops-PolynomialWork`) | M | plan |
 
 ### Totals
 
@@ -1079,11 +1079,11 @@ T1c follows §14.1's Lean text with Fable's fixes (`hI : I.IsMeasurable` with `h
 
 ### 15.5 The certificate form (audit B1, B4)
 
-(Removed by SCHUR: `shqrProgram`, `shqrSpecification`, `roundedShQRAlgorithm` and its headline are
+(Removed by SCHUR: `shqrProgram`, `shqrSpecification`, `shqrAlgorithm` and its headline are
 deleted with the oracle program; the certificate of the algorithm is
-`roundedShQRSmallEigAlgorithm`, work $967736\,(n+1)^3(k+1)^4(n_p+1)(F+1)(T+1)^2$, over
+`shqrSmallEigAlgorithm`, work $967736\,(n+1)^3(k+1)^4(n_p+1)(F+1)(T+1)^2$, over
 `SmallEig.smallEigModel` with no oracle. The `ops_certificates.txt` line for
-`roundedShQRAlgorithm` is stale.)
+`shqrAlgorithm` is stale.)
 
 File `NLAlibScaffold/Eigensolvers/ShiftedQR/RoundedCertificate.lean`. T1c and T5 are about the
 same program but not the same run; the headline is restated as a canonical certificate
@@ -1116,7 +1116,7 @@ same program but not the same run; the headline is restated as a canonical certi
   static count (`stmtWorkMono`, kernel-checked), the second the kernel-call polynomial of the
   pruned tree (`Stmt.keepCalls`, coefficient $8$, degree $4$) times the envelope
   (`Program.exec_lift_le_add_selected`, new in `NLAlib/Ops/SelectedWork.lean`).
-* **Certificate** `roundedShQRAlgorithm` (hypotheses: `admitted`, measurable `Bad`,
+* **Certificate** `shqrAlgorithm` (hypotheses: `admitted`, measurable `Bad`,
   $\beta \ge 0$, `ks ≤ kw`): termination from T1d through `wp_frame`, work from the run bound.
 * **Headline** `roundedShQR_algorithm_measureReal_not_accepts_le`: under T1c's hypotheses, the
   probability that the counted run is not accepted (success, every resource bound, the frame
@@ -1127,5 +1127,5 @@ same program but not the same run; the headline is restated as a canonical certi
   whole tape (`IsTapeLaw`), which covers every window the program reads.
 * **CI.** `scripts/OpsPrograms.lean` imports `NLAlib` only, so a scaffold certificate is not
   inventoried. On promotion it needs the reviewed line
-  `NLAlib.ShiftedQR.roundedShQRAlgorithm hyps=4 uniform=yes confined=yes charged=no
+  `NLAlib.ShiftedQR.shqrAlgorithm hyps=4 uniform=yes confined=yes charged=no
   budget=manifest scratch=manifest`.

@@ -18,7 +18,7 @@ arenas. No scratch contents are supplied as input, and no successful-run premise
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_node`: total stored outcome of the actual allocated node.
+* `NLAlib.SpectralBisection.node_writes`: total stored outcome of the actual allocated node.
 -/
 
 @[expose] public section
@@ -30,8 +30,9 @@ open Ops
 /-- The nonleaf node returns the existing mathematical step on its actual stored inputs.
 Every possible bounded split has writable, separated arena outputs; exact bounded literals
 justify all metadata conversions. Scratch is fresh and requires no initialized values.
-Numerical accuracy and the law of the stored samples are separate assumptions. -/
-theorem writes_node {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has IndexOp Op]
+Numerical accuracy and the law of the stored samples are separate assumptions.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
+theorem node_writes {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has IndexOp Op]
     [Has MatrixOp Op] [Has CmpTst Tst] [Has IdxTst Tst]
     (M : Machine K) (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
     {I : Interp Op Tst K} (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp dec I)
@@ -110,7 +111,7 @@ theorem writes_node {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has Index
     · rw [Mem.room_eq_of_below hBelow (hOutputLive r)]
       exact (hout r hr).1
     · exact (Fp.blocks_disj_above (hOutputLive r)).mono le_rfl hsAbove
-  have hbody := writes_nodeBody (μ := ⟨store, μ.pos⟩) (τ := τ)
+  have hbody := nodeBody_writes (μ := ⟨store, μ.pos⟩) (τ := τ)
     (n := n) (L := L) (fuel := fuel) (d := d) (lo := lo) (k := k) (ua := ua) (ea := ea)
     M dec mm qr hS hL hC hMM hQR hQ
     R0 beta R eps U S A hk hslot hactive hexact

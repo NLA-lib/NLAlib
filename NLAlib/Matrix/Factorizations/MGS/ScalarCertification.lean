@@ -20,12 +20,12 @@ stored scratch cells suffice independently of dimensions and rank.
 
 ## Main results
 
-* `NLAlib.MGS.ScalarCertification.algorithm` certifies the actual fully scalar program.
+* `NLAlib.MGS.Scalar.Certification.algorithm` certifies the actual fully scalar program.
 -/
 
 @[expose] public section
 
-namespace NLAlib.MGS.ScalarCertification
+namespace NLAlib.MGS.Scalar.Certification
 
 open Ops
 
@@ -41,7 +41,7 @@ def table : Table RCLikeBlas.Operation RCLikeStar.Operation CmpTst
 
 /-- One linked first-order scalar tree, fixed before dimensions and input words. -/
 def program : Program RCLikeStar.Operation CmpTst 2 1 :=
-  (MGS.program (Op := RCLikeBlas.Operation) (Tst := CmpTst)).link table
+  (MGS.factorProgram (Op := RCLikeBlas.Operation) (Tst := CmpTst)).link table
 
 /-- Scalar field operations retain their standard cell signatures; conjugation is unary. -/
 def signature : RCLikeStar.Operation → OperandSignature
@@ -57,30 +57,30 @@ def resources (work : RCLikeStar.Operation → List ℕ → ℕ) :
 /-- The complete exact scalar model is generated from exhaustive local word functions.
 There are no BLAS operation names or vector-operation assumptions in its signature. -/
 noncomputable def model (work : RCLikeStar.Operation → List ℕ → ℕ) :
-    AccessModel RCLikeStar.Operation CmpTst (Certification.problem (𝕜 := 𝕜)) :=
-  Functional.model Certification.problem RCLike.re (fun _ _ => RCLikeStar.operationFunctions)
+    AccessModel RCLikeStar.Operation CmpTst (MGS.Certification.problem (𝕜 := 𝕜)) :=
+  Functional.model MGS.Certification.problem RCLike.re (fun _ _ => RCLikeStar.operationFunctions)
     (resources work)
 
 /-- The generated scalar model induces every local contract of the original MGS model. -/
 theorem contracts_link {work : RCLikeStar.Operation → List ℕ → ℕ}
-    {d : Fin 2 → ℕ} {x : (Certification.problem (𝕜 := 𝕜)).Input d}
+    {d : Fin 2 → ℕ} {x : (MGS.Certification.problem (𝕜 := 𝕜)).Input d}
     {I : Interp RCLikeStar.Operation CmpTst 𝕜} (hI : (model work).contracts d x I) :
-    (Certification.model .unit).contracts d x (I.link table) := by
+    (MGS.Certification.model .unit).contracts d x (I.link table) := by
   have hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I :=
     fun o => Functional.isFn hI (.inl o)
   have hStar : RCLikeStar.IsExact I := Functional.isFn hI (.inr .conj)
   refine ⟨?_, ?_⟩
   · intro o
     cases o with
-    | inl s => exact Interp.link_meets_kept rfl (hS s)
+    | inl s => exact Interp.link_satisfies_kept rfl (hS s)
     | inr b =>
       cases b
-      · exact Interp.link_meets rfl (RCLikeScalar.meets_sum hS)
-      · exact Interp.link_meets rfl (RCLikeScalar.meets_dot hS hStar)
-      · exact Interp.link_meets rfl (RCLikeScalar.meets_axpy hS)
-      · exact Interp.link_meets rfl (RCLikeScalar.meets_nrm2 hS hStar)
-      · exact Interp.link_meets rfl (RCLikeScalar.meets_scal hS)
-      · exact Interp.link_meets rfl (RCLikeScalar.meets_copy hS)
+      · exact Interp.link_satisfies rfl (RCLikeScalar.satisfies_sum hS)
+      · exact Interp.link_satisfies rfl (RCLikeScalar.satisfies_dot hS hStar)
+      · exact Interp.link_satisfies rfl (RCLikeScalar.satisfies_axpy hS)
+      · exact Interp.link_satisfies rfl (RCLikeScalar.satisfies_nrm2 hS hStar)
+      · exact Interp.link_satisfies rfl (RCLikeScalar.satisfies_scal hS)
+      · exact Interp.link_satisfies rfl (RCLikeScalar.satisfies_copy hS)
   · intro q
     exact hI.2 q
 
@@ -99,16 +99,16 @@ theorem staticPeak_program (work : RCLikeStar.Operation → List ℕ → ℕ) (d
       change RCLikeScalar.table b = .inl r at hr
       simpa only [hr] using h
   have h := stmtPeak_link_le_zero_add table 1 hb
-    (MGS.program (Op := RCLikeBlas.Operation) (Tst := CmpTst)).body
+    (MGS.factorProgram (Op := RCLikeBlas.Operation) (Tst := CmpTst)).body
     (Program.environment (b := 1) d).idx
-  have hz := Certification.staticPeak_program .unit d
-  rw [staticPeak_eq, (Certification.resources .unit).queryReserve_of_zero (fun _ _ => rfl),
+  have hz := MGS.Certification.staticPeak_factorProgram .unit d
+  rw [staticPeak_eq, (MGS.Certification.resources .unit).queryReserve_of_zero (fun _ _ => rfl),
     Nat.add_zero] at hz
   change stmtPeak (fun (_ : RCLikeBlas.Operation) _ => 0)
-    (MGS.program (Op := RCLikeBlas.Operation) (Tst := CmpTst)).body
+    (MGS.factorProgram (Op := RCLikeBlas.Operation) (Tst := CmpTst)).body
     (Program.environment (b := 1) d).idx = 2 at hz
   change stmtPeak (fun (_ : RCLikeStar.Operation) _ => 0)
-    ((MGS.program (Op := RCLikeBlas.Operation) (Tst := CmpTst)).body.link table)
+    ((MGS.factorProgram (Op := RCLikeBlas.Operation) (Tst := CmpTst)).body.link table)
     (Program.environment (b := 1) d).idx ≤ 3
   simpa only [hz] using h
 
@@ -119,24 +119,24 @@ noncomputable def staticBudget (d : Fin 2 → ℕ) :
 /-- Mathematical output is unchanged by lowering; work, span, counts and memory refer to the
 same scalar run. The storage bound uses three cells above the supplied matrix. -/
 noncomputable def specification (work : RCLikeStar.Operation → List ℕ → ℕ) :
-    Specification RCLikeStar.Operation CmpTst (Certification.problem (𝕜 := 𝕜)) where
+    Specification RCLikeStar.Operation CmpTst (MGS.Certification.problem (𝕜 := 𝕜)) where
   budget := staticBudget
   scratch _ := 3
   work d := (resources work).work (staticBudget d)
   span d := (resources work).span (staticBudget d)
   memory d := d 1 * d 0 + 3
-  good d x τ _ m := (Certification.specification .unit).good d x τ 0 m
+  good d x τ _ m := (MGS.Certification.specification .unit).good d x τ 0 m
 
 /-- Every raw matrix has a total fully scalar MGS execution at every rank. The certificate
 includes actual scalar/conjugation instructions, cleanup, full accounting and constant scratch. -/
 noncomputable def algorithm (work : RCLikeStar.Operation → List ℕ → ℕ) :
     Algorithm (model (𝕜 := 𝕜) work) (specification work) := by
-  refine (Certification.algorithm (𝕜 := 𝕜) .unit).link table (model work) (specification work)
+  refine (MGS.Certification.algorithm (𝕜 := 𝕜) .unit).link table (model work) (specification work)
     (by rfl) (fun _ _ _ _ h => contracts_link h) (fun _ _ _ _ _ _ _ hg _ _ => hg)
     (fun _ _ => le_rfl) (fun d _ => staticPeak_program work d)
     (fun _ _ => le_rfl) (fun _ _ => le_rfl) ?_
   intro d _ x
-  rw [Certification.initialBytes_problem]
+  rw [MGS.Certification.initialBytes_problem]
   exact le_rfl
 
-end NLAlib.MGS.ScalarCertification
+end NLAlib.MGS.Scalar.Certification

@@ -20,7 +20,7 @@ program-specific execution state or successful-run hypothesis is introduced.
 ## Main results
 
 * `NLAlib.SpectralBisection.splitOutputs` describes the eight output regions.
-* `NLAlib.SpectralBisection.writes_split` collects their actual mathematical values.
+* `NLAlib.SpectralBisection.split_writes` collects their actual mathematical values.
 -/
 
 @[expose] public section
@@ -53,8 +53,9 @@ def splitInputLengths (n k : ℕ) : List ℕ :=
 
 /-- The split returns both actual computed bases, their shifted compressions, and the machine
 words for both sizes, kind four and the split size. Explicit interior, slot, readable-input,
-output-capacity and spatial-disjointness assumptions suffice for total execution. -/
-theorem writes_split {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
+output-capacity and spatial-disjointness assumptions suffice for total execution.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
+theorem split_writes {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     [Has IndexOp Op] [Has MatrixOp Op]
     {M : Machine K} (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
     (unif : K → Su → K) (normal : Sg → K × K) {I : Interp Op Tst K}
@@ -99,7 +100,7 @@ theorem writes_split {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
   obtain ⟨hs₀, hs₁, hs₂, hs₃, hs₄, hs₅, hs₆, hs₇, _⟩ := hap
   simp only [splitOutputs, splitOutputLengths, Mem.room_cons, Mem.room_nil, and_true] at hroom
   obtain ⟨hc₀, hc₁, hc₂, hc₃, hc₄, hc₅, hc₆, hc₇⟩ := hroom
-  refine (writes_frame rfl rfl (by room) (writes_deflate (sg := sg) (sq := (c.1, c.2 + 4)) (p := pp)
+  refine (writes_frame rfl rfl (by room) (deflate_writes (sg := sg) (sq := (c.1, c.2 + 4)) (p := pp)
     hS hMM hQR S scale Pp (by simp) hslot hInterior.2.le (by room)
     (Store.holdsEntries_of_readBlock_packMatrix rfl
       (by simpa [Nat.mul_comm, Nat.mul_left_comm, Nat.mul_assoc] using
@@ -110,7 +111,7 @@ theorem writes_split {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
   have hr₁ := Mem.readBlocks_of_eqOff hfr₁ (by
     simpa [splitOutputs, splitOutputLengths, splitInputs, splitInputLengths]
       using hprot 0) hread
-  refine (writes_frame rfl rfl (by room) (writes_deflate (sg := sg) (sq := (c.1, c.2 + 4)) (p := pm)
+  refine (writes_frame rfl rfl (by room) (deflate_writes (sg := sg) (sq := (c.1, c.2 + 4)) (p := pm)
     hS hMM hQR S scale Pm (by simp) hslot (Nat.sub_le k kp) (by room)
     (Store.holdsEntries_of_readBlock_packMatrix rfl
       (by simpa [Nat.mul_comm, Nat.mul_left_comm, Nat.mul_assoc] using
@@ -123,7 +124,7 @@ theorem writes_split {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
       using hprot 1) hr₁
   have hQp₂ := hfr₂.keep (Store.readsOnly_readBlock _ _ _ _) (by
     simpa [splitOutputs, splitOutputLengths] using hpair 1 0 (by simp)) hQp₁
-  refine (writes_frame rfl rfl (by room) (writes_compress dec mm qr unif normal hS hMM
+  refine (writes_frame rfl rfl (by room) (compress_writes dec mm qr unif normal hS hMM
     _ A two sigmaP (by room) hQp₂ (by simpa using Mem.readBlocks_getD hr₂ (i := 3) (by simp))
     (by simpa using Mem.get_of_readBlocks_getD hr₂ (i := 4) (by simp) rfl rfl)
     (by simpa using Mem.get_of_readBlocks_getD hr₂ (i := 6) (by simp) rfl rfl)
@@ -136,7 +137,7 @@ theorem writes_split {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
       using hprot 2) hr₂
   have hQm₃ := hfr₃.keep (Store.readsOnly_readBlock _ _ _ _) (by
     simpa [splitOutputs, splitOutputLengths] using hpair 2 1 (by simp)) hQm₂
-  refine (writes_frame rfl rfl (by room) (writes_compress dec mm qr unif normal hS hMM
+  refine (writes_frame rfl rfl (by room) (compress_writes dec mm qr unif normal hS hMM
     _ A two sigmaM (by room) hQm₃ (by simpa using Mem.readBlocks_getD hr₃ (i := 3) (by simp))
     (by simpa using Mem.get_of_readBlocks_getD hr₃ (i := 4) (by simp) rfl rfl)
     (by simpa using Mem.get_of_readBlocks_getD hr₃ (i := 7) (by simp) rfl rfl)

@@ -61,18 +61,18 @@ theorem Interp.linkContext_callS_inr (I : Interp Lo Tst K)
 /-- Implemented operations execute the declared body at the extra context inputs.
 The core's shape check is redundant because every statement preserves store shape. -/
 theorem Interp.linkContext_callS_inl (I : Interp Lo Tst K)
-    {T : ContextTable Op Lo Tst} {o : Op} {R : Impl Lo Tst} (hT : T o = .inl R)
+    {T : ContextTable Op Lo Tst} {o : Op} {E : Impl Lo Tst} (hT : T o = .inl E)
     (context : List (ℕ × ℕ)) (d : List ℕ) (ins outs : List (ℕ × ℕ))
     (τ : Tape K) (m : Mem K) :
     (I.linkContext T context).callS o d ins outs τ m =
       if m.Live (ins ++ outs) then
-        if R.Fits d.length (context.length + ins.length) outs.length then
-          eval I τ R.body (Env.frame d (context ++ ins ++ outs)) m
+        if E.Fits d.length (context.length + ins.length) outs.length then
+          eval I τ E.body (Env.frame d (context ++ ins ++ outs)) m
         else none
       else none := by
   simp only [Interp.callS, Interp.linkContext, hT]
   split_ifs with hl hfit
-  · cases hr : eval I τ R.body (Env.frame d (context ++ ins ++ outs)) m with
+  · cases hr : eval I τ E.body (Env.frame d (context ++ ins ++ outs)) m with
     | none => rfl
     | some m' => simp [shape_store_of_run hr]
   · rfl

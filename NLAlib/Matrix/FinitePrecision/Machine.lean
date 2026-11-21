@@ -33,9 +33,9 @@ The analysis decodes stored numbers by `dec : F → ℝ` and states the machine'
 the decoded operands, one rounding per operation (`NLAlib.IsRoundingOf`: relative error $u$
 above the floor $\tau$, in the range $\Omega$), negation, comparisons, the floor conversion,
 $0$ and $1$ are exact, and the black boxes and samplers
-meet the normwise contracts `NLAlib.IsMatMulErr`, `NLAlib.IsQRErr`, `NLAlib.IsUnifSampler`,
+satisfy the normwise contracts `NLAlib.IsMatMulErr`, `NLAlib.IsQRErr`, `NLAlib.IsUnifSampler`,
 `NLAlib.IsNormalSampler` through the decoding. The floor $\tau$ and range $\Omega$ are $0$ and
-arbitrary with an unbounded exponent; a bounded-exponent machine meets the contract with
+arbitrary with an unbounded exponent; a bounded-exponent machine satisfies the contract with
 $\tau > 0$ (§12 of the note).
 
 ## Main definitions
@@ -342,7 +342,7 @@ theorem exists_floatMachine_isAccurate (τ Ω : ℝ) {μM μQ : ℕ → ℝ} (h�
         change ‖z - z‖ ≤ _
         simp }
 
-/-- A bounded-format machine meets the contract: for a binary format `fmt` with precision
+/-- A bounded-format machine satisfies the contract: for a binary format `fmt` with precision
 $p$, smallest exponent $e_{\min}$ and largest finite number $\Omega$, and nonnegative constants,
 there is a `NLAlib.FloatMachine` on stored reals whose addition, subtraction, multiplication,
 division by a nonzero and conversion round the exact result to `fmt`

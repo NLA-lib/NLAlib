@@ -10,6 +10,7 @@ public import NLAlib.Ops.Catalog.Scalar
 public import NLAlib.Ops.Catalog.Blas1
 public import NLAlib.Ops.Logic.Builder
 public import NLAlib.Ops.Logic.Count
+public import NLAlib.Ops.RoutineSyntax
 
 /-!
 # Hestenes–Stiefel conjugate-gradient programs over operations
@@ -109,18 +110,18 @@ def step : Stmt Op Tst := ops% [n] (X, R, P) → (X, R, P) {
   call (Has.inj Blas1Op.copy) [n] (Z) → (P)
 }
 
-/-- One round is a block implementation with dimension `n` and three inputs and outputs. -/
-def stepImpl : Impl Op Tst := ⟨1, 3, 3, step⟩
+/-- One round as a routine: three vectors of length `n` updated in place. -/
+def stepRoutine : Routine Op Tst := routine% [n] (x : n, r : n, p : n) → (x, r, p) := step
 
-/-- Perform a prescribed number of active rounds from a stored CG state. Each round is
-framed using its block interface and frees its scratch before the next round. -/
-def rounds : Stmt Op Tst :=
-  .loop (.var 1) (.frame [.var 0]
-    [⟨0, .var 2⟩, ⟨1, .var 3⟩, ⟨2, .var 4⟩,
-      ⟨0, .var 2⟩, ⟨1, .var 3⟩, ⟨2, .var 4⟩] step)
+/-- Perform a prescribed number of active rounds from a stored CG state. Each round runs the
+routine of one round by its interface and frees its scratch before the next. -/
+def rounds : Stmt Op Tst := ops% [n, k] (X, R, P) → (X, R, P) {
+  for i < k { run (stepRoutine (Op := Op) (Tst := Tst)) [n] (X, R, P) }
+}
 
-/-- A block of active rounds, with dimensions `n,k` and three state inputs and outputs. -/
-def roundsImpl : Impl Op Tst := ⟨2, 3, 3, rounds⟩
+/-- The round loop as a routine: three vectors of length `n` updated in place by `k` rounds. -/
+def roundsRoutine : Routine Op Tst :=
+  routine% [n, k] (x : n, r : n, p : n) → (x, r, p) := rounds
 
 /-- The counts of one round, including the copies used by the direction update. -/
 noncomputable def stepCount (n : ℕ) : Count Op Tst :=
@@ -150,13 +151,13 @@ theorem staticPeak_step_le (W : Op → List ℕ → ℕ) (n a b c a' b' c' : ℕ
 theorem staticCost_rounds (n k a b c a' b' c' : ℕ) :
     stmtCost (rounds (Op := Op) (Tst := Tst)) [n, k, a, b, c, a', b', c'] =
       k • stepCount n := by
-  simp [rounds, stmtCost, IExp.eval, IExp.evalList, staticCost_step]
+  simp [rounds, stepRoutine, stmtCost, IExp.eval, IExp.evalList, staticCost_step]
 
 /-- The same scratch buffers suffice for every round because each call frees them. -/
 theorem staticPeak_rounds_le (W : Op → List ℕ → ℕ) (n k a b c a' b' c' : ℕ) :
     stmtPeak W (rounds (Op := Op) (Tst := Tst)) [n, k, a, b, c, a', b', c'] ≤
       stepPeak W n := by
-  simp only [rounds, stmtPeak]
+  simp only [rounds, stepRoutine, stmtPeak]
   exact Finset.sup_le fun i _ => by
     simpa [IExp.eval, IExp.evalList, Operand.off] using staticPeak_step_le W n a b c a b c
 
@@ -172,8 +173,10 @@ def initializeState : Stmt Op Tst := ops% [n] (B, X) → (X, R, P) {
   call (Has.inj Blas1Op.copy) [n] (R) → (P)
 }
 
-/-- Initialization has one dimension, two input blocks and three state output blocks. -/
-def initializeImpl : Impl Op Tst := ⟨1, 2, 3, initializeState⟩
+/-- Initialization as a routine: the right-hand side and the iterate are read, the residual and
+the direction written. -/
+def initializeRoutine : Routine Op Tst :=
+  routine% [n] (b : n, x : n) → (x, r : n, p : n) := initializeState
 
 /-- Initialization uses two copies, one product, the literal minus one and one axpy. -/
 noncomputable def initializeCount (n : ℕ) : Count Op Tst :=
@@ -202,16 +205,10 @@ theorem staticPeak_initialize_le (W : Op → List ℕ → ℕ) (n b x x' r p : �
 /-- Initialize CG from the right-hand side and starting vector, then perform the requested
 number of active Hestenes–Stiefel rounds. Dimensions are `n,k`; inputs are `B,X`; outputs
 are `X,R,P`, with `X` retained in place. -/
-def solve : Stmt Op Tst :=
-  .seq (.frame [.var 0]
-    [⟨0, .var 2⟩, ⟨1, .var 3⟩, ⟨2, .var 4⟩, ⟨3, .var 5⟩, ⟨4, .var 6⟩]
-    initializeState)
-    (.frame [.var 0, .var 1]
-      [⟨2, .var 4⟩, ⟨3, .var 5⟩, ⟨4, .var 6⟩,
-        ⟨2, .var 4⟩, ⟨3, .var 5⟩, ⟨4, .var 6⟩] rounds)
-
-/-- The complete fixed-horizon algorithm as a block implementation. -/
-def solveImpl : Impl Op Tst := ⟨2, 2, 3, solve⟩
+def solve : Stmt Op Tst := ops% [n, k] (B, X) → (X, R, P) {
+  run (initializeRoutine (Op := Op) (Tst := Tst)) [n] (B, X, R, P);
+  run (roundsRoutine (Op := Op) (Tst := Tst)) [n, k] (X, R, P)
+}
 
 /-- Counts of initialization followed by the prescribed number of rounds. -/
 noncomputable def solveCount (n k : ℕ) : Count Op Tst := initializeCount n + k • stepCount n
@@ -223,15 +220,15 @@ def solvePeak (W : Op → List ℕ → ℕ) (n : ℕ) : ℕ :=
 /-- The evaluator's static counts compose through the two framed blocks. -/
 theorem staticCost_solve (n k b x x' r p : ℕ) :
     stmtCost (solve (Op := Op) (Tst := Tst)) [n, k, b, x, x', r, p] = solveCount n k := by
-  simp [solve, stmtCost, IExp.eval, IExp.evalList, staticCost_initialize,
-    staticCost_rounds, solveCount]
+  simp [solve, initializeRoutine, roundsRoutine, stmtCost, IExp.eval, IExp.evalList,
+    staticCost_initialize, staticCost_rounds, solveCount]
 
 /-- The complete program uses the larger of the two block workspaces. -/
 theorem staticPeak_solve_le (W : Op → List ℕ → ℕ) (n k b x x' r p : ℕ) :
     stmtPeak W (solve (Op := Op) (Tst := Tst)) [n, k, b, x, x', r, p] ≤ solvePeak W n := by
-  simp only [solve, stmtPeak, solvePeak]
+  simp only [solve, initializeRoutine, roundsRoutine, stmtPeak, solvePeak]
   exact max_le_max
-    (by simpa [IExp.eval, IExp.evalList] using staticPeak_initialize_le W n b x x' r p)
-    (by simpa [IExp.eval, IExp.evalList] using staticPeak_rounds_le W n k x' r p x' r p)
+    (by simpa [IExp.eval, IExp.evalList] using staticPeak_initialize_le W n b x x r p)
+    (by simpa [IExp.eval, IExp.evalList] using staticPeak_rounds_le W n k x r p x r p)
 
 end NLAlib.Krylov.CG.HSCG

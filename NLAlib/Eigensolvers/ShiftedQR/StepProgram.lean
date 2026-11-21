@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Eigensolvers.ShiftedQR.Alg
+public import NLAlib.Eigensolvers.ShiftedQR.StepRoutine
 public import NLAlib.Eigensolvers.ShiftedQR.Problem
 public import NLAlib.Matrix.QRIteration.ShiftedQRConjugation
 public import NLAlib.Ops.Profiles.RoundedScalarBlas
@@ -34,8 +34,7 @@ open Ops
 /-- A fixed scalar program for a matrix of order `n+1`; its three raw buffers are the input
 matrix, complex shift, and output matrix. All intermediate state is scoped scratch. -/
 def stepProgram : Program ScalarOp CmpTst 1 3 :=
-  ⟨.frame [.var 0 + .const 1] [⟨0, .var 1⟩, ⟨1, .var 2⟩, ⟨2, .var 3⟩]
-    shiftedStep.body⟩
+  stepRoutine.close 1 3
 
 /-- The fixed tree uses only the declared real scalar operations and operand comparisons. -/
 theorem wellTyped_stepProgram :

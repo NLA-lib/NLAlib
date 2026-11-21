@@ -52,9 +52,9 @@ private theorem decoupleLast_round_terminates {M : Machine ℝ} {I : Interp O Q 
     (hlg : HoldsSlottedLog lg ns w (LL ++ Ls) [] μ.store) (hj : LL.length + i < ns)
     (hw : n + 1 ≤ w) :
     Writes .total I τ
-      (.seq (.frame dsM asM (multiStepStable (Op := O) (Tst := Q)).body)
-        (.seq (.frame dsV asV (slottedLogValidate (O := O) (Q := Q)).body)
-          (.frame dsS asS (bottomScan (O := O) (Q := Q)).body))) ρ
+      (.seq (.frame dsM asM (multiStepStable (Op := O) (Tst := Q)))
+        (.seq (.frame dsV asV (slottedLogValidate (O := O) (Q := Q)))
+          (.frame dsS asS (bottomScan (O := O) (Q := Q))))) ρ
       (Store.inBlock h.1 h.2 (2 * ((n + 2) * (n + 2))) ⊔ Store.inBlock L 0 5 ⊔
         Store.inBlock (L + 1) 0 2 ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun μ' => DecoupleLastCtx n L h lam qw f ζ t μ'.store ∧
@@ -124,7 +124,7 @@ theorem decoupleLast_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsS
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
     (hlog : HoldsSlottedLog lg ns w LL [] μ.store) (hj : LL.length + m₂ ≤ ns) (hw : n + 1 ≤ w)
     (hlgl : μ.Live [lg]) (hlgb : ∀ b ∈ [h, lam, qw, f], b.1 ≠ lg.1) :
-    Writes .total I τ (decoupleLast (O := O) (Q := Q)).body
+    Writes .total I τ (decoupleLast (O := O) (Q := Q))
       (Env.frame [n + 2, m₂, w, LL.length] [h, lam, qw, h, f, lg])
       (Store.inBlock h.1 h.2 (2 * ((n + 2) * (n + 2))) ⊔ Store.inBlock f.1 f.2 1 ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
@@ -176,7 +176,7 @@ theorem decoupleLast_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsS
   have hlogμ₁ : HoldsSlottedLog lg ns w LL [] μ₁.store :=
     hfr₁.keep (readsOnly_holdsSlottedLog _ _ _ _ _) (Fp.disj_inBlock_of_ne (by omega)) hlog₁
   have hexit : ∀ i ≤ m₂, ∀ μ' : Mem ℝ, Inv i μ' → Writes .total I τ
-      (roundedDecoupleExit (O := O) (Q := Q)).body (Env.frame [] [(L, 0), f])
+      (roundedDecoupleExit (O := O) (Q := Q)) (Env.frame [] [(L, 0), f])
       (Store.inBlock f.1 f.2 1)
       (fun μ'' => (∃ H' : Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ, HoldsMatrix h H' μ''.store) ∧
         ∃ x, μ''.store.get f.1 f.2 = some x ∧ ∃ Ls : List (Option (List GivensEntry)),

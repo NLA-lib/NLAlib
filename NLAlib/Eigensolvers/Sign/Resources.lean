@@ -19,7 +19,7 @@ Resources include the complete instrumented tree and all supplied capacity.
 ## Main results
 
 * `NLAlib.Sign.problem` declares the raw inputs and output capacity.
-* `NLAlib.Sign.fixedProgram` fixes one tree before sizes or input values.
+* `NLAlib.Sign.signProgram` fixes one tree before sizes or input values.
 * `NLAlib.Sign.initial_geometry` gives the supplied block reads and capacities.
 * `NLAlib.Sign.initialBytes_problem` counts all supplied capacity.
 -/
@@ -50,8 +50,8 @@ def problem (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d) : P
 
 /-- The complete sign tree uses the standard dense operation signature. Parameters are
 matrix dimension and cap; the three handles are input matrix, parameters and output. -/
-def fixedProgram : Program DenseOp (CmpTst ⊕ IdxTst) 2 3 :=
-  ⟨(program (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst) (Has.inj MatrixOp.mul)).body⟩
+def signProgram : Program DenseOp (CmpTst ⊕ IdxTst) 2 3 :=
+  (signRoutine (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst) (Has.inj MatrixOp.mul)).close 2 3
 
 variable {domain : (Fin 2 → ℕ) → Prop} {admitted : ∃ d, domain d}
 
@@ -128,11 +128,11 @@ theorem initial_geometry (d : Fin 2 → ℕ)
 
 /-- Every primitive and structural instruction in the fixed instrumented sign tree. -/
 noncomputable def staticBudget (d : Fin 2 → ℕ) :
-    Count (DenseOp ⊕ Bookkeeping) (CmpTst ⊕ IdxTst) := staticCost fixedProgram d
+    Count (DenseOp ⊕ Bookkeeping) (CmpTst ⊕ IdxTst) := staticCost signProgram d
 
 /-- Every sign call uses the storage formats of the standard dense resource profile. -/
-theorem wellTyped_fixedProgram (matrixWork matrixWorkspace : MatrixOp → List ℕ → ℕ) :
-    fixedProgram.wellTyped (Dense.resources matrixWork matrixWorkspace) (fun _ => .cell) = true :=
+theorem wellTyped_signProgram (matrixWork matrixWorkspace : MatrixOp → List ℕ → ℕ) :
+    signProgram.wellTyped (Dense.resources matrixWork matrixWorkspace) (fun _ => .cell) = true :=
   rfl
 
 end NLAlib.Sign

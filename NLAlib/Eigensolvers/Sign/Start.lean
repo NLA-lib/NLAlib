@@ -16,7 +16,7 @@ passes or the cap is zero.
 
 ## Main results
 
-* `NLAlib.Sign.writes_start` computes the capped sign loop from a stored matrix and bounds.
+* `NLAlib.Sign.start_writes` computes the capped sign loop from a stored matrix and bounds.
 -/
 
 @[expose] public section
@@ -30,8 +30,9 @@ variable {K Op Tst Su Sg : Type} [Inhabited K] [Has ScalarOp Op] [Has MatrixOp O
   {mm : MatMulMap (K × K)} {qr : QRMap (K × K)}
   {unif : K → Su → K} {normal : Sg → K × K}
 
-/-- Execute the initial test and the capped iteration on the same actual matrix. -/
-theorem writes_start {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I)
+/-- Execute the initial test and the capped iteration on the same actual matrix.
+A fragment of `NLAlib.Sign.signRoutine`. -/
+theorem start_writes {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I)
     (hMM : IsMatrixMul (EntryCodec.pair K) mm I) {τ : Tape K} {n cap : ℕ}
     (B : Matrix (Fin n) (Fin n) (K × K)) (η : K) {x w v t : ℕ × ℕ} {m : Mem K}
     (h01 : dec (M.lit 0) ≠ dec (M.lit 1)) (hl : m.Live [x, w, v, t])
@@ -44,7 +45,7 @@ theorem writes_start {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I
     (hx : x.2 + 2 * (n * n) ≤ m.store.len x.1)
     (hw : w.2 + 2 * (n * n) ≤ m.store.len w.1)
     (hv : v.2 + 2 * (n * n) ≤ m.store.len v.1) (ht : t.2 + 5 ≤ m.store.len t.1) :
-    Writes .total I τ (start (Has.inj MatrixOp.mul)).body
+    Writes .total I τ (start (Has.inj MatrixOp.mul))
       (Env.frame [n, cap] [x, w, v, t, x, w, v, t]) (loopFootprint n x w v t)
       (fun μ => μ.pos = m.pos ∧ μ.store.readBlock x.1 x.2 (2 * (n * n)) =
         some ((EntryCodec.pair K).packFinMatrix
@@ -56,7 +57,7 @@ theorem writes_start {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I
       (Store.inBlock x.1 x.2 (2 * (n * n))) := by simpa using hdis 3 0 (by simp)
   have hlTest : m.Live [x, (t.1, t.2 + 3), (t.1, t.2 + 4), t, w, v, (t.1, t.2 + 1)] := by
     simpa [Mem.Live, and_assoc, and_left_comm, and_comm] using hl
-  have htest := writes_test (dec := dec) (mm := mm) (qr := qr)
+  have htest := test_writes (dec := dec) (mm := mm) (qr := qr)
     (unif := unif) (normal := normal) (τ := τ) hS hC hMM B η hlTest (apart_test hAP)
     hX hone hlo hη hw hv (by dsimp; omega)
   have hsub : Store.inBlock w.1 w.2 (2 * (n * n)) ⊔
@@ -82,7 +83,7 @@ theorem writes_start {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I
   have hlψ : ψ.Live [x, w, v, t] := by simpa [Mem.Live, hfr.length_eq] using hl
   have hlFrame : ψ.Live [x, w, v, t, x, w, v, t] :=
     (Mem.live_append ψ _ _).mpr ⟨hlψ, hlψ⟩
-  have hloop := writes_loop (cap := cap) (dec := dec) (mm := mm) (qr := qr)
+  have hloop := loop_writes (cap := cap) (dec := dec) (mm := mm) (qr := qr)
     (unif := unif) (normal := normal) (τ := τ) hS hC hMM B η hState h01 hlψ hAP
     (by rw [hfr.len_eq]; exact hx) (by rw [hfr.len_eq]; exact hw)
     (by rw [hfr.len_eq]; exact hv) (by rw [hfr.len_eq]; exact ht)

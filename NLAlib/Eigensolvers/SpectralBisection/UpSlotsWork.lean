@@ -27,7 +27,7 @@ namespace NLAlib.SpectralBisection
 open Ops
 
 private abbrev upSlotsBody : Stmt DenseOp (CmpTst ⊕ IdxTst) :=
-  match (upNodesImpl (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body with
+  match (upNodes (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) with
   | .loop _ body => body
   | _ => .abort
 
@@ -43,7 +43,7 @@ private theorem round_weight {K : Type} {I : Interp DenseOp (CmpTst ⊕ IdxTst) 
     Dense.kernelWeight T b.cost ≤ Dense.kernelWeight T a.cost + 2 * T k := by
   have hidx := hQ.index_eq_of_decode_nat (m := a.mem)
     (x := (sz.1, sz.2 + n * d + lo)) hSize hDecode
-  dsimp only [upSlotsBody, upNodesImpl] at hr
+  dsimp only [upSlotsBody, upNodes] at hr
   rw [evalCounted] at hr
   simp only [Operand.evalList, Operand.eval, Env.pushIdx, Env.frame, List.map_cons, List.map_nil,
     List.cons_append, List.nil_append, List.length_cons, List.length_nil, zero_add, Nat.reduceAdd,
@@ -102,7 +102,7 @@ variable {K Su Sg : Type} [Inhabited K] {M : Machine K} {dec : K → ℝ}
 
 include mm qr unif normal hS hQ hMM hl hSizes hDecode hBound hSteps hChildren hLit ht
   hRoom hApart hSizesProtect hShiftsProtect hForward hChildProtect in
-private theorem writes_round (lo : ℕ) (hlo : lo < n) (m' : Mem K)
+private theorem round_writes (lo : ℕ) (hlo : lo < n) (m' : Mem K)
     (hfr : m.store.EqOff (Fp.loopPrefix
       (fun j => Fp.blocks (resultOperands n d j ua ea) (resultLengths (ks j))) lo) m'.store) :
     Writes .total I τ upSlotsBody
@@ -128,7 +128,7 @@ private theorem writes_round (lo : ℕ) (hlo : lo < n) (m' : Mem K)
         StoresResult n (d + 1) ((steps lo).childSlot lo b) ua ea (children lo b) m'.store := by
       intro b hb
       exact (hChildren lo hlo hpos b hb).of_eqOff hfrAll (hChildProtect lo hlo b hb)
-    exact (writes_frame rfl rfl (by room) (writes_upNode mm qr unif normal hS hQ hMM
+    exact (writes_frame rfl rfl (by room) (upNode_writes mm qr unif normal hS hQ hMM
       (steps lo) (children lo) hStep hChild hLit (by have := hBound lo hlo; omega)
       (by room) ht' ((hRoom lo hlo).congr hfr.len_eq) (hApart lo hlo))).mono
       le_rfl (fun _ _ _ => trivial)
@@ -140,7 +140,7 @@ from arbitrary prior counts and live scratch. The total word theorem supplies te
 separately; this auxiliary bound concerns that same existing counted evaluator. -/
 theorem upNodes_kernelWeight_le_of_exec (T : ℕ → ℕ) (W : DenseOp → List ℕ → ℕ)
     {a b : St DenseOp (CmpTst ⊕ IdxTst) K} (hmem : a.mem = m)
-    (hr : evalCounted I W τ (upNodesImpl (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body
+    (hr : evalCounted I W τ (upNodes (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst))
       (Env.frame [n, d] [ua, qa, ea, sz, kd, kp, t]) a = some b) :
     Dense.kernelWeight T b.cost ≤ Dense.kernelWeight T a.cost +
       ∑ lo ∈ Finset.range n, 2 * T (ks lo) := by
@@ -151,7 +151,7 @@ theorem upNodes_kernelWeight_le_of_exec (T : ℕ → ℕ) (W : DenseOp → List 
     (fun _ _ => True) trivial ?_ (Dense.kernelWeight T) (fun lo => 2 * T (ks lo)) ?_ hr
   · exact hb.1
   · intro lo hlo m' hfr _
-    exact (writes_round mm qr unif normal hS hQ hMM ks ws steps children
+    exact (round_writes mm qr unif normal hS hQ hMM ks ws steps children
       hl hSizes hDecode hBound hSteps hChildren hLit ht hRoom hApart
       hSizesProtect hShiftsProtect hForward hChildProtect lo hlo m' hfr).mono
       (fun b x hx => ⟨lo, by omega, hx⟩) (fun _ _ _ => trivial)

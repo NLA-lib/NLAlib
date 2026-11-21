@@ -43,10 +43,10 @@ section Theorems
 variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q]
 
 /-- The leaf call of a round: the Schur leaf on the work matrix, its accumulator in `Ub`. -/
-def roundedLeafCall (L : Impl O Q) : Stmt O Q :=
+def roundedLeafCall (L : Stmt O Q) : Stmt O Q :=
   Stmt.frame [IExp.var 8, IExp.var 2, IExp.var 4]
     [{ buf := 5, off := IExp.var 14 }, { buf := 2, off := IExp.var 11 },
-      { buf := 5, off := IExp.var 14 }, { buf := 6, off := IExp.var 15 }] L.body
+      { buf := 5, off := IExp.var 14 }, { buf := 6, off := IExp.var 15 }] L
 
 omit [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
 /-- The leaf call of a round on the good tapes: from the copied state of round
@@ -56,7 +56,7 @@ $N_0$ stores, except with probability at most $\varphi_L$, an upper triangular b
 accumulator tracked from the block before with errors $(\varepsilon_L, \beta)$. -/
 theorem roundedLeafCall_pwrites {I : Interp O Q ℝ} (hI : I.IsMeasurable)
     {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ}
-    {εL β φL N₀ u e : ℝ} {n k F T ns w m : ℕ} {ps : List ℝ} (L : Impl O Q)
+    {εL β φL N₀ u e : ℝ} {n k F T ns w m : ℕ} {ps : List ℝ} (L : Stmt O Q)
     (hLeaf : Schur.RandomSchurLeafContract law εL β φL (min k (n + 1)) N₀ ps T L I)
     {H U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (he0 : 0 ≤ e)
     (hN₀ : specNorm H + 2 * (n + 1) * e ≤ N₀) {thr : ℝ} {a t p uo f st wk ub r : ℕ × ℕ}
@@ -140,7 +140,7 @@ theorem roundedLeafBranch_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : 
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu0 : 0 ≤ u) (hu : u ≤ 1 / 100)
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     {law : ℕ → Measure ℝ} {εL β φL N₀ e : ℝ} {n k F T ns w m : ℕ} (hm2 : 2 * k * (k + 2) ≤ m)
-    {ps : List ℝ} (L : Impl O Q)
+    {ps : List ℝ} (L : Stmt O Q)
     (hLeaf : Schur.RandomSchurLeafContract law εL β φL (min k (n + 1)) N₀ ps T L I)
     (hεL : 0 ≤ εL) (he : β + (8 * (n + 1) * (k + 2) * u * N₀ + 2 * εL * N₀) ≤ e)
     (hroom : 2 * (n + 1) * (8 * (n + 1) * (k + 2) * u * N₀) ≤ N₀)
@@ -196,12 +196,12 @@ def SchurPoppedLog (n : ℕ) (H U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (u �
     ∀ v ∈ [a, t, p, uo, f, st, wk, ub, r], v.1 < Lc
 
 /-- The decoupling call of the large branch, on the work matrix with the scoped log. -/
-def roundedDecoupleCall (D : Impl O Q) : Stmt O Q :=
+def roundedDecoupleCall (D : Stmt O Q) : Stmt O Q :=
   Stmt.frame [IExp.var 8, IExp.var 1, IExp.var 2, IExp.var 3, IExp.var 4, IExp.var 5,
       IExp.var 6]
     [{ buf := 5, off := IExp.var 14 }, { buf := 2, off := IExp.var 11 },
       { buf := 5, off := IExp.var 14 }, { buf := 7, off := IExp.var 16 },
-      { buf := 8, off := IExp.const 0 }] D.body
+      { buf := 8, off := IExp.const 0 }] D
 
 omit [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
 /-- The decoupling call of a round on the good tapes: from the copied state of round
@@ -214,7 +214,7 @@ unitary similarity of the block by the log's unitary with error $\varepsilon(N_0
 bottom-$k$ subdiagonal entry of modulus at most $\omega$. -/
 theorem roundedDecoupleCall_pwrites {I : Interp O Q ℝ} (hI : I.IsMeasurable)
     {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ}
-    {B g φD N₀ u εL e ω : ℝ} {n k F T ns w m : ℕ} {ps : List ℝ} {ε : ℝ → ℝ} (D : Impl O Q)
+    {B g φD N₀ u εL e ω : ℝ} {n k F T ns w m : ℕ} {ps : List ℝ} {ε : ℝ → ℝ} (D : Stmt O Q)
     (hD : RandomDecouplingRoutineContract law (2 * B) (g / 2) φD k F T n N₀ ps ns w ω ε D I)
     {H U V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {dd : Fin (n + 1) → ℂ} (hV : IsUnit V)
     (hHV : H * V = V * Matrix.diagonal dd) (hκ : pseudoConditionNumber V ≤ B) (hg : 0 < g)
@@ -347,7 +347,7 @@ theorem roundedLarge_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hL : IsIndexLit Mch I) {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
     (hC : IsCmp id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
     (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ} {B g φD N₀ εL e ω c thr : ℝ}
-    {k F T ns w m : ℕ} (hm : ns * w ≤ m) {ps : List ℝ} {ε : ℝ → ℝ} (D : Impl O Q)
+    {k F T ns w m : ℕ} (hm : ns * w ≤ m) {ps : List ℝ} {ε : ℝ → ℝ} (D : Stmt O Q)
     (hD : RandomDecouplingRoutineContract law (2 * B) (g / 2) φD k F T n N₀ ps ns w ω ε D I)
     {H U V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {dd : Fin (n + 1) → ℂ} (hV : IsUnit V)
     (hHV : H * V = V * Matrix.diagonal dd) (hκ : pseudoConditionNumber V ≤ B) (hg : 0 < g)
@@ -358,7 +358,7 @@ theorem roundedLarge_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hN₀ : specNorm H + 2 * (n + 1) * e ≤ N₀) (hsmall : 2 * (n + 1) * e ≤ g / (16 * (n + 1) * B))
     {a t p uo f st wk ub r : ℕ × ℕ} {j lo d : ℕ} (hj : j < 2 * (n + 1)) (hk : k ≤ d)
     (hdn : d ≤ n) :
-    PWrites law I (roundedProcessLargeWith D).body
+    PWrites law I (roundedProcessLargeWith D)
       (Env.frame [n + 1, k, ps.length, F, T, ns, w, lo, d + 1] [a, t, p, st, uo, wk, r, f])
       (schurRoundFp (n + 1) a uo f st wk ub r)
       (SchurPopped true n H U u εL e m thr ps a t p uo f st wk ub r j lo (d + 1))
@@ -441,9 +441,9 @@ theorem roundedRange_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hC : IsCmp id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
     (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ}
     {B g φD φL N₀ εL β e ω c thr : ℝ} {k F T ns w m : ℕ} (hm1 : ns * w ≤ m)
-    (hm2 : 2 * k * (k + 2) ≤ m) {ps : List ℝ} {ε : ℝ → ℝ} (D : Impl O Q)
+    (hm2 : 2 * k * (k + 2) ≤ m) {ps : List ℝ} {ε : ℝ → ℝ} (D : Stmt O Q)
     (hD : RandomDecouplingRoutineContract law (2 * B) (g / 2) φD k F T n N₀ ps ns w ω ε D I)
-    (L : Impl O Q)
+    (L : Stmt O Q)
     (hLeaf : Schur.RandomSchurLeafContract law εL β φL (min k (n + 1)) N₀ ps T L I)
     (hφD : 0 ≤ φD) (hφL : 0 ≤ φL)
     {H U V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {dd : Fin (n + 1) → ℂ} (hV : IsUnit V)
@@ -456,7 +456,7 @@ theorem roundedRange_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hroomL : 2 * (n + 1) * (8 * (n + 1) * (k + 2) * u * N₀) ≤ N₀) (he0 : 0 ≤ e)
     (hN₀ : specNorm H + 2 * (n + 1) * e ≤ N₀) (hsmall : 2 * (n + 1) * e ≤ g / (16 * (n + 1) * B))
     {a t p uo f st wk ub r : ℕ × ℕ} {j lo d : ℕ} (hj : j < 2 * (n + 1)) (hd : lo + d ≤ n + 1) :
-    PWrites law I (roundedProcessRangeWith D L).body
+    PWrites law I (roundedProcessRangeWith D L)
       (Env.frame [n + 1, k, ps.length, F, T, ns, w, lo, d] [a, t, p, st, uo, wk, ub, r, f])
       (schurRoundFp (n + 1) a uo f st wk ub r)
       (SchurPopped false n H U u εL e m thr ps a t p uo f st wk ub r j lo d)
@@ -466,7 +466,7 @@ theorem roundedRange_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
       Store.inBlock wk.1 wk.2 (2 * ((n + 1) * (n + 1))) := by fp_sub
   have hcopy : PWrites law I (Stmt.frame [IExp.var 0, IExp.var 7, IExp.var 8]
       [{ buf := 0, off := IExp.var 9 }, { buf := 5, off := IExp.var 14 }]
-      (copyToWork (Op := O) (Tst := Q)).body)
+      (copyToWork (Op := O) (Tst := Q)))
       (Env.frame [n + 1, k, ps.length, F, T, ns, w, lo, d] [a, t, p, st, uo, wk, ub, r, f])
       (Store.inBlock wk.1 wk.2 (2 * (d * d)))
       (SchurPopped false n H U u εL e m thr ps a t p uo f st wk ub r j lo d)
@@ -525,9 +525,9 @@ theorem roundedWorklistRound_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
     (hC : IsCmp id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
     (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ}
     {B g φD φL N₀ εL β e ω c thr : ℝ} {k F T ns w m : ℕ} (hm1 : ns * w ≤ m)
-    (hm2 : 2 * k * (k + 2) ≤ m) {ps : List ℝ} {ε : ℝ → ℝ} (D : Impl O Q)
+    (hm2 : 2 * k * (k + 2) ≤ m) {ps : List ℝ} {ε : ℝ → ℝ} (D : Stmt O Q)
     (hD : RandomDecouplingRoutineContract law (2 * B) (g / 2) φD k F T n N₀ ps ns w ω ε D I)
-    (L : Impl O Q)
+    (L : Stmt O Q)
     (hLeaf : Schur.RandomSchurLeafContract law εL β φL (min k (n + 1)) N₀ ps T L I)
     (hφD : 0 ≤ φD) (hφL : 0 ≤ φL)
     {H U V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {dd : Fin (n + 1) → ℂ} (hV : IsUnit V)
@@ -540,7 +540,7 @@ theorem roundedWorklistRound_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
     (hroomL : 2 * (n + 1) * (8 * (n + 1) * (k + 2) * u * N₀) ≤ N₀) (he0 : 0 ≤ e)
     (hN₀ : specNorm H + 2 * (n + 1) * e ≤ N₀) (hsmall : 2 * (n + 1) * e ≤ g / (16 * (n + 1) * B))
     {a t p uo f st wk ub r : ℕ × ℕ} {j : ℕ} (hj : j < 2 * (n + 1)) :
-    PWrites law I (roundedWorklistRoundWith D L).body
+    PWrites law I (roundedWorklistRoundWith D L)
       (Env.frame [n + 1, k, ps.length, F, T, ns, w] [a, t, p, st, uo, wk, ub, r, f])
       (schurRoundFp (n + 1) a uo f st wk ub r)
       (fun μ => SchurReached n H U u εL e m thr ps a t p uo f st wk ub r j μ ∧
@@ -634,7 +634,7 @@ theorem roundedWorklistExit_reached {I : Interp O Q ℝ} (hC : IsCmp id I) {n : 
       μ = some false) :
     Writes .total I τ (Stmt.ite (Has.inj CmpTst.isPos) [] [{ buf := 4, off := IExp.var 11 }]
         (Stmt.frame [] [{ buf := 4, off := IExp.var 11 }, { buf := 8, off := IExp.var 15 }]
-          (roundedAbort (O := O) (Q := Q)).body) Stmt.skip)
+          (roundedAbort (O := O) (Q := Q))) Stmt.skip)
       ((Env.frame [n + 1, k, ps.length, F, T, ns, w] [a, t, p, uo, st, wk, ub, r, f]).pushIdx i)
       ⊥ (fun μ' => μ'.store.get f.1 f.2 = some 0 ∧
         ∃ U' Tm : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
@@ -677,9 +677,9 @@ theorem roundedWorklist_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
     (hC : IsCmp id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
     (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ}
     {B g φD φL N₀ εL β e ω c thr : ℝ} {k F T ns w m : ℕ} (hm1 : ns * w ≤ m)
-    (hm2 : 2 * k * (k + 2) ≤ m) {ps : List ℝ} {ε : ℝ → ℝ} (D : Impl O Q)
+    (hm2 : 2 * k * (k + 2) ≤ m) {ps : List ℝ} {ε : ℝ → ℝ} (D : Stmt O Q)
     (hD : RandomDecouplingRoutineContract law (2 * B) (g / 2) φD k F T n N₀ ps ns w ω ε D I)
-    (L : Impl O Q)
+    (L : Stmt O Q)
     (hLeaf : Schur.RandomSchurLeafContract law εL β φL (min k (n + 1)) N₀ ps T L I)
     (hφD : 0 ≤ φD) (hφL : 0 ≤ φL)
     {H U V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {dd : Fin (n + 1) → ℂ}
@@ -693,7 +693,7 @@ theorem roundedWorklist_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
     (hroomL : 2 * (n + 1) * (8 * (n + 1) * (k + 2) * u * N₀) ≤ N₀) (he0 : 0 ≤ e)
     (hN₀ : specNorm H + 2 * (n + 1) * e ≤ N₀) (hsmall : 2 * (n + 1) * e ≤ g / (16 * (n + 1) * B))
     {a t p uo f st wk ub r : ℕ × ℕ} :
-    PWrites law I (roundedWorklistWith D L).body
+    PWrites law I (roundedWorklistWith D L)
       (Env.frame [n + 1, k, ps.length, F, T, ns, w] [a, t, p, uo, st, wk, ub, r, f])
       (schurRoundFp (n + 1) a uo f st wk ub r)
       (fun μ => SchurGeometry (n + 1) ps.length a t p uo f st wk ub r μ ∧
@@ -798,9 +798,9 @@ theorem solveRoundedWith_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
     (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)
     (hC : IsCmp id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
     (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ} {B g φD εL β φL : ℝ}
-    {k F T ns w : ℕ} {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} (D : Impl O Q) {N₀ : ℝ}
+    {k F T ns w : ℕ} {ps : List ℝ} {ω : ℝ} {ε : ℝ → ℝ} (D : Stmt O Q) {N₀ : ℝ}
     (hD : RandomDecouplingRoutineContract law (2 * B) (g / 2) φD k F T n N₀ ps ns w ω ε D I)
-    (L : Impl O Q)
+    (L : Stmt O Q)
     (hLeaf : Schur.RandomSchurLeafContract law εL β φL (min k (n + 1)) N₀ ps T L I)
     (hφD : 0 ≤ φD) (hφL : 0 ≤ φL) (hεL : 0 ≤ εL) {a t p uo f : ℕ × ℕ}
     {H U V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} {thr c : ℝ}
@@ -812,7 +812,7 @@ theorem solveRoundedWith_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
       8 * (n + 1) * (k + 2) * u * N₀) ≤ N₀)
     (hsmall : 2 * (n + 1) * (c + ε N₀ + β + 2 * εL * N₀ + 78 * u * (ns * w) * N₀ +
       8 * (n + 1) * (k + 2) * u * N₀) ≤ g / (16 * (n + 1) * B)) :
-    PWrites law I (solveRoundedWith D L).body
+    PWrites law I (solveRoundedWith D L)
       (Env.frame [n + 1, k, ps.length, F, T, ns, w] [a, t, p, uo, a, uo, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)

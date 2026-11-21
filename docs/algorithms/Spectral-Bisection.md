@@ -77,7 +77,7 @@ range bound (`hFloor`, `hBound` in the Lean).
 - U is nearly unitary, not unitary. Nothing is said about the order of the entries of d.
 - The program is one fixed tree for all n, L and c; the covered sizes are a parameter.
 
-**Lean.** The conclusion, verbatim (the hypotheses are those of `countedAlgorithm` and of
+**Lean.** The conclusion, verbatim (the hypotheses are those of `countedBisectionAlgorithm` and of
 `measureReal_not_isApproxDiagonalization_tapeMachine_le`, specialized to the input):
 
 ```lean
@@ -125,12 +125,12 @@ noncomputable def countedSpecification … :=
 | the numerical conditions | `hDepth`, `hFuel`, `hSteps`, `hBetaMax`, `hSign`, `hStop`, `hDeflate`, `hFloor`, `hBound` | |
 
 The theorem joins three results:
-[`countedAlgorithm`](../../NLAlib/Eigensolvers/SpectralBisection/OperationCount.lean) (total
+[`countedBisectionAlgorithm`](../../NLAlib/Eigensolvers/SpectralBisection/OperationCount.lean) (total
 execution with the explicit work), `measureReal_not_accepts_le_of_wordSpecification` (a
 reference failure bound controls the failure of the run) and
 `measureReal_not_isApproxDiagonalization_tapeMachine_le` (the failure bound of the rounded
 reference computation, the setting of Shah's Theorem 4.2). On every tape the stored output
-equals that reference computation; this is the postcondition of `countedAlgorithm` itself.
+equals that reference computation; this is the postcondition of `countedBisectionAlgorithm` itself.
 
 ## Algorithm and implementation
 
@@ -172,7 +172,7 @@ multiplication/QR and explicit draws. Queries compare decoded scalar words or ta
 natural floor. A bounded conversion checks its declared bound.
 
 The generated dense functional model gives one jointly realized collection of local contracts.
-`writes_solve` assumes these primitive contracts, readable matrix/parameter blocks, live handles,
+`solve_writes` assumes these primitive contracts, readable matrix/parameter blocks, live handles,
 separate source blocks, writable separate outputs, and exact decoding of natural literals
 through `max n 4`. Outputs may overlap the source regions because the final copies follow all
 source reads. Under those premises it guarantees total execution, the mathematical word result,
@@ -180,11 +180,11 @@ exact tape advancement and release of scoped scratch. It assumes no successful r
 
 The canonical problem supplies four separate buffers: raw matrix words, three parameter words,
 and empty basis/value output capacity. Its initial memory performs no numerical preprocessing.
-`workCertifiedAlgorithm` certifies this same fixed program for every admitted raw input and tape,
+`matrixWorkBisectionAlgorithm` certifies this same fixed program for every admitted raw input and tape,
 with the word result, full instruction count, independent storage bound and matrix-work estimate
 below. The admitted root dimensions are at least two; bounded literal exactness and the stated
 matrix-cost assumptions are explicit. No premise assumes a WP or successful execution.
-The general `certifiedAlgorithm` adapter also supports other supplied resource bounds.
+The general `boundedBisectionAlgorithm` adapter also supports other supplied resource bounds.
 
 ## Resources and their scope
 
@@ -208,7 +208,7 @@ complexity for fast matrix multiplication.
 
 The matrix-cost domination is global over dimension lists, including empty and all-zero
 lists. Superadditivity forces `T(0) = 0`, so matrix costs at those lists must vanish for this
-certificate. `manifestAlgorithm` remains available for the full static manifest without
+certificate. `bisectionAlgorithm` remains available for the full static manifest without
 these additional cost assumptions.
 
 The [independent storage bound](../../NLAlib/Eigensolvers/SpectralBisection/StoragePolynomial.lean)

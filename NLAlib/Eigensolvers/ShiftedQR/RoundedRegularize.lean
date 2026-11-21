@@ -53,12 +53,12 @@ the flag `Fl` is $0$; otherwise `Fl` is $2$ and the $k$ trials run until one dec
 is $1$). Trial $t$ records its rotations in slot $j_0 + t$ of the slotted log `Lg` of slot width
 $w$; an accepted trial validates its slot. The interface is
 `[N, k, nq, T, w, j0] (A, Rd, C, Thr, Qw, B, Z, G, Tm, SR, Ds, Rg) → (A, S, Fl, Lg)`. -/
-def regularizeWithScratchWith (SE : Impl O Q) : Impl O Q :=
-  opsImpl% [N, k, nq, T, w, j0] (A, Rd, C, Thr, Qw, B, Z, G, Tm, SR, Ds, Rg) → (A, S, Fl, Lg) {
-    run (copyToWork (Op := O) (Tst := Q)).body [N, N - k, k] (A, B);
-    run SE.body [k, nq, T] (B, Qw, S);
-    run (regularizeDraws (O := O) (Q := Q)).body [k] (Rd, Z, S);
-    run (regularizeDecide (O := O) (Q := Q)).body [N, k, w, j0]
+def regularizeWithScratchWith (SE : Stmt O Q) : Stmt O Q :=
+  ops% [N, k, nq, T, w, j0] (A, Rd, C, Thr, Qw, B, Z, G, Tm, SR, Ds, Rg) → (A, S, Fl, Lg) {
+    run (copyToWork (Op := O) (Tst := Q)) [N, N - k, k] (A, B);
+    run SE [k, nq, T] (B, Qw, S);
+    run (regularizeDraws (O := O) (Q := Q)) [k] (Rd, Z, S);
+    run (regularizeDecide (O := O) (Q := Q)) [N, k, w, j0]
       (A, S, C, Thr, Tm, SR, Ds, Rg, A, G, Fl, Lg)
   }
 
@@ -71,8 +71,8 @@ flag `Fl` to $0$ (they are optimal, `A` unchanged) or $1$ (`A` holds a decoupled
 $j_0, \dots, j_0 + k - 1$ of the slotted log `Lg` of slot width $w$, the accepted one valid. All
 scratch is scoped. The interface is `[N, k, nq, T, w, j0] (A, Rd, C, Thr, Qw) → (A, S, Fl, Lg)`.
 -/
-def regularizeWith (SE : Impl O Q) : Impl O Q :=
-  opsImpl% [N, k, nq, T, w, j0] (A, Rd, C, Thr, Qw) → (A, S, Fl, Lg) {
+def regularizeWith (SE : Stmt O Q) : Stmt O Q :=
+  ops% [N, k, nq, T, w, j0] (A, Rd, C, Thr, Qw) → (A, S, Fl, Lg) {
     let B ← alloc (2 * (k * k));
     let Z ← alloc 2;
     let G ← alloc 1;
@@ -80,7 +80,7 @@ def regularizeWith (SE : Impl O Q) : Impl O Q :=
     let SR ← alloc (2 * k);
     let Ds ← alloc (2 * k);
     let Rg ← alloc 5;
-    run (regularizeWithScratchWith SE).body [N, k, nq, T, w, j0]
+    run (regularizeWithScratchWith SE) [N, k, nq, T, w, j0]
       (A, Rd, C, Thr, Qw, B, Z, G, Tm, SR, Ds, Rg, A, S, Fl, Lg)
   }
 
@@ -93,8 +93,8 @@ and set the flag `Fl` to $0$ (they are optimal, `A` unchanged) or $1$ (`A` holds
 degree $k$ step); `Fl` is $2$ only if no trial decoupled. The trials record their rotations in
 the slots $j_0, \dots, j_0 + k - 1$ of the slotted log `Lg`. The interface is
 `[N, k, w, j0] (A, Rd, C, Thr) → (A, S, Fl, Lg)`. -/
-def regularize : Impl O Q := opsImpl% [N, k, w, j0] (A, Rd, C, Thr) → (A, S, Fl, Lg) {
-  run (regularizeWith (smallEigKernel (O := O) (Q := Q))).body [N, k, 0, 0, w, j0]
+def regularize : Stmt O Q := ops% [N, k, w, j0] (A, Rd, C, Thr) → (A, S, Fl, Lg) {
+  run (regularizeWith (smallEigKernel (O := O) (Q := Q))) [N, k, 0, 0, w, j0]
     (A, Rd, C, Thr, Rd, A, S, Fl, Lg)
 }
 
@@ -115,11 +115,12 @@ variable {O Q : Type} [Has EigenvalueKernelOp O]
 randomized kernel with forward error $\beta$ and failure probability $\varphi$ on the stream `s`
 (`NLAlib.ShiftedQR.IsRandomSmallEig`), the leaf routine that calls it on an upper Hessenberg
 $\mathbf{B}$ of order $d$ writes only its output and, except with probability at most $\varphi$,
-stores values within $\beta$ of a listing of the eigenvalues of $\mathbf{B}$ with multiplicity. -/
+stores values within $\beta$ of a listing of the eigenvalues of $\mathbf{B}$ with multiplicity.
+Stated in operand form; it is a statement about a tree, not the contract of a routine. -/
 theorem IsRandomSmallEig.smallEigLeaf_pwrites {law : ℕ → Measure ℝ} {s : ℕ} {β φ : ℝ}
     {I : Interp O Q ℝ} (h : IsRandomSmallEig law s β φ I) {d : ℕ} {w o : ℕ × ℕ}
     (B : Matrix (Fin d) (Fin d) ℂ) (hB : IsUpperHessenberg B) :
-    PWrites law I (smallEigLeaf (O := O) (Q := Q)).body (Env.frame [d] [w, o])
+    PWrites law I (smallEigLeaf (O := O) (Q := Q)) (Env.frame [d] [w, o])
       (Store.inBlock o.1 o.2 (2 * d))
       (fun μ => HoldsMatrix w B μ.store ∧ μ.Live [w, o] ∧ o.2 + 2 * d ≤ μ.store.len o.1 ∧
         Fp.Disj (Store.inBlock w.1 w.2 (2 * (d * d))) (Store.inBlock o.1 o.2 (2 * d)))
@@ -311,7 +312,7 @@ theorem regularizeDecide_outcome {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
     (hlgv : ∀ b ∈ [a, rd, c, thr, s, f], b.1 ≠ lg.1)
     (hinv : DrawsInv u β R η (fun lam : Fin k → ℂ => IsEigenvalueListing (trailingBlock k H) lam)
       e rd (L + 1, 0) s k m) :
-    Writes .total I τ (regularizeDecide (O := O) (Q := Q)).body
+    Writes .total I τ (regularizeDecide (O := O) (Q := Q))
       (Env.frame [n + 1, k, w, LL.length] [a, s, c, thr, (L + 3, 0), (L + 4, 0), (L + 5, 0),
         (L + 6, 0), a, (L + 2, 0), f, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 2) 0 1 ⊔
@@ -433,7 +434,8 @@ with the routine's words stored below the scratch, apart from the shifts, ends i
 $\varphi_{\mathrm{se}} + \varphi/2$: the routine (`NLAlib.ShiftedQR.RandomSmallEigContractAt` on
 orders at most $k$ and norms at most $\Sigma$) fails with probability at most
 $\varphi_{\mathrm{se}}$, the $k$ perturbations with probability at most $\varphi/2$, the rest is
-deterministic. -/
+deterministic.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem regularizeWithScratchWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I) {n : ℕ}
@@ -457,13 +459,13 @@ theorem regularizeWithScratchWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ}
       (16 * B)⁻¹ * (R * √(φ / (2 * k)) / 2 / ((2 + 2 * 1.1) * S)) ^ k)
     (hbound : (66 + 2 * 1.1) * B * S * ((2 + 2 * 1.1) * S / (R * √(φ / (2 * k)) / 2)) ^ k *
       √(n + 1) * (300 * (n + 1) ^ 2 * u) ≤ ω / 2)
-    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) {nq T : ℕ} {qs : List ℝ} {SE : Impl O Q}
+    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) {nq T : ℕ} {qs : List ℝ} {SE : Stmt O Q}
     (hSE : RandomSmallEigContractAt law β φse k nq T S qs SE I) {qw : ℕ × ℕ} (hqL : qw.1 < L)
     (hqw : Fp.Disj (Store.inBlock s.1 s.2 (2 * k)) (Store.inBlock qw.1 qw.2 qs.length))
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))} (hj : LL.length + k ≤ ns)
     (hw : k * n ≤ w) (hlgL : lg.1 < L)
     (hlgv : ∀ b ∈ [a, rd, c, thr, qw, s, f], b.1 ≠ lg.1) :
-    PWrites law I (regularizeWithScratchWith SE).body
+    PWrites law I (regularizeWithScratchWith SE)
       (Env.frame [n + 1, k, nq, T, w, LL.length] [a, rd, c, thr, qw, (L, 0), (L + 1, 0),
         (L + 2, 0), (L + 3, 0), (L + 4, 0), (L + 5, 0), (L + 6, 0), a, s, f, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔
@@ -499,7 +501,7 @@ theorem regularizeWithScratchWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ}
   have hqLw : ∀ {o m : ℕ}, Fp.Disj (Store.inBlock L o m) (Store.inBlock qw.1 qw.2 qs.length) :=
     Fp.disj_inBlock_of_ne (by omega)
   unfold regularizeWithScratchWith
-  have h1 : PWrites law I (copyToWork (Op := O) (Tst := Q)).body
+  have h1 : PWrites law I (copyToWork (Op := O) (Tst := Q))
       (Env.frame [n + 1, n + 1 - k, k] [a, (L, 0)]) (Store.inBlock L 0 (2 * (k * k)))
       (fun m => Ctx m ∧ m.store.readBlock qw.1 qw.2 qs.length = some qs)
       (fun m => (Ctx m ∧ m.store.readBlock qw.1 qw.2 qs.length = some qs) ∧
@@ -511,7 +513,7 @@ theorem regularizeWithScratchWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ}
     rintro m' hfr ⟨-, hB⟩
     exact ⟨⟨hIn (by disjoint) (hLlg le_rfl) hm hfr,
       hfr.keep (Store.readsOnly_readBlock _ _ _ _) hqLw hq⟩, hB⟩
-  have h2 : PWrites law I SE.body (Env.frame [k, nq, T] [(L, 0), qw, s])
+  have h2 : PWrites law I SE (Env.frame [k, nq, T] [(L, 0), qw, s])
       (Store.inBlock s.1 s.2 (2 * k))
       (fun m => (Ctx m ∧ m.store.readBlock qw.1 qw.2 qs.length = some qs) ∧
         HoldsMatrix (L, 0) (trailingBlock k H) m.store)
@@ -527,7 +529,7 @@ theorem regularizeWithScratchWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ}
       refine ⟨hm', hrd', by simp [hz'], ev, hev, roots, fun j => ?_, fun j =>
         ⟨fun _ => hfw j, fun h => absurd h (Nat.not_lt_zero _)⟩⟩
       simpa using hO.read_entry j 0
-  have h3 : PWrites law I (regularizeDraws (O := O) (Q := Q)).body
+  have h3 : PWrites law I (regularizeDraws (O := O) (Q := Q))
       (Env.frame [k] [rd, (L + 1, 0), s])
       (Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock (L + 1) 0 2)
       (fun m => Ctx m ∧ DrawsInv u β R η Lam e rd (L + 1, 0) s 0 m)
@@ -537,7 +539,7 @@ theorem regularizeWithScratchWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ}
       (fun _ h => h.2) fun m m' hm hfr hinv =>
         ⟨hIn (Fp.disj_sup_left.mpr ⟨hsIn, by disjoint⟩)
           (Fp.disj_sup_left.mpr ⟨hslg, hLlg (by omega)⟩) hm.1 hfr, hinv⟩
-  have h4 : PWrites law I (regularizeDecide (O := O) (Q := Q)).body _ _
+  have h4 : PWrites law I (regularizeDecide (O := O) (Q := Q)) _ _
       (fun m => Ctx m ∧ DrawsInv u β R η Lam e rd (L + 1, 0) s k m) _ 0 :=
     PWrites.of_writes le_rfl fun m τ ⟨hm, hinv⟩ => regularizeDecide_outcome hS hM hu1 hL hNat hC
       hk0 hk hv hH hV hHV hκ hBk hω hψ hSH hgap (by positivity) hβ hdη hnu huo huo1 hxu hbound
@@ -585,7 +587,8 @@ log, and
 except with probability at most $\varphi_{\mathrm{se}} + \varphi/2$ ends in
 `NLAlib.ShiftedQR.RegularizeOutcome`: $\theta$-optimal shifts at distance at least $\eta/2$
 from the spectrum with $\mathbf{H}$ unchanged, or a decoupled perturbed unitary similarity with
-backward error $2.1\|\mathbf{H}\|_2((1 + x)^k - 1)$, $x = 300(n+1)^2\boldsymbol{u}$. -/
+backward error $2.1\|\mathbf{H}\|_2((1 + x)^k - 1)$, $x = 300(n+1)^2\boldsymbol{u}$.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem regularizeWith_pwrites_at {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I) {n : ℕ}
@@ -615,7 +618,7 @@ theorem regularizeWith_pwrites_at {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
       (16 * B)⁻¹ * (R * √(φ / (2 * k)) / 2 / ((2 + 2 * 1.1) * S)) ^ k)
     (hbound : (66 + 2 * 1.1) * B * S * ((2 + 2 * 1.1) * S / (R * √(φ / (2 * k)) / 2)) ^ k *
       √(n + 1) * (300 * (n + 1) ^ 2 * u) ≤ ω / 2)
-    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) {nq T : ℕ} {qs : List ℝ} {SE : Impl O Q}
+    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) {nq T : ℕ} {qs : List ℝ} {SE : Stmt O Q}
     (hSE : RandomSmallEigContractAt law β φse k nq T S qs SE I) {qw : ℕ × ℕ}
     (hqw : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
       Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock f.1 f.2 1)
@@ -623,7 +626,7 @@ theorem regularizeWith_pwrites_at {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))} (hj : LL.length + k ≤ ns)
     (hw : k * n ≤ w)
     (hlgv : ∀ b ∈ [a, rd, c, thr, qw, s, f], b.1 ≠ lg.1) :
-    PWrites law I (regularizeWith SE).body
+    PWrites law I (regularizeWith SE)
       (Env.frame [n + 1, k, nq, T, w, LL.length] [a, rd, c, thr, qw, a, s, f, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔
         Store.inBlock f.1 f.2 1 ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
@@ -639,13 +642,13 @@ theorem regularizeWith_pwrites_at {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
         ((1 + 1.1) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a s f lg ns w LL)
       (φse + φ / 2) := by
   have hφ0 : 0 ≤ φse + φ / 2 := by positivity
-  have e : (regularizeWith SE).body = Stmt.allocs [.const 2 * (.var 1 * .var 1),
+  have e : (regularizeWith SE) = Stmt.allocs [.const 2 * (.var 1 * .var 1),
       .const 2, .const 1, .const 2 * (.var 0 * .var 0), .const 2 * .var 1, .const 2 * .var 1,
       .const 5] (.frame [.var 0, .var 1, .var 2, .var 3, .var 4, .var 5] [⟨0, .var 6⟩,
         ⟨1, .var 7⟩, ⟨2, .var 8⟩, ⟨3, .var 9⟩, ⟨4, .var 10⟩, ⟨9, .const 0⟩, ⟨10, .const 0⟩,
         ⟨11, .const 0⟩, ⟨12, .const 0⟩, ⟨13, .const 0⟩, ⟨14, .const 0⟩, ⟨15, .const 0⟩,
         ⟨0, .var 6⟩, ⟨6, .var 12⟩, ⟨7, .var 13⟩, ⟨8, .var 14⟩]
-        (regularizeWithScratchWith SE).body) := rfl
+        (regularizeWithScratchWith SE)) := rfl
   rw [e]
   refine PWrites.allocs rfl (Pre₁ := fun L μ => (RegularizeViews L n k a rd c thr s f ∧
     qw.1 < L ∧ lg.1 < L) ∧ (RegularizeCtx L k H R
@@ -717,9 +720,10 @@ of the forward error of the rounded steps at the distance $\eta/2$
 `NLAlib.ShiftedQR.regularize` writes only the matrix, the $k$ output pairs, the flag and the
 log, and
 except with probability at most $\varphi_{\mathrm{se}} + \varphi/2$ ends in
-`NLAlib.ShiftedQR.RegularizeOutcome`: $\theta$-optimal shifts at distance at least $\eta/2$
-from the spectrum with $\mathbf{H}$ unchanged, or a decoupled perturbed unitary similarity with
-backward error $2.1\|\mathbf{H}\|_2((1 + x)^k - 1)$, $x = 300(n+1)^2\boldsymbol{u}$. -/
+`NLAlib.ShiftedQR.RegularizeOutcome`: $\theta$-optimal shifts at distance at least $\eta/2$ from the
+spectrum with $\mathbf{H}$ unchanged, or a decoupled perturbed unitary similarity with backward
+error $2.1\|\mathbf{H}\|_2((1 + x)^k - 1)$, $x = 300(n+1)^2\boldsymbol{u}$.
+Stated in operand form; it is a statement about a tree, not the contract of a routine. -/
 theorem regularize_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I) {n : ℕ}
@@ -753,7 +757,7 @@ theorem regularize_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))} (hj : LL.length + k ≤ ns)
     (hw : k * n ≤ w)
     (hlgv : ∀ b ∈ [a, rd, c, thr, s, f], b.1 ≠ lg.1) :
-    PWrites law I (regularize (O := O) (Q := Q)).body
+    PWrites law I (regularize (O := O) (Q := Q))
       (Env.frame [n + 1, k, w, LL.length] [a, rd, c, thr, a, s, f, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔
         Store.inBlock f.1 f.2 1 ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))

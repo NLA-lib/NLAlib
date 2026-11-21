@@ -280,7 +280,7 @@ theorem roundedAbort_writes_schurCore {Mch : Machine ℝ} {I : Interp O Q ℝ}
     {a t p uo f st w ub r : ℕ × ℕ} (hG : SchurGeometry (n + 1) np a t p uo f st w ub r μ)
     (hA : ∃ A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A μ.store) (hℓ : ℓ ≤ n + 1)
     (hacc : AccumIf P U ((1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ) uo μ) :
-    Writes .total I τ (roundedAbort (O := O) (Q := Q)).body (Env.frame [] [st, f])
+    Writes .total I τ (roundedAbort (O := O) (Q := Q)) (Env.frame [] [st, f])
       (Store.inBlock f.1 f.2 1 ⊔ Store.inBlock st.1 st.2 1)
       (SchurStoredCore n P U u εL m a uo f st j) μ := by
   obtain ⟨A, hA⟩ := hA
@@ -314,32 +314,32 @@ failure, else scan the bottom couplings and split and update, or abort. -/
 def roundedLargeRest : Stmt O Q :=
   Stmt.ite (Has.inj CmpTst.isPos) [] [{ buf := 7, off := IExp.var 16 }]
     (Stmt.frame [] [{ buf := 3, off := IExp.var 12 }, { buf := 7, off := IExp.var 16 }]
-      (roundedAbort (O := O) (Q := Q)).body)
+      (roundedAbort (O := O) (Q := Q)))
     ((Stmt.frame [IExp.var 8, IExp.var 1]
         [{ buf := 5, off := IExp.var 14 }, { buf := 1, off := IExp.var 10 },
-          { buf := 6, off := IExp.var 15 }] (bottomScan (O := O) (Q := Q)).body).seq
+          { buf := 6, off := IExp.var 15 }] (bottomScan (O := O) (Q := Q))).seq
       (Stmt.ite (Has.inj CmpTst.isPos) [] [{ buf := 6, off := IExp.var 15 + IExp.const 3 }]
         (Stmt.bindIdx (Has.inj IdxTst.toNat) [{ buf := 6, off := IExp.var 15 + IExp.const 4 }]
           (IExp.var 8)
           ((Stmt.frame [IExp.var 0, IExp.var 7, IExp.var 8, IExp.var 17]
               [{ buf := 0, off := IExp.var 9 }, { buf := 3, off := IExp.var 12 },
-                { buf := 5, off := IExp.var 14 }] (writeAndSplit (O := O) (Q := Q)).body).seq
+                { buf := 5, off := IExp.var 14 }] (writeAndSplit (O := O) (Q := Q))).seq
             (Stmt.frame [IExp.var 0, IExp.var 7, IExp.var 8, IExp.var 17, IExp.var 5, IExp.var 6]
               [{ buf := 8, off := IExp.const 0 }, { buf := 0, off := IExp.var 9 },
-                { buf := 4, off := IExp.var 13 }] (roundedDecoupleUpdate (O := O) (Q := Q)).body)))
+                { buf := 4, off := IExp.var 13 }] (roundedDecoupleUpdate (O := O) (Q := Q)))))
         (Stmt.frame [] [{ buf := 3, off := IExp.var 12 }, { buf := 7, off := IExp.var 16 }]
-          (roundedAbort (O := O) (Q := Q)).body)))
+          (roundedAbort (O := O) (Q := Q)))))
 
 /-- The large branch is a scoped log, the decoupling call and
 `NLAlib.ShiftedQR.roundedLargeRest`. -/
-theorem roundedProcessLargeWith_body (D : Impl O Q) :
-    (roundedProcessLargeWith D).body =
+theorem roundedProcessLargeWith_body (D : Stmt O Q) :
+    (roundedProcessLargeWith D) =
       Stmt.alloc (IExp.var 5 * (IExp.const 1 + IExp.const 5 * IExp.var 6))
         ((Stmt.frame [IExp.var 8, IExp.var 1, IExp.var 2, IExp.var 3, IExp.var 4, IExp.var 5,
             IExp.var 6]
           [{ buf := 5, off := IExp.var 14 }, { buf := 2, off := IExp.var 11 },
             { buf := 5, off := IExp.var 14 }, { buf := 7, off := IExp.var 16 },
-            { buf := 8, off := IExp.const 0 }] D.body).seq roundedLargeRest) := rfl
+            { buf := 8, off := IExp.const 0 }] D).seq roundedLargeRest) := rfl
 
 /-- The split after a decoupled block and its update keep the core: on a scalar machine with
 the standard model at $\boldsymbol{u} \le 1/100$, exact natural literals up to $n + 1$ and exact
@@ -365,10 +365,10 @@ theorem roundedSplitUpdate_core {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
     Writes .total I tape
       ((Stmt.frame [IExp.var 0, IExp.var 7, IExp.var 8, IExp.var 17]
           [{ buf := 0, off := IExp.var 9 }, { buf := 3, off := IExp.var 12 },
-            { buf := 5, off := IExp.var 14 }] (writeAndSplit (O := O) (Q := Q)).body).seq
+            { buf := 5, off := IExp.var 14 }] (writeAndSplit (O := O) (Q := Q))).seq
         (Stmt.frame [IExp.var 0, IExp.var 7, IExp.var 8, IExp.var 17, IExp.var 5, IExp.var 6]
           [{ buf := 8, off := IExp.const 0 }, { buf := 0, off := IExp.var 9 },
-            { buf := 4, off := IExp.var 13 }] (roundedDecoupleUpdate (O := O) (Q := Q)).body))
+            { buf := 4, off := IExp.var 13 }] (roundedDecoupleUpdate (O := O) (Q := Q))))
       ((⟨(Env.frame [n + 1, k, np, F, T, ns, w, lo, d + 1] [a, t, p, st, uo, wk, r, f]).idx,
         (Env.frame [n + 1, k, np, F, T, ns, w, lo, d + 1] [a, t, p, st, uo, wk, r, f]).buf ++
           [lgb]⟩ : Env).pushIdx i)
@@ -572,7 +572,7 @@ theorem roundedLarge_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
     (hS : IsScalar Mch I)
     {P : Prop} (hP : P → StdModel u id Mch ∧ u ≤ 1 / 100) (hL : IsIndexLit Mch I)
     {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
-    {k F T ns w m : ℕ} (hm : ns * w ≤ m) {ps : List ℝ} (D : Impl O Q)
+    {k F T ns w m : ℕ} (hm : ns * w ≤ m) {ps : List ℝ} (D : Stmt O Q)
     (hD : TerminatingDecouplerRoutine n k F T ps ns w D I) {tape : Tape ℝ} {μ : Mem ℝ}
     {lo d j ℓ : ℕ} {a t p uo f st wk ub r : ℕ × ℕ} {rs : List (ℕ × ℕ)}
     {A U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr εL : ℝ} (hεL : P → 0 ≤ εL)
@@ -582,7 +582,7 @@ theorem roundedLarge_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
     (hSt : StackHolds st rs μ.store) (hfit : RangesFit (n + 1) ((lo, d + 1) :: rs))
     (hℓ : ℓ + (d + 1) + (rs.map Prod.snd).sum ≤ n + 1) (hk : k ≤ d)
     (hacc : AccumIf P U ((1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ) uo μ) :
-    Writes .total I tape (roundedProcessLargeWith D).body
+    Writes .total I tape (roundedProcessLargeWith D)
       (Env.frame [n + 1, k, ps.length, F, T, ns, w, lo, d + 1] [a, t, p, st, uo, wk, r, f])
       (schurRoundFp (n + 1) a uo f st wk ub r)
       (SchurStoredCore n P U u εL m a uo f st (j + 1)) μ := by

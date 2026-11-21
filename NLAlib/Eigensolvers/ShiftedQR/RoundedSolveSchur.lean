@@ -306,10 +306,10 @@ couplings and the accumulator. -/
 def roundedLeafRest : Stmt O Q :=
   (Stmt.frame [IExp.var 0, IExp.var 7, IExp.var 8]
       [{ buf := 5, off := IExp.var 14 }, { buf := 0, off := IExp.var 9 }]
-      (copyToGlobal (Op := O) (Tst := Q)).body).seq
+      (copyToGlobal (Op := O) (Tst := Q))).seq
     (Stmt.frame [IExp.var 0, IExp.var 7, IExp.var 8]
       [{ buf := 6, off := IExp.var 15 }, { buf := 0, off := IExp.var 9 },
-        { buf := 4, off := IExp.var 13 }] (roundedLeafUpdate (O := O) (Q := Q)).body)
+        { buf := 4, off := IExp.var 13 }] (roundedLeafUpdate (O := O) (Q := Q)))
 
 omit [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
 /-- The rest of a leaf round on the good tapes: on a scalar machine with the standard model
@@ -443,10 +443,10 @@ theorem roundedSplitUpdate_reached {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
     Writes .total I tape
       ((Stmt.frame [IExp.var 0, IExp.var 7, IExp.var 8, IExp.var 17]
           [{ buf := 0, off := IExp.var 9 }, { buf := 3, off := IExp.var 12 },
-            { buf := 5, off := IExp.var 14 }] (writeAndSplit (O := O) (Q := Q)).body).seq
+            { buf := 5, off := IExp.var 14 }] (writeAndSplit (O := O) (Q := Q))).seq
         (Stmt.frame [IExp.var 0, IExp.var 7, IExp.var 8, IExp.var 17, IExp.var 5, IExp.var 6]
           [{ buf := 8, off := IExp.const 0 }, { buf := 0, off := IExp.var 9 },
-            { buf := 4, off := IExp.var 13 }] (roundedDecoupleUpdate (O := O) (Q := Q)).body))
+            { buf := 4, off := IExp.var 13 }] (roundedDecoupleUpdate (O := O) (Q := Q))))
       ((⟨(Env.frame [n + 1, k, np, F, T, ns, w, lo, d + 1] [a, t, p, st, uo, wk, r, f]).idx,
         (Env.frame [n + 1, k, np, F, T, ns, w, lo, d + 1] [a, t, p, st, uo, wk, r, f]).buf ++
           [lgb]⟩ : Env).pushIdx i)

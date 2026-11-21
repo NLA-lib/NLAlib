@@ -10,15 +10,16 @@ public import NLAlib.Ops.Blas.Level1
 /-!
 # BLAS with finite range and absolute rounding allowances
 
-The existing word-level execution proofs are independent of an error model. These consequences
-reuse them with a mixed relative/absolute model and explicit guards on every rounded target.
-The addition guard uses the computed product. Empty lengths need no per-element range facts.
-These are total weakest-precondition results, not canonical resource certificates.
+The judgments of the `axpy` and `scal` loops state the words they write, for any machine
+(`NLAlib.Ops.axpyLoopRoutine_meets_exact`). These consequences read a bound off those words
+under a mixed relative/absolute model, with explicit guards on every rounded target, by
+weakening the specification. The addition guard uses the computed product. Empty lengths need no
+per-element range facts.
 
 ## Main results
 
-* `NLAlib.Ops.wp_axpyLoop_mixed`: actual stored vector with a mixed forward-error bound.
-* `NLAlib.Ops.wp_scalLoop_mixed`: actual stored division with a mixed forward-error bound.
+* `NLAlib.Ops.axpyLoopRoutine_meets_mixed`: the `axpy` loop with a mixed forward-error bound.
+* `NLAlib.Ops.scalLoopRoutine_meets_mixed`: the `scal` loop with a mixed forward-error bound.
 -/
 
 @[expose] public section
@@ -61,40 +62,55 @@ theorem isScalMixedErr_scalF {u eta : ℝ} {dec : K → ℝ} {M : Machine K}
   rw [hv]
   exact hM.div _ _ (hs i hi).1 (hs i hi).2
 
-/-- The existing axpy program succeeds and stores a vector satisfying the finite-range mixed
-error bound. Only the numerical consequence is new; the execution proof is reused. -/
-theorem wp_axpyLoop_mixed {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
-    {u eta : ℝ} {dec : K → ℝ} {safe : ℝ → Prop} (hM : MixedModel u eta dec M safe)
-    {τ : Tape K} {n : ℕ} {al x y : ℕ × ℕ} {m : Mem K} {a : K} {xs ys : List K}
-    (hal : al.1 ≠ y.1) (hxy : x.1 ≠ y.1) (hl : m.Live [al, x, y])
-    (ha : m.store.get al.1 al.2 = some a) (hx : m.store.readBlock x.1 x.2 n = some xs)
-    (hy : m.store.readBlock y.1 y.2 n = some ys)
-    (hs : AxpySafe dec M safe n a (vec xs) (vec ys)) :
-    Wp .total I τ (axpyLoop (Op := Op) (Tst := Tst)).body (Env.frame [n] [al, x, y, y])
-      (fun m' => m'.pos = m.pos ∧ ∃ zs, m'.store.readBlock y.1 y.2 n = some zs ∧
-        IsAxpyMixedErr dec ((1 + u) ^ 2 - 1) ((2 + u) * eta) n a (vec xs) (vec ys) (vec zs))
-      m := by
-  refine wp_axpyLoop hI hal hxy hl ha hx hy ?_
-  exact ⟨rfl, _, Store.readBlock_updBlock_of_readBlock hy (length_axpyF ..),
-    isAxpyMixedErr_axpyF hM a (vec xs) (vec ys) n hs⟩
+/-- The mixed-model specification of `axpy`: on admitted finite-range data, the written block is
+within the mixed relative/absolute bound. -/
+def axpyLoopMixedSpec (dec : K → ℝ) (M : Machine K) (safe : ℝ → Prop) (u eta : ℝ) :
+    Routine.Spec K :=
+  spec% [n] ([a], xs, ys) → (zs) requires AxpySafe dec M safe n a (vec xs) (vec ys)
+    ensures IsAxpyMixedErr dec ((1 + u) ^ 2 - 1) ((2 + u) * eta) n a (vec xs) (vec ys) (vec zs)
 
-/-- The existing division loop stores a vector satisfying the guarded mixed error bound. -/
-theorem wp_scalLoop_mixed {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
-    {u eta : ℝ} {dec : K → ℝ} {safe : ℝ → Prop} (hM : MixedModel u eta dec M safe)
-    {τ : Tape K} {n : ℕ} {al x : ℕ × ℕ} {m : Mem K} {a : K} {xs : List K}
-    (hal : al.1 ≠ x.1) (ha : m.store.get al.1 al.2 = some a)
-    (hx : m.store.readBlock x.1 x.2 n = some xs) (hs : ScalSafe dec safe n a (vec xs)) :
-    Wp .total I τ (scalLoop (Op := Op) (Tst := Tst)).body (Env.frame [n] [al, x, x])
-      (fun m' => m'.pos = m.pos ∧ ∃ zs, m'.store.readBlock x.1 x.2 n = some zs ∧
-        IsScalMixedErr dec u eta n a (vec xs) (vec zs)) m := by
-  refine wp_scalLoop hI hal ha hx ?_
-  exact ⟨rfl, _, Store.readBlock_updBlock_of_readBlock hx (length_scalF ..),
-    isScalMixedErr_scalF hM a (vec xs) n hs⟩
+/-- The mixed-model specification of `scal`: on admitted data, the written block is within the
+guarded mixed bound. -/
+def scalLoopMixedSpec (dec : K → ℝ) (safe : ℝ → Prop) (u eta : ℝ) : Routine.Spec K :=
+  spec% [n] ([a], xs) → (zs) requires ScalSafe dec safe n a (vec xs)
+    ensures IsScalMixedErr dec u eta n a (vec xs) (vec zs)
+
+/-- The `axpy` loop under a mixed relative/absolute model: the bound read off the words it
+writes. -/
+theorem axpyLoopRoutine_meets_mixed {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
+    {u eta : ℝ} {dec : K → ℝ} {safe : ℝ → Prop} (hM : MixedModel u eta dec M safe) :
+    (axpyLoopRoutine (Op := Op) (Tst := Tst)).Meets I (axpyLoopMixedSpec dec M safe u eta) := by
+  routine_intro [n] (al, x, y)
+  refine ((axpyLoopRoutine_meets_exact hI) [n] [al, x, y] τ m X rfl rfl hlive hsep hr trivial
+    hrooms).mono le_rfl fun m' _ ⟨hpos, zs, hzs, hpost⟩ => ⟨hpos, zs, hzs, ?_⟩
+  split_reads hr as (as, xs, ys)
+  obtain ⟨a, -, rfl⟩ := Store.readBlock_one_eq_some.mp has
+  rcases zs with _ | ⟨z, _ | ⟨_, _⟩⟩
+  · exact hpost.elim
+  · obtain rfl : z = axpyF M a (vec xs) (vec ys) n := hpost
+    exact isAxpyMixedErr_axpyF hM a (vec xs) (vec ys) n hpre
+  · exact hpost.elim
+
+/-- The `scal` loop under a mixed relative/absolute model: the bound read off the words it
+writes. -/
+theorem scalLoopRoutine_meets_mixed {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
+    {u eta : ℝ} {dec : K → ℝ} {safe : ℝ → Prop} (hM : MixedModel u eta dec M safe) :
+    (scalLoopRoutine (Op := Op) (Tst := Tst)).Meets I (scalLoopMixedSpec dec safe u eta) := by
+  routine_intro [n] (al, x)
+  refine ((scalLoopRoutine_meets_exact hI) [n] [al, x] τ m X rfl rfl hlive hsep hr trivial
+    hrooms).mono le_rfl fun m' _ ⟨hpos, zs, hzs, hpost⟩ => ⟨hpos, zs, hzs, ?_⟩
+  split_reads hr as (as, xs)
+  obtain ⟨a, -, rfl⟩ := Store.readBlock_one_eq_some.mp has
+  rcases zs with _ | ⟨z, _ | ⟨_, _⟩⟩
+  · exact hpost.elim
+  · obtain rfl : z = scalF M a (vec xs) n := hpost
+    exact isScalMixedErr_scalF hM a (vec xs) n hpre
+  · exact hpost.elim
 
 /-- The complete instrumented axpy tree still has exactly n multiplications and n additions.
 This projects its static count; structural instructions remain in the full count. -/
 theorem original_stmtCost_axpyLoop (n a x y z : ℕ) :
-    Count.original (stmtCost (axpyLoop (Op := ScalarOp) (Tst := Empty)).body.instrument
+    Count.original (stmtCost (axpyLoop (Op := ScalarOp) (Tst := Empty)).instrument
       (Env.frame [n] [(0, a), (1, x), (2, y), (2, z)]).idx) =
       n • (Count.one .mul [] + Count.one .add []) := by
   classical
@@ -104,7 +120,7 @@ theorem original_stmtCost_axpyLoop (n a x y z : ℕ) :
 
 /-- The complete instrumented division loop retains exactly one division per component. -/
 theorem original_stmtCost_scalLoop (n a x z : ℕ) :
-    Count.original (stmtCost (scalLoop (Op := ScalarOp) (Tst := Empty)).body.instrument
+    Count.original (stmtCost (scalLoop (Op := ScalarOp) (Tst := Empty)).instrument
       (Env.frame [n] [(0, a), (1, x), (1, z)]).idx) = n • Count.one .div [] := by
   classical
   simp [scalLoop, Stmt.instrument, tally, indexBookkeeping, operandBookkeeping,

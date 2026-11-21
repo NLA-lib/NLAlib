@@ -73,7 +73,7 @@ theorem multiStepStable_isStableQRChainBy {M : Machine ℝ} {I : Interp Op Tst �
     (hlgd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock s.1 s.2 (2 * ss.length) ⊔ Store.inBlock ds.1 ds.2 (2 * ss.length))) :
-    Writes .total I τ multiStepStable.body
+    Writes .total I τ multiStepStable
       (Env.frame [n + 1, ss.length, w, L.length] [a, s, a, ds, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock ds.1 ds.2 (2 * ss.length) ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
@@ -192,7 +192,7 @@ theorem multiStepStable_isStableQRChain {M : Machine ℝ} {I : Interp Op Tst ℝ
     (hlgd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock s.1 s.2 (2 * ss.length) ⊔ Store.inBlock ds.1 ds.2 (2 * ss.length))) :
-    Writes .total I τ multiStepStable.body
+    Writes .total I τ multiStepStable
       (Env.frame [n + 1, ss.length, w, L.length] [a, s, a, ds, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock ds.1 ds.2 (2 * ss.length) ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))

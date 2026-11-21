@@ -16,7 +16,7 @@ identify the indexed tape machine, and exact output frames retain every unoccupi
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_downLevel_stored`: next inputs and current step records.
+* `NLAlib.SpectralBisection.downLevel_writes_stored`: next inputs and current step records.
 -/
 
 @[expose] public section
@@ -50,8 +50,9 @@ local notation "scratchRegion" => (downPrepareFp n d lv su sg t ⊔
   Store.inBlock (Prod.fst t) (Prod.snd t + 4) 1)
 
 /-- One complete actual level stores its mathematical outcomes and the next level inputs.
-All execution assumptions concern primitive contracts, actual input words and bounded storage. -/
-theorem writes_downLevel_stored (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp dec I)
+All execution assumptions concern primitive contracts, actual input words and bounded storage.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
+theorem downLevel_writes_stored (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp dec I)
     (hMM : IsMatrixMul (EntryCodec.pair K) mm I) (hQR : IsMatrixQR (EntryCodec.pair K) qr I)
     (hQ : IsToNat dec I) (hSample : IsSample I)
     (hexact : IsExactNatLit dec M (max n 4))
@@ -63,7 +64,7 @@ theorem writes_downLevel_stored (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : 
     (hGeometry : DownLevelGeometry n d (fun lo => (nodes lo).k)
       par lv su sg ma ua qa ea sz kd kp c t μ.store)
     (hZero : ∀ j < n, μ.store.get sz.1 (sz.2 + n * (d + 1) + j) = some (M.lit 0)) :
-    Writes .total I τ (downLevelImpl (node (Op := Op) (Tst := Tst))).body
+    Writes .total I τ (downLevelBody (node (Op := Op) (Tst := Tst)))
       (Env.frame [n, L, fuel, d] [par, lv, su, sg, ma, ua, qa, ea, sz, kd, kp, c, t])
       (downPrepareFp n d lv su sg t ⊔ (scanRegion ⊔ Store.inBlock t.1 (t.2 + 4) 1))
       (fun ν => ν.pos = base + (d + 1) * levelSampleSize n ∧
@@ -74,7 +75,7 @@ theorem writes_downLevel_stored (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : 
     have hk := nodeAtSlot_k_le F n fuel R0 eps0 beta L A d lo
     change (nodes lo).k ≤ n - lo at hk
     omega
-  have hW := writes_downLevelImpl M dec mm qr (τ := τ) (L := L) (fuel := fuel)
+  have hW := downLevelBody_writes M dec mm qr (τ := τ) (L := L) (fuel := fuel)
     hS hL hC hMM hQR hQ hSample
     (fun lo => (nodes lo).k) (fun lo => (nodes lo).A) R0 eps0 beta params.1 params.2
     hslot (fun i _ j _ hij => disjoint_nodeAtSlot_intervals F n fuel R0 eps0 beta L A d i j hij)

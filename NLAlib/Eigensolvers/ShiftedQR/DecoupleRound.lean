@@ -50,19 +50,21 @@ private theorem decoupleInv_step {n m F j : ℕ} {τ B θ α γ δ : ℝ}
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
 
 /-- Only undecoupled blocks execute a scalar strategy iteration and a new scalar scan. -/
-def decoupleRound (Iter : Impl O Q) : Impl O Q :=
-  opsImpl% [N, m, k, M] (W, Params, Const) → (W, R) {
+def decoupleRound (Iter : Stmt O Q) : Stmt O Q :=
+  ops% [N, m, k, M] (W, Params, Const) → (W, R) {
     if (Has.inj CmpTst.isZero) [] (R[3]) {
-      run Iter.body [N, m, k, M] (W, Params, Const, W);
-      run (scan (Op := O) (Tst := Q)).body [N] (W, Const, R)
+      run Iter [N, m, k, M] (W, Params, Const, W);
+      run (scan (Op := O) (Tst := Q)) [N] (W, Const, R)
     } else { skip }
   }
 
 /-- A visit retains an already decoupled block or executes the actual scalar step and rescan.
-Read-only parameter and constant views remain outside both write regions. -/
+Read-only parameter and constant views remain outside both write regions.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem decoupleRound_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar Mch I) (hE : ExactModel id Mch) (hL : IsIndexLit Mch I) (hC : IsCmp id I)
-    {θ : ℝ} (Iter : Impl O Q) (hIter : IterationContract θ Iter I)
+    {θ : ℝ} (Iter : Stmt O Q) (hIter : IterationContract θ Iter I)
     {tape : Tape ℝ} {μ : Mem ℝ} {n m F M j : ℕ} {τ B α γ δ : ℝ} {w p c r : ℕ × ℕ}
     {H₀ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     (hyp : RapidDecouplingHyps H₀ τ B θ α γ δ m F) (hkn : 2 ^ m ≤ n) (hτ : 0 ≤ τ)
@@ -78,7 +80,7 @@ theorem decoupleRound_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hSep : Fp.Disj
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock r.1 r.2 5)
       (Store.inBlock p.1 p.2 5 ⊔ Store.inBlock c.1 c.2 2)) :
-    Writes .total I tape (decoupleRound Iter).body
+    Writes .total I tape (decoupleRound Iter)
       (Env.frame [n + 1, m, 2 ^ m, M] [w, p, c, w, r])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock r.1 r.2 5)
       (fun μ' => μ'.pos = μ.pos ∧ DecoupleInv H₀ τ B θ α γ m (j + 1) w r μ') μ := by

@@ -33,10 +33,12 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O
 
 omit [Has EigenvalueKernelOp O] in
 /-- Prepared search and actual copy-back return the exact mathematical strategy step. The
-registers and trial matrix are fresh implementation workspace, not user input restrictions. -/
+registers and trial matrix are fresh implementation workspace, not user input restrictions.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem searchAndCopyWith_writes {M : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
-    {F : Impl O Q} (hF : RitzSearchContract F I)
+    {F : Stmt O Q} (hF : RitzSearchContract F I)
     {tape : Tape ℝ} {μ : Mem ℝ} {n m D : ℕ} {w ss c r z : ℕ × ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {τ B θ α γ : ℝ} {shifts : List ℂ}
     (hHess : IsUpperHessenberg H) (hlen : shifts.length = 2 ^ m) (hk : 2 ^ m ≤ n)
@@ -51,7 +53,7 @@ theorem searchAndCopyWith_writes {M : Machine ℝ} {I : Interp O Q ℝ}
     (hz : z.2 + 2 * ((n + 1) * (n + 1)) ≤ μ.store.len z.1)
     (hFreshR : r.1 ≠ w.1 ∧ r.1 ≠ ss.1 ∧ r.1 ≠ c.1 ∧ r.1 ≠ z.1)
     (hFreshZ : z.1 ≠ w.1 ∧ z.1 ≠ ss.1 ∧ z.1 ≠ c.1) :
-    Writes .total I tape (searchAndCopyWith F).body
+    Writes .total I tape (searchAndCopyWith F)
       (Env.frame [n + 1, m, 2 ^ m, D] [w, ss, c, r, z, w, z, r])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock r.1 r.2 8)
@@ -83,11 +85,13 @@ theorem searchAndCopyWith_writes {M : Machine ℝ} {I : Interp O Q ℝ}
 
 /-- The actual scalar iteration computes the mathematical three-phase shifted step of its
 local Ritz routine, including fallback. All workspace is scoped; the raw matrix, parameter
-and constant words are the only supplied data. -/
+and constant words are the only supplied data.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem iterationWith_writes {M : Machine ℝ} {I : Interp O Q ℝ} {eta : ℝ}
     {K : KernelRoutines eta} (hS : IsScalar M I) (hE : ExactModel id M)
     (hL : IsIndexLit M I) (hC : IsCmp id I) (hK : IsEigenvalueKernels K I)
-    {F : Impl O Q} (hF : RitzSearchContract F I)
+    {F : Stmt O Q} (hF : RitzSearchContract F I)
     {tape : Tape ℝ} {μ : Mem ℝ} {n m D : ℕ} {w p c : ℕ × ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {τ B θ α γ : ℝ}
     (hHess : IsUpperHessenberg H) (hk : 2 ^ m ≤ n) (hτ : 0 ≤ τ) (hB : 0 ≤ B)
@@ -97,7 +101,7 @@ theorem iterationWith_writes {M : Machine ℝ} {I : Interp O Q ℝ} {eta : ℝ}
     (hP : μ.store.readBlock p.1 p.2 5 = some [τ, B, θ, α, γ])
     (hCst : μ.store.readBlock c.1 c.2 2 = some [τ ^ 2, (1 - γ) ^ (2 * (2 ^ m))])
     (hl : μ.Live [w, p, c, w]) :
-    Writes .total I tape (iterationWith F).body (Env.frame [n + 1, m, 2 ^ m, D] [w, p, c, w])
+    Writes .total I tape (iterationWith F) (Env.frame [n + 1, m, 2 ^ m, D] [w, p, c, w])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))))
       (fun μ' => μ'.pos = μ.pos ∧ HoldsMatrix w
         (shqrAcceptStep τ B θ α γ m H (K.ritz (n + 1) (2 ^ m) H)) μ'.store) μ := by

@@ -5,9 +5,10 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Matrix.Factorizations.MGS.Factor
+public import NLAlib.Matrix.Factorizations.MGS.Routine
 public import NLAlib.Matrix.Factorizations.MGS.Resources
 public import NLAlib.Ops.Certification
+public import NLAlib.Ops.RoutineProblem
 public import NLAlib.Ops.Profiles.Standard
 
 /-!
@@ -34,23 +35,29 @@ variable {𝕜 : Type} [RCLike 𝕜]
 /-- Zero supplies the default needed to read packed scalar entries. -/
 local instance instInhabited : Inhabited 𝕜 := ⟨0⟩
 
-/-- The supplied buffer represents the mathematical matrix directly; no initializer is run. -/
-def problem : Problem 𝕜 2 1 where
-  formats _ := .cell
+/-- The admitted inputs of the factorization: every matrix, at every size, stored column by
+column in the one operand, which is updated in place. -/
+def inputs : (factorRoutine (Op := RCLikeBlas.Operation) (Tst := CmpTst)).Domain 𝕜 2 1 where
   valid _ := True
-  Data d := Matrix (Fin (d 0)) (Fin (d 1)) 𝕜
-  admissible _ A buffers := buffers 0 = ((EntryCodec.scalar 𝕜).packFinMatrix A).map some
+  In d := Matrix (Fin (d 0)) (Fin (d 1)) 𝕜
+  accepts _ _ := True
+  slot d := ![.stored (Codec.matrix (EntryCodec.scalar 𝕜) (d 0) (d 1)) id]
+  fits := by domain_fits
+  faithful d x y _ h := (Codec.matrix (EntryCodec.scalar 𝕜) (d 0) (d 1)).encode_injective (by
+    have h0 := h 0
+    simpa only [Slot.input, Matrix.cons_val_zero, Option.some.injEq, id] using h0)
   admitted := ⟨fun _ => 0, trivial⟩
-  supply d _ := ⟨0, fun _ => ((EntryCodec.scalar 𝕜).packFinMatrix
-    (0 : Matrix (Fin (d 0)) (Fin (d 1)) 𝕜)).map some, rfl⟩
+  inhabited _ _ := ⟨0, trivial⟩
+
+/-- The supplied buffer holds the matrix, and nothing else is supplied. Every matrix is
+admitted (`NLAlib.Ops.Routine.Domain.covers`). -/
+abbrev problem : Problem 𝕜 2 1 := (inputs (𝕜 := 𝕜)).problem
 
 /-- The supplied matrix occupies exactly its declared column-major payload. -/
 theorem initialBytes_problem (d : Fin 2 → ℕ) (x : (problem (𝕜 := 𝕜)).Input d) :
     problem.initialBytes d x = d 1 * d 0 := by
-  change 1 * (x.val.2 0).length + 0 = _
-  rw [one_mul, Nat.add_zero, x.property, List.length_map]
-  exact (EntryCodec.length_packFinMatrix (EntryCodec.scalar 𝕜) x.val.1).trans
-    (by simp)
+  refine ((inputs (𝕜 := 𝕜)).initialBytes_eq x).trans ?_
+  simp [inputs, Slot.len, Codec.matrix, List.ofFn_succ]
 
 /-- Scalar/BLAS calls share their standard signatures; all bookkeeping is charged. -/
 noncomputable def resources (cost : Standard.Costing) :
@@ -102,14 +109,14 @@ theorem laws {cost : Standard.Costing} {d : Fin 2 → ℕ}
 
 /-- The fixed instrumented tree determines its complete size-only instruction budget. -/
 noncomputable def staticBudget (d : Fin 2 → ℕ) :
-    Count (RCLikeBlas.Operation ⊕ Bookkeeping) CmpTst := staticCost MGS.program d
+    Count (RCLikeBlas.Operation ⊕ Bookkeeping) CmpTst := staticCost MGS.factorProgram d
 
 /-- Two scoped scalar cells are the complete extra payload for this exact catalog model. -/
-theorem staticPeak_program (cost : Standard.Costing) (d : Fin 2 → ℕ) :
-    staticPeak (resources cost) MGS.program d = 2 := by
+theorem staticPeak_factorProgram (cost : Standard.Costing) (d : Fin 2 → ℕ) :
+    staticPeak (resources cost) MGS.factorProgram d = 2 := by
   rw [staticPeak_eq, (resources cost).queryReserve_of_zero (fun _ _ => rfl), Nat.add_zero]
   change stmtPeak (fun (_ : RCLikeBlas.Operation) _ => 0)
-    (.frame [.var 0, .var 1] [⟨0, .const 0⟩] factor.body)
+    (.frame [.var 0, .var 1] [⟨0, .var 2⟩, ⟨0, .var 2⟩] factor)
     (Program.environment (b := 1) d).idx = 2
   simp only [stmtPeak, Program.environment, List.ofFn_succ, List.ofFn_zero,
     List.cons_append, List.nil_append, IExp.evalList, IExp.eval,
@@ -120,10 +127,10 @@ theorem staticPeak_program (cost : Standard.Costing) (d : Fin 2 → ℕ) :
 noncomputable def specification (cost : Standard.Costing) :
     Specification RCLikeBlas.Operation CmpTst (problem (𝕜 := 𝕜)) where
   budget := staticBudget
-  scratch d := staticPeak (resources cost) MGS.program d
+  scratch d := staticPeak (resources cost) MGS.factorProgram d
   work d := (resources cost).work (staticBudget d)
   span d := (resources cost).span (staticBudget d)
-  memory d := d 1 * d 0 + staticPeak (resources cost) MGS.program d
+  memory d := d 1 * d 0 + staticPeak (resources cost) MGS.factorProgram d
   good d x _ _ m := m.pos = 0 ∧ m.store.readBlock 0 0 (d 1 * d 0) =
     some ((EntryCodec.scalar 𝕜).packFinMatrix (gramSchmidtQ x.val.1))
 
@@ -131,27 +138,20 @@ noncomputable def specification (cost : Standard.Costing) :
 The actual program performs all sweeps, comparisons, normalizations and scoped cleanup. -/
 noncomputable def algorithm (cost : Standard.Costing) :
     Algorithm (model (𝕜 := 𝕜) cost) (specification cost) := by
-  refine Algorithm.ofWp MGS.program (by rfl) ?_
-    (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) ?_
-  · intro d _ x I hI τ
+  refine (inputs (𝕜 := 𝕜)).algorithm (fun _ _ => factorSpec 𝕜) ?_ (fun _ _ _ _ _ => trivial)
+    ?_ (hmemory := ?_)
+  · intro d _ x I hI
     obtain ⟨hS, hB, hC⟩ := laws hI
-    let μ := (problem (𝕜 := 𝕜)).initial d x
-    have hRead := Problem.initial_readBlock d x (0 : Fin 1) x.property
-    have hLen := Problem.initial_len (P := problem (𝕜 := 𝕜)) d x (0 : Fin 1)
-    have hLength : ((EntryCodec.scalar 𝕜).packFinMatrix x.val.1).length = d 1 * d 0 := by
-      exact (EntryCodec.length_packFinMatrix (EntryCodec.scalar 𝕜) x.val.1).trans
-        (by simp)
-    rw [hLength] at hRead
-    have hCap : μ.store.len 0 = d 1 * d 0 := by
-      change _ = _ at hLen
-      rw [x.property, List.length_map, hLength] at hLen
-      exact hLen
-    have hRun := writes_factor (m := μ) (τ := τ) hS hB hC x.val.1
-      (y := (0, 0)) (by simp [μ, Mem.Live, Problem.initial]) hRead
-      (by simpa only [Nat.zero_add] using hCap.ge)
-    change Wp .total I τ (.frame _ _ _) _ _ μ
-    apply wp_frame rfl rfl (by simp [μ, Mem.Live, Problem.initial])
-    exact hRun.wp fun m _ h c _ => h
+    exact factorRoutine_meets hS hB hC
+  · intro d _ x τ m' _ hpos ys hys hrel c _
+    read_outputs hys as (qs)
+    have hqs' : qs = (EntryCodec.scalar 𝕜).packFinMatrix (gramSchmidtQ x.val.1) := by
+      have h : qs = (EntryCodec.scalar 𝕜).packFinMatrix (gramSchmidtQ
+          ((EntryCodec.scalar 𝕜).matrix (d 0) (d 1)
+            ((EntryCodec.scalar 𝕜).packFinMatrix x.val.1))) := hrel
+      exact h.trans (congrArg (fun A => (EntryCodec.scalar 𝕜).packFinMatrix (gramSchmidtQ A))
+        (EntryCodec.matrix_packFinMatrix (EntryCodec.scalar 𝕜) x.val.1))
+    exact ⟨hpos, hqs.trans (congrArg some hqs')⟩
   · intro d _ x
     rw [initialBytes_problem]
     exact le_rfl

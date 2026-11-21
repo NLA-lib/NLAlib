@@ -66,18 +66,18 @@ triangular block $\widehat{\mathbf{T}}_b$ in `Bk` and its accumulator $\widehat{
 `Ub`; the eigenvalues are the diagonal of $\widehat{\mathbf{T}}_b$. The interface is
 `[d, nq, T] (Bk, Q) → (Bk, Ub)`, that of a Schur leaf (`NLAlib.Schur.RandomSchurLeafContract`).
 Algorithm: small-eig -/
-def smallEigProg (sG : ℕ) : Impl O Q := opsImpl% [d, nq, T] (Bk, Qw) → (Bk, Ub) {
-  run (identityLeaf (O := O) (Q := Q)).body [d, nq, T] (Bk, Qw, Bk, Ub);
+def smallEigProg (sG : ℕ) : Stmt O Q := ops% [d, nq, T] (Bk, Qw) → (Bk, Ub) {
+  run (identityLeaf (O := O) (Q := Q)) [d, nq, T] (Bk, Qw, Bk, Ub);
   ifPos d - 1 {
     let Fl ← alloc 1;
     let Th ← alloc 1;
     let Lg ← alloc (d * (1 + 5 * d));
     call (Has.inj ScalarOp.copy) [] (Qw[6]) → (Th);
-    run (ginibrePerturb (O := O) (Q := Q) sG).body [d, nq] (Bk, Qw, Bk);
-    run (slottedLogOpen (O := O) (Q := Q)).body [d, d] (Lg);
-    run (hessenbergReduceLast (O := O) (Q := Q)).body [d, d, 0] (Bk, Bk, Lg);
-    run (givensReplayColumns (O := O) (Q := Q)).body [d, 0, 0, d, d, d] (Lg, Ub, Ub);
-    run (smallEigCore (O := O) (Q := Q) sG).body [d, 1, nq, T, T, T + d, d]
+    run (ginibrePerturb (O := O) (Q := Q) sG) [d, nq] (Bk, Qw, Bk);
+    run (slottedLogOpen (O := O) (Q := Q)) [d, d] (Lg);
+    run (hessenbergReduceLast (O := O) (Q := Q)) [d, d, 0] (Bk, Bk, Lg);
+    run (givensReplayColumns (O := O) (Q := Q)) [d, 0, 0, d, d, d] (Lg, Ub, Ub);
+    run (smallEigCore (O := O) (Q := Q) sG) [d, 1, nq, T, T, T + d, d]
       (Bk, Th, Qw, Ub, Bk, Ub, Fl)
   }
 }
@@ -214,7 +214,7 @@ theorem smallEigProg_core_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {u :
     (ht : μ.store.get t.1 t.2 = some thr) (hp : μ.store.readBlock p.1 p.2 qs.length = some qs)
     (hV₁ : HasOrthonormalCols V₁)
     (hX'b : P → specNorm (X' - V₁) ≤ (1 + 24 * u) ^ ((n + 1) * (n + 1)) - 1) :
-    Writes .total I tape (.frame ds args (smallEigCore (O := O) (Q := Q) sG).body) ρ
+    Writes .total I tape (.frame ds args (smallEigCore (O := O) (Q := Q) sG)) ρ
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
       (fun μ' => ∃ Tb Ub : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a Tb μ'.store ∧
@@ -294,9 +294,9 @@ theorem smallEigProg_reduce_writes_if {M : Machine ℝ} {I : Interp O Q ℝ} {u 
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock ub.1 ub.2 (2 * ((n + 1) * (n + 1))))) :
     Writes .total I tape
-      (.seq (.frame ds₁ as₁ (slottedLogOpen (O := O) (Q := Q)).body)
-        (.seq (.frame ds₂ as₂ (hessenbergReduceLast (O := O) (Q := Q)).body)
-          (.frame ds₃ as₃ (givensReplayColumns (O := O) (Q := Q)).body))) ρ
+      (.seq (.frame ds₁ as₁ (slottedLogOpen (O := O) (Q := Q)))
+        (.seq (.frame ds₂ as₂ (hessenbergReduceLast (O := O) (Q := Q)))
+          (.frame ds₃ as₃ (givensReplayColumns (O := O) (Q := Q))))) ρ
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock ub.1 ub.2 (2 * ((n + 1) * (n + 1))) ⊔ Fp.above L)
       (fun μ' => ∃ X' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
@@ -392,9 +392,9 @@ theorem smallEigProg_reduce_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock ub.1 ub.2 (2 * ((n + 1) * (n + 1))))) :
     Writes .total I tape
-      (.seq (.frame ds₁ as₁ (slottedLogOpen (O := O) (Q := Q)).body)
-        (.seq (.frame ds₂ as₂ (hessenbergReduceLast (O := O) (Q := Q)).body)
-          (.frame ds₃ as₃ (givensReplayColumns (O := O) (Q := Q)).body))) ρ
+      (.seq (.frame ds₁ as₁ (slottedLogOpen (O := O) (Q := Q)))
+        (.seq (.frame ds₂ as₂ (hessenbergReduceLast (O := O) (Q := Q)))
+          (.frame ds₃ as₃ (givensReplayColumns (O := O) (Q := Q))))) ρ
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock ub.1 ub.2 (2 * ((n + 1) * (n + 1))) ⊔ Fp.above L)
       (fun μ' => ∃ X' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
@@ -439,10 +439,10 @@ theorem smallEigProg_reduce_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {u
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock ub.1 ub.2 (2 * ((n + 1) * (n + 1))))) :
     Writes .total I tape
-      (.seq (.frame ds₁ as₁ (slottedLogOpen (O := O) (Q := Q)).body)
-        (.seq (.frame ds₂ as₂ (hessenbergReduceLast (O := O) (Q := Q)).body)
-          (.seq (.frame ds₃ as₃ (givensReplayColumns (O := O) (Q := Q)).body)
-            (.frame ds₄ as₄ (smallEigCore (O := O) (Q := Q) sG).body)))) ρ
+      (.seq (.frame ds₁ as₁ (slottedLogOpen (O := O) (Q := Q)))
+        (.seq (.frame ds₂ as₂ (hessenbergReduceLast (O := O) (Q := Q)))
+          (.seq (.frame ds₃ as₃ (givensReplayColumns (O := O) (Q := Q)))
+            (.frame ds₄ as₄ (smallEigCore (O := O) (Q := Q) sG))))) ρ
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock ub.1 ub.2 (2 * ((n + 1) * (n + 1))) ⊔ Fp.above L)
       (fun μ' => ∃ Tb Ub : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix w Tb μ'.store ∧

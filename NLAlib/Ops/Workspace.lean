@@ -97,6 +97,7 @@ theorem stmtPeak_le_zero_add_on_support (W : Op → List ℕ → ℕ) (w : ℕ)
     cases he : IExp.evalList idx ds <;>
       cases ho : IExp.evalList idx (args.map Operand.off) <;>
       first | exact Nat.zero_le _ | exact ih _ (by simpa [stmtCost, he, ho] using hW)
+  | note _ _ ih => exact ih idx hW
 
 /-- A uniform primitive-workspace ceiling contributes only once above the stored allocation
 peak. The premise bounds the workspace function on all operations and dimension lists;
@@ -135,5 +136,6 @@ theorem stmtPeak_le_zero_add (W : Op → List ℕ → ℕ) (w : ℕ)
     simp only [stmtPeak]
     cases IExp.evalList idx ds <;> cases IExp.evalList idx (args.map Operand.off) <;>
       first | exact Nat.zero_le _ | exact ih _
+  | note _ _ ih => exact ih ..
 
 end NLAlib.Ops

@@ -20,8 +20,8 @@ real scalar call. Input/output aliasing is exactly the in-place pair update.
 
 * `NLAlib.decode_linearWords`: exact real arithmetic gives complex linear algebra.
 * `NLAlib.linearComplex`: the computed complex linear combination on any machine.
-* `NLAlib.writes_rotateLeftWithScratch_word`,
-  `NLAlib.writes_rotateRightWithScratch_word`: the pair updates on any machine; the
+* `NLAlib.rotateLeftWithScratch_writes_word`,
+  `NLAlib.rotateRightWithScratch_writes_word`: the pair updates on any machine; the
   exact theorems are their corollaries.
 * `NLAlib.rotateLeftWithScratch`: the left Givens pair update.
 * `NLAlib.rotateRightWithScratch`: the right adjoint Givens pair update.
@@ -95,13 +95,13 @@ def rightInstructions : List (ScalarIns ScalarOp) :=
 
 /-- The left Givens update computes both outputs before overwriting either source pair.
 Its scalar instruction list uses the shared complex linear-combination kernel. -/
-def rotateLeftWithScratch : Impl Op Tst :=
-  ⟨0, 5, 2, .scalarBlock (leftInstructions.map ScalarIns.lift)⟩
+def rotateLeftWithScratch : Stmt Op Tst :=
+  .scalarBlock (leftInstructions.map ScalarIns.lift)
 
 /-- The right adjoint Givens update computes both outputs in ten scratch words before
 copying them back to the exactly aliased input/output views. -/
-def rotateRightWithScratch : Impl Op Tst :=
-  ⟨0, 5, 2, .scalarBlock (rightInstructions.map ScalarIns.lift)⟩
+def rotateRightWithScratch : Stmt Op Tst :=
+  .scalarBlock (rightInstructions.map ScalarIns.lift)
 
 private def leftPrefix (M : Machine ℝ) (t _x _y : ℕ × ℕ) (c s u v : ℝ × ℝ) :=
   [((t.1, t.2 + 4), M.neg s.1), ((t.1, t.2 + 5), s.2),
@@ -205,8 +205,12 @@ private theorem eval_right {M : Machine ℝ} {m : Mem ℝ} {c s x y t : ℕ × �
 
 /-- The actual left scalar rotation on any machine always terminates and stores the two
 computed versions of $c x + s y$ and $-\bar s x + \bar c y$. Conjugations use the machine's
-negation operation. Input/output views are exactly aliased. [GolubVanLoan2013, §5.1.8]. -/
-theorem writes_rotateLeftWithScratch_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
+negation operation. Input/output views are exactly aliased. [GolubVanLoan2013, §5.1.8].
+Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergReduceLast`,
+`NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shiftedStepRoutine`,
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
+theorem rotateLeftWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hI : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {c s x y t : ℕ × ℕ} {cv sv xv yv : ℂ}
     (htc : t.1 ≠ c.1) (hts : t.1 ≠ s.1) (htx : t.1 ≠ x.1) (hty : t.1 ≠ y.1)
@@ -221,7 +225,7 @@ theorem writes_rotateLeftWithScratch_word {M : Machine ℝ} {I : Interp Op Tst �
     (hy1 : m.store.get y.1 (y.2 + 1) = some yv.im)
     (ht : t.2 + 10 ≤ m.store.len t.1)
     (hx : x.2 + 2 ≤ m.store.len x.1) (hy : y.2 + 2 ≤ m.store.len y.1) :
-    Writes .total I τ rotateLeftWithScratch.body (Env.frame [] [c, s, x, y, t, x, y])
+    Writes .total I τ rotateLeftWithScratch (Env.frame [] [c, s, x, y, t, x, y])
       (Fp.blocks [t, x, y] [10, 2, 2])
       (fun μ => μ.pos = m.pos ∧ μ.readBlocks [x, y] [2, 2] =
         some [[(linearComplex M cv sv xv yv).re, (linearComplex M cv sv xv yv).im],
@@ -239,7 +243,7 @@ theorem writes_rotateLeftWithScratch_word {M : Machine ℝ} {I : Interp Op Tst �
       rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
       rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;> dsimp <;> omega
   have hwrite := writes_machineScalarBlock (τ := τ) hI hev hroom
-  change Writes .total I τ rotateLeftWithScratch.body _ _ _ m at hwrite
+  change Writes .total I τ rotateLeftWithScratch _ _ _ m at hwrite
   refine hwrite.mono ?_ ?_
   · intro b i hi
     simp only [leftTrace, leftPrefix, Pair.linearTrace, List.map_append, List.map_cons,
@@ -259,8 +263,12 @@ theorem writes_rotateLeftWithScratch_word {M : Machine ℝ} {I : Interp Op Tst �
 
 /-- The actual left scalar rotation always terminates under the exact scalar model and
 stores the two mathematical Givens outputs. Input/output views are exactly aliased.
-[GolubVanLoan2013, §5.1.8]. -/
-theorem writes_rotateLeftWithScratch {M : Machine ℝ} {I : Interp Op Tst ℝ}
+[GolubVanLoan2013, §5.1.8].
+Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergReduceLast`,
+`NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shiftedStepRoutine`,
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
+theorem rotateLeftWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hI : IsScalar M I) (hM : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {c s x y t : ℕ × ℕ} {cv sv xv yv : ℂ}
     (htc : t.1 ≠ c.1) (hts : t.1 ≠ s.1) (htx : t.1 ≠ x.1) (hty : t.1 ≠ y.1)
@@ -275,12 +283,12 @@ theorem writes_rotateLeftWithScratch {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hy1 : m.store.get y.1 (y.2 + 1) = some yv.im)
     (ht : t.2 + 10 ≤ m.store.len t.1)
     (hx : x.2 + 2 ≤ m.store.len x.1) (hy : y.2 + 2 ≤ m.store.len y.1) :
-    Writes .total I τ rotateLeftWithScratch.body (Env.frame [] [c, s, x, y, t, x, y])
+    Writes .total I τ rotateLeftWithScratch (Env.frame [] [c, s, x, y, t, x, y])
       (Fp.blocks [t, x, y] [10, 2, 2])
       (fun μ => μ.pos = m.pos ∧ μ.readBlocks [x, y] [2, 2] =
         some [[(cv*xv+sv*yv).re, (cv*xv+sv*yv).im],
           [(-star sv*xv+star cv*yv).re, (-star sv*xv+star cv*yv).im]]) m := by
-  refine (writes_rotateLeftWithScratch_word hI htc hts htx hty hxy hc0 hc1 hs0 hs1 hx0 hx1
+  refine (rotateLeftWithScratch_writes_word hI htc hts htx hty hxy hc0 hc1 hs0 hs1 hx0 hx1
     hy0 hy1 ht hx hy).mono le_rfl ?_
   rintro μ _ ⟨hp, hr⟩
   have hneg (r : ℝ) : M.neg r = -r := hM.neg r
@@ -294,8 +302,11 @@ theorem writes_rotateLeftWithScratch {M : Machine ℝ} {I : Interp Op Tst ℝ}
 
 /-- The actual right adjoint scalar rotation on any machine always terminates and stores the
 two computed outputs $\bar c x + \bar s y$ and $-s x + c y$, the conjugations by exact negation
-of the words. Input/output views are exactly aliased. [GolubVanLoan2013, §5.1.8]. -/
-theorem writes_rotateRightWithScratch_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
+of the words. Input/output views are exactly aliased. [GolubVanLoan2013, §5.1.8].
+Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergReduceLast`,
+`NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
+theorem rotateRightWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hI : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {c s x y t : ℕ × ℕ} {cv sv xv yv : ℂ}
     (htc : t.1 ≠ c.1) (hts : t.1 ≠ s.1) (htx : t.1 ≠ x.1) (hty : t.1 ≠ y.1)
@@ -310,7 +321,7 @@ theorem writes_rotateRightWithScratch_word {M : Machine ℝ} {I : Interp Op Tst 
     (hy1 : m.store.get y.1 (y.2 + 1) = some yv.im)
     (ht : t.2 + 10 ≤ m.store.len t.1)
     (hx : x.2 + 2 ≤ m.store.len x.1) (hy : y.2 + 2 ≤ m.store.len y.1) :
-    Writes .total I τ rotateRightWithScratch.body (Env.frame [] [c, s, x, y, t, x, y])
+    Writes .total I τ rotateRightWithScratch (Env.frame [] [c, s, x, y, t, x, y])
       (Fp.blocks [t, x, y] [10, 2, 2])
       (fun μ => μ.pos = m.pos ∧ μ.readBlocks [x, y] [2, 2] =
         some [[(linearComplex M ⟨cv.re, M.neg cv.im⟩ ⟨sv.re, M.neg sv.im⟩ xv yv).re,
@@ -330,7 +341,7 @@ theorem writes_rotateRightWithScratch_word {M : Machine ℝ} {I : Interp Op Tst 
       rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
       rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;> dsimp <;> omega
   have hwrite := writes_machineScalarBlock (τ := τ) hI hev hroom
-  change Writes .total I τ rotateRightWithScratch.body _ _ _ m at hwrite
+  change Writes .total I τ rotateRightWithScratch _ _ _ m at hwrite
   refine hwrite.mono ?_ ?_
   · intro b i hi
     simp only [rightTrace, rightPrefix, Pair.linearTrace, List.map_append, List.map_cons,
@@ -352,8 +363,11 @@ theorem writes_rotateRightWithScratch_word {M : Machine ℝ} {I : Interp Op Tst 
 
 /-- The actual right adjoint scalar rotation always terminates under the exact scalar model and
 stores the two mathematical Givens outputs. Input/output views are exactly aliased.
-[GolubVanLoan2013, §5.1.8]. -/
-theorem writes_rotateRightWithScratch {M : Machine ℝ} {I : Interp Op Tst ℝ}
+[GolubVanLoan2013, §5.1.8].
+Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergReduceLast`,
+`NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
+theorem rotateRightWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hI : IsScalar M I) (hM : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {c s x y t : ℕ × ℕ} {cv sv xv yv : ℂ}
     (htc : t.1 ≠ c.1) (hts : t.1 ≠ s.1) (htx : t.1 ≠ x.1) (hty : t.1 ≠ y.1)
@@ -368,12 +382,12 @@ theorem writes_rotateRightWithScratch {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hy1 : m.store.get y.1 (y.2 + 1) = some yv.im)
     (ht : t.2 + 10 ≤ m.store.len t.1)
     (hx : x.2 + 2 ≤ m.store.len x.1) (hy : y.2 + 2 ≤ m.store.len y.1) :
-    Writes .total I τ rotateRightWithScratch.body (Env.frame [] [c, s, x, y, t, x, y])
+    Writes .total I τ rotateRightWithScratch (Env.frame [] [c, s, x, y, t, x, y])
       (Fp.blocks [t, x, y] [10, 2, 2])
       (fun μ => μ.pos = m.pos ∧ μ.readBlocks [x, y] [2, 2] =
         some [[(xv*star cv+yv*star sv).re, (xv*star cv+yv*star sv).im],
           [(-xv*sv+yv*cv).re, (-xv*sv+yv*cv).im]]) m := by
-  refine (writes_rotateRightWithScratch_word hI htc hts htx hty hxy hc0 hc1 hs0 hs1 hx0 hx1
+  refine (rotateRightWithScratch_writes_word hI htc hts htx hty hxy hc0 hc1 hs0 hs1 hx0 hx1
     hy0 hy1 ht hx hy).mono le_rfl ?_
   rintro μ _ ⟨hp, hr⟩
   have hneg (r : ℝ) : M.neg r = -r := hM.neg r

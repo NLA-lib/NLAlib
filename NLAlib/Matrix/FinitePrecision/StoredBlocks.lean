@@ -158,7 +158,7 @@ theorem copyStrided_writes_rect {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS : 
     (hl : μ.Live [w, a]) (hA : HoldsMatrix a A μ.store) (hB : HoldsMatrix w B μ.store)
     (hr : r0 + m ≤ N) (hc : c0 + q ≤ N) (ha : a.2 + 2 * (N * N) ≤ μ.store.len a.1)
     (hd : Fp.Disj (Store.inBlock w.1 w.2 (2 * (q * m))) (Store.inBlock a.1 a.2 (2 * (N * N)))) :
-    Writes .total I τ (copyStrided (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (copyStrided (Op := Op) (Tst := Tst))
       (Env.frame [m, q, m, N] [w, (a.1, a.2 + 2 * (c0 * N + r0))])
       ((EntryCodec.pair ℝ).regionFp a.1 (a.2 + 2 * (c0 * N + r0)) q
         (fun i j => j * N + i) (fun _ => m))
@@ -172,7 +172,7 @@ theorem copyStrided_writes_rect {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS : 
     fin_cases z
     · simpa [rectPairs, hi', hj'] using hB.get_re ⟨i, hi'⟩ ⟨j, hj'⟩
     · simpa [rectPairs, hi', hj', Nat.add_assoc] using hB.get_im ⟨i, hi'⟩ ⟨j, hj'⟩
-  have hc' := writes_copyStrided (τ := τ) hS (rectPairs B)
+  have hc' := copyStrided_writes (τ := τ) hS (rectPairs B)
     (x := w) (y := (a.1, a.2 + 2 * (c0 * N + r0)))
     (by simpa [Mem.Live] using hl) hentries (by omega)
     (fun j hj i hi => by

@@ -18,7 +18,7 @@ collects ordinary output predicates over disjoint regions; no execution-state re
 ## Main results
 
 * `NLAlib.SpectralBisection.bottomSlotFootprint`: one node's two output regions.
-* `NLAlib.SpectralBisection.writes_bottomLevel`: total initialization of every final-level node.
+* `NLAlib.SpectralBisection.bottomLevel_writes`: total initialization of every final-level node.
 -/
 
 @[expose] public section
@@ -38,8 +38,9 @@ def bottomFootprint (n D : ℕ) (ks : ℕ → ℕ) (u e : ℕ × ℕ) : Fp :=
 
 /-- Every slot returns its actual machine identity and zero eigenvalues. Size words decode
 within the explicit runtime bound; readable sizes, disjoint outputs and their capacities
-suffice for total execution. The conclusion imposes no obligation on unused gaps or kinds. -/
-theorem writes_bottomLevel {K Op Tst : Type} [Has ScalarOp Op] [Has IdxTst Tst]
+suffice for total execution. The conclusion imposes no obligation on unused gaps or kinds.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
+theorem bottomLevel_writes {K Op Tst : Type} [Has ScalarOp Op] [Has IdxTst Tst]
     {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
     (hS : IsScalar M I) (hQ : IsToNat dec I) {τ : Tape K} {m : Mem K}
     {n D : ℕ} {sz u e : ℕ × ℕ} (ks : ℕ → ℕ) (ws : ℕ → K)
@@ -78,7 +79,7 @@ theorem writes_bottomLevel {K Op Tst : Type} [Has ScalarOp Op] [Has IdxTst Tst]
     (hbound lo hlo) ?_
   refine writes_ifPos rfl ?_
   split_ifs with hk
-  · refine writes_frame rfl rfl (by room) (writes_bottomResult hS (by room)
+  · refine writes_frame rfl rfl (by room) (bottomResult_writes hS (by room)
       (by rw [hfr.len_eq]; exact hc.1) (by rw [hfr.len_eq]; exact hc.2) (hUE lo hlo))
   · have hz : ks lo = 0 := by omega
     exact ⟨rfl, by simp [BottomOutput, Store.HoldsEntries, Store.HoldsVec, hz]⟩

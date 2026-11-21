@@ -5,8 +5,8 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Krylov.Lanczos.Zero
-public import NLAlib.Krylov.Lanczos.NormalizationInterface
+public import NLAlib.Ops.Blas.Fill
+public import NLAlib.Krylov.Lanczos.Normalization
 public import NLAlib.Krylov.Lanczos.InitialState
 
 /-!
@@ -32,7 +32,11 @@ variable {K Op Tst : Type} [Inhabited K]
 variable [Has ScalarOp Op] [Has Blas1Op Op] [Has CmpTst Tst]
 
 /-- The initializer succeeds even for a zero input, and leaves every extra coefficient cell
-zero. Only its output blocks and the caller's scratch buffers may change. -/
+zero. Only its output blocks and the caller's scratch buffers may change.
+
+A fragment of `NLAlib.Krylov.Lanczos.solveRoutine`: the start of its tree, on the previous vector
+and scalar cells the solver allocates and a computed tail of `C`. Unlike the initialization of
+conjugate gradient, which has whole operands of its own and several callers, it is not a routine. -/
 theorem initialize_writes {M : Machine K} {dec : K → ℝ} {n cap clen L : ℕ}
     {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K} {ok : ℕ → Prop}
     (hS : IsScalar M I) (hM : ExactModel dec M) (hB : IsExactBlas1 dec ok I)
@@ -51,18 +55,18 @@ theorem initialize_writes {M : Machine K} {dec : K → ℝ} {n cap clen L : ℕ}
       (fun μ' => μ'.pos = μ.pos ∧ State dec A (decv dec n bs) cap 0 V C L μ'.store ∧
         ∀ i, 2 * cap + 2 ≤ i → i < clen →
           StoresCell dec (C.1, C.2 + i) 0 μ'.store) μ := by
-  refine Writes.seq_le (writes_frame rfl rfl (by simp [Mem.Live]; omega)
-    (zero_writes hS (by omega) hv)) (by fp_sub) fun μ₁ hfr₁ ⟨hpos₁, hv₁⟩ => ?_
+  have hzero := fillRoutine_meets (Tst := Tst) (hS (.lit 0))
+  call hzero [(cap + 1) * n] (V) as μ₁ hfr₁ hpos₁ (zv) ezv
+  subst ezv
+  rename' hzv => hv₁
   have hc₁ : C.2 + clen ≤ μ₁.store.len C.1 := by simpa [hfr₁.len_eq] using hc
-  refine Writes.seq_le (writes_frame rfl rfl (by simp [Mem.Live, hfr₁.length_eq]; omega)
-    (zero_writes hS (by rw [hfr₁.length_eq]; omega) hc₁)) (by fp_sub)
-    fun μ₂ hfr₂ ⟨hpos₂, hc₂⟩ => ?_
+  call hzero [clen] (C) as μ₂ hfr₂ hpos₂ (zc) ezc
+  subst ezc
+  rename' hzc => hc₂
   have hp₂ : μ₂.store.len L = n := by rw [hfr₂.len_eq, hfr₁.len_eq]; exact hp
-  refine Writes.seq_le (writes_frame rfl rfl (by
-    simp [Mem.Live, hfr₂.length_eq, hfr₁.length_eq]; omega)
-    (zero_writes hS (by rw [hfr₂.length_eq, hfr₁.length_eq]; omega)
-      (by simpa only [Nat.zero_add] using hp₂.ge)))
-    (by fp_sub) fun μ₃ hfr₃ ⟨hpos₃, hp₃⟩ => ?_
+  call hzero [n] ((L, 0)) as μ₃ hfr₃ hpos₃ (zp) ezp
+  subst ezp
+  rename' hzp => hp₃
   step hB.dot as μ₄ hfr₄ ⟨hpos₄, σ, hσ, hself⟩
   have hV : StoresVec dec V (0 : Fin ((cap + 1) * n) → ℝ) μ₄.store :=
     StoresVec.of_zero_readBlock (by kept) (by simpa using hM.lit 0)
@@ -82,14 +86,18 @@ theorem initialize_writes {M : Machine K} {dec : K → ℝ} {n cap clen L : ℕ}
     simp only [Mem.room_cons, Mem.room_nil, and_true]
     simp only [hfr₄.len_eq, hfr₃.len_eq, hfr₂.len_eq, hfr₁.len_eq]
     constructor <;> omega
-  refine (writes_frame rfl rfl (by
-    simp only [Mem.live_cons, Mem.live_nil, and_true] at hln ⊢
-    tauto)
-    (normalize_writes (w := B) (s := (L + 2, 0)) (q := V)
-      (b := (C.1, C.2 + 2 * cap + 1)) hS hM hB hok hCmp (by omega) hBV hBC (by omega) (by omega) hVC
-      hln (by kept) hσ (by simpa using hqs) hβ₀ hσdec hqzero hbzero hzn)).mono
-    (by fp_sub) ?_
-  rintro μ₅ hfr₅ ⟨hpos₅, ys, β, hys, hβ, hnormq, hnormβ⟩
+  have hTV : L + 2 ≠ V.1 := by omega
+  have hTC : L + 2 ≠ C.1 := by omega
+  have hrhs : μ₄.store.readBlock B.1 B.2 n = some bs := by kept
+  have hsig : μ₄.store.readBlock (L + 2) 0 1 = some [σ] := Store.readBlock_one_of_get hσ
+  have hnxt : μ₄.store.readBlock V.1 V.2 n = some qs := by simpa using hqs
+  have hcpl : μ₄.store.readBlock C.1 (C.2 + 2 * cap + 1) 1 = some [β₀] :=
+    Store.readBlock_one_of_get hβ₀
+  call (normalizeRoutine_meets (Op := Op) (Tst := Tst) hS hM hB hok hCmp) [n]
+    (B, (L + 2, 0), V, (C.1, C.2 + 2 * cap + 1)) (pre := ⟨rfl, hσdec, hqzero, hbzero⟩)
+    as μ₅ hfr₅ hpos₅ (ys, cs) hpost
+  obtain ⟨β, hβ, rfl⟩ := Store.readBlock_one_eq_some.mp hcs
+  obtain ⟨hnormq, hnormβ⟩ := hpost
   have hguard : ∃ σ, μ₅.store.get (L + 2) 0 = some σ ∧ 0 ≤ dec σ ∧
       (0 < dec σ ↔ decv dec n bs ≠ 0) := by
     refine ⟨σ, by kept, ?_, ?_⟩

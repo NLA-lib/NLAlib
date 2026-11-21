@@ -62,22 +62,22 @@ variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
 `[N, nr, nq, k, F, T] (A, P) → (A, U, Fl)`: `P[0]` holds the regularizer's `nr` words, `P[nr]`
 the core's `nq` words. A zero norm estimate (only $\mathbf{A} = 0$, under the standard model)
 stores the identity and the flag $0$ without a division. -/
-def schurPipelineWith (Nm Reg Red Core : Impl O Q) : Impl O Q :=
-  opsImpl% [N, nr, nq, k, F, T] (A, P) → (A, U, Fl) {
+def schurPipelineWith (Nm Reg Red Core : Stmt O Q) : Stmt O Q :=
+  ops% [N, nr, nq, k, F, T] (A, P) → (A, U, Fl) {
     let S ← alloc 1;
     let R ← alloc 1;
-    run Nm.body [N] (A, S);
+    run Nm [N] (A, S);
     if (Has.inj CmpTst.isPos) [] (S) {
       call (Has.inj (ScalarOp.lit 1)) [] () → (R);
       call (Has.inj ScalarOp.div) [] (R, S) → (R);
       for t < 2 * (N * N) { call (Has.inj ScalarOp.mul) [] (A[t], R) → (A[t]) };
-      run Reg.body [N, nr] (A, P, A);
-      run (PairMatrix.identity (Op := O) (Tst := Q)).body [N] (U);
-      run Red.body [N] (A, U, A, U);
-      run Core.body [N, nq, k, F, T] (A, P[nr], U, A, U, Fl);
+      run Reg [N, nr] (A, P, A);
+      run (PairMatrix.identity (Op := O) (Tst := Q)) [N] (U);
+      run Red [N] (A, U, A, U);
+      run Core [N, nq, k, F, T] (A, P[nr], U, A, U, Fl);
       for t < 2 * (N * N) { call (Has.inj ScalarOp.mul) [] (A[t], S) → (A[t]) }
     } else {
-      run (PairMatrix.identity (Op := O) (Tst := Q)).body [N] (U);
+      run (PairMatrix.identity (Op := O) (Tst := Q)) [N] (U);
       call (Has.inj IndexOp.lit) [0] () → (Fl)
     }
   }
@@ -274,14 +274,14 @@ variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
 
 omit [Has IndexOp O] [Has CmpTst Q] in
 /-- The identity program stores the identity when the literals $0$ and $1$ are exact. -/
-theorem writes_identity_holdsMatrix_one {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+theorem identity_writes_holdsMatrix_one {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (h1 : Mch.lit 1 = 1) {τ : Tape ℝ}
     {m : Mem ℝ} {N : ℕ} {b : ℕ × ℕ} (hroom : b.2 + 2 * (N * N) ≤ m.store.len b.1) :
-    Writes .total I τ (PairMatrix.identity (Op := O) (Tst := Q)).body (Env.frame [N] [b])
+    Writes .total I τ (PairMatrix.identity (Op := O) (Tst := Q)) (Env.frame [N] [b])
       (Store.inBlock b.1 b.2 (2 * (N * N)))
       (fun m' => HoldsMatrix b (1 : Matrix (Fin N) (Fin N) ℂ) m'.store) m := by
   have h0 : Mch.lit 0 = 0 := hM.zero
-  refine (PairMatrix.writes_identity hS hroom).mono le_rfl fun m' _ hv => ?_
+  refine (PairMatrix.identity_writes hS hroom).mono le_rfl fun m' _ hv => ?_
   refine holdsMatrix_one_of_holdsVec fun i hi => ?_
   rw [hv.1 i hi, h0, h1]
 
@@ -295,13 +295,13 @@ theorem schurPipeline_zero_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : 
     (hA : HoldsMatrix a (0 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) m.store) {eA eU : ℝ}
     (heU : 0 ≤ eU) :
     Writes .total I τ (.seq (.frame [.var 0] [⟨3, .var 9⟩]
-        (PairMatrix.identity (Op := O) (Tst := Q)).body)
+        (PairMatrix.identity (Op := O) (Tst := Q)))
         (.call (Has.inj IndexOp.lit) [.const 0] [] [⟨4, .var 10⟩]))
       (schurPipelineEnv n nr nq k F T a p uo f L) (schurFp n a uo f)
       (SchurOutput a uo f (0 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) eA eU) m := by
   obtain ⟨-, -, -, -, -, -, -, -, hap, -⟩ := id hm
   obtain ⟨-, h2, -, -, -, h6⟩ := apart_four hap
-  refine (writes_identity_holdsMatrix_one (N := n + 1) hS hM h1 hm.room_uo).frame_seq_le rfl rfl
+  refine (identity_writes_holdsMatrix_one (N := n + 1) hS hM h1 hm.room_uo).frame_seq_le rfl rfl
     (hm.live_of_subset (by simp)) (by simp only [schurFp]; fp_sub) fun m' hfr hU => ?_
   have hf : f.2 < m'.store.len f.1 := by have := hm.room_f; rw [hfr.len_eq]; omega
   refine (writes_indexLit hL (n := 0) rfl rfl hf).mono (by simp only [schurFp]; fp_sub)
@@ -421,7 +421,7 @@ conclusion is passed as `hpost`. -/
 theorem schurPipeline_core_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hI : I.IsMeasurable)
     {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ}
-    {Core : Impl O Q} {n k F T L : ℕ} {c₁ εCU εCT φC : ℝ} {qR qC : List ℝ}
+    {Core : Stmt O Q} {n k F T L : ℕ} {c₁ εCU εCT φC : ℝ} {qR qC : List ℝ}
     {C' : ∀ {m : ℕ}, Matrix (Fin (m + 1)) (Fin (m + 1)) ℂ → Prop}
     (hCore : RandomSchurCoreContract law εCU εCT φC C' k F T (n + 1) (4 / c₁) qC Core I)
     {a p uo f : ℕ × ℕ} {m : Mem ℝ} (hm : SchurPipelineMem n (qR ++ qC) a p uo f L m)
@@ -435,7 +435,7 @@ theorem schurPipeline_core_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
       HoldsMatrix a T' m'.store → HoldsMatrix uo U₂ m'.store → Goal m') :
     PWrites law I ((Stmt.frame [.var 0, .var 2, .var 3, .var 4, .var 5]
         [⟨0, .var 6⟩, ⟨1, .var 7 + .var 1⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩, ⟨4, .var 10⟩]
-        Core.body).seq (.loop (.const 2 * (.var 0 * .var 0)) (.call (Has.inj ScalarOp.mul) []
+        Core).seq (.loop (.const 2 * (.var 0 * .var 0)) (.call (Has.inj ScalarOp.mul) []
           [⟨0, .var 6 + .var 11⟩, ⟨5, .const 0⟩] [⟨0, .var 6 + .var 11⟩])))
       (schurPipelineEnv n qR.length qC.length k F T a p uo f L) (schurFp n a uo f) (· = m)
       Goal φC := by
@@ -486,7 +486,7 @@ conclusion is passed as `hpost`, its outcomes measurable. -/
 theorem schurPipeline_reg_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (h1 : Mch.lit 1 = 1) (hI : I.IsMeasurable)
     {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ}
-    {Reg Red Core : Impl O Q} {n k F T L : ℕ} {c₁ δR φR εHU εHT εCU εCT φC : ℝ}
+    {Reg Red Core : Stmt O Q} {n k F T L : ℕ} {c₁ δR φR εHU εHT εCU εCT φC : ℝ}
     {qR qC : List ℝ} {C C' : ∀ {m : ℕ}, Matrix (Fin (m + 1)) (Fin (m + 1)) ℂ → Prop}
     (hReg : RandomRegularizerContract law δR φR C (n + 1) (2 / c₁) qR Reg I)
     (hRed : HessenbergReducerContract εHU εHT (n + 1) Red I)
@@ -508,12 +508,12 @@ theorem schurPipeline_reg_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : 
       (∀ i j, Tm i j = 0 → T' i j = 0) → ∀ m' : Mem ℝ, m'.store.get f.1 f.2 = some 0 →
       HoldsMatrix a T' m'.store → HoldsMatrix uo U₂ m'.store → Goal m') :
     PWrites law I ((Stmt.frame [.var 0, .var 1] [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩]
-        Reg.body).seq ((Stmt.frame [.var 0] [⟨3, .var 9⟩]
-          (PairMatrix.identity (Op := O) (Tst := Q)).body).seq
-        ((Stmt.frame [.var 0] [⟨0, .var 6⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩] Red.body).seq
+        Reg).seq ((Stmt.frame [.var 0] [⟨3, .var 9⟩]
+          (PairMatrix.identity (Op := O) (Tst := Q))).seq
+        ((Stmt.frame [.var 0] [⟨0, .var 6⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩] Red).seq
           ((Stmt.frame [.var 0, .var 2, .var 3, .var 4, .var 5]
             [⟨0, .var 6⟩, ⟨1, .var 7 + .var 1⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩,
-              ⟨4, .var 10⟩] Core.body).seq (.loop (.const 2 * (.var 0 * .var 0))
+              ⟨4, .var 10⟩] Core).seq (.loop (.const 2 * (.var 0 * .var 0))
             (.call (Has.inj ScalarOp.mul) [] [⟨0, .var 6 + .var 11⟩, ⟨5, .const 0⟩]
               [⟨0, .var 6 + .var 11⟩]))))))
       (schurPipelineEnv n qR.length qC.length k F T a p uo f L) (schurFp n a uo f) (· = m)
@@ -555,18 +555,18 @@ theorem schurPipeline_reg_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : 
       m'.store.get L 0 = some x ∧ ∃ A₂ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
         HoldsMatrix a A₂ m'.store ∧ specNorm (A₂ - A₁) ≤ δR ∧ C A₂) m' →
       Writes .total I τ (Stmt.frame [.var 0] [⟨3, .var 9⟩]
-        (PairMatrix.identity (Op := O) (Tst := Q)).body)
+        (PairMatrix.identity (Op := O) (Tst := Q)))
         (schurPipelineEnv n qR.length qC.length k F T a p uo f L)
         (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) Mid₁ m' := by
     rintro m' τ ⟨hm', hx', A₂, hA₂, hA₂n, hC⟩
-    exact (writes_identity_holdsMatrix_one (N := n + 1) hS hM h1 hm'.room_uo).in_frame rfl rfl
+    exact (identity_writes_holdsMatrix_one (N := n + 1) hS hM h1 hm'.room_uo).in_frame rfl rfl
       (hm'.live_of_subset (by simp)) |>.mono le_rfl fun m'' hfr hU => ⟨hm'.of_eqOff hfr
         (hm'.disj_words.mono (fun _ _ h => Or.inl (Or.inl (hFu _ _ h))) le_rfl),
         by rw [hfr.2 L 0 (fun h => by obtain ⟨h, -⟩ := h; omega), hx'], A₂,
         hA₂.of_eqOff hfr h2.symm, hA₂n, hC, hU⟩
   have hred : ∀ m' τ, Mid₁ m' →
       Writes .total I τ (Stmt.frame [.var 0] [⟨0, .var 6⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩]
-        Red.body) (schurPipelineEnv n qR.length qC.length k F T a p uo f L)
+        Red) (schurPipelineEnv n qR.length qC.length k F T a p uo f L)
         (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
           Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) Mid₃ m' := by
     rintro m' τ ⟨hm', hx', A₂, hA₂, hA₂n, hC, hU⟩
@@ -578,7 +578,7 @@ theorem schurPipeline_reg_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : 
       A₂, U₁, H, hA₂n, hC, hp₁, hH, htr⟩
   have hcore : ∀ m', Mid₃ m' → PWrites law I ((Stmt.frame [.var 0, .var 2, .var 3, .var 4, .var 5]
         [⟨0, .var 6⟩, ⟨1, .var 7 + .var 1⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩,
-          ⟨4, .var 10⟩] Core.body).seq (.loop (.const 2 * (.var 0 * .var 0))
+          ⟨4, .var 10⟩] Core).seq (.loop (.const 2 * (.var 0 * .var 0))
           (.call (Has.inj ScalarOp.mul) [] [⟨0, .var 6 + .var 11⟩, ⟨5, .const 0⟩]
             [⟨0, .var 6 + .var 11⟩])))
       (schurPipelineEnv n qR.length qC.length k F T a p uo f L) (schurFp n a uo f) (· = m')
@@ -656,7 +656,7 @@ $\varphi_R + \varphi_C$. -/
 theorem schurPipeline_pos_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (h1 : Mch.lit 1 = 1) (hI : I.IsMeasurable)
     {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ}
-    {Reg Red Core : Impl O Q} {n k F T L : ℕ} {c₁ c₂ δR φR εHU εHT εCU εCT φC : ℝ}
+    {Reg Red Core : Stmt O Q} {n k F T L : ℕ} {c₁ c₂ δR φR εHU εHT εCU εCT φC : ℝ}
     {qR qC : List ℝ} {C C' : ∀ {m : ℕ}, Matrix (Fin (m + 1)) (Fin (m + 1)) ℂ → Prop}
     (hReg : RandomRegularizerContract law δR φR C (n + 1) (2 / c₁) qR Reg I)
     (hRed : HessenbergReducerContract εHU εHT (n + 1) Red I)
@@ -674,14 +674,14 @@ theorem schurPipeline_pos_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : 
         ((Stmt.call (Has.inj ScalarOp.div) [] [⟨6, .const 0⟩, ⟨5, .const 0⟩] [⟨6, .const 0⟩]).seq
           ((Stmt.loop (.const 2 * (.var 0 * .var 0)) (.call (Has.inj ScalarOp.mul) []
             [⟨0, .var 6 + .var 11⟩, ⟨6, .const 0⟩] [⟨0, .var 6 + .var 11⟩])).seq
-          ((Stmt.frame [.var 0, .var 1] [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩] Reg.body).seq
+          ((Stmt.frame [.var 0, .var 1] [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩] Reg).seq
             ((Stmt.frame [.var 0] [⟨3, .var 9⟩]
-              (PairMatrix.identity (Op := O) (Tst := Q)).body).seq
+              (PairMatrix.identity (Op := O) (Tst := Q))).seq
             ((Stmt.frame [.var 0] [⟨0, .var 6⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩]
-              Red.body).seq
+              Red).seq
             ((Stmt.frame [.var 0, .var 2, .var 3, .var 4, .var 5]
               [⟨0, .var 6⟩, ⟨1, .var 7 + .var 1⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩,
-                ⟨4, .var 10⟩] Core.body).seq (.loop (.const 2 * (.var 0 * .var 0))
+                ⟨4, .var 10⟩] Core).seq (.loop (.const 2 * (.var 0 * .var 0))
               (.call (Has.inj ScalarOp.mul) [] [⟨0, .var 6 + .var 11⟩, ⟨5, .const 0⟩]
                 [⟨0, .var 6 + .var 11⟩])))))))))
       (schurPipelineEnv n qR.length qC.length k F T a p uo f L)
@@ -726,11 +726,11 @@ accumulator with $\|\mathbf{U}^{\mathsf H}\mathbf{U} - \mathbf{I}\|_2 \le 2\vare
 \varepsilon^2$. -/
 theorem schurPipeline_pos_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (h1 : Mch.lit 1 = 1) (hu1 : u ≤ 1)
-    {Reg Red Core : Impl O Q} {n k F T L : ℕ} {εHU εHT εCU : ℝ} {qR qC : List ℝ}
+    {Reg Red Core : Stmt O Q} {n k F T L : ℕ} {εHU εHT εCU : ℝ} {qR qC : List ℝ}
     (hReg : ∀ {τ : Tape ℝ} {μ : Mem ℝ} {a q : ℕ × ℕ} (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
       HoldsMatrix a A μ.store → μ.store.readBlock q.1 q.2 qR.length = some qR → μ.Live [a, q] →
       Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock q.1 q.2 qR.length) →
-      Writes .total I τ Reg.body (Env.frame [n + 1, qR.length] [a, q, a])
+      Writes .total I τ Reg (Env.frame [n + 1, qR.length] [a, q, a])
         (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
         (fun μ' => ∃ A' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A' μ'.store) μ)
     (hRed : HessenbergReducerContract εHU εHT (n + 1) Red I)
@@ -743,14 +743,14 @@ theorem schurPipeline_pos_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
         ((Stmt.call (Has.inj ScalarOp.div) [] [⟨6, .const 0⟩, ⟨5, .const 0⟩] [⟨6, .const 0⟩]).seq
           ((Stmt.loop (.const 2 * (.var 0 * .var 0)) (.call (Has.inj ScalarOp.mul) []
             [⟨0, .var 6 + .var 11⟩, ⟨6, .const 0⟩] [⟨0, .var 6 + .var 11⟩])).seq
-          ((Stmt.frame [.var 0, .var 1] [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩] Reg.body).seq
+          ((Stmt.frame [.var 0, .var 1] [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩] Reg).seq
             ((Stmt.frame [.var 0] [⟨3, .var 9⟩]
-              (PairMatrix.identity (Op := O) (Tst := Q)).body).seq
+              (PairMatrix.identity (Op := O) (Tst := Q))).seq
             ((Stmt.frame [.var 0] [⟨0, .var 6⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩]
-              Red.body).seq
+              Red).seq
             ((Stmt.frame [.var 0, .var 2, .var 3, .var 4, .var 5]
               [⟨0, .var 6⟩, ⟨1, .var 7 + .var 1⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩,
-                ⟨4, .var 10⟩] Core.body).seq (.loop (.const 2 * (.var 0 * .var 0))
+                ⟨4, .var 10⟩] Core).seq (.loop (.const 2 * (.var 0 * .var 0))
               (.call (Has.inj ScalarOp.mul) [] [⟨0, .var 6 + .var 11⟩, ⟨5, .const 0⟩]
                 [⟨0, .var 6 + .var 11⟩])))))))))
       (schurPipelineEnv n qR.length qC.length k F T a p uo f L)
@@ -779,7 +779,7 @@ theorem schurPipeline_pos_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
     fun m₂ hfr₂ h₂ => ?_
   obtain ⟨A₂, hA₂⟩ := h₂
   have hm₂ := hm₁.of_eqOff hfr₂ (hdG.mono hFa le_rfl)
-  refine (writes_identity_holdsMatrix_one (N := n + 1) hS hM h1 hm₂.room_uo).frame_seq_le
+  refine (identity_writes_holdsMatrix_one (N := n + 1) hS hM h1 hm₂.room_uo).frame_seq_le
     rfl rfl (hm₂.live_of_subset (by simp)) hFu fun m₃ hfr₃ hU => ?_
   have hm₃ := hm₂.of_eqOff hfr₃ (hdG.mono hFu le_rfl)
   refine (hRed A₂ 1 le_rfl ⟨hA₂.of_eqOff hfr₃ h2.symm, hU⟩ (hm₃.live_of_subset (by simp))
@@ -838,12 +838,12 @@ $\|\widehat{\mathbf{U}}^{\mathsf H}\widehat{\mathbf{U}} - \mathbf{I}\|_2 \le 2\v
 theorem schurPipelineWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : ℕ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
     (hNat : IsExactNatLit id Mch (n + 1)) (hC : IsCmp id I) (hu1 : u ≤ 1)
-    {Nm Reg Red Core : Impl O Q} {k F T : ℕ} {c₁ c₂ εHU εHT εCU : ℝ} {qR qC : List ℝ}
+    {Nm Reg Red Core : Stmt O Q} {k F T : ℕ} {c₁ c₂ εHU εHT εCU : ℝ} {qR qC : List ℝ}
     (hNm : FrobNormEstimateContract c₁ c₂ (n + 1) Nm I)
     (hReg : ∀ {τ : Tape ℝ} {μ : Mem ℝ} {a q : ℕ × ℕ} (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
       HoldsMatrix a A μ.store → μ.store.readBlock q.1 q.2 qR.length = some qR → μ.Live [a, q] →
       Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock q.1 q.2 qR.length) →
-      Writes .total I τ Reg.body (Env.frame [n + 1, qR.length] [a, q, a])
+      Writes .total I τ Reg (Env.frame [n + 1, qR.length] [a, q, a])
         (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
         (fun μ' => ∃ A' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A' μ'.store) μ)
     (hRed : HessenbergReducerContract εHU εHT (n + 1) Red I)
@@ -851,7 +851,7 @@ theorem schurPipelineWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
     (hεHU : 0 ≤ εHU) (hεCU : 0 ≤ εCU) {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {a p uo f : ℕ × ℕ} {μ : Mem ℝ} (hin : SchurPipelineInput (qR ++ qC) a p uo f A μ)
     (τ : Tape ℝ) :
-    Writes .total I τ (schurPipelineWith Nm Reg Red Core).body
+    Writes .total I τ (schurPipelineWith Nm Reg Red Core)
       (Env.frame [n + 1, qR.length, qC.length, k, F, T] [a, p, a, uo, f]) (schurFp n a uo f)
       (SchurOrth (n := n) uo
         (2 * ((1 + εHU) * (1 + εCU) - 1) + ((1 + εHU) * (1 + εCU) - 1) ^ 2)) μ := by

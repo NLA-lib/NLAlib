@@ -404,6 +404,7 @@ theorem exec_link (hacc : T.AccountsW I W₂ w₂ t W₁) (τ : Tape K) (s : Stm
     split_ifs at h with hl
     obtain ⟨c₁, hc, hs₁⟩ := ih _ a a₁ c hs h
     exact ⟨c₁, by simp [Stmt.link, evalCounted, hd, hi, hc, hs.mem, hl], hs₁⟩
+  | note _ _ ih => intro ρ a a₁ c hs h; exact ih ρ a a₁ c hs h
 
 /-- **Linking a run whose postcondition sees the counts.** Under a weighted certificate, the
 linked program runs within the same workspace, and the weight of its counts is at most the

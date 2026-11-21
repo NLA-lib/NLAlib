@@ -19,7 +19,7 @@ structural work remains in the full instruction count.
 ## Main results
 
 * `NLAlib.SpectralBisection.solve_kernelWeight_le_of_exec`: allocated source kernel bound.
-* `NLAlib.SpectralBisection.program_kernelWeight_le_of_exec`: canonical actual-count bound.
+* `NLAlib.SpectralBisection.bisectionProgram_kernelWeight_le_of_exec`: canonical actual-count bound.
 -/
 
 @[expose] public section
@@ -47,8 +47,6 @@ theorem solve_kernelWeight_le_of_exec
     (hA : μ.store.readBlock input.1 input.2 (2 * (n * n)) =
       some ((EntryCodec.pair K).packFinMatrix A))
     (hPar : μ.store.readBlock par.1 par.2 3 = some [R0, eps, beta])
-    (hSource : Fp.Disj (Store.inBlock input.1 input.2 (2 * (n * n)))
-      (Store.inBlock par.1 par.2 3))
     (T : ℕ → ℕ) (hT : Monotone T) (hadd : ∀ i j, T i + T j ≤ T (i + j))
     (W : DenseOp → List ℕ → ℕ) {start finish : St DenseOp (CmpTst ⊕ IdxTst) K}
     (hmem : start.mem = μ)
@@ -103,7 +101,7 @@ theorem solve_kernelWeight_le_of_exec
     M dec mm qr R0 eps beta A hS hL hC hMM hQR hQ hSample hLit hpos hlBody
     ((hBelow.readBlock (hl input (by simp)) _ _).trans hA)
     ((hBelow.readBlock (hl par (by simp)) _ _).trans hPar)
-    hsRoom hsApart hSource hProtect T hT hadd W rfl hBodyRaw
+    hsRoom hsApart hProtect T hT hadd W rfl hBodyRaw
   simpa only [hcost, hfinal] using hWork
 
 end Source
@@ -115,7 +113,7 @@ variable {K : Type} [Inhabited K]
 
 /-- The actual canonical execution has the same matrix-kernel bound, after removing only
 its structural instruction coordinates. Its raw buffers are supplied without preprocessing. -/
-theorem program_kernelWeight_le_of_exec
+theorem bisectionProgram_kernelWeight_le_of_exec
     (M : Machine K) (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
     {I : Interp DenseOp (CmpTst ⊕ IdxTst) K}
     (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp dec I)
@@ -126,7 +124,7 @@ theorem program_kernelWeight_le_of_exec
     (T : ℕ → ℕ) (hT : Monotone T) (hadd : ∀ i j, T i + T j ≤ T (i + j))
     (R : ResourceModel DenseOp (CmpTst ⊕ IdxTst)) {τ : Tape K}
     {st : St (DenseOp ⊕ Bookkeeping) (CmpTst ⊕ IdxTst) K}
-    (hr : exec (program (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) I R
+    (hr : exec (bisectionProgram (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) I R
       (problem (K := K) domain admitted).formats τ d
       ((problem (K := K) domain admitted).initial d x) = some st) :
     Dense.kernelWeight T (Count.original st.cost) ≤
@@ -137,7 +135,7 @@ theorem program_kernelWeight_le_of_exec
     (vec x.val.1.2 0) (vec x.val.1.2 1) (vec x.val.1.2 2) (inputMatrix d x)
     hS hL hC hMM hQR hQ hSample (τ := τ) (L := d 1) (fuel := d 2)
     (input := (0, 0)) (par := (1, 0)) (u := (2, 0)) (dv := (3, 0)) hLit hl
-    (initial_readBlock_inputMatrix d x) (initial_parameter_words d x) (by disjoint)
+    (initial_readBlock_inputMatrix d x) (initial_parameter_words d x)
     T hT hadd R.workspace rfl hraw
   simpa only [St.init, map_zero, Nat.zero_add, hcost] using h
 

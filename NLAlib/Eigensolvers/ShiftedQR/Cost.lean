@@ -23,7 +23,7 @@ The admitted Ritz count is exponential in Ritz depth. Fuel and grid resolution r
 inputs, so this is not a bit-complexity or accuracy-complexity assertion.
 This is an intentionally coarse majorant, rather than a tight complexity estimate.
 It provides a closed dimension/fuel/grid expression for the same total execution certified by
-`exactAlgorithm`, independently of the much more detailed static count manifest.
+`exactDeflationAlgorithm`, independently of the much more detailed static count manifest.
 
 ## Main results
 
@@ -32,7 +32,7 @@ It provides a closed dimension/fuel/grid expression for the same total execution
 * `NLAlib.ShiftedQR.exactPolynomialWork`: explicit parameter and finite-kernel expression.
 * `NLAlib.ShiftedQR.exactPolynomialWork_eq`: the kernel-checked numeric expression.
 * `NLAlib.ShiftedQR.exactAlgorithm_runs_with_work_le`: total same-run work and output.
-* `NLAlib.ShiftedQR.exactAlgorithmWithPolynomialWork`: canonical certificate with this work field.
+* `NLAlib.ShiftedQR.countedDeflationAlgorithm`: canonical certificate with this work field.
 -/
 
 @[expose] public section
@@ -66,25 +66,17 @@ def exactCallDegree : ℕ :=
 def exactCallArity : ℕ :=
   (deflationProgram scalarDecouple).body.instrument.callArity
 
--- Kernel reduction of the closed instrumented tree exceeds the default recursion depth.
-set_option maxRecDepth 8192 in
 /-- The structural coefficient of this fixed complete instrumented tree is 17109. -/
-theorem exactWorkCoefficient_eq : exactWorkCoefficient = 17109 := by rfl
+theorem exactWorkCoefficient_eq : exactWorkCoefficient = 17109 := by kernel_rfl
 
--- Kernel reduction of the closed instrumented tree exceeds the default recursion depth.
-set_option maxRecDepth 8192 in
 /-- The slot-sensitive full-program work exponent is fourteen. -/
-theorem exactWorkDegree_eq : exactWorkDegree = 14 := by rfl
+theorem exactWorkDegree_eq : exactWorkDegree = 14 := by kernel_rfl
 
--- Kernel reduction of the closed instrumented tree exceeds the default recursion depth.
-set_option maxRecDepth 8192 in
 /-- Primitive dimension entries are bounded by the fifth power of the input base. -/
-theorem exactCallDegree_eq : exactCallDegree = 5 := by rfl
+theorem exactCallDegree_eq : exactCallDegree = 5 := by kernel_rfl
 
--- Kernel reduction of the closed instrumented tree exceeds the default recursion depth.
-set_option maxRecDepth 8192 in
 /-- Every primitive/query dimension list in the complete tree has length at most two. -/
-theorem exactCallArity_eq : exactCallArity = 2 := by rfl
+theorem exactCallArity_eq : exactCallArity = 2 := by kernel_rfl
 
 /-- A finite maximum of both supplied spectral costs over bounded dimension-list lengths
 and bounded entries. This includes malformed shapes conservatively without constraining the
@@ -163,7 +155,7 @@ theorem exactAlgorithm_runs_with_work_le
       (deflationSpecification scalarDecouple kernelWork kernelWorkspace).good
         d x tape st.cost st.mem := by
   obtain ⟨st, hr, hp, hc, hw, hs, hm, hg⟩ :=
-    (exactAlgorithm kernelWork kernelWorkspace).correct d hd x I hI tape
+    (exactDeflationAlgorithm kernelWork kernelWorkspace).correct d hd x I hI tape
   have hwork : (resources kernelWork kernelWorkspace).work st.cost ≤
       exactPolynomialWork kernelWork d :=
     Program.exec_work_le_coefficient_mul_pow (deflationProgram scalarDecouple)
@@ -185,7 +177,7 @@ noncomputable def exactWorkSpecification
 /-- Canonical exact shifted QR with the explicit work majorant and both backward and forward
 error. The program, admitted inputs, operation model and full instruction budget are unchanged.
 Algorithm: shifted-qr (run model) -/
-noncomputable def exactAlgorithmWithPolynomialWork
+noncomputable def countedDeflationAlgorithm
     (kernelWork kernelWorkspace : EigenvalueKernelOp → List ℕ → ℕ) :
     Algorithm (model deflationProblem exactRoutines (resources kernelWork kernelWorkspace))
       (exactWorkSpecification kernelWork kernelWorkspace) where
@@ -193,7 +185,7 @@ noncomputable def exactAlgorithmWithPolynomialWork
   correct := by
     intro d hd x I hI tape
     obtain ⟨old, hold, hp, hc, hw, hs, hm, hg⟩ :=
-      (exactForwardAlgorithm kernelWork kernelWorkspace).correct d hd x I hI tape
+      (forwardDeflationAlgorithm kernelWork kernelWorkspace).correct d hd x I hI tape
     obtain ⟨st, hr, hwork, hspan, -⟩ :=
       exactAlgorithm_runs_with_work_le kernelWork kernelWorkspace hd x I hI tape
     have he : old = st := Option.some.inj (hold.symm.trans hr)

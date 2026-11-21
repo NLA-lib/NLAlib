@@ -18,7 +18,7 @@ these statements transfer from an algorithm to the linked program by lemmas prov
 
 ## Main results
 
-* `NLAlib.Ops.Impl.Triple.runsLaw`: the bridge from the certificate of a program to its law-level
+* `NLAlib.Ops.Impl.Satisfies.runsLaw`: the bridge from the certificate of a program to its law-level
   statement.
 * `NLAlib.Ops.ConditionalRunsLaw`: the shape of a law-level theorem. For every sample the run
   succeeds
@@ -80,14 +80,14 @@ theorem ConditionalRunsLaw.mono {I : Interp Op Tst K} {W : Op → List ℕ → �
   obtain ⟨X, hX, hΦ⟩ := h
   exact ⟨X, fun ω => (hX ω).mono hB hM (hQ _), hΦ⟩
 
-/-- **The bridge, law-level form.** A certificate in total mode in operand form gives the
+/-- **The bridge, law-level form.** Satisfaction in total mode in operand form gives the
 law-level statement of the tree. For every sample the run terminates within its static counts and
 workspace and writes output blocks related to the inputs and to the window of the tape of the
 sample; `X ω` is the observable `obs` of these blocks. So every property `Φ` of a random variable
 that the relation implies, sample by sample, holds of `X`. The mathematics of a randomized
 algorithm is the proof of `hΦ`, from the relation and the law of the tape; no program is in it. -/
-theorem Impl.Triple.runsLaw {R : Impl Op Tst} {I : Interp Op Tst K} {B : BlockRel K}
-    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (h : R.Triple I .total (B.spec adm))
+theorem Impl.Satisfies.runsLaw {E : Impl Op Tst} {I : Interp Op Tst K} {B : BlockRel K}
+    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (h : E.Satisfies I .total (B.spec adm))
     (W : Op → List ℕ → ℕ) (ξ : Ω → Tape K) (obs : List (List K) → α) {d : List ℕ}
     {ins outs : List (ℕ × ℕ)} {m : Mem K} {xs : List (List K)} (hnd : d.length = B.nd)
     (hadm : adm d ins outs) (hl : m.Live (ins ++ outs))
@@ -96,16 +96,16 @@ theorem Impl.Triple.runsLaw {R : Impl Op Tst} {I : Interp Op Tst K} {B : BlockRe
     (hz : m.Room outs (B.outLens d)) {Φ : (Ω → α) → Prop}
     (hΦ : ∀ X : Ω → α, (∀ ω, ∃ ys, X ω = obs ys ∧ ys.map List.length = B.outLens d ∧
       B.rel d xs ((ξ ω).window B.stream m.pos (B.win d)) ys) → Φ X) :
-    ConditionalRunsLaw I W ξ R.body (Env.frame d (ins ++ outs)) m
-      (stmtCost R.body (d ++ (ins ++ outs).map Prod.snd))
-      (stmtPeak W R.body (d ++ (ins ++ outs).map Prod.snd))
+    ConditionalRunsLaw I W ξ E.body (Env.frame d (ins ++ outs)) m
+      (stmtCost E.body (d ++ (ins ++ outs).map Prod.snd))
+      (stmtPeak W E.body (d ++ (ins ++ outs).map Prod.snd))
       (fun x m' => ∃ ys, obs ys = x ∧ ys.map List.length = B.outLens d ∧
         m' = (m.updBlocks outs ys).advance (B.win d)) Φ := by
   have key : ∀ ω, ∃ ys, (ys.map List.length = B.outLens d ∧
       B.rel d xs ((ξ ω).window B.stream m.pos (B.win d)) ys) ∧
-      ConditionalRuns I W (ξ ω) R.body (Env.frame d (ins ++ outs)) m
-        (stmtCost R.body (d ++ (ins ++ outs).map Prod.snd))
-        (stmtPeak W R.body (d ++ (ins ++ outs).map Prod.snd))
+      ConditionalRuns I W (ξ ω) E.body (Env.frame d (ins ++ outs)) m
+        (stmtCost E.body (d ++ (ins ++ outs).map Prod.snd))
+        (stmtPeak W E.body (d ++ (ins ++ outs).map Prod.snd))
         (fun m' => m' = (m.updBlocks outs ys).advance (B.win d)) := fun ω => by
     obtain ⟨st', h1, h2, h3, ys, hlen, hrel, e⟩ :=
       h.runs_rel W (τ := ξ ω) hnd hadm hl hr (hdom ω) hz
@@ -129,7 +129,7 @@ theorem runsLaw (h : P.Refines Base Ck) {Q : α → Mem K → Prop} {Φ : (Ω �
     (hT : ∀ J, Ck J → (∀ o, J.TapeLocal o (P.win o)) → ConditionalRunsLaw J P.ws ξ s ρ m B M Q Φ)
     (hI : Base I) (hloc : ∀ o, I.TapeLocal o (P.winLo o)) :
     ConditionalRunsLaw I P.wsLo ξ (s.link P.table) ρ m (Count.push P.cost B) M Q Φ := by
-  obtain ⟨X, hX, hΦ⟩ := hT _ (h.meets I hI) (h.tapeLocal I hI hloc)
+  obtain ⟨X, hX, hΦ⟩ := hT _ (h.satisfies I hI) (h.tapeLocal I hI hloc)
   exact ⟨X, fun ω => h.transfer I (ξ ω) s ρ m B M _ (hX ω), hΦ⟩
 
 /-- **Failure probabilities transfer**: the event that the linked program fails, exceeds its
@@ -142,7 +142,7 @@ theorem measureReal_not_runs_le (h : P.Refines Base Ck) {mΩ : MeasurableSpace �
       μ.real {ω | ¬ ConditionalRuns (I.link P.table) P.ws (ξ ω) s ρ m B M (Q ω)} :=
   measureReal_mono fun _ hω hR => hω (h.transfer I _ s ρ m B M _ hR)
 
-/-- A bound on the failure probability of the algorithm, for every interpretation meeting the
+/-- A bound on the failure probability of the algorithm, for every interpretation satisfying the
 contracts, is a bound for the linked program. -/
 theorem measureReal_not_runs_le_of (h : P.Refines Base Ck) {mΩ : MeasurableSpace Ω}
     {μ : Measure Ω} [IsFiniteMeasure μ] {Q : Ω → Mem K → Prop} {δ : ℝ}
@@ -151,10 +151,10 @@ theorem measureReal_not_runs_le_of (h : P.Refines Base Ck) {mΩ : MeasurableSpac
     (hI : Base I) (hloc : ∀ o, I.TapeLocal o (P.winLo o)) :
     μ.real {ω | ¬ ConditionalRuns I P.wsLo (ξ ω) (s.link P.table) ρ m (Count.push P.cost B) M (Q
       ω)} ≤ δ :=
-  (h.measureReal_not_runs_le μ I Q).trans (hT _ (h.meets I hI) (h.tapeLocal I hI hloc))
+  (h.measureReal_not_runs_le μ I Q).trans (hT _ (h.satisfies I hI) (h.tapeLocal I hI hloc))
 
 /-- **Expectations transfer**: an expectation of an observable of the final memory, proved for
-every interpretation meeting the contracts, holds for the linked program. -/
+every interpretation satisfying the contracts, holds for the linked program. -/
 theorem integral_runVal (h : P.Refines Base Ck) {mΩ : MeasurableSpace Ω} {μ : Measure Ω}
     {obs : Mem K → ℝ} {c : ℝ}
     (hT : ∀ J, Ck J → (∀ o, J.TapeLocal o (P.win o)) →
@@ -162,7 +162,7 @@ theorem integral_runVal (h : P.Refines Base Ck) {mΩ : MeasurableSpace Ω} {μ :
     (hI : Base I) (hloc : ∀ o, I.TapeLocal o (P.winLo o)) :
     ∫ ω, runVal I (ξ ω) (s.link P.table) ρ m obs ∂μ = c := by
   simp only [runVal_link]
-  exact hT _ (h.meets I hI) (h.tapeLocal I hI hloc)
+  exact hT _ (h.satisfies I hI) (h.tapeLocal I hI hloc)
 
 end Profile.Refines
 

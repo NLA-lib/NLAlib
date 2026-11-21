@@ -39,7 +39,7 @@ variable {O Q : Type}
 returns the stored conjugate and scan result under explicit quantitative matrix hypotheses.
 The five parameter words are the actual threshold, conditioning, Ritz, promising and contraction
 parameters. This is a proof interface for implementation substitution, never a primitive. -/
-def DecouplingContract (θ : ℝ) (D : Impl O Q) (I : Interp O Q ℝ) : Prop :=
+def DecouplingContract (θ : ℝ) (D : Stmt O Q) (I : Interp O Q ℝ) : Prop :=
   ∀ {n m F M : ℕ} {τ B α γ δ : ℝ} {w p r : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ}
     (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
     IsUpperHessenberg H → RapidDecouplingHyps H τ B θ α γ δ m F → 2 ^ m ≤ n → 0 ≤ τ →
@@ -51,7 +51,7 @@ def DecouplingContract (θ : ℝ) (D : Impl O Q) (I : Interp O Q ℝ) : Prop :=
       (Store.inBlock r.1 r.2 5) →
     Fp.Disj (Store.inBlock p.1 p.2 5)
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock r.1 r.2 5) →
-    Writes .total I tape D.body (Env.frame [n + 1, m, 2 ^ m, F, M] [w, p, w, r])
+    Writes .total I tape D (Env.frame [n + 1, m, 2 ^ m, F, M] [w, p, w, r])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock r.1 r.2 5)
       (fun μ' => μ'.pos = μ.pos ∧
         ∃ (U H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ), HasOrthonormalCols U ∧
@@ -120,39 +120,39 @@ variable [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O]
   [Has CmpTst Q] [Has IdxTst Q]
 
 /-- Commit a decoupled work matrix and push its right and left children. -/
-def writeAndSplit : Impl O Q := opsImpl% [N, lo, d, i] (A, St, W) → () {
-  run (copyToGlobal (Op := O) (Tst := Q)).body [N, lo, d] (W, A);
-  run (splitPush (O := O) (Q := Q)).body [N, lo, d, i] (St)
+def writeAndSplit : Stmt O Q := ops% [N, lo, d, i] (A, St, W) → () {
+  run (copyToGlobal (Op := O) (Tst := Q)) [N, lo, d] (W, A);
+  run (splitPush (O := O) (Q := Q)) [N, lo, d, i] (St)
 }
 
 /-- Process one large active block: decouple, bind its actual small-entry index, write back,
 and push right then left. The supplied decoupling implementation is fixed before execution. -/
-def processLarge (D : Impl O Q) : Impl O Q :=
-  opsImpl% [N, m, k, F, M, lo, d] (A, Params, St) → (Out, W, R) {
-    run D.body [d, m, k, F, M] (W, Params, W, R);
+def processLarge (D : Stmt O Q) : Stmt O Q :=
+  ops% [N, m, k, F, M, lo, d] (A, Params, St) → (Out, W, R) {
+    run D [d, m, k, F, M] (W, Params, W, R);
     let i ← index (Has.inj IdxTst.toNat) (R[4]) ≤ d;
-    run (writeAndSplit (O := O) (Q := Q)).body [N, lo, d, i] (A, St, W)
+    run (writeAndSplit (O := O) (Q := Q)) [N, lo, d, i] (A, St, W)
   }
 
 /-- The active block is copied from raw matrix storage and processed at its actual size. -/
-def processRange (D : Impl O Q) : Impl O Q :=
-  opsImpl% [N, m, k, F, M, lo, d] (A, Params, St) → (Out, W, R) {
-    run (copyToWork (Op := O) (Tst := Q)).body [N, lo, d] (A, W);
+def processRange (D : Stmt O Q) : Stmt O Q :=
+  ops% [N, m, k, F, M, lo, d] (A, Params, St) → (Out, W, R) {
+    run (copyToWork (Op := O) (Tst := Q)) [N, lo, d] (A, W);
     ifPos k + 1 - d {
-      run (finishRange (O := O) (Q := Q)).body [N, lo, d] (W, Out)
+      run (finishRange (O := O) (Q := Q)) [N, lo, d] (W, Out)
     };
     ifPos d - k {
-      run (processLarge D).body [N, m, k, F, M, lo, d] (A, Params, St, Out, W, R)
+      run (processLarge D) [N, m, k, F, M, lo, d] (A, Params, St, Out, W, R)
     }
   }
 
 /-- Pop the actual top range, bounded-read both stored natural words, and process that range. -/
-def worklistRound (D : Impl O Q) : Impl O Q :=
-  opsImpl% [N, m, k, F, M] (A, Params, St) → (Out, W, R) {
-    run (rangePop (Op := O) (Tst := Q)).body [N] (St, R);
+def worklistRound (D : Stmt O Q) : Stmt O Q :=
+  ops% [N, m, k, F, M] (A, Params, St) → (Out, W, R) {
+    run (rangePop (Op := O) (Tst := Q)) [N] (St, R);
     let lo ← index (Has.inj IdxTst.toNat) (R) ≤ N;
     let d ← index (Has.inj IdxTst.toNat) (R[1]) ≤ N;
-    run (processRange D).body [N, m, k, F, M, lo, d] (A, Params, St, Out, W, R)
+    run (processRange D) [N, m, k, F, M, lo, d] (A, Params, St, Out, W, R)
   }
 
 end Program

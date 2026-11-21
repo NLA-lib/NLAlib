@@ -378,7 +378,7 @@ theorem smallEigProg_core_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : 
       smallEigCap nmax S δ φ c₁ c₂, smallEigCap nmax S δ φ c₁ c₂,
       smallEigCap nmax S δ φ c₁ c₂ + (n + 1), n + 1])
     (ha : Operand.evalList ρ args = some [w, (L + 1, 0), p, ub, w, ub, (L, 0)]) :
-    PWrites law I (.frame ds args (smallEigCore (O := O) (Q := Q) sG).body) ρ
+    PWrites law I (.frame ds args (smallEigCore (O := O) (Q := Q) sG)) ρ
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock ub.1 ub.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock L 0 1)
       (fun μ => ∃ H X : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
@@ -472,7 +472,7 @@ theorem SmallEigInput.identity_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar Mch I) (h0 : Mch.lit 0 = 0) (h1 : Mch.lit 1 = 1) {nmax n T : ℕ}
     {S δ φ : ℝ} {c₁ c₂ : PolyLogTail} {w q o : ℕ × ℕ} {M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {μ : Mem ℝ} {τ : Tape ℝ} (hin : SmallEigInput nmax S δ φ c₁ c₂ w q o M μ) :
-    Writes .total I τ (identityLeaf (O := O) (Q := Q)).body
+    Writes .total I τ (identityLeaf (O := O) (Q := Q))
       (Env.frame [n + 1, (smallEigParams nmax S δ φ c₁ c₂).length, T] [w, q, w, o])
       (Store.inBlock o.1 o.2 (2 * ((n + 1) * (n + 1))))
       (fun μ' => SmallEigInput nmax S δ φ c₁ c₂ w q o M μ' ∧
@@ -534,10 +534,10 @@ theorem smallEigProg_tail_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : 
       smallEigCap nmax S δ φ c₁ c₂ + (n + 1), n + 1])
     (ha₄ : Operand.evalList ρ as₄ = some [w, (L + 1, 0), q, o, w, o, (L, 0)]) :
     PWrites law I
-      (.seq (.frame ds₁ as₁ (slottedLogOpen (O := O) (Q := Q)).body)
-        (.seq (.frame ds₂ as₂ (hessenbergReduceLast (O := O) (Q := Q)).body)
-          (.seq (.frame ds₃ as₃ (givensReplayColumns (O := O) (Q := Q)).body)
-            (.frame ds₄ as₄ (smallEigCore (O := O) (Q := Q) sG).body)))) ρ
+      (.seq (.frame ds₁ as₁ (slottedLogOpen (O := O) (Q := Q)))
+        (.seq (.frame ds₂ as₂ (hessenbergReduceLast (O := O) (Q := Q)))
+          (.seq (.frame ds₃ as₃ (givensReplayColumns (O := O) (Q := Q)))
+            (.frame ds₄ as₄ (smallEigCore (O := O) (Q := Q) sG))))) ρ
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock o.1 o.2 (2 * ((n + 1) * (n + 1))) ⊔ Fp.above L)
       (fun μ => SmallEigScratch n L (smallEigParams nmax S δ φ c₁ c₂) w q o μ ∧
@@ -607,7 +607,7 @@ theorem smallEigProg_pwrites_schur {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
     {M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {S δ φ : ℝ} (hMS : specNorm M ≤ S)
     (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
     (hu : u ≤ uSmallEig nmax S δ φ c₁ c₂) (w q o : ℕ × ℕ) :
-    PWrites law I (smallEigProg (O := O) (Q := Q) sG).body
+    PWrites law I (smallEigProg (O := O) (Q := Q) sG)
       (Env.frame (smallEigDims n nmax S δ φ c₁ c₂) [w, q, w, o])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock o.1 o.2 (2 * ((n + 1) * (n + 1)))) (SmallEigInput nmax S δ φ c₁ c₂ w q o M)
@@ -727,7 +727,7 @@ theorem smallEigProg_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     {M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {S δ φ : ℝ} (hMS : specNorm M ≤ S)
     (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
     (hu : u ≤ uSmallEig nmax S δ φ c₁ c₂) (w q o : ℕ × ℕ) :
-    PWrites law I (smallEigProg (O := O) (Q := Q) sG).body
+    PWrites law I (smallEigProg (O := O) (Q := Q) sG)
       (Env.frame (smallEigDims n nmax S δ φ c₁ c₂) [w, q, w, o])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock o.1 o.2 (2 * ((n + 1) * (n + 1)))) (SmallEigInput nmax S δ φ c₁ c₂ w q o M)

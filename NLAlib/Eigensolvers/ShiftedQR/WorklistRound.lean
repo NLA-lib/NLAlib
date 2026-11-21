@@ -28,12 +28,13 @@ open Ops
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O]
   [Has IdxTst Q]
 
-/-- The actual top range is bounded-read and processed under the global input hypotheses.
-Persistent geometry supplies capacity for the stack, output and scratch before execution. -/
+/-- The actual top range is bounded-read and processed under the global input hypotheses. Persistent
+geometry supplies capacity for the stack, output and scratch before execution. A fragment: its tree
+runs only inside the tree of `NLAlib.ShiftedQR.worklistSolve`. -/
 theorem worklistRound_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar Mch I) (hE : ExactModel id Mch) (hL : IsIndexLit Mch I) (hQ : IsToNat id I)
     {θ : ℝ} {K : KernelRoutines θ} (hK : IsEigenvalueKernels K I)
-    (D : Impl O Q) (hD : DecouplingContract θ D I)
+    (D : Stmt O Q) (hD : DecouplingContract θ D I)
     {tape : Tape ℝ} {μ : Mem ℝ} {n j count m F M : ℕ} {a p stack out w r : ℕ × ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {τ B α γ δ g : ℝ}
     (hG : WorklistGeometry (n + 1) a p stack out w r μ)
@@ -42,7 +43,7 @@ theorem worklistRound_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hM : M = ⌈Real.sqrt 2 / exceptionalSpacing (2 ^ m) B θ α ((1 - γ) ^ 2)⌉₊)
     (hParams : μ.store.readBlock p.1 p.2 5 = some [τ, B, θ, α, γ])
     (hCount : μ.store.get stack.1 stack.2 = some (count : ℝ)) (hpos : 0 < count) :
-    Writes .total I tape (worklistRound D).body
+    Writes .total I tape (worklistRound D)
       (Env.frame [n + 1, m, 2 ^ m, F, M] [a, p, stack, out, w, r])
       (worklistFp (n + 1) a stack out w r)
       (fun μ' => μ'.pos = μ.pos ∧ WorklistInv H τ a stack out (j + 1) μ') μ := by

@@ -53,9 +53,9 @@ repeated $m$ times into `Tau`, then $q$ rounded square roots of `Tau` in place
 the caller from cap words. The interface is `[N, m, q] (H, S) → (Tau)`; the copy of the matrix
 is scoped.
 Algorithm: small-eig -/
-def distSpec : Impl O Q := opsImpl% [N, m, q] (H, S) → (Tau) {
-  run (comptauHalf (O := O) (Q := Q)).body [N, 1, m] (H, S, Tau);
-  run (squareRoots (Op := O) (Tst := Q)).body [q] (Tau, Tau)
+def distSpec : Stmt O Q := ops% [N, m, q] (H, S) → (Tau) {
+  run (comptauHalf (O := O) (Q := Q)) [N, 1, m] (H, S, Tau);
+  run (squareRoots (Op := O) (Tst := Q)) [q] (Tau, Tau)
 }
 
 end Program
@@ -139,19 +139,20 @@ section Theorems
 
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
 
-/-- `DistSpec` on any scalar machine: if `NLAlib.ShiftedQR.comptauHalf` meets the comparison
+/-- `DistSpec` on any scalar machine: if `NLAlib.ShiftedQR.comptauHalf` satisfies the comparison
 contract of the shift $s$ repeated, $m \ge 1$ (`NLAlib.ShiftedQR.IsHalfTau` for $\mathbf{H}$ of
 order $n + 1$ and the list of $2m$ copies of $s$), then from $\mathbf{H}$ at `h`, the pair of $s$ at
 `s` and room for the word `tau` (in a buffer of its own), `NLAlib.SmallEig.distSpec` writes only
-that word, keeps the tape position, and stores $q$ rounded square roots of a $t$ within
-$0.0011$, relatively, of $\|\mathbf{e}_n^{\mathsf{T}}(\mathbf{H} - s\mathbf{I})^{-m}\|^{-1}$. -/
+that word, keeps the tape position, and stores $q$ rounded square roots of a $t$ within $0.0011$,
+relatively, of $\|\mathbf{e}_n^{\mathsf{T}}(\mathbf{H} - s\mathbf{I})^{-m}\|^{-1}$. Shared by the
+trees of `NLAlib.SmallEig.oneEigPoint` and `NLAlib.SmallEig.oneEigStart`. -/
 theorem distSpec_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I) {n m q : ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {s : ℂ} (hm : 0 < m)
     (hT : IsHalfTau H (List.replicate (2 * m) s) (comptauHalf (O := O) (Q := Q)) I)
     {τ : Tape ℝ} {μ : Mem ℝ} {h sp tau : ℕ × ℕ} (hl : μ.Live [h, sp, tau])
     (hH : HoldsMatrix h H μ.store) (hsp : μ.store.readBlock sp.1 sp.2 2 = some [s.re, s.im])
     (htau : tau.2 < μ.store.len tau.1) (hth : tau.1 ≠ h.1) (hts : tau.1 ≠ sp.1) :
-    Writes .total I τ (distSpec (O := O) (Q := Q)).body (Env.frame [n + 1, m, q] [h, sp, tau])
+    Writes .total I τ (distSpec (O := O) (Q := Q)) (Env.frame [n + 1, m, q] [h, sp, tau])
       (Store.inBlock tau.1 tau.2 1)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ t : ℝ, μ'.store.get tau.1 tau.2 = some (sqrtIter M q t) ∧
         |t - ‖WithLp.toLp 2 (((s • (1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) - H)⁻¹ ^ m)
@@ -200,7 +201,7 @@ theorem distSpec_accuracy {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS :
     {τ : Tape ℝ} {μ : Mem ℝ} {h sp tau : ℕ × ℕ} (hl : μ.Live [h, sp, tau])
     (hHs : HoldsMatrix h H μ.store) (hsp : μ.store.readBlock sp.1 sp.2 2 = some [s.re, s.im])
     (htau : tau.2 < μ.store.len tau.1) (hth : tau.1 ≠ h.1) (hts : tau.1 ≠ sp.1) :
-    Writes .total I τ (distSpec (O := O) (Q := Q)).body (Env.frame [n + 1, m, q] [h, sp, tau])
+    Writes .total I τ (distSpec (O := O) (Q := Q)) (Env.frame [n + 1, m, q] [h, sp, tau])
       (Store.inBlock tau.1 tau.2 1)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ t : ℝ, μ'.store.get tau.1 tau.2 = some t ∧
         0.9 * (⨅ i, ‖s - d i‖) ≤ t ∧ t ≤ 1.1 * (⨅ i, ‖s - d i‖)) μ := by
@@ -271,7 +272,7 @@ theorem distSpec_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScala
     {τ : Tape ℝ} {μ : Mem ℝ} {h sp tau : ℕ × ℕ} (hl : μ.Live [h, sp, tau])
     (hHs : HoldsMatrix h H μ.store) (hsp : μ.store.readBlock sp.1 sp.2 2 = some [s.re, s.im])
     (htau : tau.2 < μ.store.len tau.1) :
-    Writes .total I τ (distSpec (O := O) (Q := Q)).body (Env.frame [n + 1, m, q] [h, sp, tau])
+    Writes .total I τ (distSpec (O := O) (Q := Q)) (Env.frame [n + 1, m, q] [h, sp, tau])
       (Store.inBlock tau.1 tau.2 1)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ t : ℝ, μ'.store.get tau.1 tau.2 = some t) μ := by
   unfold distSpec

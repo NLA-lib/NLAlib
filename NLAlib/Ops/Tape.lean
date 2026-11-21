@@ -174,6 +174,7 @@ theorem run_follows {I : Interp Op Tst K} {k : Op → List ℕ → ℕ} (hI : �
     split_ifs at h with hl
     obtain ⟨h1, h2⟩ := ih _ a b h
     exact ⟨h1, fun hag => by simp [eval, hd, hi, hl, h2 hag]⟩
+  | note _ _ ih => intro a b h; exact ih _ a b h
 
 /-- A tree without tests and index binders: its uses of the tape are static. -/
 def Stmt.Straight : Stmt Op Tst → Prop
@@ -187,6 +188,7 @@ def Stmt.Straight : Stmt Op Tst → Prop
   | .allocAs _ _ body => body.Straight
   | .loop _ body => body.Straight
   | .frame _ _ body => body.Straight
+  | .note _ s => s.Straight
 
 /-- **The static window** of a tree: the windows `k` of its calls, added up. -/
 def staticWindow (k : Op → List ℕ → ℕ) : Stmt Op Tst → List ℕ → ℕ
@@ -199,6 +201,7 @@ def staticWindow (k : Op → List ℕ → ℕ) : Stmt Op Tst → List ℕ → �
       match IExp.evalList idx ds, IExp.evalList idx (args.map Operand.off) with
       | some d, some o => staticWindow k body (d ++ o)
       | _, _ => 0
+  | .note _ s, idx => staticWindow k s idx
   | _, _ => 0
 
 theorem pos_of_iter {f : ℕ → Mem K → Option (Mem K)} {c : ℕ → ℕ}
@@ -245,6 +248,7 @@ theorem pos_of_run_of_straight {I : Interp Op Tst K} {k : Op → List ℕ → �
     obtain ⟨i, hi, h⟩ := Option.bind_eq_some_iff.mp h
     split_ifs at h
     simpa [staticWindow, hd, Operand.evalList_off_of_evalList hi] using ih hs h
+  | note _ _ ih => exact ih hs h
 
 /-- **The window lemma.** The meaning induced by an implementation without tests and index
 binders over tape-local operations is tape-local, with the static window of the tree. -/
@@ -338,6 +342,7 @@ theorem pos_of_run_of_indep {I : Interp Op Tst K} (hI : ∀ o, I.TapeLocal o fun
     obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
     split_ifs at h
     exact ih h
+  | note _ _ ih => exact ih h
 
 /-- **Linking preserves tape independence**, for every implementation: over operations that do
 not read the tape, no induced meaning reads it, tests and index binders included. -/

@@ -102,6 +102,7 @@ def Stmt.link (T : Table Op₁ Op₂ Tst) : Stmt Op₁ Tst → Stmt Op₂ Tst
   | .allocAs fmt len body => .allocAs fmt len (body.link T)
   | .loop n body => .loop n (body.link T)
   | .frame ds args body => .frame ds args (body.link T)
+  | .note n s => .note n (s.link T)
 
 /-- **The interpretation of `Op₁` induced by a table over `Op₂`**: an implemented operation means
 the run of its implementation under `I` with the tape it is given; a kept operation means what it
@@ -189,6 +190,7 @@ theorem run_link (I : Interp Op₂ Tst K) (T : Table Op₁ Op₂ Tst) (τ : Tape
   | allocAs fmt len body ih => simp only [Stmt.link, eval, ih]
   | loop n body ih => simp only [Stmt.link, eval, ih]
   | frame ds args body ih => simp only [Stmt.link, eval, ih]
+  | note _ _ ih => exact ih ..
 
 /-! ### Composition of tables -/
 
@@ -226,6 +228,7 @@ theorem Stmt.link_comp (T₁ : Table Op₁ Op₂ Tst) (T₂ : Table Op₂ Op₃ 
   | allocAs fmt len body ih => simp only [Stmt.link, ih]
   | loop n body ih => simp only [Stmt.link, ih]
   | frame ds args body ih => simp only [Stmt.link, ih]
+  | note _ _ ih => simp only [Stmt.link, ih]
 
 /-- The interpretation induced through two tables is the one induced by their composition. -/
 theorem Interp.link_comp (I : Interp Op₃ Tst K) (T₁ : Table Op₁ Op₂ Tst)
@@ -256,6 +259,7 @@ theorem Interp.link_comp (I : Interp Op₃ Tst K) (T₁ : Table Op₁ Op₂ Tst)
   | allocAs fmt len body ih => simp only [Stmt.link, ih]
   | loop n body ih => simp only [Stmt.link, ih]
   | frame ds args body ih => simp only [Stmt.link, ih]
+  | note _ _ ih => simp only [Stmt.link, ih]
 
 @[simp] theorem Interp.link_id (I : Interp Op Tst K) : I.link Table.id = I := rfl
 

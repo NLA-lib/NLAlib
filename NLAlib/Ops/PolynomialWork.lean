@@ -254,6 +254,7 @@ theorem stmtWeightedCost_le_coefficient_mul_pow
     | allocAs fmt len s hs => exact hs
     | loop n s hs => exact polynomial_loop op query n s hs
     | frame ds args s hs => exact polynomial_frame op query ds args s hs
+    | note _ s hs => exact hs
   exact h b idx degrees w hb hi hw
 
 /-- Canonical counted execution obeys the context-sensitive majorant for the full instrumented

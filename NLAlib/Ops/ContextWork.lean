@@ -38,7 +38,7 @@ def Stmt.workCoefficient : Stmt Op Tst → ℕ
   | .seq s t => s.workCoefficient + t.workCoefficient
   | .ite _ _ _ s t | .whileFuel _ _ _ _ s t => 1 + s.workCoefficient + t.workCoefficient
   | .bindIdx _ _ _ s => 1 + s.workCoefficient
-  | .loop _ s | .allocAs _ _ s | .frame _ _ s => s.workCoefficient
+  | .loop _ s | .allocAs _ _ s | .frame _ _ s | .note _ s => s.workCoefficient
 
 /-- A work exponent relative to separate initial slot degrees. Bounded loops add their
 iteration-count exponent to the body's exponent; frame substitution retains slot distinctions. -/
@@ -57,6 +57,7 @@ def Stmt.workDegreeAt : Stmt Op Tst → List ℕ → ℕ
   | .frame ds args s, degrees =>
     s.workDegreeAt (ds.map (IExp.degreeAt degrees) ++
       args.map (fun a => a.off.degreeAt degrees))
+  | .note _ s, degrees => s.workDegreeAt degrees
 
 /-- The largest primitive dimension degree at any operation or query in the fixed tree.
 Frame and binder contexts agree with the work-exponent analysis; no call shape is inferred
@@ -76,6 +77,7 @@ def Stmt.callDegreeAt : Stmt Op Tst → List ℕ → ℕ
   | .frame ds args s, degrees =>
     s.callDegreeAt (ds.map (IExp.degreeAt degrees) ++
       args.map (fun a => a.off.degreeAt degrees))
+  | .note _ s, degrees => s.callDegreeAt degrees
 
 /-- The largest operation or query dimension-list length, independent of index values.
 An index query's list is empty; dimensions used only to enter a frame are not primitive calls. -/
@@ -84,6 +86,6 @@ def Stmt.callArity : Stmt Op Tst → ℕ
   | .call _ ds _ _ => ds.length
   | .seq s t => max s.callArity t.callArity
   | .ite _ ds _ s t | .whileFuel _ _ ds _ s t => max ds.length (max s.callArity t.callArity)
-  | .bindIdx _ _ _ s | .loop _ s | .allocAs _ _ s | .frame _ _ s => s.callArity
+  | .bindIdx _ _ _ s | .loop _ s | .allocAs _ _ s | .frame _ _ s | .note _ s => s.callArity
 
 end NLAlib.Ops

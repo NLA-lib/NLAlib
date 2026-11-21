@@ -54,7 +54,7 @@ theorem sum_meets {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {u :
 
 /-- Sum two vectors by two calls of `sum` and one addition. The cell `w` is scratch for the second
 partial sum: it is written, and its final contents are not reported. -/
-def sum2 : Routine Op Tst := routine% [n] (x : n, y : n) → (z : 1, unreported w : 1) {
+def sum2 : Routine Op Tst := noted% routine% [n] (x : n, y : n) → (z : 1, unreported w : 1) {
   run (sum (Op := Op) (Tst := Tst)) [n] (x, z);
   run (sum (Op := Op) (Tst := Tst)) [n] (y, w);
   call (Has.inj ScalarOp.add) [] (z, w) → (z)

@@ -284,6 +284,7 @@ macro_rules
       routine_nf at $(mkIdent `hblocks):ident)))
     if let some xs := xs then
       tacs := tacs.push (← `(tactic| split_reads $hr:ident as ($xs,*)))
+    tacs := tacs.push (← `(tactic| strip_notes))
     let mut r := tacs[0]!
     for t in tacs.extract 1 tacs.size do
       r ← `(tactic| ($r:tactic; $t:tactic))
@@ -317,6 +318,7 @@ macro_rules
       | none => `(tactic| first | routine_sep | skip)
     `(tactic|
       (unname_goal
+       strip_notes
        -- the shape of the goal picks the rule; the judgment is then elaborated once
        (first
          | apply Writes.seq_le ?hcall ?hle fun $m $hfr hpost_call => ?hQ

@@ -128,6 +128,10 @@ theorem wp_alloc {format : StorageFormat} {len : IExp} {body : Stmt Op Tst} {n :
   simp only [Wp, eval, hn, Option.bind_some]
   exact Mode.holds_map h
 
+/-- A note changes no judgment: the tree with the note satisfies what the tree does. -/
+@[simp] theorem wp_note_iff {n : Note} {s : Stmt Op Tst} :
+    Wp md I τ (.note n s) ρ Q m ↔ Wp md I τ s ρ Q m := Iff.rfl
+
 /-- Procedure instance. -/
 theorem wp_frame {ds : List IExp} {args : List Operand} {body : Stmt Op Tst} {d : List ℕ}
     {a : List (ℕ × ℕ)} (hd : IExp.evalList ρ.idx ds = some d)

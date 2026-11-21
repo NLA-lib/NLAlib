@@ -365,6 +365,33 @@ itself, the layer under routine judgments (`Examples/Dot.lean`, `MatMul.lean`, `
 Operation meanings and primitive costs, the declared input representation, and the relevance of
 the specified postcondition remain properties of the chosen problem and operation model.
 
+## Notes: names that a tree carries
+
+A tree has one constructor that does nothing: `Stmt.note n s` is the tree `s` with the metadata
+`n : Note` (`Syntax.lean`). A note says which routine a frame runs (`Note.routine`), what a
+bound variable is called in the source (`Note.var`), what the header of a tree names
+(`Note.header`), or carries a label or a key and a value. The evaluator, the counted evaluator,
+the static count and scratch, the storage check, linking and every judgment treat `note n s` as
+`s` (`eval_note`, `stmtCost_note`, `stmtPeak_note`, `wp_note_iff`, `Writes.note_iff`,
+`PWrites.note_iff`); the instrumented tree has no notes, so a note adds no instruction and no
+certified count depends on one. Notes are the only place where a tree holds metadata, and a new
+kind of metadata is a new constructor of `Note`; the type of trees does not change.
+`Stmt.erase` removes every note, with the same run, count and scratch (`Notes.lean`).
+
+The builder attaches notes to the trees written under `noted%`:
+`def foo : Routine Op Tst := noted% routine% [n] (x : n) → (z : 1) { … }` records the names of
+the header, of each loop variable, scratch buffer and index binding, and of the routine or tree
+that each `run` frames. Without `noted%` a tree has no note. Proofs are the same in both cases:
+`routine_intro`, `step`, `call` and `loop_inv` remove the notes of the goal first
+(`strip_notes`, which is also the tactic to use after unfolding a noted tree by hand, before a
+rule that matches the shape of the tree). The library's trees are written without `noted%`
+where their proofs apply such rules by hand.
+
+`Stmt.pretty` (`Notes.lean`) reads a tree back as pseudocode with those names, and shows a
+noted `run` as `run name [dims] (operands)` in place of the tree of the routine;
+`Examples/Notes.lean` checks its output on the integrator. It is a reading aid for people and
+tools. It is not a code emitter, and nothing is proved about its output.
+
 ## Proof construction
 
 The statement interpreters `eval` and `evalCounted`, judgments `ConditionalRuns`,
@@ -446,6 +473,7 @@ source guard never becomes an omitted runtime operation. See the
 | `Cert.lean` | `Algorithm`, `Impl.Satisfies` (a tree implements an operation contract), constructors |
 | `RoutineInterface.lean` | The interface of a routine: access modes, ports, regions, the two separation rules |
 | `Routine.lean` | Routines: specifications, the judgment `Meets`, calls, programs and certificates |
+| `Notes.lean` | `Stmt.erase` and its invariance; `Stmt.pretty`, a tree as pseudocode with the names of its notes |
 | `RoutineSyntax.lean` | `routine%` and `spec%`: a routine and a specification on named dimensions and operands |
 | `Logic/RoutineIntro.lean` | The tactics of routine proofs: `routine_intro`, `call`, `routine_exit`, `read_outputs`, `implements`, `routine_sep` |
 | `Logic/KernelRfl.lean` | `kernel_rfl`: closed computations (instruction polynomials) checked by the kernel |

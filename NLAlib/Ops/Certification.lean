@@ -150,6 +150,7 @@ theorem original_stmtCost_instrument (s : Stmt Op Tst) (idx : List ℕ) :
   | frame ds args body ih =>
     simp only [Stmt.instrument, stmtCost, map_add, original_stmtCost_tally, zero_add]
     cases IExp.evalList idx ds <;> cases IExp.evalList idx (args.map Operand.off) <;> simp [ih]
+  | note _ _ ih => exact ih ..
 
 private def ProjectsOriginal (a : St (Op ⊕ Bookkeeping) Tst K) (b : St Op Tst K) : Prop :=
   a.mem = b.mem ∧ Count.original a.cost = b.cost
@@ -358,6 +359,7 @@ private theorem projectsOriginal_instrument {I : Interp Op Tst K}
     obtain ⟨b', hb', hp⟩ := ih _ _ _ _ h hab
     exact ⟨b', by simp only [evalCounted, hd, hxs, Option.bind_some, ← hab.1,
       if_pos hl, hb'], hp⟩
+  | note _ _ ih => intro ρ a a' b h hab; exact ih ρ a a' b h hab
 
 /-- Projecting an actual instrumented run recovers exactly the source run's memory and
 original operation/query counts. Structural counts remain present in the canonical run.

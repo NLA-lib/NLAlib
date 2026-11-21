@@ -1223,6 +1223,7 @@ public import NLAlib.Ops.Examples.Mixed
 public import NLAlib.Ops.Examples.Noisy
 public import NLAlib.Ops.Examples.NoisyLinked
 public import NLAlib.Ops.Examples.NoisyMath
+public import NLAlib.Ops.Examples.Notes
 public import NLAlib.Ops.Examples.Oracles
 public import NLAlib.Ops.Examples.RandomWitness
 public import NLAlib.Ops.Examples.Resources
@@ -1287,6 +1288,7 @@ public import NLAlib.Ops.Logic.WeightedLoop
 public import NLAlib.Ops.Logic.While
 public import NLAlib.Ops.Logic.Writes
 public import NLAlib.Ops.MonomialWork
+public import NLAlib.Ops.Notes
 public import NLAlib.Ops.OperationCount
 public import NLAlib.Ops.PolynomialWork
 public import NLAlib.Ops.Probability

@@ -268,6 +268,7 @@ def Stmt.countPoly : Stmt Op Tst → List CountPoly → CountPoly
   | .frame ds args s, env =>
       s.countPoly (ds.map (fun e => (e.upper env).normalize) ++
         args.map (fun a => (a.off.upper env).normalize))
+  | .note _ s, env => s.countPoly env
 
 private theorem boundedBy_push {x idx : List ℕ} {env : List CountPoly} (h : BoundedBy x idx env)
     {v : ℕ} {p : CountPoly} (hv : v ≤ CountPoly.eval x p) :
@@ -363,6 +364,7 @@ theorem stmtWeightedCost_le_countPoly {op : Op → List ℕ → ℕ} {query : Ts
     have h1 := boundedBy_normalize (IExp.evalList_le_upper h hd)
     have h2 := boundedBy_normalize (IExp.evalList_le_upper h ho)
     simpa only [List.map_map, Function.comp_def] using List.rel_append h1 h2
+  | note _ _ ih => exact ih h
 
 /-- The bounds of the index variables of a program at its start: each size is a variable, each
 initial offset is zero. -/

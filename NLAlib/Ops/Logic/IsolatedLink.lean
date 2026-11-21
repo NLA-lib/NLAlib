@@ -115,6 +115,7 @@ theorem eval_sim_of_isolated
     split_ifs at hr with hl
     obtain ⟨ht, hp'⟩ := ih _ _ _ hp (Env.Avoids.frame (Operand.avoids_of_evalList he ha) d) hr
     exact ⟨by simp only [eval, hd, ha, Option.bind_some, if_pos hl, ht], hp'⟩
+  | note _ _ ih => intro ρ m m' hp he hr; exact ih ρ m m' hp he hr
   | loop n body ih =>
     intro ρ m m' hp he hr
     obtain ⟨N, hN, hr⟩ := Option.bind_eq_some_iff.mp hr

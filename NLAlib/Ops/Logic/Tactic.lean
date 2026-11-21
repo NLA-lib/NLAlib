@@ -157,7 +157,8 @@ macro_rules
           Macro.throwError "loop_inv: expected five names for the round"
         `(tactic| intro $names*)
     `(tactic|
-      ((first
+      (strip_notes
+       (first
         | refine Writes.seq_le
             (writes_loop (N := ?_) (F := $F) (P := $P)
               ?bound ?mono ?initial ?round) ?footprint ?exit

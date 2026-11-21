@@ -60,6 +60,10 @@ namespace Writes
 variable {md : Mode} {I : Interp Op Tst K} {τ : Tape K} {ρ : Env} {c c' : Stmt Op Tst}
   {F G : Fp} {P P' : Mem K → Prop} {Q : Mem K → Prop} {m : Mem K}
 
+/-- A note changes no block specification. -/
+@[simp] theorem note_iff {n : Note} :
+    Writes md I τ (.note n c) ρ F P m ↔ Writes md I τ c ρ F P m := Iff.rfl
+
 /-- Consequence into `Wp`. -/
 theorem wp (h : Writes md I τ c ρ F P m) (hQ : ∀ m', m.store.EqOff F m'.store → P m' → Q m') :
     Wp md I τ c ρ Q m :=

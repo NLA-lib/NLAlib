@@ -19,6 +19,11 @@ tree built with the notation is `rfl`-equal to the positional one (the examples 
 `NLAlib.Ops.Examples.Built`). There is no compile function in the kernel and no kernel `rfl` of a
 compiled tree.
 
+Under `noted% t` the trees built inside the term `t` also carry the names of the source as notes
+(`NLAlib.Ops.Stmt.note`): the names of the header, of each loop variable, scratch buffer and
+index binding, and of the routine or tree that each `run` frames. A note changes no run, count
+or judgment; `NLAlib.Ops.Stmt.pretty` reads the names back.
+
 ## The header
 
 `[n, k]` are the dimensions, `(Q, w)` the input operands, `(w, R)` the output operands, in the
@@ -321,6 +326,62 @@ meta def argL (sc : Scope) (as : Array (TSyntax `opsArg)) : MacroM (TSyntax `ter
   let ts ← as.mapM (argE sc)
   `([$ts,*])
 
+/-- **`noted% t`** elaborates the term `t` with notes: the trees that `ops%` and `routine%` build
+inside `t` carry the names of their header, of each bound variable and of the routine each `run`
+frames, as `NLAlib.Ops.Stmt.note`. Without `noted%` a tree has no note. -/
+syntax (name := opsNoted) "noted% " term : term
+
+open Lean Elab Term in
+/-- Elaborate `noted%`: the flag `ops.notes` is set while the term is elaborated. -/
+@[term_elab opsNoted] meta def elabOpsNoted : TermElab := fun stx expected? => do
+  match stx with
+  | `(noted% $t) => withOptions (·.setBool `ops.notes true) (elabTerm t expected?)
+  | _ => throwUnsupportedSyntax
+
+/-- `ops_note% n s` is `Stmt.note n s` under `noted%`, and `s` otherwise. -/
+syntax (name := opsNote) "ops_note% " term:max term:max : term
+
+open Lean Elab Term in
+/-- Elaborate `ops_note%`. -/
+@[term_elab opsNote] meta def elabOpsNote : TermElab := fun stx expected? => do
+  match stx with
+  | `(ops_note% $n $s) =>
+    if (← getOptions).getBool `ops.notes false then elabTerm (← `(Stmt.note $n $s)) expected?
+    else elabTerm s expected?
+  | _ => throwUnsupportedSyntax
+
+/-- `ops_note_run% body dims operands s` is `s`, the frame of a `run`, with the note naming the
+routine or tree `body` under `noted%`. -/
+syntax (name := opsNoteRun) "ops_note_run% " term:max term:max term:max term:max : term
+
+open Lean Elab Term Meta in
+/-- Elaborate `ops_note_run%`: the name is that of the constant at the head of `body`. -/
+@[term_elab opsNoteRun] meta def elabOpsNoteRun : TermElab := fun stx expected? => do
+  match stx with
+  | `(ops_note_run% $body $ds $as $s) =>
+    unless (← getOptions).getBool `ops.notes false do return ← elabTerm s expected?
+    let saved ← saveState
+    let name? ← try
+        let b ← instantiateMVars (← withoutErrToSorry (elabTerm body none))
+        let b := if b.isAppOf `NLAlib.Ops.Routine.body then b.appArg! else b
+        saved.restore
+        pure b.getAppFn.constName?
+      catch _ => saved.restore; pure none
+    match name? with
+    | some name =>
+      let lit : TSyntax `term := ⟨Syntax.mkStrLit (toString name)⟩
+      elabTerm (← `(Stmt.note (Note.routine $lit $ds $as) $s)) expected?
+    | none => elabTerm s expected?
+  | _ => throwUnsupportedSyntax
+
+/-- A list of names as a term: the strings of a note. -/
+meta def strL (xs : Array String) : MacroM (TSyntax `term) := do
+  let ts : Array (TSyntax `term) := xs.map fun x => ⟨Syntax.mkStrLit x⟩
+  `([$ts,*])
+
+/-- The source text of a piece of syntax, for a note. -/
+meta def srcText (stx : Syntax) : String := (stx.reprint.getD "").trimAscii.toString
+
 mutual
 
 /-- Translate a sequence of statements: nested to the right; a `let` scopes over the rest. -/
@@ -331,14 +392,17 @@ meta def seqE (sc : Scope) : Nat → List (TSyntax `opsStmt) → MacroM (TSyntax
     match s with
     | `(opsStmt| let $t:ident ← allocAs $fmt $len) =>
       sc.fresh t
-      `(Stmt.allocAs $fmt $(← idxE sc depth len) $(← seqE (sc.pushBuf t.getId) f rest))
+      `(ops_note% (Note.var $(⟨Syntax.mkStrLit (toString t.getId)⟩))
+        (Stmt.allocAs $fmt $(← idxE sc depth len) $(← seqE (sc.pushBuf t.getId) f rest)))
     | `(opsStmt| let $t:ident ← alloc $len) =>
       sc.fresh t
-      `(Stmt.alloc $(← idxE sc depth len) $(← seqE (sc.pushBuf t.getId) f rest))
+      `(ops_note% (Note.var $(⟨Syntax.mkStrLit (toString t.getId)⟩))
+        (Stmt.alloc $(← idxE sc depth len) $(← seqE (sc.pushBuf t.getId) f rest)))
     | `(opsStmt| let $v:ident ← index $q ($as,*) ≤ $bd) =>
       sc.fresh v
-      `(Stmt.bindIdx $q $(← argL sc as.getElems) $(← idxE sc depth bd)
-        $(← seqE (sc.pushIdx v.getId) f rest))
+      `(ops_note% (Note.var $(⟨Syntax.mkStrLit (toString v.getId)⟩))
+        (Stmt.bindIdx $q $(← argL sc as.getElems) $(← idxE sc depth bd)
+          $(← seqE (sc.pushIdx v.getId) f rest)))
     | _ =>
       if rest.isEmpty then stmtE sc f s
       else `(Stmt.seq $(← stmtE sc f s) $(← seqE sc f rest))
@@ -360,19 +424,23 @@ meta def stmtE (sc : Scope) : Nat → TSyntax `opsStmt → MacroM (TSyntax `term
       `(Stmt.call $o $(← idxL sc ds.getElems) $(← argL sc as.getElems) $(← argL sc zs.getElems))
     | `(opsStmt| run $body [$ds,*] ($as,*)) => do
       let ops ← as.getElems.mapM (argE sc)
-      `(ops_run% $body $(← idxL sc ds.getElems) [$ops,*])
+      `(ops_note_run% $body $(← strL (ds.getElems.map (srcText ·.raw)))
+        $(← strL (as.getElems.map (srcText ·.raw)))
+        (ops_run% $body $(← idxL sc ds.getElems) [$ops,*]))
     | `(opsStmt| for $i:ident < $n $b:opsBlock) =>
       sc.fresh i
-      `(Stmt.loop $(← idxE sc depth n) $(← blockE (sc.pushIdx i.getId) f b))
+      `(ops_note% (Note.var $(⟨Syntax.mkStrLit (toString i.getId)⟩))
+        (Stmt.loop $(← idxE sc depth n) $(← blockE (sc.pushIdx i.getId) f b)))
     | `(opsStmt| if $q [$ds,*] ($as,*) $t:opsBlock else $e:opsBlock) =>
       `(Stmt.ite $q $(← idxL sc ds.getElems) $(← argL sc as.getElems) $(← blockE sc f t)
         $(← blockE sc f e))
     | `(opsStmt| while $i:ident < $fu, $q [$ds,*] ($as,*) $b:opsBlock then $k:opsBlock) =>
       sc.fresh i
       let sc' := sc.pushIdx i.getId
-      `(Stmt.whileFuel $(← idxE sc depth fu) $q $(← idxL sc' ds.getElems)
-        $(← argL sc' as.getElems)
-        $(← blockE sc' f b) $(← blockE sc' f k))
+      `(ops_note% (Note.var $(⟨Syntax.mkStrLit (toString i.getId)⟩))
+        (Stmt.whileFuel $(← idxE sc depth fu) $q $(← idxL sc' ds.getElems)
+          $(← argL sc' as.getElems)
+          $(← blockE sc' f b) $(← blockE sc' f k)))
     | `(opsStmt| ifPos $e $b:opsBlock) =>
       `(Stmt.ifPos $(← idxE sc depth e) $(← blockE (sc.pushIdx Name.anonymous) f b))
     | `(opsStmt| ifZero $e $b:opsBlock) =>
@@ -406,6 +474,11 @@ end Builder
 open Lean in
 macro_rules
   | `(ops% [$ds,*] ($ins,*) → ($outs,*) $b:opsBlock) =>
-    do Builder.blockE (← Builder.header ds.getElems ins.getElems outs.getElems) Builder.depth b
+    do
+      let names (xs : Array Ident) := xs.map fun x => toString x.getId
+      let tree ← Builder.blockE (← Builder.header ds.getElems ins.getElems outs.getElems)
+        Builder.depth b
+      `(ops_note% (Note.header $(← Builder.strL (names ds.getElems))
+        $(← Builder.strL (names (ins.getElems ++ outs.getElems)))) $tree)
 
 end NLAlib.Ops

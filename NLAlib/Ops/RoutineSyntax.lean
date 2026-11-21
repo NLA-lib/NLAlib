@@ -14,7 +14,8 @@ public import NLAlib.Ops.Logic.Builder
 `routine% [n, k] (b : n, x : n) → (x, r : n, p : n) { … }` is a **term** whose value is a plain
 `NLAlib.Ops.Routine`: the header is the interface, and the body is a program of the builder
 (`NLAlib/Ops/Logic/Builder.lean`) in which the dimensions and the operands are named. Nothing of
-the notation survives in the value.
+the notation survives in the value, unless the term is written under `noted%`, which records the
+names in the tree as notes (`NLAlib.Ops.Stmt.note`).
 
 ## The header
 
@@ -251,7 +252,11 @@ meta def routineE (ds : Array Ident) (ins outs : Array (TSyntax `routinePort))
       | _ => Macro.throwErrorAt c "routine%: not a clause"
     -- with `one variable` the buffer variables of a block are the operands, one each
     let tree ← if oneVar then tree operands #[] else tree (ins.map (·.name)) (outs.map (·.name))
-    `({ nd := $(lit ds.size), ports := [$ports,*], draws := $draws, body := $tree,
+    -- the note of the header: the dimensions and the buffer variables, by name
+    let varNames := if oneVar then operands.map (toString ·.getId) else vars.map toString
+    let noted ← `(ops_note% (Note.header $(← strL (ds.map (toString ·.getId)))
+      $(← strL varNames)) $tree)
+    `({ nd := $(lit ds.size), ports := [$ports,*], draws := $draws, body := $noted,
         binds := $binds, sep := $sep })
 
 end Builder

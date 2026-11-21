@@ -328,6 +328,26 @@ macro_rules
           try idx [$ts,*]
           done)))
 
+open Lean in
+/-- The expression with every outermost `NLAlib.Ops.Stmt.note n s` replaced by `s`. -/
+meta def stripNotesExpr (e : Expr) : Expr :=
+  e.replace fun t => if t.isAppOfArity ``Stmt.note 4 then some t.appArg! else none
+
+open Lean Meta Elab Tactic in
+/-- **`strip_notes`**: remove the notes (`NLAlib.Ops.Stmt.note`) from the trees of the goal. A
+note changes no run, so the new goal is the old one by definition (`NLAlib.Ops.eval_note`).
+`routine_intro`, `step`, `call` and `loop_inv` do this first; after unfolding a tree by hand,
+use it before applying a rule that matches the shape of the tree. Does nothing when the goal has
+no note. -/
+elab (name := stripNotes) "strip_notes" : tactic => withMainContext do
+  let goal ← getMainGoal
+  let target ← instantiateMVars (← goal.getType)
+  let mut stripped := target
+  -- each pass removes the outermost notes, so the passes end
+  while (stripped.find? (·.isAppOfArity ``Stmt.note 4)).isSome do
+    stripped := stripNotesExpr stripped
+  if stripped != target then replaceMainGoal [← goal.replaceTargetDefEq stripped]
+
 /-- **`step h [facts] as m₁ hfr₁ ⟨pat⟩`**: the call step in named form. The goal is a `Wp` or a
 `Writes` of a call, or of a call followed by more (`.seq (.call …) c`). `h` says that the
 operation satisfies its contract (`I.Satisfies md o (R.spec adm)`, or `I.IsFn` of a block function).
@@ -347,7 +367,8 @@ macro_rules
   | `(tactic| step $h as $m $hfr $[$pat]?) => `(tactic| step $h [] as $m $hfr $[$pat]?)
   | `(tactic| step $h [$ts,*] as $m $hfr) => `(tactic| step $h [$ts,*] as $m $hfr _)
   | `(tactic| step $h [$ts,*] as $m $hfr $pat:rcasesPatMed) => `(tactic|
-      ((first
+      (strip_notes
+       (first
          | refine Writes.seq_le (writes_call_cell_of $h rfl rfl rfl rfl
              (k := ?_) (xs := ?_) ?hk rfl ?hadm ?hlive ?hr ?hdom ?hz) ?hle fun $m $hfr hpost => ?hQ
          | refine Writes.seq_le (writes_call1_of $h rfl rfl rfl rfl

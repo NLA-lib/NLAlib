@@ -62,6 +62,7 @@ noncomputable def stmtCost : Stmt Op Tst → List ℕ → Count Op Tst
       match IExp.evalList idx ds, IExp.evalList idx (args.map Operand.off) with
       | some d, some o => stmtCost body (d ++ o)
       | _, _ => 0
+  | .note _ s, idx => stmtCost s idx
 
 /-- **The static workspace** of a tree: a bound on the scratch payload bytes above those live at its
 start, with the workspace `W` of each call. -/
@@ -83,6 +84,15 @@ def stmtPeak (W : Op → List ℕ → ℕ) : Stmt Op Tst → List ℕ → ℕ
       match IExp.evalList idx ds, IExp.evalList idx (args.map Operand.off) with
       | some d, some o => stmtPeak W body (d ++ o)
       | _, _ => 0
+  | .note _ s, idx => stmtPeak W s idx
+
+/-- A note adds nothing to the static count. -/
+@[simp] theorem stmtCost_note (n : Note) (s : Stmt Op Tst) (idx : List ℕ) :
+    stmtCost (.note n s) idx = stmtCost s idx := rfl
+
+/-- A note adds nothing to the static workspace. -/
+@[simp] theorem stmtPeak_note (W : Op → List ℕ → ℕ) (n : Note) (s : Stmt Op Tst)
+    (idx : List ℕ) : stmtPeak W (.note n s) idx = stmtPeak W s idx := rfl
 
 /-- An allocation of one-byte cells adds no primitive calls to its body. Structural allocation
 instructions are included separately by canonical program instrumentation. -/
@@ -176,15 +186,13 @@ theorem whileIter_within {test : ℕ → St Op Tst K → Option (Bool × St Op T
 /-- **Soundness of the static count and workspace**: a successful counted run keeps the live
 cells, adds at most the static count and stays within the static workspace. -/
 theorem exec_within {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ : Tape K} {s : Stmt Op Tst}
-    {ρ : Env}
-    {st st' : St Op Tst K} (h : evalCounted I W τ s ρ st = some st') :
+    {ρ : Env} {st st' : St Op Tst K} (h : evalCounted I W τ s ρ st = some st') :
     St.Within st st' (stmtCost s ρ.idx) (stmtPeak W s ρ.idx) := by
   induction s generalizing ρ st st' with
   | skip => cases h; exact St.Within.refl _
   | abort => cases h
   | seq s t ihs iht =>
-    obtain ⟨a, ha, hb⟩ := Option.bind_eq_some_iff.mp h
-    exact (ihs ha).trans (iht hb)
+    obtain ⟨a, ha, hb⟩ := Option.bind_eq_some_iff.mp h; exact (ihs ha).trans (iht hb)
   | call o ds ins outs =>
     obtain ⟨d, hd, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
@@ -259,6 +267,7 @@ theorem exec_within {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ : Ta
     obtain ⟨a, ha, h⟩ := Option.bind_eq_some_iff.mp h
     split_ifs at h
     simpa [stmtCost, stmtPeak, hd, Operand.evalList_off_of_evalList ha] using ih h
+  | note _ _ ih => exact ih h
 
 /-- **A run within a budget** (total correctness with accounting): from the memory `m`, the
 counted run succeeds, its counts are at most `B`, its scratch payload bytes at most `M`, and `Q`
@@ -394,6 +403,7 @@ theorem stmtPeak_instrument (W : Op → List ℕ → ℕ) (s : Stmt Op Tst) (idx
     simp only [Stmt.instrument, stmtPeak, stmtPeak_tally, zero_max]
     cases IExp.evalList idx ds <;> cases IExp.evalList idx (args.map Operand.off) <;>
       simp [ih]
+  | note _ _ ih => exact ih ..
 
 /-- The allocation/primitive part of the byte bound is unchanged by structural elaboration. -/
 theorem staticPeak_eq {r b : ℕ} (R : ResourceModel Op Tst) (p : Program Op Tst r b)

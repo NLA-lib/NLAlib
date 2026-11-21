@@ -57,14 +57,14 @@ inductive MyOperation where
   deriving DecidableEq
 
 /-- One step: `X ← X + h · (A X)`. -/
-def myStep : Routine MyOperation Empty := routine% [n] (h : 1, X : n) → (X) {
+def myStep : Routine MyOperation Empty := noted% routine% [n] (h : 1, X : n) → (X) {
   let Y ← alloc n;
   call MyOperation.matvec [n, n] (X) → (Y);
   call MyOperation.axpy [n] (h, Y, X) → (X)
 }
 
 /-- `N` steps. -/
-def myIntegrate : Routine MyOperation Empty := routine% [n, N] (h : 1, X : n) → (X) {
+def myIntegrate : Routine MyOperation Empty := noted% routine% [n, N] (h : 1, X : n) → (X) {
   for t < N { run myStep [n] (h, X) }
 }
 

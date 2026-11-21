@@ -215,6 +215,7 @@ def stmtWorkMono : Stmt Op Tst → List WorkMono → WorkMono
   | .loop n body, σ => (n.workMono σ).mul (stmtWorkMono body (loopSlots σ n))
   | .frame ds args body, σ =>
       stmtWorkMono body (ds.map (IExp.workMono σ) ++ (args.map Operand.off).map (IExp.workMono σ))
+  | .note _ s, σ => stmtWorkMono s σ
 
 /-! ### Soundness -/
 
@@ -495,6 +496,7 @@ theorem workMonoDominates (hb : ∀ b ∈ bs, 1 ≤ b) :
       exact hg _ (List.rel_append (IExp.evalList_le_workMono h hb ds hd)
         (IExp.evalList_le_workMono h hb _ ho))
     · exact zero_le
+  | .note _ s, σ => workMonoDominates hb s σ
 
 /-- The number of instructions of the static count is at most the monomial bound: at bases
 at least $1$ and slot values bounded by the monomials `σ`,
